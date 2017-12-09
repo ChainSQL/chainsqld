@@ -74,14 +74,14 @@ DerivedData
 # Profiling data
 gmon.out
 
-Builds/XCode/
-!Builds/XCode/README.md
-Builds/VisualStudio2015/
-!Builds/VisualStudio2015/README.md
-!Builds/VisualStudio2015/images
-Builds/Ubuntu/
-!Builds/Ubuntu/*.sh
-!Builds/Ubuntu/README.md
+/Builds/XCode/*
+!/Builds/XCode/README.md
+/Builds/VisualStudio2015/*
+!/Builds/VisualStudio2015/README.md
+!/Builds/VisualStudio2015/images
+/Builds/Ubuntu/*
+!/Builds/Ubuntu/*.sh
+!/Builds/Ubuntu/README.md
 
 # ignore
 third_party/
