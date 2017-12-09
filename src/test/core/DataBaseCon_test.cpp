@@ -22,7 +22,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <ripple/beast/unit_test.h>
 #include <ripple/core/DatabaseCon.h>
-#include <ripple/core/config.h>
+#include <ripple/core/Config.h>
 
 namespace ripple {
 class DataBaseConn_test : public beast::unit_test::suite {
