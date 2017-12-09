@@ -552,25 +552,24 @@ def config_env(toolchain, variant, env):
 
     add_sanitizer(toolchain, env)
 
-    ifFindMysql = False
     if toolchain in Split('clang gcc'):
         if Beast.system.linux or Beast.system.osx:
             link_static = should_link_static()
             enable_libs = ['openssl', 'protobuf'] # default libs
             if enable_mysql():
-                enable_libs.append('mysqlclient')
+                MYSQL_ROOT = os.path.normpath(os.environ['MYSQL_ROOT'])
+                if os.path.exists(MYSQL_ROOT + '/include/mysql.h'):
+                    env.Prepend(CPPPATH='%s/include' % MYSQL_ROOT)
+                    env.Prepend(LIBPATH=['%s/lib' % MYSQL_ROOT])
+                    env.Append(LIBS=['mysqlclient'])
+                else:
+                    enable_libs.append('mysqlclient')
 
             for l in enable_libs:
                 static, dynamic = get_libs(l, link_static)
                 if link_static:
-                    if l == "mysqlclient" and len(static) != 0:
-                        ifFindMysql = True
-                    else: ifFindMysql = False
                     add_static_libs(env, static, dynamic)
                 else:
-                    if l == "mysqlclient"  and  len(dynamic) !=0:
-                        ifFindMysql = True
-                    else: ifFindMysql = False
                     env.Append(LIBS=dynamic)
                 env.ParseConfig('pkg-config --static --cflags ' + l)
 
@@ -676,14 +675,6 @@ def config_env(toolchain, variant, env):
             'boost_thread'
         ]
         if Beast.system.osx:
-            if not ifFindMysql and enable_mysql():
-                if not os.path.exists('/usr/local/mysql/include/mysql.h'):
-                    raise Exception("Didn't find mysql client library")
-                OSX_MYSQL_ROOT = '/usr/local/mysql/'
-                env.Prepend(CPPPATH='%s/include' % OSX_MYSQL_ROOT)
-                env.Prepend(LIBPATH=['%s/lib' % OSX_MYSQL_ROOT])
-                env.Append(LIBS=['mysqlclient'])
-                
             boost_libs = [
                 # resist the temptation to alphabetize these. coroutine
                 # must come before context.

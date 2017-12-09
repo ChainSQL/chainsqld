@@ -346,26 +346,6 @@ if(WIN32 OR is_xcode)
         # $<OR:$<CONFIG:Debug>,$<CONFIG:Release>>)
 endif()
 
-if (WIN32 OR is_xcode)
-  # Documentation sources. Only needed for IDEs.
-  prepend(doc_srcs
-    docs/
-    Jamfile.v2
-    boostbook.dtd
-    index.xml
-    main.qbk
-    quickref.xml
-    reference.xsl
-    source.dox)
-
-  set_property(
-    SOURCE ${doc_srcs}
-    APPEND
-    PROPERTY HEADER_FILE_ONLY
-    true)
-    # Doesn't work
-    # $<OR:$<CONFIG:Debug>,$<CONFIG:Release>>)
-endif()
 
 ############################################################
 
@@ -499,14 +479,6 @@ if(${BASH_EXE} STREQUAL "BASH_EXE-NOTFOUND")
         "Unable to find bash executable. docs target may not be buildable")
     set(BASH_EXE "")
 endif()
-
-add_custom_target(docs
-  COMMAND ${CMAKE_COMMAND} -E env "PATH=$ENV{PATH} " ${BASH_EXE} ./makeqbk.sh
-  COMMAND ${B2_EXE} ${B2_PARAMS}
-  BYPRODUCTS "${CMAKE_SOURCE_DIR}/docs/html/index.html"
-  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/docs"
-  SOURCES "${doc_srcs}"
-  )
 
 set_startup_project(chainsqld)
 
