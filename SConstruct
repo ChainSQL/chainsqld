@@ -557,7 +557,12 @@ def config_env(toolchain, variant, env):
             link_static = should_link_static()
             enable_libs = ['openssl', 'protobuf'] # default libs
             if enable_mysql():
-                MYSQL_ROOT = os.path.normpath(os.environ['MYSQL_ROOT'])
+                MYSQL_ROOT = ''
+                try:
+                    MYSQL_ROOT = os.path.normpath(os.environ['MYSQL_ROOT'])
+                except:
+                    pass
+                
                 if os.path.exists(MYSQL_ROOT + '/include/mysql.h'):
                     env.Prepend(CPPPATH='%s/include' % MYSQL_ROOT)
                     env.Prepend(LIBPATH=['%s/lib' % MYSQL_ROOT])
