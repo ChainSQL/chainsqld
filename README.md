@@ -38,3 +38,12 @@ Refer the  [Builds](./Builds) directory for details, we introduce the detail com
 ## License
 
 ChainSQL is under the GNU General Public License v3.0. See the [LICENSE](./LICENSE) directory for details.
+
+## Contact Us
+Email: chainsql@peersafe.info
+
+Wechat: scan the QR below to follow PeerSafe, and then send **chainsql**, you will receive the QR image for ChainSQL community.
+
+PeerSafe Wechat QR code：
+
+![PeerSafe](/images/peersafe.jpg)
