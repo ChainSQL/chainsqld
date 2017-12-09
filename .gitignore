@@ -1,3 +1,96 @@
+# .gitignore
+
+bin/boostbook_catalog.xml
+bin/config.log
+bin/project-cache.jam
+
+# Ignore vim swap files.
+*.swp
+
+# Ignore SCons support files.
+.sconsign.dblite
+
+# Ignore python compiled files.
+*.pyc
+
+# Ignore Macintosh Desktop Services Store files.
+.DS_Store
+
+# Ignore backup/temps
+*~
+
+# Ignore object files.
+*.o
+build
+tags
+TAGS
+Debug/*.*
+Release/*.*
+
+# Ignore coverage files.
+*.gcno
+*.gcda
+*.gcov
+
+# Ignore locally installed node_modules
+/node_modules
+
+# Ignore tmp directory.
+tmp
+
+# Ignore database directory.
+db/
+db/*.db
+db/*.db-*
+
+# Ignore debug logs
+debug_log.txt
+
+# Doxygen generated documentation output
+HtmlDocumentation
+
+# Xcode user-specific project settings
+# Xcode
+.DS_Store
+*/build/*
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+profile
+*.moved-aside
+DerivedData
+.idea/
+*.hmap
+
+# Compiler intermediate output
+/out.txt
+
+# Profiling data
+gmon.out
+
+Builds/XCode/
+!Builds/XCode/README.md
+Builds/VisualStudio2015/
+!Builds/VisualStudio2015/README.md
+!Builds/VisualStudio2015/images
+Builds/Ubuntu/
+!Builds/Ubuntu/*.sh
+!Builds/Ubuntu/README.md
+
+# ignore
+third_party/
+
+# MSVC
+*.pdb
+.vs/
+
+
 # Prerequisites
 *.d
 
