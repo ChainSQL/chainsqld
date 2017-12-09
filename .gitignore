@@ -39,7 +39,6 @@ Release/*.*
 tmp
 
 # Ignore database directory.
-db/
 db/*.db
 db/*.db-*
 
