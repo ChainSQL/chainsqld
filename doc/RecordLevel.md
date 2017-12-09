@@ -184,26 +184,15 @@ Fields指定了更新操作所能更新的字段，如果不添加Fields条件�
 > 如Insert条件中某个字段在Count条件中被指定为账户字段，那这个字段是一定不能出现在Update条件的Fields中的，这种条件下必须显式的在Fields中将账户字段排除出去，否则会报**temBAD_OPERATIONRULE**错误 
 
 ## Delete/Get
-Delete与Get操作只有Condition条件，
+Delete与Get操作只有Condition条件.<br>
+> 如Insert条件中某个字段在Count条件中被指定为账户字段，删除的Condition中必须显示指定操作账户字段为本账户字段：
+```
+{
+    "Condition":{"account":"$account"}
+}
+```
 
 
-## 插入
-修改点：
-1. txPrepare
-* 根据建表的限制条件为tx填充默认字段
-* 如果比较字段已经赋值，进行比较，不通过则返回失败
-2. 共识阶段
-* 对插入条数条件的验证
-3. 同步入库
-* 与之前相同
-
-## 更新/删除
-1. txPrepare
-* 根据建表时指定的条件将Update/Delete的条件组装，然后放到tx的sfCondition字段中
-2. 共识阶段
-* 需要预执行，在Dispose时取出STTx中sfCondition的值，附加到Update/Delete的where条件中
-3. 同步入库
-* Dispose时要取出STTx中的sfCondition字段值，附加到Update/Delete的where条件中
 
 
 
