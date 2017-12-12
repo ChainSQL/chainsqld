@@ -39,21 +39,21 @@
 
     [sync_tables]<br>
     #表的发行帐户地址 表名<br>
-    rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1<br>
     #表的发行帐户地址 表名 同步到ledgerSeq2000<br>
-    rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1 2000<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1 2000<br>
     #表的发行帐户地址 表名 同步到2016-12-29 12:00:00<br>
-    rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table2 2016-12-29_12:00:00<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table2 2016-12-29_12:00:00<br>
     #表的发行帐户地址 表名 解密的私钥<br>
-    rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table3 snoPBrXtMeMyMHUVTgbuqAfg1SUTb<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table3 xxWFBu6veVgMnAqNf6YFRV2UENRd3<br>
     #表的发行帐户地址 表名 跳过ledgerSeq2000<br>
-    rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table3 !2000<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table3 !2000<br>
     #表的发行帐户地址 表名 跳过指定的交易hash<br>
-    rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ talbe4 !860689E0F4A20F4CC0B35804B66486D455DEEFA940666054F780A69F770135C0<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 !860689E0F4A20F4CC0B35804B66486D455DEEFA940666054F780A69F770135C0<br>
     #表的发行帐户地址 表名 解密的私钥 同步到2016-12-29 12:00:00<br>
-    rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ talbe4 snoPBrXtMeMyMHUVTgbuqAfg1SUTb 2016-12-29_12:00:00<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 xxWFBu6veVgMnAqNf6YFRV2UENRd3 2016-12-29_12:00:00<br>
     #表的发行帐户地址 表名 跳过ledgerSeq2000 解密的私钥<br>
-    rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ talbe4 !2000 snoPBrXtMeMyMHUVTgbuqAfg1SUTb<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 !2000 xxWFBu6veVgMnAqNf6YFRV2UENRd3<br>
         
 - **3.5 配置数据库**
   - Chainsql支持多种数据库，mysql、sqlite、mycat转换后支持mongodb、db2、sqlserver、PostgreSQL等，本地通过配置文件插件式管理，配置的参考格式如下：<br>
@@ -130,7 +130,7 @@
   - 命令形式：chainsqld “para1” “para2”
   - Para1 : 参考数3.4节中的设置，与“数据库表的同步设置”保持一致。
   - Para2 : 数据库表操作保存的目标路径。
-  - 例：chainsqld t_dump “rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1 2000” “/chainsql/table1.dmp” 
+  - 例：chainsqld t_dump “z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1 2000” “/chainsql/table1.dmp” 
 
 
 - **3.18 审计**
@@ -140,7 +140,7 @@
   - Para1 : 参考数3.4节中的设置，与“数据库表的同步设置“保持一致。
   - Para2 :  sql查询语句，表明指定条目特定字段，如“select name, salary from - table1 where id=1”，代表审计数据库表table1中id=1的条目的name与salary字段，所有与对数据库表table1的操作中影响到id=1的条目中的name与salary字段的操作将被记录。
   - Para3 : 数据库表操作保存的目标路径。
-  - 例：chainsqld t_audit “rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1 2000” “select name, salary from table1 where id=1” “/chainsql/table1.dmp” 
+  - 例：chainsqld t_audit “z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1 2000” “select name, salary from table1 where id=1” “/chainsql/table1.dmp” 
 
 - **3.19 Chainsql链瘦身操作步骤**<br>
   前提：节点保存链上的所有表且所有表已经是最新的，并且在清理数据期间没有别的对表的操作。<br>
@@ -905,7 +905,7 @@
 {
     "command": "g_dbname",
     "tx_json": {
-           "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+           "Account": "z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs",
            "TableName": "ExampleName"
       }
 }
@@ -965,7 +965,7 @@
       }
     ],
     "TableNewName": "tableNewName",     //hex形式
-    "PublicKey": "aBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
+    "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
     "Raw": [
       {
         "field": "id",
@@ -1005,7 +1005,7 @@
       "Flags": 65536,
       "OpType": 1,
       "Owner": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-      "PublicKey": "aBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
+      "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
       "Raw": [
         {
           "AI": 1,
@@ -1174,7 +1174,7 @@
 ```json
 {
   "TransactionType": "TableListSet",
-  " Account ": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  " Account ": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "Tables": [
     {
       "Table": {
@@ -1183,8 +1183,8 @@
     }
   ],
   "OpType": 11,
-  "User": "rBGagHrWQ44SX3YE7eYehiDA8iNPdBssFY",
-  "PublicKey": "aBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
+  "User": "zBGagHrWQ44SX3YE7eYehiDA8iNPdBssFY",
+  "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
   "Raw": [
     {
       "select": true,
@@ -1233,8 +1233,8 @@
 ```json
 {
   "TransactionType": "SQLStatement",
-  "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-  "Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "Account": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "Owner": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "Tables": [
     {
       "Table": {
@@ -1257,7 +1257,7 @@
   "StrictMode": true,     //可选字段: 不设置表示不使用strictMode
   "TxCheckHash": "xxxxx", //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
   "OpType": 6,
-  "User": "rBGagHrWQ44SX3YE7eYehiDA8iNPdBssFY",
+  "User": "zBGagHrWQ44SX3YE7eYehiDA8iNPdBssFY",
   "Flags": 65536,
   "Fee": 12,
   "Sequence": 6
@@ -1273,8 +1273,8 @@
 ```json
 {
   "TransactionType": "SQLStatement",
-  "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-  "Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "Account": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "Owner": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "Tables": [
     {
       "Table": {
@@ -1309,8 +1309,8 @@
 ```json
 {
   "TransactionType": "SQLStatement",
-  "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-  "Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "Account": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "Owner": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "Tables": [
     {
       "Table": {
@@ -1538,7 +1538,7 @@
   "status": "validate_success",
   "tablename": "table123",
   "transaction": {
-    "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+    "Account": "zHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
     "Fee": "10",
     "Flags": 2147483648,
     "OpType": 1,
@@ -1575,7 +1575,7 @@
   - 开始dump一张表，参数1同3.4节的设置，参数2为存储路径<br>
     Request Format:<br>
 ```json
-chainsqld t_dump “rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1 2000” “./chainsql/table1.dmp” 
+chainsqld t_dump “z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1 2000” “./chainsql/table1.dmp” 
 ```
 &emsp;　　　Response Format:
 
@@ -1586,7 +1586,7 @@ chainsqld t_dump “rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1 2000” “./chain
       "command" : "t_dump",
       "status" : "success",
       "tx_json" : [
-         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh test1 2000",
+         "zHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh test1 2000",
          "./chaindump/test1.dmp"
       ]
    }
@@ -1596,7 +1596,7 @@ chainsqld t_dump “rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1 2000” “./chain
   - 停止dump一张表，参数1为表的创建者，参数2为表名<br>
         Request Format:<br>
 ```json
-chainsqld t_dumpstop rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1
+chainsqld t_dumpstop z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1
 ```
 &emsp;　　　Response Format:
 
@@ -1606,7 +1606,7 @@ chainsqld t_dumpstop rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1
    "result" : {
       "command" : "t_dumpstop",
       "status" : "success",
-      "tx_json" : [ "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "test1" ]
+      "tx_json" : [ "zHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "test1" ]
    }
 }
 ```
@@ -1615,7 +1615,7 @@ chainsqld t_dumpstop rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1
   - 开始审计表的指定条目的特定字段，参数1同3.4节的设置，参数2为审计目标，参数3为存储路径, 返回值中的nickName为此审计任务的唯一标识，供停止审计任务使用<br>
         Request Format:<br>
 ```json
-chainsqld t_audit “rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1 2000” “select name, salary from table1 where id=1” “/chainsql/table1.dmp”
+chainsqld t_audit “z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1 2000” “select name, salary from table1 where id=1” “/chainsql/table1.dmp”
 ```
 &emsp;　　　Response Format:
 
@@ -1627,7 +1627,7 @@ chainsqld t_audit “rGutD9mnua27jYdcTqo7oGYnHzkAZq1VGJ table1 2000” “select
       "nickName" : "8034C2C0D0E150F95C7DD77EF2E7181A972C0845",
       "status" : "success",
       "tx_json" : [
-         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh test1 2000",
+         "zHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh test1 2000",
          "select * from test1 where id=1",
          "./audit.adt"
       ]
