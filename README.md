@@ -29,7 +29,7 @@ If you want to get more infomation about this production ,please access the site
 On updating  our version or  releasing new functions, the [RELEASENOTES](./RELEASENOTES.md) will be updated for the detail description.
 
 ## Setup
-Refer to the  [Setup](http://www.chainsql.net/setup.html) for details.
+Refer to the  [Setup](./doc/manual/deploy.md) for details.
 
 ## Compile
 
