@@ -570,6 +570,8 @@ namespace conditionParse {
 	bool isSampleAndCondition(const Json::Value& c) {
 		bool isSample = false;
 		do {
+			if (c.isObject() == false) 
+				break;
 			const std::vector<std::string>& keys = c.getMemberNames();
 			if (keys.size() == 0 || keys.size() > 1)
 				break;
