@@ -31,6 +31,7 @@ struct ConfigSection
     static std::string importNodeDatabase () { return "import_db"; }
     static std::string syncTables()          { return "sync_tables"; }
     static std::string autoSync()            { return "auto_sync"; }
+	static std::string pressSwitch()		 { return "press_switch"; }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.

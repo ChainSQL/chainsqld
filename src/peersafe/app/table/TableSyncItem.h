@@ -253,6 +253,7 @@ private:
 	std::pair<bool, std::string> DealTranCommonTx(const STTx &tx);
 	std::pair<bool, std::string> DealWithTx(const std::vector<STTx>& vecTxs);
 
+	void insertPressData(const STTx& tx,uint32 ledgerSeq,uint32 ledgerTime);
 	virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);
 public:
     LedgerIndex                                                  u32SeqLedger_;  //seq of ledger, last syned ledger seq 

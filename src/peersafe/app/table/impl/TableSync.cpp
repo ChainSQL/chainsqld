@@ -56,6 +56,15 @@ TableSync::TableSync(Application& app, Config& cfg, beast::Journal journal)
     }
     else
         bAutoLoadTable_ = false;
+
+	auto press_switch = cfg_.section(ConfigSection::pressSwitch());
+	if (press_switch.values().size() > 0)
+	{
+		auto value = press_switch.values().at(0);
+		bPressSwitchOn_ = atoi(value.c_str());
+	}
+	else
+		bPressSwitchOn_ = false;
 }
 
 TableSync::~TableSync()
@@ -1525,6 +1534,21 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
 bool TableSync::IsAutoLoadTable()
 {
     return bAutoLoadTable_;
+}
+
+std::string TableSync::GetPressTableName()
+{
+	return pressRealName_;
+}
+
+void TableSync::SetPressTableName(std::string name)
+{
+	pressRealName_ = name;
+}
+
+bool TableSync::IsPressSwitchOn()
+{
+	return bPressSwitchOn_;
 }
 
 void TableSync::SetHaveSyncFlag(bool haveSync)

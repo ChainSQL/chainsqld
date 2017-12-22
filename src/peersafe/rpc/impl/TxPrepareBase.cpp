@@ -217,7 +217,18 @@ Json::Value TxPrepareBase::prepareBase()
 	if (ret.isMember("error_message"))
 		return ret;
 
+	if(app_.getTableSync().IsPressSwitchOn())
+		preparePressData();
+
 	return ret;
+}
+
+void TxPrepareBase::preparePressData()
+{
+	std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+	auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
+	auto& tx_json = getTxJson();
+	tx_json[jss::Flags] = (uint32)tmp.count();
 }
 
 uint256 TxPrepareBase::getCheckHashOld(const std::string& sAccount, const std::string& sTableName)
@@ -253,7 +264,8 @@ Json::Value TxPrepareBase::prepareStrictMode()
 
 	if (!isStrictModeOpType((TableOpType)tx_json[jss::OpType].asInt()))  return ret;
 	if (!tx_json.isMember(jss::Raw))		                             return ret;
-    		
+	if (!tx_json_.isMember(jss::StrictMode) || !tx_json_[jss::StrictMode].asBool())
+		return ret;
 	//parse raw
 	std::string sRaw;
 	if (tx_json[jss::Raw].isArray())				
