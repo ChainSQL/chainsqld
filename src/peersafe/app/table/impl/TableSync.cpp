@@ -1538,12 +1538,33 @@ bool TableSync::IsAutoLoadTable()
 
 std::string TableSync::GetPressTableName()
 {
-	return pressRealName_;
-}
+	if(!pressRealName_.empty())
+		return pressRealName_;
 
-void TableSync::SetPressTableName(std::string name)
-{
-	pressRealName_ = name;
+	auto pAccount = ripple::parseBase58<AccountID>("zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh");
+	AccountID account = *pAccount;
+	auto ledger = app_.getLedgerMaster().getValidatedLedger();
+	auto id = keylet::table(account);
+	auto const tablesle = ledger->read(id);
+	if (tablesle == nullptr)
+		return "";
+	auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+	std::string sCheckName = "press_time";
+	auto iter(aTableEntries.end());
+	iter = std::find_if(aTableEntries.begin(), aTableEntries.end(),
+		[sCheckName](STObject const &item) {
+		if (!item.isFieldPresent(sfTableName))  return false;
+		if (!item.isFieldPresent(sfDeleted))    return false;
+		auto sTableName = strCopy(item.getFieldVL(sfTableName));
+		return sTableName == sCheckName && item.getFieldU8(sfDeleted) != 1;
+	});
+	if (iter == aTableEntries.end())
+		return "";
+	STEntry* pEntry = (STEntry*)(&(*iter));
+	auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+	pressRealName_ = "t_" + to_string(nameInDB);
+
+	return pressRealName_;
 }
 
 bool TableSync::IsPressSwitchOn()

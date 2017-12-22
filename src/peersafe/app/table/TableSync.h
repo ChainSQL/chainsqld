@@ -85,7 +85,6 @@ public:
 	std::vector <uint256> getTxsFromDb(uint32 TxnLgrSeq, std::string sAccountID);
 	//press test table name
 	std::string GetPressTableName();
-	void SetPressTableName(std::string);
 	bool IsPressSwitchOn();
 private:	
 	std::pair<std::shared_ptr<TableSyncItem>, std::string> CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line);

@@ -949,7 +949,7 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 	return ret;
 }
 
-void TableSyncItem::insertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledger_time)
+void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledger_time)
 {
 	std::string pressRealName;
 	if (tx.isFieldPresent(sfFlags))
@@ -960,12 +960,6 @@ void TableSyncItem::insertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 
 		if (table_name == "press_time")
 		{
-			const ripple::STArray& tables = tx.getFieldArray(sfTables);
-			ripple::uint160 hex_tablename = tables[0].getFieldH160(sfNameInDB);
-			std::string nameInDB = ripple::to_string(hex_tablename);
-
-			pressRealName = "t_" + nameInDB;
-			app_.getTableSync().SetPressTableName(pressRealName);
 			return;
 		}
 		else
@@ -1005,7 +999,7 @@ void TableSyncItem::insertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 		catch (std::exception const& e)
 		{
 			JLOG(journal_.error()) <<
-				"insertPressData exception" << e.what();
+				"InsertPressData exception" << e.what();
 		}
 	}
 }
@@ -1091,7 +1085,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					if (app_.getTableSync().IsPressSwitchOn())
 					{
 						if (ret.first)
-							insertPressData(tx, iter->ledgerseq(), iter->closetime());
+							InsertPressData(tx, iter->ledgerseq(), iter->closetime());
 					}
 
 					//deal with subscribe
