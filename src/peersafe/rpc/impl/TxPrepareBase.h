@@ -75,6 +75,7 @@ namespace ripple {
 
 		Json::Value prepareRawEncode();
 		Json::Value prepareStrictMode();
+		void preparePressData();
 
 		Json::Value prepareForOperating();
 		Json::Value prepareForCreate();

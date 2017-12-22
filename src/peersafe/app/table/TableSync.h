@@ -83,6 +83,10 @@ public:
     void SetHaveSyncFlag(bool haveSync);
 
 	std::vector <uint256> getTxsFromDb(uint32 TxnLgrSeq, std::string sAccountID);
+	//press test table name
+	std::string GetPressTableName();
+	void SetPressTableName(std::string);
+	bool IsPressSwitchOn();
 private:	
 	std::pair<std::shared_ptr<TableSyncItem>, std::string> CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line);
     bool CreateTableItems();
@@ -114,6 +118,7 @@ private:
     bool InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash, uint32 time);
 
     bool IsAutoLoadTable();
+
 private:
     Application&                                app_;
     beast::Journal                              journal_;
@@ -139,6 +144,10 @@ private:
     bool                                        bIsHaveSync_;
 
 	std::string                                 sLastErr_;
+
+	//press test related
+	bool										bPressSwitchOn_;
+	std::string									pressRealName_;
 };
 
 }
