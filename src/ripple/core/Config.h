@@ -153,8 +153,8 @@ public:
     boost::optional<std::size_t> VALIDATION_QUORUM;     // Minimum validations to consider ledger authoritative
 
     std::uint64_t                      FEE_DEFAULT = 10;
-    std::uint64_t                      FEE_ACCOUNT_RESERVE = 200*SYSTEM_CURRENCY_PARTS;
-    std::uint64_t                      FEE_OWNER_RESERVE = 50*SYSTEM_CURRENCY_PARTS;
+    std::uint64_t                      FEE_ACCOUNT_RESERVE = 20*SYSTEM_CURRENCY_PARTS;
+    std::uint64_t                      FEE_OWNER_RESERVE = 5*SYSTEM_CURRENCY_PARTS;
     std::uint64_t                      FEE_OFFER = 10;
 
     // Node storage configuration
