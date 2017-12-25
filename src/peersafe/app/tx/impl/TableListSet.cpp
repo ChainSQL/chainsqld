@@ -570,6 +570,10 @@ namespace ripple {
 
             tablesle->setFieldArray(sfTableEntries, tablentries);
 
+			//create first table
+			auto const sleAccount = view.peek(keylet::account(accountId));
+			adjustOwnerCount(view, sleAccount, 1, viewJ);
+
 			view.insert(tablesle);
         }
         else
@@ -604,6 +608,10 @@ namespace ripple {
             case T_CREATE:
 			{
 				aTableEntries.push_back(generateTableEntry(tx, view, txId));
+
+				//create table (not first one)
+				auto const sleAccount = view.peek(keylet::account(accountId));
+				adjustOwnerCount(view, sleAccount, 1, viewJ);
 				break;
 			}
             case T_DROP:
@@ -611,8 +619,11 @@ namespace ripple {
 				STEntry  *pEntry = getTableEntry(aTableEntries, vTableNameStr);
                 if (pEntry)
                 {
-                    assert(pEntry->getFieldU8(sfDeleted) == 0);
-                    pEntry->setFieldU8(sfDeleted, 1);
+					assert(pEntry->getFieldU8(sfDeleted) == 0);
+					pEntry->setFieldU8(sfDeleted, 1);
+
+					auto const sleAccount = view.peek(keylet::account(accountId));
+					adjustOwnerCount(view, sleAccount, -1, viewJ);
                 }
                 break;
             }
