@@ -49,7 +49,7 @@ bool transResultInfo (TER code, std::string& token, std::string& text)
         { tecUNFUNDED,               { "tecUNFUNDED",              "One of _ADD, _OFFER, or _SEND. Deprecated."                                    } },
         { tecUNFUNDED_ADD,           { "tecUNFUNDED_ADD",          "Insufficient ZXC balance for WalletAdd."                                       } },
         { tecUNFUNDED_OFFER,         { "tecUNFUNDED_OFFER",        "Insufficient balance to fund created offer."                                   } },
-        { tecUNFUNDED_PAYMENT,       { "tecUNFUNDED_PAYMENT",      "Insufficient XZXCRP balance to send."                                             } },
+        { tecUNFUNDED_PAYMENT,       { "tecUNFUNDED_PAYMENT",      "Insufficient ZXC balance to send."                                             } },
         { tecOWNERS,                 { "tecOWNERS",                "Non-zero owner count."                                                         } },
         { tecNO_ISSUER,              { "tecNO_ISSUER",             "Issuer account does not exist."                                                } },
         { tecNO_AUTH,                { "tecNO_AUTH",               "Not authorized to hold asset."                                                 } },
