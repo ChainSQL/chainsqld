@@ -548,16 +548,14 @@ namespace ripple {
         auto const tablesle = view.peek(id);
 		auto viewJ = app.journal("View");
         if (!tablesle)
-        {
+		{
+			//create first table
             auto const tablesle = std::make_shared<SLE>(
                 ltTABLELIST, id.key);
-
-            SLE::pointer sleTicket = std::make_shared<SLE>(ltTICKET,
-                getTicketIndex(accountId, tx.getSequence()));
             
             std::uint64_t hint;
             auto result = dirAdd(view, hint, keylet::ownerDir(accountId),
-                sleTicket->key(), describeOwnerDir(accountId), viewJ);
+				tablesle->key(), describeOwnerDir(accountId), viewJ);
 
             if (result.first == tesSUCCESS)
             {
@@ -570,8 +568,16 @@ namespace ripple {
 
             tablesle->setFieldArray(sfTableEntries, tablentries);
 
-			//create first table
 			auto const sleAccount = view.peek(keylet::account(accountId));
+			// Check reserve and funds availability
+			{
+				auto const balance = STAmount((*sleAccount)[sfBalance]).zxc();
+				auto const reserve = view.fees().accountReserve(
+					(*sleAccount)[sfOwnerCount] + 1);
+
+				if (balance < reserve)
+					return tecINSUFFICIENT_RESERVE;
+			}
 			adjustOwnerCount(view, sleAccount, 1, viewJ);
 
 			view.insert(tablesle);
@@ -607,10 +613,19 @@ namespace ripple {
             {
             case T_CREATE:
 			{
+				//create table (not first one)
 				aTableEntries.push_back(generateTableEntry(tx, view, txId));
 
-				//create table (not first one)
 				auto const sleAccount = view.peek(keylet::account(accountId));
+				// Check reserve and funds availability
+				{
+					auto const balance = STAmount((*sleAccount)[sfBalance]).zxc();
+					auto const reserve = view.fees().accountReserve(
+						(*sleAccount)[sfOwnerCount] + 1);
+
+					if (balance < reserve)
+						return tecINSUFFICIENT_RESERVE;
+				}
 				adjustOwnerCount(view, sleAccount, 1, viewJ);
 				break;
 			}
