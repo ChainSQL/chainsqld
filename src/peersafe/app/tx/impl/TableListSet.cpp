@@ -227,7 +227,7 @@ namespace ripple {
 
 
     STObject
-        TableListSet::generateTableEntry(const STTx &tx, ApplyView& view,const  uint256& txId)  //preflight assure sfTables must exist
+        TableListSet::generateTableEntry(const STTx &tx, ApplyView& view)  //preflight assure sfTables must exist
     {
         STEntry obj_tableEntry;
 
@@ -536,7 +536,7 @@ namespace ripple {
     }
 
     TER
-        TableListSet::applyHandler(ApplyView& view,const STTx & tx, Application& app,const uint256& txId)
+        TableListSet::applyHandler(ApplyView& view,const STTx & tx, Application& app, ZXCAmount priorBalance)
     {
 		auto accountId = tx.getAccountID(sfAccount);
         auto optype = tx.getFieldU16(sfOpType);
@@ -563,7 +563,7 @@ namespace ripple {
             }
 
 			STArray tablentries;
-            STObject obj = generateTableEntry(tx, view, txId);
+            STObject obj = generateTableEntry(tx, view);
             tablentries.push_back(obj);
 
             tablesle->setFieldArray(sfTableEntries, tablentries);
@@ -571,11 +571,10 @@ namespace ripple {
 			auto const sleAccount = view.peek(keylet::account(accountId));
 			// Check reserve and funds availability
 			{
-				auto const balance = STAmount((*sleAccount)[sfBalance]).zxc();
 				auto const reserve = view.fees().accountReserve(
 					(*sleAccount)[sfOwnerCount] + 1);
 
-				if (balance < reserve)
+				if (priorBalance < reserve)
 					return tecINSUFFICIENT_RESERVE;
 			}
 			adjustOwnerCount(view, sleAccount, 1, viewJ);
@@ -614,16 +613,15 @@ namespace ripple {
             case T_CREATE:
 			{
 				//create table (not first one)
-				aTableEntries.push_back(generateTableEntry(tx, view, txId));
+				aTableEntries.push_back(generateTableEntry(tx, view));
 
 				auto const sleAccount = view.peek(keylet::account(accountId));
 				// Check reserve and funds availability
 				{
-					auto const balance = STAmount((*sleAccount)[sfBalance]).zxc();
 					auto const reserve = view.fees().accountReserve(
 						(*sleAccount)[sfOwnerCount] + 1);
 
-					if (balance < reserve)
+					if (priorBalance < reserve)
 						return tecINSUFFICIENT_RESERVE;
 				}
 				adjustOwnerCount(view, sleAccount, 1, viewJ);
@@ -987,7 +985,7 @@ namespace ripple {
 		if (!isTesSuccess(tmpRet))
 			return tmpRet;
 
-		tmpRet = applyHandler(ctx_.view(), ctx_.tx, ctx_.app, ctx_.tx.getTransactionID());
+		tmpRet = applyHandler(ctx_.view(), ctx_.tx, ctx_.app, mPriorBalance);
         if (!isTesSuccess(tmpRet))
             return tmpRet;
 
