@@ -153,7 +153,7 @@ namespace ripple {
 							}
                             result = TableListSet::preclaimHandler(ctx.view(), tx, ctx.app);
                             if (result == tesSUCCESS) {
-                                result = TableListSet::applyHandler(ctx.view(), tx, ctx.app, txId);
+                                result = TableListSet::applyHandler(ctx.view(), tx, ctx.app, mPriorBalance);
                                 if (result != tesSUCCESS)
                                 {
                                     return std::move(result);
