@@ -305,15 +305,24 @@ namespace ripple {
                 {
                 case T_CREATE:
                 {
-                    if (pEntry != NULL)                ret = terTABLE_EXISTANDNOTDEL;
+                    if (pEntry != NULL)                ret = tefTABLE_EXISTANDNOTDEL;
                     else                               ret = tesSUCCESS;
 
+					auto const sleAccount = view.read(keylet::account(sourceID));
+					// Check reserve and funds availability
+					{
+						auto const reserve = view.fees().accountReserve(
+							(*sleAccount)[sfOwnerCount] + 1);
+						STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
+						if (priorBalance < reserve)
+							return tefINSUFFICIENT_RESERVE;
+					}
                     break;
                 }
                 case T_DROP:
                 {
                     if (pEntry != NULL)                ret = tesSUCCESS;
-                    else                               ret = terTABLE_NOTEXIST;
+                    else                               ret = tefTABLE_NOTEXIST;
 
                     break;
                 }
@@ -321,7 +330,7 @@ namespace ripple {
                 {
                     if (vTableNameStr == tables[0].getFieldVL(sfTableNewName))
                     {
-                        ret = terTABLE_SAMENAME;
+                        ret = tefTABLE_SAMENAME;
                         break;
                     }
                     Blob vTableNameNewStr = tables[0].getFieldVL(sfTableNewName);
@@ -329,12 +338,12 @@ namespace ripple {
 
                     if (pEntry != NULL)
                     {
-                        if (pEntryNew != NULL)                    ret = terTABLE_EXISTANDNOTDEL;
+                        if (pEntryNew != NULL)                    ret = tefTABLE_EXISTANDNOTDEL;
                         else   					                  ret = tesSUCCESS;
                     }
                     else
                     {
-                        ret = terTABLE_NOTEXIST;
+                        ret = tefTABLE_NOTEXIST;
                     }
                     break;
                 }
@@ -409,16 +418,16 @@ namespace ripple {
                                 }
                             }
                             else
-                                ret = terBAD_USER;
+                                ret = tefBAD_USER;
                         }
                         else
                         {
                             if (optype == T_ASSIGN)               ret = tesSUCCESS;
-                            else                                  ret = terBAD_USER;
+                            else                                  ret = tefBAD_USER;
                         }
                     }
                     else
-                        ret = terTABLE_NOTEXIST;
+                        ret = tefTABLE_NOTEXIST;
                     break;
                 }
                 case T_GRANT:
@@ -430,19 +439,19 @@ namespace ripple {
                     STEntry const *pEntry = getTableEntry(tablentries, vTableNameStr);
                     if (pEntry == NULL)
                     {
-                        return terTABLE_NOTEXIST;
+                        return tefTABLE_NOTEXIST;
                     }
 
                     if (!pEntry->isFieldPresent(sfUsers))
                     {
-                        return terTABLE_STATEERROR;
+                        return tefTABLE_STATEERROR;
                     }
 
                     auto& users = pEntry->getFieldArray(sfUsers);
 
                     if (!tx.isFieldPresent(sfUser))
                     {
-                        return terBAD_USER;
+                        return tefBAD_USER;
                     }
 
                     auto  addUserID = tx.getAccountID(sfUser);
@@ -450,7 +459,7 @@ namespace ripple {
                     auto key = keylet::account(addUserID);
                     if (addUserID != noAccount() && !view.exists(key))
                     {
-                        return terBAD_USER;
+                        return tefBAD_USER;
                     };
 
                     uint32_t uAdd = 0, uCancel = 0;
@@ -503,7 +512,7 @@ namespace ripple {
                 case T_RECREATE:
                 {
                     if (pEntry != NULL)                ret = tesSUCCESS;
-                    else                               ret = terTABLE_NOTEXIST;
+                    else                               ret = tefTABLE_NOTEXIST;
 
                     break;
                 }
@@ -517,7 +526,7 @@ namespace ripple {
             else         //table not exist
             {
                 if (optype >= T_DROP)
-                    ret = terTABLE_NOTEXIST;
+                    ret = tefTABLE_NOTEXIST;
             }
         }
 
@@ -536,7 +545,7 @@ namespace ripple {
     }
 
     TER
-        TableListSet::applyHandler(ApplyView& view,const STTx & tx, Application& app, ZXCAmount priorBalance)
+        TableListSet::applyHandler(ApplyView& view,const STTx & tx, Application& app)
     {
 		auto accountId = tx.getAccountID(sfAccount);
         auto optype = tx.getFieldU16(sfOpType);
@@ -568,15 +577,8 @@ namespace ripple {
 
             tablesle->setFieldArray(sfTableEntries, tablentries);
 
+			//add owner count
 			auto const sleAccount = view.peek(keylet::account(accountId));
-			// Check reserve and funds availability
-			{
-				auto const reserve = view.fees().accountReserve(
-					(*sleAccount)[sfOwnerCount] + 1);
-
-				if (priorBalance < reserve)
-					return tecINSUFFICIENT_RESERVE;
-			}
 			adjustOwnerCount(view, sleAccount, 1, viewJ);
 
 			view.insert(tablesle);
@@ -615,15 +617,8 @@ namespace ripple {
 				//create table (not first one)
 				aTableEntries.push_back(generateTableEntry(tx, view));
 
+				//add owner count
 				auto const sleAccount = view.peek(keylet::account(accountId));
-				// Check reserve and funds availability
-				{
-					auto const reserve = view.fees().accountReserve(
-						(*sleAccount)[sfOwnerCount] + 1);
-
-					if (priorBalance < reserve)
-						return tecINSUFFICIENT_RESERVE;
-				}
 				adjustOwnerCount(view, sleAccount, 1, viewJ);
 				break;
 			}
@@ -985,7 +980,7 @@ namespace ripple {
 		if (!isTesSuccess(tmpRet))
 			return tmpRet;
 
-		tmpRet = applyHandler(ctx_.view(), ctx_.tx, ctx_.app, mPriorBalance);
+		tmpRet = applyHandler(ctx_.view(), ctx_.tx, ctx_.app);
         if (!isTesSuccess(tmpRet))
             return tmpRet;
 
