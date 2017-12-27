@@ -206,23 +206,23 @@ namespace ripple {
                 }
                 else
                 {
-                    return terTABLE_STORAGENORMALERROR;
+                    return tefTABLE_STORAGENORMALERROR;
                 }
             }
             else
             {
 				if (!bAutoLoadTable_)
 				{
-					return terTABLE_STORAGENORMALERROR;
+					return tefTABLE_STORAGENORMALERROR;
 				}
                 auto const kOwner = keylet::account(accountID);
                 auto const sleOwner = validLedger->read(kOwner);
-                if (!sleOwner)  return  terTABLE_STORAGENORMALERROR;
+                if (!sleOwner)  return  tefTABLE_STORAGENORMALERROR;
 
                 auto const kTable = keylet::table(accountID);
                 auto const sleTable = validLedger->read(kTable);
 
-                if (!sleTable) return terTABLE_STORAGENORMALERROR;
+                if (!sleTable) return tefTABLE_STORAGENORMALERROR;
                 STArray tablentries = sleTable->getFieldArray(sfTableEntries);
 
                 auto iter(tablentries.end());
@@ -233,7 +233,7 @@ namespace ripple {
 
                 if (iter != tablentries.end())
                 {
-                    return terTABLE_STORAGENORMALERROR;
+                    return tefTABLE_STORAGENORMALERROR;
                 }
                 else
                 {
@@ -247,7 +247,7 @@ namespace ripple {
                     }
                     else
                     {
-                        return terTABLE_STORAGENORMALERROR;
+                        return tefTABLE_STORAGENORMALERROR;
                     }
                 }
             }

@@ -92,7 +92,7 @@ namespace ripple {
     TER TableStorageItem::PutElem(ChainSqlTx& transactor, STTx const& tx, uint256 txhash)
     {
         std::pair<bool, std::string> ret = { true, "success" };
-        auto  result = terTABLE_STORAGEERROR;
+        auto  result = tefTABLE_STORAGEERROR;
 
 		prehandleTx(tx);
 
@@ -108,7 +108,7 @@ namespace ripple {
 			{
 				JLOG(journal_.trace()) << "Dispose error";
 				ret = { false,"Dispose error" };
-				if (resultPair.first != terTABLE_TXDISPOSEERROR)
+				if (resultPair.first != tefTABLE_TXDISPOSEERROR)
 					result = resultPair.first;
 			}
 		}

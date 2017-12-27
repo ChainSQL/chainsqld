@@ -64,7 +64,7 @@ public:
 
 	static
     TER
-    applyHandler(ApplyView& view, const STTx & tx, Application& app, ZXCAmount priorBalance);
+    applyHandler(ApplyView& view, const STTx & tx, Application& app);
     TER doApply () override;
 
 	TER dealWithOperationRule(ApplyView& view, const STTx & tx, Application& app);

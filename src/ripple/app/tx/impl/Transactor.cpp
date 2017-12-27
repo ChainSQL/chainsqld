@@ -349,7 +349,7 @@ TER Transactor::apply ()
 	if (ctx_.tx.isChainSqlBaseType() && (ctx_.view().flags() & tapFromClient))
 	{
 		TER res = ctx_.app.getTableStorage().InitItem(ctx_.tx, *this);
-		if (res != tesSUCCESS && res != terTABLE_STORAGENORMALERROR)
+		if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
 			return res;
 	}
 

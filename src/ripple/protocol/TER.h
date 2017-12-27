@@ -141,7 +141,17 @@ enum TER
     tefBAD_QUORUM,
     tefNOT_MULTI_SIGNING,
     tefBAD_AUTH_MASTER,
-
+	tefTABLE_SAMENAME,   // Table name and table new name is same or create exist table
+	tefTABLE_NOTEXIST,   // Table is not exist 
+	tefTABLE_STATEERROR, // Table state is error
+	tefBAD_USER,         // User is bad format
+	tefTABLE_EXISTANDNOTDEL,         // Table exist and is not deleted
+	tefTABLE_STORAGEERROR,
+	tefTABLE_STORAGENORMALERROR,
+	tefTABLE_TXDISPOSEERROR,
+	tefTABLE_RULEDISSATISFIED,
+	tefDBNOTCONFIGURED,
+	tefINSUFFICIENT_RESERVE,
     // -99 .. -1: R Retry
     //   sequence too high, no funds for txn fee, originating -account
     //   non-existent
@@ -170,21 +180,6 @@ enum TER
     terLAST,             // Process after all other transactions
     terNO_RIPPLE,        // Rippling not allowed
     terQUEUED,           // Transaction is being held in TxQ until fee drops
-    terTABLE_SAMENAME,   // Table name and table new name is same or create exist table 
-    terUSER_SAMENAME,    // user account and source account is same
-    terTABLE_NOTEXIST,   // Table is not exist 
-	terTABLE_STATEERROR, // Table state is error
-    terTABLE_ALREADYDROP,//Table can not be dorped agagin
-    terBAD_USER,         // User is bad format
-    terTABLE_EXISTANDNOTDEL,         // Table exist and is not deleted
-    terTABLE_STORAGEERROR,
-	terTABLE_STORAGENORMALERROR,
-	terTABLE_TXCHECKERROR,
-    terTABLE_BASELEDGERERROR,
-    terTABLE_TXDISPOSEERROR,
-	terTABLE_RULEDISSATISFIED,
-	terDBNOTCONFIGURED,
-    terTABLE_TXEERROR,
     // 0: S Success (success)
     // Causes:
     // - Success.
