@@ -191,7 +191,7 @@ namespace ripple {
 		{
 			JLOG(j.trace()) <<
 				"Table is not exist for this account";
-			return terTABLE_NOTEXIST;
+			return tefTABLE_NOTEXIST;
 		}
 
 		return tesSUCCESS;
@@ -326,17 +326,17 @@ namespace ripple {
 							if (rule == "$account")
 							{
 								if (value != to_string(tx.getAccountID(sfAccount)))
-									return terTABLE_RULEDISSATISFIED;
+									return tefTABLE_RULEDISSATISFIED;
 							}
 							else if (rule == "$tx_hash")
 							{
 								if (value != to_string(tx.getTransactionID()))
-									return terTABLE_RULEDISSATISFIED;
+									return tefTABLE_RULEDISSATISFIED;
 							}
 							else
 							{
 								if (rule != value)
-									return terTABLE_RULEDISSATISFIED;
+									return tefTABLE_RULEDISSATISFIED;
 							}
 						}
 					}
@@ -356,7 +356,7 @@ namespace ripple {
 								bAccountRight = true;
 						}
 						if (!bAccountRight)
-							return terTABLE_RULEDISSATISFIED;
+							return tefTABLE_RULEDISSATISFIED;
 					}
 					
 				}
@@ -414,7 +414,7 @@ namespace ripple {
 					{
 						std::string field_name = members[i];
 						if (std::find(vecFields.begin(), vecFields.end(), field_name) == vecFields.end())
-							return terTABLE_RULEDISSATISFIED;
+							return tefTABLE_RULEDISSATISFIED;
 					}
 				}
 			}
@@ -461,7 +461,7 @@ namespace ripple {
 		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
 			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
 		{
-			return terDBNOTCONFIGURED;
+			return tefDBNOTCONFIGURED;
 		}
 
 		ripple::TxStoreDBConn *pConn;
@@ -602,7 +602,7 @@ namespace ripple {
 			return std::make_pair(tesSUCCESS, ret.second);
 		}
 		else
-			return std::make_pair(terTABLE_TXDISPOSEERROR, ret.second);
+			return std::make_pair(tefTABLE_TXDISPOSEERROR, ret.second);
 	}
 }
 // ripple

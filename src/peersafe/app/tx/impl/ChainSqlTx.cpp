@@ -147,6 +147,6 @@ namespace ripple {
 		if (pair.first)
 			return std::make_pair(tesSUCCESS, pair.second);
 		else
-			return std::make_pair(terTABLE_TXDISPOSEERROR, pair.second);
+			return std::make_pair(tefTABLE_TXDISPOSEERROR, pair.second);
 	}
 }
