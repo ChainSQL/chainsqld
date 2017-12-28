@@ -227,7 +227,7 @@ namespace ripple {
 
 
     STObject
-        TableListSet::generateTableEntry(const STTx &tx, ApplyView& view,const  uint256& txId)  //preflight assure sfTables must exist
+        TableListSet::generateTableEntry(const STTx &tx, ApplyView& view)  //preflight assure sfTables must exist
     {
         STEntry obj_tableEntry;
 
@@ -305,15 +305,24 @@ namespace ripple {
                 {
                 case T_CREATE:
                 {
-                    if (pEntry != NULL)                ret = terTABLE_EXISTANDNOTDEL;
+                    if (pEntry != NULL)                ret = tefTABLE_EXISTANDNOTDEL;
                     else                               ret = tesSUCCESS;
 
+					auto const sleAccount = view.read(keylet::account(sourceID));
+					// Check reserve and funds availability
+					{
+						auto const reserve = view.fees().accountReserve(
+							(*sleAccount)[sfOwnerCount] + 1);
+						STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
+						if (priorBalance < reserve)
+							return tefINSUFFICIENT_RESERVE;
+					}
                     break;
                 }
                 case T_DROP:
                 {
                     if (pEntry != NULL)                ret = tesSUCCESS;
-                    else                               ret = terTABLE_NOTEXIST;
+                    else                               ret = tefTABLE_NOTEXIST;
 
                     break;
                 }
@@ -321,7 +330,7 @@ namespace ripple {
                 {
                     if (vTableNameStr == tables[0].getFieldVL(sfTableNewName))
                     {
-                        ret = terTABLE_SAMENAME;
+                        ret = tefTABLE_SAMENAME;
                         break;
                     }
                     Blob vTableNameNewStr = tables[0].getFieldVL(sfTableNewName);
@@ -329,12 +338,12 @@ namespace ripple {
 
                     if (pEntry != NULL)
                     {
-                        if (pEntryNew != NULL)                    ret = terTABLE_EXISTANDNOTDEL;
+                        if (pEntryNew != NULL)                    ret = tefTABLE_EXISTANDNOTDEL;
                         else   					                  ret = tesSUCCESS;
                     }
                     else
                     {
-                        ret = terTABLE_NOTEXIST;
+                        ret = tefTABLE_NOTEXIST;
                     }
                     break;
                 }
@@ -409,16 +418,16 @@ namespace ripple {
                                 }
                             }
                             else
-                                ret = terBAD_USER;
+                                ret = tefBAD_USER;
                         }
                         else
                         {
                             if (optype == T_ASSIGN)               ret = tesSUCCESS;
-                            else                                  ret = terBAD_USER;
+                            else                                  ret = tefBAD_USER;
                         }
                     }
                     else
-                        ret = terTABLE_NOTEXIST;
+                        ret = tefTABLE_NOTEXIST;
                     break;
                 }
                 case T_GRANT:
@@ -430,19 +439,19 @@ namespace ripple {
                     STEntry const *pEntry = getTableEntry(tablentries, vTableNameStr);
                     if (pEntry == NULL)
                     {
-                        return terTABLE_NOTEXIST;
+                        return tefTABLE_NOTEXIST;
                     }
 
                     if (!pEntry->isFieldPresent(sfUsers))
                     {
-                        return terTABLE_STATEERROR;
+                        return tefTABLE_STATEERROR;
                     }
 
                     auto& users = pEntry->getFieldArray(sfUsers);
 
                     if (!tx.isFieldPresent(sfUser))
                     {
-                        return terBAD_USER;
+                        return tefBAD_USER;
                     }
 
                     auto  addUserID = tx.getAccountID(sfUser);
@@ -450,7 +459,7 @@ namespace ripple {
                     auto key = keylet::account(addUserID);
                     if (addUserID != noAccount() && !view.exists(key))
                     {
-                        return terBAD_USER;
+                        return tefBAD_USER;
                     };
 
                     uint32_t uAdd = 0, uCancel = 0;
@@ -503,7 +512,7 @@ namespace ripple {
                 case T_RECREATE:
                 {
                     if (pEntry != NULL)                ret = tesSUCCESS;
-                    else                               ret = terTABLE_NOTEXIST;
+                    else                               ret = tefTABLE_NOTEXIST;
 
                     break;
                 }
@@ -517,7 +526,7 @@ namespace ripple {
             else         //table not exist
             {
                 if (optype >= T_DROP)
-                    ret = terTABLE_NOTEXIST;
+                    ret = tefTABLE_NOTEXIST;
             }
         }
 
@@ -536,7 +545,7 @@ namespace ripple {
     }
 
     TER
-        TableListSet::applyHandler(ApplyView& view,const STTx & tx, Application& app,const uint256& txId)
+        TableListSet::applyHandler(ApplyView& view,const STTx & tx, Application& app)
     {
 		auto accountId = tx.getAccountID(sfAccount);
         auto optype = tx.getFieldU16(sfOpType);
@@ -548,16 +557,14 @@ namespace ripple {
         auto const tablesle = view.peek(id);
 		auto viewJ = app.journal("View");
         if (!tablesle)
-        {
+		{
+			//create first table
             auto const tablesle = std::make_shared<SLE>(
                 ltTABLELIST, id.key);
-
-            SLE::pointer sleTicket = std::make_shared<SLE>(ltTICKET,
-                getTicketIndex(accountId, tx.getSequence()));
             
             std::uint64_t hint;
             auto result = dirAdd(view, hint, keylet::ownerDir(accountId),
-                sleTicket->key(), describeOwnerDir(accountId), viewJ);
+				tablesle->key(), describeOwnerDir(accountId), viewJ);
 
             if (result.first == tesSUCCESS)
             {
@@ -565,10 +572,14 @@ namespace ripple {
             }
 
 			STArray tablentries;
-            STObject obj = generateTableEntry(tx, view, txId);
+            STObject obj = generateTableEntry(tx, view);
             tablentries.push_back(obj);
 
             tablesle->setFieldArray(sfTableEntries, tablentries);
+
+			//add owner count
+			auto const sleAccount = view.peek(keylet::account(accountId));
+			adjustOwnerCount(view, sleAccount, 1, viewJ);
 
 			view.insert(tablesle);
         }
@@ -603,7 +614,12 @@ namespace ripple {
             {
             case T_CREATE:
 			{
-				aTableEntries.push_back(generateTableEntry(tx, view, txId));
+				//create table (not first one)
+				aTableEntries.push_back(generateTableEntry(tx, view));
+
+				//add owner count
+				auto const sleAccount = view.peek(keylet::account(accountId));
+				adjustOwnerCount(view, sleAccount, 1, viewJ);
 				break;
 			}
             case T_DROP:
@@ -611,8 +627,11 @@ namespace ripple {
 				STEntry  *pEntry = getTableEntry(aTableEntries, vTableNameStr);
                 if (pEntry)
                 {
-                    assert(pEntry->getFieldU8(sfDeleted) == 0);
-                    pEntry->setFieldU8(sfDeleted, 1);
+					assert(pEntry->getFieldU8(sfDeleted) == 0);
+					pEntry->setFieldU8(sfDeleted, 1);
+
+					auto const sleAccount = view.peek(keylet::account(accountId));
+					adjustOwnerCount(view, sleAccount, -1, viewJ);
                 }
                 break;
             }
@@ -961,7 +980,7 @@ namespace ripple {
 		if (!isTesSuccess(tmpRet))
 			return tmpRet;
 
-		tmpRet = applyHandler(ctx_.view(), ctx_.tx, ctx_.app, ctx_.tx.getTransactionID());
+		tmpRet = applyHandler(ctx_.view(), ctx_.tx, ctx_.app);
         if (!isTesSuccess(tmpRet))
             return tmpRet;
 

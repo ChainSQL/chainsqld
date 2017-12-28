@@ -105,11 +105,11 @@ namespace ripple {
 		else if (isTableListSetOpType((TableOpType)tx.getFieldU16(sfOpType)))
 			pTx = std::make_shared<TableListSet>(ctx_);
 		if (pTx == nullptr)
-			return std::make_pair(terTABLE_TXDISPOSEERROR, "");
+			return std::make_pair(tefTABLE_TXDISPOSEERROR, "");
 		try {
 			return pTx->dispose(txStore, tx);
 		}catch (std::exception const& e) {
-			return std::make_pair(terTABLE_TXDISPOSEERROR, e.what());
+			return std::make_pair(tefTABLE_TXDISPOSEERROR, e.what());
 		}
 		
 	}
@@ -153,7 +153,7 @@ namespace ripple {
 							}
                             result = TableListSet::preclaimHandler(ctx.view(), tx, ctx.app);
                             if (result == tesSUCCESS) {
-                                result = TableListSet::applyHandler(ctx.view(), tx, ctx.app, txId);
+                                result = TableListSet::applyHandler(ctx.view(), tx, ctx.app);
                                 if (result != tesSUCCESS)
                                 {
                                     return std::move(result);
@@ -258,7 +258,7 @@ namespace ripple {
 				if (ctx_.app.getTxStoreDBConn().GetDBConn() == nullptr ||
 					ctx_.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
 				{
-					return terDBNOTCONFIGURED;
+					return tefDBNOTCONFIGURED;
 				}
                 if (ctx_.view().flags() & tapFromClient) //and firststorage is on
                 {

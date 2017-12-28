@@ -76,7 +76,7 @@ Json::Value doAccountObjects (RPC::Context& context)
     if (params.isMember (jss::type))
     {
         static
-        std::array<std::pair<char const *, LedgerEntryType>, 9> const
+        std::array<std::pair<char const *, LedgerEntryType>, 10> const
         types
         {{
             { jss::account, ltACCOUNT_ROOT },
@@ -87,7 +87,8 @@ Json::Value doAccountObjects (RPC::Context& context)
             { jss::offer, ltOFFER },
             { jss::signer_list, ltSIGNER_LIST },
             { jss::state, ltRIPPLE_STATE },
-            { jss::ticket, ltTICKET }
+            { jss::ticket, ltTICKET },
+			{ jss::table, ltTABLELIST }
         }};
 
         auto const& p = params[jss::type];

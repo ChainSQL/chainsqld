@@ -1093,7 +1093,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                     e.result = result.first;
                     e.applied = result.second;
 
-                    if (e.result == terTABLE_STORAGEERROR)
+                    if (e.result == tefTABLE_STORAGEERROR)
                         e.failType = FailHard::yes;
                     changed = changed || result.second;
                 }

@@ -64,7 +64,7 @@ public:
 
 	static
     TER
-    applyHandler(ApplyView& view, const STTx & tx, Application& app, const uint256& txId);
+    applyHandler(ApplyView& view, const STTx & tx, Application& app);
     TER doApply () override;
 
 	TER dealWithOperationRule(ApplyView& view, const STTx & tx, Application& app);
@@ -72,7 +72,7 @@ public:
 	TER preApply();
 
     static
-    STObject generateTableEntry(const STTx &tx, ApplyView& view,const uint256& txId);
+    STObject generateTableEntry(const STTx &tx, ApplyView& view);
 
     static
     void UpdateTableSle(STEntry *pEntry, LedgerIndex createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash,LedgerIndex previousTxnLgrSeq = 0,uint256 previousTxnLgrHash = uint256());
