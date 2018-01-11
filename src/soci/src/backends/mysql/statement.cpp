@@ -134,31 +134,9 @@ void mysql_statement_backend::prepare(std::string const & query,
 */
 }
 
-
-int mysql_statement_backend::handle_error_query()
-{
-	int result = 1;
-	unsigned int error = mysql_errno(session_.conn_);
-	if (error == CR_SERVER_GONE_ERROR || error == CR_SERVER_LOST) {
-		// reconnect mysql
-		session_.clean_up();
-		session_.connect_mysql();
-		result = 0;
-	}
-	else
-	{
-		throw mysql_soci_error(mysql_error(session_.conn_), error);
-	}
-
-	return result;
-}
-
 statement_backend::exec_fetch_result
 mysql_statement_backend::execute(int number)
 {
-	if (session_.conn_ == NULL) {
-		throw soci_error("MYSQL connection is NULL");
-	}
     if (justDescribed_ == false)
     {
         clean_up();
@@ -185,7 +163,6 @@ mysql_statement_backend::execute(int number)
                     "Binding for use elements must be either by position "
                     "or by name.");
             }
-			bool rowAffectedBulkChanged = false;
             long long rowsAffectedBulkTemp = 0;
             for (int i = 0; i != numberOfExecutions; ++i)
             {
@@ -259,17 +236,12 @@ mysql_statement_backend::execute(int number)
                     {
                         // preserve the number of rows affected so far.
                         rowsAffectedBulk_ = rowsAffectedBulkTemp;
-						if (handle_error_query() == 0
-							&& 0 != mysql_real_query(session_.conn_, query.c_str(),
-								static_cast<unsigned long>(query.size()))) {
-							throw mysql_soci_error(mysql_error(session_.conn_),
-								mysql_errno(session_.conn_));
-						}
+                        throw mysql_soci_error(mysql_error(session_.conn_),
+                            mysql_errno(session_.conn_));
                     }
                     else
                     {
                         rowsAffectedBulkTemp += static_cast<long long>(mysql_affected_rows(session_.conn_));
-						rowAffectedBulkChanged = true;
                     }
                     if (mysql_field_count(session_.conn_) != 0)
                     {
@@ -279,8 +251,7 @@ mysql_statement_backend::execute(int number)
                     query.clear();
                 }
             }
-			if(rowAffectedBulkChanged)
-				rowsAffectedBulk_ = rowsAffectedBulkTemp;
+            rowsAffectedBulk_ = rowsAffectedBulkTemp;
             if (numberOfExecutions > 1)
             {
                 // bulk
@@ -296,13 +267,8 @@ mysql_statement_backend::execute(int number)
         if (0 != mysql_real_query(session_.conn_, query.c_str(),
                 static_cast<unsigned long>(query.size())))
         {
-			if(handle_error_query() == 0
-				&& 0 != mysql_real_query(session_.conn_, query.c_str(),
-                static_cast<unsigned long>(query.size())))
-			{
-				throw mysql_soci_error(mysql_error(session_.conn_), 
-					mysql_errno(session_.conn_));
-			}
+            throw mysql_soci_error(mysql_error(session_.conn_),
+                mysql_errno(session_.conn_));
         }
         result_ = mysql_store_result(session_.conn_);
         if (result_ == NULL and mysql_field_count(session_.conn_) != 0)

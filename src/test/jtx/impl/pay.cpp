@@ -41,45 +41,6 @@ pay (Account const& account,
     return jv;
 }
 
-Json::Value
-paytableset(Account const& account)
-{
-    Json::Value jv;
-    jv[jss::Account] = account.human();
-    jv[jss::TransactionType] = "TableListSet";
-    jv["OpType"] = "1";
-    jv["Raw"] = "7b276665696c64273a27616765272c2774797065273a27696e74277d";
-    Json::Value tables;
-    Json::Value t;
-    Json::Value tv;
-    tv["TableName"] = "31323334";
-    tv["NameInDB"] = "4E3F8276DCF232D4CBBB7F51C849A99AD51701F6";
-    t["Table"] = tv;
-    tables.append(t);
-    jv["Tables"] = tables;
-    return jv;
-}
-
-Json::Value
-paysqlstatement(Account const& account)
-{
-    Json::Value jv;
-    jv[jss::Account] = account.human();
-    jv[jss::TransactionType] = "SQLStatement";
-    jv["Owner"] = account.human();
-    jv["OpType"] = "6";
-    jv["Raw"] = "7b27616765273a2032317d";
-    Json::Value tables;
-    Json::Value t;
-    Json::Value tv;
-    tv["TableName"] = "31323334";
-    tv["NameInDB"] = "4E3F8276DCF232D4CBBB7F51C849A99AD51701F6";
-    t["Table"] = tv;
-    tables.append(t);
-    jv["Tables"] = tables;
-    return jv;
-}
-
 } // jtx
 } // test
 } // ripple

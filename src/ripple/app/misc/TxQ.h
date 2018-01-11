@@ -26,6 +26,7 @@
 #include <ripple/protocol/TER.h>
 #include <ripple/protocol/STTx.h>
 #include <boost/intrusive/set.hpp>
+#include <boost/circular_buffer.hpp>
 
 namespace ripple {
 
@@ -55,6 +56,7 @@ public:
     struct Setup
     {
         std::size_t ledgersInQueue = 20;
+        std::size_t queueSizeMin = 2000;
         std::uint32_t retrySequencePercent = 25;
         // TODO: eahennis. Can we remove the multi tx factor?
         std::int32_t multiTxnPercent = -90;
@@ -94,6 +96,15 @@ public:
         uint64_t feeLevel;
         boost::optional<LedgerIndex const> lastValid;
         boost::optional<TxConsequences const> consequences;
+    };
+
+    struct TxDetails : AccountTxDetails
+    {
+        AccountID account;
+        std::shared_ptr<STTx const> txn;
+        int retriesRemaining;
+        TER preflightResult;
+        boost::optional<TER> lastResult;
     };
 
     TxQ(Setup const& setup,
@@ -149,8 +160,18 @@ public:
         amendment is not enabled, OR if the account has no transactions
         in the queue.
     */
-    boost::optional<std::map<TxSeq, AccountTxDetails>>
+    std::map<TxSeq, AccountTxDetails const>
     getAccountTxs(AccountID const& account, ReadView const& view) const;
+
+    /** Returns information about all transactions currently
+        in the queue.
+
+        @returns Uninitialized @ref optional if the FeeEscalation
+        amendment is not enabled, OR if there are no transactions
+        in the queue.
+    */
+    std::vector<TxDetails>
+    getTxs(ReadView const& view) const;
 
     /** Packages up fee metrics for the `fee` RPC command.
     */
@@ -174,14 +195,15 @@ private:
         // One more than this value will be accepted
         // before escalation kicks in.
         std::size_t txnsExpected_;
+        // Recent history of transaction counts that
+        // exceed the targetTxnCount_
+        boost::circular_buffer<std::size_t> recentTxnCounts_;
         // Minimum value of escalationMultiplier.
         std::uint64_t const minimumMultiplier_;
         // Based on the median fee of the LCL. Used
         // when fee escalation kicks in.
         std::uint64_t escalationMultiplier_;
         beast::Journal j_;
-
-        std::mutex mutable lock_;
 
     public:
         FeeMetrics(Setup const& setup, beast::Journal j)
@@ -195,6 +217,7 @@ private:
                     targetTxnCount_ : *setup.maximumTxnInLedger :
                         boost::optional<std::size_t>(boost::none))
             , txnsExpected_(minimumTxnCount_)
+            , recentTxnCounts_(setup.ledgersInQueue)
             , minimumMultiplier_(setup.minimumEscalationMultiplier)
             , escalationMultiplier_(minimumMultiplier_)
             , j_(j)
@@ -214,24 +237,32 @@ private:
             ReadView const& view, bool timeLeap,
             TxQ::Setup const& setup);
 
-        std::size_t
-        getTxnsExpected() const
+        /// Snapshot of the externally relevant FeeMetrics
+        /// fields at any given time.
+        struct Snapshot
         {
-            std::lock_guard <std::mutex> sl(lock_);
+            // Number of transactions expected per ledger.
+            // One more than this value will be accepted
+            // before escalation kicks in.
+            std::size_t const txnsExpected;
+            // Based on the median fee of the LCL. Used
+            // when fee escalation kicks in.
+            std::uint64_t const escalationMultiplier;
+        };
 
-            return txnsExpected_;
+        Snapshot
+        getSnapshot() const
+        {
+            return {
+                txnsExpected_,
+                escalationMultiplier_
+            };
         }
 
+        static
         std::uint64_t
-        getEscalationMultiplier() const
-        {
-            std::lock_guard <std::mutex> sl(lock_);
-
-            return escalationMultiplier_;
-        }
-
-        std::uint64_t
-        scaleFeeLevel(OpenView const& view, std::uint32_t txCountPadding = 0) const;
+        scaleFeeLevel(Snapshot const& snapshot, OpenView const& view,
+            std::uint32_t txCountPadding = 0);
 
         /**
             Returns the total fee level for all transactions in a series.
@@ -242,9 +273,10 @@ private:
             Returns: A `std::pair` as returned from `mulDiv` indicating whether
                 the calculation result is safe.
         */
+        static
         std::pair<bool, std::uint64_t>
-        escalatedSeriesFeeLevel(OpenView const& view, std::size_t extraCount,
-            std::size_t seriesSize) const;
+        escalatedSeriesFeeLevel(Snapshot const& snapshot, OpenView const& view,
+            std::size_t extraCount, std::size_t seriesSize);
     };
 
     class MaybeTx
@@ -267,6 +299,7 @@ private:
         int retriesRemaining;
         TxSeq const sequence;
         ApplyFlags const flags;
+        boost::optional<TER> lastResult;
         // Invariant: pfresult is never allowed to be empty. The
         // boost::optional is leveraged to allow `emplace`d
         // construction and replacement without a copy
@@ -365,6 +398,8 @@ private:
     Setup const setup_;
     beast::Journal j_;
 
+    // These members must always and only be accessed under
+    // locked mutex_
     FeeMetrics feeMetrics_;
     FeeMultiSet byFee_;
     AccountMap byAccount_;
@@ -404,7 +439,8 @@ private:
             TxQAccount::TxMap::iterator, std::uint64_t feeLevelPaid,
                 PreflightResult const& pfresult,
                     std::size_t const txExtraCount, ApplyFlags flags,
-                        beast::Journal j);
+                        FeeMetrics::Snapshot const& metricsSnapshot,
+                            beast::Journal j);
 
 };
 

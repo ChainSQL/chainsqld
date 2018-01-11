@@ -32,7 +32,7 @@
 #include <ripple/app/misc/SHAMapStore.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/misc/TxQ.h>
-#include <ripple/app/misc/Validations.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/paths/PathRequests.h>
 #include <ripple/basics/contract.h>
@@ -71,22 +71,9 @@ LedgerMaster::LedgerMaster (Application& app, Stopwatch& stopwatch,
     : Stoppable ("LedgerMaster", parent)
     , app_ (app)
     , m_journal (journal)
-    , mLastValidLedger (std::make_pair (uint256(), 0))
     , mLedgerHistory (collector, app)
-    , mHeldTransactions (uint256 ())
     , mLedgerCleaner (detail::make_LedgerCleaner (
         app, *this, app_.journal("LedgerCleaner")))
-    , mLastValidateSeq (0)
-    , mAdvanceThread (false)
-    , mAdvanceWork (false)
-    , mFillInProgress (0)
-    , mPathFindThread (0)
-    , mPathFindNewRequest (false)
-    , mPubLedgerClose (0)
-    , mPubLedgerSeq (0)
-    , mValidLedgerSign (0)
-    , mValidLedgerSeq (0)
-    , mBuildingLedgerSeq (0)
     , standalone_ (app_.config().standalone())
     , fetch_depth_ (app_.getSHAMapStore ().clampFetchDepth (
         app_.config().FETCH_DEPTH))
@@ -94,7 +81,6 @@ LedgerMaster::LedgerMaster (Application& app, Stopwatch& stopwatch,
     , ledger_fetch_size_ (app_.config().getSize (siLedgerFetch))
     , fetch_packs_ ("FetchPack", 65536, 45, stopwatch,
         app_.journal("TaggedCache"))
-    , fetch_seq_ (0)
 {
 }
 
@@ -174,7 +160,6 @@ LedgerMaster::getValidatedLedgerAge()
     return ret;
 }
 
-
 bool
 LedgerMaster::isCaughtUp(std::string& reason)
 {
@@ -206,7 +191,7 @@ LedgerMaster::setValidLedger(
 
     if (! standalone_)
     {
-        times = app_.getValidations().getValidationTimes(
+        times = app_.getValidations().getTrustedValidationTimes(
             l->info().hash);
     }
 
@@ -227,12 +212,24 @@ LedgerMaster::setValidLedger(
 
     mValidLedger.set (l);
     mValidLedgerSign = signTime.time_since_epoch().count();
+    assert (mValidLedgerSeq ||
+            !app_.getMaxDisallowedLedger() ||
+            l->info().seq + max_ledger_difference_ >
+                    app_.getMaxDisallowedLedger());
+    (void) max_ledger_difference_;
     mValidLedgerSeq = l->info().seq;
 
     app_.getOPs().updateLocalTx (*l);
     app_.getSHAMapStore().onLedgerClosed (getValidatedLedger());
     mLedgerHistory.validatedLedger (l);
     app_.getAmendmentTable().doValidatedLedger (l);
+    if (!app_.getOPs().isAmendmentBlocked() &&
+        app_.getAmendmentTable().hasUnsupportedEnabled ())
+    {
+        JLOG (m_journal.error()) <<
+            "One or more unsupported amendments activated: server blocked.";
+        app_.getOPs().setAmendmentBlocked();
+    }
 }
 
 void
@@ -408,22 +405,8 @@ LedgerMaster::getFullValidatedRange (std::uint32_t& minVal, std::uint32_t& maxVa
 bool
 LedgerMaster::getValidatedRange (std::uint32_t& minVal, std::uint32_t& maxVal)
 {
-    // Validated ledger is likely not stored in the DB yet so we use the
-    // published ledger which is.
-    maxVal = mPubLedgerSeq.load();
-
-    if (!maxVal)
+    if (!getFullValidatedRange(minVal, maxVal))
         return false;
-
-    {
-        ScopedLockType sl (mCompleteLock);
-        minVal = mCompleteLedgers.prevMissing (maxVal);
-    }
-
-    if (minVal == RangeSet::absent)
-        minVal = maxVal;
-    else
-        ++minVal;
 
     // Remove from the validated range any ledger sequences that may not be
     // fully updated in the database yet
@@ -509,6 +492,8 @@ LedgerMaster::tryFill (
             {
                 ScopedLockType ml (mCompleteLock);
                 mCompleteLedgers.setRange (minHas, maxHas);
+                // ScopedLockType ml(mCompleteLock);
+                // mCompleteLedgers.insert(range(minHas, maxHas));
             }
             maxHas = minHas;
             ledgerHashes = getHashesByIndex ((seq < 500)
@@ -529,6 +514,7 @@ LedgerMaster::tryFill (
     {
         ScopedLockType ml (mCompleteLock);
         mCompleteLedgers.setRange (minHas, maxHas);
+        // mCompleteLedgers.insert(range(minHas, maxHas));
     }
     {
         ScopedLockType ml (m_mutex);
@@ -674,6 +660,7 @@ LedgerMaster::setFullLedger (
     {
         ScopedLockType ml (mCompleteLock);
         mCompleteLedgers.setValue (ledger->info().seq);
+        // mCompleteLedgers.insert (ledger->info().seq);
     }
 
     {
@@ -725,9 +712,7 @@ LedgerMaster::checkAccept (uint256 const& hash, std::uint32_t seq)
         if (seq < mValidLedgerSeq)
             return;
 
-        valCount =
-            app_.getValidations().getTrustedValidationCount (hash);
-
+        valCount = app_.getValidations().numTrustedForLedger (hash);
         if (valCount >= app_.validators ().quorum ())
         {
             ScopedLockType ml (m_mutex);
@@ -1145,8 +1130,7 @@ LedgerMaster::checkAccept (
         return;
 
     auto const minVal = getNeededValidations();
-    auto const tvc = app_.getValidations().getTrustedValidationCount(
-        ledger->info().hash);
+    auto const tvc = app_.getValidations().numTrustedForLedger(ledger->info().hash);
     if (tvc < minVal) // nothing we can do
     {
         JLOG (m_journal.trace()) <<
@@ -1172,7 +1156,7 @@ LedgerMaster::checkAccept (
         app_.getOrderBookDB().setup(ledger);
     }
 
-    std::uint64_t const base = app_.getFeeTrack().getLoadBase();
+    std::uint32_t const base = app_.getFeeTrack().getLoadBase();
     auto fees = app_.getValidations().fees (ledger->info().hash, base);
     {
         auto fees2 = app_.getValidations().fees (
@@ -1180,7 +1164,7 @@ LedgerMaster::checkAccept (
         fees.reserve (fees.size() + fees2.size());
         std::copy (fees2.begin(), fees2.end(), std::back_inserter(fees));
     }
-    std::uint64_t fee;
+    std::uint32_t fee;
     if (! fees.empty())
     {
         std::sort (fees.begin(), fees.end());
@@ -1209,6 +1193,8 @@ LedgerMaster::consensusBuilt(
     if (standalone_)
         return;
 
+    mLedgerHistory.builtLedger (ledger, std::move (consensus));
+
     if (ledger->info().seq <= mValidLedgerSeq)
     {
         auto stream = app_.journal ("LedgerConsensus").info();
@@ -1233,7 +1219,7 @@ LedgerMaster::consensusBuilt(
     // maybe we saved up validations for some other ledger that can be
 
     auto const val =
-        app_.getValidations().getCurrentTrustedValidations();
+        app_.getValidations().currentTrusted();
 
     // Track validation counts with sequence numbers
     class valSeq
@@ -1293,8 +1279,6 @@ LedgerMaster::consensusBuilt(
             << "Consensus triggered check of ledger";
         checkAccept (maxLedger, maxSeq);
     }
-
-    mLedgerHistory.builtLedger (ledger, std::move (consensus));
 }
 
 void
@@ -1307,7 +1291,7 @@ LedgerMaster::advanceThread()
 
     try
     {
-        doAdvance();
+        doAdvance(sl);
     }
     catch (std::exception const&)
     {
@@ -1425,7 +1409,7 @@ LedgerMaster::findNewLedgersToPublish ()
             }
 
             // Can we try to acquire the ledger we need?
-            if (! ledger && (++acqCount < 4))
+            if (! ledger && (++acqCount < ledger_fetch_size_))
                 ledger = app_.getInboundLedgers ().acquire(
                     *hash, seq, InboundLedger::fcGENERIC);
 
@@ -1547,6 +1531,7 @@ LedgerMaster::updatePaths (Job& job)
             {
                 JLOG (m_journal.debug())
                     << "Published ledger too old for updating paths";
+                ScopedLockType ml (m_mutex);
                 --mPathFindThread;
                 return;
             }
@@ -1581,48 +1566,51 @@ LedgerMaster::updatePaths (Job& job)
     }
 }
 
-void
+bool
 LedgerMaster::newPathRequest ()
 {
     ScopedLockType ml (m_mutex);
-    mPathFindNewRequest = true;
-
-    newPFWork("pf:newRequest");
+    mPathFindNewRequest = newPFWork("pf:newRequest", ml);
+    return mPathFindNewRequest;
 }
 
 bool
 LedgerMaster::isNewPathRequest ()
 {
     ScopedLockType ml (m_mutex);
-    if (!mPathFindNewRequest)
-        return false;
+    bool const ret = mPathFindNewRequest;
     mPathFindNewRequest = false;
-    return true;
+    return ret;
 }
 
 // If the order book is radically updated, we need to reprocess all
 // pathfinding requests.
-void
+bool
 LedgerMaster::newOrderBookDB ()
 {
     ScopedLockType ml (m_mutex);
     mPathLedger.reset();
 
-    newPFWork("pf:newOBDB");
+    return newPFWork("pf:newOBDB", ml);
 }
 
 /** A thread needs to be dispatched to handle pathfinding work of some kind.
 */
-void
-LedgerMaster::newPFWork (const char *name)
+bool
+LedgerMaster::newPFWork (const char *name, ScopedLockType&)
 {
     if (mPathFindThread < 2)
     {
-        ++mPathFindThread;
-        app_.getJobQueue().addJob (
+        if (app_.getJobQueue().addJob (
             jtUPDATE_PF, name,
-            [this] (Job& j) { updatePaths(j); });
+            [this] (Job& j) { updatePaths(j); }))
+        {
+            ++mPathFindThread;
+        }
     }
+    // If we're stopping don't give callers the expectation that their
+    // request will be fulfilled, even if it may be serviced.
+    return mPathFindThread > 0 && !isStopping();
 }
 
 std::recursive_mutex&
@@ -1665,6 +1653,7 @@ LedgerMaster::getCompleteLedgers ()
 {
     ScopedLockType sl (mCompleteLock);
     return mCompleteLedgers.toString ();
+    // return to_string(mCompleteLedgers);
 }
 
 boost::optional <NetClock::time_point>
@@ -1711,7 +1700,7 @@ LedgerMaster::getHashBySeqEx(std::uint32_t index)
     boost::optional<LedgerHash> ledgerHash;
 
     if (auto referenceLedger = mValidLedger.get())
-        ledgerHash = walkHashBySeq(index, referenceLedger,false);
+        ledgerHash = walkHashBySeq(index, referenceLedger);
 
     if (ledgerHash == boost::none)  return beast::zero;
     return ledgerHash.value();
@@ -1731,7 +1720,7 @@ LedgerMaster::walkHashBySeq (std::uint32_t index)
 boost::optional<LedgerHash>
 LedgerMaster::walkHashBySeq (
     std::uint32_t index,
-    std::shared_ptr<ReadView const> const& referenceLedger, bool getMiss)
+    std::shared_ptr<ReadView const> const& referenceLedger)
 {
     if (!referenceLedger || (referenceLedger->info().seq < index))
     {
@@ -1767,7 +1756,7 @@ LedgerMaster::walkHashBySeq (
         }
 
         // Try to acquire the complete ledger
-        if (!ledger && getMiss)
+        if (!ledger)
         {
             auto const ledger = app_.getInboundLedgers().acquire (
                 *refHash, refIndex, InboundLedger::fcGENERIC);
@@ -1841,6 +1830,7 @@ LedgerMaster::setLedgerRangePresent (std::uint32_t minV, std::uint32_t maxV)
 {
     ScopedLockType sl (mCompleteLock);
     mCompleteLedgers.setRange (minV, maxV);
+    // mCompleteLedgers.insert(range(minV, maxV));
 }
 
 void
@@ -1877,6 +1867,9 @@ LedgerMaster::clearPriorLedgers (LedgerIndex seq)
         if (haveLedger (i))
             clearLedger (i);
     }
+    // ScopedLockType sl(mCompleteLock);
+    // if (seq > 0)
+    //     mCompleteLedgers.erase(range(0u, seq - 1));
 }
 
 void
@@ -1923,7 +1916,7 @@ LedgerMaster::shouldAcquire (
 }
 
 // Try to publish ledgers, acquire missing ledgers
-void LedgerMaster::doAdvance ()
+void LedgerMaster::doAdvance (ScopedLockType& sl)
 {
     // TODO NIKB: simplify and unindent this a bit!
 
@@ -1945,6 +1938,8 @@ void LedgerMaster::doAdvance ()
                     ScopedLockType sl (mCompleteLock);
                     missing = mCompleteLedgers.prevMissing(
                         mPubLedger->info().seq);
+                    // maybeMissing =
+                    //     prevMissing(mCompleteLedgers, mPubLedger->info().seq);
                 }
                 JLOG (m_journal.trace())
                     << "tryAdvance discovered missing " << missing;
@@ -2034,7 +2029,7 @@ void LedgerMaster::doAdvance ()
                                     for (int i = 0; i < ledger_fetch_size_; ++i)
                                     {
                                         std::uint32_t seq = missing - i;
-										if (seq <= 0) continue;
+										// if (seq <= 0) continue; removed in 80.2
                                         auto hash2 =
                                                 getLedgerHashForHistory(seq);
                                         if (hash2)
@@ -2109,9 +2104,8 @@ void LedgerMaster::doAdvance ()
                 app_.getTableSync().SeekCreateTable(ledger);
             }
 
-            progress = true;
             app_.getOPs().clearNeedNetworkLedger();
-            newPFWork ("pf:newLedger");
+            progress = newPFWork ("pf:newLedger", sl);
         }
         if (progress)
             mAdvanceWork = true;

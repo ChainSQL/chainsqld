@@ -101,6 +101,8 @@ Json::Value doGetAccountTables(RPC::Context&);
 Json::Value doPrepare(RPC::Context&);
 Json::Value doGetUserToken(RPC::Context&);
 Json::Value doGetCheckHash(RPC::Context&);
+Json::Value doValidators            (RPC::Context&);
+Json::Value doValidatorListSites    (RPC::Context&);
 } // ripple
 
 #endif

@@ -399,6 +399,7 @@ extern SF_U64 const sfHighNode;
 // 128-bit
 extern SF_U128 const sfEmailHash;
 extern SF_U160 const sfNameInDB;
+extern SF_U64 const sfDestinationNode;
 
 // 160-bit (common)
 extern SF_U160 const sfTakerPaysCurrency;
@@ -432,6 +433,7 @@ extern SF_U256 const sfTicketID;
 extern SF_U256 const sfDigest;
 extern SF_U256 const sfPayChannel;
 extern SF_U256 const sfTxCheckHash;
+extern SF_U256 const sfConsensusHash;
 
 // currency amount (common)
 extern SF_Amount const sfAmount;
@@ -499,7 +501,6 @@ extern SField const sfPaths;
 extern SF_Vec256 const sfIndexes;
 extern SF_Vec256 const sfHashes;
 extern SF_Vec256 const sfAmendments;
-
 
 // inner object
 // OBJECT/1 is reserved for end of object

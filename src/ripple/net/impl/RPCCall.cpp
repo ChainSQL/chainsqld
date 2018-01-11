@@ -36,7 +36,7 @@
 #include <ripple/rpc/ServerHandler.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <peersafe/basics/characterUtilities.h>
-#include <beast/core/detail/ci_char_traits.hpp>
+#include <beast/core/string.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/regex.hpp>
 #include <array>
@@ -424,9 +424,9 @@ private:
             // This may look reversed, but it's intentional: jss::vetoed
             // determines whether an amendment is vetoed - so "reject" means
             // that jss::vetoed is true.
-            if (beast::detail::ci_equal(action, "reject"))
+            if (beast::detail::iequals(action, "reject"))
                 jvRequest[jss::vetoed] = Json::Value (true);
-            else if (beast::detail::ci_equal(action, "accept"))
+            else if (beast::detail::iequals(action, "accept"))
                 jvRequest[jss::vetoed] = Json::Value (false);
             else
                 return rpcError (rpcINVALID_PARAMS);
@@ -464,7 +464,6 @@ private:
                 jvRequest[jss::account] = jvParams[0u].asString ();
                 jvRequest[jss::secret]  = jvParams[1u].asString ();
                 jvRequest[jss::tx_json] = txJSON;
-                
                 if (bOffline)
                     jvRequest[jss::offline] = true;
 
@@ -820,7 +819,6 @@ private:
 
             jvRequest[jss::secret]     = jvParams[0u].asString ();
             jvRequest[jss::tx_json]    = txJSON;
-            
             if (bOffline)
                 jvRequest[jss::offline]    = true;
 
@@ -977,7 +975,30 @@ private:
 
 		return rpcError(rpcINVALID_PARAMS);
 	}
+    // transaction_entry <tx_hash> <ledger_hash/ledger_index>
+    Json::Value parseTransactionEntry (Json::Value const& jvParams)
+    {
+        // Parameter count should have already been verified.
+        assert (jvParams.size() == 2);
 
+        std::string const txHash = jvParams[0u].asString();
+        if (txHash.length() != 64)
+            return rpcError (rpcINVALID_PARAMS);
+
+        Json::Value jvRequest;
+        jvRequest[jss::tx_hash] = txHash;
+
+        jvParseLedger (jvRequest, jvParams[1u].asString());
+
+        // jvParseLedger inserts a "ledger_index" of 0 if it doesn't
+        // find a match.
+        if (jvRequest.isMember(jss::ledger_index) &&
+            jvRequest[jss::ledger_index] == 0)
+                return rpcError (rpcINVALID_PARAMS);
+
+        return jvRequest;
+    }
+	
     // tx <transaction_id>
     Json::Value parseTx (Json::Value const& jvParams)
     {
@@ -1093,8 +1114,6 @@ private:
 
         return jvRequest;
     }
-
-
 
 public:
     //--------------------------------------------------------------------------
@@ -1530,7 +1549,7 @@ int fromCommandLine (
 {
     auto const result = rpcClient(vCmd, config, logs);
 
-    //if (result.first != rpcBAD_SYNTAX)
+    if (result.first != rpcBAD_SYNTAX)
         std::cout << result.second.toStyledString ();
 
     return result.first;
@@ -1565,7 +1584,10 @@ void fromNetwork (
 
     // Send request
 
+    // Number of bytes to try to receive if no
+    // Content-Length header received
     const int RPC_REPLY_MAX_BYTES (256*1024*1024);
+
     using namespace std::chrono_literals;
     auto constexpr RPC_NOTIFY = 10min;
 

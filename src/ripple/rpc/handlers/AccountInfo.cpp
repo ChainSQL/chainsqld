@@ -110,32 +110,6 @@ Json::Value doAccountInfo (RPC::Context& context)
             result[jss::account_data][jss::signer_lists] =
                 std::move(jvSignerList);
         }
-
-        /* test code  
-        auto const tablesle = ledger->read(keylet::table(accountID));
-
-        if (tablesle)
-        {
-            if (tablesle->isFieldPresent(sfOwnerNode))
-            {
-                auto ownerNode = tablesle->getFieldU64(sfOwnerNode);
-            }
-            if (tablesle->isFieldPresent(sfTableEntries))
-            {
-                auto tableentries = tablesle->getFieldArray(sfTableEntries);
-            }
-            if (tablesle->isFieldPresent(sfPreviousTxnID))
-            {
-                auto previousTxnID = tablesle->getFieldH256(sfPreviousTxnID);
-            }
-
-            if (tablesle->isFieldPresent(sfPreviousTxnLgrSeq))
-            {
-                auto previousTxnLgrSeq = tablesle->getFieldU32(sfPreviousTxnLgrSeq);
-            }
-        } */ 
-      
-            
         // Return queue info if that is requested
         if (queue)
         {
@@ -143,11 +117,11 @@ Json::Value doAccountInfo (RPC::Context& context)
 
             auto const txs = context.app.getTxQ().getAccountTxs(
                 accountID, *ledger);
-            if (txs && !txs->empty())
+            if (!txs.empty())
             {
-                jvQueueData[jss::txn_count] = static_cast<Json::UInt>(txs->size());
-                jvQueueData[jss::lowest_sequence] = txs->begin()->first;
-                jvQueueData[jss::highest_sequence] = txs->rbegin()->first;
+                jvQueueData[jss::txn_count] = static_cast<Json::UInt>(txs.size());
+                jvQueueData[jss::lowest_sequence] = txs.begin()->first;
+                jvQueueData[jss::highest_sequence] = txs.rbegin()->first;
 
                 auto& jvQueueTx = jvQueueData[jss::transactions];
                 jvQueueTx = Json::arrayValue;
@@ -155,7 +129,7 @@ Json::Value doAccountInfo (RPC::Context& context)
                 boost::optional<bool> anyAuthChanged(false);
                 boost::optional<ZXCAmount> totalSpend(0);
 
-                for (auto const& tx : *txs)
+                for (auto const& tx : txs)
                 {
                     Json::Value jvTx = Json::objectValue;
 

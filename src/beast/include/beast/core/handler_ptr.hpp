@@ -8,6 +8,7 @@
 #ifndef BEAST_HANDLER_PTR_HPP
 #define BEAST_HANDLER_PTR_HPP
 
+#include <beast/config.hpp>
 #include <beast/core/detail/type_traits.hpp>
 #include <atomic>
 #include <cstdint>
@@ -190,6 +191,11 @@ public:
         deallocation-before-invocation Asio guarantee. All
         instances of @ref handler_ptr which refer to the
         same owned object will be reset, including this instance.
+
+        @note Care must be taken when the arguments are themselves
+        stored in the owned object. Such arguments must first be
+        moved to the stack or elsewhere, and then passed, or else
+        undefined behavior will result.
     */
     template<class... Args>
     void

@@ -62,15 +62,7 @@ add(    jtSWEEP,         "sweep",                   maxLimit, false, 0,     0);
 add(    jtNETOP_CLUSTER, "clusterReport",           1,        false, 9999,  9999);
 add(    jtNETOP_TIMER,   "heartbeat",               1,        false, 999,   999);
 add(    jtADMIN,         "administration",          maxLimit, false, 0,     0);
-add(    jtTABLESYNC,     "tableSync",               1,        false, 0,     0);
-add(    jtTABLESTORAGE,  "tableStorage",            1,        false, 0,     0);
-add(	jtTableCheckHash, "tableCheckHash",			1,		  false, 0,		0);
-add(	jtCheckSubTx,	  "checkSubTx",				1,		  false, 0,		0);
-add(    jtTABLELOCALSYNC,"tableLocalSync",          1,        false, 0,     0);
-add(    jtOPERATESQL,    "operateSQL",              1,        false, 0,     0);
-add(    jtTABLE_REQ,     "tableRequest",            2,        false, 0,     0);
-add(    jtTABLE_DATA,    "tableData",               2,        false, 0,     0);
-add(    jtSKIPNODE,      "skipnode",                2,        false, 0,     0);
+
 add(    jtPEER,          "peerCommand",             0,        true,  200,   2500);
 add(    jtDISK,          "diskAccess",              0,        true,  500,   1000);
 add(    jtTXN_PROC,      "processTransaction",      0,        true,  0,     0);

@@ -33,14 +33,6 @@ Json::Value
 pay (Account const& account,
     Account const& to, AnyAmount amount);
 
-/** Create a tableLisetpay. */
-Json::Value
-paytableset(Account const& account);
-
-/** Create a tableLisetpay. */
-Json::Value
-paysqlstatement(Account const& account);
-
 } // jtx
 } // test
 } // ripple

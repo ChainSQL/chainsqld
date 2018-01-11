@@ -19,9 +19,6 @@ if [ -z "${ubuntu_release}" ]; then
     exit 1
 fi
 
-# install third party
-python ./install_third_party.py
-
 if [ ${ubuntu_release} == "12.04" ]; then
     apt-get install python-software-properties
     add-apt-repository ppa:afrank/boost

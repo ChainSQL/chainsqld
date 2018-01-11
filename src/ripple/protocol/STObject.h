@@ -608,6 +608,7 @@ private:
 
         return *cf;
     }
+
     // Implementation for setting most fields with a setValue() method.
     template <typename T, typename V>
     void setFieldUsingSetValue (SField const& field, V value)

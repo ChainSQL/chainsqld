@@ -27,7 +27,7 @@
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/beast/core/LexicalCast.h>
-#include <beast/core/detail/ci_char_traits.hpp>
+#include <beast/core/string.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
@@ -255,7 +255,7 @@ void Config::setup (std::string const& strConf, bool bQuiet,
         legacy("database_path", boost::filesystem::absolute(dataDir).string());
     }
 
-    HTTPClient::initializeSSLContext(*this);
+    HTTPClient::initializeSSLContext(*this, j_);
 
     if (RUN_STANDALONE)
         LEDGER_HISTORY = 0;
@@ -325,15 +325,15 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_NODE_SIZE, strTemp, j_))
     {
-        if (beast::detail::ci_equal(strTemp, "tiny"))
+        if (beast::detail::iequals(strTemp, "tiny"))
             NODE_SIZE = 0;
-        else if (beast::detail::ci_equal(strTemp, "small"))
+        else if (beast::detail::iequals(strTemp, "small"))
             NODE_SIZE = 1;
-        else if (beast::detail::ci_equal(strTemp, "medium"))
+        else if (beast::detail::iequals(strTemp, "medium"))
             NODE_SIZE = 2;
-        else if (beast::detail::ci_equal(strTemp, "large"))
+        else if (beast::detail::iequals(strTemp, "large"))
             NODE_SIZE = 3;
-        else if (beast::detail::ci_equal(strTemp, "huge"))
+        else if (beast::detail::iequals(strTemp, "huge"))
             NODE_SIZE = 4;
         else
         {
@@ -380,9 +380,9 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_LEDGER_HISTORY, strTemp, j_))
     {
-        if (beast::detail::ci_equal(strTemp, "full"))
+        if (beast::detail::iequals(strTemp, "full"))
             LEDGER_HISTORY = 1000000000u;
-        else if (beast::detail::ci_equal(strTemp, "none"))
+        else if (beast::detail::iequals(strTemp, "none"))
             LEDGER_HISTORY = 0;
         else
             LEDGER_HISTORY = beast::lexicalCastThrow <std::uint32_t> (strTemp);
@@ -390,9 +390,9 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_FETCH_DEPTH, strTemp, j_))
     {
-        if (beast::detail::ci_equal(strTemp, "none"))
+        if (beast::detail::iequals(strTemp, "none"))
             FETCH_DEPTH = 0;
-        else if (beast::detail::ci_equal(strTemp, "full"))
+        else if (beast::detail::iequals(strTemp, "full"))
             FETCH_DEPTH = 1000000000u;
         else
             FETCH_DEPTH = beast::lexicalCastThrow <std::uint32_t> (strTemp);
@@ -412,6 +412,9 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_DEBUG_LOGFILE, strTemp, j_))
         DEBUG_LOGFILE       = strTemp;
+
+    if (getSingleSection (secConfig, SECTION_WORKERS, strTemp, j_))
+        WORKERS      = beast::lexicalCastThrow <std::size_t> (strTemp);
 
     // Do not load trusted validator configuration for standalone mode
     if (! RUN_STANDALONE)
@@ -531,7 +534,13 @@ void Config::loadFromString (std::string const& fileContents)
     {
         auto const part = section("features");
         for(auto const& s : part.values())
-            features.insert(feature(s));
+        {
+            if (auto const f = getRegisteredFeature(s))
+                features.insert(*f);
+            else
+                Throw<std::runtime_error>(
+                    "Unknown feature: " + s + "  in config file.");
+        }
     }
 }
 
@@ -542,7 +551,7 @@ int Config::getSize (SizedItemName item) const
 
         { siSweepInterval,      {   10,     30,     60,     90,         120     } },
 
-        { siLedgerFetch,        {   2,      2,      3,      3,          3       } },
+        { siLedgerFetch,        {   2,      3,      5,      5,          8       } },
 
         { siNodeCacheSize,      {   16384,  32768,  131072, 262144,     524288  } },
         { siNodeCacheAge,       {   60,     90,     120,    900,        1800    } },
@@ -556,9 +565,9 @@ int Config::getSize (SizedItemName item) const
         { siLedgerSize,         {   32,     128,    256,    384,        768     } },
         { siLedgerAge,          {   30,     90,     180,    240,        900     } },
 
-        { siHashNodeDBCache,    {   4,      12,     24,     64,         128      } },
-        { siTxnDBCache,         {   4,      12,     24,     64,         128      } },
-        { siLgrDBCache,         {   4,      8,      16,     32,         128      } },
+        { siHashNodeDBCache,    {   4,      12,     24,     64,         128     } },
+        { siTxnDBCache,         {   4,      12,     24,     64,         128     } },
+        { siLgrDBCache,         {   4,      8,      16,     32,         128     } },
     };
 
     for (int i = 0; i < (sizeof (sizeTable) / sizeof (SizedItem)); ++i)

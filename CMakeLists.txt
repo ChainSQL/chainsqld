@@ -197,24 +197,55 @@ beast_utility_unity.cpp)
 
 prepend(ripple_unity_srcs
 src/ripple/unity/
+app_consensus.cpp
 app_ledger.cpp
-app_main.cpp
+app_ledger_impl.cpp
+app_main1.cpp
+app_main2.cpp
 app_misc.cpp
+app_misc_impl.cpp
 app_paths.cpp
 app_tx.cpp
 conditions.cpp
+consensus.cpp
 core.cpp
 basics.cpp
 crypto.cpp
 ledger.cpp
 net.cpp
-overlay.cpp
+overlay1.cpp
+overlay2.cpp
 peerfinder.cpp
 json.cpp
 protocol.cpp
-rpcx.cpp
+rpcx1.cpp
+rpcx2.cpp
 shamap.cpp
 server.cpp)
+
+prepend(test_unity_srcs
+src/test/unity/
+app_test_unity1.cpp
+app_test_unity2.cpp
+basics_test_unity.cpp
+beast_test_unity1.cpp
+beast_test_unity2.cpp
+conditions_test_unity.cpp
+consensus_test_unity.cpp
+core_test_unity.cpp
+json_test_unity.cpp
+ledger_test_unity.cpp
+overlay_test_unity.cpp
+peerfinder_test_unity.cpp
+protocol_test_unity.cpp
+resource_test_unity.cpp
+rpc_test_unity.cpp
+server_test_unity.cpp
+server_status_test_unity.cpp
+shamap_test_unity.cpp
+jtx_unity1.cpp
+jtx_unity2.cpp
+csf_unity.cpp)
 
 prepend(peersafe_unity_srcs
 src/peersafe/unity/
@@ -222,7 +253,15 @@ gm_encrypt.cpp
 app_table.cpp
 app_sql.cpp)
 
-list(APPEND chainsqld_src_unity ${beast_unity_srcs} ${ripple_unity_srcs} ${peersafe_unity_srcs})
+
+
+list(APPEND chainsqld_src_unity ${beast_unity_srcs} ${ripple_unity_srcs} ${peersafe_unity_srcs} ${test_unity_srcs})
+
+add_with_props(rippled_src_unity src/test/unity/nodestore_test_unity.cpp
+-I"${CMAKE_SOURCE_DIR}/"src/rocksdb2/include
+-I"${CMAKE_SOURCE_DIR}/"src/snappy/snappy
+-I"${CMAKE_SOURCE_DIR}/"src/snappy/config
+${rocks_db_system_header})
 
 add_with_props(chainsqld_src_unity src/ripple/unity/nodestore.cpp
 -I"${CMAKE_SOURCE_DIR}"/src/rocksdb2/include
@@ -231,6 +270,11 @@ add_with_props(chainsqld_src_unity src/ripple/unity/nodestore.cpp
 ${rocks_db_system_header})
 
 add_with_props(chainsqld_src_unity src/ripple/unity/soci_ripple.cpp ${soci_extra_includes})
+
+list(APPEND ripple_unity_srcs ${beast_unity_srcs} ${test_unity_srcs}
+src/ripple/unity/nodestore.cpp
+src/ripple/unity/soci_ripple.cpp
+src/test/unity/nodestore_test_unity.cpp)
 
 ############################################################
 
@@ -252,6 +296,7 @@ foreach(curdir
         basics
         conditions
         crypto
+        consensus
         json
         ledger
         legacy
@@ -296,8 +341,11 @@ foreach(curdir
         basics
         beast
         conditions
+        consensus
         core
+        csf
         json
+        jtx
         ledger
         nodestore
         overlay
@@ -306,8 +354,7 @@ foreach(curdir
         resource
         rpc
         server
-        shamap
-        jtx)
+        shamap)
     file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
     list(APPEND test_srcs "${cursrcs}")
 endforeach()
@@ -331,7 +378,9 @@ if(WIN32 OR is_xcode)
             beast/cxx17
             beast/hash
             proto
-            resource)
+            resource
+            validators
+            websocket)
         file(GLOB_RECURSE cursrcs src/ripple/${curdir}/*.cpp)
         list(APPEND chainsqld_headers "${cursrcs}")
     endforeach()
@@ -346,6 +395,27 @@ if(WIN32 OR is_xcode)
         # $<OR:$<CONFIG:Debug>,$<CONFIG:Release>>)
 endif()
 
+if (WIN32 OR is_xcode)
+  # Documentation sources. Only needed for IDEs.
+  prepend(doc_srcs
+    docs/
+    Jamfile.v2
+    boostbook.dtd
+    consensus.qbk
+    index.xml
+    main.qbk
+    quickref.xml
+    reference.xsl
+    source.dox)
+
+  set_property(
+    SOURCE ${doc_srcs}
+    APPEND
+    PROPERTY HEADER_FILE_ONLY
+    true)
+    # Doesn't work
+    # $<OR:$<CONFIG:Debug>,$<CONFIG:Release>>)
+endif()
 
 ############################################################
 
@@ -480,6 +550,13 @@ if(${BASH_EXE} STREQUAL "BASH_EXE-NOTFOUND")
     set(BASH_EXE "")
 endif()
 
+add_custom_target(docs
+  COMMAND ${CMAKE_COMMAND} -E env "PATH=$ENV{PATH} " ${BASH_EXE} ./makeqbk.sh
+  COMMAND ${B2_EXE} ${B2_PARAMS}
+  BYPRODUCTS "${CMAKE_SOURCE_DIR}/docs/html/index.html"
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/docs"
+  SOURCES "${doc_srcs}"
+  )
 set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)

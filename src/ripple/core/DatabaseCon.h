@@ -50,10 +50,6 @@ public:
         : it_ (rhs.it_), lock_ (std::move (rhs.lock_))
     {
     }
-    /*LockedPointer(LockedPointer const& rhs) 
-        : it_(rhs.it_), lock_(std::move(rhs.lock_))
-    {
-    }*/
     LockedPointer () = delete;
     LockedPointer (LockedPointer const& rhs) = delete;
     LockedPointer& operator=(LockedPointer const& rhs) = delete;

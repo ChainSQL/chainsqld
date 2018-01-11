@@ -123,6 +123,7 @@ public:
         //
         virtual pointer findRpcSub (std::string const& strUrl) = 0;
         virtual pointer addRpcSub (std::string const& strUrl, ref rspEntry) = 0;
+        virtual bool tryRemoveRpcSub (std::string const& strUrl) = 0;
     };
 
 public:

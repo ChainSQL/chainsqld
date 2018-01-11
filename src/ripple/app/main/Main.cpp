@@ -46,10 +46,10 @@
 #include <test/quiet_reporter.h>
 #include <google/protobuf/stubs/common.h>
 #include <boost/program_options.hpp>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
+#include <stdexcept>
 
 
 #if defined(BEAST_LINUX) || defined(BEAST_MAC) || defined(BEAST_BSD)
@@ -80,7 +80,7 @@ adjustDescriptorLimit(int needed, beast::Journal j)
 
     if (getrlimit(RLIMIT_NOFILE, &rl) == 0)
     {
-        // If the limit is infnite, then we are good.
+        // If the limit is infinite, then we are good.
         if (rl.rlim_cur == RLIM_INFINITY)
             available = needed;
         else
@@ -160,11 +160,11 @@ void printHelp (const po::options_description& desc)
            "     stop\n"
            "     submit <tx_blob>|[<private_key> <tx_json>]\n"
            "     submit_multisigned <tx_json>\n"
-           "     t_dump <sync> <path>\n"
-           "     t_dumpstop <account> <tableName>\n"
-           "     t_audit <sync> <sqlSelect> <path>\n"
-           "     t_auditstop <job_id>\n"
-           "     tx_count\n"
+		"     t_dump <sync> <path>\n"
+		"     t_dumpstop <account> <tableName>\n"
+		"     t_audit <sync> <sqlSelect> <path>\n"
+		"     t_auditstop <job_id>\n"
+		"     tx_count\n"
            "     tx <id>\n"
            "     validation_create [<seed>|<pass_phrase>|<key>]\n"
            "     validation_seed [<seed>|<pass_phrase>|<key>]\n"
@@ -205,7 +205,7 @@ int run (int argc, char** argv)
 
     using namespace std;
 
-    beast::setCurrentThreadName ("chainsqld: main");
+    beast::setCurrentThreadName ("rippled: main");
 
     po::variables_map vm;
 
@@ -266,7 +266,7 @@ int run (int argc, char** argv)
     }
     catch (std::exception const&)
     {
-        std::cerr << "chainsqld: Incorrect command line syntax." << std::endl;
+        std::cerr << "rippled: Incorrect command line syntax." << std::endl;
         std::cerr << "Use '--help' for a list of options." << std::endl;
         return 1;
     }
@@ -279,7 +279,7 @@ int run (int argc, char** argv)
 
     if (vm.count ("version"))
     {
-        std::cout << "chainsqld version " <<
+        std::cout << "rippled version " <<
             BuildInfo::getVersionString () << std::endl;
         return 0;
     }
@@ -385,12 +385,11 @@ int run (int argc, char** argv)
                 vm["rpc_port"].as<std::uint16_t>());
 
             if (*config->rpc_port == 0)
-                Throw<std::domain_error> ("");
+                throw std::domain_error("0");
         }
-        catch(std::exception const&)
+        catch(std::exception const& e)
         {
-            std::cerr << "Invalid rpc_port = " <<
-                vm["rpc_port"].as<std::string>() << std::endl;
+            std::cerr << "Invalid rpc_port = " << e.what() << "\n";
             return -1;
         }
     }
@@ -400,11 +399,15 @@ int run (int argc, char** argv)
         try
         {
             config->VALIDATION_QUORUM = vm["quorum"].as <std::size_t> ();
+            if (config->VALIDATION_QUORUM == std::size_t{})
+            {
+                throw std::domain_error("0");
+            }
         }
-        catch(std::exception const&)
+        catch(std::exception const& e)
         {
-            std::cerr << "Invalid quorum = " <<
-                vm["quorum"].as <std::string> () << std::endl;
+            std::cerr << "Invalid value specified for --quorum ("
+                      << e.what() << ")\n";
             return -1;
         }
     }
@@ -419,16 +422,7 @@ int run (int argc, char** argv)
         thresh = kTrace;
 
     auto logs = std::make_unique<Logs>(thresh);
-#ifdef GM_ALG_PROCESS
-    if (nullptr == HardEncryptObj::getInstance())
-    {
-        setDebugLogSink(logs->makeSink(
-            "Debug", beast::severities::kTrace));
-        auto hardEncryptJournal = logs->journal("HardEncrypt");
-        JLOG(hardEncryptJournal.info()) << "No EncryptCard! Please Check!";
-        return -1;
-    }
-#endif
+
     // No arguments. Run server.
     if (!vm.count ("parameters"))
     {
@@ -476,7 +470,7 @@ int run (int argc, char** argv)
         }
 
         // Start the server
-        app->doStart();
+        app->doStart(true /*start timers*/);
 
         // Block until we get a stop RPC.
         app->run();
@@ -490,7 +484,7 @@ int run (int argc, char** argv)
     }
 
     // We have an RPC command to process:
-    beast::setCurrentThreadName ("chainsqld: rpc");
+    beast::setCurrentThreadName ("rippled: rpc");
     return RPCCall::fromCommandLine (
         *config,
         vm["parameters"].as<std::vector<std::string>>(),
@@ -517,11 +511,11 @@ int main (int argc, char** argv)
                             __GNUC_PATCHLEVEL__;
 
     static_assert (gccver >= 50100,
-        "GCC version 5.1.0 or later is required to compile chainsqld.");
+        "GCC version 5.1.0 or later is required to compile rippled.");
 #endif
 
     static_assert (BOOST_VERSION >= 105700,
-        "Boost version 1.57 or later is required to compile chainsqld");
+        "Boost version 1.57 or later is required to compile rippled");
 
     //
     // These debug heap calls do nothing in release or non Visual Studio builds.

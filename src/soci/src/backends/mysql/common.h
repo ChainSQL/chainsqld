@@ -9,10 +9,8 @@
 #define SOCI_MYSQL_COMMON_H_INCLUDED
 
 #include "soci/mysql/soci-mysql.h"
-#include "soci/include/private/soci-cstrtod.h"
-#include "soci/include/private/soci-compiler.h"
-//#include "soci-cstrtod.h"
-//#include "soci-compiler.h"
+#include "soci-cstrtod.h"
+#include "soci-compiler.h"
 // std
 #include <cstddef>
 #include <ctime>

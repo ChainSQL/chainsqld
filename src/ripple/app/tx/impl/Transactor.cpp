@@ -35,6 +35,7 @@
 #include <peersafe/app/storage/TableStorageItem.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <ripple/protocol/Protocol.h>
 
 namespace ripple {
 
@@ -586,15 +587,41 @@ void removeUnfundedOffers (ApplyView& view, std::vector<uint256> const& offers, 
 
     for (auto const& index : offers)
     {
-        auto const sleOffer = view.peek (keylet::offer (index));
-        if (sleOffer)
+        if (auto const sleOffer = view.peek (keylet::offer (index)))
         {
             // offer is unfunded
             offerDelete (view, sleOffer, viewJ);
-            if (++removed == 1000)
+            if (++removed == unfundedOfferRemoveLimit)
                 return;
         }
     }
+}
+
+void
+Transactor::claimFee (ZXCAmount& fee, TER terResult, std::vector<uint256> const& removedOffers)
+{
+    ctx_.discard();
+
+    auto const txnAcct = view().peek(
+        keylet::account(ctx_.tx.getAccountID(sfAccount)));
+
+    auto const balance = txnAcct->getFieldAmount (sfBalance).zxc ();
+
+    // balance should have already been
+    // checked in checkFee / preFlight.
+    assert(balance != zero && (!view().open() || balance >= fee));
+    // We retry/reject the transaction if the account
+    // balance is zero or we're applying against an open
+    // ledger and the balance is less than the fee
+    if (fee > balance)
+        fee = balance;
+    txnAcct->setFieldAmount (sfBalance, balance - fee);
+    txnAcct->setFieldU32 (sfSequence, ctx_.tx.getSequence() + 1);
+
+    if (terResult == tecOVERSIZE)
+        removeUnfundedOffers (view(), removedOffers, ctx_.app.journal ("View"));
+
+    view().update (txnAcct);
 }
 
 //------------------------------------------------------------------------------
@@ -649,7 +676,7 @@ Transactor::operator()()
     bool didApply = isTesSuccess (terResult);
     auto fee = ctx_.tx.getFieldAmount(sfFee).zxc ();
 
-    if (ctx_.size() > 5200)
+    if (ctx_.size() > oversizeMetaDataCap)
         terResult = tecOVERSIZE;
 
     if ((terResult == tecOVERSIZE) ||
@@ -683,35 +710,24 @@ Transactor::operator()()
                 });
         }
 
-        ctx_.discard();
-
-        auto const txnAcct = view().peek(
-            keylet::account(ctx_.tx.getAccountID(sfAccount)));
-
-        std::uint32_t t_seq = ctx_.tx.getSequence ();
-
-        auto const balance = txnAcct->getFieldAmount (sfBalance).zxc ();
-
-        // balance should have already been
-        // checked in checkFee / preFlight.
-        assert(balance != zero && (!view().open() || balance >= fee));
-        // We retry/reject the transaction if the account
-        // balance is zero or we're applying against an open
-        // ledger and the balance is less than the fee
-        if (fee > balance)
-            fee = balance;
-        txnAcct->setFieldAmount (sfBalance, balance - fee);
-        txnAcct->setFieldU32 (sfSequence, t_seq + 1);
-
-        if (terResult == tecOVERSIZE)
-            removeUnfundedOffers (view(), removedOffers, ctx_.app.journal ("View"));
-
-        view().update (txnAcct);
+        claimFee(fee, terResult, removedOffers);
         didApply = true;
     }
-    else if (!didApply)
+
+    if (didApply)
     {
-        JLOG(j_.debug()) << "Not applying transaction " << txID;
+        // Check invariants
+        // if `tecINVARIANT_FAILED` not returned, we can proceed to apply the tx
+        terResult = ctx_.checkInvariants(terResult);
+        if (terResult == tecINVARIANT_FAILED)
+        {
+            // if invariants failed, claim a fee still
+            claimFee(fee, terResult, {});
+            //Check invariants *again* to ensure the fee claiming doesn't
+            //violate invariants.
+            terResult = ctx_.checkInvariants(terResult);
+            didApply = isTecClaim(terResult);
+        }
     }
 
     if (didApply)
@@ -719,7 +735,7 @@ Transactor::operator()()
         // Transaction succeeded fully or (retries are
         // not allowed and the transaction could claim a fee)
 
-        if(!view().open())
+        if (!view().open())
         {
             // Charge whatever fee they specified.
 
@@ -739,6 +755,11 @@ Transactor::operator()()
         // since we called apply(), it is not okay to look
         // at view() past this point.
     }
+    else
+    {
+        JLOG(j_.debug()) << "Not applying transaction " << txID;
+    }
+
 
     JLOG(j_.trace()) <<
         "apply: " << transToken(terResult) <<

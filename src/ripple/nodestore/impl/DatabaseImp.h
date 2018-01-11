@@ -24,16 +24,8 @@
 #include <ripple/nodestore/Scheduler.h>
 #include <ripple/nodestore/impl/Tuning.h>
 #include <ripple/basics/KeyCache.h>
-#include <ripple/basics/Log.h>
 #include <ripple/basics/chrono.h>
-#include <ripple/protocol/digest.h>
-#include <ripple/basics/Slice.h>
-#include <ripple/basics/TaggedCache.h>
 #include <ripple/beast/core/CurrentThreadName.h>
-#include <chrono>
-#include <condition_variable>
-#include <set>
-#include <thread>
 
 namespace ripple {
 namespace NodeStore {
@@ -62,14 +54,21 @@ private:
     bool                      m_readShut;
     uint64_t                  m_readGen;        // current read generation
     int                       fdlimit_;
+    std::atomic <std::uint32_t> m_storeCount;
+    std::atomic <std::uint32_t> m_fetchTotalCount;
+    std::atomic <std::uint32_t> m_fetchHitCount;
+    std::atomic <std::uint32_t> m_storeSize;
+    std::atomic <std::uint32_t> m_fetchSize;
 
 public:
     DatabaseImp (std::string const& name,
                  Scheduler& scheduler,
                  int readThreads,
+                 Stoppable& parent,
                  std::unique_ptr <Backend> backend,
                  beast::Journal journal)
-        : m_journal (journal)
+        : Database (name, parent)
+        , m_journal (journal)
         , m_scheduler (scheduler)
         , m_backend (std::move (backend))
         , m_cache ("NodeStore", cacheTargetSize, cacheTargetSeconds,
@@ -92,33 +91,21 @@ public:
             fdlimit_ = m_backend->fdlimit();
     }
 
-    ~DatabaseImp ()
+    ~DatabaseImp () override
     {
-        {
-            std::lock_guard <std::mutex> lock (m_readLock);
-            m_readShut = true;
-            m_readCondVar.notify_all ();
-            m_readGenCondVar.notify_all ();
-        }
-
-        for (auto& e : m_readThreads)
-            e.join();
+        // NOTE!
+        // Any derived class should call the stopThreads() method in its
+        // destructor.  Otherwise, occasionally, the derived class may
+        // crash during shutdown when its members are accessed by one of
+        // these threads after the derived class is destroyed but before
+        // this base class is destroyed.
+        stopThreads();
     }
 
     std::string
     getName () const override
     {
         return m_backend->getName ();
-    }
-
-    void
-    close() override
-    {
-        if (m_backend)
-        {
-            m_backend->close();
-            m_backend = nullptr;
-        }
     }
 
     //------------------------------------------------------------------------------
@@ -442,12 +429,34 @@ public:
         return fdlimit_;
     }
 
-private:
-    std::atomic <std::uint32_t> m_storeCount;
-    std::atomic <std::uint32_t> m_fetchTotalCount;
-    std::atomic <std::uint32_t> m_fetchHitCount;
-    std::atomic <std::uint32_t> m_storeSize;
-    std::atomic <std::uint32_t> m_fetchSize;
+    //--------------------------------------------------------------------------
+    //
+    // Stoppable.
+
+    void onStop () override
+    {
+        // After stop time we can no longer use the JobQueue for background
+        // reads.  Join the background read threads.
+        DatabaseImp::stopThreads();
+        stopped();
+    }
+
+protected:
+    void stopThreads ()
+    {
+        {
+            std::lock_guard <std::mutex> lock (m_readLock);
+            if (m_readShut) // Only stop threads once.
+                return;
+
+            m_readShut = true;
+            m_readCondVar.notify_all ();
+            m_readGenCondVar.notify_all ();
+        }
+
+        for (auto& e : m_readThreads)
+            e.join();
+    }
 };
 
 }

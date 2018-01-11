@@ -30,6 +30,7 @@
 #include <peersafe/rpc/impl/TxPrepareBase.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/app/table/TableSync.h>
 
 namespace ripple {
 TxPrepareBase::TxPrepareBase(Application& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws):

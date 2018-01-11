@@ -23,6 +23,7 @@
 #include <test/jtx/PathSet.h>
 #include <ripple/ledger/View.h>
 #include <ripple/protocol/AmountConversions.h>
+#include <ripple/protocol/Feature.h>
 
 namespace ripple {
 namespace test {
@@ -54,12 +55,12 @@ class PaymentSandbox_test : public beast::unit_test::suite
       2) New code: Path is dry because sender does not have any
          GW1 to spend until the end of the transaction.
     */
-    void testSelfFunding ()
+    void testSelfFunding (std::initializer_list<uint256> fs)
     {
         testcase ("selfFunding");
 
         using namespace jtx;
-        Env env (*this);
+        Env env (*this, with_features(fs));
         Account const gw1 ("gw1");
         Account const gw2 ("gw2");
         Account const snd ("snd");
@@ -95,12 +96,12 @@ class PaymentSandbox_test : public beast::unit_test::suite
         env.require (balance ("rcv", USD_gw2 (2)));
     }
 
-    void testSubtractCredits ()
+    void testSubtractCredits (std::initializer_list<uint256> fs)
     {
         testcase ("subtractCredits");
 
         using namespace jtx;
-        Env env (*this);
+        Env env (*this, with_features(fs));
         Account const gw1 ("gw1");
         Account const gw2 ("gw2");
         Account const alice ("alice");
@@ -255,7 +256,7 @@ class PaymentSandbox_test : public beast::unit_test::suite
         }
     }
 
-    void testTinyBalance ()
+    void testTinyBalance (std::initializer_list<uint256> fs)
     {
         testcase ("Tiny balance");
 
@@ -265,7 +266,7 @@ class PaymentSandbox_test : public beast::unit_test::suite
 
         using namespace jtx;
 
-        Env env (*this);
+        Env env (*this, with_features(fs));
 
         Account const gw ("gw");
         Account const alice ("alice");
@@ -277,21 +278,22 @@ class PaymentSandbox_test : public beast::unit_test::suite
         STAmount hugeAmt (issue, STAmount::cMaxValue, STAmount::cMaxOffset - 1,
             false, false, STAmount::unchecked{});
 
-        for (auto timeDelta : {-env.closed ()->info ().closeTimeResolution,
-                 env.closed ()->info ().closeTimeResolution})
+        for (auto d : {-1, 1})
         {
-            auto const closeTime = amendmentRIPD1141SoTime () + timeDelta;
+            auto const closeTime = fix1141Time () +
+                d * env.closed()->info().closeTimeResolution;
             env.close (closeTime);
             ApplyViewImpl av (&*env.current (), tapNONE);
             PaymentSandbox pv (&av);
             pv.creditHook (gw, alice, hugeAmt, -tinyAmt);
-            if (closeTime > amendmentRIPD1141SoTime ())
+            if (closeTime > fix1141Time ())
                 BEAST_EXPECT(pv.balanceHook (alice, gw, hugeAmt) == tinyAmt);
             else
                 BEAST_EXPECT(pv.balanceHook (alice, gw, hugeAmt) != tinyAmt);
         }
     }
-    void testReserve()
+
+    void testReserve(std::initializer_list<uint256> fs)
     {
         testcase ("Reserve");
         using namespace jtx;
@@ -310,12 +312,12 @@ class PaymentSandbox_test : public beast::unit_test::suite
             return env.current ()->fees ().accountReserve (count);
         };
 
-        Env env (*this);
+        Env env (*this, with_features(fs));
 
         Account const alice ("alice");
         env.fund (reserve(env, 1), alice);
 
-        auto const closeTime = amendmentRIPD1141SoTime () +
+        auto const closeTime = fix1141Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
         env.close (closeTime);
         ApplyViewImpl av (&*env.current (), tapNONE);
@@ -329,16 +331,55 @@ class PaymentSandbox_test : public beast::unit_test::suite
             accountSend (sb, alice, zxcAccount (), ZXC(100), dj);
             BEAST_EXPECT(accountFundsZXC (sb, alice) == beast::zero);
         }
+    }
 
+    void testBalanceHook(std::initializer_list<uint256> fs)
+    {
+        // Make sure the Issue::Account returned by PAymentSandbox::balanceHook
+        // is correct.
+        testcase ("balanceHook");
+
+        using namespace jtx;
+        Env env (*this, with_features(fs));
+
+        Account const gw ("gw");
+        auto const USD = gw["USD"];
+        Account const alice ("alice");
+
+        auto const closeTime = fix1274Time () +
+                100 * env.closed ()->info ().closeTimeResolution;
+        env.close (closeTime);
+
+        ApplyViewImpl av (&*env.current (), tapNONE);
+        PaymentSandbox sb (&av);
+
+        // The currency we pass for the last argument mimics the currency that
+        // is typically passed to creditHook, since it comes from a trust line.
+        Issue tlIssue = noIssue();
+        tlIssue.currency = USD.issue().currency;
+
+        sb.creditHook (gw.id(), alice.id(), {USD, 400}, {tlIssue, 600});
+        sb.creditHook (gw.id(), alice.id(), {USD, 100}, {tlIssue, 600});
+
+        // Expect that the STAmount issuer returned by balanceHook() is correct.
+        STAmount const balance =
+            sb.balanceHook (gw.id(), alice.id(), {USD, 600});
+        BEAST_EXPECT (balance.getIssuer() == USD.issue().account);
     }
 
 public:
     void run ()
     {
-        testSelfFunding ();
-        testSubtractCredits ();
-        testTinyBalance ();
-        testReserve();
+        auto testAll = [this](std::initializer_list<uint256> fs) {
+            testSelfFunding(fs);
+            testSubtractCredits(fs);
+            testTinyBalance(fs);
+            testReserve(fs);
+            testBalanceHook(fs);
+        };
+        testAll({});
+        testAll({featureFlow, fix1373});
+        testAll({featureFlow, fix1373, featureFlowCross});
     }
 };
 

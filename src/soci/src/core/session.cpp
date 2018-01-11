@@ -31,7 +31,7 @@ void ensureConnected(session_backend * backEnd)
 session::session()
     : once(this), prepare(this), query_transformation_(NULL), logStream_(NULL),
       uppercaseColumnNames_(false), backEnd_(NULL),
-      isFromPool_(false), pool_(NULL), last_error_(0,"")
+      isFromPool_(false), pool_(NULL)
 {
 }
 
@@ -39,7 +39,7 @@ session::session(connection_parameters const & parameters)
     : once(this), prepare(this), query_transformation_(NULL), logStream_(NULL),
       lastConnectParameters_(parameters),
       uppercaseColumnNames_(false), backEnd_(NULL),
-      isFromPool_(false), pool_(NULL), last_error_(0, "")
+      isFromPool_(false), pool_(NULL)
 {
     open(lastConnectParameters_);
 }
@@ -49,7 +49,7 @@ session::session(backend_factory const & factory,
     : once(this), prepare(this), query_transformation_(NULL), logStream_(NULL),
       lastConnectParameters_(factory, connectString),
       uppercaseColumnNames_(false), backEnd_(NULL),
-      isFromPool_(false), pool_(NULL), last_error_(0, "")
+      isFromPool_(false), pool_(NULL)
 {
     open(lastConnectParameters_);
 }
@@ -59,7 +59,7 @@ session::session(std::string const & backendName,
     : once(this), prepare(this), query_transformation_(NULL), logStream_(NULL),
       lastConnectParameters_(backendName, connectString),
       uppercaseColumnNames_(false), backEnd_(NULL),
-      isFromPool_(false), pool_(NULL), last_error_(0, "")
+      isFromPool_(false), pool_(NULL)
 {
     open(lastConnectParameters_);
 }
@@ -68,13 +68,13 @@ session::session(std::string const & connectString)
     : once(this), prepare(this), query_transformation_(NULL), logStream_(NULL),
       lastConnectParameters_(connectString),
       uppercaseColumnNames_(false), backEnd_(NULL),
-      isFromPool_(false), pool_(NULL), last_error_(0, "")
+      isFromPool_(false), pool_(NULL)
 {
     open(lastConnectParameters_);
 }
 
 session::session(connection_pool & pool)
-    : query_transformation_(NULL), logStream_(NULL), isFromPool_(true), pool_(&pool), last_error_(0, "")
+    : query_transformation_(NULL), logStream_(NULL), isFromPool_(true), pool_(&pool)
 {
     poolPosition_ = pool.lease();
     session & pooledSession = pool.at(poolPosition_);
