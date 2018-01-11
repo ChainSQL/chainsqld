@@ -160,11 +160,11 @@ void printHelp (const po::options_description& desc)
            "     stop\n"
            "     submit <tx_blob>|[<private_key> <tx_json>]\n"
            "     submit_multisigned <tx_json>\n"
-		"     t_dump <sync> <path>\n"
-		"     t_dumpstop <account> <tableName>\n"
-		"     t_audit <sync> <sqlSelect> <path>\n"
-		"     t_auditstop <job_id>\n"
-		"     tx_count\n"
+           "     t_dump <sync> <path>\n"
+           "     t_dumpstop <account> <tableName>\n"
+           "     t_audit <sync> <sqlSelect> <path>\n"
+           "     t_auditstop <job_id>\n"
+           "     tx_count\n"
            "     tx <id>\n"
            "     validation_create [<seed>|<pass_phrase>|<key>]\n"
            "     validation_seed [<seed>|<pass_phrase>|<key>]\n"
@@ -205,7 +205,7 @@ int run (int argc, char** argv)
 
     using namespace std;
 
-    beast::setCurrentThreadName ("rippled: main");
+    beast::setCurrentThreadName ("chainsqld: main");
 
     po::variables_map vm;
 
@@ -266,7 +266,7 @@ int run (int argc, char** argv)
     }
     catch (std::exception const&)
     {
-        std::cerr << "rippled: Incorrect command line syntax." << std::endl;
+        std::cerr << "chainsqld: Incorrect command line syntax." << std::endl;
         std::cerr << "Use '--help' for a list of options." << std::endl;
         return 1;
     }
@@ -279,7 +279,7 @@ int run (int argc, char** argv)
 
     if (vm.count ("version"))
     {
-        std::cout << "rippled version " <<
+        std::cout << "chainsqld version " <<
             BuildInfo::getVersionString () << std::endl;
         return 0;
     }
@@ -422,7 +422,16 @@ int run (int argc, char** argv)
         thresh = kTrace;
 
     auto logs = std::make_unique<Logs>(thresh);
-
+#ifdef GM_ALG_PROCESS
+    if (nullptr == HardEncryptObj::getInstance())
+    {
+        setDebugLogSink(logs->makeSink(
+            "Debug", beast::severities::kTrace));
+        auto hardEncryptJournal = logs->journal("HardEncrypt");
+        JLOG(hardEncryptJournal.info()) << "No EncryptCard! Please Check!";
+        return -1;
+    }
+#endif
     // No arguments. Run server.
     if (!vm.count ("parameters"))
     {
@@ -484,7 +493,7 @@ int run (int argc, char** argv)
     }
 
     // We have an RPC command to process:
-    beast::setCurrentThreadName ("rippled: rpc");
+    beast::setCurrentThreadName ("chainsqld: rpc");
     return RPCCall::fromCommandLine (
         *config,
         vm["parameters"].as<std::vector<std::string>>(),
@@ -511,11 +520,11 @@ int main (int argc, char** argv)
                             __GNUC_PATCHLEVEL__;
 
     static_assert (gccver >= 50100,
-        "GCC version 5.1.0 or later is required to compile rippled.");
+        "GCC version 5.1.0 or later is required to compile chainsqld.");
 #endif
 
     static_assert (BOOST_VERSION >= 105700,
-        "Boost version 1.57 or later is required to compile rippled");
+        "Boost version 1.57 or later is required to compile chainsqld");
 
     //
     // These debug heap calls do nothing in release or non Visual Studio builds.

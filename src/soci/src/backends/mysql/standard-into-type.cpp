@@ -10,7 +10,8 @@
 #include "soci/mysql/soci-mysql.h"
 #include "soci/soci-platform.h"
 #include "common.h"
-#include "soci-exchange-cast.h"
+//#include "soci-exchange-cast.h"
+#include "soci/include/private/soci-exchange-cast.h"
 // std
 #include <ciso646>
 #include <cstdlib>
@@ -105,7 +106,7 @@ void mysql_standard_into_type_backend::post_fetch(
             break;
         case x_stdtm:
             // attempt to parse the string and convert to std::tm
-            parse_std_tm(buf, exchange_type_cast<x_stdtm>(data_));
+			soci::details::mysql::parse_std_tm(buf, exchange_type_cast<x_stdtm>(data_));
             break;
         default:
             throw soci_error("Into element used with non-supported type.");

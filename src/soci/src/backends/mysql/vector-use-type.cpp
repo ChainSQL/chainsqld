@@ -10,7 +10,8 @@
 #include "soci/mysql/soci-mysql.h"
 #include "common.h"
 #include "soci/soci-platform.h"
-#include "soci-dtocstr.h"
+//#include "soci-dtocstr.h"
+#include "soci/include/private/soci-dtocstr.h"
 // std
 #include <ciso646>
 #include <cstddef>
@@ -189,16 +190,16 @@ std::size_t mysql_vector_use_type_backend::size()
     switch (type_)
     {
         // simple cases
-    case x_char:         sz = get_vector_size<char>         (data_); break;
-    case x_short:        sz = get_vector_size<short>        (data_); break;
-    case x_integer:      sz = get_vector_size<int>          (data_); break;
-    case x_long_long:    sz = get_vector_size<long long>    (data_); break;
+    case x_char:         sz = soci::details::mysql::get_vector_size<char>         (data_); break;
+    case x_short:        sz = soci::details::mysql::get_vector_size<short>        (data_); break;
+    case x_integer:      sz = soci::details::mysql::get_vector_size<int>          (data_); break;
+    case x_long_long:    sz = soci::details::mysql::get_vector_size<long long>    (data_); break;
     case x_unsigned_long_long:
-        sz = get_vector_size<unsigned long long>(data_);
+        sz = soci::details::mysql::get_vector_size<unsigned long long>(data_);
         break;
-    case x_double:       sz = get_vector_size<double>       (data_); break;
-    case x_stdstring:    sz = get_vector_size<std::string>  (data_); break;
-    case x_stdtm:        sz = get_vector_size<std::tm>      (data_); break;
+    case x_double:       sz = soci::details::mysql::get_vector_size<double>       (data_); break;
+    case x_stdstring:    sz = soci::details::mysql::get_vector_size<std::string>  (data_); break;
+    case x_stdtm:        sz = soci::details::mysql::get_vector_size<std::tm>      (data_); break;
 
     default:
         throw soci_error("Use vector element used with non-supported type.");

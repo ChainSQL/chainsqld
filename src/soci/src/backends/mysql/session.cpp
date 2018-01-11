@@ -286,13 +286,20 @@ void parse_connect_string(const string & connectString,
 
 mysql_session_backend::mysql_session_backend(
     connection_parameters const & parameters)
+	: conn_(nullptr)
+	, connect_parameters_(parameters)
 {
-    string host, user, password, db, unix_socket, ssl_ca, ssl_cert, ssl_key,
+	connect_mysql();
+}
+
+void mysql_session_backend::connect_mysql() {
+	string host, user, password, db, unix_socket, ssl_ca, ssl_cert, ssl_key,
         charset;
-    int port, local_infile;
+	int port = 0;
+	int local_infile = 0;
     bool host_p, user_p, password_p, db_p, unix_socket_p, port_p,
         ssl_ca_p, ssl_cert_p, ssl_key_p, local_infile_p, charset_p;
-    parse_connect_string(parameters.get_connect_string(), &host, &host_p, &user, &user_p,
+    parse_connect_string(connect_parameters_.get_connect_string(), &host, &host_p, &user, &user_p,
         &password, &password_p, &db, &db_p,
         &unix_socket, &unix_socket_p, &port, &port_p,
         &ssl_ca, &ssl_ca_p, &ssl_cert, &ssl_cert_p, &ssl_key, &ssl_key_p,
@@ -375,9 +382,40 @@ void hard_exec(MYSQL *conn, const string & query)
 
 } // namespace unnamed
 
+int mysql_session_backend::handle_error_query()
+{
+	int result = 1;
+	unsigned int error = mysql_errno(conn_);
+	if (error == CR_SERVER_GONE_ERROR || error == CR_SERVER_LOST) {
+		// reconnect mysql
+		clean_up();
+		connect_mysql();
+		result = 0;
+	}
+	else
+	{
+		throw mysql_soci_error(mysql_error(conn_), error);
+	}
+
+	return result;
+}
+
 void mysql_session_backend::begin()
 {
-    hard_exec(conn_, "BEGIN");
+	try {
+		hard_exec(conn_, "BEGIN");
+	}
+	catch (soci_error err) 
+	{
+		if (0 == handle_error_query())
+		{
+			hard_exec(conn_, "BEGIN");
+		}
+		else
+		{
+			throw err;
+		}
+	}
 }
 
 void mysql_session_backend::commit()

@@ -37,7 +37,18 @@ once_temp_type & once_temp_type::operator=(once_temp_type const & o)
 
 once_temp_type::~once_temp_type() SOCI_ONCE_TEMP_TYPE_NOEXCEPT
 {
-    rcst_->dec_ref();
+	try 
+	{
+		rcst_->dec_ref();
+	}
+	catch (soci::soci_error& e)
+	{
+		std::string err_msg = e.what();
+	}
+	catch(...)
+	{
+		std::string err_msg = "Inner error. May be sql error.";
+	} 
 }
 
 once_temp_type & once_temp_type::operator,(into_type_ptr const & i)

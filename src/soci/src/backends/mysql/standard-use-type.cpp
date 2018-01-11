@@ -10,8 +10,11 @@
 #include "soci/mysql/soci-mysql.h"
 #include "common.h"
 #include "soci/soci-platform.h"
-#include "soci-dtocstr.h"
-#include "soci-exchange-cast.h"
+//#include "soci-dtocstr.h"
+//#include "soci-exchange-cast.h"
+#include "soci/include/private/soci-dtocstr.h"
+#include "soci/include/private/soci-exchange-cast.h"
+
 // std
 #include <ciso646>
 #include <cstdio>

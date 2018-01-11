@@ -231,6 +231,7 @@ sqlite3_statement_backend::bind_and_execute(int number)
 {
     statement_backend::exec_fetch_result retVal = ef_no_data;
 
+	bool rowAffectedBulkChanged = false;
     long long rowsAffectedBulkTemp = 0;
 
     int const rows = static_cast<int>(useData_.size());
@@ -292,9 +293,11 @@ sqlite3_statement_backend::bind_and_execute(int number)
 
         retVal = load_one(); //execute each bound line
         rowsAffectedBulkTemp += get_affected_rows();
+		rowAffectedBulkChanged = true;
     }
 
-    rowsAffectedBulk_ = rowsAffectedBulkTemp;
+	if(rowAffectedBulkChanged)
+		rowsAffectedBulk_ = rowsAffectedBulkTemp;
     return retVal;
 }
 

@@ -7,13 +7,14 @@
 
 #include "common.h"
 #include "soci/soci-backend.h"
-#include "soci-mktime.h"
+//#include "soci-mktime.h"
+#include "soci/include/private/soci-mktime.h"
 #include <ciso646>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
 
-namespace // anonymous
+namespace helper 
 {
 
 // helper function for parsing decimal data (for std::tm)
@@ -31,7 +32,7 @@ long parse10(char const *&p1, char *&p2, const char *msg)
     }
 }
 
-} // namespace anonymous
+} // namespace helper
 
 
 void soci::details::mysql::parse_std_tm(char const *buf, std::tm &t)
@@ -45,9 +46,9 @@ void soci::details::mysql::parse_std_tm(char const *buf, std::tm &t)
 
     if (strchr(buf, '-') != NULL)
     {
-      year  = parse10(p1, p2, errMsg);
-      month = parse10(p1, p2, errMsg);
-      day   = parse10(p1, p2, errMsg);
+      year  = helper::parse10(p1, p2, errMsg);
+      month = helper::parse10(p1, p2, errMsg);
+      day   = helper::parse10(p1, p2, errMsg);
     }
     else
     {
@@ -60,9 +61,9 @@ void soci::details::mysql::parse_std_tm(char const *buf, std::tm &t)
     if (strchr(buf, ':') != NULL)
     {
         // there is also the time of day available
-        hour   = parse10(p1, p2, errMsg);
-        minute = parse10(p1, p2, errMsg);
-        second = parse10(p1, p2, errMsg);
+        hour   = helper::parse10(p1, p2, errMsg);
+        minute = helper::parse10(p1, p2, errMsg);
+        second = helper::parse10(p1, p2, errMsg);
     }
 
     details::mktime_from_ymdhms(t, year, month, day, hour, minute, second);
@@ -70,6 +71,8 @@ void soci::details::mysql::parse_std_tm(char const *buf, std::tm &t)
 
 char * soci::details::mysql::quote(MYSQL * conn, const char *s, size_t len)
 {
+	if (conn == NULL)
+		throw soci_error("MYSQL connection is NULL");
     char *retv = new char[2 * len + 3];
     retv[0] = '\'';
     int len_esc = mysql_real_escape_string(conn, retv + 1, s, static_cast<unsigned long>(len));
