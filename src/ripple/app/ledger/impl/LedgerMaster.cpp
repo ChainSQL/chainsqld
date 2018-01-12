@@ -2029,7 +2029,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                                     for (int i = 0; i < ledger_fetch_size_; ++i)
                                     {
                                         std::uint32_t seq = missing - i;
-										// if (seq <= 0) continue; removed in 80.2
+										if (seq <= 0) continue;// removed in 80.2
                                         auto hash2 =
                                                 getLedgerHashForHistory(seq);
                                         if (hash2)
