@@ -731,6 +731,12 @@ ServerHandlerImp::processRequest (Port const& port,
 
     Json::Value reply (Json::objectValue);
     reply[jss::result] = std::move (result);
+
+	if (tx_id != Json::Value(Json::nullValue))
+	{
+		reply[jss::tx_hash] = std::move(tx_id);
+	}
+
     if (jsonRPC.isMember(jss::jsonrpc))
         reply[jss::jsonrpc] = jsonRPC[jss::jsonrpc];
     if (jsonRPC.isMember(jss::ripplerpc))
