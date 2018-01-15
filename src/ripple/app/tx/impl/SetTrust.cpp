@@ -408,6 +408,12 @@ SetTrust::doApply ()
         if (uFlagsIn != uFlagsOut)
             sleRippleState->setFieldU32 (sfFlags, uFlagsOut);
 
+        if (ctx_.tx.isFieldPresent(sfMemos))
+        {
+            STArray memos = ctx_.tx.getFieldArray(sfMemos);
+            sleRippleState->setFieldArray(sfMemos, memos);
+        }
+
         if (bDefault || badCurrency() == currency)
         {
             // Delete.
@@ -476,6 +482,18 @@ SetTrust::doApply ()
             saLimitAllow,       // Limit for who is being charged.
             uQualityIn,
             uQualityOut, viewJ);
+
+        SLE::pointer sleState = view().peek(
+            keylet::line(account_, uDstAccountID, currency));
+        if (sleState)
+        {
+            if (ctx_.tx.isFieldPresent(sfMemos))
+            {
+                STArray memos = ctx_.tx.getFieldArray(sfMemos);
+                sleState->setFieldArray(sfMemos, memos);
+                view().update(sleState);
+            }
+        }
     }
 
     return terResult;

@@ -44,6 +44,7 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfMessageKey,          SOE_OPTIONAL)
             << SOElement (sfTransferRate,        SOE_OPTIONAL)
             << SOElement (sfDomain,              SOE_OPTIONAL)
+            << SOElement (sfMemos,               SOE_OPTIONAL) 
             << SOElement (sfTickSize,            SOE_OPTIONAL)
             ;
 
@@ -85,6 +86,7 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfHighNode,            SOE_OPTIONAL)
             << SOElement (sfHighQualityIn,       SOE_OPTIONAL)
             << SOElement (sfHighQualityOut,      SOE_OPTIONAL)
+            << SOElement (sfMemos,               SOE_OPTIONAL)
             ;
 
     add ("Escrow", ltESCROW) <<
