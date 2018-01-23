@@ -40,7 +40,9 @@ public:
 	STTx2SQL(const std::string& db_type);
 	STTx2SQL(const std::string& db_type, DatabaseCon* dbconn);
 	~STTx2SQL();
-	
+
+    static bool IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable);
+
 	using MapRule = std::map<std::string, Json::Value>;
 	// convert json into sql
 	std::pair<int /*retcode*/, std::string /*sql*/> ExecuteSQL(const ripple::STTx& tx, 

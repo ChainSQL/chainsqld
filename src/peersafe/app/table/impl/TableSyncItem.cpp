@@ -1052,6 +1052,13 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					if (vecTxs.size() > 0)
 					{
 						TryDecryptRaw(vecTxs);
+                        for (auto& tx : vecTxs)
+                        {
+                            if (T_CREATE == tx.getFieldU16(sfOpType))
+                            {
+                                DeleteTable(sTableNameInDB_);
+                            }
+                        }                        
 					}
 					JLOG(journal_.info()) << "got sync tx" << tx.getFullText();
 
