@@ -186,15 +186,32 @@ namespace ripple {
     bool TableStatusDBMySQL::CreateSnycDB(DatabaseCon::Setup setup)
     {
         bool ret = false;
-        try
-        {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+        
+        LockedSociSession sql_session = databasecon_->checkoutDb();
 
+        //1.check the synctable whether exists.
+        bool bExist = false;
+        try {            
+            std::string sql = "SELECT Owner FROM SyncTableState";
+            boost::optional<std::string> owner;
+            soci::statement st = (sql_session->prepare << sql, soci::into(owner));
+            st.execute(true);
+            bExist = true;
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.warn()) << "the first query owner form synctablestate exception" << e.what();
+            bExist = false;
+        }
+        if (bExist) return true;
+
+        //2.not exist ,create it
+        try {            
             std::string sql(
-                "CREATE TABLE IF NOT EXISTS SyncTableState(" \
-                "Owner             CHARACTER(64),          " \
+                "CREATE TABLE SyncTableState(" \
+                "Owner             CHARACTER(64) NOT NULL, " \
                 "TableName         CHARACTER(64),          " \
-                "TableNameInDB     CHARACTER(64),          " \
+                "TableNameInDB     CHARACTER(64) NOT NULL, " \
                 "TxnLedgerHash     CHARACTER(64),          " \
                 "TxnLedgerSeq      CHARACTER(64),          " \
                 "LedgerHash        CHARACTER(64),          " \
@@ -206,35 +223,30 @@ namespace ripple {
                 "PreviousCommit    CHARACTER(64),          " \
                 "PRIMARY KEY(Owner,TableNameInDB))         "
             );
-            soci::statement st =
-                (sql_session->prepare << sql);
+            soci::statement st = (sql_session->prepare << sql);
 
             ret = st.execute();
-
-
-            sql = "SELECT Owner FROM SyncTableState";
-
-            boost::optional<std::string> owner;
-            st = (sql_session->prepare << sql, soci::into(owner));
-            st.execute(true);
-
-            ret = true;
-
-            /*
-            //dont't delete , for using in the future.
-            boost::optional<std::string> pTableName;
-            sql = "SHOW TABLES LIKE 'SyncTableState'";
-            st = (sql_session->prepare << sql, soci::into(pTableName));
-
-            ret = st.execute(true);
-            */
         }
         catch (std::exception const& e)
         {
+            JLOG(journal_.error()) << "CreateSnycDB exception" << e.what();
             ret = false;
-            JLOG(journal_.error()) <<
-                "CreateSnycDB exception" << e.what();
         }
+
+        //3.check again to guarantee synctable be created successfully
+        try {            
+            std::string sql = "SELECT Owner FROM SyncTableState";
+            boost::optional<std::string> owner;
+            soci::statement st = (sql_session->prepare << sql, soci::into(owner));
+            st.execute(true);
+            ret = true;
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.warn()) << "the second query owner form synctablestate exception" << e.what();
+            ret = false;
+        }
+        
         return ret;
     }
     bool TableStatusDBMySQL::isNameInDBExist(std::string TableName, std::string Owner, bool delCheck, std::string &TableNameInDB)

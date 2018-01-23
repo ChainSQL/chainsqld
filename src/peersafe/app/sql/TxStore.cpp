@@ -170,9 +170,19 @@ std::pair<bool, std::string> TxStore::DropTable(const std::string& tablename) {
 		result = {false, "Can't connect db."};
 		return result;
 	}
-	std::string sql_str = std::string("drop table if exists t_") + tablename;
-	soci::session& sql = *databasecon_->checkoutDb();
-	sql << sql_str;
+    bool bExist = STTx2SQL::IsTableExistBySelect(databasecon_, "t_"+ tablename);
+
+    if (bExist)
+    {
+        std::string sql_str = std::string("drop table t_") + tablename;
+        soci::session& sql = *databasecon_->checkoutDb();
+        sql << sql_str;
+    }
+    else
+    {
+        return{ false, "talbe is not existed." };
+    }
+	
 	return {true, "success"};
 }
 

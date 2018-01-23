@@ -868,8 +868,12 @@ protected:
 		if (tables_.size() == 0)
 			return -1;
 		try {
-			LockedSociSession sql = db_conn_->checkoutDb();
-			*sql << build_droptable_sql();
+            bool bExist = STTx2SQL::IsTableExistBySelect(db_conn_, tables_[0]);
+            if (bExist)
+            {
+                LockedSociSession sql = db_conn_->checkoutDb();
+                *sql << build_droptable_sql();
+            }			
 		}
 		catch (soci::soci_error& e) {
 			last_error(std::make_pair<int, std::string>(-1, e.what()));
@@ -885,7 +889,7 @@ private:
 		std::string sql;
 		if (tables_.size() == 0)
 			return sql;
-		sql = (boost::format("drop table if exists %s") % tables_[0]).str();
+		sql = (boost::format("drop table %s") % tables_[0]).str();
 		return sql;
 	}
 
@@ -1822,7 +1826,8 @@ protected:
 
 	int execute_createtable_sql() override {
 		// first drop the same of a table when create a table
-		execute_droptable_sql();
+        // call drop in the higher level, avoiding drop tx in a transaction
+		//execute_droptable_sql();
 		std::string sql_str = build_createtable_sql();
 		if (sql_str.empty()) {
 			last_error(std::make_pair<int, std::string>(-1, "executing create table unsuccessfully"));
@@ -1986,7 +1991,8 @@ protected:
 
 	int execute_createtable_sql() override {
 		// first drop the same of a table when create a table
-		execute_droptable_sql();
+        // call drop in the higher level, avoiding drop tx in a transaction
+		//execute_droptable_sql();
 		std::string sql_str = build_createtable_sql();
 		if (sql_str.empty()) {
 			last_error(std::make_pair<int, std::string>(-1, "executing create table unsuccessfully"));
@@ -2586,6 +2592,27 @@ STTx2SQL::STTx2SQL(const std::string& db_type, DatabaseCon* dbconn)
 }
 
 STTx2SQL::~STTx2SQL() {
+}
+
+bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
+{
+    if (dbconn == nullptr)   return false;
+    
+    LockedSociSession sql_session = dbconn->checkoutDb();
+    bool bExist = false;
+    try {
+        std::string sSql = "SELECT * FROM " + sTable;
+        boost::optional<std::string> r;
+        soci::statement st = (sql_session->prepare << sSql, soci::into(r));
+        st.execute(true);
+        bExist = true;
+    }
+    catch (std::exception const& /* e */)
+    {        
+        bExist = false;
+    }
+    
+    return bExist;
 }
 
 int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql) {
