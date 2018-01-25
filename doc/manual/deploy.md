@@ -80,17 +80,16 @@ set GLOBAL max_connections = 10000;<br>
 ## 二、区块链网络搭建
 需要至少 4 个验证节点，每个验证节点需要生成public key和seed。
 ### 1.	验证节点的生成
-1)	将可执行程序放在目录/opt/chainsql/bin，将配置文件放在目录/opt/chainsql/etc
-2)	进入/opt/chainsql/bin目录，输入:
+1)	将可执行程序与配置文件（如chainsqld-example.cfg）放在用户目录，先启动一下：
 ```
-sudo ./chainsqld --conf="/opt/chainsql/etc/chainsqld.cfg"
+./chainsqld --conf="./ chainsqld-example.cfg"&
 ```
-3)	确认chainsqld程序已经启动，输入ps –ef | grep chainsqld，看是否列出chainsqld进程
-4)	生成validation_public_key及validation_seed, 输入:<br>
+2)	确认chainsqld程序已经启动，输入ps –ef | grep chainsqld，看是否列出chainsqld进程
+3)	生成validation_public_key及validation_seed, 输入:<br>
 ```
-sudo ./chainsqld --conf="/opt/chainsql/etc/chainsqld.cfg"  validation_create
+./chainsqld --conf="./ chainsqld-example.cfg"  validation_create
 ```
-5)	返回结果如下：
+4)	返回结果如下：
 ```
 {
    "status" : "success",
@@ -99,7 +98,7 @@ sudo ./chainsqld --conf="/opt/chainsql/etc/chainsqld.cfg"  validation_create
    "validation_seed" : "xxjX5VuTjQKvkTSw6EUyZnahbpgS1"
 }
 ```
-6)	分别在4个节点进行同样的操作，得到各自的validation_public_key及validation_seed
+5)	分别在4个节点进行同样的操作，得到各自的validation_public_key及validation_seed
 
 ### 2.	配置文件的修改
 所有节点的chainsqld.cfg都要进行下面的修改：
@@ -158,7 +157,7 @@ zxryEYgWvpjh6UGguKmS6vqgCwRyV16zuy tablename2
 
 ## 3.	架设网络 　　
 1)	启动chainsqld程序
-进入chainsqld应用程序目录：/opt/chainsql/bin，执行下面的命令
+进入chainsqld应用程序目录，执行下面的命令（配置文件名为chainsqld.cfg时可不加--conf）
 ```
 nohup ./chainsqld &
 ```
