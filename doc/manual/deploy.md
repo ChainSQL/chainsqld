@@ -198,3 +198,5 @@ watch ./chainsqld peers
 ```
 		nohup ./chainsqld &
 ```
+## 4.退出终端
+在终端输入 exit 退出，不然之前在终端上启动的chainsqld进程会退出
