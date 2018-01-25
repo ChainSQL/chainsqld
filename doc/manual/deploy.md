@@ -79,7 +79,7 @@ set GLOBAL max_connections = 10000;<br>
 	
 ## 二、区块链网络搭建
 需要至少 4 个验证节点，每个验证节点需要生成public key和seed。
-### 1.	验证节点的生成
+### 1.	验证节点公私钥的生成
 1)	将可执行程序与配置文件（如chainsqld-example.cfg）放在用户目录，先启动一下：
 ```
 ./chainsqld --conf="./ chainsqld-example.cfg"&
@@ -115,6 +115,8 @@ set GLOBAL max_connections = 10000;<br>
 [validation_seed]
 xxjX5VuTjQKvkTSw6EUyZnahbpgS1
 ```
+**注：只有验证节点需要配validation_seed，普通节点不需要这一配置**
+
 3)	字段[validation_public_key]，添加本节点的validation_public_key，如下例所示：
 ```
 [validation_public_key]
