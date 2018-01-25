@@ -26,12 +26,31 @@ mysql -uroot –p
 ```
 CREATE DATABASE IF NOT EXISTS chainsql DEFAULT CHARSET utf8 
 ```
-2)	检查是否创建成功
+也可以将mysql的默认编码设置为utf8，然后直接创建数据库
 ```
-show databases;
+create database chainsql;
 ```
-在databases中显示有chainsql字样，则为创建成功。
-3)	确认是否为utf8编码：
+
+2) 设置mysql 默认UTF8编码:<br>
+
+修改/etc/mysql/mysql.conf.d/mysqld.cnf文件<br>
+
+[mysqld]下添加
+```
+character_set_server = utf8
+```
+然后在配置文件最后添加如下配置：
+```
+[mysql.server]
+default-character-set = utf8
+[client]
+default-character-set = utf8
+```
+然后重启mysql：
+```
+/etc/init.d/mysql restart
+```
+确认是否为utf8编码：
 ```
 show variables like 'character%';
 ```
@@ -50,29 +69,6 @@ show variables like 'character%';
 | character_set_system     	| utf8                       |
 | character_sets_dir       	| /usr/share/mysql/charsets/ |
 ```
- 如果不是，则按下面的部署修改：
-4) 设置UTF8编码:<br>
-修改/etc/mysql/mysql.conf.d/mysqld.cnf文件<br>
-[mysqld]下添加
-```
-character_set_server = utf8
-```
-然后在配置文件最后添加如下配置：
-```
-[mysql.server]
-default-character-set = utf8
-[client]
-default-character-set = utf8
-```
-然后重启mysql：
-```
-/etc/init.d/mysql restart
-```
-再登录mysql，执行
-```
-show variables like 'char%';
-```
-查看结果
 
 ### 4.	最大连接数设置（可选）
 show variables like '%max_connections%';<br>
@@ -151,7 +147,7 @@ charset=utf8
 [auto_sync]
 1
 ```
-auto_sync配置为1表示开启表自动同步，开启后，新建表会自动入同步到数据库，如果不想自动同步，只同步需要同步的表，用下面的配置：
+auto_sync配置为1表示开启表自动同步，开启后，在节点正常运行的情况 下，新建表会自动入同步到数据库，如果不想自动同步，只想同步需要同步的表，用下面的配置：
 ```
 [sync_tables]
 zBUunFenERVydrqTD3J3U1FFqtmtYJGjNP tablename
