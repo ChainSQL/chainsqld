@@ -50,6 +50,30 @@ show variables like 'character%';
 | character_set_system     	| utf8                       |
 | character_sets_dir       	| /usr/share/mysql/charsets/ |
 ```
+ 如果不是，则按下面的部署修改：
+4) 设置UTF8编码:<br>
+修改/etc/mysql/mysql.conf.d/mysqld.cnf文件<br>
+[mysqld]下添加
+```
+character_set_server = utf8
+```
+然后在配置文件最后添加如下配置：
+```
+[mysql.server]
+default-character-set = utf8
+[client]
+default-character-set = utf8
+```
+然后重启mysql：
+```
+/etc/init.d/mysql restart
+```
+再登录mysql，执行
+```
+show variables like 'char%';
+```
+查看结果
+
 ### 4.	最大连接数设置（可选）
 show variables like '%max_connections%';<br>
 默认是151：<br>
@@ -123,18 +147,57 @@ first_storage=0
 charset=utf8
 ```
 **注**：Chainsql中的事务与行级控制要求每个节点必须配置数据库，如果用不到这两个特性，也可以选择只在需要查看数据的节点配置数据库
+```
+[auto_sync]
+1
+```
+auto_sync配置为1表示开启表自动同步，开启后，新建表会自动入同步到数据库，如果不想自动同步，只同步需要同步的表，用下面的配置：
+```
+[sync_tables]
+zBUunFenERVydrqTD3J3U1FFqtmtYJGjNP tablename
+zxryEYgWvpjh6UGguKmS6vqgCwRyV16zuy tablename2
+```
+非加密表格式：	建表账户 表名<br>
+加密表格式：	建表账户 表名 可解密账户私钥
 
 ## 3.	架设网络 　　
 1)	启动chainsqld程序
 进入chainsqld应用程序目录：/opt/chainsql/bin，执行下面的命令
 ```
-sudo nohup ./chainsqld  -q  --conf="/opt/chainsql/etc/chainsqld.cfg"&
+nohup ./chainsqld &
 ```
 每个网络节点均要执行上述命令，使chainsql服务在后台运行。
 2)	检查是否成功<br>
 进入chainsql应用程序目录：/opt/chainsql/bin，执行下面的命令
 ```
-sudo watch ./chainsqld  -q  --conf="/opt/chainsql/etc/chainsqld.cfg" server_info
+watch ./chainsqld server_info
 ```
 若输出结果中，字段"complete_ledgers" :类似 "1-10"，则chainsqld服务启动成功<br>
 每个网络节点的chainsql服务都要求成功运行
+
+查看其它节点的运行情况：
+```
+watch ./chainsqld peers
+```
+3) 链重启/节点重启
+
+- 节点全部挂掉的情况：<br>
+	如果想要清空链，将db,rocksdb/NuDb文件夹清空，然后重新执行节链启动过程<br>
+	如果想要加载之前的区块链数据启动，在某一全节点下执行下面的命令：<br>
+```
+		nohup ./chainsqld --load &
+```
+
+其它节点执行：
+	
+```
+		nohup ./chainsqld &
+```
+这样即可加载原来的数据启动链
+
+- 还有节点在运行的情况
+
+    只要网络中还有节点还在跑，就不需要用load方式重启链，只需要启动挂掉的节点即可：
+```
+		nohup ./chainsqld &
+```
