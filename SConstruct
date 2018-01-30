@@ -446,8 +446,7 @@ def get_libs(lib, static):
     try:
         cmd = ['pkg-config', '--static', '--libs', lib]
         libs = subprocess.check_output(cmd,
-                                   stderr=subprocess.STDOUT).strip()
-
+                                       stderr=subprocess.STDOUT).strip().decode("utf-8")
         all_libs = [l[2:] for l in libs.split() if l.startswith('-l')]
         if not static:
             return ([], all_libs)
@@ -486,19 +485,18 @@ def add_boost_and_protobuf(toolchain, env):
         br_cands = ['CLANG_BOOST_ROOT'] if toolchain == 'clang' else []
         br_cands.append('BOOST_ROOT')
         BOOST_ROOT = os.path.normpath(get_environ_value(br_cands))
-        
-        boost_include = BOOST_ROOT
-        boost_lib_path = os.path.join(BOOST_ROOT, 'stage64', 'lib')
-        if not os.path.exists(boost_lib_path):
-            boost_lib_path = os.path.join(BOOST_ROOT, 'stage', 'lib')
-            if not os.path.exists(boost_lib_path):
-                boost_lib_path = os.path.join(BOOST_ROOT, 'lib')
-                boost_include = BOOST_ROOT + '/include'
-
-        env.Append(LIBPATH=[boost_lib_path])
+        stage64_path = os.path.join(BOOST_ROOT, 'stage64', 'lib')
+        if os.path.exists(stage64_path):
+          env.Append(LIBPATH=[
+              stage64_path,
+              ])
+        else:
+          env.Append(LIBPATH=[
+              os.path.join(BOOST_ROOT, 'stage', 'lib'),
+              ])
         env['BOOST_ROOT'] = BOOST_ROOT
         if toolchain in ['gcc', 'clang']:
-            env.Append(CCFLAGS=['-isystem' + boost_include])
+            env.Append(CCFLAGS=['-isystem' + env['BOOST_ROOT']])
         else:
             env.Append(CPPPATH=[
                 env['BOOST_ROOT'],
@@ -833,6 +831,7 @@ def config_env(toolchain, variant, env):
             'uuid.lib',
             'odbc32.lib',
             'odbccp32.lib',
+	        'crypt32.lib'
             ])
         env.Append(LINKFLAGS=[
             '/DEBUG',
@@ -1028,6 +1027,7 @@ def get_classic_sources(toolchain):
     append_sources(result, *list_sources('src/ripple/basics', '.cpp'))
     append_sources(result, *list_sources('src/ripple/conditions', '.cpp'))
     append_sources(result, *list_sources('src/ripple/crypto', '.cpp'))
+    append_sources(result, *list_sources('src/ripple/consensus', '.cpp'))
     append_sources(result, *list_sources('src/ripple/json', '.cpp'))
     append_sources(result, *list_sources('src/ripple/ledger', '.cpp'))
     append_sources(result, *list_sources('src/ripple/legacy', '.cpp'))
@@ -1048,6 +1048,7 @@ def get_classic_sources(toolchain):
     append_sources(result, *list_sources('src/test/basics', '.cpp'))
     append_sources(result, *list_sources('src/test/beast', '.cpp'))
     append_sources(result, *list_sources('src/test/conditions', '.cpp'))
+    append_sources(result, *list_sources('src/test/consensus', '.cpp'))
     append_sources(result, *list_sources('src/test/core', '.cpp'))
     append_sources(result, *list_sources('src/test/json', '.cpp'))
     append_sources(result, *list_sources('src/test/ledger', '.cpp'))
@@ -1059,6 +1060,7 @@ def get_classic_sources(toolchain):
     append_sources(result, *list_sources('src/test/server', '.cpp'))
     append_sources(result, *list_sources('src/test/shamap', '.cpp'))
     append_sources(result, *list_sources('src/test/jtx', '.cpp'))
+    append_sources(result, *list_sources('src/test/csf', '.cpp'))
 
 
     if use_shp(toolchain):
@@ -1088,30 +1090,40 @@ def get_unity_sources(toolchain):
         'src/ripple/beast/unity/beast_insight_unity.cpp',
         'src/ripple/beast/unity/beast_net_unity.cpp',
         'src/ripple/beast/unity/beast_utility_unity.cpp',
+        'src/ripple/unity/app_consensus.cpp',
         'src/ripple/unity/app_ledger.cpp',
-        'src/ripple/unity/app_main.cpp',
+        'src/ripple/unity/app_ledger_impl.cpp',
+        'src/ripple/unity/app_main1.cpp',
+        'src/ripple/unity/app_main2.cpp',
         'src/ripple/unity/app_misc.cpp',
+        'src/ripple/unity/app_misc_impl.cpp',
         'src/ripple/unity/app_paths.cpp',
         'src/ripple/unity/app_tx.cpp',
         'src/ripple/unity/conditions.cpp',
+        'src/ripple/unity/consensus.cpp',
         'src/ripple/unity/core.cpp',
         'src/ripple/unity/basics.cpp',
         'src/ripple/unity/crypto.cpp',
         'src/ripple/unity/ledger.cpp',
         'src/ripple/unity/net.cpp',
-        'src/ripple/unity/overlay.cpp',
+        'src/ripple/unity/overlay1.cpp',
+        'src/ripple/unity/overlay2.cpp',
         'src/ripple/unity/peerfinder.cpp',
         'src/ripple/unity/json.cpp',
         'src/ripple/unity/protocol.cpp',
-        'src/ripple/unity/rpcx.cpp',
+        'src/ripple/unity/rpcx1.cpp',
+        'src/ripple/unity/rpcx2.cpp',
         'src/ripple/unity/shamap.cpp',
         'src/ripple/unity/server.cpp',
         'src/peersafe/unity/gm_encrypt.cpp',
         'src/peersafe/unity/app_table.cpp',
         'src/peersafe/unity/app_sql.cpp',
-        'src/test/unity/app_test_unity.cpp',
+        'src/test/unity/app_test_unity1.cpp',
+        'src/test/unity/app_test_unity2.cpp',
         'src/test/unity/basics_test_unity.cpp',
-        'src/test/unity/beast_test_unity.cpp',
+        'src/test/unity/beast_test_unity1.cpp',
+        'src/test/unity/beast_test_unity2.cpp',
+    	'src/test/unity/consensus_test_unity.cpp',
         'src/test/unity/core_test_unity.cpp',
         'src/test/unity/conditions_test_unity.cpp',
         'src/test/unity/json_test_unity.cpp',
@@ -1122,8 +1134,11 @@ def get_unity_sources(toolchain):
         'src/test/unity/resource_test_unity.cpp',
         'src/test/unity/rpc_test_unity.cpp',
         'src/test/unity/server_test_unity.cpp',
+        'src/test/unity/server_status_test_unity.cpp',
         'src/test/unity/shamap_test_unity.cpp',
-        'src/test/unity/support_unity.cpp'
+        'src/test/unity/jtx_unity1.cpp',
+        'src/test/unity/jtx_unity2.cpp',
+        'src/test/unity/csf_unity.cpp'
     )
 
     if use_shp(toolchain):
@@ -1233,7 +1248,7 @@ for tu_style in ['classic', 'unity']:
                 os.path.join(variant_dir, 'proto') :
                     os.path.join (build_dir, 'proto'),
                 }
-            for dest, source in variant_dirs.iteritems():
+            for dest, source in variant_dirs.items():
                 env.VariantDir(dest, source, duplicate=0)
 
             object_builder = ObjectBuilder(env, variant_dirs)
@@ -1336,7 +1351,7 @@ for tu_style in ['classic', 'unity']:
                     [object_builder.env] + object_builder.child_envs + [base],
                     dest_file='build.ninja')
 
-for key, value in aliases.iteritems():
+for key, value in aliases.items():
     env.Alias(key, value)
 
 vcxproj = base.VSProject(
@@ -1377,6 +1392,6 @@ def do_count(target, source, env):
     lines = 0
     for f in testfiles:
         lines = lines + sum(1 for line in open(f))
-    print "Total unit test lines: %d" % lines
+    print ("Total unit test lines: %d" % lines)
 
 PhonyTargets(env, count = do_count)

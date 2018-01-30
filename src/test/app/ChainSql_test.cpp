@@ -104,27 +104,27 @@ struct ChainSql_test : public beast::unit_test::suite
         using namespace jtx;
         auto const alice = Account("alice");
 
-        Env env(*this, features(featureFlow), features(featureOwnerPaysFee));
-        env.fund(ZXC(10000), alice);
-        env(paytableset(alice));
-        logs_ = std::make_unique<SuiteLogs>(*this);
-        
-        int errortimes = 0; 
-        time_t start = clock();
-        for (int i = 0; i < 1000; i++)
-        {
-            env(paysqlstatement(alice));
-            if (env.ter() != tesSUCCESS)
-            {
-                printf("insert error\n");
-                errortimes++;
-            }      
-        }
-        time_t end = clock();
-        printf("total running time is : %f\n", double(end - start) / CLOCKS_PER_SEC);
-        printf("1000 times of insert errortimes is : %d\n", errortimes);
-        JLOG(logs_->journal("ChainSql").trace()) << "1000 times of insert errortimes is"<< errortimes;
-        JLOG(logs_->journal("ChainSql").trace()) << "total running time is" << double(end - start) / CLOCKS_PER_SEC;
+        //Env env(*this, features(featureFlow), features(featureOwnerPaysFee));
+        //env.fund(ZXC(10000), alice);
+        //env(paytableset(alice));
+        //logs_ = std::make_unique<SuiteLogs>(*this);
+        //
+        //int errortimes = 0; 
+        //time_t start = clock();
+        //for (int i = 0; i < 1000; i++)
+        //{
+        //    env(paysqlstatement(alice));
+        //    if (env.ter() != tesSUCCESS)
+        //    {
+        //        printf("insert error\n");
+        //        errortimes++;
+        //    }      
+        //}
+        //time_t end = clock();
+        //printf("total running time is : %f\n", double(end - start) / CLOCKS_PER_SEC);
+        //printf("1000 times of insert errortimes is : %d\n", errortimes);
+        //JLOG(logs_->journal("ChainSql").trace()) << "1000 times of insert errortimes is"<< errortimes;
+        //JLOG(logs_->journal("ChainSql").trace()) << "total running time is" << double(end - start) / CLOCKS_PER_SEC;
     }
 };
 

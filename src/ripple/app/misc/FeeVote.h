@@ -22,7 +22,7 @@
 
 #include <ripple/ledger/ReadView.h>
 #include <ripple/shamap/SHAMap.h>
-#include <ripple/app/misc/Validations.h>
+#include <ripple/protocol/STValidation.h>
 #include <ripple/basics/BasicConfig.h>
 #include <ripple/protocol/SystemParameters.h>
 
@@ -46,10 +46,10 @@ public:
         std::uint32_t const reference_fee_units = 10;
 
         /** The account reserve requirement in drops. */
-        std::uint64_t account_reserve = 5 * SYSTEM_CURRENCY_PARTS;
+        std::uint64_t account_reserve = 20 * SYSTEM_CURRENCY_PARTS;
 
         /** The per-owned item reserve requirement in drops. */
-        std::uint64_t owner_reserve = 1 * SYSTEM_CURRENCY_PARTS;
+        std::uint64_t owner_reserve = 5 * SYSTEM_CURRENCY_PARTS;
     };
 
     virtual ~FeeVote () = default;
@@ -72,7 +72,7 @@ public:
     virtual
     void
     doVoting (std::shared_ptr<ReadView const> const& lastClosedLedger,
-        ValidationSet const& parentValidations,
+        std::vector<STValidation::pointer> const& parentValidations,
             std::shared_ptr<SHAMap> const& initialPosition) = 0;
 };
 

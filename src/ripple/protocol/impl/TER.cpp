@@ -19,12 +19,19 @@
 
 #include <BeastConfig.h>
 #include <ripple/protocol/TER.h>
+#include <boost/range/adaptor/transformed.hpp>
 #include <unordered_map>
 #include <type_traits>
 
 namespace ripple {
 
-bool transResultInfo (TER code, std::string& token, std::string& text)
+namespace detail {
+
+static
+std::unordered_map<
+    std::underlying_type_t<TER>,
+    std::pair<char const* const, char const* const>> const&
+transResults()
 {
     static
     std::unordered_map<
@@ -93,7 +100,13 @@ bool transResultInfo (TER code, std::string& token, std::string& text)
 		{ telFAILED_PROCESSING,      { "telFAILED_PROCESSING",     "Failed to correctly process transaction."                                      } },
 		{ telINSUF_FEE_P,            { "telINSUF_FEE_P",           "Fee insufficient."                                                             } },
 		{ telNO_DST_PARTIAL,         { "telNO_DST_PARTIAL",        "Partial payment to create account not allowed."                                } },
-		{ telCAN_NOT_QUEUE,          { "telCAN_NOT_QUEUE",         "Can not queue at this time." } },
+		{ telCAN_NOT_QUEUE,          { "telCAN_NOT_QUEUE",         "Can not queue at this time."                                                   } },
+        { telCAN_NOT_QUEUE_BALANCE,  { "telCAN_NOT_QUEUE_BALANCE", "Can not queue at this time: insufficient balance to pay all queued fees."      } },
+        { telCAN_NOT_QUEUE_BLOCKS,   { "telCAN_NOT_QUEUE_BLOCKS",  "Can not queue at this time: would block later queued transaction(s)."          } },
+        { telCAN_NOT_QUEUE_BLOCKED,  { "telCAN_NOT_QUEUE_BLOCKED", "Can not queue at this time: blocking transaction in queue."                    } },
+        { telCAN_NOT_QUEUE_FEE,      { "telCAN_NOT_QUEUE_FEE",     "Can not queue at this time: fee insufficient to replace queued transaction."   } },
+        { telCAN_NOT_QUEUE_FULL,     { "telCAN_NOT_QUEUE_FULL",    "Can not queue at this time: queue is full."                                    } },
+
 
 		{ temMALFORMED,              { "temMALFORMED",             "Malformed transaction."                                                        } },
 		{ temBAD_AMOUNT,             { "temBAD_AMOUNT",            "Can only send positive amounts."                                               } },
@@ -168,6 +181,14 @@ bool transResultInfo (TER code, std::string& token, std::string& text)
 		{ tefDBNOTCONFIGURED,		 { "tefDBNOTCONFIGURED",       "DB is not connected,please checkout 'sync_db'in config file." } },
         { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } },
     };
+    return results;
+}
+
+}
+
+bool transResultInfo (TER code, std::string& token, std::string& text)
+{
+    auto& results = detail::transResults();
 
     auto const r = results.find (
         static_cast<std::underlying_type_t<TER>> (code));
@@ -194,6 +215,37 @@ std::string transHuman (TER code)
     std::string text;
 
     return transResultInfo (code, token, text) ? text : "-";
+}
+
+boost::optional<TER>
+transCode(std::string const& token)
+{
+    static
+    auto const results = []
+    {
+        auto& byTer = detail::transResults();
+        auto range = boost::make_iterator_range(byTer.begin(),
+            byTer.end());
+        auto tRange = boost::adaptors::transform(
+            range,
+            [](auto const& r)
+            {
+            return std::make_pair(r.second.first, r.first);
+            }
+        );
+        std::unordered_map<
+            std::string,
+            std::underlying_type_t<TER>> const
+        byToken(tRange.begin(), tRange.end());
+        return byToken;
+    }();
+
+    auto const r = results.find(token);
+
+    if (r == results.end())
+        return boost::none;
+
+    return static_cast<TER>(r->second);
 }
 
 } // ripple

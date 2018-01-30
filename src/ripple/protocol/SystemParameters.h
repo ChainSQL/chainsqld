@@ -32,7 +32,7 @@ static inline
 std::string const&
 systemName ()
 {
-    static std::string const name = "chainsql";
+    static std::string const name = "ripple";
     return name;
 }
 

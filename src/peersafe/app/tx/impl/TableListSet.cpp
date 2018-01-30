@@ -562,14 +562,12 @@ namespace ripple {
             auto const tablesle = std::make_shared<SLE>(
                 ltTABLELIST, id.key);
             
-            std::uint64_t hint;
-            auto result = dirAdd(view, hint, keylet::ownerDir(accountId),
-				tablesle->key(), describeOwnerDir(accountId), viewJ);
+            auto result = dirAdd(view, keylet::ownerDir(accountId),
+				tablesle->key(),false, describeOwnerDir(accountId), viewJ);
 
-            if (result.first == tesSUCCESS)
-            {
-                tablesle->setFieldU64(sfOwnerNode, hint);
-            }
+			if (!result)
+				return tecDIR_FULL;
+			(*tablesle)[sfOwnerNode] = *result;
 
 			STArray tablentries;
             STObject obj = generateTableEntry(tx, view);

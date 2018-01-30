@@ -22,7 +22,7 @@ Source folders:
 | `nudb`          | https://github.com/vinniefalco/NuDB          | Constant-time insert-only key/value database for SSD drives (Less memory usage than RocksDB.) |
 | `peersafe`      | N/A                                          | Core source code for chainsql |
 | `protobuf`      | https://github.com/google/protobuf           | Protocol buffer data interchange format. Ripple has changed some names in order to support the unity-style of build (a single .cpp added to the project, instead of linking to a separately built static library). |
-| `ripple`        | https://github.com/ripple/rippled            | Ripple's open source code |
+| `ripple`        | N/A                                          | **Core source code for `rippled`** |
 | `rocksdb2`      | https://github.com/facebook/rocksdb          | Fast key/value database. (Supports rotational disks better than NuDB.) |
 | `secp256k1`     | https://github.com/bitcoin-core/secp256k1    | ECDSA digital signatures using the **secp256k1** curve |
 | `snappy`        | https://github.com/google/snappy             | "Snappy" lossless compression algorithm. (Technically, the source is in `snappy/snappy`, while `snappy/` also has config options that aren't part of the upstream repository.) |

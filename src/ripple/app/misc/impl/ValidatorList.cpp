@@ -21,10 +21,32 @@
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/protocol/JsonFields.h>
 #include <beast/core/detail/base64.hpp>
 #include <boost/regex.hpp>
 
 namespace ripple {
+
+std::string
+to_string(ListDisposition disposition)
+{
+    switch (disposition)
+    {
+        case ListDisposition::accepted:
+            return "accepted";
+        case ListDisposition::same_sequence:
+            return "same_sequence";
+        case ListDisposition::unsupported_version:
+            return "unsupported_version";
+        case ListDisposition::untrusted:
+            return "untrusted";
+        case ListDisposition::stale:
+            return "stale";
+        case ListDisposition::invalid:
+            return "invalid";
+    }
+    return "unknown";
+}
 
 ValidatorList::ValidatorList (
     ManifestCache& validatorManifests,
@@ -36,7 +58,7 @@ ValidatorList::ValidatorList (
     , publisherManifests_ (publisherManifests)
     , timeKeeper_ (timeKeeper)
     , j_ (j)
-    , quorum_ (minimumQuorum ? *minimumQuorum : 1) // Genesis ledger quorum
+    , quorum_ (minimumQuorum.value_or(1)) // Genesis ledger quorum
     , minimumQuorum_ (minimumQuorum)
 {
 }
@@ -165,8 +187,15 @@ ValidatorList::load (
             JLOG (j_.warn()) << "Duplicate node identity: " << match[1];
             continue;
         }
-        publisherLists_[local].list.emplace_back (std::move(id));
-        publisherLists_[local].available = true;
+        auto it = publisherLists_.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(local),
+            std::forward_as_tuple());
+        // Config listed keys never expire
+        if (it.second)
+            it.first->second.expiration = TimeKeeper::time_point::max();
+        it.first->second.list.emplace_back(std::move(id));
+        it.first->second.available = true;
         ++count;
     }
 
@@ -184,7 +213,7 @@ ValidatorList::applyList (
     std::string const& signature,
     std::uint32_t version)
 {
-    if (version != 1)
+    if (version != requiredListVersion)
         return ListDisposition::unsupported_version;
 
     boost::unique_lock<boost::shared_mutex> lock{mutex_};
@@ -199,12 +228,14 @@ ValidatorList::applyList (
     Json::Value const& newList = list["validators"];
     publisherLists_[pubKey].available = true;
     publisherLists_[pubKey].sequence = list["sequence"].asUInt ();
-    publisherLists_[pubKey].expiration = list["expiration"].asUInt ();
+    publisherLists_[pubKey].expiration = TimeKeeper::time_point{
+        TimeKeeper::duration{list["expiration"].asUInt()}};
     std::vector<PublicKey>& publisherList = publisherLists_[pubKey].list;
 
     std::vector<PublicKey> oldList = publisherList;
     publisherList.clear ();
     publisherList.reserve (newList.size ());
+    std::vector<std::string> manifests;
     for (auto const& val : newList)
     {
         if (val.isObject () &&
@@ -225,6 +256,9 @@ ValidatorList::applyList (
                 publisherList.push_back (
                     PublicKey(Slice{ ret.first.data (), ret.first.size() }));
             }
+
+            if (val.isMember ("manifest") && val["manifest"].isString ())
+                manifests.push_back(val["manifest"].asString ());
         }
     }
 
@@ -250,7 +284,7 @@ ValidatorList::applyList (
             (iOld != oldList.end () && *iOld < *iNew))
         {
             // Decrement list count for removed keys
-            if (keyListings_[*iOld] == 1)
+            if (keyListings_[*iOld] <= 1)
                 keyListings_.erase (*iOld);
             else
                 --keyListings_[*iOld];
@@ -267,6 +301,28 @@ ValidatorList::applyList (
     {
         JLOG (j_.warn()) <<
             "No validator keys included in valid list";
+    }
+
+    for (auto const& valManifest : manifests)
+    {
+        auto m = Manifest::make_Manifest (
+            beast::detail::base64_decode(valManifest));
+
+        if (! m || ! keyListings_.count (m->masterKey))
+        {
+            JLOG (j_.warn()) <<
+                "List for " << strHex(pubKey) <<
+                " contained untrusted validator manifest";
+            continue;
+        }
+
+        auto const result = validatorManifests_.applyManifest (std::move(*m));
+        if (result == ManifestDisposition::invalid)
+        {
+            JLOG (j_.warn()) <<
+                "List for " << strHex(pubKey) <<
+                " contained invalid validator manifest";
+        }
     }
 
     return ListDisposition::accepted;
@@ -317,11 +373,14 @@ ValidatorList::verify (
         list.isMember("expiration") && list["expiration"].isInt() &&
         list.isMember("validators") && list["validators"].isArray())
     {
-        auto const sequence = list["sequence"].asUInt ();
-        auto const expiration = list["expiration"].asUInt ();
-        if (sequence <= publisherLists_[pubKey].sequence ||
-                expiration <= timeKeeper_.now().time_since_epoch().count())
+        auto const sequence = list["sequence"].asUInt();
+        auto const expiration = TimeKeeper::time_point{
+            TimeKeeper::duration{list["expiration"].asUInt()}};
+        if (sequence < publisherLists_[pubKey].sequence ||
+            expiration <= timeKeeper_.now())
             return ListDisposition::stale;
+        else if (sequence == publisherLists_[pubKey].sequence)
+            return ListDisposition::same_sequence;
     }
     else
     {
@@ -410,7 +469,107 @@ ValidatorList::removePublisherList (PublicKey const& publisherKey)
             --iVal->second;
     }
 
+    iList->second.list.clear();
+    iList->second.available = false;
+
     return true;
+}
+
+boost::optional<TimeKeeper::time_point>
+ValidatorList::expires() const
+{
+    boost::shared_lock<boost::shared_mutex> read_lock{mutex_};
+    boost::optional<TimeKeeper::time_point> res{boost::none};
+    for (auto const& p : publisherLists_)
+    {
+        // Unfetched
+        if (p.second.expiration == TimeKeeper::time_point{})
+            return boost::none;
+
+        // Earliest
+        if (!res || p.second.expiration < *res)
+            res = p.second.expiration;
+    }
+    return res;
+}
+
+Json::Value
+ValidatorList::getJson() const
+{
+    Json::Value res(Json::objectValue);
+
+    boost::shared_lock<boost::shared_mutex> read_lock{mutex_};
+
+    res[jss::validation_quorum] = static_cast<Json::UInt>(quorum());
+
+    if (auto when = expires())
+    {
+        if (*when == TimeKeeper::time_point::max())
+            res[jss::validator_list_expires] = "never";
+        else
+            res[jss::validator_list_expires] = to_string(*when);
+    }
+    else
+        res[jss::validator_list_expires] = "unknown";
+
+    // Local static keys
+    PublicKey local;
+    Json::Value& jLocalStaticKeys =
+        (res[jss::local_static_keys] = Json::arrayValue);
+    auto it = publisherLists_.find(local);
+    if (it != publisherLists_.end())
+    {
+        for (auto const& key : it->second.list)
+            jLocalStaticKeys.append(
+                toBase58(TokenType::TOKEN_NODE_PUBLIC, key));
+    }
+
+    // Publisher lists
+    Json::Value& jPublisherLists =
+        (res[jss::publisher_lists] = Json::arrayValue);
+    for (auto const& p : publisherLists_)
+    {
+        if(local == p.first)
+            continue;
+        Json::Value& curr = jPublisherLists.append(Json::objectValue);
+        curr[jss::pubkey_publisher] = strHex(p.first);
+        curr[jss::available] = p.second.available;
+        if(p.second.expiration != TimeKeeper::time_point{})
+        {
+            curr[jss::seq] = static_cast<Json::UInt>(p.second.sequence);
+            curr[jss::expiration] = to_string(p.second.expiration);
+            curr[jss::version] = requiredListVersion;
+        }
+        Json::Value& keys = (curr[jss::list] = Json::arrayValue);
+        for (auto const& key : p.second.list)
+        {
+            keys.append(toBase58(TokenType::TOKEN_NODE_PUBLIC, key));
+        }
+    }
+
+    // Trusted validator keys
+    Json::Value& jValidatorKeys =
+        (res[jss::trusted_validator_keys] = Json::arrayValue);
+    for (auto const& k : trustedKeys_)
+    {
+        jValidatorKeys.append(toBase58(TokenType::TOKEN_NODE_PUBLIC, k));
+    }
+
+    // signing keys
+    Json::Value& jSigningKeys = (res[jss::signing_keys] = Json::objectValue);
+    validatorManifests_.for_each_manifest(
+        [&jSigningKeys, this](Manifest const& manifest) {
+
+            auto it = keyListings_.find(manifest.masterKey);
+            if (it != keyListings_.end())
+            {
+                jSigningKeys[toBase58(
+                    TokenType::TOKEN_NODE_PUBLIC, manifest.masterKey)] =
+                    toBase58(TokenType::TOKEN_NODE_PUBLIC, manifest.signingKey);
+            }
+        });
+
+    return res;
 }
 
 void
@@ -424,15 +583,33 @@ ValidatorList::for_each_listed (
 }
 
 std::size_t
-ValidatorList::calculateQuorum (std::size_t nTrustedKeys)
+ValidatorList::calculateMinimumQuorum (
+    std::size_t nListedKeys, bool unlistedLocal)
 {
-    // Use 80% for large values of n, but have special cases for small numbers.
-    constexpr std::array<std::size_t, 10> quorum{{ 0, 1, 2, 2, 3, 3, 4, 5, 6, 7 }};
+    // Only require 51% quorum for small number of validators to facilitate
+    // bootstrapping a network.
+    if (nListedKeys <= 6)
+        return nListedKeys/2 + 1;
 
-    if (nTrustedKeys < quorum.size())
-        return quorum[nTrustedKeys];
+    // The number of listed validators is increased to preserve the safety
+    // guarantee for two unlisted validators using the same set of listed
+    // validators.
+    if (unlistedLocal)
+        ++nListedKeys;
 
-    return nTrustedKeys - nTrustedKeys / 5;
+    // Guarantee safety with up to 1/3 listed validators being malicious.
+    // This prioritizes safety (Byzantine fault tolerance) over liveness.
+    // It takes at least as many malicious nodes to split/fork the network as
+    // to stall the network.
+    // At 67%, the overlap of two quorums is 34%
+    //   67 + 67 - 100 = 34
+    // So under certain conditions, 34% of validators could vote for two
+    // different ledgers and split the network.
+    // Similarly 34% could prevent quorum from being met (by not voting) and
+    // stall the network.
+    // If/when the quorum is subsequently raised to/towards 80%, it becomes
+    // harder to split the network (more safe) and easier to stall it (less live).
+    return nListedKeys * 2/3 + 1;
 }
 
 } // ripple

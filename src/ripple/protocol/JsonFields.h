@@ -116,6 +116,7 @@ JSS ( assets );                     // out: GatewayBalances
 JSS ( authorized );                 // out: AccountLines
 JSS ( auth_change );                // out: AccountInfo
 JSS ( auth_change_queued );         // out: AccountInfo
+JSS ( available );                  // out: ValidatorList
 JSS ( balance );                    // out: AccountLines
 JSS ( balances );                   // out: GatewayBalances
 JSS ( base );                       // out: LogLevel
@@ -137,7 +138,7 @@ JSS ( check_nodes );                // in: LedgerCleaner
 JSS ( clear );                      // in/out: FetchInfo
 JSS ( close_flags );                // out: LedgerToJson
 JSS ( close_time );                 // in: Application, out: NetworkOPs,
-                                    //      LedgerProposal, LedgerToJson
+                                    //      RCLCxPeerPos, LedgerToJson
 JSS ( close_time_estimated );       // in: Application, out: LedgerToJson
 JSS ( close_time_human );           // out: LedgerToJson
 JSS ( close_time_offset );          // out: NetworkOPs
@@ -193,6 +194,7 @@ JSS ( expected_ledger_size );       // out: TxQ
 JSS ( expiration );                 // out: AccountOffers, AccountChannels
 JSS ( fail_hard );                  // in: Sign, Submit
 JSS	( diff );						// out: diff
+JSS ( escrow );                     // in: LedgerEntry
 JSS ( failed );                     // out: InboundLedger
 JSS ( feature );                    // in: Feature
 JSS ( features );                   // out: Feature
@@ -247,6 +249,8 @@ JSS ( key_type );                   // in/out: WalletPropose, TransactionSign
 JSS ( latency );                    // out: PeerImp
 JSS ( last );                       // out: RPCVersion
 JSS ( last_close );                 // out: NetworkOPs
+JSS ( last_refresh_time );          // out: ValidatorSite
+JSS ( last_refresh_status );        // out: ValidatorSite
 JSS ( ledger );                     // in: NetworkOPs, LedgerCleaner,
                                     //     RPCHelpers
                                     // out: NetworkOPs, PeerImp
@@ -271,6 +275,7 @@ JSS ( limit );                      // in/out: AccountTx*, AccountOffers,
                                     // in: LedgerData, BookOffers
 JSS ( limit_peer );                 // out: AccountLines
 JSS ( lines );                      // out: AccountLines
+JSS ( list );                       // out: ValidatorList
 JSS ( load );                       // out: NetworkOPs, PeerImp
 JSS ( load_base );                  // out: NetworkOPs
 JSS ( load_factor );                // out: NetworkOPs
@@ -284,6 +289,7 @@ JSS ( load_factor_server );         // out: NetworkOPs
 JSS ( load_fee );                   // out: LoadFeeTrackImp, NetworkOPs
 JSS ( local );                      // out: resource/Logic.h
 JSS ( local_txs );                  // out: GetCounts
+JSS ( local_static_keys );          // out: ValidatorList
 JSS ( lowest_sequence );            // out: AccountInfo
 JSS ( majority );                   // out: RPC feature
 JSS ( marker );                     // in/out: AccountTx, AccountOffers,
@@ -352,15 +358,18 @@ JSS ( peers );                      // out: InboundLedger, handlers/Peers, Overl
 JSS ( port );                       // in: Connect
 JSS ( previous_ledger );            // out: LedgerPropose
 JSS ( private_key );                // out: OverlayImpl, PeerImp, WalletPropose
+JSS ( payment_channel );            // in: LedgerEntry
 JSS ( proof );                      // in: BookOffers
 JSS ( propose_seq );                // out: LedgerPropose
 JSS ( proposers );                  // out: NetworkOPs, LedgerConsensus
 JSS ( protocol );                   // out: PeerImp
 JSS ( pubkey_node );                // out: NetworkOPs
-JSS ( pubkey_validator );           // out: NetworkOPs
+JSS ( pubkey_publisher );           // out: ValidatorList
+JSS ( pubkey_validator );           // out: NetworkOPs, ValidatorList
 JSS ( public_key );                 // out: OverlayImpl, PeerImp, WalletPropose
 JSS ( public_key_hex );             // out: WalletPropose
 JSS ( published_ledger );           // out: NetworkOPs
+JSS ( publisher_lists );            // out: ValidatorList
 JSS ( quality );                    // out: NetworkOPs
 JSS ( quality_in );                 // out: AccountLines
 JSS ( quality_out );                // out: AccountLines
@@ -370,6 +379,7 @@ JSS ( random );                     // out: Random
 JSS ( raw_meta );                   // out: AcceptedLedgerTx
 JSS ( receive_currencies );         // out: AccountCurrencies
 JSS ( reference_level );            // out: TxQ
+JSS ( refresh_interval_min );       // out: ValidatorSites
 JSS ( regular_seed );               // in/out: LedgerEntry
 JSS ( remote );                     // out: Logic.h
 JSS ( request );                    // RPC
@@ -394,7 +404,8 @@ JSS ( seed_hex );                   // in: WalletPropose, TransactionSign
 JSS ( send_currencies );            // out: AccountCurrencies
 JSS ( send_max );                   // in: PathRequest, RipplePathFind
 JSS ( seq );                        // in: LedgerEntry;
-                                    // out: NetworkOPs, RPCSub, AccountOffers
+                                    // out: NetworkOPs, RPCSub, AccountOffers,
+                                    //      ValidatorList
 JSS ( seqNum );                     // out: LedgerToJson
 JSS ( server_state );               // out: NetworkOPs
 JSS ( server_status );              // out: NetworkOPs
@@ -403,6 +414,7 @@ JSS ( severity );                   // in: LogLevel
 JSS ( signature );                  // out: NetworkOPs, ChannelAuthorize
 JSS ( signature_verified );         // out: ChannelVerify
 JSS ( signing_key );                // out: NetworkOPs
+JSS ( signing_keys );               // out: ValidatorList
 JSS ( signing_time );               // out: NetworkOPs
 JSS ( signer_list );                // in: AccountObjects
 JSS ( signer_lists );               // in/out: AccountInfo
@@ -443,13 +455,14 @@ JSS ( transaction );                // in: Tx
 JSS	( tablename );					// in tablename
 JSS ( inclusive );
                                     // out: NetworkOPs, AcceptedLedgerTx,
-JSS ( transaction_hash );           // out: LedgerProposal, LedgerToJson
+JSS ( transaction_hash );           // out: RCLCxPeerPos, LedgerToJson
 JSS ( transactions );               // out: LedgerToJson,
                                     // in: AccountTx*, Unsubscribe
 JSS ( transitions );                // out: NetworkOPs
 JSS ( treenode_cache_size );        // out: GetCounts
 JSS ( treenode_track_size );        // out: GetCounts
 JSS ( trusted );                    // out: UnlList
+JSS ( trusted_validator_keys );     // out: ValidatorList
 JSS ( tx );                         // out: STTx, AccountTx*
 JSS ( tx_blob );                    // in/out: Submit,
                                     // in: TransactionSign, AccountTx*
@@ -467,6 +480,7 @@ JSS ( type_hex );                   // out: STPathSet
 JSS ( unl );                        // out: UnlList
 JSS ( unlimited);                   // out: Connection.h
 JSS ( uptime );                     // out: GetCounts
+JSS ( uri );                        // out: ValidatorSites
 JSS ( url );                        // in/out: Subscribe, Unsubscribe
 JSS ( url_password );               // in: Subscribe
 JSS ( url_username );               // in: Subscribe
@@ -474,6 +488,7 @@ JSS ( urlgravatar );                //
 JSS ( username );                   // in: Subscribe
 JSS ( validated );                  // out: NetworkOPs, RPCHelpers, AccountTx*
                                     //      Tx
+JSS ( validator_list_expires );     // out: NetworkOps, ValidatorList
 JSS ( validated_ledger );           // out: NetworkOPs
 JSS ( validated_ledgers );          // out: NetworkOPs
 JSS ( validation_key );             // out: ValidationCreate, ValidationSeed
@@ -482,6 +497,7 @@ JSS ( validation_public_key );      // out: ValidationCreate, ValidationSeed
 JSS ( validation_quorum );          // out: NetworkOPs
 JSS ( validation_seed );            // out: ValidationCreate, ValidationSeed
 JSS ( validations );                // out: AmendmentTableImpl
+JSS ( validator_sites );            // out: ValidatorSites
 JSS ( value );                      // out: STAmount
 JSS ( version );                    // out: RPCVersion
 JSS ( vetoed );                     // out: AmendmentTableImpl

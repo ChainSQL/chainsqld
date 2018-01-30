@@ -119,7 +119,7 @@ Currency const& noCurrency()
 
 Currency const& badCurrency()
 {
-	//0x5852500000000000 XRP
+	//0x5852500000000000 ZXC
     static Currency const currency(0x5A58430000000000);
     return currency;
 }

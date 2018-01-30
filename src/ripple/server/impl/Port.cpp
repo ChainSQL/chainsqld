@@ -188,7 +188,7 @@ parse_Port (ParsedPort& port, Section const& section, std::ostream& log)
     {
         auto const lim = get (section, "limit", "unlimited");
 
-        if (!beast::detail::ci_equal (lim, "unlimited"))
+        if (!beast::detail::iequals (lim, "unlimited"))
         {
             try
             {
@@ -202,6 +202,34 @@ parse_Port (ParsedPort& port, Section const& section, std::ostream& log)
                     "'limit' in [" << section.name() << "]\n";
                 Rethrow();
             }
+        }
+    }
+
+    {
+        auto const result = section.find("send_queue_limit");
+        if (result.second)
+        {
+            try
+            {
+                port.ws_queue_limit =
+                    beast::lexicalCastThrow<std::uint16_t>(result.first);
+
+                // Queue must be greater than 0
+                if (port.ws_queue_limit == 0)
+                    Throw<std::exception>();
+            }
+            catch (std::exception const&)
+            {
+                log <<
+                    "Invalid value '" << result.first << "' for key " <<
+                    "'send_queue_limit' in [" << section.name() << "]\n";
+                Rethrow();
+            }
+        }
+        else
+        {
+            // Default Websocket send queue size limit
+            port.ws_queue_limit = 100;
         }
     }
 

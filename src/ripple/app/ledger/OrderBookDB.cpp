@@ -101,6 +101,15 @@ void OrderBookDB::update(
     {
         for(auto& sle : ledger->sles)
         {
+            if (isStopping())
+            {
+                JLOG (j_.info())
+                    << "OrderBookDB::update exiting due to isStopping";
+                std::lock_guard <std::recursive_mutex> sl (mLock);
+                mSeq = 0;
+                return;
+            }
+
             if (sle->getType () == ltDIR_NODE &&
                 sle->isFieldPresent (sfExchangeRate) &&
                 sle->getFieldH256 (sfRootIndex) == sle->key())
@@ -239,9 +248,15 @@ void OrderBookDB::processTxn (
         const AcceptedLedgerTx& alTx, Json::Value const& jvObj)
 {
     std::lock_guard <std::recursive_mutex> sl (mLock);
-
     if (alTx.getResult () == tesSUCCESS)
     {
+        // For this particular transaction, maintain the set of unique
+        // subscriptions that have already published it.  This prevents sending
+        // the transaction multiple times if it touches multiple ltOFFER
+        // entries for the same book, or if it touches multiple books and a
+        // single client has subscribed to those books.
+        hash_set<std::uint64_t> havePublished;
+
         // Check if this is an offer or an offer cancel or a payment that
         // consumes an offer.
         // Check to see what the meta looks like.
@@ -272,12 +287,14 @@ void OrderBookDB::processTxn (
                             data->isFieldPresent (sfTakerGets))
                         {
                             // determine the OrderBook
-                            auto listeners = getBookListeners (
-                                {data->getFieldAmount (sfTakerGets).issue(),
-                                 data->getFieldAmount (sfTakerPays).issue()});
+                            Book b{data->getFieldAmount(sfTakerGets).issue(),
+                                data->getFieldAmount(sfTakerPays).issue()};
 
+                            auto listeners = getBookListeners(b);
                             if (listeners)
-                                listeners->publish (jvObj);
+                            {
+                                listeners->publish(jvObj, havePublished);
+                            }
                         }
                     }
                 }

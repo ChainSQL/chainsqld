@@ -17,6 +17,7 @@
 */
 //==============================================================================
 
+#include <ripple/protocol/Feature.h>
 #include <ripple/protocol/JsonFields.h>
 #include <test/jtx.h>
 
@@ -66,13 +67,12 @@ public:
         }
     }
 
-    void
-    testNegativeBalance()
+    void testNegativeBalance(std::initializer_list<uint256> fs)
     {
         testcase("Set noripple on a line with negative balance");
 
         using namespace jtx;
-        Env env(*this);
+        Env env(*this, with_features(fs));
 
         auto const gw = Account("gateway");
         auto const alice = Account("alice");
@@ -113,13 +113,12 @@ public:
         BEAST_EXPECT(!lines[0u].isMember(jss::no_ripple));
     }
 
-    void
-    testPairwise()
+    void testPairwise(std::initializer_list<uint256> fs)
     {
         testcase("pairwise NoRipple");
 
         using namespace jtx;
-        Env env(*this);
+        Env env(*this, with_features(fs));
 
         auto const alice = Account("alice");
         auto const bob = Account("bob");
@@ -151,13 +150,12 @@ public:
         env(pay(alice, carol, bob["USD"](50)), ter(tecPATH_DRY));
     }
 
-    void
-    testDefaultRipple()
+    void testDefaultRipple(std::initializer_list<uint256> fs)
     {
         testcase("Set default ripple on an account and check new trustlines");
 
         using namespace jtx;
-        Env env(*this);
+        Env env(*this, with_features(fs));
 
         auto const gw = Account("gateway");
         auto const alice = Account("alice");
@@ -213,9 +211,16 @@ public:
     void run ()
     {
         testSetAndClear();
-        testNegativeBalance();
-        testPairwise();
-        testDefaultRipple();
+
+        auto withFeatsTests = [this](std::initializer_list<uint256> fs) {
+            testNegativeBalance(fs);
+            testPairwise(fs);
+            testDefaultRipple(fs);
+        };
+        withFeatsTests({});
+        withFeatsTests({featureFlow});
+        withFeatsTests({featureFlow, fix1373});
+        withFeatsTests({featureFlow, fix1373, featureFlowCross});
     }
 };
 

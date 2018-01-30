@@ -19,19 +19,22 @@
 
 #include <BeastConfig.h>
 #include <ripple/basics/chrono.h>
+#include <ripple/ledger/BookDirs.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/View.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
+#include <ripple/protocol/Feature.h>
 #include <ripple/protocol/st.h>
+#include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/Quality.h>
 #include <boost/algorithm/string.hpp>
 #include <cassert>
 
 namespace ripple {
 
-NetClock::time_point const& amendmentRIPD1141SoTime ()
+NetClock::time_point const& fix1141Time ()
 {
     using namespace std::chrono_literals;
     // Fri July 1, 2016 10:00:00am PDT
@@ -39,12 +42,12 @@ NetClock::time_point const& amendmentRIPD1141SoTime ()
     return soTime;
 }
 
-bool amendmentRIPD1141 (NetClock::time_point const closeTime)
+bool fix1141 (NetClock::time_point const closeTime)
 {
-    return closeTime > amendmentRIPD1141SoTime();
+    return closeTime > fix1141Time();
 }
 
-NetClock::time_point const& amendmentRIPD1274SoTime ()
+NetClock::time_point const& fix1274Time ()
 {
     using namespace std::chrono_literals;
     // Fri Sep 30, 2016 10:00:00am PDT
@@ -53,12 +56,12 @@ NetClock::time_point const& amendmentRIPD1274SoTime ()
     return soTime;
 }
 
-bool amendmentRIPD1274 (NetClock::time_point const closeTime)
+bool fix1274 (NetClock::time_point const closeTime)
 {
-    return closeTime > amendmentRIPD1274SoTime();
+    return closeTime > fix1274Time();
 }
 
-NetClock::time_point const& amendmentRIPD1298SoTime ()
+NetClock::time_point const& fix1298Time ()
 {
     using namespace std::chrono_literals;
     // Wed Dec 21, 2016 10:00:00am PST
@@ -67,12 +70,12 @@ NetClock::time_point const& amendmentRIPD1298SoTime ()
     return soTime;
 }
 
-bool amendmentRIPD1298 (NetClock::time_point const closeTime)
+bool fix1298 (NetClock::time_point const closeTime)
 {
-    return closeTime > amendmentRIPD1298SoTime();
+    return closeTime > fix1298Time();
 }
 
-NetClock::time_point const& amendmentRIPD1443SoTime ()
+NetClock::time_point const& fix1443Time ()
 {
     using namespace std::chrono_literals;
     // Sat Mar 11, 2017 05:00:00pm PST
@@ -81,12 +84,12 @@ NetClock::time_point const& amendmentRIPD1443SoTime ()
     return soTime;
 }
 
-bool amendmentRIPD1443 (NetClock::time_point const closeTime)
+bool fix1443 (NetClock::time_point const closeTime)
 {
-    return closeTime > amendmentRIPD1443SoTime();
+    return closeTime > fix1443Time();
 }
 
-NetClock::time_point const& fix1449SoTime ()
+NetClock::time_point const& fix1449Time ()
 {
     using namespace std::chrono_literals;
     // Thurs, Mar 30, 2017 01:00:00pm PDT
@@ -97,16 +100,8 @@ NetClock::time_point const& fix1449SoTime ()
 
 bool fix1449 (NetClock::time_point const closeTime)
 {
-    return closeTime > fix1449SoTime();
+    return closeTime > fix1449Time();
 }
-
-// VFALCO NOTE A copy of the other one for now
-/** Maximum number of entries in a directory page
-    A change would be protocol-breaking.
-*/
-#ifndef DIR_NODE_MAX
-#define DIR_NODE_MAX  32
-#endif
 
 //------------------------------------------------------------------------------
 //
@@ -176,59 +171,7 @@ accountHolds (ReadView const& view,
     STAmount amount;
     if (isZXC(currency))
     {
-        // ZXC: return balance minus reserve
-        if (amendmentRIPD1141 (view.info ().parentCloseTime))
-        {
-            auto const sle = view.read(
-                keylet::account(account));
-            auto const ownerCount =
-                view.ownerCountHook (account, sle->getFieldU32 (sfOwnerCount));
-            auto const reserve =
-                    view.fees().accountReserve(ownerCount);
-
-            auto const fullBalance =
-                sle->getFieldAmount(sfBalance);
-
-            auto const balance = view.balanceHook(
-                account, issuer, fullBalance).zxc();
-
-            if (balance < reserve)
-                amount.clear ();
-            else
-                amount = balance - reserve;
-
-            JLOG (j.trace()) << "accountHolds:" <<
-                " account=" << to_string (account) <<
-                " amount=" << amount.getFullText () <<
-                " fullBalance=" << to_string (fullBalance.zxc()) <<
-                " balance=" << to_string (balance) <<
-                " reserve=" << to_string (reserve);
-
-            return amount;
-        }
-        else
-        {
-            // pre-switchover
-            // ZXC: return balance minus reserve
-            auto const sle = view.read(
-                keylet::account(account));
-            auto const reserve =
-                    view.fees().accountReserve(
-                        sle->getFieldU32(sfOwnerCount));
-            auto const balance =
-                    sle->getFieldAmount(sfBalance).zxc ();
-            if (balance < reserve)
-                amount.clear ();
-            else
-                amount = balance - reserve;
-            JLOG (j.trace()) << "accountHolds:" <<
-                    " account=" << to_string (account) <<
-                    " amount=" << amount.getFullText () <<
-                    " balance=" << to_string (balance) <<
-                    " reserve=" << to_string (reserve);
-            return view.balanceHook(
-                account, issuer, amount);
-        }
+        return {zxcLiquid (view, account, 0, j)};
     }
 
     // IOU: Return balance on trust line modulo freeze
@@ -288,6 +231,115 @@ accountFunds (ReadView const& view, AccountID const& id,
             " saFunds=" << saFunds.getFullText ();
     }
     return saFunds;
+}
+
+// Prevent ownerCount from wrapping under error conditions.
+//
+// adjustment allows the ownerCount to be adjusted up or down in multiple steps.
+// If id != boost.none, then do error reporting.
+//
+// Returns adjusted owner count.
+static
+std::uint32_t
+confineOwnerCount (std::uint32_t current, std::int32_t adjustment,
+    boost::optional<AccountID> const& id = boost::none,
+    beast::Journal j = beast::Journal{})
+{
+    std::uint32_t adjusted {current + adjustment};
+    if (adjustment > 0)
+    {
+        // Overflow is well defined on unsigned
+        if (adjusted < current)
+        {
+            if (id)
+            {
+                JLOG (j.fatal()) <<
+                    "Account " << *id <<
+                    " owner count exceeds max!";
+            }
+            adjusted = std::numeric_limits<std::uint32_t>::max ();
+        }
+    }
+    else
+    {
+        // Underflow is well defined on unsigned
+        if (adjusted > current)
+        {
+            if (id)
+            {
+                JLOG (j.fatal()) <<
+                    "Account " << *id <<
+                    " owner count set below 0!";
+            }
+            adjusted = 0;
+            assert(!id);
+        }
+    }
+    return adjusted;
+}
+
+ZXCAmount
+zxcLiquid (ReadView const& view, AccountID const& id,
+    std::int32_t ownerCountAdj, beast::Journal j)
+{
+    auto const sle = view.read(keylet::account(id));
+    if (sle == nullptr)
+        return zero;
+
+    // Return balance minus reserve
+    if (fix1141 (view.info ().parentCloseTime))
+    {
+        std::uint32_t const ownerCount = confineOwnerCount (
+            view.ownerCountHook (id, sle->getFieldU32 (sfOwnerCount)),
+                ownerCountAdj);
+
+        auto const reserve =
+            view.fees().accountReserve(ownerCount);
+
+        auto const fullBalance =
+            sle->getFieldAmount(sfBalance);
+
+        auto const balance = view.balanceHook(id, zxcAccount(), fullBalance);
+
+        STAmount amount = balance - reserve;
+        if (balance < reserve)
+            amount.clear ();
+
+        JLOG (j.trace()) << "accountHolds:" <<
+            " account=" << to_string (id) <<
+            " amount=" << amount.getFullText() <<
+            " fullBalance=" << fullBalance.getFullText() <<
+            " balance=" << balance.getFullText() <<
+            " reserve=" << to_string (reserve) <<
+            " ownerCount=" << to_string (ownerCount) <<
+            " ownerCountAdj=" << to_string (ownerCountAdj);
+
+        return amount.zxc();
+    }
+    else
+    {
+        // pre-switchover
+        // ZXC: return balance minus reserve
+        std::uint32_t const ownerCount =
+            confineOwnerCount (sle->getFieldU32 (sfOwnerCount), ownerCountAdj);
+        auto const reserve =
+            view.fees().accountReserve(sle->getFieldU32(sfOwnerCount));
+        auto const balance = sle->getFieldAmount(sfBalance);
+
+        STAmount amount = balance - reserve;
+        if (balance < reserve)
+            amount.clear ();
+
+        JLOG (j.trace()) << "accountHolds:" <<
+            " account=" << to_string (id) <<
+            " amount=" << amount.getFullText() <<
+            " balance=" << balance.getFullText() <<
+            " reserve=" << to_string (reserve) <<
+            " ownerCount=" << to_string (ownerCount) <<
+            " ownerCountAdj=" << to_string (ownerCountAdj);
+
+        return view.balanceHook(id, zxcAccount(), amount).zxc();
+    }
 }
 
 void
@@ -678,37 +730,12 @@ hashOfSeq (ReadView const& ledger, LedgerIndex seq,
 void
 adjustOwnerCount (ApplyView& view,
     std::shared_ptr<SLE> const& sle,
-        int amount, beast::Journal j)
+        std::int32_t amount, beast::Journal j)
 {
     assert(amount != 0);
-    auto const current =
-        sle->getFieldU32 (sfOwnerCount);
-    auto adjusted = current + amount;
+    std::uint32_t const current {sle->getFieldU32 (sfOwnerCount)};
     AccountID const id = (*sle)[sfAccount];
-    if (amount > 0)
-    {
-        // Overflow is well defined on unsigned
-        if (adjusted < current)
-        {
-            JLOG (j.fatal()) <<
-                "Account " << id <<
-                " owner count exceeds max!";
-            adjusted =
-                std::numeric_limits<std::uint32_t>::max ();
-        }
-    }
-    else
-    {
-        // Underflow is well defined on unsigned
-        if (adjusted > current)
-        {
-            JLOG (j.fatal()) <<
-                "Account " << id <<
-                " owner count set below 0!";
-            adjusted = 0;
-            assert(false);
-        }
-    }
+    std::uint32_t const adjusted = confineOwnerCount (current, amount, id, j);
     view.adjustOwnerCountHook (id, current, adjusted);
     sle->setFieldU32 (sfOwnerCount, adjusted);
     view.update(sle);
@@ -778,19 +805,28 @@ describeOwnerDir(AccountID const& account)
     };
 }
 
-std::pair<TER, bool>
+boost::optional<std::uint64_t>
 dirAdd (ApplyView& view,
-    std::uint64_t&                          uNodeDir,
     Keylet const&                           dir,
     uint256 const&                          uLedgerIndex,
+    bool                                    strictOrder,
     std::function<void (SLE::ref)>          fDescriber,
     beast::Journal j)
 {
+    if (view.rules().enabled(featureSortedDirectories))
+    {
+        if (strictOrder)
+            return view.dirAppend(dir, uLedgerIndex, fDescriber);
+        else
+            return view.dirInsert(dir, uLedgerIndex, fDescriber);
+    }
+
     JLOG (j.trace()) << "dirAdd:" <<
         " dir=" << to_string (dir.key) <<
         " uLedgerIndex=" << to_string (uLedgerIndex);
 
     auto sleRoot = view.peek(dir);
+    std::uint64_t uNodeDir = 0;
 
     if (! sleRoot)
     {
@@ -808,9 +844,7 @@ dirAdd (ApplyView& view,
             "dirAdd: created root " << to_string (dir.key) <<
             " for entry " << to_string (uLedgerIndex);
 
-        uNodeDir = 0;
-
-        return { tesSUCCESS, true };
+        return uNodeDir;
     }
 
     SLE::pointer sleNode;
@@ -832,7 +866,7 @@ dirAdd (ApplyView& view,
 
     svIndexes = sleNode->getFieldV256 (sfIndexes);
 
-    if (DIR_NODE_MAX != svIndexes.size ())
+    if (dirNodeMaxEntries != svIndexes.size ())
     {
         // Add to current node.
         view.update(sleNode);
@@ -840,7 +874,7 @@ dirAdd (ApplyView& view,
     // Add to new node.
     else if (!++uNodeDir)
     {
-        return { tecDIR_FULL, false };
+        return boost::none;
     }
     else
     {
@@ -876,28 +910,36 @@ dirAdd (ApplyView& view,
     JLOG (j.trace()) <<
         "dirAdd:  appending: Node: " << strHex (uNodeDir);
 
-    return { tesSUCCESS, false };
+    return uNodeDir;
 }
 
 // Ledger must be in a state for this to work.
 TER
 dirDelete (ApplyView& view,
     const bool                      bKeepRoot,      // --> True, if we never completely clean up, after we overflow the root node.
-    const std::uint64_t&            uNodeDir,       // --> Node containing entry.
-    uint256 const&                  uRootIndex,     // --> The index of the base of the directory.  Nodes are based off of this.
+    std::uint64_t                   uNodeDir,       // --> Node containing entry.
+    Keylet const&                   root,           // --> The index of the base of the directory.  Nodes are based off of this.
     uint256 const&                  uLedgerIndex,   // --> Value to remove from directory.
     const bool                      bStable,        // --> True, not to change relative order of entries.
     const bool                      bSoft,          // --> True, uNodeDir is not hard and fast (pass uNodeDir=0).
     beast::Journal j)
 {
+    if (view.rules().enabled(featureSortedDirectories))
+    {
+        if (view.dirRemove(root, uNodeDir, uLedgerIndex, bKeepRoot))
+            return tesSUCCESS;
+
+        return tefBAD_LEDGER;
+    }
+
     std::uint64_t uNodeCur = uNodeDir;
     SLE::pointer sleNode =
-        view.peek(keylet::page(uRootIndex, uNodeCur));
+        view.peek(keylet::page(root, uNodeCur));
 
     if (!sleNode)
     {
         JLOG (j.warn()) << "dirDelete: no such node:" <<
-            " uRootIndex=" << to_string (uRootIndex) <<
+            " root=" << to_string (root.key) <<
             " uNodeDir=" << strHex (uNodeDir) <<
             " uLedgerIndex=" << to_string (uLedgerIndex);
 
@@ -911,7 +953,7 @@ dirDelete (ApplyView& view,
             // Go the extra mile. Even if node doesn't exist, try the next node.
 
             return dirDelete (view, bKeepRoot,
-                uNodeDir + 1, uRootIndex, uLedgerIndex, bStable, true, j);
+                uNodeDir + 1, root, uLedgerIndex, bStable, true, j);
         }
         else
         {
@@ -936,7 +978,7 @@ dirDelete (ApplyView& view,
         {
             // Go the extra mile. Even if entry not in node, try the next node.
             return dirDelete (view, bKeepRoot, uNodeDir + 1,
-                uRootIndex, uLedgerIndex, bStable, true, j);
+                root, uLedgerIndex, bStable, true, j);
         }
 
         return tefBAD_LEDGER;
@@ -990,7 +1032,7 @@ dirDelete (ApplyView& view,
             else
             {
                 // Have only a root node and a last node.
-                auto sleLast = view.peek(keylet::page(uRootIndex, uNodeNext));
+                auto sleLast = view.peek(keylet::page(root, uNodeNext));
 
                 assert (sleLast);
 
@@ -1012,9 +1054,8 @@ dirDelete (ApplyView& view,
         {
             // Not root and not last node. Can delete node.
 
-            auto slePrevious =
-                view.peek(keylet::page(uRootIndex, uNodePrevious));
-            auto sleNext = view.peek(keylet::page(uRootIndex, uNodeNext));
+            auto slePrevious = view.peek(keylet::page(root, uNodePrevious));
+            auto sleNext = view.peek(keylet::page(root, uNodeNext));
             assert (slePrevious);
             if (!slePrevious)
             {
@@ -1047,8 +1088,7 @@ dirDelete (ApplyView& view,
         else
         {
             // Last and only node besides the root.
-            auto sleRoot = view.peek (keylet::page(uRootIndex));
-
+            auto sleRoot = view.peek(root);
             assert (sleRoot);
 
             if (sleRoot->getFieldV256 (sfIndexes).empty ())
@@ -1068,9 +1108,8 @@ dirDelete (ApplyView& view,
     return tesSUCCESS;
 }
 
-
 TER
-trustCreate(ApplyView& view,
+trustCreate (ApplyView& view,
     const bool      bSrcHigh,
     AccountID const&  uSrcAccountID,
     AccountID const&  uDstAccountID,
@@ -1087,98 +1126,88 @@ trustCreate(ApplyView& view,
     std::uint32_t uQualityOut,
     beast::Journal j)
 {
-    JLOG(j.trace())
-        << "trustCreate: " << to_string(uSrcAccountID) << ", "
-        << to_string(uDstAccountID) << ", " << saBalance.getFullText();
+    JLOG (j.trace())
+        << "trustCreate: " << to_string (uSrcAccountID) << ", "
+        << to_string (uDstAccountID) << ", " << saBalance.getFullText ();
 
-    auto const& uLowAccountID = !bSrcHigh ? uSrcAccountID : uDstAccountID;
-    auto const& uHighAccountID = bSrcHigh ? uSrcAccountID : uDstAccountID;
+    auto const& uLowAccountID   = !bSrcHigh ? uSrcAccountID : uDstAccountID;
+    auto const& uHighAccountID  =  bSrcHigh ? uSrcAccountID : uDstAccountID;
 
     auto const sleRippleState = std::make_shared<SLE>(
         ltRIPPLE_STATE, uIndex);
-    view.insert(sleRippleState);
+    view.insert (sleRippleState);
 
+    auto lowNode = dirAdd (view, keylet::ownerDir (uLowAccountID),
+        sleRippleState->key(), false, describeOwnerDir (uLowAccountID), j);
 
-    std::uint64_t   uLowNode;
-    std::uint64_t   uHighNode;
+    if (!lowNode)
+        return tecDIR_FULL;
 
-    TER terResult;
+    auto highNode = dirAdd (view, keylet::ownerDir (uHighAccountID),
+        sleRippleState->key(), false, describeOwnerDir (uHighAccountID), j);
 
-    std::tie (terResult, std::ignore) = dirAdd (view,
-        uLowNode, keylet::ownerDir (uLowAccountID),
-        sleRippleState->key(),
-        describeOwnerDir (uLowAccountID), j);
+    if (!highNode)
+        return tecDIR_FULL;
 
-    if (tesSUCCESS == terResult)
+    const bool bSetDst = saLimit.getIssuer () == uDstAccountID;
+    const bool bSetHigh = bSrcHigh ^ bSetDst;
+
+    assert (sleAccount->getAccountID (sfAccount) ==
+        (bSetHigh ? uHighAccountID : uLowAccountID));
+    auto slePeer = view.peek (keylet::account(
+        bSetHigh ? uLowAccountID : uHighAccountID));
+    assert (slePeer);
+
+    // Remember deletion hints.
+    sleRippleState->setFieldU64 (sfLowNode, *lowNode);
+    sleRippleState->setFieldU64 (sfHighNode, *highNode);
+
+    sleRippleState->setFieldAmount (
+        bSetHigh ? sfHighLimit : sfLowLimit, saLimit);
+    sleRippleState->setFieldAmount (
+        bSetHigh ? sfLowLimit : sfHighLimit,
+        STAmount ({saBalance.getCurrency (),
+                   bSetDst ? uSrcAccountID : uDstAccountID}));
+
+    if (uQualityIn)
+        sleRippleState->setFieldU32 (
+            bSetHigh ? sfHighQualityIn : sfLowQualityIn, uQualityIn);
+
+    if (uQualityOut)
+        sleRippleState->setFieldU32 (
+            bSetHigh ? sfHighQualityOut : sfLowQualityOut, uQualityOut);
+
+    std::uint32_t uFlags = bSetHigh ? lsfHighReserve : lsfLowReserve;
+
+    if (bAuth)
     {
-        std::tie (terResult, std::ignore) = dirAdd (view,
-            uHighNode, keylet::ownerDir (uHighAccountID),
-            sleRippleState->key(),
-            describeOwnerDir (uHighAccountID), j);
+        uFlags |= (bSetHigh ? lsfHighAuth : lsfLowAuth);
+    }
+    if (bNoRipple)
+    {
+        uFlags |= (bSetHigh ? lsfHighNoRipple : lsfLowNoRipple);
+    }
+    if (bFreeze)
+    {
+        uFlags |= (!bSetHigh ? lsfLowFreeze : lsfHighFreeze);
     }
 
-    if (tesSUCCESS == terResult)
+    if ((slePeer->getFlags() & lsfDefaultRipple) == 0)
     {
-        const bool bSetDst = saLimit.getIssuer() == uDstAccountID;
-        const bool bSetHigh = bSrcHigh ^ bSetDst;
-
-        assert(sleAccount->getAccountID(sfAccount) ==
-            (bSetHigh ? uHighAccountID : uLowAccountID));
-        auto slePeer = view.peek(keylet::account(
-            bSetHigh ? uLowAccountID : uHighAccountID));
-        assert(slePeer);
-
-        // Remember deletion hints.
-        sleRippleState->setFieldU64(sfLowNode, uLowNode);
-        sleRippleState->setFieldU64(sfHighNode, uHighNode);
-
-        sleRippleState->setFieldAmount(
-            bSetHigh ? sfHighLimit : sfLowLimit, saLimit);
-        sleRippleState->setFieldAmount(
-            bSetHigh ? sfLowLimit : sfHighLimit,
-            STAmount({ saBalance.getCurrency(),
-                       bSetDst ? uSrcAccountID : uDstAccountID }));
-
-        if (uQualityIn)
-            sleRippleState->setFieldU32(
-                bSetHigh ? sfHighQualityIn : sfLowQualityIn, uQualityIn);
-
-        if (uQualityOut)
-            sleRippleState->setFieldU32(
-                bSetHigh ? sfHighQualityOut : sfLowQualityOut, uQualityOut);
-
-        std::uint32_t uFlags = bSetHigh ? lsfHighReserve : lsfLowReserve;
-
-        if (bAuth)
-        {
-            uFlags |= (bSetHigh ? lsfHighAuth : lsfLowAuth);
-        }
-        if (bNoRipple)
-        {
-            uFlags |= (bSetHigh ? lsfHighNoRipple : lsfLowNoRipple);
-        }
-        if (bFreeze)
-        {
-            uFlags |= (!bSetHigh ? lsfLowFreeze : lsfHighFreeze);
-        }
-
-        if ((slePeer->getFlags() & lsfDefaultRipple) == 0)
-        {
-            // The other side's default is no rippling
-            uFlags |= (bSetHigh ? lsfLowNoRipple : lsfHighNoRipple);
-        }
-
-        sleRippleState->setFieldU32(sfFlags, uFlags);
-        adjustOwnerCount(view, sleAccount, 1, j);
-
-        // ONLY: Create ripple balance.
-        sleRippleState->setFieldAmount(sfBalance, bSetHigh ? -saBalance : saBalance);
-
-        view.creditHook(uSrcAccountID,
-            uDstAccountID, saBalance, saBalance.zeroed());
+        // The other side's default is no rippling
+        uFlags |= (bSetHigh ? lsfLowNoRipple : lsfHighNoRipple);
     }
 
-    return terResult;
+    sleRippleState->setFieldU32 (sfFlags, uFlags);
+    adjustOwnerCount(view, sleAccount, 1, j);
+
+    // ONLY: Create ripple balance.
+    sleRippleState->setFieldAmount (sfBalance, bSetHigh ? -saBalance : saBalance);
+
+    view.creditHook (uSrcAccountID,
+        uDstAccountID, saBalance, saBalance.zeroed());
+
+    return tesSUCCESS;
 }
 
 TER
@@ -1200,7 +1229,7 @@ trustDelete (ApplyView& view,
     terResult   = dirDelete(view,
         false,
         uLowNode,
-        getOwnerDirIndex (uLowAccountID),
+        keylet::ownerDir (uLowAccountID),
         sleRippleState->key(),
         false,
         !bLowNode,
@@ -1213,7 +1242,7 @@ trustDelete (ApplyView& view,
         terResult   = dirDelete (view,
             false,
             uHighNode,
-            getOwnerDirIndex (uHighAccountID),
+            keylet::ownerDir (uHighAccountID),
             sleRippleState->key(),
             false,
             !bHighNode,
@@ -1238,14 +1267,12 @@ offerDelete (ApplyView& view,
 
     // Detect legacy directories.
     bool bOwnerNode = sle->isFieldPresent (sfOwnerNode);
-    std::uint64_t uOwnerNode = sle->getFieldU64 (sfOwnerNode);
     uint256 uDirectory = sle->getFieldH256 (sfBookDirectory);
-    std::uint64_t uBookNode  = sle->getFieldU64 (sfBookNode);
 
-    TER terResult  = dirDelete (view, false, uOwnerNode,
-        getOwnerDirIndex (owner), offerIndex, false, !bOwnerNode, j);
-    TER terResult2 = dirDelete (view, false, uBookNode,
-        uDirectory, offerIndex, true, false, j);
+    TER terResult  = dirDelete (view, false, sle->getFieldU64 (sfOwnerNode),
+        keylet::ownerDir (owner), offerIndex, false, !bOwnerNode, j);
+    TER terResult2 = dirDelete (view, false, sle->getFieldU64 (sfBookNode),
+        keylet::page (uDirectory), offerIndex, true, false, j);
 
     if (tesSUCCESS == terResult)
         adjustOwnerCount(view, view.peek(
@@ -1259,7 +1286,7 @@ offerDelete (ApplyView& view,
 
 // Direct send w/o fees:
 // - Redeeming IOUs and/or sending sender's own IOUs.
-// - Create trust line of needed.
+// - Create trust line if needed.
 // --> bCheckIssuer : normally require issuer to be involved.
 TER
 rippleCredit (ApplyView& view,
@@ -1458,7 +1485,7 @@ rippleSend (ApplyView& view,
 
     // Calculate the amount to transfer accounting
     // for any transfer fees:
-    if (!amendmentRIPD1141 (view.info ().parentCloseTime))
+    if (!fix1141 (view.info ().parentCloseTime))
     {
         STAmount const saTransitFee = rippleTransferFee (
             view, uSenderID, uReceiverID, issuer, saAmount, j);
@@ -1510,7 +1537,7 @@ accountSend (ApplyView& view,
         return rippleSend (view, uSenderID, uReceiverID, saAmount, saActual, j);
     }
 
-    auto const fv2Switch = amendmentRIPD1141 (view.info ().parentCloseTime);
+    auto const fv2Switch = fix1141 (view.info ().parentCloseTime);
     if (!fv2Switch)
     {
         auto const dummyBalance = saAmount.zeroed();

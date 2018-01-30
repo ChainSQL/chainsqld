@@ -144,6 +144,7 @@ SF_U64 const sfBaseFee       = make::one<SF_U64::type>(&sfBaseFee,       STI_UIN
 SF_U64 const sfExchangeRate  = make::one<SF_U64::type>(&sfExchangeRate,  STI_UINT64, 6, "ExchangeRate");
 SF_U64 const sfLowNode       = make::one<SF_U64::type>(&sfLowNode,       STI_UINT64, 7, "LowNode");
 SF_U64 const sfHighNode      = make::one<SF_U64::type>(&sfHighNode,      STI_UINT64, 8, "HighNode");
+SF_U64 const sfDestinationNode  = make::one<SF_U64::type>(&sfDestinationNode,  STI_UINT64, 9, "DestinationNode");
 
 // 128-bit
 SF_U128 const sfEmailHash = make::one<SF_U128::type>(&sfEmailHash, STI_HASH128, 1, "EmailHash");
@@ -180,6 +181,7 @@ SF_U256 const sfAmendment     = make::one<SF_U256::type>(&sfAmendment,     STI_H
 SF_U256 const sfTicketID      = make::one<SF_U256::type>(&sfTicketID,      STI_HASH256, 20, "TicketID");
 SF_U256 const sfDigest        = make::one<SF_U256::type>(&sfDigest,        STI_HASH256, 21, "Digest");
 SF_U256 const sfPayChannel    = make::one<SF_U256::type>(&sfPayChannel,    STI_HASH256, 22, "Channel");
+SF_U256 const sfConsensusHash = make::one<SF_U256::type>(&sfConsensusHash, STI_HASH256, 23, "ConsensusHash");
 
 // currency amount (common)
 SF_Amount const sfAmount      = make::one<SF_Amount::type>(&sfAmount,      STI_AMOUNT,  1, "Amount");

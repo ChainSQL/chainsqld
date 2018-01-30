@@ -1,100 +1,183 @@
-macOS-Xcode 编译指南
-## 重要提示
-我们并不推荐使用OS X来编译运行chainsqld工程。根据当前的测试数据来看，使用Ubuntu平台能获得最高的性能保障。
-## 前置条件
-OSX 10.8及更高版本
+# macos Build Instructions
 
-需提前准备好下列软件：<br>
-- [XCode](https://developer.apple.com/xcode/)
-- [HomeBrew](https://brew.sh/)
-- [Git](https://git-scm.com/)
-- [SCons](http://www.scons.org/)
-- [MySQL](https://www.mysql.com/)
+## Important
 
-## 软件安装
-**安装XCode**<br>
-如果你已经安装XCode，请直接跳过此步骤。<br>
-XCode可直接通过AppStore安装或直接点击此[安装链接](https://developer.apple.com/xcode/).<br>
-命令行工具可在终端输入如下命令安装：
+We don't recommend macos for rippled production use at this time. Currently, the
+Ubuntu platform has received the highest level of quality assurance and
+testing. That said, macos is suitable for many development/test tasks.
+
+## Prerequisites
+
+You'll need macos 10.8 or later
+
+To clone the source code repository, create branches for inspection or
+modification, build rippled using clang, and run the system tests you will need
+these software components:
+
+* [XCode](https://developer.apple.com/xcode/)
+* [Homebrew](http://brew.sh/)
+* [Git](http://git-scm.com/)
+* [CMake](http://cmake.org/)
+
+## Install Software
+
+### Install XCode
+
+If not already installed on your system, download and install XCode using the
+appstore or by using [this link](https://developer.apple.com/xcode/).
+
+For more info, see "Step 1: Download and Install the Command Line Tools"
+[here](http://www.moncefbelyamani.com/how-to-install-xcode-homebrew-git-rvm-ruby-on-mac)
+
+The command line tools can be installed through the terminal with the command:
+
 ```
 xcode-select --install
 ```
 
-**安装HomeBrew**<br>
-如果已安装HomeBrew请跳过此步骤。<br>
-安装HomeBrew，需要先安装Ruby，安装Ruby的的方法可参考[这里](http://blog.csdn.net/u012701023/article/details/52183100).<br>
-安装完之后在命令行运行如下命令：
+### Install Homebrew
+
+> "[Homebrew](http://brew.sh/) installs the stuff you need that Apple didn’t."
+
+Open a terminal and type:
+
 ```
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ```
 
-**安装Git**
+For more info, see "Step 3: Install Homebrew"
+[here](http://www.moncefbelyamani.com/how-to-install-xcode-homebrew-git-rvm-ruby-on-mac)
+
+### Install Git
+
 ```
-brew install git
+brew update brew install git
 ```
 
-**安装Scons**<br>
-Scons版本最低要求是2.3.0，brew默认安装最新版本的软件，所以通过brew安装将会满足chainSQL对Scons的最低版本要求。
-```
-brew install scons 
-```
+For more info, see "Step 4: Install Git"
+[here](http://www.moncefbelyamani.com/how-to-install-xcode-homebrew-git-rvm-ruby-on-mac)
 
-**安装MySQL**<br>
-```
-brew install mysql
-```
+**NOTE**: To gain full featured access to the
+[git-subtree](http://blogs.atlassian.com/2013/05/alternatives-to-git-submodule-git-subtree/)
+functionality used in the rippled repository, we suggest Git version 1.8.3.2 or
+later.
 
-## 依赖及环境变量设置
+### Install Scons
 
-**安装Package Config**<br>
-```
-brew install pkg-config
-```
+Requires version 3.6.0 or later
 
-**安装cmake**<br>
 ```
 brew install cmake
 ```
 
-**安装Google Protocol Buffers编译环境**<br>
+`brew` will generally install the latest stable version of any package, which
+should satisfy the cmake minimum version requirement for rippled.
+
+### Install Package Config
+
 ```
-brew install protobuf
+brew install pkg-config
 ```
 
-**安装OpenSSL**<br>
+## Install/Build/Configure Dependencies
+
+### Build Google Protocol Buffers Compiler
+
+Building rippled on osx requires `protoc` version 2.5.x or 2.6.x (later versions
+do not work with rippled at this time).
+
+Download [this](https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.bz2)
+
+We want to compile protocol buffers with clang/libc++:
+
+```
+tar xfvj protobuf-2.6.1.tar.bz2
+cd protobuf-2.6.1
+./configure CC=clang CXX=clang++ CXXFLAGS='-std=c++11 -stdlib=libc++ -O3 -g' LDFLAGS='-stdlib=libc++' LIBS="-lc++ -lc++abi"
+make -j 4
+sudo make install
+```
+
+If you have installed `protobuf` via brew - either directly or indirectly as a
+dependency of some other package - this is likely to conflict with our specific
+version requirements. The simplest way to avoid conflicts is to uninstall it.
+`brew ls --versions protobuf` will list any versions of protobuf
+you currently have installed.
+
+### Install OpenSSL
+
 ```
 brew install openssl
 ```
 
-**安装Boost环境**<br>
-通过brew安装boost库：
-```
-brew install boost
-```
-然后将BOOST_ROOT设置为环境变量，具体方法为：<br>
-1.进入当前用户home目录<br>
-2.文本编辑器打开“.bash_profile”文件<br>
-3.在文件最后添加如下语句(其中等号后面的路径为boost文件夹所在目录，可以根据brew安装完之后的提示获得路径，也可以去“/usr/local/Cellar/boost”路径下查找)：
-```
-export BOOST_ROOT=/usr/local/Cellar/boost/boost版本
-```
-4.执行如下命令使更改生效：
-```
-source .bash_profile
-```
-5.最后可以执行“echo $BOOST_ROOT”检测设置是否生效
+### Build Boost
 
-## 克隆chainSQL代码库
+We want to compile boost with clang/libc++
 
-在终端执行如下命令：
+Download [a release](https://sourceforge.net/projects/boost/files/boost/1.61.0/boost_1_61_0.tar.bz2)
+
+Extract it to a folder, making note of where, open a terminal, then:
+
 ```
-git clone git@github.com:ChainSQL/chainsqld.git
+./bootstrap.sh ./b2 toolset=clang threading=multi runtime-link=static link=static cxxflags="-stdlib=libc++" linkflags="-stdlib=libc++" address-model=64
 ```
 
-## 创建chainSQL-Xcode项目文件
-进入chainSQL代码库根目录，然后进入“Builds/XCode”目录，执行下面命令：
+Create an environment variable `BOOST_ROOT` in one of your `rc` files, pointing
+to the root of the extracted directory.
+
+### Clone the rippled repository
+
+From the terminal
+
 ```
-cmake -G Xcode ../..
+git clone git@github.com:ripple/rippled.git
+cd rippled
 ```
-之后会在“Builds/XCode”目录下生成xcode项目文件：chainsqld.xcodeproj，然后双击即可打开Xcode。
-可通过选择“Product/Scheme”下面的chainsqld或者chainsqld_classic或者ALL_BUILD来选择不同的编译方式生成chainsqld。
+
+Choose the master branch or one of the tagged releases listed on
+[GitHub](https://github.com/ripple/rippled/releases GitHub).
+
+```
+git checkout master
+```
+
+or to test the latest release candidate, choose the `release` branch.
+
+```
+git checkout release
+```
+
+### Configure Library Paths
+
+If you didn't persistently set the `BOOST_ROOT` environment variable to the
+root of the extracted directory above, then you should set it temporarily.
+
+For example, assuming your username were `Abigail` and you extracted Boost
+1.61.0 in `/Users/Abigail/Downloads/boost_1_61_0`, you would do for any
+shell in which you want to build:
+
+```
+export BOOST_ROOT=/Users/Abigail/Downloads/boost_1_61_0
+```
+
+## Build
+
+```
+mkdir xcode_build && cd xcode_build
+cmake -GXcode ..
+```
+
+There are a number of variables/options that our CMake files support and they
+can be added to the above command as needed (e.g. `-Dassert=ON` to enable
+asserts)
+
+After generation succeeds, the xcode project file can be opened and used to
+build and debug.
+
+## Unit Tests (Recommended)
+
+rippled builds a set of unit tests into the server executable. To run these unit
+tests after building, pass the `--unittest` option to the compiled `rippled`
+executable. The executable will exit after running the unit tests.
+
+

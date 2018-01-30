@@ -333,8 +333,7 @@ ConnectHandouts::try_insert (beast::IP::Endpoint const& endpoint)
         {
             // Ignore port for security reasons
             return other.address() ==
-                endpoint.address() && other.port() ==
-                endpoint.port();
+                endpoint.address();
         }))
     {
         return false;
@@ -342,11 +341,10 @@ ConnectHandouts::try_insert (beast::IP::Endpoint const& endpoint)
 
     // Add to squelch list so we don't try it too often.
     // If its already there, then make try_insert fail.
-    m_squelches.insert (endpoint.address());
-    //auto const result (m_squelches.insert (
-       // endpoint.address()));
-    //if (! result.second)
-    //    return false;
+    auto const result (m_squelches.insert (
+        endpoint.address()));
+    if (! result.second)
+        return false;
 
     m_list.push_back (endpoint);
 

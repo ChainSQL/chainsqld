@@ -22,7 +22,7 @@
 #include <ripple/app/ledger/AcceptedLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/ledger/LedgerTiming.h>
+#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/app/ledger/LedgerToJson.h>
 #include <ripple/app/ledger/OrderBookDB.h>
 #include <ripple/app/ledger/PendingSaves.h>
@@ -714,7 +714,7 @@ bool Ledger::walkLedger (beast::Journal j) const
     return missingNodes1.empty () && missingNodes2.empty ();
 }
 
-bool Ledger::assertSane (beast::Journal ledgerJ)
+bool Ledger::assertSane (beast::Journal ledgerJ) const
 {
     if (info_.hash.isNonZero () &&
             info_.accountHash.isNonZero () &&
@@ -876,7 +876,7 @@ static bool saveValidatedLedger (
     {
         JLOG (j.warn()) << "An accepted ledger was missing nodes";
         app.getLedgerMaster().failedSave(seq, ledger->info().hash);
-         // Clients can now trust the database for information about this
+        // Clients can now trust the database for information about this
         // ledger sequence.
         app.pendingSaves().finishWork(seq);
         return false;
@@ -951,6 +951,8 @@ static bool saveValidatedLedger (
                 JLOG (j.warn())
                     << "Transaction in ledger " << seq
                     << " affects no accounts";
+                JLOG (j.warn())
+                    << vt.second->getTxn()->getJson(0);
             }
 
             *db <<
@@ -1055,25 +1057,22 @@ bool pendSaveValidated (
         return true;
     }
 
-    if (isSynchronous)
-        return saveValidatedLedger(app, ledger, isCurrent);
+    JobType const jobType {isCurrent ? jtPUBLEDGER : jtPUBOLDLEDGER};
+    char const* const jobName {
+        isCurrent ? "Ledger::pendSave" : "Ledger::pendOldSave"};
 
-    auto job = [ledger, &app, isCurrent] (Job&) {
-        saveValidatedLedger(app, ledger, isCurrent);
-    };
-
-    if (isCurrent)
+    // See if we can use the JobQueue.
+    if (!isSynchronous &&
+        app.getJobQueue().addJob (jobType, jobName,
+        [&app, ledger, isCurrent] (Job&) {
+            saveValidatedLedger(app, ledger, isCurrent);
+        }))
     {
-        app.getJobQueue().addJob(
-            jtPUBLEDGER, "Ledger::pendSave", job);
-    }
-    else
-    {
-        app.getJobQueue ().addJob(
-            jtPUBOLDLEDGER, "Ledger::pendOldSave", job);
+        return true;
     }
 
-    return true;
+    // The JobQueue won't do the Job.  Do the save synchronously.
+    return saveValidatedLedger(app, ledger, isCurrent);
 }
 
 void
