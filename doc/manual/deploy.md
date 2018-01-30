@@ -26,12 +26,31 @@ mysql -uroot –p
 ```
 CREATE DATABASE IF NOT EXISTS chainsql DEFAULT CHARSET utf8 
 ```
-2)	检查是否创建成功
+也可以将mysql的默认编码设置为utf8，然后直接创建数据库
 ```
-show databases;
+create database chainsql;
 ```
-在databases中显示有chainsql字样，则为创建成功。
-3)	确认是否为utf8编码：
+
+2) 设置mysql 默认UTF8编码:<br>
+
+修改/etc/mysql/mysql.conf.d/mysqld.cnf文件<br>
+
+[mysqld]下添加
+```
+character_set_server = utf8
+```
+然后在配置文件最后添加如下配置：
+```
+[mysql.server]
+default-character-set = utf8
+[client]
+default-character-set = utf8
+```
+然后重启mysql：
+```
+/etc/init.d/mysql restart
+```
+确认是否为utf8编码：
 ```
 show variables like 'character%';
 ```
@@ -50,6 +69,7 @@ show variables like 'character%';
 | character_set_system     	| utf8                       |
 | character_sets_dir       	| /usr/share/mysql/charsets/ |
 ```
+
 ### 4.	最大连接数设置（可选）
 show variables like '%max_connections%';<br>
 默认是151：<br>
@@ -59,18 +79,17 @@ set GLOBAL max_connections = 10000;<br>
 	
 ## 二、区块链网络搭建
 需要至少 4 个验证节点，每个验证节点需要生成public key和seed。
-### 1.	验证节点的生成
-1)	将可执行程序放在目录/opt/chainsql/bin，将配置文件放在目录/opt/chainsql/etc
-2)	进入/opt/chainsql/bin目录，输入:
+### 1.	验证节点公私钥的生成
+1)	将可执行程序与配置文件（如chainsqld-example.cfg）放在用户目录，先启动一下：
 ```
-sudo ./chainsqld --conf="/opt/chainsql/etc/chainsqld.cfg"
+./chainsqld --conf="./ chainsqld-example.cfg"&
 ```
-3)	确认chainsqld程序已经启动，输入ps –ef | grep chainsqld，看是否列出chainsqld进程
-4)	生成validation_public_key及validation_seed, 输入:<br>
+2)	确认chainsqld程序已经启动，输入ps –ef | grep chainsqld，看是否列出chainsqld进程
+3)	生成validation_public_key及validation_seed, 输入:<br>
 ```
-sudo ./chainsqld --conf="/opt/chainsql/etc/chainsqld.cfg"  validation_create
+./chainsqld --conf="./ chainsqld-example.cfg"  validation_create
 ```
-5)	返回结果如下：
+4)	返回结果如下：
 ```
 {
    "status" : "success",
@@ -79,7 +98,7 @@ sudo ./chainsqld --conf="/opt/chainsql/etc/chainsqld.cfg"  validation_create
    "validation_seed" : "xxjX5VuTjQKvkTSw6EUyZnahbpgS1"
 }
 ```
-6)	分别在4个节点进行同样的操作，得到各自的validation_public_key及validation_seed
+5)	分别在4个节点进行同样的操作，得到各自的validation_public_key及validation_seed
 
 ### 2.	配置文件的修改
 所有节点的chainsqld.cfg都要进行下面的修改：
@@ -96,6 +115,8 @@ sudo ./chainsqld --conf="/opt/chainsql/etc/chainsqld.cfg"  validation_create
 [validation_seed]
 xxjX5VuTjQKvkTSw6EUyZnahbpgS1
 ```
+**注：只有验证节点需要配validation_seed，普通节点不需要这一配置**
+
 3)	字段[validation_public_key]，添加本节点的validation_public_key，如下例所示：
 ```
 [validation_public_key]
@@ -123,18 +144,59 @@ first_storage=0
 charset=utf8
 ```
 **注**：Chainsql中的事务与行级控制要求每个节点必须配置数据库，如果用不到这两个特性，也可以选择只在需要查看数据的节点配置数据库
+```
+[auto_sync]
+1
+```
+auto_sync配置为1表示开启表自动同步，开启后，在节点正常运行的情况 下，新建表会自动入同步到数据库，如果不想自动同步，只想同步需要同步的表，用下面的配置：
+```
+[sync_tables]
+zBUunFenERVydrqTD3J3U1FFqtmtYJGjNP tablename
+zxryEYgWvpjh6UGguKmS6vqgCwRyV16zuy tablename2
+```
+非加密表格式：	建表账户 表名<br>
+加密表格式：	建表账户 表名 可解密账户私钥
 
 ## 3.	架设网络 　　
 1)	启动chainsqld程序
-进入chainsqld应用程序目录：/opt/chainsql/bin，执行下面的命令
+进入chainsqld应用程序目录，执行下面的命令（配置文件名为chainsqld.cfg时可不加--conf）
 ```
-sudo nohup ./chainsqld  -q  --conf="/opt/chainsql/etc/chainsqld.cfg"&
+nohup ./chainsqld &
 ```
 每个网络节点均要执行上述命令，使chainsql服务在后台运行。
 2)	检查是否成功<br>
 进入chainsql应用程序目录：/opt/chainsql/bin，执行下面的命令
 ```
-sudo watch ./chainsqld  -q  --conf="/opt/chainsql/etc/chainsqld.cfg" server_info
+watch ./chainsqld server_info
 ```
 若输出结果中，字段"complete_ledgers" :类似 "1-10"，则chainsqld服务启动成功<br>
 每个网络节点的chainsql服务都要求成功运行
+
+查看其它节点的运行情况：
+```
+watch ./chainsqld peers
+```
+3) 链重启/节点重启
+
+- 节点全部挂掉的情况：<br>
+	如果想要清空链，将db,rocksdb/NuDb文件夹清空，然后重新执行节链启动过程<br>
+	如果想要加载之前的区块链数据启动，在某一全节点下执行下面的命令：<br>
+```
+		nohup ./chainsqld --load &
+```
+
+其它节点执行：
+	
+```
+		nohup ./chainsqld &
+```
+这样即可加载原来的数据启动链
+
+- 还有节点在运行的情况
+
+    只要网络中还有节点还在跑，就不需要用load方式重启链，只需要启动挂掉的节点即可：
+```
+		nohup ./chainsqld &
+```
+## 4.退出终端
+在终端输入 exit 退出，不然之前在终端上启动的chainsqld进程会退出
