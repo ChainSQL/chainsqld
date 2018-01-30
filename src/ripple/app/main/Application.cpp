@@ -1178,6 +1178,15 @@ bool ApplicationImp::setup()
 
     Pathfinder::initPathTable();
 
+	// VFALCO NOTE Unfortunately, in stand-alone mode some code still
+	//             foolishly calls overlay(). When this is fixed we can
+	//             move the instantiation inside a conditional:
+	//
+	//             if (!config_.standalone())
+	m_overlay = make_Overlay(*this, setup_Overlay(*config_), *m_jobQueue,
+		*serverHandler_, *m_resourceManager, *m_resolver, get_io_service(),
+		*config_);
+	add(*m_overlay); // add to PropertyStream
     /*if (config().exists(SECTION_ENCRYPT_CARD_TYPE))
     {
         auto encryptCardType = config().section(SECTION_ENCRYPT_CARD_TYPE).lines().front();
@@ -1291,16 +1300,6 @@ bool ApplicationImp::setup()
     // Server
     //
     //----------------------------------------------------------------------
-
-    // VFALCO NOTE Unfortunately, in stand-alone mode some code still
-    //             foolishly calls overlay(). When this is fixed we can
-    //             move the instantiation inside a conditional:
-    //
-    //             if (!config_.standalone())
-    m_overlay = make_Overlay (*this, setup_Overlay(*config_), *m_jobQueue,
-        *serverHandler_, *m_resourceManager, *m_resolver, get_io_service(),
-        *config_);
-    add (*m_overlay); // add to PropertyStream
 
     validatorSites_->start ();
 

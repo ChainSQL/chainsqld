@@ -193,7 +193,6 @@ public:
 	// try to decrypt raw field with configuration.
 	void TryDecryptRaw(STTx& tx);
 	void TryDecryptRaw(std::vector<STTx>& vecTxs);
-	bool Init();
 	std::pair<bool, std::string> InitPassphrase();
 	
     void PushDataToWaitCheckQueue(sqldata_type &sqlData);
@@ -250,7 +249,6 @@ private:
     TableStatusDB& getTableStatusDB();
 
 	std::string getOperationRule(const STTx& tx);
-	STEntry* getTableEntry();
 
 	std::pair<bool, std::string> DealTranCommonTx(const STTx &tx);
 	std::pair<bool, std::string> DealWithTx(const std::vector<STTx>& vecTxs);
@@ -317,8 +315,6 @@ private:
     
     beast::WaitableEvent                                         operateSqlEvent;
     beast::WaitableEvent                                         readDataEvent;
-
-	std::shared_ptr<STEntry>									 pTableEntry_;
 };
 
 }

@@ -1161,7 +1161,7 @@ void TableSync::TableSyncThread()
                     }
 					pItem->SetPara(nameInDB, LedgerSeq, LedgerHash, TxnLedgerSeq, TxnLedgerHash, TxnUpdateHash);
 
-					if (pItem->Init())
+					if (pItem->InitPassphrase().first)
 					{
 						pItem->SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
 						pItem->GetBaseInfo(stItem);
@@ -1541,8 +1541,8 @@ std::string TableSync::GetPressTableName()
 	if(!pressRealName_.empty())
 		return pressRealName_;
 
-	auto account = calcAccountID(
-		generateKeyPair(KeyType::secp256k1, generateSeed("masterpassphrase")).first);
+	auto pAccount = ripple::parseBase58<AccountID>("zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh");
+	AccountID account = *pAccount;
 	auto ledger = app_.getLedgerMaster().getValidatedLedger();
 	auto id = keylet::table(account);
 	auto const tablesle = ledger->read(id);

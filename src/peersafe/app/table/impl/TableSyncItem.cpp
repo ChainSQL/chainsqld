@@ -712,37 +712,18 @@ bool TableSyncItem::DoUpdateSyncDB(const std::string &Owner, const std::string &
 	return ret == soci_success;
 }
 
-bool TableSyncItem::Init()
-{
-	pTableEntry_.reset(getTableEntry());
-	if (pTableEntry_ == nullptr)
-	{
-		JLOG(journal_.error()) << "Table not found";
-		return false;
-	}
-	auto ret = InitPassphrase();
-	if (!ret.first)
-	{
-		JLOG(journal_.error()) << ret.second;
-		return false;
-	}
-	return true;
-}
-
-STEntry* TableSyncItem::getTableEntry()
+std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 {
 	auto ledger = app_.getLedgerMaster().getValidatedLedger();
 	if (ledger == NULL)
 	{
-		JLOG(journal_.error()) << "ledger error";
-		return NULL;
+		return std::make_pair(false, "ledger error");
 	}
 	auto id = keylet::table(accountID_);
 	auto const tablesle = ledger->read(id);
 	if (tablesle == nullptr)
 	{
-		JLOG(journal_.error()) << "can't find account table sle.";
-		return NULL;
+		return std::make_pair(false, "can't find account table sle.");
 	}
 	auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 
@@ -752,60 +733,59 @@ STEntry* TableSyncItem::getTableEntry()
 		bool bRightName = false;
 		if (eSyncTargetType_ == SyncTarget_db) bRightName = to_string(table.getFieldH160(sfNameInDB)) == sTableNameInDB_;
 		else                                   bRightName = strCopy(table.getFieldVL(sfTableName)) == sTableName_;;
-
+		
 		if (bRightName && table.getFieldU8(sfDeleted) != 1)
 		{
-			return (STEntry*)&table;
-		}
-	}
-	return NULL;
-}
+			uCreateLedgerSequence_ = table.getFieldU32(sfCreateLgrSeq);
 
-
-std::pair<bool, std::string> TableSyncItem::InitPassphrase()
-{
-	STEntry table = *pTableEntry_;
-	uCreateLedgerSequence_ = table.getFieldU32(sfCreateLgrSeq);
-
-	auto& users = table.getFieldArray(sfUsers);
-	assert(users.size() > 0);
-	bool bConfidential = users[0].isFieldPresent(sfToken);
-
-	if (bConfidential)
-	{
-		confidential_ = true;
-		if (!user_accountID_) return std::make_pair(false, "user account is null.");;
-		for (auto & user : users)  //check if there same user
-		{
-			if (user.getAccountID(sfUser) == user_accountID_)
+			auto& users = table.getFieldArray(sfUsers);
+			assert(users.size() > 0);
+			bool bConfidential = users[0].isFieldPresent(sfToken);
+			
+			if (bConfidential)
 			{
-				auto selectFlags = getFlagFromOptype(R_GET);
-				auto userFlags = user.getFieldU32(sfFlags);
-				if ((userFlags & selectFlags) == 0)
+				confidential_ = true;
+				if (!user_accountID_) return std::make_pair(false, "user account is null.");;
+				for (auto & user : users)  //check if there same user
 				{
-					return std::make_pair(false, "no authority.");
-				}
-				else
-				{
-					if (user.isFieldPresent(sfToken))
+					if (user.getAccountID(sfUser) == user_accountID_)
 					{
-						auto token = user.getFieldVL(sfToken);
-						//passBlob_ = RippleAddress::decryptPassword(token, *user_secret_);
-						passBlob_ = ripple::decrypt(token, *user_secret_);
-						if (passBlob_.size() > 0)  return std::make_pair(true, "");
-						else                      return std::make_pair(false, "cann't get password for this table.");
-					}
-					else
-					{
-						return std::make_pair(false, "table error");
+						auto selectFlags = getFlagFromOptype(R_GET);
+						auto userFlags = user.getFieldU32(sfFlags);
+						if ((userFlags & selectFlags) == 0)
+						{
+							return std::make_pair(false, "no authority.");
+						}
+						else
+						{
+							if (user.isFieldPresent(sfToken))
+							{
+								auto token = user.getFieldVL(sfToken);
+								//passBlob_ = RippleAddress::decryptPassword(token, *user_secret_);
+                                passBlob_ = ripple::decrypt(token, *user_secret_);
+								if(passBlob_.size() > 0)  return std::make_pair(true, "");
+								else                      return std::make_pair(false, "cann't get password for this table.");
+							}
+							else
+							{
+								return std::make_pair(false, "table error");
+							}
+						}
 					}
 				}
 			}
-		}
+			else
+			{
+				return std::make_pair(true, "");
+			}
+			
+			bGetTable = true;
+			break;
+		}			
 	}
-	else
+	if (!bGetTable)
 	{
-		return std::make_pair(true, "");
+		return std::make_pair(false, "Can't find the table in the chain.");
 	}
 
 	return std::make_pair(false, "error");
@@ -877,12 +857,37 @@ bool TableSyncItem::DoUpdateSyncDB(const std::string &Owner, const std::string &
 
 std::string TableSyncItem::getOperationRule(const STTx& tx)
 {
-	if (pTableEntry_ != nullptr)
+	std::string rule;
+
+	auto opType = tx.getFieldU16(sfOpType);
+	if (!isSqlStatementOpType((TableOpType)opType))
+		return rule;
+
+	auto ledger = app_.getLedgerMaster().getValidatedLedger();
+	if (ledger == NULL)
+		return rule;
+
+	auto id = keylet::table(accountID_);
+	auto const tablesle = ledger->read(id);
+	if (tablesle == nullptr)
+		return rule;
+
+	auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+	STEntry* pEntry = NULL;
+	for (auto const &table : aTableEntries)
 	{
-		auto opType = tx.getFieldU16(sfOpType);
-		return pTableEntry_->getOperationRule((TableOpType)opType);
+		bool bRightName = false;
+		if (eSyncTargetType_ == SyncTarget_db) 
+			bRightName = to_string(table.getFieldH160(sfNameInDB)) == sTableNameInDB_;
+		else                                   
+			bRightName = strCopy(table.getFieldVL(sfTableName)) == sTableName_;;
+
+		if (bRightName && table.getFieldU8(sfDeleted) != 1)
+			pEntry = (STEntry*)&table;
 	}
-	return "";
+	if (pEntry != NULL)
+		rule = pEntry->getOperationRule((TableOpType)opType);
+	return rule;
 }
 
 std::pair<bool, std::string> TableSyncItem::DealWithTx(const std::vector<STTx>& vecTxs)
@@ -949,6 +954,7 @@ void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 	std::string pressRealName;
 	if (tx.isFieldPresent(sfFlags))
 	{
+		auto op_type = tx.getFieldU16(sfOpType);
 		auto tables = tx.getFieldArray(sfTables);
 		std::string table_name = strCopy(tables[0].getFieldVL(sfTableName));
 
