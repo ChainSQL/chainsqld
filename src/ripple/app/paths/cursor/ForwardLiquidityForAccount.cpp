@@ -265,6 +265,7 @@ TER PathCursor::forwardLiquidityForAccount () const
 
             STAmount saProvide = node().saFwdRedeem + node().saFwdIssue;
 
+			auto tmp = previousNode().saFwdIssue;
             // Adjust prv --> cur balance : take all inbound
             resultCode = saProvide
                 ? rippleCredit(view(),

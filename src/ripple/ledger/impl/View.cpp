@@ -448,6 +448,30 @@ transferRate (ReadView const& view,
     return parityRate;
 }
 
+std::uint32_t
+transferFeeMin(ReadView const& view,
+	AccountID const& issuer)
+{
+	auto const sle = view.read(keylet::account(issuer));
+
+	if (sle && sle->isFieldPresent(sfTransferFeeMin))
+		return sle->getFieldU32(sfTransferFeeMax);
+
+	return 0;
+}
+
+std::uint32_t
+transferFeeMax(ReadView const& view,
+	AccountID const& issuer)
+{
+	auto const sle = view.read(keylet::account(issuer));
+
+	if (sle && sle->isFieldPresent(sfTransferRate))
+		return sle->getFieldU32(sfTransferRate);
+
+	return uint32_t(-1);
+}
+
 bool
 areCompatible (ReadView const& validLedger, ReadView const& testLedger,
     beast::Journal::Stream& s, const char* reason)

@@ -135,6 +135,8 @@ SF_U32 const sfSettleDelay         = make::one<SF_U32::type>(&sfSettleDelay,    
 SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,           STI_UINT32, 50, "TxnLgrSeq");
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
+SF_U32 const sfTransferFeeMin	   = make::one<SF_U32::type>(&sfTransferFeeMin,		 STI_UINT32, 53, "TransferFeeMin");
+SF_U32 const sfTransferFeeMax	   = make::one<SF_U32::type>(&sfTransferFeeMax,		 STI_UINT32, 54, "TransferFeeMax");
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
 SF_U64 const sfIndexPrevious = make::one<SF_U64::type>(&sfIndexPrevious, STI_UINT64, 2, "IndexPrevious");

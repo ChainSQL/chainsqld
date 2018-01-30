@@ -353,6 +353,8 @@ extern SF_U32 const sfParentCloseTime;
 extern SF_U32 const sfSigningTime;
 extern SF_U32 const sfExpiration;
 extern SF_U32 const sfTransferRate;
+extern SF_U32 const sfTransferFeeMin;
+extern SF_U32 const sfTransferFeeMax;
 extern SF_U32 const sfWalletSize;
 extern SF_U32 const sfOwnerCount;
 extern SF_U32 const sfDestinationTag;
