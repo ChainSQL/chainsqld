@@ -215,8 +215,6 @@ SF_Blob const sfCreateCode      = make::one<SF_Blob::type>(&sfCreateCode,    STI
 SF_Blob const sfMemoType        = make::one<SF_Blob::type>(&sfMemoType,      STI_VL, 12, "MemoType");
 SF_Blob const sfMemoData        = make::one<SF_Blob::type>(&sfMemoData,      STI_VL, 13, "MemoData");
 SF_Blob const sfMemoFormat		= make::one<SF_Blob::type>(&sfMemoFormat,	 STI_VL, 14, "MemoFormat");
-SF_Blob const sfTransferFeeMin	= make::one<SF_Blob::type>(&sfTransferFeeMin, STI_VL, 15, "TransferFeeMin");
-SF_Blob const sfTransferFeeMax	= make::one<SF_Blob::type>(&sfTransferFeeMax, STI_VL, 16, "TransferFeeMax");
 
 // variable length (uncommon)
 SF_Blob const sfFulfillment     = make::one<SF_Blob::type>(&sfFulfillment,     STI_VL, 16, "Fulfillment");
@@ -233,7 +231,9 @@ SF_Blob const sfInsertRule		= make::one<SF_Blob::type>(&sfInsertRule,	   STI_VL,
 SF_Blob const sfUpdateRule		= make::one<SF_Blob::type>(&sfUpdateRule,	   STI_VL, 58, "UpdateRule");
 SF_Blob const sfDeleteRule		= make::one<SF_Blob::type>(&sfDeleteRule,      STI_VL, 59, "DeleteRule");
 SF_Blob const sfGetRule			= make::one<SF_Blob::type>(&sfGetRule,		   STI_VL, 60, "GetRule");
-SF_Blob const sfInsertCountMap	= make::one<SF_Blob::type>(&sfInsertCountMap,  STI_VL, 61, "InsertCountMap");
+SF_Blob const sfInsertCountMap  = make::one<SF_Blob::type>(&sfInsertCountMap,  STI_VL, 61, "InsertCountMap");
+SF_Blob const sfTransferFeeMin  = make::one<SF_Blob::type>(&sfTransferFeeMin,  STI_VL, 62, "TransferFeeMin");
+SF_Blob const sfTransferFeeMax  = make::one<SF_Blob::type>(&sfTransferFeeMax,  STI_VL, 63, "TransferFeeMax");
 // account
 SF_Account const sfAccount         = make::one<SF_Account::type>(&sfAccount,         STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner           = make::one<SF_Account::type>(&sfOwner,           STI_ACCOUNT, 2, "Owner");
