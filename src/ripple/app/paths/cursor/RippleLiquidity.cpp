@@ -168,6 +168,15 @@ void rippleLiquidity (
 
             STAmount saCurIn = divideRound (numerator, qualityIn, true);
 
+			//adjust fee
+			STAmount fee = saCurIn - saCur;
+			if (saFeeMin != STAmount(zero) && saFeeMax != STAmount(zero))
+			{
+				STAmount feeAct = std::min(saFeeMax, std::max(fee, saFeeMin));
+				if (fee != feeAct)
+					saCurIn = saCur + feeAct;
+			}
+
             JLOG (rippleCalc.j_.trace())
                 << "rippleLiquidity:"
                 << " bPrvUnlimited=" << bPrvUnlimited
@@ -176,17 +185,6 @@ void rippleLiquidity (
 
             if (bPrvUnlimited || saCurIn <= saPrv)
 			{
-				//adjust fee
-				STAmount fee = saCurIn - saCur;
-
-				if (saFeeMin != STAmount(zero) && saFeeMax != STAmount(zero))
-				{
-					STAmount feeAct = std::min(saFeeMax, std::max(fee, saFeeMin));
-					if (fee != feeAct)
-						saCurIn = saCur + feeAct;
-				}
-
-
                 // All of current. Some amount of previous.
                 saCurAct += saCur;
                 saPrvAct += saCurIn;
@@ -212,15 +210,6 @@ void rippleLiquidity (
 
                 JLOG (rippleCalc.j_.trace())
                     << "rippleLiquidity:4: saCurReq=" << saCurReq;
-
-				//adjust fee
-				STAmount fee = saCur - saCurOut;
-				if (saFeeMin != STAmount(zero) && saFeeMax != STAmount(zero))
-				{
-					STAmount feeAct = std::min(saFeeMax, std::max(fee, saFeeMin));
-					if (fee != feeAct)
-						saCurOut = saCur - feeAct;
-				}
 
                 saCurAct += saCurOut;
                 saPrvAct = saPrvReq;

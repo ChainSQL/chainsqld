@@ -469,7 +469,7 @@ transferFeeMax(ReadView const& view,
 	if (sle && sle->isFieldPresent(sfTransferFeeMax))
 		return sle->getFieldAmount(sfTransferFeeMax);
 
-	return zero;
+	return STAmount(zero);
 }
 
 bool
