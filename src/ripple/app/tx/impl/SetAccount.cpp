@@ -133,15 +133,13 @@ SetAccount::preflight (PreflightContext const& ctx)
 	//TransferFee
 	if (tx.isFieldPresent(sfTransferFeeMin) && tx.isFieldPresent(sfTransferFeeMax))
 	{
-		std::uint32_t uFeeMin = tx.getFieldU32(sfTransferFeeMin);
-		std::uint32_t uFeeMax = tx.getFieldU32(sfTransferFeeMax);
-		if (uFeeMin > uFeeMax)
+		STAmount feeMin = tx.getFieldAmount(sfTransferFeeMin);
+		STAmount feeMax = tx.getFieldAmount(sfTransferFeeMax);
+		if (feeMin > feeMax)
 		{
 			JLOG(j.trace()) << "Malformed transaction: TransferFeeMin can not be greater than TransferFeeMax.";
 			return temBAD_TRANSFERFEE;
-		}
-
-		
+		}		
 	}
 	else if (tx.isFieldPresent(sfTransferFeeMin) || tx.isFieldPresent(sfTransferFeeMax))
 	{
@@ -498,13 +496,13 @@ SetAccount::doApply ()
 	//
 	if (ctx_.tx.isFieldPresent(sfTransferFeeMin) && ctx_.tx.isFieldPresent(sfTransferFeeMax))
 	{
-		std::uint32_t uFeeMin = ctx_.tx.getFieldU32(sfTransferFeeMin);
-		std::uint32_t uFeeMax = ctx_.tx.getFieldU32(sfTransferFeeMax);
+		STAmount feeMin = ctx_.tx.getFieldAmount(sfTransferFeeMin);
+		STAmount feeMax = ctx_.tx.getFieldAmount(sfTransferFeeMax);
 		
 		// if you want to unset transferfee-min just set it to 0
 		// if you want to unset transferfee-max just set it to a large value
-		sle->setFieldU32(sfTransferFeeMin, uFeeMin);
-		sle->setFieldU32(sfTransferFeeMax, uFeeMax);
+		sle->setFieldAmount(sfTransferFeeMin, feeMin);
+		sle->setFieldAmount(sfTransferFeeMax, feeMax);
 		JLOG(j_.trace()) << "set transferfee min and transferfee max.";
 	}
 

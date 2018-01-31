@@ -353,8 +353,6 @@ extern SF_U32 const sfParentCloseTime;
 extern SF_U32 const sfSigningTime;
 extern SF_U32 const sfExpiration;
 extern SF_U32 const sfTransferRate;
-extern SF_U32 const sfTransferFeeMin;
-extern SF_U32 const sfTransferFeeMax;
 extern SF_U32 const sfWalletSize;
 extern SF_U32 const sfOwnerCount;
 extern SF_U32 const sfDestinationTag;
@@ -453,6 +451,10 @@ extern SF_Amount const sfDeliverMin;
 extern SF_Amount const sfMinimumOffer;
 extern SF_Amount const sfRippleEscrow;
 extern SF_Amount const sfDeliveredAmount;
+
+
+extern SF_Amount const sfTransferFeeMin;
+extern SF_Amount const sfTransferFeeMax;
 
 // variable length (common)
 extern SF_Blob const sfPublicKey;

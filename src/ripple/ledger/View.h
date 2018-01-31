@@ -105,11 +105,11 @@ Rate
 transferRate (ReadView const& view,
     AccountID const& issuer);
 
-std::uint32_t
+STAmount
 transferFeeMin(ReadView const& view,
 	AccountID const& issuer);
 
-std::uint32_t
+STAmount
 transferFeeMax(ReadView const& view,
 	AccountID const& issuer);
 

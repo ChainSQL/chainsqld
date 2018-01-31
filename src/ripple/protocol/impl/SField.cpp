@@ -135,8 +135,7 @@ SF_U32 const sfSettleDelay         = make::one<SF_U32::type>(&sfSettleDelay,    
 SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,           STI_UINT32, 50, "TxnLgrSeq");
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
-SF_U32 const sfTransferFeeMin	   = make::one<SF_U32::type>(&sfTransferFeeMin,		 STI_UINT32, 53, "TransferFeeMin");
-SF_U32 const sfTransferFeeMax	   = make::one<SF_U32::type>(&sfTransferFeeMax,		 STI_UINT32, 54, "TransferFeeMax");
+
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
 SF_U64 const sfIndexPrevious = make::one<SF_U64::type>(&sfIndexPrevious, STI_UINT64, 2, "IndexPrevious");
@@ -202,6 +201,9 @@ SF_Amount const sfMinimumOffer    = make::one<SF_Amount::type>(&sfMinimumOffer, 
 SF_Amount const sfRippleEscrow    = make::one<SF_Amount::type>(&sfRippleEscrow,    STI_AMOUNT, 17, "RippleEscrow");
 SF_Amount const sfDeliveredAmount = make::one<SF_Amount::type>(&sfDeliveredAmount, STI_AMOUNT, 18, "DeliveredAmount");
 
+SF_Amount const sfTransferFeeMin  = make::one<SF_Amount::type>(&sfTransferFeeMin,	STI_AMOUNT, 25, "TransferFeeMin");
+SF_Amount const sfTransferFeeMax  = make::one<SF_Amount::type>(&sfTransferFeeMax,	STI_AMOUNT, 26, "TransferFeeMax");
+
 // variable length (common)
 SF_Blob const sfPublicKey       = make::one<SF_Blob::type>(&sfPublicKey,     STI_VL,  1, "PublicKey");
 SF_Blob const sfSigningPubKey   = make::one<SF_Blob::type>(&sfSigningPubKey, STI_VL,  3, "SigningPubKey");
@@ -215,7 +217,7 @@ SF_Blob const sfExpireCode      = make::one<SF_Blob::type>(&sfExpireCode,    STI
 SF_Blob const sfCreateCode      = make::one<SF_Blob::type>(&sfCreateCode,    STI_VL, 11, "CreateCode");
 SF_Blob const sfMemoType        = make::one<SF_Blob::type>(&sfMemoType,      STI_VL, 12, "MemoType");
 SF_Blob const sfMemoData        = make::one<SF_Blob::type>(&sfMemoData,      STI_VL, 13, "MemoData");
-SF_Blob const sfMemoFormat      = make::one<SF_Blob::type>(&sfMemoFormat,    STI_VL, 14, "MemoFormat");
+SF_Blob const sfMemoFormat		= make::one<SF_Blob::type>(&sfMemoFormat,	 STI_VL, 14, "MemoFormat");
 
 // variable length (uncommon)
 SF_Blob const sfFulfillment     = make::one<SF_Blob::type>(&sfFulfillment,     STI_VL, 16, "Fulfillment");

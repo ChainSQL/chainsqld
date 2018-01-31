@@ -448,28 +448,28 @@ transferRate (ReadView const& view,
     return parityRate;
 }
 
-std::uint32_t
+STAmount
 transferFeeMin(ReadView const& view,
 	AccountID const& issuer)
 {
 	auto const sle = view.read(keylet::account(issuer));
 
 	if (sle && sle->isFieldPresent(sfTransferFeeMin))
-		return sle->getFieldU32(sfTransferFeeMax);
+		return sle->getFieldAmount(sfTransferFeeMin);
 
-	return 0;
+	return zero;
 }
 
-std::uint32_t
+STAmount
 transferFeeMax(ReadView const& view,
 	AccountID const& issuer)
 {
 	auto const sle = view.read(keylet::account(issuer));
 
-	if (sle && sle->isFieldPresent(sfTransferRate))
-		return sle->getFieldU32(sfTransferRate);
+	if (sle && sle->isFieldPresent(sfTransferFeeMax))
+		return sle->getFieldAmount(sfTransferFeeMax);
 
-	return uint32_t(-1);
+	return zero;
 }
 
 bool
