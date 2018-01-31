@@ -211,6 +211,15 @@ void rippleLiquidity (
                 JLOG (rippleCalc.j_.trace())
                     << "rippleLiquidity:4: saCurReq=" << saCurReq;
 
+				//adjust fee
+				STAmount fee = saCur - saCurOut;
+				STAmount feeMin = amountFromString(saCur.issue(), saFeeMin);
+				STAmount feeMax = amountFromString(saCur.issue(), saFeeMax);
+				STAmount feeAct = std::min(feeMax, std::max(fee, feeMin));
+				if (fee != feeAct)
+					saCurOut = saCur - feeAct;
+
+
                 saCurAct += saCurOut;
                 saPrvAct = saPrvReq;
             }
