@@ -27,6 +27,7 @@
 #include <ripple/protocol/Quality.h>
 #include <ripple/protocol/st.h>
 #include <ripple/ledger/View.h>
+#include <ripple/basics/StringUtilities.h>
 
 namespace ripple {
 
@@ -133,9 +134,10 @@ SetAccount::preflight (PreflightContext const& ctx)
 	//TransferFee
 	if (tx.isFieldPresent(sfTransferFeeMin) && tx.isFieldPresent(sfTransferFeeMax))
 	{
-		STAmount feeMin = tx.getFieldAmount(sfTransferFeeMin);
-		STAmount feeMax = tx.getFieldAmount(sfTransferFeeMax);
-		if (feeMin > feeMax)
+		std::string feeMin = strCopy(tx.getFieldVL(sfTransferFeeMin));
+		std::string feeMax = strCopy(tx.getFieldVL(sfTransferFeeMax));
+
+		if (atof(feeMin.c_str()) > atof(feeMax.c_str()))
 		{
 			JLOG(j.trace()) << "Malformed transaction: TransferFeeMin can not be greater than TransferFeeMax.";
 			return temBAD_TRANSFERFEE;
@@ -495,14 +497,11 @@ SetAccount::doApply ()
 	// TransferFee
 	//
 	if (ctx_.tx.isFieldPresent(sfTransferFeeMin) && ctx_.tx.isFieldPresent(sfTransferFeeMax))
-	{
-		STAmount feeMin = ctx_.tx.getFieldAmount(sfTransferFeeMin);
-		STAmount feeMax = ctx_.tx.getFieldAmount(sfTransferFeeMax);
-		
+	{		
 		// if you want to unset transferfee-min just set it to 0
 		// if you want to unset transferfee-max just set it to a large value
-		sle->setFieldAmount(sfTransferFeeMin, feeMin);
-		sle->setFieldAmount(sfTransferFeeMax, feeMax);
+		sle->setFieldVL(sfTransferFeeMin, ctx_.tx.getFieldVL(sfTransferFeeMin));
+		sle->setFieldVL(sfTransferFeeMax, ctx_.tx.getFieldVL(sfTransferFeeMax));
 		JLOG(j_.trace()) << "set transferfee min and transferfee max.";
 	}
 

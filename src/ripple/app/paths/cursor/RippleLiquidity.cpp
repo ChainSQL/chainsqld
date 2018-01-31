@@ -61,8 +61,8 @@ void rippleLiquidity(
 		rippleCalc,
 		qualityIn,
 		qualityOut,
-		amountFromString(saCurReq.issue(),"0"),
-		amountFromString(saCurReq.issue(), "1000000000000"),
+		"0",
+		"1000000000000",
 		saPrvReq,
 		saCurReq,
 		saPrvAct,
@@ -73,8 +73,8 @@ void rippleLiquidity (
     RippleCalc& rippleCalc,
     Rate const& qualityIn,
 	Rate const& qualityOut,
-	STAmount const& saFeeMin,
-	STAmount const& saFeeMax,
+	std::string const& saFeeMin,
+	std::string const& saFeeMax,
     STAmount const& saPrvReq,   // --> in limit including fees, <0 = unlimited
     STAmount const& saCurReq,   // --> out limit
     STAmount& saPrvAct,  // <-> in limit including achieved so far: <-- <= -->
@@ -170,12 +170,11 @@ void rippleLiquidity (
 
 			//adjust fee
 			STAmount fee = saCurIn - saCur;
-			if (saFeeMin != STAmount(zero) && saFeeMax != STAmount(zero))
-			{
-				STAmount feeAct = std::min(saFeeMax, std::max(fee, saFeeMin));
-				if (fee != feeAct)
-					saCurIn = saCur + feeAct;
-			}
+			STAmount feeMin = amountFromString(saCur.issue(), saFeeMin);
+			STAmount feeMax = amountFromString(saCur.issue(), saFeeMax);
+			STAmount feeAct = std::min(feeMax, std::max(fee, feeMin));
+			if (fee != feeAct)
+				saCurIn = saCur + feeAct;
 
             JLOG (rippleCalc.j_.trace())
                 << "rippleLiquidity:"
