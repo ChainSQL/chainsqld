@@ -457,7 +457,7 @@ transferFeeMin(ReadView const& view,
 	if (sle && sle->isFieldPresent(sfTransferFeeMin))
 		return sle->getFieldAmount(sfTransferFeeMin);
 
-	return zero;
+	return STAmount(zero);
 }
 
 STAmount

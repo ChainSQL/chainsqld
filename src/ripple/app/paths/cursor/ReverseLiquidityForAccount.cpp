@@ -585,7 +585,9 @@ TER PathCursor::reverseLiquidityForAccount () const
         rippleLiquidity (
             rippleCalc_,
             parityRate,
-            transferRate (view(), node().account_),
+			transferRate(view(), node().account_),
+			transferFeeMin(view(), node().account_),
+			transferFeeMax(view(), node().account_),
             saPrvDeliverReq,
             node().saRevDeliver,
             previousNode().saRevDeliver,

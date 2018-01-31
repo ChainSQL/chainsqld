@@ -179,7 +179,7 @@ void rippleLiquidity (
 				//adjust fee
 				STAmount fee = saCurIn - saCur;
 
-				if (saFeeMin != zero && saFeeMax != zero)
+				if (saFeeMin != STAmount(zero) && saFeeMax != STAmount(zero))
 				{
 					STAmount feeAct = std::min(saFeeMax, std::max(fee, saFeeMin));
 					if (fee != feeAct)
@@ -215,7 +215,7 @@ void rippleLiquidity (
 
 				//adjust fee
 				STAmount fee = saCur - saCurOut;
-				if (saFeeMin != zero && saFeeMax != zero)
+				if (saFeeMin != STAmount(zero) && saFeeMax != STAmount(zero))
 				{
 					STAmount feeAct = std::min(saFeeMax, std::max(fee, saFeeMin));
 					if (fee != feeAct)
