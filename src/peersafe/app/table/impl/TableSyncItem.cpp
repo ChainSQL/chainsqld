@@ -954,7 +954,6 @@ void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 	std::string pressRealName;
 	if (tx.isFieldPresent(sfFlags))
 	{
-		auto op_type = tx.getFieldU16(sfOpType);
 		auto tables = tx.getFieldArray(sfTables);
 		std::string table_name = strCopy(tables[0].getFieldVL(sfTableName));
 
