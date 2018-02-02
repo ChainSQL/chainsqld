@@ -1495,7 +1495,9 @@ ApplicationImp::getLastFullLedger()
 			uint256 hash;
 
 			int index = 1 + count++;
-			std::string loadSql = "order by LedgerSeq desc limit " + index + std::string(",1");
+			std::stringstream ss;
+			ss << "order by LedgerSeq desc limit " << index << ",1";
+			std::string loadSql = ss.str();
 			std::tie(ledger, seq, hash) = loadLedgerHelper(loadSql, *this);
 
 			if (!ledger)
