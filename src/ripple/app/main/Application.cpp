@@ -1485,46 +1485,49 @@ ApplicationImp::getLastFullLedger()
 {
     auto j = journal ("Ledger");
 
-    try
-    {
-        std::shared_ptr<Ledger> ledger;
-        std::uint32_t seq;
-        uint256 hash;
+	int count = 0;
+	while (count < 3)
+	{
+		try
+		{
+			std::shared_ptr<Ledger> ledger;
+			std::uint32_t seq;
+			uint256 hash;
 
-        std::tie (ledger, seq, hash) =
-            loadLedgerHelper (
-                "order by LedgerSeq desc limit 1", *this);
+			int index = 1 + count++;
+			std::string loadSql = "order by LedgerSeq desc limit " + index + std::string(",1");
+			std::tie(ledger, seq, hash) = loadLedgerHelper(loadSql, *this);
 
-        if (!ledger)
-            return ledger;
+			if (!ledger)
+				continue;
 
-        ledger->setImmutable(*config_);
+			ledger->setImmutable(*config_);
 
-        if (getLedgerMaster ().haveLedger (seq))
-            ledger->setValidated ();
+			if (getLedgerMaster().haveLedger(seq))
+				ledger->setValidated();
 
-        if (ledger->info().hash == hash)
-        {
-            JLOG (j.trace()) << "Loaded ledger: " << hash;
-            return ledger;
-        }
+			if (ledger->info().hash == hash)
+			{
+				JLOG(j.trace()) << "Loaded ledger: " << hash;
+				return ledger;
+			}
 
-        if (auto stream = j.error())
-        {
-            stream  << "Failed on ledger";
-            Json::Value p;
-            addJson (p, {*ledger, LedgerFill::full});
-            stream << p;
-        }
-
-        return {};
-    }
-    catch (SHAMapMissingNode& sn)
-    {
-        JLOG (j.warn()) <<
-            "Ledger with missing nodes in database: " << sn;
-        return {};
-    }
+			if (auto stream = j.error())
+			{
+				stream << "Failed on ledger";
+				Json::Value p;
+				addJson(p, { *ledger, LedgerFill::full });
+				stream << p;
+			}
+		}
+		catch (SHAMapMissingNode& sn)
+		{
+			JLOG(j.warn()) <<
+				"Ledger with missing nodes in database: " << sn;
+			continue;;
+		}
+	}
+	return{};
 }
 
 std::shared_ptr<Ledger>
