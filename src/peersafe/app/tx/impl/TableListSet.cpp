@@ -35,6 +35,7 @@
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/tx/TableListSet.h>
 #include <peersafe/app/storage/TableStorage.h>
+#include <peersafe/app/tx/impl/Tuning.h>
 
 namespace ripple {
 
@@ -292,6 +293,10 @@ namespace ripple {
                 {
                 case T_CREATE:
                 {
+
+					if (tablentries.size() >= ACCOUNT_OWN_TABLE_COUNT)
+						return tefTABLE_COUNTFULL;
+
                     if (pEntry != NULL)                ret = tefTABLE_EXISTANDNOTDEL;
                     else                               ret = tesSUCCESS;
 
@@ -456,7 +461,7 @@ namespace ripple {
                         return temMALFORMED;
                     }
 
-                    /*
+                    
                     bool isSameUser = false;
                     for (auto & user : users)  //check if there same user
                     {
@@ -464,17 +469,20 @@ namespace ripple {
                         if (userID == addUserID)
                         {
                             isSameUser = true;
-                            auto userFlags = user.getFieldU32(sfFlags);
+							break;
+                            //auto userFlags = user.getFieldU32(sfFlags);
 
 
-                            if ((!(userFlags & uCancel)) && !(~userFlags & uAdd))
-                            {
-                                if (uCancel)		return tefBAD_AUTH_NO;
-                                if (uAdd)		    return tefBAD_AUTH_EXIST;
-                            }
+                            //if ((!(userFlags & uCancel)) && !(~userFlags & uAdd))
+                            //{
+                            //    if (uCancel)		return tefBAD_AUTH_NO;
+                            //    if (uAdd)		    return tefBAD_AUTH_EXIST;
+                            //}
                         }
                     }
-                    */
+                    
+					if (!isSameUser && users.size() >= TABLE_GRANT_COUNT)
+						return tefTABLE_GRANTFULL;
                     //if (!isSameUser)  //mean that there no same user
                     //{
                     //    if (uCancel != lsfNone && uAdd == lsfNone)
@@ -571,7 +579,7 @@ namespace ripple {
         else
         {
             auto &aTableEntries = tablesle->peekFieldArray(sfTableEntries);
-
+			
             Blob sTxTableName;
 
             auto const & sTxTables = tx.getFieldArray(sfTables);
