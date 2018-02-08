@@ -92,6 +92,8 @@ enum TER
     temBAD_QUORUM,
     temBAD_WEIGHT,
     temBAD_TICK_SIZE,
+	temBAD_TRANSFERFEE_BOTH,
+	temBAD_TRANSFERFEE,
 
 	//for table set and sql statement
 	temBAD_OWNER,
@@ -112,6 +114,7 @@ enum TER
 	temBAD_UPDATERULE,
 	temBAD_RULEANDTOKEN,
 	temBAD_INSERTLIMIT,
+
     // An intermediate result used internally, should never be returned.
     temUNCERTAIN,
     temUNKNOWN,

@@ -483,6 +483,8 @@ extern SF_Blob const sfInsertCountMap;
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;
 extern SF_Blob const sfMasterSignature;
+extern SF_Blob const sfTransferFeeMin;
+extern SF_Blob const sfTransferFeeMax;
 
 // account
 extern SF_Account const sfAccount;

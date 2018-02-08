@@ -34,7 +34,7 @@
 
 namespace ripple {
 
-#define LAST_LEDGERSEQ_PASS 5;
+#define LAST_LEDGERSEQ_PASS 8;
 
 Json::Value doSubscribe (RPC::Context& context)
 {

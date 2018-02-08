@@ -135,6 +135,7 @@ SF_U32 const sfSettleDelay         = make::one<SF_U32::type>(&sfSettleDelay,    
 SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,           STI_UINT32, 50, "TxnLgrSeq");
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
+
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
 SF_U64 const sfIndexPrevious = make::one<SF_U64::type>(&sfIndexPrevious, STI_UINT64, 2, "IndexPrevious");
@@ -213,7 +214,7 @@ SF_Blob const sfExpireCode      = make::one<SF_Blob::type>(&sfExpireCode,    STI
 SF_Blob const sfCreateCode      = make::one<SF_Blob::type>(&sfCreateCode,    STI_VL, 11, "CreateCode");
 SF_Blob const sfMemoType        = make::one<SF_Blob::type>(&sfMemoType,      STI_VL, 12, "MemoType");
 SF_Blob const sfMemoData        = make::one<SF_Blob::type>(&sfMemoData,      STI_VL, 13, "MemoData");
-SF_Blob const sfMemoFormat      = make::one<SF_Blob::type>(&sfMemoFormat,    STI_VL, 14, "MemoFormat");
+SF_Blob const sfMemoFormat		= make::one<SF_Blob::type>(&sfMemoFormat,	 STI_VL, 14, "MemoFormat");
 
 // variable length (uncommon)
 SF_Blob const sfFulfillment     = make::one<SF_Blob::type>(&sfFulfillment,     STI_VL, 16, "Fulfillment");
@@ -230,7 +231,9 @@ SF_Blob const sfInsertRule		= make::one<SF_Blob::type>(&sfInsertRule,	   STI_VL,
 SF_Blob const sfUpdateRule		= make::one<SF_Blob::type>(&sfUpdateRule,	   STI_VL, 58, "UpdateRule");
 SF_Blob const sfDeleteRule		= make::one<SF_Blob::type>(&sfDeleteRule,      STI_VL, 59, "DeleteRule");
 SF_Blob const sfGetRule			= make::one<SF_Blob::type>(&sfGetRule,		   STI_VL, 60, "GetRule");
-SF_Blob const sfInsertCountMap	= make::one<SF_Blob::type>(&sfInsertCountMap,  STI_VL, 61, "InsertCountMap");
+SF_Blob const sfInsertCountMap  = make::one<SF_Blob::type>(&sfInsertCountMap,  STI_VL, 61, "InsertCountMap");
+SF_Blob const sfTransferFeeMin  = make::one<SF_Blob::type>(&sfTransferFeeMin,  STI_VL, 62, "TransferFeeMin");
+SF_Blob const sfTransferFeeMax  = make::one<SF_Blob::type>(&sfTransferFeeMax,  STI_VL, 63, "TransferFeeMax");
 // account
 SF_Account const sfAccount         = make::one<SF_Account::type>(&sfAccount,         STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner           = make::one<SF_Account::type>(&sfOwner,           STI_ACCOUNT, 2, "Owner");

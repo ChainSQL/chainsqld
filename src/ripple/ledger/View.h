@@ -105,6 +105,14 @@ Rate
 transferRate (ReadView const& view,
     AccountID const& issuer);
 
+std::string
+transferFeeMin(ReadView const& view,
+	AccountID const& issuer);
+
+std::string
+transferFeeMax(ReadView const& view,
+	AccountID const& issuer);
+
 /** Returns `true` if the directory is empty
     @param key The key of the directory
 */

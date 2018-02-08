@@ -1178,6 +1178,7 @@ bool ApplicationImp::setup()
 
     Pathfinder::initPathTable();
 
+
 	// VFALCO NOTE Unfortunately, in stand-alone mode some code still
 	//             foolishly calls overlay(). When this is fixed we can
 	//             move the instantiation inside a conditional:

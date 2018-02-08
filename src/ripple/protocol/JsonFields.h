@@ -48,6 +48,8 @@ JSS ( LimitAmount );                // field.
 JSS ( OfferSequence );              // field.
 JSS ( Paths );                      // in/out: TransactionSign
 JSS ( TransferRate );               // in: TransferRate
+JSS (TransferFeeMin);
+JSS (TransferFeeMax);
 JSS ( historical_perminute );       // historical_perminute
 JSS ( SLE_hit_rate );               // out: GetCounts
 JSS ( SettleDelay );                // in: TransactionSign
