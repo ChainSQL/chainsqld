@@ -45,10 +45,6 @@ public:
     }
 
     static
-    ZXCAmount
-    calculateMaxSpend(STTx const& tx);
-
-    static
     TER
     preflightHandler(const STTx & tx, Application& app);
     static
