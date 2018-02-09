@@ -1141,6 +1141,11 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                 {
                     // we check before addingto the batch
                     ApplyFlags flags = tapNO_CHECK_SIGN;
+                    if (e.local)
+                        flags = flags | tapFromClient;
+                    else
+                        flags = flags | tapByRelay;
+
                     if (e.admin)
                         flags = flags | tapUNLIMITED;
 

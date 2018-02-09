@@ -45,8 +45,11 @@ enum ApplyFlags
     // Transaction came from a privileged source
 	tapUNLIMITED = 0x400,    
 	
-	// source is client
+	// get tx from client
 	tapFromClient = 0x8000,
+
+    // get tx by relay
+    tapByRelay = 0x4000,
 };
 
 inline
