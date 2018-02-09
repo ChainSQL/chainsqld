@@ -272,7 +272,7 @@ namespace ripple {
 				{
 					return tefDBNOTCONFIGURED;
 				}
-                if (ctx_.view().flags() & tapFromClient) //and firststorage is on
+                if (ctx_.view().flags() & tapFromClient || ctx_.view().flags() & tapByRelay)
                 {
                     ret = transactionImpl(ctx_,ctx_.app.getMasterTransaction().getClientTxStoreDBConn(), ctx_.app.getMasterTransaction().getClientTxStore(), ctx_.journal, ctx_.tx); //handle transaction,need DBTrans
 					if (ret.first != tesSUCCESS)
