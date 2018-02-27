@@ -67,7 +67,8 @@ transResults()
         { tecNO_PERMISSION,          { "tecNO_PERMISSION",         "No permission to perform requested operation."                                 } },
         { tecNO_ENTRY,               { "tecNO_ENTRY",              "No matching entry found."                                                      } },
         { tecINSUFFICIENT_RESERVE,   { "tecINSUFFICIENT_RESERVE",  "Insufficient reserve to complete requested operation."                         } },
-		{ tefINSUFFICIENT_RESERVE,	 { "tefINSUFFICIENT_RESERVE",  "Insufficient reserve to complete requested operation." } },
+		{ tefTABLE_GRANTFULL,		 { "tefTABLE_GRANTFULL",	   "A table can only grant 500 uses."												} },
+		{ tefTABLE_COUNTFULL,		 { "tefTABLE_COUNTFULL",	   "One account can own at most 100 tables,now you are creating the 101 one."		} },
         { tecNEED_MASTER_KEY,        { "tecNEED_MASTER_KEY",       "The operation requires the use of the Master Key."                             } },
 		{ tecDST_TAG_NEEDED, { "tecDST_TAG_NEEDED",        "A destination tag is required." } },
 		{ tecINTERNAL,               { "tecINTERNAL",              "An internal error has occurred during processing."                             } },
@@ -180,6 +181,7 @@ transResults()
 		{ tefTABLE_STORAGENORMALERROR,{ "tefTABLE_STORAGENORMALERROR",    "Table storage normal error." } },
 		{ tefTABLE_TXDISPOSEERROR,	 { "tefTABLE_TXDISPOSEERROR",	"Tx Dispose error." } },
 		{ tefTABLE_RULEDISSATISFIED,  { "tefTABLE_RULEDISSATISFIED",	"Operation rule not satisfied."}},
+		{ tefINSUFFICIENT_RESERVE,	 { "tefINSUFFICIENT_RESERVE",  "Insufficient reserve to create a table." } },
 		{ tefDBNOTCONFIGURED,		 { "tefDBNOTCONFIGURED",       "DB is not connected,please checkout 'sync_db'in config file." } },
         { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } },
     };

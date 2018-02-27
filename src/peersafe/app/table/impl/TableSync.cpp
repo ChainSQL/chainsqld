@@ -1108,6 +1108,8 @@ void TableSync::TableSyncThread()
         case TableSyncItem::SYNC_INIT:
         case TableSyncItem::SYNC_DELETED:
         {
+			if (app_.getLedgerMaster().getValidLedgerIndex() == 0)
+				break;
 			auto stBaseInfo = app_.getLedgerMaster().getTableBaseInfo(app_.getLedgerMaster().getValidLedgerIndex(), stItem.accountID, stItem.sTableName);            
             std::string nameInDB = to_string(stBaseInfo.nameInDB);
             
