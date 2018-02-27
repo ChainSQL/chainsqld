@@ -179,6 +179,7 @@ transResults()
 		{ tefTABLE_STORAGENORMALERROR,{ "tefTABLE_STORAGENORMALERROR",    "Table storage normal error." } },
 		{ tefTABLE_TXDISPOSEERROR,	 { "tefTABLE_TXDISPOSEERROR",	"Tx Dispose error." } },
 		{ tefTABLE_RULEDISSATISFIED,  { "tefTABLE_RULEDISSATISFIED",	"Operation rule not satisfied."}},
+		{ tefINSUFFICIENT_RESERVE,	 { "tefINSUFFICIENT_RESERVE",  "Insufficient reserve to create a table." } },
 		{ tefDBNOTCONFIGURED,		 { "tefDBNOTCONFIGURED",       "DB is not connected,please checkout 'sync_db'in config file." } },
         { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } },
     };
