@@ -1571,7 +1571,7 @@
 &emsp;　　　返回值与表的订阅返回类似
 
 ### 8. CommandLine 接口
-说明：Dump、审计功能，表名只支持英文
+> 说明：Dump、审计功能，表名只支持英文
 - **8.1 t_dump 开始dump表**
   - 开始dump一张表，参数1同3.4节的设置，参数2为存储路径<br>
     Request Format:<br>
