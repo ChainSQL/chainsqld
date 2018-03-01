@@ -371,7 +371,7 @@ void TableDumpItem::SetStopInfo(FILE *fileTarget, std::string sMsg)
     sWrite += sPos;
 
     fwrite(sWrite.c_str(), 1, sWrite.size(), fp);
-    fclose(fp);
+    if(fileTarget == NULL)       fclose(fp);
 }
 
 void TableDumpItem::SetErroeInfo2FileEnd(FILE *fileTarget)
