@@ -40,7 +40,7 @@
 #include <ripple/rpc/impl/Tuning.h>
 #include <ripple/rpc/RPCHandler.h>
 #include <ripple/server/SimpleWriter.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <peersafe/basics/characterUtilities.h>
 #include <beast/core/detail/base64.hpp>
 #include <beast/http/fields.hpp>

@@ -67,7 +67,7 @@
 #include <ripple/beast/utility/rngfill.h>
 #include <ripple/basics/make_lock.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <beast/core/detail/base64.hpp>
 #include <boost/asio/steady_timer.hpp>
 
