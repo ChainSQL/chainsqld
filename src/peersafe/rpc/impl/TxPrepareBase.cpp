@@ -29,7 +29,7 @@
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/rpc/impl/TxPrepareBase.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/table/TableSync.h>
 
 namespace ripple {

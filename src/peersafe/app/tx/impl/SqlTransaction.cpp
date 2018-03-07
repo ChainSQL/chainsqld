@@ -272,18 +272,10 @@ namespace ripple {
 				{
 					return tefDBNOTCONFIGURED;
 				}
-                if (ctx_.view().flags() & tapFromClient || ctx_.view().flags() & tapByRelay)
-                {
-                    ret = transactionImpl(ctx_,ctx_.app.getMasterTransaction().getClientTxStoreDBConn(), ctx_.app.getMasterTransaction().getClientTxStore(), ctx_.journal, ctx_.tx); //handle transaction,need DBTrans
-					if (ret.first != tesSUCCESS)
-						return ret.first;
-                }
-                else 
-				{
-                    ret = transactionImpl(ctx_,ctx_.app.getMasterTransaction().getConsensusTxStoreDBConn(), ctx_.app.getMasterTransaction().getConsensusTxStore(), ctx_.journal, ctx_.tx); //handle transaction,need DBTrans
-					if (ret.first != tesSUCCESS)
-						return ret.first;
-                }
+				auto envPair = getTransactionDBEnv(ctx_);
+				ret = transactionImpl(ctx_, *envPair.first, *envPair.second, ctx_.journal, ctx_.tx); //handle transaction,need DBTrans
+				if (ret.first != tesSUCCESS)
+					return ret.first;
             }
         }
         catch (std::exception const& e)

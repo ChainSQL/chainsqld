@@ -34,8 +34,9 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/tx/TableListSet.h>
-#include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/tx/impl/Tuning.h>
+#include <peersafe/app/tx/OperationRule.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 
@@ -748,213 +749,10 @@ namespace ripple {
 
 	std::pair<TER, std::string> TableListSet::dispose(TxStore& txStore, const STTx& tx)
 	{
-		TER tmpRet = dealWithOperationRule(ctx_.view(), tx, ctx_.app);
+		TER tmpRet = OperationRule::dealWithTableListSetRule(ctx_);
 		if (!isTesSuccess(tmpRet))
 			return std::make_pair(tmpRet, "deal with operation-rule error");
 		return ChainSqlTx::dispose(txStore, tx);
-	}
-
-	TER TableListSet::dealWithOperationRule(ApplyView& view, const STTx & tx, Application& app)
-	{
-		if (tx.getFieldU16(sfOpType) != T_CREATE)
-			return tesSUCCESS;
-		if (tx.isFieldPresent(sfOperationRule))
-		{
-			if (tx.isFieldPresent(sfToken))
-				return temBAD_RULEANDTOKEN;
-
-			auto j = app.journal("dealWithOperationRule");
-
-			Json::Value jsonRule;
-			auto sOperationRule = strCopy(tx.getFieldVL(sfOperationRule));
-			if (Json::Reader().parse(sOperationRule, jsonRule))
-			{
-				std::string sRaw = strCopy(tx.getFieldVL(sfRaw));
-				// will not dispose if raw is encrypted
-				Json::Value jsonRaw;
-				if (!Json::Reader().parse(sRaw, jsonRaw))
-					return temBAD_RAW;
-
-				std::vector<std::string> vecFields;
-				for (Json::UInt idx = 0; idx < jsonRaw.size(); idx++)
-				{
-					auto& v = jsonRaw[idx];
-					if (v.isMember(jss::field))
-					{
-						vecFields.push_back(v[jss::field].asString());
-					}
-				}
-
-				bool bContainCountLimit = false;
-				std::string sAccountCondition = "";
-				//make sure all fields in sfOperationRule corresponding to fields in sfRaw
-				std::string accountField;
-				if (jsonRule.isMember(jss::Insert))
-				{
-					if (jsonRule[jss::Insert].isMember(jss::Count))
-					{
-						const auto& jsonCount = jsonRule[jss::Insert][jss::Count];
-						if (!jsonCount.isMember(jss::AccountField) || !jsonCount.isMember(jss::CountLimit))
-							return temBAD_OPERATIONRULE;
-						accountField = jsonCount[jss::AccountField].asString();
-						if (std::find(vecFields.begin(), vecFields.end(), accountField) == vecFields.end())
-							return temBAD_OPERATIONRULE;
-						if (!jsonCount[jss::CountLimit].isInt() && !jsonCount[jss::CountLimit].isUInt())
-							return temBAD_OPERATIONRULE;
-						if (jsonCount[jss::CountLimit].asInt() <= 0)
-							return temBAD_OPERATIONRULE;
-						bContainCountLimit = true;
-					}
-					auto members = jsonRule[jss::Insert].getMemberNames();
-					for (int i = 0; i < members.size(); i++)
-					{
-						if (members[i] != jss::Condition && members[i] != jss::Count)
-							return temBAD_OPERATIONRULE;
-					}
-					if (jsonRule[jss::Insert].isMember(jss::Condition))
-					{
-						Json::Value& condition = jsonRule[jss::Insert][jss::Condition];
-						if (!condition.isObject())
-							return temBAD_OPERATIONRULE;
-						std::vector<std::string> members = condition.getMemberNames();
-						// retrieve members in object
-						for (size_t i = 0; i < members.size(); i++) {
-							if (std::find(vecFields.begin(), vecFields.end(), members[i]) == vecFields.end())
-								return temBAD_OPERATIONRULE;
-							//make sure account field right
-							if (members[i] == accountField) {
-								auto sAccount = condition[accountField].asString();
-								if (sAccount != "$account" && ripple::parseBase58<AccountID>(sAccount) == boost::none)
-									return temBAD_OPERATIONRULE;
-								sAccountCondition = "\"" + accountField + "\" : \"" + sAccount + "\"";
-							}
-						}
-					}
-				}
-				if (jsonRule.isMember(jss::Update))
-				{
-					auto members = jsonRule[jss::Update].getMemberNames();
-					for (int i = 0; i < members.size(); i++)
-					{
-						if (members[i] != jss::Condition && members[i] != jss::Fields)
-							return temBAD_OPERATIONRULE;
-					}
-					if (jsonRule[jss::Update].isMember(jss::Fields))
-					{
-						Json::Value jsonFields = jsonRule[jss::Update][jss::Fields];
-						for (Json::UInt idx = 0; idx < jsonFields.size(); idx++)
-						{
-							if (std::find(vecFields.begin(), vecFields.end(), jsonFields[idx].asString()) == vecFields.end())
-								return temBAD_OPERATIONRULE;
-							if (jsonFields[idx].asString() == accountField)
-								return temBAD_OPERATIONRULE;
-						}
-					}
-					else if (!accountField.empty()){
-						return temBAD_UPDATERULE;
-					}
-					if (jsonRule[jss::Update].isMember(jss::Condition))
-					{
-						Json::Value& condition = jsonRule[jss::Update][jss::Condition];
-						if (!condition.isObject())
-							return temBAD_OPERATIONRULE;
-					}
-				}else if (!accountField.empty()) {
-					return temBAD_UPDATERULE;
-				}
-
-				if (jsonRule.isMember(jss::Delete))
-				{
-					auto members = jsonRule[jss::Delete].getMemberNames();
-					if (members.size() != 1 || members[0] != jss::Condition)
-						return temBAD_DELETERULE;
-
-					if (!jsonRule[jss::Delete][jss::Condition].isObject())
-						return temBAD_DELETERULE;
-					//if insert count is limited,then delete must define only the 'AccountField' account can delet
-					if (bContainCountLimit)
-					{
-						if (jsonRule[jss::Delete][jss::Condition].isMember("$or"))
-							return temBAD_DELETERULE;
-						else if (jsonRule[jss::Delete][jss::Condition].isMember("$and"))
-						{
-							bool bFound = false;
-							Json::Value jsonFields = jsonRule[jss::Delete][jss::Condition]["$and"];
-							if(!jsonFields.isArray())
-								return temBAD_DELETERULE;
-							for (Json::UInt idx = 0; idx < jsonFields.size(); idx++)
-							{
-								std::string sDelete = jsonFields[idx].toStyledString();
-								if (sAccountCondition != "") {
-									if (sDelete.find(sAccountCondition) != std::string::npos)
-									{
-										bFound = true;
-										break;
-									}
-								}									
-								else
-								{
-									if (jsonFields[idx].isMember(accountField))
-									{
-										std::string strAccount = jsonFields[idx][accountField].asString();
-										if (strAccount == "$account" || strAccount == to_string(tx.getAccountID(sfAccount)))
-										{
-											bFound = true;
-											break;
-										}
-									}
-								}
-							}
-							if (!bFound)
-								return temBAD_DELETERULE;
-						}
-						else
-						{
-							std::string sDelete = jsonRule[jss::Delete][jss::Condition].toStyledString();
-							if (sDelete.find(sAccountCondition) == std::string::npos)
-								return temBAD_DELETERULE;
-						}
-					}
-				}
-				else if (bContainCountLimit)
-				{
-					return temBAD_DELETERULE;
-				}
-
-				if (jsonRule.isMember(jss::Get))
-				{
-					auto members = jsonRule[jss::Get].getMemberNames();
-					if (members.size() != 1 || members[0] != jss::Condition)
-						return temBAD_OPERATIONRULE;
-					if (!jsonRule[jss::Get].isMember(jss::Condition))
-						return temBAD_OPERATIONRULE;
-					if (!jsonRule[jss::Get][jss::Condition].isObject())
-						return temBAD_OPERATIONRULE;
-				}
-			}
-			else
-				return temBAD_OPERATIONRULE;
-		}
-
-		return tesSUCCESS;
-	}
-
-	TER TableListSet::preApply()
-	{
-		auto tables = ctx_.tx.getFieldArray(sfTables);
-		uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
-
-		auto item = ctx_.app.getTableStorage().GetItem(nameInDB);
-
-		//canDispose is false if first_storage is true
-		bool canDispose = true;
-		if (item != NULL && item->isHaveTx(ctx_.tx.getTransactionID()))
-			canDispose = false;
-
-		if (canDispose)
-			return dealWithOperationRule(ctx_.view(), ctx_.tx, ctx_.app);
-		else
-			return tesSUCCESS;
 	}
 
     void TableListSet::UpdateTableSle(STEntry *pEntry, LedgerIndex createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash, LedgerIndex previousTxnLgrSeq, uint256 previousTxnLgrHash)
@@ -969,10 +767,16 @@ namespace ripple {
     TER
         TableListSet::doApply()
     {
-		auto tmpRet = preApply();
-		if (!isTesSuccess(tmpRet))
-			return tmpRet;
+		//Deal with operation-rule,if first-storage have called 'dispose',not need here
+		TER tmpRet = tesSUCCESS;
+		if (canDispose(ctx_))
+		{
+			tmpRet = OperationRule::dealWithTableListSetRule(ctx_);
+			if (!isTesSuccess(tmpRet))
+				return tmpRet;
+		}
 
+		// apply to sle
 		tmpRet = applyHandler(ctx_.view(), ctx_.tx, ctx_.app);
         if (!isTesSuccess(tmpRet))
             return tmpRet;

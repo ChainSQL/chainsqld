@@ -19,7 +19,7 @@
 
 #include <ripple/protocol/JsonFields.h>
 #include <ripple/basics/StringUtilities.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 
@@ -61,6 +61,48 @@ namespace ripple {
 		if (iter == aTables.end())  return NULL;
 
 		return (STEntry*)(&(*iter));
+	}
+
+	STEntry * getTableEntry(const STArray & aTables, Blob& vCheckName)
+	{
+		auto iter(aTables.end());
+		iter = std::find_if(aTables.begin(), aTables.end(),
+			[vCheckName](STObject const &item) {
+			if (!item.isFieldPresent(sfTableName))  return false;
+			if (!item.isFieldPresent(sfDeleted))    return false;
+
+			return item.getFieldVL(sfTableName) == vCheckName && item.getFieldU8(sfDeleted) != 1;
+		});
+
+		if (iter == aTables.end())  return NULL;
+
+		return (STEntry*)(&(*iter));
+	}
+
+	STEntry * getTableEntry(ApplyView& view, const STTx& tx)
+	{
+		ripple::uint160  nameInDB;
+
+		AccountID account;
+		if (tx.isFieldPresent(sfOwner))
+			account = tx.getAccountID(sfOwner);
+		else if (tx.isFieldPresent(sfAccount))
+			account = tx.getAccountID(sfAccount);
+		else
+			return NULL;
+		auto const k = keylet::table(account);
+		SLE::pointer pTableSle = view.peek(k);
+		if (pTableSle == NULL)
+			return NULL;
+
+		auto &aTableEntries = pTableSle->peekFieldArray(sfTableEntries);
+
+		if (!tx.isFieldPresent(sfTables))
+			return NULL;
+		auto const & sTxTables = tx.getFieldArray(sfTables);
+		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);
+		uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
+		return getTableEntry(aTableEntries, vTxTableName);
 	}
 
 	bool isChainSqlBaseType(const std::string& transactionType) {

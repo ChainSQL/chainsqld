@@ -29,7 +29,7 @@
 #include <ripple/core/JobQueue.h>
 #include <ripple/json/json_reader.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/rpc/impl/TxCommonPrepare.h>
 #include <peersafe/rpc/impl/TxTransactionPrepare.h>
