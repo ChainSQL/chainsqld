@@ -2275,6 +2275,11 @@ LedgerMaster::makeFetchPack (
             // move may save a ref/unref
             haveLedger = std::move (wantLedger);
             wantLedger = getLedgerByHash (haveLedger->info().parentHash);
+
+			if (!wantLedger)
+			{
+				JLOG(m_journal.warn()) << "Cannot read ledger when building fetch patch, LedgerSeq=" << haveLedger->info().seq - 1;
+			}
         }
         while (wantLedger &&
                UptimeTimer::getInstance ().getElapsedSeconds () <= uUptime + 1);
@@ -2284,9 +2289,9 @@ LedgerMaster::makeFetchPack (
         auto msg = std::make_shared<Message> (reply, protocol::mtGET_OBJECTS);
         peer->send (msg);
     }
-    catch (std::exception const&)
+    catch (std::exception const&e)
     {
-        JLOG(m_journal.warn()) << "Exception building fetch pach";
+        JLOG(m_journal.warn()) << "Exception building fetch patch :"<<e.what();
     }
 }
 
