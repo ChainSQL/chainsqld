@@ -28,10 +28,10 @@
 > 2. 安装完 Open SSL 后，并将 OPENSSL_ROOT_DIR 环境变量设置为 OpenSSL 安装路径
 
 ### install boost
-> 1. 下载 [boost](http://slproweb.com/products/Win32OpenSSL.html)
+> 1. 下载 [boost](http://www.boost.org/users/news/)
 > 2. 编译 boost
 ```cmd
-> cd C:\lib\boost_1_62_0
+> cd C:\lib\boost_1_63_0
 > bootstrap
 > bjam --toolset=msvc-14.0 address-model=64 architecture=x86 link=static threading=multi runtime-link=shared,static stage --stagedir=stage64
 ```
