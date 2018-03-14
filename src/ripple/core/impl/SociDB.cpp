@@ -27,6 +27,7 @@
 #include <soci/sqlite3/soci-sqlite3.h>
 #include <soci/mysql/soci-mysql.h>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace ripple {
 
@@ -102,9 +103,9 @@ void open (soci::session& s,
            std::string const& beName,
            std::string const& connectionString)
 {
-    if (beName == "sqlite")
+    if (boost::iequals(beName, "sqlite"))
 		s.open(soci::sqlite3, connectionString);	
-	else if (beName == "mycat")
+	else if (boost::iequals(beName, "mycat") || boost::iequals(beName, "mysql"))
 		s.open(soci::mysql, connectionString);
     else
         Throw<std::runtime_error> ("Unsupported soci backend: " + beName);
