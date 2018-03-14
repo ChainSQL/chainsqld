@@ -873,6 +873,7 @@ protected:
             {
                 LockedSociSession sql = db_conn_->checkoutDb();
                 *sql << build_droptable_sql();
+				sql->commit();
             }			
 		}
 		catch (soci::soci_error& e) {
@@ -912,6 +913,7 @@ private:
 		try {
 			LockedSociSession sql = db_conn_->checkoutDb();
 			*sql << "rename table :old to :new", soci::use(tables_[0]), soci::use(tables_[1]);
+			sql->commit();
 		}
 		catch (soci::soci_error& e) {
 			last_error(std::make_pair<int,std::string>(-1, e.what()));
@@ -995,6 +997,7 @@ private:
 		{
 			auto tmp = *sql << sql_str;
 			bind_fields_value(tmp);
+			sql->commit();
 		}
 		// fix an issue that we can't catch an exception on top-level,
 		// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
@@ -1119,6 +1122,7 @@ private:
 							"Binding values is unsuccessful when executing update-sql"));
 						return -1;
 					}
+				sql->commit();
 			}
 			// fix an issue that we can't catch an exception on top-level,
 			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
@@ -1194,6 +1198,7 @@ private:
 							"binding values is unsuccessfull when executing delete-sql"));
 						return -1;
 					}
+				sql->commit();
 			}
 			// fix an issue that we can't catch an exception on top-level,
 			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
@@ -1530,6 +1535,7 @@ private:
 					return -1;
 				}
 			}
+			sql->commit();
 		}
 		return 0;
 	}
@@ -1837,9 +1843,11 @@ protected:
 //        std::string sql_str = build_createtable_sql();
 		try {
 			LockedSociSession sql = db_conn_->checkoutDb();
-            soci::statement st =
-                (sql->prepare << sql_str);
-            st.execute();
+            //soci::statement st =
+            //    (sql->prepare << sql_str);
+            //st.execute();
+			*sql << sql_str;
+			sql->commit();
 		} catch (soci::soci_error& e) {
 			last_error(std::make_pair<int, std::string>(-1, e.what()));
 			return -1;
@@ -2002,6 +2010,7 @@ protected:
 		try {
 			LockedSociSession sql = db_conn_->checkoutDb();
             *sql << sql_str;
+			sql->commit();
 		}
 		catch (soci::soci_error& e) {
 			last_error(std::make_pair<int, std::string>(-1, e.what()));
@@ -2537,6 +2546,7 @@ namespace helper {
 
             LockedSociSession query = conn->checkoutDb();
             soci::rowset<soci::row> records = ((*query).prepare << sql);
+			query->commit();
             obj = query_result(records);
         }
         catch (soci::soci_error& e) {
@@ -2563,6 +2573,7 @@ namespace helper {
 			}
 			LockedSociSession query = conn->checkoutDb();
 			soci::rowset<soci::row> records = ((*query).prepare << sql);
+			query->commit();
 			obj = query_result(records);
 		}
 		catch (soci::soci_error& e) {
@@ -2603,8 +2614,10 @@ bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
     try {
         std::string sSql = "SELECT * FROM " + sTable;
         boost::optional<std::string> r;
-        soci::statement st = (sql_session->prepare << sSql, soci::into(r));
-        st.execute(true);
+        //soci::statement st = (sql_session->prepare << sSql, soci::into(r));
+        //st.execute(true);
+		*sql_session << sSql, soci::into(r);
+		sql_session->commit();
         bExist = true;
     }
     catch (std::exception const& /* e */)
@@ -2867,6 +2880,7 @@ std::pair<bool, std::string> STTx2SQL::handle_assert_statement(const Json::Value
 		try {
 			LockedSociSession query = db_conn_->checkoutDb();
 			soci::rowset<soci::row> records = ((*query).prepare << query_sql);
+			query->commit();
 			if (assert_result(records, aseert_condition)) {
 				// assert successful
 				break;
@@ -3183,6 +3197,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
                 % sAutoFillField).str();
             LockedSociSession sql = db_conn_->checkoutDb();
             soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
+			sql->commit();
             bHasAutoField = records.end() != records.begin();
         }
 		
