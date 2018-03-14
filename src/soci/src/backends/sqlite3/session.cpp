@@ -168,3 +168,7 @@ sqlite3_blob_backend * sqlite3_session_backend::make_blob_backend()
 {
     return new sqlite3_blob_backend(*this);
 }
+
+bool sqlite3_session_backend::autocommit(const bool) {
+	return true;
+}

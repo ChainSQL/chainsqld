@@ -240,6 +240,8 @@ public:
     virtual rowid_backend* make_rowid_backend() = 0;
     virtual blob_backend* make_blob_backend() = 0;
 
+	virtual bool autocommit(const bool) = 0;
+
 private:
     SOCI_NOT_COPYABLE(session_backend)
 };

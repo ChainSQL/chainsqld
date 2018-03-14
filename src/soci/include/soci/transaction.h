@@ -23,7 +23,6 @@ public:
 
     void commit();
     void rollback();
-
 private:
     bool handled_;
     session& sql_;
