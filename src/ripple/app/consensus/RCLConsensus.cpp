@@ -768,12 +768,16 @@ RCLConsensus::Adaptor::buildLCL(
     auto const v2_enabled = buildLCL->rules().enabled(featureSHAMapV2);
 
     auto v2_transition = false;
-    if (v2_enabled && !buildLCL->stateMap().is_v2())
-    {
-        buildLCL->make_v2();
-        v2_transition = true;
-    }
-
+    //if (v2_enabled && !buildLCL->stateMap().is_v2())
+    //{
+    //    buildLCL->make_v2();
+    //    v2_transition = true;
+    //}
+	if (buildLCL->stateMap().is_v2())
+	{
+		buildLCL->make_v1();
+		//JLOG(j_.warn()) << "RCLConsensus::Adaptor::buildLCL make v1------------###";
+	}
     // Set up to write SHAMap changes to our database,
     //   perform updates, extract changes
     JLOG(j_.debug()) << "Applying consensus set transactions to the"
