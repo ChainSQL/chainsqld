@@ -23,7 +23,7 @@
 
 namespace ripple {
 
-class ZXCAmount_test : public beast::unit_test::suite
+class XRPAmount_test : public beast::unit_test::suite
 {
 public:
     void testSigNum ()
@@ -201,6 +201,6 @@ public:
     }
 };
 
-BEAST_DEFINE_TESTSUITE(ZXCAmount,protocol,ripple);
+BEAST_DEFINE_TESTSUITE(XRPAmount,protocol,ripple);
 
 } // ripple
