@@ -1089,6 +1089,19 @@ Ledger::make_v2()
 }
 
 void
+Ledger::make_v1()
+{
+	assert(!mImmutable);
+	stateMap_ = stateMap_->make_v1();
+	txMap_ = txMap_->make_v1();
+	info_.validated = false;
+	info_.accountHash = stateMap_->getHash().as_uint256();
+	info_.txHash = txMap_->getHash().as_uint256();
+	info_.hash = calculateLedgerHash(info_);
+	info_.closeFlags ^= sLCF_SHAMapV2;
+}
+
+void
 Ledger::unshare() const
 {
     stateMap_->unshare();
