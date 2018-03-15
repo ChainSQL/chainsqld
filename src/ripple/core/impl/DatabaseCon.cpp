@@ -57,6 +57,7 @@ DatabaseCon::DatabaseCon (
         std::pair<std::string, bool> ssl_key = setup.sync_db.find("ssl_key");
         std::pair<std::string, bool> local_infile = setup.sync_db.find("local_infile");
         std::pair<std::string, bool> charset = setup.sync_db.find("charset");
+		std::pair<std::string, bool> autocommit = setup.sync_db.find("autocommit");
         std::string connectionstring;
         if (host.second)
             connectionstring += " host = " + host.first;
@@ -83,6 +84,9 @@ DatabaseCon::DatabaseCon (
         if (connectionstring.empty())
             return;
         open(session_, "mycat", connectionstring);
+		if (autocommit.second && autocommit.first.compare("true") == 0) {
+			session_.autocommit_after_transaction(true);
+		}
         if (strName.empty() == false) {
             std::string use_database = "use " + strName;
             soci::statement st = session_.prepare << use_database;

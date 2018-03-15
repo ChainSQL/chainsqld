@@ -397,24 +397,24 @@ endif()
 
 if (WIN32 OR is_xcode)
   # Documentation sources. Only needed for IDEs.
-  prepend(doc_srcs
-    docs/
-    Jamfile.v2
-    boostbook.dtd
-    consensus.qbk
-    index.xml
-    main.qbk
-    quickref.xml
-    reference.xsl
-    source.dox)
+  #prepend(doc_srcs
+  #  docs/
+  #  Jamfile.v2
+  #  boostbook.dtd
+  #  consensus.qbk
+  #  index.xml
+  #  main.qbk
+  #  quickref.xml
+  #  reference.xsl
+  #  source.dox)
 
-  set_property(
-    SOURCE ${doc_srcs}
-    APPEND
-    PROPERTY HEADER_FILE_ONLY
-    true)
-    # Doesn't work
-    # $<OR:$<CONFIG:Debug>,$<CONFIG:Release>>)
+  #set_property(
+  #  SOURCE ${doc_srcs}
+  #  APPEND
+  #  PROPERTY HEADER_FILE_ONLY
+  #  true)
+  #  # Doesn't work
+  #  # $<OR:$<CONFIG:Debug>,$<CONFIG:Release>>)
 endif()
 
 ############################################################
