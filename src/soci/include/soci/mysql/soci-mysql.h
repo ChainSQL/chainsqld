@@ -256,6 +256,7 @@ struct mysql_session_backend : details::session_backend
     virtual mysql_statement_backend * make_statement_backend();
     virtual mysql_rowid_backend * make_rowid_backend();
     virtual mysql_blob_backend * make_blob_backend();
+	virtual bool autocommit(const bool);
 
 	// return	0 retry query
 	//			1 not retry query

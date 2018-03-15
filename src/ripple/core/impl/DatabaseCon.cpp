@@ -25,6 +25,7 @@
 #include <memory>
 
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace ripple {
 
@@ -46,6 +47,16 @@ DatabaseCon::DatabaseCon (
         open(session_, "sqlite", pPath.string());
 	} else {  
         //connect to mycat server 
+        std::pair<std::string, bool> type = setup.sync_db.find("type");
+		std::string back_end;
+		if (type.second) {
+			back_end = type.first;
+		}
+		if (back_end.empty()) {
+			Throw<std::runtime_error>("configuration error: type must be specified in sync_db.");
+			return;
+		}
+
         std::pair<std::string, bool> host = setup.sync_db.find("host");
         std::pair<std::string, bool> port = setup.sync_db.find("port");
         std::pair<std::string, bool> user = setup.sync_db.find("user");
@@ -57,7 +68,9 @@ DatabaseCon::DatabaseCon (
         std::pair<std::string, bool> ssl_key = setup.sync_db.find("ssl_key");
         std::pair<std::string, bool> local_infile = setup.sync_db.find("local_infile");
         std::pair<std::string, bool> charset = setup.sync_db.find("charset");
+
         std::string connectionstring;
+
         if (host.second)
             connectionstring += " host = " + host.first;
         if (port.second)
@@ -80,9 +93,18 @@ DatabaseCon::DatabaseCon (
             connectionstring += " local_infile = " + local_infile.first;
         if (charset.second)
             connectionstring += " charset = " + charset.first;
-        if (connectionstring.empty())
-            return;
-        open(session_, "mycat", connectionstring);
+		
+		if (connectionstring.empty()) {
+			if (back_end.empty()) {
+				Throw<std::runtime_error>("configuration error: connection string is empty.");
+			}
+			return;
+		}
+
+        open(session_, back_end, connectionstring);
+		if (boost::iequals(back_end, "mycat")) {
+			session_.autocommit_after_transaction(true);
+		}
         if (strName.empty() == false) {
             std::string use_database = "use " + strName;
             soci::statement st = session_.prepare << use_database;
