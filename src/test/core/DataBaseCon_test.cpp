@@ -25,6 +25,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/core/Config.h>
 #include <soci/mysql/soci-mysql.h>
 
+#include <boost/format.hpp>
+
 namespace ripple {
 class DataBaseConn_test : public beast::unit_test::suite {
 public:
@@ -114,35 +116,104 @@ public:
 	}
 
 	void test_transaction() {
-		test_CreateTable();
-		//ripple::DatabaseCon database(setup_, "ripple", NULL, 0, db_type_);
 		soci::session session;
-		session.open(soci::mysql, "host=chainSQL port=8066 user=root pass=3.16 db=ripple charset=utf8");
+		std::string connect = (boost::format("host=%s port=%s user=%s pass=%s db=%s charset=%s")
+			% setup_.sync_db.find("host").first
+			% setup_.sync_db.find("port").first
+			% setup_.sync_db.find("user").first
+			% setup_.sync_db.find("pass").first
+			% setup_.sync_db.find("db").first
+			% setup_.sync_db.find("charset").first).str();
+		session.open(soci::mysql, connect);
+		auto item = setup_.sync_db.find("autocommit");
+		bool autocommit = false;
+		if (item.second && item.first.compare("true") == 0) {
+			autocommit = true;
+		}
+		session.autocommit_after_transaction(autocommit);
 		{
 			soci::transaction tr(session);
 			try {
 				session << "insert into user (id,name) values (1,'peersafe')";
 				tr.rollback();
-				//tr.commit();
 			}
 			catch (const soci::soci_error &e) {
+				std::cout << "test_transactoin: " << e.what() << std::endl;
 			}
 			catch (...) {
 			}
 		}
+		
+		// it's MAYBE invalid executing after transaction rollback 
+		// if commit don't be executed in case of connecting MyCat
+		{
+			soci::statement state = (session.prepare << "insert into user (id,name) values (2,'ripple')");
+			state.execute();
+			if (autocommit) {
+				BEAST_EXPECT(getRecords("user") == 1);
+			}
+			else {
+				BEAST_EXPECT(getRecords("user") == 0);
+			}
+		}
 
 
-		session << "insert into user (id,name) values (2,'ripple')";
-		session.commit();
+		// it's MAYBE invalid executing after transaction rollback 
+		// if commit don't be executed in case of connecting MyCat
+		{
+			session << "insert into user (id,name) values (2,'ripple')";
+			if (autocommit) {
+				BEAST_EXPECT(getRecords("user") == 2);
+			}
+			else {
+				BEAST_EXPECT(getRecords("user") == 0);
+			}
+		}
 
-		session << "insert into user (id,name) values (2,'ripple')";
+		// valid executing
+		{
+			session << "insert into user (id,name) values (2,'ripple')";
+			if (autocommit) {
+				BEAST_EXPECT(getRecords("user") == 3);
+			}
+			else {
+				session.commit();
+				BEAST_EXPECT(getRecords("user") == 3);
+			}
+		}
 
-		//soci::rowset<soci::row> rs = (session.prepare << "select * from user");
-		//for (soci::rowset<soci::row>::iterator it = rs.begin(); it != rs.end(); ++it)
-		//{
-		//	const soci::row& row = *it;
-		//	std::cout << "  id:" << row.get<int>(0) << std::endl;
-		//}
+		// delete all records
+		{
+			session << "delete from user";
+			if (autocommit) {
+				BEAST_EXPECT(getRecords("user") == 0);
+			}
+			else {
+				session.commit();
+				BEAST_EXPECT(getRecords("user") == 0);
+			}
+		}
+
+	}
+
+	int getRecords(const std::string& table) {
+		soci::session session;
+		std::string connect = (boost::format("host=%s port=%s user=%s pass=%s db=%s charset=%s")
+			% setup_.sync_db.find("host").first
+			% setup_.sync_db.find("port").first
+			% setup_.sync_db.find("user").first
+			% setup_.sync_db.find("pass").first
+			% setup_.sync_db.find("db").first
+			% setup_.sync_db.find("charset").first).str();
+		session.open(soci::mysql, connect);
+
+		soci::rowset<soci::row> rs = (session.prepare << "select * from user");
+
+		int count = 0;
+		for (auto it = rs.begin(); it != rs.end(); it++) {
+			count++;
+		}
+		return count;
 	}
 
 	void run() {
