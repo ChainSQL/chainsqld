@@ -125,12 +125,11 @@ public:
 			% setup_.sync_db.find("db").first
 			% setup_.sync_db.find("charset").first).str();
 		session.open(soci::mysql, connect);
-		auto item = setup_.sync_db.find("autocommit");
-		bool autocommit = false;
-		if (item.second && item.first.compare("true") == 0) {
-			autocommit = true;
+		auto type = setup_.sync_db.find("type");
+		if (type.second && type.first.compare("mycat") == 0) {
+			session.autocommit_after_transaction(true);
 		}
-		session.autocommit_after_transaction(autocommit);
+
 		{
 			soci::transaction tr(session);
 			try {
@@ -149,12 +148,7 @@ public:
 		{
 			soci::statement state = (session.prepare << "insert into user (id,name) values (2,'ripple')");
 			state.execute();
-			if (autocommit) {
-				BEAST_EXPECT(getRecords("user") == 1);
-			}
-			else {
-				BEAST_EXPECT(getRecords("user") == 0);
-			}
+			BEAST_EXPECT(getRecords("user") == 1);
 		}
 
 
@@ -162,36 +156,19 @@ public:
 		// if commit don't be executed in case of connecting MyCat
 		{
 			session << "insert into user (id,name) values (2,'ripple')";
-			if (autocommit) {
-				BEAST_EXPECT(getRecords("user") == 2);
-			}
-			else {
-				BEAST_EXPECT(getRecords("user") == 0);
-			}
+			BEAST_EXPECT(getRecords("user") == 2);
 		}
 
 		// valid executing
 		{
 			session << "insert into user (id,name) values (2,'ripple')";
-			if (autocommit) {
-				BEAST_EXPECT(getRecords("user") == 3);
-			}
-			else {
-				session.commit();
-				BEAST_EXPECT(getRecords("user") == 3);
-			}
+			BEAST_EXPECT(getRecords("user") == 3);
 		}
 
 		// delete all records
 		{
 			session << "delete from user";
-			if (autocommit) {
-				BEAST_EXPECT(getRecords("user") == 0);
-			}
-			else {
-				session.commit();
-				BEAST_EXPECT(getRecords("user") == 0);
-			}
+			BEAST_EXPECT(getRecords("user") == 0);
 		}
 
 	}

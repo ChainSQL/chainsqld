@@ -41,7 +41,7 @@ void transaction::commit()
     sql_.commit();    
 
 	// In Mycat, `autocommit` should be reset to true
-	// after transaction commit or rollback.
+	// after a transaction commit or rollback.
 	if (sql_.autocommit_after_transaction()) {
 		sql_.autocommit(true);
 	}
@@ -62,7 +62,7 @@ void transaction::rollback()
     sql_.rollback();
 
 	// In Mycat, `autocommit` should be reset to true
-	// after transaction commit or rollback.
+	// after a transaction commit or rollback.
 	if (sql_.autocommit_after_transaction()) {
 		sql_.autocommit(true);
 	}

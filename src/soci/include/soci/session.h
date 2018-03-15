@@ -121,7 +121,7 @@ public:
     bool get_last_insert_id(std::string const & table, long & value);
 
 	// In mycat, `autocommit` always is set false by transaction.
-	// Regardless transaction commit or rollback, 
+	// Regardless a transaction commit or rollback, 
 	// `autocommit` is still false. So application should launch 
 	// this function to set `auotcommit` in mycat.
 	bool autocommit(const bool auto_mode);
@@ -189,7 +189,7 @@ private:
 	//affected row count for insert/update/delete
 	int affected_row_count_;
 
-	// whether autocommit should be set after transaction commit or rollback
+	// whether autocommit should be set after a transaction commit or rollback
 	// in case of Mycat
 	bool set_autocommit_after_trans_;
 };
