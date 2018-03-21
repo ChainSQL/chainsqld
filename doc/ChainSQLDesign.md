@@ -1137,9 +1137,7 @@
       }
     }
   ],
-  "OpType": 2,
-  "Fee": 12,
-  "Sequence": 2
+  "OpType": 2
 }
 
 ```        
@@ -1160,9 +1158,7 @@
       }
     }
   ],
-  "OpType": 3,
-  "Fee": 12,
-  "Sequence": 2
+  "OpType": 3
 }
 
 ``` 
@@ -1281,18 +1277,10 @@
   "StrictMode": true,         //可选字段: 不设置表示不使用strictMode
   "TxCheckHash": "xxxx",      //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
   "Raw": [
-    {
-      "id": 1,
-      "name": "test"
-    },
-    {
-      "id": 2,
-      "name": "hello"
-    }
+      	{"age": "11","name":"abc"},
+	{"id":1}
   ],
-  "OpType": 8,
-  "Fee": 12,
-  "Sequence": 7
+  "OpType": 8
 }
 
 ```
@@ -1317,18 +1305,9 @@
   "StrictMode": true,         //可选字段: 不设置表示不使用strictMode
   "TxCheckHash": "xxx",       //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
   "Raw": [
-    {
-      "id": 1,
-      "name": "test"
-    },
-    {
-      "id": 2,
-      "name": "hello"
-    }
+     {"id":1}
   ],
-  "OpType": 9,
-  "Fee": 12,
-  "Sequence": 8
+  "OpType": 9
 }
 
 ```
@@ -1455,20 +1434,16 @@
         "name"
       ],
       {
-        "id": 1,
-        "name": "test"
-      },
-      {
         "id": 2
       }
     ],
-    "OpType": 7,
-    "TableFlags": 65536
+    "OpType": 7
   }
 }
 ```
     备注：
-        支持多表联合查询, 参考6.9节
+        支持多表联合查询, 参考6.9节<br>
+	Raw中第一个[]中的内容是要查询的字段名，后面是查询条件
 &emsp;　　　Response Format:
 ```json
 {
