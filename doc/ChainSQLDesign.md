@@ -981,9 +981,8 @@
         "type": "int"
       }
     ],                                 //hex形式
-    "Flags": 65536,
     "StrictMode": true,
-    "OpType": 1
+    "OpType": 3
   }
 }
 ```
@@ -1003,7 +1002,7 @@
     "tx_json": {
       "Account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
       "Flags": 65536,
-      "OpType": 1,
+      "OpType": 3,
       "Owner": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
       "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
       "Raw": [
