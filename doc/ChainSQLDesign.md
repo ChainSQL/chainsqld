@@ -1076,7 +1076,7 @@
 ```json
 
  {
-  "TransactionType": " TableListSet",
+  "TransactionType": "TableListSet",
   "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "Tables": [
     {
@@ -1253,14 +1253,9 @@
       "name": "hello"
     }
   ],
-  "AutoFillField": "TRACE_NO",
   "StrictMode": true,     //可选字段: 不设置表示不使用strictMode
-  "TxCheckHash": "xxxxx", //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
-  "OpType": 6,
-  "User": "zBGagHrWQ44SX3YE7eYehiDA8iNPdBssFY",
-  "Flags": 65536,
-  "Fee": 12,
-  "Sequence": 6
+  "TxCheckHash": "xxxxx", //可选字段: 由t_prepare根据StrictMode的指示自动计算并插入
+  "OpType": 6
 }
 
 ``` 
