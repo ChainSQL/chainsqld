@@ -959,8 +959,8 @@
     "Tables": [
       {
         "Table": {
-          "TableName": "EName2"         //hex形式
-    	  "TableNewName":"tableNewName",    //hex形式
+          "TableName": "EName2"         	//hex形式
+	  "TableNewName":"tableNewName",	//hex形式
         }
       }
     ],
@@ -991,7 +991,7 @@
           "Table": {
             "NameInDB": "4728A301542B8CE647D41A8D000F35900AEB3E09",
             "TableName":"EName2"       //hex形式
-      	    "TableNewName":"tableNewName",    //hex形式
+	    "TableNewName":"tableNewName",    //hex形式
           }
         }
       ],
@@ -1000,9 +1000,7 @@
   }
 }
 ```
-    备注：
-        Token：创建表与操作授权表操作会添加
-        Raw：所有提供Raw字段的操作（创建表/增删改），Raw字段会被加密
+
 		
 - **7.4 g_userToken**
   - 得到用户对应某张表的token，得到token后，需用用户自己的私钥去解密，得到密码明文，然后用密码明文对raw字段进行AES对称加密<br>
