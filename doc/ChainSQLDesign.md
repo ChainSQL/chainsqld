@@ -986,12 +986,12 @@
     "tx_json": {
       "Account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
       "OpType": 3,
-      "TableNewName": "tableNewName",    //hex形式
       "Tables": [
         {
           "Table": {
             "NameInDB": "4728A301542B8CE647D41A8D000F35900AEB3E09",
             "TableName": "EName2"       //hex形式
+      	    "TableNewName": "tableNewName",    //hex形式
           }
         }
       ],
