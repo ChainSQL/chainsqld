@@ -1283,6 +1283,7 @@
 
 - **7.13 t_sqlTxs 事务操作**
   - 对应SQLTransaction请求，用帐户对应的私钥将下面JSON语句本地签名后，然后再调用7.15中的submit接口将交易发往全网共识<br>
+  - 签名前，需要先将Statements中每个元素中的Raw,TableName转16进制，然后将整个Statements作为字符串转为16进制字符串，与插入中Raw字段的处理方法类似<br>
         Request Format:<br>
 ```json
 {
