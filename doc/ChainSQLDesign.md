@@ -1132,7 +1132,7 @@
 ```json
 {
   "TransactionType": "TableListSet",
-  " Account ": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "Account ": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "Tables": [
     {
       "Table": {
