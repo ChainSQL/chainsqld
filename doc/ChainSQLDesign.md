@@ -1216,8 +1216,8 @@
       "name": "hello"
     }
   ],
-  "StrictMode": true,     //可选字段: 不设置表示不使用strictMode
-  "TxCheckHash": "xxxxx", //可选字段: 由t_prepare根据StrictMode的指示自动计算并插入
+  "StrictMode": true,     //可选字段:不设置表示不使用strictMode
+  "TxCheckHash": "xxxxx", //可选字段:由t_prepare根据StrictMode的指示自动计算并插入
   "OpType": 6
 }
 
@@ -1241,8 +1241,8 @@
       }
     }
   ],
-  "StrictMode": true,         //可选字段: 不设置表示不使用strictMode
-  "TxCheckHash": "xxxx",      //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
+  "StrictMode": true,         //可选字段:不设置表示不使用strictMode
+  "TxCheckHash": "xxxx",      //可选字段:由g_prepare根据StrictMode的指示自动计算并插入
   "Raw": [
       	{"age": "11","name":"abc"},
 	{"id":1}
@@ -1269,8 +1269,8 @@
       }
     }
   ],
-  "StrictMode": true,         //可选字段: 不设置表示不使用strictMode
-  "TxCheckHash": "xxx",       //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
+  "StrictMode": true,         //可选字段:不设置表示不使用strictMode
+  "TxCheckHash": "xxx",       //可选字段:由g_prepare根据StrictMode的指示自动计算并插入
   "Raw": [
      {"id":1}
   ],
@@ -1293,8 +1293,7 @@
       "Tables": [
         {
           "Table": {
-            "TableName": "EName1",
-            "NameInDB": "48C80D2CF136054DB6F0116D4833D4DAD1D4CED5"
+            "TableName": "EName1"
           }
         }
       ],
@@ -1315,8 +1314,7 @@
       "Tables": [
         {
           "Table": {
-            "TableName": "EName1",
-            "NameInDB": "48C80D2CF136054DB6F0116D4833D4DAD1D4CED5"
+            "TableName": "EName1"
           }
         }
       ],
@@ -1332,8 +1330,7 @@
       "Tables": [
         {
           "Table": {
-            "TableName": "EName1",
-            "NameInDB": "48C80D2CF136054DB6F0116D4833D4DAD1D4CED5"
+            "TableName": "EName1"
           }
         }
       ],
@@ -1356,8 +1353,7 @@
       "Tables": [
         {
           "Table": {
-            "TableName": "EName1",
-            "NameInDB": "48C80D2CF136054DB6F0116D4833D4DAD1D4CED5"
+            "TableName": "EName1"
           }
         }
       ],
