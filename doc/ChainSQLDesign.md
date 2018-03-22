@@ -959,7 +959,7 @@
     "Tables": [
       {
         "Table": {
-          "TableName": "EName2"         	//hex形式
+          "TableName": "EName2",         	//hex形式
           "TableNewName":"tableNewName",	//hex形式
         }
       }
@@ -990,8 +990,8 @@
         {
           "Table": {
             "NameInDB": "4728A301542B8CE647D41A8D000F35900AEB3E09",
-            "TableName":"EName2"       //hex形式
-            "TableNewName":"tableNewName",    //hex形式
+            "TableName":"EName2",       	//hex形式
+            "TableNewName":"tableNewName",    	//hex形式
           }
         }
       ],
