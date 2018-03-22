@@ -968,12 +968,14 @@
   }
 }
 ```
-    备注：
+```
+   备注：
         Raw字段、TableName字段以hex形式传入
         TransactionType与OpType字段的取值根据实际操作来修改
         创建表用到的字段：TransactionType,Account,Tables,Raw,OpType
         授权表用到的字段：TransactionType,Account,Tables,PublicKey,User,Flags,Optype
         增删改操作的字段：TransactionType,Account,Tables,Raw,OpType
+```
 
 &emsp;　　　Response Format:
 
