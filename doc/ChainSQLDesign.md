@@ -956,7 +956,6 @@
   "tx_json": {
     "TransactionType": "TableListSet",
     "Account": "rBuLBiHmssAMHWQMnEN7nXQXaVj7vhAv6Q",
-    "Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
     "Tables": [
       {
         "Table": {
@@ -965,23 +964,6 @@
       }
     ],
     "TableNewName": "tableNewName",     //hex形式
-    "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
-    "Raw": [
-      {
-        "field": "id",
-        "type": "int",
-        "length": 11,
-        "PK": 1,
-        "NN": 1,
-        "UQ": 1,
-        "AI": 1
-      },
-      {
-        "field": "age",
-        "type": "int"
-      }
-    ],                                 //hex形式
-    "StrictMode": true,
     "OpType": 3
   }
 }
@@ -989,9 +971,9 @@
     备注：
         Raw字段、TableName字段以hex形式传入
         TransactionType与OpType字段的取值根据实际操作来修改
-        创建表用到的字段：Secret,TransactionType,Account,Tables,Raw,OpType
-        授权表用到的字段：Secret,TransactionType,Account,Tables,PublicKey,Flags,Optype
-        增删改操作的字段：Secret,TransactionType,Account,Tables,Raw,OpType
+        创建表用到的字段：TransactionType,Account,Tables,Raw,OpType
+        授权表用到的字段：TransactionType,Account,Tables,PublicKey,User,Flags,Optype
+        增删改操作的字段：TransactionType,Account,Tables,Raw,OpType
 
 &emsp;　　　Response Format:
 
@@ -1001,25 +983,7 @@
     "status": "success",
     "tx_json": {
       "Account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-      "Flags": 65536,
       "OpType": 3,
-      "Owner": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-      "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
-      "Raw": [
-        {
-          "AI": 1,
-          "NN": 1,
-          "PK": 1,
-          "UQ": 1,
-          "field": "id",
-          "length": 11,
-          "type": "int"
-        },
-        {
-          "field": "age",
-          "type": "int"
-        }
-      ],                                 //hex形式
       "TableNewName": "tableNewName",    //hex形式
       "Tables": [
         {
@@ -1029,8 +993,7 @@
           }
         }
       ],
-      "TransactionType": "TableListSet",
-      "TxCheckHash": "9336DE2AB6C901312CF23957462FA8596F546B4F76191F0578F80EC6C8CB1C79"
+      "TransactionType": "TableListSet"
     }
   }
 }
