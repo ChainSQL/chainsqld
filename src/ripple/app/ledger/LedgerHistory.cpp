@@ -135,7 +135,15 @@ LedgerHistory::getLedgerByHash (LedgerHash const& hash)
         return ret;
     }
 
-    ret = loadByHash (hash, app_);
+	try
+	{
+		ret = loadByHash(hash, app_);
+	}
+	catch (const std::exception& e)
+	{
+		JLOG(j_.warn()) <<
+			"getLedgerByHash exception: " << e.what() << ",ledgerhash=" << hash;
+	}
 
     if (!ret)
         return ret;

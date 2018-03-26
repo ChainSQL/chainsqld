@@ -290,7 +290,7 @@ class Consensus
 
     using Result = ConsensusResult<Adaptor>;
 
-    // Helper class to ensure adaptor is notified whenver the ConsensusMode
+    // Helper class to ensure adaptor is notified whenever the ConsensusMode
     // changes
     class MonitoredMode
     {
