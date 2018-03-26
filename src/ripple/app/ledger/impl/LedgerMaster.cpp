@@ -471,6 +471,7 @@ LedgerMaster::tryFill (
     std::uint32_t minHas = ledger->info().seq;
     std::uint32_t maxHas = ledger->info().seq;
 
+	int seqJump = -1;
     while (! job.shouldCancel() && seq > 0)
     {
         {
@@ -490,8 +491,12 @@ LedgerMaster::tryFill (
                 return;
 
             {
-                ScopedLockType ml (mCompleteLock);
-                mCompleteLedgers.setRange (minHas, maxHas);
+				if (seqJump == -1)
+				{
+					ScopedLockType ml(mCompleteLock);
+					mCompleteLedgers.setRange(minHas, maxHas);
+				}
+
                 // ScopedLockType ml(mCompleteLock);
                 // mCompleteLedgers.insert(range(minHas, maxHas));
             }
@@ -501,14 +506,25 @@ LedgerMaster::tryFill (
                 : (seq - 499), seq, app_);
             it = ledgerHashes.find (seq);
 
-            if (it == ledgerHashes.end ())
-                break;
+			if (it == ledgerHashes.end())
+			{
+				seqJump = seq;
+				if (seq > 0)
+				{
+					minHas = seq - 1;
+					maxHas = seq - 1;
+				}
+				continue;
+			}
         }
 
-        if (it->second.first != prevHash)
+		if (seqJump != -1)
+			seqJump = -1;
+        else if (it->second.first != prevHash)
             break;
 
-        prevHash = it->second.second;
+		if(seq > 0)
+			prevHash = it->second.second;
     }
 
     {
@@ -2275,6 +2291,11 @@ LedgerMaster::makeFetchPack (
             // move may save a ref/unref
             haveLedger = std::move (wantLedger);
             wantLedger = getLedgerByHash (haveLedger->info().parentHash);
+
+			if (!wantLedger)
+			{
+				JLOG(m_journal.warn()) << "Cannot read ledger when building fetch patch, LedgerSeq=" << haveLedger->info().seq - 1;
+			}
         }
         while (wantLedger &&
                UptimeTimer::getInstance ().getElapsedSeconds () <= uUptime + 1);
@@ -2284,9 +2305,9 @@ LedgerMaster::makeFetchPack (
         auto msg = std::make_shared<Message> (reply, protocol::mtGET_OBJECTS);
         peer->send (msg);
     }
-    catch (std::exception const&)
+    catch (std::exception const&e)
     {
-        JLOG(m_journal.warn()) << "Exception building fetch pach";
+        JLOG(m_journal.warn()) << "Exception building fetch patch :"<<e.what();
     }
 }
 

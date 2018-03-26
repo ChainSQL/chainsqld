@@ -30,6 +30,7 @@ namespace ripple {
 
 constexpr char const* const detail::FeatureCollections::featureNames[];
 
+
 detail::FeatureCollections::FeatureCollections()
 {
     features.reserve(numFeatures());
@@ -102,6 +103,7 @@ uint256 const featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
 uint256 const featureOwnerPaysFee = *getRegisteredFeature("OwnerPaysFee");
 uint256 const featureCompareFlowV1V2 = *getRegisteredFeature("CompareFlowV1V2");
 uint256 const featureSHAMapV2 = *getRegisteredFeature("SHAMapV2");
+uint256 const featureDisableV2 = *getRegisteredFeature("DisableV2");
 uint256 const featurePayChan = *getRegisteredFeature("PayChan");
 uint256 const featureFlow = *getRegisteredFeature("Flow");
 uint256 const featureCompareTakerFlowCross = *getRegisteredFeature("CompareTakerFlowCross");
