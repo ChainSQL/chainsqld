@@ -471,6 +471,7 @@ LedgerMaster::tryFill (
     std::uint32_t minHas = ledger->info().seq;
     std::uint32_t maxHas = ledger->info().seq;
 
+	/* load ledgers before jumped ledger
 	int seqJump = -1;
     while (! job.shouldCancel() && seq > 0)
     {
@@ -525,7 +526,46 @@ LedgerMaster::tryFill (
 
 		if(seq > 0)
 			prevHash = it->second.second;
-    }
+    }*/
+	while (!job.shouldCancel() && seq > 0)
+	{
+		{
+			ScopedLockType ml(m_mutex);
+			minHas = seq;
+			--seq;
+
+			if (haveLedger(seq))
+				break;
+		}
+
+		auto it(ledgerHashes.find(seq));
+
+		if (it == ledgerHashes.end())
+		{
+			if (app_.isShutdown())
+				return;
+
+			{
+				ScopedLockType ml(mCompleteLock);
+				mCompleteLedgers.setRange(minHas, maxHas);
+				// ScopedLockType ml(mCompleteLock);
+				// mCompleteLedgers.insert(range(minHas, maxHas));
+			}
+			maxHas = minHas;
+			ledgerHashes = getHashesByIndex((seq < 500)
+				? 0
+				: (seq - 499), seq, app_);
+			it = ledgerHashes.find(seq);
+
+			if (it == ledgerHashes.end())
+				break;
+		}
+
+		if (it->second.first != prevHash)
+			break;
+
+		prevHash = it->second.second;
+	}
 
     {
         ScopedLockType ml (mCompleteLock);
