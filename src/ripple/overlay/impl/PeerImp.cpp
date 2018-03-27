@@ -1700,34 +1700,43 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
         if (packet.has_ledgerhash ())
             reply.set_ledgerhash (packet.ledgerhash ());
 
-        // This is a very minimal implementation
-        for (int i = 0; i < packet.objects_size (); ++i)
-        {
-            uint256 hash;
-            const protocol::TMIndexedObject& obj = packet.objects (i);
+		try
+		{
+			// This is a very minimal implementation
+			for (int i = 0; i < packet.objects_size(); ++i)
+			{
+				uint256 hash;
+				const protocol::TMIndexedObject& obj = packet.objects(i);
 
-            if (obj.has_hash () && (obj.hash ().size () == (256 / 8)))
-            {
-                memcpy (hash.begin (), obj.hash ().data (), 256 / 8);
-                // VFALCO TODO Move this someplace more sensible so we dont
-                //             need to inject the NodeStore interfaces.
-                std::shared_ptr<NodeObject> hObj =
-                    app_.getNodeStore ().fetch (hash);
+				if (obj.has_hash() && (obj.hash().size() == (256 / 8)))
+				{
+					memcpy(hash.begin(), obj.hash().data(), 256 / 8);
 
-                if (hObj)
-                {
-                    protocol::TMIndexedObject& newObj = *reply.add_objects ();
-                    newObj.set_hash (hash.begin (), hash.size ());
-                    newObj.set_data (&hObj->getData ().front (),
-                        hObj->getData ().size ());
+					// VFALCO TODO Move this someplace more sensible so we dont
+					//             need to inject the NodeStore interfaces.
 
-                    if (obj.has_nodeid ())
-                        newObj.set_index (obj.nodeid ());
+					std::shared_ptr<NodeObject> hObj =
+						app_.getNodeStore().fetch(hash);
 
-                    // VFALCO NOTE "seq" in the message is obsolete
-                }
-            }
-        }
+					if (hObj)
+					{
+						protocol::TMIndexedObject& newObj = *reply.add_objects();
+						newObj.set_hash(hash.begin(), hash.size());
+						newObj.set_data(&hObj->getData().front(),
+							hObj->getData().size());
+
+						if (obj.has_nodeid())
+							newObj.set_index(obj.nodeid());
+
+						// VFALCO NOTE "seq" in the message is obsolete
+					}
+				}
+			}
+		}
+		catch (std::exception const& e)
+		{
+			JLOG(p_journal_.trace()) << "PeerImp::onMessage: exception occured:" << e.what();
+		}
 
         JLOG(p_journal_.trace()) <<
             "GetObj: " << reply.objects_size () <<

@@ -766,13 +766,18 @@ RCLConsensus::Adaptor::buildLCL(
         std::make_shared<Ledger>(*previousLedger.ledger_, closeTime);
 
     auto const v2_enabled = buildLCL->rules().enabled(featureSHAMapV2);
+	auto const disablev2_enabled = buildLCL->rules().enabled(featureDisableV2);
 
-    auto v2_transition = false;
-    if (v2_enabled && !buildLCL->stateMap().is_v2())
-    {
-        buildLCL->make_v2();
-        v2_transition = true;
-    }
+	if (disablev2_enabled && buildLCL->stateMap().is_v2())
+	{
+		buildLCL->make_v1();
+		JLOG(j_.warn()) << "Begin transfer to v1,LedgerSeq = " << buildLCL->info().seq;
+	}
+	else if (!disablev2_enabled && v2_enabled && !buildLCL->stateMap().is_v2())
+	{
+		buildLCL->make_v2();
+		JLOG(j_.warn()) << "Begin transfer to v2,LedgerSeq = " << buildLCL->info().seq;
+	}
 
     // Set up to write SHAMap changes to our database,
     //   perform updates, extract changes
