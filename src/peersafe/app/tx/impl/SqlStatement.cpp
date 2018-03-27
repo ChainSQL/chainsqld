@@ -150,11 +150,17 @@ namespace ripple {
 
 		auto const & sTxTables = tx.getFieldArray(sfTables);
 		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);
+        uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
 
 		STArray const & aTableEntries(sleTable->getFieldArray(sfTableEntries));
-		STEntry *pEntry = getTableEntry(aTableEntries, vTxTableName);
+		STEntry *pEntry = getTableEntry(aTableEntries, vTxTableName);        
 		if (pEntry)
 		{
+            //checkDBName
+            if (uTxDBName != pEntry->getFieldH160(sfNameInDB))
+            {
+                return terBAD_DBNAME;
+            }
 			// strict mode
 			if (tx.isFieldPresent(sfTxCheckHash))
 			{
@@ -207,8 +213,7 @@ namespace ripple {
 		auto &aTableEntries = pTableSle->peekFieldArray(sfTableEntries);
 
 		auto const & sTxTables = tx.getFieldArray(sfTables);
-		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);
-		uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
+		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);		
 
 		STEntry *pEntry = getTableEntry(aTableEntries, vTxTableName);
 		if (pEntry)

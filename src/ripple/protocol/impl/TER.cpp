@@ -168,6 +168,7 @@ transResults()
 		{ terNO_RIPPLE,              { "terNO_RIPPLE",             "Path does not permit rippling."                                                } },
 		{ terNO_ACCOUNT,             { "terNO_ACCOUNT",            "The source account does not exist."                                            } },
 		{ terNO_AUTH,                { "terNO_AUTH",               "Not authorized to hold IOUs."                                                  } },
+        { terBAD_DBNAME,             { "terBAD_DBNAME",            "NameInDB does not match tableName." } },
 		{ terNO_LINE,                { "terNO_LINE",               "No such line."                                                                 } },
 		{ terPRE_SEQ,                { "terPRE_SEQ",               "Missing/inapplicable prior transaction."                                       } },
 		{ terOWNERS,                 { "terOWNERS",                "Non-zero owner count."                                                         } },
