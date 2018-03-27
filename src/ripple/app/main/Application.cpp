@@ -1168,7 +1168,7 @@ bool ApplicationImp::setup()
         enabledAmendments.append (detail::preEnabledAmendments ());
 
         m_amendmentTable = make_AmendmentTable (
-            std::chrono::minutes{10},
+			weeks{ 2 },//std::chrono::minutes{10},
             MAJORITY_FRACTION,
             supportedAmendments,
             enabledAmendments,
