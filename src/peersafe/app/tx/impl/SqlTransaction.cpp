@@ -58,6 +58,12 @@ namespace ripple {
 
 		//get first transaction,to check if it have been disposed in storage.
 		auto tx_pair = STTx::parseSTTx(objs[(Json::UInt)0], accountID);
+        if (tx_pair.first == NULL)
+        {
+            std::string sError = "transtions's statement error : " + tx_pair.second;
+            JLOG(journal.error()) << sError;
+            return {terBAD_STATEMENT, sError };
+        }
 		auto txTmp = *tx_pair.first;
 		auto tables = txTmp.getFieldArray(sfTables);
 		uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
@@ -69,6 +75,12 @@ namespace ripple {
         for (auto obj : objs)
         {
             auto tx_pair = STTx::parseSTTx(obj, accountID);
+            if (tx_pair.first == NULL)
+            {
+                std::string sError = "transtions's statement error : " + tx_pair.second;
+                JLOG(journal.error()) << sError;
+                return{ terBAD_STATEMENT, sError };
+            }
             auto &txTmp = *tx_pair.first;
             auto &tables = txTmp.getFieldArray(sfTables);
             uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);

@@ -191,6 +191,7 @@ enum TER
     terOWNERS,           // Can't succeed with non-zero owner count.
     terPRE_SEQ,          // Can't pay fee, no point in forwarding, so don't
                          // burden network.
+    terBAD_STATEMENT,    // satement error
     terLAST,             // Process after all other transactions
     terNO_RIPPLE,        // Rippling not allowed
     terQUEUED,           // Transaction is being held in TxQ until fee drops
