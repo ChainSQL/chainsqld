@@ -68,6 +68,17 @@ protected:
 		{
 			when_expire_max = now - this->m_target_age_max;
 		}
+		else
+		{
+			when_expire_max = now - clock_type::duration(
+				m_target_age_max.count() * this->m_target_size / this->m_cache.size());
+
+			clock_type::duration const minimumAge(
+				std::chrono::seconds(1));
+			if (when_expire_max > (now - minimumAge))
+				when_expire_max = now - minimumAge;
+		}
+
 		if (entry.last_access > when_expire_max)
 		{
 			if (!this->m_judge_func(entry.ptr))
