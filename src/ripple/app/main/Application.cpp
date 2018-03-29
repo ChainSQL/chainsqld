@@ -1473,7 +1473,10 @@ ApplicationImp::startGenesisLedger()
 
     auto const next = std::make_shared<Ledger>(
         *genesis, timeKeeper().closeTime());
-    next->updateSkipList ();
+	next->updateSkipList();
+	//store ledger 2 account_node
+	next->stateMap().flushDirty(
+		hotACCOUNT_NODE, next->info().seq);
     next->setImmutable (*config_);
     openLedger_.emplace(next, cachedSLEs_,
         logs_->journal("OpenLedger"));
