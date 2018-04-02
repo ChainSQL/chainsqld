@@ -832,6 +832,15 @@ public:
 		default:
 			break;
 		}
+
+		// fix an issue that we can't catch an exception on top-level,
+		// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
+		// however destructor can catch an exception but can't throw an exception that was catched by destructor.
+		if (db_conn_->getSession().last_error().first != 0) {
+			last_error(db_conn_->getSession().last_error());
+			ret = -1;
+		}
+
 		return ret;
 	}
 
@@ -999,10 +1008,10 @@ private:
 		// fix an issue that we can't catch an exception on top-level,
 		// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
 		// however destructor can catch an exception but can't throw an exception that was catched by destructor.
-		if (db_conn_->getSession().last_error().first != 0) {
-			last_error(db_conn_->getSession().last_error());
-			return -1;
-		}
+		//if (db_conn_->getSession().last_error().first != 0) {
+		//	last_error(db_conn_->getSession().last_error());
+		//	return -1;
+		//}
 		return 0;
 	}
 
@@ -1123,10 +1132,10 @@ private:
 			// fix an issue that we can't catch an exception on top-level,
 			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
 			// however destructor can catch an exception but can't throw an exception that was catched by destructor.
-			if (db_conn_->getSession().last_error().first != 0) {
-				last_error(db_conn_->getSession().last_error());
-				return -1;
-			}
+			//if (db_conn_->getSession().last_error().first != 0) {
+			//	last_error(db_conn_->getSession().last_error());
+			//	return -1;
+			//}
 		}
 		else {
 			return -1;
@@ -1198,10 +1207,10 @@ private:
 			// fix an issue that we can't catch an exception on top-level,
 			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
 			// however destructor can catch an exception but can't throw an exception that was catched by destructor.
-			if (db_conn_->getSession().last_error().first != 0) {
-				last_error(db_conn_->getSession().last_error());
-				return -1;
-			}
+			//if (db_conn_->getSession().last_error().first != 0) {
+			//	last_error(db_conn_->getSession().last_error());
+			//	return -1;
+			//}
 		}
 		else {
 			return -1;
