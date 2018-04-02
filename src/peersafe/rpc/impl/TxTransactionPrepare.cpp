@@ -21,7 +21,7 @@
 #include <ripple/protocol/JsonFields.h>
 #include <peersafe/rpc/impl/TxTransactionPrepare.h>
 #include <peersafe/rpc/impl/TxSingleTransPrepare.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 	TxTransactionPrepare::TxTransactionPrepare(Application& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func,bool ws):

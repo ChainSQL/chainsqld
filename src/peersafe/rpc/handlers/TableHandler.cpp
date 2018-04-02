@@ -33,7 +33,7 @@
 #include <peersafe/app/storage/TableStorage.h> 
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/table/TableStatusDB.h>
 #include <iostream> 
 #include <fstream>

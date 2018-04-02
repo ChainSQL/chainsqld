@@ -21,7 +21,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/JsonFields.h>
 #include <peersafe/rpc/impl/TxCommonPrepare.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 //#include <ripple/protocol/TableDefines.h>
 //#include <ripple/protocol/digest.h>
 //#include <ripple/basics/Slice.h>
