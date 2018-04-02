@@ -34,6 +34,7 @@
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/tx/SqlStatement.h>
 #include <peersafe/app/tx/OperationRule.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 	TER
