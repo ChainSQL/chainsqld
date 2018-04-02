@@ -250,6 +250,7 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 		if (posPair.first == 0)
 		{            
             StopInnerDeal(fp, "");
+            fclose(fp);
 			return false;
 		}
 
@@ -259,6 +260,7 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         if (fRet < 0)
         {            
             StopInnerDeal(fp, "");
+            fclose(fp);
             return false;
         }
 
@@ -267,6 +269,7 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         if (checkRet == CHECK_REJECT && GetSyncState() != SYNC_STOP)
         {
             StopInnerDeal(fp, "catch the condition point.");
+            fclose(fp);
             return false;
         }
 
