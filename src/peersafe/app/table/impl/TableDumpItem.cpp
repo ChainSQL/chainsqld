@@ -41,6 +41,10 @@ TableDumpItem::TableDumpItem(Application& app, beast::Journal journal, Config& c
 {       
 	sDumpPath_            = "";
 	funDumpCB_            = NULL;
+    uTxSeqRecord_         = 0;
+    sTxHashRecord_        = "";
+    uLedgerSeqRecord_     = 0;
+    sLedgerHashRecord_    = "";
 }
 
 std::pair<int,int> TableDumpItem::GetRightTxEndPos(FILE * fp, bool &bEmptyTx)
