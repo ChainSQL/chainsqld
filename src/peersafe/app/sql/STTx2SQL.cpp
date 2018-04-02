@@ -989,7 +989,7 @@ private:
 		for (size_t idx = 0; idx < fields_.size(); idx++) {
 			BuildField& field = fields_[idx];
 			fields_str += field.Name();
-			values_str += ":" + field.Name();
+			values_str += ":" + std::to_string(idx + 1);
 			if (idx != fields_.size() - 1) {
 				fields_str += ",";
 				values_str += ",";
