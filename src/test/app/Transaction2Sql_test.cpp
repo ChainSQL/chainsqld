@@ -159,6 +159,62 @@ public:
 		}
 	}
 
+	int createTable(const std::string& Raw, const std::string& optionalRule) {
+		int ret = 0;
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		STTx tx(ttTABLELISTSET, [this, &Raw, &hex_table, &keypair](STObject &obj) {
+			set_AccountID(obj);
+			obj.setFieldVL(sfSigningPubKey, keypair.first.slice());
+			set_tables(obj);
+			obj.setFieldU16(sfOpType, 1); // create table
+			ripple::Blob blob;
+			blob.assign(Raw.begin(), Raw.end());
+			obj.setFieldVL(sfRaw, blob);
+		});
+
+		tx.sign(keypair.first, keypair.second);
+		std::string text = tx.getFullText();
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		auto result = txstore_->Dispose(tx, optionalRule);
+		if(result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+			ret = -1;
+		}
+		return ret;
+	}
+
+	int insert_Records(const std::string& raw) {
+		int ret = 0;
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		STTx tx(ttSQLSTATEMENT, [this, &raw, &hex_table, &keypair](STObject &obj) {
+			set_OwnerID(obj);
+			obj.setFieldU16(sfOpType, 6); // insert one record 
+			set_tables(obj);
+			ripple::Blob blob;
+			blob.assign(raw.begin(), raw.end());
+			obj.setFieldVL(sfRaw, blob);
+		});
+
+		tx.sign(keypair.first, keypair.second);
+
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		auto res = txstore_->Dispose(tx);
+		BEAST_EXPECT(res.first == true);
+		if (res.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+			ret = -1;
+		}
+		return ret;
+	}
+
 	void test_fixbug_RR207() {
 		auto f = [this](const std::string& raw, const uint16_t optype) {
 			const auto keypair = randomKeyPair(KeyType::ed25519);
@@ -229,6 +285,31 @@ public:
 		BEAST_EXPECT(f("[[]]", 10).first == false);
 	}
 
+	void test_fixbug_RR377() {
+		// create table
+		{
+			std::string raw = "[{\"field\":\"学号\",\"type\":\"int\",\"length\":11},\
+{\"field\":\"姓名\",\"type\":\"varchar\",\"length\":20},\
+{\"field\":\"年龄\",\"type\":\"int\"}]";
+			int ret = createTable(raw, "");
+			BEAST_EXPECT(ret == 0);
+		}
+
+		// insert records
+		{
+			std::string raw = "[{\"学号\":1,\"姓名\":\"中国\",\"年龄\":100},\
+{\"学号\":2,\"姓名\":\"美国\",\"年龄\":200},\
+{\"学号\":3,\"姓名\":\"英国\",\"年龄\":300}]";
+			int ret = insert_Records(raw);
+			BEAST_EXPECT(ret == 0);
+		}
+
+		// drop table
+		{
+			test_DropTableTransaction();
+		}
+	}
+
 	void test_crashfix_on_select() {
 		{
 			std::string query = "[[],{\"$and\":[{\"$order\":[{\"id\" : -1}]},{\"id\":{\"$ge\" : 3}}]}]";
@@ -238,6 +319,7 @@ public:
 	}
 
 	void test_CreateTableTransaction() {
+		/*
 		const auto keypair = randomKeyPair(KeyType::ed25519);
 		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
 		
@@ -279,6 +361,19 @@ public:
 		else {
 			tr.rollback();
 		}
+		*/
+		std::string raw = "[{\"field\":\"id\",\"type\":\"int\",\"PK\":1},{\"field\":\"cash\",\"type\":\"float\"},\
+{\"field\":\"name\",\"type\":\"varchar\",\"length\":100,\"index\":1},{\"field\":\"comment\",\"type\":\"text\"},\
+{\"field\":\"deci\",\"type\":\"decimal\",\"length\":16,\"accuracy\":2},{\"field\":\"datetime\",\"type\":\"datetime\"},\
+{\"field\":\"ch\",\"type\":\"char\"},{\"field\":\"ch2\",\"type\":\"char\",\"length\":16, \"index\":1},\
+{\"field\":\"date_field\",\"type\":\"date\"}]";
+		std::string optionalRule = "{\"OperationRule\":{\"Insert\":{\"Condition\":{\"account\":\"$account\",\
+\"txid\":\"$tx_hash\"},\"Count\":{\"AccountField\":\"account\",\"CountLimit\":5}},\
+\"Update\":{\"Condition\":{\"$or\":[{\"age\":{\"$le\":28}},{\"id\":2}]},\"Fields\":[\"age\"]},\
+\"Delete\":{\"Condition\":{\"account\":\"$account\"}},\"Get\":{\"Condition\":{\"id\":{\"$ge\":3}}}}}";
+		
+		int ret = createTable(raw, optionalRule);
+		BEAST_EXPECT(ret == 0);
 	}
 
 	void test_CreateTableForeginTransaction() {
@@ -441,6 +536,7 @@ public:
 	}
 
 	void test_InsertRecordTransaction() {
+		/*
 		const auto keypair = randomKeyPair(KeyType::ed25519);
 		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
 		STTx tx(ttSQLSTATEMENT, [this, &hex_table, &keypair](STObject &obj) {
@@ -466,6 +562,13 @@ public:
 		else {
 			tr.rollback();
 		}
+		*/
+
+		std::string raw = "[{\"id\":1,\"name\":\"test1\",\"cash\":100.00,\"comment\":\"zxc\",\"deci\":200.00000,\"datetime\":\"2017/1/11 9:42:54\"},\
+{\"id\":2,\"name\":\"test2\",\"cash\":200.00,\"comment\":\"u.s\", \"deci\":300.00000,\"datetime\":\"2017/1/11 9:42:54\"},\
+{\"id\":3,\"name\":\"test3\",\"cash\":300.00,\"comment\":\"u.s\", \"deci\":300.01,\"datetime\":\"2017/06/19 20:42:54\",\"ch\":\"testchar\",\"date_field\":\"2017/06/19\"}]";
+		int ret = insert_Records(raw);
+		BEAST_EXPECT(ret == 0);
 
 		std::string query = "[[\"id\",\"name\"]]";
 		Json::Value result = getRecords(query);
@@ -2282,6 +2385,7 @@ public:
 		init_env();
 
 		test_fixbug_RR207();
+		test_fixbug_RR377();
 		test_crashfix_on_select();
 
 		//test_CreateTableForeginTransaction();
@@ -2298,6 +2402,7 @@ public:
 
 		test_mongodb_json_style();
 		test_join_select();
+
 		pass();
 	}
 
