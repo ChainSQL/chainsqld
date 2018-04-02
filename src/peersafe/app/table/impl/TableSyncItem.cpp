@@ -104,7 +104,7 @@ void TableSyncItem::InitCondition(const std::string& cond)
 {
 	if (cond.size() > 0)
 	{
-        if (cond[0] == '!')  //SYNC_JUMP
+        if (cond[0] == '~')  //SYNC_JUMP
         {
             if (cond.size() - 1 == TXID_LENGTH)
                 sCond_.stxid = cond.substr(1);

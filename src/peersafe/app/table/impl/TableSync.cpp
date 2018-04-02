@@ -616,7 +616,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
 				user = tmp;
 			else
 			{
-				if (tmp[0] == '!')
+				if (tmp[0] == '~')
 					condition = tmp;
 				else
 				{
