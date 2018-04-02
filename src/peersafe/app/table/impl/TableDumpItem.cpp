@@ -129,14 +129,17 @@ std::pair<bool, std::string> TableDumpItem::SetDumpPara(std::string sPath, funDu
             //check first
             if (to_string(accountID_) != pos["Account"].asString())
             {
+                fclose(fDump);
                 return std::make_pair(false, "account in parameter list is different form in target file, please set a new target file.");
             }
             if (sTableName_ != pos["TableName"].asString())
             {
+                fclose(fDump);
                 return std::make_pair(false, "tablename in parameter list is different form in target file, please set a new target file.");
             }
             if (uCreateLedgerSequence_ != pos["TxnCreateSeq"].asUInt())
             {
+                fclose(fDump);
                 return std::make_pair(false, sTableName_ + " is a new created file," + sTableName_ + " in target file may have been deleted , please set a new target file.");
             }
 
