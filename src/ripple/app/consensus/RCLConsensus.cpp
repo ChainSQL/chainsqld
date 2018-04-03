@@ -962,7 +962,7 @@ RCLConsensus::Adaptor::preStartRound(RCLCxLedger const & prevLgr)
     // We have a key and do not want out of sync validations after a restart,
     // and are not amendment blocked.
     validating_ = valPublic_.size() != 0 &&
-                  prevLgr.seq() >= app_.getMaxDisallowedLedger() &&
+                  //prevLgr.seq() >= app_.getMaxDisallowedLedger() &&
                   !app_.getOPs().isAmendmentBlocked();
 
     const bool synced = app_.getOPs().getOperatingMode() == NetworkOPs::omFULL;
