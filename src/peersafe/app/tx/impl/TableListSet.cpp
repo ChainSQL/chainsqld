@@ -482,7 +482,7 @@ namespace ripple {
                         }
                     }
                     
-					if (!isSameUser && users.size() >= TABLE_GRANT_COUNT)
+					if (!isSameUser && users.size() - 1 >= TABLE_GRANT_COUNT)
 						return tefTABLE_GRANTFULL;
                     //if (!isSameUser)  //mean that there no same user
                     //{
