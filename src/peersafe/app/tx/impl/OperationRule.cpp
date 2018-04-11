@@ -52,9 +52,8 @@ bool OperationRule::hasOperationRule(ApplyView& view, const STTx& tx)
 	return !rule.empty();
 }
 
-TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx)
+TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 {
-	STTx const& tx = ctx.tx;
 	if (tx.getFieldU16(sfOpType) != T_CREATE)
 		return tesSUCCESS;
 	if (tx.isFieldPresent(sfOperationRule))
@@ -239,9 +238,8 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx)
 	return tesSUCCESS;
 }
 
-TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx)
+TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 {
-	STTx const& tx = ctx.tx;
 	STEntry* pEntry = getTableEntry(ctx.view(), tx);
 	auto optype = tx.getFieldU16(sfOpType);
 	auto sOperationRule = pEntry->getOperationRule((TableOpType)optype);
@@ -390,9 +388,8 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx)
 	return tesSUCCESS;
 }
 
-TER OperationRule::adjustInsertCount(ApplyContext& ctx, DatabaseCon* pConn)
-{
-	STTx const& tx = ctx.tx;
+TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx, DatabaseCon* pConn)
+{	
 	if (tx.getFieldU16(sfOpType) != R_DELETE)
 		return tesSUCCESS;
 
