@@ -168,8 +168,6 @@ transResults()
 		{ terNO_RIPPLE,              { "terNO_RIPPLE",             "Path does not permit rippling."                                                } },
 		{ terNO_ACCOUNT,             { "terNO_ACCOUNT",            "The source account does not exist."                                            } },
 		{ terNO_AUTH,                { "terNO_AUTH",               "Not authorized to hold IOUs."                                                  } },
-        { terBAD_DBNAME,             { "terBAD_DBNAME",            "NameInDB does not match tableName." } },
-        { terBAD_STATEMENT,          { "terBAD_STATEMENT",	       "Statement is error."                                                           } },
 		{ terNO_LINE,                { "terNO_LINE",               "No such line."                                                                 } },
 		{ terPRE_SEQ,                { "terPRE_SEQ",               "Missing/inapplicable prior transaction."                                       } },
 		{ terOWNERS,                 { "terOWNERS",                "Non-zero owner count."                                                         } },
@@ -185,6 +183,8 @@ transResults()
 		{ tefTABLE_RULEDISSATISFIED,  { "tefTABLE_RULEDISSATISFIED",	"Operation rule not satisfied."}},        
 		{ tefINSUFFICIENT_RESERVE,	 { "tefINSUFFICIENT_RESERVE",  "Insufficient reserve to create a table." } },
 		{ tefDBNOTCONFIGURED,		 { "tefDBNOTCONFIGURED",       "DB is not connected,please checkout 'sync_db'in config file." } },
+		{ tefBAD_DBNAME,			{ "tefBAD_DBNAME",            "NameInDB does not match tableName." } },
+		{ tefBAD_STATEMENT,			{ "tefBAD_STATEMENT",	       "Statement is error." } },
         { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } },
     };
     return results;

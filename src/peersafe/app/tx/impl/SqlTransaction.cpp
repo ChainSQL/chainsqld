@@ -62,7 +62,7 @@ namespace ripple {
         {
             std::string sError = "transtions's statement error : " + tx_pair.second;
             JLOG(journal.error()) << sError;
-            return {terBAD_STATEMENT, sError };
+            return {tefBAD_STATEMENT, sError };
         }
 		auto txTmp = *tx_pair.first;
 		auto tables = txTmp.getFieldArray(sfTables);
@@ -79,7 +79,7 @@ namespace ripple {
             {
                 std::string sError = "transtions's statement error : " + tx_pair.second;
                 JLOG(journal.error()) << sError;
-                return{ terBAD_STATEMENT, sError };
+                return{ tefBAD_STATEMENT, sError };
             }
             auto &txTmp = *tx_pair.first;
             auto &tables = txTmp.getFieldArray(sfTables);
