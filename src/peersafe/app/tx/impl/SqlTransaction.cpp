@@ -85,7 +85,7 @@ namespace ripple {
             auto &tables = txTmp.getFieldArray(sfTables);
             uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
 			if((TableOpType)obj["OpType"].asInt() == T_CREATE)
-				ctx_.app.getTxStore().DropTable(to_string(nameInDB));
+                txStore.DropTable(to_string(nameInDB));
         }
 
         {

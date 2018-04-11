@@ -175,8 +175,8 @@ std::pair<bool, std::string> TxStore::DropTable(const std::string& tablename) {
     if (bExist)
     {
         std::string sql_str = std::string("drop table t_") + tablename;
-        soci::session& sql = *databasecon_->checkoutDb();
-        sql << sql_str;
+        LockedSociSession sql = databasecon_->checkoutDb();
+        *sql << sql_str;
     }
     else
     {

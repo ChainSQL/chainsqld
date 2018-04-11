@@ -11,14 +11,14 @@ namespace ripple {
 class OperationRule {
 public:
 	//for TableListSet
-	static TER dealWithTableListSetRule(ApplyContext& ctx);
+	static TER dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx);
 	//for SqlStatement
-	static TER dealWithSqlStatementRule(ApplyContext& ctx);
+	static TER dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx);
 
 	static std::string getOperationRule(ApplyView& view, const STTx& tx);
 	static bool hasOperationRule(ApplyView& view, const STTx& tx);
 
-	static TER adjustInsertCount(ApplyContext& ctx, DatabaseCon* pConn);
+	static TER adjustInsertCount(ApplyContext& ctx, const STTx& tx, DatabaseCon* pConn);
 };
 
 } // ripple
