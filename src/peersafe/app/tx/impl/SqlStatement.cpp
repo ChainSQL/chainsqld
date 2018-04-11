@@ -160,7 +160,7 @@ namespace ripple {
             //checkDBName
             if (uTxDBName != pEntry->getFieldH160(sfNameInDB))
             {
-                return terBAD_DBNAME;
+                return tefBAD_DBNAME;
             }
 			// strict mode
 			if (tx.isFieldPresent(sfTxCheckHash))
