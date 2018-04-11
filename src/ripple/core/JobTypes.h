@@ -67,7 +67,7 @@ add(    jtTABLESTORAGE,  "tableStorage",            1,        false, 0,     0);
 add(	jtTableCheckHash, "tableCheckHash",			1,		  false, 0,		0);
 add(	jtCheckSubTx,	  "checkSubTx",				1,		  false, 0,		0);
 add(    jtTABLELOCALSYNC,"tableLocalSync",          1,        false, 0,     0);
-add(    jtOPERATESQL,    "operateSQL",              1,        false, 0,     0);
+add(    jtOPERATESQL,    "operateSQL",              10,        false, 0,     0);
 add(    jtTABLE_REQ,     "tableRequest",            2,        false, 0,     0);
 add(    jtTABLE_DATA,    "tableData",               2,        false, 0,     0);
 add(    jtSKIPNODE,      "skipnode",                2,        false, 0,     0);
