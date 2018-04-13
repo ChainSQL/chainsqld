@@ -136,7 +136,12 @@ namespace ripple {
             {
                 if (!getTableStatusDB().IsExist(accountID_, sTableNameInDB_))
                 {
-                    getTableStatusDB().InsertSnycDB(sTableName_, sTableNameInDB_, to_string(accountID_), LedgerSeq_, ledgerHash_, true, "");
+					// get chainid
+					uint256 chainId(0);
+					auto chainIdSle = transactor.view().read(keylet::chainId());
+					if (chainIdSle)
+						chainId = chainIdSle->getFieldH256(sfChainId);
+                    getTableStatusDB().InsertSnycDB(sTableName_, sTableNameInDB_, to_string(accountID_), LedgerSeq_, ledgerHash_, true, "",chainId);
                 }
                 bExistInSyncTable_ = true;
             }
@@ -184,20 +189,23 @@ namespace ripple {
             return false;
     }
 
-    STEntry *TableStorageItem::GetTableEntry(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID,std::string TableNameInDB, bool bStrictEqual)
+	std::pair<bool, STEntry*> TableStorageItem::IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID,std::string TableNameInDB, bool bStrictEqual)
     {
-        auto iter(aTables.end());
+		auto iter(aTables.end());
+		bool bTableFound = false;
         iter = std::find_if(aTables.begin(), aTables.end(),
-            [iLastSeq, accountID, TableNameInDB, bStrictEqual](STObject const &item) {
+            [iLastSeq, accountID, TableNameInDB, bStrictEqual,&bTableFound](STObject const &item) {
+			bTableFound = true;
             uint160 uTxDBName = item.getFieldH160(sfNameInDB);
             std::string str = to_string(uTxDBName);
-            return to_string(uTxDBName) == TableNameInDB /*&& item.getFieldU8(sfDeleted) != 1*/
+            return to_string(uTxDBName) == TableNameInDB
                 && (bStrictEqual ? item.getFieldU32(sfPreviousTxnLgrSeq) == iLastSeq : item.getFieldU32(sfPreviousTxnLgrSeq) >= iLastSeq);
         });
 
-        if (iter == aTables.end())     return NULL;
-
-        return (STEntry*)(&(*iter));
+		if (iter == aTables.end())
+			return std::make_pair(bTableFound, nullptr);
+		else
+			return std::make_pair(bTableFound, (STEntry*)(&(*iter)));
     }
 
     TableStorageItem::TableStorageDBFlag TableStorageItem::CheckSuccessive(LedgerIndex validatedIndex)
@@ -215,8 +223,9 @@ namespace ripple {
 			
             const STEntry * pEntry = NULL;
             auto aTableEntries = sleAccepted->getFieldArray(sfTableEntries);
-            pEntry = this->GetTableEntry(aTableEntries, txnLedgerSeq_, accountID_, sTableNameInDB_,true); 
-            if (pEntry == NULL)  continue;            
+            auto retPair = this->IsTableSLEChanged(aTableEntries, txnLedgerSeq_, accountID_, sTableNameInDB_,true); 
+            if (retPair.second == NULL && retPair.first)  
+				continue;            
 			            
 			std::vector <uint256> aTx;
 			for (auto const& item : ledger->txMap())
@@ -276,7 +285,9 @@ namespace ripple {
                         return STORAGE_COMMIT;
                     }
                 }
-            }        
+            } 
+			if (!retPair.first)
+				break;
         }
         return STORAGE_NONE;
     }
@@ -300,8 +311,8 @@ namespace ripple {
         {
             LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
             TxStoreTransaction &stTran = getTxStoreTrans();
-
-			getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(txnHash_), to_string(txnLedgerSeq_), to_string(ledgerHash_), to_string(LedgerSeq_), txUpdateHash_.isNonZero()?to_string(txUpdateHash_) : "", to_string(lastTxTm_),"");
+			if(!bDropped_)
+				getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(txnHash_), to_string(txnLedgerSeq_), to_string(ledgerHash_), to_string(LedgerSeq_), txUpdateHash_.isNonZero()?to_string(txUpdateHash_) : "", to_string(lastTxTm_),"");
             stTran.commit();
         }
 

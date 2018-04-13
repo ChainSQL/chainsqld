@@ -36,6 +36,7 @@
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <ripple/protocol/Protocol.h>
+#include <ripple/protocol/digest.h>
 
 namespace ripple {
 
@@ -347,15 +348,34 @@ TER Transactor::apply ()
         view().update (sle);
     }
 
-	if (ctx_.tx.isChainSqlBaseType() && (ctx_.view().flags() & tapFromClient))
+	if (ctx_.tx.isChainSqlBaseType())
 	{
-		TER res = ctx_.app.getTableStorage().InitItem(ctx_.tx, *this);
-		if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
-			return res;
+		checkAddChainIDSle();
+		if ((ctx_.view().flags() & tapFromClient))
+		{
+			TER res = ctx_.app.getTableStorage().InitItem(ctx_.tx, *this);
+			if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
+				return res;
+		}
 	}
 
     return doApply();
 }  
+
+void Transactor::checkAddChainIDSle()
+{
+	ApplyView& view = ctx_.view();
+	auto key = keylet::chainId();
+	auto const chainId = view.read(key);
+	if (!chainId)
+	{
+		auto time = std::chrono::steady_clock::now().time_since_epoch().count();
+		uint256 hash = sha512Half(time);
+		auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
+		sleChainID->setFieldH256(sfChainId, hash);
+		view.insert(sleChainID);
+	}
+}
 
 TER
 Transactor::checkSign (PreclaimContext const& ctx)

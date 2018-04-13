@@ -334,7 +334,6 @@ extern SField const sfMetadata;
 extern SF_U8 const sfCloseResolution;
 extern SF_U8 const sfMethod;
 extern SF_U8 const sfTransactionResult;
-extern SF_U8 const sfDeleted;
 extern SF_U8 const sfTickSize;
 // 16-bit integers
 extern SF_U16 const sfLedgerEntryType;
@@ -423,6 +422,7 @@ extern SF_U256 const sfCreatedLedgerHash;
 extern SF_U256 const sfCreatedTxnHash;
 extern SF_U256 const sfCurTxHash;
 extern SF_U256 const sfFutureTxHash;
+extern SF_U256 const sfChainId;
 
 // 256-bit (uncommon)
 extern SF_U256 const sfBookDirectory;

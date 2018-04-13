@@ -57,8 +57,6 @@ public:
     applyHandler(ApplyView& view, const STTx & tx, Application& app);
     TER doApply () override;
 
-	TER dealWithOperationRule(ApplyView& view, const STTx & tx, Application& app);
-
     static
     STObject generateTableEntry(const STTx &tx, ApplyView& view);
 

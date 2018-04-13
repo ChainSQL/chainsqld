@@ -1474,6 +1474,7 @@ ApplicationImp::startGenesisLedger()
     auto const next = std::make_shared<Ledger>(
         *genesis, timeKeeper().closeTime());
 	next->updateSkipList();
+
 	//store ledger 2 account_node
 	next->stateMap().flushDirty(
 		hotACCOUNT_NODE, next->info().seq);

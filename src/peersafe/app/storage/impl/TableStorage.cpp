@@ -178,9 +178,8 @@ namespace ripple {
             auto validLedger = app_.getLedgerMaster().getValidatedLedger();
             uint256 txnHash, ledgerHash, utxUpdatehash;
             LedgerIndex txnLedgerSeq, LedgerSeq;
-            bool bDeleted;
 
-            bool bRet = app_.getTableStatusDB().ReadSyncDB(to_string(uTxDBName), txnLedgerSeq, txnHash, LedgerSeq, ledgerHash, utxUpdatehash, bDeleted);
+            bool bRet = app_.getTableStatusDB().ReadSyncDB(to_string(uTxDBName), txnLedgerSeq, txnHash, LedgerSeq, ledgerHash, utxUpdatehash);
             if (bRet)
             {
                 if (validIndex - LedgerSeq < MAX_GAP_NOW2VALID)  //catch up valid ledger
@@ -228,7 +227,7 @@ namespace ripple {
                 auto iter(tablentries.end());
                 iter = std::find_if(tablentries.begin(), tablentries.end(),
                     [uTxDBName](STObject const &item) {
-                    return item.getFieldH160(sfNameInDB) == uTxDBName && item.getFieldU8(sfDeleted) != 1;
+                    return item.getFieldH160(sfNameInDB) == uTxDBName;
                 });
 
                 if (iter != tablentries.end())

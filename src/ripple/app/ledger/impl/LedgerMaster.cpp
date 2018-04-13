@@ -816,7 +816,7 @@ LedgerMaster::getNeededValidations ()
     return standalone_ ? 0 : app_.validators().quorum ();
 }
 
-std::pair<ripple::uint160, bool> LedgerMaster::getNameInDB(
+ripple::uint160 LedgerMaster::getNameInDB(
     LedgerIndex index, AccountID accountID,std::string sTableName)
 {
     ripple::uint160 name;
@@ -838,16 +838,12 @@ std::pair<ripple::uint160, bool> LedgerMaster::getNameInDB(
                 std::string tableName = std::string(blob.begin(), blob.end());
 				if (sTableName.compare(tableName) == 0)
 				{
-                    if (table.getFieldU8(sfDeleted) == 1)
-                        bDeleted = true;
-                    else
-                        name = table.getFieldH160(sfNameInDB);
+					name = table.getFieldH160(sfNameInDB);
 				}
             }
         }
     }
-    if (name.isNonZero())   bDeleted = false;
-    return std::make_pair(name, bDeleted);
+	return name;
 }
 
 table_BaseInfo
@@ -871,23 +867,18 @@ LedgerMaster::getTableBaseInfo(LedgerIndex index, AccountID accountID, std::stri
                 std::string tableName = std::string(blob.begin(), blob.end());
                 if (sTableName.compare(tableName) == 0)
                 {
-                    if (table.getFieldU8(sfDeleted) == 1)
-                        ret_baseInfo.isDeleted = true;
-					else
-					{
-                        if (table.isFieldPresent(sfNameInDB))
-						    ret_baseInfo.nameInDB = table.getFieldH160(sfNameInDB);
-                        if (table.isFieldPresent(sfCreateLgrSeq))
-						    ret_baseInfo.createLgrSeq = table.getFieldU32(sfCreateLgrSeq);
-                        if (table.isFieldPresent(sfCreatedLedgerHash))
-						    ret_baseInfo.createdLedgerHash = table.getFieldH256(sfCreatedLedgerHash);
-                        if (table.isFieldPresent(sfCreatedTxnHash))
-                            ret_baseInfo.createdTxnHash = table.getFieldH256(sfCreatedTxnHash);
-                        if (table.isFieldPresent(sfPreviousTxnLgrSeq))
-                            ret_baseInfo.previousTxnLgrSeq = table.getFieldU32(sfPreviousTxnLgrSeq);
-                        if (table.isFieldPresent(sfPrevTxnLedgerHash))
-                            ret_baseInfo.prevTxnLedgerHash = table.getFieldH256(sfPrevTxnLedgerHash);
-                    }                        
+                    if (table.isFieldPresent(sfNameInDB))
+						ret_baseInfo.nameInDB = table.getFieldH160(sfNameInDB);
+                    if (table.isFieldPresent(sfCreateLgrSeq))
+						ret_baseInfo.createLgrSeq = table.getFieldU32(sfCreateLgrSeq);
+                    if (table.isFieldPresent(sfCreatedLedgerHash))
+						ret_baseInfo.createdLedgerHash = table.getFieldH256(sfCreatedLedgerHash);
+                    if (table.isFieldPresent(sfCreatedTxnHash))
+                        ret_baseInfo.createdTxnHash = table.getFieldH256(sfCreatedTxnHash);
+                    if (table.isFieldPresent(sfPreviousTxnLgrSeq))
+                        ret_baseInfo.previousTxnLgrSeq = table.getFieldU32(sfPreviousTxnLgrSeq);
+                    if (table.isFieldPresent(sfPrevTxnLedgerHash))
+                        ret_baseInfo.prevTxnLedgerHash = table.getFieldH256(sfPrevTxnLedgerHash);
                 }
             }
         }
@@ -917,18 +908,14 @@ std::pair<ripple::uint256, std::string> LedgerMaster::getLatestTxCheckHash(Accou
 				std::string tableName = std::string(blob.begin(), blob.end());
 				if (sTableName.compare(tableName) == 0)
 				{
-					if (table.getFieldU8(sfDeleted) == 1)
-						bDeleted = true;
-					else
-						uTxCheckHash = table.getFieldH256(sfTxCheckHash);
+					uTxCheckHash = table.getFieldH256(sfTxCheckHash);
 				}
 			}
 		}
 	}
 	if (uTxCheckHash.isZero())
 	{
-		if (bDeleted)    errMsg = "The table has been deleted.";
-		else             errMsg = "Can't find the table in the chain.";
+		errMsg = "Can't find the table in the chain.";
 	}
 	return std::make_pair(uTxCheckHash, errMsg);
 }
@@ -960,7 +947,7 @@ LedgerMaster::isAuthorityValid(AccountID accountID, AccountID ownerID, std::list
                 {
                     ripple::Blob blob = table.getFieldVL(sfTableName);
                     std::string sTableName = std::string(blob.begin(), blob.end());
-                    if (sCheckName.compare(sTableName) == 0 && table.getFieldU8(sfDeleted) != 1)
+                    if (sCheckName.compare(sTableName) == 0)
                     {
 						bTableFound = true;
 						STEntry* pTableEntry = (STEntry*)(&table);
@@ -1005,7 +992,7 @@ LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string s
 			{
 				ripple::Blob blob = table.getFieldVL(sfTableName);
 				std::string tableName = std::string(blob.begin(), blob.end());
-				if (sTableName.compare(tableName) == 0 && table.getFieldU8(sfDeleted) != 1)
+				if (sTableName.compare(tableName) == 0)
 				{
 					tableFound = true;
 					assert(table.isFieldPresent(sfUsers));
@@ -1126,7 +1113,7 @@ bool LedgerMaster::isConfidentialUnit(const STTx& tx)
 
 		for (auto & table : aTableEntries)
 		{
-			if (strCopy(table.getFieldVL(sfTableName)) == sTxTableName && table.getFieldU8(sfDeleted) != 1) {
+			if (strCopy(table.getFieldVL(sfTableName)) == sTxTableName) {
 				STEntry* pEntry = (STEntry*)&table;
 				return pEntry->isConfidential();
 			}

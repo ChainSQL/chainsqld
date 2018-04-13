@@ -110,6 +110,12 @@ struct account_t
 };
 static account_t const account {};
 
+struct chainId_t
+{
+	Keylet operator()() const;
+};
+static chainId_t const chainId{};
+
 struct table_t
 {
     Keylet operator()(AccountID const& id) const;
