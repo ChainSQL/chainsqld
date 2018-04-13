@@ -481,7 +481,7 @@ namespace ripple {
                         }
                     }
                     
-					if (!isSameUser && users.size() >= TABLE_GRANT_COUNT)
+					if (!isSameUser && users.size() - 1 >= TABLE_GRANT_COUNT)
 						return tefTABLE_GRANTFULL;
                     //if (!isSameUser)  //mean that there no same user
                     //{
@@ -756,7 +756,7 @@ namespace ripple {
 
 	std::pair<TER, std::string> TableListSet::dispose(TxStore& txStore, const STTx& tx)
 	{
-		TER tmpRet = OperationRule::dealWithTableListSetRule(ctx_);
+		TER tmpRet = OperationRule::dealWithTableListSetRule(ctx_, tx);
 		if (!isTesSuccess(tmpRet))
 			return std::make_pair(tmpRet, "deal with operation-rule error");
 		return ChainSqlTx::dispose(txStore, tx);
@@ -778,7 +778,7 @@ namespace ripple {
 		TER tmpRet = tesSUCCESS;
 		if (canDispose(ctx_))
 		{
-			tmpRet = OperationRule::dealWithTableListSetRule(ctx_);
+			tmpRet = OperationRule::dealWithTableListSetRule(ctx_, ctx_.tx);
 			if (!isTesSuccess(tmpRet))
 				return tmpRet;
 		}

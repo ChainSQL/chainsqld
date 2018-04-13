@@ -164,7 +164,8 @@ enum TER
 	tefDBNOTCONFIGURED,
 	tefINSUFFICIENT_RESERVE,
     tefINVARIANT_FAILED,
-
+	tefBAD_DBNAME,       // NameInDB does not match tableName.
+	tefBAD_STATEMENT,    // satement error
     // -99 .. -1: R Retry
     //   sequence too high, no funds for txn fee, originating -account
     //   non-existent
@@ -187,11 +188,9 @@ enum TER
     terNO_ACCOUNT,       // Can't pay fee, therefore don't burden network.
     terNO_AUTH,          // Not authorized to hold IOUs.
     terNO_LINE,          // Internal flag.
-    terBAD_DBNAME,       // NameInDB does not match tableName.
     terOWNERS,           // Can't succeed with non-zero owner count.
     terPRE_SEQ,          // Can't pay fee, no point in forwarding, so don't
                          // burden network.
-    terBAD_STATEMENT,    // satement error
     terLAST,             // Process after all other transactions
     terNO_RIPPLE,        // Rippling not allowed
     terQUEUED,           // Transaction is being held in TxQ until fee drops

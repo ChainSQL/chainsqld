@@ -21,9 +21,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #define PEERSAFE_APP_TX_PATHS_TUNING_H_INCLUDED
 
 namespace ripple {
-
+	//an address can create at most 100 tables
 	int const ACCOUNT_OWN_TABLE_COUNT = 100;
-	int const TABLE_GRANT_COUNT = 500;
+
+	//a table owner can grant at most 256 users
+	int const TABLE_GRANT_COUNT = 256;
 
 } // ripple
 

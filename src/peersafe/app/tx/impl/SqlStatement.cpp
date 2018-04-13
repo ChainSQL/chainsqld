@@ -160,7 +160,7 @@ namespace ripple {
             //checkDBName
             if (uTxDBName != pEntry->getFieldH160(sfNameInDB))
             {
-                return terBAD_DBNAME;
+                return tefBAD_DBNAME;
             }
 			// strict mode
 			if (tx.isFieldPresent(sfTxCheckHash))
@@ -300,7 +300,7 @@ namespace ripple {
 		std::string sOperationRule = OperationRule::getOperationRule(ctx_.view(), tx);
 		if (!sOperationRule.empty()) {
 			//deal with operation-rule
-			auto tmpret = OperationRule::dealWithSqlStatementRule(ctx_);
+			auto tmpret = OperationRule::dealWithSqlStatementRule(ctx_, tx);
 			if (!isTesSuccess(tmpret))
 				return std::make_pair(tmpret, "deal with operation-rule error");
 		}
@@ -314,7 +314,7 @@ namespace ripple {
 		if (ret.first)
 		{
 			//update insert sle if delete
-			TER ret2 = OperationRule::adjustInsertCount(ctx_, txStore.getDatabaseCon());
+			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx,txStore.getDatabaseCon());
 			if (!isTesSuccess(ret2))
 				return std::make_pair(ret2, "Deal with delete rule error");;
 
