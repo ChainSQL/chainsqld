@@ -815,7 +815,7 @@ bool TableSync::CreateTableItems()
     catch (std::exception const& e)
     {
         JLOG(journal_.error()) <<
-            "create table item exception" << e.what();
+            "create table item exception " << e.what();
         ret = false;
     }
     return ret;
@@ -1385,7 +1385,7 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
     catch (std::exception const& e)
     {
         JLOG(journal_.error()) <<
-            "create table item exception" << e.what();
+            "InsertSnycDB exception " << e.what();
         ret = false;
     }
     return ret;
