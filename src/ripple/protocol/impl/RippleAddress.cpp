@@ -34,6 +34,8 @@
 #include <peersafe/crypto/AES.h>
 #include <peersafe/crypto/ECIES.h>
 #include <peersafe/crypto/ECDSA.h>
+#include <ripple/beast/utility/rngfill.h>
+#include <ripple/crypto/csprng.h>
 //#include <beast/unit_test/suite.h>
 #include <ed25519-donna/ed25519.h>
 #include <openssl/ripemd.h>
@@ -557,11 +559,16 @@ Blob RippleAddress::accountPrivateDecrypt (
 
 Blob RippleAddress::getRandomPassword()
 {
-	Seed seed = randomSeed();
-	Blob passBlob;
-	passBlob.resize(seed.size());
-	memcpy(&(passBlob.front()), seed.data(), seed.size());
-	return passBlob;
+	uint256 digest;
+	beast::rngfill(
+		digest.data(),
+		digest.size(),
+		crypto_prng());
+	Blob randomBlob;
+	randomBlob.resize(digest.size());
+	memcpy(&(randomBlob.front()), digest.data(), digest.size());
+
+	return randomBlob;
 }
 
 /*boost::optional<PublicKey> RippleAddress::getPublicKey(const std::string& secret)
@@ -640,12 +647,12 @@ Blob RippleAddress::decryptPassword(const Blob& cipherBlob, const Blob& secret_k
 	return secretDisencrypt;
 }
 
-Blob RippleAddress::encryptAES(Blob const& key, Blob const& plaintext)
+Blob RippleAddress::encryptAES(Blob const& key, Blob const& plaintext,int keyLength /* = 32 */)
 {
     Blob vucCipherText;
     try
     {
-        vucCipherText = ripple::encryptAES(key, plaintext);
+        vucCipherText = ripple::encryptAES(key, plaintext, keyLength);
     }
     catch (std::exception const&)
     {
@@ -655,12 +662,12 @@ Blob RippleAddress::encryptAES(Blob const& key, Blob const& plaintext)
     return vucCipherText;
 }
 
-Blob RippleAddress::decryptAES(Blob const& key, Blob const& ciphertext)
+Blob RippleAddress::decryptAES(Blob const& key, Blob const& ciphertext, int keyLength /* = 32 */)
 {
     Blob    vucPlainText;
     try
     {
-        vucPlainText = ripple::decryptAES(key, ciphertext);
+        vucPlainText = ripple::decryptAES(key, ciphertext, keyLength);
     }
     catch (std::exception const&)
     {
