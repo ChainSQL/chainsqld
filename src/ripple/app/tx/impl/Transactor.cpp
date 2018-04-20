@@ -369,8 +369,8 @@ void Transactor::checkAddChainIDSle()
 	auto const chainId = view.read(key);
 	if (!chainId)
 	{
-		auto time = std::chrono::steady_clock::now().time_since_epoch().count();
-		uint256 hash = sha512Half(time);
+		//auto time = std::chrono::steady_clock::now().time_since_epoch().count();
+		uint256 hash = sha512Half(view.info().parentHash);
 		auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
 		sleChainID->setFieldH256(sfChainId, hash);
 		view.insert(sleChainID);
