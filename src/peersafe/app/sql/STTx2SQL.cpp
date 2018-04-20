@@ -1749,8 +1749,9 @@ protected:
 				fields.push_back(std::string("NOT NULL"));
 			if (field.isUnique())
 				fields.push_back(std::string("UNIQUE"));
-			if (field.isAutoIncrease())
-				fields.push_back(std::string("AUTO_INCREMENT"));
+			// fix an bug on RR-525, disable auto increment
+			//if (field.isAutoIncrease())
+			//	fields.push_back(std::string("AUTO_INCREMENT"));
 			if (field.isIndex()) {
 				//fields.push_back(std::string("INDEX"));
 				indexs.push_back(field.Name());
@@ -1939,9 +1940,10 @@ protected:
 				foreign_keys.push_back(field.Name());
 				references.push_back(field.Foreigns());
 			}
-
-			if (field.isAutoIncrease())  
-				fields.push_back(std::string("AUTOINCREMENT"));
+			
+			// fix an bug on RR-525, disable auto increment
+			//if (field.isAutoIncrease())  
+			//	fields.push_back(std::string("AUTOINCREMENT"));
 			if (field.isNotNull())
 				fields.push_back(std::string("NOT NULL"));
 			if (field.isUnique())
@@ -2670,8 +2672,9 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
 				buildfield.SetIndex();
 			if (v.isMember("NN"))
 				buildfield.SetNotNull();
-			if (v.isMember("AI"))
-				buildfield.SetAutoIncrease();
+			// for bug RR-525 disable auto increment
+			//if (v.isMember("AI"))
+			//	buildfield.SetAutoIncrease();
 			if (v.isMember("UQ"))
 				buildfield.SetUnique();
 			if (v.isMember("default")) {
