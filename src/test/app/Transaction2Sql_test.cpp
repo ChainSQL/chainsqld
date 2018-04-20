@@ -1355,6 +1355,25 @@ public:
 		}
 
 		{
+			std::string raw_string = "[{\"age\":{\"$in\":[20]}}]";
+			Json::Reader reader = Json::Reader();
+			Json::Value conditions;
+			if (reader.parse(raw_string, conditions) == false) {
+				std::cout << "parse error. " << reader.getFormatedErrorMessages() << std::endl;
+				return;
+			}
+			auto result = createConditionTree(conditions);
+			//BEAST_EXPECT(result.first == 0);
+
+			auto result2 = parse_conditions(conditions, result.second);
+			//BEAST_EXPECT(result2.first == 0);
+
+			std::string result_conditions = result.second.asString();
+			std::string expect_conditions = "age in (20)";
+			BEAST_EXPECT(result_conditions == expect_conditions);
+		}
+
+		{
 			std::string raw_string = "[{\"name\":{\"$nin\":[\"peersafe\",\"zongxiang\"]}}]";
 			Json::Reader reader = Json::Reader();
 			Json::Value conditions;
@@ -1370,6 +1389,25 @@ public:
 
 			std::string result_conditions = result.second.asString();
 			std::string expect_conditions = "name not in ('peersafe','zongxiang')";
+			BEAST_EXPECT(result_conditions == expect_conditions);
+		}
+
+		{
+			std::string raw_string = "[{\"name\":{\"$nin\":[\"peersafe\"]}}]";
+			Json::Reader reader = Json::Reader();
+			Json::Value conditions;
+			if (reader.parse(raw_string, conditions) == false) {
+				std::cout << "parse error. " << reader.getFormatedErrorMessages() << std::endl;
+				return;
+			}
+			auto result = createConditionTree(conditions);
+			//BEAST_EXPECT(result.first == 0);
+
+			auto result2 = parse_conditions(conditions, result.second);
+			//BEAST_EXPECT(result2.first == 0);
+
+			std::string result_conditions = result.second.asString();
+			std::string expect_conditions = "name not in ('peersafe')";
 			BEAST_EXPECT(result_conditions == expect_conditions);
 		}
 
@@ -2399,7 +2437,6 @@ public:
 		test_DeleteRecordTransaction();
 
 		test_DropTableTransaction();
-
 		test_mongodb_json_style();
 		test_join_select();
 
