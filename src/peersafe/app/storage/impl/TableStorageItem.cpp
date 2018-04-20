@@ -224,9 +224,10 @@ namespace ripple {
             const STEntry * pEntry = NULL;
             auto aTableEntries = sleAccepted->getFieldArray(sfTableEntries);
             auto retPair = this->IsTableSLEChanged(aTableEntries, txnLedgerSeq_, accountID_, sTableNameInDB_,true); 
-            if (retPair.second == NULL && retPair.first)  
-				continue;            
+            if (retPair.second == NULL && retPair.first)  //deleted
+				return STORAGE_COMMIT;
 			            
+			pEntry = retPair.second;
 			std::vector <uint256> aTx;
 			for (auto const& item : ledger->txMap())
 			{
