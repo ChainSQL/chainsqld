@@ -124,7 +124,7 @@ namespace ripple {
 			// drop table if created
 			if (vecNameInDB.size() > 0)
 			{
-				for each (auto nameInDB in vecNameInDB)
+				for(auto nameInDB : vecNameInDB)
 				{
 					txStore.DropTable(to_string(nameInDB));
 				}
