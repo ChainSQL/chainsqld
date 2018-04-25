@@ -107,9 +107,6 @@ private:
 
     bool ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq, uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash);
 
-    STEntry * GetTableEntry(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID, std::string sTableName,bool bStrictEqual);
-	std::pair<bool, STEntry*> IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID, std::string sTableName, bool bStrictEqual);
-
     bool IsNeedSyn(std::shared_ptr <TableSyncItem> pItem);
     bool IsNeedSyn();
 

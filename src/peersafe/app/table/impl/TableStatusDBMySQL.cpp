@@ -568,7 +568,7 @@ namespace ripple {
 
 			static std::string  sql = boost::str(boost::format(
 				(R"(select Owner,TableName,TxnLedgerTime from SyncTableState
-            WHERE ChainId = '%s' AND AutoSync = '1'AND deleted = '0' ORDER BY TxnLedgerSeq DESC;)"))
+            WHERE ChainId = '%s' AND AutoSync = '1' AND deleted = '0' ORDER BY TxnLedgerSeq DESC;)"))
 				% to_string(chainId));
 
             boost::optional<std::string> Owner_;

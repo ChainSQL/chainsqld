@@ -74,7 +74,6 @@ private:
    
     TableStatusDB& getTableStatusDB();
 
-	std::pair<bool, STEntry*> IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID, std::string TableNameInDB, bool bStrictEqual);
 private:
     std::list<txInfo>                                                           txList_;
     std::shared_ptr <TxStoreDBConn>                                             dbconn_;

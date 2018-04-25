@@ -29,7 +29,7 @@
 #include <peersafe/app/table/TableStatusDB.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/protocol/TableDefines.h>
-#include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/util/TableSyncUtil.h>
 
 namespace ripple {
 TableSync::TableSync(Application& app, Config& cfg, beast::Journal journal)
@@ -96,27 +96,6 @@ void TableSync::GetTxRecordInfo(LedgerIndex iCurSeq, AccountID accountID, std::s
 
     iLastSeq = iter->getFieldU32(sfTxnLgrSeq);
     hash = iter->getFieldH256(sfTxnLedgerHash);
-}
-
-std::pair<bool, STEntry*> TableSync::IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID, std::string sTableName, bool bStrictEqual)
-{
-	auto iter(aTables.end());
-	bool bTableFound = false;
-	iter = std::find_if(aTables.begin(), aTables.end(),
-		[iLastSeq, accountID, sTableName, bStrictEqual,&bTableFound](STObject const &item) {
-		uint160 uTxDBName = item.getFieldH160(sfNameInDB);
-		if (to_string(uTxDBName) == sTableName) {
-			bTableFound = true;
-			return (bStrictEqual ?
-				item.getFieldU32(sfPreviousTxnLgrSeq) == iLastSeq :
-				item.getFieldU32(sfPreviousTxnLgrSeq) >= iLastSeq);
-		}
-		return false;
-	});
-	if (iter == aTables.end())
-		return std::make_pair(bTableFound, nullptr);
-	else
-		return std::make_pair(bTableFound,(STEntry*)(&(*iter)));
 }
 
 std::vector <uint256> TableSync::getTxsFromDb(uint32 TxnLgrSeq, std::string /*sAccountID*/)
@@ -336,7 +315,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
 						auto & aTables = tablesle->getFieldArray(sfTableEntries);
 						if (aTables.size() > 0)
 						{
-							retPair = this->IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.accountID, stItemInfo.sTableNameInDB, false);
+							retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.accountID, stItemInfo.sTableNameInDB, false);
 						}
 					}
 					time = ledger->info().closeTime.time_since_epoch().count();
@@ -387,7 +366,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
             auto & aTables = tablesle->getFieldArray(sfTableEntries);
             if (aTables.size() > 0)
             {
-				retPair = this->IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.accountID, stItemInfo.sTableNameInDB, true);
+				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.accountID, stItemInfo.sTableNameInDB, true);
             }
         }
 
@@ -409,10 +388,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
 			}
 			else
 			{
-				LedgerIndex  iTxSeq;
-				uint256  iTxHash;
-				pItem->GetSyncTxLedger(iTxSeq, iTxHash);
-				bRet = MakeTableDataReply(toBase58(stItemInfo.accountID), false, time, stItemInfo.sNickName, pItem->TargetType(),i, ledger->info().hash,iTxSeq,iTxHash,pItem->TableNameInDB(), *pData);
+				bRet = MakeTableDataReply(toBase58(stItemInfo.accountID), false, time, stItemInfo.sNickName, pItem->TargetType(),i, ledger->info().hash, lastTxChangeIndex, lashTxChecHash,pItem->TableNameInDB(), *pData);
 			}
             if (!bRet)
             {
@@ -513,7 +489,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
             auto & aTables = tablesle->getFieldArray(sfTableEntries);
             if (aTables.size() > 0)
             {
-				retPair = this->IsTableSLEChanged(aTables, lastTxChangeIndex, ownerID, m->tablename(), false);
+				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, ownerID, m->tablename(), false);
             }
         }
         
@@ -537,12 +513,12 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
             auto & aTables = tablesle->getFieldArray(sfTableEntries);
             if (aTables.size() > 0)
             {
-				retPair = this->IsTableSLEChanged(aTables, lastTxChangeIndex, ownerID, m->tablename(), true);
+				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, ownerID, m->tablename(), true);
             }
         }
 
         auto time = ledger->info().closeTime.time_since_epoch().count();
-		if (retPair.second != NULL || !retPair.first)
+		if (retPair.second != NULL)
         {   
             this->SendSeekResultReply(m->account(), i == stopIndex,time,wPeer, sNickName, eTargetType, ledger->info().seq, ledger->info().hash,lastTxChangeIndex, lastTxChangeHash,m->tablename());
             iLastFindSeq = i;
@@ -550,7 +526,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
             lastTxChangeIndex = i;
             lastTxChangeHash  = retPair.second? retPair.second->getFieldH256(sfTxnLedgerHash) : lastTxChangeHash;
         }
-        else if(iBlockEnd == i || (!bGetLost && i == stopIndex))
+        else if(iBlockEnd == i || (!bGetLost && i == stopIndex) || !retPair.first)
         {       
             this->SendSeekEndReply(i, ledger->info().hash, iLastFindSeq, uLashFindHash, lastTxChangeHash, m->account(), m->tablename(), sNickName, time, eTargetType, wPeer);
             break;
@@ -787,7 +763,7 @@ bool TableSync::CreateTableItems()
         //2.read from state table
 		auto ledger = app_.getLedgerMaster().getValidatedLedger();
 		//read chainId
-		uint256 chainId = GetChainId(ledger);
+		uint256 chainId = TableSyncUtil::GetChainId(ledger);
 
         std::list<std::tuple<std::string, std::string, std::string, bool> > list;
         app_.getTableStatusDB().GetAutoListFromDB(chainId, list); 
@@ -1190,7 +1166,7 @@ void TableSync::TableSyncThread()
 							bAutoSync = false;
 						}
 						pItem->SetDeleted(false);
-						auto chainId = GetChainId(app_.getLedgerMaster().getValidatedLedger());
+						auto chainId = TableSyncUtil::GetChainId(app_.getLedgerMaster().getValidatedLedger());
                         InsertSnycDB(stItem.sTableName, nameInDB, to_string(stItem.accountID), LedgerSeq, LedgerHash, bAutoSync, "",chainId);
 						app_.getTableStatusDB().UpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), to_string(TxnLedgerSeq), to_string(LedgerHash), to_string(LedgerSeq), "", "", "");
                     }
@@ -1558,7 +1534,7 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
 			auto vec = STTx::getTxs(*pSTTX);
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId
-			uint256 chainId = GetChainId(ledger);
+			uint256 chainId = TableSyncUtil::GetChainId(ledger);
 			for (auto& tx : vec)
 			{
                 if (tx.isFieldPresent(sfOpType))
