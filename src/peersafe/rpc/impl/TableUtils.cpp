@@ -53,9 +53,8 @@ namespace ripple {
 		iter = std::find_if(aTables.begin(), aTables.end(),
 			[sCheckName](STObject const &item) {
 			if (!item.isFieldPresent(sfTableName))  return false;
-			if (!item.isFieldPresent(sfDeleted))    return false;
 			auto sTableName = strCopy(item.getFieldVL(sfTableName));
-			return sTableName == sCheckName && item.getFieldU8(sfDeleted) != 1;
+			return sTableName == sCheckName;
 		});
 
 		if (iter == aTables.end())  return NULL;
@@ -69,9 +68,8 @@ namespace ripple {
 		iter = std::find_if(aTables.begin(), aTables.end(),
 			[vCheckName](STObject const &item) {
 			if (!item.isFieldPresent(sfTableName))  return false;
-			if (!item.isFieldPresent(sfDeleted))    return false;
 
-			return item.getFieldVL(sfTableName) == vCheckName && item.getFieldU8(sfDeleted) != 1;
+			return item.getFieldVL(sfTableName) == vCheckName;
 		});
 
 		if (iter == aTables.end())  return NULL;

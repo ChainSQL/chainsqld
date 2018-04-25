@@ -81,7 +81,6 @@ SField const sfIndex       = make::one(&sfIndex,       STI_HASH256,     258, "in
 SF_U8 const sfCloseResolution   = make::one<SF_U8::type>(&sfCloseResolution,   STI_UINT8, 1, "CloseResolution");
 SF_U8 const sfMethod            = make::one<SF_U8::type>(&sfMethod,            STI_UINT8, 2, "Method");
 SF_U8 const sfTransactionResult = make::one<SF_U8::type>(&sfTransactionResult, STI_UINT8, 3, "TransactionResult");
-SF_U8 const sfDeleted           = make::one<SF_U8::type>(&sfDeleted,           STI_UINT8, 50, "Deleted");
 
 // 8-bit integers (uncommon)
 SF_U8 const sfTickSize          = make::one<SF_U8::type>(&sfTickSize,          STI_UINT8, 16, "TickSize");
@@ -173,6 +172,7 @@ SF_U256 const sfCreatedLedgerHash = make::one<SF_U256::type>(&sfCreatedLedgerHas
 SF_U256 const sfCreatedTxnHash    = make::one<SF_U256::type>(&sfCreatedTxnHash,     STI_HASH256, 54, "CreatedTxnHash");
 SF_U256 const sfCurTxHash         = make::one<SF_U256::type>(&sfCurTxHash,          STI_HASH256, 55, "CurTxHash");
 SF_U256 const sfFutureTxHash      = make::one<SF_U256::type>(&sfFutureTxHash,       STI_HASH256, 56, "FutureTxHash");
+SF_U256 const sfChainId			  = make::one<SF_U256::type>(&sfChainId,			STI_HASH256, 57, "ChainId");
 
 // 256-bit (uncommon)
 SF_U256 const sfBookDirectory = make::one<SF_U256::type>(&sfBookDirectory, STI_HASH256, 16, "BookDirectory");
