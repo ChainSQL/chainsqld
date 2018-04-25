@@ -934,19 +934,25 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 			
 	}
     
-	if (T_DROP == op_type)
+	if (ret.first)
 	{
-		this->ReSetContexAfterDrop();
-	}
-	else if (T_RENAME == op_type)
-	{
-		auto tables = tx.getFieldArray(sfTables);
-		if (tables.size() > 0)
+
+		if (T_DROP == op_type)
 		{
-			auto newTableName = strCopy(tables[0].getFieldVL(sfTableNewName));
-			getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
+			this->ReSetContexAfterDrop();
+		}
+		else if (T_RENAME == op_type)
+		{
+			auto tables = tx.getFieldArray(sfTables);
+			if (tables.size() > 0)
+			{
+				auto newTableName = strCopy(tables[0].getFieldVL(sfTableNewName));
+				sTableName_ = newTableName;
+				getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
+			}
 		}
 	}
+
 	return ret;
 }
 

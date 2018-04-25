@@ -12,6 +12,9 @@ class OperationRule {
 public:
 	//for TableListSet
 	static TER dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx);
+	//check field in update/delete/get is right
+	static bool checkRuleFields(std::vector<std::string>& vecFields,Json::Value condition);
+
 	//for SqlStatement
 	static TER dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx);
 

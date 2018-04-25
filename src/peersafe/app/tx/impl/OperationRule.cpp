@@ -52,6 +52,46 @@ bool OperationRule::hasOperationRule(ApplyView& view, const STTx& tx)
 	return !rule.empty();
 }
 
+bool OperationRule::checkRuleFields(std::vector<std::string>& vecFields, Json::Value condition)
+{
+	if (!condition.isObject())
+		return false;
+	std::vector<std::string> vecMembers = condition.getMemberNames();
+	for (auto const& fieldName : vecMembers)
+	{
+		std::vector<std::string>::iterator iter;
+		for (iter = vecFields.begin(); iter != vecFields.end(); iter++)
+		{
+			if (*iter == fieldName)
+				break;
+		}
+		if (iter == vecFields.end())
+		{
+			if (fieldName.length() > 0 && fieldName[0] != '$')
+				return false;
+		}
+		Json::Value& value = condition[fieldName];
+		if (value.type() == Json::objectValue)
+		{
+			if (!checkRuleFields(vecFields, value))
+				return false;
+		}
+		else if (value.type() == Json::arrayValue)
+		{
+			//eg:{'or':[{'id':1},{'name':'123'}]}
+			for (auto &valueItem : value)
+			{
+				if (!valueItem.isObject())  
+					return false;
+
+				if (!checkRuleFields(vecFields, valueItem))
+					return false;
+			}
+		}
+	}
+	return true;
+}
+
 TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 {
 	if (tx.getFieldU16(sfOpType) != T_CREATE)
@@ -156,6 +196,8 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 					Json::Value& condition = jsonRule[jss::Update][jss::Condition];
 					if (!condition.isObject())
 						return temBAD_OPERATIONRULE;
+					if(!checkRuleFields(vecFields,condition))
+						return temBAD_OPERATIONRULE;
 				}
 			}
 			else if (!accountField.empty()) {
@@ -170,6 +212,9 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 
 				if (!jsonRule[jss::Delete][jss::Condition].isObject())
 					return temBAD_DELETERULE;
+				if (!checkRuleFields(vecFields, jsonRule[jss::Delete][jss::Condition]))
+					return temBAD_OPERATIONRULE;
+
 				//if insert count is limited,then delete must define only the 'AccountField' account can delet
 				if (bContainCountLimit)
 				{
@@ -227,7 +272,7 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 					return temBAD_OPERATIONRULE;
 				if (!jsonRule[jss::Get].isMember(jss::Condition))
 					return temBAD_OPERATIONRULE;
-				if (!jsonRule[jss::Get][jss::Condition].isObject())
+				if (!checkRuleFields(vecFields, jsonRule[jss::Get][jss::Condition]))
 					return temBAD_OPERATIONRULE;
 			}
 		}

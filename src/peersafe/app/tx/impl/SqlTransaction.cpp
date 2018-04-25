@@ -71,6 +71,7 @@ namespace ripple {
 		if (item != NULL && item->isHaveTx(tx.getTransactionID()))
 			return { tesSUCCESS, "success" };
 
+		std::vector<uint160> vecNameInDB;
         //drop table before execute the sql
         for (auto obj : objs)
         {
@@ -84,11 +85,15 @@ namespace ripple {
             auto &txTmp = *tx_pair.first;
             auto &tables = txTmp.getFieldArray(sfTables);
             uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
-			if((TableOpType)obj["OpType"].asInt() == T_CREATE)
-                txStore.DropTable(to_string(nameInDB));
+			if ((TableOpType)obj["OpType"].asInt() == T_CREATE)
+			{
+				txStore.DropTable(to_string(nameInDB));
+				vecNameInDB.push_back(nameInDB);
+			}
         }
 
         {
+			std::pair<TER, std::string> breakRet = { tesSUCCESS,"success" };
             TxStoreTransaction stTran(&txStoreDBConn);
             for (auto obj : objs)
             {
@@ -110,12 +115,22 @@ namespace ripple {
                     else
                     {
                         JLOG(journal.trace()) << "Dispose error" << result.second;
-                        stTran.rollback();
-                        return result;
+						breakRet = result;
+						break;
                     }
                 }
             }
             stTran.rollback();
+			// drop table if created
+			if (vecNameInDB.size() > 0)
+			{
+				for(auto nameInDB : vecNameInDB)
+				{
+					txStore.DropTable(to_string(nameInDB));
+				}
+			}
+			if (breakRet.first != tesSUCCESS)
+				return breakRet;
         }
 
         return{ tesSUCCESS, "success" };

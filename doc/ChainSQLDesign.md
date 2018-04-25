@@ -344,8 +344,7 @@
             "length": 11,
             "PK": 1,
             "NN": 1,
-            "UQ": 1,
-            "AI": 1
+            "UQ": 1
           },
           {
             "field": "account",
@@ -416,7 +415,6 @@
             2.Insert指定了Count条件，则Delete中也需要指定同样的账户
         NN： Not Null标识
         UQ：唯一键标识
-        AI：自增标识
         Index：索引标识
 &emsp;　　　Response Format:
     
@@ -973,8 +971,7 @@
         "length": 11,
         "PK": 1,
         "NN": 1,
-        "UQ": 1,
-        "AI": 1
+        "UQ": 1
       },
       {
         "field": "age",
@@ -1008,7 +1005,6 @@
       "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
       "Raw": [
         {
-          "AI": 1,
           "NN": 1,
           "PK": 1,
           "UQ": 1,
@@ -1094,8 +1090,7 @@
       "length": 11,
       "PK": 1,
       "NN": 1,
-      "UQ": 1,
-      "AI": 1
+      "UQ": 1
     },
     {
       "field": "age",
@@ -1110,7 +1105,6 @@
         PK：主键标识
         NN： Not Null标识
         UQ：唯一键标识
-        AI：自增标识
         Index：索引标识
 &emsp;　　　Response Format:
 

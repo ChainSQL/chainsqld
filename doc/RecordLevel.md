@@ -48,7 +48,7 @@ TableListSet的交易中添加一个新的字段**OperateRule**，示例如下�
                 ],
                "OpType": 1,
                "Raw": [
-                    {"field":"id","type":"int","length":11,"PK":1,"NN":1,"UQ":1,"AI":1},
+                    {"field":"id","type":"int","length":11,"PK":1,"NN":1,"UQ":1},
                     {"field":"age","type":"int"},
                     {"field":"name","type":"varchar","length":32},
                     {"field":"account","type":"varchar","length":64},

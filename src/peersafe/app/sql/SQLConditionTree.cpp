@@ -276,22 +276,9 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 
 		std::string sub;
 		if (style == 0) {
-			if (value.size() == 1) {
-				const BindValue& v = value[0];
-				std::string fv;
-				if (format_value(v, fv) != 0)
-					return false;
-
-				if (boost::iequals(op, "like")) {
-					modify_bind_string(fv, style);
-				}
-
-				sub = (boost::format("%1% %2% %3%")
-					% keyname %op %fv).str();
-			}
-			else {
+			if(op == "in" || op == "not in") {
 				// op must be in or nin
-				assert(op == "in" || op == "not in");
+				//assert(op == "in" || op == "not in");
 				std::string element = "(";
 				size_t size = value.size();
 				for (size_t index = 0; index < size; index++) {
@@ -309,6 +296,20 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 
 				sub = (boost::format("%1% %2% %3%")
 					% keyname %op %element).str();
+			} else {
+				//assert(value.size() == 1);
+				assert(op != "in" && op != "not in");
+				const BindValue& v = value[0];
+				std::string fv;
+				if (format_value(v, fv) != 0)
+					return false;
+
+				if (boost::iequals(op, "like")) {
+					modify_bind_string(fv, style);
+				}
+
+				sub = (boost::format("%1% %2% %3%")
+					% keyname %op %fv).str();
 			}
 		}
 		else {
