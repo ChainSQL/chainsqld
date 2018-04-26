@@ -89,7 +89,7 @@ public:
     std::shared_ptr<ReadView const>
     getCurrentLedger();
 
-    std::pair<ripple::uint160, bool>
+   ripple::uint160
     getNameInDB(LedgerIndex index, AccountID accountID, std::string sTableName);
 
     table_BaseInfo

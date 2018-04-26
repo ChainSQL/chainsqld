@@ -59,27 +59,24 @@ Json::Value doGetAccountTables(RPC::Context&  context)
             ret[jss::status] = "success";
             for (auto table : aTables)
             {
-                if (table.getFieldU8(sfDeleted) == 0)
-                {
-                    Json::Value tmp(Json::objectValue);
-                    tmp[jss::NameInDB] = to_string(table.getFieldH160(sfNameInDB));
-                    auto blob = table.getFieldVL(sfTableName);
-                    std::string str(blob.begin(), blob.end());
-                    tmp[jss::TableName] = str;
-                    ret["tx_json"].append(tmp);
-                }
+				Json::Value tmp(Json::objectValue);
+				tmp[jss::NameInDB] = to_string(table.getFieldH160(sfNameInDB));
+				auto blob = table.getFieldVL(sfTableName);
+				std::string str(blob.begin(), blob.end());
+				tmp[jss::TableName] = str;
+				ret["tx_json"].append(tmp);
             }
         }
         else
         {
             ret[jss::status] = "error";
-            ret[jss::message] = "this is no table in this account!";
+            ret[jss::message] = "There is no table in this account!";
         }
     }
     else
     {
         ret[jss::status] = "error!";
-        ret[jss::message] = "this is no table in this account!";
+        ret[jss::message] = "There is no table in this account!";
     }
 
     return ret;

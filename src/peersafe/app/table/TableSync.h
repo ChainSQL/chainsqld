@@ -55,7 +55,7 @@ public:
     bool isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType);
     //get reply
     bool GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, std::weak_ptr<Peer> const& wPeer);
-    bool SendSeekResultReply(std::string sAccountID, const STEntry * pEntry, bool bStop, uint32 time,std::weak_ptr<Peer> const& wPeer, LedgerIndex ledgerSyncSeq, std::string sNickName, TableSyncItem::SyncTargetType eTargeType);
+    bool SendSeekResultReply(std::string sAccountID, bool bStop, uint32 time, std::weak_ptr<Peer> const& wPeer, std::string sNickName , TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB);
     bool SendSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string tablename, std::string nickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, std::weak_ptr<Peer> const& wPeer);
 
     bool SendLedgerRequest(LedgerIndex iSeq, uint256 hash, std::shared_ptr <TableSyncItem> pItem);
@@ -93,19 +93,18 @@ private:
     bool CheckTheReplyIsValid(std::shared_ptr <protocol::TMTableData> const& m);
     bool CheckSyncDataBy256thLedger(std::shared_ptr <TableSyncItem> pItem, LedgerIndex index, uint256 ledgerHash);    
     bool SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr <protocol::TMTableData> const& m);
-    bool MakeTableDataReply(std::string sAccountID, const STEntry * pEntry, bool bStop, uint32_t time, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &m);
+    bool MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t time, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB, protocol::TMTableData &m);
     void GetTxRecordInfo(LedgerIndex iCurSeq, AccountID accountID, std::string sTableName, LedgerIndex &iLastSeq, uint256 &hash);
     bool MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string tablename, std::string sNickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &reply);
     
     bool Is256thLedgerExist(LedgerIndex index);
     uint256 GetLocalHash(LedgerIndex ledgerSeq);
 
-    bool InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync, std::string time);
-    bool ReadSyncDB(std::string nameInDB, std::string Owner, LedgerIndex &txnseq, uint256 &txnhash,LedgerIndex &seq, uint256 &hash, uint256 &ReadSyncDB, bool &bDeleted);
 
-    bool ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq, uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash, bool &bDeleted);
+    bool InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync, std::string time, uint256 chainId);
+    //bool ReadSyncDB(std::string nameInDB, std::string Owner, LedgerIndex &txnseq, uint256 &txnhash,LedgerIndex &seq, uint256 &hash, uint256 &ReadSyncDB, bool &bDeleted);
 
-    STEntry * GetTableEntry(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID, std::string sTableName,bool bStrictEqual);
+    bool ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq, uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash);
 
     bool IsNeedSyn(std::shared_ptr <TableSyncItem> pItem);
     bool IsNeedSyn();
@@ -114,7 +113,7 @@ private:
 
     std::shared_ptr <TableSyncItem> GetRightItem(AccountID accountID, std::string sTableName, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, bool bByNameInDB = true);
 
-    bool InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash, uint32 time);
+    bool InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash, uint32 time,uint256 chainId);
 
     bool IsAutoLoadTable();
 

@@ -214,7 +214,6 @@ namespace ripple {
         return preflight2(ctx);
     }
 
-
     STObject
         TableListSet::generateTableEntry(const STTx &tx, ApplyView& view)  //preflight assure sfTables must exist
     {
@@ -589,7 +588,7 @@ namespace ripple {
             for (auto & table : aTableEntries)
             {
                 auto str = table.getFieldVL(sfTableName);
-                if (table.getFieldVL(sfTableName) == sTxTableName && table.getFieldU8(sfDeleted) != 1)
+                if (table.getFieldVL(sfTableName) == sTxTableName)
                 {
                     if (table.getFieldU32(sfTxnLgrSeq) != view.info().seq || table.getFieldH256(sfTxnLedgerHash) != view.info().hash)
                     {
@@ -614,19 +613,27 @@ namespace ripple {
 				//add owner count
 				auto const sleAccount = view.peek(keylet::account(accountId));
 				adjustOwnerCount(view, sleAccount, 1, viewJ);
+
 				break;
 			}
             case T_DROP:
             {
-				STEntry  *pEntry = getTableEntry(aTableEntries, vTableNameStr);
-                if (pEntry)
-                {
-					assert(pEntry->getFieldU8(sfDeleted) == 0);
-					pEntry->setFieldU8(sfDeleted, 1);
+				auto iter(aTableEntries.end());
+				iter = std::find_if(aTableEntries.begin(), aTableEntries.end(),
+					[vTableNameStr](STObject const &item) {
+					if (!item.isFieldPresent(sfTableName))  return false;
+
+					return item.getFieldVL(sfTableName) == vTableNameStr;
+				});
+
+				if (iter != aTableEntries.end())
+				{
+					aTableEntries.erase(iter);
 
 					auto const sleAccount = view.peek(keylet::account(accountId));
 					adjustOwnerCount(view, sleAccount, -1, viewJ);
-                }
+				}
+
                 break;
             }
             case  T_RENAME:

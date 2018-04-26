@@ -162,12 +162,16 @@ LedgerFormats::LedgerFormats ()
         << SOElement(sfOwnerNode, SOE_REQUIRED)
         << SOElement(sfPreviousTxnID, SOE_REQUIRED)
         << SOElement(sfPreviousTxnLgrSeq, SOE_REQUIRED)
-	<< SOElement(sfTableEntries, SOE_REQUIRED)
+		<< SOElement(sfTableEntries, SOE_REQUIRED)
         << SOElement(sfFutureTxHash, SOE_OPTIONAL)
         ;
 
 	add("InsertLimt", ltINSERTMAP)
 		<< SOElement(sfInsertCountMap, SOE_REQUIRED)
+		;
+
+	add("ChainId", ltCHAINID)
+		<< SOElement(sfChainId, SOE_REQUIRED)
 		;
 }
 

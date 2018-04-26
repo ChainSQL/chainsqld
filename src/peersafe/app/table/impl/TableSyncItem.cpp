@@ -67,6 +67,7 @@ TableSyncItem::TableSyncItem(Application& app, beast::Journal journal, Config& c
     sTableNameInDB_       = "";
     sNickName_            = "";
     uCreateLedgerSequence_ = 0;
+	deleted_			  = false;
 }
 
 TableSyncItem::cond const & TableSyncItem::GetCondition()
@@ -233,14 +234,14 @@ void TableSyncItem::ReSetContex()
 }
 
 void TableSyncItem::ReSetContexAfterDrop()
-{   
-    {
-        std::lock_guard<std::mutex> lock(mutexInfo_);
-        sTableNameInDB_.clear();
-        eState_ = SYNC_DELETED;
-    }
+{
+	{
+		std::lock_guard<std::mutex> lock(mutexInfo_);
+		sTableNameInDB_.clear();
+		eState_ = SYNC_DELETING;
+	}
 
-    ReSetContex();
+	ReSetContex();
 }
 
 void TableSyncItem::SetIsDataFromLocal(bool bLocal)
@@ -515,6 +516,7 @@ void TableSyncItem::GetBaseInfo(BaseInfo &stInfo)
     stInfo.isAutoSync               = bIsAutoSync_;
 	stInfo.eTargetType              = eSyncTargetType_;
 	stInfo.uTxUpdateHash            = uTxDBUpdateHash_;
+	stInfo.isDeleted				= deleted_;
 	
 }
 
@@ -537,6 +539,12 @@ void TableSyncItem::SetSyncState(TableSyncState eState)
 {
     std::lock_guard<std::mutex> lock(mutexInfo_);
     if(eState_ != SYNC_STOP)    eState_ = eState;
+}
+
+void TableSyncItem::SetDeleted(bool deleted)
+{
+	std::lock_guard<std::mutex> lock(mutexInfo_);
+	deleted_ = deleted;
 }
 
 void TableSyncItem::SetLedgerState(LedgerSyncState lState)
@@ -734,7 +742,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 		if (eSyncTargetType_ == SyncTarget_db) bRightName = to_string(table.getFieldH160(sfNameInDB)) == sTableNameInDB_;
 		else                                   bRightName = strCopy(table.getFieldVL(sfTableName)) == sTableName_;;
 		
-		if (bRightName && table.getFieldU8(sfDeleted) != 1)
+		if (bRightName)
 		{
 			uCreateLedgerSequence_ = table.getFieldU32(sfCreateLgrSeq);
 
@@ -882,7 +890,7 @@ std::string TableSyncItem::getOperationRule(const STTx& tx)
 		else                                   
 			bRightName = strCopy(table.getFieldVL(sfTableName)) == sTableName_;;
 
-		if (bRightName && table.getFieldU8(sfDeleted) != 1)
+		if (bRightName)
 			pEntry = (STEntry*)&table;
 	}
 	if (pEntry != NULL)
@@ -921,11 +929,6 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 		}
         else
         {
-    //        if (T_CREATE == op_type)
-    //        {
-    //            getTableStatusDB().DeleteRecord(accountID_, sTableName_);
-				//this->ReSetContexAfterDrop();
-    //        }
             JLOG(journal_.trace()) << "Dispose error";
         }
 			
@@ -933,10 +936,9 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
     
 	if (ret.first)
 	{
+
 		if (T_DROP == op_type)
 		{
-			std::string PreviousCommit;
-			getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, true, PreviousCommit);
 			this->ReSetContexAfterDrop();
 		}
 		else if (T_RENAME == op_type)

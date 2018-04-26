@@ -43,16 +43,29 @@ public:
 
     enum TableSyncState
     {        
+		/*
+			three cases will be set to SYNC_INIT:
+			1. after program launched 
+			2. after table created
+			3. a
+		*/
         SYNC_INIT,
+		//state after restart one table,will change to SYNC_BLOCK_STOP
         SYNC_REINIT,
-        SYNC_WAIT_DATA,        
+		//waiting for remote data acquired
+        SYNC_WAIT_DATA,
+		//table enter sync state,will sync tx from local or remote node
         SYNC_BLOCK_STOP,
-
+		//waiting local acquiring tx,will change to SYNC_BLOCK_STOP after finished 
         SYNC_WAIT_LOCAL_ACQUIRE,
+		//acquiring tx from local
         SYNC_LOCAL_ACQUIRING,
-
-        SYNC_DELETED,
-        SYNC_STOP
+		//will delete the real table and set 'deleted' to '1' in SyncTableState
+        SYNC_DELETING,
+		//will not sync until state change
+        SYNC_STOP,
+		//Table will be removed from listTableInfo_ the next ledger
+		SYNC_REMOVE
     };
 
     enum TableSyncCondType
@@ -105,6 +118,7 @@ public:
         LedgerSyncState                                              lState;
         
         bool                                                         isAutoSync;
+		bool														 isDeleted;
 		SyncTargetType                                               eTargetType;
     };
 
@@ -184,6 +198,7 @@ public:
 
     void SetSyncState(TableSyncState eState);
     void SetLedgerState(LedgerSyncState lState);
+	void SetDeleted(bool deleted);
 
     bool IsInFailList(beast::IP::Endpoint& peerAddr);
     
@@ -273,6 +288,7 @@ private:
 	boost::optional<SecretKey>									 user_secret_;		//user secret
 	Blob														 passBlob_;			//decrypted passphrase
 	bool														 confidential_;
+	bool														 deleted_;
 
     uint256                                                      uHash_;
     uint256                                                      uTxDBUpdateHash_;
