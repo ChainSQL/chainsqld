@@ -137,9 +137,7 @@ namespace ripple {
             {
                 if (!getTableStatusDB().IsExist(accountID_, sTableNameInDB_))
                 {
-					std::shared_ptr<ReadView const> pView;
-					pView.reset(&transactor.view());
-					auto chainId = TableSyncUtil::GetChainId(pView);
+					auto chainId = TableSyncUtil::GetChainId(&transactor.view());
                     getTableStatusDB().InsertSnycDB(sTableName_, sTableNameInDB_, to_string(accountID_), LedgerSeq_, ledgerHash_, true, "",chainId);
                 }
                 bExistInSyncTable_ = true;

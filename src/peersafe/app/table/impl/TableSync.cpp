@@ -763,7 +763,7 @@ bool TableSync::CreateTableItems()
         //2.read from state table
 		auto ledger = app_.getLedgerMaster().getValidatedLedger();
 		//read chainId
-		uint256 chainId = TableSyncUtil::GetChainId(ledger);
+		uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
 
         std::list<std::tuple<std::string, std::string, std::string, bool> > list;
         app_.getTableStatusDB().GetAutoListFromDB(chainId, list); 
@@ -1166,7 +1166,7 @@ void TableSync::TableSyncThread()
 							bAutoSync = false;
 						}
 						pItem->SetDeleted(false);
-						auto chainId = TableSyncUtil::GetChainId(app_.getLedgerMaster().getValidatedLedger());
+						auto chainId = TableSyncUtil::GetChainId(app_.getLedgerMaster().getValidatedLedger().get());
                         InsertSnycDB(stItem.sTableName, nameInDB, to_string(stItem.accountID), LedgerSeq, LedgerHash, bAutoSync, "",chainId);
 						app_.getTableStatusDB().UpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), to_string(TxnLedgerSeq), to_string(LedgerHash), to_string(LedgerSeq), "", "", "");
                     }
@@ -1340,18 +1340,6 @@ void TableSync::LocalSyncThread()
         }
     }  
 	bLocalSyncThread_ = false;
-}
-
-uint256 TableSync::GetChainId(std::shared_ptr<Ledger const> ledger)
-{
-	//read chainId
-	uint256 chainId(0);
-	if (ledger == nullptr)
-		return chainId;
-	auto chainIdSle = ledger->read(keylet::chainId());
-	if (chainIdSle)
-		chainId = chainIdSle->getFieldH256(sfChainId);
-	return chainId;
 }
 
 bool TableSync::Is256thLedgerExist(LedgerIndex index)
@@ -1534,7 +1522,7 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
 			auto vec = STTx::getTxs(*pSTTX);
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId
-			uint256 chainId = TableSyncUtil::GetChainId(ledger);
+			uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
 			for (auto& tx : vec)
 			{
                 if (tx.isFieldPresent(sfOpType))

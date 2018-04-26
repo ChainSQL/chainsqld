@@ -100,7 +100,6 @@ private:
     bool Is256thLedgerExist(LedgerIndex index);
     uint256 GetLocalHash(LedgerIndex ledgerSeq);
 
-	uint256 GetChainId(std::shared_ptr<Ledger const> ledger);
 
     bool InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync, std::string time, uint256 chainId);
     //bool ReadSyncDB(std::string nameInDB, std::string Owner, LedgerIndex &txnseq, uint256 &txnhash,LedgerIndex &seq, uint256 &hash, uint256 &ReadSyncDB, bool &bDeleted);

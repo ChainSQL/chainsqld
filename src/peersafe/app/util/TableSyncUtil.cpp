@@ -2,13 +2,13 @@
 #include <peersafe/app/util/TableSyncUtil.h>
 namespace ripple{
 
-uint256 TableSyncUtil::GetChainId(std::shared_ptr<ReadView const> view)
+uint256 TableSyncUtil::GetChainId(const ReadView * pView)
 {
 	//read chainId
 	uint256 chainId(0);
-	if (view == nullptr)
+	if (pView == nullptr)
 		return chainId;
-	auto chainIdSle = view->read(keylet::chainId());
+	auto chainIdSle = pView->read(keylet::chainId());
 	if (chainIdSle)
 		chainId = chainIdSle->getFieldH256(sfChainId);
 	return chainId;
