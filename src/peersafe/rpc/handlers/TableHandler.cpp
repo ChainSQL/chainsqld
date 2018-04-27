@@ -333,10 +333,15 @@ Json::Value doGetRecord(RPC::Context&  context)
 	}
 
 	Json::Value result;
+	TxStore* pTxStore = &context.app.getTxStore();
 	if (tables_json.size() == 1)//getTableStorage first_storage related
-		result = context.app.getTableStorage().GetTxStore(nameInDB).txHistory(context);
-	else
-		result = context.app.getTxStore().txHistory(context);
+		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
+
+	//db connection is null
+	if (pTxStore->getDatabaseCon() == nullptr)
+		return rpcError(rpcNODB);
+
+	result = pTxStore->txHistory(context);
 
 	//diff between the latest ledgerseq in db and the real newest ledgerseq
 	result[jss::diff] = getDiff(context, vecNameInDB);;
