@@ -120,6 +120,7 @@ enum error_code_i
     rpcINTERNAL,        // Generic internal error.
     rpcNOT_IMPL,
     rpcNOT_SUPPORTED,
+	rpcNODB,
 };
 
 //------------------------------------------------------------------------------

@@ -77,6 +77,7 @@ public:
         add (rpcHOST_IP_MALFORMED,     "hostIpMalformed",   "Host IP is malformed.");
         add (rpcINSUF_FUNDS,           "insufFunds",        "Insufficient funds.");
         add (rpcINTERNAL,              "internal",          "Internal error.");
+		add (rpcNODB,				   "dbNotConfigured",	"Get db connection error,maybe db not configured.");
         add (rpcINVALID_PARAMS,        "invalidParams",     "Invalid parameters.");
         add (rpcJSON_RPC,              "json_rpc",          "JSON-RPC transport error.");
         add (rpcLGR_IDXS_INVALID,      "lgrIdxsInvalid",    "Ledger indexes invalid.");
