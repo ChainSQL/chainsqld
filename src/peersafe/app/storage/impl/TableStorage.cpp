@@ -148,20 +148,11 @@ namespace ripple {
 		auto vecTxs = STTx::getTxs(const_cast<STTx&>(tx));
 		for (auto& eachTx : vecTxs)
 		{
-			auto const & sTxTables = eachTx.getFieldArray(sfTables);
-			std::string sTxNameInDB = strCopy(sTxTables[0].getFieldVL(sfTableName));
-			auto iter = nameInDBSet.find(sTxNameInDB);
+			GetTxParam(eachTx, txhash, uTxDBName, sTableName, accountID, lastLedgerSequence);
+			auto ret = TableStorageHandlePut(chainSqlTx, uTxDBName, accountID, sTableName, lastLedgerSequence, tx.getTransactionID(), eachTx);
 
-			if (iter == nameInDBSet.end()) {  //can not find in set
-
-				GetTxParam(eachTx, txhash, uTxDBName, sTableName, accountID, lastLedgerSequence);
-
-				auto ret = TableStorageHandlePut(chainSqlTx,uTxDBName, accountID, sTableName, lastLedgerSequence, tx.getTransactionID(), eachTx);
-				nameInDBSet.insert(sTxNameInDB);
-
-				if (tesSUCCESS != ret)
-					return ret;
-			}
+			if (tesSUCCESS != ret)
+				return ret;
 		}
 
 		return tesSUCCESS;
