@@ -68,6 +68,15 @@ namespace ripple {
 
     void TableStorageItem::Put(STTx const& tx, uint256 txhash)
     {
+		auto iter = std::find_if(txList_.begin(), txList_.end(),
+			[txhash](txInfo& info)
+		{
+			return info.uTxHash == txhash;
+		}
+		);
+		if (iter != txList_.end())
+			return;
+
         txInfo txInfo_;
         txInfo_.accountID = accountID_;
         txInfo_.uTxHash = txhash;
