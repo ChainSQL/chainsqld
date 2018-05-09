@@ -1085,14 +1085,24 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					TxStoreTransaction stTran(&getTxStoreDBConn());
 
 					auto ret = DealWithTx(vecTxs);
+                    uTxDBUpdateHash_ = tx.getTransactionID();
 
-					uTxDBUpdateHash_ = tx.getTransactionID();
-					auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
-					if (updateRet == soci_exception) {
-						JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
-					}
-
-					stTran.commit();
+                    if (!ret.first)
+                    {
+                        stTran.rollback();
+                        auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
+                        if (updateRet == soci_exception) {
+                            JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
+                        }
+                    }
+                    else
+                    {
+                        auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
+                        if (updateRet == soci_exception) {
+                            JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
+                        }
+                        stTran.commit();
+                    }
 
 					//press test
 					if (app_.getTableSync().IsPressSwitchOn())
@@ -1108,8 +1118,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					else
 						result = std::make_pair("db_error", ret.second);
 					app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
-
-					count++;
+                    count++;
                 }
                 catch (std::exception const& e)
                 {
