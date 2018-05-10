@@ -89,14 +89,14 @@ TxStoreDBConn::~TxStoreDBConn() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TxStoreTransaction::TxStoreTransaction(TxStoreDBConn* storeDBConn)
-    : tr_(std::make_shared<soci::transaction>(storeDBConn->GetDBConn()->getSession()))
 {
-
+    lockSession_ = std::make_shared<LockedSociSession>(storeDBConn->GetDBConn()->checkoutDb());
+    tr_ = std::make_shared<soci::transaction>(*(lockSession_->get()));
 }
 
 TxStoreTransaction::~TxStoreTransaction() {
-	if (tr_)
-		tr_.reset();
+    if (lockSession_)		lockSession_.reset();
+	if (tr_)	    	    tr_.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
