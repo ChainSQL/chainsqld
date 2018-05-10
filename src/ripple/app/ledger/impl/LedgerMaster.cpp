@@ -820,7 +820,6 @@ ripple::uint160 LedgerMaster::getNameInDB(
     LedgerIndex index, AccountID accountID,std::string sTableName)
 {
     ripple::uint160 name;
-    bool bDeleted = false;
     assert(accountID);
     auto ledger = getLedgerBySeq(index);
     if (ledger)
@@ -890,7 +889,6 @@ std::pair<ripple::uint256, std::string> LedgerMaster::getLatestTxCheckHash(Accou
 {		
 	ripple::uint256 uTxCheckHash;
 	std::string  errMsg;
-	bool bDeleted = false;
 	assert(accountID);
 	auto ledger = getValidatedLedger();
 	if (ledger)
