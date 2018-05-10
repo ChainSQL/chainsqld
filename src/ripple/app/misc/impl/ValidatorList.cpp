@@ -487,8 +487,16 @@ ValidatorList::expires() const
             return boost::none;
 
         // Earliest
-        if (!res || p.second.expiration < *res)
-            res = p.second.expiration;
+		if (!res)
+		{
+			res = p.second.expiration;
+		}
+		else if (p.second.expiration < *res)
+		{
+			res = p.second.expiration;
+		}
+        /*if (!res || p.second.expiration < *res)
+            res = p.second.expiration;*/
     }
     return res;
 }
