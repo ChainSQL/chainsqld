@@ -103,6 +103,11 @@ namespace ripple {
     {
         std::pair<bool, std::string> ret = { true, "success" };
         auto  result = tefTABLE_STORAGEERROR;
+     
+        if (getTxStoreDBConn().GetDBConn() == NULL)
+        {
+            return tefTABLE_STORAGENORMALERROR;
+        }
 
 		prehandleTx(tx);
 
@@ -331,6 +336,10 @@ namespace ripple {
         if (conn_ == NULL)
         {
             conn_ = std::make_unique<TxStoreDBConn>(cfg_);
+            if (conn_->GetDBConn() == NULL)
+            {
+                JLOG(journal_.error()) << "TableStorageItem::getTxStoreDBConn() return null";
+            }
         }
         return *conn_;
     }

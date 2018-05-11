@@ -1105,6 +1105,7 @@ private:
 bool ApplicationImp::setup()
 {
     if (!setSynTable())  return false;
+    
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());
 
@@ -2151,6 +2152,12 @@ bool ApplicationImp::setSynTable()
             m_pTableStorage->SetHaveSyncFlag(false);
             //JLOG(m_journal.info()) << "fail to create sycstate table calss.";
 			std::cerr << "fail to create sycstate table calss." << std::endl;
+            return false;
+        }
+
+        if (m_txMaster.getClientTxStoreDBConn().GetDBConn() == NULL || m_txMaster.getConsensusTxStoreDBConn().GetDBConn() == NULL)
+        {
+            std::cerr << "db connection for consensus or tx check is null" << std::endl;
             return false;
         }
     }
