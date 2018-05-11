@@ -70,7 +70,6 @@ public:
 	std::pair<bool, std::string> StartDumpTable(std::string sPara, std::string sPath, TableDumpItem::funDumpCB funCB);
 	std::pair<bool, std::string> StopDumpTable(AccountID accountID, std::string sTableName);
 
-    std::pair<bool, std::string> StartAuditTable(std::string sPara, std::string sPath, const std::list<int>& idArray, const std::list<std::string> & fieldArray);
     std::pair<bool, std::string> StartAuditTable(std::string sPara, std::string sSql, std::string sPath);
     std::pair<bool, std::string> StopAuditTable(std::string sNickName);
 
