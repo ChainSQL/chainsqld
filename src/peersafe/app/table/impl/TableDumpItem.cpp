@@ -92,7 +92,13 @@ std::pair<bool, std::string> TableDumpItem::SetDumpPara(std::string sPath, funDu
 
 	if (!fs::exists(filePath))
 	{
-		bool bRet = fs::create_directories(filePath);
+                bool bRet = false;
+                try{
+		   bRet = fs::create_directories(filePath);
+                }
+                catch (std::exception const&)
+                {
+                }
 		if (!bRet)  return std::make_pair(false,"path is invalid.");
 	}
 
