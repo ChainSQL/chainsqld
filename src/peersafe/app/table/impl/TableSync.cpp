@@ -1639,29 +1639,30 @@ std::pair<bool, std::string> TableSync::StopDumpTable(AccountID accountID, std::
 	return std::make_pair(true, "");
 }
 
-std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::string sPath, const std::list<int>& idArray, const std::list<std::string> & fieldArray)
-{
-    auto ret = CreateOneItem(TableSyncItem::SyncTarget_audit, sPara);
-    if (ret.first != NULL)
-    {
-        std::shared_ptr<TableAuditItem> pAuditItem = std::static_pointer_cast<TableAuditItem>(ret.first);
-        auto retPair = pAuditItem->SetAuditPara(sPath, idArray, fieldArray);
-        if (!retPair.first)
-            return std::make_pair(false, retPair.second);
-        else
-        {
-            std::lock_guard<std::mutex> lock(mutexlistTable_);
-            listTableInfo_.push_back(ret.first);
-
-            return std::make_pair(true, retPair.second);
-        }
-    }
-    
-    return std::make_pair(false, ret.second);
-}
-
 std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::string sSql, std::string sPath)
 {
+    {
+        std::lock_guard<std::mutex> lock(mutexlistTable_);
+        auto iter(listTableInfo_.end());
+        iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
+            [sPath](std::shared_ptr <TableSyncItem>  pItem) {
+            if (pItem->TargetType() == TableSyncItem::SyncTarget_audit && pItem->GetSyncState() != TableSyncItem::SYNC_STOP)
+            {
+                std::shared_ptr<TableAuditItem> pAuditItem = std::static_pointer_cast<TableAuditItem>(pItem);
+                std::string sAuditPath = pAuditItem->GetOutputPath();
+                if (sPath == sAuditPath)
+                {
+                    return true;
+                }
+            }
+        });
+
+        if (iter != listTableInfo_.end())
+        {
+            return std::make_pair(false, "the output file is used by another process.");
+        }
+    }
+
     auto ret = CreateOneItem(TableSyncItem::SyncTarget_audit, sPara);
     if (ret.first != NULL)
     {

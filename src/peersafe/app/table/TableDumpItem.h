@@ -36,6 +36,7 @@ public:
 
 	std::pair<bool, std::string> SetDumpPara(std::string sPath, funDumpCB funCB);
     std::pair<bool, std::string> StopTask();
+    std::string GetOutputPath() { return sDumpPath_; }
 
 protected:
     std::string ConstructTxStr(std::vector<STTx> &vecTxs, const STTx & tx);
