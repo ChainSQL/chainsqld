@@ -1552,6 +1552,7 @@ bool TableSync::IsAutoLoadTable()
     return bAutoLoadTable_;
 }
 
+
 //for press-test
 std::string TableSync::GetPressTableName()
 {

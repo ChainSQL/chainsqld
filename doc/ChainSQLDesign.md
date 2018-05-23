@@ -87,44 +87,41 @@
 - **3.9 通过ChainSQL API对表的读操作**
   - 表的读操作，直接传入底层读本地的数据库
 
-- **3.10 数据的回滚**
-  - 可以根据日志表进行数据的回滚，或整个表的重建
-
-- **3.11 事务的支持**
+- **3.10 事务的支持**
   - 上层API提供事务操作的接口，使用本功能的前提是按照3.5配置好本地数据库，然后按照3.7打开自动同步开关。
  
-- **3.12 Raw字段加密**
+- **3.11 Raw字段加密**
   - 如果出于保密性考虑，对于某张表的操作不想让其它用户看到，可以选择在操作表时对Raw字段加密，密码在创建表时随机生成，用生成的密码对Raw字段进行对称加密，密码使用公钥加密存放，只有表的创建者与被授权的用户可以用自己的私钥去解密，拿到解密后的密码之后再对Raw字段进行对称解密，才能看到Raw字段的明文。
   -  如果需要同步某张使用Raw字段加密的表，需要在节点的配置文件中配置拥有读权限的用户私钥，配置格式参考3.4。
   - 需要注意的是，对于先入库功能，需要在配置先入库的节点提前配置用户私钥，对于事务类型的交易，因为交易中会出现查询类型的交易，其中包含加密的raw字段，所以需要在共识节点配置用户私钥才能共识通过。
 
-- **3.13 Strict模式**
+- **3.12 Strict模式**
   - 在限制模式下，语句共识通过的条件是期望的表的快照HASH与预期一致。
   - 第一次建表时，快照HASH=HASH(建表的Raw)。
   - 增删改操作时，快照HASH=HASH(上次的快照HASH+操作的Raw)。
   - 授权、改表名、删除表时不修改快照HASH。
   
-- **3.14 表的行级控制(P2)**
+- **3.13 表的行级控制(P2)**
   - 表的增删改查支持行级控制
   - 插入表可设置默认填写字段（账户字段、交易哈希字段）
   - 插入表可限制单个账户的插入条数
   - 更新表可限制允许更新的字段
   - 更新、删除、查询表可限制条件，规则参见8.Raw字段详解
   
-- **3.15 表、交易的订阅(P2)**
+- **3.14 表、交易的订阅(P2)**
   - 通过提供表的创建者账户地址与表名订阅一张表
   - 订阅表成功后，与表相关的交易结果（共识或入库）都会通过回调返回
   - 通过提供交易哈希订阅单个交易（支持Ripple始交易类型）
   - 交易订阅成功后交易的共识结果与入库结果（Chainsql）会通过回调返回
   - 取消订阅必需与要取消的订阅在同一个websocket连接中执行
  
-- **3.16 表的重建(P2)**
+- **3.15 表的重建(P2)**
   - 通过表的重建功能可对区块链进行“瘦身”
   - 可通过表的重建功能将表的创建点移到新建区块
   - 重建表之前通过dump导出表相关交易
   - 表重建后可通过重新发送交易重建表的数据
 
-- **3.17 dump**
+- **3.16 dump**
   - 将数据库表的操作以文档的形式进行记录，可以分多次对同一张表进行dump。
   - 实现方式：通过Commandline方式进行操作。
   - 命令形式：chainsqld “para1” “para2”
@@ -133,7 +130,7 @@
   - 例：chainsqld t_dump “z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1 2000” “/chainsql/table1.dmp” 
 
 
-- **3.18 审计**
+- **3.17 审计**
   - 对数据库表的指定条目特定字段进行追根溯源，将所有影响了指定条目特定字段的数据库表操作都记录下来。
   - 实现方式：通过Commandline方式进行操作。
   - 命令形式：chainsqld “para1” “para2” “para3”
@@ -142,7 +139,7 @@
   - Para3 : 数据库表操作保存的目标路径。
   - 例：chainsqld t_audit “z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table1 2000” “select name, salary from table1 where id=1” “/chainsql/table1.dmp” 
 
-- **3.19 Chainsql链瘦身操作步骤**<br>
+- **3.18 Chainsql链瘦身操作步骤**<br>
   前提：节点保存链上的所有表且所有表已经是最新的，并且在清理数据期间没有别的对表的操作。<br>
 操作步骤：
   1. 用dump命令将表导出至文件存档，以备以后检索
@@ -954,42 +951,26 @@
   "tx_json": {
     "TransactionType": "TableListSet",
     "Account": "rBuLBiHmssAMHWQMnEN7nXQXaVj7vhAv6Q",
-    "Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
     "Tables": [
       {
         "Table": {
-          "TableName": "EName2"         //hex形式
+          "TableName": "EName2",         	//hex形式
+          "TableNewName":"tableNewName",	//hex形式
         }
       }
     ],
-    "TableNewName": "tableNewName",     //hex形式
-    "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
-    "Raw": [
-      {
-        "field": "id",
-        "type": "int",
-        "length": 11,
-        "PK": 1,
-        "NN": 1,
-        "UQ": 1
-      },
-      {
-        "field": "age",
-        "type": "int"
-      }
-    ],                                 //hex形式
-    "Flags": 65536,
-    "StrictMode": true,
-    "OpType": 1
+    "OpType": 3
   }
 }
 ```
-    备注：
-        Raw字段、TableName字段以hex形式传入
+```
+   备注：
+        Raw字段、TableName、TableNewName字段以hex形式传入
         TransactionType与OpType字段的取值根据实际操作来修改
-        创建表用到的字段：Secret,TransactionType,Account,Tables,Raw,OpType
-        授权表用到的字段：Secret,TransactionType,Account,Tables,PublicKey,Flags,Optype
-        增删改操作的字段：Secret,TransactionType,Account,Tables,Raw,OpType
+        创建表用到的字段：TransactionType,Account,Tables,Raw,OpType
+        授权表用到的字段：TransactionType,Account,Tables,PublicKey,User,Flags,Optype
+        增删改操作的字段：TransactionType,Account,Tables,Raw,OpType
+```
 
 &emsp;　　　Response Format:
 
@@ -999,42 +980,22 @@
     "status": "success",
     "tx_json": {
       "Account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-      "Flags": 65536,
-      "OpType": 1,
-      "Owner": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-      "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
-      "Raw": [
-        {
-          "NN": 1,
-          "PK": 1,
-          "UQ": 1,
-          "field": "id",
-          "length": 11,
-          "type": "int"
-        },
-        {
-          "field": "age",
-          "type": "int"
-        }
-      ],                                 //hex形式
-      "TableNewName": "tableNewName",    //hex形式
+      "OpType": 3,
       "Tables": [
         {
           "Table": {
             "NameInDB": "4728A301542B8CE647D41A8D000F35900AEB3E09",
-            "TableName": "EName2"       //hex形式
+            "TableName":"EName2",       	//hex形式
+            "TableNewName":"tableNewName",    	//hex形式
           }
         }
       ],
-      "TransactionType": "TableListSet",
-      "TxCheckHash": "9336DE2AB6C901312CF23957462FA8596F546B4F76191F0578F80EC6C8CB1C79"
+      "TransactionType": "TableListSet"
     }
   }
 }
 ```
-    备注：
-        Token：创建表与操作授权表操作会添加
-        Raw：所有提供Raw字段的操作（创建表/增删改），Raw字段会被加密
+
 		
 - **7.4 g_userToken**
   - 得到用户对应某张表的token，得到token后，需用用户自己的私钥去解密，得到密码明文，然后用密码明文对raw字段进行AES对称加密<br>
@@ -1072,7 +1033,7 @@
 ```json
 
  {
-  "TransactionType": " TableListSet",
+  "TransactionType": "TableListSet",
   "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "Tables": [
     {
@@ -1131,9 +1092,7 @@
       }
     }
   ],
-  "OpType": 2,
-  "Fee": 12,
-  "Sequence": 2
+  "OpType": 2
 }
 
 ```        
@@ -1154,9 +1113,7 @@
       }
     }
   ],
-  "OpType": 3,
-  "Fee": 12,
-  "Sequence": 2
+  "OpType": 3
 }
 
 ``` 
@@ -1168,7 +1125,7 @@
 ```json
 {
   "TransactionType": "TableListSet",
-  " Account ": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+  "Account ": "zf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
   "Tables": [
     {
       "Table": {
@@ -1189,8 +1146,13 @@
   ]
 }
 ```
-    备注：
-        Token字段是可选的，加密方式创建的表在授权操作中需要提供用用户公钥加密过的密码的密文
+```
+	备注：
+    	User: 被授权账户地址
+	PublicKey: 给加密表授权时才用到，被授权用户公钥
+        Token: 加密方式创建的表在授权操作中需要提供用用户公钥加密过的密码的密文
+```
+
 &emsp;　　　Response Format 同上
 
 - **7.9 t_recreate**
@@ -1247,14 +1209,9 @@
       "name": "hello"
     }
   ],
-  "AutoFillField": "TRACE_NO",
-  "StrictMode": true,     //可选字段: 不设置表示不使用strictMode
-  "TxCheckHash": "xxxxx", //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
-  "OpType": 6,
-  "User": "zBGagHrWQ44SX3YE7eYehiDA8iNPdBssFY",
-  "Flags": 65536,
-  "Fee": 12,
-  "Sequence": 6
+  "StrictMode": true,     //可选字段:不设置表示不使用strictMode
+  "TxCheckHash": "xxxxx", //可选字段:由t_prepare根据StrictMode的指示自动计算并插入
+  "OpType": 6
 }
 
 ``` 
@@ -1277,21 +1234,13 @@
       }
     }
   ],
-  "StrictMode": true,         //可选字段: 不设置表示不使用strictMode
-  "TxCheckHash": "xxxx",      //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
+  "StrictMode": true,         //可选字段:不设置表示不使用strictMode
+  "TxCheckHash": "xxxx",      //可选字段:由g_prepare根据StrictMode的指示自动计算并插入
   "Raw": [
-    {
-      "id": 1,
-      "name": "test"
-    },
-    {
-      "id": 2,
-      "name": "hello"
-    }
+      	{"age": "11","name":"abc"},
+	{"id":1}
   ],
-  "OpType": 8,
-  "Fee": 12,
-  "Sequence": 7
+  "OpType": 8
 }
 
 ```
@@ -1313,21 +1262,12 @@
       }
     }
   ],
-  "StrictMode": true,         //可选字段: 不设置表示不使用strictMode
-  "TxCheckHash": "xxx",       //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
+  "StrictMode": true,         //可选字段:不设置表示不使用strictMode
+  "TxCheckHash": "xxx",       //可选字段:由g_prepare根据StrictMode的指示自动计算并插入
   "Raw": [
-    {
-      "id": 1,
-      "name": "test"
-    },
-    {
-      "id": 2,
-      "name": "hello"
-    }
+     {"id":1}
   ],
-  "OpType": 9,
-  "Fee": 12,
-  "Sequence": 8
+  "OpType": 9
 }
 
 ```
@@ -1335,7 +1275,8 @@
 &emsp;　　　Response Format 同上
 
 - **7.13 t_sqlTxs 事务操作**
-  - 对应SQLTransaction请求，用帐户对应的私钥将下面JSON语句本地签名后，然后再调用7.15中的submit接口将交易发往全网共识<br>
+  - 对应SQLTransaction请求，用帐户对应的私钥将下面JSON语句本地签名后，然后再调用7.15中的submit接口将交易发往全网共识
+  - 签名前，需要先将Statements中每个元素中的Raw,TableName转16进制，然后将整个Statements作为字符串转为16进制字符串，与插入中Raw字段的处理方法类似<br>
         Request Format:<br>
 ```json
 {
@@ -1346,8 +1287,7 @@
       "Tables": [
         {
           "Table": {
-            "TableName": "EName1",
-            "NameInDB": "48C80D2CF136054DB6F0116D4833D4DAD1D4CED5"
+            "TableName": "EName1"
           }
         }
       ],
@@ -1368,8 +1308,7 @@
       "Tables": [
         {
           "Table": {
-            "TableName": "EName1",
-            "NameInDB": "48C80D2CF136054DB6F0116D4833D4DAD1D4CED5"
+            "TableName": "EName1"
           }
         }
       ],
@@ -1385,8 +1324,7 @@
       "Tables": [
         {
           "Table": {
-            "TableName": "EName1",
-            "NameInDB": "48C80D2CF136054DB6F0116D4833D4DAD1D4CED5"
+            "TableName": "EName1"
           }
         }
       ],
@@ -1409,8 +1347,7 @@
       "Tables": [
         {
           "Table": {
-            "TableName": "EName1",
-            "NameInDB": "48C80D2CF136054DB6F0116D4833D4DAD1D4CED5"
+            "TableName": "EName1"
           }
         }
       ],
@@ -1454,20 +1391,16 @@
         "name"
       ],
       {
-        "id": 1,
-        "name": "test"
-      },
-      {
         "id": 2
       }
     ],
-    "OpType": 7,
-    "TableFlags": 65536
+    "OpType": 7
   }
 }
 ```
     备注：
-        支持多表联合查询, 参考6.9节
+        支持多表联合查询, 参考6.9节<br>
+	Raw中第一个[]中的内容是要查询的字段名，后面是查询条件
 &emsp;　　　Response Format:
 ```json
 {
@@ -1565,6 +1498,7 @@
 &emsp;　　　返回值与表的订阅返回类似
 
 ### 8. CommandLine 接口
+> 说明：Dump、审计功能，表名只支持英文
 - **8.1 t_dump 开始dump表**
   - 开始dump一张表，参数1同3.4节的设置，参数2为存储路径<br>
     Request Format:<br>

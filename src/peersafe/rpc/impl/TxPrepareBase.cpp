@@ -221,6 +221,9 @@ Json::Value TxPrepareBase::prepareBase()
 	if(app_.getTableSync().IsPressSwitchOn())
 		preparePressData();
 
+	if(app_.getTableSync().IsPressSwitchOn())
+		preparePressData();
+
 	return ret;
 }
 
