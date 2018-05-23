@@ -33,7 +33,7 @@
 #include <peersafe/app/storage/TableStorage.h> 
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/table/TableStatusDB.h>
 #include <iostream> 
 #include <fstream>
@@ -195,8 +195,8 @@ Json::Value doGetRecord(RPC::Context&  context)
             return ret;
         }
 
-		auto retPair = context.ledgerMaster.getNameInDB(context.ledgerMaster.getValidLedgerIndex(), *ownerID, v["TableName"].asString());
-		if (!retPair.first)
+		auto nameInDBGot = context.ledgerMaster.getNameInDB(context.ledgerMaster.getValidLedgerIndex(), *ownerID, v["TableName"].asString());
+		if (!nameInDBGot)
 		{
 			ret[jss::error] = "can't get TableName in DB ,please check field tablename!";
 			return ret;
@@ -210,7 +210,7 @@ Json::Value doGetRecord(RPC::Context&  context)
 			if (sNameInDB.length() > 0)
 			{
 				nameInDB = ripple::from_hex_text<ripple::uint160>(sNameInDB);
-				if (retPair.first == nameInDB)
+				if (nameInDBGot == nameInDB)
 				{
 					v["TableName"] = sNameInDB;
 				}
@@ -229,8 +229,8 @@ Json::Value doGetRecord(RPC::Context&  context)
 		else 
 		{
 			//NameInDB is absent
-			nameInDB = retPair.first;
-			v["TableName"] = to_string(retPair.first);
+			nameInDB = nameInDBGot;
+			v["TableName"] = to_string(nameInDBGot);
 		}        
 		vecNameInDB.push_back(nameInDB);
 	}
@@ -333,10 +333,15 @@ Json::Value doGetRecord(RPC::Context&  context)
 	}
 
 	Json::Value result;
+	TxStore* pTxStore = &context.app.getTxStore();
 	if (tables_json.size() == 1)//getTableStorage first_storage related
-		result = context.app.getTableStorage().GetTxStore(nameInDB).txHistory(context);
-	else
-		result = context.app.getTxStore().txHistory(context);
+		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
+
+	//db connection is null
+	if (pTxStore->getDatabaseCon() == nullptr)
+		return rpcError(rpcNODB);
+
+	result = pTxStore->txHistory(context);
 
 	//diff between the latest ledgerseq in db and the real newest ledgerseq
 	result[jss::diff] = getDiff(context, vecNameInDB);;
@@ -478,7 +483,6 @@ int getDiff(RPC::Context& context, const std::vector<ripple::uint160>& vec)
 	int diff = 0;
 	LedgerIndex txnseq, seq;
 	uint256 txnhash, hash, txnupdatehash;
-	bool bDeleted;
 	if (context.app.getTxStoreDBConn().GetDBConn() == nullptr ||
 		context.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
 	{
@@ -489,7 +493,7 @@ int getDiff(RPC::Context& context, const std::vector<ripple::uint160>& vec)
 	for (auto iter = vec.begin(); iter != vec.end(); iter++)
 	{
 		//get ledgerseq in db
-		context.app.getTableStatusDB().ReadSyncDB(to_string(*iter), txnseq, txnhash, seq, hash, txnupdatehash, bDeleted);
+		context.app.getTableStatusDB().ReadSyncDB(to_string(*iter), txnseq, txnhash, seq, hash, txnupdatehash);
 		int nTmpDiff = validIndex - seq;
 		if (diff < nTmpDiff)
 		{

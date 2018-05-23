@@ -334,7 +334,6 @@ extern SField const sfMetadata;
 extern SF_U8 const sfCloseResolution;
 extern SF_U8 const sfMethod;
 extern SF_U8 const sfTransactionResult;
-extern SF_U8 const sfDeleted;
 extern SF_U8 const sfTickSize;
 // 16-bit integers
 extern SF_U16 const sfLedgerEntryType;
@@ -399,6 +398,7 @@ extern SF_U64 const sfHighNode;
 // 128-bit
 extern SF_U128 const sfEmailHash;
 extern SF_U160 const sfNameInDB;
+extern SF_U64 const sfDestinationNode;
 
 // 160-bit (common)
 extern SF_U160 const sfTakerPaysCurrency;
@@ -422,6 +422,7 @@ extern SF_U256 const sfCreatedLedgerHash;
 extern SF_U256 const sfCreatedTxnHash;
 extern SF_U256 const sfCurTxHash;
 extern SF_U256 const sfFutureTxHash;
+extern SF_U256 const sfChainId;
 
 // 256-bit (uncommon)
 extern SF_U256 const sfBookDirectory;
@@ -432,6 +433,7 @@ extern SF_U256 const sfTicketID;
 extern SF_U256 const sfDigest;
 extern SF_U256 const sfPayChannel;
 extern SF_U256 const sfTxCheckHash;
+extern SF_U256 const sfConsensusHash;
 
 // currency amount (common)
 extern SF_Amount const sfAmount;
@@ -481,6 +483,8 @@ extern SF_Blob const sfInsertCountMap;
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;
 extern SF_Blob const sfMasterSignature;
+extern SF_Blob const sfTransferFeeMin;
+extern SF_Blob const sfTransferFeeMax;
 
 // account
 extern SF_Account const sfAccount;
@@ -499,7 +503,6 @@ extern SField const sfPaths;
 extern SF_Vec256 const sfIndexes;
 extern SF_Vec256 const sfHashes;
 extern SF_Vec256 const sfAmendments;
-
 
 // inner object
 // OBJECT/1 is reserved for end of object

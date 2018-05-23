@@ -33,21 +33,11 @@ namespace ripple {
 class SqlStatement
     : public ChainSqlTx
 {
-    /* The largest number of paths we allow */
-    static std::size_t const MaxPathSize = 6;
-
-    /* The longest path we allow */
-    static std::size_t const MaxPathLength = 8;
-
 public:
     SqlStatement(ApplyContext& ctx)
         : ChainSqlTx(ctx)
     {
     }
-
-    static
-    ZXCAmount
-    calculateMaxSpend(STTx const& tx);
 
     static
     TER
@@ -68,14 +58,7 @@ public:
     applyHandler(ApplyView& view, const STTx & tx, Application& app);
     TER doApply () override;
 
-
-	TER dealWithOperationRule(const STTx & tx,STEntry* pEntry);
-
-	TER adjustInsertCount(const STTx & tx, DatabaseCon* pConn);
-
-	std::string getOperationRule(ApplyView& view, const STTx& tx);
-	
-	TER preApply(const STTx & tx);
+	TER preApplyForOperationRule(const STTx & tx);
 
 	std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx);
 };

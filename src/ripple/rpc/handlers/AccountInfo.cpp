@@ -29,6 +29,7 @@
 #include <ripple/protocol/types.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/basics/StringUtilities.h>
 
 namespace ripple {
 
@@ -91,6 +92,10 @@ Json::Value doAccountInfo (RPC::Context& context)
         }
 
         RPC::injectSLE(jvAccepted, *sleAccepted);
+		if (jvAccepted.isMember(jss::TransferFeeMin))
+			jvAccepted[jss::TransferFeeMin] = strCopy(strUnHex(jvAccepted[jss::TransferFeeMin].asString()).first);
+		if (jvAccepted.isMember(jss::TransferFeeMax))
+			jvAccepted[jss::TransferFeeMax] = strCopy(strUnHex(jvAccepted[jss::TransferFeeMax].asString()).first);
         result[jss::account_data] = jvAccepted;
 
         // Return SignerList(s) if that is requested.
@@ -110,32 +115,6 @@ Json::Value doAccountInfo (RPC::Context& context)
             result[jss::account_data][jss::signer_lists] =
                 std::move(jvSignerList);
         }
-
-        /* test code  
-        auto const tablesle = ledger->read(keylet::table(accountID));
-
-        if (tablesle)
-        {
-            if (tablesle->isFieldPresent(sfOwnerNode))
-            {
-                auto ownerNode = tablesle->getFieldU64(sfOwnerNode);
-            }
-            if (tablesle->isFieldPresent(sfTableEntries))
-            {
-                auto tableentries = tablesle->getFieldArray(sfTableEntries);
-            }
-            if (tablesle->isFieldPresent(sfPreviousTxnID))
-            {
-                auto previousTxnID = tablesle->getFieldH256(sfPreviousTxnID);
-            }
-
-            if (tablesle->isFieldPresent(sfPreviousTxnLgrSeq))
-            {
-                auto previousTxnLgrSeq = tablesle->getFieldU32(sfPreviousTxnLgrSeq);
-            }
-        } */ 
-      
-            
         // Return queue info if that is requested
         if (queue)
         {
@@ -143,11 +122,11 @@ Json::Value doAccountInfo (RPC::Context& context)
 
             auto const txs = context.app.getTxQ().getAccountTxs(
                 accountID, *ledger);
-            if (txs && !txs->empty())
+            if (!txs.empty())
             {
-                jvQueueData[jss::txn_count] = static_cast<Json::UInt>(txs->size());
-                jvQueueData[jss::lowest_sequence] = txs->begin()->first;
-                jvQueueData[jss::highest_sequence] = txs->rbegin()->first;
+                jvQueueData[jss::txn_count] = static_cast<Json::UInt>(txs.size());
+                jvQueueData[jss::lowest_sequence] = txs.begin()->first;
+                jvQueueData[jss::highest_sequence] = txs.rbegin()->first;
 
                 auto& jvQueueTx = jvQueueData[jss::transactions];
                 jvQueueTx = Json::arrayValue;
@@ -155,7 +134,7 @@ Json::Value doAccountInfo (RPC::Context& context)
                 boost::optional<bool> anyAuthChanged(false);
                 boost::optional<ZXCAmount> totalSpend(0);
 
-                for (auto const& tx : *txs)
+                for (auto const& tx : txs)
                 {
                     Json::Value jvTx = Json::objectValue;
 

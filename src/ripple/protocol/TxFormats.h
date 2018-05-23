@@ -59,7 +59,6 @@ enum TxType
     ttFEE               = 101,
 };
 
-
 /** Manages the list of known transaction formats.
 */
 class TxFormats : public KnownFormats <TxType>

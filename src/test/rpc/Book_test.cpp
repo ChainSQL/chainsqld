@@ -64,7 +64,7 @@ public:
             // RPC subscribe to books stream
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
                 j[jss::taker_pays][jss::currency] = "USD";
@@ -147,7 +147,7 @@ public:
             // RPC subscribe to books stream
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
                 j[jss::taker_pays][jss::currency] = "USD";
@@ -225,7 +225,7 @@ public:
             // RPC subscribe to books stream
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::both] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
@@ -319,7 +319,7 @@ public:
             // RPC subscribe to books stream
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::both] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
@@ -414,14 +414,14 @@ public:
             // RPC subscribe to books stream
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
                 j[jss::taker_pays][jss::currency] = "USD";
                 j[jss::taker_pays][jss::issuer] = Account("alice").human();
             }
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::taker_gets][jss::currency] = "CNY";
                 j[jss::taker_gets][jss::issuer] = Account("alice").human();
@@ -540,14 +540,14 @@ public:
             // RPC subscribe to books stream
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
                 j[jss::taker_pays][jss::currency] = "USD";
                 j[jss::taker_pays][jss::issuer] = Account("alice").human();
             }
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::taker_gets][jss::currency] = "CNY";
                 j[jss::taker_gets][jss::issuer] = Account("alice").human();
@@ -657,7 +657,7 @@ public:
             // RPC subscribe to books stream
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::both] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
@@ -665,7 +665,7 @@ public:
                 j[jss::taker_pays][jss::issuer] = Account("alice").human();
             }
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::both] = true;
                 j[jss::taker_gets][jss::currency] = "CNY";
@@ -804,7 +804,7 @@ public:
             // RPC subscribe to books stream
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::both] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
@@ -813,7 +813,7 @@ public:
             }
             // RPC subscribe to books stream
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::both] = true;
                 j[jss::taker_gets][jss::currency] = "CNY";
@@ -951,7 +951,7 @@ public:
         {
             books[jss::books] = Json::arrayValue;
             {
-                auto &j = books[jss::books].append(Json::objectValue);
+                auto& j = books[jss::books].append(Json::objectValue);
                 j[jss::snapshot] = true;
                 j[jss::taker_gets][jss::currency] = "ZXC";
                 j[jss::taker_pays][jss::currency] = "USD";
@@ -1069,6 +1069,180 @@ public:
             BEAST_EXPECT(jv.isMember(jss::ripplerpc) && jv[jss::ripplerpc] == "2.0");
             BEAST_EXPECT(jv.isMember(jss::id) && jv[jss::id] == 5);
         }
+        BEAST_EXPECT(jv[jss::status] == "success");
+    }
+
+    // Check that a stream only sees the given OfferCreate once
+    static
+    bool
+    offerOnlyOnceInStream(
+        std::unique_ptr<WSClient> const & wsc,
+        std::chrono::milliseconds const& timeout,
+        jtx::PrettyAmount const& takerGets,
+        jtx::PrettyAmount const& takerPays)
+    {
+        auto maybeJv = wsc->getMsg(timeout);
+        // No message
+        if (!maybeJv)
+            return false;
+        // wrong message
+        if(!(*maybeJv).isMember(jss::transaction))
+            return false;
+        auto const& t = (*maybeJv)[jss::transaction];
+        if (t[jss::TransactionType] != "OfferCreate" ||
+            t[jss::TakerGets] != takerGets.value().getJson(0) ||
+            t[jss::TakerPays] != takerPays.value().getJson(0))
+            return false;
+        // Make sure no other message is waiting
+        return wsc->getMsg(timeout) == boost::none;
+    };
+
+    void
+    testCrossingSingleBookOffer()
+    {
+        testcase("Crossing single book offer");
+
+        // This was added to check that an OfferCreate transaction is only
+        // published once in a stream, even if it updates multiple offer
+        // ledger entries
+
+        using namespace jtx;
+        Env env(*this);
+
+        // Scenario is:
+        //  - Alice and Bob place identical offers for USD -> ZXC
+        //  - Charlie places a crossing order that takes both Alice and Bob's
+
+        auto const gw = Account("gateway");
+        auto const alice = Account("alice");
+        auto const bob = Account("bob");
+        auto const charlie = Account("charlie");
+        auto const USD = gw["USD"];
+
+        env.fund (ZXC(1000000), gw, alice, bob, charlie);
+        env.close();
+
+        env (trust(alice, USD(500)));
+        env (trust(bob, USD(500)));
+        env.close();
+
+        env (pay(gw, alice, USD(500)));
+        env (pay(gw, bob, USD(500)));
+        env.close();
+
+        // Alice and Bob offer $500 for 500 ZXC
+        env (offer (alice, ZXC(500), USD(500)));
+        env (offer (bob, ZXC(500), USD(500)));
+        env.close();
+
+        auto wsc = makeWSClient(env.app().config());
+        Json::Value books;
+        {
+            // RPC subscribe to books stream
+            books[jss::books] = Json::arrayValue;
+            {
+                auto& j = books[jss::books].append(Json::objectValue);
+                j[jss::snapshot] = false;
+                j[jss::taker_gets][jss::currency] = "ZXC";
+                j[jss::taker_pays][jss::currency] = "USD";
+                j[jss::taker_pays][jss::issuer] = gw.human();
+            }
+
+            auto jv = wsc->invoke("subscribe", books);
+            if (!BEAST_EXPECT(jv[jss::status] == "success"))
+                return;
+        }
+
+        // Charlie places an offer that crosses Alice and Charlie's offers
+        env(offer(charlie, USD(1000), ZXC(1000)));
+        env.close();
+        env.require(offers(alice, 0), offers(bob, 0), offers(charlie, 0));
+        BEAST_EXPECT(offerOnlyOnceInStream(wsc, 1s, ZXC(1000), USD(1000)));
+
+        // RPC unsubscribe
+        auto jv = wsc->invoke("unsubscribe", books);
+        BEAST_EXPECT(jv[jss::status] == "success");
+    }
+
+    void
+    testCrossingMultiBookOffer()
+    {
+        testcase("Crossing multi-book offer");
+
+        // This was added to check that an OfferCreate transaction is only
+        // published once in a stream, even if it auto-bridges across several
+        // books that are under subscription
+
+        using namespace jtx;
+        Env env(*this);
+
+        // Scenario is:
+        //  - Alice has 1 USD and wants 100 ZXC
+        //  - Bob has 100 ZXC and wants 1 EUR
+        //  - Charlie has 1 EUR and wants 1 USD and should auto-bridge through
+        //    Alice and Bob
+
+        auto const gw = Account("gateway");
+        auto const alice = Account("alice");
+        auto const bob = Account("bob");
+        auto const charlie = Account("charlie");
+        auto const USD = gw["USD"];
+        auto const EUR = gw["EUR"];
+
+        env.fund(ZXC(1000000), gw, alice, bob, charlie);
+        env.close();
+
+        for (auto const& account : {alice, bob, charlie})
+        {
+            for (auto const& iou : {USD, EUR})
+            {
+                env(trust(account, iou(1)));
+            }
+        }
+        env.close();
+
+        env(pay(gw, alice, USD(1)));
+        env(pay(gw, charlie, EUR(1)));
+        env.close();
+
+        env(offer(alice, ZXC(100), USD(1)));
+        env(offer(bob, EUR(1), ZXC(100)));
+        env.close();
+
+        auto wsc = makeWSClient(env.app().config());
+        Json::Value books;
+
+        {
+            // RPC subscribe to multiple book streams
+            books[jss::books] = Json::arrayValue;
+            {
+                auto& j = books[jss::books].append(Json::objectValue);
+                j[jss::snapshot] = false;
+                j[jss::taker_gets][jss::currency] = "ZXC";
+                j[jss::taker_pays][jss::currency] = "USD";
+                j[jss::taker_pays][jss::issuer] = gw.human();
+            }
+
+            {
+                auto& j = books[jss::books].append(Json::objectValue);
+                j[jss::snapshot] = false;
+                j[jss::taker_gets][jss::currency] = "EUR";
+                j[jss::taker_gets][jss::issuer] = gw.human();
+                j[jss::taker_pays][jss::currency] = "ZXC";
+            }
+
+            auto jv = wsc->invoke("subscribe", books);
+            if (!BEAST_EXPECT(jv[jss::status] == "success"))
+                return;
+        }
+
+        // Charlies places an on offer for EUR -> USD that should auto-bridge
+        env(offer(charlie, USD(1), EUR(1)));
+        env.close();
+        BEAST_EXPECT(offerOnlyOnceInStream(wsc, 1s, EUR(1), USD(1)));
+
+        // RPC unsubscribe
+        auto jv = wsc->invoke("unsubscribe", books);
         BEAST_EXPECT(jv[jss::status] == "success");
     }
 
@@ -1410,16 +1584,7 @@ public:
     {
         testcase("BookOffer Limits");
         using namespace jtx;
-        Env env(*this, [asAdmin]() {
-            auto p = std::make_unique<Config>();
-            setupConfigForUnitTests(*p);
-            if(! asAdmin)
-            {
-                (*p)["port_rpc"].set("admin","");
-                (*p)["port_ws"].set("admin","");
-            }
-            return p;
-        }());
+        Env env {*this, asAdmin ? envconfig() : envconfig(no_admin)};
         Account gw {"gw"};
         env.fund(ZXC(200000), gw);
         env.close();
@@ -1475,6 +1640,8 @@ public:
         testMultipleBooksBothSidesEmptyBook();
         testMultipleBooksBothSidesOffersInBook();
         testTrackOffers();
+        testCrossingSingleBookOffer();
+        testCrossingMultiBookOffer();
         testBookOfferErrors();
         testBookOfferLimits(true);
         testBookOfferLimits(false);

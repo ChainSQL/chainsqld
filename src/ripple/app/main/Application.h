@@ -26,6 +26,7 @@
 #include <ripple/core/Config.h>
 #include <ripple/beast/utility/PropertyStream.h>
 #include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <ripple/protocol/Protocol.h>
 #include <memory>
 #include <mutex>
 
@@ -65,7 +66,6 @@ class STLedgerEntry;
 class TimeKeeper;
 class TransactionMaster;
 class TxQ;
-class Validations;
 class ValidatorList;
 class ValidatorSite;
 class Cluster;
@@ -80,6 +80,13 @@ class DatabaseCon;
 class SHAMapStore;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
+
+template <class StalePolicy, class Validation, class MutexType>
+class Validations;
+class RCLValidation;
+class RCLValidationsPolicy;
+using RCLValidations =
+    Validations<RCLValidationsPolicy, RCLValidation, std::mutex>;
 
 class Application : public beast::PropertyStream::Source
 {
@@ -104,7 +111,7 @@ public:
     virtual ~Application () = default;
 
     virtual bool setup() = 0;
-    virtual void doStart() = 0;
+    virtual void doStart(bool withTimers) = 0;
     virtual void run() = 0;
     virtual bool isShutdown () = 0;
     virtual void signalStop () = 0;
@@ -135,7 +142,7 @@ public:
     virtual ManifestCache&          validatorManifests () = 0;
     virtual ManifestCache&          publisherManifests () = 0;
     virtual Cluster&                cluster () = 0;
-    virtual Validations&            getValidations () = 0;
+    virtual RCLValidations&         getValidations () = 0;
     virtual NodeStore::Database&    getNodeStore () = 0;
     virtual InboundLedgers&         getInboundLedgers () = 0;
     virtual InboundTransactions&    getInboundTransactions () = 0;
@@ -155,6 +162,9 @@ public:
     std::pair<PublicKey, SecretKey> const&
     nodeIdentity () = 0;
 
+    virtual
+    PublicKey const &
+    getValidationPublicKey() const  = 0;
     virtual Resource::Manager&      getResourceManager () = 0;
     virtual PathRequests&           getPathRequests () = 0;
     virtual SHAMapStore&            getSHAMapStore () = 0;
@@ -175,6 +185,10 @@ public:
 
     /** Retrieve the "wallet database" */
     virtual DatabaseCon& getWalletDB () = 0;
+
+    /** Ensure that a newly-started validator does not sign proposals older
+     * than the last ledger it persisted. */
+    virtual LedgerIndex getMaxDisallowedLedger() = 0;
 };
 
 std::unique_ptr <Application>

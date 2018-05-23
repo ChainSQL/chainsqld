@@ -27,6 +27,7 @@
 #include <ripple/protocol/Quality.h>
 #include <ripple/protocol/st.h>
 #include <ripple/ledger/View.h>
+#include <ripple/basics/StringUtilities.h>
 
 namespace ripple {
 
@@ -119,10 +120,34 @@ SetAccount::preflight (PreflightContext const& ctx)
 
         if (uRate && (uRate < QUALITY_ONE))
         {
-            JLOG(j.trace()) << "Malformed transaction: Bad transfer rate.";
+            JLOG(j.trace()) << "Malformed transaction: Transfer rate too small.";
+            return temBAD_TRANSFER_RATE;
+        }
+
+        if (ctx.rules.enabled(fix1201) && (uRate > 2 * QUALITY_ONE))
+        {
+            JLOG(j.trace()) << "Malformed transaction: Transfer rate too large.";
             return temBAD_TRANSFER_RATE;
         }
     }
+
+	//TransferFee
+	if (tx.isFieldPresent(sfTransferFeeMin) && tx.isFieldPresent(sfTransferFeeMax))
+	{
+		std::string feeMin = strCopy(tx.getFieldVL(sfTransferFeeMin));
+		std::string feeMax = strCopy(tx.getFieldVL(sfTransferFeeMax));
+
+		if (atof(feeMin.c_str()) > atof(feeMax.c_str()))
+		{
+			JLOG(j.trace()) << "Malformed transaction: TransferFeeMin can not be greater than TransferFeeMax.";
+			return temBAD_TRANSFERFEE;
+		}		
+	}
+	else if (tx.isFieldPresent(sfTransferFeeMin) || tx.isFieldPresent(sfTransferFeeMax))
+	{
+		JLOG(j.trace()) << "Malformed transaction: TransferFeeMin and TransferFeeMax can not be set individually.";
+		return temBAD_TRANSFERFEE_BOTH;
+	}
 
     // TickSize
     if (tx.isFieldPresent (sfTickSize))
@@ -461,12 +486,24 @@ SetAccount::doApply ()
             JLOG(j_.trace()) << "unset transfer rate";
             sle->makeFieldAbsent (sfTransferRate);
         }
-        else if (uRate > QUALITY_ONE)
+        else
         {
             JLOG(j_.trace()) << "set transfer rate";
             sle->setFieldU32 (sfTransferRate, uRate);
         }
     }
+
+	//
+	// TransferFee
+	//
+	if (ctx_.tx.isFieldPresent(sfTransferFeeMin) && ctx_.tx.isFieldPresent(sfTransferFeeMax))
+	{		
+		// if you want to unset transferfee-min just set it to 0
+		// if you want to unset transferfee-max just set it to a large value
+		sle->setFieldVL(sfTransferFeeMin, ctx_.tx.getFieldVL(sfTransferFeeMin));
+		sle->setFieldVL(sfTransferFeeMax, ctx_.tx.getFieldVL(sfTransferFeeMax));
+		JLOG(j_.trace()) << "set transferfee min and transferfee max.";
+	}
 
     //
     // TickSize

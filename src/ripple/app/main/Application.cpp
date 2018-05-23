@@ -20,10 +20,10 @@
 #include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/core/DatabaseCon.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/main/DBInit.h>
 #include <ripple/app/main/BasicApp.h>
 #include <ripple/app/main/Tuning.h>
-#include <ripple/app/ledger/AcceptedLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/LedgerToJson.h>
@@ -32,51 +32,29 @@
 #include <ripple/app/ledger/PendingSaves.h>
 #include <ripple/app/ledger/InboundTransactions.h>
 #include <ripple/app/ledger/TransactionMaster.h>
-#include <ripple/app/main/CollectorManager.h>
 #include <ripple/app/main/LoadManager.h>
 #include <ripple/app/main/NodeIdentity.h>
 #include <ripple/app/main/NodeStoreScheduler.h>
 #include <ripple/app/misc/AmendmentTable.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
-#include <ripple/app/misc/Manifest.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/SHAMapStore.h>
 #include <ripple/app/misc/TxQ.h>
-#include <ripple/app/misc/Validations.h>
-#include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/misc/ValidatorSite.h>
-#include <ripple/app/paths/Pathfinder.h>
+#include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/app/paths/PathRequests.h>
 #include <ripple/app/tx/apply.h>
-#include <ripple/basics/contract.h>
-#include <ripple/basics/Log.h>
 #include <ripple/basics/ResolverAsio.h>
 #include <ripple/basics/Sustain.h>
-#include <ripple/basics/chrono.h>
 #include <ripple/json/json_reader.h>
-#include <ripple/json/to_string.h>
-#include <ripple/core/ConfigSections.h>
-#include <ripple/core/DeadlineTimer.h>
-#include <ripple/core/TimeKeeper.h>
-#include <ripple/ledger/CachedSLEs.h>
-#include <ripple/nodestore/Database.h>
 #include <ripple/nodestore/DummyScheduler.h>
-#include <ripple/nodestore/Manager.h>
 #include <ripple/overlay/Cluster.h>
 #include <ripple/overlay/make_Overlay.h>
-#include <ripple/protocol/Indexes.h>
-#include <ripple/protocol/PublicKey.h>
-#include <ripple/protocol/SecretKey.h>
+#include <ripple/protocol/Feature.h>
 #include <ripple/protocol/STParsedJSON.h>
-#include <ripple/protocol/types.h>
-#include <ripple/resource/Charge.h>
-#include <ripple/resource/Consumer.h>
+#include <ripple/protocol/Protocol.h>
 #include <ripple/resource/Fees.h>
-#include <ripple/rpc/Context.h>
-#include <ripple/rpc/RPCHandler.h>
-#include <ripple/shamap/Family.h>
-#include <ripple/crypto/csprng.h>
 #include <ripple/beast/asio/io_latency_probe.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <peersafe/app/sql/TxStore.h>
@@ -85,12 +63,11 @@
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
-#include <beast/core/detail/ci_char_traits.hpp>
-#include <boost/asio/signal_set.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/optional.hpp>
-#include <atomic>
-#include <chrono>
 #include <fstream>
+#include <sstream>
+#include <iostream>
 
 namespace ripple {
 
@@ -111,7 +88,7 @@ private:
     beast::Journal j_;
 
     // missing node handler
-    std::uint32_t maxSeq = 0;
+    LedgerIndex maxSeq = 0;
     std::mutex maxSeqLock;
 
     void acquire (
@@ -252,7 +229,6 @@ supportedAmendments ();
 class ApplicationImp
     : public Application
     , public RootStoppable
-    , public DeadlineTimer::Listener
     , public BasicApp
 {
 private:
@@ -331,7 +307,6 @@ public:
 
     NodeStoreScheduler m_nodeStoreScheduler;
     std::unique_ptr <SHAMapStore> m_shaMapStore;
-    std::unique_ptr <NodeStore::Database> m_nodeStore;
     PendingSaves pendingSaves_;
     AccountIDCache accountIDCache_;
     boost::optional<OpenLedger> openLedger_;
@@ -339,14 +314,16 @@ public:
     // These are not Stoppable-derived
     NodeCache m_tempNodeCache;
     std::unique_ptr <CollectorManager> m_collectorManager;
-    detail::AppFamily family_;
     CachedSLEs cachedSLEs_;
     std::pair<PublicKey, SecretKey> nodeIdentity_;
+    ValidatorKeys const validatorKeys_;
 
     std::unique_ptr <Resource::Manager> m_resourceManager;
 
     // These are Stoppable-related
     std::unique_ptr <JobQueue> m_jobQueue;
+    std::unique_ptr <NodeStore::Database> m_nodeStore;
+    detail::AppFamily family_;
     // VFALCO TODO Make OrderBookDB abstract
     OrderBookDB m_orderBookDB;
     std::unique_ptr <PathRequests> m_pathRequests;
@@ -354,7 +331,7 @@ public:
     std::unique_ptr <InboundLedgers> m_inboundLedgers;
     std::unique_ptr <InboundTransactions> m_inboundTransactions;
     TaggedCache <uint256, AcceptedLedger> m_acceptedLedgerCache;
-    std::unique_ptr <NetworkOPs> m_networkOPs;	
+    std::unique_ptr <NetworkOPs> m_networkOPs;
     std::unique_ptr <Cluster> cluster_;
     std::unique_ptr <ManifestCache> validatorManifests_;
     std::unique_ptr <ManifestCache> publisherManifests_;
@@ -364,7 +341,7 @@ public:
     std::unique_ptr <AmendmentTable> m_amendmentTable;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
     std::unique_ptr <HashRouter> mHashRouter;
-    std::unique_ptr <Validations> mValidations;
+	RCLValidations mValidations;
     std::unique_ptr <LoadManager> m_loadManager;
     std::unique_ptr <TxQ> txQ_;
 	std::unique_ptr <TxStoreDBConn> m_pTxStoreDBConn;
@@ -373,8 +350,10 @@ public:
     std::unique_ptr <TableSync> m_pTableSync;
     std::unique_ptr <TableStorage> m_pTableStorage;
 	std::unique_ptr <TableAssistant> m_pTableAssistant;
-    DeadlineTimer m_sweepTimer;
-    DeadlineTimer m_entropyTimer;
+    ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
+    boost::asio::steady_timer sweepTimer_;
+    boost::asio::steady_timer entropyTimer_;
+    bool startTimers_;
 
     std::unique_ptr <DatabaseCon> mTxnDB;
     std::unique_ptr <DatabaseCon> mLedgerDB;
@@ -427,8 +406,6 @@ public:
             logs_->journal ("SHAMapStore"), logs_->journal ("NodeObject"),
             m_txMaster, *config_))
 
-        , m_nodeStore (m_shaMapStore->makeDatabase ("NodeStore.main", 4))
-
         , accountIDCache_(128000)
 
         , m_tempNodeCache ("NodeCache", 16384, 90, stopwatch(),
@@ -436,10 +413,8 @@ public:
 
         , m_collectorManager (CollectorManager::New (
             config_->section (SECTION_INSIGHT), logs_->journal("Collector")))
-
-        , family_ (*this, *m_nodeStore, *m_collectorManager)
-
         , cachedSLEs_ (std::chrono::minutes(1), stopwatch())
+        , validatorKeys_(*config_, m_journal)
 
         , m_resourceManager (Resource::make_Manager (
             m_collectorManager->collector(), logs_->journal("Resource")))
@@ -454,6 +429,10 @@ public:
         //
         // Anything which calls addJob must be a descendant of the JobQueue
         //
+        , m_nodeStore (
+            m_shaMapStore->makeDatabase ("NodeStore.main", 4, *m_jobQueue))
+
+        , family_ (*this, *m_nodeStore, *m_collectorManager)
 
         , m_orderBookDB (*this, *m_jobQueue)
 
@@ -485,8 +464,8 @@ public:
 
         , m_networkOPs (make_NetworkOPs (*this, stopwatch(),
             config_->standalone(), config_->NETWORK_QUORUM, config_->START_VALID,
-            *m_jobQueue, *m_ledgerMaster, *m_jobQueue,
-            logs_->journal("NetworkOPs")))		
+            *m_jobQueue, *m_ledgerMaster, *m_jobQueue, validatorKeys_,
+            get_io_service(), logs_->journal("NetworkOPs")))
 
         , cluster_ (std::make_unique<Cluster> (
             logs_->journal("Overlay")))
@@ -510,9 +489,11 @@ public:
         , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
 
         , mHashRouter (std::make_unique<HashRouter>(
-            stopwatch(), HashRouter::getDefaultHoldTime ()))
+            stopwatch(), HashRouter::getDefaultHoldTime (),
+            HashRouter::getDefaultRecoverLimit ()))
 
-        , mValidations (make_Validations (*this))
+        , mValidations (ValidationParms(),stopwatch(), logs_->journal("Validations"),
+            *this)
 
         , m_loadManager (make_LoadManager (*this, *this, logs_->journal("LoadManager")))
 
@@ -528,9 +509,11 @@ public:
 
 		, m_pTableAssistant(std::make_unique<TableAssistant>(*this, *config_, logs_->journal("TableAssistant")))
 
-        , m_sweepTimer (this)
+        , sweepTimer_ (get_io_service())
 
-        , m_entropyTimer (this)
+        , entropyTimer_ (get_io_service())
+
+        , startTimers_ (false)
 
         , m_signals (get_io_service())
 
@@ -540,8 +523,7 @@ public:
 
         , m_io_latency_sampler (m_collectorManager->collector()->make_event ("ios_latency"),
             logs_->journal("Application"), std::chrono::milliseconds (100), get_io_service())
-            {
- 
+    {
         add (m_resourceManager.get ());
 
         //
@@ -557,7 +539,8 @@ public:
         //  and services when running the unit tests. Therefore anything which
         //  needs to be stopped will not get stopped correctly if it is
         //  started in this constructor.
-        //      
+        //
+
         // VFALCO HACK
         m_nodeStoreScheduler.setJobQueue (*m_jobQueue);
 
@@ -567,7 +550,7 @@ public:
     //--------------------------------------------------------------------------
 
     bool setup() override;
-    void doStart() override;
+    void doStart(bool withTimers) override;
     void run() override;
     bool isShutdown() override;
     void signalStop() override;
@@ -617,11 +600,6 @@ public:
         return nodeIdentity_;
     }
 
-    NetworkOPs& getOPs () override
-    {
-        return *m_networkOPs;
-    }
-
 	TxStoreDBConn& getTxStoreDBConn() override
 	{
 		return *m_pTxStoreDBConn;
@@ -651,6 +629,18 @@ public:
 	{
 		return *m_pTableAssistant;
 	}
+
+    virtual
+    PublicKey const &
+    getValidationPublicKey() const override
+    {
+        return validatorKeys_.publicKey;
+    }
+
+    NetworkOPs& getOPs () override
+    {
+        return *m_networkOPs;
+    }
 
     boost::asio::io_service& getIOService () override
     {
@@ -749,9 +739,9 @@ public:
         return *mHashRouter;
     }
 
-    Validations& getValidations () override
+    RCLValidations& getValidations () override
     {
-        return *mValidations;
+        return mValidations;
     }
 
     ValidatorList& validators () override
@@ -841,24 +831,22 @@ public:
     //--------------------------------------------------------------------------
     bool initSqliteDbs ()
     {
-        assert(mTxnDB.get() == nullptr);
-        assert(mLedgerDB.get() == nullptr);
-        assert(mWalletDB.get() == nullptr);
+        assert (mTxnDB.get () == nullptr);
+        assert (mLedgerDB.get () == nullptr);
+        assert (mWalletDB.get () == nullptr);
 
-        DatabaseCon::Setup setup = setup_DatabaseCon(*config_);
-        mTxnDB = std::make_unique <DatabaseCon>(setup, "transaction.db",
-            TxnDBInit, TxnDBCount);
-        mLedgerDB = std::make_unique <DatabaseCon>(setup, "ledger.db",
-            LedgerDBInit, LedgerDBCount);
-        mWalletDB = std::make_unique <DatabaseCon>(setup, "wallet.db",
-            WalletDBInit, WalletDBCount);
-
-        //m_pTableStatusDB->InitDB(setup);
+        DatabaseCon::Setup setup = setup_DatabaseCon (*config_);
+        mTxnDB = std::make_unique <DatabaseCon> (setup, "transaction.db",
+                TxnDBInit, TxnDBCount);
+        mLedgerDB = std::make_unique <DatabaseCon> (setup, "ledger.db",
+                LedgerDBInit, LedgerDBCount);
+        mWalletDB = std::make_unique <DatabaseCon> (setup, "wallet.db",
+                WalletDBInit, WalletDBCount);
 
         return
-            mTxnDB.get() != nullptr &&
-            mLedgerDB.get() != nullptr &&
-            mWalletDB.get() != nullptr;
+            mTxnDB.get () != nullptr &&
+            mLedgerDB.get () != nullptr &&
+            mWalletDB.get () != nullptr;
     }
 
     void signalled(const boost::system::error_code& ec, int signal_number)
@@ -895,8 +883,11 @@ public:
             << "Application starting. Version is " << BuildInfo::getVersionString();
 
         using namespace std::chrono_literals;
-        m_sweepTimer.setExpiration (10s);
-        m_entropyTimer.setRecurringExpiration (5min);
+        if(startTimers_)
+        {
+            setSweepTimer();
+            setEntropyTimer();
+        }
 
         m_io_latency_sampler.start();
 
@@ -925,11 +916,30 @@ public:
         //      things will happen.
         m_resolver->stop ();
 
-        m_sweepTimer.cancel ();
+        {
+            boost::system::error_code ec;
+            sweepTimer_.cancel (ec);
+            if (ec)
+            {
+                JLOG (m_journal.error())
+                    << "Application: sweepTimer cancel error: "
+                    << ec.message();
+            }
 
-        m_entropyTimer.cancel ();
+            ec.clear();
+            entropyTimer_.cancel (ec);
+            if (ec)
+            {
+                JLOG (m_journal.error())
+                    << "Application: entropyTimer cancel error: "
+                    << ec.message();
+            }
+        }
+        // Make sure that any waitHandlers pending in our timers are done
+        // before we declare ourselves stopped.
+        waitHandlerCounter_.join("Application", 1s, m_journal);
 
-        mValidations->flush ();
+        mValidations.flush ();
 
         validatorSites_->stop ();
 
@@ -949,7 +959,7 @@ public:
         stopped ();
     }
 
-    //------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
     //
     // PropertyStream
     //
@@ -958,41 +968,83 @@ public:
     {
     }
 
-    //------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------
 
-    void onDeadlineTimer (DeadlineTimer& timer) override
+    void setSweepTimer ()
     {
-        if (timer == m_entropyTimer)
-        {
-            crypto_prng().mix_entropy ();
-            return;
-        }
-
-        if (timer == m_sweepTimer)
-        {
-            // VFALCO TODO Move all this into doSweep
-
-            if (! config_->standalone())
+        // Only start the timer if waitHandlerCounter_ is not yet joined.
+        if (auto optionalCountedHandler = waitHandlerCounter_.wrap (
+            [this] (boost::system::error_code const& e)
             {
-                boost::filesystem::space_info space =
-                        boost::filesystem::space (config_->legacy ("database_path"));
-
-                // VFALCO TODO Give this magic constant a name and move it into a well documented header
-                //
-                if (space.available < (512 * 1024 * 1024))
+                if ((e.value() == boost::system::errc::success) &&
+                    (! m_jobQueue->isStopped()))
                 {
-                    JLOG(m_journal.fatal())
-                        << "Remaining free disk space is less than 512MB";
-                    signalStop ();
+                    m_jobQueue->addJob(
+                        jtSWEEP, "sweep", [this] (Job&) { doSweep(); });
                 }
-            }
+                // Recover as best we can if an unexpected error occurs.
+                if (e.value() != boost::system::errc::success &&
+                    e.value() != boost::asio::error::operation_aborted)
+                {
+                    // Try again later and hope for the best.
+                    JLOG (m_journal.error())
+                       << "Sweep timer got error '" << e.message()
+                       << "'.  Restarting timer.";
+                    setSweepTimer();
+                }
+            }))
+        {
+            sweepTimer_.expires_from_now (
+                std::chrono::seconds {config_->getSize (siSweepInterval)});
+            sweepTimer_.async_wait (std::move (*optionalCountedHandler));
+        }
+    }
 
-            m_jobQueue->addJob(jtSWEEP, "sweep", [this] (Job&) { doSweep(); });
+    void setEntropyTimer ()
+    {
+        // Only start the timer if waitHandlerCounter_ is not yet joined.
+        if (auto optionalCountedHandler = waitHandlerCounter_.wrap (
+            [this] (boost::system::error_code const& e)
+            {
+                if (e.value() == boost::system::errc::success)
+                {
+                    crypto_prng().mix_entropy();
+                    setEntropyTimer();
+                }
+                // Recover as best we can if an unexpected error occurs.
+                if (e.value() != boost::system::errc::success &&
+                    e.value() != boost::asio::error::operation_aborted)
+                {
+                    // Try again later and hope for the best.
+                    JLOG (m_journal.error())
+                       << "Entropy timer got error '" << e.message()
+                       << "'.  Restarting timer.";
+                    setEntropyTimer();
+                }
+            }))
+        {
+            using namespace std::chrono_literals;
+            entropyTimer_.expires_from_now (5min);
+            entropyTimer_.async_wait (std::move (*optionalCountedHandler));
         }
     }
 
     void doSweep ()
     {
+        if (! config_->standalone())
+        {
+            boost::filesystem::space_info space =
+                boost::filesystem::space (config_->legacy ("database_path"));
+
+            constexpr std::uintmax_t bytes512M = 512 * 1024 * 1024;
+            if (space.available < (bytes512M))
+            {
+                JLOG(m_journal.fatal())
+                    << "Remaining free disk space is less than 512MB";
+                signalStop ();
+            }
+        }
+
         // VFALCO NOTE Does the order of calls matter?
         // VFALCO TODO fix the dependency inversion using an observer,
         //         have listeners register for "onSweep ()" notification.
@@ -1002,19 +1054,27 @@ public:
         getNodeStore().sweep();
         getLedgerMaster().sweep();
         getTempNodeCache().sweep();
-        getValidations().sweep();
+        getValidations().expire();
         getInboundLedgers().sweep();
         m_acceptedLedgerCache.sweep();
         family().treecache().sweep();
         cachedSLEs_.expire();
 
-        // VFALCO NOTE does the call to sweep() happen on another thread?
-        m_sweepTimer.setExpiration (
-            std::chrono::seconds {config_->getSize (siSweepInterval)});
+        // Set timer to do another sweep later.
+        setSweepTimer();
+    }
+
+    LedgerIndex getMaxDisallowedLedger() override
+    {
+        return maxDisallowedLedger_;
     }
 
 
 private:
+    // For a newly-started validator, this is the greatest persisted ledger
+    // and new validations must be greater than this.
+    std::atomic<LedgerIndex> maxDisallowedLedger_ {0};
+
     void addTxnSeqField();
     void addValidationSeqFields();
     bool updateTables ();
@@ -1032,6 +1092,8 @@ private:
         std::string const& ledgerID,
         bool replay,
         bool isFilename);
+
+    void setMaxDisallowedLedger();
 };
 
 //------------------------------------------------------------------------------
@@ -1043,8 +1105,9 @@ private:
 bool ApplicationImp::setup()
 {
     if (!setSynTable())  return false;
+    
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
-    m_jobQueue->setThreadCount (0, config_->standalone());
+    m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());
 
     // We want to intercept and wait for CTRL-C to terminate the process
     m_signals.add (SIGINT);
@@ -1073,12 +1136,15 @@ bool ApplicationImp::setup()
 
     if (!config_->standalone())
         timeKeeper_->run(config_->SNTP_SERVERS);
-           
-    if (!initSqliteDbs())
+
+    if (!initSqliteDbs ())
     {
         JLOG(m_journal.fatal()) << "Cannot create database connections!";
         return false;
     }
+
+    if (validatorKeys_.publicKey.size())
+        setMaxDisallowedLedger();
 
     getLedgerDB ().getSession ()
         << boost::str (boost::format ("PRAGMA cache_size=-%d;") %
@@ -1103,7 +1169,7 @@ bool ApplicationImp::setup()
         enabledAmendments.append (detail::preEnabledAmendments ());
 
         m_amendmentTable = make_AmendmentTable (
-            weeks{2},
+			weeks{ 2 },//std::chrono::minutes{10},
             MAJORITY_FRACTION,
             supportedAmendments,
             enabledAmendments,
@@ -1113,6 +1179,16 @@ bool ApplicationImp::setup()
 
     Pathfinder::initPathTable();
 
+
+	// VFALCO NOTE Unfortunately, in stand-alone mode some code still
+	//             foolishly calls overlay(). When this is fixed we can
+	//             move the instantiation inside a conditional:
+	//
+	//             if (!config_.standalone())
+	m_overlay = make_Overlay(*this, setup_Overlay(*config_), *m_jobQueue,
+		*serverHandler_, *m_resourceManager, *m_resolver, get_io_service(),
+		*config_);
+	add(*m_overlay); // add to PropertyStream
     /*if (config().exists(SECTION_ENCRYPT_CARD_TYPE))
     {
         auto encryptCardType = config().section(SECTION_ENCRYPT_CARD_TYPE).lines().front();
@@ -1134,10 +1210,6 @@ bool ApplicationImp::setup()
 	//             move the instantiation inside a conditional:
 	//
 	//             if (!config_.standalone())
-	m_overlay = make_Overlay(*this, setup_Overlay(*config_), *m_jobQueue,
-		*serverHandler_, *m_resourceManager, *m_resolver, get_io_service(),
-		*config_);
-	add(*m_overlay); // add to PropertyStream
 
     auto const startUp = config_->START_UP;
     if (startUp == Config::FRESH)
@@ -1186,55 +1258,11 @@ bool ApplicationImp::setup()
     }
 
     {
-        PublicKey valPublic;
-        SecretKey valSecret;
-        std::string manifest;
-        if (config().exists (SECTION_VALIDATOR_TOKEN))
-        {
-            if (auto const token = ValidatorToken::make_ValidatorToken (
-                config().section (SECTION_VALIDATOR_TOKEN).lines ()))
-            {
-                valSecret = token->validationSecret;
-                valPublic = derivePublicKey (KeyType::secp256k1, valSecret);
-                manifest = std::move(token->manifest);
-            }
-            else
-            {
-                JLOG(m_journal.fatal()) <<
-                    "Invalid entry in validator token configuration.";
-                return false;
-            }
-        }
-        else if (config().exists (SECTION_VALIDATION_SEED))
-        {
-            if (nullptr == HardEncryptObj::getInstance())
-            {
-                auto const seed = parseBase58<Seed>(
-                    config().section(SECTION_VALIDATION_SEED).lines().front());
-                if (!seed)
-                    Throw<std::runtime_error>(
-                        "Invalid seed specified in [" SECTION_VALIDATION_SEED "]");
-                valSecret = generateSecretKey(KeyType::secp256k1, *seed);
-                valPublic = derivePublicKey(KeyType::secp256k1, valSecret);
-            }
-            else
-            {
-                std::string privateKeyStr = config().section(SECTION_VALIDATION_SEED).lines().front();
-                std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, TOKEN_NODE_PRIVATE);
-                std::string publicKeyStr = config().section(SECTION_VALIDATION_PUBLIC_KEY).lines().front();
-                std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TOKEN_NODE_PUBLIC);
-                if (privateKeyStrDe58.empty() || publicKeyDe58.empty() || publicKeyDe58.size() != 65)
-                {
-                    Throw<std::runtime_error>(
-                        "Invalid seed specified in [" SECTION_VALIDATION_SEED "] and [" SECTION_VALIDATION_PUBLIC_KEY "]");
-                }
-                valSecret = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-                valPublic = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
-            }
-        }
+        if(validatorKeys_.configInvalid())
+            return false;
 
         if (!validatorManifests_->load (
-            getWalletDB (), "ValidatorManifests", manifest,
+            getWalletDB (), "ValidatorManifests", validatorKeys_.manifest,
             config().section (SECTION_VALIDATOR_KEY_REVOCATION).values ()))
         {
             JLOG(m_journal.fatal()) << "Invalid configured validator manifest.";
@@ -1244,11 +1272,9 @@ bool ApplicationImp::setup()
         publisherManifests_->load (
             getWalletDB (), "PublisherManifests");
 
-        m_networkOPs->setValidationKeys (valSecret, valPublic);
-
         // Setup trusted validators
         if (!validators_->load (
-                valPublic,
+                validatorKeys_.publicKey,
                 config().section (SECTION_VALIDATORS).values (),
                 config().section (SECTION_VALIDATOR_LIST_KEYS).values ()))
         {
@@ -1354,8 +1380,9 @@ bool ApplicationImp::setup()
 }
 
 void
-ApplicationImp::doStart()
+ApplicationImp::doStart(bool withTimers)
 {
+    startTimers_ = withTimers;
     prepare ();
     start ();
 }
@@ -1447,9 +1474,12 @@ ApplicationImp::startGenesisLedger()
 
     auto const next = std::make_shared<Ledger>(
         *genesis, timeKeeper().closeTime());
-    next->updateSkipList ();
+	next->updateSkipList();
+
+	//store ledger 2 account_node
+	next->stateMap().flushDirty(
+		hotACCOUNT_NODE, next->info().seq);
     next->setImmutable (*config_);
-    m_networkOPs->setLastCloseTime (next->info().closeTime);
     openLedger_.emplace(next, cachedSLEs_,
         logs_->journal("OpenLedger"));
     m_ledgerMaster->storeLedger(next);
@@ -1461,52 +1491,51 @@ ApplicationImp::getLastFullLedger()
 {
     auto j = journal ("Ledger");
 
-    try
-    {
-        std::shared_ptr<Ledger> ledger;
-        std::uint32_t seq;
-        uint256 hash;
+	int count = 0;
+	while (count < 3)
+	{
+		try
+		{
+			std::shared_ptr<Ledger> ledger;
+			std::uint32_t seq;
+			uint256 hash;
 
-        std::tie (ledger, seq, hash) =
-            loadLedgerHelper (
-                "order by LedgerSeq desc limit 1,1", *this);
-        if (!ledger)
-        {
-            std::tie(ledger, seq, hash) =
-                loadLedgerHelper(
-                    "order by LedgerSeq desc limit 0,1", *this);
-        }
+			int index = 1 + count++;
+			std::stringstream ss;
+			ss << "order by LedgerSeq desc limit " << index << ",1";
+			std::string loadSql = ss.str();
+			std::tie(ledger, seq, hash) = loadLedgerHelper(loadSql, *this);
 
-        if (!ledger)
-            return ledger;
+			if (!ledger)
+				continue;
 
-        ledger->setImmutable(*config_);
+			ledger->setImmutable(*config_);
 
-        if (getLedgerMaster ().haveLedger (seq))
-            ledger->setValidated ();
+			if (getLedgerMaster().haveLedger(seq))
+				ledger->setValidated();
 
-        if (ledger->info().hash == hash)
-        {
-            JLOG (j.trace()) << "Loaded ledger: " << hash;
-            return ledger;
-        }
+			if (ledger->info().hash == hash)
+			{
+				JLOG(j.trace()) << "Loaded ledger: " << hash;
+				return ledger;
+			}
 
-        if (auto stream = j.error())
-        {
-            stream  << "Failed on ledger";
-            Json::Value p;
-            addJson (p, {*ledger, LedgerFill::full});
-            stream << p;
-        }
-
-        return {};
-    }
-    catch (SHAMapMissingNode& sn)
-    {
-        JLOG (j.warn()) <<
-            "Ledger with missing nodes in database: " << sn;
-        return {};
-    }
+			if (auto stream = j.error())
+			{
+				stream << "Failed on ledger";
+				Json::Value p;
+				addJson(p, { *ledger, LedgerFill::full });
+				stream << p;
+			}
+		}
+		catch (SHAMapMissingNode& sn)
+		{
+			JLOG(j.warn()) <<
+				"Ledger with missing nodes in database: " << sn;
+			continue;;
+		}
+	}
+	return{};
 }
 
 std::shared_ptr<Ledger>
@@ -1660,7 +1689,7 @@ bool ApplicationImp::loadOldLedger (
 {
     try
     {
-        std::shared_ptr<Ledger> loadLedger, replayLedger;
+        std::shared_ptr<Ledger const> loadLedger, replayLedger;
 
         if (isFileName)
         {
@@ -1686,7 +1715,7 @@ bool ApplicationImp::loadOldLedger (
                 }
             }
         }
-        else if (ledgerID.empty () || beast::detail::ci_equal(ledgerID, "latest"))
+        else if (ledgerID.empty () || beast::detail::iequals(ledgerID, "latest"))
         {
             loadLedger = getLastFullLedger ();
         }
@@ -1765,7 +1794,6 @@ bool ApplicationImp::loadOldLedger (
         m_ledgerMaster->switchLCL (loadLedger);
         loadLedger->setValidated();
         m_ledgerMaster->setFullLedger(loadLedger, true, false);
-        m_networkOPs->setLastCloseTime (loadLedger->info().closeTime);
         openLedger_.emplace(loadLedger, cachedSLEs_,
             logs_->journal("OpenLedger"));
 
@@ -2050,9 +2078,9 @@ bool ApplicationImp::updateTables ()
         auto j = logs_->journal("NodeObject");
         NodeStore::DummyScheduler scheduler;
         std::unique_ptr <NodeStore::Database> source =
-            NodeStore::Manager::instance().make_Database ("NodeStore.import", scheduler,
-                j, 0,
-                config_->section(ConfigSection::importNodeDatabase ()));
+            NodeStore::Manager::instance().make_Database ("NodeStore.import",
+                scheduler, 0, *m_jobQueue,
+                config_->section(ConfigSection::importNodeDatabase ()), j);
 
         JLOG (j.warn())
             << "Node import from '" << source->getName () << "' to '"
@@ -2062,6 +2090,20 @@ bool ApplicationImp::updateTables ()
     }
 
     return true;
+}
+
+void ApplicationImp::setMaxDisallowedLedger()
+{
+	boost::optional <LedgerIndex> seq;
+	{
+		auto db = getLedgerDB().checkoutDb();
+		*db << "SELECT MAX(LedgerSeq) FROM Ledgers;", soci::into(seq);
+	}
+	if (seq)
+		maxDisallowedLedger_ = *seq;
+
+	JLOG(m_journal.trace()) << "Max persisted ledger is "
+		<< maxDisallowedLedger_;
 }
 
 bool ApplicationImp::setSynTable()
@@ -2110,6 +2152,12 @@ bool ApplicationImp::setSynTable()
             m_pTableStorage->SetHaveSyncFlag(false);
             //JLOG(m_journal.info()) << "fail to create sycstate table calss.";
 			std::cerr << "fail to create sycstate table calss." << std::endl;
+            return false;
+        }
+
+        if (m_txMaster.getClientTxStoreDBConn().GetDBConn() == NULL || m_txMaster.getConsensusTxStoreDBConn().GetDBConn() == NULL)
+        {
+            std::cerr << "db connection for consensus or tx check is null" << std::endl;
             return false;
         }
     }

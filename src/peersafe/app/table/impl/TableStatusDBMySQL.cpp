@@ -37,7 +37,7 @@ namespace ripple {
     }
 
     bool TableStatusDBMySQL::ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq,
-        uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash, bool &bDeleted)
+        uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash)
     {
         bool ret = false;
         try
@@ -45,7 +45,7 @@ namespace ripple {
             LockedSociSession sql_session = databasecon_->checkoutDb();
 
             static std::string const prefix(
-                R"(select TxnLedgerHash,TxnLedgerSeq,LedgerHash,LedgerSeq,TxnUpdateHash,deleted from SyncTableState
+                R"(select TxnLedgerHash,TxnLedgerSeq,LedgerHash,LedgerSeq,TxnUpdateHash from SyncTableState
             WHERE )");
 
             std::string sql = boost::str(boost::format(
@@ -58,7 +58,6 @@ namespace ripple {
             boost::optional<std::string> LedgerSeq;
             boost::optional<std::string> LedgerHash;
             boost::optional<std::string> TxnUpdatehash;
-            boost::optional<std::string> deleted;
             boost::optional<std::string> status;            
 
             soci::statement st = (sql_session->prepare << sql
@@ -66,8 +65,7 @@ namespace ripple {
                 , soci::into(TxnLedgerSeq)
                 , soci::into(LedgerHash)
                 , soci::into(LedgerSeq)
-                , soci::into(TxnUpdatehash)
-                , soci::into(deleted));
+                , soci::into(TxnUpdatehash));
 
             bool dbret = st.execute(true);
 
@@ -83,8 +81,6 @@ namespace ripple {
                     hash = from_hex_text<uint256>(LedgerHash.value());
                 if (TxnUpdatehash && !TxnUpdatehash.value().empty())
                     txnupdatehash = from_hex_text<uint256>(TxnUpdatehash.value());
-                if (deleted && !deleted.value().empty())
-                    bDeleted = std::stoi(deleted.value());
                 ret = true;
             }
         }
@@ -142,7 +138,7 @@ namespace ripple {
         
     }
 
-    bool TableStatusDBMySQL::InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq, uint256 LedgerHash,bool IsAutoSync,std::string TxnLedgerTime)
+    bool TableStatusDBMySQL::InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq, uint256 LedgerHash,bool IsAutoSync,std::string TxnLedgerTime, uint256 chainId)
     {
         bool ret = false;
         try
@@ -151,7 +147,7 @@ namespace ripple {
 
             std::string sql(
                 "INSERT INTO SyncTableState "
-                "(Owner, TableName, TableNameInDB,LedgerSeq,LedgerHash,deleted,AutoSync,TxnLedgerTime) VALUES('");
+                "(Owner, TableName, TableNameInDB,LedgerSeq,LedgerHash,deleted,AutoSync,TxnLedgerTime,ChainID) VALUES('");
 
             sql += Owner;
             sql += "','";
@@ -168,6 +164,8 @@ namespace ripple {
             sql += to_string(IsAutoSync? 1 : 0);
             sql += "','";
             sql += TxnLedgerTime;
+			sql += "','";
+			sql += to_string(chainId);
             sql += "');";
 
             soci::statement st = (sql_session->prepare << sql);
@@ -186,15 +184,32 @@ namespace ripple {
     bool TableStatusDBMySQL::CreateSnycDB(DatabaseCon::Setup setup)
     {
         bool ret = false;
-        try
-        {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+        
+        LockedSociSession sql_session = databasecon_->checkoutDb();
 
+        //1.check the synctable whether exists.
+        bool bExist = false;
+        try {            
+            std::string sql = "SELECT Owner FROM SyncTableState";
+            boost::optional<std::string> owner;
+            soci::statement st = (sql_session->prepare << sql, soci::into(owner));
+            st.execute(true);
+            bExist = true;
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.warn()) << "the first query owner form synctablestate exception" << e.what();
+            bExist = false;
+        }
+        if (bExist) return true;
+
+        //2.not exist ,create it
+        try {            
             std::string sql(
-                "CREATE TABLE IF NOT EXISTS SyncTableState(" \
-                "Owner             CHARACTER(64),          " \
+                "CREATE TABLE SyncTableState(" \
+                "Owner             CHARACTER(64) NOT NULL, " \
                 "TableName         CHARACTER(64),          " \
-                "TableNameInDB     CHARACTER(64),          " \
+                "TableNameInDB     CHARACTER(64) NOT NULL, " \
                 "TxnLedgerHash     CHARACTER(64),          " \
                 "TxnLedgerSeq      CHARACTER(64),          " \
                 "LedgerHash        CHARACTER(64),          " \
@@ -204,37 +219,33 @@ namespace ripple {
                 "AutoSync          CHARACTER(64),          " \
                 "TxnLedgerTime     CHARACTER(64),          " \
                 "PreviousCommit    CHARACTER(64),          " \
+				"ChainId		   CHARACTER(64),		   " \
                 "PRIMARY KEY(Owner,TableNameInDB))         "
             );
-            soci::statement st =
-                (sql_session->prepare << sql);
+            soci::statement st = (sql_session->prepare << sql);
 
             ret = st.execute();
-
-
-            sql = "SELECT Owner FROM SyncTableState";
-
-            boost::optional<std::string> owner;
-            st = (sql_session->prepare << sql, soci::into(owner));
-            st.execute(true);
-
-            ret = true;
-
-            /*
-            //dont't delete , for using in the future.
-            boost::optional<std::string> pTableName;
-            sql = "SHOW TABLES LIKE 'SyncTableState'";
-            st = (sql_session->prepare << sql, soci::into(pTableName));
-
-            ret = st.execute(true);
-            */
         }
         catch (std::exception const& e)
         {
+            JLOG(journal_.error()) << "CreateSnycDB exception" << e.what();
             ret = false;
-            JLOG(journal_.error()) <<
-                "CreateSnycDB exception" << e.what();
         }
+
+        //3.check again to guarantee synctable be created successfully
+        try {            
+            std::string sql = "SELECT Owner FROM SyncTableState";
+            boost::optional<std::string> owner;
+            soci::statement st = (sql_session->prepare << sql, soci::into(owner));
+            st.execute(true);
+            ret = true;
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.warn()) << "the second query owner form synctablestate exception" << e.what();
+            ret = false;
+        }
+        
         return ret;
     }
     bool TableStatusDBMySQL::isNameInDBExist(std::string TableName, std::string Owner, bool delCheck, std::string &TableNameInDB)
@@ -548,16 +559,17 @@ namespace ripple {
         return ret;
     }
 
-    bool TableStatusDBMySQL::GetAutoListFromDB(bool /*bAutoSunc*/, std::list<std::tuple<std::string, std::string, std::string, bool> > &list)
+    bool TableStatusDBMySQL::GetAutoListFromDB(uint256 chainId, std::list<std::tuple<std::string, std::string, std::string, bool> > &list)
     {
         bool ret = false;
         try
         {
             LockedSociSession sql_session = databasecon_->checkoutDb();
 
-            static std::string const sql(
-                R"(select Owner,TableName,TxnLedgerTime from SyncTableState
-            WHERE AutoSync = '1'AND deleted = '0' ORDER BY TxnLedgerSeq DESC;)");
+			static std::string  sql = boost::str(boost::format(
+				(R"(select Owner,TableName,TxnLedgerTime from SyncTableState
+            WHERE ChainId = '%s' AND AutoSync = '1' AND deleted = '0' ORDER BY TxnLedgerSeq DESC;)"))
+				% to_string(chainId));
 
             boost::optional<std::string> Owner_;
             boost::optional<std::string> TableName_;
@@ -595,7 +607,7 @@ namespace ripple {
         catch (std::exception const& e)
         {
             JLOG(journal_.error()) <<
-                "GetMaxTxnInfo exception" << e.what();
+                "GetAutoListFromDB exception" << e.what();
         }
         return ret;
     }

@@ -18,41 +18,27 @@
 //==============================================================================
 
 #include <BeastConfig.h>
-#include <ripple/overlay/impl/TMHello.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/overlay/impl/Tuning.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/ledger/LedgerTiming.h>
 #include <ripple/app/ledger/InboundTransactions.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/Transaction.h>
-#include <ripple/app/misc/Validations.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/tx/apply.h>
-#include <ripple/protocol/digest.h>
 #include <ripple/basics/random.h>
-#include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/UptimeTimer.h>
-#include <ripple/core/JobQueue.h>
-#include <ripple/core/TimeKeeper.h>
-#include <ripple/json/json_reader.h>
-#include <ripple/resource/Fees.h>
-#include <ripple/rpc/ServerHandler.h>
-#include <ripple/overlay/Cluster.h>
-#include <ripple/overlay/ClusterNode.h>
-#include <ripple/protocol/BuildInfo.h>
-#include <ripple/protocol/JsonFields.h>
 #include <ripple/beast/core/SemanticVersion.h>
-#include <ripple/beast/utility/weak_fn.h>
+#include <ripple/overlay/Cluster.h>
+#include <ripple/protocol/digest.h>
 #include <peersafe/app/table/TableSync.h>
-#include <beast/http/write.hpp>
+
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/asio/io_service.hpp>
 #include <algorithm>
-#include <functional>
 #include <memory>
 #include <sstream>
 
@@ -92,7 +78,7 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , fee_ (Resource::feeLightPeer)
     , slot_ (slot)
     , request_(std::move(request))
-    , headers_(request_.fields)
+    , headers_(request_)
 {
 }
 
@@ -211,6 +197,12 @@ PeerImp::send (Message::pointer const& m)
         // a small senq periodically
         large_sendq_ = 0;
     }
+    else if ((sendq_size % Tuning::sendQueueLogFreq) == 0)
+    {
+        JLOG (journal_.debug()) <<
+            (name_.empty() ? remote_address_.to_string() : name_) <<
+                " sendq: " << sendq_size;
+    }
 
     send_queue_.push(m);
 
@@ -220,8 +212,8 @@ PeerImp::send (Message::pointer const& m)
     boost::asio::async_write (stream_, boost::asio::buffer(
         send_queue_.front()->getBuffer()), strand_.wrap(std::bind(
             &PeerImp::onWriteMessage, shared_from_this(),
-                beast::asio::placeholders::error,
-                    beast::asio::placeholders::bytes_transferred)));
+                std::placeholders::_1,
+                    std::placeholders::_2)));
 }
 
 void
@@ -243,7 +235,7 @@ PeerImp::crawl() const
     auto const iter = headers_.find("Crawl");
     if (iter == headers_.end())
         return false;
-    return beast::detail::ci_equal(iter->second, "public");
+    return beast::detail::iequals(iter->value(), "public");
 }
 
 std::string
@@ -443,7 +435,9 @@ PeerImp::fail(std::string const& reason)
                 shared_from_this(), reason));
     if (socket_.is_open())
     {
-        JLOG (journal_.debug()) << reason;
+        JLOG (journal_.warn()) <<
+            (name_.empty() ? remote_address_.to_string() : name_) <<
+                " failed: " << reason;
     }
     close();
 }
@@ -454,7 +448,7 @@ PeerImp::fail(std::string const& name, error_code ec)
     assert(strand_.running_in_this_thread());
     if (socket_.is_open())
     {
-        JLOG(journal_.debug()) << name << ": " << ec.message();
+        JLOG(journal_.warn()) << name << ": " << ec.message();
     }
     close();
 }
@@ -475,7 +469,7 @@ PeerImp::gracefulClose()
         return;
     setTimer();
     stream_.async_shutdown(strand_.wrap(std::bind(&PeerImp::onShutdown,
-        shared_from_this(), beast::asio::placeholders::error)));
+        shared_from_this(), std::placeholders::_1)));
 }
 
 void
@@ -491,7 +485,7 @@ PeerImp::setTimer()
         return;
     }
     timer_.async_wait(strand_.wrap(std::bind(&PeerImp::onTimer,
-        shared_from_this(), beast::asio::placeholders::error)));
+        shared_from_this(), std::placeholders::_1)));
 }
 
 // convenience for ignoring the error code
@@ -602,9 +596,9 @@ void PeerImp::doAccept()
 
     // TODO Apply headers to connection state.
 
-    beast::write (write_buffer_, makeResponse(
+    beast::ostream(write_buffer_) << makeResponse(
         ! overlay_.peerFinder().config().peerPrivate,
-            request_, remote_address_, *sharedValue));
+            request_, remote_address_, *sharedValue);
 
     auto const protocol = BuildInfo::make_protocol(hello_.protoversion());
     JLOG(journal_.info()) << "Protocol: " << to_string(protocol);
@@ -650,17 +644,16 @@ PeerImp::makeResponse (bool crawl,
     uint256 const& sharedValue)
 {
     http_response_type resp;
-    resp.status = 101;
-    resp.reason = "Switching Protocols";
+    resp.result(beast::http::status::switching_protocols);
     resp.version = req.version;
-    resp.fields.insert("Connection", "Upgrade");
-    resp.fields.insert("Upgrade", "RTXP/1.2");
-    resp.fields.insert("Connect-AS", "Peer");
-    resp.fields.insert("Server", BuildInfo::getFullVersionString());
-    resp.fields.insert("Crawl", crawl ? "public" : "private");
+    resp.insert("Connection", "Upgrade");
+    resp.insert("Upgrade", "RTXP/1.2");
+    resp.insert("Connect-As", "Peer");
+    resp.insert("Server", BuildInfo::getFullVersionString());
+    resp.insert("Crawl", crawl ? "public" : "private");
     protocol::TMHello hello = buildHello(sharedValue,
         overlay_.setup().public_ip, remote, app_);
-    appendHello(resp.fields, hello);
+    appendHello(resp, hello);
     return resp;
 }
 
@@ -689,8 +682,8 @@ PeerImp::onWriteResponse (error_code ec, std::size_t bytes_transferred)
 
     stream_.async_write_some (write_buffer_.data(),
         strand_.wrap (std::bind (&PeerImp::onWriteResponse,
-            shared_from_this(), beast::asio::placeholders::error,
-                beast::asio::placeholders::bytes_transferred)));
+            shared_from_this(), std::placeholders::_1,
+                std::placeholders::_2)));
 }
 
 //------------------------------------------------------------------------------
@@ -764,8 +757,8 @@ PeerImp::onReadMessage (error_code ec, std::size_t bytes_transferred)
     // Timeout on writes only
     stream_.async_read_some (read_buffer_.prepare (Tuning::readBufferBytes),
         strand_.wrap (std::bind (&PeerImp::onReadMessage,
-            shared_from_this(), beast::asio::placeholders::error,
-                beast::asio::placeholders::bytes_transferred)));
+            shared_from_this(), std::placeholders::_1,
+                std::placeholders::_2)));
 }
 
 void
@@ -794,15 +787,15 @@ PeerImp::onWriteMessage (error_code ec, std::size_t bytes_transferred)
         return boost::asio::async_write (stream_, boost::asio::buffer(
             send_queue_.front()->getBuffer()), strand_.wrap(std::bind(
                 &PeerImp::onWriteMessage, shared_from_this(),
-                    beast::asio::placeholders::error,
-                        beast::asio::placeholders::bytes_transferred)));
+                    std::placeholders::_1,
+                        std::placeholders::_2)));
     }
 
     if (gracefulClose_)
     {
         return stream_.async_shutdown(strand_.wrap(std::bind(
             &PeerImp::onShutdown, shared_from_this(),
-                beast::asio::placeholders::error)));
+                std::placeholders::_1)));
     }
 }
 
@@ -825,7 +818,7 @@ PeerImp::onMessageBegin (std::uint16_t type,
     std::shared_ptr <::google::protobuf::Message> const& m,
     std::size_t size)
 {
-    load_event_ = app_.getJobQueue ().getLoadEventAP (
+    load_event_ = app_.getJobQueue ().makeLoadEvent (
         jtPEER, protocolMessageName(type));
     fee_ = Resource::feeLightPeer;
     overlay_.reportTraffic (TrafficCount::categorize (*m, type, true),
@@ -1049,6 +1042,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMTransaction> const& m)
     {
         // If we've never been in synch, there's nothing we can do
         // with a transaction
+        JLOG(p_journal_.debug()) << "Ignoring incoming transaction: " <<
+            "Need network ledger";
         return;
     }
 
@@ -1061,18 +1056,19 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMTransaction> const& m)
 
         int flags;
 
-        if (! app_.getHashRouter ().addSuppressionPeer (
-            txID, id_, flags))
+        constexpr std::chrono::seconds tx_interval = 10s;
+        if (! app_.getHashRouter ().shouldProcess (
+            txID, id_, flags, clock_type::now(), tx_interval))
         {
             // we have seen this transaction recently
             if (flags & SF_BAD)
             {
                 fee_ = Resource::feeInvalidSignature;
-                return;
+                JLOG(p_journal_.debug()) << "Ignoring known bad tx " <<
+                    txID;
             }
 
-            if (!(flags & SF_RETRY))
-                return;
+            return;
         }
 
         JLOG(p_journal_.debug()) << "Got tx " << txID;
@@ -1087,7 +1083,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMTransaction> const& m)
                 flags |= SF_TRUSTED;
             }
 
-            if (! app_.getOPs().getValidationPublicKey().size())
+            if (app_.getValidationPublicKey().empty())
             {
                 // For now, be paranoid and have each validator
                 // check each transaction, regardless of source
@@ -1095,7 +1091,9 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMTransaction> const& m)
             }
         }
 
-        if (app_.getJobQueue().getJobCount(jtTRANSACTION) > 100)
+        // The maximum number of transactions to have in the job queue.
+        constexpr int max_transactions = 250;
+        if (app_.getJobQueue().getJobCount(jtTRANSACTION) > max_transactions)
         {
             JLOG(p_journal_.info()) << "Transaction queue is full";
         }
@@ -1293,8 +1291,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
         return;
     }
 
-    if (app_.getOPs().getValidationPublicKey().size() &&
-        publicKey == app_.getOPs().getValidationPublicKey())
+    if (!app_.getValidationPublicKey().empty() &&
+        publicKey == app_.getValidationPublicKey())
     {
         JLOG(p_journal_.trace()) << "Proposal: self";
         return;
@@ -1320,10 +1318,10 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
     JLOG(p_journal_.trace()) <<
         "Proposal: " << (isTrusted ? "trusted" : "UNTRUSTED");
 
-    auto proposal = std::make_shared<LedgerProposal> (
-        prevLedger, set.proposeseq (), proposeHash, closeTime,
-        app_.timeKeeper().closeTime(), publicKey, calcNodeID(publicKey),
-        signature, suppression);
+    auto proposal = RCLCxPeerPos(
+        publicKey, signature, suppression,
+        RCLCxPeerPos::Proposal{prevLedger, set.proposeseq (), proposeHash, closeTime,
+            app_.timeKeeper().closeTime(),calcNodeID(publicKey)});
 
     std::weak_ptr<PeerImp> weak = shared_from_this();
     app_.getJobQueue ().addJob (
@@ -1356,7 +1354,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
     {
         if (!closedLedgerHash_.isZero ())
         {
-            JLOG(p_journal_.trace()) << "Status: Out of sync";
+            JLOG(p_journal_.debug()) << "Status: Out of sync";
             closedLedgerHash_.zero ();
         }
 
@@ -1369,11 +1367,11 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
         // a peer has changed ledgers
         memcpy (closedLedgerHash_.begin (), m->ledgerhash ().data (), 256 / 8);
         addLedger (closedLedgerHash_);
-        JLOG(p_journal_.trace()) << "LCL is " << closedLedgerHash_;
+        JLOG(p_journal_.debug()) << "LCL is " << closedLedgerHash_;
     }
     else
     {
-        JLOG(p_journal_.trace()) << "Status: No ledger";
+        JLOG(p_journal_.debug()) << "Status: No ledger";
         closedLedgerHash_.zero ();
     }
 
@@ -1613,7 +1611,10 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
             val->setSeen (closeTime);
         }
 
-        if (! app_.getValidations().current (val))
+        if (! isCurrent(app_.getValidations().parms(),
+            app_.timeKeeper().closeTime(),
+            val->getSignTime(),
+            val->getSeenTime()))
         {
             JLOG(p_journal_.trace()) << "Validation: Not current";
             fee_ = Resource::feeUnwantedData;
@@ -1699,34 +1700,43 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
         if (packet.has_ledgerhash ())
             reply.set_ledgerhash (packet.ledgerhash ());
 
-        // This is a very minimal implementation
-        for (int i = 0; i < packet.objects_size (); ++i)
-        {
-            uint256 hash;
-            const protocol::TMIndexedObject& obj = packet.objects (i);
+		try
+		{
+			// This is a very minimal implementation
+			for (int i = 0; i < packet.objects_size(); ++i)
+			{
+				uint256 hash;
+				const protocol::TMIndexedObject& obj = packet.objects(i);
 
-            if (obj.has_hash () && (obj.hash ().size () == (256 / 8)))
-            {
-                memcpy (hash.begin (), obj.hash ().data (), 256 / 8);
-                // VFALCO TODO Move this someplace more sensible so we dont
-                //             need to inject the NodeStore interfaces.
-                std::shared_ptr<NodeObject> hObj =
-                    app_.getNodeStore ().fetch (hash);
+				if (obj.has_hash() && (obj.hash().size() == (256 / 8)))
+				{
+					memcpy(hash.begin(), obj.hash().data(), 256 / 8);
 
-                if (hObj)
-                {
-                    protocol::TMIndexedObject& newObj = *reply.add_objects ();
-                    newObj.set_hash (hash.begin (), hash.size ());
-                    newObj.set_data (&hObj->getData ().front (),
-                        hObj->getData ().size ());
+					// VFALCO TODO Move this someplace more sensible so we dont
+					//             need to inject the NodeStore interfaces.
 
-                    if (obj.has_nodeid ())
-                        newObj.set_index (obj.nodeid ());
+					std::shared_ptr<NodeObject> hObj =
+						app_.getNodeStore().fetch(hash);
 
-                    // VFALCO NOTE "seq" in the message is obsolete
-                }
-            }
-        }
+					if (hObj)
+					{
+						protocol::TMIndexedObject& newObj = *reply.add_objects();
+						newObj.set_hash(hash.begin(), hash.size());
+						newObj.set_data(&hObj->getData().front(),
+							hObj->getData().size());
+
+						if (obj.has_nodeid())
+							newObj.set_index(obj.nodeid());
+
+						// VFALCO NOTE "seq" in the message is obsolete
+					}
+				}
+			}
+		}
+		catch (std::exception const& e)
+		{
+			JLOG(p_journal_.trace()) << "PeerImp::onMessage: exception occured:" << e.what();
+		}
 
         JLOG(p_journal_.trace()) <<
             "GetObj: " << reply.objects_size () <<
@@ -1923,7 +1933,7 @@ PeerImp::checkTransaction (int flags,
 void
 PeerImp::checkPropose (Job& job,
     std::shared_ptr <protocol::TMProposeSet> const& packet,
-        LedgerProposal::pointer proposal)
+        RCLCxPeerPos peerPos)
 {
     bool isTrusted = (job.getType () == jtPROPOSAL_t);
 
@@ -1933,7 +1943,7 @@ PeerImp::checkPropose (Job& job,
     assert (packet);
     protocol::TMProposeSet& set = *packet;
 
-    if (! cluster() && ! proposal->checkSign ())
+    if (! cluster() && !peerPos.checkSign ())
     {
         JLOG(p_journal_.warn()) <<
             "Proposal fails sig check";
@@ -1944,16 +1954,16 @@ PeerImp::checkPropose (Job& job,
     if (isTrusted)
     {
         app_.getOPs ().processTrustedProposal (
-            proposal, packet, calcNodeID (publicKey_));
+            peerPos, packet, calcNodeID (publicKey_));
     }
     else
     {
-        if (app_.getOPs().getConsensusLCL() == proposal->getPrevLedger())
+        if (app_.getOPs().getConsensusLCL() == peerPos.proposal().prevLedger())
         {
             // relay untrusted proposal
             JLOG(p_journal_.trace()) <<
                 "relaying UNTRUSTED proposal";
-            overlay_.relay(set, proposal->getSuppressionID());
+            overlay_.relay(set, peerPos.suppressionID());
         }
         else
         {

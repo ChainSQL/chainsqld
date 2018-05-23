@@ -33,11 +33,11 @@ namespace ripple {
         bool InitDB(DatabaseCon::Setup setup);
 
         bool ReadSyncDB(std::string nameInDB,LedgerIndex &txnseq,
-            uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash, bool &bDeleted);
+            uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash);
 
         bool GetMaxTxnInfo(std::string TableName, std::string Owner, LedgerIndex &TxnLedgerSeq, uint256 &TxnLedgerHash);
 
-        bool InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync, std::string TxnLedgerTime);
+        bool InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync, std::string TxnLedgerTime, uint256 chainId);
 
         bool CreateSnycDB(DatabaseCon::Setup setup);
 
@@ -66,7 +66,7 @@ namespace ripple {
         virtual soci_ret UpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB,
             bool bDel, const std::string &PreviousCommit);
 
-        bool GetAutoListFromDB(bool bAutoSunc, std::list<std::tuple<std::string, std::string, std::string, bool> > &list);
+        bool GetAutoListFromDB(uint256 chainId, std::list<std::tuple<std::string, std::string, std::string, bool> > &list);
     };
 }
 

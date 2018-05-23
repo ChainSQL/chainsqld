@@ -29,7 +29,7 @@
 #include <ripple/core/JobQueue.h>
 #include <ripple/json/json_reader.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/rpc/impl/TxCommonPrepare.h>
 #include <peersafe/rpc/impl/TxTransactionPrepare.h>
@@ -95,8 +95,7 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 		return jvAccepted;
 
 	//first,we query from ledgerMaster
-	auto retPair = app_.getLedgerMaster().getNameInDB(app_.getLedgerMaster().getValidLedgerIndex(), accountID, tableNameStr);
-	auto nameInDB = retPair.first;
+	auto nameInDB = app_.getLedgerMaster().getNameInDB(app_.getLedgerMaster().getValidLedgerIndex(), accountID, tableNameStr);
 	if (!nameInDB) //not exist,then generate nameInDB
 	{
 		uint32_t ledgerSequence = 0;

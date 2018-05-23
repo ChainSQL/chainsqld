@@ -53,6 +53,7 @@ public:
         add (rpcACT_EXISTS,            "actExists",         "Account already exists.");
         add (rpcACT_MALFORMED,         "actMalformed",      "Account malformed.");
         add (rpcACT_NOT_FOUND,         "actNotFound",       "Account not found.");
+        add (rpcAMENDMENT_BLOCKED,     "amendmentBlocked",  "Amendment blocked, need upgrade.");
         add (rpcATX_DEPRECATED,        "deprecated",        "Use the new API or specify a ledger range.");
         add (rpcBAD_BLOB,              "badBlob",           "Blob must be a non-empty hex string.");
         add (rpcBAD_FEATURE,           "badFeature",        "Feature unknown or invalid.");
@@ -76,6 +77,7 @@ public:
         add (rpcHOST_IP_MALFORMED,     "hostIpMalformed",   "Host IP is malformed.");
         add (rpcINSUF_FUNDS,           "insufFunds",        "Insufficient funds.");
         add (rpcINTERNAL,              "internal",          "Internal error.");
+		add (rpcNODB,				   "dbNotConfigured",	"Get db connection error,maybe db not configured.");
         add (rpcINVALID_PARAMS,        "invalidParams",     "Invalid parameters.");
         add (rpcJSON_RPC,              "json_rpc",          "JSON-RPC transport error.");
         add (rpcLGR_IDXS_INVALID,      "lgrIdxsInvalid",    "Ledger indexes invalid.");

@@ -23,7 +23,6 @@
 #include <ripple/basics/Log.h>
 #include <ripple/beast/net/IPAddressConversion.h>
 #include <beast/core/bind_handler.hpp>
-#include <beast/core/placeholders.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl.hpp>
@@ -150,6 +149,10 @@ public:
         return ec;
     }
 
+    void setTLSHostName(std::string const & host)
+    {
+        SSL_set_tlsext_host_name(mSocket->native_handle(), host.c_str());
+    }
 /*
     template <typename HandshakeHandler>
     BOOST_ASIO_INITFN_RESULT_TYPE(HandshakeHandler,
@@ -185,8 +188,8 @@ public:
                 std::bind (
                     &AutoSocket::handle_autodetect,
                     this, cbFunc,
-                    beast::asio::placeholders::error,
-                    beast::asio::placeholders::bytes_transferred));
+                    std::placeholders::_1,
+                    std::placeholders::_2));
         }
     }
 

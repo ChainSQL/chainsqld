@@ -24,6 +24,7 @@
 #include <ripple/app/misc/detail/Work.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
+#include <ripple/json/json_value.h>
 #include <boost/asio.hpp>
 #include <mutex>
 
@@ -44,8 +45,9 @@ namespace ripple {
         "expiration", and @c "validators" field. @c "expiration" contains the
         Ripple timestamp (seconds since January 1st, 2000 (00:00 UTC)) for when
         the list expires. @c "validators" contains an array of objects with a
-        @c "validation_public_key" field.
+        @c "validation_public_key" and optional @c "manifest" field.
         @c "validation_public_key" should be the hex-encoded master public key.
+        @c "manifest" should be the base64-encoded validator manifest.
 
     @li @c "manifest": Base64-encoded serialization of a manifest containing the
         publisher's master and signing public keys.
@@ -67,10 +69,17 @@ private:
 
     struct Site
     {
+        struct Status
+        {
+            clock_type::time_point refreshed;
+            ListDisposition disposition;
+        };
+
         std::string uri;
         parsedURL pUrl;
         std::chrono::minutes refreshInterval;
         clock_type::time_point nextRefresh;
+        boost::optional<Status> lastRefreshStatus;
     };
 
     boost::asio::io_service& ios_;
@@ -144,6 +153,11 @@ public:
     */
     void
     stop ();
+
+    /** Return JSON representation of configured validator sites
+     */
+    Json::Value
+    getJson() const;
 
 private:
     /// Queue next site to be fetched

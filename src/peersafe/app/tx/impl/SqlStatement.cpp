@@ -33,22 +33,10 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/tx/SqlStatement.h>
-#include <peersafe/app/storage/TableStorage.h>
+#include <peersafe/app/tx/OperationRule.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
-	ZXCAmount
-		SqlStatement::calculateMaxSpend(STTx const& tx)
-	{
-		if (tx.isFieldPresent(sfSendMax))
-		{
-			auto const& sendMax = tx[sfSendMax];
-			return sendMax.native() ? sendMax.zxc() : beast::zero;
-		}
-		/* If there's no sfSendMax in ZXC, and the sfAmount isn't
-		-    in ZXC, then the transaction can not send ZXC. */
-		auto const& saDstAmount = tx.getFieldAmount(sfAmount);
-		return saDstAmount.native() ? saDstAmount.zxc() : beast::zero;
-	}
 	TER
 		SqlStatement::preflightHandler(const STTx & tx, Application& app)
 	{
@@ -163,11 +151,17 @@ namespace ripple {
 
 		auto const & sTxTables = tx.getFieldArray(sfTables);
 		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);
+        uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
 
 		STArray const & aTableEntries(sleTable->getFieldArray(sfTableEntries));
-		STEntry *pEntry = getTableEntry(aTableEntries, vTxTableName);
+		STEntry *pEntry = getTableEntry(aTableEntries, vTxTableName);        
 		if (pEntry)
 		{
+            //checkDBName
+            if (uTxDBName != pEntry->getFieldH160(sfNameInDB))
+            {
+                return tefBAD_DBNAME;
+            }
 			// strict mode
 			if (tx.isFieldPresent(sfTxCheckHash))
 			{
@@ -220,8 +214,7 @@ namespace ripple {
 		auto &aTableEntries = pTableSle->peekFieldArray(sfTableEntries);
 
 		auto const & sTxTables = tx.getFieldArray(sfTables);
-		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);
-		uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
+		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);		
 
 		STEntry *pEntry = getTableEntry(aTableEntries, vTxTableName);
 		if (pEntry)
@@ -252,7 +245,7 @@ namespace ripple {
 		SqlStatement::doApply()
 	{
 		// dispose 
-		auto tmpret = preApply(ctx_.tx);
+		auto tmpret = preApplyForOperationRule(ctx_.tx);
 		if (!isTesSuccess(tmpret))
 			return tmpret;
 
@@ -264,199 +257,16 @@ namespace ripple {
 		return ChainSqlTx::doApply();
 	}
 
-	std::string SqlStatement::getOperationRule(ApplyView& view, const STTx& tx)
-	{
-		std::string rule;
-		auto opType = tx.getFieldU16(sfOpType);
-		STEntry *pEntry = getTableEntry(view, tx);
-		if (pEntry != NULL)
-			rule = pEntry->getOperationRule((TableOpType)opType);
-		return rule;
-	}
-
-	TER SqlStatement::dealWithOperationRule(const STTx & tx,STEntry* pEntry)
-	{
-		auto optype = tx.getFieldU16(sfOpType);
-		auto sOperationRule = pEntry->getOperationRule((TableOpType)optype);
-		if (!sOperationRule.empty())
-		{
-			Json::Value jsonRule;
-			if (!Json::Reader().parse(sOperationRule, jsonRule))
-				return temBAD_OPERATIONRULE;
-			std::string sRaw = strCopy(tx.getFieldVL(sfRaw));
-
-			Json::Value jsonRaw;
-			if (!Json::Reader().parse(sRaw, jsonRaw))
-				return temBAD_RAW;
-			if (optype == (int)R_INSERT)
-			{
-				//deal with insert condition 
-				std::map<std::string, std::string> mapRule;
-				std::string accountField;
-				int insertLimit = -1;
-				if (jsonRule.isMember(jss::Condition))
-				{
-					Json::Value& condition = jsonRule[jss::Condition];
-					std::vector<std::string> members = condition.getMemberNames();
-					// retrieve members in object
-					for (size_t i = 0; i < members.size(); i++) {
-						std::string field_name = members[i];
-						mapRule[field_name] = condition[field_name].asString();
-					}
-				}
-
-				if (jsonRule.isMember(jss::Count))
-				{
-					accountField = jsonRule[jss::Count][jss::AccountField].asString();
-					insertLimit = jsonRule[jss::Count][jss::CountLimit].asInt();
-				}
-
-				for (Json::UInt idx = 0; idx < jsonRaw.size(); idx++)
-				{
-					auto& v = jsonRaw[idx];
-					std::vector<std::string> members = v.getMemberNames();
-					// retrieve members in object
-					for (size_t i = 0; i < members.size(); i++) {
-						std::string field_name = members[i];
-
-						if (mapRule.find(field_name) != mapRule.end())
-						{
-							std::string rule = mapRule[field_name];
-							std::string value = v[field_name].asString();
-							if (rule == "$account")
-							{
-								if (value != to_string(tx.getAccountID(sfAccount)))
-									return tefTABLE_RULEDISSATISFIED;
-							}
-							else if (rule == "$tx_hash")
-							{
-								if (value != to_string(tx.getTransactionID()))
-									return tefTABLE_RULEDISSATISFIED;
-							}
-							else
-							{
-								if (rule != value)
-									return tefTABLE_RULEDISSATISFIED;
-							}
-						}
-					}
-					if (accountField != "")
-					{
-						bool bAccountRight = false;
-						std::string sAccountID = to_string(tx.getAccountID(sfAccount));
-
-						if (mapRule.find(accountField) != mapRule.end())
-						{
-							if (mapRule[accountField] == "$account" || mapRule[accountField] == sAccountID)
-								bAccountRight = true;
-						}
-						else if (std::find(members.begin(), members.end(), accountField) != members.end())
-						{
-							if (v[accountField].asString() == sAccountID)
-								bAccountRight = true;
-						}
-						if (!bAccountRight)
-							return tefTABLE_RULEDISSATISFIED;
-					}
-					
-				}
-
-				// deal with insert count limit
-				if (insertLimit > 0)
-				{
-					auto uNameInDB = pEntry->getFieldH160(sfNameInDB);
-					auto id = keylet::insertlimit(tx.getAccountID(sfAccount));
-					auto insertsle = ctx_.view().peek(id);
-					if (!insertsle) 
-					{
-						insertsle = std::make_shared<SLE>(
-							ltINSERTMAP, id.key);
-						insertsle->setFieldVL(sfInsertCountMap, strCopy("{}"));
-						ctx_.view().insert(insertsle);
-					}
-					std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
-					Json::Value jsonMap;
-					if (!Json::Reader().parse(sCountMap, jsonMap))
-						return temUNKNOWN;
-					int nCount = 0;
-					auto sNameInDB = to_string(uNameInDB);
-					if (jsonMap.isMember(sNameInDB)) 
-					{
-						nCount = jsonMap[sNameInDB].asInt();
-					}
-					if (nCount + jsonRaw.size() > insertLimit)
-					{
-						return temBAD_INSERTLIMIT;
-					}
-					jsonMap[sNameInDB] = nCount + jsonRaw.size();
-					insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
-					sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
-					ctx_.view().update(insertsle);
-				}
-			}
-			else if (optype == (int)R_UPDATE)
-			{
-				std::vector<std::string> vecFields;
-				Json::Value& fields = jsonRule[jss::Fields];
-				for (Json::UInt idx = 0; idx < fields.size(); idx++)
-				{
-					vecFields.push_back(fields[idx].asString());
-				}
-
-				if (jsonRaw.size() <= 1)
-					return temBAD_RAW; 
-
-				if (vecFields.size() > 0) {
-					// retrieve members in object				
-					auto& v = jsonRaw[(Json::UInt)0];
-					std::vector<std::string> members = v.getMemberNames();
-					for (size_t i = 0; i < members.size(); i++)
-					{
-						std::string field_name = members[i];
-						if (std::find(vecFields.begin(), vecFields.end(), field_name) == vecFields.end())
-							return tefTABLE_RULEDISSATISFIED;
-					}
-				}
-			}
-		}
-		//if (optype == (int)R_UPDATE)
-		//{
-		//	//cannot update 'AccountField' assigned in 'Insert'
-		//	std::string sInsertRule = pEntry->getOperationRule(R_INSERT);
-		//	if (!sInsertRule.empty()) {
-		//		Json::Value insertRule;
-		//		if (!Json::Reader().parse(sInsertRule, insertRule))
-		//			return temBAD_OPERATIONRULE;
-		//		if (insertRule.isMember(jss::Count))
-		//		{
-		//			std::string sRaw = strCopy(tx.getFieldVL(sfRaw));
-
-		//			Json::Value jsonRaw;
-		//			if (!Json::Reader().parse(sRaw, jsonRaw))
-		//				return temBAD_RAW;
-
-		//			std::string sAccountField = insertRule[jss::Count][jss::AccountField].asString();
-		//			auto& v = jsonRaw[(Json::UInt)0];
-		//			std::vector<std::string> members = v.getMemberNames();
-		//			for (size_t i = 0; i < members.size(); i++)
-		//				if (members[i] == sAccountField)
-		//					return temBAD_RAW;
-		//		}
-		//	}
-		//}
-
-		return tesSUCCESS;
-	}
-
-	TER SqlStatement::preApply(const STTx & tx)
+	TER SqlStatement::preApplyForOperationRule(const STTx & tx)
 	{
 		ApplyView& view = ctx_.view();
 		Application& app = ctx_.app;
 
-		auto sOperationRule = getOperationRule(view, tx);
-		if (sOperationRule.empty())
+		if(!OperationRule::hasOperationRule(view,tx))
 			return tesSUCCESS;
 
+		if (!canDispose(ctx_))
+			return tesSUCCESS;
 
 		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
 			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
@@ -464,121 +274,33 @@ namespace ripple {
 			return tefDBNOTCONFIGURED;
 		}
 
-		ripple::TxStoreDBConn *pConn;
-		ripple::TxStore *pStore;
-		if (view.flags() & tapFromClient)
+		auto envPair = getTransactionDBEnv(ctx_);
+		TxStoreTransaction stTran(envPair.first);
+		TxStore& txStore = *envPair.second;
+
+		auto result = dispose(txStore, tx);
+		if (result.first == tesSUCCESS)
 		{
-			pConn = &app.getMasterTransaction().getClientTxStoreDBConn();
-			pStore = &app.getMasterTransaction().getClientTxStore();
+			JLOG(app.journal("SqlStatement").trace()) << "Dispose success";
 		}
 		else
 		{
-			pConn = &app.getMasterTransaction().getConsensusTxStoreDBConn();
-			pStore = &app.getMasterTransaction().getConsensusTxStore();
-		}
-		TxStoreTransaction stTran(pConn);
-		TxStore& txStore = *pStore;
-
-		auto tables = tx.getFieldArray(sfTables);
-		uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
-
-		auto item = app.getTableStorage().GetItem(nameInDB);
-
-		//canDispose is false if first_storage is true
-		bool canDispose = true;
-		if (item != NULL && item->isHaveTx(tx.getTransactionID()))
-			canDispose = false;			
-
-		if (canDispose)//not exist in storage list,so can dispose again, for case Duplicate entry 
-		{
-			auto result = dispose(txStore,tx);
-			if (result.first == tesSUCCESS)
-			{
-				JLOG(app.journal("SqlStatement").trace()) << "Dispose success";
-			}
-			else
-			{
-				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << result.second;
-				stTran.rollback();
-				return result.first;
-			}
+			JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << result.second;
+			stTran.rollback();
+			return result.first;
 		}
 			
 		stTran.rollback();
 		return tesSUCCESS;
 	}
 
-	TER SqlStatement::adjustInsertCount(const STTx & tx, DatabaseCon* pConn)
-	{
-		STEntry *pEntry = getTableEntry(ctx_.view(), tx);
-		std::string sOperationRule = "";
-		if (pEntry != NULL) {
-			sOperationRule = pEntry->getOperationRule(R_INSERT);
-		}
-		if (sOperationRule.empty())
-			return tesSUCCESS;
-		Json::Value jsonRule;
-		Json::Reader().parse(sOperationRule, jsonRule);
-		if (!jsonRule.isMember(jss::Count))
-			return tesSUCCESS;
-		std::string sAccountField = jsonRule[jss::Count][jss::AccountField].asString();
-		int insertLimit = jsonRule[jss::Count][jss::CountLimit].asInt();
-		// deal with insert count limit
-		if (insertLimit > 0) {
-			try {
-				auto tables = tx.getFieldArray(sfTables);
-				uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
-
-				std::string sql_str = boost::str(boost::format(
-					R"(SELECT count(*) from t_%s WHERE %s = '%s';)")
-					% to_string(nameInDB)
-					% sAccountField
-					% to_string(tx.getAccountID(sfAccount)));
-				boost::optional<int> count;
-				LockedSociSession sql_session = pConn->checkoutDb();
-				soci::statement st = (sql_session->prepare << sql_str
-					, soci::into(count));
-
-				bool dbret = st.execute(true);
-
-				if (dbret && count)
-				{
-					auto uNameInDB = pEntry->getFieldH160(sfNameInDB);
-					auto id = keylet::insertlimit(tx.getAccountID(sfAccount));
-					auto insertsle = ctx_.view().peek(id);
-					if (insertsle)
-					{
-						std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
-						Json::Value jsonMap;
-						if (!Json::Reader().parse(sCountMap, jsonMap))
-							return temUNKNOWN;
-						auto sNameInDB = to_string(uNameInDB);
-						if (jsonMap.isMember(sNameInDB))
-						{
-							jsonMap[sNameInDB] = *count;
-						}
-						insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
-						ctx_.view().update(insertsle);
-					}
-				}
-			}
-			catch (std::exception &)
-			{
-				return temUNKNOWN;
-			}
-		}
-		return tesSUCCESS;
-	}
 
 	std::pair<TER, std::string> SqlStatement::dispose(TxStore& txStore, const STTx& tx)
 	{
-		std::string sOperationRule;
-		auto opType = tx.getFieldU16(sfOpType);
-		STEntry *pEntry = getTableEntry(ctx_.view(), tx);
-		if (pEntry != NULL) {
-			sOperationRule = pEntry->getOperationRule((TableOpType)opType);
+		std::string sOperationRule = OperationRule::getOperationRule(ctx_.view(), tx);
+		if (!sOperationRule.empty()) {
 			//deal with operation-rule
-			auto tmpret = dealWithOperationRule(tx, pEntry);
+			auto tmpret = OperationRule::dealWithSqlStatementRule(ctx_, tx);
 			if (!isTesSuccess(tmpret))
 				return std::make_pair(tmpret, "deal with operation-rule error");
 		}
@@ -592,17 +314,16 @@ namespace ripple {
 		if (ret.first)
 		{
 			//update insert sle if delete
-			if (tx.getFieldU16(sfOpType) == R_DELETE)
-			{
-				TER ret = adjustInsertCount(tx, txStore.getDatabaseCon());
-				if (!isTesSuccess(ret))
-					return std::make_pair(ret, "Deal with delete rule error");;
+			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx,txStore.getDatabaseCon());
+			if (!isTesSuccess(ret2))
+				return std::make_pair(ret2, "Deal with delete rule error");;
 
-			}
 			return std::make_pair(tesSUCCESS, ret.second);
 		}
 		else
+		{
 			return std::make_pair(tefTABLE_TXDISPOSEERROR, ret.second);
+		}			
 	}
 }
 // ripple

@@ -33,8 +33,9 @@ namespace ripple {
         static TER preclaim(PreclaimContext const& ctx);
 		TER doApply();	
 
-		static	STEntry *getTableEntry(const STArray & aTables, Blob& vCheckName);
-		static	STEntry *getTableEntry(ApplyView& view, const STTx& tx);
+		static bool canDispose(ApplyContext& ctx);
+
+		static std::pair<TxStoreDBConn*, TxStore*> getTransactionDBEnv(ApplyContext& ctx);
 	public:
 		virtual std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx);
     };

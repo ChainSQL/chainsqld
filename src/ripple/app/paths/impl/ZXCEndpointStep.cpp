@@ -35,11 +35,13 @@
 
 namespace ripple {
 
-class ZXCEndpointStep : public StepImp<ZXCAmount, ZXCAmount, ZXCEndpointStep>
+template <class TDerived>
+class ZXCEndpointStep : public StepImp<
+    ZXCAmount, ZXCAmount, ZXCEndpointStep<TDerived>>
 {
-  private:
+private:
     AccountID acc_;
-    bool isLast_;
+    bool const isLast_;
     beast::Journal j_;
 
     // Since this step will always be an endpoint in a strand
@@ -54,19 +56,27 @@ class ZXCEndpointStep : public StepImp<ZXCAmount, ZXCAmount, ZXCEndpointStep>
             return boost::none;
         return EitherAmount (*cache_);
     }
-  public:
+
+public:
     ZXCEndpointStep (
-        AccountID const& acc,
-        bool isLast,
-        beast::Journal j)
-            :acc_(acc)
-            , isLast_(isLast)
-            , j_ (j) {}
+        StrandContext const& ctx,
+        AccountID const& acc)
+            : acc_(acc)
+            , isLast_(ctx.isLast)
+            , j_ (ctx.j) {}
 
     AccountID const& acc () const
     {
         return acc_;
     };
+
+    boost::optional<std::pair<AccountID,AccountID>>
+    directStepAccts () const override
+    {
+        if (isLast_)
+            return std::make_pair(zxcAccount(), acc_);
+        return std::make_pair(acc_, zxcAccount());
+    }
 
     boost::optional<EitherAmount>
     cachedIn () const override
@@ -79,6 +89,9 @@ class ZXCEndpointStep : public StepImp<ZXCAmount, ZXCAmount, ZXCEndpointStep>
     {
         return cached ();
     }
+
+    boost::optional<Quality>
+    qualityUpperBound(ReadView const& v, bool& redeems) const override;
 
     std::pair<ZXCAmount, ZXCAmount>
     revImp (
@@ -103,10 +116,31 @@ class ZXCEndpointStep : public StepImp<ZXCAmount, ZXCAmount, ZXCEndpointStep>
     // Check for errors and violations of frozen constraints.
     TER check (StrandContext const& ctx) const;
 
-private:
-    friend bool operator==(ZXCEndpointStep const& lhs, ZXCEndpointStep const& rhs);
+protected:
+    ZXCAmount
+    zxcLiquidImpl (ReadView& sb, std::int32_t reserveReduction) const
+    {
+        return ripple::zxcLiquid (sb, acc_, reserveReduction, j_);
+    }
 
-    friend bool operator!=(ZXCEndpointStep const& lhs, ZXCEndpointStep const& rhs)
+    std::string logStringImpl (char const* name) const
+    {
+        std::ostringstream ostr;
+        ostr <<
+            name << ": " <<
+            "\nAcc: " << acc_;
+        return ostr.str ();
+    }
+
+private:
+    template <class P>
+    friend bool operator==(
+        ZXCEndpointStep<P> const& lhs,
+        ZXCEndpointStep<P> const& rhs);
+
+    friend bool operator!=(
+        ZXCEndpointStep const& lhs,
+        ZXCEndpointStep const& rhs)
     {
         return ! (lhs == rhs);
     }
@@ -119,39 +153,108 @@ private:
         }
         return false;
     }
+};
+
+//------------------------------------------------------------------------------
+
+// Flow is used in two different circumstances for transferring funds:
+//  o Payments, and
+//  o Offer crossing.
+// The rules for handling funds in these two cases are almost, but not
+// quite, the same.
+
+// Payment ZXCEndpointStep class (not offer crossing).
+class ZXCEndpointPaymentStep : public ZXCEndpointStep<ZXCEndpointPaymentStep>
+{
+public:
+    using ZXCEndpointStep<ZXCEndpointPaymentStep>::ZXCEndpointStep;
+
+    ZXCAmount
+    zxcLiquid (ReadView& sb) const
+    {
+        return zxcLiquidImpl (sb, 0);;
+    }
 
     std::string logString () const override
     {
-        std::ostringstream ostr;
-        ostr <<
-            "ZXCEndpointStep: " <<
-            "\nAcc: " << acc_;
-        return ostr.str ();
+        return logStringImpl ("ZXCEndpointPaymentStep");
     }
 };
 
-inline bool operator==(ZXCEndpointStep const& lhs, ZXCEndpointStep const& rhs)
+// Offer crossing ZXCEndpointStep class (not a payment).
+class ZXCEndpointOfferCrossingStep :
+    public ZXCEndpointStep<ZXCEndpointOfferCrossingStep>
+{
+private:
+
+    // For historical reasons, offer crossing is allowed to dig further
+    // into the ZXC reserve than an ordinary payment.  (I believe it's
+    // because the trust line was created after the ZXC was removed.)
+    // Return how much the reserve should be reduced.
+    //
+    // Note that reduced reserve only happens if the trust line does not
+    // currently exist.
+    static std::int32_t computeReserveReduction (
+        StrandContext const& ctx, AccountID const& acc)
+    {
+        if (ctx.isFirst &&
+            !ctx.view.read (keylet::line (acc, ctx.strandDeliver)))
+                return -1;
+        return 0;
+    }
+
+public:
+    ZXCEndpointOfferCrossingStep (
+        StrandContext const& ctx, AccountID const& acc)
+    : ZXCEndpointStep<ZXCEndpointOfferCrossingStep> (ctx, acc)
+    , reserveReduction_ (computeReserveReduction (ctx, acc))
+    {
+    }
+
+    ZXCAmount
+    zxcLiquid (ReadView& sb) const
+    {
+        return zxcLiquidImpl (sb, reserveReduction_);
+    }
+
+    std::string logString () const override
+    {
+        return logStringImpl ("ZXCEndpointOfferCrossingStep");
+    }
+
+private:
+    std::int32_t const reserveReduction_;
+};
+
+//------------------------------------------------------------------------------
+
+template <class TDerived>
+inline bool operator==(ZXCEndpointStep<TDerived> const& lhs,
+    ZXCEndpointStep<TDerived> const& rhs)
 {
     return lhs.acc_ == rhs.acc_ && lhs.isLast_ == rhs.isLast_;
 }
 
-static
-ZXCAmount
-zxcLiquid (ReadView& sb, AccountID const& src)
+template <class TDerived>
+boost::optional<Quality>
+ZXCEndpointStep<TDerived>::qualityUpperBound(
+    ReadView const& v, bool& redeems) const
 {
-    return accountHolds(
-        sb, src, zxcCurrency(), zxcAccount(), fhIGNORE_FREEZE, {}).zxc();
+    redeems = this->redeems(v, true);
+    return Quality{STAmount::uRateOne};
 }
 
 
+template <class TDerived>
 std::pair<ZXCAmount, ZXCAmount>
-ZXCEndpointStep::revImp (
+ZXCEndpointStep<TDerived>::revImp (
     PaymentSandbox& sb,
     ApplyView& afView,
     boost::container::flat_set<uint256>& ofrsToRm,
     ZXCAmount const& out)
 {
-    auto const balance = zxcLiquid (sb, acc_);
+    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid (sb);
+
     auto const result = isLast_ ? out : std::min (balance, out);
 
     auto& sender = isLast_ ? zxcAccount() : acc_;
@@ -164,15 +267,17 @@ ZXCEndpointStep::revImp (
     return {result, result};
 }
 
+template <class TDerived>
 std::pair<ZXCAmount, ZXCAmount>
-ZXCEndpointStep::fwdImp (
+ZXCEndpointStep<TDerived>::fwdImp (
     PaymentSandbox& sb,
     ApplyView& afView,
     boost::container::flat_set<uint256>& ofrsToRm,
     ZXCAmount const& in)
 {
     assert (cache_);
-    auto const balance = zxcLiquid (sb, acc_);
+    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid (sb);
+
     auto const result = isLast_ ? in : std::min (balance, in);
 
     auto& sender = isLast_ ? zxcAccount() : acc_;
@@ -185,8 +290,9 @@ ZXCEndpointStep::fwdImp (
     return {result, result};
 }
 
+template <class TDerived>
 std::pair<bool, EitherAmount>
-ZXCEndpointStep::validFwd (
+ZXCEndpointStep<TDerived>::validFwd (
     PaymentSandbox& sb,
     ApplyView& afView,
     EitherAmount const& in)
@@ -200,7 +306,7 @@ ZXCEndpointStep::validFwd (
     assert (in.native);
 
     auto const& zxcIn = in.zxc;
-    auto const balance = zxcLiquid (sb, acc_);
+    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid (sb);
 
     if (!isLast_ && balance < zxcIn)
     {
@@ -219,8 +325,9 @@ ZXCEndpointStep::validFwd (
     return {true, in};
 }
 
+template <class TDerived>
 TER
-ZXCEndpointStep::check (StrandContext const& ctx) const
+ZXCEndpointStep<TDerived>::check (StrandContext const& ctx) const
 {
     if (!acc_)
     {
@@ -231,7 +338,7 @@ ZXCEndpointStep::check (StrandContext const& ctx) const
     auto sleAcc = ctx.view.read (keylet::account (acc_));
     if (!sleAcc)
     {
-        JLOG (j_.warn()) << "ZXCEndpointStep: can't send or receive ZXCs from "
+        JLOG (j_.warn()) << "ZXCEndpointStep: can't send or receive ZXC from "
                              "non-existent account: "
                           << acc_;
         return terNO_ACCOUNT;
@@ -258,7 +365,8 @@ namespace test
 // Needed for testing
 bool zxcEndpointStepEqual (Step const& step, AccountID const& acc)
 {
-    if (auto xs = dynamic_cast<ZXCEndpointStep const*> (&step))
+    if (auto xs =
+        dynamic_cast<ZXCEndpointStep<ZXCEndpointPaymentStep> const*> (&step))
     {
         return xs->acc () == acc;
     }
@@ -273,10 +381,25 @@ make_ZXCEndpointStep (
     StrandContext const& ctx,
     AccountID const& acc)
 {
-    auto r = std::make_unique<ZXCEndpointStep> (acc, ctx.isLast, ctx.j);
-    auto ter = r->check (ctx);
+    TER ter = tefINTERNAL;
+    std::unique_ptr<Step> r;
+    if (ctx.offerCrossing)
+    {
+        auto offerCrossingStep =
+            std::make_unique<ZXCEndpointOfferCrossingStep> (ctx, acc);
+        ter = offerCrossingStep->check (ctx);
+        r = std::move (offerCrossingStep);
+    }
+    else // payment
+    {
+        auto paymentStep =
+            std::make_unique<ZXCEndpointPaymentStep> (ctx, acc);
+        ter = paymentStep->check (ctx);
+        r = std::move (paymentStep);
+    }
     if (ter != tesSUCCESS)
         return {ter, nullptr};
+
     return {tesSUCCESS, std::move (r)};
 }
 

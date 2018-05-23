@@ -66,6 +66,12 @@ getLedgerFeeIndex ()
 }
 
 uint256
+getChainIdIndex()
+{
+	return sha512Half(std::uint16_t(spaceChainId));
+}
+
+uint256
 getAccountRootIndex (AccountID const& account)
 {
     return sha512Half(
@@ -219,6 +225,12 @@ Keylet account_t::operator()(
 {
     return { ltACCOUNT_ROOT,
         getAccountRootIndex(id) };
+}
+
+Keylet chainId_t::operator ()() const
+{
+	return{ ltCHAINID,
+		getChainIdIndex() };
 }
 
 Keylet table_t::operator()(AccountID const& id) const

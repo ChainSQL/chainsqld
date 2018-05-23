@@ -22,7 +22,7 @@
 #include <peersafe/rpc/impl/TxTransactionPrepare.h>
 #include <peersafe/rpc/impl/TxSingleTransPrepare.h>
 #include <peersafe/rpc/impl/TxPrepareBase.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 
 namespace ripple {

@@ -20,133 +20,128 @@
 #include <peersafe/app/tx/ChainSqlTx.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <ripple/app/main/Application.h>
+#include <peersafe/app/storage/TableStorage.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 
 namespace ripple {
 
-    ChainSqlTx::ChainSqlTx(ApplyContext& ctx)
-        : Transactor(ctx)
-    {
-
-    }
-
-	STEntry * ChainSqlTx::getTableEntry(ApplyView& view, const STTx& tx)
+	ChainSqlTx::ChainSqlTx(ApplyContext& ctx)
+		: Transactor(ctx)
 	{
-		ripple::uint160  nameInDB;
 
-		AccountID account;
-		if (tx.isFieldPresent(sfOwner))
-			account = tx.getAccountID(sfOwner);
-		else if (tx.isFieldPresent(sfAccount))
-			account = tx.getAccountID(sfAccount);
-		else
-			return NULL;
-		auto const k = keylet::table(account);
-		SLE::pointer pTableSle = view.peek(k);
-		if (pTableSle == NULL)
-			return NULL;
-
-		auto &aTableEntries = pTableSle->peekFieldArray(sfTableEntries);
-		
-		if (!tx.isFieldPresent(sfTables))
-			return NULL;
-		auto const & sTxTables = tx.getFieldArray(sfTables);
-		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);
-		uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
-		return getTableEntry(aTableEntries, vTxTableName);
 	}
 
-	STEntry * ChainSqlTx::getTableEntry(const STArray & aTables, Blob& vCheckName)
+	TER ChainSqlTx::preflight(PreflightContext const& ctx)
 	{
-		auto iter(aTables.end());
-		iter = std::find_if(aTables.begin(), aTables.end(),
-			[vCheckName](STObject const &item) {
-			if (!item.isFieldPresent(sfTableName))  return false;
-			if (!item.isFieldPresent(sfDeleted))    return false;
+		const STTx & tx = ctx.tx;
+		Application& app = ctx.app;
+		auto j = app.journal("preflightChainSql");
 
-			return item.getFieldVL(sfTableName) == vCheckName && item.getFieldU8(sfDeleted) != 1;
-		});
+		if (tx.isCrossChainUpload() || (tx.isFieldPresent(sfOpType) && tx.getFieldU16(sfOpType) == T_REPORT))
+		{
+			if (!tx.isFieldPresent(sfOriginalAddress) ||
+				!tx.isFieldPresent(sfTxnLgrSeq) ||
+				!tx.isFieldPresent(sfCurTxHash) ||
+				!tx.isFieldPresent(sfFutureTxHash)
+				)
+			{
+				JLOG(j.trace()) <<
+					"params are not invalid";
+				return temINVALID;
+			}
+		}
 
-		if (iter == aTables.end())  return NULL;
+		return tesSUCCESS;
+	}
+	TER ChainSqlTx::preclaim(PreclaimContext const& ctx)
+	{
+		const STTx & tx = ctx.tx;
+		Application& app = ctx.app;
+		auto j = app.journal("preflightChainSql");
 
-		return (STEntry*)(&(*iter));
+		if (tx.isCrossChainUpload())
+		{
+			AccountID sourceID(tx.getAccountID(sfAccount));
+			auto key = keylet::table(sourceID);
+			auto const tablesle = ctx.view.read(key);
+
+			ripple::uint256 futureHash;
+			if (tablesle && tablesle->isFieldPresent(sfFutureTxHash))
+			{
+				futureHash = tablesle->getFieldH256(sfFutureTxHash);
+			}
+
+			if (futureHash.isNonZero() && tx.getFieldH256(sfCurTxHash) != futureHash)
+			{
+				JLOG(j.trace()) << "currecnt hash is not equal to the expected hash.";
+				return temBAD_TRANSFERORDER;
+			}
+			if (futureHash.isZero() && tx.isFieldPresent(sfOpType) && tx.getFieldU16(sfOpType) == T_REPORT)
+			{
+				JLOG(j.trace()) << "T_REPORT can't be the first transfer operator.";
+				return temBAD_TRANSFERORDER;
+			}
+		}
+		return tesSUCCESS;
 	}
 
-    TER ChainSqlTx::preflight(PreflightContext const& ctx)
-    {
-        const STTx & tx = ctx.tx;
-        Application& app = ctx.app;
-        auto j = app.journal("preflightChainSql");
+	TER ChainSqlTx::doApply()
+	{
+		const STTx & tx = ctx_.tx;
+		ApplyView & view = ctx_.view();
 
-        if (tx.isCrossChainUpload() || (tx.isFieldPresent(sfOpType) && tx.getFieldU16(sfOpType) == T_REPORT))
-        {
-            if (!tx.isFieldPresent(sfOriginalAddress) ||
-                !tx.isFieldPresent(sfTxnLgrSeq) ||
-                !tx.isFieldPresent(sfCurTxHash) ||
-                !tx.isFieldPresent(sfFutureTxHash)
-                )
-            {
-                JLOG(j.trace()) <<
-                    "params are not invalid";
-                return temINVALID;
-            }
-        }
-
-        return tesSUCCESS;
-    }
-    TER ChainSqlTx::preclaim(PreclaimContext const& ctx)
-    {
-        const STTx & tx = ctx.tx;
-        Application& app = ctx.app;
-        auto j = app.journal("preflightChainSql");
-
-        if (tx.isCrossChainUpload())
-        {
-            AccountID sourceID(tx.getAccountID(sfAccount));            
-            auto key = keylet::table(sourceID);
-            auto const tablesle = ctx.view.read(key);
-
-            ripple::uint256 futureHash;
-            if (tablesle && tablesle->isFieldPresent(sfFutureTxHash))
-            {
-                futureHash = tablesle->getFieldH256(sfFutureTxHash);
-            }
-
-            if (futureHash.isNonZero() && tx.getFieldH256(sfCurTxHash) != futureHash)
-            {
-                JLOG(j.trace()) << "currecnt hash is not equal to the expected hash.";
-                return temBAD_TRANSFERORDER;
-            }
-            if (futureHash.isZero() && tx.isFieldPresent(sfOpType) && tx.getFieldU16(sfOpType) == T_REPORT)
-            {
-                JLOG(j.trace()) << "T_REPORT can't be the first transfer operator.";
-                return temBAD_TRANSFERORDER;
-            }
-        }
-        return tesSUCCESS;
-    }
-
-    TER ChainSqlTx::doApply()
-    {
-        const STTx & tx = ctx_.tx;
-        ApplyView & view = ctx_.view();
-
-        if (tx.isCrossChainUpload())
-        {
-            auto accountId = tx.getAccountID(sfAccount);
-            auto id = keylet::table(accountId);
-            auto const tablesle1 = view.peek(id);
-            tablesle1->setFieldH256(sfFutureTxHash, tx.getFieldH256(sfFutureTxHash));
-            view.update(tablesle1);
-        }
-        return tesSUCCESS;
-    }
+		if (tx.isCrossChainUpload())
+		{
+			auto accountId = tx.getAccountID(sfAccount);
+			auto id = keylet::table(accountId);
+			auto const tablesle1 = view.peek(id);
+			tablesle1->setFieldH256(sfFutureTxHash, tx.getFieldH256(sfFutureTxHash));
+			view.update(tablesle1);
+		}
+		return tesSUCCESS;
+	}
 
 	std::pair<TER, std::string> ChainSqlTx::dispose(TxStore& txStore, const STTx& tx)
 	{
-		auto pair =  txStore.Dispose(tx);
+		auto pair = txStore.Dispose(tx);
 		if (pair.first)
 			return std::make_pair(tesSUCCESS, pair.second);
 		else
 			return std::make_pair(tefTABLE_TXDISPOSEERROR, pair.second);
+	}
+
+	bool ChainSqlTx::canDispose(ApplyContext& ctx)
+	{
+		auto tables = ctx.tx.getFieldArray(sfTables);
+		uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
+
+		auto item = ctx.app.getTableStorage().GetItem(nameInDB);
+
+		//canDispose is false if first_storage is true
+		bool canDispose = true;
+		if (item != NULL && item->isHaveTx(ctx.tx.getTransactionID()))
+			canDispose = false;
+
+		return canDispose;
+	}
+
+	std::pair<TxStoreDBConn*, TxStore*> ChainSqlTx::getTransactionDBEnv(ApplyContext& ctx)
+	{
+		ApplyView& view = ctx.view();
+
+		ripple::TxStoreDBConn *pConn;
+		ripple::TxStore *pStore;
+		if (view.flags() & tapFromClient || view.flags() & tapByRelay)
+		{
+			pConn = &ctx.app.getMasterTransaction().getClientTxStoreDBConn();
+			pStore = &ctx.app.getMasterTransaction().getClientTxStore();
+		}
+		else
+		{
+			pConn = &ctx.app.getMasterTransaction().getConsensusTxStoreDBConn();
+			pStore = &ctx.app.getMasterTransaction().getConsensusTxStore();
+		}
+		return std::make_pair(pConn, pStore);
 	}
 }

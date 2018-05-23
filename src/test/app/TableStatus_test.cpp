@@ -193,16 +193,15 @@ namespace ripple {
 
 		void testInsertSyncDB()
 		{
-			m_pTableStatusDB->InsertSnycDB("hello", "t_abcde", to_string(account_), 100, beast::zero, 1, "500000");
-			m_pTableStatusDB->InsertSnycDB("hello2", "t_abcde2", to_string(account_), 100, beast::zero, 0, "500000");
-			m_pTableStatusDB->InsertSnycDB("hello3", "t_abcde3", to_string(account_), 10000, beast::zero, 1, "500000");
+			m_pTableStatusDB->InsertSnycDB("hello", "t_abcde", to_string(account_), 100, beast::zero, 1, "500000",uint256(0));
+			m_pTableStatusDB->InsertSnycDB("hello2", "t_abcde2", to_string(account_), 100, beast::zero, 0, "500000", uint256(0));
+			m_pTableStatusDB->InsertSnycDB("hello3", "t_abcde3", to_string(account_), 10000, beast::zero, 1, "500000", uint256(0));
 		}
 
 		void testReadSyncDB() {
 			LedgerIndex TxnLedgerSeq = 0, LedgerSeq = 1;
 			uint256 TxnLedgerHash, LedgerHash, TxnUpdateHash;
-			bool deleted = 0;
-			m_pTableStatusDB->ReadSyncDB("t_abcde", TxnLedgerSeq, TxnLedgerHash, LedgerSeq, LedgerHash, TxnUpdateHash, deleted);
+			m_pTableStatusDB->ReadSyncDB("t_abcde", TxnLedgerSeq, TxnLedgerHash, LedgerSeq, LedgerHash, TxnUpdateHash);
 			JLOG(logs_->journal("Transaction2Sql").info()) << "TxnLedgerSeq:" << TxnLedgerSeq << " TxnLedgerHash:" << TxnLedgerHash;
 		}
 
@@ -257,7 +256,7 @@ namespace ripple {
 		void testGetAutoSync() {
 			//bool GetAutoListFromDB(bool bAutoSunc, std::list<std::tuple<std::string, std::string, std::string, bool> > &tuple);
 			std::list<std::tuple<std::string, std::string, std::string, bool> > list;
-			bool bRet = m_pTableStatusDB->GetAutoListFromDB(true, list);
+			bool bRet = m_pTableStatusDB->GetAutoListFromDB(uint256(0), list);
 			if (bRet)
 			{
 				std::string owner, tablename, time;
