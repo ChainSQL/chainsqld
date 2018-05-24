@@ -134,6 +134,7 @@ SF_U32 const sfSettleDelay         = make::one<SF_U32::type>(&sfSettleDelay,    
 SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,           STI_UINT32, 50, "TxnLgrSeq");
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
+SF_U32 const sfNonce			   = make::one<SF_U32::type>(&sfNonce,				 STI_UINT32, 53, "Nonce");
 
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
@@ -234,6 +235,7 @@ SF_Blob const sfGetRule			= make::one<SF_Blob::type>(&sfGetRule,		   STI_VL, 60,
 SF_Blob const sfInsertCountMap  = make::one<SF_Blob::type>(&sfInsertCountMap,  STI_VL, 61, "InsertCountMap");
 SF_Blob const sfTransferFeeMin  = make::one<SF_Blob::type>(&sfTransferFeeMin,  STI_VL, 62, "TransferFeeMin");
 SF_Blob const sfTransferFeeMax  = make::one<SF_Blob::type>(&sfTransferFeeMax,  STI_VL, 63, "TransferFeeMax");
+SF_Blob const sfContractCode	= make::one<SF_Blob::type>(&sfContractCode,    STI_VL, 64, "ContractCode");
 // account
 SF_Account const sfAccount         = make::one<SF_Account::type>(&sfAccount,         STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner           = make::one<SF_Account::type>(&sfOwner,           STI_ACCOUNT, 2, "Owner");
@@ -252,6 +254,10 @@ SField const sfPaths = make::one(&sfPaths, STI_PATHSET, 1, "Paths");
 SF_Vec256 const sfIndexes    = make::one<SF_Vec256::type>(&sfIndexes,    STI_VECTOR256, 1, "Indexes", SField::sMD_Never);
 SF_Vec256 const sfHashes     = make::one<SF_Vec256::type>(&sfHashes,     STI_VECTOR256, 2, "Hashes");
 SF_Vec256 const sfAmendments = make::one<SF_Vec256::type>(&sfAmendments, STI_VECTOR256, 3, "Amendments");
+
+// map of 256-bit
+SF_Map256 const sfStorageOverlay = make::one<SF_Map256::type>(&sfStorageOverlay, STI_MAP256, 1, "StorageOverlay");
+
 // inner object
 // OBJECT/1 is reserved for end of object
 SField const sfTransactionMetaData = make::one(&sfTransactionMetaData, STI_OBJECT,  2, "TransactionMetaData");
