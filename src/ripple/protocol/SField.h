@@ -343,6 +343,7 @@ extern SF_U16 const sfLedgerEntryType;
 extern SF_U16 const sfTransactionType;
 extern SF_U16 const sfSignerWeight;
 extern SF_U16 const sfOpType;
+extern SF_U16 const sfContractOpType;
 
 // 32-bit integers (common)
 extern SF_U32 const sfFlags;
@@ -490,6 +491,7 @@ extern SF_Blob const sfMasterSignature;
 extern SF_Blob const sfTransferFeeMin;
 extern SF_Blob const sfTransferFeeMax;
 extern SF_Blob const sfContractCode;
+extern SF_Blob const sfContractData;
 
 // account
 extern SF_Account const sfAccount;
@@ -500,7 +502,11 @@ extern SF_Account const sfTarget;
 extern SF_Account const sfRegularKey;
 extern SF_Account const sfUser;
 extern SF_Account const sfOriginalAddress;
+extern SF_Account const sfContractAddress;
+
+// Table Entry
 extern SF_Entry const sfEntry;
+
 // path set
 extern SField const sfPaths;
 
