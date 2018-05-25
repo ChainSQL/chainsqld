@@ -134,7 +134,9 @@ include_directories(
   src/beast/extras
   src/nudb/include
   src/soci/src
-  src/soci/include)
+  src/soci/include
+  src/evmjit
+  src/evmjit/evmc/include)
 
 special_build_flags()
 
@@ -286,6 +288,8 @@ add_with_props(chainsqld_src_nonunity "${core_srcs}"
 
 set(non_unity_srcs ${core_srcs})
 
+add_subdirectory(src/evmjit)
+
 foreach(curdir
         beast/clock
         beast/container
@@ -318,7 +322,8 @@ foreach(curdir
         crypto
         gmencrypt
         protocol
-        rpc)
+        rpc
+        vm)
     file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp)
     list(APPEND chainsqld_src_nonunity "${cursrcs}")
     list(APPEND non_unity_srcs "${cursrcs}")
@@ -354,7 +359,8 @@ foreach(curdir
         resource
         rpc
         server
-        shamap)
+        shamap
+        vm)
     file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
     list(APPEND test_srcs "${cursrcs}")
 endforeach()
@@ -561,7 +567,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES})
+      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} evmjit)
 
     link_common_libraries(${target})
 endforeach()

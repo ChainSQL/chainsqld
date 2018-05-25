@@ -1,0 +1,113 @@
+defaults:
+
+  git-update-submodules: &git-update-submodules
+    run:
+      name: "Update git submodules"
+      command: git submodule update --init
+
+  environment-info: &environment-info
+    run:
+      name: "Environment info"
+      command: |
+        echo CXX: $CXX
+        $CXX --version
+
+  install-dependencies: &install-dependencies
+    run:
+      name: "Install dependencies"
+      command: |
+        if [ $(uname) = Darwin ]; then
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install -q cmake ninja leveldb
+        fi
+
+  configure: &configure
+    run:
+      name: "Configure"
+      # Build "out-of-source" to have better coverage report
+      # (ninja is using relative paths otherwise).
+      working_directory: ~/build
+      command: >
+        cmake ../project
+        -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        -DEVMJIT_TESTS=ON
+        -DEVMJIT_EXAMPLES=ON
+        $CMAKE_OPTIONS
+
+  build: &build
+    run:
+      name: "Build"
+      working_directory: ~/build
+      command: cmake --build . -- -j $BUILD_PARALLEL_JOBS
+
+  test: &test
+    run:
+      name: "Test"
+      working_directory: ~/build
+      command: |
+        ctest --output-on-failure -j $TEST_PARALLEL_JOBS
+
+  save-deps-cache: &save-deps-cache
+    cache-save:
+      name: "Save dependencies cache"
+      key: &deps-cache-key deps-2-{{arch}}-{{checksum "cmake/ProjectLLVM.cmake"}}
+      paths:
+        - deps
+
+  restore-deps-cache: &restore-deps-cache
+    cache-restore:
+      name: "Restore dependencies cache"
+      key: *deps-cache-key
+
+  default-steps: &default-steps
+    - checkout
+    - *git-update-submodules
+    - *environment-info
+    - *install-dependencies
+    - *configure
+    - *restore-deps-cache
+    - *build
+    - *save-deps-cache
+    - *test
+
+
+version: 2
+jobs:
+
+  linux-clang:
+    environment:
+      - CXX: clang++
+      - CC:  clang
+      - BUILD_PARALLEL_JOBS: 3
+      - TEST_PARALLEL_JOBS: 1
+    docker:
+      - image: ethereum/cpp-build-env
+    steps: *default-steps
+
+  linux-gcc-debug:
+    environment:
+      - BUILD_TYPE: Debug
+      - CXX: g++
+      - CC:  gcc
+      - CMAKE_OPTIONS: -DLLVM_DIR=/usr/lib/llvm-5.0/cmake
+      - BUILD_PARALLEL_JOBS: 4
+      - TEST_PARALLEL_JOBS: 1
+    docker:
+      - image: ethereum/cpp-build-env
+    steps: *default-steps
+
+  macos-xcode93:
+    environment:
+      - CXX: clang++
+      - BUILD_PARALLEL_JOBS: 4
+      - TEST_PARALLEL_JOBS: 1
+    macos:
+      xcode: "9.3.0"
+    steps: *default-steps
+
+workflows:
+  version: 2
+  cpp-ethereum:
+    jobs:
+      - macos-xcode93
+      - linux-clang
+      - linux-gcc-debug

@@ -1,0 +1,26 @@
+language: cpp
+branches:
+  only:
+    - master
+    - develop
+os:
+  - linux
+  - osx
+dist: trusty
+osx_image: xcode8.2  # OSX 10.12, cmake 3.5
+env:
+  global:
+    secure: "BMDgV5REY3QSGGtixMyqg8AU6iS5ABGWgrdH7IXyTuFISHjRGrATNXU+JDh4K7YjCuRaPTUj4YPyj2koDuvcYMXaf9w/1Ov6DGH/oHiKybF+D5MABoNMC9G7mhpyaXvCVxjxJmn0EZo2J/0bwTjBhv0tBsHed9opMD6J9sWv5oo="
+  matrix:
+    - BUILD_TYPE=Release
+    - BUILD_TYPE=Debug
+cache:
+  ccache: true
+  directories:
+  - $TRAVIS_BUILD_DIR/deps
+
+script:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then scripts/install_cmake.sh; fi
+  - scripts/build.sh
+  - cd build && ctest
+  - cd ..

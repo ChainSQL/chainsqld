@@ -98,11 +98,11 @@ Builds/VisualStudio2015/*.sdf
 
 # ignore
 third_party/
+deps/
 
 # MSVC
 *.pdb
 .vs/
-
 
 # Prerequisites
 *.d
