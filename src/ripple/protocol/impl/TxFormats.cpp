@@ -136,6 +136,13 @@ TxFormats::TxFormats ()
             SOElement (sfSignature,         SOE_OPTIONAL) <<
             SOElement (sfPublicKey,         SOE_OPTIONAL);
 
+	add ("Contract", ttCONTRACT) <<
+			SOElement(sfContractOpType,		SOE_OPTIONAL) <<
+			SOElement(sfContractData,		SOE_OPTIONAL) <<
+			SOElement(sfContractAddress,	SOE_OPTIONAL)
+		;
+
+
     Item &itemTableListSet = add("TableListSet", ttTABLELISTSET)
 		<< SOElement(sfTables,              SOE_REQUIRED)
 		<< SOElement(sfUser,                SOE_OPTIONAL)

@@ -90,6 +90,7 @@ SF_U16 const sfLedgerEntryType = make::one<SF_U16::type>(&sfLedgerEntryType, STI
 SF_U16 const sfTransactionType = make::one<SF_U16::type>(&sfTransactionType, STI_UINT16, 2, "TransactionType");
 SF_U16 const sfSignerWeight    = make::one<SF_U16::type>(&sfSignerWeight,    STI_UINT16, 3, "SignerWeight");
 SF_U16 const sfOpType          = make::one<SF_U16::type>(&sfOpType,          STI_UINT16, 50, "OpType");
+SF_U16 const sfContractOpType  = make::one<SF_U16::type>(&sfContractOpType,  STI_UINT16, 51, "ContractOpType");
 
 // 32-bit integers (common)
 SF_U32 const sfFlags             = make::one<SF_U32::type>(&sfFlags,             STI_UINT32,  2, "Flags");
@@ -236,6 +237,7 @@ SF_Blob const sfInsertCountMap  = make::one<SF_Blob::type>(&sfInsertCountMap,  S
 SF_Blob const sfTransferFeeMin  = make::one<SF_Blob::type>(&sfTransferFeeMin,  STI_VL, 62, "TransferFeeMin");
 SF_Blob const sfTransferFeeMax  = make::one<SF_Blob::type>(&sfTransferFeeMax,  STI_VL, 63, "TransferFeeMax");
 SF_Blob const sfContractCode	= make::one<SF_Blob::type>(&sfContractCode,    STI_VL, 64, "ContractCode");
+SF_Blob const sfContractData	= make::one<SF_Blob::type>(&sfContractData,	   STI_VL, 65, "ContractData");
 // account
 SF_Account const sfAccount         = make::one<SF_Account::type>(&sfAccount,         STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner           = make::one<SF_Account::type>(&sfOwner,           STI_ACCOUNT, 2, "Owner");
@@ -245,6 +247,7 @@ SF_Account const sfTarget          = make::one<SF_Account::type>(&sfTarget,     
 SF_Account const sfRegularKey      = make::one<SF_Account::type>(&sfRegularKey,      STI_ACCOUNT, 8, "RegularKey");
 SF_Account const sfUser            = make::one<SF_Account::type>(&sfUser,            STI_ACCOUNT, 50, "User");
 SF_Account const sfOriginalAddress = make::one<SF_Account::type>(&sfOriginalAddress, STI_ACCOUNT, 51, "OriginalAddress");
+SF_Account const sfContractAddress = make::one<SF_Account::type>(&sfContractAddress, STI_ACCOUNT, 52, "ContractAddress");
 
 SF_Entry const sfEntry         = make::one<SF_Entry::type>(&sfEntry, STI_ENTRY, 1, "Entry");
 // path set

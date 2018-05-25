@@ -55,6 +55,7 @@ enum TxType
     ttTABLELISTSET      = 21,
     ttSQLSTATEMENT      = 22,
     ttSQLTRANSACTION    = 23,
+	ttCONTRACT			= 24,
     ttAMENDMENT         = 100,
     ttFEE               = 101,
 };

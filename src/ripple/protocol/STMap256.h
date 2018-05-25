@@ -17,8 +17,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
-#ifndef RIPPLE_PROTOCOL_STVECTOR256_H_INCLUDED
-#define RIPPLE_PROTOCOL_STVECTOR256_H_INCLUDED
+#ifndef RIPPLE_PROTOCOL_STMAP256_H_INCLUDED
+#define RIPPLE_PROTOCOL_STMAP256_H_INCLUDED
 
 #include <ripple/protocol/STBitString.h>
 #include <ripple/protocol/STInteger.h>
