@@ -11,13 +11,57 @@ namespace ripple
 
     }
 
+    //ExtVM impl
     evmc_uint256be ExtVM::store(evmc_uint256be const& key)
     {
-        evmc_uint256be vData;
-        return vData;
+        evmc_uint256be vData;        return vData;
     }
 
     void ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
+    {
+
+    }
+
+    evmc_uint256be ExtVM::balance(evmc_address const&) 
+    {
+        return evmc_uint256be(); 
+    }
+
+    bytes const& ExtVM::codeAt(evmc_address const&) 
+    { 
+        return NullBytes; 
+    }
+
+    size_t ExtVM::codeSizeAt(evmc_address const&) 
+    { 
+        return 0; 
+    }
+
+    bool ExtVM::exists(evmc_address const&) { 
+        return false; 
+    }
+
+    void ExtVM::suicide(evmc_address const&) 
+    {
+    }
+
+    CreateResult ExtVM::create(evmc_uint256be const&, int64_t const&, bytesConstRef const&, Instruction, evmc_uint256be const&)
+    {
+        CreateResult ret(EVMC_SUCCESS, owning_bytes_ref(),evmc_address());
+        return ret;
+    }
+
+    CallResult ExtVM::call(CallParameters&)
+    {
+        CallResult ret(EVMC_SUCCESS, owning_bytes_ref());
+        return ret;
+    }
+
+    void ExtVM::log(evmc_uint256be const* topics, size_t numTopics, bytesConstRef const& _data) 
+    {
+    }
+    
+    evmc_uint256be ExtVM::blockHash(int64_t  const&_number)
     {
 
     }
