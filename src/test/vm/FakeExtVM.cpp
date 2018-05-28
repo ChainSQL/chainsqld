@@ -6,7 +6,7 @@
 
 namespace ripple {
 
-bytes FakeExtVM::code;
+FakeExtVM::State FakeExtVM::m_s;
 
 FakeExtVM::FakeExtVM(EnvInfo const& envInfo, evmc_address _myAddress, 
 	evmc_address _caller, evmc_address _origin,
@@ -20,21 +20,43 @@ FakeExtVM::FakeExtVM(EnvInfo const& envInfo, evmc_address _myAddress,
 
 CreateResult FakeExtVM::create(evmc_uint256be const& endowment, int64_t const& gas,
 	bytesConstRef const& code, Instruction op, evmc_uint256be const& salt) {
-	CreateResult result = { EVMC_SUCCESS , std::move(owning_bytes_ref()), {} };
-	FakeExecutive execute(code.toBytes());
-	execute.create();
+	evmc_address contractAddress = { {5,6,7,8} };
+	CreateResult result = { EVMC_SUCCESS , std::move(owning_bytes_ref()), contractAddress };
+	bytes newCode = code.toBytes();
+	FakeExecutive execute(newCode);
+	execute.create(contractAddress);
 	return result;
 }
 
 CallResult FakeExtVM::call(CallParameters& p) {
 	CallResult result = { EVMC_SUCCESS , std::move(owning_bytes_ref())};
 	
-	bytes code = FakeExtVM::code;
-	if (code.size()) {
-		FakeExecutive execute(p.data, code);
-		execute.call();
+	auto& it = FakeExtVM::m_s.find(AccountID::fromVoid(p.codeAddress.bytes));
+	if (it != FakeExtVM::m_s.end()) {
+		bytes code = it->second;
+		if (code.size()) {
+			FakeExecutive execute(p.data, code);
+			execute.call(p.codeAddress);
+		}
 	}
+
 	return result;
+}
+
+bool FakeExtVM::exists(evmc_address const& addr) {
+	auto& it = FakeExtVM::m_s.find(AccountID::fromVoid(addr.bytes));
+	if (it != FakeExtVM::m_s.end()) {
+		return true;
+	}
+	return false;
+}
+
+size_t FakeExtVM::codeSizeAt(evmc_address const& addr) {
+	auto& it = FakeExtVM::m_s.find(AccountID::fromVoid(addr.bytes));
+	if (it != FakeExtVM::m_s.end()) {
+		return it->second.size();
+	}
+	return 0;
 }
 
 evmc_uint256be FakeExtVM::blockHash(int64_t  const&_number) {
@@ -53,14 +75,21 @@ FakeExecutive::FakeExecutive(const bytes& code)
 
 }
 
-int FakeExecutive::create() {
+FakeExecutive::FakeExecutive(const bytesConstRef& data, const evmc_address& contractAddress)
+: data_(data)
+, code_(FakeExtVM::m_s.find(AccountID::fromVoid(contractAddress.bytes))->second) {
+}
+
+int FakeExecutive::create(const evmc_address& contractAddress) {
 	EnvInfo info;
-	evmc_address myAddress = { { 1,0,0,0 } };
+	evmc_address myAddress = contractAddress;
 	evmc_address caller = { { 1,1,0,0 } };
 	evmc_address origin = { { 1,1,1,0 } };
 	evmc_uint256be value = { { 0 } };
 	evmc_uint256be gasPrice = { { 1,0,0 } };
-	evmc_uint256be codeHash = { { 1,2,3,4,5,6 } };
+	evmc_uint256be codeHash = { {0} };
+	std::size_t hash = std::hash<std::string>{}(std::string(code_.begin(), code_.end()));
+	std::memcpy(&codeHash, &hash, sizeof(hash));
 	int32_t depth = 0;
 	bool isCreate = true;
 	bool staticCall = false;
@@ -68,20 +97,23 @@ int FakeExecutive::create() {
 	assert(vmc);
 	FakeExtVM ext(info, myAddress, caller, origin, value, gasPrice,
 		data_, code_, codeHash, depth, isCreate, staticCall);
-	int64_t gas = 200000;
+	int64_t gas = 3000000;
 	owning_bytes_ref result = vmc->exec(gas, ext);
-	FakeExtVM::code = std::move(result.toBytes());
+	FakeExtVM::m_s[AccountID::fromVoid(myAddress.bytes)] = result.toBytes();
 	return 0;
 }
 
-int FakeExecutive::call() {
+int FakeExecutive::call(const evmc_address& contractAddress) {
 	EnvInfo info;
-	evmc_address myAddress = { {1,0,0,0} };
+	evmc_address myAddress = contractAddress;
 	evmc_address caller = { {1,1,0,0} };
 	evmc_address origin = { {1,1,1,0} };
 	evmc_uint256be value = { {0} };
 	evmc_uint256be gasPrice = { {1,0,0} };
-	evmc_uint256be codeHash = { {1,2,3,4,5,6} };
+	evmc_uint256be codeHash = { {0} };
+	std::size_t hash = std::hash<std::string>{}(std::string(code_.begin(), code_.end()));
+	std::memcpy(&codeHash, &hash, sizeof(hash));
+
 	int32_t depth = 0;
 	bool isCreate = false;
 	bool staticCall = false;
@@ -89,9 +121,10 @@ int FakeExecutive::call() {
 	assert(vmc);
 	FakeExtVM ext(info, myAddress, caller, origin, value, gasPrice, 
 		data_, code_, codeHash, depth, isCreate, staticCall);
-	int64_t gas = 200000;
+	int64_t gas = 3000000;
 	owning_bytes_ref result = vmc->exec(gas, ext);
 	return 0;
 }
+
 
 } // namespace ripple

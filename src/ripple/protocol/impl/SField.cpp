@@ -90,6 +90,7 @@ SF_U16 const sfLedgerEntryType = make::one<SF_U16::type>(&sfLedgerEntryType, STI
 SF_U16 const sfTransactionType = make::one<SF_U16::type>(&sfTransactionType, STI_UINT16, 2, "TransactionType");
 SF_U16 const sfSignerWeight    = make::one<SF_U16::type>(&sfSignerWeight,    STI_UINT16, 3, "SignerWeight");
 SF_U16 const sfOpType          = make::one<SF_U16::type>(&sfOpType,          STI_UINT16, 50, "OpType");
+SF_U16 const sfContractOpType  = make::one<SF_U16::type>(&sfContractOpType,  STI_UINT16, 51, "ContractOpType");
 
 // 32-bit integers (common)
 SF_U32 const sfFlags             = make::one<SF_U32::type>(&sfFlags,             STI_UINT32,  2, "Flags");
@@ -134,6 +135,7 @@ SF_U32 const sfSettleDelay         = make::one<SF_U32::type>(&sfSettleDelay,    
 SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,           STI_UINT32, 50, "TxnLgrSeq");
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
+SF_U32 const sfNonce			   = make::one<SF_U32::type>(&sfNonce,				 STI_UINT32, 53, "Nonce");
 
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
@@ -234,6 +236,8 @@ SF_Blob const sfGetRule			= make::one<SF_Blob::type>(&sfGetRule,		   STI_VL, 60,
 SF_Blob const sfInsertCountMap  = make::one<SF_Blob::type>(&sfInsertCountMap,  STI_VL, 61, "InsertCountMap");
 SF_Blob const sfTransferFeeMin  = make::one<SF_Blob::type>(&sfTransferFeeMin,  STI_VL, 62, "TransferFeeMin");
 SF_Blob const sfTransferFeeMax  = make::one<SF_Blob::type>(&sfTransferFeeMax,  STI_VL, 63, "TransferFeeMax");
+SF_Blob const sfContractCode	= make::one<SF_Blob::type>(&sfContractCode,    STI_VL, 64, "ContractCode");
+SF_Blob const sfContractData	= make::one<SF_Blob::type>(&sfContractData,	   STI_VL, 65, "ContractData");
 // account
 SF_Account const sfAccount         = make::one<SF_Account::type>(&sfAccount,         STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner           = make::one<SF_Account::type>(&sfOwner,           STI_ACCOUNT, 2, "Owner");
@@ -243,6 +247,7 @@ SF_Account const sfTarget          = make::one<SF_Account::type>(&sfTarget,     
 SF_Account const sfRegularKey      = make::one<SF_Account::type>(&sfRegularKey,      STI_ACCOUNT, 8, "RegularKey");
 SF_Account const sfUser            = make::one<SF_Account::type>(&sfUser,            STI_ACCOUNT, 50, "User");
 SF_Account const sfOriginalAddress = make::one<SF_Account::type>(&sfOriginalAddress, STI_ACCOUNT, 51, "OriginalAddress");
+SF_Account const sfContractAddress = make::one<SF_Account::type>(&sfContractAddress, STI_ACCOUNT, 52, "ContractAddress");
 
 SF_Entry const sfEntry         = make::one<SF_Entry::type>(&sfEntry, STI_ENTRY, 1, "Entry");
 // path set
@@ -252,6 +257,10 @@ SField const sfPaths = make::one(&sfPaths, STI_PATHSET, 1, "Paths");
 SF_Vec256 const sfIndexes    = make::one<SF_Vec256::type>(&sfIndexes,    STI_VECTOR256, 1, "Indexes", SField::sMD_Never);
 SF_Vec256 const sfHashes     = make::one<SF_Vec256::type>(&sfHashes,     STI_VECTOR256, 2, "Hashes");
 SF_Vec256 const sfAmendments = make::one<SF_Vec256::type>(&sfAmendments, STI_VECTOR256, 3, "Amendments");
+
+// map of 256-bit
+SF_Map256 const sfStorageOverlay = make::one<SF_Map256::type>(&sfStorageOverlay, STI_MAP256, 1, "StorageOverlay");
+
 // inner object
 // OBJECT/1 is reserved for end of object
 SField const sfTransactionMetaData = make::one(&sfTransactionMetaData, STI_OBJECT,  2, "TransactionMetaData");
