@@ -438,6 +438,8 @@ public:
     STPathSet const& getFieldPathSet (SField const& field) const;
     const STVector256& getFieldV256 (SField const& field) const;
     STVector256& peekFieldV256(SField const& field);
+	const STMap256& getFieldM256(SField const& field) const;
+	STMap256& peekFieldM256(SField const& field);
     const STArray& getFieldArray (SField const& field) const;
 	const STObject& getFieldObject(SField const& field) const;
 
