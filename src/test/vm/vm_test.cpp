@@ -49,7 +49,7 @@ size_t fromHex(const std::string& hex, std::string& binary)
 		if (h != -1) {
 			//ret.push_back(h);
 			//binary[offset++] = h;
-			binary.push_back(h);
+			binary.push_back((uint8_t)h);
 		}
 		else
 			return 0;
@@ -60,7 +60,7 @@ size_t fromHex(const std::string& hex, std::string& binary)
 		int l = fromHexChar(hex[i + 1]);
 		if (h != -1 && l != -1) {
 			//binary[offset++] = (uint8_t)(h * 16 + l);
-			binary.push_back(h * 16 + l);
+			binary.push_back((uint8_t)h * 16 + l);
 		} 
 		else
 			return 0;
@@ -82,6 +82,8 @@ public:
 
 private:
 	void init_env() {
+		size_t hash = std::hash<std::string>{}("peersafe");
+		size_t hash2 = std::hash<std::string>{}("peersafa");
 		std::string args = arg();
 		size_t code_npos = args.find("code=");
 		size_t input_npos = args.find("input=");
@@ -107,18 +109,29 @@ private:
 		std::string input_bytes;
 		if(data_.size())
 			fromHex(data_, input_bytes);
-		
+
 		bytes code;
 		code.assign(code_bytes.begin(), code_bytes.end());
-		if(input_bytes.empty()) {
+		bytesConstRef data((uint8_t*)input_bytes.c_str(), input_bytes.size());
+		FakeExecutive execute(data, code);
+		evmc_address contractAddress = { { 1,2,3,4 } };
+		execute.call(contractAddress);
+		
+		/*
+		bytes code;
+		code.assign(code_bytes.begin(), code_bytes.end());
+		evmc_address contractAddress = { {1,2,3,4} };
+		{
 			FakeExecutive execute(code);
-			execute.create();
+			execute.create(contractAddress);
 		}
-		else {
+		{
 			bytesConstRef data((uint8_t*)input_bytes.c_str(), input_bytes.size());
-			FakeExecutive execute(data, code);
-			execute.call();
+			FakeExecutive execute(data, contractAddress);
+			execute.call(contractAddress);
 		}
+		*/
+
 
 	}
 
