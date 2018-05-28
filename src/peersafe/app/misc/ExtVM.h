@@ -1,76 +1,76 @@
-#ifndef RIPPLE_APP_MISC_EXTVM_H_INCLUDED
-#define RIPPLE_APP_MISC_EXTVM_H_INCLUDED
+#ifndef CHAINSQL_APP_MISC_EXTVM_H_INCLUDED
+#define CHAINSQL_APP_MISC_EXTVM_H_INCLUDED
 
 #include <peersafe/app/misc/SleOps.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
+#include <peersafe/vm/ExtVMFace.h>
+#include <peersafe/app/misc/TypeTransform.h>
+
 #include <functional>
 #include <map>
 
 namespace ripple
 {
 
-class ExtVMFace;
-class EnvInfo;
-
-/// Externality interface for the Virtual Machine providing access to world state.
-class ExtVM : public ExtVMFace
+class EnvEnfoImpl : public EnvInfo
 {
 public:
-    /// Full constructor.
-    ExtVM(SleOps& _s, EnvInfo const& _envInfo, Address _myAddress,
-        Address _caller, Address _origin, u256 _value, u256 _gasPrice, bytesConstRef _data,
-        bytesConstRef _code, h256 const& _codeHash, unsigned _depth, bool _isCreate,
-        bool _staticCall)
-      : ExtVMFace(_envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(),
-            _codeHash, _depth, _isCreate, _staticCall),
+    EnvEnfoImpl(ApplyContext& ctx);
+private:
+    ApplyContext &ctx_;
+};
+
+class ExtVM : public ExtVMFace
+{
+public:    
+    ExtVM(SleOps& _s, EnvInfo const& _envInfo, AccountID const& _myAddress,
+        AccountID const& _caller, AccountID const& _origin, uint256 _value, uint256 _gasPrice, bytesConstRef _data,
+        bytesConstRef _code, uint256 const& _codeHash, int32_t _depth, bool _isCreate,  bool _staticCall)
+      : ExtVMFace(_envInfo, toEvmC(_myAddress), toEvmC(_caller), toEvmC(_origin), toEvmC(_value), toEvmC(_gasPrice), _data, _code.toBytes(), toEvmC(_codeHash), _depth, _isCreate, _staticCall),
         m_s(_s)
     {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
         // the account must be created first.
-        assert(m_s.addressInUse(_myAddress));
+        
+        //assert(m_s.addressInUse(_myAddress));
     }
 
 	/// Read storage location.
-    virtual u256 store(u256 _n) override final;
+    virtual evmc_uint256be store(evmc_uint256be const& key) override final;
 
 	/// Write a value in storage.
-	virtual void setStore(u256 _n, u256 _v) override final;
+	virtual void setStore(evmc_uint256be const& key, evmc_uint256be const& value) override final;
 
-	/// Read address's code.
-	virtual bytes const& codeAt(Address _a) override final { return m_s.code(_a); }
+    /// Read address's balance.
+    virtual evmc_uint256be balance(evmc_address const&) { return evmc_uint256be(); }
 
-	/// @returns the size of the code in  bytes at the given address.
-	virtual size_t codeSizeAt(Address _a) override final;
+    /// Read address's code.
+    virtual bytes const& codeAt(evmc_address const&) { return NullBytes; }
 
-	/// Create a new contract.
-	CreateResult create(u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op, u256 _salt, OnOpFunc const& _onOp = {}) final;
+    /// @returns the size of the code in bytes at the given address.
+    virtual size_t codeSizeAt(evmc_address const&) { return 0; }
 
-	/// Create a new message call.
-	CallResult call(CallParameters& _params) final;
+    /// Does the account exist?
+    virtual bool exists(evmc_address const&) { return false; }
 
-	/// Read address's balance.
-	virtual u256 balance(Address _a) override final { return m_s.balance(_a); }
+    /// Suicide the associated contract and give proceeds to the given address.
+    virtual void suicide(evmc_address const&) { }
 
-	/// Does the account exist?
-	virtual bool exists(Address _a) override final
-	{
-		if (evmSchedule().emptinessIsNonexistence())
-			return m_s.accountNonemptyAndExisting(_a);
-		else
-			return m_s.addressInUse(_a);
-	}
+    /// Create a new (contract) account.
+    virtual CreateResult create(evmc_uint256be const&, int64_t const&,
+        bytesConstRef const&, Instruction, evmc_uint256be const&) = 0;
 
-	/// Suicide the associated contract to the given address.
-	virtual void suicide(Address _a) override final;
+    /// Make a new message call.
+    virtual CallResult call(CallParameters&) = 0;
 
-	/// Return the EVM gas-price schedule for this execution context.
-	virtual EVMSchedule const& evmSchedule() const override final { return m_sealEngine.evmSchedule(envInfo().number()); }
+    /// Revert any changes made (by any of the other calls).
+    virtual void log(evmc_uint256be const* topics, size_t numTopics, bytesConstRef const& _data) {  }
 
-	State const& state() const { return m_s; }
+    /// Hash of a block if within the last 256 blocks, or h256() otherwise.
+    virtual evmc_uint256be blockHash(int64_t  const&_number) = 0;
 
-	/// Hash of a block if within the last 256 blocks, or h256() otherwise.
-	h256 blockHash(u256 _number) override;
+    SleOps const& state() const { return m_s; }
 
 private:
 	SleOps& m_s;  ///< A reference to the sleOp	

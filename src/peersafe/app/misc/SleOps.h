@@ -1,5 +1,5 @@
-#ifndef RIPPLE_APP_MISC_SLEOPS_H_INCLUDED
-#define RIPPLE_APP_MISC_SLEOPS_H_INCLUDED
+#ifndef CHAINSQL_APP_MISC_SLEOPS_H_INCLUDED
+#define CHAINSQL_APP_MISC_SLEOPS_H_INCLUDED
 
 #include <ripple/protocol/AccountID.h>
 #include <ripple/protocol/UintTypes.h>

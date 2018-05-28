@@ -5,6 +5,24 @@
 namespace ripple
 {
 
+    EnvEnfoImpl::EnvEnfoImpl(ApplyContext& ctx)
+        :ctx_(ctx)
+    {
+
+    }
+
+    evmc_uint256be ExtVM::store(evmc_uint256be const& key)
+    {
+        evmc_uint256be vData;
+        return vData;
+    }
+
+    void ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
+    {
+
+    }
+
+/*
 static unsigned const c_depthLimit = 1024;
 
 /// Upper bound of stack space needed by single CALL/CREATE execution. Set experimentally.
@@ -67,7 +85,7 @@ void go(unsigned _depth, Executive& _e, OnOpFunc const& _onOp)
 
 evmc_status_code transactionExceptionToEvmcStatusCode(TransactionException ex) noexcept
 {
-    /*
+    
     switch (ex)
     {
     case TransactionException::None:
@@ -94,7 +112,7 @@ evmc_status_code transactionExceptionToEvmcStatusCode(TransactionException ex) n
     default:
         return EVMC_FAILURE;
     }
-    */
+    
     return EVMC_FAILURE;
 }
 
@@ -119,10 +137,7 @@ size_t ExtVM::codeSizeAt(dev::Address _a)
 	return m_s.codeSize(_a);
 }
 
-u256 ExtVM::store(u256 _n)
-{
-    m_s.storage(myAddress, _n);
-}
+
 
 void ExtVM::setStore(u256 _n, u256 _v)
 {
@@ -177,4 +192,6 @@ h256 ExtVM::blockHash(u256 _number)
 	ExecutionResult res;
 	std::tie(res, std::ignore) = m_s.execute(envInfo(), m_sealEngine, tx, Permanence::Reverted);
 	return h256(res.output);
+}
+*/
 }
