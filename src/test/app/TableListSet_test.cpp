@@ -36,10 +36,10 @@ struct TableLisSet_test : public beast::unit_test::suite
         testcase("TableListSet test");
         using namespace jtx;
         auto const alice = Account("alice");
-        // Pay USD, trivial path
-        Env env(*this, features(featureFlow), features(featureOwnerPaysFee));
+        //// Pay USD, trivial path
+        //Env env(*this, features(featureFlow), features(featureOwnerPaysFee));
 
-        env(paytableset(alice));
+        //env(paytableset(alice));
     }
 };
 

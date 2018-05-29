@@ -23,7 +23,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/net/AutoSocket.h>
-#include <beast/core/placeholders.hpp>
+#include <ripple/net/RegisterSSLCerts.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
@@ -41,7 +41,7 @@ class HTTPClientSSLContext
 {
 public:
     explicit
-    HTTPClientSSLContext (Config const& config)
+    HTTPClientSSLContext (Config const& config, beast::Journal j)
         : m_context (boost::asio::ssl::context::sslv23)
         , verify_ (config.SSL_VERIFY)
     {
@@ -49,7 +49,7 @@ public:
 
         if (config.SSL_VERIFY_FILE.empty ())
         {
-            m_context.set_default_verify_paths (ec);
+            registerSSLCerts(m_context, ec, j);
 
             if (ec && config.SSL_VERIFY_DIR.empty ())
                 Throw<std::runtime_error> (
@@ -90,9 +90,9 @@ private:
 
 boost::optional<HTTPClientSSLContext> httpClientSSLContext;
 
-void HTTPClient::initializeSSLContext (Config const& config)
+void HTTPClient::initializeSSLContext (Config const& config, beast::Journal j)
 {
-    httpClientSSLContext.emplace (config);
+    httpClientSSLContext.emplace (config, j);
 }
 
 //------------------------------------------------------------------------------
@@ -104,13 +104,13 @@ class HTTPClientImp
 public:
     HTTPClientImp (boost::asio::io_service& io_service,
         const unsigned short port,
-        std::size_t responseMax,
+        std::size_t responseSize,
         beast::Journal& j)
         : mSocket (io_service, httpClientSSLContext->context ())
         , mResolver (io_service)
         , mHeader (maxClientHeaderBytes)
         , mPort (port)
-        , mResponseMax (responseMax)
+        , mResponseSize (responseSize)
         , mDeadline (io_service)
         , j_ (j)
     {
@@ -196,7 +196,7 @@ public:
                 std::bind (
                     &HTTPClientImp::handleDeadline,
                     shared_from_this (),
-                    beast::asio::placeholders::error));
+                    std::placeholders::_1));
         }
 
         if (!mShutdown)
@@ -207,8 +207,8 @@ public:
                                      std::bind (
                                          &HTTPClientImp::handleResolve,
                                          shared_from_this (),
-                                         beast::asio::placeholders::error,
-                                         beast::asio::placeholders::iterator));
+                                         std::placeholders::_1,
+                                         std::placeholders::_2));
         }
 
         if (mShutdown)
@@ -246,7 +246,7 @@ public:
             mSocket.async_shutdown (std::bind (
                                         &HTTPClientImp::handleShutdown,
                                         shared_from_this (),
-                                        beast::asio::placeholders::error));
+                                        std::placeholders::_1));
 
         }
     }
@@ -279,13 +279,19 @@ public:
         {
             JLOG (j_.trace()) << "Resolve complete.";
 
+            // If we intend  to verify the SSL connection, we need to
+            // set the default domain for server name indication *prior* to
+            // connecting
+            if (httpClientSSLContext->sslVerify())
+                mSocket.setTLSHostName(mDeqSites[0]);
+
             boost::asio::async_connect (
                 mSocket.lowest_layer (),
                 itrEndpoint,
                 std::bind (
                     &HTTPClientImp::handleConnect,
                     shared_from_this (),
-                    beast::asio::placeholders::error));
+                    std::placeholders::_1));
         }
     }
 
@@ -325,7 +331,7 @@ public:
                 std::bind (
                     &HTTPClientImp::handleRequest,
                     shared_from_this (),
-                    beast::asio::placeholders::error));
+                    std::placeholders::_1));
         }
         else
         {
@@ -354,8 +360,8 @@ public:
                 mRequest,
                 std::bind (&HTTPClientImp::handleWrite,
                              shared_from_this (),
-                             beast::asio::placeholders::error,
-                             beast::asio::placeholders::bytes_transferred));
+                             std::placeholders::_1,
+                             std::placeholders::_2));
         }
     }
 
@@ -379,8 +385,8 @@ public:
                 "\r\n\r\n",
                 std::bind (&HTTPClientImp::handleHeader,
                              shared_from_this (),
-                             beast::asio::placeholders::error,
-                             beast::asio::placeholders::bytes_transferred));
+                             std::placeholders::_1,
+                             std::placeholders::_2));
         }
     }
 
@@ -411,19 +417,14 @@ public:
             mBody = smMatch[1];
 
         if (boost::regex_match (strHeader, smMatch, reSize))
-        {
-            int size = beast::lexicalCastThrow <int> (std::string(smMatch[1]));
+            mResponseSize = beast::lexicalCastThrow <int> (std::string(smMatch[1]));
 
-            if (size < mResponseMax)
-                mResponseMax = size;
-        }
-
-        if (mResponseMax == 0)
+        if (mResponseSize == 0)
         {
             // no body wanted or available
             invokeComplete (ecResult, mStatus);
         }
-        else if (mBody.size () >= mResponseMax)
+        else if (mBody.size () >= mResponseSize)
         {
             // we got the whole thing
             invokeComplete (ecResult, mStatus, mBody);
@@ -431,12 +432,12 @@ public:
         else
         {
             mSocket.async_read (
-                mResponse.prepare (mResponseMax - mBody.size ()),
+                mResponse.prepare (mResponseSize - mBody.size ()),
                 boost::asio::transfer_all (),
                 std::bind (&HTTPClientImp::handleData,
                              shared_from_this (),
-                             beast::asio::placeholders::error,
-                             beast::asio::placeholders::bytes_transferred));
+                             std::placeholders::_1,
+                             std::placeholders::_2));
         }
     }
 
@@ -507,13 +508,13 @@ private:
     bool                                                        mSSL;
     AutoSocket                                                  mSocket;
     boost::asio::ip::tcp::resolver                              mResolver;
-    std::shared_ptr<boost::asio::ip::tcp::resolver::query>    mQuery;
+    std::shared_ptr<boost::asio::ip::tcp::resolver::query>      mQuery;
     boost::asio::streambuf                                      mRequest;
     boost::asio::streambuf                                      mHeader;
     boost::asio::streambuf                                      mResponse;
     std::string                                                 mBody;
     const unsigned short                                        mPort;
-    int                                                         mResponseMax;
+    int                                                         mResponseSize;
     int                                                         mStatus;
     std::function<void (boost::asio::streambuf& sb, std::string const& strHost)>         mBuild;
     std::function<bool (const boost::system::error_code& ecResult, int iStatus, std::string const& strData)> mComplete;

@@ -16,12 +16,12 @@
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
 //==============================================================================
+#ifdef BEGIN_SDKEY
 
 #include <peersafe/gmencrypt/hardencrypt/sdkey.h>
 #include <cstdlib>
 #include <iostream>
 
-#ifdef BEGIN_SDKEY
 unsigned long  SDkey::OpenDevice()
 {
     unsigned long rv = 0;

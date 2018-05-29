@@ -38,7 +38,6 @@ namespace ripple {
     {
         setFieldVL(sfTableName, tableName); //if (tableName == NUll ) then set to null ,no exception
         setFieldH160(sfNameInDB, nameInDB);
-        setFieldU8(sfDeleted, deleted); 
         setFieldU32(sfCreateLgrSeq, createLgrSeq);
         setFieldH256(sfCreatedLedgerHash, createdLedgerHash);
         setFieldH256(sfCreatedTxnHash, createdTxnHash);
@@ -161,7 +160,6 @@ namespace ripple {
             {
                 format.push_back(SOElement(sfTableName, SOE_REQUIRED));
                 format.push_back(SOElement(sfNameInDB, SOE_REQUIRED));
-                format.push_back(SOElement(sfDeleted, SOE_REQUIRED));
                 format.push_back(SOElement(sfCreateLgrSeq, SOE_REQUIRED));
                 format.push_back(SOElement(sfCreatedLedgerHash, SOE_REQUIRED));
                 format.push_back(SOElement(sfCreatedTxnHash, SOE_REQUIRED));

@@ -52,6 +52,7 @@ namespace ripple {
                 AutoSync            CHARACTER(64),   \
 		        TxnLedgerTime		CHARACTER(64),   \
                 PreviousCommit      CHARACTER(64),   \
+				ChainId				CHARACTER(64),  \
                 primary key  (Owner,TableNameInDB))");
 
             *sql_session << sql;
@@ -120,7 +121,7 @@ namespace ripple {
     }
 
     bool TableStatusDBSQLite::ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq,
-        uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash, bool &bDeleted)
+        uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash)
     {
         bool ret = false;
 
@@ -128,7 +129,7 @@ namespace ripple {
             auto db(databasecon_->checkoutDb());            
 
             static std::string const prefix(
-                R"(select TxnLedgerHash,TxnLedgerSeq,LedgerHash,LedgerSeq,TxnUpdateHash,deleted from SyncTableState
+                R"(select TxnLedgerHash,TxnLedgerSeq,LedgerHash,LedgerSeq,TxnUpdateHash from SyncTableState
             WHERE )");
 
             std::string sql = boost::str(boost::format(
@@ -141,7 +142,6 @@ namespace ripple {
             boost::optional<std::string> LedgerSeq;
             boost::optional<std::string> LedgerHash;
             boost::optional<std::string> TxnUpdateHash;
-            boost::optional<std::string> deleted;
             boost::optional<std::string> status;
 
             soci::statement st = (db->prepare << sql
@@ -149,8 +149,7 @@ namespace ripple {
                 , soci::into(TxnLedgerSeq)
                 , soci::into(LedgerHash)
                 , soci::into(LedgerSeq)
-                , soci::into(TxnUpdateHash)
-                , soci::into(deleted));
+                , soci::into(TxnUpdateHash));
 
             bool dbret = st.execute(true);
 
@@ -166,8 +165,6 @@ namespace ripple {
                     hash = from_hex_text<uint256>(LedgerHash.value());
                 if (TxnUpdateHash && !TxnUpdateHash.value().empty())
                     txnupdatehash = from_hex_text<uint256>(TxnUpdateHash.value());
-                if (deleted && !deleted.value().empty())
-                    bDeleted = std::stoi(deleted.value());
                 ret = true;
             }
         }
@@ -226,7 +223,7 @@ namespace ripple {
         return ret;
     }
 
-    bool TableStatusDBSQLite::InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq,uint256 LedgerHash, bool IsAutoSync,std::string TxnLedgerTime)
+    bool TableStatusDBSQLite::InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq,uint256 LedgerHash, bool IsAutoSync,std::string TxnLedgerTime, uint256 chainId)
     {
         bool ret = false;
         try
@@ -235,7 +232,7 @@ namespace ripple {
 
             std::string sql(
                 "INSERT OR REPLACE INTO SyncTableState "
-                "(Owner, TableName,TableNameInDB,LedgerSeq,LedgerHash,deleted,AutoSync,TxnLedgerTime) VALUES('");
+                "(Owner, TableName,TableNameInDB,LedgerSeq,LedgerHash,deleted,AutoSync,TxnLedgerTime,ChainID) VALUES('");
 
             sql += Owner;
             sql += "','";
@@ -251,7 +248,9 @@ namespace ripple {
             sql += "','";
             sql += std::to_string(IsAutoSync ? 1 : 0);
             sql += "','";
-            sql += TxnLedgerTime;
+			sql += TxnLedgerTime;
+			sql += "','";
+			sql += to_string(chainId);
             sql += "');";
             *db << sql;
             
@@ -266,16 +265,17 @@ namespace ripple {
         return ret;
     }
 
-    bool TableStatusDBSQLite::GetAutoListFromDB(bool /*bAutoSunc*/, std::list<std::tuple<std::string, std::string, std::string, bool> > &list)
+    bool TableStatusDBSQLite::GetAutoListFromDB(uint256 chainId, std::list<std::tuple<std::string, std::string, std::string, bool> > &list)
     {
         bool ret = false;
         try
         {
             auto db(databasecon_->checkoutDb());            
 
-            static std::string const sql(
-                R"(select Owner,TableName,TxnLedgerTime from SyncTableState
-            WHERE AutoSync = '1'AND deleted = '0' ORDER BY TxnLedgerSeq DESC;)");
+			static std::string  sql = boost::str(boost::format(
+				(R"(select Owner,TableName,TxnLedgerTime from SyncTableState
+            WHERE ChainId = '%s' AND AutoSync = '1' AND deleted = '0' ORDER BY TxnLedgerSeq DESC;)"))
+				% to_string(chainId));
 
             boost::optional<std::string> Owner_;
             boost::optional<std::string> TableName_;

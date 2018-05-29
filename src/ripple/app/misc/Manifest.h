@@ -84,7 +84,6 @@ struct Manifest
 
     Manifest(std::string s, PublicKey pk, PublicKey spk, std::uint32_t seq);
 
-	Manifest(const Manifest& other);
     Manifest(Manifest&& other) = default;
     Manifest& operator=(Manifest&& other) = default;
 
@@ -106,6 +105,9 @@ struct Manifest
         @param s Serialized manifest string
 
         @return `boost::none` if string is invalid
+
+        @note This does not verify manifest signatures.
+              `Manifest::verify` should be called after constructing manifest.
     */
     static boost::optional<Manifest> make_Manifest(std::string s);
 

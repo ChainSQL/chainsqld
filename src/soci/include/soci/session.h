@@ -120,6 +120,18 @@ public:
     // return the last value auto-generated in this session).
     bool get_last_insert_id(std::string const & table, long & value);
 
+	// In mycat, `autocommit` always is set false by transaction.
+	// Regardless a transaction commit or rollback, 
+	// `autocommit` is still false. So application should launch 
+	// this function to set `auotcommit` in mycat.
+	bool autocommit(const bool auto_mode);
+	void autocommit_after_transaction(const bool autocommit) {
+		set_autocommit_after_trans_ = autocommit;
+	}
+
+	bool autocommit_after_transaction() {
+		return set_autocommit_after_trans_;
+	}
 
     // for diagnostics and advanced users
     // (downcast it to expected back-end session class)
@@ -176,6 +188,10 @@ private:
 
 	//affected row count for insert/update/delete
 	int affected_row_count_;
+
+	// whether autocommit should be set after a transaction commit or rollback
+	// in case of Mycat
+	bool set_autocommit_after_trans_;
 };
 
 } // namespace soci

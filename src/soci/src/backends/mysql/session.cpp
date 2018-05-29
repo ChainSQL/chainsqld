@@ -459,3 +459,7 @@ mysql_blob_backend * mysql_session_backend::make_blob_backend()
 {
     return new mysql_blob_backend(*this);
 }
+
+bool mysql_session_backend::autocommit(const bool auto_mode) {
+	return mysql_autocommit(conn_, auto_mode);
+}

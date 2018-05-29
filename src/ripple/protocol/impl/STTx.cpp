@@ -122,14 +122,14 @@ STTx::STTx (SerialIter& sit)
 {
     int length = sit.getBytesLeft ();
 
-    if ((length < Protocol::txMinSizeBytes) || (length > Protocol::txMaxSizeBytes))
+    if ((length < txMinSizeBytes) || (length > txMaxSizeBytes))
         Throw<std::runtime_error> ("Transaction length invalid");
 
     set (sit);
     tx_type_ = static_cast<TxType> (getFieldU16 (sfTransactionType));
 
     if (!setType (getTxFormat (tx_type_)->elements))
-        Throw<std::runtime_error> ("transaction not valid"); 
+        Throw<std::runtime_error> ("transaction not valid");
 
     tid_ = getHash(HashPrefix::transactionID);
 }
@@ -473,7 +473,6 @@ std::pair<bool, std::string> STTx::checkSign(bool allowMultiSign) const
 Json::Value STTx::getJson (int) const
 {
     Json::Value ret = STObject::getJson (0);
-
     ret[jss::hash] = to_string (getTransactionID ());
     return ret;
 }
@@ -769,6 +768,11 @@ bool passesLocalChecks (STObject const& st, std::string& reason)
         return false;
     }
 
+    if (isPseudoTx(st))
+    {
+        reason = "Cannot submit pseudo transactions.";
+        return false;
+    }
     return true;
 }
 
@@ -779,6 +783,16 @@ sterilize (STTx const& stx)
     stx.add(s);
     SerialIter sit(s.slice());
     return std::make_shared<STTx const>(std::ref(sit));
+}
+
+bool
+isPseudoTx(STObject const& tx)
+{
+    auto t = tx[~sfTransactionType];
+    if (!t)
+        return false;
+    auto tt = static_cast<TxType>(*t);
+    return tt == ttAMENDMENT || tt == ttFEE;
 }
 
 } // ripple

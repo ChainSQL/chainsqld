@@ -37,8 +37,14 @@ void transaction::commit()
         throw soci_error("The transaction object cannot be handled twice.");
     }
 
-    sql_.commit();
     handled_ = true;
+    sql_.commit();    
+
+	// In Mycat, `autocommit` should be reset to true
+	// after a transaction commit or rollback.
+	if (sql_.autocommit_after_transaction()) {
+		sql_.autocommit(true);
+	}
 }
 
 void transaction::rollback()
@@ -48,6 +54,16 @@ void transaction::rollback()
         throw soci_error("The transaction object cannot be handled twice.");
     }
 
-    sql_.rollback();
+    //throwing exception when rollback fistly, then destruct myself,
+    //set handled_ to be true to avoid rollback secondly. 
+    //same as modification in commit function
+  
     handled_ = true;
+    sql_.rollback();
+
+	// In Mycat, `autocommit` should be reset to true
+	// after a transaction commit or rollback.
+	if (sql_.autocommit_after_transaction()) {
+		sql_.autocommit(true);
+	}
 }

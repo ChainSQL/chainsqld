@@ -19,15 +19,7 @@
 
 #include <BeastConfig.h>
 #include <ripple/core/JobQueue.h>
-#include <ripple/core/JobTypes.h>
-#include <ripple/core/JobTypeInfo.h>
-#include <ripple/core/JobTypeData.h>
-#include <ripple/beast/clock/chrono_util.h>
-#include <chrono>
-#include <memory>
-#include <mutex>
-#include <set>
-#include <thread>
+#include <ripple/basics/contract.h>
 
 namespace ripple {
 
@@ -75,8 +67,8 @@ JobQueue::collect ()
     job_count = m_jobSet.size ();
 }
 
-void
-JobQueue::addJob (JobType type, std::string const& name,
+bool
+JobQueue::addRefCountedJob (JobType type, std::string const& name,
     JobFunction const& func)
 {
     assert (type != jtINVALID);
@@ -84,7 +76,7 @@ JobQueue::addJob (JobType type, std::string const& name,
     auto iter (m_jobData.find (type));
     assert (iter != m_jobData.end ());
     if (iter == m_jobData.end ())
-        return;
+        return false;
 
     JobTypeData& data (iter->second);
 
@@ -93,6 +85,8 @@ JobQueue::addJob (JobType type, std::string const& name,
     assert (type == jtCLIENT || m_workers.getNumberOfThreads () > 0);
 
     {
+        std::lock_guard <std::mutex> lock (m_mutex);
+
         // If this goes off it means that a child didn't follow
         // the Stoppable API rules. A job may only be added if:
         //
@@ -104,21 +98,17 @@ JobQueue::addJob (JobType type, std::string const& name,
         //          OR
         //      * Not all children are stopped
         //
-        std::lock_guard <std::mutex> lock (m_mutex);
         assert (! isStopped() && (
             m_processCount>0 ||
             ! m_jobSet.empty () ||
             ! areChildrenStopped()));
-    }
-
-    {
-        std::lock_guard <std::mutex> lock (m_mutex);
 
         std::pair <std::set <Job>::iterator, bool> result (
             m_jobSet.insert (Job (type, name, ++m_lastJob,
                 data.load (), func, m_cancelCallback)));
         queueJob (*result.first, lock);
     }
+    return true;
 }
 
 int
@@ -163,14 +153,6 @@ JobQueue::getJobCountGE (JobType t) const
 }
 
 void
-JobQueue::shutdown ()
-{
-    JLOG(m_journal.info()) <<  "Job queue shutting down";
-
-    m_workers.pauseAllThreadsAndWait ();
-}
-
-void
 JobQueue::setThreadCount (int c, bool const standaloneMode)
 {
     if (standaloneMode)
@@ -180,30 +162,21 @@ JobQueue::setThreadCount (int c, bool const standaloneMode)
     else if (c == 0)
     {
         c = static_cast<int>(std::thread::hardware_concurrency());
-        c = 2 + std::min (c, 4); // I/O will bottleneck
-
-        JLOG(m_journal.info()) << "Auto-tuning to " << c <<
-                            " validation/transaction/proposal threads";
+        c = 2 + std::min(c, 4); // I/O will bottleneck
+        JLOG (m_journal.info()) << "Auto-tuning to " << c <<
+                            " validation/transaction/proposal threads.";
+    }
+    else
+    {
+        JLOG (m_journal.info()) << "Configured " << c <<
+                            " validation/transaction/proposal threads.";
     }
 
     m_workers.setNumberOfThreads (c);
 }
 
-std::shared_ptr<LoadEvent>
-JobQueue::getLoadEvent (JobType t, std::string const& name)
-{
-    JobDataMap::iterator iter (m_jobData.find (t));
-    assert (iter != m_jobData.end ());
-
-    if (iter == m_jobData.end ())
-        return std::shared_ptr<LoadEvent> ();
-
-    return std::make_shared<LoadEvent> (
-        std::ref (iter-> second.load ()), name, true);
-}
-
 std::unique_ptr<LoadEvent>
-JobQueue::getLoadEventAP (JobType t, std::string const& name)
+JobQueue::makeLoadEvent (JobType t, std::string const& name)
 {
     JobDataMap::iterator iter (m_jobData.find (t));
     assert (iter != m_jobData.end ());
@@ -218,6 +191,9 @@ void
 JobQueue::addLoadEvents (JobType t, int count,
     std::chrono::milliseconds elapsed)
 {
+    if (isStopped())
+        LogicError ("JobQueue::addLoadEvents() called after JobQueue stopped");
+
     JobDataMap::iterator iter (m_jobData.find (t));
     assert (iter != m_jobData.end ());
     iter->second.load().addSamples (count, elapsed);

@@ -39,11 +39,6 @@ public:
             {
                 final_action();
             }
-			catch (soci::soci_error& e)
-			{
-				delete this;
-				throw e;
-			}
             catch (...)
             {
                 delete this;

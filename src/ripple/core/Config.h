@@ -24,7 +24,7 @@
 #include <ripple/basics/base_uint.h>
 #include <ripple/protocol/SystemParameters.h> // VFALCO Breaks levelization
 #include <ripple/beast/net/IPEndpoint.h>
-#include <beast/core/detail/ci_char_traits.hpp>
+#include <beast/core/string.hpp>
 #include <ripple/beast/utility/Journal.h>
 #include <boost/asio/ip/tcp.hpp> // VFALCO FIX: This include should not be here
 #include <boost/filesystem.hpp> // VFALCO FIX: This include should not be here
@@ -153,8 +153,9 @@ public:
     boost::optional<std::size_t> VALIDATION_QUORUM;     // Minimum validations to consider ledger authoritative
 
     std::uint64_t                      FEE_DEFAULT = 10;
-    std::uint64_t                      FEE_ACCOUNT_RESERVE = 20*SYSTEM_CURRENCY_PARTS;
-    std::uint64_t                      FEE_OWNER_RESERVE = 5*SYSTEM_CURRENCY_PARTS;
+
+    std::uint64_t                      FEE_ACCOUNT_RESERVE = 5*SYSTEM_CURRENCY_PARTS;
+    std::uint64_t                      FEE_OWNER_RESERVE = 1*SYSTEM_CURRENCY_PARTS;
     std::uint64_t                      FEE_OFFER = 10;
 
     // Node storage configuration
@@ -165,6 +166,10 @@ public:
     bool                        SSL_VERIFY = true;
     std::string                 SSL_VERIFY_FILE;
     std::string                 SSL_VERIFY_DIR;
+
+
+    // Thread pool configuration
+    std::size_t                 WORKERS = 0;
 
     // These override the command line client settings
     boost::optional<boost::asio::ip::address_v4> rpc_ip;

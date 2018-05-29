@@ -147,33 +147,8 @@ SetTrust::doApply ()
 
     auto const sle = view().peek(
         keylet::account(account_));
-    std::uint32_t const uOwnerCount = sle->getFieldU32(sfOwnerCount);
-    /*  test code
-    auto id1 = keylet::table(account_);
-    auto id2 = keylet::account(account_);
-    auto const tablesle = view().peek(
-        id1);
-    if (!tablesle)
-    {
-        auto const tablesle2 = std::make_shared<SLE>(
-            ltTABLELIST, id1.key);
-        view().insert(tablesle2);
-    }
-    auto const tablesle3 = view().peek(
-        id1);
-    if (tablesle3->isFieldPresent(sfTableEntries))
-    {
-        auto memotmp = tablesle3->getFieldArray(sfTableEntries);
-    }
-           
-    if (ctx_.tx.isFieldPresent(sfMemos))
-    {
-        STArray const& memos = ctx_.tx.getFieldArray(sfMemos);
-        tablesle3->setFieldArray(sfTableEntries, memos);
-        view().update(tablesle3);
-    }
-    */
 
+    std::uint32_t const uOwnerCount = sle->getFieldU32 (sfOwnerCount);
 
     // The reserve that is required to create the line. Note
     // that although the reserve increases with every item
@@ -431,7 +406,7 @@ SetTrust::doApply ()
         }
 
         if (uFlagsIn != uFlagsOut)
-            sleRippleState->setFieldU32 (sfFlags, uFlagsOut); 
+            sleRippleState->setFieldU32 (sfFlags, uFlagsOut);
 
         if (ctx_.tx.isFieldPresent(sfMemos))
         {
@@ -462,7 +437,6 @@ SetTrust::doApply ()
 
             JLOG(j_.trace()) << "Modify ripple line";
         }
-
     }
     // Line does not exist.
     else if (! saLimitAmount &&                          // Setting default limit.

@@ -26,6 +26,7 @@
 #include <ripple/ledger/Sandbox.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/protocol/Feature.h>
+#include <ripple/protocol/Protocol.h>
 #include <type_traits>
 
 namespace ripple {
@@ -687,27 +688,9 @@ class View_test
         eA.close();
         auto const rdViewA4 = eA.closed();
 
-        // The two Env's can't share the same ports, so edit the config
-        // of the second Env.
-        auto getConfigWithNewPorts = [this] ()
-        {
-            auto cfg = std::make_unique<Config>();
-            setupConfigForUnitTests(*cfg);
-
-            for (auto const sectionName : {"port_peer", "port_rpc", "port_ws"})
-            {
-                Section& s = (*cfg)[sectionName];
-                auto const port = s.get<std::int32_t>("port");
-                BEAST_EXPECT(port);
-                if (port)
-                {
-                    constexpr int portIncr = 5;
-                    s.set ("port", std::to_string(*port + portIncr));
-                }
-            }
-            return cfg;
-        };
-        Env eB(*this, getConfigWithNewPorts());
+        // The two Env's can't share the same ports, so modifiy the config
+        // of the second Env to use higher port numbers
+        Env eB {*this, envconfig(port_increment, 5)};
 
         // Make ledgers that are incompatible with the first ledgers.  Note
         // that bob is funded before alice.
@@ -802,25 +785,11 @@ class View_test
 class GetAmendments_test
     : public beast::unit_test::suite
 {
-    static
-    std::unique_ptr<Config>
-    makeValidatorConfig()
-    {
-        auto p = std::make_unique<Config>();
-        setupConfigForUnitTests(*p);
-
-        // If the config has valid validation keys then we run as a validator.
-        p->section(SECTION_VALIDATION_SEED).append(
-            std::vector<std::string>{"shUwVw52ofnCUX5m7kPTKzJdr4HEH"});
-
-        return p;
-    }
-
     void
     testGetAmendments()
     {
         using namespace jtx;
-        Env env(*this, makeValidatorConfig());
+        Env env {*this, envconfig(validator, "")};
 
         // Start out with no amendments.
         auto majorities = getMajorityAmendments (*env.closed());
@@ -866,109 +835,8 @@ class GetAmendments_test
     }
 };
 
-class DirIsEmpty_test
-    : public beast::unit_test::suite
-{
-    void
-    testDirIsEmpty()
-    {
-        using namespace jtx;
-        auto const alice = Account("alice");
-        auto const bogie = Account("bogie");
-
-        Env env(*this, features(featureMultiSign));
-
-        env.fund(ZXC(10000), alice);
-        env.close();
-
-        // alice should have an empty directory.
-        BEAST_EXPECT(dirIsEmpty (*env.closed(), keylet::ownerDir(alice)));
-
-        // Give alice a signer list, then there will be stuff in the directory.
-        env(signers(alice, 1, { { bogie, 1} }));
-        env.close();
-        BEAST_EXPECT(! dirIsEmpty (*env.closed(), keylet::ownerDir(alice)));
-
-        env(signers(alice, jtx::none));
-        env.close();
-        BEAST_EXPECT(dirIsEmpty (*env.closed(), keylet::ownerDir(alice)));
-
-        // The next test is a bit awkward.  It tests the case where alice
-        // uses 3 directory pages and then deletes all entries from the
-        // first 2 pages.  dirIsEmpty() should still return false in this
-        // circumstance.
-        //
-        // Fill alice's directory with implicit trust lines (produced by
-        // taking offers) and then remove all but the last one.
-        auto const becky = Account ("becky");
-        auto const gw = Account ("gw");
-        env.fund(ZXC(10000), becky, gw);
-        env.close();
-
-        // The DIR_NODE_MAX constant is hidden in View.cpp (Feb 2016).  But,
-        // ideally, we'd verify we're doing a good test with the following:
-//      static_assert (64 >= (2 * DIR_NODE_MAX), "");
-
-        // Generate 64 currencies named AAA -> AAP and ADA -> ADP.
-        std::vector<IOU> currencies;
-        currencies.reserve(64);
-        for (char b = 'A'; b <= 'D'; ++b)
-        {
-            for (char c = 'A'; c <= 'P'; ++c)
-            {
-                currencies.push_back(gw[std::string("A") + b + c]);
-                IOU const& currency = currencies.back();
-
-                // Establish trust lines.
-                env(trust(becky, currency(50)));
-                env.close();
-                env(pay(gw, becky, currency(50)));
-                env.close();
-                env(offer(alice, currency(50), ZXC(10)));
-                env(offer(becky, ZXC(10), currency(50)));
-                env.close();
-            }
-        }
-
-        // Set up one more currency that alice will hold onto.  We expect
-        // this one to go in the third directory page.
-        IOU const lastCurrency = gw["ZZZ"];
-        env(trust(becky, lastCurrency(50)));
-        env.close();
-        env(pay(gw, becky, lastCurrency(50)));
-        env.close();
-        env(offer(alice, lastCurrency(50), ZXC(10)));
-        env(offer(becky, ZXC(10), lastCurrency(50)));
-        env.close();
-
-        BEAST_EXPECT(! dirIsEmpty (*env.closed(), keylet::ownerDir(alice)));
-
-        // Now alice gives all the currencies except the last one back to becky.
-        for (auto currency : currencies)
-        {
-            env(pay(alice, becky, currency(50)));
-            env.close();
-        }
-
-        // This is the crux of the test.
-        BEAST_EXPECT(! dirIsEmpty (*env.closed(), keylet::ownerDir(alice)));
-
-        // Give the last currency to becky.  Now alice's directory is empty.
-        env(pay(alice, becky, lastCurrency(50)));
-        env.close();
-
-        BEAST_EXPECT(dirIsEmpty (*env.closed(), keylet::ownerDir(alice)));
-    }
-
-    void run() override
-    {
-        testDirIsEmpty();
-    }
-};
-
 BEAST_DEFINE_TESTSUITE(View,ledger,ripple);
 BEAST_DEFINE_TESTSUITE(GetAmendments,ledger,ripple);
-BEAST_DEFINE_TESTSUITE(DirIsEmpty, ledger,ripple);
 
 }  // test
 }  // ripple

@@ -236,6 +236,8 @@ TER PathCursor::forwardLiquidityForAccount () const
                     rippleCalc_,
                     parityRate,
                     transferRate (view(), node().account_),
+					transferFeeMin(view(), node().account_),
+					transferFeeMax(view(), node().account_),
                     previousNode().saFwdRedeem,
                     node().saRevIssue,
                     saPrvRedeemAct,
@@ -265,6 +267,7 @@ TER PathCursor::forwardLiquidityForAccount () const
 
             STAmount saProvide = node().saFwdRedeem + node().saFwdIssue;
 
+			auto tmp = previousNode().saFwdIssue;
             // Adjust prv --> cur balance : take all inbound
             resultCode = saProvide
                 ? rippleCredit(view(),
@@ -304,7 +307,9 @@ TER PathCursor::forwardLiquidityForAccount () const
                 rippleLiquidity (
                     rippleCalc_,
                     parityRate,
-                    transferRate (view(), node().account_),
+					transferRate(view(), node().account_),
+					transferFeeMin(view(), node().account_),
+					transferFeeMax(view(), node().account_),
                     previousNode().saFwdRedeem,
                     node().saRevDeliver,
                     saPrvRedeemAct,
@@ -450,7 +455,9 @@ TER PathCursor::forwardLiquidityForAccount () const
                 rippleLiquidity (
                     rippleCalc_,
                     parityRate,
-                    transferRate (view(), node().account_),
+					transferRate(view(), node().account_),
+					transferFeeMin(view(), node().account_),
+					transferFeeMax(view(), node().account_),
                     previousNode().saFwdDeliver,
                     node().saRevIssue,
                     saPrvDeliverAct,
@@ -481,7 +488,9 @@ TER PathCursor::forwardLiquidityForAccount () const
             rippleLiquidity (
                 rippleCalc_,
                 parityRate,
-                transferRate (view(), node().account_),
+				transferRate(view(), node().account_),
+				transferFeeMin(view(), node().account_),
+				transferFeeMax(view(), node().account_),
                 previousNode().saFwdDeliver,
                 node().saRevDeliver,
                 saPrvDeliverAct,

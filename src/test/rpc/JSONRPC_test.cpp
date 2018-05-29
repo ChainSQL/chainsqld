@@ -26,6 +26,7 @@
 #include <ripple/protocol/Feature.h>
 #include <ripple/rpc/impl/TransactionSign.h>
 #include <test/jtx.h>
+#include <test/jtx/envconfig.h>
 #include <ripple/beast/unit_test.h>
 
 namespace ripple {
@@ -57,25 +58,7 @@ struct TxnTestData
 
 static TxnTestData const txnTestArray [] =
 {
-{ "TableListSet create table test",
-R"({
-    "command": "t_create",
-    "secret": "snoPBrXtMeMyMHUVTgbuqAfg1SUTb",
-    "tx_json": {
-       "TableName": "7461626c6531",
-        "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-        "Fee":"12",
-        "OpType":1, 
-        "TransactionType": "TableListSet",
-        "Raw":"637265617465",
-        "Sequence":1      
-    }
-})",
-{
-    "",
-    "",
-    "Missing field 'account'.", 
-    "Missing field 'tx_json.SigningPubKey'." } },
+
 { "Minimal payment.",
 R"({
     "command": "doesnt_matter",
@@ -1952,15 +1935,14 @@ public:
 
     void testAutoFillEscalatedFees ()
     {
-        test::jtx::Env env(*this, []()
+        using namespace test::jtx;
+        Env env {*this, envconfig([](std::unique_ptr<Config> cfg)
             {
-                auto p = std::make_unique<Config>();
-                test::setupConfigForUnitTests(*p);
-                auto& section = p->section("transaction_queue");
-                section.set("minimum_txn_in_ledger_standalone", "3");
-                return p;
-            }(),
-            test::jtx::features(featureFeeEscalation));
+                cfg->section("transaction_queue")
+                    .set("minimum_txn_in_ledger_standalone", "3");
+                return cfg;
+            }),
+            with_features(featureFeeEscalation)};
         LoadFeeTrack const& feeTrack = env.app().getFeeTrack();
 
         {
@@ -2272,7 +2254,7 @@ public:
         // "b" (not in the ledger) is rDg53Haik2475DJx8bjMDSDPj4VX7htaMd.
         // "c" (phantom signer) is rPcNzota6B8YBokhYtcTNqQVCngtbnWfux.
 
-        test::jtx::Env env(*this, test::jtx::features(featureMultiSign));
+        test::jtx::Env env(*this, test::jtx::with_features(featureMultiSign));
         env.fund(test::jtx::ZXC(100000), a, ed, g);
         env.close();
 
@@ -2323,7 +2305,7 @@ public:
                         "Internal JSONRPC_test error.  Bad test JSON.");
 
                 static Role const testedRoles[] =
-                    { Role::ADMIN,Role::GUEST, Role::USER, Role::ADMIN, Role::FORBID};
+                    {Role::GUEST, Role::USER, Role::ADMIN, Role::FORBID};
 
                 for (Role testRole : testedRoles)
                 {

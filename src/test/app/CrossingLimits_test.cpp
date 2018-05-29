@@ -18,6 +18,7 @@
 #include <BeastConfig.h>
 #include <test/jtx.h>
 #include <ripple/beast/unit_test.h>
+#include <ripple/protocol/Feature.h>
 
 namespace ripple {
 namespace test {
@@ -41,11 +42,12 @@ private:
     }
 
 public:
+
     void
-    testStepLimit()
+    testStepLimit(std::initializer_list<uint256> fs)
     {
         using namespace jtx;
-        Env env(*this);
+        Env env(*this, with_features(fs));
         auto const zxcMax = ZXC(100000000000);
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
@@ -76,10 +78,10 @@ public:
     }
 
     void
-    testCrossingLimit()
+    testCrossingLimit(std::initializer_list<uint256> fs)
     {
         using namespace jtx;
-        Env env(*this);
+        Env env(*this, with_features(fs));
         auto const zxcMax = ZXC(100000000000);
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
@@ -105,10 +107,10 @@ public:
     }
 
     void
-    testStepAndCrossingLimit()
+    testStepAndCrossingLimit(std::initializer_list<uint256> fs)
     {
         using namespace jtx;
-        Env env(*this);
+        Env env(*this, with_features(fs));
         auto const zxcMax = ZXC(100000000000);
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
@@ -150,9 +152,15 @@ public:
     void
     run()
     {
-        testStepLimit();
-        testCrossingLimit();
-        testStepAndCrossingLimit();
+        auto testAll = [this](std::initializer_list<uint256> fs) {
+            testStepLimit(fs);
+            testCrossingLimit(fs);
+            testStepAndCrossingLimit(fs);
+        };
+        testAll({});
+        testAll({featureFlow});
+        testAll({featureFlow, fix1373});
+        testAll({featureFlow, fix1373, featureFlowCross});
     }
 };
 

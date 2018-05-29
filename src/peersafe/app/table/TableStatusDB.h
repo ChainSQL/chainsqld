@@ -38,14 +38,14 @@ public:
 
     virtual bool InitDB(DatabaseCon::Setup setup) = 0;
 
-    virtual bool GetAutoListFromDB(bool bAutoSunc, std::list<std::tuple<std::string, std::string, std::string, bool> > &list) = 0;
+    virtual bool GetAutoListFromDB(uint256 chainId, std::list<std::tuple<std::string, std::string, std::string, bool> > &list) = 0;
 
     virtual bool ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq,
-        uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &TxnUpdateHash, bool &bDeleted) = 0;
+        uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &TxnUpdateHash) = 0;
 
     virtual bool GetMaxTxnInfo(std::string TableName, std::string Owner, LedgerIndex &TxnLedgerSeq, uint256 &TxnLedgerHash) = 0;
 
-    virtual bool InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner,LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync,std::string TxnLedgerTime) = 0;
+    virtual bool InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner,LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync,std::string TxnLedgerTime, uint256 chainId) = 0;
 
     virtual bool CreateSnycDB(DatabaseCon::Setup setup) = 0;
 

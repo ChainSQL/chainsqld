@@ -47,9 +47,7 @@ namespace ripple {
 
     std::pair<TER, std::string> SqlTransaction::transactionImpl(ApplyContext& ctx_,ripple::TxStoreDBConn &txStoreDBConn, ripple::TxStore& txStore, beast::Journal journal, const STTx &tx)
     {
-        ripple::AccountID accountID = tx.getAccountID(sfAccount);
-
-        TxStoreTransaction stTran(&txStoreDBConn);
+        ripple::AccountID accountID = tx.getAccountID(sfAccount);        
 
         Blob txs_blob = tx.getFieldVL(sfStatements);
         std::string txs_str;
@@ -60,6 +58,12 @@ namespace ripple {
 
 		//get first transaction,to check if it have been disposed in storage.
 		auto tx_pair = STTx::parseSTTx(objs[(Json::UInt)0], accountID);
+        if (tx_pair.first == NULL)
+        {
+            std::string sError = "transtions's statement error : " + tx_pair.second;
+            JLOG(journal.error()) << sError;
+            return {tefBAD_STATEMENT, sError };
+        }
 		auto txTmp = *tx_pair.first;
 		auto tables = txTmp.getFieldArray(sfTables);
 		uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
@@ -67,32 +71,67 @@ namespace ripple {
 		if (item != NULL && item->isHaveTx(tx.getTransactionID()))
 			return { tesSUCCESS, "success" };
 
+		std::vector<uint160> vecNameInDB;
+        //drop table before execute the sql
         for (auto obj : objs)
         {
             auto tx_pair = STTx::parseSTTx(obj, accountID);
-            auto txTmp = *tx_pair.first;
-
-			bool canDispose = true;
-			//OpType not need to dispose
-			if (isNotNeedDisposeType((TableOpType)obj["OpType"].asInt())) 
-				canDispose = false;
-
-            if (canDispose)//not exist in storage list,so can dispose again, for case Duplicate entry 
+            if (tx_pair.first == NULL)
             {
-				auto result = dispose(txStore, txTmp);
-                if (result.first == tesSUCCESS)
+                std::string sError = "transtions's statement error : " + tx_pair.second;
+                JLOG(journal.error()) << sError;
+                return{ tefBAD_STATEMENT, sError };
+            }
+            auto &txTmp = *tx_pair.first;
+            auto &tables = txTmp.getFieldArray(sfTables);
+            uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
+			if ((TableOpType)obj["OpType"].asInt() == T_CREATE)
+			{
+				txStore.DropTable(to_string(nameInDB));
+				vecNameInDB.push_back(nameInDB);
+			}
+        }
+
+        {
+			std::pair<TER, std::string> breakRet = { tesSUCCESS,"success" };
+            TxStoreTransaction stTran(&txStoreDBConn);
+            for (auto obj : objs)
+            {
+                auto tx_pair = STTx::parseSTTx(obj, accountID);
+                auto txTmp = *tx_pair.first;
+
+                bool canDispose = true;
+                //OpType not need to dispose
+                if (isNotNeedDisposeType((TableOpType)obj["OpType"].asInt()))
+                    canDispose = false;
+
+                if (canDispose)//not exist in storage list,so can dispose again, for case Duplicate entry 
                 {
-                    JLOG(journal.trace()) << "Dispose success";
-                }
-                else
-                {
-                    JLOG(journal.trace()) << "Dispose error" << result.second;
-                    stTran.rollback();
-					return result;
+                    auto result = dispose(txStore, txTmp);
+                    if (result.first == tesSUCCESS)
+                    {
+                        JLOG(journal.trace()) << "Dispose success";
+                    }
+                    else
+                    {
+                        JLOG(journal.trace()) << "Dispose error" << result.second;
+						breakRet = result;
+						break;
+                    }
                 }
             }
+            stTran.rollback();
+			// drop table if created
+			if (vecNameInDB.size() > 0)
+			{
+				for(auto nameInDB : vecNameInDB)
+				{
+					txStore.DropTable(to_string(nameInDB));
+				}
+			}
+			if (breakRet.first != tesSUCCESS)
+				return breakRet;
         }
-        stTran.rollback();
 
         return{ tesSUCCESS, "success" };
     }
@@ -260,18 +299,10 @@ namespace ripple {
 				{
 					return tefDBNOTCONFIGURED;
 				}
-                if (ctx_.view().flags() & tapFromClient) //and firststorage is on
-                {
-                    ret = transactionImpl(ctx_,ctx_.app.getMasterTransaction().getClientTxStoreDBConn(), ctx_.app.getMasterTransaction().getClientTxStore(), ctx_.journal, ctx_.tx); //handle transaction,need DBTrans
-					if (ret.first != tesSUCCESS)
-						return ret.first;
-                }
-                else 
-				{
-                    ret = transactionImpl(ctx_,ctx_.app.getMasterTransaction().getConsensusTxStoreDBConn(), ctx_.app.getMasterTransaction().getConsensusTxStore(), ctx_.journal, ctx_.tx); //handle transaction,need DBTrans
-					if (ret.first != tesSUCCESS)
-						return ret.first;
-                }
+				auto envPair = getTransactionDBEnv(ctx_);
+				ret = transactionImpl(ctx_, *envPair.first, *envPair.second, ctx_.journal, ctx_.tx); //handle transaction,need DBTrans
+				if (ret.first != tesSUCCESS)
+					return ret.first;
             }
         }
         catch (std::exception const& e)

@@ -29,7 +29,8 @@
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/rpc/impl/TxPrepareBase.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
-#include <peersafe/rpc/impl/TableUtils.h>
+#include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/table/TableSync.h>
 
 namespace ripple {
 TxPrepareBase::TxPrepareBase(Application& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws):
@@ -215,7 +216,10 @@ Json::Value TxPrepareBase::prepareBase()
 
 	ret = prepareStrictMode();
 	if (ret.isMember("error_message"))
-		return ret;
+		return ret;   
+
+	if(app_.getTableSync().IsPressSwitchOn())
+		preparePressData();
 
 	if(app_.getTableSync().IsPressSwitchOn())
 		preparePressData();

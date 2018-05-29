@@ -17,6 +17,7 @@
 
 #include <BeastConfig.h>
 #include <test/jtx.h>
+#include <test/jtx/envconfig.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
@@ -164,15 +165,13 @@ struct Regression_test : public beast::unit_test::suite
     {
         testcase("Autofilled fee should use the escalated fee");
         using namespace jtx;
-        Env env(*this, []()
+        Env env(*this, envconfig([](std::unique_ptr<Config> cfg)
             {
-                auto p = std::make_unique<Config>();
-                setupConfigForUnitTests(*p);
-                auto& section = p->section("transaction_queue");
-                section.set("minimum_txn_in_ledger_standalone", "3");
-                return p;
-            }(),
-            features(featureFeeEscalation));
+                cfg->section("transaction_queue")
+                    .set("minimum_txn_in_ledger_standalone", "3");
+                return cfg;
+            }),
+            with_features(featureFeeEscalation));
         Env_ss envs(env);
 
         auto const alice = Account("alice");

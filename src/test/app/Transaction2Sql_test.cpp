@@ -20,6 +20,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <cstring>
 #include <algorithm>
 #include <list>
+#include <vector>
 #include <memory>
 
 #include <BeastConfig.h>
@@ -158,6 +159,62 @@ public:
 		}
 	}
 
+	int createTable(const std::string& Raw, const std::string& optionalRule) {
+		int ret = 0;
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		STTx tx(ttTABLELISTSET, [this, &Raw, &hex_table, &keypair](STObject &obj) {
+			set_AccountID(obj);
+			obj.setFieldVL(sfSigningPubKey, keypair.first.slice());
+			set_tables(obj);
+			obj.setFieldU16(sfOpType, 1); // create table
+			ripple::Blob blob;
+			blob.assign(Raw.begin(), Raw.end());
+			obj.setFieldVL(sfRaw, blob);
+		});
+
+		tx.sign(keypair.first, keypair.second);
+		std::string text = tx.getFullText();
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		auto result = txstore_->Dispose(tx, optionalRule);
+		if(result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+			ret = -1;
+		}
+		return ret;
+	}
+
+	int insert_Records(const std::string& raw) {
+		int ret = 0;
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		STTx tx(ttSQLSTATEMENT, [this, &raw, &hex_table, &keypair](STObject &obj) {
+			set_OwnerID(obj);
+			obj.setFieldU16(sfOpType, 6); // insert one record 
+			set_tables(obj);
+			ripple::Blob blob;
+			blob.assign(raw.begin(), raw.end());
+			obj.setFieldVL(sfRaw, blob);
+		});
+
+		tx.sign(keypair.first, keypair.second);
+
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		auto res = txstore_->Dispose(tx);
+		BEAST_EXPECT(res.first == true);
+		if (res.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+			ret = -1;
+		}
+		return ret;
+	}
+
 	void test_fixbug_RR207() {
 		auto f = [this](const std::string& raw, const uint16_t optype) {
 			const auto keypair = randomKeyPair(KeyType::ed25519);
@@ -228,6 +285,31 @@ public:
 		BEAST_EXPECT(f("[[]]", 10).first == false);
 	}
 
+	void test_fixbug_RR377() {
+		// create table
+		{
+			std::string raw = "[{\"field\":\"学号\",\"type\":\"int\",\"length\":11},\
+{\"field\":\"姓名\",\"type\":\"varchar\",\"length\":20},\
+{\"field\":\"年龄\",\"type\":\"int\"}]";
+			int ret = createTable(raw, "");
+			BEAST_EXPECT(ret == 0);
+		}
+
+		// insert records
+		{
+			std::string raw = "[{\"学号\":1,\"姓名\":\"中国\",\"年龄\":100},\
+{\"学号\":2,\"姓名\":\"美国\",\"年龄\":200},\
+{\"学号\":3,\"姓名\":\"英国\",\"年龄\":300}]";
+			int ret = insert_Records(raw);
+			BEAST_EXPECT(ret == 0);
+		}
+
+		// drop table
+		{
+			test_DropTableTransaction();
+		}
+	}
+
 	void test_crashfix_on_select() {
 		{
 			std::string query = "[[],{\"$and\":[{\"$order\":[{\"id\" : -1}]},{\"id\":{\"$ge\" : 3}}]}]";
@@ -237,6 +319,7 @@ public:
 	}
 
 	void test_CreateTableTransaction() {
+		/*
 		const auto keypair = randomKeyPair(KeyType::ed25519);
 		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
 		
@@ -270,9 +353,27 @@ public:
 		tx.sign(keypair.first, keypair.second);
 		std::string text = tx.getFullText();
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		BEAST_EXPECT(txstore_->Dispose(tx, optionalRule).first == true);
+		auto result = txstore_->Dispose(tx, optionalRule);
+		BEAST_EXPECT(result.first == true);
+		if(result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+		}
+		*/
+		std::string raw = "[{\"field\":\"id\",\"type\":\"int\",\"PK\":1},{\"field\":\"cash\",\"type\":\"float\"},\
+{\"field\":\"name\",\"type\":\"varchar\",\"length\":100,\"index\":1},{\"field\":\"comment\",\"type\":\"text\"},\
+{\"field\":\"deci\",\"type\":\"decimal\",\"length\":16,\"accuracy\":2},{\"field\":\"datetime\",\"type\":\"datetime\"},\
+{\"field\":\"ch\",\"type\":\"char\"},{\"field\":\"ch2\",\"type\":\"char\",\"length\":16, \"index\":1},\
+{\"field\":\"date_field\",\"type\":\"date\"}]";
+		std::string optionalRule = "{\"OperationRule\":{\"Insert\":{\"Condition\":{\"account\":\"$account\",\
+\"txid\":\"$tx_hash\"},\"Count\":{\"AccountField\":\"account\",\"CountLimit\":5}},\
+\"Update\":{\"Condition\":{\"$or\":[{\"age\":{\"$le\":28}},{\"id\":2}]},\"Fields\":[\"age\"]},\
+\"Delete\":{\"Condition\":{\"account\":\"$account\"}},\"Get\":{\"Condition\":{\"id\":{\"$ge\":3}}}}}";
 		
-		tr.commit();
+		int ret = createTable(raw, optionalRule);
+		BEAST_EXPECT(ret == 0);
 	}
 
 	void test_CreateTableForeginTransaction() {
@@ -296,9 +397,14 @@ public:
 		tx.sign(keypair.first, keypair.second);
 		std::string text = tx.getFullText();
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-		
-		tr.commit();
+		auto result = txstore_->Dispose(tx);
+		BEAST_EXPECT(result.first == true);
+		if (result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+		}
 	}
 
 	void test_DropTableTransaction() {
@@ -315,8 +421,14 @@ public:
 		tx.sign(keypair.first, keypair.second);
 
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-		tr.commit();
+		auto result = txstore_->Dispose(tx);
+		BEAST_EXPECT(result.first == true);
+		if (result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+		};
 	}
 
 	void test_DeleteRecordTransaction() {
@@ -338,8 +450,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-			tr.commit();
+			auto res = txstore_->Dispose(tx);
+			BEAST_EXPECT(res.first == true);
+			if (res.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 
 			std::string query = "[[\"id\",\"name\"], {\"id\":{\"$ge\":1}}]";
 			Json::Value result = getRecords(query);
@@ -366,8 +484,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-			tr.commit();
+			auto res = txstore_->Dispose(tx);
+			BEAST_EXPECT(res.first == true);
+			if (res.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			};
 
 			std::string query = "[[\"id\",\"name\"], {\"id\":{\"$ge\":1}}]";
 			Json::Value result = getRecords(query);
@@ -394,8 +518,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-			tr.commit();
+			auto res = txstore_->Dispose(tx);
+			BEAST_EXPECT(res.first == true);
+			if (res.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 
 			std::string query = "[[\"*\"]]";
 			Json::Value result = getRecords(query);
@@ -406,6 +536,7 @@ public:
 	}
 
 	void test_InsertRecordTransaction() {
+		/*
 		const auto keypair = randomKeyPair(KeyType::ed25519);
 		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
 		STTx tx(ttSQLSTATEMENT, [this, &hex_table, &keypair](STObject &obj) {
@@ -423,8 +554,21 @@ public:
 		tx.sign(keypair.first, keypair.second);
 
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-		tr.commit();
+		auto res = txstore_->Dispose(tx);
+		BEAST_EXPECT(res.first == true);
+		if (res.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+		}
+		*/
+
+		std::string raw = "[{\"id\":1,\"name\":\"test1\",\"cash\":100.00,\"comment\":\"zxc\",\"deci\":200.00000,\"datetime\":\"2017/1/11 9:42:54\"},\
+{\"id\":2,\"name\":\"test2\",\"cash\":200.00,\"comment\":\"u.s\", \"deci\":300.00000,\"datetime\":\"2017/1/11 9:42:54\"},\
+{\"id\":3,\"name\":\"test3\",\"cash\":300.00,\"comment\":\"u.s\", \"deci\":300.01,\"datetime\":\"2017/06/19 20:42:54\",\"ch\":\"testchar\",\"date_field\":\"2017/06/19\"}]";
+		int ret = insert_Records(raw);
+		BEAST_EXPECT(ret == 0);
 
 		std::string query = "[[\"id\",\"name\"]]";
 		Json::Value result = getRecords(query);
@@ -461,8 +605,14 @@ public:
 		tx.sign(keypair.first, keypair.second);
 
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-		tr.commit();
+		auto res = txstore_->Dispose(tx);
+		BEAST_EXPECT(res.first == true);
+		if (res.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+		}
 
 		std::string query = "[[\"cash\",\"comment\"],{\"id\":{\"$gt\":1}}]";
 		//std::string query = "[[\"cash\",\"comment\"],{\"$or\":[{\"$and\":[{\"id\":{\"$ge\":1}}, {\"id\":{\"$le\":2}}]},{\"cash\":\"u.s\"}]}]";
@@ -869,8 +1019,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == true);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		// test rowcounts
@@ -891,8 +1047,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == true);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == true);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -916,8 +1078,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -937,8 +1105,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -958,8 +1132,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -979,8 +1159,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -1000,8 +1186,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -1021,8 +1213,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -1042,8 +1240,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -1063,8 +1267,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 
 		{
@@ -1084,8 +1294,14 @@ public:
 			tx.sign(keypair.first, keypair.second);
 
 			TxStoreTransaction tr(txstore_dbconn_.get());
-			BEAST_EXPECT(txstore_->Dispose(tx).first == false);
-			tr.commit();
+			auto result = txstore_->Dispose(tx);
+			BEAST_EXPECT(result.first == false);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
 		}
 	}
 
@@ -1139,6 +1355,25 @@ public:
 		}
 
 		{
+			std::string raw_string = "[{\"age\":{\"$in\":[20]}}]";
+			Json::Reader reader = Json::Reader();
+			Json::Value conditions;
+			if (reader.parse(raw_string, conditions) == false) {
+				std::cout << "parse error. " << reader.getFormatedErrorMessages() << std::endl;
+				return;
+			}
+			auto result = createConditionTree(conditions);
+			//BEAST_EXPECT(result.first == 0);
+
+			auto result2 = parse_conditions(conditions, result.second);
+			//BEAST_EXPECT(result2.first == 0);
+
+			std::string result_conditions = result.second.asString();
+			std::string expect_conditions = "age in (20)";
+			BEAST_EXPECT(result_conditions == expect_conditions);
+		}
+
+		{
 			std::string raw_string = "[{\"name\":{\"$nin\":[\"peersafe\",\"zongxiang\"]}}]";
 			Json::Reader reader = Json::Reader();
 			Json::Value conditions;
@@ -1154,6 +1389,25 @@ public:
 
 			std::string result_conditions = result.second.asString();
 			std::string expect_conditions = "name not in ('peersafe','zongxiang')";
+			BEAST_EXPECT(result_conditions == expect_conditions);
+		}
+
+		{
+			std::string raw_string = "[{\"name\":{\"$nin\":[\"peersafe\"]}}]";
+			Json::Reader reader = Json::Reader();
+			Json::Value conditions;
+			if (reader.parse(raw_string, conditions) == false) {
+				std::cout << "parse error. " << reader.getFormatedErrorMessages() << std::endl;
+				return;
+			}
+			auto result = createConditionTree(conditions);
+			//BEAST_EXPECT(result.first == 0);
+
+			auto result2 = parse_conditions(conditions, result.second);
+			//BEAST_EXPECT(result2.first == 0);
+
+			std::string result_conditions = result.second.asString();
+			std::string expect_conditions = "name not in ('peersafe')";
 			BEAST_EXPECT(result_conditions == expect_conditions);
 		}
 
@@ -2169,6 +2423,7 @@ public:
 		init_env();
 
 		test_fixbug_RR207();
+		test_fixbug_RR377();
 		test_crashfix_on_select();
 
 		//test_CreateTableForeginTransaction();
@@ -2182,9 +2437,9 @@ public:
 		test_DeleteRecordTransaction();
 
 		test_DropTableTransaction();
-
 		test_mongodb_json_style();
 		test_join_select();
+
 		pass();
 	}
 
@@ -2223,6 +2478,223 @@ private:
 	std::string table_name_;
 }; // class Transaction_test
 
+class Transaction2Sql_db2_test : public beast::unit_test::suite {
+public:
+	Transaction2Sql_db2_test()
+	: txstore_dbconn_(nullptr)
+	, txstore_(nullptr)
+	, config_()
+	, table_name_("1c2f5e6095324e2e08838f221a72ab4f") {
+		logs_ = std::make_unique<SuiteLogs>(*this);
+	}
+	
+	~Transaction2Sql_db2_test() {
+
+	}
+
+	void run() {
+		init_env();
+		createTable();
+		insertRecord();
+		dropTable();
+		pass();
+	}
+private:
+	void set_AccountID(STObject &obj) {
+		std::string account_str = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh";
+		ripple::AccountID account;
+		RPC::accountFromString(account, account_str, false);
+		obj.setAccountID(sfAccount, account);
+	}
+
+	void set_OwnerID(STObject &obj) {
+		std::string owner_str = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh";
+		ripple::AccountID owner;
+		RPC::accountFromString(owner, owner_str, false);
+		obj.setAccountID(sfOwner, owner);
+	}
+
+	void set_tables(STObject &obj) {
+		ripple::uint160 hex_table = ripple::from_hex_text<ripple::uint160>(table_name_);
+		std::string str("user");
+		ripple::Blob blob;
+		blob.assign(str.begin(), str.end());
+
+		STObject table(sfTable);
+		table.setFieldVL(sfTableName, blob);
+		table.setFieldH160(sfNameInDB, hex_table);
+		STArray tables;
+		tables.push_back(table);
+		obj.setFieldArray(sfTables, tables);
+	}
+
+	void init_env() {
+		std::string args = arg();
+		size_t npos = args.find("conf=");
+		if (npos == std::string::npos) {
+			JLOG(logs_->journal("Transaction2Sql_db2").error()) << "not specify conf";
+			exit(-1);
+		}
+		try {
+			std::string strconf = args.substr(npos + 4 + 1);
+			config_.setup(strconf, true, false, false);
+			txstore_dbconn_ = std::make_shared<TxStoreDBConn>(config_);
+			txstore_ = std::make_shared<TxStore>(txstore_dbconn_->GetDBConn(), config_, logs_->journal("TxStore"));
+		}
+		catch (const soci::soci_error& e) {
+			JLOG(logs_->journal("Transaction2Sql_db2").error()) << "init sql failed." << e.what();
+			exit(-1);
+		}
+		catch (...) {
+			JLOG(logs_->journal("Transaction2Sql_db2").error()) << "init sql failed. unkown reason";
+			exit(-1);
+		}
+	}
+
+	void dropTable() {
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		try {
+			const auto keypair = randomKeyPair(KeyType::ed25519);
+			ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+			STTx tx(ttTABLELISTSET, [this, &hex_table, &keypair](STObject &obj) {
+				set_AccountID(obj);
+				obj.setFieldVL(sfSigningPubKey, keypair.first.slice());
+				set_tables(obj);
+				obj.setFieldU16(sfOpType, 2); // drop table			ripple::Blob blob;
+			});
+
+			tx.sign(keypair.first, keypair.second);
+			auto result = txstore_->Dispose(tx, "");
+			BEAST_EXPECT(result.first == true);
+			if (result.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
+		}
+		catch (const soci::soci_error& e) {
+			JLOG(logs_->journal("Transaction2Sql_db2").error()) << e.what();
+		}
+
+	}
+
+	void createTable() {
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		STTx tx(ttTABLELISTSET, [this, &hex_table, &keypair](STObject &obj) {
+			set_AccountID(obj);
+			obj.setFieldVL(sfSigningPubKey, keypair.first.slice());
+
+			set_tables(obj);
+
+			obj.setFieldU16(sfOpType, 1); // create table
+			std::string raw = "[{\"field\":\"id\",\"type\":\"int\",\"NN\":1,\"PK\":1},\
+								{\"field\":\"name\",\"type\":\"varchar\"}]";
+			ripple::Blob blob;
+			blob.assign(raw.begin(), raw.end());
+			obj.setFieldVL(sfRaw, blob);
+		});
+
+		tx.sign(keypair.first, keypair.second);
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		auto result = txstore_->Dispose(tx, "");
+		BEAST_EXPECT(result.first == true);
+		if (result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+		}
+	}
+
+	void insertRecord() {
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		std::vector<std::string> records = {
+			"[{\"id\":1,\"name\":\"test1\"}]",
+			"[{\"id\":1,\"name\":\"test1\"}]",
+			"[{\"id\":2,\"name\":\"test2\"}]",
+		};
+		for (size_t i = 0; i < records.size(); i++) {
+			std::string& record = records[i];
+
+			STTx tx(ttSQLSTATEMENT, [this, &hex_table, &keypair, record](STObject &obj) {
+				set_OwnerID(obj);
+				obj.setFieldU16(sfOpType, 6); // insert one record 
+				set_tables(obj);
+				ripple::Blob blob;
+				blob.assign(record.begin(), record.end());
+				obj.setFieldVL(sfRaw, blob);
+			});
+
+			tx.sign(keypair.first, keypair.second);
+
+			TxStoreTransaction tr(txstore_dbconn_.get());
+			auto res = txstore_->Dispose(tx);
+			if (i == 1) {
+				BEAST_EXPECT(res.first == false);
+			}
+			else {
+				BEAST_EXPECT(res.first == true);
+			}
+			if (res.first == true) {
+				tr.commit();
+			}
+			else {
+				tr.rollback();
+			}
+		}
+
+		std::string query = "[[\"*\"]]";
+		auto result = getRecords(query);
+		BEAST_EXPECT(result["lines"].size() == 2);
+	}
+
+	Json::Value getRecords(const std::string& query_fields) {
+		using namespace test::jtx;
+		Env env(*this);
+
+		auto& app = env.app();
+		Resource::Charge loadType = Resource::feeReferenceRPC;
+		Resource::Consumer c;
+		RPC::Context context{ beast::Journal(),{}, app, loadType,
+			app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
+
+		Json::Value obj;
+		Json::Value params;
+		Json::Value p;
+		p["offline"] = true;
+		Json::Value tx_json;
+		tx_json["Owner"] = "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn";
+		Json::Value tables;
+		Json::Value t;
+		Json::Value tv;
+		tv["TableName"] = "000000001c2f5e6095324e2e08838f221a72ab4f";
+		t["Table"] = tv;
+		tables.append(t);
+		tx_json["Tables"] = tables;
+
+		tx_json["Raw"] = query_fields;
+		p["tx_json"] = tx_json;
+
+		context.params = p;
+		std::string str_json = Json::jsonAsString(context.params);
+
+		TxStoreDBConn db2(config_);
+		TxStore tx(db2.GetDBConn(), config_, logs_->journal("TxStore"));
+
+		Json::Value result = tx.txHistory(context);
+		return result;
+	}
+
+	std::shared_ptr<TxStoreDBConn> txstore_dbconn_;
+	std::shared_ptr<TxStore> txstore_;
+	ripple::Config config_;
+	std::string table_name_;
+};
+
 BEAST_DEFINE_TESTSUITE_MANUAL(Transaction2Sql, app, ripple);
+BEAST_DEFINE_TESTSUITE_MANUAL(Transaction2Sql_db2, app, ripple);
 
 }	// namespace ripple
