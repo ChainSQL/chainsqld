@@ -50,13 +50,13 @@ bool Executive::execute() {
 }
 
 bool Executive::create(evmc_address const& _txSender, uint256 const& _endowment,
-	uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress) 
+	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress)
 {
 	return createOpcode(_txSender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
 
 bool Executive::createOpcode(evmc_address const& _sender, uint256 const& _endowment,
-	uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress)
+	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress)
 {
 	SLE::pointer pSle = m_s.getSle(_sender);
 	uint32 nonce = pSle->getFieldU32(sfNonce);
@@ -141,7 +141,7 @@ bool Executive::call(CallParameters const& _cp, uint256 const& _gasPrice, evmc_a
 }
 
 bool Executive::executeCreate(evmc_address const& _sender, uint256 const& _endowment,
-	uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _origin)
+	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _origin)
 {
 	// add nonce for sender
 	m_s.incNonce(_sender);
