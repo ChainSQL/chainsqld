@@ -21,7 +21,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/JsonFields.h>
-#include <ripple/protocol/STMap256.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 

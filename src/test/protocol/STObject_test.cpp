@@ -25,6 +25,7 @@
 #include <ripple/json/json_reader.h>
 #include <ripple/json/to_string.h>
 #include <ripple/beast/unit_test.h>
+#include <peersafe/protocol/STMap256.h>
 #include <test/jtx.h>
 
 #include <memory>
@@ -634,12 +635,27 @@ public:
         }
     }
 
+	void testSTMap256() {
+		STMap256 map256;
+		map256[beast::zero] = uint256(1);
+		map256[uint256(1)] = uint256(2);
+		Json::Value json = map256.getJson(0);
+		std::cout<< json.toStyledString()<<std::endl;
+		
+		map256.insert(uint256(3), uint256(4));
+		map256.erase(uint256(1));
+		std::cout << map256.getJson(0).toStyledString() << std::endl;
+
+		std::cout << map256.at(uint256(3)) << std::endl;
+	}
+
     void
     run()
     {
         // Instantiate a jtx::Env so debugLog writes are exercised.
         test::jtx::Env env (*this);
 
+		testSTMap256();
         testFields();
         testSerialization();
         testParseJSONArray();
