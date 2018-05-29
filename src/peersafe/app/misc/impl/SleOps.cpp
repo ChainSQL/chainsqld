@@ -12,6 +12,11 @@ namespace ripple {
         return view.peek(k);
     }
 
-
+	void SleOps::incNonce(evmc_address const& addr)
+	{
+		SLE::pointer pSle = getSle(addr);
+		uint32 nonce = pSle->getFieldU32(sfNonce);
+		pSle->setFieldU32(sfNonce,++nonce);
+	}
 
 }
