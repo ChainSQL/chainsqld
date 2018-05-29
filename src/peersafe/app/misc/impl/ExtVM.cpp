@@ -223,22 +223,4 @@ namespace ripple
 
         return toEvmC(uHash);
     }
-
-/*
-
-
-CallResult ExtVM::call(CallParameters& _p)
-{
-    Executive e{m_s, envInfo(), m_sealEngine, depth + 1};
-    if (!e.call(_p, gasPrice, origin))
-    {
-        go(depth, e, _p.onOp);
-        e.accrueSubState(sub);
-    }
-    _p.gas = e.gas();
-
-    return {transactionExceptionToEvmcStatusCode(e.getException()), e.takeOutput()};
-}
-
-*/
 }
