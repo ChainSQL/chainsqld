@@ -24,6 +24,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include "FakeExtVM.h"
 
+/*
+* usage:
+	--unittest="VM" --unittest-arg="code=0x... input=0x..."
+*/
+
 namespace ripple {
 
 int fromHexChar(char _i)
@@ -76,63 +81,59 @@ public:
 
 	void run() {
 		init_env();
-		call();
+		//call();
+		createAndCall();
 		pass();
 	}
 
 private:
 	void init_env() {
-		size_t hash = std::hash<std::string>{}("peersafe");
-		size_t hash2 = std::hash<std::string>{}("peersafa");
 		std::string args = arg();
 		size_t code_npos = args.find("code=");
 		size_t input_npos = args.find("input=");
 
+		std::string code;
 		if (code_npos != std::string::npos) {
 			if (input_npos != std::string::npos) {
-				code_ = args.substr(code_npos + 5, input_npos - 6);
+				code = args.substr(code_npos + 5, input_npos - 6);
 			}
 			else {
-				code_ = args.substr(code_npos + 5);
+				code = args.substr(code_npos + 5);
 			}
+			fromHex(code, code_);
 		}
 
 		if (input_npos != std::string::npos) {
-			data_ = args.substr(input_npos + 6);
+			std::string data;
+			data = args.substr(input_npos + 6);
+
+			if (data.size())
+				fromHex(data, data_);
 		}
 	}
 
 	void call() {
-		std::string code_bytes;
-		fromHex(code_, code_bytes);
-
-		std::string input_bytes;
-		if(data_.size())
-			fromHex(data_, input_bytes);
-
 		bytes code;
-		code.assign(code_bytes.begin(), code_bytes.end());
-		bytesConstRef data((uint8_t*)input_bytes.c_str(), input_bytes.size());
+		code.assign(code_.begin(), code_.end());
+		bytesConstRef data((uint8_t*)data_.c_str(), data_.size());
 		FakeExecutive execute(data, code);
 		evmc_address contractAddress = { { 1,2,3,4 } };
 		execute.call(contractAddress);
-		
-		/*
+	}
+
+	void createAndCall() {
 		bytes code;
-		code.assign(code_bytes.begin(), code_bytes.end());
+		code.assign(code_.begin(), code_.end());
 		evmc_address contractAddress = { {1,2,3,4} };
 		{
 			FakeExecutive execute(code);
 			execute.create(contractAddress);
 		}
 		{
-			bytesConstRef data((uint8_t*)input_bytes.c_str(), input_bytes.size());
+			bytesConstRef data((uint8_t*)data_.c_str(), data_.size());
 			FakeExecutive execute(data, contractAddress);
 			execute.call(contractAddress);
 		}
-		*/
-
-
 	}
 
 	std::string code_;

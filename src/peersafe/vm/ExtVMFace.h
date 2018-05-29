@@ -36,6 +36,8 @@ public:
 	owning_bytes_ref(bytes&& _bytes, size_t _begin, size_t _size) :
 		m_bytes(std::move(_bytes))
 	{
+		if (m_bytes.empty())
+			return;
 		// Set the reference *after* the buffer is moved to avoid
 		// pointer invalidation.
 		retarget(&m_bytes[_begin], _size);
