@@ -24,6 +24,7 @@ bin/project-cache.jam
 build
 tags
 TAGS
+bin/chainsqld
 Debug/*.*
 Release/*.*
 
@@ -39,11 +40,16 @@ Release/*.*
 tmp
 
 # Ignore database directory.
+db/
 db/*.db
 db/*.db-*
 
 # Ignore debug logs
 debug_log.txt
+
+# Ignore customized configs
+chainsqld.cfg
+validators.txt
 
 # Doxygen generated documentation output
 HtmlDocumentation
@@ -73,6 +79,9 @@ DerivedData
 # Profiling data
 gmon.out
 
+# Build Log
+chainsqld-build.log
+
 /Builds/XCode/*
 !/Builds/XCode/README.md
 /Builds/VisualStudio2015/*
@@ -81,6 +90,11 @@ gmon.out
 /Builds/Ubuntu/*
 !/Builds/Ubuntu/*.sh
 !/Builds/Ubuntu/README.md
+
+Builds/VisualStudio2015/*.db
+Builds/VisualStudio2015/*.user
+Builds/VisualStudio2015/*.opendb
+Builds/VisualStudio2015/*.sdf
 
 # ignore
 third_party/

@@ -47,13 +47,13 @@
     #表的发行帐户地址 表名 解密的私钥<br>
     z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table3 xxWFBu6veVgMnAqNf6YFRV2UENRd3<br>
     #表的发行帐户地址 表名 跳过ledgerSeq2000<br>
-    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table3 !2000<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table3 ~2000<br>
     #表的发行帐户地址 表名 跳过指定的交易hash<br>
     z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 !860689E0F4A20F4CC0B35804B66486D455DEEFA940666054F780A69F770135C0<br>
     #表的发行帐户地址 表名 解密的私钥 同步到2016-12-29 12:00:00<br>
     z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 xxWFBu6veVgMnAqNf6YFRV2UENRd3 2016-12-29_12:00:00<br>
     #表的发行帐户地址 表名 跳过ledgerSeq2000 解密的私钥<br>
-    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 !2000 xxWFBu6veVgMnAqNf6YFRV2UENRd3<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 ~2000 xxWFBu6veVgMnAqNf6YFRV2UENRd3<br>
         
 - **3.5 配置数据库**
   - Chainsql支持多种数据库，mysql、sqlite、mycat转换后支持mongodb、db2、sqlserver、PostgreSQL等，本地通过配置文件插件式管理，配置的参考格式如下：<br>
@@ -341,8 +341,7 @@
             "length": 11,
             "PK": 1,
             "NN": 1,
-            "UQ": 1,
-            "AI": 1
+            "UQ": 1
           },
           {
             "field": "account",
@@ -413,7 +412,6 @@
             2.Insert指定了Count条件，则Delete中也需要指定同样的账户
         NN： Not Null标识
         UQ：唯一键标识
-        AI：自增标识
         Index：索引标识
 &emsp;　　　Response Format:
     
@@ -1053,8 +1051,7 @@
       "length": 11,
       "PK": 1,
       "NN": 1,
-      "UQ": 1,
-      "AI": 1
+      "UQ": 1
     },
     {
       "field": "age",
@@ -1069,7 +1066,6 @@
         PK：主键标识
         NN： Not Null标识
         UQ：唯一键标识
-        AI：自增标识
         Index：索引标识
 &emsp;　　　Response Format:
 

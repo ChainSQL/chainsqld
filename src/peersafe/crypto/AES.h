@@ -47,8 +47,8 @@ namespace ripple {
 	// AES functions. These throw on failure
 
 	// encrypt/decrypt functions with integrity checking.
-	Blob encryptAES(Blob const& key, Blob const& plaintext);
-	Blob decryptAES(Blob const& key, Blob const& ciphertext);
+	Blob encryptAES(Blob const& key, Blob const& plaintext, int keyByteLen);
+	Blob decryptAES(Blob const& key, Blob const& ciphertext, int keyByteLen);
 
 } // ripple
 

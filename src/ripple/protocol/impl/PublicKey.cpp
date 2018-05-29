@@ -238,72 +238,72 @@ verifyDigest (PublicKey const& publicKey,
     bool mustBeFullyCanonical)
 {
     HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    if (nullptr == hEObj)
-    {
-        if (publicKeyType(publicKey) != KeyType::secp256k1)
-            LogicError("sign: secp256k1 required for digest signing");
-        auto const canonicality = ecdsaCanonicality(sig);
-        if (!canonicality)
-            return false;
-        if (mustBeFullyCanonical &&
-            (*canonicality != ECDSACanonicality::fullyCanonical))
-            return false;
+	if (nullptr == hEObj)
+	{
+		if (publicKeyType(publicKey) != KeyType::secp256k1)
+			LogicError("sign: secp256k1 required for digest signing");
+		auto const canonicality = ecdsaCanonicality(sig);
+		if (!canonicality)
+			return false;
+		if (mustBeFullyCanonical &&
+			(*canonicality != ECDSACanonicality::fullyCanonical))
+			return false;
 
-        secp256k1_pubkey pubkey_imp;
-        if (secp256k1_ec_pubkey_parse(
-            secp256k1Context(),
-            &pubkey_imp,
-            reinterpret_cast<unsigned char const*>(
-                publicKey.data()),
-            publicKey.size()) != 1)
-            return false;
+		secp256k1_pubkey pubkey_imp;
+		if (secp256k1_ec_pubkey_parse(
+			secp256k1Context(),
+			&pubkey_imp,
+			reinterpret_cast<unsigned char const*>(
+				publicKey.data()),
+			publicKey.size()) != 1)
+			return false;
 
-        secp256k1_ecdsa_signature sig_imp;
-        if (secp256k1_ecdsa_signature_parse_der(
-            secp256k1Context(),
-            &sig_imp,
-            reinterpret_cast<unsigned char const*>(
-                sig.data()),
-            sig.size()) != 1)
-            return false;
-        if (*canonicality != ECDSACanonicality::fullyCanonical)
-        {
-            secp256k1_ecdsa_signature sig_norm;
-            if (secp256k1_ecdsa_signature_normalize(
-                secp256k1Context(),
-                &sig_norm,
-                &sig_imp) != 1)
-                return false;
-            return secp256k1_ecdsa_verify(
-                secp256k1Context(),
-                &sig_norm,
-                reinterpret_cast<unsigned char const*>(
-                    digest.data()),
-                &pubkey_imp) == 1;
-        }
-        return secp256k1_ecdsa_verify(
-            secp256k1Context(),
-            &sig_imp,
-            reinterpret_cast<unsigned char const*>(
-                digest.data()),
-            &pubkey_imp) == 1;
-    }
-    else
-    {
-        if (publicKeyType(publicKey.slice()) != KeyType::gmalg)
-            LogicError("sign: GM algorithm required for digest signing");
-        unsigned long rv = 0;
+		secp256k1_ecdsa_signature sig_imp;
+		if (secp256k1_ecdsa_signature_parse_der(
+			secp256k1Context(),
+			&sig_imp,
+			reinterpret_cast<unsigned char const*>(
+				sig.data()),
+			sig.size()) != 1)
+			return false;
+		if (*canonicality != ECDSACanonicality::fullyCanonical)
+		{
+			secp256k1_ecdsa_signature sig_norm;
+			if (secp256k1_ecdsa_signature_normalize(
+				secp256k1Context(),
+				&sig_norm,
+				&sig_imp) != 1)
+				return false;
+			return secp256k1_ecdsa_verify(
+				secp256k1Context(),
+				&sig_norm,
+				reinterpret_cast<unsigned char const*>(
+					digest.data()),
+				&pubkey_imp) == 1;
+		}
+		return secp256k1_ecdsa_verify(
+			secp256k1Context(),
+			&sig_imp,
+			reinterpret_cast<unsigned char const*>(
+				digest.data()),
+			&pubkey_imp) == 1;
+	}
+	else
+	{
+		if (publicKeyType(publicKey.slice()) != KeyType::gmalg)
+			LogicError("sign: GM algorithm required for digest signing");
+		unsigned long rv = 0;
 
-        std::pair<unsigned char*, int> pub4Verify = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
-        rv = hEObj->SM2ECCVerify(pub4Verify, (unsigned char*)digest.data(), digest.bytes, (unsigned char*)sig.data(), sig.size());
-        if (rv)
-        {
-            DebugPrint("ECCVerify Digest error! rv = 0x%04x", rv);
-            return false;
-        }
-        DebugPrint("ECCVerify Digest OK!");
-        return true;
-    }
+		std::pair<unsigned char*, int> pub4Verify = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
+		rv = hEObj->SM2ECCVerify(pub4Verify, (unsigned char*)digest.data(), digest.bytes, (unsigned char*)sig.data(), sig.size());
+		if (rv)
+		{
+			DebugPrint("ECCVerify Digest error! rv = 0x%04x", rv);
+			return false;
+		}
+		DebugPrint("ECCVerify Digest OK!");
+		return true;
+	}
 }
 
 bool

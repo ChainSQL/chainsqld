@@ -110,7 +110,7 @@ namespace {
  */
 
 error_code_i fillHandler (Context& context,
-                          boost::optional<Handler const&>& result)
+                          Handler const * & result)
 {
     if (! isUnlimited (context.role))
     {
@@ -139,7 +139,6 @@ error_code_i fillHandler (Context& context,
 
     JLOG (context.j.trace()) << "COMMAND:" << strCommand;
     JLOG (context.j.trace()) << "REQUEST:" << context.params;
-
     auto handler = getHandler(strCommand);
 
     if (!handler)
@@ -156,6 +155,13 @@ error_code_i fillHandler (Context& context,
             << context.netOps.strOperatingMode ();
 
         return rpcNO_NETWORK;
+    }
+
+    if (context.app.getOPs().isAmendmentBlocked() &&
+         (handler->condition_ & NEEDS_CURRENT_LEDGER ||
+          handler->condition_ & NEEDS_CLOSED_LEDGER))
+    {
+        return rpcAMENDMENT_BLOCKED;
     }
 
     if (!context.app.config().standalone() &&
@@ -184,7 +190,7 @@ error_code_i fillHandler (Context& context,
         return rpcNO_CLOSED;
     }
 
-    result = *handler;
+    result = handler;
     return rpcSUCCESS;
 }
 
@@ -194,7 +200,7 @@ Status callMethod (
 {
     try
     {
-        auto v = context.app.getJobQueue().getLoadEventAP(
+        auto v = context.app.getJobQueue().makeLoadEvent(
             jtGENERIC, "cmd:" + name);
         return method (context, result);
     }
@@ -232,7 +238,7 @@ void getResult (
 Status doCommand (
     RPC::Context& context, Json::Value& result)
 {
-    boost::optional <Handler const&> handler;
+    Handler const * handler = nullptr;
     if (auto error = fillHandler (context, handler))
     {
         inject_error (error, result);
@@ -263,36 +269,6 @@ Status doCommand (
     }
 
     return rpcUNKNOWN_COMMAND;
-}
-
-/** Execute an RPC command and store the results in a string. */
-void executeRPC (
-    RPC::Context& context, std::string& output)
-{
-    boost::optional <Handler const&> handler;
-    if (auto error = fillHandler (context, handler))
-    {
-        auto wo = Json::stringWriterObject (output);
-        auto&& sub = Json::addObject (*wo, jss::result);
-        inject_error (error, sub);
-    }
-    else if (auto method = handler->objectMethod_)
-    {
-        auto wo = Json::stringWriterObject (output);
-        getResult (context, method, *wo, handler->name_);
-    }
-    else if (auto method = handler->valueMethod_)
-    {
-        auto object = Json::Value (Json::objectValue);
-        getResult (context, method, object, handler->name_);
-        output = to_string (object);
-    }
-    else
-    {
-        // Can't ever get here.
-        assert (false);
-        Throw<std::logic_error> ("RPC handler with no method");
-    }
 }
 
 Role roleRequired (std::string const& method)

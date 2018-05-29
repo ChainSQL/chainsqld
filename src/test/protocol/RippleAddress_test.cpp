@@ -29,35 +29,76 @@
 #include <test/jtx/TestSuite.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
+#include <ripple/beast/utility/rngfill.h>
+#include <ripple/crypto/csprng.h>
 
 namespace ripple {
 
 class RippleAddress_test : public ripple::TestSuite
 {
 public:
-	void testOut(const Blob randomBlob,const Seed& seed,const Blob cipherText)
+	void testAes()
 	{
-		Blob randomBlob2;
-		randomBlob2.resize(seed.size());
-		memcpy(&(randomBlob2.front()), seed.data(), seed.size());
-		if (randomBlob2 == randomBlob)
+		//Test AES
+		uint256 digest;
+		beast::rngfill(
+			digest.data(),
+			digest.size(),
+			crypto_prng());
+		Blob randomBlob;
+		randomBlob.resize(digest.size());
+		memcpy(&(randomBlob.front()), digest.data(), digest.size());
+
+		std::string pass = "abcdefghijklmnopqrsthelloworldaa";
+		Blob passBlob;
+		passBlob.assign(pass.begin(), pass.end());
+		Blob textBlob;
+		std::string text = "hello,world";
+		textBlob.assign(text.begin(), text.end());
+		auto testStr = RippleAddress::encryptAES(passBlob, textBlob);
+		auto testDes = RippleAddress::decryptAES(passBlob, testStr);
+		std::cout << strHex(testStr) << std::endl;
+
+		pass = "abcdefg";
+		for (int i = 0; i < 32; i++)
 		{
-			JLOG(debugLog().fatal()) << "the same";
+			if (i < pass.size())
+				passBlob[i] = pass[i];
+			else
+				passBlob[i] = 32 - pass.size();
 		}
+		testStr = RippleAddress::encryptAES(passBlob, textBlob);
+		std::cout << strHex(testStr) << std::endl;
+
 
 		// Check account encryption.
-		Blob vucTextRecovered = RippleAddress::decryptAES(randomBlob, cipherText);
+		Blob vucTextSrc = strCopy("Hello, nurse,how are you!");
+		auto vucTextCipher = RippleAddress::encryptAES(randomBlob, vucTextSrc);
+		auto vucTextRecovered = RippleAddress::decryptAES(randomBlob, vucTextCipher);
+		expect(vucTextSrc == vucTextRecovered, "Encrypt-decrypt failed.");
+
+		beast::rngfill(
+			digest.data(),
+			digest.size(),
+			crypto_prng());
+		Blob fakeBlob;
+		fakeBlob.resize(digest.size());
+		memcpy(&(fakeBlob.front()), digest.data(), digest.size());
+		vucTextRecovered = RippleAddress::decryptAES(fakeBlob, vucTextCipher);
+		expect(vucTextSrc != vucTextRecovered, "Encrypt-decrypt failed.");
 	}
+
     void run()
     {
+		testAes();
         unsigned char temp[4] = {'t','e','s','t' };
         unsigned char sessionKey[16] = { '1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6'};
         unsigned char result1[512] = { 0 }, resultPlain[512] = {0};
         unsigned long resultLen = 512,resultPlainLen = 512;
         Blob passBlob = strCopy("test");
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
-        PublicKey rootPub(Slice(hEObj->getRootPublicKey().first, hEObj->getRootPublicKey().second));
-        SecretKey rootSec(Slice(hEObj->getRootPrivateKey().first, hEObj->getRootPrivateKey().second));
+		HardEncrypt* hEObj = HardEncryptObj::getInstance();
+		PublicKey rootPub(Slice(hEObj->getRootPublicKey().first, hEObj->getRootPublicKey().second));
+		SecretKey rootSec(Slice(hEObj->getRootPrivateKey().first, hEObj->getRootPrivateKey().second));
         auto cipher = strUnHex(std::string("04000000C9E4BB38847C760D13C54EBC7A10EAB3206CF13278AB9134ABD85DFF8A2C90F289A60DDF074DAF310EF0ADB1DD284FE155311B48C7D33F696DFC6F02683976A1C697030900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000061ED16716F8E91CE795ACCE7BA4F74DB3A5A7D0D34C49FF330C08DA30FE7FCBE"));
         //hEObj->SM4SymEncrypt(sessionKey,16,temp,4,result1,&resultLen);
         //hEObj->SM4SymDecrypt(sessionKey, 16, result1, resultLen, resultPlain, &resultPlainLen);
@@ -176,34 +217,14 @@ public:
 		expect(vucTextSrc != vucTextRecovered2, "Encrypt-decrypt failed.");
 
 		//Test AES
-		Seed seed = randomSeed();
+		uint256 digest;
+		beast::rngfill(
+			digest.data(),
+			digest.size(),
+			crypto_prng());
 		Blob randomBlob;
-		randomBlob.resize(seed.size());
-		memcpy(&(randomBlob.front()), seed.data(), seed.size());
-
-		std::string pass = "a";
-		Blob testBlob;
-		testBlob.assign(pass.begin(), pass.end());
-		Blob textBlob;
-		std::string text = "bb";
-		textBlob.assign(text.begin(), text.end());
-		auto testStr = RippleAddress::encryptAES(testBlob,textBlob);
-		auto testDes = RippleAddress::decryptAES(testBlob,testStr);
-		auto hexStr = strHex(testStr);
-
-		// Check account encryption.
-		vucTextCipher = RippleAddress::encryptAES(randomBlob, vucTextSrc);
-		vucTextRecovered = RippleAddress::decryptAES(randomBlob, vucTextCipher);
-		expect(vucTextSrc == vucTextRecovered, "Encrypt-decrypt failed.");
-
-		testOut(randomBlob,seed, vucTextCipher);
-
-		seed = randomSeed();
-		Blob fakeBlob;
-		fakeBlob.resize(seed.size());
-		memcpy(&(fakeBlob.front()), seed.data(), seed.size());
-		vucTextRecovered = RippleAddress::decryptAES(fakeBlob, vucTextCipher);
-		expect(vucTextSrc != vucTextRecovered, "Encrypt-decrypt failed.");
+		randomBlob.resize(digest.size());
+		memcpy(&(randomBlob.front()), digest.data(), digest.size());
 
 		//encrypt random seed
 		Blob keyCipher = naAccountPrivate0.accountPrivateEncrypt(naAccountPublic1, randomBlob);

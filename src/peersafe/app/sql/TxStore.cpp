@@ -89,14 +89,14 @@ TxStoreDBConn::~TxStoreDBConn() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TxStoreTransaction::TxStoreTransaction(TxStoreDBConn* storeDBConn)
-    : tr_(std::make_shared<soci::transaction>(storeDBConn->GetDBConn()->getSession()))
 {
-
+    lockSession_ = std::make_shared<LockedSociSession>(storeDBConn->GetDBConn()->checkoutDb());
+    tr_ = std::make_shared<soci::transaction>(*(lockSession_->get()));
 }
 
 TxStoreTransaction::~TxStoreTransaction() {
-	if (tr_)
-		tr_.reset();
+    if (lockSession_)		lockSession_.reset();
+	if (tr_)	    	    tr_.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,9 +170,19 @@ std::pair<bool, std::string> TxStore::DropTable(const std::string& tablename) {
 		result = {false, "Can't connect db."};
 		return result;
 	}
-	std::string sql_str = std::string("drop table if exists t_") + tablename;
-	soci::session& sql = *databasecon_->checkoutDb();
-	sql << sql_str;
+    bool bExist = STTx2SQL::IsTableExistBySelect(databasecon_, "t_"+ tablename);
+
+    if (bExist)
+    {
+        std::string sql_str = std::string("drop table t_") + tablename;
+        LockedSociSession sql = databasecon_->checkoutDb();
+        *sql << sql_str;
+    }
+    else
+    {
+        return{ false, "talbe is not existed." };
+    }
+	
 	return {true, "success"};
 }
 

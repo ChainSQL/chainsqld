@@ -30,12 +30,11 @@
 #include <test/jtx/utility.h>
 #include <test/jtx/JSONRPCClient.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/ledger/LedgerTiming.h>
+#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/TxQ.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Slice.h>
-#include <ripple/core/ConfigSections.h>
 #include <ripple/json/to_string.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/net/RPCCall.h>
@@ -54,115 +53,43 @@
 
 namespace ripple {
 namespace test {
+namespace jtx {
 
 void
-setupConfigForUnitTests (Config& cfg)
+SuiteSink::write(beast::severities::Severity level, std::string const& text)
 {
-    cfg.overwrite (ConfigSection::nodeDatabase (), "type", "memory");
-    cfg.overwrite (ConfigSection::nodeDatabase (), "path", "main");
-    cfg.deprecatedClearSection (ConfigSection::importNodeDatabase ());
-    cfg.legacy("database_path", "");
-    cfg.setupControl(true, true, true);
-    cfg["server"].append("port_peer");
-    cfg["port_peer"].set("ip", "127.0.0.1");
-    cfg["port_peer"].set("port", "8080");
-    cfg["port_peer"].set("protocol", "peer");
-    cfg["server"].append("port_rpc");
-    cfg["port_rpc"].set("ip", "127.0.0.1");
-    cfg["port_rpc"].set("port", "8081");
-    cfg["port_rpc"].set("protocol", "http,ws2");
-    cfg["port_rpc"].set("admin", "127.0.0.1");
-    cfg["server"].append("port_ws");
-    cfg["port_ws"].set("ip", "127.0.0.1");
-    cfg["port_ws"].set("port", "8082");
-    cfg["port_ws"].set("protocol", "ws");
-    cfg["port_ws"].set("admin", "127.0.0.1");
+    using namespace beast::severities;
+    std::string s;
+    switch(level)
+    {
+    case kTrace:    s = "TRC:"; break;
+    case kDebug:    s = "DBG:"; break;
+    case kInfo:     s = "INF:"; break;
+    case kWarning:  s = "WRN:"; break;
+    case kError:    s = "ERR:"; break;
+    default:
+    case kFatal:    s = "FTL:"; break;
+    }
+
+    // Only write the string if the level at least equals the threshold.
+    if (level >= threshold())
+        suite_.log << s << partition_ << text << std::endl;
 }
 
 //------------------------------------------------------------------------------
 
-namespace jtx {
-
-class SuiteSink : public beast::Journal::Sink
-{
-    std::string partition_;
-    beast::unit_test::suite& suite_;
-
-public:
-    SuiteSink(std::string const& partition,
-            beast::severities::Severity threshold,
-            beast::unit_test::suite& suite)
-        : Sink (threshold, false)
-        , partition_(partition + " ")
-        , suite_ (suite)
-    {
-    }
-
-    // For unit testing, always generate logging text.
-    bool active(beast::severities::Severity level) const override
-    {
-        return true;
-    }
-
-    void
-    write(beast::severities::Severity level,
-        std::string const& text) override
-    {
-        using namespace beast::severities;
-        std::string s;
-        switch(level)
-        {
-        case kTrace:    s = "TRC:"; break;
-        case kDebug:    s = "DBG:"; break;
-        case kInfo:     s = "INF:"; break;
-        case kWarning:  s = "WRN:"; break;
-        case kError:    s = "ERR:"; break;
-        default:
-        case kFatal:    s = "FTL:"; break;
-        }
-
-        // Only write the string if the level at least equals the threshold.
-        if (level >= threshold())
-            suite_.log << s << partition_ << text << std::endl;
-    }
-};
-
-class SuiteLogs : public Logs
-{
-    beast::unit_test::suite& suite_;
-
-public:
-    explicit
-    SuiteLogs(beast::unit_test::suite& suite)
-        : Logs (beast::severities::kError)
-        , suite_(suite)
-    {
-    }
-
-    ~SuiteLogs() override = default;
-
-    std::unique_ptr<beast::Journal::Sink>
-    makeSink(std::string const& partition,
-        beast::severities::Severity threshold) override
-    {
-        return std::make_unique<SuiteSink>(partition, threshold, suite_);
-    }
-};
-
-//------------------------------------------------------------------------------
-
 Env::AppBundle::AppBundle(beast::unit_test::suite& suite,
-    std::unique_ptr<Config> config)
+    std::unique_ptr<Config> config,
+    std::unique_ptr<Logs> logs)
 {
     using namespace beast::severities;
     // Use kFatal threshold to reduce noise from STObject.
     setDebugLogSink (std::make_unique<SuiteSink>("Debug", kFatal, suite));
-    auto logs = std::make_unique<SuiteLogs>(suite);
     auto timeKeeper_ =
         std::make_unique<ManualTimeKeeper>();
     timeKeeper = timeKeeper_.get();
     // Hack so we don't have to call Config::setup
-    HTTPClient::initializeSSLContext(*config);
+    HTTPClient::initializeSSLContext(*config, debugLog());
     owned = make_Application(std::move(config),
         std::move(logs), std::move(timeKeeper_));
     app = owned.get();
@@ -171,7 +98,7 @@ Env::AppBundle::AppBundle(beast::unit_test::suite& suite,
         Throw<std::runtime_error> ("Env::AppBundle: setup failed");
     timeKeeper->set(
         app->getLedgerMaster().getClosedLedger()->info().closeTime);
-    app->doStart();
+    app->doStart(false /*don't start timers*/);
     thread = std::thread(
         [&](){ app->run(); });
 
@@ -380,7 +307,6 @@ Env::submit (JTx const& jt)
         ter_ = temMALFORMED;
         didApply = false;
     }
-    didApply = true;
     return postconditions(jt, ter_, didApply);
 }
 
@@ -546,14 +472,32 @@ Env::do_rpc(std::vector<std::string> const& args)
         jv[jss::ripplerpc] = "2.0";
         jv[jss::id] = 5;
     }
-    auto response = client().invoke(jv[jss::method].asString(), jv[jss::params][0U]);
+    auto response = client().invoke(
+        jv[jss::method].asString(),
+        jv[jss::params][0U]);
+
     if (jv.isMember(jss::jsonrpc))
     {
         response[jss::jsonrpc] = jv[jss::jsonrpc];
         response[jss::ripplerpc] = jv[jss::ripplerpc];
         response[jss::id] = jv[jss::id];
     }
+
+    if (jv[jss::params][0u].isMember(jss::error) &&
+        (! response.isMember(jss::error)))
+    {
+        response["client_error"] = jv[jss::params][0u];
+    }
+
     return response;
+}
+
+void
+Env::enableFeature(uint256 const feature)
+{
+    // Env::close() must be called for feature
+    // enable to take place.
+    app().config().features.insert(feature);
 }
 
 } // jtx

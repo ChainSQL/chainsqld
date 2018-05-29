@@ -67,7 +67,8 @@ public:
     }
 
 private:
-	std::shared_ptr<soci::transaction> tr_;    
+	std::shared_ptr<soci::transaction> tr_;
+    std::shared_ptr<LockedSociSession> lockSession_;
 };
 
 class TxStore {

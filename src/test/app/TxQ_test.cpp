@@ -20,11 +20,11 @@
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/TxQ.h>
-#include <ripple/app/ledger/LedgerConsensus.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/mulDiv.h>
 #include <test/jtx/TestSuite.h>
+#include <test/jtx/envconfig.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/JsonFields.h>
@@ -35,6 +35,13 @@
 #include <test/jtx/WSClient.h>
 
 namespace ripple {
+
+namespace detail {
+extern
+std::vector<std::string>
+supportedAmendments ();
+}
+
 namespace test {
 
 class TxQ_test : public beast::unit_test::suite
@@ -96,18 +103,35 @@ class TxQ_test : public beast::unit_test::suite
 
     static
     std::unique_ptr<Config>
-    makeConfig(std::map<std::string, std::string> extra = {})
+    makeConfig(std::map<std::string, std::string> extraTxQ = {},
+        std::map<std::string, std::string> extraVoting = {})
     {
-        auto p = std::make_unique<Config>();
-        setupConfigForUnitTests(*p);
+        auto p = test::jtx::envconfig();
         auto& section = p->section("transaction_queue");
         section.set("ledgers_in_queue", "2");
+        section.set("minimum_queue_size", "2");
         section.set("min_ledgers_to_compute_size_limit", "3");
         section.set("max_ledger_counts_to_store", "100");
         section.set("retry_sequence_percent", "25");
         section.set("zero_basefee_transaction_feelevel", "100000000000");
-        for (auto const& value : extra)
+
+        for (auto const& value : extraTxQ)
             section.set(value.first, value.second);
+
+        // Some tests specify different fee settings that are enabled by
+        // a FeeVote
+        if (!extraVoting.empty())
+        {
+
+            auto& votingSection = p->section("voting");
+            for (auto const & value : extraVoting)
+            {
+                votingSection.set(value.first, value.second);
+            }
+
+            // In order for the vote to occur, we must run as a validator
+            p->section("validation_seed").legacy("shUwVw52ofnCUX5m7kPTKzJdr4HEH");
+        }
         return p;
     }
 
@@ -115,37 +139,22 @@ class TxQ_test : public beast::unit_test::suite
     initFee(jtx::Env& env, std::size_t expectedInLedger, std::uint32_t base,
         std::uint32_t units, std::uint32_t reserve, std::uint32_t increment)
     {
-        // Change the reserve fee so we can create an account
-        // with a lower balance.
-        STTx feeTx(ttFEE,
-            [&](auto& obj)
-        {
-            obj[sfAccount] = AccountID();
-            obj[sfLedgerSequence] = env.current()->info().seq;
-            obj[sfBaseFee] = base;
-            obj[sfReferenceFeeUnits] = units;
-            obj[sfReserveBase] = reserve;
-            obj[sfReserveIncrement] = increment;
-        });
+        // Run past the flag ledger so that a Fee change vote occurs and
+        // lowers the reserve fee.  This will allow creating accounts with lower
+        // balances.
+        for(auto i = env.current()->seq(); i <= 257; ++i)
+            env.close();
 
-        auto const changed = env.app().openLedger().modify(
-            [&](OpenView& view, beast::Journal j)
-        {
-            auto const result = ripple::apply(
-                env.app(), view, feeTx,
-                tapNONE, j);
-            BEAST_EXPECT(result.second && result.first ==
-                tesSUCCESS);
-            return result.second;
-        });
-        BEAST_EXPECT(changed);
         // Pad a couple of txs to keep the median at the default
         env(noop(env.master));
         env(noop(env.master));
+
         // Close the ledger with a delay to force the TxQ stats
         // to stay at the default.
         env.close(env.now() + 5s, 10000ms);
-        checkMetrics(env, 0, boost::none, 0, expectedInLedger, 256);
+        checkMetrics(env, 0,
+            2 * (ripple::detail::supportedAmendments().size() + 1),
+                0, expectedInLedger, 256);
         auto const fees = env.current()->fees();
         BEAST_EXPECT(fees.base == base);
         BEAST_EXPECT(fees.units == units);
@@ -160,7 +169,7 @@ public:
         using namespace std::chrono;
 
         Env env(*this, makeConfig({ {"minimum_txn_in_ledger_standalone", "3"} }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
         auto& txq = env.app().getTxQ();
 
         auto alice = Account("alice");
@@ -232,7 +241,7 @@ public:
 
         // Hank sees his txn  got held and bumps the fee,
         // but doesn't even bump it enough to requeue
-        env(noop(hank), fee(11), ter(telINSUF_FEE_P));
+        env(noop(hank), fee(11), ter(telCAN_NOT_QUEUE_FEE));
         checkMetrics(env, 2, 12, 7, 6, 256);
 
         // Hank sees his txn got held and bumps the fee,
@@ -295,7 +304,7 @@ public:
 
         // Try to add another transaction with the default (low) fee,
         // it should fail because the queue is full.
-        env(noop(charlie), ter(telINSUF_FEE_P));
+        env(noop(charlie), ter(telCAN_NOT_QUEUE_FULL));
 
         // Add another transaction, with a higher fee,
         // Not high enough to get into the ledger, but high
@@ -347,7 +356,7 @@ public:
         using namespace std::chrono;
 
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "2" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -403,7 +412,7 @@ public:
         using namespace std::chrono;
 
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "2" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -433,7 +442,7 @@ public:
         BEAST_EXPECT(env.current()->info().seq == 6);
         // Fail to queue an item with a low LastLedgerSeq
         env(noop(alice), json(R"({"LastLedgerSequence":7})"),
-            ter(telINSUF_FEE_P));
+            ter(telCAN_NOT_QUEUE));
         // Queue an item with a sufficient LastLedgerSeq.
         env(noop(alice), json(R"({"LastLedgerSequence":8})"),
             queued);
@@ -447,27 +456,21 @@ public:
         {
             auto& txQ = env.app().getTxQ();
             auto aliceStat = txQ.getAccountTxs(alice.id(), *env.current());
-            if (BEAST_EXPECT(aliceStat))
-            {
-                BEAST_EXPECT(aliceStat->size() == 1);
-                BEAST_EXPECT(aliceStat->begin()->second.feeLevel == 256);
-                BEAST_EXPECT(aliceStat->begin()->second.lastValid &&
-                    *aliceStat->begin()->second.lastValid == 8);
-                BEAST_EXPECT(!aliceStat->begin()->second.consequences);
-            }
+            BEAST_EXPECT(aliceStat.size() == 1);
+            BEAST_EXPECT(aliceStat.begin()->second.feeLevel == 256);
+            BEAST_EXPECT(aliceStat.begin()->second.lastValid &&
+                *aliceStat.begin()->second.lastValid == 8);
+            BEAST_EXPECT(!aliceStat.begin()->second.consequences);
 
             auto bobStat = txQ.getAccountTxs(bob.id(), *env.current());
-            if (BEAST_EXPECT(bobStat))
-            {
-                BEAST_EXPECT(bobStat->size() == 1);
-                BEAST_EXPECT(bobStat->begin()->second.feeLevel = 7000 * 256 / 10);
-                BEAST_EXPECT(!bobStat->begin()->second.lastValid);
-                BEAST_EXPECT(!bobStat->begin()->second.consequences);
-            }
+            BEAST_EXPECT(bobStat.size() == 1);
+            BEAST_EXPECT(bobStat.begin()->second.feeLevel == 7000 * 256 / 10);
+            BEAST_EXPECT(!bobStat.begin()->second.lastValid);
+            BEAST_EXPECT(!bobStat.begin()->second.consequences);
 
             auto noStat = txQ.getAccountTxs(Account::master.id(),
                 *env.current());
-            BEAST_EXPECT(!noStat);
+            BEAST_EXPECT(noStat.empty());
         }
 
         env.close();
@@ -517,7 +520,7 @@ public:
         using namespace std::chrono;
 
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "2" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -597,7 +600,7 @@ public:
         // average fee. (Which is ~144,115,188,075,855,907
         // because of the zero fee txn.)
         env(noop(carol), fee(feeCarol),
-            seq(seqCarol), ter(telINSUF_FEE_P));
+            seq(seqCarol), ter(telCAN_NOT_QUEUE_FULL));
 
         env.close();
         // Some of Bob's transactions stay in the queue,
@@ -623,7 +626,7 @@ public:
     {
         using namespace jtx;
 
-        Env env(*this, makeConfig(), features(featureFeeEscalation));
+        Env env(*this, makeConfig(), with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -648,7 +651,7 @@ public:
         using namespace jtx;
 
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "2" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -701,8 +704,11 @@ public:
     {
         using namespace jtx;
 
-        Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "3" } }),
-            features(featureFeeEscalation));
+        Env env(*this,
+            makeConfig(
+                {{"minimum_txn_in_ledger_standalone", "3"}},
+                {{"account_reserve", "200"}, {"owner_reserve", "50"}}),
+            with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -716,15 +722,17 @@ public:
         checkMetrics(env, 0, boost::none, 0, 3, 256);
 
         initFee(env, 3, 10, 10, 200, 50);
+        auto const initQueueMax =
+            2 * (ripple::detail::supportedAmendments().size() + 1);
 
         // Create several accounts while the fee is cheap so they all apply.
         env.fund(drops(2000), noripple(alice));
         env.fund(ZXC(500000), noripple(bob, charlie, daria));
-        checkMetrics(env, 0, boost::none, 4, 3, 256);
+        checkMetrics(env, 0, initQueueMax, 4, 3, 256);
 
         // Alice - price starts exploding: held
         env(noop(alice), queued);
-        checkMetrics(env, 1, boost::none, 4, 3, 256);
+        checkMetrics(env, 1, initQueueMax, 4, 3, 256);
 
         auto aliceSeq = env.seq(alice);
         auto bobSeq = env.seq(bob);
@@ -733,31 +741,31 @@ public:
         // Alice - try to queue a second transaction, but leave a gap
         env(noop(alice), seq(aliceSeq + 2), fee(100),
             ter(terPRE_SEQ));
-        checkMetrics(env, 1, boost::none, 4, 3, 256);
+        checkMetrics(env, 1, initQueueMax, 4, 3, 256);
 
         // Alice - queue a second transaction. Yay.
         env(noop(alice), seq(aliceSeq + 1), fee(13),
             queued);
-        checkMetrics(env, 2, boost::none, 4, 3, 256);
+        checkMetrics(env, 2, initQueueMax, 4, 3, 256);
 
         // Alice - queue a third transaction. Yay.
         env(noop(alice), seq(aliceSeq + 2), fee(17),
             queued);
-        checkMetrics(env, 3, boost::none, 4, 3, 256);
+        checkMetrics(env, 3, initQueueMax, 4, 3, 256);
 
         // Bob - queue a transaction
         env(noop(bob), queued);
-        checkMetrics(env, 4, boost::none, 4, 3, 256);
+        checkMetrics(env, 4, initQueueMax, 4, 3, 256);
 
         // Bob - queue a second transaction
         env(noop(bob), seq(bobSeq + 1), fee(50),
             queued);
-        checkMetrics(env, 5, boost::none, 4, 3, 256);
+        checkMetrics(env, 5, initQueueMax, 4, 3, 256);
 
         // Charlie - queue a transaction, with a higher fee
         // than default
         env(noop(charlie), fee(15), queued);
-        checkMetrics(env, 6, boost::none, 4, 3, 256);
+        checkMetrics(env, 6, initQueueMax, 4, 3, 256);
 
         BEAST_EXPECT(env.seq(alice) == aliceSeq);
         BEAST_EXPECT(env.seq(bob) == bobSeq);
@@ -792,21 +800,18 @@ public:
             auto aliceStat = txQ.getAccountTxs(alice.id(), *env.current());
             std::int64_t fee = 20;
             auto seq = env.seq(alice);
-            if (BEAST_EXPECT(aliceStat))
+            BEAST_EXPECT(aliceStat.size() == 7);
+            for (auto const& tx : aliceStat)
             {
-                BEAST_EXPECT(aliceStat->size() == 7);
-                for (auto const& tx : *aliceStat)
-                {
-                    BEAST_EXPECT(tx.first == seq);
-                    BEAST_EXPECT(tx.second.feeLevel == mulDiv(fee, 256, 10).second);
-                    BEAST_EXPECT(tx.second.lastValid);
-                    BEAST_EXPECT((tx.second.consequences &&
-                        tx.second.consequences->fee == drops(fee) &&
-                        tx.second.consequences->potentialSpend == drops(0) &&
-                        tx.second.consequences->category == TxConsequences::normal) ||
-                        tx.first == env.seq(alice) + 6);
-                    ++seq;
-                }
+                BEAST_EXPECT(tx.first == seq);
+                BEAST_EXPECT(tx.second.feeLevel == mulDiv(fee, 256, 10).second);
+                BEAST_EXPECT(tx.second.lastValid);
+                BEAST_EXPECT((tx.second.consequences &&
+                    tx.second.consequences->fee == drops(fee) &&
+                    tx.second.consequences->potentialSpend == drops(0) &&
+                    tx.second.consequences->category == TxConsequences::normal) ||
+                    tx.first == env.seq(alice) + 6);
+                ++seq;
             }
         }
 
@@ -815,13 +820,13 @@ public:
         // queue.
         env(noop(alice), seq(aliceSeq),
             json(jss::LastLedgerSequence, lastLedgerSeq + 7),
-                fee(aliceFee), ter(telCAN_NOT_QUEUE));
+                fee(aliceFee), ter(telCAN_NOT_QUEUE_FULL));
         checkMetrics(env, 8, 8, 5, 4, 513);
 
         // Charlie - try to add another item to the queue,
         // which fails because fee is lower than Alice's
         // queued average.
-        env(noop(charlie), fee(19), ter(telINSUF_FEE_P));
+        env(noop(charlie), fee(19), ter(telCAN_NOT_QUEUE_FULL));
         checkMetrics(env, 8, 8, 5, 4, 513);
 
         // Charlie - add another item to the queue, which
@@ -840,7 +845,7 @@ public:
         // so resubmits with higher fee, but the queue
         // is full, and her account is the cheapest.
         env(noop(alice), seq(aliceSeq - 1),
-            fee(aliceFee), ter(telCAN_NOT_QUEUE));
+            fee(aliceFee), ter(telCAN_NOT_QUEUE_FULL));
         checkMetrics(env, 8, 8, 5, 4, 513);
 
         // Try to replace a middle item in the queue
@@ -848,7 +853,7 @@ public:
         aliceSeq = env.seq(alice) + 2;
         aliceFee = 25;
         env(noop(alice), seq(aliceSeq),
-            fee(aliceFee), ter(telINSUF_FEE_P));
+            fee(aliceFee), ter(telCAN_NOT_QUEUE_FEE));
         checkMetrics(env, 8, 8, 5, 4, 513);
 
         // Replace a middle item from the queue successfully
@@ -872,7 +877,7 @@ public:
         aliceFee = env.le(alice)->getFieldAmount(sfBalance).zxc().drops()
             - (59);
         env(noop(alice), seq(aliceSeq),
-            fee(aliceFee), ter(telCAN_NOT_QUEUE));
+            fee(aliceFee), ter(telCAN_NOT_QUEUE_BALANCE));
         checkMetrics(env, 4, 10, 6, 5, 256);
 
         // Try to spend more than Alice can afford with all the other txs.
@@ -894,7 +899,7 @@ public:
         aliceFee /= 5;
         ++aliceSeq;
         env(noop(alice), seq(aliceSeq),
-            fee(aliceFee), ter(telCAN_NOT_QUEUE));
+            fee(aliceFee), ter(telCAN_NOT_QUEUE_BALANCE));
         checkMetrics(env, 4, 10, 6, 5, 256);
 
         env.close();
@@ -931,7 +936,7 @@ public:
         using namespace std::chrono;
 
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "4" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -1000,7 +1005,7 @@ public:
         // Try to add another transaction with the default (low) fee,
         // it should fail because it can't replace the one already
         // there.
-        env(noop(charlie), ter(telINSUF_FEE_P));
+        env(noop(charlie), ter(telCAN_NOT_QUEUE_FEE));
 
         // Add another transaction, with a higher fee,
         // Not high enough to get into the ledger, but high
@@ -1067,7 +1072,7 @@ public:
     {
         using namespace jtx;
 
-        Env env(*this);
+        Env env(*this, no_features);
 
         auto alice = Account("alice");
 
@@ -1090,7 +1095,7 @@ public:
         using namespace jtx;
 
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "1" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
 
@@ -1110,7 +1115,7 @@ public:
         // is still uninitialized, so preflight succeeds here,
         // and this txn fails because it can't be stored in the queue.
         env(noop(alice), json(R"({"AccountTxnID": "0"})"),
-            ter(telINSUF_FEE_P));
+            ter(telCAN_NOT_QUEUE));
 
         checkMetrics(env, 0, boost::none, 2, 1, 256);
         env.close();
@@ -1133,7 +1138,7 @@ public:
             { {"minimum_txn_in_ledger_standalone", "2"},
                 {"target_txn_in_ledger", "4"},
                     {"maximum_txn_in_ledger", "5"} }),
-                        features(featureFeeEscalation));
+                        with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto queued = ter(terQUEUED);
@@ -1158,9 +1163,12 @@ public:
     {
         using namespace jtx;
 
-        Env env(*this,
-            makeConfig({ { "minimum_txn_in_ledger_standalone", "3" } }),
-                features(featureFeeEscalation));
+        Env env(
+            *this,
+            makeConfig(
+                {{"minimum_txn_in_ledger_standalone", "3"}},
+                {{"account_reserve", "200"}, {"owner_reserve", "50"}}),
+            with_features(featureFeeEscalation));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -1168,18 +1176,20 @@ public:
         auto queued = ter(terQUEUED);
 
         initFee(env, 3, 10, 10, 200, 50);
+        auto const initQueueMax =
+            2 * (ripple::detail::supportedAmendments().size() + 1);
 
         BEAST_EXPECT(env.current()->fees().base == 10);
 
-        checkMetrics(env, 0, boost::none, 0, 3, 256);
+        checkMetrics(env, 0, initQueueMax, 0, 3, 256);
 
         env.fund(drops(5000), noripple(alice));
         env.fund(ZXC(50000), noripple(bob));
-        checkMetrics(env, 0, boost::none, 2, 3, 256);
+        checkMetrics(env, 0, initQueueMax, 2, 3, 256);
         auto USD = bob["USD"];
 
         env(offer(alice, USD(5000), drops(5000)), require(owners(alice, 1)));
-        checkMetrics(env, 0, boost::none, 3, 3, 256);
+        checkMetrics(env, 0, initQueueMax, 3, 3, 256);
 
         env.close();
         checkMetrics(env, 0, 6, 0, 3, 256);
@@ -1208,7 +1218,7 @@ public:
         // Try adding a new transaction.
         // Too many fees in flight.
         env(noop(alice), fee(drops(200)), seq(aliceSeq+1),
-            ter(telCAN_NOT_QUEUE));
+            ter(telCAN_NOT_QUEUE_BALANCE));
         checkMetrics(env, 4, 6, 5, 3, 256);
 
         // Close the ledger. All of Alice's transactions
@@ -1220,7 +1230,7 @@ public:
         // Still can't add a new transaction for Alice,
         // no matter the fee.
         env(noop(alice), fee(drops(200)), seq(aliceSeq + 1),
-            ter(telCAN_NOT_QUEUE));
+            ter(telCAN_NOT_QUEUE_BALANCE));
         checkMetrics(env, 1, 10, 3, 5, 256);
 
         /* At this point, Alice's transaction is indefinitely
@@ -1248,7 +1258,7 @@ public:
 
         Env env(*this,
             makeConfig({ { "minimum_txn_in_ledger_standalone", "3" } }),
-            features(featureFeeEscalation), features(featureMultiSign));
+            with_features(featureFeeEscalation, featureMultiSign));
 
         auto alice = Account("alice");
         auto bob = Account("bob");
@@ -1279,12 +1289,12 @@ public:
         env(noop(alice), seq(aliceSeq + 2), queued);
 
         // Can't replace the first tx with a blocker
-        env(fset(alice, asfAccountTxnID), fee(20), ter(telINSUF_FEE_P));
+        env(fset(alice, asfAccountTxnID), fee(20), ter(telCAN_NOT_QUEUE_BLOCKS));
         // Can't replace the second / middle tx with a blocker
         env(regkey(alice, bob), seq(aliceSeq + 1), fee(20),
-            ter(telCAN_NOT_QUEUE));
+            ter(telCAN_NOT_QUEUE_BLOCKS));
         env(signers(alice, 2, { {bob}, {charlie}, {daria} }), fee(20),
-            seq(aliceSeq + 1), ter(telCAN_NOT_QUEUE));
+            seq(aliceSeq + 1), ter(telCAN_NOT_QUEUE_BLOCKS));
         // CAN replace the last tx with a blocker
         env(signers(alice, 2, { { bob },{ charlie },{ daria } }), fee(20),
             seq(aliceSeq + 2), queued);
@@ -1292,7 +1302,7 @@ public:
             queued);
 
         // Can't queue up any more transactions after the blocker
-        env(noop(alice), seq(aliceSeq + 3), ter(telCAN_NOT_QUEUE));
+        env(noop(alice), seq(aliceSeq + 3), ter(telCAN_NOT_QUEUE_BLOCKED));
 
         // Other accounts are not affected
         env(noop(bob), queued);
@@ -1313,7 +1323,7 @@ public:
 
         Env env(*this,
             makeConfig({ { "minimum_txn_in_ledger_standalone", "3" } }),
-            features(featureFeeEscalation), features(featureTickets));
+            with_features(featureFeeEscalation, featureTickets));
 
         auto alice = Account("alice");
         auto charlie = Account("charlie");
@@ -1558,7 +1568,7 @@ public:
     {
         using namespace jtx;
         using namespace std::chrono;
-        Env env(*this, features(featureTickets));
+        Env env(*this, with_features(featureTickets));
         auto const alice = Account("alice");
         env.memoize(alice);
         env.memoize("bob");
@@ -1626,7 +1636,7 @@ public:
     {
         using namespace jtx;
         {
-            Env env(*this, features(featureFeeEscalation));
+            Env env(*this, with_features(featureFeeEscalation));
 
             auto fee = env.rpc("fee");
 
@@ -1683,7 +1693,7 @@ public:
         }
 
         {
-            Env env(*this);
+            Env env(*this, no_features);
 
             auto fee = env.rpc("fee");
 
@@ -1715,7 +1725,7 @@ public:
 
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "1" },
             {"ledgers_in_queue", "10"}, {"maximum_txn_per_account", "20"} }),
-                features(featureFeeEscalation));
+                with_features(featureFeeEscalation));
 
         // Alice will recreate the scenario. Bob will block.
         auto const alice = Account("alice");
@@ -1790,7 +1800,7 @@ public:
         testcase("Autofilled sequence should account for TxQ");
         using namespace jtx;
         Env env(*this, makeConfig({ {"minimum_txn_in_ledger_standalone", "6"} }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
         Env_ss envs(env);
         auto const& txQ = env.app().getTxQ();
 
@@ -1823,25 +1833,22 @@ public:
         checkMetrics(env, 5, boost::none, 7, 6, 256);
         {
             auto aliceStat = txQ.getAccountTxs(alice.id(), *env.current());
-            if (BEAST_EXPECT(aliceStat))
+            auto seq = aliceSeq;
+            BEAST_EXPECT(aliceStat.size() == 5);
+            for (auto const& tx : aliceStat)
             {
-                auto seq = aliceSeq;
-                BEAST_EXPECT(aliceStat->size() == 5);
-                for (auto const& tx : *aliceStat)
+                BEAST_EXPECT(tx.first == seq);
+                BEAST_EXPECT(tx.second.feeLevel == 25600);
+                if(seq == aliceSeq + 2)
                 {
-                    BEAST_EXPECT(tx.first == seq);
-                    BEAST_EXPECT(tx.second.feeLevel == 25600);
-                    if(seq == aliceSeq + 2)
-                    {
-                        BEAST_EXPECT(tx.second.lastValid &&
-                            *tx.second.lastValid == lastLedgerSeq);
-                    }
-                    else
-                    {
-                        BEAST_EXPECT(!tx.second.lastValid);
-                    }
-                    ++seq;
+                    BEAST_EXPECT(tx.second.lastValid &&
+                        *tx.second.lastValid == lastLedgerSeq);
                 }
+                else
+                {
+                    BEAST_EXPECT(!tx.second.lastValid);
+                }
+                ++seq;
             }
         }
         // Put some txs in the queue for bob.
@@ -1870,27 +1877,24 @@ public:
         {
             // Bob has nothing left in the queue.
             auto bobStat = txQ.getAccountTxs(bob.id(), *env.current());
-            BEAST_EXPECT(!bobStat);
+            BEAST_EXPECT(bobStat.empty());
         }
         // Verify alice's tx got dropped as we BEAST_EXPECT, and that there's
         // a gap in her queued txs.
         {
             auto aliceStat = txQ.getAccountTxs(alice.id(), *env.current());
-            if (BEAST_EXPECT(aliceStat))
+            auto seq = aliceSeq;
+            BEAST_EXPECT(aliceStat.size() == 4);
+            for (auto const& tx : aliceStat)
             {
-                auto seq = aliceSeq;
-                BEAST_EXPECT(aliceStat->size() == 4);
-                for (auto const& tx : *aliceStat)
-                {
-                    // Skip over the missing one.
-                    if (seq == aliceSeq + 2)
-                        ++seq;
-
-                    BEAST_EXPECT(tx.first == seq);
-                    BEAST_EXPECT(tx.second.feeLevel == 25600);
-                    BEAST_EXPECT(!tx.second.lastValid);
+                // Skip over the missing one.
+                if (seq == aliceSeq + 2)
                     ++seq;
-                }
+
+                BEAST_EXPECT(tx.first == seq);
+                BEAST_EXPECT(tx.second.feeLevel == 25600);
+                BEAST_EXPECT(!tx.second.lastValid);
+                ++seq;
             }
         }
         // Now, fill the gap.
@@ -1898,17 +1902,14 @@ public:
         checkMetrics(env, 5, 18, 10, 9, 256);
         {
             auto aliceStat = txQ.getAccountTxs(alice.id(), *env.current());
-            if (BEAST_EXPECT(aliceStat))
+            auto seq = aliceSeq;
+            BEAST_EXPECT(aliceStat.size() == 5);
+            for (auto const& tx : aliceStat)
             {
-                auto seq = aliceSeq;
-                BEAST_EXPECT(aliceStat->size() == 5);
-                for (auto const& tx : *aliceStat)
-                {
-                    BEAST_EXPECT(tx.first == seq);
-                    BEAST_EXPECT(tx.second.feeLevel == 25600);
-                    BEAST_EXPECT(!tx.second.lastValid);
-                    ++seq;
-                }
+                BEAST_EXPECT(tx.first == seq);
+                BEAST_EXPECT(tx.second.feeLevel == 25600);
+                BEAST_EXPECT(!tx.second.lastValid);
+                ++seq;
             }
         }
 
@@ -1917,11 +1918,11 @@ public:
         {
             // Bob's data has been cleaned up.
             auto bobStat = txQ.getAccountTxs(bob.id(), *env.current());
-            BEAST_EXPECT(!bobStat);
+            BEAST_EXPECT(bobStat.empty());
         }
         {
             auto aliceStat = txQ.getAccountTxs(alice.id(), *env.current());
-            BEAST_EXPECT(!aliceStat);
+            BEAST_EXPECT(aliceStat.empty());
         }
     }
 
@@ -1929,7 +1930,7 @@ public:
     {
         using namespace jtx;
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "3" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
         Env_ss envs(env);
 
         Account const alice{ "alice" };
@@ -2108,7 +2109,7 @@ public:
             }
         }
 
-        envs(noop(alice), fee(none), seq(none), ter(telCAN_NOT_QUEUE))(submitParams);
+        envs(noop(alice), fee(none), seq(none), ter(telCAN_NOT_QUEUE_BLOCKED))(submitParams);
         checkMetrics(env, 5, 6, 4, 3, 256);
 
         {
@@ -2199,7 +2200,7 @@ public:
     {
         using namespace jtx;
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "3" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
         Env_ss envs(env);
 
         Account const alice{ "alice" };
@@ -2422,7 +2423,7 @@ public:
         using namespace jtx;
 
         Env env(*this, makeConfig({ { "minimum_txn_in_ledger_standalone", "3" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
 
         Json::Value stream;
         stream[jss::streams] = Json::arrayValue;
@@ -2591,7 +2592,7 @@ public:
 
         Env env(*this,
             makeConfig({ { "minimum_txn_in_ledger_standalone", "3" } }),
-            features(featureFeeEscalation));
+            with_features(featureFeeEscalation));
         auto alice = Account("alice");
         auto bob = Account("bob");
 
@@ -2723,16 +2724,13 @@ public:
             checkMetrics(env, 2, 24, 16, 12, 256);
             auto const aliceQueue = env.app().getTxQ().getAccountTxs(
                 alice.id(), *env.current());
-            if (BEAST_EXPECT(aliceQueue))
+            BEAST_EXPECT(aliceQueue.size() == 2);
+            auto seq = aliceSeq;
+            for (auto const& tx : aliceQueue)
             {
-                BEAST_EXPECT(aliceQueue->size() == 2);
-                auto seq = aliceSeq;
-                for (auto const& tx : *aliceQueue)
-                {
-                    BEAST_EXPECT(tx.first == seq);
-                    BEAST_EXPECT(tx.second.feeLevel == 2560);
-                    ++seq;
-                }
+                BEAST_EXPECT(tx.first == seq);
+                BEAST_EXPECT(tx.second.feeLevel == 2560);
+                ++seq;
             }
 
             // Close the ledger to clear the queue

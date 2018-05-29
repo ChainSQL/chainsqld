@@ -92,6 +92,8 @@ enum LedgerEntryType
     ltTABLELIST         = 'l',
 
 	ltINSERTMAP			= 'i',
+
+	ltCHAINID			= 'b',
 };
 
 /**
@@ -103,6 +105,7 @@ enum LedgerNameSpace
 	spaceAccount		= 'a',
 	spaceTableList		= 'l',
 	spaceInsertLimit	= 'i',
+	spaceChainId		= 'b',
     spaceDirNode        = 'd',
     spaceGenerator      = 'g',
     spaceRipple         = 'r',

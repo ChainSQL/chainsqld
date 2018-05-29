@@ -19,6 +19,11 @@
 
 #include <BeastConfig.h>
 #include <ripple/protocol/LedgerFormats.h>
+#include <ripple/protocol/ErrorCodes.h>
+#include <ripple/protocol/JsonFields.h>
+#include <algorithm>
+#include <array>
+#include <utility>
 
 namespace ripple {
 
@@ -38,6 +43,8 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfWalletSize,          SOE_OPTIONAL)
             << SOElement (sfMessageKey,          SOE_OPTIONAL)
             << SOElement (sfTransferRate,        SOE_OPTIONAL)
+			<< SOElement (sfTransferFeeMin,		 SOE_OPTIONAL)
+			<< SOElement (sfTransferFeeMax, 	 SOE_OPTIONAL)
             << SOElement (sfDomain,              SOE_OPTIONAL)
             << SOElement (sfMemos,               SOE_OPTIONAL) 
             << SOElement (sfTickSize,            SOE_OPTIONAL)
@@ -95,7 +102,8 @@ LedgerFormats::LedgerFormats ()
         SOElement (sfDestinationTag,    SOE_OPTIONAL) <<
         SOElement (sfOwnerNode,         SOE_REQUIRED) <<
         SOElement (sfPreviousTxnID,     SOE_REQUIRED) <<
-        SOElement (sfPreviousTxnLgrSeq, SOE_REQUIRED);
+        SOElement (sfPreviousTxnLgrSeq, SOE_REQUIRED) <<
+        SOElement (sfDestinationNode,   SOE_OPTIONAL);
 
     add ("LedgerHashes", ltLEDGER_HASHES)
             << SOElement (sfFirstLedgerSequence, SOE_OPTIONAL) // Remove if we do a ledger restart
@@ -160,6 +168,10 @@ LedgerFormats::LedgerFormats ()
 
 	add("InsertLimt", ltINSERTMAP)
 		<< SOElement(sfInsertCountMap, SOE_REQUIRED)
+		;
+
+	add("ChainId", ltCHAINID)
+		<< SOElement(sfChainId, SOE_REQUIRED)
 		;
 }
 

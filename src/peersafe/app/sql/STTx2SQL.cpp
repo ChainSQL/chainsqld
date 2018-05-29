@@ -832,6 +832,15 @@ public:
 		default:
 			break;
 		}
+
+		// fix an issue that we can't catch an exception on top-level,
+		// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
+		// however destructor can catch an exception but can't throw an exception that was catched by destructor.
+		if (db_conn_->getSession().last_error().first != 0) {
+			last_error(db_conn_->getSession().last_error());
+			ret = -1;
+		}
+
 		return ret;
 	}
 
@@ -868,8 +877,12 @@ protected:
 		if (tables_.size() == 0)
 			return -1;
 		try {
-			LockedSociSession sql = db_conn_->checkoutDb();
-			*sql << build_droptable_sql();
+            bool bExist = STTx2SQL::IsTableExistBySelect(db_conn_, tables_[0]);
+            if (bExist)
+            {
+                LockedSociSession sql = db_conn_->checkoutDb();
+                *sql << build_droptable_sql();
+            }			
 		}
 		catch (soci::soci_error& e) {
 			last_error(std::make_pair<int, std::string>(-1, e.what()));
@@ -885,7 +898,7 @@ private:
 		std::string sql;
 		if (tables_.size() == 0)
 			return sql;
-		sql = (boost::format("drop table if exists %s") % tables_[0]).str();
+		sql = (boost::format("drop table %s") % tables_[0]).str();
 		return sql;
 	}
 
@@ -976,7 +989,7 @@ private:
 		for (size_t idx = 0; idx < fields_.size(); idx++) {
 			BuildField& field = fields_[idx];
 			fields_str += field.Name();
-			values_str += ":" + field.Name();
+			values_str += ":" + std::to_string(idx + 1);
 			if (idx != fields_.size() - 1) {
 				fields_str += ",";
 				values_str += ",";
@@ -995,10 +1008,10 @@ private:
 		// fix an issue that we can't catch an exception on top-level,
 		// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
 		// however destructor can catch an exception but can't throw an exception that was catched by destructor.
-		if (db_conn_->getSession().last_error().first != 0) {
-			last_error(db_conn_->getSession().last_error());
-			return -1;
-		}
+		//if (db_conn_->getSession().last_error().first != 0) {
+		//	last_error(db_conn_->getSession().last_error());
+		//	return -1;
+		//}
 		return 0;
 	}
 
@@ -1119,10 +1132,10 @@ private:
 			// fix an issue that we can't catch an exception on top-level,
 			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
 			// however destructor can catch an exception but can't throw an exception that was catched by destructor.
-			if (db_conn_->getSession().last_error().first != 0) {
-				last_error(db_conn_->getSession().last_error());
-				return -1;
-			}
+			//if (db_conn_->getSession().last_error().first != 0) {
+			//	last_error(db_conn_->getSession().last_error());
+			//	return -1;
+			//}
 		}
 		else {
 			return -1;
@@ -1194,10 +1207,10 @@ private:
 			// fix an issue that we can't catch an exception on top-level,
 			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
 			// however destructor can catch an exception but can't throw an exception that was catched by destructor.
-			if (db_conn_->getSession().last_error().first != 0) {
-				last_error(db_conn_->getSession().last_error());
-				return -1;
-			}
+			//if (db_conn_->getSession().last_error().first != 0) {
+			//	last_error(db_conn_->getSession().last_error());
+			//	return -1;
+			//}
 		}
 		else {
 			return -1;
@@ -1736,8 +1749,9 @@ protected:
 				fields.push_back(std::string("NOT NULL"));
 			if (field.isUnique())
 				fields.push_back(std::string("UNIQUE"));
-			if (field.isAutoIncrease())
-				fields.push_back(std::string("AUTO_INCREMENT"));
+			// fix an bug on RR-525, disable auto increment
+			//if (field.isAutoIncrease())
+			//	fields.push_back(std::string("AUTO_INCREMENT"));
 			if (field.isIndex()) {
 				//fields.push_back(std::string("INDEX"));
 				indexs.push_back(field.Name());
@@ -1822,7 +1836,8 @@ protected:
 
 	int execute_createtable_sql() override {
 		// first drop the same of a table when create a table
-		execute_droptable_sql();
+        // call drop in the higher level, avoiding drop tx in a transaction
+		//execute_droptable_sql();
 		std::string sql_str = build_createtable_sql();
 		if (sql_str.empty()) {
 			last_error(std::make_pair<int, std::string>(-1, "executing create table unsuccessfully"));
@@ -1925,9 +1940,10 @@ protected:
 				foreign_keys.push_back(field.Name());
 				references.push_back(field.Foreigns());
 			}
-
-			if (field.isAutoIncrease())  
-				fields.push_back(std::string("AUTOINCREMENT"));
+			
+			// fix an bug on RR-525, disable auto increment
+			//if (field.isAutoIncrease())  
+			//	fields.push_back(std::string("AUTOINCREMENT"));
 			if (field.isNotNull())
 				fields.push_back(std::string("NOT NULL"));
 			if (field.isUnique())
@@ -1986,7 +2002,8 @@ protected:
 
 	int execute_createtable_sql() override {
 		// first drop the same of a table when create a table
-		execute_droptable_sql();
+        // call drop in the higher level, avoiding drop tx in a transaction
+		//execute_droptable_sql();
 		std::string sql_str = build_createtable_sql();
 		if (sql_str.empty()) {
 			last_error(std::make_pair<int, std::string>(-1, "executing create table unsuccessfully"));
@@ -2588,6 +2605,27 @@ STTx2SQL::STTx2SQL(const std::string& db_type, DatabaseCon* dbconn)
 STTx2SQL::~STTx2SQL() {
 }
 
+bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
+{
+    if (dbconn == nullptr)   return false;
+    
+    LockedSociSession sql_session = dbconn->checkoutDb();
+    bool bExist = false;
+    try {
+        std::string sSql = "SELECT * FROM " + sTable;
+        boost::optional<std::string> r;
+        soci::statement st = (sql_session->prepare << sSql, soci::into(r));
+        st.execute(true);
+        bExist = true;
+    }
+    catch (std::exception const& /* e */)
+    {        
+        bExist = false;
+    }
+    
+    return bExist;
+}
+
 int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql) {
 	int ret = -1;
 	if (Raw.isArray()) {
@@ -2634,8 +2672,9 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
 				buildfield.SetIndex();
 			if (v.isMember("NN"))
 				buildfield.SetNotNull();
-			if (v.isMember("AI"))
-				buildfield.SetAutoIncrease();
+			// for bug RR-525 disable auto increment
+			//if (v.isMember("AI"))
+			//	buildfield.SetAutoIncrease();
 			if (v.isMember("UQ"))
 				buildfield.SetUnique();
 			if (v.isMember("default")) {

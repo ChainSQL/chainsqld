@@ -171,10 +171,6 @@ Pathfinder::Pathfinder (
     assert (! uSrcIssuer || isZXC(uSrcCurrency) == isZXC(uSrcIssuer.get()));
 }
 
-Pathfinder::~Pathfinder()
-{
-}
-
 bool Pathfinder::findPaths (int searchLevel)
 {
     if (mDstAmount == zero)
@@ -205,7 +201,7 @@ bool Pathfinder::findPaths (int searchLevel)
         return true;
     }
 
-    m_loadEvent = app_.getJobQueue ().getLoadEvent (
+    m_loadEvent = app_.getJobQueue ().makeLoadEvent (
         jtPATH_FIND, "FindPath");
     auto currencyIsZXC = isZXC (mSrcCurrency);
 

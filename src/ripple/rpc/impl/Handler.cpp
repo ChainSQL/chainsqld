@@ -92,7 +92,6 @@ class HandlerTable {
         h.valueMethod_ = &handle<Json::Value, HandlerImpl>;
         h.role_ = HandlerImpl::role();
         h.condition_ = HandlerImpl::condition();
-        h.objectMethod_ = &handle<Json::Object, HandlerImpl>;
 
         table_[HandlerImpl::name()] = h;
     };
@@ -154,6 +153,8 @@ Handler handlerArray[] {
     {   "validation_seed",      byRef (&doValidationSeed),     Role::ADMIN,   NO_CONDITION     },
     {   "wallet_propose",       byRef (&doWalletPropose),      Role::ADMIN,   NO_CONDITION     },
     {   "wallet_seed",          byRef (&doWalletSeed),         Role::ADMIN,   NO_CONDITION     },
+    {   "validators",           byRef (&doValidators),          Role::ADMIN,   NO_CONDITION     },
+    {   "validator_list_sites", byRef (&doValidatorListSites),  Role::ADMIN,   NO_CONDITION     },
 	{	"t_prepare",			byRef (&doPrepare),            Role::USER,   NO_CONDITION },
     {   "t_create",             byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION     },
     {   "g_dbname",             byRef (&doGetDBName),          Role::USER,    NO_CONDITION     },

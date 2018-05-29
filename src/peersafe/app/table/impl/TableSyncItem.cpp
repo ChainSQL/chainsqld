@@ -67,6 +67,7 @@ TableSyncItem::TableSyncItem(Application& app, beast::Journal journal, Config& c
     sTableNameInDB_       = "";
     sNickName_            = "";
     uCreateLedgerSequence_ = 0;
+	deleted_			  = false;
 }
 
 TableSyncItem::cond const & TableSyncItem::GetCondition()
@@ -104,7 +105,7 @@ void TableSyncItem::InitCondition(const std::string& cond)
 {
 	if (cond.size() > 0)
 	{
-        if (cond[0] == '!')  //SYNC_JUMP
+        if (cond[0] == '~')  //SYNC_JUMP
         {
             if (cond.size() - 1 == TXID_LENGTH)
                 sCond_.stxid = cond.substr(1);
@@ -173,6 +174,7 @@ TxStoreDBConn& TableSyncItem::getTxStoreDBConn()
 		if (conn_->GetDBConn() == NULL)
 		{
 			JLOG(journal_.error()) << "TableSyncItem::getTxStoreDBConn() return null";
+            SetSyncState(SYNC_STOP);
 		}
     }
     return *conn_;
@@ -233,14 +235,14 @@ void TableSyncItem::ReSetContex()
 }
 
 void TableSyncItem::ReSetContexAfterDrop()
-{   
-    {
-        std::lock_guard<std::mutex> lock(mutexInfo_);
-        sTableNameInDB_.clear();
-        eState_ = SYNC_DELETED;
-    }
+{
+	{
+		std::lock_guard<std::mutex> lock(mutexInfo_);
+		sTableNameInDB_.clear();
+		eState_ = SYNC_DELETING;
+	}
 
-    ReSetContex();
+	ReSetContex();
 }
 
 void TableSyncItem::SetIsDataFromLocal(bool bLocal)
@@ -515,6 +517,7 @@ void TableSyncItem::GetBaseInfo(BaseInfo &stInfo)
     stInfo.isAutoSync               = bIsAutoSync_;
 	stInfo.eTargetType              = eSyncTargetType_;
 	stInfo.uTxUpdateHash            = uTxDBUpdateHash_;
+	stInfo.isDeleted				= deleted_;
 	
 }
 
@@ -537,6 +540,12 @@ void TableSyncItem::SetSyncState(TableSyncState eState)
 {
     std::lock_guard<std::mutex> lock(mutexInfo_);
     if(eState_ != SYNC_STOP)    eState_ = eState;
+}
+
+void TableSyncItem::SetDeleted(bool deleted)
+{
+	std::lock_guard<std::mutex> lock(mutexInfo_);
+	deleted_ = deleted;
 }
 
 void TableSyncItem::SetLedgerState(LedgerSyncState lState)
@@ -734,7 +743,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 		if (eSyncTargetType_ == SyncTarget_db) bRightName = to_string(table.getFieldH160(sfNameInDB)) == sTableNameInDB_;
 		else                                   bRightName = strCopy(table.getFieldVL(sfTableName)) == sTableName_;;
 		
-		if (bRightName && table.getFieldU8(sfDeleted) != 1)
+		if (bRightName)
 		{
 			uCreateLedgerSequence_ = table.getFieldU32(sfCreateLgrSeq);
 
@@ -882,7 +891,7 @@ std::string TableSyncItem::getOperationRule(const STTx& tx)
 		else                                   
 			bRightName = strCopy(table.getFieldVL(sfTableName)) == sTableName_;;
 
-		if (bRightName && table.getFieldU8(sfDeleted) != 1)
+		if (bRightName)
 			pEntry = (STEntry*)&table;
 	}
 	if (pEntry != NULL)
@@ -921,32 +930,85 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 		}
         else
         {
-    //        if (T_CREATE == op_type)
-    //        {
-    //            getTableStatusDB().DeleteRecord(accountID_, sTableName_);
-				//this->ReSetContexAfterDrop();
-    //        }
             JLOG(journal_.trace()) << "Dispose error";
         }
 			
 	}
     
-	if (T_DROP == op_type)
+	if (ret.first)
 	{
-		std::string PreviousCommit;
-		getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, true, PreviousCommit);
-		this->ReSetContexAfterDrop();
-	}
-	else if (T_RENAME == op_type)
-	{
-		auto tables = tx.getFieldArray(sfTables);
-		if (tables.size() > 0)
+
+		if (T_DROP == op_type)
 		{
-			auto newTableName = strCopy(tables[0].getFieldVL(sfTableNewName));
-			getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
+			this->ReSetContexAfterDrop();
+		}
+		else if (T_RENAME == op_type)
+		{
+			auto tables = tx.getFieldArray(sfTables);
+			if (tables.size() > 0)
+			{
+				auto newTableName = strCopy(tables[0].getFieldVL(sfTableNewName));
+				sTableName_ = newTableName;
+				getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
+			}
 		}
 	}
+
 	return ret;
+}
+
+void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledger_time)
+{
+	std::string pressRealName;
+	if (tx.isFieldPresent(sfFlags))
+	{
+		auto tables = tx.getFieldArray(sfTables);
+		std::string table_name = strCopy(tables[0].getFieldVL(sfTableName));
+
+		if (table_name == "press_time")
+		{
+			return;
+		}
+		else
+		{
+			pressRealName = app_.getTableSync().GetPressTableName();
+			if (pressRealName.empty())
+				return;
+		}
+		
+		std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+		auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
+		uint32 submit_time = tx.getFieldU32(sfFlags);
+		uint32 db_time = tmp.count();
+		submit_time -= std::chrono::seconds(days(10957)).count();
+		db_time -= std::chrono::seconds(days(10957)).count();
+
+		ledger_time = ledger_time > submit_time ? ledger_time - submit_time : ledger_time;
+		db_time -= submit_time;
+
+		try
+		{
+			LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
+			std::string sql = "INSERT INTO " + pressRealName + " (ledger_seq, submit_time, ledger_time,db_time) VALUES('";
+			sql += to_string(ledger_seq);
+			sql += "','";
+			sql += to_string(submit_time);
+			sql += "','";
+			sql += to_string(ledger_time);
+			sql += "','";
+			sql += to_string(db_time);
+			sql += "');";
+
+			soci::statement st = (sql_session->prepare << sql);
+
+			st.execute();
+		}
+		catch (std::exception const& e)
+		{
+			JLOG(journal_.error()) <<
+				"InsertPressData exception" << e.what();
+		}
+	}
 }
 
 void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledger_time)
@@ -1058,6 +1120,13 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					if (vecTxs.size() > 0)
 					{
 						TryDecryptRaw(vecTxs);
+                        for (auto& tx : vecTxs)
+                        {
+                            if (T_CREATE == tx.getFieldU16(sfOpType))
+                            {
+                                DeleteTable(sTableNameInDB_);
+                            }
+                        }                        
 					}
 					JLOG(journal_.info()) << "got sync tx" << tx.getFullText();
 
@@ -1067,19 +1136,35 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 						SetSyncState(SYNC_STOP);
 						return false;
 					}
-						
-					LockedSociSession sql_session = conn->checkoutDb();
+
 					TxStoreTransaction stTran(&getTxStoreDBConn());
 
 					auto ret = DealWithTx(vecTxs);
+                    uTxDBUpdateHash_ = tx.getTransactionID();
 
-					uTxDBUpdateHash_ = tx.getTransactionID();
-					auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
-					if (updateRet == soci_exception) {
-						JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
+                    if (!ret.first)
+                    {
+                        stTran.rollback();
+                        auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
+                        if (updateRet == soci_exception) {
+                            JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
+                        }
+                    }
+                    else
+                    {
+                        auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
+                        if (updateRet == soci_exception) {
+                            JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
+                        }
+                        stTran.commit();
+                    }
+
+					//press test
+					if (app_.getTableSync().IsPressSwitchOn())
+					{
+						if (ret.first)
+							InsertPressData(tx, iter->ledgerseq(), iter->closetime());
 					}
-
-					stTran.commit();
 
 					//press test
 					if (app_.getTableSync().IsPressSwitchOn())
@@ -1095,8 +1180,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					else
 						result = std::make_pair("db_error", ret.second);
 					app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
-
-					count++;
+                    count++;
                 }
                 catch (std::exception const& e)
                 {
@@ -1136,6 +1220,9 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 }
 void TableSyncItem::OperateSQLThread()
 {
+    //check the connection is ok
+    getTxStoreDBConn();
+
 	if (GetSyncState() == SYNC_STOP)
 	{
 		bOperateSQL_ = false;

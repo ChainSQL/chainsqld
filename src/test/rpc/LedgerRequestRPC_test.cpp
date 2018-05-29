@@ -32,17 +32,6 @@ class LedgerRequestRPC_test : public beast::unit_test::suite
 {
 public:
 
-    static
-    std::unique_ptr<Config>
-    makeNonAdminConfig()
-    {
-        auto p = std::make_unique<Config>();
-        test::setupConfigForUnitTests(*p);
-        (*p)["port_rpc"].set("admin","");
-        (*p)["port_ws"].set("admin","");
-        return p;
-    }
-
     void testLedgerRequest()
     {
         using namespace test::jtx;
@@ -161,7 +150,8 @@ public:
     void testEvolution()
     {
         using namespace test::jtx;
-        Env env { *this };
+        Env env {*this, no_features}; //the hashes being checked below assume
+                                     //no amendments
         Account const gw { "gateway" };
         auto const USD = gw["USD"];
         env.fund(ZXC(100000), gw);
@@ -288,7 +278,7 @@ public:
     void testNonAdmin()
     {
         using namespace test::jtx;
-        Env env { *this, makeNonAdminConfig() };
+        Env env { *this, envconfig(no_admin) };
         Account const gw { "gateway" };
         auto const USD = gw["USD"];
         env.fund(ZXC(100000), gw);

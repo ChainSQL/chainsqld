@@ -41,6 +41,10 @@ TableDumpItem::TableDumpItem(Application& app, beast::Journal journal, Config& c
 {       
 	sDumpPath_            = "";
 	funDumpCB_            = NULL;
+    uTxSeqRecord_         = 0;
+    sTxHashRecord_        = "";
+    uLedgerSeqRecord_     = 0;
+    sLedgerHashRecord_    = "";
 }
 
 std::pair<int,int> TableDumpItem::GetRightTxEndPos(FILE * fp, bool &bEmptyTx)
@@ -88,7 +92,13 @@ std::pair<bool, std::string> TableDumpItem::SetDumpPara(std::string sPath, funDu
 
 	if (!fs::exists(filePath))
 	{
-		bool bRet = fs::create_directories(filePath);
+                bool bRet = false;
+                try{
+		   bRet = fs::create_directories(filePath);
+                }
+                catch (std::exception const&)
+                {
+                }
 		if (!bRet)  return std::make_pair(false,"path is invalid.");
 	}
 
@@ -125,14 +135,17 @@ std::pair<bool, std::string> TableDumpItem::SetDumpPara(std::string sPath, funDu
             //check first
             if (to_string(accountID_) != pos["Account"].asString())
             {
+                fclose(fDump);
                 return std::make_pair(false, "account in parameter list is different form in target file, please set a new target file.");
             }
             if (sTableName_ != pos["TableName"].asString())
             {
+                fclose(fDump);
                 return std::make_pair(false, "tablename in parameter list is different form in target file, please set a new target file.");
             }
             if (uCreateLedgerSequence_ != pos["TxnCreateSeq"].asUInt())
             {
+                fclose(fDump);
                 return std::make_pair(false, sTableName_ + " is a new created file," + sTableName_ + " in target file may have been deleted , please set a new target file.");
             }
 
@@ -250,6 +263,7 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 		if (posPair.first == 0)
 		{            
             StopInnerDeal(fp, "");
+            fclose(fp);
 			return false;
 		}
 
@@ -259,6 +273,7 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         if (fRet < 0)
         {            
             StopInnerDeal(fp, "");
+            fclose(fp);
             return false;
         }
 
@@ -267,6 +282,7 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         if (checkRet == CHECK_REJECT && GetSyncState() != SYNC_STOP)
         {
             StopInnerDeal(fp, "catch the condition point.");
+            fclose(fp);
             return false;
         }
 
@@ -371,7 +387,7 @@ void TableDumpItem::SetStopInfo(FILE *fileTarget, std::string sMsg)
     sWrite += sPos;
 
     fwrite(sWrite.c_str(), 1, sWrite.size(), fp);
-    fclose(fp);
+    if(fileTarget == NULL)       fclose(fp);
 }
 
 void TableDumpItem::SetErroeInfo2FileEnd(FILE *fileTarget)

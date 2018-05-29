@@ -32,21 +32,11 @@ namespace ripple {
 class TableListSet
     : public ChainSqlTx
 {
-    /* The largest number of paths we allow */
-    static std::size_t const MaxPathSize = 6;
-
-    /* The longest path we allow */
-    static std::size_t const MaxPathLength = 8;
-
 public:
     TableListSet(ApplyContext& ctx)
         : ChainSqlTx(ctx)
     {
     }
-
-    static
-    ZXCAmount
-    calculateMaxSpend(STTx const& tx);
 
     static
     TER
@@ -66,10 +56,6 @@ public:
     TER
     applyHandler(ApplyView& view, const STTx & tx, Application& app);
     TER doApply () override;
-
-	TER dealWithOperationRule(ApplyView& view, const STTx & tx, Application& app);
-
-	TER preApply();
 
     static
     STObject generateTableEntry(const STTx &tx, ApplyView& view);

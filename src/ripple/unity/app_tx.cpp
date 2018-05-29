@@ -28,6 +28,7 @@
 #include <ripple/app/tx/impl/CreateOffer.cpp>
 #include <ripple/app/tx/impl/CreateTicket.cpp>
 #include <ripple/app/tx/impl/Escrow.cpp>
+#include <ripple/app/tx/impl/InvariantCheck.cpp>
 #include <ripple/app/tx/impl/OfferStream.cpp>
 #include <ripple/app/tx/impl/Payment.cpp>
 #include <ripple/app/tx/impl/PayChan.cpp>
@@ -43,3 +44,4 @@
 #include <peersafe/app/tx/impl/TableListSet.cpp>
 #include <peersafe/app/tx/impl/SqlStatement.cpp>
 #include <peersafe/app/tx/impl/SqlTransaction.cpp>
+#include <peersafe/app/tx/impl/OperationRule.cpp>

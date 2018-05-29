@@ -148,20 +148,11 @@ namespace ripple {
 		auto vecTxs = STTx::getTxs(const_cast<STTx&>(tx));
 		for (auto& eachTx : vecTxs)
 		{
-			auto const & sTxTables = eachTx.getFieldArray(sfTables);
-			std::string sTxNameInDB = strCopy(sTxTables[0].getFieldVL(sfTableName));
-			auto iter = nameInDBSet.find(sTxNameInDB);
+			GetTxParam(eachTx, txhash, uTxDBName, sTableName, accountID, lastLedgerSequence);
+			auto ret = TableStorageHandlePut(chainSqlTx, uTxDBName, accountID, sTableName, lastLedgerSequence, tx.getTransactionID(), eachTx);
 
-			if (iter == nameInDBSet.end()) {  //can not find in set
-
-				GetTxParam(eachTx, txhash, uTxDBName, sTableName, accountID, lastLedgerSequence);
-
-				auto ret = TableStorageHandlePut(chainSqlTx,uTxDBName, accountID, sTableName, lastLedgerSequence, tx.getTransactionID(), eachTx);
-				nameInDBSet.insert(sTxNameInDB);
-
-				if (tesSUCCESS != ret)
-					return ret;
-			}
+			if (tesSUCCESS != ret)
+				return ret;
 		}
 
 		return tesSUCCESS;
@@ -178,9 +169,8 @@ namespace ripple {
             auto validLedger = app_.getLedgerMaster().getValidatedLedger();
             uint256 txnHash, ledgerHash, utxUpdatehash;
             LedgerIndex txnLedgerSeq, LedgerSeq;
-            bool bDeleted;
 
-            bool bRet = app_.getTableStatusDB().ReadSyncDB(to_string(uTxDBName), txnLedgerSeq, txnHash, LedgerSeq, ledgerHash, utxUpdatehash, bDeleted);
+            bool bRet = app_.getTableStatusDB().ReadSyncDB(to_string(uTxDBName), txnLedgerSeq, txnHash, LedgerSeq, ledgerHash, utxUpdatehash);
             if (bRet)
             {
                 if (validIndex - LedgerSeq < MAX_GAP_NOW2VALID)  //catch up valid ledger
@@ -228,7 +218,7 @@ namespace ripple {
                 auto iter(tablentries.end());
                 iter = std::find_if(tablentries.begin(), tablentries.end(),
                     [uTxDBName](STObject const &item) {
-                    return item.getFieldH160(sfNameInDB) == uTxDBName && item.getFieldU8(sfDeleted) != 1;
+                    return item.getFieldH160(sfNameInDB) == uTxDBName;
                 });
 
                 if (iter != tablentries.end())

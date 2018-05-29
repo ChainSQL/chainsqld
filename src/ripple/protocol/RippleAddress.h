@@ -168,9 +168,9 @@ public:
     static Blob decryptPassword(const Blob& rawBlob, const Blob& secret_key);
 
 	// Encrypt a message.Using AES algorithm.
-	static Blob encryptAES(Blob const& key, Blob const& plaintext);
+	static Blob encryptAES(Blob const& key, Blob const& plaintext,int keyLength = 32);
 	// Decrypt a message.Using AES algorithm.
-	static Blob decryptAES(Blob const& key, Blob const& ciphertext);
+	static Blob decryptAES(Blob const& key, Blob const& ciphertext, int keyLength = 32);
 
     static RippleAddress createAccountPrivate (
         RippleAddress const& generator, RippleAddress const& seed, int iSeq);

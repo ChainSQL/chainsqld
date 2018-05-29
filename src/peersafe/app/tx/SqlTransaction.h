@@ -32,12 +32,7 @@ namespace ripple {
 class SqlTransaction
     : public ChainSqlTx
 {
-    /* The largest number of paths we allow */
-    static std::size_t const MaxPathSize = 6;
-
-    /* The longest path we allow */
-    static std::size_t const MaxPathLength = 8;
-
+private:
     ripple::TER handleEachTx(ApplyContext& ctx);
     std::pair<TER, std::string> transactionImpl(ApplyContext& ctx_,ripple::TxStoreDBConn &txStoreDBConn, ripple::TxStore& txStore, beast::Journal journal, const STTx &tx);
 public:

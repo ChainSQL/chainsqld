@@ -21,7 +21,6 @@
 #include <test/jtx/Account.h>
 #include <test/jtx/amount.h>
 #include <ripple/protocol/types.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
 
 namespace ripple {
 namespace test {
@@ -32,7 +31,7 @@ std::unordered_map<
         Account, beast::uhash<>> Account::cache_;
 
 Account const Account::master("master",
-    generateKeyPair(HardEncryptObj::getInstance() ? KeyType::gmalg : KeyType::secp256k1,
+    generateKeyPair(KeyType::secp256k1,
         generateSeed("masterpassphrase")), Account::privateCtorTag{});
 
 Account::Account(std::string name,

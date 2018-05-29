@@ -290,6 +290,7 @@ struct sqlite3_session_backend : details::session_backend
     virtual sqlite3_statement_backend * make_statement_backend();
     virtual sqlite3_rowid_backend * make_rowid_backend();
     virtual sqlite3_blob_backend * make_blob_backend();
+	virtual bool autocommit(const bool);
 
     sqlite_api::sqlite3 *conn_;
 };

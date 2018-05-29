@@ -25,7 +25,6 @@
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/TransactionSign.h>
 #include <ripple/rpc/Role.h>
-#include <ripple/rpc/handlers/Handlers.h>
 
 namespace ripple {
 

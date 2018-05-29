@@ -18,14 +18,8 @@
 //==============================================================================
 
 #include <BeastConfig.h>
-#include <ripple/basics/contract.h>
 #include <ripple/nodestore/impl/ManagerImp.h>
-#include <ripple/nodestore/impl/DatabaseImp.h>
 #include <ripple/nodestore/impl/DatabaseRotatingImp.h>
-#include <ripple/basics/StringUtilities.h>
-#include <beast/core/detail/ci_char_traits.hpp>
-#include <memory>
-#include <stdexcept>
 
 namespace ripple {
 namespace NodeStore {
@@ -41,8 +35,8 @@ void
 ManagerImp::missing_backend()
 {
     Throw<std::runtime_error> (
-        "Your chainsqld.cfg is missing a [node_db] entry, "
-        "please see the chainsqld-example.cfg file!"
+        "Your rippled.cfg is missing a [node_db] entry, "
+        "please see the rippled-example.cfg file!"
         );
 }
 
@@ -90,14 +84,16 @@ std::unique_ptr <Database>
 ManagerImp::make_Database (
     std::string const& name,
     Scheduler& scheduler,
-    beast::Journal journal,
     int readThreads,
-    Section const& backendParameters)
+    Stoppable& parent,
+    Section const& backendParameters,
+    beast::Journal journal)
 {
     return std::make_unique <DatabaseImp> (
         name,
         scheduler,
         readThreads,
+        parent,
         make_Backend (
             backendParameters,
             scheduler,
@@ -110,6 +106,7 @@ ManagerImp::make_DatabaseRotating (
         std::string const& name,
         Scheduler& scheduler,
         std::int32_t readThreads,
+        Stoppable& parent,
         std::shared_ptr <Backend> writableBackend,
         std::shared_ptr <Backend> archiveBackend,
         beast::Journal journal)
@@ -118,6 +115,7 @@ ManagerImp::make_DatabaseRotating (
         name,
         scheduler,
         readThreads,
+        parent,
         writableBackend,
         archiveBackend,
         journal);
@@ -130,7 +128,7 @@ ManagerImp::find (std::string const& name)
     auto const iter = std::find_if(list_.begin(), list_.end(),
         [&name](Factory* other)
         {
-            return beast::detail::ci_equal(name, other->getName());
+            return beast::detail::iequals(name, other->getName());
         } );
     if (iter == list_.end())
         return nullptr;

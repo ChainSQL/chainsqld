@@ -20,6 +20,7 @@
 #ifndef RIPPLE_PROTOCOL_TER_H_INCLUDED
 #define RIPPLE_PROTOCOL_TER_H_INCLUDED
 
+#include <boost/optional.hpp>
 #include <string>
 
 namespace ripple {
@@ -46,6 +47,11 @@ enum TER
     telINSUF_FEE_P,
     telNO_DST_PARTIAL,
     telCAN_NOT_QUEUE,
+    telCAN_NOT_QUEUE_BALANCE,
+    telCAN_NOT_QUEUE_BLOCKS,
+    telCAN_NOT_QUEUE_BLOCKED,
+    telCAN_NOT_QUEUE_FEE,
+    telCAN_NOT_QUEUE_FULL,
 
     // -299 .. -200: M Malformed (bad signature)
     // Causes:
@@ -86,6 +92,8 @@ enum TER
     temBAD_QUORUM,
     temBAD_WEIGHT,
     temBAD_TICK_SIZE,
+	temBAD_TRANSFERFEE_BOTH,
+	temBAD_TRANSFERFEE,
 
 	//for table set and sql statement
 	temBAD_OWNER,
@@ -106,6 +114,7 @@ enum TER
 	temBAD_UPDATERULE,
 	temBAD_RULEANDTOKEN,
 	temBAD_INSERTLIMIT,
+
     // An intermediate result used internally, should never be returned.
     temUNCERTAIN,
     temUNKNOWN,
@@ -150,8 +159,13 @@ enum TER
 	tefTABLE_STORAGENORMALERROR,
 	tefTABLE_TXDISPOSEERROR,
 	tefTABLE_RULEDISSATISFIED,
+	tefTABLE_COUNTFULL,
+	tefTABLE_GRANTFULL,
 	tefDBNOTCONFIGURED,
 	tefINSUFFICIENT_RESERVE,
+    tefINVARIANT_FAILED,
+	tefBAD_DBNAME,       // NameInDB does not match tableName.
+	tefBAD_STATEMENT,    // satement error
     // -99 .. -1: R Retry
     //   sequence too high, no funds for txn fee, originating -account
     //   non-existent
@@ -236,7 +250,8 @@ enum TER
     tecDST_TAG_NEEDED           = 143,
     tecINTERNAL                 = 144,
     tecOVERSIZE                 = 145,
-    tecCRYPTOCONDITION_ERROR    = 146
+    tecCRYPTOCONDITION_ERROR    = 146,
+    tecINVARIANT_FAILED         = 147
 };
 
 inline bool isTelLocal(TER x)
@@ -281,6 +296,10 @@ transToken (TER code);
 extern
 std::string
 transHuman (TER code);
+
+extern
+boost::optional<TER>
+transCode(std::string const& token);
 
 } // ripple
 

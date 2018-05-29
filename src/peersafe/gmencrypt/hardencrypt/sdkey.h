@@ -22,11 +22,11 @@
 #ifndef HARDENCRYPT_SDKEY_H_INCLUDE
 #define HARDENCRYPT_SDKEY_H_INCLUDE
 
+#ifdef BEGIN_SDKEY
+
 #include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
 #include <peersafe/gmencrypt/hardencrypt/sdkey/swsdkey.h>
 #include <cstring>
-
-#ifdef BEGIN_SDKEY
 
 class SDkey : public HardEncrypt
 {

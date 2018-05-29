@@ -303,9 +303,10 @@ public:
 
     bool walkLedger (beast::Journal j) const;
 
-    bool assertSane (beast::Journal ledgerJ);
+    bool assertSane (beast::Journal ledgerJ) const;
 
     void make_v2();
+	void make_v1();
     void invariants() const;
     void unshare() const;
 private:
