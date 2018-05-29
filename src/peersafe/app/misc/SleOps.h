@@ -33,9 +33,16 @@ public:
 	bool addressHasCode(evmc_address const& addr);
 	/// Sets the code of the account. Must only be called during / after contract creation.
 	void setCode(evmc_address const& _address, bytes&& _code);
+	/// Get the code of an account.
+	/// @returns bytes() if no account exists at that address.
+	/// @warning The reference to the code is only valid until the access to
+	///          other account. Do not keep it.
+	bytes const& code(evmc_address const& _addr) const;
+	/// Get the code hash of an account.
+	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
+	uint256 codeHash(evmc_address const& _contract) const;
 
 	void transferBalance(evmc_address const& _from, evmc_address const& _to, uint256 const& _value);
-
 
 	/// Clear the storage root hash of an account to the hash of the empty trie.
 	void clearStorage(evmc_address const& _contract);

@@ -29,7 +29,7 @@ class STTx;
 class Executive {
 public:
 	// Simple constructor; executive will operate on given state, with the given environment info.
-	Executive(SleOps const& _s, EnvInfo const& _envInfo, unsigned int _level);
+	Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level);
 
 	//No default constructor
 	Executive() = delete;

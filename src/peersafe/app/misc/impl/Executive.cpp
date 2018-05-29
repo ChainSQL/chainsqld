@@ -5,7 +5,7 @@
 
 namespace ripple {
 
-Executive::Executive(SleOps const& _s, EnvInfo const& _envInfo, unsigned int _level)
+Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
 	:m_s(_s),m_envInfo(_envInfo),m_depth(_level)
 {
 }
@@ -16,20 +16,20 @@ void Executive::initialize(STTx const& _transaction) {
 
 bool Executive::finalize() {
 	//Todo:deal with balance:
-	//if (m_t)
-	//{
-	//	m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
+	if (m_t)
+	{
+		//m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
-	//	u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
-	//	m_s.addBalance(m_envInfo.author(), feesEarned);
-	//}
+		//u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
+		//m_s.addBalance(m_envInfo.author(), feesEarned);
+	}
 	return true;
 }
 
-uint256 Executive::gasUsed() const
+int64_t Executive::gasUsed() const
 {
 	//return m_t.gas() - m_gas;
-	return beast::zero
+	return 0;
 }
 
 bool Executive::execute() {
@@ -43,10 +43,11 @@ bool Executive::execute() {
 	bool isCreation = m_t->getFieldU16(sfContractOpType) == 1;
 	evmc_address sender = toEvmC(m_t->getAccountID(sfAccount));
 	evmc_address contract_address = toEvmC(m_t->getAccountID(sfContractAddress));
+
 	if (isCreation)
-		return create(m_t.sender(), m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+		return create(sender, m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
 	else
-		return call(m_t.receiveAddress(), m_t.sender(), m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
+		return call(contract_address, sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
 }
 
 bool Executive::create(evmc_address const& _txSender, uint256 const& _endowment,
@@ -75,7 +76,7 @@ bool Executive::call(evmc_address const& _receiveAddress, evmc_address const& _s
 	return call(params, _gasPrice, _senderAddress);
 }
 
-bool Executive::call(CallParameters const& _cp, uint256 const& _gasPrice, evmc_address const& _origin)
+bool Executive::call(CallParameters const& _p, uint256 const& _gasPrice, evmc_address const& _origin)
 {
 	// If external transaction.
 	if (m_t)
@@ -83,60 +84,24 @@ bool Executive::call(CallParameters const& _cp, uint256 const& _gasPrice, evmc_a
 		// FIXME: changelog contains unrevertable balance change that paid
 		//        for the transaction.
 		// Increment associated nonce for sender.
-		if (_p.senderAddress != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().constantinopleForkBlock) // EIP86
-			m_s.incNonce(_p.senderAddress);
+		//if (_p.senderAddress != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().constantinopleForkBlock) // EIP86
+		m_s.incNonce(_p.senderAddress);
 	}
 
 	//m_savepoint = m_s.savepoint();
 
-	if (m_sealEngine.isPrecompiled(_p.codeAddress, m_envInfo.number()))
+	m_gas = _p.gas;
+	if (m_s.addressHasCode(_p.codeAddress))
 	{
-		bigint g = m_sealEngine.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
-		if (_p.gas < g)
-		{
-			m_excepted = TransactionException::OutOfGasBase;
-			// Bail from exception.
-
-			// Empty precompiled contracts need to be deleted even in case of OOG
-			// because the bug in both Geth and Parity led to deleting RIPEMD precompiled in this case
-			// see https://github.com/ethereum/go-ethereum/pull/3341/files#diff-2433aa143ee4772026454b8abd76b9dd
-			// We mark the account as touched here, so that is can be removed among other touched empty accounts (after tx finalization)
-			if (m_envInfo.number() >= m_sealEngine.chainParams().EIP158ForkBlock)
-				m_s.addBalance(_p.codeAddress, 0);
-
-			return true;	// true actually means "all finished - nothing more to be done regarding go().
-		}
-		else
-		{
-			m_gas = (u256)(_p.gas - g);
-			bytes output;
-			bool success;
-			tie(success, output) = m_sealEngine.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.number());
-			size_t outputSize = output.size();
-			m_output = owning_bytes_ref{ std::move(output), 0, outputSize };
-			if (!success)
-			{
-				m_gas = 0;
-				m_excepted = TransactionException::OutOfGas;
-				return true;	// true means no need to run go().
-			}
-		}
-	}
-	else
-	{
-		m_gas = _p.gas;
-		if (m_s.addressHasCode(_p.codeAddress))
-		{
-			bytes const& c = m_s.code(_p.codeAddress);
-			h256 codeHash = m_s.codeHash(_p.codeAddress);
-			m_ext = make_shared<ExtVM>(m_s, m_envInfo, m_sealEngine, _p.receiveAddress,
-				_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-				m_depth, false, _p.staticCall);
-		}
+		bytes const& c = m_s.code(_p.codeAddress);
+		uint256 codeHash = m_s.codeHash(_p.codeAddress);
+		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
+			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
+			m_depth, false, _p.staticCall);
 	}
 
 	// Transfer ether.
-	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, fromEvmC(_p.valueTransfer));
 	return !m_ext;
 }
 
