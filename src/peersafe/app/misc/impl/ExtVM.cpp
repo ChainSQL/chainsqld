@@ -53,7 +53,7 @@ namespace ripple
 
     evmc_uint256be ExtVM::balance(evmc_address const& addr)
     {        
-        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
+        SLE::pointer pSle = oSle_.getSle(addr);
 
         auto& stBalance = pSle->getFieldAmount(sfBalance);        
         std::int64_t i64Drops = stBalance.zxc().drops();
@@ -104,16 +104,8 @@ namespace ripple
 
     void ExtVM::suicide(evmc_address const& addr) 
     {
-        ApplyContext& ctx = ((EnvEnfoImpl &)envInfo()).getCtx();
-        ApplyView& view = ctx.view();
-
-        AccountID contractID = fromEvmC(addr);
-        auto const contractKey = keylet::account(contractID);
-        SLE::pointer sleContract = view.peek(contractKey);
-        
-        AccountID myAddrID = fromEvmC(myAddress);
-        auto const myk = keylet::account(myAddrID);
-        SLE::pointer sleMy = view.peek(myk);
+        SLE::pointer sleContract = oSle_.getSle(addr);
+        SLE::pointer sleMy = oSle_.getSle(myAddress);
 
         auto& stBalanceContract = sleContract->getFieldAmount(sfBalance);
         auto& stBalanceMy = sleMy->getFieldAmount(sfBalance);
@@ -136,7 +128,7 @@ namespace ripple
 
     void ExtVM::log(evmc_uint256be const* /*topics*/, size_t /*numTopics*/, bytesConstRef const& data) 
     {
-        ApplyContext& ctx = ((EnvEnfoImpl &)envInfo()).getCtx();
+        ApplyContext& ctx = oSle_.getContex();
         auto j = ctx.app.journal("ExtVM");
 
         JLOG(j.trace()) << data.toString();
@@ -146,8 +138,7 @@ namespace ripple
     {
         uint256 uHash = beast::zero;
 
-        ApplyContext& ctx = ((EnvEnfoImpl &)envInfo()).getCtx();
-                
+        ApplyContext& ctx = oSle_.getContex();                
         auto ledger = ctx.app.getLedgerMaster().getLedgerBySeq(iSeq);
         
         if (ledger != nullptr)

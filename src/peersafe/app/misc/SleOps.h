@@ -18,6 +18,8 @@ public:
 
     SLE::pointer getSle(evmc_address const & addr) const;
 
+    ApplyContext & getContex() { return ctx_; }
+
 private:
     ApplyContext &ctx_;
 };
