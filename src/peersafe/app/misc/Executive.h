@@ -58,10 +58,10 @@ public:
 	/// Set up the executive for evaluating a bare CREATE (contract-creation) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool create(evmc_address const& _txSender, uint256 const& _endowment, 
-		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool createOpcode(evmc_address const& _sender, uint256 const& _endowment,
-		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
 	///// @returns false iff go() must be called (and thus a VM execution in required).
 	//bool create2Opcode(evmc_address const& _sender, uint256 const& _endowment, 
 	//	uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress, uint256 const& _salt);
@@ -93,7 +93,7 @@ public:
 private:
 	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool executeCreate(evmc_address const& _txSender, uint256 const& _endowment, 
-		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
 private:
 	SleOps& m_s;							///< The state to which this operation/transaction is applied.
 										
