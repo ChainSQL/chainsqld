@@ -169,7 +169,7 @@ public:
 	virtual void suicide(evmc_address const&) { }
 
 	/// Create a new (contract) account.
-	virtual CreateResult create(evmc_uint256be const&, int64_t const&, 
+	virtual CreateResult create(evmc_uint256be const&, int64_t&, 
 		bytesConstRef const&, Instruction, evmc_uint256be const&) = 0;
 
 	/// Make a new message call.
