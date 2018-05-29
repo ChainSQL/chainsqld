@@ -14,20 +14,10 @@ namespace ripple
 
     }
 
-    //ExtVM impl
-    SLE::pointer ExtVM::getSle(evmc_address const & addr)
-    {
-        ApplyContext& ctx = ((EnvEnfoImpl &)envInfo()).getCtx();
-        ApplyView& view = ctx.view();
-
-        AccountID accountID = fromEvmC(addr);
-        auto const k = keylet::account(accountID);
-        SLE::pointer sleDst = view.peek(k);
-    }
-
     evmc_uint256be ExtVM::balance(evmc_address const& addr)
-    {
-        SLE::pointer pSle = getSle(addr);
+    {        
+        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
+
         auto& stBalance = pSle->getFieldAmount(sfBalance);        
         std::int64_t i64Drops = stBalance.zxc().drops();
 
@@ -36,7 +26,7 @@ namespace ripple
 
     evmc_uint256be ExtVM::store(evmc_uint256be const& key)
     {           
-        SLE::pointer pSle = getSle(myAddress);
+        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), myAddress);
         const STMap256& mapStore = pSle->getFieldM256(sfStorageOverlay);
 
         uint256 uKey = fromEvmC(key);        
@@ -46,7 +36,7 @@ namespace ripple
 
     void ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
     {
-        SLE::pointer pSle = getSle(myAddress);
+        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), myAddress);
         const STMap256& mapStore = pSle->getFieldM256(sfStorageOverlay);
                 
         uint256 uKey = fromEvmC(key);
@@ -56,7 +46,7 @@ namespace ripple
 
     bytes const& ExtVM::codeAt(evmc_address const& addr)
     { 
-        SLE::pointer pSle = getSle(addr);
+        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
         Blob blobCode = pSle->getFieldVL(sfContractCode);
 
         return blobCode; 
@@ -64,14 +54,14 @@ namespace ripple
 
     size_t ExtVM::codeSizeAt(evmc_address const& addr) 
     { 
-        SLE::pointer pSle = getSle(myAddress);
+        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
         Blob blobCode = pSle->getFieldVL(sfContractCode);
 
         return blobCode.size();
     }
 
     bool ExtVM::exists(evmc_address const& addr) { 
-        SLE::pointer pSle = getSle(addr);
+        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
         return pSle != nullptr;
     }
 
@@ -107,8 +97,12 @@ namespace ripple
         return ret;
     }
 
-    void ExtVM::log(evmc_uint256be const* topics, size_t numTopics, bytesConstRef const& _data) 
+    void ExtVM::log(evmc_uint256be const* /*topics*/, size_t /*numTopics*/, bytesConstRef const& data) 
     {
+        ApplyContext& ctx = ((EnvEnfoImpl &)envInfo()).getCtx();
+        auto j = ctx.app.journal("ExtVM");
+
+        JLOG(j.trace()) << data.toString();
     }
     
     evmc_uint256be ExtVM::blockHash(int64_t  const& iSeq)
@@ -237,17 +231,7 @@ CallResult ExtVM::call(CallParameters& _p)
     return {transactionExceptionToEvmcStatusCode(e.getException()), e.takeOutput()};
 }
 
-size_t ExtVM::codeSizeAt(dev::Address _a)
-{
-	return m_s.codeSize(_a);
-}
 
-
-
-void ExtVM::setStore(u256 _n, u256 _v)
-{
-	m_s.setStorage(myAddress, _n, _v);
-}
 
 CreateResult ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, Instruction _op, u256 _salt, OnOpFunc const& _onOp)
 {
@@ -267,36 +251,5 @@ CreateResult ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, I
 	return {transactionExceptionToEvmcStatusCode(e.getException()), e.takeOutput(), e.newAddress()};
 }
 
-void ExtVM::suicide(Address _a)
-{
-    //how to suicide in zxc net???
-    ExtVMFace::suicide(_a);
-}
-
-h256 ExtVM::blockHash(u256 _number)
-{
-	u256 const currentNumber = envInfo().number();
-
-	if (_number >= currentNumber || _number < (std::max<u256>(256, currentNumber) - 256))
-		return h256();
-
-	if (currentNumber < m_sealEngine.chainParams().constantinopleForkBlock + 256)
-	{
-		h256 const parentHash = envInfo().header().parentHash();
-		h256s const lastHashes = envInfo().lastHashes().precedingHashes(parentHash);
-
-		assert(lastHashes.size() > (unsigned)(currentNumber - 1 - _number));
-		return lastHashes[(unsigned)(currentNumber - 1 - _number)];
-	}
-
-	u256 const nonce = m_s.getNonce(caller);
-	u256 const gas = 1000000;
-	Transaction tx(0, 0, gas, c_blockhashContractAddress, toBigEndian(_number), nonce);
-	tx.forceSender(caller);
-
-	ExecutionResult res;
-	std::tie(res, std::ignore) = m_s.execute(envInfo(), m_sealEngine, tx, Permanence::Reverted);
-	return h256(res.output);
-}
 */
 }

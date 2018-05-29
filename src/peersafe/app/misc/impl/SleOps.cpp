@@ -3,12 +3,14 @@
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
 
-    STAmount SleOps::balance(AccountID const& account, Currency const& currency, uint32 &scale) const
-    {
-        STAmount stAmout;
-        return stAmout;
+    SLE::pointer SleOps::getSle(ApplyContext& ctx, evmc_address const & addr) const
+    {        
+        ApplyView& view = ctx.view();
+        
+        AccountID accountID = fromEvmC(addr);
+        auto const k = keylet::account(accountID);
+        return view.peek(k);
     }
-
 
 
 

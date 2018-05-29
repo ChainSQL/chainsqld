@@ -28,7 +28,7 @@ public:
         AccountID const& _caller, AccountID const& _origin, uint256 _value, uint256 _gasPrice, bytesConstRef _data,
         bytesConstRef _code, uint256 const& _codeHash, int32_t _depth, bool _isCreate,  bool _staticCall)
       : ExtVMFace(_envInfo, toEvmC(_myAddress), toEvmC(_caller), toEvmC(_origin), toEvmC(_value), toEvmC(_gasPrice), _data, _code.toBytes(), toEvmC(_codeHash), _depth, _isCreate, _staticCall),
-        m_s(_s)
+        oSle_(_s)
     {
         // Contract: processing account must exist. In case of CALL, the ExtVM
         // is created only if an account has code (so exist). In case of CREATE
@@ -58,6 +58,7 @@ public:
     /// Suicide the associated contract and give proceeds to the given address.
     virtual void suicide(evmc_address const& addr) override final;
 
+    /// Hash of a block if within the last 256 blocks, or h256() otherwise.
     virtual evmc_uint256be blockHash(int64_t  const& iSeq) override final;
 
     /// Create a new (contract) account.
@@ -68,17 +69,17 @@ public:
     virtual CallResult call(CallParameters&) override final;
 
     /// Revert any changes made (by any of the other calls).
-    virtual void log(evmc_uint256be const* topics, size_t numTopics, bytesConstRef const& _data) override final;
+    virtual void log(evmc_uint256be const* /*topics*/, size_t /*numTopics*/, bytesConstRef const& data) override final;
 
-    /// Hash of a block if within the last 256 blocks, or h256() otherwise.
+    
     
 
-    SleOps const& state() const { return m_s; }
-private:
-    SLE::pointer getSle(evmc_address const & addr);
+    SleOps const& state() const { return oSle_; }
+
 
 private:
-	SleOps& m_s;  ///< A reference to the sleOp	
+	SleOps&                                                      oSle_;
+    beast::Journal                                               journal_;
 };
 
 }
