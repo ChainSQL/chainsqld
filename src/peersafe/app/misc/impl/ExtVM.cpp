@@ -176,7 +176,7 @@ namespace ripple
 
         if (!result)
         {
-            ApplyContext& ctx = oSle_.getContex();
+            ApplyContext const& ctx = oSle_.ctx();
             auto j = ctx.app.journal("ExtVM");
             go(depth, e, j);            
         }
@@ -194,7 +194,7 @@ namespace ripple
 
     void ExtVM::log(evmc_uint256be const* /*topics*/, size_t /*numTopics*/, bytesConstRef const& data) 
     {
-        ApplyContext& ctx = oSle_.getContex();
+        ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
         JLOG(j.trace()) << data.toString();
@@ -204,7 +204,7 @@ namespace ripple
     {
         uint256 uHash = beast::zero;
 
-        ApplyContext& ctx = oSle_.getContex();                
+        ApplyContext const& ctx = oSle_.ctx();
         auto ledger = ctx.app.getLedgerMaster().getLedgerBySeq(iSeq);
         
         if (ledger != nullptr)
