@@ -120,8 +120,13 @@ namespace ripple {
 			return mValue.empty();
 		}
 
-		const uint256&
-			operator[] (uint256 key) const
+		uint256&
+			operator[] (const uint256& key)
+		{
+			return mValue[key];
+		}		
+
+		uint256& at(const uint256& key)
 		{
 			return mValue.at(key);
 		}
@@ -178,6 +183,11 @@ namespace ripple {
 			erase(std::map<uint256, uint256>::iterator position)
 		{
 			return mValue.erase(position);
+		}
+
+		size_t erase(const uint256& key)
+		{
+			return mValue.erase(key);
 		}
 
 		void

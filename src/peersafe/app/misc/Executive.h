@@ -1,0 +1,107 @@
+#ifndef __H_CHAINSQL_VM_EXECUTIVE_H__
+#define __H_CHAINSQL_VM_EXECUTIVE_H__
+
+#include <peersafe/app/misc/SleOps.h>
+#include <peersafe/app/misc/ExtVM.h>
+
+namespace ripple {
+	/**
+	* @brief Message-call/contract-creation executor; useful for executing transactions.
+	*
+	* Two ways of using this class - either as a transaction executive or a CALL/CREATE executive.
+	*
+	* In the first use, after construction, begin with initialize(), then execute() and end with finalize(). Call go()
+	* after execute() only if it returns false.
+	*
+	* In the second use, after construction, begin with call() or create() and end with
+	* accrueSubState(). Call go() after call()/create() only if it returns false.
+	*
+	* Example:
+	* @code
+	* Executive e(state, blockchain, 0);
+	* e.initialize(transaction);
+	* if (!e.execute())
+	*    e.go();
+	* e.finalize();
+	* @endcode
+	*/
+class STTx;
+class Executive {
+public:
+	// Simple constructor; executive will operate on given state, with the given environment info.
+	Executive(SleOps& _s, EnvInfo& _envInfo, unsigned int _level);
+
+	//No default constructor
+	Executive() = delete;
+
+	//Cannot copy from another object
+	Executive(Executive const&) = delete;
+	void operator=(Executive) = delete;
+
+	/// Initializes the executive for evaluating a transaction. You must call finalize() at some point following this.
+	//void initialize(bytesConstRef _transaction) { initialize(STTx(_transaction, CheckTransaction::None)); }
+	void initialize(STTx const& _transaction);
+
+	/// Finalise a transaction previously set up with initialize().
+	/// @warning Only valid after initialize() and execute(), and possibly go().
+	/// @returns true if the outermost execution halted normally, false if exceptionally halted.
+	bool finalize();
+
+	/// Begins execution of a transaction. You must call finalize() following this.
+	/// @returns true if the transaction is done, false if go() must be called.
+	bool execute();
+
+	/// @returns the transaction from initialize().
+	/// @warning Only valid after initialize().
+	STTx const& t() const { return *m_t; }
+
+	/// Set up the executive for evaluating a bare CREATE (contract-creation) operation.
+	/// @returns false iff go() must be called (and thus a VM execution in required).
+	bool create(evmc_address const& _txSender, uint256 const& _endowment, 
+		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+	/// @returns false iff go() must be called (and thus a VM execution in required).
+	bool createOpcode(evmc_address const& _sender, uint256 const& _endowment,
+		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+	/// @returns false iff go() must be called (and thus a VM execution in required).
+	bool create2Opcode(evmc_address const& _sender, uint256 const& _endowment, 
+		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress, uint256 const& _salt);
+	/// Set up the executive for evaluating a bare CALL (message call) operation.
+	/// @returns false iff go() must be called (and thus a VM execution in required).
+	bool call(evmc_address const& _receiveAddress, evmc_address const& _txSender, 
+		uint256 const& _txValue, uint256 const& _gasPrice, bytesConstRef _txData, uint256 const& _gas);
+	bool call(CallParameters const& _cp, uint256 const& _gasPrice, evmc_address const& _origin);
+	/// Executes (or continues execution of) the VM.
+	/// @returns false iff go() must be called again to finish the transaction.
+	//bool go(OnOpFunc const& _onOp = OnOpFunc());
+	bool go();
+
+	/// @returns the new address for the created contract in the CREATE operation.
+	evmc_address newAddress() const { return m_newAddress; }
+
+	///// Revert all changes made to the state by this execution.
+	//void revert();
+private:
+	SleOps& m_s;							///< The state to which this operation/transaction is applied.
+										
+	EnvInfo m_envInfo;					///< Information on the runtime environment.
+	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
+	owning_bytes_ref m_output;			///< Execution output.
+	//ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
+
+	unsigned m_depth = 0;				///< The context's call-depth.
+	//TransactionException m_excepted = TransactionException::None;	///< Details if the VM's execution resulted in an exception.
+	int64_t m_baseGasRequired;			///< The base amount of gas requried for executing this transaction.
+	uint256 m_gas = beast::zero;		///< The gas for EVM code execution. Initial amount before go() execution, final amount after go() execution.
+	uint256 m_refunded = beast::zero;	///< The amount of gas refunded.
+
+	std::shared_ptr<const STTx> m_t;							///< The original transaction. Set by setup().
+
+	uint256 m_gasCost;
+
+	bool m_isCreation = false;
+	evmc_address m_newAddress;
+	size_t m_savepoint = 0;
+};
+} // namespace ripple
+
+#endif // !__H_CHAINSQL_VM_EXECUTIVE_H__

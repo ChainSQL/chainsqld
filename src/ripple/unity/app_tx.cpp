@@ -45,3 +45,4 @@
 #include <peersafe/app/tx/impl/SqlStatement.cpp>
 #include <peersafe/app/tx/impl/SqlTransaction.cpp>
 #include <peersafe/app/tx/impl/OperationRule.cpp>
+#include <peersafe/app/tx/impl/SmartContract.cpp>
