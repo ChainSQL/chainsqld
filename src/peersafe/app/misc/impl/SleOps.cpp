@@ -3,9 +3,9 @@
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
 
-    SLE::pointer SleOps::getSle(ApplyContext& ctx, evmc_address const & addr) const
+    SLE::pointer SleOps::getSle(evmc_address const & addr) const
     {        
-        ApplyView& view = ctx.view();
+        ApplyView& view = ctx_.view();
         
         AccountID accountID = fromEvmC(addr);
         auto const k = keylet::account(accountID);

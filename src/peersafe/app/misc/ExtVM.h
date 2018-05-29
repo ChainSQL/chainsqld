@@ -12,15 +12,6 @@
 namespace ripple
 {
 
-class EnvEnfoImpl : public EnvInfo
-{
-public:
-    EnvEnfoImpl(ApplyContext& ctx);
-    ApplyContext & getCtx() { return ctx_; }
-private:
-    ApplyContext &ctx_;
-};
-
 class ExtVM : public ExtVMFace
 {
 public:    
@@ -70,12 +61,8 @@ public:
 
     /// Revert any changes made (by any of the other calls).
     virtual void log(evmc_uint256be const* /*topics*/, size_t /*numTopics*/, bytesConstRef const& data) override final;
-
     
-    
-
     SleOps const& state() const { return oSle_; }
-
 
 private:
 	SleOps&                                                      oSle_;

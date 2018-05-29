@@ -1,12 +1,55 @@
 #include <peersafe/app/misc/ExtVM.h>
-#include <ripple/protocol/STMap256.h>
+#include <peersafe/app/misc/Executive.h>
+#include <peersafe/protocol/STMap256.h>
 #include <ripple/protocol/ZXCAmount.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+
 #include <boost/thread.hpp>
 #include <exception>
 
+
 namespace ripple
 {
+    static unsigned const c_depthLimit = 1024;
+
+    /// Upper bound of stack space needed by single CALL/CREATE execution. Set experimentally.
+    static size_t const c_singleExecutionStackSize = 100 * 1024;
+    /// Standard thread stack size.
+    static size_t const c_defaultStackSize =
+#if defined(__linux)
+        8 * 1024 * 1024;
+#elif defined(_WIN32)
+        16 * 1024 * 1024;
+#else
+        512 * 1024; // OSX and other OSs
+#endif
+    /// Stack overhead prior to allocation.
+    static size_t const c_entryOverhead = 128 * 1024;
+    /// On what depth execution should be offloaded to additional separated stack space.
+    static unsigned const c_offloadPoint = (c_defaultStackSize - c_entryOverhead) / c_singleExecutionStackSize;
+
+    void goOnOffloadedStack(Executive& _e)
+    {
+        // Set new stack size enouth to handle the rest of the calls up to the limit.
+        boost::thread::attributes attrs;
+        attrs.set_stack_size((c_depthLimit - c_offloadPoint) * c_singleExecutionStackSize);
+
+        // Create new thread with big stack and join immediately.
+        // TODO: It is possible to switch the implementation to Boost.Context or similar when the API is stable.
+        boost::exception_ptr exception;
+        boost::thread{ attrs, [&] {
+            try
+            {
+                _e.go();
+            }
+            catch (...)
+            {
+                exception = boost::current_exception(); // Catch all exceptions to be rethrown in parent thread.
+            }
+        } }.join();
+        if (exception)
+            boost::rethrow_exception(exception);
+    }
 
     EnvEnfoImpl::EnvEnfoImpl(ApplyContext& ctx)
         :ctx_(ctx)
@@ -26,27 +69,27 @@ namespace ripple
 
     evmc_uint256be ExtVM::store(evmc_uint256be const& key)
     {           
-        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), myAddress);
-        const STMap256& mapStore = pSle->getFieldM256(sfStorageOverlay);
+        SLE::pointer pSle = oSle_.getSle(myAddress);
+        STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
 
         uint256 uKey = fromEvmC(key);        
-        const uint256&  uV = mapStore[uKey];
+        uint256& uV = mapStore.at(uKey);
         return toEvmC(uV);
     }
 
     void ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
     {
-        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), myAddress);
-        const STMap256& mapStore = pSle->getFieldM256(sfStorageOverlay);
+        SLE::pointer pSle = oSle_.getSle(myAddress);
+        STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
                 
         uint256 uKey = fromEvmC(key);
         uint256 uValue = fromEvmC(value);
-        //set stroe
+        mapStore[uKey] = uValue;
     }
 
     bytes const& ExtVM::codeAt(evmc_address const& addr)
     { 
-        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
+        SLE::pointer pSle = oSle_.getSle(addr);
         Blob blobCode = pSle->getFieldVL(sfContractCode);
 
         return blobCode; 
@@ -54,14 +97,14 @@ namespace ripple
 
     size_t ExtVM::codeSizeAt(evmc_address const& addr) 
     { 
-        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
+        SLE::pointer pSle = oSle_.getSle(addr);
         Blob blobCode = pSle->getFieldVL(sfContractCode);
 
         return blobCode.size();
     }
 
     bool ExtVM::exists(evmc_address const& addr) { 
-        SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
+        SLE::pointer pSle = oSle_.getSle(addr);
         return pSle != nullptr;
     }
 

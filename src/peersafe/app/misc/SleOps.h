@@ -14,9 +14,12 @@ namespace ripple {
 class SleOps
 {
 public:
-    SleOps() {}
+    SleOps(ApplyContext& ctx):ctx_(ctx) {}
 
-    SLE::pointer getSle(ApplyContext& ctx, evmc_address const & addr) const;
+    SLE::pointer getSle(evmc_address const & addr) const;
+
+private:
+    ApplyContext &ctx_;
 };
 
 }
