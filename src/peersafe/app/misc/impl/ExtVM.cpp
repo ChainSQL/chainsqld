@@ -51,12 +51,6 @@ namespace ripple
             boost::rethrow_exception(exception);
     }
 
-    EnvEnfoImpl::EnvEnfoImpl(ApplyContext& ctx)
-        :ctx_(ctx)
-    {
-
-    }
-
     evmc_uint256be ExtVM::balance(evmc_address const& addr)
     {        
         SLE::pointer pSle = oSle_.getSle(((EnvEnfoImpl &)envInfo()).getCtx(), addr);
