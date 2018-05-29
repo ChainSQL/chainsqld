@@ -51,6 +51,57 @@ namespace ripple
             boost::rethrow_exception(exception);
     }
 
+    void go(unsigned _depth, Executive& _e, beast::Journal &j)
+    {
+        // If in the offloading point we need to switch to additional separated stack space.
+        // Current stack is too small to handle more CALL/CREATE executions.
+        // It needs to be done only once as newly allocated stack space it enough to handle
+        // the rest of the calls up to the depth limit (c_depthLimit).
+
+        if (_depth == c_offloadPoint)
+        {
+            JLOG(j.trace()) << "Stack offloading (depth: " << c_offloadPoint << ")";
+            goOnOffloadedStack(_e);
+        }
+        else
+            _e.go();
+    }
+
+    evmc_status_code terToEvmcStatusCode(TER eState) noexcept
+    {
+        /*
+        switch (ex)
+        {
+        case TransactionException::None:
+            return EVMC_SUCCESS;
+
+        case TransactionException::RevertInstruction:
+            return EVMC_REVERT;
+
+        case TransactionException::OutOfGas:
+            return EVMC_OUT_OF_GAS;
+
+        case TransactionException::BadInstruction:
+            return EVMC_UNDEFINED_INSTRUCTION;
+
+        case TransactionException::OutOfStack:
+            return EVMC_STACK_OVERFLOW;
+
+        case TransactionException::StackUnderflow:
+            return EVMC_STACK_UNDERFLOW;
+
+        case TransactionException::BadJumpDestination:
+            return EVMC_BAD_JUMP_DESTINATION;
+
+        default:
+            return EVMC_FAILURE;
+        }
+        
+        return EVMC_FAILURE;
+        */
+        return EVMC_SUCCESS;
+    }
+
     evmc_uint256be ExtVM::balance(evmc_address const& addr)
     {        
         SLE::pointer pSle = oSle_.getSle(addr);
@@ -114,9 +165,24 @@ namespace ripple
         ExtVMFace::suicide(addr);
     }
 
-    CreateResult ExtVM::create(evmc_uint256be const&, int64_t const&, bytesConstRef const&, Instruction, evmc_uint256be const&)
+    CreateResult ExtVM::create(evmc_uint256be const& endowment, int64_t const& ioGas,
+        bytesConstRef const& code, Instruction op, evmc_uint256be const& /*salt*/)
     {
         CreateResult ret(EVMC_SUCCESS, owning_bytes_ref(),evmc_address());
+        
+        Executive e(oSle_, envInfo(), depth + 1);
+        assert(op == Instruction::CREATE);
+        bool result = e.createOpcode(myAddress, fromEvmC(endowment), fromEvmC(gasPrice), ioGas, code, origin);
+
+        if (!result)
+        {
+            ApplyContext& ctx = oSle_.getContex();
+            auto j = ctx.app.journal("ExtVM");
+            go(depth, e, j);            
+        }
+        ioGas = e.gas();
+        return{ terToEvmcStatusCode(e.getException()), e.takeOutput(), e.newAddress() };
+
         return ret;
     }
 

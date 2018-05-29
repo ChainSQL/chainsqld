@@ -53,8 +53,8 @@ public:
     virtual evmc_uint256be blockHash(int64_t  const& iSeq) override final;
 
     /// Create a new (contract) account.
-    virtual CreateResult create(evmc_uint256be const&, int64_t const&,
-        bytesConstRef const&, Instruction, evmc_uint256be const&) override final;
+    virtual CreateResult create(evmc_uint256be const& endowment, int64_t const& ioGas,
+        bytesConstRef const& code, Instruction op, evmc_uint256be const& salt) override final;
 
     /// Make a new message call.
     virtual CallResult call(CallParameters&) override final;
