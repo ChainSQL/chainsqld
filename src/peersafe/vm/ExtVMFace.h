@@ -138,7 +138,7 @@ public:
 
 class ExtVMFace : public evmc_context {
 public:
-	ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,
+	ExtVMFace(EnvInfo & envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,
 		evmc_uint256be _value, evmc_uint256be _gasPrice, 
 		bytesConstRef _data, bytes _code, evmc_uint256be _codeHash, int32_t _depth,
 		bool _isCreate, bool _staticCall);

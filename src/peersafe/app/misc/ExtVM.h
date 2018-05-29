@@ -15,7 +15,7 @@ namespace ripple
 class ExtVM : public ExtVMFace
 {
 public:    
-    ExtVM(SleOps& _s, EnvInfo const& _envInfo, AccountID const& _myAddress,
+    ExtVM(SleOps& _s, EnvInfo &_envInfo, AccountID const& _myAddress,
         AccountID const& _caller, AccountID const& _origin, uint256 _value, uint256 _gasPrice, bytesConstRef _data,
         bytesConstRef _code, uint256 const& _codeHash, int32_t _depth, bool _isCreate,  bool _staticCall)
       : ExtVMFace(_envInfo, toEvmC(_myAddress), toEvmC(_caller), toEvmC(_origin), toEvmC(_value), toEvmC(_gasPrice), _data, _code.toBytes(), toEvmC(_codeHash), _depth, _isCreate, _staticCall),
