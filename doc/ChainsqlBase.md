@@ -62,7 +62,7 @@ A账户要建一张表，建表交易费用为0.5ZXC，对象增加费用为1ZXC
 # 3.交易费用
 在Chainsql中交易费用将会被销毁，不会给任何人，也就是说，Chainsql网络中总的ZXC数量是随着交易不断减少的。
 ## 3.1 Chainsql交易费用计算规则
-基础费用为 1010drop，也就是0.00101zxc，1ZXC = 1000000 drop<br>
+Chainsql类型的交易（TableListSet,SQLStatement,SQLTransaction）基础费用为 1010drop，也就是0.00101zxc，1ZXC = 1000000 drop<br>
 Chainsql类型交易费用 = 0.00101(ZXC) + 交易中Raw字段字节数/1024(ZXC)
 
 比如我要建一张表，建表的rpc命令如下：
