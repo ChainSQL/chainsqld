@@ -29,7 +29,7 @@ class STTx;
 class Executive {
 public:
 	// Simple constructor; executive will operate on given state, with the given environment info.
-	Executive(SleOps& _s, EnvInfo& _envInfo, unsigned int _level);
+	Executive(SleOps const& _s, EnvInfo const& _envInfo, unsigned int _level);
 
 	//No default constructor
 	Executive() = delete;
@@ -62,13 +62,13 @@ public:
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool createOpcode(evmc_address const& _sender, uint256 const& _endowment,
 		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
-	/// @returns false iff go() must be called (and thus a VM execution in required).
-	bool create2Opcode(evmc_address const& _sender, uint256 const& _endowment, 
-		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress, uint256 const& _salt);
+	///// @returns false iff go() must be called (and thus a VM execution in required).
+	//bool create2Opcode(evmc_address const& _sender, uint256 const& _endowment, 
+	//	uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress, uint256 const& _salt);
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool call(evmc_address const& _receiveAddress, evmc_address const& _txSender, 
-		uint256 const& _txValue, uint256 const& _gasPrice, bytesConstRef _txData, uint256 const& _gas);
+		uint256 const& _txValue, uint256 const& _gasPrice, bytesConstRef _txData, int64_t const& _gas);
 	bool call(CallParameters const& _cp, uint256 const& _gasPrice, evmc_address const& _origin);
 	/// Executes (or continues execution of) the VM.
 	/// @returns false iff go() must be called again to finish the transaction.
@@ -80,6 +80,20 @@ public:
 
 	///// Revert all changes made to the state by this execution.
 	//void revert();
+
+	/// @returns gas remaining after the transaction/operation. Valid after the transaction has been executed.
+	int64_t gas() const { return m_gas; }
+	/// @returns total gas used in the transaction/operation.
+	/// @warning Only valid after finalise().
+	int64_t gasUsed() const;
+
+	owning_bytes_ref takeOutput() { return std::move(m_output); }
+	/// @returns The exception that has happened during the execution if any.
+	TER getException() const noexcept { return m_excepted; }
+private:
+	/// @returns false if go() must be called (and thus a VM execution in required).
+	bool executeCreate(evmc_address const& _txSender, uint256 const& _endowment, 
+		uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
 private:
 	SleOps& m_s;							///< The state to which this operation/transaction is applied.
 										
@@ -89,14 +103,14 @@ private:
 	//ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 
 	unsigned m_depth = 0;				///< The context's call-depth.
-	//TransactionException m_excepted = TransactionException::None;	///< Details if the VM's execution resulted in an exception.
+	TER m_excepted = tesSUCCESS;	///< Details if the VM's execution resulted in an exception.
 	int64_t m_baseGasRequired;			///< The base amount of gas requried for executing this transaction.
-	uint256 m_gas = beast::zero;		///< The gas for EVM code execution. Initial amount before go() execution, final amount after go() execution.
+	int64_t m_gas = 0;					///< The gas for EVM code execution. Initial amount before go() execution, final amount after go() execution.
 	uint256 m_refunded = beast::zero;	///< The amount of gas refunded.
 
-	std::shared_ptr<const STTx> m_t;							///< The original transaction. Set by setup().
+	std::shared_ptr<const STTx> m_t;	///< The original transaction. Set by setup().
 
-	uint256 m_gasCost;
+	int64_t m_gasCost;
 
 	bool m_isCreation = false;
 	evmc_address m_newAddress;
