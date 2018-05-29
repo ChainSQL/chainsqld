@@ -1,4 +1,7 @@
 #include <peersafe/app/misc/ExtVM.h>
+#include <ripple/protocol/STMap256.h>
+#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 #include <boost/thread.hpp>
 #include <exception>
 
@@ -12,37 +15,84 @@ namespace ripple
     }
 
     //ExtVM impl
-    evmc_uint256be ExtVM::store(evmc_uint256be const& key)
+    SLE::pointer ExtVM::getSle(evmc_address const & addr)
     {
-        evmc_uint256be vData;        return vData;
+        ApplyContext& ctx = ((EnvEnfoImpl &)envInfo()).getCtx();
+        ApplyView& view = ctx.view();
+
+        AccountID accountID = fromEvmC(addr);
+        auto const k = keylet::account(accountID);
+        SLE::pointer sleDst = view.peek(k);
+    }
+
+    evmc_uint256be ExtVM::balance(evmc_address const& addr)
+    {
+        SLE::pointer pSle = getSle(addr);
+        auto& stBalance = pSle->getFieldAmount(sfBalance);        
+        std::int64_t i64Drops = stBalance.zxc().drops();
+
+        return toEvmC(uint256(i64Drops));
+    }
+
+    evmc_uint256be ExtVM::store(evmc_uint256be const& key)
+    {           
+        SLE::pointer pSle = getSle(myAddress);
+        const STMap256& mapStore = pSle->getFieldM256(sfStorageOverlay);
+
+        uint256 uKey = fromEvmC(key);        
+        const uint256&  uV = mapStore[uKey];
+        return toEvmC(uV);
     }
 
     void ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
     {
-
+        SLE::pointer pSle = getSle(myAddress);
+        const STMap256& mapStore = pSle->getFieldM256(sfStorageOverlay);
+                
+        uint256 uKey = fromEvmC(key);
+        uint256 uValue = fromEvmC(value);
+        //set stroe
     }
 
-    evmc_uint256be ExtVM::balance(evmc_address const&) 
-    {
-        return evmc_uint256be(); 
-    }
-
-    bytes const& ExtVM::codeAt(evmc_address const&) 
+    bytes const& ExtVM::codeAt(evmc_address const& addr)
     { 
-        return NullBytes; 
+        SLE::pointer pSle = getSle(addr);
+        Blob blobCode = pSle->getFieldVL(sfContractCode);
+
+        return blobCode; 
     }
 
-    size_t ExtVM::codeSizeAt(evmc_address const&) 
+    size_t ExtVM::codeSizeAt(evmc_address const& addr) 
     { 
-        return 0; 
+        SLE::pointer pSle = getSle(myAddress);
+        Blob blobCode = pSle->getFieldVL(sfContractCode);
+
+        return blobCode.size();
     }
 
-    bool ExtVM::exists(evmc_address const&) { 
-        return false; 
+    bool ExtVM::exists(evmc_address const& addr) { 
+        SLE::pointer pSle = getSle(addr);
+        return pSle != nullptr;
     }
 
-    void ExtVM::suicide(evmc_address const&) 
+    void ExtVM::suicide(evmc_address const& addr) 
     {
+        ApplyContext& ctx = ((EnvEnfoImpl &)envInfo()).getCtx();
+        ApplyView& view = ctx.view();
+
+        AccountID contractID = fromEvmC(addr);
+        auto const contractKey = keylet::account(contractID);
+        SLE::pointer sleContract = view.peek(contractKey);
+        
+        AccountID myAddrID = fromEvmC(myAddress);
+        auto const myk = keylet::account(myAddrID);
+        SLE::pointer sleMy = view.peek(myk);
+
+        auto& stBalanceContract = sleContract->getFieldAmount(sfBalance);
+        auto& stBalanceMy = sleMy->getFieldAmount(sfBalance);
+        sleMy->setFieldAmount(sfBalance, stBalanceContract + stBalanceMy);
+
+        ExtVMFace::suicide(addr);
     }
 
     CreateResult ExtVM::create(evmc_uint256be const&, int64_t const&, bytesConstRef const&, Instruction, evmc_uint256be const&)
@@ -61,9 +111,20 @@ namespace ripple
     {
     }
     
-    evmc_uint256be ExtVM::blockHash(int64_t  const&_number)
+    evmc_uint256be ExtVM::blockHash(int64_t  const& iSeq)
     {
+        uint256 uHash = beast::zero;
 
+        ApplyContext& ctx = ((EnvEnfoImpl &)envInfo()).getCtx();
+                
+        auto ledger = ctx.app.getLedgerMaster().getLedgerBySeq(iSeq);
+        
+        if (ledger != nullptr)
+        {
+            uHash = ledger->info().hash;
+        }
+
+        return toEvmC(uHash);
     }
 
 /*

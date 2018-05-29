@@ -16,6 +16,7 @@ class EnvEnfoImpl : public EnvInfo
 {
 public:
     EnvEnfoImpl(ApplyContext& ctx);
+    ApplyContext & getCtx() { return ctx_; }
 private:
     ApplyContext &ctx_;
 };
@@ -43,34 +44,38 @@ public:
 	virtual void setStore(evmc_uint256be const& key, evmc_uint256be const& value) override final;
 
     /// Read address's balance.
-    virtual evmc_uint256be balance(evmc_address const&) { return evmc_uint256be(); }
+    virtual evmc_uint256be balance(evmc_address const& addr) override final;
 
     /// Read address's code.
-    virtual bytes const& codeAt(evmc_address const&) { return NullBytes; }
+    virtual bytes const& codeAt(evmc_address const& addr)  override final;
 
     /// @returns the size of the code in bytes at the given address.
-    virtual size_t codeSizeAt(evmc_address const&) { return 0; }
+    virtual size_t codeSizeAt(evmc_address const& addr)  override final;
 
     /// Does the account exist?
-    virtual bool exists(evmc_address const&) { return false; }
+    virtual bool exists(evmc_address const& addr) override final;
 
     /// Suicide the associated contract and give proceeds to the given address.
-    virtual void suicide(evmc_address const&) { }
+    virtual void suicide(evmc_address const& addr) override final;
+
+    virtual evmc_uint256be blockHash(int64_t  const& iSeq) override final;
 
     /// Create a new (contract) account.
     virtual CreateResult create(evmc_uint256be const&, int64_t const&,
-        bytesConstRef const&, Instruction, evmc_uint256be const&) = 0;
+        bytesConstRef const&, Instruction, evmc_uint256be const&) override final;
 
     /// Make a new message call.
-    virtual CallResult call(CallParameters&) = 0;
+    virtual CallResult call(CallParameters&) override final;
 
     /// Revert any changes made (by any of the other calls).
-    virtual void log(evmc_uint256be const* topics, size_t numTopics, bytesConstRef const& _data) {  }
+    virtual void log(evmc_uint256be const* topics, size_t numTopics, bytesConstRef const& _data) override final;
 
     /// Hash of a block if within the last 256 blocks, or h256() otherwise.
-    virtual evmc_uint256be blockHash(int64_t  const&_number) = 0;
+    
 
     SleOps const& state() const { return m_s; }
+private:
+    SLE::pointer getSle(evmc_address const & addr);
 
 private:
 	SleOps& m_s;  ///< A reference to the sleOp	
