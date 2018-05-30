@@ -6,7 +6,6 @@
 #include <ripple/protocol/STAmount.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/basics/TaggedCache.h>
-#include <peersafe/app/misc/SleOps.h>
 #include <peersafe/app/misc/TypeTransform.h>
 
 
@@ -16,11 +15,7 @@ namespace ripple {
 class SleOps
 {
 public:
-    SleOps(ApplyContext& ctx)
-        :ctx_(ctx)
-        , contractCacheCode_("contractCode", 100, 300, stopwatch())
-    {
-    }
+    SleOps(ApplyContext& ctx);
 
 	const ApplyContext& ctx() { return ctx_; }
 
@@ -43,7 +38,7 @@ public:
 	/// @returns bytes() if no account exists at that address.
 	/// @warning The reference to the code is only valid until the access to
 	///          other account. Do not keep it.
-	bytes const& code(evmc_address const& _addr) const;
+	bytes const& code(evmc_address const& _addr);
 	/// Get the code hash of an account.
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
 	uint256 codeHash(evmc_address const& _contract) const;

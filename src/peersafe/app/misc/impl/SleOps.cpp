@@ -4,6 +4,12 @@
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
 
+    SleOps::SleOps(ApplyContext& ctx)
+        :ctx_(ctx)
+        , contractCacheCode_("contractCode", 100, 300, stopwatch(), ctx.app.journal("TaggedCache"))
+    {        
+    }
+
     SLE::pointer SleOps::getSle(evmc_address const & addr) const
     {        
         ApplyView& view = ctx_.view();
@@ -46,10 +52,27 @@ namespace ripple {
 		pSle->setFieldVL(sfContractCode,code);
 	}
 
-	bytes const& SleOps::code(evmc_address const& addr) const
-	{
+	bytes const& SleOps::code(evmc_address const& addr) 	
+    {
 		SLE::pointer pSle = getSle(addr);
-		return pSle->getFieldVL(sfContractCode);
+		Blob blobCode = pSle->getFieldVL(sfContractCode);
+
+        auto p = std::make_shared<ripple::Blob>(blobCode);
+
+        AccountID const i;
+        std::uint32_t ii = 0;
+        //contractCacheCode_.canonicalize(ii, p);
+
+        auto blobCode = contractCacheCode_.fetch(addr);
+        /*
+        blobCode
+
+        if (nullptr == )
+        {
+
+        }
+        */
+        return blobCode;
 	}
 
 	uint256 SleOps::codeHash(evmc_address const& addr) const
