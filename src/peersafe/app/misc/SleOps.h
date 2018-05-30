@@ -41,7 +41,7 @@ public:
 	bytes const& code(evmc_address const& _addr);
 	/// Get the code hash of an account.
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
-	uint256 codeHash(evmc_address const& _contract) const;
+	uint256 codeHash(evmc_address const& _contract);
 
 	void transferBalance(evmc_address const& _from, evmc_address const& _to, uint256 const& _value);
 
