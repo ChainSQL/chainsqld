@@ -54,31 +54,23 @@ namespace ripple {
 
 	bytes const& SleOps::code(evmc_address const& addr) 	
     {
-		SLE::pointer pSle = getSle(addr);
-		Blob blobCode = pSle->getFieldVL(sfContractCode);
+        Blob *pBlobCode = contractCacheCode_.fetch(addr).get();
+        if (nullptr == pBlobCode)
+        {         
+            SLE::pointer pSle = getSle(addr);
+            Blob blobCode = pSle->getFieldVL(sfContractCode);
 
-        auto p = std::make_shared<ripple::Blob>(blobCode);
+            auto p = std::make_shared<ripple::Blob>(blobCode);
+            contractCacheCode_.canonicalize(addr, p);
 
-        AccountID const i;
-        std::uint32_t ii = 0;
-        //contractCacheCode_.canonicalize(ii, p);
-
-        auto blobCode = contractCacheCode_.fetch(addr);
-        /*
-        blobCode
-
-        if (nullptr == )
-        {
-
-        }
-        */
-        return blobCode;
+            pBlobCode = p.get();
+        }        
+        return *pBlobCode;
 	}
 
-	uint256 SleOps::codeHash(evmc_address const& addr) const
+	uint256 SleOps::codeHash(evmc_address const& addr)
 	{
-		SLE::pointer pSle = getSle(addr);
-		bytes code = pSle->getFieldVL(sfContractCode);
+        bytes const& code = SleOps::code(addr);
 		return sha512Half(code);
 	}
 

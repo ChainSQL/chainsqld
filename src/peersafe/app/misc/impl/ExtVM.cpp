@@ -134,18 +134,13 @@ namespace ripple
 
     bytes const& ExtVM::codeAt(evmc_address const& addr)
     { 
-        SLE::pointer pSle = oSle_.getSle(addr);
-        Blob blobCode = pSle->getFieldVL(sfContractCode);
-
-        return blobCode; 
+        return oSle_.code(addr);        
     }
 
     size_t ExtVM::codeSizeAt(evmc_address const& addr) 
     { 
-        SLE::pointer pSle = oSle_.getSle(addr);
-        Blob blobCode = pSle->getFieldVL(sfContractCode);
-
-        return blobCode.size();
+        bytes const& code = oSle_.code(addr);
+        return code.size();
     }
 
     bool ExtVM::exists(evmc_address const& addr) { 
