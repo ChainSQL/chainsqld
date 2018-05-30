@@ -27,6 +27,12 @@ namespace ripple {
         return AccountID();
     }
 
+	inline static evmc_address noAddress() 
+	{
+		static evmc_address no_address = toEvmC(noAccount());
+		return no_address;
+	}
+
 }
 
 #endif

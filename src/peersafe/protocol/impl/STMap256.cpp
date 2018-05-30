@@ -25,56 +25,56 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 namespace ripple {
 
-	STMap256::STMap256(SerialIter& sit, SField const& name)
-		: STBase(name)
-	{
-		Blob data = sit.getVL();
-		auto const count = data.size() / (256 / 8) / 2;
+	//STMap256::STMap256(SerialIter& sit, SField const& name)
+	//	: STBase(name)
+	//{
+	//	Blob data = sit.getVL();
+	//	auto const count = data.size() / (256 / 8) / 2;
 
-		Blob::iterator begin = data.begin();
-		unsigned int uStart = 0;
-		for (unsigned int i = 0; i != count; i++)
-		{
-			unsigned int uKeyEnd = uStart + (256 / 8);
-			unsigned int uValueEnd = uStart + (256 / 8) * 2;
-			// This next line could be optimized to construct a default
-			// uint256 in the map and then copy into it
-			mValue.insert(std::make_pair(uint256(Blob(begin + uStart, begin + uKeyEnd)),
-				uint256(Blob(begin + uKeyEnd, begin + uValueEnd))));
-			uStart = uValueEnd;
-		}
-	}
+	//	Blob::iterator begin = data.begin();
+	//	unsigned int uStart = 0;
+	//	for (unsigned int i = 0; i != count; i++)
+	//	{
+	//		unsigned int uKeyEnd = uStart + (256 / 8);
+	//		unsigned int uValueEnd = uStart + (256 / 8) * 2;
+	//		// This next line could be optimized to construct a default
+	//		// uint256 in the map and then copy into it
+	//		mValue.insert(std::make_pair(uint256(Blob(begin + uStart, begin + uKeyEnd)),
+	//			uint256(Blob(begin + uKeyEnd, begin + uValueEnd))));
+	//		uStart = uValueEnd;
+	//	}
+	//}
 
-	void
-		STMap256::add(Serializer& s) const
-	{
-		assert(fName->isBinary());
-		assert(fName->fieldType == STI_MAP256);
-		for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-		{
-			s.add256(iter->first);
-			s.add256(iter->second);
-		}
-	}
+	//void
+	//	STMap256::add(Serializer& s) const
+	//{
+	//	assert(fName->isBinary());
+	//	assert(fName->fieldType == STI_MAP256);
+	//	for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
+	//	{
+	//		s.add256(iter->first);
+	//		s.add256(iter->second);
+	//	}
+	//}
 
-	bool
-		STMap256::isEquivalent(const STBase& t) const
-	{
-		const STMap256* v = dynamic_cast<const STMap256*> (&t);
-		return v && (mValue == v->mValue);
-	}
+	//bool
+	//	STMap256::isEquivalent(const STBase& t) const
+	//{
+	//	const STMap256* v = dynamic_cast<const STMap256*> (&t);
+	//	return v && (mValue == v->mValue);
+	//}
 
-	Json::Value
-		STMap256::getJson(int) const
-	{
-		Json::Value ret(Json::objectValue);
+	//Json::Value
+	//	STMap256::getJson(int) const
+	//{
+	//	Json::Value ret(Json::objectValue);
 
-		for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-		{
-			ret[to_string(iter->first)] = to_string(iter->second);
-		}
+	//	for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
+	//	{
+	//		ret[to_string(iter->first)] = to_string(iter->second);
+	//	}
 
-		return ret;
-	}
+	//	return ret;
+	//}
 
 } // ripple

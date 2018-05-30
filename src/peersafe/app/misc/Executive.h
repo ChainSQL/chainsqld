@@ -62,9 +62,7 @@ public:
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool createOpcode(evmc_address const& _sender, uint256 const& _endowment,
 		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
-	///// @returns false iff go() must be called (and thus a VM execution in required).
-	//bool create2Opcode(evmc_address const& _sender, uint256 const& _endowment, 
-	//	uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress, uint256 const& _salt);
+
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool call(evmc_address const& _receiveAddress, evmc_address const& _txSender, 
@@ -94,6 +92,8 @@ private:
 	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool executeCreate(evmc_address const& _txSender, uint256 const& _endowment, 
 		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+
+	beast::Journal getJ();
 private:
 	SleOps& m_s;							///< The state to which this operation/transaction is applied.
 										
@@ -104,7 +104,7 @@ private:
 
 	unsigned m_depth = 0;				///< The context's call-depth.
 	TER m_excepted = tesSUCCESS;	///< Details if the VM's execution resulted in an exception.
-	int64_t m_baseGasRequired;			///< The base amount of gas requried for executing this transaction.
+	int64_t m_baseGasRequired = 0;			///< The base amount of gas requried for executing this transaction.
 	int64_t m_gas = 0;					///< The gas for EVM code execution. Initial amount before go() execution, final amount after go() execution.
 	uint256 m_refunded = beast::zero;	///< The amount of gas refunded.
 

@@ -1,6 +1,7 @@
 #include <peersafe/app/misc/Executive.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/main/Application.h>
+#include <peersafe/app/tx/impl/Tuning.h>
 #include <peersafe/vm/VMFactory.h>
 
 namespace ripple {
@@ -33,21 +34,32 @@ int64_t Executive::gasUsed() const
 }
 
 bool Executive::execute() {
+	auto j = getJ();
 	// Entry point for a user-executed transaction.
 
 	// Pay...
-	//clog(StateDetail) << "Paying" << formatBalance(m_gasCost) << "from sender for gas (" << m_t.gas() << "gas at" << formatBalance(m_t.gasPrice()) << ")";
+	JLOG(j.warn()) << "Paying" << 0/*formatBalance(m_gasCost)*/ << "from sender for gas (" << 0/*m_t.gas()*/ << "gas at" << 0/*formatBalance(m_t.gasPrice())*/ << ")";
 	//m_s.subBalance(m_t.sender(), m_gasCost);
 
 	//assert(m_t.gas() >= (u256)m_baseGasRequired);
 	bool isCreation = m_t->getFieldU16(sfContractOpType) == 1;
 	evmc_address sender = toEvmC(m_t->getAccountID(sfAccount));
-	evmc_address contract_address = toEvmC(m_t->getAccountID(sfContractAddress));
+	evmc_address contract_address = m_t->isFieldPresent(sfContractAddress) ? 
+		toEvmC(m_t->getAccountID(sfContractAddress)) : noAddress();
 
+	bytes data = m_t->getFieldVL(sfContractData);
+	uint32 value = m_t->getFieldU32(sfContractValue);
+	uint256 gasPrice = uint256(1000);
+	int64_t gas = 300000;
 	if (isCreation)
-		return create(sender, m_t.value(), m_t.gasPrice(), m_t.gas() - (u256)m_baseGasRequired, &m_t.data(), m_t.sender());
+	{
+		return create(sender, uint256(value), gasPrice, gas - m_baseGasRequired, &data, sender);
+	}
 	else
-		return call(contract_address, sender, m_t.value(), m_t.gasPrice(), bytesConstRef(&m_t.data()), m_t.gas() - (u256)m_baseGasRequired);
+	{
+		evmc_address contract_address = toEvmC(m_t->getAccountID(sfContractAddress));
+		return call(contract_address, sender, uint256(value), gasPrice, bytesConstRef(&data), gas - m_baseGasRequired);
+	}
 }
 
 bool Executive::create(evmc_address const& _txSender, uint256 const& _endowment,
@@ -64,11 +76,8 @@ bool Executive::createOpcode(evmc_address const& _sender, uint256 const& _endowm
 	//m_newAddress = _sender + nonce;
 	return executeCreate(_sender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
-///// @returns false iff go() must be called (and thus a VM execution in required).
-//bool create2Opcode(evmc_address const& _sender, uint256 const& _endowment,
-//	uint256 const& _gasPrice, uint256 const& _gas, bytesConstRef _code, evmc_address const& _originAddress, uint256 const& _salt);
-/// Set up the executive for evaluating a bare CALL (message call) operation.
-/// @returns false iff go() must be called (and thus a VM execution in required).
+
+
 bool Executive::call(evmc_address const& _receiveAddress, evmc_address const& _senderAddress,
 	uint256 const& _value, uint256 const& _gasPrice, bytesConstRef _data, int64_t const& _gas)
 {
@@ -100,7 +109,7 @@ bool Executive::call(CallParameters const& _p, uint256 const& _gasPrice, evmc_ad
 			m_depth, false, _p.staticCall);
 	}
 
-	// Transfer ether.
+	// Transfer zxc.
 	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, fromEvmC(_p.valueTransfer));
 	return !m_ext;
 }
@@ -108,6 +117,7 @@ bool Executive::call(CallParameters const& _p, uint256 const& _gasPrice, evmc_ad
 bool Executive::executeCreate(evmc_address const& _sender, uint256 const& _endowment,
 	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _origin)
 {
+	auto j = getJ();
 	// add nonce for sender
 	m_s.incNonce(_sender);
 
@@ -117,7 +127,7 @@ bool Executive::executeCreate(evmc_address const& _sender, uint256 const& _endow
 	bool accountAlreadyExist = (m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 0);
 	if (accountAlreadyExist)
 	{
-		//clog(StateSafeExceptions) << "Address already used: " << m_newAddress;
+		JLOG(j.warn()) << "Address already used: " << to_string(fromEvmC(m_newAddress));
 		m_gas = 0;
 		//m_excepted = TransactionException::AddressAlreadyUsed;
 		//revert();
@@ -134,14 +144,14 @@ bool Executive::executeCreate(evmc_address const& _sender, uint256 const& _endow
 	// Schedule _init execution if not empty.
 	if (!_code.empty())
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
-			_endowment, _gasPrice, bytesConstRef(), _code, sha512Half(_code), m_depth, true, false);
+			_endowment, _gasPrice, bytesConstRef(), _code, sha512Half(_code.data()), m_depth, true, false);
 
 	return !m_ext;
 }
 
 bool Executive::go()
 {
-	auto j = m_s.ctx().app.journal("Executive");
+	auto j = getJ();
 	if (m_ext)
 	{
 #if ETH_TIMED_EXECUTIONS
@@ -161,24 +171,17 @@ bool Executive::go()
 				//	m_res->gasForDeposit = m_gas;
 				//	m_res->depositSize = out.size();
 				//}
-				if (out.size() > m_ext->evmSchedule().maxCodeSize)
+				if (out.size() > MAX_CODE_SIZE)
 					BOOST_THROW_EXCEPTION(OutOfGas());
-				else if (out.size() * m_ext->evmSchedule().createDataGas <= m_gas)
+				else if (out.size() * CREATE_DATA_GAS <= m_gas)
 				{
 					//if (m_res)
 					//	m_res->codeDeposit = CodeDeposit::Success;
-					m_gas -= out.size() * m_ext->evmSchedule().createDataGas;
+					m_gas -= out.size() * CREATE_DATA_GAS;
 				}
 				else
 				{
-					if (m_ext->evmSchedule().exceptionalFailedCodeDeposit)
-						BOOST_THROW_EXCEPTION(OutOfGas());
-					else
-					{
-						//if (m_res)
-						//	m_res->codeDeposit = CodeDeposit::Failed;
-						out = {};
-					}
+					BOOST_THROW_EXCEPTION(OutOfGas());
 				}
 				//if (m_res)
 				//	m_res->output = out.toVector(); // copy output to execution result
@@ -232,5 +235,10 @@ bool Executive::go()
 #endif
 	}
 	return true;
+}
+
+beast::Journal Executive::getJ()
+{
+	return m_s.ctx().app.journal("Executive");
 }
 } // namespace ripple

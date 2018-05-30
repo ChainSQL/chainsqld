@@ -137,9 +137,10 @@ TxFormats::TxFormats ()
             SOElement (sfPublicKey,         SOE_OPTIONAL);
 
 	add ("Contract", ttCONTRACT) <<
-			SOElement(sfContractOpType,		SOE_OPTIONAL) <<
-			SOElement(sfContractData,		SOE_OPTIONAL) <<
-			SOElement(sfContractAddress,	SOE_OPTIONAL)
+			SOElement(sfContractOpType,		SOE_REQUIRED) <<
+			SOElement(sfContractData,		SOE_REQUIRED) <<
+			SOElement(sfContractAddress,	SOE_OPTIONAL) <<
+			SOElement(sfContractValue,				SOE_OPTIONAL)
 		;
 
 

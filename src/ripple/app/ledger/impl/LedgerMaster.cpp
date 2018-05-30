@@ -820,7 +820,7 @@ ripple::uint160 LedgerMaster::getNameInDB(
     LedgerIndex index, AccountID accountID,std::string sTableName)
 {
     ripple::uint160 name;
-    assert(accountID);
+    assert(accountID.isZero() == false);
     auto ledger = getLedgerBySeq(index);
     if (ledger)
     {
@@ -849,7 +849,7 @@ table_BaseInfo
 LedgerMaster::getTableBaseInfo(LedgerIndex index, AccountID accountID, std::string sTableName)
 {
     table_BaseInfo ret_baseInfo;
-    assert(accountID);
+    assert(accountID.isZero() == false);
     auto ledger = getLedgerBySeq(index);
     if (ledger)
     {
@@ -889,7 +889,7 @@ std::pair<ripple::uint256, std::string> LedgerMaster::getLatestTxCheckHash(Accou
 {		
 	ripple::uint256 uTxCheckHash;
 	std::string  errMsg;
-	assert(accountID);
+	//assert(accountID);
 	auto ledger = getValidatedLedger();
 	if (ledger)
 	{
@@ -975,7 +975,7 @@ LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string s
 {
 	std::string sToken, errMsg;
 	
-	assert(accountID);
+	assert(accountID.isZero() == false);
 	auto ledger = getValidatedLedger();
 	if (ledger)
 	{

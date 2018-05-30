@@ -27,11 +27,15 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 namespace ripple {
 
-	// See https://ripple.com/wiki/Transaction_Format#Payment_.280.29
-
 	TER Contract::preflight(PreflightContext const& ctx)
 	{
-		return tesSUCCESS;
+		auto const ret = preflight1(ctx);
+		if (!isTesSuccess(ret))
+			return ret;
+
+		//if()
+
+		return preflight2(ctx);
 	}
 
 	TER Contract::preclaim(PreclaimContext const& ctx)
@@ -41,6 +45,7 @@ namespace ripple {
 
 	TER Contract::doApply()
 	{
+
 		return tesSUCCESS;
 	}
 }
