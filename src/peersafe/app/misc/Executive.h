@@ -58,16 +58,16 @@ public:
 	/// Set up the executive for evaluating a bare CREATE (contract-creation) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool create(evmc_address const& _txSender, uint256 const& _endowment, 
-		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+		evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool createOpcode(evmc_address const& _sender, uint256 const& _endowment,
-		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+		evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
 
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool call(evmc_address const& _receiveAddress, evmc_address const& _txSender, 
-		uint256 const& _txValue, uint256 const& _gasPrice, bytesConstRef _txData, int64_t const& _gas);
-	bool call(CallParameters const& _cp, uint256 const& _gasPrice, evmc_address const& _origin);
+		uint256 const& _txValue, evmc_uint256be const& _gasPrice, bytesConstRef _txData, int64_t const& _gas);
+	bool call(CallParameters const& _cp, evmc_uint256be const& _gasPrice, evmc_address const& _origin);
 	/// Executes (or continues execution of) the VM.
 	/// @returns false iff go() must be called again to finish the transaction.
 	//bool go(OnOpFunc const& _onOp = OnOpFunc());
@@ -91,7 +91,7 @@ public:
 private:
 	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool executeCreate(evmc_address const& _txSender, uint256 const& _endowment, 
-		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+		evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
 
 	beast::Journal getJ();
 private:
