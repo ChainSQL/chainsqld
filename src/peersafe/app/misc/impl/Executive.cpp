@@ -48,27 +48,27 @@ bool Executive::execute() {
 		toEvmC(m_t->getAccountID(sfContractAddress)) : noAddress();
 
 	bytes data = m_t->getFieldVL(sfContractData);
-	uint32 value = m_t->getFieldU32(sfContractValue);
+	auto value = toEvmC(uint256(m_t->getFieldU32(sfContractValue)));
 	evmc_uint256be gasPrice = toEvmC(uint256(1000));
 	int64_t gas = 300000;
 	if (isCreation)
 	{
-		return create(sender, uint256(value), gasPrice, gas - m_baseGasRequired, &data, sender);
+		return create(sender, value, gasPrice, gas - m_baseGasRequired, &data, sender);
 	}
 	else
 	{
 		evmc_address contract_address = toEvmC(m_t->getAccountID(sfContractAddress));
-		return call(contract_address, sender, uint256(value), gasPrice, bytesConstRef(&data), gas - m_baseGasRequired);
+		return call(contract_address, sender, value, gasPrice, bytesConstRef(&data), gas - m_baseGasRequired);
 	}
 }
 
-bool Executive::create(evmc_address const& _txSender, uint256 const& _endowment,
+bool Executive::create(evmc_address const& _txSender, evmc_uint256be const& _endowment,
 	evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress)
 {
 	return createOpcode(_txSender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
 
-bool Executive::createOpcode(evmc_address const& _sender, uint256 const& _endowment,
+bool Executive::createOpcode(evmc_address const& _sender, evmc_uint256be const& _endowment,
 	evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress)
 {
 	SLE::pointer pSle = m_s.getSle(_sender);
@@ -79,7 +79,7 @@ bool Executive::createOpcode(evmc_address const& _sender, uint256 const& _endowm
 
 
 bool Executive::call(evmc_address const& _receiveAddress, evmc_address const& _senderAddress,
-	uint256 const& _value, evmc_uint256be const& _gasPrice, bytesConstRef _data, int64_t const& _gas)
+	evmc_uint256be const& _value, evmc_uint256be const& _gasPrice, bytesConstRef _data, int64_t const& _gas)
 {
 	CallParameters params{ _senderAddress, _receiveAddress, _receiveAddress, toEvmC(_value), toEvmC(_value), _gas, _data };
 	return call(params, _gasPrice, _senderAddress);
@@ -144,7 +144,7 @@ bool Executive::executeCreate(evmc_address const& _sender, uint256 const& _endow
 	// Schedule _init execution if not empty.
 	if (!_code.empty())
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
-			_endowment, _gasPrice, bytesConstRef(), _code, sha512Half(_code.data()), m_depth, true, false);
+			_endowment, _gasPrice, bytesConstRef(), _code, toEvmC(sha512Half(_code.data())), m_depth, true, false);
 
 	return !m_ext;
 }
