@@ -29,7 +29,7 @@ class STTx;
 class Executive {
 public:
 	// Simple constructor; executive will operate on given state, with the given environment info.
-	Executive(SleOps & _s, EnvInfoImpl const& _envInfo, unsigned int _level);
+	Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level);
 
 	//No default constructor
 	Executive() = delete;
@@ -97,7 +97,7 @@ private:
 private:
 	SleOps& m_s;							///< The state to which this operation/transaction is applied.
 										
-	EnvInfoImpl m_envInfo;					///< Information on the runtime environment.
+	EnvInfo m_envInfo;					///< Information on the runtime environment.
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
 	owning_bytes_ref m_output;			///< Execution output.
 	//ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.

@@ -6,7 +6,7 @@
 
 namespace ripple {
 
-Executive::Executive(SleOps & _s, EnvInfoImpl const& _envInfo, unsigned int _level)
+Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
 	:m_s(_s),m_envInfo(_envInfo),m_depth(_level)
 {
 }
@@ -43,7 +43,7 @@ bool Executive::execute() {
 
 	//assert(m_t.gas() >= (u256)m_baseGasRequired);
 	bool isCreation = m_t->getFieldU16(sfContractOpType) == 1;
-	evmc_address sender = toEvmC(m_t->getAccountID(sfAccount));
+	auto sender = toEvmC(m_t->getAccountID(sfAccount));
 	evmc_address contract_address = m_t->isFieldPresent(sfContractAddress) ? 
 		toEvmC(m_t->getAccountID(sfContractAddress)) : noAddress();
 
