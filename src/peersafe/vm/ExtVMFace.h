@@ -114,9 +114,8 @@ public:
 	EnvInfo() = default;
 	virtual ~EnvInfo() = default;
 
-	virtual evmc_address const coin_base() const {
-		evmc_address addr;
-		return addr;
+	virtual evmc_address const coin_base() const {        
+		return evmc_address();
 	}
 
 	virtual int64_t const gasLimit() const {

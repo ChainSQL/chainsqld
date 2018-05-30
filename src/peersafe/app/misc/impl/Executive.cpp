@@ -5,7 +5,7 @@
 
 namespace ripple {
 
-Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
+Executive::Executive(SleOps & _s, EnvInfoImpl const& _envInfo, unsigned int _level)
 	:m_s(_s),m_envInfo(_envInfo),m_depth(_level)
 {
 }
