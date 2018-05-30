@@ -170,7 +170,7 @@ namespace ripple
     {
         //CreateResult ret(EVMC_SUCCESS, owning_bytes_ref(),evmc_address());
         
-        Executive e(oSle_, (EnvInfoImpl&)envInfo(), depth + 1);
+        Executive e(oSle_, envInfo(), depth + 1);
         assert(op == Instruction::CREATE);
         bool result = e.createOpcode(myAddress, fromEvmC(endowment), fromEvmC(gasPrice), ioGas, code, origin);
 
@@ -188,7 +188,7 @@ namespace ripple
     {
         //CallResult ret(EVMC_SUCCESS, owning_bytes_ref());
 
-        Executive e(oSle_, (EnvInfoImpl&)envInfo(), depth + 1);
+        Executive e(oSle_, envInfo(), depth + 1);
         
         if (!e.call(oPara, fromEvmC(gasPrice), origin))
         {
