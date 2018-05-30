@@ -33,10 +33,10 @@ private:
 class ExtVM : public ExtVMFace
 {
 public:    
-    ExtVM(SleOps& _s, EnvInfoImpl &_envInfo, AccountID const& _myAddress,
-        AccountID const& _caller, AccountID const& _origin, uint256 _value, uint256 _gasPrice, bytesConstRef _data,
-        bytesConstRef _code, uint256 const& _codeHash, int32_t _depth, bool _isCreate,  bool _staticCall)
-      : ExtVMFace(_envInfo, toEvmC(_myAddress), toEvmC(_caller), toEvmC(_origin), toEvmC(_value), toEvmC(_gasPrice), _data, _code.toBytes(), toEvmC(_codeHash), _depth, _isCreate, _staticCall),
+    ExtVM(SleOps& _s, EnvInfo &_envInfo, evmc_address const& _myAddress,
+        evmc_address const& _caller, evmc_address const& _origin, evmc_uint256be _value, evmc_uint256be _gasPrice, bytesConstRef _data,
+        bytesConstRef _code, evmc_uint256be const& _codeHash, int32_t _depth, bool _isCreate,  bool _staticCall)
+      : ExtVMFace(_envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(), _codeHash, _depth, _isCreate, _staticCall),
         oSle_(_s)
     {
         // Contract: processing account must exist. In case of CALL, the ExtVM

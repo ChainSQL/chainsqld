@@ -58,7 +58,7 @@ public:
 	void subBalance(evmc_address const& _addr, uint256 const& _value);
 private:
     ApplyContext &ctx_;
-    TaggedCache <evmc_address, Blob>             contractCacheCode_;
+    TaggedCache <AccountID, Blob>             contractCacheCode_;
 };
 
 }

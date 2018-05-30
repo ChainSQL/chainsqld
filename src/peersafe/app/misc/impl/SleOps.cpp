@@ -54,14 +54,14 @@ namespace ripple {
 
 	bytes const& SleOps::code(evmc_address const& addr) 	
     {
-        Blob *pBlobCode = contractCacheCode_.fetch(addr).get();
+        Blob *pBlobCode = contractCacheCode_.fetch(fromEvmC(addr)).get();
         if (nullptr == pBlobCode)
         {         
             SLE::pointer pSle = getSle(addr);
             Blob blobCode = pSle->getFieldVL(sfContractCode);
 
             auto p = std::make_shared<ripple::Blob>(blobCode);
-            contractCacheCode_.canonicalize(addr, p);
+            contractCacheCode_.canonicalize(fromEvmC(addr), p);
 
             pBlobCode = p.get();
         }        

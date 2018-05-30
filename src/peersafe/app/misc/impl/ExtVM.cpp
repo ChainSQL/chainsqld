@@ -167,7 +167,7 @@ namespace ripple
         
         Executive e(oSle_, envInfo(), depth + 1);
         assert(op == Instruction::CREATE);
-        bool result = e.createOpcode(myAddress, fromEvmC(endowment), fromEvmC(gasPrice), ioGas, code, origin);
+        bool result = e.createOpcode(myAddress, endowment, gasPrice, ioGas, code, origin);
 
         if (!result)
         {
@@ -185,7 +185,7 @@ namespace ripple
 
         Executive e(oSle_, envInfo(), depth + 1);
         
-        if (!e.call(oPara, fromEvmC(gasPrice), origin))
+        if (!e.call(oPara, gasPrice, origin))
         {
             ApplyContext const& ctx = oSle_.ctx();
             auto j = ctx.app.journal("ExtVM");

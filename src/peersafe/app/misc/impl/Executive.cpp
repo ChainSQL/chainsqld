@@ -81,7 +81,7 @@ bool Executive::createOpcode(evmc_address const& _sender, evmc_uint256be const& 
 bool Executive::call(evmc_address const& _receiveAddress, evmc_address const& _senderAddress,
 	evmc_uint256be const& _value, evmc_uint256be const& _gasPrice, bytesConstRef _data, int64_t const& _gas)
 {
-	CallParameters params{ _senderAddress, _receiveAddress, _receiveAddress, toEvmC(_value), toEvmC(_value), _gas, _data };
+	CallParameters params{ _senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas, _data };
 	return call(params, _gasPrice, _senderAddress);
 }
 
@@ -105,7 +105,7 @@ bool Executive::call(CallParameters const& _p, evmc_uint256be const& _gasPrice, 
 		bytes const& c = m_s.code(_p.codeAddress);
 		uint256 codeHash = m_s.codeHash(_p.codeAddress);
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
-			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
+			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, toEvmC(codeHash),
 			m_depth, false, _p.staticCall);
 	}
 
@@ -114,7 +114,7 @@ bool Executive::call(CallParameters const& _p, evmc_uint256be const& _gasPrice, 
 	return !m_ext;
 }
 
-bool Executive::executeCreate(evmc_address const& _sender, uint256 const& _endowment,
+bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const& _endowment,
 	evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _origin)
 {
 	auto j = getJ();
@@ -137,7 +137,7 @@ bool Executive::executeCreate(evmc_address const& _sender, uint256 const& _endow
 
 	// Transfer ether before deploying the code. This will also create new
 	// account if it does not exist yet.
-	m_s.transferBalance(_sender, m_newAddress, _endowment);
+	m_s.transferBalance(_sender, m_newAddress, fromEvmC(_endowment));
 	uint32 newNonce = m_s.requireAccountStartNonce();
 	m_s.setNonce(m_newAddress, newNonce);
 
