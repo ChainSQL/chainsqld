@@ -5,8 +5,10 @@
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/STAmount.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
+#include <ripple/basics/TaggedCache.h>
 #include <peersafe/app/misc/SleOps.h>
 #include <peersafe/app/misc/TypeTransform.h>
+
 
 
 namespace ripple {
@@ -14,7 +16,11 @@ namespace ripple {
 class SleOps
 {
 public:
-    SleOps(ApplyContext& ctx):ctx_(ctx) {}
+    SleOps(ApplyContext& ctx)
+        :ctx_(ctx)
+        , contractCacheCode_("contractCode", 100, 300, stopwatch()
+    {
+    }
 
 	const ApplyContext& ctx() { return ctx_; }
 
@@ -48,6 +54,7 @@ public:
 	void clearStorage(evmc_address const& _contract);
 private:
     ApplyContext &ctx_;
+    TaggedCache <evmc_address, Blob>             contractCacheCode_;
 };
 
 }
