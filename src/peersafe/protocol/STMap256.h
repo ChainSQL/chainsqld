@@ -32,7 +32,7 @@ namespace ripple {
 	public:
 		using value_type = std::map<uint256,uint256> const&;
 
-		STMap256() = default;
+		STMap256(){};
 
 		explicit STMap256(SField const& n)
 			: STBase(n)
@@ -46,7 +46,26 @@ namespace ripple {
 			: STBase(n), mValue(map)
 		{ }
 
-		STMap256(SerialIter& sit, SField const& name);
+		STMap256(SerialIter& sit, SField const& name)
+        : STBase(name)
+        {
+            Blob data = sit.getVL();
+            auto const count = data.size() / (256 / 8) / 2;
+
+            Blob::iterator begin = data.begin();
+            unsigned int uStart = 0;
+            for (unsigned int i = 0; i != count; i++)
+            {
+                unsigned int uKeyEnd = uStart + (256 / 8);
+                unsigned int uValueEnd = uStart + (256 / 8) * 2;
+                // This next line could be optimized to construct a default
+                // uint256 in the map and then copy into it
+                mValue.insert(std::make_pair(uint256(Blob(begin + uStart, begin + uKeyEnd)),
+                            uint256(Blob(begin + uKeyEnd, begin + uValueEnd))));
+                uStart = uValueEnd;
+            }
+        }
+
 
 		STBase*
 			copy(std::size_t n, void* buf) const override
@@ -66,14 +85,37 @@ namespace ripple {
 			return STI_MAP256;
 		}
 
-		void
-			add(Serializer& s) const override;
+        void
+        add(Serializer& s) const
+        {
+            assert(fName->isBinary());
+            assert(fName->fieldType == STI_MAP256);
+            for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
+            {
+                s.add256(iter->first);
+                s.add256(iter->second);
+            }
+        }
 
-		Json::Value
-			getJson(int) const override;
+        bool
+        isEquivalent(const STBase& t) const
+        {
+            const STMap256* v = dynamic_cast<const STMap256*> (&t);
+            return v && (mValue == v->mValue);
+        }
 
-		bool
-			isEquivalent(const STBase& t) const override;
+        Json::Value
+        getJson(int) const
+        {
+            Json::Value ret(Json::objectValue);
+
+            for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
+            {
+                ret[to_string(iter->first)] = to_string(iter->second);
+            }
+
+            return ret;
+        }
 
 		bool
 			isDefault() const override

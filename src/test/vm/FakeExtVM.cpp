@@ -31,7 +31,7 @@ CreateResult FakeExtVM::create(evmc_uint256be const& endowment, int64_t const& g
 CallResult FakeExtVM::call(CallParameters& p) {
 	CallResult result = { EVMC_SUCCESS , std::move(owning_bytes_ref())};
 	
-	auto& it = FakeExtVM::m_s.find(AccountID::fromVoid(p.codeAddress.bytes));
+	auto it = FakeExtVM::m_s.find(AccountID::fromVoid(p.codeAddress.bytes));
 	if (it != FakeExtVM::m_s.end()) {
 		bytes code = it->second;
 		if (code.size()) {
@@ -44,7 +44,7 @@ CallResult FakeExtVM::call(CallParameters& p) {
 }
 
 bool FakeExtVM::exists(evmc_address const& addr) {
-	auto& it = FakeExtVM::m_s.find(AccountID::fromVoid(addr.bytes));
+	auto it = FakeExtVM::m_s.find(AccountID::fromVoid(addr.bytes));
 	if (it != FakeExtVM::m_s.end()) {
 		return true;
 	}
@@ -52,7 +52,7 @@ bool FakeExtVM::exists(evmc_address const& addr) {
 }
 
 size_t FakeExtVM::codeSizeAt(evmc_address const& addr) {
-	auto& it = FakeExtVM::m_s.find(AccountID::fromVoid(addr.bytes));
+	auto it = FakeExtVM::m_s.find(AccountID::fromVoid(addr.bytes));
 	if (it != FakeExtVM::m_s.end()) {
 		return it->second.size();
 	}
