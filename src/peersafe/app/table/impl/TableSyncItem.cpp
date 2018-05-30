@@ -1011,61 +1011,6 @@ void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 	}
 }
 
-void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledger_time)
-{
-	std::string pressRealName;
-	if (tx.isFieldPresent(sfFlags))
-	{
-		auto op_type = tx.getFieldU16(sfOpType);
-		auto tables = tx.getFieldArray(sfTables);
-		std::string table_name = strCopy(tables[0].getFieldVL(sfTableName));
-
-		if (table_name == "press_time")
-		{
-			return;
-		}
-		else
-		{
-			pressRealName = app_.getTableSync().GetPressTableName();
-			if (pressRealName.empty())
-				return;
-		}
-		
-		std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
-		auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-		uint32 submit_time = tx.getFieldU32(sfFlags);
-		uint32 db_time = tmp.count();
-		submit_time -= std::chrono::seconds(days(10957)).count();
-		db_time -= std::chrono::seconds(days(10957)).count();
-
-		ledger_time = ledger_time > submit_time ? ledger_time - submit_time : ledger_time;
-		db_time -= submit_time;
-
-		try
-		{
-			LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
-			std::string sql = "INSERT INTO " + pressRealName + " (ledger_seq, submit_time, ledger_time,db_time) VALUES('";
-			sql += to_string(ledger_seq);
-			sql += "','";
-			sql += to_string(submit_time);
-			sql += "','";
-			sql += to_string(ledger_time);
-			sql += "','";
-			sql += to_string(db_time);
-			sql += "');";
-
-			soci::statement st = (sql_session->prepare << sql);
-
-			st.execute();
-		}
-		catch (std::exception const& e)
-		{
-			JLOG(journal_.error()) <<
-				"InsertPressData exception" << e.what();
-		}
-	}
-}
-
 bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData)
 {
 	for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
@@ -1158,13 +1103,6 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                         }
                         stTran.commit();
                     }
-
-					//press test
-					if (app_.getTableSync().IsPressSwitchOn())
-					{
-						if (ret.first)
-							InsertPressData(tx, iter->ledgerseq(), iter->closetime());
-					}
 
 					//press test
 					if (app_.getTableSync().IsPressSwitchOn())
