@@ -18,7 +18,7 @@ class SleOps
 public:
     SleOps(ApplyContext& ctx)
         :ctx_(ctx)
-        , contractCacheCode_("contractCode", 100, 300, stopwatch()
+        , contractCacheCode_("contractCode", 100, 300, stopwatch())
     {
     }
 
