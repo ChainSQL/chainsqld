@@ -46,6 +46,15 @@ public:
 
 	/// Clear the storage root hash of an account to the hash of the empty trie.
 	void clearStorage(evmc_address const& _contract);
+
+	/// Add some amount to balance.
+	/// Will initialise the address if it has never been used.
+	void addBalance(evmc_address const& _id, uint256 const& _amount);
+
+	/// Subtract the @p _value amount from the balance of @p _addr account.
+	/// @throws NotEnoughCash if the balance of the account is less than the
+	/// amount to be subtrackted (also in case the account does not exist).
+	void subBalance(evmc_address const& _addr, uint256 const& _value);
 private:
     ApplyContext &ctx_;
 };
