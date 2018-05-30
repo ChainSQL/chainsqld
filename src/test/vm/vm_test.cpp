@@ -20,7 +20,6 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <string>
 
 #include <ripple/beast/unit_test.h>
-#include <peersafe/vm/Executive.h>
 
 #include "FakeExtVM.h"
 

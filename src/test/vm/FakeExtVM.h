@@ -15,7 +15,7 @@ public:
 		bytesConstRef _data, bytes _code, evmc_uint256be _codeHash, int32_t _depth,
 		bool _isCreate, bool _staticCall);
 
-	CreateResult create(evmc_uint256be const&, int64_t const&,
+	CreateResult create(evmc_uint256be const&, int64_t&,
 		bytesConstRef const&, Instruction, evmc_uint256be const&) final;
 	CallResult call(CallParameters&) final;
 	evmc_uint256be blockHash(int64_t  const&_number) final;

@@ -18,7 +18,7 @@ FakeExtVM::FakeExtVM(EnvInfo const& envInfo, evmc_address _myAddress,
 
 }
 
-CreateResult FakeExtVM::create(evmc_uint256be const& endowment, int64_t const& gas,
+CreateResult FakeExtVM::create(evmc_uint256be const& endowment, int64_t & gas,
 	bytesConstRef const& code, Instruction op, evmc_uint256be const& salt) {
 	evmc_address contractAddress = { {5,6,7,8} };
 	CreateResult result = { EVMC_SUCCESS , std::move(owning_bytes_ref()), contractAddress };
