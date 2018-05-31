@@ -131,11 +131,13 @@ macro(parse_target)
       "Path to a program" FORCE)
     unset(CMAKE_CXX_COMPILER)
   endif (CMAKE_CXX_COMPILER)
-
+  
   if (release)
     set(CMAKE_BUILD_TYPE Release)
+    set(LLVM_BUILD_TYPE Release)
   else()
     set(CMAKE_BUILD_TYPE Debug)
+    set(LLVM_BUILD_TYPE Debug)
   endif()
 
   # ensure that the unity flags are set and exclusive
