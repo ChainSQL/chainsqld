@@ -17,15 +17,21 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
-#ifndef PEERSAFE_APP_TX_PATHS_TUNING_H_INCLUDED
-#define PEERSAFE_APP_TX_PATHS_TUNING_H_INCLUDED
+#ifndef PEERSAFE_CORE_PATHS_TUNING_H_INCLUDED
+#define PEERSAFE_CORE_PATHS_TUNING_H_INCLUDED
 
-namespace ripple {
-	//an address can create at most 100 tables
-	int const ACCOUNT_OWN_TABLE_COUNT = 100;
+namespace ripple {	
+	// 
+    int64_t const MAX_CODE_SIZE = 0x6000;
+	
+	//
+    int64_t const CREATE_DATA_GAS = 200;
 
-	//a table owner can grant at most 256 users
-	int const TABLE_GRANT_COUNT = 256;
+    //
+    uint64_t const STORE_REFUND_GAS = 15000;
+
+    //
+    uint64_t const SUICIDE_REFUND_GAS = 24000;
 
 } // ripple
 

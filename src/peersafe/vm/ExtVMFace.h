@@ -2,12 +2,7 @@
 #define __H_CHAINSQL_VM_EXTVMFACE_H__
 
 #include "Common.h"
-
-#include <ripple/basics/base_uint.h>
-#include <ripple/app/ledger/Ledger.h>
-
-#include <evmc/evmc.h>
-
+#include <peersafe/basics/TypeTransform.h>
 namespace ripple {
 
 /// Reference to a slice of buffer that also owns the buffer.
@@ -57,6 +52,26 @@ public:
 
 private:
 	bytes m_bytes;
+};
+
+struct SubState
+{
+    std::set<evmc_address> suicides;    ///< Any accounts that have suicided.
+    uint256 refunds;                    ///< Refund counter of SSTORE nonzero->zero.
+
+    SubState& operator+=(SubState const& _s)
+    {
+        for (auto it = suicides.begin(); it != suicides.end(); ++it)
+            suicides.emplace(*it);        
+        refunds += _s.refunds;        
+        return *this;
+    }
+
+    void clear()
+    {
+        suicides.clear();        
+        refunds = 0;
+    }
 };
 
 struct CallParameters
@@ -189,6 +204,7 @@ public:
 	evmc_uint256be value;
 	evmc_uint256be gasPrice;
 	bytesConstRef data;
+    SubState sub;             ///< Sub-band VM state (suicides, refund counter, logs).
 	bytes code;
 	evmc_uint256be codeHash;
 	int32_t depth;
