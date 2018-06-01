@@ -26,21 +26,12 @@ namespace ripple {
 
 	//a table owner can grant at most 256 users
 	int const TABLE_GRANT_COUNT = 256;
-
-<<<<<<< HEAD
-=======
 	// 
 	int const MAX_CODE_SIZE			= 0x6000;
 	
 	//
 	int const CREATE_DATA_GAS		= 200;
 
-	int const TX_GAS				= 21000;
-	int const TX_CREATE_GAS			= 53000;
-	int const TX_DATA_ZERO_GAS		= 4;
-	int const TX_DATA_NON_ZERO_GAS	= 68;
-
->>>>>>> d17733124115eeaecd5b53f6db92ce1f919910e4
 } // ripple
 
 #endif
