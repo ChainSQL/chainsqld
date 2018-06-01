@@ -24,28 +24,59 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/protocol/st.h>
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/protocol/JsonFields.h>
+#include <peersafe/app/misc/Executive.h>
 
 namespace ripple {
 
-	TER Contract::preflight(PreflightContext const& ctx)
+	TER SmartContract::preflight(PreflightContext const& ctx)
 	{
 		auto const ret = preflight1(ctx);
 		if (!isTesSuccess(ret))
 			return ret;
+		auto& tx = ctx.tx;
 
-		//if()
+		if (!tx.isFieldPresent(sfContractData))
+		{
+			return temMALFORMED;
+		}
 
 		return preflight2(ctx);
 	}
 
-	TER Contract::preclaim(PreclaimContext const& ctx)
+	TER SmartContract::preclaim(PreclaimContext const& ctx)
 	{
+		// Avoid unaffordable transactions.
+		auto& tx = ctx.tx;
+		int64_t gas = tx.getFieldU32(sfGas);
+		int64_t gasPrice = tx.getFieldU32(sfGasPrice);
+		int64_t gasCost = int64_t(gas * gasPrice);
+		int64_t value = tx.getFieldAmount(sfContractValue).zxc().drops();
+		int64_t totalCost = value + gasCost;
+		
+		if (gasCost < 0 || totalCost < 0)
+		{
+			return temMALFORMED;
+		}
+
+		auto const k = keylet::account(tx.getAccountID(sfAccount));
+		auto const sle = ctx.view.read(k);
+		auto balance = sle->getFieldAmount(sfBalance).zxc().drops();
+		if (balance < totalCost)
+		{
+			JLOG(ctx.j.trace()) << "Not enough zxc: Require >" << totalCost << "=" << gas << "*" << gasPrice << "+" << value << " Got" << balance << "for sender: " << tx.getAccountID(sfAccount);
+			return terINSUF_FEE_B;
+		}
 		return tesSUCCESS;
 	}
 
-	TER Contract::doApply()
+	TER SmartContract::doApply()
 	{
-
-		return tesSUCCESS;
+		SleOps ops(ctx_);
+		auto pInfo = std::make_shared<EnvInfoImpl>(ctx_.view().info().seq, 210000);
+		Executive e(ops, *pInfo, 1);
+		e.initialize();
+		if (!e.execute())
+			e.go();
+		return e.finalize();
 	}
 }

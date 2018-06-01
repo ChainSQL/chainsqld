@@ -22,16 +22,18 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 namespace ripple {	
 	// 
-    int64_t const MAX_CODE_SIZE = 0x6000;
-	
+    int64_t const MAX_CODE_SIZE         = 0x6000;	
 	//
-    int64_t const CREATE_DATA_GAS = 200;
-
+    int64_t const CREATE_DATA_GAS       = 200;
     //
-    uint64_t const STORE_REFUND_GAS = 15000;
-
+    uint64_t const STORE_REFUND_GAS     = 15000;
     //
-    uint64_t const SUICIDE_REFUND_GAS = 24000;
+    uint64_t const SUICIDE_REFUND_GAS   = 24000;
+
+    uint64_t const TX_GAS               = 21000;
+    uint64_t const TX_CREATE_GAS        = 53000;
+    uint64_t const TX_DATA_ZERO_GAS     = 4;
+    uint64_t const TX_DATA_NON_ZERO_GAS = 68;
 
 } // ripple
 

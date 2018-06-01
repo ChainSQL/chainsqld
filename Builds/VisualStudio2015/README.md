@@ -56,7 +56,7 @@
 
 ```
 # E:/work/chainsqld 为源码根目录
-> cmake -G"Visual Studio 14 2015 Win64" -DLLVM_BUILD_TYPE=Debug -Dtarget=msvc.debug.unity E:/work/chainsqld
+> cmake -G"Visual Studio 14 2015 Win64" -Dtarget=msvc.debug.unity E:/work/chainsqld
 ```
 
 ### 编译 chainsqld

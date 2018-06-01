@@ -389,7 +389,8 @@ extern SF_U32 const sfFinishAfter;
 extern SF_U32 const sfSignerListID;
 extern SF_U32 const sfSettleDelay;
 extern SF_U32 const sfNonce;
-extern SF_U32 const sfContractValue;
+extern SF_U32 const sfGas;
+extern SF_U32 const sfGasPrice;
 
 // 64-bit integers
 extern SF_U64 const sfIndexNext;
@@ -457,6 +458,7 @@ extern SF_Amount const sfDeliverMin;
 extern SF_Amount const sfMinimumOffer;
 extern SF_Amount const sfRippleEscrow;
 extern SF_Amount const sfDeliveredAmount;
+extern SF_Amount const sfContractValue;
 
 // variable length (common)
 extern SF_Blob const sfPublicKey;

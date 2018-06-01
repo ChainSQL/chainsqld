@@ -11,26 +11,39 @@ Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
 {
 }
 
-void Executive::initialize(STTx const& _transaction) {
-	m_t.reset(&_transaction);
+void Executive::initialize() {
+	auto& tx = m_s.ctx().tx;
+	auto data = tx.getFieldVL(sfContractData);
+	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
+	int g = isCreation ? TX_CREATE_GAS : TX_GAS;
+	for (auto i : data)
+		g += i ? TX_DATA_NON_ZERO_GAS : TX_DATA_ZERO_GAS;
+	m_baseGasRequired = g;
+
+	// Avoid unaffordable transactions.
+	int64_t gas = tx.getFieldU32(sfGas);
+	int64_t gasPrice = tx.getFieldU32(sfGasPrice);
+	int64_t gasCost = int64_t(gas * gasPrice);
+	m_gasCost = gasCost;
 }
 
-bool Executive::finalize() {
-	//Todo:deal with balance:
-	if (m_t)
-	{
-		//m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
+TER Executive::finalize() {
+	auto& tx = m_s.ctx().tx;
+	auto sender = toEvmC(tx.getAccountID(sfAccount));
+	int64_t gasPrice = tx.getFieldU32(sfGasPrice);
+	m_s.addBalance(sender, m_gas * gasPrice);
 
-		//u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
-		//m_s.addBalance(m_envInfo.author(), feesEarned);
-	}
-	return true;
+	//to coinbase
+	//u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
+	//m_s.addBalance(m_envInfo.author(), feesEarned);
+	return m_excepted;
 }
 
 int64_t Executive::gasUsed() const
 {
-	//return m_t.gas() - m_gas;
-	return 0;
+	auto& tx = m_s.ctx().tx;
+	int64_t gas = tx.getFieldU32(sfGas);
+	return gas - m_gas;
 }
 
 bool Executive::execute() {
@@ -39,25 +52,27 @@ bool Executive::execute() {
 
 	// Pay...
 	JLOG(j.warn()) << "Paying" << 0/*formatBalance(m_gasCost)*/ << "from sender for gas (" << 0/*m_t.gas()*/ << "gas at" << 0/*formatBalance(m_t.gasPrice())*/ << ")";
-	//m_s.subBalance(m_t.sender(), m_gasCost);
+	auto& tx = m_s.ctx().tx;
+	auto sender = toEvmC(tx.getAccountID(sfAccount));
+	m_s.subBalance(sender, m_gasCost);
 
-	//assert(m_t.gas() >= (u256)m_baseGasRequired);
-	bool isCreation = m_t->getFieldU16(sfContractOpType) == 1;
-	auto sender = toEvmC(m_t->getAccountID(sfAccount));
-	evmc_address contract_address = m_t->isFieldPresent(sfContractAddress) ? 
-		toEvmC(m_t->getAccountID(sfContractAddress)) : noAddress();
-
-	bytes data = m_t->getFieldVL(sfContractData);
-	auto value = toEvmC(uint256(m_t->getFieldU32(sfContractValue)));
-	evmc_uint256be gasPrice = toEvmC(uint256(1000));
-	int64_t gas = 300000;
+	if (uint256(tx.getFieldU32(sfGas)) < (uint256)m_baseGasRequired)
+	{
+		m_excepted = tefGAS_INSUFFICIENT;
+		return true;
+	}
+	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
+	bytes data = tx.getFieldVL(sfContractData);
+	auto value = toEvmC(uint256(tx.getFieldAmount(sfContractValue).zxc().drops()));
+	evmc_uint256be gasPrice = toEvmC(uint256());
+	int64_t gas = tx.getFieldU32(sfGas);
 	if (isCreation)
 	{
 		return create(sender, value, gasPrice, gas - m_baseGasRequired, &data, sender);
 	}
 	else
 	{
-		evmc_address contract_address = toEvmC(m_t->getAccountID(sfContractAddress));
+		evmc_address contract_address = toEvmC(tx.getAccountID(sfContractAddress));
 		return call(contract_address, sender, value, gasPrice, bytesConstRef(&data), gas - m_baseGasRequired);
 	}
 }
@@ -73,7 +88,9 @@ bool Executive::createOpcode(evmc_address const& _sender, evmc_uint256be const& 
 {
 	SLE::pointer pSle = m_s.getSle(_sender);
 	uint32 nonce = pSle->getFieldU32(sfNonce);
-	//m_newAddress = _sender + nonce;
+	m_newAddress = m_s.calcNewAddress(_sender, nonce);
+	// add nonce for sender
+	m_s.incNonce(_sender);
 	return executeCreate(_sender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
 
@@ -87,15 +104,15 @@ bool Executive::call(evmc_address const& _receiveAddress, evmc_address const& _s
 
 bool Executive::call(CallParameters const& _p, evmc_uint256be const& _gasPrice, evmc_address const& _origin)
 {
-	// If external transaction.
-	if (m_t)
-	{
-		// FIXME: changelog contains unrevertable balance change that paid
-		//        for the transaction.
-		// Increment associated nonce for sender.
-		//if (_p.senderAddress != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().constantinopleForkBlock) // EIP86
-		m_s.incNonce(_p.senderAddress);
-	}
+	//// If external transaction.
+	//if (m_t)
+	//{
+	//	// FIXME: changelog contains unrevertable balance change that paid
+	//	//        for the transaction.
+	//	// Increment associated nonce for sender.
+	//	//if (_p.senderAddress != MaxAddress || m_envInfo.number() < m_sealEngine.chainParams().constantinopleForkBlock) // EIP86
+	//	m_s.incNonce(_p.senderAddress);
+	//}
 
 	//m_savepoint = m_s.savepoint();
 
@@ -110,7 +127,7 @@ bool Executive::call(CallParameters const& _p, evmc_uint256be const& _gasPrice, 
 	}
 
 	// Transfer zxc.
-	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, fromEvmC(_p.valueTransfer));
+	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
 	return !m_ext;
 }
 
@@ -118,8 +135,6 @@ bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const&
 	evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _origin)
 {
 	auto j = getJ();
-	// add nonce for sender
-	m_s.incNonce(_sender);
 
 	m_isCreation = true;
 	m_gas = _gas;
@@ -129,7 +144,7 @@ bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const&
 	{
 		JLOG(j.warn()) << "Address already used: " << to_string(fromEvmC(m_newAddress));
 		m_gas = 0;
-		//m_excepted = TransactionException::AddressAlreadyUsed;
+		m_excepted = tefADDRESS_AREADY_USED;
 		//revert();
 		m_ext = {}; // cancel the _init execution if there are any scheduled.
 		return !m_ext;
@@ -137,7 +152,12 @@ bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const&
 
 	// Transfer ether before deploying the code. This will also create new
 	// account if it does not exist yet.
-	m_s.transferBalance(_sender, m_newAddress, fromEvmC(_endowment));
+	TER ret = m_s.activateContract(_sender, m_newAddress, _endowment);
+	if (ret != tesSUCCESS)
+	{
+		return true;
+	}
+	//m_s.transferBalance(_sender, m_newAddress, _endowment);
 	uint32 newNonce = m_s.requireAccountStartNonce();
 	m_s.setNonce(m_newAddress, newNonce);
 
@@ -160,7 +180,6 @@ bool Executive::go()
 		try
 		{
 			// Create VM instance. Force Interpreter if tracing requested.
-
 			VMFace::pointer vmc = VMFactory::create(VMKind::JIT);
 			if (m_isCreation)
 			{
@@ -194,26 +213,28 @@ bool Executive::go()
 		{
 			//revert();
 			m_output = _e.output();
+			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			//m_excepted = TransactionException::RevertInstruction;
 		}
 		catch (VMException const& _e)
 		{
 			JLOG(j.warn()) << "Safe VM Exception. " << diagnostic_information(_e);
 			m_gas = 0;
-			//m_excepted = toTransactionException(_e);
+			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			//revert();
 		}
 		catch (InternalVMError const& _e)
 		{
 			JLOG(j.warn()) << "Internal VM Error (" << *boost::get_error_info<errinfo_evmcStatusCode>(_e) << ")\n"
 				<< diagnostic_information(_e);
+			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			throw;
 		}
 		catch (Exception const& _e)
 		{
 			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 			JLOG(j.warn()) << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
-			exit(1);
+			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			// Another solution would be to reject this transaction, but that also
 			// has drawbacks. Essentially, the amount of ram has to be increased here.
 		}
@@ -221,7 +242,7 @@ bool Executive::go()
 		{
 			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 			JLOG(j.warn()) << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
-			exit(1);
+			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			// Another solution would be to reject this transaction, but that also
 			// has drawbacks. Essentially, the amount of ram has to be increased here.
 		}
