@@ -35,6 +35,7 @@
 #include <peersafe/app/tx/TableListSet.h>
 #include <peersafe/app/tx/SqlStatement.h>
 #include <peersafe/app/tx/SqlTransaction.h>
+#include <peersafe/app/tx/SmartContract.h>
 
 namespace ripple {
 
@@ -64,6 +65,7 @@ invoke_preflight (PreflightContext const& ctx)
     case ttTABLELISTSET:    return TableListSet     ::preflight(ctx);
     case ttSQLSTATEMENT:    return SqlStatement     ::preflight(ctx);
     case ttSQLTRANSACTION:  return SqlTransaction   ::preflight(ctx);
+	case ttCONTRACT:		return SmartContract	::preflight(ctx);
     default:
         assert(false);
         return temUNKNOWN;
@@ -132,6 +134,7 @@ invoke_preclaim (PreclaimContext const& ctx)
     case ttTABLELISTSET:    return invoke_preclaim<TableListSet>(ctx);
     case ttSQLSTATEMENT:    return invoke_preclaim<SqlStatement>(ctx);
     case ttSQLTRANSACTION:  return invoke_preclaim<SqlTransaction>(ctx); 
+	case ttCONTRACT:		return invoke_preclaim<SmartContract>(ctx);
     default:
         assert(false);
         return { temUNKNOWN, 0 };
@@ -163,7 +166,8 @@ invoke_calculateBaseFee(PreclaimContext const& ctx)
     case ttPAYCHAN_CLAIM:   return PayChanClaim::calculateBaseFee(ctx);
     case ttTABLELISTSET:    return TableListSet::calculateBaseFee(ctx);
     case ttSQLSTATEMENT:    return SqlStatement::calculateBaseFee(ctx);
-    case ttSQLTRANSACTION:  return SqlTransaction::calculateBaseFee(ctx);
+	case ttSQLTRANSACTION:  return SqlTransaction::calculateBaseFee(ctx);
+	case ttCONTRACT:		return SmartContract::calculateBaseFee(ctx);
     default:
         assert(false);
         return 0;
@@ -207,6 +211,7 @@ invoke_calculateConsequences(STTx const& tx)
     case ttTABLELISTSET:    return invoke_calculateConsequences<TableListSet>(tx);
     case ttSQLSTATEMENT:    return invoke_calculateConsequences<SqlStatement>(tx);
     case ttSQLTRANSACTION:  return invoke_calculateConsequences<SqlTransaction>(tx);
+	case ttCONTRACT:		return invoke_calculateConsequences<SmartContract>(tx);
     case ttAMENDMENT:
     case ttFEE:
         // fall through to default
@@ -243,6 +248,7 @@ invoke_apply (ApplyContext& ctx)
     case ttTABLELISTSET:    { TableListSet  p(ctx); return p(); }
     case ttSQLSTATEMENT:    { SqlStatement  p(ctx); return p(); }
     case ttSQLTRANSACTION:  { SqlTransaction p(ctx); return p(); } 
+	case ttCONTRACT:		{ SmartContract p(ctx); return p(); }
     default:
         assert(false);
         return { temUNKNOWN, false };

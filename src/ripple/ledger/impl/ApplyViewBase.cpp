@@ -135,6 +135,11 @@ ApplyViewBase::flags() const
     return flags_;
 }
 
+OpenView& ApplyViewBase::openView() const
+{
+	return (OpenView&)*base_;
+}
+
 std::shared_ptr<SLE>
 ApplyViewBase::peek (Keylet const& k)
 {

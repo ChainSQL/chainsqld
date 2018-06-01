@@ -93,6 +93,9 @@ transResults()
 		{ tefPAST_SEQ,               { "tefPAST_SEQ",              "This sequence number has already past."                                        } },
 		{ tefWRONG_PRIOR,            { "tefWRONG_PRIOR",           "This previous transaction does not match."                                     } },
 		{ tefBAD_AUTH_MASTER,        { "tefBAD_AUTH_MASTER",       "Auth for unclaimed account needs correct master key."                          } },
+		{ tefADDRESS_AREADY_USED,	 { "tefADDRESS_AREADY_USED",   "Contract address already used when creating contract." } },
+		{ tefGAS_INSUFFICIENT,		 { "tefGAS_INSUFFICIENT",	   "Gas insufficient." } },
+		{ tefCONTRACT_EXEC_EXCEPTION,{ "tefCONTRACT_EXEC_EXCEPTION","Exception occured while executing contract ." } },
 
 		{ telLOCAL_ERROR,            { "telLOCAL_ERROR",           "Local failure."                                                                } },
 		{ telBAD_DOMAIN,             { "telBAD_DOMAIN",            "Domain too long."                                                              } },

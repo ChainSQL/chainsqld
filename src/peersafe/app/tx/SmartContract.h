@@ -29,12 +29,12 @@ namespace ripple {
 
 	// See https://ripple.com/wiki/Transaction_Format#Payment_.280.29
 
-	class Contract
+	class SmartContract
 		: public Transactor
 	{
 
 	public:
-		Contract(ApplyContext& ctx)
+		SmartContract(ApplyContext& ctx)
 			: Transactor(ctx)
 		{
 		}

@@ -11,7 +11,11 @@
 
 
 namespace ripple {
-
+enum ContractOpType {
+	ContractCreation	= 1,			///< Transaction to create contracts - receiveAddress() is ignored.
+	MessageCall			= 2,			///< Transaction to invoke a message call - receiveAddress() is used.
+	ContractDeletion	= 3				///
+};
 class SleOps
 {
 public:
@@ -43,19 +47,24 @@ public:
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
 	uint256 codeHash(evmc_address const& _contract);
 
-	void transferBalance(evmc_address const& _from, evmc_address const& _to, uint256 const& _value);
+	void transferBalance(evmc_address const& _from, evmc_address const& _to, evmc_uint256be const& _value);
 
+	TER activateContract(evmc_address const& _from, evmc_address const& _to, evmc_uint256be const& _value);
 	/// Clear the storage root hash of an account to the hash of the empty trie.
 	void clearStorage(evmc_address const& _contract);
 
 	/// Add some amount to balance.
 	/// Will initialise the address if it has never been used.
-	void addBalance(evmc_address const& _id, uint256 const& _amount);
+	void addBalance(evmc_address const& _id, int64_t const& _amount);
 
 	/// Subtract the @p _value amount from the balance of @p _addr account.
 	/// @throws NotEnoughCash if the balance of the account is less than the
 	/// amount to be subtrackted (also in case the account does not exist).
-	void subBalance(evmc_address const& _addr, uint256 const& _value);
+	void subBalance(evmc_address const& _addr, int64_t const& _value);
+
+	int64_t balance(evmc_address address);
+
+	evmc_address calcNewAddress(evmc_address sender, int nonce);
 private:
     ApplyContext &ctx_;
     TaggedCache <AccountID, Blob>             contractCacheCode_;

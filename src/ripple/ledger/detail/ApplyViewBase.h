@@ -95,6 +95,8 @@ public:
     ApplyFlags
     flags() const override;
 
+	OpenView& openView() const override;
+
     std::shared_ptr<SLE>
     peek (Keylet const& k) override;
 

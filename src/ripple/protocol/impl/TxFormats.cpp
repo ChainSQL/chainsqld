@@ -139,8 +139,10 @@ TxFormats::TxFormats ()
 	add ("Contract", ttCONTRACT) <<
 			SOElement(sfContractOpType,		SOE_REQUIRED) <<
 			SOElement(sfContractData,		SOE_REQUIRED) <<
+			SOElement(sfGas,				SOE_REQUIRED) <<
+			SOElement(sfGasPrice,			SOE_REQUIRED) <<
 			SOElement(sfContractAddress,	SOE_OPTIONAL) <<
-			SOElement(sfContractValue,				SOE_OPTIONAL)
+			SOElement(sfContractValue,		SOE_OPTIONAL) 
 		;
 
 

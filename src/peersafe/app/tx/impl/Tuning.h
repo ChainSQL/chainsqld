@@ -28,10 +28,15 @@ namespace ripple {
 	int const TABLE_GRANT_COUNT = 256;
 
 	// 
-	int const MAX_CODE_SIZE = 0x6000;
+	int const MAX_CODE_SIZE			= 0x6000;
 	
 	//
-	int const CREATE_DATA_GAS = 200;
+	int const CREATE_DATA_GAS		= 200;
+
+	int const TX_GAS				= 21000;
+	int const TX_CREATE_GAS			= 53000;
+	int const TX_DATA_ZERO_GAS		= 4;
+	int const TX_DATA_NON_ZERO_GAS	= 68;
 
 } // ripple
 

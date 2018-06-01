@@ -33,7 +33,7 @@ private:
 class ExtVM : public ExtVMFace
 {
 public:    
-    ExtVM(SleOps& _s, EnvInfo &_envInfo, evmc_address const& _myAddress,
+    ExtVM(SleOps& _s, EnvInfo const&_envInfo, evmc_address const& _myAddress,
         evmc_address const& _caller, evmc_address const& _origin, evmc_uint256be _value, evmc_uint256be _gasPrice, bytesConstRef _data,
         bytesConstRef _code, evmc_uint256be const& _codeHash, int32_t _depth, bool _isCreate,  bool _staticCall)
       : ExtVMFace(_envInfo, _myAddress, _caller, _origin, _value, _gasPrice, _data, _code.toBytes(), _codeHash, _depth, _isCreate, _staticCall),

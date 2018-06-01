@@ -136,8 +136,8 @@ SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,      
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
 SF_U32 const sfNonce			   = make::one<SF_U32::type>(&sfNonce,				 STI_UINT32, 53, "Nonce");
-SF_U32 const sfContractValue	   = make::one<SF_U32::type>(&sfContractValue,		 STI_UINT32, 54, "ContractValue");
-
+SF_U32 const sfGas				   = make::one<SF_U32::type>(&sfGas,				 STI_UINT32, 55, "Gas");
+SF_U32 const sfGasPrice			   = make::one<SF_U32::type>(&sfGasPrice,			 STI_UINT32, 56, "GasPrice");
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
 SF_U64 const sfIndexPrevious = make::one<SF_U64::type>(&sfIndexPrevious, STI_UINT64, 2, "IndexPrevious");
@@ -203,6 +203,7 @@ SF_Amount const sfDeliverMin  = make::one<SF_Amount::type>(&sfDeliverMin,  STI_A
 SF_Amount const sfMinimumOffer    = make::one<SF_Amount::type>(&sfMinimumOffer,    STI_AMOUNT, 16, "MinimumOffer");
 SF_Amount const sfRippleEscrow    = make::one<SF_Amount::type>(&sfRippleEscrow,    STI_AMOUNT, 17, "RippleEscrow");
 SF_Amount const sfDeliveredAmount = make::one<SF_Amount::type>(&sfDeliveredAmount, STI_AMOUNT, 18, "DeliveredAmount");
+SF_Amount const sfContractValue	  = make::one<SF_Amount::type>(&sfContractValue,   STI_AMOUNT, 19, "ContractValue");
 
 // variable length (common)
 SF_Blob const sfPublicKey       = make::one<SF_Blob::type>(&sfPublicKey,     STI_VL,  1, "PublicKey");

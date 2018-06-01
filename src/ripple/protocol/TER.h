@@ -68,104 +68,107 @@ enum TER
     temBAD_EXPIRATION,
     temBAD_FEE,
     temBAD_ISSUER,
-    temBAD_LIMIT,
-    temBAD_OFFER,
-    temBAD_PATH,
-    temBAD_PATH_LOOP,
-    temBAD_SEND_ZXC_LIMIT,
-    temBAD_SEND_ZXC_MAX,
-    temBAD_SEND_ZXC_NO_DIRECT,
-    temBAD_SEND_ZXC_PARTIAL,
-    temBAD_SEND_ZXC_PATHS,
-    temBAD_SEQUENCE,
-    temBAD_SIGNATURE,
-    temBAD_SRC_ACCOUNT,
-    temBAD_TRANSFER_RATE,
-    temDST_IS_SRC,
-    temDST_NEEDED,
-    temINVALID,
-    temINVALID_FLAG,
-    temREDUNDANT,
-    temRIPPLE_EMPTY,
-    temDISABLED,
-    temBAD_SIGNER,
-    temBAD_QUORUM,
-    temBAD_WEIGHT,
-    temBAD_TICK_SIZE,
-	temBAD_TRANSFERFEE_BOTH,
-	temBAD_TRANSFERFEE,
+temBAD_LIMIT,
+temBAD_OFFER,
+temBAD_PATH,
+temBAD_PATH_LOOP,
+temBAD_SEND_ZXC_LIMIT,
+temBAD_SEND_ZXC_MAX,
+temBAD_SEND_ZXC_NO_DIRECT,
+temBAD_SEND_ZXC_PARTIAL,
+temBAD_SEND_ZXC_PATHS,
+temBAD_SEQUENCE,
+temBAD_SIGNATURE,
+temBAD_SRC_ACCOUNT,
+temBAD_TRANSFER_RATE,
+temDST_IS_SRC,
+temDST_NEEDED,
+temINVALID,
+temINVALID_FLAG,
+temREDUNDANT,
+temRIPPLE_EMPTY,
+temDISABLED,
+temBAD_SIGNER,
+temBAD_QUORUM,
+temBAD_WEIGHT,
+temBAD_TICK_SIZE,
+temBAD_TRANSFERFEE_BOTH,
+temBAD_TRANSFERFEE,
 
-	//for table set and sql statement
-	temBAD_OWNER,
-	temBAD_TABLES,
-	temBAD_TABLEFLAGS,
-	temBAD_RAW,
-    temBAD_OPTYPE,
-	temBAD_BASETX,
-	temBAD_PUT,
-    temBAD_DBTX,
-    temBAD_STATEMENTS,
-    temBAD_NEEDVERIFY,
-    temBAD_STRICTMODE,
-	temBAD_BASELEDGER,
-    temBAD_TRANSFERORDER,
-	temBAD_OPERATIONRULE,
-	temBAD_DELETERULE,
-	temBAD_UPDATERULE,
-	temBAD_RULEANDTOKEN,
-	temBAD_INSERTLIMIT,
+//for table set and sql statement
+temBAD_OWNER,
+temBAD_TABLES,
+temBAD_TABLEFLAGS,
+temBAD_RAW,
+temBAD_OPTYPE,
+temBAD_BASETX,
+temBAD_PUT,
+temBAD_DBTX,
+temBAD_STATEMENTS,
+temBAD_NEEDVERIFY,
+temBAD_STRICTMODE,
+temBAD_BASELEDGER,
+temBAD_TRANSFERORDER,
+temBAD_OPERATIONRULE,
+temBAD_DELETERULE,
+temBAD_UPDATERULE,
+temBAD_RULEANDTOKEN,
+temBAD_INSERTLIMIT,
 
-    // An intermediate result used internally, should never be returned.
-    temUNCERTAIN,
-    temUNKNOWN,
+// An intermediate result used internally, should never be returned.
+temUNCERTAIN,
+temUNKNOWN,
 
-    // -199 .. -100: F
-    //    Failure (sequence number previously used)
-    //
-    // Causes:
-    // - Transaction cannot succeed because of ledger state.
-    // - Unexpected ledger state.
-    // - C++ exception.
-    //
-    // Implications:
-    // - Not applied
-    // - Not forwarded
-    // - Could succeed in an imagined ledger.
-    tefFAILURE      = -199,
-    tefALREADY,
-    tefBAD_ADD_AUTH,
-    tefBAD_AUTH,
-    tefBAD_AUTH_EXIST,
-    tefBAD_AUTH_NO,
-    tefBAD_LEDGER,
-    tefCREATED,
-    tefEXCEPTION,
-    tefINTERNAL,
-    tefNO_AUTH_REQUIRED,    // Can't set auth if auth is not required.
-    tefPAST_SEQ,
-    tefWRONG_PRIOR,
-    tefMASTER_DISABLED,
-    tefMAX_LEDGER,
-    tefBAD_SIGNATURE,
-    tefBAD_QUORUM,
-    tefNOT_MULTI_SIGNING,
-    tefBAD_AUTH_MASTER,
-	tefTABLE_SAMENAME,   // Table name and table new name is same or create exist table
-	tefTABLE_NOTEXIST,   // Table is not exist 
-	tefTABLE_STATEERROR, // Table state is error
-	tefBAD_USER,         // User is bad format
-	tefTABLE_EXISTANDNOTDEL,         // Table exist and is not deleted
-	tefTABLE_STORAGEERROR,
-	tefTABLE_STORAGENORMALERROR,
-	tefTABLE_TXDISPOSEERROR,
-	tefTABLE_RULEDISSATISFIED,
-	tefTABLE_COUNTFULL,
-	tefTABLE_GRANTFULL,
-	tefDBNOTCONFIGURED,
-	tefINSUFFICIENT_RESERVE,
-    tefINVARIANT_FAILED,
-	tefBAD_DBNAME,       // NameInDB does not match tableName.
-	tefBAD_STATEMENT,    // satement error
+// -199 .. -100: F
+//    Failure (sequence number previously used)
+//
+// Causes:
+// - Transaction cannot succeed because of ledger state.
+// - Unexpected ledger state.
+// - C++ exception.
+//
+// Implications:
+// - Not applied
+// - Not forwarded
+// - Could succeed in an imagined ledger.
+tefFAILURE = -199,
+tefALREADY,
+tefBAD_ADD_AUTH,
+tefBAD_AUTH,
+tefBAD_AUTH_EXIST,
+tefBAD_AUTH_NO,
+tefBAD_LEDGER,
+tefCREATED,
+tefEXCEPTION,
+tefINTERNAL,
+tefNO_AUTH_REQUIRED,    // Can't set auth if auth is not required.
+tefPAST_SEQ,
+tefWRONG_PRIOR,
+tefMASTER_DISABLED,
+tefMAX_LEDGER,
+tefBAD_SIGNATURE,
+tefBAD_QUORUM,
+tefNOT_MULTI_SIGNING,
+tefBAD_AUTH_MASTER,
+tefTABLE_SAMENAME,   // Table name and table new name is same or create exist table
+tefTABLE_NOTEXIST,   // Table is not exist 
+tefTABLE_STATEERROR, // Table state is error
+tefBAD_USER,         // User is bad format
+tefTABLE_EXISTANDNOTDEL,         // Table exist and is not deleted
+tefTABLE_STORAGEERROR,
+tefTABLE_STORAGENORMALERROR,
+tefTABLE_TXDISPOSEERROR,
+tefTABLE_RULEDISSATISFIED,
+tefTABLE_COUNTFULL,
+tefTABLE_GRANTFULL,
+tefDBNOTCONFIGURED,
+tefINSUFFICIENT_RESERVE,
+tefINVARIANT_FAILED,
+tefBAD_DBNAME,       // NameInDB does not match tableName.
+tefBAD_STATEMENT,    // satement error
+tefADDRESS_AREADY_USED,
+tefGAS_INSUFFICIENT,
+tefCONTRACT_EXEC_EXCEPTION,
     // -99 .. -1: R Retry
     //   sequence too high, no funds for txn fee, originating -account
     //   non-existent
