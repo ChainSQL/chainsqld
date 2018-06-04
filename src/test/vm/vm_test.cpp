@@ -20,6 +20,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <string>
 
 #include <ripple/beast/unit_test.h>
+#include <ripple/basics/StringUtilities.h>
 
 #include "FakeExtVM.h"
 
@@ -30,45 +31,19 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 namespace ripple {
 
-int fromHexChar(char _i)
-{
-	if (_i >= '0' && _i <= '9')
-		return _i - '0';
-	if (_i >= 'a' && _i <= 'f')
-		return _i - 'a' + 10;
-	if (_i >= 'A' && _i <= 'F')
-		return _i - 'A' + 10;
-	return -1;
-}
-
 size_t fromHex(const std::string& hex, std::string& binary)
 {
-	//size_t offset = 0;
-	size_t size = hex.size();
-	size_t s = (size >= 2 && hex[0] == '0' && hex[1] == 'x') ? 2 : 0;
-
-	if (size % 2)
-	{
-		int h = fromHexChar(hex[s++]);
-		if (h != -1) {
-			//ret.push_back(h);
-			//binary[offset++] = h;
-			binary.push_back((uint8_t)h);
-		}
-		else
-			return 0;
+	std::string pure_hex;
+	if (hex[0] == '0' && hex[1] == 'x') {
+		pure_hex = hex.substr(2);
 	}
-	for (size_t i = s; i < size; i += 2)
-	{
-		int h = fromHexChar(hex[i]);
-		int l = fromHexChar(hex[i + 1]);
-		if (h != -1 && l != -1) {
-			//binary[offset++] = (uint8_t)(h * 16 + l);
-			binary.push_back((uint8_t)h * 16 + l);
-		} 
-		else
-			return 0;
+	else {
+		pure_hex = hex;
 	}
+	std::pair<Blob, bool> ret = strUnHex(pure_hex);
+	if (ret.second == false)
+		return 0;
+	binary.assign(ret.first.begin(), ret.first.end());
 	return binary.size();
 }
 
@@ -80,7 +55,7 @@ public:
 
     void run() {
 		init_env();
-		//call();
+		call();
 		createAndCall();
 		pass();
 	}
