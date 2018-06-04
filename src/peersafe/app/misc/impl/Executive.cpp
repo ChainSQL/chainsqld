@@ -51,7 +51,7 @@ TER Executive::finalize() {
     m_s.addBalance(sender, m_gas * gasPrice);
 
     // Suicides...
-    if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(a);
+    if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(toEvmC(a));
 
 	return m_excepted;
 }

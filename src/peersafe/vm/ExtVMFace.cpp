@@ -31,7 +31,7 @@ void setStorage(
 	evmc_uint256be const* _value
 ) noexcept
 {
-	//(void)_addr;
+	(void)_addr;
 	auto& env = static_cast<ExtVMFace&>(*_context);
         
     uint256 uNewValue = fromEvmC(*_value);
