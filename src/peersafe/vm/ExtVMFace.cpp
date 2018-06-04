@@ -110,6 +110,7 @@ void getTxContext(evmc_tx_context* result, evmc_context* _context) noexcept
 	result->block_number = env.envInfo().block_number();
 	result->block_timestamp = env.envInfo().block_timestamp();
 	result->block_gas_limit = env.envInfo().gasLimit();
+    result->block_difficulty = evmc_uint256be{};
 }
 
 void getBlockHash(evmc_uint256be* o_hash, evmc_context* _envPtr, int64_t _number)
