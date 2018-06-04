@@ -6,9 +6,7 @@
 #include <ripple/protocol/STAmount.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/basics/TaggedCache.h>
-#include <peersafe/app/misc/TypeTransform.h>
-
-
+#include <peersafe/basics/TypeTransform.h>
 
 namespace ripple {
 enum ContractOpType {
@@ -65,6 +63,8 @@ public:
 	int64_t balance(evmc_address address);
 
 	evmc_address calcNewAddress(evmc_address sender, int nonce);
+
+    void kill(evmc_address sender);
 private:
     ApplyContext &ctx_;
     TaggedCache <AccountID, Blob>             contractCacheCode_;

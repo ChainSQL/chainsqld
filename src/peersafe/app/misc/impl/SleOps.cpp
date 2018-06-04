@@ -146,4 +146,9 @@ namespace ripple {
 		std::memcpy(id.data(), d.data(), d.size());
 		return toEvmC(id);
 	}
+
+    void SleOps::kill(evmc_address addr)
+    {
+        assert(0);
+    }
 }

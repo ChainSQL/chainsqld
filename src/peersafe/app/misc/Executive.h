@@ -69,6 +69,9 @@ public:
 	bool call(evmc_address const& _receiveAddress, evmc_address const& _txSender, 
 		evmc_uint256be const& _txValue, evmc_uint256be const& _gasPrice, bytesConstRef _txData, int64_t const& _gas);
 	bool call(CallParameters const& _cp, evmc_uint256be const& _gasPrice, evmc_address const& _origin);
+
+    void accrueSubState(SubState& _parentContext);
+
 	/// Executes (or continues execution of) the VM.
 	/// @returns false iff go() must be called again to finish the transaction.
 	//bool go(OnOpFunc const& _onOp = OnOpFunc());
@@ -106,7 +109,8 @@ private:
 
 	unsigned m_depth = 0;				///< The context's call-depth.
 	TER m_excepted = tesSUCCESS;		///< Details if the VM's execution resulted in an exception.
-	int64_t m_baseGasRequired = 0;		///< The base amount of gas requried for executing this transaction.
+	int64_t m_refunded = 0;		        ///< The amount of gas refunded.
+    int64_t m_baseGasRequired = 0;		///< The base amount of gas requried for executing this transaction.
 	int64_t m_gas = 0;					///< gas remained
 	//uint256 m_refunded = beast::zero;	///< The amount of gas refunded.
 

@@ -1,8 +1,8 @@
 #include <peersafe/app/misc/Executive.h>
+#include <peersafe/vm/VMFactory.h>
+#include <peersafe/core/Tuning.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/main/Application.h>
-#include <peersafe/core/Tuning.h>
-#include <peersafe/vm/VMFactory.h>
 
 namespace ripple {
 
@@ -28,14 +28,31 @@ void Executive::initialize() {
 }
 
 TER Executive::finalize() {
-	auto& tx = m_s.ctx().tx;
-	auto sender = toEvmC(tx.getAccountID(sfAccount));
-	int64_t gasPrice = tx.getFieldU32(sfGasPrice);
-	m_s.addBalance(sender, m_gas * gasPrice);
 
-	//to coinbase
-	//u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
-	//m_s.addBalance(m_envInfo.author(), feesEarned);
+    // Accumulate refunds for suicides.
+    if (m_ext)
+        m_ext->sub.refunds += SUICIDE_REFUND_GAS * m_ext->sub.suicides.size();
+        
+    auto& tx = m_s.ctx().tx;
+    int64_t gas = tx.getFieldU32(sfGas);
+    
+    if (m_ext)
+    {
+        m_refunded = (gas - m_gas) / 2 > m_ext->sub.refunds ? m_ext->sub.refunds : (gas - m_gas) / 2;
+    } 
+    else
+    {
+        m_refunded = 0;
+    }    
+    m_gas += m_refunded;
+
+    auto sender = toEvmC(tx.getAccountID(sfAccount));
+    int64_t gasPrice = tx.getFieldU32(sfGasPrice);
+    m_s.addBalance(sender, m_gas * gasPrice);
+
+    // Suicides...
+    if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(a);
+
 	return m_excepted;
 }
 
@@ -256,6 +273,12 @@ bool Executive::go()
 #endif
 	}
 	return true;
+}
+
+void Executive::accrueSubState(SubState& _parentContext)
+{
+    if (m_ext)
+        _parentContext += m_ext->sub;
 }
 
 beast::Journal Executive::getJ()

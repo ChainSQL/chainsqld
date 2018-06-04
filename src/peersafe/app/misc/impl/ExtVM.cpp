@@ -173,7 +173,8 @@ namespace ripple
         {
             ApplyContext const& ctx = oSle_.ctx();
             auto j = ctx.app.journal("ExtVM");
-            go(depth, e, j);            
+            go(depth, e, j);  
+            e.accrueSubState(sub);
         }
         ioGas = e.gas();
         return{ terToEvmcStatusCode(e.getException()), e.takeOutput(), e.newAddress() };
@@ -190,6 +191,7 @@ namespace ripple
             ApplyContext const& ctx = oSle_.ctx();
             auto j = ctx.app.journal("ExtVM");
             go(depth, e, j);
+            e.accrueSubState(sub);
         }
         oPara.gas = e.gas();
 

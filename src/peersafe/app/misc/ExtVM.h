@@ -4,7 +4,7 @@
 #include <peersafe/app/misc/SleOps.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <peersafe/vm/ExtVMFace.h>
-#include <peersafe/app/misc/TypeTransform.h>
+#include <peersafe/basics/TypeTransform.h>
 
 #include <functional>
 #include <map>

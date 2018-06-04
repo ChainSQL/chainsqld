@@ -1,15 +1,16 @@
-#ifndef CHAINSQL_APP_MISC_TYPETRANSFORM_H_INCLUDED
-#define CHAINSQL_APP_MISC_TYPETRANSFORM_H_INCLUDED
+#ifndef CHAINSQL_BASICS_TYPETRANSFORM_H_INCLUDED
+#define CHAINSQL_BASICS_TYPETRANSFORM_H_INCLUDED
 
 #include <ripple/protocol/AccountID.h>
 #include <ripple/basics/base_uint.h>
+#include <peersafe/vm/common.h>
 #include <evmc/evmc.h>
 
 namespace ripple {
 
 
     inline evmc_address & toEvmC(AccountID const& addr)
-    {
+    {        
         return const_cast<evmc_address&>(reinterpret_cast<evmc_address const&>(addr));
     }
 
@@ -24,7 +25,7 @@ namespace ripple {
     }
 
     inline AccountID const& fromEvmC(evmc_address const& _addr)
-    {
+    {        
 		return const_cast<AccountID&>(reinterpret_cast<AccountID const&>(_addr));
     }
 

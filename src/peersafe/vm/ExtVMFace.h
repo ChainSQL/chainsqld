@@ -57,7 +57,7 @@ private:
 struct SubState
 {
     std::set<evmc_address> suicides;    ///< Any accounts that have suicided.
-    uint256 refunds;                    ///< Refund counter of SSTORE nonzero->zero.
+    uint64_t refunds;                    ///< Refund counter of SSTORE nonzero->zero.
 
     SubState& operator+=(SubState const& _s)
     {
@@ -180,7 +180,7 @@ public:
 	virtual bool exists(evmc_address const&) { return false; }
 
 	/// Suicide the associated contract and give proceeds to the given address.
-	virtual void suicide(evmc_address const&) { }
+	virtual void suicide(evmc_address const&) { sub.suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
 	virtual CreateResult create(evmc_uint256be const&, int64_t&, 
