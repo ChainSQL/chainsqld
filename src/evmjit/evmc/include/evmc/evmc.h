@@ -142,7 +142,6 @@ struct evmc_tx_context
     int64_t block_number;                   /**< The block number. */
     int64_t block_timestamp;                /**< The block timestamp. */
     int64_t block_gas_limit;                /**< The block gas limit. */
-    struct evmc_uint256be block_difficulty; /**< The block difficulty. */
 };
 
 struct evmc_context;

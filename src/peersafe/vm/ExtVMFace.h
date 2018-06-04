@@ -137,10 +137,6 @@ public:
 		return 0;
 	}
 
-	virtual evmc_uint256be const& difficulty() const {
-		return evmc_uint256be();
-	}
-
 	virtual int64_t const block_number() const {
 		return 0;
 	}
