@@ -2,7 +2,8 @@
 #define CHAINSQL_APP_MISC_TYPETRANSFORM_H_INCLUDED
 
 #include <ripple/protocol/AccountID.h>
-#include <peersafe/vm/ExtVMFace.h>
+#include <ripple/basics/base_uint.h>
+#include <evmc/evmc.h>
 
 namespace ripple {
 

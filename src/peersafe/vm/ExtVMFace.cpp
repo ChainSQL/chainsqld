@@ -2,6 +2,7 @@
 
 #include "ExtVMFace.h"
 #include "Common.h"
+#include <peersafe/core/Tuning.h>
 
 namespace ripple {
 
@@ -32,6 +33,13 @@ void setStorage(
 {
 	(void)_addr;
 	auto& env = static_cast<ExtVMFace&>(*_context);
+        
+    uint256 uNewValue = fromEvmC(*_value);
+    uint256 uOldValue = fromEvmC(env.store(*_key));
+
+    if (uNewValue == 0 && uOldValue != 0)                // If delete
+        env.sub.refunds += uint256(STORE_REFUND_GAS);    // Increase refund counter
+
 	env.setStore(*_key, *_value);
 }
 

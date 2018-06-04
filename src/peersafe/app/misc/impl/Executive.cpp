@@ -1,7 +1,7 @@
 #include <peersafe/app/misc/Executive.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/main/Application.h>
-#include <peersafe/app/tx/impl/Tuning.h>
+#include <peersafe/core/Tuning.h>
 #include <peersafe/vm/VMFactory.h>
 
 namespace ripple {
