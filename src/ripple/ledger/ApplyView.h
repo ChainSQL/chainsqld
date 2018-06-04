@@ -140,7 +140,6 @@ public:
     flags() const = 0;
 
 	virtual OpenView& openView() const = 0;
-
     /** Prepare to modify the SLE associated with key.
 
         Effects:
