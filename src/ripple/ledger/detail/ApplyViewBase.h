@@ -59,6 +59,10 @@ public:
     Rules const&
     rules() const override;
 
+	detail::ApplyStateTable& items() {
+		return items_;
+	}
+
     bool
     exists (Keylet const& k) const override;
 

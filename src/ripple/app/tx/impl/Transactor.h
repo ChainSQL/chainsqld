@@ -154,14 +154,12 @@ public:
     }
     /////////////////////////////////////////////////////
 
+	TER apply();
 protected:
-    TER
-    apply();
-
     explicit
     Transactor (ApplyContext& ctx);
 
-    virtual void preCompute();
+	virtual void preCompute();
 
     virtual TER doApply () = 0;
 

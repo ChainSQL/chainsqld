@@ -2,6 +2,8 @@
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/TxFormats.h>
 #include <ripple/app/tx/apply.h>
+#include <ripple/ledger/ApplyViewImpl.h>
+#include <peersafe/app/tx/DirectApply.h>
 
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
@@ -97,10 +99,9 @@ namespace ripple {
 			obj.setFieldAmount(sfAmount, ZXCAmount(value));
 		});
 		ApplyFlags flags = tapNO_CHECK_SIGN;
-		auto ret = ripple::apply(ctx_.app, ctx_.view().openView(), paymentTx, ctx_.view().flags(), ctx_.app.journal("Executive"));
-		return ret.first;
+		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
+		return ret;
 	}
-
 
 	void SleOps::addBalance(evmc_address const& addr, int64_t const& amount)
 	{

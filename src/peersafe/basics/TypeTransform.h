@@ -32,15 +32,16 @@ namespace ripple {
 	inline int64_t fromUint256(evmc_uint256be const& _n)
 	{
 		uint256 n = fromEvmC(_n);
-		union
-		{
-			unsigned u[2];
-			std::int64_t ul;
-		};
-		int nWidth = n.size() / 32;
-		u[0] = n.data()[nWidth - 2];
-		u[1] = n.data()[nWidth - 1];
-		return ul;
+		return be64toh(((std::uint64_t*) n.end())[-1]);
+		//union
+		//{
+		//	unsigned u[2];
+		//	std::int64_t ul;
+		//};
+		//int nWidth = n.size() / 32;
+		//u[0] = n.data()[nWidth - 2];
+		//u[1] = n.data()[nWidth - 1];
+		//return ul;
 	}
 
 	inline static const evmc_address noAddress() 
