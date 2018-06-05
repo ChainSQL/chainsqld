@@ -168,7 +168,7 @@ namespace ripple {
 			return mValue[key];
 		}		
 
-		uint256& at(const uint256& key)
+		uint256 & at(const uint256& key)
 		{
 			return mValue.at(key);
 		}

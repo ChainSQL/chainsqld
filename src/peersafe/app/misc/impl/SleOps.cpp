@@ -98,7 +98,6 @@ namespace ripple {
 			obj.setAccountID(sfDestination, fromEvmC(_to));
 			obj.setFieldAmount(sfAmount, ZXCAmount(value));
 		});
-		ApplyFlags flags = tapNO_CHECK_SIGN;
 		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
 		return ret;
 	}

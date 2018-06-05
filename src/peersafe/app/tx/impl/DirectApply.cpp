@@ -126,8 +126,11 @@ namespace ripple {
 				preclaimResult.tx, preclaimResult.ter,
 				preclaimResult.baseFee, preclaimResult.flags,
 				preclaimResult.j);
-			TER ter = invoke_apply_direct(ctx);
+			ApplyViewImpl& viewImpl = (ApplyViewImpl&)view;
 			ApplyViewImpl& applyView = (ApplyViewImpl&)(ctx.view());
+			
+			viewImpl.items().apply(applyView);
+			TER ter = invoke_apply_direct(ctx);
 			applyView.items().apply((ApplyViewImpl&)view);
 			return ter;
 		}

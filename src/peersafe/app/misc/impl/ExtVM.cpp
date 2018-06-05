@@ -117,9 +117,14 @@ namespace ripple
         SLE::pointer pSle = oSle_.getSle(myAddress);
         STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
 
-        uint256 uKey = fromEvmC(key);        
-        uint256& uV = mapStore.at(uKey);
-        return toEvmC(uV);
+        uint256 uKey = fromEvmC(key);  
+		try {
+			auto uV = mapStore.at(uKey);
+			return toEvmC(uV);
+		}
+		catch (std::exception e) {
+			return toEvmC(uint256(0));
+		}
     }
 
     void ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)

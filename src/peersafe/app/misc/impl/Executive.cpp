@@ -79,18 +79,18 @@ bool Executive::execute() {
 		return true;
 	}
 	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
-	bytes data = tx.getFieldVL(sfContractData);
+	m_input = tx.getFieldVL(sfContractData);
 	auto value = toEvmC(uint256(tx.getFieldAmount(sfContractValue).zxc().drops()));
 	evmc_uint256be gasPrice = toEvmC(uint256());
 	int64_t gas = tx.getFieldU32(sfGas);
 	if (isCreation)
 	{
-		return create(sender, value, gasPrice, gas - m_baseGasRequired, &data, sender);
+		return create(sender, value, gasPrice, gas - m_baseGasRequired, &m_input, sender);
 	}
 	else
 	{
 		evmc_address contract_address = toEvmC(tx.getAccountID(sfContractAddress));
-		return call(contract_address, sender, value, gasPrice, bytesConstRef(&data), gas - m_baseGasRequired);
+		return call(contract_address, sender, value, gasPrice, bytesConstRef(&m_input), gas - m_baseGasRequired);
 	}
 }
 
