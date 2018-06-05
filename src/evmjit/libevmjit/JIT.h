@@ -7,6 +7,8 @@
 
 #include <evmjit.h>
 
+#undef DEBUG
+
 namespace dev
 {
 namespace evmjit
