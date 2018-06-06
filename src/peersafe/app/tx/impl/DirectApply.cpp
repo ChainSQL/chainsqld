@@ -100,7 +100,7 @@ namespace ripple {
 	{
 		switch (ctx.tx.getTxnType())
 		{
-		case ttPAYMENT: { Payment       p(ctx); return p.apply(); }
+		case ttPAYMENT: { Payment       p(ctx); return p.applyDirect(); }
 		default:
 			assert(false);
 			return temUNKNOWN;
@@ -129,8 +129,13 @@ namespace ripple {
 			ApplyViewImpl& viewImpl = (ApplyViewImpl&)view;
 			ApplyViewImpl& applyView = (ApplyViewImpl&)(ctx.view());
 			
+			//first fetch changes from outside view
 			viewImpl.items().apply(applyView);
+
+			//then apply tx directly
 			TER ter = invoke_apply_direct(ctx);
+
+			//finally apply changes to outside view
 			applyView.items().apply((ApplyViewImpl&)view);
 			return ter;
 		}

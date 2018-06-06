@@ -151,11 +151,18 @@ public:
         // Most transactors do nothing
         // after checkSeq/Fee/Sign.
         return tesSUCCESS;
-    }
-    /////////////////////////////////////////////////////
+	}
 
-	TER apply();
+	// apply directly
+	TER applyDirect();
+    /////////////////////////////////////////////////////
 protected:
+	TER
+	apply();
+
+	//pre-apply for chainsql
+	TER preChainsql();
+
     explicit
     Transactor (ApplyContext& ctx);
 

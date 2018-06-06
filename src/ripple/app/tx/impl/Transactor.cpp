@@ -319,6 +319,30 @@ void Transactor::preCompute ()
     assert(account_ != zero);
 }
 
+TER Transactor::preChainsql()
+{
+	if (ctx_.tx.isChainSqlBaseType())
+	{
+		checkAddChainIDSle();
+		if ((ctx_.view().flags() & tapFromClient))
+		{
+			return ctx_.app.getTableStorage().InitItem(ctx_.tx, *this);
+		}
+	}
+	return tesSUCCESS;
+}
+
+TER Transactor::applyDirect()
+{
+	preCompute();
+
+	TER res = preChainsql();
+	if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
+		return res;
+
+	return doApply();
+}
+
 TER Transactor::apply ()
 {
     preCompute();
@@ -348,16 +372,9 @@ TER Transactor::apply ()
         view().update (sle);
     }
 
-	if (ctx_.tx.isChainSqlBaseType())
-	{
-		checkAddChainIDSle();
-		if ((ctx_.view().flags() & tapFromClient))
-		{
-			TER res = ctx_.app.getTableStorage().InitItem(ctx_.tx, *this);
-			if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
-				return res;
-		}
-	}
+	TER res = preChainsql();
+	if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
+		return res;
 
     return doApply();
 }  
