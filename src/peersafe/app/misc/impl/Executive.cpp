@@ -172,6 +172,7 @@ bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const&
 	TER ret = m_s.activateContract(_sender, m_newAddress, _endowment);
 	if (ret != tesSUCCESS)
 	{
+		m_excepted = ret;
 		return true;
 	}
 	//m_s.transferBalance(_sender, m_newAddress, _endowment);

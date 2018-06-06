@@ -76,7 +76,11 @@ namespace ripple {
 		Executive e(ops, *pInfo, 1);
 		e.initialize();
 		if (!e.execute())
+		{
 			e.go();
-		return e.finalize();
+			return e.finalize();
+		}			
+		else
+			return e.getException();
 	}
 }
