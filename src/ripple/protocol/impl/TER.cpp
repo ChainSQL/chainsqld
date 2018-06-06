@@ -132,6 +132,7 @@ transResults()
 		{ temBAD_TRANSFER_RATE,      { "temBAD_TRANSFER_RATE",     "Malformed: Transfer rate must be >= 1.0"                                       } },
 		{ temBAD_TRANSFERFEE_BOTH,	 { "temBAD_TRANSFERFEE_BOTH",  "Malformed: TransferFeeMin and TransferFeeMax can not be set individually."	   } },
 		{ temBAD_TRANSFERFEE,		 { "temBAD_TRANSFERFEE",	   "Malformed: TransferFeeMin can not be greater than TransferMax."				   } },
+		{ temBAD_NO_TRANSFER_RATE,	 { "temBAD_NO_TRANSFER_RATE",   "Malformed: Must set TransferRate if set TransferFeeMin or TransferFeeMax alone."}},
 		{ temBAD_WEIGHT,             { "temBAD_WEIGHT",            "Malformed: Weight must be a positive value."                                   } },
 		{ temDST_IS_SRC,             { "temDST_IS_SRC",            "Destination may not be source."                                                } },
 		{ temDST_NEEDED,             { "temDST_NEEDED",            "Destination not specified."                                                    } },
