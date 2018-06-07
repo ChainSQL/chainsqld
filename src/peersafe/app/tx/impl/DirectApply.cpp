@@ -150,7 +150,7 @@ namespace ripple {
 	TER
 		applyDirect(Application& app, ApplyView& view, STTx const& tx, beast::Journal j)
 	{
-		auto pfresult = preflight(app, view.openView().rules(), tx, view.flags(), j);
+		auto pfresult = preflight(app, view.openView().rules(), tx, view.flags()| tapNO_CHECK_SIGN, j);
 		auto pcresult = preclaimDirect(pfresult, app, view.openView());
 		auto ret = doApplyDirect(pcresult, app, view);
 		return ret;
