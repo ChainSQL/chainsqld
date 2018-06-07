@@ -105,31 +105,41 @@ namespace ripple {
 	void SleOps::addBalance(evmc_address const& addr, int64_t const& amount)
 	{
 		SLE::pointer pSle = getSle(addr);
-		auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
-		int64_t finalBanance = balance + amount;
-		
-		pSle->setFieldAmount(sfBalance,ZXCAmount(finalBanance));
+		if (pSle)
+		{
+			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
+			int64_t finalBanance = balance + amount;
+
+			pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
+		}
 	}
 
 	void SleOps::subBalance(evmc_address const& addr, int64_t const& amount)
 	{
 		SLE::pointer pSle = getSle(addr);
-		auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
-		int64_t finalBanance = balance - amount;
-
-		pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
+		if (pSle)
+		{
+			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
+			int64_t finalBanance = balance - amount;
+			if (finalBanance > 0)
+				pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
+		}
 	}
 
 	int64_t SleOps::balance(evmc_address address)
 	{
 		SLE::pointer pSle = getSle(address);
-		return pSle->getFieldAmount(sfBalance).zxc().drops();
+		if (pSle)
+			return pSle->getFieldAmount(sfBalance).zxc().drops();
+		else
+			return 0;
 	}
 
 	void SleOps::clearStorage(evmc_address const& _contract)
 	{
 		SLE::pointer pSle = getSle(_contract);
-		pSle->makeFieldAbsent(sfContractCode);
+		if(pSle)
+			pSle->makeFieldAbsent(sfContractCode);
 	}
 
 	evmc_address SleOps::calcNewAddress(evmc_address sender, int nonce)

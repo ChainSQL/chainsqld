@@ -90,11 +90,13 @@ namespace ripple {
         {
             assert(fName->isBinary());
             assert(fName->fieldType == STI_MAP256);
+			Blob blob;
             for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
             {
-                s.add256(iter->first);
-                s.add256(iter->second);
+				blob.insert(blob.end(), iter->first.begin(), iter->first.end());
+				blob.insert(blob.end(), iter->second.begin(), iter->second.end());
             }
+			s.addVL(blob);
         }
 
         bool

@@ -377,6 +377,7 @@ SField::getField (int code)
     case STI_HASH160:
     case STI_PATHSET:
     case STI_VECTOR256:
+	case STI_MAP256:
         break;
 
     default:
