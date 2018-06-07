@@ -336,6 +336,17 @@ TER Transactor::applyDirect()
 {
 	preCompute();
 
+	// If the transactor requires a valid account and the transaction doesn't
+	// list one, preflight will have already a flagged a failure.
+	auto const sle = view().peek(keylet::account(account_));
+	if (sle)
+	{
+		mPriorBalance = STAmount((*sle)[sfBalance]).zxc();
+		mSourceBalance = mPriorBalance;
+
+		view().update(sle);
+	}
+
 	TER res = preChainsql();
 	if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
 		return res;
@@ -343,7 +354,7 @@ TER Transactor::applyDirect()
 	return doApply();
 }
 
-TER Transactor::apply ()
+TER Transactor::apply()
 {
     preCompute();
 
