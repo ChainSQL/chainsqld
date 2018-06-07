@@ -222,6 +222,11 @@ int64_t call(evmc_context* _ctx, int _kind, int64_t _gas, evmc_address const* _a
 	return r;
 }
 
+uint8_t* evm_realloc(uint8_t* data, size_t size) {
+	uint8_t *newData = (uint8_t*)std::realloc(data, size);
+	return newData;
+}
+
 
 /// A wrapper for new EVM-C copycode callback function.
 size_t getCode(uint8_t** o_pCode, evmc_context* _ctx, evmc_address const* _address) noexcept
@@ -264,6 +269,7 @@ class SymbolResolver : public llvm::SectionMemoryManager
                 .Case("evm.get_tx_context", reinterpret_cast<uint64_t>(jit.host->get_tx_context))
                 .Case("evm.blockhash", reinterpret_cast<uint64_t>(jit.host->get_block_hash))
                 .Case("evm.log", reinterpret_cast<uint64_t>(jit.host->emit_log))
+				.Case("evm.realloc",reinterpret_cast<uint64_t>(evm_realloc))
                 .Default(0);
         if (addr)
             return {addr, llvm::JITSymbolFlags::Exported};
@@ -500,9 +506,7 @@ static evmc_result execute(evmc_instance* instance, evmc_context* context, evmc_
 		// Set pointer to the destructor that will release the memory.
 		result.release = [](evmc_result const* r)
 		{
-			// test
-			//std::free(evmc_get_const_optional_data(r)->pointer);
-			// end test
+			std::free(evmc_get_const_optional_data(r)->pointer);
 		};
 		ctx.m_memData = nullptr;
 	}

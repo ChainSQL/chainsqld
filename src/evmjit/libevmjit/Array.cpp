@@ -153,7 +153,7 @@ llvm::Function* Array::createFreeFunc()
 	func->setDoesNotThrow();
 	func->addAttribute(1, llvm::Attribute::NoCapture);
 
-	auto freeFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, Type::BytePtr, false), llvm::Function::ExternalLinkage, "Free", getModule());
+	auto freeFunc = llvm::Function::Create(llvm::FunctionType::get(Type::Void, Type::BytePtr, false), llvm::Function::ExternalLinkage, "free", getModule());
 	freeFunc->setDoesNotThrow();
 	freeFunc->addAttribute(1, llvm::Attribute::NoCapture);
 
@@ -176,7 +176,8 @@ llvm::Function* Array::getReallocFunc()
 		return func;
 
 	llvm::Type* reallocArgTypes[] = {Type::BytePtr, Type::Size};
-	auto reallocFunc = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, reallocArgTypes, false), llvm::Function::ExternalLinkage, "realloc", getModule());
+	auto reallocFunc = llvm::Function::Create(llvm::FunctionType::get(Type::BytePtr, reallocArgTypes, false), 
+		llvm::Function::ExternalLinkage, "evm.realloc", getModule());
 	reallocFunc->setDoesNotThrow();
 	reallocFunc->addAttribute(0, llvm::Attribute::NoAlias);
 	reallocFunc->addAttribute(1, llvm::Attribute::NoCapture);
