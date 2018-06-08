@@ -56,8 +56,8 @@ private:
 
 struct SubState
 {
-    std::set<AccountID> suicides;    ///< Any accounts that have suicided.
-    uint64_t refunds;                    ///< Refund counter of SSTORE nonzero->zero.
+    std::set<AccountID> suicides;			 ///< Any accounts that have suicided.
+    uint64_t refunds = 0;                    ///< Refund counter of SSTORE nonzero->zero.
 
     SubState& operator+=(SubState const& _s)
     {

@@ -134,7 +134,10 @@ namespace ripple
                 
         uint256 uKey = fromEvmC(key);
         uint256 uValue = fromEvmC(value);
-        mapStore[uKey] = uValue;
+		if (uValue == uint256(0))
+			mapStore.erase(uKey);
+		else
+			mapStore[uKey] = uValue;
     }
 
     bytes const& ExtVM::codeAt(evmc_address const& addr)

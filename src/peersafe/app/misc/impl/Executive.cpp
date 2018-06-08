@@ -27,48 +27,12 @@ void Executive::initialize() {
 	m_gasCost = gasCost;
 }
 
-TER Executive::finalize() {
-
-    // Accumulate refunds for suicides.
-    if (m_ext)
-        m_ext->sub.refunds += SUICIDE_REFUND_GAS * m_ext->sub.suicides.size();
-        
-    auto& tx = m_s.ctx().tx;
-    int64_t gas = tx.getFieldU32(sfGas);
-    
-    if (m_ext)
-    {
-        m_refunded = (gas - m_gas) / 2 > m_ext->sub.refunds ? m_ext->sub.refunds : (gas - m_gas) / 2;
-    } 
-    else
-    {
-        m_refunded = 0;
-    }    
-    m_gas += m_refunded;
-
-    auto sender = toEvmC(tx.getAccountID(sfAccount));
-    int64_t gasPrice = tx.getFieldU32(sfGasPrice);
-    m_s.addBalance(sender, m_gas * gasPrice);
-
-    // Suicides...
-    if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(toEvmC(a));
-
-	return m_excepted;
-}
-
-int64_t Executive::gasUsed() const
-{
-	auto& tx = m_s.ctx().tx;
-	int64_t gas = tx.getFieldU32(sfGas);
-	return gas - m_gas;
-}
-
 bool Executive::execute() {
 	auto j = getJ();
 	// Entry point for a user-executed transaction.
-
+	
 	// Pay...
-	JLOG(j.warn()) << "Paying" << 0/*formatBalance(m_gasCost)*/ << "from sender for gas (" << 0/*m_t.gas()*/ << "gas at" << 0/*formatBalance(m_t.gasPrice())*/ << ")";
+	JLOG(j.info()) << "Paying" << m_gasCost << "from sender";
 	auto& tx = m_s.ctx().tx;
 	auto sender = toEvmC(tx.getAccountID(sfAccount));
 	m_s.subBalance(sender, m_gasCost);
@@ -81,7 +45,7 @@ bool Executive::execute() {
 	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
 	m_input = tx.getFieldVL(sfContractData);
 	auto value = toEvmC(uint256(tx.getFieldAmount(sfContractValue).zxc().drops()));
-	evmc_uint256be gasPrice = toEvmC(uint256());
+	evmc_uint256be gasPrice = toEvmC(uint256(tx.getFieldU32(sfGasPrice)));
 	int64_t gas = tx.getFieldU32(sfGas);
 	if (isCreation)
 	{
@@ -275,6 +239,43 @@ bool Executive::go()
 #endif
 	}
 	return true;
+}
+
+
+int64_t Executive::gasUsed() const
+{
+	auto& tx = m_s.ctx().tx;
+	int64_t gas = tx.getFieldU32(sfGas);
+	return gas - m_gas;
+}
+
+TER Executive::finalize() {
+
+	// Accumulate refunds for suicides.
+	if (m_ext)
+		m_ext->sub.refunds += SUICIDE_REFUND_GAS * m_ext->sub.suicides.size();
+
+	auto& tx = m_s.ctx().tx;
+	int64_t gas = tx.getFieldU32(sfGas);
+
+	if (m_ext)
+	{
+		m_refunded = (gas - m_gas) / 2 > m_ext->sub.refunds ? m_ext->sub.refunds : (gas - m_gas) / 2;
+	}
+	else
+	{
+		m_refunded = 0;
+	}
+	m_gas += m_refunded;
+
+	auto sender = toEvmC(tx.getAccountID(sfAccount));
+	int64_t gasPrice = tx.getFieldU32(sfGasPrice);
+	m_s.addBalance(sender, m_gas * gasPrice);
+
+	// Suicides...
+	if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(toEvmC(a));
+
+	return m_excepted;
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
