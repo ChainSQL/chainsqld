@@ -35,6 +35,8 @@ namespace ripple {
     uint64_t const TX_DATA_ZERO_GAS     = 4;
     uint64_t const TX_DATA_NON_ZERO_GAS = 68;
 
+	uint64_t const GAS_PRICE			= 10;
+
 } // ripple
 
 #endif

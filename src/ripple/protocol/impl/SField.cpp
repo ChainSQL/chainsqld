@@ -137,7 +137,7 @@ SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
 SF_U32 const sfNonce			   = make::one<SF_U32::type>(&sfNonce,				 STI_UINT32, 53, "Nonce");
 SF_U32 const sfGas				   = make::one<SF_U32::type>(&sfGas,				 STI_UINT32, 55, "Gas");
-SF_U32 const sfGasPrice			   = make::one<SF_U32::type>(&sfGasPrice,			 STI_UINT32, 56, "GasPrice");
+
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
 SF_U64 const sfIndexPrevious = make::one<SF_U64::type>(&sfIndexPrevious, STI_UINT64, 2, "IndexPrevious");

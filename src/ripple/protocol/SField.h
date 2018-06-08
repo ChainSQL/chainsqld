@@ -390,7 +390,6 @@ extern SF_U32 const sfSignerListID;
 extern SF_U32 const sfSettleDelay;
 extern SF_U32 const sfNonce;
 extern SF_U32 const sfGas;
-extern SF_U32 const sfGasPrice;
 
 // 64-bit integers
 extern SF_U64 const sfIndexNext;

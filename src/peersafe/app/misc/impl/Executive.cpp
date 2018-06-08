@@ -22,8 +22,7 @@ void Executive::initialize() {
 
 	// Avoid unaffordable transactions.
 	int64_t gas = tx.getFieldU32(sfGas);
-	int64_t gasPrice = tx.getFieldU32(sfGasPrice);
-	int64_t gasCost = int64_t(gas * gasPrice);
+	int64_t gasCost = int64_t(gas * GAS_PRICE);
 	m_gasCost = gasCost;
 }
 
@@ -45,7 +44,7 @@ bool Executive::execute() {
 	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
 	m_input = tx.getFieldVL(sfContractData);
 	auto value = toEvmC(uint256(tx.getFieldAmount(sfContractValue).zxc().drops()));
-	evmc_uint256be gasPrice = toEvmC(uint256(tx.getFieldU32(sfGasPrice)));
+	evmc_uint256be gasPrice = toEvmC(uint256(GAS_PRICE));
 	int64_t gas = tx.getFieldU32(sfGas);
 	if (isCreation)
 	{
@@ -269,8 +268,7 @@ TER Executive::finalize() {
 	m_gas += m_refunded;
 
 	auto sender = toEvmC(tx.getAccountID(sfAccount));
-	int64_t gasPrice = tx.getFieldU32(sfGasPrice);
-	m_s.addBalance(sender, m_gas * gasPrice);
+	m_s.addBalance(sender, m_gas * GAS_PRICE);
 
 	// Suicides...
 	if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(toEvmC(a));
