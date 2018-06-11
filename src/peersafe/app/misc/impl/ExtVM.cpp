@@ -138,6 +138,8 @@ namespace ripple
 			mapStore.erase(uKey);
 		else
 			mapStore[uKey] = uValue;
+
+		oSle_.ctx().view().update(pSle);
     }
 
     bytes const& ExtVM::codeAt(evmc_address const& addr)

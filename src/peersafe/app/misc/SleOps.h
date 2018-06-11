@@ -19,7 +19,7 @@ class SleOps
 public:
     SleOps(ApplyContext& ctx);
 
-	const ApplyContext& ctx() { return ctx_; }
+	ApplyContext& ctx() { return ctx_; }
 
     SLE::pointer getSle(evmc_address const & addr) const;
 

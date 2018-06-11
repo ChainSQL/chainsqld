@@ -98,6 +98,7 @@ JSS ( accountTreeHash );            // out: ledger/Ledger.cpp
 JSS ( account_data );               // out: AccountInfo
 JSS ( account_hash );               // out: LedgerToJson
 JSS ( account_id );                 // out: WalletPropose
+JSS	( account_id_hex );
 JSS ( account_objects );            // out: AccountObjects
 JSS ( account_root );               // in: LedgerEntry
 JSS ( accounts );                   // in: LedgerEntry, Subscribe,
