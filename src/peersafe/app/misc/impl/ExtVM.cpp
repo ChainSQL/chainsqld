@@ -69,36 +69,17 @@ namespace ripple
 
     evmc_status_code terToEvmcStatusCode(TER eState) noexcept
     {
-        /*
-        switch (ex)
+        switch (eState)
         {
-        case TransactionException::None:
+        case tesSUCCESS:
             return EVMC_SUCCESS;
-
-        case TransactionException::RevertInstruction:
-            return EVMC_REVERT;
-
-        case TransactionException::OutOfGas:
+        case tefGAS_INSUFFICIENT:
             return EVMC_OUT_OF_GAS;
-
-        case TransactionException::BadInstruction:
-            return EVMC_UNDEFINED_INSTRUCTION;
-
-        case TransactionException::OutOfStack:
-            return EVMC_STACK_OVERFLOW;
-
-        case TransactionException::StackUnderflow:
-            return EVMC_STACK_UNDERFLOW;
-
-        case TransactionException::BadJumpDestination:
-            return EVMC_BAD_JUMP_DESTINATION;
-
+        case tefCONTRACT_REVERT_INSTRUCTION:
+            return EVMC_REVERT;
         default:
             return EVMC_FAILURE;
         }
-        
-        return EVMC_FAILURE;
-        */
         return EVMC_SUCCESS;
     }
 

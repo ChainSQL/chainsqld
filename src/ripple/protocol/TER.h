@@ -169,6 +169,7 @@ tefBAD_STATEMENT,    // satement error
 tefADDRESS_AREADY_USED,
 tefGAS_INSUFFICIENT,
 tefCONTRACT_EXEC_EXCEPTION,
+tefCONTRACT_REVERT_INSTRUCTION
     // -99 .. -1: R Retry
     //   sequence too high, no funds for txn fee, originating -account
     //   non-existent

@@ -197,7 +197,7 @@ bool Executive::go()
 		{
 			//revert();
 			m_output = _e.output();
-			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
+			m_excepted = tefCONTRACT_REVERT_INSTRUCTION;
 			//m_excepted = TransactionException::RevertInstruction;
 		}
 		catch (VMException const& _e)
