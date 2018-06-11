@@ -48,6 +48,7 @@ namespace ripple {
 			preclaim(PreclaimContext const& ctx);
 
 		TER doApply() override;
+		std::pair<TER, Json::Value> doLocalCall();
 	};
 
 } // ripple

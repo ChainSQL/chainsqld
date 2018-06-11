@@ -154,6 +154,7 @@ JSS ( command );                    // in: RPCHandler
 JSS ( complete );                   // out: NetworkOPs, InboundLedger
 JSS ( complete_ledgers );           // out: NetworkOPs, PeerImp
 JSS ( consensus );                  // out: NetworkOPs, LedgerConsensus
+JSS(contract_local_call_result);    // out: Contract
 JSS ( converge_time );              // out: NetworkOPs
 JSS ( converge_time_s );            // out: NetworkOPs
 JSS ( count );                      // in: AccountTx*

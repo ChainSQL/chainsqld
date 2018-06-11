@@ -12,7 +12,8 @@ namespace ripple {
 enum ContractOpType {
 	ContractCreation	= 1,			///< Transaction to create contracts - receiveAddress() is ignored.
 	MessageCall			= 2,			///< Transaction to invoke a message call - receiveAddress() is used.
-	ContractDeletion	= 3				///
+	ContractDeletion	= 3,				///
+	LocalMessageCall    = 4
 };
 class SleOps
 {

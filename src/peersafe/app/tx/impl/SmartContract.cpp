@@ -83,4 +83,22 @@ namespace ripple {
 		else
 			return e.getException();
 	}
+
+	std::pair<TER, Json::Value> SmartContract::doLocalCall()
+	{
+		SleOps ops(ctx_);
+		auto pInfo = std::make_shared<EnvInfoImpl>(ctx_.view().info().seq, 210000);
+		Executive e(ops, *pInfo, 1);
+		e.initialize();
+		//if (!e.execute())
+		//{
+			e.go();
+			TER terResult = e.finalize();
+		//}
+		//else
+			//return e.getException();
+		//owning_bytes_ref localCallRet = e.takeOutput();
+		Json::Value localCallRet/* = e.takeOutput()*/;
+		return std::make_pair(terResult, localCallRet);
+	}
 }
