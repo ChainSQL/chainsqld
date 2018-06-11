@@ -33,7 +33,7 @@ bool Executive::execute() {
 	// Pay...
 	JLOG(j.info()) << "Paying" << m_gasCost << "from sender";
 	auto& tx = m_s.ctx().tx;
-	auto sender = toEvmC(tx.getAccountID(sfAccount));
+	auto sender = tx.getAccountID(sfAccount);
 	m_s.subBalance(sender, m_gasCost);
 
 	if (uint256(tx.getFieldU32(sfGas)) < (uint256)m_baseGasRequired)
@@ -43,28 +43,28 @@ bool Executive::execute() {
 	}
 	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
 	m_input = tx.getFieldVL(sfContractData);
-	auto value = toEvmC(uint256(tx.getFieldAmount(sfContractValue).zxc().drops()));
-	evmc_uint256be gasPrice = toEvmC(uint256(GAS_PRICE));
+	uint256 value = uint256(tx.getFieldAmount(sfContractValue).zxc().drops());
+	uint256 gasPrice = uint256(GAS_PRICE);
 	int64_t gas = tx.getFieldU32(sfGas);
 	if (isCreation)
 	{
-		return create(sender, value, gasPrice, gas - m_baseGasRequired, &m_input, sender);
+		return create(sender, value, gasPrice, gas - m_baseGasRequired, m_input, sender);
 	}
 	else
 	{
-		evmc_address contract_address = toEvmC(tx.getAccountID(sfContractAddress));
-		return call(contract_address, sender, value, gasPrice, bytesConstRef(&m_input), gas - m_baseGasRequired);
+		AccountID contract_address = tx.getAccountID(sfContractAddress);
+		return call(contract_address, sender, value, gasPrice, m_input, gas - m_baseGasRequired);
 	}
 }
 
-bool Executive::create(evmc_address const& _txSender, evmc_uint256be const& _endowment,
-	evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress)
+bool Executive::create(AccountID const& _txSender, uint256 const& _endowment,
+	uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress)
 {
 	return createOpcode(_txSender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
 
-bool Executive::createOpcode(evmc_address const& _sender, evmc_uint256be const& _endowment,
-	evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress)
+bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment,
+	uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress)
 {
 	SLE::pointer pSle = m_s.getSle(_sender);
 	uint32 nonce = pSle->getFieldU32(sfNonce);
@@ -75,14 +75,14 @@ bool Executive::createOpcode(evmc_address const& _sender, evmc_uint256be const& 
 }
 
 
-bool Executive::call(evmc_address const& _receiveAddress, evmc_address const& _senderAddress,
-	evmc_uint256be const& _value, evmc_uint256be const& _gasPrice, bytesConstRef _data, int64_t const& _gas)
+bool Executive::call(AccountID const& _receiveAddress, AccountID const& _senderAddress,
+	uint256 const& _value, uint256 const& _gasPrice, BlobRef _data, int64_t const& _gas)
 {
-	CallParameters params{ _senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas, _data };
+	CallParametersR params{ _senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas, _data };
 	return call(params, _gasPrice, _senderAddress);
 }
 
-bool Executive::call(CallParameters const& _p, evmc_uint256be const& _gasPrice, evmc_address const& _origin)
+bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, AccountID const& _origin)
 {
 	//// If external transaction.
 	//if (m_t)
@@ -100,9 +100,10 @@ bool Executive::call(CallParameters const& _p, evmc_uint256be const& _gasPrice, 
 	if (m_s.addressHasCode(_p.codeAddress))
 	{
 		bytes const& c = m_s.code(_p.codeAddress);
+		Blob code(c);
 		uint256 codeHash = m_s.codeHash(_p.codeAddress);
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
-			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, toEvmC(codeHash),
+			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, code, codeHash,
 			m_depth, false, _p.staticCall);
 
 		// Transfer zxc.
@@ -112,8 +113,8 @@ bool Executive::call(CallParameters const& _p, evmc_uint256be const& _gasPrice, 
 	return !m_ext;
 }
 
-bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const& _endowment,
-	evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _origin)
+bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowment,
+	uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _origin)
 {
 	auto j = getJ();
 
@@ -123,7 +124,7 @@ bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const&
 	bool accountAlreadyExist = (m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 0);
 	if (accountAlreadyExist)
 	{
-		JLOG(j.warn()) << "Address already used: " << to_string(fromEvmC(m_newAddress));
+		JLOG(j.warn()) << "Address already used: " << to_string(m_newAddress);
 		m_gas = 0;
 		m_excepted = tefADDRESS_AREADY_USED;
 		//revert();
@@ -144,9 +145,10 @@ bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const&
 	m_s.setNonce(m_newAddress, newNonce);
 
 	// Schedule _init execution if not empty.
+	Blob data;
 	if (!_code.empty())
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
-			toEvmC(uint256(0))/*_endowment*/, _gasPrice, bytesConstRef(), _code, toEvmC(sha512Half(_code.data())), m_depth, true, false);
+			uint256(0)/*_endowment*/, _gasPrice, data, _code, sha512Half(_code.data()), m_depth, true, false);
 
 	return !m_ext;
 }
@@ -165,7 +167,7 @@ bool Executive::go()
 			VMFace::pointer vmc = VMFactory::create(VMKind::JIT);
 			if (m_isCreation)
 			{
-				m_s.clearStorage(m_ext->myAddress);
+				m_s.clearStorage(m_ext->contractAddress());
 				auto out = vmc->exec(m_gas, *m_ext);
 				//if (m_res)
 				//{
@@ -186,7 +188,7 @@ bool Executive::go()
 				}
 				//if (m_res)
 				//	m_res->output = out.toVector(); // copy output to execution result
-				m_s.setCode(m_ext->myAddress, out.toVector());
+				m_s.setCode(m_ext->contractAddress(), out.toVector());
 			}
 			else
 				m_output = vmc->exec(m_gas, *m_ext);
@@ -267,11 +269,11 @@ TER Executive::finalize() {
 	}
 	m_gas += m_refunded;
 
-	auto sender = toEvmC(tx.getAccountID(sfAccount));
+	auto sender = tx.getAccountID(sfAccount);
 	m_s.addBalance(sender, m_gas * GAS_PRICE);
 
 	// Suicides...
-	if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(toEvmC(a));
+	if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(a);
 
 	return m_excepted;
 }

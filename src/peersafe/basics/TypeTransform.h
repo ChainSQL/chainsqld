@@ -29,19 +29,19 @@ namespace ripple {
 		return const_cast<AccountID&>(reinterpret_cast<AccountID const&>(_addr));
     }
 
+	inline int64_t fromUint256(uint256 _n)
+	{
+		return be64toh(((std::uint64_t*) _n.end())[-1]);
+	}
+
 	inline int64_t fromUint256(evmc_uint256be const& _n)
 	{
 		uint256 n = fromEvmC(_n);
-		return be64toh(((std::uint64_t*) n.end())[-1]);
-		//union
-		//{
-		//	unsigned u[2];
-		//	std::int64_t ul;
-		//};
-		//int nWidth = n.size() / 32;
-		//u[0] = n.data()[nWidth - 2];
-		//u[1] = n.data()[nWidth - 1];
-		//return ul;
+		return fromUint256(n);
+	}
+
+	inline Blob fromEvmC(bytesConstRef const& data) {
+		return std::move(data.toBytes());
 	}
 
 	inline static const evmc_address noAddress() 
