@@ -146,7 +146,7 @@ bool Executive::executeCreate(evmc_address const& _sender, evmc_uint256be const&
 	// Schedule _init execution if not empty.
 	if (!_code.empty())
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
-			_endowment, _gasPrice, bytesConstRef(), _code, toEvmC(sha512Half(_code.data())), m_depth, true, false);
+			toEvmC(uint256(0))/*_endowment*/, _gasPrice, bytesConstRef(), _code, toEvmC(sha512Half(_code.data())), m_depth, true, false);
 
 	return !m_ext;
 }
