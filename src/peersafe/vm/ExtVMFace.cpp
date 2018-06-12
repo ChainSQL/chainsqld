@@ -148,6 +148,21 @@ void create(evmc_result* o_result, ExtVMFace& _env, evmc_message const* _msg) no
 		o_result->output_data = result.output.data();
 		o_result->output_size = result.output.size();
 
+#ifdef DEBUG
+		// fix an issue that Stack around the variable 'result' was corrupted
+		evmc_get_optional_data(o_result)->pointer = std::malloc(o_result->output_size);
+		new(evmc_get_optional_data(o_result)->pointer) bytes(result.output.takeBytes());
+
+		o_result->release = [](evmc_result const* _result)
+		{
+			uint8_t* data = (uint8_t*)evmc_get_const_optional_data(_result)->pointer;
+			auto& output = reinterpret_cast<bytes const&>(*data);
+			// Explicitly call vector's destructor to release its data.
+			// This is normal pattern when placement new operator is used.
+			output.~bytes();
+			std::free(data);
+		};
+#else
 		// Place a new vector of bytes containing output in result's reserved memory.
 		auto* data = evmc_get_optional_data(o_result);
 		//static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
@@ -161,6 +176,7 @@ void create(evmc_result* o_result, ExtVMFace& _env, evmc_message const* _msg) no
 			// This is normal pattern when placement new operator is used.
 			output.~bytes();
 		};
+#endif // DEBUG
 	}
 }
 
@@ -198,6 +214,21 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
 	o_result->output_data = result.output.data();
 	o_result->output_size = result.output.size();
 
+#ifdef DEBUG
+		// fix an issue that Stack around the variable 'result' was corrupted
+		evmc_get_optional_data(o_result)->pointer = std::malloc(o_result->output_size);
+		new(evmc_get_optional_data(o_result)->pointer) bytes(result.output.takeBytes());
+
+		o_result->release = [](evmc_result const* _result)
+		{
+			uint8_t* data = (uint8_t*)evmc_get_const_optional_data(_result)->pointer;
+			auto& output = reinterpret_cast<bytes const&>(*data);
+			// Explicitly call vector's destructor to release its data.
+			// This is normal pattern when placement new operator is used.
+			output.~bytes();
+			std::free(data);
+		};
+#else
 	// Place a new vector of bytes containing output in result's reserved memory.
 	auto* data = evmc_get_optional_data(o_result);
 	//static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
@@ -211,6 +242,8 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
 		// This is normal pattern when placement new operator is used.
 		output.~bytes();
 	};
+#endif
+
 }
 
 evmc_context_fn_table const fnTable = {
