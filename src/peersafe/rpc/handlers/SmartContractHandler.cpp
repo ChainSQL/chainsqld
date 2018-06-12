@@ -154,13 +154,13 @@ Json::Value doCtractLocalCall(RPC::Context& context)
 	if (!checkResult.second)
 		return checkResult.first;
 	auto const srcAddressID = parseBase58<AccountID>(jsonRpcObj[jss::Account].asString());
-	if (srcAddressID->size() == 0)
+	if (srcAddressID == boost::none)
 	{
 		errMsgStr = "Missing Account field";
 		return contractLocalCallErrResultImpl(jsonRpcObj, errMsgStr);
 	}
 	auto const contractAddrID = parseBase58<AccountID>(jsonRpcObj[jss::ContractAddress].asString());
-	if (contractAddrID->size() == 0)
+	if (contractAddrID == boost::none)
 	{
 		errMsgStr = "Missing ContractAddress field";
 		return contractLocalCallErrResultImpl(jsonRpcObj, errMsgStr);
