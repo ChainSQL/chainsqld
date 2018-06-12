@@ -226,8 +226,8 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 
 		if ((fMin == 0 && fMax != 0) || (fMin != 0 && fMax == 0))
 		{
-			if (!(ctx.tx.isFieldPresent(sfTransferRate) && ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE) &&
-				!sle->isFieldPresent(sfTransferRate))
+			if (!((ctx.tx.isFieldPresent(sfTransferRate) && ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE) ||
+				(sle->isFieldPresent(sfTransferRate) && sle->getFieldU32(sfTransferRate) > QUALITY_ONE)))
 			{
 				return temBAD_FEE_MISMATCH_TRANSFER_RATE;
 			}
