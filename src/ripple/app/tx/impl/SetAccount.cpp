@@ -139,7 +139,7 @@ SetAccount::preflight (PreflightContext const& ctx)
 
         float fMax = atof(feeMax.c_str());
         float fMin = atof(feeMin.c_str());
-		if (fMax != 0 && fMin > fMax)
+		if ((fMax != 0 && fMin > fMax) || fMin<0 || fMax < 0)
 		{
 			JLOG(j.trace()) << "Malformed transaction: TransferFeeMin can not be greater than TransferFeeMax.";
 			return temBAD_TRANSFERFEE;
@@ -229,9 +229,16 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 			if (!(ctx.tx.isFieldPresent(sfTransferRate) && ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE) &&
 				!sle->isFieldPresent(sfTransferRate))
 			{
-				return temBAD_NO_TRANSFER_RATE;
+				return temBAD_FEE_MISMATCH_TRANSFER_RATE;
 			}
 		}
+        else if(fMin > 0 && fMin == fMax)
+        {
+            if(ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE || sle->getFieldU32(sfTransferRate) > QUALITY_ONE)
+            {
+				return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+            }
+        }
 	}
     return tesSUCCESS;
 }

@@ -94,7 +94,7 @@ enum TER
     temBAD_TICK_SIZE,
 	temBAD_TRANSFERFEE_BOTH,
 	temBAD_TRANSFERFEE,
-    temBAD_NO_TRANSFER_RATE,
+	temBAD_FEE_MISMATCH_TRANSFER_RATE,
 
 	//for table set and sql statement
 	temBAD_OWNER,
