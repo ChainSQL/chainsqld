@@ -56,7 +56,7 @@ public:
     void run() {
 		init_env();
 		call();
-		createAndCall();
+		//createAndCall();
 		pass();
 	}
 
@@ -87,12 +87,22 @@ private:
 	}
 
 	void call() {
-		bytes code;
-		code.assign(code_.begin(), code_.end());
-		bytesConstRef data((uint8_t*)data_.c_str(), data_.size());
-		FakeExecutive execute(data, code);
-		evmc_address contractAddress = { { 1,2,3,4 } };
-		execute.call(contractAddress);
+		try {
+			bytes code;
+			code.assign(code_.begin(), code_.end());
+			bytesConstRef data((uint8_t*)data_.c_str(), data_.size());
+			FakeExecutive execute(data, code);
+			evmc_address contractAddress = { { 1,2,3,4 } };
+			int64_t gas = 300000;
+			execute.call(contractAddress, gas);
+		}
+		catch (const std::exception& e) {
+			std::cout << e.what() << std::endl;
+		}
+		catch (...) {
+			std::cout << "unkown exception." << std::endl;
+		}
+
 	}
 
 	void createAndCall() {
@@ -101,12 +111,14 @@ private:
 		evmc_address contractAddress = { {1,2,3,4} };
 		{
 			FakeExecutive execute(code);
-			execute.create(contractAddress);
+			int64_t gas = 300000;
+			execute.create(contractAddress, gas);
 		}
 		{
 			bytesConstRef data((uint8_t*)data_.c_str(), data_.size());
 			FakeExecutive execute(data, contractAddress);
-			execute.call(contractAddress);
+			int64_t gas = 300000;
+			execute.call(contractAddress, gas);
 		}
 	}
 
