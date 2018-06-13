@@ -17,16 +17,16 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 //==============================================================================
 
-#include <BeastConfig.h>
-#include <ripple/app/misc/NetworkOPs.h>
+//#include <ripple/rpc/Role.h>
+//#include <ripple/json/json_reader.h>
+//#include <ripple/protocol/SecretKey.h>
+//#include <BeastConfig.h>
+//#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/JsonFields.h>
-#include <ripple/rpc/Role.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/json/json_reader.h>
-#include <ripple/protocol/SecretKey.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/app/ledger/OpenLedger.h>
@@ -185,12 +185,12 @@ Json::Value doCtractLocalCall(RPC::Context& context)
 		//obj.setFieldAmount(sfAmount, ZXCAmount(txValue));
 	});
 	OpenLedger& openLedgerTemp = appTemp.openLedger();
-	OpenView& openViewTemp = const_cast<OpenView&>(*openLedgerTemp.current());
-	ApplyContext applyContext(appTemp, openViewTemp, paymentTx, tesSUCCESS, 10,
+	//OpenView& openViewTemp = const_cast<OpenView&>(*openLedgerTemp.current());
+	std::shared_ptr<OpenView> openViewTemp = std::make_shared<OpenView>(*openLedgerTemp.current());
+	ApplyContext applyContext(appTemp, *openViewTemp, paymentTx, tesSUCCESS, 10,
 		tapNO_CHECK_SIGN, appTemp.journal("ContractLocalCall"));
 
 	auto localCallRet = doEVMCall(applyContext);
-	int value = 0;
 
 	return ContractLocalCallResultImpl(jsonRpcObj, localCallRet.first, localCallRet.second);
 }
