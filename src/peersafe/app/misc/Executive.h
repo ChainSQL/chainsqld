@@ -39,7 +39,7 @@ public:
 	void operator=(Executive) = delete;
 
 	/// Initializes the executive for evaluating a transaction. You must call finalize() at some point following this.
-	//void initialize(bytesConstRef _transaction) { initialize(STTx(_transaction, CheckTransaction::None)); }
+	//void initialize(BlobRef _transaction) { initialize(STTx(_transaction, CheckTransaction::None)); }
 	void initialize();
 
 	/// Finalise a transaction previously set up with initialize().
@@ -57,18 +57,18 @@ public:
 
 	/// Set up the executive for evaluating a bare CREATE (contract-creation) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
-	bool create(evmc_address const& _txSender, evmc_uint256be const& _endowment,
-		evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+	bool create(AccountID const& _txSender, uint256 const& _endowment,
+		uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress);
 
 	/// @returns false iff go() must be called (and thus a VM execution in required).
-	bool createOpcode(evmc_address const& _sender, evmc_uint256be const& _endowment,
-		evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+	bool createOpcode(AccountID const& _sender, uint256 const& _endowment,
+		uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress);
 
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
-	bool call(evmc_address const& _receiveAddress, evmc_address const& _txSender, 
-		evmc_uint256be const& _txValue, evmc_uint256be const& _gasPrice, bytesConstRef _txData, int64_t const& _gas);
-	bool call(CallParameters const& _cp, evmc_uint256be const& _gasPrice, evmc_address const& _origin);
+	bool call(AccountID const& _receiveAddress, AccountID const& _txSender, 
+		uint256 const& _txValue, uint256 const& _gasPrice, BlobRef _txData, int64_t const& _gas);
+	bool call(CallParametersR const& _cp, uint256 const& _gasPrice, AccountID const& _origin);
 
     void accrueSubState(SubState& _parentContext);
 
@@ -78,7 +78,7 @@ public:
 	bool go();
 
 	/// @returns the new address for the created contract in the CREATE operation.
-	evmc_address newAddress() const { return m_newAddress; }
+	AccountID newAddress() const { return m_newAddress; }
 
 	///// Revert all changes made to the state by this execution.
 	//void revert();
@@ -95,8 +95,8 @@ public:
 	TER getException() const noexcept { return m_excepted; }
 private:
 	/// @returns false if go() must be called (and thus a VM execution in required).
-	bool executeCreate(evmc_address const& _txSender, evmc_uint256be const& _endowment,
-		evmc_uint256be const& _gasPrice, int64_t const& _gas, bytesConstRef _code, evmc_address const& _originAddress);
+	bool executeCreate(AccountID const& _txSender, uint256 const& _endowment,
+		uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress);
 
 	beast::Journal getJ();
 private:
@@ -119,7 +119,7 @@ private:
 	int64_t m_gasCost;
 
 	bool m_isCreation = false;
-	evmc_address m_newAddress;
+	AccountID m_newAddress;
 };
 } // namespace ripple
 

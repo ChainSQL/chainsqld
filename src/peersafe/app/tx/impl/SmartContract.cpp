@@ -25,6 +25,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/protocol/JsonFields.h>
 #include <peersafe/app/misc/Executive.h>
+#include <peersafe/core/Tuning.h>
 
 namespace ripple {
 
@@ -48,8 +49,7 @@ namespace ripple {
 		// Avoid unaffordable transactions.
 		auto& tx = ctx.tx;
 		int64_t gas = tx.getFieldU32(sfGas);
-		int64_t gasPrice = tx.getFieldU32(sfGasPrice);
-		int64_t gasCost = int64_t(gas * gasPrice);
+		int64_t gasCost = int64_t(gas * GAS_PRICE);
 		int64_t value = tx.getFieldAmount(sfContractValue).zxc().drops();
 		int64_t totalCost = value + gasCost;
 		
@@ -63,7 +63,7 @@ namespace ripple {
 		auto balance = sle->getFieldAmount(sfBalance).zxc().drops();
 		if (balance < totalCost)
 		{
-			JLOG(ctx.j.trace()) << "Not enough zxc: Require >" << totalCost << "=" << gas << "*" << gasPrice << "+" << value << " Got" << balance << "for sender: " << tx.getAccountID(sfAccount);
+			JLOG(ctx.j.trace()) << "Not enough zxc: Require >" << totalCost << "=" << gas << "*" << GAS_PRICE << "+" << value << " Got" << balance << "for sender: " << tx.getAccountID(sfAccount);
 			return terINSUF_FEE_B;
 		}
 		return tesSUCCESS;

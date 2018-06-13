@@ -69,7 +69,7 @@ public:
 			ext.data.data(), ext.data.size(),ext.codeHash, 
 			gas, ext.depth, kind, flags };
 		return Result{
-			m_instance->execute(m_instance, &ext, EVMC_FRONTIER, 
+			m_instance->execute(m_instance, &ext, EVMC_CONSTANTINOPLE,
 			&msg, ext.code.data(), ext.code.size())
 		};
 	}

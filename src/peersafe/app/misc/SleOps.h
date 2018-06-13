@@ -20,52 +20,52 @@ class SleOps
 public:
     SleOps(ApplyContext& ctx);
 
-	const ApplyContext& ctx() { return ctx_; }
+	ApplyContext& ctx() { return ctx_; }
 
-    SLE::pointer getSle(evmc_address const & addr) const;
+    SLE::pointer getSle(AccountID const & addr) const;
 
 	/// Increament the account nonce.
-	void incNonce(evmc_address const& addr);
+	void incNonce(AccountID const& addr);
 	/// Get the account nonce -- the number of transactions it has sent.
 	/// @returns 0 if the address has never been used.
-	uint32 getNonce(evmc_address const& addr);
+	uint32 getNonce(AccountID const& addr);
 
 	uint32 requireAccountStartNonce() { return 1; }
 	/// Set the account nonce.
-	void setNonce(evmc_address const& _addr, uint32 const& _newNonce);
+	void setNonce(AccountID const& _addr, uint32 const& _newNonce);
 
-	bool addressHasCode(evmc_address const& addr);
+	bool addressHasCode(AccountID const& addr);
 	/// Sets the code of the account. Must only be called during / after contract creation.
-	void setCode(evmc_address const& _address, bytes&& _code);
+	void setCode(AccountID const& _address, bytes&& _code);
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.
 	/// @warning The reference to the code is only valid until the access to
 	///          other account. Do not keep it.
-	bytes const& code(evmc_address const& _addr);
+	bytes const& code(AccountID const& _addr);
 	/// Get the code hash of an account.
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
-	uint256 codeHash(evmc_address const& _contract);
+	uint256 codeHash(AccountID const& _contract);
 
-	void transferBalance(evmc_address const& _from, evmc_address const& _to, evmc_uint256be const& _value);
+	void transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 
-	TER activateContract(evmc_address const& _from, evmc_address const& _to, evmc_uint256be const& _value);
+	TER activateContract(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 	/// Clear the storage root hash of an account to the hash of the empty trie.
-	void clearStorage(evmc_address const& _contract);
+	void clearStorage(AccountID const& _contract);
 
 	/// Add some amount to balance.
 	/// Will initialise the address if it has never been used.
-	void addBalance(evmc_address const& _id, int64_t const& _amount);
+	void addBalance(AccountID const& _id, int64_t const& _amount);
 
 	/// Subtract the @p _value amount from the balance of @p _addr account.
 	/// @throws NotEnoughCash if the balance of the account is less than the
 	/// amount to be subtrackted (also in case the account does not exist).
-	void subBalance(evmc_address const& _addr, int64_t const& _value);
+	void subBalance(AccountID const& _addr, int64_t const& _value);
 
-	int64_t balance(evmc_address address);
+	int64_t balance(AccountID const& address);
 
-	evmc_address calcNewAddress(evmc_address sender, int nonce);
+	AccountID calcNewAddress(AccountID sender, int nonce);
 
-    void kill(evmc_address sender);
+    void kill(AccountID sender);
 private:
     ApplyContext &ctx_;
     TaggedCache <AccountID, Blob>             contractCacheCode_;

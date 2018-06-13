@@ -7,6 +7,7 @@
 namespace ripple {
 
 FakeExtVM::State FakeExtVM::m_s;
+FakeExtVM::KV FakeExtVM::m_kv;
 
 FakeExtVM::FakeExtVM(EnvInfo const& envInfo, evmc_address _myAddress, 
 	evmc_address _caller, evmc_address _origin,
@@ -21,26 +22,24 @@ FakeExtVM::FakeExtVM(EnvInfo const& envInfo, evmc_address _myAddress,
 CreateResult FakeExtVM::create(evmc_uint256be const& endowment, int64_t & gas,
 	bytesConstRef const& code, Instruction op, evmc_uint256be const& salt) {
 	evmc_address contractAddress = { {5,6,7,8} };
-	CreateResult result = { EVMC_SUCCESS , std::move(owning_bytes_ref()), contractAddress };
 	bytes newCode = code.toBytes();
 	FakeExecutive execute(newCode);
-	execute.create(contractAddress);
-	return result;
+	auto result = execute.create(contractAddress, gas);
+	return { EVMC_SUCCESS , std::move(result), contractAddress };
 }
 
 CallResult FakeExtVM::call(CallParameters& p) {
-	CallResult result = { EVMC_SUCCESS , std::move(owning_bytes_ref())};
-	
 	auto it = FakeExtVM::m_s.find(AccountID::fromVoid(p.codeAddress.bytes));
 	if (it != FakeExtVM::m_s.end()) {
 		bytes code = it->second;
 		if (code.size()) {
 			FakeExecutive execute(p.data, code);
-			execute.call(p.codeAddress);
+			auto result = execute.call(p.codeAddress, p.gas);
+			return{ EVMC_SUCCESS, std::move(result) };
 		}
 	}
 
-	return result;
+	return { EVMC_FAILURE , std::move(owning_bytes_ref())};
 }
 
 bool FakeExtVM::exists(evmc_address const& addr) {
@@ -57,6 +56,24 @@ size_t FakeExtVM::codeSizeAt(evmc_address const& addr) {
 		return it->second.size();
 	}
 	return 0;
+}
+
+evmc_uint256be FakeExtVM::store(evmc_uint256be const& key) {
+	std::string k((const char*)key.bytes, sizeof(key.bytes));
+	size_t x = std::atoll(k.c_str());
+	auto it = FakeExtVM::m_kv.find(x);
+	if (it == FakeExtVM::m_kv.end())
+		return key;
+	evmc_uint256be result;
+	std::memcpy(&result.bytes, it->second.c_str(), sizeof(result.bytes));
+	return result;
+}
+
+void FakeExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value) {
+	std::string k((const char*)key.bytes, sizeof(key.bytes));
+	size_t x = std::atoll(k.c_str());
+	std::string v((const char*)value.bytes, sizeof(value.bytes));
+	FakeExtVM::m_kv[x] = v;
 }
 
 evmc_uint256be FakeExtVM::blockHash(int64_t  const&_number) {
@@ -80,7 +97,7 @@ FakeExecutive::FakeExecutive(const bytesConstRef& data, const evmc_address& cont
 , code_(FakeExtVM::m_s.find(AccountID::fromVoid(contractAddress.bytes))->second) {
 }
 
-int FakeExecutive::create(const evmc_address& contractAddress) {
+owning_bytes_ref FakeExecutive::create(const evmc_address& contractAddress, int64_t& gas) {
 	EnvInfo info;
 	evmc_address myAddress = contractAddress;
 	evmc_address caller = { { 1,1,0,0 } };
@@ -97,13 +114,12 @@ int FakeExecutive::create(const evmc_address& contractAddress) {
 	assert(vmc);
 	FakeExtVM ext(info, myAddress, caller, origin, value, gasPrice,
 		data_, code_, codeHash, depth, isCreate, staticCall);
-	int64_t gas = 3000000;
 	owning_bytes_ref result = vmc->exec(gas, ext);
 	FakeExtVM::m_s[AccountID::fromVoid(myAddress.bytes)] = result.toBytes();
-	return 0;
+	return result;
 }
 
-int FakeExecutive::call(const evmc_address& contractAddress) {
+owning_bytes_ref FakeExecutive::call(const evmc_address& contractAddress, int64_t& gas) {
 	EnvInfo info;
 	evmc_address myAddress = contractAddress;
 	evmc_address caller = { {1,1,0,0} };
@@ -121,9 +137,8 @@ int FakeExecutive::call(const evmc_address& contractAddress) {
 	assert(vmc);
 	FakeExtVM ext(info, myAddress, caller, origin, value, gasPrice, 
 		data_, code_, codeHash, depth, isCreate, staticCall);
-	int64_t gas = 3000000;
 	owning_bytes_ref result = vmc->exec(gas, ext);
-	return 0;
+	return result;
 }
 
 

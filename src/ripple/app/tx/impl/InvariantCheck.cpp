@@ -19,6 +19,7 @@
 
 #include <ripple/app/tx/impl/InvariantCheck.h>
 #include <ripple/basics/Log.h>
+#include <peersafe/core/Tuning.h>
 
 namespace ripple {
 
@@ -71,9 +72,16 @@ ZXCNotCreated::visitEntry(
 bool
 ZXCNotCreated::finalize(STTx const& tx, TER /*tec*/, beast::Journal const& j)
 {
-    auto fee = tx.getFieldAmount(sfFee).zxc().drops();
-    if(-1*fee <= drops_ && drops_ <= 0)
-        return true;
+	auto fee = tx.getFieldAmount(sfFee).zxc().drops();
+	// contract have extra fee
+	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT)
+	{
+		uint32 gas = tx.getFieldU32(sfGas);
+		fee += gas * GAS_PRICE;
+	}
+
+	if (-1 * fee <= drops_ && drops_ <= 0)
+		return true;
 
     JLOG(j.fatal()) << "Invariant failed: ZXC net change was " << drops_ <<
         " on a fee of " << fee;

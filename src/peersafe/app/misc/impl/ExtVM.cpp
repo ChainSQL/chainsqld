@@ -69,52 +69,29 @@ namespace ripple
 
     evmc_status_code terToEvmcStatusCode(TER eState) noexcept
     {
-        /*
-        switch (ex)
+        switch (eState)
         {
-        case TransactionException::None:
+        case tesSUCCESS:
             return EVMC_SUCCESS;
-
-        case TransactionException::RevertInstruction:
-            return EVMC_REVERT;
-
-        case TransactionException::OutOfGas:
+        case tefGAS_INSUFFICIENT:
             return EVMC_OUT_OF_GAS;
-
-        case TransactionException::BadInstruction:
-            return EVMC_UNDEFINED_INSTRUCTION;
-
-        case TransactionException::OutOfStack:
-            return EVMC_STACK_OVERFLOW;
-
-        case TransactionException::StackUnderflow:
-            return EVMC_STACK_UNDERFLOW;
-
-        case TransactionException::BadJumpDestination:
-            return EVMC_BAD_JUMP_DESTINATION;
-
+        case tefCONTRACT_REVERT_INSTRUCTION:
+            return EVMC_REVERT;
         default:
             return EVMC_FAILURE;
         }
-        
-        return EVMC_FAILURE;
-        */
         return EVMC_SUCCESS;
     }
 
     evmc_uint256be ExtVM::balance(evmc_address const& addr)
     {        
-        SLE::pointer pSle = oSle_.getSle(addr);
-
-        auto& stBalance = pSle->getFieldAmount(sfBalance);        
-        std::int64_t i64Drops = stBalance.zxc().drops();
-
-        return toEvmC(uint256(i64Drops));
+		int64_t drops = oSle_.balance(fromEvmC(addr));
+        return toEvmC(uint256(drops));
     }
 
     evmc_uint256be ExtVM::store(evmc_uint256be const& key)
     {           
-        SLE::pointer pSle = oSle_.getSle(myAddress);
+        SLE::pointer pSle = oSle_.getSle(fromEvmC(myAddress));
         STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
 
         uint256 uKey = fromEvmC(key);  
@@ -129,34 +106,39 @@ namespace ripple
 
     void ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
     {
-        SLE::pointer pSle = oSle_.getSle(myAddress);
+        SLE::pointer pSle = oSle_.getSle(fromEvmC(myAddress));
         STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
                 
         uint256 uKey = fromEvmC(key);
         uint256 uValue = fromEvmC(value);
-        mapStore[uKey] = uValue;
+		if (uValue == uint256(0))
+			mapStore.erase(uKey);
+		else
+			mapStore[uKey] = uValue;
+
+		oSle_.ctx().view().update(pSle);
     }
 
     bytes const& ExtVM::codeAt(evmc_address const& addr)
     { 
-        return oSle_.code(addr);        
+        return oSle_.code(fromEvmC(addr));
     }
 
     size_t ExtVM::codeSizeAt(evmc_address const& addr) 
     { 
-        bytes const& code = oSle_.code(addr);
+        bytes const& code = oSle_.code(fromEvmC(addr));
         return code.size();
     }
 
     bool ExtVM::exists(evmc_address const& addr) { 
-        SLE::pointer pSle = oSle_.getSle(addr);
+        SLE::pointer pSle = oSle_.getSle(fromEvmC(addr));
         return pSle != nullptr;
     }
 
     void ExtVM::suicide(evmc_address const& addr) 
     {
-        SLE::pointer sleContract = oSle_.getSle(addr);
-        SLE::pointer sleMy = oSle_.getSle(myAddress);
+        SLE::pointer sleContract = oSle_.getSle(fromEvmC(addr));
+        SLE::pointer sleMy = oSle_.getSle(fromEvmC(myAddress));
 
         auto& stBalanceContract = sleContract->getFieldAmount(sfBalance);
         auto& stBalanceMy = sleMy->getFieldAmount(sfBalance);
@@ -172,7 +154,8 @@ namespace ripple
         
         Executive e(oSle_, envInfo(), depth + 1);
         assert(op == Instruction::CREATE);
-        bool result = e.createOpcode(myAddress, endowment, gasPrice, ioGas, code, origin);
+        bool result = e.createOpcode(fromEvmC(myAddress), fromEvmC(endowment), fromEvmC(gasPrice),
+			ioGas, fromEvmC(code), fromEvmC(origin));
 
         if (!result)
         {
@@ -182,7 +165,7 @@ namespace ripple
             e.accrueSubState(sub);
         }
         ioGas = e.gas();
-        return{ terToEvmcStatusCode(e.getException()), e.takeOutput(), e.newAddress() };
+        return{ terToEvmcStatusCode(e.getException()), e.takeOutput(), toEvmC(e.newAddress()) };
     }
 
     CallResult ExtVM::call(CallParameters& oPara)
@@ -190,8 +173,8 @@ namespace ripple
         //CallResult ret(EVMC_SUCCESS, owning_bytes_ref());
 
         Executive e(oSle_, envInfo(), depth + 1);
-        
-        if (!e.call(oPara, gasPrice, origin))
+		CallParametersR p(oPara);
+        if (!e.call(p, fromEvmC(gasPrice), fromEvmC(origin)))
         {
             ApplyContext const& ctx = oSle_.ctx();
             auto j = ctx.app.journal("ExtVM");

@@ -98,7 +98,7 @@ Builds/VisualStudio2015/*.sdf
 
 # ignore
 third_party/
-deps/
+deps*/
 
 # MSVC
 *.pdb

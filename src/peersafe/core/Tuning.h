@@ -37,6 +37,8 @@ namespace ripple {
 
 	constexpr auto maxUInt64 = std::numeric_limits<std::uint64_t>::max();
 
+	uint64_t const GAS_PRICE			= 10;
+
 } // ripple
 
 #endif
