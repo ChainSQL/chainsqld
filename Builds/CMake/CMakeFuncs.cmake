@@ -768,7 +768,12 @@ macro(setup_build_boilerplate)
       /SUBSYSTEM:CONSOLE
       /TLBID:1)
 
-
+    STRING(REPLACE "INCREMENTAL" "INCREMENTAL:NO" replacementFlags ${CMAKE_EXE_LINKER_FLAGS_DEBUG})
+    SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "/INCREMENTAL:NO ${replacementFlags}")
+    
+    #STRING(REPLACE "INCREMENTAL:YES" "INCREMENTAL:NO" replacementFlags3 ${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO})
+    #message("yyyy: ${replacementFlags3}")
+    #SET(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/INCREMENTAL:NO ${replacementFlags3}" )
     # There seems to be an issue using generator experssions with multiple values,
     # split the expression
     # /GS  Buffers security check: enable
