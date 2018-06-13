@@ -226,10 +226,19 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 
 		if ((fMin == 0 && fMax != 0) || (fMin != 0 && fMax == 0))
 		{
-			if (!((ctx.tx.isFieldPresent(sfTransferRate) && ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE) ||
-				(sle->isFieldPresent(sfTransferRate) && sle->getFieldU32(sfTransferRate) > QUALITY_ONE)))
+			if (ctx.tx.isFieldPresent(sfTransferRate) )
 			{
-				return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+				if (ctx.tx.getFieldU32(sfTransferRate) == QUALITY_ONE || ctx.tx.getFieldU32(sfTransferRate) == 0)
+				{
+					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+				}
+			}
+			else if(sle->isFieldPresent(sfTransferRate))
+			{
+				if (sle->getFieldU32(sfTransferRate) == QUALITY_ONE || sle->getFieldU32(sfTransferRate) == 0)
+				{
+					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+				 }
 			}
 		}
         else if(fMin > 0 && fMin == fMax)
