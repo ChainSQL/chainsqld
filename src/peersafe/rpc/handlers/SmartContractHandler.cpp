@@ -17,11 +17,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 //==============================================================================
 
-//#include <ripple/rpc/Role.h>
-//#include <ripple/json/json_reader.h>
-//#include <ripple/protocol/SecretKey.h>
-//#include <BeastConfig.h>
-//#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/JsonFields.h>
@@ -34,8 +29,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/misc/ExtVM.h>
 #include <peersafe/app/misc/Executive.h>
 #include <peersafe/basics/TypeTransform.h>
+#include <peersafe/core/Tuning.h>
 #include <iostream> 
-#include <fstream>
 
 namespace ripple {
 
@@ -48,15 +43,15 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 
 		if (temUNCERTAIN != terResult)
 		{
-			std::string sToken;
-			std::string sHuman;
-
-			transResultInfo(terResult, sToken, sHuman);
-
-			jvResult[jss::engine_result] = sToken;
-			jvResult[jss::engine_result_code] = terResult;
-			jvResult[jss::engine_result_message] = sHuman;
-			jvResult[jss::contract_local_call_result] = exeResult;
+			if (tesSUCCESS != terResult)
+			{
+				jvResult[jss::error] = "ctrEvmExeException";
+				jvResult[jss::error_message] = exeResult;
+			}
+			else
+			{
+				jvResult[jss::contract_local_call_result] = exeResult;
+			}
 		}
 	}
 	catch (std::exception&)
@@ -67,11 +62,11 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 	return jvResult;
 }
 
-Json::Value contractLocalCallErrResultImpl(Json::Value originJson, std::string errMsgStr)
+Json::Value contractLocalCallErrResultImpl(std::string errMsgStr)
 {
 	Json::Value jvResult;
 	
-	jvResult[jss::tx_json] = originJson;
+	//originJson will return in default
 	jvResult[jss::error_message] = errMsgStr;
 	jvResult[jss::error] = "error";
 
@@ -81,7 +76,7 @@ Json::Value contractLocalCallErrResultImpl(Json::Value originJson, std::string e
 std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 {
 	SleOps ops(context);
-	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, 210000);
+	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS);
 	Executive e(ops, *pInfo, 1);
 	e.initialize();
 	auto tx = context.tx;
@@ -90,7 +85,7 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 	evmc_uint256be value = toEvmC(uint256());
 	evmc_uint256be gasPrice = toEvmC(uint256());
 	bytes contractData = tx.getFieldVL(sfContractData);
-	bool callResult = !(e.call(contractAddr, senderAddr, value, gasPrice, bytesConstRef(&contractData), 5000000));
+	bool callResult = !(e.call(contractAddr, senderAddr, value, gasPrice, bytesConstRef(&contractData), maxUInt64/2));
 	if (callResult)
 	{
 		e.go();
@@ -135,7 +130,8 @@ std::pair<Json::Value, bool> checkJsonFields(Json::Value originJson)
 
 	if (!originJson.isMember(jss::ContractData))
 	{
-		ret.first = RPC::missing_field_message("tx_json.ContractData");
+		ret.first = RPC::make_error(rpcCTR_DATA_MISSING,
+			RPC::missing_field_message("tx_json.ContractData"));
 		return ret;
 	}
 	ret.first = Json::Value();
@@ -143,7 +139,7 @@ std::pair<Json::Value, bool> checkJsonFields(Json::Value originJson)
 	return ret;
 }
 
-Json::Value doCtractLocalCall(RPC::Context& context)
+Json::Value doContractLocalCall(RPC::Context& context)
 {
 	Application& appTemp = context.app;
 	std::string errMsgStr("");
@@ -157,26 +153,23 @@ Json::Value doCtractLocalCall(RPC::Context& context)
 	if (srcAddressID == boost::none)
 	{
 		errMsgStr = "Missing Account field";
-		return contractLocalCallErrResultImpl(jsonRpcObj, errMsgStr);
+		return contractLocalCallErrResultImpl(errMsgStr);
 	}
 	auto const contractAddrID = parseBase58<AccountID>(jsonRpcObj[jss::ContractAddress].asString());
 	if (contractAddrID == boost::none)
 	{
 		errMsgStr = "Missing ContractAddress field";
-		return contractLocalCallErrResultImpl(jsonRpcObj, errMsgStr);
+		return contractLocalCallErrResultImpl(errMsgStr);
 	}
-	/*auto const contractDataStr = jsonRpcObj[jss::ContractData].asString();
-	Blob contractDataBlob;
-	contractDataBlob.resize(contractDataStr.size());
-	contractDataBlob.assign(contractDataStr.begin(), contractDataStr.end());*/
+	
 	Blob contractDataBlob = strUnHex(jsonRpcObj[jss::ContractData].asString()).first;
 	if (contractDataBlob.size() == 0)
 	{
 		errMsgStr = "Missing ContractData field";
-		return contractLocalCallErrResultImpl(jsonRpcObj, errMsgStr);
+		return contractLocalCallErrResultImpl(errMsgStr);
 	}
 	//int64_t txValue = 0;
-	STTx paymentTx(ttCONTRACT,
+	STTx contractTx(ttCONTRACT,
 		[&srcAddressID, &contractAddrID, /*&txValue,*/ &contractDataBlob](auto& obj)
 	{
 		obj.setAccountID(sfAccount, *srcAddressID);
@@ -187,7 +180,7 @@ Json::Value doCtractLocalCall(RPC::Context& context)
 	OpenLedger& openLedgerTemp = appTemp.openLedger();
 	//OpenView& openViewTemp = const_cast<OpenView&>(*openLedgerTemp.current());
 	std::shared_ptr<OpenView> openViewTemp = std::make_shared<OpenView>(*openLedgerTemp.current());
-	ApplyContext applyContext(appTemp, *openViewTemp, paymentTx, tesSUCCESS, 10,
+	ApplyContext applyContext(appTemp, *openViewTemp, contractTx, tesSUCCESS, openViewTemp->fees().base,
 		tapNO_CHECK_SIGN, appTemp.journal("ContractLocalCall"));
 
 	auto localCallRet = doEVMCall(applyContext);
