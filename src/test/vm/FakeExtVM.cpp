@@ -6,6 +6,32 @@
 
 namespace ripple {
 
+namespace test {
+	template <class T, class _In>
+	inline T fromBigEndian(_In const& _bytes)
+	{
+		T ret = (T)0;
+		for (auto i : _bytes)
+			ret = (T)((ret << 8) | (byte)(typename std::make_unsigned<decltype(i)>::type)i);
+		return ret;
+	}
+
+	inline u256 fromEvmC(evmc_uint256be const& _n)
+	{
+		return fromBigEndian<u256>(_n.bytes);
+	}
+
+	inline evmc_uint256be toEvmC(const std::string& value)
+	{
+		evmc_uint256be evmc;
+		std::memset(&evmc, 0, sizeof(evmc));
+		std::memcpy(&evmc, value.c_str(), sizeof(evmc));
+		return evmc;
+		//return reinterpret_cast<evmc_uint256be const&>(_h);
+	}
+
+}
+
 FakeExtVM::State FakeExtVM::m_s;
 FakeExtVM::KV FakeExtVM::m_kv;
 
@@ -59,21 +85,21 @@ size_t FakeExtVM::codeSizeAt(evmc_address const& addr) {
 }
 
 evmc_uint256be FakeExtVM::store(evmc_uint256be const& key) {
-	std::string k((const char*)key.bytes, sizeof(key.bytes));
-	size_t x = std::atoll(k.c_str());
-	auto it = FakeExtVM::m_kv.find(x);
-	if (it == FakeExtVM::m_kv.end())
-		return key;
-	evmc_uint256be result;
-	std::memcpy(&result.bytes, it->second.c_str(), sizeof(result.bytes));
-	return result;
+	u256 k = test::fromEvmC(key);
+	auto it = FakeExtVM::m_kv.find(k);
+	if (it == FakeExtVM::m_kv.end()) {
+		std::string v;
+		FakeExtVM::m_kv[k] = v;
+		return test::toEvmC(v);
+	}
+	return test::toEvmC(it->second);
 }
 
 void FakeExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value) {
-	std::string k((const char*)key.bytes, sizeof(key.bytes));
-	size_t x = std::atoll(k.c_str());
-	std::string v((const char*)value.bytes, sizeof(value.bytes));
-	FakeExtVM::m_kv[x] = v;
+	u256 k = test::fromEvmC(key);
+	//u256 v = test::fromEvmC(value);
+	std::string v((const char*)value.bytes, sizeof(value));
+	FakeExtVM::m_kv[k] = v;
 }
 
 evmc_uint256be FakeExtVM::blockHash(int64_t  const&_number) {

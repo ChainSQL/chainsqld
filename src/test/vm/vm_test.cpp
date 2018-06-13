@@ -18,15 +18,17 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 //==============================================================================
 
 #include <string>
+#include <vector>
 
 #include <ripple/beast/unit_test.h>
 #include <ripple/basics/StringUtilities.h>
+#include <boost/algorithm/string.hpp>
 
 #include "FakeExtVM.h"
 
 /*
 * usage:
-	--unittest="VM" --unittest-arg="code=0x... input=0x..."
+	--unittest="VM" --unittest-arg="code=0x... input=0x...;0x..."
 */
 
 namespace ripple {
@@ -80,9 +82,15 @@ private:
 		if (input_npos != std::string::npos) {
 			std::string data;
 			data = args.substr(input_npos + 6);
+			std::vector<std::string> datas;
+			boost::split(datas, data, boost::is_any_of(";"), boost::token_compress_on);
 
-			if (data.size())
-				fromHex(data, data_);
+			std::for_each(datas.begin(), datas.end(), [this](const std::string& data) {
+				std::string binary;
+				if (fromHex(data, binary) > 0)
+					datas_.push_back(binary);
+			});
+			
 		}
 	}
 
@@ -90,11 +98,14 @@ private:
 		try {
 			bytes code;
 			code.assign(code_.begin(), code_.end());
-			bytesConstRef data((uint8_t*)data_.c_str(), data_.size());
-			FakeExecutive execute(data, code);
-			evmc_address contractAddress = { { 1,2,3,4 } };
-			int64_t gas = 300000;
-			execute.call(contractAddress, gas);
+			std::for_each(datas_.begin(), datas_.end(), [this, &code](const std::string& input) {
+				bytesConstRef data((uint8_t*)input.c_str(), input.size());
+				FakeExecutive execute(data, code);
+				evmc_address contractAddress = { { 1,2,3,4 } };
+				int64_t gas = 300000;
+				execute.call(contractAddress, gas);
+			});
+
 		}
 		catch (const std::exception& e) {
 			std::cout << e.what() << std::endl;
@@ -115,11 +126,16 @@ private:
 				int64_t gas = 300000;
 				execute.create(contractAddress, gas);
 			}
+
+			// invoke functions
 			{
-				bytesConstRef data((uint8_t*)data_.c_str(), data_.size());
-				FakeExecutive execute(data, contractAddress);
-				int64_t gas = 300000;
-				execute.call(contractAddress, gas);
+				std::for_each(datas_.begin(), datas_.end(), [this, &contractAddress](const std::string& input) {
+					bytesConstRef data((uint8_t*)input.c_str(), input.size());
+					FakeExecutive execute(data, contractAddress);
+					int64_t gas = 300000;
+					execute.call(contractAddress, gas);
+				});
+				
 			}
 		}
 		catch (const std::exception& e) {
@@ -132,7 +148,7 @@ private:
 	}
 
 	std::string code_;
-	std::string data_;
+	std::vector<std::string> datas_;
 };
 BEAST_DEFINE_TESTSUITE_MANUAL(VM, evm, ripple);
 }

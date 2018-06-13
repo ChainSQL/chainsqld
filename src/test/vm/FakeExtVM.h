@@ -7,6 +7,10 @@
 #include <peersafe/vm/ExtVMFace.h>
 #include <ripple/protocol/AccountID.h>
 
+#include <boost/multiprecision/cpp_int.hpp>
+
+using u256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+
 namespace ripple {
 
 class FakeExtVM : public ExtVMFace {
@@ -27,7 +31,7 @@ public:
 	void setStore(evmc_uint256be const&, evmc_uint256be const&) final;
 
 	using State = std::map<AccountID, bytes>;
-	using KV = std::map<size_t, std::string>;
+	using KV = std::map<u256, std::string>;
 	static State m_s;
 	static KV m_kv;
 private:
