@@ -81,6 +81,9 @@ namespace ripple {
 
 	void SleOps::transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
+		if (_value == uint256(0))
+			return;
+
 		int64_t value = fromUint256(_value);
 		subBalance(_from, value);
 		addBalance(_to, value);
@@ -142,7 +145,7 @@ namespace ripple {
 
 	AccountID SleOps::calcNewAddress(AccountID sender, int nonce)
 	{
-		bytes data(sender.bytes, sender.bytes + 20);
+		bytes data(sender.begin(), sender.end());
 		data.push_back(nonce);
 
 		ripesha_hasher rsh;
