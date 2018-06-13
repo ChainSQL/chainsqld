@@ -116,6 +116,10 @@ enum error_code_i
     rpcSTREAM_MALFORMED,
     rpcATX_DEPRECATED,
 
+	rpcCTR_ACT_MISSING,
+	rpcCTR_DATA_MISSING,
+	rpcCTR_EVMEXE_EXCEPTION,
+
     // Internal error (should never happen)
     rpcINTERNAL,        // Generic internal error.
     rpcNOT_IMPL,
