@@ -147,74 +147,74 @@ SetAccount::preflight (PreflightContext const& ctx)
 	}
 	else if (tx.isFieldPresent(sfTransferFeeMin) || tx.isFieldPresent(sfTransferFeeMax))
 	{
-		JLOG(j.trace()) << "Malformed transaction: TransferFeeMin and TransferFeeMax can not be set individually.";
-		return temBAD_TRANSFERFEE_BOTH;
+	JLOG(j.trace()) << "Malformed transaction: TransferFeeMin and TransferFeeMax can not be set individually.";
+	return temBAD_TRANSFERFEE_BOTH;
 	}
 
-    // TickSize
-    if (tx.isFieldPresent (sfTickSize))
-    {
-        if (!ctx.rules.enabled(featureTickSize))
-            return temDISABLED;
+	// TickSize
+	if (tx.isFieldPresent(sfTickSize))
+	{
+		if (!ctx.rules.enabled(featureTickSize))
+			return temDISABLED;
 
-        auto uTickSize = tx[sfTickSize];
-        if (uTickSize &&
-            ((uTickSize < Quality::minTickSize) ||
-            (uTickSize > Quality::maxTickSize)))
-        {
-            JLOG(j.trace()) << "Malformed transaction: Bad tick size.";
-            return temBAD_TICK_SIZE;
-        }
-    }
+		auto uTickSize = tx[sfTickSize];
+		if (uTickSize &&
+			((uTickSize < Quality::minTickSize) ||
+			(uTickSize > Quality::maxTickSize)))
+		{
+			JLOG(j.trace()) << "Malformed transaction: Bad tick size.";
+			return temBAD_TICK_SIZE;
+		}
+	}
 
-    if (auto const mk = tx[~sfMessageKey])
-    {
-        if (mk->size() && ! publicKeyType ({mk->data(), mk->size()}))
-        {
-            JLOG(j.trace()) << "Invalid message key specified.";
-            return telBAD_PUBLIC_KEY;
-        }
-    }
+	if (auto const mk = tx[~sfMessageKey])
+	{
+		if (mk->size() && !publicKeyType({ mk->data(), mk->size() }))
+		{
+			JLOG(j.trace()) << "Invalid message key specified.";
+			return telBAD_PUBLIC_KEY;
+		}
+	}
 
-    auto const domain = tx[~sfDomain];
-    if (domain && domain->size() > DOMAIN_BYTES_MAX)
-    {
-        JLOG(j.trace()) << "domain too long";
-        return telBAD_DOMAIN;
-    }
+	auto const domain = tx[~sfDomain];
+	if (domain && domain->size() > DOMAIN_BYTES_MAX)
+	{
+		JLOG(j.trace()) << "domain too long";
+		return telBAD_DOMAIN;
+	}
 
-    return preflight2(ctx);
+	return preflight2(ctx);
 }
 
 TER
 SetAccount::preclaim(PreclaimContext const& ctx)
 {
-    auto const id = ctx.tx[sfAccount];
+	auto const id = ctx.tx[sfAccount];
 
-    std::uint32_t const uTxFlags = ctx.tx.getFlags();
+	std::uint32_t const uTxFlags = ctx.tx.getFlags();
 
-    auto const sle = ctx.view.read(
-        keylet::account(id));
+	auto const sle = ctx.view.read(
+		keylet::account(id));
 
-    std::uint32_t const uFlagsIn = sle->getFieldU32(sfFlags);
+	std::uint32_t const uFlagsIn = sle->getFieldU32(sfFlags);
 
-    std::uint32_t const uSetFlag = ctx.tx.getFieldU32(sfSetFlag);
+	std::uint32_t const uSetFlag = ctx.tx.getFieldU32(sfSetFlag);
 
-    // legacy AccountSet flags
-    bool bSetRequireAuth = (uTxFlags & tfRequireAuth) || (uSetFlag == asfRequireAuth);
+	// legacy AccountSet flags
+	bool bSetRequireAuth = (uTxFlags & tfRequireAuth) || (uSetFlag == asfRequireAuth);
 
-    //
-    // RequireAuth
-    //
-    if (bSetRequireAuth && !(uFlagsIn & lsfRequireAuth))
-    {
-        if (!dirIsEmpty(ctx.view,
-            keylet::ownerDir(id)))
-        {
-            JLOG(ctx.j.trace()) << "Retry: Owner directory not empty.";
-            return (ctx.flags & tapRETRY) ? terOWNERS : tecOWNERS;
-        }
-    }
+	//
+	// RequireAuth
+	//
+	if (bSetRequireAuth && !(uFlagsIn & lsfRequireAuth))
+	{
+		if (!dirIsEmpty(ctx.view,
+			keylet::ownerDir(id)))
+		{
+			JLOG(ctx.j.trace()) << "Retry: Owner directory not empty.";
+			return (ctx.flags & tapRETRY) ? terOWNERS : tecOWNERS;
+		}
+	}
 
 	if (ctx.tx.isFieldPresent(sfTransferFeeMin) && ctx.tx.isFieldPresent(sfTransferFeeMax))
 	{
@@ -226,27 +226,37 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 
 		if ((fMin == 0 && fMax != 0) || (fMin != 0 && fMax == 0))
 		{
-			if (ctx.tx.isFieldPresent(sfTransferRate) )
+			if (ctx.tx.isFieldPresent(sfTransferRate))
 			{
 				if (ctx.tx.getFieldU32(sfTransferRate) == QUALITY_ONE || ctx.tx.getFieldU32(sfTransferRate) == 0)
 				{
 					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
 				}
 			}
-			else if(sle->isFieldPresent(sfTransferRate))
+			else if (sle->isFieldPresent(sfTransferRate))
 			{
 				if (sle->getFieldU32(sfTransferRate) == QUALITY_ONE || sle->getFieldU32(sfTransferRate) == 0)
 				{
 					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
-				 }
+				}
 			}
 		}
-        else if(fMin > 0 && fMin == fMax)
-        {
-            if(ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE || sle->getFieldU32(sfTransferRate) > QUALITY_ONE)
-            {
-				return temBAD_FEE_MISMATCH_TRANSFER_RATE;
-            }
+		else if (fMin > 0 && fMin == fMax)
+		{
+			if (ctx.tx.isFieldPresent(sfTransferRate))
+			{
+				if (ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE)
+				{
+					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+				}
+			}
+			else if(sle->isFieldPresent(sfTransferRate))
+			{
+				if (sle->getFieldU32(sfTransferRate) > QUALITY_ONE)
+				{
+					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+				}
+			}
         }
 	}
     return tesSUCCESS;
