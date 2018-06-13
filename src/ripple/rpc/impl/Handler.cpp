@@ -179,6 +179,8 @@ Handler handlerArray[] {
     {   "g_accountTables",      byRef (&doGetAccountTables),   Role::USER,   NO_CONDITION },
 	{	"tx_count",				byRef(&doTxCount),            Role::USER,	 NO_CONDITION },
 	{	"tx_crossget",			byRef(&doGetCrossChainTx),	   Role::USER,	NO_CONDITION },
+	//Contract methods
+	{	"c_localcall",			byRef(&doCtractLocalCall),	   Role::USER,	NO_CONDITION },
     // Evented methods
     {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION     },
     {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION     },

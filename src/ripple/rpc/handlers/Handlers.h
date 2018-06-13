@@ -103,6 +103,10 @@ Json::Value doGetUserToken(RPC::Context&);
 Json::Value doGetCheckHash(RPC::Context&);
 Json::Value doValidators            (RPC::Context&);
 Json::Value doValidatorListSites    (RPC::Context&);
+
+//for contract
+Json::Value doCtractLocalCall(RPC::Context&);
+
 } // ripple
 
 #endif
