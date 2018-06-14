@@ -207,6 +207,7 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
 	CallResult result = env.call(params);
 	o_result->status_code = result.status;
 	o_result->gas_left = params.gas;
+	o_result->release = nullptr;
 
 	// Pass the output to the EVM without a copy. The EVM will delete it
 	// when finished with it.
