@@ -48,23 +48,23 @@ bool Executive::execute() {
 	int64_t gas = tx.getFieldU32(sfGas);
 	if (isCreation)
 	{
-		return create(sender, value, gasPrice, gas - m_baseGasRequired, m_input, sender);
+		return create(sender, value, gasPrice, gas - m_baseGasRequired, &m_input, sender);
 	}
 	else
 	{
 		AccountID contract_address = tx.getAccountID(sfContractAddress);
-		return call(contract_address, sender, value, gasPrice, m_input, gas - m_baseGasRequired);
+		return call(contract_address, sender, value, gasPrice, &m_input, gas - m_baseGasRequired);
 	}
 }
 
 bool Executive::create(AccountID const& _txSender, uint256 const& _endowment,
-	uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress)
+	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress)
 {
 	return createOpcode(_txSender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
 
 bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment,
-	uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress)
+	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress)
 {
 	SLE::pointer pSle = m_s.getSle(_sender);
 	uint32 nonce = pSle->getFieldU32(sfNonce);
@@ -76,7 +76,7 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 
 
 bool Executive::call(AccountID const& _receiveAddress, AccountID const& _senderAddress,
-	uint256 const& _value, uint256 const& _gasPrice, BlobRef _data, int64_t const& _gas)
+	uint256 const& _value, uint256 const& _gasPrice, bytesConstRef const& _data, int64_t const& _gas)
 {
 	CallParametersR params{ _senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas, _data };
 	return call(params, _gasPrice, _senderAddress);
@@ -100,10 +100,9 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 	if (m_s.addressHasCode(_p.codeAddress))
 	{
 		bytes const& c = m_s.code(_p.codeAddress);
-		Blob code(c);
 		uint256 codeHash = m_s.codeHash(_p.codeAddress);
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
-			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, code, codeHash,
+			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
 			m_depth, false, _p.staticCall);
 
 		// Transfer zxc.
@@ -114,7 +113,7 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 }
 
 bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowment,
-	uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _origin)
+	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _origin)
 {
 	auto j = getJ();
 
@@ -134,7 +133,17 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 
 	// Transfer ether before deploying the code. This will also create new
 	// account if it does not exist yet.
-	TER ret = m_s.activateContract(_sender, m_newAddress, _endowment);
+	TER ret = tesSUCCESS;
+	if (m_depth == INITIAL_DEPTH)
+	{
+		ret = m_s.activateContract(_sender, m_newAddress, _endowment);
+	}
+	else
+	{
+		//contract create contract
+		auto value = uint256(m_s.ctx().view().fees().accountReserve(0).drops());
+		ret = m_s.activateContract(_sender, m_newAddress, value);
+	}
 	if (ret != tesSUCCESS)
 	{
 		m_excepted = ret;
@@ -148,7 +157,7 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 	Blob data;
 	if (!_code.empty())
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
-			uint256(0)/*_endowment*/, _gasPrice, data, _code, sha512Half(_code.data()), m_depth, true, false);
+			uint256(0)/*_endowment*/, _gasPrice, &data, _code, sha512Half(_code.data()), m_depth, true, false);
 
 	return !m_ext;
 }
@@ -203,6 +212,7 @@ bool Executive::go()
 		catch (VMException const& _e)
 		{
 			JLOG(j.warn()) << "Safe VM Exception. " << diagnostic_information(_e);
+			//m_output = std::string(_e.what());
 			m_gas = 0;
 			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			//revert();

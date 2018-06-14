@@ -39,6 +39,8 @@ namespace ripple {
 
 	uint64_t const GAS_PRICE			= 10;
 
+	uint32 const INITIAL_DEPTH			= 1;
+
 } // ripple
 
 #endif

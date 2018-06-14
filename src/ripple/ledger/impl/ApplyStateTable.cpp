@@ -655,5 +655,10 @@ ApplyStateTable::threadOwners (ReadView const& base,
     }
 }
 
+void
+ApplyStateTable::clear()
+{
+	items_.clear();
+}
 } // detail
 } // ripple

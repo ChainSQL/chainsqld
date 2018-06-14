@@ -73,7 +73,7 @@ namespace ripple {
 	{
 		SleOps ops(ctx_);
 		auto pInfo = std::make_shared<EnvInfoImpl>(ctx_.view().info().seq, 210000);
-		Executive e(ops, *pInfo, 1);
+		Executive e(ops, *pInfo, INITIAL_DEPTH);
 		e.initialize();
 		if (!e.execute())
 		{

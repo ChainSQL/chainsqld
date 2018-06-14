@@ -30,7 +30,6 @@ private:
     int64_t                   iBlockNum_;
 };
 
-using BlobRef = Blob &;
 struct CallParametersR
 {
 	CallParametersR() = default;
@@ -41,13 +40,15 @@ struct CallParametersR
 		uint256	  _valueTransfer,
 		uint256   _apparentValue,
 		int64_t _gas,
-		BlobRef _data
+		bytesConstRef _data
 	) : senderAddress(_senderAddress), codeAddress(_codeAddress), receiveAddress(_receiveAddress),
 		valueTransfer(_valueTransfer), apparentValue(_apparentValue), gas(_gas), data(_data) {}
 	CallParametersR(CallParameters const& p) :senderAddress(fromEvmC(p.senderAddress)),
 		codeAddress(fromEvmC(p.codeAddress)),receiveAddress(fromEvmC(p.receiveAddress)),
 		valueTransfer(fromEvmC(p.valueTransfer)), apparentValue(fromEvmC(p.apparentValue)),
-		gas(p.gas), data(fromEvmC(p.data)) {}
+		gas(p.gas),data(p.data)
+	{
+	}
 
 	AccountID senderAddress;
 	AccountID codeAddress;
@@ -55,7 +56,7 @@ struct CallParametersR
 	uint256 valueTransfer;
 	uint256 apparentValue;
 	int64_t gas;
-	BlobRef data;
+	bytesConstRef data;
 	bool staticCall = false;
 };
 
@@ -63,10 +64,10 @@ class ExtVM : public ExtVMFace
 {
 public:    
     ExtVM(SleOps& _s, EnvInfo const&_envInfo, AccountID const& _myAddress,
-		AccountID const& _caller, AccountID const& _origin, uint256 _value, uint256 _gasPrice, BlobRef _data,
-		BlobRef _code, uint256 const& _codeHash, int32_t _depth, bool _isCreate,  bool _staticCall)
+		AccountID const& _caller, AccountID const& _origin, uint256 _value, uint256 _gasPrice, bytesConstRef _data,
+		bytesConstRef _code, uint256 const& _codeHash, int32_t _depth, bool _isCreate,  bool _staticCall)
       : ExtVMFace(_envInfo, toEvmC(_myAddress), toEvmC(_caller), toEvmC(_origin), toEvmC(_value),
-		  toEvmC(_gasPrice), &_data, _code, toEvmC(_codeHash), _depth, _isCreate, _staticCall),
+		  toEvmC(_gasPrice), _data, _code.toBytes(), toEvmC(_codeHash), _depth, _isCreate, _staticCall),
 		oSle_(_s)
     {
         // Contract: processing account must exist. In case of CALL, the ExtVM

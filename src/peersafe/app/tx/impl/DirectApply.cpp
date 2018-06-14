@@ -136,7 +136,8 @@ namespace ripple {
 			TER ter = invoke_apply_direct(ctx);
 
 			//finally apply changes to outside view
-			applyView.items().apply((ApplyViewImpl&)view);
+			viewImpl.items().clear();
+			applyView.items().apply(viewImpl);
 			return ter;
 		}
 		catch (std::exception const& e)

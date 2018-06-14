@@ -58,16 +58,16 @@ public:
 	/// Set up the executive for evaluating a bare CREATE (contract-creation) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool create(AccountID const& _txSender, uint256 const& _endowment,
-		uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress);
 
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool createOpcode(AccountID const& _sender, uint256 const& _endowment,
-		uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress);
 
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool call(AccountID const& _receiveAddress, AccountID const& _txSender, 
-		uint256 const& _txValue, uint256 const& _gasPrice, BlobRef _txData, int64_t const& _gas);
+		uint256 const& _txValue, uint256 const& _gasPrice, bytesConstRef const& _txData, int64_t const& _gas);
 	bool call(CallParametersR const& _cp, uint256 const& _gasPrice, AccountID const& _origin);
 
     void accrueSubState(SubState& _parentContext);
@@ -96,7 +96,7 @@ public:
 private:
 	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool executeCreate(AccountID const& _txSender, uint256 const& _endowment,
-		uint256 const& _gasPrice, int64_t const& _gas, BlobRef _code, AccountID const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress);
 
 	beast::Journal getJ();
 private:

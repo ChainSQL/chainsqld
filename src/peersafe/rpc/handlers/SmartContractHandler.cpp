@@ -77,7 +77,7 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 {
 	SleOps ops(context);
 	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS);
-	Executive e(ops, *pInfo, 1);
+	Executive e(ops, *pInfo, INITIAL_DEPTH);
 	e.initialize();
 	auto tx = context.tx;
 	AccountID contractAddr = tx.getAccountID(sfContractAddress);
@@ -85,7 +85,7 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 	uint256 value = uint256();
 	uint256 gasPrice = uint256();
 	Blob contractData = tx.getFieldVL(sfContractData);
-	bool callResult = !(e.call(contractAddr, senderAddr, value, gasPrice, contractData, maxUInt64/2));
+	bool callResult = !(e.call(contractAddr, senderAddr, value, gasPrice, &contractData, maxUInt64/2));
 	if (callResult)
 	{
 		e.go();

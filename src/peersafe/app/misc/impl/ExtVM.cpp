@@ -155,7 +155,7 @@ namespace ripple
         Executive e(oSle_, envInfo(), depth + 1);
         assert(op == Instruction::CREATE);
         bool result = e.createOpcode(fromEvmC(myAddress), fromEvmC(endowment), fromEvmC(gasPrice),
-			ioGas, fromEvmC(code), fromEvmC(origin));
+			ioGas, code, fromEvmC(origin));
 
         if (!result)
         {

@@ -127,6 +127,7 @@ public:
         return dropsDestroyed_;
     }
 
+	void clear();
 private:
     using Mods = hash_map<key_type,
         std::shared_ptr<SLE>>;
