@@ -80,12 +80,12 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 	Executive e(ops, *pInfo, 1);
 	e.initialize();
 	auto tx = context.tx;
-	evmc_address contractAddr = toEvmC(tx.getAccountID(sfContractAddress));
-	evmc_address senderAddr = toEvmC(tx.getAccountID(sfAccount));
-	evmc_uint256be value = toEvmC(uint256());
-	evmc_uint256be gasPrice = toEvmC(uint256());
-	bytes contractData = tx.getFieldVL(sfContractData);
-	bool callResult = !(e.call(contractAddr, senderAddr, value, gasPrice, bytesConstRef(&contractData), maxUInt64/2));
+	AccountID contractAddr = tx.getAccountID(sfContractAddress);
+	AccountID senderAddr = tx.getAccountID(sfAccount);
+	uint256 value = uint256();
+	uint256 gasPrice = uint256();
+	Blob contractData = tx.getFieldVL(sfContractData);
+	bool callResult = !(e.call(contractAddr, senderAddr, value, gasPrice, contractData, maxUInt64/2));
 	if (callResult)
 	{
 		e.go();
