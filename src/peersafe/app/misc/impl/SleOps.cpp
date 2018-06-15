@@ -25,7 +25,10 @@ namespace ripple {
 	{
 		SLE::pointer pSle = getSle(addr);
 		uint32 nonce = pSle->getFieldU32(sfNonce);
-		pSle->setFieldU32(sfNonce,++nonce);
+		{
+			pSle->setFieldU32(sfNonce, ++nonce);
+			ctx_.view().update(pSle);
+		}		
 	}
 
 	uint32 SleOps::getNonce(AccountID const& addr)
@@ -145,8 +148,11 @@ namespace ripple {
 	void SleOps::clearStorage(AccountID const& _contract)
 	{
 		SLE::pointer pSle = getSle(_contract);
-		if(pSle)
+		if (pSle)
+		{
 			pSle->makeFieldAbsent(sfContractCode);
+			ctx_.view().update(pSle);
+		}			
 	}
 
 	AccountID SleOps::calcNewAddress(AccountID sender, int nonce)
