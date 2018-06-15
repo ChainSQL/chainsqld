@@ -17,13 +17,19 @@ class EnvInfoImpl : public EnvInfo
 public:
     EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit) : iBlockNum_(iBlockNum), iGasLimit_(iGasLimit), EnvInfo()  {}
        
-    virtual int64_t const gasLimit() const {
+	int64_t const gasLimit() const override {
         return iGasLimit_;
     }
     
-    virtual int64_t const block_number() const {
+	int64_t const block_number() const override{
         return iBlockNum_;
     }
+
+
+	int64_t const block_timestamp() const override {
+		return std::chrono::seconds(std::time(NULL)).count();
+	}
+
     
 private:
     int64_t                   iGasLimit_;

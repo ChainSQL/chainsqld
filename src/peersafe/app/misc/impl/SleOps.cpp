@@ -110,8 +110,11 @@ namespace ripple {
 		{
 			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
 			int64_t finalBanance = balance + amount;
-
-			pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
+			if (amount > 0)
+			{
+				pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
+				ctx_.view().update(pSle);
+			}			
 		}
 	}
 
@@ -123,7 +126,10 @@ namespace ripple {
 			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
 			int64_t finalBanance = balance - amount;
 			if (finalBanance > 0)
+			{
 				pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
+				ctx_.view().update(pSle);
+			}			
 		}
 	}
 
