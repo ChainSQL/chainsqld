@@ -76,8 +76,10 @@ ZXCNotCreated::finalize(STTx const& tx, TER /*tec*/, beast::Journal const& j)
 	// contract have extra fee
 	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT)
 	{
-		uint32 gas = tx.getFieldU32(sfGas);
-		fee += gas * GAS_PRICE;
+		return true;
+		//transfer or send in contract can change balance too
+		//uint32 gas = tx.getFieldU32(sfGas);
+		//fee += gas * GAS_PRICE;
 	}
 
 	if (-1 * fee <= drops_ && drops_ <= 0)

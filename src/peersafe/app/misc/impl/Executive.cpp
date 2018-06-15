@@ -104,10 +104,10 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
 			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
 			m_depth, false, _p.staticCall);
-
-		// Transfer zxc.
-		m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
 	}
+
+	// Transfer zxc.
+	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
 
 	return !m_ext;
 }
@@ -207,7 +207,6 @@ bool Executive::go()
 			//revert();
 			m_output = _e.output();
 			m_excepted = tefCONTRACT_REVERT_INSTRUCTION;
-			//m_excepted = TransactionException::RevertInstruction;
 		}
 		catch (VMException const& _e)
 		{

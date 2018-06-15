@@ -96,6 +96,7 @@ transResults()
 		{ tefADDRESS_AREADY_USED,	 { "tefADDRESS_AREADY_USED",   "Contract address already used when creating contract." } },
 		{ tefGAS_INSUFFICIENT,		 { "tefGAS_INSUFFICIENT",	   "Gas insufficient." } },
 		{ tefCONTRACT_EXEC_EXCEPTION,{ "tefCONTRACT_EXEC_EXCEPTION","Exception occured while executing contract ." } },
+		{ tefCONTRACT_REVERT_INSTRUCTION,{ "tefCONTRACT_REVERT_INSTRUCTION","Contract reverted,maybe 'require' condition not satisfied." } },
 
 		{ telLOCAL_ERROR,            { "telLOCAL_ERROR",           "Local failure."                                                                } },
 		{ telBAD_DOMAIN,             { "telBAD_DOMAIN",            "Domain too long."                                                              } },
