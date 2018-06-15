@@ -236,6 +236,9 @@ namespace ripple {
 		//publish results for chain-sql txs
 		virtual void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,
 			const STTx& stTxn, const std::pair<std::string, std::string>& disposRes, bool bValidated) = 0;
+
+        virtual void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const unsigned char * byValue) = 0;
+
 		virtual void TryCheckSubTx() = 0;
 	};
 

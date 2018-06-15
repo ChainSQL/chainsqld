@@ -442,24 +442,26 @@ public:
 		const std::pair<std::string, std::string>& disposRes,bool validated);
 	void pubChainSqlTableTxs(const AccountID& ownerId, const std::string& sTableName, 
 		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes);
+
+    void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const unsigned char * byValue);
     //--------------------------------------------------------------------------
     //
     // InfoSub::Source.
     //
     void subAccount (
         InfoSub::ref ispListener,
-        hash_set<AccountID> const& vnaAccountIDs, bool rt) override;
+        hash_set<AccountID> const& vnaAccountIDs, InfoSub::ACOUNT_TYPE eType) override;
     void unsubAccount (
         InfoSub::ref ispListener,
         hash_set<AccountID> const& vnaAccountIDs,
-        bool rt) override;
+        InfoSub::ACOUNT_TYPE eType) override;
 
     // Just remove the subscription from the tracking
     // not from the InfoSub. Needed for InfoSub destruction
     void unsubAccountInternal (
         std::uint64_t seq,
         hash_set<AccountID> const& vnaAccountIDs,
-        bool rt) override;
+        InfoSub::ACOUNT_TYPE eType) override;
 
     bool subLedger (InfoSub::ref ispListener, Json::Value& jvResult) override;
     bool unsubLedger (std::uint64_t uListener) override;
@@ -470,7 +472,7 @@ public:
 
 	//for a single tx
 	virtual void subTransaction(InfoSub::ref ispListener, uint256 const& txId, const int lastLedgerSeq) override;
-	virtual void unsubTransaction(InfoSub::ref ispListener, uint256 const& txId) override;
+	virtual void unsubTransaction(InfoSub::ref ispListener, uint256 const& txId) override;    
 
     bool subServer (
         InfoSub::ref ispListener, Json::Value& jvResult, bool admin) override;
@@ -558,7 +560,7 @@ private:
         std::shared_ptr<ReadView const> const& lpCurrent,
         const AcceptedLedgerTx& alTransaction,
         bool isAccepted);
-
+    
 	void PubValidatedTxForTable(const STTx& tx);
 
     void pubServer ();
@@ -597,13 +599,14 @@ private:
     std::shared_ptr<InboundLedger> mAcquiringLedger;
 
     SubInfoMapType mSubAccount;
-    SubInfoMapType mSubRTAccount;
+    SubInfoMapType mSubRTAccount;   
+    SubInfoMapType mSubContract;
 
     subRpcMapType mRpcSubMap;
 
 	 SubTableMapType mSubTable;		  // 
 	 SubTxMapType	mSubTx;			  // All chain-sql related transactions.
-	 SubTxMapType	mValidatedSubTx;
+	 SubTxMapType	mValidatedSubTx;     
 
     // SubMapType mSubLedger;            // Accepted ledgers.
     // SubMapType mSubManifests;         // Received validator manifests.
@@ -647,6 +650,9 @@ private:
     std::vector <TransactionStatus> mTransactions;
 
     StateAccounting accounting_ {};
+
+private:
+    SubInfoMapType& getCompatibleSubInfoMap(InfoSub::ACOUNT_TYPE eType);
 };
 
 //------------------------------------------------------------------------------
@@ -1402,7 +1408,7 @@ bool NetworkOPsImp::checkLastClosedLedger (
     };
 
     hash_map<uint256, ValidationCount> ledgers;
-    {
+    {        
         hash_map<uint256, std::uint32_t> current =
             app_.getValidations().currentTrustedDistribution(
                 closedLedger,
@@ -2777,6 +2783,46 @@ void NetworkOPsImp::PubValidatedTxForTable(const STTx& tx)
 	}
 }
 
+void NetworkOPsImp::PubContractEvents(const AccountID& contractID,uint256 const * aTopic, int iTopicNum, const unsigned char * byValue)
+{
+    hash_set<InfoSub::pointer>  notify;
+
+    auto simiIt = mSubRTAccount.find(contractID);
+    if (simiIt != mSubRTAccount.end())
+    {
+        auto it = simiIt->second.begin();
+
+        while (it != simiIt->second.end())
+        {
+            InfoSub::pointer p = it->second.lock();
+
+            if (p)
+            {
+                notify.insert(p);
+                ++it;
+            }
+            else
+                it = simiIt->second.erase(it);
+        }
+    }
+
+    JLOG(m_journal.trace()) << "event:" << to_string(contractID);
+
+    if (!notify.empty())
+    {
+        Json::Value jvObj;
+        jvObj[jss::ContractEventTopics].resize(iTopicNum);
+        for (int i = 0; i < iTopicNum; i++)
+        {
+            jvObj[jss::ContractEventTopics][i] = to_string(aTopic[i]);
+        }
+
+        jvObj[jss::ContractEventInfo] = to_string(byValue);
+
+        for (InfoSub::ref isrListener : notify)
+            isrListener->send(jvObj, true);
+    }
+}
 void NetworkOPsImp::pubAccountTransaction (
     std::shared_ptr<ReadView const> const& lpCurrent,
     const AcceptedLedgerTx& alTx,
@@ -2952,16 +2998,16 @@ void NetworkOPsImp::pubChainSqlTableTxs(const AccountID& ownerId, const std::str
 
 void NetworkOPsImp::subAccount (
     InfoSub::ref isrListener,
-    hash_set<AccountID> const& vnaAccountIDs, bool rt)
-{
-    SubInfoMapType& subMap = rt ? mSubRTAccount : mSubAccount;
+    hash_set<AccountID> const& vnaAccountIDs, InfoSub::ACOUNT_TYPE eType)
+{    
+    SubInfoMapType& subMap = getCompatibleSubInfoMap(eType);    
 
     for (auto const& naAccountID : vnaAccountIDs)
     {
         JLOG(m_journal.trace()) <<
             "subAccount: account: " << toBase58(naAccountID);
 
-        isrListener->insertSubAccountInfo (naAccountID, rt);
+        isrListener->insertSubAccountInfo (naAccountID, eType);
     }
 
     ScopedLockType sl (mSubLock);
@@ -2989,26 +3035,26 @@ void NetworkOPsImp::subAccount (
 void NetworkOPsImp::unsubAccount (
     InfoSub::ref isrListener,
     hash_set<AccountID> const& vnaAccountIDs,
-    bool rt)
+    InfoSub::ACOUNT_TYPE eType)
 {
     for (auto const& naAccountID : vnaAccountIDs)
     {
         // Remove from the InfoSub
-        isrListener->deleteSubAccountInfo(naAccountID, rt);
+        isrListener->deleteSubAccountInfo(naAccountID, eType);
     }
 
     // Remove from the server
-    unsubAccountInternal (isrListener->getSeq(), vnaAccountIDs, rt);
+    unsubAccountInternal (isrListener->getSeq(), vnaAccountIDs, eType);
 }
 
 void NetworkOPsImp::unsubAccountInternal (
     std::uint64_t uSeq,
     hash_set<AccountID> const& vnaAccountIDs,
-    bool rt)
+    InfoSub::ACOUNT_TYPE eType)
 {
     ScopedLockType sl (mSubLock);
 
-    SubInfoMapType& subMap = rt ? mSubRTAccount : mSubAccount;
+    SubInfoMapType& subMap = getCompatibleSubInfoMap(eType);
 
     for (auto const& naAccountID : vnaAccountIDs)
     {
@@ -3026,6 +3072,24 @@ void NetworkOPsImp::unsubAccountInternal (
             }
         }
     }
+}
+
+NetworkOPsImp::SubInfoMapType& NetworkOPsImp::getCompatibleSubInfoMap(InfoSub::ACOUNT_TYPE eType)
+{
+
+    switch (eType)
+    {
+    case ripple::InfoSub::ACCOUNT_NORMANT:
+        return mSubAccount;
+    case ripple::InfoSub::ACCOUNT_REALTIME:
+        return mSubRTAccount;
+    case ripple::InfoSub::ACCOUNT_CONTRACE:
+        return mSubContract;
+    default:
+        return mSubAccount;
+    }
+
+    return mSubAccount;
 }
 
 bool NetworkOPsImp::subBook (InfoSub::ref isrListener, Book const& book)

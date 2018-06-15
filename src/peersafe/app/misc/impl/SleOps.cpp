@@ -3,7 +3,9 @@
 #include <ripple/protocol/TxFormats.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/ledger/ApplyViewImpl.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <peersafe/app/tx/DirectApply.h>
+
 
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
@@ -157,6 +159,11 @@ namespace ripple {
 		std::memcpy(id.data(), d.data(), d.size());
 		return id;
 	}
+
+    void SleOps::PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const unsigned char * byValue)
+    {
+        ctx_.app.getOPs().PubContractEvents(contractID, aTopic, iTopicNum, byValue);
+    }
 
     void SleOps::kill(AccountID addr)
     {

@@ -87,6 +87,8 @@ JSS ( OperationRule );
 JSS ( Condition );
 JSS ( Count );
 JSS ( AccountField );
+JSS ( ContractEventTopics );
+JSS ( ContractEventInfo);
 JSS ( CountLimit );
 JSS ( Fields );
 JSS ( field );

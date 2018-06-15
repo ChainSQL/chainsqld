@@ -70,11 +70,11 @@ InfoSub::~InfoSub ()
     // back to us and modify its own parameter
     if (! realTimeSubscriptions_.empty ())
         m_source.unsubAccountInternal
-            (mSeq, realTimeSubscriptions_, true);
+            (mSeq, realTimeSubscriptions_, ACCOUNT_REALTIME);
 
     if (! normalSubscriptions_.empty ())
         m_source.unsubAccountInternal
-            (mSeq, normalSubscriptions_, false);
+            (mSeq, normalSubscriptions_, ACCOUNT_NORMANT);
 }
 
 Resource::Consumer& InfoSub::getConsumer()
@@ -91,24 +91,22 @@ void InfoSub::onSendEmpty ()
 {
 }
 
-void InfoSub::insertSubAccountInfo (AccountID const& account, bool rt)
+void InfoSub::insertSubAccountInfo (AccountID const& account, ACOUNT_TYPE eType)
 {
     ScopedLockType sl (mLock);
 
-    if (rt)
-        realTimeSubscriptions_.insert (account);
-    else
-        normalSubscriptions_.insert (account);
+    hash_set <AccountID> & accountSet = getCompatibleAccountSet(eType);
+
+    accountSet.insert(account);
 }
 
-void InfoSub::deleteSubAccountInfo (AccountID const& account, bool rt)
+void InfoSub::deleteSubAccountInfo (AccountID const& account, ACOUNT_TYPE eType)
 {
     ScopedLockType sl (mLock);
 
-    if (rt)
-        realTimeSubscriptions_.erase (account);
-    else
-        normalSubscriptions_.erase (account);
+    hash_set <AccountID> & accountSet = getCompatibleAccountSet(eType);
+
+    accountSet.erase(account);
 }
 
 void InfoSub::clearPathRequest ()
@@ -124,6 +122,24 @@ void InfoSub::setPathRequest (const std::shared_ptr<PathRequest>& req)
 const std::shared_ptr<PathRequest>& InfoSub::getPathRequest ()
 {
     return mPathRequest;
+}
+
+hash_set <AccountID>& InfoSub::getCompatibleAccountSet(ACOUNT_TYPE eType)
+{
+
+    switch (eType)
+    {
+    case ripple::InfoSub::ACCOUNT_NORMANT:
+        return normalSubscriptions_;
+    case ripple::InfoSub::ACCOUNT_REALTIME:
+        return realTimeSubscriptions_;
+    case ripple::InfoSub::ACCOUNT_CONTRACE:
+        return contractSubscriptions_;
+    default:
+        return normalSubscriptions_;
+    }
+
+    return normalSubscriptions_;
 }
 
 } // ripple

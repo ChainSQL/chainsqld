@@ -24,9 +24,14 @@ namespace ripple {
         return const_cast<uint256&>(reinterpret_cast<uint256 const&>(_n));
     }
 
+    inline uint256 const * fromEvmC(evmc_uint256be const* _n)
+    {
+        return reinterpret_cast<uint256 const*>(_n);
+    }
+
     inline AccountID const& fromEvmC(evmc_address const& _addr)
     {        
-		return const_cast<AccountID&>(reinterpret_cast<AccountID const&>(_addr));
+		return reinterpret_cast<AccountID const&>(_addr);
     }
 
 	inline int64_t fromUint256(uint256 _n)

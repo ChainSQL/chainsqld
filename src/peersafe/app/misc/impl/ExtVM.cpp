@@ -186,10 +186,12 @@ namespace ripple
         return{ terToEvmcStatusCode(e.getException()), e.takeOutput() };
     }
 
-    void ExtVM::log(evmc_uint256be const* /*topics*/, size_t /*numTopics*/, bytesConstRef const& data) 
+    void ExtVM::log(evmc_uint256be const* topics, size_t numTopics, bytesConstRef const& data) 
     {
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
+                
+        oSle_.PubContractEvents(AccountID(), fromEvmC(topics), numTopics, data.data());
 
         JLOG(j.trace()) << data.toString();
     }

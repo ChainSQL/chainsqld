@@ -52,6 +52,8 @@ public:
 
     using Consumer = Resource::Consumer;
 
+    enum ACOUNT_TYPE { ACCOUNT_NORMANT, ACCOUNT_REALTIME, ACCOUNT_CONTRACE };
+
 public:
     /** Abstracts the source of subscription data.
     */
@@ -60,26 +62,25 @@ public:
     protected:
         Source (char const* name, Stoppable& parent);
 
-    public:
-
+    public:        
         // For some reason, these were originally called "rt"
         // for "real time". They actually refer to whether
         // you get transactions as they occur or once their
         // results are confirmed
         virtual void subAccount (ref ispListener,
             hash_set<AccountID> const& vnaAccountIDs,
-            bool realTime) = 0;
+            ACOUNT_TYPE eType) = 0;
 
         // for normal use, removes from InfoSub and server
         virtual void unsubAccount (ref isplistener,
             hash_set<AccountID> const& vnaAccountIDs,
-            bool realTime) = 0;
+            ACOUNT_TYPE eType) = 0;
 
         // for use during InfoSub destruction
         // Removes only from the server
         virtual void unsubAccountInternal (std::uint64_t uListener,
             hash_set<AccountID> const& vnaAccountIDs,
-            bool realTime) = 0;
+            ACOUNT_TYPE eType) = 0;
 
         // VFALCO TODO Document the bool return value
         virtual bool subLedger (ref ispListener, Json::Value& jvResult) = 0;
@@ -142,11 +143,11 @@ public:
 
     void insertSubAccountInfo (
         AccountID const& account,
-        bool rt);
+        ACOUNT_TYPE eType);
 
     void deleteSubAccountInfo (
         AccountID const& account,
-        bool rt);
+        ACOUNT_TYPE eType);
 
     void clearPathRequest ();
 
@@ -159,11 +160,13 @@ protected:
     using ScopedLockType = std::lock_guard <LockType>;
     LockType mLock;
 
+
 private:
     Consumer                      m_consumer;
     Source&                       m_source;
     hash_set <AccountID> realTimeSubscriptions_;
     hash_set <AccountID> normalSubscriptions_;
+    hash_set <AccountID> contractSubscriptions_;
     std::shared_ptr <PathRequest> mPathRequest;
     std::uint64_t                 mSeq;
 
@@ -174,6 +177,8 @@ private:
         static std::atomic<std::uint64_t> id(0);
         return ++id;
     }
+
+    hash_set <AccountID>& getCompatibleAccountSet(ACOUNT_TYPE eType);
 };
 
 } // ripple

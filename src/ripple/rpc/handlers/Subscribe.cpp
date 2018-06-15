@@ -172,7 +172,7 @@ Json::Value doSubscribe (RPC::Context& context)
         auto ids = RPC::parseAccountIds(context.params[accountsProposed]);
         if (ids.empty())
             return rpcError(rpcACT_MALFORMED);
-        context.netOps.subAccount(ispSub, ids, true);
+        context.netOps.subAccount(ispSub, ids, InfoSub::ACCOUNT_REALTIME);
     }
 
     if (context.params.isMember(jss::accounts))
@@ -183,7 +183,7 @@ Json::Value doSubscribe (RPC::Context& context)
         auto ids = RPC::parseAccountIds(context.params[jss::accounts]);
         if (ids.empty())
             return rpcError(rpcACT_MALFORMED);
-        context.netOps.subAccount(ispSub, ids, false);
+        context.netOps.subAccount(ispSub, ids, InfoSub::ACCOUNT_NORMANT);
         JLOG(context.j.debug()) << "doSubscribe: accounts: " << ids.size();
     }
 
