@@ -46,9 +46,9 @@ public:
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
 	uint256 codeHash(AccountID const& _contract);
 
-	void transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value);
+	TER transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 
-	TER activateContract(AccountID const& _from, AccountID const& _to, uint256 const& _value);
+	TER doPayment(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 	/// Clear the storage root hash of an account to the hash of the empty trie.
 	void clearStorage(AccountID const& _contract);
 
@@ -59,7 +59,7 @@ public:
 	/// Subtract the @p _value amount from the balance of @p _addr account.
 	/// @throws NotEnoughCash if the balance of the account is less than the
 	/// amount to be subtrackted (also in case the account does not exist).
-	void subBalance(AccountID const& _addr, int64_t const& _value);
+	TER subBalance(AccountID const& _addr, int64_t const& _value);
 
 	int64_t balance(AccountID const& address);
 
