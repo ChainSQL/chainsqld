@@ -224,7 +224,7 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 		float fMax = atof(feeMax.c_str());
 		float fMin = atof(feeMin.c_str());
 
-		if ((fMin == 0 && fMax != 0) || (fMin != 0 && fMax == 0))
+		if ((fMin == 0 && fMax != 0) || (fMin != 0 && fMax == 0) || (fMin > 0 && fMax > 0 && fMin < fMax))
 		{
 			if (ctx.tx.isFieldPresent(sfTransferRate))
 			{
@@ -258,6 +258,17 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 				}
 			}
         }
+	}
+
+	if (ctx.tx.isFieldPresent(sfTransferRate) && ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE)
+	{
+		if (sle->isFieldPresent(sfTransferFeeMin) && sle->isFieldPresent(sfTransferFeeMax))
+		{
+			std::string feeMin = strCopy(sle->getFieldVL(sfTransferFeeMin));
+			std::string feeMax = strCopy(sle->getFieldVL(sfTransferFeeMax));
+			if (feeMin == feeMax)
+				return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+		}
 	}
     return tesSUCCESS;
 }
