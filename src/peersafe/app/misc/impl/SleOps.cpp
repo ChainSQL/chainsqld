@@ -84,17 +84,19 @@ namespace ripple {
 		return sha512Half(code);
 	}
 
-	void SleOps::transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value)
+	TER SleOps::transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
 		if (_value == uint256(0))
-			return;
+			return tesSUCCESS;
 
 		int64_t value = fromUint256(_value);
-		subBalance(_from, value);
-		addBalance(_to, value);
+		auto ret = subBalance(_from, value);
+		if(ret == tesSUCCESS)
+			addBalance(_to, value);
+		return ret;
 	}
 
-	TER SleOps::activateContract(AccountID const& _from, AccountID const& _to, uint256 const& _value)
+	TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
 		int64_t value = fromUint256(_value);
 		STTx paymentTx(ttPAYMENT,
@@ -123,19 +125,26 @@ namespace ripple {
 		}
 	}
 
-	void SleOps::subBalance(AccountID const& addr, int64_t const& amount)
+	TER SleOps::subBalance(AccountID const& addr, int64_t const& amount)
 	{
 		SLE::pointer pSle = getSle(addr);
 		if (pSle)
 		{
+			// This is the total reserve in drops.
+			auto const uOwnerCount = pSle->getFieldU32(sfOwnerCount);
+			auto const reserve = ctx_.view().fees().accountReserve(uOwnerCount);
+
 			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
 			int64_t finalBanance = balance - amount;
-			if (finalBanance > 0)
+			if (finalBanance > reserve)
 			{
 				pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
 				ctx_.view().update(pSle);
-			}			
+			}
+			else
+				return tecUNFUNDED_PAYMENT;
 		}
+		return tesSUCCESS;
 	}
 
 	int64_t SleOps::balance(AccountID const& address)

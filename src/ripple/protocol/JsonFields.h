@@ -107,6 +107,7 @@ JSS ( accounts );                   // in: LedgerEntry, Subscribe,
                                     //     handlers/Ledger, Unsubscribe
                                     // out: WalletAccounts
 JSS ( accounts_proposed );          // in: Subscribe, Unsubscribe
+JSS ( accounts_contract );
 JSS ( action );
 JSS ( acquiring );                  // out: LedgerRequest
 JSS ( address );                    // out: PeerImp

@@ -34,7 +34,12 @@ bool Executive::execute() {
 	JLOG(j.info()) << "Paying" << m_gasCost << "from sender";
 	auto& tx = m_s.ctx().tx;
 	auto sender = tx.getAccountID(sfAccount);
-	m_s.subBalance(sender, m_gasCost);
+	auto ter = m_s.subBalance(sender, m_gasCost);
+	if (ter != tesSUCCESS)
+	{
+		m_excepted = ter;
+		return true;
+	}
 
 	if (uint256(tx.getFieldU32(sfGas)) < (uint256)m_baseGasRequired)
 	{
@@ -107,7 +112,22 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 	}
 
 	// Transfer zxc.
-	m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+	TER ret = tesSUCCESS;
+	if (m_s.getSle(_p.receiveAddress) == nullptr)
+	{
+		//account not exist,activate it
+		ret = m_s.doPayment(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+	}
+	else
+	{
+		ret = m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+	}
+
+	if (ret != tesSUCCESS)
+	{
+		m_excepted = ret;
+		return true;
+	}
 
 	return !m_ext;
 }
@@ -133,23 +153,20 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 
 	// Transfer ether before deploying the code. This will also create new
 	// account if it does not exist yet.
-	TER ret = tesSUCCESS;
-	if (m_depth == INITIAL_DEPTH)
-	{
-		ret = m_s.activateContract(_sender, m_newAddress, _endowment);
-	}
-	else
+	auto value = _endowment;
+	if (m_depth > INITIAL_DEPTH)
 	{
 		//contract create contract
-		auto value = uint256(m_s.ctx().view().fees().accountReserve(0).drops());
-		ret = m_s.activateContract(_sender, m_newAddress, value);
+		value = uint256(m_s.ctx().view().fees().accountReserve(0).drops());
 	}
+
+	TER ret = m_s.doPayment(_sender, m_newAddress, value);
 	if (ret != tesSUCCESS)
 	{
 		m_excepted = ret;
 		return true;
 	}
-	//m_s.transferBalance(_sender, m_newAddress, _endowment);
+
 	uint32 newNonce = m_s.requireAccountStartNonce();
 	m_s.setNonce(m_newAddress, newNonce);
 

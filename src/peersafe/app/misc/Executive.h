@@ -65,7 +65,7 @@ public:
 		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress);
 
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
-	/// @returns false iff go() must be called (and thus a VM execution in required).
+	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool call(AccountID const& _receiveAddress, AccountID const& _txSender, 
 		uint256 const& _txValue, uint256 const& _gasPrice, bytesConstRef const& _txData, int64_t const& _gas);
 	bool call(CallParametersR const& _cp, uint256 const& _gasPrice, AccountID const& _origin);

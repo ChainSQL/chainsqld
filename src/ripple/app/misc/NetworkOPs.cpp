@@ -2787,8 +2787,8 @@ void NetworkOPsImp::PubContractEvents(const AccountID& contractID,uint256 const 
 {
     hash_set<InfoSub::pointer>  notify;
 
-    auto simiIt = mSubRTAccount.find(contractID);
-    if (simiIt != mSubRTAccount.end())
+    auto simiIt = mSubContract.find(contractID);
+    if (simiIt != mSubContract.end())
     {
         auto it = simiIt->second.begin();
 
@@ -3083,7 +3083,7 @@ NetworkOPsImp::SubInfoMapType& NetworkOPsImp::getCompatibleSubInfoMap(InfoSub::A
         return mSubAccount;
     case ripple::InfoSub::ACCOUNT_REALTIME:
         return mSubRTAccount;
-    case ripple::InfoSub::ACCOUNT_CONTRACE:
+    case ripple::InfoSub::ACCOUNT_CONTRACT:
         return mSubContract;
     default:
         return mSubAccount;

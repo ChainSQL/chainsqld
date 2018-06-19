@@ -133,6 +133,16 @@ Json::Value doUnsubscribe (RPC::Context& context)
         context.netOps.unsubAccount(ispSub, ids, InfoSub::ACCOUNT_NORMANT);
     }
 
+	if (context.params.isMember(jss::accounts_contract))
+	{
+		if (!context.params[jss::accounts_contract].isArray())
+			return rpcError(rpcINVALID_PARAMS);
+
+		auto ids = RPC::parseAccountIds(context.params[jss::accounts_contract]);
+		if (ids.empty())
+			return rpcError(rpcACT_MALFORMED);
+		context.netOps.unsubAccount(ispSub, ids, InfoSub::ACCOUNT_CONTRACT);
+	}
 
 	if (context.params.isMember(jss::transaction))
 	{
