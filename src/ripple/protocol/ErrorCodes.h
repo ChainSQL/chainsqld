@@ -119,6 +119,7 @@ enum error_code_i
 	rpcCTR_ACT_MISSING,
 	rpcCTR_DATA_MISSING,
 	rpcCTR_EVMEXE_EXCEPTION,
+	rpcCTR_CONTENT_EMPTY,
 
     // Internal error (should never happen)
     rpcINTERNAL,        // Generic internal error.
