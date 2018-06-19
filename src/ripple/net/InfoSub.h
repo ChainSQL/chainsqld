@@ -52,7 +52,7 @@ public:
 
     using Consumer = Resource::Consumer;
 
-    enum ACOUNT_TYPE { ACCOUNT_NORMANT, ACCOUNT_REALTIME, ACCOUNT_CONTRACE };
+    enum ACOUNT_TYPE { ACCOUNT_NORMANT, ACCOUNT_REALTIME, ACCOUNT_CONTRACT };
 
 public:
     /** Abstracts the source of subscription data.

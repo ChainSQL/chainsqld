@@ -187,6 +187,18 @@ Json::Value doSubscribe (RPC::Context& context)
         JLOG(context.j.debug()) << "doSubscribe: accounts: " << ids.size();
     }
 
+	if (context.params.isMember(jss::accounts_contract))
+	{
+		if (!context.params[jss::accounts_contract].isArray())
+			return rpcError(rpcINVALID_PARAMS);
+
+		auto ids = RPC::parseAccountIds(context.params[jss::accounts_contract]);
+		if (ids.empty())
+			return rpcError(rpcACT_MALFORMED);
+		context.netOps.subAccount(ispSub, ids, InfoSub::ACCOUNT_CONTRACT);
+		JLOG(context.j.debug()) << "doSubscribe: accounts_contract: " << ids.size();
+	}
+
 	if (context.params.isMember(jss::transaction))
 	{
 		auto sTxId = context.params[jss::transaction].asString();

@@ -133,7 +133,7 @@ hash_set <AccountID>& InfoSub::getCompatibleAccountSet(ACOUNT_TYPE eType)
         return normalSubscriptions_;
     case ripple::InfoSub::ACCOUNT_REALTIME:
         return realTimeSubscriptions_;
-    case ripple::InfoSub::ACCOUNT_CONTRACE:
+    case ripple::InfoSub::ACCOUNT_CONTRACT:
         return contractSubscriptions_;
     default:
         return normalSubscriptions_;
