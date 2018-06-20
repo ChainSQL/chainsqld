@@ -262,8 +262,7 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 			}
         }
 	}
-
-	if (ctx.tx.isFieldPresent(sfTransferRate) && ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE)
+	else if (ctx.tx.isFieldPresent(sfTransferRate) && ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE)
 	{
 		if (sle->isFieldPresent(sfTransferFeeMin) && sle->isFieldPresent(sfTransferFeeMax))
 		{
