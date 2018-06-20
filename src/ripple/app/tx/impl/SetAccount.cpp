@@ -240,6 +240,9 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
 				}
 			}
+			else {
+				return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+			}
 		}
 		else if (fMin > 0 && fMin == fMax)
 		{
