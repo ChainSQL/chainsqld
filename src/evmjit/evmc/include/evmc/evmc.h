@@ -544,6 +544,24 @@ typedef void (*evmc_emit_log_fn)(struct evmc_context* context,
                                  size_t topics_count);
 
 /**
+ * executeSQL callback function.
+ *
+ *  This callback function is used by an EVM to inform about a executing SQL that happened
+ *  during an EVM bytecode execution.
+ *  @param context       The pointer to the Host execution context.
+ *                       @see ::evmc_context.
+ *  @param address       The address of the contract that generated the log.
+ *  @param data          The pointer to SQL attached to the executeSQL.
+ *  @param data_size     The length of the data.
+ *                       0 and 4 inclusively.
+ */
+typedef int64_t (*evmc_emit_executesql_fn)(struct evmc_context* context,
+                                 const struct evmc_address* address,
+                                 const uint8_t* sqls,
+                                 size_t data_size);
+
+
+/**
  * Pointer to the callback function supporting EVM calls.
  *
  *  @param[out] result  The result of the call. The result object is not
@@ -599,6 +617,9 @@ struct evmc_context_fn_table
 
     /** Emit log callback function. */
     evmc_emit_log_fn emit_log;
+
+    /** Emit execute sql callback function. */
+	evmc_emit_executesql_fn emit_executesql;
 };
 
 

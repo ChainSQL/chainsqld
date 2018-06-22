@@ -101,6 +101,17 @@ void log(
 	env.log(_topics, _numTopics, bytesConstRef{ _data, _dataSize });
 }
 
+int64_t evm_executeSQL(
+	evmc_context* _context,
+	evmc_address const* _addr,
+	uint8_t const* _data,
+	size_t _dataSize
+) noexcept
+{
+	return 1;
+}
+
+
 void getTxContext(evmc_tx_context* result, evmc_context* _context) noexcept
 {
 	auto& env = static_cast<ExtVMFace&>(*_context);
@@ -263,6 +274,7 @@ evmc_context_fn_table const fnTable = {
 	getTxContext,
 	getBlockHash,
 	log,
+	evm_executeSQL,
 };
 
 ExtVMFace::ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,
