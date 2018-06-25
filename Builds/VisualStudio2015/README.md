@@ -16,7 +16,7 @@
 > [Git for windows](https://git-scm.com/downloads)
 
 ### install cmake for windows
-> [cmake for windows](https://cmake.org/download/)
+> 编译chainsql需要3.10版本的[cmake for windows](https://cmake.org/download/)
 
 ### install protocol
 > 1. 编译 chainsqld 需要 2.5.1 以上版本的 [protoc.exe](https://ripple.github.io/Downloads/protoc/2.5.1/protoc.exe)
