@@ -74,16 +74,16 @@ show variables like 'character%';
 
 
 ### 4.	最大连接数设置（可选）
-show variables like '%max_connections%';<br>
-默认是151：<br>
- 
-修改配置命令如下：<br>
-set GLOBAL max_connections = 10000;<br>
+	show variables like '%max_connections%';
+默认是151，
+修改配置命令如下：
+
+	set GLOBAL max_connections = 10000;
 	
 ## 二、区块链网络搭建
 需要至少 4 个验证节点，每个验证节点需要生成public key和seed。
 
-	下面以一个验证节点为例进行说明，想要得到更多节点，重复以下步骤即可。
+下面以一个验证节点为例进行说明，想要得到更多节点，重复以下步骤即可。
 ### 1.	验证节点公私钥的生成
 1)	将可执行程序与配置文件（如chainsqld-example.cfg）放在用户目录，先启动一下：
 
@@ -93,9 +93,9 @@ nohup ./chainsqld --conf="./chainsqld-example.cfg"&
 
 **备注：**
 
-	I） 使用不同的配置文件启动应用程序，可以得到不同的验证节点。有关启动节点，以及查看各节点运行情况的详细介绍，请参见后面“架设网络”部分。
+&emsp;&emsp;I） 使用不同的配置文件启动应用程序，可以得到不同的验证节点。有关启动节点，以及查看各节点运行情况的详细介绍，请参见后面“架设网络”部分。
 
-	II）配置文件需要依据您个人的应用场景进行修改，配置文件的修改方法，请参见后面“配置文件的修改”部分。
+&emsp;&emsp;II）配置文件需要依据您个人的应用场景进行修改，配置文件的修改方法，请参见后面“配置文件的修改”部分。
 2)	确认chainsqld程序已经启动，输入ps –ef | grep chainsqld，看是否列出chainsqld进程
 
 3)	生成validation_public_key及validation_seed, 输入:<br>
@@ -118,10 +118,12 @@ nohup ./chainsqld --conf="./chainsqld-example.cfg"&
 
 **[sync_db]**
 
-	配置port，db，mysql安装时设置的(user,pass)等。
-	Chainsql中的事务与行级控制要求每个节点必须配置数据库，如果用不到这两个特性，也可以选择只在需要查看数据的节点配置数据库。
+&emsp;&emsp;配置port，db，mysql安装时设置的(user,pass)等。
 
-	例如：
+&emsp;&emsp;Chainsql中的事务与行级控制要求每个节点必须配置数据库，如果用不到这两个特性，也可以选择只在需要查看数据的节点配置数据库。
+
+&emsp;&emsp;例如：
+	
 		[sync_db]
 		type=mysql
 		host=localhost
@@ -130,55 +132,64 @@ nohup ./chainsqld --conf="./chainsqld-example.cfg"&
 		pass=root
 		db=chainsql
 		first_storage=0   #关闭先入库后共识的功能
-**[server]**
-
-	不同节点配置不同
+**[server]**&emsp;&emsp;不同节点配置不同
 	
 **[node_db]**
 
-	windows平台: type=NuDB
-	Ubuntu平台:  type=RocksDB
+&emsp;&emsp;windows平台: type=NuDB
+
+&emsp;&emsp;Ubuntu平台:  type=RocksDB
 
 **[ips_fixed]**
 
-	chainsql始终尝试进行对等连接的IP地址或主机名（其它三个节点的ip及端口号5123）。
-	例如：
+&emsp;&emsp;chainsql始终尝试进行对等连接的IP地址或主机名（其它三个节点的ip及端口号5123）。
+
+&emsp;&emsp;例如：
+
 		[ips_fixed]
 		127.0.0.1 51236
 		127.0.0.1 51237
 		127.0.0.1 51238
 **[validators]或[validators_file]**
 
-	添加其他(三个)节点的validation_public_key；
-	例如：
+&emsp;&emsp;添加其他(三个)节点的validation_public_key；
+
+&emsp;&emsp;例如：
+
 		[validators]
 		n9MRden4YqNe1oM9CTtpjtYdLHamKZwb1GmmnRgmSmu3JLghBGGJ
 		n9Ko97E3xBCrgTy4SR7bRMomytxgkXePRoQUBAsdz1KU1C7qC4xq
 		n9Km65gnE4uzT1V9L7yAY9TpjWK1orVPthCkSNX8nRhpRaeCN6ga
 **[validation_public_key]**
 
-	添加本节点的validation_public_key。此字段可不配置，但方便后续查阅，建议配置。
-	例如：
+&emsp;&emsp;添加本节点的validation_public_key。此字段可不配置，但方便后续查阅，建议配置。
+
+&emsp;&emsp;例如：
+
 		[validation_public_key]
 		n9Jq6dyM2jbxspDu92qbiz4pq7zg8umnVCmNmEDGGyyJv9XchvVn
 **[validation_seed]**
 
-	添加本节点的validation_seed。只有验证节点需要配validation_seed，普通节点不需要这一配置。
-	例如：
+&emsp;&emsp;添加本节点的validation_seed。只有验证节点需要配validation_seed，普通节点不需要这一配置。
+
+&emsp;&emsp;例如：
+
 		[validation_public_key]
 		n9Jq6dyM2jbxspDu92qbiz4pq7zg8umnVCmNmEDGGyyJv9XchvVn
 		[validation_seed]
 		xnvq8z6C1hpcYPP94dbBib1VyoEQ1
 **[auto_sync]**
 
-	auto_sync配置为1表示开启表自动同步，开启后，在节点正常运行的情况下，新建表会自动入同步到数据库，如果不想自动同步，只想同步需要同步的表，用下面的配置：
+&emsp;&emsp;auto_sync配置为1表示开启表自动同步，开启后，在节点正常运行的情况下，新建表会自动入同步到数据库，如果不想自动同步，只想同步需要同步的表，用下面的配置：
 
-	[sync_tables]
-	zBUunFenERVydrqTD3J3U1FFqtmtYJGjNP tablename
-	zxryEYgWvpjh6UGguKmS6vqgCwRyV16zuy tablename2
+		[sync_tables]
+		zBUunFenERVydrqTD3J3U1FFqtmtYJGjNP tablename
+		zxryEYgWvpjh6UGguKmS6vqgCwRyV16zuy tablename2
 
-	非加密表格式：	建表账户 表名
-	加密表格式：	建表账户 表名 可解密账户私钥
+
+&emsp;&emsp;非加密表格式：	建表账户 表名
+
+&emsp;&emsp;加密表格式：	建表账户 表名 可解密账户私钥
 
 ## 3.	架设网络 　　
 1)	启动chainsqld程序
