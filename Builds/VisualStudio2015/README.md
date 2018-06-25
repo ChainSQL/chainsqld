@@ -38,8 +38,8 @@
 > 3. 将 BOOST_ROOT 环境变量设置为 C:\lib\boost_1_62_0
 
 ### install mysql
-> 1. 下载 [libmysqlclient for windwos](https://dev.mysql.com/downloads/connector/c/)。建议优先选择 x86，64-bit 的压缩包。
-> 2. 将 MYSQL_ROOT_DIR 环境变量设置为 libmysqlclient 的安装目录
+> 1. 下载5.6或5.7版本的 [MySQL Community Server](https://downloads.mysql.com/archives/community/)。建议优先选择 x86，64-bit 的压缩包。
+> 2. 将 MYSQL_ROOT_DIR 环境变量设置为 mysql 的安装目录
 
 ## 编译 chainsqld
 ### 下载源码
