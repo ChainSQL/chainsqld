@@ -104,15 +104,14 @@ nohup ./chainsqld --conf="./chainsqld-example.cfg"&
 ```
 
 4)	返回结果如下：
-
-	{
-		"status" : "success",
-		"validation_key" : "TUCK NUDE CORD BERN LARD COCK ENDS ETC GLUM GALE CASK KEG",
-		"validation_public_key" : "n9L9BaBQr3KwGuMoRWisBbqXfVoKfdJg3Nb3H1gjRSiM1arQ4vNg",
-		"validation_seed" : "xxjX5VuTjQKvkTSw6EUyZnahbpgS1"
-	}
-
-
+```
+{
+   "status" : "success",
+   "validation_key" : "TUCK NUDE CORD BERN LARD COCK ENDS ETC GLUM GALE CASK KEG",
+   "validation_public_key" : "n9L9BaBQr3KwGuMoRWisBbqXfVoKfdJg3Nb3H1gjRSiM1arQ4vNg",
+   "validation_seed" : "xxjX5VuTjQKvkTSw6EUyZnahbpgS1"
+}
+```
 ### 2.	配置文件的修改
 
 以下仅针对部分字段进行说明：
