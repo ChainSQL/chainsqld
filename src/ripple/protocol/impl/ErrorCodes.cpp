@@ -121,7 +121,10 @@ public:
         add (rpcUNKNOWN_COMMAND,       "unknownCmd",        "Unknown method.");
         add (rpcWRONG_SEED,            "wrongSeed",         "The regular key does not point as the master key.");
         add (rpcSENDMAX_MALFORMED,     "sendMaxMalformed",  "SendMax amount malformed.");
-		add(rpcCTR_ACT_MISSING,        "contractAddrMissing","Contract Address not provided.");
+		add(rpcCTR_ACT_MISSING,        "contractAddrMissing", "Contract address not provided.");
+		add(rpcCTR_DATA_MISSING,       "contractDataMissing", "Contract data not provided.");
+		add(rpcCTR_EVMEXE_EXCEPTION,   "contractAddrMissing", "Contract execution exception.");
+		add(rpcCTR_CONTENT_EMPTY,      "fieldContentEmpty", "Field content is empty.");
     }
 
     ErrorInfo const& get (error_code_i code) const
