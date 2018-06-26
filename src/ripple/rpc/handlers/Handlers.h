@@ -105,7 +105,7 @@ Json::Value doValidators            (RPC::Context&);
 Json::Value doValidatorListSites    (RPC::Context&);
 
 //for contract
-Json::Value doContractLocalCall(RPC::Context&);
+Json::Value doContractCall(RPC::Context&);
 
 } // ripple
 

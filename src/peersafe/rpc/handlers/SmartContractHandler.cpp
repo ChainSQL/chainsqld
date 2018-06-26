@@ -139,7 +139,7 @@ std::pair<Json::Value, bool> checkJsonFields(Json::Value originJson)
 	return ret;
 }
 
-Json::Value doContractLocalCall(RPC::Context& context)
+Json::Value doContractCall(RPC::Context& context)
 {
 	Application& appTemp = context.app;
 	std::string errMsgStr("");

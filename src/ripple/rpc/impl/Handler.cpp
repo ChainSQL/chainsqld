@@ -180,7 +180,7 @@ Handler handlerArray[] {
 	{	"tx_count",				byRef(&doTxCount),            Role::USER,	 NO_CONDITION },
 	{	"tx_crossget",			byRef(&doGetCrossChainTx),	   Role::USER,	NO_CONDITION },
 	//Contract methods
-	{	"c_localcall",			byRef(&doContractLocalCall),	   Role::USER,	NO_CONDITION },
+	{	"contract_call",		byRef(&doContractCall),	   Role::USER,	NO_CONDITION },
     // Evented methods
     {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION     },
     {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION     },
