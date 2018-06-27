@@ -96,7 +96,7 @@ nohup ./chainsqld --conf="./chainsqld-example.cfg"&
 &emsp;&emsp;I） 使用不同的配置文件启动应用程序，可以得到不同的验证节点。有关启动节点，以及查看各节点运行情况的详细介绍，请参见后面“架设网络”部分。
 
 &emsp;&emsp;II）配置文件需要依据您个人的应用场景进行修改，配置文件的修改方法，请参见后面“配置文件的修改”部分。
-2)	确认chainsqld程序已经启动，输入ps –ef | grep chainsqld，看是否列出chainsqld进程
+2)	确认chainsqld程序已经启动，输入ps -ef|grep chainsqld，看是否列出chainsqld进程
 
 3)	生成validation_public_key及validation_seed, 输入:<br>
 ```
