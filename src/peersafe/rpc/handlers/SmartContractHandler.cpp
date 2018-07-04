@@ -39,7 +39,7 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 	Json::Value jvResult;
 	try
 	{
-		jvResult[jss::tx_json] = originJson;
+		jvResult[jss::request] = originJson;
 
 		if (temUNCERTAIN != terResult)
 		{
@@ -50,7 +50,7 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 			}
 			else
 			{
-				jvResult[jss::contract_local_call_result] = exeResult;
+				jvResult[jss::contract_call_result] = exeResult;
 			}
 		}
 	}
@@ -97,7 +97,7 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 
 	TER terResult = e.getException();
 	owning_bytes_ref localCallRet = e.takeOutput();
-	std::string localCallRetStr = strHex(localCallRet.takeBytes());
+	std::string localCallRetStr = "0x" + strHex(localCallRet.takeBytes());
 
 	return std::make_pair(terResult, localCallRetStr);
 }
@@ -108,28 +108,29 @@ std::pair<Json::Value, bool> checkJsonFields(Json::Value originJson)
 	ret.second = false;
 	if (!originJson.isObject())
 	{
-		ret.first = RPC::object_field_error(jss::tx_json);
+		ret.first = RPC::object_field_error(jss::params);
 		return ret;
 	}
 
 	if (!originJson.isMember(jss::Account))
 	{
+		//ret.first = RPC::missing_field_error(jss::Account);
 		ret.first = RPC::make_error(rpcSRC_ACT_MISSING,
-			RPC::missing_field_message("tx_json.Account"));
+			RPC::missing_field_message("Account"));
 		return ret;
 	}
 
 	if (!originJson.isMember(jss::ContractAddress))
 	{
 		ret.first = RPC::make_error(rpcCTR_ACT_MISSING,
-			RPC::missing_field_message("tx_json.ContractAddress"));
+			RPC::missing_field_message("ContractAddress"));
 		return ret;
 	}
 
 	if (!originJson.isMember(jss::ContractData))
 	{
 		ret.first = RPC::make_error(rpcCTR_DATA_MISSING,
-			RPC::missing_field_message("tx_json.ContractData"));
+			RPC::missing_field_message("ContractData"));
 		return ret;
 	}
 	ret.first = Json::Value();
@@ -142,25 +143,26 @@ Json::Value doContractCall(RPC::Context& context)
 	Application& appTemp = context.app;
 	std::string errMsgStr("");
 
-	Json::Value jsonRpcObj = context.params[jss::tx_json];
+	//Json::Value jsonRpcObj = context.params[jss::tx_json];
+	Json::Value jsonParams = context.params;
 
-	auto checkResult = checkJsonFields(jsonRpcObj);
+	auto checkResult = checkJsonFields(jsonParams);
 	if (!checkResult.second)
 		return checkResult.first;
-	auto const srcAddressID = parseBase58<AccountID>(jsonRpcObj[jss::Account].asString());
+	auto const srcAddressID = parseBase58<AccountID>(jsonParams[jss::Account].asString());
 	if (srcAddressID == boost::none)
 	{
 		errMsgStr = "Account field is empty!";
 		return contractLocalCallErrResultImpl(rpcCTR_CONTENT_EMPTY, errMsgStr);
 	}
-	auto const contractAddrID = parseBase58<AccountID>(jsonRpcObj[jss::ContractAddress].asString());
+	auto const contractAddrID = parseBase58<AccountID>(jsonParams[jss::ContractAddress].asString());
 	if (contractAddrID == boost::none)
 	{
 		errMsgStr = "ContractAddress field is empty!";
 		return contractLocalCallErrResultImpl(rpcCTR_CONTENT_EMPTY, errMsgStr);
 	}
 	
-	auto strUnHexRes = strUnHex(jsonRpcObj[jss::ContractData].asString());
+	auto strUnHexRes = strUnHex(jsonParams[jss::ContractData].asString());
 	if (!strUnHexRes.second)
 	{
 		errMsgStr = "tx_json.ContractData";
@@ -189,7 +191,7 @@ Json::Value doContractCall(RPC::Context& context)
 
 	auto localCallRet = doEVMCall(applyContext);
 
-	return ContractLocalCallResultImpl(jsonRpcObj, localCallRet.first, localCallRet.second);
+	return ContractLocalCallResultImpl(jsonParams, localCallRet.first, localCallRet.second);
 }
 
 } // ripple
