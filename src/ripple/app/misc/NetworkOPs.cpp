@@ -438,7 +438,7 @@ public:
 	void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,
 		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes,bool bVaidated) override;
 	//publish results for chain-sql txs
-	void pubChainSqlTxResult(const STTx& stTxn,
+	void pubTxResult(const STTx& stTxn,
 		const std::pair<std::string, std::string>& disposRes,bool validated);
 	void pubChainSqlTableTxs(const AccountID& ownerId, const std::string& sTableName, 
 		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes);
@@ -2757,7 +2757,7 @@ void NetworkOPsImp::PubValidatedTxForTable(const STTx& tx)
 		}
 		if (listPair.size() > 0)
 		{
-			pubChainSqlTxResult(tx, res, true);
+			pubTxResult(tx, res, true);
 		}
 	}
 	else
@@ -2778,7 +2778,7 @@ void NetworkOPsImp::PubValidatedTxForTable(const STTx& tx)
 		else
 		{
 			//ripple original tx
-			pubChainSqlTxResult(tx, res, true);
+			pubTxResult(tx, res, true);
 		}
 	}
 }
@@ -2911,15 +2911,15 @@ void NetworkOPsImp::pubTableTxs(const AccountID& owner, const std::string& sTabl
 	if (!bValidated && mSubTx.find(stTxn.getTransactionID()) != mSubTx.end())
 	{
 		auto result = std::make_pair("validate_success", "");
-		pubChainSqlTxResult(stTxn, result, true);
+		pubTxResult(stTxn, result, true);
 	}
 
-	pubChainSqlTxResult(stTxn, res, bValidated);
+	pubTxResult(stTxn, res, bValidated);
 	pubChainSqlTableTxs(owner, sTableName, stTxn, res);
 }
 
 //publish results for chain-sql txs
-void NetworkOPsImp::pubChainSqlTxResult(const STTx& stTxn,
+void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 	const std::pair<std::string, std::string>& disposRes,bool bValidated)
 {
 	ScopedLockType sl(mSubLock);
