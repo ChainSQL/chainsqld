@@ -41,7 +41,8 @@ bool Executive::execute() {
 		return true;
 	}
 
-	if (uint256(tx.getFieldU32(sfGas)) < (uint256)m_baseGasRequired)
+	int64_t gas = tx.getFieldU32(sfGas);
+	if (uint256(gas) < (uint256)m_baseGasRequired)
 	{
 		m_excepted = tefGAS_INSUFFICIENT;
 		return true;
@@ -50,7 +51,6 @@ bool Executive::execute() {
 	m_input = tx.getFieldVL(sfContractData);
 	uint256 value = uint256(tx.getFieldAmount(sfContractValue).zxc().drops());
 	uint256 gasPrice = uint256(GAS_PRICE);
-	int64_t gas = tx.getFieldU32(sfGas);
 	if (isCreation)
 	{
 		return create(sender, value, gasPrice, gas - m_baseGasRequired, &m_input, sender);
@@ -174,7 +174,7 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 	Blob data;
 	if (!_code.empty())
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
-			uint256(0)/*_endowment*/, _gasPrice, &data, _code, sha512Half(_code.data()), m_depth, true, false);
+			value, _gasPrice, &data, _code, sha512Half(_code.data()), m_depth, true, false);
 
 	return !m_ext;
 }
