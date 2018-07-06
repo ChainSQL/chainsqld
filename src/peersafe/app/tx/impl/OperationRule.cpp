@@ -180,6 +180,12 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 				if (jsonRule[jss::Update].isMember(jss::Fields))
 				{
 					Json::Value jsonFields = jsonRule[jss::Update][jss::Fields];
+					//RR-382
+					if ( (0 == jsonFields.size()) && bContainCountLimit )
+					{
+						return temBAD_UPDATERULE;
+					}
+					//
 					for (Json::UInt idx = 0; idx < jsonFields.size(); idx++)
 					{
 						if (std::find(vecFields.begin(), vecFields.end(), jsonFields[idx].asString()) == vecFields.end())
@@ -188,7 +194,7 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 							return temBAD_OPERATIONRULE;
 					}
 				}
-				else if (!accountField.empty()) {
+				else if (bContainCountLimit) {
 					return temBAD_UPDATERULE;
 				}
 				if (jsonRule[jss::Update].isMember(jss::Condition))
@@ -200,7 +206,7 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 						return temBAD_OPERATIONRULE;
 				}
 			}
-			else if (!accountField.empty()) {
+			else if (bContainCountLimit) {
 				return temBAD_UPDATERULE;
 			}
 
@@ -218,6 +224,11 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 				//if insert count is limited,then delete must define only the 'AccountField' account can delet
 				if (bContainCountLimit)
 				{
+					if (!jsonRule[jss::Delete].isMember(jss::Condition))
+					{
+						return temBAD_DELETERULE;
+					}
+					//
 					if (jsonRule[jss::Delete][jss::Condition].isMember("$or"))
 						return temBAD_DELETERULE;
 					else if (jsonRule[jss::Delete][jss::Condition].isMember("$and"))
@@ -254,9 +265,25 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 					}
 					else
 					{
-						std::string sDelete = jsonRule[jss::Delete][jss::Condition].toStyledString();
-						if (sDelete.find(sAccountCondition) == std::string::npos)
-							return temBAD_DELETERULE;
+						if (sAccountCondition.empty())//RR-382
+						{
+							if (jsonRule[jss::Delete][jss::Condition].isMember(accountField))
+							{
+								std::string strAccount = jsonRule[jss::Delete][jss::Condition][accountField].asString();
+								if (strAccount != "$account" && strAccount != to_string(tx.getAccountID(sfAccount)))
+								{
+									return temBAD_DELETERULE;
+								}
+							}
+							else
+								return temBAD_DELETERULE;
+						}
+						else
+						{
+							std::string sDelete = jsonRule[jss::Delete][jss::Condition].toStyledString();
+							if (sDelete.find(sAccountCondition) == std::string::npos)
+								return temBAD_DELETERULE;
+						}
 					}
 				}
 			}
