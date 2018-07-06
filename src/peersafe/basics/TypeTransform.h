@@ -3,7 +3,7 @@
 
 #include <ripple/protocol/AccountID.h>
 #include <ripple/basics/base_uint.h>
-#include <peersafe/vm/common.h>
+#include <peersafe/vm/Common.h>
 #include <evmc/evmc.h>
 
 namespace ripple {
