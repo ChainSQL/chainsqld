@@ -48,6 +48,9 @@ enum ApplyFlags
 	// get tx from client
 	tapFromClient = 0x8000,
 
+	//applying for buildLCL
+	tapForConsensus = 0x2000,
+
     // get tx by relay
     tapByRelay = 0x4000,
 };

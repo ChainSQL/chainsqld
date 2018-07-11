@@ -65,7 +65,7 @@ public:
 
 	AccountID calcNewAddress(AccountID sender, int nonce);
 
-    void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const unsigned char * byValue);
+    void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue);
 
     void kill(AccountID sender);
 private:

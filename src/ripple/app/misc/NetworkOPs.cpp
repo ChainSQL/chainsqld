@@ -443,7 +443,7 @@ public:
 	void pubChainSqlTableTxs(const AccountID& ownerId, const std::string& sTableName, 
 		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes);
 
-    void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const unsigned char * byValue);
+    void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue);
     //--------------------------------------------------------------------------
     //
     // InfoSub::Source.
@@ -2783,7 +2783,7 @@ void NetworkOPsImp::PubValidatedTxForTable(const STTx& tx)
 	}
 }
 
-void NetworkOPsImp::PubContractEvents(const AccountID& contractID,uint256 const * aTopic, int iTopicNum, const unsigned char * byValue)
+void NetworkOPsImp::PubContractEvents(const AccountID& contractID,uint256 const * aTopic, int iTopicNum, const Blob& byValue)
 {
     hash_set<InfoSub::pointer>  notify;
 
@@ -2811,13 +2811,14 @@ void NetworkOPsImp::PubContractEvents(const AccountID& contractID,uint256 const 
     if (!notify.empty())
     {
         Json::Value jvObj;
+		jvObj[jss::type] = "contract_event";
         jvObj[jss::ContractEventTopics].resize(iTopicNum);
         for (int i = 0; i < iTopicNum; i++)
         {
             jvObj[jss::ContractEventTopics][i] = to_string(aTopic[i]);
         }
 
-        jvObj[jss::ContractEventInfo] = to_string(byValue);
+        jvObj[jss::ContractEventInfo] = strHex(byValue);
 
         for (InfoSub::ref isrListener : notify)
             isrListener->send(jvObj, true);

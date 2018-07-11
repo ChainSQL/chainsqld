@@ -699,7 +699,7 @@ applyTransactions(
             try
             {
                 switch (applyTransaction(
-                    app, view, *it->second, certainRetry, tapNO_CHECK_SIGN, j))
+                    app, view, *it->second, certainRetry, tapNO_CHECK_SIGN | tapForConsensus, j))
                 {
                     case ApplyResult::Success:
                         it = retriableTxs.erase(it);
@@ -792,7 +792,7 @@ RCLConsensus::Adaptor::buildLCL(
             // Special case, we are replaying a ledger close
             for (auto& tx : replay->txns_)
                 applyTransaction(
-                    app_, accum, *tx.second, false, tapNO_CHECK_SIGN, j_);
+                    app_, accum, *tx.second, false, tapNO_CHECK_SIGN | tapForConsensus, j_);
         }
         else
         {

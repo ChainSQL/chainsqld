@@ -190,8 +190,10 @@ namespace ripple
     {
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
-                
-        oSle_.PubContractEvents(AccountID(), fromEvmC(topics), numTopics, data.data());
+		if (ctx.view().flags() & tapForConsensus)
+		{
+			oSle_.PubContractEvents(fromEvmC(myAddress), fromEvmC(topics), numTopics, data.toBytes());
+		}
 
         JLOG(j.trace()) << data.toString();
     }

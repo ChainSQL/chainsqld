@@ -181,7 +181,7 @@ namespace ripple {
 		return id;
 	}
 
-    void SleOps::PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const unsigned char * byValue)
+    void SleOps::PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue)
     {
         ctx_.app.getOPs().PubContractEvents(contractID, aTopic, iTopicNum, byValue);
     }
