@@ -116,21 +116,21 @@ std::pair<Json::Value, bool> checkJsonFields(Json::Value originJson)
 	{
 		//ret.first = RPC::missing_field_error(jss::Account);
 		ret.first = RPC::make_error(rpcSRC_ACT_MISSING,
-			RPC::missing_field_message("Account"));
+			RPC::missing_field_message("account"));
 		return ret;
 	}
 
 	if (!originJson.isMember(jss::contract_address))
 	{
 		ret.first = RPC::make_error(rpcCTR_ACT_MISSING,
-			RPC::missing_field_message("ContractAddress"));
+			RPC::missing_field_message("contract_address"));
 		return ret;
 	}
 
 	if (!originJson.isMember(jss::contract_data))
 	{
 		ret.first = RPC::make_error(rpcCTR_DATA_MISSING,
-			RPC::missing_field_message("ContractData"));
+			RPC::missing_field_message("contract_data"));
 		return ret;
 	}
 	ret.first = Json::Value();
@@ -152,26 +152,26 @@ Json::Value doContractCall(RPC::Context& context)
 	auto const srcAddressID = parseBase58<AccountID>(jsonParams[jss::account].asString());
 	if (srcAddressID == boost::none)
 	{
-		errMsgStr = "Account field is empty!";
+		errMsgStr = "account field is empty!";
 		return contractLocalCallErrResultImpl(rpcCTR_CONTENT_EMPTY, errMsgStr);
 	}
 	auto const contractAddrID = parseBase58<AccountID>(jsonParams[jss::contract_address].asString());
 	if (contractAddrID == boost::none)
 	{
-		errMsgStr = "ContractAddress field is empty!";
+		errMsgStr = "contract_address field is empty!";
 		return contractLocalCallErrResultImpl(rpcCTR_CONTENT_EMPTY, errMsgStr);
 	}
 	
 	auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
 	if (!strUnHexRes.second)
 	{
-		errMsgStr = "tx_json.ContractData";
+		errMsgStr = "contract_data";
 		return contractLocalCallErrResultImpl(rpcINVALID_PARAMS, errMsgStr);
 	}
 	Blob contractDataBlob = strUnHexRes.first;
 	if (contractDataBlob.size() == 0)
 	{
-		errMsgStr = "ContractData field is empty";
+		errMsgStr = "contract_data field is empty";
 		return contractLocalCallErrResultImpl(rpcCTR_CONTENT_EMPTY, errMsgStr);
 	}
 	//int64_t txValue = 0;
