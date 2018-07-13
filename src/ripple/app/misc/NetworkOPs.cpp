@@ -2812,6 +2812,7 @@ void NetworkOPsImp::PubContractEvents(const AccountID& contractID,uint256 const 
     {
         Json::Value jvObj;
 		jvObj[jss::type] = "contract_event";
+		jvObj[jss::ContractAddress] = to_string(contractID);
         jvObj[jss::ContractEventTopics].resize(iTopicNum);
         for (int i = 0; i < iTopicNum; i++)
         {
