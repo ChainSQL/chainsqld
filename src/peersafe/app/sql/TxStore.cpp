@@ -69,7 +69,13 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
         {   
             count++;
             databasecon_ = std::make_shared<DatabaseCon>(setup, database_name, nullptr, 0, dbType);
-        }
+		}
+		catch (soci::soci_error error)
+		{
+			if(count == 1)
+				std::cerr << error.get_error_message() << std::endl;
+			databasecon_ = NULL;
+		}
         catch (...)
         {
             databasecon_ = NULL;
