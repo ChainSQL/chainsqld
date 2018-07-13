@@ -160,12 +160,7 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 		value = uint256(m_s.ctx().view().fees().accountReserve(0).drops());
 	}
 
-	TER ret = m_s.doPayment(_sender, m_newAddress, value);
-	if (ret != tesSUCCESS)
-	{
-		m_excepted = ret;
-		return true;
-	}
+	m_s.createContractAccount(_sender, m_newAddress, value);
 
 	uint32 newNonce = m_s.requireAccountStartNonce();
 	m_s.setNonce(m_newAddress, newNonce);

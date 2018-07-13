@@ -97,6 +97,7 @@ transResults()
 		{ tefGAS_INSUFFICIENT,		 { "tefGAS_INSUFFICIENT",	   "Gas insufficient." } },
 		{ tefCONTRACT_EXEC_EXCEPTION,{ "tefCONTRACT_EXEC_EXCEPTION","Exception occured while executing contract ." } },
 		{ tefCONTRACT_REVERT_INSTRUCTION,{ "tefCONTRACT_REVERT_INSTRUCTION","Contract reverted,maybe 'require' condition not satisfied." } },
+		{ tefCONTRACT_CANNOT_BEPAYED ,{ "tefCONTRACT_CANNOT_BEPAYED","Contract address cannot be 'Destination' for 'Payment'." } },
 
 		{ telLOCAL_ERROR,            { "telLOCAL_ERROR",           "Local failure."                                                                } },
 		{ telBAD_DOMAIN,             { "telBAD_DOMAIN",            "Domain too long."                                                              } },

@@ -110,6 +110,29 @@ namespace ripple {
 		return ret;
 	}
 
+	bool SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)
+	{
+		// Open a ledger for editing.
+		auto const k = keylet::account(_to);
+		SLE::pointer sleDst = ctx_.view().peek(k);
+
+		if (!sleDst)
+		{
+			// Create the account.
+			sleDst = std::make_shared<SLE>(k);
+			sleDst->setAccountID(sfAccount, _to);
+			sleDst->setFieldU32(sfSequence, 1);
+			ctx_.view().insert(sleDst);
+		}
+
+		if (_value != uint256(0))
+		{
+			transferBalance(_from, _to, _value);
+		}
+
+		return true;
+	}
+
 	void SleOps::addBalance(AccountID const& addr, int64_t const& amount)
 	{
 		SLE::pointer pSle = getSle(addr);

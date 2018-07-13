@@ -266,7 +266,12 @@ Payment::preclaim(PreclaimContext const& ctx)
         JLOG(ctx.j.trace()) << "Malformed transaction: DestinationTag required.";
 
         return tecDST_TAG_NEEDED;
-    }
+	}
+	else if (sleDst->isFieldPresent(sfContractCode))
+	{
+		//The destination cannot be a contract address
+		return tefCONTRACT_CANNOT_BEPAYED;
+	}
 
     if (paths || sendMax || !saDstAmount.native())
     {

@@ -49,6 +49,10 @@ public:
 	TER transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 
 	TER doPayment(AccountID const& _from, AccountID const& _to, uint256 const& _value);
+
+	//contract account can have zero zxc and exist on chainsql
+	bool createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value);
+
 	/// Clear the storage root hash of an account to the hash of the empty trie.
 	void clearStorage(AccountID const& _contract);
 
