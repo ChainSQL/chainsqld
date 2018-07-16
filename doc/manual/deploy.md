@@ -132,6 +132,8 @@ nohup ./chainsqld --conf="./chainsqld-example.cfg"&
 		pass=root
 		db=chainsql
 		first_storage=0   #关闭先入库后共识的功能
+		unix_socket=/var/lib/mysql/mysql.sock #使用localhost连接时，会默认使用sock方式连接，默认sock路径是/var/run/mysqld/mysqld.sock在非ubuntu系统中，这个路径是不对的，需要用unix_socket选项来指定sock路径，如果用ip去连接，会使用tcp方式连接，就不会有问题
+
 **[server]**&emsp;&emsp;不同节点配置不同
 	
 **[node_db]**
