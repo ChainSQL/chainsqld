@@ -89,7 +89,7 @@ TxStoreDBConn::~TxStoreDBConn() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TxStoreTransaction::TxStoreTransaction(TxStoreDBConn* storeDBConn)
-    :tr_(std::make_shared<soci::transaction>(storeDBConn->GetDBConn()->checkoutDb()))
+    :tr_(std::make_shared<soci::transaction>(storeDBConn->GetDBConn()->getSession()))
 {
 }
 

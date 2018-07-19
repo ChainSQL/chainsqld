@@ -29,6 +29,40 @@
 
 namespace ripple {
 
+
+inline bool IsNumerialStr_Decimal(std::string str)
+{
+	std::string::const_iterator iter = str.cbegin();
+	if (*iter == '+' || *iter == '-')
+		iter++;
+	//cannot begin with dot
+	if (*iter == '.')
+		return false;
+	//
+	int nDotCnt = 0;
+	std::string::const_iterator findIter = find_if(iter, str.cend(),
+		[&nDotCnt](char item)
+	{
+		if (item >= '0' && item <= '9')
+			return false;
+		else if (item == '.')
+		{
+			nDotCnt++;
+			if (nDotCnt > 1)//must be only one point
+				return true;
+			else
+				return false;
+		}
+		else
+			return true;
+		//if (!(item >= '0' && item <= '9') && item != '.')
+		//	return true;
+		//else
+		//	return false;
+	});
+	return (findIter == str.cend());
+}
+
 // NIKB TODO Remove the need for all these overloads. Move them out of here.
 inline const std::string strHex (std::string const& strSrc)
 {
