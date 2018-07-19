@@ -379,10 +379,7 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 				auto insertsle = ctx.view().peek(id);
 				if (!insertsle)
 				{
-					insertsle = std::make_shared<SLE>(
-						ltINSERTMAP, id.key);
-					insertsle->setFieldVL(sfInsertCountMap, strCopy("{}"));
-					ctx.view().insert(insertsle);
+					return tesSUCCESS;
 				}
 				std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
 				Json::Value jsonMap;
@@ -398,10 +395,6 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 				{
 					return temBAD_INSERTLIMIT;
 				}
-				jsonMap[sNameInDB] = nCount + jsonRaw.size();
-				insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
-				sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
-				ctx.view().update(insertsle);
 			}
 		}
 		else if (optype == (int)R_UPDATE)
@@ -433,68 +426,119 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 	return tesSUCCESS;
 }
 
-TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx, DatabaseCon* pConn)
-{	
-	if (tx.getFieldU16(sfOpType) != R_DELETE)
-		return tesSUCCESS;
+TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx)
+{
+	STEntry* pEntry = getTableEntry(ctx.view(), tx);
+	auto optype = tx.getFieldU16(sfOpType);
+	auto sOperationRule = pEntry->getOperationRule((TableOpType)optype);
+	if (!sOperationRule.empty())
+	{
+		Json::Value jsonRule;
+		if (!Json::Reader().parse(sOperationRule, jsonRule))
+			return temBAD_OPERATIONRULE;
+		std::string sRaw = strCopy(tx.getFieldVL(sfRaw));
 
-	STEntry *pEntry = getTableEntry(ctx.view(), ctx.tx);
-	std::string sOperationRule = "";
-	if (pEntry != NULL) {
-		sOperationRule = pEntry->getOperationRule(R_INSERT);
-	}
-	if (sOperationRule.empty())
-		return tesSUCCESS;
-	Json::Value jsonRule;
-	Json::Reader().parse(sOperationRule, jsonRule);
-	if (!jsonRule.isMember(jss::Count))
-		return tesSUCCESS;
-	std::string sAccountField = jsonRule[jss::Count][jss::AccountField].asString();
-	int insertLimit = jsonRule[jss::Count][jss::CountLimit].asInt();
-	// deal with insert count limit
-	if (insertLimit > 0) {
-		try {
-			auto tables = tx.getFieldArray(sfTables);
-			uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
+		Json::Value jsonRaw;
+		if (!Json::Reader().parse(sRaw, jsonRaw))
+			return temBAD_RAW;
+		if (optype == (int)R_INSERT)
+		{
+			//deal with insert condition 
+			std::map<std::string, std::string> mapRule;
+			std::string accountField;
+			int insertLimit = -1;
+			if (jsonRule.isMember(jss::Condition))
+			{
+				Json::Value& condition = jsonRule[jss::Condition];
+				std::vector<std::string> members = condition.getMemberNames();
+				// retrieve members in object
+				for (size_t i = 0; i < members.size(); i++) {
+					std::string field_name = members[i];
+					mapRule[field_name] = condition[field_name].asString();
+				}
+			}
 
-			std::string sql_str = boost::str(boost::format(
-				R"(SELECT count(*) from t_%s WHERE %s = '%s';)")
-				% to_string(nameInDB)
-				% sAccountField
-				% to_string(tx.getAccountID(sfAccount)));
-			boost::optional<int> count;
-			LockedSociSession sql_session = pConn->checkoutDb();
-			soci::statement st = (sql_session->prepare << sql_str
-				, soci::into(count));
+			if (jsonRule.isMember(jss::Count))
+			{
+				accountField = jsonRule[jss::Count][jss::AccountField].asString();
+				insertLimit = jsonRule[jss::Count][jss::CountLimit].asInt();
+			}
 
-			bool dbret = st.execute(true);
-
-			if (dbret && count)
+			// deal with insert count limit
+			if (insertLimit > 0)
 			{
 				auto uNameInDB = pEntry->getFieldH160(sfNameInDB);
 				auto id = keylet::insertlimit(tx.getAccountID(sfAccount));
 				auto insertsle = ctx.view().peek(id);
-				if (insertsle)
+				if (!insertsle)
 				{
-					std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
-					Json::Value jsonMap;
-					if (!Json::Reader().parse(sCountMap, jsonMap))
-						return temUNKNOWN;
-					auto sNameInDB = to_string(uNameInDB);
-					if (jsonMap.isMember(sNameInDB))
-					{
-						jsonMap[sNameInDB] = *count;
-					}
-					insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
-					ctx.view().update(insertsle);
+					insertsle = std::make_shared<SLE>(
+						ltINSERTMAP, id.key);
+					insertsle->setFieldVL(sfInsertCountMap, strCopy("{}"));
+					ctx.view().insert(insertsle);
 				}
+				std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
+				Json::Value jsonMap;
+				if (!Json::Reader().parse(sCountMap, jsonMap))
+					return temUNKNOWN;
+				int nCount = 0;
+				auto sNameInDB = to_string(uNameInDB);
+				if (jsonMap.isMember(sNameInDB))
+				{
+					nCount = jsonMap[sNameInDB].asInt();
+				}
+				jsonMap[sNameInDB] = nCount + jsonRaw.size();
+				insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
+				sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
+				ctx.view().update(insertsle);
 			}
 		}
-		catch (std::exception &)
+		else if (optype == (int)R_DELETE)
 		{
-			return temUNKNOWN;
+			if (tx.getFieldU16(sfOpType) != R_DELETE)
+				return tesSUCCESS;
+
+			STEntry *pEntry = getTableEntry(ctx.view(), tx);//RR-696
+			std::string sOperationRule = "";
+			if (pEntry != NULL) {
+				sOperationRule = pEntry->getOperationRule(R_INSERT);
+			}
+			if (sOperationRule.empty())
+				return tesSUCCESS;
+			Json::Value jsonRule;
+			Json::Reader().parse(sOperationRule, jsonRule);
+			if (!jsonRule.isMember(jss::Count))
+				return tesSUCCESS;
+			std::string sAccountField = jsonRule[jss::Count][jss::AccountField].asString();
+			int insertLimit = jsonRule[jss::Count][jss::CountLimit].asInt();
+			// deal with insert count limit
+			if (insertLimit > 0)
+			{
+				auto uNameInDB = pEntry->getFieldH160(sfNameInDB);
+				auto id = keylet::insertlimit(tx.getAccountID(sfAccount));
+				auto insertsle = ctx.view().peek(id);
+				if (!insertsle)
+				{
+					return temBAD_DELETERULE;
+				}
+				std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
+				Json::Value jsonMap;
+				if (!Json::Reader().parse(sCountMap, jsonMap))
+					return temUNKNOWN;
+				int nCount = 0;
+				auto sNameInDB = to_string(uNameInDB);
+				if (jsonMap.isMember(sNameInDB))
+				{
+					nCount = jsonMap[sNameInDB].asInt();
+				}
+				jsonMap[sNameInDB] = nCount - jsonRaw.size();//with not judge because of no case of <0
+				insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
+				sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
+				ctx.view().update(insertsle);
+			}
 		}
 	}
+
 	return tesSUCCESS;
 }
 

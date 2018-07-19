@@ -95,9 +95,8 @@ TxStoreDBConn::~TxStoreDBConn() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TxStoreTransaction::TxStoreTransaction(TxStoreDBConn* storeDBConn)
+    :tr_(std::make_shared<soci::transaction>(storeDBConn->GetDBConn()->getSession()))
 {
-    lockSession_ = std::make_shared<LockedSociSession>(storeDBConn->GetDBConn()->checkoutDb());
-    tr_ = std::make_shared<soci::transaction>(*(lockSession_->get()));
 }
 
 TxStoreTransaction::~TxStoreTransaction() {

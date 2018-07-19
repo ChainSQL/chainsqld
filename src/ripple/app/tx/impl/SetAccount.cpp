@@ -137,7 +137,15 @@ SetAccount::preflight (PreflightContext const& ctx)
 		std::string feeMin = strCopy(tx.getFieldVL(sfTransferFeeMin));
 		std::string feeMax = strCopy(tx.getFieldVL(sfTransferFeeMax));
 
-		if (atof(feeMin.c_str()) > atof(feeMax.c_str()))
+		//RR-726
+		if ( (!IsNumerialStr_Decimal(feeMin)) || (!IsNumerialStr_Decimal(feeMax)) )
+		{
+			JLOG(j.trace()) << "Malformed transaction: TransferFeeMin or TransferFeeMax invalid.";
+			return temBAD_TRANSFERFEE;
+		}
+        float fMax = atof(feeMax.c_str());
+        float fMin = atof(feeMin.c_str());
+		if ((fMax != 0 && fMin > fMax) || fMin<0 || fMax < 0)
 		{
 			JLOG(j.trace()) << "Malformed transaction: TransferFeeMin can not be greater than TransferFeeMax.";
 			return temBAD_TRANSFERFEE;
