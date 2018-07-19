@@ -21,7 +21,7 @@ public:
 	static std::string getOperationRule(ApplyView& view, const STTx& tx);
 	static bool hasOperationRule(ApplyView& view, const STTx& tx);
 
-	static TER adjustInsertCount(ApplyContext& ctx, const STTx& tx, DatabaseCon* pConn);
+	static TER adjustInsertCount(ApplyContext& ctx, const STTx& tx);
 };
 
 } // ripple

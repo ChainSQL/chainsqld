@@ -265,8 +265,17 @@ namespace ripple {
 		if(!OperationRule::hasOperationRule(view,tx))
 			return tesSUCCESS;
 
+		//
 		if (!canDispose(ctx_))
+		{
+			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx);//RR-628
+			if (!isTesSuccess(ret2))
+			{
+				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
+				return ret2;
+			}
 			return tesSUCCESS;
+		}
 
 		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
 			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
@@ -281,6 +290,12 @@ namespace ripple {
 		auto result = dispose(txStore, tx);
 		if (result.first == tesSUCCESS)
 		{
+			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx);
+			if (!isTesSuccess(ret2))
+			{
+				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
+				return ret2;
+			}
 			JLOG(app.journal("SqlStatement").trace()) << "Dispose success";
 		}
 		else
@@ -313,11 +328,6 @@ namespace ripple {
 			ret = txStore.Dispose(tx);
 		if (ret.first)
 		{
-			//update insert sle if delete
-			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx,txStore.getDatabaseCon());
-			if (!isTesSuccess(ret2))
-				return std::make_pair(ret2, "Deal with delete rule error");;
-
 			return std::make_pair(tesSUCCESS, ret.second);
 		}
 		else
