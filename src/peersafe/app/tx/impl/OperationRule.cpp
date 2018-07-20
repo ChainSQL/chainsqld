@@ -406,6 +406,10 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 				auto insertsle = ctx.view().peek(id);
 				if (!insertsle)
 				{
+					if (jsonRaw.size() > insertLimit)
+					{
+						return temBAD_INSERTLIMIT;
+					}
 					return tesSUCCESS;
 				}
 				std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
