@@ -253,6 +253,7 @@ prepend(peersafe_unity_srcs
 src/peersafe/unity/
 gm_encrypt.cpp
 app_table.cpp
+app_contract.cpp
 app_sql.cpp)
 
 
