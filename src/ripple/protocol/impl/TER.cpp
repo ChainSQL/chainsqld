@@ -95,9 +95,10 @@ transResults()
 		{ tefBAD_AUTH_MASTER,        { "tefBAD_AUTH_MASTER",       "Auth for unclaimed account needs correct master key."                          } },
 		{ tefADDRESS_AREADY_USED,	 { "tefADDRESS_AREADY_USED",   "Contract address already used when creating contract." } },
 		{ tefGAS_INSUFFICIENT,		 { "tefGAS_INSUFFICIENT",	   "Gas insufficient." } },
-		{ tefCONTRACT_EXEC_EXCEPTION,{ "tefCONTRACT_EXEC_EXCEPTION","Exception occured while executing contract ." } },
+		{ tefCONTRACT_EXEC_EXCEPTION,{ "tefCONTRACT_EXEC_EXCEPTION","Exception occurred while executing contract ." } },
 		{ tefCONTRACT_REVERT_INSTRUCTION,{ "tefCONTRACT_REVERT_INSTRUCTION","Contract reverted,maybe 'require' condition not satisfied." } },
 		{ tefCONTRACT_CANNOT_BEPAYED ,{ "tefCONTRACT_CANNOT_BEPAYED","Contract address cannot be 'Destination' for 'Payment'." } },
+		{ tefCONTRACT_NOT_EXIST ,	 {"tefCONTRACT_NOT_EXIST",		"Contract does not exist,maybe destructed."				}},
 
 		{ telLOCAL_ERROR,            { "telLOCAL_ERROR",           "Local failure."                                                                } },
 		{ telBAD_DOMAIN,             { "telBAD_DOMAIN",            "Domain too long."                                                              } },

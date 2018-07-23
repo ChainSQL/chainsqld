@@ -110,6 +110,12 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
 			m_depth, false, _p.staticCall);
 	}
+	else
+	{
+		// contract may be killed
+		m_excepted = tefCONTRACT_NOT_EXIST;
+		return true;
+	}
 
 	// Transfer zxc.
 	TER ret = tesSUCCESS;

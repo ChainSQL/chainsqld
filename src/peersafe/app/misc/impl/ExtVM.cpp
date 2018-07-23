@@ -137,12 +137,12 @@ namespace ripple
 
     void ExtVM::suicide(evmc_address const& addr) 
     {
-        SLE::pointer sleContract = oSle_.getSle(fromEvmC(addr));
-        SLE::pointer sleMy = oSle_.getSle(fromEvmC(myAddress));
+        SLE::pointer sleContract = oSle_.getSle(fromEvmC(myAddress));
+        SLE::pointer sleTo = oSle_.getSle(fromEvmC(addr));
 
         auto& stBalanceContract = sleContract->getFieldAmount(sfBalance);
-        auto& stBalanceMy = sleMy->getFieldAmount(sfBalance);
-        sleMy->setFieldAmount(sfBalance, stBalanceContract + stBalanceMy);
+        auto& stBalanceMy = sleTo->getFieldAmount(sfBalance);
+		sleTo->setFieldAmount(sfBalance, stBalanceContract + stBalanceMy);
 
         ExtVMFace::suicide(addr);
     }

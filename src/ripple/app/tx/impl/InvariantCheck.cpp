@@ -234,10 +234,13 @@ AccountRootsNotDeleted::visitEntry(
 }
 
 bool
-AccountRootsNotDeleted::finalize(STTx const&, TER, beast::Journal const& j)
+AccountRootsNotDeleted::finalize(STTx const& tx, TER, beast::Journal const& j)
 {
     if (! accountDeleted_)
         return true;
+
+	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT)
+		return true;
 
     JLOG(j.fatal()) << "Invariant failed: an account root was deleted";
     return false;

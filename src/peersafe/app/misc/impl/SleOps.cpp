@@ -211,6 +211,7 @@ namespace ripple {
 
     void SleOps::kill(AccountID addr)
     {
-        assert(0);
+		SLE::pointer pSle = getSle(addr);
+		ctx_.view().erase(pSle);
     }
 }
