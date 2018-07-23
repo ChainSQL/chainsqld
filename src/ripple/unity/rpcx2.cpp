@@ -74,4 +74,5 @@
 #include <peersafe/rpc/impl/TxCommonPrepare.cpp>
 #include <peersafe/rpc/impl/TxSingleTransPrepare.cpp>
 #include <peersafe/rpc/impl/TxTransactionPrepare.cpp>
+#include <peersafe/rpc/handlers/SmartContractHandler.cpp>
 
