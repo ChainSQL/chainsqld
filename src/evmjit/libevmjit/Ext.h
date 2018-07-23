@@ -41,6 +41,7 @@ enum class EnvFunc
 	create,
 	call,
 	log,
+	executeSQL,
 	blockhash,
 	extcode,
 
@@ -76,6 +77,8 @@ public:
 	                  llvm::Value* _inSize,
 	                  llvm::Value* _outOff,
 	                  llvm::Value* _outSize);
+
+	llvm::Value* executeSQL(llvm::Value* _memIdx, llvm::Value* _numBytes);
 
 private:
 	Memory& m_memoryMan;

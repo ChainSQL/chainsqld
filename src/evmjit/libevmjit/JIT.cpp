@@ -227,7 +227,6 @@ uint8_t* evm_realloc(uint8_t* data, size_t size) {
 	return newData;
 }
 
-
 /// A wrapper for new EVM-C copycode callback function.
 size_t getCode(uint8_t** o_pCode, evmc_context* _ctx, evmc_address const* _address) noexcept
 {
@@ -270,6 +269,7 @@ class SymbolResolver : public llvm::SectionMemoryManager
                 .Case("evm.blockhash", reinterpret_cast<uint64_t>(jit.host->get_block_hash))
                 .Case("evm.log", reinterpret_cast<uint64_t>(jit.host->emit_log))
 				.Case("evm.realloc",reinterpret_cast<uint64_t>(evm_realloc))
+				.Case("evm.executeSQL",reinterpret_cast<uint64_t>(jit.host->emit_executesql))
                 .Default(0);
         if (addr)
             return {addr, llvm::JITSymbolFlags::Exported};

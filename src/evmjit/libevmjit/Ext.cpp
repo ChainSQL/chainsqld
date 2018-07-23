@@ -46,6 +46,7 @@ std::array<FuncDesc, sizeOf<EnvFunc>::value> const& getEnvFuncDescs()
 		FuncDesc{"env_create", getFunctionType(Type::Void, {Type::EnvPtr, Type::GasPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::WordPtr})},
 		FuncDesc{"env_call", getFunctionType(Type::Bool, {Type::EnvPtr, Type::GasPtr, Type::Gas, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size})},
 		FuncDesc{"env_log", getFunctionType(Type::Void, {Type::EnvPtr, Type::BytePtr, Type::Size, Type::WordPtr, Type::WordPtr, Type::WordPtr, Type::WordPtr})},
+		FuncDesc{"env_executeSQL", getFunctionType(Type::Size, {Type::EnvPtr, Type::BytePtr, Type::Size, Type::WordPtr})},
 		FuncDesc{"env_blockhash", getFunctionType(Type::Void, {Type::EnvPtr, Type::WordPtr, Type::WordPtr})},
 		FuncDesc{"env_extcode", getFunctionType(Type::BytePtr, {Type::EnvPtr, Type::WordPtr, Type::Size->getPointerTo()})},
 	}};
@@ -206,6 +207,24 @@ llvm::Function* getLogFunc(llvm::Module* _module)
 		func->addAttribute(5, llvm::Attribute::ReadOnly);
 		func->addAttribute(5, llvm::Attribute::NoAlias);
 		func->addAttribute(5, llvm::Attribute::NoCapture);
+	}
+	return func;
+}
+
+llvm::Function* getExecuteSQLFunc(llvm::Module* _module) {
+	static const auto funcName = "evm.executeSQL";
+	auto func = _module->getFunction(funcName);
+	if (!func)
+	{
+		auto addrPtrTy = llvm::Type::getIntNPtrTy(_module->getContext(), 160);
+		auto fty = llvm::FunctionType::get(Type::Size, {Type::EnvPtr, addrPtrTy, Type::BytePtr, Type::Size}, false);
+		func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+		func->addAttribute(2, llvm::Attribute::ReadOnly);
+		func->addAttribute(2, llvm::Attribute::NoAlias);
+		func->addAttribute(2, llvm::Attribute::NoCapture);
+		func->addAttribute(3, llvm::Attribute::ReadOnly);
+		func->addAttribute(3, llvm::Attribute::NoAlias);
+		func->addAttribute(3, llvm::Attribute::NoCapture);
 	}
 	return func;
 }
@@ -597,6 +616,19 @@ std::tuple<llvm::Value*, llvm::Value*> Ext::create(llvm::Value* _gas,
 
 	pAddr = m_builder.CreateBitCast(pAddr, addrTy->getPointerTo());
 	return std::tuple<llvm::Value*, llvm::Value*>{ret, pAddr};
+}
+
+llvm::Value* Ext::executeSQL(llvm::Value* _memIdx, llvm::Value* _numBytes) {
+	auto dataPtr = m_memoryMan.getBytePtr(_memIdx);
+	auto dataSize = m_builder.CreateTrunc(_numBytes, Type::Size, "data.size");
+
+	auto addrTy = m_builder.getIntNTy(160);
+	auto func = getExecuteSQLFunc(getModule());
+
+	auto myAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(Endianness::toNative(m_builder, getRuntimeManager().getAddress()), addrTy));
+	auto r = createCABICall(func, {
+		getRuntimeManager().getEnvPtr(), myAddr, dataPtr, dataSize});
+	return m_builder.CreateZExt(r, Type::Word);
 }
 }
 }

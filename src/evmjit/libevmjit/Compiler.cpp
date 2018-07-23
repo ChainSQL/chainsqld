@@ -923,7 +923,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			// TODO: optimize
 			auto finalGas = m_builder.CreateSub(r, rmagic, "call.finalgas");
 			_gasMeter.giveBack(finalGas);
-			stack.push(m_builder.CreateZExt(ret, Type::Word));
+			auto xx = m_builder.CreateZExt(ret, Type::Word);
+			stack.push(xx);
 			break;
 		}
 
@@ -997,6 +998,18 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 				topics.emplace_back(stack.pop());
 
 			_ext.log(beginIdx, numBytes, topics);
+			break;
+		}
+		case Instruction::EXECUTESQL:
+		{
+			auto beginIdx = stack.pop();
+			auto numBytes = stack.pop();
+			_memory.require(beginIdx, numBytes);
+
+			// This will commit the current cost block
+			_gasMeter.countLogData(numBytes);
+			auto r = _ext.executeSQL(beginIdx, numBytes);
+			stack.push(r);
 			break;
 		}
 
