@@ -274,7 +274,7 @@ calculateConsequences(PreflightResult const& preflightResult);
     @return A pair with the `TER` and a `bool` indicating
     whether or not the transaction was applied.
 */
-std::pair<TER, bool>
+std::pair<STer, bool>
 doApply(PreclaimResult const& preclaimResult,
     Application& app, OpenView& view);
 

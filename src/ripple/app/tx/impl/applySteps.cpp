@@ -223,7 +223,7 @@ invoke_calculateConsequences(STTx const& tx)
 }
 
 static
-std::pair<TER, bool>
+std::pair<STer, bool>
 invoke_apply (ApplyContext& ctx)
 {
     switch(ctx.tx.getTxnType())
@@ -329,7 +329,7 @@ calculateConsequences(PreflightResult const& preflightResult)
     return invoke_calculateConsequences(preflightResult.tx);
 }
 
-std::pair<TER, bool>
+std::pair<STer, bool>
 doApply(PreclaimResult const& preclaimResult,
     Application& app, OpenView& view)
 {

@@ -259,5 +259,4 @@ transCode(std::string const& token)
 
     return static_cast<TER>(r->second);
 }
-
 } // ripple
