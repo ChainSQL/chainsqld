@@ -84,9 +84,11 @@ protected:
     ZXCAmount     mPriorBalance;  // Balance before fees.
     ZXCAmount     mSourceBalance; // Balance after fees.
 
+	std::string	  mDetailMsg;
+
 public:
     /** Process the transaction. */
-    std::pair<TER, bool>
+    std::pair<STer, bool>
     operator()();
 
     ApplyView&
@@ -162,8 +164,8 @@ public:
     /////////////////////////////////////////////////////
 
 protected:
-    TER
-    apply();
+	STer
+	apply();
 
     explicit
     Transactor (ApplyContext& ctx);
@@ -171,6 +173,8 @@ protected:
     virtual void preCompute();
 
     virtual TER doApply () = 0;
+
+	void setExtraMsg(std::string msg);
 
 private:
     void setSeq ();

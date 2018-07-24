@@ -1660,7 +1660,7 @@ std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::
                     return true;
                 }
             }
-            return false;
+			return false;
         });
 
         if (iter != listTableInfo_.end())
