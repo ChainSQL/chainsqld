@@ -90,7 +90,7 @@ class NetworkOPsImp final
         bool local;
         FailHard failType;
         bool applied;
-        TER result;
+        STer result;
 
         TransactionStatus (
                 std::shared_ptr<Transaction> t,

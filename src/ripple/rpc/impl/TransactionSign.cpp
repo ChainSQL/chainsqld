@@ -609,24 +609,27 @@ transactionConstructImpl (std::shared_ptr<STTx const> const& stpTrans,
 static Json::Value transactionFormatResultImpl (Transaction::pointer tpTrans)
 {
     Json::Value jvResult;
-    try
-    {
+	try
+	{
 		jvResult[jss::tx_json] = tpTrans->getJson(0);
 		jvResult[jss::tx_blob] = strHex(
 			tpTrans->getSTransaction()->getSerializer().peekData());
 
-        if (temUNCERTAIN != tpTrans->getResult ())
-        {
-            std::string sToken;
-            std::string sHuman;
+		STer result = tpTrans->getResult();
+		if (temUNCERTAIN != result.ter)
+		{
+			std::string sToken;
+			std::string sHuman;
 
-            transResultInfo (tpTrans->getResult (), sToken, sHuman);
+			transResultInfo(result.ter, sToken, sHuman);
 
-            jvResult[jss::engine_result]           = sToken;
-            jvResult[jss::engine_result_code]      = tpTrans->getResult ();
-            jvResult[jss::engine_result_message]   = sHuman;
-        }
-    }
+			jvResult[jss::engine_result] = sToken;
+			jvResult[jss::engine_result_code] = result.ter;
+			jvResult[jss::engine_result_message] = sHuman;
+			if (!result.msg.empty())
+				jvResult[jss::engine_result_message_detail] = result.msg;
+		}
+	}
     catch (std::exception&)
     {
         jvResult = RPC::make_error (rpcINTERNAL,

@@ -298,6 +298,11 @@ Transactor::checkSeq (PreclaimContext const& ctx)
     return tesSUCCESS;
 }
 
+void Transactor::setExtraMsg(std::string msg)
+{
+	mDetailMsg = msg;
+}
+
 void
 Transactor::setSeq ()
 {
@@ -354,7 +359,7 @@ TER Transactor::applyDirect()
 	return doApply();
 }
 
-TER Transactor::apply()
+STer Transactor::apply()
 {
     preCompute();
 
@@ -385,9 +390,10 @@ TER Transactor::apply()
 
 	TER res = preChainsql();
 	if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
-		return res;
+		return STer(res);
 
-    return doApply();
+	res = doApply();
+    return std::move(STer(res, mDetailMsg));
 }  
 
 void Transactor::checkAddChainIDSle()
@@ -673,7 +679,7 @@ Transactor::claimFee (ZXCAmount& fee, TER terResult, std::vector<uint256> const&
 }
 
 //------------------------------------------------------------------------------
-std::pair<TER, bool>
+std::pair<STer, bool>
 Transactor::operator()()
 {
     JLOG(j_.trace()) <<
@@ -700,7 +706,7 @@ Transactor::operator()()
     }
 #endif
 
-    auto terResult = ctx_.preclaimResult;
+    auto terResult = STer(ctx_.preclaimResult);
     if (terResult == tesSUCCESS)
         terResult = apply();
 
@@ -766,14 +772,14 @@ Transactor::operator()()
     {
         // Check invariants
         // if `tecINVARIANT_FAILED` not returned, we can proceed to apply the tx
-        terResult = ctx_.checkInvariants(terResult);
+        terResult.ter = ctx_.checkInvariants(terResult);
         if (terResult == tecINVARIANT_FAILED)
         {
             // if invariants failed, claim a fee still
             claimFee(fee, terResult, {});
             //Check invariants *again* to ensure the fee claiming doesn't
             //violate invariants.
-            terResult = ctx_.checkInvariants(terResult);
+            terResult.ter = ctx_.checkInvariants(terResult);
             didApply = isTecClaim(terResult);
         }
     }
