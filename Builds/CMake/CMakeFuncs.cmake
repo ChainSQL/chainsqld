@@ -169,7 +169,12 @@ macro(setup_build_cache)
     instrumentation")
   set_property(CACHE san PROPERTY STRINGS ";address;thread")
   set(assert false CACHE BOOL "Enables asserts, even in release builds")
-  set(static false CACHE BOOL
+  if(WIN32)
+    set(use_static false)
+  else()
+    set(use_static true)
+  endif()
+  set(static ${use_static} CACHE BOOL
     "On linux, link protobuf, openssl, libc++, and boost statically")
   set(jemalloc false CACHE BOOL "Enables jemalloc for heap profiling")
   set(perf false CACHE BOOL "Enables flags that assist with perf recording")
@@ -418,8 +423,9 @@ macro(use_mysql)
     SET(MYSQL_NAMES libmysql)
   ELSE()
     SET(MYSQL_NAMES mysqlclient mysqlclient_r)
+    SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
   ENDIF()
-  
+
   if (APPLE)
     find_program(HOMEBREW brew)
     if (NOT HOMEBREW STREQUAL "HOMEBREW-NOTFOUND")
@@ -441,51 +447,56 @@ macro(use_mysql)
       )
     endif()
   endif()
-  
-  if (NOT MYSQL_LIBRARY)
-    FIND_PATH(MYSQL_INCLUDE_DIR mysql.h
-      IF (WIN32 AND DEFINED ENV{MYSQL_ROOT_DIR})
-        $ENV{MYSQL_ROOT_DIR}/include
-      ELSE()
-        /usr/local/include/mysql
-        /usr/include/mysql
-        /usr/local/mysql/include
-      ENDIF()
 
-    )
-    
-    FIND_LIBRARY(MYSQL_LIBRARY
-      NAMES ${MYSQL_NAMES}
-      IF (WIN32 AND DEFINED ENV{MYSQL_ROOT_DIR})
-        PATHS $ENV{MYSQL_ROOT_DIR}/lib
-      ELSE()
-        PATHS /usr/lib /usr/local/lib /usr/local/mysql/lib
-      ENDIF()
-      PATH_SUFFIXES mysql
-    )
-    
-    get_filename_component(MYSQL_NAME ${MYSQL_LIBRARY} NAME)
-    FIND_PATH(MYSQL_LIBRARY_DIR ${MYSQL_NAME}
-      IF (WIN32 AND DEFINED ENV{MYSQL_ROOT_DIR})
-        $ENV{MYSQL_ROOT_DIR}/lib
-      ELSE()
-        /usr/lib /usr/local/lib /usr/local/mysql/lib
-      ENDIF()
-    )
+  if (NOT MYSQL_LIBRARY)
+      FIND_PATH(MYSQL_INCLUDE_DIR mysql.h
+          IF (WIN32 AND DEFINED ENV{MYSQL_ROOT_DIR})
+              $ENV{MYSQL_ROOT_DIR}/include
+          ELSE()
+              /usr/local/include/mysql
+              /usr/include/mysql
+              /usr/local/mysql/include
+          ENDIF()
+          )
+
+
+      if(WIN32 AND DEFINED ENV{MYSQL_ROOT_DIR})
+          set(SEARCH_PATHS $ENV{MYSQL_ROOT_DIR}/lib)
+      else()
+          set(SEARCH_PATHS 
+              /usr/lib 
+              /usr/lib/*/ 
+              /usr/local 
+              /usr/local/lib 
+              /usr/local/mysql)
+      endif()
+
+      FIND_LIBRARY(MYSQL_LIBRARY
+          NAMES ${MYSQL_NAMES}
+          PATHS ${SEARCH_PATHS}
+          PATH_SUFFIXES mysql
+          )
+
+      get_filename_component(MYSQL_NAME ${MYSQL_LIBRARY} NAME)
+      message("MYSQL_NAME: ${MYSQL_NAME}")
+      FIND_PATH(MYSQL_LIBRARY_DIR ${MYSQL_NAME}
+          ${SEARCH_PATHS} 
+          )
   endif()
-  
+
+
   IF (MYSQL_INCLUDE_DIR AND MYSQL_LIBRARY)
-    SET(MYSQL_FOUND TRUE)
-    SET(MYSQL_LIBRARIES ${MYSQL_LIBRARY})
+      SET(MYSQL_FOUND TRUE)
+      SET(MYSQL_LIBRARIES ${MYSQL_LIBRARY})
   ELSE ()
-    SET(MYSQL_FOUND FALSE)
-    SET(MYSQL_LIBRARIES)
+      SET(MYSQL_FOUND FALSE)
+      SET(MYSQL_LIBRARIES)
   ENDIF ()
-  
+
   IF (NOT MYSQL_FOUND)
-    MESSAGE(FATAL_ERROR "Could NOT find MySQL library")
+      MESSAGE(FATAL_ERROR "Could NOT find MySQL library")
   endif()
-  
+
   MESSAGE(STATUS "Found MySQL include path: ${MYSQL_INCLUDE_DIR}")
   MESSAGE(STATUS "Found MySQL library path: ${MYSQL_LIBRARY_DIR}")
   MESSAGE(STATUS "Found MySQL library: ${MYSQL_LIBRARY}")
@@ -693,12 +704,12 @@ macro(setup_build_boilerplate)
     append_flags(CMAKE_CXX_FLAGS -frtti -std=c++14 -Wno-invalid-offsetof
       -DBOOST_COROUTINE_NO_DEPRECATION_WARNING -DBOOST_COROUTINES_NO_DEPRECATION_WARNING)
     add_compile_options(-Wall -Wno-sign-compare -Wno-char-subscripts -Wno-format
-      -Wno-unused-local-typedefs -g)
+      -Wno-unused-local-typedefs)
     # There seems to be an issue using generator experssions with multiple values,
     # split the expression
     add_compile_options($<$<OR:$<CONFIG:Release>,$<CONFIG:ReleaseClassic>>:-O3>)
     add_compile_options($<$<OR:$<CONFIG:Release>,$<CONFIG:ReleaseClassic>>:-fno-strict-aliasing>)
-    append_flags(CMAKE_EXE_LINKER_FLAGS -rdynamic -g)
+    append_flags(CMAKE_EXE_LINKER_FLAGS -rdynamic)
 
     if (is_clang)
       add_compile_options(
@@ -839,7 +850,7 @@ macro(link_common_libraries cur_project)
       target_link_libraries(${cur_project}
         iconv ${app_kit} ${foundation})
     else()
-      target_link_libraries(${cur_project} rt)
+      target_link_libraries(${cur_project} rt z m)
     endif()
   else(NOT MSVC)
     target_link_libraries(${cur_project}
