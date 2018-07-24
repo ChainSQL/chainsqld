@@ -120,7 +120,7 @@ forceValidity(HashRouter& router, uint256 const& txid,
     @return A pair with the `TER` and a `bool` indicating
             whether or not the transaction was applied.
 */
-std::pair<TER, bool>
+std::pair<STer, bool>
 apply (Application& app, OpenView& view,
     STTx const& tx, ApplyFlags flags,
         beast::Journal journal);

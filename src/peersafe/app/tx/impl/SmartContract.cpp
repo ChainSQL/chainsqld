@@ -78,6 +78,7 @@ namespace ripple {
 		if (!e.execute())
 		{
 			e.go();
+			setExtraMsg(e.takeOutput().toString());
 			return e.finalize();
 		}			
 		else

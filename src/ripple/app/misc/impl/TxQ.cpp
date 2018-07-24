@@ -598,7 +598,7 @@ TxQ::tryClearAccountQueue(Application& app, OpenView& view,
             No: Reject `txn` with a low fee TER code.
     8. Put `txn` in the queue.
 */
-std::pair<TER, bool>
+std::pair<STer, bool>
 TxQ::apply(Application& app, OpenView& view,
     std::shared_ptr<STTx const> const& tx,
         ApplyFlags flags, beast::Journal j)
@@ -991,7 +991,7 @@ TxQ::apply(Application& app, OpenView& view,
         JLOG(j_.trace()) << "Applying transaction " <<
             transactionID <<
             " to open ledger.";
-        ripple::TER txnResult;
+        ripple::STer txnResult;
         bool didApply;
 
         std::tie(txnResult, didApply) = doApply(pcresult, app, view);
