@@ -298,6 +298,11 @@ Transactor::checkSeq (PreclaimContext const& ctx)
     return tesSUCCESS;
 }
 
+void Transactor::setExtraMsg(std::string msg)
+{
+	mDetailMsg = msg;
+}
+
 void
 Transactor::setSeq ()
 {
@@ -319,7 +324,42 @@ void Transactor::preCompute ()
     assert(account_ != zero);
 }
 
-TER Transactor::apply ()
+TER Transactor::preChainsql()
+{
+	if (ctx_.tx.isChainSqlBaseType())
+	{
+		checkAddChainIDSle();
+		if ((ctx_.view().flags() & tapFromClient))
+		{
+			return ctx_.app.getTableStorage().InitItem(ctx_.tx, *this);
+		}
+	}
+	return tesSUCCESS;
+}
+
+TER Transactor::applyDirect()
+{
+	preCompute();
+
+	// If the transactor requires a valid account and the transaction doesn't
+	// list one, preflight will have already a flagged a failure.
+	auto const sle = view().peek(keylet::account(account_));
+	if (sle)
+	{
+		mPriorBalance = STAmount((*sle)[sfBalance]).zxc();
+		mSourceBalance = mPriorBalance;
+
+		view().update(sle);
+	}
+
+	TER res = preChainsql();
+	if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
+		return res;
+
+	return doApply();
+}
+
+STer Transactor::apply()
 {
     preCompute();
 
@@ -350,9 +390,10 @@ TER Transactor::apply ()
 
 	TER res = preChainsql();
 	if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
-		return STer(res, mDetailMsg);
+		return STer(res);
 
-    return doApply();
+	res = doApply();
+    return std::move(STer(res, mDetailMsg));
 }  
 
 void Transactor::checkAddChainIDSle()
@@ -638,7 +679,7 @@ Transactor::claimFee (ZXCAmount& fee, TER terResult, std::vector<uint256> const&
 }
 
 //------------------------------------------------------------------------------
-std::pair<TER, bool>
+std::pair<STer, bool>
 Transactor::operator()()
 {
     JLOG(j_.trace()) <<
@@ -665,7 +706,7 @@ Transactor::operator()()
     }
 #endif
 
-    auto terResult = ctx_.preclaimResult;
+    auto terResult = STer(ctx_.preclaimResult);
     if (terResult == tesSUCCESS)
         terResult = apply();
 
@@ -731,14 +772,14 @@ Transactor::operator()()
     {
         // Check invariants
         // if `tecINVARIANT_FAILED` not returned, we can proceed to apply the tx
-        terResult = ctx_.checkInvariants(terResult);
+        terResult.ter = ctx_.checkInvariants(terResult);
         if (terResult == tecINVARIANT_FAILED)
         {
             // if invariants failed, claim a fee still
             claimFee(fee, terResult, {});
             //Check invariants *again* to ensure the fee claiming doesn't
             //violate invariants.
-            terResult = ctx_.checkInvariants(terResult);
+            terResult.ter = ctx_.checkInvariants(terResult);
             didApply = isTecClaim(terResult);
         }
     }
