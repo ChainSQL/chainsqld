@@ -74,12 +74,9 @@ namespace ripple {
         {         
             SLE::pointer pSle = getSle(addr);
 			Blob blobCode;
-			if (pSle == nullptr)
-			{
-				return blobCode;
-			}
-
-			blobCode = pSle->getFieldVL(sfContractCode);
+			if (pSle)
+				blobCode = pSle->getFieldVL(sfContractCode);
+	
             auto p = std::make_shared<ripple::Blob>(blobCode);
             contractCacheCode_.canonicalize(addr, p);
 
