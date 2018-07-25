@@ -124,7 +124,10 @@ namespace ripple {
 				JLOG(journal_.trace()) << "Dispose error";
 				ret = { false,"Dispose error" };
 				if (resultPair.first != tefTABLE_TXDISPOSEERROR)
+				{
 					result = resultPair.first;
+					transactor.setExtraMsg(resultPair.second);
+				}					
 			}
 		}
 					
