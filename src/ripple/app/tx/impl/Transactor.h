@@ -157,6 +157,9 @@ public:
 
 	// apply directly
 	TER applyDirect();
+
+	//set extra message for error
+	void setExtraMsg(std::string msg);
     /////////////////////////////////////////////////////
 protected:
 	STer
@@ -171,8 +174,6 @@ protected:
 	virtual void preCompute();
 
     virtual TER doApply () = 0;
-
-	void setExtraMsg(std::string msg);
 
 private:
     void setSeq ();
