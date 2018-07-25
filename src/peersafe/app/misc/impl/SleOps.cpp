@@ -26,10 +26,13 @@ namespace ripple {
 	void SleOps::incNonce(AccountID const& addr)
 	{
 		SLE::pointer pSle = getSle(addr);
-		uint32 nonce = pSle->getFieldU32(sfNonce);
+		if (pSle)
 		{
-			pSle->setFieldU32(sfNonce, ++nonce);
-			ctx_.view().update(pSle);
+			uint32 nonce = pSle->getFieldU32(sfNonce);
+			{
+				pSle->setFieldU32(sfNonce, ++nonce);
+				ctx_.view().update(pSle);
+			}
 		}		
 	}
 
@@ -45,7 +48,8 @@ namespace ripple {
 	void SleOps::setNonce(AccountID const& addr, uint32 const& _newNonce)
 	{
 		SLE::pointer pSle = getSle(addr);
-		pSle->setFieldU32(sfNonce, _newNonce);
+		if(pSle)
+			pSle->setFieldU32(sfNonce, _newNonce);
 	}
 
 	bool SleOps::addressHasCode(AccountID const& addr)
@@ -59,7 +63,8 @@ namespace ripple {
 	void SleOps::setCode(AccountID const& addr, bytes&& code)
 	{
 		SLE::pointer pSle = getSle(addr);
-		pSle->setFieldVL(sfContractCode,code);
+		if(pSle)
+			pSle->setFieldVL(sfContractCode,code);
 	}
 
 	bytes const& SleOps::code(AccountID const& addr) 	
@@ -68,8 +73,13 @@ namespace ripple {
         if (nullptr == pBlobCode)
         {         
             SLE::pointer pSle = getSle(addr);
-            Blob blobCode = pSle->getFieldVL(sfContractCode);
+			Blob blobCode;
+			if (pSle == nullptr)
+			{
+				return blobCode;
+			}
 
+			blobCode = pSle->getFieldVL(sfContractCode);
             auto p = std::make_shared<ripple::Blob>(blobCode);
             contractCacheCode_.canonicalize(addr, p);
 
@@ -212,6 +222,7 @@ namespace ripple {
     void SleOps::kill(AccountID addr)
     {
 		SLE::pointer pSle = getSle(addr);
-		ctx_.view().erase(pSle);
+		if (pSle)
+			ctx_.view().erase(pSle);
     }
 }
