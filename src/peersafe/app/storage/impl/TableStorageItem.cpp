@@ -126,8 +126,8 @@ namespace ripple {
 				if (resultPair.first != tefTABLE_TXDISPOSEERROR)
 				{
 					result = resultPair.first;
-					transactor.setExtraMsg(resultPair.second);
-				}					
+				}
+				transactor.setExtraMsg(resultPair.second);
 			}
 		}
 					
