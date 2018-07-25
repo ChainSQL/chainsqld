@@ -14,14 +14,8 @@ Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
 
 void Executive::initGasPrice()
 {
-	//calc gas_price
-	std::uint64_t baseFee = m_s.ctx().view().fees().units;
-	auto fee = scaleFeeLoad(baseFee, m_s.ctx().app.getFeeTrack(),
-		m_s.ctx().view().fees(), false);
-	m_gasPrice = (uint32)fee / baseFee *(float)GAS_PRICE;
-	if (m_gasPrice > GAS_PRICE)
-		m_gasPrice -= (uint64)(m_gasPrice - GAS_PRICE) * 0.99;
-	m_gasPrice = std::min((uint64_t)m_gasPrice, 2 * GAS_PRICE);
+	m_gasPrice = scaleGasLoad(GAS_PRICE, m_s.ctx().app.getFeeTrack(),
+		m_s.ctx().view().fees());
 }
 
 void Executive::initialize() {

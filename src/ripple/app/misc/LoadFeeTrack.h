@@ -142,6 +142,9 @@ private:
 std::uint64_t scaleFeeLoad(std::uint64_t fee, LoadFeeTrack const& feeTrack,
     Fees const& fees, bool bUnlimited);
 
+std::uint64_t scaleGasLoad(std::uint64_t gasPrice, LoadFeeTrack const& feeTrack,
+	Fees const& fees);
+
 } // ripple
 
 #endif

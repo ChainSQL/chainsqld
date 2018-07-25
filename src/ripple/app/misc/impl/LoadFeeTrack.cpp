@@ -124,6 +124,7 @@ void lowestTerms(T1& a,  T2& b)
     b /= x;
 }
 
+
 // Scale using load as well as base rate
 std::uint64_t
 scaleFeeLoad(std::uint64_t fee, LoadFeeTrack const& feeTrack,
@@ -187,6 +188,19 @@ scaleFeeLoad(std::uint64_t fee, LoadFeeTrack const& feeTrack,
         fee /= den;
     }
     return fee;
+}
+
+std::uint64_t scaleGasLoad(std::uint64_t gasPrice, LoadFeeTrack const& feeTrack,
+	Fees const& fees)
+{
+	//calc gas_price
+	auto fee = scaleFeeLoad(fees.base, feeTrack,
+		fees, false);
+	auto gasPriceRet = (uint32)fee / fees.base *(float)gasPrice;
+	if (gasPriceRet > gasPrice)
+		gasPriceRet -= (uint64)(gasPriceRet - gasPrice) * 0.99;
+	gasPriceRet = std::min((uint64_t)gasPriceRet, 2 * gasPrice);
+	return gasPriceRet;
 }
 
 } // ripple

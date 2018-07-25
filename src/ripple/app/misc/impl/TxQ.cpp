@@ -1490,12 +1490,8 @@ TxQ::doRPC(Application& app) const
     drops[jss::open_ledger_fee] = to_string(escalatedFee);
 
 	//calc gas_price
-	auto fee = scaleFeeLoad(baseFee, app.getFeeTrack(),
-		view->fees(), false);
-	uint64 gasPrice = (uint32)fee / baseFee *(float)GAS_PRICE;
-	if (gasPrice > GAS_PRICE)
-		gasPrice -= (uint64)(gasPrice - GAS_PRICE) / (float)99;
-	gasPrice = std::min((uint64_t)gasPrice, 2 * GAS_PRICE);
+	auto gasPrice = scaleGasLoad(GAS_PRICE, app.getFeeTrack(),
+		view->fees());
 
 	drops[jss::gas_price] = to_string(gasPrice);
 
