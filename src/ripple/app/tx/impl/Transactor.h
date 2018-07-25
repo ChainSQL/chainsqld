@@ -151,7 +151,14 @@ public:
         // Most transactors do nothing
         // after checkSeq/Fee/Sign.
         return tesSUCCESS;
-    }
+
+	}
+
+	// apply directly
+	TER applyDirect();
+
+	//set extra message for error
+	void setExtraMsg(std::string msg);
     /////////////////////////////////////////////////////
 
 protected:
