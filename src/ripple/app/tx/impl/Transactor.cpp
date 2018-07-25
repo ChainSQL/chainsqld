@@ -348,16 +348,9 @@ TER Transactor::apply ()
         view().update (sle);
     }
 
-	if (ctx_.tx.isChainSqlBaseType())
-	{
-		checkAddChainIDSle();
-		if ((ctx_.view().flags() & tapFromClient))
-		{
-			TER res = ctx_.app.getTableStorage().InitItem(ctx_.tx, *this);
-			if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
-				return res;
-		}
-	}
+	TER res = preChainsql();
+	if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
+		return STer(res, mDetailMsg);
 
     return doApply();
 }  
