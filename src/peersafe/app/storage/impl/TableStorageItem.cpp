@@ -125,6 +125,7 @@ namespace ripple {
 				ret = { false,"Dispose error" };
 				if (resultPair.first != tefTABLE_TXDISPOSEERROR)
 					result = resultPair.first;
+				transactor.setExtraMsg(resultPair.second);
 			}
 		}
 					
