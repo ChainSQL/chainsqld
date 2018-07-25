@@ -42,6 +42,8 @@ public:
 	//void initialize(BlobRef _transaction) { initialize(STTx(_transaction, CheckTransaction::None)); }
 	void initialize();
 
+	// initialize gas price depending on network load
+	void initGasPrice();
 	/// Finalise a transaction previously set up with initialize().
 	/// @warning Only valid after initialize() and execute(), and possibly go().
 	/// @returns true if the outermost execution halted normally, false if exceptionally halted.
@@ -117,6 +119,7 @@ private:
 
 	//std::shared_ptr<const STTx> m_t;        ///< The original transaction.
 	int64_t m_gasCost;
+	uint32 m_gasPrice;
 
 	bool m_isCreation = false;
 	AccountID m_newAddress;
