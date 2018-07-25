@@ -3,6 +3,7 @@
 #include <peersafe/core/Tuning.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/main/Application.h>
+#include <ripple/app/misc/LoadFeeTrack.h>
 
 namespace ripple {
 
@@ -11,7 +12,21 @@ Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
 {
 }
 
+void Executive::initGasPrice()
+{
+	//calc gas_price
+	std::uint64_t baseFee = m_s.ctx().view().fees().units;
+	auto fee = scaleFeeLoad(baseFee, m_s.ctx().app.getFeeTrack(),
+		m_s.ctx().view().fees(), false);
+	m_gasPrice = (uint32)fee / baseFee *(float)GAS_PRICE;
+	if (m_gasPrice > GAS_PRICE)
+		m_gasPrice -= (uint64)(m_gasPrice - GAS_PRICE) * 0.99;
+	m_gasPrice = std::min((uint64_t)m_gasPrice, 2 * GAS_PRICE);
+}
+
 void Executive::initialize() {
+	initGasPrice();
+
 	auto& tx = m_s.ctx().tx;
 	auto data = tx.getFieldVL(sfContractData);
 	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
@@ -22,7 +37,7 @@ void Executive::initialize() {
 
 	// Avoid unaffordable transactions.
 	int64_t gas = tx.getFieldU32(sfGas);
-	int64_t gasCost = int64_t(gas * GAS_PRICE);
+	int64_t gasCost = int64_t(gas * m_gasPrice);
 	m_gasCost = gasCost;
 }
 
@@ -50,7 +65,7 @@ bool Executive::execute() {
 	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
 	m_input = tx.getFieldVL(sfContractData);
 	uint256 value = uint256(tx.getFieldAmount(sfContractValue).zxc().drops());
-	uint256 gasPrice = uint256(GAS_PRICE);
+	uint256 gasPrice = uint256(m_gasPrice);
 	if (isCreation)
 	{
 		return create(sender, value, gasPrice, gas - m_baseGasRequired, &m_input, sender);
@@ -297,7 +312,7 @@ TER Executive::finalize() {
 	m_gas += m_refunded;
 
 	auto sender = tx.getAccountID(sfAccount);
-	m_s.addBalance(sender, m_gas * GAS_PRICE);
+	m_s.addBalance(sender, m_gas * m_gasPrice);
 
 	// Suicides...
 	if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(a);

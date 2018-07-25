@@ -351,6 +351,7 @@ JSS ( offset );                     // in/out: AccountTxOld
 JSS ( open );                       // out: handlers/Ledger
 JSS ( open_ledger_fee );            // out: TxQ
 JSS ( open_ledger_level );          // out: TxQ
+JSS	( gas_price );					// out: TxQ
 JSS	( OpType );						// out: Tx OpType
 JSS ( owner );                      // in: LedgerEntry, out: NetworkOPs
 JSS ( owner_funds );                // in/out: Ledger, NetworkOPs, AcceptedLedgerTx
