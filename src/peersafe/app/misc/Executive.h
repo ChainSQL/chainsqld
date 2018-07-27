@@ -101,6 +101,7 @@ private:
 		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress);
 
 	beast::Journal getJ();
+	void formatOutput(std::string msg);
 private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										
