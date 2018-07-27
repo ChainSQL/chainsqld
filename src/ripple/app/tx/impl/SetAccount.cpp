@@ -113,6 +113,12 @@ SetAccount::preflight (PreflightContext const& ctx)
         return temINVALID_FLAG;
     }
 
+	//cannot set contract code
+	if (tx.isFieldPresent(sfContractCode))
+	{
+		return temMALFORMED;
+	}
+
     // TransferRate
     if (tx.isFieldPresent (sfTransferRate))
     {
