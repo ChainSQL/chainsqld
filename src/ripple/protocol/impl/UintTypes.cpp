@@ -42,7 +42,7 @@ std::string to_string(Currency const& currency)
 		return "1";
 
 	static Currency const sIsoBits(
-		from_hex_text<Currency>("FFFFFFFFFFFFFFFFFFFFFF000000000000000000"));
+		from_hex_text<Currency>("FFFFFFFFFFFFFFFFFF0000000000000000000000"));
 
 	if ((currency & sIsoBits).isZero())
 	{
