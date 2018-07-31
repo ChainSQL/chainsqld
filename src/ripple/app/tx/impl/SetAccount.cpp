@@ -268,14 +268,22 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 			}
         }
 	}
-	else if (ctx.tx.isFieldPresent(sfTransferRate) && ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE)
+	else if (ctx.tx.isFieldPresent(sfTransferRate))
 	{
 		if (sle->isFieldPresent(sfTransferFeeMin) && sle->isFieldPresent(sfTransferFeeMax))
 		{
 			std::string feeMin = strCopy(sle->getFieldVL(sfTransferFeeMin));
 			std::string feeMax = strCopy(sle->getFieldVL(sfTransferFeeMax));
-			if (feeMin == feeMax)
-				return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+			if (ctx.tx.getFieldU32(sfTransferRate) > QUALITY_ONE)
+			{
+				if (feeMin == feeMax)
+					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+			}
+			else//RR-766
+			{
+				if (feeMin != feeMax)
+					return temBAD_FEE_MISMATCH_TRANSFER_RATE;
+			}
 		}
 	}
     return tesSUCCESS;
