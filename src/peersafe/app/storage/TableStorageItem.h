@@ -65,7 +65,7 @@ private:
     bool rollBack();
     bool commit();
     void Put(STTx const& tx, uint256 txhash);
-    bool CheckExistInLedger(LedgerIndex CurLedgerVersion);
+    bool CheckLastLedgerSeq(LedgerIndex CurLedgerVersion);
     void prehandleTx(STTx const& tx);
     TableStorageItem::TableStorageDBFlag CheckSuccessive(LedgerIndex validatedIndex);
    
