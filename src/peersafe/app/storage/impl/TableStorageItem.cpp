@@ -165,7 +165,7 @@ namespace ripple {
         return result;
     }
 
-    bool TableStorageItem::CheckExistInLedger(LedgerIndex CurLedgerVersion)
+    bool TableStorageItem::CheckLastLedgerSeq(LedgerIndex CurLedgerVersion)
     {
 		auto ledger = app_.getLedgerMaster().getLedgerBySeq(CurLedgerVersion);
 		if (!ledger) return false;
@@ -175,15 +175,19 @@ namespace ripple {
         {
             if (iter->bCommit)   continue;
             
-            if (iter->uTxLedgerVersion <= CurLedgerVersion)
+            if (iter->uTxLedgerVersion < CurLedgerVersion)
             {
-               if (!ledger->txMap().hasItem(iter->uTxHash))
-               {
-                    break;
-                }
+				return false;
             }
+			else if(iter->uTxLedgerVersion == CurLedgerVersion)
+			{
+				if (!ledger->txMap().hasItem(iter->uTxHash))
+				{
+					return false;
+				}
+			}
         }
-        return iter == txList_.end();
+        return true;
     }
 
     bool TableStorageItem::isHaveTx(uint256 txid)
@@ -200,7 +204,7 @@ namespace ripple {
             return false;
     }
 
-    TableStorageItem::TableStorageDBFlag TableStorageItem::CheckSuccessive(LedgerIndex validatedIndex)
+    TableStorageItem::TableStorageDBFlag TableStorageItem::CheckSuccess(LedgerIndex validatedIndex)
     {     
         for (int index = LedgerSeq_ + 1; index <= validatedIndex; index++)
         {
@@ -383,13 +387,13 @@ namespace ripple {
     bool TableStorageItem::doJob(LedgerIndex CurLedgerVersion)
     {
         bool bRet = false;
-        bRet = CheckExistInLedger(CurLedgerVersion);
+        bRet = CheckLastLedgerSeq(CurLedgerVersion);
         if (!bRet)
         {
             rollBack();
             return true;
         }
-        auto eType = CheckSuccessive(CurLedgerVersion);
+        auto eType = CheckSuccess(CurLedgerVersion);
         if (eType == STORAGE_ROLLBACK)
         {
             rollBack();
