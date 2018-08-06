@@ -67,7 +67,7 @@ private:
     void Put(STTx const& tx, uint256 txhash);
     bool CheckLastLedgerSeq(LedgerIndex CurLedgerVersion);
     void prehandleTx(STTx const& tx);
-    TableStorageItem::TableStorageDBFlag CheckSuccessive(LedgerIndex validatedIndex);
+    TableStorageItem::TableStorageDBFlag CheckSuccess(LedgerIndex validatedIndex);
    
     TxStoreDBConn& getTxStoreDBConn();
     TxStoreTransaction& getTxStoreTrans();
