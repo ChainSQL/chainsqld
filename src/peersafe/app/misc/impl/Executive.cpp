@@ -123,8 +123,9 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 	else if(m_depth == 1) //if not first call,codeAddress not need to be a contract address
 	{
 		// contract may be killed
-		auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));
-		m_output = owning_bytes_ref(std::move(blob),0,blob.size());
+		//auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));
+		//blob.insert(blob.begin(), 4, 0);
+		//m_output = owning_bytes_ref(std::move(blob),0,blob.size());
 		m_excepted = tefCONTRACT_NOT_EXIST;
 		return true;
 	}
@@ -235,7 +236,7 @@ bool Executive::go()
 		catch (RevertInstruction& _e)
 		{
 			//revert();
-			m_output = _e.output();
+			formatOutput(_e.output());
 			m_excepted = tefCONTRACT_REVERT_INSTRUCTION;
 		}
 		catch (VMException const& _e)
@@ -336,4 +337,22 @@ void Executive::formatOutput(std::string msg)
 	auto blob = strCopy(msg);
 	m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
 }
+
+void Executive::formatOutput(owning_bytes_ref output)
+{
+	auto str = output.toString();
+	Blob blob;
+	if (str.substr(0, 4) == "\0\0\0\0")
+	{
+		blob = strCopy(str.substr(4,str.size() - 4));
+	}
+	else
+	{
+		uint256 offset = uint256(strCopy(str.substr(4, 32)));
+		uint256 length = uint256(strCopy(str.substr(4 + 32, 32)));
+		blob = strCopy(str.substr(4 + 32 + fromUint256(offset), fromUint256(length)));
+	}
+	m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
+}
+
 } // namespace ripple
