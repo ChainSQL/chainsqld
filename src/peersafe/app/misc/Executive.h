@@ -102,6 +102,7 @@ private:
 
 	beast::Journal getJ();
 	void formatOutput(std::string msg);
+	void formatOutput(owning_bytes_ref output);
 private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										
