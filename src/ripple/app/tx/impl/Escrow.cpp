@@ -215,7 +215,7 @@ EscrowCreate::doApply()
         keylet::account(account));
 
 
-	auto& amount = ctx_.tx[sfAmount];
+	auto const& amount = ctx_.tx[sfAmount];
 	bool isZxc = isZXC(amount);
     // Check reserve and funds availability
     {
