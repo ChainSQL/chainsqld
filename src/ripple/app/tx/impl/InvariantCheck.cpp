@@ -40,7 +40,8 @@ ZXCNotCreated::visitEntry(
             drops_ -= ((*before)[sfAmount] - (*before)[sfBalance]).zxc().drops();
             break;
         case ltESCROW:
-            drops_ -= (*before)[sfAmount].zxc().drops();
+			if (isZXC((*before)[sfAmount]))
+				drops_ -= (*before)[sfAmount].zxc().drops();
             break;
         default:
             break;
@@ -59,8 +60,9 @@ ZXCNotCreated::visitEntry(
                 drops_ += ((*after)[sfAmount] - (*after)[sfBalance]).zxc().drops();
             break;
         case ltESCROW:
-            if (! isDelete)
-                drops_ += (*after)[sfAmount].zxc().drops();
+			if (!isDelete)
+				if(isZXC((*after)[sfAmount]))
+					drops_ += (*after)[sfAmount].zxc().drops();             
             break;
         default:
             break;
@@ -179,14 +181,17 @@ NoZeroEscrow::visitEntry(
 {
     auto isBad = [](STAmount const& amount)
     {
-        if (!amount.native())
-            return true;
+		if (isZXC(amount))
+		{
+			if (!amount.native())
+				return true;
 
-        if (amount.zxc().drops() <= 0)
-            return true;
+			if (amount.zxc().drops() <= 0)
+				return true;
 
-        if (amount.zxc().drops() >= SYSTEM_CURRENCY_START)
-            return true;
+			if (amount.zxc().drops() >= SYSTEM_CURRENCY_START)
+				return true;
+		}
 
         return false;
     };

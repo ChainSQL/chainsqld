@@ -164,95 +164,96 @@ enum TER
 	tefTABLE_GRANTFULL,
 	tefDBNOTCONFIGURED,
 	tefINSUFFICIENT_RESERVE,
-    tefINVARIANT_FAILED,
+	tefINVARIANT_FAILED,
 	tefBAD_DBNAME,       // NameInDB does not match tableName.
 	tefBAD_STATEMENT,    // satement error
-    // -99 .. -1: R Retry
-    //   sequence too high, no funds for txn fee, originating -account
-    //   non-existent
-    //
-    // Cause:
-    //   Prior application of another, possibly non-existent, transaction could
-    //   allow this transaction to succeed.
-    //
-    // Implications:
-    // - Not applied
-    // - May be forwarded
-    //   - Results indicating the txn was forwarded: terQUEUED
-    //   - All others are not forwarded.
-    // - Might succeed later
-    // - Hold
-    // - Makes hole in sequence which jams transactions.
-    terRETRY        = -99,
-    terFUNDS_SPENT,      // This is a free transaction, so don't burden network.
-    terINSUF_FEE_B,      // Can't pay fee, therefore don't burden network.
-    terNO_ACCOUNT,       // Can't pay fee, therefore don't burden network.
-    terNO_AUTH,          // Not authorized to hold IOUs.
-    terNO_LINE,          // Internal flag.
-    terOWNERS,           // Can't succeed with non-zero owner count.
-    terPRE_SEQ,          // Can't pay fee, no point in forwarding, so don't
-                         // burden network.
-    terLAST,             // Process after all other transactions
-    terNO_RIPPLE,        // Rippling not allowed
-    terQUEUED,           // Transaction is being held in TxQ until fee drops
-    // 0: S Success (success)
-    // Causes:
-    // - Success.
-    // Implications:
-    // - Applied
-    // - Forwarded
-    tesSUCCESS      = 0,
+	// -99 .. -1: R Retry
+	//   sequence too high, no funds for txn fee, originating -account
+	//   non-existent
+	//
+	// Cause:
+	//   Prior application of another, possibly non-existent, transaction could
+	//   allow this transaction to succeed.
+	//
+	// Implications:
+	// - Not applied
+	// - May be forwarded
+	//   - Results indicating the txn was forwarded: terQUEUED
+	//   - All others are not forwarded.
+	// - Might succeed later
+	// - Hold
+	// - Makes hole in sequence which jams transactions.
+	terRETRY = -99,
+	terFUNDS_SPENT,      // This is a free transaction, so don't burden network.
+	terINSUF_FEE_B,      // Can't pay fee, therefore don't burden network.
+	terNO_ACCOUNT,       // Can't pay fee, therefore don't burden network.
+	terNO_AUTH,          // Not authorized to hold IOUs.
+	terNO_LINE,          // Internal flag.
+	terOWNERS,           // Can't succeed with non-zero owner count.
+	terPRE_SEQ,          // Can't pay fee, no point in forwarding, so don't
+						 // burden network.
+	terLAST,             // Process after all other transactions
+	terNO_RIPPLE,        // Rippling not allowed
+	terQUEUED,           // Transaction is being held in TxQ until fee drops
+	// 0: S Success (success)
+	// Causes:
+	// - Success.
+	// Implications:
+	// - Applied
+	// - Forwarded
+	tesSUCCESS = 0,
 
-    // 100 .. 159 C
-    //   Claim fee only (ripple transaction with no good paths, pay to
-    //   non-existent account, no path)
-    //
-    // Causes:
-    // - Success, but does not achieve optimal result.
-    // - Invalid transaction or no effect, but claim fee to use the sequence
-    //   number.
-    //
-    // Implications:
-    // - Applied
-    // - Forwarded
-    //
-    // Only allowed as a return code of appliedTransaction when !tapRetry.
-    // Otherwise, treated as terRETRY.
-    //
-    // DO NOT CHANGE THESE NUMBERS: They appear in ledger meta data.
-    tecCLAIM                    = 100,
-    tecPATH_PARTIAL             = 101,
-    tecUNFUNDED_ADD             = 102,
-    tecUNFUNDED_OFFER           = 103,
-    tecUNFUNDED_PAYMENT         = 104,
-    tecFAILED_PROCESSING        = 105,
-    tecDIR_FULL                 = 121,
-    tecINSUF_RESERVE_LINE       = 122,
-    tecINSUF_RESERVE_OFFER      = 123,
-    tecNO_DST                   = 124,
-    tecNO_DST_INSUF_ZXC         = 125,
-    tecNO_LINE_INSUF_RESERVE    = 126,
-    tecNO_LINE_REDUNDANT        = 127,
-    tecPATH_DRY                 = 128,
-    tecUNFUNDED                 = 129,  // Deprecated, old ambiguous unfunded.
-    tecNO_ALTERNATIVE_KEY       = 130,
-    tecNO_REGULAR_KEY           = 131,
-    tecOWNERS                   = 132,
-    tecNO_ISSUER                = 133,
-    tecNO_AUTH                  = 134,
-    tecNO_LINE                  = 135,
-    tecINSUFF_FEE               = 136,
-    tecFROZEN                   = 137,
-    tecNO_TARGET                = 138,
-    tecNO_PERMISSION            = 139,
-    tecNO_ENTRY                 = 140,
-    tecINSUFFICIENT_RESERVE     = 141,
-    tecNEED_MASTER_KEY          = 142,
-    tecDST_TAG_NEEDED           = 143,
-    tecINTERNAL                 = 144,
-    tecOVERSIZE                 = 145,
-    tecCRYPTOCONDITION_ERROR    = 146,
-    tecINVARIANT_FAILED         = 147
+	// 100 .. 159 C
+	//   Claim fee only (ripple transaction with no good paths, pay to
+	//   non-existent account, no path)
+	//
+	// Causes:
+	// - Success, but does not achieve optimal result.
+	// - Invalid transaction or no effect, but claim fee to use the sequence
+	//   number.
+	//
+	// Implications:
+	// - Applied
+	// - Forwarded
+	//
+	// Only allowed as a return code of appliedTransaction when !tapRetry.
+	// Otherwise, treated as terRETRY.
+	//
+	// DO NOT CHANGE THESE NUMBERS: They appear in ledger meta data.
+	tecCLAIM = 100,
+	tecPATH_PARTIAL = 101,
+	tecUNFUNDED_ADD = 102,
+	tecUNFUNDED_OFFER = 103,
+	tecUNFUNDED_PAYMENT = 104,
+	tecFAILED_PROCESSING = 105,
+	tecDIR_FULL = 121,
+	tecINSUF_RESERVE_LINE = 122,
+	tecINSUF_RESERVE_OFFER = 123,
+	tecNO_DST = 124,
+	tecNO_DST_INSUF_ZXC = 125,
+	tecNO_LINE_INSUF_RESERVE = 126,
+	tecNO_LINE_REDUNDANT = 127,
+	tecPATH_DRY = 128,
+	tecUNFUNDED = 129,  // Deprecated, old ambiguous unfunded.
+	tecNO_ALTERNATIVE_KEY = 130,
+	tecNO_REGULAR_KEY = 131,
+	tecOWNERS = 132,
+	tecNO_ISSUER = 133,
+	tecNO_AUTH = 134,
+	tecNO_LINE = 135,
+	tecINSUFF_FEE = 136,
+	tecFROZEN = 137,
+	tecNO_TARGET = 138,
+	tecNO_PERMISSION = 139,
+	tecNO_ENTRY = 140,
+	tecINSUFFICIENT_RESERVE = 141,
+	tecNEED_MASTER_KEY = 142,
+	tecDST_TAG_NEEDED = 143,
+	tecINTERNAL = 144,
+	tecOVERSIZE = 145,
+	tecCRYPTOCONDITION_ERROR = 146,
+	tecINVARIANT_FAILED = 147,
+	tecUNFUNDED_ESCROW = 148
 };
 
 inline bool isTelLocal(TER x)
