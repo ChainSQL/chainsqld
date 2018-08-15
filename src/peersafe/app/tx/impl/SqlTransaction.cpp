@@ -69,7 +69,31 @@ namespace ripple {
 		uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
 		auto item = ctx_.app.getTableStorage().GetItem(nameInDB);
 		if (item != NULL && item->isHaveTx(tx.getTransactionID()))
-			return { tesSUCCESS, "success" };
+		{
+			for (auto obj : objs)
+			{
+				auto tx_pair = STTx::parseSTTx(obj, accountID);
+				if (tx_pair.first == NULL)
+				{
+					std::string sError = "transtions's statement error : " + tx_pair.second;
+					JLOG(journal.error()) << sError;
+					return{ tefBAD_STATEMENT, sError };
+				}
+				auto &txTmp = *tx_pair.first;
+				TER ret2 = OperationRule::adjustInsertCount(ctx_, txTmp, txStore.getDatabaseCon());
+				if (!isTesSuccess(ret2))
+				{
+					JLOG(journal.trace()) << "Dispose error" << "Deal with count limit rule error";
+					return std::make_pair(ret2, "Dispose error: Deal with count limit rule error");
+				}
+
+			}
+			// drop table if created....
+			{
+
+			}
+			return{ tesSUCCESS, "success" };
+		}
 
 		std::vector<uint160> vecNameInDB;
         //drop table before execute the sql
@@ -109,7 +133,14 @@ namespace ripple {
                 {
                     auto result = dispose(txStore, txTmp);
                     if (result.first == tesSUCCESS)
-                    {
+					{
+						TER ret2 = OperationRule::adjustInsertCount(ctx_, txTmp, txStore.getDatabaseCon());
+						if (!isTesSuccess(ret2))
+						{
+							JLOG(journal.trace()) << "Dispose error" << "Deal with count limit rule error";
+							breakRet = std::make_pair(ret2, "Dispose error: Deal with count limit rule error");
+							break;
+						}
                         JLOG(journal.trace()) << "Dispose success";
                     }
                     else

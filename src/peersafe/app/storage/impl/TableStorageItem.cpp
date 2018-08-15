@@ -121,7 +121,6 @@ namespace ripple {
 			}
 			else
 			{
-				JLOG(journal_.trace()) << "Dispose error";
 				ret = { false,"Dispose error" };
 				if (resultPair.first != tefTABLE_TXDISPOSEERROR)
 					result = resultPair.first;
@@ -220,7 +219,7 @@ namespace ripple {
 			{
 				if (retPair.first)
 					continue;
-				else //deleted
+				else if(bDropped_) //deleted bug:RR-559
 					return STORAGE_COMMIT;
 			}				
 			            
