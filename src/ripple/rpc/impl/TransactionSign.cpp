@@ -142,6 +142,23 @@ static error_code_i acctMatchesPubKey (
     return rpcBAD_SECRET;
 }
 
+
+static Json::Value checkLastLedgerSequence(
+	Json::Value& request,
+	bool doAutoFill,
+	std::shared_ptr<OpenView const> const& ledger)
+{
+	Json::Value& tx(request[jss::tx_json]);
+	if (tx.isMember(jss::LastLedgerSequence))
+		return Json::Value();
+
+	if (!doAutoFill)
+		return RPC::missing_field_error("tx_json.LastLedgerSequence");
+	tx[jss::LastLedgerSequence] = ledger->seq() + 5;
+	return Json::Value();
+}
+
+
 static Json::Value checkPayment(
     Json::Value const& params,
     Json::Value& tx_json,
@@ -402,6 +419,14 @@ transactionPreProcessImpl (
 
         if (RPC::contains_error (err))
             return std::move (err);
+
+		err = checkLastLedgerSequence(
+			params,
+			verify && signingArgs.editFields(),
+			ledger);
+
+		if (RPC::contains_error(err))
+			return std::move(err);
 
         err = checkPayment (
             params,

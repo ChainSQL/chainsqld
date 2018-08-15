@@ -236,15 +236,10 @@ std::string STTx::buildRaw(std::string sOperationRule) const
 				conditions.append(v);
 			}
 		}
-		if (conditions.isArray() && conditions.size() > 0)
+		if (conditions.isArray())
 		{
 			Json::Value newRaw;
 			buildRaw(conditions, sOperationRule);
-		}
-		else {
-			Json::Value jsonRule;
-			Json::Reader().parse(sOperationRule, jsonRule);
-			conditions = jsonRule;
 		}
 
 		finalRaw.append(raw_json[(Json::UInt)0]);

@@ -297,19 +297,10 @@ Json::Value doGetRecord(RPC::Context&  context)
 		}
 
 		StringReplace(rule, "$account", tx_json["Account"].asString());
-		if (conditions.isArray() && conditions.size() > 0)
+		if (conditions.isArray())
 		{
 			Json::Value newRaw;
 			buildRaw(conditions, rule);
-		}
-		else {
-			Json::Value jsonRule;
-			Json::Reader().parse(rule, jsonRule);
-			jsonRule = jsonRule[jss::Condition];
-			if (jsonRule.isArray())
-				conditions = jsonRule;
-			else
-				conditions.append(jsonRule);
 		}
 		Json::Value finalRaw;
 		if(jsonRaw.size() > 0)
