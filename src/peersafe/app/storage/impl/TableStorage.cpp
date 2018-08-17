@@ -28,8 +28,8 @@
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/tx/ChainSqlTx.h>
+#include <ripple/ledger/impl/Tuning.h>
 
-#define MAX_GAP_NOW2VALID  5
 namespace ripple {
     TableStorage::TableStorage(Application& app, Config& cfg, beast::Journal journal)
         : app_(app)

@@ -32,6 +32,7 @@
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/tx/ChainSqlTx.h>
 #include <peersafe/app/util/TableSyncUtil.h>
+#include <ripple/ledger/impl/Tuning.h>
 
 namespace ripple {    
     
@@ -85,7 +86,7 @@ namespace ripple {
             txInfo_.uTxLedgerVersion = tx.getFieldU32(sfLastLedgerSequence);  //uTxLedgerVersion			
 		if (txInfo_.uTxLedgerVersion <= 0)
 		{
-			txInfo_.uTxLedgerVersion = app_.getLedgerMaster().getValidLedgerIndex() + 5;
+			txInfo_.uTxLedgerVersion = app_.getLedgerMaster().getValidLedgerIndex() + MAX_GAP_LEDGERNUM_TXN_APPEARIN;
 		}
 
         txList_.push_back(txInfo_);
@@ -219,7 +220,7 @@ namespace ripple {
 			{
 				if (retPair.first)
 					continue;
-				else if(bDropped_) //deleted bug:RR-559
+				else if(bDropped_) //deleted;bug:RR-559
 					return STORAGE_COMMIT;
 			}				
 			            

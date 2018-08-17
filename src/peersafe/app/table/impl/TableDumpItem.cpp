@@ -24,12 +24,12 @@
 #include <peersafe/app/table/TableDumpItem.h>
 #include <fstream>
 #include <boost/filesystem.hpp>
+#include <ripple/ledger/impl/Tuning.h>
 
 
 namespace ripple {
 
 namespace fs = boost::filesystem;
-#define MAX_GAP_NOW2VALID   5
 #define BUFFER_FOR_POSINFO  1024
 
 TableDumpItem::~TableDumpItem()
