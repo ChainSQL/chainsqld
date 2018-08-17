@@ -331,8 +331,11 @@ std::vector<STTx> STTx::getTxs(STTx& tx,std::string sTableNameInDB)
 			//int type = obj["OpType"].asInt();
 			//if (type == T_ASSERT) continue;
 			auto tx_pair = parseSTTx(obj, accountID);
-			auto tx = *tx_pair.first;
-			getOneTx(vec,tx,sTableNameInDB);
+			if (tx_pair.first)
+			{
+				auto tx = *tx_pair.first;
+				getOneTx(vec, tx, sTableNameInDB);
+			}
 		}
 	}
 	else

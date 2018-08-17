@@ -33,7 +33,6 @@
 namespace ripple {
 
 namespace fs = boost::filesystem;
-#define MAX_GAP_NOW2VALID   5
 
 TableAuditItem::~TableAuditItem()
 {

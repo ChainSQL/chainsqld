@@ -1,0 +1,5 @@
+#pragma once
+
+#define MAX_GAP_NOW2VALID  5
+
+#define MAX_GAP_LEDGERNUM_TXN_APPEARIN  5
