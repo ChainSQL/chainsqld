@@ -106,12 +106,12 @@ public:
         return mStatus;
     }
 
-    TER getResult ()
+    STer getResult ()
     {
         return mResult;
     }
 
-    void setResult (TER terResult)
+    void setResult (STer terResult)
     {
         mResult = terResult;
     }
@@ -163,7 +163,7 @@ private:
 
     LedgerIndex     mInLedger = 0;
     TransStatus     mStatus = INVALID;
-    TER             mResult = temUNCERTAIN;
+    STer            mResult = temUNCERTAIN;
     bool            mApplying = false;
 
     std::shared_ptr<STTx const>   mTransaction;

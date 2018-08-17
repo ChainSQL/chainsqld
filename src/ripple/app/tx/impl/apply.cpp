@@ -103,7 +103,7 @@ forceValidity(HashRouter& router, uint256 const& txid,
         router.setFlags(txid, flags);
 }
 
-std::pair<TER, bool>
+std::pair<STer, bool>
 apply (Application& app, OpenView& view,
     STTx const& tx, ApplyFlags flags,
         beast::Journal j)

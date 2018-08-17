@@ -264,11 +264,14 @@ namespace ripple {
 
 		if(!OperationRule::hasOperationRule(view,tx))
 			return tesSUCCESS;
-
+		//
+		auto envPair = getTransactionDBEnv(ctx_);
+		TxStoreTransaction stTran(envPair.first);
+		TxStore& txStore = *envPair.second;
 		//
 		if (!canDispose(ctx_))
 		{
-			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx);//RR-628
+			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx, txStore.getDatabaseCon());//RR-628
 			if (!isTesSuccess(ret2))
 			{
 				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
@@ -283,14 +286,11 @@ namespace ripple {
 			return tefDBNOTCONFIGURED;
 		}
 
-		auto envPair = getTransactionDBEnv(ctx_);
-		TxStoreTransaction stTran(envPair.first);
-		TxStore& txStore = *envPair.second;
 
 		auto result = dispose(txStore, tx);
 		if (result.first == tesSUCCESS)
 		{
-			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx);
+			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx, txStore.getDatabaseCon());
 			if (!isTesSuccess(ret2))
 			{
 				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";

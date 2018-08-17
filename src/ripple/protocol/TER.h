@@ -302,6 +302,34 @@ extern
 boost::optional<TER>
 transCode(std::string const& token);
 
+struct STer {
+	TER ter;
+	std::string msg;
+
+	STer() 
+	{
+		ter = tesSUCCESS;
+	}
+
+	STer(TER ter,std::string msg = "") 
+	{
+		this->ter = ter;
+		this->msg = msg;
+	}
+
+	operator TER() {
+		return ter;
+	}
+
+	operator TER()const {
+		return ter;
+	}
+	bool operator==(TER const& rhs)
+	{
+		return this->ter == rhs;
+	}
+};
+
 } // ripple
 
 #endif

@@ -437,7 +437,7 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 				vecFields.push_back(fields[idx].asString());
 			}
 
-			if (jsonRaw.size() <= 1)
+			if (jsonRaw.size() < 1)
 				return temBAD_RAW;
 
 			if (vecFields.size() > 0) {
@@ -457,7 +457,7 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 	return tesSUCCESS;
 }
 
-TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx)
+TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx, DatabaseCon* pConn)
 {
 	STEntry* pEntry = getTableEntry(ctx.view(), tx);
 	auto optype = tx.getFieldU16(sfOpType);
@@ -519,6 +519,7 @@ TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx)
 					nCount = jsonMap[sNameInDB].asInt();
 				}
 				jsonMap[sNameInDB] = nCount + jsonRaw.size();
+				JLOG(ctx.app.journal(__FUNCTION__).trace()) << "R_INSERT:" << "tableRowCnt:" << nCount << "jsonRow:" << jsonRaw.size() << " sum:" << jsonMap[sNameInDB];
 				insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
 				sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
 				ctx.view().update(insertsle);
@@ -526,14 +527,7 @@ TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx)
 		}
 		else if (optype == (int)R_DELETE)
 		{
-			if (tx.getFieldU16(sfOpType) != R_DELETE)
-				return tesSUCCESS;
-
-			STEntry *pEntry = getTableEntry(ctx.view(), tx);//RR-696
-			std::string sOperationRule = "";
-			if (pEntry != NULL) {
-				sOperationRule = pEntry->getOperationRule(R_INSERT);
-			}
+			sOperationRule = pEntry->getOperationRule(R_INSERT);
 			if (sOperationRule.empty())
 				return tesSUCCESS;
 			Json::Value jsonRule;
@@ -545,27 +539,48 @@ TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx)
 			// deal with insert count limit
 			if (insertLimit > 0)
 			{
-				auto uNameInDB = pEntry->getFieldH160(sfNameInDB);
-				auto id = keylet::insertlimit(tx.getAccountID(sfAccount));
-				auto insertsle = ctx.view().peek(id);
-				if (!insertsle)
-				{
-					return temBAD_DELETERULE;
+				try {
+					auto tables = tx.getFieldArray(sfTables);
+					uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
+
+					std::string sql_str = boost::str(boost::format(
+						R"(SELECT count(*) from t_%s WHERE %s = '%s';)")
+						% to_string(nameInDB)
+						% sAccountField
+						% to_string(tx.getAccountID(sfAccount)));
+					boost::optional<int> count;
+					LockedSociSession sql_session = pConn->checkoutDb();
+					soci::statement st = (sql_session->prepare << sql_str
+						, soci::into(count));
+
+					bool dbret = st.execute(true);
+
+					if (dbret && count)
+					{
+						auto uNameInDB = pEntry->getFieldH160(sfNameInDB);
+						auto id = keylet::insertlimit(tx.getAccountID(sfAccount));
+						auto insertsle = ctx.view().peek(id);
+						if (insertsle)
+						{
+							std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
+							Json::Value jsonMap;
+							if (!Json::Reader().parse(sCountMap, jsonMap))
+								return temUNKNOWN;
+							auto sNameInDB = to_string(uNameInDB);
+							if (jsonMap.isMember(sNameInDB))
+							{
+								jsonMap[sNameInDB] = *count;
+								JLOG(ctx.app.journal(__FUNCTION__).trace()) << "R_DELETE:" << "tableRowCnt:" << *count;
+							}
+							insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
+							ctx.view().update(insertsle);
+						}
+					}
 				}
-				std::string sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
-				Json::Value jsonMap;
-				if (!Json::Reader().parse(sCountMap, jsonMap))
+				catch (std::exception &)
+				{
 					return temUNKNOWN;
-				int nCount = 0;
-				auto sNameInDB = to_string(uNameInDB);
-				if (jsonMap.isMember(sNameInDB))
-				{
-					nCount = jsonMap[sNameInDB].asInt();
 				}
-				jsonMap[sNameInDB] = nCount - jsonRaw.size();//with not judge because of no case of <0
-				insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
-				sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
-				ctx.view().update(insertsle);
 			}
 		}
 	}
