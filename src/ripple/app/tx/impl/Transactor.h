@@ -164,8 +164,10 @@ public:
     /////////////////////////////////////////////////////
 
 protected:
-	STer
-	apply();
+	STer apply();
+
+	//pre-apply for chainsql
+	TER preChainsql();
 
     explicit
     Transactor (ApplyContext& ctx);
@@ -173,8 +175,6 @@ protected:
     virtual void preCompute();
 
     virtual TER doApply () = 0;
-
-	void setExtraMsg(std::string msg);
 
 private:
     void setSeq ();
