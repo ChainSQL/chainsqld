@@ -275,6 +275,7 @@ namespace ripple {
 			if (!isTesSuccess(ret2))
 			{
 				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
+				setExtraMsg("Dispose error: Deal with count limit rule error.");
 				return ret2;
 			}
 			return tesSUCCESS;
@@ -302,6 +303,7 @@ namespace ripple {
 		{
 			JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << result.second;
 			stTran.rollback();
+			setExtraMsg(result.second);
 			return result.first;
 		}
 			

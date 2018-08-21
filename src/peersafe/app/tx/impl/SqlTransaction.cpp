@@ -143,7 +143,10 @@ namespace ripple {
 				}
 			}
 			if (breakRet.first != tesSUCCESS)
+			{
+				setExtraMsg(breakRet.second);
 				return breakRet;
+			}
 		}
 		return{ tesSUCCESS, "success" };
 	}

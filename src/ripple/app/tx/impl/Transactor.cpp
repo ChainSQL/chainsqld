@@ -390,7 +390,7 @@ STer Transactor::apply()
 
 	TER res = preChainsql();
 	if (res != tesSUCCESS && res != tefTABLE_STORAGENORMALERROR)
-		return STer(res);
+		return STer(res, mDetailMsg);
 
 	res = doApply();
     return std::move(STer(res, mDetailMsg));
