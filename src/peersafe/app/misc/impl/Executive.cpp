@@ -123,9 +123,8 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 	else if(m_depth == 1) //if not first call,codeAddress not need to be a contract address
 	{
 		// contract may be killed
-		//auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));
-		//blob.insert(blob.begin(), 4, 0);
-		//m_output = owning_bytes_ref(std::move(blob),0,blob.size());
+		auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));
+		m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
 		m_excepted = tefCONTRACT_NOT_EXIST;
 		return true;
 	}
@@ -342,6 +341,8 @@ void Executive::formatOutput(owning_bytes_ref output)
 {
 	auto str = output.toString();
 	Blob blob;
+
+	//self-define exception in go()
 	if (str.substr(0, 4) == "\0\0\0\0")
 	{
 		blob = strCopy(str.substr(4,str.size() - 4));
