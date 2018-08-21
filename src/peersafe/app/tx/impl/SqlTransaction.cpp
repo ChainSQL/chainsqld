@@ -44,97 +44,112 @@
 
 namespace ripple {
 
-
-    std::pair<TER, std::string> SqlTransaction::transactionImpl(ApplyContext& ctx_,ripple::TxStoreDBConn &txStoreDBConn, ripple::TxStore& txStore, beast::Journal journal, const STTx &tx)
-    {
-        ripple::AccountID accountID = tx.getAccountID(sfAccount);        
-
-        Blob txs_blob = tx.getFieldVL(sfStatements);
-        std::string txs_str;
-
-        txs_str.assign(txs_blob.begin(), txs_blob.end());
-        Json::Value objs;
-        Json::Reader().parse(txs_str, objs);
-
-		//get first transaction,to check if it have been disposed in storage.
-		auto tx_pair = STTx::parseSTTx(objs[(Json::UInt)0], accountID);
-        if (tx_pair.first == NULL)
-        {
-            std::string sError = "transtions's statement error : " + tx_pair.second;
-            JLOG(journal.error()) << sError;
-            return {tefBAD_STATEMENT, sError };
-        }
-		auto txTmp = *tx_pair.first;
-		auto tables = txTmp.getFieldArray(sfTables);
+	std::pair<TER, std::string> SqlTransaction::transactionImpl_FstStorage(ApplyContext& ctx_, ripple::TxStore& txStore, TxID txID, beast::Journal journal, const std::vector<STTx> &txs)
+	{
+		auto tables = txs.at(0).getFieldArray(sfTables);
 		uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
 		auto item = ctx_.app.getTableStorage().GetItem(nameInDB);
-		if (item != NULL && item->isHaveTx(tx.getTransactionID()))
-			return { tesSUCCESS, "success" };
-
-		std::vector<uint160> vecNameInDB;
-        //drop table before execute the sql
-        for (auto obj : objs)
-        {
-            auto tx_pair = STTx::parseSTTx(obj, accountID);
-            if (tx_pair.first == NULL)
-            {
-                std::string sError = "transtions's statement error : " + tx_pair.second;
-                JLOG(journal.error()) << sError;
-                return{ tefBAD_STATEMENT, sError };
-            }
-            auto &txTmp = *tx_pair.first;
-            auto &tables = txTmp.getFieldArray(sfTables);
-            uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
-			if ((TableOpType)obj["OpType"].asInt() == T_CREATE)
+		if (item != NULL && item->isHaveTx(txID))
+		{
+			for (auto txTmp : txs)
 			{
-				txStore.DropTable(to_string(nameInDB));
-				vecNameInDB.push_back(nameInDB);
+				TER ret2 = OperationRule::adjustInsertCount(ctx_, txTmp, txStore.getDatabaseCon());
+				if (!isTesSuccess(ret2))
+				{
+					JLOG(journal.trace()) << "Dispose error" << "Deal with count limit rule error";
+					return std::make_pair(ret2, "Dispose error: Deal with count limit rule error");
+				}
+
 			}
-        }
+			return{ tesSUCCESS, "success" };
+		}
+		return{ tesSUCCESS, "success" };
+	}
 
-        {
+	std::pair<TER, std::string> SqlTransaction::transactionImpl(ApplyContext& ctx_, ripple::TxStoreDBConn &txStoreDBConn, ripple::TxStore& txStore, beast::Journal journal, const STTx &tx)
+	{
+		STTx tmpTx = tx;
+		std::vector<STTx> txs = tx.getTxs(tmpTx);
+		//
+		TxID txID = tx.getTransactionID();
+		std::pair<TER, std::string> ret = transactionImpl_FstStorage(ctx_, txStore, txID, journal, txs);
+		if (ret.first != tesSUCCESS)
+			return ret;
+
+		/*
+		 * drop table before execute the sql.
+		 * do this first, because dropTable is not one step of Transaction.
+		 * 
+		 */
+		for (auto txTmp : txs)
+		{
+			if (txTmp.getFieldU16(sfOpType) == T_CREATE)
+			{
+				auto &tables = txTmp.getFieldArray(sfTables);
+				uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
+				txStore.DropTable(to_string(nameInDB));
+			}
+		}
+
+		{
+			std::vector<uint160> vecNameInDB;
 			std::pair<TER, std::string> breakRet = { tesSUCCESS,"success" };
-            TxStoreTransaction stTran(&txStoreDBConn);
-            for (auto obj : objs)
-            {
-                auto tx_pair = STTx::parseSTTx(obj, accountID);
-                auto txTmp = *tx_pair.first;
+			TxStoreTransaction stTran(&txStoreDBConn);
+			for (auto txTmp : txs)
+			{
+				bool canDispose = true;
+				TableOpType opType = (TableOpType)txTmp.getFieldU16(sfOpType);
+				//
+				if (opType == T_CREATE)
+				{
+					auto &tables = txTmp.getFieldArray(sfTables);
+					uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
+					vecNameInDB.push_back(nameInDB);
+				}
+				//OpType not need to dispose
+				if (isNotNeedDisposeType(opType))
+					canDispose = false;
 
-                bool canDispose = true;
-                //OpType not need to dispose
-                if (isNotNeedDisposeType((TableOpType)obj["OpType"].asInt()))
-                    canDispose = false;
 
-                if (canDispose)//not exist in storage list,so can dispose again, for case Duplicate entry 
-                {
-                    auto result = dispose(txStore, txTmp);
-                    if (result.first == tesSUCCESS)
-                    {
-                        JLOG(journal.trace()) << "Dispose success";
-                    }
-                    else
-                    {
-                        JLOG(journal.trace()) << "Dispose error" << result.second;
+				if (canDispose)//not exist in storage list,so can dispose again, for case Duplicate entry 
+				{
+					auto result = dispose(txStore, txTmp);
+					if (result.first == tesSUCCESS)
+					{
+						TER ret2 = OperationRule::adjustInsertCount(ctx_, txTmp, txStore.getDatabaseCon());
+						if (!isTesSuccess(ret2))
+						{
+							JLOG(journal.trace()) << "Dispose error" << "Deal with count limit rule error";
+							breakRet = std::make_pair(ret2, "Dispose error: Deal with count limit rule error");
+							break;
+						}
+						JLOG(journal.trace()) << "Dispose success";
+					}
+					else
+					{
+						JLOG(journal.trace()) << "Dispose error" << result.second;
 						breakRet = result;
 						break;
-                    }
-                }
-            }
-            stTran.rollback();
+					}
+				}
+			}
+			stTran.rollback();
 			// drop table if created
 			if (vecNameInDB.size() > 0)
 			{
-				for(auto nameInDB : vecNameInDB)
+				for (auto nameInDB : vecNameInDB)
 				{
 					txStore.DropTable(to_string(nameInDB));
 				}
 			}
 			if (breakRet.first != tesSUCCESS)
+			{
+				setExtraMsg(breakRet.second);
 				return breakRet;
-        }
-
-        return{ tesSUCCESS, "success" };
-    }
+			}
+		}
+		return{ tesSUCCESS, "success" };
+	}
 
 	std::pair<TER, std::string> SqlTransaction::dispose(TxStore& txStore, const STTx& tx)
 	{

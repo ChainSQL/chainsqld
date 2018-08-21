@@ -187,6 +187,7 @@ JSS ( enabled );                    // out: AmendmentTable
 JSS ( engine_result );              // out: NetworkOPs, TransactionSign, Submit
 JSS ( engine_result_code );         // out: NetworkOPs, TransactionSign, Submit
 JSS ( engine_result_message );      // out: NetworkOPs, TransactionSign, Submit
+JSS(engine_result_message_detail);  // out: NetworkOPs, Submit
 JSS ( error );                      // out: error
 JSS ( error_code );                 // out: error
 JSS ( error_exception );            // out: Submit

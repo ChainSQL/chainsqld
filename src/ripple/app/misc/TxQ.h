@@ -121,7 +121,7 @@ public:
                 If the transaction is queued, will return
                 { terQUEUED, false }.
     */
-    std::pair<TER, bool>
+    std::pair<STer, bool>
     apply(Application& app, OpenView& view,
         std::shared_ptr<STTx const> const& tx,
             ApplyFlags flags, beast::Journal j);

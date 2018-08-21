@@ -70,6 +70,11 @@ Json::Value checkFee (
     TxQ const& txQ,
     std::shared_ptr<OpenView const> const& ledger);
 
+Json::Value checkLastLedgerSequence(
+	Json::Value& request,
+	bool doAutoFill,
+	std::shared_ptr<OpenView const> const& ledger);
+
 // Return a std::function<> that calls NetworkOPs::processTransaction.
 using ProcessTransactionFn =
     std::function<void (std::shared_ptr<Transaction>& transaction,
