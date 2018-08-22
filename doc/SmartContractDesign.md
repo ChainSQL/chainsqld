@@ -281,13 +281,9 @@ function trust(address gateway,string coin,uint amount) public onlyOwner
     msg.sender.trustSet(gateway,coin,amount);
 }
 ```
-2. 单纯给合约转网关代币
-- 前以太坊如果fallback函数是payable的可以转直接转账，不需要调用任何方法
-- 如果函数是payable的，也可以转账
-    - 难点主要有
-```
+2. 给合约转网关代币
+- 如果fallback函数是payable的可以转直接转账系统币，转网关币也需要fallback？
 
-```
 
 3. 查询网关代币余额
 ```
