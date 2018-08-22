@@ -88,7 +88,7 @@ ContractValue |STAMOUNT| 选填 | 本次交易要给合约地址转账的金额
 
 字段名 |类型|说明
 ---|---|---
-account |字符串| 调用合约的地址（这里包括r_get中的Account好像都无意义。。。）
+account |字符串| 调用合约的地址
 contract_address |字符串| 合约地址
 contract_data |字符串| 合约数据
 
