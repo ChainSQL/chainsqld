@@ -4,7 +4,7 @@
 #### 1.2 背景
 - 基于以下技术实现
     - Ripple 的区块链技术实现
-    - 以太坊客户端 [C++实现](!https://github.com/ethereum/aleth)
+    - 以太坊客户端 [C++实现](https://github.com/ethereum/aleth)
     - 以太坊虚拟机EVM
     - llvm框架
 ### 2. 总体说明
