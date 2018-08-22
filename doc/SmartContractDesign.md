@@ -104,7 +104,7 @@ contract_data |字符串| 合约数据
     "method": "submit",
     "params": [
         {
-            "secret": "xxprJNCURq7J9BVpeox38CGq2nwLM",
+            "secret": "x████████████████████████████",
             "tx_json": {
                 "TransactionType": "Contract",
                 "Account": "zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9",
@@ -131,7 +131,7 @@ tx_json中的必填字段：
     "method": "submit",
     "params": [
         {
-            "secret": "xxprJNCURq7J9BVpeox38CGq2nwLM",
+            "secret": "x████████████████████████████",
             "tx_json": {
                 "TransactionType": "Contract",
                 "Account": "zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9",
@@ -158,7 +158,7 @@ tx_json中的必填字段：
     "method": "contract_call",
     "params": [
         {
-            "account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
+            "account": "x████████████████████████████",
             "contract_data":"70a082310000000000000000000000009ce44096251e2c23ad95af33564a6b7addfb3317",
             "contract_address":"zJAErHfpG8rpzucKQoUMU4NAPKpR1DrmU2"
         }
