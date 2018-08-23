@@ -141,9 +141,13 @@ Json::Value doSubmit (RPC::Context& context)
 
             jvResult[jss::engine_result]           = sToken;
             jvResult[jss::engine_result_code]      = result.ter;
-            jvResult[jss::engine_result_message]   = sHuman;
-			if (!result.msg.empty())
-				jvResult[jss::engine_result_message_detail] = result.msg;
+			if(result.msg.empty())
+				jvResult[jss::engine_result_message] = sHuman;
+			else
+				jvResult[jss::engine_result_message] = result.msg;
+			//jvResult[jss::engine_result_message] = sHuman;
+			//if (!result.msg.empty())
+			//	jvResult[jss::engine_result_message_detail] = result.msg;
         }
 
         return jvResult;
