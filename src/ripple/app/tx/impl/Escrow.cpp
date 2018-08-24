@@ -32,6 +32,7 @@
 #include <ripple/protocol/ZXCAmount.h>
 #include <ripple/ledger/View.h>
 #include <ripple/app/paths/RippleState.h>
+#include <ripple/protocol/Quality.h>
 
 // During an EscrowFinish, the transaction must specify both
 // a condition and a fulfillment. We track whether that
@@ -323,6 +324,16 @@ EscrowCreate::doApply()
         }
     }
 
+	// add to issuer's owner directory
+	if (amount.getIssuer() != account && amount.getIssuer() != ctx_.tx[sfDestination])
+	{
+		auto page = dirAdd(ctx_.view(), keylet::ownerDir(amount.getIssuer()), slep->key(),
+			false, describeOwnerDir(amount.getIssuer()), ctx_.app.journal("View"));
+		if (!page)
+			return tecDIR_FULL;
+		(*slep)[sfIssuerNode] = *page;
+	}
+
     // Deduct owner's balance, increment owner count
 	if (isZxc)
 	{
@@ -501,6 +512,7 @@ EscrowFinish::doApply()
     }
 
     AccountID const account = (*slep)[sfAccount];
+	STAmount const& amount = (*slep)[sfAmount];
 
     // Remove escrow from owner directory
     {
@@ -522,9 +534,18 @@ EscrowFinish::doApply()
             return ter;
     }
 
-    // NOTE: These payments cannot be used to fund accounts
+	//Remove escrow from issuer's owner directory
+	AccountID const destination = (*slep)[sfDestination];
+	if (amount.getIssuer() != account && amount.getIssuer() != destination)
+	{
+		TER const ter = dirDelete(ctx_.view(), true,
+			(*slep)[sfIssuerNode], keylet::ownerDir(amount.getIssuer()),
+			k.key, false, false, ctx_.app.journal("View"));
+		if (!isTesSuccess(ter))
+			return ter;
+	}
 
-	STAmount const& amount = (*slep)[sfAmount];
+    // NOTE: These payments cannot be used to fund accounts
 	bool isZxc = isZXC(amount);
 
 	AccountID const& dest = (*slep)[sfDestination];
@@ -551,11 +572,25 @@ EscrowFinish::doApply()
 		if (limit < amount)
 			return tecPATH_DRY;
 
+		// If the gateway has a transfer rate, accommodate that.
+		Rate gatewayXferRate{ QUALITY_ONE };
+		STAmount const& sendMax = amount;
+		STAmount amountSend = amount;
+		if (!sendMax.native() && (account_ != sendMax.getIssuer()))
+		{
+			gatewayXferRate = transferRate(ctx_.view(), sendMax.getIssuer());
+			if (gatewayXferRate.value != QUALITY_ONE)
+			{
+				amountSend = divideRound(sendMax,
+					gatewayXferRate, true);
+			}
+		}
+
 		//transfer amount to destination
 		if(bHigh)
-			(*sled)[sfBalance] = (*sled)[sfBalance] - (*slep)[sfAmount];
+			(*sled)[sfBalance] = (*sled)[sfBalance] - amountSend;
 		else
-			(*sled)[sfBalance] = (*sled)[sfBalance] + (*slep)[sfAmount];
+			(*sled)[sfBalance] = (*sled)[sfBalance] + amountSend;
 
 		ctx_.view().update(sled);
 	}
@@ -601,7 +636,8 @@ EscrowCancel::doApply()
         ctx_.view().info().parentCloseTime.time_since_epoch().count() <=
             (*slep)[sfCancelAfter])
         return tecNO_PERMISSION;
-    AccountID const account = (*slep)[sfAccount];
+	AccountID const account = (*slep)[sfAccount];
+	STAmount const& amount = (*slep)[sfAmount];
 
     // Remove escrow from owner directory
     {
@@ -623,8 +659,18 @@ EscrowCancel::doApply()
             return ter;
     }
 
+	//Remove escrow from issuer's owner directory
+	AccountID const destination = (*slep)[sfDestination];
+	if (amount.getIssuer() != account && amount.getIssuer() != destination)
+	{
+		TER const ter = dirDelete(ctx_.view(), true,
+			(*slep)[sfIssuerNode], keylet::ownerDir(amount.getIssuer()),
+			k.key, false, false, ctx_.app.journal("View"));
+		if (!isTesSuccess(ter))
+			return ter;
+	}
+
     // Transfer amount back to owner
-	STAmount const& amount = (*slep)[sfAmount];
 	bool isZxc = isZXC(amount);
 	// Fetch Destination SLE,transfer amount to src
 	if (isZxc)
