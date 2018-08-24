@@ -585,7 +585,16 @@ EscrowFinish::doApply()
 					gatewayXferRate, true);
 			}
 		}
-
+		// adjust feeMin,feeMax
+		std::string saFeeMax = transferFeeMax(ctx_.view(), amount.getIssuer());
+		std::string saFeeMin = transferFeeMin(ctx_.view(), amount.getIssuer());
+		STAmount feeMin = amountFromString(amount.issue(), saFeeMin);
+		STAmount feeMax = amountFromString(amount.issue(), saFeeMax);
+		STAmount fee = sendMax - amountSend;
+		STAmount feeAct = std::min(feeMax, std::max(fee, feeMin));
+		if (feeAct != fee)
+			amountSend = sendMax - feeAct;
+		
 		//transfer amount to destination
 		if(bHigh)
 			(*sled)[sfBalance] = (*sled)[sfBalance] - amountSend;
