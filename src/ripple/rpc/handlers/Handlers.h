@@ -93,6 +93,7 @@ Json::Value doTableDump(RPC::Context&);
 Json::Value doTableDumpStop(RPC::Context&);
 Json::Value doTableAudit(RPC::Context&);
 Json::Value doTableAuditStop(RPC::Context&);
+Json::Value doTableAuthority(RPC::Context&);
 Json::Value doRpcSubmit(RPC::Context&);
 Json::Value doCreateFromRaw(RPC::Context&);
 Json::Value doGetRecord(RPC::Context&);

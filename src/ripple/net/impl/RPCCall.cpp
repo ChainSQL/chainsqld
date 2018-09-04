@@ -850,7 +850,7 @@ private:
 
     Json::Value parseDumpTable(Json::Value const& jvParams)
     { 
-		if (jvParams.size() != 2)
+		if (jvParams.size() < 2)
 		{
 			return rpcError(rpcINVALID_PARAMS);
 		}
@@ -933,6 +933,26 @@ private:
 				jvRequest[jss::tx_json] = txJSON;
 				return jvRequest;
 			}
+		}
+
+		return rpcError(rpcINVALID_PARAMS);
+	}
+
+	// get table authority
+	//
+	// table_auth <owner_address> <table_name>
+	Json::Value parseTableAuth(Json::Value const& jvParams)
+	{
+		Json::Value     txJSON;
+		Json::Reader    reader;
+
+		if (2 == jvParams.size())
+		{
+			Json::Value jvRequest;
+
+			jvRequest[jss::Owner] = jvParams[0u].asString();
+			jvRequest[jss::TableName] = jvParams[1u].asString();
+			return jvRequest;
 		}
 
 		return rpcError(rpcINVALID_PARAMS);
@@ -1228,6 +1248,7 @@ public:
             {   "t_auditstop",         &RPCParser::parseAuditStop,             1,  1 },
             {   "g_dbname",            &RPCParser::parseGetDBName,             1,  1 },
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
+			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
         };
 
         auto const count = jvParams.size ();
