@@ -924,7 +924,7 @@ namespace conditionParse {
 			const std::string& key = keys[0];
 			Json::Value value = condition[key];
 			if (value.isObject()) {
-				if (value.getMemberNames().size() > 1) {
+				if (value.getMemberNames().size() != 1) {
 					result = { -1, (boost::format("condtion is malformed in parsing expression.[%s]")
 						% Json::jsonAsString(condition)).str() };
 					break;
