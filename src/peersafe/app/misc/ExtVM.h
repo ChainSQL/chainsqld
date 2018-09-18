@@ -15,7 +15,7 @@ namespace ripple
 class EnvInfoImpl : public EnvInfo
 {
 public:
-    EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit) : iGasLimit_(iGasLimit),iBlockNum_(iBlockNum),  EnvInfo()  {}
+    EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit) : iBlockNum_(iBlockNum),iGasLimit_(iGasLimit),EnvInfo()  {}
        
 	int64_t const gasLimit() const override {
         return iGasLimit_;
