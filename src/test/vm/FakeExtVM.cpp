@@ -102,6 +102,9 @@ void FakeExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
 	FakeExtVM::m_kv[k] = v;
 }
 
+int64_t FakeExtVM::executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) {
+    return 0;
+}
 evmc_uint256be FakeExtVM::blockHash(int64_t  const&_number) {
 	return evmc_uint256be();
 }

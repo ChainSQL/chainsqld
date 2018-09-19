@@ -78,7 +78,7 @@ public:
 	                  llvm::Value* _outOff,
 	                  llvm::Value* _outSize);
 
-	llvm::Value* executeSQL(llvm::Value* _memIdx, llvm::Value* _numBytes);
+	llvm::Value* executeSQL(llvm::Value* _addr, int _type, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
 
 private:
 	Memory& m_memoryMan;

@@ -222,4 +222,10 @@ namespace ripple {
 		if (pSle)
 			ctx_.view().erase(pSle);
     }
+
+    int64_t SleOps::executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw)
+    {
+        return 0;
+    }
+    
 }

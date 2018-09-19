@@ -29,6 +29,7 @@ public:
 	size_t codeSizeAt(evmc_address const& addr) final;
 	evmc_uint256be store(evmc_uint256be const&) final;
 	void setStore(evmc_uint256be const&, evmc_uint256be const&) final;
+    int64_t executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) final;
 
 	using State = std::map<AccountID, bytes>;
 	using KV = std::map<u256, std::string>;

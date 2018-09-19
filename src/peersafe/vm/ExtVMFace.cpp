@@ -104,13 +104,16 @@ void log(
 int64_t evm_executeSQL(
 	evmc_context* _context,
 	evmc_address const* _addr,
-	uint8_t const* _data,
-	size_t _dataSize
+    uint8_t _type,
+	uint8_t const* _name,
+	size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize
 ) noexcept
 {
-	return 1;
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.executeSQL(_addr, _type, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });	
 }
-
 
 void getTxContext(evmc_tx_context* result, evmc_context* _context) noexcept
 {

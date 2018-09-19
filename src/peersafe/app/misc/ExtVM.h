@@ -116,6 +116,8 @@ public:
 
     /// Revert any changes made (by any of the other calls).
     virtual void log(evmc_uint256be const* /*topics*/, size_t /*numTopics*/, bytesConstRef const& data) override final;
+
+    virtual int64_t executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
     
     SleOps const& state() const { return oSle_; }
 

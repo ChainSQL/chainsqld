@@ -22,6 +22,7 @@
 
 
 enum TableOpType {
+    T_COMMON       = 0,
     T_CREATE       = 1,
     T_DROP         = 2,
     T_RENAME       = 3,

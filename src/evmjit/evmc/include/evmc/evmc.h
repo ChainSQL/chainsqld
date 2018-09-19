@@ -551,14 +551,22 @@ typedef void (*evmc_emit_log_fn)(struct evmc_context* context,
  *  @param context       The pointer to the Host execution context.
  *                       @see ::evmc_context.
  *  @param address       The address of the contract that generated the log.
+ *  @param type          The operater type : create, update , insert ,select ...
+ *  @param name          The destinative table name 
+ *  @param nameSize      The length of table name
+ *  @param raw           The sql raw field
+ *  @param rawSize      The length of raw
  *  @param data          The pointer to SQL attached to the executeSQL.
  *  @param data_size     The length of the data.
  *                       0 and 4 inclusively.
  */
 typedef int64_t (*evmc_emit_executesql_fn)(struct evmc_context* context,
-                                 const struct evmc_address* address,
-                                 const uint8_t* sqls,
-                                 size_t data_size);
+                                           const struct evmc_address* address,
+                                           uint8_t _type,
+                                           uint8_t const* _name,
+                                           size_t _nameSize,
+                                           uint8_t const* _raw,
+                                           size_t _rawSize);
 
 
 /**

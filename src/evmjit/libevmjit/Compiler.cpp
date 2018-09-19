@@ -1000,17 +1000,28 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			_ext.log(beginIdx, numBytes, topics);
 			break;
 		}
-		case Instruction::EXECUTESQL:
+		case Instruction::CREATETABLE:
 		{
-			auto beginIdx = stack.pop();
-			auto numBytes = stack.pop();
-			_memory.require(beginIdx, numBytes);
+            auto address   = stack.pop();
+            auto nameIdx   = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx    = stack.pop();
+            auto rawBytes  = stack.pop();
 
-			// This will commit the current cost block
-			_gasMeter.countLogData(numBytes);
-			auto r = _ext.executeSQL(beginIdx, numBytes);
-			stack.push(r);
-			break;
+             _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            // This will commit the current cost block
+            //_gasMeter.countLogData(numBytes);
+            
+            
+            
+
+            auto type = (uint8_t)inst - (uint8_t)Instruction::CREATETABLE;
+
+            auto r = _ext.executeSQL(address, type, nameIdx, nameBytes, rawIdx, rawBytes);            
+            stack.push(r);
+            break;           
 		}
 
 		invalidInstruction:

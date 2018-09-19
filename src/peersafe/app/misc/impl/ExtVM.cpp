@@ -3,6 +3,7 @@
 #include <peersafe/protocol/STMap256.h>
 #include <ripple/protocol/ZXCAmount.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <peersafe/protocol/TableDefines.h>
 
 #include <boost/thread.hpp>
 #include <exception>
@@ -198,6 +199,26 @@ namespace ripple
         JLOG(j.trace()) << data.toString();
     }
     
+    int64_t ExtVM::executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw)
+    {
+        ApplyContext const& ctx = oSle_.ctx();
+        auto j = ctx.app.journal("ExtVM");
+        TableOpType eType = T_COMMON;
+        switch (_type)
+        {
+        case 0:            return eType = T_CREATE;
+        case 1:            return eType = R_INSERT;
+        case 2:            return eType = R_UPDATE;
+        case 3:            return eType = R_DELETE;
+        case 4:            return eType = R_GET;
+        default:           return eType = T_COMMON;
+        }
+        int64_t iRet = oSle_.executeSQL(fromEvmC(myAddress), fromEvmC(*_addr), eType, _name.toString(), _raw.toString());
+
+        JLOG(j.trace()) <<"tableName is "<< _name.toString() << ", raw is " << _raw.toString();
+        return iRet;
+    }
+
     evmc_uint256be ExtVM::blockHash(int64_t  const& iSeq)
     {
         uint256 uHash = beast::zero;

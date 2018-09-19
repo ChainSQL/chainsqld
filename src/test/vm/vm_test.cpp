@@ -123,7 +123,7 @@ private:
 			evmc_address contractAddress = { {1,2,3,4} };
 			{
 				FakeExecutive execute(code);
-				int64_t gas = 300000;
+				int64_t gas = 30000000;
 				execute.create(contractAddress, gas);
 			}
 
@@ -132,7 +132,7 @@ private:
 				std::for_each(datas_.begin(), datas_.end(), [this, &contractAddress](const std::string& input) {
 					bytesConstRef data((uint8_t*)input.c_str(), input.size());
 					FakeExecutive execute(data, contractAddress);
-					int64_t gas = 300000;
+					int64_t gas = 30000000;
 					execute.call(contractAddress, gas);
 				});
 				

@@ -190,6 +190,9 @@ public:
 
 	/// Hash of a block if within the last 256 blocks, or h256() otherwise.
 	virtual evmc_uint256be blockHash(int64_t  const&_number) = 0;
+    
+    /// DB operator
+    virtual int64_t executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) = 0;
 
 	/// Get the execution environment information.
 	EnvInfo const& envInfo() const { return envInfo_; }

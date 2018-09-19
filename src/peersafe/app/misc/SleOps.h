@@ -7,6 +7,7 @@
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/basics/TaggedCache.h>
 #include <peersafe/basics/TypeTransform.h>
+#include <peersafe/protocol/TableDefines.h>
 
 namespace ripple {
 enum ContractOpType {
@@ -64,6 +65,9 @@ public:
 	/// @throws NotEnoughCash if the balance of the account is less than the
 	/// amount to be subtrackted (also in case the account does not exist).
 	TER subBalance(AccountID const& _addr, int64_t const& _value);
+
+    //db operators
+    int64_t executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw);
 
 	int64_t balance(AccountID const& address);
 
