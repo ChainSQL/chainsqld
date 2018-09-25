@@ -51,6 +51,7 @@ namespace ripple {
 		Json::Value prepareBase();
         Json::Value prepareGetRaw();        
 
+		Json::Value checkBaseInfo(const Json::Value& tx_json, Application& app, bool bWs);
 		bool checkConfidentialBase(const AccountID& owner, const std::string& tableName);
 		//get decrypted pass_blob
 		std::pair<Blob, Json::Value> getPassBlobBase(AccountID& ownerId, AccountID& userId, boost::optional<SecretKey> secret_key);
