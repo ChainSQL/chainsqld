@@ -41,6 +41,7 @@
 #include <peersafe/app/tx/TableListSet.h>
 #include <peersafe/app/tx/SqlStatement.h>
 #include <peersafe/app/tx/SqlTransaction.h>
+#include <peersafe/app/tx/OperationRule.h>
 
 namespace ripple {
 
