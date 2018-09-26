@@ -519,7 +519,7 @@ TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx, Database
 					nCount = jsonMap[sNameInDB].asInt();
 				}
 				jsonMap[sNameInDB] = nCount + jsonRaw.size();
-				JLOG(ctx.app.journal(__FUNCTION__).trace()) << "R_INSERT:" << "tableRowCnt:" << nCount << "jsonRow:" << jsonRaw.size() << " sum:" << jsonMap[sNameInDB];
+				JLOG(ctx.app.journal(__FUNCTION__).info()) << "R_INSERT:" << "tableRowCnt:" << nCount << "jsonRow:" << jsonRaw.size() << " sum:" << jsonMap[sNameInDB].asString();
 				insertsle->setFieldVL(sfInsertCountMap, strCopy(jsonMap.toStyledString()));
 				sCountMap = strCopy(insertsle->getFieldVL(sfInsertCountMap));
 				ctx.view().update(insertsle);
