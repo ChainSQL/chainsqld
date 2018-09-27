@@ -152,6 +152,19 @@ enum class Instruction: uint8_t
 	LOG4,				///< Makes a log entry; 4 topics.
 
     CREATETABLE = 0xe0,
+    EXDROPTABLE,
+    EXRENAMETABLE,
+    EXINSERTSQL,
+    EXDELETESQL,
+    EXUPDATESQL,
+    EXSELECTSQL,
+    EXGRANTSQL,
+    EXTRANSBEGIN,
+    EXTRANSCOMMIT,
+    EXGETROWSIZE,
+    EXGETCOLSIZE,
+    EXGETVALUEBYKEY,
+    EXGETVALUEBYINDEX,
 
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account
