@@ -166,7 +166,8 @@ namespace ripple {
 
 			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
 			int64_t finalBanance = balance - amount;
-			if (finalBanance > reserve)
+			//no reserve demand for contract
+			if (pSle->isFieldPresent(sfContractCode) && finalBanance > 0 || finalBanance > reserve)
 			{
 				pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
 				ctx_.view().update(pSle);
