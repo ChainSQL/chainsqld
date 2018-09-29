@@ -45,6 +45,7 @@ public:
 	~FakeExecutive() = default;
 
 	owning_bytes_ref create(const evmc_address& contractAddress, int64_t &gas);
+	owning_bytes_ref create(const evmc_address& contractAddress, const evmc_uint256be& codeHash, int64_t &gas);
 	owning_bytes_ref call(const evmc_address& contractAddress, int64_t &gas);
 private:
 	const bytesConstRef& data_;

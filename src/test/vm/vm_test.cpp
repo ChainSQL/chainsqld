@@ -58,7 +58,8 @@ public:
     void run() {
 		init_env();
 		//call();
-		createAndCall();
+		//createAndCall();
+		muiltCreateCode();
 		pass();
 	}
 
@@ -145,6 +146,44 @@ private:
 			std::cout << "unkown exception." << std::endl;
 		}
 
+	}
+
+	void muiltCreateCode() {
+		auto worker = [this](const evmc_address& address, const evmc_uint256be& codeHash, const bytes& code) {
+			FakeExecutive execute(code);
+			int64_t gas = 300000;
+			execute.create(address, codeHash, gas);
+		};
+
+		std::thread t1([this,&worker]() {
+			bytes code;
+			code.assign(code_.begin(), code_.end());
+			long idx = 1;
+			while (true) {
+				evmc_address contractAddress = { {1,2,3,idx++} };
+				evmc_uint256be codeHash = { {5,6,7,8,idx++} };
+				worker(contractAddress, codeHash, code);
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			}
+		});
+
+		std::thread t2([this, &worker]() {
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+			bytes code;
+			code.assign(code_.begin(), code_.end());
+			long idx = 1;
+			while (true) {
+				evmc_address contractAddress = { {1,2,++idx,4} };
+				evmc_uint256be codeHash = { {5,6,7,8,idx++,9} };
+				worker(contractAddress, codeHash, code);
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			}
+		});
+
+		t1.join();
+		t2.join();
 	}
 
 	std::string code_;
