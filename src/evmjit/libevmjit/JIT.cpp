@@ -131,6 +131,8 @@ class JITImpl: public evmc_instance
 	mutable std::mutex x_codeMap;
 	std::unordered_map<std::string, CodeMapEntry> m_codeMap;
 
+	std::mutex m_complite;
+
 	static llvm::LLVMContext& getLLVMContext()
 	{
 		// TODO: This probably should be thread_local, but for now that causes
@@ -336,6 +338,7 @@ void JITImpl::mapExecFunc(std::string const& _codeIdentifier, ExecFunc _funcAddr
 ExecFunc JITImpl::compile(evmc_revision _rev, bool _staticCall, byte const* _code, uint64_t _codeSize,
 	std::string const& _codeIdentifier)
 {
+    std::lock_guard<std::mutex> lock(m_complite);
 	auto module = Cache::getObject(_codeIdentifier, getLLVMContext());
 	if (!module)
 	{
