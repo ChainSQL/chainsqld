@@ -1004,7 +1004,7 @@ llvm::Value* Ext::table_drop(llvm::Value* _addr, llvm::Value* _name, llvm::Value
     return  m_builder.CreateZExt(r, Type::Word);
 }
 
-llvm::Value* Ext::table_update(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw1, llvm::Value* _rawBytes1, , llvm::Value* _raw2, llvm::Value* _rawBytes2)
+llvm::Value* Ext::table_update(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw1, llvm::Value* _rawBytes1, llvm::Value* _raw2, llvm::Value* _rawBytes2)
 {
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
