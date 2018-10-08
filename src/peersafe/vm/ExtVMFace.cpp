@@ -265,6 +265,158 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
 
 }
 
+
+bool table_create(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.table_create(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });    
+}
+bool table_rename(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.table_rename(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+}
+bool table_insert(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.table_insert(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+}
+
+bool table_delete(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.table_delete(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+}
+bool table_drop(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.table_drop(address, bytesConstRef{ _name, _nameSize });
+}
+bool table_update(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw1,
+    size_t _rawSize1,
+    uint8_t const* _raw2,
+    size_t _rawSize2)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.table_update(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw1, _rawSize1 }, bytesConstRef{ _raw2, _rawSize2 });
+}
+
+bool table_grant(struct evmc_context* _context,
+    const struct evmc_address* address1,
+    const struct evmc_address* address2,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.table_grant(address1, address2, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+    return true;
+}
+
+void table_get_handle(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize,
+    struct evmc_uint256be* result)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    *result =  env.table_get_handle(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+}
+void table_get_lines(struct evmc_context* _context,
+    const struct evmc_uint256be* handle,
+    struct evmc_uint256be* result)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    *result = env.table_get_lines(handle);
+}
+void table_get_columns(struct evmc_context* _context,
+    const struct evmc_uint256be* handle,
+    struct evmc_uint256be* result)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    *result = env.table_get_columns(handle);
+}
+//wfp_need_data!!!!!!!
+size_t table_get_field1(struct evmc_context* _context,
+    const struct evmc_uint256be* handle,
+    size_t line,
+    uint8_t const* _fieldName,
+    size_t _fieldSize,
+    uint8_t* buffer_data)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    bytes byResult = env.table_get_field1(handle, line, bytesConstRef{ _fieldName, _fieldSize });
+    for (int i = 0; i < byResult.size(); i++)
+    {
+        *buffer_data++ = byResult[i];
+    }    
+
+    return byResult.size();
+}
+//wfp_need_data!!!!!!!
+size_t table_get_field2(struct evmc_context* _context,
+    const struct evmc_uint256be* handle,
+    size_t line,
+    size_t _fieldNum,
+    uint8_t* buffer_data)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+
+    bytes byResult = env.table_get_field2(handle, line, _fieldNum);
+    for (int i = 0; i < byResult.size(); i++)
+    {
+        *buffer_data++ = byResult[i];
+    }
+
+    return byResult.size();
+}
+void db_trans_begin(struct evmc_context* _context)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    env.db_trans_begin();
+}
+bool db_trans_submit(struct evmc_context* _context)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    return env.db_trans_submit();
+}
+
+void release_resource(struct evmc_context* _context)
+{
+    auto& env = static_cast<ExtVMFace&>(*_context);
+    env.release_resource();
+}
+
 evmc_context_fn_table const fnTable = {
 	accountExists,
 	getStorage,
@@ -278,6 +430,25 @@ evmc_context_fn_table const fnTable = {
 	getBlockHash,
 	log,
 	evm_executeSQL,
+
+    table_create,
+    table_rename,
+    table_insert,
+    table_delete,
+    table_drop,
+    table_update,
+    table_grant,
+
+    table_get_handle,
+    table_get_lines,
+    table_get_columns,
+    table_get_field1,
+    table_get_field2,
+
+    db_trans_begin,
+    db_trans_submit,
+
+    release_resource
 };
 
 ExtVMFace::ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,

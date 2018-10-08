@@ -80,6 +80,22 @@ public:
 
 	llvm::Value* executeSQL(llvm::Value* _addr, int _type, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
 
+    llvm::Value* table_create(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
+    llvm::Value* table_rename(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
+    llvm::Value* table_insert(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
+    llvm::Value* table_delete(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
+    llvm::Value* table_drop(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes);
+    llvm::Value* table_update(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw1, llvm::Value* _rawBytes1, , llvm::Value* _raw2, llvm::Value* _rawBytes2);
+    llvm::Value* table_grant(llvm::Value* _addr1, llvm::Value* _addr2, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
+    llvm::Value* table_get_handle(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
+    llvm::Value* table_get_lines(llvm::Value* _handle);
+    llvm::Value* table_get_columns(llvm::Value* _handle);
+    void  table_get_field1(llvm::Value* _handle, llvm::Value* _line, llvm::Value* _name, llvm::Value* _nameBytes);
+    void  table_get_field2(llvm::Value* _handle, llvm::Value* _line, llvm::Value* _num);
+    void  db_trans_begin();
+    llvm::Value* db_trans_submit();
+    void  exit_fun();
+
 private:
 	Memory& m_memoryMan;
 

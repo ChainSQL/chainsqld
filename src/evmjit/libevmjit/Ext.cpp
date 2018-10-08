@@ -212,26 +212,298 @@ llvm::Function* getLogFunc(llvm::Module* _module)
 }
 
 llvm::Function* getExecuteSQLFunc(llvm::Module* _module) {
-	static const auto funcName = "evm.executeSQL";
-	auto func = _module->getFunction(funcName);
-	if (!func)
-	{
+    static const auto funcName = "evm.executeSQL";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
         auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
-		auto fty = llvm::FunctionType::get(Type::Size, {Type::EnvPtr, addrTy->getPointerTo(), Type::Byte, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size}, false);
-		func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
-        
-		func->addAttribute(2, llvm::Attribute::ReadOnly);
-		func->addAttribute(2, llvm::Attribute::NoAlias);
-		func->addAttribute(2, llvm::Attribute::NoCapture);
-		func->addAttribute(4, llvm::Attribute::ReadOnly);
-		func->addAttribute(4, llvm::Attribute::NoAlias);
-		func->addAttribute(4, llvm::Attribute::NoCapture);
+        auto fty = llvm::FunctionType::get(Type::Size, { Type::EnvPtr, addrTy->getPointerTo(), Type::Byte, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(4, llvm::Attribute::ReadOnly);
+        func->addAttribute(4, llvm::Attribute::NoAlias);
+        func->addAttribute(4, llvm::Attribute::NoCapture);
         func->addAttribute(6, llvm::Attribute::ReadOnly);
         func->addAttribute(6, llvm::Attribute::NoAlias);
         func->addAttribute(6, llvm::Attribute::NoCapture);
-        
-	}
-	return func;
+
+    }
+    return func;
+}
+
+llvm::Function* getTableCreateFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_create";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(5, llvm::Attribute::ReadOnly);
+        func->addAttribute(5, llvm::Attribute::NoAlias);
+        func->addAttribute(5, llvm::Attribute::NoCapture);
+
+    }
+    return func;
+}
+
+llvm::Function* getTableRenameFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_rename";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(5, llvm::Attribute::ReadOnly);
+        func->addAttribute(5, llvm::Attribute::NoAlias);
+        func->addAttribute(5, llvm::Attribute::NoCapture);
+
+    }
+    return func;
+}
+llvm::Function* getTableInsertFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_insert";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(5, llvm::Attribute::ReadOnly);
+        func->addAttribute(5, llvm::Attribute::NoAlias);
+        func->addAttribute(5, llvm::Attribute::NoCapture);
+
+    }
+    return func;
+}
+llvm::Function* getTableDeleteFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_delete";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(5, llvm::Attribute::ReadOnly);
+        func->addAttribute(5, llvm::Attribute::NoAlias);
+        func->addAttribute(5, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+llvm::Function* getTableDropFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_drop";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+llvm::Function* getTableUpdateFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_update";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(5, llvm::Attribute::ReadOnly);
+        func->addAttribute(5, llvm::Attribute::NoAlias);
+        func->addAttribute(5, llvm::Attribute::NoCapture);
+        func->addAttribute(7, llvm::Attribute::ReadOnly);
+        func->addAttribute(7, llvm::Attribute::NoAlias);
+        func->addAttribute(7, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+llvm::Function* getTableGrantFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_grant";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy1 = llvm::IntegerType::get(_module->getContext(), 160);
+        auto addrTy2 = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr, addrTy1->getPointerTo(), addrTy1->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(4, llvm::Attribute::ReadOnly);
+        func->addAttribute(4, llvm::Attribute::NoAlias);
+        func->addAttribute(4, llvm::Attribute::NoCapture);
+        func->addAttribute(6, llvm::Attribute::ReadOnly);
+        func->addAttribute(6, llvm::Attribute::NoAlias);
+        func->addAttribute(6, llvm::Attribute::NoCapture);
+
+    }
+    return func;
+}
+llvm::Function* getTableGetHandleFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_get_handle";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Void, { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::WordPtr }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(5, llvm::Attribute::ReadOnly);
+        func->addAttribute(5, llvm::Attribute::NoAlias);
+        func->addAttribute(5, llvm::Attribute::NoCapture);
+
+    }
+    return func;
+}
+llvm::Function* getTableGetLinesFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_get_lines";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Void, { Type::EnvPtr, Type::WordPtr, Type::WordPtr }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+llvm::Function* getTableGetColumnsFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.table_get_columns";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto fty = llvm::FunctionType::get(Type::Void, { Type::EnvPtr, Type::WordPtr, Type::WordPtr }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+llvm::Function* getTableGetFiled1Func(llvm::Module* _module) {
+    static const auto funcName = "evm.table_get_field1";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto fty = llvm::FunctionType::get(Type::Size, { Type::EnvPtr, Type::WordPtr, Type::Size, Type::BytePtr, Type::Size, Type::WordPtr }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(4, llvm::Attribute::ReadOnly);
+        func->addAttribute(4, llvm::Attribute::NoAlias);
+        func->addAttribute(4, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+llvm::Function* getTableGetFiled2Func(llvm::Module* _module) {
+    static const auto funcName = "evm.table_get_field2";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto fty = llvm::FunctionType::get(Type::Size, { Type::EnvPtr, Type::WordPtr, Type::Size, Type::Size, Type::WordPtr }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+llvm::Function* getDBTransBeginiFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.db_trans_begin";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Void, { Type::EnvPtr }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+    }
+    return func;
+}
+llvm::Function* getDBTransSubmitFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.db_trans_submit";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+    }
+    return func;
+}
+llvm::Function* getExitFunFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.exit_fun";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Void, { Type::EnvPtr }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+    }
+    return func;
 }
 
 llvm::Function* getCallFunc(llvm::Module* _module)
@@ -639,6 +911,251 @@ llvm::Value* Ext::executeSQL(llvm::Value* _addr, int _type, llvm::Value* _name, 
 	auto r = createCABICall(func, {
 		getRuntimeManager().getEnvPtr(), ownerAddr, m_builder.getInt8(_type), namePtr, nameSize ,rawPtr ,rawSize });
     return  m_builder.CreateZExt(r, Type::Word);
+}
+
+
+
+
+llvm::Value* Ext::table_create(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
+{
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+    auto rawPtr = m_memoryMan.getBytePtr(_raw);
+    auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableCreateFunc(getModule());
+
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize });
+    return  m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_rename(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
+{
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+    auto rawPtr = m_memoryMan.getBytePtr(_raw);
+    auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableRenameFunc(getModule());
+
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize });
+    return  m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_insert(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
+{
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+    auto rawPtr = m_memoryMan.getBytePtr(_raw);
+    auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableInsertFunc(getModule());
+
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize });
+    return  m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_delete(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
+{
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+    auto rawPtr = m_memoryMan.getBytePtr(_raw);
+    auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableDeleteFunc(getModule());
+
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize });
+    return  m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_drop(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes)
+{
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableDropFunc(getModule());
+
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize });
+    return  m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_update(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw1, llvm::Value* _rawBytes1, , llvm::Value* _raw2, llvm::Value* _rawBytes2)
+{
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+    auto rawPtr1 = m_memoryMan.getBytePtr(_raw1);
+    auto rawSize1 = m_builder.CreateTrunc(_rawBytes1, Type::Size, "raw1.size");
+    auto rawPtr2 = m_memoryMan.getBytePtr(_raw2);
+    auto rawSize2 = m_builder.CreateTrunc(_rawBytes2, Type::Size, "raw2.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableUpdateFunc(getModule());
+
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr1 ,rawSize1, rawPtr2 ,rawSize2 });
+    return  m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_grant(llvm::Value* _addr1, llvm::Value* _addr2, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
+{
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+    auto rawPtr = m_memoryMan.getBytePtr(_raw);
+    auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
+
+    auto addrTy1 = m_builder.getIntNTy(160);
+    auto addrTy2 = m_builder.getIntNTy(160);
+    auto func = getTableGrantFunc(getModule());
+
+    auto ownerAddr1 = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr1, addrTy1));
+    auto pAddr1 = m_builder.CreateBitCast(getArgAlloca(), addrTy1->getPointerTo());
+    m_builder.CreateStore(ownerAddr1, pAddr1);
+
+    auto ownerAddr2 = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr2, addrTy2));
+    auto pAddr2 = m_builder.CreateBitCast(getArgAlloca(), addrTy2->getPointerTo());
+    m_builder.CreateStore(ownerAddr2, pAddr2);
+
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), ownerAddr1, ownerAddr2, namePtr, nameSize ,rawPtr ,rawSize });
+    return  m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_get_handle(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
+{
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+    auto rawPtr = m_memoryMan.getBytePtr(_raw);
+    auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableGetHandleFunc(getModule());
+
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+
+    auto pValue = getArgAlloca();
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize , pValue });
+   return Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
+}
+
+llvm::Value* Ext::table_get_lines(llvm::Value* _handle)
+{
+    auto hGet = Endianness::toBE(m_builder, _handle);
+
+    auto func = getTableGetLinesFunc(getModule());
+
+    auto pValue = getArgAlloca();
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), hGet, pValue });
+    return  m_builder.CreateZExt(r, Type::Void);
+}
+
+
+llvm::Value* Ext::table_get_columns(llvm::Value* _handle)
+{
+    auto hGet = Endianness::toBE(m_builder, _handle);
+
+    auto func = getTableGetColumnsFunc(getModule());
+
+    auto pValue = getArgAlloca();
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), hGet, pValue });
+    return  m_builder.CreateZExt(r, Type::Void);
+}
+
+void  Ext::table_get_field1(llvm::Value* _handle, llvm::Value* _line, llvm::Value* _name, llvm::Value* _nameBytes)
+{
+    auto hGet = Endianness::toBE(m_builder, _handle);
+
+    auto line = m_builder.CreateTrunc(_line, m_builder.getInt64Ty());
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableGetFiled1Func(getModule());
+
+    auto pValue = getArgAlloca();
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), hGet, line, namePtr, nameSize, pValue });
+
+    auto srcPtr = Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
+    auto srcSize = m_builder.CreateZExt(r, Type::Word);
+    auto memSize = m_memoryMan.getSize();
+    m_memoryMan.require(m_memoryMan.getSize(), srcSize);
+    m_memoryMan.copyBytes(srcPtr, srcSize, 0, m_memoryMan.getBytePtr(memSize), srcSize);
+}
+
+void Ext::table_get_field2(llvm::Value* _handle, llvm::Value* _line, llvm::Value* _num)
+{
+    auto hGet = Endianness::toBE(m_builder, _handle);
+
+    auto line = m_builder.CreateTrunc(_line, m_builder.getInt64Ty());
+    auto num = m_builder.CreateTrunc(_num, m_builder.getInt64Ty());
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto func = getTableGetFiled2Func(getModule());
+
+    auto pValue = getArgAlloca();
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr(), hGet, line, num, pValue });
+
+    auto srcPtr = Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
+    auto srcSize = m_builder.CreateZExt(r, Type::Word);
+    auto memSize = m_memoryMan.getSize();
+    m_memoryMan.require(m_memoryMan.getSize(), srcSize);
+    m_memoryMan.copyBytes(srcPtr, srcSize, 0, m_memoryMan.getBytePtr(memSize), srcSize);
+}
+
+void Ext::db_trans_begin()
+{
+    auto func = getDBTransBeginiFunc(getModule());
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr()});
+}
+
+llvm::Value* Ext::db_trans_submit()
+{
+    auto func = getDBTransSubmitFunc(getModule());
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr() });
+    return  m_builder.CreateZExt(r, Type::Bool);
+}
+
+void Ext::exit_fun()
+{
+    auto func = getDBTransBeginiFunc(getModule());
+    auto r = createCABICall(func, {
+        getRuntimeManager().getEnvPtr() });
 }
 }
 }

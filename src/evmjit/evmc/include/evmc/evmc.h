@@ -570,6 +570,194 @@ typedef int64_t (*evmc_emit_executesql_fn)(struct evmc_context* context,
 
 
 /**
+* sql1 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for createTable, insertItem, deleteItem, renameTable
+*  @param context       The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param address       The address of the contract that generated the log.
+*  @param name          The destinative table name
+*  @param nameSize      The length of table name
+*  @param raw           The sql raw field
+*  @param rawSize      The length of raw
+*/
+typedef bool (*evmc_emit_sql1_fn)(struct evmc_context* context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize);
+
+
+/**
+* sql2 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for deleteTable
+*  @param context       The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param address       The address of the contract that generated the log.
+*  @param name          The destinative table name
+*  @param nameSize      The length of table name
+*/
+typedef bool(*evmc_emit_sql2_fn)(struct evmc_context* context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize);
+
+/**
+* sql3 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for updateItem
+*  @param context       The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param address       The address of the contract that generated the log.
+*  @param name          The destinative table name
+*  @param nameSize      The length of table name
+*  @param raw1          The sql raw field
+*  @param rawSize1      The length of raw
+*  @param raw2          The sql raw field
+*  @param rawSize2      The length of raw
+*/
+typedef bool(*evmc_emit_sql3_fn)(struct evmc_context* context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw1,
+    size_t _rawSize1,
+    uint8_t const* _raw2,
+    size_t _rawSize2);
+
+
+/**
+* sql4 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for select
+*  @param context       The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param address       The address of the contract that generated the log.
+*  @param name          The destinative table name
+*  @param nameSize      The length of table name
+*  @param raw           The sql raw field
+*  @param rawSize       The length of raw
+*  @param result        handle
+*/
+typedef void  (*evmc_emit_sql4_fn)(struct evmc_context* context,
+    const struct evmc_address* address,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize,
+    struct evmc_uint256be* result);
+
+/**
+* sql5 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for grant
+*  @param context       The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param address       The address of owner.
+*  @param address       The address of destination.
+*  @param name          The destinative table name
+*  @param nameSize      The length of table name
+*  @param raw           The sql raw field
+*  @param rawSize      The length of raw
+*/
+typedef bool (*evmc_emit_sql5_fn)(struct evmc_context* context,
+    const struct evmc_address* address1,
+    const struct evmc_address* address2,
+    uint8_t const* _name,
+    size_t _nameSize,
+    uint8_t const* _raw,
+    size_t _rawSize);
+
+/**
+* sql6 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for begin transaction exitFunction
+*  @param context       The pointer to the Host execution context.
+*/
+typedef void (*evmc_emit_sql6_fn)(struct evmc_context* context);
+
+
+/**
+* sql7 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for begin transaction exitFunction
+*  @param context       The pointer to the Host execution context.
+*/
+typedef bool(*evmc_emit_sql7_fn)(struct evmc_context* context);
+
+
+/**
+* sql8 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for grant
+*  @param context       The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param handle        The handle for a table.
+*  @param result        line number or field number
+*/
+typedef void (*evmc_emit_sql8_fn)(struct evmc_context* context,
+    const struct evmc_uint256be* handle,
+    struct evmc_uint256be* result);
+
+/**
+* sql8 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for select by handle
+*  @param context       The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param handle       The handle for a table.
+*  @param line         line number.
+*  @param _fieldName   field name.
+*  @param _fieldSize   field name size.
+*  @param buffer_data  The value of result set by client.
+*/
+typedef size_t (*evmc_emit_sql9_fn)(struct evmc_context* context,
+    const struct evmc_uint256be* handle,
+    size_t line,
+    uint8_t const* _fieldName,
+    size_t _fieldSize,
+    uint8_t* buffer_data);
+
+/**
+* sql8 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for selcet by handle
+*  @param context       The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param handle       The handle for a table.
+*  @param line         line number.
+*  @param _fieldNum    fieldNum.
+*  @param buffer_data  The value of result set by client.
+*/
+typedef size_t(*evmc_emit_sql10_fn)(struct evmc_context* context,
+    const struct evmc_uint256be* handle,
+    size_t line,
+    size_t _fieldNum,
+    uint8_t* buffer_data);
+
+/**
  * Pointer to the callback function supporting EVM calls.
  *
  *  @param[out] result  The result of the call. The result object is not
@@ -628,6 +816,26 @@ struct evmc_context_fn_table
 
     /** Emit execute sql callback function. */
 	evmc_emit_executesql_fn emit_executesql;
+
+    evmc_emit_sql1_fn       table_create;
+    evmc_emit_sql1_fn       table_rename;
+    evmc_emit_sql1_fn       table_insert;
+    evmc_emit_sql1_fn       table_delete;
+    evmc_emit_sql2_fn       table_drop;
+    evmc_emit_sql3_fn       table_update;
+    evmc_emit_sql5_fn       table_grant;
+
+    evmc_emit_sql4_fn       table_get_handle;
+    evmc_emit_sql8_fn       table_get_lines;
+    evmc_emit_sql8_fn       table_get_columns;
+    evmc_emit_sql9_fn       table_get_field1;
+    evmc_emit_sql10_fn      table_get_field2;
+
+    evmc_emit_sql6_fn       db_trans_begin;
+    evmc_emit_sql7_fn       db_trans_submit;
+
+    evmc_emit_sql6_fn       exit_fun;
+
 };
 
 

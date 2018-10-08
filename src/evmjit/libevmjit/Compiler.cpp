@@ -1000,6 +1000,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 			_ext.log(beginIdx, numBytes, topics);
 			break;
 		}
+        /*
 		case Instruction::CREATETABLE:
 		{
             auto address   = stack.pop();
@@ -1023,6 +1024,181 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             stack.push(r);
             break;           
 		}
+        */
+        case Instruction::CREATETABLE:
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            auto r = _ext.table_create(address, nameIdx, nameBytes, rawIdx, rawBytes);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXDROPTABLE:
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+
+            auto r = _ext.table_drop(address, nameIdx, nameBytes);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXRENAMETABLE:
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            auto r = _ext.table_rename(address, nameIdx, nameBytes, rawIdx, rawBytes);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXINSERTSQL:
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            auto r = _ext.table_insert(address, nameIdx, nameBytes, rawIdx, rawBytes);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXDELETESQL:
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            auto r = _ext.table_delete(address, nameIdx, nameBytes, rawIdx, rawBytes);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXUPDATESQL:
+        {
+            auto address   = stack.pop();
+            auto nameIdx   = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx1   = stack.pop();
+            auto rawBytes1 = stack.pop();
+            auto rawIdx2   = stack.pop();
+            auto rawBytes2 = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx1, rawBytes1);
+            _memory.require(rawIdx2, rawBytes2);
+
+            auto r = _ext.table_update(address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXSELECTSQL:
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            auto r = _ext.table_get_handle(address, nameIdx, nameBytes, rawIdx, rawBytes);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXGRANTSQL:
+        {
+            auto addOwner  = stack.pop();
+            auto addDest   = stack.pop();
+            auto nameIdx   = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx    = stack.pop();
+            auto rawBytes  = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            auto r = _ext.table_grant(addOwner, addDest, nameIdx, nameBytes, rawIdx, rawBytes);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXTRANSBEGIN:
+        {
+            _ext.db_trans_begin();
+            break;
+        }
+        case Instruction::EXTRANSCOMMIT:
+        {
+            auto r = _ext.db_trans_submit();
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXGETROWSIZE:
+        {
+            auto handle = stack.pop();
+
+            auto r = _ext.table_get_lines(handle);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXGETCOLSIZE:
+        {
+            auto handle = stack.pop();
+
+            auto r = _ext.table_get_columns(handle);
+            stack.push(r);
+            break;
+        }
+        case Instruction::EXGETVALUEBYKEY:
+        {
+            auto handle = stack.pop();
+            auto line   = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+
+            _ext.table_get_field1(handle, line, nameIdx, nameBytes);
+            break;
+        }
+        case Instruction::EXGETVALUEBYINDEX:
+        {
+            auto handle = stack.pop();
+            auto line   = stack.pop();
+            auto num    = stack.pop();
+
+            _ext.table_get_field2(handle, line, num);
+            break;
+        }
+        case Instruction::EXEXITFUNC:
+        {
+            _ext.exit_fun();
+            break;
+        }
 
 		invalidInstruction:
 		default: // Invalid instruction - abort
