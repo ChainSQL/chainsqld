@@ -204,8 +204,8 @@ public:
     virtual evmc_uint256be table_get_handle(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return evmc_uint256be(); }
     virtual evmc_uint256be table_get_lines(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
     virtual evmc_uint256be table_get_columns(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
-    virtual bytes table_get_field1(const struct evmc_uint256be *handle, size_t line, bytesConstRef const& _name) { return bytes(); }
-    virtual bytes table_get_field2(const struct evmc_uint256be *handle, size_t line, size_t _num) { return bytes(); }
+    virtual bytes table_get_by_key(const struct evmc_uint256be *handle, size_t line, bytesConstRef const& _name) { return bytes(); }
+    virtual bytes table_get_by_index(const struct evmc_uint256be *handle, size_t line, size_t _num) { return bytes(); }
     virtual void db_trans_begin() {}
     virtual bool db_trans_submit() { return 0; }
     virtual void release_resource() {}
