@@ -92,6 +92,9 @@ public:
 	void	transactionBegin();
 	void	transactionCommit();
 
+	void	addCommonFields(STObject& obj, AccountID const& _account);
+	std::pair<bool,STArray>
+			genTableFields(AccountID const& _account,std::string _sTablename,std::string _tableNewName,bool bNewNameInDB);
 
 	int64_t balance(AccountID const& address);
 

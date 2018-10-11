@@ -72,7 +72,7 @@ public:
         TxType type,
         std::function<void(STObject&)> assembler);
 private:
-	static void getOneTx(std::vector<STTx>& vec, STTx& tx, std::string sTableNameInDB = "");
+	static void getOneTx(std::vector<STTx>& vec, STTx const& tx, std::string sTableNameInDB = "");
 public:
     STBase*
     copy (std::size_t n, void* buf) const override
@@ -120,7 +120,7 @@ public:
 
 	static std::pair<std::shared_ptr<STTx>, std::string> parseSTTx(Json::Value& obj, AccountID accountID);
 
-	static std::vector<STTx> getTxs(STTx& tx, std::string sTableNameInDB = "");
+	static std::vector<STTx> getTxs(STTx const& tx, std::string sTableNameInDB = "", STArray const& txs = STArray());
 
 	bool isCrossChainUpload() const;
 

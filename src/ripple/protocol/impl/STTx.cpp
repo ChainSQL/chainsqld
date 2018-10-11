@@ -323,7 +323,7 @@ void STTx::buildRaw(Json::Value& condition, std::string& rule) const
 	std::swap(finalRaw, condition);
 }
 
-std::vector<STTx> STTx::getTxs(STTx& tx,std::string sTableNameInDB)
+std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""*/, STArray const& txs/* = STObject()*/)
 {
 	std::vector<STTx> vec;
 	if (tx.getTxnType() == ttSQLTRANSACTION)
@@ -343,18 +343,35 @@ std::vector<STTx> STTx::getTxs(STTx& tx,std::string sTableNameInDB)
 			//if (type == T_ASSERT) continue;
 			auto tx_pair = parseSTTx(obj, accountID);
 			auto tx = *tx_pair.first;
-			getOneTx(vec,tx,sTableNameInDB);
+			getOneTx(vec,tx, sTableNameInDB);
 		}
 	}
-	else
+	else if(tx.getTxnType() == ttTABLELISTSET || tx.getTxnType() == ttSQLSTATEMENT)
 	{
 		getOneTx(vec, tx, sTableNameInDB);
+	}
+	else if (tx.getTxnType() == ttCONTRACT)
+	{
+		for (auto txInner : txs)
+		{
+			if (txInner.getFieldU16(sfTransactionType) == ttTABLELISTSET ||
+				txInner.getFieldU16(sfTransactionType) == ttSQLSTATEMENT)
+			{
+				STTx txFinal(std::move(txInner));
+				getOneTx(vec, txFinal, sTableNameInDB);
+			}
+			else if (txInner.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
+			{
+				STTx txTransaction(std::move(txInner));
+				getTxs(txTransaction, sTableNameInDB, txs);
+			}
+		}
 	}
 
 	return vec;
 }
 
-void STTx::getOneTx(std::vector<STTx>& vec, STTx& tx, std::string sTableNameInDB)
+void STTx::getOneTx(std::vector<STTx>& vec, STTx const& tx, std::string sTableNameInDB)
 {
 	if (sTableNameInDB == "")
 	{

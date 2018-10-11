@@ -33,6 +33,7 @@
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/rpc/impl/TxCommonPrepare.h>
 #include <peersafe/rpc/impl/TxTransactionPrepare.h>
+#include <peersafe/rpc/TableUtils.h>
 
 
 namespace ripple {
@@ -40,16 +41,6 @@ namespace ripple {
 //#define EXPIRE_TIME 60 * 60
 #define EXPIRE_TIME 300
 
-std::string hash(std::string &pk)
-{
-	ripesha_hasher rsh;
-	rsh(pk.c_str(), pk.size());
-	auto const d = static_cast<
-		ripesha_hasher::result_type>(rsh);
-	std::string str;
-	str = strHex(d.data(), d.size());
-	return str;
-}
 
 TableAssistant::TableAssistant(Application& app, Config& cfg, beast::Journal journal)
 	: app_(app)
@@ -108,13 +99,10 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 			ret[jss::error_message] = "Can not find validated ledger!";
 			return ret;
 		}
-		std::string ledgerSequenceStr = to_string(ledgerSequence);
 
 		try
 		{
-			std::string tmp = ledgerSequenceStr + accountIdStr + tableNameStr;
-			std::string str = hash(tmp);
-			nameInDB = from_hex_text<uint160>(str);
+			nameInDB = generateNameInDB(ledgerSequence, accountID, tableNameStr);
 		}
 		catch (std::exception const& e)
 		{

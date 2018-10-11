@@ -1060,14 +1060,35 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 						continue;
 					}
 
-					auto vecTxs = STTx::getTxs(tx, sTableNameInDB_);
+					std::vector<STTx> vecTxs;
+					if (tx.getTxnType() == ttCONTRACT)
+					{
+						auto ledger = app_.getLedgerMaster().getValidatedLedger();
+						auto rawMeta = ledger->txRead(tx.getTransactionID()).second;
+						if (!rawMeta)
+							continue;
+
+						auto txMeta = std::make_shared<TxMeta>(tx.getTransactionID(),
+							ledger->seq(), *rawMeta, app_.journal("TableSync"));
+
+						auto meta = txMeta->getNodes().back();
+						if (!meta.isFieldPresent(sfContractTxs))
+							continue;
+						auto txs = meta.getFieldArray(sfContractTxs);
+
+						vecTxs = STTx::getTxs(tx, sTableNameInDB_,txs);
+					}
+					else
+					{
+						vecTxs = STTx::getTxs(tx, sTableNameInDB_);
+					}					
 
 					if (vecTxs.size() > 0)
 					{
 						TryDecryptRaw(vecTxs);
                         for (auto& tx : vecTxs)
                         {
-                            if (T_CREATE == tx.getFieldU16(sfOpType))
+                            if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
                             {
                                 DeleteTable(sTableNameInDB_);
                             }

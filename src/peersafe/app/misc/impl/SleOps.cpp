@@ -7,6 +7,8 @@
 #include <peersafe/app/tx/DirectApply.h>
 #include <peersafe/app/misc/ContractHelper.h>
 #include <ripple/basics/StringUtilities.h>
+#include <ripple/app/ledger/LedgerMaster.h>
+#include <peersafe/rpc/TableUtils.h>
 
 
 namespace ripple {
@@ -230,21 +232,66 @@ namespace ripple {
         return 0;
     }
 
+	void SleOps::addCommonFields(STObject& obj,AccountID const& _account)
+	{
+		obj.setAccountID(sfAccount, _account);
+
+		obj.setFieldU16(sfSequence, 0);
+		obj.setFieldAmount(sfFee, STAmount());
+		obj.setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
+	}
+
+	std::pair<bool, STArray> SleOps::genTableFields(AccountID const& _account, std::string _sTableName, std::string _tableNewName, bool bNewNameInDB)
+	{
+		STArray tables;
+		STObject table(sfTable);
+		table.setFieldVL(sfTableName, strCopy(_sTableName));
+		if(!_tableNewName.empty())
+			table.setFieldVL(sfTableNewName, strCopy(_tableNewName));
+		if (bNewNameInDB)
+		{
+			auto nameInDB = generateNameInDB(ctx_.view().seq(), _account, _sTableName);
+			table.setFieldVL(sfNameInDB, strCopy(to_string(nameInDB)));
+		}
+		else
+		{
+			auto ledgerSeq = ctx_.app.getLedgerMaster().getValidLedgerIndex();
+			auto nameInDB = ctx_.app.getLedgerMaster().getNameInDB(ledgerSeq, _account, _sTableName);
+			if (!nameInDB)
+			{
+				auto j = ctx_.app.journal("Executive");
+				JLOG(j.info())
+					<< "SleOps genTableFields getNameInDB failed,account="
+					<< to_string(_account)
+					<< ",tableName="
+					<< _sTableName;
+				return std::make_pair(false, tables);
+			}
+				
+			table.setFieldVL(sfNameInDB, strCopy(to_string(nameInDB)));
+		}
+		
+		tables.push_back(table);
+		return std::make_pair(true, tables);
+
+	}
+
 	//table opeartion
 	bool SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
 	{
 		STTx tx(ttTABLELISTSET,
 			[&_account, &_sTableName, &_raw](auto& obj)
 		{
-			STArray tables;
-			STObject table(sfTable);
-			table.setFieldVL(sfTableName, strCopy(_sTableName));
-			tables.push_back(table);
 
 			obj.setFieldU16(sfOpType, T_CREATE);
-			obj.setAccountID(sfAccount, _account);
-			obj.setFieldArray(sfTables, tables);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
+			auto tables = genTableFields(_account, _sTableName, "", true);
+			if (tables.first)
+				obj.setFieldArray(sfTables, tables);
+			else
+				return false;
+
+			addCommonFields(obj, _account);
 		});
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)

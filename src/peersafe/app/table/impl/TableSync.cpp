@@ -158,35 +158,114 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
             //std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
 
             STTx stTx(SerialIter{ blob.data(), blob.size() });
-            if (!stTx.isChainSqlBaseType())  continue;
+            if (!stTx.isChainSqlBaseType() && stTx.getTxnType() != ttCONTRACT)  continue;
 
-            if (stTx.getTxnType() == ttSQLTRANSACTION) {
-                Blob txs_blob = stTx.getFieldVL(sfStatements);
-                std::string txs_str;
+			std::vector<STTx> vecTxs;
+			if (stTx.getTxnType() == ttCONTRACT)
+			{
+				auto ledger = app_.getLedgerMaster().getValidatedLedger();
+				auto rawMeta = ledger->txRead(stTx.getTransactionID()).second;
+				if (!rawMeta)
+					continue;
 
-                txs_str.assign(txs_blob.begin(), txs_blob.end());
-                Json::Value objs;
-                Json::Reader().parse(txs_str, objs);
+				auto txMeta = std::make_shared<TxMeta>(stTx.getTransactionID(),
+					ledger->seq(), *rawMeta, app_.journal("TableSync"));
 
-				bool bFound = false;
-                for (auto obj : objs)
-                {
-                    auto const & sTxTable = obj["Tables"][0u]["Table"];
-                    if (sNameInDB == sTxTable["NameInDB"].asString())
-                    {
-						bFound = true;
-						break;
-                    }
-                }
-				if (!bFound) continue;;
-            }
-            else {
-                auto const & sTxTables = stTx.getFieldArray(sfTables);
-                if (sNameInDB != to_string(sTxTables[0].getFieldH160(sfNameInDB)))
-                {
-                    continue;
-                }
-            }
+				auto meta = txMeta->getNodes().back();
+				if (!meta.isFieldPresent(sfContractTxs))
+					continue;
+				auto txs = meta.getFieldArray(sfContractTxs);
+
+				vecTxs = STTx::getTxs(stTx, sNameInDB, txs);
+			}
+			else
+			{
+				vecTxs = STTx::getTxs(stTx, sNameInDB);
+			}
+			if(vecTxs.size() == 0)
+				continue;
+
+   //         if (stTx.getTxnType() == ttSQLTRANSACTION) {
+   //             Blob txs_blob = stTx.getFieldVL(sfStatements);
+   //             std::string txs_str;
+
+   //             txs_str.assign(txs_blob.begin(), txs_blob.end());
+   //             Json::Value objs;
+   //             Json::Reader().parse(txs_str, objs);
+
+			//	bool bFound = false;
+   //             for (auto obj : objs)
+   //             {
+   //                 auto const & sTxTable = obj["Tables"][0u]["Table"];
+   //                 if (sNameInDB == sTxTable["NameInDB"].asString())
+   //                 {
+			//			bFound = true;
+			//			break;
+   //                 }
+   //             }
+			//	if (!bFound) continue;;
+   //         }
+			//else if (stTx.getTxnType() == ttCONTRACT)
+			//{
+			//	auto rawMeta = ledger->txRead(stTx.getTransactionID()).second;
+			//	if(!rawMeta)
+			//		continue;
+
+			//	auto txMeta = std::make_shared<TxMeta>(stTx.getTransactionID(),
+			//		ledger->seq(), *rawMeta, app_.journal("TableSync"));
+
+			//	auto meta = txMeta->getNodes().back();
+			//	if (!meta.isFieldPresent(sfContractTxs))
+			//		continue;
+			//	auto txs = meta.getFieldArray(sfContractTxs);
+
+			//	bool bFound = false;
+			//	for (auto txInner : txs)
+			//	{
+			//		if (txInner.getFieldU16(sfTransactionType) == ttTABLELISTSET || 
+			//			txInner.getFieldU16(sfTransactionType) == ttSQLSTATEMENT)
+			//		{
+			//			auto const & sTxTables = txInner.getFieldArray(sfTables);
+			//			if (sNameInDB == to_string(sTxTables[0].getFieldH160(sfNameInDB)))
+			//			{
+			//				bFound = true;
+			//				break;
+			//			}
+			//		}
+			//		else if (txInner.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
+			//		{
+			//			Blob txs_blob = txInner.getFieldVL(sfStatements);
+			//			std::string txs_str;
+
+			//			txs_str.assign(txs_blob.begin(), txs_blob.end());
+			//			Json::Value objs;
+			//			Json::Reader().parse(txs_str, objs);
+
+			//			for (auto obj : objs)
+			//			{
+			//				auto const & sTxTable = obj["Tables"][0u]["Table"];
+			//				if (sNameInDB == sTxTable["NameInDB"].asString())
+			//				{
+			//					bFound = true;
+			//					break;
+			//				}
+			//			}
+			//			if (bFound)
+			//				break;
+			//		}
+			//	}
+
+			//	if(!bFound)
+			//		continue;
+			//}
+   //         else 
+			//{
+   //             auto const & sTxTables = stTx.getFieldArray(sfTables);
+   //             if (sNameInDB != to_string(sTxTables[0].getFieldH160(sfNameInDB)))
+   //             {
+   //                 continue;
+   //             }
+   //         }
 
             protocol::TMLedgerNode* node = m.add_txnodes();
             node->set_nodedata(blob.data(),
@@ -1529,16 +1608,35 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
                 {
                     if (T_CREATE == tx.getFieldU16(sfOpType))
                     {
-                        AccountID accountID = tx.getAccountID(sfAccount);
-                        auto tables = tx.getFieldArray(sfTables);
-                        uint160 uTxDBName = tables[0].getFieldH160(sfNameInDB);
-
-                        auto tableBlob = tables[0].getFieldVL(sfTableName);
-                        std::string tableName;
-                        tableName.assign(tableBlob.begin(), tableBlob.end());
-                        InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
+						OnCreateTableTx(tx, ledger, time, chainId);
                     }
                 }
+				else if (tx.getTxnType() == ttCONTRACT)
+				{
+					auto rawMeta = ledger->txRead(tx.getTransactionID()).second;
+					if (!rawMeta)
+						continue;
+
+					auto txMeta = std::make_shared<TxMeta>(tx.getTransactionID(),
+						ledger->seq(), *rawMeta, app_.journal("TableSync"));
+					
+					auto meta = txMeta->getNodes().back();
+					if (!meta.isFieldPresent(sfContractTxs))
+						continue;
+					auto txs = meta.getFieldArray(sfContractTxs);
+
+					for (auto txInner : txs)
+					{
+						if (txInner.isFieldPresent(sfOpType) && T_CREATE == txInner.getFieldU16(sfOpType))
+						{
+							OnCreateTableTx(txInner, ledger, time, chainId);
+						}
+						else if (txInner.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
+						{
+
+						}
+					}
+				}
 			}
         }
         catch (std::exception const&)
@@ -1547,6 +1645,19 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
         }
     }
 }
+
+void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
+{
+	AccountID accountID = tx.getAccountID(sfAccount);
+	auto tables = tx.getFieldArray(sfTables);
+	uint160 uTxDBName = tables[0].getFieldH160(sfNameInDB);
+
+	auto tableBlob = tables[0].getFieldVL(sfTableName);
+	std::string tableName;
+	tableName.assign(tableBlob.begin(), tableBlob.end());
+	InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
+}
+
 bool TableSync::IsAutoLoadTable()
 {
     return bAutoLoadTable_;
