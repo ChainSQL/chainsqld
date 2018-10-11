@@ -75,6 +75,7 @@ class TableStatusDB;
 class TableSync;
 class TableStorage;
 class TableAssistant;
+class ContractHelper;
 
 class DatabaseCon;
 class SHAMapStore;
@@ -158,6 +159,7 @@ public:
     virtual TableSync&              getTableSync() = 0;
     virtual TableStorage&           getTableStorage() = 0;
 	virtual TableAssistant&			getTableAssistant() = 0;
+	virtual ContractHelper&			getContractHelper() = 0;
 	virtual
     std::pair<PublicKey, SecretKey> const&
     nodeIdentity () = 0;

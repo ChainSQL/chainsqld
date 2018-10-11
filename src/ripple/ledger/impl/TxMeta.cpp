@@ -267,4 +267,16 @@ void TxMeta::addRaw (Serializer& s, TER result, std::uint32_t index)
     getAsObject ().add (s);
 }
 
+void TxMeta::makeContractTxField(std::vector<STTx> const& vecTxs)
+{
+	mNodes.push_back(STObject(sfContractTxs));
+	STObject& txs = mNodes.back();
+	STArray txsArray;
+	for (auto& tx : vecTxs)
+	{
+		txsArray.push_back(tx);
+	}
+	txs.setFieldArray(sfContractTxs, txsArray);
+}
+
 } // ripple

@@ -5,6 +5,8 @@
 #include <ripple/ledger/ApplyViewImpl.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <peersafe/app/tx/DirectApply.h>
+#include <peersafe/app/misc/ContractHelper.h>
+#include <ripple/basics/StringUtilities.h>
 
 
 namespace ripple {
@@ -227,5 +229,105 @@ namespace ripple {
     {
         return 0;
     }
-    
+
+	//table opeartion
+	bool SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
+	{
+		STTx tx(ttTABLELISTSET,
+			[&_account, &_sTableName, &_raw](auto& obj)
+		{
+			STArray tables;
+			STObject table(sfTable);
+			table.setFieldVL(sfTableName, strCopy(_sTableName));
+			tables.push_back(table);
+
+			obj.setFieldU16(sfOpType, T_CREATE);
+			obj.setAccountID(sfAccount, _account);
+			obj.setFieldArray(sfTables, tables);
+			obj.setFieldVL(sfRaw, strCopy(_raw));
+		});
+		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+		if (ret != tesSUCCESS)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps createTable,apply result:"
+				<< transToken(ret);
+		}
+
+		if (ctx_.view().flags() & tapForConsensus)
+		{
+			ctx_.tx.addSubTx(tx);
+			//ctx_.app.getContractHelper().addTx(ctx_.tx.getTransactionID(), tx);
+		}
+		
+		return ret == tesSUCCESS;
+	}
+
+	bool SleOps::dropTable(AccountID const& _account, std::string const& _sTableName)
+	{
+		return true;
+	}
+
+	bool SleOps::renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName)
+	{
+		return true;
+	}
+
+	bool SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _raw)
+	{
+		return true;
+	}
+
+	//CRUD operation
+	bool SleOps::insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+	{
+		return true;
+	}
+
+	bool SleOps::deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+	{
+		return true;
+	}
+
+	bool SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw)
+	{
+		return true;
+	}
+
+	//Select related
+	uint256 SleOps::getDataHandle(AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+	{
+		return uint256(0);
+	}
+	uint256 SleOps::getDataLines(uint256 const& _handle)
+	{
+		return uint256(0);
+	}
+	uint256 SleOps::getDataColumns(uint256 const& _handle)
+	{
+		return uint256(0);
+	}
+	bytes	SleOps::getByKey(uint256 const& _handle, size_t row, std::string const& _key)
+	{
+		return Blob();
+	}
+	bytes	SleOps::getByIndex(uint256 const& handle, size_t row, size_t column)
+	{
+		return Blob();
+	}
+	void	SleOps::releaseResource()	//release hanle related resources
+	{
+
+	}
+
+	//transaction related
+	void	SleOps::transactionBegin()
+	{
+
+	}
+	void	SleOps::transactionCommit()
+	{
+
+	}    
 }

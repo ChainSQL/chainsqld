@@ -68,6 +68,8 @@ STTx::STTx (STObject&& object)
         Throw<std::runtime_error> ("transaction not valid");
 
     tid_ = getHash(HashPrefix::transactionID);
+
+	pTxs_ = std::make_shared<std::vector<STTx>>();
 }
 
 std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, AccountID accountID)
@@ -132,6 +134,8 @@ STTx::STTx (SerialIter& sit)
         Throw<std::runtime_error> ("transaction not valid");
 
     tid_ = getHash(HashPrefix::transactionID);
+
+	pTxs_ = std::make_shared<std::vector<STTx>>();
 }
 
 STTx::STTx (
@@ -152,6 +156,8 @@ STTx::STTx (
         LogicError ("Transaction type was mutated during assembly");
 
     tid_ = getHash(HashPrefix::transactionID);
+	
+	pTxs_ = std::make_shared<std::vector<STTx>>();
 }
 
 bool STTx::isCrossChainUpload() const

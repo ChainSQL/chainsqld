@@ -26,6 +26,7 @@
 #include <ripple/beast/utility/Journal.h>
 #include <boost/container/flat_set.hpp>
 #include <boost/optional.hpp>
+#include <ripple/protocol/STTx.h>
 
 namespace ripple {
 
@@ -107,6 +108,8 @@ public:
         return getAsObject ().getJson (p);
     }
     void addRaw (Serializer&, TER, std::uint32_t index);
+
+	void makeContractTxField(std::vector<STTx> const& vecTxs);
 
     STObject getAsObject () const;
     STArray& getNodes ()

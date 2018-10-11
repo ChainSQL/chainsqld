@@ -108,6 +108,16 @@ public:
 		return tx_type_ == ttTABLELISTSET || tx_type_ == ttSQLSTATEMENT || tx_type_ == ttSQLTRANSACTION;
 	}
 
+	void addSubTx(STTx const& tx) const
+	{
+		pTxs_->push_back(tx);
+	}
+
+	std::vector<STTx> const& getSubTxs() const
+	{
+		return *pTxs_;
+	}
+
 	static std::pair<std::shared_ptr<STTx>, std::string> parseSTTx(Json::Value& obj, AccountID accountID);
 
 	static std::vector<STTx> getTxs(STTx& tx, std::string sTableNameInDB = "");
@@ -173,6 +183,8 @@ private:
 
     uint256 tid_;
     TxType tx_type_;
+	std::shared_ptr<std::vector<STTx>> pTxs_;
+
 };
 
 bool passesLocalChecks (STObject const& st, std::string&);

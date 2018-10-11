@@ -296,6 +296,7 @@ SField const sfMemos           = make::one(&sfMemos,           STI_ARRAY, 9, "Me
 SField const sfTableEntries    = make::one(&sfTableEntries,    STI_ARRAY, 50,"TableEntries");
 SField const sfTables          = make::one(&sfTables,          STI_ARRAY, 51, "Tables");
 SField const sfUsers           = make::one(&sfUsers,           STI_ARRAY, 52, "Users");	
+SField const sfContractTxs	   = make::one(&sfContractTxs,	   STI_ARRAY, 53, "ContractTxs");
 
 // array of objects (uncommon)
 SField const sfMajorities      = make::one(&sfMajorities,      STI_ARRAY, 16, "Majorities");
