@@ -125,6 +125,6 @@ namespace ripple {
 	{
 		std::string tmp = to_string(ledgerSeq) + to_string(account) + sTableName;
 		std::string str = hash(tmp);
-		auto nameInDB = from_hex_text<uint160>(str);
+		return from_hex_text<uint160>(str);
 	}
 }

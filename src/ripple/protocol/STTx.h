@@ -23,6 +23,7 @@
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/STObject.h>
+#include <ripple/protocol/STArray.h>
 #include <ripple/protocol/TxFormats.h>
 #include <boost/container/flat_set.hpp>
 #include <boost/logic/tribool.hpp>
