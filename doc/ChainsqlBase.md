@@ -38,7 +38,7 @@ await c.connect('ws://106.75.99.244:6006');
 console.log('连接成功')
 c.as(owner);    //这里owner指一个有足够zxc的账户，第一个转账操作肯定要用根账户
 		
-let rs = await c.pay(account,200);
+let rs = await c.pay(account.address,200);
 console.log(rs);
 ```
 输出结果为tesSUCCESS 说明提交成功，大约2-3秒后交易共识通过，可在链上查询到账户信息
