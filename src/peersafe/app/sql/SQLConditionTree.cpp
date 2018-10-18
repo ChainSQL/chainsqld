@@ -212,6 +212,11 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 		std::string keyname = std::get<0>(result);
 		std::string op = std::get<1>(result);
 		std::vector<BindValue> value = std::get<2>(result);
+		if (value.empty()) {
+			c = (boost::format("ERROR: %s %s null. value can't be null or nil") %keyname %op).str();
+			return false;
+		}
+
 		if (boost::iequals(op, "$eq")) {
 			op = "=";
 		}
@@ -435,7 +440,7 @@ int conditionTree::parse_value(const Json::Value& j, BindValue& v) {
 	else if (j.isDouble())
 		v = BindValue(j.asDouble());
 	else
-		result = -1;
+		v = BindValue(j.asString());
 	return result;
 }
 
@@ -471,8 +476,8 @@ conditionTree::expression_result conditionTree::parse_expression(const Json::Val
 			if (parse_value(v, value[0]) != 0)
 				break;
 		}
-		result = std::make_tuple(keyname, op, value);
 	} while (false);
+	result = std::make_tuple(keyname, op, value);
 	return result;
 }
 
