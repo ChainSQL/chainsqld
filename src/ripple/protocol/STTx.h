@@ -23,6 +23,7 @@
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/STObject.h>
+#include <ripple/protocol/STArray.h>
 #include <ripple/protocol/TxFormats.h>
 #include <boost/container/flat_set.hpp>
 #include <boost/logic/tribool.hpp>
@@ -72,7 +73,7 @@ public:
         TxType type,
         std::function<void(STObject&)> assembler);
 private:
-	static void getOneTx(std::vector<STTx>& vec, STTx& tx, std::string sTableNameInDB = "");
+	static void getOneTx(std::vector<STTx>& vec, STTx const& tx, std::string sTableNameInDB = "");
 public:
     STBase*
     copy (std::size_t n, void* buf) const override
@@ -108,9 +109,19 @@ public:
 		return tx_type_ == ttTABLELISTSET || tx_type_ == ttSQLSTATEMENT || tx_type_ == ttSQLTRANSACTION;
 	}
 
+	void addSubTx(STTx const& tx) const
+	{
+		pTxs_->push_back(tx);
+	}
+
+	std::vector<STTx> const& getSubTxs() const
+	{
+		return *pTxs_;
+	}
+
 	static std::pair<std::shared_ptr<STTx>, std::string> parseSTTx(Json::Value& obj, AccountID accountID);
 
-	static std::vector<STTx> getTxs(STTx& tx, std::string sTableNameInDB = "");
+	static std::vector<STTx> getTxs(STTx const& tx, std::string sTableNameInDB = "", STArray const& txs = STArray());
 
 	bool isCrossChainUpload() const;
 
@@ -173,6 +184,8 @@ private:
 
     uint256 tid_;
     TxType tx_type_;
+	std::shared_ptr<std::vector<STTx>> pTxs_;
+
 };
 
 bool passesLocalChecks (STObject const& st, std::string&);

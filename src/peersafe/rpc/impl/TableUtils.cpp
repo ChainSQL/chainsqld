@@ -20,8 +20,20 @@
 #include <ripple/protocol/JsonFields.h>
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <ripple/protocol/digest.h>
 
 namespace ripple {
+
+	std::string hash(std::string &pk)
+	{
+		ripesha_hasher rsh;
+		rsh(pk.c_str(), pk.size());
+		auto const d = static_cast<
+			ripesha_hasher::result_type>(rsh);
+		std::string str;
+		str = strHex(d.data(), d.size());
+		return str;
+	}
 
 	Json::Value generateRpcError(const std::string& errMsg)
 	{
@@ -107,5 +119,12 @@ namespace ripple {
 		return transactionType == "TableListSet" ||
 			transactionType == "SQLStatement" ||
 			transactionType == "SQLTransaction";
+	}
+
+	uint160 generateNameInDB(uint32 ledgerSeq, AccountID account, std::string sTableName)
+	{
+		std::string tmp = to_string(ledgerSeq) + to_string(account) + sTableName;
+		std::string str = hash(tmp);
+		return from_hex_text<uint160>(str);
 	}
 }

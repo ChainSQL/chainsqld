@@ -551,6 +551,7 @@ extern SField const sfMajorities;
 extern SField const sfTableEntries;
 extern SField const sfTables;
 extern SField const sfUsers;
+extern SField const sfContractTxs;
 //------------------------------------------------------------------------------
 
 } // ripple
