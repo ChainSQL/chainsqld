@@ -1,8 +1,12 @@
+#include <iostream>
+#include <string>
+
 #include "Ext.h"
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Module.h>
+#include <llvm/Support/raw_ostream.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "RuntimeManager.h"
@@ -370,7 +374,6 @@ llvm::Function* getTableGrantFunc(llvm::Module* _module) {
     if (!func)
     {
         auto addrTy1 = llvm::IntegerType::get(_module->getContext(), 160);
-        auto addrTy2 = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr, addrTy1->getPointerTo(), addrTy1->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
 
@@ -417,7 +420,6 @@ llvm::Function* getTableGetLinesFunc(llvm::Module* _module) {
     auto func = _module->getFunction(funcName);
     if (!func)
     {
-        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Void, { Type::EnvPtr, Type::WordPtr, Type::WordPtr }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
 
@@ -477,7 +479,6 @@ llvm::Function* getDBTransBeginiFunc(llvm::Module* _module) {
     auto func = _module->getFunction(funcName);
     if (!func)
     {
-        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Void, { Type::EnvPtr }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
     }
@@ -488,7 +489,6 @@ llvm::Function* getDBTransSubmitFunc(llvm::Module* _module) {
     auto func = _module->getFunction(funcName);
     if (!func)
     {
-        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Bool, { Type::EnvPtr }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
     }
@@ -499,7 +499,6 @@ llvm::Function* getExitFunFunc(llvm::Module* _module) {
     auto func = _module->getFunction(funcName);
     if (!func)
     {
-        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Void, { Type::EnvPtr }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
     }
@@ -895,117 +894,148 @@ std::tuple<llvm::Value*, llvm::Value*> Ext::create(llvm::Value* _gas,
 	return std::tuple<llvm::Value*, llvm::Value*>{ret, pAddr};
 }
 
-llvm::Value* Ext::executeSQL(llvm::Value* _addr, int _type, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
-{
+llvm::Value* Ext::executeSQL(llvm::Value* _addr, 
+        int _type, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes, 
+        llvm::Value* _raw, 
+        llvm::Value* _rawBytes) {
+	auto func = getExecuteSQLFunc(getModule());
+
 	auto namePtr = m_memoryMan.getBytePtr(_name);
 	auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
     auto rawPtr = m_memoryMan.getBytePtr(_raw);
     auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
 
 	auto addrTy = m_builder.getIntNTy(160);
-	auto func = getExecuteSQLFunc(getModule());
-
-	auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+	auto ownerAddr = Endianness::toBE(
+            m_builder, m_builder.CreateTrunc(_addr, addrTy));
     auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
     m_builder.CreateStore(ownerAddr, pAddr);
-	auto r = createCABICall(func, {
-		getRuntimeManager().getEnvPtr(), ownerAddr, m_builder.getInt8(_type), namePtr, nameSize ,rawPtr ,rawSize });
+	auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), ownerAddr, 
+             m_builder.getInt8((uint8_t)_type), namePtr, nameSize, 
+             rawPtr, rawSize});
     return  m_builder.CreateZExt(r, Type::Word);
 }
 
-
-
-
-llvm::Value* Ext::table_create(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
-{
-    auto namePtr = m_memoryMan.getBytePtr(_name);
-    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
-    auto rawPtr = m_memoryMan.getBytePtr(_raw);
-    auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
-
-    auto addrTy = m_builder.getIntNTy(160);
+llvm::Value* Ext::table_create(llvm::Value* _addr, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes, 
+        llvm::Value* _raw, 
+        llvm::Value* _rawBytes) {
     auto func = getTableCreateFunc(getModule());
 
-    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
-    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
-    m_builder.CreateStore(ownerAddr, pAddr);
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize });
-    return  m_builder.CreateZExt(r, Type::Word);
-}
-
-llvm::Value* Ext::table_rename(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
-{
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
     auto rawPtr = m_memoryMan.getBytePtr(_raw);
     auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
 
     auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), ownerAddr, 
+             namePtr, nameSize ,rawPtr ,rawSize });
+    return m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_rename(llvm::Value* _addr, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes, 
+        llvm::Value* _raw, 
+        llvm::Value* _rawBytes) {
     auto func = getTableRenameFunc(getModule());
 
-    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
-    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
-    m_builder.CreateStore(ownerAddr, pAddr);
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize });
-    return  m_builder.CreateZExt(r, Type::Word);
-}
-
-llvm::Value* Ext::table_insert(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
-{
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
     auto rawPtr = m_memoryMan.getBytePtr(_raw);
     auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
 
     auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, 
+            m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), ownerAddr, 
+             namePtr, nameSize ,rawPtr ,rawSize });
+    return m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_insert(llvm::Value* _addr, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes, 
+        llvm::Value* _raw, 
+        llvm::Value* _rawBytes) {
     auto func = getTableInsertFunc(getModule());
 
-    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
-    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
-    m_builder.CreateStore(ownerAddr, pAddr);
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize });
-    return  m_builder.CreateZExt(r, Type::Word);
-}
-
-llvm::Value* Ext::table_delete(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
-{
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
     auto rawPtr = m_memoryMan.getBytePtr(_raw);
     auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
 
     auto addrTy = m_builder.getIntNTy(160);
-    auto func = getTableDeleteFunc(getModule());
-
     auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
     auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
     m_builder.CreateStore(ownerAddr, pAddr);
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize });
-    return  m_builder.CreateZExt(r, Type::Word);
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), ownerAddr, 
+             namePtr, nameSize ,rawPtr ,rawSize });
+    return m_builder.CreateZExt(r, Type::Word);
 }
 
-llvm::Value* Ext::table_drop(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes)
-{
+llvm::Value* Ext::table_delete(llvm::Value* _addr, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes, 
+        llvm::Value* _raw, 
+        llvm::Value* _rawBytes) {
+    auto func = getTableDeleteFunc(getModule());
+
+    auto namePtr = m_memoryMan.getBytePtr(_name);
+    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
+    auto rawPtr = m_memoryMan.getBytePtr(_raw);
+    auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(
+            m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), ownerAddr, 
+             namePtr, nameSize ,rawPtr ,rawSize});
+    return m_builder.CreateZExt(r, Type::Word);
+}
+
+llvm::Value* Ext::table_drop(llvm::Value* _addr, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes) {
+    auto func = getTableDropFunc(getModule());
+
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
 
     auto addrTy = m_builder.getIntNTy(160);
-    auto func = getTableDropFunc(getModule());
-
-    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto ownerAddr = Endianness::toBE(
+            m_builder, m_builder.CreateTrunc(_addr, addrTy));
     auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
     m_builder.CreateStore(ownerAddr, pAddr);
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize });
-    return  m_builder.CreateZExt(r, Type::Word);
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize});
+    return m_builder.CreateZExt(r, Type::Word);
 }
 
-llvm::Value* Ext::table_update(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw1, llvm::Value* _rawBytes1, llvm::Value* _raw2, llvm::Value* _rawBytes2)
-{
+llvm::Value* Ext::table_update(llvm::Value* _addr, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes, 
+        llvm::Value* _raw1, 
+        llvm::Value* _rawBytes1, 
+        llvm::Value* _raw2, 
+        llvm::Value* _rawBytes2) {
+    auto func = getTableUpdateFunc(getModule());
+
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
     auto rawPtr1 = m_memoryMan.getBytePtr(_raw1);
@@ -1014,149 +1044,169 @@ llvm::Value* Ext::table_update(llvm::Value* _addr, llvm::Value* _name, llvm::Val
     auto rawSize2 = m_builder.CreateTrunc(_rawBytes2, Type::Size, "raw2.size");
 
     auto addrTy = m_builder.getIntNTy(160);
-    auto func = getTableUpdateFunc(getModule());
-
-    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto ownerAddr = Endianness::toBE(
+            m_builder, m_builder.CreateTrunc(_addr, addrTy));
     auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
     m_builder.CreateStore(ownerAddr, pAddr);
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr1 ,rawSize1, rawPtr2 ,rawSize2 });
-    return  m_builder.CreateZExt(r, Type::Word);
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), ownerAddr, 
+             namePtr, nameSize ,rawPtr1 ,rawSize1, rawPtr2 ,rawSize2});
+    return m_builder.CreateZExt(r, Type::Word);
 }
 
-llvm::Value* Ext::table_grant(llvm::Value* _addr1, llvm::Value* _addr2, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
-{
+llvm::Value* Ext::table_grant(llvm::Value* _addr1, 
+        llvm::Value* _addr2, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes, 
+        llvm::Value* _raw, 
+        llvm::Value* _rawBytes) {
+    auto func = getTableGrantFunc(getModule());
+
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
     auto rawPtr = m_memoryMan.getBytePtr(_raw);
     auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
 
     auto addrTy1 = m_builder.getIntNTy(160);
-    auto addrTy2 = m_builder.getIntNTy(160);
-    auto func = getTableGrantFunc(getModule());
-
-    auto ownerAddr1 = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr1, addrTy1));
-    auto pAddr1 = m_builder.CreateBitCast(getArgAlloca(), addrTy1->getPointerTo());
+    auto ownerAddr1 = Endianness::toBE(
+            m_builder, m_builder.CreateTrunc(_addr1, addrTy1));
+    auto pAddr1 = m_builder.CreateBitCast(
+            getArgAlloca(), addrTy1->getPointerTo());
     m_builder.CreateStore(ownerAddr1, pAddr1);
 
-    auto ownerAddr2 = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr2, addrTy2));
-    auto pAddr2 = m_builder.CreateBitCast(getArgAlloca(), addrTy2->getPointerTo());
+    auto addrTy2 = m_builder.getIntNTy(160);
+    auto ownerAddr2 = Endianness::toBE(m_builder, 
+            m_builder.CreateTrunc(_addr2, addrTy2));
+    auto pAddr2 = m_builder.CreateBitCast(
+            getArgAlloca(), addrTy2->getPointerTo());
     m_builder.CreateStore(ownerAddr2, pAddr2);
 
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), ownerAddr1, ownerAddr2, namePtr, nameSize ,rawPtr ,rawSize });
-    return  m_builder.CreateZExt(r, Type::Word);
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), ownerAddr1, ownerAddr2, 
+             namePtr, nameSize ,rawPtr ,rawSize });
+    return m_builder.CreateZExt(r, Type::Word);
 }
 
-llvm::Value* Ext::table_get_handle(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes)
-{
+llvm::Value* Ext::table_get_handle(llvm::Value* _addr, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes, 
+        llvm::Value* _raw, 
+        llvm::Value* _rawBytes) {
+    auto func = getTableGetHandleFunc(getModule());
+
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
     auto rawPtr = m_memoryMan.getBytePtr(_raw);
     auto rawSize = m_builder.CreateTrunc(_rawBytes, Type::Size, "raw.size");
 
     auto addrTy = m_builder.getIntNTy(160);
-    auto func = getTableGetHandleFunc(getModule());
-
-    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto address = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
     auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
-    m_builder.CreateStore(ownerAddr, pAddr);
+    m_builder.CreateStore(address, pAddr);
 
-    auto pValue = getArgAlloca();
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), ownerAddr, namePtr, nameSize ,rawPtr ,rawSize , pValue });
-   return Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
+    auto pResult = getArgAlloca();
+    createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), pAddr, 
+            namePtr, nameSize ,rawPtr ,rawSize, pResult});
+    return Endianness::toNative(m_builder, m_builder.CreateLoad(pResult));
 }
 
-llvm::Value* Ext::table_get_lines(llvm::Value* _handle)
-{
-    auto hGet = Endianness::toBE(m_builder, _handle);
-
+llvm::Value* Ext::table_get_lines(llvm::Value* _handle) {
     auto func = getTableGetLinesFunc(getModule());
 
-    auto pValue = getArgAlloca();
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), hGet, pValue });
-    return  m_builder.CreateZExt(r, Type::Void);
-}
-
-
-llvm::Value* Ext::table_get_columns(llvm::Value* _handle)
-{
     auto hGet = Endianness::toBE(m_builder, _handle);
 
-    auto func = getTableGetColumnsFunc(getModule());
-
     auto pValue = getArgAlloca();
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), hGet, pValue });
-    return  m_builder.CreateZExt(r, Type::Void);
+    createCABICall(func, {getRuntimeManager().getEnvPtr(), hGet, pValue});
+    return Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
 }
 
-void  Ext::table_get_field1(llvm::Value* _handle, llvm::Value* _line, llvm::Value* _name, llvm::Value* _nameBytes)
-{
+llvm::Value* Ext::table_get_columns(llvm::Value* _handle) {
+    auto func = getTableGetColumnsFunc(getModule());
+
+    auto hGet = Endianness::toBE(m_builder, _handle);
+
+    auto pValue = getArgAlloca();
+    createCABICall(func, {getRuntimeManager().getEnvPtr(), hGet, pValue});
+    return Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
+}
+
+template<typename T> static inline
+void PrintValueAndType(const char *desc, const T *_value) {
+    std::string value;
+    llvm::raw_string_ostream os(value);
+    _value->print(os);
+    std::cout << desc << std::endl;
+    std::cout << "type : " << _value->getType()->getTypeID() << std::endl;
+    std::cout << "value: " << value << std::endl;
+}
+
+void  Ext::table_get_field1(llvm::Value* _handle, 
+        llvm::Value* _line, 
+        llvm::Value* _name, 
+        llvm::Value* _nameBytes) {
+    auto func = getTableGetFiled1Func(getModule());
+
     auto hGet = Endianness::toBE(m_builder, _handle);
 
     auto line = m_builder.CreateTrunc(_line, m_builder.getInt64Ty());
     auto namePtr = m_memoryMan.getBytePtr(_name);
     auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
 
-    auto addrTy = m_builder.getIntNTy(160);
-    auto func = getTableGetFiled1Func(getModule());
-
     auto pValue = getArgAlloca();
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), hGet, line, namePtr, nameSize, pValue });
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), hGet, line, namePtr, 
+             nameSize, pValue});
 
-    auto srcPtr = Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
-    auto srcSize = m_builder.CreateZExt(r, Type::Word);
-    auto memSize = m_memoryMan.getSize();
-    m_memoryMan.require(m_memoryMan.getSize(), srcSize);
-    m_memoryMan.copyBytes(srcPtr, srcSize, 0, m_memoryMan.getBytePtr(memSize), srcSize);
+    PrintValueAndType("ret_size:", r);
+    PrintValueAndType("ret_data:", pValue);
+
+    //auto srcPtr = Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
+    //auto srcSize = m_builder.CreateZExt(r, Type::Word);
+    //auto memSize = m_memoryMan.getSize();
+    //m_memoryMan.require(m_memoryMan.getSize(), srcSize);
+    //m_memoryMan.copyBytes(namePtr, nameSize, _name, 
+    //        pValue, srcSize);
 }
 
-void Ext::table_get_field2(llvm::Value* _handle, llvm::Value* _line, llvm::Value* _num)
-{
+void Ext::table_get_field2(llvm::Value* _handle, 
+        llvm::Value* _line, 
+        llvm::Value* _num) {
+    auto func = getTableGetFiled2Func(getModule());
+
     auto hGet = Endianness::toBE(m_builder, _handle);
 
     auto line = m_builder.CreateTrunc(_line, m_builder.getInt64Ty());
     auto num = m_builder.CreateTrunc(_num, m_builder.getInt64Ty());
 
-    auto addrTy = m_builder.getIntNTy(160);
-    auto func = getTableGetFiled2Func(getModule());
-
     auto pValue = getArgAlloca();
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr(), hGet, line, num, pValue });
+    auto r = createCABICall(func, 
+            {getRuntimeManager().getEnvPtr(), hGet, line, num, pValue});
 
     auto srcPtr = Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
     auto srcSize = m_builder.CreateZExt(r, Type::Word);
     auto memSize = m_memoryMan.getSize();
     m_memoryMan.require(m_memoryMan.getSize(), srcSize);
-    m_memoryMan.copyBytes(srcPtr, srcSize, 0, m_memoryMan.getBytePtr(memSize), srcSize);
+    m_memoryMan.copyBytes(srcPtr, srcSize, 0, 
+            m_memoryMan.getBytePtr(memSize), srcSize);
 }
 
-void Ext::db_trans_begin()
-{
+void Ext::db_trans_begin() {
     auto func = getDBTransBeginiFunc(getModule());
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr()});
+    createCABICall(func, {getRuntimeManager().getEnvPtr()});
 }
 
-llvm::Value* Ext::db_trans_submit()
-{
+llvm::Value* Ext::db_trans_submit() {
     auto func = getDBTransSubmitFunc(getModule());
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr() });
-    return  m_builder.CreateZExt(r, Type::Bool);
+    auto r = createCABICall(func, {getRuntimeManager().getEnvPtr()});
+    return m_builder.CreateZExt(r, Type::Word);
 }
 
-void Ext::exit_fun()
-{
-    auto func = getDBTransBeginiFunc(getModule());
-    auto r = createCABICall(func, {
-        getRuntimeManager().getEnvPtr() });
+void Ext::exit_fun() {
+    auto func = getExitFunFunc(getModule());
+    createCABICall(func, {getRuntimeManager().getEnvPtr()});
 }
+
 }
 }
 }

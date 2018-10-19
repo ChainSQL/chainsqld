@@ -1,4 +1,9 @@
 #include <iostream>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <initializer_list>
+#include <algorithm>
 
 #include "FakeExtVM.h"
 
@@ -30,6 +35,46 @@ namespace test {
 		//return reinterpret_cast<evmc_uint256be const&>(_h);
 	}
 
+    inline 
+    evmc_uint256be & toEvmC(uint256 const &_h) {
+        return const_cast<evmc_uint256be&>(
+                reinterpret_cast<evmc_uint256be const&>(_h));
+    }
+
+    // convert evmc address to string
+    std::string evmcAddrToString(const evmc_address *addr) {
+        if (!addr) {
+            return "0x";
+        }
+        std::ostringstream os;
+        os << std::setiosflags(std::ios::uppercase) << std::hex;
+        os.fill('0');
+        os << "0x";
+        size_t len = sizeof(addr->bytes)/sizeof(addr->bytes[0]);
+        for (size_t i=0; i!=len; ++i) {
+            os << std::setw(2) << (int)(addr->bytes[i]);
+        }
+        return os.str();
+    }
+
+    template<typename T> inline
+    void PrintInputParams(std::initializer_list<T> li) {
+        std::for_each(li.begin(), li.end(), 
+                [](const T &elem) { std::cout << elem << std::endl; });
+    }
+
+    template<class TKey, class TVal> inline
+    void PrintInputParams(const char *instruction, 
+            std::initializer_list<std::pair<TKey, TVal>> li) {
+        std::cout << "****************************************\n";
+        std::cout << instruction << ":" << std::endl;
+        std::for_each(li.begin(), li.end(), 
+                [](const std::pair<TKey, TVal> &elem) {
+                    std::cout << "\t" << elem.first 
+                        << "\t: " << elem.second << std::endl;
+                });
+        std::cout << "****************************************\n";
+    }
 }
 
 FakeExtVM::State FakeExtVM::m_s;
@@ -105,10 +150,168 @@ void FakeExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
 int64_t FakeExtVM::executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) {
     return 0;
 }
+
 evmc_uint256be FakeExtVM::blockHash(int64_t  const&_number) {
 	return evmc_uint256be();
 }
 
+bool FakeExtVM::table_create(const evmc_address *address, 
+        bytesConstRef const &_name, 
+        bytesConstRef const &_raw) {
+    test::PrintInputParams<const char*, std::string>("CreateTable", 
+            {{"ownerAddr", test::evmcAddrToString(address)},
+             {"tableName", _name.toString()}, 
+             {"createStmt", _raw.toString()}}
+            );
+    return true;
+}
+
+bool FakeExtVM::table_rename(const evmc_address* address, 
+        bytesConstRef const &oname, 
+        bytesConstRef const &nname) {
+    test::PrintInputParams<const char*, std::string>("RenameTable", 
+            {{"ownerAddr", test::evmcAddrToString(address)},
+             {"oldName", oname.toString()}, 
+             {"newName", nname.toString()}}
+            );
+    return true;
+}
+
+bool FakeExtVM::table_insert(const evmc_address *address, 
+        bytesConstRef const &name, 
+        bytesConstRef const &stmt) {
+    test::PrintInputParams<const char*, std::string>("InsertSQL", 
+            {{"ownerAddr", test::evmcAddrToString(address)},
+             {"tableName", name.toString()}, 
+             {"insertStmt", stmt.toString()}}
+            );
+    return true;
+}
+
+bool FakeExtVM::table_delete(const evmc_address *address, 
+        bytesConstRef const &name, bytesConstRef const &stmt) {
+    test::PrintInputParams<const char*, std::string>("DeleteSQL", 
+            {{"ownerAddr", test::evmcAddrToString(address)},
+             {"tableName", name.toString()}, 
+             {"deleteStmt", stmt.toString()}}
+            );
+    return true;
+}
+
+bool FakeExtVM::table_drop(const evmc_address *address, 
+        bytesConstRef const &name) {
+    test::PrintInputParams<const char*, std::string>("DropTable", 
+            {{"ownerAddr", test::evmcAddrToString(address)},
+             {"tableName", name.toString()}}
+            );
+    return true;
+}
+
+bool FakeExtVM::table_update(const evmc_address *address, 
+        bytesConstRef const &name, 
+        bytesConstRef const &cond, 
+        bytesConstRef const &upd) {
+    test::PrintInputParams<const char*, std::string>("UpdateSQL", 
+            {{"ownerAddr", test::evmcAddrToString(address)},
+             {"tableName", name.toString()}, 
+             {"condition", cond.toString()}, 
+             {"updateValue", upd.toString()}}
+            );
+    return true;
+}
+
+bool FakeExtVM::table_grant(const evmc_address *owner, 
+        const evmc_address *to, 
+        bytesConstRef const &name, 
+        bytesConstRef const &stmt) {
+    test::PrintInputParams<const char*, std::string>("GrantSQL", 
+            {{"ownerAddr", test::evmcAddrToString(owner)},
+             {"toAddr", test::evmcAddrToString(to)}, 
+             {"tableName", name.toString()}, 
+             {"grantStmt", stmt.toString()}}
+            );
+    return false;
+}
+
+evmc_uint256be FakeExtVM::table_get_handle(const evmc_address *address, 
+        bytesConstRef const &name, 
+        bytesConstRef const &stmt) {
+    test::PrintInputParams<const char*, std::string>("SelectSQL", 
+            {{"ownerAddr", test::evmcAddrToString(address)},
+             {"tableName", name.toString()}, 
+             {"condition", stmt.toString()}}
+            );
+    return test::toEvmC((uint256)10);
+}
+
+evmc_uint256be FakeExtVM::table_get_lines(const evmc_uint256be *handle) {
+    test::PrintInputParams<const char*, u256>("GetRowSize", 
+            {{"handle", test::fromEvmC(*handle)}}
+            );
+    return test::toEvmC((uint256)20);
+}
+
+evmc_uint256be FakeExtVM::table_get_columns(const evmc_uint256be *handle) {
+    test::PrintInputParams<const char*, u256>("GetColSize", 
+            {{"handle", test::fromEvmC(*handle)}}
+            );
+    return test::toEvmC((uint256)30);
+}
+
+bytes FakeExtVM::table_get_field1(const evmc_uint256be *handle, 
+        size_t rowNum, 
+        bytesConstRef const &column) {
+    unsigned uh = (unsigned)(test::fromEvmC(*handle));
+    test::PrintInputParams<const char*, std::string>("GetFiledByKey", 
+            {{"handle", std::to_string(uh)}, 
+             {"rowNum", std::to_string(rowNum)}, 
+             {"colName", column.toString()}}
+            );
+    return bytes{'b', 'y'};
+}
+
+bytes FakeExtVM::table_get_field2(const evmc_uint256be *handle, 
+        size_t rowNum, size_t colNum) {
+    unsigned uh = (unsigned)(test::fromEvmC(*handle));
+    test::PrintInputParams<const char*, std::string>("GetFieldByIndex", 
+            {{"handle", std::to_string(uh)}, 
+             {"rowNum", std::to_string(rowNum)}, 
+             {"colNum", std::to_string(colNum)}}
+            );
+    return bytes();
+}
+
+void FakeExtVM::db_trans_begin() {
+    test::PrintInputParams<const char*, const char*>(
+            "BeginTransaction", {{"parameters", "None"}});
+}
+
+bool FakeExtVM::db_trans_submit() {
+    test::PrintInputParams<const char*, const char*>(
+            "SubmitTransaction", {{"parameters", "None"}});
+    return true;
+}
+
+void FakeExtVM::release_resource() {
+    test::PrintInputParams<const char*, const char*>(
+            "OutOfScope", {{"parameters", "None"}});
+}
+
+// NOTE:this function is limited to only one parameter,
+// and the type of the parameter is integer or convertible 
+// to integeral type
+void FakeExtVM::log(evmc_uint256be const* topics, 
+        size_t numTopics, 
+        bytesConstRef const &_data) {
+    unsigned utopic = (unsigned)(test::fromEvmC(*topics));
+    evmc_uint256be temp = test::toEvmC(_data.toString());
+    unsigned data = (unsigned)(test::fromEvmC(temp));
+    test::PrintInputParams<const char*, std::string>("Log", 
+            {{"topics", std::to_string(utopic)}, 
+             {"numTopics", std::to_string(numTopics)}, 
+             {"data", std::to_string(data)}}
+            );
+}
 
 FakeExecutive::FakeExecutive(const bytesConstRef& data, const bytes& code)
 : data_(data)

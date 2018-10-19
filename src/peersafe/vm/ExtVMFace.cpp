@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <iostream>
 
 #include "ExtVMFace.h"
 #include "Common.h"
@@ -265,17 +266,17 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
 
 }
 
-
 bool table_create(struct evmc_context* _context,
-    const struct evmc_address* address,
-    uint8_t const* _name,
-    size_t _nameSize,
-    uint8_t const* _raw,
-    size_t _rawSize)
-{
+        const struct evmc_address* address,
+        uint8_t const* _name,
+        size_t _nameSize,
+        uint8_t const* _raw,
+        size_t _rawSize) {
     auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_create(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });    
+    return env.table_create(address, bytesConstRef{_name, _nameSize}, 
+            bytesConstRef{_raw, _rawSize});
 }
+
 bool table_rename(struct evmc_context* _context,
     const struct evmc_address* address,
     uint8_t const* _name,
@@ -347,11 +348,12 @@ void table_get_handle(struct evmc_context* _context,
     size_t _nameSize,
     uint8_t const* _raw,
     size_t _rawSize,
-    struct evmc_uint256be* result)
-{
+    struct evmc_uint256be* result) {
     auto& env = static_cast<ExtVMFace&>(*_context);
-    *result =  env.table_get_handle(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+    *result =  env.table_get_handle(address, 
+            bytesConstRef{_name, _nameSize}, bytesConstRef{_raw, _rawSize});
 }
+
 void table_get_lines(struct evmc_context* _context,
     const struct evmc_uint256be* handle,
     struct evmc_uint256be* result)
@@ -366,23 +368,24 @@ void table_get_columns(struct evmc_context* _context,
     auto& env = static_cast<ExtVMFace&>(*_context);
     *result = env.table_get_columns(handle);
 }
+
 //wfp_need_data!!!!!!!
 size_t table_get_field1(struct evmc_context* _context,
     const struct evmc_uint256be* handle,
     size_t line,
     uint8_t const* _fieldName,
     size_t _fieldSize,
-    uint8_t* buffer_data)
-{
+    uint8_t* buffer_data) {
     auto& env = static_cast<ExtVMFace&>(*_context);
-    bytes byResult = env.table_get_field1(handle, line, bytesConstRef{ _fieldName, _fieldSize });
-    for (int i = 0; i < byResult.size(); i++)
-    {
+    bytes byResult = env.table_get_field1(handle, line, 
+            bytesConstRef{_fieldName, _fieldSize});
+    for (int i = 0; i < byResult.size(); i++) {
         *buffer_data++ = byResult[i];
     }    
 
     return byResult.size();
 }
+
 //wfp_need_data!!!!!!!
 size_t table_get_field2(struct evmc_context* _context,
     const struct evmc_uint256be* handle,
