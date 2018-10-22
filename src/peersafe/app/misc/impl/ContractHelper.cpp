@@ -43,6 +43,12 @@ namespace ripple {
 	{
 		auto p = std::make_shared<Json::Value>(result);
 		mRecordCache.canonicalize(handle, p);
+		mHandleFlag.emplace(handle);
+		boost::asio::io_service io;
+		boost::asio::deadline_timer t(io, boost::posix_time::seconds(60));
+		int count = 0;
+		t.async_wait(boost::bind(releaseHandle, &app_.getContractHelper(), &t, &handle));
+		io.run();
 	}
 
 	Json::Value ContractHelper::getRecord(uint256 const& handle)
@@ -53,9 +59,27 @@ namespace ripple {
 		return *ret;
 	}
 
+	void releaseHandle(ContractHelper *contractHelper, boost::asio::deadline_timer*t, uint256*handle)
+	{
+		contractHelper->releaseHandle(*handle);
+		t->cancel();
+	}
+
 	void ContractHelper::releaseHandle(uint256 const& handle)
 	{
 		mRecordCache.del(handle, false);
+		mHandleFlag.erase(handle);
+	}
+
+	uint256 ContractHelper::genRandomUniqueHandle()
+	{
+		int num = 0;
+		do {
+			srand(time(0));
+			num = rand();
+		} while (mHandleFlag.find(uint256(num)) != mHandleFlag.end);
+		//
+		return uint256(num);
 	}
 }
 

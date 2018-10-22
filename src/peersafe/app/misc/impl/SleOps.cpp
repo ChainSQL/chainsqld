@@ -9,15 +9,18 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/rpc/TableUtils.h>
-
+#include <ripple/rpc/handlers/Handlers.h>
+#include <peersafe/app/sql/TxStore.h>
 
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
 
     SleOps::SleOps(ApplyContext& ctx)
-        :ctx_(ctx)
+        :ctx_(ctx),
+		bTransaction_(false),
+		txHash_(uint256(0))
         , contractCacheCode_("contractCode", 100, 300, stopwatch(), ctx.app.journal("TaggedCache"))
-    {        
+    {
     }
 
     SLE::pointer SleOps::getSle(AccountID const & addr) const
@@ -227,11 +230,6 @@ namespace ripple {
 			ctx_.view().erase(pSle);
     }
 
-    int64_t SleOps::executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw)
-    {
-        return 0;
-    }
-
 	void SleOps::addCommonFields(STObject& obj,AccountID const& _account)
 	{
 		obj.setAccountID(sfAccount, _account);
@@ -241,7 +239,7 @@ namespace ripple {
 		obj.setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
 	}
 
-	std::pair<bool, STArray> SleOps::genTableFields(AccountID const& _account, std::string _sTableName, std::string _tableNewName, bool bNewNameInDB)
+	std::pair<bool, STArray> SleOps::genTableFields(const ApplyContext &_ctx, AccountID const& _account, std::string _sTableName, std::string _tableNewName, bool bNewNameInDB)
 	{
 		STArray tables;
 		STObject table(sfTable);
@@ -250,16 +248,16 @@ namespace ripple {
 			table.setFieldVL(sfTableNewName, strCopy(_tableNewName));
 		if (bNewNameInDB)
 		{
-			auto nameInDB = generateNameInDB(ctx_.view().seq(), _account, _sTableName);
+			auto nameInDB = generateNameInDB(_ctx.view().seq(), _account, _sTableName);
 			table.setFieldVL(sfNameInDB, strCopy(to_string(nameInDB)));
 		}
 		else
 		{
-			auto ledgerSeq = ctx_.app.getLedgerMaster().getValidLedgerIndex();
-			auto nameInDB = ctx_.app.getLedgerMaster().getNameInDB(ledgerSeq, _account, _sTableName);
+			auto ledgerSeq = _ctx.app.getLedgerMaster().getValidLedgerIndex();
+			auto nameInDB = _ctx.app.getLedgerMaster().getNameInDB(ledgerSeq, _account, _sTableName);
 			if (!nameInDB)
 			{
-				auto j = ctx_.app.journal("Executive");
+				auto j = _ctx.app.journal("Executive");
 				JLOG(j.info())
 					<< "SleOps genTableFields getNameInDB failed,account="
 					<< to_string(_account)
@@ -276,23 +274,30 @@ namespace ripple {
 
 	}
 
-	//table opeartion
+	//table operation
 	bool SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
 	{
+		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_raw,this](auto& obj)
+			[&_account, &_sTableName, &_raw, &_ctx](auto& obj)
 		{
 
 			obj.setFieldU16(sfOpType, T_CREATE);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
-			auto tables = genTableFields(_account, _sTableName, "", true);
+			auto tables = genTableFields(_ctx, _account, _sTableName, "", true);
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
 				return false;
 
-			addCommonFields(obj, _account);
+			SleOps::addCommonFields(obj, _account);
 		});
+		if (bTransaction_) {
+			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			if (txs.size() > 0)
+				txs.at(0).addSubTx(tx);
+			return tesSUCCESS;
+		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)
 		{
@@ -313,68 +318,393 @@ namespace ripple {
 
 	bool SleOps::dropTable(AccountID const& _account, std::string const& _sTableName)
 	{
-		return true;
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttTABLELISTSET,
+			[&_account, &_sTableName, &_ctx](auto& obj)
+		{
+			auto tables = genTableFields(_ctx, _account, _sTableName, "", false);
+			if (tables.first)
+				obj.setFieldArray(sfTables, tables.second);
+			else
+				return false;
+
+			SleOps::addCommonFields(obj, _account);
+
+			obj.setFieldU16(sfOpType, T_DROP);
+			obj.setAccountID(sfAccount, _account);
+		});
+		if (bTransaction_) {
+			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			if (txs.size() > 0)
+				txs.at(0).addSubTx(tx);
+			return tesSUCCESS;
+		}
+		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+		if (ret != tesSUCCESS)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps dropTable,apply result:"
+				<< transToken(ret);
+		}
+
+		if (ctx_.view().flags() & tapForConsensus)
+		{
+			ctx_.tx.addSubTx(tx);
+		}
+
+		return ret == tesSUCCESS;
 	}
 
 	bool SleOps::renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName)
 	{
-		return true;
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttTABLELISTSET,
+			[&_account, &_sTableName, &_sTableNewName, &_ctx](auto& obj)
+		{
+			auto tables = genTableFields(_ctx, _account, _sTableName, _sTableNewName, false);
+			if (tables.first)
+				obj.setFieldArray(sfTables, tables.second);
+			else
+				return false;
+
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, T_RENAME);
+			obj.setAccountID(sfAccount, _account);
+		});
+		if (bTransaction_) {
+			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			if (txs.size() > 0)
+				txs.at(0).addSubTx(tx);
+			return tesSUCCESS;
+		}
+		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+		if (ret != tesSUCCESS)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps renameTable,apply result:"
+				<< transToken(ret);
+		}
+
+		if (ctx_.view().flags() & tapForConsensus)
+		{
+			ctx_.tx.addSubTx(tx);
+		}
+
+		return ret == tesSUCCESS;
 	}
 
-	bool SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _raw)
+	bool SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw)
 	{
-		return true;
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttTABLELISTSET,
+			[&_account, &_account2, &_sTableName, &_raw, &_ctx](auto& obj)
+		{
+			auto tables = genTableFields(_ctx, _account, _sTableName, "", false);
+			if (tables.first)
+				obj.setFieldArray(sfTables, tables.second);
+			else
+				return false;
+
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, T_GRANT);
+			obj.setAccountID(sfAccount, _account);
+			obj.setAccountID(sfUser, _account2);
+			obj.setFieldVL(sfRaw, strCopy(_raw));
+		});
+		if (bTransaction_) {
+			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			if (txs.size() > 0)
+				txs.at(0).addSubTx(tx);
+			return tesSUCCESS;
+		}
+		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+		if (ret != tesSUCCESS)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps grantTable,apply result:"
+				<< transToken(ret);
+		}
+
+		if (ctx_.view().flags() & tapForConsensus)
+		{
+			ctx_.tx.addSubTx(tx);
+		}
+
+		return ret == tesSUCCESS;
 	}
 
 	//CRUD operation
 	bool SleOps::insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
-		return true;
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttSQLSTATEMENT,
+			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
+		{
+			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
+			if (tables.first)
+				obj.setFieldArray(sfTables, tables.second);
+			else
+				return false;
+
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, R_INSERT);
+			obj.setAccountID(sfAccount, _account);
+			obj.setAccountID(sfOwner, _owner);
+			obj.setFieldVL(sfRaw, strCopy(_raw));
+		});
+		if (bTransaction_) {
+			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			if (txs.size() > 0)
+				txs.at(0).addSubTx(tx);
+			return tesSUCCESS;
+		}
+		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+		if (ret != tesSUCCESS)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps insertData,apply result:"
+				<< transToken(ret);
+		}
+
+		if (ctx_.view().flags() & tapForConsensus)
+		{
+			ctx_.tx.addSubTx(tx);
+		}
+
+		return ret == tesSUCCESS;
 	}
 
 	bool SleOps::deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
-		return true;
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttSQLSTATEMENT,
+			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
+		{
+			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
+			if (tables.first)
+				obj.setFieldArray(sfTables, tables.second);
+			else
+				return false;
+
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, R_DELETE);
+			obj.setAccountID(sfAccount, _account);
+			obj.setAccountID(sfOwner, _owner);
+			std::string _sRaw = "[" + _raw + "]";
+			obj.setFieldVL(sfRaw, strCopy(_sRaw));
+		});
+		if (bTransaction_) {
+			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			if (txs.size() > 0)
+				txs.at(0).addSubTx(tx);
+			return tesSUCCESS;
+		}
+		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+		if (ret != tesSUCCESS)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps deleteData,apply result:"
+				<< transToken(ret);
+		}
+
+		if (ctx_.view().flags() & tapForConsensus)
+		{
+			ctx_.tx.addSubTx(tx);
+		}
+
+		return ret == tesSUCCESS;
 	}
 
 	bool SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw)
 	{
-		return true;
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttSQLSTATEMENT,
+			[&_account, &_owner, &_sTableName, &_getRaw, &_updateRaw, &_ctx](auto& obj)
+		{
+			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
+			if (tables.first)
+				obj.setFieldArray(sfTables, tables.second);
+			else
+				return false;
+
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, R_UPDATE);
+			obj.setAccountID(sfAccount, _account);
+			obj.setAccountID(sfOwner, _owner);
+			std::string _sRaw = "[" + _updateRaw + "," + _getRaw + "]";
+			obj.setFieldVL(sfRaw, strCopy(_sRaw));
+		});
+		if (bTransaction_) {
+			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			if (txs.size() > 0)
+				txs.at(0).addSubTx(tx);
+			return tesSUCCESS;
+		}
+		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+		if (ret != tesSUCCESS)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps deleteData,apply result:"
+				<< transToken(ret);
+		}
+
+		if (ctx_.view().flags() & tapForConsensus)
+		{
+			ctx_.tx.addSubTx(tx);
+		}
+
+		return ret == tesSUCCESS;
 	}
 
 	//Select related
 	uint256 SleOps::getDataHandle(AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
-		return uint256(0);
-	}
-	uint256 SleOps::getDataLines(uint256 const& _handle)
-	{
-		return uint256(0);
-	}
-	uint256 SleOps::getDataColumns(uint256 const& _handle)
-	{
-		return uint256(0);
-	}
-	bytes	SleOps::getByKey(uint256 const& _handle, size_t row, std::string const& _key)
-	{
-		return Blob();
-	}
-	bytes	SleOps::getByIndex(uint256 const& handle, size_t row, size_t column)
-	{
-		return Blob();
-	}
-	void	SleOps::releaseResource()	//release hanle related resources
-	{
+		uint256 handle = uint256(0);
+		//
+		Json::Value jvCommand, tableJson;
+		jvCommand[jss::Owner] = to_string(_owner);
+		jvCommand[jss::Table] = _sTableName;
+		jvCommand[jss::Raw] = _raw;
+		tableJson[jss::Table][jss::TableName] = to_string(_sTableName);
 
+		auto ledgerSeq = ctx_.app.getLedgerMaster().getValidLedgerIndex();
+		auto nameInDB = ctx_.app.getLedgerMaster().getNameInDB(ledgerSeq, _owner, _sTableName);
+		if (!nameInDB)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps genTableFields getNameInDB failed,account="
+				<< to_string(_owner)
+				<< ",tableName="
+				<< _sTableName;
+		}
+		else
+		{
+			tableJson[jss::Table][jss::NameInDB] = to_string(nameInDB);
+		}
+		jvCommand[jss::Tables].append(tableJson);
+		//
+		Resource::Charge loadType = -1;
+		Resource::Consumer c;
+		RPC::Context context{ ctx_.app.journal("RPCHandler"), jvCommand, ctx_.app,
+			loadType,ctx_.app.getOPs(), ctx_.app.getLedgerMaster(), c, Role::ADMIN };
+
+		Json::Value jvResult = ripple::doGetRecord(context);
+		//
+		handle = ctx_.app.getContractHelper().genRandomUniqueHandle();
+		//
+		if(!jvResult.isNull())
+			ctx_.app.getContractHelper().addRecord(handle, jvResult);
+		//
+		return handle;
+	}
+	uint256 SleOps::getDataRowCount(uint256 const& _handle)
+	{
+		Json::Value jvRes = ctx_.app.getContractHelper().getRecord(_handle);
+		if(jvRes.isNull())
+			return uint256(0);
+		//
+		Json::Value lines = jvRes[jss::result][jss::lines];
+		return uint256(lines.size());
+	}
+	uint256 SleOps::getDataColumnCount(uint256 const& _handle)
+	{
+		Json::Value::UInt size = 0;
+		Json::Value jvRes = ctx_.app.getContractHelper().getRecord(_handle);
+		if (jvRes.isNull())
+			return uint256(size);
+		//
+		Json::Value lines = jvRes[jss::result][jss::lines];
+		if (lines.size() > 0)
+			size = lines[Json::Value::UInt(0)].size();
+		return uint256(size);
+	}
+	std::string	SleOps::getByKey(uint256 const& _handle, size_t row, std::string const& _key)
+	{
+		Json::Value jvRes = ctx_.app.getContractHelper().getRecord(_handle);
+		if (jvRes.isNull())
+			return "";
+		//
+		Json::Value lines = jvRes[jss::result][jss::lines];
+		if (lines.size() > row+1)
+			return lines[Json::Value::UInt(row)].get(_key.data(), "").toStyledString();
+		return "";
+	}
+	std::string	SleOps::getByIndex(uint256 const& _handle, size_t row, size_t column)
+	{
+		Json::Value jvRes = ctx_.app.getContractHelper().getRecord(_handle);
+		if (jvRes.isNull())
+			return "";
+		//
+		Json::Value lines = jvRes[jss::result][jss::lines];
+		if (lines.size() > row + 1) {
+			Json::Value rowData = lines[Json::Value::UInt(row)];
+			if (rowData.size() > column + 1)
+				return rowData[Json::Value::UInt(column)].toStyledString();
+		}
+		return "";
+	}
+	void	SleOps::releaseResource(uint256 const& handle)	//release handle related resources
+	{
+		ctx_.app.getContractHelper().releaseHandle(handle);
 	}
 
 	//transaction related
 	void	SleOps::transactionBegin()
 	{
-
+		bTransaction_ = true;
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttSQLTRANSACTION,
+			[](auto& obj)
+		{
+			obj.setFieldVL(sfStatements, strCopy("[]"));
+		});
+		txHash_ = tx.getTransactionID();
+		ctx_.app.getContractHelper.addTx(txHash_, tx);
 	}
+
 	void	SleOps::transactionCommit()
 	{
+		if (!bTransaction_)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps transactionCommit failed, because no exist 'transaction Begin'.";
+			return;
+		}
+		//
+		std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+		if (txs.size() > 0)
+		{
+			STTx tx = txs.at(0);
+			auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+			if (ret != tesSUCCESS)
+			{
+				auto j = ctx_.app.journal("Executive");
+				JLOG(j.info())
+					<< "SleOps createTable,apply result:"
+					<< transToken(ret);
+			}
 
+			if (ctx_.view().flags() & tapForConsensus)
+			{
+				ctx_.tx.addSubTx(tx);
+				//ctx_.app.getContractHelper().addTx(ctx_.tx.getTransactionID(), tx);
+			}
+		}
+		//
+		bTransaction_ = false;
+		txHash_ = uint256(0);
 	}    
 }

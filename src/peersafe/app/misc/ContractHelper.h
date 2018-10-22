@@ -2,6 +2,7 @@
 #define __H_CHAINSQL_CONTRACT_HELPER_H__
 
 #include <vector>
+#include <boost/bind.hpp>
 #include <ripple/protocol/STTx.h>
 #include <ripple/basics/TaggedCache.h>
 #include <ripple/json/json_value.h>
@@ -24,11 +25,13 @@ public:
 	void addRecord(uint256 const& handle, Json::Value const& result);
 	Json::Value getRecord(uint256 const& handle);
 	void releaseHandle(uint256 const& handle);
+	uint256 genRandomUniqueHandle();
 
 private:
 	TaggedCache<uint256, std::vector<STTx>>	mTxCache;
 	TaggedCache<uint256, Json::Value>		mRecordCache;
 	Application&							app_;
+	std::set<uint256>			            mHandleFlag;
 };
 
 }
