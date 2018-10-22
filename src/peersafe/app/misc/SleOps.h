@@ -66,6 +66,9 @@ public:
 	/// amount to be subtrackted (also in case the account does not exist).
 	TER subBalance(AccountID const& _addr, int64_t const& _value);
 
+	//db operators
+	int64_t executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw);
+
 	//table opeartion
 	bool createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw);
 	bool dropTable(AccountID const& _account, std::string const& _sTableName);

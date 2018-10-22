@@ -1063,20 +1063,9 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					std::vector<STTx> vecTxs;
 					if (tx.getTxnType() == ttCONTRACT)
 					{
-						auto ledger = app_.getLedgerMaster().getValidatedLedger();
+						auto ledger = app_.getLedgerMaster().getLedgerBySeq(iter->ledgerseq());
 						auto rawMeta = ledger->txRead(tx.getTransactionID()).second;
-						if (!rawMeta)
-							continue;
-
-						auto txMeta = std::make_shared<TxMeta>(tx.getTransactionID(),
-							ledger->seq(), *rawMeta, app_.journal("TableSync"));
-
-						auto meta = txMeta->getNodes().back();
-						if (!meta.isFieldPresent(sfContractTxs))
-							continue;
-						auto txs = meta.getFieldArray(sfContractTxs);
-
-						vecTxs = STTx::getTxs(tx, sTableNameInDB_,txs);
+						vecTxs = STTx::getTxs(tx, sTableNameInDB_, rawMeta);
 					}
 					else
 					{

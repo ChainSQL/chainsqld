@@ -323,7 +323,7 @@ void STTx::buildRaw(Json::Value& condition, std::string& rule) const
 	std::swap(finalRaw, condition);
 }
 
-std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""*/, STArray const& txs/* = STObject()*/)
+std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""*/, std::shared_ptr<STObject const> contractRawMetadata)
 {
 	std::vector<STTx> vec;
 	if (tx.getTxnType() == ttSQLTRANSACTION)
@@ -352,18 +352,40 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""
 	}
 	else if (tx.getTxnType() == ttCONTRACT)
 	{
-		for (auto txInner : txs)
+		if (!contractRawMetadata)
 		{
-			if (txInner.getFieldU16(sfTransactionType) == ttTABLELISTSET ||
-				txInner.getFieldU16(sfTransactionType) == ttSQLSTATEMENT)
+			return vec;
+		}
+		//
+		if (!contractRawMetadata->isFieldPresent(sfContractTxs))
+			return vec;
+		Blob txs_blob = contractRawMetadata->getFieldVL(sfContractTxs);
+		std::string txs_str;
+		txs_str.assign(txs_blob.begin(), txs_blob.end());
+		Json::Value objs;
+		Json::Reader().parse(txs_str, objs);
+
+		ripple::AccountID accountID = tx.getAccountID(sfAccount);
+		for (auto obj : objs)
+		{
+			//int type = obj["OpType"].asInt();
+			//if (type == T_ASSERT) continue;
+			auto tx_pair = parseSTTx(obj, accountID);
+			if (!tx_pair.first)
+				continue;
+			auto tx = *tx_pair.first;
+			auto transactionType = tx.getFieldU16(sfTransactionType);
+			if (transactionType == ttTABLELISTSET || transactionType == ttSQLSTATEMENT)
 			{
-				STTx txFinal(std::move(txInner));
-				getOneTx(vec, txFinal, sTableNameInDB);
+				getOneTx(vec, tx, sTableNameInDB);
 			}
-			else if (txInner.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
+			else if (transactionType == ttSQLTRANSACTION)
 			{
-				STTx txTransaction(std::move(txInner));
-				getTxs(txTransaction, sTableNameInDB, txs);
+				auto vecTxs = getTxs(tx, sTableNameInDB);
+				for (auto subTx : vecTxs)
+				{
+					vec.push_back(subTx);
+				}
 			}
 		}
 	}

@@ -230,11 +230,16 @@ namespace ripple {
 			ctx_.view().erase(pSle);
     }
 
+	int64_t SleOps::executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw)
+	{
+		return 0;
+	}
+
 	void SleOps::addCommonFields(STObject& obj,AccountID const& _account)
 	{
 		obj.setAccountID(sfAccount, _account);
 
-		obj.setFieldU16(sfSequence, 0);
+		obj.setFieldU32(sfSequence, 0);
 		obj.setFieldAmount(sfFee, STAmount());
 		obj.setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
 	}
@@ -249,7 +254,7 @@ namespace ripple {
 		if (bNewNameInDB)
 		{
 			auto nameInDB = generateNameInDB(_ctx.view().seq(), _account, _sTableName);
-			table.setFieldVL(sfNameInDB, strCopy(to_string(nameInDB)));
+			table.setFieldH160(sfNameInDB, nameInDB);
 		}
 		else
 		{
@@ -278,8 +283,9 @@ namespace ripple {
 	bool SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
+		bool bRel = false;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_account, &_sTableName, &_raw, &_ctx, &bRel](auto& obj)
 		{
 
 			obj.setFieldU16(sfOpType, T_CREATE);
@@ -288,12 +294,22 @@ namespace ripple {
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
-				return false;
+				return;
 
 			SleOps::addCommonFields(obj, _account);
+			bRel = true;
 		});
+		if (!bRel) {
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps dropTable,apply result: failed.";
+			return bRel;
+		}
+		auto j = ctx_.app.journal("Executive");
+		JLOG(j.warn()) <<
+			"-----------createTable subTx: " << tx;
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
 			if (txs.size() > 0)
 				txs.at(0).addSubTx(tx);
 			return tesSUCCESS;
@@ -319,22 +335,30 @@ namespace ripple {
 	bool SleOps::dropTable(AccountID const& _account, std::string const& _sTableName)
 	{
 		const ApplyContext &_ctx = ctx_;
+		bool bRel = false;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_ctx](auto& obj)
+			[&_account, &_sTableName, &_ctx, &bRel](auto& obj)
 		{
 			auto tables = genTableFields(_ctx, _account, _sTableName, "", false);
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
-				return false;
+				return;
 
 			SleOps::addCommonFields(obj, _account);
 
 			obj.setFieldU16(sfOpType, T_DROP);
 			obj.setAccountID(sfAccount, _account);
+			bRel = true;
 		});
+		if (!bRel) {
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps dropTable,apply result: failed.";
+			return bRel;
+		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
 			if (txs.size() > 0)
 				txs.at(0).addSubTx(tx);
 			return tesSUCCESS;
@@ -359,22 +383,30 @@ namespace ripple {
 	bool SleOps::renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName)
 	{
 		const ApplyContext &_ctx = ctx_;
+		bool bRel = false;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_sTableNewName, &_ctx](auto& obj)
+			[&_account, &_sTableName, &_sTableNewName, &_ctx, &bRel](auto& obj)
 		{
 			auto tables = genTableFields(_ctx, _account, _sTableName, _sTableNewName, false);
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
-				return false;
+				return;
 
 			SleOps::addCommonFields(obj, _account);
 			//
 			obj.setFieldU16(sfOpType, T_RENAME);
 			obj.setAccountID(sfAccount, _account);
+			bRel = true;
 		});
+		if (!bRel) {
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps dropTable,apply result: failed.";
+			return bRel;
+		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
 			if (txs.size() > 0)
 				txs.at(0).addSubTx(tx);
 			return tesSUCCESS;
@@ -399,14 +431,15 @@ namespace ripple {
 	bool SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
+		bool bRel = false;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_account2, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_account, &_account2, &_sTableName, &_raw, &_ctx, &bRel](auto& obj)
 		{
 			auto tables = genTableFields(_ctx, _account, _sTableName, "", false);
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
-				return false;
+				return;
 
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -414,9 +447,16 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfUser, _account2);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
+			bRel = true;
 		});
+		if (!bRel) {
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps dropTable,apply result: failed.";
+			return bRel;
+		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
 			if (txs.size() > 0)
 				txs.at(0).addSubTx(tx);
 			return tesSUCCESS;
@@ -442,14 +482,15 @@ namespace ripple {
 	bool SleOps::insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
+		bool bRel = false;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_account, &_owner, &_sTableName, &_raw, &_ctx, &bRel](auto& obj)
 		{
 			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
-				return false;
+				return;
 
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -457,9 +498,16 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfOwner, _owner);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
+			bRel = true;
 		});
+		if (!bRel) {
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps dropTable,apply result: failed.";
+			return bRel;
+		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
 			if (txs.size() > 0)
 				txs.at(0).addSubTx(tx);
 			return tesSUCCESS;
@@ -484,14 +532,15 @@ namespace ripple {
 	bool SleOps::deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
+		bool bRel = false;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_account, &_owner, &_sTableName, &_raw, &_ctx, &bRel](auto& obj)
 		{
 			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
-				return false;
+				return;
 
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -500,9 +549,16 @@ namespace ripple {
 			obj.setAccountID(sfOwner, _owner);
 			std::string _sRaw = "[" + _raw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
+			bRel = true;
 		});
+		if (!bRel) {
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps dropTable,apply result: failed.";
+			return bRel;
+		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
 			if (txs.size() > 0)
 				txs.at(0).addSubTx(tx);
 			return tesSUCCESS;
@@ -527,14 +583,15 @@ namespace ripple {
 	bool SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw)
 	{
 		const ApplyContext &_ctx = ctx_;
+		bool bRel = false;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_getRaw, &_updateRaw, &_ctx](auto& obj)
+			[&_account, &_owner, &_sTableName, &_getRaw, &_updateRaw, &_ctx, &bRel](auto& obj)
 		{
 			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
-				return false;
+				return;
 
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -543,9 +600,16 @@ namespace ripple {
 			obj.setAccountID(sfOwner, _owner);
 			std::string _sRaw = "[" + _updateRaw + "," + _getRaw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
+			bRel = true;
 		});
+		if (!bRel) {
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps dropTable,apply result: failed.";
+			return bRel;
+		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
 			if (txs.size() > 0)
 				txs.at(0).addSubTx(tx);
 			return tesSUCCESS;
@@ -671,7 +735,7 @@ namespace ripple {
 			obj.setFieldVL(sfStatements, strCopy("[]"));
 		});
 		txHash_ = tx.getTransactionID();
-		ctx_.app.getContractHelper.addTx(txHash_, tx);
+		ctx_.app.getContractHelper().addTx(txHash_, tx);
 	}
 
 	void	SleOps::transactionCommit()
@@ -684,7 +748,7 @@ namespace ripple {
 			return;
 		}
 		//
-		std::vector<STTx>  txs = ctx_.app.getContractHelper.getTxsByHash(txHash_);
+		std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
 		if (txs.size() > 0)
 		{
 			STTx tx = txs.at(0);

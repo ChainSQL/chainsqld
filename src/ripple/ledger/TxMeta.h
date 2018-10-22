@@ -144,6 +144,7 @@ private:
     boost::optional <STAmount> mDelivered;
 
     STArray mNodes;
+	STArray contractTxsArray;
 
     beast::Journal j_;
 };
