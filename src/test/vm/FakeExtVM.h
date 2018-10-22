@@ -73,11 +73,11 @@ public:
     evmc_uint256be table_get_columns(
             const evmc_uint256be *handle) override final;
 
-    bytes table_get_field1(const evmc_uint256be *handle, 
+    bytes table_get_by_key(const evmc_uint256be *handle, 
             size_t rowNum, 
             bytesConstRef const &column) override final;
 
-    bytes table_get_field2(const evmc_uint256be *handle, 
+    bytes table_get_by_index(const evmc_uint256be *handle, 
             size_t rowNum, 
             size_t colNum) override final;
 

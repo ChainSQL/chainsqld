@@ -377,7 +377,7 @@ size_t table_get_field1(struct evmc_context* _context,
     size_t _fieldSize,
     uint8_t* buffer_data) {
     auto& env = static_cast<ExtVMFace&>(*_context);
-    bytes byResult = env.table_get_field1(handle, line, 
+    bytes byResult = env.table_get_by_key(handle, line, 
             bytesConstRef{_fieldName, _fieldSize});
     for (int i = 0; i < byResult.size(); i++) {
         *buffer_data++ = byResult[i];
