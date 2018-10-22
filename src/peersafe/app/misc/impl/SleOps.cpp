@@ -280,18 +280,18 @@ namespace ripple {
 	bool SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
 	{
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_raw,this](auto& obj)
+			[&_account, &_sTableName, &_raw, this](auto& obj)
 		{
 
 			obj.setFieldU16(sfOpType, T_CREATE);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
-			auto tables = genTableFields(_account, _sTableName, "", true);
+			auto tables = this->genTableFields(_account, _sTableName, "", true);
 			if (tables.first)
 				obj.setFieldArray(sfTables, tables.second);
 			else
 				return false;
 
-			addCommonFields(obj, _account);
+			this->addCommonFields(obj, _account);
 		});
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)

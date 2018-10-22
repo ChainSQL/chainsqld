@@ -258,7 +258,7 @@ evmc_uint256be FakeExtVM::table_get_columns(const evmc_uint256be *handle) {
     return test::toEvmC((uint256)30);
 }
 
-bytes FakeExtVM::table_get_field1(const evmc_uint256be *handle, 
+bytes FakeExtVM::table_get_by_key(const evmc_uint256be *handle, 
         size_t rowNum, 
         bytesConstRef const &column) {
     unsigned uh = (unsigned)(test::fromEvmC(*handle));
@@ -270,7 +270,7 @@ bytes FakeExtVM::table_get_field1(const evmc_uint256be *handle,
     return bytes{'b', 'y'};
 }
 
-bytes FakeExtVM::table_get_field2(const evmc_uint256be *handle, 
+bytes FakeExtVM::table_get_by_index(const evmc_uint256be *handle, 
         size_t rowNum, size_t colNum) {
     unsigned uh = (unsigned)(test::fromEvmC(*handle));
     test::PrintInputParams<const char*, std::string>("GetFieldByIndex", 
