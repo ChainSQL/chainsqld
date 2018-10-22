@@ -3,11 +3,14 @@
 #include <fstream>
 #include <chrono>
 #include <sstream>
+#include <iostream>
+#include <string>
 
 #include "preprocessor/llvm_includes_start.h"
 #include <llvm/IR/CFG.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IntrinsicInst.h>
+#include <llvm/Support/raw_ostream.h>
 #include "preprocessor/llvm_includes_end.h"
 
 #include "JIT.h"
@@ -1176,7 +1179,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
         case Instruction::EXGETVALUEBYKEY:
         {
             auto handle = stack.pop();
-            auto line   = stack.pop();
+            auto line = stack.pop();
             auto nameIdx = stack.pop();
             auto nameBytes = stack.pop();
 
