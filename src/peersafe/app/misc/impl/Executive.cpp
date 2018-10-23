@@ -88,19 +88,22 @@ void test(SleOps &s_) {
 			"{\"id\":1}"
 		);
 	}
+	break;
 	case 6:
 	{
 		sDetailStep = "updateData";
-		rel = s_.updateData(userAddr, userAddr, sTableName, "{id: 2}",
-			"[{\"age\":15}]"
+		rel = s_.updateData(userAddr, userAddr, sTableName, "{\"id\": 2}",
+			"{\"age\":15}"
 		);
 	}
 	break;
 	case 7:
 	{
 		sDetailStep = "getDataHandle";
-		uint256 handle = s_.getDataHandle(userAddr, sTableName, "{id: 2}");
-		rel = (handle == uint256(0));
+		//uint256 handle = s_.getDataHandle(userAddr, sTableName, "{\"id\": 2}");
+		//uint256 handle = s_.getDataHandle(userAddr, sTableName, "{\"$or\":[{\"id\": 1},{\"id\": 2}]}");
+		uint256 handle = s_.getDataHandle(userAddr, sTableName, "");
+		rel = (handle != uint256(0));
 	}
 	break;
 	case 8:
@@ -112,7 +115,7 @@ void test(SleOps &s_) {
 	case 9:
 	{
 		sDetailStep = "grantTable";
-		rel = s_.grantTable(userAddr, userAddr, sTableName, "{insert:false, delete:false}");
+		rel = s_.grantTable(userAddr, userAddr1, sTableName, "{\"insert\":false, \"delete\":false}");
 	}
 	break;
 	default:break;

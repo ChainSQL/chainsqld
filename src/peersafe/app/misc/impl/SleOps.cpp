@@ -11,6 +11,7 @@
 #include <peersafe/rpc/TableUtils.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <ripple/json/json_reader.h>
 
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
@@ -271,7 +272,7 @@ namespace ripple {
 				return std::make_pair(false, tables);
 			}
 				
-			table.setFieldVL(sfNameInDB, strCopy(to_string(nameInDB)));
+			table.setFieldH160(sfNameInDB, nameInDB);
 		}
 		
 		tables.push_back(table);
@@ -446,13 +447,14 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, T_GRANT);
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfUser, _account2);
-			obj.setFieldVL(sfRaw, strCopy(_raw));
+			std::string _sRaw = "[" + _raw + "]";
+			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 			bRel = true;
 		});
 		if (!bRel) {
 			auto j = ctx_.app.journal("Executive");
 			JLOG(j.info())
-				<< "SleOps dropTable,apply result: failed.";
+				<< "SleOps grantTable,apply result: failed.";
 			return bRel;
 		}
 		if (bTransaction_) {
@@ -637,10 +639,20 @@ namespace ripple {
 		uint256 handle = uint256(0);
 		//
 		Json::Value jvCommand, tableJson;
-		jvCommand[jss::Owner] = to_string(_owner);
-		jvCommand[jss::Table] = _sTableName;
-		jvCommand[jss::Raw] = _raw;
-		tableJson[jss::Table][jss::TableName] = to_string(_sTableName);
+		jvCommand[jss::tx_json][jss::Owner] = to_string(_owner);
+		jvCommand[jss::tx_json][jss::Account] = to_string(_owner);
+		//std::string _sRaw = "[[]," + _raw + "]";//get all default,in fact, the first [] represent fields
+		//jvCommand[jss::tx_json][jss::Raw] = _sRaw;
+		Json::Value _fields(Json::arrayValue);//select fields
+		jvCommand[jss::tx_json][jss::Raw].append(_fields);//append select fields
+		if (!_raw.empty())
+		{
+			Json::Value _condition;
+			Json::Reader().parse(_raw, _condition);
+			jvCommand[jss::tx_json][jss::Raw].append(_condition);
+		}
+		jvCommand[jss::tx_json][jss::OpType] = 7;
+		tableJson[jss::Table][jss::TableName] = _sTableName;
 
 		auto ledgerSeq = ctx_.app.getLedgerMaster().getValidLedgerIndex();
 		auto nameInDB = ctx_.app.getLedgerMaster().getNameInDB(ledgerSeq, _owner, _sTableName);
@@ -657,7 +669,7 @@ namespace ripple {
 		{
 			tableJson[jss::Table][jss::NameInDB] = to_string(nameInDB);
 		}
-		jvCommand[jss::Tables].append(tableJson);
+		jvCommand[jss::tx_json][jss::Tables].append(tableJson);
 		//
 		Resource::Charge loadType = -1;
 		Resource::Consumer c;
@@ -665,6 +677,8 @@ namespace ripple {
 			loadType,ctx_.app.getOPs(), ctx_.app.getLedgerMaster(), c, Role::ADMIN };
 
 		Json::Value jvResult = ripple::doGetRecord(context);
+		if (!jvResult[jss::error].asString().empty())
+			return handle;
 		//
 		handle = ctx_.app.getContractHelper().genRandomUniqueHandle();
 		//
