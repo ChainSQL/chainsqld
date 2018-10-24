@@ -77,23 +77,32 @@ std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, 
 	std::string err_message;
 	int transactionType = 0;
 
-	int type = obj["OpType"].asInt();
-
-	if (isTableListSetOpType((TableOpType)type)) {
-		transactionType = ttTABLELISTSET;
-	}
-	else if (isSqlStatementOpType((TableOpType)type)) {
-		transactionType = ttSQLSTATEMENT;
-	}
+	if (obj.isMember(jss::TransactionType) && obj["TransactionType"] == "SQLTransaction")
+		transactionType = ttSQLTRANSACTION;
 	else
 	{
-		transactionType = ttSQLSTATEMENT;
+		int type = obj["OpType"].asInt();
+
+		if (isTableListSetOpType((TableOpType)type)) {
+			transactionType = ttTABLELISTSET;
+		}
+		else if (isSqlStatementOpType((TableOpType)type)) {
+			transactionType = ttSQLSTATEMENT;
+		}
+		else
+		{
+			transactionType = ttSQLSTATEMENT;
+		}
 	}
 
-	obj[jss::TransactionType] = transactionType;
-	obj[jss::Account] = to_string(accountID);
-	obj[jss::Fee] = 0;
-	obj[jss::Sequence] = 0;
+	if(!obj.isMember(jss::TransactionType))
+		obj[jss::TransactionType] = transactionType;
+	if(!obj.isMember(jss::Account))
+		obj[jss::Account] = to_string(accountID);
+	if(!obj.isMember(jss::Fee))
+		obj[jss::Fee] = 0;
+	if(!obj.isMember(jss::Sequence))
+		obj[jss::Sequence] = 0;
 
 	std::shared_ptr<STTx> stpTrans;
 	STParsedJSONObject parsed(std::string(jss::tx_json), obj);
@@ -107,7 +116,8 @@ std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, 
 	{
 		// If we're generating a multi-signature the SigningPubKey must be
 		// empty, otherwise it must be the master account's public key.
-		parsed.object->setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
+		if(parsed.object->getFieldIndex(sfSigningPubKey) != -1)
+			parsed.object->setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
 
 		stpTrans = std::make_shared<STTx>(
 			std::move(parsed.object.get()));

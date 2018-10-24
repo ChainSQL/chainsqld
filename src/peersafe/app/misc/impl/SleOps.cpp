@@ -18,8 +18,7 @@ namespace ripple {
 
     SleOps::SleOps(ApplyContext& ctx)
         :ctx_(ctx),
-		bTransaction_(false),
-		txHash_(uint256(0))
+		bTransaction_(false)
         , contractCacheCode_("contractCode", 100, 300, stopwatch(), ctx.app.journal("TaggedCache"))
     {
     }
@@ -310,10 +309,8 @@ namespace ripple {
 		JLOG(j.warn()) <<
 			"-----------createTable subTx: " << tx;
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
-			if (txs.size() > 0)
-				txs.at(0).addSubTx(tx);
-			return tesSUCCESS;
+			sqlTxsStatements_.push_back(tx);
+			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)
@@ -359,10 +356,8 @@ namespace ripple {
 			return bRel;
 		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
-			if (txs.size() > 0)
-				txs.at(0).addSubTx(tx);
-			return tesSUCCESS;
+			sqlTxsStatements_.push_back(tx);
+			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)
@@ -407,10 +402,8 @@ namespace ripple {
 			return bRel;
 		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
-			if (txs.size() > 0)
-				txs.at(0).addSubTx(tx);
-			return tesSUCCESS;
+			sqlTxsStatements_.push_back(tx);
+			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)
@@ -458,10 +451,8 @@ namespace ripple {
 			return bRel;
 		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
-			if (txs.size() > 0)
-				txs.at(0).addSubTx(tx);
-			return tesSUCCESS;
+			sqlTxsStatements_.push_back(tx);
+			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)
@@ -509,10 +500,8 @@ namespace ripple {
 			return bRel;
 		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
-			if (txs.size() > 0)
-				txs.at(0).addSubTx(tx);
-			return tesSUCCESS;
+			sqlTxsStatements_.push_back(tx);
+			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)
@@ -560,10 +549,8 @@ namespace ripple {
 			return bRel;
 		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
-			if (txs.size() > 0)
-				txs.at(0).addSubTx(tx);
-			return tesSUCCESS;
+			sqlTxsStatements_.push_back(tx);
+			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)
@@ -611,10 +598,8 @@ namespace ripple {
 			return bRel;
 		}
 		if (bTransaction_) {
-			std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
-			if (txs.size() > 0)
-				txs.at(0).addSubTx(tx);
-			return tesSUCCESS;
+			sqlTxsStatements_.push_back(tx);
+			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		if (ret != tesSUCCESS)
@@ -678,12 +663,23 @@ namespace ripple {
 
 		Json::Value jvResult = ripple::doGetRecord(context);
 		if (!jvResult[jss::error].asString().empty())
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps getDataHandle failed, error: "
+				<< jvResult[jss::error].asString();
+			//
 			return handle;
+		}
 		//
 		handle = ctx_.app.getContractHelper().genRandomUniqueHandle();
-		//
-		if(!jvResult.isNull())
-			ctx_.app.getContractHelper().addRecord(handle, jvResult);
+		ctx_.app.getContractHelper().addRecord(handle, jvResult);
+		//* //////////////////////test
+		uint256 row = getDataRowCount(handle);
+		uint256 column = getDataColumnCount(handle);
+		std::string value = getByKey(handle, fromUint256(row)-1, "id");
+		std::string value1 = getByIndex(handle, fromUint256(row)-1, fromUint256(column)-1);
+		// */
 		//
 		return handle;
 	}
@@ -693,7 +689,7 @@ namespace ripple {
 		if(jvRes.isNull())
 			return uint256(0);
 		//
-		Json::Value lines = jvRes[jss::result][jss::lines];
+		Json::Value lines = jvRes[jss::lines];
 		return uint256(lines.size());
 	}
 	uint256 SleOps::getDataColumnCount(uint256 const& _handle)
@@ -703,7 +699,7 @@ namespace ripple {
 		if (jvRes.isNull())
 			return uint256(size);
 		//
-		Json::Value lines = jvRes[jss::result][jss::lines];
+		Json::Value lines = jvRes[jss::lines];
 		if (lines.size() > 0)
 			size = lines[Json::Value::UInt(0)].size();
 		return uint256(size);
@@ -714,8 +710,8 @@ namespace ripple {
 		if (jvRes.isNull())
 			return "";
 		//
-		Json::Value lines = jvRes[jss::result][jss::lines];
-		if (lines.size() > row+1)
+		Json::Value lines = jvRes[jss::lines];
+		if (lines.size() > row)
 			return lines[Json::Value::UInt(row)].get(_key.data(), "").toStyledString();
 		return "";
 	}
@@ -725,13 +721,26 @@ namespace ripple {
 		if (jvRes.isNull())
 			return "";
 		//
-		Json::Value lines = jvRes[jss::result][jss::lines];
-		if (lines.size() > row + 1) {
+		Json::Value value;
+		Json::Value lines = jvRes[jss::lines];
+		if (lines.size() > row) {
 			Json::Value rowData = lines[Json::Value::UInt(row)];
-			if (rowData.size() > column + 1)
-				return rowData[Json::Value::UInt(column)].toStyledString();
+			if (rowData.size() > column)
+			{
+				int i = 0;
+				Json::ValueIterator iter = rowData.begin();
+				while (iter != rowData.end())
+				{
+					if (i++ == column)
+					{
+						value = *iter;
+						break;
+					}
+					iter++;
+				}
+			}
 		}
-		return "";
+		return value.toStyledString();
 	}
 	void	SleOps::releaseResource(uint256 const& handle)	//release handle related resources
 	{
@@ -742,17 +751,10 @@ namespace ripple {
 	void	SleOps::transactionBegin()
 	{
 		bTransaction_ = true;
-		const ApplyContext &_ctx = ctx_;
-		STTx tx(ttSQLTRANSACTION,
-			[](auto& obj)
-		{
-			obj.setFieldVL(sfStatements, strCopy("[]"));
-		});
-		txHash_ = tx.getTransactionID();
-		ctx_.app.getContractHelper().addTx(txHash_, tx);
+		sqlTxsStatements_.clear();
 	}
 
-	void	SleOps::transactionCommit()
+	void	SleOps::transactionCommit(AccountID const& _account, bool _bNeedVerify)
 	{
 		if (!bTransaction_)
 		{
@@ -761,28 +763,36 @@ namespace ripple {
 				<< "SleOps transactionCommit failed, because no exist 'transaction Begin'.";
 			return;
 		}
-		//
-		std::vector<STTx>  txs = ctx_.app.getContractHelper().getTxsByHash(txHash_);
-		if (txs.size() > 0)
+		Json::Value vec;
+		for (auto tx : sqlTxsStatements_) {
+			vec.append(tx.getJson(0));
+		}
+		Blob _statements = ripple::strCopy(vec.toStyledString());
+		STTx tx(ttSQLTRANSACTION,
+			[&_account, &_bNeedVerify, &_statements](auto& obj)
 		{
-			STTx tx = txs.at(0);
-			auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-			if (ret != tesSUCCESS)
-			{
-				auto j = ctx_.app.journal("Executive");
-				JLOG(j.info())
-					<< "SleOps createTable,apply result:"
-					<< transToken(ret);
-			}
+			obj.setFieldVL(sfStatements, _statements);
+			obj.setAccountID(sfAccount, _account);
+			obj.setFieldU32(sfNeedVerify, _bNeedVerify);
+			SleOps::addCommonFields(obj, _account);
+		});
+		//
+		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
+		if (ret != tesSUCCESS)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.info())
+				<< "SleOps createTable,apply result:"
+				<< transToken(ret);
+		}
 
-			if (ctx_.view().flags() & tapForConsensus)
-			{
-				ctx_.tx.addSubTx(tx);
-				//ctx_.app.getContractHelper().addTx(ctx_.tx.getTransactionID(), tx);
-			}
+		if (ctx_.view().flags() & tapForConsensus)
+		{
+			ctx_.tx.addSubTx(tx);
+			//ctx_.app.getContractHelper().addTx(ctx_.tx.getTransactionID(), tx);
 		}
 		//
 		bTransaction_ = false;
-		txHash_ = uint256(0);
+		sqlTxsStatements_.clear();
 	}    
 }

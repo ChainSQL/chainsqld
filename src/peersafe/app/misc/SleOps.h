@@ -90,7 +90,7 @@ public:
 
 	//transaction related
 	void	transactionBegin();
-	void	transactionCommit();
+	void	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
 
 	static void	addCommonFields(STObject& obj, AccountID const& _account);
 	static std::pair<bool,STArray>
@@ -107,7 +107,7 @@ private:
     ApplyContext &ctx_;
     TaggedCache <AccountID, Blob>             contractCacheCode_;
 	bool									  bTransaction_;
-	uint256									  txHash_;
+	std::vector<STTx>						  sqlTxsStatements_;
 };
 
 }

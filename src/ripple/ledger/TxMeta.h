@@ -109,7 +109,7 @@ public:
     }
     void addRaw (Serializer&, TER, std::uint32_t index);
 
-	void makeContractTxField(std::vector<STTx> const& vecTxs);
+	void setContractTxFieldData(std::vector<STTx> const& vecTxs);
 
     STObject getAsObject () const;
     STArray& getNodes ()
@@ -144,7 +144,7 @@ private:
     boost::optional <STAmount> mDelivered;
 
     STArray mNodes;
-	STArray contractTxsArray;
+	std::vector<STTx> contractTxsVec;
 
     beast::Journal j_;
 };

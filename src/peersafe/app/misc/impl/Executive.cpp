@@ -77,7 +77,7 @@ void test(SleOps &s_) {
 	{
 		sDetailStep = "insertData";
 		rel = s_.insertData(userAddr, userAddr, sTableName,
-			"[{\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":1}, {\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":2}]"
+			"[{\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":0}, {\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":1}, {\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":2}]"
 		);
 	}
 	break;
@@ -116,6 +116,22 @@ void test(SleOps &s_) {
 	{
 		sDetailStep = "grantTable";
 		rel = s_.grantTable(userAddr, userAddr1, sTableName, "{\"insert\":false, \"delete\":false}");
+	}
+	break;
+	case 10:
+	{
+		sDetailStep = "transaction";
+		s_.transactionBegin();
+		//
+		rel = s_.insertData(userAddr, userAddr, sTableName,
+			"[{\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":1}, {\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":2}]"
+		);
+		//
+		rel = s_.deleteData(userAddr, userAddr, sTableName,
+			"{\"id\":1}"
+		);
+		//
+		s_.transactionCommit(userAddr);
 	}
 	break;
 	default:break;
