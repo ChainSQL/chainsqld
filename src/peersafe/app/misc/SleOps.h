@@ -66,6 +66,8 @@ public:
 	/// amount to be subtrackted (also in case the account does not exist).
 	TER subBalance(AccountID const& _addr, int64_t const& _value);
 
+	bool disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName = "", bool bNewNameInDB = false);
+
 	//db operators
 	int64_t executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw);
 
@@ -91,9 +93,10 @@ public:
 	//transaction related
 	void	transactionBegin();
 	void	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
+	void	resetTransactionCache();
 
 	static void	addCommonFields(STObject& obj, AccountID const& _account);
-	static std::pair<bool,STArray>
+	std::pair<bool,STArray>
 			genTableFields(const ApplyContext &_ctx, AccountID const& _account,std::string _sTablename,std::string _tableNewName,bool bNewNameInDB);
 
 	int64_t balance(AccountID const& address);
@@ -108,6 +111,7 @@ private:
     TaggedCache <AccountID, Blob>             contractCacheCode_;
 	bool									  bTransaction_;
 	std::vector<STTx>						  sqlTxsStatements_;
+	std::map<std::string, uint160>			  sqlTxsNameInDB_;
 };
 
 }

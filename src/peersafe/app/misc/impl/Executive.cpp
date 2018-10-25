@@ -103,6 +103,10 @@ void test(SleOps &s_) {
 		//uint256 handle = s_.getDataHandle(userAddr, sTableName, "{\"id\": 2}");
 		//uint256 handle = s_.getDataHandle(userAddr, sTableName, "{\"$or\":[{\"id\": 1},{\"id\": 2}]}");
 		uint256 handle = s_.getDataHandle(userAddr, sTableName, "");
+		uint256 row = s_.getDataRowCount(handle);
+		uint256 column = s_.getDataColumnCount(handle);
+		std::string value = s_.getByKey(handle, fromUint256(row) - 1, "id");
+		std::string value1 = s_.getByIndex(handle, fromUint256(row) - 1, fromUint256(column) - 1);
 		rel = (handle != uint256(0));
 	}
 	break;
@@ -123,13 +127,23 @@ void test(SleOps &s_) {
 		sDetailStep = "transaction";
 		s_.transactionBegin();
 		//
+		//rel = s_.createTable(userAddr, sTableName,
+		//	"[{\"field\":\"id\", \"type\" : \"int\", \"length\" : 11, \"PK\" : 1, \"NN\" : 1, \"UQ\" : 1},\
+		//	{ \"field\":\"account\", \"type\" : \"varchar\" },\
+		//	{ \"field\":\"age\", \"type\" : \"int\" }]"
+		//);
+		//JLOG(j.warn()) << " nTestStep: " << nTestStep << " " << sDetailStep << " createTable rel: " << rel << " >>>++++>>>";
 		rel = s_.insertData(userAddr, userAddr, sTableName,
 			"[{\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":1}, {\"account\":\"zU42yDW3fzFjGWosdeVjVasyPsF4YHj224\", \"id\":2}]"
 		);
+		JLOG(j.warn()) << " nTestStep: " << nTestStep << " " << sDetailStep << " insert rel: " << rel << " >>>++++>>>";
 		//
 		rel = s_.deleteData(userAddr, userAddr, sTableName,
 			"{\"id\":1}"
 		);
+		JLOG(j.warn()) << " nTestStep: " << nTestStep << " " << sDetailStep << " delete rel: " << rel << " >>>++++>>>";
+		//rel = s_.renameTable(userAddr, sTableName, sTableNameNew);
+		//JLOG(j.warn()) << " nTestStep: " << nTestStep << " " << sDetailStep << " renameTable rel: " << rel << " >>>++++>>>";
 		//
 		s_.transactionCommit(userAddr);
 	}

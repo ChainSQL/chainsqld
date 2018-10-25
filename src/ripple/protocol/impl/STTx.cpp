@@ -383,19 +383,11 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""
 			auto tx_pair = parseSTTx(obj, accountID);
 			if (!tx_pair.first)
 				continue;
-			auto tx = *tx_pair.first;
-			auto transactionType = tx.getFieldU16(sfTransactionType);
-			if (transactionType == ttTABLELISTSET || transactionType == ttSQLSTATEMENT)
+			auto tx_ = *tx_pair.first;
+			auto vecTxs = getTxs(tx_, sTableNameInDB);
+			for (auto subTx : vecTxs)
 			{
-				getOneTx(vec, tx, sTableNameInDB);
-			}
-			else if (transactionType == ttSQLTRANSACTION)
-			{
-				auto vecTxs = getTxs(tx, sTableNameInDB);
-				for (auto subTx : vecTxs)
-				{
-					vec.push_back(subTx);
-				}
+				vec.push_back(subTx);
 			}
 		}
 	}

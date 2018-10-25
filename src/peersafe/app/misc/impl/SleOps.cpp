@@ -255,22 +255,34 @@ namespace ripple {
 		{
 			auto nameInDB = generateNameInDB(_ctx.view().seq(), _account, _sTableName);
 			table.setFieldH160(sfNameInDB, nameInDB);
+			if (bTransaction_)
+				sqlTxsNameInDB_.emplace(_sTableName, nameInDB);
 		}
 		else
 		{
-			auto ledgerSeq = _ctx.app.getLedgerMaster().getValidLedgerIndex();
-			auto nameInDB = _ctx.app.getLedgerMaster().getNameInDB(ledgerSeq, _account, _sTableName);
-			if (!nameInDB)
+			uint160 nameInDB = (uint160)0;
+			if (bTransaction_)
 			{
-				auto j = _ctx.app.journal("Executive");
-				JLOG(j.info())
-					<< "SleOps genTableFields getNameInDB failed,account="
-					<< to_string(_account)
-					<< ",tableName="
-					<< _sTableName;
-				return std::make_pair(false, tables);
+				if(sqlTxsNameInDB_.find(_sTableName) != sqlTxsNameInDB_.end())
+					nameInDB = sqlTxsNameInDB_.at(_sTableName);
 			}
-				
+			//
+			if(!nameInDB)
+			{
+				auto ledgerSeq = _ctx.app.getLedgerMaster().getValidLedgerIndex();
+				nameInDB = _ctx.app.getLedgerMaster().getNameInDB(ledgerSeq, _account, _sTableName);
+				if (!nameInDB)
+				{
+					auto j = _ctx.app.journal("Executive");
+					JLOG(j.info())
+						<< "SleOps genTableFields getNameInDB failed,account="
+						<< to_string(_account)
+						<< ",tableName="
+						<< _sTableName;
+					return std::make_pair(false, tables);
+				}
+			}
+			//
 			table.setFieldH160(sfNameInDB, nameInDB);
 		}
 		
@@ -279,162 +291,89 @@ namespace ripple {
 
 	}
 
-	//table operation
-	bool SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
+	bool SleOps::disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName, bool bNewNameInDB)
 	{
-		const ApplyContext &_ctx = ctx_;
-		bool bRel = false;
-		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_raw, &_ctx, &bRel](auto& obj)
-		{
-
-			obj.setFieldU16(sfOpType, T_CREATE);
-			obj.setFieldVL(sfRaw, strCopy(_raw));
-			auto tables = genTableFields(_ctx, _account, _sTableName, "", true);
-			if (tables.first)
-				obj.setFieldArray(sfTables, tables.second);
-			else
-				return;
-
-			SleOps::addCommonFields(obj, _account);
-			bRel = true;
-		});
-		if (!bRel) {
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps dropTable,apply result: failed.";
-			return bRel;
-		}
+		auto tables = genTableFields(ctx_, _account, _sTableName, _tableNewName, bNewNameInDB);
+		if(!tables.first)
+			return false;
+		//
+		tx.setFieldArray(sfTables, tables.second);
+		SleOps::addCommonFields(tx, _account);
+		//
 		auto j = ctx_.app.journal("Executive");
 		JLOG(j.warn()) <<
-			"-----------createTable subTx: " << tx;
+			"-----------disposeTableTx subTx: " << tx;
 		if (bTransaction_) {
 			sqlTxsStatements_.push_back(tx);
 			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		if (ret != tesSUCCESS)
+		bool rel = (ret == tesSUCCESS);
+		if (!ret)
 		{
 			auto j = ctx_.app.journal("Executive");
 			JLOG(j.info())
-				<< "SleOps createTable,apply result:"
+				<< "SleOps disposeTableTx,apply result:"
 				<< transToken(ret);
 		}
 
 		if (ctx_.view().flags() & tapForConsensus)
 		{
 			ctx_.tx.addSubTx(tx);
-			//ctx_.app.getContractHelper().addTx(ctx_.tx.getTransactionID(), tx);
 		}
-		
-		return ret == tesSUCCESS;
+
+		return rel;
+	}
+
+	//table operation
+	bool SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
+	{
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttTABLELISTSET,
+			[&_account, &_sTableName, &_raw, &_ctx](auto& obj)
+		{
+
+			obj.setFieldU16(sfOpType, T_CREATE);
+			obj.setFieldVL(sfRaw, strCopy(_raw));
+		});
+		//
+		return disposeTableTx(tx, _account, _sTableName, "", true);
 	}
 
 	bool SleOps::dropTable(AccountID const& _account, std::string const& _sTableName)
 	{
 		const ApplyContext &_ctx = ctx_;
-		bool bRel = false;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_ctx, &bRel](auto& obj)
+			[&_account, &_sTableName, &_ctx](auto& obj)
 		{
-			auto tables = genTableFields(_ctx, _account, _sTableName, "", false);
-			if (tables.first)
-				obj.setFieldArray(sfTables, tables.second);
-			else
-				return;
-
-			SleOps::addCommonFields(obj, _account);
-
 			obj.setFieldU16(sfOpType, T_DROP);
 			obj.setAccountID(sfAccount, _account);
-			bRel = true;
 		});
-		if (!bRel) {
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps dropTable,apply result: failed.";
-			return bRel;
-		}
-		if (bTransaction_) {
-			sqlTxsStatements_.push_back(tx);
-			return true;
-		}
-		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		if (ret != tesSUCCESS)
-		{
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps dropTable,apply result:"
-				<< transToken(ret);
-		}
-
-		if (ctx_.view().flags() & tapForConsensus)
-		{
-			ctx_.tx.addSubTx(tx);
-		}
-
-		return ret == tesSUCCESS;
+		//
+		return disposeTableTx(tx, _account, _sTableName);
 	}
 
 	bool SleOps::renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName)
 	{
 		const ApplyContext &_ctx = ctx_;
-		bool bRel = false;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_sTableNewName, &_ctx, &bRel](auto& obj)
+			[&_account, &_sTableName, &_sTableNewName, &_ctx](auto& obj)
 		{
-			auto tables = genTableFields(_ctx, _account, _sTableName, _sTableNewName, false);
-			if (tables.first)
-				obj.setFieldArray(sfTables, tables.second);
-			else
-				return;
-
 			SleOps::addCommonFields(obj, _account);
 			//
 			obj.setFieldU16(sfOpType, T_RENAME);
 			obj.setAccountID(sfAccount, _account);
-			bRel = true;
 		});
-		if (!bRel) {
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps dropTable,apply result: failed.";
-			return bRel;
-		}
-		if (bTransaction_) {
-			sqlTxsStatements_.push_back(tx);
-			return true;
-		}
-		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		if (ret != tesSUCCESS)
-		{
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps renameTable,apply result:"
-				<< transToken(ret);
-		}
-
-		if (ctx_.view().flags() & tapForConsensus)
-		{
-			ctx_.tx.addSubTx(tx);
-		}
-
-		return ret == tesSUCCESS;
+		//
+		return disposeTableTx(tx, _account, _sTableName, _sTableNewName);
 	}
 
 	bool SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
-		bool bRel = false;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_account2, &_sTableName, &_raw, &_ctx, &bRel](auto& obj)
+			[&_account, &_account2, &_sTableName, &_raw, &_ctx](auto& obj)
 		{
-			auto tables = genTableFields(_ctx, _account, _sTableName, "", false);
-			if (tables.first)
-				obj.setFieldArray(sfTables, tables.second);
-			else
-				return;
-
 			SleOps::addCommonFields(obj, _account);
 			//
 			obj.setFieldU16(sfOpType, T_GRANT);
@@ -442,97 +381,35 @@ namespace ripple {
 			obj.setAccountID(sfUser, _account2);
 			std::string _sRaw = "[" + _raw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
-			bRel = true;
 		});
-		if (!bRel) {
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps grantTable,apply result: failed.";
-			return bRel;
-		}
-		if (bTransaction_) {
-			sqlTxsStatements_.push_back(tx);
-			return true;
-		}
-		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		if (ret != tesSUCCESS)
-		{
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps grantTable,apply result:"
-				<< transToken(ret);
-		}
-
-		if (ctx_.view().flags() & tapForConsensus)
-		{
-			ctx_.tx.addSubTx(tx);
-		}
-
-		return ret == tesSUCCESS;
+		//
+		return disposeTableTx(tx, _account, _sTableName);
 	}
 
 	//CRUD operation
 	bool SleOps::insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
-		bool bRel = false;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_raw, &_ctx, &bRel](auto& obj)
+			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
 		{
-			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
-			if (tables.first)
-				obj.setFieldArray(sfTables, tables.second);
-			else
-				return;
-
 			SleOps::addCommonFields(obj, _account);
 			//
 			obj.setFieldU16(sfOpType, R_INSERT);
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfOwner, _owner);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
-			bRel = true;
 		});
-		if (!bRel) {
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps dropTable,apply result: failed.";
-			return bRel;
-		}
-		if (bTransaction_) {
-			sqlTxsStatements_.push_back(tx);
-			return true;
-		}
-		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		if (ret != tesSUCCESS)
-		{
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps insertData,apply result:"
-				<< transToken(ret);
-		}
-
-		if (ctx_.view().flags() & tapForConsensus)
-		{
-			ctx_.tx.addSubTx(tx);
-		}
-
-		return ret == tesSUCCESS;
+		//
+		return disposeTableTx(tx, _account, _sTableName);
 	}
 
 	bool SleOps::deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
-		bool bRel = false;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_raw, &_ctx, &bRel](auto& obj)
+			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
 		{
-			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
-			if (tables.first)
-				obj.setFieldArray(sfTables, tables.second);
-			else
-				return;
-
 			SleOps::addCommonFields(obj, _account);
 			//
 			obj.setFieldU16(sfOpType, R_DELETE);
@@ -540,48 +417,17 @@ namespace ripple {
 			obj.setAccountID(sfOwner, _owner);
 			std::string _sRaw = "[" + _raw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
-			bRel = true;
 		});
-		if (!bRel) {
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps dropTable,apply result: failed.";
-			return bRel;
-		}
-		if (bTransaction_) {
-			sqlTxsStatements_.push_back(tx);
-			return true;
-		}
-		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		if (ret != tesSUCCESS)
-		{
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps deleteData,apply result:"
-				<< transToken(ret);
-		}
-
-		if (ctx_.view().flags() & tapForConsensus)
-		{
-			ctx_.tx.addSubTx(tx);
-		}
-
-		return ret == tesSUCCESS;
+		//
+		return disposeTableTx(tx, _account, _sTableName);
 	}
 
 	bool SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw)
 	{
 		const ApplyContext &_ctx = ctx_;
-		bool bRel = false;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_getRaw, &_updateRaw, &_ctx, &bRel](auto& obj)
+			[&_account, &_owner, &_sTableName, &_getRaw, &_updateRaw, &_ctx](auto& obj)
 		{
-			auto tables = genTableFields(_ctx, _owner, _sTableName, "", false);
-			if (tables.first)
-				obj.setFieldArray(sfTables, tables.second);
-			else
-				return;
-
 			SleOps::addCommonFields(obj, _account);
 			//
 			obj.setFieldU16(sfOpType, R_UPDATE);
@@ -589,33 +435,9 @@ namespace ripple {
 			obj.setAccountID(sfOwner, _owner);
 			std::string _sRaw = "[" + _updateRaw + "," + _getRaw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
-			bRel = true;
 		});
-		if (!bRel) {
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps dropTable,apply result: failed.";
-			return bRel;
-		}
-		if (bTransaction_) {
-			sqlTxsStatements_.push_back(tx);
-			return true;
-		}
-		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		if (ret != tesSUCCESS)
-		{
-			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
-				<< "SleOps deleteData,apply result:"
-				<< transToken(ret);
-		}
-
-		if (ctx_.view().flags() & tapForConsensus)
-		{
-			ctx_.tx.addSubTx(tx);
-		}
-
-		return ret == tesSUCCESS;
+		//
+		return disposeTableTx(tx, _account, _sTableName);
 	}
 
 	//Select related
@@ -626,11 +448,9 @@ namespace ripple {
 		Json::Value jvCommand, tableJson;
 		jvCommand[jss::tx_json][jss::Owner] = to_string(_owner);
 		jvCommand[jss::tx_json][jss::Account] = to_string(_owner);
-		//std::string _sRaw = "[[]," + _raw + "]";//get all default,in fact, the first [] represent fields
-		//jvCommand[jss::tx_json][jss::Raw] = _sRaw;
 		Json::Value _fields(Json::arrayValue);//select fields
 		jvCommand[jss::tx_json][jss::Raw].append(_fields);//append select fields
-		if (!_raw.empty())
+		if (!_raw.empty())//append select conditions
 		{
 			Json::Value _condition;
 			Json::Reader().parse(_raw, _condition);
@@ -645,7 +465,7 @@ namespace ripple {
 		{
 			auto j = ctx_.app.journal("Executive");
 			JLOG(j.info())
-				<< "SleOps genTableFields getNameInDB failed,account="
+				<< "SleOps getDataHandle getNameInDB failed,account="
 				<< to_string(_owner)
 				<< ",tableName="
 				<< _sTableName;
@@ -674,12 +494,6 @@ namespace ripple {
 		//
 		handle = ctx_.app.getContractHelper().genRandomUniqueHandle();
 		ctx_.app.getContractHelper().addRecord(handle, jvResult);
-		//* //////////////////////test
-		uint256 row = getDataRowCount(handle);
-		uint256 column = getDataColumnCount(handle);
-		std::string value = getByKey(handle, fromUint256(row)-1, "id");
-		std::string value1 = getByIndex(handle, fromUint256(row)-1, fromUint256(column)-1);
-		// */
 		//
 		return handle;
 	}
@@ -750,8 +564,8 @@ namespace ripple {
 	//transaction related
 	void	SleOps::transactionBegin()
 	{
+		resetTransactionCache();
 		bTransaction_ = true;
-		sqlTxsStatements_.clear();
 	}
 
 	void	SleOps::transactionCommit(AccountID const& _account, bool _bNeedVerify)
@@ -789,10 +603,17 @@ namespace ripple {
 		if (ctx_.view().flags() & tapForConsensus)
 		{
 			ctx_.tx.addSubTx(tx);
-			//ctx_.app.getContractHelper().addTx(ctx_.tx.getTransactionID(), tx);
 		}
 		//
+		resetTransactionCache();
+	}
+
+	void SleOps::resetTransactionCache()
+	{
 		bTransaction_ = false;
-		sqlTxsStatements_.clear();
-	}    
+		if (!sqlTxsNameInDB_.empty())
+			sqlTxsNameInDB_.clear();
+		if (!sqlTxsStatements_.empty())
+			sqlTxsStatements_.clear();
+	}
 }
