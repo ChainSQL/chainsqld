@@ -77,23 +77,32 @@ std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, 
 	std::string err_message;
 	int transactionType = 0;
 
-	int type = obj["OpType"].asInt();
-
-	if (isTableListSetOpType((TableOpType)type)) {
-		transactionType = ttTABLELISTSET;
-	}
-	else if (isSqlStatementOpType((TableOpType)type)) {
-		transactionType = ttSQLSTATEMENT;
-	}
+	if (obj.isMember(jss::TransactionType) && obj["TransactionType"] == "SQLTransaction")
+		transactionType = ttSQLTRANSACTION;
 	else
 	{
-		transactionType = ttSQLSTATEMENT;
+		int type = obj["OpType"].asInt();
+
+		if (isTableListSetOpType((TableOpType)type)) {
+			transactionType = ttTABLELISTSET;
+		}
+		else if (isSqlStatementOpType((TableOpType)type)) {
+			transactionType = ttSQLSTATEMENT;
+		}
+		else
+		{
+			transactionType = ttSQLSTATEMENT;
+		}
 	}
 
-	obj[jss::TransactionType] = transactionType;
-	obj[jss::Account] = to_string(accountID);
-	obj[jss::Fee] = 0;
-	obj[jss::Sequence] = 0;
+	if(!obj.isMember(jss::TransactionType))
+		obj[jss::TransactionType] = transactionType;
+	if(!obj.isMember(jss::Account))
+		obj[jss::Account] = to_string(accountID);
+	if(!obj.isMember(jss::Fee))
+		obj[jss::Fee] = 0;
+	if(!obj.isMember(jss::Sequence))
+		obj[jss::Sequence] = 0;
 
 	std::shared_ptr<STTx> stpTrans;
 	STParsedJSONObject parsed(std::string(jss::tx_json), obj);
@@ -107,7 +116,8 @@ std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, 
 	{
 		// If we're generating a multi-signature the SigningPubKey must be
 		// empty, otherwise it must be the master account's public key.
-		parsed.object->setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
+		if(parsed.object->getFieldIndex(sfSigningPubKey) != -1)
+			parsed.object->setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
 
 		stpTrans = std::make_shared<STTx>(
 			std::move(parsed.object.get()));
@@ -323,7 +333,7 @@ void STTx::buildRaw(Json::Value& condition, std::string& rule) const
 	std::swap(finalRaw, condition);
 }
 
-std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""*/, STArray const& txs/* = STObject()*/)
+std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""*/, std::shared_ptr<STObject const> contractRawMetadata)
 {
 	std::vector<STTx> vec;
 	if (tx.getTxnType() == ttSQLTRANSACTION)
@@ -352,18 +362,32 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""
 	}
 	else if (tx.getTxnType() == ttCONTRACT)
 	{
-		for (auto txInner : txs)
+		if (!contractRawMetadata)
 		{
-			if (txInner.getFieldU16(sfTransactionType) == ttTABLELISTSET ||
-				txInner.getFieldU16(sfTransactionType) == ttSQLSTATEMENT)
+			return vec;
+		}
+		//
+		if (!contractRawMetadata->isFieldPresent(sfContractTxs))
+			return vec;
+		Blob txs_blob = contractRawMetadata->getFieldVL(sfContractTxs);
+		std::string txs_str;
+		txs_str.assign(txs_blob.begin(), txs_blob.end());
+		Json::Value objs;
+		Json::Reader().parse(txs_str, objs);
+
+		ripple::AccountID accountID = tx.getAccountID(sfAccount);
+		for (auto obj : objs)
+		{
+			//int type = obj["OpType"].asInt();
+			//if (type == T_ASSERT) continue;
+			auto tx_pair = parseSTTx(obj, accountID);
+			if (!tx_pair.first)
+				continue;
+			auto tx_ = *tx_pair.first;
+			auto vecTxs = getTxs(tx_, sTableNameInDB);
+			for (auto subTx : vecTxs)
 			{
-				STTx txFinal(std::move(txInner));
-				getOneTx(vec, txFinal, sTableNameInDB);
-			}
-			else if (txInner.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
-			{
-				STTx txTransaction(std::move(txInner));
-				getTxs(txTransaction, sTableNameInDB, txs);
+				vec.push_back(subTx);
 			}
 		}
 	}

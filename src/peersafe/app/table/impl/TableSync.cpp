@@ -163,20 +163,9 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
 			std::vector<STTx> vecTxs;
 			if (stTx.getTxnType() == ttCONTRACT)
 			{
-				auto ledger = app_.getLedgerMaster().getValidatedLedger();
 				auto rawMeta = ledger->txRead(stTx.getTransactionID()).second;
-				if (!rawMeta)
-					continue;
 
-				auto txMeta = std::make_shared<TxMeta>(stTx.getTransactionID(),
-					ledger->seq(), *rawMeta, app_.journal("TableSync"));
-
-				auto meta = txMeta->getNodes().back();
-				if (!meta.isFieldPresent(sfContractTxs))
-					continue;
-				auto txs = meta.getFieldArray(sfContractTxs);
-
-				vecTxs = STTx::getTxs(stTx, sNameInDB, txs);
+				vecTxs = STTx::getTxs(stTx, sNameInDB, rawMeta);
 			}
 			else
 			{
@@ -1597,8 +1586,13 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
         {
             auto blob = SerialIter{ item.data(), item.size() }.getVL();
             std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
-
-			auto vec = STTx::getTxs(*pSTTX);
+			//
+			std::shared_ptr<STObject const> rawMeta = NULL;
+			if(pSTTX->getTxnType() == ttCONTRACT)
+				rawMeta = ledger->txRead(pSTTX->getTransactionID()).second;
+			//
+			std::vector<STTx> vecTxs = STTx::getTxs(*pSTTX, "", rawMeta);
+			auto vec = STTx::getTxs(*pSTTX, "", rawMeta);
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId
 			uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
@@ -1611,32 +1605,6 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
 						OnCreateTableTx(tx, ledger, time, chainId);
                     }
                 }
-				else if (tx.getTxnType() == ttCONTRACT)
-				{
-					auto rawMeta = ledger->txRead(tx.getTransactionID()).second;
-					if (!rawMeta)
-						continue;
-
-					auto txMeta = std::make_shared<TxMeta>(tx.getTransactionID(),
-						ledger->seq(), *rawMeta, app_.journal("TableSync"));
-					
-					auto meta = txMeta->getNodes().back();
-					if (!meta.isFieldPresent(sfContractTxs))
-						continue;
-					auto txs = meta.getFieldArray(sfContractTxs);
-
-					for (auto txInner : txs)
-					{
-						if (txInner.isFieldPresent(sfOpType) && T_CREATE == txInner.getFieldU16(sfOpType))
-						{
-							OnCreateTableTx(txInner, ledger, time, chainId);
-						}
-						else if (txInner.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
-						{
-
-						}
-					}
-				}
 			}
         }
         catch (std::exception const&)

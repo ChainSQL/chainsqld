@@ -240,6 +240,7 @@ SF_Blob const sfTransferFeeMin  = make::one<SF_Blob::type>(&sfTransferFeeMin,  S
 SF_Blob const sfTransferFeeMax  = make::one<SF_Blob::type>(&sfTransferFeeMax,  STI_VL, 63, "TransferFeeMax");
 SF_Blob const sfContractCode	= make::one<SF_Blob::type>(&sfContractCode,    STI_VL, 64, "ContractCode");
 SF_Blob const sfContractData	= make::one<SF_Blob::type>(&sfContractData,	   STI_VL, 65, "ContractData");
+SF_Blob const sfContractTxs     = make::one<SF_Blob::type>(&sfContractTxs,     STI_VL, 66, "ContractTxs");
 // account
 SF_Account const sfAccount         = make::one<SF_Account::type>(&sfAccount,         STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner           = make::one<SF_Account::type>(&sfOwner,           STI_ACCOUNT, 2, "Owner");
@@ -296,7 +297,6 @@ SField const sfMemos           = make::one(&sfMemos,           STI_ARRAY, 9, "Me
 SField const sfTableEntries    = make::one(&sfTableEntries,    STI_ARRAY, 50,"TableEntries");
 SField const sfTables          = make::one(&sfTables,          STI_ARRAY, 51, "Tables");
 SField const sfUsers           = make::one(&sfUsers,           STI_ARRAY, 52, "Users");	
-SField const sfContractTxs	   = make::one(&sfContractTxs,	   STI_ARRAY, 53, "ContractTxs");
 
 // array of objects (uncommon)
 SField const sfMajorities      = make::one(&sfMajorities,      STI_ARRAY, 16, "Majorities");

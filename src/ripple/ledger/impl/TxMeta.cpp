@@ -23,6 +23,7 @@
 #include <ripple/basics/Log.h>
 #include <ripple/json/to_string.h>
 #include <ripple/protocol/STAccount.h>
+#include <ripple/basics/StringUtilities.h>
 #include <string>
 
 namespace ripple {
@@ -264,19 +265,29 @@ void TxMeta::addRaw (Serializer& s, TER result, std::uint32_t index)
 
     mNodes.sort (compare);
 
-    getAsObject ().add (s);
+	STObject obj = getAsObject();
+	//
+	if (contractTxsVec.size() > 0)
+	{
+		Json::Value vec;
+		for (auto tx : contractTxsVec) {
+			vec.append(tx.getJson(0));
+		}
+		obj.setFieldVL(sfContractTxs, ripple::strCopy(vec.toStyledString()));
+		contractTxsVec.clear();
+	}
+    obj.add (s);
 }
 
-void TxMeta::makeContractTxField(std::vector<STTx> const& vecTxs)
+void TxMeta::setContractTxFieldData(std::vector<STTx> const& vecTxs)
 {
-	mNodes.push_back(STObject(sfContractTxs));
-	STObject& txs = mNodes.back();
-	STArray txsArray;
-	for (auto& tx : vecTxs)
+	if (contractTxsVec.size() > 0)
+		contractTxsVec.clear();
+	//
+	for (auto tx : vecTxs)
 	{
-		txsArray.push_back(tx);
+		contractTxsVec.push_back(tx);
 	}
-	txs.setFieldArray(sfContractTxs, txsArray);
 }
 
 } // ripple

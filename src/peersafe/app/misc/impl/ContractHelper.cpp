@@ -43,6 +43,7 @@ namespace ripple {
 	{
 		auto p = std::make_shared<Json::Value>(result);
 		mRecordCache.canonicalize(handle, p);
+		mHandleFlag.emplace(handle);
 	}
 
 	Json::Value ContractHelper::getRecord(uint256 const& handle)
@@ -56,6 +57,18 @@ namespace ripple {
 	void ContractHelper::releaseHandle(uint256 const& handle)
 	{
 		mRecordCache.del(handle, false);
+		mHandleFlag.erase(handle);
+	}
+
+	uint256 ContractHelper::genRandomUniqueHandle()
+	{
+		int num = 0;
+		do {
+			srand(time(0));
+			num = rand();
+		} while (mHandleFlag.find(uint256(num)) != mHandleFlag.end());
+		//
+		return uint256(num);
 	}
 }
 

@@ -121,7 +121,7 @@ public:
 
 	static std::pair<std::shared_ptr<STTx>, std::string> parseSTTx(Json::Value& obj, AccountID accountID);
 
-	static std::vector<STTx> getTxs(STTx const& tx, std::string sTableNameInDB = "", STArray const& txs = STArray());
+	static std::vector<STTx> getTxs(STTx const& tx, std::string sTableNameInDB = "", std::shared_ptr<STObject const> contractRawMetadata = NULL);
 
 	bool isCrossChainUpload() const;
 

@@ -241,11 +241,16 @@ ApplyStateTable::apply (OpenView& to,
         for (auto& mod : newMod)
             to.rawReplace (mod.second);
 
-		meta.makeContractTxField(tx.getSubTxs());
+		meta.setContractTxFieldData(tx.getSubTxs());
 
         sMeta = std::make_shared<Serializer>();
         meta.addRaw (*sMeta, ter, to.txCount());
 
+		Slice slice = sMeta->slice();
+		SerialIter z(slice);
+		STObject ojb1(z, sfMetadata);
+		JLOG(j.warn()) <<
+			"metadata " << ojb1;
         // VFALCO For diagnostics do we want to show
         //        metadata even when the base view is open?
         JLOG(j.trace()) <<

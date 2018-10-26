@@ -66,14 +66,16 @@ public:
 	/// amount to be subtrackted (also in case the account does not exist).
 	TER subBalance(AccountID const& _addr, int64_t const& _value);
 
-    //db operators
-    int64_t executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw);
+	bool disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName = "", bool bNewNameInDB = false);
+
+	//db operators
+	int64_t executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw);
 
 	//table opeartion
 	bool createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw);
 	bool dropTable(AccountID const& _account, std::string const& _sTableName);
 	bool renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName);
-	bool grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _raw);
+	bool grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw);
 
 	//CRUD operation
 	bool insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
@@ -82,19 +84,20 @@ public:
 
 	//Select related
 	uint256 getDataHandle(AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
-	uint256 getDataLines(uint256 const& _handle);
-	uint256 getDataColumns(uint256 const& _handle);
-	bytes	getByKey(uint256 const& _handle, size_t row, std::string const& _key);
-	bytes	getByIndex(uint256 const& handle, size_t row, size_t column);
-	void	releaseResource();	//release hanle related resources
+	uint256 getDataRowCount(uint256 const& _handle);
+	uint256 getDataColumnCount(uint256 const& _handle);
+	std::string	getByKey(uint256 const& _handle, size_t row, std::string const& _key);
+	std::string	getByIndex(uint256 const& handle, size_t row, size_t column);
+	void	releaseResource(uint256 const& handle);	//release handle related resources
 
 	//transaction related
 	void	transactionBegin();
-	void	transactionCommit();
+	void	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
+	void	resetTransactionCache();
 
-	void	addCommonFields(STObject& obj, AccountID const& _account);
+	static void	addCommonFields(STObject& obj, AccountID const& _account);
 	std::pair<bool,STArray>
-			genTableFields(AccountID const& _account,std::string _sTablename,std::string _tableNewName,bool bNewNameInDB);
+			genTableFields(const ApplyContext &_ctx, AccountID const& _account,std::string _sTablename,std::string _tableNewName,bool bNewNameInDB);
 
 	int64_t balance(AccountID const& address);
 
@@ -106,6 +109,9 @@ public:
 private:
     ApplyContext &ctx_;
     TaggedCache <AccountID, Blob>             contractCacheCode_;
+	bool									  bTransaction_;
+	std::vector<STTx>						  sqlTxsStatements_;
+	std::map<std::string, uint160>			  sqlTxsNameInDB_;
 };
 
 }

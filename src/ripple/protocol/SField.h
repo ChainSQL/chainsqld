@@ -486,6 +486,7 @@ extern SF_Blob const sfDeleteRule;
 extern SF_Blob const sfGetRule;
 extern SF_Blob const sfTxOperateRule;
 extern SF_Blob const sfInsertCountMap;
+extern SF_Blob const sfContractTxs;
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;
@@ -551,7 +552,6 @@ extern SField const sfMajorities;
 extern SField const sfTableEntries;
 extern SField const sfTables;
 extern SField const sfUsers;
-extern SField const sfContractTxs;
 //------------------------------------------------------------------------------
 
 } // ripple
