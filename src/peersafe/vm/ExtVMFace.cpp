@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <iostream>
+#include <cstdlib>
 
 #include "ExtVMFace.h"
 #include "Common.h"
@@ -356,53 +357,48 @@ void table_get_handle(struct evmc_context* _context,
 
 void table_get_lines(struct evmc_context* _context,
     const struct evmc_uint256be* handle,
-    struct evmc_uint256be* result)
-{
+    struct evmc_uint256be* result) {
     auto& env = static_cast<ExtVMFace&>(*_context);
     *result = env.table_get_lines(handle);
 }
+
 void table_get_columns(struct evmc_context* _context,
     const struct evmc_uint256be* handle,
-    struct evmc_uint256be* result)
-{
+    struct evmc_uint256be* result) {
     auto& env = static_cast<ExtVMFace&>(*_context);
     *result = env.table_get_columns(handle);
 }
 
-//wfp_need_data!!!!!!!
-size_t table_get_field1(struct evmc_context* _context,
-    const struct evmc_uint256be* handle,
-    size_t line,
-    uint8_t const* _fieldName,
-    size_t _fieldSize,
-    uint8_t* buffer_data) {
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    bytes byResult = env.table_get_by_key(handle, line, 
-            bytesConstRef{_fieldName, _fieldSize});
-    for (int i = 0; i < byResult.size(); i++) {
-        *buffer_data++ = byResult[i];
-    }    
-
-    return byResult.size();
-}
-
-//wfp_need_data!!!!!!!
-size_t table_get_field2(struct evmc_context* _context,
-    const struct evmc_uint256be* handle,
-    size_t line,
-    size_t _fieldNum,
-    uint8_t* buffer_data)
-{
+// TODO: Remove the copy to outBuf
+size_t get_column_by_name(evmc_context* _context,
+    const evmc_uint256be* _handle,
+    size_t _row,
+    uint8_t const* _column,
+    size_t _columnSize,
+    uint8_t* _outBuf, 
+    size_t _outSize) {
     auto& env = static_cast<ExtVMFace&>(*_context);
 
-    bytes byResult = env.table_get_by_index(handle, line, _fieldNum);
-    for (int i = 0; i < byResult.size(); i++)
-    {
-        *buffer_data++ = byResult[i];
-    }
-
-    return byResult.size();
+    size_t size = env.table_get_by_key(_handle, _row, 
+            bytesConstRef{_column, _columnSize}, _outBuf+32, _outSize-32);
+    memcpy(_outBuf, toEvmC((uint256)size).bytes, 32);
+    return size;
 }
+
+size_t get_column_by_index(evmc_context *_context,
+    const evmc_uint256be *_handle,
+    size_t _row,
+    size_t _column,
+    uint8_t *_outBuf, 
+    size_t _outSize) {
+    auto& env = static_cast<ExtVMFace&>(*_context);
+
+    size_t size = env.table_get_by_index(_handle, _row, _column, 
+            _outBuf+32, _outSize-32);
+    memcpy(_outBuf, toEvmC((uint256)size).bytes, 32);
+    return size;
+}
+
 void db_trans_begin(struct evmc_context* _context)
 {
     auto& env = static_cast<ExtVMFace&>(*_context);
@@ -418,6 +414,25 @@ void release_resource(struct evmc_context* _context)
 {
     auto& env = static_cast<ExtVMFace&>(*_context);
     env.release_resource();
+}
+
+void get_column_len_by_name(evmc_context*_context, 
+        const evmc_uint256be *_handle, 
+        size_t _row,
+        const uint8_t *_column, 
+        size_t _size, 
+        evmc_uint256be *_len) {
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    *_len = env.get_column_len(_handle, _row, bytesConstRef{_column, _size});
+}
+
+void get_column_len_by_index(evmc_context*_context, 
+        const evmc_uint256be *_handle, 
+        size_t _row,
+        size_t _column, 
+        evmc_uint256be *_len) {
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    *_len = env.get_column_len(_handle, _row, _column);
 }
 
 evmc_context_fn_table const fnTable = {
@@ -445,13 +460,16 @@ evmc_context_fn_table const fnTable = {
     table_get_handle,
     table_get_lines,
     table_get_columns,
-    table_get_field1,
-    table_get_field2,
+    get_column_by_name,
+    get_column_by_index,
 
     db_trans_begin,
     db_trans_submit,
 
-    release_resource
+    release_resource,
+
+    get_column_len_by_name,
+    get_column_len_by_index,
 };
 
 ExtVMFace::ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,

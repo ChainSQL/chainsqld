@@ -1179,27 +1179,62 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
         case Instruction::EXGETVALUEBYKEY:
         {
             auto handle = stack.pop();
-            auto line = stack.pop();
-            auto nameIdx = stack.pop();
-            auto nameBytes = stack.pop();
+            auto row = stack.pop();
+            auto columnOff = stack.pop();
+            auto columnSize = stack.pop();
+            auto outOff = stack.pop();
+            auto outSize = stack.pop();
 
-            _memory.require(nameIdx, nameBytes);
+            _memory.require(columnOff, columnSize);
+            _memory.require(outOff, outSize);
 
-            _ext.table_get_field1(handle, line, nameIdx, nameBytes);
+            _ext.table_get_column(handle, row, columnOff, columnSize, 
+                    outOff, outSize);
+            stack.push(m_builder.CreateZExt(outOff, Type::Word));
+
             break;
         }
         case Instruction::EXGETVALUEBYINDEX:
         {
             auto handle = stack.pop();
-            auto line   = stack.pop();
-            auto num    = stack.pop();
+            auto row = stack.pop();
+            auto colomn = stack.pop();
+            auto outOff = stack.pop();
+            auto outSize = stack.pop();
 
-            _ext.table_get_field2(handle, line, num);
+            _memory.require(outOff, outSize);
+            _ext.table_get_column(handle, row, colomn, outOff, outSize);
+            stack.push(m_builder.CreateZExt(outOff, Type::Word));
+
             break;
         }
         case Instruction::EXEXITFUNC:
         {
             _ext.exit_fun();
+            break;
+        }
+        case Instruction::EXGETLENBYKEY:
+        {
+            auto handle = stack.pop();
+            auto row = stack.pop();
+            auto columnOff = stack.pop();
+            auto columnSize = stack.pop();
+
+            _memory.require(columnOff, columnSize);
+            auto r = _ext.get_column_len(handle, row, columnOff, columnSize);
+            stack.push(r);
+
+            break; 
+        }
+        case Instruction::EXGETLENBYINDEX:
+        {
+            auto handle = stack.pop();
+            auto row = stack.pop();
+            auto column = stack.pop();
+
+            auto r = _ext.get_column_len(handle, row, column);
+            stack.push(r);
+
             break;
         }
 

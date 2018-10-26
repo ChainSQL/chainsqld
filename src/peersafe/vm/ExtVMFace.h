@@ -204,11 +204,30 @@ public:
     virtual evmc_uint256be table_get_handle(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return evmc_uint256be(); }
     virtual evmc_uint256be table_get_lines(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
     virtual evmc_uint256be table_get_columns(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
-    virtual bytes table_get_by_key(const struct evmc_uint256be *handle, size_t line, bytesConstRef const& _name) { return bytes(); }
-    virtual bytes table_get_by_index(const struct evmc_uint256be *handle, size_t line, size_t _num) { return bytes(); }
+
+    virtual 
+    size_t table_get_by_key(const evmc_uint256be *_handle, 
+            size_t _row, bytesConstRef const& _column, 
+            uint8_t *_outBuf, size_t _outSize) { return 0; }
+    virtual 
+    size_t table_get_by_index(const evmc_uint256be *_handle, 
+            size_t _row, size_t _column, uint8_t *_outBuf, 
+            size_t _outSize) { return 0; }
+
     virtual void db_trans_begin() {}
     virtual bool db_trans_submit() { return 0; }
     virtual void release_resource() {}
+
+    virtual 
+    evmc_uint256be get_column_len(const evmc_uint256be *_handle, 
+            size_t _row, bytesConstRef const &_column) {
+        return evmc_uint256be();
+    }
+    virtual 
+    evmc_uint256be get_column_len(const evmc_uint256be *_handle, 
+            size_t _row, size_t _column) {
+        return evmc_uint256be();
+    }
 
 	/// Get the execution environment information.
 	EnvInfo const& envInfo() const { return envInfo_; }

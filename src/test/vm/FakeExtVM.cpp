@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <initializer_list>
 #include <algorithm>
+#include <cstdlib>
 
 #include "FakeExtVM.h"
 
@@ -251,34 +252,50 @@ evmc_uint256be FakeExtVM::table_get_lines(const evmc_uint256be *handle) {
     return test::toEvmC((uint256)20);
 }
 
-evmc_uint256be FakeExtVM::table_get_columns(const evmc_uint256be *handle) {
+evmc_uint256be FakeExtVM::table_get_columns(
+        const evmc_uint256be *handle) {
     test::PrintInputParams<const char*, u256>("GetColSize", 
             {{"handle", test::fromEvmC(*handle)}}
             );
     return test::toEvmC((uint256)30);
 }
 
-bytes FakeExtVM::table_get_by_key(const evmc_uint256be *handle, 
-        size_t rowNum, 
-        bytesConstRef const &column) {
-    unsigned uh = (unsigned)(test::fromEvmC(*handle));
-    test::PrintInputParams<const char*, std::string>("GetFiledByKey", 
+size_t FakeExtVM::table_get_by_key(const evmc_uint256be *_handle, 
+        size_t _row, 
+        bytesConstRef const& _column, 
+        uint8_t *_outBuf, 
+        size_t _outSize) {
+    unsigned uh = (unsigned)(test::fromEvmC(*_handle));
+    std::string column = _column.toString();
+    test::PrintInputParams<const char*, std::string>("GetColumnByName", 
             {{"handle", std::to_string(uh)}, 
-             {"rowNum", std::to_string(rowNum)}, 
-             {"colName", column.toString()}}
+             {"rowNum", std::to_string(_row)}, 
+             {"colName", column}, 
+             {"colLen", std::to_string(_outSize)}}
             );
-    return bytes{'b', 'y'};
+    // to simulate 
+    size_t copySize = column.size()<_outSize?column.size():_outSize;
+    memcpy(_outBuf, column.c_str(), copySize);
+    return copySize;
 }
 
-bytes FakeExtVM::table_get_by_index(const evmc_uint256be *handle, 
-        size_t rowNum, size_t colNum) {
-    unsigned uh = (unsigned)(test::fromEvmC(*handle));
-    test::PrintInputParams<const char*, std::string>("GetFieldByIndex", 
+size_t FakeExtVM::table_get_by_index(const evmc_uint256be *_handle, 
+        size_t _row, 
+        size_t _column, 
+        uint8_t *_outBuf, 
+        size_t _outSize) {
+    unsigned uh = (unsigned)(test::fromEvmC(*_handle));
+    test::PrintInputParams<const char*, std::string>("GetColumnByIndex", 
             {{"handle", std::to_string(uh)}, 
-             {"rowNum", std::to_string(rowNum)}, 
-             {"colNum", std::to_string(colNum)}}
+             {"rowNum", std::to_string(_row)}, 
+             {"colNum", std::to_string(_column)}, 
+             {"colLen", std::to_string(_outSize)}}
             );
-    return bytes();
+    // to simulate 
+    const char * const value = "by index";
+    size_t copySize = strlen(value)<_outSize?strlen(value):_outSize;
+    memcpy(_outBuf, value, copySize);
+    return copySize;
 }
 
 void FakeExtVM::db_trans_begin() {
@@ -295,6 +312,34 @@ bool FakeExtVM::db_trans_submit() {
 void FakeExtVM::release_resource() {
     test::PrintInputParams<const char*, const char*>(
             "OutOfScope", {{"parameters", "None"}});
+}
+
+evmc_uint256be FakeExtVM::get_column_len(
+        const evmc_uint256be *_handle, 
+        size_t _rowNum, 
+        bytesConstRef const &_column) {
+    unsigned uh = (unsigned)(test::fromEvmC(*_handle));
+    test::PrintInputParams<const char*, std::string>(
+            "GetColumnLenByName", 
+            {{"handle", std::to_string(uh)}, 
+             {"rowNum", std::to_string(_rowNum)}, 
+             {"colName", _column.toString()}}
+            );
+    return test::toEvmC((uint256)100);
+}
+
+evmc_uint256be FakeExtVM::get_column_len(
+        const evmc_uint256be *_handle, 
+        size_t _row, 
+        size_t _column) {
+    unsigned uh = (unsigned)(test::fromEvmC(*_handle));
+    test::PrintInputParams<const char*, std::string>(
+            "GetColumnLenByIndex", 
+            {{"handle", std::to_string(uh)}, 
+             {"rowNum", std::to_string(_row)}, 
+             {"colNum", std::to_string(_column)}}
+            );
+    return test::toEvmC((uint256)100);
 }
 
 // NOTE:this function is limited to only one parameter,

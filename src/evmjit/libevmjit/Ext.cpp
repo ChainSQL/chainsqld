@@ -443,13 +443,17 @@ llvm::Function* getTableGetColumnsFunc(llvm::Module* _module) {
     }
     return func;
 }
-llvm::Function* getTableGetFiled1Func(llvm::Module* _module) {
-    static const auto funcName = "evm.table_get_field1";
+
+static
+llvm::Function* getColumnLenByNameFunc(llvm::Module* _module) {
+    static auto funcName = "evm.get_column_len_by_name";
     auto func = _module->getFunction(funcName);
-    if (!func)
-    {
-        auto fty = llvm::FunctionType::get(Type::Size, { Type::EnvPtr, Type::WordPtr, Type::Size, Type::BytePtr, Type::Size, Type::WordPtr }, false);
-        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+    if (!func) {
+        auto fty = llvm::FunctionType::get(Type::Size, 
+                {Type::EnvPtr, Type::WordPtr, Type::Size, 
+                 Type::BytePtr, Type::Size, Type::WordPtr}, false);
+        func = llvm::Function::Create(fty, 
+                llvm::Function::ExternalLinkage, funcName, _module);
 
         func->addAttribute(2, llvm::Attribute::ReadOnly);
         func->addAttribute(2, llvm::Attribute::NoAlias);
@@ -460,13 +464,51 @@ llvm::Function* getTableGetFiled1Func(llvm::Module* _module) {
     }
     return func;
 }
-llvm::Function* getTableGetFiled2Func(llvm::Module* _module) {
-    static const auto funcName = "evm.table_get_field2";
+
+llvm::Function* getColumnByNameFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.get_column_by_name";
+    auto func = _module->getFunction(funcName);
+    if (!func) {
+        auto fty = llvm::FunctionType::get(Type::Size, 
+                {Type::EnvPtr, Type::WordPtr, Type::Size, Type::BytePtr, 
+                 Type::Size, Type::BytePtr, Type::Size}, false);
+        func = llvm::Function::Create(fty, 
+                llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(4, llvm::Attribute::ReadOnly);
+        func->addAttribute(4, llvm::Attribute::NoAlias);
+        func->addAttribute(4, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+
+static 
+llvm::Function* getColumnLenByIndexFunc(llvm::Module *_module) {
+    static const auto funcName = "evm.get_column_len_by_index";
+    auto func = _module->getFunction(funcName);
+    if (!func) {
+        auto fty = llvm::FunctionType::get(Type::Size, 
+                {Type::EnvPtr, Type::WordPtr, Type::Size, Type::Size, 
+                 Type::WordPtr}, false);
+        func = llvm::Function::Create(fty, 
+                llvm::Function::ExternalLinkage, funcName, _module);
+    }
+    return func;
+}
+
+llvm::Function* getColumnByIndexFunc(llvm::Module* _module) {
+    static const auto funcName = "evm.get_column_by_index";
     auto func = _module->getFunction(funcName);
     if (!func)
     {
-        auto fty = llvm::FunctionType::get(Type::Size, { Type::EnvPtr, Type::WordPtr, Type::Size, Type::Size, Type::WordPtr }, false);
-        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+        auto fty = llvm::FunctionType::get(Type::Size, 
+                {Type::EnvPtr, Type::WordPtr, Type::Size, Type::Size, 
+                 Type::BytePtr, Type::Size}, false);
+        func = llvm::Function::Create(fty, 
+                llvm::Function::ExternalLinkage, funcName, _module);
 
         func->addAttribute(2, llvm::Attribute::ReadOnly);
         func->addAttribute(2, llvm::Attribute::NoAlias);
@@ -474,6 +516,7 @@ llvm::Function* getTableGetFiled2Func(llvm::Module* _module) {
     }
     return func;
 }
+
 llvm::Function* getDBTransBeginiFunc(llvm::Module* _module) {
     static const auto funcName = "evm.db_trans_begin";
     auto func = _module->getFunction(funcName);
@@ -1141,54 +1184,72 @@ void PrintValueAndType(const char *desc, const T *_value) {
     std::cout << "value: " << value << std::endl;
 }
 
-void  Ext::table_get_field1(llvm::Value* _handle, 
-        llvm::Value* _line, 
-        llvm::Value* _name, 
-        llvm::Value* _nameBytes) {
-    auto func = getTableGetFiled1Func(getModule());
+llvm::Value* Ext::get_column_len(llvm::Value *_handle, 
+        llvm::Value *_row, 
+        llvm::Value *_columnOff, 
+        llvm::Value *_columnSize) {
+    auto func = getColumnLenByNameFunc(getModule());
 
-    auto hGet = Endianness::toBE(m_builder, _handle);
+    auto handle = Endianness::toBE(m_builder, _handle);
+    auto row = m_builder.CreateTrunc(_row, m_builder.getInt64Ty());
+    auto columnPtr = m_memoryMan.getBytePtr(_columnOff);
+    auto columnSize = m_builder.CreateTrunc(_columnSize, Type::Size);
 
-    auto line = m_builder.CreateTrunc(_line, m_builder.getInt64Ty());
-    auto namePtr = m_memoryMan.getBytePtr(_name);
-    auto nameSize = m_builder.CreateTrunc(_nameBytes, Type::Size, "name.size");
-
-    auto pValue = getArgAlloca();
-    auto r = createCABICall(func, 
-            {getRuntimeManager().getEnvPtr(), hGet, line, namePtr, 
-             nameSize, pValue});
-
-    PrintValueAndType("ret_size:", r);
-    PrintValueAndType("ret_data:", pValue);
-
-    //auto srcPtr = Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
-    //auto srcSize = m_builder.CreateZExt(r, Type::Word);
-    //auto memSize = m_memoryMan.getSize();
-    //m_memoryMan.require(m_memoryMan.getSize(), srcSize);
-    //m_memoryMan.copyBytes(namePtr, nameSize, _name, 
-    //        pValue, srcSize);
+    auto len = getArgAlloca();
+    createCABICall(func, {getRuntimeManager().getEnvPtr(), 
+            handle, row, columnPtr, columnSize, len});
+    return Endianness::toNative(m_builder, m_builder.CreateLoad(len));
 }
 
-void Ext::table_get_field2(llvm::Value* _handle, 
-        llvm::Value* _line, 
-        llvm::Value* _num) {
-    auto func = getTableGetFiled2Func(getModule());
+void  Ext::table_get_column(llvm::Value* _handle, 
+        llvm::Value *_row, 
+        llvm::Value *_columnOff, 
+        llvm::Value *_columnSize, 
+        llvm::Value *_outOff, 
+        llvm::Value *_outSize) {
+    auto func = getColumnByNameFunc(getModule());
 
-    auto hGet = Endianness::toBE(m_builder, _handle);
+    auto handle = Endianness::toBE(m_builder, _handle);
+    auto row = m_builder.CreateTrunc(_row, m_builder.getInt64Ty());
+    auto columnPtr = m_memoryMan.getBytePtr(_columnOff);
+    auto columnSize = m_builder.CreateTrunc(_columnSize, Type::Size);
+    auto outPtr = m_memoryMan.getBytePtr(_outOff);
+    auto outSize = m_builder.CreateTrunc(_outSize, Type::Size);
 
-    auto line = m_builder.CreateTrunc(_line, m_builder.getInt64Ty());
-    auto num = m_builder.CreateTrunc(_num, m_builder.getInt64Ty());
+    createCABICall(func, {getRuntimeManager().getEnvPtr(), 
+            handle, row, columnPtr, columnSize, outPtr, outSize});
+}
 
-    auto pValue = getArgAlloca();
-    auto r = createCABICall(func, 
-            {getRuntimeManager().getEnvPtr(), hGet, line, num, pValue});
+llvm::Value* Ext::get_column_len(llvm::Value *_handle, 
+        llvm::Value *_row,
+        llvm::Value *_column) {
+    auto func = getColumnLenByIndexFunc(getModule());
 
-    auto srcPtr = Endianness::toNative(m_builder, m_builder.CreateLoad(pValue));
-    auto srcSize = m_builder.CreateZExt(r, Type::Word);
-    auto memSize = m_memoryMan.getSize();
-    m_memoryMan.require(m_memoryMan.getSize(), srcSize);
-    m_memoryMan.copyBytes(srcPtr, srcSize, 0, 
-            m_memoryMan.getBytePtr(memSize), srcSize);
+    auto handle = Endianness::toBE(m_builder, _handle);
+    auto row = m_builder.CreateTrunc(_row, m_builder.getInt64Ty());
+    auto column = m_builder.CreateTrunc(_column, m_builder.getInt64Ty());
+
+    auto len = getArgAlloca();
+    createCABICall(func, {getRuntimeManager().getEnvPtr(), 
+            handle, row, column, len});
+    return Endianness::toNative(m_builder, m_builder.CreateLoad(len));
+}
+
+void Ext::table_get_column(llvm::Value* _handle, 
+        llvm::Value *_row, 
+        llvm::Value *_column, 
+        llvm::Value *_outOff, 
+        llvm::Value *_outSize) {
+    auto func = getColumnByIndexFunc(getModule());
+
+    auto handle = Endianness::toBE(m_builder, _handle);
+    auto row = m_builder.CreateTrunc(_row, m_builder.getInt64Ty());
+    auto column = m_builder.CreateTrunc(_column, m_builder.getInt64Ty());
+    auto outPtr = m_memoryMan.getBytePtr(_outOff);
+    auto outSize = m_builder.CreateTrunc(_outSize, Type::Size);
+
+    createCABICall(func, {getRuntimeManager().getEnvPtr(), 
+            handle, row, column, outPtr, outSize});
 }
 
 void Ext::db_trans_begin() {

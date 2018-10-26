@@ -279,11 +279,13 @@ class SymbolResolver : public llvm::SectionMemoryManager
                 .Case("evm.table_get_handle", reinterpret_cast<uint64_t>(jit.host->table_get_handle))
                 .Case("evm.table_get_lines", reinterpret_cast<uint64_t>(jit.host->table_get_lines))
                 .Case("evm.table_get_columns", reinterpret_cast<uint64_t>(jit.host->table_get_columns))
-                .Case("evm.table_get_field1", reinterpret_cast<uint64_t>(jit.host->table_get_field1))
-                .Case("evm.table_get_field2", reinterpret_cast<uint64_t>(jit.host->table_get_field2))
+                .Case("evm.get_column_by_name", reinterpret_cast<uint64_t>(jit.host->get_column_by_name))
+                .Case("evm.get_column_by_index", reinterpret_cast<uint64_t>(jit.host->get_column_by_index))
                 .Case("evm.db_trans_begin", reinterpret_cast<uint64_t>(jit.host->db_trans_begin))
                 .Case("evm.db_trans_submit", reinterpret_cast<uint64_t>(jit.host->db_trans_submit))
                 .Case("evm.exit_fun", reinterpret_cast<uint64_t>(jit.host->exit_fun))
+                .Case("evm.get_column_len_by_name", reinterpret_cast<uint64_t>(jit.host->get_column_len_by_name))
+                .Case("evm.get_column_len_by_index", reinterpret_cast<uint64_t>(jit.host->get_column_len_by_index))
                 .Default(0);
         if (addr)
             return {addr, llvm::JITSymbolFlags::Exported};

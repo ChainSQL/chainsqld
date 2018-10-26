@@ -736,7 +736,50 @@ typedef size_t (*evmc_emit_sql9_fn)(struct evmc_context* context,
     size_t line,
     uint8_t const* _fieldName,
     size_t _fieldSize,
-    uint8_t* buffer_data);
+    uint8_t* _outData, 
+    size_t _outSize);
+
+/**
+* sql8 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for select by handle
+*  @param _context      The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param _handle       The handle for a inquery result set.
+*  @param _row          row number.
+*  @param _columnPtr    column name.
+*  @param _columnSize   lenght of column name.
+*  @param _len          length of column value.
+*/
+typedef void (*evmc_get_col_len_by_nm_fn)(
+        struct evmc_context *context,
+        const struct evmc_uint256be *_handle,
+        size_t _row,
+        uint8_t const *_columnPtr,
+        size_t _columnSize, 
+        evmc_uint256be *_len);
+
+/**
+* sql8 callback function.
+*
+*  This callback function is used by an EVM to inform about a executing SQL that happened
+*  during an EVM bytecode execution.
+*  for select by handle
+*  @param _context      The pointer to the Host execution context.
+*                       @see ::evmc_context.
+*  @param _handle       The handle for a inquery result set.
+*  @param _row          row number.
+*  @param _column       column number.
+*  @param _len          length of column value.
+*/
+typedef void (*evmc_get_col_len_by_idx_fn)(
+        struct evmc_context *context,
+        const struct evmc_uint256be *_handle,
+        size_t _row,
+        size_t _column, 
+        evmc_uint256be *_len);
 
 /**
 * sql8 callback function.
@@ -753,9 +796,10 @@ typedef size_t (*evmc_emit_sql9_fn)(struct evmc_context* context,
 */
 typedef size_t(*evmc_emit_sql10_fn)(struct evmc_context* context,
     const struct evmc_uint256be* handle,
-    size_t line,
+    size_t _line,
     size_t _fieldNum,
-    uint8_t* buffer_data);
+    uint8_t *outBuf, 
+    size_t _outSize);
 
 /**
  * Pointer to the callback function supporting EVM calls.
@@ -828,14 +872,15 @@ struct evmc_context_fn_table
     evmc_emit_sql4_fn       table_get_handle;
     evmc_emit_sql8_fn       table_get_lines;
     evmc_emit_sql8_fn       table_get_columns;
-    evmc_emit_sql9_fn       table_get_field1;
-    evmc_emit_sql10_fn      table_get_field2;
+    evmc_emit_sql9_fn       get_column_by_name;
+    evmc_emit_sql10_fn      get_column_by_index;
 
     evmc_emit_sql6_fn       db_trans_begin;
     evmc_emit_sql7_fn       db_trans_submit;
 
     evmc_emit_sql6_fn       exit_fun;
-
+    evmc_get_col_len_by_nm_fn get_column_len_by_name;
+    evmc_get_col_len_by_idx_fn get_column_len_by_index;
 };
 
 

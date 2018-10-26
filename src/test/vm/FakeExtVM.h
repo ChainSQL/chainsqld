@@ -73,18 +73,24 @@ public:
     evmc_uint256be table_get_columns(
             const evmc_uint256be *handle) override final;
 
-    bytes table_get_by_key(const evmc_uint256be *handle, 
-            size_t rowNum, 
-            bytesConstRef const &column) override final;
+    size_t table_get_by_key(const evmc_uint256be *_handle, 
+            size_t _row, bytesConstRef const& _column, 
+            uint8_t *_outBuf, size_t _outSize) override final;
 
-    bytes table_get_by_index(const evmc_uint256be *handle, 
-            size_t rowNum, 
-            size_t colNum) override final;
+    size_t table_get_by_index(const evmc_uint256be *_handle, 
+            size_t _row, size_t _column, uint8_t *_outBuf, 
+            size_t _outSize) override final;
 
     // interface to transaction control
     void db_trans_begin() override final;
     bool db_trans_submit() override final;
     void release_resource() override final;
+
+    evmc_uint256be get_column_len(const evmc_uint256be *handle, 
+            size_t _rowNum, 
+            bytesConstRef const &_column) override final; 
+    evmc_uint256be get_column_len(const evmc_uint256be *_handle, 
+            size_t _row, size_t _column) override final;
 
     /** end: Instruction extension */
 

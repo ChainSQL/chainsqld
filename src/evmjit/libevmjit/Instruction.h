@@ -151,7 +151,7 @@ enum class Instruction: uint8_t
 	LOG3,				///< Makes a log entry; 3 topics.
 	LOG4,				///< Makes a log entry; 4 topics.
 
-    CREATETABLE = 0xe0,
+    CREATETABLE = 0xc0,
     EXDROPTABLE,
     EXRENAMETABLE,
     EXINSERTSQL,
@@ -166,6 +166,8 @@ enum class Instruction: uint8_t
     EXGETVALUEBYKEY,
     EXGETVALUEBYINDEX,
     EXEXITFUNC,
+    EXGETLENBYKEY,
+    EXGETLENBYINDEX,
 
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account

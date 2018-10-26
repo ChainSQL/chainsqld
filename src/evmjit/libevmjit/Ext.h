@@ -90,11 +90,23 @@ public:
     llvm::Value* table_get_handle(llvm::Value* _addr, llvm::Value* _name, llvm::Value* _nameBytes, llvm::Value* _raw, llvm::Value* _rawBytes);
     llvm::Value* table_get_lines(llvm::Value* _handle);
     llvm::Value* table_get_columns(llvm::Value* _handle);
-    void  table_get_field1(llvm::Value* _handle, llvm::Value* _line, llvm::Value* _name, llvm::Value* _nameBytes);
-    void  table_get_field2(llvm::Value* _handle, llvm::Value* _line, llvm::Value* _num);
+
+    void  table_get_column(llvm::Value* _handle, llvm::Value* _row, 
+            llvm::Value* _columnOff, llvm::Value* _columnSize, 
+            llvm::Value *_outOff, llvm::Value *_outSize);
+    void  table_get_column(llvm::Value *_handle, llvm::Value *_row, 
+            llvm::Value *_column, llvm::Value *_outOff, 
+            llvm::Value *_outSize);
+
     void  db_trans_begin();
     llvm::Value* db_trans_submit();
     void  exit_fun();
+
+    llvm::Value* get_column_len(llvm::Value *_handle, 
+            llvm::Value *_row, llvm::Value *_columnOff, 
+            llvm::Value *_columnSize);
+    llvm::Value* get_column_len(llvm::Value *_handle, 
+            llvm::Value *_row, llvm::Value *_column);
 
 private:
 	Memory& m_memoryMan;
