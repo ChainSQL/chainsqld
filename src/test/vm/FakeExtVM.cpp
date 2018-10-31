@@ -292,7 +292,7 @@ size_t FakeExtVM::table_get_by_index(const evmc_uint256be *_handle,
              {"colLen", std::to_string(_outSize)}}
             );
     // to simulate 
-    const char * const value = "by index";
+    const char * const value = "get column's value by index";
     size_t copySize = strlen(value)<_outSize?strlen(value):_outSize;
     memcpy(_outBuf, value, copySize);
     return copySize;
@@ -325,7 +325,7 @@ evmc_uint256be FakeExtVM::get_column_len(
              {"rowNum", std::to_string(_rowNum)}, 
              {"colName", _column.toString()}}
             );
-    return test::toEvmC((uint256)100);
+    return test::toEvmC((uint256)(_column.size()));
 }
 
 evmc_uint256be FakeExtVM::get_column_len(

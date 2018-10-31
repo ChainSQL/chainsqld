@@ -3,6 +3,7 @@
 
 #include "Common.h"
 #include <peersafe/basics/TypeTransform.h>
+
 namespace ripple {
 
 /// Reference to a slice of buffer that also owns the buffer.

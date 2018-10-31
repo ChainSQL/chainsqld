@@ -335,12 +335,11 @@ bool table_grant(struct evmc_context* _context,
     const struct evmc_address* address2,
     uint8_t const* _name,
     size_t _nameSize,
-    uint8_t const* _raw,
-    size_t _rawSize)
-{
+    uint8_t const* _row,
+    size_t _rowSize) {
     auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_grant(address1, address2, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
-    return true;
+    return env.table_grant(address1, address2, 
+            bytesConstRef{_name, _nameSize}, bytesConstRef{_row, _rowSize});
 }
 
 void table_get_handle(struct evmc_context* _context,

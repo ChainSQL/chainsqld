@@ -1145,7 +1145,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(nameIdx, nameBytes);
             _memory.require(rawIdx, rawBytes);
 
-            auto r = _ext.table_grant(addOwner, addDest, nameIdx, nameBytes, rawIdx, rawBytes);
+            auto r = _ext.table_grant(addOwner, addDest, 
+                    nameIdx, nameBytes, rawIdx, rawBytes);
             stack.push(r);
             break;
         }
