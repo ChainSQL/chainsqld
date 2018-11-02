@@ -1591,7 +1591,6 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
 			if(pSTTX->getTxnType() == ttCONTRACT)
 				rawMeta = ledger->txRead(pSTTX->getTransactionID()).second;
 			//
-			std::vector<STTx> vecTxs = STTx::getTxs(*pSTTX, "", rawMeta);
 			auto vec = STTx::getTxs(*pSTTX, "", rawMeta);
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId

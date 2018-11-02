@@ -219,6 +219,131 @@ namespace ripple
         return iRet;
     }
 
+	bool ExtVM::table_create(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
+		return oSle_.createTable(fromEvmC(*address), _name.toString(), _raw.toString());
+	}
+
+	bool ExtVM::table_rename(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
+		return oSle_.renameTable(fromEvmC(*address), _name.toString(), _raw.toString());
+	}
+
+	bool ExtVM::table_insert(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
+		return oSle_.insertData(fromEvmC(myAddress), fromEvmC(*address), _name.toString(), _raw.toString());
+	}
+
+	bool ExtVM::table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
+		return oSle_.deleteData(fromEvmC(myAddress), fromEvmC(*address), _name.toString(), _raw.toString());
+	}
+
+	bool ExtVM::table_drop(const struct evmc_address* address, bytesConstRef const& _name)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << "tableName is " << _name.toString();
+		return oSle_.dropTable(fromEvmC(*address), _name.toString());
+	}
+
+	bool ExtVM::table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw1, bytesConstRef const& _raw2)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw1.toString()<< _raw2.toString();
+		return oSle_.updateData(fromEvmC(myAddress), fromEvmC(*address), _name.toString(), _raw1.toString(), _raw2.toString());
+	}
+
+	bool ExtVM::table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
+		return oSle_.grantTable(fromEvmC(*address1), fromEvmC(*address2), _name.toString(), _raw.toString());
+	}
+
+	evmc_uint256be ExtVM::table_get_handle(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
+		uint256 rel = oSle_.getDataHandle(fromEvmC(*address), _name.toString(), _raw.toString());
+		return toEvmC(rel);
+	}
+
+	evmc_uint256be ExtVM::table_get_lines(const struct evmc_uint256be *handle)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		uint256 rel = fromEvmC(*handle);
+		JLOG(j.trace()) << __FUNCTION__<< " handle:" << rel;
+		rel = oSle_.getDataRowCount(rel);
+		return toEvmC(rel);
+	}
+
+	evmc_uint256be ExtVM::table_get_columns(const struct evmc_uint256be *handle)
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		uint256 rel = fromEvmC(*handle);
+		JLOG(j.trace()) << __FUNCTION__ << " handle:" << rel;
+		rel = oSle_.getDataColumnCount(rel);
+		return toEvmC(rel);
+	}
+	
+	size_t ExtVM::table_get_by_key(const evmc_uint256be *_handle,
+			size_t _row, bytesConstRef const& _column,
+			uint8_t *_outBuf, size_t _outSize)
+	{
+		return 0;
+	}
+	
+	size_t ExtVM::table_get_by_index(const evmc_uint256be *_handle,
+			size_t _row, size_t _column, uint8_t *_outBuf,
+			size_t _outSize)
+	{
+		return 0;
+	}
+
+	void ExtVM::db_trans_begin()
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << __FUNCTION__;
+		oSle_.transactionBegin();
+	}
+	bool ExtVM::db_trans_submit()
+	{
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		JLOG(j.trace()) << __FUNCTION__;
+		return oSle_.transactionCommit(fromEvmC(myAddress));
+	}
+	void ExtVM::release_resource()
+	{}
+
+	evmc_uint256be ExtVM::get_column_len(const evmc_uint256be *_handle,
+			size_t _row, bytesConstRef const &_column) {
+		return evmc_uint256be();
+	}
+	evmc_uint256be ExtVM::get_column_len(const evmc_uint256be *_handle,
+			size_t _row, size_t _column) {
+		return evmc_uint256be();
+	}
+
     evmc_uint256be ExtVM::blockHash(int64_t  const& iSeq)
     {
         uint256 uHash = beast::zero;

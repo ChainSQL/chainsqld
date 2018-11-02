@@ -568,14 +568,14 @@ namespace ripple {
 		bTransaction_ = true;
 	}
 
-	void	SleOps::transactionCommit(AccountID const& _account, bool _bNeedVerify)
+	bool	SleOps::transactionCommit(AccountID const& _account, bool _bNeedVerify)
 	{
 		if (!bTransaction_)
 		{
 			auto j = ctx_.app.journal("Executive");
 			JLOG(j.info())
 				<< "SleOps transactionCommit failed, because no exist 'transaction Begin'.";
-			return;
+			return false;
 		}
 		Json::Value vec;
 		for (auto tx : sqlTxsStatements_) {
@@ -592,12 +592,14 @@ namespace ripple {
 		});
 		//
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		if (ret != tesSUCCESS)
+		bool rel = (ret == tesSUCCESS);
+		if (!rel)
 		{
 			auto j = ctx_.app.journal("Executive");
 			JLOG(j.info())
-				<< "SleOps createTable,apply result:"
+				<< "SleOps transactionCommit,apply result:"
 				<< transToken(ret);
+			JLOG(j.warn()) << " transactionCommit.ret: " << ret << " " << transToken(ret) << " >>>++++>>>";
 		}
 
 		if (ctx_.view().flags() & tapForConsensus)
@@ -606,6 +608,7 @@ namespace ripple {
 		}
 		//
 		resetTransactionCache();
+		return rel;
 	}
 
 	void SleOps::resetTransactionCache()

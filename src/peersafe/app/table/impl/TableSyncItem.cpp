@@ -960,7 +960,7 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledger_time)
 {
 	std::string pressRealName;
-	if (tx.isFieldPresent(sfFlags))
+	if (tx.isFieldPresent(sfFlags) && tx.isFieldPresent(sfTables))
 	{
 		auto tables = tx.getFieldArray(sfTables);
 		std::string table_name = strCopy(tables[0].getFieldVL(sfTableName));

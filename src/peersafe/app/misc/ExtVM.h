@@ -118,6 +118,39 @@ public:
     virtual void log(evmc_uint256be const* /*topics*/, size_t /*numTopics*/, bytesConstRef const& data) override final;
 
     virtual int64_t executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+
+	//
+	virtual bool table_create(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual bool table_rename(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual bool table_insert(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual bool table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual bool table_drop(const struct evmc_address* address, bytesConstRef const& _name) override final;
+	virtual bool table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw1, bytesConstRef const& _raw2) override final;
+	virtual bool table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual evmc_uint256be table_get_handle(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual evmc_uint256be table_get_lines(const struct evmc_uint256be *handle) override final;
+	virtual evmc_uint256be table_get_columns(const struct evmc_uint256be *handle) override final;
+
+	virtual
+		size_t table_get_by_key(const evmc_uint256be *_handle,
+			size_t _row, bytesConstRef const& _column,
+			uint8_t *_outBuf, size_t _outSize) override final;
+	virtual
+		size_t table_get_by_index(const evmc_uint256be *_handle,
+			size_t _row, size_t _column, uint8_t *_outBuf,
+			size_t _outSize) override final;
+
+	virtual void db_trans_begin() override final;
+	virtual bool db_trans_submit() override final;
+	virtual void release_resource() override final;
+
+	//get field's value size
+	virtual
+		evmc_uint256be get_column_len(const evmc_uint256be *_handle,
+			size_t _row, bytesConstRef const &_column) override final;
+	virtual
+		evmc_uint256be get_column_len(const evmc_uint256be *_handle,
+			size_t _row, size_t _column) override final;
     
     SleOps const& state() const { return oSle_; }
 

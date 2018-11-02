@@ -92,7 +92,7 @@ public:
 
 	//transaction related
 	void	transactionBegin();
-	void	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
+	bool	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
 	void	resetTransactionCache();
 
 	static void	addCommonFields(STObject& obj, AccountID const& _account);
