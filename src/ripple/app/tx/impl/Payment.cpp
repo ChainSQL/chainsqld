@@ -431,7 +431,11 @@ Payment::doApply ()
         auto const mmm = std::max(reserve,
             ctx_.tx.getFieldAmount (sfFee).zxc ());
 
-        if (mPriorBalance < saDstAmount.zxc () + mmm)
+		//is src account a contract?
+		bool isContractSrc = view().read(
+			keylet::account(account_))->isFieldPresent(sfContractCode);
+        if ((!isContractSrc && mPriorBalance < saDstAmount.zxc () + mmm ) || 
+			(isContractSrc && mPriorBalance < saDstAmount.zxc()))
         {
             // Vote no. However the transaction might succeed, if applied in
             // a different order.
