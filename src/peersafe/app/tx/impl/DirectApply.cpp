@@ -118,6 +118,12 @@ namespace ripple {
 			// info to recover.
 			return tefEXCEPTION;
 		}
+
+		if (preclaimResult.ter != tesSUCCESS)
+		{
+			return preclaimResult.ter;
+		}
+			
 		try
 		{
 			if (!preclaimResult.likelyToClaimFee)
