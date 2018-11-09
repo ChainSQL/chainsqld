@@ -15,7 +15,7 @@ err.c:(.text+0x1ac0): multiple definition of `ERR_remove_thread_state'
 - sudo apt-get install git
 
 ## 下载源码
-- git clone git@github.com:ChainSQL/chainsqld.git chainsqld
+- git clone https://github.com/ChainSQL/chainsqld.git
 
 ## 安装开发环境依赖
 - 进入编译目录
