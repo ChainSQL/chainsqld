@@ -240,7 +240,7 @@ namespace ripple
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
 		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
-		return oSle_.insertData(fromEvmC(myAddress), fromEvmC(*address), _name.toString(), _raw.toString());
+		return oSle_.insertData(fromEvmC(caller), fromEvmC(*address), _name.toString(), _raw.toString());
 	}
 
 	bool ExtVM::table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
@@ -248,7 +248,7 @@ namespace ripple
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
 		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
-		return oSle_.deleteData(fromEvmC(myAddress), fromEvmC(*address), _name.toString(), _raw.toString());
+		return oSle_.deleteData(fromEvmC(caller), fromEvmC(*address), _name.toString(), _raw.toString());
 	}
 
 	bool ExtVM::table_drop(const struct evmc_address* address, bytesConstRef const& _name)
@@ -259,12 +259,12 @@ namespace ripple
 		return oSle_.dropTable(fromEvmC(*address), _name.toString());
 	}
 
-	bool ExtVM::table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw1, bytesConstRef const& _raw2)
+	bool ExtVM::table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _rawUpdate, bytesConstRef const& _rawCondition)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
-		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw1.toString()<< _raw2.toString();
-		return oSle_.updateData(fromEvmC(myAddress), fromEvmC(*address), _name.toString(), _raw1.toString(), _raw2.toString());
+		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _rawCondition.toString()<< _rawUpdate.toString();
+		return oSle_.updateData(fromEvmC(caller), fromEvmC(*address), _name.toString(), _rawCondition.toString(), _rawUpdate.toString());
 	}
 
 	bool ExtVM::table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw)
@@ -308,14 +308,34 @@ namespace ripple
 			size_t _row, bytesConstRef const& _column,
 			uint8_t *_outBuf, size_t _outSize)
 	{
-		return 0;
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		uint256 rel = fromEvmC(*_handle);
+		JLOG(j.trace()) << __FUNCTION__ << " handle:" << rel;
+		std::string value = oSle_.getByKey(rel, _row, _column.toString());
+		//
+		memset(_outBuf, 0, _outSize);
+		size_t copySize = value.size() < _outSize ? value.size() : _outSize;
+		if (copySize > 0)
+			memcpy(_outBuf, value.c_str(), copySize);
+		return copySize;
 	}
 	
 	size_t ExtVM::table_get_by_index(const evmc_uint256be *_handle,
 			size_t _row, size_t _column, uint8_t *_outBuf,
 			size_t _outSize)
 	{
-		return 0;
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		uint256 rel = fromEvmC(*_handle);
+		JLOG(j.trace()) << __FUNCTION__ << " handle:" << rel;
+		std::string value = oSle_.getByIndex(rel, _row, _column);
+		//
+		memset(_outBuf, 0, _outSize);
+		size_t copySize = value.size() < _outSize ? value.size() : _outSize;
+		if(copySize > 0)
+			memcpy(_outBuf, value.c_str(), copySize);
+		return copySize;
 	}
 
 	void ExtVM::db_trans_begin()
@@ -337,11 +357,24 @@ namespace ripple
 
 	evmc_uint256be ExtVM::get_column_len(const evmc_uint256be *_handle,
 			size_t _row, bytesConstRef const &_column) {
-		return evmc_uint256be();
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		uint256 rel = fromEvmC(*_handle);
+		JLOG(j.trace()) << __FUNCTION__ << " handle:" << rel;
+		std::string value = oSle_.getByKey(rel, _row, _column.toString());
+		int len = value.size() + 1;
+		return toEvmC((uint256)len);
 	}
 	evmc_uint256be ExtVM::get_column_len(const evmc_uint256be *_handle,
 			size_t _row, size_t _column) {
-		return evmc_uint256be();
+		ApplyContext const& ctx = oSle_.ctx();
+		auto j = ctx.app.journal("ExtVM");
+		uint256 rel = fromEvmC(*_handle);
+		JLOG(j.trace()) << __FUNCTION__ << " handle:" << rel;
+		std::string value = oSle_.getByIndex(rel, _row, _column);
+		//
+		int len = value.size() + 1;
+		return toEvmC((uint256)len);
 	}
 
     evmc_uint256be ExtVM::blockHash(int64_t  const& iSeq)

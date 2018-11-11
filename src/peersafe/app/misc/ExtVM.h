@@ -125,7 +125,7 @@ public:
 	virtual bool table_insert(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
 	virtual bool table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
 	virtual bool table_drop(const struct evmc_address* address, bytesConstRef const& _name) override final;
-	virtual bool table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw1, bytesConstRef const& _raw2) override final;
+	virtual bool table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _rawUpdate, bytesConstRef const& _rawCondition) override final;
 	virtual bool table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
 	virtual evmc_uint256be table_get_handle(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
 	virtual evmc_uint256be table_get_lines(const struct evmc_uint256be *handle) override final;

@@ -602,12 +602,6 @@ Ledger::rawTxInsert (uint256 const& key,
     if (! txMap().addGiveItem
             (std::move(item), true, true))
         LogicError("duplicate_tx: " + to_string(key));
-	auto const& item22 =
-		txMap_->peekItem(key);
-	std::pair<std::shared_ptr<STTx const>,
-		std::shared_ptr<STObject const>> result = deserializeTxPlusMeta(*item22);
-	std::string str = result.second->getFullText();
-	str = "22";
 }
 
 bool

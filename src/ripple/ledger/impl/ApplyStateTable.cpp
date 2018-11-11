@@ -246,12 +246,7 @@ ApplyStateTable::apply (OpenView& to,
         sMeta = std::make_shared<Serializer>();
         meta.addRaw (*sMeta, ter, to.txCount());
 
-		Slice slice = sMeta->slice();
-		SerialIter z(slice);
-		STObject ojb1(z, sfMetadata);
-		JLOG(j.warn()) <<
-			"metadata " << ojb1;
-        // VFALCO For diagnostics do we want to show
+		// VFALCO For diagnostics do we want to show
         //        metadata even when the base view is open?
         JLOG(j.trace()) <<
             "metadata " << meta.getJson (0);

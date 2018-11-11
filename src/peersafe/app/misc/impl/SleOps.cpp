@@ -293,7 +293,12 @@ namespace ripple {
 
 	bool SleOps::disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName, bool bNewNameInDB)
 	{
-		auto tables = genTableFields(ctx_, _account, _sTableName, _tableNewName, bNewNameInDB);
+		AccountID ownerAccountID = _account;
+		std::string sAccount = ripple::toBase58(ownerAccountID);
+		if (tx.isFieldPresent(sfOwner))
+			ownerAccountID = tx.getAccountID(sfOwner);
+		std::string sOwner = ripple::toBase58(ownerAccountID);
+		auto tables = genTableFields(ctx_, ownerAccountID, _sTableName, _tableNewName, bNewNameInDB);
 		if(!tables.first)
 			return false;
 		//
@@ -301,15 +306,15 @@ namespace ripple {
 		SleOps::addCommonFields(tx, _account);
 		//
 		auto j = ctx_.app.journal("Executive");
-		JLOG(j.warn()) <<
-			"-----------disposeTableTx subTx: " << tx;
+		JLOG(j.trace()) <<
+			"SleOps --- disposeTableTx subTx: " << tx;
 		if (bTransaction_) {
 			sqlTxsStatements_.push_back(tx);
 			return true;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		bool rel = (ret == tesSUCCESS);
-		if (!ret)
+		if (!rel)
 		{
 			auto j = ctx_.app.journal("Executive");
 			JLOG(j.info())
@@ -433,7 +438,11 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, R_UPDATE);
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfOwner, _owner);
-			std::string _sRaw = "[" + _updateRaw + "," + _getRaw + "]";
+			std::string _sRaw;
+			if (_getRaw.empty())
+				_sRaw = "[" + _updateRaw + "]";
+			else
+				_sRaw = "[" + _updateRaw + "," + _getRaw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
 		//
