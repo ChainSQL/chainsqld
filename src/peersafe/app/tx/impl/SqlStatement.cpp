@@ -135,6 +135,7 @@ namespace ripple {
 			return tecNO_DST;
 		}
 
+
 		//whether the table node is existed
 		auto const kTable = keylet::table(uOwnerID);
 		auto const sleTable = view.read(kTable);
