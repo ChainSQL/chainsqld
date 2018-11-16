@@ -353,7 +353,9 @@ namespace ripple
 		return oSle_.transactionCommit(fromEvmC(myAddress));
 	}
 	void ExtVM::release_resource()
-	{}
+	{
+		oSle_.releaseResource();
+	}
 
 	evmc_uint256be ExtVM::get_column_len(const evmc_uint256be *_handle,
 			size_t _row, bytesConstRef const &_column) {

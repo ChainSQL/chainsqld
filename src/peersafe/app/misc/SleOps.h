@@ -88,7 +88,7 @@ public:
 	uint256 getDataColumnCount(uint256 const& _handle);
 	std::string	getByKey(uint256 const& _handle, size_t row, std::string const& _key);
 	std::string	getByIndex(uint256 const& handle, size_t row, size_t column);
-	void	releaseResource(uint256 const& handle);	//release handle related resources
+	void	releaseResource();
 
 	//transaction related
 	void	transactionBegin();
@@ -111,6 +111,7 @@ private:
     TaggedCache <AccountID, Blob>             contractCacheCode_;
 	bool									  bTransaction_;
 	std::vector<STTx>						  sqlTxsStatements_;
+	std::vector<uint256>					  handleList;
 	std::map<std::string, uint160>			  sqlTxsNameInDB_;
 };
 

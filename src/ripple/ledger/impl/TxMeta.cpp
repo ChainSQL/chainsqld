@@ -267,27 +267,24 @@ void TxMeta::addRaw (Serializer& s, TER result, std::uint32_t index)
 
 	STObject obj = getAsObject();
 	//
-	if (contractTxsVec.size() > 0)
+	if (!contractTxsData.empty())
 	{
-		Json::Value vec;
-		for (auto tx : contractTxsVec) {
-			vec.append(tx.getJson(0));
-		}
-		obj.setFieldVL(sfContractTxs, ripple::strCopy(vec.toStyledString()));
-		contractTxsVec.clear();
+		obj.setFieldVL(sfContractTxs, contractTxsData);
+		contractTxsData.clear();
 	}
     obj.add (s);
 }
 
 void TxMeta::setContractTxFieldData(std::vector<STTx> const& vecTxs)
 {
-	if (contractTxsVec.size() > 0)
-		contractTxsVec.clear();
+	if (!contractTxsData.empty())
+		contractTxsData.clear();
 	//
-	for (auto tx : vecTxs)
-	{
-		contractTxsVec.push_back(tx);
+	Json::Value vec;
+	for (auto tx : vecTxs) {
+		vec.append(tx.getJson(0));
 	}
+	contractTxsData = ripple::strCopy(vec.toStyledString());
 }
 
 } // ripple
