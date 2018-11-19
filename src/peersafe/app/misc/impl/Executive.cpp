@@ -305,7 +305,7 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 	Blob data;
 	if (!_code.empty())
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
-			value, _gasPrice, &data, _code, sha512Half(_code.data()), m_depth, true, false);
+			value, _gasPrice, &data, _code, sha512Half(_code.toBytes()), m_depth, true, false);
 
 	return !m_ext;
 }
