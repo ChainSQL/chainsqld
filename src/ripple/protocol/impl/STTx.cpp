@@ -116,7 +116,7 @@ std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, 
 	{
 		// If we're generating a multi-signature the SigningPubKey must be
 		// empty, otherwise it must be the master account's public key.
-		if(parsed.object->getFieldIndex(sfSigningPubKey) != -1)
+		if(parsed.object->getFieldIndex(sfSigningPubKey) == -1)
 			parsed.object->setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
 
 		stpTrans = std::make_shared<STTx>(
