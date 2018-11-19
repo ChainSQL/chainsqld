@@ -144,7 +144,7 @@ private:
     boost::optional <STAmount> mDelivered;
 
     STArray mNodes;
-	std::vector<STTx> contractTxsVec;
+	ripple::Blob      contractTxsData;
 
     beast::Journal j_;
 };

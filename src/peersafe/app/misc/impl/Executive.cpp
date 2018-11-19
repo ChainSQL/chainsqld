@@ -179,9 +179,6 @@ bool Executive::execute() {
 	m_input = tx.getFieldVL(sfContractData);
 	uint256 value = uint256(tx.getFieldAmount(sfContractValue).zxc().drops());
 	uint256 gasPrice = uint256(m_gasPrice);
-	//* //////////////just for test
-	test(m_s);
-	// */
 	if (isCreation)
 	{
 		return create(sender, value, gasPrice, gas - m_baseGasRequired, &m_input, sender);

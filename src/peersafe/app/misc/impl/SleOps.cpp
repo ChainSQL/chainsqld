@@ -12,6 +12,7 @@
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <ripple/json/json_reader.h>
+#include <peersafe/vm/VMFace.h>
 
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
@@ -452,8 +453,6 @@ namespace ripple {
 	//Select related
 	uint256 SleOps::getDataHandle(AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
-		uint256 handle = uint256(0);
-		//
 		Json::Value jvCommand, tableJson;
 		jvCommand[jss::tx_json][jss::Owner] = to_string(_owner);
 		jvCommand[jss::tx_json][jss::Account] = to_string(_owner);
@@ -498,11 +497,12 @@ namespace ripple {
 				<< "SleOps getDataHandle failed, error: "
 				<< jvResult[jss::error].asString();
 			//
-			return handle;
+			return uint256(0);
 		}
 		//
-		handle = ctx_.app.getContractHelper().genRandomUniqueHandle();
+		uint256 handle = ctx_.app.getContractHelper().genRandomUniqueHandle();
 		ctx_.app.getContractHelper().addRecord(handle, jvResult);
+		handleList.push_back(handle);
 		//
 		return handle;
 	}
@@ -565,9 +565,11 @@ namespace ripple {
 		}
 		return value.toStyledString();
 	}
-	void	SleOps::releaseResource(uint256 const& handle)	//release handle related resources
+	void	SleOps::releaseResource()
 	{
-		ctx_.app.getContractHelper().releaseHandle(handle);
+		resetTransactionCache();
+		for(auto handle : handleList)
+			ctx_.app.getContractHelper().releaseHandle(handle);
 	}
 
 	//transaction related
