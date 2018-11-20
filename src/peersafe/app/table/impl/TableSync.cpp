@@ -1593,6 +1593,11 @@ void TableSync::SetHaveSyncFlag(bool haveSync)
     bIsHaveSync_ = haveSync;
 }
 
+void TableSync::sweep()
+{
+    checkSkipNode_.sweep();
+}
+
 std::pair<bool, std::string> TableSync::StartDumpTable(std::string sPara, std::string sPath, TableDumpItem::funDumpCB funCB)
 {
     auto ret = CreateOneItem(TableSyncItem::SyncTarget_dump, sPara);

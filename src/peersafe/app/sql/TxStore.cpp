@@ -100,7 +100,6 @@ TxStoreTransaction::TxStoreTransaction(TxStoreDBConn* storeDBConn)
 }
 
 TxStoreTransaction::~TxStoreTransaction() {
-    if (lockSession_)		lockSession_.reset();
 	if (tr_)	    	    tr_.reset();
 }
 
@@ -169,6 +168,7 @@ std::pair<bool, std::string> TxStore::Dispose(const STTx& tx, const std::string&
 	return ret;
 }
 
+//invoke "drop table if exists" directly failed In DB2, so judge first before drop
 std::pair<bool, std::string> TxStore::DropTable(const std::string& tablename) {
 	std::pair<bool, std::string> result = { false, "inner error" };
 	if (databasecon_ == nullptr) {

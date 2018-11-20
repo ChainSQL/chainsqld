@@ -119,6 +119,7 @@ JSS ( amendments );                 // in: AccountObjects, out: NetworkOPs
 JSS ( amount );                     // out: AccountChannels
 JSS ( asks );                       // out: Subscribe
 JSS ( assets );                     // out: GatewayBalances
+JSS ( escrows );
 JSS ( authorized );                 // out: AccountLines
 JSS ( auth_change );                // out: AccountInfo
 JSS ( auth_change_queued );         // out: AccountInfo

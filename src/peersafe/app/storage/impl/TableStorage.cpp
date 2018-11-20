@@ -28,8 +28,8 @@
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/tx/ChainSqlTx.h>
+#include <ripple/ledger/impl/Tuning.h>
 
-#define MAX_GAP_NOW2VALID  5
 namespace ripple {
     TableStorage::TableStorage(Application& app, Config& cfg, beast::Journal journal)
         : app_(app)
@@ -212,34 +212,44 @@ namespace ripple {
                 auto const kTable = keylet::table(accountID);
                 auto const sleTable = validLedger->read(kTable);
 
-                if (!sleTable) return tefTABLE_STORAGENORMALERROR;
-                STArray tablentries = sleTable->getFieldArray(sfTableEntries);
+				if (!sleTable)
+				{
+					//In the case of first storage and no table sle, only T_CREATE OpType's tx can go on...bug:RR-559
+					if ((tx.getTxnType() != ttTABLELISTSET) || (tx.getFieldU16(sfOpType) != T_CREATE) )
+					{
+						return tefTABLE_STORAGENORMALERROR;
+					}
+				}
+				else
+				{
+					STArray tablentries = sleTable->getFieldArray(sfTableEntries);
 
-                auto iter(tablentries.end());
-                iter = std::find_if(tablentries.begin(), tablentries.end(),
-                    [uTxDBName](STObject const &item) {
-                    return item.getFieldH160(sfNameInDB) == uTxDBName;
-                });
+					auto iter(tablentries.end());
+					iter = std::find_if(tablentries.begin(), tablentries.end(),
+						[uTxDBName](STObject const &item) {
+						return item.getFieldH160(sfNameInDB) == uTxDBName;
+					});
+					if (iter != tablentries.end())
+					{
+						return tefTABLE_STORAGENORMALERROR;
+					}
+				}
 
-                if (iter != tablentries.end())
-                {
-                    return tefTABLE_STORAGENORMALERROR;
-                }
-                else
-                {
-                    auto pItem = std::make_shared<TableStorageItem>(app_, cfg_, journal_);
-                    auto itRet = m_map.insert(make_pair(uTxDBName, pItem));
-                    if (itRet.second)
-                    {
-                        pItem->InitItem(accountID, to_string(uTxDBName), sTableName);
-                        pItem->SetItemParam(0, txhash, validLedger->info().seq, validLedger->info().hash);
+				//
+				{
+					auto pItem = std::make_shared<TableStorageItem>(app_, cfg_, journal_);
+					auto itRet = m_map.insert(make_pair(uTxDBName, pItem));
+					if (itRet.second)
+					{
+						pItem->InitItem(accountID, to_string(uTxDBName), sTableName);
+						pItem->SetItemParam(0, txhash, validLedger->info().seq, validLedger->info().hash);
 						return pItem->PutElem(transactor, tx, txhash);
-                    }
-                    else
-                    {
-                        return tefTABLE_STORAGENORMALERROR;
-                    }
-                }
+					}
+					else
+					{
+						return tefTABLE_STORAGENORMALERROR;
+					}
+				}
             }
         }
         else

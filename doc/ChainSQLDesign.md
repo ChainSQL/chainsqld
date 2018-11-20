@@ -203,7 +203,6 @@
 |-------|-----------|---------------|-------------|
 | TableName | String|  Blob| 数据库表名 |
 | NameInDB | String | Hash128 | 对应底层数据库中实际的表名,（LedgerSequence+OwnerAccountID+表名） |
-| Deleted | Bool | Bool | 标示表是否被删除 |
 | CreateLgrSeq | Number | UInt32 | 表创建交易所在ledger的前一个ledger 序列号 |
 | CreatedLedgerHash | Number | Hash256 | 表创建交易所在ledger的前一个ledger HASH |
 | CreatedTxnHash | Number | Hash256 | 表创建交易HASH |
@@ -260,7 +259,6 @@
 |------|-----------|---------------|-------------|
 | Owner | String | AccountID | 必填，表的创建者 |
 | Tables | Array | Array | 必填，本次操作涉及到的表名 |
-| Flags | Number | UInt32 | 必填，公用字段，操作需要的权限 |
 | OpType | Number | UInt32 | 必填，操作类型，6:插入记录, 8:更新记录,9:删除记录 |
 | AutoFillField | String | Blob | 选填，指定自动填充的字段 |
 | Raw | String | Blob | 必填，select/insert/update/delete的sql或json |
@@ -849,8 +847,7 @@
                 "age": "30"
               }
             ],
-            "OpType": 6,
-            "Flags": 65536,
+            "OpType": 6,            
             "StrictMode": true
           },
           {
@@ -863,7 +860,6 @@
                 }
               }
             ],
-            "Flags": 65536,
             "OpType": 10,
             "Raw": [
               {
@@ -978,7 +974,6 @@
         "type": "int"
       }
     ],                                 //hex形式
-    "Flags": 65536,
     "StrictMode": true,
     "OpType": 1
   }
@@ -999,7 +994,6 @@
     "status": "success",
     "tx_json": {
       "Account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-      "Flags": 65536,
       "OpType": 1,
       "Owner": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
       "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
@@ -1252,7 +1246,6 @@
   "TxCheckHash": "xxxxx", //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
   "OpType": 6,
   "User": "zBGagHrWQ44SX3YE7eYehiDA8iNPdBssFY",
-  "Flags": 65536,
   "Fee": 12,
   "Sequence": 6
 }
@@ -1401,7 +1394,6 @@
         }
       ],
       "OpType": 6,
-      "Flags": 65536,
       "StrictMode": true
     },
     {
@@ -1414,7 +1406,6 @@
           }
         }
       ],
-      "Flags": 65536,
       "OpType": 10,
       "Raw": [
         {

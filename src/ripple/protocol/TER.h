@@ -94,6 +94,7 @@ enum TER
 	temBAD_TICK_SIZE,
 	temBAD_TRANSFERFEE_BOTH,
 	temBAD_TRANSFERFEE,
+	temBAD_FEE_MISMATCH_TRANSFER_RATE,
 
 	//for table set and sql statement
 	temBAD_OWNER,
@@ -208,56 +209,57 @@ enum TER
     // - Forwarded
     tesSUCCESS      = 0,
 
-    // 100 .. 159 C
-    //   Claim fee only (ripple transaction with no good paths, pay to
-    //   non-existent account, no path)
-    //
-    // Causes:
-    // - Success, but does not achieve optimal result.
-    // - Invalid transaction or no effect, but claim fee to use the sequence
-    //   number.
-    //
-    // Implications:
-    // - Applied
-    // - Forwarded
-    //
-    // Only allowed as a return code of appliedTransaction when !tapRetry.
-    // Otherwise, treated as terRETRY.
-    //
-    // DO NOT CHANGE THESE NUMBERS: They appear in ledger meta data.
-    tecCLAIM                    = 100,
-    tecPATH_PARTIAL             = 101,
-    tecUNFUNDED_ADD             = 102,
-    tecUNFUNDED_OFFER           = 103,
-    tecUNFUNDED_PAYMENT         = 104,
-    tecFAILED_PROCESSING        = 105,
-    tecDIR_FULL                 = 121,
-    tecINSUF_RESERVE_LINE       = 122,
-    tecINSUF_RESERVE_OFFER      = 123,
-    tecNO_DST                   = 124,
-    tecNO_DST_INSUF_ZXC         = 125,
-    tecNO_LINE_INSUF_RESERVE    = 126,
-    tecNO_LINE_REDUNDANT        = 127,
-    tecPATH_DRY                 = 128,
-    tecUNFUNDED                 = 129,  // Deprecated, old ambiguous unfunded.
-    tecNO_ALTERNATIVE_KEY       = 130,
-    tecNO_REGULAR_KEY           = 131,
-    tecOWNERS                   = 132,
-    tecNO_ISSUER                = 133,
-    tecNO_AUTH                  = 134,
-    tecNO_LINE                  = 135,
-    tecINSUFF_FEE               = 136,
-    tecFROZEN                   = 137,
-    tecNO_TARGET                = 138,
-    tecNO_PERMISSION            = 139,
-    tecNO_ENTRY                 = 140,
-    tecINSUFFICIENT_RESERVE     = 141,
-    tecNEED_MASTER_KEY          = 142,
-    tecDST_TAG_NEEDED           = 143,
-    tecINTERNAL                 = 144,
-    tecOVERSIZE                 = 145,
-    tecCRYPTOCONDITION_ERROR    = 146,
-    tecINVARIANT_FAILED         = 147
+	// 100 .. 159 C
+	//   Claim fee only (ripple transaction with no good paths, pay to
+	//   non-existent account, no path)
+	//
+	// Causes:
+	// - Success, but does not achieve optimal result.
+	// - Invalid transaction or no effect, but claim fee to use the sequence
+	//   number.
+	//
+	// Implications:
+	// - Applied
+	// - Forwarded
+	//
+	// Only allowed as a return code of appliedTransaction when !tapRetry.
+	// Otherwise, treated as terRETRY.
+	//
+	// DO NOT CHANGE THESE NUMBERS: They appear in ledger meta data.
+	tecCLAIM = 100,
+	tecPATH_PARTIAL = 101,
+	tecUNFUNDED_ADD = 102,
+	tecUNFUNDED_OFFER = 103,
+	tecUNFUNDED_PAYMENT = 104,
+	tecFAILED_PROCESSING = 105,
+	tecDIR_FULL = 121,
+	tecINSUF_RESERVE_LINE = 122,
+	tecINSUF_RESERVE_OFFER = 123,
+	tecNO_DST = 124,
+	tecNO_DST_INSUF_ZXC = 125,
+	tecNO_LINE_INSUF_RESERVE = 126,
+	tecNO_LINE_REDUNDANT = 127,
+	tecPATH_DRY = 128,
+	tecUNFUNDED = 129,  // Deprecated, old ambiguous unfunded.
+	tecNO_ALTERNATIVE_KEY = 130,
+	tecNO_REGULAR_KEY = 131,
+	tecOWNERS = 132,
+	tecNO_ISSUER = 133,
+	tecNO_AUTH = 134,
+	tecNO_LINE = 135,
+	tecINSUFF_FEE = 136,
+	tecFROZEN = 137,
+	tecNO_TARGET = 138,
+	tecNO_PERMISSION = 139,
+	tecNO_ENTRY = 140,
+	tecINSUFFICIENT_RESERVE = 141,
+	tecNEED_MASTER_KEY = 142,
+	tecDST_TAG_NEEDED = 143,
+	tecINTERNAL = 144,
+	tecOVERSIZE = 145,
+	tecCRYPTOCONDITION_ERROR = 146,
+	tecINVARIANT_FAILED = 147,
+	tecUNFUNDED_ESCROW = 148
 };
 
 inline bool isTelLocal(TER x)

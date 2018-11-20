@@ -1082,6 +1082,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 						return false;
 					}
 
+                    LockedSociSession sql_session = conn->checkoutDb();
 					TxStoreTransaction stTran(&getTxStoreDBConn());
 
 					auto ret = DealWithTx(vecTxs);
