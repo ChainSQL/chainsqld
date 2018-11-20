@@ -160,10 +160,8 @@ public:
 
 	//set extra message for error
 	void setExtraMsg(std::string msg);
-    /////////////////////////////////////////////////////
 protected:
-	STer
-	apply();
+	STer apply();
 
 	//pre-apply for chainsql
 	TER preChainsql();

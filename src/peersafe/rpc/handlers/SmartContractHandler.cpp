@@ -96,10 +96,14 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 	}
 
 	TER terResult = e.getException();
-	owning_bytes_ref localCallRet = e.takeOutput();
-	std::string localCallRetStr = "0x" + strHex(localCallRet.takeBytes());
+	owning_bytes_ref localCallRet = e.takeOutput();;
+	std::string localCallRetStr = "";
+	if (terResult == tesSUCCESS)
+		localCallRetStr = "0x" + strHex(localCallRet.takeBytes());
+	else
+		localCallRetStr = localCallRet.toString();
 
-	return std::make_pair(terResult, localCallRetStr);
+	return std::make_pair(terResult, localCallRetStr);	
 }
 
 std::pair<Json::Value, bool> checkJsonFields(Json::Value originJson)

@@ -252,15 +252,10 @@ std::string STTx::buildRaw(std::string sOperationRule) const
 				conditions.append(v);
 			}
 		}
-		if (conditions.isArray() && conditions.size() > 0)
+		if (conditions.isArray())
 		{
 			Json::Value newRaw;
 			buildRaw(conditions, sOperationRule);
-		}
-		else {
-			Json::Value jsonRule;
-			Json::Reader().parse(sOperationRule, jsonRule);
-			conditions = jsonRule;
 		}
 
 		finalRaw.append(raw_json[(Json::UInt)0]);
@@ -352,8 +347,11 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""
 			//int type = obj["OpType"].asInt();
 			//if (type == T_ASSERT) continue;
 			auto tx_pair = parseSTTx(obj, accountID);
-			auto tx = *tx_pair.first;
-			getOneTx(vec,tx, sTableNameInDB);
+			if (tx_pair.first)
+			{
+				auto tx = *tx_pair.first;
+				getOneTx(vec, tx, sTableNameInDB);
+			}
 		}
 	}
 	else if(tx.getTxnType() == ttTABLELISTSET || tx.getTxnType() == ttSQLSTATEMENT)

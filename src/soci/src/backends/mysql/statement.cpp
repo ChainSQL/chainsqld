@@ -157,7 +157,8 @@ statement_backend::exec_fetch_result
 mysql_statement_backend::execute(int number)
 {
 	if (session_.conn_ == NULL) {
-		throw soci_error("MYSQL connection is NULL");
+		session_.connect_mysql();
+		//throw soci_error("MYSQL connection is NULL");
 	}
     if (justDescribed_ == false)
     {

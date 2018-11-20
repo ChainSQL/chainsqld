@@ -396,6 +396,26 @@ owning_bytes_ref FakeExecutive::create(const evmc_address& contractAddress, int6
 	return result;
 }
 
+owning_bytes_ref FakeExecutive::create(const evmc_address& contractAddress, 
+	const evmc_uint256be& codeHash, int64_t &gas) {
+	EnvInfo info;
+	evmc_address myAddress = contractAddress;
+	evmc_address caller = { { 1,1,0,0 } };
+	evmc_address origin = { { 1,1,1,0 } };
+	evmc_uint256be value = { { 0 } };
+	evmc_uint256be gasPrice = { { 1,0,0 } };
+	int32_t depth = 0;
+	bool isCreate = true;
+	bool staticCall = false;
+	VMFace::pointer vmc = VMFactory::create(VMKind::JIT);
+	assert(vmc);
+	FakeExtVM ext(info, myAddress, caller, origin, value, gasPrice,
+		data_, code_, codeHash, depth, isCreate, staticCall);
+	owning_bytes_ref result = vmc->exec(gas, ext);
+	FakeExtVM::m_s[AccountID::fromVoid(myAddress.bytes)] = result.toBytes();
+	return result;
+}
+
 owning_bytes_ref FakeExecutive::call(const evmc_address& contractAddress, int64_t& gas) {
 	EnvInfo info;
 	evmc_address myAddress = contractAddress;

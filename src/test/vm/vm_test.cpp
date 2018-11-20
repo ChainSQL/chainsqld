@@ -29,6 +29,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 /*
 * usage:
 	--unittest="VM" --unittest-arg="code=0x... input=0x...;0x..."
+	--unittest="VM" --unittest-arg="file=smartCodes "
 */
 
 namespace ripple {
@@ -56,9 +57,18 @@ public:
 	}
 
     void run() {
-		init_env();
-		//call();
-		createAndCall();
+		std::string args = arg();
+		size_t code_npos = args.find("code=");
+		size_t file_npos = args.find("file=");
+		if (code_npos == 0) {
+			init_env();
+			createAndCall();
+		}
+
+		if (file_npos == 0) {
+			muiltCreateCode();
+		}
+
 		pass();
 	}
 
@@ -94,28 +104,6 @@ private:
 		}
 	}
 
-	void call() {
-		try {
-			bytes code;
-			code.assign(code_.begin(), code_.end());
-			std::for_each(datas_.begin(), datas_.end(), [this, &code](const std::string& input) {
-				bytesConstRef data((uint8_t*)input.c_str(), input.size());
-				FakeExecutive execute(data, code);
-				evmc_address contractAddress = { { 1,2,3,4 } };
-				int64_t gas = 300000;
-				execute.call(contractAddress, gas);
-			});
-
-		}
-		catch (const std::exception& e) {
-			std::cout << e.what() << std::endl;
-		}
-		catch (...) {
-			std::cout << "unkown exception." << std::endl;
-		}
-
-	}
-
 	void createAndCall() {
 		try {
 			bytes code;
@@ -145,6 +133,91 @@ private:
 			std::cout << "unkown exception." << std::endl;
 		}
 
+	}
+
+	int readSmartCodes(const std::string& codesPath, std::string& codes) {
+		int ret = 1;
+		do {
+			if (boost::filesystem::exists(codesPath) == false)
+				break;
+
+			std::ifstream is(codesPath.c_str(), std::ifstream::binary);
+			if (is) {
+				is.seekg(0, is.end);
+				int len = is.tellg();
+				is.seekg(0, is.beg);
+				codes.resize(len);
+				is.read(&codes[0], len);
+				is.close();
+			}
+
+			ret = 0;
+		} while (0);
+			
+		return ret;
+	}
+
+	void muiltCreateCode() {
+
+		std::string args = arg();
+		size_t path_npos = args.find("file=");
+
+		std::string mess_codes;
+		std::string path;
+		if (path_npos != std::string::npos) {
+			path = args.substr(path_npos + 5);
+			std::cout << "read smart codes in " << path << std::endl;
+			readSmartCodes(path, mess_codes);
+		}
+		
+		std::vector<std::string> codes;
+		boost::split(codes, mess_codes, boost::is_any_of(";"), boost::token_compress_on);
+		std::vector<std::string> runCodes;
+		for (size_t i = 0; i < codes.size(); i++) {
+			std::string run_code;
+			fromHex(codes[i], run_code);
+			runCodes.push_back(run_code);
+		}
+
+		auto worker = [this](const evmc_address& address, const evmc_uint256be& codeHash, const bytes& code) {
+			FakeExecutive execute(code);
+			int64_t gas = 300000;
+			execute.create(address, codeHash, gas);
+		};
+
+		size_t t1_start = 0;
+		size_t t1_end = (runCodes.size() / 2) - 1;
+		std::thread t1([this,&worker, &runCodes, t1_start, t1_end]() {
+			
+			long idx = 1;
+			for(size_t i = t1_start; i < t1_end; i++) {
+				bytes code;
+				code.assign(runCodes[i].begin(), runCodes[i].end());
+				evmc_address contractAddress = { {1,2,3,idx++} };
+				evmc_uint256be codeHash = { {5,6,7,8,idx++} };
+				worker(contractAddress, codeHash, code);
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			}
+		});
+
+		size_t t2_start = runCodes.size()/2;
+		size_t t2_end = runCodes.size();
+		std::thread t2([this, &worker, &runCodes, t2_start, t2_end]() {
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			long idx = 1;
+			for(size_t i = t2_start; i < t2_end; i++) {
+				bytes code;
+				code.assign(runCodes[i].begin(), runCodes[i].end());
+				evmc_address contractAddress = { {1,2,++idx,4} };
+				evmc_uint256be codeHash = { {5,6,7,8,idx++,9} };
+				worker(contractAddress, codeHash, code);
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			}
+		});
+		
+		t1.join();
+		t2.join();
 	}
 
 	std::string code_;

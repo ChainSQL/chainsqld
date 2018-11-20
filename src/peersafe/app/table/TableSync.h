@@ -86,6 +86,7 @@ public:
 	//press test table name
 	std::string GetPressTableName();
 	bool IsPressSwitchOn();
+    void sweep();
 private:	
 	std::pair<std::shared_ptr<TableSyncItem>, std::string> CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line);
     bool CreateTableItems();

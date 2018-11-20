@@ -46,8 +46,20 @@ namespace ripple {
 
 	TER SmartContract::preclaim(PreclaimContext const& ctx)
 	{
-		// Avoid unaffordable transactions.
 		auto& tx = ctx.tx;
+
+		if (tx.getFieldVL(sfContractData).size() == 0)
+		{
+			//empty contract_data not valid if deploy or pay to contract 0
+			if (tx.getFieldU16(sfContractOpType) == 1 ||
+				(tx.getFieldU16(sfContractOpType) != 1 && (!tx.isFieldPresent(sfContractValue) ||
+				(tx.isFieldPresent(sfContractValue) && tx.getFieldAmount(sfContractValue).zxc().drops() == 0))))
+			{
+				return temMALFORMED;
+			}
+		}			
+
+		// Avoid unaffordable transactions.
 		int64_t gas = tx.getFieldU32(sfGas);
 		int64_t gasCost = int64_t(gas * GAS_PRICE);
 		int64_t value = tx.getFieldAmount(sfContractValue).zxc().drops();

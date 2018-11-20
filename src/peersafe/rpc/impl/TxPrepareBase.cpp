@@ -192,8 +192,12 @@ Json::Value TxPrepareBase::prepareGetRaw()
 
 Json::Value TxPrepareBase::prepareBase()
 {
+	auto ret = checkBaseInfo(tx_json_, app_, ws_);
+	if (ret.isMember("error_message"))
+		return ret;
+
     //check the future hash
-    auto ret = prepareFutureHash(tx_json_, app_, ws_);
+    ret = prepareFutureHash(tx_json_, app_, ws_);
     if (ret.isMember("error_message"))
         return ret;
 
@@ -352,11 +356,23 @@ Json::Value TxPrepareBase::prepareDBName()
                 if (tablePair.second)
                     sTableName = strCopy(tablePair.first);
             }
+
+			// get nameInDB from validated ledger
+			auto aAccountId = ripple::parseBase58<AccountID>(accountId);
+			auto nameInDBInLedger = app_.getLedgerMaster().getNameInDB(app_.getLedgerMaster().getValidLedgerIndex(), *aAccountId, sTableName);
+
 			sNameInDB = getNameInDB(accountId, sTableName);
 			if (sNameInDB.size() > 0)
 				json[jss::Table][jss::NameInDB] = sNameInDB;
-			else
+			else if (nameInDBInLedger != beast::zero)
+			{
+				sNameInDB = to_string(nameInDBInLedger);
+				json[jss::Table][jss::NameInDB] = sNameInDB;
+				updateNameInDB(accountId, sTableName, sNameInDB);
+			}				
+			else if(tx_json_[jss::OpType].asInt() == T_CREATE)
 			{				
+				// if create table,generate one, else error
 				Json::Value ret = app_.getTableAssistant().getDBName(accountId, sTableName);
 				if (ret["status"].asString() == "error")
 				{
@@ -365,9 +381,11 @@ Json::Value TxPrepareBase::prepareDBName()
 
 				sNameInDB = ret["nameInDB"].asString();
 				if (sNameInDB.size() > 0)
-					json[jss::Table][jss::NameInDB] =sNameInDB;
+					json[jss::Table][jss::NameInDB] = sNameInDB;
 				updateNameInDB(accountId, sTableName, sNameInDB);
-			}            
+			}
+			else
+				return generateError("Please make sure table exist before this operation!", ws_);
 		}
         else
         {
@@ -762,23 +780,35 @@ bool TxPrepareBase::checkConfidentialBase(const AccountID& owner, const std::str
 	return false;
 }
 
+Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Application& app, bool bWs)
+{
+	Json::Value jsonRet(Json::objectValue);
+	AccountID accountID;
+	if (tx_json.isMember(jss::Account) && tx_json[jss::Account].asString().size() != 0)
+	{
+		auto pAccount = ripple::parseBase58<AccountID>(tx_json[jss::Account].asString());
+		if (!pAccount)
+			return generateError("Parse Account failed.", bWs);
+	}
+	else
+		return generateError("Account is missing,please checkout!", bWs);
+
+	if (tx_json.isMember(jss::Owner) && tx_json[jss::Owner].asString().size() != 0)
+	{
+		auto pAccount = ripple::parseBase58<AccountID>(tx_json[jss::Owner].asString());
+		if (!pAccount)
+			return generateError("Parse Owner failed.", bWs);
+	}
+
+	return jsonRet;
+}
+
 Json::Value TxPrepareBase::prepareFutureHash(const Json::Value& tx_json, Application& app,bool bWs)
 {
     Json::Value jsonRet(Json::objectValue);
     
-    AccountID accountID;
+	AccountID accountID = *ripple::parseBase58<AccountID>(tx_json[jss::Account].asString());
     std::string sCurHash;
-    
-    if (tx_json.isMember(jss::Account) && tx_json[jss::Account].asString().size() != 0)
-    {
-		auto pAccount = ripple::parseBase58<AccountID>(tx_json[jss::Account].asString());
-		if(pAccount)
-			accountID = *pAccount;
-		else
-			return generateError("Parse Account failed.", bWs);
-    }
-    else
-        return generateError("Account is missing,please checkout!", bWs);
 
     if (tx_json.isMember(jss::OriginalAddress) || tx_json.isMember(jss::TxnLgrSeq) ||
         tx_json.isMember(jss::CurTxHash) || tx_json.isMember(jss::FutureTxHash))

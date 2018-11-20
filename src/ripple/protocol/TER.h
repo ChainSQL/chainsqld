@@ -68,110 +68,111 @@ enum TER
     temBAD_EXPIRATION,
     temBAD_FEE,
     temBAD_ISSUER,
-temBAD_LIMIT,
-temBAD_OFFER,
-temBAD_PATH,
-temBAD_PATH_LOOP,
-temBAD_SEND_ZXC_LIMIT,
-temBAD_SEND_ZXC_MAX,
-temBAD_SEND_ZXC_NO_DIRECT,
-temBAD_SEND_ZXC_PARTIAL,
-temBAD_SEND_ZXC_PATHS,
-temBAD_SEQUENCE,
-temBAD_SIGNATURE,
-temBAD_SRC_ACCOUNT,
-temBAD_TRANSFER_RATE,
-temDST_IS_SRC,
-temDST_NEEDED,
-temINVALID,
-temINVALID_FLAG,
-temREDUNDANT,
-temRIPPLE_EMPTY,
-temDISABLED,
-temBAD_SIGNER,
-temBAD_QUORUM,
-temBAD_WEIGHT,
-temBAD_TICK_SIZE,
-temBAD_TRANSFERFEE_BOTH,
-temBAD_TRANSFERFEE,
+	temBAD_LIMIT,
+	temBAD_OFFER,
+	temBAD_PATH,
+	temBAD_PATH_LOOP,
+	temBAD_SEND_ZXC_LIMIT,
+	temBAD_SEND_ZXC_MAX,
+	temBAD_SEND_ZXC_NO_DIRECT,
+	temBAD_SEND_ZXC_PARTIAL,
+	temBAD_SEND_ZXC_PATHS,
+	temBAD_SEQUENCE,
+	temBAD_SIGNATURE,
+	temBAD_SRC_ACCOUNT,
+	temBAD_TRANSFER_RATE,
+	temDST_IS_SRC,
+	temDST_NEEDED,
+	temINVALID,
+	temINVALID_FLAG,
+	temREDUNDANT,
+	temRIPPLE_EMPTY,
+	temDISABLED,
+	temBAD_SIGNER,
+	temBAD_QUORUM,
+	temBAD_WEIGHT,
+	temBAD_TICK_SIZE,
+	temBAD_TRANSFERFEE_BOTH,
+	temBAD_TRANSFERFEE,
+	temBAD_FEE_MISMATCH_TRANSFER_RATE,
 
-//for table set and sql statement
-temBAD_OWNER,
-temBAD_TABLES,
-temBAD_TABLEFLAGS,
-temBAD_RAW,
-temBAD_OPTYPE,
-temBAD_BASETX,
-temBAD_PUT,
-temBAD_DBTX,
-temBAD_STATEMENTS,
-temBAD_NEEDVERIFY,
-temBAD_STRICTMODE,
-temBAD_BASELEDGER,
-temBAD_TRANSFERORDER,
-temBAD_OPERATIONRULE,
-temBAD_DELETERULE,
-temBAD_UPDATERULE,
-temBAD_RULEANDTOKEN,
-temBAD_INSERTLIMIT,
+	//for table set and sql statement
+	temBAD_OWNER,
+	temBAD_TABLES,
+	temBAD_TABLEFLAGS,
+	temBAD_RAW,
+	temBAD_OPTYPE,
+	temBAD_BASETX,
+	temBAD_PUT,
+	temBAD_DBTX,
+	temBAD_STATEMENTS,
+	temBAD_NEEDVERIFY,
+	temBAD_STRICTMODE,
+	temBAD_BASELEDGER,
+	temBAD_TRANSFERORDER,
+	temBAD_OPERATIONRULE,
+	temBAD_DELETERULE,
+	temBAD_UPDATERULE,
+	temBAD_RULEANDTOKEN,
+	temBAD_INSERTLIMIT,
 
-// An intermediate result used internally, should never be returned.
-temUNCERTAIN,
-temUNKNOWN,
+	// An intermediate result used internally, should never be returned.
+	temUNCERTAIN,
+	temUNKNOWN,
 
-// -199 .. -100: F
-//    Failure (sequence number previously used)
-//
-// Causes:
-// - Transaction cannot succeed because of ledger state.
-// - Unexpected ledger state.
-// - C++ exception.
-//
-// Implications:
-// - Not applied
-// - Not forwarded
-// - Could succeed in an imagined ledger.
-tefFAILURE = -199,
-tefALREADY,
-tefBAD_ADD_AUTH,
-tefBAD_AUTH,
-tefBAD_AUTH_EXIST,
-tefBAD_AUTH_NO,
-tefBAD_LEDGER,
-tefCREATED,
-tefEXCEPTION,
-tefINTERNAL,
-tefNO_AUTH_REQUIRED,    // Can't set auth if auth is not required.
-tefPAST_SEQ,
-tefWRONG_PRIOR,
-tefMASTER_DISABLED,
-tefMAX_LEDGER,
-tefBAD_SIGNATURE,
-tefBAD_QUORUM,
-tefNOT_MULTI_SIGNING,
-tefBAD_AUTH_MASTER,
-tefTABLE_SAMENAME,   // Table name and table new name is same or create exist table
-tefTABLE_NOTEXIST,   // Table is not exist 
-tefTABLE_STATEERROR, // Table state is error
-tefBAD_USER,         // User is bad format
-tefTABLE_EXISTANDNOTDEL,         // Table exist and is not deleted
-tefTABLE_STORAGEERROR,
-tefTABLE_STORAGENORMALERROR,
-tefTABLE_TXDISPOSEERROR,
-tefTABLE_RULEDISSATISFIED,
-tefTABLE_COUNTFULL,
-tefTABLE_GRANTFULL,
-tefDBNOTCONFIGURED,
-tefINSUFFICIENT_RESERVE,
-tefINVARIANT_FAILED,
-tefBAD_DBNAME,       // NameInDB does not match tableName.
-tefBAD_STATEMENT,    // satement error
-tefADDRESS_AREADY_USED,
-tefGAS_INSUFFICIENT,
-tefCONTRACT_EXEC_EXCEPTION,
-tefCONTRACT_REVERT_INSTRUCTION,
-tefCONTRACT_CANNOT_BEPAYED,
-tefCONTRACT_NOT_EXIST,
+	// -199 .. -100: F
+	//    Failure (sequence number previously used)
+	//
+	// Causes:
+	// - Transaction cannot succeed because of ledger state.
+	// - Unexpected ledger state.
+	// - C++ exception.
+	//
+	// Implications:
+	// - Not applied
+	// - Not forwarded
+	// - Could succeed in an imagined ledger.
+	tefFAILURE = -199,
+	tefALREADY,
+	tefBAD_ADD_AUTH,
+	tefBAD_AUTH,
+	tefBAD_AUTH_EXIST,
+	tefBAD_AUTH_NO,
+	tefBAD_LEDGER,
+	tefCREATED,
+	tefEXCEPTION,
+	tefINTERNAL,
+	tefNO_AUTH_REQUIRED,    // Can't set auth if auth is not required.
+	tefPAST_SEQ,
+	tefWRONG_PRIOR,
+	tefMASTER_DISABLED,
+	tefMAX_LEDGER,
+	tefBAD_SIGNATURE,
+	tefBAD_QUORUM,
+	tefNOT_MULTI_SIGNING,
+	tefBAD_AUTH_MASTER,
+	tefTABLE_SAMENAME,   // Table name and table new name is same or create exist table
+	tefTABLE_NOTEXIST,   // Table is not exist 
+	tefTABLE_STATEERROR, // Table state is error
+	tefBAD_USER,         // User is bad format
+	tefTABLE_EXISTANDNOTDEL,         // Table exist and is not deleted
+	tefTABLE_STORAGEERROR,
+	tefTABLE_STORAGENORMALERROR,
+	tefTABLE_TXDISPOSEERROR,
+	tefTABLE_RULEDISSATISFIED,
+	tefTABLE_COUNTFULL,
+	tefTABLE_GRANTFULL,
+	tefDBNOTCONFIGURED,
+	tefINSUFFICIENT_RESERVE,
+	tefINVARIANT_FAILED,
+	tefBAD_DBNAME,       // NameInDB does not match tableName.
+	tefBAD_STATEMENT,    // satement error
+	tefADDRESS_AREADY_USED,
+	tefGAS_INSUFFICIENT,
+	tefCONTRACT_EXEC_EXCEPTION,
+	tefCONTRACT_REVERT_INSTRUCTION,
+	tefCONTRACT_CANNOT_BEPAYED,
+	tefCONTRACT_NOT_EXIST,
     // -99 .. -1: R Retry
     //   sequence too high, no funds for txn fee, originating -account
     //   non-existent
@@ -208,56 +209,57 @@ tefCONTRACT_NOT_EXIST,
     // - Forwarded
     tesSUCCESS      = 0,
 
-    // 100 .. 159 C
-    //   Claim fee only (ripple transaction with no good paths, pay to
-    //   non-existent account, no path)
-    //
-    // Causes:
-    // - Success, but does not achieve optimal result.
-    // - Invalid transaction or no effect, but claim fee to use the sequence
-    //   number.
-    //
-    // Implications:
-    // - Applied
-    // - Forwarded
-    //
-    // Only allowed as a return code of appliedTransaction when !tapRetry.
-    // Otherwise, treated as terRETRY.
-    //
-    // DO NOT CHANGE THESE NUMBERS: They appear in ledger meta data.
-    tecCLAIM                    = 100,
-    tecPATH_PARTIAL             = 101,
-    tecUNFUNDED_ADD             = 102,
-    tecUNFUNDED_OFFER           = 103,
-    tecUNFUNDED_PAYMENT         = 104,
-    tecFAILED_PROCESSING        = 105,
-    tecDIR_FULL                 = 121,
-    tecINSUF_RESERVE_LINE       = 122,
-    tecINSUF_RESERVE_OFFER      = 123,
-    tecNO_DST                   = 124,
-    tecNO_DST_INSUF_ZXC         = 125,
-    tecNO_LINE_INSUF_RESERVE    = 126,
-    tecNO_LINE_REDUNDANT        = 127,
-    tecPATH_DRY                 = 128,
-    tecUNFUNDED                 = 129,  // Deprecated, old ambiguous unfunded.
-    tecNO_ALTERNATIVE_KEY       = 130,
-    tecNO_REGULAR_KEY           = 131,
-    tecOWNERS                   = 132,
-    tecNO_ISSUER                = 133,
-    tecNO_AUTH                  = 134,
-    tecNO_LINE                  = 135,
-    tecINSUFF_FEE               = 136,
-    tecFROZEN                   = 137,
-    tecNO_TARGET                = 138,
-    tecNO_PERMISSION            = 139,
-    tecNO_ENTRY                 = 140,
-    tecINSUFFICIENT_RESERVE     = 141,
-    tecNEED_MASTER_KEY          = 142,
-    tecDST_TAG_NEEDED           = 143,
-    tecINTERNAL                 = 144,
-    tecOVERSIZE                 = 145,
-    tecCRYPTOCONDITION_ERROR    = 146,
-    tecINVARIANT_FAILED         = 147
+	// 100 .. 159 C
+	//   Claim fee only (ripple transaction with no good paths, pay to
+	//   non-existent account, no path)
+	//
+	// Causes:
+	// - Success, but does not achieve optimal result.
+	// - Invalid transaction or no effect, but claim fee to use the sequence
+	//   number.
+	//
+	// Implications:
+	// - Applied
+	// - Forwarded
+	//
+	// Only allowed as a return code of appliedTransaction when !tapRetry.
+	// Otherwise, treated as terRETRY.
+	//
+	// DO NOT CHANGE THESE NUMBERS: They appear in ledger meta data.
+	tecCLAIM = 100,
+	tecPATH_PARTIAL = 101,
+	tecUNFUNDED_ADD = 102,
+	tecUNFUNDED_OFFER = 103,
+	tecUNFUNDED_PAYMENT = 104,
+	tecFAILED_PROCESSING = 105,
+	tecDIR_FULL = 121,
+	tecINSUF_RESERVE_LINE = 122,
+	tecINSUF_RESERVE_OFFER = 123,
+	tecNO_DST = 124,
+	tecNO_DST_INSUF_ZXC = 125,
+	tecNO_LINE_INSUF_RESERVE = 126,
+	tecNO_LINE_REDUNDANT = 127,
+	tecPATH_DRY = 128,
+	tecUNFUNDED = 129,  // Deprecated, old ambiguous unfunded.
+	tecNO_ALTERNATIVE_KEY = 130,
+	tecNO_REGULAR_KEY = 131,
+	tecOWNERS = 132,
+	tecNO_ISSUER = 133,
+	tecNO_AUTH = 134,
+	tecNO_LINE = 135,
+	tecINSUFF_FEE = 136,
+	tecFROZEN = 137,
+	tecNO_TARGET = 138,
+	tecNO_PERMISSION = 139,
+	tecNO_ENTRY = 140,
+	tecINSUFFICIENT_RESERVE = 141,
+	tecNEED_MASTER_KEY = 142,
+	tecDST_TAG_NEEDED = 143,
+	tecINTERNAL = 144,
+	tecOVERSIZE = 145,
+	tecCRYPTOCONDITION_ERROR = 146,
+	tecINVARIANT_FAILED = 147,
+	tecUNFUNDED_ESCROW = 148
 };
 
 inline bool isTelLocal(TER x)

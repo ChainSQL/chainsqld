@@ -274,7 +274,6 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
     else
     {
         checkAccept (lastClosed);
-        app_.getTableSync().TryTableSync();
         app_.getTableStorage().TryTableStorage();
 		app_.getTableAssistant().TryTableCheckHash();
 		app_.getOPs().TryCheckSubTx();
@@ -2144,6 +2143,8 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                 
                 app_.getTableSync().SeekCreateTable(ledger);
             }
+			//move table_sync here,cause it used pub_ledger
+			app_.getTableSync().TryTableSync();
 
             app_.getOPs().clearNeedNetworkLedger();
             progress = newPFWork ("pf:newLedger", sl);

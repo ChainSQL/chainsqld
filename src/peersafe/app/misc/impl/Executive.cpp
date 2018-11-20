@@ -4,6 +4,7 @@
 #include <ripple/protocol/digest.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
+#include <ripple/basics/StringUtilities.h>
 
 namespace ripple {
 
@@ -237,9 +238,11 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
 			m_depth, false, _p.staticCall);
 	}
-	else
+	else if(m_depth == 1) //if not first call,codeAddress not need to be a contract address
 	{
 		// contract may be killed
+		auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));
+		m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
 		m_excepted = tefCONTRACT_NOT_EXIST;
 		return true;
 	}
@@ -350,13 +353,13 @@ bool Executive::go()
 		catch (RevertInstruction& _e)
 		{
 			//revert();
-			m_output = _e.output();
+			formatOutput(_e.output());
 			m_excepted = tefCONTRACT_REVERT_INSTRUCTION;
 		}
 		catch (VMException const& _e)
 		{
 			JLOG(j.warn()) << "Safe VM Exception. " << diagnostic_information(_e);
-			//m_output = std::string(_e.what());
+			formatOutput(_e.what());
 			m_gas = 0;
 			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			//revert();
@@ -365,6 +368,7 @@ bool Executive::go()
 		{
 			JLOG(j.warn()) << "Internal VM Error (" << *boost::get_error_info<errinfo_evmcStatusCode>(_e) << ")\n"
 				<< diagnostic_information(_e);
+			formatOutput(_e.what());
 			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			throw;
 		}
@@ -373,6 +377,7 @@ bool Executive::go()
 			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 			JLOG(j.warn()) << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
 			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
+			formatOutput(_e.what());
 			// Another solution would be to reject this transaction, but that also
 			// has drawbacks. Essentially, the amount of ram has to be increased here.
 		}
@@ -381,6 +386,7 @@ bool Executive::go()
 			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 			JLOG(j.warn()) << "Unexpected std::exception in VM. Not enough RAM? " << _e.what();
 			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
+			formatOutput(_e.what());
 			// Another solution would be to reject this transaction, but that also
 			// has drawbacks. Essentially, the amount of ram has to be increased here.
 		}
@@ -442,4 +448,30 @@ beast::Journal Executive::getJ()
 {
 	return m_s.ctx().app.journal("Executive");
 }
+
+void Executive::formatOutput(std::string msg)
+{
+	auto blob = strCopy(msg);
+	m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
+}
+
+void Executive::formatOutput(owning_bytes_ref output)
+{
+	auto str = output.toString();
+	Blob blob;
+
+	//self-define exception in go()
+	if (str.substr(0, 4) == "\0\0\0\0")
+	{
+		blob = strCopy(str.substr(4,str.size() - 4));
+	}
+	else
+	{
+		uint256 offset = uint256(strCopy(str.substr(4, 32)));
+		uint256 length = uint256(strCopy(str.substr(4 + 32, 32)));
+		blob = strCopy(str.substr(4 + 32 + fromUint256(offset), fromUint256(length)));
+	}
+	m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
+}
+
 } // namespace ripple
