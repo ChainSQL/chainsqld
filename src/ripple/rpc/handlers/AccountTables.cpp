@@ -30,16 +30,15 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 {
 	Json::Value ret(Json::objectValue);
     
-    Json::Value& tx_json(context.params["tx_json"]);
 
-	if (tx_json["account"].asString().empty())
+	if (context.params["account"].asString().empty())
 	{
 		ret[jss::status] = "error";
 		ret[jss::error_message] = "Account  is null";
 		return ret;
 	}
 
-	auto pOwnerId = ripple::parseBase58<AccountID>(tx_json["account"].asString());
+	auto pOwnerId = ripple::parseBase58<AccountID>(context.params["account"].asString());
 	if (pOwnerId == boost::none)
 	{
 		ret[jss::status] = "error";
@@ -64,7 +63,7 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 				auto blob = table.getFieldVL(sfTableName);
 				std::string str(blob.begin(), blob.end());
 				tmp[jss::TableName] = str;
-				ret["tx_json"].append(tmp);
+				ret["tables"].append(tmp);
             }
         }
         else
