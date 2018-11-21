@@ -135,7 +135,6 @@ SF_U32 const sfSettleDelay         = make::one<SF_U32::type>(&sfSettleDelay,    
 SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,           STI_UINT32, 50, "TxnLgrSeq");
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
-SF_U32 const sfNonce			   = make::one<SF_U32::type>(&sfNonce,				 STI_UINT32, 53, "Nonce");
 SF_U32 const sfGas				   = make::one<SF_U32::type>(&sfGas,				 STI_UINT32, 55, "Gas");
 
 // 64-bit integers

@@ -23,33 +23,26 @@ namespace ripple {
         return view.peek(k);
     }
 
-	void SleOps::incNonce(AccountID const& addr)
+	void SleOps::incSequence(AccountID const& addr)
 	{
 		SLE::pointer pSle = getSle(addr);
 		if (pSle)
 		{
-			uint32 nonce = pSle->getFieldU32(sfNonce);
+			uint32 sequence = pSle->getFieldU32(sfSequence);
 			{
-				pSle->setFieldU32(sfNonce, ++nonce);
+				pSle->setFieldU32(sfSequence, ++sequence);
 				ctx_.view().update(pSle);
 			}
 		}		
 	}
 
-	uint32 SleOps::getNonce(AccountID const& addr)
+	uint32 SleOps::getSequence(AccountID const& addr)
 	{
 		SLE::pointer pSle = getSle(addr);
 		if (pSle)
-			return pSle->getFieldU32(sfNonce);
+			return pSle->getFieldU32(sfSequence);
 		else
 			return 0;
-	}
-
-	void SleOps::setNonce(AccountID const& addr, uint32 const& _newNonce)
-	{
-		SLE::pointer pSle = getSle(addr);
-		if(pSle)
-			pSle->setFieldU32(sfNonce, _newNonce);
 	}
 
 	bool SleOps::addressHasCode(AccountID const& addr)
