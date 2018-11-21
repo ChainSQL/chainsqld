@@ -325,6 +325,12 @@ void Executive::formatOutput(std::string msg)
 
 void Executive::formatOutput(owning_bytes_ref output)
 {
+	if (output.empty())
+	{
+		m_output = owning_bytes_ref();
+		return;
+	}
+
 	auto str = output.toString();
 	Blob blob;
 
