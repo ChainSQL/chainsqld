@@ -200,11 +200,16 @@ bool Executive::create(AccountID const& _txSender, uint256 const& _endowment,
 bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment,
 	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress)
 {
-	SLE::pointer pSle = m_s.getSle(_sender);
-	uint32 nonce = pSle->getFieldU32(sfNonce);
-	m_newAddress = m_s.calcNewAddress(_sender, nonce);
-	// add nonce for sender
-	m_s.incNonce(_sender);
+	bool accountAlreadyExist = false;
+	do {
+		uint32 sequence = m_s.getSequence(_sender);
+		m_newAddress = m_s.calcNewAddress(_sender, sequence);
+		// add sequence for sender
+		m_s.incSequence(_sender);
+
+		accountAlreadyExist = (m_s.getSle(m_newAddress) != nullptr);
+	} while (accountAlreadyExist);
+
 	return executeCreate(_sender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
 
@@ -276,17 +281,6 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 	m_isCreation = true;
 	m_gas = _gas;
 
-	bool accountAlreadyExist = (m_s.addressHasCode(m_newAddress) || m_s.getNonce(m_newAddress) > 0);
-	if (accountAlreadyExist)
-	{
-		JLOG(j.warn()) << "Address already used: " << to_string(m_newAddress);
-		m_gas = 0;
-		m_excepted = tefADDRESS_AREADY_USED;
-		//revert();
-		m_ext = {}; // cancel the _init execution if there are any scheduled.
-		return !m_ext;
-	}
-
 	// Transfer ether before deploying the code. This will also create new
 	// account if it does not exist yet.
 	auto value = _endowment;
@@ -297,9 +291,6 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 	}
 
 	m_s.createContractAccount(_sender, m_newAddress, value);
-
-	uint32 newNonce = m_s.requireAccountStartNonce();
-	m_s.setNonce(m_newAddress, newNonce);
 
 	// Schedule _init execution if not empty.
 	Blob data;

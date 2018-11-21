@@ -167,7 +167,6 @@ enum TER
 	tefINVARIANT_FAILED,
 	tefBAD_DBNAME,       // NameInDB does not match tableName.
 	tefBAD_STATEMENT,    // satement error
-	tefADDRESS_AREADY_USED,
 	tefGAS_INSUFFICIENT,
 	tefCONTRACT_EXEC_EXCEPTION,
 	tefCONTRACT_REVERT_INSTRUCTION,
