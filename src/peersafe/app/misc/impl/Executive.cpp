@@ -163,14 +163,9 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 	m_isCreation = true;
 	m_gas = _gas;
 
-	// Transfer ether before deploying the code. This will also create new
+	// Transfer zxc before deploying the code. This will also create new
 	// account if it does not exist yet.
 	auto value = _endowment;
-	if (m_depth > INITIAL_DEPTH)
-	{
-		//contract create contract
-		value = uint256(m_s.ctx().view().fees().accountReserve(0).drops());
-	}
 
 	m_s.createContractAccount(_sender, m_newAddress, value);
 
