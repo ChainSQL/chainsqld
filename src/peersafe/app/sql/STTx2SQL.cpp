@@ -490,7 +490,8 @@ public:
 	virtual int execSQL() = 0;
 	virtual void clear() = 0;
 
-	virtual std::pair<int, std::string> last_error() = 0;
+	virtual std::pair<int, std::string> last_error()     = 0;
+    virtual void set_last_error(const std::pair<int, std::string> &error) = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1763,8 +1764,7 @@ protected:
 				}
 				else if (field.isString()) {
 					std::string default_value = field.asString();
-					if (default_value.empty()
-						|| boost::iequals(default_value, "null")
+					if (boost::iequals(default_value, "null")
 						|| boost::iequals(default_value, "nil"))
 						str = "DEFAULT NULL";
 					else
@@ -2172,8 +2172,13 @@ public:
 	std::pair<int, std::string> last_error() override {
 		if (disposesql_)
 			return disposesql_->last_error().value();
-		return std::make_pair<int, std::string>(-1, "exhausted resource");
+		return std::make_pair<int, std::string>(-1, "exhausted resource");        
 	}
+
+    void set_last_error(const std::pair<int, std::string> &error) override {
+        if (disposesql_)
+            return disposesql_->last_error(error);        
+    }
  
 private:
 	explicit BuildMySQL() {};
@@ -2309,6 +2314,11 @@ public:
 			return disposesql_->last_error().value();
 		return std::make_pair<int, std::string>(-1, "exhausted resource");
 	}
+
+    void set_last_error(const std::pair<int, std::string> &error) override {
+        if (disposesql_)
+            return disposesql_->last_error(error);
+    }
 
 private:
 	explicit BuildSqlite() {};
@@ -2628,82 +2638,116 @@ bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
 
 int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql) {
 	int ret = -1;
+    std::string sError = "";
 	if (Raw.isArray()) {
 		for (Json::UInt index = 0; index < Raw.size(); index++) {
 			Json::Value v = Raw[index];
-			// both field and type are requirment 
-			if (v.isMember("field") == false && v.isMember("type") == false)
-				return ret;
 
-			std::string fieldname = v["field"].asString();
-			std::string type = v["type"].asString();
-			BuildField buildfield(fieldname);
-			// set default value when create table
-			if (boost::iequals(type, "int") || boost::iequals(type, "integer"))
-				buildfield.SetFieldValue(0);
-			else if (boost::iequals(type, "float"))
-				buildfield.SetFieldValue(0.0f);
-			else if (boost::iequals(type, "double"))
-				buildfield.SetFieldValue((double)0.0f);
-			else if (boost::iequals(type, "text"))
-				buildfield.SetFieldValue("", FieldValue::fTEXT);
-			else if (boost::iequals(type, "varchar"))
-				buildfield.SetFieldValue("", FieldValue::fVARCHAR);
-			else if (boost::iequals(type, "char"))
-				buildfield.SetFieldValue("", FieldValue::fCHAR);
-			else if (boost::iequals(type, "blob"))
-				buildfield.SetFieldValue("", FieldValue::fBLOB);
-			else if (boost::iequals(type, "datetime"))
-				buildfield.SetFieldValue(InnerDateTime());
-			else if (boost::iequals(type, "date"))
-				buildfield.SetFieldValue(InnerDate());
-			else if (boost::iequals(type, "decimal"))
-				buildfield.SetFieldValue(InnerDecimal(32,0));
 
-			if (v.isMember("PK"))
-				buildfield.SetPrimaryKey();
-			if (v.isMember("FK") && v.isMember("REFERENCES")) {
-				buildfield.SetForeignKey();
-				if (v["REFERENCES"].isMember("table") == false || v["REFERENCES"].isMember("field") == false)
-					return ret;
-				buildfield.SetForeigns(v["REFERENCES"]);
-			}
-			if (v.isMember("index"))
-				buildfield.SetIndex();
-			if (v.isMember("NN"))
-				buildfield.SetNotNull();
-			// for bug RR-525 disable auto increment
-			//if (v.isMember("AI"))
-			//	buildfield.SetAutoIncrease();
-			if (v.isMember("UQ"))
-				buildfield.SetUnique();
-			if (v.isMember("default")) {
-				buildfield.SetDefault();
-				if (v["default"].isString())
-					buildfield.SetFieldValue(v["default"].asString());
-				else if (v["default"].isNumeric())
-					buildfield.SetFieldValue(v["default"].asInt());
-			}
+            // both field and type are requirment 
+            if (v.isMember("field") == false && v.isMember("type") == false)
+                return ret;
+            //field and type
+            std::string fieldname = v["field"].asString();
+            std::string type = v["type"].asString();
+            BuildField buildfield(fieldname);
+            // set default value when create table
+            if (boost::iequals(type, "int") || boost::iequals(type, "integer"))
+                buildfield.SetFieldValue(0);
+            else if (boost::iequals(type, "float"))
+                buildfield.SetFieldValue(0.0f);
+            else if (boost::iequals(type, "double"))
+                buildfield.SetFieldValue((double)0.0f);
+            else if (boost::iequals(type, "text"))
+                buildfield.SetFieldValue("", FieldValue::fTEXT);
+            else if (boost::iequals(type, "varchar"))
+                buildfield.SetFieldValue("", FieldValue::fVARCHAR);
+            else if (boost::iequals(type, "char"))
+                buildfield.SetFieldValue("", FieldValue::fCHAR);
+            else if (boost::iequals(type, "blob"))
+                buildfield.SetFieldValue("", FieldValue::fBLOB);
+            else if (boost::iequals(type, "datetime"))
+                buildfield.SetFieldValue(InnerDateTime());
+            else if (boost::iequals(type, "date"))
+                buildfield.SetFieldValue(InnerDate());
+            else if (boost::iequals(type, "decimal"))
+                buildfield.SetFieldValue(InnerDecimal(32, 0));
+            else
+            {                
+                buildsql->set_last_error( std::make_pair<int, std::string>(-1, (boost::format("type : %s is not support") % type).str()));
+                return ret;
+            }
 
-			int length = 0;
-			if (v.isMember("length")) {
-				length = v["length"].asInt();
-			}
-			
-			// update decimal
-			if (boost::iequals(type, "decimal")) {
-				if (length == 0)
-					length = 32;
-				int accuracy = 2;
-				if (v.isMember("accuracy"))
-					accuracy = v["accuracy"].asInt();
-				// update decimal
-				buildfield.asDecimal().update(InnerDecimal(length, accuracy));
-			}
-			else {
-				if (length)
-					buildfield.SetLength(length);
-			}
+            //about length
+            int length = 0;
+            if (v.isMember("length")) {
+                length = v["length"].asInt();
+            }
+
+            if (boost::iequals(type, "decimal")) {
+                if (length == 0)
+                    length = 32;
+                int accuracy = 2;
+                if (v.isMember("accuracy"))
+                    accuracy = v["accuracy"].asInt();
+                // update decimal
+                buildfield.asDecimal().update(InnerDecimal(length, accuracy));
+            }
+            else {
+                if (length)
+                    buildfield.SetLength(length);
+            }
+
+
+            //
+            if (v.isMember("FK") && v.isMember("REFERENCES")) {
+                buildfield.SetForeignKey();
+                if (v["REFERENCES"].isMember("table") == false || v["REFERENCES"].isMember("field") == false)
+                {
+                    buildsql->set_last_error(std::make_pair<int, std::string>(-1, "There is no table or field in REFERENCES object."));
+                    return ret;
+                }
+                    
+                buildfield.SetForeigns(v["REFERENCES"]);
+            }
+
+            //other fields
+            Json::Value::Members members = v.getMemberNames();
+            for (auto it = members.cbegin(); it != members.cend(); it++)
+            {
+                if ((*it).compare("field") == 0  || (*it).compare("type")       == 0 ||
+                    (*it).compare("length") == 0 || (*it).compare("accuracy")   == 0 ||
+                    (*it).compare("FK")    == 0  || (*it).compare("REFERENCES") == 0  )   continue;
+                else if ((*it).compare("PK") == 0)
+                {
+                    buildfield.SetPrimaryKey();
+                }
+                else if ((*it).compare("index") == 0)
+                {
+                    buildfield.SetIndex();
+                }
+                else if ((*it).compare("NN") == 0)
+                {
+                    buildfield.SetNotNull();
+                }
+                else if ((*it).compare("UQ") == 0)
+                {
+                    buildfield.SetUnique();
+                }
+                else if ((*it).compare("default") == 0)
+                {
+                    buildfield.SetDefault();
+                    if (v["default"].isString())
+                        buildfield.SetFieldValue(v["default"].asString());
+                    else if (v["default"].isNumeric())
+                        buildfield.SetFieldValue(v["default"].asInt());
+                }
+                else
+                {
+                    buildsql->set_last_error(std::make_pair<int, std::string>(-1, (boost::format("key word : %s is not support") % *it).str()));
+                    return ret;
+                }
+            }
 
 			buildsql->AddField(buildfield);
 		}
