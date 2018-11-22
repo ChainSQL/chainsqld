@@ -388,7 +388,6 @@ extern SF_U32 const sfCancelAfter;
 extern SF_U32 const sfFinishAfter;
 extern SF_U32 const sfSignerListID;
 extern SF_U32 const sfSettleDelay;
-extern SF_U32 const sfNonce;
 extern SF_U32 const sfGas;
 
 // 64-bit integers

@@ -49,7 +49,6 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfMemos,               SOE_OPTIONAL) 
             << SOElement (sfTickSize,            SOE_OPTIONAL)
 			<< SOElement (sfStorageOverlay,		 SOE_OPTIONAL) 
-			<< SOElement (sfNonce,				 SOE_OPTIONAL)
 			<< SOElement (sfContractCode,		 SOE_OPTIONAL)
             ;
 
