@@ -163,6 +163,13 @@ void GasMeter::countCopy(llvm::Value* _copyWords)
 	count(m_builder.CreateNUWMul(_copyWords, m_builder.getInt64(JITSchedule::copyGas::value)));
 }
 
+void GasMeter::countSqlData(llvm::Value* _sqlLength)
+{
+    assert(m_checkCall);
+    assert(m_blockCost > 0);    
+    count(m_builder.CreateNUWMul(_sqlLength, Constant::get(JITSchedule::sqlDataGas::value)));
+}
+
 int64_t GasMeter::getStepCost(Instruction inst) const
 {
 	switch (inst)
@@ -281,6 +288,25 @@ int64_t GasMeter::getStepCost(Instruction inst) const
 
 	case Instruction::SUICIDE:
 		return m_rev >= EVMC_TANGERINE_WHISTLE ? 5000 : JITSchedule::stepGas0::value;
+
+    case Instruction::CREATETABLE:        
+    case Instruction::EXDROPTABLE:
+    case Instruction::EXRENAMETABLE:
+    case Instruction::EXINSERTSQL:
+    case Instruction::EXDELETESQL:
+    case Instruction::EXUPDATESQL:
+    case Instruction::EXSELECTSQL:
+    case Instruction::EXGRANTSQL:
+    case Instruction::EXTRANSBEGIN:
+    case Instruction::EXTRANSCOMMIT:
+    case Instruction::EXGETROWSIZE:
+    case Instruction::EXGETCOLSIZE:
+    case Instruction::EXGETVALUEBYKEY:
+    case Instruction::EXGETVALUEBYINDEX:
+    case Instruction::EXEXITFUNC:
+    case Instruction::EXGETLENBYKEY:
+    case Instruction::EXGETLENBYINDEX:
+        return JITSchedule::sqlGas::value;
 
 	default:
 		// For invalid instruction just return 0.

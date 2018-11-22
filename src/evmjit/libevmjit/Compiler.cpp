@@ -1039,6 +1039,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(nameIdx, nameBytes);
             _memory.require(rawIdx, rawBytes);
 
+            _gasMeter.countSqlData(rawBytes);
+
             auto r = _ext.table_create(address, nameIdx, nameBytes, rawIdx, rawBytes);
             stack.push(r);
             break;
@@ -1066,6 +1068,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(nameIdx, nameBytes);
             _memory.require(rawIdx, rawBytes);
 
+            _gasMeter.countSqlData(rawBytes);
+
             auto r = _ext.table_rename(address, nameIdx, nameBytes, rawIdx, rawBytes);
             stack.push(r);
             break;
@@ -1081,6 +1085,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(nameIdx, nameBytes);
             _memory.require(rawIdx, rawBytes);
 
+            _gasMeter.countSqlData(rawBytes);
+
             auto r = _ext.table_insert(address, nameIdx, nameBytes, rawIdx, rawBytes);
             stack.push(r);
             break;
@@ -1095,6 +1101,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             _memory.require(nameIdx, nameBytes);
             _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
 
             auto r = _ext.table_delete(address, nameIdx, nameBytes, rawIdx, rawBytes);
             stack.push(r);
@@ -1114,6 +1122,10 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(rawIdx1, rawBytes1);
             _memory.require(rawIdx2, rawBytes2);
 
+            _gasMeter.countSqlData(rawBytes1);
+            _gasMeter.countSqlData(rawBytes2);
+            
+
             auto r = _ext.table_update(address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
             stack.push(r);
             break;
@@ -1128,6 +1140,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             _memory.require(nameIdx, nameBytes);
             _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
 
             auto r = _ext.table_get_handle(address, nameIdx, nameBytes, rawIdx, rawBytes);
             stack.push(r);
@@ -1144,6 +1158,8 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             _memory.require(nameIdx, nameBytes);
             _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
 
             auto r = _ext.table_grant(addOwner, addDest, 
                     nameIdx, nameBytes, rawIdx, rawBytes);

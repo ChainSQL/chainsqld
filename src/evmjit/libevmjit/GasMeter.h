@@ -48,6 +48,9 @@ public:
 	/// Count addional gas cost for memory copy
 	void countCopy(llvm::Value* _copyWords);
 
+    /// Count gas cost of sql data
+    void countSqlData(llvm::Value* _sqlLength);
+
 private:
 	int64_t getStepCost(Instruction inst) const;
 
