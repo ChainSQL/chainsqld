@@ -20,6 +20,8 @@ class SleOps
 {
 public:
     SleOps(ApplyContext& ctx);
+	// Release resources in destructor
+	~SleOps();
 
 	ApplyContext& ctx() { return ctx_; }
 
@@ -104,10 +106,10 @@ public:
     void kill(AccountID sender);
 private:
     ApplyContext &ctx_;
-    TaggedCache <AccountID, Blob>             contractCacheCode_;
 	bool									  bTransaction_;
+	std::map <AccountID, Blob>				  contractCacheCode_;
 	std::vector<STTx>						  sqlTxsStatements_;
-	std::vector<uint256>					  handleList;
+	std::vector<uint256>					  handleList_;
 	std::map<std::string, uint160>			  sqlTxsNameInDB_;
 };
 

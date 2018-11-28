@@ -31,7 +31,6 @@ private:
 	TaggedCache<uint256, std::vector<STTx>>	mTxCache;
 	TaggedCache<uint256, Json::Value>		mRecordCache;
 	Application&							app_;
-	std::set<uint256>			            mHandleFlag;
 };
 
 }

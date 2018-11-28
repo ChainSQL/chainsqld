@@ -20,9 +20,13 @@ namespace ripple {
     SleOps::SleOps(ApplyContext& ctx)
         :ctx_(ctx),
 		bTransaction_(false)
-        , contractCacheCode_("contractCode", 100, 300, stopwatch(), ctx.app.journal("TaggedCache"))
     {
     }
+
+	SleOps::~SleOps()
+	{
+		releaseResource();
+	}
 
     SLE::pointer SleOps::getSle(AccountID const & addr) const
     {        
@@ -70,20 +74,16 @@ namespace ripple {
 
 	bytes const& SleOps::code(AccountID const& addr) 	
     {
-        Blob *pBlobCode = contractCacheCode_.fetch(addr).get();
-        if (nullptr == pBlobCode)
-        {         
-            SLE::pointer pSle = getSle(addr);
-			Blob blobCode;
-			if (pSle)
-				blobCode = pSle->getFieldVL(sfContractCode);
-	
-            auto p = std::make_shared<ripple::Blob>(blobCode);
-            contractCacheCode_.canonicalize(addr, p);
-
-            pBlobCode = p.get();
-        }        
-        return *pBlobCode;
+		if (contractCacheCode_.find(addr) == contractCacheCode_.end())
+		{
+			SLE::pointer pSle = getSle(addr);
+			if (!pSle)
+			{
+				return Blob();
+			}
+			contractCacheCode_.emplace(addr, pSle->getFieldVL(sfContractCode));
+		}
+		return contractCacheCode_[addr];
 	}
 
 	uint256 SleOps::codeHash(AccountID const& addr)
@@ -496,7 +496,7 @@ namespace ripple {
 		//
 		uint256 handle = ctx_.app.getContractHelper().genRandomUniqueHandle();
 		ctx_.app.getContractHelper().addRecord(handle, jvResult);
-		handleList.push_back(handle);
+		handleList_.push_back(handle);
 		//
 		return handle;
 	}
@@ -562,7 +562,7 @@ namespace ripple {
 	void	SleOps::releaseResource()
 	{
 		resetTransactionCache();
-		for(auto handle : handleList)
+		for(auto handle : handleList_)
 			ctx_.app.getContractHelper().releaseHandle(handle);
 	}
 

@@ -238,6 +238,12 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 	if (m_s.addressHasCode(_p.codeAddress))
 	{
 		bytes const& c = m_s.code(_p.codeAddress);
+		if (c.size() == 0)
+		{
+			m_excepted = tefCONTRACT_NOT_EXIST;
+			return true;
+		}
+			
 		uint256 codeHash = m_s.codeHash(_p.codeAddress);
 		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
 			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
