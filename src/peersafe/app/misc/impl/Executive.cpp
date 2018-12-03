@@ -340,7 +340,9 @@ bool Executive::go()
 				m_s.setCode(m_ext->contractAddress(), out.toVector());
 			}
 			else
+			{
 				m_output = vmc->exec(m_gas, *m_ext);
+			}
 		}
 		catch (RevertInstruction& _e)
 		{
