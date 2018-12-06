@@ -90,7 +90,8 @@ namespace ripple {
 		if (!e.execute())
 		{
 			e.go();
-			setExtraMsg(e.takeOutput().toString());
+			if(e.getException() != tesSUCCESS)
+				setExtraMsg(e.takeOutput().toString());
 			return e.finalize();
 		}			
 		else
