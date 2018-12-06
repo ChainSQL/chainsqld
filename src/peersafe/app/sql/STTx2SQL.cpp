@@ -2546,7 +2546,7 @@ namespace helper {
     
     void modifyLimitCount(std::string& sSql)
     {   
-        std::string sLimit = "limit 200";
+        std::string sLimit = "limit " + to_string(SELECT_ITEM_LIMIT);
 
         int iPosLimitLower = sSql.find("limit");
         int iPosLimitUpper = sSql.find("LIMIT");
@@ -2565,7 +2565,7 @@ namespace helper {
                 }
             }
             std::string sLimitNew = "";
-            std::string sCount = "200";
+            std::string sCount = to_string(SELECT_ITEM_LIMIT);
             int iPosComma = sLimit.find(",");
             if (iPosComma >= 0)
             {
