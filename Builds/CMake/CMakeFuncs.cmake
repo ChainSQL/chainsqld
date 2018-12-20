@@ -169,7 +169,7 @@ macro(setup_build_cache)
     instrumentation")
   set_property(CACHE san PROPERTY STRINGS ";address;thread")
   set(assert false CACHE BOOL "Enables asserts, even in release builds")
-  if(WIN32)
+  if(WIN32 OR APPLE)
     set(use_static false)
   else()
     set(use_static true)
@@ -429,7 +429,7 @@ macro(use_mysql)
   if (APPLE)
     find_program(HOMEBREW brew)
     if (NOT HOMEBREW STREQUAL "HOMEBREW-NOTFOUND")
-      execute_process(COMMAND brew --prefix mysql
+      execute_process(COMMAND brew --prefix mysql-client
         OUTPUT_VARIABLE MYSQL_ROOT
         OUTPUT_STRIP_TRAILING_WHITESPACE)
 
