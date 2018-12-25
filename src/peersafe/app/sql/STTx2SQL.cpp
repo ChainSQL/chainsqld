@@ -42,6 +42,7 @@
 #include <ripple/net/RPCErr.h>
 
 #define TABLE_PREFIX    "t_"
+#define SELECT_ITEM_LIMIT   200
 
 namespace ripple {
 
@@ -2393,6 +2394,7 @@ namespace helper {
 
 			Json::UInt size = obj_raw.size();
 			Json::Value conditions;
+            
 			for (Json::UInt idx = 0; idx < size; idx++) {
 				const Json::Value& v = obj_raw[idx];
 				if (idx == 0) {
@@ -2541,11 +2543,79 @@ namespace helper {
 		}
 		return obj;
 	}
+    
+    void modifyLimitCount(std::string& sSql)
+    {   
+        std::string sLimit = "limit " + to_string(SELECT_ITEM_LIMIT);
 
+        int iPosLimitLower = sSql.find("limit");
+        int iPosLimitUpper = sSql.find("LIMIT");
+        if (iPosLimitLower >= 0 || iPosLimitUpper >= 0)
+        {
+            if (iPosLimitLower)   sLimit = sSql.substr(iPosLimitLower);
+            else                  sLimit = sSql.substr(iPosLimitUpper);
+
+            const char * chLimit = sLimit.c_str();
+            for (int i = 5; i<sLimit.length(); i++)
+            {
+                if (chLimit[i] > 'a' && chLimit[i] < 'z' || chLimit[i] > 'A' && chLimit[i] < 'Z' || chLimit[i] == ';')
+                {
+                    sLimit = sLimit.substr(0, i);
+                    break;
+                }
+            }
+            std::string sLimitNew = "";
+            std::string sCount = to_string(SELECT_ITEM_LIMIT);
+            int iPosComma = sLimit.find(",");
+            if (iPosComma >= 0)
+            {
+                sCount = sLimit.substr(iPosComma + 1);
+                boost::algorithm::trim(sCount);
+                int iCount = std::stoi(sCount.c_str());
+                if (iCount > SELECT_ITEM_LIMIT)
+                {
+                    iCount = SELECT_ITEM_LIMIT;
+                    sCount = to_string(iCount);
+                    sLimitNew = sLimit.substr(0, iPosComma + 1);
+                    sLimitNew += sCount;
+                }                
+            }
+            else
+            {
+                sCount = sLimit.substr(5);
+                boost::algorithm::trim(sCount);
+                int iCount = std::stoi(sCount.c_str());
+                if (iCount > SELECT_ITEM_LIMIT)
+                {
+                    iCount = SELECT_ITEM_LIMIT;
+                    sCount = to_string(iCount);
+                    sLimitNew = "limit " + sCount;
+                }
+            }
+
+            if (!sLimitNew.empty())
+            {
+                StringReplace(sSql, sLimit, sLimitNew);
+            }
+        }
+        else
+        {
+            int iPosSemicolon = sSql.find(';');
+            if (iPosSemicolon >= 0)
+            {
+                sSql = sSql.substr(0, iPosSemicolon);
+                sSql += " " + sLimit + ";";
+            }
+            else
+            {
+                sSql += " " + sLimit;
+            }
+        }
+    }
     Json::Value query_directly(DatabaseCon* conn, std::string sql) {
         Json::Value obj;
+        modifyLimitCount(sql);
         try {
-
             LockedSociSession query = conn->checkoutDb();
             soci::rowset<soci::row> records = ((*query).prepare << sql);
             obj = query_result(records);
@@ -2566,6 +2636,7 @@ namespace helper {
 
 		try {
 			std::string sql = buildsql->asString();
+            modifyLimitCount(sql);
 			auto last_error = buildsql->last_error();
 			if (last_error.first != 0) {
 				obj[jss::status] = "failure";

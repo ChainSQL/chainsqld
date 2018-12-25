@@ -5,6 +5,7 @@
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/basics/StringUtilities.h>
+#include <peersafe/protocol/ContractDefines.h>
 
 namespace ripple {
 

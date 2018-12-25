@@ -1,6 +1,10 @@
 #ifndef __H_CHAINSQL_VM_COMMON_H__
 #define __H_CHAINSQL_VM_COMMON_H__
 
+#ifdef MSIZE
+#undef MSIZE
+#endif
+
 #include <vector>
 #include "vector_ref.h"
 

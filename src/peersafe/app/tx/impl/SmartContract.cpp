@@ -26,6 +26,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/protocol/JsonFields.h>
 #include <peersafe/app/misc/Executive.h>
 #include <peersafe/core/Tuning.h>
+#include <peersafe/protocol/ContractDefines.h>
 
 namespace ripple {
 
@@ -48,6 +49,8 @@ namespace ripple {
 	{
 		auto& tx = ctx.tx;
 
+        if (!isContractTypeValid((ContractOpType)tx.getFieldU16(sfContractOpType)))
+            return temBAD_OPTYPE;
 		if (tx.getFieldVL(sfContractData).size() == 0)
 		{
 			//empty contract_data not valid if deploy or pay to contract 0

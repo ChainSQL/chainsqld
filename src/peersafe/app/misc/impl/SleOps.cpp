@@ -78,8 +78,9 @@ namespace ripple {
 		{
 			SLE::pointer pSle = getSle(addr);
 			if (!pSle)
-			{
-				return Blob();
+			{				
+                static Blob staticBlob;
+                return staticBlob;
 			}
 			contractCacheCode_.emplace(addr, pSle->getFieldVL(sfContractCode));
 		}
