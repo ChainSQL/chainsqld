@@ -32,8 +32,8 @@ public:
 
     
 private:
+	int64_t                   iBlockNum_;
     int64_t                   iGasLimit_;
-    int64_t                   iBlockNum_;
 };
 
 struct CallParametersR
