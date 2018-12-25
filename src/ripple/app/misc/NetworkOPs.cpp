@@ -439,7 +439,7 @@ public:
 		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes,bool bVaidated) override;
 	//publish results for chain-sql txs
 	void pubTxResult(const STTx& stTxn,
-		const std::pair<std::string, std::string>& disposRes,bool validated);
+		const std::pair<std::string, std::string>& disposRes,bool validated,bool bForTableTx);
 	void pubChainSqlTableTxs(const AccountID& ownerId, const std::string& sTableName, 
 		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes);
 
@@ -2761,29 +2761,30 @@ void NetworkOPsImp::PubValidatedTxForTable(const STTx& tx)
 		}
 		if (listPair.size() > 0)
 		{
-			pubTxResult(tx, res, true);
+			pubTxResult(tx, res, true,true);
+		}
+	}
+	else if(vecTxs.size() == 1)
+	{
+		auto txFinal = vecTxs[0];
+		if (txFinal.isFieldPresent(sfTables))
+		{
+			auto const & sTxTables = txFinal.getFieldArray(sfTables);
+			auto sTableName = strCopy(sTxTables[0].getFieldVL(sfTableName));
+
+			AccountID owner = beast::zero;
+			if (txFinal.isFieldPresent(sfOwner))
+				owner = txFinal.getAccountID(sfOwner);
+			else if (txFinal.isFieldPresent(sfAccount))
+				owner = txFinal.getAccountID(sfAccount);
+
+			pubTableTxs(owner, sTableName, tx, res, true);
 		}
 	}
 	else
 	{
-		if (tx.isFieldPresent(sfTables))
-		{
-			auto const & sTxTables = tx.getFieldArray(sfTables);
-			auto sTableName = strCopy(sTxTables[0].getFieldVL(sfTableName));
-
-			AccountID owner = beast::zero;
-			if (tx.isFieldPresent(sfOwner))
-				owner = tx.getAccountID(sfOwner);
-			else if (tx.isFieldPresent(sfAccount))
-				owner = tx.getAccountID(sfAccount);
-
-			pubTableTxs(owner, sTableName, tx, res, true);
-		}
-		else
-		{
-			//ripple original tx
-			pubTxResult(tx, res, true);
-		}
+		//ripple original tx
+		pubTxResult(tx, res, true, false);
 	}
 }
 
@@ -2917,16 +2918,16 @@ void NetworkOPsImp::pubTableTxs(const AccountID& owner, const std::string& sTabl
 	if (!bValidated && mSubTx.find(stTxn.getTransactionID()) != mSubTx.end())
 	{
 		auto result = std::make_pair("validate_success", "");
-		pubTxResult(stTxn, result, true);
+		pubTxResult(stTxn, result, true,true);
 	}
 
-	pubTxResult(stTxn, res, bValidated);
+	pubTxResult(stTxn, res, bValidated,true);
 	pubChainSqlTableTxs(owner, sTableName, stTxn, res);
 }
 
 //publish results for chain-sql txs
 void NetworkOPsImp::pubTxResult(const STTx& stTxn,
-	const std::pair<std::string, std::string>& disposRes,bool bValidated)
+	const std::pair<std::string, std::string>& disposRes,bool bValidated, bool bForTableTx)
 {
 	ScopedLockType sl(mSubLock);
 	auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
@@ -2947,7 +2948,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 
 				p->send(jvObj, true);
 				//for chainsql type,subscribe db event
-				if (stTxn.isChainSqlBaseType() && bValidated)
+				if (bForTableTx && bValidated)
 				{
 					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
 				}
