@@ -520,6 +520,11 @@ JSS ( warning );                    // rpc:
 JSS ( write_load );                 // out: GetCounts
 JSS (memos);                        // out: memos
 JSS ( lastLedgerSequence );			//
+JSS ( metaChain );			        // out: table tx chain and contract
+JSS ( TableChain );                  // out: 
+JSS ( ContractChain );               // out: 
+JSS ( PreviousHash );               // out: 
+JSS ( NextHash );                   // out: 
 #undef JSS
 
 } // jss

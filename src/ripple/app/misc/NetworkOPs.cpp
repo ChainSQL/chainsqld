@@ -1063,7 +1063,7 @@ void NetworkOPsImp::doTransactionSync (std::shared_ptr<Transaction> transaction,
         bool bUnlimited, FailHard failType)
 {
     auto stTx = *transaction->getSTransaction();
-    if (stTx.isChainSqlBaseType())
+    if (stTx.isChainSqlTableType())
     {
         bool ret = app_.getTableAssistant().Put(stTx);
         if (!ret)
@@ -2947,7 +2947,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 
 				p->send(jvObj, true);
 				//for chainsql type,subscribe db event
-				if (stTxn.isChainSqlBaseType() && bValidated)
+				if (stTxn.isChainSqlTableType() && bValidated)
 				{
 					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
 				}
