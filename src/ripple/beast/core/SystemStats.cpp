@@ -50,7 +50,7 @@ getStackBacktrace()
 {
     std::vector <std::string> result;
 
-#if BEAST_ANDROID || BEAST_MINGW || BEAST_BSD
+#if BEAST_ANDROID || BEAST_MINGW || BEAST_BSD || BEAST_LINUX || BEAST_MAC
     assert(false); // sorry, not implemented yet!
 
 #elif BEAST_WINDOWS

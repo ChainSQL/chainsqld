@@ -284,7 +284,10 @@ void TxMeta::setContractTxFieldData(std::vector<STTx> const& vecTxs)
 	for (auto tx : vecTxs) {
 		vec.append(tx.getJson(0));
 	}
-	contractTxsData = ripple::strCopy(vec.toStyledString());
+	if (vec.size() > 0)
+	{
+		contractTxsData = ripple::strCopy(vec.toStyledString());
+	}		
 }
 
 } // ripple
