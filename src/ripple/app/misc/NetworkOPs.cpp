@@ -1063,7 +1063,7 @@ void NetworkOPsImp::doTransactionSync (std::shared_ptr<Transaction> transaction,
         bool bUnlimited, FailHard failType)
 {
     auto stTx = *transaction->getSTransaction();
-    if (stTx.isChainSqlBaseType())
+    if (stTx.isChainSqlTableType())
     {
         bool ret = app_.getTableAssistant().Put(stTx);
         if (!ret)

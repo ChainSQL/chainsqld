@@ -40,6 +40,7 @@
 #include <utility>
 #include <ripple/json/json_reader.h>
 #include <peersafe/protocol/TableDefines.h>
+#include <ripple/core/SociDB.h>
 
 namespace ripple {
 
@@ -535,13 +536,95 @@ Json::Value STTx::getJson (int options, bool binary) const
     return getJson(options);
 }
 
+bool STTx::storePeersafeSql(LockedSociSession &db, std::uint64_t SeqInLedger, std::uint32_t inLedger, std::shared_ptr<STObject const> contractRawMetadata) const
+{
+    std::string retSql = "";
+
+    if (!isChainSqlTableType() && tx_type_ != ttCONTRACT)    return false;
+
+    static std::string const sqlHeader = "INSERT OR REPLACE INTO TraceTransactions "
+        "(TransID, TransType, TxSeq, LedgerSeq, Owner, Name)"
+        " VALUES ";
+    
+    static boost::format bfTrans("('%s', '%s', '%lld', '%d', '%s', '%s')");    
+
+    auto format = TxFormats::getInstance().findByType(tx_type_);
+    assert(format != nullptr);
+
+    auto txsAll = getTxs(*this, "", contractRawMetadata);    
+    std::vector<ripple::STTx> txsNoRepeat;
+    
+    ripple::uint160 uDBNameN, uDBNameA;    
+    for (auto itA = txsAll.begin(); itA != txsAll.end(); itA++)
+    {
+        auto itN = txsNoRepeat.begin();
+        while (itN != txsNoRepeat.end())
+        {
+            auto& tablesN = (*itN).getFieldArray(sfTables);
+            if (tablesN.size() <= 0)  break;
+            auto uDBNameN = tablesN[0].getFieldH160(sfNameInDB);
+
+            auto& tablesA = (*itA).getFieldArray(sfTables);
+            if (tablesA.size() <= 0)  break;
+            auto uDBNameA = tablesA[0].getFieldH160(sfNameInDB);
+                        
+            if (uDBNameA == uDBNameN)  break;
+            itN++;
+        }
+        if(itN == txsNoRepeat.end())  txsNoRepeat.push_back(std::move(*itA));
+    } 
+    
+
+    AccountID ownerID;
+    ripple::uint160 uDBName;
+    std::string sqlBody = "", sqlExe = "";
+    for (auto tx : txsNoRepeat)
+    {        
+        if (this->isFieldPresent(sfOwner))
+        {
+            ownerID = tx.getAccountID(sfOwner);
+        }
+        else
+        {
+            ownerID = tx.getAccountID(sfAccount);
+        }
+        auto& tables = tx.getFieldArray(sfTables);
+        if (tables.size() <= 0)  continue;
+        uDBName = tables[0].getFieldH160(sfNameInDB);        
+
+        sqlBody =  boost::str(boost::format(bfTrans)
+            % to_string(getTransactionID()) % format->getName()   
+            % SeqInLedger % inLedger
+            % toBase58(ownerID)
+            % to_string(uDBName));
+
+        sqlExe = sqlHeader + sqlBody;
+
+        *db << sqlExe;
+    }
+    if (tx_type_ == ttCONTRACT)
+    {
+        sqlBody = boost::str(boost::format(bfTrans)
+            % to_string(getTransactionID()) % format->getName()
+            % SeqInLedger % inLedger
+            % toBase58(getAccountID(sfContractAddress))
+            % "");
+
+        sqlExe = sqlHeader + sqlBody;
+
+        *db << sqlExe;
+    }
+
+    return true;
+}
+
 std::string const&
 STTx::getMetaSQLInsertReplaceHeader ()
 {
     static std::string const sql = "INSERT OR REPLACE INTO Transactions "
         "(TransID, TransType, FromAcct, FromSeq, LedgerSeq, Status, RawTxn, TxnMeta)"
         " VALUES ";
-
+    
     return sql;
 }
 

@@ -115,11 +115,16 @@ namespace ripple {
 		return getTableEntry(aTableEntries, vTxTableName);
 	}
 
-	bool isChainSqlBaseType(const std::string& transactionType) {
+	bool isChainSqlTableType(const std::string& transactionType) {
 		return transactionType == "TableListSet" ||
 			transactionType == "SQLStatement" ||
 			transactionType == "SQLTransaction";
 	}
+
+    bool isChainsqlContractType(const std::string& transactionType)
+    {
+        return transactionType == "Contract";
+    }
 
 	uint160 generateNameInDB(uint32 ledgerSeq, AccountID account, std::string sTableName)
 	{

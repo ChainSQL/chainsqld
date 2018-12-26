@@ -704,7 +704,7 @@ ServerHandlerImp::processRequest (Port const& port,
 		&& !result[jss::tx_json].isMember("Signers"))
 	{
 		std::string txType = result[jss::tx_json][jss::TransactionType].asString();
-		if (isChainSqlBaseType(txType))
+		if (isChainSqlTableType(txType))
 		{
 			tx_id = std::move(result[jss::tx_json][jss::hash]);
 

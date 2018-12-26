@@ -837,6 +837,8 @@ static bool saveValidatedLedger (
         "DELETE FROM AccountTransactions WHERE LedgerSeq = %u;");
     static boost::format deleteAcctTrans (
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
+    static boost::format deleteTrans3(
+        "DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
 
     auto seq = ledger->info().seq;
 
@@ -900,9 +902,11 @@ static bool saveValidatedLedger (
 
         *db << boost::str (deleteTrans1 % seq);
         *db << boost::str (deleteTrans2 % seq);
+        *db << boost::str (deleteTrans3 % seq);
 
         std::string const ledgerSeq (std::to_string (seq));
 
+        std::uint64_t iTxSeq = uint64_t(seq) * 100000;
         for (auto const& vt : aLedger->getMap ())
         {
             uint256 transactionID = vt.second->getTransactionID ();
@@ -965,6 +969,11 @@ static bool saveValidatedLedger (
                (STTx::getMetaSQLInsertReplaceHeader () +
                 vt.second->getTxn ()->getMetaSQL (
                     seq, vt.second->getEscMeta ()) + ";");
+                        
+            auto contractMeta = vt.second->getTxnType() == ttCONTRACT ? ledger->txRead(vt.second->getTxn()->getTransactionID()).second : NULL;
+            vt.second->getTxn()->storePeersafeSql(db, iTxSeq, seq, contractMeta);
+
+            iTxSeq++;
         }
 
         tr.commit ();

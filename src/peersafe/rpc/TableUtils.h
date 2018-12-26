@@ -30,7 +30,8 @@ namespace ripple {
 	STEntry * getTableEntry(const STArray & aTables, std::string sCheckName); 
 	STEntry *getTableEntry(ApplyView& view, const STTx& tx);
 	STEntry *getTableEntry(const STArray & aTables, Blob& vCheckName);
-	bool isChainSqlBaseType(const std::string& transactionType);
+	bool isChainSqlTableType(const std::string& transactionType);
+    bool isChainsqlContractType(const std::string& transactionType);
 	std::string hash(std::string &pk);
 	uint160 generateNameInDB(uint32 ledgerSeq,AccountID account,std::string sTableName);
 }

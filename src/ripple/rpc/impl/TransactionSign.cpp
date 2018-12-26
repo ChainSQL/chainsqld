@@ -775,7 +775,7 @@ Json::Value checkFee (
     }
 
 	std::string txType = tx[jss::TransactionType].asString();
-	if (isChainSqlBaseType(txType))
+	if (isChainSqlTableType(txType))
 	{
 		int zxcDrops = 1000000;
 		double multiplier = 0.001;

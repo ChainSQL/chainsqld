@@ -158,7 +158,7 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
             //std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
 
             STTx stTx(SerialIter{ blob.data(), blob.size() });
-            if (!stTx.isChainSqlBaseType() && stTx.getTxnType() != ttCONTRACT)  continue;
+            if (!stTx.isChainSqlTableType() && stTx.getTxnType() != ttCONTRACT)  continue;
 
 			std::vector<STTx> vecTxs;
 			if (stTx.getTxnType() == ttCONTRACT)
