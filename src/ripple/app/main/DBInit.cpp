@@ -50,6 +50,15 @@ const char* TxnDBInit[] =
     "CREATE INDEX IF NOT EXISTS TxLgrIndex ON                 \
         Transactions(LedgerSeq);",
 
+    "CREATE TABLE IF NOT EXISTS TraceTransactions (         \
+        TransID     CHARACTER(64),              \
+        TransType   CHARACTER(24),              \
+        TxSeq       BIGINT UNSIGNED,            \
+        LedgerSeq   BIGINT UNSIGNED,            \
+        Owner       CHARACTER(64),              \
+        Name        CHARACTER(64)              \
+    );",
+
     "CREATE TABLE IF NOT EXISTS AccountTransactions (         \
         TransID     CHARACTER(64),              \
         Account     CHARACTER(64),              \

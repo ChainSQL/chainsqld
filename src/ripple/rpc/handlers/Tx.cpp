@@ -28,64 +28,140 @@
 #include <ripple/protocol/JsonFields.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/beast/core/LexicalCast.h>
+#include <boost/optional/optional_io.hpp>
+#include <peersafe/rpc/TableUtils.h>
 #include <chrono>
 
 namespace ripple {
 
-// {
-//   transaction: <hex>
-// }
-std::pair<std::vector<std::shared_ptr<STTx>>, std::string> getLedgerTxs(RPC::Context& context, int ledgerSeq, uint256 startHash = beast::zero, bool include = false);
-void appendTxJson(const std::vector<std::shared_ptr<STTx>>& vecTxs, Json::Value& jvTxns, int ledgerSeq, int limit);
+    // {
+    //   transaction: <hex>
+    // }
+    std::pair<std::vector<std::shared_ptr<STTx>>, std::string> getLedgerTxs(RPC::Context& context, int ledgerSeq, uint256 startHash = beast::zero, bool include = false);
+    void appendTxJson(const std::vector<std::shared_ptr<STTx>>& vecTxs, Json::Value& jvTxns, int ledgerSeq, int limit);
 
-static
-bool
-isHexTxID (std::string const& txid)
-{
-    if (txid.size () != 64)
-        return false;
+    static
+        bool
+        isHexTxID(std::string const& txid)
+    {
+        if (txid.size() != 64)
+            return false;
 
-    auto const ret = std::find_if (txid.begin (), txid.end (),
-        [](std::string::value_type c)
+        auto const ret = std::find_if(txid.begin(), txid.end(),
+            [](std::string::value_type c)
         {
-            return !std::isxdigit (c);
+            return !std::isxdigit(c);
         });
 
-    return (ret == txid.end ());
-}
+        return (ret == txid.end());
+    }
 
-static
-bool
-isValidated (RPC::Context& context, std::uint32_t seq, uint256 const& hash)
-{
-    if (!context.ledgerMaster.haveLedger (seq))
-        return false;
+    static
+        bool
+        isValidated(RPC::Context& context, std::uint32_t seq, uint256 const& hash)
+    {
+        if (!context.ledgerMaster.haveLedger(seq))
+            return false;
 
-    if (seq > context.ledgerMaster.getValidatedLedger ()->info().seq)
-        return false;
+        if (seq > context.ledgerMaster.getValidatedLedger()->info().seq)
+            return false;
 
-    return context.ledgerMaster.getHashBySeq (seq) == hash;
-}
+        return context.ledgerMaster.getHashBySeq(seq) == hash;
+    }
 
-bool
-getMetaHex (Ledger const& ledger,
-    uint256 const& transID, std::string& hex)
-{
-    SHAMapTreeNode::TNType type;
-    auto const item =
-        ledger.txMap().peekItem (transID, type);
+    bool
+        getMetaHex(Ledger const& ledger,
+            uint256 const& transID, std::string& hex)
+    {
+        SHAMapTreeNode::TNType type;
+        auto const item =
+            ledger.txMap().peekItem(transID, type);
 
-    if (!item)
-        return false;
+        if (!item)
+            return false;
 
-    if (type != SHAMapTreeNode::tnTRANSACTION_MD)
-        return false;
+        if (type != SHAMapTreeNode::tnTRANSACTION_MD)
+            return false;
 
-    SerialIter it (item->slice());
-    it.getVL (); // skip transaction
-    hex = strHex (makeSlice(it.getVL ()));
-    return true;
-}
+        SerialIter it(item->slice());
+        it.getVL(); // skip transaction
+        hex = strHex(makeSlice(it.getVL()));
+        return true;
+    }
+
+    bool doTxChain(TxType txType, const RPC::Context& context, Json::Value& retJson)
+    {
+        if (!STTx::checkChainsqlTableType(txType) && !STTx::checkChainsqlContractType(txType))  return false;
+
+        auto const txid = context.params[jss::transaction].asString();
+
+        Json::Value jsonMetaChain,jsonContractChain,jsonTableChain;
+
+
+        std::string sql = "SELECT TxSeq, TransType, Owner, Name FROM TraceTransactions WHERE TransID='";
+        sql.append(txid);    sql.append("';");
+
+        boost::optional<std::uint64_t> txSeq;
+        boost::optional<std::string> previousTxid, nextTxid, ownerRead, nameRead, typeRead;
+        {
+            auto db = context.app.getTxnDB().checkoutDb();
+
+            soci::statement st = (db->prepare << sql,
+                soci::into(txSeq),
+                soci::into(typeRead),
+                soci::into(ownerRead),
+                soci::into(nameRead));
+            st.execute();
+
+            std::string sSqlPrefix = "SELECT TransID FROM TraceTransactions WHERE TxSeq ";            
+
+            while (st.fetch())
+            {
+                std::string sSqlSufix = boost::str(boost::format("'%lld' AND Owner = '%s' AND Name = '%s' order by TxSeq desc limit 1; ")   \
+                    % beast::lexicalCastThrow <std::string>(*txSeq)   \
+                    % *ownerRead % *nameRead);
+                std::string sSqlPrevious = sSqlPrefix + "<" + sSqlSufix;
+                std::string sSqlNext = sSqlPrefix + ">" + sSqlSufix;
+
+                Json::Value jsonTableItem;
+
+                // get previous hash
+                *db << sSqlPrevious, soci::into(previousTxid);
+
+                if (isChainsqlContractType(*typeRead))
+                {
+                    jsonContractChain[jss::PreviousHash] = db->got_data() ? *previousTxid : "";
+                }
+                else
+                {
+                    jsonTableItem[jss::PreviousHash] = db->got_data() ? *previousTxid : "";
+                }
+
+                //get next hash
+                *db << sSqlNext, soci::into(nextTxid);
+                if (isChainsqlContractType(*typeRead))
+                {
+                    jsonContractChain[jss::NextHash] = db->got_data() ? *nextTxid : "";
+                }
+                else
+                {
+                    jsonTableItem[jss::NextHash] = db->got_data() ? *nextTxid : "";
+                }
+
+                if (!isChainsqlContractType(*typeRead))
+                {
+                    jsonTableItem[jss::NameInDB] = *nameRead;
+                    jsonTableChain.append(jsonTableItem);                    
+                }
+            }
+            if(jsonTableChain.size()>0)      jsonMetaChain[jss::TableChain]    = jsonTableChain;
+            if(!jsonContractChain.isNull())  jsonMetaChain[jss::ContractChain] = jsonContractChain;
+
+        }
+        retJson[jss::metaChain] = jsonMetaChain;
+        return true;
+    }
 
 Json::Value doTx (RPC::Context& context)
 {
@@ -142,7 +218,9 @@ Json::Value doTx (RPC::Context& context)
         if (okay)
             ret[jss::validated] = isValidated (
                 context, lgr->info().seq, lgr->info().hash);
-    }
+    }       
+    
+    doTxChain(txn->getSTransaction()->getTxnType(), context, ret);
 
     return ret;
 }
@@ -286,7 +364,7 @@ std::pair<std::vector<std::shared_ptr<STTx>>,std::string> getLedgerTxs(RPC::Cont
 		{
 			auto blob = SerialIter{ item.data(), item.size() }.getVL();
 			std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
-			if (pSTTX->isChainSqlBaseType())
+			if (pSTTX->isChainSqlTableType())
 			{
 				if (startHash != beast::zero && !bFound)
 				{

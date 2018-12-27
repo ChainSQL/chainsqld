@@ -55,6 +55,7 @@
 namespace ripple {
 
 create_genesis_t const create_genesis {};
+bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger, std::shared_ptr<STObject const> contractRawMetadata);
 
 static
 uint256
@@ -837,6 +838,8 @@ static bool saveValidatedLedger (
         "DELETE FROM AccountTransactions WHERE LedgerSeq = %u;");
     static boost::format deleteAcctTrans (
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
+    static boost::format deleteTrans3(
+        "DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
 
     auto seq = ledger->info().seq;
 
@@ -900,9 +903,11 @@ static bool saveValidatedLedger (
 
         *db << boost::str (deleteTrans1 % seq);
         *db << boost::str (deleteTrans2 % seq);
+        *db << boost::str (deleteTrans3 % seq);
 
         std::string const ledgerSeq (std::to_string (seq));
 
+        std::uint64_t iTxSeq = uint64_t(seq) * 100000;
         for (auto const& vt : aLedger->getMap ())
         {
             uint256 transactionID = vt.second->getTransactionID ();
@@ -965,6 +970,11 @@ static bool saveValidatedLedger (
                (STTx::getMetaSQLInsertReplaceHeader () +
                 vt.second->getTxn ()->getMetaSQL (
                     seq, vt.second->getEscMeta ()) + ";");
+                        
+            auto contractMeta = vt.second->getTxnType() == ttCONTRACT ? ledger->txRead(vt.second->getTxn()->getTransactionID()).second : NULL;
+            storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq, contractMeta);
+
+            iTxSeq++;
         }
 
         tr.commit ();
@@ -1369,6 +1379,89 @@ getHashesByIndex (std::uint32_t minSeq, std::uint32_t maxSeq,
     }
 
     return ret;
+}
+
+bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger, std::shared_ptr<STObject const> contractRawMetadata)
+{
+    std::string retSql = "";
+    if (pTx == nullptr)  return false;
+    TxType txType = pTx->getTxnType();
+    if (!pTx->isChainSqlTableType() && txType != ttCONTRACT)    return false;
+
+    static std::string const sqlHeader = "INSERT OR REPLACE INTO TraceTransactions "
+        "(TransID, TransType, TxSeq, LedgerSeq, Owner, Name)"
+        " VALUES ";
+
+    static boost::format bfTrans("('%s', '%s', '%lld', '%d', '%s', '%s')");
+
+    auto format = TxFormats::getInstance().findByType(txType);
+    assert(format != nullptr);
+
+    auto txsAll = STTx::getTxs(*pTx, "", contractRawMetadata);
+    std::vector<ripple::STTx> txsNoRepeat;
+
+    ripple::uint160 uDBNameN, uDBNameA;
+    for (auto itA = txsAll.begin(); itA != txsAll.end(); itA++)
+    {
+        auto itN = txsNoRepeat.begin();
+        while (itN != txsNoRepeat.end())
+        {
+            auto& tablesN = (*itN).getFieldArray(sfTables);
+            if (tablesN.size() <= 0)  break;
+            auto uDBNameN = tablesN[0].getFieldH160(sfNameInDB);
+
+            auto& tablesA = (*itA).getFieldArray(sfTables);
+            if (tablesA.size() <= 0)  break;
+            auto uDBNameA = tablesA[0].getFieldH160(sfNameInDB);
+
+            if (uDBNameA == uDBNameN)  break;
+            itN++;
+        }
+        if (itN == txsNoRepeat.end())  txsNoRepeat.push_back(std::move(*itA));
+    }
+
+
+    AccountID ownerID;
+    ripple::uint160 uDBName;
+    std::string sqlBody = "", sqlExe = "";
+    for (auto tx : txsNoRepeat)
+    {
+        if (tx.isFieldPresent(sfOwner))
+        {
+            ownerID = tx.getAccountID(sfOwner);
+        }
+        else
+        {
+            ownerID = tx.getAccountID(sfAccount);
+        }
+        auto& tables = tx.getFieldArray(sfTables);
+        if (tables.size() <= 0)  continue;
+        uDBName = tables[0].getFieldH160(sfNameInDB);
+
+        sqlBody = boost::str(boost::format(bfTrans)
+            % to_string(tx.getTransactionID()) % format->getName()
+            % SeqInLedger % inLedger
+            % toBase58(ownerID)
+            % to_string(uDBName));
+
+        sqlExe = sqlHeader + sqlBody;
+
+        *db << sqlExe;
+    }
+    if (txType == ttCONTRACT)
+    {
+        sqlBody = boost::str(boost::format(bfTrans)
+            % to_string(pTx->getTransactionID()) % format->getName()
+            % SeqInLedger % inLedger
+            % toBase58(pTx->getAccountID(sfContractAddress))
+            % "");
+
+        sqlExe = sqlHeader + sqlBody;
+
+        *db << sqlExe;
+    }
+
+    return true;
 }
 
 } // ripple

@@ -31,7 +31,6 @@
 #include <functional>
 
 namespace ripple {
-
 // VFALCO TODO replace these macros with language constants
 #define TXN_SQL_NEW         'N'
 #define TXN_SQL_CONFLICT    'C'
@@ -104,9 +103,9 @@ public:
         return tx_type_;
     }
 
-	bool isChainSqlBaseType() const
+	bool isChainSqlTableType() const
 	{
-		return tx_type_ == ttTABLELISTSET || tx_type_ == ttSQLSTATEMENT || tx_type_ == ttSQLTRANSACTION;
+        return checkChainsqlTableType(tx_type_);
 	}
 
 	void addSubTx(STTx const& tx) const
@@ -118,6 +117,16 @@ public:
 	{
 		return *pTxs_;
 	}
+
+    static bool checkChainsqlTableType(TxType txType)
+    {
+        return txType == ttTABLELISTSET || txType == ttSQLSTATEMENT || txType == ttSQLTRANSACTION;
+    }
+
+    static bool checkChainsqlContractType(TxType txType)
+    {
+        return txType == ttCONTRACT;
+    }
 
 	static std::pair<std::shared_ptr<STTx>, std::string> parseSTTx(Json::Value& obj, AccountID accountID);
 

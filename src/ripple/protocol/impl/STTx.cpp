@@ -541,7 +541,7 @@ STTx::getMetaSQLInsertReplaceHeader ()
     static std::string const sql = "INSERT OR REPLACE INTO Transactions "
         "(TransID, TransType, FromAcct, FromSeq, LedgerSeq, Status, RawTxn, TxnMeta)"
         " VALUES ";
-
+    
     return sql;
 }
 

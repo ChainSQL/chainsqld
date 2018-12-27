@@ -180,7 +180,7 @@ Transactor::checkFee (PreclaimContext const& ctx, std::uint64_t baseFee)
     auto feeDue = ripple::calculateFee(ctx.app,
         baseFee, ctx.view.fees(), ctx.flags);
 
-	if (ctx.tx.isChainSqlBaseType())
+	if (ctx.tx.isChainSqlTableType())
 	{
 		int zxcDrops = 1000000;
 		double multiplier = 0.001;
@@ -326,7 +326,7 @@ void Transactor::preCompute ()
 
 TER Transactor::preChainsql()
 {
-	if (ctx_.tx.isChainSqlBaseType())
+	if (ctx_.tx.isChainSqlTableType())
 	{
 		checkAddChainIDSle();
 		if ((ctx_.view().flags() & tapFromClient))
