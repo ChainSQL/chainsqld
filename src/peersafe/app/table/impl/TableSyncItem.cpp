@@ -931,8 +931,7 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
         else
         {
             JLOG(journal_.trace()) << "Dispose error";
-        }
-			
+        }			
 	}
     
 	if (ret.first)
@@ -950,6 +949,18 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 				auto newTableName = strCopy(tables[0].getFieldVL(sfTableNewName));
 				sTableName_ = newTableName;
 				getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
+			}
+		}
+	}
+	else
+	{
+		if ((TableOpType)op_type == T_CREATE)
+		{
+			auto tables = tx.getFieldArray(sfTables);
+			if (tables.size() > 0)
+			{
+				auto nameInDB = strCopy(tables[0].getFieldVL(sfNameInDB));
+				DeleteTable(nameInDB);
 			}
 		}
 	}
