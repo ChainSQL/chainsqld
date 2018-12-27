@@ -202,7 +202,10 @@ namespace ripple {
 	AccountID SleOps::calcNewAddress(AccountID sender, int nonce)
 	{
 		bytes data(sender.begin(), sender.end());
-		data.push_back(nonce);
+		data.push_back((byte)((nonce >> 24) & 0xff));
+		data.push_back((byte)((nonce >> 16) & 0xff));
+		data.push_back((byte)((nonce >> 8) & 0xff));
+		data.push_back((byte)(nonce & 0xff));
 
 		ripesha_hasher rsh;
 		rsh(data.data(), data.size());
