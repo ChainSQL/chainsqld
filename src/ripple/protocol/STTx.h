@@ -28,7 +28,6 @@
 #include <boost/container/flat_set.hpp>
 #include <boost/logic/tribool.hpp>
 #include <ripple/json/impl/json_assert.h>
-#include <ripple/core/DatabaseCon.h>
 #include <functional>
 
 namespace ripple {
@@ -185,9 +184,6 @@ public:
         std::uint32_t inLedger,
         char status,
         std::string const& escapedMetaData) const;
-
-    // Peersafe db 
-    bool storePeersafeSql(LockedSociSession &db, std::uint64_t SeqInLedger, std::uint32_t inLedger, std::shared_ptr<STObject const> contractRawMetadata) const;
 
 private:
     std::pair<bool, std::string> checkSingleSign () const;
