@@ -24,15 +24,11 @@ public:
 
     SLE::pointer getSle(AccountID const & addr) const;
 
-	/// Increament the account nonce.
-	void incNonce(AccountID const& addr);
-	/// Get the account nonce -- the number of transactions it has sent.
+	/// Increament the account sequence.
+	void incSequence(AccountID const& addr);
+	/// Get the account sequence -- the number of transactions it has sent.
 	/// @returns 0 if the address has never been used.
-	uint32 getNonce(AccountID const& addr);
-
-	uint32 requireAccountStartNonce() { return 1; }
-	/// Set the account nonce.
-	void setNonce(AccountID const& _addr, uint32 const& _newNonce);
+	uint32 getSequence(AccountID const& addr);
 
 	bool addressHasCode(AccountID const& addr);
 	/// Sets the code of the account. Must only be called during / after contract creation.
