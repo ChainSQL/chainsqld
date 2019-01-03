@@ -17,22 +17,20 @@
  */
 //==============================================================================
 
-#ifndef RIPPLE_PROTOCOL_CONTRACTDEFINES_H_INCLUDED
-#define RIPPLE_PROTOCOL_CONTRACTDEFINES_H_INCLUDED
+#ifndef RIPPLE_PROTOCOL_CONTRACT_H_INCLUDED
+#define RIPPLE_PROTOCOL_CONTRACT_H_INCLUDED
 
+#include <ripple/protocol/AccountID.h>
+namespace ripple {
 
-enum ContractOpType {
-    ContractCreation = 1,			///< Transaction to create contracts - receiveAddress() is ignored.
-    MessageCall = 2,			///< Transaction to invoke a message call - receiveAddress() is used.
-    ContractDeletion = 3,				///
-    LocalMessageCall = 4
-};
+    class Contract
+    {
+    public:
+        static AccountID calcNewAddress(AccountID sender, int nonce);
+    private:
+        Contract();
+    };
 
-inline bool isContractTypeValid(ContractOpType eType)
-{
-    if (eType >= ContractCreation && eType <= LocalMessageCall)  return true;
-    
-	return false;
 }
 
 #endif

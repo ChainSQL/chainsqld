@@ -297,7 +297,17 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                 blob.assign(str.begin(), str.end());
                 STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
 
-				auto vecTxs = STTx::getTxs(tx, sTableNameInDB_);
+                std::vector<STTx> vecTxs;
+                if (tx.getTxnType() == ttCONTRACT)
+                {
+                    auto ledger = app_.getLedgerMaster().getLedgerBySeq(iter->ledgerseq());
+                    auto rawMeta = ledger->txRead(tx.getTransactionID()).second;
+                    vecTxs = STTx::getTxs(tx, sTableNameInDB_, rawMeta);
+                }
+                else
+                {
+                    vecTxs = STTx::getTxs(tx, sTableNameInDB_);
+                }
                 TryDecryptRaw(vecTxs);
                 bool bOutPut = isTxNeededOutput(tx, vecTxs);
 

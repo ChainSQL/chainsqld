@@ -23,6 +23,8 @@
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/app/ledger/TransactionMaster.h>
+#include <ripple/app/misc/Transaction.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 
 namespace ripple {
@@ -45,6 +47,12 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 		ret[jss::error_message] = "account parse failed";
 		return ret;
 	}
+
+    bool bGetDetailInfo = false;
+    if (context.params.isMember("detail") && context.params["detail"].asBool())
+    {
+        bGetDetailInfo = true;
+    }
     AccountID ownerID(*pOwnerId);
     auto key = keylet::table(ownerID);
 
@@ -63,6 +71,20 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 				auto blob = table.getFieldVL(sfTableName);
 				std::string str(blob.begin(), blob.end());
 				tmp[jss::TableName] = str;
+                LedgerIndex iInLedger = table.getFieldU32(sfCreateLgrSeq) + 1;
+                tmp[jss::ledger_index] = iInLedger;
+                uint256 txHash = table.getFieldH256(sfCreatedTxnHash);
+                tmp[jss::tx_hash] = to_string(txHash);
+                if (bGetDetailInfo)
+                {
+                    auto tx = context.app.getMasterTransaction().fetch(txHash, true);
+                    auto stTx = tx->getSTransaction();
+                    auto blob = stTx->getFieldVL(sfRaw);
+                    std::string strRaw(blob.begin(), blob.end());
+                    tmp[jss::Raw] = strHex(strRaw);
+                    uint256 ledgerHash = context.app.getLedgerMaster().getHashBySeq(iInLedger);
+                    tmp[jss::ledger_hash] = to_string(ledgerHash);
+                }
 				ret["tables"].append(tmp);
             }
         }
