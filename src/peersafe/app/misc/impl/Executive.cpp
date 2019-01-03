@@ -6,6 +6,7 @@
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/protocol/Contract.h>
 
 namespace ripple {
 
@@ -203,8 +204,8 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 {
 	bool accountAlreadyExist = false;
 	do {
-		uint32 sequence = m_s.getSequence(_sender);
-		m_newAddress = m_s.calcNewAddress(_sender, sequence);
+		uint32 sequence = m_s.getTx().getFieldU32(sfSequence);
+		m_newAddress = Contract::calcNewAddress(_sender, sequence);
 		// add sequence for sender
 		m_s.incSequence(_sender);
 

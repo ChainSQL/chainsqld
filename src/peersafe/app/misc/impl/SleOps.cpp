@@ -57,6 +57,11 @@ namespace ripple {
 			return 0;
 	}
 
+	STTx& SleOps::getTx()
+	{
+		return ctx_.tx;
+	}
+
 	bool SleOps::addressHasCode(AccountID const& addr)
 	{
 		SLE::pointer pSle = getSle(addr);
@@ -197,24 +202,6 @@ namespace ripple {
 			pSle->makeFieldAbsent(sfContractCode);
 			ctx_.view().update(pSle);
 		}			
-	}
-
-	AccountID SleOps::calcNewAddress(AccountID sender, int nonce)
-	{
-		bytes data(sender.begin(), sender.end());
-		data.push_back((byte)((nonce >> 24) & 0xff));
-		data.push_back((byte)((nonce >> 16) & 0xff));
-		data.push_back((byte)((nonce >> 8) & 0xff));
-		data.push_back((byte)(nonce & 0xff));
-
-		ripesha_hasher rsh;
-		rsh(data.data(), data.size());
-		auto const d = static_cast<
-			ripesha_hasher::result_type>(rsh);
-		AccountID id;
-		static_assert(sizeof(d) == id.size(), "");
-		std::memcpy(id.data(), d.data(), d.size());
-		return id;
 	}
 
     void SleOps::PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue)

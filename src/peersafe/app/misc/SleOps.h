@@ -28,6 +28,8 @@ public:
 	/// @returns 0 if the address has never been used.
 	uint32 getSequence(AccountID const& addr);
 
+	STTx& getTx();
+
 	bool addressHasCode(AccountID const& addr);
 	/// Sets the code of the account. Must only be called during / after contract creation.
 	void setCode(AccountID const& _address, bytes&& _code);
@@ -93,8 +95,6 @@ public:
 			genTableFields(const ApplyContext &_ctx, AccountID const& _account,std::string _sTablename,std::string _tableNewName,bool bNewNameInDB);
 
 	int64_t balance(AccountID const& address);
-
-	AccountID calcNewAddress(AccountID sender, int nonce);
 
     void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue);
 
