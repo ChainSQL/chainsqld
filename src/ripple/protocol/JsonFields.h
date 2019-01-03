@@ -525,6 +525,7 @@ JSS ( TableChain );                  // out:
 JSS ( ContractChain );               // out: 
 JSS ( PreviousHash );               // out: 
 JSS ( NextHash );                   // out: 
+JSS ( log );
 #undef JSS
 
 } // jss

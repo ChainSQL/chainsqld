@@ -45,6 +45,7 @@ enum LogSeverity
     lsFATAL     = 5     // A severe condition that indicates a server problem
 };
 
+class Application;
 /** Manages partitions for logging. */
 class Logs
 {
@@ -152,7 +153,7 @@ private:
     beast::severities::Severity thresh_;
     File file_;
     bool silent_ = false;
-
+	Application* app_;
 public:
     Logs(beast::severities::Severity level);
 
@@ -188,6 +189,8 @@ public:
 
     std::string
     rotate();
+
+	void setApplication(Application* app);
 
     /**
      * Set flag to write logs to stderr (false) or not (true).

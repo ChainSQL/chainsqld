@@ -28,6 +28,8 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <ripple/app/main/Application.h>
+#include <ripple/app/misc/NetworkOPs.h>
 
 namespace ripple {
 
@@ -116,7 +118,8 @@ void Logs::File::writeln (char const* text)
 //------------------------------------------------------------------------------
 
 Logs::Logs(beast::severities::Severity thresh)
-    : thresh_ (thresh) // default severity
+    : thresh_ (thresh), // default severity
+	app_(NULL)
 {
 }
 
@@ -184,6 +187,8 @@ Logs::write (beast::severities::Severity level, std::string const& partition,
     file_.writeln (s);
     if (! silent_)
         std::cerr << s << '\n';
+	if (app_ != NULL)
+		app_->getOPs().pubLogs(s);
     // VFALCO TODO Fix console output
     //if (console)
     //    out_.write_console(s);
@@ -197,6 +202,12 @@ Logs::rotate()
     if (wasOpened)
         return "The log file was closed and reopened.";
     return "The log file could not be closed and reopened.";
+}
+
+
+void Logs::setApplication(Application* app)
+{
+	app_ = &app;
 }
 
 std::unique_ptr<beast::Journal::Sink>
