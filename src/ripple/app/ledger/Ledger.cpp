@@ -48,6 +48,8 @@
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/types.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/protocol/Contract.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -1450,10 +1452,21 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
     }
     if (txType == ttCONTRACT)
     {
+        bool isCreation = pTx->getFieldU16(sfContractOpType) == ContractCreation;
+        AccountID addrContract;
+        if (pTx->getFieldU16(sfContractOpType) == ContractCreation)
+        {
+            addrContract = Contract::calcNewAddress(pTx->getAccountID(sfAccount),pTx->getFieldU32(sfSequence));
+        }
+        else
+        {
+            addrContract = pTx->getAccountID(sfContractAddress);
+        }
+
         sqlBody = boost::str(boost::format(bfTrans)
             % to_string(pTx->getTransactionID()) % format->getName()
             % SeqInLedger % inLedger
-            % toBase58(pTx->getAccountID(sfContractAddress))
+            % toBase58(addrContract)
             % "");
 
         sqlExe = sqlHeader + sqlBody;
