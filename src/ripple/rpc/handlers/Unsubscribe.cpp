@@ -102,6 +102,10 @@ Json::Value doUnsubscribe (RPC::Context& context)
             {
                 context.netOps.unsubPeerStatus (ispSub->getSeq ());
             }
+			else if (streamName == "logs")
+			{
+				context.netOps.unsubLogs(ispSub->getSeq());
+			}
             else
             {
                 return rpcError(rpcSTREAM_MALFORMED);

@@ -549,6 +549,8 @@ public:
         m_nodeStoreScheduler.setJobQueue (*m_jobQueue);
 
         add (m_ledgerMaster->getPropertySource ());
+
+		logs_->setApplication(this);
     }
 
     //--------------------------------------------------------------------------

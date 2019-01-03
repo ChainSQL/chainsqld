@@ -155,6 +155,10 @@ Json::Value doSubscribe (RPC::Context& context)
                     return rpcError(rpcNO_PERMISSION);
                 context.netOps.subPeerStatus (ispSub);
             }
+			else if (streamName == "logs")
+			{
+				context.netOps.subLogs(ispSub);
+			}
             else
             {
                 return rpcError(rpcSTREAM_MALFORMED);

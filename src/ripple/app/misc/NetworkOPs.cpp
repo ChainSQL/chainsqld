@@ -498,6 +498,10 @@ public:
     bool unsubPeerStatus (std::uint64_t uListener) override;
     void pubPeerStatus (std::function<Json::Value(void)> const&) override;
 
+	bool subLogs(InfoSub::ref ispListener) override;
+	bool unsubLogs(std::uint64_t uListener) override;
+	void pubLogs(std::string const& log);
+
     InfoSub::pointer findRpcSub (std::string const& strUrl) override;
     InfoSub::pointer addRpcSub (
         std::string const& strUrl, InfoSub::ref) override;
@@ -615,17 +619,18 @@ private:
     // SubMapType mSubRTTransactions;    // All proposed and accepted transactions.
     // SubMapType mSubValidations;       // Received validations.
     // SubMapType mSubPeerStatus;        // peer status changes
-    enum SubTypes
-    {
-        sLedger,                    // Accepted ledgers.
-        sManifests,                 // Received validator manifests.
-        sServer,                    // When server changes connectivity state.
-        sTransactions,              // All accepted transactions.
-        sRTTransactions,            // All proposed and accepted transactions.
-        sValidations,               // Received validations.
-        sPeerStatus,                // Peer status changes.
+	 enum SubTypes
+	 {
+		 sLedger,                    // Accepted ledgers.
+		 sManifests,                 // Received validator manifests.
+		 sServer,                    // When server changes connectivity state.
+		 sTransactions,              // All accepted transactions.
+		 sRTTransactions,            // All proposed and accepted transactions.
+		 sValidations,               // Received validations.
+		 sPeerStatus,                // Peer status changes.
+		 sLogs,
 
-        sLastEntry = sPeerStatus    // as this name implies, any new entry must
+		 sLastEntry = sLogs			// as this name implies, any new entry must
                                     // be ADDED ABOVE this one
     };
     std::array<SubMapType, SubTypes::sLastEntry+1> mStreamMaps;
@@ -1944,6 +1949,35 @@ void NetworkOPsImp::pubPeerStatus (
             }
         }
     }
+}
+
+void NetworkOPsImp::pubLogs(std::string const& log)
+{
+	ScopedLockType sl(mSubLock);
+
+	if (!mStreamMaps[sLogs].empty())
+	{
+		Json::Value jvObj(Json::objectValue);
+
+		jvObj[jss::type] = "log";
+		jvObj[jss::log] = log;
+
+		for (auto i = mStreamMaps[sLogs].begin();
+			i != mStreamMaps[sLogs].end(); )
+		{
+			InfoSub::pointer p = i->second.lock();
+
+			if (p)
+			{
+				p->send(jvObj, true);
+				++i;
+			}
+			else
+			{
+				i = mStreamMaps[sLogs].erase(i);
+			}
+		}
+	}
 }
 
 void NetworkOPsImp::setMode (OperatingMode om)
@@ -3345,6 +3379,19 @@ bool NetworkOPsImp::unsubPeerStatus (std::uint64_t uSeq)
 {
     ScopedLockType sl (mSubLock);
     return mStreamMaps[sPeerStatus].erase (uSeq);
+}
+
+bool NetworkOPsImp::subLogs(InfoSub::ref isrListener)
+{
+	ScopedLockType sl(mSubLock);
+	return mStreamMaps[sLogs].emplace(
+		isrListener->getSeq(), isrListener).second;
+}
+
+bool NetworkOPsImp::unsubLogs(std::uint64_t uSeq)
+{
+	ScopedLockType sl(mSubLock);
+	return mStreamMaps[sLogs].erase(uSeq);
 }
 
 InfoSub::pointer NetworkOPsImp::findRpcSub (std::string const& strUrl)
