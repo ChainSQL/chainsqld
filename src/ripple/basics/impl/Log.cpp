@@ -207,7 +207,7 @@ Logs::rotate()
 
 void Logs::setApplication(Application* app)
 {
-	app_ = &app;
+	app_ = app;
 }
 
 std::unique_ptr<beast::Journal::Sink>
