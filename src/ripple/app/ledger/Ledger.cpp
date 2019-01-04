@@ -1440,7 +1440,7 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
         uDBName = tables[0].getFieldH160(sfNameInDB);
 
         sqlBody = boost::str(boost::format(bfTrans)
-            % to_string(tx.getTransactionID()) % format->getName()
+            % to_string(pTx->getTransactionID()) % format->getName()
             % SeqInLedger % inLedger
             % toBase58(ownerID)
             % to_string(uDBName));
