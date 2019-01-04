@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/overlay/Overlay.h>
@@ -160,17 +161,7 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
             STTx stTx(SerialIter{ blob.data(), blob.size() });
             if (!stTx.isChainSqlTableType() && stTx.getTxnType() != ttCONTRACT)  continue;
 
-			std::vector<STTx> vecTxs;
-			if (stTx.getTxnType() == ttCONTRACT)
-			{
-				auto rawMeta = ledger->txRead(stTx.getTransactionID()).second;
-
-				vecTxs = STTx::getTxs(stTx, sNameInDB, rawMeta);
-			}
-			else
-			{
-				vecTxs = STTx::getTxs(stTx, sNameInDB);
-			}
+			std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(stTx, sNameInDB,ledger,0);
 			if(vecTxs.size() == 0)
 				continue;
 
@@ -1587,11 +1578,7 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
             auto blob = SerialIter{ item.data(), item.size() }.getVL();
             std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
 			//
-			std::shared_ptr<STObject const> rawMeta = NULL;
-			if(pSTTX->getTxnType() == ttCONTRACT)
-				rawMeta = ledger->txRead(pSTTX->getTransactionID()).second;
-			//
-			auto vec = STTx::getTxs(*pSTTX, "", rawMeta);
+			auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "",ledger,0);
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId
 			uint256 chainId = TableSyncUtil::GetChainId(ledger.get());

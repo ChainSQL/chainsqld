@@ -29,6 +29,7 @@ namespace ripple {
 class Application;
 class Transaction;
 class STTx;
+class ReadView;
 
 // Tracks all transactions in memory
 
@@ -68,6 +69,8 @@ public:
 		param:	return only chainsql tx if true
 	*/
 	int						getTxCount(bool chainsql);
+
+	std::vector<STTx>		getTxs(STTx const& tx, std::string sTableNameInDB = "",std::shared_ptr<ReadView const> ledger = nullptr,int ledgerSeq = 0);
 private:
     Application& mApp;
     TaggedCache <uint256, Transaction> mCache;

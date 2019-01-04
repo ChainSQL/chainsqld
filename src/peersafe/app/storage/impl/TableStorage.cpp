@@ -145,7 +145,7 @@ namespace ripple {
 			return tesSUCCESS;
 
 		std::set<std::string>   nameInDBSet;
-		auto vecTxs = STTx::getTxs(const_cast<STTx&>(tx));
+		auto vecTxs = app_.getMasterTransaction().getTxs(tx);
 		for (auto& eachTx : vecTxs)
 		{
 			GetTxParam(eachTx, txhash, uTxDBName, sTableName, accountID, lastLedgerSequence);

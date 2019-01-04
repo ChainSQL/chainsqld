@@ -19,6 +19,7 @@
 
 #include <BeastConfig.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/ledger/OrderBookDB.h>
@@ -1060,7 +1061,7 @@ bool LedgerMaster::isConfidential(const STTx& tx)
 {
 	if (tx.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
 	{
-		auto vecTxs = STTx::getTxs(const_cast<STTx&>(tx));
+		auto vecTxs = app_.getMasterTransaction().getTxs(tx);
 		for (auto& tx : vecTxs)
 		{
 			if (isConfidentialUnit(tx))

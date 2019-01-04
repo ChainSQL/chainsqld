@@ -57,7 +57,7 @@
 namespace ripple {
 
 create_genesis_t const create_genesis {};
-bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger, std::shared_ptr<STObject const> contractRawMetadata);
+bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Application& app);
 
 static
 uint256
@@ -973,8 +973,7 @@ static bool saveValidatedLedger (
                 vt.second->getTxn ()->getMetaSQL (
                     seq, vt.second->getEscMeta ()) + ";");
                         
-            auto contractMeta = vt.second->getTxnType() == ttCONTRACT ? ledger->txRead(vt.second->getTxn()->getTransactionID()).second : NULL;
-            storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq, contractMeta);
+            storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq,app);
 
             iTxSeq++;
         }
@@ -1383,7 +1382,7 @@ getHashesByIndex (std::uint32_t minSeq, std::uint32_t maxSeq,
     return ret;
 }
 
-bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger, std::shared_ptr<STObject const> contractRawMetadata)
+bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Application& app)
 {
     std::string retSql = "";
     if (pTx == nullptr)  return false;
@@ -1399,7 +1398,7 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
     auto format = TxFormats::getInstance().findByType(txType);
     assert(format != nullptr);
 
-    auto txsAll = STTx::getTxs(*pTx, "", contractRawMetadata);
+	auto txsAll = app.getMasterTransaction().getTxs(*pTx, "", nullptr, inLedger);
     std::vector<ripple::STTx> txsNoRepeat;
 
     ripple::uint160 uDBNameN, uDBNameA;

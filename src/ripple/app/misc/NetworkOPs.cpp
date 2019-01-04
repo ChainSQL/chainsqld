@@ -2759,10 +2759,7 @@ void NetworkOPsImp::PubValidatedTxForTable(const STTx& tx)
 {
 	auto res = std::make_pair(std::string("validate_success"), std::string(""));
 	auto ledger = app_.getLedgerMaster().getPublishedLedger();
-	std::shared_ptr<STObject const> rawMeta = NULL;
-	if(tx.getTxnType() == ttCONTRACT)
-		rawMeta = ledger->txRead(tx.getTransactionID()).second;
-	auto vecTxs = STTx::getTxs(tx, "", rawMeta);
+	auto vecTxs = app_.getMasterTransaction().getTxs(tx, "", ledger, 0);
 	if (vecTxs.size() > 1)
 	{
 		std::list<std::pair<AccountID, std::string>> listPair;
