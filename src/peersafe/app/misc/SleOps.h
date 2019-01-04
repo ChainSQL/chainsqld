@@ -28,7 +28,7 @@ public:
 	/// @returns 0 if the address has never been used.
 	uint32 getSequence(AccountID const& addr);
 
-	STTx& getTx();
+	const STTx& getTx();
 
 	bool addressHasCode(AccountID const& addr);
 	/// Sets the code of the account. Must only be called during / after contract creation.

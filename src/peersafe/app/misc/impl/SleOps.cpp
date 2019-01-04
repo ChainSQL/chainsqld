@@ -57,7 +57,7 @@ namespace ripple {
 			return 0;
 	}
 
-	STTx& SleOps::getTx()
+	const STTx& SleOps::getTx()
 	{
 		return ctx_.tx;
 	}
