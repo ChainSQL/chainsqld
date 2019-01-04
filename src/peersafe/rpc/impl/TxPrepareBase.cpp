@@ -175,7 +175,7 @@ Json::Value TxPrepareBase::prepareGetRaw()
 		return generateError("can not find create tx in local disk,please change node or try later", ws_);;
 	}
 	auto stTx = txn->getSTransaction();
-	auto vecTxs = STTx::getTxs(const_cast<STTx&>(*stTx.get()), to_string(baseinfo.nameInDB));
+	auto vecTxs = app_.getMasterTransaction().getTxs(const_cast<STTx&>(*stTx.get()), to_string(baseinfo.nameInDB));
 	for (auto& tx : vecTxs)
 	{
 		auto optype = tx.getFieldU16(sfOpType);

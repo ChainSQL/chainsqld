@@ -22,6 +22,8 @@
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/protocol/STTx.h>
+#include <ripple/app/ledger/Ledger.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/chrono.h>
 
@@ -71,6 +73,28 @@ int TransactionMaster::getTxCount(bool chainsql)
 	return *txCount;
 }
 
+std::vector<STTx> TransactionMaster::getTxs(STTx const& stTx, std::string sTableNameInDB /* = "" */,
+	std::shared_ptr<ReadView const> ledger /* = nullptr */,int ledgerSeq /* = 0 */)
+{
+	std::vector<STTx> vecTxs;
+	if (stTx.getTxnType() == ttCONTRACT)
+	{
+		if (ledger == nullptr && ledgerSeq != 0)
+		{
+			ledger = mApp.getLedgerMaster().getLedgerBySeq(ledgerSeq);
+		}
+		if (ledger != nullptr)
+		{
+			auto rawMeta = ledger->txRead(stTx.getTransactionID()).second;
+			vecTxs = STTx::getTxs(stTx, sTableNameInDB, rawMeta);
+		}
+	}
+	else
+	{
+		vecTxs = STTx::getTxs(stTx, sTableNameInDB);
+	}
+	return vecTxs;
+}
 std::shared_ptr<Transaction>
 TransactionMaster::fetch (uint256 const& txnID, bool checkDisk)
 {

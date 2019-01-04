@@ -21,6 +21,7 @@
 #include <ripple/protocol/STTx.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <peersafe/app/table/TableDumpItem.h>
 #include <fstream>
 #include <boost/filesystem.hpp>
@@ -297,17 +298,7 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                 blob.assign(str.begin(), str.end());
                 STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
 
-                std::vector<STTx> vecTxs;
-                if (tx.getTxnType() == ttCONTRACT)
-                {
-                    auto ledger = app_.getLedgerMaster().getLedgerBySeq(iter->ledgerseq());
-                    auto rawMeta = ledger->txRead(tx.getTransactionID()).second;
-                    vecTxs = STTx::getTxs(tx, sTableNameInDB_, rawMeta);
-                }
-                else
-                {
-                    vecTxs = STTx::getTxs(tx, sTableNameInDB_);
-                }
+                std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_, nullptr, iter->ledgerseq());
                 TryDecryptRaw(vecTxs);
                 bool bOutPut = isTxNeededOutput(tx, vecTxs);
 

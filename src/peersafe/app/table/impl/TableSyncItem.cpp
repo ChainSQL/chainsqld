@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/core/JobQueue.h>
 #include <boost/optional.hpp>
 #include <ripple/overlay/Peer.h>
@@ -1071,17 +1072,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 						continue;
 					}
 
-					std::vector<STTx> vecTxs;
-					if (tx.getTxnType() == ttCONTRACT)
-					{
-						auto ledger = app_.getLedgerMaster().getLedgerBySeq(iter->ledgerseq());
-						auto rawMeta = ledger->txRead(tx.getTransactionID()).second;
-						vecTxs = STTx::getTxs(tx, sTableNameInDB_, rawMeta);
-					}
-					else
-					{
-						vecTxs = STTx::getTxs(tx, sTableNameInDB_);
-					}					
+					std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_,nullptr, iter->ledgerseq());				
 
 					if (vecTxs.size() > 0)
 					{

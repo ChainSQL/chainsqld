@@ -239,7 +239,7 @@ namespace ripple {
 				STTx stTx(SerialIter{ blob.data(), blob.size() });				
                 auto str = stTx.getFullText();
 
-				auto vecTxs = STTx::getTxs(stTx, sTableNameInDB_);
+				auto vecTxs = app_.getMasterTransaction().getTxs(stTx, sTableNameInDB_);
 				if (vecTxs.size() > 0)
 				{
 					aTx.push_back(stTx.getTransactionID());
