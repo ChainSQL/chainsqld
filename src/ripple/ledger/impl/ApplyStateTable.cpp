@@ -241,7 +241,7 @@ ApplyStateTable::apply (OpenView& to,
         for (auto& mod : newMod)
             to.rawReplace (mod.second);
 
-		meta.setContractTxFieldData(tx.getSubTxs());
+		meta.setContractFieldData(tx);
 
         sMeta = std::make_shared<Serializer>();
         meta.addRaw (*sMeta, ter, to.txCount());

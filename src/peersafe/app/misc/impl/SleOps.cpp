@@ -206,7 +206,19 @@ namespace ripple {
 	}
 
     void SleOps::PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue)
-    {
+    {     
+        //add log to tx
+        Json::Value jsonTopic, jsonLog;
+        for (int i = 0; i < iTopicNum; i++)
+        {
+            jsonTopic.append(to_string(aTopic[i]));            
+        }
+        jsonLog[jss::contract_topics] = jsonTopic;
+        std::string strData(byValue.begin(), byValue.end());
+        jsonLog[jss::contract_data] = strHex(strData);
+        getTx().addLog(jsonLog);
+
+        //getTx().
         ctx_.app.getOPs().PubContractEvents(contractID, aTopic, iTopicNum, byValue);
     }
 
