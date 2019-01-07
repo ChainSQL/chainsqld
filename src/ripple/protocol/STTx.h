@@ -118,6 +118,16 @@ public:
 		return *pTxs_;
 	}
 
+    void addLog(Json::Value& jsonLog) const
+    {
+        paJsonLog_->append(jsonLog);
+    }
+
+    Json::Value const& getLogs() const
+    {
+        return *paJsonLog_;
+    }
+
     static bool checkChainsqlTableType(TxType txType)
     {
         return txType == ttTABLELISTSET || txType == ttSQLSTATEMENT || txType == ttSQLTRANSACTION;
@@ -194,7 +204,7 @@ private:
     uint256 tid_;
     TxType tx_type_;
 	std::shared_ptr<std::vector<STTx>> pTxs_;
-
+    std::shared_ptr<Json::Value> paJsonLog_;    
 };
 
 bool passesLocalChecks (STObject const& st, std::string&);

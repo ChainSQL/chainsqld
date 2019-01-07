@@ -241,6 +241,7 @@ SF_Blob const sfTransferFeeMax  = make::one<SF_Blob::type>(&sfTransferFeeMax,  S
 SF_Blob const sfContractCode	= make::one<SF_Blob::type>(&sfContractCode,    STI_VL, 64, "ContractCode");
 SF_Blob const sfContractData	= make::one<SF_Blob::type>(&sfContractData,	   STI_VL, 65, "ContractData");
 SF_Blob const sfContractTxs     = make::one<SF_Blob::type>(&sfContractTxs,     STI_VL, 66, "ContractTxs");
+SF_Blob const sfContractLogs    = make::one<SF_Blob::type>(&sfContractLogs,    STI_VL, 67, "ContractLogs");
 // account
 SF_Account const sfAccount         = make::one<SF_Account::type>(&sfAccount,         STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner           = make::one<SF_Account::type>(&sfOwner,           STI_ACCOUNT, 2, "Owner");
