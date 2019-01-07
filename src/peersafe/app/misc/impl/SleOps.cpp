@@ -120,6 +120,7 @@ namespace ripple {
 			obj.setAccountID(sfDestination, _to);
 			obj.setFieldAmount(sfAmount, ZXCAmount(value));
 		});
+        paymentTx.setParentTxID(ctx_.tx.getTransactionID());
 		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
 		return ret;
 	}
@@ -339,6 +340,7 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, T_CREATE);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName, "", true);
 	}
@@ -352,6 +354,7 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, T_DROP);
 			obj.setAccountID(sfAccount, _account);
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -367,6 +370,7 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, T_RENAME);
 			obj.setAccountID(sfAccount, _account);
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName, _sTableNewName);
 	}
@@ -385,6 +389,7 @@ namespace ripple {
 			std::string _sRaw = "[" + _raw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -403,6 +408,7 @@ namespace ripple {
 			obj.setAccountID(sfOwner, _owner);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -421,6 +427,7 @@ namespace ripple {
 			std::string _sRaw = "[" + _raw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -443,6 +450,7 @@ namespace ripple {
 				_sRaw = "[" + _updateRaw + "," + _getRaw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -598,6 +606,7 @@ namespace ripple {
 			obj.setFieldU32(sfNeedVerify, _bNeedVerify);
 			SleOps::addCommonFields(obj, _account);
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		bool rel = (ret == tesSUCCESS);

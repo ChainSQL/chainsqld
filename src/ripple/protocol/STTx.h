@@ -195,12 +195,15 @@ public:
         char status,
         std::string const& escapedMetaData) const;
 
+    void setParentTxID(const uint256 &tidParent) { tidParent_ = tidParent; }
+    bool isSubTransaction() const   {  return !tidParent_.isZero();  }
 private:
     std::pair<bool, std::string> checkSingleSign () const;
     std::pair<bool, std::string> checkMultiSign () const;
 
 	void buildRaw(Json::Value& condition, std::string& rule) const;
 
+    uint256 tidParent_;
     uint256 tid_;
     TxType tx_type_;
 	std::shared_ptr<std::vector<STTx>> pTxs_;
