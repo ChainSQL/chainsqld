@@ -66,6 +66,7 @@
 #include <peersafe/rpc/handlers/TableHandler.cpp>
 #include <peersafe/rpc/handlers/TableDump.cpp>
 #include <peersafe/rpc/handlers/TableAudit.cpp>
+#include <peersafe/rpc/handlers/TableAuthority.cpp>
 #include <peersafe/rpc/handlers/TableName.cpp>
 #include <peersafe/rpc/handlers/TableCheckHash.cpp>
 #include <peersafe/rpc/impl/TableAssistant.cpp>
