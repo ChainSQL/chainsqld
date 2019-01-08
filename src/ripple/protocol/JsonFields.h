@@ -164,6 +164,7 @@ JSS ( ContractData );               // in: Contract
 JSS ( contract_address );           // in: Contract Local Call
 JSS ( contract_data );              // in: Contract Local Call
 JSS ( contract_call_result );       // out: Contract Local Call
+JSS ( contract_topics);             // in: Contract Local Call
 JSS ( converge_time );              // out: NetworkOPs
 JSS ( converge_time_s );            // out: NetworkOPs
 JSS ( count );                      // in: AccountTx*

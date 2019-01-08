@@ -109,7 +109,7 @@ public:
     }
     void addRaw (Serializer&, TER, std::uint32_t index);
 
-	void setContractTxFieldData(std::vector<STTx> const& vecTxs);
+	void setContractFieldData(STTx const& tx);
 
     STObject getAsObject () const;
     STArray& getNodes ()
@@ -145,6 +145,7 @@ private:
 
     STArray mNodes;
 	ripple::Blob      contractTxsData;
+    ripple::Blob      contractLogData;
 
     beast::Journal j_;
 };

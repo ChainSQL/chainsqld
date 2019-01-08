@@ -120,6 +120,7 @@ namespace ripple {
 			obj.setAccountID(sfDestination, _to);
 			obj.setFieldAmount(sfAmount, ZXCAmount(value));
 		});
+        paymentTx.setParentTxID(ctx_.tx.getTransactionID());
 		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
 		return ret;
 	}
@@ -205,7 +206,19 @@ namespace ripple {
 	}
 
     void SleOps::PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue)
-    {
+    {     
+        //add log to tx
+        Json::Value jsonTopic, jsonLog;
+        for (int i = 0; i < iTopicNum; i++)
+        {
+            jsonTopic.append(to_string(aTopic[i]));            
+        }
+        jsonLog[jss::contract_topics] = jsonTopic;
+        std::string strData(byValue.begin(), byValue.end());
+        jsonLog[jss::contract_data] = strHex(strData);
+        getTx().addLog(jsonLog);
+
+        //getTx().
         ctx_.app.getOPs().PubContractEvents(contractID, aTopic, iTopicNum, byValue);
     }
 
@@ -327,6 +340,7 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, T_CREATE);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName, "", true);
 	}
@@ -340,6 +354,7 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, T_DROP);
 			obj.setAccountID(sfAccount, _account);
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -355,6 +370,7 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, T_RENAME);
 			obj.setAccountID(sfAccount, _account);
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName, _sTableNewName);
 	}
@@ -373,6 +389,7 @@ namespace ripple {
 			std::string _sRaw = "[" + _raw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -391,6 +408,7 @@ namespace ripple {
 			obj.setAccountID(sfOwner, _owner);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -409,6 +427,7 @@ namespace ripple {
 			std::string _sRaw = "[" + _raw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -431,6 +450,7 @@ namespace ripple {
 				_sRaw = "[" + _updateRaw + "," + _getRaw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -586,6 +606,7 @@ namespace ripple {
 			obj.setFieldU32(sfNeedVerify, _bNeedVerify);
 			SleOps::addCommonFields(obj, _account);
 		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
 		bool rel = (ret == tesSUCCESS);

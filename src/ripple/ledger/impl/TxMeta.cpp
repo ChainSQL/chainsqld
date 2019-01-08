@@ -266,28 +266,48 @@ void TxMeta::addRaw (Serializer& s, TER result, std::uint32_t index)
     mNodes.sort (compare);
 
 	STObject obj = getAsObject();
-	//
+	//sub tx
 	if (!contractTxsData.empty())
 	{
 		obj.setFieldVL(sfContractTxs, contractTxsData);
 		contractTxsData.clear();
 	}
+    //log
+    if (!contractLogData.empty())
+    {
+        obj.setFieldVL(sfContractLogs, contractLogData);
+        contractLogData.clear();
+    }
     obj.add (s);
 }
 
-void TxMeta::setContractTxFieldData(std::vector<STTx> const& vecTxs)
+void TxMeta::setContractFieldData(STTx const& tx)
 {
-	if (!contractTxsData.empty())
-		contractTxsData.clear();
-	//
-	Json::Value vec;
-	for (auto tx : vecTxs) {
-		vec.append(tx.getJson(0));
-	}
-	if (vec.size() > 0)
-	{
-		contractTxsData = ripple::strCopy(vec.toStyledString());
-	}		
+    if (!tx.checkChainsqlContractType(tx.getTxnType()))  return;
+
+    //set sub tx info
+    auto vecTxs = tx.getSubTxs();
+
+    if (!contractTxsData.empty())  contractTxsData.clear();
+    //
+    Json::Value vec;
+    for (auto tx : vecTxs) {
+        vec.append(tx.getJson(0));
+    }
+    if (vec.size() > 0)
+    {
+        contractTxsData = ripple::strCopy(vec.toStyledString());
+    }
+
+    //set log info
+    auto jsonLog = tx.getLogs();
+    if (!contractLogData.empty())  contractLogData.clear();
+
+    if (jsonLog.size() > 0)
+    {
+        contractLogData = ripple::strCopy(jsonLog.toStyledString());
+    }
+
 }
 
 } // ripple

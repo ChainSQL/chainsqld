@@ -69,7 +69,8 @@ STTx::STTx (STObject&& object)
 
     tid_ = getHash(HashPrefix::transactionID);
 
-	pTxs_ = std::make_shared<std::vector<STTx>>();
+	pTxs_      = std::make_shared<std::vector<STTx>>();
+    paJsonLog_ = std::make_shared<Json::Value>();    
 }
 
 std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, AccountID accountID)
@@ -146,6 +147,7 @@ STTx::STTx (SerialIter& sit)
     tid_ = getHash(HashPrefix::transactionID);
 
 	pTxs_ = std::make_shared<std::vector<STTx>>();
+    paJsonLog_ = std::make_shared<Json::Value>();
 }
 
 STTx::STTx (
@@ -168,6 +170,7 @@ STTx::STTx (
     tid_ = getHash(HashPrefix::transactionID);
 	
 	pTxs_ = std::make_shared<std::vector<STTx>>();
+    paJsonLog_ = std::make_shared<Json::Value>();
 }
 
 bool STTx::isCrossChainUpload() const

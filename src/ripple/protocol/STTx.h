@@ -118,6 +118,16 @@ public:
 		return *pTxs_;
 	}
 
+    void addLog(Json::Value& jsonLog) const
+    {
+        paJsonLog_->append(jsonLog);
+    }
+
+    Json::Value const& getLogs() const
+    {
+        return *paJsonLog_;
+    }
+
     static bool checkChainsqlTableType(TxType txType)
     {
         return txType == ttTABLELISTSET || txType == ttSQLSTATEMENT || txType == ttSQLTRANSACTION;
@@ -185,16 +195,19 @@ public:
         char status,
         std::string const& escapedMetaData) const;
 
+    void setParentTxID(const uint256 &tidParent) { tidParent_ = tidParent; }
+    bool isSubTransaction() const   {  return !tidParent_.isZero();  }
 private:
     std::pair<bool, std::string> checkSingleSign () const;
     std::pair<bool, std::string> checkMultiSign () const;
 
 	void buildRaw(Json::Value& condition, std::string& rule) const;
 
+    uint256 tidParent_;
     uint256 tid_;
     TxType tx_type_;
 	std::shared_ptr<std::vector<STTx>> pTxs_;
-
+    std::shared_ptr<Json::Value> paJsonLog_;    
 };
 
 bool passesLocalChecks (STObject const& st, std::string&);

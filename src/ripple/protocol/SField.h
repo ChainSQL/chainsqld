@@ -487,6 +487,7 @@ extern SF_Blob const sfGetRule;
 extern SF_Blob const sfTxOperateRule;
 extern SF_Blob const sfInsertCountMap;
 extern SF_Blob const sfContractTxs;
+extern SF_Blob const sfContractLogs;
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;
