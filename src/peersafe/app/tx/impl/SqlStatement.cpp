@@ -266,6 +266,11 @@ namespace ripple {
 		if(!OperationRule::hasOperationRule(view,tx))
 			return tesSUCCESS;
 		//
+		if (ctx_.app.getTxStoreDBConn().GetDBConn() == nullptr ||
+			ctx_.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+		{
+			return tefDBNOTCONFIGURED;
+		}
 		auto envPair = getTransactionDBEnv(ctx_);
 		TxStoreTransaction stTran(envPair.first);
 		TxStore& txStore = *envPair.second;
