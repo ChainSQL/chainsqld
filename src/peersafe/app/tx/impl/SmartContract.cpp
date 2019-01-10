@@ -42,6 +42,11 @@ namespace ripple {
 			return temMALFORMED;
 		}
 
+		if (tx.isFieldPresent(sfContractValue) && tx.getFieldAmount(sfContractValue) < 0)
+		{
+			return temBAD_AMOUNT;
+		}
+
 		return preflight2(ctx);
 	}
 
