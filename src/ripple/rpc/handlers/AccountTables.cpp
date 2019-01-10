@@ -26,6 +26,7 @@
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/misc/Transaction.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
+#include <peersafe/protocol/STEntry.h>
 
 namespace ripple {
 Json::Value doGetAccountTables(RPC::Context&  context)
@@ -67,10 +68,10 @@ Json::Value doGetAccountTables(RPC::Context&  context)
             for (auto table : aTables)
             {
 				Json::Value tmp(Json::objectValue);
-				tmp[jss::NameInDB] = to_string(table.getFieldH160(sfNameInDB));
+				tmp[jss::nameInDB] = to_string(table.getFieldH160(sfNameInDB));
 				auto blob = table.getFieldVL(sfTableName);
 				std::string str(blob.begin(), blob.end());
-				tmp[jss::TableName] = str;
+				tmp[jss::tablename] = str;
                 LedgerIndex iInLedger = table.getFieldU32(sfCreateLgrSeq) + 1;
                 tmp[jss::ledger_index] = iInLedger;
                 uint256 txHash = table.getFieldH256(sfCreatedTxnHash);
@@ -78,12 +79,46 @@ Json::Value doGetAccountTables(RPC::Context&  context)
                 if (bGetDetailInfo)
                 {
                     auto tx = context.app.getMasterTransaction().fetch(txHash, true);
-                    auto stTx = tx->getSTransaction();
-                    auto blob = stTx->getFieldVL(sfRaw);
-                    std::string strRaw(blob.begin(), blob.end());
-                    tmp[jss::Raw] = strHex(strRaw);
-                    uint256 ledgerHash = context.app.getLedgerMaster().getHashBySeq(iInLedger);
-                    tmp[jss::ledger_hash] = to_string(ledgerHash);
+					if (tx)
+					{
+						auto stTx = tx->getSTransaction();
+						if (stTx->isFieldPresent(sfRaw))
+						{
+							auto blob = stTx->getFieldVL(sfRaw);
+							std::string strRaw(blob.begin(), blob.end());
+							tmp[jss::raw] = strHex(strRaw);
+							uint256 ledgerHash = context.app.getLedgerMaster().getHashBySeq(iInLedger);
+							tmp[jss::ledger_hash] = to_string(ledgerHash);
+						}
+					}
+					STEntry* pEntry = (STEntry*)(&table);
+					tmp[jss::confidential] = pEntry->isConfidential();
+
+					if (context.app.getTxStoreDBConn().GetDBConn() != nullptr ||
+						context.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() != nullptr)
+					{
+						auto pConn = context.app.getTxStoreDBConn().GetDBConn();
+						uint160 nameInDB = table.getFieldH160(sfNameInDB);
+
+						std::string sql_str = boost::str(boost::format(
+							R"(SELECT count(*) from t_%s ;)")
+							% to_string(nameInDB));
+						boost::optional<int> count;
+						LockedSociSession sql_session = pConn->checkoutDb();
+						soci::statement st = (sql_session->prepare << sql_str
+							, soci::into(count));
+						try {
+							bool dbret = st.execute(true);
+
+							if (dbret && count)
+							{
+								tmp[jss::count] = *count;
+							}
+						}
+						catch (std::exception& e) {
+							tmp[jss::error_message] = e.what();
+						}
+					}
                 }
 				ret["tables"].append(tmp);
             }

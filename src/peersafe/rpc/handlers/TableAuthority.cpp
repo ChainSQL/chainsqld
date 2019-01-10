@@ -37,18 +37,18 @@ namespace ripple {
 	{
 		Json::Value params(context.params);
 		Json::Value ret(Json::objectValue);
-		if (params[jss::Owner].asString().empty())
+		if (params[jss::owner].asString().empty())
 		{
 			ret[jss::error] = "field owner is empty!";
 			return ret;
 		}
-		if (params[jss::TableName].asString().empty())
+		if (params[jss::tablename].asString().empty())
 		{
 			ret[jss::error] = "field table_name is empty!";
 			return ret;
 		}
-		auto ownerID = ripple::parseBase58<AccountID>(params[jss::Owner].asString());
-		auto tableName = params[jss::TableName].asString();
+		auto ownerID = ripple::parseBase58<AccountID>(params[jss::owner].asString());
+		auto tableName = params[jss::tablename].asString();
 
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		STEntry* pEntry = nullptr;
@@ -75,8 +75,8 @@ namespace ripple {
 					auto userID = user.getAccountID(sfUser);
 					auto flags = user.getFieldU32(sfFlags);
 
-					jvObj[jss::Account] = to_string(userID);
-					Json::Value& jvAuth = jvObj["Authority"];
+					jvObj[jss::account] = to_string(userID);
+					Json::Value& jvAuth = jvObj["authority"];
 					jvAuth["insert"] = flags & lsfInsert ? true : false;
 					jvAuth["delete"] = flags & lsfDelete ? true : false;
 					jvAuth["update"] = flags & lsfUpdate ? true : false;

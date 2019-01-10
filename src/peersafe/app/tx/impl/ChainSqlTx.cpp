@@ -128,8 +128,13 @@ namespace ripple {
 
 	std::pair<TxStoreDBConn*, TxStore*> ChainSqlTx::getTransactionDBEnv(ApplyContext& ctx)
 	{
-		ApplyView& view = ctx.view();
+		if (ctx.app.getTxStoreDBConn().GetDBConn() == nullptr ||
+			ctx.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+		{
+			return std::make_pair<TxStoreDBConn*, TxStore*>(nullptr, nullptr);
+		}
 
+		ApplyView& view = ctx.view();
 		ripple::TxStoreDBConn *pConn;
 		ripple::TxStore *pStore;
 		if (view.flags() & tapFromClient || view.flags() & tapByRelay)

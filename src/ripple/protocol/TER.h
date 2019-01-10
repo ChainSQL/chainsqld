@@ -30,91 +30,92 @@ namespace ripple {
 // "Transaction Engine Result"
 // or Transaction ERror.
 //
-enum TER
-{
-    // Note: Range is stable.  Exact numbers are currently unstable.  Use tokens.
+	enum TER
+	{
+		// Note: Range is stable.  Exact numbers are currently unstable.  Use tokens.
 
-    // -399 .. -300: L Local error (transaction fee inadequate, exceeds local limit)
-    // Only valid during non-consensus processing.
-    // Implications:
-    // - Not forwarded
-    // - No fee check
-    telLOCAL_ERROR  = -399,
-    telBAD_DOMAIN,
-    telBAD_PATH_COUNT,
-    telBAD_PUBLIC_KEY,
-    telFAILED_PROCESSING,
-    telINSUF_FEE_P,
-    telNO_DST_PARTIAL,
-    telCAN_NOT_QUEUE,
-    telCAN_NOT_QUEUE_BALANCE,
-    telCAN_NOT_QUEUE_BLOCKS,
-    telCAN_NOT_QUEUE_BLOCKED,
-    telCAN_NOT_QUEUE_FEE,
-    telCAN_NOT_QUEUE_FULL,
+		// -399 .. -300: L Local error (transaction fee inadequate, exceeds local limit)
+		// Only valid during non-consensus processing.
+		// Implications:
+		// - Not forwarded
+		// - No fee check
+		telLOCAL_ERROR = -399,
+		telBAD_DOMAIN,
+		telBAD_PATH_COUNT,
+		telBAD_PUBLIC_KEY,
+		telFAILED_PROCESSING,
+		telINSUF_FEE_P,
+		telNO_DST_PARTIAL,
+		telCAN_NOT_QUEUE,
+		telCAN_NOT_QUEUE_BALANCE,
+		telCAN_NOT_QUEUE_BLOCKS,
+		telCAN_NOT_QUEUE_BLOCKED,
+		telCAN_NOT_QUEUE_FEE,
+		telCAN_NOT_QUEUE_FULL,
 
-    // -299 .. -200: M Malformed (bad signature)
-    // Causes:
-    // - Transaction corrupt.
-    // Implications:
-    // - Not applied
-    // - Not forwarded
-    // - Reject
-    // - Can not succeed in any imagined ledger.
-    temMALFORMED    = -299,
+		// -299 .. -200: M Malformed (bad signature)
+		// Causes:
+		// - Transaction corrupt.
+		// Implications:
+		// - Not applied
+		// - Not forwarded
+		// - Reject
+		// - Can not succeed in any imagined ledger.
+		temMALFORMED = -299,
 
-    temBAD_AMOUNT,
-    temBAD_CURRENCY,
-    temBAD_EXPIRATION,
-    temBAD_FEE,
-    temBAD_ISSUER,
-	temBAD_LIMIT,
-	temBAD_OFFER,
-	temBAD_PATH,
-	temBAD_PATH_LOOP,
-	temBAD_SEND_ZXC_LIMIT,
-	temBAD_SEND_ZXC_MAX,
-	temBAD_SEND_ZXC_NO_DIRECT,
-	temBAD_SEND_ZXC_PARTIAL,
-	temBAD_SEND_ZXC_PATHS,
-	temBAD_SEQUENCE,
-	temBAD_SIGNATURE,
-	temBAD_SRC_ACCOUNT,
-	temBAD_TRANSFER_RATE,
-	temDST_IS_SRC,
-	temDST_NEEDED,
-	temINVALID,
-	temINVALID_FLAG,
-	temREDUNDANT,
-	temRIPPLE_EMPTY,
-	temDISABLED,
-	temBAD_SIGNER,
-	temBAD_QUORUM,
-	temBAD_WEIGHT,
-	temBAD_TICK_SIZE,
-	temBAD_TRANSFERFEE_BOTH,
-	temBAD_TRANSFERFEE,
-	temBAD_FEE_MISMATCH_TRANSFER_RATE,
+		temBAD_AMOUNT,
+		temBAD_CURRENCY,
+		temBAD_EXPIRATION,
+		temBAD_FEE,
+		temBAD_ISSUER,
+		temBAD_LIMIT,
+		temBAD_OFFER,
+		temBAD_PATH,
+		temBAD_PATH_LOOP,
+		temBAD_SEND_ZXC_LIMIT,
+		temBAD_SEND_ZXC_MAX,
+		temBAD_SEND_ZXC_NO_DIRECT,
+		temBAD_SEND_ZXC_PARTIAL,
+		temBAD_SEND_ZXC_PATHS,
+		temBAD_SEQUENCE,
+		temBAD_SIGNATURE,
+		temBAD_SRC_ACCOUNT,
+		temBAD_TRANSFER_RATE,
+		temDST_IS_SRC,
+		temDST_NEEDED,
+		temINVALID,
+		temINVALID_FLAG,
+		temREDUNDANT,
+		temRIPPLE_EMPTY,
+		temDISABLED,
+		temBAD_SIGNER,
+		temBAD_QUORUM,
+		temBAD_WEIGHT,
+		temBAD_TICK_SIZE,
+		temBAD_TRANSFERFEE_BOTH,
+		temBAD_TRANSFERFEE,
+		temBAD_FEE_MISMATCH_TRANSFER_RATE,
 
-	//for table set and sql statement
-	temBAD_OWNER,
-	temBAD_TABLES,
-	temBAD_TABLEFLAGS,
-	temBAD_RAW,
-	temBAD_OPTYPE,
-	temBAD_BASETX,
-	temBAD_PUT,
-	temBAD_DBTX,
-	temBAD_STATEMENTS,
-	temBAD_NEEDVERIFY,
-	temBAD_STRICTMODE,
-	temBAD_BASELEDGER,
-	temBAD_TRANSFERORDER,
-	temBAD_OPERATIONRULE,
-	temBAD_DELETERULE,
-	temBAD_UPDATERULE,
-	temBAD_RULEANDTOKEN,
-	temBAD_INSERTLIMIT,
+		//for table set and sql statement
+		temBAD_OWNER,
+		temBAD_TABLES,
+		temBAD_TABLEFLAGS,
+		temBAD_RAW,
+		temBAD_OPTYPE,
+		temBAD_BASETX,
+		temBAD_PUT,
+		temBAD_DBTX,
+		temBAD_STATEMENTS,
+		temBAD_NEEDVERIFY,
+		temBAD_STRICTMODE,
+		temBAD_BASELEDGER,
+		temBAD_TRANSFERORDER,
+		temBAD_OPERATIONRULE,
+		temBAD_DELETERULE,
+		temBAD_UPDATERULE,
+		temBAD_RULEANDTOKEN,
+		temBAD_INSERTLIMIT,
+		temBAD_NEEDVERIFY_OPERRULE,
 
 	// An intermediate result used internally, should never be returned.
 	temUNCERTAIN,

@@ -189,6 +189,7 @@ namespace ripple {
                 //STTx tx(obj, accountID);
 				auto tx_pair = STTx::parseSTTx(obj, accountID);
 				auto tx = *tx_pair.first;
+				tx.setParentTxID(ctx.tx.isSubTransaction() ? ctx.tx.getParentTxID() : ctx.tx.getTransactionID());
                 if (obj["OpType"].asInt() != T_ASSERT) {
                     auto type = tx.getFieldU16(sfTransactionType);
                     if (type == ttTABLELISTSET)
@@ -222,6 +223,10 @@ namespace ripple {
                     }
                     else if (type == ttSQLSTATEMENT)
                     {
+						if (OperationRule::hasOperationRule(ctx.view(), tx) && ctx_.tx.getFieldU32(sfNeedVerify) != 1)
+						{
+							return temBAD_NEEDVERIFY_OPERRULE;
+						}
                         result = SqlStatement::preflightHandler(tx, ctx.app);
                         if (result == tesSUCCESS) {
                             result = SqlStatement::preclaimHandler(ctx.view(), tx, ctx.app);
@@ -310,12 +315,11 @@ namespace ripple {
 			//database verify
 			std::pair<TER, std::string> ret;
             if (ctx_.tx.getFieldU32(sfNeedVerify) == 1) {
-				if (ctx_.app.getTxStoreDBConn().GetDBConn() == nullptr ||
-					ctx_.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+				auto envPair = getTransactionDBEnv(ctx_);
+				if (envPair.first == nullptr && envPair.second == nullptr)
 				{
 					return tefDBNOTCONFIGURED;
 				}
-				auto envPair = getTransactionDBEnv(ctx_);
 				ret = transactionImpl(ctx_, *envPair.first, *envPair.second, ctx_.journal, ctx_.tx); //handle transaction,need DBTrans
 				if (ret.first != tesSUCCESS)
 					return ret.first;

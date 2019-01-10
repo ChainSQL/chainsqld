@@ -468,6 +468,9 @@ JSS ( total_coins );                // out: LedgerToJson
 JSS ( transTreeHash );              // out: ledger/Ledger.cpp
 JSS ( transaction );                // in: Tx
 JSS	( tablename );					// in tablename
+JSS ( nameInDB );
+JSS	(confidential);
+JSS ( raw );
 JSS ( inclusive );
                                     // out: NetworkOPs, AcceptedLedgerTx,
 JSS ( transaction_hash );           // out: RCLCxPeerPos, LedgerToJson

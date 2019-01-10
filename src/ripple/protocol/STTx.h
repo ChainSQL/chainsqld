@@ -196,6 +196,7 @@ public:
         std::string const& escapedMetaData) const;
 
     void setParentTxID(const uint256 &tidParent) { tidParent_ = tidParent; }
+	uint256 getParentTxID() const { return tidParent_;  }
     bool isSubTransaction() const   {  return !tidParent_.isZero();  }
 private:
     std::pair<bool, std::string> checkSingleSign () const;

@@ -266,6 +266,10 @@ namespace ripple {
 			return tesSUCCESS;
 		//
 		auto envPair = getTransactionDBEnv(ctx_);
+		if (envPair.first == nullptr && envPair.second == nullptr)
+		{
+			return tefDBNOTCONFIGURED;
+		}
 		TxStoreTransaction stTran(envPair.first);
 		TxStore& txStore = *envPair.second;
 		//

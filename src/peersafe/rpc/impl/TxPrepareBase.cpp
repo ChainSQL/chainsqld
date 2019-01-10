@@ -766,19 +766,8 @@ bool TxPrepareBase::checkConfidentialBase(const AccountID& owner, const std::str
 		return false;
 	auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 
-	STEntry const *pEntry = getTableEntry(aTableEntries, tableName);
-	if (pEntry != NULL)
-	{
-		if (pEntry->isFieldPresent(sfUsers))
-		{
-			auto& users = pEntry->getFieldArray(sfUsers);
-			if (users.size() > 0 && users[0].isFieldPresent(sfToken))
-			{
-				return true;
-			}
-		}
-	}
-	return false;
+	STEntry *pEntry = getTableEntry(aTableEntries, tableName);
+	return pEntry->isConfidential();
 }
 
 Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Application& app, bool bWs)
