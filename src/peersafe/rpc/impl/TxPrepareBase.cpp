@@ -328,6 +328,7 @@ std::pair<uint256, Json::Value> TxPrepareBase::getCheckHash(const std::string& s
 Json::Value TxPrepareBase::prepareDBName()
 {
 	auto& tx_json = getTxJson();
+
 	std::string accountId;
 
 	if (tx_json.isMember(jss::Owner) && tx_json[jss::Owner].asString().size() != 0)
@@ -370,7 +371,7 @@ Json::Value TxPrepareBase::prepareDBName()
 				json[jss::Table][jss::NameInDB] = sNameInDB;
 				updateNameInDB(accountId, sTableName, sNameInDB);
 			}				
-			else if(tx_json_[jss::OpType].asInt() == T_CREATE)
+			else if(tx_json_[jss::OpType].asInt() == T_CREATE || tx_json_[jss::OpType].asInt() == T_REPORT)
 			{				
 				// if create table,generate one, else error
 				Json::Value ret = app_.getTableAssistant().getDBName(accountId, sTableName);
@@ -807,6 +808,10 @@ Json::Value TxPrepareBase::prepareFutureHash(const Json::Value& tx_json, Applica
 {
     Json::Value jsonRet(Json::objectValue);
     
+	int opType = tx_json[jss::OpType].asInt();
+	if (opType == T_REPORT)
+		return jsonRet;
+
 	AccountID accountID = *ripple::parseBase58<AccountID>(tx_json[jss::Account].asString());
     std::string sCurHash;
 
