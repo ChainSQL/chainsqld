@@ -767,7 +767,7 @@ bool TxPrepareBase::checkConfidentialBase(const AccountID& owner, const std::str
 	auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 
 	STEntry *pEntry = getTableEntry(aTableEntries, tableName);
-	return pEntry->isConfidential();
+	return pEntry ? pEntry->isConfidential():false;
 }
 
 Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Application& app, bool bWs)
