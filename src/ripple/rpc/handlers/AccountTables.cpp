@@ -94,7 +94,7 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 					STEntry* pEntry = (STEntry*)(&table);
 					tmp[jss::confidential] = pEntry->isConfidential();
 
-					if (context.app.getTxStoreDBConn().GetDBConn() != nullptr ||
+					if (context.app.getTxStoreDBConn().GetDBConn() != nullptr &&
 						context.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() != nullptr)
 					{
 						auto pConn = context.app.getTxStoreDBConn().GetDBConn();
