@@ -156,14 +156,14 @@ Json::Value doContractCall(RPC::Context& context)
 	auto const srcAddressID = parseBase58<AccountID>(jsonParams[jss::account].asString());
 	if (srcAddressID == boost::none)
 	{
-		errMsgStr = "account field is empty!";
-		return contractLocalCallErrResultImpl(rpcCTR_CONTENT_EMPTY, errMsgStr);
+		errMsgStr = "account field is invalid!";
+		return contractLocalCallErrResultImpl(rpcINVALID_PARAMS, errMsgStr);
 	}
 	auto const contractAddrID = parseBase58<AccountID>(jsonParams[jss::contract_address].asString());
 	if (contractAddrID == boost::none)
 	{
-		errMsgStr = "contract_address field is empty!";
-		return contractLocalCallErrResultImpl(rpcCTR_CONTENT_EMPTY, errMsgStr);
+		errMsgStr = "contract_address field is invalid!";
+		return contractLocalCallErrResultImpl(rpcINVALID_PARAMS, errMsgStr);
 	}
 	
 	auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
