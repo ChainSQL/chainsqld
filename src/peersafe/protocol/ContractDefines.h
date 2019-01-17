@@ -24,13 +24,13 @@
 enum ContractOpType {
     ContractCreation = 1,			///< Transaction to create contracts - receiveAddress() is ignored.
     MessageCall = 2,			///< Transaction to invoke a message call - receiveAddress() is used.
-    ContractDeletion = 3,				///
-    LocalMessageCall = 4
+
+    typeMax
 };
 
 inline bool isContractTypeValid(ContractOpType eType)
 {
-    if (eType >= ContractCreation && eType <= LocalMessageCall)  return true;
+    if (eType >= ContractCreation && eType <= typeMax)  return true;
     
 	return false;
 }
