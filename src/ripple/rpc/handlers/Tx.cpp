@@ -118,11 +118,11 @@ namespace ripple {
 
             while (st.fetch())
             {
-                std::string sSqlSufix = boost::str(boost::format("'%lld' AND Owner = '%s' AND Name = '%s' order by TxSeq desc limit 1; ")   \
+                std::string sSqlSufix = boost::str(boost::format("'%lld' AND Owner = '%s' AND Name = '%s' order by TxSeq ")   \
                     % beast::lexicalCastThrow <std::string>(*txSeq)   \
                     % *ownerRead % *nameRead);
-                std::string sSqlPrevious = sSqlPrefix + "<" + sSqlSufix;
-                std::string sSqlNext = sSqlPrefix + ">" + sSqlSufix;
+                std::string sSqlPrevious = sSqlPrefix + "<" + sSqlSufix + "desc limit 1";
+                std::string sSqlNext = sSqlPrefix + ">" + sSqlSufix + "asc limit 1";
 
                 Json::Value jsonTableItem;
 
