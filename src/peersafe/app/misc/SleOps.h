@@ -47,7 +47,7 @@ public:
 	TER doPayment(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 
 	//contract account can have zero zxc and exist on chainsql
-	bool createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value);
+	TER createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 
 	/// Clear the storage root hash of an account to the hash of the empty trie.
 	void clearStorage(AccountID const& _contract);
@@ -61,21 +61,21 @@ public:
 	/// amount to be subtrackted (also in case the account does not exist).
 	TER subBalance(AccountID const& _addr, int64_t const& _value);
 
-	bool disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName = "", bool bNewNameInDB = false);
+	int64_t disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName = "", bool bNewNameInDB = false);
 
 	//db operators
 	int64_t executeSQL(AccountID const& _account, AccountID const& _owner, TableOpType _iType, std::string _sTableName, std::string _sRaw);
 
 	//table opeartion
-	bool createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw);
-	bool dropTable(AccountID const& _account, std::string const& _sTableName);
-	bool renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName);
-	bool grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw);
+	int64_t createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw);
+	int64_t dropTable(AccountID const& _account, std::string const& _sTableName);
+	int64_t renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName);
+	int64_t grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw);
 
 	//CRUD operation
-	bool insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
-	bool deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
-	bool updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw);
+	int64_t insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
+	int64_t deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
+	int64_t updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw);
 
 	//Select related
 	uint256 getDataHandle(AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
@@ -87,7 +87,7 @@ public:
 
 	//transaction related
 	void	transactionBegin();
-	bool	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
+	int64_t	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
 	void	resetTransactionCache();
 
 	static void	addCommonFields(STObject& obj, AccountID const& _account);

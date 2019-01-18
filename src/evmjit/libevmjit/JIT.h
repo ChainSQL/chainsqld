@@ -99,6 +99,7 @@ enum class ReturnCode
 	Stop    = 0,
 	Return  = 1,
 	Revert  = 2,
+	RevertDiy = 3,
 
 	// Standard error codes
 	OutOfGas           = -1,

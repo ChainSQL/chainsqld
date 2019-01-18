@@ -33,31 +33,31 @@ public:
     int64_t executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) final;
 
     /** begin: instruction extension */
-    bool table_create(const evmc_address *address, 
+	int64_t table_create(const evmc_address *address,
             bytesConstRef const &_name, 
             bytesConstRef const &_raw) override final;
 
-    bool table_rename(const evmc_address *address, 
+	int64_t table_rename(const evmc_address *address,
             bytesConstRef const &oname, 
             bytesConstRef const &nname) override final;
 
-    bool table_insert(const evmc_address *address, 
+	int64_t table_insert(const evmc_address *address,
             bytesConstRef const &name, 
             bytesConstRef const &stmt) override final;
 
-    bool table_delete(const evmc_address *address, 
+	int64_t table_delete(const evmc_address *address,
             bytesConstRef const &name, 
             bytesConstRef const &stmt) override final;
 
-    bool table_drop(const evmc_address *address, 
+	int64_t table_drop(const evmc_address *address,
             bytesConstRef const &name) override final;
 
-    bool table_update(const evmc_address *address, 
+	int64_t table_update(const evmc_address *address,
             bytesConstRef const &name, 
             bytesConstRef const &cond, 
             bytesConstRef const &upd) override final;
 
-    bool table_grant(const evmc_address *owner, 
+	int64_t table_grant(const evmc_address *owner,
             const evmc_address *to, 
             bytesConstRef const &name, 
             bytesConstRef const &stmt) override final;
@@ -83,7 +83,7 @@ public:
 
     // interface to transaction control
     void db_trans_begin() override final;
-    bool db_trans_submit() override final;
+	int64_t db_trans_submit() override final;
     void release_resource() override final;
 
     evmc_uint256be get_column_len(const evmc_uint256be *handle, 

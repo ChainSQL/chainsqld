@@ -265,6 +265,15 @@ enum evmc_status_code
      * Casper's purity checker or ewasm contract rules).
      */
     EVMC_CONTRACT_VALIDATION_FAILURE = 13,
+    /**
+     * Execution terminated with self-defined REVERTDIY opcode.
+     *
+     * In this case the amount of gas left MAY be non-zero and additional output
+     * data MAY be provided in ::evmc_result.
+	 *
+	 * Used to throw real TER error code.
+     */
+	EVMC_REVERTDIY = 14,
 
 
     /** EVM implementation generic internal error. */
@@ -583,7 +592,7 @@ typedef int64_t (*evmc_emit_executesql_fn)(struct evmc_context* context,
 *  @param raw           The sql raw field
 *  @param rawSize      The length of raw
 */
-typedef bool (*evmc_emit_sql1_fn)(struct evmc_context* context,
+typedef int64_t (*evmc_emit_sql1_fn)(struct evmc_context* context,
     const struct evmc_address* address,
     uint8_t const* _name,
     size_t _nameSize,
@@ -603,7 +612,7 @@ typedef bool (*evmc_emit_sql1_fn)(struct evmc_context* context,
 *  @param name          The destinative table name
 *  @param nameSize      The length of table name
 */
-typedef bool(*evmc_emit_sql2_fn)(struct evmc_context* context,
+typedef int64_t (*evmc_emit_sql2_fn)(struct evmc_context* context,
     const struct evmc_address* address,
     uint8_t const* _name,
     size_t _nameSize);
@@ -624,7 +633,7 @@ typedef bool(*evmc_emit_sql2_fn)(struct evmc_context* context,
 *  @param raw2          The sql raw field
 *  @param rawSize2      The length of raw
 */
-typedef bool(*evmc_emit_sql3_fn)(struct evmc_context* context,
+typedef int64_t (*evmc_emit_sql3_fn)(struct evmc_context* context,
     const struct evmc_address* address,
     uint8_t const* _name,
     size_t _nameSize,
@@ -672,7 +681,7 @@ typedef void  (*evmc_emit_sql4_fn)(struct evmc_context* context,
 *  @param raw           The sql raw field
 *  @param rawSize      The length of raw
 */
-typedef bool (*evmc_emit_sql5_fn)(struct evmc_context* context,
+typedef int64_t (*evmc_emit_sql5_fn)(struct evmc_context* context,
     const struct evmc_address* address1,
     const struct evmc_address* address2,
     uint8_t const* _name,
@@ -699,7 +708,7 @@ typedef void (*evmc_emit_sql6_fn)(struct evmc_context* context);
 *  for begin transaction exitFunction
 *  @param context       The pointer to the Host execution context.
 */
-typedef bool(*evmc_emit_sql7_fn)(struct evmc_context* context);
+typedef int64_t (*evmc_emit_sql7_fn)(struct evmc_context* context);
 
 
 /**

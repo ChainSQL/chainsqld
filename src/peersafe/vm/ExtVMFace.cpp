@@ -267,49 +267,49 @@ void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _ms
 
 }
 
-bool table_create(struct evmc_context* _context,
+int64_t table_create(struct evmc_context* _context,
         const struct evmc_address* address,
         uint8_t const* _name,
         size_t _nameSize,
         uint8_t const* _raw,
-        size_t _rawSize) {
+		size_t _rawSize) {
     auto& env = static_cast<ExtVMFace&>(*_context);
     return env.table_create(address, bytesConstRef{_name, _nameSize}, 
             bytesConstRef{_raw, _rawSize});
 }
 
-bool table_rename(struct evmc_context* _context,
+int64_t table_rename(struct evmc_context* _context,
     const struct evmc_address* address,
     uint8_t const* _name,
     size_t _nameSize,
     uint8_t const* _raw,
-    size_t _rawSize)
+	size_t _rawSize)
 {
     auto& env = static_cast<ExtVMFace&>(*_context);
     return env.table_rename(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
 }
-bool table_insert(struct evmc_context* _context,
+int64_t table_insert(struct evmc_context* _context,
     const struct evmc_address* address,
     uint8_t const* _name,
     size_t _nameSize,
     uint8_t const* _raw,
-    size_t _rawSize)
+	size_t _rawSize)
 {
     auto& env = static_cast<ExtVMFace&>(*_context);
     return env.table_insert(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
 }
 
-bool table_delete(struct evmc_context* _context,
+int64_t table_delete(struct evmc_context* _context,
     const struct evmc_address* address,
     uint8_t const* _name,
     size_t _nameSize,
     uint8_t const* _raw,
-    size_t _rawSize)
+	size_t _rawSize)
 {
     auto& env = static_cast<ExtVMFace&>(*_context);
     return env.table_delete(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
 }
-bool table_drop(struct evmc_context* _context,
+int64_t table_drop(struct evmc_context* _context,
     const struct evmc_address* address,
     uint8_t const* _name,
     size_t _nameSize)
@@ -317,7 +317,7 @@ bool table_drop(struct evmc_context* _context,
     auto& env = static_cast<ExtVMFace&>(*_context);
     return env.table_drop(address, bytesConstRef{ _name, _nameSize });
 }
-bool table_update(struct evmc_context* _context,
+int64_t table_update(struct evmc_context* _context,
     const struct evmc_address* address,
     uint8_t const* _name,
     size_t _nameSize,
@@ -330,7 +330,7 @@ bool table_update(struct evmc_context* _context,
     return env.table_update(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw1, _rawSize1 }, bytesConstRef{ _raw2, _rawSize2 });
 }
 
-bool table_grant(struct evmc_context* _context,
+int64_t table_grant(struct evmc_context* _context,
     const struct evmc_address* address1,
     const struct evmc_address* address2,
     uint8_t const* _name,
@@ -403,7 +403,7 @@ void db_trans_begin(struct evmc_context* _context)
     auto& env = static_cast<ExtVMFace&>(*_context);
     env.db_trans_begin();
 }
-bool db_trans_submit(struct evmc_context* _context)
+int64_t db_trans_submit(struct evmc_context* _context)
 {
     auto& env = static_cast<ExtVMFace&>(*_context);
     return env.db_trans_submit();

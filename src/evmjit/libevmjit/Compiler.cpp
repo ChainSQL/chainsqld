@@ -94,6 +94,7 @@ std::vector<BasicBlock> Compiler::createBasicBlocks(code_iterator _codeBegin, co
 		case Instruction::JUMP:
 		case Instruction::RETURN:
 		case Instruction::REVERT:
+        case Instruction::REVERTDIY:
 		case Instruction::STOP:
 		case Instruction::SUICIDE:
 			isDead = true;
@@ -933,20 +934,31 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
 		case Instruction::RETURN:
 		case Instruction::REVERT:
-		{
-			auto const isRevert = inst == Instruction::REVERT;
-			if (isRevert && m_rev < EVMC_BYZANTIUM)
-				goto invalidInstruction;
+        case Instruction::REVERTDIY:
+        {
+            auto const isRevert = (inst == Instruction::REVERT || inst == Instruction::REVERTDIY);
+            if (isRevert && m_rev < EVMC_BYZANTIUM)
+                goto invalidInstruction;
 
-			auto index = stack.pop();
-			auto size = stack.pop();
+            auto index = stack.pop();
+            auto size = stack.pop();
 
-			_memory.require(index, size);
-			_runtimeManager.registerReturnData(index, size);
-
-			_runtimeManager.exit(isRevert ? ReturnCode::Revert : ReturnCode::Return);
-			break;
-		}
+            _memory.require(index, size);
+            _runtimeManager.registerReturnData(index, size);
+            switch (inst)
+            {
+            case Instruction::RETURN:
+                _runtimeManager.exit(ReturnCode::Return);
+                break;
+            case Instruction::REVERT:
+                _runtimeManager.exit(ReturnCode::Revert);
+                break;
+            case Instruction::REVERTDIY:
+                _runtimeManager.exit(ReturnCode::RevertDiy);
+                break;
+            }
+            break;
+        }
 
 		case Instruction::SUICIDE:
 		{
@@ -1042,7 +1054,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _gasMeter.countSqlData(rawBytes);
 
             auto r = _ext.table_create(address, nameIdx, nameBytes, rawIdx, rawBytes);
-            stack.push(r);
+
+			auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
             break;
         }
         case Instruction::EXDROPTABLE:
@@ -1054,7 +1070,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(nameIdx, nameBytes);
 
             auto r = _ext.table_drop(address, nameIdx, nameBytes);
-            stack.push(r);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
             break;
         }
         case Instruction::EXRENAMETABLE:
@@ -1071,7 +1091,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _gasMeter.countSqlData(rawBytes);
 
             auto r = _ext.table_rename(address, nameIdx, nameBytes, rawIdx, rawBytes);
-            stack.push(r);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
             break;
         }
         case Instruction::EXINSERTSQL:
@@ -1088,7 +1112,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _gasMeter.countSqlData(rawBytes);
 
             auto r = _ext.table_insert(address, nameIdx, nameBytes, rawIdx, rawBytes);
-            stack.push(r);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
             break;
         }
         case Instruction::EXDELETESQL:
@@ -1105,7 +1133,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _gasMeter.countSqlData(rawBytes);
 
             auto r = _ext.table_delete(address, nameIdx, nameBytes, rawIdx, rawBytes);
-            stack.push(r);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
             break;
         }
         case Instruction::EXUPDATESQL:
@@ -1127,7 +1159,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             
 
             auto r = _ext.table_update(address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
-            stack.push(r);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
             break;
         }
         case Instruction::EXSELECTSQL:
@@ -1163,7 +1199,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             auto r = _ext.table_grant(addOwner, addDest, 
                     nameIdx, nameBytes, rawIdx, rawBytes);
-            stack.push(r);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
             break;
         }
         case Instruction::EXTRANSBEGIN:
@@ -1174,7 +1214,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
         case Instruction::EXTRANSCOMMIT:
         {
             auto r = _ext.db_trans_submit();
-            stack.push(r);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
             break;
         }
         case Instruction::EXGETROWSIZE:
