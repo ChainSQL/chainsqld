@@ -1434,12 +1434,17 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
         std::shared_ptr<TableSyncItem> pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
         std::string PreviousCommit;
         pItem->Init(accountID, sTableName,true);
-        InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
-        {
+        bool ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
+		if(ret)
+		{
+			ret = true;
             std::lock_guard<std::mutex> lock(mutexlistTable_);
             listTableInfo_.push_back(pItem);     
         }
-        ret = true;
+		else
+		{
+			return false;
+		}
     }
     catch (std::exception const& e)
     {
