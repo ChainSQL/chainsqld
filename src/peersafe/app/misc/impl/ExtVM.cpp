@@ -280,7 +280,7 @@ namespace ripple
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
 		JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
-		uint256 rel = oSle_.getDataHandle(fromEvmC(*address), _name.toString(), _raw.toString());
+		uint256 rel = oSle_.getDataHandle(fromEvmC(caller),fromEvmC(*address), _name.toString(), _raw.toString());
 		return toEvmC(rel);
 	}
 

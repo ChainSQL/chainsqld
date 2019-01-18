@@ -78,7 +78,7 @@ public:
 	int64_t updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw);
 
 	//Select related
-	uint256 getDataHandle(AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
+	uint256 getDataHandle(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
 	uint256 getDataRowCount(uint256 const& _handle);
 	uint256 getDataColumnCount(uint256 const& _handle);
 	std::string	getByKey(uint256 const& _handle, size_t row, std::string const& _key);

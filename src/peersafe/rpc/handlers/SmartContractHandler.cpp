@@ -45,8 +45,8 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 		{
 			if (tesSUCCESS != terResult)
 			{
-				jvResult[jss::error] = "ctrEvmExeException";
-				jvResult[jss::error_message] = exeResult;
+				jvResult[jss::error] = exeResult;
+				//jvResult[jss::error_message] = exeResult;
 			}
 			else
 			{

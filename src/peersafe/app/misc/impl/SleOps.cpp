@@ -453,11 +453,11 @@ namespace ripple {
 	}
 
 	//Select related
-	uint256 SleOps::getDataHandle(AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+	uint256 SleOps::getDataHandle(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
 		Json::Value jvCommand, tableJson;
 		jvCommand[jss::tx_json][jss::Owner] = to_string(_owner);
-		jvCommand[jss::tx_json][jss::Account] = to_string(_owner);
+		jvCommand[jss::tx_json][jss::Account] = to_string(_account);
 		Json::Value _fields(Json::arrayValue);//select fields
 		jvCommand[jss::tx_json][jss::Raw].append(_fields);//append select fields
 		if (!_raw.empty())//append select conditions
