@@ -195,13 +195,13 @@ public:
     /// DB operator
     virtual int64_t executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) = 0;
 
-    virtual bool table_create(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return false; }
-    virtual bool table_rename(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return false; }
-    virtual bool table_insert(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return false; }
-    virtual bool table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return false; }
-    virtual bool table_drop(const struct evmc_address* address, bytesConstRef const& _name) { return false; }
-    virtual bool table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw1, bytesConstRef const& _raw2) { return false; }
-    virtual bool table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw) { return false; }
+    virtual int64_t table_create(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return 0; }
+    virtual int64_t table_rename(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return 0; }
+    virtual int64_t table_insert(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return 0; }
+    virtual int64_t table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return 0; }
+    virtual int64_t table_drop(const struct evmc_address* address, bytesConstRef const& _name) { return 0; }
+    virtual int64_t table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw1, bytesConstRef const& _raw2) { return 0; }
+    virtual int64_t table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw) { return 0; }
     virtual evmc_uint256be table_get_handle(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) { return evmc_uint256be(); }
     virtual evmc_uint256be table_get_lines(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
     virtual evmc_uint256be table_get_columns(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
@@ -216,7 +216,7 @@ public:
             size_t _outSize) { return 0; }
 
     virtual void db_trans_begin() {}
-    virtual bool db_trans_submit() { return 0; }
+    virtual int64_t db_trans_submit() { return 0; }
     virtual void release_resource() {}
 
     virtual 

@@ -156,7 +156,7 @@ evmc_uint256be FakeExtVM::blockHash(int64_t  const&_number) {
 	return evmc_uint256be();
 }
 
-bool FakeExtVM::table_create(const evmc_address *address, 
+int64_t FakeExtVM::table_create(const evmc_address *address,
         bytesConstRef const &_name, 
         bytesConstRef const &_raw) {
     test::PrintInputParams<const char*, std::string>("CreateTable", 
@@ -167,7 +167,7 @@ bool FakeExtVM::table_create(const evmc_address *address,
     return true;
 }
 
-bool FakeExtVM::table_rename(const evmc_address* address, 
+int64_t FakeExtVM::table_rename(const evmc_address* address,
         bytesConstRef const &oname, 
         bytesConstRef const &nname) {
     test::PrintInputParams<const char*, std::string>("RenameTable", 
@@ -178,7 +178,7 @@ bool FakeExtVM::table_rename(const evmc_address* address,
     return true;
 }
 
-bool FakeExtVM::table_insert(const evmc_address *address, 
+int64_t FakeExtVM::table_insert(const evmc_address *address,
         bytesConstRef const &name, 
         bytesConstRef const &stmt) {
     test::PrintInputParams<const char*, std::string>("InsertSQL", 
@@ -189,7 +189,7 @@ bool FakeExtVM::table_insert(const evmc_address *address,
     return true;
 }
 
-bool FakeExtVM::table_delete(const evmc_address *address, 
+int64_t FakeExtVM::table_delete(const evmc_address *address,
         bytesConstRef const &name, bytesConstRef const &stmt) {
     test::PrintInputParams<const char*, std::string>("DeleteSQL", 
             {{"ownerAddr", test::evmcAddrToString(address)},
@@ -199,7 +199,7 @@ bool FakeExtVM::table_delete(const evmc_address *address,
     return true;
 }
 
-bool FakeExtVM::table_drop(const evmc_address *address, 
+int64_t FakeExtVM::table_drop(const evmc_address *address,
         bytesConstRef const &name) {
     test::PrintInputParams<const char*, std::string>("DropTable", 
             {{"ownerAddr", test::evmcAddrToString(address)},
@@ -208,7 +208,7 @@ bool FakeExtVM::table_drop(const evmc_address *address,
     return true;
 }
 
-bool FakeExtVM::table_update(const evmc_address *address, 
+int64_t FakeExtVM::table_update(const evmc_address *address,
         bytesConstRef const &name, 
         bytesConstRef const &cond, 
         bytesConstRef const &upd) {
@@ -221,7 +221,7 @@ bool FakeExtVM::table_update(const evmc_address *address,
     return true;
 }
 
-bool FakeExtVM::table_grant(const evmc_address *owner, 
+int64_t FakeExtVM::table_grant(const evmc_address *owner,
         const evmc_address *to, 
         bytesConstRef const &name, 
         bytesConstRef const &stmt) {
@@ -303,7 +303,7 @@ void FakeExtVM::db_trans_begin() {
             "BeginTransaction", {{"parameters", "None"}});
 }
 
-bool FakeExtVM::db_trans_submit() {
+int64_t FakeExtVM::db_trans_submit() {
     test::PrintInputParams<const char*, const char*>(
             "SubmitTransaction", {{"parameters", "None"}});
     return true;

@@ -50,6 +50,23 @@ private:
 	owning_bytes_ref m_output;
 };
 
+//Diy exception,to throw real ter
+struct RevertDiyInstruction :VMException
+{
+	explicit RevertDiyInstruction(owning_bytes_ref&& _output) : m_output(std::move(_output)) {}
+	RevertDiyInstruction(RevertDiyInstruction const&) = delete;
+	RevertDiyInstruction(RevertDiyInstruction&&) = default;
+	RevertDiyInstruction& operator=(RevertDiyInstruction const&) = delete;
+	RevertDiyInstruction& operator=(RevertDiyInstruction&&) = default;
+
+	char const* what() const noexcept override { return "RevertDiy instruction"; }
+
+	owning_bytes_ref&& output() { return std::move(m_output); }
+
+private:
+	owning_bytes_ref m_output;
+};
+
 class VMFace {
 public:
 	using pointer = std::shared_ptr<VMFace>;

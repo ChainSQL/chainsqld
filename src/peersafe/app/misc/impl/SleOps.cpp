@@ -125,7 +125,7 @@ namespace ripple {
 		return ret;
 	}
 
-	bool SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)
+	TER SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
 		// Open a ledger for editing.
 		auto const k = keylet::account(_to);
@@ -142,10 +142,10 @@ namespace ripple {
 
 		if (_value != uint256(0))
 		{
-			transferBalance(_from, _to, _value);
+			return transferBalance(_from, _to, _value);
 		}
 
-		return true;
+		return tesSUCCESS;
 	}
 
 	void SleOps::addBalance(AccountID const& addr, int64_t const& amount)
@@ -290,7 +290,7 @@ namespace ripple {
 
 	}
 
-	bool SleOps::disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName, bool bNewNameInDB)
+	int64_t SleOps::disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName, bool bNewNameInDB)
 	{
 		AccountID ownerAccountID = _account;
 		std::string sAccount = ripple::toBase58(ownerAccountID);
@@ -299,7 +299,7 @@ namespace ripple {
 		std::string sOwner = ripple::toBase58(ownerAccountID);
 		auto tables = genTableFields(ctx_, ownerAccountID, _sTableName, _tableNewName, bNewNameInDB);
 		if(!tables.first)
-			return false;
+			return tefTABLE_NOTEXIST;
 		//
 		tx.setFieldArray(sfTables, tables.second);
 		SleOps::addCommonFields(tx, _account);
@@ -309,28 +309,25 @@ namespace ripple {
 			"SleOps --- disposeTableTx subTx: " << tx;
 		if (bTransaction_) {
 			sqlTxsStatements_.push_back(tx);
-			return true;
+			return tesSUCCESS;
 		}
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		bool rel = (ret == tesSUCCESS);
-		if (!rel)
+		if (ret != tesSUCCESS)
 		{
 			auto j = ctx_.app.journal("Executive");
 			JLOG(j.info())
 				<< "SleOps disposeTableTx,apply result:"
 				<< transToken(ret);
 		}
-
 		if (ctx_.view().flags() & tapForConsensus)
 		{
 			ctx_.tx.addSubTx(tx);
 		}
-
-		return rel;
+		return ret;
 	}
 
 	//table operation
-	bool SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
+	int64_t SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
@@ -341,11 +338,11 @@ namespace ripple {
 			obj.setFieldVL(sfRaw, strCopy(_raw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
-		//
+
 		return disposeTableTx(tx, _account, _sTableName, "", true);
 	}
 
-	bool SleOps::dropTable(AccountID const& _account, std::string const& _sTableName)
+	int64_t SleOps::dropTable(AccountID const& _account, std::string const& _sTableName)
 	{
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
@@ -355,11 +352,11 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
-		//
+
 		return disposeTableTx(tx, _account, _sTableName);
 	}
 
-	bool SleOps::renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName)
+	int64_t SleOps::renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName)
 	{
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
@@ -371,11 +368,11 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
-		//
+
 		return disposeTableTx(tx, _account, _sTableName, _sTableNewName);
 	}
 
-	bool SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw)
+	int64_t SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
@@ -395,7 +392,7 @@ namespace ripple {
 	}
 
 	//CRUD operation
-	bool SleOps::insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+	int64_t SleOps::insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttSQLSTATEMENT,
@@ -413,7 +410,7 @@ namespace ripple {
 		return disposeTableTx(tx, _account, _sTableName);
 	}
 
-	bool SleOps::deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+	int64_t SleOps::deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttSQLSTATEMENT,
@@ -432,7 +429,7 @@ namespace ripple {
 		return disposeTableTx(tx, _account, _sTableName);
 	}
 
-	bool SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw)
+	int64_t SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw)
 	{
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttSQLSTATEMENT,
@@ -584,7 +581,7 @@ namespace ripple {
 		bTransaction_ = true;
 	}
 
-	bool	SleOps::transactionCommit(AccountID const& _account, bool _bNeedVerify)
+	int64_t	SleOps::transactionCommit(AccountID const& _account, bool _bNeedVerify)
 	{
 		if (!bTransaction_)
 		{
@@ -609,8 +606,7 @@ namespace ripple {
         tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
 		auto ret = applyDirect(ctx_.app, ctx_.view(), tx, ctx_.app.journal("SleOps"));
-		bool rel = (ret == tesSUCCESS);
-		if (!rel)
+		if (ret != tesSUCCESS)
 		{
 			auto j = ctx_.app.journal("Executive");
 			JLOG(j.info())
@@ -625,7 +621,7 @@ namespace ripple {
 		}
 		//
 		resetTransactionCache();
-		return rel;
+		return ret;
 	}
 
 	void SleOps::resetTransactionCache()

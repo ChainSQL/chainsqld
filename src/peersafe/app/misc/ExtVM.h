@@ -120,13 +120,13 @@ public:
     virtual int64_t executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
 
 	//
-	virtual bool table_create(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
-	virtual bool table_rename(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
-	virtual bool table_insert(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
-	virtual bool table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
-	virtual bool table_drop(const struct evmc_address* address, bytesConstRef const& _name) override final;
-	virtual bool table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _rawUpdate, bytesConstRef const& _rawCondition) override final;
-	virtual bool table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual int64_t table_create(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual int64_t table_rename(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual int64_t table_insert(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual int64_t table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
+	virtual int64_t table_drop(const struct evmc_address* address, bytesConstRef const& _name) override final;
+	virtual int64_t table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _rawUpdate, bytesConstRef const& _rawCondition) override final;
+	virtual int64_t table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
 	virtual evmc_uint256be table_get_handle(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw) override final;
 	virtual evmc_uint256be table_get_lines(const struct evmc_uint256be *handle) override final;
 	virtual evmc_uint256be table_get_columns(const struct evmc_uint256be *handle) override final;
@@ -141,7 +141,7 @@ public:
 			size_t _outSize) override final;
 
 	virtual void db_trans_begin() override final;
-	virtual bool db_trans_submit() override final;
+	virtual int64_t db_trans_submit() override final;
 	virtual void release_resource() override final;
 
 	//get field's value size

@@ -28,7 +28,10 @@ owning_bytes_ref VMC::exec(int64_t& gas, ExtVMFace& ext) {
 	case EVMC_REVERT:
 		gas = r.gasLeft();
 		throw RevertInstruction{ { r.output().toVector(), 0, r.output().size() } };
-
+	case EVMC_REVERTDIY:
+		gas = r.gasLeft();
+		throw RevertDiyInstruction{ { r.output().toVector(), 0, r.output().size() } };
+		break;
 	case EVMC_OUT_OF_GAS:
 	case EVMC_FAILURE:
 		BOOST_THROW_EXCEPTION(OutOfGas());

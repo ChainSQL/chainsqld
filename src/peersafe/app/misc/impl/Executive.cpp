@@ -293,7 +293,12 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 	// account if it does not exist yet.
 	auto value = _endowment;
 
-	m_s.createContractAccount(_sender, m_newAddress, value);
+	TER ret = m_s.createContractAccount(_sender, m_newAddress, value);
+	if (ret != tesSUCCESS)
+	{
+		m_excepted = ret;
+		return true;
+	}
 
 	// Schedule _init execution if not empty.
 	Blob data;
@@ -351,6 +356,12 @@ bool Executive::go()
 			//revert();
 			formatOutput(_e.output());
 			m_excepted = tefCONTRACT_REVERT_INSTRUCTION;
+		}
+		catch (RevertDiyInstruction& _e)
+		{
+			auto str = _e.output().toString();
+			int n = atoi(str.c_str());
+			m_excepted = TER(n);
 		}
 		catch (VMException const& _e)
 		{
