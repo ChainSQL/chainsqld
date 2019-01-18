@@ -135,6 +135,7 @@ namespace ripple {
 			return tecNO_DST;
 		}
 
+
 		//whether the table node is existed
 		auto const kTable = keylet::table(uOwnerID);
 		auto const sleTable = view.read(kTable);
@@ -265,6 +266,11 @@ namespace ripple {
 		if(!OperationRule::hasOperationRule(view,tx))
 			return tesSUCCESS;
 		//
+		if (ctx_.app.getTxStoreDBConn().GetDBConn() == nullptr ||
+			ctx_.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+		{
+			return tefDBNOTCONFIGURED;
+		}
 		auto envPair = getTransactionDBEnv(ctx_);
 		if (envPair.first == nullptr && envPair.second == nullptr)
 		{

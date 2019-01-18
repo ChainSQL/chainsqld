@@ -165,6 +165,7 @@ namespace ripple {
 	tefTABLE_GRANTFULL,
 	tefDBNOTCONFIGURED,
 	tefINSUFFICIENT_RESERVE,
+	tefINSU_RESERVE_TABLE,
 	tefINVARIANT_FAILED,
 	tefBAD_DBNAME,       // NameInDB does not match tableName.
 	tefBAD_STATEMENT,    // satement error

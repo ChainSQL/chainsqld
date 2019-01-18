@@ -60,6 +60,16 @@ namespace ripple {
 		Application& app = ctx.app;
 		auto j = app.journal("preflightChainSql");
 
+		auto const sleAccount = ctx.view.read(keylet::account(tx.getAccountID(sfAccount)));
+		// Check reserve and funds availability
+		{
+			auto const reserve = ctx.view.fees().accountReserve(
+				(*sleAccount)[sfOwnerCount]);
+			STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
+			if (priorBalance < reserve + calculateFeePaid(tx))
+				return tefINSUFFICIENT_RESERVE;
+		}
+
 		if (tx.isCrossChainUpload())
 		{
 			AccountID sourceID(tx.getAccountID(sfAccount));
