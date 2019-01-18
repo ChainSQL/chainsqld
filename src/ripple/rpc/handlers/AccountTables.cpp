@@ -84,7 +84,7 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 					{
 						auto  pTx = tx->getSTransaction();
                         std::vector<STTx> vecTxs = context.app.getMasterTransaction().getTxs(*pTx, to_string(nameInDB), nullptr, iInLedger);
-                        for (auto& it = vecTxs.begin(); it != vecTxs.end(); it++)
+                        for (auto it = vecTxs.begin(); it != vecTxs.end(); it++)
                         {
                             if ((*it).getFieldU16(sfOpType) == T_CREATE)
                             {
