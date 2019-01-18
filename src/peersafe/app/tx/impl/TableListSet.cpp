@@ -149,6 +149,13 @@ namespace ripple {
 
 		if (optype == T_CREATE)
 		{
+			auto tables = tx.getFieldArray(sfTables);
+			if (!tables[0].isFieldPresent(sfTableName) ||
+				tables[0].getFieldVL(sfTableName).size() == 0 ||
+				tables[0].getFieldVL(sfTableName).size() > 64)
+			{
+				return temINVALID;
+			}
 			if (tx.isFieldPresent(sfOperationRule))
 			{
 				Json::Value jsonRule;
@@ -171,7 +178,9 @@ namespace ripple {
         if (optype == T_RENAME)  //check sfTableNewName
         {
             auto tables = tx.getFieldArray(sfTables);
-            if (!tables[0].isFieldPresent(sfTableNewName) || (tables[0].getFieldVL(sfTableNewName).size() == 0))
+            if (!tables[0].isFieldPresent(sfTableNewName) ||
+				tables[0].getFieldVL(sfTableNewName).size() == 0 ||
+				tables[0].getFieldVL(sfTableNewName).size() > 64)
             {
                 JLOG(j.trace()) <<
                     "rename opreator but sfTableNewName is not filled";
