@@ -68,7 +68,8 @@ Json::Value doGetAccountTables(RPC::Context&  context)
             for (auto table : aTables)
             {
 				Json::Value tmp(Json::objectValue);
-				tmp[jss::nameInDB] = to_string(table.getFieldH160(sfNameInDB));
+                auto nameInDB = table.getFieldH160(sfNameInDB);
+				tmp[jss::nameInDB] = to_string(nameInDB);
 				auto blob = table.getFieldVL(sfTableName);
 				std::string str(blob.begin(), blob.end());
 				tmp[jss::tablename] = str;
@@ -78,18 +79,27 @@ Json::Value doGetAccountTables(RPC::Context&  context)
                 tmp[jss::tx_hash] = to_string(txHash);
                 if (bGetDetailInfo)
                 {
-                    auto tx = context.app.getMasterTransaction().fetch(txHash, true);
+                    auto  tx = context.app.getMasterTransaction().fetch(txHash, true);
 					if (tx)
 					{
-						auto stTx = tx->getSTransaction();
-						if (stTx->isFieldPresent(sfRaw))
-						{
-							auto blob = stTx->getFieldVL(sfRaw);
-							std::string strRaw(blob.begin(), blob.end());
-							tmp[jss::raw] = strHex(strRaw);
-							uint256 ledgerHash = context.app.getLedgerMaster().getHashBySeq(iInLedger);
-							tmp[jss::ledger_hash] = to_string(ledgerHash);
-						}
+						auto  pTx = tx->getSTransaction();
+                        std::vector<STTx> vecTxs = context.app.getMasterTransaction().getTxs(*pTx, to_string(nameInDB), nullptr, iInLedger);
+                        for (auto& it = vecTxs.begin(); it != vecTxs.end(); it++)
+                        {
+                            if ((*it).getFieldU16(sfOpType) == T_CREATE)
+                            {
+                                if ((*it).isFieldPresent(sfRaw))
+                                {
+                                    auto blob = (*it).getFieldVL(sfRaw);
+                                    std::string strRaw(blob.begin(), blob.end());
+                                    tmp[jss::raw] = strHex(strRaw);                                    
+                                }
+                                uint256 ledgerHash = context.app.getLedgerMaster().getHashBySeq(iInLedger);
+                                tmp[jss::ledger_hash] = to_string(ledgerHash);
+
+                                break;
+                            }
+                        }						
 					}
 					STEntry* pEntry = (STEntry*)(&table);
 					tmp[jss::confidential] = pEntry->isConfidential();
