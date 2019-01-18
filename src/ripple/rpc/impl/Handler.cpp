@@ -176,7 +176,7 @@ Handler handlerArray[] {
 	{   "t_dumpstop",			byRef (&doTableDumpStop),      Role::ADMIN,   NO_CONDITION },
     {   "t_audit",			    byRef (&doTableAudit),         Role::ADMIN,   NO_CONDITION },
     {   "t_auditstop",			byRef (&doTableAuditStop),     Role::ADMIN,   NO_CONDITION },
-	{   "table_auth",			byRef (&doTableAuthority),     Role::ADMIN,   NO_CONDITION },
+	{   "table_auth",			byRef (&doTableAuthority),     Role::USER,   NO_CONDITION },
     {   "g_accountTables",      byRef (&doGetAccountTables),   Role::USER,   NO_CONDITION },
 	{	"tx_count",				byRef(&doTxCount),            Role::USER,	 NO_CONDITION },
 	{	"tx_crossget",			byRef(&doGetCrossChainTx),	   Role::USER,	NO_CONDITION },
