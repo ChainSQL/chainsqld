@@ -30,6 +30,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/basics/characterUtilities.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 
 namespace ripple {
 
@@ -47,6 +48,16 @@ namespace ripple {
 			ret[jss::error] = "field table_name is empty!";
 			return ret;
 		}
+		ripple::hash_set<AccountID> ids;
+		if (context.params.isMember(jss::accounts))
+		{
+			if (!context.params[jss::accounts].isArray())
+				return rpcError(rpcINVALID_PARAMS);
+			ids = RPC::parseAccountIds(context.params[jss::accounts]);
+			if (ids.empty())
+				return rpcError(rpcACT_MALFORMED);
+		}
+
 		auto ownerID = ripple::parseBase58<AccountID>(params[jss::owner].asString());
 		auto tableName = params[jss::tablename].asString();
 
@@ -71,10 +82,13 @@ namespace ripple {
 				auto users = pEntry->peekFieldArray(sfUsers);
 				for (auto & user : users)  //check if there same user
 				{
-					Json::Value& jvObj = jvUsers.append(Json::objectValue);
 					auto userID = user.getAccountID(sfUser);
 					auto flags = user.getFieldU32(sfFlags);
 
+					if (!ids.empty() && ids.find(userID) == ids.end())
+						continue;
+
+					Json::Value& jvObj = jvUsers.append(Json::objectValue);
 					jvObj[jss::account] = to_string(userID);
 					Json::Value& jvAuth = jvObj["authority"];
 					jvAuth["insert"] = flags & lsfInsert ? true : false;
