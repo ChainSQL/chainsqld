@@ -83,6 +83,8 @@ public:
 	Json::Value txHistory(RPC::Context& context);
     Json::Value txHistory(Json::Value& tx_json);
     Json::Value txHistory(std::string sql);
+	std::pair<std::vector<std::vector<Json::Value>>, std::string> txHistory2d(RPC::Context& context);
+	std::pair<std::vector<std::vector<Json::Value>>, std::string> txHistory2d(Json::Value& tx_json);
 
 	DatabaseCon* getDatabaseCon();
 private:

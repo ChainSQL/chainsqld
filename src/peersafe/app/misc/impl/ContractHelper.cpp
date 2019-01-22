@@ -39,17 +39,17 @@ namespace ripple {
 		}
 	}
 
-	void ContractHelper::addRecord(uint256 const& handle, Json::Value const& result)
+	void ContractHelper::addRecord(uint256 const& handle, std::vector<std::vector<Json::Value>> const& result)
 	{
-		auto p = std::make_shared<Json::Value>(result);
+		auto p = std::make_shared<std::vector<std::vector<Json::Value>>>(result);
 		mRecordCache.canonicalize(handle, p);
 	}
 
-	Json::Value ContractHelper::getRecord(uint256 const& handle)
+	std::vector<std::vector<Json::Value>>const& ContractHelper::getRecord(uint256 const& handle)
 	{
-		Json::Value* ret = mRecordCache.fetch(handle).get();
+		std::vector<std::vector<Json::Value>>* ret = mRecordCache.fetch(handle).get();
 		if (ret == nullptr)
-			return Json::Value();
+			return std::vector<std::vector<Json::Value>>();
 		return *ret;
 	}
 

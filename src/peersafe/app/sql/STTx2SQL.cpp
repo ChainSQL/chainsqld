@@ -2490,6 +2490,71 @@ namespace helper {
 		return{ code, error };
 	}
 
+	std::vector<std::vector<Json::Value>> query_result_2d(const soci::rowset<soci::row>& records)
+	{
+		std::vector<std::vector<Json::Value>> vecRet;
+		try {
+			soci::rowset<soci::row>::const_iterator r = records.begin();
+			for (; r != records.end(); r++) {
+				std::vector<Json::Value> vecCol;
+				for (size_t i = 0; i < r->size(); i++) {
+					Json::Value e;
+					std::string key = r->get_properties(i).get_name();
+					if (r->get_properties(i).get_data_type() == soci::dt_string
+						|| r->get_properties(i).get_data_type() == soci::dt_blob) {
+						if (r->get_indicator(i) == soci::i_ok)
+							e[key] = r->get<std::string>(i);
+						else
+							e[key] = "null";
+					}
+					else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
+						if (r->get_indicator(i) == soci::i_ok)
+							e[key] = r->get<int>(i);
+						else
+							e[key] = 0;
+					}
+					else if (r->get_properties(i).get_data_type() == soci::dt_double) {
+						if (r->get_indicator(i) == soci::i_ok)
+							e[key] = r->get<double>(i);
+						else
+							e[key] = 0.0;
+					}
+					else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
+						if (r->get_indicator(i) == soci::i_ok)
+							e[key] = static_cast<int>(r->get<long long>(i));
+						else
+							e[key] = 0;
+					}
+					else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
+						if (r->get_indicator(i) == soci::i_ok)
+							e[key] = static_cast<int>(r->get<unsigned long long>(i));
+						else
+							e[key] = 0;
+					}
+					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
+						std::tm tm = { 0 };
+						std::string datetime = "NULL";
+						if (r->get_indicator(i) == soci::i_ok) {
+							tm = r->get<std::tm>(i);
+							datetime = (boost::format("%d/%d/%d %d:%d:%d")
+								% (tm.tm_year + 1900) % (tm.tm_mon + 1) % tm.tm_mday
+								%tm.tm_hour % (tm.tm_min) % tm.tm_sec).str();
+						}
+
+						e[key] = datetime;
+					}
+					vecCol.push_back(e);
+				}
+				vecRet.push_back(vecCol);
+			}
+		}
+		catch (soci::soci_error& e) {
+			Json::Value obj(Json::objectValue);
+			obj[jss::error] = e.what();
+		}
+		return vecRet;
+	}
+
 	Json::Value query_result(const soci::rowset<soci::row>& records) {
 		Json::Value obj;
 		Json::Value lines;
@@ -2662,7 +2727,29 @@ namespace helper {
 		}
 		return obj;
 	}
+	std::pair<std::vector<std::vector<Json::Value>>, std::string> query_directly2d(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql) {
+		std::vector<std::vector<Json::Value>> obj;
+		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
+		if (result.first != 0) {
+			return std::make_pair(obj,result.second);
+		}
 
+		try {
+			std::string sql = buildsql->asString();
+			modifyLimitCount(sql);
+			auto last_error = buildsql->last_error();
+			if (last_error.first != 0) {
+				return std::make_pair(obj,last_error.second);
+			}
+			LockedSociSession query = conn->checkoutDb();
+			soci::rowset<soci::row> records = ((*query).prepare << sql);
+			obj = query_result_2d(records);
+		}
+		catch (soci::soci_error& e) {
+			return std::make_pair(obj,e.what());
+		}
+		return std::make_pair(std::move(obj),"");
+	}
     
 } // namespace helper
 
@@ -3422,9 +3509,13 @@ Json::Value TxStore::txHistory(RPC::Context& context) {
     return txHistory(context.params[jss::tx_json]);
 }
 
+std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory2d(RPC::Context& context)
+{
+	return txHistory2d(context.params[jss::tx_json]);
+}
+
 Json::Value TxStore::txHistory(Json::Value& tx_json) {
     Json::Value obj;
-    Json::Value lines;
     if (databasecon_ == nullptr)
         return rpcError(rpcINTERNAL);
 
@@ -3441,6 +3532,25 @@ Json::Value TxStore::txHistory(Json::Value& tx_json) {
     }
 
     return helper::query_directly(tx_json, databasecon_, buildsql.get());
+}
+
+std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory2d(Json::Value& tx_json) {
+	std::vector<std::vector<Json::Value>> ret;
+	if (databasecon_ == nullptr)
+		return std::make_pair(ret,"internal error: connection object is null");
+
+	std::shared_ptr<BuildSQL> buildsql = nullptr;
+	if (boost::iequals(db_type_, "sqlite"))
+		buildsql = std::make_shared<BuildSqlite>(BuildSQL::BUILD_SELECT_SQL, databasecon_);
+	else if (boost::iequals(db_type_, "mycat") || boost::iequals(db_type_, "mysql"))
+		buildsql = std::make_shared<BuildMySQL>(BuildSQL::BUILD_SELECT_SQL, databasecon_);
+
+	if (buildsql == nullptr)
+	{
+		return std::make_pair(ret,"there is no DB in this node");
+	}
+
+	return helper::query_directly2d(tx_json, databasecon_, buildsql.get());
 }
 
 Json::Value TxStore::txHistory(std::string sql) {

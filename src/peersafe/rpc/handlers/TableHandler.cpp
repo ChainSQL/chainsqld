@@ -128,17 +128,16 @@ Json::Value doCreateFromRaw(RPC::Context& context)
     return doRpcSubmit(context);
 }
 
-
-Json::Value doGetRecord(RPC::Context&  context)
+Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector<ripple::uint160> vecNameInDB)
 {
-    Json::Value ret(Json::objectValue);
+	Json::Value ret(Json::objectValue);
 	Json::Value& tx_json(context.params["tx_json"]);
 
-    if (tx_json["Owner"].asString().empty())
-    {
-        ret[jss::error] = "field Owner is empty!";
-        return ret;
-	}	
+	if (tx_json["Owner"].asString().empty())
+	{
+		ret[jss::error] = "field Owner is empty!";
+		return ret;
+	}
 	auto ownerID = ripple::parseBase58<AccountID>(tx_json["Owner"].asString());
 	if (ownerID == boost::none)
 	{
@@ -146,54 +145,52 @@ Json::Value doGetRecord(RPC::Context&  context)
 		return ret;
 	}
 
-    if (tx_json["Account"].asString().empty())
-    {
-        ret[jss::error] = "field Account is empty!";
-        return ret;
-    }
-    auto accountID = ripple::parseBase58<AccountID>(tx_json["Account"].asString());
-    if (accountID == boost::none)
-    {
-        ret[jss::error] = "field Account is wrong!";
-        return ret;
-    }
+	if (tx_json["Account"].asString().empty())
+	{
+		ret[jss::error] = "field Account is empty!";
+		return ret;
+	}
+	auto accountID = ripple::parseBase58<AccountID>(tx_json["Account"].asString());
+	if (accountID == boost::none)
+	{
+		ret[jss::error] = "field Account is wrong!";
+		return ret;
+	}
 
 
 	Json::Value &tables_json = tx_json["Tables"];
-    if (!tables_json.isArray())
-    {
-        ret[jss::error] = "field Tables is not array!";
-        return ret;
-    }
+	if (!tables_json.isArray())
+	{
+		ret[jss::error] = "field Tables is not array!";
+		return ret;
+	}
 
 	auto j = context.app.journal("RPCHandler");
 	JLOG(j.debug())
 		<< "get record from tables: " << tx_json.toStyledString();
 
-    uint160 nameInDB;
-	std::vector<ripple::uint160> vecNameInDB;
-    std::list<std::string> listTableName;
+	std::list<std::string> listTableName;
 	for (Json::UInt idx = 0; idx < tables_json.size(); idx++) {
 		Json::Value& e = tables_json[idx];
-        if (!e.isObject()) 
-        {
-            ret[jss::error] = "field Tables is not object!";
-            return ret;
-        };
+		if (!e.isObject())
+		{
+			ret[jss::error] = "field Tables is not object!";
+			return ret;
+		};
 
 		Json::Value& v = e["Table"];
-        if (!v.isObject())
-        {
-            ret[jss::error] = "field Table is not object!";
-            return ret;
-        }
+		if (!v.isObject())
+		{
+			ret[jss::error] = "field Table is not object!";
+			return ret;
+		}
 
 		Json::Value tn = v["TableName"];
-        if (!tn.isString())
-        {
-            ret[jss::error] = "field TableName is not string!";
-            return ret;
-        }
+		if (!tn.isString())
+		{
+			ret[jss::error] = "field TableName is not string!";
+			return ret;
+		}
 
 		auto nameInDBGot = context.ledgerMaster.getNameInDB(context.ledgerMaster.getValidLedgerIndex(), *ownerID, v["TableName"].asString());
 		if (!nameInDBGot)
@@ -201,9 +198,9 @@ Json::Value doGetRecord(RPC::Context&  context)
 			ret[jss::error] = "can't get TableName in DB ,please check field tablename!";
 			return ret;
 		}
-        listTableName.push_back(v["TableName"].asString());
-        // NameInDB is optional
-		if (v.isMember("NameInDB")) 
+		listTableName.push_back(v["TableName"].asString());
+		// NameInDB is optional
+		if (v.isMember("NameInDB"))
 		{
 			//NameInDB is filled
 			std::string sNameInDB = v["NameInDB"].asString();
@@ -220,28 +217,28 @@ Json::Value doGetRecord(RPC::Context&  context)
 					return ret;
 				}
 			}
-			else 
+			else
 			{
 				ret[jss::error] = "field NameInDB is empty!";
 				return ret;
 			}
 		}
-		else 
+		else
 		{
 			//NameInDB is absent
 			nameInDB = nameInDBGot;
 			v["TableName"] = to_string(nameInDBGot);
-		}        
+		}
 		vecNameInDB.push_back(nameInDB);
 	}
 
-    //check the authority
-    auto retPair = context.ledgerMaster.isAuthorityValid(*accountID, *ownerID, listTableName, lsfSelect);
-    if (!retPair.first)
-    {
-        ret[jss::error] = retPair.second;
-        return ret;
-    }
+	//check the authority
+	auto retPair = context.ledgerMaster.isAuthorityValid(*accountID, *ownerID, listTableName, lsfSelect);
+	if (!retPair.first)
+	{
+		ret[jss::error] = retPair.second;
+		return ret;
+	}
 
 	std::string rule;
 	auto ledger = context.ledgerMaster.getValidatedLedger();
@@ -261,12 +258,12 @@ Json::Value doGetRecord(RPC::Context&  context)
 		if (tablesle)
 		{
 			auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-			STEntry* pEntry = getTableEntry(aTableEntries,listTableName.front());
+			STEntry* pEntry = getTableEntry(aTableEntries, listTableName.front());
 			if (pEntry)
 				rule = pEntry->getOperationRule(R_GET);
 		}
 	}
-	if (rule != "") 
+	if (rule != "")
 	{
 		Json::Value conditions;
 		Json::Value jsonRaw = tx_json[jss::Raw];
@@ -303,14 +300,14 @@ Json::Value doGetRecord(RPC::Context&  context)
 			buildRaw(conditions, rule);
 		}
 		Json::Value finalRaw;
-		if(jsonRaw.size() > 0)
+		if (jsonRaw.size() > 0)
 			finalRaw.append(jsonRaw[(Json::UInt)0]);
 		else
 		{
 			Json::Value arr(Json::arrayValue);
 			finalRaw.append(arr);
 		}
-			
+
 		for (Json::UInt idx = 0; idx < conditions.size(); idx++)
 		{
 			finalRaw.append(conditions[idx]);
@@ -322,8 +319,20 @@ Json::Value doGetRecord(RPC::Context&  context)
 	{
 		tx_json["Raw"] = tx_json["Raw"].toStyledString();
 	}
+	return ret;
+}
 
+Json::Value doGetRecord(RPC::Context&  context)
+{
+	uint160 nameInDB = beast::zero;
+	std::vector<ripple::uint160> vecNameInDB;
+	Json::Value ret = checkForSelect(context,nameInDB,vecNameInDB);
+	if (ret.isMember(jss::error))
+		return ret;
+
+	Json::Value& tx_json(context.params["tx_json"]);
 	Json::Value result;
+	Json::Value& tables_json = tx_json["Tables"];
 	TxStore* pTxStore = &context.app.getTxStore();
 	if (tables_json.size() == 1)//getTableStorage first_storage related
 		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
@@ -339,6 +348,29 @@ Json::Value doGetRecord(RPC::Context&  context)
 
 	return result;
 }
+
+std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::Context&  context)
+{
+	std::vector<std::vector<Json::Value>> result;
+	uint160 nameInDB = beast::zero;
+	std::vector<ripple::uint160> vecNameInDB;
+	Json::Value ret = checkForSelect(context, nameInDB, vecNameInDB);
+	if (ret.isMember(jss::error))
+		return std::make_pair(result,ret[jss::error].asString());
+
+	Json::Value& tx_json(context.params["tx_json"]);
+	Json::Value& tables_json = tx_json["Tables"];
+	TxStore* pTxStore = &context.app.getTxStore();
+	if (tables_json.size() == 1)//getTableStorage first_storage related
+		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
+
+	//db connection is null
+	if (pTxStore->getDatabaseCon() == nullptr)
+		return std::make_pair(result,"Db not configured.");
+
+	return pTxStore->txHistory2d(context);
+}
+
 void buildRaw(Json::Value& condition, std::string& rule)
 {
 	Json::Value finalRaw;

@@ -466,7 +466,7 @@ namespace ripple {
 			Json::Reader().parse(_raw, _condition);
 			jvCommand[jss::tx_json][jss::Raw].append(_condition);
 		}
-		jvCommand[jss::tx_json][jss::OpType] = 7;
+		jvCommand[jss::tx_json][jss::OpType] = R_GET;
 		tableJson[jss::Table][jss::TableName] = _sTableName;
 
 		auto ledgerSeq = ctx_.app.getLedgerMaster().getValidLedgerIndex();
@@ -491,81 +491,60 @@ namespace ripple {
 		RPC::Context context{ ctx_.app.journal("RPCHandler"), jvCommand, ctx_.app,
 			loadType,ctx_.app.getOPs(), ctx_.app.getLedgerMaster(), c, Role::ADMIN };
 
-		Json::Value jvResult = ripple::doGetRecord(context);
-		if (!jvResult[jss::error].asString().empty())
+		auto result = ripple::doGetRecord2D(context);
+		if (!result.second.empty())
 		{
 			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
+			JLOG(j.error())
 				<< "SleOps getDataHandle failed, error: "
-				<< jvResult[jss::error].asString();
+				<< result.second;
 			//
 			return uint256(0);
 		}
 		//
 		uint256 handle = ctx_.app.getContractHelper().genRandomUniqueHandle();
-		ctx_.app.getContractHelper().addRecord(handle, jvResult);
+		ctx_.app.getContractHelper().addRecord(handle, result.first);
 		handleList_.push_back(handle);
 		//
 		return handle;
 	}
 	uint256 SleOps::getDataRowCount(uint256 const& _handle)
 	{
-		Json::Value jvRes = ctx_.app.getContractHelper().getRecord(_handle);
-		if(jvRes.isNull())
-			return uint256(0);
-		//
-		Json::Value lines = jvRes[jss::lines];
-		return uint256(lines.size());
+		auto& vecRes = ctx_.app.getContractHelper().getRecord(_handle);
+		return uint256(vecRes.size());
 	}
+
 	uint256 SleOps::getDataColumnCount(uint256 const& _handle)
 	{
-		Json::Value::UInt size = 0;
-		Json::Value jvRes = ctx_.app.getContractHelper().getRecord(_handle);
-		if (jvRes.isNull())
-			return uint256(size);
-		//
-		Json::Value lines = jvRes[jss::lines];
-		if (lines.size() > 0)
-			size = lines[Json::Value::UInt(0)].size();
-		return uint256(size);
+		auto& vecRes = ctx_.app.getContractHelper().getRecord(_handle);
+		if (vecRes.size() == 0)
+			return uint256(0);
+		else
+			return uint256(vecRes[0].size());
 	}
 	std::string	SleOps::getByKey(uint256 const& _handle, size_t row, std::string const& _key)
 	{
-		Json::Value jvRes = ctx_.app.getContractHelper().getRecord(_handle);
-		if (jvRes.isNull())
+		auto& vecRes = ctx_.app.getContractHelper().getRecord(_handle);
+		if (vecRes.empty() || vecRes.size() <= row)
 			return "";
 		//
-		Json::Value lines = jvRes[jss::lines];
-		if (lines.size() > row)
-			return lines[Json::Value::UInt(row)].get(_key.data(), "").toStyledString();
+		auto& vecCol = vecRes[row];
+		for (Json::Value const& value : vecCol)
+		{
+			if (value.isMember(_key))
+				return value[_key].toStyledString();
+		}
 		return "";
 	}
 	std::string	SleOps::getByIndex(uint256 const& _handle, size_t row, size_t column)
 	{
-		Json::Value jvRes = ctx_.app.getContractHelper().getRecord(_handle);
-		if (jvRes.isNull())
+		auto& vecRes = ctx_.app.getContractHelper().getRecord(_handle);
+		if (vecRes.empty() || vecRes.size() <= row || vecRes[row].size() <= column)
 			return "";
-		//
-		Json::Value value;
-		Json::Value lines = jvRes[jss::lines];
-		if (lines.size() > row) {
-			Json::Value rowData = lines[Json::Value::UInt(row)];
-			if (rowData.size() > column)
-			{
-				int i = 0;
-				Json::ValueIterator iter = rowData.begin();
-				while (iter != rowData.end())
-				{
-					if (i++ == column)
-					{
-						value = *iter;
-						break;
-					}
-					iter++;
-				}
-			}
-		}
-		return value.toStyledString();
+
+		auto& value = vecRes[row][column];
+		Json::Value first = *value.begin();
+		return first.toStyledString();
 	}
 	void	SleOps::releaseResource()
 	{
