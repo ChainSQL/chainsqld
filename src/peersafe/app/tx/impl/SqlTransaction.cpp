@@ -45,7 +45,7 @@
 
 namespace ripple {
 
-	std::pair<TER, std::string> SqlTransaction::transactionImpl_FstStorage(ApplyContext& ctx_, ripple::TxStore& txStore, TxID txID, beast::Journal journal, const std::vector<STTx> &txs)
+	std::pair<TER, bool> SqlTransaction::transactionImpl_FstStorage(ApplyContext& ctx_, ripple::TxStore& txStore, TxID txID, beast::Journal journal, const std::vector<STTx> &txs)
 	{
 		auto tables = txs.at(0).getFieldArray(sfTables);
 		uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
@@ -58,13 +58,13 @@ namespace ripple {
 				if (!isTesSuccess(ret2))
 				{
 					JLOG(journal.trace()) << "Dispose error" << "Deal with count limit rule error";
-					return std::make_pair(ret2, "Dispose error: Deal with count limit rule error");
+					return std::make_pair(ret2, true);
 				}
 
 			}
-			return{ tesSUCCESS, "success" };
+			return{ tesSUCCESS, true };
 		}
-		return{ tesSUCCESS, "success" };
+		return{ tesSUCCESS, false };
 	}
 
 	std::pair<TER, std::string> SqlTransaction::transactionImpl(ApplyContext& ctx_, ripple::TxStoreDBConn &txStoreDBConn, ripple::TxStore& txStore, beast::Journal journal, const STTx &tx)
@@ -73,9 +73,9 @@ namespace ripple {
 		std::vector<STTx> txs = tx.getTxs(tmpTx);
 		//
 		TxID txID = tx.getTransactionID();
-		std::pair<TER, std::string> ret = transactionImpl_FstStorage(ctx_, txStore, txID, journal, txs);
-		if (ret.first != tesSUCCESS)
-			return ret;
+		auto ret = transactionImpl_FstStorage(ctx_, txStore, txID, journal, txs);
+		if (ret.first != tesSUCCESS || ret.second)
+			return std::make_pair(ret.first,"");
 
 		/*
 		 * drop table before execute the sql.
