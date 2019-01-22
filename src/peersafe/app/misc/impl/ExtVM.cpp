@@ -350,7 +350,7 @@ namespace ripple
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
 		JLOG(j.trace()) << __FUNCTION__;
-		return oSle_.transactionCommit(fromEvmC(myAddress));
+		return oSle_.transactionCommit(fromEvmC(caller));
 	}
 	void ExtVM::release_resource()
 	{
