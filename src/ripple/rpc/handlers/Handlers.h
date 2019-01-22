@@ -97,6 +97,7 @@ Json::Value doTableAuthority(RPC::Context&);
 Json::Value doRpcSubmit(RPC::Context&);
 Json::Value doCreateFromRaw(RPC::Context&);
 Json::Value doGetRecord(RPC::Context&);
+std::pair<std::vector<std::vector<Json::Value>>, std::string> doGetRecord2D(RPC::Context&  context);
 Json::Value doGetDBName(RPC::Context&);
 Json::Value doGetAccountTables(RPC::Context&);
 Json::Value doPrepare(RPC::Context&);

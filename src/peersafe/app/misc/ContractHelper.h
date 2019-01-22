@@ -22,14 +22,15 @@ public:
 	std::vector<STTx> getTxsByHash(uint256 const& txHash);
 
 	//for get interface
-	void addRecord(uint256 const& handle, Json::Value const& result);
-	Json::Value getRecord(uint256 const& handle);
+	void addRecord(uint256 const& handle, std::vector<std::vector<Json::Value>> const& result);
+	std::vector<std::vector<Json::Value>>const& getRecord(uint256 const& handle);
 	void releaseHandle(uint256 const& handle);
 	uint256 genRandomUniqueHandle();
 
 private:
 	TaggedCache<uint256, std::vector<STTx>>	mTxCache;
-	TaggedCache<uint256, Json::Value>		mRecordCache;
+	TaggedCache<uint256, std::vector<std::vector<Json::Value>>>		
+											mRecordCache;
 	Application&							app_;
 };
 
