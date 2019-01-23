@@ -388,6 +388,44 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
     }
 }
 
+bool generateAddrAndPubFile(int pubType, int index, std::string filePath)
+{
+	HardEncrypt* hEObj = HardEncryptObj::getInstance();
+	std::string fileName = "";
+	unsigned char publicKeyTemp[PUBLIC_KEY_EXT_LEN] = { 0 };
+	if (hEObj != NULL)
+	{
+		std::pair<unsigned char*, int> tempPublickey;
+		std::string pubKeyStr = "";
+		PublicKey* newPubKey = nullptr;
+		if (hEObj->syncTableKey == pubType)
+		{
+			tempPublickey = hEObj->getECCSyncTablePubKey(publicKeyTemp);
+			fileName = "/synctablePub.txt";
+			newPubKey = new PublicKey(Slice(tempPublickey.first, tempPublickey.second));
+			pubKeyStr = toBase58(TOKEN_ACCOUNT_PUBLIC, *newPubKey);
+		}
+		else if (hEObj->nodeVerifyKey == pubType)
+		{
+			tempPublickey = hEObj->getECCNodeVerifyPubKey(publicKeyTemp,index);
+			fileName = "/nodeverifyPub.txt";
+			newPubKey = new PublicKey(Slice(tempPublickey.first, tempPublickey.second));
+			pubKeyStr = toBase58(TOKEN_NODE_PUBLIC, *newPubKey);
+		}
+
+		std::string addrStr = toBase58(calcAccountID(*newPubKey));
+		std::string fileBuffer = pubKeyStr + "\r\n" + addrStr + "\r\n";
+		if (filePath.empty())
+		{
+			filePath = hEObj->GetHomePath();
+			filePath += fileName;
+		}
+		hEObj->FileWrite(filePath.c_str(), "wb+", (unsigned char*)fileBuffer.c_str(), fileBuffer.size());
+		return true;
+	}
+	return false;
+}
+
 NodeID
 calcNodeID (PublicKey const& pk)
 {

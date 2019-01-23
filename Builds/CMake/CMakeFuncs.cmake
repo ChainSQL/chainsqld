@@ -74,6 +74,7 @@ macro(parse_target)
         # TBD
       endif()
 
+      message( STATUS "cur_component: ${cur_component}")
       if (${cur_component} STREQUAL unity)
         set(unity true)
         set(nonunity false)
@@ -504,6 +505,19 @@ macro(use_mysql)
   include_directories(${MYSQL_INCLUDE_DIR})
   link_directories(${MYSQL_LIBRARY_DIR})  
 
+endmacro()
+
+macro(use_gmalg)
+  set(CMAKE_INSTALL_RPATH "./gmAlgLib/")
+  message( STATUS "CMAKE_INSTALL_RPATH: ${CMAKE_INSTALL_RPATH}" )
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+  #set(GMALG_LIBRARYS "./gmAlgLib/libswsds.so" "./gmAlgLib/libswsd.so")
+  set(GMALG_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/gmAlgLib")
+  message(STATUS "GMALG_LIBRARY_DIR: ${GMALG_LIBRARY_DIR}")
+  #link_directories(${GMALG_LIBRARY_DIR})
+  set(GMALG_LIBRARYS "${GMALG_LIBRARY_DIR}/libswsds.so" "${GMALG_LIBRARY_DIR}/libswsd.so")
+  #link_directories("./gmAlgLib/")
+  #set(CMAKE_INSTALL_RPATH "./gmAlgLib/")
 endmacro()
 
 macro(use_protobuf)

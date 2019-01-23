@@ -46,6 +46,8 @@
 #include <test/quiet_reporter.h>
 #include <google/protobuf/stubs/common.h>
 #include <boost/program_options.hpp>
+#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/gmencrypt/hardencrypt/gmCheck.h>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
@@ -197,6 +199,29 @@ static int runUnitTests(
     if(anyFailed)
         return EXIT_FAILURE;
     return EXIT_SUCCESS;
+}
+
+std::string GetExecuteName()
+{
+     std::string _exeName = "/proc/self/exe";
+#ifdef _WIN64
+     std::string str = _pgmptr;
+     int pos_s = str.rfind('\\');
+     std::string str_s = str.substr(pos_s + 1, str.length() - pos_s - 1);
+     int pos_t = str_s.rfind('.');
+     _exeName = str_s.substr(0, pos_t);
+#else
+     size_t linksize = 256;
+     char exeName[256] = { 0 };
+     if (readlink(_exeName.c_str(), exeName, linksize) != -1)
+     {
+         _exeName = exeName;
+     }
+     int pos = _exeName.rfind('/');
+     _exeName = _exeName.substr(pos + 1,_exeName.length() - pos);
+     std::cerr << "exename:" <<_exeName<< std::endl;
+#endif
+     return _exeName;
 }
 
 //------------------------------------------------------------------------------
@@ -426,18 +451,45 @@ int run (int argc, char** argv)
 
     auto logs = std::make_unique<Logs>(thresh);
 #ifdef GM_ALG_PROCESS
-    if (nullptr == HardEncryptObj::getInstance())
-    {
-        setDebugLogSink(logs->makeSink(
-            "Debug", beast::severities::kTrace));
-        auto hardEncryptJournal = logs->journal("HardEncrypt");
-        JLOG(hardEncryptJournal.info()) << "No EncryptCard! Please Check!";
-        return -1;
-    }
+	setDebugLogSink(logs->makeSink(
+		"Debug", beast::severities::kTrace));
+	auto hardEncryptJournal = logs->journal("HardEncrypt");
+	HardEncrypt* hEObj = HardEncryptObj::getInstance();
+	if (nullptr == hEObj)
+	{
+		JLOG(hardEncryptJournal.info()) << "No EncryptCard! Please Check!";
+		return -1;
+	}
 #endif
     // No arguments. Run server.
     if (!vm.count ("parameters"))
     {
+#ifdef GM_ALG_PROCESS
+		bool checkResult = false;
+		GMCheck* gmCheckObj = GMCheck::getInstance();
+		//beast::Journal checkJournal(logs->journal("GMAlgorithmCheck"));
+		//gmCheckObj->setLogJournal(&checkJournal);
+		if (gmCheckObj != nullptr)
+		{
+			checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
+			if (checkResult)
+			{
+				JLOG(hardEncryptJournal.info()) << "SM2/SM3/SM4 and random check successful!";
+			}
+			else {
+				JLOG(hardEncryptJournal.info()) << "SM2/SM3/SM4 and random check failed!";
+				return -1;
+			}
+		}
+		else
+		{
+			JLOG(hardEncryptJournal.info()) << "Get check obj failed! Please Check!";
+			return -1;
+		}
+		//std::string filePath = GetHomePath();
+		generateAddrAndPubFile(hEObj->syncTableKey, SYNC_TABLE_KEY_INDEX);
+		//generateAddrAndPubFile(filePath, hEObj->nodeVerifyKey);
+#endif
         // We want at least 1024 file descriptors. We'll
         // tweak this further.
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))

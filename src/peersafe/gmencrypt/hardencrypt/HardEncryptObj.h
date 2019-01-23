@@ -21,7 +21,6 @@
 #ifndef HARDENCRYPT_HARDENCRYPT_OBJ_H_INCLUDE
 #define HARDENCRYPT_HARDENCRYPT_OBJ_H_INCLUDE
 #include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
-
 #include <iostream>
 
 class HardEncryptObj

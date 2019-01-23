@@ -215,10 +215,7 @@ Ledger::Ledger (
     {
         keyType = KeyType::gmalg;
     }
-    else
-    {
-        keyType = KeyType::secp256k1;
-    }
+
     static auto const id = calcAccountID(
         generateKeyPair(keyType,
             generateSeed("masterpassphrase")).first);

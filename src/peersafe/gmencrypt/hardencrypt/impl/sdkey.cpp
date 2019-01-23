@@ -75,6 +75,23 @@ std::pair<unsigned char*, int> SDkey::getPrivateKey()
     DebugPrint("priKeyLen_:%u,%s", priKeyLen_, priKey_);
     return std::make_pair(priKey_, priKeyLen_);
 }
+//Generate Random
+unsigned long SDkey::GenerateRandom(unsigned int uiLength, unsigned char * pucRandomBuf)
+{
+	int rv;
+	memset(pucRandomBuf, 0, sizeof(pucRandomBuf));
+	rv = SDKEY_GenRandom(hEkey_, uiLength, pucRandomBuf);
+	if (rv)
+	{
+		DebugPrint("Generate random failed, failed number:[0x%08x]\n", rv);
+		return rv;
+	}
+	else
+	{
+		DebugPrint("Generate random successful!");
+		return 0;
+	}
+}
 
 //SM2 interface
 //Generate Publick&Secret Key
@@ -288,8 +305,79 @@ void SDkey::operator()(HANDLE phSM3Handle, void const* data, std::size_t size) n
     }
 }
 
+unsigned long SM4SymEncryptECB(
+	unsigned char *pSessionKey,
+	unsigned long pSessionKeyLen,
+	unsigned char *pPlainData,
+	unsigned long ulPlainDataLen,
+	unsigned char *pCipherData,
+	unsigned long *pulCipherDataLen)
+{
+	int rv = 0;
+	rv = SM4SymEncrypt(ALG_MOD_ECB, pSessionKey, pSessionKeyLen, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
+	return rv;
+}
+unsigned long SM4SymDecryptECB(
+	unsigned char *pSessionKey,
+	unsigned long pSessionKeyLen,
+	unsigned char *pPlainData,
+	unsigned long ulPlainDataLen,
+	unsigned char *pCipherData,
+	unsigned long *pulCipherDataLen)
+{
+	int rv = 0;
+	rv = SM4SymDecrypt(ALG_MOD_ECB, pSessionKey, pSessionKeyLen, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
+	return rv;
+}
+unsigned long SM4SymEncryptCBC(
+	unsigned char *pSessionKey,
+	unsigned long pSessionKeyLen,
+	unsigned char *pPlainData,
+	unsigned long ulPlainDataLen,
+	unsigned char *pCipherData,
+	unsigned long *pulCipherDataLen)
+{
+	int rv = 0;
+	rv = SM4SymEncrypt(ALG_MOD_CBC, pSessionKey, pSessionKeyLen, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
+	return rv;
+}
+unsigned long SM4SymDecryptCBC(
+	unsigned char *pSessionKey,
+	unsigned long pSessionKeyLen,
+	unsigned char *pPlainData,
+	unsigned long ulPlainDataLen,
+	unsigned char *pCipherData,
+	unsigned long *pulCipherDataLen)
+{
+	int rv = 0;
+	rv = SM4SymDecrypt(ALG_MOD_CBC, pSessionKey, pSessionKeyLen, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
+	return rv;
+}
+
+unsigned long SDkey::generateIV(unsigned int uiAlgMode, unsigned char * pIV)
+{
+	int rv = 0;
+	if (pIV != NULL)
+	{
+		switch (uiAlgMode)
+		{
+		case ALG_MOD_CBC:
+			memset(pIV, 0x00, 16);
+			rv = GenerateRandom(16, pIV);
+			break;
+		case ALG_MOD_ECB:
+		default:
+			memset(pIV, 0, 16);
+			break;
+		}
+	}
+	else rv = -1;
+	return rv;
+}
+
 //SM4 Symetry Encrypt&Decrypt
 unsigned long SDkey::SM4SymEncrypt(
+	unsigned int uiAlgMode,
     unsigned char *pSessionKey,
     unsigned long pSessionKeyLen,
     unsigned char *pPlainData,
@@ -305,8 +393,8 @@ unsigned long SDkey::SM4SymEncrypt(
     {
         unsigned long rv = 0;
         unsigned char pIv[16];
-        memset(pIv, 0, 16);
-        rv = SDKEY_SymEncrypt(hEkey_, ALG_SM4, ALG_MOD_ECB, pIv, pSessionKey, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
+		generateIV(uiAlgMode, pIv);
+        rv = SDKEY_SymEncrypt(hEkey_, ALG_SM4, uiAlgMode, pIv, pSessionKey, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
         if (rv)
         {
             DebugPrint("SM4 symetry encrypt failed, failed number:[0x%04x]", rv);
@@ -319,6 +407,7 @@ unsigned long SDkey::SM4SymEncrypt(
     }
 }
 unsigned long SDkey::SM4SymDecrypt(
+	unsigned int uiAlgMode,
     unsigned char *pSessionKey,
     unsigned long pSessionKeyLen,
     unsigned char *pCipherData,
@@ -334,8 +423,8 @@ unsigned long SDkey::SM4SymDecrypt(
     {
         unsigned long rv = 0;
         unsigned char pIv[16];
-        memset(pIv, 0, 16);
-        rv = SDKEY_SymDecrypt(hEkey_, ALG_SM4, ALG_MOD_ECB, pIv, pSessionKey, pCipherData, ulCipherDataLen, pPlainData, pulPlainDataLen);
+		generateIV(uiAlgMode, pIv);
+        rv = SDKEY_SymDecrypt(hEkey_, ALG_SM4, uiAlgMode, pIv, pSessionKey, pCipherData, ulCipherDataLen, pPlainData, pulPlainDataLen);
         if (rv)
         {
             DebugPrint("SM4 symmetry decrypt failed, failed number:[0x%04x]", rv);

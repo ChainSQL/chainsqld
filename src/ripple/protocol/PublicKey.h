@@ -252,6 +252,10 @@ verify (PublicKey const& publicKey,
 Blob 
 encrypt(const Blob& passBlob, PublicKey const& publicKey);
 
+/** Genrate a add and publickey file.*/
+bool 
+generateAddrAndPubFile(int pubType, int index, std::string filePath = "");
+
 /** Calculate the 160-bit node ID from a node public key. */
 NodeID
 calcNodeID (PublicKey const&);

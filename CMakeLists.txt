@@ -75,6 +75,10 @@ parse_target()
 project(chainsqld)
 #########################################################
 
+set(enableGmalg FALSE CACHE BOOL "Enable GM algorithm")
+
+#########################################################
+
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
   set(dir "build")
   set(cmd "cmake")
@@ -178,6 +182,12 @@ use_protobuf()
 use_mysql()
 
 setup_build_boilerplate()
+
+if(enableGmalg)
+  use_gmalg()
+else()
+  set(GMALG_LIBRARYS)
+endif()
 
 ############################################################
 
@@ -571,7 +581,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} evmjit)
+      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} ${GMALG_LIBRARYS} evmjit)
 
     link_common_libraries(${target})
 endforeach()

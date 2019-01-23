@@ -20,6 +20,7 @@
 #ifndef RIPPLE_APP_MISC_VALIDATOR_KEYS_H_INCLUDED
 #define RIPPLE_APP_MISC_VALIDATOR_KEYS_H_INCLUDED
 
+#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>

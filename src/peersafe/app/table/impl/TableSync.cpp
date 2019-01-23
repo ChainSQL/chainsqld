@@ -759,21 +759,41 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
         return std::make_pair(pItem, sLastErr_);
     }
     else accountID = *oAccountID;
-
-    if (HardEncryptObj::getInstance() != NULL)
+	
+    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    if (hEObj != NULL)
     {
         try
-        {
-            
+        { 
             if(!user.empty() && !secret.empty())
             {
 				auto pUser = ripple::parseBase58<AccountID>(user);
 				if (boost::none == pUser)
 					return std::make_pair(pItem, tablename + ":user invalid!");
 				userAccountId = *pUser;
-                std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
-                SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
-                secret_key = tempSecKey;
+                
+				if (secret.size() <= 3)
+				{
+					//add a try catch to judge whether the index is a number.
+					secret = secret.substr(1);
+					int index = atoi(secret.c_str());
+					//SecretKey tempSecKey(Slice(nullptr, 0));
+					char* temp4Secret = new char[32];
+					memset(temp4Secret, index, 32);
+					SecretKey tempSecKey(Slice(temp4Secret, 32));
+					tempSecKey.encrytCardIndex = index;
+					tempSecKey.keyTypeInt = hEObj->gmInCard;
+					hEObj->getPrivateKeyRight(index);
+					secret_key = tempSecKey;
+					delete[] temp4Secret;
+				}
+				else
+				{
+					std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
+					SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
+					tempSecKey.keyTypeInt = hEObj->gmOutCard;
+					secret_key = tempSecKey;
+				}
             }
         }
         catch (std::exception const& e)

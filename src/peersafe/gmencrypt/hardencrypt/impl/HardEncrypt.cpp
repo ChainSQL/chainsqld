@@ -19,6 +19,15 @@
 
 #include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
 #include <string.h>
+#ifdef _WIN64 //== _WIN32
+#include <Userenv.h>
+#pragma comment(lib, "userenv.lib")
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#endif // _WIN64
+
 //define FLAG AND MODE __WFP
 #define SM3_HASH_TYPE 4
 #define SM4_SYM_ALG   6
@@ -50,6 +59,24 @@ HardEncrypt::~HardEncrypt()
 bool HardEncrypt::isHardEncryptExist()
 {
     return isHardEncryptExist_;
+}
+
+std::string HardEncrypt::GetHomePath() {
+	std::string homeStr = "";
+#ifdef _WIN64
+	char lpProfileDir[512];
+	DWORD size = 512;
+	memset(lpProfileDir, 0, 512);
+	HANDLE hToken = nullptr;
+	BOOL bres1 = OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken);
+	BOOL bres = GetUserProfileDirectory(hToken, lpProfileDir, &size);
+	homeStr.replace(0, 1, lpProfileDir);
+#else
+	struct passwd *pw = getpwuid(getuid());
+	const char *homedir = pw->pw_dir;
+	homeStr.replace(0, 1, homedir);
+#endif
+	return homeStr;
 }
 
 std::pair<unsigned char*, int> HardEncrypt::getRootPublicKey()
@@ -84,11 +111,31 @@ void HardEncrypt::dePkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, u
     memcpy(dstUC, srcUC, *dstUCLen);
 }
 
+int HardEncrypt::FileWrite(const char *filename, char *mode, unsigned char *buffer, size_t size)
+{
+	FILE *fp;
+	int rw, rwed;
+
+	if ((fp = fopen(filename, mode)) == NULL)
+	{
+		return 0;
+	}
+	rwed = 0;
+	while (size > rwed)
+	{
+		if ((rw = fwrite(buffer + rwed, 1, size - rwed, fp)) <= 0)
+		{
+			break;
+		}
+		rwed += rw;
+	}
+	fclose(fp);
+	return rwed;
+}
 /*HardEncrypt::SM3Hash &HardEncrypt::getSM3Obj()
 {
     return objSM3_;
 }*/
-
 
 HardEncrypt::SM3Hash::SM3Hash(HardEncrypt *pEncrypt)
 {

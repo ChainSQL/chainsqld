@@ -53,6 +53,7 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/gmencrypt/hardencrypt/gmCheck.h>
 #include <algorithm>
 #include <cassert>
 #include <memory>
@@ -294,6 +295,13 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
     }
     else
     {
+		LedgerInfo ledgerInfo = lastClosed->info();
+		if (nullptr != HardEncryptObj::getInstance())
+		{
+			GMCheck* gmCheckObj = GMCheck::getInstance();
+			gmCheckObj->tryRandomCycleCheck(ledgerInfo.seq);
+		}
+
         checkAccept (lastClosed);
 		//app_.getTableStorage().TryTableStorage();
 		//app_.getTableAssistant().TryTableCheckHash();

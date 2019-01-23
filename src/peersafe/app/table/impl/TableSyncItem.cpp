@@ -791,11 +791,12 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 							if (user.isFieldPresent(sfToken))
 							{
 								auto token = user.getFieldVL(sfToken);
-								//passBlob_ = RippleAddress::decryptPassword(token, *user_secret_);
-                                passBlob_ = ripple::decrypt(token, *user_secret_);
-								if(passBlob_.size() > 0)  return std::make_pair(true, "");
+								bool result = tokenProcObj_.setSymmertryKey(token, *user_secret_);
+                                //passBlob_ = ripple::decrypt(token, *user_secret_);
+								//if(passBlob_.size() > 0)  return std::make_pair(true, "");
+								if (result)  return std::make_pair(true, "");
 								else
-								{
+                                {
 									app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
 									return std::make_pair(false, "cann't get password for this table.");
 								}
@@ -835,7 +836,7 @@ void TableSyncItem::TryDecryptRaw(std::vector<STTx>& vecTxs)
 
 void TableSyncItem::TryDecryptRaw(STTx& tx)
 {
-	if (!user_accountID_ || passBlob_.size() == 0)
+	if (!user_accountID_ || !tokenProcObj_.isValidate)
 		return;
 
 	Blob raw;
@@ -855,20 +856,22 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
 	if (user_accountID_ && user_secret_)
 	{
 		//decrypt passphrase
-        Blob rawDecrypted;
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
-        if (nullptr == hEObj)
-        {
-            rawDecrypted = RippleAddress::decryptAES(passBlob_, raw);
-        }
-        else
-        {
-            unsigned char* pPlainData = new unsigned char[raw.size()];
-            unsigned long plainDataLen = raw.size();
-            hEObj->SM4SymDecrypt(passBlob_.data(),passBlob_.size(),raw.data(),raw.size(),pPlainData,&plainDataLen);
-            rawDecrypted = Blob(pPlainData, pPlainData + plainDataLen);
-            delete[] pPlainData;
-        }
+        Blob rawDecrypted = tokenProcObj_.symmertryDecrypt(raw);
+        //HardEncrypt* hEObj = HardEncryptObj::getInstance();
+        //if (nullptr == hEObj)
+        //{
+        //    rawDecrypted = RippleAddress::decryptAES(passBlob_, raw);
+        //}
+        //else
+        //{
+        //    //unsigned char plainData[512] = { 0 };
+        //    //unsigned long plainDataLen = 512;
+        //    unsigned char* pPlainData = new unsigned char[raw.size()];
+        //    unsigned long plainDataLen = raw.size();
+        //    hEObj->SM4SymDecrypt(hEObj->ECB, passBlob_.data(),passBlob_.size(),raw.data(),raw.size(),pPlainData,&plainDataLen);
+        //    rawDecrypted = Blob(pPlainData, pPlainData + plainDataLen);
+        //    delete[] pPlainData;
+        //}
 
 		if (rawDecrypted.size() > 0)
 		{

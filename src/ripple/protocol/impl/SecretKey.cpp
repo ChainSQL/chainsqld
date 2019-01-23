@@ -29,6 +29,7 @@
 #include <ripple/beast/utility/rngfill.h>
 #include <ed25519-donna/ed25519.h>
 #include <cstring>
+#include <peersafe/gmencrypt/hardencrypt/gmCheck.h>
 
 namespace ripple {
 
@@ -135,9 +136,9 @@ signDigest (PublicKey const& pk, SecretKey const& sk,
 		if (publicKeyType(pk.slice()) != KeyType::gmalg)
 			LogicError("sign: GM algorithm required for digest signing");
 		BOOST_ASSERT(sk.size() == 32);
-
+		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt, sk.encrytCardIndex);
 		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
-		unsigned long rv = hEObj->SM2ECCSign(pri4Sign, (unsigned char*)digest.data(), digest.bytes, sig, (unsigned long*)&len);
+		unsigned long rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, (unsigned char*)digest.data(), digest.bytes, sig, (unsigned long*)&len);
 		if (rv)
 		{
 			DebugPrint("ECCSign error! rv = 0x%04x", rv);
@@ -204,10 +205,12 @@ sign (PublicKey const& pk,
         unsigned long hashDataLen = 32;
 
         HardEncrypt* hEObj = HardEncryptObj::getInstance();
-        std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
         hEObj->SM3HashTotal((unsigned char*)m.data(), m.size(), hashData, &hashDataLen);
 
-        rv = hEObj->SM2ECCSign(pri4Sign, hashData, hashDataLen, outData, &outDataLen);
+		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt, sk.encrytCardIndex);
+		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
+
+        rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, hashData, hashDataLen, outData, &outDataLen);
         if (rv)
         {
             DebugPrint("SM2ECCSign error! rv = 0x%04x", rv);
@@ -229,9 +232,9 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
         unsigned long rv = 0;
         unsigned char plain[512] = { 0 };
         unsigned long plainLen = 512;
-
+		std::pair<int, int> pri4DecryptInfo = std::make_pair(secret_key.keyTypeInt, secret_key.encrytCardIndex);
         std::pair<unsigned char*, int> pri4Decrypt = std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
-        rv = hEObj->SM2ECCDecrypt(pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), plain, &plainLen);
+        rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), plain, &plainLen);
         if (rv)
         {
             DebugPrint("ECCDecrypt error! rv = 0x%04x", rv);
@@ -393,6 +396,11 @@ generateKeyPair (KeyType type, Seed const& seed)
     }
     case KeyType::gmalg:
     {
+		const int randomCheckLen = 32; //256bit = 32 byte
+		if (!GMCheck::getInstance()->randomSingleCheck(randomCheckLen))
+		{
+			LogicError("randomSingleCheck failed!");
+		}
         HardEncrypt* hEObj = HardEncryptObj::getInstance();
         std::pair<unsigned char*, int> tempPublickey;
         std::pair<unsigned char*, int> tempPrivatekey;
@@ -410,8 +418,10 @@ generateKeyPair (KeyType type, Seed const& seed)
             tempPublickey = hEObj->getRootPublicKey();
             tempPrivatekey = hEObj->getRootPrivateKey();
         }
+		SecretKey secretkeyTemp(Slice(tempPrivatekey.first, tempPrivatekey.second));
+		secretkeyTemp.keyTypeInt = hEObj->gmOutCard;
         return std::make_pair(PublicKey(Slice(tempPublickey.first, tempPublickey.second)),
-            SecretKey(Slice(tempPrivatekey.first, tempPrivatekey.second)));
+			secretkeyTemp);
     }
     }
 }
@@ -421,14 +431,21 @@ randomKeyPair (KeyType type)
 {
     if (KeyType::gmalg == type)
     {
+		const int randomCheckLen = 32; //256bit = 32 byte
+		if (!GMCheck::getInstance()->randomSingleCheck(randomCheckLen))
+		{
+			LogicError("randomSingleCheck failed!");
+		}
         HardEncrypt* hEObj = HardEncryptObj::getInstance();
         std::pair<unsigned char*, int> tempPublickey;
         std::pair<unsigned char*, int> tempPrivatekey;
         hEObj->SM2GenECCKeyPair();
         tempPublickey = hEObj->getPublicKey();
         tempPrivatekey = hEObj->getPrivateKey();
+		SecretKey secretkeyTemp(Slice(tempPrivatekey.first, tempPrivatekey.second));
+		secretkeyTemp.keyTypeInt = hEObj->gmOutCard;
         return std::make_pair(PublicKey(Slice(tempPublickey.first, tempPublickey.second)),
-            SecretKey(Slice(tempPrivatekey.first, tempPrivatekey.second)));
+			secretkeyTemp);
     }
     else
     {
