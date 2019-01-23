@@ -85,7 +85,16 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 {
 	bool accountAlreadyExist = false;
 	do {
-		uint32 sequence = m_s.getTx().getFieldU32(sfSequence);
+		uint32 sequence = 1;
+		if (m_depth == 1)
+		{
+			sequence = m_s.getTx().getFieldU32(sfSequence);
+		}
+		else
+		{
+			sequence = m_s.getSequence(_sender);
+		}
+
 		m_newAddress = Contract::calcNewAddress(_sender, sequence);
 		// add sequence for sender
 		m_s.incSequence(_sender);
