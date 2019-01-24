@@ -1454,7 +1454,6 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
     }
     if (txType == ttCONTRACT)
     {
-        bool isCreation = pTx->getFieldU16(sfContractOpType) == ContractCreation;
         AccountID addrContract;
         if (pTx->getFieldU16(sfContractOpType) == ContractCreation)
         {

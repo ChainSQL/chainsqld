@@ -49,7 +49,7 @@ namespace ripple {
 	{
 		std::vector<std::vector<Json::Value>>* ret = mRecordCache.fetch(handle).get();
 		if (ret == nullptr)
-			return std::vector<std::vector<Json::Value>>();
+			return *std::make_shared<std::vector<std::vector<Json::Value>>>();
 		return *ret;
 	}
 
