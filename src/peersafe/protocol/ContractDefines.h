@@ -30,7 +30,7 @@ enum ContractOpType {
 
 inline bool isContractTypeValid(ContractOpType eType)
 {
-    if (eType >= ContractCreation && eType <= typeMax)  return true;
+    if (eType >= ContractCreation && eType < typeMax)  return true;
     
 	return false;
 }

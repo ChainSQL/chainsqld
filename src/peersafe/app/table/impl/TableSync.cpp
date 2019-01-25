@@ -1028,10 +1028,10 @@ bool TableSync::ReStartOneTable(AccountID accountID, std::string sNameInDB,std::
         });
         bInTempList = it != listTempTable_.end();
 
-        if (bCommit && bInTempList)
+        if (bCommit && bInTempList && bAutoLoadTable_)
         {
             std::shared_ptr<TableSyncItem> pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
-            pItem->Init(accountID, sTableName, false);
+            pItem->Init(accountID, sTableName, true);
             pItem->SetTableNameInDB(sNameInDB);
             {
                 std::lock_guard<std::mutex> lock(mutexlistTable_);
