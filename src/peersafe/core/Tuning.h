@@ -42,6 +42,8 @@ namespace ripple {
 
 	uint32 const INITIAL_DEPTH			= 1;
 
+	uint32 const LAST_LEDGERSEQ_PASS	= 8;
+
 } // ripple
 
 #endif

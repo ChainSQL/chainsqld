@@ -79,9 +79,18 @@ std::vector<STTx> TransactionMaster::getTxs(STTx const& stTx, std::string sTable
 	std::vector<STTx> vecTxs;
 	if (stTx.getTxnType() == ttCONTRACT)
 	{
-		if (ledger == nullptr && ledgerSeq != 0)
+		if (ledger == nullptr)
 		{
-			ledger = mApp.getLedgerMaster().getLedgerBySeq(ledgerSeq);
+			if (ledgerSeq == 0)
+			{
+				auto txn = fetch(stTx.getTransactionID(), true);
+				if (txn)
+					ledgerSeq = txn->getLedger();
+			}
+			if(ledgerSeq != 0)
+			{
+				ledger = mApp.getLedgerMaster().getLedgerBySeq(ledgerSeq);
+			}
 		}
 		if (ledger != nullptr)
 		{

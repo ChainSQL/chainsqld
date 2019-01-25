@@ -61,6 +61,7 @@
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/app/table/TableTxAccumulator.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
@@ -352,6 +353,7 @@ public:
     std::unique_ptr <TableStorage> m_pTableStorage;
 	std::unique_ptr <TableAssistant> m_pTableAssistant;
 	std::unique_ptr <ContractHelper> m_pContractHelper;
+	std::unique_ptr <TableTxAccumulator> m_pTableTxAccumulator;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
     boost::asio::steady_timer sweepTimer_;
     boost::asio::steady_timer entropyTimer_;
@@ -513,6 +515,8 @@ public:
 
 		, m_pContractHelper(std::make_unique<ContractHelper>(*this))
 
+		, m_pTableTxAccumulator(std::make_unique<TableTxAccumulator>(*this))
+
         , sweepTimer_ (get_io_service())
 
         , entropyTimer_ (get_io_service())
@@ -639,6 +643,11 @@ public:
 	ContractHelper& getContractHelper() override
 	{
 		return *m_pContractHelper;
+	}
+
+	TableTxAccumulator& getTableTxAccumulator() override
+	{
+		return *m_pTableTxAccumulator;
 	}
 
     virtual

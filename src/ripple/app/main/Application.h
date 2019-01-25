@@ -76,6 +76,7 @@ class TableSync;
 class TableStorage;
 class TableAssistant;
 class ContractHelper;
+class TableTxAccumulator;
 
 class DatabaseCon;
 class SHAMapStore;
@@ -160,6 +161,7 @@ public:
     virtual TableStorage&           getTableStorage() = 0;
 	virtual TableAssistant&			getTableAssistant() = 0;
 	virtual ContractHelper&			getContractHelper() = 0;
+	virtual TableTxAccumulator&		getTableTxAccumulator() = 0;
 	virtual
     std::pair<PublicKey, SecretKey> const&
     nodeIdentity () = 0;

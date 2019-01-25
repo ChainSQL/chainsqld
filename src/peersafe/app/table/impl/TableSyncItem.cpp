@@ -37,6 +37,7 @@
 #include <peersafe/app/table/TableStatusDB.h>
 #include <peersafe/app/table/TableStatusDB.h>
 #include <peersafe/app/table/TableSync.h>
+#include <peersafe/app/table/TableTxAccumulator.h>
 
 
 using namespace std::chrono;
@@ -1125,12 +1126,13 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					}
 
 					//deal with subscribe
-					std::pair<std::string, std::string> result;
-					if (ret.first)
-						result = std::make_pair("db_success", "");
-					else
-						result = std::make_pair("db_error", ret.second);
-					app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
+					app_.getTableTxAccumulator().onSubtxResponse(tx, sTableName_, vecTxs.size(), ret);
+					//std::pair<std::string, std::string> result;
+					//if (ret.first)
+					//	result = std::make_pair("db_success", "");
+					//else
+					//	result = std::make_pair("db_error", ret.second);
+					//app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
                     count++;
                 }
                 catch (std::exception const& e)

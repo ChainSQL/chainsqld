@@ -70,7 +70,13 @@ public:
 	*/
 	int						getTxCount(bool chainsql);
 
-	std::vector<STTx>		getTxs(STTx const& tx, std::string sTableNameInDB = "",std::shared_ptr<ReadView const> ledger = nullptr,int ledgerSeq = 0);
+	/*
+		Get chainsql transactions.
+	*/
+	std::vector<STTx>		getTxs(STTx const& tx, 
+								std::string sTableNameInDB = "",
+								std::shared_ptr<ReadView const> ledger = nullptr,
+								int ledgerSeq = 0);
 private:
     Application& mApp;
     TaggedCache <uint256, Transaction> mCache;
