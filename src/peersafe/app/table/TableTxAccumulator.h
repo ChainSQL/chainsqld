@@ -24,6 +24,7 @@
 #include <set>
 #include <string>
 #include <ripple/basics/base_uint.h>
+#include <ripple/protocol/AccountID.h>
 
 namespace ripple {
 	class STTx;
@@ -37,17 +38,17 @@ namespace ripple {
 		struct SubTxInfo {
 			SubTxInfo(){}
 
-			std::set<std::string>	setTableNames;	
+			std::set<std::pair<AccountID,std::string>>	setTables;	
 			int						numSuccess;			//subtx count of db_success 
 			int						numSubTxs;			//all subtx count
 			int						startLedgerSeq;		//the ledger sequence when first subTx db_success triggered.
 		};
 	public:
 		TableTxAccumulator(Application& app);
-		void onSubtxResponse(STTx const& tx, std::string tableName, int subTxCount,std::pair<bool, std::string> result);
+		void onSubtxResponse(STTx const& tx, AccountID const& owner, std::string tableName, int subTxCount,std::pair<bool, std::string> result);
 
 		void pubTableTxSuccess(STTx const& tx);
-		void pubTableTxError(STTx const& tx, std::string tableName, std::string err_msg);
+		void pubTableTxError(STTx const& tx, AccountID const& owner,std::string tableName, std::string err_msg);
 
 		void checkTxResult(STTx const& tx);
 		void trySweepCache();
