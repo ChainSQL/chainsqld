@@ -7,6 +7,7 @@
 #include <peersafe/app/table/impl/TableDumpItem.cpp>
 #include <peersafe/app/table/impl/TableAuditItem.cpp>
 #include <peersafe/app/table/impl/TableSync.cpp>
+#include <peersafe/app/table/impl/TableTxAccumulator.cpp>
 #include <peersafe/app/util/TableSyncUtil.cpp>
 #include <peersafe/app/storage/impl/TableStorageItem.cpp>
 #include <peersafe/app/storage/impl/TableStorage.cpp>

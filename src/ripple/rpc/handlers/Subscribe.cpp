@@ -31,10 +31,9 @@
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/Role.h>
+#include <peersafe/core/Tuning.h>
 
 namespace ripple {
-
-#define LAST_LEDGERSEQ_PASS 8;
 
 Json::Value doSubscribe (RPC::Context& context)
 {

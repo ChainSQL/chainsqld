@@ -49,6 +49,7 @@
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
+#include <peersafe/app/table/TableTxAccumulator.h>
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <algorithm>
@@ -278,6 +279,7 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
         app_.getTableStorage().TryTableStorage();
 		app_.getTableAssistant().TryTableCheckHash();
 		app_.getOPs().TryCheckSubTx();
+		app_.getTableTxAccumulator().trySweepCache();
     }
 }
 
