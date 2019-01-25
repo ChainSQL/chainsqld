@@ -34,11 +34,11 @@ namespace ripple {
 	}
 
 	//ignore the case that tx swept and come again
-	void TableTxAccumulator::onSubtxResponse(STTx const& tx, std::string tableName, int subTxCount,std::pair<bool, std::string> result)
+	void TableTxAccumulator::onSubtxResponse(STTx const& tx, AccountID const& owner, std::string tableName, int subTxCount,std::pair<bool, std::string> result)
 	{
 		if (!result.first)
 		{
-			pubTableTxError(tx, tableName, result.second);
+			pubTableTxError(tx, owner,tableName, result.second);
 			return;
 		}
 
@@ -53,9 +53,10 @@ namespace ripple {
 		{
 			auto txsAll = app_.getMasterTransaction().getTxs(tx);
 			SubTxInfo info;
+			info.owner_ = owner;
 			info.numSuccess = subTxCount;
 			info.numSubTxs = txsAll.size();
-			info.setTableNames.emplace(tableName);
+			info.setTables.emplace(std::make_pair(owner,tableName));
 			info.startLedgerSeq = app_.getLedgerMaster().getValidLedgerIndex();
 
 			std::lock_guard<std::mutex> lock(mutexTxCache_);
@@ -64,7 +65,7 @@ namespace ripple {
 		else
 		{
 			auto& info = mapTxAccumulator_[tx.getTransactionID()];
-			info.setTableNames.emplace(tableName);
+			info.setTables.emplace(std::make_pair(owner, tableName));
 			info.numSuccess += subTxCount;
 		}
 		checkTxResult(tx);
@@ -112,20 +113,19 @@ namespace ripple {
 	void TableTxAccumulator::pubTableTxSuccess(STTx const& tx)
 	{
 		std::pair <std::string, std::string> result = std::make_pair("db_success", "");
-		auto accountID = tx.getAccountID(sfAccount);
-		auto& tmpSet = mapTxAccumulator_[tx.getTransactionID()].setTableNames;
+		auto& tmpSet = mapTxAccumulator_[tx.getTransactionID()].setTables;
 		for (auto iter = tmpSet.begin(); iter != tmpSet.end(); iter++)
 		{
-			app_.getOPs().pubTableTxs(accountID, *iter, tx, result, false);
+			app_.getOPs().pubTableTxs(iter->first, iter->second, tx, result, false);
 		}		
 		clearCache(tx.getTransactionID());
 	}
 
-	void TableTxAccumulator::pubTableTxError(STTx const& tx, std::string tableName, std::string err_msg)
+	void TableTxAccumulator::pubTableTxError(STTx const& tx, AccountID const& owner,
+		std::string tableName, std::string err_msg)
 	{
-		auto accountID = tx.getAccountID(sfAccount);
 		std::pair <std::string, std::string> result = std::make_pair("db_error", err_msg);
-		app_.getOPs().pubTableTxs(accountID, tableName, tx, result, false);
+		app_.getOPs().pubTableTxs(owner, tableName, tx, result, false);
 		clearCache(tx.getTransactionID());
 	}
 
