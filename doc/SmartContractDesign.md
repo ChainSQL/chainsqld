@@ -60,14 +60,13 @@
 
 ### 5. 实现
 #### 5.1 LedgerNode修改： AccountRoot
-- 合约地址与普通账户地址生成规则一致，合约只有地址，无公私钥
+- 合约地址地址生成使用原有地址计算规则，以部署合约帐户与帐户当前交易序号为原像，合约只有地址，无公私钥
 - 合约在Chainsql中也是以AccountRoot这种LedgerNode的形式存在
 - AccountRoot增加了下面的可选字段：
 
 字段名 |类型| 说明
 ---|---|---
 StorageOverlay |STMap256| 合约中的存储
-Nonce |UINT32| 属于创建合约的账户，生成合约地址时使用
 ContractCode |STBlob| 合约中的字节码，调用合约时使用
 
 #### 5.2 增加交易类型Contract
