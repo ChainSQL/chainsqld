@@ -28,10 +28,10 @@ public:
 	uint256 genRandomUniqueHandle();
 
 private:
+	Application&							app_;
 	TaggedCache<uint256, std::vector<STTx>>	mTxCache;
 	TaggedCache<uint256, std::vector<std::vector<Json::Value>>>		
 											mRecordCache;
-	Application&							app_;
 };
 
 }
