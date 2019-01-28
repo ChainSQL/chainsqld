@@ -465,26 +465,30 @@ int run (int argc, char** argv)
     if (!vm.count ("parameters"))
     {
 #ifdef GM_ALG_PROCESS
-		bool checkResult = false;
-		GMCheck* gmCheckObj = GMCheck::getInstance();
-		//beast::Journal checkJournal(logs->journal("GMAlgorithmCheck"));
-		//gmCheckObj->setLogJournal(&checkJournal);
-		if (gmCheckObj != nullptr)
+		if (config->GM_SELF_CHECK)
 		{
-			checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
-			if (checkResult)
+			bool checkResult = false;
+			GMCheck *gmCheckObj = GMCheck::getInstance();
+			//beast::Journal checkJournal(logs->journal("GMAlgorithmCheck"));
+			//gmCheckObj->setLogJournal(&checkJournal);
+			if (gmCheckObj != nullptr)
 			{
-				JLOG(hardEncryptJournal.info()) << "SM2/SM3/SM4 and random check successful!";
+				checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
+				if (checkResult)
+				{
+					JLOG(hardEncryptJournal.info()) << "SM2/SM3/SM4 and random check successful!";
+				}
+				else
+				{
+					JLOG(hardEncryptJournal.info()) << "SM2/SM3/SM4 and random check failed!";
+					return -1;
+				}
 			}
-			else {
-				JLOG(hardEncryptJournal.info()) << "SM2/SM3/SM4 and random check failed!";
+			else
+			{
+				JLOG(hardEncryptJournal.info()) << "Get check obj failed! Please Check!";
 				return -1;
 			}
-		}
-		else
-		{
-			JLOG(hardEncryptJournal.info()) << "Get check obj failed! Please Check!";
-			return -1;
 		}
 		//std::string filePath = GetHomePath();
 		generateAddrAndPubFile(hEObj->syncTableKey, SYNC_TABLE_KEY_INDEX);

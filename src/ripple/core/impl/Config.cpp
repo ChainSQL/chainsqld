@@ -337,6 +337,9 @@ void Config::loadFromString (std::string const& fileContents)
     }
 
     std::string strTemp;
+	
+	if (getSingleSection(secConfig, SECTION_GM_SELF_CHECK, strTemp, j_))
+		GM_SELF_CHECK = beast::lexicalCastThrow <bool>(strTemp);
 
     if (getSingleSection (secConfig, SECTION_PEER_PRIVATE, strTemp, j_))
         PEER_PRIVATE = beast::lexicalCastThrow <bool> (strTemp);

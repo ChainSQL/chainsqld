@@ -112,6 +112,8 @@ public:
     bool doImport = false;
     bool ELB_SUPPORT = false;
 
+    bool GM_SELF_CHECK = false;
+
     std::vector<std::string>    IPS;                    // Peer IPs from rippled.cfg.
     std::vector<std::string>    IPS_FIXED;              // Fixed Peer IPs from rippled.cfg.
     std::vector<std::string>    SNTP_SERVERS;           // SNTP servers from rippled.cfg.
