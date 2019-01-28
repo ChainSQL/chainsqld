@@ -47,7 +47,7 @@ namespace ripple {
 		TableTxAccumulator(Application& app);
 		void onSubtxResponse(STTx const& tx, AccountID const& owner, std::string tableName, int subTxCount,std::pair<bool, std::string> result);
 
-		void pubTableTxSuccess(STTx const& tx);
+		void pubTableTxSuccess(STTx const& tx, AccountID const& owner, std::string tableName);
 		void pubTableTxError(STTx const& tx, AccountID const& owner,std::string tableName, std::string err_msg);
 
 		void checkTxResult(STTx const& tx);

@@ -45,7 +45,7 @@ namespace ripple {
 		//Unit chainsql-tx,send db_success immediately
 		if (tx.getTxnType() != ttCONTRACT && tx.getTxnType() != ttSQLTRANSACTION)
 		{
-			pubTableTxSuccess(tx);
+			pubTableTxSuccess(tx,owner,tableName);
 			return;
 		}
 
@@ -53,7 +53,6 @@ namespace ripple {
 		{
 			auto txsAll = app_.getMasterTransaction().getTxs(tx);
 			SubTxInfo info;
-			info.owner_ = owner;
 			info.numSuccess = subTxCount;
 			info.numSubTxs = txsAll.size();
 			info.setTables.emplace(std::make_pair(owner,tableName));
@@ -77,7 +76,13 @@ namespace ripple {
 		auto& info = mapTxAccumulator_[tx.getTransactionID()];
 		if (info.numSuccess == info.numSubTxs)
 		{
-			pubTableTxSuccess(tx);
+			auto& tmpSet = mapTxAccumulator_[tx.getTransactionID()].setTables;
+			for (auto iter = tmpSet.begin(); iter != tmpSet.end(); iter++)
+			{
+				pubTableTxSuccess(tx,iter->first,iter->second);
+			}		
+
+			clearCache(tx.getTransactionID());
 		}
 	}
 
@@ -110,15 +115,10 @@ namespace ripple {
 		sweepingThread_ = false;
 	}
 
-	void TableTxAccumulator::pubTableTxSuccess(STTx const& tx)
+	void TableTxAccumulator::pubTableTxSuccess(STTx const& tx, AccountID const& owner, std::string tableName)
 	{
-		std::pair <std::string, std::string> result = std::make_pair("db_success", "");
-		auto& tmpSet = mapTxAccumulator_[tx.getTransactionID()].setTables;
-		for (auto iter = tmpSet.begin(); iter != tmpSet.end(); iter++)
-		{
-			app_.getOPs().pubTableTxs(iter->first, iter->second, tx, result, false);
-		}		
-		clearCache(tx.getTransactionID());
+		std::pair <std::string, std::string> result = std::make_pair("db_success", "");	
+		app_.getOPs().pubTableTxs(owner, tableName, tx, result, false);
 	}
 
 	void TableTxAccumulator::pubTableTxError(STTx const& tx, AccountID const& owner,
