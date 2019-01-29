@@ -1104,6 +1104,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     if (!ret.first)
                     {
                         stTran.rollback();
+						//record uTxDBUpdateHash_ to record newest sync-point,in case dump when sync the mid tx in a ledger.
                         auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
                         if (updateRet == soci_exception) {
                             JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
