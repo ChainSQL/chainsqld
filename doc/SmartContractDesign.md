@@ -176,7 +176,7 @@ tx_json中的必填字段：
 owner.create("table_name","create raw string");
 //example
 function createTable(string name,string raw) public{
-    ret = msg.sender.create(name, raw);
+    msg.sender.create(name, raw);
 }
 ```
 2. 插入
@@ -202,7 +202,7 @@ function deleteFromTable(address owner,string name,string raw) public{
 owner.update(table_name,"raw string","get raw");
 //example
 function updateTable(address owner,string name,string getRaw,string updateRaw) public{
-    owner.table().get(getRaw).update(name, updateRaw, getRaw);
+    owner.update(name, updateRaw, getRaw);
 }
 ```
 5. 查询
@@ -244,7 +244,7 @@ db.commit();
 owner.grant(user_address,table_name,"grant_raw");
 //example
 function grantTable(string name,address user,string raw) public{
-    ret = msg.sender.grant(user,name,raw);
+    msg.sender.grant(user,name,raw);
 }
 ```
 
@@ -254,7 +254,7 @@ function grantTable(string name,address user,string raw) public{
 owner.drop("table_name");
 //example
 function dropTable(string name) public{
-    ret = msg.sender.drop(name);
+    msg.sender.drop(name);
 }
 ```
 9. 重命名表
@@ -262,7 +262,7 @@ function dropTable(string name) public{
 ```
 owner.rename("table_name","new_name");
 //example
-function renameTable(string name,string newName) public returns{
+function renameTable(string name,string newName) public{
     msg.sender.rename(name,newName);
 }
 ```
