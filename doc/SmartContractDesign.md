@@ -173,36 +173,36 @@ tx_json中的必填字段：
     - raw字符串为json字符串，非16进制
 1. 建表
 ```
-bool ret = owner.table("table_name").create("create raw string");
+owner.create("table_name","create raw string");
 //example
-function createTable(string name,string raw) public returns(bool ret){
-    ret = msg.sender.table(name).create(raw);
+function createTable(string name,string raw) public{
+    ret = msg.sender.create(name, raw);
 }
 ```
 2. 插入
 ```
-bool ret = owner.table("table_name").insert("insert raw string");
+owner.insert("table_name", "insert raw string");
 //example
-function insertToTable(address owner,string name,string raw) public retunrs(bool ret){
-    ret = owner.table(name).insert(raw);
+function insertToTable(address owner,string name,string raw) public{
+    owner.insert(name,raw);
 }
 ```
 3. 删除
 ```
 //delete参数代表删除条件
-bool ret = owner.table("table_name").delete("raw string");
+owner.delete("table_name","raw string");
 //example
-function deleteFromTable(address owner,string name,string raw) public returns (bool ret){
-    ret = owner.table(name).delete(raw);
+function deleteFromTable(address owner,string name,string raw) public{
+    owner.delete(name,raw);
 }
 ```
 4. 修改
 ```
 //update需要两个参数
-bool ret = owner.table("table_name").get("get raw").update("raw string");
+owner.update(table_name,"raw string","get raw");
 //example
-function updateTable(address owner,string name,string getRaw,string updateRaw) public returns (bool ret){
-    ret = owner.table(name).get(getRaw).update(updateRaw);
+function updateTable(address owner,string name,string getRaw,string updateRaw) public{
+    owner.table().get(getRaw).update(name, updateRaw, getRaw);
 }
 ```
 5. 查询
@@ -211,63 +211,62 @@ function updateTable(address owner,string name,string getRaw,string updateRaw) p
 - 可根据查询得到的句柄去获取查询结果中的字段值
 - 提供遍历方法，可根据句柄遍历查询结果
 ```
-handle result = owner.table(name).get(raw);
-uint rowSize = getRowSize(result);
-uint colSize = getColSize(result);
-string output;
-for(uint i=0; i<size; i++){
-    if(getValueByKey(result,i,"status") > 0){
-        for(uint j=0; j<colSize; j++){
-            output += getValueByIndex(result,i,j);
-            output += ",";
-        }
-        output += ";";
-    }
-}
+uint256 handle = owner.get(tableName, raw);
+uint row = db.getRowSize(handle);
+uint col = db.getColSize(handle);
+string memory xxx;
+for(uint i=0; i<row; i++)
+{
+      for(uint j=0; j<col; j++)
+      {
+         string memory y1 = (db.getValueByIndex(handle, i, j));
+         string memory y2 = (db.getValueByKey(handle, i, field));
+      }   
+  }
 ```
 6. 事务相关
 - 增加两个指令beginTrans()、commit()，指令之间的部分组成事务
 - 两个指令之间的操作逐行执行
 ```
-beginTrans();
-owner.table(name).insert(raw);
-handle res = owner.table(name).get(getRaw);
-if(getRowSize(res) > 0){
-    owner.table(name).get(getRaw).update(updateRaw);
+db.beginTrans();
+owner.insert(name.raw);
+uint256 handle = owner.get(name,getRaw);
+if(db.getRowSize(handle) > 0){
+    owner.update(name, updateRaw, getRaw);
 }
 ...
 //every op is alone
-commit();
+db.commit();
 ```
 7. 授权
 - 必须由表的拥有者发起
 ```
-owner.table("table_name").grant(user_address,"grant_raw");
+owner.grant(user_address,table_name,"grant_raw");
 //example
-function grantTable(string name,address user,string raw) public returns(bool ret){
-    ret = msg.sender.table(name).grant(user,raw);
+function grantTable(string name,address user,string raw) public{
+    ret = msg.sender.grant(user,name,raw);
 }
 ```
 
 8. 删除表
 - 必须由表的拥有者发起
 ```
-owner.table("table_name").drop();
+owner.drop("table_name");
 //example
-function dropTable(string name) public returns(bool ret){
-    ret = msg.sender.table(name).drop();
+function dropTable(string name) public{
+    ret = msg.sender.drop(name);
 }
 ```
 9. 重命名表
 - 必须由表的拥有者发起
 ```
-owner.table("table_name").rename("new_name");
+owner.rename("table_name","new_name");
 //example
-function renameTable(string name,string newName) public returns(bool ret){
-    ret = msg.sender.table(name).rename(newName);
+function renameTable(string name,string newName) public returns{
+    msg.sender.rename(name,newName);
 }
 ```
-#### 9.代币接口
+#### 9.代币接口 (TO DO)
 1. 合约信任发行币网关接口
 - 可设置由合约拥有者发起
 ```
@@ -280,7 +279,7 @@ function trust(address gateway,string coin,uint amount) public onlyOwner
     msg.sender.trustSet(gateway,coin,amount);
 }
 ```
-2. 给合约转网关代币
+2. 给合约转网关代币 
 - 如果fallback函数是payable的可以转直接转账系统币，转网关币也需要fallback？
 
 
