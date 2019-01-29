@@ -102,6 +102,7 @@ namespace ripple {
 		temBAD_TABLEFLAGS,
 		temBAD_RAW,
 		temBAD_OPTYPE,
+		temBAD_OPTYPE_IN_TRANSACTION,
 		temBAD_BASETX,
 		temBAD_PUT,
 		temBAD_DBTX,
