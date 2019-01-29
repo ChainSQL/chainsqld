@@ -329,7 +329,9 @@ TER Transactor::preChainsql()
 	if (ctx_.tx.isChainSqlTableType())
 	{
 		checkAddChainIDSle();
-		if ((ctx_.view().flags() & tapFromClient) && !ctx_.tx.isSubTransaction())
+		if ((ctx_.view().flags() & tapFromClient) 
+			&& !ctx_.tx.isSubTransaction() 
+			&& !STTx::checkChainsqlContractType(ctx_.tx.getTxnType()))
 		{
 			return ctx_.app.getTableStorage().InitItem(ctx_.tx, *this);
 		}
