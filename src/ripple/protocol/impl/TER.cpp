@@ -154,6 +154,7 @@ transResults()
 		{ temBAD_TABLEFLAGS,         { "temBAD_TABLEFLAGS",        "Malformed: Bad table authority."                                               } },
 		{ temBAD_RAW,                { "temBAD_RAW",               "Malformed: Bad raw sql."                                                       } },
 		{ temBAD_OPTYPE,             { "temBAD_OPTYPE",            "Malformed: Bad operator type." } },
+		{ temBAD_OPTYPE_IN_TRANSACTION ,{ "temBAD_OPTYPE_IN_TRANSACTION","Malformed:create,drop,rename is not allowd in SqlTransaction."}},
 		{ temBAD_BASETX,             { "temBAD_BASETX",            "Malformed: Bad base tx check hash." } },
 		{ temBAD_PUT,				 { "temBAD_PUT",               "Malformed: Bad base tx format or check hash error" } },
 		{ temBAD_DBTX,               { "temBAD_DBTX",              "Malformed: Bad DBTx support."                                                  } },
