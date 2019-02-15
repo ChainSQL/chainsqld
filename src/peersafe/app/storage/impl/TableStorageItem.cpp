@@ -222,7 +222,7 @@ namespace ripple {
 			
             const STEntry * pEntry = NULL;
             auto aTableEntries = sleAccepted->getFieldArray(sfTableEntries);
-            auto retPair = TableSyncUtil::IsTableSLEChanged(aTableEntries, txnLedgerSeq_, accountID_, sTableNameInDB_,true); 
+            auto retPair = TableSyncUtil::IsTableSLEChanged(aTableEntries, txnLedgerSeq_, sTableNameInDB_,true); 
 			if (retPair.second == NULL)
 			{
 				if (retPair.first)

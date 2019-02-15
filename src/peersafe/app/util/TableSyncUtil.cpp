@@ -14,14 +14,14 @@ uint256 TableSyncUtil::GetChainId(const ReadView * pView)
 	return chainId;
 }
 
-std::pair<bool, STEntry*> TableSyncUtil::IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID, std::string sTableName, bool bStrictEqual)
+std::pair<bool, STEntry*> TableSyncUtil::IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, std::string sNameInDB, bool bStrictEqual)
 {
 	auto iter(aTables.end());
 	bool bTableFound = false;
+	uint160 nameInDB = from_hex_text<uint160>(sNameInDB);
 	iter = std::find_if(aTables.begin(), aTables.end(),
-		[iLastSeq, accountID, sTableName, bStrictEqual, &bTableFound](STObject const &item) {
-		uint160 uTxDBName = item.getFieldH160(sfNameInDB);
-		if (to_string(uTxDBName) == sTableName) {
+		[iLastSeq, nameInDB, bStrictEqual, &bTableFound](STObject const &item) {
+		if (item.getFieldH160(sfNameInDB) == nameInDB) {
 			bTableFound = true;
 			return (bStrictEqual ?
 				item.getFieldU32(sfPreviousTxnLgrSeq) == iLastSeq :

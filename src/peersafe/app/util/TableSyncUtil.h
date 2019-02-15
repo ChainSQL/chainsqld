@@ -27,7 +27,7 @@ namespace ripple {
 	class TableSyncUtil {
 	public:
 		static uint256 GetChainId(const ReadView * pView);
-		static std::pair<bool, STEntry*> IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, AccountID accountID, std::string sTableName, bool bStrictEqual);
+		static std::pair<bool, STEntry*> IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, std::string sTableName, bool bStrictEqual);
 	};
 }
 
