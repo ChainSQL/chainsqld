@@ -49,7 +49,7 @@
     #表的发行帐户地址 表名 跳过ledgerSeq2000<br>
     z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs table3 ~2000<br>
     #表的发行帐户地址 表名 跳过指定的交易hash<br>
-    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 !860689E0F4A20F4CC0B35804B66486D455DEEFA940666054F780A69F770135C0<br>
+    z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 ~860689E0F4A20F4CC0B35804B66486D455DEEFA940666054F780A69F770135C0<br>
     #表的发行帐户地址 表名 解密的私钥 同步到2016-12-29 12:00:00<br>
     z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs talbe4 xxWFBu6veVgMnAqNf6YFRV2UENRd3 2016-12-29_12:00:00<br>
     #表的发行帐户地址 表名 跳过ledgerSeq2000 解密的私钥<br>
