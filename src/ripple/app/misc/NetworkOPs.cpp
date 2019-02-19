@@ -1257,6 +1257,10 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
             }
             else
             {
+                if (e.transaction->getSTransaction()->isChainSqlTableType())
+                {
+                    addLocal = false;
+                }
                 JLOG(m_journal.debug())
                     << "Status other than success " << e.result;
                 e.transaction->setStatus (INVALID);
