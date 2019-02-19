@@ -61,7 +61,7 @@ public:
     bool SendLedgerRequest(LedgerIndex iSeq, uint256 hash, std::shared_ptr <TableSyncItem> pItem);
     bool GotLedger(std::shared_ptr <protocol::TMLedgerData> const& m);
 
-    void SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo);
+    void SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo, TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>>& cache);
     void SeekCreateTable(std::shared_ptr<Ledger const> const& ledger);    
 	void OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger, uint32 time, uint256 const& chainId);
 

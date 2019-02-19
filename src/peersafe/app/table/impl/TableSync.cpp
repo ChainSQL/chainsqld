@@ -327,7 +327,8 @@ bool TableSync::SendSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLa
     return ret;
 }
 //not exceed 256 ledger every check time
-void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
+void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo, 
+	TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const ripple::SLE>>>& cache)
 {    
     std::shared_ptr <TableSyncItem> pItem = GetRightItem(stItemInfo.accountID, stItemInfo.sTableNameInDB, stItemInfo.sNickName, stItemInfo.eTargetType);
     if (pItem == NULL) return;
@@ -367,18 +368,43 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
 				if (ledger)
 				{
 					std::pair<bool, STEntry*> retPair;
-
-					auto tablesle = ledger->read(key);
+					std::shared_ptr<const ripple::SLE> tablesle = nullptr;
+					auto pMapTables = cache.fetch(uStopIndex).get();
+					if (pMapTables == nullptr)
+					{
+						tablesle = ledger->read(key);
+						auto pMapSle = std::make_shared<std::map<AccountID, std::shared_ptr<const ripple::SLE>>>();
+						pMapSle->emplace(std::make_pair(stItemInfo.accountID,tablesle));
+						cache.canonicalize(uStopIndex, pMapSle);
+					}
+					else
+					{
+						auto& mapTables = *pMapTables;
+						if (mapTables.find(stItemInfo.accountID) != mapTables.end())
+						{
+							tablesle = mapTables[stItemInfo.accountID];
+						}
+						else
+						{
+							tablesle = ledger->read(key);
+							mapTables.emplace(std::make_pair(stItemInfo.accountID, tablesle));
+						}
+					}
+					
 					if (tablesle)
 					{
 						auto & aTables = tablesle->getFieldArray(sfTableEntries);
 						if (aTables.size() > 0)
 						{
-							retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.accountID, stItemInfo.sTableNameInDB, false);
+							retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.sTableNameInDB, false);
+
 						}
 					}
+
+					
 					time = ledger->info().closeTime.time_since_epoch().count();
 
+					//table sle found,but not changed, only update LedgerSeq in SyncTableState to uStopIndex.
 					if (retPair.second == NULL && retPair.first)
 					{
 						i = uStopIndex;
@@ -417,15 +443,24 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
 
 		time = ledger->info().closeTime.time_since_epoch().count();
 		std::pair<bool, STEntry*> retPair;
-       
-        auto tablesle = ledger->read(key);
+
+		std::shared_ptr<const ripple::SLE> tablesle = nullptr;
+		auto pMapTables = cache.fetch(i).get();
+		if (pMapTables != nullptr && pMapTables->find(stItemInfo.accountID) != pMapTables->end())
+		{
+			tablesle = (*pMapTables)[stItemInfo.accountID];
+		}
+		else
+		{
+			tablesle = ledger->read(key);
+		}
        
         if (tablesle)
         {
             auto & aTables = tablesle->getFieldArray(sfTableEntries);
             if (aTables.size() > 0)
             {
-				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.accountID, stItemInfo.sTableNameInDB, true);
+				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.sTableNameInDB, true);
             }
         }
 
@@ -548,7 +583,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
             auto & aTables = tablesle->getFieldArray(sfTableEntries);
             if (aTables.size() > 0)
             {
-				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, ownerID, m->tablename(), false);
+				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, m->tablename(), false);
             }
         }
         
@@ -572,7 +607,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
             auto & aTables = tablesle->getFieldArray(sfTableEntries);
             if (aTables.size() > 0)
             {
-				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, ownerID, m->tablename(), true);
+				retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, m->tablename(), true);
             }
         }
 
@@ -1137,6 +1172,8 @@ void TableSync::TableSyncThread()
             tmList.push_back(*iter);
         }
     }
+
+	bool bNeedLocalSync = false;
 	auto iter = tmList.begin();
     while (iter != tmList.end())
     {
@@ -1266,7 +1303,7 @@ void TableSync::TableSyncThread()
 					if (stBaseInfo.createLgrSeq > stItem.u32SeqLedger)
 					{						
 						pItem->SetPara(nameInDB, stBaseInfo.createLgrSeq, stBaseInfo.createdLedgerHash, stItem.uTxSeq, stItem.uTxHash, stItem.uTxUpdateHash);
-                        pItem->GetBaseInfo(stItem);
+                        //pItem->GetBaseInfo(stItem);
 					}
 					else
 					{
@@ -1285,7 +1322,11 @@ void TableSync::TableSyncThread()
             if (app_.getLedgerMaster().haveLedger(stItem.u32SeqLedger+1) || app_.getLedgerMaster().lastCompleteIndex() <= stItem.u32SeqLedger + 1)
             {
                 pItem->SetSyncState(TableSyncItem::SYNC_WAIT_LOCAL_ACQUIRE);
-                TryLocalSync();                
+				if (!bNeedLocalSync)
+				{
+					TryLocalSync();   
+					bNeedLocalSync = true;
+				}
             }            
             else
             { 
@@ -1315,7 +1356,11 @@ void TableSync::TableSyncThread()
                 if (app_.getLedgerMaster().haveLedger(stRange.u32SeqLedger) || app_.getLedgerMaster().lastCompleteIndex() <= stItem.u32SeqLedger)
                 {
                     pItem->SetSyncState(TableSyncItem::SYNC_WAIT_LOCAL_ACQUIRE);
-                    TryLocalSync();
+					if (!bNeedLocalSync)
+					{
+						TryLocalSync();
+						bNeedLocalSync = true;
+					}
                 }
                 else
                 {
@@ -1365,6 +1410,7 @@ void TableSync::TableSyncThread()
         }
 		iter++;
     }
+
     bTableSyncThread_ = false;
 }
 
@@ -1373,7 +1419,7 @@ void TableSync::TryLocalSync()
     if (!bLocalSyncThread_)
     {
         bLocalSyncThread_ = true;
-        app_.getJobQueue().addJob(jtTABLELOCALSYNC, "tableSync", [this](Job&) { LocalSyncThread(); });
+        app_.getJobQueue().addJob(jtTABLELOCALSYNC, "tableLocalSync", [this](Job&) { LocalSyncThread(); });
     }
 }
 void TableSync::LocalSyncThread()
@@ -1387,6 +1433,7 @@ void TableSync::LocalSyncThread()
             tmList.push_back(*iter);
         }
     }
+	TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>> cache("TableLocalSync",100,10, stopwatch(), journal_);
     for (auto pItem : tmList)
     {
         pItem->GetBaseInfo(stItem);
@@ -1394,7 +1441,7 @@ void TableSync::LocalSyncThread()
         {           
             pItem->SetSyncState(TableSyncItem::SYNC_LOCAL_ACQUIRING);
             pItem->StartLocalLedgerRead();
-            SeekTableTxLedger(stItem);
+            SeekTableTxLedger(stItem,cache);
             pItem->StopLocalLedgerRead();
         }
     }  
@@ -1616,7 +1663,7 @@ void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const
 	tableName.assign(tableBlob.begin(), tableBlob.end());
 	InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
 }
-
+//////////////////
 bool TableSync::IsAutoLoadTable()
 {
     return bAutoLoadTable_;
