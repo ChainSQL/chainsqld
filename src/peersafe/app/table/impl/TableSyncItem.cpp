@@ -1073,18 +1073,20 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 						continue;
 					}
 
-					std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_,nullptr, iter->ledgerseq());				
+					std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_,nullptr, iter->ledgerseq(),false);				
 
 					if (vecTxs.size() > 0)
 					{
 						TryDecryptRaw(vecTxs);
-                        for (auto& tx : vecTxs)
-                        {
-                            if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
-                            {
-                                DeleteTable(sTableNameInDB_);
-                            }
-                        }                        
+
+						//Sqltransaction does not include T_CREATE any more
+						//for (auto& tx : vecTxs)
+						//{
+						//	if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
+						//	{
+						//		DeleteTable(sTableNameInDB_);
+						//	}
+						//}
 					}
 					JLOG(journal_.info()) << "got sync tx" << tx.getFullText();
 
