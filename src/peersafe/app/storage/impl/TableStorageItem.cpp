@@ -390,6 +390,11 @@ namespace ripple {
     bool TableStorageItem::doJob(LedgerIndex CurLedgerVersion)
     {
         bool bRet = false;
+        if (txList_.size() <= 0)
+        {
+            rollBack();
+            return true;
+        }
         bRet = CheckLastLedgerSeq(CurLedgerVersion);
         if (!bRet)
         {
