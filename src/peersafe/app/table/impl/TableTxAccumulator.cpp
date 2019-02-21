@@ -51,7 +51,7 @@ namespace ripple {
 
 		if (mapTxAccumulator_.find(tx.getTransactionID()) == mapTxAccumulator_.end())
 		{
-			auto txsAll = app_.getMasterTransaction().getTxs(tx);
+			auto txsAll = app_.getMasterTransaction().getTxs(tx,"",nullptr,0,false);
 			SubTxInfo info;
 			info.numSuccess = subTxCount;
 			info.numSubTxs = txsAll.size();
