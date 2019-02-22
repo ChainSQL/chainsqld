@@ -52,8 +52,8 @@ shouldCloseLedger(
 
 	if (!anyTransactions)
 	{
-		if (timeSincePrevClose >= idleInterval)
-			return true;
+		if (timeSincePrevClose < idleInterval)
+			return false;
 	}
 
     if ((proposersClosed + proposersValidated) > (prevProposers / 2))
