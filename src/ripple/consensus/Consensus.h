@@ -1077,7 +1077,7 @@ Consensus<Adaptor>::phaseOpen()
     }
 
     auto const idleInterval = std::max<milliseconds>(
-        adaptor_.parms().ledgerIDLE_INTERVAL,
+        adaptor_.parms().ledgerIDLE_INTERVAL_EMPTY,
         2 * previousLedger_.closeTimeResolution());
 
     // Decide if we should close the ledger

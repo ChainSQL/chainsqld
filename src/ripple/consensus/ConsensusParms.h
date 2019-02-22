@@ -79,6 +79,9 @@ struct ConsensusParms
     //! The duration a ledger may remain idle before closing
     std::chrono::milliseconds ledgerIDLE_INTERVAL = 15s;
 
+	//! The duration an empty ledger must remain idle before closing.
+	std::chrono::milliseconds ledgerIDLE_INTERVAL_EMPTY = 60s;
+
     //! The number of seconds we wait minimum to ensure participation
     std::chrono::milliseconds ledgerMIN_CONSENSUS = 1950ms;
 
