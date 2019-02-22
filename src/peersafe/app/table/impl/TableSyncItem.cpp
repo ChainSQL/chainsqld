@@ -1073,7 +1073,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 						continue;
 					}
 
-					std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_,nullptr, iter->ledgerseq(),false);				
+					std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_,nullptr, iter->ledgerseq());				
 
 					if (vecTxs.size() > 0)
 					{

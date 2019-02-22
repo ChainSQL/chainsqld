@@ -74,7 +74,7 @@ namespace ripple {
 	{
 		//check to send db_success.
 		auto& info = mapTxAccumulator_[tx.getTransactionID()];
-		if (info.numSuccess == info.numSubTxs)
+		if (info.numSuccess >= info.numSubTxs)
 		{
 			auto& tmpSet = mapTxAccumulator_[tx.getTransactionID()].setTables;
 			for (auto iter = tmpSet.begin(); iter != tmpSet.end(); iter++)
