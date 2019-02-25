@@ -223,6 +223,13 @@ public:
         , m_standalone (standalone)
         , m_network_quorum (start_valid ? 0 : network_quorum)
     {
+		auto& cfg = app_.config();
+		auto sync_section = cfg.section(ConfigSection::autoSync());
+		if (sync_section.values().size() > 0)
+		{
+			auto value = sync_section.values().at(0);
+			m_bAutoSync = atoi(value.c_str());
+		}
     }
 
     ~NetworkOPsImp() override
@@ -644,6 +651,8 @@ private:
     bool const m_standalone;
 
 	bool m_bCheckTxThread = false;
+
+	bool m_bAutoSync = false;
 
     // The number of nodes that we need to consider ourselves connected.
     std::size_t const m_network_quorum;
@@ -2982,10 +2991,35 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 					jvObj[jss::error_message] = disposRes.second;
 
 				p->send(jvObj, true);
-				//for chainsql type,subscribe db event
-				if (bForTableTx && bValidated)
+
+				if (isDBConfigured(app_))
 				{
-					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
+					if (!m_bAutoSync)
+					{
+						Json::Value jvObj(Json::objectValue);
+						jvObj[jss::type] = "singleTransaction";
+						jvObj[jss::transaction] = stTxn.getJson(0);
+						jvObj[jss::status] = "db_noAutoSync";
+
+						p->send(jvObj, true);
+					}
+					else
+					{
+						//for chainsql type,subscribe db event
+						if (bForTableTx && bValidated)
+						{
+							mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
+						}
+					}
+				}
+				else
+				{
+					Json::Value jvObj(Json::objectValue);
+					jvObj[jss::type] = "singleTransaction";
+					jvObj[jss::transaction] = stTxn.getJson(0);
+					jvObj[jss::status] = "db_noDbConfig";
+
+					p->send(jvObj, true);
 				}
 			}
 

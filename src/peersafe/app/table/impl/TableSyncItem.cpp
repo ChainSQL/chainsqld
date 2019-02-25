@@ -38,7 +38,7 @@
 #include <peersafe/app/table/TableStatusDB.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableTxAccumulator.h>
-
+#include <ripple/app/misc/Transaction.h>
 
 using namespace std::chrono;
 auto constexpr TABLE_DATA_OVERTM = 30s;
@@ -756,7 +756,18 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 			if (bConfidential)
 			{
 				confidential_ = true;
-				if (!user_accountID_) return std::make_pair(false, "user account is null.");;
+				std::shared_ptr<STTx const> pTx = nullptr;
+				auto pTransaction = app_.getMasterTransaction().fetch(table.getFieldH256(sfCreatedTxnHash),true);
+				if (pTransaction)
+				{
+					pTx = pTransaction->getSTransaction();
+				}
+				if (!user_accountID_)
+				{
+					app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
+					return std::make_pair(false, "user account is null.");
+				}
+					
 				for (auto & user : users)  //check if there same user
 				{
 					if (user.getAccountID(sfUser) == user_accountID_)
@@ -765,6 +776,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 						auto userFlags = user.getFieldU32(sfFlags);
 						if ((userFlags & selectFlags) == 0)
 						{
+							app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
 							return std::make_pair(false, "no authority.");
 						}
 						else
@@ -775,7 +787,11 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 								//passBlob_ = RippleAddress::decryptPassword(token, *user_secret_);
                                 passBlob_ = ripple::decrypt(token, *user_secret_);
 								if(passBlob_.size() > 0)  return std::make_pair(true, "");
-								else                      return std::make_pair(false, "cann't get password for this table.");
+								else
+								{
+									app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
+									return std::make_pair(false, "cann't get password for this table.");
+								}
 							}
 							else
 							{
@@ -1077,6 +1093,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
 					if (vecTxs.size() > 0)
 					{
+
 						TryDecryptRaw(vecTxs);
                         for (auto& tx : vecTxs)
                         {

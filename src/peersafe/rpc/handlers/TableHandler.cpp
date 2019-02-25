@@ -330,16 +330,16 @@ Json::Value doGetRecord(RPC::Context&  context)
 	if (ret.isMember(jss::error))
 		return ret;
 
+	//db connection is null
+	if (!isDBConfigured(context.app))
+		return rpcError(rpcNODB);
+
 	Json::Value& tx_json(context.params["tx_json"]);
 	Json::Value result;
 	Json::Value& tables_json = tx_json["Tables"];
 	TxStore* pTxStore = &context.app.getTxStore();
 	if (tables_json.size() == 1)//getTableStorage first_storage related
 		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
-
-	//db connection is null
-	if (pTxStore->getDatabaseCon() == nullptr)
-		return rpcError(rpcNODB);
 
 	result = pTxStore->txHistory(context);
 
@@ -352,7 +352,10 @@ Json::Value doGetRecord(RPC::Context&  context)
 Json::Value doGetRecordBySql(RPC::Context&  context)
 {
 	Json::Value ret(Json::objectValue);
-	TxStore* pTxStore = &context.app.getTxStore();
+	//db connection is null
+	if (!isDBConfigured(context.app))
+		return rpcError(rpcNODB);
+
 	if (!context.params.isMember("sql"))
 	{
 		ret[jss::error] = "Missing field sql!";
@@ -364,6 +367,7 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 		return ret;
 	}
 
+	TxStore* pTxStore = &context.app.getTxStore();
 	ret = pTxStore->txHistory(context.params["sql"].asString());
 	
 	return ret;
@@ -379,15 +383,15 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
 	if (ret.isMember(jss::error))
 		return std::make_pair(result,ret[jss::error].asString());
 
+	//db connection is null
+	if (!isDBConfigured(context.app))
+		return std::make_pair(result, "Db not configured.");
+
 	Json::Value& tx_json(context.params["tx_json"]);
 	Json::Value& tables_json = tx_json["Tables"];
 	TxStore* pTxStore = &context.app.getTxStore();
 	if (tables_json.size() == 1)//getTableStorage first_storage related
 		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
-
-	//db connection is null
-	if (pTxStore->getDatabaseCon() == nullptr)
-		return std::make_pair(result,"Db not configured.");
 
 	return pTxStore->txHistory2d(context);
 }

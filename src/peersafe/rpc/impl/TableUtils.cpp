@@ -21,6 +21,8 @@
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <ripple/protocol/digest.h>
+#include <ripple/app/main/Application.h>
+#include <peersafe/app/sql/TxStore.h>
 
 namespace ripple {
 
@@ -131,5 +133,14 @@ namespace ripple {
 		std::string tmp = to_string(ledgerSeq) + to_string(account) + sTableName;
 		std::string str = hash(tmp);
 		return from_hex_text<uint160>(str);
+	}
+
+	bool isDBConfigured(Application& app)
+	{
+		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
+			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+			return false;
+		else
+			return true;
 	}
 }
