@@ -344,11 +344,32 @@ Json::Value doGetRecord(RPC::Context&  context)
 	result = pTxStore->txHistory(context);
 
 	//diff between the latest ledgerseq in db and the real newest ledgerseq
-	result[jss::diff] = getDiff(context, vecNameInDB);;
+	result[jss::diff] = getDiff(context, vecNameInDB);
 
 	return result;
 }
 
+Json::Value doGetRecordBySql(RPC::Context&  context)
+{
+	Json::Value ret(Json::objectValue);
+	TxStore* pTxStore = &context.app.getTxStore();
+	if (!context.params.isMember("sql"))
+	{
+		ret[jss::error] = "Missing field sql!";
+		return ret;
+	}		
+	if (context.params["sql"].asString().empty())
+	{
+		ret[jss::error] = "Field sql is empty!";
+		return ret;
+	}
+
+	ret = pTxStore->txHistory(context.params["sql"].asString());
+	
+	return ret;
+}
+
+//Get record,will keep column order consistent with the order the table created.
 std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::Context&  context)
 {
 	std::vector<std::vector<Json::Value>> result;

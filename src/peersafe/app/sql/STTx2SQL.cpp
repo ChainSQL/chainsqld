@@ -3556,7 +3556,7 @@ std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory
 Json::Value TxStore::txHistory(std::string sql) {
     Json::Value obj;
     if (databasecon_ == nullptr)
-        return rpcError(rpcINTERNAL);
+        return rpcError(rpcNODB);
 	std::shared_ptr<BuildSQL> buildsql = nullptr;
 	
 	if (boost::iequals(db_type_, "sqlite"))
