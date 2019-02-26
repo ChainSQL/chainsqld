@@ -74,7 +74,7 @@ int TransactionMaster::getTxCount(bool chainsql)
 }
 
 std::vector<STTx> TransactionMaster::getTxs(STTx const& stTx, std::string sTableNameInDB /* = "" */,
-	std::shared_ptr<ReadView const> ledger /* = nullptr */,int ledgerSeq /* = 0 */)
+	std::shared_ptr<ReadView const> ledger /* = nullptr */,int ledgerSeq /* = 0 */,bool includeAssert /* = true*/)
 {
 	std::vector<STTx> vecTxs;
 	if (stTx.getTxnType() == ttCONTRACT)
@@ -95,12 +95,12 @@ std::vector<STTx> TransactionMaster::getTxs(STTx const& stTx, std::string sTable
 		if (ledger != nullptr)
 		{
 			auto rawMeta = ledger->txRead(stTx.getTransactionID()).second;
-			vecTxs = STTx::getTxs(stTx, sTableNameInDB, rawMeta);
+			vecTxs = STTx::getTxs(stTx, sTableNameInDB, rawMeta,includeAssert);
 		}
 	}
 	else
 	{
-		vecTxs = STTx::getTxs(stTx, sTableNameInDB);
+		vecTxs = STTx::getTxs(stTx, sTableNameInDB,NULL,includeAssert);
 	}
 	return vecTxs;
 }

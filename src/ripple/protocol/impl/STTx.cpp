@@ -331,7 +331,8 @@ void STTx::buildRaw(Json::Value& condition, std::string& rule) const
 	std::swap(finalRaw, condition);
 }
 
-std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""*/, std::shared_ptr<STObject const> contractRawMetadata)
+std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "" */,
+	std::shared_ptr<STObject const> contractRawMetadata /* = NULL */,bool includeAssert /* = true */)
 {
 	std::vector<STTx> vec;
 	if (tx.getTxnType() == ttSQLTRANSACTION)
@@ -347,8 +348,10 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB/* = ""
 
 		for (auto obj : objs)
 		{
-			//int type = obj["OpType"].asInt();
-			//if (type == T_ASSERT) continue;
+			int type = obj["OpType"].asInt();
+			if (!includeAssert && type == T_ASSERT)
+				continue;
+
 			auto tx_pair = parseSTTx(obj, accountID);
 			if (tx_pair.first)
 			{
