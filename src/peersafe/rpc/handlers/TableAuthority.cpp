@@ -61,6 +61,9 @@ namespace ripple {
 		auto ownerID = ripple::parseBase58<AccountID>(params[jss::owner].asString());
 		auto tableName = params[jss::tablename].asString();
 
+		ret[jss::owner] = params[jss::owner].asString();
+		ret[jss::tablename] = tableName;
+
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		STEntry* pEntry = nullptr;
 		if (ledger)
