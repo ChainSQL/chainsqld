@@ -361,14 +361,25 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 		ret[jss::error] = "Missing field sql!";
 		return ret;
 	}		
-	if (context.params["sql"].asString().empty())
+	auto sql = context.params["sql"].asString();
+	if (sql.empty())
 	{
 		ret[jss::error] = "Field sql is empty!";
 		return ret;
 	}
 
+	size_t posSpace = sql.find_first_of(' ');
+	std::string firstWord = sql.substr(0, posSpace);
+	if (toUpper(firstWord) != "SELECT")
+	{
+		ret[jss::error] = "You can only query table data,first word should be select!";
+		return ret;
+	}
+
+
+
 	TxStore* pTxStore = &context.app.getTxStore();
-	ret = pTxStore->txHistory(context.params["sql"].asString());
+	ret = pTxStore->txHistory(sql);
 	
 	return ret;
 }
