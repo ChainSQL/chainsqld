@@ -104,6 +104,12 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 					STEntry* pEntry = (STEntry*)(&table);
 					tmp[jss::confidential] = pEntry->isConfidential();
 
+					auto ledger = context.app.getLedgerMaster().getLedgerBySeq(iInLedger);
+					if (ledger != nullptr)
+					{
+						tmp["create_time_human"] = to_string(ledger->info().closeTime);
+					}
+					
 					if (context.app.getTxStoreDBConn().GetDBConn() != nullptr &&
 						context.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() != nullptr)
 					{
