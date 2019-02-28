@@ -29,24 +29,17 @@ namespace ripple {
 Json::Value doGetDBName(RPC::Context&  context)
 {
 	Json::Value ret(Json::objectValue);
-	Json::Value& tx_json(context.params["tx_json"]);
+	Json::Value& tx_json(context.params);
 
-	if (tx_json["Account"].asString().empty() || tx_json["TableName"].asString().empty())
+	if (tx_json["account"].asString().empty() || tx_json["tablename"].asString().empty())
 	{
 		ret[jss::status] = "error";
-		ret[jss::error_message] = "Account or TableName is null";
+		ret[jss::error_message] = "account or tablename is empty";
 		return ret;
 	}
 
-    auto tableNameStr = tx_json["TableName"].asString();
-	auto accountIdStr = tx_json["Account"].asString();
-
-	if (accountIdStr.empty() || tableNameStr.empty())
-	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "Account or TableName is null";
-		return ret;
-	}
+    auto tableNameStr = tx_json["tablename"].asString();
+	auto accountIdStr = tx_json["account"].asString();
 
 	return context.app.getTableAssistant().getDBName(accountIdStr, tableNameStr);
 }
