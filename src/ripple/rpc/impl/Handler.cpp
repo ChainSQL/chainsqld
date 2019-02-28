@@ -173,6 +173,7 @@ Handler handlerArray[] {
 	{	"t_sqlTxs",             byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
 	{   "r_get",                byRef (&doGetRecord),          Role::USER,   NO_CONDITION },
 	{   "r_get_sql_admin",      byRef (&doGetRecordBySql),     Role::ADMIN,   NO_CONDITION },
+	{   "r_get_sql_user",       byRef (&doGetRecordBySqlUser), Role::USER,   NO_CONDITION },
     {   "readraw_create",       byRef (&doCreateFromRaw),      Role::USER,   NO_CONDITION },
 	{	"t_dump",			    byRef (&doTableDump),          Role::ADMIN,   NO_CONDITION },
 	{   "t_dumpstop",			byRef (&doTableDumpStop),      Role::ADMIN,   NO_CONDITION },
