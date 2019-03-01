@@ -95,9 +95,7 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 			ledgerSequence = ledger->info().seq;
 		else
 		{
-			ret[jss::status] = "error";
-			ret[jss::error_message] = "Can not find validated ledger!";
-			return ret;
+			return generateError("Can not find validated ledger!");
 		}
 
 		try
@@ -106,9 +104,7 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 		}
 		catch (std::exception const& e)
 		{
-			ret[jss::status] = "error";
-			ret[jss::error_message] = e.what();
-			return ret;
+			return generateError(e.what());
 		}
 		ret[jss::status] = "success";
 	}

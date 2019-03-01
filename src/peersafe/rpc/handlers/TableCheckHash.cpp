@@ -30,6 +30,7 @@
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 Json::Value doGetCheckHash(RPC::Context&  context)
@@ -39,9 +40,7 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 
 	if (tx_json["Account"].asString().empty() || tx_json["TableName"].asString().empty())
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "Account or TableName is null";
-		return ret;
+		return generateError("Account or TableName is null");
 	}
 
 	auto accountIdStr = tx_json["Account"].asString();
@@ -58,8 +57,7 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 	auto txCheckHash = retPair.first;
 	if (txCheckHash.isZero()) //not exist,then generate nameInDB
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = retPair.second;
+		return generateError(retPair.second);
 	}	
 
 	ret[jss::status] = "success";

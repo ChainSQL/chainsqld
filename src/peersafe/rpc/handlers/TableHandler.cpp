@@ -135,39 +135,33 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 	Json::Value ret(Json::objectValue);
 	if (!context.params.isMember("tx_json"))
 	{
-		ret[jss::error] = "field tx_json is empty!";
-		return ret;
+		return generateError("field tx_json is empty!");
 	}
 	Json::Value& tx_json(context.params["tx_json"]);
 	if (tx_json["Owner"].asString().empty())
 	{
-		ret[jss::error] = "field Owner is empty!";
-		return ret;
+		return generateError("field Owner is empty!");
 	}
 	auto ownerID = ripple::parseBase58<AccountID>(tx_json["Owner"].asString());
 	if (ownerID == boost::none)
 	{
-		ret[jss::error] = "field Owner is wrong!";
-		return ret;
+		return generateError("field Owner is wrong!");
 	}
 
 	if (tx_json["Account"].asString().empty())
 	{
-		ret[jss::error] = "field Account is empty!";
-		return ret;
+		return generateError("field Account is empty!");
 	}
 	auto accountID = ripple::parseBase58<AccountID>(tx_json["Account"].asString());
 	if (accountID == boost::none)
 	{
-		ret[jss::error] = "field Account is wrong!";
-		return ret;
+		return generateError("field Account is wrong!");
 	}
 
 	Json::Value &tables_json = tx_json["Tables"];
 	if (!tables_json.isArray())
 	{
-		ret[jss::error] = "field Tables is not array!";
-		return ret;
+		return generateError("field Tables is not array!");
 	}
 
 	auto j = context.app.journal("RPCHandler");
@@ -177,31 +171,22 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 	std::list<std::string> listTableName;
 	for (Json::UInt idx = 0; idx < tables_json.size(); idx++) {
 		Json::Value& e = tables_json[idx];
-		if (!e.isObject())
-		{
-			ret[jss::error] = "field Tables is not object!";
-			return ret;
-		};
-
 		Json::Value& v = e["Table"];
 		if (!v.isObject())
 		{
-			ret[jss::error] = "field Table is not object!";
-			return ret;
+			return generateError("field Table is not object!");
 		}
 
 		Json::Value tn = v["TableName"];
 		if (!tn.isString())
 		{
-			ret[jss::error] = "field TableName is not string!";
-			return ret;
+			return generateError("field TableName is not string!");
 		}
 
 		auto nameInDBGot = context.ledgerMaster.getNameInDB(context.ledgerMaster.getValidLedgerIndex(), *ownerID, v["TableName"].asString());
 		if (!nameInDBGot)
 		{
-			ret[jss::error] = "can't get TableName in DB ,please check field tablename!";
-			return ret;
+			return generateError("can't get TableName in DB ,please check field tablename!");
 		}
 		listTableName.push_back(v["TableName"].asString());
 		// NameInDB is optional
@@ -218,14 +203,12 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 				}
 				else
 				{
-					ret[jss::error] = "please make sure the given 'NameInDB' in accordance with the 'TableName'";
-					return ret;
+					return generateError("please make sure the given 'NameInDB' in accordance with the 'TableName!");
 				}
 			}
 			else
 			{
-				ret[jss::error] = "field NameInDB is empty!";
-				return ret;
+				return generateError("field NameInDB is empty!");
 			}
 		}
 		else
@@ -241,8 +224,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 	auto retPair = context.ledgerMaster.isAuthorityValid(*accountID, *ownerID, listTableName, lsfSelect);
 	if (!retPair.first)
 	{
-		ret[jss::error] = retPair.second;
-		return ret;
+		return generateError(retPair.second);
 	}
 
 	std::string rule;
@@ -256,8 +238,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 		auto key = keylet::account(*accountID);
 		if (!ledger->exists(key))
 		{
-			ret[jss::error] = "account not valid";
-			return ret;
+			return generateError("account not valid!");
 		}
 
 		if (tablesle)
@@ -277,8 +258,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 			Json::Reader().parse(sRaw, jsonRaw);
 			if (!jsonRaw.isArray())
 			{
-				ret[jss::error] = "Raw not valid";
-				return ret;
+				return generateError("Raw not valid!");
 			}
 		}
 		for (Json::UInt idx = 0; idx < jsonRaw.size(); idx++)
@@ -288,8 +268,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 			{
 				if (!v.isArray())
 				{
-					ret[jss::error] = "Raw has a wrong format ,first element must be an array";
-					return ret;
+					return generateError("Raw has a wrong format ,first element must be an array");
 				}
 			}
 			else
@@ -331,19 +310,16 @@ Json::Value checkSig(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	if (!context.params.isMember("publicKey"))
 	{
-		ret[jss::error] = "field publicKey is empty!";
-		return ret;
+		return generateError("field publicKey is empty!");
 	}
 	if (!context.params.isMember("signature"))
 	{
-		ret[jss::error] = "field signature is empty!";
-		return ret;
+		return generateError("field signature is empty!");
 	}
 	
 	if (!context.params.isMember("signingData"))
 	{
-		ret[jss::error] = "field signingData is empty!";
-		return ret;
+		return generateError("field signingData is empty!");
 	}
 
 	//tx_json should be equal to signingData
@@ -353,22 +329,19 @@ Json::Value checkSig(RPC::Context&  context)
 	auto& tx_json = context.params["tx_json"];
 	if (json != tx_json)
 	{
-		ret[jss::error] = "signing data does not match tx_json!";
-		return ret;
+		return generateError("signing data does not match tx_json!");
 	}
 
 	//check for LedgerIndex
 	auto valSeq = context.app.getLedgerMaster().getValidatedLedger()->info().seq;
 	if (!tx_json.isMember("LedgerIndex"))
 	{
-		ret[jss::error] = "field LedgerIndex is empty!";
-		return ret;
+		return generateError("field LedgerIndex is empty!");
 	}
 	auto seqInJson = tx_json["LedgerIndex"].asUInt();
 	if (valSeq - seqInJson < 0 || valSeq - seqInJson > 3)
 	{
-		ret[jss::error] = "LedgerIndex in tx_json is not valid!";
-		return ret;
+		return generateError("LedgerIndex in tx_json is not valid!");
 	}
 
 	auto publicKey = context.params["publicKey"].asString();
@@ -377,8 +350,7 @@ Json::Value checkSig(RPC::Context&  context)
 	auto retPair = strUnHex(publicKey);
 	if (!retPair.second)
 	{
-		ret[jss::error] = "field publicKey should be hex string!";
-		return ret;
+		return generateError("field publicKey should be hex string!");
 	}
 	spk = retPair.first;
 
@@ -387,16 +359,15 @@ Json::Value checkSig(RPC::Context&  context)
 		calcAccountID(PublicKey(makeSlice(spk)));
 	if (tx_json[jss::Account].asString() != to_string(signingAcctIDFromPubKey))
 	{
-		ret[jss::error] = "Account in tx_json doesn't match publicKey for signing!";
-		return ret;
+		return generateError("Account in tx_json doesn't match publicKey for signing!");
 	}
 
 	retPair = strUnHex(signatureHex);
 	if (!retPair.second)
 	{
-		ret[jss::error] = "field signature should be hex string!";
-		return ret;
+		return generateError("field signature should be hex string!");
 	}
+
 	auto signature = retPair.first;
 	if (publicKeyType(makeSlice(spk)))
 	{
@@ -407,15 +378,13 @@ Json::Value checkSig(RPC::Context&  context)
 			false);
 		if (!success)
 		{
-			ret[jss::error] = "check signature failed!";
-			return ret;
+			return generateError("check signature failed!");
 		}
 		return ret;
 	}
 	else
 	{
-		ret[jss::error] = "publicKey type error!";
-		return ret;
+		return generateError("publicKey type error!");
 	}
 }
 
@@ -496,18 +465,18 @@ Json::Value checkAuthForSql(RPC::Context& context)
 Json::Value doGetRecord(RPC::Context&  context)
 {
 	Json::Value ret = checkSig(context); 
-	if (ret.isMember(jss::error))
+	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
 		return ret;
 
 	uint160 nameInDB = beast::zero;
 	std::vector<ripple::uint160> vecNameInDB;
 	ret = checkForSelect(context, nameInDB, vecNameInDB);
-	if (ret.isMember(jss::error))
+	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
 		return ret;
 
 	//db connection is null
 	if (!isDBConfigured(context.app))
-		return rpcError(rpcNODB);
+		return generateError("Get db connection error,maybe db not configured.");
 
 	Json::Value& tx_json(context.params["tx_json"]);
 	Json::Value result;
@@ -518,10 +487,16 @@ Json::Value doGetRecord(RPC::Context&  context)
 
 	result = pTxStore->txHistory(context);
 
-	//diff between the latest ledgerseq in db and the real newest ledgerseq
-	result[jss::diff] = getDiff(context, vecNameInDB);
-
-	return result;
+	if (result.isMember(jss::error))
+	{
+		return generateError(result[jss::error].asString());
+	}
+	else
+	{
+		//diff between the latest ledgerseq in db and the real newest ledgerseq
+		result[jss::diff] = getDiff(context, vecNameInDB);
+		return result;
+	}	
 }
 
 Json::Value queryBySql(TxStore& txStore,std::string& sql)
@@ -529,20 +504,24 @@ Json::Value queryBySql(TxStore& txStore,std::string& sql)
 	Json::Value ret(Json::objectValue);
 	if (sql.empty())
 	{
-		ret[jss::error] = "Field sql is empty!";
-		return ret;
+		return generateError("Field sql is empty!");
 	}
 
 	size_t posSpace = sql.find_first_of(' ');
 	std::string firstWord = sql.substr(0, posSpace);
 	if (toUpper(firstWord) != "SELECT")
 	{
-		ret[jss::error] = "You can only query table data,first word should be select!";
-		return ret;
+		return generateError("You can only query table data,first word should be select!");
 	}
 	ret = txStore.txHistory(sql);
-
-	return ret;
+	if (ret.isMember("error"))
+	{
+		return generateError(ret[jss::error].asString());
+	}
+	else
+	{
+		return ret;
+	}	
 }
 
 Json::Value doGetRecordBySql(RPC::Context&  context)
@@ -550,12 +529,11 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	//db connection is null
 	if (!isDBConfigured(context.app))
-		return rpcError(rpcNODB);
+		return generateError("Get db connection error,maybe db not configured.");
 
 	if (!context.params.isMember("sql"))
 	{
-		ret[jss::error] = "Missing field sql!";
-		return ret;
+		return generateError("Missing field sql!");
 	}		
 	auto sql = context.params["sql"].asString();
 	return queryBySql(context.app.getTxStore(),sql);
@@ -565,17 +543,17 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 {
 	//check signature
 	Json::Value ret = checkSig(context);
-	if (ret.isMember(jss::error))
+	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
 		return ret;
 
 	//db connection is null
 	if (!isDBConfigured(context.app))
-		return rpcError(rpcNODB);
+		return generateError("Get db connection error,maybe db not configured.");
 
 	Json::Value& tx_json(context.params["tx_json"]);
 	//check table authority
 	ret = checkAuthForSql(context);
-	if (ret.isMember(jss::error))
+	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
 	{
 		return ret;
 	}
@@ -592,8 +570,8 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
 	uint160 nameInDB = beast::zero;
 	std::vector<ripple::uint160> vecNameInDB;
 	Json::Value ret = checkForSelect(context, nameInDB, vecNameInDB);
-	if (ret.isMember(jss::error))
-		return std::make_pair(result,ret[jss::error].asString());
+	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+		return std::make_pair(result,ret[jss::error_message].asString());
 
 	//db connection is null
 	if (!isDBConfigured(context.app))
@@ -704,17 +682,13 @@ Json::Value doGetUserToken(RPC::Context& context)
 	
 	if (!tx_json.isMember(jss::Owner) || !tx_json.isMember("User"))
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "Owner or User is missing";
-		return ret;
+		return generateError("Owner or User is missing");
 	}
 	auto pOwner = ripple::parseBase58<AccountID>(tx_json["Owner"].asString());
 	auto pAccount = ripple::parseBase58<AccountID>(tx_json["User"].asString());
 	if (boost::none == pOwner || boost::none == pAccount)
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "Owner or User parse failed";
-		return ret;
+		return generateError("Owner or User parse failed");
 	}
 	AccountID ownerID(*pOwner);
 	AccountID accountID(*pAccount);
@@ -731,8 +705,7 @@ Json::Value doGetUserToken(RPC::Context& context)
 	}
 	else
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = sError;
+		return generateError(sError);
 	}
 
 	return ret;

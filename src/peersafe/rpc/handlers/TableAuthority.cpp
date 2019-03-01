@@ -40,22 +40,20 @@ namespace ripple {
 		Json::Value ret(Json::objectValue);
 		if (params[jss::owner].asString().empty())
 		{
-			ret[jss::error] = "field owner is empty!";
-			return ret;
+			return generateError("field owner is empty!");
 		}
 		if (params[jss::tablename].asString().empty())
 		{
-			ret[jss::error] = "field table_name is empty!";
-			return ret;
+			return generateError("field table_name is empty!");
 		}
 		ripple::hash_set<AccountID> ids;
 		if (context.params.isMember(jss::accounts))
 		{
 			if (!context.params[jss::accounts].isArray())
-				return rpcError(rpcINVALID_PARAMS);
+				return generateError("accounts is not array");
 			ids = RPC::parseAccountIds(context.params[jss::accounts]);
 			if (ids.empty())
-				return rpcError(rpcACT_MALFORMED);
+				return generateError("accounts does not include account");
 		}
 
 		auto ownerID = ripple::parseBase58<AccountID>(params[jss::owner].asString());
@@ -74,8 +72,7 @@ namespace ripple {
 				pEntry = getTableEntry(aTableEntries, tableName);
 				if (!pEntry)
 				{
-					ret[jss::error] = "Table not found!";
-					return ret;
+					return generateError("Table not found!");
 				}
 
 				Json::Value& jvUsers = (ret["users"] = Json::arrayValue);
@@ -99,11 +96,10 @@ namespace ripple {
 			}
 			else
 			{
-				ret[jss::error] = "Table not found!";
-				return ret;
+				return generateError("Table not found!");
 			}
 		}
-
+		ret[jss::status] = "success";
 		return ret;
 	}
 

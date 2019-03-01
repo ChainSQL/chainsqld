@@ -27,6 +27,7 @@
 #include <ripple/app/misc/Transaction.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/protocol/STEntry.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 Json::Value doGetAccountTables(RPC::Context&  context)
@@ -36,17 +37,13 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 
 	if (context.params["account"].asString().empty())
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "Account  is null";
-		return ret;
+		return generateError("account  is null");
 	}
 
 	auto pOwnerId = ripple::parseBase58<AccountID>(context.params["account"].asString());
 	if (pOwnerId == boost::none)
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "account parse failed";
-		return ret;
+		return generateError("account parse failed");
 	}
 
     bool bGetDetailInfo = false;
@@ -64,7 +61,6 @@ Json::Value doGetAccountTables(RPC::Context&  context)
         auto & aTables = tablesle->getFieldArray(sfTableEntries);
         if (aTables.size() > 0)
         {
-            ret[jss::status] = "success";
             for (auto table : aTables)
             {
 				Json::Value tmp(Json::objectValue);
@@ -141,16 +137,15 @@ Json::Value doGetAccountTables(RPC::Context&  context)
         }
         else
         {
-            ret[jss::status] = "error";
-            ret[jss::message] = "There is no table in this account!";
+			return generateError("There is no table in this account!");
         }
     }
     else
     {
-        ret[jss::status] = "error!";
-        ret[jss::message] = "There is no table in this account!";
+		return generateError("There is no table in this account!");
     }
 
+	ret[jss::status] = "success";
     return ret;
 }
 

@@ -41,7 +41,8 @@ namespace ripple {
 	{
 		Json::Value jvResult;
 		jvResult[jss::error_message] = errMsg;
-		jvResult[jss::error] = "error";
+		//jvResult[jss::error] = "error";
+		jvResult[jss::status] = "error";
 		return jvResult;
 	}
 

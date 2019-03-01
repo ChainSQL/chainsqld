@@ -89,8 +89,7 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 	Json::Value jsonRet;
 	if (!json.isObject())
 	{
-		jsonRet[jss::error] = "value type is not object.";
-		return jsonRet;
+		return generateError("value type is not object.");
 	}
 
 	for (auto const& fieldName : json.getMemberNames())

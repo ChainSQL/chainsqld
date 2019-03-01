@@ -24,6 +24,7 @@
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 Json::Value doGetDBName(RPC::Context&  context)
@@ -33,15 +34,28 @@ Json::Value doGetDBName(RPC::Context&  context)
 
 	if (tx_json["account"].asString().empty() || tx_json["tablename"].asString().empty())
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "account or tablename is empty";
-		return ret;
+		return generateError("account or tablename is empty");
 	}
 
     auto tableNameStr = tx_json["tablename"].asString();
 	auto accountIdStr = tx_json["account"].asString();
+	ripple::AccountID accountID;
+	auto jvAccepted = RPC::accountFromString(accountID, accountIdStr, false);
+	if (jvAccepted.isMember(jss::error_message))
+		return generateError(jvAccepted[jss::error_message].asString());
 
-	return context.app.getTableAssistant().getDBName(accountIdStr, tableNameStr);
+	auto nameInDB = context.app.getLedgerMaster().getNameInDB(
+		context.app.getLedgerMaster().getValidLedgerIndex(), accountID, tableNameStr);
+	if (!nameInDB)
+	{
+		return generateError("Table does not exist");
+	}
+	else
+	{
+		ret[jss::status] = "success";
+		ret[jss::nameInDB] = to_string(nameInDB);
+		return ret;
+	}
 }
 
 } // ripple
