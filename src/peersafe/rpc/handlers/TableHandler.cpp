@@ -417,7 +417,6 @@ Json::Value checkAuthForSql(RPC::Context& context)
 	int nTableNameLength = prefix.length() + 2 * (160/8);
 	std::set <std::string> setTableNames;
 	int pos1 = sql.find(prefix);
-	int pos2 = 0;
 	while (pos1 != std::string::npos)
 	{
 		int pos2 = sql.find(" ", pos1);
