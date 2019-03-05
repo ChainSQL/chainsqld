@@ -46,6 +46,7 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 		return generateError("account parse failed");
 	}
 
+	ret["tables"] = Json::Value(Json::arrayValue);
     bool bGetDetailInfo = false;
     if (context.params.isMember("detail") && context.params["detail"].asBool())
     {
@@ -104,6 +105,7 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 					if (ledger != nullptr)
 					{
 						tmp["create_time_human"] = to_string(ledger->info().closeTime);
+						//tmp["create_time"] = ledger->info().closeTime.time_since_epoch().count();
 					}
 					
 					if (context.app.getTxStoreDBConn().GetDBConn() != nullptr &&
@@ -139,10 +141,6 @@ Json::Value doGetAccountTables(RPC::Context&  context)
         {
 			return generateError("There is no table in this account!");
         }
-    }
-    else
-    {
-		return generateError("There is no table in this account!");
     }
 
 	ret[jss::status] = "success";
