@@ -388,34 +388,11 @@ Json::Value checkSig(RPC::Context&  context)
 	}
 }
 
-Json::Value checkAuthForSql(RPC::Context& context)
+void getNameInDBSetInSql(std::string sql,std::set <std::string>& setTableNames)
 {
-	TxStore& txStore = context.app.getTxStore();
-	Json::Value& tx_json(context.params["tx_json"]);
-	Json::Value ret;
-	if (!tx_json.isMember("Account"))
-	{
-		ret[jss::error] = "Missing field Account!";
-		return ret;
-	}
-	if (!tx_json.isMember("Sql"))
-	{
-		ret[jss::error] = "Missing field Sql!";
-		return ret;
-	}
-
-	auto accountID = ripple::parseBase58<AccountID>(tx_json["Account"].asString());
-	if (accountID == boost::none)
-	{
-		ret[jss::error] = "field Account is wrong!";
-		return ret;
-	}
-
-	std::string sql = tx_json["Sql"].asString();
 	std::string prefix = "t_";
 	//type of nameInDB: uint160
-	int nTableNameLength = prefix.length() + 2 * (160/8);
-	std::set <std::string> setTableNames;
+	int nTableNameLength = prefix.length() + 2 * (160 / 8);
 	int pos1 = sql.find(prefix);
 	while (pos1 != std::string::npos)
 	{
@@ -424,12 +401,36 @@ Json::Value checkAuthForSql(RPC::Context& context)
 			pos2 = sql.length();
 		if (pos2 - pos1 == nTableNameLength)
 		{
-			std::string str = sql.substr(pos1 + 2, pos2 - pos1);
+			std::string str = sql.substr(pos1 + 2, pos2 - pos1 - 2);
 			setTableNames.emplace(str);
 		}
 
 		pos1 = sql.find(prefix, pos2);
 	}
+}
+Json::Value checkAuthForSql(RPC::Context& context)
+{
+	TxStore& txStore = context.app.getTxStore();
+	Json::Value& tx_json(context.params["tx_json"]);
+	Json::Value ret;
+	if (!tx_json.isMember("Account"))
+	{
+		return generateError("Missing field Account!");
+	}
+	if (!tx_json.isMember("Sql"))
+	{
+		return generateError("Missing field Sql!");
+	}
+
+	auto accountID = ripple::parseBase58<AccountID>(tx_json["Account"].asString());
+	if (accountID == boost::none)
+	{
+		return generateError("field Account is wrong!");
+	}
+
+	std::string sql = tx_json["Sql"].asString();
+	std::set <std::string> setTableNames;
+	getNameInDBSetInSql(sql, setTableNames);
 
 	for (auto nameInDB : setTableNames)
 	{
@@ -441,8 +442,7 @@ Json::Value checkAuthForSql(RPC::Context& context)
 		const Json::Value& lines = val[jss::lines];
 		if (lines.isArray() == false || lines.size() != 1)
 		{
-			ret[jss::error] = "Return value not valid while select Owner,TableName from SyncTableState!";
-			return ret;
+			return generateError("Return value not valid while select Owner,TableName from SyncTableState,nameInDB=" + nameInDB);
 		}
 		const Json::Value & line = lines[0u];
 
@@ -454,8 +454,7 @@ Json::Value checkAuthForSql(RPC::Context& context)
 		auto retPair = context.ledgerMaster.isAuthorityValid(*accountID, *ownerID, listTableName, lsfSelect);
 		if (!retPair.first)
 		{
-			ret[jss::error] = retPair.second;
-			return ret;
+			return generateError(retPair.second);
 		}
 	}
 	return ret;
@@ -523,6 +522,52 @@ Json::Value queryBySql(TxStore& txStore,std::string& sql)
 	}	
 }
 
+Json::Value checkTableExistOnChain(RPC::Context&  context, std::string sql)
+{
+	Json::Value ret(Json::objectValue);
+	std::set <std::string> setTableNames;
+	getNameInDBSetInSql(sql, setTableNames);
+
+	for (auto nameInDB : setTableNames)
+	{
+		Json::Value val = context.app.getTxStore().txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB + "';");
+		if (val.isMember(jss::error))
+		{
+			return ret;
+		}
+		const Json::Value& lines = val[jss::lines];
+		if (lines.isArray() == false || lines.size() != 1)
+		{
+			return ret;
+		}
+		const Json::Value & line = lines[0u];
+
+		auto ownerID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
+		auto tableName = line[jss::TableName].asString();
+		//check table exist
+		auto ledger = context.ledgerMaster.getValidatedLedger();
+		if (ledger)
+		{
+			auto id = keylet::table(*ownerID);
+			auto const tablesle = ledger->read(id);
+			if (!tablesle)
+			{
+				return generateError("Table not exist on this chain");
+			}
+
+			if (tablesle)
+			{
+				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+				if (getTableEntry(aTableEntries, tableName) == nullptr)
+				{
+					return generateError("Table not exist on this chain");
+				}
+			}
+		}
+	}
+	return ret;
+}
+
 Json::Value doGetRecordBySql(RPC::Context&  context)
 {
 	Json::Value ret(Json::objectValue);
@@ -535,6 +580,12 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 		return generateError("Missing field sql!");
 	}		
 	auto sql = context.params["sql"].asString();
+
+	//check table exist on chain
+	ret = checkTableExistOnChain(context, sql);
+	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+		return ret;
+
 	return queryBySql(context.app.getTxStore(),sql);
 }
 
