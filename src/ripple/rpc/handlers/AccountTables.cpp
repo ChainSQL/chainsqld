@@ -104,8 +104,8 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 					auto ledger = context.app.getLedgerMaster().getLedgerBySeq(iInLedger);
 					if (ledger != nullptr)
 					{
-						tmp["create_time_human"] = to_string(ledger->info().closeTime);
-						//tmp["create_time"] = ledger->info().closeTime.time_since_epoch().count();
+						//tmp["create_time_human"] = to_string(ledger->info().closeTime);
+						tmp["create_time"] = ledger->info().closeTime.time_since_epoch().count();
 					}
 					
 					if (context.app.getTxStoreDBConn().GetDBConn() != nullptr &&
