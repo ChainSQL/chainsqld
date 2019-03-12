@@ -35,7 +35,8 @@ shouldCloseLedger(
     std::chrono::milliseconds openTime,  // Time waiting to close this ledger
     std::chrono::milliseconds idleInterval,
     ConsensusParms const& parms,
-    beast::Journal j)
+	beast::Journal j,
+	bool bUseLargeInterval)
 {
     using namespace std::chrono_literals;
     if ((prevRoundTime < -1s) || (prevRoundTime > 10min) ||
@@ -50,7 +51,7 @@ shouldCloseLedger(
         return true;
     }
 
-	if (!anyTransactions)
+	if (bUseLargeInterval && !anyTransactions)
 	{
 		if (timeSincePrevClose < idleInterval)
 			return false;

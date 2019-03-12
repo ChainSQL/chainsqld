@@ -276,10 +276,6 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
     else
     {
         checkAccept (lastClosed);
-        app_.getTableStorage().TryTableStorage();
-		app_.getTableAssistant().TryTableCheckHash();
-		app_.getOPs().TryCheckSubTx();
-		app_.getTableTxAccumulator().trySweepCache();
     }
 }
 
@@ -386,6 +382,10 @@ LedgerMaster::getFullValidatedRange (std::uint32_t& minVal, std::uint32_t& maxVa
     // Validated ledger is likely not stored in the DB yet so we use the
     // published ledger which is.
     maxVal = mPubLedgerSeq.load();
+	if (mLastValidateSeq - mPubLedgerSeq > 2)
+	{
+		maxVal = mLastValidateSeq;
+	}
 
     if (!maxVal)
         return false;
@@ -1057,6 +1057,14 @@ std::tuple<bool, ripple::uint256, std::string> LedgerMaster::getUserFutureHash(A
     }
 
     return std::make_tuple(false, uint256(), "error.");
+}
+
+void LedgerMaster::processFullLedgerTask(std::shared_ptr<Ledger const> const& ledger)
+{
+	app_.getTableSync().SeekCreateTable(ledger);
+	app_.getTableStorage().TryTableStorage();
+	app_.getTableAssistant().TryTableCheckHash();
+	app_.getTableTxAccumulator().trySweepCache();
 }
 
 bool LedgerMaster::isConfidential(const STTx& tx)
@@ -2144,7 +2152,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                     app_.getOPs().pubLedger(ledger);
                 }
                 
-                app_.getTableSync().SeekCreateTable(ledger);
+				processFullLedgerTask(ledger);
             }
 			//move table_sync here,cause it used pub_ledger
 			app_.getTableSync().TryTableSync();

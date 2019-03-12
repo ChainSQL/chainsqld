@@ -91,7 +91,7 @@ public:
 		virtual void unsubTable(ref isplistener, AccountID const& accountID, std::string const& sNameInDB) = 0;
 		
 		//for a single tx
-		virtual void subTransaction(ref ispListener, uint256 const& txId,const int lastLedgerSeq) = 0;
+		virtual void subTransaction(ref ispListener, uint256 const& txId) = 0;
 		virtual void unsubTransaction(ref ispListener, uint256 const& txId) = 0;
 
         virtual bool subManifests (ref ispListener) = 0;

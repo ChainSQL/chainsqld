@@ -108,6 +108,9 @@ public:
         getUserFutureHash(AccountID accountID);
     
 	bool isConfidential(const STTx& tx);
+
+	void processFullLedgerTask(std::shared_ptr<Ledger const> const& l);
+
     // The finalized ledger is the last closed/accepted ledger
     std::shared_ptr<Ledger const>
     getClosedLedger()
