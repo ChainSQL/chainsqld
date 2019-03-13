@@ -71,7 +71,6 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 		//return generateError(retPair.second);
 	}	
 
-	ret[jss::status] = "success";
 	ret["txCheckHash"] = to_string(txCheckHash);
 
 	return ret;

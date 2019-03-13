@@ -65,7 +65,6 @@ Json::Value doGetDBName(RPC::Context&  context)
 	}
 	else
 	{
-		ret[jss::status] = "success";
 		ret[jss::nameInDB] = to_string(nameInDB);
 		return ret;
 	}

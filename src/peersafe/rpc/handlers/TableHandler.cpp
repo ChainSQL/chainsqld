@@ -789,7 +789,6 @@ Json::Value doPrepare(RPC::Context& context)
 	auto ret = context.app.getTableAssistant().prepare(context.params["secret"].asString(), context.params["public_key"].asString(), tx_json,true);
 	if (!ret.isMember(jss::status) && ret[jss::status].asString() == "error")
 	{
-		ret["status"] = "success";
 		ret["tx_json"] = tx_json;
 	}
 
@@ -852,7 +851,6 @@ Json::Value doGetUserToken(RPC::Context& context)
 
 	if (bRet)
 	{
-		ret[jss::status] = "success";
 		ret["token"] = strHex(passWd);
 	}
 	else

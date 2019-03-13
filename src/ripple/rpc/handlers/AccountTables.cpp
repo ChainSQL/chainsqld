@@ -157,7 +157,6 @@ Json::Value doGetAccountTables(RPC::Context&  context)
         }
     }
 
-	ret[jss::status] = "success";
     return ret;
 }
 

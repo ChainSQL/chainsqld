@@ -118,7 +118,6 @@ namespace ripple {
 				//return generateError("Table not found!");
 			}
 		}
-		ret[jss::status] = "success";
 		return ret;
 	}
 
