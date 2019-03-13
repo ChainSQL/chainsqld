@@ -48,6 +48,12 @@ Json::Value doGetDBName(RPC::Context&  context)
 	auto jvAccepted = RPC::accountFromString(accountID, accountIdStr, true);
 	if (jvAccepted)
 		return jvAccepted;
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (!ledger)
+		return result;
+	if (!ledger->exists(keylet::account(accountID)))
+		return rpcError(rpcACT_NOT_FOUND);
 
 	auto nameInDB = context.app.getLedgerMaster().getNameInDB(
 		context.app.getLedgerMaster().getValidLedgerIndex(), accountID, tableNameStr);

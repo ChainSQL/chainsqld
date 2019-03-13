@@ -50,6 +50,12 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 	{
 		return jvAccepted;
 	}
+	std::shared_ptr<ReadView const> ledgerConst;
+	auto result = RPC::lookupLedger(ledgerConst, context);
+	if (!ledgerConst)
+		return result;
+	if (!ledgerConst->exists(keylet::account(ownerID)))
+		return rpcError(rpcACT_NOT_FOUND);
 
 	ret["tables"] = Json::Value(Json::arrayValue);
     bool bGetDetailInfo = false;

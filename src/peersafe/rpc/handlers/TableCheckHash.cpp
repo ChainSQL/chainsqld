@@ -55,6 +55,12 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 
 	if (jvAccepted)
 		return jvAccepted;
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (!ledger)
+		return result;
+	if (!ledger->exists(keylet::account(accountID)))
+		return rpcError(rpcACT_NOT_FOUND);
 
 	//first,we query from ledgerMaster
 	auto retPair = context.ledgerMaster.getLatestTxCheckHash(accountID, tableNameStr);

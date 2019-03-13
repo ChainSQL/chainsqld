@@ -67,6 +67,12 @@ namespace ripple {
 		{
 			return jvAcceptedOwner;
 		}
+		std::shared_ptr<ReadView const> ledgerConst;
+		auto result = RPC::lookupLedger(ledgerConst, context);
+		if (!ledgerConst)
+			return result;
+		if (!ledgerConst->exists(keylet::account(ownerID)))
+			return rpcError(rpcACT_NOT_FOUND);
 
 		auto tableName = params[jss::tablename].asString();
 

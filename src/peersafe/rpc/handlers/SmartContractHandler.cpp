@@ -163,6 +163,12 @@ Json::Value doContractCall(RPC::Context& context)
 	{
 		return jvAccepted;
 	}
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (!ledger)
+		return result;
+	if (!ledger->exists(keylet::account(accountID)))
+		return rpcError(rpcACT_NOT_FOUND);
 	/*auto const srcAddressID = parseBase58<AccountID>(jsonParams[jss::account].asString());
 	if (srcAddressID == boost::none)
 	{
@@ -177,6 +183,8 @@ Json::Value doContractCall(RPC::Context& context)
 	{
 		return jvAcceptedCtrAddr;
 	}
+	if (!ledger->exists(keylet::account(contractAddrID)))
+		return rpcError(rpcACT_NOT_FOUND);
 
 	/*auto const contractAddrID = parseBase58<AccountID>(jsonParams[jss::contract_address].asString());
 	if (contractAddrID == boost::none)

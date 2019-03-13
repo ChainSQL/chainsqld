@@ -152,12 +152,18 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 
 	AccountID ownerID;
 	AccountID accountID;
+	std::shared_ptr<ReadView const> ledgerConst;
+	auto result = RPC::lookupLedger(ledgerConst, context);
+	if (!ledgerConst)
+		return result;
 	std::string ownerStr = tx_json[jss::Owner].asString();
 	auto jvAcceptedOwner = RPC::accountFromString(ownerID, ownerStr, true);
 	if (jvAcceptedOwner)
 	{
 		return jvAcceptedOwner;
 	}
+	if (!ledgerConst->exists(keylet::account(ownerID)))
+		return rpcError(rpcACT_NOT_FOUND);
 
 	std::string accountStr = tx_json[jss::Account].asString();
 	auto jvAcceptedAccount = RPC::accountFromString(accountID, accountStr, true);
@@ -165,6 +171,8 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 	{
 		return jvAcceptedAccount;
 	}
+	if (!ledgerConst->exists(keylet::account(accountID)))
+		return rpcError(rpcACT_NOT_FOUND);
 
 	Json::Value &tables_json = tx_json["Tables"];
 	if (!tables_json.isArray())
@@ -819,14 +827,23 @@ Json::Value doGetUserToken(RPC::Context& context)
 		return RPC::missing_field_error(jss::User);
 	}
 
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (!ledger)
+		return result;
+	
 	AccountID ownerID;
 	AccountID userID;
 	auto jvAcceptedOwner = RPC::accountFromString(ownerID, ownerStr, true);
 	if (jvAcceptedOwner)
 		return jvAcceptedOwner;
+	if (!ledger->exists(keylet::account(ownerID)))
+		return rpcError(rpcACT_NOT_FOUND);
 	auto jvAcceptedUser = RPC::accountFromString(userID, userStr, true);
 	if (jvAcceptedUser)
 		return jvAcceptedUser;
+	if (!ledger->exists(keylet::account(userID)))
+		return rpcError(rpcACT_NOT_FOUND);
 
 	bool bRet = false;
 	ripple::Blob passWd;
