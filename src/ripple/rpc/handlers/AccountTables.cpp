@@ -132,10 +132,11 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 							if (dbret && count)
 							{
 								tmp[jss::count] = *count;
+								tmp["table_exist_inDB"] = true;
 							}
 						}
 						catch (std::exception& e) {
-							tmp[jss::error_message] = e.what();
+							tmp["table_exist_inDB"] = false;
 						}
 					}
                 }

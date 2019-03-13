@@ -490,7 +490,9 @@ Json::Value checkAuthForSql(RPC::Context& context)
 		const Json::Value& lines = val[jss::lines];
 		if (lines.isArray() == false || lines.size() != 1)
 		{
-			return rpcError(rpcGET_VALUE_INVALID, ret);
+			//return rpcError(rpcGET_VALUE_INVALID, ret);
+			std::string errMsg = "Table t_" + nameInDB + " not found in database.";
+			return RPC::make_error(rpcTAB_NOT_EXIST, errMsg);
 			//return generateError("Return value not valid while select Owner,TableName from SyncTableState,nameInDB=" + nameInDB);
 		}
 		const Json::Value & line = lines[0u];
