@@ -95,7 +95,9 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 			ledgerSequence = ledger->info().seq;
 		else
 		{
-			return generateError("Can not find validated ledger!");
+			std::string errMsg = "Can not find validated ledger!";
+			RPC::inject_error(rpcLGR_NOT_VALIDATED, errMsg, ret);
+			return ret;
 		}
 
 		try
@@ -104,7 +106,9 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 		}
 		catch (std::exception const& e)
 		{
-			return generateError(e.what());
+			RPC::inject_error(rpcGENERAL, e.what(), ret);
+			return ret;
+			// return generateError(e.what());
 		}
 		ret[jss::status] = "success";
 	}

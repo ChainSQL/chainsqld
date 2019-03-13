@@ -38,32 +38,43 @@ namespace ripple {
 	{
 		Json::Value params(context.params);
 		Json::Value ret(Json::objectValue);
-		if (params[jss::owner].asString().empty())
+		std::string ownerStr;
+
+		if (!params.isMember(jss::Owner))
 		{
-			return generateError("field owner is empty!");
+			return RPC::missing_field_error(jss::Owner);
 		}
-		if (params[jss::tablename].asString().empty())
+		if (!params.isMember(jss::tablename))
 		{
-			return generateError("field table_name is empty!");
+			return RPC::missing_field_error(jss::tablename);
 		}
+		
 		ripple::hash_set<AccountID> ids;
 		if (context.params.isMember(jss::accounts))
 		{
 			if (!context.params[jss::accounts].isArray())
-				return generateError("accounts is not array");
+				return rpcError(rpcINVALID_PARAMS, ret);
+				//return generateError("accounts is not array");
 			ids = RPC::parseAccountIds(context.params[jss::accounts]);
 			if (ids.empty())
-				return generateError("accounts does not include account");
+				return rpcError(rpcINVALID_PARAMS, ret);
+				//return generateError("accounts does not include account");
 		}
 
-		auto ownerID = ripple::parseBase58<AccountID>(params[jss::owner].asString());
+		AccountID ownerID;
+		auto jvAcceptedOwner = RPC::accountFromString(ownerID, ownerStr, true);
+		if (jvAcceptedOwner)
+		{
+			return jvAcceptedOwner;
+		}
+
 		auto tableName = params[jss::tablename].asString();
 
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		STEntry* pEntry = nullptr;
 		if (ledger)
 		{
-			auto id = keylet::table(*ownerID);
+			auto id = keylet::table(ownerID);
 			auto const tablesle = ledger->read(id);
 
 			if (tablesle)
@@ -72,7 +83,8 @@ namespace ripple {
 				pEntry = getTableEntry(aTableEntries, tableName);
 				if (!pEntry)
 				{
-					return generateError("Table not found!");
+					return rpcError(rpcTAB_NOT_EXIST, ret);
+					//return generateError("Table not found!");
 				}
 
 				Json::Value& jvUsers = (ret["users"] = Json::arrayValue);
@@ -96,7 +108,8 @@ namespace ripple {
 			}
 			else
 			{
-				return generateError("Table not found!");
+				return rpcError(rpcTAB_NOT_EXIST, ret);
+				//return generateError("Table not found!");
 			}
 		}
 		ret[jss::status] = "success";

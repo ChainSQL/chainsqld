@@ -20,6 +20,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/JsonFields.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/main/Application.h>
@@ -118,23 +119,25 @@ std::pair<Json::Value, bool> checkJsonFields(Json::Value originJson)
 
 	if (!originJson.isMember(jss::account))
 	{
-		//ret.first = RPC::missing_field_error(jss::Account);
-		ret.first = RPC::make_error(rpcSRC_ACT_MISSING,
-			RPC::missing_field_message("account"));
+		ret.first = RPC::missing_field_error(jss::account);
+		/*ret.first = RPC::make_error(rpcSRC_ACT_MISSING,
+			RPC::missing_field_message("account"));*/
 		return ret;
 	}
 
 	if (!originJson.isMember(jss::contract_address))
 	{
-		ret.first = RPC::make_error(rpcCTR_ACT_MISSING,
-			RPC::missing_field_message("contract_address"));
+		ret.first = RPC::missing_field_error(jss::contract_address);
+		/*ret.first = RPC::make_error(rpcCTR_ACT_MISSING,
+			RPC::missing_field_message("contract_address"));*/
 		return ret;
 	}
 
 	if (!originJson.isMember(jss::contract_data))
 	{
-		ret.first = RPC::make_error(rpcCTR_DATA_MISSING,
-			RPC::missing_field_message("contract_data"));
+		ret.first = RPC::missing_field_error(jss::contract_data);
+		/*ret.first = RPC::make_error(rpcCTR_DATA_MISSING,
+			RPC::missing_field_message("contract_data"));*/
 		return ret;
 	}
 	ret.first = Json::Value();
@@ -153,18 +156,34 @@ Json::Value doContractCall(RPC::Context& context)
 	auto checkResult = checkJsonFields(jsonParams);
 	if (!checkResult.second)
 		return checkResult.first;
-	auto const srcAddressID = parseBase58<AccountID>(jsonParams[jss::account].asString());
+	std::string accountStr = jsonParams[jss::account].asString();
+	AccountID accountID;
+	auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
+	if (jvAccepted)
+	{
+		return jvAccepted;
+	}
+	/*auto const srcAddressID = parseBase58<AccountID>(jsonParams[jss::account].asString());
 	if (srcAddressID == boost::none)
 	{
 		errMsgStr = "account field is invalid!";
 		return contractLocalCallErrResultImpl(rpcINVALID_PARAMS, errMsgStr);
+	}*/
+
+	std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
+	AccountID contractAddrID;
+	auto jvAcceptedCtrAddr = RPC::accountFromString(contractAddrID, ctrAddrStr, true);
+	if (jvAcceptedCtrAddr)
+	{
+		return jvAcceptedCtrAddr;
 	}
-	auto const contractAddrID = parseBase58<AccountID>(jsonParams[jss::contract_address].asString());
+
+	/*auto const contractAddrID = parseBase58<AccountID>(jsonParams[jss::contract_address].asString());
 	if (contractAddrID == boost::none)
 	{
 		errMsgStr = "contract_address field is invalid!";
 		return contractLocalCallErrResultImpl(rpcINVALID_PARAMS, errMsgStr);
-	}
+	}*/
 	
 	auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
 	if (!strUnHexRes.second)
@@ -180,10 +199,10 @@ Json::Value doContractCall(RPC::Context& context)
 	}
 	//int64_t txValue = 0;
 	STTx contractTx(ttCONTRACT,
-		[&srcAddressID, &contractAddrID, /*&txValue,*/ &contractDataBlob](auto& obj)
+		[accountID, contractAddrID, /*&txValue,*/ &contractDataBlob](auto& obj)
 	{
-		obj.setAccountID(sfAccount, *srcAddressID);
-		obj.setAccountID(sfContractAddress, *contractAddrID);
+		obj.setAccountID(sfAccount, accountID);
+		obj.setAccountID(sfContractAddress, contractAddrID);
 		obj.setFieldVL(sfContractData, contractDataBlob);
 		//obj.setFieldAmount(sfAmount, ZXCAmount(txValue));
 	});

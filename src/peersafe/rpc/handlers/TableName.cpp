@@ -25,6 +25,7 @@
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <ripple/protocol/ErrorCodes.h>
 
 namespace ripple {
 Json::Value doGetDBName(RPC::Context&  context)
@@ -32,23 +33,29 @@ Json::Value doGetDBName(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	Json::Value& tx_json(context.params);
 
-	if (tx_json["account"].asString().empty() || tx_json["tablename"].asString().empty())
+	if (tx_json["account"].asString().empty())
 	{
-		return generateError("account or tablename is empty");
+		return RPC::missing_field_error(jss::account);
+	}
+	if (tx_json["tablename"].asString().empty())
+	{
+		return RPC::missing_field_error(jss::tablename);
 	}
 
     auto tableNameStr = tx_json["tablename"].asString();
 	auto accountIdStr = tx_json["account"].asString();
 	ripple::AccountID accountID;
-	auto jvAccepted = RPC::accountFromString(accountID, accountIdStr, false);
-	if (jvAccepted.isMember(jss::error_message))
-		return generateError(jvAccepted[jss::error_message].asString());
+	auto jvAccepted = RPC::accountFromString(accountID, accountIdStr, true);
+	if (jvAccepted)
+		return jvAccepted;
 
 	auto nameInDB = context.app.getLedgerMaster().getNameInDB(
 		context.app.getLedgerMaster().getValidLedgerIndex(), accountID, tableNameStr);
 	if (!nameInDB)
 	{
-		return generateError("Table does not exist");
+		RPC::inject_error(rpcTAB_NOT_EXIST, ret);
+		return ret;
+		// return generateError("Table does not exist");
 	}
 	else
 	{

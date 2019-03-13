@@ -33,26 +33,31 @@ namespace ripple {
 Json::Value doGetAccountTables(RPC::Context&  context)
 {
 	Json::Value ret(Json::objectValue);
+	auto& params = context.params;
+	std::string accountStr;
     
-
-	if (context.params["account"].asString().empty())
+	if (params.isMember(jss::account))
 	{
-		return generateError("account  is null");
+		accountStr = params[jss::account].asString();
 	}
-
-	auto pOwnerId = ripple::parseBase58<AccountID>(context.params["account"].asString());
-	if (pOwnerId == boost::none)
+	else
 	{
-		return generateError("account parse failed");
+		return RPC::missing_field_error(jss::account);
+	}
+	AccountID ownerID;
+	auto jvAccepted = RPC::accountFromString(ownerID, accountStr, true);
+	if (jvAccepted)
+	{
+		return jvAccepted;
 	}
 
 	ret["tables"] = Json::Value(Json::arrayValue);
     bool bGetDetailInfo = false;
+	//Todo:should check detail is bool
     if (context.params.isMember("detail") && context.params["detail"].asBool())
     {
         bGetDetailInfo = true;
     }
-    AccountID ownerID(*pOwnerId);
     auto key = keylet::table(ownerID);
 
     auto ledger = context.app.getLedgerMaster().getValidatedLedger();
@@ -139,7 +144,9 @@ Json::Value doGetAccountTables(RPC::Context&  context)
         }
         else
         {
-			return generateError("There is no table in this account!");
+			RPC::inject_error(rpcTAB_NOT_EXIST, ret);
+			return ret;
+			//return generateError("There is no table in this account!");
         }
     }
 

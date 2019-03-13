@@ -38,9 +38,9 @@ namespace ripple {
 
         if (ret[jss::tx_json].size() != 3)
         {
-            ret[jss::error] = "error";
-            ret[jss::error_message] = "must follow 3 params,in format: 'owner tableName' 'sql' 'path'";
-            ret.removeMember(jss::tx_json);
+			std::string errMsg = "must follow 3 params,in format: 'owner tableName' 'sql' 'path'";
+			ret.removeMember(jss::tx_json);
+			RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
             return ret;
         }
 
@@ -55,13 +55,10 @@ namespace ripple {
         auto retSet = context.app.getTableSync().StartAuditTable(sNormal, sSQL,sFullPath);
         if (!retSet.first)
         {
-            ret[jss::error] = "error.";
-
             std::string sErrorMsg;
             TransGBK_UTF8(retSet.second, sErrorMsg, false);
-            ret[jss::error_message] = sErrorMsg;
-
             ret.removeMember(jss::tx_json);
+			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
             return ret;
         }
         else
@@ -89,9 +86,9 @@ namespace ripple {
 
         if (ret[jss::tx_json].size() != 1)
         {
-            ret[jss::error] = "error.";
-            ret[jss::error_message] = "must follow 1 params,in format: job_id.";
-            ret.removeMember(jss::tx_json);
+			std::string errMsg = "must follow 1 params,in format: job_id.";
+			ret.removeMember(jss::tx_json);
+			RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
             return ret;
         }
 
@@ -100,12 +97,9 @@ namespace ripple {
         auto retPair = context.app.getTableSync().StopAuditTable(sNickName);        
         if (!retPair.first)
         {
-            ret[jss::error] = "error.";
-
             std::string sErrorMsg;
             TransGBK_UTF8(retPair.second, sErrorMsg, false);
-            ret[jss::error_message] = sErrorMsg;
-
+			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
             ret.removeMember(jss::tx_json);
         }
         else

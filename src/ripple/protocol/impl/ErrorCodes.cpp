@@ -53,6 +53,7 @@ public:
         add (rpcACT_EXISTS,            "actExists",         "Account already exists.");
         add (rpcACT_MALFORMED,         "actMalformed",      "Account malformed.");
         add (rpcACT_NOT_FOUND,         "actNotFound",       "Account not found.");
+		add (rpcACT_NOT_MATCH_PUBKEY,  "actNotMatchPublic", "Account is not match with publicKey.");
         add (rpcAMENDMENT_BLOCKED,     "amendmentBlocked",  "Amendment blocked, need upgrade.");
         add (rpcATX_DEPRECATED,        "deprecated",        "Use the new API or specify a ledger range.");
         add (rpcBAD_BLOB,              "badBlob",           "Blob must be a non-empty hex string.");
@@ -77,13 +78,14 @@ public:
         add (rpcHOST_IP_MALFORMED,     "hostIpMalformed",   "Host IP is malformed.");
         add (rpcINSUF_FUNDS,           "insufFunds",        "Insufficient funds.");
         add (rpcINTERNAL,              "internal",          "Internal error.");
-		add (rpcNODB,				   "db_noDbConfig",	"Get db connection error,maybe db not configured.");
+		add (rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured.");
         add (rpcINVALID_PARAMS,        "invalidParams",     "Invalid parameters.");
         add (rpcJSON_RPC,              "json_rpc",          "JSON-RPC transport error.");
         add (rpcLGR_IDXS_INVALID,      "lgrIdxsInvalid",    "Ledger indexes invalid.");
         add (rpcLGR_IDX_MALFORMED,     "lgrIdxMalformed",   "Ledger index malformed.");
         add (rpcLGR_NOT_FOUND,         "lgrNotFound",       "Ledger not found.");
         add (rpcLGR_NOT_VALIDATED,     "lgrNotValidated",   "Ledger not validated.");
+		add (rpcLGR_IN_JSON_NOT_VALIDATED, "lgrInJsonNotValidated", "LedgerIndex in json is not validated.");
         add (rpcLOAD_FAILED,           "loadFailed",        "Load failed");
         add (rpcMASTER_DISABLED,       "masterDisabled",    "Master key is disabled.");
         add (rpcNOT_ENABLED,           "notEnabled",        "Not enabled in configuration.");
@@ -104,6 +106,7 @@ public:
         add (rpcPAYS_AMT_MALFORMED,    "paysAmtMalformed",  "Pays amount malformed.");
         add (rpcPORT_MALFORMED,        "portMalformed",     "Port is malformed.");
         add (rpcPUBLIC_MALFORMED,      "publicMalformed",   "Public key is malformed.");
+		add (rpcPUBLIC_NOT_IN_HEX,     "publicNotInHex",    "Public key is not in hex.");
         add (rpcQUALITY_MALFORMED,     "qualityMalformed",  "Quality malformed.");
         add (rpcSIGN_FOR_MALFORMED,    "signForMalformed",  "Signing for account is malformed.");
         add (rpcSLOW_DOWN,             "slowDown",          "You are placing too much load on the server.");
@@ -121,10 +124,26 @@ public:
         add (rpcUNKNOWN_COMMAND,       "unknownCmd",        "Unknown method.");
         add (rpcWRONG_SEED,            "wrongSeed",         "The regular key does not point as the master key.");
         add (rpcSENDMAX_MALFORMED,     "sendMaxMalformed",  "SendMax amount malformed.");
-		add(rpcCTR_ACT_MISSING,        "contractAddrMissing", "Contract address not provided.");
-		add(rpcCTR_DATA_MISSING,       "contractDataMissing", "Contract data not provided.");
-		add(rpcCTR_EVMEXE_EXCEPTION,   "contractAddrMissing", "Contract execution exception.");
-		add(rpcCTR_CONTENT_EMPTY,      "fieldContentEmpty", "Field content is empty.");
+		add (rpcJSON_PARSED_ERR,       "txJsonParsedErr",   "Tx Json parsed error.");
+		add (rpcSQL_DISPOSE_ERR,       "disposeSqlErr",     "Dispose SQL common error info");
+		add (rpcSQL_SELECT_ONLY,       "sqlSelectOnly",     "First word of SQL must be Select.");
+		add (rpcDB_NOT_SUPPORT,        "dbTypeNotSupport",  "Do not support this db type.");
+		add (rpcTAB_NOT_EXIST,         "tabNotExist",       "Table does not exist.");
+		add (rpcTAB_UNAUTHORIZED,      "tabUnauthorized",   "The user is unauthorized to the table.");
+		add (rpcTAB_NOT_ARRAY,         "tabNotArray",       "Tables field is not array.");
+		add (rpcTAB_NOT_VALIDATED,     "tabNotValidated",   "Table field is not validated.");
+		add (rpcRAW_NOT_VALIDATED,     "rawNotValidated",   "Raw field is not validated.");
+		add (rpcNAMEINDB_NOT_MATCH,    "DBNameNotMatchTabName","DBName is not matched with table name.");
+		add (rpcNAMEINDB_INVALID,      "NameInDBInvalid",   "NameInDB field is invalid.");
+		add (rpcSLE_TOKEN_MISSING,     "userSleTokenMissing",  "Missing 'Token' field in sle of the corresponding user.");
+		add (rpcSIGN_NOT_MATCH,        "signDataNotMatch",     "Signing data does not match tx_json.");
+		add (rpcSIGN_NOT_IN_HEX,       "signNotInHex",         "Signature is not in hex.");
+		add (rpcOBJ_PARSED_ERR,        "objParsedError",       "Parsed object is error.");
+		add (rpcGET_VALUE_INVALID,     "getValueInvalid",   "Get value invalid from syncTableState.");
+		add (rpcCTR_ACT_MISSING,       "contractAddrMissing",  "Contract address not provided.");
+		add (rpcCTR_DATA_MISSING,      "contractDataMissing",  "Contract data not provided.");
+		add (rpcCTR_EVMEXE_EXCEPTION,  "contractAddrMissing",  "Contract execution exception.");
+		add (rpcCTR_CONTENT_EMPTY,     "fieldContentEmpty",    "Field content is empty.");
     }
 
     ErrorInfo const& get (error_code_i code) const

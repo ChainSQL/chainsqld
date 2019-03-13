@@ -38,13 +38,17 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	Json::Value& tx_json(context.params["tx_json"]);
 
-	if (tx_json["Account"].asString().empty() || tx_json["TableName"].asString().empty())
+	if (tx_json["Account"].asString().empty())
 	{
-		return generateError("Account or TableName is null");
+		return RPC::missing_field_error("Account");
+	}
+	if (tx_json[jss::TableName].asString().empty())
+	{
+		return RPC::missing_field_error(jss::TableName);
 	}
 
 	auto accountIdStr = tx_json["Account"].asString();
-	auto tableNameStr = tx_json["TableName"].asString();
+	auto tableNameStr = tx_json[jss::TableName].asString();
 
 	ripple::AccountID accountID;
 	auto jvAccepted = RPC::accountFromString(accountID, accountIdStr, false);
@@ -57,7 +61,8 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 	auto txCheckHash = retPair.first;
 	if (txCheckHash.isZero()) //not exist,then generate nameInDB
 	{
-		return generateError(retPair.second);
+		return rpcError(retPair.second);
+		//return generateError(retPair.second);
 	}	
 
 	ret[jss::status] = "success";

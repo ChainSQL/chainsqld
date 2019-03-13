@@ -26,6 +26,7 @@
 #include <ripple/rpc/impl/TransactionSign.h>
 #include <ripple/rpc/Role.h>
 #include <ripple/rpc/handlers/Handlers.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/basics/characterUtilities.h>
 
@@ -56,9 +57,9 @@ namespace ripple {
        
         if (ret[jss::tx_json].size() != 2)
         {
-			ret[jss::error] = "error";
-            ret[jss::error_message] = "must follow 2 params,in format:\"owner tableName secret\" \"path\".";
+			std::string errMsg = "must follow 2 params,in format:\"owner tableName secret\" \"path\".";
 			ret.removeMember(jss::tx_json);
+			RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
             return ret;
         }	
 
@@ -70,14 +71,12 @@ namespace ripple {
 		auto retPair = context.app.getTableSync().StartDumpTable(sNormal, sFullPath, NULL);        
 
 		if(!retPair.first)
-		{ 
-			ret[jss::error] = "error.";
-
+		{
             std::string sErrorMsg;
             TransGBK_UTF8(retPair.second, sErrorMsg, false);
-			ret[jss::error_message] = sErrorMsg;
-
+			//ret[jss::error_message] = sErrorMsg;
 			ret.removeMember(jss::tx_json);
+			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
 		}
         else
         {
@@ -103,35 +102,29 @@ namespace ripple {
 
 		if (ret[jss::tx_json].size() != 2)
 		{
-			ret[jss::error] = "error.";
-			ret[jss::error_message] = "must follow 2 params,in format:owner tableName.";
+			std::string errMsg = "must follow 2 params,in format:owner tableName.";
 			ret.removeMember(jss::tx_json);
+			RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
 			return ret;
 		}
 
 		std::string owner = ret[jss::tx_json][0U].asString();
+		AccountID ownerID;
+		auto jvAccepted = RPC::accountFromString(ownerID, owner, true);
+		if (jvAccepted)
+		{
+			return jvAccepted;
+		}
 		std::string tableName = ret[jss::tx_json][1U].asString();
-        auto pOwnerID = ripple::parseBase58<AccountID>(owner);
 
-        if (!pOwnerID)
-        {
-            ret[jss::error] = "error.";
-            ret[jss::error_message] = "para error, owner is invalid.";
-            ret.removeMember(jss::tx_json);
-            return ret;
-        }
-
-		AccountID ownerID(*pOwnerID);
 		auto retPair = context.app.getTableSync().StopDumpTable(ownerID, tableName);
         
 		if (!retPair.first)
 		{
-			ret[jss::error] = "error.";
-
             std::string sErrorMsg;
             TransGBK_UTF8(retPair.second, sErrorMsg, false);
-			ret[jss::error_message] = sErrorMsg;
-
+			// ret[jss::error_message] = sErrorMsg;
+			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
 			ret.removeMember(jss::tx_json);
 		}
         else

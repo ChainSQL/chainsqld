@@ -23,6 +23,7 @@
 #include <ripple/protocol/digest.h>
 #include <ripple/app/main/Application.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <ripple/protocol/ErrorCodes.h>
 
 namespace ripple {
 

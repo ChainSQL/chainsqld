@@ -24,6 +24,7 @@
 #include <ripple/basics/Blob.h>
 #include <ripple/basics/strHex.h>
 #include <boost/format.hpp>
+#include <iterator>
 #include <sstream>
 #include <string>
 
