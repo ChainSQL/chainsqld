@@ -2616,8 +2616,6 @@ namespace helper {
 				lines.append(e);
 			}
 			obj[jss::lines] = lines;
-			obj[jss::status] = "success";
-
 		}
 		catch (soci::soci_error& e) {
 			return RPC::make_error(rpcGENERAL, e.what());
