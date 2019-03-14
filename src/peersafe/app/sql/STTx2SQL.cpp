@@ -2638,7 +2638,9 @@ namespace helper {
             const char * chLimit = sLimit.c_str();
             for (int i = 5; i<sLimit.length(); i++)
             {
-                if (chLimit[i] > 'a' && chLimit[i] < 'z' || chLimit[i] > 'A' && chLimit[i] < 'Z' || chLimit[i] == ';')
+                if ((chLimit[i] > 'a' && chLimit[i] < 'z') || 
+					(chLimit[i] > 'A' && chLimit[i] < 'Z') || 
+					chLimit[i] == ';')
                 {
                     sLimit = sLimit.substr(0, i);
                     break;
