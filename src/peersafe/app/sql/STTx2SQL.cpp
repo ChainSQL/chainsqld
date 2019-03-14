@@ -2505,64 +2505,58 @@ namespace helper {
 	std::vector<std::vector<Json::Value>> query_result_2d(const soci::rowset<soci::row>& records)
 	{
 		std::vector<std::vector<Json::Value>> vecRet;
-		try {
-			soci::rowset<soci::row>::const_iterator r = records.begin();
-			for (; r != records.end(); r++) {
-				std::vector<Json::Value> vecCol;
-				for (size_t i = 0; i < r->size(); i++) {
-					Json::Value e;
-					std::string key = r->get_properties(i).get_name();
-					if (r->get_properties(i).get_data_type() == soci::dt_string
-						|| r->get_properties(i).get_data_type() == soci::dt_blob) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = r->get<std::string>(i);
-						else
-							e[key] = "null";
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = r->get<int>(i);
-						else
-							e[key] = 0;
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_double) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = r->get<double>(i);
-						else
-							e[key] = 0.0;
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = static_cast<int>(r->get<long long>(i));
-						else
-							e[key] = 0;
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = static_cast<int>(r->get<unsigned long long>(i));
-						else
-							e[key] = 0;
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
-						std::tm tm = { 0 };
-						std::string datetime = "NULL";
-						if (r->get_indicator(i) == soci::i_ok) {
-							tm = r->get<std::tm>(i);
-							datetime = (boost::format("%d/%d/%d %d:%d:%d")
-								% (tm.tm_year + 1900) % (tm.tm_mon + 1) % tm.tm_mday
-								%tm.tm_hour % (tm.tm_min) % tm.tm_sec).str();
-						}
-
-						e[key] = datetime;
-					}
-					vecCol.push_back(e);
+		soci::rowset<soci::row>::const_iterator r = records.begin();
+		for (; r != records.end(); r++) {
+			std::vector<Json::Value> vecCol;
+			for (size_t i = 0; i < r->size(); i++) {
+				Json::Value e;
+				std::string key = r->get_properties(i).get_name();
+				if (r->get_properties(i).get_data_type() == soci::dt_string
+					|| r->get_properties(i).get_data_type() == soci::dt_blob) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = r->get<std::string>(i);
+					else
+						e[key] = "null";
 				}
-				vecRet.push_back(vecCol);
+				else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = r->get<int>(i);
+					else
+						e[key] = 0;
+				}
+				else if (r->get_properties(i).get_data_type() == soci::dt_double) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = r->get<double>(i);
+					else
+						e[key] = 0.0;
+				}
+				else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = static_cast<int>(r->get<long long>(i));
+					else
+						e[key] = 0;
+				}
+				else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = static_cast<int>(r->get<unsigned long long>(i));
+					else
+						e[key] = 0;
+				}
+				else if (r->get_properties(i).get_data_type() == soci::dt_date) {
+					std::tm tm = { 0 };
+					std::string datetime = "NULL";
+					if (r->get_indicator(i) == soci::i_ok) {
+						tm = r->get<std::tm>(i);
+						datetime = (boost::format("%d/%d/%d %d:%d:%d")
+							% (tm.tm_year + 1900) % (tm.tm_mon + 1) % tm.tm_mday
+							%tm.tm_hour % (tm.tm_min) % tm.tm_sec).str();
+					}
+
+					e[key] = datetime;
+				}
+				vecCol.push_back(e);
 			}
-		}
-		catch (soci::soci_error& e) {
-			Json::Value obj(Json::objectValue);
-			obj[jss::error] = e.what();
+			vecRet.push_back(vecCol);
 		}
 		return vecRet;
 	}
@@ -2626,7 +2620,8 @@ namespace helper {
 
 		}
 		catch (soci::soci_error& e) {
-			obj[jss::error] = e.what();
+			return RPC::make_error(rpcGENERAL, e.what());
+			//obj[jss::error] = e.what();
 		}
 		return obj;
 	}
@@ -3143,7 +3138,7 @@ bool STTx2SQL::assert_result(const soci::rowset<soci::row>& records, const Json:
 		}
 		else if (assert_type == 1) {
 			Json::Value r = helper::query_result(records);
-			if (r.isMember(jss::status) && r[jss::status] == "success") {
+			if (!r.isMember(jss::error)) {
 				Json::Value c;
 				c.append(expect);
 				auto node = conditionTree::createRoot(c);

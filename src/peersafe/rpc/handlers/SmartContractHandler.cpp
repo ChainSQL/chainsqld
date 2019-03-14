@@ -207,7 +207,7 @@ Json::Value doContractCall(RPC::Context& context)
 	}
 	//int64_t txValue = 0;
 	STTx contractTx(ttCONTRACT,
-		[accountID, contractAddrID, /*&txValue,*/ &contractDataBlob](auto& obj)
+		[&accountID, &contractAddrID, /*&txValue,*/ &contractDataBlob](auto& obj)
 	{
 		obj.setAccountID(sfAccount, accountID);
 		obj.setAccountID(sfContractAddress, contractAddrID);

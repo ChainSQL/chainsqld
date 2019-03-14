@@ -58,7 +58,7 @@ namespace ripple {
 
         ret = TxPrepareBase::prepareFutureHash(tx_json_, app_, ws_);
 		//if (ret.isMember("error_message"))
-		if(ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+		if(ret.isMember(jss::error))
             return ret;
 
 		Json::Value statement(Json::arrayValue);
@@ -72,7 +72,7 @@ namespace ripple {
 
 			auto pTransPrepare = std::make_shared<TxSingleTransPrepare>(app_,this,secret_,public_,json,getCheckHashFunc_,ws_);
 			auto ret = pTransPrepare->prepare();
-			if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+			if (ret.isMember(jss::error))
 			{
 				return ret;
 			}

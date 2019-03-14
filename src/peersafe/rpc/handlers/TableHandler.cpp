@@ -523,13 +523,13 @@ Json::Value checkAuthForSql(RPC::Context& context)
 Json::Value doGetRecord(RPC::Context&  context)
 {
 	Json::Value ret = checkSig(context); 
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return ret;
 
 	uint160 nameInDB = beast::zero;
 	std::vector<ripple::uint160> vecNameInDB;
 	ret = checkForSelect(context, nameInDB, vecNameInDB);
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return ret;
 
 	//db connection is null
@@ -549,7 +549,7 @@ Json::Value doGetRecord(RPC::Context&  context)
 
 	result = pTxStore->txHistory(context);
 
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 	{
 		return result;
 		//return generateError(result[jss::error].asString());
@@ -655,7 +655,7 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 
 	//check table exist on chain
 	ret = checkTableExistOnChain(context, sql);
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return ret;
 
 	return queryBySql(context.app.getTxStore(),sql);
@@ -665,7 +665,7 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 {
 	//check signature
 	Json::Value ret = checkSig(context);
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return ret;
 
 	//db connection is null
@@ -676,7 +676,7 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 	Json::Value& tx_json(context.params["tx_json"]);
 	//check table authority
 	ret = checkAuthForSql(context);
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 	{
 		return ret;
 	}
@@ -693,7 +693,7 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
 	uint160 nameInDB = beast::zero;
 	std::vector<ripple::uint160> vecNameInDB;
 	Json::Value ret = checkForSelect(context, nameInDB, vecNameInDB);
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return std::make_pair(result,ret[jss::error_message].asString());
 
 	//db connection is null
@@ -787,7 +787,7 @@ Json::Value doPrepare(RPC::Context& context)
 {
 	auto& tx_json = context.params["tx_json"];
 	auto ret = context.app.getTableAssistant().prepare(context.params["secret"].asString(), context.params["public_key"].asString(), tx_json,true);
-	if (!ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (!ret.isMember(jss::error))
 	{
 		ret["tx_json"] = tx_json;
 	}

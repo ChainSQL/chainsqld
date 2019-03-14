@@ -80,7 +80,7 @@ Json::Value& TxPrepareBase::getTxJson()
 Json::Value TxPrepareBase::prepare()
 {
 	auto ret = prepareBase();
-	if ((ret.isMember(jss::status) && ret[jss::status].asString() == "error") || ws_)
+	if (ret.isMember(jss::error) || ws_)
 		return ret;
 	return prepareVL(getTxJson());
 }
@@ -201,33 +201,33 @@ Json::Value TxPrepareBase::prepareGetRaw()
 Json::Value TxPrepareBase::prepareBase()
 {
 	auto ret = checkBaseInfo(tx_json_, app_, ws_);
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return ret;
 
     //check the future hash
     ret = prepareFutureHash(tx_json_, app_, ws_);
-    if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+    if (ret.isMember(jss::error))
         return ret;
 
 	//actually, this fun get base info: account ,stableName ,nameInDB
 	ret = prepareDBName();
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return ret;
     
 	//prepare raw for recreate operation
     ret = prepareGetRaw();
-    if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+    if (ret.isMember(jss::error))
         return ret;	
 
 	if (!ws_)
 	{
 		ret = prepareRawEncode();
-		if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+		if (ret.isMember(jss::error))
 			return ret;
 	}
 
 	ret = prepareStrictMode();
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return ret;   
 
 	if(app_.getTableSync().IsPressSwitchOn())
@@ -308,7 +308,7 @@ Json::Value TxPrepareBase::prepareStrictMode()
 	}
 
 	ret = prepareCheckHash(sRaw, checkHash, checkHashNew);
-	if (ret.isMember(jss::status) && ret[jss::status].asString() == "error")
+	if (ret.isMember(jss::error))
 		return ret;
     if(isStrictModeOpType((TableOpType)(tx_json[jss::OpType].asInt())))
         updateCheckHash(to_string(ownerID_), sTableName_, checkHashNew);
