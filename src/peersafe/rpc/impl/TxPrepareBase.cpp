@@ -118,8 +118,7 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 					if (!valueItem.isObject())  continue;
 
 					jsonRet = prepareVL(valueItem);
-					if (jsonRet.isMember(jss::status) && jsonRet[jss::status].asString() == "error")
-						std::move(jsonRet);
+					if (jsonRet.isMember(jss::error)) std::move(jsonRet);
 				}
 				
 			}
@@ -133,7 +132,7 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 			try
 			{
 				jsonRet = prepareVL(value);
-				if (jsonRet.isMember(jss::status) && jsonRet[jss::status].asString() == "error")
+				if (jsonRet.isMember(jss::error))
 					return jsonRet;
 			}
 			catch (std::exception const& e)
@@ -331,7 +330,11 @@ std::pair<uint256, Json::Value> TxPrepareBase::getCheckHash(const std::string& s
 			auto ret = app_.getLedgerMaster().getLatestTxCheckHash(*accountID, sTableName);
 			checkHash = ret.first;
 			if (checkHash.isZero())
-				return std::make_pair(checkHash, generateError("GetCheckHash failed,checkHash is empty.", ws_));
+			{
+				Json::Value ret = RPC::make_error(rpcGENERAL, "GetCheckHash failed,checkHash is empty.");
+				return std::make_pair(checkHash, ret);
+			}
+				
 		}
 	}
 	return std::make_pair(checkHash, jvRet);
@@ -390,7 +393,7 @@ Json::Value TxPrepareBase::prepareDBName()
 			{				
 				// if create table,generate one, else error
 				Json::Value ret = app_.getTableAssistant().getDBName(accountId, sTableName);
-				if (ret["status"].asString() == "error")
+				if (ret.isMember(jss::error))
 				{
 					return ret;
 				}
@@ -449,7 +452,7 @@ Json::Value TxPrepareBase::prepareRawEncode()
             if (tx_json_[jss::Confidential].asBool())
             {
                 auto ret = prepareForCreate();
-                if (ret.isMember(jss::status) && (ret[jss::status].asString() == "error"))
+                if (ret.isMember(jss::error))
                 {
                     return ret;
                 }
@@ -464,7 +467,7 @@ Json::Value TxPrepareBase::prepareRawEncode()
 		if (checkConfidential(ownerID_, sTableName_))
 		{
 			auto ret = prepareForAssign();
-			if (ret.isMember(jss::status) && (ret[jss::status].asString() == "error"))
+			if (ret.isMember(jss::error))
 			{
 				return ret;
 			}
@@ -480,7 +483,7 @@ Json::Value TxPrepareBase::prepareRawEncode()
 		if (checkConfidential(ownerID_, sTableName_))
 		{
 			auto ret = prepareForOperating();
-			if (ret.isMember(jss::status) && (ret[jss::status].asString() == "error"))
+			if (ret.isMember(jss::error))
 			{
 				return ret;
 			}
@@ -495,10 +498,10 @@ Json::Value TxPrepareBase::parseTableName()
 {
 	Json::Value json(Json::stringValue);
 	if (tx_json_[jss::Tables].size() == 0)
-		return generateError("Tables is missing", ws_);
+		return RPC::missing_field_error(jss::Tables);
 	auto sTableName = tx_json_[jss::Tables][0u][jss::Table][jss::TableName].asString();
-	if(sTableName.empty())
-		return generateError("TableName is empty", ws_);
+	if (sTableName.empty())
+		return RPC::make_error(rpcINVALID_PARAMS, "TableName is empty");
 	json = sTableName;
 	return json;
 }
@@ -561,7 +564,6 @@ std::pair<Blob, Json::Value> TxPrepareBase::getPassBlobBase(AccountID& ownerId, 
     passBlob = ripple::decrypt(passBlob, *secret_key);
 	if (passBlob.size() == 0)
 	{
-		//jvResult = generateError("Decrypt password failed!", ws_);
 		RPC::inject_error(rpcGENERAL, "Decrypt password failed!", jvResult);
 		return std::pair<Blob, Json::Value>(passBlob, jvResult);
 	}
@@ -582,7 +584,6 @@ Json::Value TxPrepareBase::prepareForCreate()
         {
 			RPC::inject_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!", ret);
 			return ret;
-            //return generateError("Parse publicKey failed, please checkout!", ws_);
         }
         PublicKey tempPubKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
         public_key = tempPubKey;
@@ -595,7 +596,6 @@ Json::Value TxPrepareBase::prepareForCreate()
         {
 			RPC::inject_error(rpcINVALID_PARAMS, "Secret error,please checkout!", ret);
 			return ret;
-            //return generateError("Secret error,please checkout!", ws_);
         }
         else
         {
@@ -643,7 +643,6 @@ Json::Value TxPrepareBase::prepareForCreate()
 	{
 		RPC::inject_error(rpcGENERAL, "encrypt raw failed,please checkout!", ret);
 		return ret;
-		//return generateError("encrypt raw failed,please checkout!", ws_);
 	}
 	
 	updatePassblob(to_string(ownerID_), sTableName_, passBlob);
@@ -665,7 +664,6 @@ Json::Value TxPrepareBase::prepareForAssign()
         {
 			RPC::inject_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!", ret);
 			return ret;
-            //return generateError("Parse publickey failed,please checkout!", ws_);
         }
 		if (tx_json_["User"].asString() != toBase58(calcAccountID(*oPublicKey)))
 		{
@@ -694,7 +692,6 @@ Json::Value TxPrepareBase::prepareForAssign()
         {
 			RPC::inject_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!", ret);
 			return ret;
-            //return generateError("Parse publickey failed,please checkout!", ws_);
         }
         PublicKey tempPubKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
 
@@ -710,13 +707,12 @@ Json::Value TxPrepareBase::prepareForAssign()
         {
 			RPC::inject_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!", ret);
 			return ret;
-            //return generateError("Parse secret key error,please checkout!", ws_);
         }
         SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
         secret_key = tempSecKey;
     }
 	std::pair<Blob, Json::Value> result = getPassBlob(ownerID_, ownerID_, secret_key);
-	if (result.second.isMember(jss::status) && result.second[jss::status].asString() == "error")
+	if (result.second.isMember(jss::error))
 	{
 		return result.second;
 	}
@@ -753,7 +749,6 @@ Json::Value TxPrepareBase::prepareForOperating()
         {
 			RPC::inject_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!", ret);
 			return ret;
-            //return generateError("Parse secret key error,please checkout!", ws_);
         }
         SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
         secret_key = tempSecKey;
@@ -763,11 +758,10 @@ Json::Value TxPrepareBase::prepareForOperating()
 	if (!userAccountId)
 	{
 		return RPC::missing_field_error(jss::Account);
-		//return generateError("Account is missing,please checkout!", ws_);
 	}
 
 	std::pair<Blob, Json::Value> result = getPassBlob(ownerID_, *userAccountId, secret_key);
-	if (result.second.isMember(jss::status) && result.second[jss::status].asString() == "error")
+	if (result.second.isMember(jss::error))
 	{
 		return result.second;
 	}
@@ -799,7 +793,6 @@ Json::Value TxPrepareBase::prepareForOperating()
 	{
 		RPC::inject_error(rpcGENERAL, "encrypt raw failed,please checkout!", ret);
 		return ret;
-		//return generateError("encrypt raw failed,please checkout!", ws_);
 	}
 
 	auto str = tx_json_[jss::Raw].asString();

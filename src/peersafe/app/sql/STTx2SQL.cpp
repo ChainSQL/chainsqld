@@ -2710,7 +2710,7 @@ namespace helper {
 		Json::Value obj;
 		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
 		if (result.first != 0) {
-			obj = RPC::make_error(rpcJSON_PARSED_ERR, result.second);
+			return RPC::make_error(rpcJSON_PARSED_ERR, result.second);
 			//return rpcError(result.second, obj);
 			/*obj[jss::error] = result.second;
 			return obj;*/

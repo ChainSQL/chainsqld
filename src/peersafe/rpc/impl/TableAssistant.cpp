@@ -110,7 +110,6 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 			return ret;
 			// return generateError(e.what());
 		}
-		ret[jss::status] = "success";
 	}
 	ret["nameInDB"] = to_string(nameInDB);
 	return ret;
