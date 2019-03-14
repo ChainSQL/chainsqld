@@ -66,8 +66,6 @@ shouldCloseLedger(
 
     if (!anyTransactions)
     {
-		if(timeSincePrevClose >= idleInterval)
-			JLOG(j.warn()) << "no Transactions,and timeSincePrevClose:" << timeSincePrevClose.count() << ">= idleInterval:"<<idleInterval.count();
         // Only close at the end of the idle interval
         return timeSincePrevClose >= idleInterval;  // normal idle
     }
