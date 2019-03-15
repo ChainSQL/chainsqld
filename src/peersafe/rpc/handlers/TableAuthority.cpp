@@ -40,9 +40,9 @@ namespace ripple {
 		Json::Value ret(Json::objectValue);
 		std::string ownerStr;
 
-		if (!params.isMember(jss::Owner))
+		if (!params.isMember(jss::owner))
 		{
-			return RPC::missing_field_error(jss::Owner);
+			return RPC::missing_field_error(jss::owner);
 		}
 		if (!params.isMember(jss::tablename))
 		{
@@ -62,6 +62,7 @@ namespace ripple {
 		}
 
 		AccountID ownerID;
+		ownerStr = params[jss::owner].asString();
 		auto jvAcceptedOwner = RPC::accountFromString(ownerID, ownerStr, true);
 		if (jvAcceptedOwner)
 		{
