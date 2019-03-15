@@ -851,8 +851,6 @@ Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Application
 		if (!pAccount)
 			return generateError("Parse Owner failed.", bWs);*/
 	}
-	else
-		return RPC::missing_field_error(jss::Owner);
 
 	return jsonRet;
 }
