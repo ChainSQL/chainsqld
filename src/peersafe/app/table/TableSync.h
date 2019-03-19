@@ -70,9 +70,11 @@ public:
 
 	std::pair<bool, std::string> StartDumpTable(std::string sPara, std::string sPath, TableDumpItem::funDumpCB funCB);
 	std::pair<bool, std::string> StopDumpTable(AccountID accountID, std::string sTableName);
+    bool GetCurrentDumpPos(AccountID accountID, std::string sTableName, TableSyncItem::taskInfo &info);
 
     std::pair<bool, std::string> StartAuditTable(std::string sPara, std::string sSql, std::string sPath);
     std::pair<bool, std::string> StopAuditTable(std::string sNickName);
+    bool GetCurrentAuditPos(std::string sNickName, TableSyncItem::taskInfo &info);
 
     void TryTableSync();
     void TableSyncThread();

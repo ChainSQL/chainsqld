@@ -1749,8 +1749,8 @@ std::pair<bool, std::string> TableSync::StopDumpTable(AccountID accountID, std::
 		return std::make_pair(false, "can't find the talbe in dump tasks.");;
 	}
     
-    std::shared_ptr<TableDumpItem> pAuditItem = std::static_pointer_cast<TableDumpItem>(*iter);
-    auto retStop = pAuditItem->StopTask();
+    std::shared_ptr<TableDumpItem> pDumpItem = std::static_pointer_cast<TableDumpItem>(*iter);
+    auto retStop = pDumpItem->StopTask();
     if (!retStop.first)
     {
         return retStop;
@@ -1761,6 +1761,23 @@ std::pair<bool, std::string> TableSync::StopDumpTable(AccountID accountID, std::
 	return std::make_pair(true, "");
 }
 
+bool TableSync::GetCurrentDumpPos(AccountID accountID, std::string sTableName, TableSyncItem::taskInfo &info)
+{
+    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    auto iter(listTableInfo_.end());
+    iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
+        [accountID, sTableName](std::shared_ptr <TableSyncItem>  pItem) {
+        return pItem->GetAccount() == accountID && pItem->GetTableName() == sTableName && pItem->TargetType() == TableSyncItem::SyncTarget_dump && pItem->GetSyncState() != TableSyncItem::SYNC_STOP;
+    });
+
+    if (iter == listTableInfo_.end())  return false;
+
+    std::shared_ptr<TableDumpItem> pDumpItem = std::static_pointer_cast<TableDumpItem>(*iter);
+    pDumpItem->GetCurrentPos(info);
+
+    return true;
+
+}
 std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::string sSql, std::string sPath)
 {
     {
@@ -1828,5 +1845,21 @@ std::pair<bool, std::string> TableSync::StopAuditTable(std::string sNickName)
     return std::make_pair(true, "");
 }
 
+bool TableSync::GetCurrentAuditPos(std::string sNickName, TableSyncItem::taskInfo &info)
+{
+    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    auto iter(listTableInfo_.end());
+    iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
+        [sNickName](std::shared_ptr <TableSyncItem>  pItem) {
+        return pItem->GetNickName() == sNickName && pItem->TargetType() == TableSyncItem::SyncTarget_audit && pItem->GetSyncState() != TableSyncItem::SYNC_STOP;
+    });
+
+    if (iter == listTableInfo_.end())  return false;
+  
+    std::shared_ptr<TableAuditItem> pAuditItem = std::static_pointer_cast<TableAuditItem>(*iter);    
+    pAuditItem->GetCurrentPos(info);
+
+    return true;
+}
 
 }

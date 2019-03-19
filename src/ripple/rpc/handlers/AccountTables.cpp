@@ -141,7 +141,7 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 								tmp["table_exist_inDB"] = true;
 							}
 						}
-						catch (std::exception& e) {
+						catch (std::exception& /*e*/) {
 							tmp["table_exist_inDB"] = false;
 						}
 					}

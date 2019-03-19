@@ -140,6 +140,20 @@ public:
         }
     };
 
+    struct taskInfo
+    {
+        LedgerIndex                                              uStartPos;
+        LedgerIndex                                              uStopPos;
+        LedgerIndex                                              uCurPos;
+
+        taskInfo()
+        {
+            uStartPos = 0;
+            uStopPos  = 0;
+            uCurPos   = 0;
+        }
+    };
+
 public:     
     TableSyncItem(Application& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType = SyncTarget_db);
     virtual ~TableSyncItem();

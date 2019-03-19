@@ -46,6 +46,16 @@ TableDumpItem::TableDumpItem(Application& app, beast::Journal journal, Config& c
     sTxHashRecord_        = "";
     uLedgerSeqRecord_     = 0;
     sLedgerHashRecord_    = "";
+    uLedgerStart_         = 0;
+    uLedgerStop_          = 0;
+}
+
+void TableDumpItem::GetCurrentPos(taskInfo &info)
+{ 
+    info.uStartPos     = uLedgerStart_;
+    info.uStopPos      = uLedgerStop_;
+    info.uCurPos       = uLedgerSeqRecord_;
+    return;    
 }
 
 std::pair<int,int> TableDumpItem::GetRightTxEndPos(FILE * fp, bool &bEmptyTx)
@@ -86,6 +96,7 @@ std::pair<int,int> TableDumpItem::GetRightTxEndPos(FILE * fp, bool &bEmptyTx)
 std::pair<bool, std::string> TableDumpItem::SetDumpPara(std::string sPath, funDumpCB funCB)
 {		
 	sDumpPath_ = sPath;
+    uLedgerStart_ = uCreateLedgerSequence_;
 
 	fs::path sFullPath(sDumpPath_);
 	auto filePath = sFullPath.parent_path();
@@ -93,13 +104,14 @@ std::pair<bool, std::string> TableDumpItem::SetDumpPara(std::string sPath, funDu
 
 	if (!fs::exists(filePath))
 	{
-                bool bRet = false;
-                try{
-		   bRet = fs::create_directories(filePath);
-                }
-                catch (std::exception const&)
-                {
-                }
+       bool bRet = false;
+       try
+       {
+           bRet = fs::create_directories(filePath);
+       }
+       catch (std::exception const&)
+       {
+       }
 		if (!bRet)  return std::make_pair(false,"path is invalid.");
 	}
 
@@ -153,6 +165,8 @@ std::pair<bool, std::string> TableDumpItem::SetDumpPara(std::string sPath, funDu
 			SetPara("", pos["LedgerSeq"].asUInt(), from_hex_text<uint256>(pos["LedgerHash"].asString()), pos["TxnLedgerSeq"].asUInt(), from_hex_text<uint256>(pos["TxnHash"].asString()), uint256(0));
             uTxSeqRecord_ = pos["TxnLedgerSeq"].asUInt();
             sTxHashRecord_ = pos["TxnHash"].asString();
+
+            uLedgerStart_ = u32SeqLedger_;
 		}
 		else
 		{
@@ -172,6 +186,7 @@ std::pair<bool, std::string> TableDumpItem::SetDumpPara(std::string sPath, funDu
 	}
 	fclose(fDump);
 
+    uLedgerStop_ = app_.getLedgerMaster().getValidLedgerIndex();
 	return std::make_pair(true, "");
 }
 
@@ -331,13 +346,13 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 		sWrite += sPos;
 		fwrite(sWrite.c_str(), 1, sWrite.size(), fp);
 
+        if (uLedgerSeq >= uLedgerStop_)  break;
     }         
 
 	//stop the dump task
-	auto validIndex = app_.getLedgerMaster().getValidLedgerIndex();
-	if (validIndex - uCurSynPos < MAX_GAP_NOW2VALID && GetSyncState() != SYNC_STOP)
+	if (uLedgerStop_ <= uCurSynPos && GetSyncState() != SYNC_STOP)
 	{        
-        StopInnerDeal(fp, "catch the newest valid ledger.");
+        StopInnerDeal(fp, "catch the stop ledger.");
 	}
 
     fclose(fp);

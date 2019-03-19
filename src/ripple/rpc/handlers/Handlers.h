@@ -91,8 +91,10 @@ Json::Value doWalletVerify          (RPC::Context&);
 //for sql operation
 Json::Value doTableDump(RPC::Context&);
 Json::Value doTableDumpStop(RPC::Context&);
+Json::Value getDumpCurPos(RPC::Context& context);
 Json::Value doTableAudit(RPC::Context&);
 Json::Value doTableAuditStop(RPC::Context&);
+Json::Value getAuditCurPos(RPC::Context& context);
 Json::Value doTableAuthority(RPC::Context&);
 Json::Value doRpcSubmit(RPC::Context&);
 Json::Value doCreateFromRaw(RPC::Context&);

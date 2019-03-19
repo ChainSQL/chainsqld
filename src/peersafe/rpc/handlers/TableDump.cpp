@@ -79,8 +79,7 @@ namespace ripple {
 			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
 		}
         else
-        {
-            
+        {           
             for (int i = 0; i < ret[jss::tx_json].size(); i++)
             {
                 std::string sDest = "";
@@ -96,33 +95,42 @@ namespace ripple {
 		return ret;
 	}
 
+    Json::Value parseParam(RPC::Context& context, AccountID & ownerID, std::string &tableName)
+    {
+        Json::Value ret(context.params);
+
+        if (ret[jss::tx_json].size() != 2)
+        {
+            std::string errMsg = "must follow 2 params,in format:owner tableName.";
+            ret.removeMember(jss::tx_json);
+            RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
+            return ret;
+        }
+
+        std::string owner = ret[jss::tx_json][0U].asString();
+        auto jvAccepted = RPC::accountFromString(ownerID, owner, true);
+        if (jvAccepted)
+        {
+            return jvAccepted;
+        }
+        std::shared_ptr<ReadView const> ledger;
+        auto result = RPC::lookupLedger(ledger, context);
+        if (!ledger)
+            return result;
+        if (!ledger->exists(keylet::account(ownerID)))
+            return rpcError(rpcACT_NOT_FOUND);
+
+        tableName = ret[jss::tx_json][1U].asString();
+
+        return ret;
+    }
+
 	Json::Value doTableDumpStop(RPC::Context& context)
 	{
-		Json::Value ret(context.params);
-
-		if (ret[jss::tx_json].size() != 2)
-		{
-			std::string errMsg = "must follow 2 params,in format:owner tableName.";
-			ret.removeMember(jss::tx_json);
-			RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
-			return ret;
-		}
-
-		std::string owner = ret[jss::tx_json][0U].asString();
 		AccountID ownerID;
-		auto jvAccepted = RPC::accountFromString(ownerID, owner, true);
-		if (jvAccepted)
-		{
-			return jvAccepted;
-		}
-		std::shared_ptr<ReadView const> ledger;
-		auto result = RPC::lookupLedger(ledger, context);
-		if (!ledger)
-			return result;
-		if (!ledger->exists(keylet::account(ownerID)))
-			return rpcError(rpcACT_NOT_FOUND);
-
-		std::string tableName = ret[jss::tx_json][1U].asString();
+		std::string tableName;
+        Json::Value ret = parseParam(context, ownerID, tableName);
+        if (isRpcError(ret))   return ret;
 
 		auto retPair = context.app.getTableSync().StopDumpTable(ownerID, tableName);
         
@@ -150,4 +158,30 @@ namespace ripple {
 		
 		return ret;
 	}
+
+    Json::Value getDumpCurPos(RPC::Context& context)
+    {
+        AccountID ownerID;
+        std::string tableName;
+        Json::Value ret = parseParam(context, ownerID, tableName);
+        if (isRpcError(ret))   return ret;
+
+        TableSyncItem::taskInfo info;
+        bool bRet = context.app.getTableSync().GetCurrentDumpPos(ownerID, tableName, info);
+        
+        if (bRet)
+        {
+            ret[jss::start]     = info.uStartPos;
+            ret[jss::stop]      = info.uStopPos;
+            ret[jss::current]   = info.uCurPos;
+        }
+        else
+        {
+            std::string errMsg = "task completed.";
+            ret.removeMember(jss::tx_json);
+            RPC::inject_error(rpcCTR_CONTENT_EMPTY, errMsg, ret);
+        }
+
+        return ret;
+    }
 } // ripple
