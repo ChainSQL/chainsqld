@@ -119,4 +119,37 @@ namespace ripple {
 
         return ret;
     }	
+
+    Json::Value  getAuditCurPos(RPC::Context& context)
+    {
+        Json::Value ret(context.params);
+
+        if (ret[jss::tx_json].size() != 1)
+        {
+            std::string errMsg = "must follow 1 params,in format: job_id.";
+            ret.removeMember(jss::tx_json);
+            RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
+            return ret;
+        }
+
+        std::string sNickName = ret[jss::tx_json][0U].asString();
+
+        TableSyncItem::taskInfo info;
+        bool bRet = context.app.getTableSync().GetCurrentAuditPos(sNickName, info);
+
+        if (bRet)
+        {
+            ret[jss::start]    = info.uStartPos;
+            ret[jss::stop]     = info.uStopPos;
+            ret[jss::current]  = info.uCurPos;
+        }
+        else
+        {
+            std::string errMsg = "task completed.";
+            ret.removeMember(jss::tx_json);
+            RPC::inject_error(rpcCTR_CONTENT_EMPTY, errMsg, ret);
+        }
+
+        return ret;
+    }
 } // ripple

@@ -35,7 +35,9 @@ public:
     virtual ~TableDumpItem();
 
 	std::pair<bool, std::string> SetDumpPara(std::string sPath, funDumpCB funCB);
-    std::pair<bool, std::string> StopTask();
+    std::pair<bool, std::string> StopTask();    
+
+    void GetCurrentPos(taskInfo &info);
     std::string GetOutputPath() { return sDumpPath_; }
 
 protected:
@@ -60,6 +62,9 @@ protected:
     std::string                                                  sTxHashRecord_;
     LedgerIndex                                                  uLedgerSeqRecord_;
     std::string                                                  sLedgerHashRecord_;
+
+    LedgerIndex                                                  uLedgerStart_;
+    LedgerIndex                                                  uLedgerStop_;
 
 private:	
 	funDumpCB                                                    funDumpCB_;    

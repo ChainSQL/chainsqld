@@ -970,18 +970,19 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 			}
 		}
 	}
-	else
-	{
-		if ((TableOpType)op_type == T_CREATE)
-		{
-			auto tables = tx.getFieldArray(sfTables);
-			if (tables.size() > 0)
-			{
-				auto nameInDB = strCopy(tables[0].getFieldVL(sfNameInDB));
-				DeleteTable(nameInDB);
-			}
-		}
-	}
+	//else
+	//{
+	//	if ((TableOpType)op_type == T_CREATE)
+	//	{
+	//		auto tables = tx.getFieldArray(sfTables);
+	//		if (tables.size() > 0)
+	//		{
+	//			JLOG(journal_.warn()) << "Deleting item where tableName = " << sTableName_  <<" because of creating real table failure." ;
+	//			getTableStatusDB().DeleteRecord(accountID_, sTableName_);
+	//			this->ReSetContexAfterDrop();
+	//		}
+	//	}
+	//}
 
 	return ret;
 }
