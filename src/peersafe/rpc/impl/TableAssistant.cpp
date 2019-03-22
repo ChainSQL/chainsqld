@@ -22,6 +22,7 @@
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/protocol/JsonFields.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/net/RPCErr.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/RippleAddress.h>
 
@@ -95,9 +96,7 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 			ledgerSequence = ledger->info().seq;
 		else
 		{
-			std::string errMsg = "Can not find validated ledger!";
-			RPC::inject_error(rpcLGR_NOT_VALIDATED, errMsg, ret);
-			return ret;
+			return rpcError(rpcGET_LGR_FAILED);
 		}
 
 		try

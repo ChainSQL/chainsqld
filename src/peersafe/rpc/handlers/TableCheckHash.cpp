@@ -38,21 +38,18 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	Json::Value& tx_json(context.params["tx_json"]);
 
-	if (tx_json["Account"].asString().empty())
+	if (tx_json.isMember(jss::Account))
 	{
-		return RPC::missing_field_error("Account");
+		return RPC::missing_field_error(jss::Account);
 	}
-	if (tx_json[jss::TableName].asString().empty())
+	if (tx_json.isMember(jss::TableName))
 	{
 		return RPC::missing_field_error(jss::TableName);
 	}
 
-	auto accountIdStr = tx_json["Account"].asString();
-	auto tableNameStr = tx_json[jss::TableName].asString();
-
+	auto accountIdStr = tx_json[jss::Account].asString();
 	ripple::AccountID accountID;
 	auto jvAccepted = RPC::accountFromString(accountID, accountIdStr, false);
-
 	if (jvAccepted)
 		return jvAccepted;
 	std::shared_ptr<ReadView const> ledger;
@@ -62,13 +59,18 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 	if (!ledger->exists(keylet::account(accountID)))
 		return rpcError(rpcACT_NOT_FOUND);
 
+	auto tableNameStr = tx_json[jss::TableName].asString();
+	if (tableNameStr.empty())
+	{
+		return RPC::invalid_field_error(jss::TableName);
+	}
+
 	//first,we query from ledgerMaster
 	auto retPair = context.ledgerMaster.getLatestTxCheckHash(accountID, tableNameStr);
 	auto txCheckHash = retPair.first;
 	if (txCheckHash.isZero()) //not exist,then generate nameInDB
 	{
 		return rpcError(retPair.second);
-		//return generateError(retPair.second);
 	}	
 
 	ret["txCheckHash"] = to_string(txCheckHash);

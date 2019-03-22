@@ -289,7 +289,7 @@ Json::Value TxPrepareBase::prepareStrictMode()
 		auto rawPair = strUnHex(sRaw);
 		if (!rawPair.second)
 		{
-			return RPC::make_error(rpcRAW_NOT_VALIDATED, "Raw should be hexed");
+			return RPC::make_error(rpcRAW_INVALID, "Raw should be hexed");
 			//return generateError("Raw should be hexed", ws_);
 		}
 		sRaw = strCopy(rawPair.first);

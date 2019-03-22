@@ -912,11 +912,17 @@ std::pair<ripple::uint256, error_code_i> LedgerMaster::getLatestTxCheckHash(Acco
 				}
 			}
 		}
+		if (uTxCheckHash.isZero())
+		{
+			errCode = rpcTAB_NOT_EXIST; //Can't find the table in the chain.
+		}
 	}
-	if (uTxCheckHash.isZero())
+	else
 	{
-		errCode = rpcTAB_NOT_EXIST; //Can't find the table in the chain.
+		uTxCheckHash = beast::zero;
+		errCode = rpcGET_LGR_FAILED;
 	}
+	
 	return std::make_pair(uTxCheckHash, errCode);
 }
 
@@ -926,11 +932,9 @@ LedgerMaster::isAuthorityValid(AccountID accountID, AccountID ownerID, std::list
     if (accountID.isZero() || ownerID.isZero() || aTableName.size() <= 0)
     {
 		return std::make_pair(false, rpcINVALID_PARAMS);
-        //return std::make_pair(false, "please check the paras.");
     }
 
     //std::string errMsg = " does not have the right authority.";
-
     auto ledger = getValidatedLedger();
     if (ledger)
     {
@@ -966,11 +970,9 @@ LedgerMaster::isAuthorityValid(AccountID accountID, AccountID ownerID, std::list
 						//return std::make_pair(false, sCheckName + " does not exist");
 					else
 						return std::make_pair(false, rpcTAB_UNAUTHORIZED);
-					    //return std::make_pair(false, to_string(accountID) + " does not have authority");
                 }
                 return std::make_pair(true, rpcSUCCESS);
             }
-            
         }
     }
     return std::make_pair(true, rpcSUCCESS);
@@ -1004,7 +1006,7 @@ LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string s
 					bool bNeedToken = users[0].isFieldPresent(sfToken);
 					if (!bNeedToken)
 					{
-						return std::make_tuple(true, Blob(), rpcUNKNOWN);
+						return std::make_tuple(true, Blob(), rpcSUCCESS);
 					}
 					else
 					{
@@ -1016,7 +1018,7 @@ LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string s
 								{
 									ripple::Blob passBlob = user.getFieldVL(sfToken);
 									//std::string sPass = std::string(passBlob.begin(), passBlob.end());
-									return std::make_tuple(true, passBlob, rpcUNKNOWN);
+									return std::make_tuple(true, passBlob, rpcSUCCESS);
 								}
 								else
 								{
@@ -1035,7 +1037,7 @@ LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string s
 	}
 	else
 	{
-		return std::make_tuple(false, Blob(), rpcLGR_NOT_VALIDATED);
+		return std::make_tuple(false, Blob(), rpcGET_LGR_FAILED);
 	}
 
 	return std::make_tuple(false, Blob(), rpcUNKNOWN);
@@ -1056,8 +1058,7 @@ std::tuple<bool, ripple::uint256, error_code_i> LedgerMaster::getUserFutureHash(
     }
     else
     {
-        return std::make_tuple(false, uint256(), rpcLGR_NOT_VALIDATED);
-		//return std::make_tuple(false, uint256(), "Can not find validated ledger!");
+        return std::make_tuple(false, uint256(), rpcGET_LGR_FAILED);
     }
 
     return std::make_tuple(false, uint256(), rpcUNKNOWN);

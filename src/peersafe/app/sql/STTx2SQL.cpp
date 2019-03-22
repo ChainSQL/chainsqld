@@ -2330,14 +2330,12 @@ namespace helper {
 
 	std::pair<int, std::string> ParseTxJson(const Json::Value& tx_json, BuildSQL &buildsql) {
 		std::string error = "Unkown Error when parse json";
-		//error_code_i errCode = rpcUNKNOWN;
 		int code = 0;
 		do {
 			Json::Value obj_tables = tx_json["Tables"];
 			if (obj_tables.isArray() == false) {
 				error = (boost::format("Tables' type is error. [%s]")
 					% Json::jsonAsString(obj_tables)).str();
-				//errCode = rpcTAB_NOT_ARRAY;
 				code = -1;
 				break;
 			}
@@ -2347,7 +2345,6 @@ namespace helper {
 				if (e.isObject() == false) {
 					error = (boost::format("Parsed object is error. [%s]")
 						% Json::jsonAsString(e)).str();
-					//errCode = rpcOBJ_PARSED_ERR;
 					code = -1;
 					break;
 				}
@@ -2358,7 +2355,6 @@ namespace helper {
 					if (v.isObject() == false) {
 						error = (boost::format("Parsed object is error. [%s]")
 							% Json::jsonAsString(v)).str();
-						//errCode = rpcOBJ_PARSED_ERR;
 						code = -1;
 						break;
 					}
@@ -2376,7 +2372,6 @@ namespace helper {
 				else {
 					error = (boost::format("Not support key. [%s]")
 						% Json::jsonAsString(e)).str();
-					//errCode = rpcINVALID_PARAMS;
 					code = -1;
 					return {code, error };
 				}
@@ -2388,7 +2383,6 @@ namespace helper {
 			if (raw.isString() == false) {
 				error = (boost::format("Parsed object is error. [%s]")
 					% Json::jsonAsString(raw)).str();
-				//errCode = rpcOBJ_PARSED_ERR;
 				code = -1;
 				break;
 			}
@@ -2397,7 +2391,6 @@ namespace helper {
 			if (Json::Reader().parse(raw.asString(), obj_raw) == false) {
 				error = (boost::format("Parsed Raw is error. [%s]")
 					% raw.asString()).str();
-				//errCode = rpcRAW_NOT_VALIDATED;
 				code = -1;
 				break;
 			}
@@ -2405,7 +2398,6 @@ namespace helper {
 			if (obj_raw.isArray() == false) {
 				error = (boost::format("Raw's type is error. [%s]")
 					% Json::jsonAsString(obj_raw)).str();
-				//errCode = rpcRAW_NOT_VALIDATED;
 				code = -2;
 				break;
 			}
@@ -2421,7 +2413,6 @@ namespace helper {
                     {
                         error = (boost::format("Raw's type is error, the first item must be array. [%s]")
                             % Json::jsonAsString(obj_raw)).str();
-						//errCode = rpcRAW_NOT_VALIDATED;
                         code = -2;
                         break;
                     }
@@ -2432,7 +2423,6 @@ namespace helper {
 						if (fieldname.isString() == false) {
 							error = (boost::format("Field's type is not string . [%s]")
 								% Json::jsonAsString(fieldname)).str();
-							//errCode = rpcINVALID_PARAMS;
 							code = -3;
 							break;
 						}
@@ -2444,7 +2434,6 @@ namespace helper {
 					if (v.isObject() == false)
 						return{ -1, (boost::format("Conditions' type is error.[%s]")
 							% Json::jsonAsString(v)).str() };
-						//return { -1, rpcINVALID_PARAMS };
 
 					// first, parse limit,order conditions or join that union query will use
 					code = buildsql.parseExtraCondition(v, [&buildsql](const Json::Value& limit) {
@@ -2472,7 +2461,6 @@ namespace helper {
 						if (e["result"].asInt() != 0) {
 							error = (boost::format("Parsing limit-condition or order-condition is unsuccessfull.[%s]")
 								% e["message"].asString()).str();
-							//errCode = rpcOBJ_PARSED_ERR;
 						}
 					});
 					if (code == 0) {
@@ -2496,7 +2484,6 @@ namespace helper {
 
 		if (code == 0 || code == 1) {
 			code = 0;
-			//errCode = "success";
 		}
 
 		return{ code, error };
@@ -2619,7 +2606,6 @@ namespace helper {
 		}
 		catch (soci::soci_error& e) {
 			return RPC::make_error(rpcGENERAL, e.what());
-			//obj[jss::error] = e.what();
 		}
 		return obj;
 	}
@@ -2713,9 +2699,6 @@ namespace helper {
 		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
 		if (result.first != 0) {
 			return RPC::make_error(rpcJSON_PARSED_ERR, result.second);
-			//return rpcError(result.second, obj);
-			/*obj[jss::error] = result.second;
-			return obj;*/
 		}
 
 		try {
@@ -2724,8 +2707,6 @@ namespace helper {
 			auto last_error = buildsql->last_error();
 			//Todo-LC:need to modify error
 			if (last_error.first != 0) {
-				/*obj[jss::status] = "failure";
-				obj[jss::error] = last_error.second;*/
 				obj = RPC::make_error(rpcSQL_DISPOSE_ERR, last_error.second);
 				return obj;
 			}
@@ -2735,7 +2716,6 @@ namespace helper {
 		}
 		catch (soci::soci_error& e) {
 			obj = RPC::make_error(rpcGENERAL, e.what());
-			//obj[jss::error] = e.what();
 		}
 		return obj;
 	}
@@ -3529,7 +3509,7 @@ std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory
 Json::Value TxStore::txHistory(Json::Value& tx_json) {
     Json::Value obj;
     if (databasecon_ == nullptr)
-        return rpcError(rpcINTERNAL);
+        return rpcError(rpcNODB);
 
     std::shared_ptr<BuildSQL> buildsql = nullptr;
     if (boost::iequals(db_type_, "sqlite"))
@@ -3539,9 +3519,8 @@ Json::Value TxStore::txHistory(Json::Value& tx_json) {
 
     if (buildsql == nullptr)
     {
-		return rpcError(rpcDB_NOT_SUPPORT, obj);
-        /*obj[jss::error] = "there is no DB in this node";
-        return obj;*/
+		std::string errMsg = "Initial buildsql failed.";
+		return RPC::make_error(rpcINTERNAL, errMsg);
     }
 
     return helper::query_directly(tx_json, databasecon_, buildsql.get());
@@ -3579,9 +3558,8 @@ Json::Value TxStore::txHistory(std::string sql) {
 
     if (buildsql == nullptr)
     {
-		return rpcError(rpcDB_NOT_SUPPORT, obj);
-        /*obj[jss::error] = "there is no DB in this node";
-        return obj;*/
+		std::string errMsg = "Initial buildsql failed.";
+		return RPC::make_error(rpcINTERNAL, errMsg);
     }
 
     return helper::query_directly(databasecon_, sql);

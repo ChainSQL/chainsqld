@@ -134,16 +134,14 @@ Json::Value doCreateFromRaw(RPC::Context& context)
 Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector<ripple::uint160> vecNameInDB)
 {
 	Json::Value ret(Json::objectValue);
-	if (!context.params.isMember("tx_json"))
+	if (!context.params.isMember(jss::tx_json))
 	{
-		return RPC::missing_field_error("tx_json");
-		// return generateError("field tx_json is empty!");
+		return RPC::missing_field_error(jss::tx_json);
 	}
 	Json::Value& tx_json(context.params["tx_json"]);
 	if (!tx_json.isMember(jss::Owner))
 	{
 		return RPC::missing_field_error(jss::Owner);
-		// return generateError("field Owner is empty!");
 	}
 	if (!tx_json.isMember(jss::Account))
 	{
@@ -174,12 +172,10 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 	if (!ledgerConst->exists(keylet::account(accountID)))
 		return rpcError(rpcACT_NOT_FOUND);
 
-	Json::Value &tables_json = tx_json["Tables"];
+	Json::Value &tables_json = tx_json[jss::Tables];
 	if (!tables_json.isArray())
 	{
-		RPC::inject_error(rpcTAB_NOT_ARRAY, ret);
-		return ret;
-		// return generateError("field Tables is not array!");
+		return RPC::make_error(rpcINVALID_PARAMS, "Field Tables is not array!");
 	}
 
 	auto j = context.app.journal("RPCHandler");
@@ -192,32 +188,26 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 		Json::Value& v = e["Table"];
 		if (!v.isObject())
 		{
-			RPC::inject_error(rpcTAB_NOT_VALIDATED, ret);
-			return ret;
-			// return generateError("field Table is not object!");
+			return RPC::make_error(rpcINVALID_PARAMS, "Field Tables is not object!");
 		}
 
 		Json::Value tn = v["TableName"];
 		if (!tn.isString())
 		{
-			RPC::inject_error(rpcTAB_NAME_NOT_VALIDATED, ret);
-			return ret;
-			// return generateError("field TableName is not string!");
+			return RPC::make_error(rpcINVALID_PARAMS, "Field TableName is not string!");
 		}
 
 		auto nameInDBGot = context.ledgerMaster.getNameInDB(context.ledgerMaster.getValidLedgerIndex(), ownerID, v["TableName"].asString());
 		if (!nameInDBGot)
 		{
-			RPC::inject_error(rpcTAB_NOT_EXIST, ret);
-			return ret;
-			// return generateError("can't get TableName in DB ,please check field tablename!");
+			return rpcError(rpcTAB_NOT_EXIST);
 		}
 		listTableName.push_back(v["TableName"].asString());
 		// NameInDB is optional
-		if (v.isMember("NameInDB"))
+		if (v.isMember(jss::NameInDB))
 		{
 			//NameInDB is filled
-			std::string sNameInDB = v["NameInDB"].asString();
+			std::string sNameInDB = v[jss::NameInDB].asString();
 			if (sNameInDB.length() > 0)
 			{
 				nameInDB = ripple::from_hex_text<ripple::uint160>(sNameInDB);
@@ -227,16 +217,12 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 				}
 				else
 				{
-					RPC::inject_error(rpcNAMEINDB_NOT_MATCH, ret);
-					return ret;
-					// return generateError("please make sure the given 'NameInDB' in accordance with the 'TableName!");
+					return rpcError(rpcNAMEINDB_NOT_MATCH);
 				}
 			}
 			else
 			{
-				RPC::inject_error(rpcNAMEINDB_INVALID, ret);
-				return ret;
-				// return generateError("field NameInDB is empty!");
+				return RPC::invalid_field_error(jss::NameInDB);
 			}
 		}
 		else
@@ -252,9 +238,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 	auto retPair = context.ledgerMaster.isAuthorityValid(accountID, ownerID, listTableName, lsfSelect);
 	if (!retPair.first)
 	{
-		RPC::inject_error(rpcTAB_UNAUTHORIZED, ret);
-		return ret;
-		// return generateError(retPair.second);
+		return rpcError(retPair.second);
 	}
 
 	std::string rule;
@@ -268,9 +252,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 		auto key = keylet::account(accountID);
 		if (!ledger->exists(key))
 		{
-			RPC::inject_error(rpcACT_NOT_FOUND, ret);
-			return ret;
-			//return generateError("account not valid!");
+			return rpcError(rpcACT_NOT_FOUND);
 		}
 
 		if (tablesle)
@@ -290,9 +272,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 			Json::Reader().parse(sRaw, jsonRaw);
 			if (!jsonRaw.isArray())
 			{
-				RPC::inject_error(rpcRAW_NOT_VALIDATED, ret);
-				return ret;
-				// return generateError("Raw not valid!");
+				return RPC::invalid_field_error(jss::Raw);
 			}
 		}
 		for (Json::UInt idx = 0; idx < jsonRaw.size(); idx++)
@@ -302,9 +282,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 			{
 				if (!v.isArray())
 				{
-					RPC::inject_error(rpcRAW_NOT_VALIDATED, ret);
-					return ret;
-					// return generateError("Raw has a wrong format ,first element must be an array");
+					return RPC::make_error(rpcINVALID_PARAMS, "Raw has a wrong format, first element must be an array");
 				}
 			}
 			else
@@ -347,18 +325,15 @@ Json::Value checkSig(RPC::Context&  context)
 	if (!context.params.isMember("publicKey"))
 	{
 		return RPC::missing_field_error("publicKey");
-		// return generateError("field publicKey is empty!");
 	}
 	if (!context.params.isMember("signature"))
 	{
 		return RPC::missing_field_error("signature");
-		//return generateError("field signature is empty!");
 	}
 	
 	if (!context.params.isMember("signingData"))
 	{
 		return RPC::missing_field_error("signingData");
-		//return generateError("field signingData is empty!");
 	}
 
 	//tx_json should be equal to signingData
@@ -368,9 +343,7 @@ Json::Value checkSig(RPC::Context&  context)
 	auto& tx_json = context.params["tx_json"];
 	if (json != tx_json)
 	{
-		RPC::inject_error(rpcSIGN_NOT_MATCH, ret);
-		return ret;
-		// return generateError("signing data does not match tx_json!");
+		return rpcError(rpcSIGN_NOT_MATCH);
 	}
 
 	//check for LedgerIndex
@@ -378,25 +351,28 @@ Json::Value checkSig(RPC::Context&  context)
 	if (!tx_json.isMember("LedgerIndex"))
 	{
 		return RPC::missing_field_error("LedgerIndex");
-		// return generateError("field LedgerIndex is empty!");
 	}
 	auto seqInJson = tx_json["LedgerIndex"].asUInt();
 	if (valSeq - seqInJson < 0 || valSeq - seqInJson > 3)
 	{
-		RPC::inject_error(rpcLGR_IN_JSON_NOT_VALIDATED, ret);
-		return ret;
-		// return generateError("LedgerIndex in tx_json is not valid!");
+		return RPC::invalid_field_error("LedgerIndex");
 	}
 
 	auto publicKey = context.params["publicKey"].asString();
+	if (publicKey.empty())
+	{
+		return RPC::invalid_field_error("publicKey");
+	}
 	auto signatureHex = context.params["signature"].asString();
+	if (signatureHex.empty())
+	{
+		return RPC::invalid_field_error("signature");
+	}
 	Blob spk;
 	auto retPair = strUnHex(publicKey);
 	if (!retPair.second)
 	{
-		RPC::inject_error(rpcPUBLIC_NOT_IN_HEX, ret);
-		return ret;
-		// return generateError("field publicKey should be hex string!");
+		return RPC::make_error(rpcINVALID_PARAMS, "Field publicKey should be hex string!");
 	}
 	spk = retPair.first;
 
@@ -405,17 +381,13 @@ Json::Value checkSig(RPC::Context&  context)
 		calcAccountID(PublicKey(makeSlice(spk)));
 	if (tx_json[jss::Account].asString() != to_string(signingAcctIDFromPubKey))
 	{
-		RPC::inject_error(rpcACT_NOT_MATCH_PUBKEY, ret);
-		return ret;
-		// return generateError("Account in tx_json doesn't match publicKey for signing!");
+		return rpcError(rpcACT_NOT_MATCH_PUBKEY);
 	}
 
 	retPair = strUnHex(signatureHex);
 	if (!retPair.second)
 	{
-		RPC::inject_error(rpcSIGN_NOT_IN_HEX, ret);
-		return ret;
-		// return generateError("field signature should be hex string!");
+		return RPC::make_error(rpcINVALID_PARAMS, "Field signature should be hex string!");
 	}
 
 	auto signature = retPair.first;
@@ -428,17 +400,13 @@ Json::Value checkSig(RPC::Context&  context)
 			false);
 		if (!success)
 		{
-			RPC::inject_error(rpcSIGN_FOR_MALFORMED, ret);
-			return ret;
-			// return generateError("check signature failed!");
+			return rpcError(rpcSIGN_FOR_MALFORMED);
 		}
 		return ret;
 	}
 	else
 	{
-		RPC::inject_error(rpcPUBLIC_MALFORMED, ret);
-		return ret;
-		// return generateError("publicKey type error!");
+		return RPC::make_error(rpcPUBLIC_MALFORMED, "Field publicKey type error!");
 	}
 }
 
@@ -483,8 +451,18 @@ Json::Value checkAuthForSql(RPC::Context& context)
 	{
 		return jvAccepted;
 	}
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (!ledger)
+		return result;
+	if (!ledger->exists(keylet::account(accountID)))
+		return rpcError(rpcACT_NOT_FOUND);
 
 	std::string sql = tx_json["Sql"].asString();
+	if (sql.empty())
+	{
+		return RPC::invalid_field_error("Sql");
+	}
 	std::set <std::string> setTableNames;
 	getNameInDBSetInSql(sql, setTableNames);
 
@@ -498,10 +476,8 @@ Json::Value checkAuthForSql(RPC::Context& context)
 		const Json::Value& lines = val[jss::lines];
 		if (lines.isArray() == false || lines.size() != 1)
 		{
-			//return rpcError(rpcGET_VALUE_INVALID, ret);
-			std::string errMsg = "Table t_" + nameInDB + " not found in database.";
-			return RPC::make_error(rpcTAB_NOT_EXIST, errMsg);
-			//return generateError("Return value not valid while select Owner,TableName from SyncTableState,nameInDB=" + nameInDB);
+			std::string errMsg = "Get value invalid from syncTableState, nameInDB=" + nameInDB;
+			return RPC::make_error(rpcGET_VALUE_INVALID, errMsg);
 		}
 		const Json::Value & line = lines[0u];
 
@@ -513,8 +489,7 @@ Json::Value checkAuthForSql(RPC::Context& context)
 		auto retPair = context.ledgerMaster.isAuthorityValid(accountID, *ownerID, listTableName, lsfSelect);
 		if (!retPair.first)
 		{
-			return rpcError(retPair.second, ret);
-			//return generateError(retPair.second);
+			return rpcError(retPair.second);
 		}
 	}
 	return ret;
@@ -535,9 +510,7 @@ Json::Value doGetRecord(RPC::Context&  context)
 	//db connection is null
 	if (!isDBConfigured(context.app))
 	{
-		RPC::inject_error(rpcNODB, ret);
-		return ret;
-		// return generateError("Get db connection error,maybe db not configured.");
+		return rpcError(rpcNODB);
 	}
 
 	Json::Value& tx_json(context.params["tx_json"]);
@@ -552,7 +525,6 @@ Json::Value doGetRecord(RPC::Context&  context)
 	if (ret.isMember(jss::error))
 	{
 		return result;
-		//return generateError(result[jss::error].asString());
 	}
 	else
 	{
@@ -565,29 +537,15 @@ Json::Value doGetRecord(RPC::Context&  context)
 Json::Value queryBySql(TxStore& txStore,std::string& sql)
 {
 	Json::Value ret(Json::objectValue);
-	if (sql.empty())
-	{
-		return RPC::missing_field_error("Sql");
-		//return generateError("Field sql is empty!");
-	}
 
 	size_t posSpace = sql.find_first_of(' ');
 	std::string firstWord = sql.substr(0, posSpace);
 	if (toUpper(firstWord) != "SELECT")
 	{
 		return rpcError(rpcSQL_SELECT_ONLY, ret);
-		//return generateError("You can only query table data,first word should be select!");
 	}
 	ret = txStore.txHistory(sql);
 	return ret;
-	//if (ret.isMember("error"))
-	//{
-	//	//return generateError(ret[jss::error].asString());
-	//}
-	//else
-	//{
-	//	return ret;
-	//}	
 }
 
 Json::Value checkTableExistOnChain(RPC::Context&  context, std::string sql)
@@ -620,8 +578,7 @@ Json::Value checkTableExistOnChain(RPC::Context&  context, std::string sql)
 			auto const tablesle = ledger->read(id);
 			if (!tablesle)
 			{
-				return rpcError(rpcTAB_NOT_EXIST, ret);
-				// return generateError("Table not exist on this chain");
+				return rpcError(rpcTAB_NOT_EXIST);
 			}
 
 			if (tablesle)
@@ -629,8 +586,7 @@ Json::Value checkTableExistOnChain(RPC::Context&  context, std::string sql)
 				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 				if (getTableEntry(aTableEntries, tableName) == nullptr)
 				{
-					return rpcError(rpcTAB_NOT_EXIST, ret);
-					// return generateError("Table not exist on this chain");
+					return rpcError(rpcTAB_NOT_EXIST);
 				}
 			}
 		}
@@ -643,15 +599,17 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	//db connection is null
 	if (!isDBConfigured(context.app))
-		return rpcError(rpcNODB, ret);
-		//return generateError("Get db connection error,maybe db not configured.");
+		return rpcError(rpcNODB);
 
 	if (!context.params.isMember(jss::sql))
 	{
 		return RPC::missing_field_error(jss::sql);
-		//return generateError("Missing field sql!");
 	}		
-	auto sql = context.params["sql"].asString();
+	auto sql = context.params[jss::sql].asString();
+	if (sql.empty())
+	{
+		return RPC::invalid_field_error(jss::sql);
+	}
 
 	//check table exist on chain
 	ret = checkTableExistOnChain(context, sql);
@@ -671,7 +629,6 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 	//db connection is null
 	if (!isDBConfigured(context.app))
 		return rpcError(rpcNODB);
-		// return generateError("Get db connection error,maybe db not configured.");
 
 	Json::Value& tx_json(context.params["tx_json"]);
 	//check table authority
@@ -800,10 +757,14 @@ Json::Value doGetUserToken(RPC::Context& context)
 	Json::Value ret(Json::objectValue);
 	auto& tx_json = context.params["tx_json"];
 	
-	auto tableName = tx_json["TableName"].asString();
+	if (!tx_json.isMember(jss::TableName))
+	{
+		return RPC::missing_field_error(jss::TableName);
+	}
+	auto tableName = tx_json[jss::TableName].asString();
 	if (tableName.empty())
 	{
-		return RPC::missing_field_error("TableName");
+		return RPC::invalid_field_error(jss::TableName);
 	}
 	std::string ownerStr = "";
 	std::string userStr = "";
@@ -855,9 +816,7 @@ Json::Value doGetUserToken(RPC::Context& context)
 	}
 	else
 	{
-		RPC::inject_error(errCode, ret);
-		return ret;
-		// return generateError(sError);
+		return rpcError(errCode);
 	}
 
 	return ret;

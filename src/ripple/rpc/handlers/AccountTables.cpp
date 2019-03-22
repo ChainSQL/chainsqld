@@ -58,8 +58,8 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 		return rpcError(rpcACT_NOT_FOUND);
 
 	ret["tables"] = Json::Value(Json::arrayValue);
+
     bool bGetDetailInfo = false;
-	//Todo:should check detail is bool
     if (context.params.isMember("detail") && context.params["detail"].asBool())
     {
         bGetDetailInfo = true;
@@ -151,9 +151,7 @@ Json::Value doGetAccountTables(RPC::Context&  context)
         }
         else
         {
-			RPC::inject_error(rpcTAB_NOT_EXIST, ret);
-			return ret;
-			//return generateError("There is no table in this account!");
+			return RPC::make_error(rpcTAB_NOT_EXIST, "There is no table in this account!");
         }
     }
 

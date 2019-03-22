@@ -59,8 +59,7 @@ namespace ripple {
         {
 			std::string errMsg = "must follow 2 params,in format:\"owner tableName secret\" \"path\".";
 			ret.removeMember(jss::tx_json);
-			RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
-            return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, errMsg);
         }	
 
         //1. param similar to synctables
