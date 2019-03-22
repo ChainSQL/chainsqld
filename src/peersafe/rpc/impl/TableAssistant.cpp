@@ -105,9 +105,7 @@ Json::Value TableAssistant::getDBName(const std::string& accountIdStr, const std
 		}
 		catch (std::exception const& e)
 		{
-			RPC::inject_error(rpcGENERAL, e.what(), ret);
-			return ret;
-			// return generateError(e.what());
+			return RPC::make_error(rpcGENERAL, e.what());
 		}
 	}
 	ret["nameInDB"] = to_string(nameInDB);

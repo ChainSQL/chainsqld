@@ -1062,7 +1062,6 @@ std::tuple<bool, ripple::uint256, error_code_i> LedgerMaster::getUserFutureHash(
     }
 
     return std::make_tuple(false, uint256(), rpcUNKNOWN);
-	//return std::make_tuple(false, uint256(), "error.");
 }
 
 bool LedgerMaster::isConfidential(const STTx& tx)

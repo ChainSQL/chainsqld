@@ -53,12 +53,10 @@ namespace ripple {
 		if (context.params.isMember(jss::accounts))
 		{
 			if (!context.params[jss::accounts].isArray())
-				return rpcError(rpcINVALID_PARAMS, ret);
-				//return generateError("accounts is not array");
+				return RPC::make_error(rpcINVALID_PARAMS, "Field accounts is not array");
 			ids = RPC::parseAccountIds(context.params[jss::accounts]);
 			if (ids.empty())
-				return rpcError(rpcINVALID_PARAMS, ret);
-				//return generateError("accounts does not include account");
+				return RPC::make_error(rpcINVALID_PARAMS, "Field accounts does not include account");
 		}
 
 		AccountID ownerID;
@@ -76,6 +74,10 @@ namespace ripple {
 			return rpcError(rpcACT_NOT_FOUND);
 
 		auto tableName = params[jss::tablename].asString();
+		if (tableName.empty())
+		{
+			return RPC::invalid_field_error(jss::tablename);
+		}
 
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		STEntry* pEntry = nullptr;
@@ -90,8 +92,7 @@ namespace ripple {
 				pEntry = getTableEntry(aTableEntries, tableName);
 				if (!pEntry)
 				{
-					return rpcError(rpcTAB_NOT_EXIST, ret);
-					//return generateError("Table not found!");
+					return rpcError(rpcTAB_NOT_EXIST);
 				}
 
 				Json::Value& jvUsers = (ret["users"] = Json::arrayValue);
@@ -115,8 +116,7 @@ namespace ripple {
 			}
 			else
 			{
-				return rpcError(rpcTAB_NOT_EXIST, ret);
-				//return generateError("Table not found!");
+				return rpcError(rpcTAB_NOT_EXIST);
 			}
 		}
 		return ret;

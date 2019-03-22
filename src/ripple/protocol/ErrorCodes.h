@@ -131,11 +131,13 @@ enum error_code_i
 	rpcSIGN_NOT_IN_HEX,
 	rpcGET_VALUE_INVALID,
 	rpcGET_LGR_FAILED,
+	rpcDUMP_GENERAL_ERR,
+	rpcDUMPSTOP_GENERAL_ERR,
+	rpcAUDIT_GENERAL_ERR,
+	rpcAUDITSTOP_GENERAL_ERR,
 
-	rpcCTR_ACT_MISSING,
-	rpcCTR_DATA_MISSING,
 	rpcCTR_EVMEXE_EXCEPTION,
-	rpcCTR_CONTENT_EMPTY,
+	rpcCTR_EVMCALL_EXCEPTION,
 
     // Internal error (should never happen)
     rpcINTERNAL,        // Generic internal error.

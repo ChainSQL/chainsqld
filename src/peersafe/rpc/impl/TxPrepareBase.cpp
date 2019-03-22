@@ -91,7 +91,6 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 	if (!json.isObject())
 	{
 		return RPC::make_error(rpcINVALID_PARAMS, "value type is not object.");
-		//return generateError("value type is not object.");
 	}
 
 	for (auto const& fieldName : json.getMemberNames())
@@ -107,7 +106,6 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 			{
 				if (!value.isArray())
 				{
-					//jsonRet[jss::error] = "key : " + fieldName + ", value type is not array.";
 					std::string errMsg = "key : " + fieldName + ", value type is not array.";
 					jsonRet = RPC::make_error(rpcINVALID_PARAMS, errMsg);
 					std::move(jsonRet);
@@ -177,9 +175,7 @@ Json::Value TxPrepareBase::prepareGetRaw()
 	if (!txn)
 	{
 		std::string errMsg = "can not find create tx in local disk,please change node or try later";
-		RPC::inject_error(rpcGENERAL, errMsg, ret);
-		return ret;
-		//return generateError("can not find create tx in local disk,please change node or try later", ws_);;
+		return RPC::make_error(rpcGENERAL, errMsg);
 	}
 	auto stTx = txn->getSTransaction();
 	auto vecTxs = app_.getMasterTransaction().getTxs(const_cast<STTx&>(*stTx.get()), to_string(baseinfo.nameInDB));
@@ -290,7 +286,6 @@ Json::Value TxPrepareBase::prepareStrictMode()
 		if (!rawPair.second)
 		{
 			return RPC::make_error(rpcRAW_INVALID, "Raw should be hexed");
-			//return generateError("Raw should be hexed", ws_);
 		}
 		sRaw = strCopy(rawPair.first);
 	}
@@ -302,7 +297,6 @@ Json::Value TxPrepareBase::prepareStrictMode()
 		auto retPair = getCheckHash(to_string(ownerID_), sTableName_);
 		if (retPair.first.isZero())
 			return RPC::make_error(rpcTAB_NOT_EXIST, "Please make sure table exist or to be created in this transaction");
-			//return generateError("Please make sure table exist or to be created in this transaction", ws_);
 		checkHash = retPair.first;
 	}
 
@@ -353,7 +347,6 @@ Json::Value TxPrepareBase::prepareDBName()
 		accountId = tx_json[jss::Account].asString();
 	else
 		return RPC::missing_field_error(jss::Account);
-		//return generateError("Account is missing,please checkout!", ws_);
 
 	// fill NameInDB
 	Json::Value& tables_json(tx_json[jss::Tables]);
@@ -362,7 +355,6 @@ Json::Value TxPrepareBase::prepareDBName()
 		if (json[jss::Table][jss::TableName].asString().size() == 0)
 		{
 			return RPC::missing_field_error(jss::TableName);
-			//return generateError("TableName is missing,please checkout!", ws_);
 		}
 
         std::string sNameInDB = "";
@@ -406,9 +398,7 @@ Json::Value TxPrepareBase::prepareDBName()
 			else
 			{
 				std::string errMsg = "Please make sure table exist before this operation!";
-				RPC::inject_error(rpcTAB_NOT_EXIST, errMsg, ret);
-				return ret;
-				//return generateError("Please make sure table exist before this operation!", ws_);
+				return RPC::make_error(rpcTAB_NOT_EXIST, errMsg);
 			}
 		}
         else
@@ -432,15 +422,12 @@ Json::Value TxPrepareBase::prepareRawEncode()
         if (rawStr.size() == 0)
 		{
 			return RPC::missing_field_error(jss::Raw);
-			//return generateError("Raw is missing,please checkout!", ws_);
 		}
         else
         {
 			if (!tx_json_[jss::Raw].isArray() || tx_json_[jss::Raw].size() == 0)
 			{
-				RPC::inject_error(rpcINVALID_PARAMS, "[] in Raw is empty, please checkout!", ret);
-				return ret;
-				//return generateError("[] in Raw is empty, please checkout!", ws_);
+				return RPC::make_error(rpcINVALID_PARAMS, "[] in Raw is empty, please checkout!");
 			}
         }
 	}
@@ -490,7 +477,7 @@ Json::Value TxPrepareBase::prepareRawEncode()
 			m_bConfidential = true;
 		}
 	}
-	//Json::Value ret(Json::objectValue);
+
 	return ret;
 }
 
@@ -582,8 +569,7 @@ Json::Value TxPrepareBase::prepareForCreate()
         std::string publicKeyDe58 = decodeBase58Token(public_, TOKEN_ACCOUNT_PUBLIC);
         if (publicKeyDe58.empty() || publicKeyDe58.size() != 65)
         {
-			RPC::inject_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!", ret);
-			return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");
         }
         PublicKey tempPubKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
         public_key = tempPubKey;
@@ -594,8 +580,7 @@ Json::Value TxPrepareBase::prepareForCreate()
         auto oPublic_key = ripple::getPublicKey(secret_);
         if (!oPublic_key)
         {
-			RPC::inject_error(rpcINVALID_PARAMS, "Secret error,please checkout!", ret);
-			return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, "Secret error,please checkout!");
         }
         else
         {
@@ -641,8 +626,7 @@ Json::Value TxPrepareBase::prepareForCreate()
 	}
 	else
 	{
-		RPC::inject_error(rpcGENERAL, "encrypt raw failed,please checkout!", ret);
-		return ret;
+		return RPC::make_error(rpcGENERAL, "encrypt raw failed,please checkout!");
 	}
 	
 	updatePassblob(to_string(ownerID_), sTableName_, passBlob);
@@ -662,13 +646,11 @@ Json::Value TxPrepareBase::prepareForAssign()
         auto oPublicKey = parseBase58<PublicKey>(TOKEN_ACCOUNT_PUBLIC, sPublic_key);
         if (!oPublicKey)
         {
-			RPC::inject_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!", ret);
-			return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");
         }
 		if (tx_json_["User"].asString() != toBase58(calcAccountID(*oPublicKey)))
 		{
-			return rpcError(rpcACT_NOT_MATCH_PUBKEY, ret);
-			//return generateError("PublicKey is not compatible with User!", ws_);
+			return rpcError(rpcACT_NOT_MATCH_PUBKEY);
 		}
 
         public_key = *oPublicKey;
@@ -678,7 +660,6 @@ Json::Value TxPrepareBase::prepareForAssign()
         if (!oSecret_key)
         {
 			return RPC::missing_field_error(jss::secret);
-            //return generateError("Secret is missing,please checkout!", ws_);
         }
         else
         {
@@ -690,23 +671,20 @@ Json::Value TxPrepareBase::prepareForAssign()
         std::string publicKeyDe58 = decodeBase58Token(sPublic_key, TOKEN_ACCOUNT_PUBLIC);
         if (publicKeyDe58.empty())
         {
-			RPC::inject_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!", ret);
-			return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");
         }
         PublicKey tempPubKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
 
         if (tx_json_["User"].asString() != toBase58(calcAccountID(tempPubKey)))
         {
-			return rpcError(rpcACT_NOT_MATCH_PUBKEY, ret);
-            //return generateError("PublicKey is not compatible with User!", ws_);
+			return rpcError(rpcACT_NOT_MATCH_PUBKEY);
         }
         public_key = tempPubKey;
 
         std::string privateKeyStrDe58 = decodeBase58Token(secret_, TOKEN_ACCOUNT_SECRET);
         if (privateKeyStrDe58.empty() || privateKeyStrDe58.size() != 32)
         {
-			RPC::inject_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!", ret);
-			return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
         SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
         secret_key = tempSecKey;
@@ -737,8 +715,6 @@ Json::Value TxPrepareBase::prepareForOperating()
         if (!oSecret_key)
         {
 			return RPC::missing_field_error(jss::secret);
-            /*auto jvResult = generateError("Secret is missing,please checkout!", ws_);
-            return jvResult;*/
         }
         secret_key = *oSecret_key;
     }
@@ -747,8 +723,7 @@ Json::Value TxPrepareBase::prepareForOperating()
         std::string privateKeyStrDe58 = decodeBase58Token(secret_, TOKEN_ACCOUNT_SECRET);
         if (privateKeyStrDe58.empty() || privateKeyStrDe58.size() != 32)
         {
-			RPC::inject_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!", ret);
-			return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
         SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
         secret_key = tempSecKey;
@@ -791,8 +766,7 @@ Json::Value TxPrepareBase::prepareForOperating()
 		tx_json_[jss::Raw] = strCopy(rawCipher);
 	else
 	{
-		RPC::inject_error(rpcGENERAL, "encrypt raw failed,please checkout!", ret);
-		return ret;
+		return RPC::make_error(rpcGENERAL, "encrypt raw failed,please checkout!");
 	}
 
 	auto str = tx_json_[jss::Raw].asString();
@@ -830,13 +804,9 @@ Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Application
 		{
 			return jvAccepted;
 		}
-		/*auto pAccount = ripple::parseBase58<AccountID>(tx_json[jss::Account].asString());
-		if (!pAccount)
-			return generateError("Parse Account failed.", bWs);*/
 	}
 	else
 		return RPC::missing_field_error(jss::Account);
-		//return generateError("Account is missing,please checkout!", bWs);
 
 	if (tx_json.isMember(jss::Owner) && tx_json[jss::Owner].asString().size() != 0)
 	{
@@ -847,9 +817,6 @@ Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Application
 		{
 			return jvAccepted;
 		}
-		/*auto pAccount = ripple::parseBase58<AccountID>(tx_json[jss::Owner].asString());
-		if (!pAccount)
-			return generateError("Parse Owner failed.", bWs);*/
 	}
 
 	return jsonRet;
@@ -872,40 +839,28 @@ Json::Value TxPrepareBase::prepareFutureHash(const Json::Value& tx_json, Applica
         if (!tx_json.isMember(jss::OriginalAddress))
         {
 			return RPC::missing_field_error(jss::OriginalAddress);
-            //return generateError("no OriginalAddress field.", bWs);
         }
         else if (tx_json[jss::OriginalAddress].asString().size() <= 0)
         {
-			std::string errMsg = "OriginalAddress field is empty.";
-			RPC::inject_error(rpcINVALID_PARAMS, errMsg, jsonRet);
-			return jsonRet;
-            //return generateError("OriginalAddress field is empty.", bWs);
+			return RPC::invalid_field_error(jss::OriginalAddress);
         }
 
         if (!tx_json.isMember(jss::TxnLgrSeq))
         {
 			return RPC::missing_field_error(jss::TxnLgrSeq);
-            //return generateError("no TxnLgrSeq field.", bWs);
         }
         else if (tx_json[jss::TxnLgrSeq].asString().size() <= 0)
         {
-			std::string errMsg = "TxnLgrSeq field is empty.";
-			RPC::inject_error(rpcINVALID_PARAMS, errMsg, jsonRet);
-			return jsonRet;
-            //return generateError("TxnLgrSeq field is empty.", bWs);
+			return RPC::invalid_field_error(jss::TxnLgrSeq);
         }
 
         if (!tx_json.isMember(jss::CurTxHash))
         {
 			return RPC::missing_field_error(jss::CurTxHash);
-            //return generateError("no CurTxHash field.", bWs);
         }
         else if (tx_json[jss::CurTxHash].asString().size() <= 0)
         {
-			std::string errMsg = "CurTxHash field is empty.";
-			RPC::inject_error(rpcINVALID_PARAMS, errMsg, jsonRet);
-			return jsonRet;
-            //return generateError("CurTxHash field is empty.", bWs);
+			return RPC::invalid_field_error(jss::CurTxHash);
         }
         else
         {
@@ -915,14 +870,10 @@ Json::Value TxPrepareBase::prepareFutureHash(const Json::Value& tx_json, Applica
         if (!tx_json.isMember(jss::FutureTxHash))
         {
 			return RPC::missing_field_error(jss::FutureTxHash);
-            //return generateError("no FutureTxHash field.", bWs);
         }
         else if (tx_json[jss::FutureTxHash].asString().size() <= 0)
         {
-			std::string errMsg = "FutureTxHash field is empty.";
-			RPC::inject_error(rpcINVALID_PARAMS, errMsg, jsonRet);
-			return jsonRet;
-            //return generateError("FutureTxHash field is empty.", bWs);
+			return RPC::invalid_field_error(jss::FutureTxHash);
         }
 
         bool bRet;
@@ -940,10 +891,7 @@ Json::Value TxPrepareBase::prepareFutureHash(const Json::Value& tx_json, Applica
             {
 				std::string errMsg = "current hash is not the expected one";
 				jsonRet[jss::FutureTxHash] = to_string(hashFuture);
-				RPC::inject_error(rpcINVALID_PARAMS, errMsg, jsonRet);
-                //Json::Value ret = generateError("current hash is not the expected one", bWs);
-				//ret[jss::FutureTxHash] = to_string(hashFuture);
-				return jsonRet;
+				return RPC::make_error(rpcGENERAL, errMsg);
             }
         }        
     }

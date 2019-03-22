@@ -73,9 +73,8 @@ namespace ripple {
 		{
             std::string sErrorMsg;
             TransGBK_UTF8(retPair.second, sErrorMsg, false);
-			//ret[jss::error_message] = sErrorMsg;
 			ret.removeMember(jss::tx_json);
-			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
+			return RPC::make_error(rpcDUMP_GENERAL_ERR, sErrorMsg);
 		}
         else
         {           
@@ -102,8 +101,7 @@ namespace ripple {
         {
             std::string errMsg = "must follow 2 params,in format:owner tableName.";
             ret.removeMember(jss::tx_json);
-            RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
-            return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, errMsg);
         }
 
         std::string owner = ret[jss::tx_json][0U].asString();
@@ -137,8 +135,7 @@ namespace ripple {
 		{
             std::string sErrorMsg;
             TransGBK_UTF8(retPair.second, sErrorMsg, false);
-			// ret[jss::error_message] = sErrorMsg;
-			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
+			RPC::inject_error(rpcDUMPSTOP_GENERAL_ERR, sErrorMsg, ret);
 			ret.removeMember(jss::tx_json);
 		}
         else
@@ -176,9 +173,9 @@ namespace ripple {
         }
         else
         {
-            std::string errMsg = "task completed.";
+            std::string errMsg = "task has already completed.";
             ret.removeMember(jss::tx_json);
-            RPC::inject_error(rpcCTR_CONTENT_EMPTY, errMsg, ret);
+            return RPC::make_error(rpcDUMP_GENERAL_ERR, errMsg);
         }
 
         return ret;

@@ -134,12 +134,14 @@ public:
 		add (rpcSLE_TOKEN_MISSING,     "userSleTokenMissing",  "Missing 'Token' field in sle of the corresponding user.");
 		add (rpcSIGN_NOT_MATCH,        "signDataNotMatch",     "Signing data does not match tx_json.");
 		add (rpcSIGN_NOT_IN_HEX,       "signNotInHex",         "Signature is not in hex.");
-		add (rpcGET_VALUE_INVALID,     "getValueInvalid",   "Get value invalid from syncTableState.");
-		add (rpcGET_LGR_FAILED,        "getLedgerFailed",   "Get validated ledger failed.");
-		add (rpcCTR_ACT_MISSING,       "contractAddrMissing",  "Contract address not provided.");
-		add (rpcCTR_DATA_MISSING,      "contractDataMissing",  "Contract data not provided.");
-		add (rpcCTR_EVMEXE_EXCEPTION,  "contractAddrMissing",  "Contract execution exception.");
-		add (rpcCTR_CONTENT_EMPTY,     "fieldContentEmpty",    "Field content is empty.");
+		add (rpcGET_VALUE_INVALID,     "getValueInvalid",      "Get value invalid from syncTableState.");
+		add (rpcGET_LGR_FAILED,        "getLedgerFailed",      "Get validated ledger failed.");
+		add (rpcDUMP_GENERAL_ERR,      "dumpGeneralError",     "General error when start dump.");
+		add (rpcDUMPSTOP_GENERAL_ERR,  "dumpStopGeneralError", "General error when stop dump.");
+		add (rpcAUDIT_GENERAL_ERR,     "auditGeneralError",    "General error when start audit.");
+		add (rpcAUDITSTOP_GENERAL_ERR, "auditStopGeneralError","General error when stop audit.");
+		add (rpcCTR_EVMEXE_EXCEPTION,  "contractEVMexeError",  "Contract execution exception.");
+		add (rpcCTR_EVMCALL_EXCEPTION, "contractEVMcallError", "Contract execution exception.");
     }
 
     ErrorInfo const& get (error_code_i code) const
