@@ -33,17 +33,16 @@ Json::Value doGetDBName(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	Json::Value& tx_json(context.params);
 
-	if (tx_json["account"].asString().empty())
+	if (!tx_json.isMember(jss::account))
 	{
 		return RPC::missing_field_error(jss::account);
 	}
-	if (tx_json["tablename"].asString().empty())
+	if (!tx_json.isMember(jss::tablename))
 	{
 		return RPC::missing_field_error(jss::tablename);
 	}
 
-    auto tableNameStr = tx_json["tablename"].asString();
-	auto accountIdStr = tx_json["account"].asString();
+	auto accountIdStr = tx_json[jss::account].asString();
 	ripple::AccountID accountID;
 	auto jvAccepted = RPC::accountFromString(accountID, accountIdStr, true);
 	if (jvAccepted)
@@ -55,13 +54,16 @@ Json::Value doGetDBName(RPC::Context&  context)
 	if (!ledger->exists(keylet::account(accountID)))
 		return rpcError(rpcACT_NOT_FOUND);
 
+	auto tableNameStr = tx_json[jss::tablename].asString();
+	if (tableNameStr.empty())
+	{
+		return RPC::invalid_field_error(jss::tablename);
+	}
 	auto nameInDB = context.app.getLedgerMaster().getNameInDB(
 		context.app.getLedgerMaster().getValidLedgerIndex(), accountID, tableNameStr);
 	if (!nameInDB)
 	{
-		RPC::inject_error(rpcTAB_NOT_EXIST, ret);
-		return ret;
-		// return generateError("Table does not exist");
+		return rpcError(rpcTAB_NOT_EXIST);
 	}
 	else
 	{

@@ -40,8 +40,7 @@ namespace ripple {
         {
 			std::string errMsg = "must follow 3 params,in format: 'owner tableName' 'sql' 'path'";
 			ret.removeMember(jss::tx_json);
-			RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
-            return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, errMsg);
         }
 
         std::string sTableName, sNameInDB, sAccount;
@@ -58,8 +57,7 @@ namespace ripple {
             std::string sErrorMsg;
             TransGBK_UTF8(retSet.second, sErrorMsg, false);
             ret.removeMember(jss::tx_json);
-			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
-            return ret;
+			return RPC::make_error(rpcAUDIT_GENERAL_ERR, sErrorMsg);
         }
         else
         {
@@ -88,8 +86,7 @@ namespace ripple {
         {
 			std::string errMsg = "must follow 1 params,in format: job_id.";
 			ret.removeMember(jss::tx_json);
-			RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
-            return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, errMsg);
         }
 
         std::string sNickName = ret[jss::tx_json][0U].asString();
@@ -99,8 +96,8 @@ namespace ripple {
         {
             std::string sErrorMsg;
             TransGBK_UTF8(retPair.second, sErrorMsg, false);
-			RPC::inject_error(rpcINVALID_PARAMS, sErrorMsg, ret);
-            ret.removeMember(jss::tx_json);
+			ret.removeMember(jss::tx_json);
+			return RPC::make_error(rpcAUDITSTOP_GENERAL_ERR, sErrorMsg);
         }
         else
         {
@@ -128,8 +125,7 @@ namespace ripple {
         {
             std::string errMsg = "must follow 1 params,in format: job_id.";
             ret.removeMember(jss::tx_json);
-            RPC::inject_error(rpcINVALID_PARAMS, errMsg, ret);
-            return ret;
+            return RPC::make_error(rpcINVALID_PARAMS, errMsg);
         }
 
         std::string sNickName = ret[jss::tx_json][0U].asString();
@@ -145,9 +141,9 @@ namespace ripple {
         }
         else
         {
-            std::string errMsg = "task completed.";
+            std::string errMsg = "task has already completed.";
             ret.removeMember(jss::tx_json);
-            RPC::inject_error(rpcCTR_CONTENT_EMPTY, errMsg, ret);
+            return RPC::make_error(rpcAUDIT_GENERAL_ERR, errMsg);
         }
 
         return ret;

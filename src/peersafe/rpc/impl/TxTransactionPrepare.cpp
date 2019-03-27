@@ -46,7 +46,6 @@ namespace ripple {
 		Json::Value ret;
 		if (!tx_json_.isMember(jss::Statements))
 			return RPC::missing_field_error(jss::Statements);
-			//return generateError("Statement is missing or empty!", ws_);
 		if (tx_json_[jss::Statements].size() == 0)
 		{
 			return RPC::invalid_field_error(jss::Statements);
@@ -57,7 +56,6 @@ namespace ripple {
 			bStrictMode = tx_json_[jss::StrictMode].asBool();
 
         ret = TxPrepareBase::prepareFutureHash(tx_json_, app_, ws_);
-		//if (ret.isMember("error_message"))
 		if(ret.isMember(jss::error))
             return ret;
 

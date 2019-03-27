@@ -735,7 +735,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
     auto oAccountID = ripple::parseBase58<AccountID>(owner);
     if (boost::none == oAccountID)
     {
-        sLastErr_ = tablename + ":owner wrong!";
+        sLastErr_ = tablename + ":owner invalid!";
         return std::make_pair(pItem, sLastErr_);
     }
     else accountID = *oAccountID;
@@ -749,7 +749,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
             {
 				auto pUser = ripple::parseBase58<AccountID>(user);
 				if (boost::none == pUser)
-					return std::make_pair(pItem, tablename + ":user wrong!");
+					return std::make_pair(pItem, tablename + ":user invalid!");
 				userAccountId = *pUser;
                 std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
                 SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
@@ -760,7 +760,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
         {
             JLOG(journal_.warn()) <<
                 "AccountID|userAccountId|secret exception" << e.what();
-            sLastErr_ = tablename + " exception";
+            sLastErr_ = tablename + " exception :" + e.what();
             return std::make_pair(pItem, sLastErr_);
         }
     }
@@ -786,7 +786,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
         {
             JLOG(journal_.warn()) <<
                 "AccountID|userAccountId|secret exception" << e.what();
-            sLastErr_ = tablename + " exception";
+            sLastErr_ = tablename + " exception :" + e.what();
             return std::make_pair(pItem, sLastErr_);
         }
     }
