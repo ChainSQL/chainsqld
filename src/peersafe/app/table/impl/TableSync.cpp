@@ -1112,7 +1112,14 @@ bool TableSync::CheckTheReplyIsValid(std::shared_ptr <protocol::TMTableData> con
 
 bool TableSync::IsNeedSyn(std::shared_ptr <TableSyncItem> pItem)
 {
-    if (pItem->TargetType() == TableSyncItem::SyncTarget_db && pItem->GetSyncState() == TableSyncItem::SYNC_STOP)     return false;
+    if (!bIsHaveSync_)
+    {
+        if (pItem->TargetType() == TableSyncItem::SyncTarget_db || 
+            pItem->TargetType() == TableSyncItem::SyncTarget_audit)     return false;
+    }
+    
+    if (pItem->GetSyncState() == TableSyncItem::SYNC_STOP)              return false;
+       
     return true;
 }
 bool TableSync::ClearNotSyncItem()
@@ -1121,7 +1128,7 @@ bool TableSync::ClearNotSyncItem()
 
 	listTableInfo_.remove_if([this](std::shared_ptr <TableSyncItem> pItem) {
 		return pItem->GetSyncState() == TableSyncItem::SYNC_REMOVE || 
-			   (pItem->TargetType() != TableSyncItem::SyncTarget_db && pItem->GetSyncState() == TableSyncItem::SYNC_STOP);
+			   pItem->GetSyncState() == TableSyncItem::SYNC_STOP;
 	});
 	return true;
 }
@@ -1138,9 +1145,7 @@ bool TableSync::IsNeedSyn()
 
 void TableSync::TryTableSync()
 {
-    if (!bIsHaveSync_)                return;
-
-    if (!bInitTableItems_)
+    if (!bInitTableItems_ && bIsHaveSync_)
     {
 		if (app_.getLedgerMaster().getValidLedgerIndex() > 0)
 		{
@@ -1178,8 +1183,9 @@ void TableSync::TableSyncThread()
     while (iter != tmList.end())
     {
 		auto pItem = *iter;
-        pItem->GetBaseInfo(stItem); 
+        if (!IsNeedSyn(pItem))   continue;
 
+        pItem->GetBaseInfo(stItem);         
         switch (stItem.eState)
         {           
         case TableSyncItem::SYNC_REINIT:
@@ -1462,6 +1468,8 @@ bool TableSync::Is256thLedgerExist(LedgerIndex index)
 
 bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash,uint32 time, uint256 chainId)
 {
+    if (!bIsHaveSync_)                return false;
+
     std::lock_guard<std::mutex> lock(mutexCreateTable_);
     
     bool ret = false;
@@ -1780,6 +1788,11 @@ bool TableSync::GetCurrentDumpPos(AccountID accountID, std::string sTableName, T
 }
 std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::string sSql, std::string sPath)
 {
+    if (!bIsHaveSync_)
+    {
+        return std::make_pair(false, "fail to open a database connection.");
+    }
+
     {
         std::lock_guard<std::mutex> lock(mutexlistTable_);
         auto iter(listTableInfo_.end());

@@ -1193,7 +1193,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 void TableSyncItem::OperateSQLThread()
 {
     //check the connection is ok
-    getTxStoreDBConn();
+    if(eSyncTargetType_ != SyncTarget_dump)       getTxStoreDBConn();
 
 	if (GetSyncState() == SYNC_STOP)
 	{
