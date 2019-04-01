@@ -2618,8 +2618,8 @@ namespace helper {
         int iPosLimitUpper = sSql.find("LIMIT");
         if (iPosLimitLower >= 0 || iPosLimitUpper >= 0)
         {
-            if (iPosLimitLower)   sLimit = sSql.substr(iPosLimitLower);
-            else                  sLimit = sSql.substr(iPosLimitUpper);
+			if (iPosLimitLower >= 0)   sLimit = sSql.substr(iPosLimitLower);
+			else                       sLimit = sSql.substr(iPosLimitUpper);
 
             const char * chLimit = sLimit.c_str();
             for (int i = 5; i<sLimit.length(); i++)
@@ -3207,7 +3207,7 @@ bool STTx2SQL::assert_result(const soci::rowset<soci::row>& records, const Json:
 
 bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	bool check = true;
-	if (optype == BuildSQL::BUILD_DROPTABLE_SQL 
+	if (optype == BuildSQL::BUILD_DROPTABLE_SQL
 		|| optype == BuildSQL::BUILD_RENAMETABLE_SQL
 		|| optype == BuildSQL::BUILD_CANCEL_ASSIGN_SQL
 		|| optype == BuildSQL::BUILD_ASSIGN_SQL) {
@@ -3228,19 +3228,37 @@ bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	case BuildSQL::BUILD_INSERT_SQL:
 	case BuildSQL::BUILD_UPDATE_SQL:
 	case BuildSQL::BUILD_DELETE_SQL:
-	case BuildSQL::BUILD_ASSERT_STATEMENT:
-		for (Json::UInt idx = 0; idx < size; idx++) {
+	case BuildSQL::BUILD_ASSERT_STATEMENT: 
+	{
+		std::set<std::string> setFieldName;
+		for (Json::UInt idx = 0; idx < size; idx++) 
+		{
+
 			const Json::Value& e = raw[idx];
-			if (e.isObject() == false) {
+			if (e.isObject() == false) 
+			{
 				check = false;
 				break;
 			}
-			// null object
-			if (e.getMemberNames().size() == 0) {
+
+
+			if (e.getMemberNames().size() == 0) 
+			{
 				check = false;
 				break;
 			}
+
+			// table's field must be unique
+			std::string fieldname = e["field"].asString();
+			if (setFieldName.count(fieldname))
+			{
+				check = false;
+				break;
+			}
+			setFieldName.insert(fieldname);
 		}
+
+	}
 		break;
 	default:
 		check = false;
