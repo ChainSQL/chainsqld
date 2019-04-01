@@ -143,7 +143,7 @@ namespace ripple {
         {
             std::string errMsg = "task has already completed.";
             ret.removeMember(jss::tx_json);
-            return RPC::make_error(rpcAUDIT_GENERAL_ERR, errMsg);
+            return RPC::make_error(rpcFIELD_CONTENT_EMPTY, errMsg);
         }
 
         return ret;

@@ -140,6 +140,7 @@ public:
 		add (rpcDUMPSTOP_GENERAL_ERR,  "dumpStopGeneralError", "General error when stop dump.");
 		add (rpcAUDIT_GENERAL_ERR,     "auditGeneralError",    "General error when start audit.");
 		add (rpcAUDITSTOP_GENERAL_ERR, "auditStopGeneralError","General error when stop audit.");
+		add (rpcFIELD_CONTENT_EMPTY,   "fieldContentEmpty",	   "Field content is empty.");
 		add (rpcCTR_EVMEXE_EXCEPTION,  "contractEVMexeError",  "Contract execution exception.");
 		add (rpcCTR_EVMCALL_EXCEPTION, "contractEVMcallError", "Contract execution exception.");
     }
