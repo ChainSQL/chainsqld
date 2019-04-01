@@ -614,7 +614,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
         auto time = ledger->info().closeTime.time_since_epoch().count();
 		if (retPair.second != NULL)
         {   
-            this->SendSeekResultReply(m->account(), i == stopIndex,time,wPeer, sNickName, eTargetType, ledger->info().seq, ledger->info().hash,lastTxChangeIndex, lastTxChangeHash,m->tablename());
+            this->SendSeekResultReply(m->account(), i == stopIndex,time,wPeer, sNickName, eTargetType, ledger->info().seq, retPair.second->getFieldH256(sfTxnLedgerHash),lastTxChangeIndex, lastTxChangeHash,m->tablename());
             iLastFindSeq = i;
             uLashFindHash = ledger->info().hash;
             lastTxChangeIndex = i;
@@ -1216,6 +1216,8 @@ void TableSync::TableSyncThread()
 		}
         case TableSyncItem::SYNC_INIT:
         {
+			JLOG(journal_.info()) << "TableSyncThread SYNC_INIT,tableName=" << stItem.sTableName << ",owner=" << to_string(stItem.accountID);
+
 			if (app_.getLedgerMaster().getValidLedgerIndex() == 0)
 				break;
 			auto stBaseInfo = app_.getLedgerMaster().getTableBaseInfo(app_.getLedgerMaster().getValidLedgerIndex(), stItem.accountID, stItem.sTableName);            
@@ -1277,6 +1279,7 @@ void TableSync::TableSyncThread()
 					if (pItem->InitPassphrase().first)
 					{
 						pItem->SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
+						JLOG(journal_.info()) << "InitPassphrase success,tableName=" << stItem.sTableName << ",owner=" << to_string(stItem.accountID);
 					}
 					else
 					{
@@ -1494,7 +1497,9 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
 		{
 			ret = true;
             std::lock_guard<std::mutex> lock(mutexlistTable_);
-            listTableInfo_.push_back(pItem);     
+            listTableInfo_.push_back(pItem);   
+			JLOG(journal_.info()) <<
+				"InsertListDynamically listTableInfo_ add item,tableName=" << sTableName <<",owner="<< to_string(accountID);
         }
 		else
 		{
@@ -1669,7 +1674,11 @@ void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const
 	auto tableBlob = tables[0].getFieldVL(sfTableName);
 	std::string tableName;
 	tableName.assign(tableBlob.begin(), tableBlob.end());
-	InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
+	bool bInsertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
+	if (!bInsertRes)
+	{
+		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << "owner = " << to_string(accountID);
+	}
 }
 //////////////////
 bool TableSync::IsAutoLoadTable()
