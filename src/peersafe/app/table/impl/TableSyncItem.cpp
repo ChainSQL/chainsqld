@@ -762,7 +762,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 				{
 					pTx = pTransaction->getSTransaction();
 				}
-				if (!user_accountID_)
+				if (!user_accountID_ || user_accountID_->isZero() )
 				{
 					app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
 					return std::make_pair(false, "user account is null.");
