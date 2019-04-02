@@ -2150,6 +2150,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                 }
                 
                 app_.getTableSync().SeekCreateTable(ledger);
+				app_.getTableSync().SeekModifyTable(ledger);
             }
 			//move table_sync here,cause it used pub_ledger
 			app_.getTableSync().TryTableSync();
