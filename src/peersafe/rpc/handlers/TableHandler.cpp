@@ -32,6 +32,7 @@
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/app/main/Application.h>
 #include <peersafe/app/storage/TableStorage.h> 
+#include <peersafe/app/sql/SQLConditionTree.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/rpc/TableUtils.h>
@@ -430,7 +431,10 @@ void getNameInDBSetInSql(std::string sql,std::set <std::string>& setTableNames)
 		pos1 = sql.find(prefix, pos2);
 	}
 }
-Json::Value checkAuthForSql(RPC::Context& context)
+
+
+
+Json::Value getInfoByRPContext(RPC::Context& context, std::string&sSql, AccountID& accountID)
 {
 	TxStore& txStore = context.app.getTxStore();
 	Json::Value& tx_json(context.params["tx_json"]);
@@ -445,7 +449,7 @@ Json::Value checkAuthForSql(RPC::Context& context)
 	}
 
 	std::string accountStr = tx_json[jss::Account].asString();
-	AccountID accountID;
+
 	auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
 	if (jvAccepted)
 	{
@@ -458,35 +462,72 @@ Json::Value checkAuthForSql(RPC::Context& context)
 	if (!ledger->exists(keylet::account(accountID)))
 		return rpcError(rpcACT_NOT_FOUND);
 
-	std::string sql = tx_json["Sql"].asString();
-	if (sql.empty())
+	sSql = tx_json["Sql"].asString();
+	if (sSql.empty())
 	{
 		return RPC::invalid_field_error("Sql");
 	}
+
+	return ret;
+
+}
+
+
+
+Json::Value getLedgerTableInfo(RPC::Context& context,std::string& nameInDB, AccountID& ownerID, std::string& tableName)
+{
+	Json::Value ret;
+	TxStore& txStore = context.app.getTxStore();
+	Json::Value val = txStore.txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB + "';");
+	if (val.isMember(jss::error))
+	{
+		return val;
+	}
+	const Json::Value& lines = val[jss::lines];
+	if (lines.isArray() == false || lines.size() != 1)
+	{
+		std::string errMsg = "Get value invalid from syncTableState, nameInDB=" + nameInDB;
+		return RPC::make_error(rpcGET_VALUE_INVALID, errMsg);
+	}
+	const Json::Value & line = lines[0u];
+
+	auto accountID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
+
+	ownerID   = *accountID;
+	tableName = line[jss::TableName].asString();
+
+	return ret;
+}
+
+Json::Value checkAuthForSql(RPC::Context& context)
+{
+	Json::Value ret;
+	AccountID accountID;
+	std::string sSql;
+
+	ret = getInfoByRPContext(context, sSql, accountID);
+	if (ret.isMember(jss::error))
+	{
+		return ret;
+	}
+
 	std::set <std::string> setTableNames;
-	getNameInDBSetInSql(sql, setTableNames);
+	getNameInDBSetInSql(sSql, setTableNames);
 
 	for (auto nameInDB : setTableNames)
 	{
-		Json::Value val = txStore.txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB +"';");
+		AccountID ownerID;
+		std::string tableName;
+		Json::Value val = getLedgerTableInfo(context,nameInDB, ownerID,tableName);
 		if (val.isMember(jss::error))
 		{
 			return val;
 		}
-		const Json::Value& lines = val[jss::lines];
-		if (lines.isArray() == false || lines.size() != 1)
-		{
-			std::string errMsg = "Get value invalid from syncTableState, nameInDB=" + nameInDB;
-			return RPC::make_error(rpcGET_VALUE_INVALID, errMsg);
-		}
-		const Json::Value & line = lines[0u];
-
-		auto ownerID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
 		
 		//check the authority
 		std::list<std::string> listTableName;
-		listTableName.push_back(line[jss::TableName].asString());
-		auto retPair = context.ledgerMaster.isAuthorityValid(accountID, *ownerID, listTableName, lsfSelect);
+		listTableName.push_back(tableName);
+		auto retPair = context.ledgerMaster.isAuthorityValid(accountID, ownerID, listTableName, lsfSelect);
 		if (!retPair.first)
 		{
 			return rpcError(retPair.second);
@@ -494,6 +535,116 @@ Json::Value checkAuthForSql(RPC::Context& context)
 	}
 	return ret;
 }
+
+
+std::pair<int, conditionTree> createConditionTree(const Json::Value& conditions) {
+	return conditionTree::createRoot(conditions);
+}
+
+std::pair<int, std::string> parse_conditions(const Json::Value& raw_value, conditionTree& root) {
+	return conditionParse::parse_conditions(raw_value, root);
+}
+
+
+Json::Value checkOperationRuleForSql(RPC::Context& context)
+{
+	Json::Value ret;
+	AccountID accountID;
+	std::string sSql;
+
+	ret = getInfoByRPContext(context, sSql, accountID);
+	if (ret.isMember(jss::error))
+	{
+		return ret;
+	}
+
+	std::set <std::string> setTableNames;
+	getNameInDBSetInSql(sSql, setTableNames);
+
+	TxStore& txStore = context.app.getTxStore();
+	Json::Value& tx_json(context.params["tx_json"]);
+	for (auto nameInDB : setTableNames)
+	{
+		AccountID ownerID;
+		std::string tableName;
+		Json::Value val = getLedgerTableInfo(context, nameInDB, ownerID, tableName);
+		if (val.isMember(jss::error))
+		{
+			return val;
+		}
+
+		std::string rule;
+		auto ledger = context.ledgerMaster.getValidatedLedger();
+		if (ledger)
+		{
+			auto id = keylet::table(ownerID);
+			auto const tablesle = ledger->read(id);
+
+			//judge if account is activated
+			auto key = keylet::account(accountID);
+			if (!ledger->exists(key))
+			{
+				return rpcError(rpcACT_NOT_FOUND);
+			}
+
+			if (tablesle)
+			{
+				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+				STEntry* pEntry = getTableEntry(aTableEntries, tableName);
+				if (pEntry)
+					rule = pEntry->getOperationRule(R_GET);
+			}
+		}
+
+
+		// sql concatennation according to jss::condition
+		Json::Value jsonRule;
+		Json::Reader().parse(rule, jsonRule);
+
+		bool bRule = jsonRule.isMember(jss::Condition);
+		if (bRule)
+		{
+			Json::Value& condition = jsonRule[jss::Condition];
+
+			if (condition.isObject()) {
+
+				Json::Value arr(Json::arrayValue);
+				arr.append(condition);
+
+				if (arr.isArray())
+					condition = arr;
+			}
+
+			// parse condition to string, like  "[{\"id\" : {\"$ge\" : 3}}]" to "id>=3"
+			std::string sRule;
+			auto rTree = createConditionTree(condition);
+			if (rTree.first != 0)
+				return RPC::invalid_field_error("Sql");
+
+			auto rConditions = parse_conditions(condition, rTree.second);
+			if (rConditions.first != 0)
+				return RPC::invalid_field_error("Sql");
+
+			std::string result_conditions = rTree.second.asString();
+			std::string preSql = tx_json["Sql"].asString();
+			std::string newSql = (boost::format("%s where %s")
+				% preSql
+				%result_conditions).str();
+
+			tx_json["Sql"] = Json::Value(newSql);
+
+		}
+
+		// union queries && rule not supported
+		if (!rule.empty() && setTableNames.size() > 1)
+		{
+			return RPC::invalid_field_error("Sql");
+		}
+
+	}
+	return ret;
+}
+
 
 Json::Value doGetRecord(RPC::Context&  context)
 {
@@ -633,6 +784,12 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 	Json::Value& tx_json(context.params["tx_json"]);
 	//check table authority
 	ret = checkAuthForSql(context);
+	if (ret.isMember(jss::error))
+	{
+		return ret;
+	}
+
+	ret = checkOperationRuleForSql(context);
 	if (ret.isMember(jss::error))
 	{
 		return ret;
