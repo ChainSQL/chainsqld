@@ -3228,36 +3228,35 @@ bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	case BuildSQL::BUILD_INSERT_SQL:
 	case BuildSQL::BUILD_UPDATE_SQL:
 	case BuildSQL::BUILD_DELETE_SQL:
-	case BuildSQL::BUILD_ASSERT_STATEMENT: 
-	{
+	case BuildSQL::BUILD_ASSERT_STATEMENT: {
+
 		std::set<std::string> setFieldName;
-		for (Json::UInt idx = 0; idx < size; idx++) 
-		{
-
+		for (Json::UInt idx = 0; idx < size; idx++) {
 			const Json::Value& e = raw[idx];
-			if (e.isObject() == false) 
-			{
+			if (e.isObject() == false) {
+				check = false;
+				break;
+			}
+			// null object
+			if (e.getMemberNames().size() == 0) {
 				check = false;
 				break;
 			}
 
-
-			if (e.getMemberNames().size() == 0) 
-			{
-				check = false;
-				break;
+			if (optype == BuildSQL::BUILD_CREATETABLE_SQL) {
+				
+				// table's field must be unique
+				if (e.isMember(jss::field)){
+					std::string fieldname = e["field"].asString();
+					if (setFieldName.count(fieldname)){
+						check = false;
+						break;
+					}
+					setFieldName.insert(fieldname);
+				}				
 			}
 
-			// table's field must be unique
-			std::string fieldname = e["field"].asString();
-			if (setFieldName.count(fieldname))
-			{
-				check = false;
-				break;
-			}
-			setFieldName.insert(fieldname);
 		}
-
 	}
 		break;
 	default:
