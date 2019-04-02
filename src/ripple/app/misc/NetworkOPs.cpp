@@ -3000,21 +3000,21 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 					Json::Value jvToPub(Json::objectValue);
 					if (isDBConfigured(app_))
 					{
-						if (!m_bAutoSync)
-						{
-							Json::Value jvObj(Json::objectValue);
-							jvObj[jss::type] = "singleTransaction";
-							jvObj[jss::transaction] = stTxn.getJson(0);
-							jvObj[jss::status] = "db_noAutoSync";
+						//if (!m_bAutoSync)
+						//{
+						//	Json::Value jvObj(Json::objectValue);
+						//	jvObj[jss::type] = "singleTransaction";
+						//	jvObj[jss::transaction] = stTxn.getJson(0);
+						////	jvObj[jss::status] = "db_noAutoSync";
 
-							jvToPub = jvObj;
-							bPendErase = true;
-						}
-						else
-						{
-							//for chainsql type,subscribe db event
+						//	jvToPub = jvObj;
+						//	bPendErase = true;
+						//}
+						//else
+						//{
+							//for chainsql type, subscribe db event
 							mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
-						}
+					//	}
 					}
 					else
 					{
