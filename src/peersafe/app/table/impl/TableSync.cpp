@@ -1633,9 +1633,10 @@ std::shared_ptr <TableSyncItem> TableSync::GetRightItem(AccountID accountID, std
     return *iter;
 }
 
-void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
+
+// check and sync table
+void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 {    
-	if (!bIsHaveSync_)     return;
 	if (ledger == NULL)    return;
 
 	CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
@@ -1650,21 +1651,27 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId
 			uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
+
 			for (auto& tx : vec)
 			{
 				if (tx.isFieldPresent(sfOpType))
 				{
-					if (T_CREATE == tx.getFieldU16(sfOpType))
+					AccountID accountID = tx.getAccountID(sfAccount);
+					auto tables         = tx.getFieldArray(sfTables);
+					uint160 uTxDBName   = tables[0].getFieldH160(sfNameInDB);
+					auto tableBlob      = tables[0].getFieldVL(sfTableName);
+					std::string tableName;
+					tableName.assign(tableBlob.begin(), tableBlob.end());
+
+					if (!bIsHaveSync_)
 					{
+						app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noDbConfig", ""), false);
+						return;
+					}
 
-						AccountID accountID = tx.getAccountID(sfAccount);
-						auto tables = tx.getFieldArray(sfTables);
-						//uint160 uTxDBName = tables[0].getFieldH160(sfNameInDB);
-
-						auto tableBlob = tables[0].getFieldVL(sfTableName);
-						std::string tableName;
-						tableName.assign(tableBlob.begin(), tableBlob.end());
-
+					auto opType = tx.getFieldU16(sfOpType);
+					if (opType == T_CREATE)
+					{
 						std::string temKey = to_string(accountID) + tableName;
 						bool bInSyncTables = true;
 						if (setTableInCfg.end() == std::find(setTableInCfg.begin(), setTableInCfg.end(), temKey)) {
@@ -1675,64 +1682,24 @@ void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
 						if (!bAutoLoadTable_ && !bInSyncTables) {
 
 							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noAutoSync", ""), false);
-							return;
+							break;
 						}
+
 						OnCreateTableTx(tx, ledger, time, chainId);
 					}
-				}
-			}
-		}
-		catch (std::exception const&)
-		{
-			JLOG(journal_.warn()) << "Txn " << item.key() << " throws";
-		}
-	}
-}
-
-
-void TableSync::SeekModifyTable(std::shared_ptr<Ledger const> const& ledger)
-{
-	if (!bIsHaveSync_)     return;
-	if (ledger == NULL)    return;
-
-	CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
-	for (auto const& item : ledger->txMap())
-	{
-		try
-		{
-			auto blob = SerialIter{ item.data(), item.size() }.getVL();
-			std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
-			//
-			auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "", ledger, 0);
-			auto time = ledger->info().closeTime.time_since_epoch().count();
-			//read chainId
-			uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
-			for (auto& tx : vec)
-			{
-				if (tx.isFieldPresent(sfOpType))
-				{
-					auto opType = tx.getFieldU16(sfOpType);
-					if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
+					else if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
 						|| opType == R_DELETE)
 					{
-						AccountID accountID = tx.getAccountID(sfAccount);
-						auto tables = tx.getFieldArray(sfTables);
-						uint160 uTxDBName = tables[0].getFieldH160(sfNameInDB);
-
-						auto tableBlob = tables[0].getFieldVL(sfTableName);
-						std::string tableName;
-						tableName.assign(tableBlob.begin(), tableBlob.end());
-
 						bool bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
 						if (!bDBTableExist)
 						{
-							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noAutoSync", ""), false);
-							return;
+							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair(" db_noTableExistInDB", ""), false);
+							break;
 						}
+
 					}
 				}
 			}
-
 		}
 		catch (std::exception const&)
 		{
@@ -1740,8 +1707,6 @@ void TableSync::SeekModifyTable(std::shared_ptr<Ledger const> const& ledger)
 		}
 	}
 }
-
-
 
 void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
 {
