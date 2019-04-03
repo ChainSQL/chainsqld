@@ -2997,9 +2997,9 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				//for table-related tx and validation event
 				if (bForTableTx && bValidated)
 				{
-					Json::Value jvToPub(Json::objectValue);
-					if (isDBConfigured(app_))
-					{
+					//Json::Value jvToPub(Json::objectValue);
+					//if (isDBConfigured(app_))
+					//{
 						//if (!m_bAutoSync)
 						//{
 						//	Json::Value jvObj(Json::objectValue);
@@ -3015,40 +3015,39 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 							//for chainsql type, subscribe db event
 							mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
 					//	}
-					}
-					else
-					{
-						Json::Value jvObj(Json::objectValue);
-						jvObj[jss::type] = "singleTransaction";
-						jvObj[jss::transaction] = stTxn.getJson(0);
-						jvObj[jss::status] = "db_noDbConfig";
+				  }
+			/*	else
+				{
+					Json::Value jvObj(Json::objectValue);
+					jvObj[jss::type] = "singleTransaction";
+					jvObj[jss::transaction] = stTxn.getJson(0);
+					jvObj[jss::status] = "db_noDbConfig";
 
-						jvToPub = jvObj;
-						bPendErase = true;
-					}
-					if (bPendErase)
-					{
-						std::thread([this, txId, jvToPub]() {
-							std::this_thread::sleep_for(std::chrono::milliseconds(50));
-							ScopedLockType sl(mSubLock);
-							auto simiIt = mSubTx.find(txId);
-							if (simiIt != mSubTx.end())
-							{
-								InfoSub::pointer p = simiIt->second.first.lock();
-								if (p)
-								{
-									p->send(jvToPub, true);
-								}
-							}
-							mSubTx.erase(simiIt);
-						}).detach();
-					}
+					jvToPub = jvObj;
+					bPendErase = true;
 				}
+				if (bPendErase)
+				{
+					std::thread([this, txId, jvToPub]() {
+						std::this_thread::sleep_for(std::chrono::milliseconds(50));
+						ScopedLockType sl(mSubLock);
+						auto simiIt = mSubTx.find(txId);
+						if (simiIt != mSubTx.end())
+						{
+							InfoSub::pointer p = simiIt->second.first.lock();
+							if (p)
+							{
+								p->send(jvToPub, true);
+							}
+						}
+						mSubTx.erase(simiIt);
+					}).detach();
+				}*/
 			}
-			if (!bPendErase)
-			{
-				subTx.erase(simiIt);
-			}			
+//			if (!bPendErase)
+//			{
+//				subTx.erase(simiIt);
+//			}			
 		}
 	}
 }

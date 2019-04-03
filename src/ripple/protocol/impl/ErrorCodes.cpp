@@ -142,6 +142,7 @@ public:
 		add (rpcAUDITSTOP_GENERAL_ERR, "auditStopGeneralError","General error when stop audit.");
 		add (rpcCTR_EVMEXE_EXCEPTION,  "contractEVMexeError",  "Contract execution exception.");
 		add (rpcCTR_EVMCALL_EXCEPTION, "contractEVMcallError", "Contract execution exception.");
+		add (rpcSQL_OPERRULE_MULTABLE_QUERY_NOT_SUPPORT, "operRuleMulQuerysqlNotSupport", "OperationRule Table not support multi_table sql_query");
     }
 
     ErrorInfo const& get (error_code_i code) const

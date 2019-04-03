@@ -27,7 +27,7 @@
 #include <peersafe/app/sql/SQLConditionTree.h>
 #include <peersafe/app/sql/STTx2SQL.h>
 #include <peersafe/app/sql/TxStore.h>
-
+#include <peersafe/app/sql/SQLConditionTree.h>
 
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -2786,6 +2786,23 @@ bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
     return bExist;
 }
 
+// parse condition to string, like  "[{\"id\" : {\"$ge\" : 3}}]" to "id>=3"
+bool STTx2SQL::ConvertCondition2SQL(const Json::Value& condition, std::string& sSql)
+{
+
+	auto rTree = conditionTree::createRoot(condition);
+	if (rTree.first != 0)
+		return false;
+
+	auto rConditions = conditionParse::parse_conditions(condition, rTree.second);
+	if (rConditions.first != 0)
+		return false;
+
+	sSql = rTree.second.asString();
+
+	return true;
+}
+
 int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql) {
 	int ret = -1;
     std::string sError = "";
@@ -3228,9 +3245,7 @@ bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	case BuildSQL::BUILD_INSERT_SQL:
 	case BuildSQL::BUILD_UPDATE_SQL:
 	case BuildSQL::BUILD_DELETE_SQL:
-	case BuildSQL::BUILD_ASSERT_STATEMENT: {
-
-		std::set<std::string> setFieldName;
+	case BuildSQL::BUILD_ASSERT_STATEMENT:
 		for (Json::UInt idx = 0; idx < size; idx++) {
 			const Json::Value& e = raw[idx];
 			if (e.isObject() == false) {
@@ -3242,22 +3257,7 @@ bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 				check = false;
 				break;
 			}
-
-			if (optype == BuildSQL::BUILD_CREATETABLE_SQL) {
-				
-				// table's field must be unique
-				if (e.isMember(jss::field)){
-					std::string fieldname = e["field"].asString();
-					if (setFieldName.count(fieldname)){
-						check = false;
-						break;
-					}
-					setFieldName.insert(fieldname);
-				}				
-			}
-
 		}
-	}
 		break;
 	default:
 		check = false;
