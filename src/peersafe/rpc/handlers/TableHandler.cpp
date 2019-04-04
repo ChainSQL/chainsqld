@@ -416,20 +416,22 @@ void getNameInDBSetInSql(std::string sql,std::set <std::string>& setTableNames)
 {
 	std::string prefix = "t_";
 	//type of nameInDB: uint160
-	int nTableNameLength = prefix.length() + 2 * (160 / 8);
+	int nTableNameLength =  2 * (160 / 8);
 	int pos1 = sql.find(prefix);
 	while (pos1 != std::string::npos)
 	{
-		int pos2 = sql.find(" ", pos1);
-		if (pos2 == std::string::npos)
-			pos2 = sql.length();
-		if (pos2 - pos1 == nTableNameLength)
+		if ( pos1 + 2 + nTableNameLength <= sql.length() )
 		{
-			std::string str = sql.substr(pos1 + 2, pos2 - pos1 - 2);
+			std::string str = sql.substr(pos1 + 2, nTableNameLength);
 			setTableNames.emplace(str);
+
+			int pos2 = pos1 + 2 + nTableNameLength;
+			 pos1 = sql.find(prefix, pos2);
+		}
+		else {
+			break;
 		}
 
-		pos1 = sql.find(prefix, pos2);
 	}
 }
 
