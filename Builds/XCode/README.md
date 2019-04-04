@@ -125,6 +125,11 @@ Extract it to a folder, making note of where, open a terminal, then:
 Create an environment variable `BOOST_ROOT` in one of your `rc` files, pointing
 to the root of the extracted directory.
 
+### Install mysql-client
+```
+brew install mysql-client
+```
+
 ### Clone the rippled repository
 
 From the terminal
