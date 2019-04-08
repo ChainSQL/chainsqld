@@ -1666,7 +1666,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 					if (!bIsHaveSync_)
 					{
 						app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noDbConfig", ""), false);
-						return;
+						break;
 					}
 
 					auto opType = tx.getFieldU16(sfOpType);
