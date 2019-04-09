@@ -1498,7 +1498,7 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
         std::shared_ptr<TableSyncItem> pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
         std::string PreviousCommit;
         pItem->Init(accountID, sTableName,true);
-        bool ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
+        ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
 		if(ret)
 		{
 			ret = true;
@@ -1507,10 +1507,6 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
 			JLOG(journal_.info()) <<
 				"InsertListDynamically listTableInfo_ add item,tableName=" << sTableName <<",owner="<< to_string(accountID);
         }
-		else
-		{
-			return false;
-		}
     }
     catch (std::exception const& e)
     {
@@ -1683,7 +1679,7 @@ void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const
 	bool bInsertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
 	if (!bInsertRes)
 	{
-		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << "owner = " << to_string(accountID);
+		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
 	}
 }
 //////////////////
