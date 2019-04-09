@@ -439,7 +439,6 @@ void getNameInDBSetInSql(std::string sql,std::set <std::string>& setTableNames)
 
 Json::Value getInfoByRPContext(RPC::Context& context, std::string&sSql, AccountID& accountID)
 {
-	TxStore& txStore = context.app.getTxStore();
 	Json::Value& tx_json(context.params["tx_json"]);
 	Json::Value ret;
 	if (!tx_json.isMember(jss::Account))
