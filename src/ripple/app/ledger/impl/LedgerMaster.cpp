@@ -887,10 +887,10 @@ LedgerMaster::getTableBaseInfo(LedgerIndex index, AccountID accountID, std::stri
     return ret_baseInfo;
 }
 
-std::pair<ripple::uint256, std::string> LedgerMaster::getLatestTxCheckHash(AccountID accountID, std::string sTableName)
+std::pair<ripple::uint256, error_code_i> LedgerMaster::getLatestTxCheckHash(AccountID accountID, std::string sTableName)
 {		
 	ripple::uint256 uTxCheckHash;
-	std::string  errMsg;
+	error_code_i errCode=rpcUNKNOWN;
 	//assert(accountID);
 	auto ledger = getValidatedLedger();
 	if (ledger)
@@ -912,24 +912,29 @@ std::pair<ripple::uint256, std::string> LedgerMaster::getLatestTxCheckHash(Accou
 				}
 			}
 		}
+		if (uTxCheckHash.isZero())
+		{
+			errCode = rpcTAB_NOT_EXIST; //Can't find the table in the chain.
+		}
 	}
-	if (uTxCheckHash.isZero())
+	else
 	{
-		errMsg = "Can't find the table in the chain.";
+		uTxCheckHash = beast::zero;
+		errCode = rpcGET_LGR_FAILED;
 	}
-	return std::make_pair(uTxCheckHash, errMsg);
+	
+	return std::make_pair(uTxCheckHash, errCode);
 }
 
-std::pair<bool, std::string>
+std::pair<bool, error_code_i>
 LedgerMaster::isAuthorityValid(AccountID accountID, AccountID ownerID, std::list<std::string>aTableName, TableRoleFlags roles)
 {
     if (accountID.isZero() || ownerID.isZero() || aTableName.size() <= 0)
     {
-        return std::make_pair(false, "please check the paras.");
+		return std::make_pair(false, rpcINVALID_PARAMS);
     }
 
-    std::string errMsg = " does not have the right authority.";
-
+    //std::string errMsg = " does not have the right authority.";
     auto ledger = getValidatedLedger();
     if (ledger)
     {
@@ -961,18 +966,18 @@ LedgerMaster::isAuthorityValid(AccountID accountID, AccountID ownerID, std::list
                 if (!bValid)
                 {
 					if(!bTableFound)
-						return std::make_pair(false, sCheckName + " does not exist");
+						return std::make_pair(false, rpcTAB_NOT_EXIST);
+						//return std::make_pair(false, sCheckName + " does not exist");
 					else
-						return std::make_pair(false, to_string(accountID) + " does not have authority");
+						return std::make_pair(false, rpcTAB_UNAUTHORIZED);
                 }
-                return std::make_pair(true, "");
+                return std::make_pair(true, rpcSUCCESS);
             }
-            
         }
     }
-    return std::make_pair(true, "");
+    return std::make_pair(true, rpcSUCCESS);
 }
-std::tuple<bool, ripple::Blob, std::string>
+std::tuple<bool, ripple::Blob, error_code_i>
 LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string sTableName)
 {
 	std::string sToken, errMsg;
@@ -1001,7 +1006,7 @@ LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string s
 					bool bNeedToken = users[0].isFieldPresent(sfToken);
 					if (!bNeedToken)
 					{
-						return std::make_tuple(true, Blob(), "token is not needed");
+						return std::make_tuple(true, Blob(), rpcSUCCESS);
 					}
 					else
 					{
@@ -1013,33 +1018,33 @@ LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string s
 								{
 									ripple::Blob passBlob = user.getFieldVL(sfToken);
 									//std::string sPass = std::string(passBlob.begin(), passBlob.end());
-									return std::make_tuple(true, passBlob, "");
+									return std::make_tuple(true, passBlob, rpcSUCCESS);
 								}
 								else
 								{
-									return std::make_tuple(false, Blob(), "Missing 'Token' field in sle of the corresponding user!");
+									return std::make_tuple(false, Blob(), rpcSLE_TOKEN_MISSING);
 								}
 							}
 						}
-						return std::make_tuple(false, Blob(), "no authority to the table.");
+						return std::make_tuple(false, Blob(), rpcTAB_UNAUTHORIZED);
 					}
 					break;
 				}
 			}
 		}
 		if(!tableFound)
-			return std::make_tuple(false, Blob(), "Table not found,Please make sure table exists and not deleted.");
+			return std::make_tuple(false, Blob(), rpcTAB_NOT_EXIST);
 	}
 	else
 	{
-		return std::make_tuple(false, Blob(), "Can not find validated ledger!");
+		return std::make_tuple(false, Blob(), rpcGET_LGR_FAILED);
 	}
 
-	return std::make_tuple(false, Blob(), "Unknown error");
+	return std::make_tuple(false, Blob(), rpcUNKNOWN);
 
 }
 
-std::tuple<bool, ripple::uint256, std::string> LedgerMaster::getUserFutureHash(AccountID accountID)
+std::tuple<bool, ripple::uint256, error_code_i> LedgerMaster::getUserFutureHash(AccountID accountID)
 {
     auto ledger = getValidatedLedger();
     if (ledger)
@@ -1049,14 +1054,14 @@ std::tuple<bool, ripple::uint256, std::string> LedgerMaster::getUserFutureHash(A
         auto const tablesle = ledger->read(id);
         if (tablesle && tablesle->isFieldPresent(sfFutureTxHash))
             futureHash = tablesle->getFieldH256(sfFutureTxHash);
-        return std::make_tuple(true, futureHash, "");
+        return std::make_tuple(true, futureHash, rpcSUCCESS);
     }
     else
     {
-        return std::make_tuple(false, uint256(), "Can not find validated ledger!");
+        return std::make_tuple(false, uint256(), rpcGET_LGR_FAILED);
     }
 
-    return std::make_tuple(false, uint256(), "error.");
+    return std::make_tuple(false, uint256(), rpcUNKNOWN);
 }
 
 bool LedgerMaster::isConfidential(const STTx& tx)
@@ -2144,7 +2149,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                     app_.getOPs().pubLedger(ledger);
                 }
                 
-                app_.getTableSync().SeekCreateTable(ledger);
+                app_.getTableSync().CheckSyncTableTxs(ledger);
             }
 			//move table_sync here,cause it used pub_ledger
 			app_.getTableSync().TryTableSync();

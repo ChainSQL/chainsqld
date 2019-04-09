@@ -43,6 +43,8 @@ public:
 
     static bool IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable);
 
+	static bool ConvertCondition2SQL(const Json::Value& condition, std::string& sql);
+
 	using MapRule = std::map<std::string, Json::Value>;
 	// convert json into sql
 	std::pair<int /*retcode*/, std::string /*sql*/> ExecuteSQL(const ripple::STTx& tx, 

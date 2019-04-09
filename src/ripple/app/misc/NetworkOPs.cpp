@@ -223,6 +223,13 @@ public:
         , m_standalone (standalone)
         , m_network_quorum (start_valid ? 0 : network_quorum)
     {
+		auto& cfg = app_.config();
+		auto sync_section = cfg.section(ConfigSection::autoSync());
+		if (sync_section.values().size() > 0)
+		{
+			auto value = sync_section.values().at(0);
+			m_bAutoSync = atoi(value.c_str());
+		}
     }
 
     ~NetworkOPsImp() override
@@ -644,6 +651,8 @@ private:
     bool const m_standalone;
 
 	bool m_bCheckTxThread = false;
+
+	bool m_bAutoSync = false;
 
     // The number of nodes that we need to consider ourselves connected.
     std::size_t const m_network_quorum;
@@ -1266,7 +1275,8 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                 e.transaction->setStatus (INVALID);
             }
 
-            if (addLocal)
+			//chainsql type tx will not retry.
+            if (addLocal && !e.transaction->getSTransaction()->isChainSqlTableType())
             {
                 m_localTX->push_back (
                     m_ledgerMaster.getCurrentLedgerIndex(),
@@ -2968,9 +2978,11 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 	auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
 	if (!subTx.empty())
 	{
-		auto simiIt	= subTx.find(stTxn.getTransactionID());
+		auto txId = stTxn.getTransactionID();
+		auto simiIt	= subTx.find(txId);
 		if (simiIt != subTx.end())
 		{
+			//bool bPendErase = false;
 			InfoSub::pointer p = simiIt->second.first.lock();
 			if (p)
 			{
@@ -2982,14 +2994,31 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 					jvObj[jss::error_message] = disposRes.second;
 
 				p->send(jvObj, true);
-				//for chainsql type,subscribe db event
+
+				//for table-related tx and validation event
 				if (bForTableTx && bValidated)
 				{
-					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
+					//for chainsql type, subscribe db event
+					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);			
 				}
-			}
-
-			subTx.erase(simiIt);
+				//if (bPendErase)
+				//{
+				//	std::thread([this, txId, jvToPub]() {
+				//		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				//		ScopedLockType sl(mSubLock);
+				//		auto simiIt = mSubTx.find(txId);
+				//		if (simiIt != mSubTx.end())
+				//		{
+				//			InfoSub::pointer p = simiIt->second.first.lock();
+				//			if (p)
+				//			{
+				//				p->send(jvToPub, true);
+				//			}
+				//		}
+				//		mSubTx.erase(simiIt);
+				//	}).detach();
+				//}
+			}	
 		}
 	}
 }

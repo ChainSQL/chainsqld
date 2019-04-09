@@ -65,6 +65,7 @@ JSS ( Confidential );				// in: Confidential
 JSS ( Raw );						// in: Raw
 JSS ( RawOriginal );                // in: RawOriginal
 JSS ( Owner );						// in: Owner
+JSS ( User );						// in: User
 JSS ( Tables );						// in: Tables
 JSS	( Table );						// in: Table
 JSS	( TableName );					// in: TableName
@@ -438,6 +439,7 @@ JSS ( source_account );             // in: PathRequest, RipplePathFind
 JSS ( source_amount );              // in: PathRequest, RipplePathFind
 JSS ( source_currencies );          // in: PathRequest, RipplePathFind
 JSS ( source_tag );                 // out: AccountChannels
+JSS ( sql );                        // in: SQL
 JSS ( stand_alone );                // out: NetworkOPs
 JSS ( start );                      // in: TxHistory
 JSS ( state );                      // out: Logic.h, ServerState, LedgerData
@@ -512,6 +514,7 @@ JSS ( validated_ledgers );          // out: NetworkOPs
 JSS ( validation_key );             // out: ValidationCreate, ValidationSeed
 JSS ( validation_private_key );     // out: ValidationCreate
 JSS ( validation_public_key );      // out: ValidationCreate, ValidationSeed
+JSS ( validation_public_key_hex );  // out: ValidationCreate, ValidationSeed
 JSS ( validation_quorum );          // out: NetworkOPs
 JSS ( validation_seed );            // out: ValidationCreate, ValidationSeed
 JSS ( validations );                // out: AmendmentTableImpl

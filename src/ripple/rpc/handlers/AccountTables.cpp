@@ -27,34 +27,43 @@
 #include <ripple/app/misc/Transaction.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/protocol/STEntry.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 Json::Value doGetAccountTables(RPC::Context&  context)
 {
 	Json::Value ret(Json::objectValue);
+	auto& params = context.params;
+	std::string accountStr;
     
-
-	if (context.params["account"].asString().empty())
+	if (params.isMember(jss::account))
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "Account  is null";
-		return ret;
+		accountStr = params[jss::account].asString();
 	}
-
-	auto pOwnerId = ripple::parseBase58<AccountID>(context.params["account"].asString());
-	if (pOwnerId == boost::none)
+	else
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "account parse failed";
-		return ret;
+		return RPC::missing_field_error(jss::account);
 	}
+	AccountID ownerID;
+	auto jvAccepted = RPC::accountFromString(ownerID, accountStr, true);
+	if (jvAccepted)
+	{
+		return jvAccepted;
+	}
+	std::shared_ptr<ReadView const> ledgerConst;
+	auto result = RPC::lookupLedger(ledgerConst, context);
+	if (!ledgerConst)
+		return result;
+	if (!ledgerConst->exists(keylet::account(ownerID)))
+		return rpcError(rpcACT_NOT_FOUND);
+
+	ret["tables"] = Json::Value(Json::arrayValue);
 
     bool bGetDetailInfo = false;
     if (context.params.isMember("detail") && context.params["detail"].asBool())
     {
         bGetDetailInfo = true;
     }
-    AccountID ownerID(*pOwnerId);
     auto key = keylet::table(ownerID);
 
     auto ledger = context.app.getLedgerMaster().getValidatedLedger();
@@ -64,7 +73,6 @@ Json::Value doGetAccountTables(RPC::Context&  context)
         auto & aTables = tablesle->getFieldArray(sfTableEntries);
         if (aTables.size() > 0)
         {
-            ret[jss::status] = "success";
             for (auto table : aTables)
             {
 				Json::Value tmp(Json::objectValue);
@@ -104,6 +112,13 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 					STEntry* pEntry = (STEntry*)(&table);
 					tmp[jss::confidential] = pEntry->isConfidential();
 
+					auto ledger = context.app.getLedgerMaster().getLedgerBySeq(iInLedger);
+					if (ledger != nullptr)
+					{
+						//tmp["create_time_human"] = to_string(ledger->info().closeTime);
+						tmp["create_time"] = ledger->info().closeTime.time_since_epoch().count();
+					}
+					
 					if (context.app.getTxStoreDBConn().GetDBConn() != nullptr &&
 						context.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() != nullptr)
 					{
@@ -123,10 +138,11 @@ Json::Value doGetAccountTables(RPC::Context&  context)
 							if (dbret && count)
 							{
 								tmp[jss::count] = *count;
+								tmp["table_exist_inDB"] = true;
 							}
 						}
-						catch (std::exception& e) {
-							tmp[jss::error_message] = e.what();
+						catch (std::exception& /*e*/) {
+							tmp["table_exist_inDB"] = false;
 						}
 					}
                 }
@@ -135,14 +151,8 @@ Json::Value doGetAccountTables(RPC::Context&  context)
         }
         else
         {
-            ret[jss::status] = "error";
-            ret[jss::message] = "There is no table in this account!";
+			return RPC::make_error(rpcTAB_NOT_EXIST, "There is no table in this account!");
         }
-    }
-    else
-    {
-        ret[jss::status] = "error!";
-        ret[jss::message] = "There is no table in this account!";
     }
 
     return ret;

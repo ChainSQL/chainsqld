@@ -63,7 +63,7 @@ enum error_code_i
     rpcACT_NOT_FOUND,
     rpcINSUF_FUNDS,
     rpcLGR_NOT_FOUND,
-    rpcLGR_NOT_VALIDATED,
+	rpcLGR_NOT_VALIDATED,
     rpcMASTER_DISABLED,
     rpcNO_ACCOUNT,
     rpcNO_PATH,
@@ -81,6 +81,7 @@ enum error_code_i
     // Bad parameter
     rpcACT_BITCOIN,
     rpcACT_MALFORMED,
+	rpcACT_NOT_MATCH_PUBKEY,
     rpcQUALITY_MALFORMED,
     rpcBAD_BLOB,
     rpcBAD_FEATURE,
@@ -116,10 +117,30 @@ enum error_code_i
     rpcSTREAM_MALFORMED,
     rpcATX_DEPRECATED,
 
-	rpcCTR_ACT_MISSING,
-	rpcCTR_DATA_MISSING,
+	rpcJSON_PARSED_ERR,
+	rpcSQL_DISPOSE_ERR,
+	rpcSQL_SELECT_ONLY,
+	rpcDB_NOT_SUPPORT,
+	rpcDB_CONNECT_FAILED,
+	rpcTAB_NOT_EXIST,
+	rpcTAB_UNAUTHORIZED,
+	rpcRAW_INVALID,
+	rpcNAMEINDB_NOT_MATCH,
+	rpcSLE_TOKEN_MISSING,
+	rpcSIGN_NOT_MATCH,
+	rpcSIGN_NOT_IN_HEX,
+	rpcGET_VALUE_INVALID,
+	rpcGET_LGR_FAILED,
+	rpcDUMP_GENERAL_ERR,
+	rpcDUMPSTOP_GENERAL_ERR,
+	rpcAUDIT_GENERAL_ERR,
+	rpcAUDITSTOP_GENERAL_ERR,
+	rpcFIELD_CONTENT_EMPTY,
+
+	rpcSQL_OPERRULE_MULTABLE_QUERY_NOT_SUPPORT,
+
 	rpcCTR_EVMEXE_EXCEPTION,
-	rpcCTR_CONTENT_EMPTY,
+	rpcCTR_EVMCALL_EXCEPTION,
 
     // Internal error (should never happen)
     rpcINTERNAL,        // Generic internal error.

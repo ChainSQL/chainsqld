@@ -53,6 +53,7 @@ public:
         add (rpcACT_EXISTS,            "actExists",         "Account already exists.");
         add (rpcACT_MALFORMED,         "actMalformed",      "Account malformed.");
         add (rpcACT_NOT_FOUND,         "actNotFound",       "Account not found.");
+		add (rpcACT_NOT_MATCH_PUBKEY,  "actNotMatchPublic", "Account is not match with publicKey.");
         add (rpcAMENDMENT_BLOCKED,     "amendmentBlocked",  "Amendment blocked, need upgrade.");
         add (rpcATX_DEPRECATED,        "deprecated",        "Use the new API or specify a ledger range.");
         add (rpcBAD_BLOB,              "badBlob",           "Blob must be a non-empty hex string.");
@@ -77,7 +78,7 @@ public:
         add (rpcHOST_IP_MALFORMED,     "hostIpMalformed",   "Host IP is malformed.");
         add (rpcINSUF_FUNDS,           "insufFunds",        "Insufficient funds.");
         add (rpcINTERNAL,              "internal",          "Internal error.");
-		add (rpcNODB,				   "dbNotConfigured",	"Get db connection error,maybe db not configured.");
+		add (rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured.");
         add (rpcINVALID_PARAMS,        "invalidParams",     "Invalid parameters.");
         add (rpcJSON_RPC,              "json_rpc",          "JSON-RPC transport error.");
         add (rpcLGR_IDXS_INVALID,      "lgrIdxsInvalid",    "Ledger indexes invalid.");
@@ -121,10 +122,28 @@ public:
         add (rpcUNKNOWN_COMMAND,       "unknownCmd",        "Unknown method.");
         add (rpcWRONG_SEED,            "wrongSeed",         "The regular key does not point as the master key.");
         add (rpcSENDMAX_MALFORMED,     "sendMaxMalformed",  "SendMax amount malformed.");
-		add(rpcCTR_ACT_MISSING,        "contractAddrMissing", "Contract address not provided.");
-		add(rpcCTR_DATA_MISSING,       "contractDataMissing", "Contract data not provided.");
-		add(rpcCTR_EVMEXE_EXCEPTION,   "contractAddrMissing", "Contract execution exception.");
-		add(rpcCTR_CONTENT_EMPTY,      "fieldContentEmpty", "Field content is empty.");
+		add (rpcJSON_PARSED_ERR,       "txJsonParsedErr",   "Tx Json parsed error.");
+		add (rpcSQL_DISPOSE_ERR,       "disposeSqlErr",     "Dispose SQL common error info");
+		add (rpcSQL_SELECT_ONLY,       "sqlSelectOnly",     "First word of SQL must be select.");
+		add (rpcDB_NOT_SUPPORT,        "dbTypeNotSupport",  "Do not support this db type.");
+		add (rpcDB_CONNECT_FAILED,     "dbConnectFailed",   "Database connection is failed.");
+		add (rpcTAB_NOT_EXIST,         "tabNotExist",       "Table does not exist.");
+		add (rpcTAB_UNAUTHORIZED,      "tabUnauthorized",   "The user is unauthorized to the table.");
+		add (rpcRAW_INVALID,           "rawNotValidated",   "Raw field is not validated.");
+		add (rpcNAMEINDB_NOT_MATCH,    "dBNameNotMatchTabName","DBName is not matched with table name.");
+		add (rpcSLE_TOKEN_MISSING,     "userSleTokenMissing",  "Missing 'Token' field in sle of the corresponding user.");
+		add (rpcSIGN_NOT_MATCH,        "signDataNotMatch",     "Signing data does not match tx_json.");
+		add (rpcSIGN_NOT_IN_HEX,       "signNotInHex",         "Signature is not in hex.");
+		add (rpcGET_VALUE_INVALID,     "getValueInvalid",      "Get value invalid from syncTableState.");
+		add (rpcGET_LGR_FAILED,        "getLedgerFailed",      "Get validated ledger failed.");
+		add (rpcDUMP_GENERAL_ERR,      "dumpGeneralError",     "General error when start dump.");
+		add (rpcDUMPSTOP_GENERAL_ERR,  "dumpStopGeneralError", "General error when stop dump.");
+		add (rpcAUDIT_GENERAL_ERR,     "auditGeneralError",    "General error when start audit.");
+		add (rpcAUDITSTOP_GENERAL_ERR, "auditStopGeneralError","General error when stop audit.");
+		add (rpcFIELD_CONTENT_EMPTY,   "fieldContentEmpty",	   "Field content is empty.");
+		add (rpcCTR_EVMEXE_EXCEPTION,  "contractEVMexeError",  "Contract execution exception.");
+		add (rpcCTR_EVMCALL_EXCEPTION, "contractEVMcallError", "Contract execution exception.");
+		add (rpcSQL_OPERRULE_MULTABLE_QUERY_NOT_SUPPORT, "operRuleMulQuerysqlNotSupport", "OperationRule Table not support multi_table sql_query");
     }
 
     ErrorInfo const& get (error_code_i code) const

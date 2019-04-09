@@ -22,6 +22,7 @@
 #include <peersafe/rpc/impl/TxTransactionPrepare.h>
 #include <peersafe/rpc/impl/TxSingleTransPrepare.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <ripple/protocol/ErrorCodes.h>
 
 namespace ripple {
 	TxTransactionPrepare::TxTransactionPrepare(Application& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func,bool ws):
@@ -43,16 +44,19 @@ namespace ripple {
 	Json::Value TxTransactionPrepare::prepare()
 	{
 		Json::Value ret;
-		if (!tx_json_.isMember(jss::Statements) || tx_json_[jss::Statements].size() == 0)
-			return generateError("Statement is missing or empty!", ws_);
-
+		if (!tx_json_.isMember(jss::Statements))
+			return RPC::missing_field_error(jss::Statements);
+		if (tx_json_[jss::Statements].size() == 0)
+		{
+			return RPC::invalid_field_error(jss::Statements);
+		}
 		bool bNeedVerify = true;
 		bool bStrictMode = false;
 		if (tx_json_.isMember(jss::StrictMode))
 			bStrictMode = tx_json_[jss::StrictMode].asBool();
 
         ret = TxPrepareBase::prepareFutureHash(tx_json_, app_, ws_);
-        if (ret.isMember("error_message"))
+		if(ret.isMember(jss::error))
             return ret;
 
 		Json::Value statement(Json::arrayValue);
@@ -66,7 +70,7 @@ namespace ripple {
 
 			auto pTransPrepare = std::make_shared<TxSingleTransPrepare>(app_,this,secret_,public_,json,getCheckHashFunc_,ws_);
 			auto ret = pTransPrepare->prepare();
-			if (ret.isMember(jss::error_message))
+			if (ret.isMember(jss::error))
 			{
 				return ret;
 			}

@@ -25,9 +25,11 @@
 #include <boost/optional/optional_io.hpp>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableStatusDB.h>
+#include <peersafe/app/sql/STTx2SQL.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/util/TableSyncUtil.h>
@@ -614,7 +616,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
         auto time = ledger->info().closeTime.time_since_epoch().count();
 		if (retPair.second != NULL)
         {   
-            this->SendSeekResultReply(m->account(), i == stopIndex,time,wPeer, sNickName, eTargetType, ledger->info().seq, ledger->info().hash,lastTxChangeIndex, lastTxChangeHash,m->tablename());
+            this->SendSeekResultReply(m->account(), i == stopIndex,time,wPeer, sNickName, eTargetType, ledger->info().seq, retPair.second->getFieldH256(sfTxnLedgerHash),lastTxChangeIndex, lastTxChangeHash,m->tablename());
             iLastFindSeq = i;
             uLashFindHash = ledger->info().hash;
             lastTxChangeIndex = i;
@@ -735,7 +737,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
     auto oAccountID = ripple::parseBase58<AccountID>(owner);
     if (boost::none == oAccountID)
     {
-        sLastErr_ = tablename + ":owner wrong!";
+        sLastErr_ = tablename + ":owner invalid!";
         return std::make_pair(pItem, sLastErr_);
     }
     else accountID = *oAccountID;
@@ -749,7 +751,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
             {
 				auto pUser = ripple::parseBase58<AccountID>(user);
 				if (boost::none == pUser)
-					return std::make_pair(pItem, tablename + ":user wrong!");
+					return std::make_pair(pItem, tablename + ":user invalid!");
 				userAccountId = *pUser;
                 std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
                 SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
@@ -760,7 +762,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
         {
             JLOG(journal_.warn()) <<
                 "AccountID|userAccountId|secret exception" << e.what();
-            sLastErr_ = tablename + " exception";
+            sLastErr_ = tablename + " exception :" + e.what();
             return std::make_pair(pItem, sLastErr_);
         }
     }
@@ -786,7 +788,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
         {
             JLOG(journal_.warn()) <<
                 "AccountID|userAccountId|secret exception" << e.what();
-            sLastErr_ = tablename + " exception";
+            sLastErr_ = tablename + " exception :" + e.what();
             return std::make_pair(pItem, sLastErr_);
         }
     }
@@ -1112,7 +1114,14 @@ bool TableSync::CheckTheReplyIsValid(std::shared_ptr <protocol::TMTableData> con
 
 bool TableSync::IsNeedSyn(std::shared_ptr <TableSyncItem> pItem)
 {
-    if (pItem->TargetType() == TableSyncItem::SyncTarget_db && pItem->GetSyncState() == TableSyncItem::SYNC_STOP)     return false;
+    if (!bIsHaveSync_)
+    {
+        if (pItem->TargetType() == TableSyncItem::SyncTarget_db || 
+            pItem->TargetType() == TableSyncItem::SyncTarget_audit)     return false;
+    }
+    
+    if (pItem->GetSyncState() == TableSyncItem::SYNC_STOP)              return false;
+       
     return true;
 }
 bool TableSync::ClearNotSyncItem()
@@ -1121,7 +1130,7 @@ bool TableSync::ClearNotSyncItem()
 
 	listTableInfo_.remove_if([this](std::shared_ptr <TableSyncItem> pItem) {
 		return pItem->GetSyncState() == TableSyncItem::SYNC_REMOVE || 
-			   (pItem->TargetType() != TableSyncItem::SyncTarget_db && pItem->GetSyncState() == TableSyncItem::SYNC_STOP);
+			   pItem->GetSyncState() == TableSyncItem::SYNC_STOP;
 	});
 	return true;
 }
@@ -1138,9 +1147,7 @@ bool TableSync::IsNeedSyn()
 
 void TableSync::TryTableSync()
 {
-    if (!bIsHaveSync_)                return;
-
-    if (!bInitTableItems_)
+    if (!bInitTableItems_ && bIsHaveSync_)
     {
 		if (app_.getLedgerMaster().getValidLedgerIndex() > 0)
 		{
@@ -1173,13 +1180,15 @@ void TableSync::TableSyncThread()
         }
     }
 
+	bool bNeedReSync = false;
 	bool bNeedLocalSync = false;
 	auto iter = tmList.begin();
     while (iter != tmList.end())
     {
 		auto pItem = *iter;
-        pItem->GetBaseInfo(stItem); 
+        if (!IsNeedSyn(pItem))   continue;
 
+        pItem->GetBaseInfo(stItem);         
         switch (stItem.eState)
         {           
         case TableSyncItem::SYNC_REINIT:
@@ -1210,6 +1219,8 @@ void TableSync::TableSyncThread()
 		}
         case TableSyncItem::SYNC_INIT:
         {
+			JLOG(journal_.info()) << "TableSyncThread SYNC_INIT,tableName=" << stItem.sTableName << ",owner=" << to_string(stItem.accountID);
+
 			if (app_.getLedgerMaster().getValidLedgerIndex() == 0)
 				break;
 			auto stBaseInfo = app_.getLedgerMaster().getTableBaseInfo(app_.getLedgerMaster().getValidLedgerIndex(), stItem.accountID, stItem.sTableName);            
@@ -1271,6 +1282,8 @@ void TableSync::TableSyncThread()
 					if (pItem->InitPassphrase().first)
 					{
 						pItem->SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
+						bNeedReSync = true;
+						JLOG(journal_.info()) << "InitPassphrase success,tableName=" << stItem.sTableName << ",owner=" << to_string(stItem.accountID);
 					}
 					else
 					{
@@ -1412,6 +1425,10 @@ void TableSync::TableSyncThread()
     }
 
     bTableSyncThread_ = false;
+
+	if (bNeedReSync) {
+		TryTableSync();
+	}
 }
 
 void TableSync::TryLocalSync()
@@ -1462,6 +1479,8 @@ bool TableSync::Is256thLedgerExist(LedgerIndex index)
 
 bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash,uint32 time, uint256 chainId)
 {
+    if (!bIsHaveSync_)                return false;
+
     std::lock_guard<std::mutex> lock(mutexCreateTable_);
     
     bool ret = false;
@@ -1481,17 +1500,15 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
         std::shared_ptr<TableSyncItem> pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
         std::string PreviousCommit;
         pItem->Init(accountID, sTableName,true);
-        bool ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
+        ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
 		if(ret)
 		{
 			ret = true;
             std::lock_guard<std::mutex> lock(mutexlistTable_);
-            listTableInfo_.push_back(pItem);     
+            listTableInfo_.push_back(pItem);   
+			JLOG(journal_.info()) <<
+				"InsertListDynamically listTableInfo_ add item,tableName=" << sTableName <<",owner="<< to_string(accountID);
         }
-		else
-		{
-			return false;
-		}
     }
     catch (std::exception const& e)
     {
@@ -1616,40 +1633,79 @@ std::shared_ptr <TableSyncItem> TableSync::GetRightItem(AccountID accountID, std
     return *iter;
 }
 
-void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
-{    
-    if (!bAutoLoadTable_)  return;
-    if (!bIsHaveSync_)     return;
-    if (ledger == NULL)    return;
 
-    CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
-    for (auto const& item : ledger->txMap())
-    {
-        try
-        {
-            auto blob = SerialIter{ item.data(), item.size() }.getVL();
-            std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
+// check and sync table
+void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
+{    
+	if (ledger == NULL)    return;
+
+	CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
+	for (auto const& item : ledger->txMap())
+	{
+		try
+		{
+			auto blob = SerialIter{ item.data(), item.size() }.getVL();
+			std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
 			//
-			auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "",ledger,0);
+			auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "", ledger, 0);
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId
 			uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
+
 			for (auto& tx : vec)
 			{
-                if (tx.isFieldPresent(sfOpType))
-                {
-                    if (T_CREATE == tx.getFieldU16(sfOpType))
-                    {
+				if (tx.isFieldPresent(sfOpType))
+				{
+					AccountID accountID = tx.getAccountID(sfAccount);
+					auto tables         = tx.getFieldArray(sfTables);
+					uint160 uTxDBName   = tables[0].getFieldH160(sfNameInDB);
+					auto tableBlob      = tables[0].getFieldVL(sfTableName);
+					std::string tableName;
+					tableName.assign(tableBlob.begin(), tableBlob.end());
+
+					if (!bIsHaveSync_)
+					{
+						app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noDbConfig", ""), false);
+						break;
+					}
+
+					auto opType = tx.getFieldU16(sfOpType);
+					if (opType == T_CREATE)
+					{
+						std::string temKey = to_string(accountID) + tableName;
+						bool bInSyncTables = true;
+						if (setTableInCfg.end() == std::find(setTableInCfg.begin(), setTableInCfg.end(), temKey)) {
+							bInSyncTables = false;
+						}
+
+						// not in [auto_sync] && [sync_tables]
+						if (!bAutoLoadTable_ && !bInSyncTables) {
+
+							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noAutoSync", ""), false);
+							break;
+						}
+
 						OnCreateTableTx(tx, ledger, time, chainId);
-                    }
-                }
+					}
+					else if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
+						|| opType == R_DELETE)
+					{
+						bool bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+						if (!bDBTableExist)
+						{
+							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair(" db_noTableExistInDB", ""), false);
+							break;
+						}
+
+					}
+				}
 			}
-        }
-        catch (std::exception const&)
-        {
-            JLOG(journal_.warn()) << "Txn " << item.key() << " throws";
-        }
-    }
+		}
+		catch (std::exception const&)
+		{
+			JLOG(journal_.warn()) << "Txn " << item.key() << " throws";
+		}
+	}
 }
 
 void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
@@ -1661,7 +1717,11 @@ void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const
 	auto tableBlob = tables[0].getFieldVL(sfTableName);
 	std::string tableName;
 	tableName.assign(tableBlob.begin(), tableBlob.end());
-	InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
+	bool bInsertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
+	if (!bInsertRes)
+	{
+		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
+	}
 }
 //////////////////
 bool TableSync::IsAutoLoadTable()
@@ -1749,8 +1809,8 @@ std::pair<bool, std::string> TableSync::StopDumpTable(AccountID accountID, std::
 		return std::make_pair(false, "can't find the talbe in dump tasks.");;
 	}
     
-    std::shared_ptr<TableDumpItem> pAuditItem = std::static_pointer_cast<TableDumpItem>(*iter);
-    auto retStop = pAuditItem->StopTask();
+    std::shared_ptr<TableDumpItem> pDumpItem = std::static_pointer_cast<TableDumpItem>(*iter);
+    auto retStop = pDumpItem->StopTask();
     if (!retStop.first)
     {
         return retStop;
@@ -1761,8 +1821,30 @@ std::pair<bool, std::string> TableSync::StopDumpTable(AccountID accountID, std::
 	return std::make_pair(true, "");
 }
 
+bool TableSync::GetCurrentDumpPos(AccountID accountID, std::string sTableName, TableSyncItem::taskInfo &info)
+{
+    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    auto iter(listTableInfo_.end());
+    iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
+        [accountID, sTableName](std::shared_ptr <TableSyncItem>  pItem) {
+        return pItem->GetAccount() == accountID && pItem->GetTableName() == sTableName && pItem->TargetType() == TableSyncItem::SyncTarget_dump && pItem->GetSyncState() != TableSyncItem::SYNC_STOP;
+    });
+
+    if (iter == listTableInfo_.end())  return false;
+
+    std::shared_ptr<TableDumpItem> pDumpItem = std::static_pointer_cast<TableDumpItem>(*iter);
+    pDumpItem->GetCurrentPos(info);
+
+    return true;
+
+}
 std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::string sSql, std::string sPath)
 {
+    if (!bIsHaveSync_)
+    {
+        return std::make_pair(false, "fail to open a database connection.");
+    }
+
     {
         std::lock_guard<std::mutex> lock(mutexlistTable_);
         auto iter(listTableInfo_.end());
@@ -1828,5 +1910,21 @@ std::pair<bool, std::string> TableSync::StopAuditTable(std::string sNickName)
     return std::make_pair(true, "");
 }
 
+bool TableSync::GetCurrentAuditPos(std::string sNickName, TableSyncItem::taskInfo &info)
+{
+    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    auto iter(listTableInfo_.end());
+    iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
+        [sNickName](std::shared_ptr <TableSyncItem>  pItem) {
+        return pItem->GetNickName() == sNickName && pItem->TargetType() == TableSyncItem::SyncTarget_audit && pItem->GetSyncState() != TableSyncItem::SYNC_STOP;
+    });
+
+    if (iter == listTableInfo_.end())  return false;
+  
+    std::shared_ptr<TableAuditItem> pAuditItem = std::static_pointer_cast<TableAuditItem>(*iter);    
+    pAuditItem->GetCurrentPos(info);
+
+    return true;
+}
 
 }

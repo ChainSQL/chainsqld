@@ -26,6 +26,7 @@
 #include <ripple/rpc/impl/TransactionSign.h>
 #include <ripple/rpc/Role.h>
 #include <ripple/rpc/handlers/Handlers.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/basics/characterUtilities.h>
 
@@ -56,10 +57,9 @@ namespace ripple {
        
         if (ret[jss::tx_json].size() != 2)
         {
-			ret[jss::error] = "error";
-            ret[jss::error_message] = "must follow 2 params,in format:\"owner tableName secret\" \"path\".";
+			std::string errMsg = "must follow 2 params,in format:\"owner tableName secret\" \"path\".";
 			ret.removeMember(jss::tx_json);
-            return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, errMsg);
         }	
 
         //1. param similar to synctables
@@ -70,18 +70,14 @@ namespace ripple {
 		auto retPair = context.app.getTableSync().StartDumpTable(sNormal, sFullPath, NULL);        
 
 		if(!retPair.first)
-		{ 
-			ret[jss::error] = "error.";
-
+		{
             std::string sErrorMsg;
             TransGBK_UTF8(retPair.second, sErrorMsg, false);
-			ret[jss::error_message] = sErrorMsg;
-
 			ret.removeMember(jss::tx_json);
+			return RPC::make_error(rpcDUMP_GENERAL_ERR, sErrorMsg);
 		}
         else
-        {
-            
+        {           
             for (int i = 0; i < ret[jss::tx_json].size(); i++)
             {
                 std::string sDest = "";
@@ -97,41 +93,49 @@ namespace ripple {
 		return ret;
 	}
 
-	Json::Value doTableDumpStop(RPC::Context& context)
-	{
-		Json::Value ret(context.params);
+    Json::Value parseParam(RPC::Context& context, AccountID & ownerID, std::string &tableName)
+    {
+        Json::Value ret(context.params);
 
-		if (ret[jss::tx_json].size() != 2)
-		{
-			ret[jss::error] = "error.";
-			ret[jss::error_message] = "must follow 2 params,in format:owner tableName.";
-			ret.removeMember(jss::tx_json);
-			return ret;
-		}
-
-		std::string owner = ret[jss::tx_json][0U].asString();
-		std::string tableName = ret[jss::tx_json][1U].asString();
-        auto pOwnerID = ripple::parseBase58<AccountID>(owner);
-
-        if (!pOwnerID)
+        if (ret[jss::tx_json].size() != 2)
         {
-            ret[jss::error] = "error.";
-            ret[jss::error_message] = "para error, owner is invalid.";
+            std::string errMsg = "must follow 2 params,in format:owner tableName.";
             ret.removeMember(jss::tx_json);
-            return ret;
+			return RPC::make_error(rpcINVALID_PARAMS, errMsg);
         }
 
-		AccountID ownerID(*pOwnerID);
+        std::string owner = ret[jss::tx_json][0U].asString();
+        auto jvAccepted = RPC::accountFromString(ownerID, owner, true);
+        if (jvAccepted)
+        {
+            return jvAccepted;
+        }
+        std::shared_ptr<ReadView const> ledger;
+        auto result = RPC::lookupLedger(ledger, context);
+        if (!ledger)
+            return result;
+        if (!ledger->exists(keylet::account(ownerID)))
+            return rpcError(rpcACT_NOT_FOUND);
+
+        tableName = ret[jss::tx_json][1U].asString();
+
+        return ret;
+    }
+
+	Json::Value doTableDumpStop(RPC::Context& context)
+	{
+		AccountID ownerID;
+		std::string tableName;
+        Json::Value ret = parseParam(context, ownerID, tableName);
+        if (isRpcError(ret))   return ret;
+
 		auto retPair = context.app.getTableSync().StopDumpTable(ownerID, tableName);
         
 		if (!retPair.first)
 		{
-			ret[jss::error] = "error.";
-
             std::string sErrorMsg;
             TransGBK_UTF8(retPair.second, sErrorMsg, false);
-			ret[jss::error_message] = sErrorMsg;
-
+			RPC::inject_error(rpcDUMPSTOP_GENERAL_ERR, sErrorMsg, ret);
 			ret.removeMember(jss::tx_json);
 		}
         else
@@ -150,4 +154,30 @@ namespace ripple {
 		
 		return ret;
 	}
+
+    Json::Value getDumpCurPos(RPC::Context& context)
+    {
+        AccountID ownerID;
+        std::string tableName;
+        Json::Value ret = parseParam(context, ownerID, tableName);
+        if (isRpcError(ret))   return ret;
+
+        TableSyncItem::taskInfo info;
+        bool bRet = context.app.getTableSync().GetCurrentDumpPos(ownerID, tableName, info);
+        
+        if (bRet)
+        {
+            ret[jss::start]     = info.uStartPos;
+            ret[jss::stop]      = info.uStopPos;
+            ret[jss::current]   = info.uCurPos;
+        }
+        else
+        {
+            std::string errMsg = "task has already completed.";
+            ret.removeMember(jss::tx_json);
+            return RPC::make_error(rpcFIELD_CONTENT_EMPTY, errMsg);
+        }
+
+        return ret;
+    }
 } // ripple

@@ -24,6 +24,7 @@
 #include <ripple/basics/Blob.h>
 #include <ripple/basics/strHex.h>
 #include <boost/format.hpp>
+#include <iterator>
 #include <sstream>
 #include <string>
 
@@ -126,6 +127,13 @@ inline static std::string sqlEscape (Blob const& vecSrc)
     return j;
 }
 
+inline static std::string toUpper(const std::string& str)
+{
+	std::string dst;
+	std::transform(str.begin(), str.end(), back_inserter(dst), ::toupper);
+	return dst;
+}
+
 uint64_t uintFromHex (std::string const& strSrc);
 
 std::pair<Blob, bool> strUnHex (std::string const& strSrc);
@@ -143,7 +151,6 @@ struct parsedURL
 bool parseUrl (parsedURL& pUrl, std::string const& strUrl);
 
 std::string trim_whitespace (std::string str);
-
 } // ripple
 
 #endif

@@ -474,7 +474,7 @@ namespace ripple {
         const std::string &TxnLedgerSeq, const std::string &LedgerHash, const std::string &LedgerSeq, const std::string &TxnUpdateHash,
         const std::string &TxnLedgerTime, const std::string &PreviousCommit)
     {
-		soci_ret ret = soci_failed;
+		soci_ret ret = soci_success;
 
        try
         {
@@ -495,7 +495,6 @@ namespace ripple {
                 soci::use(Owner),
                 soci::use(TableNameInDB);
                         
-            ret = soci_success;
         }
         catch (std::exception const& e)
         {
@@ -510,7 +509,7 @@ namespace ripple {
 	soci_ret TableStatusDBSQLite::UpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB, const std::string &LedgerHash,
         const std::string &LedgerSeq, const std::string &PreviousCommit)
     {
-		soci_ret ret = soci_failed;
+		soci_ret ret = soci_success;
         
         try
         {
@@ -526,8 +525,6 @@ namespace ripple {
                 soci::use(PreviousCommit),
                 soci::use(Owner),
                 soci::use(TableNameInDB);
-                        
-            ret = soci_success;
         }
         catch (std::exception const& e)
         {
