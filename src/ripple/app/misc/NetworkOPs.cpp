@@ -2981,7 +2981,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 		auto simiIt	= subTx.find(txId);
 		if (simiIt != subTx.end())
 		{
-			bool bPendErase = false;
+			//bool bPendErase = false;
 			InfoSub::pointer p = simiIt->second.first.lock();
 			if (p)
 			{
@@ -2997,57 +2997,27 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				//for table-related tx and validation event
 				if (bForTableTx && bValidated)
 				{
-					//Json::Value jvToPub(Json::objectValue);
-					//if (isDBConfigured(app_))
-					//{
-						//if (!m_bAutoSync)
-						//{
-						//	Json::Value jvObj(Json::objectValue);
-						//	jvObj[jss::type] = "singleTransaction";
-						//	jvObj[jss::transaction] = stTxn.getJson(0);
-						////	jvObj[jss::status] = "db_noAutoSync";
-
-						//	jvToPub = jvObj;
-						//	bPendErase = true;
-						//}
-						//else
-						//{
-							//for chainsql type, subscribe db event
-							mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
-					//	}
-				  }
-			/*	else
-				{
-					Json::Value jvObj(Json::objectValue);
-					jvObj[jss::type] = "singleTransaction";
-					jvObj[jss::transaction] = stTxn.getJson(0);
-					jvObj[jss::status] = "db_noDbConfig";
-
-					jvToPub = jvObj;
-					bPendErase = true;
+					//for chainsql type, subscribe db event
+					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);			
 				}
-				if (bPendErase)
-				{
-					std::thread([this, txId, jvToPub]() {
-						std::this_thread::sleep_for(std::chrono::milliseconds(50));
-						ScopedLockType sl(mSubLock);
-						auto simiIt = mSubTx.find(txId);
-						if (simiIt != mSubTx.end())
-						{
-							InfoSub::pointer p = simiIt->second.first.lock();
-							if (p)
-							{
-								p->send(jvToPub, true);
-							}
-						}
-						mSubTx.erase(simiIt);
-					}).detach();
-				}*/
-			}
-//			if (!bPendErase)
-//			{
-//				subTx.erase(simiIt);
-//			}			
+				//if (bPendErase)
+				//{
+				//	std::thread([this, txId, jvToPub]() {
+				//		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				//		ScopedLockType sl(mSubLock);
+				//		auto simiIt = mSubTx.find(txId);
+				//		if (simiIt != mSubTx.end())
+				//		{
+				//			InfoSub::pointer p = simiIt->second.first.lock();
+				//			if (p)
+				//			{
+				//				p->send(jvToPub, true);
+				//			}
+				//		}
+				//		mSubTx.erase(simiIt);
+				//	}).detach();
+				//}
+			}	
 		}
 	}
 }
