@@ -27,7 +27,7 @@
 #include <peersafe/app/sql/SQLConditionTree.h>
 #include <peersafe/app/sql/STTx2SQL.h>
 #include <peersafe/app/sql/TxStore.h>
-
+#include <peersafe/app/sql/SQLConditionTree.h>
 
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -2550,7 +2550,7 @@ namespace helper {
 
 	Json::Value query_result(const soci::rowset<soci::row>& records) {
 		Json::Value obj;
-		Json::Value lines;
+		Json::Value lines(Json::arrayValue);
 		try {
 			soci::rowset<soci::row>::const_iterator r = records.begin();
 			for (; r != records.end(); r++) {
@@ -2618,8 +2618,8 @@ namespace helper {
         int iPosLimitUpper = sSql.find("LIMIT");
         if (iPosLimitLower >= 0 || iPosLimitUpper >= 0)
         {
-            if (iPosLimitLower)   sLimit = sSql.substr(iPosLimitLower);
-            else                  sLimit = sSql.substr(iPosLimitUpper);
+			if (iPosLimitLower >= 0)   sLimit = sSql.substr(iPosLimitLower);
+			else                       sLimit = sSql.substr(iPosLimitUpper);
 
             const char * chLimit = sLimit.c_str();
             for (int i = 5; i<sLimit.length(); i++)
@@ -2784,6 +2784,23 @@ bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
     }
     
     return bExist;
+}
+
+// parse condition to string, like  "[{\"id\" : {\"$ge\" : 3}}]" to "id>=3"
+bool STTx2SQL::ConvertCondition2SQL(const Json::Value& condition, std::string& sSql)
+{
+
+	auto rTree = conditionTree::createRoot(condition);
+	if (rTree.first != 0)
+		return false;
+
+	auto rConditions = conditionParse::parse_conditions(condition, rTree.second);
+	if (rConditions.first != 0)
+		return false;
+
+	sSql = rTree.second.asString();
+
+	return true;
 }
 
 int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql) {
@@ -3207,7 +3224,7 @@ bool STTx2SQL::assert_result(const soci::rowset<soci::row>& records, const Json:
 
 bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	bool check = true;
-	if (optype == BuildSQL::BUILD_DROPTABLE_SQL 
+	if (optype == BuildSQL::BUILD_DROPTABLE_SQL
 		|| optype == BuildSQL::BUILD_RENAMETABLE_SQL
 		|| optype == BuildSQL::BUILD_CANCEL_ASSIGN_SQL
 		|| optype == BuildSQL::BUILD_ASSIGN_SQL) {

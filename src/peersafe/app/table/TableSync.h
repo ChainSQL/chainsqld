@@ -62,9 +62,8 @@ public:
     bool GotLedger(std::shared_ptr <protocol::TMLedgerData> const& m);
 
     void SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo, TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>>& cache);
-    void SeekCreateTable(std::shared_ptr<Ledger const> const& ledger);    
+    void CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger);
 	void OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger, uint32 time, uint256 const& chainId);
-
     bool ReStartOneTable(AccountID accountID, std::string sNameInDB, std::string sTableName, bool bDrop, bool bCommit);
     bool StopOneTable(AccountID accountID, std::string sNameInDB, bool bNewTable);
 

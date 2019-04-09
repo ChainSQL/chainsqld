@@ -324,7 +324,7 @@ namespace ripple {
 
 	soci_ret TableStatusDBMySQL::UpdateSyncDB(AccountID accountID, std::string TableName, std::string TableNameInDB)
     {
-		soci_ret ret = soci_failed;
+		soci_ret ret = soci_success;
         try {
             std::string Owner = to_string(accountID);
 
@@ -339,10 +339,7 @@ namespace ripple {
 
             soci::statement st = sql_session->prepare << sql;
 
-            bool dbret = st.execute(true);
-
-            if (dbret)
-                ret = soci_success;
+            st.execute(true);
         }
         catch (std::exception const& e)
         {
@@ -426,7 +423,7 @@ namespace ripple {
         const std::string &TxnLedgerSeq, const std::string &LedgerHash, const std::string &LedgerSeq, const std::string &TxnUpdateHash,
         const std::string &TxnLedgerTime, const std::string &PreviousCommit)
     {
-		soci_ret ret = soci_failed;
+		soci_ret ret = soci_success;
         try
         {
             LockedSociSession sql_session = databasecon_->checkoutDb();
@@ -445,12 +442,7 @@ namespace ripple {
                 soci::use(Owner),
                 soci::use(TableNameInDB));
 
-            bool dbret = st.execute(true);
-
-            if (dbret)//if have records
-            {
-                ret = soci_success;
-            }
+            st.execute(true);
         }
         catch (std::exception const& e)
         {
@@ -464,7 +456,7 @@ namespace ripple {
     soci_ret TableStatusDBMySQL::UpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB, const std::string &LedgerHash,
         const std::string &LedgerSeq, const std::string &PreviousCommit)
     {
-		soci_ret ret = soci_failed;
+		soci_ret ret = soci_success;
         try
         {
             LockedSociSession sql_session = databasecon_->checkoutDb();
@@ -480,12 +472,12 @@ namespace ripple {
                 soci::use(Owner),
                 soci::use(TableNameInDB));
 
-            bool dbret = st.execute(true);
+            st.execute(true);
 
-            if (dbret)//if have records
-            {
-                ret = soci_success;
-            }
+            //if (dbret)//if have records
+            //{
+            //    ret = soci_success;
+            //}
         }
         catch (std::exception const& e)
         {
@@ -531,7 +523,7 @@ namespace ripple {
 	soci_ret TableStatusDBMySQL::UpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB,
         bool bDel, const std::string &PreviousCommit)
     {
-		soci_ret ret = soci_failed;
+		soci_ret ret = soci_success;
         try {
             LockedSociSession sql_session = databasecon_->checkoutDb();
 
@@ -544,10 +536,7 @@ namespace ripple {
 
             soci::statement st = ((*sql_session).prepare << sql);
 
-            bool dbret = st.execute(true);
-
-            if(dbret)
-                ret = soci_success;
+            st.execute(true);
         }
         catch (std::exception const& e)
         {

@@ -25,9 +25,11 @@
 #include <boost/optional/optional_io.hpp>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableStatusDB.h>
+#include <peersafe/app/sql/STTx2SQL.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/util/TableSyncUtil.h>
@@ -1178,6 +1180,7 @@ void TableSync::TableSyncThread()
         }
     }
 
+	bool bNeedReSync = false;
 	bool bNeedLocalSync = false;
 	auto iter = tmList.begin();
     while (iter != tmList.end())
@@ -1279,6 +1282,7 @@ void TableSync::TableSyncThread()
 					if (pItem->InitPassphrase().first)
 					{
 						pItem->SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
+						bNeedReSync = true;
 						JLOG(journal_.info()) << "InitPassphrase success,tableName=" << stItem.sTableName << ",owner=" << to_string(stItem.accountID);
 					}
 					else
@@ -1421,6 +1425,10 @@ void TableSync::TableSyncThread()
     }
 
     bTableSyncThread_ = false;
+
+	if (bNeedReSync) {
+		TryTableSync();
+	}
 }
 
 void TableSync::TryLocalSync()
@@ -1492,7 +1500,7 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
         std::shared_ptr<TableSyncItem> pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
         std::string PreviousCommit;
         pItem->Init(accountID, sTableName,true);
-        bool ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
+        ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
 		if(ret)
 		{
 			ret = true;
@@ -1501,10 +1509,6 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
 			JLOG(journal_.info()) <<
 				"InsertListDynamically listTableInfo_ add item,tableName=" << sTableName <<",owner="<< to_string(accountID);
         }
-		else
-		{
-			return false;
-		}
     }
     catch (std::exception const& e)
     {
@@ -1629,40 +1633,79 @@ std::shared_ptr <TableSyncItem> TableSync::GetRightItem(AccountID accountID, std
     return *iter;
 }
 
-void TableSync::SeekCreateTable(std::shared_ptr<Ledger const> const& ledger)
-{    
-    if (!bAutoLoadTable_)  return;
-    if (!bIsHaveSync_)     return;
-    if (ledger == NULL)    return;
 
-    CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
-    for (auto const& item : ledger->txMap())
-    {
-        try
-        {
-            auto blob = SerialIter{ item.data(), item.size() }.getVL();
-            std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
+// check and sync table
+void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
+{    
+	if (ledger == NULL)    return;
+
+	CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
+	for (auto const& item : ledger->txMap())
+	{
+		try
+		{
+			auto blob = SerialIter{ item.data(), item.size() }.getVL();
+			std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
 			//
-			auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "",ledger,0);
+			auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "", ledger, 0);
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId
 			uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
+
 			for (auto& tx : vec)
 			{
-                if (tx.isFieldPresent(sfOpType))
-                {
-                    if (T_CREATE == tx.getFieldU16(sfOpType))
-                    {
+				if (tx.isFieldPresent(sfOpType))
+				{
+					AccountID accountID = tx.getAccountID(sfAccount);
+					auto tables         = tx.getFieldArray(sfTables);
+					uint160 uTxDBName   = tables[0].getFieldH160(sfNameInDB);
+					auto tableBlob      = tables[0].getFieldVL(sfTableName);
+					std::string tableName;
+					tableName.assign(tableBlob.begin(), tableBlob.end());
+
+					if (!bIsHaveSync_)
+					{
+						app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noDbConfig", ""), false);
+						break;
+					}
+
+					auto opType = tx.getFieldU16(sfOpType);
+					if (opType == T_CREATE)
+					{
+						std::string temKey = to_string(accountID) + tableName;
+						bool bInSyncTables = true;
+						if (setTableInCfg.end() == std::find(setTableInCfg.begin(), setTableInCfg.end(), temKey)) {
+							bInSyncTables = false;
+						}
+
+						// not in [auto_sync] && [sync_tables]
+						if (!bAutoLoadTable_ && !bInSyncTables) {
+
+							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noAutoSync", ""), false);
+							break;
+						}
+
 						OnCreateTableTx(tx, ledger, time, chainId);
-                    }
-                }
+					}
+					else if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
+						|| opType == R_DELETE)
+					{
+						bool bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+						if (!bDBTableExist)
+						{
+							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair(" db_noTableExistInDB", ""), false);
+							break;
+						}
+
+					}
+				}
 			}
-        }
-        catch (std::exception const&)
-        {
-            JLOG(journal_.warn()) << "Txn " << item.key() << " throws";
-        }
-    }
+		}
+		catch (std::exception const&)
+		{
+			JLOG(journal_.warn()) << "Txn " << item.key() << " throws";
+		}
+	}
 }
 
 void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
@@ -1677,7 +1720,7 @@ void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const
 	bool bInsertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
 	if (!bInsertRes)
 	{
-		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << "owner = " << to_string(accountID);
+		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
 	}
 }
 //////////////////
