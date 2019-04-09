@@ -76,7 +76,8 @@ public:
 	std::vector<STTx>		getTxs(STTx const& tx, 
 								std::string sTableNameInDB = "",
 								std::shared_ptr<ReadView const> ledger = nullptr,
-								int ledgerSeq = 0);
+								int ledgerSeq = 0,
+								bool includeAssert = true);
 private:
     Application& mApp;
     TaggedCache <uint256, Transaction> mCache;

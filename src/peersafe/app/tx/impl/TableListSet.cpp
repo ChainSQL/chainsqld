@@ -588,29 +588,23 @@ namespace ripple {
         else
         {
             auto &aTableEntries = tablesle->peekFieldArray(sfTableEntries);
-			
-            Blob sTxTableName;
 
             auto const & sTxTables = tx.getFieldArray(sfTables);
-            sTxTableName = sTxTables[0].getFieldVL(sfTableName);
+			auto vTableNameStr = sTxTables[0].getFieldVL(sfTableName);
 
-            for (auto & table : aTableEntries)
-            {
-                auto str = table.getFieldVL(sfTableName);
-                if (table.getFieldVL(sfTableName) == sTxTableName)
-                {
-                    if (table.getFieldU32(sfTxnLgrSeq) != view.info().seq || table.getFieldH256(sfTxnLedgerHash) != view.info().hash)
-                    {
-                        table.setFieldU32(sfPreviousTxnLgrSeq, table.getFieldU32(sfTxnLgrSeq));
-                        table.setFieldH256(sfPrevTxnLedgerHash, table.getFieldH256(sfTxnLedgerHash));
-                        table.setFieldU32(sfTxnLgrSeq, view.info().seq);
-                        table.setFieldH256(sfTxnLedgerHash, view.info().hash);
-                    }
-                }
-            }
+			STEntry* pEntry = getTableEntry(aTableEntries, vTableNameStr);
+			if (pEntry)
+			{
+				auto& table = *pEntry;
+				if (table.getFieldU32(sfTxnLgrSeq) != view.info().seq || table.getFieldH256(sfTxnLedgerHash) != view.info().hash)
+				{
+					table.setFieldU32(sfPreviousTxnLgrSeq, table.getFieldU32(sfTxnLgrSeq));
+					table.setFieldH256(sfPrevTxnLedgerHash, table.getFieldH256(sfTxnLedgerHash));
+					table.setFieldU32(sfTxnLgrSeq, view.info().seq);
+					table.setFieldH256(sfTxnLedgerHash, view.info().hash);
+				}
+			}
 
-            auto tables = tx.getFieldArray(sfTables);
-            Blob vTableNameStr = tables.begin()->getFieldVL(sfTableName);
             //add the new tx to the node
             switch (optype)
             {

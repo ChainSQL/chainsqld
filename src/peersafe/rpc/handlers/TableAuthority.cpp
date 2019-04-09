@@ -79,6 +79,9 @@ namespace ripple {
 			return RPC::invalid_field_error(jss::tablename);
 		}
 
+		ret[jss::owner] = params[jss::owner].asString();
+		ret[jss::tablename] = tableName;
+
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		STEntry* pEntry = nullptr;
 		if (ledger)

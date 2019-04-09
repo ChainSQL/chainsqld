@@ -420,7 +420,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
 						lastLedgerHash = ledger->info().hash;
 
 						bSendEnd = true; 
-                        JLOG(journal_.info()) << "in local seekLedger, this ledger does not include the tx : " << uStopIndex
+                        JLOG(journal_.info()) << "in local seekLedger, this ledger does not include tx : " << uStopIndex
                             << " lashTxChecHash : " << lashTxChecHash
                             << " nameInDB : " << stItemInfo.sTableNameInDB;                            
 						continue;
@@ -620,7 +620,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
             iLastFindSeq = i;
             uLashFindHash = ledger->info().hash;
             lastTxChangeIndex = i;
-            lastTxChangeHash  = retPair.second? retPair.second->getFieldH256(sfTxnLedgerHash) : lastTxChangeHash;
+			lastTxChangeHash = ledger->info().hash;//retPair.second->getFieldH256(sfTxnLedgerHash);
         }
         else if(iBlockEnd == i || (!bGetLost && i == stopIndex) || !retPair.first)
         {       
