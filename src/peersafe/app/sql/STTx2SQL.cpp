@@ -2550,7 +2550,7 @@ namespace helper {
 
 	Json::Value query_result(const soci::rowset<soci::row>& records) {
 		Json::Value obj;
-		Json::Value lines;
+		Json::Value lines(Json::arrayValue);
 		try {
 			soci::rowset<soci::row>::const_iterator r = records.begin();
 			for (; r != records.end(); r++) {
