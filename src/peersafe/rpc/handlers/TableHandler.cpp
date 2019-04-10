@@ -349,13 +349,13 @@ Json::Value checkSig(RPC::Context&  context)
 	}
 
 	//check for LedgerIndex
-	auto valSeq = context.app.getLedgerMaster().getValidatedLedger()->info().seq;
+	auto valSeq = context.app.getLedgerMaster().getCurrentLedgerIndex();
 	if (!tx_json.isMember("LedgerIndex"))
 	{
 		return RPC::missing_field_error("LedgerIndex");
 	}
 	auto seqInJson = tx_json["LedgerIndex"].asUInt();
-	if (valSeq - seqInJson < 0 || valSeq - seqInJson > 3)
+	if (valSeq - seqInJson < 0 || valSeq - seqInJson > 5)
 	{
 		return RPC::invalid_field_error("LedgerIndex");
 	}
