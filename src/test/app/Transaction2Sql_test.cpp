@@ -1341,8 +1341,8 @@ public:
 	}
 
 	void test_sample_mongodb_json_style() {
-		std::string ops[] = { "$eq","$ne","$lt","$le","$gt","$ge" };
-		std::string expect_ops[] = {"=", "!=", "<", "<=", ">", ">="};
+		std::string ops[] = { "$eq","$ne","$lt","$le","$gt","$ge","$is", "$isnot" };
+		std::string expect_ops[] = {"=", "!=", "<", "<=", ">", ">=", "is", "is not"};
 		for (size_t i = 0; i < 6; i++) {
 			std::string raw_string = (boost::format("[{\"age\":{\"%1%\":20}}]") %ops[i]).str();
 			Json::Reader reader = Json::Reader();
@@ -1359,6 +1359,26 @@ public:
 
 			std::string result_conditions = result.second.asString();
 			std::string expect_conditions = (boost::format("age %1% 20") %expect_ops[i]).str();
+			BEAST_EXPECT(result_conditions == expect_conditions);
+		}
+
+		for (size_t i = 6; i < 8; i++)
+		{
+			std::string raw_string = (boost::format("[{\"age\":{\"%1%\":\"null\"}}]") % ops[i]).str();
+			Json::Reader reader = Json::Reader();
+			Json::Value conditions;
+			if (reader.parse(raw_string, conditions) == false) {
+				std::cout << "parse error. " << reader.getFormatedErrorMessages() << std::endl;
+				return;
+			}
+			auto result = createConditionTree(conditions);
+			//BEAST_EXPECT(result.first == 0);
+
+			auto result2 = parse_conditions(conditions, result.second);
+			//BEAST_EXPECT(result2.first == 0);
+
+			std::string result_conditions = result.second.asString();
+			std::string expect_conditions = (boost::format("age %1% NULL") % expect_ops[i]).str();
 			BEAST_EXPECT(result_conditions == expect_conditions);
 		}
 

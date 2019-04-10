@@ -2567,25 +2567,25 @@ namespace helper {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<int>(i);
 						else
-							e[r->get_properties(i).get_name()] = 0;
+							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_double) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<double>(i);
 						else
-							e[r->get_properties(i).get_name()] = 0.0;
+							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<long long>(i));
 						else
-							e[r->get_properties(i).get_name()] = 0;
+							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<unsigned long long>(i));
 						else
-							e[r->get_properties(i).get_name()] = 0;
+							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
 						std::tm tm = { 0 };
