@@ -19,6 +19,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <string>
 #include <vector>
+#include <thread>
 
 #include <ripple/beast/unit_test.h>
 #include <ripple/basics/StringUtilities.h>
@@ -189,7 +190,7 @@ private:
 		size_t t1_end = (runCodes.size() / 2) - 1;
 		std::thread t1([this,&worker, &runCodes, t1_start, t1_end]() {
 			
-			long idx = 1;
+			uint8_t idx = 1;
 			for(size_t i = t1_start; i < t1_end; i++) {
 				bytes code;
 				code.assign(runCodes[i].begin(), runCodes[i].end());
@@ -205,7 +206,7 @@ private:
 		size_t t2_end = runCodes.size();
 		std::thread t2([this, &worker, &runCodes, t2_start, t2_end]() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-			long idx = 1;
+			uint8_t idx = 1;
 			for(size_t i = t2_start; i < t2_end; i++) {
 				bytes code;
 				code.assign(runCodes[i].begin(), runCodes[i].end());
