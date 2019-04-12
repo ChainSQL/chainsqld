@@ -363,8 +363,10 @@ FakeExecutive::FakeExecutive(const bytesConstRef& data, const bytes& code)
 , code_(code) {
 }
 
+std::string g_str = "";
+bytesConstRef g_data((uint8_t*)g_str.c_str(),g_str.size());
 FakeExecutive::FakeExecutive(const bytes& code)
-: data_{(uint8_t*)"",0}
+: data_(g_data)
 , code_(code) {
 
 }

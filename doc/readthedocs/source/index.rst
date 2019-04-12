@@ -1,7 +1,7 @@
 ChainSQL
 ========
 
-.. image:: ../../images/logo.png
+.. image:: ../../../images/logo.png
     :width: 301px
     :alt: ChainSQL logo
     :align: center
@@ -20,7 +20,7 @@ ChainSQL是全球首个基于区块链的数据库应用平台，基于开源项
 
 系统架构
 
-    .. image:: ../../images/ChainSQL.png
+    .. image:: ../../../images/ChainSQL.png
         :width: 326px
         :alt: ChainSQL Framework
         :align: center

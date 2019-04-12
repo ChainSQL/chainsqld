@@ -244,6 +244,12 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 		else if (boost::iequals(op, "$nin")) {
 			op = "not in";
 		}
+        else if (boost::iequals(op, "$is")) {
+            op = "is";
+        }
+        else if (boost::iequals(op, "$isnot")) {
+            op = "is not";
+        }
 
 		// handle regex 
 		std::function<bool(std::string&, int)> modify_bind_string = [this](std::string& fv, int style) {
@@ -301,7 +307,20 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 
 				sub = (boost::format("%1% %2% %3%")
 					% keyname %op %element).str();
-			} else {
+            } else if (op == "is" || op == "is not") {
+                if (!(value[0].isString() || value[0].isBlob() ||
+                      value[0].isText() || value[0].isVarchar())) {
+                    return false;
+                }
+
+                std::string s = value[0].asString();
+                transform(s.begin(), s.end(), s.begin(), ::toupper);
+                if (s != "NULL") {
+                    return false;
+                }
+
+                sub += (boost::format("%1% %2% %3%") %keyname %op %s).str();
+            } else {
 				//assert(value.size() == 1);
 				assert(op != "in" && op != "not in");
 				const BindValue& v = value[0];
@@ -487,6 +506,7 @@ namespace conditionParse {
 		if (boost::iequals(logic, "$eq") || boost::iequals(logic, "$ne")
 			|| boost::iequals(logic, "$lt") || boost::iequals(logic, "$le")
 			|| boost::iequals(logic, "$gt") || boost::iequals(logic, "$ge")
+            || boost::iequals(logic, "$is") || boost::iequals(logic, "$isnot")
 			|| boost::iequals(logic, "$regex") || boost::iequals(logic, "$in")
 			|| boost::iequals(logic, "$nin")) {
 			return true;

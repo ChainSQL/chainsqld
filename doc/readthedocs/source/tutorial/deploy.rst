@@ -11,7 +11,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 软硬件环境要求
 ==============
 
-    .. image:: ../../../images/environment.png
+    .. image:: ../../../../images/environment.png
         :width: 600px
         :alt: ChainSQL Framework
         :align: center
