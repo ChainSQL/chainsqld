@@ -756,15 +756,14 @@ commit
 -------
 例子
 -------
-
 .. code-block:: java
 
   c.beginTran();
 
-  c.table("posts").insert({name: 'peera',age: 22}, {name: 'peerb',age: 21});
-  c.table("posts").get({id: 1}).assert({age:22,name:'peera'});
-  c.table("posts").get({id: 1}).update({age:52,name:'lisi'});
-  c.table("comments").delete({id: 1});
+  c.table("posts").insert("{name: 'peera',age: 22}, {name: 'peerb',age: 21}");
+  c.table("posts").get("{id: 1}").assert"({age:22,name:'peera'}");
+  c.table("posts").get("{id: 1}").update("{age:52,name:'lisi'}");
+  c.table("comments").delete("{id: 1}");
 
   c.commit();
 
@@ -886,17 +885,17 @@ subscribeTable
 2. ``owner``     - ``String``:  为表的所有者地址;
 3. ``cb``        - ``Callback`` : 回调函数
 
-.. code-block:: javascript
+.. code-block:: json
 
-    {
-      "owner":"zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M",
-      "status":"validate_success",
-      "tablename":"sub_message1", 
-      "transaction": {
-        … 
-      },
-      "type":"table"
-    }
+  {
+    "owner":"zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M",
+    "status":"validate_success",
+    "tablename":"sub_message1", 
+    "transaction": {
+     
+    },
+    "type":"table"
+  }
 
 -------
 返回值
