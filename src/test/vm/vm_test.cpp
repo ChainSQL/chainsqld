@@ -25,7 +25,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/basics/StringUtilities.h>
 #include <boost/algorithm/string.hpp>
 
-#include "FakeExtVM.h"
+#include <test/vm/FakeExtVM.h>
+//#include "FakeExtVM.h"
 
 /*
 * usage:

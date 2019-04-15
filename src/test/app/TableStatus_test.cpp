@@ -43,6 +43,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/format.hpp>
 #include <test/jtx.h>
+#include <test/app/SuitLogs.h>
 #include <iostream>
 #include <peersafe/app/table/TableStatusDB.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
@@ -53,71 +54,71 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 using namespace std;
 
 namespace ripple {
-	class SuiteSink : public beast::Journal::Sink
-	{
-		std::string partition_;
-		beast::unit_test::suite& suite_;
+	//class SuiteSink : public beast::Journal::Sink
+	//{
+	//	std::string partition_;
+	//	beast::unit_test::suite& suite_;
 
-	public:
-		SuiteSink(std::string const& partition,
-			beast::severities::Severity threshold,
-			beast::unit_test::suite& suite)
-			: Sink(threshold, false)
-			, partition_(partition + " ")
-			, suite_(suite)
-		{
-		}
+	//public:
+	//	SuiteSink(std::string const& partition,
+	//		beast::severities::Severity threshold,
+	//		beast::unit_test::suite& suite)
+	//		: Sink(threshold, false)
+	//		, partition_(partition + " ")
+	//		, suite_(suite)
+	//	{
+	//	}
 
-		// For unit testing, always generate logging text.
-		bool active(beast::severities::Severity level) const override
-		{
-			return true;
-		}
+	//	// For unit testing, always generate logging text.
+	//	bool active(beast::severities::Severity level) const override
+	//	{
+	//		return true;
+	//	}
 
-		void
-			write(beast::severities::Severity level,
-				std::string const& text) override
-		{
-			using namespace beast::severities;
-			std::string s;
-			switch (level)
-			{
-			case kTrace:    s = "TRC:"; break;
-			case kDebug:    s = "DBG:"; break;
-			case kInfo:     s = "INF:"; break;
-			case kWarning:  s = "WRN:"; break;
-			case kError:    s = "ERR:"; break;
-			default:
-			case kFatal:    s = "FTL:"; break;
-			}
+	//	void
+	//		write(beast::severities::Severity level,
+	//			std::string const& text) override
+	//	{
+	//		using namespace beast::severities;
+	//		std::string s;
+	//		switch (level)
+	//		{
+	//		case kTrace:    s = "TRC:"; break;
+	//		case kDebug:    s = "DBG:"; break;
+	//		case kInfo:     s = "INF:"; break;
+	//		case kWarning:  s = "WRN:"; break;
+	//		case kError:    s = "ERR:"; break;
+	//		default:
+	//		case kFatal:    s = "FTL:"; break;
+	//		}
 
-			// Only write the string if the level at least equals the threshold.
-			if (level >= threshold())
-				suite_.log << s << partition_ << text << std::endl;
-		}
-	};
+	//		// Only write the string if the level at least equals the threshold.
+	//		if (level >= threshold())
+	//			suite_.log << s << partition_ << text << std::endl;
+	//	}
+	//};
 
-	class SuiteLogs : public Logs
-	{
-		beast::unit_test::suite& suite_;
+	//class SuiteLogs : public Logs
+	//{
+	//	beast::unit_test::suite& suite_;
 
-	public:
-		explicit
-			SuiteLogs(beast::unit_test::suite& suite)
-			: Logs(beast::severities::kError)
-			, suite_(suite)
-		{
-		}
+	//public:
+	//	explicit
+	//		SuiteLogs(beast::unit_test::suite& suite)
+	//		: Logs(beast::severities::kError)
+	//		, suite_(suite)
+	//	{
+	//	}
 
-		~SuiteLogs() override = default;
+	//	~SuiteLogs() override = default;
 
-		std::unique_ptr<beast::Journal::Sink>
-			makeSink(std::string const& partition,
-				beast::severities::Severity threshold) override
-		{
-			return std::make_unique<SuiteSink>(partition, threshold, suite_);
-		}
-	};
+	//	std::unique_ptr<beast::Journal::Sink>
+	//		makeSink(std::string const& partition,
+	//			beast::severities::Severity threshold) override
+	//	{
+	//		return std::make_unique<SuiteSink>(partition, threshold, suite_);
+	//	}
+	//};
 
 	extern std::unique_ptr<ripple::Logs> logs_;
 

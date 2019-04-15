@@ -247,7 +247,8 @@ server_status_test_unity.cpp
 shamap_test_unity.cpp
 jtx_unity1.cpp
 jtx_unity2.cpp
-csf_unity.cpp)
+csf_unity.cpp
+vm_test_unity.cpp)
 
 prepend(peersafe_unity_srcs
 src/peersafe/unity/
