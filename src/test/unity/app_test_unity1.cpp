@@ -20,6 +20,7 @@
 
 #include <test/app/AccountTxPaging_test.cpp>
 #include <test/app/AmendmentTable_test.cpp>
+#include <test/app/ChainSql_test.cpp>
 #include <test/app/CrossingLimits_test.cpp>
 #include <test/app/DeliverMin_test.cpp>
 #include <test/app/Discrepancy_test.cpp>
@@ -27,6 +28,7 @@
 #include <test/app/Flow_test.cpp>
 #include <test/app/Freeze_test.cpp>
 #include <test/app/HashRouter_test.cpp>
+#include <test/app/Json2Sql_test.cpp>
 #include <test/app/LedgerLoad_test.cpp>
 #include <test/app/LoadFeeTrack_test.cpp>
 #include <test/app/Manifest_test.cpp>
