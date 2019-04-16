@@ -143,8 +143,8 @@ public:
 		add (rpcFIELD_CONTENT_EMPTY,   "fieldContentEmpty",	   "Field content is empty.");
 		add (rpcCTR_EVMEXE_EXCEPTION,  "contractEVMexeError",  "Contract execution exception.");
 		add (rpcCTR_EVMCALL_EXCEPTION, "contractEVMcallError", "Contract execution exception.");
-		add (rpcSQL_OPERRULE_MULTABLE_QUERY_NOT_SUPPORT, "operRuleMulQuerysqlNotSupport", "OperationRule Table not support multi_table sql_query");
-    }
+		add(rpcSQL_MULQUERY_NOT_SUPPORT, "mulQuerysqlNotSupport", "OperationRule Table not support multi_table sql_query");
+	}
 
     ErrorInfo const& get (error_code_i code) const
     {

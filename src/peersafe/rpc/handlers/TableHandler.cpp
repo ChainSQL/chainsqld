@@ -560,7 +560,7 @@ Json::Value checkOperationRuleForSql(RPC::Context& context, AccountID& accountID
 		// union queries && rule not supported
 		if (!rule.empty() && setOwnerID2TableName.size() > 1)
 		{
-			return rpcError(rpcSQL_OPERRULE_MULTABLE_QUERY_NOT_SUPPORT);
+			return rpcError(rpcSQL_MULQUERY_NOT_SUPPORT);
 		}
 
 		// sql concatennation according to jss::condition
