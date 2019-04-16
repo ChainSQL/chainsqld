@@ -45,8 +45,6 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 检查是否能正常登录：::
 
 	mysql -uroot –p
-	-u 表示选择登录的用户名
-	-p 表示登录的用户密码
 
 上面命令输入之后会提示输入密码，此时正确输入密码就可以登录到mysql。
 
@@ -136,12 +134,12 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
     nohup ./chainsqld --conf="./chainsqld-example.cfg"&
 
-确认chainsqld程序已经启动，输入ps -ef|grep chainsqld，看是否列出chainsqld进程
+确认chainsqld程序已经启动，输入 ``ps -ef|grep chainsqld`` ，看是否列出chainsqld进程
 
 .. WARNING::
-    这里启动chainsqld进程，是因为下面的validation_create命令要向进程发送rpc请求，如果进程启动不成功，命令会返回错误。
+    在0.30.3版本之前，执行这一命令要提前启动chainsqld进程，是因为下面的validation_create命令要向进程发送rpc请求，如果进程启动不成功，命令会返回错误。0.30.3及之后的版本可以不启动chainsqld程序直接返回结果。
 
-生成validation_public_key及validation_seed, 输入:
+生成 ``validation_public_key`` 及 ``validation_seed`` , 输入:
 
 .. code-block:: bash
 
@@ -159,6 +157,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
     }
 
 .. IMPORTANT::
+
     如果配置文件的名称为 ``chainsqld.cfg``  ，可以不用加--conf指定配置文件路径，直接运行 ``nohup ./chainsqld &`` 命令即可启动节点。
 
 2.	配置文件的修改
@@ -180,15 +179,17 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 	user=root
 	pass=root
 	db=chainsql
-	first_storage=0   #关闭先入库后共识的功能
-	unix_socket=/var/lib/mysql/mysql.sock #使用localhost连接时，会默认使用sock方式连接，默认sock路径是/var/run/mysqld/mysqld.sock在非ubuntu系统中，这个路径是不对的，需要用unix_socket选项来指定sock路径，如果用ip去连接，会使用tcp方式连接，就不会有问题
+	first_storage=0
+	unix_socket=/var/lib/mysql/mysql.sock
 
-[server]  不同节点配置不同
+.. note::
+
+	使用localhost连接时，会默认使用 ``sock`` 方式连接，默认sock路径是 ``/var/run/mysqld/mysqld.sock`` 在非ubuntu系统中，这个路径是不对的，会导致连接数据库失败，需要用 ``unix_socket`` 选项来指定 ``sock`` 路径，如果用ip去连接，会使用 ``tcp`` 方式连接，就不会有这个问题
 
 [node_db]
 
--  windows平台: type=NuDB
--  Ubuntu平台: type=RocksDB
+- windows平台: type=NuDB
+- Ubuntu平台: type=RocksDB
 
 [ips_fixed]
 
@@ -203,7 +204,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 [validators]或[validators_file]
 
-  添加其他(三个)节点的validation_public_key；
+  添加其他(三个)节点的 ``validation_public_key`` ；
 
 例如：::
 
@@ -223,7 +224,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 [validation_seed]
 
-  添加本节点的validation_seed。只有验证节点需要配validation_seed，普通节点不需要这一配置。
+  添加本节点的 ``validation_seed`` 。只有验证节点需要配 ``validation_seed`` ，普通节点不需要这一配置。
 
 例如：::
 
@@ -234,28 +235,36 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 [auto_sync]
 
-auto_sync配置为1表示开启表自动同步，开启后，在节点正常运行的情况下，新建表会自动入同步到数据库，如果不想自动同步，只想同步需要同步的表，用下面的配置：::
+auto_sync配置为1表示开启表自动同步，开启后，在节点正常运行的情况下，新建表会自动入同步到数据库。
+
+如果不想自动同步，只想同步需要同步的表，使用 ``sync_tables`` 配置项。
+
+[sync_tables]：::
 
 	[sync_tables]
 	zBUunFenERVydrqTD3J3U1FFqtmtYJGjNP tablename
 	zxryEYgWvpjh6UGguKmS6vqgCwRyV16zuy tablename2
 
-  非加密表格式：	建表账户 表名
-  加密表格式：	建表账户 表名 可解密账户私钥
+配置格式：
 
-3.	架设网络 　　
+- 非加密表格式：	建表账户 表名
+- 加密表格式：		建表账户 表名 可解密账户私钥
+
+3.	架设网络
+---------------------------
 启动chainsqld程序
-进入chainsqld应用程序目录，执行下面的命令（配置文件名为chainsqld.cfg时可不加--conf；否则，在启动程序/检查状态/重启时，均需加--conf="configFileName.cfg"）
+进入chainsqld应用程序目录，执行下面的命令::
 
-nohup ./chainsqld &
+	nohup ./chainsqld &
+
 每个网络节点均要执行上述命令，使chainsql服务在后台运行。
 
 检查是否成功
-进入chainsql应用程序目录：/opt/chainsql/bin，执行命令::
+进入chainsql应用程序目录，执行命令::
 
 	watch ./chainsqld server_info
 
-若输出结果中，字段"complete_ledgers" :类似 "1-10"，则chainsqld服务启动成功
+若输出结果中，字段 ``complete_ledgers``  :类似 "1-10"，则chainsqld服务启动成功
 每个网络节点的chainsql服务都要求成功运行
 
 查看其它节点的运行情况：::
@@ -264,8 +273,9 @@ nohup ./chainsqld &
 
 链重启/节点重启
 节点全部挂掉的情况：
-如果想要清空链，将db,rocksdb/NuDb文件夹清空，然后重新执行节链启动过程；
-如果想要加载之前的区块链数据启动，在某一全节点下执行下面的命令：::
+
+- 如果想要清空链，将 ``db,rocksdb/NuDb`` 文件夹清空，然后重新执行节链启动过程；
+- 如果想要加载之前的区块链数据启动，在某一全节点下执行下面的命令::
 
 	nohup ./chainsqld --load &
 
@@ -277,9 +287,10 @@ nohup ./chainsqld &
 
 还有节点在运行的情况
 
-只要网络中还有节点还在跑，就不需要用load方式重启链，只需要启动挂掉的节点即可：::
+只要网络中还有节点还在跑，就不需要用 ``load`` 方式重启链，只需要启动挂掉的节点即可：::
 
 		nohup ./chainsqld &
 
 4.退出终端
-在终端输入 exit 退出，不然之前在终端上启动的chainsqld进程会退出
+---------------------------
+在终端输入 ``exit`` 退出，不然之前在终端上启动的chainsqld进程会退出
