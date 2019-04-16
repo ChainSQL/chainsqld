@@ -7,16 +7,18 @@ Api 调用问题
 ---------------
 
 1. 两笔挂单，分别是买单与卖单，兑换比例一致，但未成交
-    原因：网关未开启Rippling
+    原因：网关未开启 `Rippling <https://developers.ripple.com/rippling.html>`_
 
 2. Insufficient reserve to create offer
-    原因：挂单时Zxc余额不满足保留费用要求，需要最终 ZxcBalance >= AccountReserve(5) + AccountObjectCount*1
+    原因：挂单时Zxc余额不满足保留费用要求，需要最终满足::
+    
+        ZxcBalance >= AccountReserve(5) + AccountObjectCount*1
 
 3. Fee of xxx exceeds 
     原因：不在交易中填写Fee会自己去算，而负载高时，算出来的Fee比较大，>100时，会报这个错误。所以建议自己在交易中填上Fee的值。
 
 4. 对表进行操作，无论什么交易都是db_timeout
-    原因：表的某个区块没有同步到，感觉被跳过了，然后后面的交易，PreviousTxnLgrSeq总是无法与当前的对上
+    原因：表的某个区块没有同步到，由于某种原因被跳过了，然后后面的交易，PreviousTxnLgrSeq总是无法与当前的对上
     目前暂未发现导致的根本原因，只能把LedgerSeq重新置为TxnLedgerSeq:
 
 .. code-block:: sql
@@ -41,7 +43,10 @@ Api 调用问题
 Chainsql节点问题
 -----------------
 
-1. 一个ip频繁发请求，过一段时间就发不了了，直接丢包::
+1. 客户端频繁发请求，过一段时间就发不了了，直接丢包
+    输出如下：
+
+::
 
     2018-Dec-05 02:45:23 Resource:WRN Consumer entry 114.242.47.14 dropped with balance 525166 at or above drop threshold 15000
     2018-Dec-05 02:45:23 Resource:WRN Consumer entry 114.242.47.14 dropped with balance 525260 at or above drop threshold 15000
@@ -62,7 +67,13 @@ Chainsql节点问题
     数据库连接失败，请检查配置文件中数据库(sync_db)的配置
 
 3. cfg文件中配置项不起作用
-
-- 注释只能写在开头，中间写注释会导致配置项不起作用（#）
+    注释只能写在开头，中间写注释会导致配置项不起作用（#）
 
 4. 如何升级chainsql节点
+    一般升级chainsql节点只需要挨个节点替换重启即可，步骤如下：
+
+    1. 停掉一个正在运行的节点（先用 ``./chainsqld stop`` 命令，如果停不掉再用 ``kill`` 命令杀进程）
+    2. 替换新的chainsqld可执行程序
+    3. 启动chainsqld进程
+    4. 查看 ``server_info``，直到 ``completed_ledgers`` 正常出块
+    5. 依次对所有节点执行1-4过程

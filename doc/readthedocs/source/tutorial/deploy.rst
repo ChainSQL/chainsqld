@@ -36,13 +36,15 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 2.检查是否安装成功
 -------------------------
-检查是否安装成功：::
+检查是否安装成功::
 
 	mysql --version
 
 能查询到mysql版本号则表示安装成功。 
 
-检查是否能正常登录：::
+检查是否能正常登录:
+
+.. code-block:: bash
 
 	mysql -uroot –p
 
@@ -50,9 +52,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 3.	创建数据库并支持utf8编码
 ------------------------------------------
-登入mysql 后：
-
-创建名字为chainsql的database：
+登入mysql 后，创建名字为chainsql的database：
 
 .. code-block:: sql
 
@@ -67,7 +67,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 设置mysql 默认UTF8编码:
 修改/etc/mysql/mysql.conf.d/mysqld.cnf文件
 
-[mysqld]下添加：::
+``[mysqld]`` 下添加：::
 
 	character_set_server = utf8
 
@@ -164,7 +164,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 ---------------------------
 以下仅针对部分字段进行说明：
 
-[sync_db]
+``[sync_db]``
 
   配置port，db，mysql安装时设置的(user,pass)等。
 
@@ -186,12 +186,12 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 	使用localhost连接时，会默认使用 ``sock`` 方式连接，默认sock路径是 ``/var/run/mysqld/mysqld.sock`` 在非ubuntu系统中，这个路径是不对的，会导致连接数据库失败，需要用 ``unix_socket`` 选项来指定 ``sock`` 路径，如果用ip去连接，会使用 ``tcp`` 方式连接，就不会有这个问题
 
-[node_db]
+``[node_db]``
 
 - windows平台: type=NuDB
 - Ubuntu平台: type=RocksDB
 
-[ips_fixed]
+``[ips_fixed]``
 
   chainsql始终尝试进行对等连接的IP地址或主机名（其它三个节点的ip及端口号5123）。
 
@@ -202,7 +202,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 	127.0.0.1 51237
 	127.0.0.1 51238
 
-[validators]或[validators_file]
+``[validators]`` 或 ``[validators_file]``
 
   添加其他(三个)节点的 ``validation_public_key`` ；
 
@@ -213,7 +213,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 	n9Ko97E3xBCrgTy4SR7bRMomytxgkXePRoQUBAsdz1KU1C7qC4xq
 	n9Km65gnE4uzT1V9L7yAY9TpjWK1orVPthCkSNX8nRhpRaeCN6ga
 
-[validation_public_key]
+``[validation_public_key]``
 
   添加本节点的validation_public_key。此字段可不配置，但方便后续查阅，建议配置。
 
@@ -222,7 +222,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 	[validation_public_key]
 	n9Jq6dyM2jbxspDu92qbiz4pq7zg8umnVCmNmEDGGyyJv9XchvVn
 
-[validation_seed]
+``[validation_seed]``
 
   添加本节点的 ``validation_seed`` 。只有验证节点需要配 ``validation_seed`` ，普通节点不需要这一配置。
 
@@ -233,13 +233,13 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 	[validation_seed]
 	xnvq8z6C1hpcYPP94dbBib1VyoEQ1
 
-[auto_sync]
+``[auto_sync]``
 
 auto_sync配置为1表示开启表自动同步，开启后，在节点正常运行的情况下，新建表会自动入同步到数据库。
 
 如果不想自动同步，只想同步需要同步的表，使用 ``sync_tables`` 配置项。
 
-[sync_tables]：::
+``[sync_tables]``::
 
 	[sync_tables]
 	zBUunFenERVydrqTD3J3U1FFqtmtYJGjNP tablename
