@@ -34,9 +34,9 @@ export BOOST_ROOT=/home/dbliu/work/chainSQL/Builds/Ubuntu/boost_1_63_0
 ```bash
 > cd ~/work/chainsqld
 ```
-- 创建编译目录 build
+- 创建并进入编译目录 build
 ```bash
-> mkdir build
+> mkdir build && cd build
 ```
 - 执行 cmake
 ```bash
