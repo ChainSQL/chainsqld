@@ -6,78 +6,165 @@ JSON-RPC，是一个无状态且轻量级的远程过程调用（RPC）传送协
 chainsqld沿用rippled的JSON-RPC，使用HTTP短连接，由“method”域指定调用的方法，“params”域指定调用的参数。
 可以将RPC接口分为交易类和查询类。
 
+.. _RPC返回值:
+
 接口返回值
 **************************
 
-RPC接口返回的JSON包含的各个域如下：
+交易类接口
+++++++++++++++++++++++++++
+
+RPC交易类接口返回的JSON包含的各个域如下：
 
 .. list-table::
 
     * - **域**
       - **类型**
       - **描述**
-    * - id
-      - 整数
-      - 与请求的id一致。
+    * - result
+      - 对象
+      - 包含返回状态和具体结果，内容因命令而异。
+    * - result.tx_json
+      - 对象
+      - 签名后的交易的JSON格式。
+    * - result.tx_blob
+      - 对象
+      - 交易的16进制序列化。
+    * - result.status
+      - 字符串
+      - 标识交易是否已被服务节点成功接收并且解析成功。
+    * - result.engine_result
+      - 字符串
+      - 表明交易请求解析成功，并且能够被处理，现阶段的处理结果。
+    * - result.engine_result_code
+      - 整形
+      - 与engine_result关联的整形值。
+    * - result.engine_result_message
+      - 字符串
+      - 交易状态结果的描述。
+    * - result.error
+      - 字符串
+      - 如果交易请求解析或者处理出错，返回错误类型码。
+    * - result.error_code
+      - 字符串
+      - 与error关联的整形值。
+    * - result.error_message
+      - 字符串
+      - 错误原因的描叙。
+
+成功示例
+==========================================
+
+.. code-block:: json
+
+    {
+        "result": {
+            "engine_result": "tesSUCCESS",
+            "engine_result_code": 0,
+            "engine_result_message": "The transaction was applied. Only final in a validated ledger.",
+            "status": "success",
+            "tx_blob": "12000022800000002400000001201B0000010F614000000005F5E10068400000000000000A73210330E7FC9D56BB25D6893BA3F317AE5BCF33B3291BD63DB32654A313222F7FD0207446304402203A5E874FF57F41BEA70F3C1D0A839FA6307DC21049A1478DED7B18EBCA734D5002200685C792BCDCC6DA764F2EE2F1897100F914991A4A51E91D5CF72342FD38C0C58114B5F762798A53D543A014CAF8B297CFF8F2F937E88314934CD4FACC490E3DC5152F7C1BAD57EEEE3F9C77",
+            "tx_json": {
+                "Account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
+                "Amount": "100000000",
+                "Destination": "zNRi42SAPegzJYzXYZfRFqPqUfGqKCaSbx",
+                "Fee": "10",
+                "Flags": 2147483648,
+                "LastLedgerSequence": 271,
+                "Sequence": 1,
+                "SigningPubKey": "0330E7FC9D56BB25D6893BA3F317AE5BCF33B3291BD63DB32654A313222F7FD020",
+                "TransactionType": "Payment",
+                "TxnSignature": "304402203A5E874FF57F41BEA70F3C1D0A839FA6307DC21049A1478DED7B18EBCA734D5002200685C792BCDCC6DA764F2EE2F1897100F914991A4A51E91D5CF72342FD38C0C5",
+                "hash": "2A5573C42CA73036A57AD823ACC4F0359D335FF067D6232EAB919AC2C130866E"
+            }
+        }
+    }
+
+出错示例
+======================================
+
+.. code-block:: json
+
+    {
+        "result": {
+            "engine_result": "tefTABLE_EXISTANDNOTDEL",
+            "engine_result_code": -176,
+            "engine_result_message": "Table exist and not deleted.",
+            "status": "success"
+        },
+        "tx_hash": "0D096D85F6F31E5BB93C44EB125D878BC704A8922AD27538B63676751D90D7FB"
+    }
+
+查询类接口
+++++++++++++++++++++++++++
+
+RPC查询类接口返回的JSON包含的各个域如下：
+
+.. list-table::
+
+    * - **域**
+      - **类型**
+      - **描述**
     * - result
       - 对象
       - 包含返回状态和具体结果。
     * - result.status
       - 字符串
-      - 如果请求处理成功则返回状态为成功（success），否则返回错误（error）。
-    * - result.engine_result
-      - 字符串
-      - 可选，交易类请求的初步处理结果
-    * - result.engine_result_code
-      - 整形
-      - 可选，与engine_result关联的整形值。
-    * - result.engine_result_message
-      - 字符串
-      - 可选，交易状态结果描叙。
+      - 标识请求是否已被服务节点成功接收并且解析成功。
     * - result.error
       - 字符串
-      - 可选，如果请求处理出错，返回错误码。
+      - 如果请求解析或处理出错，返回错误类型码；处理成功，则被省略。
     * - result.error_code
       - 字符串
-      - 可选，与error关联的整形值。
+      - 与error关联的整形值。
     * - result.error_message
       - 字符串
-      - 可选，错误原因的描叙。
+      - 如果请求处理出错，描述错误原因；处理成功，则被省略。
 
 成功示例
-++++++++++++++++++++++++++++++++++++++
+=============================================
 
 .. code-block:: json
 
     {
-        "id": 1,
         "result": {
-            "account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-            "ledger_hash": "715319ACF27A63AD69D6738E6AB6B0BE3C9DE71DCE42464DEF864B2B693E12DE",
-            "ledger_index": 3378444,
-            "lines": [],
+            "account_data": {
+                "Account": "zNRi42SAPegzJYzXYZfRFqPqUfGqKCaSbx",
+                "Balance": "197899991",
+                "Flags": 0,
+                "LedgerEntryType": "AccountRoot",
+                "OwnerCount": 3,
+                "PreviousTxnID": "095CA8636351941D1AC9A9415D90F7A2AD73363198CDA0441999059C9A6B328B",
+                "PreviousTxnLgrSeq": 359781,
+                "Sequence": 13,
+                "index": "68D7B391587F7FD814AE718F6BE298AACDB6662DFABF21A13FD163CF9E0C9C14"
+            },
+            "ledger_current_index": 363498,
             "status": "success",
-            "validated": true
+            "validated": false
         }
     }
 
 出错示例
-++++++++++++++++++++++++++++++++++++++
+============================================
 
 .. code-block:: json
 
     {
-        "id": 1,
         "result": {
+            "account": "zcPMx2Zp4p9UnYaMtPLDwpSR5YFaa4E2SR",
             "error": "actNotFound",
             "error_code": 19,
             "error_message": "Account not found.",
+            "ledger_current_index": 363481,
             "request": {
-                "account": "zcPMx2Zp4p9UnYaMtLDwpSR5YFaa4E2SR",
-                "command": "account_lines",
-                "ledger_index": "validated"
+                "account": "zcPMx2Zp4p9UnYaMtPLDwpSR5YFaa4E2SR",
+                "command": "account_info",
+                "ledger_index": "current",
+                "strict": true
             },
-            "status": "error"
+            "status": "error",
+            "validated": false
         }
     }
 

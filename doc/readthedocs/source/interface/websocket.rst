@@ -13,7 +13,10 @@ Websocket接口与JSON-RPC接口的主要区别在于，
 接口返回值
 **************************
 
-Websocket接口返回的JSON包含的各个域如下：
+交易类接口
+++++++++++++++++++++++++++
+
+Websocket交易类接口返回的JSON包含的各个域如下：
 
 .. list-table::
 
@@ -21,61 +24,146 @@ Websocket接口返回的JSON包含的各个域如下：
       - **类型**
       - **描述**
     * - id
-      - 整数
+      - 整数或者字符串
       - 与请求的id一致。
+    * - type
+      - 字符串
+      - 标识数据类型，response表示对命令的响应，异步通知使用不同的值（例如：table、transaction）。
+    * - status
+      - 字符串
+      - 标识交易是否已被服务节点成功接收并且解析成功
     * - result
       - 对象
-      - 包含返回状态和具体结果。
-    * - result.status
-      - 字符串
-      - 如果请求处理成功则返回状态为成功（success），否则返回错误（error）。
+      - 包含返回状态和具体结果，内容因命令而异。
     * - result.engine_result
       - 字符串
-      - 可选，交易类请求的初步处理结果
+      - 表明交易请求解析成功，并且能够被处理，现阶段的处理结果。
     * - result.engine_result_code
       - 整形
-      - 可选，与engine_result关联的整形值。
+      - 与engine_result关联的整形值。
     * - result.engine_result_message
       - 字符串
-      - 可选，交易状态结果描叙。
-    * - result.error
+      - 交易状态结果的描述。
+    * - reqeust
+      - 对象
+      - 请求处理出错时，展示原始请求的格式。
+    * - error
       - 字符串
-      - 可选，如果请求处理出错，返回错误码。
-    * - result.error_code
+      - 如果交易请求解析或者处理出错，返回错误类型码。
+    * - error_code
       - 字符串
-      - 可选，与error关联的整形值。
-    * - result.error_message
+      - 与error关联的整形值。
+    * - error_message
       - 字符串
-      - 可选，错误原因的描叙。
+      - 错误原因的描述。
 
 成功示例
-++++++++++++++++++++++++++++++++++++++
+============================================
 
 .. code-block:: json
 
     {
-        "result":{
-            "account_data":{
-                "Account":"zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-                "Balance":"99999995902525493",
-                "Flags":0,
-                "LedgerEntryType":"AccountRoot",
-                "OwnerCount":8,
-                "PreviousTxnID":"F3B60BC018BCF1E83794FB4D36233257D48BD94E63152E93FFA6BF282F1D6AA9",
-                "PreviousTxnLgrSeq":4930,
-                "Sequence":46,
-                "index":"2B6AC232AA4C4BE41BF49D2459FA4A0347E1B543A4C92FCEE0821C0201E2E9A8"
-            },
-            "ledger_hash":"BB15B9125DE99FEA0B9DA846D9E9CC7187701C822B896CA4F1851F87733F2DCD",
-            "ledger_index":10521,
-            "validated":true
+        "id": 2,
+        "result": {
+            "engine_result": "tesSUCCESS",
+            "engine_result_code": 0,
+            "engine_result_message": "The transaction was applied. Only final in a validated ledger.",
+            "tx_blob": "12000022800000002400000003201B00001F40614000000005F5E10068400000000000000A73210330E7FC9D56BB25D6893BA3F317AE5BCF33B3291BD63DB32654A313222F7FD02074473045022100C57C4430FDC9F43CD0EC5BFACFCF09582399D0414F7484DEA8D5AEA1D315605502200A9C569863A4654D073EDC273E7321652887B6610CE0C20DB3E35A38639F62DD8114B5F762798A53D543A014CAF8B297CFF8F2F937E88314934CD4FACC490E3DC5152F7C1BAD57EEEE3F9C77",
+            "tx_json": {
+                "Account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
+                "Amount": "100000000",
+                "Destination": "zNRi42SAPegzJYzXYZfRFqPqUfGqKCaSbx",
+                "Fee": "10",
+                "Flags": 2147483648,
+                "LastLedgerSequence": 8000,
+                "Sequence": 3,
+                "SigningPubKey": "0330E7FC9D56BB25D6893BA3F317AE5BCF33B3291BD63DB32654A313222F7FD020",
+                "TransactionType": "Payment",
+                "TxnSignature": "3045022100C57C4430FDC9F43CD0EC5BFACFCF09582399D0414F7484DEA8D5AEA1D315605502200A9C569863A4654D073EDC273E7321652887B6610CE0C20DB3E35A38639F62DD",
+                "hash": "8D1CC127661FD004B6700AB60CEC8C0EB0A733CF894A074C635914FAE49C928F"
+            }
         },
-        "status":"success",
-        "type":"response"
+        "status": "success",
+        "type": "response"
     }
 
 出错示例
-++++++++++++++++++++++++++++++++++++++
+=============================================
+
+.. code-block:: json
+
+    {
+        "error": "badSecret",
+        "error_code": 42,
+        "error_message": "Secret does not match account.",
+        "id": 2,
+        "request": {
+            "command": "submit",
+            "id": 2,
+            "secret": "xnoPBzXtMeMyMHUVTgbuqAfg1SUTb",
+            "tx_json": {
+                "Account": "zNRi42SAPegzJYzXYZfRFqPqUfGqKCaSbx",
+                "Amount": "100000000",
+                "Destination": "zcPMx2Zp4p9UnYaMtPLDwpSR5YFaa4E2SR",
+                "TransactionType": "Payment"
+            }
+        },
+        "status": "error",
+        "type": "response"
+    }
+
+查询类接口
+++++++++++++++++++++++++++
+
+Websocket查询类接口返回的JSON包含的各个域如下：
+
+.. list-table::
+
+    * - **域**
+      - **类型**
+      - **描述**
+    * - id
+      - 整数或者字符串
+      - 与请求的id一致。
+    * - type
+      - 字符串
+      - 标识数据类型，response表示对命令的响应，异步通知使用不同的值（例如：table、transaction）。
+    * - status
+      - 字符串
+      - 标识请求是否已被服务节点成功接收并且解析成功。
+    * - result
+      - 对象
+      - 包含返回状态和具体结果，内容因命令而异。
+    * - reqeust
+      - 对象
+      - 请求处理出错时，展示原始请求的格式。
+    * - error
+      - 字符串
+      - 如果请求解析或者处理出错，返回错误类型码。
+    * - error_code
+      - 字符串
+      - 与error关联的整形值。
+    * - error_message
+      - 字符串
+      - 错误原因的描述。
+
+成功示例
+===============================================
+
+.. code-block:: json
+
+    {
+        "id": 5,
+        "result": {
+            "lines": [
+            ]
+        },
+        "status": "success",
+        "type": "response"
+    }
+
+出错示例
+==============================================
 
 .. code-block:: json
 
@@ -682,7 +770,7 @@ SQLStatement类型的交易的json格式（tx_json对象）各个域的描叙如
         ],
         "Raw": [
       	    { "age": "11", "name": "abc" },
-	        { "id": 1 }
+            { "id": 1 }
         ],
         "OpType": 8
     }
@@ -1104,7 +1192,7 @@ admin接口：
 
     SQL语句中的表名为数据库中的实际表名，需要先\ `获取实际表名`_\ 。
 
- 应答格式：
+应答格式：
 
  .. code-block:: json
 
