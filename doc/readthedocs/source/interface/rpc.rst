@@ -4,6 +4,82 @@ JSON-RPC接口
 JSON-RPC，是一个无状态且轻量级的远程过程调用（RPC）传送协议，其传递内容透过 JSON 为主。
 
 chainsqld沿用rippled的JSON-RPC，使用HTTP短连接，由“method”域指定调用的方法，“params”域指定调用的参数。
+可以将RPC接口分为交易类和查询类。
+
+接口返回值
+**************************
+
+RPC接口返回的JSON包含的各个域如下：
+
+.. list-table::
+
+    * - **域**
+      - **类型**
+      - **描述**
+    * - id
+      - 整数
+      - 与请求的id一致。
+    * - result
+      - 对象
+      - 包含返回状态和具体结果。
+    * - result.status
+      - 字符串
+      - 如果请求处理成功则返回状态为成功（success），否则返回错误（error）。
+    * - result.engine_result
+      - 字符串
+      - 可选，交易类请求的初步处理结果
+    * - result.engine_result_code
+      - 整形
+      - 可选，与engine_result关联的整形值。
+    * - result.engine_result_message
+      - 字符串
+      - 可选，交易状态结果描叙。
+    * - result.error
+      - 字符串
+      - 可选，如果请求处理出错，返回错误码。
+    * - result.error_code
+      - 字符串
+      - 可选，与error关联的整形值。
+    * - result.error_message
+      - 字符串
+      - 可选，错误原因的描叙。
+
+成功示例
+++++++++++++++++++++++++++++++++++++++
+
+.. code-block:: json
+
+    {
+        "id": 1,
+        "result": {
+            "account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
+            "ledger_hash": "715319ACF27A63AD69D6738E6AB6B0BE3C9DE71DCE42464DEF864B2B693E12DE",
+            "ledger_index": 3378444,
+            "lines": [],
+            "status": "success",
+            "validated": true
+        }
+    }
+
+出错示例
+++++++++++++++++++++++++++++++++++++++
+
+.. code-block:: json
+
+    {
+        "id": 1,
+        "result": {
+            "error": "actNotFound",
+            "error_code": 19,
+            "error_message": "Account not found.",
+            "request": {
+                "account": "zcPMx2Zp4p9UnYaMtLDwpSR5YFaa4E2SR",
+                "command": "account_lines",
+                "ledger_index": "validated"
+            },
+            "status": "error"
+        }
+    }
 
 交易类接口
 **************************
@@ -12,6 +88,12 @@ chainsqld沿用rippled的JSON-RPC，使用HTTP短连接，由“method”域指�
 
 因为交易都需要在区块链上达成共识，所以交易类接口的应答结果是临时的，只代表此次交易是否已经进入本节点的临时账本。
 最终的结果在共识后都有可能发生变化。
+
+.. warning::
+
+    交易类接口都需要将交易JSON进行签名或者向服务节点提供账户的私钥，
+    本文中示例都是通过向服务节点提供账户私钥的方式。
+    如果服务节点不可信任，或者请求通过公共网络发送，则存在风险。
 
 Rippled交易
 ++++++++++++++++++++++++++++
@@ -23,7 +105,8 @@ rippled交易类JSON-RPC接口有很多，详情请参看XRP官方开发文档 `
 ============================
 
 请求格式：
-::
+
+.. code-block:: json
 
     {
         "method": "submit",
@@ -51,8 +134,8 @@ rippled交易类JSON-RPC接口有很多，详情请参看XRP官方开发文档 `
       - 字符串
       - | Rippled的交易类接口包含的Method有
         | sign、sign_for、submit、submit_multisigned、
-        | transaction_entry、tx、tx_history。\
-        \
+        | transaction_entry、tx、tx_history。
+
         具体参看XRP官方开发文档 `Transcation Methods <https://developers.ripple.com/transaction-methods.html>`_。
     * - params
       - 数组
@@ -77,7 +160,8 @@ rippled交易类JSON-RPC接口有很多，详情请参看XRP官方开发文档 `
       - 此次转账的XRP数量，单位drop。
 
 应答格式：
-::
+
+.. code-block:: json
 
     {
         "result": {
@@ -130,12 +214,14 @@ rippled交易类JSON-RPC接口有很多，详情请参看XRP官方开发文档 `
 数据库表交易
 +++++++++++++++++++++++++++++
 
-数据库表交易类型接口可以分为三种，TableListSet接口、SQLStatement接口、SQLTranscation接口。每种类型的接口对应不同的数据库操作语句。
+数据库表交易类型接口可以分为三种，
+TableListSet交易类型、SQLStatement交易类型、SQLTranscation交易类型。
+每种类型的接口对应不同的数据库操作语句。
 
-TableListSet接口
+TableListSet
 =============================
 
-TableListSet交易接口主要对应SQL的数据定义语句（DDL）和数据控制语句（DCL）。
+TableListSet交易类型主要对应SQL的数据定义语句（DDL）和数据控制语句（DCL）。
 具体包含的操作有创建表、删除表、表重命名、表授权、表重建等操作，只有表的创建者可以删除及授权等其它操作。
 
 TableListSet类型的交易的json格式（tx_json对象）各个域的描叙如下：
@@ -209,7 +295,8 @@ TableListSet类型的交易的json格式（tx_json对象）各个域的描叙如
 ---------------------------
 
 请求格式
-::
+
+.. code-block:: json
 
     {
         "method": "t_create",
@@ -231,7 +318,8 @@ TableListSet类型的交易的json格式（tx_json对象）各个域的描叙如
                         "length": 11,
                         "PK": 1,
                         "NN": 1,
-                        "UQ": 1
+                        "UQ": 1,
+                        "Index": 1
                     },
                     {
                         "field": "age",
@@ -255,11 +343,47 @@ TableListSet类型的交易的json格式（tx_json对象）各个域的描叙如
 
 .. note::
 
-    Raw数组中每一个对象表示一列，包括列名，数据类型，约束，索引等。
-    常用约束：PK（主键约束）、NN（Not Null)、UQ（唯一约束）、Index（索引列）。
+    Raw数组在创建表时用来描述表结构；在插入数据时用来表示插入的数据；
+    在更新表时用来表示更新的列和条件；在查询列时用来表示查询条件。
+    上例中，插入表时，Raw数组中每一个对象表示一列，包括列名，数据类型，数据长度，约束，索引等。
+    具体见下表。
+
+.. list-table::
+
+    * - **域**
+      - **类型**
+      - **值**
+    * - field
+      - 字符串
+      - 列名。
+    * - type
+      - 字符串
+      - 列的数据类型，可选值有int/float/double/decimal/varchar/blob/text/datetime。
+    * - length
+      - 整数
+      - 列的数据长度。
+    * - PK
+      - 整数
+      - 值为1表示为列创建主键约束。
+    * - NN
+      - 整数
+      - 值为1表示列的值不能为空（NULL）。
+    * - UQ
+      - 整数
+      - 值为1表示为列创建唯一约束。
+    * - Index
+      - 整数
+      - 值为1表示为列建立索引。
+    * - FK
+      - 整数
+      - 值为1表示为列创建外键约束。必须配置REFERENCES使用。
+    * - REFERENCES
+      - 对象
+      - 值的格式为{"table": "tablename", "field": "filedname"}。
 
 一个成功应答格式：
-::
+
+.. code-block:: json
 
     {
         "result": {
@@ -277,7 +401,8 @@ TableListSet类型的交易的json格式（tx_json对象）各个域的描叙如
 -------------------------
 
 请求格式：
-::
+
+.. code-block:: json
 
     {
         "method": "t_drop",
@@ -303,7 +428,8 @@ TableListSet类型的交易的json格式（tx_json对象）各个域的描叙如
 ------------------------------
 
 请求格式
-::
+
+.. code-block:: json
 
     {
         "method": "t_rename",
@@ -332,7 +458,8 @@ TableListSet类型的交易的json格式（tx_json对象）各个域的描叙如
 --------------------------------
 
 请求格式
-::
+
+.. code-block:: json
 
     {
         "method": "t_grant",
@@ -372,10 +499,10 @@ TableListSet类型的交易的json格式（tx_json对象）各个域的描叙如
 
 .. _SQLStatement接口:
 
-SQLStatement接口
+SQLStatement
 =============================================
 
-SQLStatement交易接口主要对应SQL的数据操纵语句（DML）。
+SQLStatement交易类型主要对应SQL的数据操纵语句（DML）。
 具体包含的操作有增、删、改操作，只有表的创建者和被授权的账户具有操作权限。
 
 SQLStatement类型的交易的json格式（tx_json对象）各个域的描叙如下：
@@ -441,7 +568,8 @@ SQLStatement类型的交易的json格式（tx_json对象）各个域的描叙如
 ---------------------------------
 
 请求格式：
-::
+
+.. code-block:: json
 
     {
         "method": "r_insert",
@@ -480,7 +608,8 @@ SQLStatement类型的交易的json格式（tx_json对象）各个域的描叙如
 ----------------------------------
 
 请求格式：
-::
+
+.. code-block:: json
 
     {
         "method": "r_update",
@@ -524,7 +653,8 @@ SQLStatement类型的交易的json格式（tx_json对象）各个域的描叙如
 ---------------------------------
 
 请求格式：
-::
+
+.. code-block:: json
 
     {
         "method": "r_delete",
@@ -556,12 +686,12 @@ SQLStatement类型的交易的json格式（tx_json对象）各个域的描叙如
 
 应答格式同上。
 
-SQLTranscation接口
+SQLTranscation
 =================================================
 
 事务处理可以用来维护数据库的完整性，保证成批的SQL语句要么全部执行，要么全部不执行。
 
-SQLTranscation RPC交易接口的请求方法名固定为\ ``t_sqlTxs``\ ，交易json格式（tx_json对象）各个域的描叙如下：
+SQLTranscation RPC交易类型接口的请求方法名固定为\ ``t_sqlTxs``\ ，交易json格式（tx_json对象）各个域的描叙如下：
 
 .. list-table::
 
@@ -596,7 +726,7 @@ SQLTranscation RPC交易接口的请求方法名固定为\ ``t_sqlTxs``\ ，交�
     * - OpType
       - 整型
       - UInt32
-      - 必填，具体操作类型有：1：创建表，2：删除表，3：改重命名，6:插入记录，8:更新记录，9:删除记录，10：验证断言。
+      - 必填，具体操作类型有：6:插入记录，8:更新记录，9:删除记录，10：验证断言，11:表授权。
     * - Raw
       - 数组
       - Array
@@ -628,7 +758,8 @@ SQLTranscation RPC交易接口的请求方法名固定为\ ``t_sqlTxs``\ ，交�
 -----------------------------------------------------------------------------------------
 
 请求格式：
-::
+
+.. code-block:: json
 
     {
         "method": "t_sqlTxs",
@@ -733,7 +864,8 @@ RPC接口方法名使用Rippled的交易方法名\ ``submit``\ ，交易json格�
 ==================================
 
 请求格式：
-::
+
+.. code-block:: json
 
     {
         "method": "submit",
@@ -754,7 +886,8 @@ RPC接口方法名使用Rippled的交易方法名\ ``submit``\ ，交易json格�
     }
 
 应答格式：
-::
+
+.. code-block:: json
 
     {
         "TODO":"TODO"
@@ -780,7 +913,7 @@ RPC接口方法名使用Rippled的交易方法名\ ``submit``\ ，交易json格�
 调用合约
 ==================================
 
-::
+.. code-block:: json
 
     {
         "method": "submit",
@@ -800,7 +933,8 @@ RPC接口方法名使用Rippled的交易方法名\ ``submit``\ ，交易json格�
     }
 
 应答格式：
-::
+
+.. code-block:: json
 
     {
         "TODO":"TODO"
@@ -822,7 +956,8 @@ rippled查询类JSON-RPC接口有很多，详情请参看XRP官方开发文档 `
 ======================================
 
 请求格式：
-::
+
+.. code-block:: json
 
     {
         "method": "account_info",
@@ -853,7 +988,8 @@ rippled查询类JSON-RPC接口有很多，详情请参看XRP官方开发文档 `
       - 可选，指定具体的账本进行查询，可选的值参考\ `Specifying Ledgers <https://developers.ripple.com/basic-data-types.html#specifying-ledgers>`_\ 。
 
 应答格式：
-::
+
+.. code-block:: json
 
     {
         "result": {
@@ -903,7 +1039,7 @@ rippled查询类JSON-RPC接口有很多，详情请参看XRP官方开发文档 `
 r_get方法
 ======================================
 
-::
+.. code-block:: json
 
     {
         "method": "r_get",
@@ -931,7 +1067,7 @@ r_get方法
 这样，不管用户A持有的账户是否真的有查询权限，都可以查询表的数据了。
 所有需要增加签名字段，用来验证用户的身份，修改后的API格式不变，请求的JSON格式变为如下。
 
-::
+.. code-block:: json
 
     {
         "method": "r_get",
@@ -997,22 +1133,64 @@ r_get方法
 
 .. warning::
 
-    因为一些域的限制，比如签名等，之后的版本不能用JSON-RPC接口直接查询表数据了。
+    因为必须对查询接口的JSON进行签名（跟交易类接口类似，但不支持提供私钥的形式），
+    所以之后的版本不能用JSON-RPC接口直接查询表数据了。
 
 SQL语句查询
 ==========================================
 
  | 通过SQL语句直接查询的接口支持复杂查询，多表联合查询等。
  | 为了区分权限，分为两个接口：
- | 管理员接口：需要在节点配置文件中配置ip为admin，才可调用，不检查调用者身份。
- | 普通用户接口：不需要配置admin，通过签名验证调用者身份。
+ | 管理员接口：需要在节点配置文件中配置admin IP，才可调用，不检查调用者身份。
+ | 普通接口：节点不需要配置admin IP，通过签名验证调用者身份。
 
 请求格式：
 
-::
+admin接口：
+
+.. code-block:: json
 
     {
         "method": "r_get_sql_admin",
+        "params": [{
+            "sql": "select * from t_43ACD1FF143986210A44AB8B609371B392F45A86"
+        }]
+    }
+
+.. note::
+
+    SQL语句中的表名为数据库中的实际表名，需要先\ `查询实际表名`_\ 。
+
+ 应答格式：
+
+ .. code-block:: json
+
+    {
+        "result": {
+            "lines": [
+                {
+                    "age": 11,
+                    "first_name": "Peer",
+                    "full_name": "null",
+                    "id": 1
+                },
+                {
+                    "age": "null",
+                    "first_name": "Peer",
+                    "full_name": "Peer safe",
+                    "id": 2
+                }
+            ],
+            "status": "success"
+        }
+    }
+
+普通接口：
+
+.. code-block:: json
+
+    {
+        "method": "r_get_sql_user",
         "params": [{
             "publicKey": "0253D5CE98521C9109791B69D2DABD135061BA2D4CA3742346D8DD56296D3F038F",
             "signature": "3045022100CF636FC5D0AE06AD097250D8344974315DE32BC6C1AF0B2AE87D600560FB571602203AC238419A2A7CB75556B24111ABD52764070AF62E5EBEC84A938148ADC151B6",
@@ -1027,15 +1205,16 @@ SQL语句查询
 
 .. warning::
 
-    这里只是列一下JSON格式，RPC请求并没有实现。详情请参看Java和Node.js接口说明。
+    这里只是列一下JSON格式，因为需要签名，所以普通接口的RPC请求并没有实现。详情请参看Java和Node.js接口说明。
 
+.. _查询实际表名:
 
 查询实际表名
 ==========================================
 
 请求格式：
 
-::
+.. code-block:: json
 
     {
         "method": "g_dbname",
@@ -1064,7 +1243,7 @@ SQL语句查询
 
 应答格式：
 
-::
+.. code-block:: json
 
     {
         "result": {
@@ -1095,7 +1274,7 @@ SQL语句查询
 
 请求格式：
 
-::
+.. code-block:: json
 
     {
         "method": "table_auth",
@@ -1124,7 +1303,7 @@ SQL语句查询
 
 应答格式：
 
-::
+.. code-block:: json
 
     {
         "result": {
@@ -1167,7 +1346,7 @@ SQL语句查询
 
 请求格式：
 
-::
+.. code-block:: json
 
     {
         "method": "g_accountTables",
@@ -1196,7 +1375,7 @@ SQL语句查询
 
 应答格式：
 
-::
+.. code-block:: json
 
     {
         "result": {
@@ -1252,7 +1431,7 @@ SQL语句查询
 
 请求格式：
 
-::
+.. code-block:: json
 
     {
         "method": "contract_call",
@@ -1286,7 +1465,7 @@ SQL语句查询
 
 应答格式：
 
-::
+.. code-block:: json
 
     {
         "TODO": "TODO"
