@@ -1,7 +1,3 @@
-===============================
-chainsql-nodejs智能合约接口文档
-===============================
-
 .. _remix.chainsql.net: http://remix.chainsql.net
 
 在chainsql的nodejs接口中，我们提供了chainsql.contract对象，通过创建该对象，就可以开始与chainsql智能合约的交互了。
@@ -29,7 +25,7 @@ chainsql-nodejs智能合约接口文档
 参数说明
 --------
 
-1. ``abi`` - ``Array`` : 一个由Json对象组成的数组，每个Json对象都是solidity的函数或者事件,可通过 `remix.chainsql.net`_ 获取。
+1. ``abi`` - ``Array`` : 一个由Json对象组成的数组，每个Json对象都是solidity的函数或者事件,可通过 `remix.chainsql.net`_ 获取；
 2. ``contractAddr`` - ``String`` : [**可选**]合约地址，在初次创建合约对象时，没有合约地址，可不填；合约已经存在，可直接利用合约地址，创建一个包含该合约函数和事件的合约对象。
 
 
@@ -65,27 +61,27 @@ chainsql-nodejs智能合约接口文档
 参数说明
 --------
 
-1. ``paramsNeeded`` - ``JsonObject`` : 由以下两个必选字段组成。
+1. ``paramsNeeded`` - ``JsonObject`` : 由以下两个必选字段组成：
 
     * ``ContractData`` - ``String`` : 智能合约字节码，以0x开头。可通过 `remix.chainsql.net`_ 获取；
     * ``arguments`` - ``Array``: 智能合约构造函数的参数作为元素组成的数组，每个元素根据类型填写元素值，没有参数提供一个空数组[]。
 
-2. ``options`` - ``JsonObject`` : 由以下两个字段组成。
+2. ``options`` - ``JsonObject`` : 由以下两个字段组成：
 
     * ``ContractValue`` - ``String`` : [**可选**]如果合约构造函数为payable类型，则可使用该字段给合约转账，单位为drop；
     * ``Gas`` - ``Number`` : 执行合约部署所需要的手续费用。
 
-3. ``callback`` - ``callback`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则需要通过then和catch接收promise结果。
+3. ``callback`` - ``Function`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则需要通过then和catch接收promise结果。
 
 返回值
 --------
 
 ``JsonObject`` - 智能合约的部署成功或失败的结果。返回方式取决于是否指定回调函数。
 
-1. 部署成功 - 指定回调函数，则通过回调函数返回，否则返回返回一个resolve的Promise对象。 ``JsonObject`` 包含以下字段。
+1. 部署成功 - 指定回调函数，则通过回调函数返回，否则返回返回一个resolve的Promise对象。 ``JsonObject`` 包含以下字段：
 
-	* ``status`` - ``String`` : 表示部署状态，成功则为固定值:"validate_success"
-	* ``tx_hash`` - ``String`` : 部署合约的交易hash值
+	* ``status`` - ``String`` : 表示部署状态，成功则为固定值:"validate_success"；
+	* ``tx_hash`` - ``String`` : 部署合约的交易hash值；
 	* ``contractAddress`` - ``String`` : 部署成功的合约地址。
 	
 2. 部署失败 - 指定回调函数，则通过回调函数返回，否则返回返回一个reject的Promise对象。 ``JsonObject`` 内容依具体错误形式返回。
@@ -94,7 +90,7 @@ chainsql-nodejs智能合约接口文档
 --------
 .. code-block:: javascript
 
-    //use the callback
+    // use the callback
     const deployBytecode = '0x...';
     contractObj.deploy({
         ContractData : deployBytecode,
@@ -112,7 +108,7 @@ chainsql-nodejs智能合约接口文档
     }
 
 
-    //use the promise
+    // use the promise
     const deployBytecode = '0x...';
     contractObj.deploy({
         ContractData : deployBytecode,
@@ -141,28 +137,28 @@ chainsql-nodejs智能合约接口文档
 ---------
 
 1. ``params`` - ``any`` : 合约本身function的参数值，依据合约方法的参数个数和类型进行传递；
-2. ``options`` - ``JsonObject`` : 由以下两个字段组成。
+2. ``options`` - ``JsonObject`` : 由以下两个字段组成：
 
     * ``ContractValue`` - ``String`` : [**可选**]如果合约函数为payable类型，则可使用该字段给合约转账，单位为drop；
-    * ``Gas`` - ``Number`` : 执行合约函数所需要的手续费用;
+    * ``Gas`` - ``Number`` : 执行合约函数所需要的手续费用。
 
 	.. _tx-expect:
     * ``expect`` - ``String`` : [**可选**]在chainsql中提供几种预期交易执行结果的返回，不指定则使用"send_success"，可选执行结果如下：
 
         - "send_success" : 交易发送成功即返回结果；
     	- "validate_success" ： 交易共识成功即返回结果；
-    	- "db_success" ： 涉及数据库交易，执行入库成功即返回结果；
-3. ``callback`` - ``callback`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则需要通过then和catch接收promise结果。
+    	- "db_success" ： 涉及数据库交易，执行入库成功即返回结果。
+3. ``callback`` - ``Function`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则需要通过then和catch接收promise结果。
 
 返回值
 --------
 
 ``JsonObject`` : 合约函数执行成功或失败的结果。返回方式取决于是否指定回调函数。
 
-1. 调用成功 - 指定回调函数，则通过回调函数返回，否则返回返回一个resolve的Promise对象。 ``JsonObject`` 包含以下字段。
+1. 调用成功 - 指定回调函数，则通过回调函数返回，否则返回返回一个resolve的Promise对象。 ``JsonObject`` 包含以下字段：
 
-	* ``status`` - ``String`` : 表示合约函数执行状态，其值由调用时的expect决定。
-	* ``tx_hash`` - ``String`` : 合约函数的交易hash值
+	* ``status`` - ``String`` : 表示合约函数执行状态，其值由调用时的expect决定；
+	* ``tx_hash`` - ``String`` : 合约函数的交易hash值。
 	
 2. 调用失败 - 指定回调函数，则通过回调函数返回，否则返回返回一个reject的Promise对象。 ``JsonObject`` 内容依具体错误形式返回。
 
@@ -186,7 +182,7 @@ chainsql-nodejs智能合约接口文档
         Gas: 500000,
         expect: "validate_success"
     },function (err, res) {
-        err ? console.log(err) : console.log(res);
+        err ? console.error(err) : console.log(res);
     });
     > res
     {
@@ -208,14 +204,14 @@ chainsql-nodejs智能合约接口文档
 ---------
 
 1. ``params`` - ``any`` : 合约本身function的参数值，依据合约方法的参数个数和类型进行传递；
-2. ``callback`` - ``callback`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则需要通过then和catch接收promise结果。
+2. ``callback`` - ``Function`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则需要通过then和catch接收promise结果。
 
 返回值
 --------
 
 返回值由合约本身的函数规定的返回值个数及类型决定，个数为1时，直接返回该值，个数大于1时，构造为一个JsonObject返回。返回方式取决于是否指定回调函数。
 
-1. 调用成功时，指定回调函数，则通过回调函数返回，否则返回返回一个resolve的Promise对象。；
+1. 调用成功时，指定回调函数，则通过回调函数返回，否则返回返回一个resolve的Promise对象；
 2. 调用失败时，指定回调函数，则通过回调函数返回，否则返回返回一个reject的Promise对象。依具体错误形式返回。
 
 示例
@@ -257,7 +253,7 @@ chainsql-nodejs智能合约接口文档
 1. ``contractAddr`` - ``String`` : 接收转账的合约地址；
 2. ``contractValue`` - ``Number`` : 转账数额；
 3. ``gas`` - ``Number`` : 执行转账交易的手续费用；
-4. ``options`` - ``JsonObject`` : 指定交易执行到何种状态返回，默认为"send_success", 具体可参考 :ref:`交易expect <tx-expect>`.
+4. ``options`` - ``JsonObject`` : 指定交易执行到何种状态返回，默认为"send_success", 具体可参考 :ref:`交易expect <tx-expect>`。
 
 返回值
 --------
@@ -324,7 +320,7 @@ chainsql-nodejs智能合约接口文档
 参数说明
 ---------
 
-1. ``callback`` - ``callback`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则需要通过then和catch接收promise结果。
+1. ``callback`` - ``Function`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则需要通过then和catch接收promise结果。
 
 返回值
 --------
