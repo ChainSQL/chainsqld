@@ -1639,6 +1639,8 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 {    
 	if (ledger == NULL)    return;
 
+	std::map<uint160, bool> mapTxDBNam2Exist;
+
 	CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
 	for (auto const& item : ledger->txMap())
 	{
@@ -1690,7 +1692,15 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 					else if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
 						|| opType == R_DELETE)
 					{
-						bool bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+
+						bool bDBTableExist = false;
+						if (mapTxDBNam2Exist.find(uTxDBName) == mapTxDBNam2Exist.end()) 
+						{
+							bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+							mapTxDBNam2Exist[uTxDBName] = bDBTableExist;
+						}
+
+						bDBTableExist = mapTxDBNam2Exist[uTxDBName];
 						if (!bDBTableExist)
 						{
 							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noTableExistInDB", ""), false);

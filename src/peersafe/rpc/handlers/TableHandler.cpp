@@ -510,6 +510,54 @@ Json::Value getLedgerTableInfo(RPC::Context& context,AccountID& accountID, std::
 
 }
 
+// sql caternate OperateRule according to jss::condition
+Json::Value caternateSqlAndOperateRule(const std::string rule, std::string& sql) {
+
+	Json::Value jsonRule;
+	Json::Reader().parse(rule, jsonRule);
+
+	bool bRule = jsonRule.isMember(jss::Condition);
+	if (bRule){
+
+		Json::Value& condition = jsonRule[jss::Condition];
+
+		if (condition.isObject()) {
+
+			Json::Value arr(Json::arrayValue);
+			arr.append(condition);
+
+			if (arr.isArray())
+				condition = arr;
+		}
+		std::string sConditionSql;
+		bool bSuccess = STTx2SQL::ConvertCondition2SQL(condition, sConditionSql);
+
+		if (!bSuccess) {
+			return RPC::invalid_field_error("Sql");
+		}
+
+		std::string newSql;
+		bool bHasNoKeyWords = ((sql.find("WHERE") == -1) && (sql.find("where") == -1));
+		if (bHasNoKeyWords) {
+			newSql = (boost::format("%s where %s")
+				% sql
+				%sConditionSql).str();
+		}
+		else {
+			newSql = (boost::format("%s and %s")
+				% sql
+				%sConditionSql).str();
+		}
+
+		sql = newSql;
+
+	}
+
+	return Json::Value();
+
+
+}
+
 Json::Value checkAuthForSql(RPC::Context& context, AccountID& accountID, std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName)
 {
 	for (auto ownerID2TableName : setOwnerID2TableName)
@@ -563,49 +611,57 @@ Json::Value checkOperationRuleForSql(RPC::Context& context, AccountID& accountID
 			return rpcError(rpcSQL_MULQUERY_NOT_SUPPORT);
 		}
 
-		// sql concatennation according to jss::condition
-		Json::Value jsonRule;
-		Json::Reader().parse(rule, jsonRule);
+		std::string sql = tx_json["Sql"].asString();
 
-		bool bRule = jsonRule.isMember(jss::Condition);
-		if (bRule)
-		{
-			Json::Value& condition = jsonRule[jss::Condition];
+		Json::Value ret = caternateSqlAndOperateRule(rule, sql);
+		if (ret.isMember(jss::error))
+			return ret;
 
-			if (condition.isObject()) {
+		tx_json["Sql"] = Json::Value(sql);
 
-				Json::Value arr(Json::arrayValue);
-				arr.append(condition);
+		//// sql concatennation according to jss::condition
+		//Json::Value jsonRule;
+		//Json::Reader().parse(rule, jsonRule);
 
-				if (arr.isArray())
-					condition = arr;
-			}
-			std::string sConditionSql;
-			bool bSuccess= STTx2SQL::ConvertCondition2SQL(condition, sConditionSql);
+		//bool bRule = jsonRule.isMember(jss::Condition);
+		//if (bRule)
+		//{
+		//	Json::Value& condition = jsonRule[jss::Condition];
 
-			if (!bSuccess) {
-				return RPC::invalid_field_error("Sql");
-			}
+		//	if (condition.isObject()) {
 
-			//std::string result_conditions = rTree.second.asString();
-			std::string preSql = tx_json["Sql"].asString();
-			std::string newSql;
+		//		Json::Value arr(Json::arrayValue);
+		//		arr.append(condition);
 
-			bool bHasNoKeyWords = ( (preSql.find("WHERE") == -1) && (preSql.find("where") == -1) );
-			if (bHasNoKeyWords) {
-				newSql = (boost::format("%s where %s")
-					% preSql
-					%sConditionSql).str();			
-			}
-			else {
-				newSql = (boost::format("%s and %s")
-					% preSql
-					%sConditionSql).str();
-			}
+		//		if (arr.isArray())
+		//			condition = arr;
+		//	}
+		//	std::string sConditionSql;
+		//	bool bSuccess= STTx2SQL::ConvertCondition2SQL(condition, sConditionSql);
 
-			tx_json["Sql"] = Json::Value(newSql);
+		//	if (!bSuccess) {
+		//		return RPC::invalid_field_error("Sql");
+		//	}
 
-		}
+		//	//std::string result_conditions = rTree.second.asString();
+		//	std::string preSql = tx_json["Sql"].asString();
+		//	std::string newSql;
+
+		//	bool bHasNoKeyWords = ( (preSql.find("WHERE") == -1) && (preSql.find("where") == -1) );
+		//	if (bHasNoKeyWords) {
+		//		newSql = (boost::format("%s where %s")
+		//			% preSql
+		//			%sConditionSql).str();			
+		//	}
+		//	else {
+		//		newSql = (boost::format("%s and %s")
+		//			% preSql
+		//			%sConditionSql).str();
+		//	}
+
+		//	tx_json["Sql"] = Json::Value(newSql);
+
+		//}
 
 
 	}
@@ -666,7 +722,7 @@ Json::Value queryBySql(TxStore& txStore,std::string& sql)
 	return ret;
 }
 
-Json::Value checkTableExistOnChain(RPC::Context&  context, std::string sql)
+Json::Value checkTableExistOnChain(RPC::Context&  context, std::string& sql)
 {
 	Json::Value ret(Json::objectValue);
 	std::set <std::string> setTableNames;
@@ -674,6 +730,8 @@ Json::Value checkTableExistOnChain(RPC::Context&  context, std::string sql)
 
 	for (auto nameInDB : setTableNames)
 	{
+		std::string rule;
+
 		Json::Value val = context.app.getTxStore().txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB + "';");
 		if (val.isMember(jss::error))
 		{
@@ -702,11 +760,30 @@ Json::Value checkTableExistOnChain(RPC::Context&  context, std::string sql)
 			if (tablesle)
 			{
 				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-				if (getTableEntry(aTableEntries, tableName) == nullptr)
-				{
+
+				STEntry* pEntry = getTableEntry(aTableEntries, tableName);
+				if (pEntry == nullptr) {
 					return rpcError(rpcTAB_NOT_EXIST);
 				}
+				else {
+					rule = pEntry->getOperationRule(R_GET);
+				}
+
+
 			}
+
+			//
+			// union queries && rule not supported
+			if (!rule.empty() && setTableNames.size() > 1)
+			{
+				return rpcError(rpcSQL_MULQUERY_NOT_SUPPORT);
+			}
+
+			ret = caternateSqlAndOperateRule(rule, sql);
+			if (ret.isMember(jss::error))
+				return ret;
+
+		
 		}
 	}
 	return ret;
@@ -729,7 +806,7 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 		return RPC::invalid_field_error(jss::sql);
 	}
 
-	//check table exist on chain
+	//check table exist on chain  and catenate sql and OperationRule
 	ret = checkTableExistOnChain(context, sql);
 	if (ret.isMember(jss::error))
 		return ret;
