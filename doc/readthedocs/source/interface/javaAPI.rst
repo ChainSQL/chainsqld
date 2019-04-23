@@ -56,8 +56,7 @@ Java接口
 接口返回格式
 =====================
 
-请求的接口以``JSONObject``格式返回时
-成功时显示
+成功
 
 .. code-block:: json
 
@@ -66,7 +65,11 @@ Java接口
         "status":"db_success"
     }
 
-失败时显示类似以下信息，JSON中包含``error_message``字段
+说明
+
+- status 为db_success，validate_success表示接口调用成功
+
+失败
 
 .. code-block:: json
 
@@ -84,6 +87,11 @@ Java接口
       "type":"response",
       "status":"error"
     }
+
+说明
+
+- status 值为error，表明接口调用失败
+- error_message 为错误提示
 
 ------------------------------------------------------------------------------
 
@@ -150,7 +158,7 @@ use
 
 ------------------------------------------------------------------------------
 
-.. note:: 进行表操作前必须调用use,来指定表的所有者
+.. note:: 进行表操作前必须调用use,来指定表的所有者。因为不同用户可能存在同名的表名
 
 connect
 =====================
@@ -189,9 +197,29 @@ Connect to a websocket url.
 
 .. code-block:: java
 
+    // 同步连接
     // 如果无法建立连接,会抛出java.net.ConnectException;
     String url = "ws://192.168.0.162:6006";
     c.connect(url);
+
+.. code-block:: java
+
+    // 异步连接
+    c.connect("ws://127.0.0.1:6006", new Callback<Client>() {
+			@Override
+			public void called(Client args) {
+
+				System.out.println("Connected");
+
+			}
+		}, new Callback<Client>() {
+			@Override
+			public void called(Client args) {
+
+				System.out.println("Disconnected  ");
+
+			}
+		});
 
 ------------------------------------------------------------------------------
 
@@ -257,7 +285,7 @@ pay
 
     c.pay(accountId,count);
 
-给用户转账,新创建的用户在转账成功之后才能正常使用。
+给用户转账,新创建的用户在转账成功之后才能正常使用(激活)。
 
 ------------
 参数
@@ -321,36 +349,10 @@ validationCreate
 
 .. code-block:: java
 
-    c.validationCreate();
+    JSONObject validationCreate();
+    JSONArray validationCreate(int count);
 
 Create validation key
-
--------
-返回值
--------
-
-``JSONObject`` - JSONObject with field "seed" and "publickey".
-
--------
-示例
--------
-
-.. code-block:: java
-
-    JSONObject json = c.validationCreate();
-
-    // 输出:
-
-    //{
-    //  "seed"     :"xnaKLBqkwZxCxCNk1LokjAekUQaWT",
-    //  "publickey":"n9KrLAkaHZk3kns6TfZS9mRJmPrNJLjARxM8qUtM2CXpBpUcyTdD"
-    //}
-
-.. code-block:: java
-
-    c.validationCreate(count);
-
-Create validation keys
 
 ------------
 参数
@@ -362,7 +364,8 @@ Create validation keys
 返回值
 -------
 
-``JSONArray`` - 一个或多个有效的key，每个key的结构为{"seed":xxx,"publickey":xxx}
+``JSONObject`` -  一个有效的key,结构为{"seed":xxx,"publickey":xxx}
+``JSONArray``  -  一个或多个有效的key，每个key的结构为{"seed":xxx,"publickey":xxx}
 
 -------
 示例
@@ -370,10 +373,18 @@ Create validation keys
 
 .. code-block:: java
 
+    JSONObject json = c.validationCreate();
+
+    // 输出:
+    //{
+    //  "seed"     :"xnaKLBqkwZxCxCNk1LokjAekUQaWT",
+    //  "publickey":"n9KrLAkaHZk3kns6TfZS9mRJmPrNJLjARxM8qUtM2CXpBpUcyTdD"
+    //}
+
+
     JSONArray jsonArr = c.validationCreate(2);
 
     // 输出:
-
     //[
     // {"seed":"xxuvaugPX5ZTCcFvKdd9vzhAHFd27","publickey":"n94U13Uap8LQaDJQtbV9HGcgWH8qzWPscpZdqMv6SPz6U5Zazcdq"},
     // {"seed":"xxqE8bBLKrKMMEpjqS4gwLwmRAGm6","publickey":"n9MdENDVAaQSDnmFdv3BzRbuuNH1AvUmpy8D7LMfN3evEx82us4Z"}
@@ -388,7 +399,7 @@ getServerInfo
 
     c.getServerInfo();
 
-Create validation key
+获取服务器信息.
 
 -------
 返回值
@@ -695,7 +706,7 @@ sign
 
 .. code-block:: java
 
-    // sample 1
+    // Example 1
     JSONObject obj = new JSONObject();
 		JSONObject tx_json = new JSONObject();
 		tx_json.put("Account", "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
@@ -709,7 +720,7 @@ sign
 		System.out.println("sign payment result:" + res);
 
 
-    //sample 2
+    //Example 2
 		String hello = "helloworld";
 		byte[] signature = c.sign(hello.getBytes(), "xnoPBzXtMeMyMHUVTgbuqAfg1SUTb");
 		if(c.verify(hello.getBytes(), signature, "cBQG8RQArjx1eTKFEAQXz2gS4utaDiEC9wmi7pfUPTi27VCchwgw"))
@@ -741,18 +752,18 @@ signFor
 返回值
 -------
 
-``JSONObject``	  
+``JSONObject``
 
 .. code-block:: json
 
   {
-                          "Signer":{
-                            "Account":"rDsFXt1KRDNNckSh3exyTqkQeBKQCXawb2",
-                            "SigningPubKey":"02E37D565DF377D0C30D93163CF40F41BB81B966B11757821F25FBCDCFEA18E8A9",
-                              "TxnSignature":"3044022050903320FF924BCD7F55D3BE095A457BF2421E805C5B39DA77F006BB217D6398022024C51DECA25018D80CB16AB65674B71BFD20789D63EC47FD5EAD7FC75B880055"
-                          },
-                          "hash":""
-                      }
+      "Signer":{
+        "Account":"rDsFXt1KRDNNckSh3exyTqkQeBKQCXawb2",
+        "SigningPubKey":"02E37D565DF377D0C30D93163CF40F41BB81B966B11757821F25FBCDCFEA18E8A9",
+          "TxnSignature":"3044022050903320FF924BCD7F55D3BE095A457BF2421E805C5B39DA77F006BB217D6398022024C51DECA25018D80CB16AB65674B71BFD20789D63EC47FD5EAD7FC75B880055"
+      },
+      "hash":""
+  }
 
 -------
 示例
@@ -930,9 +941,9 @@ accountSet
 
 1. ``flag`` - ``int``:                 一般情况下为8，表示asfDefaultRipple，详见 `AccountSet Flags <https://developers.ripple.com/accountset.html>`_
 2. ``bSet`` - ``boolean``:             true:SetFlag; false:ClearFlag
-3. ``transferRate`` - ``String``:      1.0 - 2.0 string
-4. ``transferFeeMin`` - ``String``:    decimal number string
-5. ``transferFeeMax`` - ``String``:    decimal number string
+3. ``transferRate`` - ``String``:      1.0 - 2.0 string,，例如 "1.005","1.008"
+4. ``transferFeeMin`` - ``String``:    10进制字符串数字，例如"10"
+5. ``transferFeeMax`` - ``String``:    10进制字符串数字，例如"10"
 
 -------
 返回值
@@ -946,7 +957,10 @@ accountSet
 
 .. code-block:: java
 
-    c.setRestrict(false);
+    JSONObject jsonObj = c.accountSet(8, true).submit(SyncCond.validate_success);
+    System.out.print("set gateWay:" + jsonObj + "\ntrust gateWay ...\n");
+    jsonObj = c.accountSet("1.005", "2", "3").submit(SyncCond.validate_success);
+    System.out.print("set gateWay:" + jsonObj + "\ntrust gateWay ...\n");
 
 ------------------------------------------------------------------------------
 
@@ -996,16 +1010,38 @@ pay
 参数
 ------------
 
-1. ``accountId``   - ``String``:  转账的用户地址
-2. ``value``   - ``String``:      Count of coins to transfer,max value:1e11.
-3. ``sCurrency`` - ``String``:    货币名称 ，例如"RMB"
-4. ``sIssuer``   - ``String``:  转账的用户地址
+1. ``accountId``   - ``String``:  转账接受地址
+2. ``value``       - ``String``:  转账货币的数量 最大值为:1e11.
+3. ``sCurrency``   - ``String``:  货币名称 ，例如"RMB"
+4. ``sIssuer``     - ``String``:  网关地址
 
 -------
 返回值
 -------
 
 ``Ripple`` - Ripple对象
+
+-------
+备注
+-------
+
+交易的费用的计算公式如下
+
+``transferRate``   - 费率，    为accountSet函数中的参数
+
+``transferFeeMin`` - 最小花费， 为accountSet函数中的参数
+
+``transferFeeMax`` - 最大花费， 为accountSet函数中的参数
+
+.. math::
+    \begin{gather}
+    fee   = 转账金额*费率 \\
+    交易花费=\begin{cases}
+    最小花费, \quad fee<最小花费 \\
+    fee,\quad 最小花费\leq fee\leq 最大花费 \\ 
+    最大花费，\quad fee>最大花费
+    \end{cases}
+    \end{gather}
 
 -------
 示例
@@ -1093,7 +1129,7 @@ REFERENCES   值的格式为 {'table':'user','field':'id'}
 ==========   =========================================
 
 
-3. ``confidential``  - ``boolean``: 表示创建的表是否为加密的表,true:创建加密表;如果不写,默认为false;
+3. ``confidential``  - ``boolean``:    表示创建的表是否为加密的表,true:创建加密表;如果不写,默认为false;
 4. ``operationRule`` - ``JSONObject``: 行级控制规则，不能与confidential一起使用
 
 -------
@@ -1156,7 +1192,7 @@ dropTable
 
 .. code-block:: java
 
-  c.dropTable(tableName);
+  c.dropTable(tableName).submit();
 
 从数据库删除一个表。表和它的所有数据将被删除;
 
@@ -1378,15 +1414,15 @@ grant
 
   Chainsql grant(String name, String user,String flag);
 
-Grant a user with authorities to operate a table.
+授权user用户操作表name的各项权限
 
 ------------
 参数
 ------------
 
-1. ``name``    - ``String``:  Table name
-2. ``user``    - ``String``:  ser address,start with a lower case 'z'.
-3. ``flag``    - ``String``:  Options to notify the authorities.eg:"{insert:true,delete:false}" means the user can insert to this table,but cannot delete from this table.
+1. ``name``    - ``String``:  表名
+2. ``user``    - ``String``:  被授权账户地址 ,以字母 'z' 开头.
+3. ``flag``    - ``String``:  表操作规则.例如:"{insert:true,delete:false}" 表示user 账户可以执行插入操作，但是不能执行删除操作
 
 -------
 返回值
@@ -1567,13 +1603,13 @@ getBySqlAdmin
     JSONObject getBySqlAdmin(String sql);//同步接口
     void getBySqlAdmin(String sql,Callback<JSONObject> cb);// 异步接口
 
-根据sql语句查询，admin接口。
+根据sql语句查询，admin权限，无签名检测
 
 ------------
 参数
 ------------
 
-1. ``sql``    - ``String``:  标准sql语句
+1. ``sql``   - ``String``:  标准sql语句
 2. ``cb``    - ``Callback<JSONObject>``:  回调函数
 
 -------
@@ -1684,7 +1720,7 @@ subscribeTable
 
 .. code-block:: java
 
-  // 用户订阅TestName表信息，表的创建者为zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M  加密表?
+  // 用户订阅TestName表信息，表的创建者为zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M
   c.event.subscribeTable("TestName", "zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M",new Callback(){
 
     @Override
@@ -1753,9 +1789,15 @@ subscribeTx
 .. code-block:: java
 
   // 用户订阅交易Hash信息.
-  c.event.subscribeTx(txid, (data) -> {
-    //do something here
-  }));
+		c.event.subscribeTx("601781B50D7936370276287EAC3737D7A1D20281E2E73FCA31FE7563426C93B0", new Callback<JSONObject>() {
+
+			@Override
+			public void called(JSONObject args) {
+				//do something here
+
+				System.out.println("subscribeTx Info:" + args);
+			}
+		});
 
 ------------------------------------------------------------------------------
 
