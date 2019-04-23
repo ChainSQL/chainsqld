@@ -158,7 +158,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 .. IMPORTANT::
 
-    如果配置文件的名称为 ``chainsqld.cfg``  ，可以不用加--conf指定配置文件路径，直接运行 ``nohup ./chainsqld &`` 命令即可启动节点。
+    如果配置文件在当前目录，且名称为 ``chainsqld.cfg``  ，可以不用加 ``--conf`` 指定配置文件路径，直接运行 ``nohup ./chainsqld &`` 命令即可启动节点。
 
 2.	配置文件的修改
 ---------------------------
@@ -166,7 +166,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 ``[sync_db]``
 
-  配置port，db，mysql安装时设置的(user,pass)等。
+  配置ip，port，db，mysql安装时设置的(user,pass)等。
 
   Chainsql中的事务与行级控制要求每个节点必须配置数据库，如果用不到这两个特性，也可以选择只在需要查看数据的节点配置数据库。
 

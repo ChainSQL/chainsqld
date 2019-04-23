@@ -77,3 +77,7 @@ Chainsql节点问题
     3. 启动chainsqld进程
     4. 查看 ``server_info``，直到 ``completed_ledgers`` 正常出块
     5. 依次对所有节点执行1-4过程
+
+5. 节点全部挂掉，找不到原因
+    | 使用secureCRT或者Xshell连接服务器，退出时，直接关闭对话窗口，会将nohup后台运行的进程杀死。
+    | 应该使用 ``exit`` 命令退出 ssh 工具终端
