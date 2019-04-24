@@ -854,8 +854,6 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 	if (!isDBConfigured(context.app))
 		return rpcError(rpcNODB);
 
-	Json::Value& tx_json(context.params["tx_json"]);
-
 	AccountID accountID;
 
 	std::set < std::pair<AccountID, std::string>  > setOwnerID2TableName;
