@@ -474,6 +474,40 @@ Json::Value getInfoByRPContext(RPC::Context& context, std::string&sSql, AccountI
 
 }
 
+
+Json::Value getLedgerTableInfo(RPC::Context& context, const std::string& sql, std::set < std::pair<AccountID, std::string>  >& setOwnerID2TableName)
+{
+
+	std::set <std::string> setDBTableNames;
+	getNameInDBSetInSql(sql, setDBTableNames);
+
+	Json::Value ret(Json::objectValue);
+	for (auto nameInDB : setDBTableNames)
+	{
+		std::string rule;
+
+		Json::Value val = context.app.getTxStore().txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB + "';");
+		if (val.isMember(jss::error))
+		{
+			return val;
+		}
+		const Json::Value& lines = val[jss::lines];
+		if (lines.isArray() == false || lines.size() != 1)
+		{
+			std::string errMsg = "Get value invalid from syncTableState, nameInDB=" + nameInDB;
+			return RPC::make_error(rpcGET_VALUE_INVALID, errMsg);
+		}
+
+		const Json::Value & line = lines[0u];
+		auto ownerID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
+		setOwnerID2TableName.emplace(std::make_pair(*ownerID, line[jss::TableName].asString()));
+
+	}
+	return ret;
+
+}
+
+
 Json::Value getLedgerTableInfo(RPC::Context& context,AccountID& accountID, std::set < std::pair<AccountID,std::string>  >& setOwnerID2TableName )
 {
 	std::string sSql;
@@ -510,8 +544,21 @@ Json::Value getLedgerTableInfo(RPC::Context& context,AccountID& accountID, std::
 
 }
 
-// sql caternate OperateRule according to jss::condition
-Json::Value caternateSqlAndOperateRule(const std::string rule, std::string& sql) {
+// 
+
+/**
+	sql catenate OperateRule according to jss::condition
+
+	@param rule               OperateRule 
+	@param sql                sql string
+	@param catenatedSql    a catenatedSql string
+
+	@return Json::Value   
+	   success:{};
+	   error  :{"error":"Invalid field sql"}
+*/
+
+Json::Value catenateSqlAndOperateRule(const std::string& rule, const std::string& sql,std::string& catenatedSql) {
 
 	Json::Value jsonRule;
 	Json::Reader().parse(rule, jsonRule);
@@ -536,26 +583,26 @@ Json::Value caternateSqlAndOperateRule(const std::string rule, std::string& sql)
 			return RPC::invalid_field_error("Sql");
 		}
 
-		std::string newSql;
 		bool bHasNoKeyWords = ((sql.find("WHERE") == -1) && (sql.find("where") == -1));
 		if (bHasNoKeyWords) {
-			newSql = (boost::format("%s where %s")
+			catenatedSql = (boost::format("%s where %s")
 				% sql
 				%sConditionSql).str();
 		}
 		else {
-			newSql = (boost::format("%s and %s")
+			catenatedSql = (boost::format("%s and %s")
 				% sql
 				%sConditionSql).str();
 		}
 
-		sql = newSql;
+	}
+	else {
+
+		catenatedSql = sql;
 
 	}
 
-	return Json::Value();
-
-
+	return Json::Value();	
 }
 
 Json::Value checkAuthForSql(RPC::Context& context, AccountID& accountID, std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName)
@@ -575,10 +622,61 @@ Json::Value checkAuthForSql(RPC::Context& context, AccountID& accountID, std::se
 }
 
 
-
-Json::Value checkOperationRuleForSql(RPC::Context& context, AccountID& accountID, std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName)
+// Reference to return 
+Json::Value 
+checkOperationRuleForSql(RPC::Context& context, const std::string& sql,const std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName,std::string& catenatedSql)
 {
+	std::string rule;
+	catenatedSql = sql;
+
+	for (auto ownerID2TableName : setOwnerID2TableName)
+	{
+		auto ledger = context.ledgerMaster.getValidatedLedger();
+		if (ledger)
+		{
+			auto id = keylet::table(ownerID2TableName.first);
+			auto const tablesle = ledger->read(id);
+
+			if (tablesle)
+			{
+				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+
+				STEntry* pEntry = getTableEntry(aTableEntries, ownerID2TableName.second);
+				if (pEntry ) {
+
+					rule = pEntry->getOperationRule(R_GET);
+	
+					// union queries && rule not supported
+					if (!rule.empty() && setOwnerID2TableName.size() > 1)
+					{
+						return rpcError(rpcSQL_MULQUERY_NOT_SUPPORT);
+					}
+
+					Json::Value ret = catenateSqlAndOperateRule(rule, sql, catenatedSql);
+					if (ret.isMember(jss::error))
+						return ret;
+
+				}
+
+			}
+
+		}
+	}
+	return Json::Value();
+}
+
+
+
+Json::Value 
+checkOperationRuleForSqlUser(RPC::Context& context,const AccountID& accountID, const std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName, std::string& catenatedSql)
+{
+	Json::Value retJson;
+
 	Json::Value& tx_json(context.params["tx_json"]);
+
+	std::string sql = tx_json["Sql"].asString();
+	catenatedSql    = sql;
+
 	for (auto ownerID2TableName : setOwnerID2TableName)
 	{
 		std::string rule;
@@ -604,68 +702,21 @@ Json::Value checkOperationRuleForSql(RPC::Context& context, AccountID& accountID
 			}
 		}
 
-
 		// union queries && rule not supported
 		if (!rule.empty() && setOwnerID2TableName.size() > 1)
 		{
 			return rpcError(rpcSQL_MULQUERY_NOT_SUPPORT);
 		}
 
-		std::string sql = tx_json["Sql"].asString();
 
-		Json::Value ret = caternateSqlAndOperateRule(rule, sql);
+		Json::Value ret = catenateSqlAndOperateRule(rule, sql,catenatedSql);
 		if (ret.isMember(jss::error))
 			return ret;
 
-		tx_json["Sql"] = Json::Value(sql);
-
-		//// sql concatennation according to jss::condition
-		//Json::Value jsonRule;
-		//Json::Reader().parse(rule, jsonRule);
-
-		//bool bRule = jsonRule.isMember(jss::Condition);
-		//if (bRule)
-		//{
-		//	Json::Value& condition = jsonRule[jss::Condition];
-
-		//	if (condition.isObject()) {
-
-		//		Json::Value arr(Json::arrayValue);
-		//		arr.append(condition);
-
-		//		if (arr.isArray())
-		//			condition = arr;
-		//	}
-		//	std::string sConditionSql;
-		//	bool bSuccess= STTx2SQL::ConvertCondition2SQL(condition, sConditionSql);
-
-		//	if (!bSuccess) {
-		//		return RPC::invalid_field_error("Sql");
-		//	}
-
-		//	//std::string result_conditions = rTree.second.asString();
-		//	std::string preSql = tx_json["Sql"].asString();
-		//	std::string newSql;
-
-		//	bool bHasNoKeyWords = ( (preSql.find("WHERE") == -1) && (preSql.find("where") == -1) );
-		//	if (bHasNoKeyWords) {
-		//		newSql = (boost::format("%s where %s")
-		//			% preSql
-		//			%sConditionSql).str();			
-		//	}
-		//	else {
-		//		newSql = (boost::format("%s and %s")
-		//			% preSql
-		//			%sConditionSql).str();
-		//	}
-
-		//	tx_json["Sql"] = Json::Value(newSql);
-
-		//}
-
+		retJson = ret;
 
 	}
-	return Json::Value();
+	return retJson;
 }
 
 
@@ -722,35 +773,19 @@ Json::Value queryBySql(TxStore& txStore,std::string& sql)
 	return ret;
 }
 
-Json::Value checkTableExistOnChain(RPC::Context&  context, std::string& sql)
+Json::Value checkTableExistOnChain(RPC::Context&  context, std::set < std::pair<AccountID, std::string>  >& setOwnerID2TableName)
 {
 	Json::Value ret(Json::objectValue);
-	std::set <std::string> setTableNames;
-	getNameInDBSetInSql(sql, setTableNames);
 
-	for (auto nameInDB : setTableNames)
+	for ( auto ownerID2TableName : setOwnerID2TableName)
 	{
-		std::string rule;
 
-		Json::Value val = context.app.getTxStore().txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB + "';");
-		if (val.isMember(jss::error))
-		{
-			return ret;
-		}
-		const Json::Value& lines = val[jss::lines];
-		if (lines.isArray() == false || lines.size() != 1)
-		{
-			return ret;
-		}
-		const Json::Value & line = lines[0u];
-
-		auto ownerID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
-		auto tableName = line[jss::TableName].asString();
 		//check table exist
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		if (ledger)
 		{
-			auto id = keylet::table(*ownerID);
+
+			auto id = keylet::table(ownerID2TableName.first);
 			auto const tablesle = ledger->read(id);
 			if (!tablesle)
 			{
@@ -761,29 +796,13 @@ Json::Value checkTableExistOnChain(RPC::Context&  context, std::string& sql)
 			{
 				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 
-				STEntry* pEntry = getTableEntry(aTableEntries, tableName);
+				STEntry* pEntry = getTableEntry(aTableEntries, ownerID2TableName.second);
 				if (pEntry == nullptr) {
 					return rpcError(rpcTAB_NOT_EXIST);
 				}
-				else {
-					rule = pEntry->getOperationRule(R_GET);
-				}
-
 
 			}
-
-			//
-			// union queries && rule not supported
-			if (!rule.empty() && setTableNames.size() > 1)
-			{
-				return rpcError(rpcSQL_MULQUERY_NOT_SUPPORT);
-			}
-
-			ret = caternateSqlAndOperateRule(rule, sql);
-			if (ret.isMember(jss::error))
-				return ret;
-
-		
+	
 		}
 	}
 	return ret;
@@ -806,12 +825,22 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 		return RPC::invalid_field_error(jss::sql);
 	}
 
-	//check table exist on chain  and catenate sql and OperationRule
-	ret = checkTableExistOnChain(context, sql);
+	std::set < std::pair<AccountID, std::string>  > setOwnerID2TableName;
+	ret = getLedgerTableInfo(context, sql, setOwnerID2TableName);
+
+	//check table exist on chain  
+	ret = checkTableExistOnChain(context, setOwnerID2TableName);
 	if (ret.isMember(jss::error))
 		return ret;
 
-	return queryBySql(context.app.getTxStore(),sql);
+	std::string catenatedSql;
+	ret = checkOperationRuleForSql(context, sql, setOwnerID2TableName, catenatedSql);
+	if (ret.isMember(jss::error))
+	{
+		return ret;
+	}
+
+	return queryBySql(context.app.getTxStore(), catenatedSql);
 }
 
 Json::Value doGetRecordBySqlUser(RPC::Context& context)
@@ -843,15 +872,14 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 		return ret;
 	}
 
-	ret = checkOperationRuleForSql(context, accountID, setOwnerID2TableName);
+	std::string catenatedSql;
+	ret = checkOperationRuleForSqlUser(context, accountID, setOwnerID2TableName, catenatedSql);
 	if (ret.isMember(jss::error))
 	{
 		return ret;
 	}
 
-	// get result
-	auto sql = tx_json["Sql"].asString();
-	return queryBySql(context.app.getTxStore(), sql);
+	return queryBySql(context.app.getTxStore(), catenatedSql);
 }
 
 //Get record,will keep column order consistent with the order the table created.
