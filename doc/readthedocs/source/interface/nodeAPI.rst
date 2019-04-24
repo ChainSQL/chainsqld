@@ -53,7 +53,7 @@ as
 
 1. ``user`` - ``JsonObject`` : chainsql账户，包含账户地址、账户私钥和账户公钥，其中账户公钥为可选字段。
 
-.. code-block:: json
+.. code-block:: javascript
 
 	const user = {
 		secret: "xhFyeP6kFEtm......Rx7Zqu2xFvm",
@@ -195,18 +195,18 @@ submit
 
 ``JsonObject`` : 交易执行结果的返回值，如果指定回调函数，则通过回调函数返回，否则返回一个Promise的对象。
 
-1. 执行成功，则 ``JsonObject``中包含两个字段：
+1. 执行成功，则 ``JsonObject`` 中包含两个字段：
 
 	* ``status`` - ``String`` : 为提交时expect后的设定值，如果没有，则默认为"send_success"；
 	* ``tx_hash`` - ``String`` : 交易哈希值，通过该值可以在链上查询交易。
 2. 执行失败，有两种情况，一种是交易提交前的信息检测，一种是交易提交后共识出错。
 
-	*第一种信息检测出错，``JsonObject`` 中主要包含以下字段：
+	* 第一种信息检测出错，``JsonObject`` 中主要包含以下字段：
 
 		- ``name`` - ``String`` : 错误类型；
 		- ``message`` - ``String`` : 错误具体描述。
 
-	*第二种交易提交之后共识出错，``JsonObject`` 中包含以下字段：
+	* 第二种交易提交之后共识出错，``JsonObject`` 中包含以下字段：
 
 		- ``resultCode`` - ``String`` : 错误类型或者说错误码；
 		- ``resultMessage`` - ``String`` : 错误具体描述。
@@ -367,19 +367,20 @@ getAccountInfo
 ---------------
 .. code-block:: javascript
 
-	chainsql.api.getAccountInfo(address)
+	chainsql.getAccountInfo(address[, callback])
 
 从链上请求查询账户信息。
 
 参数说明
 -----------
 
-1. ``address`` - ``String`` : 账户地址
+1. ``address`` - ``String`` : 账户地址；
+2. ``callback`` - ``Function`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则返回一个promise对象。
 
 返回值
 -----------
 
-1. ``JsonObject`` : 通过Promise的resolve返回一个 ``JsonObject``, 包含账户基本信息，错误情况需要加try...catch进行捕获。正常返回主要字段如下：
+1. ``JsonObject`` : 包含账户基本信息。正常返回主要字段如下：
 
 	* ``sequence`` - ``Number`` : 该账户交易次数；
 	* ``zxcBalance`` - ``String`` : 账户ZXC系统币的余额。
@@ -389,8 +390,10 @@ getAccountInfo
 .. code-block:: javascript
 
 	try {
-		c.api.getAccountInfo("zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh").then(res => {
+		chainsql.getAccountInfo("zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh").then(res => {
 			console.log(res);
+		}).catch(err => {
+			console.error(err);
 		});
 	}catch(e){
 		console.error(e);
@@ -403,14 +406,14 @@ getLedger
 -----------
 .. code-block:: javascript
 
-	chainsql.getLedger(opt, callback)
+	chainsql.getLedger([[opt], [callback]])
 
 返回指定区块的区块头信息，如果在opt中指定详细信息，则会额外返回所有交易信息或者账户状态。
 
 参数说明
 -----------
 
-1. ``opt`` - ``JsonObject`` : 指定区块高度，定制返回内容。如果想默认获取最新区块信息，需要传入一个空的opt对象，可选字段如下：
+1. ``opt`` - ``JsonObject`` : [**可选**]指定区块高度，定制返回内容。如果想默认获取最新区块信息，可以不填opt参数。可选字段如下：
 
 	* ``includeAllData`` - ``Boolean`` : [**可选**]设置为True，如果又将includeState和(或)includeTransactions设置为True，会将详细交易和(或)详细账户状态返回；
 	* ``includeState`` - ``Boolean`` : [**可选**]设置为True，会返回一个包含状态哈希值的数组；如果同时将includeAllData设置为True，则会返回一个包含状态详细信息的数组；
@@ -418,7 +421,7 @@ getLedger
 	* ``ledgerHash`` - ``String`` : [**可选**]将返回此指定区块哈希值的区块头信息；
 	* ``ledgerVersion`` - ``integer`` : [**可选**]将返回此指定区块高度的区块头信息。
 
-2. ``callback`` - ``Function`` : 指定结果返回的回调函数。
+2. ``callback`` - ``Function`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则返回一个promise对象。
 
 返回值
 -----------
@@ -460,14 +463,14 @@ getLedgerVersion
 -----------------
 .. code-block:: javascript
 
-	chainsql.getLedgerVersion(callback)
+	chainsql.getLedgerVersion([callback])
 
 获取最新区块高度（区块号）
 
 参数说明
 -----------
 
-1. ``callback`` - ``Function`` : 指定结果返回的回调函数。
+1. ``callback`` - ``Function`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则返回一个promise对象。
 
 返回值
 -----------
@@ -681,11 +684,19 @@ getTableAuth
 
 1. ``ownerAddr`` - ``String`` : 表的拥有者地址；
 2. ``tableName`` - ``String`` : 表名；
-3. ``account`` - ``String`` : ？？？。
+3. ``account`` - ``Array`` : 查询指定账户的授权情况，当此参数不填时，返回指定表的所有授权情况。指定账户数组，只返回指定账户的授权情况。
 
 返回值
 -----------
 
+``JsonObject`` : 由以下字段组成：
+
+	* ``owner`` - ``String`` : 表的拥有者地址；
+	* ``tablename`` - ``String`` : 表名；
+	* ``users`` - ``Array`` : 由 ``JsonObject`` 组成的数组，每个 ``JsonObject`` 为某个账户的授权信息，具体字段如下：
+
+		- ``account`` - ``String`` : 被授权账户地址；
+		- ``authority`` - ``JsonObject`` : 具体被授予的操作权限，key为insert、delete、update、select，value为true或者false；
 
 示例
 -----------
@@ -696,6 +707,31 @@ getTableAuth
 	}).catch(err => {
 		console.error(err);
 	});
+	>
+	{
+		owner:"zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
+		tablename:"tableTest",
+		users:[
+			{
+				account:"zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
+				authority:{
+					delete:true,
+					insert:true,
+					select:true,
+					update:true
+				}
+			},
+			{
+				account:"zLtH4NFSqDFioq5zifriKKLf8xcyyw7VCf",
+				authority:{
+					delete:false,
+					insert:true,
+					select:true,
+					update:false
+				}
+			}
+		]
+	}
 
 ------------------------------------------------------------------------------
 
@@ -822,6 +858,7 @@ trustSet
 		* ``value`` - ``String`` : 转账数额；
 		* ``currency`` - ``String`` : 转账币种；
 		* ``issuer`` - ``String`` : 该币种的发行网关地址。
+
 返回值
 -----------
 
@@ -1035,7 +1072,7 @@ insert
 -----------
 
 1. ``raw`` - ``Array`` : 插入操作的raw，详细格式和内容可参看 **raw说明** ；
-2. ``field`` - ``????`` : 。
+2. ``field`` - ``String`` : 插入操作支持将每次执行插入交易的哈希值作为字段同步插入到数据库中。需要提前在建表的时候指定一个字段为存储交易哈希，然后将该字段名作为参数传递给insert即可。
 
 返回值
 -----------
@@ -1280,7 +1317,7 @@ limit
 
 | 对表内容进行查询操作的限定条件，tableObj是由chainsql.table接口创建的。
 | 对数据库进行分页查询.返回对应条件的数据。
-| 此接口单独使用没有意义，需要在get接口之后级联调用。并可以与order和withField依次级联，但最后需要调用submit接口。
+| 此接口单独使用没有意义，需要在get接口之后级联调用。并可以与order和withFields依次级联，但最后需要调用submit接口。
 
 参数说明
 -----------
@@ -1316,7 +1353,7 @@ order
 
 | 对表内容进行查询操作的限定条件，tableObj是由chainsql.table接口创建的。
 | 对查询的数据按指定字段进行排序；
-| 此接口单独使用没有意义，需要在get接口之后级联调用。并可以与limit和withField依次级联，但最后需要调用submit接口。
+| 此接口单独使用没有意义，需要在get接口之后级联调用。并可以与limit和withFields依次级联，但最后需要调用submit接口。
 
 参数说明
 -----------
@@ -1345,16 +1382,16 @@ withFields
 -----------
 .. code-block:: javascript
 
-	tableObj.withFields(feild1[, feild2[, ...]])
+	tableObj.withFields(feildArray)
 
 | 对表内容进行查询操作的限定条件，tableObj是由chainsql.table接口创建的。
-| 从数据库查询数据,并返回指定字段。
-| 此接口单独使用没有意义，需要在get接口之后级联调用。并可以与limit和withField依次级联，但最后需要调用submit接口。
+| 从数据库查询数据,通过参数指定返回字段。
+| 此接口单独使用没有意义，需要在get接口之后级联调用。并可以与limit和order依次级联，但最后需要调用submit接口。
 
 参数说明
 -----------
 
-1. ``raw`` - ``Array`` : raw参数的详细格式及内容可参看 **raw说明**
+1. ``feildArray`` - ``Array`` : 由限定的返回字段组成的数组，每个数组元素为 ``String`` 格式。数组元素可以是字段名，也可以是其他SQL语句，可参考 **withFields** 。
 
 返回值
 -----------
@@ -1376,9 +1413,9 @@ withFields
 
 ------------------------------------------------------------------------------
 
------------
+--------------
 getBySqlAdmin
------------
+--------------
 .. code-block:: javascript
 
 	chainsql.getBySqlAdmin(sql)
@@ -1412,9 +1449,9 @@ getBySqlAdmin
 
 ------------------------------------------------------------------------------
 
------------
+-------------
 getBySqlUser
------------
+-------------
 .. code-block:: javascript
 
 	chainsql.getBySqlUser(sql)
@@ -1459,9 +1496,9 @@ getBySqlUser
 订阅
 ===========
 
------------
+---------------
 subscribeTable
------------
+---------------
 .. code-block:: javascript
 
 	chainsql.event.subscribeTable(owner, tableName, callback)
@@ -1497,9 +1534,9 @@ subscribeTable
 
 ------------------------------------------------------------------------------
 
------------
+----------------
 unsubcribeTable
------------
+----------------
 .. code-block:: javascript
 
 	chainsql.event.unsubcribeTable(owner, tableName)
@@ -1600,7 +1637,6 @@ unsubscribeTx
 智能合约接口
 ============
 
-------------
 .. toctree::
    :maxdepth: 2
 
