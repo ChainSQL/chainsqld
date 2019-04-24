@@ -234,7 +234,10 @@ namespace ripple {
 			uint256 txnLedgerHash;
 
 			bool bRet = m_pTableStatusDB->GetMaxTxnInfo("hello", to_string(account_), txnLedgerSeq, txnLedgerHash);
-			JLOG(logs_->journal("TableStatus").info()) << "TxnLedgerSeq:" << txnLedgerSeq << " TxnLedgerHash:" << txnLedgerHash;
+			if(bRet)
+			{
+				JLOG(logs_->journal("TableStatus").info()) << "TxnLedgerSeq:" << txnLedgerSeq << " TxnLedgerHash:" << txnLedgerHash;
+			}				
 		}
 
 		void testIs()
@@ -243,7 +246,9 @@ namespace ripple {
 			std::string nameInDB;
 			bool bRet = m_pTableStatusDB->isNameInDBExist("hijack", to_string(account_),true, nameInDB);
 			if (bRet)
+			{ 
 				JLOG(logs_->journal("TableStatus").info())<<"NameInDBExist";
+			}
 			bRet = m_pTableStatusDB->IsExist(account_, "t_abcdef");
 		}
 

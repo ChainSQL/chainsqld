@@ -20,6 +20,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <string>
 #include <vector>
 #include <thread>
+#include <fstream>
 
 #include <ripple/beast/unit_test.h>
 #include <ripple/basics/StringUtilities.h>
