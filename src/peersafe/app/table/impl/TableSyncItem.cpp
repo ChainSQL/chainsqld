@@ -1109,6 +1109,9 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					auto conn = getTxStoreDBConn().GetDBConn();
 					if (conn == NULL)
 					{
+						std::pair<std::string, std::string> result = std::make_pair("db_error", "Get db connection failed,maybe max-connections too small.");
+						app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
+
 						SetSyncState(SYNC_STOP);
 						return false;
 					}
