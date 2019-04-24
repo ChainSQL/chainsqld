@@ -1699,8 +1699,11 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 							bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
 							mapTxDBNam2Exist[uTxDBName] = bDBTableExist;
 						}
-
-						bDBTableExist = mapTxDBNam2Exist[uTxDBName];
+						else 
+						{
+							bDBTableExist = mapTxDBNam2Exist[uTxDBName];
+						}
+				
 						if (!bDBTableExist)
 						{
 							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noTableExistInDB", ""), false);
