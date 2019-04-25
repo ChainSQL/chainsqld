@@ -236,6 +236,8 @@ submit
 
 ------------------------------------------------------------------------------
 
+.. _pay-introduce:
+
 ---------------
 pay（账户转账）
 ---------------
@@ -406,14 +408,14 @@ getLedger
 -----------
 .. code-block:: javascript
 
-	chainsql.getLedger([[opt], [callback]])
+	chainsql.getLedger([[opts], [callback]])
 
 返回指定区块的区块头信息，如果在opt中指定详细信息，则会额外返回所有交易信息或者账户状态。
 
 参数说明
 -----------
 
-1. ``opt`` - ``JsonObject`` : [**可选**]指定区块高度，定制返回内容。如果想默认获取最新区块信息，可以不填opt参数。可选字段如下：
+1. ``opts`` - ``JsonObject`` : [**可选**]指定区块高度，定制返回内容。如果想默认获取最新区块信息，可以不填opt参数。可选字段如下：
 
 	* ``includeAllData`` - ``Boolean`` : [**可选**]设置为True，如果又将includeState和(或)includeTransactions设置为True，会将详细交易和(或)详细账户状态返回；
 	* ``includeState`` - ``Boolean`` : [**可选**]设置为True，会返回一个包含状态哈希值的数组；如果同时将includeAllData设置为True，则会返回一个包含状态详细信息的数组；
@@ -433,13 +435,13 @@ getLedger
 -----------
 .. code-block:: javascript
 
-	const opt = {
+	const opts = {
 		ledgerVersion : 418,
 		includeAllData : false,
 		includeTransactions : true,
 		includeState : false
 	}
-	chainsql.getLedger(opt, function(err, res) {
+	chainsql.getLedger(opts, function(err, res) {
 		err ? console.error(err) : console.log(res);
 	});
 	> res:
@@ -488,12 +490,12 @@ getLedgerVersion
 
 ------------------------------------------------------------------------------
 
-----------------
-getTransactions
-----------------
+-----------------------
+getAccountTransactions
+-----------------------
 .. code-block:: javascript
 
-	chainsql.getTransactions(address[, opt][, cb])
+	chainsql.getAccountTransactions(address[, opts][, cb])
 
 获取账户的交易信息
 
@@ -501,7 +503,7 @@ getTransactions
 -----------
 
 1. ``address`` - ``String`` : 账户地址
-2. ``opt`` - ``JsonObject`` : [**可选**]返回值限定值，可选字段如下：
+2. ``opts`` - ``JsonObject`` : [**可选**]返回值限定值，可选字段如下：
 
 	* ``binary`` - ``boolean`` : [**可选**]如果为True，则节点返回一个二进制格式的结果，而不是一个可读的Json对象；
 	* ``counterparty`` - ``address`` : [**可选**]如果为True，则节点只返回涉及指定网关的交易；
@@ -512,7 +514,7 @@ getTransactions
 	* ``limit`` - ``integer`` : [**可选**]限定节点返回的交易个数；
 	* ``maxLedgerVersion`` - ``integer`` : [**可选**]节点返回此指定区块之前区块中该账户的交易；
 	* ``minLedgerVersion`` - ``integer`` : [**可选**]节点返回此指定区块之后区块中该账户的交易；
-	* ``start`` - ``string`` : [**可选**]**没看懂**；
+	* ``start`` - ``string`` : [**可选**]某个交易哈希值，如果指定，则从指定交易哈希的交易开始按序返回交易。不可以和maxLedgerVersion和minLedgerVersion一起使用；
 	* ``types`` - ``TransactionTypes`` : [**可选**]节点只返回该交易类型的交易；
 
 3. ``callback`` - ``Function`` : [**可选**]回调函数，如果指定，则通过指定回调函数返回结果，否则返回一个promise对象。。
@@ -529,7 +531,7 @@ getTransactions
 	//use the callback
 	const address = "zMpUjXckTSn6NacRq2rcGPbjADHBCPsURF";
 	const opt = {limit:12};
-	chainsql.getTransactions(address, opt, function(err, res) {
+	chainsql.getAccountTransactions(address, opt, function(err, res) {
 		err ? console.error(err) : console.log(res);
 	});
 
@@ -574,7 +576,7 @@ sign
 -----------
 .. code-block:: javascript
 
-	chainsql.sign(txJson, secret)
+	chainsql.sign(txJson, secret[, option])
 
 交易签名接口，只能对交易进行签名。
 
@@ -585,6 +587,9 @@ sign
 
 1. ``txJson`` - ``JsonObject`` : 交易对象，不同交易类型，结构不同，可参考 `交易结构`_ 的说明。以及对chainsql的表交易结构说明
 2. ``secret`` - ``String`` : 签名者的私钥。
+3. ``option`` - ``JsonObject`` : [**可选**]进行多方签名时，需要利用option参数提供签名账户地址，此时secret参数应为option中账户的私钥。此对象只包含一个字段：
+	
+	* ``signAs`` - ``String`` : 字符串，签名账户的地址。
 
 返回值
 -----------
@@ -599,42 +604,39 @@ sign
 .. code-block:: javascript
 
 	const user = {
-		address:"zwqrah4YEKCxLQM2oAG8Qm8p1KQ5dMB9tC"
-		publicKey:"cB4uvqvj49hBjXT25aYYk91K9PwFn8A12wwQZq8WP5g2um9PJFSo"
+		address:"zwqrah4YEKCxLQM2oAG8Qm8p1KQ5dMB9tC",
+		publicKey:"cB4uvqvj49hBjXT25aYYk91K9PwFn8A12wwQZq8WP5g2um9PJFSo",
 		secret:"xnBUAtQZMEhDDtTtfjXhK1LE5yN6D"
 	}
-	const payment = {
-		"Account": "zwqrah4YEKCxLQM2oAG8Qm8p1KQ5dMB9tC",
-		"Amount":"1000000000",
-		"Destination": "rBuLBiHmssAMHWQMnEN7nXQXaVj7vhAv6Q",
-		"TransactionType": "Payment",
-		"Sequence": info.sequence,
-		"LastLedgerSequence":data + 5,
-		"Fee":"50"
+	let info = await chainsql.getAccountInfo(user.address);
+	chainsql.getLedgerVersion(function(err,data){
+		const payment = {
+			"Account": "zwqrah4YEKCxLQM2oAG8Qm8p1KQ5dMB9tC",
+			"Amount":"1000000000",
+			"Destination": "zPBJ6Ai7JoQxYcYhF8gqsBDdhUVdaqQq2u",
+			"TransactionType": "Payment",
+			"Sequence": info.sequence,
+			"LastLedgerSequence":data + 5,
+			"Fee":"50"
+		}
+		let signedRet = chainsql.sign(payment, user.secret);
 	}
-	let signedRet = chainsql.sign(payment, user.secret);
 	>
 	{
   		"signedTransaction": "12000322800000002400000017201B0086955368400000000000000C732102F89EAEC7667B30F33D0687BBA86C3FE2A08CCA40A9186C5BDE2DAA6FA97A37D874473045022100BDE09A1F6670403F341C21A77CF35BA47E45CDE974096E1AA5FC39811D8269E702203D60291B9A27F1DCABA9CF5DED307B4F23223E0B6F156991DB601DFB9C41CE1C770A726970706C652E636F6D81145E7B112523F68D2F5E879DB4EAC51C66980503AF",
   		"id": "02BAE87F1996E3A23690A5BB7F0503BF71CCBA68F79805831B42ABAD5913BA86"
 	}
 
-------------------------------------------------------------------------------
-
------------
-signFor
------------
-.. code-block:: javascript
-
-参数说明
------------
-
-返回值
------------
-
-示例
------------
-.. code-block:: javascript
+	//multisigning
+	const signer = {
+		address:"zN9xbg1aPEP8aror3n7yr6s6JBGr7eEPeC",
+		publicKey:"cBQV4TokXMD4fumjtUrBi1Jj8p6iAeK74F2SeHih7jnTECzXYdJU",
+		secret:"xnrMj6Nyc3KYHn244KdMyaJn1wLUy"
+	}
+	const option = {
+		signAs:"zN9xbg1aPEP8aror3n7yr6s6JBGr7eEPeC"
+	}
+	let signedRet = chainsql.sign(payment, signer.secret, option);
 
 ------------------------------------------------------------------------------
 
@@ -812,11 +814,18 @@ accountSet
 
 1. ``option`` - ``JsonObject`` : 账户设置的可选属性，有一下几个：
 
-	* ``setFlag`` - ``String`` :
-	* ``clearFlag`` - ``String`` : 
-	* ``rate`` - ``Number`` : 转账费率
-	* ``min`` - ``Number`` : 
-	* ``max`` - ``Number`` : 
+	* ``enableRippling`` - ``Boolean`` : 是否开启网关的rippling功能，即信任同一网关同一货币的账户之间是否可以转账；
+	* ``rate`` - ``Number`` : 信任同一网关同一货币的账户之间转账费率，取值为1.0~2.0；
+	* ``min`` - ``Number`` : 根据rate计算出转账手续费后如果小于min值，则取min值；
+	* ``max`` - ``Number`` : 根据rate计算出转账手续费后如果大于max值，则取max值
+
+.. note::
+
+	* 关于费率：可取消设置，min/max=0,rate=1.0为取消设置。
+	* 每次设置都是重新设置，之前的设置会被替代。
+	* min,max可单独设置，但是要跟rate一起设置。
+	* 如果只设置rate，默认为取消设置min,max。
+	* 如果只设置min与rate，max会被取消设置,同理只设置max与rate，min会被取消设置。
 
 返回值
 -----------
@@ -828,7 +837,7 @@ accountSet
 .. code-block:: javascript
 
 	chainsql opt = {
-        setFlag: "defaultChainsql",
+        enableRippling: "defaultChainsql",
         rate: 1.002,
         min: 1,
         max: 1.5
@@ -881,6 +890,13 @@ trustSet
 	});
 
 ------------------------------------------------------------------------------
+
+-----------
+pay（网关发行币转账）
+-----------
+
+网关发行货币转账和普通转账接口相同，只是在amount参数处有所不同，具体格式和用法可以参考 :ref:`pay <pay-introduce>`
+
 
 表交易
 ===========
@@ -1288,19 +1304,30 @@ get
 参数说明
 -----------
 
-1. ``raw`` - ``Array`` : raw参数的详细格式及内容可参看 **raw说明**
+1. ``raw`` - ``JsonObject`` : raw参数的详细格式及内容可参看 **raw说明**
 
 返回值
 -----------
 
 ``JsonObject`` : 返回tableObj对象本身。
 
+.. _get-return:
+
+.. note::
+
+	通过get接口调用submit提交查询请求之后，实际返回查询结果为一个 ``JsonObject`` ，具体包含字段如下：
+
+	* ``diff`` - ``Number`` : ???
+	* ``lines`` - ``Array`` : 查询结果组成的数组，每个元素为数据库中的一行，类型为 ``JsonObject`` ，key为字段名，value为字段值。
+
 示例
 -----------
 .. code-block:: javascript
 
 	const tableName = "tableTest";
-	const raw = [{'id': 1}];
+	const raw = {
+		$and: [{id: {$gt: 1}}, {id: {$lt: 100}}]
+	};
 	chainsql.table(tableName).get(raw).submit().then(res => {
 		console.log(res);
 	}).catch(err => {
@@ -1430,7 +1457,7 @@ getBySqlAdmin
 返回值
 -----------
 
-``any`` : 返回查询结果。
+``JsonObject`` : 返回查询结果，格式与调用get接口之后在submit中获取的结果格式一致，可参考 :ref:`get接口 <get-return>`
 
 示例
 -----------
@@ -1466,7 +1493,7 @@ getBySqlUser
 返回值
 -----------
 
-``any`` : 返回查询结果。
+``JsonObject`` : 返回查询结果，格式与调用get接口之后在submit中获取的结果格式一致，可参考 :ref:`get接口 <get-return>`
 
 示例
 -----------
