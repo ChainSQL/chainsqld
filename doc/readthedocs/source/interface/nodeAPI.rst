@@ -1486,7 +1486,7 @@ getBySqlAdmin
 返回值
 -----------
 
-``JsonObject`` : 返回查询结果，格式与调用get接口之后在submit中获取的结果格式一致，可参考 :ref:`get接口 <get-return>`
+``JsonObject`` : 返回查询结果，格式与调用get接口之后在submit中获取的结果格式一致，但是没有diff字段。具体可参考 :ref:`get接口 <get-return>`
 
 示例
 -----------
@@ -1522,7 +1522,7 @@ getBySqlUser
 返回值
 -----------
 
-``JsonObject`` : 返回查询结果，格式与调用get接口之后在submit中获取的结果格式一致，可参考 :ref:`get接口 <get-return>`
+``JsonObject`` : 返回查询结果，格式与调用get接口之后在submit中获取的结果格式一致，但是没有diff字段。可参考 :ref:`get接口 <get-return>`
 
 示例
 -----------
