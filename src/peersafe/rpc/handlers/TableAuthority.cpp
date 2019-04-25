@@ -55,8 +55,6 @@ namespace ripple {
 			if (!context.params[jss::accounts].isArray())
 				return RPC::make_error(rpcINVALID_PARAMS, "Field accounts is not array");
 			ids = RPC::parseAccountIds(context.params[jss::accounts]);
-			if (ids.empty())
-				return RPC::make_error(rpcINVALID_PARAMS, "Field accounts does not include account");
 		}
 
 		AccountID ownerID;
