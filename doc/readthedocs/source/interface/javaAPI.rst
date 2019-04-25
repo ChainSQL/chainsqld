@@ -306,7 +306,7 @@ connect
     Connection connect(String url,String serverCertPath,String storePass,final Callback<Client> connectCb,
                        final Callback<Client> disconnectCb);
 
-连接一个 ``websockert`` 地址.如果需要与节点进行交互，必须设置节点的websocket地址。
+连接一个 ``websocket`` 地址.如果需要与节点进行交互，必须设置节点的websocket地址。
 
 ------------
 参数
@@ -381,6 +381,7 @@ submit接口有使用前提，需要事先调用其他操作接口将交易主�
 .. code-block:: java
 
   enum SyncCond {
+      send_success,     
       validate_success,// 交易共识通过
       db_success       //交易成功同步到数据库
   };
@@ -596,11 +597,11 @@ getServerInfo
               "converge_time_s":1.985
           },
 
-          {...},
+
 
           "validation_quorum":1,
 
-          {...},
+
 
           "complete_ledgers":"1-7888",
           "pubkey_validator":"n9KigtPo6tPTNSuyaz7AtHk7XijPZwEUuF8LfaQQhjmSwFBenk6Q",
@@ -797,8 +798,7 @@ getLedger
     "ledger":{
     "close_flags":0,
     "ledger_index":"13755",
-    {...}
-    {...}
+
     "validated":true,
     "ledger_index":13755,
     "ledger_hash":"F231B1EA321934EC608E5F1D7FDE8E17CEF4DC880DD0EEE2783071B36EC47C39"
