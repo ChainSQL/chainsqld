@@ -1,22 +1,12 @@
 .. _remix.chainsql.net: http://remix.chainsql.net
 
 在chainsql的nodejs接口中，我们提供了chainsql.contract对象，通过创建该对象，就可以开始与chainsql智能合约的交互了。
-合约的交互主要分为以下几种：
-
-- :ref:`创建合约对象 <contract-newObj>`
-- :ref:`合约部署 <contract-deploy>`
-- :ref:`更改合约内部状态调用 <contract-submit>`
-- :ref:`读取合约内部状态调用 <contract-call>`
-- :ref:`合约fallback函数调用 <contract-fallback>`
-- :ref:`获取合约函数编码值 <contract-encode>`
-- :ref:`合约事件监听 <contract-event>`
-
 
 .. _contract-newObj:
 
 创建合约对象
 ============
-::
+.. code-block:: javascript
 
 	chainsql.contract(abi[, contractAddr]);
 
@@ -36,7 +26,7 @@
 
 示例
 --------
-::
+.. code-block:: javascript
 
     //first create a contract object without contract address.
     const abi = '[{"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"amount","type":"uint256"}],"name":"transferToUser","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":true,"inputs":[],"name":"returnMixType","outputs":[{"name":"","type":"uint256"},{"name":"","type":"string"}],"payable":false,"stateMutability":"pure","type":"function"},{"constant":false,"inputs":[{"name":"newMem","type":"uint256"}],"name":"setMem","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"returnString","outputs":[{"name":"","type":"string"}],"payable":false,"stateMutability":"pure","type":"function"},{"constant":true,"inputs":[],"name":"getMsgSender","outputs":[{"name":"","type":"address"},{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"getTxOrigin","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"a","type":"uint256"}],"name":"multiply","outputs":[{"name":"d","type":"uint256"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"to","type":"address"}],"name":"userTransferUser","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":true,"inputs":[],"name":"getMem","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"user","type":"address"}],"name":"getBalance","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[],"payable":true,"stateMutability":"payable","type":"constructor"},{"payable":true,"stateMutability":"payable","type":"fallback"},{"anonymous":false,"inputs":[{"indexed":false,"name":"sender","type":"address"},{"indexed":true,"name":"number","type":"uint256"},{"indexed":false,"name":"result","type":"uint256"}],"name":"multiplylog","type":"event"}]';
@@ -52,7 +42,7 @@
 
 合约部署
 =========
-::
+.. code-block:: javascript
 
     contractObj.deploy(paramsNeeded).submit(options[, callback]);
 
@@ -127,7 +117,7 @@
 
 更改合约内部状态调用
 ====================
-::
+.. code-block:: javascript
 
     contractObj.method.function([params1[, params2, ...]]]).submit(options[, callback])
 
@@ -283,7 +273,7 @@
 
 获取合约函数编码值
 ==================
-::
+.. code-block:: javascript
 
     contractObj.method.function([params1[, params2, ...]]]).encodeABI()
 
@@ -313,7 +303,7 @@
 
 合约事件监听
 =============
-::
+.. code-block:: javascript
 
     myContract.events.eventFunc([callback]);
 
