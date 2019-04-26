@@ -35,6 +35,8 @@ Nodejs接口的使用，需要以下准备：
 	// 引入之后使用new创建全局chainsql对象，之后使用chainsql对象进行接口操作
 	const chainsql = new ChainsqlAPI();
 
+.. _Node.js返回值:
+
 返回值格式
 ===========
 

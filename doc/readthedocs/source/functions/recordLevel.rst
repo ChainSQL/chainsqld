@@ -105,7 +105,7 @@ Condition
 
 1 表示插入表的 ``field1`` 字段的默认值为0
 
-.. code-block::
+.. code-block:: json
 
     {"field1":0 }
 
