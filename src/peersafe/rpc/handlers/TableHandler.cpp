@@ -840,7 +840,26 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 		return ret;
 	}
 
-	return queryBySql(context.app.getTxStore(), catenatedSql);
+	ret = queryBySql(context.app.getTxStore(), catenatedSql);
+
+	if (ret.isMember(jss::error))
+	{
+		return ret;
+	}
+
+	//diff between the latest ledgerseq in db and the real newest ledgerseq
+	std::set <std::string> setNameInDB;
+	std::vector<ripple::uint160> vecNameInDB;
+
+	getNameInDBSetInSql(sql, setNameInDB);
+	for (std::set<std::string>::iterator iter = setNameInDB.begin(); iter != setNameInDB.end(); ++iter)
+	{
+		vecNameInDB.push_back(ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
+	}
+
+	ret[jss::diff] = getDiff(context, vecNameInDB);
+
+	return ret;
 }
 
 Json::Value doGetRecordBySqlUser(RPC::Context& context)
@@ -877,7 +896,32 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 		return ret;
 	}
 
-	return queryBySql(context.app.getTxStore(), catenatedSql);
+	ret = queryBySql(context.app.getTxStore(), catenatedSql);
+	if (ret.isMember(jss::error))
+	{
+		return ret;
+	}
+
+	//diff between the latest ledgerseq in db and the real newest ledgerseq
+	std::string Sql;
+	std::set <std::string> setNameInDB;
+	std::vector<ripple::uint160> vecNameInDB;
+
+	ret = getInfoByRPContext(context, Sql, accountID);
+	if (ret.isMember(jss::error))
+	{
+		return ret;
+	}
+
+	getNameInDBSetInSql(Sql, setNameInDB);
+	for (std::set<std::string>::iterator iter = setNameInDB.begin(); iter != setNameInDB.end(); ++iter)
+	{
+		vecNameInDB.push_back(ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
+	}
+
+	ret[jss::diff] = getDiff(context, vecNameInDB);
+
+	return ret;
 }
 
 //Get record,will keep column order consistent with the order the table created.
