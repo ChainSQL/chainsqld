@@ -1007,6 +1007,8 @@ SQLTranscation websocket交易接口的json格式（tx_json对象）各个域的
 
     关于智能合约的编写和编译，参考solidity官方文档\ `introduction-smart-contracts <https://solidity.readthedocs.io/en/latest/index.html>`_\ 。
 
+.. _websocket部署合约:
+
 部署合约
 ==================================
 
@@ -1047,6 +1049,8 @@ SQLTranscation websocket交易接口的json格式（tx_json对象）各个域的
       - 字符串
       - ContractID
       - 部署后的合约账户地址。
+
+.. _websocket调用合约:
 
 调用合约
 ==================================
@@ -1198,6 +1202,7 @@ admin接口：
 
     {
         "result": {
+            "diff": 0,
             "lines": [
                 {
                     "age": 11,
@@ -1212,7 +1217,8 @@ admin接口：
                     "id": 2
                 }
             ],
-            "status": "success"
+            "status": "success",
+            "type":"response"
         }
     }
 
@@ -1422,6 +1428,8 @@ admin接口：
       - 对象
       - Object
       - 包含曾删改查等权限，true表示拥有权限，省略或false表示没有对应的操作权限。
+
+.. _websocket查询合约:
 
 智能合约查询
 ++++++++++++++++++++++++++++++++
