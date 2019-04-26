@@ -170,6 +170,8 @@ contractEVMcallError		Contract execution exception
 mulQueryNotSupport              OperationRule Table not support multi_table sql_query
 ========================	=====================================================================
 
+.. _tx-errcode:
+
 交易类返回码
 ===================
 返回码分类

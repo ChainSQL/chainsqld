@@ -233,7 +233,7 @@ submit
 
 	* 第二种交易提交之后共识出错，``JsonObject`` 中包含以下字段：
 
-		- ``resultCode`` - ``String`` : 错误类型或者说错误码；
+		- ``resultCode`` - ``String`` : 错误类型或者说错误码，可参考 :ref:`交易类错误码 <tx-errcode>`；
 		- ``resultMessage`` - ``String`` : 错误具体描述。
 
 示例
