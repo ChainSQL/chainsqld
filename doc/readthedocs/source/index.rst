@@ -48,6 +48,7 @@ ChainSQL是全球首个基于区块链的数据库应用平台，基于开源项
     functions/currency
     functions/tableOperation
     functions/smartContract
+    functions/recordLevel
 
 .. toctree::
    :maxdepth: 2
