@@ -383,9 +383,9 @@ submit接口有使用前提，需要事先调用其他操作接口将交易主�
 .. code-block:: java
 
   enum SyncCond {
-      send_success,     
+      send_success,    // 交易提交成功
       validate_success,// 交易共识通过
-      db_success       //交易成功同步到数据库
+      db_success       // 交易成功同步到数据库
   };
 
 -------
@@ -841,13 +841,13 @@ getLedgerVersion
 
 ------------------------------------------------------------------------------
 
-getTransactions
-=====================
+getAccountTransactions
+==================================
 
 .. code-block:: java
 
-   JSONObject getTransactions (String address);     //同步
-   void getTransactions(String address,Callback cb);//异步
+   JSONObject getAccountTransactions (String address);     //同步
+   void getAccountTransactions(String address,Callback cb);//异步
 
 查询某账户提交的最新20笔交易
 
@@ -1693,6 +1693,7 @@ get
    Table get(List<String> args);
 
 从数据库查询数据,后面可以进行其他操作，例如update、delete等;
+通过指定查询的内容作为raw参数传入，raw的详细格式及内容可参看 :ref:`Raw字段详解 <查询Raw详解>`
 
 ------------
 参数
