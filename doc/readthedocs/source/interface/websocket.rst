@@ -1012,7 +1012,7 @@ SQLTranscation websocket交易接口的json格式（tx_json对象）各个域的
 
 请求格式：
 
-.. code-block::
+.. code-block:: json
 
     {
         "TransactionType": "Contract",

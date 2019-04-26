@@ -183,7 +183,7 @@
 - 若不想维护历史区块，则设置为 ``none`` ,若想维护全部历史区块（全节点），则设置为 ``full`` 还可以设置为一个数字
 - 默认值为256，如果 [node_db]中有 ``online_delete`` 配置项，[ledger_history] 的值必须 <= ``online_delete`` 的值
 
-**配置非全节点的示例**:
+**配置非全节点的示例** :
 
 .. code-block:: bash
 
