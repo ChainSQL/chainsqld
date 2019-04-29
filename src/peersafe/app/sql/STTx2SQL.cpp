@@ -2887,19 +2887,19 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
                     (*it).compare("FK")    == 0  || (*it).compare("REFERENCES") == 0  )   continue;
                 else if ((*it).compare("PK") == 0)
                 {
-                    buildfield.SetPrimaryKey();
+                    if (v["PK"].asInt() == 1) buildfield.SetPrimaryKey();
                 }
                 else if ((*it).compare("index") == 0)
                 {
-                    buildfield.SetIndex();
+                    if (v["index"].asInt() == 1) buildfield.SetIndex();
                 }
                 else if ((*it).compare("NN") == 0)
                 {
-                    buildfield.SetNotNull();
+                    if (v["NN"].asInt() == 1) buildfield.SetNotNull();
                 }
                 else if ((*it).compare("UQ") == 0)
                 {
-                    buildfield.SetUnique();
+                    if (v["UQ"].asInt() == 1) buildfield.SetUnique();
                 }
                 else if ((*it).compare("default") == 0)
                 {
