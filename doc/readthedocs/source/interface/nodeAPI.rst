@@ -233,7 +233,7 @@ submit
 
 	* 第二种交易提交之后共识出错，``JsonObject`` 中包含以下字段：
 
-		- ``resultCode`` - ``String`` : 错误类型或者说错误码；
+		- ``resultCode`` - ``String`` : 错误类型或者说错误码，可参考 :ref:`交易类错误码 <tx-errcode>`；
 		- ``resultMessage`` - ``String`` : 错误具体描述。
 
 示例
@@ -453,7 +453,9 @@ getLedger
 返回值
 -----------
 
-1. ``JsonObject`` : 区块头信息，可参考 **区块头信息跳转**
+.. _区块信息字段说明: https://developers.ripple.com/rippleapi-reference.html#getledger
+
+1. ``JsonObject`` : 区块信息，可参考 `区块信息字段说明`_
 
 
 示例
@@ -610,7 +612,7 @@ sign
 
 .. _交易结构: https://developers.ripple.com/rippleapi-reference.html#transaction-types
 
-1. ``txJson`` - ``JsonObject`` : 交易对象，不同交易类型，结构不同，可参考 `交易结构`_ 的说明。以及对chainsql的表交易结构说明
+1. ``txJson`` - ``JsonObject`` : 交易对象，不同交易类型，结构不同，可参考 `交易结构`_ 的说明。对chainsql的表及合约交易结构的说明可参考 :ref:`rpc接口 <rpc-tx>` 中每个接口的tx_json字段值；
 2. ``secret`` - ``String`` : 签名者的私钥。
 3. ``option`` - ``JsonObject`` : [**可选**]进行多方签名时，需要利用option参数提供签名账户地址，此时secret参数应为option中账户的私钥。此对象只包含一个字段：
 	
@@ -966,11 +968,11 @@ createTable
 -----------
 
 1. ``tableName`` - ``String`` : 新建表的表名
-2. ``raw`` - ``Array`` : 对新建表的属性设定，详细格式及内容可参看 **raw说明**
+2. ``raw`` - ``Array`` : 对新建表的属性设定，详细格式及内容可参看  :ref:`建表raw字段说明 <create-table>`
 3. ``option`` - ``JsonObject`` : [**可选**]是否创建加密表及是否开启行及控制，字段如下：
 
 	* ``confidential`` - ``Boolean`` : [**可选**]是否创建加密表，不传该值或者为false时，创建非加密表；
-	* ``operationRule`` - ``JsonObject`` : [**可选**]行及控制规则，格式及内容可参看 **行级控制规则** 。
+	* ``operationRule`` - ``JsonObject`` : [**可选**]行及控制规则，格式及内容可参看 :ref:`行级控制规则 <recordLevel>` 。
 
 返回值
 -----------
@@ -1112,7 +1114,7 @@ insert
 参数说明
 -----------
 
-1. ``raw`` - ``Array`` : 插入操作的raw，详细格式和内容可参看 **raw说明** ；
+1. ``raw`` - ``Array`` : 插入操作的raw，详细格式和内容可参看 :ref:`插入raw字段说明 <insert-table>` ；
 2. ``field`` - ``String`` : 插入操作支持将每次执行插入交易的哈希值作为字段同步插入到数据库中。需要提前在建表的时候指定一个字段为存储交易哈希，然后将该字段名作为参数传递给insert即可。
 
 返回值
@@ -1152,7 +1154,7 @@ update
 参数说明
 -----------
 
-1. ``raw`` - ``Array`` : 插入操作的raw，详细格式和内容可参看 **raw说明** 。
+1. ``raw`` - ``Array`` : 插入操作的raw，详细格式和内容可参看 :ref:`更新raw字段说明 <update-table>` 。
 
 返回值
 -----------
@@ -1287,7 +1289,7 @@ ChainSQL数据库表权限管理，控制自己创建的表被其他用户访问
 -----------
 
 1. ``tableName`` - ``String`` : 准备授权给user的表名；
-2. ``userAddr`` - ``String`` : 被授权用户地址；对新建表的属性设定，详细格式及内容可参看 **raw说明**
+2. ``userAddr`` - ``String`` : 被授权用户地址；对新建表的属性设定，详细格式及内容可参看 :ref:`授权raw字段说明 <grant-table>`
 3. ``raw`` - ``JsonObject`` : 指定这次给user授予的权限，key为增删改查，value为True或者False，希望授予的操作置位True，否则为False；
 4. ``userPub`` - ``String`` : [**可选**]针对加密表，必须添加user的公钥，格式为base58编码的。非加密表不需要填此参数。
 
@@ -1325,7 +1327,6 @@ get
 	tableObj.get([raw])
 
 | 对表内容进行查询操作，tableObj是由chainsql.table接口创建的。
-| 通过指定查询的内容作为raw参数传入，raw的详细格式及内容可参看 **raw说明**
 | 此接口不属于交易类型，但是为了检查用户是否有查询权限，需要签名之后调用，因此需要调用submit接口。
 | 此外ChainSQL还提供了三个查询限定接口，主要包括limit、order、withField。在对应接口下查看具体说明。
 
@@ -1335,7 +1336,7 @@ get
 参数说明
 -----------
 
-1. ``raw`` - ``JsonObject`` : [**可选**]raw参数的详细格式及内容可参看 **raw说明** ，需要查询所有内容时，不传raw参数即可。
+1. ``raw`` - ``JsonObject`` : [**可选**]raw参数的详细格式及内容可参看 :ref:`查询raw字段说明 <查询Raw详解>` ，需要查询所有内容时，不传raw参数即可。
 
 返回值
 -----------
@@ -1449,7 +1450,7 @@ withFields
 参数说明
 -----------
 
-1. ``feildArray`` - ``Array`` : 由限定的返回字段组成的数组，每个数组元素为 ``String`` 格式。数组元素可以是字段名，也可以是其他SQL语句，可参考 **withFields** 。
+1. ``feildArray`` - ``Array`` : 由限定的返回字段组成的数组，每个数组元素为 ``String`` 格式。数组元素可以是字段名，也可以是其他SQL语句，SQL作为参数可参考 :ref:`字段统计 <withField-introduce>` 。
 
 返回值
 -----------
@@ -1478,7 +1479,13 @@ getBySqlAdmin
 
 	chainsql.getBySqlAdmin(sql)
 
-由表的拥有者调用的，直接传入SQL语句进行数据库查询操作，因为直接操作数据库中的表，所有需要配合getTableNameInDB接口获取表在数据库中的真实表名。
+直接传入SQL语句进行数据库查询操作，因为直接操作数据库中的表，所有需要配合getTableNameInDB接口获取表在数据库中的真实表名。
+
+.. note::
+
+	* 本接口不做表权限判断，但是只能由节点配置文件中 **[port_ws_admin_local]** 的admin里所配置的ip才可以发起此接口的调用，否则调用失败。
+	* 即nodejs接口运行所在的主机ip必须是配置在配置文件的 **[port_ws_admin_local]** 的admin里。
+	* 因为在配置文件中配置为admin的ip认为是该节点的管理员。拥有对本节点已经同步表的查询权限。
 
 参数说明
 -----------
@@ -1514,7 +1521,10 @@ getBySqlUser
 
 	chainsql.getBySqlUser(sql)
 
-由表的被授权者，即所有被授权的非表的拥有者调用，直接传入SQL语句进行数据库查询操作，因为直接操作数据库中的表，所有需要配合getTableNameInDB接口获取表在数据库中的真实表名。
+直接传入SQL语句进行数据库查询操作，因为直接操作数据库中的表，所有需要配合getTableNameInDB接口获取表在数据库中的真实表名。
+
+.. note::
+	* 调用此接口前as接口中设置的用户，对SQL语句中的表有查询权限，才可以调用此接口。
 
 参数说明
 -----------
