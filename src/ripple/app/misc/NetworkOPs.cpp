@@ -2978,7 +2978,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 	auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
 	if (!subTx.empty())
 	{
-		auto txId = stTxn.getTransactionID();
+		auto txId   = stTxn.getTransactionID();
 		auto simiIt	= subTx.find(txId);
 		if (simiIt != subTx.end())
 		{
@@ -2996,11 +2996,16 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				p->send(jvObj, true);
 
 				//for table-related tx and validation event
-				if (bForTableTx && bValidated)
-				{
-					//for chainsql type, subscribe db event
-					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);			
+				if (bValidated) {
+					if (bForTableTx) {
+						//for chainsql type, subscribe db event
+						mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
+					}
+					else {
+						mSubTx.erase(simiIt);
+					}
 				}
+
 				//if (bPendErase)
 				//{
 				//	std::thread([this, txId, jvToPub]() {
