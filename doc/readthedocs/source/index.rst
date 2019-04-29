@@ -21,7 +21,7 @@ ChainSQL是全球首个基于区块链的数据库应用平台，基于开源项
 系统架构
 
     .. image:: ../../../images/ChainSQL.png
-        :width: 326px
+        :width: 626px
         :alt: ChainSQL Framework
         :align: center
 
@@ -45,11 +45,13 @@ ChainSQL是全球首个基于区块链的数据库应用平台，基于开源项
     :maxdepth: 2
     :caption: 功能介绍
 
+    functions/recordLevel
+    functions/raw
+    
+..
     functions/currency
     functions/tableOperation
     functions/smartContract
-    functions/recordLevel
-    functions/raw
 
 .. toctree::
    :maxdepth: 2
@@ -60,7 +62,6 @@ ChainSQL是全球首个基于区块链的数据库应用平台，基于开源项
    interface/websocket
    interface/javaAPI
    interface/nodeAPI
-   interface/code
 
 .. toctree::
    :maxdepth: 1

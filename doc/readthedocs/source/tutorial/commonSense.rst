@@ -8,8 +8,8 @@
 1.1 根账户
 ------------------
 
-根账户是在创世区块中就存在的，区块链中所有的众享币(1000亿ZXC)默认都在根账户中。
-生成/查看根账户的命令如下：
+| 根账户是在创世区块中就存在的，区块链中所有的众享币(1000亿ZXC)默认都在根账户中。
+| 生成/查看根账户的命令如下：
 
 .. code-block:: bash
 
@@ -71,7 +71,7 @@ Java:
     console.log('连接成功')
     c.as(owner);    //这里owner指一个有足够zxc的账户，第一个转账操作肯定要用根账户
             
-    let rs = await c.pay(account.address,200);
+    let rs = await c.pay(account.address,200).submit({expect:'validate_success'});
     console.log(rs);
 
 2.Chainsql中的预留费用

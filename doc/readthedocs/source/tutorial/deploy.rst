@@ -112,12 +112,19 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 	show variables like '%max_connections%';
 
-默认是151， 修改配置命令如下：
+| 默认是151， 最大可以达到16384。修改方法有两种。
+| 第一种，命令行修改：
 
 .. code-block:: sql
 	
 	set GLOBAL max_connections = 10000;
 
+| 这种方式有个问题，就是设置的最大连接数只在mysql当前服务进程有效，一旦mysql重启，又会恢复到初始状态。
+
+| 第二种，修改配置文件：
+
+| 这种方式也很简单，只要修改MySQL配置文件my.cnf的参数max_connections，
+| 将其改为max_connections=10000，然后重启MySQL即可。
 
 区块链网络搭建
 ===============================
@@ -162,7 +169,7 @@ ChainSQL 的节点程序可在 `Github开源仓库 <https://github.com/ChainSQL/
 
 2.	配置文件的修改
 ---------------------------
-以下仅针对部分字段进行说明：
+以下仅针对部分字段进行说明，针对配置文件的详细说明参考 :ref:`配置文件详解 <配置文件>` 。
 
 ``[sync_db]``
 
