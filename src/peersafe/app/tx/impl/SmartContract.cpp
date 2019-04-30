@@ -37,7 +37,7 @@ namespace ripple {
 			return ret;
 		auto& tx = ctx.tx;
 
-		if (!tx.isFieldPresent(sfContractData) || tx.getFieldVL(sfContractData).empty())
+		if (!tx.isFieldPresent(sfContractData))
 		{
 			return temMALFORMED;
 		}
