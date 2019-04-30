@@ -231,7 +231,7 @@ as
 
 .. code-block:: java
 
-  as(String address, String secret);
+  public void as(String address, String secret);
 
 部分接口与节点进行交互操作前，需要指明一个全局的操作账户，这样避免在每次接口的操作中频繁的提供账户。再次调用该接口即可修改全局操作账户。
 
@@ -262,7 +262,7 @@ use
 
 .. code-block:: java
 
-  use(String address);
+  public void use(String address);
 
 use接口主要使用场景是针对ChainSQL的表操作，为其提供表的 **拥有者账户地址** 。use接口和as接口的区别如下：
 
@@ -297,12 +297,12 @@ connect
 
 .. code-block:: java
 
-    Connection connect(String url);
-    Connection connect(String url,String serverCertPath,String storePass);
-    Connection connect(String url,final Callback<Client> connectCb);
-    Connection connect(String url,final Callback<Client> connectCb,final Callback<Client> disconnectCb);
-    Connection connect(String url,String serverCertPath,String storePass,final Callback<Client> connectCb);
-    Connection connect(String url,String serverCertPath,String storePass,final Callback<Client> connectCb,
+    public Connection connect(String url);
+    public Connection connect(String url,String serverCertPath,String storePass);
+    public Connection connect(String url,final Callback<Client> connectCb);
+    public Connection connect(String url,final Callback<Client> connectCb,final Callback<Client> disconnectCb);
+    public Connection connect(String url,String serverCertPath,String storePass,final Callback<Client> connectCb);
+    public Connection connect(String url,String serverCertPath,String storePass,final Callback<Client> connectCb,
                        final Callback<Client> disconnectCb);
 
 连接一个 ``websocket`` 地址.如果需要与节点进行交互，必须设置节点的websocket地址。
@@ -360,9 +360,9 @@ submit
 
 .. code-block:: java
 
-  JSONObject submit();
-  JSONObject submit(Callback cb)
-  JSONObject submit(SyncCond cond);
+  public JSONObject submit();
+  public JSONObject submit(Callback cb)
+  public JSONObject submit(SyncCond cond);
 
 submit有3个重载函数，对应异步和同步，客户可以根据需要填写参数。返回值均为JSON对象，指示成功或失败;
 
@@ -438,7 +438,7 @@ pay(转账系统币)
 
 .. code-block:: java
 
-    c.pay(accountId,count).submit(SyncCond.validate_success);
+  public Ripple pay(String accountId, String value);
 
 给用户转账,新创建的用户在转账成功之后才能正常使用(激活)。
 
@@ -453,13 +453,13 @@ pay(转账系统币)
 ------------
 
 1. ``accountId``   - ``String``: 接收转账方地址
-2. ``count``       - ``String``: 转账金额（单位:ZXC）,默认情况下，最小需要5个ZXC才能激活一个账户;
+2. ``value``       - ``String``: 转账金额（单位:ZXC）,默认情况下，最小需要5个ZXC才能激活一个账户;
 
 -------
 返回值
 -------
 
-``Ripple`` - Ripple对象
+``Ripple`` - Ripple对象,后面一般接submit进行连续操作,如示例。
 
 -------
 示例
@@ -477,7 +477,7 @@ generateAddress
 
 .. code-block:: java
 
-    c.generateAddress();
+  public JSONObject generateAddress();
 
 生成一个ChainSQL账户，但是此账户未在链上有效，需要链上有效账户对新账户发起pay操作，新账户才有效。
 
@@ -499,13 +499,15 @@ generateAddress
 
     JSONObject json = c.generateAddress();
 
-    // 输出:
+输出:
 
-    // {
-    //   "secret":"xcUd996waZzyaPEmeFVp4q5S3FZYB",
-    //   "address":"zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M",
-    //   "publicKey":"02B2F836C47A36DE57C2AF2116B8E812B7C70E7F0FEB0906493B8476FC58692EBE"
-    // }
+.. code-block:: json    
+
+     {
+       "secret":"xcUd996waZzyaPEmeFVp4q5S3FZYB",
+       "address":"zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M",
+       "publicKey":"02B2F836C47A36DE57C2AF2116B8E812B7C70E7F0FEB0906493B8476FC58692EBE"
+     }
 
 ------------------------------------------------------------------------------
 
@@ -514,8 +516,8 @@ validationCreate
 
 .. code-block:: java
 
-    JSONObject validationCreate();
-    JSONArray validationCreate(int count);
+  public JSONObject validationCreate();
+  public JSONArray  validationCreate(int count);
 
 生成验证key
 
@@ -539,21 +541,28 @@ validationCreate
 .. code-block:: java
 
     JSONObject json = c.validationCreate();
+  
+输出:
 
-    // 输出:
-    //{
-    //  "seed"     :"xnaKLBqkwZxCxCNk1LokjAekUQaWT",
-    //  "publickey":"n9KrLAkaHZk3kns6TfZS9mRJmPrNJLjARxM8qUtM2CXpBpUcyTdD"
-    //}
+.. code-block:: json
 
+    {
+      "seed"     :"xnaKLBqkwZxCxCNk1LokjAekUQaWT",
+      "publickey":"n9KrLAkaHZk3kns6TfZS9mRJmPrNJLjARxM8qUtM2CXpBpUcyTdD"
+    }
+
+.. code-block:: java
 
     JSONArray jsonArr = c.validationCreate(2);
 
-    // 输出:
-    //[
-    // {"seed":"xxuvaugPX5ZTCcFvKdd9vzhAHFd27","publickey":"n94U13Uap8LQaDJQtbV9HGcgWH8qzWPscpZdqMv6SPz6U5Zazcdq"},
-    // {"seed":"xxqE8bBLKrKMMEpjqS4gwLwmRAGm6","publickey":"n9MdENDVAaQSDnmFdv3BzRbuuNH1AvUmpy8D7LMfN3evEx82us4Z"}
-    //]
+输出:
+
+.. code-block:: json
+
+    [
+     {"seed":"xxuvaugPX5ZTCcFvKdd9vzhAHFd27","publickey":"n94U13Uap8LQaDJQtbV9HGcgWH8qzWPscpZdqMv6SPz6U5Zazcdq"},
+     {"seed":"xxqE8bBLKrKMMEpjqS4gwLwmRAGm6","publickey":"n9MdENDVAaQSDnmFdv3BzRbuuNH1AvUmpy8D7LMfN3evEx82us4Z"}
+    ]
 
 ------------------------------------------------------------------------------
 
@@ -562,7 +571,7 @@ getServerInfo
 
 .. code-block:: java
 
-    c.getServerInfo();
+  public JSONObject getServerInfo();
 
 获取区块链信息.
 
@@ -572,7 +581,7 @@ getServerInfo
 
 ``JSONObject`` - 区块链信息.
 
-1. ``JsonObject`` : 包含区块链基础信息，详细字段可在 **其他文档** 中查看， 主要字段介绍如下：
+1. ``JsonObject`` : 包含区块链基础信息，详细字段可在 **命令行接口 server_info** 中查看， 主要字段介绍如下：
 
 	* ``buildVersion`` - ``String`` : 节点程序版本
 	* ``complete_ledgers`` - ``String`` : 当前区块范围
@@ -621,7 +630,7 @@ getChainInfo
 
 .. code-block:: java
 
-    c.getChainInfo();
+    public JSONObject getChainInfo();
 
 获取链信息
 
@@ -629,7 +638,10 @@ getChainInfo
 返回值
 -------
 
-``JSONObject`` - 链信息.
+1. ``JsonObject`` : 包含区块链基础信息，详细字段可在 **命令行接口 server_info** 中查看， 主要字段介绍如下：
+
+	* ``chain_time`` - ``int`` : 区块链运行时间
+	* ``tx_count`` - ``JSONObject`` : 见 **getTransactionCount 返回值**
 
 -------
 示例
@@ -646,8 +658,8 @@ getChainInfo
     {
         "chain_time":517500,
         "tx_count":{
-        "all":562,
-        "chainsql":502
+              "all":562,
+              "chainsql":502
         }
     }
 
@@ -658,7 +670,7 @@ getUnlList
 
 .. code-block:: java
 
-    c.getUnlList();
+    public JSONObject getUnlList();
 
 获取信任公钥列表
 
@@ -683,8 +695,8 @@ getUnlList
     {
         "unl":[
           {
-          "trusted":true,
-          "pubkey_validator":"n9KigtPo6tPTNSuyaz7AtHk7XijPZwEUuF8LfaQQhjmSwFBenk6Q"
+            "trusted":true,
+            "pubkey_validator":"n9KigtPo6tPTNSuyaz7AtHk7XijPZwEUuF8LfaQQhjmSwFBenk6Q"
           }
         ]
     }
@@ -696,7 +708,7 @@ getAccountInfo
 
 .. code-block:: java
 
-    c.getAccountInfo(address);
+    public JSONObject getAccountInfo(address);
 
 从链上请求查询账户信息。
 
@@ -760,7 +772,10 @@ getTransactionCount
 返回值
 -------
 
-``JSONObject`` - 交易数量.
+1. ``JsonObject`` : 获取交易数量
+
+	* ``all``      - ``int`` : 所有交易数量
+	* ``chainsql`` - ``int`` : chainsql交易数量
 
 ------------------------------------------------------------------------------
 
@@ -769,8 +784,15 @@ getLedger
 
 .. code-block:: java
 
-    JSONObject getLedger();// 获取最新账本信息
-    JSONObject getLedger(ledger_index);//// 获取指定索引账本信息
+    // 同步接口
+    public JSONObject getLedger();                    // 获取最新账本信息
+    public JSONObject getLedger(Integer ledger_index);// 获取指定索引账本信息
+    public JSONObject getLedger(JSONObject option) ;
+
+    // 异步接口
+    public void getLedger(Callback<JSONObject> cb);
+    public void getLedger(Integer ledger_index,Callback<JSONObject> cb);
+
 
 获取账本信息
 
@@ -780,11 +802,19 @@ getLedger
 
 1. ``ledger_index`` - ``Integer``: 账本索引
 
+2. ``option`` - ``JSONObject``:
+
+  * ``ledger_index`` - ``Integer`` : 账本索引；
+
+3. ``cb``      - ``Callback`` : 异步接口，参数为一回调函数
+
 -------
 返回值
 -------
 
-``JSONObject`` - 账本信息.
+.. _区块信息字段说明: https://developers.ripple.com/rippleapi-reference.html#getledger
+
+1. ``JsonObject`` : 区块信息，可参考 `区块信息字段说明`_
 
 -------
 示例
@@ -800,12 +830,28 @@ getLedger
 
   {
     "ledger":{
-    "close_flags":0,
-    "ledger_index":"13755",
-
+      "close_flags":0,
+      "ledger_index":"1654",
+      "seqNum":"1654",
+      "account_hash":"B5FAE3E051FDBC120E57A89EEEC54A59FA5974F7FC433236909A24BE09D31B8F",
+      "close_time_resolution":10,
+      "accepted":true,
+      "close_time":609909971,
+      "transactions":[
+      ],
+      "close_time_human":"2019-Apr-30 03:26:11",
+      "ledger_hash":"3B2931B3F2D5FD589322B5EBA704B2249BCCB4E04E6BB660C5405660DAAE7D5B",
+      "total_coins":"99999999999848599",
+      "closed":true,
+      "totalCoins":"99999999999848599",
+      "parent_close_time":609909970,
+      "hash":"3B2931B3F2D5FD589322B5EBA704B2249BCCB4E04E6BB660C5405660DAAE7D5B",
+      "parent_hash":"939FE60220A6016CA0847790B4319C0FFA1AA06A58A3BA30DA37A664FEBD24E5",
+      "transaction_hash":"0000000000000000000000000000000000000000000000000000000000000000"
+    },
     "validated":true,
-    "ledger_index":13755,
-    "ledger_hash":"F231B1EA321934EC608E5F1D7FDE8E17CEF4DC880DD0EEE2783071B36EC47C39"
+    "ledger_index":1654,
+    "ledger_hash":"3B2931B3F2D5FD589322B5EBA704B2249BCCB4E04E6BB660C5405660DAAE7D5B"
   }
 
 ------------------------------------------------------------------------------
@@ -815,7 +861,9 @@ getLedgerVersion
 
 .. code-block:: java
 
-    JSONObject getLedgerVersion();
+    public void       getLedgerVersion(Callback<JSONObject> cb);
+    public JSONObject getLedgerVersion();
+    
 
 获取最新区块高度（区块号）
 
@@ -831,7 +879,13 @@ getLedgerVersion
 
 .. code-block:: java
 
-    JSONObject json = c.getLedgerVersion();
+    System.out.println(c.getLedgerVersion);
+    c.getLedgerVersion( new Callback<JSONObject>() {
+			@Override
+			public void called(JSONObject args) {
+				System.out.println(args);
+			}
+		});
 
 输出:
 
@@ -848,23 +902,93 @@ getAccountTransactions
 
 .. code-block:: java
 
-   JSONObject getAccountTransactions (String address);     //同步
-   void getAccountTransactions(String address,Callback cb);//异步
+  public void       getAccountTransactions(String address,Callback cb);
+  public void       getAccountTransactions(String address,int limit,Callback<JSONObject> cb);
+  public JSONObject getAccountTransactions(String address,int limit);
+  public JSONObject getAccountTransactions(String address);     
 
-查询某账户提交的最新20笔交易
+查询某账户的交易
 
 ------------
 参数
 ------------
 
-1. ``address``    - ``String``:  要查询的账户地址;
-2. ``cb``   - ``Callback`` : 异步接口，参数为一回调函数
+1. ``address`` - ``String``: 查询交易的账户地址;
+2. ``limit``   - ``int``: 获取的最大的交易数量;
+3. ``cb``      - ``Callback`` : 异步接口，参数为一回调函数
 
 -------
 返回值
 -------
 
-``JSONObject`` - 成功为交易信息数组，失败为null
+1. ``JsonObject`` : 包含账户基本信息。正常返回主要字段如下：
+
+    * ``ledger_index_max`` - ``int`` : 最大区块号 
+    * ``limit``            - ``int`` : 获取的最大的交易数量，默认为20
+    * ``ledger_index_min`` - ``int`` : 最小区块号 
+    * ``transactions``     - ``JSONArray`` : 交易数组，详见示例 
+    * ``account``          - ``String`` : 查询交易的账户地址
+
+
+-------
+示例
+-------
+
+.. code-block:: java
+
+		String rootAddress   = "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh";
+		JSONObject  obj      =   c.getAccountTransactions(rootAddress,30);
+		System.out.println(obj);
+
+		// Example 2
+		c.getAccountTransactions(rootAddress, 30, new Callback<JSONObject>() {
+
+			public void called(JSONObject args) {
+				System.out.println(args);
+			}
+		});
+
+
+输出
+
+.. code-block:: json
+
+    {
+        "ledger_index_max":911,
+        "limit":30,
+        "ledger_index_min":1,
+        "transactions":[
+                  {
+                  "tx":{
+                      "date":609906292,
+                      "Account":"zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
+                      "TransactionType":"TableListSet",
+                      "ledger_index":431,
+                      "SigningPubKey":"0330E7FC9D56BB25D6893BA3F317AE5BCF33B3291BD63DB32654A313222F7FD020",
+                      "Fee":"151401",
+                      "Raw":"[{\"NN\":1,\"field\":\"id\",\"length\":11,\"PK\":1,\"type\":\"int\",\"UQ\":1}, {\"default\":null,\"field\":\"name\",\"length\":50,\"type\":\"varchar\"}, {\"field\":\"age\",\"type\":\"int\"}]",
+                      "Flags":2147483648,
+                      "Sequence":1,
+                      "LastLedgerSequence":434,
+                      "TxnSignature":"304402207E31292196C8004021A7A8D021E1EC39E2E997149DE886AF8AC3DFBFF17EAADA02200467DA6734FA000A3915806C4DC951F7307D3DFEEC0A6D75E715D1E5E51C54DC",
+                      "Tables":[
+                      {
+                      "Table":{
+                      "TableName":"c1235",
+                      "NameInDB":"79D9C64B0297611ED6A642B1B5980C9C05E8ECBD"
+                      }
+                      }
+                      ],
+                      "inLedger":431,
+                      "OpType":1,
+                      "hash":"7A836046F485A7F94A205476AFC4D4BB12EFE9E2C0EFA31402406F774DC86094"
+                      },
+                      "validated":true                      
+                  }                       
+        ],
+        "account":"zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh"
+    }
+
 
 ------------------------------------------------------------------------------
 
@@ -873,8 +997,8 @@ getTransaction
 
 .. code-block:: java
 
-   JSONObject getTransaction (String hash);     //同步
-   void getTransaction(String hash,Callback cb);//异步
+   public JSONObject getTransaction (String hash);     //同步
+   public void getTransaction(String hash,Callback cb);//异步
 
 查询某个hash下的交易信息
 
@@ -898,26 +1022,29 @@ sign
 
 .. code-block:: java
 
-    JSONObject sign(JSONObject tx,String secret);
-    byte[]     sign(byte[] message,String secret);
+    public JSONObject sign(JSONObject tx,String secret);  //对交易签名
+    public byte[]     sign(byte[] message,String secret); //对普通字符串进行签名
 
-交易签名接口，只能对交易进行签名。
+签名接口。
 
 ------------
 参数
 ------------
 
-1. ``tx`` - ``JSONObject``:  交易对象，不同交易类型，结构不同
-1. ``message`` - ``byte[]``: 要签名的内容
-2. ``secret`` - ``String``:  签名私钥
+1. ``tx``      - ``JSONObject``:  交易对象，不同交易类型，结构不同
+1. ``message`` - ``byte[]``    : 要签名的字符串
+2. ``secret``  - ``String``    :  签名私钥
 
 -------
 返回值
 -------
 
-``JSONObject`` - tx_blob and hash:{"tx_blob":"xxxxx", "hash":"xxx" }
+1. ``JsonObject`` : 
 
-``byte[]`` - 签名.
+	* ``tx_blob``  -  签名后的交易
+	* ``hash``     -  哈希值
+
+2.  ``byte[]`` - 签名后的字符串
 
 -------
 示例
@@ -925,7 +1052,6 @@ sign
 
 .. code-block:: java
 
-  // Example 1
   JSONObject obj = new JSONObject();
   JSONObject tx_json = new JSONObject();
   tx_json.put("Account", "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh");
@@ -936,18 +1062,30 @@ sign
   obj.put("tx_json", tx_json);
 
   JSONObject res = c.sign(obj, "snoPBrXtMeMyMHUVTgbuqAfg1SUTb");
-  System.out.println("sign payment result:" + res);
+  System.out.println(res);
 
 
-  //Example 2
-  String hello = "helloworld";
-  byte[] signature = c.sign(hello.getBytes(), "xnoPBzXtMeMyMHUVTgbuqAfg1SUTb");
-  if(c.verify(hello.getBytes(), signature, "cBQG8RQArjx1eTKFEAQXz2gS4utaDiEC9wmi7pfUPTi27VCchwgw"))
+输出
+
+.. code-block:: json
+
   {
-    System.out.println("verify success");
-  }else {
-    System.out.println("verify failed");
+      "tx_blob":"120000228000000024000000026140000002540BE40068400000000000000B73210330E7FC9D56BB25D6893BA3F317AE5BCF33B3291BD63DB32654A313222F7FD0207446304402203C7734114C1F9EEB16C775D49B8392636361CC844839483979BCBF0EE39F4B390220233BE3C714E1374415E2B4F2EF155579DB2E97BA627A3B16A0342A78975E06BF8114B5F762798A53D543A014CAF8B297CFF8F2F937E883140EDBA2E944E1751BDA1FC4ACC7116C9B19394996",
+      "hash":"706BF05DD43730C312A3B3F2F9BB7B16B04DEC827E29A38AD2C5C390ED0E75D2"
   }
+
+.. code-block:: java
+
+    String hello = "helloworld";
+		byte[] signature = c.sign(hello.getBytes(), rootSecret);
+		System.out.println(signature);
+
+输出
+
+.. code-block::
+
+  [B@56cbfb61
+
 
 ------------------------------------------------------------------------------
 
@@ -956,33 +1094,27 @@ signFor
 
 .. code-block:: java
 
-    JSONObject signFor(JSONObject tx,String secret);
+    public JSONObject signFor(JSONObject tx,String secret);
 
-交易多方签名，多方签名的详细介绍请参考 `Ripple开发者官网 <https://developers.ripple.com/multi-signing.html>`_ 
+用于交易多方签名，多方签名的详细介绍请参考 `Ripple开发者官网 <https://developers.ripple.com/multi-signing.html>`_ 
 
 ------------
 参数
 ------------
 
-1. ``tx`` - ``JSONObject``: transaction Json
-2. ``secret`` - ``String``: Secret used to sign
+1. ``tx``     - ``JSONObject``: 交易JSON
+2. ``secret`` - ``String``    : 签名私钥
 
 -------
 返回值
 -------
 
-``JSONObject``
+1. ``JSONObject`` :主要参数说明(格式见示例输出)
 
-.. code-block:: json
-
-  {
-      "Signer":{
-        "Account":"rDsFXt1KRDNNckSh3exyTqkQeBKQCXawb2",
-        "SigningPubKey":"02E37D565DF377D0C30D93163CF40F41BB81B966B11757821F25FBCDCFEA18E8A9",
-          "TxnSignature":"3044022050903320FF924BCD7F55D3BE095A457BF2421E805C5B39DA77F006BB217D6398022024C51DECA25018D80CB16AB65674B71BFD20789D63EC47FD5EAD7FC75B880055"
-      },
-      "hash":""
-  }
+      * ``Account``        -  签名账户
+      * ``TxnSignature``   -  签名后的交易
+      * ``SigningPubKey``  -  签名公钥    
+      * ``hash``           -  哈希值
 
 -------
 示例
@@ -990,7 +1122,34 @@ signFor
 
 .. code-block:: java
 
-  String strSign   = "testSign";
+      JSONObject obj = new JSONObject();
+      obj.put("secret", "xnoPBzXtMeMyMHUVTgbuqAfg1SUTb");
+      obj.put("account","zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh");
+      JSONObject tx_json = new JSONObject();
+      tx_json.put("Account", "zKvHeBUtEoNRW1wtvA42tfJx1bh7pqxZmT");
+      tx_json.put("Amount", "1000000000");
+      tx_json.put("Destination", "zMcXHEkD78T1pwAgG2pf6QWALyBKF1YvD1");
+      tx_json.put("TransactionType", "Payment");
+      tx_json.put("Sequence", 2);
+      obj.put("tx_json", tx_json);
+
+      JSONObject res = c.signFor(obj, "xnoPBzXtMeMyMHUVTgbuqAfg1SUTb");
+      System.out.println("sign_for payment signer:");
+      System.out.println(res);
+
+输出
+
+.. code-block:: json
+
+    {
+      "Signer":{
+        "Account":"zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
+        "TxnSignature":"3045022100CF059AC2B07D3CAC1F3E877F0E81675731BDA21F6BF51000FC3DE3EE579A343002207320DB8614F45925D1AA392E0E61D468D1F3BA269574ED24F3789A887CC89F12",
+        "SigningPubKey":"0330E7FC9D56BB25D6893BA3F317AE5BCF33B3291BD63DB32654A313222F7FD020"
+      },
+      "hash":"EB11BE3944E183EBD89A5CDB1EE55664DD2289D05E84BF99F47147108A5A728B"
+    }
+
 
 ------------------------------------------------------------------------------
 
@@ -999,7 +1158,7 @@ getTableNameInDB
 
 .. code-block:: java
 
-    JSONObject getTableNameInDB(String owner,String tableName);
+    public JSONObject getTableNameInDB(String owner,String tableName);
 
 查询表在数据库中的记录的名字，在外定义的表名，经过ChainSQL会进行格式转换，此接口查询转换之后的名字。
 
@@ -1014,26 +1173,12 @@ getTableNameInDB
 返回值
 -------
 
-``JSONObject``
+ ``JSONObject`` : 
 
-success:
-
-.. code-block:: json
-
-  {
-    "status":"success"
-    "nameInDB":"xxx"
-  }
-
-failed:
-
-.. code-block:: json
-
-  {
-    "status":"error"
-    "error_message":"xxx"
-  }
-
+      * ``status``         -  正确 success;错误 error
+      * ``nameInDB``       -  数据库中的表名
+      * ``error_message``  -  错误返回时，显示错误信息
+      
 -------
 示例
 -------
@@ -1058,10 +1203,10 @@ getTableAuth
 
 .. code-block:: java
 
-    JSONObject getTableAuth(String owner,String tableName);
-    JSONObject getTableAuth(String owner,String tableName,List<String> accounts);
-    void getTableAuth(String owner,String tableName,Callback<JSONObject> cb);
-    void getTableAuth(String owner,String tableName,List<String> accounts,Callback<JSONObject> cb)
+    public JSONObject getTableAuth(String owner,String tableName);
+    public JSONObject getTableAuth(String owner,String tableName,List<String> accounts);
+    public void getTableAuth(String owner,String tableName,Callback<JSONObject> cb);
+    public  void getTableAuth(String owner,String tableName,List<String> accounts,Callback<JSONObject> cb)
 
 
 获取某张表的授权列表
@@ -1114,8 +1259,8 @@ getAccountTables
 
 .. code-block:: java
 
-    JSONObject getAccountTables(String address,boolean bGetDetail);
-    void getAccountTables(String address,boolean bGetDetail,Callback<JSONObject> cb);
+    public JSONObject getAccountTables(String address,boolean bGetDetail);
+    public void getAccountTables(String address,boolean bGetDetail,Callback<JSONObject> cb);
 
 获取某个账户建的表
 
@@ -1171,8 +1316,8 @@ accountSet
 
 .. code-block:: java
 
-  Ripple accountSet(int nFlag, boolean bSet);
-  Ripple accountSet(String transferRate, String transferFeeMin, String transferFeeMax);
+  public Ripple accountSet(int nFlag, boolean bSet);
+  public Ripple accountSet(String transferRate, String transferFeeMin, String transferFeeMax);
 
 账户属性设置
 
@@ -1190,7 +1335,7 @@ accountSet
 返回值
 -------
 
-``Ripple`` - Ripple对象
+``Ripple`` - Ripple对象,后面一般接submit进行连续操作,如示例。
 
 -------
 示例
@@ -1213,7 +1358,7 @@ trustSet
 
 .. code-block:: java
 
-  Ripple trustSet(String value, String sCurrency, String sIssuer)
+  public Ripple trustSet(String value, String sCurrency, String sIssuer)
 
 信任网关，参数指定信任某个网关的某货币数量。从而可以交易该货币。为交易类型，需要调用submit提交交易。
 
@@ -1230,7 +1375,7 @@ trustSet
 返回值
 -------
 
-``Ripple`` - Ripple对象
+``Ripple`` - Ripple对象,后面一般接submit进行连续操作,如示例。
 
 -------
 示例
@@ -1249,7 +1394,7 @@ pay(转账网关代币)
 
 .. code-block:: java
 
-    Ripple pay(String accountId, String value, String sCurrency, String sIssuer);
+   public  Ripple pay(String accountId, String value, String sCurrency, String sIssuer);
 
 转发代币
 
@@ -1269,7 +1414,7 @@ pay(转账网关代币)
 返回值
 -------
 
-``Ripple`` - Ripple对象
+``Ripple`` - Ripple对象,后面一般接submit进行连续操作,如示例。
 
 -------
 备注
@@ -1300,50 +1445,21 @@ pay(转账网关代币)
 .. code-block:: java
 
   // 给账户地址等于 z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs 的用户转账5RMB.
-  c.pay("z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs", "5", "RMB", "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh");
+  c.pay("z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs", "5", "RMB", "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh").submit(SyncCond.validate_success);
 
 ------------------------------------------------------------------------------
 
 表交易
 *****************
 
-setRestrict
-=====================
-
-.. code-block:: java
-
-  c.setRestrict(flag)
-
-设置是否使用严格模式，默认为非严格模式；在严格模式下，语句共识通过的条件是期望的快照HASH与预期一致
-
-------------
-参数
-------------
-
-1. ``flag`` - ``boolean``: true:严格模式     false: 非严格模式
-
--------
-返回值
--------
-
--------
-示例
--------
-
-.. code-block:: java
-
-    c.setRestrict(false);
-
-------------------------------------------------------------------------------
-
 createTable
 =====================
 
 .. code-block:: java
 
-  Chainsql createTable(String name, List raw);
-  Chainsql createTable(String name, List rawList ,boolean confidential);
-  Chainsql createTable(String name, List raw,JSONObject operationRule);
+  public Chainsql createTable(String name, List raw);
+  public Chainsql createTable(String name, List rawList ,boolean confidential);
+  public Chainsql createTable(String name, List raw,JSONObject operationRule);
 
 
 建表。
@@ -1365,11 +1481,13 @@ createTable
 3. ``confidential``  - ``boolean``:    表示创建的表是否为加密的表,true:创建加密表;如果不写,默认为false;
 4. ``operationRule`` - ``JSONObject``: 行级控制规则，不能与confidential一起使用
 
+.. _my-reference-chainsql:
+
 -------
 返回值
 -------
 
-``Chainsql`` - Chainsql对象
+1. ``Chainsql`` - Chainsql对象，后面一般接submit函数进行连续操作,如示例。
 
 -------
 示例
@@ -1392,7 +1510,7 @@ renameTable
 
 .. code-block:: java
 
-  c.renameTable(tableName, NewTableName).submit();
+  public Chainsql renameTable(String oldName, String newName);
 
 修改数据库中表的名字
 
@@ -1407,7 +1525,7 @@ renameTable
 返回值
 -------
 
-``Chainsql`` - Chainsql对象
+``Chainsql`` -  :ref:`Chainsql <my-reference-chainsql>`.
 
 -------
 示例
@@ -1425,7 +1543,7 @@ dropTable
 
 .. code-block:: java
 
-  c.dropTable(tableName).submit();
+  public Chainsql dropTable(String tableName);
 
 从数据库删除一个表。表和它的所有数据将被删除;
 
@@ -1439,7 +1557,7 @@ dropTable
 返回值
 -------
 
-``Chainsql`` - Chainsql对象
+``Chainsql`` -  :ref:`Chainsql <my-reference-chainsql>`.
 
 -------
 示例
@@ -1456,7 +1574,7 @@ table
 
 .. code-block:: java
 
-  Table table(String name);
+  public Table table(String name);
 
 创建一个table对象
 
@@ -1466,11 +1584,15 @@ table
 
 1. ``tableName``    - ``String``:  表名
 
+
+
 -------
 返回值
 -------
 
-``Table`` - Table对象
+.. _my-reference-table:
+
+``Table`` - Table对象，一般后面接insert，get，submit等函数进行连续操作，如示例。
 
 -------
 示例
@@ -1478,7 +1600,13 @@ table
 
 .. code-block:: java
 
-  Table table = c.table("test");
+  c.table("posts").insert(c.array("{id: 1, 'name': 'peera','age': 22}", "{id: 2, 'name': 'peerb','age': 21}"))
+  .submit(SyncCond.db_success);
+
+  c.table("posts")
+  .get(c.array("{'id': 1}"))
+  .update("{'age':52,'name':'lisi'}")
+  .submit(SyncCond.db_success);
 
 ------------------------------------------------------------------------------
 
@@ -1487,7 +1615,7 @@ insert
 
 .. code-block:: java
 
-  c.table(tableName).insert(raw).submit(SyncCond.db_success);
+  public Table insert(List<String> raw);
 
 向数据库中插入数据。
 
@@ -1501,7 +1629,7 @@ insert
 返回值
 -------
 
-``Table`` - Table对象
+``Table`` - 见 :ref:`Table  <my-reference-table>`.
 
 -------
 示例
@@ -1512,6 +1640,7 @@ insert
   // 向表"posts"中插入一条记录.
   c.table("posts").insert(c.array("{id: 1, 'name': 'peera','age': 22}", "{id: 2, 'name': 'peerb','age': 21}"))
   .submit(SyncCond.db_success);
+  
 
 ------------------------------------------------------------------------------
 
@@ -1520,7 +1649,7 @@ update
 
 .. code-block:: java
 
-  c.table(tableName).get(raw).update(raw).submit();
+  public Table update(String raw);
 
 更新表中数据。如果get添加为空，则更新表中所有记录；其中raw为json格式字符串;
 
@@ -1534,7 +1663,7 @@ update
 返回值
 -------
 
-``Table`` - Table对象
+``Table`` - 见 :ref:`Table  <my-reference-table>`.
 
 -------
 示例
@@ -1555,9 +1684,9 @@ delete
 
 .. code-block:: java
 
-  c.table(tableName).get(raw).delete().submit(SyncCond.db_success);
+  public Table delete();
 
-从表中删除对应条件的数据，如果get条件为空，则删除所有数据
+从表中删除对应条件的数据，需要与get配置使用。如果get条件为空，则删除所有数据。
 
 ------------
 参数
@@ -1567,7 +1696,7 @@ delete
 返回值
 -------
 
-``Table`` - Table对象
+``Table`` - 见 :ref:`Table  <my-reference-table>`.
 
 -------
 示例
@@ -1588,7 +1717,7 @@ beginTran
 
 .. code-block:: java
 
-  void beginTran()
+  public void beginTran();
 
 开启事务.
 
@@ -1597,9 +1726,9 @@ commit
 
 .. code-block:: java
 
-  JSONObject commit();
-  JSONObject commit(SyncCond cond);
-  JSONObject commit(Callback<?> cb);
+  public JSONObject commit();
+  public JSONObject commit(SyncCond cond);
+  public JSONObject commit(Callback<?> cb);
 
 提交事务;本次事务期间的所有操作都会打包提交到区块链网络。
 commit有3个重载函数，对应异步和同步，客户可以根据需要填写参数。返回值均为JSON对象，指示成功或失败;
@@ -1610,6 +1739,10 @@ commit有3个重载函数，对应异步和同步，客户可以根据需要填�
 
 1. ``cond`` - ``SyncCond``: 同步接口，参数为 枚举类型;
 2. ``cb``   - ``Callback``: 异步接口，参数为 回调函数
+
+-------
+返回值
+-------
 
 -------
 示例
@@ -1645,7 +1778,7 @@ grant
 
 .. code-block:: java
 
-  Chainsql grant(String name, String user,String flag);
+  public Chainsql grant(String name, String user,String flag);
 
 授权user用户操作表name的各项权限
 
@@ -1661,7 +1794,7 @@ grant
 返回值
 -------
 
-``Chainsql`` - Chainsql对象
+``Chainsql`` -  :ref:`Chainsql <my-reference-chainsql>`.
 
 -------
 示例
@@ -1676,6 +1809,64 @@ grant
 
 ------------------------------------------------------------------------------
 
+setRestrict
+=====================
+
+.. code-block:: java
+
+  public void setRestrict(boolean falg);
+
+设置是否使用严格模式，默认为非严格模式；在严格模式下，语句共识通过的条件是期望的快照HASH与预期一致
+
+------------
+参数
+------------
+
+1. ``flag`` - ``boolean``: true:严格模式     false: 非严格模式
+
+-------
+返回值
+-------
+
+-------
+示例
+-------
+
+.. code-block:: java
+
+    c.setRestrict(false);
+
+------------------------------------------------------------------------------
+
+setNeedVerify
+=====================
+
+.. code-block:: java
+
+  public void setNeedVerify(boolean flag);
+
+设置是否需要认证
+
+------------
+参数
+------------
+
+1. ``flag`` - ``boolean``: true: 需要认证  false: 不需要认证
+
+-------
+返回值
+-------
+
+-------
+示例
+-------
+
+.. code-block:: java
+
+    c.setNeedVerify(false);
+
+------------------------------------------------------------------------------
+
 表查询
 *****************
 
@@ -1687,7 +1878,7 @@ get
 
 .. code-block:: java
 
-   Table get(List<String> args);
+   public  Table get(List<String> args);
 
 从数据库查询数据,后面可以进行其他操作，例如update、delete等;
 通过指定查询的内容作为raw参数传入，raw的详细格式及内容可参看 :ref:`Raw字段详解 <查询Raw详解>`
@@ -1729,7 +1920,7 @@ limit
 
 .. code-block:: java
 
-  c.table(tableName).get(raw).limit("{index:0,total:10}").withFields([]).submit();;
+   public Table limit(String raw);
 
 对数据库进行分页查询.返回对应条件的数据；必须与get配合使用;
 
@@ -1765,15 +1956,13 @@ order
 
 .. code-block:: java
 
-  c.table(tableName).get(raw).order(orgs);
-
-对查询的数据按指定字段进行排序；必须与get配合使用;
+   public Table order(String raw);
 
 ------------
 参数
 ------------
 
-1. ``orgs``    - ``List<String>``:  orgs类型必须都是示例中的json格式的数据类型;
+1. ``raw``    - ``List<String>``:  raw类型必须都是示例中的json格式的数据类型;
 
 -------
 返回值
@@ -1801,7 +1990,7 @@ withFields
 
 .. code-block:: java
 
-  c.table(tableName).get(raw).withFields(orgs);
+  public Table withFields(String  orgs);
 
 从数据库查询数据,并返回指定字段,必须与get配合使用;
 
@@ -1837,23 +2026,30 @@ getBySqlAdmin
 
 .. code-block:: java
 
-    JSONObject getBySqlAdmin(String sql);//同步接口
-    void getBySqlAdmin(String sql,Callback<JSONObject> cb);// 异步接口
+   // 根据sql语句查询，admin接口，同步调用
+   public JSONObject getBySqlAdmin(String sql);
 
-由表的拥有者调用的，直接传入SQL语句进行数据库查询操作，因为直接操作数据库中的表，所以需要配合getTableNameInDB接口获取表在数据库中的真实表名。
+   // 根据sql语句查询，admin接口，异步调用
+   public void       getBySqlAdmin(String sql,Callback<JSONObject> cb);
+
+直接传入SQL语句进行数据库查询操作。因为直接操作数据库中的表，所以需要配合getTableNameInDB接口获取表在数据库中的真实表名。
+admin权限需要在cfg文件中配置，详细见**配置文件详解 port_ws_admin_local.admin**
 
 ------------
 参数
 ------------
 
-1. ``sql``   - ``String``:  标准sql语句
+1. ``sql``   - ``String``              :  标准sql语句
 2. ``cb``    - ``Callback<JSONObject>``:  回调函数
 
 -------
 返回值
 -------
 
-``JSONObject`` - JSONObject对象
+1. ``JSONObject`` :主要参数说明(格式见示例输出)   
+
+      * ``lines``           -  正确返回时，返回查询的sql结果。 
+      * ``error_message``   -  错误返回时，显示错误信息。
 
 -------
 示例
@@ -1864,8 +2060,8 @@ getBySqlAdmin
   // select * from t_xxxxxxx
   c.getTableNameInDB(rootAddress, sTableName, new Callback<JSONObject>(){
 
-    @Override
-    public void called(JSONObject args) {
+  @Override
+  public void called(JSONObject args) {
       System.out.println(args);
       if(args.has("nameInDB")) {
         String sql = "select * from t_" + args.getString("nameInDB");
@@ -1883,16 +2079,58 @@ getBySqlAdmin
     
   });
 
-------------------------------------------------------------------------------
+成功
 
+.. code-block:: json
+
+    {
+      "final_result":true,
+      "lines":[
+          {
+          "name":"hello",
+          "id":1,
+          "age":333
+          },
+          {
+          "name":"sss",
+          "id":2,
+          "age":444
+          },
+          {
+          "name":"rrr",
+          "id":3,
+          "age":555
+          }
+      ]
+    }
+
+失败
+
+.. code-block:: json
+
+    {
+        "error_message":"Bad credentials.",
+        "request":{
+          "id":2,
+          "command":"r_get_sql_admin",
+          "sql":"select * from t_27C10F5E2128840470021D82A40933CEC689FEC5"
+        },
+        "error_code":3,
+        "id":2,
+        "error":"forbidden",
+        "type":"response",
+        "status":"error"
+    }
+
+------------------------------------------------------------------------------
 
 getBySqlUser
 =====================
 
 .. code-block:: java
 
-    JSONObject getBySqlUser(String sql);//同步接口
-    void getBySqlUser(String sql,Callback<JSONObject> cb);// 异步接口
+    public JSONObject getBySqlUser(String sql);//同步接口
+    public void getBySqlUser(String sql,Callback<JSONObject> cb);// 异步接口
 
 由表的被授权者，即所有被授权的非表的拥有者调用，直接传入SQL语句进行数据库查询操作，因为直接操作数据库中的表，所有需要配合getTableNameInDB接口获取表在数据库中的真实表名。
 
@@ -1907,7 +2145,9 @@ getBySqlUser
 返回值
 -------
 
-``JSONObject`` - JSONObject对象
+1. ``JSONObject`` :主要参数说明(格式见示例输出)   
+
+      * ``lines``   -  返回查询的sql结果。 
 
 -------
 示例
@@ -1921,6 +2161,29 @@ getBySqlUser
     System.out.println("get_sql_user sync result:" + obj);
   }
 
+.. code-block:: json
+
+    {
+      "final_result":true,
+      "lines":[
+          {
+          "name":"hello",
+          "id":1,
+          "age":333
+          },
+          {
+          "name":"sss",
+          "id":2,
+          "age":444
+          },
+          {
+          "name":"rrr",
+          "id":3,
+          "age":555
+          }
+      ]
+    }
+
 ------------------------------------------------------------------------------
 
 订阅
@@ -1931,7 +2194,7 @@ subscribeTable
 
 .. code-block:: java
 
-  void subscribeTable(String name, String owner ,Callback<JSONObject> cb);
+  public void subscribeTable(String name, String owner ,Callback<JSONObject> cb);
 
 订阅某张表；
 
@@ -1969,7 +2232,7 @@ unsubcribeTable
 
 .. code-block:: java
 
-  c.event.unsubcribeTable(owner, tablename);
+  public void unsubscribeTable(String name, String owner,Callback<JSONObject> cb);
 
 取消对表的订阅。
 
@@ -1979,6 +2242,7 @@ unsubcribeTable
 
 1. ``owner``      - ``String``:  被订阅的表拥有者地址；
 2. ``tablename``  - ``String``:  被订阅的数据库表名；
+3. ``cb``         - ``Callback``: 异步接口回调
 
 -------
 返回值
@@ -2000,7 +2264,7 @@ subscribeTx
 
 .. code-block:: java
 
-  c.event.subscribeTx(txid, callback);
+   public void subscribeTx(String txid,Callback<?> cb);
 
 订阅交易事件，提供交易的哈希值，就可以订阅此交易。
 
@@ -2009,7 +2273,7 @@ subscribeTx
 ------------
 
 1. ``txid`` - ``String``:          被订阅的交易哈希值；
-2. ``callback``     - ``callback``:  回调函数，为必填项，需用通过此函数接收后续订阅结果。
+2. ``cb``   - ``callback``:  回调函数，为必填项，需用通过此函数接收后续订阅结果。
 
 -------
 返回值
@@ -2039,7 +2303,7 @@ unsubscribeTx
 
 .. code-block:: java
 
-  c.event.unsubscribeTx(txid);
+   public void unsubscribeTx(String txid,Callback<JSONObject> cb)
 
 取消对交易的订阅
 
