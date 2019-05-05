@@ -227,9 +227,9 @@ submit
 
 	* ``status`` - ``String`` : 为提交时expect后的设定值，如果没有，则默认为"send_success"；
 	* ``tx_hash`` - ``String`` : 交易哈希值，通过该值可以在链上查询交易。
-2. 执行失败，有两种情况，一种是交易提交前的信息检测，一种是交易提交后共识出错。
+2. 执行失败，有以下几种情况：
 
-	* 第一种信息检测出错，``JsonObject`` 中主要包含以下字段：
+	* 第一种交易共识前的字段信息有效性检测出错，``JsonObject`` 中主要包含以下字段：
 
 		- ``name`` - ``String`` : 错误类型；
 		- ``message`` - ``String`` : 错误具体描述。
@@ -238,6 +238,20 @@ submit
 
 		- ``resultCode`` - ``String`` : 错误类型或者说错误码，可参考 :ref:`交易类错误码 <tx-errcode>`；
 		- ``resultMessage`` - ``String`` : 错误具体描述。
+	
+	* 第三种交易提交共识后出错，主要是数据库入库操作中的错误，``JsonObject`` 中包含以下字段：
+
+		- ``status`` - ``String`` : 错误类型，有以下可能字段：
+
+			- db_error
+			- validate_timeout
+			- db_noTableExistInDB
+			- db_noDbConfig
+			- db_noSyncConfig
+			- db_noAutoSync
+			- db_noTableExistInDB
+		- ``tx_hash`` - ``String`` : 交易哈希值。
+		- ``error_message`` - ``String`` : [**可选**]在错误类型为"db_error"的时候，会额外附加错误信息。
 
 示例
 -----------
