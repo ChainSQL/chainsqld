@@ -163,6 +163,8 @@ server_info属于公共命令，用来查看节点的运行状态。
     }
 
 
+.. _serverInfo-return:
+
 结果说明：
 
 .. list-table::
