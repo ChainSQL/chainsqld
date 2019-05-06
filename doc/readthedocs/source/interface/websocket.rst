@@ -1172,7 +1172,7 @@ admin接口：
 
 应答格式：
 
- .. code-block:: json
+.. code-block:: json
 
     {
         "result": {
@@ -1195,6 +1195,23 @@ admin接口：
             "type":"response"
         }
     }
+
+应答域说明：
+
+.. list-table::
+
+    * - **域**
+      - **json类型**
+      - **内部类型**
+      - **描述**
+    * - diff
+      - 整形
+      - UInt32
+      - 当前区块序号与被查询表数据库同步到的区块序号的差值，如果有多个表，取最大差值。
+    * - lines
+      - 数组
+      - Vector
+      - 查询的结果行。
 
 普通接口请参看Java和Node.js接口说明。
 
