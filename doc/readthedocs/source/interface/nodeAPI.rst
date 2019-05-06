@@ -194,8 +194,11 @@ submit
 	chainsql.submit([param])
 
 | 针对ChainSQL的交易类型的操作，需要使用submit接口执行提交上链操作，交易类型的操作是指需要进行区块链共识的操作。
-| 还有一类ChainSQL的查询类操作，不需要使用submit接口，不需要进行区块链共识。
+| 还有一类ChainSQL的查询类操作，不需要使用submit接口，不需要进行区块链共识。 
 | submit接口有使用前提，需要事先调用其他操作接口将交易主体构造，比如创建数据库表，需要调用createTable接口，然后调用submit接口，详细使用方法在具体接口处介绍。
+
+.. note::
+	在ChainSQL的查询类操作中，数据库查询接口[ :ref:`get接口 <get-API>` ]仍然需要submit是为了进行查询权限验证。
 
 .. _submit-param:
 
@@ -224,9 +227,9 @@ submit
 
 	* ``status`` - ``String`` : 为提交时expect后的设定值，如果没有，则默认为"send_success"；
 	* ``tx_hash`` - ``String`` : 交易哈希值，通过该值可以在链上查询交易。
-2. 执行失败，有两种情况，一种是交易提交前的信息检测，一种是交易提交后共识出错。
+2. 执行失败，有以下几种情况：
 
-	* 第一种信息检测出错，``JsonObject`` 中主要包含以下字段：
+	* 第一种交易共识前的字段信息有效性检测出错，``JsonObject`` 中主要包含以下字段：
 
 		- ``name`` - ``String`` : 错误类型；
 		- ``message`` - ``String`` : 错误具体描述。
@@ -235,6 +238,20 @@ submit
 
 		- ``resultCode`` - ``String`` : 错误类型或者说错误码，可参考 :ref:`交易类错误码 <tx-errcode>`；
 		- ``resultMessage`` - ``String`` : 错误具体描述。
+	
+	* 第三种交易提交共识后出错，主要是数据库入库操作中的错误，``JsonObject`` 中包含以下字段：
+
+		- ``status`` - ``String`` : 错误类型，有以下可能字段：
+
+			- db_error
+			- validate_timeout
+			- db_noTableExistInDB
+			- db_noDbConfig
+			- db_noSyncConfig
+			- db_noAutoSync
+			- db_noTableExistInDB
+		- ``tx_hash`` - ``String`` : 交易哈希值。
+		- ``error_message`` - ``String`` : [**可选**]在错误类型为"db_error"的时候，会额外附加错误信息。
 
 示例
 -----------
@@ -270,8 +287,12 @@ pay（账户转账）
 
 	chainsql.pay(address, amount[, memos])
 
-| ChainSQL区块链中账户之间转账接口，在 **0.6.35** 版本之前，直接调用pay即可完成交易提交。
-| **0.6.35** 版本及之后的版本，使用本接口只是构造转账交易，最后需要调用submit接口进行交易的提交。
+ChainSQL区块链中账户之间转账接口，支持系统币与发行的代币。
+
+.. note::
+
+	**0.6.35** 版本之前，直接调用pay即可完成交易提交。
+	**0.6.35** 版本及之后的版本，使用本接口只是构造转账交易，最后需要调用submit接口进行交易的提交。
 
 参数说明
 -----------
@@ -313,14 +334,14 @@ generateAddress
 ----------------
 .. code-block:: javascript
 
-	chainsql.generateAddress()
+	chainsql.generateAddress([secret])
 
 生成一个ChainSQL账户，但是此账户未在链上有效，需要链上有效账户对新账户发起pay操作，新账户才有效。
 
 参数说明
 -----------
 
-None
+1. ``secret`` - ``String`` : [**可选**]参数为私钥，通过指定私钥，可返回基于该私钥的账户和公私钥对。该参数为空则生成一对新的公私钥及对应地址。
 
 返回值
 -----------
@@ -363,7 +384,7 @@ getServerInfo
 返回值
 -----------
 
-1. ``JsonObject`` : 包含区块链基础信息，详细字段可在 **其他文档** 中查看， 主要字段介绍如下：
+1. ``JsonObject`` : 包含区块链基础信息，详细字段可在 :ref:`命令行server_info返回结果 <serverInfo-return>` 中查看， 主要字段介绍如下：
 
 	* ``buildVersion`` - ``String`` : 节点程序版本
 	* ``completeLedgers`` - ``String`` : 当前区块范围
@@ -410,7 +431,13 @@ getAccountInfo
 1. ``JsonObject`` : 包含账户基本信息。正常返回主要字段如下：
 
 	* ``sequence`` - ``Number`` : 该账户交易次数；
-	* ``zxcBalance`` - ``String`` : 账户ZXC系统币的余额。
+	* ``zxcBalance`` - ``String`` : 账户ZXC系统币的余额；
+	* ``ownerCount`` - ``Number`` : 该账户在链上拥有的对象个数，如与其他账户建立的TrustLine，或者创建的一个表都作为一个对象。
+	* ``previousAffectingTransactionID`` - ``String`` : 上一个对该账户有影响的交易哈希值；
+	* ``previousAffectingTransactionLedgerVersion`` - ``Number`` : 上一个对该账户有影响的区块号。
+
+.. note::
+	返回值中的 ``previousAffectingTransactionID`` 里的交易不包括 TrustLine 和 挂单交易。
 
 示例
 -----------
@@ -424,6 +451,14 @@ getAccountInfo
 		});
 	}catch(e){
 		console.error(e);
+	}
+	>
+	{
+		ownerCount:35,
+		previousAffectingTransactionID:"0099076BA13A03AEE5179A71F0A2E678DEA6891CAC6E05EC1656D6F857E071CB",
+		previousAffectingTransactionLedgerVersion:4957964,
+		sequence:2792,
+		zxcBalance:"9974287188.189876",
 	}
 
 ------------------------------------------------------------------------------
@@ -536,7 +571,7 @@ getAccountTransactions
 	* ``counterparty`` - ``address`` : [**可选**]如果为True，则节点只返回涉及指定网关的交易；
 	* ``earliestFirst`` - ``boolean`` : [**可选**]如果为True，则节点将按最早的交易排前为顺序，默认是最新交易排前；
 	* ``excludeFailures`` - ``boolean`` : [**可选**]如果为True，则节点只返回成功的交易；
-	* ``includeRawTransactions`` - ``object`` : [**可选**]如果为True，则节点返回交易的详细数据，返回数据量会比较大；
+	* ``includeRawTransactions`` - ``object`` : [**可选**]提供交易的原始数据，即交易对象，主要为调试使用，节点需要解析提供的原始交易；
 	* ``initiated`` - ``boolean`` : [**可选**]如果为True，则节点只返回又第一个参数address作为交易发起者的交易，如果为False，则只返回address不是交易发起者的交易；
 	* ``limit`` - ``integer`` : [**可选**]限定节点返回的交易个数；
 	* ``maxLedgerVersion`` - ``integer`` : [**可选**]节点返回此指定区块之前区块中该账户的交易；
@@ -557,10 +592,46 @@ getAccountTransactions
 
 	//use the callback
 	const address = "zMpUjXckTSn6NacRq2rcGPbjADHBCPsURF";
-	const opt = {limit:12};
+	const opt = {limit:1};
 	chainsql.getAccountTransactions(address, opt, function(err, res) {
 		err ? console.error(err) : console.log(res);
 	});
+	>
+	[
+		{
+			"type":"payment",
+			"address":"zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9",
+			"sequence":2791,
+			"id":"0099076BA13A03AEE5179A71F0A2E678DEA6891CAC6E05EC1656D6F857E071CB",
+			"specification":{
+				"source":{
+					"address":"zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9",
+					"maxAmount":{"currency":"ZXX","value":"10000"}
+				},
+				"destination":{
+					"address":"zob3V1NnCsFNYdGNod3auU5asmK1SkJs7",
+					"amount":{"currency":"ZXX","value":"100"}
+				}
+			},
+			"outcome":{
+				"result":"tesSUCCESS",
+				"timestamp":"2019-04-30T03:49:00.000Z",
+				"fee":"0.000012",
+				"balanceChanges":{
+					"zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9":[{"currency":"ZXC","value":"-0.000012"},{"counterparty":"zob3V1NnCsFNYdGNod3auU5asmK1SkJs7","currency":"ZXX","value":"-100"}],
+					"zob3V1NnCsFNYdGNod3auU5asmK1SkJs7":[{"counterparty":"zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9","currency":"ZXX","value":"100"}]
+				},
+				"orderbookChanges":{},
+				"ledgerVersion":4957964,
+				"indexInLedger":0,
+				"deliveredAmount":{
+					"currency":"ZXX",
+					"value":"100",
+					"counterparty":"zob3V1NnCsFNYdGNod3auU5asmK1SkJs7"
+				}
+			}
+		}
+	]
 
 ------------------------------------------------------------------------------
 
@@ -595,6 +666,40 @@ getTransaction
 	chainsql.getTransaction(txHash, function(err, res) {
 		err ? console.error(err) : console.log(res);
 	});
+	>
+	{
+		"type":"payment",
+		"address":"zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9",
+		"sequence":2791,
+		"id":"0099076BA13A03AEE5179A71F0A2E678DEA6891CAC6E05EC1656D6F857E071CB",
+		"specification":{
+			"source":{
+				"address":"zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9",
+				"maxAmount":{"currency":"ZXX","value":"10000"}
+			},
+			"destination":{
+				"address":"zob3V1NnCsFNYdGNod3auU5asmK1SkJs7",
+				"amount":{"currency":"ZXX","value":"100"}
+			}
+		},
+		"outcome":{
+			"result":"tesSUCCESS",
+			"timestamp":"2019-04-30T03:49:00.000Z",
+			"fee":"0.000012",
+			"balanceChanges":{
+				"zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9":[{"currency":"ZXC","value":"-0.000012"},{"counterparty":"zob3V1NnCsFNYdGNod3auU5asmK1SkJs7","currency":"ZXX","value":"-100"}],
+				"zob3V1NnCsFNYdGNod3auU5asmK1SkJs7":[{"counterparty":"zHyz3V6V3DZ2fYdb6AUc5WV4VKZP1pAEs9","currency":"ZXX","value":"100"}]
+			},
+			"orderbookChanges":{},
+			"ledgerVersion":4957964,
+			"indexInLedger":0,
+			"deliveredAmount":{
+				"currency":"ZXX",
+				"value":"100",
+				"counterparty":"zob3V1NnCsFNYdGNod3auU5asmK1SkJs7"
+			}
+		}
+	}
 
 ------------------------------------------------------------------------------
 
@@ -850,7 +955,7 @@ accountSet
 
 	* 关于费率：可取消设置，min/max=0,rate=1.0为取消设置。
 	* 每次设置都是重新设置，之前的设置会被替代。
-	* min,max可单独设置，但是要跟rate一起设置。
+	* min,max可只设置一个，但这时要同时设置rate。
 	* 如果只设置rate，默认为取消设置min,max。
 	* 如果只设置min与rate，max会被取消设置,同理只设置max与rate，min会被取消设置。
 
@@ -864,7 +969,7 @@ accountSet
 .. code-block:: javascript
 
 	chainsql opt = {
-        enableRippling: "defaultChainsql",
+        enableRippling: true,
         rate: 1.002,
         min: 1,
         max: 1.5
@@ -927,33 +1032,6 @@ pay（网关发行币转账）
 
 表交易
 ===========
-
-------------
-setRestrict
-------------
-.. code-block:: javascript
-
-	chainsql.setRestrict(mode)
-
-设置ChainSQL严格模式的开关。
-
-参数说明
------------
-
-1. ``mode`` - ``Boolean`` : 是否开启ChainSQL严格模式，true则开启，false则关闭。新建chainsql对象之后是默认关闭的。
-
-返回值
------------
-
-None
-
-示例
------------
-.. code-block:: javascript
-
-	chainsql.setRestrict(true);
-
-------------------------------------------------------------------------------
 
 ------------
 createTable
@@ -1314,10 +1392,65 @@ ChainSQL数据库表权限管理，控制自己创建的表被其他用户访问
 
 ------------------------------------------------------------------------------
 
+------------
+setRestrict
+------------
+.. code-block:: javascript
+
+	chainsql.setRestrict(mode)
+
+设置ChainSQL严格模式的开关。
+
+参数说明
+-----------
+
+1. ``mode`` - ``Boolean`` : 是否开启ChainSQL严格模式，true则开启，false则关闭。新建chainsql对象之后是默认关闭的。
+
+返回值
+-----------
+
+None
+
+示例
+-----------
+.. code-block:: javascript
+
+	chainsql.setRestrict(true);
+
+------------------------------------------------------------------------------
+
+--------------
+setNeedVerify
+--------------
+.. code-block:: javascript
+
+	chainsql.setNeedVerify(isNeed)
+
+设置ChainSQL是否开启数据库验证的开关，用于事务交易，在事务交易中对数据库操作在共识过程中进行实际数据库操作验证。
+
+参数说明
+-----------
+
+1. ``isNeed`` - ``Boolean`` : 是否开启ChainSQL数据库验证的开关，true则开启，false则关闭。新建chainsql对象之后是默认开启的。
+
+返回值
+-----------
+
+None
+
+示例
+-----------
+.. code-block:: javascript
+
+	chainsql.setNeedVerify(true);
+
+------------------------------------------------------------------------------
 
 
 表查询
 ===========
+
+.. _get-API:
 
 -----------
 get
@@ -1331,7 +1464,7 @@ get
 | 此外ChainSQL还提供了三个查询限定接口，主要包括limit、order、withField。在对应接口下查看具体说明。
 
 .. note::
-	现在查询无论数据库有多少内容，get接口一次最多返回200条结果。
+	现在查询无论数据库有多少内容，get接口一次最多返回200条结果，如果数据较多，可以结合 :ref:`limit接口 <limit-API>` 做分页查询。
 
 参数说明
 -----------
@@ -1366,7 +1499,7 @@ get
 		console.error(err);
 	});
 
-
+.. _limit-API:
 -----------
 limit
 -----------
