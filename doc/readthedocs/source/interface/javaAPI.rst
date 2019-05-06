@@ -2,7 +2,7 @@
 Java接口
 ======================
 
-ChainSQL提供JAVA-API与节点进行交互，实现基础交易发送、链数据查询、数据库操作、智能合约操作等ChainSQL区块链交互操作。
+ChainSQL提供JAVA-API与节点进行交互。实现ChainSQL区块链的基础交易发送、链数据查询、数据库操作、智能合约操作等交互操作。
 
 环境准备
 *****************
@@ -11,7 +11,7 @@ ChainSQL提供JAVA-API与节点进行交互，实现基础交易发送、链数�
 =====================
 
 
-- 如果本地有maven环境，将以下代码加入本地开发环境pom.xml文件进行jar包下载。
+* 如果本地有maven环境，将以下代码加入本地开发环境pom.xml文件进行jar包下载。
 
 .. code-block:: xml
 
@@ -22,14 +22,20 @@ ChainSQL提供JAVA-API与节点进行交互，实现基础交易发送、链数�
   </dependency>
 
 
-- 如果本地没有maven环境，直接下载项目依赖的jar包，在“buildPath”中选择“libraries”，再Add External Jars 添加相应的jar包。项目依赖的jar包下载: `下载地址 <http://www.chainsql.net/libs.zip>`_
+- 如果本地没有maven环境，可以直接下载项目依赖的jar包。项目依赖的jar包下载: `下载地址 <http://www.chainsql.net/libs.zip>`_
+
+  *-* Eclipse。在"buildPath"中选择"libraries"，再Add External Jars 添加相应的jar包。
+
+  *-* IDEA。在"Project Structure"-"Modules"-"Dependencies"中添加相应的jar包。
+
+
 
 ------------------------------------------------------------------------------
 
 引入
 =====================
 
-使用下面的代码引入ChainSQL JAVA API
+使用下面的代码引入ChainSQL JAVA-API
 
 .. code-block:: java
 
@@ -45,14 +51,12 @@ ChainSQL提供JAVA-API与节点进行交互，实现基础交易发送、链数�
 版本变化
 =====================
 
-    - 1.5.1版本之前的版本对多线程的支持不好,新版本支持在多线程中调用。
-    - 1.5.1版本之前 ``pay`` 方法直接调会返回交易提交结果，新版本需要跟 ``.submit`` 指定是否共识成功返回。
-    - 1.5.1版本之前对象可以使用Chainsql静态对象： ``Chainsql c = Chainsql.c`` ,现在删除了静态对象，需要用户自己调用 ``new`` :
+    - 1.5.1版本之前的版本对多线程的支持不好,新版本支持多线程中调用。
+    - 1.5.1版本之前 ``pay`` 方法直接调会返回交易提交结果，而新版本需要在方法后接``.submit`` 指定是否共识成功返回。具体示例见 :ref:`示例 <my-reference-pay-sample>`.
+    - 1.5.1版本之前对象可以使用Chainsql静态对象： ``Chainsql c = Chainsql.c`` ,现在删除了静态对象，需要用户自己调用 ``new`` ，例如
       ``Chainsql c = new Chainsql();``
 
 ------------------------------------------------------------------------------
-
-.. _java返回值:
 
 接口返回格式
 =====================
@@ -60,6 +64,10 @@ ChainSQL提供JAVA-API与节点进行交互，实现基础交易发送、链数�
 ------------
 交易类接口
 ------------
+
+交易类的接口包括网关交易以及表交易等相关的一系列接口。
+
+.. _json-return:
 
 交易类接口返回的JSON包含的各个域如下：
 
@@ -74,9 +82,6 @@ ChainSQL提供JAVA-API与节点进行交互，实现基础交易发送、链数�
     * - status
       - 字符串
       - 标识交易是否已被服务节点成功接收并且解析成功。
-    * - error_message
-      - 字符串
-      - 错误原因的描述。
     * - tx_json
       - 对象
       - 签名后的交易的JSON格式。
@@ -135,6 +140,8 @@ ChainSQL提供JAVA-API与节点进行交互，实现基础交易发送、链数�
 查询类接口
 ------------
 
+查询类的接口包括账户相关的信息查询以及表查询等相关的一系列接口。
+
 查询类接口返回的JSON包含的各个域如下：
 
 .. list-table::
@@ -145,9 +152,6 @@ ChainSQL提供JAVA-API与节点进行交互，实现基础交易发送、链数�
     * - status
       - 字符串
       - 标识交易是否已被服务节点成功接收并且解析成功。
-    * - error_message
-      - 字符串
-      - 错误原因的描述。
     * - request
       - 对象
       - 查询接口的JSON格式。
@@ -233,14 +237,17 @@ as
 
   public void as(String address, String secret);
 
-部分接口与节点进行交互操作前，需要指明一个全局的操作账户，这样避免在每次接口的操作中频繁的提供账户。再次调用该接口即可修改全局操作账户。
+提供操作账户信息，指明一个全局的操作账户。
+
+.. warning::
+    部分接口与节点进行交互操作前，需要指明一个全局的操作账户，这样避免在每次接口的操作中频繁的提供账户。再次调用该接口即可修改全局操作账户。
 
 ------------
 参数
 ------------
 
-1. ``address`` - ``String``: 账户地址.
-2. ``secret``  - ``String``: 账户私钥
+1. ``address``  - ``String``: 账户地址.
+2. ``secret ``  - ``String``: 账户私钥
 
 -------
 返回值
@@ -252,7 +259,7 @@ as
 
 .. code-block:: java
 
-    //提供操作账户信息;
+    //提供操作账户信息
     c.as("zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M", "xcUd996waZzyaPEmeFVp4q5S3FZYB");
 
 ------------------------------------------------------------------------------
@@ -305,7 +312,7 @@ connect
     public Connection connect(String url,String serverCertPath,String storePass,final Callback<Client> connectCb,
                        final Callback<Client> disconnectCb);
 
-连接一个 ``websocket`` 地址.如果需要与节点进行交互，必须设置节点的websocket地址。
+连接一个 ``websocket`` 地址.如果需要与节点进行交互，必须设置该节点的websocket地址。
 
 ------------
 参数
@@ -336,22 +343,22 @@ connect
 
 .. code-block:: java
 
-    // 异步连接
-    c.connect("ws://127.0.0.1:6006", new Callback<Client>() {
-			@Override
-			public void called(Client args) {
+  // 异步连接
+  c.connect("ws://127.0.0.1:6006", new Callback<Client>() {
+    @Override
+    public void called(Client args) {
 
-				System.out.println("Connected");
+      System.out.println("Connected");
 
-			}
-		}, new Callback<Client>() {
-			@Override
-			public void called(Client args) {
+    }
+  }, new Callback<Client>() {
+    @Override
+    public void called(Client args) {
 
-				System.out.println("Disconnected  ");
+      System.out.println("Disconnected  ");
 
-			}
-		});
+    }
+  });
 
 ------------------------------------------------------------------------------
 
@@ -389,27 +396,40 @@ submit接口有使用前提，需要事先调用其他操作接口将交易主�
 返回值
 -------
 
-``JSONObject`` - JSON对象.
+``JSONObject`` - JSON对象.可参考 :ref:`接口返回值 <json-return>`
 
 1. 执行成功，则 ``JsonObject`` 中包含两个字段：
 
-	* ``status`` - ``String`` : 为提交时expect后的设定值，如果没有，则默认为"send_success"；
-	* ``tx_hash`` - ``String`` : 交易哈希值，通过该值可以在链上查询交易。
-2. 执行失败，有两种情况，一种是交易提交前的信息检测，一种是交易提交后共识出错。
+  * ``status`` - ``String`` : 为提交时的设定值，如果没有，则默认为**send_success**
+  * ``tx_hash`` - ``String`` : 交易哈希值，通过该值可以在链上查询交易
 
-	* 第一种信息检测出错，``JsonObject`` 中主要包含以下字段：
+2. 执行失败，有以下几种情况:
 
-		- ``name`` - ``String`` : 错误类型；
-		- ``message`` - ``String`` : 错误具体描述。
+  * 第一种交易共识前的字段信息有效性检测出错，``JsonObject`` 中主要包含以下字段：
 
-	* 第二种交易提交之后共识出错，``JsonObject`` 中包含以下字段：
+    - ``error`` - ``String`` : 错误类型；
+    - ``error_message`` - ``String`` : 错误具体描述。
 
-		- ``resultCode`` - ``String`` : 错误类型或者说错误码；
-		- ``resultMessage`` - ``String`` : 错误具体描述。
+  * 第二种交易提交之后共识出错，``JsonObject`` 中包含以下字段：
 
--------
+  - ``error`` - ``String`` : 错误类型或者说错误码，可参考 :ref:`交易类错误码 <tx-errcode>`；
+  - ``error_message`` - ``String`` : 错误具体描述。
+
+  * 第三种交易提交共识后出错，主要是数据库入库操作中的错误，``JsonObject`` 中包含以下字段：
+
+    - ``status`` - ``String`` : 错误类型，有以下可能字段：
+
+      - db_error
+      - validate_timeout
+      - db_noTableExistInDB
+      - db_noDbConfig
+      - db_noSyncConfig
+      - db_noAutoSync
+      - db_noTableExistInDB
+    - ``tx_hash`` - ``String`` : 交易哈希值。
+    - ``error_message`` - ``String`` : [**可选**]在错误类型为"db_error"的时候，会额外附加错误信息。
+
 示例
--------
 
 .. code-block:: java
 
@@ -421,13 +441,14 @@ submit接口有使用前提，需要事先调用其他操作接口将交易主�
   // 2、
   c.table("marvel").insert(c.array("{'name': 'peera','age': 22}", "{'name': 'peerb','age': 21}"))
   .submit(new Callback () {
-    public void called(JSONObject data) {
-      System.out.println(data);
+  public void called(JSONObject data) {
+    System.out.println(data);
   }));
 
   // 3、
   c.table("marvel").insert(c.array("{'name': 'peera','age': 22}", "{'name': 'peerb','age': 21}"))
   .submit(SyncCond.db_success);
+  pay(转账系统币)
 
 ------------------------------------------------------------------------------
 
@@ -460,6 +481,9 @@ pay(转账系统币)
 -------
 
 ``Ripple`` - Ripple对象,后面一般接submit进行连续操作,如示例。
+
+
+.. _my-reference-pay-sample:
 
 -------
 示例
@@ -1032,8 +1056,8 @@ sign
 ------------
 
 1. ``tx``      - ``JSONObject``:  交易对象，不同交易类型，结构不同
-1. ``message`` - ``byte[]``    : 要签名的字符串
-2. ``secret``  - ``String``    :  签名私钥
+2. ``message`` - ``byte[]``    : 要签名的字符串
+3. ``secret``  - ``String``    :  签名私钥
 
 -------
 返回值
@@ -1082,9 +1106,9 @@ sign
 
 输出
 
-.. code-block::
+.. code-block:: java
 
-  [B@56cbfb61
+  "[B@56cbfb61"
 
 
 ------------------------------------------------------------------------------
@@ -1584,8 +1608,6 @@ table
 
 1. ``tableName``    - ``String``:  表名
 
-
-
 -------
 返回值
 -------
@@ -1893,7 +1915,7 @@ get
 返回值
 -------
 
-``Table`` - Table对象
+``Table`` - 见 :ref:`Table  <my-reference-table>`.
 
 -------
 示例
@@ -1934,7 +1956,7 @@ limit
 返回值
 -------
 
-``Table`` - Table对象
+``Table`` - 见 :ref:`Table  <my-reference-table>`.
 
 -------
 示例
@@ -1968,7 +1990,7 @@ order
 返回值
 -------
 
-``Table`` - Table对象
+``Table`` - 见 :ref:`Table  <my-reference-table>`.
 
 -------
 示例
@@ -2004,7 +2026,7 @@ withFields
 返回值
 -------
 
-``Table`` - Table对象
+``Table`` - 见 :ref:`Table  <my-reference-table>`.
 
 -------
 示例
@@ -2020,7 +2042,6 @@ withFields
 
 ------------------------------------------------------------------------------
 
-
 getBySqlAdmin
 =====================
 
@@ -2032,8 +2053,15 @@ getBySqlAdmin
    // 根据sql语句查询，admin接口，异步调用
    public void       getBySqlAdmin(String sql,Callback<JSONObject> cb);
 
-直接传入SQL语句进行数据库查询操作。因为直接操作数据库中的表，所以需要配合getTableNameInDB接口获取表在数据库中的真实表名。
-admin权限需要在cfg文件中配置，详细见**配置文件详解 port_ws_admin_local.admin**
+直接传入SQL语句进行数据库查询操作。
+
+.. note::
+
+  * 因为直接操作数据库中的表，所以需要配合getTableNameInDB接口获取表在数据库中的真实表名。详见示例。
+	* 本接口不做表权限判断，但是只能由节点配置文件中 **[port_ws_admin_local]** 的admin里所配置的ip才可以发起此接口的调用，否则调用失败。
+	* 即nodejs接口运行所在的主机ip必须是配置在配置文件的 **[port_ws_admin_local]** 的admin里。
+	* 因为在配置文件中配置为admin的ip认为是该节点的管理员。拥有对本节点已经同步表的查询权限。
+
 
 ------------
 参数
@@ -2048,8 +2076,10 @@ admin权限需要在cfg文件中配置，详细见**配置文件详解 port_ws_a
 
 1. ``JSONObject`` :主要参数说明(格式见示例输出)   
 
-      * ``lines``           -  正确返回时，返回查询的sql结果。 
-      * ``error_message``   -  错误返回时，显示错误信息。
+      * ``final_result``   -  true，查询成功;false,查询失败。
+      * ``diff``           -  当前区块序号与被查询表数据库同步到的区块序号的差值，如果有多个表，取最大差值。
+      * ``lines``          -  返回查询的sql结果。
+      * ``error_message``  -  错误返回时，显示错误信息。
 
 -------
 示例
@@ -2069,7 +2099,7 @@ admin权限需要在cfg文件中配置，详细见**配置文件详解 port_ws_a
 
           @Override
           public void called(JSONObject args) {
-            System.out.println("get_sql_admin async result:" + args);
+            System.out.println( args);
           }
           
         });
@@ -2130,9 +2160,14 @@ getBySqlUser
 .. code-block:: java
 
     public JSONObject getBySqlUser(String sql);//同步接口
-    public void getBySqlUser(String sql,Callback<JSONObject> cb);// 异步接口
+    public void       getBySqlUser(String sql,Callback<JSONObject> cb);// 异步接口
 
-由表的被授权者，即所有被授权的非表的拥有者调用，直接传入SQL语句进行数据库查询操作，因为直接操作数据库中的表，所有需要配合getTableNameInDB接口获取表在数据库中的真实表名。
+直接传入SQL语句进行数据库查询操作。
+
+.. note::
+  * 因为直接操作数据库中的表，所以需要配合getTableNameInDB接口获取表在数据库中的真实表名。详见示例。
+  * 调用此接口前，as接口中设置的用户需要对SQL语句中的表有查询权限，才可以调用此接口。
+
 
 ------------
 参数
@@ -2147,7 +2182,10 @@ getBySqlUser
 
 1. ``JSONObject`` :主要参数说明(格式见示例输出)   
 
-      * ``lines``   -  返回查询的sql结果。 
+      * ``final_result``   -  true，查询成功;false,查询失败。
+      * ``diff``           -  当前区块序号与被查询表数据库同步到的区块序号的差值，如果有多个表，取最大差值。
+      * ``lines``          -  返回查询的sql结果。
+      * ``error_message``  -  错误返回时，显示错误信息。
 
 -------
 示例
@@ -2158,8 +2196,10 @@ getBySqlUser
   JSONObject ret = c.getTableNameInDB(rootAddress, sTableName);
   if(ret.has("nameInDB")) {
     JSONObject obj = c.getBySqlUser("select * from t_" + ret.getString("nameInDB"));
-    System.out.println("get_sql_user sync result:" + obj);
+    System.out.println( obj );
   }
+
+成功
 
 .. code-block:: json
 
@@ -2184,6 +2224,33 @@ getBySqlUser
       ]
     }
 
+失败
+
+.. code-block:: json
+
+  {
+    "error_message": "The user is unauthorized to the table.",
+    "request": {
+      "signature": "304402200BFB2A48BCBDCA39E10334ABE926CAB3AAF668DC34C0EC6FC16AB6D30F3906520220025A911F16530C60842CEBF6EF70BDFA053287427A007B6E8D5751D49BE7B36F",
+      "tx_json": {
+        "LedgerIndex": 33020,
+        "Account": "zpMZ2H58HFPB5QTycMGWSXUeF47eA8jyd4",
+        "Sql": "select * from t_A07D12AF1616383806669B128675E8C32A894265"
+      },
+      "id": 3,
+      "publicKey": "02080EF3E62711D21A502DC6B6290E2819474AA7701271D82CDFF73F65AFEE7276",
+      "signingData": "{\"LedgerIndex\":33020,\"Account\":\"zpMZ2H58HFPB5QTycMGWSXUeF47eA8jyd4\",\"Sql\":\"select * from t_A07D12AF1616383806669B128675E8C32A894265\"}",
+      "command": "r_get_sql_user"
+    },
+    "final_result": true,
+    "error_code": 77,
+    "id": 3,
+    "error": "tabUnauthorized",
+    "type": "response",
+    "status": "error"
+  }
+
+
 ------------------------------------------------------------------------------
 
 订阅
@@ -2196,14 +2263,14 @@ subscribeTable
 
   public void subscribeTable(String name, String owner ,Callback<JSONObject> cb);
 
-订阅某张表；
+订阅某张表。该表相关的信息发生改变时，会通过回调函数返回改变内容。
 
 ------------
 参数
 ------------
 
-1. ``name``    - ``String``:  表名;
-2. ``owner``   - ``String``:  为表的所有者地址;
+1. ``name``    - ``String``:    表名;
+2. ``owner``   - ``String``:    为表的所有者地址;
 3. ``cb``      - ``Callback`` : 回调函数
 
 -------
@@ -2216,12 +2283,11 @@ subscribeTable
 
 .. code-block:: java
 
-  // 用户订阅TestName表信息，表的创建者为zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M
-  c.event.subscribeTable("TestName", "zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M",new Callback(){
-
+  // 用户订阅TestName表信息，表的创建者为rootAddress
+  c.event.subscribeTable("TestName", rootAddress,new Callback<JSONObject>() {
     @Override
-    public void called(Object args) {
-      //do something here
+    public void called(JSONObject args) {
+      System.out.println(" table info :" + args);
     }
   });
 
@@ -2240,8 +2306,8 @@ unsubcribeTable
 参数
 ------------
 
-1. ``owner``      - ``String``:  被订阅的表拥有者地址；
-2. ``tablename``  - ``String``:  被订阅的数据库表名；
+1. ``name``  - ``String``:  被订阅的数据库表名；
+2. ``owner``      - ``String``:  被订阅的表拥有者地址；
 3. ``cb``         - ``Callback``: 异步接口回调
 
 -------
@@ -2254,8 +2320,14 @@ unsubcribeTable
 
 .. code-block:: java
 
-  // 用户取消订阅TestName表信息.
-  c.event.unsubcribeTable("zP8Mum8xaGSkypRgDHKRbN8otJSzwgiJ9M");
+  // 用户取消订阅TestName表
+  c.event.unsubscribeTable("TestName", rootAddress, new Callback<JSONObject>() {
+      @Override
+      public void called(JSONObject args) {
+
+        System.out.println(" unsubscribeTable info :" + args);
+      }
+  });
 
 ------------------------------------------------------------------------------
 
@@ -2290,8 +2362,6 @@ subscribeTx
 
     @Override
     public void called(JSONObject args) {
-      //do something here
-
       System.out.println("subscribeTx Info:" + args);
     }
   });
@@ -2324,7 +2394,12 @@ unsubscribeTx
 .. code-block:: java
 
   // 取消订阅交易Hash信息.
-  c.event.unsubscribeTx(txid);
+  c.event.unsubscribeTx("601781B50D7936370276287EAC3737D7A1D20281E2E73FCA31FE7563426C93B0", new Callback<JSONObject>() {
+    @Override
+    public void called(JSONObject args) {
+      System.out.println("unsubscribeTx Info:" + args);
+    }
+  });
 
 ------------------------------------------------------------------------------
 
