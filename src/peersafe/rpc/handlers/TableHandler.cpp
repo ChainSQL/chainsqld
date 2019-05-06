@@ -475,10 +475,10 @@ Json::Value getInfoByRPContext(RPC::Context& context, std::string&sSql, AccountI
 }
 
 
-Json::Value getLedgerTableInfo(RPC::Context& context, const std::string& sql, std::set < std::pair<AccountID, std::string>  >& setOwnerID2TableName)
+Json::Value getLedgerTableInfo(RPC::Context& context, const std::string& sql, std::set <std::string>& setDBTableNames,
+							   std::set < std::pair<AccountID, std::string>  >& setOwnerID2TableName)
 {
 
-	std::set <std::string> setDBTableNames;
 	getNameInDBSetInSql(sql, setDBTableNames);
 
 	Json::Value ret(Json::objectValue);
@@ -508,7 +508,8 @@ Json::Value getLedgerTableInfo(RPC::Context& context, const std::string& sql, st
 }
 
 
-Json::Value getLedgerTableInfo(RPC::Context& context,AccountID& accountID, std::set < std::pair<AccountID,std::string>  >& setOwnerID2TableName )
+Json::Value getLedgerTableInfo(RPC::Context& context,AccountID& accountID, std::set <std::string>& setDBTableNames,	
+							   std::set < std::pair<AccountID,std::string>  >& setOwnerID2TableName)
 {
 	std::string sSql;
 	Json::Value ret = getInfoByRPContext(context, sSql, accountID);
@@ -517,9 +518,8 @@ Json::Value getLedgerTableInfo(RPC::Context& context,AccountID& accountID, std::
 		return ret;
 	}
 
-	std::set <std::string> tableNames;
-	getNameInDBSetInSql(sSql, tableNames);
-	for (auto nameInDB : tableNames)
+	getNameInDBSetInSql(sSql, setDBTableNames);
+	for (auto nameInDB : setDBTableNames)
 	{
 		Json::Value ret;
 		TxStore& txStore = context.app.getTxStore();
@@ -825,8 +825,9 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 		return RPC::invalid_field_error(jss::sql);
 	}
 
+	std::set <std::string> setNameInDB;
 	std::set < std::pair<AccountID, std::string>  > setOwnerID2TableName;
-	ret = getLedgerTableInfo(context, sql, setOwnerID2TableName);
+	ret = getLedgerTableInfo(context, sql, setNameInDB,setOwnerID2TableName);
 
 	//check table exist on chain  
 	ret = checkTableExistOnChain(context, setOwnerID2TableName);
@@ -848,10 +849,7 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 	}
 
 	//diff between the latest ledgerseq in db and the real newest ledgerseq
-	std::set <std::string> setNameInDB;
 	std::vector<ripple::uint160> vecNameInDB;
-
-	getNameInDBSetInSql(sql, setNameInDB);
 	for (std::set<std::string>::iterator iter = setNameInDB.begin(); iter != setNameInDB.end(); ++iter)
 	{
 		vecNameInDB.push_back(ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
@@ -875,8 +873,9 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 
 	AccountID accountID;
 
+	std::set <std::string> setNameInDB;
 	std::set < std::pair<AccountID, std::string>  > setOwnerID2TableName;
-	ret = getLedgerTableInfo(context, accountID, setOwnerID2TableName);
+	ret = getLedgerTableInfo(context, accountID, setNameInDB, setOwnerID2TableName);
 	if (ret.isMember(jss::error))
 	{
 		return ret;
@@ -903,17 +902,7 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 	}
 
 	//diff between the latest ledgerseq in db and the real newest ledgerseq
-	std::string Sql;
-	std::set <std::string> setNameInDB;
 	std::vector<ripple::uint160> vecNameInDB;
-
-	ret = getInfoByRPContext(context, Sql, accountID);
-	if (ret.isMember(jss::error))
-	{
-		return ret;
-	}
-
-	getNameInDBSetInSql(Sql, setNameInDB);
 	for (std::set<std::string>::iterator iter = setNameInDB.begin(); iter != setNameInDB.end(); ++iter)
 	{
 		vecNameInDB.push_back(ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
