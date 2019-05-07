@@ -348,10 +348,10 @@ function renameTable(string name,string newName) public{
 	* @param  sGateway           网关地址
 	* @return -1:不存在网关代币信任关系; >=0 信任网关代币额度
 	*/
-	function getTrustlineLimit(string sCurrency,string sGateway)
+	function trustLimit(string sCurrency,string sGateway)
 	public view returns(int) {
 
-		return msg.sender.hasTrustline(sCurrency,sGateway);
+		return msg.sender.trustLimit(sCurrency,sGateway);
 	}
 	
 	
@@ -362,7 +362,7 @@ function renameTable(string name,string newName) public{
 	* @param  sGateway           网关地址
 	* @return -1:不存在网关代币信任关系; >=0 信任网关代币额度
 	*/
-	function getTrustlineLimit(address contractAddr,string sCurrency,string sGateway)
+	function trustLimit(address contractAddr,string sCurrency,string sGateway)
 	public view returns(int) {
 	    // 合约地址也可查询网关信任代币信息
 	    return contractAddr.trustLimit(sCurrency,sGateway);
