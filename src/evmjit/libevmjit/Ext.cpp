@@ -613,6 +613,25 @@ llvm::Function* getExitFunFunc(llvm::Module* _module)
     return func;
 }
 
+llvm::Function* getAccountSetFunc(llvm::Module* _module)
+{
+    static const auto funcName = "evm.account_set";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto i32 = llvm::IntegerType::getInt32Ty(_module->getContext());
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Void, 
+                { Type::EnvPtr, addrTy->getPointerTo(), i32, Type::Bool}, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+
 llvm::Function* getCallFunc(llvm::Module* _module)
 {
     static const auto funcName = "call";
@@ -1296,6 +1315,21 @@ void Ext::exit_fun()
 {
     auto func = getExitFunFunc(getModule());
     createCABICall(func, {getRuntimeManager().getEnvPtr()});
+}
+
+void Ext::account_set(llvm::Value* _addr, llvm::Value* _flag, llvm::Value* _set)
+{
+    auto func = getAccountSetFunc(getModule());
+
+    auto flag = m_builder.CreateTrunc(_flag, /* Type::Size */ m_builder.getInt32Ty());
+    auto set = m_builder.CreateTrunc(_set, /*Type::Bool*/ m_builder.getInt1Ty());
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(_addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+
+    createCABICall(func, {getRuntimeManager().getEnvPtr(), ownerAddr, flag, set});
 }
 
 }  // namespace jit

@@ -1299,6 +1299,17 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             break;
         }
 
+        case Instruction::EXACCOUNTSET:
+        {
+            auto address = stack.pop();
+            auto flag = stack.pop();
+            auto set = stack.pop();
+
+            _ext.account_set(address, flag, set);
+
+            break;
+        }
+
 		invalidInstruction:
 		default: // Invalid instruction - abort
 			_runtimeManager.exit(ReturnCode::OutOfGas);

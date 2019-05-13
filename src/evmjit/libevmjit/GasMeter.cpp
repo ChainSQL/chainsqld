@@ -308,6 +308,9 @@ int64_t GasMeter::getStepCost(Instruction inst) const
     case Instruction::EXGETLENBYINDEX:
         return JITSchedule::sqlGas::value;
 
+    case Instruction::EXACCOUNTSET:
+        return JITSchedule::tokenGas::value;
+
 	default:
 		// For invalid instruction just return 0.
 		return 0;

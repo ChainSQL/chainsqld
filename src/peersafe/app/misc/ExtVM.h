@@ -155,6 +155,8 @@ public:
 	virtual
 		evmc_uint256be get_column_len(const evmc_uint256be *_handle,
 			size_t _row, size_t _column) override final;
+
+    virtual void account_set(const struct evmc_address* address, uint32_t _uflag, bool _bset) override final;
     
     SleOps const& state() const { return oSle_; }
 

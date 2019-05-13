@@ -434,6 +434,17 @@ void get_column_len_by_index(evmc_context*_context,
     *_len = env.get_column_len(_handle, _row, _column);
 }
 
+void account_set(struct evmc_context* _context,
+        const struct evmc_address* _address,
+        uint32_t _uFlag,
+        bool _bSet)
+{
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    env.account_set(_address, _uFlag, _bSet);
+}
+
+
+
 evmc_context_fn_table const fnTable = {
 	accountExists,
 	getStorage,
@@ -469,6 +480,8 @@ evmc_context_fn_table const fnTable = {
 
     get_column_len_by_name,
     get_column_len_by_index,
+
+    account_set,
 };
 
 ExtVMFace::ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,

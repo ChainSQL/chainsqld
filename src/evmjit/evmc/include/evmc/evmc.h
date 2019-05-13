@@ -810,6 +810,13 @@ typedef size_t(*evmc_emit_sql10_fn)(struct evmc_context* context,
     uint8_t *outBuf, 
     size_t _outSize);
 
+/* BEGIN Token callback function */
+typedef void(*evmc_emit_token1_fn)(struct evmc_context* context,
+                                   const struct evmc_address* address,
+                                   uint32_t _uFlag,
+                                   bool _bSet);
+/* END Token callback function */
+
 /**
  * Pointer to the callback function supporting EVM calls.
  *
@@ -890,6 +897,8 @@ struct evmc_context_fn_table
     evmc_emit_sql6_fn       exit_fun;
     evmc_get_col_len_by_nm_fn get_column_len_by_name;
     evmc_get_col_len_by_idx_fn get_column_len_by_index;
+
+    evmc_emit_token1_fn     account_set;
 };
 
 

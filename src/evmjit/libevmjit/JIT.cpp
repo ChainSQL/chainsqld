@@ -398,6 +398,7 @@ class SymbolResolver : public llvm::SectionMemoryManager
                     reinterpret_cast<uint64_t>(jit.host->get_column_len_by_name))
                 .Case("evm.get_column_len_by_index",
                     reinterpret_cast<uint64_t>(jit.host->get_column_len_by_index))
+                .Case("evm.account_set", reinterpret_cast<uint64_t>(jit.host->account_set))
                 .Default(0);
         if (addr)
             return {addr, llvm::JITSymbolFlags::Exported};

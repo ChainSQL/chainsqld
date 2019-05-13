@@ -167,7 +167,10 @@ enum class Instruction: uint8_t
     EXGETVALUEBYINDEX,
     EXEXITFUNC,
     EXGETLENBYKEY,
-    EXGETLENBYINDEX,
+    EXGETLENBYINDEX = 0xd0,
+
+    EXACCOUNTSET,
+
 	REVERTDIY,
 
 	CREATE = 0xf0,		///< create a new account with associated code

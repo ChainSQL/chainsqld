@@ -108,6 +108,8 @@ public:
     llvm::Value* get_column_len(llvm::Value *_handle, 
             llvm::Value *_row, llvm::Value *_column);
 
+    void account_set(llvm::Value *addr, llvm::Value *_flag, llvm::Value *_set);
+
 private:
 	Memory& m_memoryMan;
 

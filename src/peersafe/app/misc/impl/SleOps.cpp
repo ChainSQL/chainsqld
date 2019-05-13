@@ -4,6 +4,7 @@
 #include <ripple/app/tx/apply.h>
 #include <ripple/ledger/ApplyViewImpl.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/beast/core/LexicalCast.h>
 #include <peersafe/app/tx/DirectApply.h>
 #include <peersafe/app/misc/ContractHelper.h>
 #include <ripple/basics/StringUtilities.h>
@@ -123,6 +124,24 @@ namespace ripple {
         paymentTx.setParentTxID(ctx_.tx.getTransactionID());
 		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
 		return ret;
+	}
+
+	// gateWay  currency transfer
+	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, int const& _value, std::string const& _sCurrency, AccountID const& _issuer)
+	{
+
+		STTx paymentTx(ttPAYMENT,
+			[&_from, &_to, &_value,&_sCurrency,&_issuer](auto& obj)
+		{
+			obj.setAccountID(sfAccount, _from);
+			obj.setAccountID(sfDestination, _to);
+
+			obj.setFieldAmount(sfAmount, STAmount{ Issue{ to_currency(_sCurrency),_issuer }, _value });
+		});
+		paymentTx.setParentTxID(ctx_.tx.getTransactionID());
+		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
+		return ret;
+
 	}
 
 	TER SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)
@@ -353,6 +372,7 @@ namespace ripple {
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
 
+
 		return disposeTableTx(tx, _account, _sTableName);
 	}
 
@@ -368,6 +388,7 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
+
 
 		return disposeTableTx(tx, _account, _sTableName, _sTableNewName);
 	}
@@ -388,6 +409,7 @@ namespace ripple {
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
+
 		return disposeTableTx(tx, _account, _sTableName);
 	}
 
@@ -611,4 +633,162 @@ namespace ripple {
 		if (!sqlTxsStatements_.empty())
 			sqlTxsStatements_.clear();
 	}
+
+	int SleOps::accountSet(AccountID const& _account, int nFlag, bool bSet)
+	{
+		STTx accountSetTx(ttACCOUNT_SET,
+			[&nFlag, &bSet](auto& obj)
+		{
+			if (bSet)   obj.setFieldU32(sfSetFlag,   nFlag);
+			else        obj.setFieldU32(sfClearFlag, nFlag);			
+		});
+
+		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
+		SleOps::addCommonFields(accountSetTx, _account);
+		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("SleOps"));
+		return ret;
+	}
+
+	int SleOps::setTransferRate(AccountID const& _gateWay, std::string & _feeRate)
+	{
+
+		STTx accountSetTx(ttACCOUNT_SET,
+			[&_feeRate](auto& obj)
+		{
+			//Rate  sfTransferRate
+			std::uint32_t uRate = beast::lexicalCastThrow <std::uint32_t> (_feeRate);
+			obj.setFieldU32(sfTransferRate, uRate);
+		});
+
+		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
+		SleOps::addCommonFields(accountSetTx, _gateWay);
+		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("Executive"));
+		return ret;
+	}
+
+	int SleOps::setTransferRange(AccountID const& _gateWay, std::string & _minFee, std::string & _maxFee)
+	{
+		STTx accountSetTx(ttACCOUNT_SET,
+			[&_minFee,&_maxFee](auto& obj)
+		{
+			obj.setFieldVL(sfTransferFeeMin, strCopy(_minFee));
+			obj.setFieldVL(sfTransferFeeMax, strCopy(_maxFee));
+		});
+
+		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
+		SleOps::addCommonFields(accountSetTx, _gateWay);
+		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("Executive"));
+		return ret;
+	}
+
+	int SleOps::trustSet(AccountID const& _account, int const& _value, std::string const& _sCurrency, AccountID const& _issuer)
+	{
+		STTx accountSetTx(ttTRUST_SET,
+			[&_value, &_sCurrency, &_issuer](auto& obj)
+		{
+			obj.setFieldAmount(sfLimitAmount, STAmount{ Issue{ to_currency(_sCurrency),_issuer }, _value });
+		});
+
+		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
+		SleOps::addCommonFields(accountSetTx, _account);
+		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("Executive"));
+		return ret;	
+	}
+
+	int SleOps::trustLimit(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
+	{
+		//[
+		//	{
+		//		"balance": "0",
+		//			"limit" : "0",
+		//			"quality_in" : 0,
+		//			"quality_out" : 0,
+		//			"currency" : "USD",
+		//			"limit_peer" : "100",
+		//			"account" : "zpMZ2H58HFPB5QTycMGWSXUeF47eA8jyd4"
+		//	}
+		//]
+
+		Json::Value retJson = getAccountLines(_account);
+
+		if (retJson.isNull() || !retJson.isArray())
+			return -1;
+
+		Json::UInt size = retJson.size();
+		for (Json::UInt index = 0; index < size; index++) {
+			Json::Value& v = retJson[index];
+
+			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
+
+				int limit = v[jss::limit].asInt();
+				return limit;
+			}
+
+		}
+
+		return -1;
+	}
+
+
+	Json::Value SleOps::getAccountLines(AccountID const& _account)
+	{
+		Json::Value jvCommand;
+		jvCommand[jss::account] = to_string(_account);
+
+		Resource::Charge loadType = -1;
+		Resource::Consumer c;
+
+		RPC::Context context{
+			ctx_.app.journal("RPCHandler"),
+			jvCommand,
+			ctx_.app,
+			loadType,
+			ctx_.app.getOPs(),
+			ctx_.app.getLedgerMaster(),
+			c,Role::ADMIN };
+
+		auto result = ripple::doAccountLines(context);
+
+		if (result.isMember(jss::lines))
+			return result;
+
+
+		return Json::Value();
+
+	}
+
+	int SleOps::gateWayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
+	{
+		//[
+		//	{
+		//		"balance": "0",
+		//			"limit" : "0",
+		//			"quality_in" : 0,
+		//			"quality_out" : 0,
+		//			"currency" : "USD",
+		//			"limit_peer" : "100",
+		//			"account" : "zpMZ2H58HFPB5QTycMGWSXUeF47eA8jyd4"
+		//	}
+		//]
+
+		Json::Value retJson = getAccountLines(_account);
+
+		if (retJson.isNull() || !retJson.isArray())
+			return -1;
+
+		Json::UInt size = retJson.size();
+		for (Json::UInt index = 0; index < size; index++) {
+			Json::Value& v = retJson[index];
+
+			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
+
+				int limit = v[jss::balance].asInt();
+				return limit;
+			}
+
+		}
+
+		return -1;
+	}
+
 }

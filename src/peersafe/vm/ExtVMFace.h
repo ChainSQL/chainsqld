@@ -206,6 +206,8 @@ public:
     virtual evmc_uint256be table_get_lines(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
     virtual evmc_uint256be table_get_columns(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
 
+    virtual void account_set(const struct evmc_address* address, uint32_t _uflag, bool _bset) { }
+
     virtual 
     size_t table_get_by_key(const evmc_uint256be *_handle, 
             size_t _row, bytesConstRef const& _column, 
