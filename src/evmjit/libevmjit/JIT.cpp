@@ -399,6 +399,12 @@ class SymbolResolver : public llvm::SectionMemoryManager
                 .Case("evm.get_column_len_by_index",
                     reinterpret_cast<uint64_t>(jit.host->get_column_len_by_index))
                 .Case("evm.account_set", reinterpret_cast<uint64_t>(jit.host->account_set))
+                .Case("evm.transfer_rate_set", reinterpret_cast<uint64_t>(jit.host->transfer_rate_set))
+                .Case("evm.transfer_range_set", reinterpret_cast<uint64_t>(jit.host->transfer_range_set))
+                .Case("evm.trust_set", reinterpret_cast<uint64_t>(jit.host->trust_set))
+                .Case("evm.trust_limit", reinterpret_cast<uint64_t>(jit.host->trust_limit))
+                .Case("evm.gateway_balance", reinterpret_cast<uint64_t>(jit.host->gateway_balance))
+                .Case("evm.pay", reinterpret_cast<uint64_t>(jit.host->pay))
                 .Default(0);
         if (addr)
             return {addr, llvm::JITSymbolFlags::Exported};

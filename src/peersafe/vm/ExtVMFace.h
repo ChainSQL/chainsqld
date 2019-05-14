@@ -206,8 +206,6 @@ public:
     virtual evmc_uint256be table_get_lines(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
     virtual evmc_uint256be table_get_columns(const struct evmc_uint256be *handle) { return evmc_uint256be(); }
 
-    virtual void account_set(const struct evmc_address* address, uint32_t _uflag, bool _bset) { }
-
     virtual 
     size_t table_get_by_key(const evmc_uint256be *_handle, 
             size_t _row, bytesConstRef const& _column, 
@@ -231,6 +229,29 @@ public:
             size_t _row, size_t _column) {
         return evmc_uint256be();
     }
+
+    virtual void account_set(const struct evmc_address *address, 
+        uint32_t _uflag, bool _bset) {}
+    virtual void transfer_rate_set(const struct evmc_address *address, 
+        bytesConstRef const& _Rate) {}
+    virtual void transfer_range_set(const struct evmc_address *address, 
+        bytesConstRef const& _Min, 
+        bytesConstRef const& _Max) {}
+    virtual void trust_set(const struct evmc_address *address, 
+        bytesConstRef const& _value, 
+        bytesConstRef const& _currency, 
+        const struct evmc_address *gateWay) {}
+    virtual evmc_uint256be trust_limit(const struct evmc_address *address, 
+        bytesConstRef const& _currency, 
+        const struct evmc_address *gateWay) { return evmc_uint256be(); }
+    virtual evmc_uint256be gateway_balance(const struct evmc_address *address, 
+        bytesConstRef const& _currency, 
+        const struct evmc_address *gateWay) { return evmc_uint256be(); }
+    virtual void pay(const struct evmc_address *address, 
+        const struct evmc_address *receiver, 
+        bytesConstRef const& _value, 
+        bytesConstRef const&  _currency, 
+        const struct evmc_address *gateWay) {}
 
 	/// Get the execution environment information.
 	EnvInfo const& envInfo() const { return envInfo_; }

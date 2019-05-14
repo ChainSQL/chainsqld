@@ -109,6 +109,25 @@ public:
             llvm::Value *_row, llvm::Value *_column);
 
     void account_set(llvm::Value *addr, llvm::Value *_flag, llvm::Value *_set);
+    void transfer_rate_set(llvm::Value *addr, llvm::Value *_rateIdx, llvm::Value *_rateLen);
+    void transfer_range_set(llvm::Value *addr, 
+        llvm::Value *_minIdx, llvm::Value *_minLen, 
+        llvm::Value *_maxIdx, llvm::Value *_maxLen);
+    void trust_set(llvm::Value *addr,
+        llvm::Value *_valueIdx, llvm::Value *_valueLen,
+        llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+        llvm::Value *gateway);
+    llvm::Value* trust_limit(llvm::Value *addr,
+        llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+        llvm::Value *gateway);
+    llvm::Value* gateway_balance(llvm::Value *addr,
+        llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+        llvm::Value *gateway);
+    void pay(llvm::Value *addr,
+        llvm::Value *receiver,
+        llvm::Value *_valueIdx, llvm::Value *_valueLen,
+        llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+        llvm::Value *gateway);
 
 private:
 	Memory& m_memoryMan;

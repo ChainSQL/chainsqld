@@ -1309,6 +1309,96 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             break;
         }
+        case Instruction::EXTRANSFERRATESET:
+        {
+            auto address = stack.pop();
+            auto rateIdx = stack.pop();
+            auto rateLen = stack.pop();
+
+            _memory.require(rateIdx, rateLen);
+
+            _ext.transfer_rate_set(address, rateIdx, rateLen);
+
+            break;
+        }
+        case Instruction::EXTRANSFERRANGESET:
+        {
+            auto address = stack.pop();
+            auto minIdx = stack.pop();
+            auto minLen = stack.pop();
+            auto maxIdx = stack.pop();
+            auto maxLen = stack.pop();
+
+            _memory.require(minIdx, minLen);
+            _memory.require(maxIdx, maxLen);
+
+            _ext.transfer_range_set(address, minIdx, minLen, maxIdx, maxLen);
+
+            break;
+        }
+        case Instruction::EXTRUSTSET:
+        {
+            auto address = stack.pop();
+            auto valueIdx = stack.pop();
+            auto valueLen = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(valueIdx, valueLen);
+            _memory.require(currencyIdx, currencyLen);
+
+            _ext.trust_set(address, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+
+            break;
+        }
+        case Instruction::EXTRUSTLIMIT:
+        {
+            auto address = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.trust_limit(address, currencyIdx, currencyLen, gateway);
+
+            stack.push(r);
+
+            break;
+        }
+        case Instruction::EXGATEWAYBALANCE:
+        {
+            auto address = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.gateway_balance(address, currencyIdx, currencyLen, gateway);
+
+            stack.push(r);
+
+            break;
+        }
+        case Instruction::EXPAY:
+        {
+            auto address = stack.pop();
+            auto receiver = stack.pop();
+            auto valueIdx = stack.pop();
+            auto valueLen = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(valueIdx, valueLen);
+            _memory.require(currencyIdx, currencyLen);
+
+            _ext.pay(address, receiver, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+
+            break;
+        }
 
 		invalidInstruction:
 		default: // Invalid instruction - abort
