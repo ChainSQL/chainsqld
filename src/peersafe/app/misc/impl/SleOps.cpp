@@ -371,8 +371,6 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
-
-
 		return disposeTableTx(tx, _account, _sTableName);
 	}
 
@@ -408,7 +406,6 @@ namespace ripple {
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
-		//
 
 		return disposeTableTx(tx, _account, _sTableName);
 	}
@@ -634,7 +631,7 @@ namespace ripple {
 			sqlTxsStatements_.clear();
 	}
 
-	int SleOps::accountSet(AccountID const& _account, int nFlag, bool bSet)
+	int SleOps::accountSet(AccountID const& _account, uint32_t nFlag, bool bSet)
 	{
 		STTx accountSetTx(ttACCOUNT_SET,
 			[&nFlag, &bSet](auto& obj)

@@ -396,15 +396,8 @@ namespace ripple
 
     void ExtVM::account_set(const struct evmc_address* address, uint32_t _uFlag, bool _bSet)
     {
-        //ApplyContext const& ctx = oSle_.ctx();
-        //auto j = ctx.app.journal("ExtVM");
-
-        //JLOG(j.warn()) << __FUNCTION__ << address << _uFlag << _bSet;
-
-
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
-       // JLOG(j.trace()) << "tableName is " << _name.toString() << ", raw is " << _raw.toString();
         oSle_.accountSet(fromEvmC(*address), (int)_uFlag, _bSet);
     }
 }

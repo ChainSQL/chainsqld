@@ -92,7 +92,7 @@ public:
 
 
 	// gateway Transaction related
-	int  accountSet(AccountID const&  _account, int nFlag,bool bSet);
+	int  accountSet(AccountID const&  _account, uint32_t nFlag,bool bSet);
 	int  setTransferRate(AccountID const&  _gateWay, std::string & _feeRate);
 	int  setTransferRange(AccountID const&  _gateWay, std::string & _minFee, std::string & _maxFee);
 	int  trustSet(AccountID const&  _account, int const& _value, std::string const&  _sCurrency, AccountID const& _issuer);
