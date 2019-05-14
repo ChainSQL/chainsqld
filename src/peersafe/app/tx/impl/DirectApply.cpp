@@ -59,6 +59,8 @@ namespace ripple {
 		case ttTABLELISTSET:	return invoke_preclaim_direct<TableListSet>(ctx);
 		case ttSQLSTATEMENT:	return invoke_preclaim_direct<SqlStatement>(ctx);
 		case ttSQLTRANSACTION:  return invoke_preclaim_direct<SqlTransaction>(ctx);
+		case ttACCOUNT_SET:     return invoke_preclaim_direct<SetAccount>(ctx);
+		case ttTRUST_SET:		return invoke_preclaim_direct<SetTrust>(ctx);
 		default:
 			assert(false);
 			return{ temUNKNOWN, 0 };
@@ -103,10 +105,13 @@ namespace ripple {
 	{
 		switch (ctx.tx.getTxnType())
 		{
-		case ttPAYMENT:			{ Payment       p(ctx); return p.applyDirect(); }
-		case ttTABLELISTSET:	{ TableListSet  p(ctx); return p.applyDirect(); }
-		case ttSQLSTATEMENT:	{ SqlStatement  p(ctx); return p.applyDirect(); }
+		case ttPAYMENT:			{ Payment        p(ctx); return p.applyDirect(); }
+		case ttTABLELISTSET:	{ TableListSet   p(ctx); return p.applyDirect(); }
+		case ttSQLSTATEMENT:	{ SqlStatement   p(ctx); return p.applyDirect(); }
 		case ttSQLTRANSACTION:	{ SqlTransaction p(ctx); return p.applyDirect(); }
+		case ttACCOUNT_SET:     { SetAccount     p(ctx); return p.applyDirect(); }
+		case ttTRUST_SET:       { SetTrust       p(ctx); return p.applyDirect(); }
+					
 		default:
 			assert(false);
 			return temUNKNOWN;
