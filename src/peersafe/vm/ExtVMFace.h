@@ -241,12 +241,12 @@ public:
         bytesConstRef const& _value, 
         bytesConstRef const& _currency, 
         const struct evmc_address *gateWay) {}
-    virtual evmc_uint256be trust_limit(const struct evmc_address *address, 
+    virtual int64_t trust_limit(const struct evmc_address *address, 
         bytesConstRef const& _currency, 
-        const struct evmc_address *gateWay) { return evmc_uint256be(); }
-    virtual evmc_uint256be gateway_balance(const struct evmc_address *address, 
+        const struct evmc_address *gateWay) { return 0; }
+    virtual int64_t gateway_balance(const struct evmc_address *address, 
         bytesConstRef const& _currency, 
-        const struct evmc_address *gateWay) { return evmc_uint256be(); }
+        const struct evmc_address *gateWay) { return 0; }
     virtual void pay(const struct evmc_address *address, 
         const struct evmc_address *receiver, 
         bytesConstRef const& _value, 

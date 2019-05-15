@@ -478,8 +478,8 @@ void trust_set(
     env.trust_set(address, bytesConstRef{ _pValue, _valueLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
 }
 
-void trust_limit(
-    evmc_uint256be* o_result, 
+int64_t trust_limit(
+    /* evmc_uint256be* o_result, */
     struct evmc_context *_context,
     const struct evmc_address *address,
     uint8_t const *_pCurrency, size_t _currencyLen,
@@ -487,11 +487,12 @@ void trust_limit(
 ) noexcept
 {
     auto &env = static_cast<ExtVMFace&>(*_context);
-    *o_result = env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    //*o_result = env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
 }
 
-void gateway_balance(
-    evmc_uint256be* o_result, 
+int64_t gateway_balance(
+    /* evmc_uint256be* o_result, */
     struct evmc_context *_context,
     const struct evmc_address *address,
     uint8_t const *_pCurrency, size_t _currencyLen,
@@ -499,7 +500,8 @@ void gateway_balance(
 ) noexcept
 {
     auto &env = static_cast<ExtVMFace&>(*_context);
-    *o_result = env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    //*o_result = env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
 }
 
 void pay(

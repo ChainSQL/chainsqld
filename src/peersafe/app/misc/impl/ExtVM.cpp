@@ -432,7 +432,7 @@ namespace ripple
         JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _value.toString() << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
     }
 
-    evmc_uint256be ExtVM::trust_limit(const struct evmc_address *address,
+    int64_t ExtVM::trust_limit(const struct evmc_address *address,
         bytesConstRef const& _currency,
         const struct evmc_address *gateWay)
     {
@@ -441,10 +441,10 @@ namespace ripple
 
         JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
 
-        return toEvmC(uint256(-1));
+        return -1;
     }
 
-    evmc_uint256be ExtVM::gateway_balance(const struct evmc_address *address,
+    int64_t ExtVM::gateway_balance(const struct evmc_address *address,
         bytesConstRef const& _currency,
         const struct evmc_address *gateWay)
     {
@@ -453,7 +453,7 @@ namespace ripple
 
         JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
 
-        return toEvmC(uint256(-1));
+        return -1;
     }
 
     void ExtVM::pay(const struct evmc_address *address,

@@ -165,10 +165,10 @@ public:
     virtual void trust_set(const struct evmc_address *address, 
         bytesConstRef const& _value, bytesConstRef const& _currency, 
         const struct evmc_address *gateWay) override final;
-    virtual evmc_uint256be trust_limit(const struct evmc_address *address, 
+    virtual int64_t trust_limit(const struct evmc_address *address, 
         bytesConstRef const& _currency, 
         const struct evmc_address *gateWay) override final;
-    virtual evmc_uint256be gateway_balance(const struct evmc_address *address, 
+    virtual int64_t gateway_balance(const struct evmc_address *address,
         bytesConstRef const& _currency, 
         const struct evmc_address *gateWay) override final;
     virtual void pay(const struct evmc_address *address, 

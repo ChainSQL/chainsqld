@@ -1363,7 +1363,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             auto r = _ext.trust_limit(address, currencyIdx, currencyLen, gateway);
 
-            stack.push(r);
+            stack.push(m_builder.CreateSExt(r, Type::Word));
 
             break;
         }
@@ -1378,7 +1378,7 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             auto r = _ext.gateway_balance(address, currencyIdx, currencyLen, gateway);
 
-            stack.push(r);
+            stack.push(m_builder.CreateSExt(r, Type::Word));
 
             break;
         }
