@@ -399,9 +399,9 @@ namespace ripple
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _uFlag << " " << _bSet;
+        //JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _uFlag << " " << _bSet;
 
-        //oSle_.accountSet(fromEvmC(*address), (int)_uFlag, _bSet);
+        oSle_.accountSet(fromEvmC(*address), _uFlag, _bSet);
     }
 
     void ExtVM::transfer_rate_set(const struct evmc_address *address,
@@ -410,7 +410,9 @@ namespace ripple
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _Rate.toString();
+       // JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _Rate.toString();
+
+		oSle_.setTransferRate(fromEvmC(*address), _Rate.toString());
     }
 
     void ExtVM::transfer_range_set(const struct evmc_address *address,
@@ -419,7 +421,11 @@ namespace ripple
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _Min.toString() << " " << _Max.toString();
+        //JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _Min.toString() << " " << _Max.toString();
+
+
+		oSle_.setTransferRange(fromEvmC(*address), _Min.toString(), _Max.toString());
+
     }
 
     void ExtVM::trust_set(const struct evmc_address *address,
@@ -429,8 +435,10 @@ namespace ripple
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _value.toString() << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
-    }
+       // JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _value.toString() << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
+   
+		oSle_.trustSet(fromEvmC(*address), atoi(_value.toString().c_str()), _currency.toString(), fromEvmC(*gateWay));
+	}
 
     int64_t ExtVM::trust_limit(const struct evmc_address *address,
         bytesConstRef const& _currency,
@@ -439,9 +447,12 @@ namespace ripple
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
+     //   JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
 
-        return -1;
+
+		int ret = oSle_.trustLimit(fromEvmC(*address), fromEvmC(*gateWay), _currency.toString());
+
+        return ret;
     }
 
     int64_t ExtVM::gateway_balance(const struct evmc_address *address,
@@ -451,9 +462,11 @@ namespace ripple
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
+      //  JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
 
-        return -1;
+
+		int ret = oSle_.gateWayBalance(fromEvmC(*address), fromEvmC(*gateWay), _currency.toString());
+        return ret;
     }
 
     void ExtVM::pay(const struct evmc_address *address,
@@ -464,8 +477,10 @@ namespace ripple
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << toBase58(fromEvmC(*receiver)) << " "
-            << _value.toString() << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
+     //   JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << toBase58(fromEvmC(*receiver)) << " "
+       //     << _value.toString() << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
+
+		oSle_.doPayment(fromEvmC(*address), fromEvmC(*receiver), atoi(_value.toString().c_str()), _currency.toString(), fromEvmC(*gateWay));
     }
 }
 

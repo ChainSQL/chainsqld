@@ -1,6 +1,7 @@
 #include <peersafe/app/misc/SleOps.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/TxFormats.h>
+#include <ripple/protocol/Quality.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/ledger/ApplyViewImpl.h>
 #include <ripple/app/misc/NetworkOPs.h>
@@ -648,12 +649,15 @@ namespace ripple {
 
 	int SleOps::setTransferRate(AccountID const& _gateWay, std::string & _feeRate)
 	{
+		std::uint32_t uRate = atoi(_feeRate.c_str());
+		if (uRate < QUALITY_ONE || uRate > 2 * QUALITY_ONE)
+			return temBAD_TRANSFER_RATE;
 
 		STTx accountSetTx(ttACCOUNT_SET,
-			[&_feeRate](auto& obj)
+			[&uRate](auto& obj)
 		{
 			//Rate  sfTransferRate
-			std::uint32_t uRate = beast::lexicalCastThrow <std::uint32_t> (_feeRate);
+			//std::uint32_t uRate = beast::lexicalCastThrow <std::uint32_t> (_feeRate);
 			obj.setFieldU32(sfTransferRate, uRate);
 		});
 
@@ -706,7 +710,7 @@ namespace ripple {
 		//	}
 		//]
 
-		Json::Value retJson = getAccountLines(_account);
+		Json::Value& retJson = getAccountLines(_account);
 
 		if (retJson.isNull() || !retJson.isArray())
 			return -1;
@@ -746,12 +750,15 @@ namespace ripple {
 
 		auto result = ripple::doAccountLines(context);
 
-		if (result.isMember(jss::lines))
-			return result;
+		if (result.isMember(jss::lines)) {
+		
+			Json::Value& ret = result[jss::lines];
+			return ret;
+		}
+			
 
 
 		return Json::Value();
-
 	}
 
 	int SleOps::gateWayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
@@ -768,7 +775,7 @@ namespace ripple {
 		//	}
 		//]
 
-		Json::Value retJson = getAccountLines(_account);
+		Json::Value& retJson = getAccountLines(_account);
 
 		if (retJson.isNull() || !retJson.isArray())
 			return -1;
