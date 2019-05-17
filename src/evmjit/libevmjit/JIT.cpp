@@ -326,6 +326,53 @@ int64_t db_trans_submit(struct evmc_context* _context, uint8_t const** o_bufData
     return ter;
 }
 
+int64_t account_set(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint32_t _uFlag, bool _bSet,
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->account_set(_context, address, _uFlag, _bSet);
+    formatOutput(ter, o_bufData, o_bufSize);
+    return ter;
+}
+
+int64_t transfer_rate_set(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _pStr, size_t _len,
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->transfer_rate_set(_context, address, _pStr, _len);
+    formatOutput(ter, o_bufData, o_bufSize);
+    return ter;
+}
+
+int64_t transfer_range_set(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _pStr1, size_t _len1,
+    uint8_t const* _pStr2, size_t _len2,
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->transfer_range_set(_context, address, _pStr1, _len1, _pStr2, _len2);
+    formatOutput(ter, o_bufData, o_bufSize);
+    return ter;
+}
+
+int64_t trust_set(struct evmc_context* _context,
+    const struct evmc_address* address1,
+    uint8_t const* _pStr1, size_t _len1,
+    uint8_t const* _pStr2, size_t _len2,
+    const struct evmc_address* address2,
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->trust_set(_context, address1, _pStr1, _len1, _pStr2, _len2, address2);
+    formatOutput(ter, o_bufData, o_bufSize);
+    return ter;
+}
+
 int64_t trust_limit(struct evmc_context* _context, 
     const struct evmc_address* address1,
     uint8_t const* _pStr, size_t _len,
@@ -333,9 +380,9 @@ int64_t trust_limit(struct evmc_context* _context,
     uint8_t const** o_bufData, size_t* o_bufSize)
 {
     auto& jit = JITImpl::instance();
-    int64_t ter = jit.host->trust_limit(_context, address1, _pStr, _len, address2);
-    formatOutput(ter, o_bufData, o_bufSize);
-    return ter;
+    int64_t limit = jit.host->trust_limit(_context, address1, _pStr, _len, address2);
+    formatOutput(limit, o_bufData, o_bufSize);
+    return limit;
 }
 
 int64_t gateway_balance(struct evmc_context* _context,
@@ -345,7 +392,21 @@ int64_t gateway_balance(struct evmc_context* _context,
     uint8_t const** o_bufData, size_t* o_bufSize)
 {
     auto& jit = JITImpl::instance();
-    int64_t ter = jit.host->gateway_balance(_context, address1, _pStr, _len, address2);
+    int64_t balance = jit.host->gateway_balance(_context, address1, _pStr, _len, address2);
+    formatOutput(balance, o_bufData, o_bufSize);
+    return balance;
+}
+
+int64_t pay(struct evmc_context* _context,
+    const struct evmc_address* address1,
+    const struct evmc_address* address2,
+    uint8_t const* _pStr1, size_t _len1,
+    uint8_t const* _pStr2, size_t _len2,
+    const struct evmc_address* address3, 
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->pay(_context, address1, address2, _pStr1, _len1, _pStr2, _len2, address3);
     formatOutput(ter, o_bufData, o_bufSize);
     return ter;
 }
@@ -422,13 +483,13 @@ class SymbolResolver : public llvm::SectionMemoryManager
                     reinterpret_cast<uint64_t>(jit.host->get_column_len_by_name))
                 .Case("evm.get_column_len_by_index",
                     reinterpret_cast<uint64_t>(jit.host->get_column_len_by_index))
-                .Case("evm.account_set", reinterpret_cast<uint64_t>(jit.host->account_set))
-                .Case("evm.transfer_rate_set", reinterpret_cast<uint64_t>(jit.host->transfer_rate_set))
-                .Case("evm.transfer_range_set", reinterpret_cast<uint64_t>(jit.host->transfer_range_set))
-                .Case("evm.trust_set", reinterpret_cast<uint64_t>(jit.host->trust_set))
+                .Case("evm.account_set", reinterpret_cast<uint64_t>(account_set))
+                .Case("evm.transfer_rate_set", reinterpret_cast<uint64_t>(transfer_rate_set))
+                .Case("evm.transfer_range_set", reinterpret_cast<uint64_t>(transfer_range_set))
+                .Case("evm.trust_set", reinterpret_cast<uint64_t>(trust_set))
                 .Case("evm.trust_limit", reinterpret_cast<uint64_t>(trust_limit))
                 .Case("evm.gateway_balance", reinterpret_cast<uint64_t>(gateway_balance))
-                .Case("evm.pay", reinterpret_cast<uint64_t>(jit.host->pay))
+                .Case("evm.pay", reinterpret_cast<uint64_t>(pay))
                 .Default(0);
         if (addr)
             return {addr, llvm::JITSymbolFlags::Exported};

@@ -108,12 +108,12 @@ public:
     llvm::Value* get_column_len(llvm::Value *_handle, 
             llvm::Value *_row, llvm::Value *_column);
 
-    void account_set(llvm::Value *addr, llvm::Value *_flag, llvm::Value *_set);
-    void transfer_rate_set(llvm::Value *addr, llvm::Value *_rateIdx, llvm::Value *_rateLen);
-    void transfer_range_set(llvm::Value *addr, 
+    llvm::Value* account_set(llvm::Value *addr, llvm::Value *_flag, llvm::Value *_set);
+    llvm::Value* transfer_rate_set(llvm::Value *addr, llvm::Value *_rateIdx, llvm::Value *_rateLen);
+    llvm::Value* transfer_range_set(llvm::Value *addr,
         llvm::Value *_minIdx, llvm::Value *_minLen, 
         llvm::Value *_maxIdx, llvm::Value *_maxLen);
-    void trust_set(llvm::Value *addr,
+    llvm::Value* trust_set(llvm::Value *addr,
         llvm::Value *_valueIdx, llvm::Value *_valueLen,
         llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
         llvm::Value *gateway);
@@ -123,7 +123,7 @@ public:
     llvm::Value* gateway_balance(llvm::Value *addr,
         llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
         llvm::Value *gateway);
-    void pay(llvm::Value *addr,
+    llvm::Value* pay(llvm::Value *addr,
         llvm::Value *receiver,
         llvm::Value *_valueIdx, llvm::Value *_valueLen,
         llvm::Value *_currencyIdx, llvm::Value *_currencyLen,

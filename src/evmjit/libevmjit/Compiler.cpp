@@ -1305,7 +1305,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             auto flag = stack.pop();
             auto set = stack.pop();
 
-            _ext.account_set(address, flag, set);
+            auto r = _ext.account_set(address, flag, set);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "accountset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
 
             break;
         }
@@ -1317,7 +1321,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             _memory.require(rateIdx, rateLen);
 
-            _ext.transfer_rate_set(address, rateIdx, rateLen);
+            auto r = _ext.transfer_rate_set(address, rateIdx, rateLen);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "txrateset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
 
             break;
         }
@@ -1332,7 +1340,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(minIdx, minLen);
             _memory.require(maxIdx, maxLen);
 
-            _ext.transfer_range_set(address, minIdx, minLen, maxIdx, maxLen);
+            auto r = _ext.transfer_range_set(address, minIdx, minLen, maxIdx, maxLen);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "txrangeset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
 
             break;
         }
@@ -1348,7 +1360,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(valueIdx, valueLen);
             _memory.require(currencyIdx, currencyLen);
 
-            _ext.trust_set(address, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+            auto r = _ext.trust_set(address, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "trustset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
 
             break;
         }
@@ -1395,7 +1411,11 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             _memory.require(valueIdx, valueLen);
             _memory.require(currencyIdx, currencyLen);
 
-            _ext.pay(address, receiver, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+            auto r = _ext.pay(address, receiver, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "pay.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
 
             break;
         }

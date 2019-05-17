@@ -811,21 +811,21 @@ typedef size_t(*evmc_emit_sql10_fn)(struct evmc_context* context,
     size_t _outSize);
 
 /* BEGIN Token callback function */
-typedef void(*evmc_emit_token1_fn)(struct evmc_context* context,    /* account_set */
+typedef int64_t(*evmc_emit_token1_fn)(struct evmc_context* context,    /* account_set */
                                    const struct evmc_address* address,
                                    uint32_t _uFlag,
                                    bool _bSet);
 
-typedef void(*evmc_emit_token2_fn)(struct evmc_context* context,    /* transfer_rate_set */
+typedef int64_t(*evmc_emit_token2_fn)(struct evmc_context* context,    /* transfer_rate_set */
                                    const struct evmc_address* address,
                                    uint8_t const* _pStr, size_t _len);
 
-typedef void(*evmc_emit_token3_fn)(struct evmc_context* context,    /* transfer_range_set */
+typedef int64_t(*evmc_emit_token3_fn)(struct evmc_context* context,    /* transfer_range_set */
                                    const struct evmc_address* address,
                                    uint8_t const* _pStr1, size_t _len1,
                                    uint8_t const* _pStr2, size_t _len2);
 
-typedef void(*evmc_emit_token4_fn)(struct evmc_context* context,    /* trust_set */
+typedef int64_t(*evmc_emit_token4_fn)(struct evmc_context* context,    /* trust_set */
                                    const struct evmc_address* address1,
                                    uint8_t const* _pStr1, size_t _len1,
                                    uint8_t const* _pStr2, size_t _len2,
@@ -837,7 +837,7 @@ typedef int64_t(*evmc_emit_token5_fn)( /* struct evmc_uint256be* result, */ /* t
                                    uint8_t const* _pStr, size_t _len,
                                    const struct evmc_address* address2);
 
-typedef void(*evmc_emit_token6_fn)(struct evmc_context* context,    /* pay */
+typedef int64_t(*evmc_emit_token6_fn)(struct evmc_context* context,    /* pay */
                                    const struct evmc_address* address1,
                                    const struct evmc_address* address2,
                                    uint8_t const* _pStr1, size_t _len1,

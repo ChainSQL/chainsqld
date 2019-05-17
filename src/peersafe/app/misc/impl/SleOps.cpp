@@ -632,7 +632,7 @@ namespace ripple {
 			sqlTxsStatements_.clear();
 	}
 
-	int SleOps::accountSet(AccountID const& _account, uint32_t nFlag, bool bSet)
+	int64_t SleOps::accountSet(AccountID const& _account, uint32_t nFlag, bool bSet)
 	{
 		STTx accountSetTx(ttACCOUNT_SET,
 			[&nFlag, &bSet](auto& obj)
@@ -647,7 +647,7 @@ namespace ripple {
 		return ret;
 	}
 
-	int SleOps::setTransferRate(AccountID const& _gateWay, std::string & _feeRate)
+    int64_t SleOps::setTransferRate(AccountID const& _gateWay, std::string & _feeRate)
 	{
 		std::uint32_t uRate = atoi(_feeRate.c_str());
 		if (uRate < QUALITY_ONE || uRate > 2 * QUALITY_ONE)
@@ -667,7 +667,7 @@ namespace ripple {
 		return ret;
 	}
 
-	int SleOps::setTransferRange(AccountID const& _gateWay, std::string & _minFee, std::string & _maxFee)
+    int64_t SleOps::setTransferRange(AccountID const& _gateWay, std::string & _minFee, std::string & _maxFee)
 	{
 		STTx accountSetTx(ttACCOUNT_SET,
 			[&_minFee,&_maxFee](auto& obj)
@@ -682,7 +682,7 @@ namespace ripple {
 		return ret;
 	}
 
-	int SleOps::trustSet(AccountID const& _account, int const& _value, std::string const& _sCurrency, AccountID const& _issuer)
+    int64_t SleOps::trustSet(AccountID const& _account, int const& _value, std::string const& _sCurrency, AccountID const& _issuer)
 	{
 		STTx accountSetTx(ttTRUST_SET,
 			[&_value, &_sCurrency, &_issuer](auto& obj)
@@ -696,7 +696,7 @@ namespace ripple {
 		return ret;	
 	}
 
-	int SleOps::trustLimit(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
+    int64_t SleOps::trustLimit(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
 	{
 		//[
 		//	{
@@ -761,7 +761,7 @@ namespace ripple {
 		return Json::Value();
 	}
 
-	int SleOps::gateWayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
+    int64_t SleOps::gatewayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
 	{
 		//[
 		//	{
