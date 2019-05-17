@@ -717,12 +717,9 @@ llvm::Function* getTrustLimitFunc(llvm::Module* _module)
     if (!func)
     {
         auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
-        auto fty = llvm::FunctionType::get(/*Type::Void*/ Type::Size,
-                { /*Type::WordPtr,*/ Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, addrTy->getPointerTo(), 
-                Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
+        auto fty = llvm::FunctionType::get(Type::Size,
+                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, addrTy->getPointerTo() }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
-        //func->addAttribute(1, llvm::Attribute::NoAlias);
-        //func->addAttribute(1, llvm::Attribute::NoCapture);
         func->addAttribute(2, llvm::Attribute::ReadOnly);
         func->addAttribute(2, llvm::Attribute::NoAlias);
         func->addAttribute(2, llvm::Attribute::NoCapture);
@@ -743,12 +740,9 @@ llvm::Function* getGatewayBalanceFunc(llvm::Module* _module)
     if (!func)
     {
         auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
-        auto fty = llvm::FunctionType::get(/*Type::Void*/ Type::Size,
-                { /*Type::WordPtr,*/ Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, addrTy->getPointerTo(),
-                Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
+        auto fty = llvm::FunctionType::get(Type::Size,
+                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, addrTy->getPointerTo() }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
-        //func->addAttribute(1, llvm::Attribute::NoAlias);
-        //func->addAttribute(1, llvm::Attribute::NoCapture);
         func->addAttribute(2, llvm::Attribute::ReadOnly);
         func->addAttribute(2, llvm::Attribute::NoAlias);
         func->addAttribute(2, llvm::Attribute::NoCapture);
@@ -1585,13 +1579,7 @@ llvm::Value* Ext::trust_limit(llvm::Value *addr,
     auto pGateway = m_builder.CreateBitCast(getArgAlloca(), gatewayTy->getPointerTo());
     m_builder.CreateStore(gatewayAddr, pGateway);
 
-    //auto pResult = getArgAlloca();
-    getRuntimeManager().resetReturnBuf();
-
-    return createCABICall(func, { /*pResult,*/ getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, pGateway,
-            getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
-
-    //return Endianness::toNative(m_builder, m_builder.CreateLoad(pResult));
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, pGateway });
 }
 
 llvm::Value* Ext::gateway_balance(llvm::Value *addr,
@@ -1613,13 +1601,7 @@ llvm::Value* Ext::gateway_balance(llvm::Value *addr,
     auto pGateway = m_builder.CreateBitCast(getArgAlloca(), gatewayTy->getPointerTo());
     m_builder.CreateStore(gatewayAddr, pGateway);
 
-    //auto pResult = getArgAlloca();
-    getRuntimeManager().resetReturnBuf();
-
-    return createCABICall(func, { /*pResult,*/ getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, pGateway,
-            getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
-
-    //return Endianness::toNative(m_builder, m_builder.CreateLoad(pResult));
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, pGateway });
 }
 
 llvm::Value* Ext::pay(llvm::Value *addr,

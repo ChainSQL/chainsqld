@@ -373,30 +373,6 @@ int64_t trust_set(struct evmc_context* _context,
     return ter;
 }
 
-int64_t trust_limit(struct evmc_context* _context, 
-    const struct evmc_address* address1,
-    uint8_t const* _pStr, size_t _len,
-    const struct evmc_address* address2,
-    uint8_t const** o_bufData, size_t* o_bufSize)
-{
-    auto& jit = JITImpl::instance();
-    int64_t limit = jit.host->trust_limit(_context, address1, _pStr, _len, address2);
-    formatOutput(limit, o_bufData, o_bufSize);
-    return limit;
-}
-
-int64_t gateway_balance(struct evmc_context* _context,
-    const struct evmc_address* address1,
-    uint8_t const* _pStr, size_t _len,
-    const struct evmc_address* address2,
-    uint8_t const** o_bufData, size_t* o_bufSize)
-{
-    auto& jit = JITImpl::instance();
-    int64_t balance = jit.host->gateway_balance(_context, address1, _pStr, _len, address2);
-    formatOutput(balance, o_bufData, o_bufSize);
-    return balance;
-}
-
 int64_t pay(struct evmc_context* _context,
     const struct evmc_address* address1,
     const struct evmc_address* address2,
@@ -487,8 +463,8 @@ class SymbolResolver : public llvm::SectionMemoryManager
                 .Case("evm.transfer_rate_set", reinterpret_cast<uint64_t>(transfer_rate_set))
                 .Case("evm.transfer_range_set", reinterpret_cast<uint64_t>(transfer_range_set))
                 .Case("evm.trust_set", reinterpret_cast<uint64_t>(trust_set))
-                .Case("evm.trust_limit", reinterpret_cast<uint64_t>(trust_limit))
-                .Case("evm.gateway_balance", reinterpret_cast<uint64_t>(gateway_balance))
+                .Case("evm.trust_limit", reinterpret_cast<uint64_t>(jit.host->trust_limit))
+                .Case("evm.gateway_balance", reinterpret_cast<uint64_t>(jit.host->gateway_balance))
                 .Case("evm.pay", reinterpret_cast<uint64_t>(pay))
                 .Default(0);
         if (addr)
