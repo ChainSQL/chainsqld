@@ -418,15 +418,22 @@ void getNameInDBSetInSql(std::string sql,std::set <std::string>& setTableNames)
 	//type of nameInDB: uint160
 	int nTableNameLength =  2 * (160 / 8);
 	int pos1 = sql.find(prefix);
-	while (pos1 != std::string::npos)
-	{
-		if ( pos1 + 2 + nTableNameLength <= sql.length() )
-		{
-			std::string str = sql.substr(pos1 + 2, nTableNameLength);
-			setTableNames.emplace(str);
+	while (pos1 != std::string::npos){
 
-			int pos2 = pos1 + 2 + nTableNameLength;
-			 pos1 = sql.find(prefix, pos2);
+		if ( pos1 + 2 + nTableNameLength <= sql.length() ){
+
+			std::string str = sql.substr(pos1 + 2, nTableNameLength);
+			ripple::uint160 nameINDB = ripple::from_hex_text<ripple::uint160>(str);
+
+			// str must be  a hex_text type
+			int pos2 = 0;
+			if (nameINDB != beast::zero) {
+				setTableNames.emplace(str);
+				pos2 = pos1 + 2 + nTableNameLength;
+			}
+			else		pos2 = pos1 + 2;
+
+			pos1 = sql.find(prefix, pos2);
 		}
 		else {
 			break;
