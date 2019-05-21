@@ -131,12 +131,17 @@ namespace ripple {
 	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, int const& _value, std::string const& _sCurrency, AccountID const& _issuer)
 	{
 
+		STAmount feeMaxAmount;
+		getTransFerMaxFee(_value, _sCurrency, _issuer, feeMaxAmount);
+
+
 		STTx paymentTx(ttPAYMENT,
-			[&_from, &_to, &_value,&_sCurrency,&_issuer](auto& obj)
+			[&_from, &_to, &_value,&_sCurrency,&_issuer,&feeMaxAmount](auto& obj)
 		{
 			obj.setAccountID(sfAccount, _from);
 			obj.setAccountID(sfDestination, _to);
 
+			obj.setFieldAmount(sfSendMax, feeMaxAmount);
 			obj.setFieldAmount(sfAmount, STAmount{ Issue{ to_currency(_sCurrency),_issuer }, _value });
 		});
 		paymentTx.setParentTxID(ctx_.tx.getTransactionID());
@@ -144,6 +149,63 @@ namespace ripple {
 		return ret;
 
 	}
+
+	void SleOps::getTransFerMaxFee(int const& _transferValue, std::string const&  _sCurrency, AccountID const& _issuer, STAmount& _outFeeMax)
+	{
+		STAmount _transfer(Issue{ to_currency(_sCurrency),_issuer }, _transferValue);
+	
+		std::string feeMax, feeMin;
+		SLE::pointer pSle = getSle(_issuer);
+
+		if (pSle == NULL) {
+
+			_outFeeMax = _transfer;
+			return ;
+		}
+		
+		std::uint32_t uRate = 0;
+
+		if (pSle->isFieldPresent(sfTransferFeeMin) && pSle->isFieldPresent(sfTransferFeeMax) && (pSle->isFieldPresent(sfTransferRate)))
+		{
+			feeMin = strCopy(pSle->getFieldVL(sfTransferFeeMin));
+			feeMax = strCopy(pSle->getFieldVL(sfTransferFeeMax));
+
+			STAmount  fee;
+
+			STAmount minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
+			STAmount maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
+
+			//_outFeeMax = _transfer + maxAmount;
+
+			//return;
+
+			uRate = pSle->getFieldU32(sfTransferRate);
+
+			if (feeMin == feeMax) {
+
+				fee = minAmount;
+			}
+			else if (uRate > QUALITY_ONE && uRate <= 2 * QUALITY_ONE) {
+
+				Rate const rate(uRate);
+				fee = multiply(_transfer, rate);
+
+				if (minAmount > fee) {
+					fee = minAmount;
+				}
+
+				if (fee > maxAmount) {
+					fee = minAmount;
+				}
+
+			}
+
+
+			_outFeeMax = _transfer + fee;
+		}
+	
+	}
+
 
 	TER SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
@@ -721,8 +783,10 @@ namespace ripple {
 
 			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
 
-				int limit = v[jss::limit].asInt();
-				return limit;
+				std::string sLimit;
+				if (v[jss::limit].isString())
+					sLimit = v[jss::balance].asString();
+				return  atoi(sLimit.c_str());
 			}
 
 		}
@@ -786,8 +850,11 @@ namespace ripple {
 
 			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
 
-				int limit = v[jss::balance].asInt();
-				return limit;
+				std::string sBalance;
+				if(v[jss::balance].isString())
+					sBalance = v[jss::balance].asString();
+
+				return  atoi(sBalance.c_str());
 			}
 
 		}
