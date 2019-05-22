@@ -414,7 +414,8 @@ namespace ripple
         /*JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _Rate.toString();
         return 0;*/
 
-        return oSle_.setTransferRate(fromEvmC(*address), _Rate.toString());
+		std::string    feeRate = _Rate.toString();
+        return oSle_.setTransferRate(fromEvmC(*address), feeRate);
     }
 
     int64_t ExtVM::transfer_range_set(const struct evmc_address *address,
@@ -425,8 +426,10 @@ namespace ripple
 
         /*JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _Min.toString() << " " << _Max.toString();
         return 0;*/
+		std::string   minFee  =  _Min.toString();
+		std::string   maxFee = _Max.toString();
 
-        return oSle_.setTransferRange(fromEvmC(*address), _Min.toString(), _Max.toString());
+        return oSle_.setTransferRange(fromEvmC(*address), minFee, maxFee);
     }
 
     int64_t ExtVM::trust_set(const struct evmc_address *address,

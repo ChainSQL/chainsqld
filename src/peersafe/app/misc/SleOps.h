@@ -99,7 +99,7 @@ public:
 
 	// search gateway trust lines   -1 no trust  >=0 trust limit
     int64_t trustLimit(AccountID const&  _account, AccountID const& _issuer, std::string const&  _sCurrency);
-	Json::Value getAccountLines(AccountID const&  _account);
+	bool getAccountLines(AccountID const&  _account, Json::Value& _lines );
 
 	// get gateWay Currncy balance
     int64_t gatewayBalance(AccountID const&  _account, AccountID const& _issuer, std::string const&  _sCurrency);

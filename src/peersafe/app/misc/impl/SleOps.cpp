@@ -772,14 +772,15 @@ namespace ripple {
 		//	}
 		//]
 
-		Json::Value& retJson = getAccountLines(_account);
+		Json::Value lines;
+		bool  hasLines= getAccountLines(_account,lines);
 
-		if (retJson.isNull() || !retJson.isArray())
+		if (!hasLines || lines.isNull() || !lines.isArray())
 			return -1;
 
-		Json::UInt size = retJson.size();
+		Json::UInt size = lines.size();
 		for (Json::UInt index = 0; index < size; index++) {
-			Json::Value& v = retJson[index];
+			Json::Value& v = lines[index];
 
 			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
 
@@ -795,7 +796,7 @@ namespace ripple {
 	}
 
 
-	Json::Value SleOps::getAccountLines(AccountID const& _account)
+	bool SleOps::getAccountLines(AccountID const&  _account, Json::Value& _lines)
 	{
 		Json::Value jvCommand;
 		jvCommand[jss::account] = to_string(_account);
@@ -815,14 +816,13 @@ namespace ripple {
 		auto result = ripple::doAccountLines(context);
 
 		if (result.isMember(jss::lines)) {
-		
-			Json::Value& ret = result[jss::lines];
-			return ret;
+
+			_lines = result[jss::lines];
+			return true;
 		}
-			
-
-
-		return Json::Value();
+		else {
+			return false;
+		}			
 	}
 
     int64_t SleOps::gatewayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
@@ -839,14 +839,15 @@ namespace ripple {
 		//	}
 		//]
 
-		Json::Value& retJson = getAccountLines(_account);
+		Json::Value lines;
+		bool  hasLines = getAccountLines(_account, lines);
 
-		if (retJson.isNull() || !retJson.isArray())
+		if (!hasLines || lines.isNull() || !lines.isArray())
 			return -1;
 
-		Json::UInt size = retJson.size();
+		Json::UInt size = lines.size();
 		for (Json::UInt index = 0; index < size; index++) {
-			Json::Value& v = retJson[index];
+			Json::Value& v = lines[index];
 
 			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
 
