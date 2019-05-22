@@ -786,7 +786,7 @@ namespace ripple {
 
 				std::string sLimit;
 				if (v[jss::limit].isString())
-					sLimit = v[jss::balance].asString();
+					sLimit = v[jss::limit].asString();
 				return  atoi(sLimit.c_str());
 			}
 
