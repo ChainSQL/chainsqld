@@ -157,23 +157,23 @@ namespace ripple {
 		std::string feeMax, feeMin;
 		SLE::pointer pSle = getSle(_issuer);
 
-		if (pSle == NULL) {
+		_outFeeMax = _transfer;
 
-			_outFeeMax = _transfer;
+		if (pSle == NULL) {			
 			return ;
 		}
 		
-		std::uint32_t uRate = 0;
-
 		if (pSle->isFieldPresent(sfTransferFeeMin) && pSle->isFieldPresent(sfTransferFeeMax) && (pSle->isFieldPresent(sfTransferRate)))
 		{
 			feeMin = strCopy(pSle->getFieldVL(sfTransferFeeMin));
 			feeMax = strCopy(pSle->getFieldVL(sfTransferFeeMax));
 
-			STAmount  fee;
 
-			STAmount minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
-			STAmount maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
+			std::uint32_t uRate = 0;
+			
+			STAmount  transferFee  = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, 0);
+			STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
+			STAmount  maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
 
 			//_outFeeMax = _transfer + maxAmount;
 
@@ -183,26 +183,25 @@ namespace ripple {
 
 			if (feeMin == feeMax) {
 
-				fee = minAmount;
+				transferFee = minAmount;
 			}
 			else if (uRate > QUALITY_ONE && uRate <= 2 * QUALITY_ONE) {
 
 				Rate const rate(uRate);
-				fee = multiply(_transfer, rate);
+				transferFee = multiply(_transfer, rate);
 
-				if (minAmount > fee) {
-					fee = minAmount;
+				if (minAmount > transferFee) {
+					transferFee = minAmount;
 				}
 
-				if (fee > maxAmount) {
-					fee = minAmount;
+				if (transferFee > maxAmount) {
+					transferFee = maxAmount;
 				}
-
 			}
 
-
-			_outFeeMax = _transfer + fee;
+			_outFeeMax += transferFee;
 		}
+
 	
 	}
 
