@@ -483,12 +483,13 @@ int64_t trust_limit(
     struct evmc_context *_context,
     const struct evmc_address *address,
     uint8_t const *_pCurrency, size_t _currencyLen,
+    uint64_t _power,
     const struct evmc_address *gateWay
 ) noexcept
 {
     auto &env = static_cast<ExtVMFace&>(*_context);
     //*o_result = env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
-    return env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, _power, gateWay);
 }
 
 int64_t gateway_balance(
@@ -496,12 +497,13 @@ int64_t gateway_balance(
     struct evmc_context *_context,
     const struct evmc_address *address,
     uint8_t const *_pCurrency, size_t _currencyLen,
+    uint64_t _power,
     const struct evmc_address *gateWay
 ) noexcept
 {
     auto &env = static_cast<ExtVMFace&>(*_context);
     //*o_result = env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
-    return env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, _power, gateWay);
 }
 
 int64_t pay(

@@ -119,9 +119,11 @@ public:
         llvm::Value *gateway);
     llvm::Value* trust_limit(llvm::Value *addr,
         llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+        llvm::Value *_power,
         llvm::Value *gateway);
     llvm::Value* gateway_balance(llvm::Value *addr,
         llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+        llvm::Value *power,
         llvm::Value *gateway);
     llvm::Value* pay(llvm::Value *addr,
         llvm::Value *receiver,

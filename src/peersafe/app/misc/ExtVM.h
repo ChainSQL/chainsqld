@@ -167,9 +167,11 @@ public:
         const struct evmc_address *gateWay) override final;
     virtual int64_t trust_limit(const struct evmc_address *address, 
         bytesConstRef const& _currency, 
+        uint64_t _power, 
         const struct evmc_address *gateWay) override final;
     virtual int64_t gateway_balance(const struct evmc_address *address,
         bytesConstRef const& _currency, 
+        uint64_t _power, 
         const struct evmc_address *gateWay) override final;
     virtual int64_t pay(const struct evmc_address *address,
         const struct evmc_address *receiver, 

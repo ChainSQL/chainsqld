@@ -718,7 +718,7 @@ llvm::Function* getTrustLimitFunc(llvm::Module* _module)
     {
         auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Size,
-                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, addrTy->getPointerTo() }, false);
+                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::Size, addrTy->getPointerTo() }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
         func->addAttribute(2, llvm::Attribute::ReadOnly);
         func->addAttribute(2, llvm::Attribute::NoAlias);
@@ -726,9 +726,9 @@ llvm::Function* getTrustLimitFunc(llvm::Module* _module)
         func->addAttribute(3, llvm::Attribute::ReadOnly);
         func->addAttribute(3, llvm::Attribute::NoAlias);
         func->addAttribute(3, llvm::Attribute::NoCapture);
-        func->addAttribute(5, llvm::Attribute::ReadOnly);
-        func->addAttribute(5, llvm::Attribute::NoAlias);
-        func->addAttribute(5, llvm::Attribute::NoCapture);
+        func->addAttribute(6, llvm::Attribute::ReadOnly);
+        func->addAttribute(6, llvm::Attribute::NoAlias);
+        func->addAttribute(6, llvm::Attribute::NoCapture);
     }
     return func;
 }
@@ -741,7 +741,7 @@ llvm::Function* getGatewayBalanceFunc(llvm::Module* _module)
     {
         auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Size,
-                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, addrTy->getPointerTo() }, false);
+                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::Size, addrTy->getPointerTo() }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
         func->addAttribute(2, llvm::Attribute::ReadOnly);
         func->addAttribute(2, llvm::Attribute::NoAlias);
@@ -749,9 +749,9 @@ llvm::Function* getGatewayBalanceFunc(llvm::Module* _module)
         func->addAttribute(3, llvm::Attribute::ReadOnly);
         func->addAttribute(3, llvm::Attribute::NoAlias);
         func->addAttribute(3, llvm::Attribute::NoCapture);
-        func->addAttribute(5, llvm::Attribute::ReadOnly);
-        func->addAttribute(5, llvm::Attribute::NoAlias);
-        func->addAttribute(5, llvm::Attribute::NoCapture);
+        func->addAttribute(6, llvm::Attribute::ReadOnly);
+        func->addAttribute(6, llvm::Attribute::NoAlias);
+        func->addAttribute(6, llvm::Attribute::NoCapture);
     }
     return func;
 }
@@ -1562,6 +1562,7 @@ llvm::Value* Ext::trust_set(llvm::Value *addr,
 
 llvm::Value* Ext::trust_limit(llvm::Value *addr,
     llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+    llvm::Value *_power, 
     llvm::Value *gateway)
 {
     auto func = getTrustLimitFunc(getModule());
@@ -1574,16 +1575,19 @@ llvm::Value* Ext::trust_limit(llvm::Value *addr,
     auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
     m_builder.CreateStore(ownerAddr, pAddr);
 
+    auto power = m_builder.CreateTrunc(_power, Type::Size, "power");
+
     auto gatewayTy = m_builder.getIntNTy(160);
     auto gatewayAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(gateway, gatewayTy));
     auto pGateway = m_builder.CreateBitCast(getArgAlloca(), gatewayTy->getPointerTo());
     m_builder.CreateStore(gatewayAddr, pGateway);
 
-    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, pGateway });
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, power, pGateway });
 }
 
 llvm::Value* Ext::gateway_balance(llvm::Value *addr,
     llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+    llvm::Value *_power,
     llvm::Value *gateway)
 {
     auto func = getGatewayBalanceFunc(getModule());
@@ -1596,12 +1600,14 @@ llvm::Value* Ext::gateway_balance(llvm::Value *addr,
     auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
     m_builder.CreateStore(ownerAddr, pAddr);
 
+    auto power = m_builder.CreateTrunc(_power, Type::Size, "power");
+
     auto gatewayTy = m_builder.getIntNTy(160);
     auto gatewayAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(gateway, gatewayTy));
     auto pGateway = m_builder.CreateBitCast(getArgAlloca(), gatewayTy->getPointerTo());
     m_builder.CreateStore(gatewayAddr, pGateway);
 
-    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, pGateway });
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, power, pGateway });
 }
 
 llvm::Value* Ext::pay(llvm::Value *addr,

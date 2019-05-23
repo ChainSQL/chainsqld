@@ -1373,11 +1373,12 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             auto address = stack.pop();
             auto currencyIdx = stack.pop();
             auto currencyLen = stack.pop();
+            auto power = stack.pop();
             auto gateway = stack.pop();
 
             _memory.require(currencyIdx, currencyLen);
 
-            auto r = _ext.trust_limit(address, currencyIdx, currencyLen, gateway);
+            auto r = _ext.trust_limit(address, currencyIdx, currencyLen, power, gateway);
 
             stack.push(m_builder.CreateSExt(r, Type::Word));
 
@@ -1388,11 +1389,12 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             auto address = stack.pop();
             auto currencyIdx = stack.pop();
             auto currencyLen = stack.pop();
+            auto power = stack.pop();
             auto gateway = stack.pop();
 
             _memory.require(currencyIdx, currencyLen);
 
-            auto r = _ext.gateway_balance(address, currencyIdx, currencyLen, gateway);
+            auto r = _ext.gateway_balance(address, currencyIdx, currencyLen, power, gateway);
 
             stack.push(m_builder.CreateSExt(r, Type::Word));
 

@@ -835,6 +835,7 @@ typedef int64_t(*evmc_emit_token5_fn)( /* struct evmc_uint256be* result, */ /* t
                                    struct evmc_context* context,  
                                    const struct evmc_address* address1,
                                    uint8_t const* _pStr, size_t _len,
+                                   uint64_t power,
                                    const struct evmc_address* address2);
 
 typedef int64_t(*evmc_emit_token6_fn)(struct evmc_context* context,    /* pay */
