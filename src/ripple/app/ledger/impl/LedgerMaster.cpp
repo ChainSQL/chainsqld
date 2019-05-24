@@ -382,10 +382,6 @@ LedgerMaster::getFullValidatedRange (std::uint32_t& minVal, std::uint32_t& maxVa
     // Validated ledger is likely not stored in the DB yet so we use the
     // published ledger which is.
     maxVal = mPubLedgerSeq.load();
-	if (mLastValidateSeq - mPubLedgerSeq > 2)
-	{
-		maxVal = mLastValidateSeq;
-	}
 
     if (!maxVal)
         return false;
