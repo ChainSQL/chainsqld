@@ -1914,6 +1914,9 @@ void NetworkOPsImp::pubValidation (STValidation::ref val)
         if (auto const baseFee = (*val)[~sfBaseFee])
             jvObj [jss::base_fee] = static_cast<double> (*baseFee);
 
+		if (auto const perZXC = (*val)[~sfPerZXC])
+			jvObj[jss::base_fee] = static_cast<double> (*baseFee);
+
         if (auto const reserveBase = (*val)[~sfReserveBase])
             jvObj [jss::reserve_base] = *reserveBase;
 

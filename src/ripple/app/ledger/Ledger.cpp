@@ -617,6 +617,8 @@ Ledger::setup (Config const& config)
     fees_.reserve = config.FEE_ACCOUNT_RESERVE;
     fees_.increment = config.FEE_OWNER_RESERVE;
 
+	fees_.perZXC = config.PER_ZXC_SIZE;
+
     try
     {
         if (auto const sle = read(keylet::fees()))
@@ -634,6 +636,10 @@ Ledger::setup (Config const& config)
 
             if (sle->getFieldIndex (sfReserveIncrement) != -1)
                 fees_.increment = sle->getFieldU32 (sfReserveIncrement);
+
+
+			if (sle->getFieldIndex(sfPerZXC) != -1)
+				fees_.perZXC = sle->getFieldU64(sfPerZXC);
         }
     }
     catch (SHAMapMissingNode &)

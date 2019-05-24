@@ -224,6 +224,9 @@ Change::applyFee()
     feeObject->setFieldU32 (
         sfReserveIncrement, ctx_.tx.getFieldU32 (sfReserveIncrement));
 
+	feeObject->setFieldU32(
+		sfPerZXC, ctx_.tx.getFieldU32(sfPerZXC));
+
     view().update (feeObject);
 
     JLOG(j_.warn()) << "Fees have been changed";

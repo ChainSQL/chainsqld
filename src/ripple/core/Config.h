@@ -156,6 +156,9 @@ public:
     std::uint64_t                      FEE_ACCOUNT_RESERVE = 5*SYSTEM_CURRENCY_PARTS;
     std::uint64_t                      FEE_OWNER_RESERVE = 1*SYSTEM_CURRENCY_PARTS;
 
+
+	std::uint64_t                      PER_ZXC_SIZE = 1024;
+
     std::uint64_t                      FEE_OFFER = 10;
 
     // Node storage configuration

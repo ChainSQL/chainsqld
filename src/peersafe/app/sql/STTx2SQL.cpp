@@ -42,7 +42,7 @@
 #include <ripple/net/RPCErr.h>
 
 #define TABLE_PREFIX    "t_"
-#define SELECT_ITEM_LIMIT   200
+//#define SELECT_ITEM_LIMIT   200
 
 namespace ripple {
 
@@ -2610,9 +2610,9 @@ namespace helper {
 		return obj;
 	}
     
-    void modifyLimitCount(std::string& sSql)
+    void modifyLimitCount(std::string& sSql,int selectLimit)
     {   
-        std::string sLimit = "limit " + to_string(SELECT_ITEM_LIMIT);
+        std::string sLimit = "limit " + to_string(selectLimit);
 
         int iPosLimitLower = sSql.find("limit");
         int iPosLimitUpper = sSql.find("LIMIT");
@@ -2633,16 +2633,16 @@ namespace helper {
                 }
             }
             std::string sLimitNew = "";
-            std::string sCount = to_string(SELECT_ITEM_LIMIT);
+            std::string sCount = to_string(selectLimit);
             int iPosComma = sLimit.find(",");
             if (iPosComma >= 0)
             {
                 sCount = sLimit.substr(iPosComma + 1);
                 boost::algorithm::trim(sCount);
                 int iCount = std::stoi(sCount.c_str());
-                if (iCount > SELECT_ITEM_LIMIT)
+                if (iCount > selectLimit)
                 {
-                    iCount = SELECT_ITEM_LIMIT;
+                    iCount = selectLimit;
                     sCount = to_string(iCount);
                     sLimitNew = sLimit.substr(0, iPosComma + 1);
                     sLimitNew += sCount;
@@ -2653,9 +2653,9 @@ namespace helper {
                 sCount = sLimit.substr(5);
                 boost::algorithm::trim(sCount);
                 int iCount = std::stoi(sCount.c_str());
-                if (iCount > SELECT_ITEM_LIMIT)
+                if (iCount > selectLimit)
                 {
-                    iCount = SELECT_ITEM_LIMIT;
+                    iCount = selectLimit;
                     sCount = to_string(iCount);
                     sLimitNew = "limit " + sCount;
                 }
@@ -2680,9 +2680,9 @@ namespace helper {
             }
         }
     }
-    Json::Value query_directly(DatabaseCon* conn, std::string sql) {
+    Json::Value query_directly(DatabaseCon* conn, std::string sql,int selectLimit) {
         Json::Value obj;
-        modifyLimitCount(sql);
+        modifyLimitCount(sql, selectLimit);
         try {
             LockedSociSession query = conn->checkoutDb();
             soci::rowset<soci::row> records = ((*query).prepare << sql);
@@ -2694,7 +2694,7 @@ namespace helper {
         return obj;
     }
 
-	Json::Value query_directly(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql) {
+	Json::Value query_directly(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql, int selectLimit) {
 		Json::Value obj;
 		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
 		if (result.first != 0) {
@@ -2703,7 +2703,7 @@ namespace helper {
 
 		try {
 			std::string sql = buildsql->asString();
-            modifyLimitCount(sql);
+            modifyLimitCount(sql, selectLimit);
 			auto last_error = buildsql->last_error();
 			//Todo-LC:need to modify error
 			if (last_error.first != 0) {
@@ -2719,7 +2719,7 @@ namespace helper {
 		}
 		return obj;
 	}
-	std::pair<std::vector<std::vector<Json::Value>>, std::string> query_directly2d(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql) {
+	std::pair<std::vector<std::vector<Json::Value>>, std::string> query_directly2d(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql, int selectLimit) {
 		std::vector<std::vector<Json::Value>> obj;
 		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
 		if (result.first != 0) {
@@ -2728,7 +2728,7 @@ namespace helper {
 
 		try {
 			std::string sql = buildsql->asString();
-			modifyLimitCount(sql);
+			modifyLimitCount(sql, selectLimit);
 			auto last_error = buildsql->last_error();
 			if (last_error.first != 0) {
 				return std::make_pair(obj,last_error.second);
@@ -3540,7 +3540,7 @@ Json::Value TxStore::txHistory(Json::Value& tx_json) {
 		return RPC::make_error(rpcINTERNAL, errMsg);
     }
 
-    return helper::query_directly(tx_json, databasecon_, buildsql.get());
+    return helper::query_directly(tx_json, databasecon_, buildsql.get(), select_limit_);
 }
 
 std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory2d(Json::Value& tx_json) {
@@ -3559,7 +3559,7 @@ std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory
 		return std::make_pair(ret,"there is no DB in this node");
 	}
 
-	return helper::query_directly2d(tx_json, databasecon_, buildsql.get());
+	return helper::query_directly2d(tx_json, databasecon_, buildsql.get(),select_limit_);
 }
 
 Json::Value TxStore::txHistory(std::string sql) {
@@ -3579,6 +3579,6 @@ Json::Value TxStore::txHistory(std::string sql) {
 		return RPC::make_error(rpcINTERNAL, errMsg);
     }
 
-    return helper::query_directly(databasecon_, sql);
+	return helper::query_directly(databasecon_, sql, select_limit_);
 }
 }	// namespace ripple

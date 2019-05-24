@@ -401,6 +401,11 @@ extern SF_U64 const sfLowNode;
 extern SF_U64 const sfHighNode;
 extern SF_U64 const sfIssuerNode;
 
+// rc test
+extern SF_U64 const sfPerZXC;
+
+
+
 // 128-bit
 extern SF_U128 const sfEmailHash;
 extern SF_U160 const sfNameInDB;

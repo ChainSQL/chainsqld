@@ -144,6 +144,16 @@ FeeVoteImpl::doValidation(
         baseValidation.setFieldU32 (sfReserveIncrement,
             target_.owner_reserve);
     }
+
+
+	if (lastClosedLedger->fees().perZXC != target_.per_zxc_size)
+	{
+		JLOG(journal_.info()) <<
+			"Voting for per zxc size " << target_.per_zxc_size;
+
+		baseValidation.setFieldU32(sfPerZXC,
+			target_.per_zxc_size);
+	}
 }
 
 void
@@ -163,6 +173,11 @@ FeeVoteImpl::doVoting(
 
     detail::VotableInteger<std::uint32_t> incReserveVote (
         lastClosedLedger->fees().increment, target_.owner_reserve);
+
+
+	// last
+	detail::VotableInteger<std::uint64_t> perZXCVote(
+		lastClosedLedger->fees().perZXC, target_.per_zxc_size);
 
     for (auto const& val : set)
     {
@@ -194,6 +209,18 @@ FeeVoteImpl::doVoting(
             {
                 incReserveVote.noVote ();
             }
+
+
+			if (val->isFieldPresent(sfPerZXC))
+			{
+				perZXCVote.addVote(val->getFieldU64(sfPerZXC));
+			}
+			else
+			{
+				perZXCVote.noVote();
+			}
+
+
         }
     }
 
@@ -202,6 +229,10 @@ FeeVoteImpl::doVoting(
     std::uint32_t const baseReserve = baseReserveVote.getVotes ();
     std::uint32_t const incReserve = incReserveVote.getVotes ();
     std::uint32_t const feeUnits = target_.reference_fee_units;
+
+
+	std::uint64_t const perZXC = perZXCVote.getVotes();
+
     auto const seq = lastClosedLedger->info().seq + 1;
 
     // add transactions to our position
@@ -215,7 +246,7 @@ FeeVoteImpl::doVoting(
             "/" << incReserve;
 
         STTx feeTx (ttFEE,
-            [seq,baseFee,baseReserve,incReserve,feeUnits](auto& obj)
+            [seq,baseFee,baseReserve,incReserve,feeUnits, perZXC](auto& obj)
             {
                 obj[sfAccount] = AccountID();
                 obj[sfLedgerSequence] = seq;
@@ -223,6 +254,8 @@ FeeVoteImpl::doVoting(
                 obj[sfReserveBase] = baseReserve;
                 obj[sfReserveIncrement] = incReserve;
                 obj[sfReferenceFeeUnits] = feeUnits;
+
+				obj[sfPerZXC] = perZXC;
             });
 
         uint256 txID = feeTx.getTransactionID ();
@@ -252,6 +285,9 @@ setup_FeeVote (Section const& section)
     set (setup.reference_fee, "reference_fee", section);
     set (setup.account_reserve, "account_reserve", section);
     set (setup.owner_reserve, "owner_reserve", section);
+
+
+	set(setup.per_zxc_size, "per_zxc_size", section);
     return setup;
 }
 

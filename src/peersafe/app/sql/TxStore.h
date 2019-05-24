@@ -90,6 +90,7 @@ public:
 private:
 	const Config& cfg_;
 	std::string db_type_;
+	int         select_limit_;
 	DatabaseCon* databasecon_;
 	beast::Journal journal_;
 };	// class TxStore

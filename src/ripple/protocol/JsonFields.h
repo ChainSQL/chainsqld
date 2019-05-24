@@ -533,6 +533,9 @@ JSS ( ContractChain );               // out:
 JSS ( PreviousHash );               // out: 
 JSS ( NextHash );                   // out: 
 JSS ( log );
+
+
+JSS(per_zxc);                       // out: LogLevel
 #undef JSS
 
 } // jss
