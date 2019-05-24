@@ -531,7 +531,7 @@ Json::Value getLedgerTableInfo(RPC::Context& context,AccountID& accountID, std::
 		const Json::Value& lines = val[jss::lines];
 		if (lines.isArray() == false || lines.size() != 1)
 		{
-			std::string errMsg = "Get value invalid from syncTableState, nameInDB=" + nameInDB;
+			std::string errMsg = "Get value invalid from syncTableState, nameInDB=" + nameInDB + " maybe not exist ";
 			return RPC::make_error(rpcGET_VALUE_INVALID, errMsg);
 		}
 		const Json::Value & line = lines[0u];
