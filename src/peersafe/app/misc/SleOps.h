@@ -99,10 +99,13 @@ public:
 
 	// search gateway trust lines   -1 no trust  >=0 trust limit
     int64_t trustLimit(AccountID const&  _account, AccountID const& _issuer, std::string const&  _sCurrency);
-	Json::Value getAccountLines(AccountID const&  _account);
+	bool getAccountLines(AccountID const&  _account, Json::Value& _lines );
 
 	// get gateWay Currncy balance
     int64_t gatewayBalance(AccountID const&  _account, AccountID const& _issuer, std::string const&  _sCurrency);
+
+
+	void getTransFerMaxFee(int const& _transferValue, std::string const&  _sCurrency, AccountID const& _issuer, STAmount& _outFeeMax);
 
 	TER doPayment(AccountID const& _from, AccountID const& _to, int const& _value, std::string const&  _sCurrency,AccountID const& _issuer);
 

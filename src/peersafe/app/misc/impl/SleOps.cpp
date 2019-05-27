@@ -131,12 +131,17 @@ namespace ripple {
 	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, int const& _value, std::string const& _sCurrency, AccountID const& _issuer)
 	{
 
+		STAmount feeMaxAmount;
+		getTransFerMaxFee(_value, _sCurrency, _issuer, feeMaxAmount);
+
+
 		STTx paymentTx(ttPAYMENT,
-			[&_from, &_to, &_value,&_sCurrency,&_issuer](auto& obj)
+			[&_from, &_to, &_value,&_sCurrency,&_issuer,&feeMaxAmount](auto& obj)
 		{
 			obj.setAccountID(sfAccount, _from);
 			obj.setAccountID(sfDestination, _to);
 
+			obj.setFieldAmount(sfSendMax, feeMaxAmount);
 			obj.setFieldAmount(sfAmount, STAmount{ Issue{ to_currency(_sCurrency),_issuer }, _value });
 		});
 		paymentTx.setParentTxID(ctx_.tx.getTransactionID());
@@ -144,6 +149,62 @@ namespace ripple {
 		return ret;
 
 	}
+
+	void SleOps::getTransFerMaxFee(int const& _transferValue, std::string const&  _sCurrency, AccountID const& _issuer, STAmount& _outFeeMax)
+	{
+		STAmount _transfer(Issue{ to_currency(_sCurrency),_issuer }, _transferValue);
+	
+		std::string feeMax, feeMin;
+		SLE::pointer pSle = getSle(_issuer);
+
+		_outFeeMax = _transfer;
+
+		if (pSle == NULL) {			
+			return ;
+		}
+		
+		if (pSle->isFieldPresent(sfTransferFeeMin) && pSle->isFieldPresent(sfTransferFeeMax) && (pSle->isFieldPresent(sfTransferRate)))
+		{
+			feeMin = strCopy(pSle->getFieldVL(sfTransferFeeMin));
+			feeMax = strCopy(pSle->getFieldVL(sfTransferFeeMax));
+
+
+			std::uint32_t uRate = 0;
+			
+			STAmount  transferFee  = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, 0);
+			STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
+			STAmount  maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
+
+			//_outFeeMax = _transfer + maxAmount;
+
+			//return;
+
+			uRate = pSle->getFieldU32(sfTransferRate);
+
+			if (feeMin == feeMax) {
+
+				transferFee = minAmount;
+			}
+			else if (uRate > QUALITY_ONE && uRate <= 2 * QUALITY_ONE) {
+
+				Rate const rate(uRate);
+				transferFee = multiply(_transfer, rate);
+
+				if (minAmount > transferFee) {
+					transferFee = minAmount;
+				}
+
+				if (transferFee > maxAmount) {
+					transferFee = maxAmount;
+				}
+			}
+
+			_outFeeMax += transferFee;
+		}
+
+	
+	}
+
 
 	TER SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
@@ -710,19 +771,22 @@ namespace ripple {
 		//	}
 		//]
 
-		Json::Value& retJson = getAccountLines(_account);
+		Json::Value lines;
+		bool  hasLines= getAccountLines(_account,lines);
 
-		if (retJson.isNull() || !retJson.isArray())
+		if (!hasLines || lines.isNull() || !lines.isArray())
 			return -1;
 
-		Json::UInt size = retJson.size();
+		Json::UInt size = lines.size();
 		for (Json::UInt index = 0; index < size; index++) {
-			Json::Value& v = retJson[index];
+			Json::Value& v = lines[index];
 
 			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
 
-				int limit = v[jss::limit].asInt();
-				return limit;
+				std::string sLimit;
+				if (v[jss::limit].isString())
+					sLimit = v[jss::limit].asString();
+				return  atoi(sLimit.c_str());
 			}
 
 		}
@@ -731,7 +795,7 @@ namespace ripple {
 	}
 
 
-	Json::Value SleOps::getAccountLines(AccountID const& _account)
+	bool SleOps::getAccountLines(AccountID const&  _account, Json::Value& _lines)
 	{
 		Json::Value jvCommand;
 		jvCommand[jss::account] = to_string(_account);
@@ -751,14 +815,13 @@ namespace ripple {
 		auto result = ripple::doAccountLines(context);
 
 		if (result.isMember(jss::lines)) {
-		
-			Json::Value& ret = result[jss::lines];
-			return ret;
+
+			_lines = result[jss::lines];
+			return true;
 		}
-			
-
-
-		return Json::Value();
+		else {
+			return false;
+		}			
 	}
 
     int64_t SleOps::gatewayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
@@ -775,19 +838,23 @@ namespace ripple {
 		//	}
 		//]
 
-		Json::Value& retJson = getAccountLines(_account);
+		Json::Value lines;
+		bool  hasLines = getAccountLines(_account, lines);
 
-		if (retJson.isNull() || !retJson.isArray())
+		if (!hasLines || lines.isNull() || !lines.isArray())
 			return -1;
 
-		Json::UInt size = retJson.size();
+		Json::UInt size = lines.size();
 		for (Json::UInt index = 0; index < size; index++) {
-			Json::Value& v = retJson[index];
+			Json::Value& v = lines[index];
 
 			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
 
-				int limit = v[jss::balance].asInt();
-				return limit;
+				std::string sBalance;
+				if(v[jss::balance].isString())
+					sBalance = v[jss::balance].asString();
+
+				return  atoi(sBalance.c_str());
 			}
 
 		}
