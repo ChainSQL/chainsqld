@@ -162,47 +162,58 @@ namespace ripple {
 		if (pSle == NULL) {			
 			return ;
 		}
+
+		bool bFreeMin       = pSle->isFieldPresent(sfTransferFeeMin);
+		bool bFreeMax       = pSle->isFieldPresent(sfTransferFeeMax);
+		bool bTransferRate = pSle->isFieldPresent(sfTransferRate);
+
+		std::uint32_t uRate = 0;
 		
-		if (pSle->isFieldPresent(sfTransferFeeMin) && pSle->isFieldPresent(sfTransferFeeMax) && (pSle->isFieldPresent(sfTransferRate)))
+		if ( bFreeMin || bFreeMax || bTransferRate)
 		{
-			feeMin = strCopy(pSle->getFieldVL(sfTransferFeeMin));
-			feeMax = strCopy(pSle->getFieldVL(sfTransferFeeMax));
+			if (bFreeMin)
+				feeMin = strCopy(pSle->getFieldVL(sfTransferFeeMin));
 
+			if(bFreeMax)		
+				feeMax = strCopy(pSle->getFieldVL(sfTransferFeeMax));
+			if(bTransferRate)
+				uRate = pSle->getFieldU32(sfTransferRate);
 
-			std::uint32_t uRate = 0;
-			
-			STAmount  transferFee  = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, 0);
-			STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
-			STAmount  maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
+			// Exception catch 
+			if (!feeMin.empty() && feeMin == feeMax) {
 
-			//_outFeeMax = _transfer + maxAmount;
-
-			//return;
-
-			uRate = pSle->getFieldU32(sfTransferRate);
-
-			if (feeMin == feeMax) {
-
-				transferFee = minAmount;
+				STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
+				_outFeeMax += minAmount;
 			}
 			else if (uRate > QUALITY_ONE && uRate <= 2 * QUALITY_ONE) {
-
+				
 				Rate const rate(uRate);
-				transferFee = multiply(_transfer, rate);
+				STAmount transferFee = multiply(_transfer, rate);
 
-				if (minAmount > transferFee) {
-					transferFee = minAmount;
+				if ( ! feeMin.empty() ) {
+
+					STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
+					if(minAmount > transferFee)
+						transferFee = minAmount;
 				}
 
-				if (transferFee > maxAmount) {
-					transferFee = maxAmount;
+				if (!feeMax.empty()  ) {
+
+					STAmount  maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
+					if(transferFee > maxAmount)
+						transferFee = maxAmount;
 				}
+
+				_outFeeMax += transferFee;
+
+			}
+			else {
+
+				// output Exception
 			}
 
-			_outFeeMax += transferFee;
 		}
 
-	
 	}
 
 
@@ -757,7 +768,7 @@ namespace ripple {
 		return ret;	
 	}
 
-    int64_t SleOps::trustLimit(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
+    int64_t SleOps::trustLimit(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency, uint64_t _power)
 	{
 		//[
 		//	{
@@ -786,7 +797,11 @@ namespace ripple {
 				std::string sLimit;
 				if (v[jss::limit].isString())
 					sLimit = v[jss::limit].asString();
-				return  atoi(sLimit.c_str());
+
+				double dLimit = atof(sLimit.c_str());
+				int64_t  iLimit = (_power == 0) ? int64_t(dLimit) : int64_t(dLimit * std::pow(10, _power));
+				return iLimit;
+			//	return  atoi(sLimit.c_str());
 			}
 
 		}
@@ -824,7 +839,7 @@ namespace ripple {
 		}			
 	}
 
-    int64_t SleOps::gatewayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency)
+    int64_t SleOps::gatewayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency,uint64_t _power)
 	{
 		//[
 		//	{
@@ -854,7 +869,10 @@ namespace ripple {
 				if(v[jss::balance].isString())
 					sBalance = v[jss::balance].asString();
 
-				return  atoi(sBalance.c_str());
+				double dBalance = atof(sBalance.c_str());
+
+				int64_t  iBalance  = (_power == 0) ? int64_t(dBalance) : int64_t(dBalance * std::pow(10, _power));
+				return iBalance;
 			}
 
 		}
