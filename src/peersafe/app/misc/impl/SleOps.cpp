@@ -7,7 +7,7 @@
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <peersafe/app/tx/DirectApply.h>
-#include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/app/misc/ContractHelper.h> 
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/rpc/TableUtils.h>
@@ -754,12 +754,12 @@ namespace ripple {
 		return ret;
 	}
 
-    int64_t SleOps::trustSet(AccountID const& _account, int const& _value, std::string const& _sCurrency, AccountID const& _issuer)
+    int64_t SleOps::trustSet(AccountID const& _account, std::string const& _value, std::string const& _sCurrency, AccountID const& _issuer)
 	{
 		STTx accountSetTx(ttTRUST_SET,
 			[&_value, &_sCurrency, &_issuer](auto& obj)
 		{
-			obj.setFieldAmount(sfLimitAmount, STAmount{ Issue{ to_currency(_sCurrency),_issuer }, _value });
+			obj.setFieldAmount(sfLimitAmount, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _value));
 		});
 
 		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
@@ -801,7 +801,6 @@ namespace ripple {
 				double dLimit = atof(sLimit.c_str());
 				int64_t  iLimit = (_power == 0) ? int64_t(dLimit) : int64_t(dLimit * std::pow(10, _power));
 				return iLimit;
-			//	return  atoi(sLimit.c_str());
 			}
 
 		}
