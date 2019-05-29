@@ -485,7 +485,7 @@ namespace ripple
             << _value.toString() << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
         return 0;*/
 
-        return oSle_.doPayment(fromEvmC(*address), fromEvmC(*receiver), atoi(_value.toString().c_str()), _currency.toString(), fromEvmC(*gateWay));
+        return oSle_.doPayment(fromEvmC(*address), fromEvmC(*receiver), _value.toString().c_str(), _currency.toString(), fromEvmC(*gateWay));
     }
 }
 

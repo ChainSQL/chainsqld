@@ -128,11 +128,11 @@ namespace ripple {
 	}
 
 	// gateWay  currency transfer
-	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, int const& _value, std::string const& _sCurrency, AccountID const& _issuer)
+	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, std::string const& _value, std::string const& _sCurrency, AccountID const& _issuer)
 	{
 
 		STAmount feeMaxAmount;
-		getTransFerMaxFee(_value, _sCurrency, _issuer, feeMaxAmount);
+		getTransferMaxFee(_value, _sCurrency, _issuer, feeMaxAmount);
 
 
 		STTx paymentTx(ttPAYMENT,
@@ -142,7 +142,7 @@ namespace ripple {
 			obj.setAccountID(sfDestination, _to);
 
 			obj.setFieldAmount(sfSendMax, feeMaxAmount);
-			obj.setFieldAmount(sfAmount, STAmount{ Issue{ to_currency(_sCurrency),_issuer }, _value });
+			obj.setFieldAmount(sfAmount, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _value));
 		});
 		paymentTx.setParentTxID(ctx_.tx.getTransactionID());
 		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
@@ -150,10 +150,10 @@ namespace ripple {
 
 	}
 
-	void SleOps::getTransFerMaxFee(int const& _transferValue, std::string const&  _sCurrency, AccountID const& _issuer, STAmount& _outFeeMax)
+	void SleOps::getTransferMaxFee(std::string const& _transferValue, std::string const&  _sCurrency, AccountID const& _issuer, STAmount& _outFeeMax)
 	{
-		STAmount _transfer(Issue{ to_currency(_sCurrency),_issuer }, _transferValue);
-	
+		STAmount _transfer = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _transferValue);
+
 		std::string feeMax, feeMin;
 		SLE::pointer pSle = getSle(_issuer);
 
@@ -718,18 +718,30 @@ namespace ripple {
 		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("SleOps"));
 		return ret;
 	}
-
+	
+	//   sRate  [1.0 - 2.0]
     int64_t SleOps::setTransferRate(AccountID const& _gateWay, std::string & _feeRate)
 	{
-		std::uint32_t uRate = atoi(_feeRate.c_str());
-		if (uRate < QUALITY_ONE || uRate > 2 * QUALITY_ONE)
+		// convert [1.0,2.0]  -->  [1000000000,2000000000]
+		double dRate = atof(_feeRate.c_str());
+		if (dRate < 1.0 ||  dRate >2.0)
 			return temBAD_TRANSFER_RATE;
 
-		STTx accountSetTx(ttACCOUNT_SET,
-			[&uRate](auto& obj)
+		_feeRate.erase(std::remove(_feeRate.begin(), _feeRate.end(), '.'), _feeRate.end());
+		int nLen = 10 - _feeRate.size();
+		while (nLen > 0)
 		{
-			//Rate  sfTransferRate
-			//std::uint32_t uRate = beast::lexicalCastThrow <std::uint32_t> (_feeRate);
+			_feeRate.append("0");
+			nLen--;
+		}
+
+		//if (uRate < QUALITY_ONE || uRate > 2 * QUALITY_ONE)
+		//	return temBAD_TRANSFER_RATE;
+
+		STTx accountSetTx(ttACCOUNT_SET,
+			[&_feeRate](auto& obj)
+		{
+			std::uint32_t uRate = atoi(_feeRate.c_str());
 			obj.setFieldU32(sfTransferRate, uRate);
 		});
 
@@ -756,10 +768,14 @@ namespace ripple {
 
     int64_t SleOps::trustSet(AccountID const& _account, std::string const& _value, std::string const& _sCurrency, AccountID const& _issuer)
 	{
+		Currency currency;
+		if (!to_currency(currency, _sCurrency))
+			return tefINVALID_CURRENY;
+
 		STTx accountSetTx(ttTRUST_SET,
-			[&_value, &_sCurrency, &_issuer](auto& obj)
+			[&_value, &_sCurrency, &_issuer,&currency](auto& obj)
 		{
-			obj.setFieldAmount(sfLimitAmount, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _value));
+			obj.setFieldAmount(sfLimitAmount, ripple::amountFromString(Issue{ currency,_issuer }, _value));
 		});
 
 		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());

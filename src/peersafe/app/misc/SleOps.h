@@ -104,10 +104,9 @@ public:
 	// get gateWay Currncy balance
     int64_t gatewayBalance(AccountID const&  _account, AccountID const& _issuer, std::string const&  _sCurrency, uint64_t _power);
 
+	void getTransferMaxFee(std::string const& _transferValue, std::string const&  _sCurrency, AccountID const& _issuer, STAmount& _outFeeMax);
 
-	void getTransFerMaxFee(int const& _transferValue, std::string const&  _sCurrency, AccountID const& _issuer, STAmount& _outFeeMax);
-
-	TER doPayment(AccountID const& _from, AccountID const& _to, int const& _value, std::string const&  _sCurrency,AccountID const& _issuer);
+	TER doPayment(AccountID const& _from, AccountID const& _to, std::string const& _value, std::string const&  _sCurrency,AccountID const& _issuer);
 
 	static void	addCommonFields(STObject& obj, AccountID const& _account);
 	std::pair<bool,STArray>
