@@ -786,18 +786,6 @@ namespace ripple {
 
     int64_t SleOps::trustLimit(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency, uint64_t _power)
 	{
-		//[
-		//	{
-		//		"balance": "0",
-		//			"limit" : "0",
-		//			"quality_in" : 0,
-		//			"quality_out" : 0,
-		//			"currency" : "USD",
-		//			"limit_peer" : "100",
-		//			"account" : "zpMZ2H58HFPB5QTycMGWSXUeF47eA8jyd4"
-		//	}
-		//]
-
 		Json::Value lines;
 		bool  hasLines= getAccountLines(_account,lines);
 
@@ -814,9 +802,18 @@ namespace ripple {
 				if (v[jss::limit].isString())
 					sLimit = v[jss::limit].asString();
 
-				double dLimit = atof(sLimit.c_str());
-				int64_t  iLimit = (_power == 0) ? int64_t(dLimit) : int64_t(dLimit * std::pow(10, _power));
-				return iLimit;
+				if (_power == 0) {
+					return  atof(sLimit.c_str());
+				}
+				else {
+
+					STAmount  limitST = ripple::amountFromString(noIssue(), sLimit);
+					STAmount  powerST(noIssue(), (uint64_t)std::pow(10, _power));
+
+					limitST = multiply(limitST, powerST,noIssue());
+					std::string sLimit = limitST.getText();
+					return atof(sLimit.c_str());
+				}
 			}
 
 		}
@@ -856,18 +853,6 @@ namespace ripple {
 
     int64_t SleOps::gatewayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency,uint64_t _power)
 	{
-		//[
-		//	{
-		//		"balance": "0",
-		//			"limit" : "0",
-		//			"quality_in" : 0,
-		//			"quality_out" : 0,
-		//			"currency" : "USD",
-		//			"limit_peer" : "100",
-		//			"account" : "zpMZ2H58HFPB5QTycMGWSXUeF47eA8jyd4"
-		//	}
-		//]
-
 		Json::Value lines;
 		bool  hasLines = getAccountLines(_account, lines);
 
@@ -884,10 +869,18 @@ namespace ripple {
 				if(v[jss::balance].isString())
 					sBalance = v[jss::balance].asString();
 
-				double dBalance = atof(sBalance.c_str());
+				if (_power == 0) {
+					return  atof(sBalance.c_str());
+				}
+				else {
 
-				int64_t  iBalance  = (_power == 0) ? int64_t(dBalance) : int64_t(dBalance * std::pow(10, _power));
-				return iBalance;
+					STAmount balanceST = ripple::amountFromString(noIssue(), sBalance);
+					STAmount  powerST(noIssue(), (uint64_t)std::pow(10, _power));
+
+					balanceST = multiply(balanceST, powerST, noIssue());
+					std::string sBalance = balanceST.getText();
+					return atof(sBalance.c_str());
+				}
 			}
 
 		}
