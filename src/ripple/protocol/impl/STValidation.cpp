@@ -162,8 +162,7 @@ SOTemplate const& STValidation::getFormat ()
             format.push_back (SOElement (sfSigningPubKey,   SOE_REQUIRED));
             format.push_back (SOElement (sfSignature,       SOE_OPTIONAL));
             format.push_back (SOElement (sfConsensusHash,   SOE_OPTIONAL));
-
-			format.push_back(SOElement(sfPerZXC, SOE_OPTIONAL));
+			format.push_back(SOElement  (sfDropsPerByte,    SOE_OPTIONAL));
         }
     };
 

@@ -124,7 +124,7 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfReferenceFeeUnits,   SOE_REQUIRED)
             << SOElement (sfReserveBase,         SOE_REQUIRED)
             << SOElement (sfReserveIncrement,    SOE_REQUIRED)
-			<< SOElement(sfPerZXC, SOE_REQUIRED)
+			<< SOElement (sfDropsPerByte,        SOE_OPTIONAL)
             ;
 
     add ("Ticket", ltTICKET)

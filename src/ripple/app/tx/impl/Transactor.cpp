@@ -182,19 +182,20 @@ Transactor::checkFee (PreclaimContext const& ctx, std::uint64_t baseFee)
 
 	if (ctx.tx.isChainSqlTableType())
 	{
-		int zxcDrops = 1000000;
-		double multiplier = 0.001;
+		int zxcDrops = 1;
+		std::uint64_t   dropsPerByte = ctx.view.fees().drops_per_byte;
+
 		if (ctx.tx.isFieldPresent(sfRaw)) 
 		{
 			auto raw = ctx.tx.getFieldVL(sfRaw);
-			multiplier += raw.size() / 1024.0;
+			zxcDrops  =  raw.size() * dropsPerByte;
 		}
 		else if (ctx.tx.isFieldPresent(sfStatements))
 		{
 			auto statements = ctx.tx.getFieldVL(sfStatements);
-			multiplier += statements.size() / 1024.0;
+			zxcDrops = statements.size() * dropsPerByte;
 		}
-		auto extraAmount = new ZXCAmount((int)(zxcDrops * multiplier));
+		auto extraAmount = new ZXCAmount(zxcDrops);
 		feeDue += *extraAmount;
 	}
 

@@ -1489,8 +1489,11 @@ TxQ::doRPC(Application& app) const
 
     drops[jss::open_ledger_fee] = to_string(escalatedFee);
 
+
+	std::uint64_t gas_price = view->fees().drops_per_byte;
+
 	//calc gas_price
-	auto gasPrice = scaleGasLoad(GAS_PRICE, app.getFeeTrack(),
+	auto gasPrice = scaleGasLoad(gas_price /100, app.getFeeTrack(),
 		view->fees());
 
 	drops[jss::gas_price] = to_string(gasPrice);

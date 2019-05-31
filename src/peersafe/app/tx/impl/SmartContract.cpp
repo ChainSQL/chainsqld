@@ -67,9 +67,15 @@ namespace ripple {
 			}
 		}			
 
+		std::uint64_t gas_price = 10;
+		if (tx.getFieldIndex(sfDropsPerByte) != -1) {
+			uint64_t drops_per_byte = tx.getFieldU64(sfDropsPerByte);
+			gas_price = drops_per_byte / 100;
+		}
+
 		// Avoid unaffordable transactions.
 		int64_t gas = tx.getFieldU32(sfGas);
-		int64_t gasCost = int64_t(gas * GAS_PRICE);
+		int64_t gasCost = int64_t(gas * gas_price);
 		int64_t value = tx.getFieldAmount(sfContractValue).zxc().drops();
 		int64_t totalCost = value + gasCost;
 		

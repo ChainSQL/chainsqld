@@ -440,9 +440,9 @@ Payment::doApply ()
             // Vote no. However the transaction might succeed, if applied in
             // a different order.
             JLOG(j_.trace()) << "Delay transaction: Insufficient funds: " <<
-                " " << to_string (mPriorBalance) <<
+                " " <<   to_string (mPriorBalance) <<
                 " / " << to_string (saDstAmount.zxc () + mmm) <<
-                " (" << to_string (reserve) << ")";
+                " (" <<  to_string (reserve) << ")";
 
             terResult = tecUNFUNDED_PAYMENT;
         }

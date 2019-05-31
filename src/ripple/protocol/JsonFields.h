@@ -535,7 +535,7 @@ JSS ( NextHash );                   // out:
 JSS ( log );
 
 
-JSS(per_zxc);                       // out: LogLevel
+JSS(drops_per_byte);                       // out: LogLevel
 #undef JSS
 
 } // jss

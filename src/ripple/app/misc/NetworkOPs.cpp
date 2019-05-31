@@ -1914,8 +1914,8 @@ void NetworkOPsImp::pubValidation (STValidation::ref val)
         if (auto const baseFee = (*val)[~sfBaseFee])
             jvObj [jss::base_fee] = static_cast<double> (*baseFee);
 
-		if (auto const perZXC = (*val)[~sfPerZXC])
-			jvObj[jss::base_fee] = static_cast<double> (*baseFee);
+		if (auto const dropsPerByte = (*val)[~sfDropsPerByte])
+			jvObj[jss::drops_per_byte] = static_cast<double> (*dropsPerByte);
 
         if (auto const reserveBase = (*val)[~sfReserveBase])
             jvObj [jss::reserve_base] = *reserveBase;
@@ -2490,6 +2490,8 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
         l[jss::seq] = Json::UInt (lpClosed->info().seq);
         l[jss::hash] = to_string (lpClosed->info().hash);
 
+		std::uint64_t drops_per_byte = lpClosed->fees().drops_per_byte;
+
         if (!human)
         {
             l[jss::base_fee] = Json::Value::UInt (baseFee);
@@ -2501,6 +2503,8 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
         }
         else
         {
+			l[jss::drops_per_byte] = Json::Value::UInt(drops_per_byte);
+
             l[jss::base_fee_zxc] = static_cast<double> (baseFee) /
                     SYSTEM_CURRENCY_PARTS;
             l[jss::reserve_base_zxc]   =
