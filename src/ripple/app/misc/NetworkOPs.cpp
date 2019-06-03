@@ -2627,6 +2627,7 @@ void NetworkOPsImp::pubLedger (
             jvObj[jss::fee_ref]
                     = Json::UInt (lpAccepted->fees().units);
             jvObj[jss::fee_base] = Json::UInt (lpAccepted->fees().base);
+			jvObj[jss::drops_per_byte] = Json::UInt(lpAccepted->fees().drops_per_byte);
             jvObj[jss::reserve_base] = Json::UInt (lpAccepted->fees().accountReserve(0).drops());
             jvObj[jss::reserve_inc] = Json::UInt (lpAccepted->fees().increment);
 
@@ -3221,6 +3222,7 @@ bool NetworkOPsImp::subLedger (InfoSub::ref isrListener, Json::Value& jvResult)
         jvResult[jss::fee_ref]
                 = Json::UInt (lpClosed->fees().units);
         jvResult[jss::fee_base]        = Json::UInt (lpClosed->fees().base);
+		jvResult[jss::drops_per_byte]  = Json::UInt(lpClosed->fees().drops_per_byte);
         jvResult[jss::reserve_base]    = Json::UInt (lpClosed->fees().accountReserve(0).drops());
         jvResult[jss::reserve_inc]     = Json::UInt (lpClosed->fees().increment);
     }
