@@ -175,7 +175,7 @@ public:
         const struct evmc_address *gateWay) override final;
     virtual int64_t pay(const struct evmc_address *address,
         const struct evmc_address *receiver, 
-        bytesConstRef const& _value, bytesConstRef const&  _currency, 
+        bytesConstRef const& _value, bytesConstRef const& _sendMax, bytesConstRef const&  _currency,
         const struct evmc_address *gateWay) override final;
     
     SleOps const& state() const { return oSle_; }

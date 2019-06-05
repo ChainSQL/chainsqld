@@ -475,17 +475,17 @@ namespace ripple
 
     int64_t ExtVM::pay(const struct evmc_address *address,
         const struct evmc_address *receiver,
-        bytesConstRef const& _value, bytesConstRef const&  _currency,
+        bytesConstRef const& _value, bytesConstRef const&  _sendMax, bytesConstRef const&  _currency,
         const struct evmc_address *gateWay)
     {
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        /*JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << toBase58(fromEvmC(*receiver)) << " "
-            << _value.toString() << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
-        return 0;*/
+        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << toBase58(fromEvmC(*receiver)) << " "
+            << _value.toString() << " " << _sendMax.toString() << " "<< _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
+        return 0;
 
-        return oSle_.doPayment(fromEvmC(*address), fromEvmC(*receiver), atoi(_value.toString().c_str()), _currency.toString(), fromEvmC(*gateWay));
+        //return oSle_.doPayment(fromEvmC(*address), fromEvmC(*receiver), atoi(_value.toString().c_str()), _currency.toString(), fromEvmC(*gateWay));
     }
 }
 

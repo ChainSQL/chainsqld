@@ -128,6 +128,7 @@ public:
     llvm::Value* pay(llvm::Value *addr,
         llvm::Value *receiver,
         llvm::Value *_valueIdx, llvm::Value *_valueLen,
+        llvm::Value *_sendMaxIdx, llvm::Value *_sendMaxLen,
         llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
         llvm::Value *gateway);
 

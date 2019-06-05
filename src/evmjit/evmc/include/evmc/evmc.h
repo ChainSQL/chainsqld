@@ -843,6 +843,7 @@ typedef int64_t(*evmc_emit_token6_fn)(struct evmc_context* context,    /* pay */
                                    const struct evmc_address* address2,
                                    uint8_t const* _pStr1, size_t _len1,
                                    uint8_t const* _pStr2, size_t _len2,
+                                   uint8_t const* _pStr3, size_t _len3,
                                    const struct evmc_address* address3);
 /* END Token callback function */
 

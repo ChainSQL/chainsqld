@@ -378,11 +378,12 @@ int64_t pay(struct evmc_context* _context,
     const struct evmc_address* address2,
     uint8_t const* _pStr1, size_t _len1,
     uint8_t const* _pStr2, size_t _len2,
+    uint8_t const* _pStr3, size_t _len3,
     const struct evmc_address* address3, 
     uint8_t const** o_bufData, size_t* o_bufSize)
 {
     auto& jit = JITImpl::instance();
-    int64_t ter = jit.host->pay(_context, address1, address2, _pStr1, _len1, _pStr2, _len2, address3);
+    int64_t ter = jit.host->pay(_context, address1, address2, _pStr1, _len1, _pStr2, _len2, _pStr3, _len3, address3);
     formatOutput(ter, o_bufData, o_bufSize);
     return ter;
 }

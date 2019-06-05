@@ -252,6 +252,7 @@ public:
     virtual int64_t pay(const struct evmc_address *address,
         const struct evmc_address *receiver, 
         bytesConstRef const& _value, 
+        bytesConstRef const& _sendMax,
         bytesConstRef const&  _currency, 
         const struct evmc_address *gateWay) { return 0; }
 

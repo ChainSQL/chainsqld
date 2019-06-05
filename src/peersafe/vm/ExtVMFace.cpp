@@ -511,12 +511,14 @@ int64_t pay(
     const struct evmc_address *address,
     const struct evmc_address *receiver,
     uint8_t const *_pValue, size_t _valueLen,
+    uint8_t const *_pSendMax, size_t _sendMaxLen,
     uint8_t const *_pCurrency, size_t _currencyLen,
     const struct evmc_address *gateWay
 ) noexcept
 {
     auto &env = static_cast<ExtVMFace&>(*_context);
-    return env.pay(address, receiver, bytesConstRef{ _pValue, _valueLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return env.pay(address, receiver, bytesConstRef{ _pValue, _valueLen }, 
+            bytesConstRef{ _pSendMax, _sendMaxLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
 }
 
 

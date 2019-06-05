@@ -765,7 +765,7 @@ llvm::Function* getPayFunc(llvm::Module* _module)
         auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Size,
             { Type::EnvPtr, addrTy->getPointerTo(), addrTy->getPointerTo(),
-            Type::BytePtr, Type::Size, Type::BytePtr, Type::Size,
+            Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size,
             addrTy->getPointerTo(),
             Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
@@ -785,6 +785,9 @@ llvm::Function* getPayFunc(llvm::Module* _module)
         func->addAttribute(8, llvm::Attribute::ReadOnly);
         func->addAttribute(8, llvm::Attribute::NoAlias);
         func->addAttribute(8, llvm::Attribute::NoCapture);
+        func->addAttribute(10, llvm::Attribute::ReadOnly);
+        func->addAttribute(10, llvm::Attribute::NoAlias);
+        func->addAttribute(10, llvm::Attribute::NoCapture);
     }
     return func;
 }
@@ -1613,6 +1616,7 @@ llvm::Value* Ext::gateway_balance(llvm::Value *addr,
 llvm::Value* Ext::pay(llvm::Value *addr,
     llvm::Value *receiver,
     llvm::Value *_valueIdx, llvm::Value *_valueLen,
+    llvm::Value *_sendMaxIdx, llvm::Value *_sendMaxLen,
     llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
     llvm::Value *gateway)
 {
@@ -1620,6 +1624,8 @@ llvm::Value* Ext::pay(llvm::Value *addr,
 
     auto valuePtr = m_memoryMan.getBytePtr(_valueIdx);
     auto valueLen = m_builder.CreateTrunc(_valueLen, Type::Size, "value.len");
+    auto sendMaxPtr = m_memoryMan.getBytePtr(_sendMaxIdx);
+    auto sendMaxLen = m_builder.CreateTrunc(_sendMaxLen, Type::Size, "sendMax.len");
     auto currencyPtr = m_memoryMan.getBytePtr(_currencyIdx);
     auto currencyLen = m_builder.CreateTrunc(_currencyLen, Type::Size, "currency.len");
 
@@ -1640,7 +1646,8 @@ llvm::Value* Ext::pay(llvm::Value *addr,
 
     getRuntimeManager().resetReturnBuf();
 
-    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, pReceiver, valuePtr, valueLen, currencyPtr, currencyLen, pGateway,
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, pReceiver, 
+            valuePtr, valueLen, sendMaxPtr, sendMaxLen, currencyPtr, currencyLen, pGateway,
             getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
 }
 

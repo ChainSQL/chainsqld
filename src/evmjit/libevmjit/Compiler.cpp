@@ -1402,18 +1402,21 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
         }
         case Instruction::EXPAY:
         {
-            auto address = stack.pop();
-            auto receiver = stack.pop();
-            auto valueIdx = stack.pop();
-            auto valueLen = stack.pop();
+            auto gateway = stack.pop();
             auto currencyIdx = stack.pop();
             auto currencyLen = stack.pop();
-            auto gateway = stack.pop();
+            auto sendMaxIdx = stack.pop();
+            auto sendMaxLen = stack.pop();
+            auto valueIdx = stack.pop();
+            auto valueLen = stack.pop();
+            auto receiver = stack.pop();
+            auto address = stack.pop();
 
             _memory.require(valueIdx, valueLen);
+            _memory.require(sendMaxIdx, sendMaxLen);
             _memory.require(currencyIdx, currencyLen);
 
-            auto r = _ext.pay(address, receiver, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+            auto r = _ext.pay(address, receiver, valueIdx, valueLen, sendMaxIdx, sendMaxLen, currencyIdx, currencyLen, gateway);
 
             auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "pay.ret");
 
