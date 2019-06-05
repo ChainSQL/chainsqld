@@ -209,7 +209,17 @@ namespace ripple {
 			}
 			else {
 
-				// output Exception
+				if (!feeMax.empty()) {
+
+					STAmount  maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
+					_outFeeMax += maxAmount;
+
+				}
+				else if(!feeMin.empty()) {
+					STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
+					_outFeeMax += minAmount;
+				}
+
 			}
 
 		}
@@ -753,6 +763,9 @@ namespace ripple {
 
     int64_t SleOps::setTransferRange(AccountID const& _gateWay, std::string & _minFee, std::string & _maxFee)
 	{
+
+
+
 		STTx accountSetTx(ttACCOUNT_SET,
 			[&_minFee,&_maxFee](auto& obj)
 		{
