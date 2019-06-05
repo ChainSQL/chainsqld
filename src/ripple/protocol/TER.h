@@ -175,6 +175,9 @@ namespace ripple {
 	tefCONTRACT_REVERT_INSTRUCTION,
 	tefCONTRACT_CANNOT_BEPAYED,
 	tefCONTRACT_NOT_EXIST,
+
+			//invalid currency
+	tefINVALID_CURRENY,
     // -99 .. -1: R Retry
     //   sequence too high, no funds for txn fee, originating -account
     //   non-existent

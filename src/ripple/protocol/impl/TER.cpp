@@ -99,6 +99,8 @@ transResults()
 		{ tefCONTRACT_REVERT_INSTRUCTION,{ "tefCONTRACT_REVERT_INSTRUCTION","Contract reverted,maybe 'require' condition not satisfied." } },
 		{ tefCONTRACT_CANNOT_BEPAYED ,{ "tefCONTRACT_CANNOT_BEPAYED","Contract address cannot be 'Destination' for 'Payment'." } },
 		{ tefCONTRACT_NOT_EXIST ,	 {"tefCONTRACT_NOT_EXIST",		"Contract does not exist,maybe destructed."				}},
+
+		{ tefINVALID_CURRENY ,{ "tefINVALID_CURRENY",		"Invalid currency" } },
         
 		{ telLOCAL_ERROR,            { "telLOCAL_ERROR",           "Local failure."                                                                } },
 		{ telBAD_DOMAIN,             { "telBAD_DOMAIN",            "Domain too long."                                                              } },
