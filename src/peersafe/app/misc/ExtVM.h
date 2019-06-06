@@ -15,10 +15,11 @@ namespace ripple
 class EnvInfoImpl : public EnvInfo
 {
 public:
-    EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit) : EnvInfo() 
+    EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit, uint64_t iDropsPerByte) : EnvInfo()
     {
-	iBlockNum_ = iBlockNum;
-	iGasLimit_ = iGasLimit;
+		iBlockNum_     = iBlockNum;
+		iGasLimit_     = iGasLimit;
+		iDropsPerByte_ = iDropsPerByte;
     }
        
 	int64_t const gasLimit() const override {
@@ -34,10 +35,15 @@ public:
 		return std::chrono::seconds(std::time(NULL)).count();
 	}
 
+	uint64_t const dropsPerByte() const override {
+		return iDropsPerByte_;
+	}
     
 private:
 	int64_t                   iBlockNum_;
     int64_t                   iGasLimit_;
+
+	uint64_t                  iDropsPerByte_;
 };
 
 struct CallParametersR

@@ -65,9 +65,10 @@ public:
 		evmc_call_kind kind = ext.isCreate ? EVMC_CREATE : EVMC_CALL;
 		uint32_t flags = ext.staticCall ? EVMC_STATIC : 0;
 		assert(flags != EVMC_STATIC || kind == EVMC_CALL);  // STATIC implies a CALL.
+
 		evmc_message msg = { ext.myAddress, ext.caller, ext.value, 
 			ext.data.data(), ext.data.size(),ext.codeHash, 
-			gas, ext.depth, kind, flags };
+			gas,ext.envInfo().dropsPerByte(), ext.depth, kind, flags };
 		return Result{
 			m_instance->execute(m_instance, &ext, EVMC_CONSTANTINOPLE,
 			&msg, ext.code.data(), ext.code.size())

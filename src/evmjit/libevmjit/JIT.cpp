@@ -24,11 +24,11 @@
 
 
 // FIXME: Move these checks to evmc tests.
-static_assert(sizeof(evmc_uint256be) == 32, "evmc_uint256be is too big");
-static_assert(sizeof(evmc_address) == 20, "evmc_address is too big");
-static_assert(sizeof(evmc_result) == 64, "evmc_result does not fit cache line");
-static_assert(sizeof(evmc_message) <= 18 * 8, "evmc_message not optimally packed");
-static_assert(offsetof(evmc_message, code_hash) % 8 == 0, "evmc_message.code_hash not aligned");
+//static_assert(sizeof(evmc_uint256be) == 32, "evmc_uint256be is too big");
+//static_assert(sizeof(evmc_address) == 20, "evmc_address is too big");
+//static_assert(sizeof(evmc_result) == 64, "evmc_result does not fit cache line");
+//static_assert(sizeof(evmc_message) <= 19 * 8, "evmc_message not optimally packed");
+//static_assert(offsetof(evmc_message, code_hash) % 8 == 0, "evmc_message.code_hash not aligned");
 
 // Check enums match int size.
 // On GCC/clang the underlying type should be unsigned int, on MSVC int
@@ -496,8 +496,13 @@ ExecFunc JITImpl::compile(evmc_revision _rev, bool _staticCall, byte const* _cod
     return (ExecFunc)m_engine->getFunctionAddress(_codeIdentifier);
 }
 
+
+
 }  // anonymous namespace
 
+
+
+uint64_t JITSchedule::dropsPerByte = 1000;
 
 ExecutionContext::~ExecutionContext() noexcept
 {
@@ -550,6 +555,9 @@ static evmc_result execute(evmc_instance* instance, evmc_context* context, evmc_
     // TODO: Temporary keep track of the current message.
     evmc_message const* prevMsg = jit.currentMsg;
     jit.currentMsg = msg;
+
+	// 
+	JITSchedule::dropsPerByte = msg->drops_per_byte;
 
     RuntimeData rt;
     rt.code = code;

@@ -17,15 +17,8 @@ Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
 
 void Executive::initGasPrice()
 {
-	auto& tx = m_s.ctx().tx;
-	std::uint64_t gas_price = 10;
-	if (tx.getFieldIndex(sfDropsPerByte) != -1){
-		
-		uint64_t drops_per_byte = tx.getFieldU64(sfDropsPerByte);
-		gas_price = drops_per_byte / 100;
-	}
 
-	m_gasPrice = scaleGasLoad(gas_price, m_s.ctx().app.getFeeTrack(),
+	m_gasPrice = scaleGasLoad(GAS_PRICE, m_s.ctx().app.getFeeTrack(),
 		m_s.ctx().view().fees());
 }
 

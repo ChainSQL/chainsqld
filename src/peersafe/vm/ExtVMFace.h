@@ -145,6 +145,11 @@ public:
 	virtual int64_t const block_timestamp() const {
 		return 0;
 	}
+
+	virtual uint64_t const dropsPerByte() const{
+		return 0;
+	}
+
 };
 
 class ExtVMFace : public evmc_context {
@@ -245,6 +250,8 @@ public:
 	int32_t depth;
 	bool isCreate = false;
 	bool staticCall = false;
+
+	uint64_t dropsPerByte;
 
 private:
 	EnvInfo const& envInfo_;

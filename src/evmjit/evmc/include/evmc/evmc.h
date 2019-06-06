@@ -119,6 +119,9 @@ struct evmc_message
     /** The amount of gas for message execution. */
     int64_t gas;
 
+	/**  a byte cost's drops. */
+	uint64_t drops_per_byte;
+
     /** The call depth. */
     int32_t depth;
 
@@ -130,6 +133,9 @@ struct evmc_message
      *  In the current version the only valid values are ::EVMC_STATIC or 0.
      */
     uint32_t flags;
+
+
+
 };
 
 

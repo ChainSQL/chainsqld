@@ -91,6 +91,9 @@ struct JITSchedule
 	typedef std::integral_constant<uint64_t, 25000> callNewAccount;
     typedef std::integral_constant<uint64_t, 100> sqlGas;
     typedef std::integral_constant<uint64_t, 100> sqlDataGas;
+
+	static uint64_t  dropsPerByte;
+
 };
 
 enum class ReturnCode
