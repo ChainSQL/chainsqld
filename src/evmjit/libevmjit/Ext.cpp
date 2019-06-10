@@ -633,37 +633,16 @@ llvm::Function* getAccountSetFunc(llvm::Module* _module)
     return func;
 }
 
-llvm::Function* getTransferRateSetFunc(llvm::Module* _module)
+llvm::Function* getTransferFeeSetFunc(llvm::Module* _module)
 {
-    static const auto funcName = "evm.transfer_rate_set";
+    static const auto funcName = "evm.transfer_fee_set";
     auto func = _module->getFunction(funcName);
     if (!func)
     {
         auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
         auto fty = llvm::FunctionType::get(Type::Size,
-                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size,
-                Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
-        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
-
-        func->addAttribute(2, llvm::Attribute::ReadOnly);
-        func->addAttribute(2, llvm::Attribute::NoAlias);
-        func->addAttribute(2, llvm::Attribute::NoCapture);
-        func->addAttribute(3, llvm::Attribute::ReadOnly);
-        func->addAttribute(3, llvm::Attribute::NoAlias);
-        func->addAttribute(3, llvm::Attribute::NoCapture);
-    }
-    return func;
-}
-
-llvm::Function* getTransferRangeSetFunc(llvm::Module* _module)
-{
-    static const auto funcName = "evm.transfer_range_set";
-    auto func = _module->getFunction(funcName);
-    if (!func)
-    {
-        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
-        auto fty = llvm::FunctionType::get(Type::Size,
-                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::BytePtr, Type::Size,
+                { Type::EnvPtr, addrTy->getPointerTo(), 
+                Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size,
                 Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
         func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
 
@@ -676,6 +655,9 @@ llvm::Function* getTransferRangeSetFunc(llvm::Module* _module)
         func->addAttribute(5, llvm::Attribute::ReadOnly);
         func->addAttribute(5, llvm::Attribute::NoAlias);
         func->addAttribute(5, llvm::Attribute::NoCapture);
+        func->addAttribute(7, llvm::Attribute::ReadOnly);
+        func->addAttribute(7, llvm::Attribute::NoAlias);
+        func->addAttribute(7, llvm::Attribute::NoCapture);
     }
     return func;
 }
@@ -1495,30 +1477,15 @@ llvm::Value* Ext::account_set(llvm::Value* addr, llvm::Value* _flag, llvm::Value
             getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
 }
 
-llvm::Value* Ext::transfer_rate_set(llvm::Value* addr, llvm::Value *_rateIdx, llvm::Value *_rateLen)
-{
-    auto func = getTransferRateSetFunc(getModule());
-
-    auto ratePtr = m_memoryMan.getBytePtr(_rateIdx);
-    auto nameLen = m_builder.CreateTrunc(_rateLen, Type::Size, "rate.len");
-
-    auto addrTy = m_builder.getIntNTy(160);
-    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(addr, addrTy));
-    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
-    m_builder.CreateStore(ownerAddr, pAddr);
-
-    getRuntimeManager().resetReturnBuf();
-
-    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, ratePtr, nameLen,
-            getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
-}
-
-llvm::Value* Ext::transfer_range_set(llvm::Value *addr,
+llvm::Value* Ext::transfer_fee_set(llvm::Value *addr,
+    llvm::Value *_rateIdx, llvm::Value *_rateLen,
     llvm::Value *_minIdx, llvm::Value *_minLen,
     llvm::Value *_maxIdx, llvm::Value *_maxLen)
 {
-    auto func = getTransferRangeSetFunc(getModule());
+    auto func = getTransferFeeSetFunc(getModule());
 
+    auto ratePtr = m_memoryMan.getBytePtr(_rateIdx);
+    auto rateLen = m_builder.CreateTrunc(_rateLen, Type::Size, "rate.len");
     auto minPtr = m_memoryMan.getBytePtr(_minIdx);
     auto minLen = m_builder.CreateTrunc(_minLen, Type::Size, "min.len");
     auto maxPtr = m_memoryMan.getBytePtr(_maxIdx);
@@ -1531,7 +1498,7 @@ llvm::Value* Ext::transfer_range_set(llvm::Value *addr,
 
     getRuntimeManager().resetReturnBuf();
 
-    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, minPtr, minLen, maxPtr, maxLen,
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, ratePtr, rateLen, minPtr, minLen, maxPtr, maxLen,
             getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
 }
 

@@ -309,6 +309,11 @@ int64_t GasMeter::getStepCost(Instruction inst) const
         return JITSchedule::sqlGas::value;
 
     case Instruction::EXACCOUNTSET:
+    case Instruction::EXTRANSFERFEESET:
+    case Instruction::EXTRUSTSET:
+    case Instruction::EXTRUSTLIMIT:
+    case Instruction::EXGATEWAYBALANCE:
+    case Instruction::EXPAY:
         return JITSchedule::tokenGas::value;
 
 	default:

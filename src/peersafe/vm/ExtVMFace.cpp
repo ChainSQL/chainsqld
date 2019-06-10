@@ -445,25 +445,16 @@ int64_t account_set(
     return env.account_set(_address, _uFlag, _bSet);
 }
 
-int64_t transfer_rate_set(
-    struct evmc_context *_context, 
-    const struct evmc_address *address, 
-    uint8_t const *_pRate, size_t _len
-) noexcept
-{
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    return env.transfer_rate_set(address, bytesConstRef{ _pRate, _len });
-}
-
-int64_t transfer_range_set(
+int64_t transfer_fee_set(
     struct evmc_context *_context,
     const struct evmc_address *address, 
+    uint8_t const *_pRate, size_t _rateLen,
     uint8_t const *_pMin, size_t _minLen,
     uint8_t const *_pMax, size_t _maxLen
 ) noexcept
 {
     auto &env = static_cast<ExtVMFace&>(*_context);
-    return env.transfer_range_set(address, bytesConstRef{ _pMin, _minLen }, bytesConstRef{ _pMax, _maxLen });
+    return env.transfer_fee_set(address, bytesConstRef{ _pRate, _rateLen }, bytesConstRef{ _pMin, _minLen }, bytesConstRef{ _pMax, _maxLen });
 }
 
 int64_t trust_set(
@@ -559,8 +550,7 @@ evmc_context_fn_table const fnTable = {
     get_column_len_by_index,
 
     account_set,
-    transfer_rate_set,
-    transfer_range_set,
+    transfer_fee_set,
     trust_set,
     trust_limit,
     gateway_balance,

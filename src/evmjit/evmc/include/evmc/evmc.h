@@ -816,29 +816,26 @@ typedef int64_t(*evmc_emit_token1_fn)(struct evmc_context* context,    /* accoun
                                    uint32_t _uFlag,
                                    bool _bSet);
 
-typedef int64_t(*evmc_emit_token2_fn)(struct evmc_context* context,    /* transfer_rate_set */
-                                   const struct evmc_address* address,
-                                   uint8_t const* _pStr, size_t _len);
-
-typedef int64_t(*evmc_emit_token3_fn)(struct evmc_context* context,    /* transfer_range_set */
+typedef int64_t(*evmc_emit_token2_fn)(struct evmc_context* context,    /* transfer_fee_set */
                                    const struct evmc_address* address,
                                    uint8_t const* _pStr1, size_t _len1,
-                                   uint8_t const* _pStr2, size_t _len2);
+                                   uint8_t const* _pStr2, size_t _len2,
+                                   uint8_t const* _pStr3, size_t _len3);
 
-typedef int64_t(*evmc_emit_token4_fn)(struct evmc_context* context,    /* trust_set */
+typedef int64_t(*evmc_emit_token3_fn)(struct evmc_context* context,    /* trust_set */
                                    const struct evmc_address* address1,
                                    uint8_t const* _pStr1, size_t _len1,
                                    uint8_t const* _pStr2, size_t _len2,
                                    const struct evmc_address* address2);
 
-typedef int64_t(*evmc_emit_token5_fn)( /* struct evmc_uint256be* result, */ /* trust_limit & gateway_balance */
+typedef int64_t(*evmc_emit_token4_fn)( /* struct evmc_uint256be* result, */ /* trust_limit & gateway_balance */
                                    struct evmc_context* context,  
                                    const struct evmc_address* address1,
                                    uint8_t const* _pStr, size_t _len,
                                    uint64_t power,
                                    const struct evmc_address* address2);
 
-typedef int64_t(*evmc_emit_token6_fn)(struct evmc_context* context,    /* pay */
+typedef int64_t(*evmc_emit_token5_fn)(struct evmc_context* context,    /* pay */
                                    const struct evmc_address* address1,
                                    const struct evmc_address* address2,
                                    uint8_t const* _pStr1, size_t _len1,
@@ -929,12 +926,11 @@ struct evmc_context_fn_table
     evmc_get_col_len_by_idx_fn get_column_len_by_index;
 
     evmc_emit_token1_fn     account_set;
-    evmc_emit_token2_fn     transfer_rate_set;
-    evmc_emit_token3_fn     transfer_range_set;
-    evmc_emit_token4_fn     trust_set;
-    evmc_emit_token5_fn     trust_limit;
-    evmc_emit_token5_fn     gateway_balance;
-    evmc_emit_token6_fn     pay;
+    evmc_emit_token2_fn     transfer_fee_set;
+    evmc_emit_token3_fn     trust_set;
+    evmc_emit_token4_fn     trust_limit;
+    evmc_emit_token4_fn     gateway_balance;
+    evmc_emit_token5_fn     pay;
 };
 
 

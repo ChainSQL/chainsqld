@@ -1313,34 +1313,21 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
 
             break;
         }
-        case Instruction::EXTRANSFERRATESET:
+        case Instruction::EXTRANSFERFEESET:
         {
             auto address = stack.pop();
             auto rateIdx = stack.pop();
             auto rateLen = stack.pop();
-
-            _memory.require(rateIdx, rateLen);
-
-            auto r = _ext.transfer_rate_set(address, rateIdx, rateLen);
-
-            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "txrateset.ret");
-
-            stack.push(m_builder.CreateZExt(isZero, Type::Word));
-
-            break;
-        }
-        case Instruction::EXTRANSFERRANGESET:
-        {
-            auto address = stack.pop();
             auto minIdx = stack.pop();
             auto minLen = stack.pop();
             auto maxIdx = stack.pop();
             auto maxLen = stack.pop();
 
+            _memory.require(rateIdx, rateLen);
             _memory.require(minIdx, minLen);
             _memory.require(maxIdx, maxLen);
 
-            auto r = _ext.transfer_range_set(address, minIdx, minLen, maxIdx, maxLen);
+            auto r = _ext.transfer_fee_set(address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
 
             auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "txrangeset.ret");
 

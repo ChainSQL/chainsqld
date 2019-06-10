@@ -232,9 +232,8 @@ public:
 
     virtual int64_t account_set(const struct evmc_address *address, 
         uint32_t _uflag, bool _bset) { return 0; }
-    virtual int64_t transfer_rate_set(const struct evmc_address *address,
-        bytesConstRef const& _Rate) { return 0; }
-    virtual int64_t transfer_range_set(const struct evmc_address *address,
+    virtual int64_t transfer_fee_set(const struct evmc_address *address,
+        bytesConstRef const& _Rate,
         bytesConstRef const& _Min, 
         bytesConstRef const& _Max) { return 0; }
     virtual int64_t trust_set(const struct evmc_address *address,

@@ -109,8 +109,8 @@ public:
             llvm::Value *_row, llvm::Value *_column);
 
     llvm::Value* account_set(llvm::Value *addr, llvm::Value *_flag, llvm::Value *_set);
-    llvm::Value* transfer_rate_set(llvm::Value *addr, llvm::Value *_rateIdx, llvm::Value *_rateLen);
-    llvm::Value* transfer_range_set(llvm::Value *addr,
+    llvm::Value* transfer_fee_set(llvm::Value *addr,
+        llvm::Value *_rateIdx, llvm::Value *_rateLen,
         llvm::Value *_minIdx, llvm::Value *_minLen, 
         llvm::Value *_maxIdx, llvm::Value *_maxLen);
     llvm::Value* trust_set(llvm::Value *addr,
