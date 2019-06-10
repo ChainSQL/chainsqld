@@ -128,20 +128,16 @@ namespace ripple {
 	}
 
 	// gateWay  currency transfer
-	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, std::string const& _value, std::string const& _sCurrency, AccountID const& _issuer)
+	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, std::string const& _value, std::string const& _sendMax, std::string const& _sCurrency, AccountID const& _issuer)
 	{
 
-		STAmount feeMaxAmount;
-		getTransferMaxFee(_value, _sCurrency, _issuer, feeMaxAmount);
-
-
 		STTx paymentTx(ttPAYMENT,
-			[&_from, &_to, &_value,&_sCurrency,&_issuer,&feeMaxAmount](auto& obj)
+			[&_from, &_to, &_value, &_sendMax,&_sCurrency,&_issuer](auto& obj)
 		{
 			obj.setAccountID(sfAccount, _from);
 			obj.setAccountID(sfDestination, _to);
 
-			obj.setFieldAmount(sfSendMax, feeMaxAmount);
+			obj.setFieldAmount(sfSendMax, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _sendMax));
 			obj.setFieldAmount(sfAmount, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _value));
 		});
 		paymentTx.setParentTxID(ctx_.tx.getTransactionID());
@@ -149,83 +145,6 @@ namespace ripple {
 		return ret;
 
 	}
-
-	void SleOps::getTransferMaxFee(std::string const& _transferValue, std::string const&  _sCurrency, AccountID const& _issuer, STAmount& _outFeeMax)
-	{
-		STAmount _transfer = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _transferValue);
-
-		std::string feeMax, feeMin;
-		SLE::pointer pSle = getSle(_issuer);
-
-		_outFeeMax = _transfer;
-
-		if (pSle == NULL) {			
-			return ;
-		}
-
-		bool bFreeMin       = pSle->isFieldPresent(sfTransferFeeMin);
-		bool bFreeMax       = pSle->isFieldPresent(sfTransferFeeMax);
-		bool bTransferRate = pSle->isFieldPresent(sfTransferRate);
-
-		std::uint32_t uRate = 0;
-		
-		if ( bFreeMin || bFreeMax || bTransferRate)
-		{
-			if (bFreeMin)
-				feeMin = strCopy(pSle->getFieldVL(sfTransferFeeMin));
-
-			if(bFreeMax)		
-				feeMax = strCopy(pSle->getFieldVL(sfTransferFeeMax));
-			if(bTransferRate)
-				uRate = pSle->getFieldU32(sfTransferRate);
-
-			// Exception catch 
-			if (!feeMin.empty() && feeMin == feeMax) {
-
-				STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
-				_outFeeMax += minAmount;
-			}
-			else if (uRate > QUALITY_ONE && uRate <= 2 * QUALITY_ONE) {
-				
-				Rate const rate(uRate);
-				STAmount transferFee = multiply(_transfer, rate);
-
-				if ( ! feeMin.empty() ) {
-
-					STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
-					if(minAmount > transferFee)
-						transferFee = minAmount;
-				}
-
-				if (!feeMax.empty()  ) {
-
-					STAmount  maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
-					if(transferFee > maxAmount)
-						transferFee = maxAmount;
-				}
-
-				_outFeeMax += transferFee;
-
-			}
-			else {
-
-				if (!feeMax.empty()) {
-
-					STAmount  maxAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMax);
-					_outFeeMax += maxAmount;
-
-				}
-				else if(!feeMin.empty()) {
-					STAmount  minAmount = ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, feeMin);
-					_outFeeMax += minAmount;
-				}
-
-			}
-
-		}
-
-	}
-
 
 	TER SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
