@@ -649,11 +649,11 @@ namespace ripple {
 	}
 	
 	//   sRate  [1.0 - 2.0]
-    int64_t SleOps::setTransferRate(AccountID const& _gateWay, std::string & _feeRate)
+	int64_t SleOps::setTransferFee(AccountID const& _gateWay,  std::string & _feeRate,  std::string & _minFee,  std::string & _maxFee)
 	{
 		// convert [1.0,2.0]  -->  [1000000000,2000000000]
 		double dRate = atof(_feeRate.c_str());
-		if (dRate < 1.0 ||  dRate >2.0)
+		if (dRate < 1.0 || dRate >2.0)
 			return temBAD_TRANSFER_RATE;
 
 		_feeRate.erase(std::remove(_feeRate.begin(), _feeRate.end(), '.'), _feeRate.end());
@@ -664,33 +664,15 @@ namespace ripple {
 			nLen--;
 		}
 
-		//if (uRate < QUALITY_ONE || uRate > 2 * QUALITY_ONE)
-		//	return temBAD_TRANSFER_RATE;
-
 		STTx accountSetTx(ttACCOUNT_SET,
-			[&_feeRate](auto& obj)
+			[&_feeRate,&_minFee, &_maxFee](auto& obj)
 		{
 			std::uint32_t uRate = atoi(_feeRate.c_str());
 			obj.setFieldU32(sfTransferRate, uRate);
-		});
-
-		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
-		SleOps::addCommonFields(accountSetTx, _gateWay);
-		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("Executive"));
-		return ret;
-	}
-
-    int64_t SleOps::setTransferRange(AccountID const& _gateWay, std::string & _minFee, std::string & _maxFee)
-	{
-
-
-
-		STTx accountSetTx(ttACCOUNT_SET,
-			[&_minFee,&_maxFee](auto& obj)
-		{
 			obj.setFieldVL(sfTransferFeeMin, strCopy(_minFee));
 			obj.setFieldVL(sfTransferFeeMax, strCopy(_maxFee));
 		});
+
 
 		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
 		SleOps::addCommonFields(accountSetTx, _gateWay);

@@ -411,11 +411,7 @@ namespace ripple
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
 
-        JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " 
-            << _Rate.toString() << " " << _Min.toString() << " " << _Max.toString();
-        return 0;
-
-        //return oSle_.setTransferRange(fromEvmC(*address), _Min.toString(), _Max.toString());
+        return oSle_.setTransferFee(fromEvmC(*address), _Rate.toString(), _Min.toString(), _Max.toString());
     }
 
     int64_t ExtVM::trust_set(const struct evmc_address *address,

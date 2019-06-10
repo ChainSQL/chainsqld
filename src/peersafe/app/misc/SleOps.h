@@ -90,11 +90,10 @@ public:
 	int64_t	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
 	void	resetTransactionCache();
 
-
 	// gateway Transaction related
     int64_t accountSet(AccountID const&  _account, uint32_t nFlag,bool bSet);
-    int64_t setTransferRate(AccountID const&  _gateWay, std::string & _feeRate);
-    int64_t setTransferRange(AccountID const&  _gateWay, std::string & _minFee, std::string & _maxFee);
+	int64_t setTransferFee(AccountID const&  _gateWay,std::string & _feeRate, std::string & _minFee,  std::string & _maxFee);
+
     int64_t trustSet(AccountID const&  _account, std::string const& _value, std::string const&  _sCurrency, AccountID const& _issuer);
 
 	// search gateway trust lines   -1 no trust£»  >=0 trust limit
