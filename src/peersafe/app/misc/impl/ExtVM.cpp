@@ -410,8 +410,11 @@ namespace ripple
     {
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
+		std::string  sRate = _Rate.toString();
+		std::string  sMin  = _Min.toString();
+		std::string  sMax  = _Max.toString();
 
-        return oSle_.setTransferFee(fromEvmC(*address), _Rate.toString(), _Min.toString(), _Max.toString());
+        return oSle_.setTransferFee(fromEvmC(*address), sRate,sMin,sMax);
     }
 
     int64_t ExtVM::trust_set(const struct evmc_address *address,
