@@ -131,18 +131,30 @@ namespace ripple {
 	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, std::string const& _value, std::string const& _sendMax, std::string const& _sCurrency, AccountID const& _issuer)
 	{
 
-		STTx paymentTx(ttPAYMENT,
-			[&_from, &_to, &_value, &_sendMax,&_sCurrency,&_issuer](auto& obj)
+		try
 		{
-			obj.setAccountID(sfAccount, _from);
-			obj.setAccountID(sfDestination, _to);
 
-			obj.setFieldAmount(sfSendMax, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _sendMax));
-			obj.setFieldAmount(sfAmount, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _value));
-		});
-		paymentTx.setParentTxID(ctx_.tx.getTransactionID());
-		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
-		return ret;
+			STTx paymentTx(ttPAYMENT,
+				[&_from, &_to, &_value, &_sendMax, &_sCurrency, &_issuer](auto& obj)
+			{
+				obj.setAccountID(sfAccount, _from);
+				obj.setAccountID(sfDestination, _to);
+
+				obj.setFieldAmount(sfSendMax, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _sendMax));
+				obj.setFieldAmount(sfAmount, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _value));
+			});
+			paymentTx.setParentTxID(ctx_.tx.getTransactionID());
+			auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
+			return ret;
+		}
+		catch (std::exception const& e)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.fatal()) << e.what();
+			return tefEXCEPTION;
+		}
+
+
 
 	}
 
@@ -653,7 +665,7 @@ namespace ripple {
 	{
 		// convert [1.0,2.0]  -->  [1000000000,2000000000]
 		double dRate = atof(_feeRate.c_str());
-		if (dRate < 1.0 || dRate >2.0)
+		if ( dRate !=0 && ( dRate < 1.0 || dRate >2.0) )
 			return temBAD_TRANSFER_RATE;
 
 		_feeRate.erase(std::remove(_feeRate.begin(), _feeRate.end(), '.'), _feeRate.end());
