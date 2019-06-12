@@ -167,8 +167,11 @@ void GasMeter::countSqlData(llvm::Value* _sqlLength)
 {
     assert(m_checkCall);
     assert(m_blockCost > 0);    
-	assert(JITSchedule::dropsPerByte >= 10);
-    count(m_builder.CreateNUWMul(_sqlLength, Constant::get(JITSchedule::dropsPerByte/10)));
+
+	//   (_sqlLength* JITSchedule::dropsPerByte) /10
+	llvm::Value* _cost = m_builder.CreateNUWMul(_sqlLength, Constant::get(JITSchedule::dropsPerByte));
+	_cost = m_builder.CreateUDiv(_cost, Constant::get(10));
+    count(_cost);
 }
 
 int64_t GasMeter::getStepCost(Instruction inst) const

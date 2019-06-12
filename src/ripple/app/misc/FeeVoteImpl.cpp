@@ -283,6 +283,10 @@ setup_FeeVote (Section const& section)
     set (setup.owner_reserve, "owner_reserve", section);
 	set(setup.drops_per_byte, "drops_per_byte", section);
 
+	if (setup.drops_per_byte == 0) {			
+		setup.drops_per_byte = 1000;
+	}
+		
     return setup;
 }
 
