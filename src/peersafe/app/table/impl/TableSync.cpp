@@ -922,7 +922,13 @@ bool TableSync::isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInf
     std::lock_guard<std::mutex> lock(mutexlistTable_);
     std::list<std::shared_ptr <TableSyncItem>>::iterator iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
         [accountID, sTableName, eTargeType](std::shared_ptr <TableSyncItem> pItem) {
-        return pItem->GetTableName() == sTableName && pItem->GetAccount() == accountID && pItem->TargetType() == eTargeType;
+
+		bool bExist = (pItem->GetTableName() == sTableName) &&
+			                  (pItem->GetAccount() == accountID) &&
+			                  (pItem->TargetType() == eTargeType) &&
+			                  (pItem->GetSyncState() != TableSyncItem::SYNC_DELETING && pItem->GetSyncState() != TableSyncItem::SYNC_REMOVE);
+
+        return bExist;
     });
     if (iter == listTableInfo_.end())     return false;
     return true;
@@ -1208,7 +1214,7 @@ void TableSync::TableSyncThread()
 			std::string sNameInDB;
 			if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, sNameInDB))
 			{
-				pItem->DeleteTable(sNameInDB);
+				//pItem->DeleteTable(sNameInDB);
 				pItem->DoUpdateSyncDB(to_string(stItem.accountID), sNameInDB, true, PreviousCommit);
 			}
 			if (pItem->getAutoSync())

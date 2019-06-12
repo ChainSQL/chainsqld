@@ -137,7 +137,7 @@ transResults()
 		{ temBAD_SIGNATURE,          { "temBAD_SIGNATURE",         "Malformed: Bad signature."                                                     } },
 		{ temBAD_SIGNER,             { "temBAD_SIGNER",            "Malformed: No signer may duplicate account or other signers."                  } },
 		{ temBAD_SRC_ACCOUNT,        { "temBAD_SRC_ACCOUNT",       "Malformed: Bad source account."                                                } },
-		{ temBAD_TRANSFER_RATE,      { "temBAD_TRANSFER_RATE",     "Malformed: Transfer rate must be >= 1.0 and <= 2.0."                                       } },
+		{ temBAD_TRANSFER_RATE,      { "temBAD_TRANSFER_RATE",     "Malformed: Transfer rate must be 0 or >= 1.0 and <= 2.0."                                       } },
 		{ temBAD_TRANSFERFEE_BOTH,	 { "temBAD_TRANSFERFEE_BOTH",  "Malformed: TransferFeeMin and TransferFeeMax can not be set individually."	   } },
 		{ temBAD_TRANSFERFEE,		 { "temBAD_TRANSFERFEE",	   "Malformed: TransferFeeMin or TransferMax invalid."				   } },
 		{ temBAD_FEE_MISMATCH_TRANSFER_RATE,{ "temBAD_FEE_MISMATCH_TRANSFER_RATE",   "Malformed: TransferRate mismatch with TransferFeeMin or TransferFeeMax."}},
