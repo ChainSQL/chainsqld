@@ -286,6 +286,9 @@ setup_FeeVote (Section const& section)
 	if (setup.drops_per_byte == 0) {			
 		setup.drops_per_byte = 1000;
 	}
+	else if (setup.drops_per_byte > 1000000) {
+		setup.drops_per_byte = 1000000;
+	}
 		
     return setup;
 }
