@@ -235,7 +235,8 @@ FeeVoteImpl::doVoting(
     // add transactions to our position
     if ((baseFee != lastClosedLedger->fees().base) ||
             (baseReserve != lastClosedLedger->fees().accountReserve(0)) ||
-            (incReserve != lastClosedLedger->fees().increment))
+            (incReserve != lastClosedLedger->fees().increment) ||
+		(dropsPerByte != lastClosedLedger->fees().drops_per_byte) )
     {
         JLOG(journal_.warn()) <<
             "We are voting for a fee change: " << baseFee <<
