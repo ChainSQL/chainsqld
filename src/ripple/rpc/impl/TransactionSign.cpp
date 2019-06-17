@@ -778,18 +778,18 @@ Json::Value checkFee (
 	if (isChainSqlTableType(txType))
 	{
 
-		int extraAmount = 0;
+		int extraAmount = 1000;
 		std::uint64_t   dropsPerByte = ledger->fees().drops_per_byte;
 		if (tx.isMember(jss::Raw))
 		{
 			auto raw = tx[jss::Raw].asString();
 			int size = raw.size() / 2;
-			extraAmount = size * dropsPerByte;
+			extraAmount += size * dropsPerByte;
 		}
 		else if (tx.isMember(jss::Statements))
 		{
 			auto statements = tx[jss::Statements].asString();
-			extraAmount = statements.size() * dropsPerByte;
+			extraAmount += statements.size() * dropsPerByte;
 		}
 
 		fee += extraAmount;
