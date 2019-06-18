@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 ![Chainsql](/images/logo.png)
 
 
@@ -10,6 +10,70 @@
 关于chainsql的其它详细介绍，请访问 [www.chainsql.net](http://www.chainsql.net)。
 
 # 发布
+## 版本 0.30.4
+### 新特性
+### 优化
+### Bug修复
+
+## 版本 0.30.3
+## 主要修改：
+1. 增加智能合约功能
+2. 对Chainsql 功能的修改，Bug修复
+3. 增加新的 [chainsql开发者文档](http://docs.chainsql.net) 
+
+### 1.智能合约
+增加智能合约功能，详细设计参考：[Chainsql智能合约设计文档](https://github.com/ChainSQL/chainsqld/blob/feature/solidityModify/doc/SmartContractDesign.md)
+#### 主要实现功能：
+1. 全面兼容以太坊智能合约，基于版本 **version:0.4.25-nightly.2018.8.1+commit.21888e24**
+2. 增加对表相关交易的指令支持
+3. 实现了Java与Node.js API对智能合约的支持
+
+
+### 2.功能修改
+- 表相关交易在共识成功后，立即入库
+- 调用表的所有查询接口，目前最多只返回200条（后面会把这一数字做成可配置）数据，可用limit接口进行分页查询
+- 事务中不允许出现建表、删除表、表的重命名操作
+- r_get 查询接口请求中需要附加账户私钥的签名，以更准确地验证用户查询权限
+- validation_create 不依赖运行中的节点，可直接执行
+- 修复建表时字段的修饰为: PK:0 ，字段也是主键的bug
+
+### 3.新增功能
+- 增加对表当前授权情况的查询接口：table_auth
+- 增加对chainsql节点日志的订阅功能
+- tx接口中增加对chainsql表交易的追溯功能
+- 增加 **r_get_sql_user**与**r_get_sql_admin** 接口，支持用sql语句来完成对表的复杂查询
+- 统一chainsql请求的返回值格式（api中同步调整）
+- 查询的raw字段中增加 [$is,$isnot](http://docs.chainsql.net/functions/raw.html#id24) 操作符用于判断字段的值在数据库中是否为null
+- 增加以下错误码对入库超时错误进行细分：
+- db_noDbConfig     未配置数据库
+- db_noSyncConfig   未在sync_tables中配置表（一般用于加密表）
+- db_noAutoSync     未开启自动同步
+- db_noTableExistInDB 表在数据库中不存在
+
+## 版本 0.21.1
+- 修改表最大授权数量为256
+- 单个用户建表数量限制最大为100
+- 同步表SyncTableState中去掉deleted字段，添加ChainID字段
+- 删除建表时对字段自增的设置(AI，这个设置会导致不同节点同步后的结果不同)
+- 为先入库/行级控制交易增加明确的engine_result_message提示
+- Escrow支持发行币
+- Bug修复
+
+## 版本 0.20.4
+- 账户激活费用由20改到5，账户对象增加费用5改到1
+- 每次建表冻结1个ZXC，删除表取消冻结
+- 增加账户转账最大最小费用设置（针对发行货币）
+- 每个账户最多只能建100张表，同一张表最多可授权256次
+- 增加DisableV2特性，用来禁用SHAMapV2特性
+- 增加通过mycat对DB2数据库的支持
+- 修改插入操作时nameInDB错误导致表不再同步的bug
+- 2号区块经常找不到，complete_ledgers显示3-...的问题
+- 修复同步区块时，节点发生内存暴涨的问题
+- 删除表功能代码修改（增加ChainId)
+- 对称加密密钥长度改为256位（涉及表加密，字段级加密）
+- 行级控制update,deltete,get增加字段检查
+- Chainsqld版本号改为0.20.4
+
 
 ## 版本 0.20.1
 
