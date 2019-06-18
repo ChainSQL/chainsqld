@@ -9,11 +9,18 @@
 
 关于chainsql的其它详细介绍，请访问 [www.chainsql.net](http://www.chainsql.net)。
 
+如果你是开发者，请访问[www.docs.chainsql.net](http://docs.chainsql.net)
+
 # 发布
 ## 版本 0.30.4
 ### 新特性
+
 ### 优化
+
 ### Bug修复
+- [RR-1539](http://jira.peersafe.cn:8081/browse/RR-1539)
+- [RR-1538](http://jira.peersafe.cn:8081/browse/RR-1538)
+
 
 ## 版本 0.30.3
 ### 主要修改：
