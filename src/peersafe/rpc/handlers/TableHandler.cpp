@@ -422,12 +422,12 @@ void getNameInDBSetInSql(std::string sql,std::set <std::string>& setTableNames)
 
 		if ( pos1 + 2 + nTableNameLength <= sql.length() ){
 
+			ripple::uint160 nameINDB;
 			std::string str = sql.substr(pos1 + 2, nTableNameLength);
-			ripple::uint160 nameINDB = ripple::from_hex_text<ripple::uint160>(str);
 
 			// str must be  a hex_text type
 			int pos2 = 0;
-			if (nameINDB != beast::zero) {
+			if (nameINDB.SetHex(str)) {
 				setTableNames.emplace(str);
 				pos2 = pos1 + 2 + nTableNameLength;
 			}
