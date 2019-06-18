@@ -16,20 +16,20 @@
 ### Bug修复
 
 ## 版本 0.30.3
-## 主要修改：
+### 主要修改：
 1. 增加智能合约功能
 2. 对Chainsql 功能的修改，Bug修复
 3. 增加新的 [chainsql开发者文档](http://docs.chainsql.net) 
 
-### 1.智能合约
+#### 1.智能合约
 增加智能合约功能，详细设计参考：[Chainsql智能合约设计文档](https://github.com/ChainSQL/chainsqld/blob/feature/solidityModify/doc/SmartContractDesign.md)
-#### 主要实现功能：
+##### 主要实现功能：
 1. 全面兼容以太坊智能合约，基于版本 **version:0.4.25-nightly.2018.8.1+commit.21888e24**
 2. 增加对表相关交易的指令支持
 3. 实现了Java与Node.js API对智能合约的支持
 
 
-### 2.功能修改
+#### 2.功能修改
 - 表相关交易在共识成功后，立即入库
 - 调用表的所有查询接口，目前最多只返回200条（后面会把这一数字做成可配置）数据，可用limit接口进行分页查询
 - 事务中不允许出现建表、删除表、表的重命名操作
@@ -37,7 +37,7 @@
 - validation_create 不依赖运行中的节点，可直接执行
 - 修复建表时字段的修饰为: PK:0 ，字段也是主键的bug
 
-### 3.新增功能
+#### 3.新增功能
 - 增加对表当前授权情况的查询接口：table_auth
 - 增加对chainsql节点日志的订阅功能
 - tx接口中增加对chainsql表交易的追溯功能
