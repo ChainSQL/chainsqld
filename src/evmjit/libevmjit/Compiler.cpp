@@ -1299,6 +1299,119 @@ void Compiler::compileBasicBlock(BasicBlock& _basicBlock, RuntimeManager& _runti
             break;
         }
 
+        case Instruction::EXACCOUNTSET:
+        {
+            auto address = stack.pop();
+            auto flag = stack.pop();
+            auto set = stack.pop();
+
+            auto r = _ext.account_set(address, flag, set);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "accountset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
+
+            break;
+        }
+        case Instruction::EXTRANSFERFEESET:
+        {
+            auto address = stack.pop();
+            auto rateIdx = stack.pop();
+            auto rateLen = stack.pop();
+            auto minIdx = stack.pop();
+            auto minLen = stack.pop();
+            auto maxIdx = stack.pop();
+            auto maxLen = stack.pop();
+
+            _memory.require(rateIdx, rateLen);
+            _memory.require(minIdx, minLen);
+            _memory.require(maxIdx, maxLen);
+
+            auto r = _ext.transfer_fee_set(address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "txrangeset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
+
+            break;
+        }
+        case Instruction::EXTRUSTSET:
+        {
+            auto address = stack.pop();
+            auto valueIdx = stack.pop();
+            auto valueLen = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(valueIdx, valueLen);
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.trust_set(address, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "trustset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
+
+            break;
+        }
+        case Instruction::EXTRUSTLIMIT:
+        {
+            auto address = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto power = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.trust_limit(address, currencyIdx, currencyLen, power, gateway);
+
+            stack.push(m_builder.CreateSExt(r, Type::Word));
+
+            break;
+        }
+        case Instruction::EXGATEWAYBALANCE:
+        {
+            auto address = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto power = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.gateway_balance(address, currencyIdx, currencyLen, power, gateway);
+
+            stack.push(m_builder.CreateSExt(r, Type::Word));
+
+            break;
+        }
+        case Instruction::EXPAY:
+        {
+            auto gateway = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto sendMaxIdx = stack.pop();
+            auto sendMaxLen = stack.pop();
+            auto valueIdx = stack.pop();
+            auto valueLen = stack.pop();
+            auto receiver = stack.pop();
+            auto address = stack.pop();
+
+            _memory.require(valueIdx, valueLen);
+            _memory.require(sendMaxIdx, sendMaxLen);
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.pay(address, receiver, valueIdx, valueLen, sendMaxIdx, sendMaxLen, currencyIdx, currencyLen, gateway);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "pay.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
+
+            break;
+        }
+
 		invalidInstruction:
 		default: // Invalid instruction - abort
 			_runtimeManager.exit(ReturnCode::OutOfGas);

@@ -90,6 +90,22 @@ public:
 	int64_t	transactionCommit(AccountID const & _account, bool _bNeedVerify = true);
 	void	resetTransactionCache();
 
+	// gateway Transaction related
+    int64_t accountSet(AccountID const&  _account, uint32_t nFlag,bool bSet);
+	int64_t setTransferFee(AccountID const&  _gateWay,std::string & _feeRate, std::string & _minFee,  std::string & _maxFee);
+
+    int64_t trustSet(AccountID const&  _account, std::string const& _value, std::string const&  _sCurrency, AccountID const& _issuer);
+
+	// search gateway trust lines   -1 no trust£»  >=0 trust limit
+    int64_t trustLimit(AccountID const&  _account, AccountID const& _issuer, std::string const&  _sCurrency,uint64_t _power);
+	bool getAccountLines(AccountID const&  _account, Json::Value& _lines );
+
+	// get gateWay Currncy balance
+    int64_t gatewayBalance(AccountID const&  _account, AccountID const& _issuer, std::string const&  _sCurrency, uint64_t _power);
+
+
+	TER doPayment(AccountID const& _from, AccountID const& _to, std::string const& _value, std::string const& _sendMax,std::string const&  _sCurrency,AccountID const& _issuer);
+
 	static void	addCommonFields(STObject& obj, AccountID const& _account);
 	std::pair<bool,STArray>
 			genTableFields(const ApplyContext &_ctx, AccountID const& _account,std::string _sTablename,std::string _tableNewName,bool bNewNameInDB);

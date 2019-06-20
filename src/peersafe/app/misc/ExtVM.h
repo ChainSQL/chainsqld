@@ -161,6 +161,26 @@ public:
 	virtual
 		evmc_uint256be get_column_len(const evmc_uint256be *_handle,
 			size_t _row, size_t _column) override final;
+
+    virtual int64_t account_set(const struct evmc_address* address,
+        uint32_t _uflag, bool _bset) override final;
+    virtual int64_t transfer_fee_set(const struct evmc_address *address,
+        bytesConstRef const& _Rate, bytesConstRef const& _Min, bytesConstRef const& _Max) override final;
+    virtual int64_t trust_set(const struct evmc_address *address,
+        bytesConstRef const& _value, bytesConstRef const& _currency, 
+        const struct evmc_address *gateWay) override final;
+    virtual int64_t trust_limit(const struct evmc_address *address, 
+        bytesConstRef const& _currency, 
+        uint64_t _power, 
+        const struct evmc_address *gateWay) override final;
+    virtual int64_t gateway_balance(const struct evmc_address *address,
+        bytesConstRef const& _currency, 
+        uint64_t _power, 
+        const struct evmc_address *gateWay) override final;
+    virtual int64_t pay(const struct evmc_address *address,
+        const struct evmc_address *receiver, 
+        bytesConstRef const& _value, bytesConstRef const& _sendMax, bytesConstRef const&  _currency,
+        const struct evmc_address *gateWay) override final;
     
     SleOps const& state() const { return oSle_; }
 

@@ -1,11 +1,13 @@
 #include <peersafe/app/misc/SleOps.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/TxFormats.h>
+#include <ripple/protocol/Quality.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/ledger/ApplyViewImpl.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/beast/core/LexicalCast.h>
 #include <peersafe/app/tx/DirectApply.h>
-#include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/app/misc/ContractHelper.h> 
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/rpc/TableUtils.h>
@@ -123,6 +125,37 @@ namespace ripple {
         paymentTx.setParentTxID(ctx_.tx.getTransactionID());
 		auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
 		return ret;
+	}
+
+	// gateWay  currency transfer
+	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, std::string const& _value, std::string const& _sendMax, std::string const& _sCurrency, AccountID const& _issuer)
+	{
+
+		try
+		{
+
+			STTx paymentTx(ttPAYMENT,
+				[&_from, &_to, &_value, &_sendMax, &_sCurrency, &_issuer](auto& obj)
+			{
+				obj.setAccountID(sfAccount, _from);
+				obj.setAccountID(sfDestination, _to);
+
+				obj.setFieldAmount(sfSendMax, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _sendMax));
+				obj.setFieldAmount(sfAmount, ripple::amountFromString(Issue{ to_currency(_sCurrency),_issuer }, _value));
+			});
+			paymentTx.setParentTxID(ctx_.tx.getTransactionID());
+			auto ret = applyDirect(ctx_.app, ctx_.view(), paymentTx, ctx_.app.journal("Executive"));
+			return ret;
+		}
+		catch (std::exception const& e)
+		{
+			auto j = ctx_.app.journal("Executive");
+			JLOG(j.fatal()) << e.what();
+			return tefEXCEPTION;
+		}
+
+
+
 	}
 
 	TER SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)
@@ -352,7 +385,6 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
-
 		return disposeTableTx(tx, _account, _sTableName);
 	}
 
@@ -368,6 +400,7 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
+
 
 		return disposeTableTx(tx, _account, _sTableName, _sTableNewName);
 	}
@@ -387,7 +420,7 @@ namespace ripple {
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
-		//
+
 		return disposeTableTx(tx, _account, _sTableName);
 	}
 
@@ -611,4 +644,174 @@ namespace ripple {
 		if (!sqlTxsStatements_.empty())
 			sqlTxsStatements_.clear();
 	}
+
+	int64_t SleOps::accountSet(AccountID const& _account, uint32_t nFlag, bool bSet)
+	{
+		STTx accountSetTx(ttACCOUNT_SET,
+			[&nFlag, &bSet](auto& obj)
+		{
+			if (bSet)   obj.setFieldU32(sfSetFlag,   nFlag);
+			else        obj.setFieldU32(sfClearFlag, nFlag);			
+		});
+
+		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
+		SleOps::addCommonFields(accountSetTx, _account);
+		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("SleOps"));
+		return ret;
+	}
+	
+	//   sRate  [1.0 - 2.0]
+	int64_t SleOps::setTransferFee(AccountID const& _gateWay,  std::string & _feeRate,  std::string & _minFee,  std::string & _maxFee)
+	{
+		// convert [1.0,2.0]  -->  [1000000000,2000000000]
+		double dRate = atof(_feeRate.c_str());
+		if ( dRate !=0 && ( dRate < 1.0 || dRate >2.0) )
+			return temBAD_TRANSFER_RATE;
+
+		_feeRate.erase(std::remove(_feeRate.begin(), _feeRate.end(), '.'), _feeRate.end());
+		int nLen = 10 - _feeRate.size();
+		while (nLen > 0)
+		{
+			_feeRate.append("0");
+			nLen--;
+		}
+
+		STTx accountSetTx(ttACCOUNT_SET,
+			[&_feeRate,&_minFee, &_maxFee](auto& obj)
+		{
+			std::uint32_t uRate = atoi(_feeRate.c_str());
+			obj.setFieldU32(sfTransferRate, uRate);
+			obj.setFieldVL(sfTransferFeeMin, strCopy(_minFee));
+			obj.setFieldVL(sfTransferFeeMax, strCopy(_maxFee));
+		});
+
+
+		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
+		SleOps::addCommonFields(accountSetTx, _gateWay);
+		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("Executive"));
+		return ret;
+	}
+
+    int64_t SleOps::trustSet(AccountID const& _account, std::string const& _value, std::string const& _sCurrency, AccountID const& _issuer)
+	{
+		Currency currency;
+		if (!to_currency(currency, _sCurrency))
+			return tefINVALID_CURRENY;
+
+		STTx accountSetTx(ttTRUST_SET,
+			[&_value, &_sCurrency, &_issuer,&currency](auto& obj)
+		{
+			obj.setFieldAmount(sfLimitAmount, ripple::amountFromString(Issue{ currency,_issuer }, _value));
+		});
+
+		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
+		SleOps::addCommonFields(accountSetTx, _account);
+		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("Executive"));
+		return ret;	
+	}
+
+    int64_t SleOps::trustLimit(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency, uint64_t _power)
+	{
+		Json::Value lines;
+		bool  hasLines= getAccountLines(_account,lines);
+
+		if (!hasLines || lines.isNull() || !lines.isArray())
+			return -1;
+
+		Json::UInt size = lines.size();
+		for (Json::UInt index = 0; index < size; index++) {
+			Json::Value& v = lines[index];
+
+			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
+
+				std::string sLimit;
+				if (v[jss::limit].isString())
+					sLimit = v[jss::limit].asString();
+
+				if (_power == 0) {
+					return  atof(sLimit.c_str());
+				}
+				else {
+
+					STAmount  limitST = ripple::amountFromString(noIssue(), sLimit);
+					STAmount  powerST(noIssue(), (uint64_t)std::pow(10, _power));
+
+					limitST = multiply(limitST, powerST,noIssue());
+					std::string sLimit = limitST.getText();
+					return atof(sLimit.c_str());
+				}
+			}
+
+		}
+
+		return -1;
+	}
+
+
+	bool SleOps::getAccountLines(AccountID const&  _account, Json::Value& _lines)
+	{
+		Json::Value jvCommand;
+		jvCommand[jss::account] = to_string(_account);
+
+		Resource::Charge loadType = -1;
+		Resource::Consumer c;
+
+		RPC::Context context{
+			ctx_.app.journal("RPCHandler"),
+			jvCommand,
+			ctx_.app,
+			loadType,
+			ctx_.app.getOPs(),
+			ctx_.app.getLedgerMaster(),
+			c,Role::ADMIN };
+
+		auto result = ripple::doAccountLines(context);
+
+		if (result.isMember(jss::lines)) {
+
+			_lines = result[jss::lines];
+			return true;
+		}
+		else {
+			return false;
+		}			
+	}
+
+    int64_t SleOps::gatewayBalance(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency,uint64_t _power)
+	{
+		Json::Value lines;
+		bool  hasLines = getAccountLines(_account, lines);
+
+		if (!hasLines || lines.isNull() || !lines.isArray())
+			return -1;
+
+		Json::UInt size = lines.size();
+		for (Json::UInt index = 0; index < size; index++) {
+			Json::Value& v = lines[index];
+
+			if (v[jss::account] == to_string(_issuer) && v[jss::currency] == _sCurrency) {
+
+				std::string sBalance;
+				if(v[jss::balance].isString())
+					sBalance = v[jss::balance].asString();
+
+				if (_power == 0) {
+					return  atof(sBalance.c_str());
+				}
+				else {
+
+					STAmount balanceST = ripple::amountFromString(noIssue(), sBalance);
+					STAmount  powerST(noIssue(), (uint64_t)std::pow(10, _power));
+
+					balanceST = multiply(balanceST, powerST, noIssue());
+					std::string sBalance = balanceST.getText();
+					return atof(sBalance.c_str());
+				}
+			}
+
+		}
+
+		return -1;
+	}
+
 }
