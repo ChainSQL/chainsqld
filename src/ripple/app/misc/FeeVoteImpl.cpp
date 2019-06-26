@@ -284,11 +284,9 @@ setup_FeeVote (Section const& section)
     set (setup.owner_reserve, "owner_reserve", section);
 	set(setup.drops_per_byte, "drops_per_byte", section);
 
-	if (setup.drops_per_byte == 0) {			
+	// drops_per_byte range in [1,10^6]
+	if (setup.drops_per_byte == 0 || setup.drops_per_byte > 1000000) {
 		setup.drops_per_byte = 1000;
-	}
-	else if (setup.drops_per_byte > 1000000) {
-		setup.drops_per_byte = 1000000;
 	}
 		
     return setup;
