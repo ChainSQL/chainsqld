@@ -5,7 +5,7 @@
 Basing on the ripple's source code, we added chainsql's own database related modules. The DB operating log will be stored in the chainsql chain, then you can acquire the visual data in traditional DB.
 
 ## Details of ChainSQL
-Detail online-document can be found [here](http://docs.chainsql.net).
+Detailed online-document can be found [here](http://docs.chainsql.net).
 
 By setting the sync_tables, sync_db and auto_sync, you can restore the real DB tables you wanted from block chain. You can set the DB type arbitrarily, includeing mysql, sqlite, oracle and so on.
 
