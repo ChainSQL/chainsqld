@@ -16,7 +16,7 @@
 2. ChainSQL联盟链增加TPS共识机制修改
 
 # 发布
-## 版本 0.30.4
+## 版本 0.30.4 （即将发布）
 ### 新特性
 1. 智能合约添加代币接口。支持通过智能合约发代币。[代币接口](http://docs.chainsql.net/theory/smartContractDesign.html#id27)
 ##### 主要实现功能：
