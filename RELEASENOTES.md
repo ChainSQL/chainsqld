@@ -30,8 +30,10 @@
 ### 优化
 
 ### Bug修复
+- [RR-1458](http://jira.peersafe.cn:8081/browse/RR-1458)
 - [RR-1539](http://jira.peersafe.cn:8081/browse/RR-1539)
 - [RR-1538](http://jira.peersafe.cn:8081/browse/RR-1538)
+- [RR-1578](http://jira.peersafe.cn:8081/browse/RR-1578)
 
 
 ## 版本 0.30.3
