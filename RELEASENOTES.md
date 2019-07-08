@@ -11,6 +11,10 @@
 
 如果你是开发者，请访问[www.docs.chainsql.net](http://docs.chainsql.net)
 
+# 进行中
+1. CA准入机制添加
+2. ChainSQL联盟链增加TPS共识机制修改
+
 # 发布
 ## 版本 0.30.4
 ### 新特性
