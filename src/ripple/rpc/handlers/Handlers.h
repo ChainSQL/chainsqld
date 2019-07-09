@@ -113,6 +113,10 @@ Json::Value doValidatorListSites    (RPC::Context&);
 //for contract
 Json::Value doContractCall(RPC::Context&);
 
+
+
+Json::Value doGenCsr(RPC::Context&); // for humans
+
 } // ripple
 
 #endif

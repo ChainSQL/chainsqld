@@ -1,19 +1,19 @@
 //------------------------------------------------------------------------------
 /*
-	This file is part of rippled: https://github.com/ripple/rippled
-	Copyright (c) 2012, 2013 Ripple Labs Inc.
+This file is part of rippled: https://github.com/ripple/rippled
+Copyright (c) 2012, 2013 Ripple Labs Inc.
 
-	Permission to use, copy, modify, and/or distribute this software for any
-	purpose  with  or without fee is hereby granted, provided that the above
-	copyright notice and this permission notice appear in all copies.
+Permission to use, copy, modify, and/or distribute this software for any
+purpose  with  or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
 
-	THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-	WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
-	MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-	ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-	WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
-	ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-	OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
+MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>   
+
+
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
@@ -30,9 +32,12 @@
 #include "ripple/crypto/X509.h"
 #include <ripple/crypto/GenerateDeterministicKey.h>
 
+
+
+
+
 namespace ripple {
-	
-	//从文件读入到string里
+
 	std::string readFileIntoString(const char * filename)
 	{
 		std::ifstream ifile(filename);
@@ -40,7 +45,7 @@ namespace ripple {
 		char ch;
 		while (ifile.get(ch))
 			buf.put(ch);
-		//返回与流对象buf关联的字符串
+
 		return buf.str();
 	}
 
@@ -57,36 +62,57 @@ namespace ripple {
 		return readCertFromString(clientCrt);
 	}
 
-	bool verifyCert(std::string const& rootCert, std::string const& certStr,std::string & exception)
+	//
+	//  certStr  root certificate chain 
+	//
+	bool verifyCert(std::vector<std::string> const& vecRootCert, std::string const& certStr, std::string & exception)
 	{
 		OpenSSL_add_all_algorithms();
 
-		int ret = 0;
-		X509_STORE * certChain = NULL;
-		//cert chain context
-		X509_STORE_CTX *ctx = NULL;
-		
-		X509_STORE *cerChain = X509_STORE_new();
+		// verify vecRootCert validation
+		bool bValidation = false;
+
+		std::vector<X509*> vecX509RootCert;
+		for (auto certChainStr : vecRootCert) {
+			X509* x509Ca = readCertFromString(certChainStr);
+			if (x509Ca) {
+				vecX509RootCert.push_back(x509Ca);
+				bValidation = true;
+			}
+		}
+
+		if (!bValidation) {
+
+			exception = "All of the rootCert  is  invalidation ";
+			return false;
+		}
 
 		X509 * x509Client = readCertFromString(certStr);
-		X509* x509Ca = readCertFromString(rootCert);
+		if (x509Client == nullptr) {
 
-		certChain = X509_STORE_new();
-
-		//we can add a lot of ca to the chain
-		//for (int i = 0; i < nTrustCount; i++)
-		//{
-		//	X509 * rootCert = GetTrustCert();//这个函数openssl中没有，用来读取可以被信任的证书
-		//	X509_STORE_add_cert(certChain, rootCert);
-		//}
-		ret = X509_STORE_add_cert(certChain, x509Ca);
-		if (1 != ret)
-		{
-			exception = "X509_STORE_add_cert fail, ret = " + ret;
-			goto EXIT;
+			exception = "certStr  is  invalidation ";
+			return false;
 		}
+
+
+		int ret = 0;
+
+		//cert chain context
+		X509_STORE_CTX *ctx = NULL;
+		X509_STORE *  certChain = X509_STORE_new();
 		//init context
 		ctx = X509_STORE_CTX_new();
+
+		for (auto certChainStr : vecX509RootCert) {
+			ret = X509_STORE_add_cert(certChain, certChainStr);
+			if (1 != ret) {
+
+				exception = "X509_STORE_add_cert fail, ret = " + ret;
+				goto EXIT;
+			}
+		}
+
+
 		//x509Client is the certificate to be verified
 		ret = X509_STORE_CTX_init(ctx, certChain, x509Client, NULL);
 		if (1 != ret)
@@ -105,7 +131,10 @@ namespace ripple {
 		}
 	EXIT:
 		X509_free(x509Client);
-		X509_free(x509Ca);
+
+		for (auto certChainStr : vecX509RootCert) {
+			X509_free(certChainStr);
+		}
 
 		X509_STORE_CTX_cleanup(ctx);
 		X509_STORE_CTX_free(ctx);
@@ -115,11 +144,72 @@ namespace ripple {
 		return ret == 1;
 	}
 
-	bool genCsr(Seed const& seed, x509_subject const& sub,std::string const& reqPath, std::string & exception)
+
+	Blob getBlob(const EC_POINT  *  ecPoint) {
+
+
+		EC_KEY* key1 = EC_KEY_new_by_curve_name(NID_secp256k1);
+
+		if (key1 == nullptr)  Throw<std::runtime_error>("EC_KEY_new_by_curve_name() failed");
+
+		EC_KEY_set_conv_form(key1, POINT_CONVERSION_COMPRESSED);
+
+		openssl::ec_key key = openssl::ec_key((openssl::ec_key::pointer_t) key1);
+
+
+		if (EC_KEY_set_public_key((EC_KEY*)key.get(), ecPoint) <= 0)
+			Throw<std::runtime_error>("EC_KEY_set_public_key() failed");
+
+		Blob result(33);
+		std::uint8_t* ptr = &result[0];
+
+		int const size = i2o_ECPublicKey((EC_KEY*)key.get(), &ptr);
+		assert(size <= 33);
+
+
+		return result;
+
+
+	}
+
+	PublicKey getPublicKeyFromX509(std::string const& certificate) {
+
+		PublicKey  publicKey;
+
+		EVP_PKEY * pkey = NULL;
+		EC_KEY*   pEcKey = NULL;
+
+		X509* x509Ca = readCertFromString(certificate);
+		if (x509Ca) {
+
+			pkey = X509_get_pubkey(x509Ca);
+			pEcKey = EVP_PKEY_get1_EC_KEY(pkey);
+
+			const EC_POINT*  ecPoint = EC_KEY_get0_public_key(pEcKey);
+			Blob blob = getBlob(ecPoint);
+			// PublicKey
+			publicKey = PublicKey(makeSlice(blob));
+
+			std::string    sPublicKey = toBase58(TOKEN_NODE_PUBLIC, publicKey);
+			int test = 9;
+		}
+
+
+
+
+		EVP_PKEY_free(pkey);
+		EC_KEY_free(pEcKey);
+		X509_free(x509Ca);
+
+		return publicKey;
+
+	}
+
+	bool genCsr(Seed const& seed, x509_subject const& sub, std::string const& reqPath, std::string & exception)
 	{
 		/* ---------------------------------------------------------- *
-		 * These function calls initialize openssl for correct work.  *
-		 * ---------------------------------------------------------- */
+		* These function calls initialize openssl for correct work.  *
+		* ---------------------------------------------------------- */
 		OpenSSL_add_all_algorithms();
 		ERR_load_BIO_strings();
 		//ERR_load_crypto_strings();
@@ -257,6 +347,8 @@ namespace ripple {
 			goto free_all;
 		}
 
+		
+
 		out = BIO_new_file(reqPath.c_str(), "w");
 		if (out == nullptr)
 		{
@@ -276,7 +368,7 @@ namespace ripple {
 		X509_REQ_free(x509_req);
 		EVP_PKEY_free(pkey);
 		EC_KEY_free(myecc);
-		//BIO_free_all(outbio);
+		BIO_free_all(out);
 		return ret == 1;
 	}
 }

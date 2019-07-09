@@ -18,8 +18,16 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 //==============================================================================
 
 #include <BeastConfig.h>
+#include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/crypto/X509.h>
+#include <ripple/protocol/Seed.h>
 #include <ripple/beast/unit_test.h>
+
+
+
+
+
+
 
 
 namespace ripple {
@@ -38,7 +46,7 @@ namespace ripple {
 				"localhost"
 			};
 			std::string strExcept;
-			bool ret = genCsr(seed, sub, "e:\\keystore\\x509Req.pem", strExcept);
+			bool ret = genCsr(seed, sub, "x509Req.pem", strExcept);
 
 			BEAST_EXPECT(ret);
 		}
@@ -64,22 +72,41 @@ namespace ripple {
 				"MPYmxVGbTMIIV6ur6TY4+80=\n" \
 				"-----END CERTIFICATE-----";
 
-			std::string certUser = 
+			std::string certUser =
 				"-----BEGIN CERTIFICATE-----\n" \
-				"MIIBxzCCAW0CCQCKCYVfCt37gDAKBggqhkjOPQQDAjCBgzELMAkGA1UEBhMCQ04x\n" \
-				"EDAOBgNVBAgMB0JlaUppbmcxCzAJBgNVBAcMAkJKMREwDwYDVQQKDAhQZWVyc2Fm\n" \
-				"ZTELMAkGA1UECwwCUFMxEjAQBgNVBAMMCWx1amluZ2xlaTEhMB8GCSqGSIb3DQEJ\n" \
-				"ARYSbHVsZWlncmVhdEAxNjMuY29tMB4XDTE5MDYyMDAzNDExNVoXDTE5MDcyMDAz\n" \
-				"NDExNVowVjELMAkGA1UEBhMCQ0ExCzAJBgNVBAgMAkJDMRIwEAYDVQQHDAlWYW5j\n" \
-				"b3V2ZXIxEjAQBgNVBAoMCUR5bmFtc29mdDESMBAGA1UEAwwJbG9jYWxob3N0MFYw\n" \
-				"EAYHKoZIzj0CAQYFK4EEAAoDQgAE1JxW4bGF8b6JmuZqAu/Bf3jqb8U6+F4P5Uxu\n" \
-				"i3+McaiLOReyWD+JlC4tflDg/Gs9fk8URyVSo4QUNZlZq/qBGzAKBggqhkjOPQQD\n" \
-				"AgNIADBFAiEA1lyu3mn4jQCMhVQ47cgyFh8vT6pVKumi3xSbPCQqJXECIHUpuVAx\n" \
-				"TSdbHT9HNiTykF3MnaJxx3Qdy0pqSK13ZdUZ\n" \
+				"MIICPzCCAScCCQCfrMP2woqkuzANBgkqhkiG9w0BAQsFADBKMQswCQYDVQQGEwJD\n" \
+				"TjELMAkGA1UECAwCQkoxCzAJBgNVBAcMAkJKMSEwHwYDVQQKDBhJbnRlcm5ldCBX\n" \
+				"aWRnaXRzIFB0eSBMdGQwHhcNMTkwNzA0MTAyNTI3WhcNMTkwODAzMTAyNTI3WjBH\n" \
+				"MQswCQYDVQQGEwJDTjELMAkGA1UECAwCQkoxCzAJBgNVBAcMAkJKMREwDwYDVQQK\n" \
+				"DAhQZWVyc2FmZTELMAkGA1UEAwwCUkMwVjAQBgcqhkjOPQIBBgUrgQQACgNCAARX\n" \
+				"pcbxeBum/eJRYfe1DKuwOB7+IXopv1OQpCNVXMilOUDScvo3H48IQQKvl0gcU2fe\n" \
+				"RylZeuQd/tbvWw8FO59GMA0GCSqGSIb3DQEBCwUAA4IBAQAgEuPG/kbKKYV+9bVJ\n" \
+				"T2dGRgFvElmJjnMp7fuxZSydu6P03Cg6wZ3iQf+VlFVkO0TZ65i4IFFx7vg2ln5Z\n" \
+				"Bo2t/I/zM9DzMcsN7j/93WUTqCHtQa6N5YRn0gDoLe5cnmNo0BV+dggPn/s5d9J+\n" \
+				"OsOWnNPfxP9/OCpX+kjL0BxHepDPK6OGwHA8Lcd2jfoz8TsHf0IU8wl6dqUENOaA\n" \
+				"FBXuqf1R+SHSI92PRlitGGkQ+JmE/+Xe+2Bro5tIm+qnVJdRivzkbmYvMPJI4jSS\n" \
+				"SJBfTI454wVsNqcYcoLbTdj9FmfaOcaenWZTPBPLDWJBIKu5UVW5HgJqHtxpys2K\n" \
+				"chJy\n" \
 				"-----END CERTIFICATE-----";
 
+			std::vector<std::string> vecRootCa = { certCA };
+                                    
+			auto const seedSecretKey =
+				generateSecretKey(KeyType::secp256k1, generateSeed("masterpassphrase"));
+			auto const seedPublicKey =
+				derivePublicKey(KeyType::secp256k1, seedSecretKey);
+
+			//auto retPB = toBase58(TokenType::TOKEN_NODE_PUBLIC, seedPublicKey);
+
+			//auto const pk = parseBase58<PublicKey>(
+			//	TokenType::TOKEN_ACCOUNT_PUBLIC, "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh");
+
+			// compare  public keys from CA and sign
+			PublicKey pubKey = getPublicKeyFromX509(certCA);
+			BEAST_EXPECT(pubKey == seedPublicKey);
+
 			std::string strExcept;
-			bool ret = verifyCert(certCA,certUser,strExcept);
+			bool ret = verifyCert(vecRootCa,certUser,strExcept);
 			
 			BEAST_EXPECT(ret);
 		}

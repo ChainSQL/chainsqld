@@ -220,6 +220,8 @@ SF_Blob const sfMemoType        = make::one<SF_Blob::type>(&sfMemoType,      STI
 SF_Blob const sfMemoData        = make::one<SF_Blob::type>(&sfMemoData,      STI_VL, 13, "MemoData");
 SF_Blob const sfMemoFormat		= make::one<SF_Blob::type>(&sfMemoFormat,	 STI_VL, 14, "MemoFormat");
 
+SF_Blob const sfCertificate = make::one<SF_Blob::type>(&sfCertificate, STI_VL, 15, "Certificate");
+
 // variable length (uncommon)
 SF_Blob const sfFulfillment     = make::one<SF_Blob::type>(&sfFulfillment,     STI_VL, 16, "Fulfillment");
 SF_Blob const sfCondition       = make::one<SF_Blob::type>(&sfCondition,       STI_VL, 17, "Condition");

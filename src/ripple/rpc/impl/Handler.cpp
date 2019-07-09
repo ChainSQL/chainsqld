@@ -157,6 +157,8 @@ Handler handlerArray[] {
     {   "validator_list_sites", byRef (&doValidatorListSites),  Role::ADMIN,   NO_CONDITION     },
 	{	"t_prepare",			byRef (&doPrepare),            Role::USER,   NO_CONDITION },
     {   "t_create",             byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION     },
+
+
     {   "g_dbname",             byRef (&doGetDBName),          Role::USER,    NO_CONDITION     },
 	{   "g_userToken",          byRef(&doGetUserToken),        Role::USER,    NO_CONDITION },
 	{   "g_getcheckhash",       byRef(&doGetCheckHash),       Role::USER,    NO_CONDITION     },
@@ -189,6 +191,9 @@ Handler handlerArray[] {
     // Evented methods
     {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION     },
     {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION     },
+
+	{    "gen_csr",             byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION },
+
 };
 
 } // namespace

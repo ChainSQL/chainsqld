@@ -52,6 +52,9 @@ generatePrivateDeterministicKey (
 openssl::bignum generateECPrivateKey(uint128 const& seed);
 openssl::ec_point generateECPublicKey(uint128 const& seed);
 
+Blob  generateRipplePublicKey(openssl::ec_point const& ecPoint);
+
+
 } // ripple
 
 #endif

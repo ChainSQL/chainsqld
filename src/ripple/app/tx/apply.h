@@ -152,6 +152,10 @@ applyTransaction(Application& app, OpenView& view,
     STTx const& tx, bool retryAssured, ApplyFlags flags,
     beast::Journal journal);
 
+// ca verify
+bool 
+verifyCACert(std::string& certUser,Config const& config, std::string& sException);
+
 } // ripple
 
 #endif

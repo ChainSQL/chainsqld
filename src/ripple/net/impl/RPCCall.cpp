@@ -1135,6 +1135,19 @@ private:
         return jvRequest;
     }
 
+
+
+	Json::Value parseGenCsr(Json::Value const& jvParams)
+	{
+		if (jvParams.size() < 2)
+		{
+			return rpcError(rpcINVALID_PARAMS);
+		}
+
+		return TransGBKToUTF8(jvParams);
+	}
+
+
 public:
     //--------------------------------------------------------------------------
 
@@ -1251,6 +1264,8 @@ public:
             {   "g_dbname",            &RPCParser::parseGetDBName,             1,  1 },
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
 			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
+			{   "gen_csr",          &RPCParser::parseGenCsr,                   2,  2 },
+
         };
 
         auto const count = jvParams.size ();
