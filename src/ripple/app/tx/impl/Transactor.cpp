@@ -179,23 +179,24 @@ Transactor::checkFee (PreclaimContext const& ctx, std::uint64_t baseFee)
 
     auto feeDue = ripple::calculateFee(ctx.app,
         baseFee, ctx.view.fees(), ctx.flags);
-
+	
 	if (ctx.tx.isChainSqlTableType())
 	{
-		int zxcDrops = 1000;
+		int zxcDrops = 1000000;
+		double multiplier = 0.001;
 		std::uint64_t   dropsPerByte = ctx.view.fees().drops_per_byte;
 
-		if (ctx.tx.isFieldPresent(sfRaw)) 
+		if (ctx.tx.isFieldPresent(sfRaw))
 		{
 			auto raw = ctx.tx.getFieldVL(sfRaw);
-			zxcDrops  +=  raw.size() * dropsPerByte;
+			multiplier += raw.size() / (dropsPerByte*1.0);
 		}
 		else if (ctx.tx.isFieldPresent(sfStatements))
 		{
 			auto statements = ctx.tx.getFieldVL(sfStatements);
-			zxcDrops += statements.size() * dropsPerByte;
+			multiplier += statements.size() / (dropsPerByte*1.0);
 		}
-		auto extraAmount = new ZXCAmount(zxcDrops);
+		auto extraAmount = new ZXCAmount((int)(zxcDrops * multiplier));
 		feeDue += *extraAmount;
 	}
 

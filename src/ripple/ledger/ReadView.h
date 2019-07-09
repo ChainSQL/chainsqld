@@ -50,7 +50,7 @@ struct Fees
     std::uint32_t reserve = 0;      // Reserve base (drops)
     std::uint32_t increment = 0;    // Reserve increment (drops)
 
-	std::uint64_t drops_per_byte = 1000; // the cost of  a byte in drops
+	std::uint64_t drops_per_byte = 1024; // the cost of  a byte in drops
 
     Fees() = default;
     Fees (Fees const&) = default;
