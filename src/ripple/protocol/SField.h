@@ -553,6 +553,11 @@ extern SField const sfMajorities;
 extern SField const sfTableEntries;
 extern SField const sfTables;
 extern SField const sfUsers;
+
+
+// certificate
+extern SF_Blob const sfCertificate;
+
 //------------------------------------------------------------------------------
 
 } // ripple

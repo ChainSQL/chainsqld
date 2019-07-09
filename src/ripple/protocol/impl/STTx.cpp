@@ -29,6 +29,9 @@
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/protocol/types.h>
 #include <ripple/protocol/STParsedJSON.h>
+
+#include <ripple/crypto/X509.h>
+
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
@@ -697,6 +700,42 @@ std::pair<bool, std::string> STTx::checkMultiSign () const
 
     // All signatures verified.
     return {true, ""};
+}
+
+std::pair<bool, std::string> STTx::checkCertSign() const
+{
+
+	bool validSig = false;
+	try
+	{
+		auto const spk = getFieldVL(sfSigningPubKey);
+
+		auto const certificate = getFieldVL(sfCertificate);
+		std::string sCertificate = std::string(certificate.begin(), certificate.end());
+		PublicKey certPublicKey = getPublicKeyFromX509(sCertificate);
+
+		if (certPublicKey == PublicKey(makeSlice(spk)) ){
+
+			Blob const signature = getFieldVL(sfTxnSignature);
+			Blob const data = getSigningData(*this);
+
+			return{ true, sCertificate };
+
+		}
+
+	}
+	catch (std::exception const&)
+	{
+		// Assume it was a signature failure.
+		validSig = false;
+	}
+
+	if (validSig == false)
+		return{ false, "Invalid signature." };
+
+	return{ true, "" };
+
+
 }
 
 //------------------------------------------------------------------------------

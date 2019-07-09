@@ -17,11 +17,12 @@
 */
 //==============================================================================
 
-#ifndef RIPPLE_CRYPTO_RFC1751_H_INCLUDED
-#define RIPPLE_CRYPTO_RFC1751_H_INCLUDED
+#ifndef RIPPLE_CRYPTO_X509_H_INCLUDED
+#define RIPPLE_CRYPTO_X509_H_INCLUDED
 
 #include <string>
 #include <ripple/protocol/Seed.h>
+#include <ripple/protocol/PublicKey.h>
 #include <openssl/x509.h>
 
 namespace ripple {
@@ -33,7 +34,9 @@ namespace ripple {
 		std::string common;
 	} x509_subject;
 
-	bool verifyCert(std::string const& rootCert,std::string const& certStr,std::string & exception);
+	PublicKey getPublicKeyFromX509(std::string const& certificate);
+
+	bool verifyCert(std::vector<std::string> const& vecRootCert, std::string const& certStr, std::string & exception);
 	bool genCsr(Seed const& seed, x509_subject const& sub, std::string const& reqPath, std::string & exception);
 	X509* readCertFromFile(const char* filename);
 }

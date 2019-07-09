@@ -170,7 +170,8 @@ void printHelp (const po::options_description& desc)
            "     tx <id>\n"
            "     validation_create [<seed>|<pass_phrase>|<key>]\n"
            "     validation_seed [<seed>|<pass_phrase>|<key>]\n"
-           "     wallet_propose [<passphrase>]\n";
+           "     wallet_propose [<passphrase>]\n"
+		   "     gen_csr <send> <x509_subject>\n";
 }
 
 //------------------------------------------------------------------------------

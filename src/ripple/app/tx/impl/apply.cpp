@@ -23,6 +23,7 @@
 #include <ripple/app/tx/applySteps.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/protocol/Feature.h>
+#include <ripple/crypto/X509.h>
 
 namespace ripple {
 
@@ -50,6 +51,24 @@ checkValidity(HashRouter& router,
 
     if (!(flags & SF_SIGGOOD))
     {
+
+		// Certificate authentication
+		auto const sigCertVerify = tx.checkCertSign();
+		if (!sigCertVerify.first)
+		{
+			router.setFlags(id, SF_SIGBAD);
+			return{ Validity::SigBad, sigCertVerify.second };
+		}
+
+		// certification  au
+		std::string certInfo = sigCertVerify.second;
+		
+		std::string sException;
+		if ( !verifyCACert(certInfo, config, sException)){
+
+			return{ Validity::SigBad, "Certificate authentication failed" };
+		}
+
         // Don't know signature state. Check it.
         auto const sigVerify = tx.checkSign(allowMultiSign);
         if (! sigVerify.first)
@@ -159,6 +178,43 @@ applyTransaction (Application& app, OpenView& view,
         JLOG (j.warn()) << "Throws";
         return ApplyResult::Fail;
     }
+}
+
+bool verifyCACert(std::string& certUser, Config const& config, std::string& sException)
+{
+	//config.
+	auto const vecCrtPath  =    config.section("x509_crt_path").values();
+
+	if (vecCrtPath.empty())
+		return true;
+
+	bool bVerify = false;
+
+	std::vector<std::string>  vecRootCert;
+
+	for (auto path : vecCrtPath) {
+
+		std::string rootCert;
+		std::ifstream ifsPath(path.c_str());
+		rootCert.assign(
+			std::istreambuf_iterator<char>(ifsPath),
+			std::istreambuf_iterator<char>());
+
+		if(rootCert.empty())
+			continue;
+
+		vecRootCert.push_back(rootCert);
+	}
+
+	if (vecRootCert.empty()) {
+
+		sException = "Root certificate has not been configured";
+		// config error
+		return false;
+	}
+		
+	return verifyCert(vecRootCert, certUser, sException);
+
 }
 
 } // ripple
