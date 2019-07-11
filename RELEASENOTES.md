@@ -19,6 +19,7 @@
 ## 版本 0.30.4 （即将发布）
 ### 新特性
 1. 智能合约添加代币接口。支持通过智能合约发代币。[代币接口](http://docs.chainsql.net/theory/smartContractDesign.html#id27)
+2. 表相关交易费用通过配置项进行调节.[配置项](http://docs.chainsql.net/theory/cfg.html#dropsperbyte) 
 ##### 主要实现功能：
 1. 网关的accoutSet属性设置。
 2. 网关交易费用设置。
@@ -26,6 +27,8 @@
 4. 网关的信任代币信息查询。
 5. 网关代币余额查询。
 6. 代币转账接口。
+7. 表相关交易费用通过配置文件[voting]项中drops_per_byte进行配置。
+
 
 ### 优化
 
