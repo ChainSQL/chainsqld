@@ -1914,6 +1914,9 @@ void NetworkOPsImp::pubValidation (STValidation::ref val)
         if (auto const baseFee = (*val)[~sfBaseFee])
             jvObj [jss::base_fee] = static_cast<double> (*baseFee);
 
+		if (auto const dropsPerByte = (*val)[~sfDropsPerByte])
+			jvObj[jss::drops_per_byte] = static_cast<double> (*dropsPerByte);
+
         if (auto const reserveBase = (*val)[~sfReserveBase])
             jvObj [jss::reserve_base] = *reserveBase;
 
@@ -2487,6 +2490,8 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
         l[jss::seq] = Json::UInt (lpClosed->info().seq);
         l[jss::hash] = to_string (lpClosed->info().hash);
 
+		std::uint64_t drops_per_byte = lpClosed->fees().drops_per_byte;
+
         if (!human)
         {
             l[jss::base_fee] = Json::Value::UInt (baseFee);
@@ -2498,6 +2503,8 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
         }
         else
         {
+			l[jss::drops_per_byte] = Json::Value::UInt(drops_per_byte);
+
             l[jss::base_fee_zxc] = static_cast<double> (baseFee) /
                     SYSTEM_CURRENCY_PARTS;
             l[jss::reserve_base_zxc]   =
@@ -2620,6 +2627,7 @@ void NetworkOPsImp::pubLedger (
             jvObj[jss::fee_ref]
                     = Json::UInt (lpAccepted->fees().units);
             jvObj[jss::fee_base] = Json::UInt (lpAccepted->fees().base);
+			jvObj[jss::drops_per_byte] = Json::UInt(lpAccepted->fees().drops_per_byte);
             jvObj[jss::reserve_base] = Json::UInt (lpAccepted->fees().accountReserve(0).drops());
             jvObj[jss::reserve_inc] = Json::UInt (lpAccepted->fees().increment);
 
@@ -3214,6 +3222,7 @@ bool NetworkOPsImp::subLedger (InfoSub::ref isrListener, Json::Value& jvResult)
         jvResult[jss::fee_ref]
                 = Json::UInt (lpClosed->fees().units);
         jvResult[jss::fee_base]        = Json::UInt (lpClosed->fees().base);
+		jvResult[jss::drops_per_byte]  = Json::UInt(lpClosed->fees().drops_per_byte);
         jvResult[jss::reserve_base]    = Json::UInt (lpClosed->fees().accountReserve(0).drops());
         jvResult[jss::reserve_inc]     = Json::UInt (lpClosed->fees().increment);
     }

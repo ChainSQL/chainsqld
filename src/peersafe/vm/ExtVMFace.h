@@ -145,6 +145,11 @@ public:
 	virtual int64_t const block_timestamp() const {
 		return 0;
 	}
+
+	virtual uint64_t const dropsPerByte() const{
+		return 0;
+	}
+
 };
 
 class ExtVMFace : public evmc_context {
@@ -230,6 +235,31 @@ public:
         return evmc_uint256be();
     }
 
+    virtual int64_t account_set(const struct evmc_address *address, 
+        uint32_t _uflag, bool _bset) { return 0; }
+    virtual int64_t transfer_fee_set(const struct evmc_address *address,
+        bytesConstRef const& _Rate,
+        bytesConstRef const& _Min, 
+        bytesConstRef const& _Max) { return 0; }
+    virtual int64_t trust_set(const struct evmc_address *address,
+        bytesConstRef const& _value, 
+        bytesConstRef const& _currency, 
+        const struct evmc_address *gateWay) { return 0; }
+    virtual int64_t trust_limit(const struct evmc_address *address, 
+        bytesConstRef const& _currency, 
+        uint64_t _power,
+        const struct evmc_address *gateWay) { return 0; }
+    virtual int64_t gateway_balance(const struct evmc_address *address, 
+        bytesConstRef const& _currency, 
+        uint64_t _power,
+        const struct evmc_address *gateWay) { return 0; }
+    virtual int64_t pay(const struct evmc_address *address,
+        const struct evmc_address *receiver, 
+        bytesConstRef const& _value, 
+        bytesConstRef const& _sendMax,
+        bytesConstRef const&  _currency, 
+        const struct evmc_address *gateWay) { return 0; }
+
 	/// Get the execution environment information.
 	EnvInfo const& envInfo() const { return envInfo_; }
 
@@ -245,6 +275,8 @@ public:
 	int32_t depth;
 	bool isCreate = false;
 	bool staticCall = false;
+
+	uint64_t dropsPerByte;
 
 private:
 	EnvInfo const& envInfo_;

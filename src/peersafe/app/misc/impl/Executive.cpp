@@ -17,6 +17,7 @@ Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
 
 void Executive::initGasPrice()
 {
+
 	m_gasPrice = scaleGasLoad(GAS_PRICE, m_s.ctx().app.getFeeTrack(),
 		m_s.ctx().view().fees());
 }

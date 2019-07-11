@@ -98,6 +98,7 @@ TxFormats::TxFormats ()
         << SOElement (sfReferenceFeeUnits,   SOE_REQUIRED)
         << SOElement (sfReserveBase,         SOE_REQUIRED)
         << SOElement (sfReserveIncrement,    SOE_REQUIRED)
+		<< SOElement (sfDropsPerByte,		 SOE_OPTIONAL)
         ;
 
     add ("TicketCreate", ttTICKET_CREATE)

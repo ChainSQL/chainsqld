@@ -434,6 +434,85 @@ void get_column_len_by_index(evmc_context*_context,
     *_len = env.get_column_len(_handle, _row, _column);
 }
 
+int64_t account_set(
+    struct evmc_context *_context,
+    const struct evmc_address *_address,
+    uint32_t _uFlag,
+    bool _bSet
+) noexcept
+{
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    return env.account_set(_address, _uFlag, _bSet);
+}
+
+int64_t transfer_fee_set(
+    struct evmc_context *_context,
+    const struct evmc_address *address, 
+    uint8_t const *_pRate, size_t _rateLen,
+    uint8_t const *_pMin, size_t _minLen,
+    uint8_t const *_pMax, size_t _maxLen
+) noexcept
+{
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    return env.transfer_fee_set(address, bytesConstRef{ _pRate, _rateLen }, bytesConstRef{ _pMin, _minLen }, bytesConstRef{ _pMax, _maxLen });
+}
+
+int64_t trust_set(
+    struct evmc_context *_context, 
+    const struct evmc_address *address,
+    uint8_t const *_pValue, size_t _valueLen,
+    uint8_t const *_pCurrency, size_t _currencyLen,
+    const struct evmc_address *gateWay
+) noexcept
+{
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    return env.trust_set(address, bytesConstRef{ _pValue, _valueLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+}
+
+int64_t trust_limit(
+    /* evmc_uint256be* o_result, */
+    struct evmc_context *_context,
+    const struct evmc_address *address,
+    uint8_t const *_pCurrency, size_t _currencyLen,
+    uint64_t _power,
+    const struct evmc_address *gateWay
+) noexcept
+{
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    //*o_result = env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, _power, gateWay);
+}
+
+int64_t gateway_balance(
+    /* evmc_uint256be* o_result, */
+    struct evmc_context *_context,
+    const struct evmc_address *address,
+    uint8_t const *_pCurrency, size_t _currencyLen,
+    uint64_t _power,
+    const struct evmc_address *gateWay
+) noexcept
+{
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    //*o_result = env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, _power, gateWay);
+}
+
+int64_t pay(
+    struct evmc_context *_context, 
+    const struct evmc_address *address,
+    const struct evmc_address *receiver,
+    uint8_t const *_pValue, size_t _valueLen,
+    uint8_t const *_pSendMax, size_t _sendMaxLen,
+    uint8_t const *_pCurrency, size_t _currencyLen,
+    const struct evmc_address *gateWay
+) noexcept
+{
+    auto &env = static_cast<ExtVMFace&>(*_context);
+    return env.pay(address, receiver, bytesConstRef{ _pValue, _valueLen }, 
+            bytesConstRef{ _pSendMax, _sendMaxLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+}
+
+
 evmc_context_fn_table const fnTable = {
 	accountExists,
 	getStorage,
@@ -469,6 +548,13 @@ evmc_context_fn_table const fnTable = {
 
     get_column_len_by_name,
     get_column_len_by_index,
+
+    account_set,
+    transfer_fee_set,
+    trust_set,
+    trust_limit,
+    gateway_balance,
+    pay
 };
 
 ExtVMFace::ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,

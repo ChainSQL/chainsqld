@@ -167,8 +167,16 @@ enum class Instruction: uint8_t
     EXGETVALUEBYINDEX,
     EXEXITFUNC,
     EXGETLENBYKEY,
-    EXGETLENBYINDEX,
-	REVERTDIY,
+    EXGETLENBYINDEX = 0xd0,
+
+    REVERTDIY,
+
+    EXACCOUNTSET,
+    EXTRANSFERFEESET,
+    EXTRUSTSET,
+    EXTRUSTLIMIT,
+    EXGATEWAYBALANCE,
+    EXPAY,
 
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account

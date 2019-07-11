@@ -66,7 +66,7 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 {
 	SleOps ops(context);
-	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS);
+	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS, context.view().fees().drops_per_byte);
 	Executive e(ops, *pInfo, INITIAL_DEPTH);
 	e.initialize();
 	auto tx = context.tx;

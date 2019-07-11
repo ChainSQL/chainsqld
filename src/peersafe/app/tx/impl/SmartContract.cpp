@@ -67,6 +67,7 @@ namespace ripple {
 			}
 		}			
 
+
 		// Avoid unaffordable transactions.
 		int64_t gas = tx.getFieldU32(sfGas);
 		int64_t gasCost = int64_t(gas * GAS_PRICE);
@@ -92,7 +93,7 @@ namespace ripple {
 	TER SmartContract::doApply()
 	{
 		SleOps ops(ctx_);
-		auto pInfo = std::make_shared<EnvInfoImpl>(ctx_.view().info().seq, 210000);
+		auto pInfo = std::make_shared<EnvInfoImpl>(ctx_.view().info().seq, 210000, ctx_.view().fees().drops_per_byte);
 		Executive e(ops, *pInfo, INITIAL_DEPTH);
 		e.initialize();
 		if (!e.execute())

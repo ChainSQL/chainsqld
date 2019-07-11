@@ -24,11 +24,11 @@
 
 
 // FIXME: Move these checks to evmc tests.
-static_assert(sizeof(evmc_uint256be) == 32, "evmc_uint256be is too big");
-static_assert(sizeof(evmc_address) == 20, "evmc_address is too big");
-static_assert(sizeof(evmc_result) == 64, "evmc_result does not fit cache line");
-static_assert(sizeof(evmc_message) <= 18 * 8, "evmc_message not optimally packed");
-static_assert(offsetof(evmc_message, code_hash) % 8 == 0, "evmc_message.code_hash not aligned");
+//static_assert(sizeof(evmc_uint256be) == 32, "evmc_uint256be is too big");
+//static_assert(sizeof(evmc_address) == 20, "evmc_address is too big");
+//static_assert(sizeof(evmc_result) == 64, "evmc_result does not fit cache line");
+//static_assert(sizeof(evmc_message) <= 19 * 8, "evmc_message not optimally packed");
+//static_assert(offsetof(evmc_message, code_hash) % 8 == 0, "evmc_message.code_hash not aligned");
 
 // Check enums match int size.
 // On GCC/clang the underlying type should be unsigned int, on MSVC int
@@ -326,6 +326,58 @@ int64_t db_trans_submit(struct evmc_context* _context, uint8_t const** o_bufData
     return ter;
 }
 
+int64_t account_set(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint32_t _uFlag, bool _bSet,
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->account_set(_context, address, _uFlag, _bSet);
+    formatOutput(ter, o_bufData, o_bufSize);
+    return ter;
+}
+
+int64_t transfer_fee_set(struct evmc_context* _context,
+    const struct evmc_address* address,
+    uint8_t const* _pStr1, size_t _len1,
+    uint8_t const* _pStr2, size_t _len2,
+    uint8_t const* _pStr3, size_t _len3,
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->transfer_fee_set(_context, address, _pStr1, _len1, _pStr2, _len2, _pStr3, _len3);
+    formatOutput(ter, o_bufData, o_bufSize);
+    return ter;
+}
+
+int64_t trust_set(struct evmc_context* _context,
+    const struct evmc_address* address1,
+    uint8_t const* _pStr1, size_t _len1,
+    uint8_t const* _pStr2, size_t _len2,
+    const struct evmc_address* address2,
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->trust_set(_context, address1, _pStr1, _len1, _pStr2, _len2, address2);
+    formatOutput(ter, o_bufData, o_bufSize);
+    return ter;
+}
+
+int64_t pay(struct evmc_context* _context,
+    const struct evmc_address* address1,
+    const struct evmc_address* address2,
+    uint8_t const* _pStr1, size_t _len1,
+    uint8_t const* _pStr2, size_t _len2,
+    uint8_t const* _pStr3, size_t _len3,
+    const struct evmc_address* address3, 
+    uint8_t const** o_bufData, size_t* o_bufSize)
+{
+    auto& jit = JITImpl::instance();
+    int64_t ter = jit.host->pay(_context, address1, address2, _pStr1, _len1, _pStr2, _len2, _pStr3, _len3, address3);
+    formatOutput(ter, o_bufData, o_bufSize);
+    return ter;
+}
+
 uint8_t* evm_realloc(uint8_t* data, size_t size)
 {
     uint8_t* newData = (uint8_t*)std::realloc(data, size);
@@ -398,6 +450,12 @@ class SymbolResolver : public llvm::SectionMemoryManager
                     reinterpret_cast<uint64_t>(jit.host->get_column_len_by_name))
                 .Case("evm.get_column_len_by_index",
                     reinterpret_cast<uint64_t>(jit.host->get_column_len_by_index))
+                .Case("evm.account_set", reinterpret_cast<uint64_t>(account_set))
+                .Case("evm.transfer_fee_set", reinterpret_cast<uint64_t>(transfer_fee_set))
+                .Case("evm.trust_set", reinterpret_cast<uint64_t>(trust_set))
+                .Case("evm.trust_limit", reinterpret_cast<uint64_t>(jit.host->trust_limit))
+                .Case("evm.gateway_balance", reinterpret_cast<uint64_t>(jit.host->gateway_balance))
+                .Case("evm.pay", reinterpret_cast<uint64_t>(pay))
                 .Default(0);
         if (addr)
             return {addr, llvm::JITSymbolFlags::Exported};
@@ -496,8 +554,13 @@ ExecFunc JITImpl::compile(evmc_revision _rev, bool _staticCall, byte const* _cod
     return (ExecFunc)m_engine->getFunctionAddress(_codeIdentifier);
 }
 
+
+
 }  // anonymous namespace
 
+
+
+uint64_t JITSchedule::dropsPerByte = 1000;
 
 ExecutionContext::~ExecutionContext() noexcept
 {
@@ -550,6 +613,9 @@ static evmc_result execute(evmc_instance* instance, evmc_context* context, evmc_
     // TODO: Temporary keep track of the current message.
     evmc_message const* prevMsg = jit.currentMsg;
     jit.currentMsg = msg;
+
+	// 
+	JITSchedule::dropsPerByte = msg->drops_per_byte;
 
     RuntimeData rt;
     rt.code = code;

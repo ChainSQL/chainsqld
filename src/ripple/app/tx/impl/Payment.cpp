@@ -216,6 +216,8 @@ Payment::preclaim(PreclaimContext const& ctx)
     auto const k = keylet::account(uDstAccountID);
     auto const sleDst = ctx.view.read(k);
 
+	bool const bRipple = paths || sendMax || !saDstAmount.native();
+
     if (!sleDst)
     {
         // Destination account does not exist.
@@ -267,9 +269,9 @@ Payment::preclaim(PreclaimContext const& ctx)
 
         return tecDST_TAG_NEEDED;
 	}
-	else if (sleDst->isFieldPresent(sfContractCode))
+	else if (sleDst->isFieldPresent(sfContractCode) && !bRipple)
 	{
-		//The destination cannot be a contract address
+		// In ZXC payment, the destination cannot be a contract address
 		return tefCONTRACT_CANNOT_BEPAYED;
 	}
 
@@ -440,9 +442,9 @@ Payment::doApply ()
             // Vote no. However the transaction might succeed, if applied in
             // a different order.
             JLOG(j_.trace()) << "Delay transaction: Insufficient funds: " <<
-                " " << to_string (mPriorBalance) <<
+                " " <<   to_string (mPriorBalance) <<
                 " / " << to_string (saDstAmount.zxc () + mmm) <<
-                " (" << to_string (reserve) << ")";
+                " (" <<  to_string (reserve) << ")";
 
             terResult = tecUNFUNDED_PAYMENT;
         }

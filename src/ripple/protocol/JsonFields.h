@@ -533,6 +533,9 @@ JSS ( ContractChain );               // out:
 JSS ( PreviousHash );               // out: 
 JSS ( NextHash );                   // out: 
 JSS ( log );
+
+
+JSS(drops_per_byte);                       // out: LogLevel
 #undef JSS
 
 } // jss
