@@ -157,7 +157,7 @@ public:
     std::uint64_t                      FEE_OWNER_RESERVE = 1*SYSTEM_CURRENCY_PARTS;
 
 
-	std::uint64_t                     DROPS_PER_BYTE = 1000;
+	std::uint64_t                     DROPS_PER_BYTE = (1000000 / 1024);
 
     std::uint64_t                      FEE_OFFER = 10;
 
