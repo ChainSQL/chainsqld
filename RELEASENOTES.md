@@ -17,10 +17,11 @@
 
 # 发布
 ## 版本 0.30.4 （即将发布）
-### 新特性
+### 1. 新特性
 1. 智能合约添加代币接口。支持通过智能合约发代币。[代币接口](http://docs.chainsql.net/theory/smartContractDesign.html#id27)
 2. 表相关交易费用通过配置项进行调节.[配置项](http://docs.chainsql.net/theory/cfg.html#dropsperbyte) 
-##### 主要实现功能：
+
+##### 2. 主要实现功能：
 1. 网关的accoutSet属性设置。
 2. 网关交易费用设置。
 3. 信任网关代币以及代币的额度设置。
@@ -30,13 +31,35 @@
 7. 表相关交易费用通过配置文件进行调节。
 
 
+
+### 3.功能修改
+- 智能合约中新增加以下指令
+    - [accountSet](http://docs.chainsql.net/theory/smartContractDesign.html#accoutset)
+    - [setTransferFee](http://docs.chainsql.net/theory/smartContractDesign.html#id28)
+    - [trustSet](http://docs.chainsql.net/theory/smartContractDesign.html#id29)
+    - [trustLimit](http://docs.chainsql.net/theory/smartContractDesign.html#id30)
+    - [gatewayBalance](http://docs.chainsql.net/theory/smartContractDesign.html#id31)
+    - [pay](http://docs.chainsql.net/theory/smartContractDesign.html#id32)
+- 修改cmake文件，解决Windows Release版本的编译问题。
+- 配置文件中新增配置选项[drops_per_byte](http://docs.chainsql.net/theory/cfg.html#dropsperbyte)，表示一个字节消耗多少drops。
+- 增加以下错误码
+    - **tefINVALID_CURRENY** 无效的代币名
+
+
 ### 优化
 
 ### Bug修复
+
+- [RR-1360](http://jira.peersafe.cn:8081/browse/RR-1360)
 - [RR-1458](http://jira.peersafe.cn:8081/browse/RR-1458)
 - [RR-1539](http://jira.peersafe.cn:8081/browse/RR-1539)
 - [RR-1538](http://jira.peersafe.cn:8081/browse/RR-1538)
 - [RR-1578](http://jira.peersafe.cn:8081/browse/RR-1578)
+- [RR-1605](http://jira.peersafe.cn:8081/browse/RR-1605)
+
+
+
+
 
 
 ## 版本 0.30.3
