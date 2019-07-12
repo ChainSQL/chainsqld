@@ -21,7 +21,7 @@
 1. 智能合约添加代币接口。支持通过智能合约发代币。[代币接口](http://docs.chainsql.net/theory/smartContractDesign.html#id27)
 2. 表相关交易费用通过配置项进行调节.[配置项](http://docs.chainsql.net/theory/cfg.html#dropsperbyte) 
 
-##### 2. 主要实现功能：
+### 2. 主要实现功能：
 1. 网关的accoutSet属性设置。
 2. 网关交易费用设置。
 3. 信任网关代币以及代币的额度设置。
@@ -29,6 +29,7 @@
 5. 网关代币余额查询。
 6. 代币转账接口。
 7. 表相关交易费用通过配置文件进行调节。
+8. 表的所有查询接口，查询结果的最大条数可通过配置文件配置。
 
 
 
@@ -41,7 +42,9 @@
     - [gatewayBalance](http://docs.chainsql.net/theory/smartContractDesign.html#id31)
     - [pay](http://docs.chainsql.net/theory/smartContractDesign.html#id32)
 - 修改cmake文件，解决Windows Release版本的编译问题。
-- 配置文件中新增配置选项[drops_per_byte](http://docs.chainsql.net/theory/cfg.html#dropsperbyte)，表示一个字节消耗多少drops。
+- 配置文件中新增配置选项
+    - [drops_per_byte](http://docs.chainsql.net/theory/cfg.html#dropsperbyte)，表示一个字节消耗多少drops。
+    - [select_limit] 调用表的所有查询接口，表示查询结果最多返回条数，默认值为200。
 - 增加以下错误码
     - **tefINVALID_CURRENY** 无效的代币名
 
