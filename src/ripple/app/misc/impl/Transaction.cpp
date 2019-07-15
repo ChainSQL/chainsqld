@@ -28,6 +28,7 @@
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/JsonFields.h>
 #include <boost/optional.hpp>
+#include <peersafe/app/util/CommonUtil.h>
 
 namespace ripple {
 
@@ -47,7 +48,7 @@ Transaction::Transaction (std::shared_ptr<STTx const> const& stx,
         reason = e.what();
         return;
     }
-
+	mTimeCreate = utcTime();
     mStatus = NEW;
 }
 

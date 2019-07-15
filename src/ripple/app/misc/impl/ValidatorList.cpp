@@ -177,6 +177,7 @@ ValidatorList::load (
             id = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
         }
         
+		validators_.push_back(id);
         // Skip local key which was already added
         if (id == localPubKey_ || id == localSigningKey)
             continue;

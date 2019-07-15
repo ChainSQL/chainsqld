@@ -91,6 +91,11 @@ public:
         return mTransaction;
     }
 
+	std::shared_ptr<STTx const> const& getSTransaction() const
+	{
+		return mTransaction;
+	}
+
     uint256 const& getID () const
     {
         return mTransactionID;
@@ -154,6 +159,8 @@ public:
         mApplying = false;
     }
 
+	uint64_t getTime() const{ return mTimeCreate; }
+
     Json::Value getJson (int options, bool binary = false) const;
 
     static Transaction::pointer load (uint256 const& id, Application& app);
@@ -165,6 +172,7 @@ private:
     TransStatus     mStatus = INVALID;
     STer            mResult = temUNCERTAIN;
     bool            mApplying = false;
+	uint64_t		mTimeCreate;
 
     std::shared_ptr<STTx const>   mTransaction;
     Application&    mApp;

@@ -68,6 +68,7 @@
 #include <ripple/basics/make_lock.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/misc/TxPool.h>
 #include <beast/core/detail/base64.hpp>
 #include <boost/asio/steady_timer.hpp>
 
@@ -281,6 +282,8 @@ public:
     void doTransactionAsync (std::shared_ptr<Transaction> transaction,
         bool bUnlimited, FailHard failtype);
 
+	void doTransactionCheck(std::shared_ptr<Transaction> transaction,
+		bool bUnlimited, FailHard failtype);
     /**
      * Apply transactions in batches. Continue until none are queued.
      */
@@ -1044,10 +1047,33 @@ void NetworkOPsImp::processTransaction (std::shared_ptr<Transaction>& transactio
     // canonicalize can change our pointer
     app_.getMasterTransaction ().canonicalize (&transaction);
 
-    if (bLocal)
-        doTransactionSync (transaction, bUnlimited, failType);
-    else
-        doTransactionAsync (transaction, bUnlimited, failType);
+	doTransactionCheck(transaction,bUnlimited,failType);
+
+    //if (bLocal)
+    //    doTransactionSync (transaction, bUnlimited, failType);
+    //else
+    //    doTransactionAsync (transaction, bUnlimited, failType);
+}
+
+void NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
+	bool bUnlimited, FailHard failType)
+{
+	//mock the process of doTransactionAsync or doTransactionSync
+
+		/*in its inner function like apply,you should do the following:
+		1. check sequence & LastLedgerSeq like in Transactor::checkSeq
+		2. check accountid match publickey like Transactor::checkSign
+		3. check fee like Transactor:;checkFee
+		*/
+
+		// after check and transaction's check result is tesSUCCESS£¬add it to TxPool:
+		if (!app_.getTxPool().insertTx(transaction))
+		{
+			// Todo: return err tx_pool is full
+			//transaction->setStatus(INVALID);
+			//transaction->setResult(temBAD_SIGNATURE);
+			return;
+		}
 }
 
 void NetworkOPsImp::doTransactionAsync (std::shared_ptr<Transaction> transaction,
