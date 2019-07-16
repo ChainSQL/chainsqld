@@ -716,8 +716,6 @@ std::pair<bool, std::string> STTx::checkCertSign() const
 
 		if (certPublicKey == PublicKey(makeSlice(spk)) ){
 
-			Blob const signature = getFieldVL(sfTxnSignature);
-			Blob const data = getSigningData(*this);
 
 			return{ true, sCertificate };
 

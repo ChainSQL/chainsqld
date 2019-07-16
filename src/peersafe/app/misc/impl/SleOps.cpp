@@ -241,7 +241,6 @@ namespace ripple {
 		obj.setFieldU32(sfSequence, 0);
 		obj.setFieldAmount(sfFee, STAmount());
 		obj.setFieldVL(sfSigningPubKey, Slice(nullptr, 0));
-		obj.setFieldVL(sfCertificate, Slice(nullptr, 0));
 	}
 
 	std::pair<bool, STArray> SleOps::genTableFields(const ApplyContext &_ctx, AccountID const& _account, std::string _sTableName, std::string _tableNewName, bool bNewNameInDB)
