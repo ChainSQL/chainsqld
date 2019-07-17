@@ -52,6 +52,7 @@
 #include <peersafe/app/table/TableTxAccumulator.h>
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <peersafe/app/misc/TxPool.h>
 #include <algorithm>
 #include <cassert>
 #include <memory>
@@ -1197,6 +1198,8 @@ LedgerMaster::checkAccept (
     ledger->setValidated();
     ledger->setFull();
     setValidLedger(ledger);
+	app_.getTxPool().removeTxs(ledger->txMap());
+
     if (!mPubLedger)
     {
         pendSaveValidated(app_, ledger, true, true);
