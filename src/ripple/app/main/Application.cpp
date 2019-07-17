@@ -65,6 +65,7 @@
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
+#include <peersafe/app/misc/TxPool.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/optional.hpp>
 #include <fstream>
@@ -354,6 +355,7 @@ public:
 	std::unique_ptr <TableAssistant> m_pTableAssistant;
 	std::unique_ptr <ContractHelper> m_pContractHelper;
 	std::unique_ptr <TableTxAccumulator> m_pTableTxAccumulator;
+    std::unique_ptr <TxPool> m_pTxPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
     boost::asio::steady_timer sweepTimer_;
     boost::asio::steady_timer entropyTimer_;
@@ -517,6 +519,8 @@ public:
 
 		, m_pTableTxAccumulator(std::make_unique<TableTxAccumulator>(*this))
 
+        , m_pTxPool(std::make_unique<TxPool>(*this, logs_->journal("TxPool")))
+
         , sweepTimer_ (get_io_service())
 
         , entropyTimer_ (get_io_service())
@@ -649,6 +653,11 @@ public:
 	{
 		return *m_pTableTxAccumulator;
 	}
+
+    TxPool& getTxPool() override
+    {
+        return *m_pTxPool;
+    }
 
     virtual
     PublicKey const &

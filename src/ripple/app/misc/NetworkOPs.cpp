@@ -71,6 +71,7 @@
 #include <peersafe/app/misc/TxPool.h>
 #include <beast/core/detail/base64.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <ripple/app/tx/impl/Transactor.h>
 
 namespace ripple {
 
@@ -283,7 +284,11 @@ public:
         bool bUnlimited, FailHard failtype);
 
 	void doTransactionCheck(std::shared_ptr<Transaction> transaction,
-		bool bUnlimited, FailHard failtype);
+		bool bUnlimited, bool bLocal, FailHard failtype);
+
+    STer check(std::shared_ptr<Transaction> transaction, 
+        PreflightContext const& pfctx, OpenView const& view);
+
     /**
      * Apply transactions in batches. Continue until none are queued.
      */
@@ -1047,33 +1052,159 @@ void NetworkOPsImp::processTransaction (std::shared_ptr<Transaction>& transactio
     // canonicalize can change our pointer
     app_.getMasterTransaction ().canonicalize (&transaction);
 
-	doTransactionCheck(transaction,bUnlimited,failType);
+	doTransactionCheck(transaction, bUnlimited, bLocal, failType);
 
-    //if (bLocal)
-    //    doTransactionSync (transaction, bUnlimited, failType);
-    //else
-    //    doTransactionAsync (transaction, bUnlimited, failType);
+    if (bLocal)
+        doTransactionSync (transaction, bUnlimited, failType);
+    else
+        doTransactionAsync (transaction, bUnlimited, failType);
 }
 
 void NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
-	bool bUnlimited, FailHard failType)
+    bool bUnlimited, bool bLocal, FailHard failType)
 {
-	//mock the process of doTransactionAsync or doTransactionSync
+    std::vector<TransactionStatus> submit_held;
 
-		/*in its inner function like apply,you should do the following:
-		1. check sequence & LastLedgerSeq like in Transactor::checkSeq
-		2. check accountid match publickey like Transactor::checkSign
-		3. check fee like Transactor:;checkFee
-		*/
+    if (app_.getTxPool().txExists(transaction->getID()))
+    {
+        JLOG(m_journal.info()) << "Tx: " << transaction->getID()
+            << " already in Tx pool";
 
-		// after check and transaction's check result is tesSUCCESS£¬add it to TxPool:
-		if (!app_.getTxPool().insertTx(transaction))
-		{
-			// Todo: return err tx_pool is full
-			//transaction->setStatus(INVALID);
-			//transaction->setResult(temBAD_SIGNATURE);
-			return;
-		}
+        transaction->setResult(tefALREADY);
+        return;
+    }
+
+    auto stTx = *transaction->getSTransaction();
+
+    ApplyFlags flags = tapNO_CHECK_SIGN;
+    if (bLocal)
+        flags = flags | tapFromClient;
+    else
+        flags = flags | tapByRelay;
+
+    if (bUnlimited)
+        flags = flags | tapUNLIMITED;
+
+    PreflightContext const pfctx(
+        app_, stTx, app_.openLedger().current()->rules(), flags, m_journal);
+
+    auto ter = check(transaction, pfctx, *app_.openLedger().current());
+
+    transaction->setResult(ter);
+
+    if (ter == tesSUCCESS)
+    {
+        transaction->setStatus(INCLUDED);
+
+        // after check and transaction's check result is tesSUCCESS£¬add it to TxPool:
+        if (!app_.getTxPool().insertTx(transaction))
+        {
+            transaction->setStatus(INVALID);
+            transaction->setResult(telTX_POOL_FULL);
+            return;
+        }
+
+        auto txCur = transaction->getSTransaction();
+
+        app_.openLedger().modify(
+            [&](OpenView& view, beast::Journal j)
+        {
+            Transactor::setSeq(view, flags, *txCur);
+            return true;
+        });
+        
+        for (auto const& tx : m_ledgerMaster.pruneHeldTransactions(
+            txCur->getAccountID(sfAccount), txCur->getSequence() + 1))
+        {
+            std::string reason;
+            auto const trans = sterilize(*tx);
+            auto t = std::make_shared<Transaction>(trans, reason, app_);
+            submit_held.emplace_back(t, false, false, FailHard::no);
+        }
+    }
+    else if (isTerRetry(ter))
+    {
+        transaction->setStatus(HELD);
+
+        m_ledgerMaster.addHeldTransaction(transaction);
+    }
+    else
+    {
+        transaction->setStatus(INVALID);
+        return;
+    }
+
+    if (ter == tesSUCCESS || ter == terQUEUED)
+    {
+        auto const toSkip = app_.getHashRouter().shouldRelay(transaction->getID());
+
+        if (toSkip)
+        {
+            protocol::TMTransaction tx;
+            Serializer s;
+
+            transaction->getSTransaction()->add(s);
+            tx.set_rawtransaction(s.data(), s.size());
+            tx.set_status(protocol::tsCURRENT);
+            tx.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
+            tx.set_deferred(ter == terQUEUED);
+            // FIXME: This should be when we received it
+            app_.overlay().foreach(send_if_not(
+                std::make_shared<Message>(tx, protocol::mtTRANSACTION),
+                peer_in_set(*toSkip)));
+        }
+    }
+
+    if (!submit_held.empty())
+    {
+        for (auto &e : submit_held)
+            doTransactionCheck(e.transaction, e.admin, e.local, e.failType);
+    }
+}
+
+STer NetworkOPsImp::check(std::shared_ptr<Transaction> transaction, 
+    PreflightContext const& pfctx, OpenView const& view)
+{
+    auto ter = preflight1(pfctx);
+    if (ter != tesSUCCESS)
+    {
+        return ter;
+    }
+
+    //mock the process of doTransactionAsync or doTransactionSync
+
+    /**
+    * In its inner function like apply, you should do the following:
+    * 1. check sequence & LastLedgerSeq like in Transactor::checkSeq
+    * 2. check fee like Transactor::checkFee
+    * 3. check accountid match publickey like Transactor::checkSign
+    */
+
+    boost::optional<PreclaimContext const> pcctx;
+    pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
+
+    ter = Transactor::checkSeq(*pcctx);
+    if (ter != tesSUCCESS)
+    {
+        return ter;
+    }
+
+    auto const id = pcctx->tx.getAccountID(sfAccount);
+    auto const baseFee = Transactor::calculateBaseFee(*pcctx);
+
+    ter = Transactor::checkFee(*pcctx, baseFee);
+    if (ter != tesSUCCESS)
+    {
+        return ter;
+    }
+
+    ter = Transactor::checkSign(*pcctx);
+    if (ter != tesSUCCESS)
+    {
+        return ter;
+    }
+
+    return ter;
 }
 
 void NetworkOPsImp::doTransactionAsync (std::shared_ptr<Transaction> transaction,

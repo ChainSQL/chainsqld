@@ -29,6 +29,8 @@
 #include <ripple/consensus/LedgerTiming.h>
 #include <ripple/json/json_writer.h>
 #include <peersafe/app/util/Common.h>
+#include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/consensus/PConsensusParams.h>
 
 namespace ripple {
 
@@ -46,6 +48,7 @@ class PConsensus
 		typename Ledger_t::ID,
 		typename TxSet_t::ID>;
 
+    using Result = ConsensusResult<Adaptor>;
 	// Helper class to ensure adaptor is notified whenever the ConsensusMode
 	// changes
 	class MonitoredMode
@@ -261,7 +264,7 @@ private:
 	boost::optional<Result> result_;
 
 	//current setID proposed by leader.
-	boost::optional<TxSet_t::ID> setID_;
+	boost::optional<typename TxSet_t::ID> setID_;
 
 	ConsensusCloseTimes rawCloseTimes_;
 
@@ -272,12 +275,12 @@ private:
 	std::size_t prevProposers_ = 0;
 
 	// The minimum block generation time(ms)
-	unsigned minBlockTime_ = 500;
+	unsigned minBlockTime_ = MinBlockTime;
 
 	// The maximum block generation time(ms) even without transactions.
-	unsigned maxBlockTime_ = 1000;
+	unsigned maxBlockTime_ = MaxBlockTime;
 
-	unsigned maxTxsInLedger_ = 5000;
+	unsigned maxTxsInLedger_ = MaxTxsInLedger;
 
 	// Journal for debugging
 	beast::Journal j_;
@@ -426,7 +429,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 		auto iter = txSetVoted_.find(newPeerProp.position());
 		if (iter != txSetVoted_.end())
 		{
-			iter->second.push_back(pub);
+			iter->second.insert(pub);
 		}
 		else
 		{
@@ -434,16 +437,20 @@ PConsensus<Adaptor>::peerProposalInternal(
 			{
 				txSetVoted_[newPeerProp.position()] = std::set<PublicKey>{pub};
 				setID_ = newPeerProp.position();
-				if (txSetCached_.find(setID_) != txSetCached_.end())
+
+				if (txSetCached_.find(*setID_) != txSetCached_.end())
 				{
-					for (auto pub : txSetCached[setID_])
+					for (auto pub : txSetCached_[*setID_])
 						txSetVoted_[newPeerProp.position()].insert(pub);
-					txSetCached_.erase(setID_);
+					txSetCached_.erase(*setID_);
 				}
+                
+                if (phase_ == ConsensusPhase::open)
+                    phase_ = ConsensusPhase::establish;
 			}
 			else
 			{
-				if (txSetCached_.find(setID_) != txSetCached_.end())
+				if (txSetCached_.find(*setID_) != txSetCached_.end())
 				{
 					txSetCached_[newPeerProp.position()].insert(pub);
 				}
@@ -451,7 +458,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 				{
 					txSetCached_[newPeerProp.position()] = std::set<PublicKey>{ pub };
 				}
-				return;
+				return true;
 			}
 		}
 	}
@@ -496,19 +503,21 @@ PConsensus<Adaptor>::gotTxSet(
 	if (!acquired_.emplace(id, txSet).second)
 		return;
 
+    adaptor_.app_.getTxPool().updateAvoid(txSet);
 
 	if (!isLeader(adaptor_.valPublic_))
 	{
+        auto set = txSet.map_->snapShot(false);
 		//this place has a txSet copy,what's the time it costs?
-		result_ = Result{
-		txSet,
-		RCLCxPeerPos::Proposal{
+		result_.emplace(Result(
+		std::move(set),
+		RCLCxPeerPos::Proposal(
 			prevLedgerID_,
 			RCLCxPeerPos::Proposal::seqJoin,
 			id,
 			now,
-			app_.timeKeeper().closeTime(),
-			adaptor_.nodeID_()} };
+			adaptor_.app_.timeKeeper().closeTime(),
+			adaptor_.nodeID())) );
 
 		adaptor_.propose(result_->position);
 	}
@@ -553,7 +562,6 @@ PConsensus<Adaptor>::phaseCollecting()
 
 	// it is shortly before ledger close time
 	bool anyTransactions = adaptor_.hasOpenTransactions();
-	auto proposersClosed = currPeerPositions_.size();
 	auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
 
 	openTime_.tick(clock_.now());
@@ -583,7 +591,7 @@ PConsensus<Adaptor>::phaseCollecting()
 		int tx_count = transactions_.size();
 
 		//if time for this block's tx-set reached
-		bool bTimeReached = false;
+		bool bTimeReached = sinceClose.count() >= maxBlockTime_;
 		if (tx_count < maxTxsInLedger_ && !bTimeReached)
 		{
 			appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
@@ -606,13 +614,13 @@ PConsensus<Adaptor>::phaseCollecting()
 
 			// Share the newly created transaction set if we haven't already
 			// received it from a peer
-			if (acquired_.emplace(setID_, result_->set).second)
+			if (acquired_.emplace(*setID_, result_->set).second)
 				adaptor_.relay(result_->set);
 
 			if (mode_.get() == ConsensusMode::proposing)
 				adaptor_.propose(result_->position);
 
-			txSetVoted_[setID_] = std::set<PublicKey>{ adaptor_.valPublic_ };
+			txSetVoted_[*setID_] = std::set<PublicKey>{ adaptor_.valPublic_ };
 		}
 	}
 	
@@ -629,7 +637,7 @@ PConsensus<Adaptor>::phaseVoting()
 	ConsensusParms const & parms = adaptor_.parms();
 
 	result_->roundTime.tick(clock_.now());
-	result_->proposers = currPeerPositions_.size();
+	//result_->proposers = currPeerPositions_.size();
 
 	// Give everyone a chance to take an initial position
 	if (result_->roundTime.read() < parms.ledgerMIN_CONSENSUS)
@@ -639,7 +647,7 @@ PConsensus<Adaptor>::phaseVoting()
 	if (!haveConsensus())
 		return;
 
-	prevProposers_ = txSetVoted_[setID_].size();
+	prevProposers_ = txSetVoted_[*setID_].size();
 	prevRoundTime_ = result_->roundTime.read();
 
 	phase_ = ConsensusPhase::accepted;
@@ -660,7 +668,7 @@ PConsensus<Adaptor>::haveConsensus()
 	if (!result_)
 		return false;
 
-	int agreed = txSetVoted_[setID_].size();
+	int agreed = txSetVoted_[*setID_].size();
 	int minVal = adaptor_.app_.validators().quorum();
 	auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
 
@@ -712,7 +720,7 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 	int view = 0;
 	int leader_idx = (view + currentLedgerIndex) % validators.size();
 	assert(validators.size() > leader_idx);
-	return pub == validators[idx];
+	return pub == validators[leader_idx];
 }
 
 
@@ -725,9 +733,9 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 template <class Adaptor>
 bool PConsensus<Adaptor>::finalCondReached(std::chrono::milliseconds sinceLastClose)
 {
-	if (transactions_.size() >= maxTxsInLedger_ && sinceLastClose >= minBlockTime_)
+	if (transactions_.size() >= maxTxsInLedger_ && sinceLastClose.count() >= minBlockTime_)
 		return true;
-	if (sinceLastClose >= maxBlockTime_)
+	if (sinceLastClose.count() >= maxBlockTime_)
 		return true;
 	return false;
 }
@@ -756,7 +764,7 @@ PConsensus<Adaptor>::getJson(bool full) const
 	ret["phase"] = to_string(phase_);
 	if (phase_ == ConsensusPhase::open)
 	{
-		ret["transaction_count"] = transactions_.size();
+		ret["transaction_count"] = static_cast<int>(transactions_.size());
 	}
 
 	if (full)
@@ -765,7 +773,7 @@ PConsensus<Adaptor>::getJson(bool full) const
 			ret["current_ms"] =
 			static_cast<Int>(result_->roundTime.read().count());
 		ret["close_resolution"] = static_cast<Int>(closeResolution_.count());
-		ret["have_time_consensus"] = haveCloseTimeConsensus_;
+		//ret["have_time_consensus"] = haveCloseTimeConsensus_;
 		ret["previous_proposers"] = static_cast<Int>(prevProposers_);
 		ret["previous_mseconds"] = static_cast<Int>(prevRoundTime_.count());
 

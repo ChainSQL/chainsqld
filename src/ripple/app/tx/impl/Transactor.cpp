@@ -319,6 +319,21 @@ Transactor::setSeq ()
         sle->setFieldH256 (sfAccountTxnID, ctx_.tx.getTransactionID ());
 }
 
+void 
+Transactor::setSeq(OpenView &view, ApplyFlags &flags, STTx const& tx)
+{
+    auto accountID = tx.getAccountID(sfAccount);
+    ApplyViewImpl applyView(&view, flags);
+    auto const sle = applyView.peek(keylet::account(accountID));
+
+    std::uint32_t const t_seq = tx.getSequence();
+
+    sle->setFieldU32(sfSequence, t_seq + 1);
+
+    if (sle->isFieldPresent(sfAccountTxnID))
+        sle->setFieldH256(sfAccountTxnID, tx.getTransactionID());
+}
+
 // check stuff before you bother to lock the ledger
 void Transactor::preCompute ()
 {

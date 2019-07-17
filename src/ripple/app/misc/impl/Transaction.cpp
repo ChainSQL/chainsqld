@@ -28,7 +28,7 @@
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/JsonFields.h>
 #include <boost/optional.hpp>
-#include <peersafe/app/util/CommonUtil.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 

@@ -33,6 +33,7 @@
 #include <boost/functional/hash.hpp>
 #include <functional>
 #include <type_traits>
+#include <boost/functional/hash.hpp>
 
 using beast::zero;
 using beast::Zero;
@@ -104,6 +105,17 @@ public:
             return lhs == rhs;
         }
     };
+
+    struct hash
+    {
+        /// Make a hash of the object's data.
+        size_t operator()(base_uint const& _value) const
+        {
+            return boost::hash_range(_value.cbegin(), _value.cend());
+        }
+    };
+
+    bool operator==(base_uint const& _c) const { return pn == _c.pn; }
 
     //--------------------------------------------------------------------------
 
@@ -424,6 +436,24 @@ public:
     void zero () { *this = beast::zero; }
 };
 
+/// Fast equality operator for h256.
+template <>
+inline bool base_uint<256>::operator==(base_uint<256> const& _other) const
+{
+    const uint64_t* hash1 = (const uint64_t*)data();
+    const uint64_t* hash2 = (const uint64_t*)_other.data();
+    return (hash1[0] == hash2[0]) && (hash1[1] == hash2[1]) && (hash1[2] == hash2[2]) &&
+        (hash1[3] == hash2[3]);
+}
+
+/// Fast std::hash compatible hash function object for h256.
+template <>
+inline size_t base_uint<256>::hash::operator()(base_uint<256> const& value) const
+{
+    uint64_t const* data = reinterpret_cast<uint64_t const*>(value.data());
+    return boost::hash_range(data, data + 4);
+}
+
 using uint128 = base_uint<128>;
 using uint160 = base_uint<160>;
 using uint256 = base_uint<256>;
@@ -581,5 +611,13 @@ struct is_uniquely_represented<ripple::base_uint<Bits, Tag>>
     {};
 
 }  // beast
+
+namespace std
+{
+    template <>
+    struct hash<ripple::uint256> : ripple::uint256::hash
+    {
+    };
+}
 
 #endif

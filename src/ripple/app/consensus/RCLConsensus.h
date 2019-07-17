@@ -152,7 +152,8 @@ class RCLConsensus
         // consensus code at anytime. The only special case is the dispatched
         // onAccept call, which does not take a lock and relies on Consensus not
         // changing state until a future call to startRound.
-        friend class Consensus<Adaptor>;
+        //friend class Consensus<Adaptor>;
+        friend class PConsensus<Adaptor>;
 
         /** Attempt to acquire a specific ledger.
 

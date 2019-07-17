@@ -52,6 +52,7 @@ namespace ripple {
 		telCAN_NOT_QUEUE_BLOCKED,
 		telCAN_NOT_QUEUE_FEE,
 		telCAN_NOT_QUEUE_FULL,
+        telTX_POOL_FULL,
 
 		// -299 .. -200: M Malformed (bad signature)
 		// Causes:

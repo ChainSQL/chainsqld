@@ -115,7 +115,7 @@ transResults()
         { telCAN_NOT_QUEUE_BLOCKED,  { "telCAN_NOT_QUEUE_BLOCKED", "Can not queue at this time: blocking transaction in queue."                    } },
         { telCAN_NOT_QUEUE_FEE,      { "telCAN_NOT_QUEUE_FEE",     "Can not queue at this time: fee insufficient to replace queued transaction."   } },
         { telCAN_NOT_QUEUE_FULL,     { "telCAN_NOT_QUEUE_FULL",    "Can not queue at this time: queue is full."                                    } },
-
+        { telTX_POOL_FULL,           { "telTX_POOL_FULL",          "Can not queue at this time: tx pool is full."                                  } },
 
 		{ temMALFORMED,              { "temMALFORMED",             "Malformed transaction."                                                        } },
 		{ temBAD_AMOUNT,             { "temBAD_AMOUNT",            "Can only send positive amounts."                                               } },

@@ -41,6 +41,7 @@
 #include <ripple/overlay/predicates.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
+#include <ripple/app/misc/Transaction.h>
 
 namespace ripple {
 
@@ -389,7 +390,7 @@ RCLConsensus::Adaptor::onCollectFinish(
 		Serializer s(2048);
 		tx->getSTransaction()->add(s);
 		initialSet->addItem(
-			SHAMapItem(tx.first->getTransactionID(), std::move(s)),
+			SHAMapItem(tx->getID(), std::move(s)),
 			true,
 			false);
 	}

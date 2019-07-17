@@ -125,6 +125,10 @@ public:
     TER
     checkSign (PreclaimContext const& ctx);
 
+    static 
+    void
+    setSeq(OpenView &view, ApplyFlags &flags, STTx const& tx);
+
     // Returns the fee in fee units, not scaled for load.
     static
     std::uint64_t
