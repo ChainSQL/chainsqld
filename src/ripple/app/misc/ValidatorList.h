@@ -240,6 +240,11 @@ public:
         return quorum_;
     };
 
+	std::vector<PublicKey> validators()
+	{
+		return validators_;
+	}
+
     /** Returns `true` if public key is trusted
 
         @param identity Validation public key

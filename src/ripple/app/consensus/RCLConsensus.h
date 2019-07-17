@@ -29,6 +29,7 @@
 #include <ripple/basics/Log.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/consensus/Consensus.h>
+#include <peersafe/app/consensus/PConsensus.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/overlay/Message.h>
 #include <ripple/protocol/RippleLedgerHash.h>
@@ -134,6 +135,11 @@ class RCLConsensus
             return parms_;
         }
 
+		NodeID_t const& 
+			nodeID() const
+		{
+			return nodeID_;
+		}
     private:
         //---------------------------------------------------------------------
         // The following members implement the generic Consensus requirements
@@ -261,6 +267,13 @@ class RCLConsensus
             RCLCxLedger const& ledger,
             NetClock::time_point const& closeTime,
             ConsensusMode mode);
+
+		Result
+		onCollectFinish(
+			RCLCxLedger const& ledger,
+			std::vector<uint256> const& transactions,
+			NetClock::time_point const& closeTime,
+			ConsensusMode mode);
 
         /** Process the accepted ledger.
 
@@ -470,7 +483,8 @@ private:
     using ScopedLockType = std::lock_guard <std::recursive_mutex>;
 
     Adaptor adaptor_;
-    Consensus<Adaptor> consensus_;
+    //Consensus<Adaptor> consensus_;
+	PConsensus<Adaptor> consensus_;
     beast::Journal j_;
 };
 }
