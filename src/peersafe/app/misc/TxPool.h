@@ -34,29 +34,6 @@ struct transactionCompare
 	}
 };
 
-
-struct u256Hash
-{
-    size_t operator()(const uint256& u256) const {
-        //calculate hash here.
-        std::vector<unsigned char> v(u256.begin(), u256.end());
-        std::hash<int> hasher;
-        size_t seed = 0;
-        for (int i : v) {
-            seed ^= hasher(i) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        }
-        return seed;
-    }
-};
-
-struct u256Equal
-{
-public:
-    bool operator()(const uint256& a, const uint256& b) const {
-        return ripple::compare<256, void>(a, b);
-    }
-};
-
 class TxPool
 {
 public:
@@ -76,7 +53,7 @@ public:
 	bool insertTx(std::shared_ptr<Transaction> transaction);
 
     // When block validated, remove Txs from pool and avoid set.
-	bool removeTxs(RCLTxSet const& cSet);
+	bool removeTxs(SHAMap const& cSet);
 
     // Update avoid set when receiving a Tx set from peers.
     void updateAvoid(RCLTxSet const& cSet);

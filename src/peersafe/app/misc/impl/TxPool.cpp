@@ -55,14 +55,17 @@ namespace ripple {
         //return true;
     }
 
-    bool TxPool::removeTxs(RCLTxSet const& cSet)
+    bool TxPool::removeTxs(SHAMap const& cSet)
     {
         TransactionSet::iterator iterSet;
 
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
-        for (auto const& item : *(cSet.map_))
+        for (auto const& item : cSet)
         {
+            if (!txExists(item.key()))
+                continue;
+
             try
             {
                 // If not exist, throw std::out_of_range exception.
@@ -99,7 +102,8 @@ namespace ripple {
 
         for (auto const& item : *(cSet.map_))
         {
-            mAvoid.insert(item.key());
+            if (txExists(item.key()))
+                mAvoid.insert(item.key());
         }
     }
 }
