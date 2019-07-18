@@ -340,8 +340,8 @@ ConnectAttempt::processResponse()
 
     if (! OverlayImpl::isPeerUpgrade(response_))
     {
-        JLOG(journal_.info()) <<
-            "HTTP Response: " << response_.result() << " " << response_.reason();
+        //JLOG(journal_.info()) <<
+        //    "HTTP Response: " << response_.result() << " " << response_.reason();
         return close();
     }
 
