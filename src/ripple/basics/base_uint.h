@@ -115,8 +115,6 @@ public:
         }
     };
 
-    bool operator==(base_uint const& _c) const { return pn == _c.pn; }
-
     //--------------------------------------------------------------------------
 
 private:
@@ -435,16 +433,6 @@ public:
     bool isNonZero () const { return *this != beast::zero; }
     void zero () { *this = beast::zero; }
 };
-
-/// Fast equality operator for h256.
-template <>
-inline bool base_uint<256>::operator==(base_uint<256> const& _other) const
-{
-    const uint64_t* hash1 = (const uint64_t*)data();
-    const uint64_t* hash2 = (const uint64_t*)_other.data();
-    return (hash1[0] == hash2[0]) && (hash1[1] == hash2[1]) && (hash1[2] == hash2[2]) &&
-        (hash1[3] == hash2[3]);
-}
 
 /// Fast std::hash compatible hash function object for h256.
 template <>
