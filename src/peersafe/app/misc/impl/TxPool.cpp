@@ -39,7 +39,7 @@ namespace ripple {
             return false;
         }
 
-        bool rc = false;
+        bool success = false;
         auto result = mTxsSet.insert(transaction);
 
         JLOG(j_.info()) << "Inserting a " << (result.second ? "new" : "exist")
@@ -48,11 +48,10 @@ namespace ripple {
         if (result.second)
         {
             auto ret = mTxsHash.emplace(make_pair(transaction->getID(), result.first));
-            rc = ret.second;
+            success = ret.second;
         }
 
-        return rc;
-        //return true;
+        return success;
     }
 
     bool TxPool::removeTxs(SHAMap const& cSet)

@@ -76,7 +76,6 @@ private:
 	using TransactionSet = std::set<std::shared_ptr<Transaction>, transactionCompare>;
 
 	TransactionSet mTxsSet;
-	//std::map<uint256, TransactionSet::iterator, > mTxsHash;
     std::unordered_map<uint256, TransactionSet::iterator> mTxsHash;
 
     h256Set mAvoid;

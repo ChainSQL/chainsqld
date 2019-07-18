@@ -1054,10 +1054,10 @@ void NetworkOPsImp::processTransaction (std::shared_ptr<Transaction>& transactio
 
 	doTransactionCheck(transaction, bUnlimited, bLocal, failType);
 
-    if (bLocal)
-        doTransactionSync (transaction, bUnlimited, failType);
-    else
-        doTransactionAsync (transaction, bUnlimited, failType);
+    //if (bLocal)
+    //    doTransactionSync (transaction, bUnlimited, failType);
+    //else
+    //    doTransactionAsync (transaction, bUnlimited, failType);
 }
 
 void NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
