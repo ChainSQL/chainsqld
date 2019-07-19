@@ -221,6 +221,8 @@ private:
 	bool finalCondReached(std::chrono::milliseconds sinceLastClose);
 
 	void appendTransactions(h256Set const& txSet);
+
+	std::chrono::milliseconds timeSinceClose();
 private:
 	Adaptor& adaptor_;
 
@@ -251,9 +253,6 @@ private:
 	ConsensusTimer openTime_;
 
 	NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
-
-	// Time it took for the last consensus round to converge
-	std::chrono::milliseconds prevRoundTime_;
 
 	// Transaction Sets, indexed by hash of transaction tree
 	hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
@@ -309,8 +308,6 @@ PConsensus<Adaptor>::startRound(
 {
 	if (firstRound_)
 	{
-		// take our initial view of closeTime_ from the seed ledger
-		prevRoundTime_ = adaptor_.parms().ledgerIDLE_INTERVAL;
 		prevCloseTime_ = prevLedger.closeTime();
 		firstRound_ = false;
 	}
@@ -404,34 +401,17 @@ PConsensus<Adaptor>::peerProposalInternal(
 	if (newPeerProp.prevLedger() != prevLedgerID_)
 	{
 		JLOG(j_.debug()) << "Got proposal for " << newPeerProp.prevLedger()
-			<< " but we are on " << prevLedgerID_;
+			<< " from "<< toBase58(TOKEN_NODE_PUBLIC, newPeerPos.publicKey()) << " but we are on " << prevLedgerID_;
 		return false;
 	}
 
 	{
-		// update current position
-		//auto peerPosIt = currPeerPositions_.find(peerID);
-
-		//if (peerPosIt != currPeerPositions_.end())
-		//{
-		//	if (newPeerProp.proposeSeq() <=
-		//		peerPosIt->second.proposal().proposeSeq())
-		//	{
-		//		return false;
-		//	}
-		//}
-
-
-		//if (peerPosIt != currPeerPositions_.end())
-		//	peerPosIt->second = newPeerPos;
-		//else
-		//	currPeerPositions_.emplace(peerID, newPeerPos);
 		PublicKey pub = newPeerPos.publicKey();
 		auto newSetID = newPeerProp.position();
 		auto iter = txSetVoted_.find(newSetID);
 		if (iter != txSetVoted_.end())
 		{
-			JLOG(j_.info()) << "Got proposal for set from public :" << toBase58(TOKEN_NODE_PUBLIC, pub);;
+			JLOG(j_.info()) << "Got proposal for set from public :" << toBase58(TOKEN_NODE_PUBLIC, pub);
 			iter->second.insert(pub);
 		}
 		else
@@ -442,6 +422,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 
 				txSetVoted_[newSetID] = std::set<PublicKey>{pub};
 				setID_ = newSetID;
+				rawCloseTimes_.self = now_;
 
 				JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
 				for (auto pub : txSetVoted_[*setID_])
@@ -473,6 +454,15 @@ PConsensus<Adaptor>::peerProposalInternal(
 			}
 		}
 	}
+
+	if (newPeerProp.isInitial())
+	{
+		// Record the close time estimate
+		JLOG(j_.debug()) << "Peer reports close time as "
+			<< newPeerProp.closeTime().time_since_epoch().count();
+		++rawCloseTimes_.peers[newPeerProp.closeTime()];
+	}
+
 
 	JLOG(j_.trace()) << "Processing peer proposal " << newPeerProp.proposeSeq()
 		<< "/" << newPeerProp.position();
@@ -578,17 +568,9 @@ PConsensus<Adaptor>::appendTransactions(h256Set const& txSet)
 }
 
 template <class Adaptor>
-void
-PConsensus<Adaptor>::phaseCollecting()
+std::chrono::milliseconds
+PConsensus<Adaptor>::timeSinceClose()
 {
-	using namespace std::chrono;
-
-	// it is shortly before ledger close time
-	bool anyTransactions = adaptor_.hasOpenTransactions();
-	auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
-
-	openTime_.tick(clock_.now());
-
 	// This computes how long since last ledger's close time
 	milliseconds sinceClose;
 	{
@@ -607,6 +589,24 @@ PConsensus<Adaptor>::phaseCollecting()
 		else
 			sinceClose = -duration_cast<milliseconds>(lastCloseTime - now_);
 	}
+	return sinceClose;
+}
+
+template <class Adaptor>
+void
+PConsensus<Adaptor>::phaseCollecting()
+{
+	using namespace std::chrono;
+
+	// it is shortly before ledger close time
+	bool anyTransactions = adaptor_.hasOpenTransactions();
+	auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
+
+	openTime_.tick(clock_.now());
+
+	auto sinceClose = timeSinceClose();
+
+	JLOG(j_.info()) << "phaseCollecting time sinceClosed:" << sinceClose.count() <<"ms";
 
 	// Decide if we should propose a tx-set
 	if (shouldPack())
@@ -657,6 +657,8 @@ PConsensus<Adaptor>::phaseCollecting()
 		if (currentFinished >= minVal)
 		{
 			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_, mode_.get()));
+			result_->roundTime.reset(clock_.now());
+			rawCloseTimes_.self = now_;
 			phase_ = ConsensusPhase::establish;
 		}
 	}
@@ -678,7 +680,7 @@ PConsensus<Adaptor>::phaseVoting()
 	JLOG(j_.info()) << "phaseVoting roundTime:" << result_->roundTime.read().count();
 
 	// Give everyone a chance to take an initial position
-	if (result_->roundTime.read().count() < minBlockTime_)
+	if (timeSinceClose().count() < maxBlockTime_)
 		return;
 
 	// Nothing to do if we don't have consensus.
@@ -686,7 +688,6 @@ PConsensus<Adaptor>::phaseVoting()
 		return;
 
 	prevProposers_ = txSetVoted_[*setID_].size();
-	prevRoundTime_ = result_->roundTime.read();
 
 	phase_ = ConsensusPhase::accepted;
 	adaptor_.onAccept(
@@ -814,7 +815,6 @@ PConsensus<Adaptor>::getJson(bool full) const
 		ret["close_resolution"] = static_cast<Int>(closeResolution_.count());
 		//ret["have_time_consensus"] = haveCloseTimeConsensus_;
 		ret["previous_proposers"] = static_cast<Int>(prevProposers_);
-		ret["previous_mseconds"] = static_cast<Int>(prevRoundTime_.count());
 
 		if (!acquired_.empty())
 		{
@@ -856,19 +856,19 @@ PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 	{
 		prevLedgerID_ = lgrId;
 
-		// Clear out state
-		if (result_)
-		{
-			result_->disputes.clear();
-			result_->compares.clear();
-		}
+		//// Clear out state
+		//if (result_)
+		//{
+		//	result_->disputes.clear();
+		//	result_->compares.clear();
+		//}
 
-		currPeerPositions_.clear();
+		//currPeerPositions_.clear();
 		rawCloseTimes_.peers.clear();
-		deadNodes_.clear();
+		//deadNodes_.clear();
 
-		// Get back in sync, this will also recreate disputes
-		playbackProposals();
+		//// Get back in sync, this will also recreate disputes
+		//playbackProposals();
 	}
 
 	if (previousLedger_.id() == prevLedgerID_)
