@@ -30,6 +30,7 @@
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/consensus/Consensus.h>
 #include <peersafe/app/consensus/PConsensus.h>
+#include <peersafe/app/consensus/ConsensusBase.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/overlay/Message.h>
 #include <ripple/protocol/RippleLedgerHash.h>
@@ -154,6 +155,8 @@ class RCLConsensus
         // changing state until a future call to startRound.
         //friend class Consensus<Adaptor>;
         friend class PConsensus<Adaptor>;
+		friend class Consensus<Adaptor>;
+		friend class RCLConsensus;
 
         /** Attempt to acquire a specific ledger.
 
@@ -455,7 +458,7 @@ public:
     prevLedgerID() const
     {
         ScopedLockType _{mutex_};
-        return consensus_.prevLedgerID();
+        return consensus_->prevLedgerID();
     }
 
     //! @see Consensus::simulate
@@ -477,6 +480,10 @@ public:
     }
 
 private:
+	// check if switch consensus from Consensus to PConsensus.
+	void checkSwitchConsensus(LedgerIndex prevLedgerSeq);
+
+private:
     // Since Consensus does not provide intrinsic thread-safety, this mutex
     // guards all calls to consensus_. adaptor_ uses atomics internally
     // to allow concurrent access of its data members that have getters.
@@ -484,8 +491,12 @@ private:
     using ScopedLockType = std::lock_guard <std::recursive_mutex>;
 
     Adaptor adaptor_;
-    //Consensus<Adaptor> consensus_;
-	PConsensus<Adaptor> consensus_;
+    std::shared_ptr<Consensus<Adaptor>> consensus_ripple_;
+	std::shared_ptr<PConsensus<Adaptor>> consensus_peersafe_;
+	std::shared_ptr<ConsensusBase<Adaptor>> consensus_;
+
+	LedgerIndex firstNewValidated_;
+	
     beast::Journal j_;
 };
 }

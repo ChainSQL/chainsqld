@@ -29,6 +29,7 @@
 #include <ripple/consensus/LedgerTiming.h>
 #include <ripple/consensus/DisputedTx.h>
 #include <ripple/json/json_writer.h>
+#include <peersafe/app/consensus/ConsensusBase.h>
 
 namespace ripple {
 
@@ -276,7 +277,7 @@ checkConsensus(
                   Consensus to the larger application.
 */
 template <class Adaptor>
-class Consensus
+class Consensus : public ConsensusBase<Adaptor>
 {
     using Ledger_t = typename Adaptor::Ledger_t;
     using TxSet_t = typename Adaptor::TxSet_t;

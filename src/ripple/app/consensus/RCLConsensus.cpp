@@ -62,10 +62,13 @@ RCLConsensus::RCLConsensus(
           inboundTransactions,
           validatorKeys,
           journal)
-    , consensus_(clock, adaptor_, journal)
+    , consensus_ripple_(std::make_shared<Consensus<Adaptor>>(clock, adaptor_, journal))
+	, consensus_peersafe_(std::make_shared<PConsensus<Adaptor>>(clock, adaptor_, journal))
     , j_(journal)
 
 {
+	consensus_ = consensus_ripple_;
+	firstNewValidated_ = 0;
 }
 
 RCLConsensus::Adaptor::Adaptor(
@@ -502,6 +505,8 @@ RCLConsensus::Adaptor::doAccept(
     }
     else
     {
+		JLOG(j_.info()) << "consensusCloseTime:" << consensusCloseTime.time_since_epoch().count() <<
+			",closeResolution:" << closeResolution.count() << ",prevLedger.closeTime():" << prevLedger.closeTime().time_since_epoch().count();
         // We agreed on a close time
         consensusCloseTime = effCloseTime(
             consensusCloseTime, closeResolution, prevLedger.closeTime());
@@ -973,7 +978,7 @@ RCLConsensus::getJson(bool full) const
     Json::Value ret;
     {
       ScopedLockType _{mutex_};
-      ret = consensus_.getJson(full);
+      ret = consensus_->getJson(full);
     }
     ret["validating"] = adaptor_.validating();
     return ret;
@@ -985,7 +990,7 @@ RCLConsensus::timerEntry(NetClock::time_point const& now)
     try
     {
         ScopedLockType _{mutex_};
-        consensus_.timerEntry(now);
+        consensus_->timerEntry(now);
     }
     catch (SHAMapMissingNode const& mn)
     {
@@ -1001,7 +1006,7 @@ RCLConsensus::gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet)
     try
     {
         ScopedLockType _{mutex_};
-        consensus_.gotTxSet(now, txSet);
+        consensus_->gotTxSet(now, txSet);
     }
     catch (SHAMapMissingNode const& mn)
     {
@@ -1020,7 +1025,7 @@ RCLConsensus::simulate(
     boost::optional<std::chrono::milliseconds> consensusDelay)
 {
     ScopedLockType _{mutex_};
-    consensus_.simulate(now, consensusDelay);
+    consensus_->simulate(now, consensusDelay);
 }
 
 bool
@@ -1029,7 +1034,7 @@ RCLConsensus::peerProposal(
     RCLCxPeerPos const& newProposal)
 {
     ScopedLockType _{mutex_};
-    return consensus_.peerProposal(now, newProposal);
+    return consensus_->peerProposal(now, newProposal);
 }
 
 bool
@@ -1072,7 +1077,34 @@ RCLConsensus::startRound(
     RCLCxLedger const& prevLgr)
 {
     ScopedLockType _{mutex_};
-    consensus_.startRound(
+	checkSwitchConsensus(prevLgr.seq());
+    consensus_->startRound(
         now, prevLgrId, prevLgr, adaptor_.preStartRound(prevLgr));
 }
+
+void RCLConsensus::checkSwitchConsensus(LedgerIndex prevLedgerSeq)
+{
+	if (firstNewValidated_ == 0)
+	{
+		if (0 != adaptor_.app_.getLedgerMaster().getValidLedgerIndex())
+		{
+			firstNewValidated_ = adaptor_.app_.getLedgerMaster().getValidLedgerIndex();
+		}
+	}
+	if (firstNewValidated_ != 0 && consensus_ != consensus_peersafe_)
+	{
+		JLOG(j_.warn()) << "checkSwitchConsensus  firstNewValidated_ = " << firstNewValidated_;
+		int round = 10;
+		LedgerIndex indexToSwitch = firstNewValidated_ + round / 2;
+		indexToSwitch -= indexToSwitch % round;
+		indexToSwitch += round;
+
+		if (prevLedgerSeq == indexToSwitch - 1)
+		{
+			consensus_ = consensus_peersafe_;
+			JLOG(j_.warn()) << "Switching consensus to PConsensus from ledger " << indexToSwitch;
+		}			
+	}
+}
+
 }
