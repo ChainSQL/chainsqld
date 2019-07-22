@@ -1113,6 +1113,10 @@ void RCLConsensus::checkSwitchConsensus(LedgerIndex prevLedgerSeq)
 		int round = 20;
 		LedgerIndex indexToSwitch = firstNewValidated_ + round / 2;
 		indexToSwitch -= indexToSwitch % round;
+		if (indexToSwitch < firstNewValidated_)
+		{
+			indexToSwitch += round;
+		}
 		//indexToSwitch += round;
 
 		if (prevLedgerSeq == indexToSwitch - 1)
