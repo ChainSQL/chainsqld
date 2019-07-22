@@ -86,7 +86,7 @@ struct ConsensusParms
     std::chrono::milliseconds ledgerMIN_CLOSE = 2s;
 
     //! How often we check state or change positions
-    std::chrono::milliseconds ledgerGRANULARITY = 1s;
+    std::chrono::milliseconds ledgerGRANULARITY = 200ms;
 
     /** The minimum amount of time to consider the previous round
         to have taken.
