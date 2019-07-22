@@ -1198,7 +1198,8 @@ LedgerMaster::checkAccept (
     ledger->setValidated();
     ledger->setFull();
     setValidLedger(ledger);
-	app_.getTxPool().removeTxs(ledger->txMap());
+
+    app_.getTxPool().removeTxs(ledger->txMap());
 
     if (!mPubLedger)
     {

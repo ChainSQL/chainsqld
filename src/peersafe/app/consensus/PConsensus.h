@@ -361,6 +361,8 @@ PConsensus<Adaptor>::startRoundInternal(
 	rawCloseTimes_.self = {};
 	txSetCached_.clear();
 	txSetVoted_.clear();
+    transactions_.clear();
+    setID_.reset();
 
 	closeResolution_ = getNextLedgerTimeResolution(
 		previousLedger_.closeTimeResolution(),
