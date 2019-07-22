@@ -507,10 +507,20 @@ RCLConsensus::Adaptor::doAccept(
     {
 		JLOG(j_.info()) << "consensusCloseTime:" << consensusCloseTime.time_since_epoch().count() <<
 			",closeResolution:" << closeResolution.count() << ",prevLedger.closeTime():" << prevLedger.closeTime().time_since_epoch().count();
-        // We agreed on a close time
-        consensusCloseTime = effCloseTime(
-            consensusCloseTime, closeResolution, prevLedger.closeTime());
-        closeTimeCorrect = true;
+
+		if (useNewConsensus_)
+		{
+			//lujinglei:not need to round close time any more,just use leader's close time,just adjust by prevLedger
+			consensusCloseTime = std::max<NetClock::time_point>(consensusCloseTime, prevLedger.closeTime() + 1s);
+		}
+		else
+		{
+			// We agreed on a close time
+			consensusCloseTime = effCloseTime(
+				consensusCloseTime, closeResolution, prevLedger.closeTime());
+		}
+
+		closeTimeCorrect = true;
     }
 
     JLOG(j_.debug()) << "Report: Prop=" << (proposing ? "yes" : "no")
@@ -963,6 +973,12 @@ RCLConsensus::Adaptor::validate(RCLCxLedger const& ledger, bool proposing)
 }
 
 void
+RCLConsensus::Adaptor::setUseNewConsensus(bool bUseNew)
+{
+	useNewConsensus_ = bUseNew;
+}
+
+void
 RCLConsensus::Adaptor::onModeChange(
     ConsensusMode before,
     ConsensusMode after)
@@ -1094,14 +1110,15 @@ void RCLConsensus::checkSwitchConsensus(LedgerIndex prevLedgerSeq)
 	if (firstNewValidated_ != 0 && consensus_ != consensus_peersafe_)
 	{
 		JLOG(j_.warn()) << "checkSwitchConsensus  firstNewValidated_ = " << firstNewValidated_;
-		int round = 10;
+		int round = 20;
 		LedgerIndex indexToSwitch = firstNewValidated_ + round / 2;
 		indexToSwitch -= indexToSwitch % round;
-		indexToSwitch += round;
+		//indexToSwitch += round;
 
 		if (prevLedgerSeq == indexToSwitch - 1)
 		{
 			consensus_ = consensus_peersafe_;
+			adaptor_.setUseNewConsensus(true);
 			JLOG(j_.warn()) << "Switching consensus to PConsensus from ledger " << indexToSwitch;
 		}			
 	}

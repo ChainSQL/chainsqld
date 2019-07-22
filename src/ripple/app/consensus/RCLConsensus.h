@@ -69,7 +69,8 @@ class RCLConsensus
         ConsensusParms parms_;
 
         // The timestamp of the last validation we used
-        NetClock::time_point lastValidationTime_;
+		NetClock::time_point lastValidationTime_;
+		bool useNewConsensus_ = false;
 
         // These members are queried via public accesors and are atomic for
         // thread safety.
@@ -141,6 +142,8 @@ class RCLConsensus
 		{
 			return nodeID_;
 		}
+
+		void setUseNewConsensus(bool bUseNew);
     private:
         //---------------------------------------------------------------------
         // The following members implement the generic Consensus requirements
@@ -379,7 +382,6 @@ class RCLConsensus
         */
         void
         validate(RCLCxLedger const& ledger, bool proposing);
-
     };
 
 public:

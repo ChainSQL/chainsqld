@@ -223,6 +223,8 @@ private:
 	void appendTransactions(h256Set const& txSet);
 
 	std::chrono::milliseconds timeSinceClose();
+
+	void leaveConsensus();
 private:
 	Adaptor& adaptor_;
 
@@ -240,6 +242,7 @@ private:
 	// ledger would close if it closed now
 	NetClock::time_point now_;
 	NetClock::time_point prevCloseTime_;
+	NetClock::time_point closeTime_;
 
 	//-------------------------------------------------------------------------
 	// Non-peer (self) consensus data
@@ -350,6 +353,7 @@ PConsensus<Adaptor>::startRoundInternal(
 	phase_ = ConsensusPhase::open;
 	mode_.set(mode, adaptor_);
 	now_ = now;
+	closeTime_ = now;
 	prevLedgerID_ = prevLedgerID;
 	previousLedger_ = prevLedger;
 	result_.reset();
@@ -407,6 +411,9 @@ PConsensus<Adaptor>::peerProposalInternal(
 		return false;
 	}
 
+	JLOG(j_.info()) << "Processing peer proposal " << newPeerProp.proposeSeq()
+		<< "/" << newPeerProp.position();
+
 	{
 		PublicKey pub = newPeerPos.publicKey();
 		auto newSetID = newPeerProp.position();
@@ -420,17 +427,12 @@ PConsensus<Adaptor>::peerProposalInternal(
 		{
 			if (isLeader(pub))
 			{
-				JLOG(j_.info()) << "Got proposal from leader :" << newSetID <<", enter phase::establish.";
+				JLOG(j_.info()) << "Got proposal from leader, enter phase::establish.";
 
 				txSetVoted_[newSetID] = std::set<PublicKey>{pub};
 				setID_ = newSetID;
 				rawCloseTimes_.self = now_;
-
-				JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
-				for (auto pub : txSetVoted_[*setID_])
-				{
-					JLOG(j_.info()) << "voting public for set:" << toBase58(TOKEN_NODE_PUBLIC, pub);
-				}
+				closeTime_ = newPeerProp.closeTime();
 
 				if (txSetCached_.find(*setID_) != txSetCached_.end())
 				{
@@ -439,12 +441,18 @@ PConsensus<Adaptor>::peerProposalInternal(
 					txSetCached_.erase(*setID_);
 				}
                 
+				JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
+				for (auto pub : txSetVoted_[*setID_])
+				{
+					JLOG(j_.info()) << "voting public for set:" << toBase58(TOKEN_NODE_PUBLIC, pub);
+				}
+
                 if (phase_ == ConsensusPhase::open)
                     phase_ = ConsensusPhase::establish;
 			}
 			else
 			{
-				JLOG(j_.info()) << "Got proposal for set from public and added to cache:" << toBase58(TOKEN_NODE_PUBLIC, pub);;
+				JLOG(j_.info()) << "Got proposal for set from public " << toBase58(TOKEN_NODE_PUBLIC, pub) <<" and added to cache";
 				if (txSetCached_.find(newSetID) != txSetCached_.end())
 				{
 					txSetCached_[newSetID].insert(pub);
@@ -465,9 +473,6 @@ PConsensus<Adaptor>::peerProposalInternal(
 		++rawCloseTimes_.peers[newPeerProp.closeTime()];
 	}
 
-
-	JLOG(j_.trace()) << "Processing peer proposal " << newPeerProp.proposeSeq()
-		<< "/" << newPeerProp.position();
 
 	{
 		auto const ait = acquired_.find(newPeerProp.position());
@@ -499,17 +504,18 @@ PConsensus<Adaptor>::gotTxSet(
 
 	auto id = txSet.id();
 
-	// If we've already processed this transaction set since requesting
-	// it from the network, there is nothing to do now
-	if (!acquired_.emplace(id, txSet).second)
-		return;
-
-    adaptor_.app_.getTxPool().updateAvoid(txSet);
+	if (acquired_.find(id) == acquired_.end())
+	{
+		acquired_.emplace(id, txSet);
+	}
 
 	if (!isLeader(adaptor_.valPublic_))
 	{
 		if (setID_ && setID_ == id)
 		{
+			//update avoid if we got the right tx-set
+			adaptor_.app_.getTxPool().updateAvoid(txSet);
+
 			auto set = txSet.map_->snapShot(false);
 			//this place has a txSet copy,what's the time it costs?
 			result_.emplace(Result(
@@ -518,8 +524,8 @@ PConsensus<Adaptor>::gotTxSet(
 				prevLedgerID_,
 				RCLCxPeerPos::Proposal::seqJoin,
 				id,
+				closeTime_,
 				now,
-				adaptor_.app_.timeKeeper().closeTime(),
 				adaptor_.nodeID())) );
 
 			txSetVoted_[*setID_].insert(adaptor_.valPublic_);
@@ -573,6 +579,7 @@ template <class Adaptor>
 std::chrono::milliseconds
 PConsensus<Adaptor>::timeSinceClose()
 {
+	using namespace std::chrono;
 	// This computes how long since last ledger's close time
 	milliseconds sinceClose;
 	{
@@ -598,8 +605,6 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::phaseCollecting()
 {
-	using namespace std::chrono;
-
 	// it is shortly before ledger close time
 	bool anyTransactions = adaptor_.hasOpenTransactions();
 	auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
@@ -662,6 +667,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			result_->roundTime.reset(clock_.now());
 			rawCloseTimes_.self = now_;
 			phase_ = ConsensusPhase::establish;
+			JLOG(j_.warn()) << "Enter establish without receiving leader proposal!";
 		}
 	}
 }
@@ -886,6 +892,23 @@ PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 	else
 	{
 		mode_.set(ConsensusMode::wrongLedger, adaptor_);
+	}
+}
+
+template <class Adaptor>
+void
+PConsensus<Adaptor>::leaveConsensus()
+{
+	if (mode_.get() == ConsensusMode::proposing)
+	{
+		if (result_ && !result_->position.isBowOut())
+		{
+			result_->position.bowOut(now_);
+			adaptor_.propose(result_->position);
+		}
+
+		mode_.set(ConsensusMode::observing, adaptor_);
+		JLOG(j_.info()) << "Bowing out of consensus";
 	}
 }
 
