@@ -80,7 +80,6 @@ SField const sfIndex       = make::one(&sfIndex,       STI_HASH256,     258, "in
 // 8-bit integers
 SF_U8 const sfCloseResolution   = make::one<SF_U8::type>(&sfCloseResolution,   STI_UINT8, 1, "CloseResolution");
 SF_U8 const sfMethod            = make::one<SF_U8::type>(&sfMethod,            STI_UINT8, 2, "Method");
-SF_U8 const sfTransactionResult = make::one<SF_U8::type>(&sfTransactionResult, STI_UINT8, 3, "TransactionResult");
 
 // 8-bit integers (uncommon)
 SF_U8 const sfTickSize          = make::one<SF_U8::type>(&sfTickSize,          STI_UINT8, 16, "TickSize");
@@ -89,6 +88,7 @@ SF_U8 const sfTickSize          = make::one<SF_U8::type>(&sfTickSize,          S
 SF_U16 const sfLedgerEntryType = make::one<SF_U16::type>(&sfLedgerEntryType, STI_UINT16, 1, "LedgerEntryType", SField::sMD_Never);
 SF_U16 const sfTransactionType = make::one<SF_U16::type>(&sfTransactionType, STI_UINT16, 2, "TransactionType");
 SF_U16 const sfSignerWeight    = make::one<SF_U16::type>(&sfSignerWeight,    STI_UINT16, 3, "SignerWeight");
+SF_U16 const sfTransactionResult = make::one<SF_U16::type>(&sfTransactionResult, STI_UINT16, 4, "TransactionResult");
 SF_U16 const sfOpType          = make::one<SF_U16::type>(&sfOpType,          STI_UINT16, 50, "OpType");
 SF_U16 const sfContractOpType  = make::one<SF_U16::type>(&sfContractOpType,  STI_UINT16, 51, "ContractOpType");
 

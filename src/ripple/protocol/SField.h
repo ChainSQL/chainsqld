@@ -336,12 +336,12 @@ extern SField const sfMetadata;
 // 8-bit integers
 extern SF_U8 const sfCloseResolution;
 extern SF_U8 const sfMethod;
-extern SF_U8 const sfTransactionResult;
 extern SF_U8 const sfTickSize;
 // 16-bit integers
 extern SF_U16 const sfLedgerEntryType;
 extern SF_U16 const sfTransactionType;
 extern SF_U16 const sfSignerWeight;
+extern SF_U16 const sfTransactionResult;
 extern SF_U16 const sfOpType;
 extern SF_U16 const sfContractOpType;
 

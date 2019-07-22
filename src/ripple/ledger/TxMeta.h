@@ -46,7 +46,7 @@ public:
     TxMeta (beast::Journal j)
         : mLedger (0)
         , mIndex (static_cast<std::uint32_t> (-1))
-        , mResult (255)
+        , mResult (terMAX)
         , j_ (j)
     {
     }
@@ -55,7 +55,7 @@ public:
         : mTransactionID (txID)
         , mLedger (ledger)
         , mIndex (static_cast<std::uint32_t> (-1))
-        , mResult (255)
+        , mResult (terMAX)
         , j_(j)
     {
     }
