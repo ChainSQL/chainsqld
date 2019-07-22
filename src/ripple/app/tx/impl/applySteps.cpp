@@ -341,8 +341,8 @@ doApply(PreclaimResult const& preclaimResult,
     }
     try
     {
-        if (!preclaimResult.likelyToClaimFee)
-            return{ preclaimResult.ter, false };
+        //if (!preclaimResult.likelyToClaimFee)
+        //    return{ preclaimResult.ter, false };
         ApplyContext ctx(app, view,
             preclaimResult.tx, preclaimResult.ter,
                 preclaimResult.baseFee, preclaimResult.flags,

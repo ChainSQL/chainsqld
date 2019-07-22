@@ -803,6 +803,9 @@ Transactor::operator()()
         }
     }
 
+    // Always apply to ledger, even if tx invalid.
+    didApply = true;
+
     if (didApply)
     {
         // Transaction succeeded fully or (retries are
