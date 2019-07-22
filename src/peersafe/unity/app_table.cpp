@@ -9,5 +9,6 @@
 #include <peersafe/app/table/impl/TableSync.cpp>
 #include <peersafe/app/table/impl/TableTxAccumulator.cpp>
 #include <peersafe/app/util/TableSyncUtil.cpp>
+#include <peersafe/app/util/Common.cpp>
 #include <peersafe/app/storage/impl/TableStorageItem.cpp>
 #include <peersafe/app/storage/impl/TableStorage.cpp>
