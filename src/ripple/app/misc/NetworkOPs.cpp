@@ -283,12 +283,6 @@ public:
     void doTransactionAsync (std::shared_ptr<Transaction> transaction,
         bool bUnlimited, FailHard failtype);
 
-    void doTransactionCheckSync(std::shared_ptr<Transaction> transaction,
-        bool bUnlimited, FailHard failType);
-
-    void doTransactionCheckAsync(std::shared_ptr<Transaction> transaction,
-        bool bUnlimited, FailHard failType);
-
     std::pair<STer, bool> 
     doTransactionCheck(std::shared_ptr<Transaction> transaction,
         ApplyFlags flags, OpenView& view);
@@ -1059,82 +1053,10 @@ void NetworkOPsImp::processTransaction (std::shared_ptr<Transaction>& transactio
     app_.getMasterTransaction ().canonicalize (&transaction);
 
     if (bLocal)
-        doTransactionCheckSync (transaction, bUnlimited, failType);
+        doTransactionSync (transaction, bUnlimited, failType);
     else
-        doTransactionCheckAsync (transaction, bUnlimited, failType);
+        doTransactionAsync (transaction, bUnlimited, failType);
 }
-
-void NetworkOPsImp::doTransactionCheckSync(std::shared_ptr<Transaction> transaction,
-    bool bUnlimited, FailHard failType)
-{
-    auto stTx = *transaction->getSTransaction();
-    //if (stTx.isChainSqlTableType())
-    //{
-    //    bool ret = app_.getTableAssistant().Put(stTx);
-    //    if (!ret)
-    //    {
-    //        transaction->setStatus(INVALID);
-    //        transaction->setResult(temBAD_PUT);
-    //        return;
-    //    }
-    //}
-    std::unique_lock<std::mutex> lock(mMutex);
-
-    if (!transaction->getApplying())
-    {
-        mTransactions.push_back(TransactionStatus(transaction, bUnlimited,
-            true, failType));
-        transaction->setApplying();
-    }
-
-    do
-    {
-        if (mDispatchState == DispatchState::running)
-        {
-            // A batch processing job is already running, so wait.
-            mCond.wait(lock);
-        }
-        else
-        {
-            apply(lock);
-
-            if (mTransactions.size())
-            {
-                // More transactions need to be applied, but by another job.
-                if (m_job_queue.addJob(
-                    jtBATCH, "transactionBatch",
-                    [this](Job&) { transactionBatch(); }))
-                {
-                    mDispatchState = DispatchState::scheduled;
-                }
-            }
-        }
-    } while (transaction->getApplying());
-}
-
-void NetworkOPsImp::doTransactionCheckAsync(std::shared_ptr<Transaction> transaction,
-    bool bUnlimited, FailHard failType)
-{
-    std::lock_guard<std::mutex> lock(mMutex);
-
-    if (transaction->getApplying())
-        return;
-
-    mTransactions.push_back(TransactionStatus(transaction, bUnlimited, false,
-        failType));
-    transaction->setApplying();
-
-    if (mDispatchState == DispatchState::none)
-    {
-        if (m_job_queue.addJob(
-            jtBATCH, "transactionBatch",
-            [this](Job&) { transactionBatch(); }))
-        {
-            mDispatchState = DispatchState::scheduled;
-        }
-    }
-}
-
 
 std::pair<STer, bool>
 NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
@@ -1335,10 +1257,16 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                     if (e.admin)
                         flags = flags | tapUNLIMITED;
 
-                    auto const result = doTransactionCheck(e.transaction, flags, view);
-                    //auto const result = app_.getTxQ().apply(
-                    //    app_, view, e.transaction->getSTransaction(),
-                    //    flags, j);
+                    //if (mConsensus.adaptor_.getUseNewConsensus())
+                    //{
+                        auto const result = doTransactionCheck(e.transaction, flags, view);
+                    //}
+                    //else
+                    //{
+                    //    //auto const result = app_.getTxQ().apply(
+                    //    //    app_, view, e.transaction->getSTransaction(),
+                    //    //    flags, j);
+                    //}
                     e.result = result.first;
                     e.applied = result.second;
 
