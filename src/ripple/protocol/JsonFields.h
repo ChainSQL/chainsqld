@@ -492,6 +492,15 @@ JSS ( tx_json );                    // in/out: TransactionSign
 JSS ( tx_signing_hash );            // out: TransactionSign
 JSS ( tx_unsigned );                // out: TransactionSign
 JSS ( txn_count );                  // out: NetworkOPs
+
+
+JSS(txn_success);                  // out: NetworkOPs
+JSS(txn_failure);                  // out: NetworkOPs
+
+JSS(fail_tx_info);                  // out: NetworkOPs
+
+JSS(txn_failure_detail);                  // out: NetworkOPs
+
 JSS ( txs );                        // out: TxHistory
 JSS ( type );                       // in: AccountObjects
                                     // out: NetworkOPs
