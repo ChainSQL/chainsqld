@@ -494,12 +494,11 @@ JSS ( tx_unsigned );                // out: TransactionSign
 JSS ( txn_count );                  // out: NetworkOPs
 
 
-JSS(txn_success);                  // out: NetworkOPs
+JSS(txn_success);                 // out: NetworkOPs
 JSS(txn_failure);                  // out: NetworkOPs
 
-JSS(fail_tx_info);                  // out: NetworkOPs
-
-JSS(txn_failure_detail);                  // out: NetworkOPs
+JSS(transaction_result);      // out: doLedgerTxs
+JSS(txn_failure_detail);       // out: doLedgerTxs
 
 JSS ( txs );                        // out: TxHistory
 JSS ( type );                       // in: AccountObjects

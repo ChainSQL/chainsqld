@@ -73,8 +73,8 @@ namespace ripple {
 				failureItem[jss::hash] = to_string(item.first->getTransactionID());
 
 				std::string token, human;
-				if (transResultInfo(result, token, human)){			
-					failureItem[jss::fail_tx_info] = human;
+				if (transResultInfo(result, token, human)){
+					failureItem[jss::transaction_result] = token;
 				}
 				else {
 					JLOG(j_.error())
@@ -87,8 +87,8 @@ namespace ripple {
 						
 		}
 
-		jvResult[jss::txn_success] = Json::UInt(iSuccess);
-		jvResult[jss::txn_failure]   = Json::UInt(iFailure);
+		jvResult[jss::txn_success]   = Json::UInt(iSuccess);
+		jvResult[jss::txn_failure]     = Json::UInt(iFailure);
 		jvResult[jss::ledger_index] = ledger->seq();
 	
 		if (full) {

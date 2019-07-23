@@ -47,3 +47,4 @@
 #include <test/rpc/TransactionEntry_test.cpp>
 #include <test/rpc/TransactionHistory_test.cpp>
 #include <test/rpc/ValidatorRPC_test.cpp>
+#include <test/rpc/LedgerTxs_test.cpp>
