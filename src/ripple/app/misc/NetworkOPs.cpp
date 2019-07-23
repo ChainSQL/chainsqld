@@ -283,11 +283,17 @@ public:
     void doTransactionAsync (std::shared_ptr<Transaction> transaction,
         bool bUnlimited, FailHard failtype);
 
-	void doTransactionCheck(std::shared_ptr<Transaction> transaction,
-		bool bUnlimited, bool bLocal, FailHard failtype);
+    void doTransactionCheckSync(std::shared_ptr<Transaction> transaction,
+        bool bUnlimited, FailHard failType);
 
-    STer check(std::shared_ptr<Transaction> transaction, 
-        PreflightContext const& pfctx, OpenView const& view);
+    void doTransactionCheckAsync(std::shared_ptr<Transaction> transaction,
+        bool bUnlimited, FailHard failType);
+
+    std::pair<STer, bool> 
+    doTransactionCheck(std::shared_ptr<Transaction> transaction,
+        ApplyFlags flags, OpenView& view);
+
+    TER check(PreflightContext const& pfctx, OpenView const& view);
 
     /**
      * Apply transactions in batches. Continue until none are queued.
@@ -1052,127 +1058,120 @@ void NetworkOPsImp::processTransaction (std::shared_ptr<Transaction>& transactio
     // canonicalize can change our pointer
     app_.getMasterTransaction ().canonicalize (&transaction);
 
-	doTransactionCheck(transaction, bUnlimited, bLocal, failType);
-
-    //if (bLocal)
-    //    doTransactionSync (transaction, bUnlimited, failType);
-    //else
-    //    doTransactionAsync (transaction, bUnlimited, failType);
+    if (bLocal)
+        doTransactionCheckSync (transaction, bUnlimited, failType);
+    else
+        doTransactionCheckAsync (transaction, bUnlimited, failType);
 }
 
-void NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
-    bool bUnlimited, bool bLocal, FailHard failType)
+void NetworkOPsImp::doTransactionCheckSync(std::shared_ptr<Transaction> transaction,
+    bool bUnlimited, FailHard failType)
 {
-    std::vector<TransactionStatus> submit_held;
+    auto stTx = *transaction->getSTransaction();
+    //if (stTx.isChainSqlTableType())
+    //{
+    //    bool ret = app_.getTableAssistant().Put(stTx);
+    //    if (!ret)
+    //    {
+    //        transaction->setStatus(INVALID);
+    //        transaction->setResult(temBAD_PUT);
+    //        return;
+    //    }
+    //}
+    std::unique_lock<std::mutex> lock(mMutex);
 
-    if (app_.getTxPool().txExists(transaction->getID()))
+    if (!transaction->getApplying())
     {
-        JLOG(m_journal.info()) << "Tx: " << transaction->getID()
-            << " already in Tx pool";
-
-        transaction->setResult(tefALREADY);
-        return;
+        mTransactions.push_back(TransactionStatus(transaction, bUnlimited,
+            true, failType));
+        transaction->setApplying();
     }
 
-    auto stTx = *transaction->getSTransaction();
+    do
+    {
+        if (mDispatchState == DispatchState::running)
+        {
+            // A batch processing job is already running, so wait.
+            mCond.wait(lock);
+        }
+        else
+        {
+            apply(lock);
 
-    ApplyFlags flags = tapNO_CHECK_SIGN;
-    if (bLocal)
-        flags = flags | tapFromClient;
-    else
-        flags = flags | tapByRelay;
+            if (mTransactions.size())
+            {
+                // More transactions need to be applied, but by another job.
+                if (m_job_queue.addJob(
+                    jtBATCH, "transactionBatch",
+                    [this](Job&) { transactionBatch(); }))
+                {
+                    mDispatchState = DispatchState::scheduled;
+                }
+            }
+        }
+    } while (transaction->getApplying());
+}
 
-    if (bUnlimited)
-        flags = flags | tapUNLIMITED;
+void NetworkOPsImp::doTransactionCheckAsync(std::shared_ptr<Transaction> transaction,
+    bool bUnlimited, FailHard failType)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+
+    if (transaction->getApplying())
+        return;
+
+    mTransactions.push_back(TransactionStatus(transaction, bUnlimited, false,
+        failType));
+    transaction->setApplying();
+
+    if (mDispatchState == DispatchState::none)
+    {
+        if (m_job_queue.addJob(
+            jtBATCH, "transactionBatch",
+            [this](Job&) { transactionBatch(); }))
+        {
+            mDispatchState = DispatchState::scheduled;
+        }
+    }
+}
+
+
+std::pair<STer, bool>
+NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
+    ApplyFlags flags, OpenView& view)
+{
+    auto txCur = transaction->getSTransaction();
+
+    if (app_.getTxPool().txExists(txCur->getTransactionID()))
+    {
+        JLOG(m_journal.info()) << "Tx: " << txCur->getTransactionID()
+            << " already in Tx pool";
+
+        return{ tefALREADY, false };
+    }
 
     PreflightContext const pfctx(
-        app_, stTx, app_.openLedger().current()->rules(), flags, m_journal);
+        app_, *txCur, app_.openLedger().current()->rules(), flags, m_journal);
 
-    auto ter = check(transaction, pfctx, *app_.openLedger().current());
-
-    transaction->setResult(ter);
+    auto ter = check(pfctx, view);
 
     if (ter == tesSUCCESS)
     {
-        transaction->setStatus(INCLUDED);
-
         // after check and transaction's check result is tesSUCCESS£¬add it to TxPool:
-        if (!app_.getTxPool().insertTx(transaction))
+        ter = app_.getTxPool().insertTx(transaction);
+        if (ter != tesSUCCESS)
         {
-            transaction->setStatus(INVALID);
-            transaction->setResult(telTX_POOL_FULL);
-            return;
+            return{ ter, false };
         }
 
-        auto txCur = transaction->getSTransaction();
-
-        //auto AccountID = txCur->getAccountID(sfAccount);
-        //std::shared_ptr<SLE const> sle1 = cachedRead(*app_.openLedger().current(),
-        //    keylet::account(AccountID).key, ltACCOUNT_ROOT);
-        //auto seq1 = (*sle1)[sfSequence];
-
-        app_.openLedger().modify(
-            [&](OpenView& view, beast::Journal j)
-        {
-            Transactor::setSeq(view, flags, *txCur);
-            return true;
-        });
-
-        //std::shared_ptr<SLE const> sle2 = cachedRead(*app_.openLedger().current(),
-        //    keylet::account(AccountID).key, ltACCOUNT_ROOT);
-        //auto seq2 = (*sle2)[sfSequence];
-        
-        for (auto const& tx : m_ledgerMaster.pruneHeldTransactions(
-            txCur->getAccountID(sfAccount), txCur->getSequence() + 1))
-        {
-            std::string reason;
-            auto const trans = sterilize(*tx);
-            auto t = std::make_shared<Transaction>(trans, reason, app_);
-            submit_held.emplace_back(t, false, false, FailHard::no);
-        }
-    }
-    else if (isTerRetry(ter))
-    {
-        transaction->setStatus(HELD);
-
-        m_ledgerMaster.addHeldTransaction(transaction);
-    }
-    else
-    {
-        transaction->setStatus(INVALID);
-        return;
+        Transactor::setSeq(view, flags, *txCur);
+        return{ tesSUCCESS, true };
     }
 
-    if (ter == tesSUCCESS || ter == terQUEUED)
-    {
-        auto const toSkip = app_.getHashRouter().shouldRelay(transaction->getID());
-
-        if (toSkip)
-        {
-            protocol::TMTransaction tx;
-            Serializer s;
-
-            transaction->getSTransaction()->add(s);
-            tx.set_rawtransaction(s.data(), s.size());
-            tx.set_status(protocol::tsCURRENT);
-            tx.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
-            tx.set_deferred(ter == terQUEUED);
-            // FIXME: This should be when we received it
-            app_.overlay().foreach(send_if_not(
-                std::make_shared<Message>(tx, protocol::mtTRANSACTION),
-                peer_in_set(*toSkip)));
-        }
-    }
-
-    if (!submit_held.empty())
-    {
-        for (auto &e : submit_held)
-            doTransactionCheck(e.transaction, e.admin, e.local, e.failType);
-    }
+    return{ ter, false };
 }
 
-STer NetworkOPsImp::check(std::shared_ptr<Transaction> transaction, 
-    PreflightContext const& pfctx, OpenView const& view)
+TER NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 {
     auto ter = preflight1(pfctx);
     if (ter != tesSUCCESS)
@@ -1193,6 +1192,7 @@ STer NetworkOPsImp::check(std::shared_ptr<Transaction> transaction,
     pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
 
     ter = Transactor::checkSeq(*pcctx);
+
     if (ter != tesSUCCESS)
     {
         return ter;
@@ -1335,9 +1335,10 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                     if (e.admin)
                         flags = flags | tapUNLIMITED;
 
-                    auto const result = app_.getTxQ().apply(
-                        app_, view, e.transaction->getSTransaction(),
-                        flags, j);
+                    auto const result = doTransactionCheck(e.transaction, flags, view);
+                    //auto const result = app_.getTxQ().apply(
+                    //    app_, view, e.transaction->getSTransaction(),
+                    //    flags, j);
                     e.result = result.first;
                     e.applied = result.second;
 

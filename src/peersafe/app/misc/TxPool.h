@@ -12,6 +12,7 @@
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/app/consensus/RCLCxTx.h>
+#include <ripple/protocol/TER.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/consensus/PConsensusParams.h>
 
@@ -50,7 +51,7 @@ public:
 	h256Set topTransactions(uint64_t const& limit);
 
     // Insert a new Tx, return true if success else false.
-	bool insertTx(std::shared_ptr<Transaction> transaction);
+	TER insertTx(std::shared_ptr<Transaction> transaction);
 
     // When block validated, remove Txs from pool and avoid set.
 	bool removeTxs(SHAMap const& cSet);
