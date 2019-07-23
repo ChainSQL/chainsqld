@@ -1106,12 +1106,21 @@ void NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
 
         auto txCur = transaction->getSTransaction();
 
+        //auto AccountID = txCur->getAccountID(sfAccount);
+        //std::shared_ptr<SLE const> sle1 = cachedRead(*app_.openLedger().current(),
+        //    keylet::account(AccountID).key, ltACCOUNT_ROOT);
+        //auto seq1 = (*sle1)[sfSequence];
+
         app_.openLedger().modify(
             [&](OpenView& view, beast::Journal j)
         {
             Transactor::setSeq(view, flags, *txCur);
             return true;
         });
+
+        //std::shared_ptr<SLE const> sle2 = cachedRead(*app_.openLedger().current(),
+        //    keylet::account(AccountID).key, ltACCOUNT_ROOT);
+        //auto seq2 = (*sle2)[sfSequence];
         
         for (auto const& tx : m_ledgerMaster.pruneHeldTransactions(
             txCur->getAccountID(sfAccount), txCur->getSequence() + 1))

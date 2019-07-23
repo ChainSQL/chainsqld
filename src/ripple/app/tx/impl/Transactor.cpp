@@ -329,8 +329,12 @@ Transactor::setSeq(OpenView &view, ApplyFlags &flags, STTx const& tx)
 
     sle->setFieldU32(sfSequence, t_seq + 1);
 
+    //auto seq = sle->getFieldU32(sfSequence);
+
     if (sle->isFieldPresent(sfAccountTxnID))
         sle->setFieldH256(sfAccountTxnID, tx.getTransactionID());
+
+    view.rawReplace(sle);
 }
 
 // check stuff before you bother to lock the ledger
