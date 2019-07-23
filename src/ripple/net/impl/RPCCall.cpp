@@ -589,6 +589,32 @@ private:
         return jvRequest;
     }
 
+
+
+	Json::Value parseLedgerTxs(Json::Value const& jvParams)
+	{
+		Json::Value     jvRequest(Json::objectValue);
+
+		if (!jvParams.size())
+		{
+			return jvRequest;
+		}
+
+		jvParseLedger(jvRequest, jvParams[0u].asString());
+
+		if (2 == jvParams.size())
+		{
+			if (jvParams[1u].asString() == "full")
+			{
+				jvRequest[jss::full] = true;
+			}
+		}
+
+		return jvRequest;
+	}
+
+
+
     // log_level:                           Get log levels
     // log_level <severity>:                Set master log level to the specified severity
     // log_level <partition> <severity>:    Set specified partition to specified severity
@@ -1194,6 +1220,9 @@ public:
             {   "ledger_accept",        &RPCParser::parseAsIs,                  0,  0   },
             {   "ledger_closed",        &RPCParser::parseAsIs,                  0,  0   },
             {   "ledger_current",       &RPCParser::parseAsIs,                  0,  0   },
+
+			{   "ledger_txs",            &RPCParser::parseLedgerTxs,              0,  2   },
+
     //      {   "ledger_entry",         &RPCParser::parseLedgerEntry,          -1, -1   },
             {   "ledger_header",        &RPCParser::parseLedgerId,              1,  1   },
             {   "ledger_request",       &RPCParser::parseLedgerId,              1,  1   },
