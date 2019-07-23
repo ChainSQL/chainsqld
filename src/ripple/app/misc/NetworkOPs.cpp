@@ -1094,15 +1094,16 @@ void NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
 
     if (ter == tesSUCCESS)
     {
-        transaction->setStatus(INCLUDED);
-
         // after check and transaction's check result is tesSUCCESS£¬add it to TxPool:
-        if (!app_.getTxPool().insertTx(transaction))
+        ter = app_.getTxPool().insertTx(transaction);
+        if (ter != tesSUCCESS)
         {
             transaction->setStatus(INVALID);
-            transaction->setResult(telTX_POOL_FULL);
+            transaction->setResult(ter);
             return;
         }
+
+        transaction->setStatus(INCLUDED);
 
         auto txCur = transaction->getSTransaction();
 

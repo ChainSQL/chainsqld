@@ -28,7 +28,7 @@ namespace ripple {
         return ret;
     }
 
-    bool TxPool::insertTx(std::shared_ptr<Transaction> transaction)
+    TER TxPool::insertTx(std::shared_ptr<Transaction> transaction)
     {
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
@@ -36,10 +36,10 @@ namespace ripple {
         {
             JLOG(j_.warn()) << "Txs pool is full, insert failed, Tx hash: " 
                 << transaction->getID();
-            return false;
+            return telTX_POOL_FULL;
         }
 
-        bool success = false;
+        TER ter = tefPAST_SEQ;
         auto result = mTxsSet.insert(transaction);
 
         JLOG(j_.info()) << "Inserting a " << (result.second ? "new" : "exist")
@@ -47,11 +47,19 @@ namespace ripple {
 
         if (result.second)
         {
-            auto ret = mTxsHash.emplace(make_pair(transaction->getID(), result.first));
-            success = ret.second;
+            if (mTxsHash.emplace(make_pair(transaction->getID(), result.first)).second)
+            {
+                ter = tesSUCCESS;
+            }
+            else
+            {
+                JLOG(j_.error()) << "mTxsHash.emplace failed, Tx: " << transaction->getID();
+                mTxsSet.erase(transaction);
+                ter = telLOCAL_ERROR;
+            }
         }
 
-        return success;
+        return ter;
     }
 
     bool TxPool::removeTxs(SHAMap const& cSet)
