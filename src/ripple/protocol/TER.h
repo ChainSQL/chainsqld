@@ -34,152 +34,15 @@ namespace ripple {
 	{
 		// Note: Range is stable.  Exact numbers are currently unstable.  Use tokens.
 
-		// -399 .. -300: L Local error (transaction fee inadequate, exceeds local limit)
-		// Only valid during non-consensus processing.
-		// Implications:
-		// - Not forwarded
-		// - No fee check
-		telLOCAL_ERROR = -399,
-		telBAD_DOMAIN,
-		telBAD_PATH_COUNT,
-		telBAD_PUBLIC_KEY,
-		telFAILED_PROCESSING,
-		telINSUF_FEE_P,
-		telNO_DST_PARTIAL,
-		telCAN_NOT_QUEUE,
-		telCAN_NOT_QUEUE_BALANCE,
-		telCAN_NOT_QUEUE_BLOCKS,
-		telCAN_NOT_QUEUE_BLOCKED,
-		telCAN_NOT_QUEUE_FEE,
-		telCAN_NOT_QUEUE_FULL,
-        telTX_POOL_FULL,
+    // 0: S Success (success)
+    // Causes:
+    // - Success.
+    // Implications:
+    // - Applied
+    // - Forwarded
+    tesSUCCESS      = 0,
 
-		// -299 .. -200: M Malformed (bad signature)
-		// Causes:
-		// - Transaction corrupt.
-		// Implications:
-		// - Not applied
-		// - Not forwarded
-		// - Reject
-		// - Can not succeed in any imagined ledger.
-		temMALFORMED = -299,
-
-		temBAD_AMOUNT,
-		temBAD_CURRENCY,
-		temBAD_EXPIRATION,
-		temBAD_FEE,
-		temBAD_ISSUER,
-		temBAD_LIMIT,
-		temBAD_OFFER,
-		temBAD_PATH,
-		temBAD_PATH_LOOP,
-		temBAD_SEND_ZXC_LIMIT,
-		temBAD_SEND_ZXC_MAX,
-		temBAD_SEND_ZXC_NO_DIRECT,
-		temBAD_SEND_ZXC_PARTIAL,
-		temBAD_SEND_ZXC_PATHS,
-		temBAD_SEQUENCE,
-		temBAD_SIGNATURE,
-		temBAD_SRC_ACCOUNT,
-		temBAD_TRANSFER_RATE,
-		temDST_IS_SRC,
-		temDST_NEEDED,
-		temINVALID,
-		temINVALID_FLAG,
-		temREDUNDANT,
-		temRIPPLE_EMPTY,
-		temDISABLED,
-		temBAD_SIGNER,
-		temBAD_QUORUM,
-		temBAD_WEIGHT,
-		temBAD_TICK_SIZE,
-		temBAD_TRANSFERFEE_BOTH,
-		temBAD_TRANSFERFEE,
-		temBAD_FEE_MISMATCH_TRANSFER_RATE,
-
-		//for table set and sql statement
-		temBAD_OWNER,
-		temBAD_TABLES,
-		temBAD_TABLEFLAGS,
-		temBAD_RAW,
-		temBAD_OPTYPE,
-		temBAD_OPTYPE_IN_TRANSACTION,
-		temBAD_BASETX,
-		temBAD_PUT,
-		temBAD_DBTX,
-		temBAD_STATEMENTS,
-		temBAD_NEEDVERIFY,
-		temBAD_STRICTMODE,
-		temBAD_BASELEDGER,
-		temBAD_TRANSFERORDER,
-		temBAD_OPERATIONRULE,
-		temBAD_DELETERULE,
-		temBAD_UPDATERULE,
-		temBAD_RULEANDTOKEN,
-		temBAD_INSERTLIMIT,
-		temBAD_NEEDVERIFY_OPERRULE,
-
-	// An intermediate result used internally, should never be returned.
-	temUNCERTAIN,
-	temUNKNOWN,
-
-	// -199 .. -100: F
-	//    Failure (sequence number previously used)
-	//
-	// Causes:
-	// - Transaction cannot succeed because of ledger state.
-	// - Unexpected ledger state.
-	// - C++ exception.
-	//
-	// Implications:
-	// - Not applied
-	// - Not forwarded
-	// - Could succeed in an imagined ledger.
-	tefFAILURE = -199,
-	tefALREADY,
-	tefBAD_ADD_AUTH,
-	tefBAD_AUTH,
-	tefBAD_AUTH_EXIST,
-	tefBAD_AUTH_NO,
-	tefBAD_LEDGER,
-	tefCREATED,
-	tefEXCEPTION,
-	tefINTERNAL,
-	tefNO_AUTH_REQUIRED,    // Can't set auth if auth is not required.
-	tefPAST_SEQ,
-	tefWRONG_PRIOR,
-	tefMASTER_DISABLED,
-	tefMAX_LEDGER,
-	tefBAD_SIGNATURE,
-	tefBAD_QUORUM,
-	tefNOT_MULTI_SIGNING,
-	tefBAD_AUTH_MASTER,
-	tefTABLE_SAMENAME,   // Table name and table new name is same or create exist table
-	tefTABLE_NOTEXIST,   // Table is not exist 
-	tefTABLE_STATEERROR, // Table state is error
-	tefBAD_USER,         // User is bad format
-	tefTABLE_EXISTANDNOTDEL,         // Table exist and is not deleted
-	tefTABLE_STORAGEERROR,
-	tefTABLE_STORAGENORMALERROR,
-	tefTABLE_TXDISPOSEERROR,
-	tefTABLE_RULEDISSATISFIED,
-	tefTABLE_COUNTFULL,
-	tefTABLE_GRANTFULL,
-	tefDBNOTCONFIGURED,
-	tefINSUFFICIENT_RESERVE,
-	tefINSU_RESERVE_TABLE,
-	tefINVARIANT_FAILED,
-	tefBAD_DBNAME,       // NameInDB does not match tableName.
-	tefBAD_STATEMENT,    // satement error
-	tefGAS_INSUFFICIENT,
-	tefCONTRACT_EXEC_EXCEPTION,
-	tefCONTRACT_REVERT_INSTRUCTION,
-	tefCONTRACT_CANNOT_BEPAYED,
-	tefCONTRACT_NOT_EXIST,
-
-			//invalid currency
-	tefINVALID_CURRENY,
-    // -99 .. -1: R Retry
+    // 1 .. 99: R Retry
     //   sequence too high, no funds for txn fee, originating -account
     //   non-existent
     //
@@ -195,7 +58,7 @@ namespace ripple {
     // - Might succeed later
     // - Hold
     // - Makes hole in sequence which jams transactions.
-    terRETRY        = -99,
+    terRETRY = 89,
     terFUNDS_SPENT,      // This is a free transaction, so don't burden network.
     terINSUF_FEE_B,      // Can't pay fee, therefore don't burden network.
     terNO_ACCOUNT,       // Can't pay fee, therefore don't burden network.
@@ -203,19 +66,12 @@ namespace ripple {
     terNO_LINE,          // Internal flag.
     terOWNERS,           // Can't succeed with non-zero owner count.
     terPRE_SEQ,          // Can't pay fee, no point in forwarding, so don't
-                         // burden network.
+                            // burden network.
     terLAST,             // Process after all other transactions
     terNO_RIPPLE,        // Rippling not allowed
-    terQUEUED,           // Transaction is being held in TxQ until fee drops
-    // 0: S Success (success)
-    // Causes:
-    // - Success.
-    // Implications:
-    // - Applied
-    // - Forwarded
-    tesSUCCESS      = 0,
+    terQUEUED = 99,           // Transaction is being held in TxQ until fee drops
 
-	// 100 .. 159 C
+	// 100 .. 149 C
 	//   Claim fee only (ripple transaction with no good paths, pay to
 	//   non-existent account, no path)
 	//
@@ -265,27 +121,175 @@ namespace ripple {
 	tecOVERSIZE = 145,
 	tecCRYPTOCONDITION_ERROR = 146,
 	tecINVARIANT_FAILED = 147,
-	tecUNFUNDED_ESCROW = 148
+	tecUNFUNDED_ESCROW = 148,
+
+    // 150 .. 199: F
+    //    Failure (sequence number previously used)
+    //
+    // Causes:
+    // - Transaction cannot succeed because of ledger state.
+    // - Unexpected ledger state.
+    // - C++ exception.
+    //
+    // Implications:
+    // - Not applied
+    // - Not forwarded
+    // - Could succeed in an imagined ledger.
+    tefFAILURE = 150,
+    tefALREADY,
+    tefBAD_ADD_AUTH,
+    tefBAD_AUTH,
+    tefBAD_AUTH_EXIST,
+    tefBAD_AUTH_NO,
+    tefBAD_LEDGER,
+    tefCREATED,
+    tefEXCEPTION,
+    tefINTERNAL,
+    tefNO_AUTH_REQUIRED,    // Can't set auth if auth is not required.
+    tefPAST_SEQ,
+    tefWRONG_PRIOR,
+    tefMASTER_DISABLED,
+    tefMAX_LEDGER,
+    tefBAD_SIGNATURE,
+    tefBAD_QUORUM,
+    tefNOT_MULTI_SIGNING,
+    tefBAD_AUTH_MASTER,
+    tefTABLE_SAMENAME,   // Table name and table new name is same or create exist table
+    tefTABLE_NOTEXIST,   // Table is not exist 
+    tefTABLE_STATEERROR, // Table state is error
+    tefBAD_USER,         // User is bad format
+    tefTABLE_EXISTANDNOTDEL,         // Table exist and is not deleted
+    tefTABLE_STORAGEERROR,
+    tefTABLE_STORAGENORMALERROR,
+    tefTABLE_TXDISPOSEERROR,
+    tefTABLE_RULEDISSATISFIED,
+    tefTABLE_COUNTFULL,
+    tefTABLE_GRANTFULL,
+    tefDBNOTCONFIGURED,
+    tefINSUFFICIENT_RESERVE,
+    tefINSU_RESERVE_TABLE,
+    tefINVARIANT_FAILED,
+    tefBAD_DBNAME,       // NameInDB does not match tableName.
+    tefBAD_STATEMENT,    // satement error
+    tefGAS_INSUFFICIENT,
+    tefCONTRACT_EXEC_EXCEPTION,
+    tefCONTRACT_REVERT_INSTRUCTION,
+    tefCONTRACT_CANNOT_BEPAYED,
+    tefCONTRACT_NOT_EXIST,
+
+    //invalid currency
+    tefINVALID_CURRENY = 191,
+
+    // 200 .. 299: M Malformed (bad signature)
+    // Causes:
+    // - Transaction corrupt.
+    // Implications:
+    // - Not applied
+    // - Not forwarded
+    // - Reject
+    // - Can not succeed in any imagined ledger.
+    temMALFORMED = 200,
+
+    temBAD_AMOUNT,
+    temBAD_CURRENCY,
+    temBAD_EXPIRATION,
+    temBAD_FEE,
+    temBAD_ISSUER,
+    temBAD_LIMIT,
+    temBAD_OFFER,
+    temBAD_PATH,
+    temBAD_PATH_LOOP,
+    temBAD_SEND_ZXC_LIMIT,
+    temBAD_SEND_ZXC_MAX,
+    temBAD_SEND_ZXC_NO_DIRECT,
+    temBAD_SEND_ZXC_PARTIAL,
+    temBAD_SEND_ZXC_PATHS,
+    temBAD_SEQUENCE,
+    temBAD_SIGNATURE,
+    temBAD_SRC_ACCOUNT,
+    temBAD_TRANSFER_RATE,
+    temDST_IS_SRC,
+    temDST_NEEDED,
+    temINVALID,
+    temINVALID_FLAG,
+    temREDUNDANT,
+    temRIPPLE_EMPTY,
+    temDISABLED,
+    temBAD_SIGNER,
+    temBAD_QUORUM,
+    temBAD_WEIGHT,
+    temBAD_TICK_SIZE,
+    temBAD_TRANSFERFEE_BOTH,
+    temBAD_TRANSFERFEE,
+    temBAD_FEE_MISMATCH_TRANSFER_RATE,
+
+    //for table set and sql statement
+    temBAD_OWNER,
+    temBAD_TABLES,
+    temBAD_TABLEFLAGS,
+    temBAD_RAW,
+    temBAD_OPTYPE,
+    temBAD_OPTYPE_IN_TRANSACTION,
+    temBAD_BASETX,
+    temBAD_PUT,
+    temBAD_DBTX,
+    temBAD_STATEMENTS,
+    temBAD_NEEDVERIFY,
+    temBAD_STRICTMODE,
+    temBAD_BASELEDGER,
+    temBAD_TRANSFERORDER,
+    temBAD_OPERATIONRULE,
+    temBAD_DELETERULE,
+    temBAD_UPDATERULE,
+    temBAD_RULEANDTOKEN,
+    temBAD_INSERTLIMIT,
+    temBAD_NEEDVERIFY_OPERRULE,
+
+    // An intermediate result used internally, should never be returned.
+    temUNCERTAIN,
+    temUNKNOWN = 254,
+
+    // 300 .. 65534: L Local error (transaction fee inadequate, exceeds local limit)
+    // Only valid during non-consensus processing.
+    // Implications:
+    // - Not forwarded
+    // - No fee check
+    telLOCAL_ERROR = 300,
+    telBAD_DOMAIN,
+    telBAD_PATH_COUNT,
+    telBAD_PUBLIC_KEY,
+    telFAILED_PROCESSING,
+    telINSUF_FEE_P,
+    telNO_DST_PARTIAL,
+    telCAN_NOT_QUEUE,
+    telCAN_NOT_QUEUE_BALANCE,
+    telCAN_NOT_QUEUE_BLOCKS,
+    telCAN_NOT_QUEUE_BLOCKED,
+    telCAN_NOT_QUEUE_FEE,
+    telCAN_NOT_QUEUE_FULL,
+    telTX_POOL_FULL = 313,
+
+    terMAX = 65535
 };
 
 inline bool isTelLocal(TER x)
 {
-    return ((x) >= telLOCAL_ERROR && (x) < temMALFORMED);
+    return ((x) >= telLOCAL_ERROR && (x) < terMAX);
 }
 
 inline bool isTemMalformed(TER x)
 {
-    return ((x) >= temMALFORMED && (x) < tefFAILURE);
+    return ((x) >= temMALFORMED && (x) < telLOCAL_ERROR);
 }
 
 inline bool isTefFailure(TER x)
 {
-    return ((x) >= tefFAILURE && (x) < terRETRY);
+    return ((x) >= tefFAILURE && (x) < temMALFORMED);
 }
 
 inline bool isTerRetry(TER x)
 {
-    return ((x) >= terRETRY && (x) < tesSUCCESS);
+    return ((x) > tesSUCCESS && (x) <= terQUEUED);
 }
 
 inline bool isTesSuccess(TER x)
@@ -295,7 +299,7 @@ inline bool isTesSuccess(TER x)
 
 inline bool isTecClaim(TER x)
 {
-    return ((x) >= tecCLAIM);
+    return ((x) >= tecCLAIM && (x) < tefFAILURE);
 }
 
 // VFALCO TODO group these into a shell class along with the defines above.

@@ -363,8 +363,9 @@ PConsensus<Adaptor>::startRoundInternal(
 	rawCloseTimes_.self = {};
 	txSetCached_.clear();
 	txSetVoted_.clear();
-	transactions_.clear();
-	setID_.reset();
+    transactions_.clear();
+    setID_.reset();
+
 
 	closeResolution_ = getNextLedgerTimeResolution(
 		previousLedger_.closeTimeResolution(),
@@ -402,7 +403,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 
 	Proposal_t const& newPeerProp = newPeerPos.proposal();
 
-	NodeID_t const& peerID = newPeerProp.nodeID();
+	//NodeID_t const& peerID = newPeerProp.nodeID();
 
 	if (newPeerProp.prevLedger() != prevLedgerID_)
 	{
@@ -606,8 +607,8 @@ void
 PConsensus<Adaptor>::phaseCollecting()
 {
 	// it is shortly before ledger close time
-	bool anyTransactions = adaptor_.hasOpenTransactions();
-	auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
+	//bool anyTransactions = adaptor_.hasOpenTransactions();
+	//auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
 
 	openTime_.tick(clock_.now());
 
@@ -680,7 +681,7 @@ PConsensus<Adaptor>::phaseVoting()
 	assert(result_);
 
 	using namespace std::chrono;
-	ConsensusParms const & parms = adaptor_.parms();
+	//ConsensusParms const & parms = adaptor_.parms();
 
 	result_->roundTime.tick(clock_.now());
 	//result_->proposers = currPeerPositions_.size();

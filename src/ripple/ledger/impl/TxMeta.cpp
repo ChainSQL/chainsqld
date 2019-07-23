@@ -41,7 +41,7 @@ TxMeta::TxMeta (uint256 const& txid,
     SerialIter sit (makeSlice(data));
 
     STObject obj(sit, sfMetadata);
-    mResult = obj.getFieldU8 (sfTransactionResult);
+    mResult = obj.getFieldU16 (sfTransactionResult);
     mIndex = obj.getFieldU32 (sfTransactionIndex);
     mNodes = * dynamic_cast<STArray*> (&obj.getField (sfAffectedNodes));
 
@@ -56,7 +56,7 @@ TxMeta::TxMeta (uint256 const& txid, std::uint32_t ledger, STObject const& obj,
     , mNodes (obj.getFieldArray (sfAffectedNodes))
     , j_ (j)
 {
-    mResult = obj.getFieldU8 (sfTransactionResult);
+    mResult = obj.getFieldU16 (sfTransactionResult);
     mIndex = obj.getFieldU32 (sfTransactionIndex);
 
     auto affectedNodes = dynamic_cast <STArray const*>
@@ -248,8 +248,8 @@ static bool compare (const STObject& o1, const STObject& o2)
 STObject TxMeta::getAsObject () const
 {
     STObject metaData (sfTransactionMetaData);
-    assert (mResult != 255);
-    metaData.setFieldU8 (sfTransactionResult, mResult);
+    assert (mResult != terMAX);
+    metaData.setFieldU16 (sfTransactionResult, mResult);
     metaData.setFieldU32 (sfTransactionIndex, mIndex);
     metaData.emplace_back (mNodes);
     if (hasDeliveredAmount ())
@@ -261,7 +261,7 @@ void TxMeta::addRaw (Serializer& s, TER result, std::uint32_t index)
 {
     mResult = static_cast<int> (result);
     mIndex = index;
-    assert ((mResult == 0) || ((mResult > 100) && (mResult <= 255)));
+    //assert ((mResult == tesSUCCESS) || ((mResult >= tecCLAIM) && (mResult < tefFAILURE)));
 
     mNodes.sort (compare);
 
