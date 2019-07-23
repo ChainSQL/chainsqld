@@ -2790,6 +2790,21 @@ void NetworkOPsImp::pubLedger (
 
             jvObj[jss::txn_count] = Json::UInt (alpAccepted->getTxnCount ());
 
+			int iSuccess = 0;
+			int iFailure = 0;
+
+			// 
+			for (auto const& vt : alpAccepted->getMap()) {
+
+				if (vt.second->getResult() == tesSUCCESS) iSuccess++;
+				else                                      iFailure++;
+			}
+
+
+			jvObj[jss::txn_success] = Json::UInt(iSuccess);
+			jvObj[jss::txn_failure] = Json::UInt(iFailure);
+			
+
             if (mMode >= omSYNCING)
             {
                 jvObj[jss::validated_ledgers]
