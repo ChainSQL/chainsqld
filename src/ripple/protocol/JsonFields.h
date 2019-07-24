@@ -539,6 +539,11 @@ JSS ( warning );                    // rpc:
 JSS ( write_load );                 // out: GetCounts
 JSS (memos);                        // out: memos
 JSS ( lastLedgerSequence );			//
+
+JSS ( alg_type );                   // in: gm algorithm type
+JSS ( data_set_count );             // in: make data set count
+JSS ( plain_data_len );             // in: make plain data len
+
 JSS ( metaChain );			        // out: table tx chain and contract
 JSS ( TableChain );                  // out: 
 JSS ( ContractChain );               // out: 
