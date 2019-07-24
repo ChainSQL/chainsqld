@@ -31,7 +31,11 @@ struct transactionCompare
 		{
 			return first->getSTransaction()->getFieldU32(sfSequence) < second->getSTransaction()->getFieldU32(sfSequence);
 		}
-		return first->getTime() <= second->getTime();
+		else
+		{
+			return first->getSTransaction()->getAccountID(sfAccount) < second->getSTransaction()->getAccountID(sfAccount);
+		}
+		//return first->getTime() <= second->getTime();
 	}
 };
 

@@ -1126,14 +1126,14 @@ void RCLConsensus::checkSwitchConsensus(LedgerIndex prevLedgerSeq)
 	}
 	if (firstNewValidated_ != 0 && consensus_ != consensus_peersafe_)
 	{
-		JLOG(j_.warn()) << "checkSwitchConsensus  firstNewValidated_ = " << firstNewValidated_;
 		int round = 20;
 		LedgerIndex indexToSwitch = firstNewValidated_ + round / 2;
 		indexToSwitch -= indexToSwitch % round;
-		if (indexToSwitch < firstNewValidated_)
+		if (indexToSwitch <= firstNewValidated_)
 		{
 			indexToSwitch += round;
 		}
+		
 		//indexToSwitch += round;
 
 		if (prevLedgerSeq == indexToSwitch - 1)
@@ -1141,7 +1141,11 @@ void RCLConsensus::checkSwitchConsensus(LedgerIndex prevLedgerSeq)
 			consensus_ = consensus_peersafe_;
 			adaptor_.setUseNewConsensus(true);
 			JLOG(j_.warn()) << "Switching consensus to PConsensus from ledger " << indexToSwitch;
-		}			
+		}
+		else
+		{
+			JLOG(j_.warn()) << "checkSwitchConsensus  firstNewValidated_ = " << firstNewValidated_ << " gap = " << (indexToSwitch - 1 - prevLedgerSeq);
+		}
 	}
 }
 
