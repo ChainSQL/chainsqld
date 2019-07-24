@@ -19,9 +19,9 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <BeastConfig.h>
 #include <ripple/app/misc/ValidatorKeys.h>
-#include <ripple/crypto/X509.h>
 #include <ripple/protocol/Seed.h>
 #include <ripple/beast/unit_test.h>
+#include <peersafe/crypto/X509.h>
 
 
 

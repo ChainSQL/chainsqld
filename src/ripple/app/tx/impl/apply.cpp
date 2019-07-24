@@ -23,7 +23,7 @@
 #include <ripple/app/tx/applySteps.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/protocol/Feature.h>
-#include <ripple/crypto/X509.h>
+#include <peersafe/crypto/X509.h>
 
 namespace ripple {
 

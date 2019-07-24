@@ -22,17 +22,14 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <fstream>
 #include <sstream>   
 
-
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
-#include "openssl.h"
 #include <openssl/x509_vfy.h>
 #include <openssl/ec.h>
-#include "ripple/crypto/X509.h"
+#include <ripple/crypto/impl/openssl.h>
 #include <ripple/crypto/GenerateDeterministicKey.h>
-
-
+#include <peersafe/crypto/X509.h>
 
 
 

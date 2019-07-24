@@ -29,9 +29,6 @@
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/protocol/types.h>
 #include <ripple/protocol/STParsedJSON.h>
-
-#include <ripple/crypto/X509.h>
-
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
@@ -43,6 +40,7 @@
 #include <utility>
 #include <ripple/json/json_reader.h>
 #include <peersafe/protocol/TableDefines.h>
+#include <peersafe/crypto/X509.h>
 
 namespace ripple {
 
