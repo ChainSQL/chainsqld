@@ -51,6 +51,7 @@ public:
 			db_type_ = setup_.sync_db.find("type").first;
 		}
 		catch (const soci::soci_error& e) {
+			std::cout << "init_env: " << e.what() << std::endl;
 			exit(-1);
 		}
 		catch (...) {
