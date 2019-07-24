@@ -408,7 +408,7 @@ transactionPreProcessImpl (
 		err = checkLastLedgerSequence(
 			params,
 			verify && signingArgs.editFields(),
-			ledger);
+			app.openLedger().current());
 
 		if (RPC::contains_error(err))
 			return std::move(err);
@@ -846,7 +846,7 @@ Json::Value transactionSubmit (
 {
     using namespace detail;
 
-    auto const& ledger = app.openLedger().current();
+    auto const& ledger = app.checkLedger().current();
     auto j = app.journal ("RPCHandler");
     JLOG (j.debug()) << "transactionSubmit: " << jvRequest;
 

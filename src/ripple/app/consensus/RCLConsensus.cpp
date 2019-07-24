@@ -636,7 +636,24 @@ RCLConsensus::Adaptor::doAccept(
                 // Stuff the ledger with transactions from the queue.
                 return app_.getTxQ().accept(app_, view);
             });
-
+		//ljl:lock openledger
+		if (useNewConsensus_ && firstTimeUseNew)
+		{
+			app_.checkLedger().accept(
+				app_,
+				*rules,
+				sharedLCL.ledger_,
+				localTxs_.getTxSet(),
+				anyDisputes,
+				retriableTxs,
+				tapNONE,
+				"consensus",
+				[&](OpenView& view, beast::Journal j) {
+				// Stuff the ledger with transactions from the queue.
+				return app_.getTxQ().accept(app_, view);
+			});
+			firstTimeUseNew = false;
+		}
         // Signal a potential fee change to subscribers after the open ledger
         // is created
         app_.getOPs().reportFeeChange();

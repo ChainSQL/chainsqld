@@ -71,6 +71,7 @@ class RCLConsensus
         // The timestamp of the last validation we used
 		NetClock::time_point lastValidationTime_;
 		bool useNewConsensus_ = false;
+		bool firstTimeUseNew = true;
 
         // These members are queried via public accesors and are atomic for
         // thread safety.

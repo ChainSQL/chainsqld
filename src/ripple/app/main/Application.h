@@ -176,6 +176,8 @@ public:
     virtual SHAMapStore&            getSHAMapStore () = 0;
     virtual PendingSaves&           pendingSaves() = 0;
     virtual AccountIDCache const&   accountIDCache() const = 0;
+	virtual OpenLedger&				checkLedger() = 0;
+	virtual OpenLedger const&       checkLedger() const = 0;
     virtual OpenLedger&             openLedger() = 0;
     virtual OpenLedger const&       openLedger() const = 0;
     virtual DatabaseCon& getTxnDB () = 0;

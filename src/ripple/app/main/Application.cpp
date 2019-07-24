@@ -313,6 +313,7 @@ public:
     PendingSaves pendingSaves_;
     AccountIDCache accountIDCache_;
     boost::optional<OpenLedger> openLedger_;
+	boost::optional<OpenLedger> checkLedger_;
 
     // These are not Stoppable-derived
     NodeCache m_tempNodeCache;
@@ -825,6 +826,18 @@ public:
     {
         return *openLedger_;
     }
+
+	OpenLedger&
+		checkLedger() override
+	{
+		return *checkLedger_;
+	}
+
+	OpenLedger const&
+		checkLedger() const override
+	{
+		return *checkLedger_;
+	}
 
     Overlay& overlay () override
     {
@@ -1512,6 +1525,8 @@ ApplicationImp::startGenesisLedger()
     next->setImmutable (*config_);
     openLedger_.emplace(next, cachedSLEs_,
         logs_->journal("OpenLedger"));
+	checkLedger_.emplace(next, cachedSLEs_,
+		logs_->journal("OpenLedger"));
     m_ledgerMaster->storeLedger(next);
     m_ledgerMaster->switchLCL (next);
 }
@@ -1826,7 +1841,8 @@ bool ApplicationImp::loadOldLedger (
         m_ledgerMaster->setFullLedger(loadLedger, true, false);
         openLedger_.emplace(loadLedger, cachedSLEs_,
             logs_->journal("OpenLedger"));
-
+		checkLedger_.emplace(loadLedger, cachedSLEs_,
+			logs_->journal("CheckLedger"));
         if (replay)
         {
             // inject transaction(s) from the replayLedger into our open ledger

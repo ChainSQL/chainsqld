@@ -1242,7 +1242,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
             std::lock_guard <std::recursive_mutex> lock (
                 m_ledgerMaster.peekMutex());
 
-            app_.openLedger().modify(
+            app_.checkLedger().modify(
                 [&](OpenView& view, beast::Journal j)
             {
                 for (TransactionStatus& e : transactions)
@@ -1373,9 +1373,9 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
 			//chainsql type tx will not retry.
             if (addLocal && !e.transaction->getSTransaction()->isChainSqlTableType())
             {
-                m_localTX->push_back (
-                    m_ledgerMaster.getCurrentLedgerIndex(),
-                    e.transaction->getSTransaction());
+				//m_localTX->push_back(
+				//	m_ledgerMaster.getCurrentLedgerIndex(),
+				//	e.transaction->getSTransaction());
             }
 
             if (e.applied || ((mMode != omFULL) &&
