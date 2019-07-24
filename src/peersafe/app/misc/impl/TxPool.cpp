@@ -42,7 +42,7 @@ namespace ripple {
         TER ter = tefPAST_SEQ;
         auto result = mTxsSet.insert(transaction);
 
-        JLOG(j_.info()) << "Inserting a " << (result.second ? "new" : "exist")
+        JLOG(j_.trace()) << "Inserting a " << (result.second ? "new" : "exist")
             << " Tx: " << transaction->getID();
 
         if (result.second)
