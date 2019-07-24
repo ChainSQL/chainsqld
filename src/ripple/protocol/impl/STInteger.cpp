@@ -139,6 +139,17 @@ STUInt16::getJson (int) const
             return item->getName ();
     }
 
+    if (getFName() == sfTransactionResult)
+    {
+        std::string token, human;
+
+        if (transResultInfo(static_cast<TER> (value_), token, human))
+            return token;
+
+        JLOG(debugLog().error())
+            << "Unknown result code in metadata: " << value_;
+    }
+
     return value_;
 }
 
