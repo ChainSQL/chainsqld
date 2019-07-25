@@ -466,6 +466,7 @@ RCLConsensus::Adaptor::onAccept(
             // is accepted, the consensus results and capture by reference state
             // will not change until startRound is called (which happens via
             // endConsensus).
+			auto timeStart = utcTime();
             this->doAccept(
                 result,
                 prevLedger,
@@ -473,6 +474,7 @@ RCLConsensus::Adaptor::onAccept(
                 rawCloseTimes,
                 mode,
                 std::move(cj));
+			JLOG(j_.info()) << "doAccept time used:" << utcTime() - timeStart << "ms";
             this->app_.getOPs().endConsensus();
         });
 }
