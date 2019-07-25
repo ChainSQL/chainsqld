@@ -43,13 +43,17 @@ enum JobType
     jtPUBOLDLEDGER,  // An old ledger has been accepted
     jtVALIDATION_ut, // A validation from an untrusted source
     jtTRANSACTION_l, // A local transaction
-    jtLEDGER_REQ,    // Peer request ledger/txnset data
+    
     jtTABLE_REQ,     // Peer request table data
     jtTABLE_DATA,    // Peer request table data
     jtPROPOSAL_ut,   // A proposal from an untrusted source
-    jtLEDGER_DATA,   // Received data for a ledger we're acquiring
+    
     jtCLIENT,        // A websocket command from the client
     jtRPC,           // A websocket command from the client
+
+    jtLEDGER_REQ,    // Peer request ledger/txnset data
+    jtLEDGER_DATA,   // Received data for a ledger we're acquiring
+
     jtUPDATE_PF,     // Update pathfinding requests
     jtTRANSACTION,   // A transaction received from the network
     jtBATCH,         // Apply batched transactions
