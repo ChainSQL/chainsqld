@@ -531,7 +531,10 @@ PConsensus<Adaptor>::gotTxSet(
 
 			txSetVoted_[*setID_].insert(adaptor_.valPublic_);
 
-			adaptor_.propose(result_->position);
+			if (adaptor_.validating())
+			{
+				adaptor_.propose(result_->position);
+			}			
 
 			JLOG(j_.info()) << "voting for set:" << *setID_ <<" "<< txSetVoted_[*setID_].size();
 			for (auto pub : txSetVoted_[*setID_])
