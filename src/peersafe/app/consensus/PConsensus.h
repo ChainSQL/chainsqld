@@ -695,6 +695,13 @@ PConsensus<Adaptor>::phaseVoting()
 	if (timeSinceClose().count() < maxBlockTime_)
 		return;
 
+	//Here deal with abnormal case:other peers may not receive the proposal
+	if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
+	{
+		adaptor_.propose(result_->position);
+		JLOG(j_.warn()) << "We are leader and reProposing position:" ;
+	}
+
 	// Nothing to do if we don't have consensus.
 	if (!haveConsensus())
 		return;
