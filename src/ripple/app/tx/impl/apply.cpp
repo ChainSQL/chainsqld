@@ -52,21 +52,35 @@ checkValidity(HashRouter& router,
     if (!(flags & SF_SIGGOOD))
     {
 
-		// Certificate authentication
-		auto const sigCertVerify = tx.checkCertSign();
-		if (!sigCertVerify.first)
-		{
-			router.setFlags(id, SF_SIGBAD);
-			return{ Validity::SigBad, sigCertVerify.second };
+		auto const certificate = tx.getFieldVL(sfCertificate);
+
+		bool  bHasCert             = (!certificate.empty());
+		bool  bNeedCertVerify = (!config.ROOT_CERTIFICATES.empty());
+
+		if (bHasCert  && bNeedCertVerify) {
+
+				auto const sigCertVerify = tx.checkCertSign();
+				if (!sigCertVerify.first) {
+
+					router.setFlags(id, SF_SIGBAD);
+					return{ Validity::SigBad, sigCertVerify.second };
+				}
+
+				// certification  au
+				std::string certInfo = sigCertVerify.second;
+
+				std::string sException;
+				if (!verifyCACert(certInfo, config, sException)) {
+
+					return{ Validity::SigBad, "Certificate authentication failed" };
+				}
 		}
+		else if (bNeedCertVerify) {
+				return{ Validity::SigBad, "Missing Certificate field" };
+		}
+		else if(bHasCert){
 
-		// certification  au
-		std::string certInfo = sigCertVerify.second;
-		
-		std::string sException;
-		if ( !verifyCACert(certInfo, config, sException)){
-
-			return{ Validity::SigBad, "Certificate authentication failed" };
+			return{ Validity::SigBad, "Root certificate has not been configurated" };
 		}
 
         // Don't know signature state. Check it.
@@ -182,39 +196,7 @@ applyTransaction (Application& app, OpenView& view,
 
 bool verifyCACert(std::string& certUser, Config const& config, std::string& sException)
 {
-	//config.
-	auto const vecCrtPath  =    config.section("x509_crt_path").values();
-
-	if (vecCrtPath.empty())
-		return true;
-
-	bool bVerify = false;
-
-	std::vector<std::string>  vecRootCert;
-
-	for (auto path : vecCrtPath) {
-
-		std::string rootCert;
-		std::ifstream ifsPath(path.c_str());
-		rootCert.assign(
-			std::istreambuf_iterator<char>(ifsPath),
-			std::istreambuf_iterator<char>());
-
-		if(rootCert.empty())
-			continue;
-
-		vecRootCert.push_back(rootCert);
-	}
-
-	if (vecRootCert.empty()) {
-
-		sException = "Root certificate has not been configured";
-		// config error
-		return false;
-	}
-		
-	return verifyCert(vecRootCert, certUser, sException);
-
+	return verifyCert(config.ROOT_CERTIFICATES , certUser, sException);
 }
 
 } // ripple

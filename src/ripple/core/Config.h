@@ -116,6 +116,9 @@ public:
     std::vector<std::string>    IPS_FIXED;              // Fixed Peer IPs from rippled.cfg.
     std::vector<std::string>    SNTP_SERVERS;           // SNTP servers from rippled.cfg.
 
+
+	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
+
     enum StartUpType
     {
         FRESH,

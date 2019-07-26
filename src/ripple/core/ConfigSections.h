@@ -75,6 +75,8 @@ struct ConfigSection
 #define SECTION_VETO_AMENDMENTS         "veto_amendments"
 #define SECTION_WORKERS                 "workers"
 
+#define SECTION_PATH_X509               "x509_crt_path"
+
 } // ripple
 
 #endif
