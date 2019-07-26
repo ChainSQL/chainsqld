@@ -23,6 +23,7 @@
 #include <ripple/core/Job.h>
 #include <ripple/core/JobTypeInfo.h>
 #include <map>
+#include <thread>
 
 namespace ripple
 {
