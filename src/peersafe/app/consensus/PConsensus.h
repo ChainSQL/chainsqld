@@ -223,6 +223,7 @@ private:
 	void appendTransactions(h256Set const& txSet);
 
 	std::chrono::milliseconds timeSinceClose();
+	std::chrono::milliseconds timeSinceOpen();
 
 	void leaveConsensus();
 private:
@@ -608,6 +609,14 @@ PConsensus<Adaptor>::timeSinceClose()
 }
 
 template <class Adaptor>
+std::chrono::milliseconds
+PConsensus<Adaptor>::timeSinceOpen()
+{
+	openTime_.tick(clock_.now());
+	return openTime_.read();
+}
+
+template <class Adaptor>
 void
 PConsensus<Adaptor>::phaseCollecting()
 {
@@ -615,11 +624,10 @@ PConsensus<Adaptor>::phaseCollecting()
 	//bool anyTransactions = adaptor_.hasOpenTransactions();
 	//auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
 
-	openTime_.tick(clock_.now());
+	//auto sinceClose = timeSinceClose();
+	auto sinceOpen = timeSinceOpen();
 
-	auto sinceClose = timeSinceClose();
-
-	JLOG(j_.info()) << "phaseCollecting time sinceClosed:" << sinceClose.count() <<"ms";
+	JLOG(j_.info()) << "phaseCollecting time sinceOpen:" << sinceOpen.count() <<"ms";
 
 	// Decide if we should propose a tx-set
 	if (shouldPack())
@@ -627,13 +635,13 @@ PConsensus<Adaptor>::phaseCollecting()
 		int tx_count = transactions_.size();
 
 		//if time for this block's tx-set reached
-		bool bTimeReached = sinceClose.count() >= maxBlockTime_;
+		bool bTimeReached = sinceOpen.count() >= maxBlockTime_;
 		if (tx_count < maxTxsInLedger_ && !bTimeReached)
 		{
 			appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
 		}
 
-		if (finalCondReached(sinceClose))
+		if (finalCondReached(sinceOpen))
 		{
 			/** 
 			1. construct result_ 
@@ -694,7 +702,7 @@ PConsensus<Adaptor>::phaseVoting()
 	JLOG(j_.info()) << "phaseVoting roundTime:" << result_->roundTime.read().count();
 
 	// Give everyone a chance to take an initial position
-	if (timeSinceClose().count() < maxBlockTime_)
+	if (timeSinceOpen().count() < maxBlockTime_)
 		return;
 
 	//Here deal with abnormal case:other peers may not receive the proposal
