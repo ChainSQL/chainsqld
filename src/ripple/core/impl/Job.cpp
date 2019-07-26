@@ -117,11 +117,15 @@ bool Job::operator>= (const Job& j) const
 
 bool Job::operator< (const Job& j) const
 {
-    if (mType < j.mType)
-        return false;
+    if ((mType != jtCLIENT && mType != jtLEDGER_REQ && mType != jtLEDGER_DATA) ||
+        (j.mType != jtCLIENT && j.mType != jtLEDGER_REQ && j.mType != jtLEDGER_DATA))
+    {
+        if (mType < j.mType)
+            return false;
 
-    if (mType > j.mType)
-        return true;
+        if (mType > j.mType)
+            return true;
+    }
 
     return mJobIndex < j.mJobIndex;
 }

@@ -45,7 +45,7 @@ add(    jtTRANSACTION_l, "localTransaction",        maxLimit, false, 100,   500)
 add(    jtLEDGER_REQ,    "ledgerRequest",           3,        false, 0,     0);
 add(    jtPROPOSAL_ut,   "untrustedProposal",       maxLimit, false, 500,   1250);
 add(    jtLEDGER_DATA,   "ledgerData",              3,        false, 0,     0);
-add(    jtCLIENT,        "clientCommand",           maxLimit, false, 2000,  5000);
+add(    jtCLIENT,        "clientCommand", std::min(static_cast<int>(std::thread::hardware_concurrency()), 4), false, 2000,  5000);
 add(    jtRPC,           "RPC",                     maxLimit, false, 0,     0);
 add(    jtUPDATE_PF,     "updatePaths",             maxLimit, false, 0,     0);
 add(    jtTRANSACTION,   "transaction",             maxLimit, false, 250,   1000);
