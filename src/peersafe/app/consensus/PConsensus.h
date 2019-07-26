@@ -218,12 +218,12 @@ private:
 		2. Is maxBlockTime reached.
 		3. Is this node the next leader and the above 2 conditions reached.
 	*/
-	bool finalCondReached(std::chrono::milliseconds sinceLastClose);
+	bool finalCondReached(uint64 sinceLastClose);
 
 	void appendTransactions(h256Set const& txSet);
 
 	std::chrono::milliseconds timeSinceClose();
-	std::chrono::milliseconds timeSinceOpen();
+	uint64 timeSinceOpen();
 
 	void leaveConsensus();
 private:
@@ -244,6 +244,7 @@ private:
 	NetClock::time_point now_;
 	NetClock::time_point prevCloseTime_;
 	NetClock::time_point closeTime_;
+	uint64 openTime2_;
 
 	//-------------------------------------------------------------------------
 	// Non-peer (self) consensus data
@@ -355,6 +356,7 @@ PConsensus<Adaptor>::startRoundInternal(
 	mode_.set(mode, adaptor_);
 	now_ = now;
 	closeTime_ = now;
+	openTime2_ = utcTime();
 	prevLedgerID_ = prevLedgerID;
 	previousLedger_ = prevLedger;
 	result_.reset();
@@ -609,11 +611,13 @@ PConsensus<Adaptor>::timeSinceClose()
 }
 
 template <class Adaptor>
-std::chrono::milliseconds
+uint64
 PConsensus<Adaptor>::timeSinceOpen()
 {
-	openTime_.tick(clock_.now());
-	return openTime_.read();
+	//openTime_.tick(clock_.now());
+	//return openTime_.read();
+	//using namespace std::chrono;
+	return utcTime() - openTime2_;
 }
 
 template <class Adaptor>
@@ -627,7 +631,7 @@ PConsensus<Adaptor>::phaseCollecting()
 	//auto sinceClose = timeSinceClose();
 	auto sinceOpen = timeSinceOpen();
 
-	JLOG(j_.info()) << "phaseCollecting time sinceOpen:" << sinceOpen.count() <<"ms";
+	JLOG(j_.info()) << "phaseCollecting time sinceOpen:" << sinceOpen <<"ms";
 
 	// Decide if we should propose a tx-set
 	if (shouldPack())
@@ -706,7 +710,7 @@ PConsensus<Adaptor>::phaseVoting()
 		return;
 
 	//Here deal with abnormal case:other peers may not receive the proposal
-	if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
+	if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (2 * maxBlockTime_)) == 1)
 	{
 		result_->position.changePosition(*setID_, result_->position.closeTime(), now_);
 		adaptor_.propose(result_->position);
@@ -801,11 +805,11 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 	3. Is this node the next leader and the above 2 conditions reached.
 */
 template <class Adaptor>
-bool PConsensus<Adaptor>::finalCondReached(std::chrono::milliseconds sinceLastClose)
+bool PConsensus<Adaptor>::finalCondReached(uint64 sinceLastClose)
 {
-	if (transactions_.size() >= maxTxsInLedger_ && sinceLastClose.count() >= minBlockTime_)
+	if (transactions_.size() >= maxTxsInLedger_/2 && sinceLastClose >= minBlockTime_)
 		return true;
-	if (sinceLastClose.count() >= maxBlockTime_)
+	if (sinceLastClose >= maxBlockTime_)
 		return true;
 	return false;
 }
