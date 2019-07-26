@@ -639,7 +639,7 @@ PConsensus<Adaptor>::phaseCollecting()
 		int tx_count = transactions_.size();
 
 		//if time for this block's tx-set reached
-		bool bTimeReached = sinceOpen.count() >= maxBlockTime_;
+		bool bTimeReached = sinceOpen >= maxBlockTime_;
 		if (tx_count < maxTxsInLedger_ && !bTimeReached)
 		{
 			appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
@@ -706,7 +706,7 @@ PConsensus<Adaptor>::phaseVoting()
 	JLOG(j_.info()) << "phaseVoting roundTime:" << result_->roundTime.read().count();
 
 	// Give everyone a chance to take an initial position
-	if (timeSinceOpen().count() < maxBlockTime_)
+	if (timeSinceOpen() < maxBlockTime_)
 		return;
 
 	//Here deal with abnormal case:other peers may not receive the proposal
