@@ -93,6 +93,7 @@ namespace ripple {
 
 
 		int ret = 0;
+		int nX509Verify = 1;
 
 		//cert chain context
 		X509_STORE_CTX *ctx = NULL;
@@ -118,7 +119,7 @@ namespace ripple {
 			goto EXIT;
 		}
 
-		int nX509Verify = X509_verify_cert(ctx);
+		nX509Verify = X509_verify_cert(ctx);
 		if (1 != nX509Verify)
 		{
 			long nCode = X509_STORE_CTX_get_error(ctx);
