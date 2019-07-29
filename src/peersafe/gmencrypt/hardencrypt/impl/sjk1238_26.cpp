@@ -133,38 +133,38 @@ unsigned long SJK1238::GenerateRandom2File(unsigned int uiLength, unsigned char 
 	rv = SDF_GenerateRandom(hSessionHandle_, 1024, pbtmpBuffer); //pbOutBuffer+(j*1024));
 	if (rv != SDR_OK)
 	{
-		printf("²úÉúËæ»úÊý´íÎó£¬´íÎóÂë[0x%08x]\n", rv);
+		printf("Generate random failed, failed number:[0x%08x]\n", rv);
 		return 0;
 	}
-	//²úÉúkey
+	//Generate Key
 	memset(pbkeyBuffer, 0x00, 16);
 	rv = SDF_GenerateRandom(hSessionHandle_, 16, pbkeyBuffer); //pbOutBuffer+(j*1024));
 	if (rv != SDR_OK)
 	{
-		printf("²úÉúËæ»úÊý´íÎó£¬´íÎóÂë[0x%08x]\n", rv);
+		printf("Generate random failed, failed number:[0x%08x]\n", rv);
 		return 0;
 	}
-	//²úÉúIV
+	//Generate IV
 	memset(pbivBuffer, 0x00, 16);
 	rv = SDF_GenerateRandom(hSessionHandle_, 16, pbivBuffer); //pbOutBuffer+(j*1024));
 	if (rv != SDR_OK)
 	{
-		printf("²úÉúËæ»úÊý´íÎó£¬´íÎóÂë[0x%08x]\n", rv);
+		printf("Generate random failed, failed number:[0x%08x]\n", rv);
 		return 0;
 	}
-	//sm4¼ÓÃÜ
+	//sm4 encrypt
 
 	rv = SDF_ImportKey(hSessionHandle_, pbkeyBuffer, 16, &hKey);
 	if (rv != SDR_OK)
 	{
-		printf("²úÉúËæ»úÊý´íÎó£¬´íÎóÂë[0x%08x]\n", rv);
+		printf("Importing SymmetryKey is failed, failed number:[0x%08x]\n", rv);
 		return 0;
 	}
 	tmpLen = 1024;
 	rv = SDF_Encrypt(hSessionHandle_, hKey, SGD_SMS4_CBC, pbivBuffer, pbtmpBuffer, 1024, pucRandomBuf + (times * 1024), (SGD_UINT32 *)&tmpLen);
 	if (rv != SDR_OK)
 	{
-		printf("²úÉúËæ»úÊý´íÎó£¬´íÎóÂë[0x%08x]\n", rv);
+		printf("SM4 symetry encrypt failed, failed number:[0x%08x]\n", rv);
 		SDF_DestroyKey(hSessionHandle_, hKey);
 		return 0;
 	}
@@ -272,7 +272,7 @@ unsigned long SJK1238::SM2ECCSign(
     unsigned long ulAlias,
     unsigned long ulKeyUse)
 {
-	//½øÀ´Ö®ºó¸ù¾ÝÃÜÔ¿ÀàÐÍÅÐ¶ÏÊÇÄÚ²¿ÃÜÔ¿»¹ÊÇÍâ²¿ÃÜÔ¿À´µ÷ÓÃ¾ßÌå½Ó¿Ú
+	//according key type to determine is inner key or external key to call interface
 	int rv;
 	if (SeckeyType::gmInCard == pri4SignInfo.first)
 	{
@@ -656,7 +656,7 @@ unsigned long SJK1238::generateIV(unsigned int uiAlgMode, unsigned char * pIV)
 			rv = SDF_GenerateRandom(hSessionHandle_, 16, pIV);
 			if (rv != SDR_OK)
 			{
-				printf("²úÉúËæ»úÊý´íÎó£¬´íÎóÂë[0x%08x]\n", rv);
+				printf("Generate random failed, failed number:[0x%08x]\n", rv);
 			}
 			break;
 		case SGD_SMS4_ECB:
