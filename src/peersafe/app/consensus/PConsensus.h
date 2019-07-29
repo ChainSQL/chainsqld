@@ -218,7 +218,7 @@ private:
 		2. Is maxBlockTime reached.
 		3. Is this node the next leader and the above 2 conditions reached.
 	*/
-	bool finalCondReached(uint64 sinceLastClose);
+	bool finalCondReached(uint64 sinceOpen,uint64 sinceLastClose);
 
 	void appendTransactions(h256Set const& txSet);
 
@@ -628,7 +628,7 @@ PConsensus<Adaptor>::phaseCollecting()
 	//bool anyTransactions = adaptor_.hasOpenTransactions();
 	//auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
 
-	//auto sinceClose = timeSinceClose();
+	auto sinceClose = timeSinceClose();
 	auto sinceOpen = timeSinceOpen();
 
 	JLOG(j_.info()) << "phaseCollecting time sinceOpen:" << sinceOpen <<"ms";
@@ -645,7 +645,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
 		}
 
-		if (finalCondReached(sinceOpen))
+		if (finalCondReached(sinceOpen, sinceClose.count()))
 		{
 			/** 
 			1. construct result_ 
@@ -805,11 +805,11 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 	3. Is this node the next leader and the above 2 conditions reached.
 */
 template <class Adaptor>
-bool PConsensus<Adaptor>::finalCondReached(uint64 sinceLastClose)
+bool PConsensus<Adaptor>::finalCondReached(uint64 sinceOpen, uint64 sinceLastClose)
 {
-	if (transactions_.size() >= maxTxsInLedger_/2 && sinceLastClose >= minBlockTime_)
+	if (transactions_.size() >= maxTxsInLedger_/2 && sinceOpen >= minBlockTime_ && sinceLastClose >= minBlockTime_)
 		return true;
-	if (sinceLastClose >= maxBlockTime_)
+	if (sinceOpen >= maxBlockTime_)
 		return true;
 	return false;
 }
