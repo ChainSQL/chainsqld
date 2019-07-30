@@ -42,6 +42,17 @@
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/misc/Transaction.h>
+#ifdef _CRTDBG_MAP_ALLOC
+#pragma push_macro("free")
+#undef free
+#include <tbb/parallel_for.h>
+#pragma pop_macro("free")
+#else
+#include <tbb/parallel_for.h>
+#endif
+#include <tbb/concurrent_vector.h>
+#include <tbb/blocked_range.h>
+#include <peersafe/app/tx/ParallelApply.h>
 
 namespace ripple {
 
@@ -774,6 +785,8 @@ applyTransactions(
 
     auto& set = *(cSet.map_);
     CanonicalTXSet retriableTxs(set.getHash().as_uint256());
+    ParallelApply::Txs shouldApplyTxs;
+    ParallelApply::Txs retryTxs;
 
     for (auto const& item : set)
     {
@@ -785,8 +798,7 @@ applyTransactions(
         JLOG(j.debug()) << "Processing candidate transaction: " << item.key();
         try
         {
-            retriableTxs.insert(
-                std::make_shared<STTx const>(SerialIter{item.slice()}));
+            shouldApplyTxs.push_back(std::make_shared<STTx const>(SerialIter{ item.slice() }));
         }
         catch (std::exception const&)
         {
@@ -795,53 +807,34 @@ applyTransactions(
     }
 
     bool certainRetry = true;
+    int changes = 0;
+
+    ParallelApply parallelApply{ shouldApplyTxs, retryTxs, certainRetry, changes, app, view, j };
+
     // Attempt to apply all of the retriable transactions
     for (int pass = 0; pass < LEDGER_TOTAL_PASSES; ++pass)
     {
-        JLOG(j.debug()) << "Pass: " << pass << " Txns: " << retriableTxs.size()
+        JLOG(j.info()) << "Pass: " << pass << " Txns: " << shouldApplyTxs.size()
                         << (certainRetry ? " retriable" : " final");
-        int changes = 0;
 
-        auto it = retriableTxs.begin();
+        tbb::parallel_for(shouldApplyTxs.range(), parallelApply, tbb::auto_partitioner());
 
-        while (it != retriableTxs.end())
-        {
-            try
-            {
-                switch (applyTransaction(
-                    app, view, *it->second, certainRetry, tapNO_CHECK_SIGN | tapForConsensus, j))
-                {
-                    case ApplyResult::Success:
-                        it = retriableTxs.erase(it);
-                        ++changes;
-                        break;
-
-                    case ApplyResult::Fail:
-                        it = retriableTxs.erase(it);
-                        break;
-
-                    case ApplyResult::Retry:
-                        ++it;
-                }
-            }
-            catch (std::exception const&)
-            {
-                JLOG(j.warn()) << "Transaction throws";
-                it = retriableTxs.erase(it);
-            }
-        }
-
-        JLOG(j.debug()) << "Pass: " << pass << " finished " << changes
-                        << " changes";
+        JLOG(j.info()) << "Pass: " << pass << " finished " << changes
+                        << " changes and retry Txns remaining " << retryTxs.size();
 
         // A non-retry pass made no changes
         if (!changes && !certainRetry)
-            return retriableTxs;
+            break;
 
         // Stop retriable passes
         if (!changes || (pass >= LEDGER_RETRY_PASSES))
             certainRetry = false;
+
+        parallelApply.preRetry();
     }
+
+    for (auto it = retryTxs.begin(); it != retryTxs.end(); ++it)
+        retriableTxs.insert(*it);
 
     // If there are any transactions left, we must have
     // tried them in at least one final pass

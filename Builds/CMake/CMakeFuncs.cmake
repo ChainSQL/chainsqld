@@ -608,6 +608,27 @@ macro(use_protobuf)
 
 endmacro()
 
+macro(use_tbb)
+  set(TBB_ROOT "${CMAKE_SOURCE_DIR}/src/tbb-2019_U8")
+  include(${TBB_ROOT}/cmake/TBBBuild.cmake)
+
+  # Build TBB with enabled Community Preview Features (CPF).
+  tbb_build(TBB_ROOT ${TBB_ROOT} CONFIG_DIR TBB_DIR)
+
+  find_package(TBB REQUIRED tbb)
+
+  include_directories(${TBB_ROOT}/include)
+  if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    link_directories(${CMAKE_SOURCE_DIR}/build/tbb_cmake_build/tbb_cmake_build_subdir_debug)
+  else()
+    link_directories(${CMAKE_SOURCE_DIR}/build/tbb_cmake_build/tbb_cmake_build_subdir_release)
+  endif()
+
+  # Link TBB imported targets to the executable;
+  # "TBB::tbb_preview" can be used instead of "${TBB_IMPORTED_TARGETS}".
+  # target_link_libraries(sub_string_finder ${TBB_IMPORTED_TARGETS})
+endmacro()
+
 ############################################################
 
 macro(setup_build_boilerplate)
