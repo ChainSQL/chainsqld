@@ -64,6 +64,10 @@ namespace ripple {
 	//
 	bool verifyCert(std::vector<std::string> const& vecRootCert, std::string const& certStr, std::string & exception)
 	{
+		//  OpenSSL_add_all_algorithms is not thread safe
+		static std::mutex m;
+		std::lock_guard<std::mutex> lock{ m };
+
 		OpenSSL_add_all_algorithms();
 
 		// verify vecRootCert validation
@@ -188,8 +192,6 @@ namespace ripple {
 			// PublicKey
 			publicKey = PublicKey(makeSlice(blob));
 
-			std::string    sPublicKey = toBase58(TOKEN_NODE_PUBLIC, publicKey);
-			int test = 9;
 		}
 
 
@@ -205,6 +207,11 @@ namespace ripple {
 
 	bool genCsr(Seed const& seed, x509_subject const& sub, std::string const& reqPath, std::string & exception)
 	{
+		//  OpenSSL_add_all_algorithms is not thread safe
+
+		static std::mutex m;
+		std::lock_guard<std::mutex> lock{ m };
+
 		/* ---------------------------------------------------------- *
 		* These function calls initialize openssl for correct work.  *
 		* ---------------------------------------------------------- */
@@ -218,16 +225,16 @@ namespace ripple {
 		auto privateKey = generateECPrivateKey(ui);
 		auto publicKey = generateECPublicKey(ui);
 
-		BIO               *outbio = NULL;
+		//BIO               *outbio = NULL;
 		EC_KEY            *myecc = EC_KEY_new();;
 		EVP_PKEY          *pkey = NULL;
 		//int               eccgrp;
 		int             ret = 0;
 		int             nVersion = 1;
-		X509_REQ        *x509_req = NULL;
+		X509_REQ        *ls = NULL;
 		X509_NAME       *x509_name = NULL;
-		RSA             *tem = NULL;
-		BIO             *out = NULL, *bio_err = NULL;
+	//	RSA             *tem = NULL;
+		BIO             *out = NULL;
 
 
 		EC_GROUP *group = EC_GROUP_new_by_curve_name(NID_secp256k1);
