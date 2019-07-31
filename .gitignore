@@ -22,6 +22,7 @@ bin/project-cache.jam
 # Ignore object files.
 *.o
 build
+!src/tbb-2019_U8/build
 tags
 TAGS
 bin/chainsqld
