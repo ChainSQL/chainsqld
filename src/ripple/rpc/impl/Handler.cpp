@@ -127,7 +127,7 @@ Handler handlerArray[] {
     {   "ledger_entry",         byRef (&doLedgerEntry),        Role::USER,  NO_CONDITION  },
     {   "ledger_header",        byRef (&doLedgerHeader),       Role::USER,  NO_CONDITION  },
     {   "ledger_request",       byRef (&doLedgerRequest),      Role::ADMIN, NO_CONDITION  },
-	{   "ledger_txs",           byRef(&doLedgerTxs),           Role::USER,  NO_CONDITION  },   
+	{   "ledger_txs",           byRef (&doLedgerTxs),          Role::USER,  NO_CONDITION  },   
 	{   "log_level",			byRef (&doLogLevel),           Role::ADMIN, NO_CONDITION  },
     {   "logrotate",            byRef (&doLogRotate),          Role::ADMIN, NO_CONDITION  },
     {   "noripple_check",       byRef (&doNoRippleCheck),      Role::USER,  NO_CONDITION  },

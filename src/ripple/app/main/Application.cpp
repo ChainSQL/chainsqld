@@ -66,6 +66,7 @@
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/misc/StateManager.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/optional.hpp>
 #include <fstream>
@@ -313,7 +314,6 @@ public:
     PendingSaves pendingSaves_;
     AccountIDCache accountIDCache_;
     boost::optional<OpenLedger> openLedger_;
-	boost::optional<OpenLedger> checkLedger_;
 
     // These are not Stoppable-derived
     NodeCache m_tempNodeCache;
@@ -357,6 +357,7 @@ public:
 	std::unique_ptr <ContractHelper> m_pContractHelper;
 	std::unique_ptr <TableTxAccumulator> m_pTableTxAccumulator;
     std::unique_ptr <TxPool> m_pTxPool;
+	std::unique_ptr <StateManager> m_pStateManager;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
     boost::asio::steady_timer sweepTimer_;
     boost::asio::steady_timer entropyTimer_;
@@ -522,6 +523,8 @@ public:
 
         , m_pTxPool(std::make_unique<TxPool>(*this, logs_->journal("TxPool")))
 
+		, m_pStateManager(std::make_unique<StateManager>(*this, logs_->journal("StateManager")))
+
         , sweepTimer_ (get_io_service())
 
         , entropyTimer_ (get_io_service())
@@ -659,6 +662,11 @@ public:
     {
         return *m_pTxPool;
     }
+
+	StateManager& getStateManager() override
+	{
+		return *m_pStateManager;
+	}
 
     virtual
     PublicKey const &
@@ -826,18 +834,6 @@ public:
     {
         return *openLedger_;
     }
-
-	OpenLedger&
-		checkLedger() override
-	{
-		return *checkLedger_;
-	}
-
-	OpenLedger const&
-		checkLedger() const override
-	{
-		return *checkLedger_;
-	}
 
     Overlay& overlay () override
     {
@@ -1525,8 +1521,6 @@ ApplicationImp::startGenesisLedger()
     next->setImmutable (*config_);
     openLedger_.emplace(next, cachedSLEs_,
         logs_->journal("OpenLedger"));
-	checkLedger_.emplace(next, cachedSLEs_,
-		logs_->journal("OpenLedger"));
     m_ledgerMaster->storeLedger(next);
     m_ledgerMaster->switchLCL (next);
 }
@@ -1841,8 +1835,6 @@ bool ApplicationImp::loadOldLedger (
         m_ledgerMaster->setFullLedger(loadLedger, true, false);
         openLedger_.emplace(loadLedger, cachedSLEs_,
             logs_->journal("OpenLedger"));
-		checkLedger_.emplace(loadLedger, cachedSLEs_,
-			logs_->journal("CheckLedger"));
         if (replay)
         {
             // inject transaction(s) from the replayLedger into our open ledger

@@ -117,6 +117,10 @@ public:
     TER
     checkSeq (PreclaimContext const& ctx);
 
+	static
+	TER
+	checkSeq2(PreclaimContext const& ctx);
+
     static
     TER
     checkFee (PreclaimContext const& ctx, std::uint64_t baseFee);

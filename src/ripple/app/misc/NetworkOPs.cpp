@@ -72,6 +72,7 @@
 #include <beast/core/detail/base64.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <ripple/app/tx/impl/Transactor.h>
+#include <peersafe/app/misc/StateManager.h>
 
 namespace ripple {
 
@@ -1086,7 +1087,7 @@ NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
             return{ ter, false };
         }
 
-        Transactor::setSeq(view, flags, *txCur);
+		app_.getStateManager().incrementSeq(txCur->getAccountID(sfAccount));
         return{ tesSUCCESS, true };
     }
 
@@ -1113,27 +1114,26 @@ TER NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     boost::optional<PreclaimContext const> pcctx;
     pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
 
-    ter = Transactor::checkSeq(*pcctx);
+    ter = Transactor::checkSeq2(*pcctx);
 
     if (ter != tesSUCCESS)
     {
         return ter;
     }
 
-    auto const id = pcctx->tx.getAccountID(sfAccount);
     auto const baseFee = Transactor::calculateBaseFee(*pcctx);
 
-    ter = Transactor::checkFee(*pcctx, baseFee);
-    if (ter != tesSUCCESS)
-    {
-        return ter;
-    }
+	ter = Transactor::checkFee(*pcctx, baseFee);
+	if (ter != tesSUCCESS)
+	{
+		return ter;
+	}
 
-    ter = Transactor::checkSign(*pcctx);
-    if (ter != tesSUCCESS)
-    {
-        return ter;
-    }
+    //ter = Transactor::checkSign(*pcctx);
+    //if (ter != tesSUCCESS)
+    //{
+    //    return ter;
+    //}
 
     return ter;
 }
@@ -1242,7 +1242,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
             std::lock_guard <std::recursive_mutex> lock (
                 m_ledgerMaster.peekMutex());
 
-            app_.checkLedger().modify(
+            app_.openLedger().modify(
                 [&](OpenView& view, beast::Journal j)
             {
                 for (TransactionStatus& e : transactions)

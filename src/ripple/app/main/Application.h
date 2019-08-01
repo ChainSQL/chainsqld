@@ -78,6 +78,7 @@ class TableAssistant;
 class ContractHelper;
 class TableTxAccumulator;
 class TxPool;
+class StateManager;
 
 class DatabaseCon;
 class SHAMapStore;
@@ -164,6 +165,7 @@ public:
 	virtual ContractHelper&			getContractHelper() = 0;
 	virtual TableTxAccumulator&		getTableTxAccumulator() = 0;
 	virtual TxPool&					getTxPool() = 0;
+	virtual StateManager&			getStateManager() = 0;
 	virtual
     std::pair<PublicKey, SecretKey> const&
     nodeIdentity () = 0;
@@ -176,8 +178,6 @@ public:
     virtual SHAMapStore&            getSHAMapStore () = 0;
     virtual PendingSaves&           pendingSaves() = 0;
     virtual AccountIDCache const&   accountIDCache() const = 0;
-	virtual OpenLedger&				checkLedger() = 0;
-	virtual OpenLedger const&       checkLedger() const = 0;
     virtual OpenLedger&             openLedger() = 0;
     virtual OpenLedger const&       openLedger() const = 0;
     virtual DatabaseCon& getTxnDB () = 0;

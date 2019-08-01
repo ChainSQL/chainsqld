@@ -22,4 +22,5 @@
 #include <ripple/app/consensus/RCLCxPeerPos.cpp>
 #include <ripple/app/consensus/RCLValidations.cpp>
 #include <peersafe/app/misc/impl/TxPool.cpp>
+#include <peersafe/app/misc/impl/StateManager.cpp>
 

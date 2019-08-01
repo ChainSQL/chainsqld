@@ -42,6 +42,7 @@
 #include <ripple/rpc/impl/Tuning.h>
 #include <ripple/ledger/impl/Tuning.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/misc/StateManager.h>
 #include <algorithm>
 #include <iterator>
 
@@ -439,7 +440,10 @@ transactionPreProcessImpl (
 
                 return rpcError (rpcSRC_ACT_NOT_FOUND);
             }
-
+			//use new consensus
+			tx_json[jss::Sequence] = app.getStateManager().getAccountSeq(srcAddressID);
+			//use old consensus
+			/*
             auto seq = (*sle)[sfSequence];
             auto const queued = app.getTxQ().getAccountTxs(srcAddressID,
                 *ledger);
@@ -453,6 +457,7 @@ transactionPreProcessImpl (
                     break;
             }
             tx_json[jss::Sequence] = seq;
+			*/
         }
 
         if (!tx_json.isMember (jss::Flags))
@@ -846,7 +851,7 @@ Json::Value transactionSubmit (
 {
     using namespace detail;
 
-    auto const& ledger = app.checkLedger().current();
+    auto const& ledger = app.openLedger().current();
     auto j = app.journal ("RPCHandler");
     JLOG (j.debug()) << "transactionSubmit: " << jvRequest;
 
