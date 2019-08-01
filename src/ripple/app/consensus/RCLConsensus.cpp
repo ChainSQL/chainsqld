@@ -773,7 +773,7 @@ RCLConsensus::Adaptor::notify(
   @param txFilter       callback, return false to reject txn
   @return               retriable transactions
 */
-
+#if 0
 CanonicalTXSet
 applyTransactions(
     Application& app,
@@ -841,6 +841,95 @@ applyTransactions(
     assert(retriableTxs.empty() || !certainRetry);
     return retriableTxs;
 }
+
+#else
+CanonicalTXSet
+applyTransactions(
+    Application& app,
+    RCLTxSet const& cSet,
+    OpenView& view,
+    std::function<bool(uint256 const&)> txFilter)
+{
+    auto j = app.journal("LedgerConsensus");
+
+    auto& set = *(cSet.map_);
+    CanonicalTXSet retriableTxs(set.getHash().as_uint256());
+
+    for (auto const& item : set)
+    {
+        if (!txFilter(item.key()))
+            continue;
+
+        // The transaction wan't filtered
+        // Add it to the set to be tried in canonical order
+        JLOG(j.debug()) << "Processing candidate transaction: " << item.key();
+        try
+        {
+            retriableTxs.insert(
+                std::make_shared<STTx const>(SerialIter{ item.slice() }));
+        }
+        catch (std::exception const&)
+        {
+            JLOG(j.warn()) << "Txn " << item.key() << " throws";
+        }
+    }
+
+    bool certainRetry = true;
+    // Attempt to apply all of the retriable transactions
+    for (int pass = 0; pass < LEDGER_TOTAL_PASSES; ++pass)
+    {
+        JLOG(j.debug()) << "Pass: " << pass << " Txns: " << retriableTxs.size()
+            << (certainRetry ? " retriable" : " final");
+        int changes = 0;
+
+        auto it = retriableTxs.begin();
+
+        while (it != retriableTxs.end())
+        {
+            try
+            {
+                switch (applyTransaction(
+                    app, view, *it->second, certainRetry, tapNO_CHECK_SIGN | tapForConsensus, j))
+                {
+                case ApplyResult::Success:
+                    it = retriableTxs.erase(it);
+                    ++changes;
+                    break;
+
+                case ApplyResult::Fail:
+                    it = retriableTxs.erase(it);
+                    break;
+
+                case ApplyResult::Retry:
+                    ++it;
+                }
+            }
+            catch (std::exception const&)
+            {
+                JLOG(j.warn()) << "Transaction throws";
+                it = retriableTxs.erase(it);
+            }
+        }
+
+        JLOG(j.debug()) << "Pass: " << pass << " finished " << changes
+            << " changes";
+
+        // A non-retry pass made no changes
+        if (!changes && !certainRetry)
+            return retriableTxs;
+
+        // Stop retriable passes
+        if (!changes || (pass >= LEDGER_RETRY_PASSES))
+            certainRetry = false;
+    }
+
+    // If there are any transactions left, we must have
+    // tried them in at least one final pass
+    assert(retriableTxs.empty() || !certainRetry);
+    return retriableTxs;
+}
+
+#endif
 
 RCLCxLedger
 RCLConsensus::Adaptor::buildLCL(
