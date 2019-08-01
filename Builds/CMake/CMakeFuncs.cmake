@@ -609,24 +609,52 @@ macro(use_protobuf)
 endmacro()
 
 macro(use_tbb)
-  set(TBB_ROOT "${CMAKE_SOURCE_DIR}/src/tbb-2019_U8")
-  include(${TBB_ROOT}/cmake/TBBBuild.cmake)
-
-  # Build TBB with enabled Community Preview Features (CPF).
-  tbb_build(TBB_ROOT ${TBB_ROOT} CONFIG_DIR TBB_DIR)
-
-  find_package(TBB REQUIRED tbb)
-
-  include_directories(${TBB_ROOT}/include)
-  if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-    link_directories(${CMAKE_SOURCE_DIR}/build/tbb_cmake_build/tbb_cmake_build_subdir_debug)
+  if (TBB_DIR)
+    find_package(TBB REQUIRED tbb)
   else()
-    link_directories(${CMAKE_SOURCE_DIR}/build/tbb_cmake_build/tbb_cmake_build_subdir_release)
+    include(ExternalProject)
+
+    if (NOT WIN32)
+        if (APPLE)
+            set(ENABLE_STD_LIB cpp0x=1 stdlib=libc++)
+        else()
+            set(ENABLE_STD_LIB cpp0x=1)
+        endif()
+
+		set(INSTALL_CMD bash -c "cp ./build/*_release/*${CMAKE_STATIC_LIBRARY_SUFFIX}* ${CMAKE_SOURCE_DIR}/deps/lib")
+	endif()
+
+	message("INSTALL_CMD=${INSTALL_CMD}")
+
+    ExternalProject_Add(tbb
+        PREFIX ${CMAKE_SOURCE_DIR}/deps
+        DOWNLOAD_NO_PROGRESS 1
+        DOWNLOAD_NAME tbb_2019_u3.tar.gz
+        URL https://github.com/01org/tbb/archive/2019_U3.tar.gz
+        URL_HASH SHA256=b2244147bc8159cdd8f06a38afeb42f3237d3fc822555499d7ccfbd4b86f8ece
+		#BINARY_DIR ${CMAKE_SOURCE_DIR}/deps
+        BUILD_IN_SOURCE 1
+        LOG_CONFIGURE 1
+        LOG_BUILD 1
+        LOG_INSTALL 1
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND make extra_inc=big_iron.inc ${ENABLE_STD_LIB}
+		INSTALL_COMMAND "${INSTALL_CMD}"
+        )
+    ExternalProject_Get_Property(tbb SOURCE_DIR)
+
+    set(TBB_INCLUDE_DIR ${SOURCE_DIR}/include)
+    set(TBB_LIBRARY ${CMAKE_SOURCE_DIR}/deps/lib/libtbb${CMAKE_STATIC_LIBRARY_SUFFIX})
+    file(MAKE_DIRECTORY ${TBB_INCLUDE_DIR})  # Must exist.
+    file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/lib/)  # Must exist.
   endif()
 
-  # Link TBB imported targets to the executable;
-  # "TBB::tbb_preview" can be used instead of "${TBB_IMPORTED_TARGETS}".
-  # target_link_libraries(sub_string_finder ${TBB_IMPORTED_TARGETS})
+  add_library(TBB STATIC IMPORTED)
+  set_property(TARGET TBB PROPERTY IMPORTED_LOCATION ${TBB_LIBRARY})
+  set_property(TARGET TBB PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${TBB_INCLUDE_DIR})
+  add_dependencies(TBB tbb)
+  unset(SOURCE_DIR)
+
 endmacro()
 
 ############################################################
