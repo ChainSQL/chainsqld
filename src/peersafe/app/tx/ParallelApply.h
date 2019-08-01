@@ -19,10 +19,10 @@ public:
         Txs &a, Txs &r, bool &certainRetry, int &changes, 
         Application& app, OpenView& view, beast::Journal j
     )
-        : shouldApplyTxs_(a)
-        , retryTxs_(r)
-        , certainRetry_(certainRetry)
+        : certainRetry_(certainRetry)
         , changes_(changes)
+	, shouldApplyTxs_(a)
+	, retryTxs_(r)
         , app_(app)
         , view_(view)
         , j(j)
