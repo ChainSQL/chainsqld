@@ -1285,7 +1285,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
         proposeHash, prevLedger, set.proposeseq(),
         closeTime, publicKey.slice(), signature);
 
-	JLOG(p_journal_.info()) << "PeerImpl recv peer proposal:" << proposeHash <<" from public "<< toBase58(TOKEN_NODE_PUBLIC, publicKey);
+	JLOG(p_journal_.info()) << "PeerImpl recv peer proposal:" << proposeHash <<" from public "<< toBase58(TOKEN_NODE_PUBLIC, publicKey)
+		<<",prevHash="<<to_string(prevLedger);
 
     if (! app_.getHashRouter ().addSuppressionPeer (suppression, id_))
     {

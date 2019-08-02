@@ -73,6 +73,9 @@ class RCLConsensus
 		bool useNewConsensus_ = false;
 		bool firstTimeUseNew = true;
 
+		// save next proposal
+		std::shared_ptr<RCLCxPeerPos> nextProposal_;
+
         // These members are queried via public accesors and are atomic for
         // thread safety.
         std::atomic<bool> validating_{false};

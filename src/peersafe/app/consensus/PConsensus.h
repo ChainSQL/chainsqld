@@ -212,6 +212,7 @@ private:
 
 	bool isLeader(PublicKey const& pub);
 
+	int getPubIndex(PublicKey const& pub);
 	/** Is final condition reached for proposing.
 		We should check:
 		1. Is tx-count reached max and minBlockTime reached.
@@ -226,6 +227,8 @@ private:
 	uint64 timeSinceOpen();
 
 	void leaveConsensus();
+
+	void checkSaveNextProposal(PeerPosition_t const& newPeerPos);
 private:
 	Adaptor& adaptor_;
 
@@ -381,6 +384,12 @@ PConsensus<Adaptor>::startRoundInternal(
 	//	// consider closing the ledger immediately
 	//	timerEntry(now_);
 	//}
+	if (adaptor_.nextProposal_.get())
+	{
+		if (peerProposalInternal(now, *adaptor_.nextProposal_))
+			JLOG(j_.info()) << "check peerProposalInternal after startRoundInternal success!";
+	}
+	adaptor_.nextProposal_.reset();
 }
 
 template <class Adaptor>
@@ -400,20 +409,22 @@ PConsensus<Adaptor>::peerProposalInternal(
 {
 	// Nothing to do for now if we are currently working on a ledger
 	if (phase_ == ConsensusPhase::accepted)
-		return false;
-
-	now_ = now;
-
-	Proposal_t const& newPeerProp = newPeerPos.proposal();
-
-	//NodeID_t const& peerID = newPeerProp.nodeID();
-
-	if (newPeerProp.prevLedger() != prevLedgerID_)
 	{
-		JLOG(j_.debug()) << "Got proposal for " << newPeerProp.prevLedger()
-			<< " from "<< toBase58(TOKEN_NODE_PUBLIC, newPeerPos.publicKey()) << " but we are on " << prevLedgerID_;
+		checkSaveNextProposal(newPeerPos);
 		return false;
 	}
+
+
+	Proposal_t const& newPeerProp = newPeerPos.proposal();
+	if (newPeerProp.prevLedger() != prevLedgerID_)
+	{
+		checkSaveNextProposal(newPeerPos);
+		JLOG(j_.info()) << "Got proposal for " << newPeerProp.prevLedger()
+			<< " from node "<< getPubIndex(newPeerPos.publicKey()) << " but we are on " << prevLedgerID_;
+		return false;
+	}
+
+	now_ = now;
 
 	JLOG(j_.info()) << "Processing peer proposal " << newPeerProp.proposeSeq()
 		<< "/" << newPeerProp.position();
@@ -424,14 +435,14 @@ PConsensus<Adaptor>::peerProposalInternal(
 		auto iter = txSetVoted_.find(newSetID);
 		if (iter != txSetVoted_.end())
 		{
-			JLOG(j_.info()) << "Got proposal for set from public :" << toBase58(TOKEN_NODE_PUBLIC, pub);
+			JLOG(j_.info()) << "Got proposal for set from public :" << getPubIndex(pub);
 			iter->second.insert(pub);
 		}
 		else
 		{
 			if (isLeader(pub))
 			{
-				JLOG(j_.info()) << "Got proposal from leader, enter phase::establish.";
+				JLOG(j_.info()) << "Got proposal from leader,time sinceOpen:"<< timeSinceOpen() <<"ms, enter phase::establish.";
 
 				txSetVoted_[newSetID] = std::set<PublicKey>{pub};
 				setID_ = newSetID;
@@ -448,7 +459,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 				JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
 				for (auto pub : txSetVoted_[*setID_])
 				{
-					JLOG(j_.info()) << "voting public for set:" << toBase58(TOKEN_NODE_PUBLIC, pub);
+					JLOG(j_.info()) << "voting public for set:" << getPubIndex(pub);
 				}
 
                 if (phase_ == ConsensusPhase::open)
@@ -456,7 +467,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 			}
 			else
 			{
-				JLOG(j_.info()) << "Got proposal for set from public " << toBase58(TOKEN_NODE_PUBLIC, pub) <<" and added to cache";
+				JLOG(j_.info()) << "Got proposal for set from public " << getPubIndex(pub) <<" and added to cache";
 				if (txSetCached_.find(newSetID) != txSetCached_.end())
 				{
 					txSetCached_[newSetID].insert(pub);
@@ -541,10 +552,11 @@ PConsensus<Adaptor>::gotTxSet(
 				adaptor_.propose(result_->position);
 			}			
 
+			JLOG(j_.info()) << "gotTxSet time elapsed since receive set_id from leader:" << (now - rawCloseTimes_.self).count();
 			JLOG(j_.info()) << "voting for set:" << *setID_ <<" "<< txSetVoted_[*setID_].size();
 			for (auto pub : txSetVoted_[*setID_])
 			{
-				JLOG(j_.info()) << "voting public for set:" << toBase58(TOKEN_NODE_PUBLIC, pub);
+				JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
 			}
 		}
 
@@ -705,12 +717,12 @@ PConsensus<Adaptor>::phaseVoting()
 
 	JLOG(j_.info()) << "phaseVoting roundTime:" << result_->roundTime.read().count();
 
-	// Give everyone a chance to take an initial position
-	if (timeSinceOpen() < maxBlockTime_)
-		return;
+	//// Give everyone a chance to take an initial position
+	//if (timeSinceOpen() < maxBlockTime_)
+	//	return;
 
 	//Here deal with abnormal case:other peers may not receive the proposal
-	if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (2 * maxBlockTime_)) == 1)
+	if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
 	{
 		result_->position.changePosition(*setID_, result_->position.closeTime(), now_);
 		adaptor_.propose(result_->position);
@@ -797,7 +809,17 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 	return pub == validators[leader_idx];
 }
 
-
+template <class Adaptor>
+int PConsensus<Adaptor>::getPubIndex(PublicKey const& pub)
+{
+	auto const& validators = adaptor_.app_.validators().validators();
+	for (int i = 0; i < validators.size(); i++)
+	{
+		if (validators[i] == pub)
+			return i + 1;
+	}
+	return 0;
+}
 /** Is final condition reached for proposing.
 	We should check:
 	1. Is tx-count reached max and minBlockTime reached.
@@ -807,6 +829,8 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 template <class Adaptor>
 bool PConsensus<Adaptor>::finalCondReached(uint64 sinceOpen, uint64 sinceLastClose)
 {
+	if (transactions_.size() >= maxTxsInLedger_)
+		return true;
 	if (transactions_.size() >= maxTxsInLedger_/2 && sinceOpen >= minBlockTime_ && sinceLastClose >= minBlockTime_)
 		return true;
 	if (sinceOpen >= maxBlockTime_)
@@ -918,6 +942,17 @@ PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 	else
 	{
 		mode_.set(ConsensusMode::wrongLedger, adaptor_);
+	}
+}
+
+template <class Adaptor>
+void 
+PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
+{
+	Proposal_t const& newPeerProp = newPeerPos.proposal();
+	if (newPeerProp.prevLedger() != prevLedgerID_)
+	{
+		adaptor_.nextProposal_ = std::make_shared<PeerPosition_t>(newPeerPos);
 	}
 }
 
