@@ -387,9 +387,11 @@ PConsensus<Adaptor>::startRoundInternal(
 	if (adaptor_.nextProposal_.get())
 	{
 		if (peerProposalInternal(now, *adaptor_.nextProposal_))
+		{
 			JLOG(j_.info()) << "check peerProposalInternal after startRoundInternal success!";
+		}
+		adaptor_.nextProposal_.reset();
 	}
-	adaptor_.nextProposal_.reset();
 }
 
 template <class Adaptor>
