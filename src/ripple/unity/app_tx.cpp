@@ -47,4 +47,6 @@
 #include <peersafe/app/tx/impl/OperationRule.cpp>
 #include <peersafe/app/tx/impl/SmartContract.cpp>
 #include <peersafe/app/tx/impl/DirectApply.cpp>
+#if USE_TBB
 #include <peersafe/app/tx/impl/ParallelApply.cpp>
+#endif

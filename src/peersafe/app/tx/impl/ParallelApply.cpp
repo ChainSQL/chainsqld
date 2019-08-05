@@ -1,4 +1,6 @@
 
+#if USE_TBB
+
 #include <peersafe/app/tx/ParallelApply.h>
 #include <ripple/app/tx/apply.h>
 
@@ -48,3 +50,5 @@ void ParallelApply::preRetry()
 }
 
 }
+
+#endif
