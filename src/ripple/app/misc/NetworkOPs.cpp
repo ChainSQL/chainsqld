@@ -1067,8 +1067,9 @@ NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
 
     if (app_.getTxPool().txExists(txCur->getTransactionID()))
     {
+		std::string from = (flags & tapFromClient) ? "local" : "relay";
         JLOG(m_journal.info()) << "Tx: " << txCur->getTransactionID()
-            << " already in Tx pool";
+            << " already in Tx pool from " << from;
 
         return{ tefALREADY, false };
     }

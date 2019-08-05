@@ -450,6 +450,10 @@ PConsensus<Adaptor>::peerProposalInternal(
 				setID_ = newSetID;
 				rawCloseTimes_.self = now_;
 				closeTime_ = newPeerProp.closeTime();
+				if (result_)
+				{
+					result_->roundTime.reset(clock_.now());
+				}
 
 				if (txSetCached_.find(*setID_) != txSetCached_.end())
 				{
@@ -547,7 +551,7 @@ PConsensus<Adaptor>::gotTxSet(
 
 			txSetVoted_[*setID_].insert(adaptor_.valPublic_);
 
-			result_->roundTime.reset(clock_.now());
+			//result_->roundTime.reset(clock_.now());
 
 			if (adaptor_.validating())
 			{
@@ -720,8 +724,8 @@ PConsensus<Adaptor>::phaseVoting()
 	JLOG(j_.info()) << "phaseVoting roundTime:" << result_->roundTime.read().count();
 
 	//// Give everyone a chance to take an initial position
-	//if (timeSinceOpen() < maxBlockTime_)
-	//	return;
+	if (*setID_ == beast::zero && timeSinceOpen() < maxBlockTime_)
+		return;
 
 	//Here deal with abnormal case:other peers may not receive the proposal
 	if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
