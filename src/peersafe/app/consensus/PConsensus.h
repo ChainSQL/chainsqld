@@ -210,7 +210,7 @@ private:
 	*/
 	bool shouldPack();
 
-	bool isLeader(PublicKey const& pub);
+	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
 
 	int getPubIndex(PublicKey const& pub);
 	/** Is final condition reached for proposing.
@@ -801,10 +801,15 @@ bool PConsensus<Adaptor>::shouldPack()
 }
 
 template <class Adaptor>
-bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
+bool PConsensus<Adaptor>::isLeader(PublicKey const& pub,bool bNextLeader /* = false */)
 {
 	auto const& validators = adaptor_.app_.validators().validators();
 	LedgerIndex currentLedgerIndex = previousLedger_.seq() + 1;
+	if (bNextLeader)
+	{
+		currentLedgerIndex++;
+	}
+
 	int view = 0;
 	int leader_idx = (view + currentLedgerIndex) % validators.size();
 	assert(validators.size() > leader_idx);
@@ -952,9 +957,13 @@ void
 PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 {
 	Proposal_t const& newPeerProp = newPeerPos.proposal();
-	if (newPeerProp.prevLedger() != prevLedgerID_)
+	if (newPeerProp.prevLedger() != prevLedgerID_ )
 	{
-		adaptor_.nextProposal_ = std::make_shared<PeerPosition_t>(newPeerPos);
+		//only cache proposal from next leader
+		if (isLeader(newPeerPos.publicKey(), true))
+		{
+			adaptor_.nextProposal_ = std::make_shared<PeerPosition_t>(newPeerPos);
+		}		
 	}
 }
 

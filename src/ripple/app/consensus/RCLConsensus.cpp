@@ -990,13 +990,15 @@ RCLConsensus::Adaptor::buildLCL(
     {
         // Write the final version of all modified SHAMap
         // nodes to the node store to preserve the new LCL
-
+		auto timeStart = utcTime();
         int asf = buildLCL->stateMap().flushDirty(
             hotACCOUNT_NODE, buildLCL->info().seq);
         int tmf = buildLCL->txMap().flushDirty(
             hotTRANSACTION_NODE, buildLCL->info().seq);
         JLOG(j_.debug()) << "Flushed " << asf << " accounts and " << tmf
                          << " transaction nodes";
+
+		JLOG(j_.info()) << "flushDirty time used:" << utcTime() - timeStart << "ms";
     }
     buildLCL->unshare();
 
