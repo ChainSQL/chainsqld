@@ -65,10 +65,10 @@ namespace ripple {
 	bool verifyCert(std::vector<std::string> const& vecRootCert, std::string const& certStr, std::string & exception)
 	{
 		//  OpenSSL_add_all_algorithms is not thread safe
-		static std::mutex m;
-		std::lock_guard<std::mutex> lock{ m };
+		//static std::mutex m;
+		//std::lock_guard<std::mutex> lock{ m };
 
-		OpenSSL_add_all_algorithms();
+		//OpenSSL_add_all_algorithms();
 
 		// verify vecRootCert validation
 		bool bValidation = false;
@@ -209,13 +209,13 @@ namespace ripple {
 	{
 		//  OpenSSL_add_all_algorithms is not thread safe
 
-		static std::mutex m;
-		std::lock_guard<std::mutex> lock{ m };
+		//static std::mutex m;
+		//std::lock_guard<std::mutex> lock{ m };
 
-		/* ---------------------------------------------------------- *
-		* These function calls initialize openssl for correct work.  *
-		* ---------------------------------------------------------- */
-		OpenSSL_add_all_algorithms();
+		///* ---------------------------------------------------------- *
+		//* These function calls initialize openssl for correct work.  *
+		//* ---------------------------------------------------------- */
+		//OpenSSL_add_all_algorithms();
 		ERR_load_BIO_strings();
 		//ERR_load_crypto_strings();
 

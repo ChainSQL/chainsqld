@@ -65,6 +65,7 @@
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
+#include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/optional.hpp>
 #include <fstream>
@@ -2192,8 +2193,14 @@ bool ApplicationImp::setSynTable()
 bool ApplicationImp::checkCertificate()
 {
 	auto const vecCrtPath = config_ ->section("x509_crt_path").values();
-	if (vecCrtPath.empty() || !config_->ROOT_CERTIFICATES.empty())
+	if (vecCrtPath.empty()) {
 		return true;
+	}
+	else if (!config_->ROOT_CERTIFICATES.empty()) {
+
+		OpenSSL_add_all_algorithms();
+		return true;
+	}	
 	else {
 	
 		std::cerr << "Root certificate configuration error ,please check cfg!" << std::endl;
