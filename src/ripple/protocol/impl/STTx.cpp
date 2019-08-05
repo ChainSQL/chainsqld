@@ -702,36 +702,29 @@ std::pair<bool, std::string> STTx::checkMultiSign () const
 
 std::pair<bool, std::string> STTx::checkCertSign() const
 {
-
 	bool validSig = false;
 	try
 	{
-		auto const spk = getFieldVL(sfSigningPubKey);
-
-		auto const certificate = getFieldVL(sfCertificate);
-		std::string sCertificate = std::string(certificate.begin(), certificate.end());
+		auto const spk                 = getFieldVL(sfSigningPubKey);
+		auto const certificate      = getFieldVL(sfCertificate);
+		std::string sCertificate     = std::string(certificate.begin(), certificate.end());
 		PublicKey certPublicKey = getPublicKeyFromX509(sCertificate);
 
 		if (certPublicKey == PublicKey(makeSlice(spk)) ){
-
-
 			return{ true, sCertificate };
-
 		}
 
 	}
 	catch (std::exception const&)
 	{
-		// Assume it was a signature failure.
+
 		validSig = false;
 	}
 
 	if (validSig == false)
-		return{ false, "Invalid signature." };
+		return{ false, "Cert signature and Tx signature not match ." };
 
 	return{ true, "" };
-
-
 }
 
 //------------------------------------------------------------------------------

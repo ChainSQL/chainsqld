@@ -91,6 +91,12 @@ Json::Value doSubmit (RPC::Context& context)
                 context.app.config());
         if (validity.first != Validity::Valid)
         {
+
+			auto j = context.app.journal("CheckValidity");
+			JLOG(j.warn())
+				<< "the error info of checkValidity £º "
+				<< validity.second;
+
             jvResult[jss::error] = "invalidTransaction";
             jvResult[jss::error_exception] = "fails local checks: " + validity.second;
 
