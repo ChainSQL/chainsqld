@@ -247,7 +247,7 @@ private:
 	NetClock::time_point now_;
 	NetClock::time_point prevCloseTime_;
 	NetClock::time_point closeTime_;
-	NetClock::time_point proposalTime_;
+	std::chrono::steady_clock::time_point proposalTime_;
 	uint64 openTime2_;
 
 	//-------------------------------------------------------------------------
@@ -767,6 +767,7 @@ PConsensus<Adaptor>::haveConsensus()
 	// Determine if we actually have consensus or not
 	if (agreed >= minVal)
 	{
+		JLOG(j_.info()) << "Consensus for tx-set reached with agreed = " << agreed;
 		result_->state = ConsensusState::Yes;
 		return true;
 	}
@@ -964,6 +965,7 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 		//only cache proposal from next leader
 		if (isLeader(newPeerPos.publicKey(), true))
 		{
+			JLOG(j_.info()) << "Position "<<newPeerProp.position() <<" from " <<getPubIndex(isLeader(newPeerPos.publicKey())) <<" added to cache.";
 			adaptor_.nextProposal_ = std::make_shared<PeerPosition_t>(newPeerPos);
 		}		
 	}
