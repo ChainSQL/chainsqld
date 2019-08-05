@@ -1,6 +1,7 @@
 #ifndef CHAINSQL_APP_TX_PARALLELAPPLY_H_INCLUDED
 #define CHAINSQL_APP_TX_PARALLELAPPLY_H_INCLUDED
 
+#if USE_TBB
 #include <ripple/app/main/Application.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/STTx.h>
@@ -48,5 +49,7 @@ private:
 };
 
 }
+
+#endif
 
 #endif

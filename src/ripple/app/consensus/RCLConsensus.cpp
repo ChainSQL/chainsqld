@@ -42,6 +42,7 @@
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/misc/Transaction.h>
+#if USE_TBB
 #ifdef _CRTDBG_MAP_ALLOC
 #pragma push_macro("free")
 #undef free
@@ -53,6 +54,7 @@
 #include <tbb/concurrent_vector.h>
 #include <tbb/blocked_range.h>
 #include <peersafe/app/tx/ParallelApply.h>
+#endif
 
 namespace ripple {
 
@@ -755,7 +757,7 @@ RCLConsensus::Adaptor::notify(
   @param txFilter       callback, return false to reject txn
   @return               retriable transactions
 */
-#if 0
+#if USE_TBB
 CanonicalTXSet
 applyTransactions(
     Application& app,
