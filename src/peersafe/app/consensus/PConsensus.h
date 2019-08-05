@@ -247,6 +247,7 @@ private:
 	NetClock::time_point now_;
 	NetClock::time_point prevCloseTime_;
 	NetClock::time_point closeTime_;
+	NetClock::time_point proposalTime_;
 	uint64 openTime2_;
 
 	//-------------------------------------------------------------------------
@@ -450,10 +451,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 				setID_ = newSetID;
 				rawCloseTimes_.self = now_;
 				closeTime_ = newPeerProp.closeTime();
-				if (result_)
-				{
-					result_->roundTime.reset(clock_.now());
-				}
+				proposalTime_ = clock_.now();
 
 				if (txSetCached_.find(*setID_) != txSetCached_.end())
 				{
@@ -551,7 +549,7 @@ PConsensus<Adaptor>::gotTxSet(
 
 			txSetVoted_[*setID_].insert(adaptor_.valPublic_);
 
-			//result_->roundTime.reset(clock_.now());
+			result_->roundTime.reset(proposalTime_);
 
 			if (adaptor_.validating())
 			{
