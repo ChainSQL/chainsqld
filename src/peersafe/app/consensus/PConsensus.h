@@ -965,7 +965,7 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 		//only cache proposal from next leader
 		if (isLeader(newPeerPos.publicKey(), true))
 		{
-			JLOG(j_.info()) << "Position "<<newPeerProp.position() <<" from " <<getPubIndex(isLeader(newPeerPos.publicKey())) <<" added to cache.";
+			JLOG(j_.info()) << "Position "<<newPeerProp.position() <<" from " <<getPubIndex(newPeerPos.publicKey()) <<" added to cache.";
 			adaptor_.nextProposal_ = std::make_shared<PeerPosition_t>(newPeerPos);
 		}		
 	}
