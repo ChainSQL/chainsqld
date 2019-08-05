@@ -169,7 +169,7 @@ use_boost(
 
 use_pthread()
 
-use_tbb()
+#use_tbb()
 
 use_openssl(${openssl_min})
 
@@ -571,7 +571,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} evmjit TBB)
+      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} evmjit)
 
     link_common_libraries(${target})
 endforeach()
