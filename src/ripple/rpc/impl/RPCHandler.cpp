@@ -258,6 +258,7 @@ Status doCommand (
         if (! context.headers.user.empty() ||
             ! context.headers.forwardedFor.empty())
         {
+			JLOG(context.j.custom()) << "Recieve trade from client : " << context.params;
             JLOG(context.j.debug()) << "start command: " << handler->name_ <<
                 ", X-User: " << context.headers.user << ", X-Forwarded-For: " <<
                     context.headers.forwardedFor;

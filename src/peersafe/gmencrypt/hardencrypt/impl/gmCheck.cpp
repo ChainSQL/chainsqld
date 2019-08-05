@@ -843,6 +843,7 @@ int GMCheck::getDataSM4EncDec_ECB_Enc(int dataSetCnt, unsigned int plainLen)
 	FileWrite(pFileName, "wb", NULL, 0);
 	for (i = 0; i<dataSetCnt; i++)
 	{
+		unsigned plainLenTemp = plainLen * ((i % 5) + 1);
 		printf("\n");
 		printf("\n");
 		printf("SM4对称加密解密数据采集。\n");
@@ -860,10 +861,10 @@ int GMCheck::getDataSM4EncDec_ECB_Enc(int dataSetCnt, unsigned int plainLen)
 		//明文
 		FileWrite(pFileName, "ab", (unsigned char *)"明文长度", 8);
 		FileWrite(pFileName, "ab", equal, 2);
-		sprintf((char*)pTmpData, "%08x", plainLen);
+		sprintf((char*)pTmpData, "%08x", plainLenTemp);
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
-		rv = hEObj->GenerateRandom(plainLen, pInData);
+		rv = hEObj->GenerateRandom(plainLenTemp, pInData);
 		if (rv)
 		{
 			printf("生成随机明文错误，错误码[0x%08x]\n", rv);
@@ -871,11 +872,11 @@ int GMCheck::getDataSM4EncDec_ECB_Enc(int dataSetCnt, unsigned int plainLen)
 		}
 		FileWrite(pFileName, "ab", (unsigned char *)"明文", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(pInData, plainLen, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(pInData, plainLenTemp, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 
-		rv = hEObj->SM4SymEncrypt(hEObj->ECB, pKey, 16, pInData, plainLen, pEncData, (unsigned long*)&nEncDataLen);
+		rv = hEObj->SM4SymEncrypt(hEObj->ECB, pKey, 16, pInData, plainLenTemp, pEncData, (unsigned long*)&nEncDataLen);
 		if (rv)
 		{
 			printf("SGD_SMS4_ECB模式加密错误，错误码[0x%08x]\n", rv);
@@ -895,7 +896,7 @@ int GMCheck::getDataSM4EncDec_ECB_Enc(int dataSetCnt, unsigned int plainLen)
 			printf("SGD_SMS4_ECB模式解密错误，错误码[0x%08x]\n", rv);
 			return rv;
 		}
-		if ((nOutDataLen == plainLen) && (memcmp(pOutData, pInData, plainLen) == 0))
+		if ((nOutDataLen == plainLenTemp) && (memcmp(pOutData, pInData, plainLenTemp) == 0))
 		{
 			PrintData("SGD_SMS4_ECB->解密结果", pOutData, nOutDataLen, 16);
 			printf("SGD_SMS4_ECB运算结果：加密、解密及结果比较均正确。\n");
@@ -924,6 +925,7 @@ int GMCheck::getDataSM4EncDec_ECB_Dec(int dataSetCnt, unsigned int plainLen)
 	FileWrite(pFileName, "wb", NULL, 0);
 	for (i = 0; i<dataSetCnt; i++)
 	{
+		unsigned plainLenTemp = plainLen * ((i % 5) + 1);
 		printf("\n");
 		printf("\n");
 		printf("SM4对称加密解密数据采集。\n");
@@ -941,17 +943,17 @@ int GMCheck::getDataSM4EncDec_ECB_Dec(int dataSetCnt, unsigned int plainLen)
 		//明文
 		FileWrite(pFileName, "ab", (unsigned char *)"明文长度", 8);
 		FileWrite(pFileName, "ab", equal, 2);
-		sprintf((char*)pTmpData, "%08x", plainLen);
+		sprintf((char*)pTmpData, "%08x", plainLenTemp);
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
-		rv = hEObj->GenerateRandom(plainLen, pInData);
+		rv = hEObj->GenerateRandom(plainLenTemp, pInData);
 		if (rv)
 		{
 			printf("生成随机明文错误，错误码[0x%08x]\n", rv);
 			return rv;
 		}
 
-		rv = hEObj->SM4SymEncrypt(hEObj->ECB, pKey,16, pInData, plainLen, pEncData, (unsigned long*)&nEncDataLen);
+		rv = hEObj->SM4SymEncrypt(hEObj->ECB, pKey,16, pInData, plainLenTemp, pEncData, (unsigned long*)&nEncDataLen);
 		if (rv)
 		{
 			printf("SGD_SMS4_ECB模式加密错误，错误码[0x%08x]\n", rv);
@@ -969,7 +971,7 @@ int GMCheck::getDataSM4EncDec_ECB_Dec(int dataSetCnt, unsigned int plainLen)
 			printf("SGD_SMS4_ECB模式解密错误，错误码[0x%08x]\n", rv);
 			return rv;
 		}
-		if ((nOutDataLen == plainLen) && (memcmp(pOutData, pInData, plainLen) == 0))
+		if ((nOutDataLen == plainLenTemp) && (memcmp(pOutData, pInData, plainLenTemp) == 0))
 		{
 			PrintData("SGD_SMS4_ECB->解密结果", pOutData, nOutDataLen, 16);
 			printf("SGD_SMS4_ECB运算结果：加密、解密及结果比较均正确。\n");
@@ -982,7 +984,7 @@ int GMCheck::getDataSM4EncDec_ECB_Dec(int dataSetCnt, unsigned int plainLen)
 		}
 		FileWrite(pFileName, "ab", (unsigned char *)"明文", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(pInData, plainLen, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(pInData, plainLenTemp, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		FileWrite(pFileName, "ab", newline, 2);
@@ -998,8 +1000,8 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 	unsigned char pInData[10240], pTmpData[10240], pCipherData[236], pOutData[10240];
 	//unsigned char pGMStdCipher[MAX_LEN_4_GMSTD];
 	unsigned int cipherLen = 236, nTmpDataLen, nOutDataLen;
-	unsigned int gmStdCipherLen = 96 + plainLen;
-	unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
+	// unsigned int gmStdCipherLen = 96 + plainLen;
+	// unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
 	char pFileName[128] = { 0x00 };
 	unsigned char newline[] = { 0x0D,0x0A }, equal[] = { 0x3D,0x20 };
 
@@ -1008,12 +1010,15 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 
 	for (i = 0; i<dataSetCnt; i++)
 	{
+		unsigned plainLenTemp = plainLen * ((i % 5) + 1);
+		unsigned int gmStdCipherLen = 96 + plainLenTemp;
+		unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
 		printf("\n");
 		printf("\n");
 		printf("SM2加密解密数据采集。\n");
 		memset(pGMStdCipher, 0, gmStdCipherLen);
 
-		rv = hEObj->GenerateRandom(plainLen, pInData);
+		rv = hEObj->GenerateRandom(plainLenTemp, pInData);
 		if (rv)
 		{
 			printf("生成随机明文错误，错误码[0x%08x]\n", rv);
@@ -1048,14 +1053,14 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 		printf("\n");
 		PrintData("SM2加密解密公钥", tempPublickey.first + 1, tempPublickey.second - 1, 16);
 		PrintData("SM2加密解密私钥", tempPrivatekey.first, tempPrivatekey.second, 16);
-		PrintData("SM2加密解密明文", pInData, plainLen, 16);
+		PrintData("SM2加密解密明文", pInData, plainLenTemp, 16);
 		//明文长度
 		FileWrite(pFileName, "ab", (unsigned char *)"明文长度", 8);
 		FileWrite(pFileName, "ab", equal, 2);
-		sprintf((char*)pTmpData, "%08x", plainLen);
+		sprintf((char*)pTmpData, "%08x", plainLenTemp);
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
-		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLen, pCipherData,(unsigned long*)&cipherLen);
+		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLenTemp, pCipherData,(unsigned long*)&cipherLen);
 		if (rv)
 		{
 			printf("SM2加密错误，错误码[0x%08x]\n", rv);
@@ -1063,7 +1068,7 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 			//return rv;
 		}
 		//cipherLen = strlen((char*)pCipherData);
-		cipher2GMStand(pCipherData, pGMStdCipher, plainLen);
+		cipher2GMStand(pCipherData, pGMStdCipher, plainLenTemp);
 		//gmStdCipherLen = strlen((char*)pGMStdCipher);
 		PrintData("SM2->加密结果", pGMStdCipher, gmStdCipherLen, 16);
 		//密文
@@ -1093,13 +1098,13 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 		//明文
 		FileWrite(pFileName, "ab", (unsigned char *)"明文", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(pInData, plainLen, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(pInData, plainLenTemp, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		FileWrite(pFileName, "ab", newline, 2);
+		delete[] pGMStdCipher;
 	}
 	printf("采集SM2加密解密数据完成。\n");
-	delete[] pGMStdCipher;
 	return rv;
 }
 //SM2 解密
@@ -1110,8 +1115,8 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 	unsigned char pInData[10240], pTmpData[10240], pCipherData[236], pOutData[10240];
 	//unsigned char pGMStdCipher[MAX_LEN_4_GMSTD];
 	unsigned int cipherLen = 236, nTmpDataLen, nOutDataLen;
-	unsigned int gmStdCipherLen = 96 + plainLen;
-	unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
+	// unsigned int gmStdCipherLen = 96 + plainLen;
+	// unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
 	char pFileName[128] = { 0x00 };
 	unsigned char newline[] = { 0x0D,0x0A }, equal[] = { 0x3D,0x20 };
 
@@ -1120,12 +1125,15 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 
 	for (i = 0; i<dataSetCnt; i++)
 	{
+		unsigned plainLenTemp = plainLen * ((i % 5) + 1);
+		unsigned int gmStdCipherLen = 96 + plainLenTemp;
+		unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
 		printf("\n");
 		printf("\n");
 		printf("SM2加密解密数据采集。\n");
 		memset(pGMStdCipher, 0, gmStdCipherLen);
 
-		rv = hEObj->GenerateRandom(plainLen, pInData);
+		rv = hEObj->GenerateRandom(plainLenTemp, pInData);
 		if (rv)
 		{
 			printf("生成随机明文错误，错误码[0x%08x]\n", rv);
@@ -1159,22 +1167,22 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 		printf("\n");
 		PrintData("SM2加密解密公钥", tempPublickey.first + 1, tempPublickey.second - 1, 16);
 		PrintData("SM2加密解密私钥", tempPrivatekey.first, tempPrivatekey.second, 16);
-		PrintData("SM2加密解密明文", pInData, plainLen, 16);
+		PrintData("SM2加密解密明文", pInData, plainLenTemp, 16);
 		//明文长度
 		FileWrite(pFileName, "ab", (unsigned char *)"明文长度", 8);
 		FileWrite(pFileName, "ab", equal, 2);
-		sprintf((char*)pTmpData, "%08x", plainLen);
+		sprintf((char*)pTmpData, "%08x", plainLenTemp);
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
 
-		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLen, pCipherData, (unsigned long*)&cipherLen);
+		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLenTemp, pCipherData, (unsigned long*)&cipherLen);
 		if (rv)
 		{
 			printf("SM2加密错误，错误码[0x%08x]\n", rv);
 			break;
 			//return rv;
 		}
-		cipher2GMStand(pCipherData, pGMStdCipher, plainLen);
+		cipher2GMStand(pCipherData, pGMStdCipher, plainLenTemp);
 		//gmStdCipherLen = strlen((char*)pGMStdCipher);
 		PrintData("SM2->加密结果", pGMStdCipher, gmStdCipherLen, 16);
 		//密文
@@ -1204,13 +1212,13 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 		//明文
 		FileWrite(pFileName, "ab", (unsigned char *)"明文", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(pInData, plainLen, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(pInData, plainLenTemp, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		FileWrite(pFileName, "ab", newline, 2);
+		delete[] pGMStdCipher;
 	}
 	printf("采集SM2加密解密数据完成。\n");
-	delete[] pGMStdCipher;
 	return 0;
 }
 //SM2 签名数据 有预处理
@@ -1529,12 +1537,13 @@ int GMCheck::getDataSM3(int dataSetCnt, unsigned int plainLen)
 	FileWrite(pFileName, "wb", NULL, 0);
 	for (i = 0; i<dataSetCnt; i++)
 	{
+		unsigned plainLenTemp = plainLen * ((i % 5) + 1);
 		printf("\n");
 		printf("\n");
 		printf("SM3杂凑数据采集。\n");
 		//printf("请选择输入数据的长度(16~8000)。\n");
 		
-		rv = hEObj->GenerateRandom(plainLen, pInData);
+		rv = hEObj->GenerateRandom(plainLenTemp, pInData);
 		if (rv)
 		{
 			printf("生成随机明文错误，错误码[0x%08x]\n", rv);
@@ -1543,23 +1552,23 @@ int GMCheck::getDataSM3(int dataSetCnt, unsigned int plainLen)
 		//消息长度
 		FileWrite(pFileName, "ab", (unsigned char *)"消息长度", 8);
 		FileWrite(pFileName, "ab", equal, 2);
-		sprintf((char*)pTmpData, "%08x", plainLen);
+		sprintf((char*)pTmpData, "%08x", plainLenTemp);
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
 
 		//消息
 		FileWrite(pFileName, "ab", (unsigned char *)"消息", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(pInData, plainLen, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(pInData, plainLenTemp, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 
-		PrintData("SM3杂凑_明文", pInData, plainLen, 16);
+		PrintData("SM3杂凑_明文", pInData, plainLenTemp, 16);
 		
 		unsigned char hashData[32] = { 0 };
 		int HashDataLen = 0;
 		objSM3.SM3HashInitFun();
-		objSM3(pInData, plainLen);
+		objSM3(pInData, plainLenTemp);
 		objSM3.SM3HashFinalFun(pHashData, (unsigned long*)&nHashDateLen);
 
 		PrintData("SM3杂凑结果", pHashData, nHashDateLen, 16);
@@ -1581,14 +1590,15 @@ int GMCheck::getDataSMALL(int dataSetCnt, unsigned int plainLen)
 	//不提供CBC数据生成输出
 	//getDataSM4EncDec_CBC_Enc(dataSetCnt, plainLen);
 	//getDataSM4EncDec_CBC_Dec(dataSetCnt, plainLen);
-	getDataSM4EncDec_ECB_Enc(dataSetCnt, plainLen);
-	getDataSM4EncDec_ECB_Dec(dataSetCnt, plainLen);
-	getDataSM2EncDec_Enc(dataSetCnt, plainLen);
-	getDataSM2EncDec_Dec(dataSetCnt, plainLen);
-	getDataSM2Sign(dataSetCnt, plainLen);
-	getDataSM2Verify(dataSetCnt, plainLen);
+	unsigned int plainLen4All = 16;
+	getDataSM4EncDec_ECB_Enc(dataSetCnt, plainLen4All);
+	getDataSM4EncDec_ECB_Dec(dataSetCnt, plainLen4All);
+	getDataSM2EncDec_Enc(dataSetCnt, plainLen4All);
+	getDataSM2EncDec_Dec(dataSetCnt, plainLen4All);
+	getDataSM2Sign(dataSetCnt, plainLen4All);
+	getDataSM2Verify(dataSetCnt, plainLen4All);
 	getDataSM2KeyPair(dataSetCnt);
-	getDataSM3(dataSetCnt, plainLen);
+	getDataSM3(dataSetCnt, plainLen4All);
 	return 0;
 }
 
