@@ -966,6 +966,7 @@ void
 PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 {
 	Proposal_t const& newPeerProp = newPeerPos.proposal();
+	JLOG(j_.info()) << "checkSaveNextProposal,newPeerPos.curSeq=" << newPeerProp.curLedgerSeq() << ", and we are on " << previousLedger_.seq() + 1;
 	if (newPeerProp.curLedgerSeq() > previousLedger_.seq() + 1)
 	{
 		auto curSeq = newPeerProp.curLedgerSeq();
