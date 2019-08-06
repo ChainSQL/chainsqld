@@ -964,7 +964,9 @@ RCLConsensus::Adaptor::buildLCL(
 
     {
         OpenView accum(&*buildLCL);
-        assert(!accum.open());
+		assert(!accum.open());
+
+		auto timeStart = utcTime();
         if (replay)
         {
             // Special case, we are replaying a ledger close
@@ -980,9 +982,13 @@ RCLConsensus::Adaptor::buildLCL(
                     return !buildLCL->txExists(txID);
                 });
         }
+		JLOG(j_.info()) << "applyTransactions time used:" << utcTime() - timeStart << "ms";
+		timeStart = utcTime();
         // Update fee computations.
         app_.getTxQ().processClosedLedger(app_, accum, roundTime > 5s);
         accum.apply(*buildLCL);
+
+		JLOG(j_.info()) << "apply sle time used:" << utcTime() - timeStart << "ms";
     }
 
     // retriableTxs will include any transactions that
