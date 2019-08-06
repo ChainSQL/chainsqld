@@ -59,7 +59,30 @@ public:
 
     //< Sequence number when  a peer wants to bow out and leave consensus
     static std::uint32_t const seqLeave = 0xffffffff;
+	/** Constructor
 
+	 @param prevLedger The previous ledger this proposal is building on.
+	 @param seq The sequence number of this proposal.
+	 @param position The position taken on transactions in this round.
+	 @param closeTime Position of when this ledger closed.
+	 @param now Time when the proposal was taken.
+	 @param nodeID ID of node/peer taking this position.
+ */
+	ConsensusProposal(
+		LedgerID_t const& prevLedger,
+		std::uint32_t seq,
+		Position_t const& position,
+		NetClock::time_point closeTime,
+		NetClock::time_point now,
+		NodeID_t const& nodeID)
+		: previousLedger_(prevLedger)
+		, position_(position)
+		, closeTime_(closeTime)
+		, time_(now)
+		, proposeSeq_(seq)
+		, nodeID_(nodeID)
+	{
+	}
     /** Constructor
 
         @param prevLedger The previous ledger this proposal is building on.
@@ -68,9 +91,11 @@ public:
         @param closeTime Position of when this ledger closed.
         @param now Time when the proposal was taken.
         @param nodeID ID of node/peer taking this position.
+		@param curLedgerSeq Current ledger sequence
     */
     ConsensusProposal(
         LedgerID_t const& prevLedger,
+		std::uint32_t curLedgerSeq,
         std::uint32_t seq,
         Position_t const& position,
         NetClock::time_point closeTime,
@@ -82,6 +107,7 @@ public:
         , time_(now)
         , proposeSeq_(seq)
         , nodeID_(nodeID)
+		, curLedgerSeq_(curLedgerSeq)
     {
     }
 
@@ -105,6 +131,13 @@ public:
     {
         return previousLedger_;
     }
+
+	// ! Get current ledger index
+	std::uint32_t const&
+		curLedgerSeq() const
+	{
+		return curLedgerSeq_;
+	}
 
     /** Get the sequence number of this proposal
 
@@ -197,6 +230,7 @@ public:
 
         Json::Value ret = Json::objectValue;
         ret[jss::previous_ledger] = to_string(prevLedger());
+		ret[jss::ledger_current_index] = curLedgerSeq_;
 
         if (!isBowOut())
         {
@@ -227,7 +261,9 @@ private:
     std::uint32_t proposeSeq_;
 
     //! The identifier of the node taking this position
-    NodeID_t nodeID_;
+	NodeID_t nodeID_;
+
+	std::uint32_t curLedgerSeq_ = 0;
 };
 
 template <class NodeID_t, class LedgerID_t, class Position_t>

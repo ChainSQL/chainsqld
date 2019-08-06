@@ -196,6 +196,7 @@ message TMProposeSet
     repeated bytes addedTransactions    = 10;   // not required if number is large
     repeated bytes removedTransactions  = 11;   // not required if number is large
     optional uint32 hops                = 12;   // Number of hops traveled
+	optional uint32 curLedgerSeq		= 13; 	// Current ledger sequence
 }
 
 enum TxSetStatus

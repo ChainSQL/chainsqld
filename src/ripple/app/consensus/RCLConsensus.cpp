@@ -202,6 +202,7 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
         proposal.position().begin(), proposal.position().size());
     prop.set_previousledger(
         proposal.prevLedger().begin(), proposal.position().size());
+	prop.set_curledgerseq(proposal.curLedgerSeq());
     prop.set_proposeseq(proposal.proposeSeq());
     prop.set_closetime(proposal.closeTime().time_since_epoch().count());
 
@@ -436,6 +437,7 @@ RCLConsensus::Adaptor::onCollectFinish(
 		std::move(initialSet),
 		RCLCxPeerPos::Proposal{
 			prevLedger->info().hash,
+			prevLedger->info().seq + 1,
 			RCLCxPeerPos::Proposal::seqJoin,
 			setHash,
 			closeTime,

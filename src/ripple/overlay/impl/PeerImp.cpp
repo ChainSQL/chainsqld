@@ -1323,7 +1323,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 
     auto proposal = RCLCxPeerPos(
         publicKey, signature, suppression,
-        RCLCxPeerPos::Proposal{prevLedger, set.proposeseq (), proposeHash, closeTime,
+        RCLCxPeerPos::Proposal{prevLedger, set.curledgerseq(), set.proposeseq (), proposeHash, closeTime,
             app_.timeKeeper().closeTime(),calcNodeID(publicKey)});
 
     std::weak_ptr<PeerImp> weak = shared_from_this();

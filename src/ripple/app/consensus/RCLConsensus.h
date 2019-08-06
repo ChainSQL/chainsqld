@@ -74,7 +74,7 @@ class RCLConsensus
 		bool firstTimeUseNew = true;
 
 		// save next proposal
-		std::shared_ptr<RCLCxPeerPos> nextProposal_;
+		std::map<std::uint32_t, std::map<PublicKey, RCLCxPeerPos>> proposalCache_;
 
         // These members are queried via public accesors and are atomic for
         // thread safety.

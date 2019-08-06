@@ -385,13 +385,19 @@ PConsensus<Adaptor>::startRoundInternal(
 	//	// consider closing the ledger immediately
 	//	timerEntry(now_);
 	//}
-	if (adaptor_.nextProposal_.get())
+	std::uint32_t curSeq = prevLedger.seq() + 1;
+	if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
 	{
-		if (peerProposalInternal(now, *adaptor_.nextProposal_))
+		JLOG(j_.info()) << "Check peerProposalInternal after startRoundInternal";
+		for (auto it = adaptor_.proposalCache_[curSeq].begin(); it != adaptor_.proposalCache_[curSeq].end(); it++)
 		{
-			JLOG(j_.info()) << "check peerProposalInternal after startRoundInternal success!";
+			if (peerProposalInternal(now, it->second))
+			{
+				JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
+			}
 		}
-		adaptor_.nextProposal_.reset();
+
+		adaptor_.proposalCache_.erase(curSeq);
 	}
 }
 
@@ -960,14 +966,22 @@ void
 PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 {
 	Proposal_t const& newPeerProp = newPeerPos.proposal();
-	if (newPeerProp.prevLedger() != prevLedgerID_ )
+	if (newPeerProp.curLedgerSeq() > previousLedger_.seq() + 1)
 	{
-		//only cache proposal from next leader
-		if (isLeader(newPeerPos.publicKey(), true))
+		auto curSeq = newPeerProp.curLedgerSeq();
+		if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
 		{
-			JLOG(j_.info()) << "Position "<<newPeerProp.position() <<" from " <<getPubIndex(newPeerPos.publicKey()) <<" added to cache.";
-			adaptor_.nextProposal_ = std::make_shared<PeerPosition_t>(newPeerPos);
-		}		
+			//only the first time for a same key will succeed.
+			adaptor_.proposalCache_[curSeq].emplace(newPeerPos.publicKey(),newPeerPos);
+		}
+		else
+		{
+			std::map<PublicKey, RCLCxPeerPos> mapPos;
+			mapPos.emplace(newPeerPos.publicKey(), newPeerPos);
+			adaptor_.proposalCache_[curSeq] = mapPos;
+		}
+
+		JLOG(j_.info()) << "Position " << newPeerProp.position() << "of ledger " << newPeerProp.curLedgerSeq() << " from " << getPubIndex(newPeerPos.publicKey()) << " added to cache.";
 	}
 }
 
