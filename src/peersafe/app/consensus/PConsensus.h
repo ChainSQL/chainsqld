@@ -423,8 +423,13 @@ PConsensus<Adaptor>::peerProposalInternal(
 		return false;
 	}
 
-
 	Proposal_t const& newPeerProp = newPeerPos.proposal();
+	if (newPeerProp.curLedgerSeq() < previousLedger_.seq() + 1)
+	{
+		// in case the leader is fall behind and proposing previous tx-set...
+		return false;
+	}
+
 	if (newPeerProp.prevLedger() != prevLedgerID_)
 	{
 		checkSaveNextProposal(newPeerPos);
@@ -538,25 +543,28 @@ PConsensus<Adaptor>::gotTxSet(
 	{
 		if (setID_ && setID_ == id)
 		{
-			//update avoid if we got the right tx-set
-			adaptor_.app_.getTxPool().updateAvoid(txSet);
+			if (!result_)
+			{
+				//update avoid if we got the right tx-set
+				adaptor_.app_.getTxPool().updateAvoid(txSet);
 
-			auto set = txSet.map_->snapShot(false);
-			//this place has a txSet copy,what's the time it costs?
-			result_.emplace(Result(
-			std::move(set),
-			RCLCxPeerPos::Proposal(
-				prevLedgerID_,
-				previousLedger_.seq() + 1,
-				RCLCxPeerPos::Proposal::seqJoin,
-				id,
-				closeTime_,
-				now,
-				adaptor_.nodeID())) );
+				auto set = txSet.map_->snapShot(false);
+				//this place has a txSet copy,what's the time it costs?
+				result_.emplace(Result(
+					std::move(set),
+					RCLCxPeerPos::Proposal(
+						prevLedgerID_,
+						previousLedger_.seq() + 1,
+						RCLCxPeerPos::Proposal::seqJoin,
+						id,
+						closeTime_,
+						now,
+						adaptor_.nodeID())));
 
-			txSetVoted_[*setID_].insert(adaptor_.valPublic_);
+				txSetVoted_[*setID_].insert(adaptor_.valPublic_);
 
-			result_->roundTime.reset(proposalTime_);
+				result_->roundTime.reset(proposalTime_);
+			}
 
 			if (adaptor_.validating())
 			{
