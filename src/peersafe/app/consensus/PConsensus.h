@@ -547,6 +547,7 @@ PConsensus<Adaptor>::gotTxSet(
 			std::move(set),
 			RCLCxPeerPos::Proposal(
 				prevLedgerID_,
+				previousLedger_.seq() + 1,
 				RCLCxPeerPos::Proposal::seqJoin,
 				id,
 				closeTime_,
@@ -721,11 +722,21 @@ PConsensus<Adaptor>::phaseVoting()
 
 	using namespace std::chrono;
 	//ConsensusParms const & parms = adaptor_.parms();
+	auto const ait = acquired_.find(*setID_);
+	if (ait == acquired_.end())
+	{
+		using namespace std::chrono;
+		auto dur = duration_cast<milliseconds>(clock_.now() - proposalTime_);
+		JLOG(j_.info()) << "phaseVoting roundTime:" << dur.count() << "ms.";
+	}
+	else
+	{
+		result_->roundTime.tick(clock_.now());
+		//result_->proposers = currPeerPositions_.size();
 
-	result_->roundTime.tick(clock_.now());
-	//result_->proposers = currPeerPositions_.size();
+		JLOG(j_.info()) << "phaseVoting roundTime:" << result_->roundTime.read().count();
+	}
 
-	JLOG(j_.info()) << "phaseVoting roundTime:" << result_->roundTime.read().count();
 
 	//// Give everyone a chance to take an initial position
 	if (*setID_ == beast::zero && timeSinceOpen() < maxBlockTime_)
@@ -982,7 +993,7 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 			adaptor_.proposalCache_[curSeq] = mapPos;
 		}
 
-		JLOG(j_.info()) << "Position " << newPeerProp.position() << "of ledger " << newPeerProp.curLedgerSeq() << " from " << getPubIndex(newPeerPos.publicKey()) << " added to cache.";
+		JLOG(j_.info()) << "Position " << newPeerProp.position() << " of ledger " << newPeerProp.curLedgerSeq() << " from " << getPubIndex(newPeerPos.publicKey()) << " added to cache.";
 	}
 }
 
