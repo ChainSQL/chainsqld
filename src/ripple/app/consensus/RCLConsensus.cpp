@@ -550,7 +550,8 @@ RCLConsensus::Adaptor::doAccept(
     //--------------------------------------------------------------------------
     // Put transactions into a deterministic, but unpredictable, order
     CanonicalTXSet retriableTxs{result.set.id()};
-
+	
+	auto timeStart = utcTime();
     auto sharedLCL = buildLCL(
         prevLedger,
         result.set,
@@ -559,6 +560,8 @@ RCLConsensus::Adaptor::doAccept(
         closeResolution,
         result.roundTime.read(),
         retriableTxs);
+	JLOG(j_.info()) << "buildLCL time used:" << utcTime() - timeStart << "ms";
+	timeStart = utcTime();
 
     auto const newLCLHash = sharedLCL.id();
     JLOG(j_.debug()) << "Report: NewL  = " << newLCLHash << ":"
@@ -657,7 +660,7 @@ RCLConsensus::Adaptor::doAccept(
         // is created
         app_.getOPs().reportFeeChange();
     }
-
+	JLOG(j_.info()) << "openLedger().accept time used:" << utcTime() - timeStart << "ms";
     //-------------------------------------------------------------------------
     {
         ledgerMaster_.switchLCL(sharedLCL.ledger_);
