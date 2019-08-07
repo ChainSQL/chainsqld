@@ -36,6 +36,7 @@
 #include <ripple/overlay/Cluster.h>
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/table/TableSync.h>
+#include <peersafe/app/misc/TxPool.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <algorithm>
@@ -1053,7 +1054,10 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMTransaction> const& m)
     {
         auto stx = std::make_shared<STTx const>(sit);
         uint256 txID = stx->getTransactionID ();
-
+	if (app_.getTxPool().txExists(txID))
+	{
+	    return;
+	}
         int flags;
 
         constexpr std::chrono::seconds tx_interval = 10s;
@@ -1092,10 +1096,10 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMTransaction> const& m)
         }
 
         // The maximum number of transactions to have in the job queue.
-        constexpr int max_transactions = 250;
+        constexpr int max_transactions = 65536;
         if (app_.getJobQueue().getJobCount(jtTRANSACTION) > max_transactions)
         {
-            JLOG(p_journal_.info()) << "Transaction queue is full";
+           JLOG(p_journal_.info()) << "Transaction queue is full";
         }
         else if (app_.getLedgerMaster().getValidatedLedgerAge() > 4min)
         {
@@ -1286,7 +1290,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
         closeTime, publicKey.slice(), signature);
 
 	JLOG(p_journal_.info()) << "PeerImpl recv peer proposal:" << proposeHash <<" from public "<< toBase58(TOKEN_NODE_PUBLIC, publicKey)
-		<<",prevHash="<<to_string(prevLedger);
+		<<",prevHash="<<to_string(prevLedger) << ",curSeq="<< set.curledgerseq();
 
     if (! app_.getHashRouter ().addSuppressionPeer (suppression, id_))
     {
