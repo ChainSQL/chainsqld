@@ -385,19 +385,28 @@ PConsensus<Adaptor>::startRoundInternal(
 	//	// consider closing the ledger immediately
 	//	timerEntry(now_);
 	//}
-	std::uint32_t curSeq = prevLedger.seq() + 1;
-	if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
+	if (mode == ConsensusMode::proposing)
 	{
-		JLOG(j_.info()) << "Check peerProposalInternal after startRoundInternal";
-		for (auto it = adaptor_.proposalCache_[curSeq].begin(); it != adaptor_.proposalCache_[curSeq].end(); it++)
+		std::uint32_t curSeq = prevLedger.seq() + 1;
+		if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
 		{
-			if (peerProposalInternal(now, it->second))
+			JLOG(j_.info()) << "Check peerProposalInternal after startRoundInternal";
+			for (auto it = adaptor_.proposalCache_[curSeq].begin(); it != adaptor_.proposalCache_[curSeq].end(); it++)
 			{
-				JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
+				if (peerProposalInternal(now, it->second))
+				{
+					JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
+				}
 			}
-		}
 
-		adaptor_.proposalCache_.erase(curSeq);
+			for (auto iter = adaptor_.proposalCache_.begin(); iter != adaptor_.proposalCache_.end(); iter++)
+			{
+				if (iter->first <= curSeq)
+				{
+					adaptor_.proposalCache_.erase(curSeq);
+				}				
+			}			
+		}
 	}
 }
 
@@ -427,6 +436,13 @@ PConsensus<Adaptor>::peerProposalInternal(
 	if (newPeerProp.curLedgerSeq() < previousLedger_.seq() + 1)
 	{
 		// in case the leader is fall behind and proposing previous tx-set...
+		return false;
+	}
+
+	if (newPeerProp.curLedgerSeq() > previousLedger_.seq() + 1)
+	{
+		checkSaveNextProposal(newPeerPos);
+		// in case the we are fall behind and get proposal from a non-leader node ,but we think it's our leader
 		return false;
 	}
 
@@ -564,6 +580,8 @@ PConsensus<Adaptor>::gotTxSet(
 				txSetVoted_[*setID_].insert(adaptor_.valPublic_);
 
 				result_->roundTime.reset(proposalTime_);
+
+				JLOG(j_.info()) << "gotTxSet time elapsed since receive set_id from leader:" << (now - rawCloseTimes_.self).count();
 			}
 
 			if (adaptor_.validating())
@@ -571,16 +589,19 @@ PConsensus<Adaptor>::gotTxSet(
 				adaptor_.propose(result_->position);
 			}			
 
-			JLOG(j_.info()) << "gotTxSet time elapsed since receive set_id from leader:" << (now - rawCloseTimes_.self).count();
+			//trigger a timer entry if final condition reached.
+			if (txSetVoted_[*setID_].size() >= adaptor_.app_.validators().quorum())
+			{
+				timerEntry(clock_.now());
+			}
+
 			JLOG(j_.info()) << "voting for set:" << *setID_ <<" "<< txSetVoted_[*setID_].size();
 			for (auto pub : txSetVoted_[*setID_])
 			{
 				JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
 			}
+			JLOG(j_.info()) << "We are not leader gotTxSet,and proposing position:" << id;
 		}
-
-
-		JLOG(j_.info()) << "We are not leader gotTxSet,and proposing position:" << id;
 	}
 }
 
@@ -596,6 +617,11 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 
 	// Check we are on the proper ledger (this may change phase_)
 	checkLedger();
+
+	if (mode_.get() == ConsensusMode::wrongLedger)
+	{
+		return;
+	}
 
 	if (phase_ == ConsensusPhase::open)
 	{

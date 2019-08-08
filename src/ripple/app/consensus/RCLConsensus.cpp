@@ -1081,9 +1081,12 @@ RCLConsensus::Adaptor::onModeChange(
     ConsensusMode before,
     ConsensusMode after)
 {
-    JLOG(j_.info()) << "Consensus mode change before=" << to_string(before)
-                    << ", after=" << to_string(after);
-    mode_ = after;
+	if (before != after)
+	{
+		JLOG(j_.info()) << "Consensus mode change before=" << to_string(before)
+			<< ", after=" << to_string(after);
+		mode_ = after;
+	}
 }
 
 Json::Value
