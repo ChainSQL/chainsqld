@@ -51,14 +51,15 @@ enum JobType
     jtCLIENT,        // A websocket command from the client
     jtRPC,           // A websocket command from the client
 
-    jtLEDGER_REQ,    // Peer request ledger/txnset data
-    jtLEDGER_DATA,   // Received data for a ledger we're acquiring
-
     jtUPDATE_PF,     // Update pathfinding requests
     jtTRANSACTION,   // A transaction received from the network
     jtBATCH,         // Apply batched transactions
     jtADVANCE,       // Advance validated/acquired ledgers
     jtPUBLEDGER,     // Publish a fully-accepted ledger
+
+	jtLEDGER_REQ,    // Peer request ledger/txnset data
+	jtLEDGER_DATA,   // Received data for a ledger we're acquiring
+
     jtTXN_DATA,      // Fetch a proposed set
     jtWAL,           // Write-ahead logging
     jtVALIDATION_t,  // A validation from a trusted source
