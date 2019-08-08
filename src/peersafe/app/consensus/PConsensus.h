@@ -592,7 +592,7 @@ PConsensus<Adaptor>::gotTxSet(
 			//trigger a timer entry if final condition reached.
 			if (txSetVoted_[*setID_].size() >= adaptor_.app_.validators().quorum())
 			{
-				timerEntry(clock_.now());
+				timerEntry(adaptor_.app_.timeKeeper().closeTime());
 			}
 
 			JLOG(j_.info()) << "voting for set:" << *setID_ <<" "<< txSetVoted_[*setID_].size();
