@@ -402,13 +402,13 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::checkCache()
 {
-	std::uint32_t curSeq = prevLedger.seq() + 1;
+	std::uint32_t curSeq = previousLedger_.seq() + 1;
 	if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
 	{
 		JLOG(j_.info()) << "Check peerProposalInternal after startRoundInternal";
 		for (auto it = adaptor_.proposalCache_[curSeq].begin(); it != adaptor_.proposalCache_[curSeq].end(); it++)
 		{
-			if (peerProposalInternal(now, it->second))
+			if (peerProposalInternal(now_, it->second))
 			{
 				JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
 			}
