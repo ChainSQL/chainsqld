@@ -230,7 +230,7 @@ private:
 
 	void appendTransactions(h256Set const& txSet);
 
-	std::chrono::milliseconds timeSinceClose();
+	std::chrono::milliseconds timeSinceLastClose();
 	uint64 timeSinceOpen();
 
 	void leaveConsensus();
@@ -657,7 +657,7 @@ PConsensus<Adaptor>::appendTransactions(h256Set const& txSet)
 
 template <class Adaptor>
 std::chrono::milliseconds
-PConsensus<Adaptor>::timeSinceClose()
+PConsensus<Adaptor>::timeSinceLastClose()
 {
 	using namespace std::chrono;
 	// This computes how long since last ledger's close time
@@ -699,7 +699,7 @@ PConsensus<Adaptor>::phaseCollecting()
 	//bool anyTransactions = adaptor_.hasOpenTransactions();
 	//auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
 
-	auto sinceClose = timeSinceClose();
+	auto sinceClose = timeSinceLastClose();
 	auto sinceOpen = timeSinceOpen();
 
 	JLOG(j_.info()) << "phaseCollecting time sinceOpen:" << sinceOpen <<"ms";
@@ -908,7 +908,7 @@ bool PConsensus<Adaptor>::finalCondReached(uint64 sinceOpen, uint64 sinceLastClo
 		return true;
 	if (transactions_.size() >= maxTxsInLedger_/2 && sinceOpen >= minBlockTime_ && sinceLastClose >= minBlockTime_)
 		return true;
-	if (sinceOpen >= maxBlockTime_)
+	if (sinceLastClose >= maxBlockTime_)
 		return true;
 	return false;
 }
