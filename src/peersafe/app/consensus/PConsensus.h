@@ -182,6 +182,13 @@ private:
 	void
 		checkLedger();
 
+	/** Check if we have proposal cached for current ledger when consensus started.
+
+		If we have the cache,just need to fetch the corresponding tx-set.
+	*/
+	void 
+		checkCache();
+
 	/** Handle tx-collecting phase.
 
 		In the tx-collecting phase, the ledger is open as we wait for new
@@ -387,25 +394,32 @@ PConsensus<Adaptor>::startRoundInternal(
 	//}
 	if (mode == ConsensusMode::proposing)
 	{
-		std::uint32_t curSeq = prevLedger.seq() + 1;
-		if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
-		{
-			JLOG(j_.info()) << "Check peerProposalInternal after startRoundInternal";
-			for (auto it = adaptor_.proposalCache_[curSeq].begin(); it != adaptor_.proposalCache_[curSeq].end(); it++)
-			{
-				if (peerProposalInternal(now, it->second))
-				{
-					JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
-				}
-			}
+		checkCache();
+	}
+}
 
-			for (auto iter = adaptor_.proposalCache_.begin(); iter != adaptor_.proposalCache_.end(); iter++)
+template <class Adaptor>
+void
+PConsensus<Adaptor>::checkCache()
+{
+	std::uint32_t curSeq = prevLedger.seq() + 1;
+	if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
+	{
+		JLOG(j_.info()) << "Check peerProposalInternal after startRoundInternal";
+		for (auto it = adaptor_.proposalCache_[curSeq].begin(); it != adaptor_.proposalCache_[curSeq].end(); it++)
+		{
+			if (peerProposalInternal(now, it->second))
 			{
-				if (iter->first <= curSeq)
-				{
-					adaptor_.proposalCache_.erase(curSeq);
-				}				
-			}			
+				JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
+			}
+		}
+
+		for (auto iter = adaptor_.proposalCache_.begin(); iter != adaptor_.proposalCache_.end(); iter++)
+		{
+			if (iter->first <= curSeq)
+			{
+				adaptor_.proposalCache_.erase(iter->first);
+			}
 		}
 	}
 }
