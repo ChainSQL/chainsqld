@@ -97,8 +97,8 @@ Json::Value doSubmit (RPC::Context& context)
 				<< "the error info of checkValidity £º "
 				<< validity.second;
 
-            jvResult[jss::error] = "invalidTransaction";
-            jvResult[jss::error_exception] = "fails local checks: " + validity.second;
+            jvResult[jss::error]                 = "invalidTransaction";
+            jvResult[jss::error_message] = "fails local checks: " + validity.second;
 
             return jvResult;
         }
