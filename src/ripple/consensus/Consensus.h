@@ -62,7 +62,8 @@ shouldCloseLedger(
     std::chrono::milliseconds openTime,
     std::chrono::milliseconds idleInterval,
     ConsensusParms const & parms,
-    beast::Journal j);
+	beast::Journal j,
+	bool bUseLargeInterval = false);
 
 /** Determine whether the network reached consensus and whether we joined.
 
@@ -416,6 +417,8 @@ public:
     Json::Value
     getJson(bool full) const;
 
+	bool useLargeInterval();
+	void setUseLargeInterval(bool bUse);
 private:
     void
     startRoundInternal(
@@ -497,7 +500,6 @@ private:
     // The rounded or effective close time estimate from a proposer
     NetClock::time_point
     asCloseTime(NetClock::time_point raw) const;
-
 private:
     Adaptor& adaptor_;
 
@@ -560,6 +562,8 @@ private:
 
     // Journal for debugging
     beast::Journal j_;
+
+	bool useLargeInterval_ = false;
 };
 
 template <class Adaptor>
@@ -1077,7 +1081,7 @@ Consensus<Adaptor>::phaseOpen()
     }
 
     auto const idleInterval = std::max<milliseconds>(
-        adaptor_.parms().ledgerIDLE_INTERVAL,
+		useLargeInterval_ ? adaptor_.parms().ledgerIDLE_INTERVAL_EMPTY : adaptor_.parms().ledgerIDLE_INTERVAL,
         2 * previousLedger_.closeTimeResolution());
 
     // Decide if we should close the ledger
@@ -1091,7 +1095,8 @@ Consensus<Adaptor>::phaseOpen()
             openTime_.read(),
             idleInterval,
             adaptor_.parms(),
-            j_))
+			j_,
+			useLargeInterval_))
     {
         closeLedger();
     }
@@ -1539,6 +1544,17 @@ Consensus<Adaptor>::asCloseTime(NetClock::time_point raw) const
         return effCloseTime(raw, closeResolution_, previousLedger_.closeTime());
 }
 
-}  // namespace ripple
+template <class Adaptor>
+bool Consensus<Adaptor>::useLargeInterval()
+{
+	return useLargeInterval_;
+}
 
+template <class Adaptor>
+void Consensus<Adaptor>::setUseLargeInterval(bool bUse)
+{
+	useLargeInterval_ = bUse;
+}
+// namespace ripple
+}
 #endif

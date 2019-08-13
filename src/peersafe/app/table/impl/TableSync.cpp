@@ -1431,7 +1431,6 @@ void TableSync::TableSyncThread()
     }
 
     bTableSyncThread_ = false;
-
 	if (bNeedReSync) {
 		TryTableSync();
 	}

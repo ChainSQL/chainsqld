@@ -58,6 +58,7 @@ class FeatureCollections
         "CompareFlowV1V2",
         "SHAMapV2",
 		"DisableV2",
+		"DecreaseStorage",
         "PayChan",
         "Flow",
         "CompareTakerFlowCross",
@@ -156,6 +157,7 @@ extern uint256 const featureOwnerPaysFee;
 extern uint256 const featureCompareFlowV1V2;
 extern uint256 const featureSHAMapV2;
 extern uint256 const featureDisableV2;
+extern uint256 const featureDecreaseStorage;
 extern uint256 const featurePayChan;
 extern uint256 const featureFlow;
 extern uint256 const featureCompareTakerFlowCross;
