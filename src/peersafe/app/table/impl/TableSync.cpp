@@ -1289,6 +1289,7 @@ void TableSync::TableSyncThread()
 					{
 						pItem->SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
 						bNeedReSync = true;
+						JLOG(journal_.info()) << "InitPassphrase success,tableName=" << stItem.sTableName << ",owner=" << to_string(stItem.accountID);
 					}
 					else
 					{
