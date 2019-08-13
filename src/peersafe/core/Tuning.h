@@ -22,7 +22,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 namespace ripple {	
 	// 
-    int64_t const MAX_CODE_SIZE         = 0x6000;	
+    int64_t const MAX_CODE_SIZE         = std::numeric_limits<std::uint64_t>::max(); //0x6000;
 	//
     int64_t const CREATE_DATA_GAS       = 200;
     //

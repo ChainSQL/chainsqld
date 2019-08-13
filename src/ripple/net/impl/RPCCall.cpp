@@ -1244,8 +1244,10 @@ public:
 			{   "r_get",               &RPCParser::parseQueryTable,            1,  1 },
             {   "t_dump",              &RPCParser::parseDumpTable,             2,  2 },
 			{   "t_dumpstop",          &RPCParser::parseDumpStop,              2,  2 },
+            {   "t_dumpposition",      &RPCParser::parseDumpStop,              2,  2 },
             {   "t_audit",             &RPCParser::parseAuditTable,            3,  3 },
             {   "t_auditstop",         &RPCParser::parseAuditStop,             1,  1 },
+            {   "t_auditposition",     &RPCParser::parseAuditStop,             1,  1 },
             {   "g_dbname",            &RPCParser::parseGetDBName,             1,  1 },
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
 			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
@@ -1485,6 +1487,29 @@ rpcClient(std::vector<std::string> const& args,
                 assert(params.size() == 1);
                 jvParams.append(params[0u]);
             }
+
+			if (args.size() == 1 && args[0] == "validation_create")
+			{
+				Json::Value     obj(Json::objectValue);
+				auto seed = randomSeed();
+
+				auto const private_key = generateSecretKey(KeyType::secp256k1, seed);
+
+				obj[jss::validation_public_key] = toBase58(
+					TokenType::TOKEN_NODE_PUBLIC,
+					derivePublicKey(KeyType::secp256k1, private_key));
+
+				obj[jss::validation_public_key_hex] = strHex(derivePublicKey(KeyType::secp256k1, private_key));
+
+				obj[jss::validation_private_key] = toBase58(
+					TokenType::TOKEN_NODE_PRIVATE, private_key);
+
+				obj[jss::validation_seed] = toBase58(seed);
+				obj[jss::validation_key] = seedAs1751(seed);
+
+				jvOutput["result"] = obj;
+			}
+			else
             {
                 boost::asio::io_service isService;
                 RPCCall::fromNetwork (

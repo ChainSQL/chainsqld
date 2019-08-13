@@ -38,7 +38,7 @@
 #include <peersafe/app/table/TableStatusDB.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableTxAccumulator.h>
-
+#include <ripple/app/misc/Transaction.h>
 
 using namespace std::chrono;
 auto constexpr TABLE_DATA_OVERTM = 30s;
@@ -756,7 +756,18 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 			if (bConfidential)
 			{
 				confidential_ = true;
-				if (!user_accountID_) return std::make_pair(false, "user account is null.");;
+				std::shared_ptr<STTx const> pTx = nullptr;
+				auto pTransaction = app_.getMasterTransaction().fetch(table.getFieldH256(sfCreatedTxnHash),true);
+				if (pTransaction)
+				{
+					pTx = pTransaction->getSTransaction();
+				}
+				if (!user_accountID_ || user_accountID_->isZero() )
+				{
+					app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
+					return std::make_pair(false, "user account is null.");
+				}
+					
 				for (auto & user : users)  //check if there same user
 				{
 					if (user.getAccountID(sfUser) == user_accountID_)
@@ -765,6 +776,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 						auto userFlags = user.getFieldU32(sfFlags);
 						if ((userFlags & selectFlags) == 0)
 						{
+							app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
 							return std::make_pair(false, "no authority.");
 						}
 						else
@@ -775,7 +787,11 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 								//passBlob_ = RippleAddress::decryptPassword(token, *user_secret_);
                                 passBlob_ = ripple::decrypt(token, *user_secret_);
 								if(passBlob_.size() > 0)  return std::make_pair(true, "");
-								else                      return std::make_pair(false, "cann't get password for this table.");
+								else
+								{
+									app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
+									return std::make_pair(false, "cann't get password for this table.");
+								}
 							}
 							else
 							{
@@ -954,18 +970,19 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 			}
 		}
 	}
-	else
-	{
-		if ((TableOpType)op_type == T_CREATE)
-		{
-			auto tables = tx.getFieldArray(sfTables);
-			if (tables.size() > 0)
-			{
-				auto nameInDB = strCopy(tables[0].getFieldVL(sfNameInDB));
-				DeleteTable(nameInDB);
-			}
-		}
-	}
+	//else
+	//{
+	//	if ((TableOpType)op_type == T_CREATE)
+	//	{
+	//		auto tables = tx.getFieldArray(sfTables);
+	//		if (tables.size() > 0)
+	//		{
+	//			JLOG(journal_.warn()) << "Deleting item where tableName = " << sTableName_  <<" because of creating real table failure." ;
+	//			getTableStatusDB().DeleteRecord(accountID_, sTableName_);
+	//			this->ReSetContexAfterDrop();
+	//		}
+	//	}
+	//}
 
 	return ret;
 }
@@ -1077,20 +1094,24 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
 					if (vecTxs.size() > 0)
 					{
+
 						TryDecryptRaw(vecTxs);
-                        for (auto& tx : vecTxs)
-                        {
-                            if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
-                            {
-                                DeleteTable(sTableNameInDB_);
-                            }
-                        }                        
+						for (auto& tx : vecTxs)
+						{
+							if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
+							{
+								DeleteTable(sTableNameInDB_);
+							}
+						}
 					}
 					JLOG(journal_.info()) << "got sync tx" << tx.getFullText();
 
 					auto conn = getTxStoreDBConn().GetDBConn();
 					if (conn == NULL)
 					{
+						std::pair<std::string, std::string> result = std::make_pair("db_error", "Get db connection failed,maybe max-connections too small.");
+						app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
+
 						SetSyncState(SYNC_STOP);
 						return false;
 					}
@@ -1175,7 +1196,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 void TableSyncItem::OperateSQLThread()
 {
     //check the connection is ok
-    getTxStoreDBConn();
+    if(eSyncTargetType_ != SyncTarget_dump)       getTxStoreDBConn();
 
 	if (GetSyncState() == SYNC_STOP)
 	{

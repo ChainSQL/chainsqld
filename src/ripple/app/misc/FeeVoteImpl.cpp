@@ -144,6 +144,15 @@ FeeVoteImpl::doValidation(
         baseValidation.setFieldU32 (sfReserveIncrement,
             target_.owner_reserve);
     }
+
+
+	if (lastClosedLedger->fees().drops_per_byte != target_.drops_per_byte)
+	{
+		JLOG(journal_.info()) <<
+			"Voting for per zxc size " << target_.drops_per_byte;
+		baseValidation.setFieldU64(sfDropsPerByte,
+			target_.drops_per_byte);
+	}
 }
 
 void
@@ -163,6 +172,10 @@ FeeVoteImpl::doVoting(
 
     detail::VotableInteger<std::uint32_t> incReserveVote (
         lastClosedLedger->fees().increment, target_.owner_reserve);
+
+
+	detail::VotableInteger<std::uint64_t> dropsPerByteVote(
+		lastClosedLedger->fees().drops_per_byte, target_.drops_per_byte);
 
     for (auto const& val : set)
     {
@@ -194,6 +207,18 @@ FeeVoteImpl::doVoting(
             {
                 incReserveVote.noVote ();
             }
+
+
+			if (val->isFieldPresent(sfDropsPerByte))
+			{
+				dropsPerByteVote.addVote(val->getFieldU64(sfDropsPerByte));
+			}
+			else
+			{
+				dropsPerByteVote.noVote();
+			}
+
+
         }
     }
 
@@ -202,12 +227,16 @@ FeeVoteImpl::doVoting(
     std::uint32_t const baseReserve = baseReserveVote.getVotes ();
     std::uint32_t const incReserve = incReserveVote.getVotes ();
     std::uint32_t const feeUnits = target_.reference_fee_units;
+
+	std::uint64_t const dropsPerByte = dropsPerByteVote.getVotes();
+
     auto const seq = lastClosedLedger->info().seq + 1;
 
     // add transactions to our position
     if ((baseFee != lastClosedLedger->fees().base) ||
             (baseReserve != lastClosedLedger->fees().accountReserve(0)) ||
-            (incReserve != lastClosedLedger->fees().increment))
+            (incReserve != lastClosedLedger->fees().increment) ||
+		(dropsPerByte != lastClosedLedger->fees().drops_per_byte) )
     {
         JLOG(journal_.warn()) <<
             "We are voting for a fee change: " << baseFee <<
@@ -215,7 +244,7 @@ FeeVoteImpl::doVoting(
             "/" << incReserve;
 
         STTx feeTx (ttFEE,
-            [seq,baseFee,baseReserve,incReserve,feeUnits](auto& obj)
+            [seq,baseFee,baseReserve,incReserve,feeUnits, dropsPerByte](auto& obj)
             {
                 obj[sfAccount] = AccountID();
                 obj[sfLedgerSequence] = seq;
@@ -223,6 +252,7 @@ FeeVoteImpl::doVoting(
                 obj[sfReserveBase] = baseReserve;
                 obj[sfReserveIncrement] = incReserve;
                 obj[sfReferenceFeeUnits] = feeUnits;
+				obj[sfDropsPerByte] = dropsPerByte;
             });
 
         uint256 txID = feeTx.getTransactionID ();
@@ -252,6 +282,13 @@ setup_FeeVote (Section const& section)
     set (setup.reference_fee, "reference_fee", section);
     set (setup.account_reserve, "account_reserve", section);
     set (setup.owner_reserve, "owner_reserve", section);
+	set(setup.drops_per_byte, "drops_per_byte", section);
+
+	// drops_per_byte range in [1,10^6]
+	if (setup.drops_per_byte == 0 || setup.drops_per_byte > 1000000) {
+		setup.drops_per_byte = (1000000 / 1024);
+	}
+		
     return setup;
 }
 

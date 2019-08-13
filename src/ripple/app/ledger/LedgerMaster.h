@@ -33,6 +33,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/RippleLedgerHash.h>
 #include <ripple/protocol/STValidation.h>
+#include <ripple/protocol/ErrorCodes.h>
 #include <ripple/beast/insight/Collector.h>
 #include <ripple/core/Stoppable.h>
 #include <ripple/beast/utility/PropertyStream.h>
@@ -95,16 +96,16 @@ public:
     table_BaseInfo
     getTableBaseInfo(LedgerIndex index, AccountID accountID, std::string sTableName);
 
-	std::pair<ripple::uint256, std::string>
+	std::pair<ripple::uint256, error_code_i>
 	getLatestTxCheckHash(AccountID accountID, std::string sTableName);
 
-    std::pair<bool, std::string>
+    std::pair<bool, error_code_i>
         isAuthorityValid(AccountID accountID, AccountID ownerID, std::list<std::string>aTableName, TableRoleFlags roles);
 
-	std::tuple<bool, ripple::Blob, std::string>
+	std::tuple<bool, ripple::Blob, error_code_i>
 		getUserToken(AccountID accountID, AccountID ownerID, std::string sTableName);
 	
-    std::tuple<bool, ripple::uint256, std::string>
+    std::tuple<bool, ripple::uint256, error_code_i>
         getUserFutureHash(AccountID accountID);
     
 	bool isConfidential(const STTx& tx);

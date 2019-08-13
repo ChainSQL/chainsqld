@@ -93,8 +93,12 @@ function(configure_llvm_project)
         set(LLVM_INCLUDE_DIRS ${INSTALL_DIR}/include)
         file(MAKE_DIRECTORY ${LLVM_INCLUDE_DIRS})  # Must exists.
 
-        foreach(LIB ${LIBS})
-            list(APPEND LIBFILES "${LLVM_LIBRARY_DIRS}/${CMAKE_STATIC_LIBRARY_PREFIX}${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        foreach(LIB ${LIBS})	
+			if (MSVC)
+			  list(APPEND LIBFILES "${INSTALL_DIR}/${CMAKE_CFG_INTDIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}")		
+			else()
+			  list(APPEND LIBFILES "${LLVM_LIBRARY_DIRS}/${CMAKE_STATIC_LIBRARY_PREFIX}${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+			endif()          
         endforeach()
 
         # Pick one of the libraries to be the main one. It does not matter which one

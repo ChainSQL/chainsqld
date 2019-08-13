@@ -613,6 +613,167 @@ llvm::Function* getExitFunFunc(llvm::Module* _module)
     return func;
 }
 
+llvm::Function* getAccountSetFunc(llvm::Module* _module)
+{
+    static const auto funcName = "evm.account_set";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto i32 = llvm::IntegerType::getInt32Ty(_module->getContext());
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Size,
+                { Type::EnvPtr, addrTy->getPointerTo(), i32, Type::Bool,
+                Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+
+llvm::Function* getTransferFeeSetFunc(llvm::Module* _module)
+{
+    static const auto funcName = "evm.transfer_fee_set";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Size,
+                { Type::EnvPtr, addrTy->getPointerTo(), 
+                Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size,
+                Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(5, llvm::Attribute::ReadOnly);
+        func->addAttribute(5, llvm::Attribute::NoAlias);
+        func->addAttribute(5, llvm::Attribute::NoCapture);
+        func->addAttribute(7, llvm::Attribute::ReadOnly);
+        func->addAttribute(7, llvm::Attribute::NoAlias);
+        func->addAttribute(7, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+
+llvm::Function* getTrustSetFunc(llvm::Module* _module)
+{
+    static const auto funcName = "evm.trust_set";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Size,
+                { Type::EnvPtr, addrTy->getPointerTo(), 
+                Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, 
+                addrTy->getPointerTo(),
+                Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(5, llvm::Attribute::ReadOnly);
+        func->addAttribute(5, llvm::Attribute::NoAlias);
+        func->addAttribute(5, llvm::Attribute::NoCapture);
+        func->addAttribute(7, llvm::Attribute::ReadOnly);
+        func->addAttribute(7, llvm::Attribute::NoAlias);
+        func->addAttribute(7, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+
+llvm::Function* getTrustLimitFunc(llvm::Module* _module)
+{
+    static const auto funcName = "evm.trust_limit";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Size,
+                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::Size, addrTy->getPointerTo() }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(6, llvm::Attribute::ReadOnly);
+        func->addAttribute(6, llvm::Attribute::NoAlias);
+        func->addAttribute(6, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+
+llvm::Function* getGatewayBalanceFunc(llvm::Module* _module)
+{
+    static const auto funcName = "evm.gateway_balance";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Size,
+                { Type::EnvPtr, addrTy->getPointerTo(), Type::BytePtr, Type::Size, Type::Size, addrTy->getPointerTo() }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(6, llvm::Attribute::ReadOnly);
+        func->addAttribute(6, llvm::Attribute::NoAlias);
+        func->addAttribute(6, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+
+llvm::Function* getPayFunc(llvm::Module* _module)
+{
+    static const auto funcName = "evm.pay";
+    auto func = _module->getFunction(funcName);
+    if (!func)
+    {
+        auto addrTy = llvm::IntegerType::get(_module->getContext(), 160);
+        auto fty = llvm::FunctionType::get(Type::Size,
+            { Type::EnvPtr, addrTy->getPointerTo(), addrTy->getPointerTo(),
+            Type::BytePtr, Type::Size, Type::BytePtr, Type::Size, Type::BytePtr, Type::Size,
+            addrTy->getPointerTo(),
+            Type::BytePtr->getPointerTo(), Type::Size->getPointerTo() }, false);
+        func = llvm::Function::Create(fty, llvm::Function::ExternalLinkage, funcName, _module);
+
+        func->addAttribute(2, llvm::Attribute::ReadOnly);
+        func->addAttribute(2, llvm::Attribute::NoAlias);
+        func->addAttribute(2, llvm::Attribute::NoCapture);
+        func->addAttribute(3, llvm::Attribute::ReadOnly);
+        func->addAttribute(3, llvm::Attribute::NoAlias);
+        func->addAttribute(3, llvm::Attribute::NoCapture);
+        func->addAttribute(4, llvm::Attribute::ReadOnly);
+        func->addAttribute(4, llvm::Attribute::NoAlias);
+        func->addAttribute(4, llvm::Attribute::NoCapture);
+        func->addAttribute(6, llvm::Attribute::ReadOnly);
+        func->addAttribute(6, llvm::Attribute::NoAlias);
+        func->addAttribute(6, llvm::Attribute::NoCapture);
+        func->addAttribute(8, llvm::Attribute::ReadOnly);
+        func->addAttribute(8, llvm::Attribute::NoAlias);
+        func->addAttribute(8, llvm::Attribute::NoCapture);
+        func->addAttribute(10, llvm::Attribute::ReadOnly);
+        func->addAttribute(10, llvm::Attribute::NoAlias);
+        func->addAttribute(10, llvm::Attribute::NoCapture);
+    }
+    return func;
+}
+
 llvm::Function* getCallFunc(llvm::Module* _module)
 {
     static const auto funcName = "call";
@@ -1296,6 +1457,165 @@ void Ext::exit_fun()
 {
     auto func = getExitFunFunc(getModule());
     createCABICall(func, {getRuntimeManager().getEnvPtr()});
+}
+
+llvm::Value* Ext::account_set(llvm::Value* addr, llvm::Value* _flag, llvm::Value* _set)
+{
+    auto func = getAccountSetFunc(getModule());
+
+    auto flag = m_builder.CreateTrunc(_flag, /* Type::Size */ m_builder.getInt32Ty());
+    auto set = m_builder.CreateTrunc(_set, /*Type::Bool*/ m_builder.getInt1Ty());
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+
+    getRuntimeManager().resetReturnBuf();
+
+    return createCABICall(func, {getRuntimeManager().getEnvPtr(), pAddr, flag, set, 
+            getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
+}
+
+llvm::Value* Ext::transfer_fee_set(llvm::Value *addr,
+    llvm::Value *_rateIdx, llvm::Value *_rateLen,
+    llvm::Value *_minIdx, llvm::Value *_minLen,
+    llvm::Value *_maxIdx, llvm::Value *_maxLen)
+{
+    auto func = getTransferFeeSetFunc(getModule());
+
+    auto ratePtr = m_memoryMan.getBytePtr(_rateIdx);
+    auto rateLen = m_builder.CreateTrunc(_rateLen, Type::Size, "rate.len");
+    auto minPtr = m_memoryMan.getBytePtr(_minIdx);
+    auto minLen = m_builder.CreateTrunc(_minLen, Type::Size, "min.len");
+    auto maxPtr = m_memoryMan.getBytePtr(_maxIdx);
+    auto maxLen = m_builder.CreateTrunc(_maxLen, Type::Size, "max.len");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+
+    getRuntimeManager().resetReturnBuf();
+
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, ratePtr, rateLen, minPtr, minLen, maxPtr, maxLen,
+            getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
+}
+
+llvm::Value* Ext::trust_set(llvm::Value *addr,
+    llvm::Value *_valueIdx, llvm::Value *_valueLen,
+    llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+    llvm::Value *gateway)
+{
+    auto func = getTrustSetFunc(getModule());
+
+    auto valuePtr = m_memoryMan.getBytePtr(_valueIdx);
+    auto valueLen = m_builder.CreateTrunc(_valueLen, Type::Size, "value.len");
+    auto currencyPtr = m_memoryMan.getBytePtr(_currencyIdx);
+    auto currencyLen = m_builder.CreateTrunc(_currencyLen, Type::Size, "currency.len");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+
+    auto gatewayTy = m_builder.getIntNTy(160);
+    auto gatewayAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(gateway, gatewayTy));
+    auto pGateway = m_builder.CreateBitCast(getArgAlloca(), gatewayTy->getPointerTo());
+    m_builder.CreateStore(gatewayAddr, pGateway);
+
+    getRuntimeManager().resetReturnBuf();
+
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, valuePtr, valueLen, currencyPtr, currencyLen, pGateway,
+            getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
+}
+
+llvm::Value* Ext::trust_limit(llvm::Value *addr,
+    llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+    llvm::Value *_power, 
+    llvm::Value *gateway)
+{
+    auto func = getTrustLimitFunc(getModule());
+
+    auto currencyPtr = m_memoryMan.getBytePtr(_currencyIdx);
+    auto currencyLen = m_builder.CreateTrunc(_currencyLen, Type::Size, "currency.len");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+
+    auto power = m_builder.CreateTrunc(_power, Type::Size, "power");
+
+    auto gatewayTy = m_builder.getIntNTy(160);
+    auto gatewayAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(gateway, gatewayTy));
+    auto pGateway = m_builder.CreateBitCast(getArgAlloca(), gatewayTy->getPointerTo());
+    m_builder.CreateStore(gatewayAddr, pGateway);
+
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, power, pGateway });
+}
+
+llvm::Value* Ext::gateway_balance(llvm::Value *addr,
+    llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+    llvm::Value *_power,
+    llvm::Value *gateway)
+{
+    auto func = getGatewayBalanceFunc(getModule());
+
+    auto currencyPtr = m_memoryMan.getBytePtr(_currencyIdx);
+    auto currencyLen = m_builder.CreateTrunc(_currencyLen, Type::Size, "currency.len");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+
+    auto power = m_builder.CreateTrunc(_power, Type::Size, "power");
+
+    auto gatewayTy = m_builder.getIntNTy(160);
+    auto gatewayAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(gateway, gatewayTy));
+    auto pGateway = m_builder.CreateBitCast(getArgAlloca(), gatewayTy->getPointerTo());
+    m_builder.CreateStore(gatewayAddr, pGateway);
+
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, currencyPtr, currencyLen, power, pGateway });
+}
+
+llvm::Value* Ext::pay(llvm::Value *addr,
+    llvm::Value *receiver,
+    llvm::Value *_valueIdx, llvm::Value *_valueLen,
+    llvm::Value *_sendMaxIdx, llvm::Value *_sendMaxLen,
+    llvm::Value *_currencyIdx, llvm::Value *_currencyLen,
+    llvm::Value *gateway)
+{
+    auto func = getPayFunc(getModule());
+
+    auto valuePtr = m_memoryMan.getBytePtr(_valueIdx);
+    auto valueLen = m_builder.CreateTrunc(_valueLen, Type::Size, "value.len");
+    auto sendMaxPtr = m_memoryMan.getBytePtr(_sendMaxIdx);
+    auto sendMaxLen = m_builder.CreateTrunc(_sendMaxLen, Type::Size, "sendMax.len");
+    auto currencyPtr = m_memoryMan.getBytePtr(_currencyIdx);
+    auto currencyLen = m_builder.CreateTrunc(_currencyLen, Type::Size, "currency.len");
+
+    auto addrTy = m_builder.getIntNTy(160);
+    auto ownerAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(addr, addrTy));
+    auto pAddr = m_builder.CreateBitCast(getArgAlloca(), addrTy->getPointerTo());
+    m_builder.CreateStore(ownerAddr, pAddr);
+
+    auto receiverTy = m_builder.getIntNTy(160);
+    auto receiverAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(receiver, receiverTy));
+    auto pReceiver = m_builder.CreateBitCast(getArgAlloca(), receiverTy->getPointerTo());
+    m_builder.CreateStore(receiverAddr, pReceiver);
+
+    auto gatewayTy = m_builder.getIntNTy(160);
+    auto gatewayAddr = Endianness::toBE(m_builder, m_builder.CreateTrunc(gateway, gatewayTy));
+    auto pGateway = m_builder.CreateBitCast(getArgAlloca(), gatewayTy->getPointerTo());
+    m_builder.CreateStore(gatewayAddr, pGateway);
+
+    getRuntimeManager().resetReturnBuf();
+
+    return createCABICall(func, { getRuntimeManager().getEnvPtr(), pAddr, pReceiver, 
+            valuePtr, valueLen, sendMaxPtr, sendMaxLen, currencyPtr, currencyLen, pGateway,
+            getRuntimeManager().getReturnBufDataPtr(), getRuntimeManager().getReturnBufSizePtr() });
 }
 
 }  // namespace jit

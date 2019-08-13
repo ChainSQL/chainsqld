@@ -21,6 +21,9 @@
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <ripple/protocol/digest.h>
+#include <ripple/app/main/Application.h>
+#include <peersafe/app/sql/TxStore.h>
+#include <ripple/protocol/ErrorCodes.h>
 
 namespace ripple {
 
@@ -39,7 +42,8 @@ namespace ripple {
 	{
 		Json::Value jvResult;
 		jvResult[jss::error_message] = errMsg;
-		jvResult[jss::error] = "error";
+		//jvResult[jss::error] = "error";
+		jvResult[jss::status] = "error";
 		return jvResult;
 	}
 
@@ -131,5 +135,14 @@ namespace ripple {
 		std::string tmp = to_string(ledgerSeq) + to_string(account) + sTableName;
 		std::string str = hash(tmp);
 		return from_hex_text<uint160>(str);
+	}
+
+	bool isDBConfigured(Application& app)
+	{
+		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
+			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+			return false;
+		else
+			return true;
 	}
 }

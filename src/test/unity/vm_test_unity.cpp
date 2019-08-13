@@ -1,3 +1,4 @@
+
 //------------------------------------------------------------------------------
 /*
  This file is part of chainsqld: https://github.com/chainsql/chainsqld
@@ -17,26 +18,6 @@
  */
 //==============================================================================
 
-#ifndef RIPPLE_RPC_TABLE_UTILS_H_INCLUDED
-#define RIPPLE_RPC_TABLE_UTILS_H_INCLUDED
-
-
-#include <ripple/json/json_value.h>
-#include <peersafe/protocol/STEntry.h>
-
-namespace ripple {
-
-	class Application;
-
-	Json::Value generateError(const std::string& errMsg, bool ws = false);
-	STEntry * getTableEntry(const STArray & aTables, std::string sCheckName); 
-	STEntry *getTableEntry(ApplyView& view, const STTx& tx);
-	STEntry *getTableEntry(const STArray & aTables, Blob& vCheckName);
-	bool isChainSqlTableType(const std::string& transactionType);
-    bool isChainsqlContractType(const std::string& transactionType);
-	std::string hash(std::string &pk);
-	uint160 generateNameInDB(uint32 ledgerSeq,AccountID account,std::string sTableName);
-	bool isDBConfigured(Application& app);
-}
-
-#endif
+#include <test/vm/Executive_test.cpp>
+#include <test/vm/FakeExtVM.cpp>
+#include <test/vm/vm_test.cpp>

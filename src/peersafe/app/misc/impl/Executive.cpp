@@ -17,6 +17,7 @@ Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
 
 void Executive::initGasPrice()
 {
+
 	m_gasPrice = scaleGasLoad(GAS_PRICE, m_s.ctx().app.getFeeTrack(),
 		m_s.ctx().view().fees());
 }
@@ -364,15 +365,19 @@ void Executive::formatOutput(owning_bytes_ref output)
 	Blob blob;
 
 	//self-define exception in go()
-	if (str.substr(0, 4) == "\0\0\0\0")
+	if ((str.length() >=4) && (str.substr(0, 4) == "\0\0\0\0"))
 	{
 		blob = strCopy(str.substr(4,str.size() - 4));
-	}
-	else
+	}// Todo:need some flag instead of the length of str;
+	else if (str.length() >= 100)
 	{
 		uint256 offset = uint256(strCopy(str.substr(4, 32)));
 		uint256 length = uint256(strCopy(str.substr(4 + 32, 32)));
 		blob = strCopy(str.substr(4 + 32 + fromUint256(offset), fromUint256(length)));
+	}
+	else
+	{
+		blob = strCopy(str);
 	}
 	m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
 }

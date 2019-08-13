@@ -266,36 +266,169 @@ function renameTable(string name,string newName) public{
     msg.sender.rename(name,newName);
 }
 ```
-#### 9.代币接口 (TO DO)
-1. 合约信任发行币网关接口
-- 可设置由合约拥有者发起
-```
-modifier onlyOwner {
-    require(msg.sender == owner);
-    _;
-}
-function trust(address gateway,string coin,uint amount) public onlyOwner
-{
-    msg.sender.trustSet(gateway,coin,amount);
-}
-```
-2. 给合约转网关代币 
-- 如果fallback函数是payable的可以转直接转账系统币，转网关币也需要fallback？
+#### 9.
+- 说明：
+    - 添加了合约中对网关设置，信任，转账网关代币，查询信任额度，查询网关代币余额功能的支持
+    - 函数中涉及到给合约地址转账网关代币的操作，需要添加payable修饰符。
+    - solidity本身没有提供获取合约地址的指令，需要通过接口传入。
+    - 无信任关系时，查询信任额度，查询网关代币余额返回-1
 
 
-3. 查询网关代币余额
+相关指令示例:
+
+1 网关的accoutSet属性设置。
+
 ```
-function gatewayBalance(address addr,address gateway,string coin) public returns(uint amount){
-    return addr.gatewayBalance(gateway,coin);
-}
+   /*
+	*  设置网关相关属性
+	* @param uFlag   一般情况下为8，表示asfDefaultRipple，详见https://developers.ripple.com/accountset.html#accountset-flags
+	* @param bSet    true，开启uFlag；false 取消uFlag。
+	*/
+	function accountSet(uint32 uFlag,bool bSet) public {
+		msg.sender.accountSet(uFlag,bSet);
+	}
 ```
-4. 转账发行币
-- 接收网关代币的方法必须是payable的
-- 先将代币转给合约，然后合约内调用transfer/send转出
+
+2  网关交易费率
 ```
-function transfer(address to,address gateway,string coin,uint amount) public payable{
-    uint balance = gatewayBalance(msg.sender,gateway,coin);
-    require(balance > amount,"balance insufficient");
-    to.transfer(gateway,coin,amount);   
-}
+   /*
+	*  设置网关交易费率
+	* @param sRate  交易费率。范围为"1.0" - "2.0",例如 "1.005","1.008"  
+	*/
+	function setTransferRate(string sRate) public {
+		msg.sender.setTransferRate(sRate);
+	}
+```
+
+3  设置网关交易费用范围
+```
+    /*
+	*  设置网关交易费用范围
+	* @param minFee   网关交易最小花费
+	* @param maxFee   网关交易最大花费
+	*/
+	function setTransferRange(string minFee,string maxFee) public {
+		msg.sender.setTransferRange(minFee,maxFee);
+	}	
+```
+
+4 设置信任网关代币以及代币的额度
+```
+	/*
+	*   设置信任网关代币以及代币的额度
+	* @param value           代币额度
+	* @param sCurrency       代币名称
+	* @param sGateway        信任网关地址
+	*/
+	function trustSet(string value,	string sCurrency, string sGateway) public {
+
+		msg.sender.trustSet(value,sCurrency,sGateway);
+	}
+	
+	/*
+	*   设置信任网关代币以及代币的额度
+	* @param contractAddr    合约地址
+	* @param value           代币额度
+	* @param sCurrency       代币名称
+	* @param sGateway        信任网关地址
+	*/
+	function trustSet(address contractAddr,string value,
+						string sCurrency, string sGateway) public {
+
+		// 合约地址也可信任网关
+		contractAddr.trustSet(value,sCurrency,sGateway);
+	}
+	
+```
+5 查询网关的信任代币信息
+```
+	/*
+	*   查询网关的信任代币信息
+	* @param  sCurrency          代币名称
+	* @param  sGateway           网关地址
+	* @return -1:不存在网关代币信任关系; >=0 信任网关代币额度
+	*/
+	function trustLimit(string sCurrency,string sGateway)
+	public view returns(int) {
+
+		return msg.sender.trustLimit(sCurrency,sGateway);
+	}
+	
+	
+	/*
+	*   查询网关的信任代币信息
+	* @param  contractAddr       合约地址
+	* @param  sCurrency          代币名称
+	* @param  sGateway           网关地址
+	* @return -1:不存在网关代币信任关系; >=0 信任网关代币额度
+	*/
+	function trustLimit(address contractAddr,string sCurrency,string sGateway)
+	public view returns(int) {
+	    // 合约地址也可查询网关信任代币信息
+	    return contractAddr.trustLimit(sCurrency,sGateway);
+
+	}	
+```
+
+6 查询网关代币余额 
+```
+	/*
+	*   获取网关代币的余额
+	* @param  sCurrency       代币名称
+	* @param  sGateway        网关地址
+	* @return -1:不存在该网关代币; >=0 网关代币的余额
+	*/
+	function gateWayBalance(string sCurrency,string sGateway) returns(uint256) public {
+
+	   return msg.sender.gateWayBalance(sCurrency,sGateway);
+	}
+	
+	
+	/*
+	*   获取网关代币的余额
+	* @param  contractAddr    合约地址
+	* @param  sCurrency       代币名称
+	* @param  sGateway        网关地址
+	* @return -1:不存在该网关代币; >=0 网关代币的余额
+	*/
+	function gateWayBalance(address contractAddr,string sCurrency,string sGateway) returns(uint256) public {
+	   // 合约地址也可获取网关代币的余额
+	   return contractAddr.gateWayBalance(sCurrency,sGateway);
+	}	
+```
+
+
+7 代币转账接口
+```
+	/*
+	*   转账代币
+	* @param accountTo         转入账户
+	* @param value             代币数量
+	* @param sCurrency         代币名称
+	* @param sGateway          网关地址
+	*/
+	function pay(string accountTo,string value,
+						string sCurrency,string sGateway) public payable{
+		uint balance = gatewayBalance(sCurrency,sGateway);
+    	require(balance >= value,"balance insufficient");
+    	
+		msg.sender.pay(accountTo,value,sCurrency,sGateway);
+	}
+	
+	/*
+	*   转账代币
+	* @param contractAddr      合约地址
+	* @param accountTo         转入账户
+	* @param value             代币数量
+	* @param sCurrency         代币名称
+	* @param sGateway          网关地址
+	*/
+	function pay(address contractAddr,string accountTo,string value,
+						string sCurrency,string sGateway) public payable{
+		uint balance = gatewayBalance(contractAddr,sCurrency,sGateway);
+    	require(balance >= value,"balance insufficient");
+    	
+    	// 合约地址也可转账代币
+	    contractAddr.pay(accountTo,value,sCurrency,sGateway);
+	}	
 ```

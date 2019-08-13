@@ -20,6 +20,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/JsonFields.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/main/Application.h>
@@ -45,8 +46,8 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 		{
 			if (tesSUCCESS != terResult)
 			{
-				jvResult[jss::error] = exeResult;
-				//jvResult[jss::error_message] = exeResult;
+				return RPC::make_error(rpcCTR_EVMCALL_EXCEPTION, exeResult);
+				//jvResult[jss::error] = exeResult;
 			}
 			else
 			{
@@ -62,25 +63,10 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 	return jvResult;
 }
 
-Json::Value contractLocalCallErrResultImpl(error_code_i code, std::string errMsgStr)
-{
-	Json::Value jvResult;
-
-	//originJson will return in default
-	jvResult = RPC::make_error(code, errMsgStr);
-	return jvResult;
-	
-	////originJson will return in default
-	//jvResult[jss::error_message] = errMsgStr;
-	//jvResult[jss::error] = "error";
-
-	//return jvResult;
-}
-
 std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 {
 	SleOps ops(context);
-	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS);
+	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS, context.view().fees().drops_per_byte);
 	Executive e(ops, *pInfo, INITIAL_DEPTH);
 	e.initialize();
 	auto tx = context.tx;
@@ -106,39 +92,29 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 	return std::make_pair(terResult, localCallRetStr);	
 }
 
-std::pair<Json::Value, bool> checkJsonFields(Json::Value originJson)
+Json::Value checkJsonFields(Json::Value originJson)
 {
-	std::pair<Json::Value, bool> ret;
-	ret.second = false;
+	Json::Value ret = Json::Value();
+
 	if (!originJson.isObject())
 	{
-		ret.first = RPC::object_field_error(jss::params);
-		return ret;
+		ret = RPC::object_field_error(jss::params);
 	}
 
 	if (!originJson.isMember(jss::account))
 	{
-		//ret.first = RPC::missing_field_error(jss::Account);
-		ret.first = RPC::make_error(rpcSRC_ACT_MISSING,
-			RPC::missing_field_message("account"));
-		return ret;
+		ret = RPC::missing_field_error(jss::account);
 	}
 
 	if (!originJson.isMember(jss::contract_address))
 	{
-		ret.first = RPC::make_error(rpcCTR_ACT_MISSING,
-			RPC::missing_field_message("contract_address"));
-		return ret;
+		ret = RPC::missing_field_error(jss::contract_address);
 	}
 
 	if (!originJson.isMember(jss::contract_data))
 	{
-		ret.first = RPC::make_error(rpcCTR_DATA_MISSING,
-			RPC::missing_field_message("contract_data"));
-		return ret;
+		ret = RPC::missing_field_error(jss::contract_data);
 	}
-	ret.first = Json::Value();
-	ret.second = true;
 	return ret;
 }
 
@@ -151,39 +127,50 @@ Json::Value doContractCall(RPC::Context& context)
 	Json::Value jsonParams = context.params;
 
 	auto checkResult = checkJsonFields(jsonParams);
-	if (!checkResult.second)
-		return checkResult.first;
-	auto const srcAddressID = parseBase58<AccountID>(jsonParams[jss::account].asString());
-	if (srcAddressID == boost::none)
+	if (isRpcError(checkResult))
+		return checkResult;
+
+	std::string accountStr = jsonParams[jss::account].asString();
+	AccountID accountID;
+	auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
+	if (jvAccepted)
 	{
-		errMsgStr = "account field is invalid!";
-		return contractLocalCallErrResultImpl(rpcINVALID_PARAMS, errMsgStr);
+		return jvAccepted;
 	}
-	auto const contractAddrID = parseBase58<AccountID>(jsonParams[jss::contract_address].asString());
-	if (contractAddrID == boost::none)
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (!ledger)
+		return result;
+	if (!ledger->exists(keylet::account(accountID)))
+		return rpcError(rpcACT_NOT_FOUND);
+
+	std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
+	AccountID contractAddrID;
+	auto jvAcceptedCtrAddr = RPC::accountFromString(contractAddrID, ctrAddrStr, true);
+	if (jvAcceptedCtrAddr)
 	{
-		errMsgStr = "contract_address field is invalid!";
-		return contractLocalCallErrResultImpl(rpcINVALID_PARAMS, errMsgStr);
+		return jvAcceptedCtrAddr;
 	}
+	if (!ledger->exists(keylet::account(contractAddrID)))
+		return rpcError(rpcACT_NOT_FOUND);
 	
 	auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
 	if (!strUnHexRes.second)
 	{
-		errMsgStr = "contract_data";
-		return contractLocalCallErrResultImpl(rpcINVALID_PARAMS, errMsgStr);
+		errMsgStr = "contract_data is not in hex";
+		return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
 	}
 	Blob contractDataBlob = strUnHexRes.first;
 	if (contractDataBlob.size() == 0)
 	{
-		errMsgStr = "contract_data field is empty";
-		return contractLocalCallErrResultImpl(rpcCTR_CONTENT_EMPTY, errMsgStr);
+		return RPC::invalid_field_error(jss::contract_data);
 	}
 	//int64_t txValue = 0;
 	STTx contractTx(ttCONTRACT,
-		[&srcAddressID, &contractAddrID, /*&txValue,*/ &contractDataBlob](auto& obj)
+		[&accountID, &contractAddrID, /*&txValue,*/ &contractDataBlob](auto& obj)
 	{
-		obj.setAccountID(sfAccount, *srcAddressID);
-		obj.setAccountID(sfContractAddress, *contractAddrID);
+		obj.setAccountID(sfAccount, accountID);
+		obj.setAccountID(sfContractAddress, contractAddrID);
 		obj.setFieldVL(sfContractData, contractDataBlob);
 		//obj.setFieldAmount(sfAmount, ZXCAmount(txValue));
 	});

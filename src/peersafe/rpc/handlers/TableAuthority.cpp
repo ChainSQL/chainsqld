@@ -38,34 +38,53 @@ namespace ripple {
 	{
 		Json::Value params(context.params);
 		Json::Value ret(Json::objectValue);
-		if (params[jss::owner].asString().empty())
+		std::string ownerStr;
+
+		if (!params.isMember(jss::owner))
 		{
-			ret[jss::error] = "field owner is empty!";
-			return ret;
+			return RPC::missing_field_error(jss::owner);
 		}
-		if (params[jss::tablename].asString().empty())
+		if (!params.isMember(jss::tablename))
 		{
-			ret[jss::error] = "field table_name is empty!";
-			return ret;
+			return RPC::missing_field_error(jss::tablename);
 		}
+		
 		ripple::hash_set<AccountID> ids;
 		if (context.params.isMember(jss::accounts))
 		{
 			if (!context.params[jss::accounts].isArray())
-				return rpcError(rpcINVALID_PARAMS);
+				return RPC::make_error(rpcINVALID_PARAMS, "Field accounts is not array");
 			ids = RPC::parseAccountIds(context.params[jss::accounts]);
-			if (ids.empty())
-				return rpcError(rpcACT_MALFORMED);
 		}
 
-		auto ownerID = ripple::parseBase58<AccountID>(params[jss::owner].asString());
+		AccountID ownerID;
+		ownerStr = params[jss::owner].asString();
+		auto jvAcceptedOwner = RPC::accountFromString(ownerID, ownerStr, true);
+		if (jvAcceptedOwner)
+		{
+			return jvAcceptedOwner;
+		}
+		std::shared_ptr<ReadView const> ledgerConst;
+		auto result = RPC::lookupLedger(ledgerConst, context);
+		if (!ledgerConst)
+			return result;
+		if (!ledgerConst->exists(keylet::account(ownerID)))
+			return rpcError(rpcACT_NOT_FOUND);
+
 		auto tableName = params[jss::tablename].asString();
+		if (tableName.empty())
+		{
+			return RPC::invalid_field_error(jss::tablename);
+		}
+
+		ret[jss::owner] = params[jss::owner].asString();
+		ret[jss::tablename] = tableName;
 
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		STEntry* pEntry = nullptr;
 		if (ledger)
 		{
-			auto id = keylet::table(*ownerID);
+			auto id = keylet::table(ownerID);
 			auto const tablesle = ledger->read(id);
 
 			if (tablesle)
@@ -74,8 +93,7 @@ namespace ripple {
 				pEntry = getTableEntry(aTableEntries, tableName);
 				if (!pEntry)
 				{
-					ret[jss::error] = "Table not found!";
-					return ret;
+					return rpcError(rpcTAB_NOT_EXIST);
 				}
 
 				Json::Value& jvUsers = (ret["users"] = Json::arrayValue);
@@ -99,11 +117,9 @@ namespace ripple {
 			}
 			else
 			{
-				ret[jss::error] = "Table not found!";
-				return ret;
+				return rpcError(rpcTAB_NOT_EXIST);
 			}
 		}
-
 		return ret;
 	}
 

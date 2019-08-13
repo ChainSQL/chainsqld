@@ -50,6 +50,9 @@ public:
 
         /** The per-owned item reserve requirement in drops. */
         std::uint64_t owner_reserve = 1 * SYSTEM_CURRENCY_PARTS;
+
+		/** The cost of a byte in drops. */
+		std::uint64_t drops_per_byte = (1000000 / 1024);
     };
 
     virtual ~FeeVote () = default;

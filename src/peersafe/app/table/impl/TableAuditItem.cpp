@@ -120,6 +120,9 @@ std::pair<bool, std::string> TableAuditItem::SetAuditPara(std::string sSql, std:
 
     SetPara("", 0, uint256(0), 0, uint256(0), uint256(0));
 
+    uLedgerStart_ = uCreateLedgerSequence_;
+    uLedgerStop_  = app_.getLedgerMaster().getValidLedgerIndex();
+
     return std::make_pair(true, sNickName_);
 }
 

@@ -104,6 +104,9 @@ deps*/
 *.pdb
 .vs/
 
+# vscode
+.vscode/
+
 # Prerequisites
 *.d
 

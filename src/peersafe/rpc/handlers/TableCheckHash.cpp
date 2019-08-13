@@ -30,6 +30,7 @@
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 Json::Value doGetCheckHash(RPC::Context&  context)
@@ -37,32 +38,41 @@ Json::Value doGetCheckHash(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	Json::Value& tx_json(context.params["tx_json"]);
 
-	if (tx_json["Account"].asString().empty() || tx_json["TableName"].asString().empty())
+	if (tx_json.isMember(jss::Account))
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = "Account or TableName is null";
-		return ret;
+		return RPC::missing_field_error(jss::Account);
+	}
+	if (tx_json.isMember(jss::TableName))
+	{
+		return RPC::missing_field_error(jss::TableName);
 	}
 
-	auto accountIdStr = tx_json["Account"].asString();
-	auto tableNameStr = tx_json["TableName"].asString();
-
+	auto accountIdStr = tx_json[jss::Account].asString();
 	ripple::AccountID accountID;
 	auto jvAccepted = RPC::accountFromString(accountID, accountIdStr, false);
-
 	if (jvAccepted)
 		return jvAccepted;
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (!ledger)
+		return result;
+	if (!ledger->exists(keylet::account(accountID)))
+		return rpcError(rpcACT_NOT_FOUND);
+
+	auto tableNameStr = tx_json[jss::TableName].asString();
+	if (tableNameStr.empty())
+	{
+		return RPC::invalid_field_error(jss::TableName);
+	}
 
 	//first,we query from ledgerMaster
 	auto retPair = context.ledgerMaster.getLatestTxCheckHash(accountID, tableNameStr);
 	auto txCheckHash = retPair.first;
 	if (txCheckHash.isZero()) //not exist,then generate nameInDB
 	{
-		ret[jss::status] = "error";
-		ret[jss::error_message] = retPair.second;
+		return rpcError(retPair.second);
 	}	
 
-	ret[jss::status] = "success";
 	ret["txCheckHash"] = to_string(txCheckHash);
 
 	return ret;

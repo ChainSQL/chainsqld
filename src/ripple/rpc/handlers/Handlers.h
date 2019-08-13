@@ -91,12 +91,16 @@ Json::Value doWalletVerify          (RPC::Context&);
 //for sql operation
 Json::Value doTableDump(RPC::Context&);
 Json::Value doTableDumpStop(RPC::Context&);
+Json::Value getDumpCurPos(RPC::Context& context);
 Json::Value doTableAudit(RPC::Context&);
 Json::Value doTableAuditStop(RPC::Context&);
+Json::Value getAuditCurPos(RPC::Context& context);
 Json::Value doTableAuthority(RPC::Context&);
 Json::Value doRpcSubmit(RPC::Context&);
 Json::Value doCreateFromRaw(RPC::Context&);
 Json::Value doGetRecord(RPC::Context&);
+Json::Value doGetRecordBySql(RPC::Context&);
+Json::Value doGetRecordBySqlUser(RPC::Context&);
 std::pair<std::vector<std::vector<Json::Value>>, std::string> doGetRecord2D(RPC::Context&  context);
 Json::Value doGetDBName(RPC::Context&);
 Json::Value doGetAccountTables(RPC::Context&);

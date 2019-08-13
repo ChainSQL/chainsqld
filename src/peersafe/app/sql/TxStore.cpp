@@ -126,12 +126,21 @@ TxStoreTransaction::~TxStoreTransaction() {
 TxStore::TxStore(DatabaseCon* dbconn, const Config& cfg, const beast::Journal& journal)
 : cfg_(cfg)
 , db_type_()
+, select_limit_(200)
 , databasecon_(dbconn)
 , journal_(journal) {
 	const ripple::Section& sync_db = cfg_.section("sync_db");
 	std::pair<std::string, bool> result = sync_db.find("type");
 	if (result.second)
 		db_type_ = result.first;
+
+	auto select_limit = cfg_.section("select_limit");
+	if (select_limit.values().size() > 0)
+	{
+		auto value = select_limit.values().at(0);
+		select_limit_ = atoi(value.c_str());
+	}
+
 }
 
 TxStore::~TxStore() {

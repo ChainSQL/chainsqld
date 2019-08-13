@@ -393,4 +393,79 @@ namespace ripple
 
         return toEvmC(uHash);
     }
+
+    int64_t ExtVM::account_set(const struct evmc_address* address, uint32_t _uFlag, bool _bSet)
+    {
+        ApplyContext const& ctx = oSle_.ctx();
+        auto j = ctx.app.journal("ExtVM");
+
+        /*JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _uFlag << " " << _bSet;
+        return 0;*/
+
+        return oSle_.accountSet(fromEvmC(*address), _uFlag, _bSet);
+    }
+
+    int64_t ExtVM::transfer_fee_set(const struct evmc_address *address,
+        bytesConstRef const& _Rate, bytesConstRef const& _Min, bytesConstRef const& _Max)
+    {
+        ApplyContext const& ctx = oSle_.ctx();
+        auto j = ctx.app.journal("ExtVM");
+		std::string  sRate = _Rate.toString();
+		std::string  sMin  = _Min.toString();
+		std::string  sMax  = _Max.toString();
+
+        return oSle_.setTransferFee(fromEvmC(*address), sRate,sMin,sMax);
+    }
+
+    int64_t ExtVM::trust_set(const struct evmc_address *address,
+        bytesConstRef const& _value, bytesConstRef const& _currency,
+        const struct evmc_address *gateWay)
+    {
+        ApplyContext const& ctx = oSle_.ctx();
+        auto j = ctx.app.journal("ExtVM");
+
+        /*JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _value.toString() << " " << _currency.toString() << " " << toBase58(fromEvmC(*gateWay));
+        return 0;*/
+
+        return oSle_.trustSet(fromEvmC(*address), _value.toString(), _currency.toString(), fromEvmC(*gateWay));
+	}
+
+    int64_t ExtVM::trust_limit(const struct evmc_address *address,
+        bytesConstRef const& _currency,
+        uint64_t _power,
+        const struct evmc_address *gateWay)
+    {
+        ApplyContext const& ctx = oSle_.ctx();
+        auto j = ctx.app.journal("ExtVM");
+
+        /*JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _currency.toString() << " " << _power << toBase58(fromEvmC(*gateWay));
+        return 1.234567 * std::pow(10, _power);*/
+
+        return oSle_.trustLimit(fromEvmC(*address), fromEvmC(*gateWay), _currency.toString(),_power);
+    }
+
+    int64_t ExtVM::gateway_balance(const struct evmc_address *address,
+        bytesConstRef const& _currency,
+        uint64_t _power,
+        const struct evmc_address *gateWay)
+    {
+        ApplyContext const& ctx = oSle_.ctx();
+        auto j = ctx.app.journal("ExtVM");
+
+        /*JLOG(j.warn()) << __FUNCTION__ << " " << toBase58(fromEvmC(*address)) << " " << _currency.toString() << " " << _power << toBase58(fromEvmC(*gateWay));
+        return -1;*/
+
+        return oSle_.gatewayBalance(fromEvmC(*address), fromEvmC(*gateWay), _currency.toString(),_power);
+    }
+
+    int64_t ExtVM::pay(const struct evmc_address *address,
+        const struct evmc_address *receiver,
+        bytesConstRef const& _value, bytesConstRef const& _sendMax, bytesConstRef const& _currency,
+        const struct evmc_address *gateWay)
+    {
+        ApplyContext const& ctx = oSle_.ctx();
+        auto j = ctx.app.journal("ExtVM");
+        return oSle_.doPayment(fromEvmC(*address), fromEvmC(*receiver), _value.toString(), _sendMax.toString(), _currency.toString(), fromEvmC(*gateWay));
+    }
 }
+

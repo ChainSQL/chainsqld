@@ -223,6 +223,13 @@ public:
         , m_standalone (standalone)
         , m_network_quorum (start_valid ? 0 : network_quorum)
     {
+		auto& cfg = app_.config();
+		auto sync_section = cfg.section(ConfigSection::autoSync());
+		if (sync_section.values().size() > 0)
+		{
+			auto value = sync_section.values().at(0);
+			m_bAutoSync = atoi(value.c_str());
+		}
     }
 
     ~NetworkOPsImp() override
@@ -648,6 +655,8 @@ private:
     bool const m_standalone;
 
 	bool m_bCheckTxThread = false;
+
+	bool m_bAutoSync = false;
 
     // The number of nodes that we need to consider ourselves connected.
     std::size_t const m_network_quorum;
@@ -1271,7 +1280,8 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                 e.transaction->setStatus (INVALID);
             }
 
-            if (addLocal)
+			//chainsql type tx will not retry.
+            if (addLocal && !e.transaction->getSTransaction()->isChainSqlTableType())
             {
                 m_localTX->push_back (
                     m_ledgerMaster.getCurrentLedgerIndex(),
@@ -1909,6 +1919,9 @@ void NetworkOPsImp::pubValidation (STValidation::ref val)
         if (auto const baseFee = (*val)[~sfBaseFee])
             jvObj [jss::base_fee] = static_cast<double> (*baseFee);
 
+		if (auto const dropsPerByte = (*val)[~sfDropsPerByte])
+			jvObj[jss::drops_per_byte] = static_cast<double> (*dropsPerByte);
+
         if (auto const reserveBase = (*val)[~sfReserveBase])
             jvObj [jss::reserve_base] = *reserveBase;
 
@@ -2487,6 +2500,8 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
         l[jss::seq] = Json::UInt (lpClosed->info().seq);
         l[jss::hash] = to_string (lpClosed->info().hash);
 
+		std::uint64_t drops_per_byte = lpClosed->fees().drops_per_byte;
+
         if (!human)
         {
             l[jss::base_fee] = Json::Value::UInt (baseFee);
@@ -2498,6 +2513,8 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
         }
         else
         {
+			l[jss::drops_per_byte] = Json::Value::UInt(drops_per_byte);
+
             l[jss::base_fee_zxc] = static_cast<double> (baseFee) /
                     SYSTEM_CURRENCY_PARTS;
             l[jss::reserve_base_zxc]   =
@@ -2646,6 +2663,7 @@ void NetworkOPsImp::pubLedger (
             jvObj[jss::fee_ref]
                     = Json::UInt (lpAccepted->fees().units);
             jvObj[jss::fee_base] = Json::UInt (lpAccepted->fees().base);
+			jvObj[jss::drops_per_byte] = Json::UInt(lpAccepted->fees().drops_per_byte);
             jvObj[jss::reserve_base] = Json::UInt (lpAccepted->fees().accountReserve(0).drops());
             jvObj[jss::reserve_inc] = Json::UInt (lpAccepted->fees().increment);
 
@@ -3035,9 +3053,11 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 	auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
 	if (!subTx.empty())
 	{
-		auto simiIt	= subTx.find(stTxn.getTransactionID());
+		auto txId   = stTxn.getTransactionID();
+		auto simiIt	= subTx.find(txId);
 		if (simiIt != subTx.end())
 		{
+			//bool bPendErase = false;
 			InfoSub::pointer p = simiIt->second.first.lock();
 			if (p)
 			{
@@ -3054,9 +3074,25 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				{
 					mValidatedSubTx[simiIt->first] = make_pair(p, std::chrono::system_clock::now());
 				}
-			}
 
-			subTx.erase(simiIt);
+				//if (bPendErase)
+				//{
+				//	std::thread([this, txId, jvToPub]() {
+				//		std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				//		ScopedLockType sl(mSubLock);
+				//		auto simiIt = mSubTx.find(txId);
+				//		if (simiIt != mSubTx.end())
+				//		{
+				//			InfoSub::pointer p = simiIt->second.first.lock();
+				//			if (p)
+				//			{
+				//				p->send(jvToPub, true);
+				//			}
+				//		}
+				//		mSubTx.erase(simiIt);
+				//	}).detach();
+				//}
+			}	
 		}
 	}
 }
@@ -3247,6 +3283,7 @@ bool NetworkOPsImp::subLedger (InfoSub::ref isrListener, Json::Value& jvResult)
         jvResult[jss::fee_ref]
                 = Json::UInt (lpClosed->fees().units);
         jvResult[jss::fee_base]        = Json::UInt (lpClosed->fees().base);
+		jvResult[jss::drops_per_byte]  = Json::UInt(lpClosed->fees().drops_per_byte);
         jvResult[jss::reserve_base]    = Json::UInt (lpClosed->fees().accountReserve(0).drops());
         jvResult[jss::reserve_inc]     = Json::UInt (lpClosed->fees().increment);
     }

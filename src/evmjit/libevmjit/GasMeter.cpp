@@ -167,7 +167,11 @@ void GasMeter::countSqlData(llvm::Value* _sqlLength)
 {
     assert(m_checkCall);
     assert(m_blockCost > 0);    
-    count(m_builder.CreateNUWMul(_sqlLength, Constant::get(JITSchedule::sqlDataGas::value)));
+
+	//   (_sqlLength* JITSchedule::dropsPerByte) /10
+	llvm::Value* _cost = m_builder.CreateNUWMul(_sqlLength, Constant::get(JITSchedule::dropsPerByte));
+	_cost = m_builder.CreateUDiv(_cost, Constant::get(10));
+    count(_cost);
 }
 
 int64_t GasMeter::getStepCost(Instruction inst) const
@@ -307,6 +311,14 @@ int64_t GasMeter::getStepCost(Instruction inst) const
     case Instruction::EXGETLENBYKEY:
     case Instruction::EXGETLENBYINDEX:
         return JITSchedule::sqlGas::value;
+
+    case Instruction::EXACCOUNTSET:
+    case Instruction::EXTRANSFERFEESET:
+    case Instruction::EXTRUSTSET:
+    case Instruction::EXTRUSTLIMIT:
+    case Instruction::EXGATEWAYBALANCE:
+    case Instruction::EXPAY:
+        return JITSchedule::tokenGas::value;
 
 	default:
 		// For invalid instruction just return 0.

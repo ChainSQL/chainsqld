@@ -27,7 +27,7 @@
 #include <peersafe/app/sql/SQLConditionTree.h>
 #include <peersafe/app/sql/STTx2SQL.h>
 #include <peersafe/app/sql/TxStore.h>
-
+#include <peersafe/app/sql/SQLConditionTree.h>
 
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
@@ -42,7 +42,7 @@
 #include <ripple/net/RPCErr.h>
 
 #define TABLE_PREFIX    "t_"
-#define SELECT_ITEM_LIMIT   200
+//#define SELECT_ITEM_LIMIT   200
 
 namespace ripple {
 
@@ -2373,7 +2373,7 @@ namespace helper {
 					error = (boost::format("Not support key. [%s]")
 						% Json::jsonAsString(e)).str();
 					code = -1;
-					return {code, error};
+					return {code, error };
 				}
 
 			}
@@ -2484,7 +2484,6 @@ namespace helper {
 
 		if (code == 0 || code == 1) {
 			code = 0;
-			error = "success";
 		}
 
 		return{ code, error };
@@ -2493,71 +2492,65 @@ namespace helper {
 	std::vector<std::vector<Json::Value>> query_result_2d(const soci::rowset<soci::row>& records)
 	{
 		std::vector<std::vector<Json::Value>> vecRet;
-		try {
-			soci::rowset<soci::row>::const_iterator r = records.begin();
-			for (; r != records.end(); r++) {
-				std::vector<Json::Value> vecCol;
-				for (size_t i = 0; i < r->size(); i++) {
-					Json::Value e;
-					std::string key = r->get_properties(i).get_name();
-					if (r->get_properties(i).get_data_type() == soci::dt_string
-						|| r->get_properties(i).get_data_type() == soci::dt_blob) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = r->get<std::string>(i);
-						else
-							e[key] = "null";
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = r->get<int>(i);
-						else
-							e[key] = 0;
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_double) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = r->get<double>(i);
-						else
-							e[key] = 0.0;
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = static_cast<int>(r->get<long long>(i));
-						else
-							e[key] = 0;
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
-						if (r->get_indicator(i) == soci::i_ok)
-							e[key] = static_cast<int>(r->get<unsigned long long>(i));
-						else
-							e[key] = 0;
-					}
-					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
-						std::tm tm = { 0 };
-						std::string datetime = "NULL";
-						if (r->get_indicator(i) == soci::i_ok) {
-							tm = r->get<std::tm>(i);
-							datetime = (boost::format("%d/%d/%d %d:%d:%d")
-								% (tm.tm_year + 1900) % (tm.tm_mon + 1) % tm.tm_mday
-								%tm.tm_hour % (tm.tm_min) % tm.tm_sec).str();
-						}
-
-						e[key] = datetime;
-					}
-					vecCol.push_back(e);
+		soci::rowset<soci::row>::const_iterator r = records.begin();
+		for (; r != records.end(); r++) {
+			std::vector<Json::Value> vecCol;
+			for (size_t i = 0; i < r->size(); i++) {
+				Json::Value e;
+				std::string key = r->get_properties(i).get_name();
+				if (r->get_properties(i).get_data_type() == soci::dt_string
+					|| r->get_properties(i).get_data_type() == soci::dt_blob) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = r->get<std::string>(i);
+					else
+						e[key] = "null";
 				}
-				vecRet.push_back(vecCol);
+				else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = r->get<int>(i);
+					else
+						e[key] = 0;
+				}
+				else if (r->get_properties(i).get_data_type() == soci::dt_double) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = r->get<double>(i);
+					else
+						e[key] = 0.0;
+				}
+				else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = static_cast<int>(r->get<long long>(i));
+					else
+						e[key] = 0;
+				}
+				else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
+					if (r->get_indicator(i) == soci::i_ok)
+						e[key] = static_cast<int>(r->get<unsigned long long>(i));
+					else
+						e[key] = 0;
+				}
+				else if (r->get_properties(i).get_data_type() == soci::dt_date) {
+					std::tm tm = { 0 };
+					std::string datetime = "NULL";
+					if (r->get_indicator(i) == soci::i_ok) {
+						tm = r->get<std::tm>(i);
+						datetime = (boost::format("%d/%d/%d %d:%d:%d")
+							% (tm.tm_year + 1900) % (tm.tm_mon + 1) % tm.tm_mday
+							%tm.tm_hour % (tm.tm_min) % tm.tm_sec).str();
+					}
+
+					e[key] = datetime;
+				}
+				vecCol.push_back(e);
 			}
-		}
-		catch (soci::soci_error& e) {
-			Json::Value obj(Json::objectValue);
-			obj[jss::error] = e.what();
+			vecRet.push_back(vecCol);
 		}
 		return vecRet;
 	}
 
 	Json::Value query_result(const soci::rowset<soci::row>& records) {
 		Json::Value obj;
-		Json::Value lines;
+		Json::Value lines(Json::arrayValue);
 		try {
 			soci::rowset<soci::row>::const_iterator r = records.begin();
 			for (; r != records.end(); r++) {
@@ -2574,25 +2567,25 @@ namespace helper {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<int>(i);
 						else
-							e[r->get_properties(i).get_name()] = 0;
+							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_double) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<double>(i);
 						else
-							e[r->get_properties(i).get_name()] = 0.0;
+							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<long long>(i));
 						else
-							e[r->get_properties(i).get_name()] = 0;
+							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<unsigned long long>(i));
 						else
-							e[r->get_properties(i).get_name()] = 0;
+							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
 						std::tm tm = { 0 };
@@ -2610,25 +2603,23 @@ namespace helper {
 				lines.append(e);
 			}
 			obj[jss::lines] = lines;
-			obj[jss::status] = "success";
-
 		}
 		catch (soci::soci_error& e) {
-			obj[jss::error] = e.what();
+			return RPC::make_error(rpcGENERAL, e.what());
 		}
 		return obj;
 	}
     
-    void modifyLimitCount(std::string& sSql)
+    void modifyLimitCount(std::string& sSql,int selectLimit)
     {   
-        std::string sLimit = "limit " + to_string(SELECT_ITEM_LIMIT);
+        std::string sLimit = "limit " + to_string(selectLimit);
 
         int iPosLimitLower = sSql.find("limit");
         int iPosLimitUpper = sSql.find("LIMIT");
         if (iPosLimitLower >= 0 || iPosLimitUpper >= 0)
         {
-            if (iPosLimitLower)   sLimit = sSql.substr(iPosLimitLower);
-            else                  sLimit = sSql.substr(iPosLimitUpper);
+			if (iPosLimitLower >= 0)   sLimit = sSql.substr(iPosLimitLower);
+			else                       sLimit = sSql.substr(iPosLimitUpper);
 
             const char * chLimit = sLimit.c_str();
             for (int i = 5; i<sLimit.length(); i++)
@@ -2642,16 +2633,16 @@ namespace helper {
                 }
             }
             std::string sLimitNew = "";
-            std::string sCount = to_string(SELECT_ITEM_LIMIT);
+            std::string sCount = to_string(selectLimit);
             int iPosComma = sLimit.find(",");
             if (iPosComma >= 0)
             {
                 sCount = sLimit.substr(iPosComma + 1);
                 boost::algorithm::trim(sCount);
                 int iCount = std::stoi(sCount.c_str());
-                if (iCount > SELECT_ITEM_LIMIT)
+                if (iCount > selectLimit)
                 {
-                    iCount = SELECT_ITEM_LIMIT;
+                    iCount = selectLimit;
                     sCount = to_string(iCount);
                     sLimitNew = sLimit.substr(0, iPosComma + 1);
                     sLimitNew += sCount;
@@ -2662,9 +2653,9 @@ namespace helper {
                 sCount = sLimit.substr(5);
                 boost::algorithm::trim(sCount);
                 int iCount = std::stoi(sCount.c_str());
-                if (iCount > SELECT_ITEM_LIMIT)
+                if (iCount > selectLimit)
                 {
-                    iCount = SELECT_ITEM_LIMIT;
+                    iCount = selectLimit;
                     sCount = to_string(iCount);
                     sLimitNew = "limit " + sCount;
                 }
@@ -2689,9 +2680,9 @@ namespace helper {
             }
         }
     }
-    Json::Value query_directly(DatabaseCon* conn, std::string sql) {
+    Json::Value query_directly(DatabaseCon* conn, std::string sql,int selectLimit) {
         Json::Value obj;
-        modifyLimitCount(sql);
+        modifyLimitCount(sql, selectLimit);
         try {
             LockedSociSession query = conn->checkoutDb();
             soci::rowset<soci::row> records = ((*query).prepare << sql);
@@ -2703,21 +2694,20 @@ namespace helper {
         return obj;
     }
 
-	Json::Value query_directly(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql) {
+	Json::Value query_directly(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql, int selectLimit) {
 		Json::Value obj;
 		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
 		if (result.first != 0) {
-			obj[jss::error] = result.second;
-			return obj;
+			return RPC::make_error(rpcJSON_PARSED_ERR, result.second);
 		}
 
 		try {
 			std::string sql = buildsql->asString();
-            modifyLimitCount(sql);
+            modifyLimitCount(sql, selectLimit);
 			auto last_error = buildsql->last_error();
+			//Todo-LC:need to modify error
 			if (last_error.first != 0) {
-				obj[jss::status] = "failure";
-				obj[jss::error] = last_error.second;
+				obj = RPC::make_error(rpcSQL_DISPOSE_ERR, last_error.second);
 				return obj;
 			}
 			LockedSociSession query = conn->checkoutDb();
@@ -2725,11 +2715,11 @@ namespace helper {
 			obj = query_result(records);
 		}
 		catch (soci::soci_error& e) {
-			obj[jss::error] = e.what();
+			obj = RPC::make_error(rpcGENERAL, e.what());
 		}
 		return obj;
 	}
-	std::pair<std::vector<std::vector<Json::Value>>, std::string> query_directly2d(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql) {
+	std::pair<std::vector<std::vector<Json::Value>>, std::string> query_directly2d(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql, int selectLimit) {
 		std::vector<std::vector<Json::Value>> obj;
 		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
 		if (result.first != 0) {
@@ -2738,7 +2728,7 @@ namespace helper {
 
 		try {
 			std::string sql = buildsql->asString();
-			modifyLimitCount(sql);
+			modifyLimitCount(sql, selectLimit);
 			auto last_error = buildsql->last_error();
 			if (last_error.first != 0) {
 				return std::make_pair(obj,last_error.second);
@@ -2794,6 +2784,23 @@ bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
     }
     
     return bExist;
+}
+
+// parse condition to string, like  "[{\"id\" : {\"$ge\" : 3}}]" to "id>=3"
+bool STTx2SQL::ConvertCondition2SQL(const Json::Value& condition, std::string& sSql)
+{
+
+	auto rTree = conditionTree::createRoot(condition);
+	if (rTree.first != 0)
+		return false;
+
+	auto rConditions = conditionParse::parse_conditions(condition, rTree.second);
+	if (rConditions.first != 0)
+		return false;
+
+	sSql = rTree.second.asString();
+
+	return true;
 }
 
 int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql) {
@@ -2880,19 +2887,19 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
                     (*it).compare("FK")    == 0  || (*it).compare("REFERENCES") == 0  )   continue;
                 else if ((*it).compare("PK") == 0)
                 {
-                    buildfield.SetPrimaryKey();
+                    if (v["PK"].asInt() == 1) buildfield.SetPrimaryKey();
                 }
                 else if ((*it).compare("index") == 0)
                 {
-                    buildfield.SetIndex();
+                    if (v["index"].asInt() == 1) buildfield.SetIndex();
                 }
                 else if ((*it).compare("NN") == 0)
                 {
-                    buildfield.SetNotNull();
+                    if (v["NN"].asInt() == 1) buildfield.SetNotNull();
                 }
                 else if ((*it).compare("UQ") == 0)
                 {
-                    buildfield.SetUnique();
+                    if (v["UQ"].asInt() == 1) buildfield.SetUnique();
                 }
                 else if ((*it).compare("default") == 0)
                 {
@@ -3128,7 +3135,7 @@ bool STTx2SQL::assert_result(const soci::rowset<soci::row>& records, const Json:
 		}
 		else if (assert_type == 1) {
 			Json::Value r = helper::query_result(records);
-			if (r.isMember(jss::status) && r[jss::status] == "success") {
+			if (!r.isMember(jss::error)) {
 				Json::Value c;
 				c.append(expect);
 				auto node = conditionTree::createRoot(c);
@@ -3217,7 +3224,7 @@ bool STTx2SQL::assert_result(const soci::rowset<soci::row>& records, const Json:
 
 bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	bool check = true;
-	if (optype == BuildSQL::BUILD_DROPTABLE_SQL 
+	if (optype == BuildSQL::BUILD_DROPTABLE_SQL
 		|| optype == BuildSQL::BUILD_RENAMETABLE_SQL
 		|| optype == BuildSQL::BUILD_CANCEL_ASSIGN_SQL
 		|| optype == BuildSQL::BUILD_ASSIGN_SQL) {
@@ -3519,7 +3526,7 @@ std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory
 Json::Value TxStore::txHistory(Json::Value& tx_json) {
     Json::Value obj;
     if (databasecon_ == nullptr)
-        return rpcError(rpcINTERNAL);
+        return rpcError(rpcNODB);
 
     std::shared_ptr<BuildSQL> buildsql = nullptr;
     if (boost::iequals(db_type_, "sqlite"))
@@ -3529,11 +3536,11 @@ Json::Value TxStore::txHistory(Json::Value& tx_json) {
 
     if (buildsql == nullptr)
     {
-        obj[jss::error] = "there is no DB in this node";
-        return obj;
+		std::string errMsg = "Initial buildsql failed.";
+		return RPC::make_error(rpcINTERNAL, errMsg);
     }
 
-    return helper::query_directly(tx_json, databasecon_, buildsql.get());
+    return helper::query_directly(tx_json, databasecon_, buildsql.get(), select_limit_);
 }
 
 std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory2d(Json::Value& tx_json) {
@@ -3552,13 +3559,13 @@ std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory
 		return std::make_pair(ret,"there is no DB in this node");
 	}
 
-	return helper::query_directly2d(tx_json, databasecon_, buildsql.get());
+	return helper::query_directly2d(tx_json, databasecon_, buildsql.get(),select_limit_);
 }
 
 Json::Value TxStore::txHistory(std::string sql) {
     Json::Value obj;
     if (databasecon_ == nullptr)
-        return rpcError(rpcINTERNAL);
+        return rpcError(rpcNODB);
 	std::shared_ptr<BuildSQL> buildsql = nullptr;
 	
 	if (boost::iequals(db_type_, "sqlite"))
@@ -3568,10 +3575,10 @@ Json::Value TxStore::txHistory(std::string sql) {
 
     if (buildsql == nullptr)
     {
-        obj[jss::error] = "there is no DB in this node";
-        return obj;
+		std::string errMsg = "Initial buildsql failed.";
+		return RPC::make_error(rpcINTERNAL, errMsg);
     }
 
-    return helper::query_directly(databasecon_, sql);
+	return helper::query_directly(databasecon_, sql, select_limit_);
 }
 }	// namespace ripple

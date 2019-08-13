@@ -42,6 +42,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <peersafe/app/sql/STTx2SQL.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <test/jtx.h>
+#include <test/app/SuitLogs.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/multiprecision/cpp_dec_float.hpp>
@@ -52,73 +53,73 @@ using boost::multiprecision::cpp_dec_float_50;
 
 namespace ripple {
 
-class SuiteSink : public beast::Journal::Sink
-{
-	std::string partition_;
-	beast::unit_test::suite& suite_;
-
-public:
-	SuiteSink(std::string const& partition,
-		beast::severities::Severity threshold,
-		beast::unit_test::suite& suite)
-		: Sink(threshold, false)
-		, partition_(partition + " ")
-		, suite_(suite)
-	{
-	}
-
-	// For unit testing, always generate logging text.
-	bool active(beast::severities::Severity level) const override
-	{
-		return true;
-	}
-
-	void
-		write(beast::severities::Severity level,
-			std::string const& text) override
-	{
-		using namespace beast::severities;
-		std::string s;
-		switch (level)
-		{
-		case kTrace:    s = "TRC:"; break;
-		case kDebug:    s = "DBG:"; break;
-		case kInfo:     s = "INF:"; break;
-		case kWarning:  s = "WRN:"; break;
-		case kError:    s = "ERR:"; break;
-		default:
-		case kFatal:    s = "FTL:"; break;
-		}
-
-		// Only write the string if the level at least equals the threshold.
-		if (level >= threshold())
-			suite_.log << s << partition_ << text << std::endl;
-	}
-};
-
-
-
-class SuiteLogs : public Logs
-{
-	beast::unit_test::suite& suite_;
-
-public:
-	explicit
-		SuiteLogs(beast::unit_test::suite& suite)
-		: Logs(beast::severities::kError)
-		, suite_(suite)
-	{
-	}
-
-	~SuiteLogs() override = default;
-
-	std::unique_ptr<beast::Journal::Sink>
-		makeSink(std::string const& partition,
-			beast::severities::Severity threshold) override
-	{
-		return std::make_unique<SuiteSink>(partition, threshold, suite_);
-	}
-};
+//class SuiteSink : public beast::Journal::Sink
+//{
+//	std::string partition_;
+//	beast::unit_test::suite& suite_;
+//
+//public:
+//	SuiteSink(std::string const& partition,
+//		beast::severities::Severity threshold,
+//		beast::unit_test::suite& suite)
+//		: Sink(threshold, false)
+//		, partition_(partition + " ")
+//		, suite_(suite)
+//	{
+//	}
+//
+//	// For unit testing, always generate logging text.
+//	bool active(beast::severities::Severity level) const override
+//	{
+//		return true;
+//	}
+//
+//	void
+//		write(beast::severities::Severity level,
+//			std::string const& text) override
+//	{
+//		using namespace beast::severities;
+//		std::string s;
+//		switch (level)
+//		{
+//		case kTrace:    s = "TRC:"; break;
+//		case kDebug:    s = "DBG:"; break;
+//		case kInfo:     s = "INF:"; break;
+//		case kWarning:  s = "WRN:"; break;
+//		case kError:    s = "ERR:"; break;
+//		default:
+//		case kFatal:    s = "FTL:"; break;
+//		}
+//
+//		// Only write the string if the level at least equals the threshold.
+//		if (level >= threshold())
+//			suite_.log << s << partition_ << text << std::endl;
+//	}
+//};
+//
+//
+//
+//class SuiteLogs : public Logs
+//{
+//	beast::unit_test::suite& suite_;
+//
+//public:
+//	explicit
+//		SuiteLogs(beast::unit_test::suite& suite)
+//		: Logs(beast::severities::kError)
+//		, suite_(suite)
+//	{
+//	}
+//
+//	~SuiteLogs() override = default;
+//
+//	std::unique_ptr<beast::Journal::Sink>
+//		makeSink(std::string const& partition,
+//			beast::severities::Severity threshold) override
+//	{
+//		return std::make_unique<SuiteSink>(partition, threshold, suite_);
+//	}
+//};
 std::unique_ptr<ripple::Logs> logs_;
 
 class Transaction2Sql_test : public beast::unit_test::suite {
@@ -1341,8 +1342,8 @@ public:
 	}
 
 	void test_sample_mongodb_json_style() {
-		std::string ops[] = { "$eq","$ne","$lt","$le","$gt","$ge" };
-		std::string expect_ops[] = {"=", "!=", "<", "<=", ">", ">="};
+		std::string ops[] = { "$eq","$ne","$lt","$le","$gt","$ge","$is", "$isnot" };
+		std::string expect_ops[] = {"=", "!=", "<", "<=", ">", ">=", "is", "is not"};
 		for (size_t i = 0; i < 6; i++) {
 			std::string raw_string = (boost::format("[{\"age\":{\"%1%\":20}}]") %ops[i]).str();
 			Json::Reader reader = Json::Reader();
@@ -1359,6 +1360,26 @@ public:
 
 			std::string result_conditions = result.second.asString();
 			std::string expect_conditions = (boost::format("age %1% 20") %expect_ops[i]).str();
+			BEAST_EXPECT(result_conditions == expect_conditions);
+		}
+
+		for (size_t i = 6; i < 8; i++)
+		{
+			std::string raw_string = (boost::format("[{\"age\":{\"%1%\":\"null\"}}]") % ops[i]).str();
+			Json::Reader reader = Json::Reader();
+			Json::Value conditions;
+			if (reader.parse(raw_string, conditions) == false) {
+				std::cout << "parse error. " << reader.getFormatedErrorMessages() << std::endl;
+				return;
+			}
+			auto result = createConditionTree(conditions);
+			//BEAST_EXPECT(result.first == 0);
+
+			auto result2 = parse_conditions(conditions, result.second);
+			//BEAST_EXPECT(result2.first == 0);
+
+			std::string result_conditions = result.second.asString();
+			std::string expect_conditions = (boost::format("age %1% NULL") % expect_ops[i]).str();
 			BEAST_EXPECT(result_conditions == expect_conditions);
 		}
 
