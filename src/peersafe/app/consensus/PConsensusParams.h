@@ -9,7 +9,7 @@ namespace ripple {
         // The maximum block generation time(ms) even without transactions.
         const unsigned MaxBlockTime = 1000;
 
-        const unsigned MaxTxsInLedger = 5000;
+        const unsigned MaxTxsInLedger = 10000;
 
 
         const std::size_t TxPoolCapacity = 100000;
