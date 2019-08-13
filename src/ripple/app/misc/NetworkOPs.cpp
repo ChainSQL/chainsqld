@@ -3074,7 +3074,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				{
 					mValidatedSubTx[simiIt->first] = make_pair(p, std::chrono::system_clock::now());
 				}
-
+                subTx.erase(simiIt);
 				//if (bPendErase)
 				//{
 				//	std::thread([this, txId, jvToPub]() {
