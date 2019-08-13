@@ -1445,7 +1445,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
                         break;
                     case protocol::neLOST_SYNC:
                         j[jss::action] = "LOST_SYNC";
-                        break;
+						break;
                 }
             }
 

@@ -205,22 +205,13 @@ Json::Value doSubscribe (RPC::Context& context)
 	if (context.params.isMember(jss::transaction))
 	{
 		auto sTxId = context.params[jss::transaction].asString();
-		int lastLedgerSeq = 0;
-		if (context.params.isMember(jss::lastLedgerSequence))
-		{
-			lastLedgerSeq = context.params[jss::lastLedgerSequence].asInt();
-		}
-		else
-		{
-			lastLedgerSeq = context.app.getLedgerMaster().getValidLedgerIndex() + LAST_LEDGERSEQ_PASS;
-		}
 		
 		if (sTxId.size() == 0)
 			return rpcError(rpcACT_MALFORMED);
 		auto uTxId = from_hex_text<uint256>(sTxId);
 		if(uTxId.isZero())
 			return rpcError(rpcINVALID_PARAMS);
-		context.netOps.subTransaction(ispSub, uTxId, lastLedgerSeq);
+		context.netOps.subTransaction(ispSub, uTxId);
 		JLOG(context.j.debug()) << "doSubscribe: transaction: " << sTxId;
 	}
 

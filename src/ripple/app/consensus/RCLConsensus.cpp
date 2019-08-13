@@ -996,6 +996,15 @@ RCLConsensus::startRound(
     RCLCxLedger const& prevLgr)
 {
     ScopedLockType _{mutex_};
+	//use large interval for empty ledger?
+	if (!consensus_.useLargeInterval())
+	{
+		if (prevLgr.ledger_->rules().enabled(featureDecreaseStorage))
+		{
+			consensus_.setUseLargeInterval(true);
+		}
+	}
+	
     consensus_.startRound(
         now, prevLgrId, prevLgr, adaptor_.preStartRound(prevLgr));
 }

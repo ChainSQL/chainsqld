@@ -440,7 +440,10 @@ public:
     void pubValidation (
         STValidation::ref val) override;
 
-	void TryCheckSubTx() override;
+	void tryCheckSubTx() override;
+	void onPubLedger(std::shared_ptr<ReadView const> const& lpAccepted);
+
+	std::string getServerStatus() override;
 
 	void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,
 		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes,bool bVaidated) override;
@@ -478,7 +481,7 @@ public:
 	virtual void unsubTable(InfoSub::ref ispListener, AccountID const& accountID, std::string const& sTableName) override;
 
 	//for a single tx
-	virtual void subTransaction(InfoSub::ref ispListener, uint256 const& txId, const int lastLedgerSeq) override;
+	virtual void subTransaction(InfoSub::ref ispListener, uint256 const& txId) override;
 	virtual void unsubTransaction(InfoSub::ref ispListener, uint256 const& txId) override;    
 
     bool subServer (
@@ -555,7 +558,8 @@ private:
 
 	void processSubTxTimer();
 
-	using SubTxMapType = hash_map<uint256, std::pair<InfoSub::wptr, int>>;
+	using time_point = std::chrono::system_clock::time_point;
+	using SubTxMapType = hash_map<uint256, std::pair<InfoSub::wptr, time_point>>;
 	void processSubTx(SubTxMapType& subTx, const std::string& status);
 
     void setMode (OperatingMode);
@@ -830,10 +834,12 @@ void NetworkOPsImp::processHeartbeatTimer ()
 
     mConsensus.timerEntry (app_.timeKeeper().closeTime());
 
+	tryCheckSubTx();
+
     setHeartbeatTimer ();
 }
 
-void NetworkOPsImp::TryCheckSubTx()
+void NetworkOPsImp::tryCheckSubTx()
 {
 	if (!m_bCheckTxThread && (mSubTx.size() > 0 || mValidatedSubTx.size() > 0))
 	{
@@ -858,11 +864,10 @@ void NetworkOPsImp::processSubTx(SubTxMapType&subTx, const std::string& status)
 	auto iter = subTx.begin();
 	while (iter != subTx.end())
 	{
-		//auto now = std::chrono::steady_clock::now();
-		//using duration_type = std::chrono::duration<double>;
-		//duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
-		//if (time_span.count() >= EXPIRE_TIME)
-		if(app_.getLedgerMaster().getValidLedgerIndex() > iter->second.second)
+		auto now = std::chrono::system_clock::now();
+		using duration_type = std::chrono::duration<double>;
+		duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
+		if (time_span.count() >= EXPIRE_TIME)
 		{
 			//notify time out
 			InfoSub::pointer p = iter->second.first.lock();
@@ -2374,6 +2379,11 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
 
     Json::Value lastClose = Json::objectValue;
     lastClose[jss::proposers] = Json::UInt(mConsensus.prevProposers());
+	auto pLedger = m_ledgerMaster.getLedgerByHash(mConsensus.prevLedgerID());
+	if (pLedger)
+	{
+		lastClose[jss::seq] = pLedger->info().seq;
+	}
 
     if (human)
     {
@@ -2551,7 +2561,31 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
     info[jss::state_accounting] = accounting_.json();
     info[jss::uptime] = UptimeTimer::getInstance ().getElapsedSeconds ();
 
+	//comprehensive judgement for server_status
+	info[jss::server_status] = getServerStatus();
+
     return info;
+}
+
+std::string NetworkOPsImp::getServerStatus()
+{
+	auto pLedger = m_ledgerMaster.getLedgerByHash(mConsensus.prevLedgerID());
+	uint32 minVal, maxVal;
+	minVal = maxVal = 0;
+	m_ledgerMaster.getValidatedRange(minVal, maxVal);
+	if (minVal == maxVal)
+	{
+		return "abnormal";
+	}
+	
+	if (pLedger && pLedger->info().seq == maxVal && strOperatingMode() == "proposing")
+	{
+		return "normal";
+	}
+	else
+	{
+		return "abnormal";
+	}
 }
 
 void NetworkOPsImp::clearLedgerFetch ()
@@ -2600,6 +2634,8 @@ void NetworkOPsImp::pubLedger (
 {
     // Ledgers are published only when they acquire sufficient validations
     // Holes are filled across connection loss or other catastrophe
+
+	onPubLedger(lpAccepted);
 
     std::shared_ptr<AcceptedLedger> alpAccepted =
         app_.getAcceptedLedgerCache().fetch (lpAccepted->info().hash);
@@ -2660,6 +2696,37 @@ void NetworkOPsImp::pubLedger (
         JLOG(m_journal.trace()) << "pubAccepted: " << vt.second->getJson ();
         pubValidatedTransaction (lpAccepted, *vt.second);
     }
+}
+
+void NetworkOPsImp::onPubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
+{
+	// update ledger seq to peers
+	protocol::TMStatusChange s;
+	s.set_newevent(protocol::neACCEPTED_LEDGER);
+	s.set_ledgerseq(lpAccepted->info().seq);
+	s.set_networktime(app_.timeKeeper().now().time_since_epoch().count());
+	s.set_ledgerhashprevious(
+		lpAccepted->info().parentHash.begin(),
+		lpAccepted->info().parentHash.size());
+	s.set_ledgerhash(
+		lpAccepted->info().hash.begin(),
+		lpAccepted->info().hash.size());
+	std::uint32_t uMin, uMax;
+	if (!app_.getLedgerMaster().getFullValidatedRange(uMin, uMax))
+	{
+		uMin = 0;
+		uMax = 0;
+	}
+	else
+	{
+		// Don't advertise ledgers we're not willing to serve
+		uMin = std::max(uMin, app_.getLedgerMaster().getEarliestFetch());
+	}
+	s.set_firstseq(uMin);
+	s.set_lastseq(uMax);
+
+	app_.overlay().foreach(send_always(
+		std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
 }
 
 void NetworkOPsImp::reportFeeChange ()
@@ -3002,18 +3069,12 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 					jvObj[jss::error_message] = disposRes.second;
 
 				p->send(jvObj, true);
-
-				//for table-related tx and validation event
-				if (bValidated) {
-					if (bForTableTx) {
-						//for chainsql type, subscribe db event
-						mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
-					}
-					else {
-						mSubTx.erase(simiIt);
-					}
+				//for chainsql type,subscribe db event
+				if (bForTableTx && bValidated)
+				{
+					mValidatedSubTx[simiIt->first] = make_pair(p, std::chrono::system_clock::now());
 				}
-
+                subTx.erase(simiIt);
 				//if (bPendErase)
 				//{
 				//	std::thread([this, txId, jvToPub]() {
@@ -3300,11 +3361,11 @@ void NetworkOPsImp::unsubTable(InfoSub::ref isplistener, AccountID const& accoun
 }
 
 //for a single tx
-void NetworkOPsImp::subTransaction(InfoSub::ref isrListener, uint256 const& uTxId, const int lastLedgerSeq)
+void NetworkOPsImp::subTransaction(InfoSub::ref isrListener, uint256 const& uTxId)
 {
 	ScopedLockType sl(mSubLock);
 	
-	mSubTx[uTxId] = make_pair(isrListener, lastLedgerSeq);
+	mSubTx[uTxId] = make_pair(isrListener, std::chrono::system_clock::now());
 }
 
 void NetworkOPsImp::unsubTransaction(InfoSub::ref ispListener, uint256 const& uTxId)
