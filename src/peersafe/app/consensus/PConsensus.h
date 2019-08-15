@@ -291,12 +291,14 @@ private:
 	std::size_t prevProposers_ = 0;
 
 	// The minimum block generation time(ms)
-	unsigned minBlockTime_ = MinBlockTime;
+	unsigned minBlockTime_;
 
 	// The maximum block generation time(ms) even without transactions.
-	unsigned maxBlockTime_ = MaxBlockTime;
+	unsigned maxBlockTime_;
 
-	unsigned maxTxsInLedger_ = MaxTxsInLedger;
+	unsigned maxTxsInLedger_;
+
+    bool omitEmptyBlock_;
 
 	// Journal for debugging
 	beast::Journal j_;
@@ -311,7 +313,96 @@ PConsensus<Adaptor>::PConsensus(
 	, clock_(clock)
 	, j_{ journal }
 {
-	JLOG(j_.debug()) << "Creating consensus object";
+	JLOG(j_.debug()) << "Creating pconsensus object";
+
+    minBlockTime_ = MinBlockTime;
+    maxBlockTime_ = MaxBlockTime;
+    maxTxsInLedger_ = MaxTxsInLedger;
+    omitEmptyBlock_ = true;
+
+    if (adaptor.app_.config().exists(SECTION_PCONSENSUS))
+    {
+        {
+            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("min_block_time");
+            if (result.second)
+            {
+                try
+                {
+                    minBlockTime_ = beast::lexicalCastThrow<std::uint32_t>(result.first);
+
+                    if (minBlockTime_ == 0)
+                        Throw<std::exception>();
+                }
+                catch (std::exception const&)
+                {
+                    JLOG(j_.error()) <<
+                        "Invalid value '" << result.first << "' for key " <<
+                        "'min_block_time' in [" << SECTION_PCONSENSUS << "]\n";
+                    Rethrow();
+                }
+            }
+        }
+
+        {
+            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("max_block_time");
+            if (result.second)
+            {
+                try
+                {
+                    maxBlockTime_ = beast::lexicalCastThrow<std::uint32_t>(result.first);
+
+                    if (maxBlockTime_ == 0 || maxBlockTime_ < minBlockTime_)
+                        Throw<std::exception>();
+                }
+                catch (std::exception const&)
+                {
+                    JLOG(j_.error()) <<
+                        "Invalid value '" << result.first << "' for key " <<
+                        "'max_block_time' in [" << SECTION_PCONSENSUS << "]\n";
+                    Rethrow();
+                }
+            }
+        }
+
+        {
+            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("max_txs_per_ledger");
+            if (result.second)
+            {
+                try
+                {
+                    maxTxsInLedger_ = beast::lexicalCastThrow<std::uint32_t>(result.first);
+
+                    if (maxTxsInLedger_ == 0)
+                        Throw<std::exception>();
+                }
+                catch (std::exception const&)
+                {
+                    JLOG(j_.error()) <<
+                        "Invalid value '" << result.first << "' for key " <<
+                        "'max_txs_per_ledger' in [" << SECTION_PCONSENSUS << "]\n";
+                    Rethrow();
+                }
+            }
+        }
+
+        {
+            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("empty_block");
+            if (result.second)
+            {
+                try
+                {
+                    omitEmptyBlock_ = beast::lexicalCastThrow<bool>(result.first);
+                }
+                catch (std::exception const&)
+                {
+                    JLOG(j_.error()) <<
+                        "Invalid value '" << result.first << "' for key " <<
+                        "'empty_block' in [" << SECTION_PCONSENSUS << "]\n";
+                    Rethrow();
+                }
+            }
+        }
+    }
 }
 
 template <class Adaptor>

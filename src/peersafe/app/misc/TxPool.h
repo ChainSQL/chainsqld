@@ -7,6 +7,8 @@
 #include <memory>
 #include <functional>
 #include <unordered_map>
+#include <ripple/core/ConfigSections.h>
+#include <ripple/beast/core/LexicalCast.h>
 #include <ripple/basics/base_uint.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/Transaction.h>
@@ -47,6 +49,28 @@ public:
         , j_(j)
     {
         mMaxTxsInPool = TxPoolCapacity;
+
+        if (app.config().exists(SECTION_PCONSENSUS))
+        {
+            auto const result = app.config().section(SECTION_PCONSENSUS).find("txpool_cap");
+            if (result.second)
+            {
+                try
+                {
+                    mMaxTxsInPool = beast::lexicalCastThrow<std::uint32_t>(result.first);
+
+                    if (mMaxTxsInPool == 0)
+                        Throw<std::exception>();
+                }
+                catch (std::exception const&)
+                {
+                    JLOG(j_.error()) <<
+                        "Invalid value '" << result.first << "' for key " <<
+                        "'txpool_cap' in [" << SECTION_PCONSENSUS << "]\n";
+                    Rethrow();
+                }
+            }
+        }
     }
 
 	virtual ~TxPool() {}

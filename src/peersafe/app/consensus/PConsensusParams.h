@@ -3,16 +3,27 @@
 #define PEERSAFE_APP_CONSENSUS_PCONSENSUSPARAMS_H
 
 namespace ripple {
-        // The minimum block generation time(ms)
-        const unsigned MinBlockTime = 500;
 
-        // The maximum block generation time(ms) even without transactions.
-        const unsigned MaxBlockTime = 1000;
+    // Default pconsensus parameters
 
-        const unsigned MaxTxsInLedger = 10000;
+    // The minimum block generation time(ms)
+    const unsigned MinBlockTime = 500;
+
+    // The maximum block generation time(ms) even without transactions.
+    const unsigned MaxBlockTime = 1000;
+
+    const unsigned MaxTxsInLedger = 10000;
 
 
-        const std::size_t TxPoolCapacity = 100000;
+    const std::size_t TxPoolCapacity = 100000;
+
+    // simple config section e.x.
+    // [pconsensus]
+    // min_block_time=500
+    // max_block_time=1000
+    // max_txs_per_ledger=10000
+    // txpool_cap=100000
+    // empty_block=0
 }
 
 
