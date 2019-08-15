@@ -1062,7 +1062,7 @@ std::tuple<bool, ripple::uint256, error_code_i> LedgerMaster::getUserFutureHash(
 
 void LedgerMaster::processFullLedgerTask(std::shared_ptr<Ledger const> const& ledger)
 {
-	app_.getTableSync().SeekCreateTable(ledger);
+	app_.getTableSync().CheckSyncTableTxs(ledger);
 	app_.getTableStorage().TryTableStorage();
 	app_.getTableAssistant().TryTableCheckHash();
 	app_.getTableTxAccumulator().trySweepCache();
