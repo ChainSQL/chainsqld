@@ -576,7 +576,8 @@ PConsensus<Adaptor>::gotTxSet(
 			if (!result_)
 			{
 				//update avoid if we got the right tx-set
-				adaptor_.app_.getTxPool().updateAvoid(txSet);
+                if (adaptor_.validating())
+				    adaptor_.app_.getTxPool().updateAvoid(txSet);
 
 				auto set = txSet.map_->snapShot(false);
 				//this place has a txSet copy,what's the time it costs?
@@ -790,17 +791,18 @@ PConsensus<Adaptor>::phaseVoting()
 	if (*setID_ == beast::zero && timeSinceOpen() < maxBlockTime_)
 		return;
 
-	//Here deal with abnormal case:other peers may not receive the proposal
-	if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
-	{
-		result_->position.changePosition(*setID_, result_->position.closeTime(), now_);
-		adaptor_.propose(result_->position);
-		JLOG(j_.warn()) << "We are leader and reProposing position" ;
-	}
-
 	// Nothing to do if we don't have consensus.
-	if (!haveConsensus())
-		return;
+    if (!haveConsensus())
+    {
+        //Here deal with abnormal case:other peers may not receive the proposal
+        if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
+        {
+            result_->position.changePosition(*setID_, result_->position.closeTime(), now_);
+            adaptor_.propose(result_->position);
+            JLOG(j_.warn()) << "We are leader and reProposing position";
+        }
+        return;
+    }
 
 	prevProposers_ = txSetVoted_[*setID_].size();
 
