@@ -43,6 +43,7 @@ checkValidity(HashRouter& router,
     auto const allowMultiSign =
         rules.enabled(featureMultiSign);
 
+	
     auto const id = tx.getTransactionID();
     auto const flags = router.getFlags(id);
     if (flags & SF_SIGBAD)
@@ -51,7 +52,6 @@ checkValidity(HashRouter& router,
 
     if (!(flags & SF_SIGGOOD))
     {
-
 		auto const certificate = tx.getFieldVL(sfCertificate);
 
 		bool  bHasCert             = (!certificate.empty());
@@ -72,7 +72,8 @@ checkValidity(HashRouter& router,
 				std::string sException;
 				if (!verifyCACert(certInfo, config, sException)) {
 
-					return{ Validity::SigBad, "Certificate authentication failed" };
+					std::string errInfo = "Certificate authentication failed. " + sException;
+					return{ Validity::SigBad,errInfo };
 				}
 		}
 		else if (bNeedCertVerify) {

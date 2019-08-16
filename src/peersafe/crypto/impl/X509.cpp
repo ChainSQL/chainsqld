@@ -32,6 +32,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <peersafe/crypto/X509.h>
 
 
+#include <boost/format.hpp> // boost::format
 
 namespace ripple {
 
@@ -114,7 +115,6 @@ namespace ripple {
 			}
 		}
 
-
 		//x509Client is the certificate to be verified
 		ret = X509_STORE_CTX_init(ctx, certChain, x509Client, NULL);
 		if (1 != ret)
@@ -123,12 +123,12 @@ namespace ripple {
 			goto EXIT;
 		}
 
-		nX509Verify = X509_verify_cert(ctx);
-		if (1 != nX509Verify)
+		ret = X509_verify_cert(ctx);
+		if (1 != ret)
 		{
 			long nCode = X509_STORE_CTX_get_error(ctx);
 			const char * pChError = X509_verify_cert_error_string(nCode);
-			exception = pChError;
+			exception = (boost::format("X509 err_msg: %s , err_code:  %ld") % pChError %nCode).str();
 			goto EXIT;
 		}
 	EXIT:
@@ -193,8 +193,6 @@ namespace ripple {
 			publicKey = PublicKey(makeSlice(blob));
 
 		}
-
-
 
 
 		EVP_PKEY_free(pkey);

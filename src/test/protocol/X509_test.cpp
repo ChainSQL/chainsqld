@@ -25,11 +25,6 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 
-
-
-
-
-
 namespace ripple {
 	class X509_test : public beast::unit_test::suite
 	{
@@ -95,20 +90,42 @@ namespace ripple {
 				generateSecretKey(KeyType::secp256k1, generateSeed("masterpassphrase"));
 			auto const seedPublicKey =
 				derivePublicKey(KeyType::secp256k1, seedSecretKey);
-
-			//auto retPB = toBase58(TokenType::TOKEN_NODE_PUBLIC, seedPublicKey);
-
-			//auto const pk = parseBase58<PublicKey>(
-			//	TokenType::TOKEN_ACCOUNT_PUBLIC, "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh");
+			auto retPB = toBase58(TokenType::TOKEN_ACCOUNT_PUBLIC, seedPublicKey);
 
 			// compare  public keys from CA and sign
 			PublicKey pubKey = getPublicKeyFromX509(certCA);
 			BEAST_EXPECT(pubKey == seedPublicKey);
 
 			std::string strExcept;
-			bool ret = verifyCert(vecRootCa,certUser,strExcept);
-			
+			bool ret = verifyCert(vecRootCa,certUser,strExcept);		
 			BEAST_EXPECT(ret);
+
+			//auto retPB2 = toBase58(TokenType::TOKEN_ACCOUNT_PUBLIC, pubKeyFromFile);
+			//BEAST_EXPECT(pubKeyFromFile == seedPublicKey);
+			//std::cout << "public key "<< strHex (seedPublicKey) << "  " << strHex(pubKeyFromFile) <<std::endl;
+
+			std::string rootCert1;
+			std::ifstream ifsPath1("root1.cert");
+			rootCert1.assign(
+				std::istreambuf_iterator<char>(ifsPath1),
+				std::istreambuf_iterator<char>());
+
+			std::string userCert1;
+			std::ifstream ifsPathUser1("user1.cert");
+			userCert1.assign(
+				std::istreambuf_iterator<char>(ifsPathUser1),
+				std::istreambuf_iterator<char>());
+
+			BEAST_EXPECT(!rootCert1.empty());
+			BEAST_EXPECT(!userCert1.empty());
+
+			std::vector<std::string> vecRootCertFromFile = { rootCert1 };
+			PublicKey pubKeyFromFile = getPublicKeyFromX509(userCert1);
+			BEAST_EXPECT(pubKey == pubKeyFromFile);
+
+			ret = verifyCert(vecRootCertFromFile, userCert1, strExcept);
+			BEAST_EXPECT(ret);
+
 		}
 
 		void run() override
