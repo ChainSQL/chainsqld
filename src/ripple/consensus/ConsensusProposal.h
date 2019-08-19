@@ -96,6 +96,7 @@ public:
     ConsensusProposal(
         LedgerID_t const& prevLedger,
 		std::uint32_t curLedgerSeq,
+		std::uint64_t view,
         std::uint32_t seq,
         Position_t const& position,
         NetClock::time_point closeTime,
@@ -108,6 +109,7 @@ public:
         , proposeSeq_(seq)
         , nodeID_(nodeID)
 		, curLedgerSeq_(curLedgerSeq)
+		, view_(view)
     {
     }
 
@@ -139,6 +141,11 @@ public:
 		return curLedgerSeq_;
 	}
 
+	std::uint64_t const&
+		view() const
+	{
+		return view_;
+	}
     /** Get the sequence number of this proposal
 
         Starting with an initial sequence number of `seqJoin`, successive
@@ -264,6 +271,8 @@ private:
 	NodeID_t nodeID_;
 
 	std::uint32_t curLedgerSeq_ = 0;
+
+	std::uint64_t view_ = 0;
 };
 
 template <class NodeID_t, class LedgerID_t, class Position_t>

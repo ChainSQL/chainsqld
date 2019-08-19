@@ -32,6 +32,8 @@
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/consensus/PConsensusParams.h>
 #include <peersafe/app/consensus/ConsensusBase.h>
+#include <peersafe/app/consensus/ViewChange.h>
+#include <peersafe/app/consensus/ViewChangeManager.h>
 
 namespace ripple {
 
@@ -133,6 +135,11 @@ public:
 		peerProposal(
 			NetClock::time_point const& now,
 			PeerPosition_t const& newProposal);
+
+	bool
+		peerViewChange(ViewChange const& change);
+
+	void launchViewChange();
 	/** Get the previous ledger ID.
 
 		The previous ledger is the last ledger seen by the consensus code and
@@ -189,6 +196,11 @@ private:
 	void 
 		checkCache();
 
+	void 
+		checkChangeView(uint64_t toView);
+
+	void onViewChange();
+
 	/** Handle tx-collecting phase.
 
 		In the tx-collecting phase, the ledger is open as we wait for new
@@ -208,6 +220,8 @@ private:
 	*/
 	void
 		phaseVoting();
+
+	void checkTimeout();
 
 	bool
 		haveConsensus();
@@ -232,6 +246,7 @@ private:
 
 	std::chrono::milliseconds timeSinceLastClose();
 	uint64 timeSinceOpen();
+	uint64 timeSinceConsensus();
 
 	void leaveConsensus();
 
@@ -255,7 +270,8 @@ private:
 	NetClock::time_point prevCloseTime_;
 	NetClock::time_point closeTime_;
 	std::chrono::steady_clock::time_point proposalTime_;
-	uint64 openTime2_;
+	uint64 openTimeMilli_;
+	uint64 consensusTime_;
 
 	//-------------------------------------------------------------------------
 	// Non-peer (self) consensus data
@@ -300,8 +316,17 @@ private:
 
     bool omitEmptyBlock_;
 
+	bool omitEmpty_ = true;
+
+	uint64 view_ = 0;
+	uint64 toView_ = 0;
+
+	std::chrono::milliseconds timeOut_ = 3s;
+
 	// Journal for debugging
 	beast::Journal j_;
+
+	ViewChangeManager viewChangeManager_;
 };
 
 template <class Adaptor>
@@ -312,6 +337,7 @@ PConsensus<Adaptor>::PConsensus(
 	: adaptor_(adaptor)
 	, clock_(clock)
 	, j_{ journal }
+	, viewChangeManager_{ journal }
 {
 	JLOG(j_.debug()) << "Creating pconsensus object";
 
@@ -458,7 +484,8 @@ PConsensus<Adaptor>::startRoundInternal(
 	mode_.set(mode, adaptor_);
 	now_ = now;
 	closeTime_ = now;
-	openTime2_ = utcTime();
+	openTimeMilli_ = utcTime();
+	consensusTime_ = openTimeMilli_;
 	prevLedgerID_ = prevLedgerID;
 	previousLedger_ = prevLedger;
 	result_.reset();
@@ -504,15 +531,49 @@ PConsensus<Adaptor>::checkCache()
 				JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
 			}
 		}
-
-		for (auto iter = adaptor_.proposalCache_.begin(); iter != adaptor_.proposalCache_.end(); iter++)
+		auto iter = adaptor_.proposalCache_.begin();
+		while ( iter != adaptor_.proposalCache_.end())
 		{
 			if (iter->first <= curSeq)
 			{
-				adaptor_.proposalCache_.erase(iter->first);
+				iter = adaptor_.proposalCache_.erase(iter);
+			}
+			else
+			{
+				iter++;
 			}
 		}
 	}
+}
+
+template<class Adaptor>
+void
+PConsensus<Adaptor>::checkChangeView(uint64_t toView)
+{
+	if (viewChangeManager_.checkChange(toView, view_, adaptor_.app_.validators().quorum()))
+	{
+		view_ = toView;
+		onViewChange();
+	}
+}
+
+template<class Adaptor>
+void
+PConsensus<Adaptor>::onViewChange()
+{
+	consensusTime_ = utcTime();
+	phase_ = ConsensusPhase::open;
+	result_.reset();
+	acquired_.clear();
+	rawCloseTimes_.peers.clear();
+	rawCloseTimes_.self = {};
+	txSetCached_.clear();
+	txSetVoted_.clear();
+	transactions_.clear();
+	setID_.reset();
+
+	viewChangeManager_.onViewChanged(view_);
+	adaptor_.onViewChanged();
 }
 
 template <class Adaptor>
@@ -522,6 +583,21 @@ PConsensus<Adaptor>::peerProposal(
 	PeerPosition_t const& newPeerPos)
 {
 	return peerProposalInternal(now, newPeerPos);
+}
+
+template <class Adaptor>
+bool
+PConsensus<Adaptor>::peerViewChange(ViewChange const& change)
+{
+	bool ret = viewChangeManager_.recvViewChange(change);
+	if (ret)
+	{
+		JLOG(j_.info()) << "peerViewChange viewChangeReq saved,toView=" <<
+			change.toView() << ",nodeid=" << getPubIndex(change.nodePublic());
+		checkChangeView(change.toView());
+	}
+	
+	return true;
 }
 
 template <class Adaptor>
@@ -577,7 +653,14 @@ PConsensus<Adaptor>::peerProposalInternal(
 		{
 			if (isLeader(pub))
 			{
-				JLOG(j_.info()) << "Got proposal from leader,time sinceOpen:"<< timeSinceOpen() <<"ms, enter phase::establish.";
+				JLOG(j_.info()) << "Got proposal from leader,time sinceOpen:"<< timeSinceOpen() <<"ms.";
+
+				if (omitEmpty_ && newSetID == beast::zero)
+				{
+					launchViewChange();
+					JLOG(j_.info()) << "Empty proposal from leader,will trigger view_change.";
+					return true;
+				}
 
 				txSetVoted_[newSetID] = std::set<PublicKey>{pub};
 				setID_ = newSetID;
@@ -598,8 +681,8 @@ PConsensus<Adaptor>::peerProposalInternal(
 					JLOG(j_.info()) << "voting public for set:" << getPubIndex(pub);
 				}
 
-                if (phase_ == ConsensusPhase::open)
-                    phase_ = ConsensusPhase::establish;
+                //if (phase_ == ConsensusPhase::open)
+                //    phase_ = ConsensusPhase::establish;
 			}
 			else
 			{
@@ -677,6 +760,7 @@ PConsensus<Adaptor>::gotTxSet(
 					RCLCxPeerPos::Proposal(
 						prevLedgerID_,
 						previousLedger_.seq() + 1,
+						view_,
 						RCLCxPeerPos::Proposal::seqJoin,
 						id,
 						closeTime_,
@@ -686,6 +770,9 @@ PConsensus<Adaptor>::gotTxSet(
 				txSetVoted_[*setID_].insert(adaptor_.valPublic_);
 
 				result_->roundTime.reset(proposalTime_);
+
+				if (phase_ == ConsensusPhase::open)
+					phase_ = ConsensusPhase::establish;
 
 				JLOG(j_.info()) << "gotTxSet time elapsed since receive set_id from leader:" << (now - rawCloseTimes_.self).count();
 			}
@@ -737,6 +824,8 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 	{
 		phaseVoting();
 	}
+
+	checkTimeout();
 }
 
 template <class Adaptor>
@@ -780,7 +869,17 @@ PConsensus<Adaptor>::timeSinceOpen()
 	//openTime_.tick(clock_.now());
 	//return openTime_.read();
 	//using namespace std::chrono;
-	return utcTime() - openTime2_;
+	return utcTime() - openTimeMilli_;
+}
+
+template <class Adaptor>
+uint64
+PConsensus<Adaptor>::timeSinceConsensus()
+{
+	//openTime_.tick(clock_.now());
+	//return openTime_.read();
+	//using namespace std::chrono;
+	return utcTime() - consensusTime_;
 }
 
 template <class Adaptor>
@@ -791,8 +890,15 @@ PConsensus<Adaptor>::phaseCollecting()
 	//bool anyTransactions = adaptor_.hasOpenTransactions();
 	//auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
 
-	auto sinceClose = timeSinceLastClose();
+	auto sinceClose = timeSinceLastClose().count();
 	auto sinceOpen = timeSinceOpen();
+	auto sinceConsensus = timeSinceConsensus();
+	//view change ha
+	if (sinceOpen != sinceConsensus)
+	{
+		sinceOpen = sinceConsensus;
+		sinceClose = sinceConsensus;
+	}
 
 	JLOG(j_.info()) << "phaseCollecting time sinceOpen:" << sinceOpen <<"ms";
 
@@ -808,7 +914,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
 		}
 
-		if (finalCondReached(sinceOpen, sinceClose.count()))
+		if (finalCondReached(sinceOpen, sinceClose))
 		{
 			/** 
 			1. construct result_ 
@@ -819,7 +925,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			phase_ = ConsensusPhase::establish;
 			rawCloseTimes_.self = now_;
 
-			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_, mode_.get()));
+			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
 			result_->roundTime.reset(clock_.now());
 			setID_ = result_->set.id();
 
@@ -844,7 +950,7 @@ PConsensus<Adaptor>::phaseCollecting()
 		auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
 		if (currentFinished >= minVal)
 		{
-			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_, mode_.get()));
+			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
 			result_->roundTime.reset(clock_.now());
 			rawCloseTimes_.self = now_;
 			phase_ = ConsensusPhase::establish;
@@ -879,19 +985,19 @@ PConsensus<Adaptor>::phaseVoting()
 
 
 	//// Give everyone a chance to take an initial position
-	if (*setID_ == beast::zero && timeSinceOpen() < maxBlockTime_)
+	if (*setID_ == beast::zero && timeSinceConsensus() < maxBlockTime_)
 		return;
 
 	// Nothing to do if we don't have consensus.
     if (!haveConsensus())
     {
-        //Here deal with abnormal case:other peers may not receive the proposal
-        if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
-        {
-            result_->position.changePosition(*setID_, result_->position.closeTime(), now_);
-            adaptor_.propose(result_->position);
-            JLOG(j_.warn()) << "We are leader and reProposing position";
-        }
+        ////Here deal with abnormal case:other peers may not receive the proposal
+        //if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
+        //{
+        //    result_->position.changePosition(*setID_, result_->position.closeTime(), now_);
+        //    adaptor_.propose(result_->position);
+        //    JLOG(j_.warn()) << "We are leader and reProposing position";
+        //}
         return;
     }
 
@@ -971,8 +1077,7 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub,bool bNextLeader /* = fa
 		currentLedgerIndex++;
 	}
 
-	int view = 0;
-	int leader_idx = (view + currentLedgerIndex) % validators.size();
+	int leader_idx = (view_ + currentLedgerIndex) % validators.size();
 	assert(validators.size() > leader_idx);
 	return pub == validators[leader_idx];
 }
@@ -1175,6 +1280,35 @@ PConsensus<Adaptor>::checkLedger()
 	}
 	else if (previousLedger_.id() != prevLedgerID_)
 		handleWrongLedger(netLgr);
+}
+
+template <class Adaptor>
+void
+PConsensus<Adaptor>::checkTimeout()
+{
+	if (phase_ == ConsensusPhase::accepted)
+		return;
+
+	if (timeSinceConsensus() < timeOut_.count())
+		return;
+
+	launchViewChange();
+}
+
+template <class Adaptor>
+void
+PConsensus<Adaptor>::launchViewChange()
+{
+	toView_ = view_ + 1;
+	consensusTime_ = utcTime();
+
+	ViewChange change(previousLedger_.seq(), prevLedgerID_, adaptor_.valPublic_, toView_);
+	adaptor_.sendViewChange(change);
+
+	JLOG(j_.info()) << "checkTimeout sendViewChange,toView=" << toView_ << ",nodeId=" << getPubIndex(adaptor_.valPublic_)
+		<< ",prevLedgerSeq=" << previousLedger_.seq();
+
+	peerViewChange(change);
 }
 
 }

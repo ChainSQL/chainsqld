@@ -203,6 +203,7 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
     prop.set_previousledger(
         proposal.prevLedger().begin(), proposal.position().size());
 	prop.set_curledgerseq(proposal.curLedgerSeq());
+	prop.set_view(proposal.view());
     prop.set_proposeseq(proposal.proposeSeq());
     prop.set_closetime(proposal.closeTime().time_since_epoch().count());
 
@@ -220,6 +221,22 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
     prop.set_signature(sig.data(), sig.size());
 
     app_.overlay().send(prop);
+}
+
+void
+RCLConsensus::Adaptor::sendViewChange(ViewChange const& change)
+{
+	protocol::TMViewChange msg;
+	auto signingHash = change.signingHash();
+	auto sig = signDigest(valPublic_, valSecret_, signingHash);
+
+	msg.set_previousledgerseq(change.prevSeq());
+	msg.set_previousledgerhash(change.prevHash().begin(), change.prevHash().size());
+	msg.set_nodepubkey(valPublic_.data(),valPublic_.size());
+	msg.set_toview(change.toView());
+	msg.set_signature(sig.data(), sig.size());
+
+	app_.overlay().send(msg);
 }
 
 void
@@ -370,11 +387,18 @@ RCLConsensus::Adaptor::onClose(
             nodeID_}};
 }
 
+void 
+RCLConsensus::Adaptor::onViewChanged()
+{
+	app_.getLedgerMaster().updateConsensusTime();
+}
+
 auto
 RCLConsensus::Adaptor::onCollectFinish(
 	RCLCxLedger const& ledger,
 	std::vector<uint256> const& transactions,
 	NetClock::time_point const& closeTime,
+	std::uint64_t const& view,
 	ConsensusMode mode) -> Result
 {
 	const bool wrongLCL = mode == ConsensusMode::wrongLedger;
@@ -438,6 +462,7 @@ RCLConsensus::Adaptor::onCollectFinish(
 		RCLCxPeerPos::Proposal{
 			prevLedger->info().hash,
 			prevLedger->info().seq + 1,
+			view,
 			RCLCxPeerPos::Proposal::seqJoin,
 			setHash,
 			closeTime,
@@ -1152,6 +1177,14 @@ RCLConsensus::peerProposal(
 {
     ScopedLockType _{mutex_};
     return consensus_->peerProposal(now, newProposal);
+}
+
+bool
+RCLConsensus::peerViewChange(
+	ViewChange const& change)
+{
+	ScopedLockType _{ mutex_ };
+	return consensus_->peerViewChange(change);
 }
 
 bool

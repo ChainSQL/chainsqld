@@ -180,6 +180,9 @@ public:
     void
     send (protocol::TMValidation& m) override;
 
+	void
+	send(protocol::TMViewChange& m) override;
+
     void
     relay (protocol::TMProposeSet& m,
         uint256 const& uid) override;
@@ -188,6 +191,10 @@ public:
     relay (protocol::TMValidation& m,
         uint256 const& uid) override;
 
+
+	void
+		relay(protocol::TMViewChange& m,
+			uint256 const& uid) override;
     //--------------------------------------------------------------------------
     //
     // OverlayImpl

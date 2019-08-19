@@ -1327,7 +1327,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 
     auto proposal = RCLCxPeerPos(
         publicKey, signature, suppression,
-        RCLCxPeerPos::Proposal{prevLedger, set.curledgerseq(), set.proposeseq (), proposeHash, closeTime,
+        RCLCxPeerPos::Proposal{prevLedger, set.curledgerseq(),set.view(), set.proposeseq (), proposeHash, closeTime,
             app_.timeKeeper().closeTime(),calcNodeID(publicKey)});
 
     std::weak_ptr<PeerImp> weak = shared_from_this();
@@ -1339,6 +1339,99 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
         });
 }
 
+void
+PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
+{
+	protocol::TMViewChange change = *m;
+	auto const type = publicKeyType(
+		makeSlice(change.nodepubkey()));
+
+	// VFALCO Magic numbers are bad
+	// Roll this into a validation function
+	if ((!type) ||
+		(change.previousledgerhash().size() != 32) ||
+		(change.signature().size() < 56) ||
+		(change.signature().size() > 128)
+		)
+	{
+		JLOG(p_journal_.warn()) << "Proposal: malformed";
+		fee_ = Resource::feeInvalidSignature;
+		return;
+	}
+
+	uint32_t prevSeq = change.previousledgerseq();
+	uint64_t toView = change.toview();
+	PublicKey const publicKey(makeSlice(change.nodepubkey()));
+	Slice signature(change.signature().data(), change.signature().size());
+
+	uint256 prevLedgerHash;
+	memcpy(prevLedgerHash.begin(), change.previousledgerhash().data(), 32);
+
+	uint256 suppression = viewChangeUniqueId(
+		change.previousledgerseq(),prevLedgerHash, publicKey, toView);
+
+	JLOG(p_journal_.info()) << "PeerImpl recv view change from public " << toBase58(TOKEN_NODE_PUBLIC, publicKey)
+		<< ",prevHash=" << to_string(prevLedgerHash) << ",prevSeq=" << change.previousledgerseq() << ",toView = " << change.toview();
+
+	if (!app_.getHashRouter().addSuppressionPeer(suppression, id_))
+	{
+		JLOG(p_journal_.trace()) << "View change: duplicate";
+		return;
+	}
+
+	if (!app_.getValidationPublicKey().empty() &&
+		publicKey == app_.getValidationPublicKey())
+	{
+		JLOG(p_journal_.trace()) << "Proposal: self";
+		return;
+	}
+
+	auto const isTrusted = app_.validators().trusted(publicKey);
+
+	if (!isTrusted)
+	{
+		if (sanity_.load() == Sanity::insane)
+		{
+			JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (insane)";
+			return;
+		}
+
+		if (app_.getFeeTrack().isLoadedLocal())
+		{
+			JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (load)";
+			return;
+		}
+	}
+
+	ViewChange view_change(
+		prevSeq,
+		prevLedgerHash,
+		publicKey,
+		toView,
+		signature
+		);
+	if (isTrusted || !app_.getFeeTrack().isLoadedLocal())
+	{
+		std::weak_ptr<PeerImp> weak = shared_from_this();
+		app_.getJobQueue().addJob(
+			jtVIEW_CHANGE,
+			"recvViewChange->checkViewChange",
+			[weak, view_change, isTrusted, m](Job&)
+		{
+			if (auto peer = weak.lock())
+				peer->checkViewChange(
+					isTrusted,
+					view_change,
+					m);
+		});
+	}
+	else
+	{
+		JLOG(p_journal_.debug()) <<
+			"Validation: Dropping UNTRUSTED (load)";
+	}
+
+}
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
 {
@@ -2006,6 +2099,32 @@ PeerImp::checkValidation (STValidation::pointer val,
             "Exception processing validation";
         charge (Resource::feeInvalidRequest);
     }
+}
+
+void
+PeerImp::checkViewChange(bool isTrusted, ViewChange const& change,
+	std::shared_ptr<protocol::TMViewChange> const& packet)
+{
+	try
+	{
+		// VFALCO Which functions throw?
+		if (!cluster() && !change.checkSign())
+		{
+			JLOG(p_journal_.warn()) <<
+				"Validation is invalid";
+			charge(Resource::feeInvalidRequest);
+			return;
+		}
+
+		if (app_.getOPs().recvViewChange(change))
+			overlay_.relay(*packet, change.signingHash());
+	}
+	catch (std::exception const&)
+	{
+		JLOG(p_journal_.trace()) <<
+			"Exception processing validation";
+		charge(Resource::feeInvalidRequest);
+	}
 }
 
 // Returns the set of peers that can help us get

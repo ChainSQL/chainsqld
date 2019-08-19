@@ -42,6 +42,7 @@ namespace ripple {
 	class LedgerMaster;
 	class Transaction;
 	class ValidatorKeys;
+	class ViewChange;
 
 	// This is the primary interface into the "client" portion of the program.
 	// Code that wants to do normal operations on the network such as
@@ -157,6 +158,8 @@ namespace ripple {
 
 		virtual bool recvValidation(STValidation::ref val,
 			std::string const& source) = 0;
+
+		virtual bool recvViewChange(ViewChange const& change) =  0;
 
 		virtual void mapComplete(std::shared_ptr<SHAMap> const& map,
 			bool fromAcquire) = 0;

@@ -19,6 +19,7 @@ enum MessageType
     mtHAVE_SET              = 35;
 	mtGET_TABLE             = 36;
 	mtTABLE_DATA            = 37;
+	mtVIEW_CHANGE			= 38;
     mtVALIDATION            = 41;
     mtGET_OBJECTS           = 42;
 
@@ -197,6 +198,7 @@ message TMProposeSet
     repeated bytes removedTransactions  = 11;   // not required if number is large
     optional uint32 hops                = 12;   // Number of hops traveled
 	optional uint32 curLedgerSeq		= 13; 	// Current ledger sequence
+	optional uint64 view				= 14; 	// Current view
 }
 
 enum TxSetStatus
@@ -385,3 +387,11 @@ message TMPing
     optional uint64 netTime     = 4;
 }
 
+message TMViewChange
+{
+	required uint32 	previousLedgerSeq	= 1; 	// Current ledger sequence
+	required bytes 		previousLedgerHash  = 2;    // the hash of the ledger we are proposing
+    required bytes 		nodePubKey          = 3;
+    required bytes 		signature           = 4;
+	required uint64 	toView				= 5;
+}

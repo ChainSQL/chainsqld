@@ -145,6 +145,11 @@ LedgerMaster::getPublishedLedgerAge()
     return ret;
 }
 
+void LedgerMaster::updateConsensusTime()
+{
+	mLastConsensusTime = app_.timeKeeper().closeTime().time_since_epoch().count();
+}
+
 std::chrono::seconds
 LedgerMaster::getValidatedLedgerAge()
 {
@@ -154,6 +159,8 @@ LedgerMaster::getValidatedLedgerAge()
         JLOG (m_journal.debug()) << "No validated ledger";
         return weeks{2};
     }
+
+	valClose = std::chrono::seconds(std::max(mValidLedgerSign.load(), mLastConsensusTime.load()));
 
     std::chrono::seconds ret = app_.timeKeeper().closeTime().time_since_epoch();
     ret -= valClose;

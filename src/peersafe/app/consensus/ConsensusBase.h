@@ -34,6 +34,7 @@
 
 namespace ripple {
 
+	class ViewChange;
 
 	template <class Adaptor>
 	class ConsensusBase
@@ -64,6 +65,9 @@ namespace ripple {
 			peerProposal(
 				NetClock::time_point const& now,
 				PeerPosition_t const& newProposal) = 0;
+
+		virtual bool
+			peerViewChange(ViewChange const& change) { return true; }
 
 		virtual typename Ledger_t::ID
 			prevLedgerID() const = 0;

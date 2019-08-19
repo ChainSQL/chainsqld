@@ -58,6 +58,7 @@ protocolMessageName (int type)
     case protocol::mtSTATUS_CHANGE:     return "status";
     case protocol::mtHAVE_SET:          return "have_set";
     case protocol::mtVALIDATION:        return "validation";
+	case protocol::mtVIEW_CHANGE:       return "view_change";
     case protocol::mtGET_OBJECTS:       return "get_objects";
     default:
         break;
@@ -131,6 +132,7 @@ invokeProtocolMessage (Buffers const& buffers, Handler& handler)
     case protocol::mtSTATUS_CHANGE: ec = detail::invoke<protocol::TMStatusChange> (type, buffers, handler); break;
     case protocol::mtHAVE_SET:      ec = detail::invoke<protocol::TMHaveTransactionSet> (type, buffers, handler); break;
     case protocol::mtVALIDATION:    ec = detail::invoke<protocol::TMValidation> (type, buffers, handler); break;
+	case protocol::mtVIEW_CHANGE:   ec = detail::invoke<protocol::TMViewChange>(type, buffers, handler); break;
     case protocol::mtGET_OBJECTS:   ec = detail::invoke<protocol::TMGetObjectByHash> (type, buffers, handler); break;
     default:
         ec = handler.onMessageUnknown (type);
