@@ -1511,6 +1511,13 @@ ApplicationImp::startGenesisLedger()
             family());
     m_ledgerMaster->storeLedger (genesis);
 
+	genesis->setImmutable(*config_);
+	openLedger_.emplace(genesis, cachedSLEs_,
+		logs_->journal("OpenLedger"));
+	m_ledgerMaster->switchLCL(genesis);
+	//set valid ledger
+	m_ledgerMaster->initGenesisLedger(genesis);
+	/*
     auto const next = std::make_shared<Ledger>(
         *genesis, timeKeeper().closeTime());
 	next->updateSkipList();
@@ -1523,6 +1530,7 @@ ApplicationImp::startGenesisLedger()
         logs_->journal("OpenLedger"));
     m_ledgerMaster->storeLedger(next);
     m_ledgerMaster->switchLCL (next);
+	*/
 }
 
 std::shared_ptr<Ledger>

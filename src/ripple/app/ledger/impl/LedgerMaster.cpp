@@ -145,9 +145,15 @@ LedgerMaster::getPublishedLedgerAge()
     return ret;
 }
 
-void LedgerMaster::updateConsensusTime()
+void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger)
 {
 	mLastConsensusTime = app_.timeKeeper().closeTime().time_since_epoch().count();
+
+	if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
+	{
+		setValidLedger(previousLedger);
+	}
+	tryAdvance();
 }
 
 std::chrono::seconds
@@ -217,7 +223,8 @@ LedgerMaster::setValidLedger(
     }
     else
     {
-        signTime = l->info().closeTime;
+        signTime = l->info().closeTime.time_since_epoch().count() == 0 ? 
+			app_.timeKeeper().closeTime():l->info().closeTime;
     }
 
     mValidLedger.set (l);
@@ -1134,6 +1141,19 @@ bool LedgerMaster::isConfidentialUnit(const STTx& tx)
 	}
 
 	return false;
+}
+
+void LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
+{
+	genesis->setValidated();
+	setValidLedger(genesis);
+	//setLedgerRangePresent(
+	//	genesis->info().seq,
+	//	genesis->info().seq);
+	pendSaveValidated(app_, genesis, true, true);
+	setPubLedger(genesis);
+
+	tryAdvance();
 }
 
 void

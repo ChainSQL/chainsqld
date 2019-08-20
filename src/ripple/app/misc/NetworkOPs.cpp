@@ -210,7 +210,8 @@ public:
         , m_clock (clock)
         , m_journal (journal)
         , m_localTX (make_LocalTxs ())
-        , mMode (start_valid ? omFULL : omDISCONNECTED)
+		, mMode(omFULL)
+        //, mMode (start_valid ? omFULL : omDISCONNECTED)
         , heartbeatTimer_ (io_svc)
         , clusterTimer_ (io_svc)
         , mConsensus (app,
@@ -451,6 +452,8 @@ public:
         std::shared_ptr<STTx const> const& stTxn, TER terResult) override;
     void pubValidation (
         STValidation::ref val) override;
+
+	std::string getServerStatus();
 
 	void TryCheckSubTx() override;
 
@@ -2655,7 +2658,24 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
     info[jss::state_accounting] = accounting_.json();
     info[jss::uptime] = UptimeTimer::getInstance ().getElapsedSeconds ();
 
+	//comprehensive judgement for server_status
+	info[jss::server_status] = getServerStatus();
+
     return info;
+}
+
+std::string NetworkOPsImp::getServerStatus()
+{
+	bool bConsensusValid = m_ledgerMaster.getValidatedLedgerAge() < 2 * CONSENSUS_TIMEOUT;
+
+	if (bConsensusValid && strOperatingMode() == "proposing")
+	{
+		return "normal";
+	}
+	else
+	{
+		return "abnormal";
+	}
 }
 
 void NetworkOPsImp::clearLedgerFetch ()

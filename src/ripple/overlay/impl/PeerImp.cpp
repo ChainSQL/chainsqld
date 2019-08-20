@@ -1416,12 +1416,13 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 		app_.getJobQueue().addJob(
 			jtVIEW_CHANGE,
 			"recvViewChange->checkViewChange",
-			[weak, view_change, isTrusted, m](Job&)
+			[weak, view_change, isTrusted, m,suppression](Job&)
 		{
 			if (auto peer = weak.lock())
 				peer->checkViewChange(
 					isTrusted,
 					view_change,
+					suppression,
 					m);
 		});
 	}
@@ -2102,7 +2103,7 @@ PeerImp::checkValidation (STValidation::pointer val,
 }
 
 void
-PeerImp::checkViewChange(bool isTrusted, ViewChange const& change,
+PeerImp::checkViewChange(bool isTrusted, ViewChange const& change, uint256 suppression,
 	std::shared_ptr<protocol::TMViewChange> const& packet)
 {
 	try
@@ -2117,7 +2118,7 @@ PeerImp::checkViewChange(bool isTrusted, ViewChange const& change,
 		}
 
 		if (app_.getOPs().recvViewChange(change))
-			overlay_.relay(*packet, change.signingHash());
+			overlay_.relay(*packet, suppression);
 	}
 	catch (std::exception const&)
 	{

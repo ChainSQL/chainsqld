@@ -80,7 +80,8 @@ RCLConsensus::RCLConsensus(
     , j_(journal)
 
 {
-	consensus_ = consensus_ripple_;
+	//consensus_ = consensus_ripple_;
+	consensus_ = consensus_peersafe_;
 	firstNewValidated_ = 0;
 }
 
@@ -388,9 +389,13 @@ RCLConsensus::Adaptor::onClose(
 }
 
 void 
-RCLConsensus::Adaptor::onViewChanged()
+RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 {
-	app_.getLedgerMaster().updateConsensusTime();
+	app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
+	if (bWaitingInit)
+	{
+		notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
+	}	
 }
 
 auto
@@ -1227,7 +1232,7 @@ RCLConsensus::startRound(
     RCLCxLedger const& prevLgr)
 {
     ScopedLockType _{mutex_};
-	checkSwitchConsensus(prevLgr.seq());
+	//checkSwitchConsensus(prevLgr.seq());
     consensus_->startRound(
         now, prevLgrId, prevLgr, adaptor_.preStartRound(prevLgr));
 }

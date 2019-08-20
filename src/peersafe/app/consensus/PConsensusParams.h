@@ -17,6 +17,9 @@ namespace ripple {
 
     const std::size_t TxPoolCapacity = 100000;
 
+
+	const std::chrono::milliseconds CONSENSUS_TIMEOUT = 3s;
+
     // simple config section e.x.
     // [pconsensus]
     // min_block_time=500

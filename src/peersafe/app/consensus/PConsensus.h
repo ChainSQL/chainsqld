@@ -52,6 +52,8 @@ class PConsensus : public ConsensusBase<Adaptor>
 		typename TxSet_t::ID>;
 
     using Result = ConsensusResult<Adaptor>;
+
+	const unsigned GENESIS_LEDGER_INDEX = 1;
 	// Helper class to ensure adaptor is notified whenever the ConsensusMode
 	// changes
 	class MonitoredMode
@@ -196,7 +198,7 @@ private:
 	void 
 		checkCache();
 
-	void 
+	bool 
 		checkChangeView(uint64_t toView);
 
 	void onViewChange();
@@ -231,6 +233,8 @@ private:
 	*/
 	bool shouldPack();
 
+	bool waitingForInit();
+
 	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
 
 	int getPubIndex(PublicKey const& pub);
@@ -257,8 +261,6 @@ private:
 	ConsensusPhase phase_{ ConsensusPhase::accepted };
 	MonitoredMode mode_{ ConsensusMode::observing };
 
-	bool firstRound_ = true;
-
 	clock_type const& clock_;
 
 	//-------------------------------------------------------------------------
@@ -267,8 +269,8 @@ private:
 	// The current network adjusted time.  This is the network time the
 	// ledger would close if it closed now
 	NetClock::time_point now_;
-	NetClock::time_point prevCloseTime_;
-	NetClock::time_point closeTime_;
+	NetClock::time_point closeTime_; 
+	NetClock::time_point openTime_;
 	std::chrono::steady_clock::time_point proposalTime_;
 	uint64 openTimeMilli_;
 	uint64 consensusTime_;
@@ -280,9 +282,6 @@ private:
 	typename Ledger_t::ID prevLedgerID_;
 	// Last validated ledger seen by consensus
 	Ledger_t previousLedger_;
-
-	// How long has this round been open
-	ConsensusTimer openTime_;
 
 	NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
 
@@ -303,9 +302,6 @@ private:
 	// Transaction hashes that have packaged in packaging block.
 	std::vector<uint256> transactions_;
 
-	// The number of proposers who participated in the last consensus round
-	std::size_t prevProposers_ = 0;
-
 	// The minimum block generation time(ms)
 	unsigned minBlockTime_;
 
@@ -318,10 +314,9 @@ private:
 
 	bool omitEmpty_ = true;
 
-	uint64 view_ = 0;
-	uint64 toView_ = 0;
+	bool bWaitingInit_ = true;
 
-	std::chrono::milliseconds timeOut_ = 3s;
+	uint64 view_ = 0;
 
 	// Journal for debugging
 	beast::Journal j_;
@@ -439,16 +434,6 @@ PConsensus<Adaptor>::startRound(
 	Ledger_t prevLedger,
 	bool proposing)
 {
-	if (firstRound_)
-	{
-		prevCloseTime_ = prevLedger.closeTime();
-		firstRound_ = false;
-	}
-	else
-	{
-		prevCloseTime_ = now;
-	}
-
 	ConsensusMode startMode =
 		proposing ? ConsensusMode::proposing : ConsensusMode::observing;
 
@@ -484,12 +469,12 @@ PConsensus<Adaptor>::startRoundInternal(
 	mode_.set(mode, adaptor_);
 	now_ = now;
 	closeTime_ = now;
+	openTime_ = now;
 	openTimeMilli_ = utcTime();
 	consensusTime_ = openTimeMilli_;
 	prevLedgerID_ = prevLedgerID;
 	previousLedger_ = prevLedger;
 	result_.reset();
-	openTime_.reset(clock_.now());
 	acquired_.clear();
 	rawCloseTimes_.peers.clear();
 	rawCloseTimes_.self = {};
@@ -497,6 +482,10 @@ PConsensus<Adaptor>::startRoundInternal(
 	txSetVoted_.clear();
     transactions_.clear();
     setID_.reset();
+	if (previousLedger_.seq() != GENESIS_LEDGER_INDEX && mode == ConsensusMode::proposing)
+	{
+		bWaitingInit_ = false;
+	}
 
 
 	closeResolution_ = getNextLedgerTimeResolution(
@@ -504,12 +493,6 @@ PConsensus<Adaptor>::startRoundInternal(
 		previousLedger_.closeAgree(),
 		previousLedger_.seq() + 1);
 
-	//if (currPeerPositions_.size() > (prevProposers_ / 2))
-	//{
-	//	// We may be falling behind, don't wait for the timer
-	//	// consider closing the ledger immediately
-	//	timerEntry(now_);
-	//}
 	if (mode == ConsensusMode::proposing)
 	{
 		checkCache();
@@ -547,14 +530,16 @@ PConsensus<Adaptor>::checkCache()
 }
 
 template<class Adaptor>
-void
+bool
 PConsensus<Adaptor>::checkChangeView(uint64_t toView)
 {
 	if (viewChangeManager_.checkChange(toView, view_, adaptor_.app_.validators().quorum()))
 	{
 		view_ = toView;
 		onViewChange();
+		return true;
 	}
+	return false;
 }
 
 template<class Adaptor>
@@ -573,7 +558,9 @@ PConsensus<Adaptor>::onViewChange()
 	setID_.reset();
 
 	viewChangeManager_.onViewChanged(view_);
-	adaptor_.onViewChanged();
+	adaptor_.onViewChanged(bWaitingInit_,previousLedger_);
+	if (bWaitingInit_)
+		bWaitingInit_ = false;
 }
 
 template <class Adaptor>
@@ -595,6 +582,12 @@ PConsensus<Adaptor>::peerViewChange(ViewChange const& change)
 		JLOG(j_.info()) << "peerViewChange viewChangeReq saved,toView=" <<
 			change.toView() << ",nodeid=" << getPubIndex(change.nodePublic());
 		checkChangeView(change.toView());
+		if (waitingForInit() && change.prevSeq() > GENESIS_LEDGER_INDEX)
+		{
+			prevLedgerID_ = change.prevHash();
+			view_ = change.toView() - 1;
+			checkLedger();
+		}
 	}
 	
 	return true;
@@ -657,7 +650,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 
 				if (omitEmpty_ && newSetID == beast::zero)
 				{
-					launchViewChange();
+					consensusTime_ = 0;
 					JLOG(j_.info()) << "Empty proposal from leader,will trigger view_change.";
 					return true;
 				}
@@ -805,11 +798,13 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 	// Nothing to do if we are currently working on a ledger
 	if (phase_ == ConsensusPhase::accepted)
 		return;
-
-	now_ = now;
-
 	// Check we are on the proper ledger (this may change phase_)
 	checkLedger();
+
+	if (waitingForInit())
+		return;
+
+	now_ = now;
 
 	if (mode_.get() == ConsensusMode::wrongLedger)
 	{
@@ -847,12 +842,11 @@ PConsensus<Adaptor>::timeSinceLastClose()
 		bool previousCloseCorrect =
 			(mode_.get() != ConsensusMode::wrongLedger) &&
 			previousLedger_.closeAgree() &&
-			(previousLedger_.closeTime() !=
-			(previousLedger_.parentCloseTime() + 1s));
+			(previousLedger_.closeTime() != NetClock::time_point({}));
 
 		auto lastCloseTime = previousCloseCorrect
 			? previousLedger_.closeTime()  // use consensus timing
-			: prevCloseTime_;              // use the time we saw internally
+			: openTime_;              // use the time we saw internally
 
 		if (now_ >= lastCloseTime)
 			sinceClose = duration_cast<milliseconds>(now_ - lastCloseTime);
@@ -866,8 +860,6 @@ template <class Adaptor>
 uint64
 PConsensus<Adaptor>::timeSinceOpen()
 {
-	//openTime_.tick(clock_.now());
-	//return openTime_.read();
 	//using namespace std::chrono;
 	return utcTime() - openTimeMilli_;
 }
@@ -876,8 +868,6 @@ template <class Adaptor>
 uint64
 PConsensus<Adaptor>::timeSinceConsensus()
 {
-	//openTime_.tick(clock_.now());
-	//return openTime_.read();
 	//using namespace std::chrono;
 	return utcTime() - consensusTime_;
 }
@@ -886,14 +876,10 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::phaseCollecting()
 {
-	// it is shortly before ledger close time
-	//bool anyTransactions = adaptor_.hasOpenTransactions();
-	//auto proposersValidated = adaptor_.proposersValidated(prevLedgerID_);
-
 	auto sinceClose = timeSinceLastClose().count();
 	auto sinceOpen = timeSinceOpen();
 	auto sinceConsensus = timeSinceConsensus();
-	//view change ha
+	//view change have taken effect
 	if (sinceOpen != sinceConsensus)
 	{
 		sinceOpen = sinceConsensus;
@@ -922,7 +908,6 @@ PConsensus<Adaptor>::phaseCollecting()
 			3. add position to self
 			*/
 
-			phase_ = ConsensusPhase::establish;
 			rawCloseTimes_.self = now_;
 
 			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
@@ -937,8 +922,18 @@ PConsensus<Adaptor>::phaseCollecting()
 			if (mode_.get() == ConsensusMode::proposing)
 				adaptor_.propose(result_->position);
 
+			//Omit empty block ,launch view-change
+			if (omitEmpty_ && *setID_ == beast::zero)
+			{
+				//set zero,trigger time-out
+				consensusTime_ = 0;
+				JLOG(j_.info()) << "Empty transaction-set from self,will trigger view_change.";
+				return;
+			}
+
 			txSetVoted_[*setID_] = std::set<PublicKey>{ adaptor_.valPublic_ };
 
+			phase_ = ConsensusPhase::establish;
 			JLOG(j_.info()) << "We are leader,proposing position:" << *setID_;
 		}
 	}
@@ -965,6 +960,9 @@ PConsensus<Adaptor>::phaseVoting()
 {
 	// can only establish consensus if we already took a stance
 	assert(result_);
+
+	if (bWaitingInit_)
+		bWaitingInit_ = false;
 
 	using namespace std::chrono;
 	//ConsensusParms const & parms = adaptor_.parms();
@@ -1000,8 +998,6 @@ PConsensus<Adaptor>::phaseVoting()
         //}
         return;
     }
-
-	prevProposers_ = txSetVoted_[*setID_].size();
 
 	phase_ = ConsensusPhase::accepted;
 	adaptor_.onAccept(
@@ -1061,6 +1057,19 @@ PConsensus<Adaptor>::haveConsensus()
 
 	//return true;
 }
+
+template<class Adaptor>
+bool PConsensus<Adaptor>::waitingForInit()
+{
+	// This code is for initialization,wait 60 seconds for loading ledger before real start-mode.
+	if (previousLedger_.seq() == GENESIS_LEDGER_INDEX && 
+		timeSinceOpen()/1000 < 3 * previousLedger_.closeTimeResolution().count())
+	{
+		return true;
+	}
+	return false;
+}
+
 template <class Adaptor>
 bool PConsensus<Adaptor>::shouldPack()
 {
@@ -1145,7 +1154,6 @@ PConsensus<Adaptor>::getJson(bool full) const
 			static_cast<Int>(result_->roundTime.read().count());
 		ret["close_resolution"] = static_cast<Int>(closeResolution_.count());
 		//ret["have_time_consensus"] = haveCloseTimeConsensus_;
-		ret["previous_proposers"] = static_cast<Int>(prevProposers_);
 
 		if (!acquired_.empty())
 		{
@@ -1289,7 +1297,7 @@ PConsensus<Adaptor>::checkTimeout()
 	if (phase_ == ConsensusPhase::accepted)
 		return;
 
-	if (timeSinceConsensus() < timeOut_.count())
+	if (timeSinceConsensus() < CONSENSUS_TIMEOUT.count())
 		return;
 
 	launchViewChange();
@@ -1299,13 +1307,13 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::launchViewChange()
 {
-	toView_ = view_ + 1;
+	uint64_t toView = view_ + 1;
 	consensusTime_ = utcTime();
 
-	ViewChange change(previousLedger_.seq(), prevLedgerID_, adaptor_.valPublic_, toView_);
+	ViewChange change(previousLedger_.seq(), prevLedgerID_, adaptor_.valPublic_, toView);
 	adaptor_.sendViewChange(change);
 
-	JLOG(j_.info()) << "checkTimeout sendViewChange,toView=" << toView_ << ",nodeId=" << getPubIndex(adaptor_.valPublic_)
+	JLOG(j_.info()) << "checkTimeout sendViewChange,toView=" << toView << ",nodeId=" << getPubIndex(adaptor_.valPublic_)
 		<< ",prevLedgerSeq=" << previousLedger_.seq();
 
 	peerViewChange(change);

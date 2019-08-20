@@ -134,7 +134,7 @@ public:
     std::chrono::seconds getPublishedLedgerAge ();
     std::chrono::seconds getValidatedLedgerAge ();
     bool isCaughtUp(std::string& reason);
-	void updateConsensusTime();
+	void onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger);
 
     std::uint32_t getEarliestFetch ();
 
@@ -267,7 +267,9 @@ public:
         uint256 haveLedgerHash,
         std::uint32_t uUptime);
 
-    std::size_t getFetchPackCacheSize () const;
+	std::size_t getFetchPackCacheSize() const;
+
+	void initGenesisLedger(std::shared_ptr<Ledger> const genesis);
 
 private:
     using ScopedLockType = std::lock_guard <std::recursive_mutex>;
@@ -305,6 +307,7 @@ private:
     bool newPFWork(const char *name, ScopedLockType&);
 
 	bool isConfidentialUnit(const STTx& tx);
+
 private:
     // using ScopedLockType = std::lock_guard <std::recursive_mutex>;
     // using ScopedUnlockType = GenericScopedUnlock <std::recursive_mutex>;

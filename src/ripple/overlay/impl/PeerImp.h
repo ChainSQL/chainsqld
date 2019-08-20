@@ -456,7 +456,7 @@ private:
             RCLCxPeerPos peerPos);
 
 	void
-		checkViewChange(bool isTrusted,ViewChange const& change,
+		checkViewChange(bool isTrusted,ViewChange const& change, uint256 suppression,
 			std::shared_ptr<protocol::TMViewChange> const& packet);
 
     void
