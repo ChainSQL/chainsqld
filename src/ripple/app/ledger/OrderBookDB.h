@@ -53,6 +53,8 @@ public:
     BookListeners::pointer getBookListeners (Book const&);
     BookListeners::pointer makeBookListeners (Book const&);
 
+    bool hasListener() { return !mListeners.empty(); }
+
     // see if this txn effects any orderbook
     void processTxn (
         std::shared_ptr<ReadView const> const& ledger,

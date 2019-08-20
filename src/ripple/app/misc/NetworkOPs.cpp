@@ -2765,11 +2765,19 @@ void NetworkOPsImp::pubLedger (
         }
     }
 
-    // Don't lock since pubAcceptedTransaction is locking.
-    for (auto const& vt : alpAccepted->getMap ())
+    if (!mStreamMaps[sTransactions].empty() || !mStreamMaps[sRTTransactions].empty() ||
+        !mSubAccount.empty() || !mSubRTAccount.empty() ||
+        !mSubTable.empty() || !mSubTx.empty() || !mValidatedSubTx.empty() ||
+        app_.getOrderBookDB().hasListener())
     {
-        JLOG(m_journal.trace()) << "pubAccepted: " << vt.second->getJson ();
-        pubValidatedTransaction (lpAccepted, *vt.second);
+        auto timeStart = utcTime();
+        // Don't lock since pubAcceptedTransaction is locking.
+        for (auto const& vt : alpAccepted->getMap())
+        {
+            JLOG(m_journal.trace()) << "pubAccepted: " << vt.second->getJson();
+            pubValidatedTransaction(lpAccepted, *vt.second);
+        }
+        JLOG(m_journal.info()) << "pub all Txs, time used: " << utcTime() - timeStart << "ms";
     }
 }
 
@@ -2882,10 +2890,21 @@ void NetworkOPsImp::pubValidatedTransaction (
                 it = mStreamMaps[sRTTransactions].erase (it);
         }
     }
-    app_.getOrderBookDB ().processTxn (alAccepted, alTx, jvObj);
-    pubAccountTransaction (alAccepted, alTx, true);
 
-	PubValidatedTxForTable(*alTx.getTxn());
+    if (app_.getOrderBookDB().hasListener())
+    {
+        app_.getOrderBookDB().processTxn(alAccepted, alTx, jvObj);
+    }
+
+    if (!mSubAccount.empty() || !mSubRTAccount.empty())
+    {
+        pubAccountTransaction(alAccepted, alTx, true);
+    }
+
+    if (!mSubTable.empty() || !mSubTx.empty() || !mValidatedSubTx.empty())
+    {
+        PubValidatedTxForTable(*alTx.getTxn());
+    }
 }
 
 void NetworkOPsImp::PubValidatedTxForTable(const STTx& tx)
