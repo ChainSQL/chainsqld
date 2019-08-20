@@ -38,6 +38,7 @@
 #include <beast/http/message.hpp>
 #include <ripple/beast/utility/WrappedSink.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
+#include <peersafe/app/consensus/ViewChange.h>
 #include <cstdint>
 #include <deque>
 #include <queue>
@@ -424,6 +425,7 @@ public:
     void onMessage (std::shared_ptr <protocol::TMHaveTransactionSet> const& m);
     void onMessage (std::shared_ptr <protocol::TMValidation> const& m);
     void onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m);
+	void onMessage (std::shared_ptr <protocol::TMViewChange> const& m);
 
 private:
     State state() const
@@ -452,6 +454,10 @@ private:
     checkPropose (Job& job,
         std::shared_ptr<protocol::TMProposeSet> const& packet,
             RCLCxPeerPos peerPos);
+
+	void
+		checkViewChange(bool isTrusted,ViewChange const& change,
+			std::shared_ptr<protocol::TMViewChange> const& packet);
 
     void
     checkValidation (STValidation::pointer val,

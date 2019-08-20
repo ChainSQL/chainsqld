@@ -36,6 +36,8 @@ const char* TrafficCount::getName (category c)
             return "proposals";
         case category::CT_validation:
             return "validations";
+		case category::CT_view_change:
+			return "view_change";
         case category::CT_get_ledger:
             return "ledger_get";
         case category::CT_get_table:
@@ -76,6 +78,9 @@ TrafficCount::category TrafficCount::categorize (
 
     if (type == protocol::mtVALIDATION)
         return TrafficCount::category::CT_validation;
+
+	if (type == protocol::mtVIEW_CHANGE)
+		return TrafficCount::category::CT_view_change;
 
     if (type == protocol::mtPROPOSE_LEDGER)
         return TrafficCount::category::CT_proposal;

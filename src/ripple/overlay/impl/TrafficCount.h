@@ -73,6 +73,7 @@ public:
         CT_share_ledger,   // ledgers we share
         CT_get_trans,      // transaction sets we try to get
         CT_share_trans,    // transaction sets we get
+		CT_view_change,
         CT_unknown         // must be last
     };
 

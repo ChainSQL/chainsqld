@@ -149,6 +149,11 @@ public:
     void
     send (protocol::TMValidation& m) = 0;
 
+	/* Broadcast a view change*/
+	virtual
+	void
+	send(protocol::TMViewChange& m) = 0;
+
     /** Relay a proposal. */
     virtual
     void
@@ -161,6 +166,11 @@ public:
     relay (protocol::TMValidation& m,
         uint256 const& uid) = 0;
 
+	/** Relay a view change. */
+	virtual
+		void
+		relay(protocol::TMViewChange& m,
+			uint256 const& uid) = 0;
     /** Visit every active peer and return a value
         The functor must:
         - Be callable as:

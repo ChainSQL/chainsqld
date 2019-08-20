@@ -284,8 +284,10 @@ class RCLConsensus
 			RCLCxLedger const& ledger,
 			std::vector<uint256> const& transactions,
 			NetClock::time_point const& closeTime,
+			std::uint64_t const& view,
 			ConsensusMode mode);
 
+		void onViewChanged();
         /** Process the accepted ledger.
 
             @param result The result of consensus
@@ -386,6 +388,11 @@ class RCLConsensus
         */
         void
         validate(RCLCxLedger const& ledger, bool proposing);
+
+		/** Send view change message.
+		*/
+		void
+			sendViewChange(ViewChange const& proposal);
     };
 
 public:
@@ -478,6 +485,8 @@ public:
     peerProposal(
         NetClock::time_point const& now,
         RCLCxPeerPos const& newProposal);
+
+	bool peerViewChange(ViewChange const& change);
 
     ConsensusParms const &
     parms() const

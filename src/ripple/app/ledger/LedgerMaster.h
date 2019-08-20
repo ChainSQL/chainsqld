@@ -134,6 +134,7 @@ public:
     std::chrono::seconds getPublishedLedgerAge ();
     std::chrono::seconds getValidatedLedgerAge ();
     bool isCaughtUp(std::string& reason);
+	void updateConsensusTime();
 
     std::uint32_t getEarliestFetch ();
 
@@ -359,6 +360,7 @@ private:
     std::atomic <std::uint32_t> mPubLedgerClose {0};
     std::atomic <LedgerIndex> mPubLedgerSeq {0};
     std::atomic <std::uint32_t> mValidLedgerSign {0};
+	std::atomic <std::uint32_t> mLastConsensusTime{ 0 };
     std::atomic <LedgerIndex> mValidLedgerSeq {0};
     std::atomic <LedgerIndex> mBuildingLedgerSeq {0};
 

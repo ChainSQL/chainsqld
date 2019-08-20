@@ -73,6 +73,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/app/consensus/ViewChange.h>
 
 namespace ripple {
 
@@ -328,6 +329,8 @@ public:
 
     bool recvValidation (
         STValidation::ref val, std::string const& source) override;
+
+	bool recvViewChange(ViewChange const& change) override;
 
     std::shared_ptr<SHAMap> getTXMap (uint256 const& hash);
     bool hasTXSet (
@@ -2386,6 +2389,11 @@ bool NetworkOPsImp::recvValidation (
                           << " from " << source;
     pubValidation (val);
     return handleNewValidation(app_, val, source);
+}
+
+bool NetworkOPsImp::recvViewChange(ViewChange const& change)
+{
+	return mConsensus.peerViewChange(change);
 }
 
 Json::Value NetworkOPsImp::getConsensusInfo ()
