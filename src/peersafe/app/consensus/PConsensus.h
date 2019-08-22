@@ -310,8 +310,6 @@ private:
 
 	unsigned maxTxsInLedger_;
 
-    bool omitEmptyBlock_;
-
 	bool omitEmpty_ = true;
 
 	bool bWaitingInit_ = true;
@@ -339,7 +337,7 @@ PConsensus<Adaptor>::PConsensus(
     minBlockTime_ = MinBlockTime;
     maxBlockTime_ = MaxBlockTime;
     maxTxsInLedger_ = MaxTxsInLedger;
-    omitEmptyBlock_ = true;
+    omitEmpty_ = true;
 
     if (adaptor.app_.config().exists(SECTION_PCONSENSUS))
     {
@@ -412,7 +410,7 @@ PConsensus<Adaptor>::PConsensus(
             {
                 try
                 {
-                    omitEmptyBlock_ = beast::lexicalCastThrow<bool>(result.first);
+                    omitEmpty_ = beast::lexicalCastThrow<bool>(result.first);
                 }
                 catch (std::exception const&)
                 {
@@ -889,7 +887,7 @@ PConsensus<Adaptor>::phaseCollecting()
 	JLOG(j_.info()) << "phaseCollecting time sinceOpen:" << sinceOpen <<"ms";
 
 	// Decide if we should propose a tx-set
-	if (shouldPack())
+	if (shouldPack() && !result_)
 	{
 		int tx_count = transactions_.size();
 
