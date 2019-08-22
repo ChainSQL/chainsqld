@@ -706,19 +706,22 @@ std::pair<bool, std::string> STTx::checkCertSign() const
 	try
 	{
 		auto const spk                 = getFieldVL(sfSigningPubKey);
-		auto const certificate      = getFieldVL(sfCertificate);
-		std::string sCertificate     = std::string(certificate.begin(), certificate.end());
-		PublicKey certPublicKey = getPublicKeyFromX509(sCertificate);
+		auto const certificate       = getFieldVL(sfCertificate);
+		std::string sCertificate      = std::string(certificate.begin(), certificate.end());
+		PublicKey certPublicKey  = getPublicKeyFromX509(sCertificate);
 
 		if (certPublicKey == PublicKey(makeSlice(spk)) ){
 			return{ true, sCertificate };
 		}
 
 	}
-	catch (std::exception const&)
+	catch (std::exception const& e)
 	{
+		std::string sExcept(e.what());
+		sExcept = "checkCertSign()  exception :" + sExcept;
 
-		validSig = false;
+		LogicError(sExcept);
+		return{ false," Failed to get the X509 certificate public key" };
 	}
 
 	if (validSig == false)

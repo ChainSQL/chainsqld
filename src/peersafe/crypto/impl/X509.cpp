@@ -147,8 +147,8 @@ namespace ripple {
 	}
 
 
-	Blob getBlob(const EC_POINT  *  ecPoint) {
-
+	Blob getBlob(const EC_POINT  *  ecPoint) 
+	{
 
 		EC_KEY* key1 = EC_KEY_new_by_curve_name(NID_secp256k1);
 
@@ -174,10 +174,10 @@ namespace ripple {
 
 	}
 
-	PublicKey getPublicKeyFromX509(std::string const& certificate) {
+	PublicKey getPublicKeyFromX509(std::string const& certificate)
+	{
 
 		PublicKey  publicKey;
-
 		EVP_PKEY * pkey = NULL;
 		EC_KEY*   pEcKey = NULL;
 
@@ -185,7 +185,18 @@ namespace ripple {
 		if (x509Ca) {
 
 			pkey = X509_get_pubkey(x509Ca);
+			if (pkey == nullptr) {
+				X509_free(x509Ca);
+				Throw<std::runtime_error>("X509_get_pubkey() failed");
+			}
+
 			pEcKey = EVP_PKEY_get1_EC_KEY(pkey);
+			if (pEcKey == nullptr) {
+
+				EVP_PKEY_free(pkey);
+				X509_free(x509Ca);
+				Throw<std::runtime_error>("EVP_PKEY_get1_EC_KEY() failed");
+			}
 
 			const EC_POINT*  ecPoint = EC_KEY_get0_public_key(pEcKey);
 			Blob blob = getBlob(ecPoint);
@@ -195,12 +206,11 @@ namespace ripple {
 		}
 
 
-		EVP_PKEY_free(pkey);
 		EC_KEY_free(pEcKey);
+		EVP_PKEY_free(pkey);
 		X509_free(x509Ca);
 
 		return publicKey;
-
 	}
 
 	bool genCsr(Seed const& seed, x509_subject const& sub, std::string const& reqPath, std::string & exception)
