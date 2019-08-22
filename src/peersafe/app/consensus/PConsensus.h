@@ -840,7 +840,7 @@ PConsensus<Adaptor>::timeSinceLastClose()
 		bool previousCloseCorrect =
 			(mode_.get() != ConsensusMode::wrongLedger) &&
 			previousLedger_.closeAgree() &&
-			(previousLedger_.closeTime() != NetClock::time_point({}));
+			(previousLedger_.closeTime().time_since_epoch().count() != 0);
 
 		auto lastCloseTime = previousCloseCorrect
 			? previousLedger_.closeTime()  // use consensus timing

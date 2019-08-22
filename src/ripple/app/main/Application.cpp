@@ -1538,23 +1538,24 @@ ApplicationImp::getLastFullLedger()
 {
     auto j = journal ("Ledger");
 
-	int count = 0;
-	while (count < 3)
-	{
+	//int count = 0;
+	//while (count < 3)
+	//{
 		try
 		{
 			std::shared_ptr<Ledger> ledger;
 			std::uint32_t seq;
 			uint256 hash;
 
-			int index = 1 + count++;
+			//int index = 1 + count++;
 			std::stringstream ss;
-			ss << "order by LedgerSeq desc limit " << index << ",1";
-			std::string loadSql = ss.str();
+			//ss << "order by LedgerSeq desc limit " << index << ",1";
+			//std::string loadSql = ss.str();
+			std::string loadSql = "order by LedgerSeq desc limit 1";
 			std::tie(ledger, seq, hash) = loadLedgerHelper(loadSql, *this);
 
-			if (!ledger)
-				continue;
+			//if (!ledger)
+			//	continue;
 
 			ledger->setImmutable(*config_);
 
@@ -1579,9 +1580,9 @@ ApplicationImp::getLastFullLedger()
 		{
 			JLOG(j.warn()) <<
 				"Ledger with missing nodes in database: " << sn;
-			continue;;
+			//continue;
 		}
-	}
+	//}
 	return{};
 }
 
