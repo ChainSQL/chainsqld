@@ -221,7 +221,7 @@ private:
 		If we have consensus, move to the accepted phase.
 	*/
 	void
-		phaseVoting();
+		checkVoting();
 
 	void checkTimeout();
 
@@ -313,6 +313,8 @@ private:
 	bool omitEmpty_ = true;
 
 	bool bWaitingInit_ = true;
+
+	std::atomic_bool leaderFailed_ = false;
 
 	uint64 view_ = 0;
 
@@ -480,6 +482,7 @@ PConsensus<Adaptor>::startRoundInternal(
 	txSetVoted_.clear();
     transactions_.clear();
     setID_.reset();
+	leaderFailed_ = false;
 	if (previousLedger_.seq() != GENESIS_LEDGER_INDEX && mode == ConsensusMode::proposing)
 	{
 		bWaitingInit_ = false;
@@ -554,6 +557,7 @@ PConsensus<Adaptor>::onViewChange()
 	txSetVoted_.clear();
 	transactions_.clear();
 	setID_.reset();
+	leaderFailed_ = false;
 
 	viewChangeManager_.onViewChanged(view_);
 	adaptor_.onViewChanged(bWaitingInit_,previousLedger_);
@@ -649,6 +653,8 @@ PConsensus<Adaptor>::peerProposalInternal(
 				if (omitEmpty_ && newSetID == beast::zero)
 				{
 					consensusTime_ = 0;
+					leaderFailed_ = true;
+
 					JLOG(j_.info()) << "Empty proposal from leader,will trigger view_change.";
 					return true;
 				}
@@ -773,11 +779,11 @@ PConsensus<Adaptor>::gotTxSet(
 				adaptor_.propose(result_->position);
 			}			
 
-			//trigger a timer entry if final condition reached.
-			if (txSetVoted_[*setID_].size() >= adaptor_.app_.validators().quorum())
+			//check to see if final condition reached.
+			if (result_)
 			{
-				timerEntry(adaptor_.app_.timeKeeper().closeTime());
-			}
+				checkVoting();
+			}			
 
 			JLOG(j_.info()) << "voting for set:" << *setID_ <<" "<< txSetVoted_[*setID_].size();
 			for (auto pub : txSetVoted_[*setID_])
@@ -812,10 +818,6 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 	if (phase_ == ConsensusPhase::open)
 	{
 		phaseCollecting();
-	}
-	else if (phase_ == ConsensusPhase::establish)
-	{
-		phaseVoting();
 	}
 
 	checkTimeout();
@@ -874,6 +876,9 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::phaseCollecting()
 {
+	if (leaderFailed_)
+		return;
+
 	auto sinceClose = timeSinceLastClose().count();
 	auto sinceOpen = timeSinceOpen();
 	auto sinceConsensus = timeSinceConsensus();
@@ -925,6 +930,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			{
 				//set zero,trigger time-out
 				consensusTime_ = 0;
+				leaderFailed_ = true;
 				JLOG(j_.info()) << "Empty transaction-set from self,will trigger view_change.";
 				return;
 			}
@@ -954,46 +960,22 @@ PConsensus<Adaptor>::phaseCollecting()
 
 template <class Adaptor>
 void
-PConsensus<Adaptor>::phaseVoting()
+PConsensus<Adaptor>::checkVoting()
 {
 	// can only establish consensus if we already took a stance
 	assert(result_);
 
-	if (bWaitingInit_)
-		bWaitingInit_ = false;
-
 	using namespace std::chrono;
-	//ConsensusParms const & parms = adaptor_.parms();
-	auto const ait = acquired_.find(*setID_);
-	if (ait == acquired_.end())
-	{
-		using namespace std::chrono;
-		auto dur = duration_cast<milliseconds>(clock_.now() - proposalTime_);
-		JLOG(j_.info()) << "phaseVoting roundTime:" << dur.count() << "ms.";
-	}
-	else
 	{
 		result_->roundTime.tick(clock_.now());
 		//result_->proposers = currPeerPositions_.size();
 
-		JLOG(j_.info()) << "phaseVoting roundTime:" << result_->roundTime.read().count();
+		JLOG(j_.info()) << "checkVoting roundTime:" << result_->roundTime.read().count();
 	}
-
-
-	//// Give everyone a chance to take an initial position
-	if (*setID_ == beast::zero && timeSinceConsensus() < maxBlockTime_)
-		return;
 
 	// Nothing to do if we don't have consensus.
     if (!haveConsensus())
     {
-        ////Here deal with abnormal case:other peers may not receive the proposal
-        //if (isLeader(adaptor_.valPublic_) && (result_->roundTime.read().count() / (3 * maxBlockTime_)) == 1)
-        //{
-        //    result_->position.changePosition(*setID_, result_->position.closeTime(), now_);
-        //    adaptor_.propose(result_->position);
-        //    JLOG(j_.warn()) << "We are leader and reProposing position";
-        //}
         return;
     }
 
