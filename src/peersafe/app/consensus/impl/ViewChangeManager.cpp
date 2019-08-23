@@ -61,4 +61,27 @@ void ViewChangeManager::onViewChanged(VIEWTYPE const& newView)
 	}
 }
 
+void ViewChangeManager::onNewRound(RCLCxLedger const& prevLedger)
+{
+	for (auto it = viewChangeReq_.begin(); it != viewChangeReq_.end();)
+	{
+		for (auto cache_entry = it->second.begin(); cache_entry != it->second.end();)
+		{
+			/// delete expired cache
+			if (cache_entry->second.prevSeq() < prevLedger.seq())
+				cache_entry = it->second.erase(cache_entry);
+			/// in case of faked block hash
+			else if (cache_entry->second.prevSeq() == prevLedger.seq() &&
+				cache_entry->second.prevHash() != prevLedger.id())
+				cache_entry = it->second.erase(cache_entry);
+			else
+				cache_entry++;
+		}
+		if (it->second.size() == 0)
+			it = viewChangeReq_.erase(it);
+		else
+			it++;
+	}
+}
+
 }

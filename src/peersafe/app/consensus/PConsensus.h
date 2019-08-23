@@ -497,6 +497,7 @@ PConsensus<Adaptor>::startRoundInternal(
 
 		//reset view to 0 after a new close ledger.
 		view_ = 0;
+		viewChangeManager_.onNewRound(previousLedger_);
 
 		checkCache();
 	}
@@ -540,6 +541,7 @@ PConsensus<Adaptor>::checkChangeView(uint64_t toView)
 	{
 		view_ = toView;
 		onViewChange();
+		JLOG(j_.info()) << "View changed to " << view_;
 		return true;
 	}
 	return false;
@@ -921,8 +923,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			if (acquired_.emplace(*setID_, result_->set).second)
 				adaptor_.relay(result_->set);
 
-			if (mode_.get() == ConsensusMode::proposing)
-				adaptor_.propose(result_->position);
+			adaptor_.propose(result_->position);
 
 			//Omit empty block ,launch view-change
 			if (omitEmpty_ && *setID_ == beast::zero)

@@ -8,6 +8,7 @@
 #include <ripple/protocol/PublicKey.h>
 #include <peersafe/app/consensus/ViewChange.h>
 #include <ripple/beast/utility/Journal.h>
+#include <ripple/app/consensus/RCLCxLedger.h>
 
 namespace ripple {
 	class ViewChangeManager {
@@ -30,6 +31,9 @@ namespace ripple {
 
 		// Erase some old view-change cache when view_change happen.
 		void onViewChanged(VIEWTYPE const& newView);
+
+		//Erase invalid ViewChange object from the cache on new round started.
+		void onNewRound(RCLCxLedger const& ledger);
 	private:
 		std::map<VIEWTYPE, std::map<PublicKey, ViewChange>> viewChangeReq_;
 		// Journal for debugging

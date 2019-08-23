@@ -1289,9 +1289,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
         proposeHash, prevLedger, set.proposeseq(),
         closeTime, publicKey.slice(), signature);
 
-	JLOG(p_journal_.info()) << "PeerImpl recv peer proposal:" << proposeHash <<" from public "<< toBase58(TOKEN_NODE_PUBLIC, publicKey)
-		<<",prevHash="<<to_string(prevLedger) << ",curSeq="<< set.curledgerseq();
-
     if (! app_.getHashRouter ().addSuppressionPeer (suppression, id_))
     {
         JLOG(p_journal_.trace()) << "Proposal: duplicate";
@@ -1304,6 +1301,9 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
         JLOG(p_journal_.trace()) << "Proposal: self";
         return;
     }
+
+	JLOG(p_journal_.info()) << "PeerImpl recv peer proposal:" << proposeHash << " from public " << toBase58(TOKEN_NODE_PUBLIC, publicKey)
+		<< ",prevHash=" << to_string(prevLedger) << ",curSeq=" << set.curledgerseq();
 
     auto const isTrusted = app_.validators().trusted (publicKey);
 
@@ -1370,9 +1370,6 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 	uint256 suppression = viewChangeUniqueId(
 		change.previousledgerseq(),prevLedgerHash, publicKey, toView);
 
-	JLOG(p_journal_.info()) << "PeerImpl recv view change from public " << toBase58(TOKEN_NODE_PUBLIC, publicKey)
-		<< ",prevHash=" << to_string(prevLedgerHash) << ",prevSeq=" << change.previousledgerseq() << ",toView = " << change.toview();
-
 	if (!app_.getHashRouter().addSuppressionPeer(suppression, id_))
 	{
 		JLOG(p_journal_.trace()) << "View change: duplicate";
@@ -1385,6 +1382,9 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 		JLOG(p_journal_.trace()) << "Proposal: self";
 		return;
 	}
+
+	JLOG(p_journal_.info()) << "PeerImpl recv view change from public " << toBase58(TOKEN_NODE_PUBLIC, publicKey)
+		<< ",prevHash=" << to_string(prevLedgerHash) << ",prevSeq=" << change.previousledgerseq() << ",toView = " << change.toview();
 
 	auto const isTrusted = app_.validators().trusted(publicKey);
 
