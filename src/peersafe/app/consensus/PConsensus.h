@@ -484,11 +484,6 @@ PConsensus<Adaptor>::startRoundInternal(
     transactions_.clear();
     setID_.reset();
 	leaderFailed_ = false;
-	if (previousLedger_.seq() != GENESIS_LEDGER_INDEX && mode == ConsensusMode::proposing)
-	{
-		bWaitingInit_ = false;
-	}
-
 
 	closeResolution_ = getNextLedgerTimeResolution(
 		previousLedger_.closeTimeResolution(),
@@ -497,6 +492,12 @@ PConsensus<Adaptor>::startRoundInternal(
 
 	if (mode == ConsensusMode::proposing)
 	{
+		if(bWaitingInit_ && previousLedger_.seq() != GENESIS_LEDGER_INDEX)
+			bWaitingInit_ = false;
+
+		//reset view to 0 after a new close ledger.
+		view_ = 0;
+
 		checkCache();
 	}
 }
@@ -649,7 +650,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 		{
 			if (isLeader(pub))
 			{
-				JLOG(j_.info()) << "Got proposal from leader,time sinceOpen:"<< timeSinceOpen() <<"ms.";
+				JLOG(j_.info()) << "Got proposal from leader,time since consensus:"<< timeSinceConsensus() <<"ms.";
 
 				if (omitEmpty_ && newSetID == beast::zero)
 				{
@@ -699,9 +700,6 @@ PConsensus<Adaptor>::peerProposalInternal(
 
 	if (newPeerProp.isInitial())
 	{
-		// Record the close time estimate
-		JLOG(j_.debug()) << "Peer reports close time as "
-			<< newPeerProp.closeTime().time_since_epoch().count();
 		++rawCloseTimes_.peers[newPeerProp.closeTime()];
 	}
 
@@ -740,10 +738,9 @@ PConsensus<Adaptor>::gotTxSet(
 	{
 		acquired_.emplace(id, txSet);
 	}
-
-	if (!isLeader(adaptor_.valPublic_))
+	if (setID_ && setID_ == id)
 	{
-		if (setID_ && setID_ == id)
+		if (!isLeader(adaptor_.valPublic_))
 		{
 			if (!result_)
 			{
@@ -773,27 +770,28 @@ PConsensus<Adaptor>::gotTxSet(
 					phase_ = ConsensusPhase::establish;
 
 				JLOG(j_.info()) << "gotTxSet time elapsed since receive set_id from leader:" << (now - rawCloseTimes_.self).count();
+
+				if (adaptor_.validating())
+				{
+					adaptor_.propose(result_->position);
+				}
+
+				JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
+				for (auto pub : txSetVoted_[*setID_])
+				{
+					JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
+				}
+				JLOG(j_.info()) << "We are not leader gotTxSet,and proposing position:" << id;
 			}
+		}
 
-			if (adaptor_.validating())
-			{
-				adaptor_.propose(result_->position);
-			}			
-
-			//check to see if final condition reached.
-			if (result_)
-			{
-				checkVoting();
-			}			
-
-			JLOG(j_.info()) << "voting for set:" << *setID_ <<" "<< txSetVoted_[*setID_].size();
-			for (auto pub : txSetVoted_[*setID_])
-			{
-				JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
-			}
-			JLOG(j_.info()) << "We are not leader gotTxSet,and proposing position:" << id;
+		//check to see if final condition reached.
+		if (result_)
+		{
+			checkVoting();
 		}
 	}
+
 }
 
 template <class Adaptor>
@@ -1176,19 +1174,7 @@ PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 	{
 		prevLedgerID_ = lgrId;
 
-		//// Clear out state
-		//if (result_)
-		//{
-		//	result_->disputes.clear();
-		//	result_->compares.clear();
-		//}
-
-		//currPeerPositions_.clear();
 		rawCloseTimes_.peers.clear();
-		//deadNodes_.clear();
-
-		//// Get back in sync, this will also recreate disputes
-		//playbackProposals();
 	}
 
 	if (previousLedger_.id() == prevLedgerID_)
