@@ -34,6 +34,7 @@
 #include <peersafe/app/consensus/ConsensusBase.h>
 #include <peersafe/app/consensus/ViewChange.h>
 #include <peersafe/app/consensus/ViewChangeManager.h>
+#include <atomic>
 
 namespace ripple {
 
@@ -314,7 +315,7 @@ private:
 
 	bool bWaitingInit_ = true;
 
-	std::atomic_bool leaderFailed_ = false;
+	std::atomic_bool leaderFailed_ = { false };
 
 	uint64 view_ = 0;
 
