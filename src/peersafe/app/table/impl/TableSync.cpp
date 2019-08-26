@@ -19,6 +19,7 @@
 
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/TransactionMaster.h>
+#include <ripple/app/ledger/AcceptedLedger.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/overlay/Overlay.h>
@@ -155,12 +156,22 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
         //txs = getTxsFromDb(TxnLgrSeq, sAccountID);
         bool bHasTX = false;
         for (auto const& item : ledger->txMap())        
-        {            
+        {
             //std::shared_ptr<STTx> pSTTX = std::make_shared<STTx const>(std::ref(sit));            
             auto blob = SerialIter{ item.data(), item.size() }.getVL();
             //std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
 
             STTx stTx(SerialIter{ blob.data(), blob.size() });
+
+            auto Meta = ledger->txRead(stTx.getTransactionID()).second;
+
+            auto txResult = Meta->getFieldU16(sfTransactionResult);
+            if (txResult != tesSUCCESS &&
+                (txResult < tecCLAIM || txResult > tecUNFUNDED_ESCROW))
+            {
+                continue;
+            }
+
             if (!stTx.isChainSqlTableType() && stTx.getTxnType() != ttCONTRACT)  continue;
 
 			std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(stTx, sNameInDB,ledger,0);
@@ -1504,7 +1515,7 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
             return false;
 
         std::shared_ptr<TableSyncItem> pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
-        std::string PreviousCommit;
+        //std::string PreviousCommit;
         pItem->Init(accountID, sTableName,true);
         ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
 		if(ret)
@@ -1645,16 +1656,29 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 {    
 	if (ledger == NULL)    return;
 
+    std::shared_ptr<AcceptedLedger> alpAccepted =
+        app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
+    if (!alpAccepted)
+    {
+        alpAccepted = std::make_shared<AcceptedLedger>(
+            ledger, app_.accountIDCache(), app_.logs());
+        app_.getAcceptedLedgerCache().canonicalize(
+            ledger->info().hash, alpAccepted);
+    }
+
 	std::map<uint160, bool> mapTxDBNam2Exist;
 
-	CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
-	for (auto const& item : ledger->txMap())
+	for (auto const &item : alpAccepted->getMap())
 	{
+        if (item.second->getResult() != tesSUCCESS &&
+            (item.second->getResult() < tecCLAIM || item.second->getResult() > tecUNFUNDED_ESCROW))
+        {
+            continue;
+        }
+
 		try
 		{
-			auto blob = SerialIter{ item.data(), item.size() }.getVL();
-			std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
-			//
+            std::shared_ptr<const STTx> pSTTX = item.second->getTxn();
 			auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "", ledger, 0);
 			auto time = ledger->info().closeTime.time_since_epoch().count();
 			//read chainId
@@ -1693,7 +1717,10 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 							break;
 						}
 
-						OnCreateTableTx(tx, ledger, time, chainId);
+                        if (OnCreateTableTx(tx, ledger, time, chainId))
+                        {
+                            mapTxDBNam2Exist[uTxDBName] = true;
+                        }
 					}
 					else if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
 						|| opType == R_DELETE)
@@ -1722,12 +1749,12 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 		}
 		catch (std::exception const&)
 		{
-			JLOG(journal_.warn()) << "Txn " << item.key() << " throws";
+			JLOG(journal_.warn()) << "Txn " << item.second->getTransactionID() << " throws";
 		}
 	}
 }
 
-void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
+bool TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
 {
 	AccountID accountID = tx.getAccountID(sfAccount);
 	auto tables = tx.getFieldArray(sfTables);
@@ -1741,6 +1768,8 @@ void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const
 	{
 		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
 	}
+
+    return bInsertRes;
 }
 //////////////////
 bool TableSync::IsAutoLoadTable()

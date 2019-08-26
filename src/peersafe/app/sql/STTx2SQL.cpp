@@ -2772,7 +2772,7 @@ bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
     LockedSociSession sql_session = dbconn->checkoutDb();
     bool bExist = false;
     try {
-        std::string sSql = "SELECT * FROM " + sTable;
+        std::string sSql = "SELECT * FROM " + sTable + " LIMIT 1";
         boost::optional<std::string> r;
         soci::statement st = (sql_session->prepare << sSql, soci::into(r));
         st.execute(true);

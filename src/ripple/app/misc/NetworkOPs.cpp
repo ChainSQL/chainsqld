@@ -2802,8 +2802,12 @@ void NetworkOPsImp::pubLedger (
         // Don't lock since pubAcceptedTransaction is locking.
         for (auto const& vt : alpAccepted->getMap())
         {
-            JLOG(m_journal.trace()) << "pubAccepted: " << vt.second->getJson();
-            pubValidatedTransaction(lpAccepted, *vt.second);
+            if (vt.second->getResult() == tesSUCCESS ||
+                (vt.second->getResult() >= tecCLAIM && vt.second->getResult() <= tecUNFUNDED_ESCROW))
+            {
+                JLOG(m_journal.trace()) << "pubAccepted: " << vt.second->getJson();
+                pubValidatedTransaction(lpAccepted, *vt.second);
+            }
         }
         JLOG(m_journal.info()) << "pub all Txs, time used: " << utcTime() - timeStart << "ms";
     }

@@ -36,43 +36,34 @@ namespace ripple {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TxStoreDBConn::TxStoreDBConn(const Config& cfg)
-: databasecon_(nullptr) {
+    : databasecon_(nullptr)
+{
+    std::string database_name = "chainsql";
+    std::string dbType = "sqlite";
+
 	DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg);
-	std::pair<std::string, bool> result_type = setup.sync_db.find("type");
-	std::string database_name, dbType; 
+
     std::pair<std::string, bool> database = setup.sync_db.find("db");
- 
-	if (result_type.second == false || result_type.first.empty()) 
-	{
+    if (database.second)
+        database_name = database.first;
 
-	}
-	else if (result_type.first.compare("sqlite")==0) {
-		std::pair<std::string, bool> database = setup.sync_db.find("db");
-		database_name = "chainsql";
-		if (database.second)
-			database_name = database.first;
-        if (result_type.first.compare("sqlite") == 0)
-            database_name += ".db";
-        dbType = "sqlite";
-	}
+    std::pair<std::string, bool> db_type = setup.sync_db.find("type");
+    if (db_type.second == false || db_type.first.empty())
+        ; // default db type sqlite
+	else if (db_type.first.compare("sqlite")==0)
+        database_name += ".db";
     else
-    {
-        if (database.second)
-            database_name = database.first;
         dbType = "mycat";
-    }
-    int count = 0;
 
-    while (count < 3)
+    for (int count = 0; count < 3; ++count)
     {
         try
-        {   
-            count++;
+        {
             databasecon_ = std::make_shared<DatabaseCon>(setup, database_name, nullptr, 0, dbType);
 		}
 		catch (soci::soci_error error)
 		{
-			if(count == 1)
+			if (count == 1)
 				std::cerr << error.get_error_message() << std::endl;
 			databasecon_ = NULL;
 		}
