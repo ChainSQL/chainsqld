@@ -939,6 +939,8 @@ PConsensus<Adaptor>::phaseCollecting()
 
 			phase_ = ConsensusPhase::establish;
 			JLOG(j_.info()) << "We are leader,proposing position:" << *setID_;
+
+            checkVoting();
 		}
 	}
 	else
