@@ -39,7 +39,7 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
     : databasecon_(nullptr)
 {
     std::string database_name = "chainsql";
-    std::string dbType = "sqlite";
+    std::string dbType;
 
 	DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg);
 
@@ -49,7 +49,7 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
 
     std::pair<std::string, bool> db_type = setup.sync_db.find("type");
     if (db_type.second == false || db_type.first.empty())
-        ; // default db type sqlite
+        ;
 	else if (db_type.first.compare("sqlite")==0)
         database_name += ".db";
     else
