@@ -2667,8 +2667,10 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
 std::string NetworkOPsImp::getServerStatus()
 {
 	bool bConsensusValid = m_ledgerMaster.getValidatedLedgerAge() < 2 * CONSENSUS_TIMEOUT;
-
-	if (bConsensusValid && strOperatingMode() == "proposing")
+	auto const mode = mConsensus.mode();
+	if (bConsensusValid && 
+		(mode == ConsensusMode::proposing || mode == ConsensusMode::switchedLedger)
+	)
 	{
 		return "normal";
 	}
