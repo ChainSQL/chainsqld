@@ -70,8 +70,6 @@ class RCLConsensus
 
         // The timestamp of the last validation we used
 		NetClock::time_point lastValidationTime_;
-		bool useNewConsensus_ = false;
-		bool firstTimeUseNew = true;
 
 		// save next proposal
 		std::map<std::uint32_t, std::map<PublicKey, RCLCxPeerPos>> proposalCache_;

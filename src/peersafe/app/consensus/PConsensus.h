@@ -245,7 +245,7 @@ private:
 		2. Is maxBlockTime reached.
 		3. Is this node the next leader and the above 2 conditions reached.
 	*/
-	bool finalCondReached(uint64 sinceOpen,uint64 sinceLastClose);
+	bool finalCondReached(int64_t sinceOpen, int64_t sinceLastClose);
 
 	void appendTransactions(h256Set const& txSet);
 
@@ -951,11 +951,11 @@ PConsensus<Adaptor>::phaseCollecting()
 		auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
 		if (currentFinished >= minVal)
 		{
-			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
-			result_->roundTime.reset(clock_.now());
-			rawCloseTimes_.self = now_;
-			phase_ = ConsensusPhase::establish;
-			JLOG(j_.warn()) << "Enter establish without receiving leader proposal!";
+			//result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
+			//result_->roundTime.reset(clock_.now());
+			//rawCloseTimes_.self = now_;
+			//phase_ = ConsensusPhase::establish;
+			JLOG(j_.warn()) << "Other nodes have enter establish phase!";
 		}
 	}
 }
@@ -1091,7 +1091,7 @@ int PConsensus<Adaptor>::getPubIndex(PublicKey const& pub)
 	3. Is this node the next leader and the above 2 conditions reached.
 */
 template <class Adaptor>
-bool PConsensus<Adaptor>::finalCondReached(uint64 sinceOpen, uint64 sinceLastClose)
+bool PConsensus<Adaptor>::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
 {
 	if (transactions_.size() >= maxTxsInLedger_)
 		return true;

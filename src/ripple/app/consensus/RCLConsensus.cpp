@@ -552,20 +552,9 @@ RCLConsensus::Adaptor::doAccept(
     }
     else
     {
-		JLOG(j_.info()) << "consensusCloseTime:" << consensusCloseTime.time_since_epoch().count() <<
-			",closeResolution:" << closeResolution.count() << ",prevLedger.closeTime():" << prevLedger.closeTime().time_since_epoch().count();
-
-		if (useNewConsensus_)
-		{
-			//lujinglei:not need to round close time any more,just use leader's close time,just adjust by prevLedger
-			consensusCloseTime = std::max<NetClock::time_point>(consensusCloseTime, prevLedger.closeTime() + 1s);
-		}
-		else
-		{
-			// We agreed on a close time
-			consensusCloseTime = effCloseTime(
-				consensusCloseTime, closeResolution, prevLedger.closeTime());
-		}
+		//Not need to round close time any more,just use leader's close time,adjust by prevLedger
+		consensusCloseTime = std::max<NetClock::time_point>(consensusCloseTime, prevLedger.closeTime() + 1s);
+		JLOG(j_.info()) << "consensusCloseTime:" << consensusCloseTime.time_since_epoch().count();
 
 		closeTimeCorrect = true;
     }
@@ -1098,12 +1087,6 @@ RCLConsensus::Adaptor::validate(RCLCxLedger const& ledger, bool proposing)
     val.set_validation(&validation[0], validation.size());
     // Send signed validation to all of our directly connected peers
     app_.overlay().send(val);
-}
-
-void
-RCLConsensus::Adaptor::setUseNewConsensus(bool bUseNew)
-{
-	useNewConsensus_ = bUseNew;
 }
 
 void
