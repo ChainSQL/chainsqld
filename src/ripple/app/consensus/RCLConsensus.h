@@ -145,7 +145,6 @@ class RCLConsensus
 			return nodeID_;
 		}
 
-		void setUseNewConsensus(bool bUseNew);
     private:
         //---------------------------------------------------------------------
         // The following members implement the generic Consensus requirements
@@ -493,10 +492,6 @@ public:
     }
 
 private:
-	// check if switch consensus from Consensus to PConsensus.
-	void checkSwitchConsensus(LedgerIndex prevLedgerSeq);
-
-private:
     // Since Consensus does not provide intrinsic thread-safety, this mutex
     // guards all calls to consensus_. adaptor_ uses atomics internally
     // to allow concurrent access of its data members that have getters.
@@ -507,8 +502,6 @@ private:
     std::shared_ptr<Consensus<Adaptor>> consensus_ripple_;
 	std::shared_ptr<PConsensus<Adaptor>> consensus_peersafe_;
 	std::shared_ptr<ConsensusBase<Adaptor>> consensus_;
-
-	LedgerIndex firstNewValidated_;
 	
     beast::Journal j_;
 };

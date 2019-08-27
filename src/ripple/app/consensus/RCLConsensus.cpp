@@ -82,7 +82,6 @@ RCLConsensus::RCLConsensus(
 {
 	//consensus_ = consensus_ripple_;
 	consensus_ = consensus_peersafe_;
-	firstNewValidated_ = 0;
 }
 
 RCLConsensus::Adaptor::Adaptor(
@@ -1215,43 +1214,8 @@ RCLConsensus::startRound(
     RCLCxLedger const& prevLgr)
 {
     ScopedLockType _{mutex_};
-	//checkSwitchConsensus(prevLgr.seq());
     consensus_->startRound(
         now, prevLgrId, prevLgr, adaptor_.preStartRound(prevLgr));
-}
-
-void RCLConsensus::checkSwitchConsensus(LedgerIndex prevLedgerSeq)
-{
-	if (firstNewValidated_ == 0)
-	{
-		if (0 != adaptor_.app_.getLedgerMaster().getValidLedgerIndex())
-		{
-			firstNewValidated_ = adaptor_.app_.getLedgerMaster().getValidLedgerIndex();
-		}
-	}
-	if (firstNewValidated_ != 0 && consensus_ != consensus_peersafe_)
-	{
-		int round = 20;
-		LedgerIndex indexToSwitch = firstNewValidated_ + round / 2;
-		indexToSwitch -= indexToSwitch % round;
-		if (indexToSwitch <= firstNewValidated_)
-		{
-			indexToSwitch += round;
-		}
-		
-		//indexToSwitch += round;
-
-		if (prevLedgerSeq == indexToSwitch - 1)
-		{
-			consensus_ = consensus_peersafe_;
-			adaptor_.setUseNewConsensus(true);
-			JLOG(j_.warn()) << "Switching consensus to PConsensus from ledger " << indexToSwitch;
-		}
-		else
-		{
-			JLOG(j_.warn()) << "checkSwitchConsensus  firstNewValidated_ = " << firstNewValidated_ << " gap = " << (indexToSwitch - 1 - prevLedgerSeq);
-		}
-	}
 }
 
 }
