@@ -458,12 +458,12 @@ public:
 	void TryCheckSubTx() override;
 
 	void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,
-		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes,bool bVaidated) override;
+		const STTx& stTxn, const std::tuple<std::string, std::string, std::string>& disposRes,bool bVaidated) override;
 	//publish results for chain-sql txs
 	void pubTxResult(const STTx& stTxn,
-		const std::pair<std::string, std::string>& disposRes,bool validated,bool bForTableTx);
+		const std::tuple<std::string, std::string, std::string>& disposRes,bool validated,bool bForTableTx);
 	void pubChainSqlTableTxs(const AccountID& ownerId, const std::string& sTableName, 
-		const STTx& stTxn, const std::pair<std::string, std::string>& disposRes);
+		const STTx& stTxn, const std::tuple<std::string, std::string, std::string>& disposRes);
 
     void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue);
     //--------------------------------------------------------------------------
@@ -587,7 +587,9 @@ private:
         const AcceptedLedgerTx& alTransaction,
         bool isAccepted);
     
-	void PubValidatedTxForTable(const STTx& tx);
+    std::tuple<std::string, std::string, std::string> get_res(TER ter);
+
+	void PubValidatedTxForTable(const AcceptedLedgerTx& alTx);
 
     void pubServer ();
 
@@ -2804,12 +2806,8 @@ void NetworkOPsImp::pubLedger (
         // Don't lock since pubAcceptedTransaction is locking.
         for (auto const& vt : alpAccepted->getMap())
         {
-            if (vt.second->getResult() == tesSUCCESS ||
-                (vt.second->getResult() >= tecCLAIM && vt.second->getResult() <= tecUNFUNDED_ESCROW))
-            {
-                JLOG(m_journal.trace()) << "pubAccepted: " << vt.second->getJson();
-                pubValidatedTransaction(lpAccepted, *vt.second);
-            }
+            JLOG(m_journal.trace()) << "pubAccepted: " << vt.second->getJson();
+            pubValidatedTransaction(lpAccepted, *vt.second);
         }
         JLOG(m_journal.info()) << "pub all Txs, time used: " << utcTime() - timeStart << "ms";
     }
@@ -2932,18 +2930,29 @@ void NetworkOPsImp::pubValidatedTransaction (
 
     if (!mSubAccount.empty() || !mSubRTAccount.empty())
     {
-        pubAccountTransaction(alAccepted, alTx, true);
+        if (alTx.getResult() == tesSUCCESS)
+            pubAccountTransaction(alAccepted, alTx, true);
     }
 
     if (!mSubTable.empty() || !mSubTx.empty() || !mValidatedSubTx.empty())
     {
-        PubValidatedTxForTable(*alTx.getTxn());
+            PubValidatedTxForTable(alTx);
     }
 }
 
-void NetworkOPsImp::PubValidatedTxForTable(const STTx& tx)
+std::tuple<std::string, std::string, std::string> NetworkOPsImp::get_res(TER ter)
 {
-	auto res = std::make_pair(std::string("validate_success"), std::string(""));
+    if (ter == tesSUCCESS)
+        return std::make_tuple("validate_success", "", "");
+    
+    return std::make_tuple("validate_error", transToken(ter), transHuman(ter));
+}
+
+void NetworkOPsImp::PubValidatedTxForTable(const AcceptedLedgerTx& alTx)
+{
+    auto tx = *alTx.getTxn();
+    auto res = get_res(alTx.getResult());
+
 	auto ledger = app_.getLedgerMaster().getPublishedLedger();
 	auto vecTxs = app_.getMasterTransaction().getTxs(tx, "", ledger, 0);
 	if (vecTxs.size() > 1)
@@ -3129,22 +3138,22 @@ void NetworkOPsImp::pubAccountTransaction (
 }
 
 void NetworkOPsImp::pubTableTxs(const AccountID& owner, const std::string& sTableName,
-	const STTx& stTxn, const std::pair<std::string, std::string>& res,bool bValidated)
+	const STTx& stTxn, const std::tuple<std::string, std::string, std::string>& res,bool bValidated)
 {
 	//db_success come,but validate_success not processed
 	if (!bValidated && mSubTx.find(stTxn.getTransactionID()) != mSubTx.end())
 	{
-		auto result = std::make_pair("validate_success", "");
+		auto result = std::make_tuple("validate_success", "", "");
 		pubTxResult(stTxn, result, true,true);
 	}
 
-	pubTxResult(stTxn, res, bValidated,true);
+	pubTxResult(stTxn, res, bValidated, true);
 	pubChainSqlTableTxs(owner, sTableName, stTxn, res);
 }
 
 //publish results for chain-sql txs
 void NetworkOPsImp::pubTxResult(const STTx& stTxn,
-	const std::pair<std::string, std::string>& disposRes,bool bValidated, bool bForTableTx)
+	const std::tuple<std::string, std::string, std::string>& disposRes,bool bValidated, bool bForTableTx)
 {
 	ScopedLockType sl(mSubLock);
 	auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
@@ -3161,9 +3170,15 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				Json::Value jvObj(Json::objectValue);
 				jvObj[jss::type] = "singleTransaction";
 				jvObj[jss::transaction] = stTxn.getJson(0);
-				jvObj[jss::status] = disposRes.first;
-				if (disposRes.second.size() != 0)
-					jvObj[jss::error_message] = disposRes.second;
+                jvObj[jss::status] = std::get<0>(disposRes);
+                if (std::get<1>(disposRes).size() != 0)
+                {
+                    jvObj[jss::error] = std::get<1>(disposRes);
+                }
+                if (std::get<2>(disposRes).size() != 0)
+                {
+                    jvObj[jss::error_message] = std::get<2>(disposRes);
+                }
 
 				p->send(jvObj, true);
 
@@ -3201,7 +3216,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 }
 
 void NetworkOPsImp::pubChainSqlTableTxs(const AccountID& ownerId, const std::string& sTableName, 
-	const STTx& stTxn,const std::pair<std::string,std::string>& disposRes)
+	const STTx& stTxn,const std::tuple<std::string, std::string, std::string>& disposRes)
 {
 	ScopedLockType sl(mSubLock);
 	if (mSubTable.find(ownerId) != mSubTable.end() &&
@@ -3212,9 +3227,15 @@ void NetworkOPsImp::pubChainSqlTableTxs(const AccountID& ownerId, const std::str
 		jvObj[jss::tablename] = sTableName;
 		jvObj[jss::owner] = to_string(ownerId);
 		jvObj[jss::transaction] = stTxn.getJson(0);
-		jvObj[jss::status] = disposRes.first;
-		if (disposRes.second.size() != 0)
-			jvObj[jss::error_message] = disposRes.second;
+		jvObj[jss::status] = std::get<0>(disposRes);
+        if (std::get<1>(disposRes).size() != 0)
+        {
+            jvObj[jss::error] = std::get<1>(disposRes);
+        }
+        if (std::get<2>(disposRes).size() != 0)
+        {
+            jvObj[jss::error_message] = std::get<2>(disposRes);
+        }
 
 		auto iter = mSubTable[ownerId][sTableName].begin();
 		while (iter != mSubTable[ownerId][sTableName].end())

@@ -764,7 +764,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 				}
 				if (!user_accountID_ || user_accountID_->isZero() )
 				{
-					app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
+					app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
 					return std::make_pair(false, "user account is null.");
 				}
 					
@@ -776,7 +776,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 						auto userFlags = user.getFieldU32(sfFlags);
 						if ((userFlags & selectFlags) == 0)
 						{
-							app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
+							app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
 							return std::make_pair(false, "no authority.");
 						}
 						else
@@ -789,7 +789,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 								if(passBlob_.size() > 0)  return std::make_pair(true, "");
 								else
 								{
-									app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
+									app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
 									return std::make_pair(false, "cann't get password for this table.");
 								}
 							}
@@ -1109,7 +1109,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					auto conn = getTxStoreDBConn().GetDBConn();
 					if (conn == NULL)
 					{
-						std::pair<std::string, std::string> result = std::make_pair("db_error", "Get db connection failed,maybe max-connections too small.");
+						std::tuple<std::string, std::string, std::string> result = 
+                            std::make_tuple("db_error", "", "Get db connection failed,maybe max-connections too small.");
 						app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
 
 						SetSyncState(SYNC_STOP);
@@ -1162,7 +1163,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     JLOG(journal_.info()) <<
                         "Dispose exception" << e.what();
 
-                    std::pair<std::string, std::string> result = std::make_pair("db_error", e.what());
+                    std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", e.what());
                     app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
                 }
 			}

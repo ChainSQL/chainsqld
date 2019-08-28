@@ -166,8 +166,7 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
             auto Meta = ledger->txRead(stTx.getTransactionID()).second;
 
             auto txResult = Meta->getFieldU16(sfTransactionResult);
-            if (txResult != tesSUCCESS &&
-                (txResult < tecCLAIM || txResult > tecUNFUNDED_ESCROW))
+            if (txResult != tesSUCCESS)
             {
                 continue;
             }
@@ -1670,8 +1669,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 
 	for (auto const &item : alpAccepted->getMap())
 	{
-        if (item.second->getResult() != tesSUCCESS &&
-            (item.second->getResult() < tecCLAIM || item.second->getResult() > tecUNFUNDED_ESCROW))
+        if (item.second->getResult() != tesSUCCESS)
         {
             continue;
         }
@@ -1697,7 +1695,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 
 					if (!bIsHaveSync_)
 					{
-						app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noDbConfig", ""), false);
+						app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noDbConfig", "", ""), false);
 						break;
 					}
 
@@ -1713,7 +1711,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 						// not in [auto_sync] && [sync_tables]
 						if (!bAutoLoadTable_ && !bInSyncTables) {
 
-							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noAutoSync", ""), false);
+							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noAutoSync", "", ""), false);
 							break;
 						}
 
@@ -1739,7 +1737,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 				
 						if (!bDBTableExist)
 						{
-							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_pair("db_noTableExistInDB", ""), false);
+							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noTableExistInDB", "", ""), false);
 							break;
 						}
 
