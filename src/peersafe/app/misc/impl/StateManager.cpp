@@ -24,6 +24,14 @@ uint32 StateManager::getAccountSeq(AccountID const& id)
 	}
 }
 
+void StateManager::resetAccountSeq(AccountID const& id)
+{
+	if (accountState_.find(id) != accountState_.end())
+	{
+		accountState_.erase(id);
+	}	
+}
+
 void StateManager::incrementSeq(AccountID const& id)
 {
 	if (accountState_.find(id) != accountState_.end())
@@ -35,6 +43,14 @@ void StateManager::incrementSeq(AccountID const& id)
 	if (sle)
 	{
 		accountState_[id].sequence = sle->getFieldU32(sfSequence) + 1;
+	}
+}
+
+void StateManager::clear()
+{
+	if (accountState_.size() > 0)
+	{
+		accountState_.clear();
 	}
 }
 

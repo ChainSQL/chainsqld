@@ -42,6 +42,7 @@
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/misc/Transaction.h>
+#include <peersafe/app/misc/StateManager.h>
 #if USE_TBB
 #ifdef _CRTDBG_MAP_ALLOC
 #pragma push_macro("free")
@@ -391,10 +392,35 @@ void
 RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 {
 	app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
+	app_.getStateManager().clear();
 	if (bWaitingInit)
 	{
 		notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
 	}	
+	if (app_.openLedger().current()->info().seq != previousLedger.seq() + 1)
+	{
+		//Generate new openLedger
+		CanonicalTXSet retriableTxs{ beast::zero };
+		auto const lastVal = ledgerMaster_.getValidatedLedger();
+		boost::optional<Rules> rules;
+		if (lastVal)
+			rules.emplace(*lastVal, app_.config().features);
+		else
+			rules.emplace(app_.config().features);
+		app_.openLedger().accept(
+			app_,
+			*rules,
+			previousLedger.ledger_,
+			localTxs_.getTxSet(),
+			false,
+			retriableTxs,
+			tapNONE,
+			"consensus",
+			[&](OpenView& view, beast::Journal j) {
+			// Stuff the ledger with transactions from the queue.
+			return app_.getTxQ().accept(app_, view);
+		});
+	}
 }
 
 auto

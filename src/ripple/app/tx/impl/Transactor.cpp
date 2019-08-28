@@ -324,6 +324,9 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 	{
 		if (a_seq < t_seq)
 		{
+			//if pre-seq,just reset ,to re-fetch next time.
+			ctx.app.getStateManager().resetAccountSeq(id);
+
 			JLOG(ctx.j.trace()) <<
 				"applyTransaction: has future sequence number " <<
 				"a_seq=" << a_seq << " t_seq=" << t_seq;

@@ -159,14 +159,12 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 std::chrono::seconds
 LedgerMaster::getValidatedLedgerAge()
 {
-    std::chrono::seconds valClose{mValidLedgerSign.load()};
+    std::chrono::seconds valClose = std::chrono::seconds(std::max(mValidLedgerSign.load(), mLastConsensusTime.load()));
     if (valClose == 0s)
     {
         JLOG (m_journal.debug()) << "No validated ledger";
         return weeks{2};
     }
-
-	valClose = std::chrono::seconds(std::max(mValidLedgerSign.load(), mLastConsensusTime.load()));
 
     std::chrono::seconds ret = app_.timeKeeper().closeTime().time_since_epoch();
     ret -= valClose;

@@ -22,8 +22,11 @@ public:
 	}
 
 	uint32 getAccountSeq(AccountID const& id);
+	void resetAccountSeq(AccountID const& id);
 
 	void incrementSeq(AccountID const& id);
+
+	void clear();
 
 private:
 	Application& app_;
