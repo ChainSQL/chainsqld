@@ -392,7 +392,13 @@ void
 RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 {
 	app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
-	app_.getStateManager().clear();
+	//Try to clear state cache.
+	if (app_.getLedgerMaster().getPublishedLedgerAge() > 3 * CONSENSUS_TIMEOUT &&
+		app_.getTxPool().isEmpty())
+	{
+		app_.getStateManager().clear();
+	}
+	
 	if (bWaitingInit)
 	{
 		notify(protocol::neSWITCHED_LEDGER, previousLedger, true);

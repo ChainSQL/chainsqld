@@ -95,6 +95,8 @@ public:
     // Get pool limit.
     std::size_t const& getTxLimitInPool() { return mMaxTxsInPool; }
 
+	bool isEmpty() { return mTxsSet.size() == 0; }
+
 private:
 	Application& app_;
 

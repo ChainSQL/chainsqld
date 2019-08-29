@@ -53,6 +53,8 @@ class PConsensus : public ConsensusBase<Adaptor>
 		typename TxSet_t::ID>;
 
     using Result = ConsensusResult<Adaptor>;
+	// XXX Split into more locks.
+	using ScopedLockType = std::lock_guard <std::recursive_mutex>;
 
 	const unsigned GENESIS_LEDGER_INDEX = 1;
 	// Helper class to ensure adaptor is notified whenever the ConsensusMode
@@ -315,7 +317,11 @@ private:
 
 	bool bWaitingInit_ = true;
 
+	bool extraTimeOut_ = false;
+
 	std::atomic_bool leaderFailed_ = { false };
+
+	std::recursive_mutex lock_;
 
 	uint64 view_ = 0;
 
@@ -484,6 +490,7 @@ PConsensus<Adaptor>::startRoundInternal(
     transactions_.clear();
     setID_.reset();
 	leaderFailed_ = false;
+	extraTimeOut_ = false;
 
 	closeResolution_ = getNextLedgerTimeResolution(
 		previousLedger_.closeTimeResolution(),
@@ -551,6 +558,8 @@ template<class Adaptor>
 void
 PConsensus<Adaptor>::onViewChange()
 {
+	ScopedLockType sl(lock_);
+
 	consensusTime_ = utcTime();
 	phase_ = ConsensusPhase::open;
 	result_.reset();
@@ -562,11 +571,21 @@ PConsensus<Adaptor>::onViewChange()
 	transactions_.clear();
 	setID_.reset();
 	leaderFailed_ = false;
+	extraTimeOut_ = false;
 
 	viewChangeManager_.onViewChanged(view_);
-	adaptor_.onViewChanged(bWaitingInit_,previousLedger_);
 	if (bWaitingInit_)
-		bWaitingInit_ = false;
+	{
+		if (mode_.get() != ConsensusMode::wrongLedger)
+		{
+			adaptor_.onViewChanged(bWaitingInit_, previousLedger_);
+			bWaitingInit_ = false;
+		}		
+	}
+	else
+	{
+		adaptor_.onViewChanged(bWaitingInit_, previousLedger_);
+	}
 }
 
 template <class Adaptor>
@@ -682,6 +701,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 					JLOG(j_.info()) << "voting public for set:" << getPubIndex(pub);
 				}
 
+				extraTimeOut_ = true;
                 //if (phase_ == ConsensusPhase::open)
                 //    phase_ = ConsensusPhase::establish;
 			}
@@ -917,6 +937,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
 			result_->roundTime.reset(clock_.now());
 			setID_ = result_->set.id();
+			extraTimeOut_ = true;
 
 			// Share the newly created transaction set if we haven't already
 			// received it from a peer
@@ -964,6 +985,8 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::checkVoting()
 {
+	ScopedLockType sl(lock_);
+
 	// can only establish consensus if we already took a stance
 	assert(result_);
 
@@ -1267,7 +1290,8 @@ PConsensus<Adaptor>::checkTimeout()
 	if (phase_ == ConsensusPhase::accepted)
 		return;
 
-	if (timeSinceConsensus() < CONSENSUS_TIMEOUT.count())
+	auto timeOut = extraTimeOut_ ? CONSENSUS_TIMEOUT * 1.5 : CONSENSUS_TIMEOUT;
+	if (timeSinceConsensus() < timeOut.count())
 		return;
 
 	launchViewChange();
