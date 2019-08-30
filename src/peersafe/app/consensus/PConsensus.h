@@ -414,7 +414,7 @@ PConsensus<Adaptor>::PConsensus(
         }
 
         {
-            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("empty_block");
+            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("omit_empty_block");
             if (result.second)
             {
                 try
