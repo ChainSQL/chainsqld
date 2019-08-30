@@ -455,7 +455,7 @@ public:
 
 	std::string getServerStatus();
 
-	void TryCheckSubTx() override;
+	void tryCheckSubTx() override;
 
 	void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,
 		const STTx& stTxn, const std::tuple<std::string, std::string, std::string>& disposRes,bool bVaidated) override;
@@ -493,7 +493,7 @@ public:
 	virtual void unsubTable(InfoSub::ref ispListener, AccountID const& accountID, std::string const& sTableName) override;
 
 	//for a single tx
-	virtual void subTransaction(InfoSub::ref ispListener, uint256 const& txId, const int lastLedgerSeq) override;
+	virtual void subTransaction(InfoSub::ref ispListener, uint256 const& txId) override;
 	virtual void unsubTransaction(InfoSub::ref ispListener, uint256 const& txId) override;    
 
     bool subServer (
@@ -570,7 +570,8 @@ private:
 
 	void processSubTxTimer();
 
-	using SubTxMapType = hash_map<uint256, std::pair<InfoSub::wptr, int>>;
+	using time_point = std::chrono::system_clock::time_point;
+	using SubTxMapType = hash_map<uint256, std::pair<InfoSub::wptr, time_point>>;
 	void processSubTx(SubTxMapType& subTx, const std::string& status);
 
     void setMode (OperatingMode);
@@ -847,10 +848,12 @@ void NetworkOPsImp::processHeartbeatTimer ()
 
     mConsensus.timerEntry (app_.timeKeeper().closeTime());
 
+	tryCheckSubTx();
+
     setHeartbeatTimer ();
 }
 
-void NetworkOPsImp::TryCheckSubTx()
+void NetworkOPsImp::tryCheckSubTx()
 {
 	if (!m_bCheckTxThread && (mSubTx.size() > 0 || mValidatedSubTx.size() > 0))
 	{
@@ -875,11 +878,11 @@ void NetworkOPsImp::processSubTx(SubTxMapType&subTx, const std::string& status)
 	auto iter = subTx.begin();
 	while (iter != subTx.end())
 	{
-		//auto now = std::chrono::steady_clock::now();
-		//using duration_type = std::chrono::duration<double>;
-		//duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
-		//if (time_span.count() >= EXPIRE_TIME)
-		if(app_.getLedgerMaster().getValidLedgerIndex() > iter->second.second)
+		auto now = std::chrono::system_clock::now();
+		using duration_type = std::chrono::duration<double>;
+		duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
+		if (time_span.count() >= EXPIRE_TIME)
+		//if(app_.getLedgerMaster().getValidLedgerIndex() > iter->second.second)
 		{
 			//notify time out
 			InfoSub::pointer p = iter->second.first.lock();
@@ -3185,7 +3188,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				//for table-related tx and validation event
 				if (bValidated && bForTableTx) {
 					//for chainsql type, subscribe db event
-					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
+					mValidatedSubTx[simiIt->first] = make_pair(p, std::chrono::system_clock::now());
 				}
 				subTx.erase(simiIt);
 				//if (bPendErase)
@@ -3480,11 +3483,11 @@ void NetworkOPsImp::unsubTable(InfoSub::ref isplistener, AccountID const& accoun
 }
 
 //for a single tx
-void NetworkOPsImp::subTransaction(InfoSub::ref isrListener, uint256 const& uTxId, const int lastLedgerSeq)
+void NetworkOPsImp::subTransaction(InfoSub::ref isrListener, uint256 const& uTxId)
 {
 	ScopedLockType sl(mSubLock);
 	
-	mSubTx[uTxId] = make_pair(isrListener, lastLedgerSeq);
+	mSubTx[uTxId] = make_pair(isrListener, std::chrono::system_clock::now());
 }
 
 void NetworkOPsImp::unsubTransaction(InfoSub::ref ispListener, uint256 const& uTxId)

@@ -289,10 +289,10 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
     else
     {
         checkAccept (lastClosed);
-        app_.getTableStorage().TryTableStorage();
-		app_.getTableAssistant().TryTableCheckHash();
-		app_.getOPs().TryCheckSubTx();
-		app_.getTableTxAccumulator().trySweepCache();
+		//app_.getTableStorage().TryTableStorage();
+		//app_.getTableAssistant().TryTableCheckHash();
+		////app_.getOPs().TryCheckSubTx();
+		//app_.getTableTxAccumulator().trySweepCache();
     }
 }
 
@@ -1094,6 +1094,16 @@ bool LedgerMaster::isConfidential(const STTx& tx)
 		return isConfidentialUnit(tx);
 	}
 }
+
+void LedgerMaster::processFullLedgerTask(std::shared_ptr<Ledger const> const& ledger)
+{
+	app_.getTableSync().CheckSyncTableTxs(ledger);
+	app_.getTableStorage().TryTableStorage();
+	app_.getTableAssistant().TryTableCheckHash();
+	//app_.getOPs().TryCheckSubTx();
+	app_.getTableTxAccumulator().trySweepCache();
+}
+
 
 bool LedgerMaster::isConfidentialUnit(const STTx& tx)
 {
@@ -2178,7 +2188,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                     app_.getOPs().pubLedger(ledger);
                 }
                 
-                app_.getTableSync().CheckSyncTableTxs(ledger);
+				processFullLedgerTask(ledger);
             }
 			//move table_sync here,cause it used pub_ledger
 			app_.getTableSync().TryTableSync();

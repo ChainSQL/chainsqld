@@ -242,7 +242,7 @@ namespace ripple {
 
         virtual void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue) = 0;
 		virtual void pubLogs(std::string const& log) = 0;
-		virtual void TryCheckSubTx() = 0;
+		virtual void tryCheckSubTx() = 0;
 	};
 
 	//------------------------------------------------------------------------------
