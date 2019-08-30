@@ -3183,16 +3183,11 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				p->send(jvObj, true);
 
 				//for table-related tx and validation event
-				if (bValidated) {
-					if (bForTableTx) {
-						//for chainsql type, subscribe db event
-						mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
-					}
-					else {
-						mSubTx.erase(simiIt);
-					}
+				if (bValidated && bForTableTx) {
+					//for chainsql type, subscribe db event
+					mValidatedSubTx[simiIt->first] = make_pair(p, app_.getLedgerMaster().getValidLedgerIndex() + 5);
 				}
-
+				subTx.erase(simiIt);
 				//if (bPendErase)
 				//{
 				//	std::thread([this, txId, jvToPub]() {
