@@ -1568,7 +1568,7 @@ bool NetworkOPsImp::checkLastClosedLedger (
         uint256 const & currLedger =  it.first;
         ValidationCount const & currCounts = it.second;
 
-        JLOG(m_journal.debug()) << "L: " << currLedger
+        JLOG(m_journal.info()) << "L: " << currLedger
                               << " t=" << currCounts.trustedValidations
                               << ", n=" << currCounts.nodesUsing;
 
