@@ -63,7 +63,6 @@ enum JobType
 	jtVIEW_CHANGE,	 // Recv view_change msg.
     jtTXN_DATA,      // Fetch a proposed set
     jtWAL,           // Write-ahead logging
-    jtVALIDATION_t,  // A validation from a trusted source
     jtWRITE,         // Write out hashed objects
     jtACCEPT,        // Accept a consensus ledger
     jtPROPOSAL_t,    // A proposal from a trusted source
@@ -74,7 +73,8 @@ enum JobType
     jtTABLESYNC,     // synchronize tables
     jtTABLESTORAGE,  // storage tables
 	jtTableCheckHash,// check tx hash
-	jtCheckSubTx,	 // check subscribe tx
+	jtCheckSubTx,	 // check subscribe tx    
+	jtVALIDATION_t,  // A validation from a trusted source
     jtSKIPNODE,      // skip node 
     jtTABLELOCALSYNC,// local synchronize tables
     jtOPERATESQL,    // write table sync info
