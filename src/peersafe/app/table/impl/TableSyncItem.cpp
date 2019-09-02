@@ -1220,6 +1220,18 @@ void TableSyncItem::OperateSQLThread()
 
     bOperateSQL_ = false;
     operateSqlEvent.signal();
+
+    {
+        std::lock_guard<std::mutex> lock(mutexWholeData_);
+        if (aWholeData_.size() > 0)
+        {
+            bOperateSQL_ = true;
+
+            operateSqlEvent.reset();
+            app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread();
+            });
+        }
+    }
 }
 bool TableSyncItem::isJumpThisTx(uint256 txid)
 {
