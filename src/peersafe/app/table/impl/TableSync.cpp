@@ -152,28 +152,29 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
     {
         m.set_ledgerhash(to_string(ledger->info().hash));
 
-        std::vector <uint256> txs;
-        //txs = getTxsFromDb(TxnLgrSeq, sAccountID);
-        bool bHasTX = false;
-        for (auto const& item : ledger->txMap())        
+        std::shared_ptr<AcceptedLedger> alpAccepted =
+            app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
+        if (!alpAccepted)
         {
-            //std::shared_ptr<STTx> pSTTX = std::make_shared<STTx const>(std::ref(sit));            
-            auto blob = SerialIter{ item.data(), item.size() }.getVL();
-            //std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
+            alpAccepted = std::make_shared<AcceptedLedger>(
+                ledger, app_.accountIDCache(), app_.logs());
+            app_.getAcceptedLedgerCache().canonicalize(
+                ledger->info().hash, alpAccepted);
+        }
 
-            STTx stTx(SerialIter{ blob.data(), blob.size() });
-
-            auto Meta = ledger->txRead(stTx.getTransactionID()).second;
-
-            auto txResult = Meta->getFieldU16(sfTransactionResult);
-            if (txResult != tesSUCCESS)
+        bool bHasTX = false;
+        for (auto const& vt : alpAccepted->getMap())
+        {
+            if (vt.second->getResult() != tesSUCCESS)
             {
                 continue;
             }
 
-            if (!stTx.isChainSqlTableType() && stTx.getTxnType() != ttCONTRACT)  continue;
+            std::shared_ptr<const STTx> stTx = vt.second->getTxn();
 
-			std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(stTx, sNameInDB,ledger,0);
+            if (!stTx->isChainSqlTableType() && stTx->getTxnType() != ttCONTRACT)  continue;
+
+			std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(*stTx, sNameInDB,ledger,0);
 			if(vecTxs.size() == 0)
 				continue;
 
@@ -260,8 +261,11 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
    //         }
 
             protocol::TMLedgerNode* node = m.add_txnodes();
-            node->set_nodedata(blob.data(),
-                blob.size());
+
+            Serializer s;
+            (*stTx).add(s);
+
+            node->set_nodedata(s.data(), s.size());
 
             bHasTX = true;
         }
