@@ -310,7 +310,7 @@ RCLConsensus::Adaptor::getPrevLedger(
         if (mode != ConsensusMode::wrongLedger)
             app_.getOPs().consensusViewChange();
 
-        if (auto stream = j_.debug())
+        if (auto stream = j_.info())
         {
             for (auto const & it : ledgerCounts)
                 stream << "V: " << it.first << ", " << it.second;
