@@ -1413,6 +1413,8 @@ void TableSyncItem::onStop()
     {
         getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
     }
+
+    stopped();
 }
 
 }
