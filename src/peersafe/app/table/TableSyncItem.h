@@ -36,6 +36,7 @@ class STTx;
 
 //class Peer;
 class TableSyncItem
+    : public Stoppable
 {
 public:
     using clock_type = beast::abstract_clock <std::chrono::steady_clock>;
@@ -345,6 +346,8 @@ private:
     
     beast::WaitableEvent                                         operateSqlEvent;
     beast::WaitableEvent                                         readDataEvent;
+
+    void onStop() override;
 };
 
 }

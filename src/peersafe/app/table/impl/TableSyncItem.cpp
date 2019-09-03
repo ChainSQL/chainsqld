@@ -53,7 +53,8 @@ TableSyncItem::~TableSyncItem()
 }
 
 TableSyncItem::TableSyncItem(Application& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
-    :app_(app)
+    : Stoppable("TableSyncItem", app.getJobQueue())
+    , app_(app)
     ,journal_(journal)
     ,cfg_(cfg)
 	,eSyncTargetType_(eTargetType)
@@ -1127,17 +1128,17 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     {
                         stTran.rollback();
 						//record uTxDBUpdateHash_ to record newest sync-point,in case dump when sync the mid tx in a ledger.
-                        auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
-                        if (updateRet == soci_exception) {
-                            JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
-                        }
+                        //auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
+                        //if (updateRet == soci_exception) {
+                        //    JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
+                        //}
                     }
                     else
                     {
-                        auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
-                        if (updateRet == soci_exception) {
-                            JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
-                        }
+                        //auto updateRet = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
+                        //if (updateRet == soci_exception) {
+                        //    JLOG(journal_.error()) << "UpdateSyncDB soci_exception";
+                        //}
                         stTran.commit();
                     }
 
@@ -1401,4 +1402,17 @@ std::string TableSyncItem::GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedg
 
     return sPos;
 }
+
+void TableSyncItem::onStop()
+{
+    // onStop must be defined and empty here,
+    // otherwise the base class will do the wrong thing.
+    std::string PreviousCommit;
+
+    if (uTxDBUpdateHash_.isNonZero())
+    {
+        getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(uTxDBUpdateHash_), PreviousCommit);
+    }
+}
+
 }
