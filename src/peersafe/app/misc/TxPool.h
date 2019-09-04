@@ -52,7 +52,7 @@ public:
 
         if (app.config().exists(SECTION_PCONSENSUS))
         {
-            auto const result = app.config().section(SECTION_PCONSENSUS).find("txpool_cap");
+            auto const result = app.config().section(SECTION_PCONSENSUS).find("max_txs_in_pool");
             if (result.second)
             {
                 try
@@ -66,7 +66,7 @@ public:
                 {
                     JLOG(j_.error()) <<
                         "Invalid value '" << result.first << "' for key " <<
-                        "'txpool_cap' in [" << SECTION_PCONSENSUS << "]\n";
+                        "'max_tx_in_pool' in [" << SECTION_PCONSENSUS << "]\n";
                     Rethrow();
                 }
             }

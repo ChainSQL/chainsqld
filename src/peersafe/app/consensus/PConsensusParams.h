@@ -7,7 +7,7 @@ namespace ripple {
     // Default pconsensus parameters
 
     // The minimum block generation time(ms)
-    const unsigned MinBlockTime = 500;
+    const unsigned MinBlockTime = 1000;
 
     // The maximum block generation time(ms) even without transactions.
     const unsigned MaxBlockTime = 1000;

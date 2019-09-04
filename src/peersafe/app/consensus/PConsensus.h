@@ -258,6 +258,8 @@ private:
 	void leaveConsensus();
 
 	void checkSaveNextProposal(PeerPosition_t const& newPeerPos);
+
+	uint32 loadConfig(std::string configName);
 private:
 	Adaptor& adaptor_;
 
@@ -313,6 +315,8 @@ private:
 
 	unsigned maxTxsInLedger_;
 
+	unsigned timeOut_;
+
 	bool omitEmpty_ = true;
 
 	bool bWaitingInit_ = true;
@@ -346,72 +350,16 @@ PConsensus<Adaptor>::PConsensus(
     minBlockTime_ = MinBlockTime;
     maxBlockTime_ = MaxBlockTime;
     maxTxsInLedger_ = MaxTxsInLedger;
+	timeOut_ = CONSENSUS_TIMEOUT.count();
     omitEmpty_ = true;
 
     if (adaptor.app_.config().exists(SECTION_PCONSENSUS))
     {
-        {
-            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("min_block_time");
-            if (result.second)
-            {
-                try
-                {
-                    minBlockTime_ = beast::lexicalCastThrow<std::uint32_t>(result.first);
-
-                    if (minBlockTime_ == 0)
-                        Throw<std::exception>();
-                }
-                catch (std::exception const&)
-                {
-                    JLOG(j_.error()) <<
-                        "Invalid value '" << result.first << "' for key " <<
-                        "'min_block_time' in [" << SECTION_PCONSENSUS << "]\n";
-                    Rethrow();
-                }
-            }
-        }
-
-        {
-            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("max_block_time");
-            if (result.second)
-            {
-                try
-                {
-                    maxBlockTime_ = beast::lexicalCastThrow<std::uint32_t>(result.first);
-
-                    if (maxBlockTime_ == 0 || maxBlockTime_ < minBlockTime_)
-                        Throw<std::exception>();
-                }
-                catch (std::exception const&)
-                {
-                    JLOG(j_.error()) <<
-                        "Invalid value '" << result.first << "' for key " <<
-                        "'max_block_time' in [" << SECTION_PCONSENSUS << "]\n";
-                    Rethrow();
-                }
-            }
-        }
-
-        {
-            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("max_txs_per_ledger");
-            if (result.second)
-            {
-                try
-                {
-                    maxTxsInLedger_ = beast::lexicalCastThrow<std::uint32_t>(result.first);
-
-                    if (maxTxsInLedger_ == 0)
-                        Throw<std::exception>();
-                }
-                catch (std::exception const&)
-                {
-                    JLOG(j_.error()) <<
-                        "Invalid value '" << result.first << "' for key " <<
-                        "'max_txs_per_ledger' in [" << SECTION_PCONSENSUS << "]\n";
-                    Rethrow();
-                }
-            }
-        }
+		minBlockTime_ = std::max(MinBlockTime, loadConfig("min_block_time"));
+		maxBlockTime_ = std::max(MaxBlockTime, loadConfig("max_block_time"));
+		maxBlockTime_ = std::max(maxBlockTime_, minBlockTime_);
+		maxTxsInLedger_ = std::max(MaxTxsInLedger, loadConfig("max_txs_per_ledger"));
+		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
         {
             auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("omit_empty_block");
@@ -426,7 +374,6 @@ PConsensus<Adaptor>::PConsensus(
                     JLOG(j_.error()) <<
                         "Invalid value '" << result.first << "' for key " <<
                         "'empty_block' in [" << SECTION_PCONSENSUS << "]\n";
-                    Rethrow();
                 }
             }
         }
@@ -1117,7 +1064,7 @@ bool PConsensus<Adaptor>::finalCondReached(int64_t sinceOpen, int64_t sinceLastC
 {
 	if (transactions_.size() >= maxTxsInLedger_)
 		return true;
-	if (transactions_.size() >= maxTxsInLedger_/2 && sinceOpen >= minBlockTime_ && sinceLastClose >= minBlockTime_)
+	if (transactions_.size() > 0 && sinceOpen >= minBlockTime_ && sinceLastClose >= minBlockTime_)
 		return true;
 	if (sinceLastClose >= maxBlockTime_)
 		return true;
@@ -1244,6 +1191,28 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 }
 
 template <class Adaptor>
+uint32 
+PConsensus<Adaptor>::loadConfig(std::string configName)
+{
+	auto const result = adaptor_.app_.config().section(SECTION_PCONSENSUS).find(configName);
+	if (result.second)
+	{
+		try
+		{
+			std::uint32_t value = beast::lexicalCastThrow<std::uint32_t>(result.first);
+			return value;
+		}
+		catch (std::exception const&)
+		{
+			JLOG(j_.error()) <<
+				"Invalid value '" << result.first << "' for key " <<
+				"'"<< configName << "' in [" << SECTION_PCONSENSUS << "]\n";
+		}
+	}
+	return 0;
+}
+
+template <class Adaptor>
 void
 PConsensus<Adaptor>::leaveConsensus()
 {
@@ -1289,8 +1258,8 @@ PConsensus<Adaptor>::checkTimeout()
 	if (phase_ == ConsensusPhase::accepted)
 		return;
 
-	auto timeOut = extraTimeOut_ ? CONSENSUS_TIMEOUT * 1.5 : CONSENSUS_TIMEOUT;
-	if (timeSinceConsensus() < timeOut.count())
+	auto timeOut = extraTimeOut_ ? timeOut_ * 1.5 : timeOut_;
+	if (timeSinceConsensus() < timeOut)
 		return;
 
 	launchViewChange();
