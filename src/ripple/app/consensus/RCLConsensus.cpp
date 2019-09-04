@@ -569,7 +569,7 @@ RCLConsensus::Adaptor::doAccept(
 
     bool closeTimeCorrect;
 
-    const bool proposing = mode == ConsensusMode::proposing;
+    const bool proposing = (mode == ConsensusMode::proposing || mode == ConsensusMode::switchedLedger);
     const bool haveCorrectLCL = mode != ConsensusMode::wrongLedger;
     const bool consensusFail = result.state == ConsensusState::MovedOn;
 
