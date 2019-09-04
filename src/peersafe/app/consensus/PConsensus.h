@@ -1090,9 +1090,8 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub,bool bNextLeader /* = fa
 	{
 		currentLedgerIndex++;
 	}
-
+	assert(validators.size() > 0);
 	int leader_idx = (view_ + currentLedgerIndex) % validators.size();
-	assert(validators.size() > leader_idx);
 	return pub == validators[leader_idx];
 }
 

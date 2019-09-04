@@ -288,7 +288,7 @@ public:
 
     std::pair<STer, bool> 
     doTransactionCheck(std::shared_ptr<Transaction> transaction,
-        ApplyFlags flags, OpenView& view);
+        ApplyFlags flags, OpenView const& view);
 
     TER check(PreflightContext const& pfctx, OpenView const& view);
 
@@ -1072,7 +1072,7 @@ void NetworkOPsImp::processTransaction (std::shared_ptr<Transaction>& transactio
 
 std::pair<STer, bool>
 NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
-    ApplyFlags flags, OpenView& view)
+    ApplyFlags flags, OpenView const& view)
 {
     auto txCur = transaction->getSTransaction();
 
@@ -1251,12 +1251,12 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
         auto lock = make_lock(app_.getMasterMutex());
         bool changed = false;
         {
-            std::lock_guard <std::recursive_mutex> lock (
-                m_ledgerMaster.peekMutex());
+            //std::lock_guard <std::recursive_mutex> lock (
+            //    m_ledgerMaster.peekMutex());
 
-            app_.openLedger().modify(
-                [&](OpenView& view, beast::Journal j)
-            {
+            //app_.openLedger().modify(
+            //    [&](OpenView& view, beast::Journal j)
+            //{
                 for (TransactionStatus& e : transactions)
                 {
                     // we check before addingto the batch
@@ -1271,7 +1271,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
 
                     //if (mConsensus.adaptor_.getUseNewConsensus())
                     //{
-                        auto const result = doTransactionCheck(e.transaction, flags, view);
+                        auto const result = doTransactionCheck(e.transaction, flags, *app_.openLedger().current());
                     //}
                     //else
                     //{
@@ -1286,11 +1286,11 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                         e.failType = FailHard::yes;
                     changed = changed || result.second;
                 }
-                return changed;
-            });
+                //return changed;
+            //});
         }
-        if (changed)
-            reportFeeChange();
+        //if (changed)
+        //    reportFeeChange();
 
         auto newOL = app_.openLedger().current();
         for (TransactionStatus& e : transactions)
