@@ -187,11 +187,11 @@ class RootStoppable;
                                                              |
                                                          JobQueue
                                                              |
-        +-----------+-----------+-----------+-----------+----+--------+
-        |           |           |           |           |             |
-        |       NetworkOPs      |     InboundLedgers    |        OrderbookDB
-        |                       |                       |
-     Overlay           InboundTransactions        LedgerMaster
+        +-----------+-----------+-----------+-----------+----+--------+-------------+
+        |           |           |           |           |             |             |
+        |       NetworkOPs      |     InboundLedgers    |        OrderbookDB        |
+        |                       |                       |                           |
+     Overlay           InboundTransactions        LedgerMaster                TableSyncItem
         |                                               |
     PeerFinder                                   LedgerCleaner
 
