@@ -48,12 +48,21 @@ enum JobType
     jtTABLE_DATA,    // Peer request table data
     jtPROPOSAL_ut,   // A proposal from an untrusted source
     
+    jtCheckSubTx,	 // check subscribe tx
+
     jtCLIENT,        // A websocket command from the client
     jtRPC,           // A websocket command from the client
 
     jtUPDATE_PF,     // Update pathfinding requests
     jtTRANSACTION,   // A transaction received from the network
     jtBATCH,         // Apply batched transactions
+
+    jtTABLESTORAGE,  // storage tables
+    jtTableCheckHash,// check tx hash
+    jtOPERATESQL,    // write table sync info
+    jtTABLELOCALSYNC,// local synchronize tables
+    jtTABLESYNC,     // synchronize tables
+
     jtADVANCE,       // Advance validated/acquired ledgers
     jtPUBLEDGER,     // Publish a fully-accepted ledger
 
@@ -70,14 +79,10 @@ enum JobType
     jtNETOP_CLUSTER, // NetworkOPs cluster peer report
     jtNETOP_TIMER,   // NetworkOPs net timer processing
     jtADMIN,         // An administrative operation
-    jtTABLESYNC,     // synchronize tables
-    jtTABLESTORAGE,  // storage tables
-	jtTableCheckHash,// check tx hash
-	jtCheckSubTx,	 // check subscribe tx    
+
 	jtVALIDATION_t,  // A validation from a trusted source
     jtSKIPNODE,      // skip node 
-    jtTABLELOCALSYNC,// local synchronize tables
-    jtOPERATESQL,    // write table sync info
+
 
     // Special job types which are not dispatched by the job pool
     jtPEER          ,
