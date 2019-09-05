@@ -1043,17 +1043,17 @@ void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 
 bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData)
 {
-	for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
-	{
-		std::string LedgerHash = iter->ledgerhash();
-		std::string LedgerCheckHash = iter->ledgercheckhash();
-		std::string LedgerSeq = to_string(iter->ledgerseq());
-		std::string PreviousCommit;
-          
+    for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
+    {
+        std::string LedgerHash = iter->ledgerhash();
+        std::string LedgerCheckHash = iter->ledgercheckhash();
+        std::string LedgerSeq = to_string(iter->ledgerseq());
+        std::string PreviousCommit;
+
         //check for jump one seq, check for deadline time and deadline seq
         CheckConditionState  checkRet = CondFilter(iter->closetime(), iter->ledgerseq(), uint256(0));
         if (checkRet == CHECK_JUMP)     continue;
-        else if(checkRet == CHECK_REJECT)
+        else if (checkRet == CHECK_REJECT)
         {
             SetSyncState(SYNC_STOP);
             return false;
@@ -1067,7 +1067,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             }
             JLOG(journal_.info()) <<
                 "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
-            
+
             continue;
         }
 
@@ -1083,77 +1083,53 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         TxStoreTransaction stTran(&getTxStoreDBConn());
 
         int count = 0;
-        //bool bFindLastSuccessTx = uTxDBUpdateHash_.isZero() ? true : false;
-        
+        std::vector<std::tuple<STTx, int, std::pair<bool, std::string>>> tmpPubVec;
+
         for (int i = 0; i < iter->txnodes().size(); i++)
-		{
-			const protocol::TMLedgerNode &node = iter->txnodes().Get(i);
+        {
+            const protocol::TMLedgerNode &node = iter->txnodes().Get(i);
 
-			auto str = node.nodedata();
-			Blob blob;
-			blob.assign(str.begin(), str.end());
-			STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
-
-            /**
-             * if a ledger have many txs, first handles some txs,
-             * then stop rippled,next start rippled, must jump those txs
-             */
-            //if (!bFindLastSuccessTx)
-            //{
-            //    if (tx.getTransactionID() == uTxDBUpdateHash_)
-            //    {
-            //        bFindLastSuccessTx = true;
-            //    }
-
-            //    count++;
-            //    continue;
-            //}
+            auto str = node.nodedata();
+            Blob blob;
+            blob.assign(str.begin(), str.end());
+            STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
 
             try
             {
-				//check for jump one tx.
-				if (isJumpThisTx(tx.getTransactionID()))
-				{
-					count++;
-					continue;
-				}
+                //check for jump one tx.
+                if (isJumpThisTx(tx.getTransactionID()))
+                {
+                    count++;
+                    continue;
+                }
 
-				std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_,nullptr, iter->ledgerseq());
+                std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_, nullptr, iter->ledgerseq());
 
-				if (vecTxs.size() > 0)
-				{
-					TryDecryptRaw(vecTxs);
-					for (auto& tx : vecTxs)
-					{
-						if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
-						{
-							DeleteTable(sTableNameInDB_);
-						}
-					}
-				}
-				JLOG(journal_.info()) << "got sync tx" << tx.getFullText();
+                if (vecTxs.size() > 0)
+                {
+                    TryDecryptRaw(vecTxs);
+                    for (auto& tx : vecTxs)
+                    {
+                        if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
+                        {
+                            DeleteTable(sTableNameInDB_);
+                        }
+                    }
+                }
+                JLOG(journal_.info()) << "got sync tx" << tx.getFullText();
 
-				auto ret = DealWithTx(vecTxs);
+                auto ret = DealWithTx(vecTxs);
                 uTxDBUpdateHash_ = tx.getTransactionID();
 
-                //if (!ret.first)
-                //{
-                //    stTran.rollback();
-                //}
-                //else
-                //{
-                //    stTran.commit();
-                //}
+                //press test
+                if (app_.getTableSync().IsPressSwitchOn())
+                {
+                    if (ret.first)
+                        InsertPressData(tx, iter->ledgerseq(), iter->closetime());
+                }
 
-				//press test
-				if (app_.getTableSync().IsPressSwitchOn())
-				{
-					if (ret.first)
-						InsertPressData(tx, iter->ledgerseq(), iter->closetime());
-				}
+                tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
 
-				//deal with subscribe
-				app_.getTableTxAccumulator().onSubtxResponse(tx, accountID_,sTableName_, vecTxs.size(), ret);
                 count++;
             }
             catch (std::exception const& e)
@@ -1163,9 +1139,15 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                 std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", e.what());
                 app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
             }
-		}
+        }
 
         stTran.commit();
+
+        //deal with subscribe
+        for (auto iter : tmpPubVec)
+        {
+            app_.getTableTxAccumulator().onSubtxResponse(std::get<0>(iter), accountID_, sTableName_, std::get<1>(iter), std::get<2>(iter));
+        }
 
         JLOG(journal_.info()) <<
             "find tx and UpdateSyncDB LedgerSeq: " << LedgerSeq << " count: " << count;
