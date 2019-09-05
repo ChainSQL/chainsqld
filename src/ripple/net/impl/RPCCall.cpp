@@ -602,13 +602,17 @@ private:
 
 		jvParseLedger(jvRequest, jvParams[0u].asString());
 
-		if (2 == jvParams.size())
-		{
-			if (jvParams[1u].asString() == "full")
-			{
-				jvRequest[jss::full] = true;
-			}
+
+		if (jvParams.isMember(jss::include_success)) {
+
+			jvRequest[jss::include_success] = true;
 		}
+
+		if (jvParams.isMember(jss::include_failure)) {
+
+			jvRequest[jss::include_failure] = true;
+		}
+
 
 		return jvRequest;
 	}
@@ -1220,7 +1224,7 @@ public:
             {   "ledger_accept",        &RPCParser::parseAsIs,                  0,  0   },
             {   "ledger_closed",        &RPCParser::parseAsIs,                  0,  0   },
             {   "ledger_current",       &RPCParser::parseAsIs,                  0,  0   },
-			{   "ledger_txs",              &RPCParser::parseLedgerTxs,        0,  2   },
+			{   "ledger_txs",           &RPCParser::parseLedgerTxs,             1,  3   },
     //      {   "ledger_entry",         &RPCParser::parseLedgerEntry,          -1, -1   },
             {   "ledger_header",        &RPCParser::parseLedgerId,              1,  1   },
             {   "ledger_request",       &RPCParser::parseLedgerId,              1,  1   },

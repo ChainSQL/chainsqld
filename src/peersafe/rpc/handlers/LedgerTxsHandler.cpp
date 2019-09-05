@@ -50,12 +50,15 @@ namespace ripple {
 		if (!ledger)
 			return result;
 
-		bool const full = params[jss::full].asBool();
+		bool const bSuccessDetail  = params[jss::txn_success_detail].asBool();
+		bool const bFailtureDetail = params[jss::txn_failure_detail].asBool();
 
 		int iSuccess = 0;
 		int iFailure = 0;
 
 		Json::Value arrFailureDetail(Json::arrayValue);
+		Json::Value arrSuccessDetail(Json::arrayValue);
+
 		beast::Journal  j_ = context.app.logs().journal("LedgerTxHandler");
 
 		for (auto& item : ledger->txs){
@@ -64,35 +67,42 @@ namespace ripple {
 				item.first->getTransactionID(), ledger->seq(), *(item.second), j_);
 
 			TER result = meta->getResultTER();
-			if (result == tesSUCCESS) 
+
+			Json::Value txItem;
+			txItem[jss::hash] = to_string(item.first->getTransactionID());
+
+			std::string token, human;
+			if (transResultInfo(result, token, human)) {
+				txItem[jss::transaction_result] = token;
+			}
+			else {
+				JLOG(j_.error())
+					<< "Unknown result code in metadata: : " << result;
+			}
+
+			if (result == tesSUCCESS) {
+
+				arrSuccessDetail.append(txItem);
 				iSuccess++;
+			}		
 			else {
 
-				Json::Value failureItem;
-
-				failureItem[jss::hash] = to_string(item.first->getTransactionID());
-
-				std::string token, human;
-				if (transResultInfo(result, token, human)){
-					failureItem[jss::transaction_result] = token;
-				}
-				else {
-					JLOG(j_.error())
-						<< "Unknown result code in metadata: : " << result;
-				}
-
-				arrFailureDetail.append(failureItem);
+				arrFailureDetail.append(txItem);
 				iFailure++;
 			}
 						
 		}
 
 		jvResult[jss::txn_success]   = Json::UInt(iSuccess);
-		jvResult[jss::txn_failure]     = Json::UInt(iFailure);
-		jvResult[jss::ledger_index] = ledger->seq();
+		jvResult[jss::txn_failure]   = Json::UInt(iFailure);
+		jvResult[jss::ledger_index]  = ledger->seq();
 	
-		if (full) {
+		if (bFailtureDetail) {
 			jvResult[jss::txn_failure_detail] = arrFailureDetail;
+		}
+
+		if (bSuccessDetail) {
+			jvResult[jss::txn_success_detail] = arrSuccessDetail;
 		}
 
 		return jvResult;

@@ -42,7 +42,8 @@ class LedgerTx_test : public beast::unit_test::suite
 
         Json::Value jvParams;
         jvParams[jss::ledger_index] = 3u;
-        jvParams[jss::full] = true;
+        jvParams[jss::include_success] = true;
+		jvParams[jss::include_failure] = true;
         auto const jrr = env.rpc ( "json", "ledger_txs", to_string(jvParams) ) [jss::result];
 
 		BEAST_EXPECT(jrr.isMember(jss::ledger_index));
@@ -50,6 +51,7 @@ class LedgerTx_test : public beast::unit_test::suite
 		BEAST_EXPECT(jrr.isMember(jss::txn_success));
 		BEAST_EXPECT(jrr.isMember(jss::txn_failure));
         BEAST_EXPECT(jrr.isMember(jss::txn_failure_detail));
+		BEAST_EXPECT(jrr.isMember(jss::txn_success_detail));
         BEAST_EXPECT(jrr[jss::txn_failure_detail].isArray());
 
     }
