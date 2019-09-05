@@ -50,8 +50,8 @@ namespace ripple {
 		if (!ledger)
 			return result;
 
-		bool const bSuccessDetail  = params[jss::txn_success_detail].asBool();
-		bool const bFailtureDetail = params[jss::txn_failure_detail].asBool();
+		bool const bSuccessDetail  = params[jss::include_success].asBool();
+		bool const bFailtureDetail = params[jss::include_failure].asBool();
 
 		int iSuccess = 0;
 		int iFailure = 0;
