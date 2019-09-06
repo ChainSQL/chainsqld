@@ -1128,7 +1128,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                         InsertPressData(tx, iter->ledgerseq(), iter->closetime());
                 }
 
-                tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
+                if (app_.getOPs().hasChainSQLTxListener())
+                    tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
 
                 count++;
             }
@@ -1144,9 +1145,12 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         stTran.commit();
 
         //deal with subscribe
-        for (auto iter : tmpPubVec)
+        if (app_.getOPs().hasChainSQLTxListener())
         {
-            app_.getTableTxAccumulator().onSubtxResponse(std::get<0>(iter), accountID_, sTableName_, std::get<1>(iter), std::get<2>(iter));
+            for (auto iter : tmpPubVec)
+            {
+                app_.getTableTxAccumulator().onSubtxResponse(std::get<0>(iter), accountID_, sTableName_, std::get<1>(iter), std::get<2>(iter));
+            }
         }
 
         JLOG(journal_.info()) <<

@@ -529,6 +529,8 @@ public:
         std::string const& strUrl, InfoSub::ref) override;
     bool tryRemoveRpcSub (std::string const& strUrl) override;
 
+    bool hasChainSQLTxListener() { return  !mSubTable.empty() || !mSubTx.empty() || mValidatedSubTx.empty(); }
+
     //--------------------------------------------------------------------------
     //
     // Stoppable.
