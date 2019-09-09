@@ -38,6 +38,11 @@ operator<<(std::ostream& os, PublicKey const& pk)
     return os;
 }
 
+bool publicKeyComp(PublicKey const& lhs, PublicKey const& rhs)
+{
+    return lhs < rhs;
+}
+
 using uint264 = boost::multiprecision::number<
     boost::multiprecision::cpp_int_backend<
         264, 264, boost::multiprecision::signed_magnitude,

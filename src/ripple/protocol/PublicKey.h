@@ -134,6 +134,8 @@ operator< (PublicKey const& lhs,
             rhs.data(), rhs.data() + rhs.size());
 }
 
+bool publicKeyComp(PublicKey const& lhs, PublicKey const& rhs);
+
 template <class Hasher>
 void
 hash_append (Hasher& h,

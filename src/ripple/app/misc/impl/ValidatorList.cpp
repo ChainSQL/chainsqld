@@ -177,10 +177,11 @@ ValidatorList::load (
             id = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
         }
         
-		validators_.push_back(id);
-        // Skip local key which was already added
+        // Skip local key here, then add it at last
         if (id == localPubKey_ || id == localSigningKey)
             continue;
+
+        validators_.push_back(id);
 
         auto ret = keyListings_.insert ({id, 1});
         if (! ret.second)
@@ -202,6 +203,18 @@ ValidatorList::load (
 
     JLOG (j_.debug()) <<
         "Loaded " << count << " entries";
+
+    // add self
+    if (localPubKey_.size())
+        validators_.push_back(localPubKey_);
+
+    std::sort(validators_.begin(), validators_.end(), publicKeyComp);
+
+    JLOG(j_.info()) << "validators_: ";
+    for (auto iter = validators_.begin(); iter != validators_.end(); ++iter)
+    {
+        JLOG(j_.info()) << toBase58(TOKEN_NODE_PUBLIC, *iter);
+    }
 
     return true;
 }
