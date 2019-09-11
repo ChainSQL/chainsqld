@@ -773,8 +773,8 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 	// Check we are on the proper ledger (this may change phase_)
 	checkLedger();
 
-	if (waitingForInit())
-		return;
+    if (waitingForInit())
+        return;
 
 	now_ = now;
 
