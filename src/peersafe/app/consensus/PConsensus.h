@@ -361,6 +361,11 @@ PConsensus<Adaptor>::PConsensus(
 		maxTxsInLedger_ = std::max(MaxTxsInLedger, loadConfig("max_txs_per_ledger"));
 		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
+        if (timeOut_ <= maxBlockTime_)
+        {
+            timeOut_ = maxBlockTime_ * 2;
+        }
+
         {
             auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("omit_empty_block");
             if (result.second)
@@ -774,7 +779,10 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 	checkLedger();
 
     if (waitingForInit())
+    {
+        consensusTime_ = utcTime();
         return;
+    }
 
 	now_ = now;
 
