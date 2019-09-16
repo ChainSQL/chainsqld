@@ -30,6 +30,7 @@
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/basics/StringUtilities.h>
+#include <peersafe/app/misc/StateManager.h>
 
 namespace ripple {
 
@@ -96,6 +97,12 @@ Json::Value doAccountInfo (RPC::Context& context)
 			jvAccepted[jss::TransferFeeMin] = strCopy(strUnHex(jvAccepted[jss::TransferFeeMin].asString()).first);
 		if (jvAccepted.isMember(jss::TransferFeeMax))
 			jvAccepted[jss::TransferFeeMax] = strCopy(strUnHex(jvAccepted[jss::TransferFeeMax].asString()).first);
+		if (jvAccepted.isMember(jss::Sequence) && jvAccepted[jss::Sequence].asUInt() 
+			!= context.app.getStateManager().getAccountSeq(accountID))
+		{
+			jvAccepted[jss::Sequence] = context.app.getStateManager().getAccountSeq(accountID);
+		}
+
         result[jss::account_data] = jvAccepted;
 
         // Return SignerList(s) if that is requested.

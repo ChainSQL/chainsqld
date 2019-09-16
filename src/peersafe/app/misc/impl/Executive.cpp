@@ -85,23 +85,24 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress)
 {
 	bool accountAlreadyExist = false;
-	do {
-		uint32 sequence = 1;
-		if (m_depth == 1)
-		{
-			sequence = m_s.getTx().getFieldU32(sfSequence);
-		}
-		else
-		{
-			sequence = m_s.getSequence(_sender);
-		}
-
+	uint32 sequence = 1;
+	if (m_depth == 1)
+	{
+		sequence = m_s.getTx().getFieldU32(sfSequence);
 		m_newAddress = Contract::calcNewAddress(_sender, sequence);
-		// add sequence for sender
-		m_s.incSequence(_sender);
-
-		accountAlreadyExist = (m_s.getSle(m_newAddress) != nullptr);
-	} while (accountAlreadyExist);
+	}
+	else
+	{
+		sequence = m_s.getSequence(_sender);
+		do {
+			m_newAddress = Contract::calcNewAddress(_sender, sequence);
+			// add sequence for sender
+			//m_s.incSequence(_sender);
+			sequence++;
+			accountAlreadyExist = (m_s.getSle(m_newAddress) != nullptr);
+		} while (accountAlreadyExist);
+	}
+	
 
 	return executeCreate(_sender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
