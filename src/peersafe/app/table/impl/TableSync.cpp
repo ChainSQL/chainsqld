@@ -1357,7 +1357,7 @@ void TableSync::TableSyncThread()
                 pItem->SetSyncState(TableSyncItem::SYNC_WAIT_LOCAL_ACQUIRE);
 				if (!bNeedLocalSync)
 				{
-					TryLocalSync();   
+					//TryLocalSync();
 					bNeedLocalSync = true;
 				}
             }            
@@ -1391,7 +1391,7 @@ void TableSync::TableSyncThread()
                     pItem->SetSyncState(TableSyncItem::SYNC_WAIT_LOCAL_ACQUIRE);
 					if (!bNeedLocalSync)
 					{
-						TryLocalSync();
+						//TryLocalSync();
 						bNeedLocalSync = true;
 					}
                 }
@@ -1442,6 +1442,11 @@ void TableSync::TableSyncThread()
             }
         }
 		iter++;
+    }
+
+    if (bNeedLocalSync)
+    {
+        TryLocalSync();
     }
 
     bTableSyncThread_ = false;
