@@ -909,9 +909,12 @@ bool TableSync::CreateTableItems()
             if (pItem != NULL)
             {   
                 //if time > cond_time then set stop
-                if (pItem->GetCondition().utime < std::stoi(time))
+                if (pItem->GetCondition().utime > 0 &&
+                    pItem->GetCondition().utime < std::stoi(time))
+                {
                     listTableInfo_.remove(pItem);
-                app_.getTableStatusDB().UpdateStateDB(owner, tablename, false);//update audoSync flag
+                    app_.getTableStatusDB().UpdateStateDB(owner, tablename, false);//update audoSync flag
+                }
             }       
             else
 			{
