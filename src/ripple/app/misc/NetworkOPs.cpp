@@ -455,6 +455,8 @@ public:
 
 	std::string getServerStatus();
 
+    bool waitingForInit();
+
 	void tryCheckSubTx() override;
 
 	void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,
@@ -2688,6 +2690,11 @@ std::string NetworkOPsImp::getServerStatus()
 	{
 		return "abnormal";
 	}
+}
+
+bool NetworkOPsImp::waitingForInit()
+{
+    return mConsensus.waitingForInit();
 }
 
 void NetworkOPsImp::clearLedgerFetch ()

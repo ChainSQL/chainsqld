@@ -236,7 +236,7 @@ private:
 	*/
 	bool shouldPack();
 
-	bool waitingForInit();
+    bool waitingForInit();
 
 	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
 

@@ -245,6 +245,8 @@ namespace ripple {
 		virtual void tryCheckSubTx() = 0;
 
         virtual bool hasChainSQLTxListener() = 0;
+
+        virtual bool waitingForInit() = 0;
 	};
 
 	//------------------------------------------------------------------------------

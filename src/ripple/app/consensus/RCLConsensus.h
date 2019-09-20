@@ -491,6 +491,11 @@ public:
         return adaptor_.parms();
     }
 
+    bool waitingForInit()
+    {
+        return consensus_->waitingForInit();
+    }
+
 private:
     // Since Consensus does not provide intrinsic thread-safety, this mutex
     // guards all calls to consensus_. adaptor_ uses atomics internally

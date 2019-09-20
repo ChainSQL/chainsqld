@@ -74,6 +74,8 @@ namespace ripple {
 
 		virtual Json::Value
 			getJson(bool full) const = 0;
+
+        virtual bool waitingForInit() { return false; }
 	};
 }
 
