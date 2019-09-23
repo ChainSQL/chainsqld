@@ -157,11 +157,12 @@ error_code_i fillHandler (Context& context,
         return rpcNO_NETWORK;
     }
 
-    if (context.netOps.waitingForInit())
+    if (handler->condition_ & NEEDS_CURRENT_LEDGER &&
+        context.netOps.waitingForInit())
     {
         JLOG(context.j.info()) << "Waitint for init";
 
-        return rpcNO_NETWORK;
+        return rpcNO_CURRENT;
     }
 
     if (context.app.getOPs().isAmendmentBlocked() &&
