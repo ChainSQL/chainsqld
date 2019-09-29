@@ -496,6 +496,11 @@ public:
         return consensus_->waitingForInit();
     }
 
+    std::chrono::milliseconds getConsensusTimeout()
+    {
+        return consensus_->getConsensusTimeout();
+    }
+
 private:
     // Since Consensus does not provide intrinsic thread-safety, this mutex
     // guards all calls to consensus_. adaptor_ uses atomics internally
