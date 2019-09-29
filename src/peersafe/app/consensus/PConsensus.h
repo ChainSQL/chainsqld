@@ -358,7 +358,7 @@ PConsensus<Adaptor>::PConsensus(
 		minBlockTime_   = std::max(MinBlockTime, loadConfig("min_block_time"));
 		maxBlockTime_   = std::max(MaxBlockTime, loadConfig("max_block_time"));
 		maxBlockTime_   = std::max(maxBlockTime_, minBlockTime_);
-		maxTxsInLedger_ = std::min(maxTxsInLedger_, std::max((unsigned)1, loadConfig("max_txs_per_ledger")));
+		maxTxsInLedger_ = std::min(TxPoolCapacity, std::max((unsigned)1, loadConfig("max_txs_per_ledger")));
 		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
         if (timeOut_ <= maxBlockTime_)
