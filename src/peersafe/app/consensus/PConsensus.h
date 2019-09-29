@@ -347,18 +347,18 @@ PConsensus<Adaptor>::PConsensus(
 {
 	JLOG(j_.debug()) << "Creating pconsensus object";
 
-    minBlockTime_ = MinBlockTime;
-    maxBlockTime_ = MaxBlockTime;
+    minBlockTime_   = MinBlockTime;
+    maxBlockTime_   = MaxBlockTime;
     maxTxsInLedger_ = MaxTxsInLedger;
 	timeOut_ = CONSENSUS_TIMEOUT.count();
     omitEmpty_ = true;
 
     if (adaptor.app_.config().exists(SECTION_PCONSENSUS))
     {
-		minBlockTime_ = std::max(MinBlockTime, loadConfig("min_block_time"));
-		maxBlockTime_ = std::max(MaxBlockTime, loadConfig("max_block_time"));
-		maxBlockTime_ = std::max(maxBlockTime_, minBlockTime_);
-		maxTxsInLedger_ = std::max(MaxTxsInLedger, loadConfig("max_txs_per_ledger"));
+		minBlockTime_   = std::max(MinBlockTime, loadConfig("min_block_time"));
+		maxBlockTime_   = std::max(MaxBlockTime, loadConfig("max_block_time"));
+		maxBlockTime_   = std::max(maxBlockTime_, minBlockTime_);
+		maxTxsInLedger_ = std::min(maxTxsInLedger_, std::max((unsigned)1, loadConfig("max_txs_per_ledger")));
 		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
         if (timeOut_ <= maxBlockTime_)
