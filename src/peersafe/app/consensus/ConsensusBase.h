@@ -76,6 +76,8 @@ namespace ripple {
 			getJson(bool full) const = 0;
 
         virtual bool waitingForInit() { return false; }
+
+        virtual std::chrono::milliseconds getConsensusTimeout() { return CONSENSUS_TIMEOUT; }
 	};
 }
 

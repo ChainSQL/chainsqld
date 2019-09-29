@@ -238,6 +238,8 @@ private:
 
     bool waitingForInit();
 
+    std::chrono::milliseconds getConsensusTimeout();
+
 	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
 
 	int getPubIndex(PublicKey const& pub);
@@ -1028,6 +1030,12 @@ bool PConsensus<Adaptor>::waitingForInit()
 		return true;
 	}
 	return false;
+}
+
+template<class Adaptor>
+std::chrono::milliseconds PConsensus<Adaptor>::getConsensusTimeout()
+{
+    return std::chrono::milliseconds(timeOut_);
 }
 
 template <class Adaptor>
