@@ -1116,7 +1116,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                         }
                     }
                 }
-                JLOG(journal_.info()) << "got sync tx" << tx.getFullText();
+                JLOG(journal_.debug()) << "got sync tx" << tx.getFullText();
 
                 auto ret = DealWithTx(vecTxs);
                 uTxDBUpdateHash_ = tx.getTransactionID();
