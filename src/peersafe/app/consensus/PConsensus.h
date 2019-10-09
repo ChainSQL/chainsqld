@@ -238,6 +238,8 @@ private:
 
     bool waitingForInit();
 
+    std::chrono::milliseconds getConsensusTimeout();
+
 	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
 
 	int getPubIndex(PublicKey const& pub);
@@ -358,7 +360,7 @@ PConsensus<Adaptor>::PConsensus(
 		minBlockTime_   = std::max(MinBlockTime, loadConfig("min_block_time"));
 		maxBlockTime_   = std::max(MaxBlockTime, loadConfig("max_block_time"));
 		maxBlockTime_   = std::max(maxBlockTime_, minBlockTime_);
-		maxTxsInLedger_ = std::min(maxTxsInLedger_, std::max((unsigned)1, loadConfig("max_txs_per_ledger")));
+		maxTxsInLedger_ = std::min((unsigned)TxPoolCapacity, std::max((unsigned)1, loadConfig("max_txs_per_ledger")));
 		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
         if (timeOut_ <= maxBlockTime_)
@@ -1028,6 +1030,12 @@ bool PConsensus<Adaptor>::waitingForInit()
 		return true;
 	}
 	return false;
+}
+
+template<class Adaptor>
+std::chrono::milliseconds PConsensus<Adaptor>::getConsensusTimeout()
+{
+    return std::chrono::milliseconds(timeOut_);
 }
 
 template <class Adaptor>
