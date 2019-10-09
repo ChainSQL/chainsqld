@@ -1270,7 +1270,8 @@ PConsensus<Adaptor>::checkTimeout()
 	if (timeSinceConsensus() < timeOut)
 		return;
 
-	launchViewChange();
+	if(adaptor_.validating())
+		launchViewChange();
 }
 
 template <class Adaptor>
