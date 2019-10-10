@@ -310,7 +310,7 @@ private:
 	std::vector<uint256> transactions_;
 
 	// The minimum block generation time(ms)
-	unsigned minBlockTime_;
+    unsigned minBlockTime_;
 
 	// The maximum block generation time(ms) even without transactions.
 	unsigned maxBlockTime_;
@@ -360,7 +360,8 @@ PConsensus<Adaptor>::PConsensus(
 		minBlockTime_   = std::max(MinBlockTime, loadConfig("min_block_time"));
 		maxBlockTime_   = std::max(MaxBlockTime, loadConfig("max_block_time"));
 		maxBlockTime_   = std::max(maxBlockTime_, minBlockTime_);
-		maxTxsInLedger_ = std::min((unsigned)TxPoolCapacity, std::max((unsigned)1, loadConfig("max_txs_per_ledger")));
+        maxTxsInLedger_ = loadConfig("max_txs_per_ledger");
+        maxTxsInLedger_ = maxTxsInLedger_ ? maxTxsInLedger_ : TxPoolCapacity;
 		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
         if (timeOut_ <= maxBlockTime_)
@@ -1078,9 +1079,13 @@ int PConsensus<Adaptor>::getPubIndex(PublicKey const& pub)
 template <class Adaptor>
 bool PConsensus<Adaptor>::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
 {
-	if (transactions_.size() >= maxTxsInLedger_)
+    if (sinceLastClose < 0)
+    {
+        sinceLastClose = sinceOpen;
+    }
+	if (transactions_.size() >= maxTxsInLedger_ && sinceLastClose >= minBlockTime_)
 		return true;
-	if (transactions_.size() > 0 && sinceOpen >= minBlockTime_ && sinceLastClose >= minBlockTime_)
+	if (transactions_.size() > 0 && sinceLastClose >= minBlockTime_)
 		return true;
 	if (sinceLastClose >= maxBlockTime_)
 		return true;
