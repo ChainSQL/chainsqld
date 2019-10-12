@@ -780,8 +780,15 @@ Transactor::operator()()
 #endif
 
     auto terResult = STer(ctx_.preclaimResult);
-    if (terResult == tesSUCCESS)
-        terResult = apply();
+	if (terResult == tesSUCCESS)
+	{
+		terResult = apply();
+	}        
+	else if (terResult == tefPAST_SEQ || terPRE_SEQ)
+	{
+		//If continue,there will be a bug: claimFee will set sequence to  ctx_.tx.getSequence() + 1
+		return { terResult,false };
+	}		
 
     // No transaction can return temUNKNOWN from apply,
     // and it can't be passed in from a preclaim.
