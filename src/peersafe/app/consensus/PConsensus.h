@@ -330,6 +330,7 @@ private:
 	std::recursive_mutex lock_;
 
 	uint64 view_ = 0;
+	uint64 toView_ = 0;
 
 	// Journal for debugging
 	beast::Journal j_;
@@ -464,6 +465,7 @@ PConsensus<Adaptor>::startRoundInternal(
 
 		//reset view to 0 after a new close ledger.
 		view_ = 0;
+		toView_ = 0;
 		viewChangeManager_.onNewRound(previousLedger_);
 
 		checkCache();
@@ -504,13 +506,44 @@ template<class Adaptor>
 bool
 PConsensus<Adaptor>::checkChangeView(uint64_t toView)
 {
-	if (viewChangeManager_.checkChange(toView, view_, adaptor_.app_.validators().quorum()))
+	if (phase_ == ConsensusPhase::accepted)
 	{
-		view_ = toView;
-		onViewChange();
-		JLOG(j_.info()) << "View changed to " << view_;
-		return true;
+		return false;
 	}
+	if (toView_ == toView)
+	{
+		if (viewChangeManager_.checkChange(toView, view_, adaptor_.app_.validators().quorum()))
+		{
+			view_ = toView;
+			onViewChange();
+			JLOG(j_.info()) << "View changed to " << view_;
+			return true;
+		}
+	}
+	else
+	{
+		/* If number of toView can met ,we need to check:
+		1. if previousLedgerSeq < ViewChange.previousLedgerSeq£¬handleWrong ledger
+		2. if previousLedgerSeq == ViewChange.previousLedgerSeq£¬change our view_ to new view.
+		*/
+		auto ret = viewChangeManager_.shouldTriggerViewChange(toView, previousLedger_, adaptor_.app_.validators().quorum());
+		if (std::get<0>(ret))
+		{
+			if (previousLedger_.seq() < std::get<1>(ret))
+			{
+				handleWrongLedger(std::get<2>(ret));
+				JLOG(j_.info()) << "View changed fulfilled in other nodes: " << toView <<",and we need ledger:"<< std::get<1>(ret);
+			}
+			else if(previousLedger_.seq() == std::get<1>(ret))
+			{
+				view_ = toView;
+				onViewChange();
+				JLOG(j_.info()) << "We have the newest ledger,change view to " << view_;
+				return true;
+			}
+		}
+	}
+
 	return false;
 }
 
@@ -796,6 +829,12 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 
 	if (mode_.get() == ConsensusMode::wrongLedger)
 	{
+		if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
+		{
+			JLOG(j_.info()) << "Have the consensus ledger " << prevLedgerID_;
+			startRoundInternal(
+				now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
+		}
 		return;
 	}
 
@@ -1202,8 +1241,13 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 		auto curSeq = newPeerProp.curLedgerSeq();
 		if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
 		{
-			//only the first time for a same key will succeed.
+			//Only the first time for a same key will succeed.
 			adaptor_.proposalCache_[curSeq].emplace(newPeerPos.publicKey(),newPeerPos);
+			//If other nodes have reached a consensus for a newest ledger,we should acquire that ledger.
+			if (adaptor_.proposalCache_[curSeq].size() >= adaptor_.app_.validators().quorum())
+			{
+				adaptor_.acquireLedger(newPeerProp.prevLedger());
+			}
 		}
 		else
 		{
@@ -1296,13 +1340,13 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::launchViewChange()
 {
-	uint64_t toView = view_ + 1;
+	toView_ = view_ + 1;
 	consensusTime_ = utcTime();
 
-	ViewChange change(previousLedger_.seq(), prevLedgerID_, adaptor_.valPublic_, toView);
+	ViewChange change(previousLedger_.seq(), prevLedgerID_, adaptor_.valPublic_, toView_);
 	adaptor_.sendViewChange(change);
 
-	JLOG(j_.info()) << "checkTimeout sendViewChange,toView=" << toView << ",nodeId=" << getPubIndex(adaptor_.valPublic_)
+	JLOG(j_.info()) << "checkTimeout sendViewChange,toView=" << toView_ << ",nodeId=" << getPubIndex(adaptor_.valPublic_)
 		<< ",prevLedgerSeq=" << previousLedger_.seq();
 
 	peerViewChange(change);
