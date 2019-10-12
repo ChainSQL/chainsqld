@@ -744,10 +744,6 @@ PConsensus<Adaptor>::gotTxSet(
 						now,
 						adaptor_.nodeID())));
 
-				txSetVoted_[*setID_].insert(adaptor_.valPublic_);
-
-				result_->roundTime.reset(proposalTime_);
-
 				if (phase_ == ConsensusPhase::open)
 					phase_ = ConsensusPhase::establish;
 
@@ -755,10 +751,14 @@ PConsensus<Adaptor>::gotTxSet(
 
 				if (adaptor_.validating())
 				{
+                    txSetVoted_[*setID_].insert(adaptor_.valPublic_);
 					adaptor_.propose(result_->position);
+
+                    JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
 				}
 
-				JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
+                result_->roundTime.reset(proposalTime_);
+
 				for (auto pub : txSetVoted_[*setID_])
 				{
 					JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
