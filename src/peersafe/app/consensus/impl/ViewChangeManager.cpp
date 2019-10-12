@@ -61,6 +61,44 @@ bool ViewChangeManager::checkChange(VIEWTYPE const& toView, VIEWTYPE const& curV
 	return false;
 }
 
+std::tuple<bool, uint32_t, uint256>
+ViewChangeManager::shouldTriggerViewChange(VIEWTYPE const& toView, RCLCxLedger const& prevLedger, std::size_t quorum)
+{
+	if (viewChangeReq_[toView].size() >= quorum)
+	{
+		auto& mapChange = viewChangeReq_[toView];
+		std::map<int, int> mapSeqCount;
+		uint32_t prevSeq = 0;
+		uint256 prevHash = beast::zero;
+		//Check if the prevSeq is consistent between view_change messages.
+		for (auto iter = mapChange.begin(); iter != mapChange.end(); iter++)
+		{
+			int prevSeq = iter->second.prevSeq();
+			if (mapSeqCount.find(prevSeq) != mapSeqCount.end())
+			{
+				mapSeqCount[prevSeq]++;
+			}
+			else
+			{
+				mapSeqCount[prevSeq] = 1;
+			}
+
+			if (mapSeqCount[prevSeq] >= quorum)
+			{
+				prevSeq = prevSeq;
+				prevHash = iter->second.prevHash();
+				break;
+			}
+		}
+
+		if (prevSeq > 0)
+		{
+			return std::make_tuple(true, prevSeq, prevHash);
+		}
+	}
+	return std::make_tuple(false, 0, beast::zero);
+}
+
 void ViewChangeManager::onViewChanged(VIEWTYPE const& newView)
 {
 	auto iter = viewChangeReq_.begin();
