@@ -2685,7 +2685,8 @@ std::string NetworkOPsImp::getServerStatus()
 	bool bConsensusValid = m_ledgerMaster.getValidatedLedgerAge() < 2 * mConsensus.getConsensusTimeout();
 	auto const mode = mConsensus.mode();
 	if (bConsensusValid && 
-		(mode == ConsensusMode::proposing || mode == ConsensusMode::switchedLedger)
+		(mode == ConsensusMode::proposing || mode == ConsensusMode::switchedLedger || 
+            (!mConsensus.validating() && mode == ConsensusMode::observing))
 	)
 	{
 		return "normal";
