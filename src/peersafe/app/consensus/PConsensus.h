@@ -917,6 +917,11 @@ PConsensus<Adaptor>::phaseCollecting()
 	// Decide if we should propose a tx-set
 	if (shouldPack() && !result_)
 	{
+		if (!adaptor_.app_.getTxPool().isAvailable())
+		{
+			return;
+		}
+
 		int tx_count = transactions_.size();
 
 		//if time for this block's tx-set reached

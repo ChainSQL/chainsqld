@@ -41,6 +41,25 @@ struct transactionCompare
 	}
 };
 
+struct sync_status
+{
+	int pool_start_seq;
+	int max_advance_seq;
+	uint256 prevHash;
+
+	sync_status()
+	{
+		init();
+	}
+
+	void init()
+	{
+		pool_start_seq = 0;
+		max_advance_seq = 0;
+		prevHash = beast::zero;
+	}
+};
+
 class TxPool
 {
 public:
@@ -79,10 +98,10 @@ public:
 	h256Set topTransactions(uint64_t const& limit);
 
     // Insert a new Tx, return true if success else false.
-	TER insertTx(std::shared_ptr<Transaction> transaction);
+	TER insertTx(std::shared_ptr<Transaction> transaction,int ledgerSeq);
 
     // When block validated, remove Txs from pool and avoid set.
-	bool removeTxs(SHAMap const& cSet);
+	void removeTxs(SHAMap const& cSet,int const ledgerSeq,uint256 const& prevHash);
 
     // Update avoid set when receiving a Tx set from peers.
     void updateAvoid(RCLTxSet const& cSet);
@@ -97,6 +116,10 @@ public:
 
 	bool isEmpty() { return mTxsSet.size() == 0; }
 
+	bool isAvailable();
+
+	void timerEntry();
+
 private:
 	Application& app_;
 
@@ -110,6 +133,8 @@ private:
     std::unordered_map<uint256, TransactionSet::iterator> mTxsHash;
 
     h256Set mAvoid;
+
+	sync_status mSyncStatus;
 
     beast::Journal j_;
 };

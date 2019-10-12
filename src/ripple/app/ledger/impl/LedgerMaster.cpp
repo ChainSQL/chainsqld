@@ -1234,7 +1234,7 @@ LedgerMaster::checkAccept (
     ledger->setFull();
     setValidLedger(ledger);
 
-    app_.getTxPool().removeTxs(ledger->txMap());
+    app_.getTxPool().removeTxs(ledger->txMap(),ledger->info().seq,ledger->info().parentHash);
 
     if (!mPubLedger)
     {
