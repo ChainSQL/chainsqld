@@ -73,19 +73,20 @@ ViewChangeManager::shouldTriggerViewChange(VIEWTYPE const& toView, RCLCxLedger c
 		//Check if the prevSeq is consistent between view_change messages.
 		for (auto iter = mapChange.begin(); iter != mapChange.end(); iter++)
 		{
-			if (mapSeqCount.find(iter->second.prevSeq) != mapSeqCount.end())
+			int prevSeq = iter->second.prevSeq();
+			if (mapSeqCount.find(prevSeq) != mapSeqCount.end())
 			{
-				mapSeqCount[iter->second.prevSeq]++;
+				mapSeqCount[prevSeq]++;
 			}
 			else
 			{
-				mapSeqCount[iter->second.prevSeq] = 1;
+				mapSeqCount[prevSeq] = 1;
 			}
 
-			if (mapSeqCount[iter->second.prevSeq] >= quorum)
+			if (mapSeqCount[prevSeq] >= quorum)
 			{
-				prevSeq = iter->second.prevSeq;
-				prevHash = iter->second.prevHash;
+				prevSeq = prevSeq;
+				prevHash = iter->second.prevHash();
 				break;
 			}
 		}
