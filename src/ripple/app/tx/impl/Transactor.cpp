@@ -743,7 +743,7 @@ Transactor::claimFee (ZXCAmount& fee, TER terResult, std::vector<uint256> const&
     if (fee > balance)
         fee = balance;
     txnAcct->setFieldAmount (sfBalance, balance - fee);
-    txnAcct->setFieldU32 (sfSequence, ctx_.tx.getSequence() + 1);
+    txnAcct->setFieldU32 (sfSequence, txnAcct->getFieldU32(sfSequence) + 1);
 
     if (terResult == tecOVERSIZE)
         removeUnfundedOffers (view(), removedOffers, ctx_.app.journal ("View"));
@@ -783,12 +783,7 @@ Transactor::operator()()
 	if (terResult == tesSUCCESS)
 	{
 		terResult = apply();
-	}        
-	else if (terResult == tefPAST_SEQ || terPRE_SEQ)
-	{
-		//If continue,there will be a bug: claimFee will set sequence to  ctx_.tx.getSequence() + 1
-		return { terResult,false };
-	}		
+	}	
 
     // No transaction can return temUNKNOWN from apply,
     // and it can't be passed in from a preclaim.
