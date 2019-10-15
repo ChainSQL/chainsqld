@@ -63,7 +63,7 @@ namespace ripple {
 using namespace std::chrono_literals;
 
 // Don't catch up more than 100 ledgers (cannot exceed 256)
-#define MAX_LEDGER_GAP          100
+#define MAX_LEDGER_GAP          0
 
 // Don't acquire history if ledger is too old
 auto constexpr MAX_LEDGER_AGE_ACQUIRE = 1min;

@@ -427,6 +427,11 @@ RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 			return app_.getTxQ().accept(app_, view);
 		});
 	}
+
+    if (!validating())
+    {
+        notify(protocol::neCLOSING_LEDGER, previousLedger, mode() != ConsensusMode::wrongLedger);
+    }
 }
 
 auto
