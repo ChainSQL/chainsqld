@@ -13,6 +13,22 @@ bool ViewChangeManager::recvViewChange(ViewChange const& change)
 	uint64_t toView = change.toView();
 	if (viewChangeReq_.find(toView) != viewChangeReq_.end())
 	{
+        /**
+         * Maybe pre round viewchange doesn't be deleted(new consensus round hasn't begin), 
+         * so delete old viewchange here first. otherwise, emplace will failed.
+         */
+        if (viewChangeReq_[toView].find(change.nodePublic()) != viewChangeReq_[toView].end())
+        {
+            auto oldViewChange = viewChangeReq_[toView].find(change.nodePublic())->second;
+            JLOG(j_.info()) << "peerViewChange toView=" << toView
+                << ", pubKey=" << change.nodePublic() << " exist, prevSeq=" << oldViewChange.prevSeq()
+                << ", and this viewChange preSeq=" << change.prevSeq();
+            if (oldViewChange.prevSeq() < change.prevSeq())
+            {
+                viewChangeReq_[toView].erase(change.nodePublic());
+            }
+        }
+
 		auto ret = viewChangeReq_[toView].emplace(change.nodePublic(), change);
 		if (ret.second)
 		{
@@ -43,6 +59,44 @@ bool ViewChangeManager::checkChange(VIEWTYPE const& toView, VIEWTYPE const& curV
 		}
 	}
 	return false;
+}
+
+std::tuple<bool, uint32_t, uint256>
+ViewChangeManager::shouldTriggerViewChange(VIEWTYPE const& toView, RCLCxLedger const& prevLedger, std::size_t quorum)
+{
+	if (viewChangeReq_[toView].size() >= quorum)
+	{
+		auto& mapChange = viewChangeReq_[toView];
+		std::map<int, int> mapSeqCount;
+		uint32_t prevSeq = 0;
+		uint256 prevHash = beast::zero;
+		//Check if the prevSeq is consistent between view_change messages.
+		for (auto iter = mapChange.begin(); iter != mapChange.end(); iter++)
+		{
+			int prevSeqTmp = iter->second.prevSeq();
+			if (mapSeqCount.find(prevSeqTmp) != mapSeqCount.end())
+			{
+				mapSeqCount[prevSeqTmp]++;
+			}
+			else
+			{
+				mapSeqCount[prevSeqTmp] = 1;
+			}
+
+			if (mapSeqCount[prevSeqTmp] >= quorum)
+			{
+				prevSeq = prevSeqTmp;
+				prevHash = iter->second.prevHash();
+				break;
+			}
+		}
+
+		if (prevSeq > 0)
+		{
+			return std::make_tuple(true, prevSeq, prevHash);
+		}
+	}
+	return std::make_tuple(false, 0, beast::zero);
 }
 
 void ViewChangeManager::onViewChanged(VIEWTYPE const& newView)

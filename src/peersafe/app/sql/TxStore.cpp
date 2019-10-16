@@ -162,7 +162,7 @@ std::pair<bool, std::string> TxStore::Dispose(const STTx& tx, const std::string&
 			JLOG(journal_.error()) << errmsg;
 			break;
 		} else {
-			JLOG(journal_.info()) << "Execute sucess." + result.second;
+			JLOG(journal_.debug()) << "Execute success. " + result.second;
             ret = { true, "success" };
 		}
 	} while (0);

@@ -457,6 +457,8 @@ public:
 
     bool waitingForInit();
 
+    std::chrono::milliseconds getConsensusTimeout();
+
 	void tryCheckSubTx() override;
 
 	void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,
@@ -855,6 +857,8 @@ void NetworkOPsImp::processHeartbeatTimer ()
 
     mConsensus.timerEntry (app_.timeKeeper().closeTime());
 
+	app_.getTxPool().timerEntry();
+
 	tryCheckSubTx();
 
     setHeartbeatTimer ();
@@ -1100,7 +1104,7 @@ NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
     if (ter == tesSUCCESS)
     {
         // after check and transaction's check result is tesSUCCESS£¬add it to TxPool:
-        ter = app_.getTxPool().insertTx(transaction);
+        ter = app_.getTxPool().insertTx(transaction,view.seq());
         if (ter != tesSUCCESS)
         {
             return{ ter, false };
@@ -2678,10 +2682,11 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
 
 std::string NetworkOPsImp::getServerStatus()
 {
-	bool bConsensusValid = m_ledgerMaster.getValidatedLedgerAge() < 2 * CONSENSUS_TIMEOUT;
+	bool bConsensusValid = m_ledgerMaster.getValidatedLedgerAge() < 2 * mConsensus.getConsensusTimeout();
 	auto const mode = mConsensus.mode();
 	if (bConsensusValid && 
-		(mode == ConsensusMode::proposing || mode == ConsensusMode::switchedLedger)
+		(mode == ConsensusMode::proposing || mode == ConsensusMode::switchedLedger || 
+            (!mConsensus.validating() && mode == ConsensusMode::observing))
 	)
 	{
 		return "normal";
@@ -2695,6 +2700,11 @@ std::string NetworkOPsImp::getServerStatus()
 bool NetworkOPsImp::waitingForInit()
 {
     return mConsensus.waitingForInit();
+}
+
+std::chrono::milliseconds NetworkOPsImp::getConsensusTimeout()
+{
+    return mConsensus.getConsensusTimeout();
 }
 
 void NetworkOPsImp::clearLedgerFetch ()

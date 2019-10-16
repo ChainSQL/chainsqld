@@ -152,6 +152,7 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 	if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
 	{
 		setValidLedger(previousLedger);
+		setPubLedger(previousLedger);
 	}
 	tryAdvance();
 }
@@ -1234,7 +1235,7 @@ LedgerMaster::checkAccept (
     ledger->setFull();
     setValidLedger(ledger);
 
-    app_.getTxPool().removeTxs(ledger->txMap());
+    app_.getTxPool().removeTxs(ledger->txMap(),ledger->info().seq,ledger->info().parentHash);
 
     if (!mPubLedger)
     {

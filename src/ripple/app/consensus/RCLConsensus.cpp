@@ -393,7 +393,7 @@ RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 {
 	app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
 	//Try to clear state cache.
-	if (app_.getLedgerMaster().getPublishedLedgerAge() > 3 * CONSENSUS_TIMEOUT &&
+	if (app_.getLedgerMaster().getPublishedLedgerAge() > 3 * app_.getOPs().getConsensusTimeout() &&
 		app_.getTxPool().isEmpty())
 	{
 		app_.getStateManager().clear();
@@ -427,6 +427,11 @@ RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 			return app_.getTxQ().accept(app_, view);
 		});
 	}
+
+    if (!validating())
+    {
+        notify(protocol::neCLOSING_LEDGER, previousLedger, mode() != ConsensusMode::wrongLedger);
+    }
 }
 
 auto

@@ -247,6 +247,8 @@ namespace ripple {
         virtual bool hasChainSQLTxListener() = 0;
 
         virtual bool waitingForInit() = 0;
+
+        virtual std::chrono::milliseconds getConsensusTimeout() = 0;
 	};
 
 	//------------------------------------------------------------------------------

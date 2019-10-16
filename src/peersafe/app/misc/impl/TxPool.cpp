@@ -1,5 +1,7 @@
 
 #include <peersafe/app/misc/TxPool.h>
+#include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/core/JobQueue.h>
 
 namespace ripple {
 
@@ -28,7 +30,7 @@ namespace ripple {
         return ret;
     }
 
-    TER TxPool::insertTx(std::shared_ptr<Transaction> transaction)
+    TER TxPool::insertTx(std::shared_ptr<Transaction> transaction,int ledgerSeq)
     {
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
@@ -50,6 +52,11 @@ namespace ripple {
             if (mTxsHash.emplace(make_pair(transaction->getID(), result.first)).second)
             {
                 ter = tesSUCCESS;
+				// Init sync_status
+				if (mSyncStatus.pool_start_seq == 0)
+				{
+					mSyncStatus.pool_start_seq = ledgerSeq;
+				}
             }
             else
             {
@@ -62,12 +69,12 @@ namespace ripple {
         return ter;
     }
 
-    bool TxPool::removeTxs(SHAMap const& cSet)
+    void TxPool::removeTxs(SHAMap const& cSet, int const ledgerSeq, uint256 const& prevHash)
     {
-        TransactionSet::iterator iterSet;
-
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
+		JLOG(j_.info()) << "Remove txs for ledger "<< ledgerSeq;
+		TransactionSet::iterator iterSet;
         for (auto const& item : cSet)
         {
             if (!txExists(item.key()))
@@ -88,12 +95,29 @@ namespace ripple {
             catch (std::exception const&)
             {
                 JLOG(j_.warn()) << "Tx: " << item.key() << " throws, not in pool";
-
-                return false;
             }
         }
 
-        return true;
+		//update sync_status
+		if (mTxsSet.size() == 0)
+		{
+			mSyncStatus.init();
+			return;
+		}
+
+		if (mSyncStatus.pool_start_seq > 0)
+		{
+			if (mSyncStatus.max_advance_seq < ledgerSeq)
+			{
+				mSyncStatus.max_advance_seq = ledgerSeq;
+			}
+			
+			if (ledgerSeq == mSyncStatus.pool_start_seq)
+			{
+				mSyncStatus.pool_start_seq = mSyncStatus.max_advance_seq + 1;
+			}
+			mSyncStatus.prevHash = prevHash;
+		}
     }
 
     void TxPool::updateAvoid(RCLTxSet const& cSet)
@@ -113,4 +137,23 @@ namespace ripple {
                 mAvoid.insert(item.key());
         }
     }
+
+	bool TxPool::isAvailable()
+	{
+		return mSyncStatus.max_advance_seq <= mSyncStatus.pool_start_seq;
+	}
+
+	void TxPool::timerEntry()
+	{
+		if (!isAvailable())
+		{
+			// we need to switch the ledger we're working from
+			auto prevLedger = app_.getLedgerMaster().getLedgerByHash(mSyncStatus.prevHash);
+			if (prevLedger)
+			{
+				JLOG(j_.info()) << "TxPool found ledger " << prevLedger->info().seq;
+				removeTxs(prevLedger->txMap(), prevLedger->info().seq, prevLedger->info().parentHash);
+			}
+		}
+	}
 }
