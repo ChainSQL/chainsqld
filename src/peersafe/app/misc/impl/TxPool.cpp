@@ -73,6 +73,7 @@ namespace ripple {
     {
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
+		JLOG(j_.info()) << "Remove txs for ledger "<< ledgerSeq;
 		TransactionSet::iterator iterSet;
         for (auto const& item : cSet)
         {
