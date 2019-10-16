@@ -361,9 +361,6 @@ PConsensus<Adaptor>::PConsensus(
 		minBlockTime_   = std::max(MinBlockTime, loadConfig("min_block_time"));
 		maxBlockTime_   = std::max(MaxBlockTime, loadConfig("max_block_time"));
 		maxBlockTime_   = std::max(maxBlockTime_, minBlockTime_);
-<<<<<<< HEAD
-		maxTxsInLedger_ = std::max((unsigned)1, loadConfig("max_txs_per_ledger"));
-=======
         maxTxsInLedger_ = loadConfig("max_txs_per_ledger");
         maxTxsInLedger_ = maxTxsInLedger_ ? maxTxsInLedger_ : MaxTxsInLedger;
         if (maxTxsInLedger_ > TxPoolCapacity)
@@ -371,7 +368,6 @@ PConsensus<Adaptor>::PConsensus(
             maxTxsInLedger_ = TxPoolCapacity;
         }
 
->>>>>>> 61d83de57e697210e7dc727a7f638eaeb41cbf48
 		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
         if (timeOut_ <= maxBlockTime_)
@@ -527,8 +523,8 @@ PConsensus<Adaptor>::checkChangeView(uint64_t toView)
 	else
 	{
 		/* If number of toView can met ,we need to check:
-		1. if previousLedgerSeq < ViewChange.previousLedgerSeq£¬handleWrong ledger
-		2. if previousLedgerSeq == ViewChange.previousLedgerSeq£¬change our view_ to new view.
+		1. if previousLedgerSeq < ViewChange.previousLedgerSeqï¿½ï¿½handleWrong ledger
+		2. if previousLedgerSeq == ViewChange.previousLedgerSeqï¿½ï¿½change our view_ to new view.
 		*/
 		auto ret = viewChangeManager_.shouldTriggerViewChange(toView, previousLedger_, adaptor_.app_.validators().quorum());
 		if (std::get<0>(ret))
