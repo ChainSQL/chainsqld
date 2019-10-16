@@ -153,7 +153,12 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 	{
 		setValidLedger(previousLedger);
 		setPubLedger(previousLedger);
+		{
+			ScopedLockType ml(mCompleteLock);
+			mCompleteLedgers.setValue(previousLedger->info().seq);
+		}
 	}
+	app_.getTableSync().TryTableSync();
 	tryAdvance();
 }
 
