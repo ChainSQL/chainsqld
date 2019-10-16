@@ -38,6 +38,8 @@
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/app/misc/TxPool.h>
+
 
 namespace ripple {
 
@@ -771,7 +773,7 @@ Transactor::operator()()
         if (! s2.isEquivalent(ctx_.tx))
         {
             JLOG(j_.fatal()) <<
-                "Transaction serdes mismatch";
+                "Transaction series mismatch";
             JLOG(j_.info()) << to_string(ctx_.tx.getJson (0));
             JLOG(j_.fatal()) << s2.getJson (0);
             assert (false);
@@ -784,7 +786,8 @@ Transactor::operator()()
 	{
 		//If continue,there will be a bug: claimFee will set sequence to  ctx_.tx.getSequence() + 1
 		JLOG(j_.warn()) << "Transaction " << ctx_.tx.getTransactionID()<<"has a sequence ter:"<< 
-			(terResult == tefPAST_SEQ) ? "tefPAST_SEQ":"terPRE_SEQ";
+			(terResult == tefPAST_SEQ) ? "tefPAST_SEQ":"terPRE_SEQ"; 
+		ctx_.app.getTxPool().removeTx(ctx_.tx.getTransactionID());
 		return { terResult, false };
 	}
 	if (terResult == tesSUCCESS)
