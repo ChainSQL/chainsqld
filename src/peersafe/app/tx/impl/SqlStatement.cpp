@@ -276,48 +276,60 @@ namespace ripple {
 		{
 			return tefDBNOTCONFIGURED;
 		}
-		TxStoreTransaction stTran(envPair.first);
-		TxStore& txStore = *envPair.second;
-		//
-		if (!canDispose(ctx_))
-		{
-			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx, txStore.getDatabaseCon());//RR-628
-			if (!isTesSuccess(ret2))
-			{
-				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
-				setExtraMsg("Dispose error: Deal with count limit rule error.");
-				return ret2;
-			}
-			return tesSUCCESS;
-		}
 
-		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
-			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+		try
 		{
+				TxStoreTransaction stTran(envPair.first);
+				TxStore& txStore = *envPair.second;
+				//
+				if (!canDispose(ctx_))
+				{
+					TER ret2 = OperationRule::adjustInsertCount(ctx_, tx, txStore.getDatabaseCon());//RR-628
+					if (!isTesSuccess(ret2))
+					{
+						JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
+						setExtraMsg("Dispose error: Deal with count limit rule error.");
+						return ret2;
+					}
+					return tesSUCCESS;
+				}
+
+				if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
+					app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+				{
+					return tefDBNOTCONFIGURED;
+				}
+
+
+				auto result = dispose(txStore, tx);
+				if (result.first == tesSUCCESS)
+				{
+					TER ret2 = OperationRule::adjustInsertCount(ctx_, tx, txStore.getDatabaseCon());
+					if (!isTesSuccess(ret2))
+					{
+						JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
+						return ret2;
+					}
+					JLOG(app.journal("SqlStatement").trace()) << "Dispose success";
+				}
+				else
+				{
+					JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << result.second;
+					stTran.rollback();
+					setExtraMsg(result.second);
+					return result.first;
+				}
+			
+				stTran.rollback();
+
+		}
+		catch (soci::soci_error& e) {
+
+			JLOG(app.journal("SqlStatement").error()) << "soci::soci_error : " << std::string(e.what());
+
 			return tefDBNOTCONFIGURED;
 		}
 
-
-		auto result = dispose(txStore, tx);
-		if (result.first == tesSUCCESS)
-		{
-			TER ret2 = OperationRule::adjustInsertCount(ctx_, tx, txStore.getDatabaseCon());
-			if (!isTesSuccess(ret2))
-			{
-				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
-				return ret2;
-			}
-			JLOG(app.journal("SqlStatement").trace()) << "Dispose success";
-		}
-		else
-		{
-			JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << result.second;
-			stTran.rollback();
-			setExtraMsg(result.second);
-			return result.first;
-		}
-			
-		stTran.rollback();
 		return tesSUCCESS;
 	}
 

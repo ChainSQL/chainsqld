@@ -403,6 +403,8 @@ int mysql_session_backend::handle_error_query()
 void mysql_session_backend::begin()
 {
 	try {
+		if(conn_ == NULL)
+			connect_mysql();
 		hard_exec(conn_, "BEGIN");
 	}
 	catch (soci_error err) 

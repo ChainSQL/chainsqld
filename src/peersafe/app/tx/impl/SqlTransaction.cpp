@@ -93,6 +93,11 @@ namespace ripple {
 		}
 
 		{
+			try
+			{
+
+
+
 			std::vector<uint160> vecNameInDB;
 			std::pair<TER, std::string> breakRet = { tesSUCCESS,"success" };
 			TxStoreTransaction stTran(&txStoreDBConn);
@@ -147,6 +152,16 @@ namespace ripple {
 			{
 				setExtraMsg(breakRet.second);
 				return breakRet;
+			}
+
+
+			}
+			catch (soci::soci_error& e) {
+
+				JLOG(journal.error()) << "soci::soci_error : " << std::string(e.what());
+				std::string strErrInfo = "soci::soci_error : " + std::string(e.what());
+				return std::make_pair(tefDBNOTCONFIGURED, strErrInfo);
+			
 			}
 		}
 		return{ tesSUCCESS, "success" };
