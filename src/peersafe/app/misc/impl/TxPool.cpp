@@ -73,7 +73,7 @@ namespace ripple {
     {
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
-		JLOG(j_.info()) << "Remove txs for ledger "<< ledgerSeq;
+		int count = 0;
 		TransactionSet::iterator iterSet;
         for (auto const& item : cSet)
         {
@@ -91,12 +91,15 @@ namespace ripple {
 
                 // remove from avoid set.
                 mAvoid.erase(item.key());
+				count++;
             }
             catch (std::exception const&)
             {
                 JLOG(j_.warn()) << "Tx: " << item.key() << " throws, not in pool";
             }
         }
+
+		JLOG(j_.info()) << "Remove " << count << " txs for ledger " << ledgerSeq;
 
 		//update sync_status
 		if (mTxsSet.size() == 0)
