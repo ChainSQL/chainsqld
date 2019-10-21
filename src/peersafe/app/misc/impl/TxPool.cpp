@@ -160,26 +160,23 @@ namespace ripple {
 	void TxPool::removeTx(uint256 hash)
 	{
 		std::lock_guard<std::mutex> lock(mutexTxPoll_);
-		try
+		if(mTxsHash.find(hash) != mTxsHash.end())
 		{
-			// If not exist, throw std::out_of_range exception.
-			auto iterSet = mTxsHash.at(hash);
-
 			// remove from Tx pool.
+			auto iter = mTxsHash.at(hash);
 			mTxsHash.erase(hash);
-			mTxsSet.erase(iterSet);
+			mTxsSet.erase(iter);
 
 			// remove from avoid set.
-			mAvoid.erase(hash);
-		}
-		catch (std::exception const&)
-		{
-			JLOG(j_.warn()) << "Tx: " << hash << " throws in removetx, not in pool";
-		}
+			if (mAvoid.find(hash) != mAvoid.end())
+			{
+				mAvoid.erase(hash);
+			}			
 
-		if (mTxsSet.size() == 0)
-		{
-			mSyncStatus.init();
+			if (mTxsSet.size() == 0)
+			{
+				mSyncStatus.init();
+			}
 		}
 	}
 }
