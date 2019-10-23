@@ -68,7 +68,19 @@ public:
         std::string const& port,
         boost::asio::io_service& ios,
         beast::Journal j,
-        callback_type cb);
+        callback_type cb)
+		: WorkBase(host, path, port, ios, cb)
+		, context_(j)
+		, stream_(socket_, context_)
+	{
+		// Set SNI hostname
+		SSL_set_tlsext_host_name(stream_.native_handle(), host.c_str());
+		stream_.set_verify_mode(boost::asio::ssl::verify_peer);
+		stream_.set_verify_callback(std::bind(
+			&WorkSSL::rfc2818_verify, host_,
+			std::placeholders::_1, std::placeholders::_2));
+	}
+
     ~WorkSSL() = default;
 
 private:
@@ -79,10 +91,26 @@ private:
     }
 
     void
-    onConnect(error_code const& ec);
+    onConnect(error_code const& ec)
+	{
+		if (ec)
+			return fail(ec);
+
+		stream_.async_handshake(
+			boost::asio::ssl::stream_base::client,
+			strand_.wrap(boost::bind(&WorkSSL::onHandshake, shared_from_this(),
+				boost::asio::placeholders::error)));
+	}
 
     void
-    onHandshake(error_code const& ec);
+    onHandshake(error_code const& ec)
+	{
+		if (ec)
+			return fail(ec);
+
+		onStart();
+	}
+
 
     static bool
     rfc2818_verify(
@@ -93,48 +121,6 @@ private:
         return boost::asio::ssl::rfc2818_verification(domain)(preverified, ctx);
     }
 };
-
-//------------------------------------------------------------------------------
-
-WorkSSL::WorkSSL(
-    std::string const& host,
-    std::string const& path,
-    std::string const& port,
-    boost::asio::io_service& ios,
-    beast::Journal j,
-    callback_type cb)
-    : WorkBase(host, path, port, ios, cb)
-    , context_(j)
-    , stream_(socket_, context_)
-{
-    // Set SNI hostname
-    SSL_set_tlsext_host_name(stream_.native_handle(), host.c_str());
-    stream_.set_verify_mode (boost::asio::ssl::verify_peer);
-    stream_.set_verify_callback(    std::bind (
-            &WorkSSL::rfc2818_verify, host_,
-            std::placeholders::_1, std::placeholders::_2));
-}
-
-void
-WorkSSL::onConnect(error_code const& ec)
-{
-    if (ec)
-        return fail(ec);
-
-    stream_.async_handshake(
-        boost::asio::ssl::stream_base::client,
-        strand_.wrap (boost::bind(&WorkSSL::onHandshake, shared_from_this(),
-            boost::asio::placeholders::error)));
-}
-
-void
-WorkSSL::onHandshake(error_code const& ec)
-{
-    if (ec)
-        return fail(ec);
-
-    onStart ();
-}
 
 } // detail
 
