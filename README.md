@@ -14,7 +14,7 @@ We defined three new transaction types for the DB operation, named sqlStatement,
 You can operate the DB or send DB operations to the block chain by the following four ways.
 
 1. RPC API , supplied by the RPC modules.
-2. Web sockets API, developed using javascript and java. Refer to [API in javascript](http://www.chainsql.net/api_javascript.html) and [API in java](http://www.chainsql.net/api_java.html) .
+2. Web sockets API, developed using javascript and java. Refer to [API in javascript](http://docs.chainsql.net/interface/nodeAPI.html) and [API in java](http://docs.chainsql.net/interface/javaAPI.html) .
 3. Commandline, access to the node directly.
 4. By kingshrad, using db's primitive sql clause. Refer to[Access by sql](http://www.chainsql.net/api_mysql.html).
 
