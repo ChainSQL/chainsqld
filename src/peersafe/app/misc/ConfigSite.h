@@ -34,7 +34,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 namespace ripple {
 
 
-	enum class SiteListDisposition
+	enum class ListDisposition
 	{
 		/// List is valid
 		accepted = 0,
@@ -54,6 +54,11 @@ namespace ripple {
 		/// Invalid format or signature
 		invalid
 	};
+
+	//std::string
+	//	to_string(ListDisposition disposition);
+
+
 
 /**
     Validator Sites
@@ -100,25 +105,12 @@ private:
     using error_code = boost::system::error_code;
     using clock_type = std::chrono::system_clock;
 
-    struct Site
-    {
-        struct Status
-        {
-            clock_type::time_point refreshed;
-			SiteListDisposition disposition;
-        };
 
-        std::string uri;
-        parsedURL pUrl;
-        std::chrono::minutes refreshInterval;
-        clock_type::time_point nextRefresh;
-        boost::optional<Status> lastRefreshStatus;
-    };
 
     boost::asio::io_service& ios_;
  //   ValidatorList& validators_;
 
-    std::mutex mutable sites_mutex_;
+
     std::mutex mutable state_mutex_;
 
     std::condition_variable cv_;
@@ -132,6 +124,26 @@ private:
     std::atomic<bool> pending_;
     std::atomic<bool> stopping_;
 
+public:
+
+	struct Site
+	{
+		struct Status
+		{
+			clock_type::time_point refreshed;
+			ListDisposition disposition;
+		};
+
+		std::string uri;
+		parsedURL pUrl;
+		std::chrono::minutes refreshInterval;
+		clock_type::time_point nextRefresh;
+		boost::optional<Status> lastRefreshStatus;
+	};
+
+	std::mutex mutable  publisher_mutex_;
+
+	std::mutex mutable sites_mutex_;
     // The configured list of URIs for fetching lists
     std::vector<Site> sites_;
 
@@ -160,10 +172,14 @@ public:
 
         @return `false` if an entry is invalid or unparsable
     */
-    virtual bool
-    load (
-		std::vector<std::string> const& publisherKeys,
-        std::vector<std::string> const& siteURIs);
+	bool
+		load(
+			std::vector<std::string> const& publisherKeys,
+			std::vector<std::string> const& siteURIs);
+
+	bool
+		load(
+			std::vector<std::string> const& siteURIs);
 
     /** Start fetching lists from sites
 
@@ -199,9 +215,9 @@ public:
     /** Return JSON representation of configured validator sites
      */
 	virtual Json::Value
-    getJson() const;
+		getJson() const = 0;
 
-private:
+public:
     /// Queue next site to be fetched
 	virtual  void
     setTimer ();
@@ -220,11 +236,12 @@ private:
         std::size_t siteIdx);
 
 
-	virtual  SiteListDisposition applyList(
+	virtual  ListDisposition applyList(
 		std::string const& manifest,
 		std::string const& blob,
 		std::string const& signature,
 		std::uint32_t version) = 0;
+
 };
 
 } // ripple

@@ -79,9 +79,10 @@ public:
     ~CACertSite();
 
 
+	virtual Json::Value
+		getJson() const ;
 
-
-	virtual  SiteListDisposition applyList(
+	virtual  ListDisposition applyList(
 		std::string const& manifest,
 		std::string const& blob,
 		std::string const& signature,
@@ -111,7 +112,7 @@ private:
 
 	Calling public member function is expected to lock mutex
 	*/
-	SiteListDisposition
+	ListDisposition
 		verify(
 			Json::Value& list,
 			PublicKey& pubKey,

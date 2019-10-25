@@ -49,17 +49,24 @@ namespace ripple {
 	}
 
 
-	ripple::SiteListDisposition CACertSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature, std::uint32_t version)
+	Json::Value CACertSite::getJson() const
+	{
+		Json::Value jrr(Json::objectValue);
+
+		return jrr;
+	}
+
+	ripple::ListDisposition CACertSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature, std::uint32_t version)
 	{
 		if (version != requiredListVersion)
-			return SiteListDisposition::unsupported_version;
+			return ListDisposition::unsupported_version;
 
 		boost::unique_lock<boost::shared_mutex> lock{ mutex_ };
 
 		Json::Value list;
 		PublicKey pubKey;
 		auto const result = verify(list, pubKey, manifest, blob, signature);
-		if (result != SiteListDisposition::accepted)
+		if (result != ListDisposition::accepted)
 			return result;
 
 		// update CA root certs
@@ -77,7 +84,7 @@ namespace ripple {
 			}
 		}
 
-		return SiteListDisposition::accepted;
+		return ListDisposition::accepted;
 		 
 	}
 
@@ -110,12 +117,12 @@ namespace ripple {
 		return true;
 	}
 
-	ripple::SiteListDisposition CACertSite::verify(Json::Value& list, PublicKey& pubKey, std::string const& manifest, std::string const& blob, std::string const& signature)
+	ripple::ListDisposition CACertSite::verify(Json::Value& list, PublicKey& pubKey, std::string const& manifest, std::string const& blob, std::string const& signature)
 	{
 		auto m = Manifest::make_Manifest(beast::detail::base64_decode(manifest));
 
 		if (!m || !publisherLists_.count(m->masterKey))
-			return SiteListDisposition::untrusted;
+			return ListDisposition::untrusted;
 
 		pubKey = m->masterKey;
 		auto const revoked = m->revoked();
@@ -130,7 +137,7 @@ namespace ripple {
 		}
 
 		if (revoked || result == ManifestDisposition::invalid)
-			return SiteListDisposition::untrusted;
+			return ListDisposition::untrusted;
 
 		auto const sig = strUnHex(signature);
 		auto const data = beast::detail::base64_decode(blob);
@@ -139,11 +146,11 @@ namespace ripple {
 				publisherManifests_.getSigningKey(pubKey),
 				makeSlice(data),
 				makeSlice(sig.first)))
-			return SiteListDisposition::invalid;
+			return ListDisposition::invalid;
 
 		Json::Reader r;
 		if (!r.parse(data, list))
-			return SiteListDisposition::invalid;
+			return ListDisposition::invalid;
 
 		if (list.isMember("sequence") && list["sequence"].isInt() &&
 			list.isMember("expiration") && list["expiration"].isInt() &&
@@ -154,16 +161,16 @@ namespace ripple {
 				TimeKeeper::duration{ list["expiration"].asUInt() } };
 			if (sequence < publisherLists_[pubKey].sequence ||
 				expiration <= timeKeeper_.now())
-				return SiteListDisposition::stale;
+				return ListDisposition::stale;
 			else if (sequence == publisherLists_[pubKey].sequence)
-				return SiteListDisposition::same_sequence;
+				return ListDisposition::same_sequence;
 		}
 		else
 		{
-			return SiteListDisposition::invalid;
+			return ListDisposition::invalid;
 		}
 
-		return SiteListDisposition::accepted;
+		return ListDisposition::accepted;
 	}
 
 } // ripple

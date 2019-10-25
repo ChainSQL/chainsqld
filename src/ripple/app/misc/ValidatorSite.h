@@ -20,6 +20,7 @@
 #ifndef RIPPLE_APP_MISC_VALIDATORSITE_H_INCLUDED
 #define RIPPLE_APP_MISC_VALIDATORSITE_H_INCLUDED
 
+#include <peersafe/app/misc/ConfigSite.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/misc/detail/Work.h>
 #include <ripple/basics/Log.h>
@@ -59,51 +60,52 @@ namespace ripple {
 
     @li @c "refreshInterval" (optional)
 */
-class ValidatorSite
+class ValidatorSite : public ConfigSite
 {
-    friend class Work;
-
-private:
-    using error_code = boost::system::error_code;
-    using clock_type = std::chrono::system_clock;
-
-    struct Site
-    {
-        struct Status
-        {
-            clock_type::time_point refreshed;
-            ListDisposition disposition;
-        };
-
-        std::string uri;
-        parsedURL pUrl;
-        std::chrono::minutes refreshInterval;
-        clock_type::time_point nextRefresh;
-        boost::optional<Status> lastRefreshStatus;
-    };
-
-    boost::asio::io_service& ios_;
+//    friend class Work;
+//
+//private:
+//    using error_code = boost::system::error_code;
+//    using clock_type = std::chrono::system_clock;
+//
+//    struct Site
+//    {
+//        struct Status
+//        {
+//            clock_type::time_point refreshed;
+//            ListDisposition disposition;
+//        };
+//
+//        std::string uri;
+//        parsedURL pUrl;
+//        std::chrono::minutes refreshInterval;
+//        clock_type::time_point nextRefresh;
+//        boost::optional<Status> lastRefreshStatus;
+//    };
+//
+//    boost::asio::io_service& ios_;
     ValidatorList& validators_;
-    beast::Journal j_;
-    std::mutex mutable sites_mutex_;
-    std::mutex mutable state_mutex_;
-
-    std::condition_variable cv_;
-    std::weak_ptr<detail::Work> work_;
-    boost::asio::basic_waitable_timer<clock_type> timer_;
-
-    // A list is currently being fetched from a site
-    std::atomic<bool> fetching_;
-
-    // One or more lists are due to be fetched
-    std::atomic<bool> pending_;
-    std::atomic<bool> stopping_;
-
-    // The configured list of URIs for fetching lists
-    std::vector<Site> sites_;
+//    beast::Journal j_;
+//    std::mutex mutable sites_mutex_;
+//    std::mutex mutable state_mutex_;
+//
+//    std::condition_variable cv_;
+//    std::weak_ptr<detail::Work> work_;
+//    boost::asio::basic_waitable_timer<clock_type> timer_;
+//
+//    // A list is currently being fetched from a site
+//    std::atomic<bool> fetching_;
+//
+//    // One or more lists are due to be fetched
+//    std::atomic<bool> pending_;
+//    std::atomic<bool> stopping_;
+//
+//    // The configured list of URIs for fetching lists
+//    std::vector<Site> sites_;
 
 public:
     ValidatorSite (
+		ManifestCache& validatorManifests,
         boost::asio::io_service& ios,
         ValidatorList& validators,
         beast::Journal j);
@@ -119,9 +121,9 @@ public:
 
         @return `false` if an entry is invalid or unparsable
     */
-    bool
-    load (
-        std::vector<std::string> const& siteURIs);
+    //bool
+    //load (
+    //    std::vector<std::string> const& siteURIs);
 
     /** Start fetching lists from sites
 
@@ -131,17 +133,17 @@ public:
 
         May be called concurrently
     */
-    void
-    start ();
+    //void
+    //start ();
 
     /** Wait for current fetches from sites to complete
 
         @par Thread Safety
 
         May be called concurrently
-    */
-    void
-    join ();
+    //*/
+    //void
+    //join ();
 
     /** Stop fetching lists from sites
 
@@ -151,31 +153,41 @@ public:
 
         May be called concurrently
     */
-    void
-    stop ();
+    //void
+    //stop ();
 
     /** Return JSON representation of configured validator sites
      */
-    Json::Value
+	virtual  Json::Value
     getJson() const;
 
-private:
-    /// Queue next site to be fetched
-    void
-    setTimer ();
+public:
+    ///// Queue next site to be fetched
+    //void
+    //setTimer ();
 
-    /// Fetch site whose time has come
-    void
-    onTimer (
-        std::size_t siteIdx,
-        error_code const& ec);
+    ///// Fetch site whose time has come
+    //void
+    //onTimer (
+    //    std::size_t siteIdx,
+    //    error_code const& ec);
 
-    /// Store latest list fetched from site
-    void
-    onSiteFetch (
-        boost::system::error_code const& ec,
-        detail::response_type&& res,
-        std::size_t siteIdx);
+    ///// Store latest list fetched from site
+    //void
+    //onSiteFetch (
+    //    boost::system::error_code const& ec,
+    //    detail::response_type&& res,
+    //    std::size_t siteIdx);
+
+
+
+	virtual  ListDisposition applyList(
+		std::string const& manifest,
+		std::string const& blob,
+		std::string const& signature,
+		std::uint32_t version) ;
+
+
 };
 
 } // ripple

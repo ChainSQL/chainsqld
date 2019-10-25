@@ -28,6 +28,30 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
+
+	//std::string
+	//	to_string(ListDisposition disposition)
+	//{
+	//	switch (disposition)
+	//	{
+	//	case ListDisposition::accepted:
+	//		return "accepted";
+	//	case ListDisposition::same_sequence:
+	//		return "same_sequence";
+	//	case ListDisposition::unsupported_version:
+	//		return "unsupported_version";
+	//	case ListDisposition::untrusted:
+	//		return "untrusted";
+	//	case ListDisposition::stale:
+	//		return "stale";
+	//	case ListDisposition::invalid:
+	//		return "invalid";
+	//	}
+	//	return "unknown";
+	//}
+
+
+
 	// default site query frequency - 5 minutes
 	auto constexpr DEFAULT_REFRESH_INTERVAL = std::chrono::minutes{ 5 };
 
@@ -70,7 +94,7 @@ namespace ripple {
 		JLOG(j_.debug()) <<
 			"Loading configured validator list sites";
 
-		std::lock_guard <std::mutex> lock{ sites_mutex_ };
+		std::lock_guard <std::mutex> lock{ publisher_mutex_ };
 
 		JLOG(j_.debug()) <<
 			"Loading configured trusted validator list publisher keys";
@@ -113,29 +137,38 @@ namespace ripple {
 		JLOG(j_.debug()) <<
 			"Loaded " << count << " keys";
 
+		return load(siteURIs);
+	}
 
-		for (auto uri : siteURIs)
-		{
-			parsedURL pUrl;
-			if (!parseUrl(pUrl, uri) ||
-				(pUrl.scheme != "http" && pUrl.scheme != "https"))
-			{
-				JLOG(j_.error()) <<
-					"Invalid validator site uri: " << uri;
-				return false;
-			}
-
-			if (!pUrl.port)
-				pUrl.port = (pUrl.scheme == "https") ? 443 : 80;
-
-			sites_.push_back({
-				uri, pUrl, DEFAULT_REFRESH_INTERVAL, clock_type::now() });
-		}
-
-		JLOG(j_.debug()) <<
-			"Loaded " << siteURIs.size() << " sites";
-
-		return true;
+	bool ConfigSite::load(std::vector<std::string> const& siteURIs)
+	{
+		    JLOG (j_.debug()) <<
+		        "Loading configured validator list sites";
+		
+		    std::lock_guard <std::mutex> lock{sites_mutex_};
+		
+		    for (auto uri : siteURIs)
+		    {
+		        parsedURL pUrl;
+		        if (! parseUrl (pUrl, uri) ||
+		            (pUrl.scheme != "http" && pUrl.scheme != "https"))
+		        {
+		            JLOG (j_.error()) <<
+		                "Invalid validator site uri: " << uri;
+		            return false;
+		        }
+		
+		        if (! pUrl.port)
+		            pUrl.port = (pUrl.scheme == "https") ? 443 : 80;
+		
+		        sites_.push_back ({
+		            uri, pUrl, DEFAULT_REFRESH_INTERVAL, clock_type::now()});
+		    }
+		
+		    JLOG (j_.debug()) <<
+		        "Loaded " << siteURIs.size() << " sites";
+		
+		    return true;
 	}
 
 	void
@@ -257,7 +290,7 @@ namespace ripple {
 				sites_[siteIdx].uri << " returned " << res.result_int();
 
 			sites_[siteIdx].lastRefreshStatus.emplace(
-				Site::Status{ clock_type::now(), SiteListDisposition::invalid });
+				Site::Status{ clock_type::now(), ListDisposition::invalid });
 		}
 		else if (!ec)
 		{
@@ -281,36 +314,36 @@ namespace ripple {
 				sites_[siteIdx].lastRefreshStatus.emplace(
 					Site::Status{ clock_type::now(), disp });
 
-				if (SiteListDisposition::accepted == disp)
+				if (ListDisposition::accepted == disp)
 				{
 					JLOG(j_.debug()) <<
 						"Applied new validator list from " <<
 						sites_[siteIdx].uri;
 				}
-				else if (SiteListDisposition::same_sequence == disp)
+				else if (ListDisposition::same_sequence == disp)
 				{
 					JLOG(j_.debug()) <<
 						"Validator list with current sequence from " <<
 						sites_[siteIdx].uri;
 				}
-				else if (SiteListDisposition::stale == disp)
+				else if (ListDisposition::stale == disp)
 				{
 					JLOG(j_.warn()) <<
 						"Stale validator list from " << sites_[siteIdx].uri;
 				}
-				else if (SiteListDisposition::untrusted == disp)
+				else if (ListDisposition::untrusted == disp)
 				{
 					JLOG(j_.warn()) <<
 						"Untrusted validator list from " <<
 						sites_[siteIdx].uri;
 				}
-				else if (SiteListDisposition::invalid == disp)
+				else if (ListDisposition::invalid == disp)
 				{
 					JLOG(j_.warn()) <<
 						"Invalid validator list from " <<
 						sites_[siteIdx].uri;
 				}
-				else if (SiteListDisposition::unsupported_version == disp)
+				else if (ListDisposition::unsupported_version == disp)
 				{
 					JLOG(j_.warn()) <<
 						"Unsupported version validator list from " <<
@@ -335,14 +368,14 @@ namespace ripple {
 					sites_[siteIdx].uri;
 
 				sites_[siteIdx].lastRefreshStatus.emplace(
-					Site::Status{ clock_type::now(), SiteListDisposition::invalid });
+					Site::Status{ clock_type::now(), ListDisposition::invalid });
 			}
 		}
 		else
 		{
 			std::lock_guard <std::mutex> lock{ sites_mutex_ };
 			sites_[siteIdx].lastRefreshStatus.emplace(
-				Site::Status{ clock_type::now(), SiteListDisposition::invalid });
+				Site::Status{ clock_type::now(), ListDisposition::invalid });
 
 			JLOG(j_.warn()) <<
 				"Problem retrieving from " <<
