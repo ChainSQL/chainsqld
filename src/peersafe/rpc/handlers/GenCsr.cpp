@@ -57,7 +57,7 @@ Json::Value doGenCsr(RPC::Context& context)
 		common
 	};
 	std::string strExcept;
-	bool bOK = genCsr(*seed, sub, "x509Req.pem", strExcept);
+	bool bOK = genCsr(*seed, sub, "x509Req.csr", strExcept);
 
 	if (bOK) {
 		ret[jss::status] = "success";
