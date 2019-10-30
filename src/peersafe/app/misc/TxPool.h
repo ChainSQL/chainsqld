@@ -46,6 +46,9 @@ struct sync_status
 	int pool_start_seq;
 	int max_advance_seq;
 	uint256 prevHash;
+	int prevSeq;
+	std::map<int, uint256> mapSynced;
+
 
 	sync_status()
 	{
@@ -57,6 +60,8 @@ struct sync_status
 		pool_start_seq = 0;
 		max_advance_seq = 0;
 		prevHash = beast::zero;
+		prevSeq = 0;
+		mapSynced.clear();
 	}
 };
 
@@ -122,6 +127,8 @@ public:
 	void timerEntry();
 
 	std::size_t getTxCountInPool() { return mTxsSet.size();  }
+
+	void checkSyncStatus(int const ledgerSeq, uint256 const& prevHash);
 
 private:
 	Application& app_;

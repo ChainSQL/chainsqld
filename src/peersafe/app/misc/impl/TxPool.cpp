@@ -101,6 +101,11 @@ namespace ripple {
 
 		JLOG(j_.info()) << "Remove " << count << " txs for ledger " << ledgerSeq;
 
+		checkSyncStatus(ledgerSeq, prevHash);
+    }
+
+	void TxPool::checkSyncStatus(int const ledgerSeq, uint256 const& prevHash)
+	{
 		//update sync_status
 		if (mTxsSet.size() == 0)
 		{
@@ -108,24 +113,40 @@ namespace ripple {
 			return;
 		}
 
+		// There are ledgers to be synced.
 		if (mSyncStatus.pool_start_seq > 0)
 		{
 			if (mSyncStatus.max_advance_seq < ledgerSeq)
 			{
 				mSyncStatus.max_advance_seq = ledgerSeq;
 			}
-			
-			if (ledgerSeq == mSyncStatus.pool_start_seq)
+
+			mSyncStatus.mapSynced[ledgerSeq] = prevHash;
+
+			// get next prevHash to sync
 			{
-				mSyncStatus.pool_start_seq = mSyncStatus.max_advance_seq + 1;
+				uint256 prevHashDue = beast::zero;
+				for (int i = mSyncStatus.max_advance_seq - 1; i >= mSyncStatus.pool_start_seq; i--)
+				{
+					if (mSyncStatus.mapSynced.find(i) == mSyncStatus.mapSynced.end())
+					{
+						prevHashDue = mSyncStatus.mapSynced[i + 1];
+					}
+				}
+				if (prevHashDue == beast::zero)
+				{
+					mSyncStatus.pool_start_seq = mSyncStatus.max_advance_seq + 1;
+					mSyncStatus.mapSynced.clear();
+				}
+				else
+				{
+					mSyncStatus.prevHash = prevHash;
+					JLOG(j_.info()) << "start_seq:" << mSyncStatus.pool_start_seq << ",advance seq=" 
+						<< mSyncStatus.max_advance_seq << ",prevHash to acquire:" << prevHash;
+				}
 			}
-			else
-			{
-				JLOG(j_.info()) << "start_seq:" << mSyncStatus.pool_start_seq << " and advance seq=" << mSyncStatus.max_advance_seq;
-			}
-			mSyncStatus.prevHash = prevHash;
 		}
-    }
+	}
 
     void TxPool::updateAvoid(RCLTxSet const& cSet)
     {
