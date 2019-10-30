@@ -201,4 +201,44 @@ uint256 generatePrivateDeterministicKey (
     return uint256_from_bignum_clear (privKey);
 }
 
+openssl::bignum generateECPrivateKey(uint128 const& seed)
+{
+	Blob pubGen = generateRootDeterministicPublicKey(seed);
+	bignum rootPrivKey = generateRootDeterministicKey(seed);
+	// calculate the private additional key
+	bignum privKey = makeHash(pubGen, 0, secp256k1curve.order);
+	
+	bn_ctx ctx;
+	// calculate the final private key
+	add_to(rootPrivKey, privKey, secp256k1curve.order, ctx);
+
+	rootPrivKey.clear();  // security erase
+
+	return privKey;
+}
+
+openssl::ec_point generateECPublicKey(uint128 const& seed)
+{
+	Blob pubGen = generateRootDeterministicPublicKey(seed);
+	// publicKey(n) = rootPublicKey EC_POINT_+ Hash(pubHash|seq)*point
+	ec_point rootPubKey = generateRootPubKey(bignum(pubGen));
+	bn_ctx ctx;
+
+	// Calculate the private additional key.
+	bignum hash = makeHash(pubGen, 0, secp256k1curve.order);
+
+	// Calculate the corresponding public key.
+	ec_point newPoint = multiply(secp256k1curve.group, hash, ctx);
+
+	// Add the master public key and set.
+	add_to(secp256k1curve.group, rootPubKey, newPoint, ctx);
+
+	return newPoint;
+}
+
+Blob generateRipplePublicKey(openssl::ec_point const& ecPoint)
+{
+	return serialize_ec_point(ecPoint);
+}
+
 } // ripple

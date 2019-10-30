@@ -762,7 +762,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 				{
 					pTx = pTransaction->getSTransaction();
 				}
-				if (!user_accountID_ || user_accountID_->isZero() )
+				if (pTx && (!user_accountID_ || user_accountID_->isZero()) )
 				{
 					app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
 					return std::make_pair(false, "user account is null.");
@@ -774,7 +774,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 					{
 						auto selectFlags = getFlagFromOptype(R_GET);
 						auto userFlags = user.getFieldU32(sfFlags);
-						if ((userFlags & selectFlags) == 0)
+						if (pTx && ((userFlags & selectFlags) == 0))
 						{
 							app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
 							return std::make_pair(false, "no authority.");
@@ -789,8 +789,11 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 								if(passBlob_.size() > 0)  return std::make_pair(true, "");
 								else
 								{
-									app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
-									return std::make_pair(false, "cann't get password for this table.");
+									if (pTx) {
+										app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_pair("db_noSyncConfig", ""), false);
+										return std::make_pair(false, "cann't get password for this table.");
+									}
+
 								}
 							}
 							else

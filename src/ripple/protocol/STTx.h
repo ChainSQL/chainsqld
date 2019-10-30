@@ -181,6 +181,10 @@ public:
     std::pair<bool, std::string>
     checkSign(bool allowMultiSign) const;
 
+	// certificate sign
+	std::pair<bool, std::string>
+		checkCertSign() const;
+
     // SQL Functions with metadata.
     static
     std::string const&
