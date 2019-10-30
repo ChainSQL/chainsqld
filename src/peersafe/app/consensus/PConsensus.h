@@ -1128,16 +1128,23 @@ int PConsensus<Adaptor>::getPubIndex(PublicKey const& pub)
 template <class Adaptor>
 bool PConsensus<Adaptor>::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
 {
-    if (sinceLastClose < 0)
-    {
-        sinceLastClose = sinceOpen;
-    }
+	if (sinceLastClose < 0)
+	{
+		sinceLastClose = sinceOpen;
+	}
+
+	/* If min time reached, tx count must great than configured value or 0 */
+#if 0
 	if (transactions_.size() >= maxTxsInLedger_ && sinceLastClose >= minBlockTime_)
 		return true;
+#else
 	if (transactions_.size() > 0 && sinceLastClose >= minBlockTime_)
 		return true;
+#endif
+
 	if (sinceLastClose >= maxBlockTime_)
 		return true;
+
 	return false;
 }
 
