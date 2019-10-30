@@ -831,7 +831,7 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 	{
 		if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
 		{
-			JLOG(j_.info()) << "Have the consensus ledger " << prevLedgerID_;
+			JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()<<":"<< prevLedgerID_;
 			startRoundInternal(
 				now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
 		}
@@ -1160,13 +1160,18 @@ PConsensus<Adaptor>::getJson(bool full) const
 		ret["close_granularity"] = static_cast<Int>(closeResolution_.count());
 	}
 	else
+	{
 		ret["synched"] = false;
+		ret["ledger_seq"] = previousLedger_.seq() + 1;
+	}		
 
 	ret["phase"] = to_string(phase_);
 	if (phase_ == ConsensusPhase::open)
 	{
 		ret["transaction_count"] = static_cast<int>(transactions_.size());
 	}
+	
+	ret["tx_count_in_pool"] = adaptor_.app_.getTxPool().getTxCountInPool();
 
 	if (full)
 	{
@@ -1225,7 +1230,7 @@ PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 	// we need to switch the ledger we're working from
 	if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
 	{
-		JLOG(j_.info()) << "Have the consensus ledger " << prevLedgerID_;
+		JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
 		startRoundInternal(
 			now_, lgrId, *newLedger, ConsensusMode::switchedLedger);
 	}

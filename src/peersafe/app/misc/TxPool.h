@@ -121,6 +121,8 @@ public:
 
 	void timerEntry();
 
+	std::size_t getTxCountInPool() { return mTxsSet.size();  }
+
 private:
 	Application& app_;
 

@@ -119,6 +119,10 @@ namespace ripple {
 			{
 				mSyncStatus.pool_start_seq = mSyncStatus.max_advance_seq + 1;
 			}
+			else
+			{
+				JLOG(j_.info()) << "start_seq:" << mSyncStatus.pool_start_seq << " and advance seq=" << mSyncStatus.max_advance_seq;
+			}
 			mSyncStatus.prevHash = prevHash;
 		}
     }
