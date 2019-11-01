@@ -243,12 +243,7 @@ private:
 	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
 
 	int getPubIndex(PublicKey const& pub);
-	/** Is final condition reached for proposing.
-		We should check:
-		1. Is tx-count reached max and minBlockTime reached.
-		2. Is maxBlockTime reached.
-		3. Is this node the next leader and the above 2 conditions reached.
-	*/
+
 	bool finalCondReached(int64_t sinceOpen, int64_t sinceLastClose);
 
 	void appendTransactions(h256Set const& txSet);
@@ -1121,9 +1116,10 @@ int PConsensus<Adaptor>::getPubIndex(PublicKey const& pub)
 }
 /** Is final condition reached for proposing.
 	We should check:
-	1. Is tx-count reached max and minBlockTime reached.
-	2. Is maxBlockTime reached.
-	3. Is this node the next leader and the above 2 conditions reached.
+	1. Is maxBlockTime reached.
+	2. Is tx-count reached max and max >=5000 and minBlockTime/2 reached.(There will be 
+	   a time to reach tx-set consensus)
+	3. If there are txs but not reach max-count,is the minBlockTime reached.
 */
 template <class Adaptor>
 bool PConsensus<Adaptor>::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
@@ -1133,16 +1129,17 @@ bool PConsensus<Adaptor>::finalCondReached(int64_t sinceOpen, int64_t sinceLastC
 		sinceLastClose = sinceOpen;
 	}
 
-	/* If min time reached, tx count must great than configured value or 0 */
-#if 0
-	if (transactions_.size() >= maxTxsInLedger_ && sinceLastClose >= minBlockTime_)
-		return true;
-#else
-	if (transactions_.size() > 0 && sinceLastClose >= minBlockTime_)
-		return true;
-#endif
-
 	if (sinceLastClose >= maxBlockTime_)
+		return true;
+
+	if (maxTxsInLedger_ >= MinTxsInLedgerAdvance &&
+		transactions_.size() >= maxTxsInLedger_ &&
+		sinceLastClose >= minBlockTime_ / 2)
+	{
+		return true;
+	}
+		
+	if (transactions_.size() > 0 && sinceLastClose >= minBlockTime_)
 		return true;
 
 	return false;
@@ -1178,7 +1175,7 @@ PConsensus<Adaptor>::getJson(bool full) const
 		ret["transaction_count"] = static_cast<int>(transactions_.size());
 	}
 	
-	ret["tx_count_in_pool"] = adaptor_.app_.getTxPool().getTxCountInPool();
+	ret["tx_count_in_pool"] = static_cast<int>(adaptor_.app_.getTxPool().getTxCountInPool());
 
 	if (full)
 	{

@@ -14,6 +14,8 @@ namespace ripple {
 
     const unsigned MaxTxsInLedger = 10000;
 
+	// The minimum tx limit for leader to propose a tx-set after half-MinBlockTime
+	const unsigned MinTxsInLedgerAdvance = 5000;
 
     const std::size_t TxPoolCapacity = 100000;
 
