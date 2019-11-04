@@ -782,11 +782,14 @@ Transactor::operator()()
 #endif
 
     auto terResult = STer(ctx_.preclaimResult);
-	if (terResult == tefPAST_SEQ || terResult == terPRE_SEQ)
+	if (terResult == terPRE_SEQ)
 	{
-		//If continue,there will be a bug: claimFee will set sequence to  ctx_.tx.getSequence() + 1
-		JLOG(j_.warn()) << "Transaction " << ctx_.tx.getTransactionID()<<" has a sequence ter:"<< 
-			((terResult == tefPAST_SEQ) ? "tefPAST_SEQ":"terPRE_SEQ"); 
+		return { terResult, false };
+	}
+	else if (terResult == tefPAST_SEQ)
+	{
+		//If continue, there will be a bug : claimFee will set sequence to  ctx_.tx.getSequence() + 1
+		JLOG(j_.info()) << "Transaction " << ctx_.tx.getTransactionID() << " tefPAST_SEQ";
 		ctx_.app.getTxPool().removeTx(ctx_.tx.getTransactionID());
 		return { terResult, false };
 	}
