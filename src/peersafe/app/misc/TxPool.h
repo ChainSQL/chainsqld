@@ -111,6 +111,7 @@ public:
 
     // Update avoid set when receiving a Tx set from peers.
     void updateAvoid(RCLTxSet const& cSet);
+	void clearAvoid();
 
     inline bool txExists(uint256 hash) { return mTxsHash.count(hash); }
 

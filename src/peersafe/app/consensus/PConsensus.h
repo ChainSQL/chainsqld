@@ -561,6 +561,9 @@ PConsensus<Adaptor>::onViewChange()
 	leaderFailed_ = false;
 	extraTimeOut_ = false;
 
+	//clear avoid
+	adaptor_.app_.getTxPool().clearAvoid();
+
 	viewChangeManager_.onViewChanged(view_);
 	if (bWaitingInit_)
 	{

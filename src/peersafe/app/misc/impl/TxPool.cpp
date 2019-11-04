@@ -169,6 +169,11 @@ namespace ripple {
         }
     }
 
+	void TxPool::clearAvoid()
+	{
+		mAvoid.clear();
+	}
+
 	bool TxPool::isAvailable()
 	{
 		return mSyncStatus.max_advance_seq <= mSyncStatus.pool_start_seq;
