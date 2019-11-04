@@ -126,11 +126,14 @@ namespace ripple {
 			// get next prevHash to sync
 			{
 				uint256 prevHashDue = beast::zero;
+				int seqDue = 0;
 				for (int i = mSyncStatus.max_advance_seq - 1; i >= mSyncStatus.pool_start_seq; i--)
 				{
 					if (mSyncStatus.mapSynced.find(i) == mSyncStatus.mapSynced.end())
 					{
 						prevHashDue = mSyncStatus.mapSynced[i + 1];
+						seqDue = i;
+						break;
 					}
 				}
 				if (prevHashDue == beast::zero)
@@ -140,9 +143,9 @@ namespace ripple {
 				}
 				else
 				{
-					mSyncStatus.prevHash = prevHash;
+					mSyncStatus.prevHash = prevHashDue;
 					JLOG(j_.info()) << "start_seq:" << mSyncStatus.pool_start_seq << ",advance seq=" 
-						<< mSyncStatus.max_advance_seq << ",prevHash to acquire:" << prevHash;
+						<< mSyncStatus.max_advance_seq << ",ledger seq to acquire:" << seqDue;
 				}
 			}
 		}
