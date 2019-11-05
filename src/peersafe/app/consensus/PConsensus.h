@@ -34,6 +34,7 @@
 #include <peersafe/app/consensus/ConsensusBase.h>
 #include <peersafe/app/consensus/ViewChange.h>
 #include <peersafe/app/consensus/ViewChangeManager.h>
+#include <peersafe/app/misc/TxPool.h>
 #include <atomic>
 
 namespace ripple {
@@ -830,6 +831,10 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 		if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
 		{
 			JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()<<":"<< prevLedgerID_;
+            adaptor_.app_.getTxPool().removeTxs(
+                newLedger->ledger_->txMap(),
+                newLedger->ledger_->info().seq,
+                newLedger->ledger_->info().parentHash);
 			startRoundInternal(
 				now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
 		}
@@ -1238,6 +1243,10 @@ PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 	if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
 	{
 		JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
+        adaptor_.app_.getTxPool().removeTxs(
+            newLedger->ledger_->txMap(),
+            newLedger->ledger_->info().seq,
+            newLedger->ledger_->info().parentHash);
 		startRoundInternal(
 			now_, lgrId, *newLedger, ConsensusMode::switchedLedger);
 	}
