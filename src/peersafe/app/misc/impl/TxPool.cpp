@@ -44,11 +44,10 @@ namespace ripple {
         TER ter = tefPAST_SEQ;
         auto result = mTxsSet.insert(transaction);
 
-        JLOG(j_.trace()) << "Inserting a " << (result.second ? "new" : "exist")
-            << " Tx: " << transaction->getID();
-
         if (result.second)
         {
+            JLOG(j_.trace()) << "Inserting a new Tx: " << transaction->getID();
+
             if (mTxsHash.emplace(make_pair(transaction->getID(), result.first)).second)
             {
                 ter = tesSUCCESS;
@@ -64,6 +63,10 @@ namespace ripple {
                 mTxsSet.erase(transaction);
                 ter = telLOCAL_ERROR;
             }
+        }
+        else
+        {
+            JLOG(j_.info()) << "Inserting a exist Tx: " << transaction->getID();
         }
 
         return ter;

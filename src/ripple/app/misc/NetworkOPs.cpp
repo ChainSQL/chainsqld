@@ -1359,7 +1359,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
             }
             else if (e.result == terQUEUED)
             {
-                JLOG(m_journal.debug()) << "Transaction is likely to claim a " <<
+                JLOG(m_journal.info()) << "Transaction is likely to claim a " <<
                     "fee, but is queued until fee drops";
                 e.transaction->setStatus(HELD);
                 // Add to held transactions, because it could get
@@ -1376,7 +1376,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                 else
                 {
                     // transaction should be held
-                    JLOG(m_journal.debug())
+                    JLOG(m_journal.info())
                         << "Transaction should be held: " << e.result;
                     e.transaction->setStatus (HELD);
                     m_ledgerMaster.addHeldTransaction (e.transaction);
@@ -1388,7 +1388,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                 {
                     addLocal = false;
                 }
-                JLOG(m_journal.debug())
+                JLOG(m_journal.info())
                     << "Status other than success " << e.result;
                 e.transaction->setStatus (INVALID);
             }

@@ -316,7 +316,7 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 	std::uint32_t const a_seq = ctx.app.getStateManager().getAccountSeq(id);
 	if(a_seq == 0)
 	{
-		JLOG(ctx.j.trace()) <<
+		JLOG(ctx.j.info()) <<
 			"applyTransaction: delay: source account does not exist " <<
 			toBase58(ctx.tx.getAccountID(sfAccount));
 		return terNO_ACCOUNT;
@@ -329,14 +329,16 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 			//if pre-seq,just reset ,to re-fetch next time.
 			//ctx.app.getStateManager().resetAccountSeq(id);
 
-			JLOG(ctx.j.trace()) <<
-				"applyTransaction: has future sequence number " <<
-				"a_seq=" << a_seq << " t_seq=" << t_seq;
+			JLOG(ctx.j.info()) <<
+				"applyTransaction: has future sequence number, Account: " << 
+                toBase58(ctx.tx.getAccountID(sfAccount)) << 
+				" a_seq=" << a_seq << " t_seq=" << t_seq;
 			return terPRE_SEQ;
 		}
 
-		JLOG(ctx.j.trace()) << "applyTransaction: has past sequence number " <<
-			"a_seq=" << a_seq << " t_seq=" << t_seq;
+		JLOG(ctx.j.info()) << "applyTransaction: has past sequence number, Account: " <<
+            toBase58(ctx.tx.getAccountID(sfAccount)) <<
+			" a_seq=" << a_seq << " t_seq=" << t_seq;
 		return tefPAST_SEQ;
 	}
 
