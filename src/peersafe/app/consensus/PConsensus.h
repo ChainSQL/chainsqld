@@ -508,7 +508,7 @@ PConsensus<Adaptor>::checkChangeView(uint64_t toView)
 	}
 	if (toView_ == toView)
 	{
-		if (viewChangeManager_.checkChange(toView, view_, adaptor_.app_.validators().quorum()))
+		if (viewChangeManager_.checkChange(toView, view_, prevLedgerID_, adaptor_.app_.validators().quorum()))
 		{
 			view_ = toView;
 			onViewChange();

@@ -46,14 +46,22 @@ bool ViewChangeManager::recvViewChange(ViewChange const& change)
 	}
 }
 
-bool ViewChangeManager::checkChange(VIEWTYPE const& toView, VIEWTYPE const& curView, std::size_t quorum)
+bool ViewChangeManager::checkChange(VIEWTYPE const& toView, VIEWTYPE const& curView, RCLCxLedger::ID const& curPrevHash, std::size_t quorum)
 {
 	if (viewChangeReq_.find(toView) == viewChangeReq_.end())
 		return false;
 
 	if (viewChangeReq_[toView].size() >= quorum)
 	{
-		if (toView > curView)
+		int count = 0; 
+		for (auto item : viewChangeReq_[toView])
+		{
+			if (item.second.prevHash() == curPrevHash)
+			{
+				count++;
+			}
+		}
+		if (count >= quorum && toView > curView)
 		{
 			return true;
 		}

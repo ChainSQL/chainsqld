@@ -27,10 +27,10 @@ namespace ripple {
 				- true if condition for view-change met.
 				- false if condition not met.
 		*/
-		bool checkChange(VIEWTYPE const& toView, VIEWTYPE const& curView, std::size_t quorum);
+		bool checkChange(VIEWTYPE const& toView, VIEWTYPE const& curView, RCLCxLedger::ID const& curPrevHash ,std::size_t quorum);
 
 		std::tuple<bool,uint32_t,uint256> 
-			shouldTriggerViewChange(VIEWTYPE const& toView, RCLCxLedger const& prevLedger, std::size_t quorum);
+			shouldTriggerViewChange(VIEWTYPE const& toView, RCLCxLedger const& prevLedger,std::size_t quorum);
 
 		// Erase some old view-change cache when view_change happen.
 		void onViewChanged(VIEWTYPE const& newView);
