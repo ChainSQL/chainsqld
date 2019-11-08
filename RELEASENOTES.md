@@ -2777,4 +2777,3 @@ RC6 fixed some possible load issues with the network state timer and cluster rep
 **Issues**
 
 Fetching of historical ledgers is slower in this build than in previous builds. This is being investigated.
->>>>>>> d2fc4e3569d79d3cade78533f673f642a8d26845
