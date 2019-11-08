@@ -307,7 +307,7 @@ namespace ripple {
 							(*sleAccount)[sfOwnerCount] + 1);
 						STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
 						if (priorBalance < reserve)
-							return tefINSUFFICIENT_RESERVE;
+							return tefINSU_RESERVE_TABLE;
 					}
                     break;
                 }

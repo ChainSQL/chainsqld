@@ -131,16 +131,23 @@ Json::Value doSubmit (RPC::Context& context)
         jvResult[jss::tx_blob] = strHex (
             tpTrans->getSTransaction ()->getSerializer ().peekData ());
 
-        if (temUNCERTAIN != tpTrans->getResult ())
+		STer result = tpTrans->getResult();
+        if (temUNCERTAIN != result.ter)
         {
             std::string sToken;
             std::string sHuman;
 
-            transResultInfo (tpTrans->getResult (), sToken, sHuman);
+            transResultInfo (result.ter, sToken, sHuman);
 
             jvResult[jss::engine_result]           = sToken;
-            jvResult[jss::engine_result_code]      = tpTrans->getResult ();
-            jvResult[jss::engine_result_message]   = sHuman;
+            jvResult[jss::engine_result_code]      = result.ter;
+			if(result.msg.empty())
+				jvResult[jss::engine_result_message] = sHuman;
+			else
+				jvResult[jss::engine_result_message] = result.msg;
+			//jvResult[jss::engine_result_message] = sHuman;
+			//if (!result.msg.empty())
+			//	jvResult[jss::engine_result_message_detail] = result.msg;
         }
 
         return jvResult;

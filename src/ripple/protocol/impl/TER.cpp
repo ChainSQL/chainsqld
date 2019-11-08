@@ -57,6 +57,7 @@ transResults()
         { tecUNFUNDED_ADD,           { "tecUNFUNDED_ADD",          "Insufficient ZXC balance for WalletAdd."                                       } },
         { tecUNFUNDED_OFFER,         { "tecUNFUNDED_OFFER",        "Insufficient balance to fund created offer."                                   } },
         { tecUNFUNDED_PAYMENT,       { "tecUNFUNDED_PAYMENT",      "Insufficient ZXC balance to send."                                             } },
+		{ tecUNFUNDED_ESCROW,		 { "tecUNFUNDED_ESCROW",       "Insufficient balance to create escrow."											   } },
         { tecOWNERS,                 { "tecOWNERS",                "Non-zero owner count."                                                         } },
         { tecNO_ISSUER,              { "tecNO_ISSUER",             "Issuer account does not exist."                                                } },
         { tecNO_AUTH,                { "tecNO_AUTH",               "Not authorized to hold asset."                                                 } },
@@ -131,7 +132,8 @@ transResults()
 		{ temBAD_SRC_ACCOUNT,        { "temBAD_SRC_ACCOUNT",       "Malformed: Bad source account."                                                } },
 		{ temBAD_TRANSFER_RATE,      { "temBAD_TRANSFER_RATE",     "Malformed: Transfer rate must be >= 1.0"                                       } },
 		{ temBAD_TRANSFERFEE_BOTH,	 { "temBAD_TRANSFERFEE_BOTH",  "Malformed: TransferFeeMin and TransferFeeMax can not be set individually."	   } },
-		{ temBAD_TRANSFERFEE,		 { "temBAD_TRANSFERFEE",	   "Malformed: TransferFeeMin can not be greater than TransferMax."				   } },
+		{ temBAD_TRANSFERFEE,		 { "temBAD_TRANSFERFEE",	   "Malformed: TransferFeeMin or TransferMax invalid."				   } },
+		{ temBAD_FEE_MISMATCH_TRANSFER_RATE,{ "temBAD_FEE_MISMATCH_TRANSFER_RATE",   "Malformed: TransferRate mismatch with TransferFeeMin or TransferFeeMax."}},
 		{ temBAD_WEIGHT,             { "temBAD_WEIGHT",            "Malformed: Weight must be a positive value."                                   } },
 		{ temDST_IS_SRC,             { "temDST_IS_SRC",            "Destination may not be source."                                                } },
 		{ temDST_NEEDED,             { "temDST_NEEDED",            "Destination not specified."                                                    } },
@@ -181,7 +183,8 @@ transResults()
 		{ tefTABLE_STORAGENORMALERROR,{ "tefTABLE_STORAGENORMALERROR",    "Table storage normal error." } },
 		{ tefTABLE_TXDISPOSEERROR,	 { "tefTABLE_TXDISPOSEERROR",	"Tx Dispose error." } },
 		{ tefTABLE_RULEDISSATISFIED,  { "tefTABLE_RULEDISSATISFIED",	"Operation rule not satisfied."}},        
-		{ tefINSUFFICIENT_RESERVE,	 { "tefINSUFFICIENT_RESERVE",  "Insufficient reserve to create a table." } },
+		{ tefINSUFFICIENT_RESERVE,	 { "tefINSUFFICIENT_RESERVE",  "Insufficient reserve to complete requested operation." } },
+		{ tefINSU_RESERVE_TABLE,	{ "tefINSU_RESERVE_TABLE",		"Insufficient reserve to create a table." } },
 		{ tefDBNOTCONFIGURED,		 { "tefDBNOTCONFIGURED",       "DB is not connected,please checkout 'sync_db'in config file." } },
 		{ tefBAD_DBNAME,			{ "tefBAD_DBNAME",            "NameInDB does not match tableName." } },
 		{ tefBAD_STATEMENT,			{ "tefBAD_STATEMENT",	       "Statement is error." } },
@@ -253,5 +256,4 @@ transCode(std::string const& token)
 
     return static_cast<TER>(r->second);
 }
-
 } // ripple

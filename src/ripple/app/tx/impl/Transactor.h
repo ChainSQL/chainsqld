@@ -84,9 +84,11 @@ protected:
     ZXCAmount     mPriorBalance;  // Balance before fees.
     ZXCAmount     mSourceBalance; // Balance after fees.
 
+	std::string	  mDetailMsg;
+
 public:
     /** Process the transaction. */
-    std::pair<TER, bool>
+    std::pair<STer, bool>
     operator()();
 
     ApplyView&
@@ -151,12 +153,21 @@ public:
         // Most transactors do nothing
         // after checkSeq/Fee/Sign.
         return tesSUCCESS;
-    }
+
+	}
+
+	// apply directly
+	TER applyDirect();
+
+	//set extra message for error
+	void setExtraMsg(std::string msg);
     /////////////////////////////////////////////////////
 
 protected:
-    TER
-    apply();
+	STer apply();
+
+	//pre-apply for chainsql
+	TER preChainsql();
 
     explicit
     Transactor (ApplyContext& ctx);

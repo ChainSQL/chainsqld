@@ -115,6 +115,7 @@ JSS ( amendments );                 // in: AccountObjects, out: NetworkOPs
 JSS ( amount );                     // out: AccountChannels
 JSS ( asks );                       // out: Subscribe
 JSS ( assets );                     // out: GatewayBalances
+JSS ( escrows );
 JSS ( authorized );                 // out: AccountLines
 JSS ( auth_change );                // out: AccountInfo
 JSS ( auth_change_queued );         // out: AccountInfo
@@ -187,6 +188,7 @@ JSS ( enabled );                    // out: AmendmentTable
 JSS ( engine_result );              // out: NetworkOPs, TransactionSign, Submit
 JSS ( engine_result_code );         // out: NetworkOPs, TransactionSign, Submit
 JSS ( engine_result_message );      // out: NetworkOPs, TransactionSign, Submit
+JSS(engine_result_message_detail);  // out: NetworkOPs, Submit
 JSS ( error );                      // out: error
 JSS ( error_code );                 // out: error
 JSS ( error_exception );            // out: Submit

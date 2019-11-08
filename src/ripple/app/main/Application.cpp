@@ -1056,6 +1056,7 @@ public:
         getTempNodeCache().sweep();
         getValidations().expire();
         getInboundLedgers().sweep();
+        getTableSync().sweep();
         m_acceptedLedgerCache.sweep();
         family().treecache().sweep();
         cachedSLEs_.expire();

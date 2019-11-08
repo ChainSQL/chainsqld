@@ -32,6 +32,7 @@
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/tx/ChainSqlTx.h>
 #include <peersafe/app/util/TableSyncUtil.h>
+#include <ripple/ledger/impl/Tuning.h>
 
 namespace ripple {    
     
@@ -85,7 +86,7 @@ namespace ripple {
             txInfo_.uTxLedgerVersion = tx.getFieldU32(sfLastLedgerSequence);  //uTxLedgerVersion			
 		if (txInfo_.uTxLedgerVersion <= 0)
 		{
-			txInfo_.uTxLedgerVersion = app_.getLedgerMaster().getValidLedgerIndex() + 5;
+			txInfo_.uTxLedgerVersion = app_.getLedgerMaster().getValidLedgerIndex() + MAX_GAP_LEDGERNUM_TXN_APPEARIN;
 		}
 
         txList_.push_back(txInfo_);
@@ -121,10 +122,12 @@ namespace ripple {
 			}
 			else
 			{
-				JLOG(journal_.trace()) << "Dispose error";
 				ret = { false,"Dispose error" };
 				if (resultPair.first != tefTABLE_TXDISPOSEERROR)
+				{
 					result = resultPair.first;
+				}
+				transactor.setExtraMsg(resultPair.second);
 			}
 		}
 					
@@ -165,7 +168,7 @@ namespace ripple {
         return result;
     }
 
-    bool TableStorageItem::CheckExistInLedger(LedgerIndex CurLedgerVersion)
+    bool TableStorageItem::CheckLastLedgerSeq(LedgerIndex CurLedgerVersion)
     {
 		auto ledger = app_.getLedgerMaster().getLedgerBySeq(CurLedgerVersion);
 		if (!ledger) return false;
@@ -175,15 +178,19 @@ namespace ripple {
         {
             if (iter->bCommit)   continue;
             
-            if (iter->uTxLedgerVersion <= CurLedgerVersion)
+            if (iter->uTxLedgerVersion < CurLedgerVersion)
             {
-               if (!ledger->txMap().hasItem(iter->uTxHash))
-               {
-                    break;
-                }
+				return false;
             }
+			else if(iter->uTxLedgerVersion == CurLedgerVersion)
+			{
+				if (!ledger->txMap().hasItem(iter->uTxHash))
+				{
+					return false;
+				}
+			}
         }
-        return iter == txList_.end();
+        return true;
     }
 
     bool TableStorageItem::isHaveTx(uint256 txid)
@@ -200,7 +207,7 @@ namespace ripple {
             return false;
     }
 
-    TableStorageItem::TableStorageDBFlag TableStorageItem::CheckSuccessive(LedgerIndex validatedIndex)
+    TableStorageItem::TableStorageDBFlag TableStorageItem::CheckSuccess(LedgerIndex validatedIndex)
     {     
         for (int index = LedgerSeq_ + 1; index <= validatedIndex; index++)
         {
@@ -220,7 +227,7 @@ namespace ripple {
 			{
 				if (retPair.first)
 					continue;
-				else //deleted
+				else if(bDropped_) //deleted;bug:RR-559
 					return STORAGE_COMMIT;
 			}				
 			            
@@ -291,6 +298,7 @@ namespace ripple {
     bool TableStorageItem::rollBack()
     {
         {
+            LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
             TxStoreTransaction &stTran = getTxStoreTrans();
             stTran.rollback();
             JLOG(journal_.warn()) << " TableStorageItem::rollBack " << sTableName_;
@@ -304,6 +312,7 @@ namespace ripple {
     bool TableStorageItem::commit()
     {
         {
+            LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
             TxStoreTransaction &stTran = getTxStoreTrans();
 			if(!bDropped_)
 				getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(txnHash_), to_string(txnLedgerSeq_), to_string(ledgerHash_), to_string(LedgerSeq_), txUpdateHash_.isNonZero()?to_string(txUpdateHash_) : "", to_string(lastTxTm_),"");
@@ -381,13 +390,13 @@ namespace ripple {
     bool TableStorageItem::doJob(LedgerIndex CurLedgerVersion)
     {
         bool bRet = false;
-        bRet = CheckExistInLedger(CurLedgerVersion);
+        bRet = CheckLastLedgerSeq(CurLedgerVersion);
         if (!bRet)
         {
             rollBack();
             return true;
         }
-        auto eType = CheckSuccessive(CurLedgerVersion);
+        auto eType = CheckSuccess(CurLedgerVersion);
         if (eType == STORAGE_ROLLBACK)
         {
             rollBack();

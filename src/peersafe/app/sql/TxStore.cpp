@@ -89,13 +89,11 @@ TxStoreDBConn::~TxStoreDBConn() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TxStoreTransaction::TxStoreTransaction(TxStoreDBConn* storeDBConn)
+    :tr_(std::make_shared<soci::transaction>(storeDBConn->GetDBConn()->getSession()))
 {
-    lockSession_ = std::make_shared<LockedSociSession>(storeDBConn->GetDBConn()->checkoutDb());
-    tr_ = std::make_shared<soci::transaction>(*(lockSession_->get()));
 }
 
 TxStoreTransaction::~TxStoreTransaction() {
-    if (lockSession_)		lockSession_.reset();
 	if (tr_)	    	    tr_.reset();
 }
 
@@ -164,6 +162,7 @@ std::pair<bool, std::string> TxStore::Dispose(const STTx& tx, const std::string&
 	return ret;
 }
 
+//invoke "drop table if exists" directly failed In DB2, so judge first before drop
 std::pair<bool, std::string> TxStore::DropTable(const std::string& tablename) {
 	std::pair<bool, std::string> result = { false, "inner error" };
 	if (databasecon_ == nullptr) {

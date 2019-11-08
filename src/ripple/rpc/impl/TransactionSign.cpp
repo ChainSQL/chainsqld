@@ -40,6 +40,7 @@
 #include <ripple/rpc/impl/LegacyPathFind.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/impl/Tuning.h>
+#include <ripple/ledger/impl/Tuning.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <algorithm>
 #include <iterator>
@@ -141,6 +142,7 @@ static error_code_i acctMatchesPubKey (
     }
     return rpcBAD_SECRET;
 }
+
 
 static Json::Value checkPayment(
     Json::Value const& params,
@@ -403,6 +405,14 @@ transactionPreProcessImpl (
         if (RPC::contains_error (err))
             return std::move (err);
 
+		err = checkLastLedgerSequence(
+			params,
+			verify && signingArgs.editFields(),
+			ledger);
+
+		if (RPC::contains_error(err))
+			return std::move(err);
+
         err = checkPayment (
             params,
             tx_json,
@@ -609,24 +619,31 @@ transactionConstructImpl (std::shared_ptr<STTx const> const& stpTrans,
 static Json::Value transactionFormatResultImpl (Transaction::pointer tpTrans)
 {
     Json::Value jvResult;
-    try
-    {
+	try
+	{
 		jvResult[jss::tx_json] = tpTrans->getJson(0);
 		jvResult[jss::tx_blob] = strHex(
 			tpTrans->getSTransaction()->getSerializer().peekData());
 
-        if (temUNCERTAIN != tpTrans->getResult ())
-        {
-            std::string sToken;
-            std::string sHuman;
+		STer result = tpTrans->getResult();
+		if (temUNCERTAIN != result.ter)
+		{
+			std::string sToken;
+			std::string sHuman;
 
-            transResultInfo (tpTrans->getResult (), sToken, sHuman);
+			transResultInfo(result.ter, sToken, sHuman);
 
-            jvResult[jss::engine_result]           = sToken;
-            jvResult[jss::engine_result_code]      = tpTrans->getResult ();
-            jvResult[jss::engine_result_message]   = sHuman;
-        }
-    }
+			jvResult[jss::engine_result] = sToken;
+			jvResult[jss::engine_result_code] = result.ter;
+			if (result.msg.empty())
+				jvResult[jss::engine_result_message] = sHuman;
+			else
+				jvResult[jss::engine_result_message] = result.msg;
+			//jvResult[jss::engine_result_message] = sHuman;
+			//if (!result.msg.empty())
+			//	jvResult[jss::engine_result_message_detail] = result.msg;
+		}
+	}
     catch (std::exception&)
     {
         jvResult = RPC::make_error (rpcINTERNAL,
@@ -636,6 +653,21 @@ static Json::Value transactionFormatResultImpl (Transaction::pointer tpTrans)
 }
 
 } // detail
+
+Json::Value checkLastLedgerSequence(
+	Json::Value& request,
+	bool doAutoFill,
+	std::shared_ptr<OpenView const> const& ledger)
+{
+	Json::Value& tx(request[jss::tx_json]);
+	if (tx.isMember(jss::LastLedgerSequence))
+		return Json::Value();
+
+	if (!doAutoFill)
+		return RPC::missing_field_error("tx_json.LastLedgerSequence");
+	tx[jss::LastLedgerSequence] = ledger->seq() + MAX_GAP_LEDGERNUM_TXN_APPEARIN;
+	return Json::Value();
+}
 
 //------------------------------------------------------------------------------
 
@@ -1102,6 +1134,14 @@ Json::Value transactionSubmitMultiSigned (
 
         if (RPC::contains_error(err))
             return err;
+
+		err = checkLastLedgerSequence(
+			jvRequest,
+			false,
+			ledger);
+
+		if (RPC::contains_error(err))
+			return std::move(err);
 
         err = checkPayment (
             jvRequest,
