@@ -872,7 +872,7 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 			if (auto oldLedger = adaptor_.app_.getLedgerMaster().getValidatedLedger())
 			{
 				startRoundInternal(
-					now_, prevLedgerID_, *oldLedger, ConsensusMode::switchedLedger);
+					now_, prevLedgerID_, oldLedger, ConsensusMode::switchedLedger);
 				//Clear view-change cache after initial state.
 				viewChangeManager_.clearCache();
 			}
