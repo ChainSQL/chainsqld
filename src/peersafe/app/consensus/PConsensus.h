@@ -486,7 +486,11 @@ PConsensus<Adaptor>::checkCache()
 		auto iter = adaptor_.proposalCache_.begin();
 		while ( iter != adaptor_.proposalCache_.end())
 		{
-			if (iter->first <= curSeq)
+            /**
+             * Maybe prosoal seq meet curSeq, but view is feture, 
+             * so don't remove propal which seq meet curSeq at this moment
+             */
+			if (iter->first < curSeq)
 			{
 				iter = adaptor_.proposalCache_.erase(iter);
 			}
@@ -578,6 +582,11 @@ PConsensus<Adaptor>::onViewChange()
 	{
 		adaptor_.onViewChanged(bWaitingInit_, previousLedger_);
 	}
+
+    if (mode_.get() == ConsensusMode::proposing)
+    {
+        checkCache();
+    }
 }
 
 template <class Adaptor>
@@ -645,6 +654,14 @@ PConsensus<Adaptor>::peerProposalInternal(
 		return false;
 	}
 
+    if (newPeerProp.view() != view_)
+    {
+        checkSaveNextProposal(newPeerPos);
+        JLOG(j_.info()) << "Got proposal for " << newPeerProp.prevLedger() << " view=" << newPeerProp.view()
+            << " from node " << getPubIndex(newPeerPos.publicKey()) << " but we are on view_ " << view_;
+        return false;
+    }
+    
 	now_ = now;
 
 	JLOG(j_.info()) << "Processing peer proposal " << newPeerProp.proposeSeq()
@@ -1261,8 +1278,10 @@ void
 PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 {
 	Proposal_t const& newPeerProp = newPeerPos.proposal();
-	JLOG(j_.info()) << "checkSaveNextProposal,newPeerPos.curSeq=" << newPeerProp.curLedgerSeq() << ", and we are on " << previousLedger_.seq() + 1;
-	if (newPeerProp.curLedgerSeq() > previousLedger_.seq() + 1)
+    JLOG(j_.info()) << "checkSaveNextProposal, newPeerPos.curSeq=" << newPeerProp.curLedgerSeq() << " newPeerPos.view=" << newPeerProp.view()
+        << ", and we are on seq " << previousLedger_.seq() + 1 << " view " << view_;
+	if ((newPeerProp.curLedgerSeq() > previousLedger_.seq() + 1) || 
+        (newPeerProp.curLedgerSeq() == previousLedger_.seq() + 1 && newPeerProp.view() > view_))
 	{
 		auto curSeq = newPeerProp.curLedgerSeq();
 		if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
@@ -1270,7 +1289,15 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 			//Only the first time for a same key will succeed.
 			adaptor_.proposalCache_[curSeq].emplace(newPeerPos.publicKey(),newPeerPos);
 			//If other nodes have reached a consensus for a newest ledger,we should acquire that ledger.
-			if (adaptor_.proposalCache_[curSeq].size() >= adaptor_.app_.validators().quorum())
+            int count = 0;
+            for (auto iter : adaptor_.proposalCache_[curSeq])
+            {
+                if (iter.second.proposal().view() == view_)
+                {
+                    count++;
+                }
+            }
+			if (count >= adaptor_.app_.validators().quorum())
 			{
 				adaptor_.acquireLedger(newPeerProp.prevLedger());
 			}
