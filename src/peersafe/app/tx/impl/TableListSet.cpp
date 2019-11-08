@@ -616,7 +616,6 @@ namespace ripple {
 				//add owner count
 				auto const sleAccount = view.peek(keylet::account(accountId));
 				adjustOwnerCount(view, sleAccount, 1, viewJ);
-
 				break;
 			}
             case T_DROP:
