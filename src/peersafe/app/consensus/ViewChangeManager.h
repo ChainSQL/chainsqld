@@ -37,6 +37,8 @@ namespace ripple {
 
 		//Erase invalid ViewChange object from the cache on new round started.
 		void onNewRound(RCLCxLedger const& ledger);
+
+		void clearCache();
 	private:
 		std::map<VIEWTYPE, std::map<PublicKey, ViewChange>> viewChangeReq_;
 		// Journal for debugging

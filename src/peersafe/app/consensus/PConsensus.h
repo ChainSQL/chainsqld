@@ -321,6 +321,9 @@ private:
 
 	bool extraTimeOut_ = false;
 
+	//Count for timeout that didn't reach consensus
+	unsigned timeOutCount_;
+
 	std::atomic_bool leaderFailed_ = { false };
 
 	std::recursive_mutex lock_;
@@ -448,6 +451,10 @@ PConsensus<Adaptor>::startRoundInternal(
     setID_.reset();
 	leaderFailed_ = false;
 	extraTimeOut_ = false;
+	timeOutCount_ = 0;
+	//reset view to 0 after a new close ledger.
+	view_ = 0;
+	toView_ = 0;
 
 	closeResolution_ = getNextLedgerTimeResolution(
 		previousLedger_.closeTimeResolution(),
@@ -459,9 +466,6 @@ PConsensus<Adaptor>::startRoundInternal(
 		if(bWaitingInit_ && previousLedger_.seq() != GENESIS_LEDGER_INDEX)
 			bWaitingInit_ = false;
 
-		//reset view to 0 after a new close ledger.
-		view_ = 0;
-		toView_ = 0;
 		viewChangeManager_.onNewRound(previousLedger_);
 
 		checkCache();
@@ -565,6 +569,7 @@ PConsensus<Adaptor>::onViewChange()
 	setID_.reset();
 	leaderFailed_ = false;
 	extraTimeOut_ = false;
+	timeOutCount_ = 0;
 
 	//clear avoid
 	adaptor_.app_.getTxPool().clearAvoid();
@@ -856,6 +861,22 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 				now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
 		}
 		return;
+	}
+
+	//Long time no consensus reach,rollback to initial state.
+	if (timeOutCount_ > TimeOutCountRollback)
+	{
+		if (view_ > 0 || previousLedger_.seq() > adaptor_.app_.getLedgerMaster().getValidLedgerIndex())
+		{
+			JLOG(j_.warn()) << "There have been " <<TimeOutCountRollback << " times of timeout,will rollback to initial consensus state!";
+			if (auto oldLedger = adaptor_.app_.getLedgerMaster().getValidatedLedger())
+			{
+				startRoupndInternal(
+					now_, prevLedgerID_, *oldLedger, ConsensusMode::switchedLedger);
+				//Clear view-change cache after initial state.
+				viewChangeManager_.clearCache();
+			}
+		}
 	}
 
 	if (phase_ == ConsensusPhase::open)
@@ -1387,6 +1408,8 @@ PConsensus<Adaptor>::checkTimeout()
 
 	if(adaptor_.validating())
 		launchViewChange();
+
+	timeOutCount_++;
 }
 
 template <class Adaptor>

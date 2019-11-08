@@ -22,6 +22,8 @@ namespace ripple {
 
 	const std::chrono::milliseconds CONSENSUS_TIMEOUT = 3s;
 
+	const unsigned TimeOutCountRollback = 5;
+
     // simple config section e.x.
     // [pconsensus]
     // min_block_time=500

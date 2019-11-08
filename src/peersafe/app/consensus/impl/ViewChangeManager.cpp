@@ -146,4 +146,9 @@ void ViewChangeManager::onNewRound(RCLCxLedger const& prevLedger)
 	}
 }
 
+void ViewChangeManager::clearCache()
+{
+	viewChangeReq_.clear();
+}
+
 }
