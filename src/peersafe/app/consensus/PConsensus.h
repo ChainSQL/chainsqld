@@ -871,7 +871,7 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 			JLOG(j_.warn()) << "There have been " <<TimeOutCountRollback << " times of timeout,will rollback to initial consensus state!";
 			if (auto oldLedger = adaptor_.app_.getLedgerMaster().getValidatedLedger())
 			{
-				startRoupndInternal(
+				startRoundInternal(
 					now_, prevLedgerID_, *oldLedger, ConsensusMode::switchedLedger);
 				//Clear view-change cache after initial state.
 				viewChangeManager_.clearCache();
