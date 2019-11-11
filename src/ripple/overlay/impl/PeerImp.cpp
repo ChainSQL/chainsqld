@@ -1373,7 +1373,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 	if (!app_.getHashRouter().addSuppressionPeer(suppression, id_))
 	{
 		JLOG(p_journal_.trace()) << "View change: duplicate";
-		return;
+		//return;
 	}
 
 	if (!app_.getValidationPublicKey().empty() &&
