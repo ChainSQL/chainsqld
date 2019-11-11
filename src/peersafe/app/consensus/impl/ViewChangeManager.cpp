@@ -21,7 +21,7 @@ bool ViewChangeManager::recvViewChange(ViewChange const& change)
         {
             auto oldViewChange = viewChangeReq_[toView].find(change.nodePublic())->second;
             JLOG(j_.info()) << "peerViewChange toView=" << toView
-                << ", pubKey=" << change.nodePublic() << " exist, prevSeq=" << oldViewChange.prevSeq()
+                << ", pubKey=" << toBase58(TOKEN_NODE_PUBLIC, change.nodePublic()) << " exist, prevSeq=" << oldViewChange.prevSeq()
                 << ", and this viewChange preSeq=" << change.prevSeq();
             if (oldViewChange.prevSeq() < change.prevSeq())
             {

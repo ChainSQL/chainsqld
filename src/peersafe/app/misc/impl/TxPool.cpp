@@ -80,11 +80,11 @@ namespace ripple {
 		TransactionSet::iterator iterSet;
         for (auto const& item : cSet)
         {
-            if (!txExists(item.key()))
-                continue;
-
             try
             {
+				if (!txExists(item.key()))
+					continue;
+
                 // If not exist, throw std::out_of_range exception.
                 iterSet = mTxsHash.at(item.key());
 
@@ -96,9 +96,9 @@ namespace ripple {
                 mAvoid.erase(item.key());
 				count++;
             }
-            catch (std::exception const&)
+            catch (std::exception const& e)
             {
-                JLOG(j_.warn()) << "Tx: " << item.key() << " throws, not in pool";
+                JLOG(j_.warn()) << "TxPool::removeTxs exception:" << e.what();
             }
         }
 
