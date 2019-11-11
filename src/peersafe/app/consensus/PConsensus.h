@@ -1307,8 +1307,26 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 		auto curSeq = newPeerProp.curLedgerSeq();
 		if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
 		{
-			//Only the first time for a same key will succeed.
+			/** 
+             * Only the first time for the same key will succeed,
+             * Or Save the newest proposal from same key, which proposal's view great than the old one,
+             * that's a question
+             */
+#if 1
+            if (adaptor_.proposalCache_[curSeq].find(newPeerPos.publicKey()) != adaptor_.proposalCache_[curSeq].end())
+            {
+                auto oldPeerProp = adaptor_.proposalCache_[curSeq].find(newPeerPos.publicKey())->second.proposal();
+                JLOG(j_.info()) << "peerProposal curSeq=" << curSeq
+                    << ", pubKey=" << newPeerPos.publicKey() << " exist, oldView=" << oldPeerProp.view()
+                    << ", and this Proposal view=" << newPeerProp.view();
+                if (oldPeerProp.view() < newPeerProp.view())
+                {
+                    adaptor_.proposalCache_[curSeq].erase(newPeerPos.publicKey());
+                }
+            }
+#endif
 			adaptor_.proposalCache_[curSeq].emplace(newPeerPos.publicKey(),newPeerPos);
+
 			//If other nodes have reached a consensus for a newest ledger,we should acquire that ledger.
             int count = 0;
             for (auto iter : adaptor_.proposalCache_[curSeq])
