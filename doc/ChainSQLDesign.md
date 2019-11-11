@@ -955,28 +955,7 @@
         }
       }
     ],
-<<<<<<< HEAD
     "OpType": 3
-=======
-    "TableNewName": "tableNewName",     //hex形式
-    "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
-    "Raw": [
-      {
-        "field": "id",
-        "type": "int",
-        "length": 11,
-        "PK": 1,
-        "NN": 1,
-        "UQ": 1
-      },
-      {
-        "field": "age",
-        "type": "int"
-      }
-    ],                                 //hex形式
-    "StrictMode": true,
-    "OpType": 1
->>>>>>> 62dafa70a561b45ce096d99227e6533175d00592
   }
 }
 ```
@@ -997,28 +976,7 @@
     "status": "success",
     "tx_json": {
       "Account": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-<<<<<<< HEAD
       "OpType": 3,
-=======
-      "OpType": 1,
-      "Owner": "zHb9CJAWyB4zj91VRWn96DkukG4bwdtyTh",
-      "PublicKey": "cBP8JEiNXr3a9nnBFDNKKzAoGNezoXzsa1N8kQAoLU5F5HrQbFvs",
-      "Raw": [
-        {
-          "NN": 1,
-          "PK": 1,
-          "UQ": 1,
-          "field": "id",
-          "length": 11,
-          "type": "int"
-        },
-        {
-          "field": "age",
-          "type": "int"
-        }
-      ],                                 //hex形式
-      "TableNewName": "tableNewName",    //hex形式
->>>>>>> 62dafa70a561b45ce096d99227e6533175d00592
       "Tables": [
         {
           "Table": {
@@ -1247,19 +1205,9 @@
       "name": "hello"
     }
   ],
-<<<<<<< HEAD
   "StrictMode": true,     //可选字段:不设置表示不使用strictMode
   "TxCheckHash": "xxxxx", //可选字段:由t_prepare根据StrictMode的指示自动计算并插入
   "OpType": 6
-=======
-  "AutoFillField": "TRACE_NO",
-  "StrictMode": true,     //可选字段: 不设置表示不使用strictMode
-  "TxCheckHash": "xxxxx", //可选字段: 由g_prepare根据StrictMode的指示自动计算并插入
-  "OpType": 6,
-  "User": "zBGagHrWQ44SX3YE7eYehiDA8iNPdBssFY",
-  "Fee": 12,
-  "Sequence": 6
->>>>>>> 62dafa70a561b45ce096d99227e6533175d00592
 }
 
 ``` 
