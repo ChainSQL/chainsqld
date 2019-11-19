@@ -864,17 +864,21 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 	}
 
 	//Long time no consensus reach,rollback to initial state.
+	//What if 2 of 4 validate new ledger success, but other 2 of 4 not ,can roll back work,or is there such occasion?
 	if (timeOutCount_ > TimeOutCountRollback)
 	{
-		if (view_ > 0 || previousLedger_.seq() > adaptor_.app_.getLedgerMaster().getValidLedgerIndex())
+		auto valLedger = adaptor_.app_.getLedgerMaster().getValidLedgerIndex();
+		if (view_ > 0 || previousLedger_.seq() > valLedger)
 		{
-			JLOG(j_.warn()) << "There have been " <<TimeOutCountRollback << " times of timeout,will rollback to initial consensus state!";
+			JLOG(j_.warn()) << "There have been " <<TimeOutCountRollback << " times of timeout,will rollback to validated ledger "<< valLedger;
 			if (auto oldLedger = adaptor_.app_.getLedgerMaster().getValidatedLedger())
 			{
 				startRoundInternal(
 					now_, prevLedgerID_, oldLedger, ConsensusMode::switchedLedger);
 				//Clear view-change cache after initial state.
 				viewChangeManager_.clearCache();
+				//Clear validation cache,in case "checkLedger move back to advanced ledger".
+				adaptor_.app_.getValidations().flush();
 			}
 		}
 	}
