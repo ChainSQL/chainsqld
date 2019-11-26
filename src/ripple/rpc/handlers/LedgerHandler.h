@@ -25,7 +25,7 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/json/Object.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/Status.h>
 #include <ripple/rpc/impl/Handler.h>
@@ -55,7 +55,7 @@ public:
     template <class Object>
     void writeResult (Object&);
 
-    static const char* const name()
+    static char const* name()
     {
         return "ledger";
     }

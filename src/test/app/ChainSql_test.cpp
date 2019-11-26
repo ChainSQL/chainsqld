@@ -15,7 +15,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <test/jtx.h>
 #include <ripple/app/paths/Flow.h>
 #include <ripple/app/paths/impl/Steps.h>
@@ -25,7 +25,7 @@
 #include <ripple/ledger/Sandbox.h>
 #include <test/jtx/PathSet.h>
 #include <ripple/protocol/Feature.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 namespace ripple {
 namespace test {
 

@@ -1,19 +1,19 @@
 //------------------------------------------------------------------------------
 /*
-	This file is part of rippled: https://github.com/ripple/rippled
-	Copyright (c) 2012, 2013 Ripple Labs Inc.
+    This file is part of rippled: https://github.com/ripple/rippled
+    Copyright (c) 2012, 2013 Ripple Labs Inc.
 
-	Permission to use, copy, modify, and/or distribute this software for any
-	purpose  with  or without fee is hereby granted, provided that the above
-	copyright notice and this permission notice appear in all copies.
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose  with  or without fee is hereby granted, provided that the above
+    copyright notice and this permission notice appear in all copies.
 
-	THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-	WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
-	MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-	ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-	WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
-	ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-	OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+    THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+    WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
+    MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+    ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
+    ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
@@ -24,17 +24,20 @@
 
 namespace ripple {
 
-	// VFALCO DEPRECATED in favor of the BasicConfig interface
-	struct ConfigSection
-	{
-		static std::string nodeDatabase() { return "node_db"; }
-		static std::string importNodeDatabase() { return "import_db"; }
-		static std::string syncTables() { return "sync_tables"; }
-		static std::string autoSync() { return "auto_sync"; }
-		static std::string pressSwitch() { return "press_switch"; }
-	};
+// VFALCO DEPRECATED in favor of the BasicConfig interface
+struct ConfigSection
+{
+    explicit ConfigSection() = default;
 
-	// VFALCO TODO Rename and replace these macros with variables.
+    static std::string nodeDatabase ()       { return "node_db"; }
+    static std::string shardDatabase ()      { return "shard_db"; }
+    static std::string importNodeDatabase () { return "import_db"; }
+	static std::string syncTables() 		 { return "sync_tables"; }
+	static std::string autoSync() 			 { return "auto_sync"; }
+	static std::string pressSwitch() 		 { return "press_switch"; }
+};
+
+// VFALCO TODO Rename and replace these macros with variables.
 #define SECTION_AMENDMENTS              "amendments"
 #define SECTION_CLUSTER_NODES           "cluster_nodes"
 #define SECTION_DEBUG_LOGFILE           "debug_logfile"
@@ -58,6 +61,7 @@ namespace ripple {
 #define SECTION_PEER_PRIVATE            "peer_private"
 #define SECTION_PEERS_MAX               "peers_max"
 #define SECTION_RPC_STARTUP             "rpc_startup"
+#define SECTION_SIGNING_SUPPORT         "signing_support"
 #define SECTION_SNTP                    "sntp_servers"
 #define SECTION_SSL_VERIFY              "ssl_verify"
 #define SECTION_SSL_VERIFY_FILE         "ssl_verify_file"

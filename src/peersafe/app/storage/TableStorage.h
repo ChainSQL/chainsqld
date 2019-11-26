@@ -45,8 +45,8 @@ public:
     TxStore& GetTxStore(uint160 nameInDB);
     bool isStroageOn();
 private:
-    void GetTxParam(STTx const & tx, uint256 &txshash, uint160 &uTxDBName, std::string &sTableName, AccountID &accountID, uint32 &lastLedgerSequence);
-    TER TableStorageHandlePut(ChainSqlTx& transactor,uint160 uTxDBName, AccountID accountID, std::string sTableName, uint32 lastLedgerSequence, uint256 txhash, STTx const & tx);
+    void GetTxParam(STTx const & tx, uint256 &txshash, uint160 &uTxDBName, std::string &sTableName, AccountID &accountID, uint32_t &lastLedgerSequence);
+    TER TableStorageHandlePut(ChainSqlTx& transactor,uint160 uTxDBName, AccountID accountID, std::string sTableName, uint32_t lastLedgerSequence, uint256 txhash, STTx const & tx);
 
 private:
     Application&                                                                app_;

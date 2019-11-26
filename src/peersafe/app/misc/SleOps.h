@@ -26,7 +26,7 @@ public:
 	void incSequence(AccountID const& addr);
 	/// Get the account sequence -- the number of transactions it has sent.
 	/// @returns 0 if the address has never been used.
-	uint32 getSequence(AccountID const& addr);
+	uint32_t getSequence(AccountID const& addr);
 
 	const STTx& getTx();
 

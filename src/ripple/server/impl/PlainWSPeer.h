@@ -21,6 +21,7 @@
 #define RIPPLE_SERVER_PLAINWSPEER_H_INCLUDED
 
 #include <ripple/server/impl/BaseWSPeer.h>
+#include <ripple/beast/asio/waitable_timer.h>
 #include <memory>
 
 namespace ripple {
@@ -39,7 +40,7 @@ class PlainWSPeer
     using waitable_timer = boost::asio::basic_waitable_timer <clock_type>;
     using socket_type = boost::asio::ip::tcp::socket;
 
-    beast::websocket::stream<socket_type> ws_;
+    boost::beast::websocket::stream<socket_type> ws_;
 
 public:
     template<class Body, class Headers>
@@ -47,25 +48,30 @@ public:
         Port const& port,
         Handler& handler,
         endpoint_type remote_address,
-        beast::http::request<Body, Headers>&& request,
+        boost::beast::http::request<Body, Headers>&& request,
         socket_type&& socket,
         beast::Journal journal);
 };
 
 //------------------------------------------------------------------------------
 
-template<class Handler>
-template<class Body, class Headers>
-PlainWSPeer<Handler>::
-PlainWSPeer(
+template <class Handler>
+template <class Body, class Headers>
+PlainWSPeer<Handler>::PlainWSPeer(
     Port const& port,
     Handler& handler,
     endpoint_type remote_address,
-    beast::http::request<Body, Headers>&& request,
+    boost::beast::http::request<Body, Headers>&& request,
     socket_type&& socket,
     beast::Journal journal)
-    : BaseWSPeer<Handler, PlainWSPeer>(port, handler, remote_address,
-        std::move(request), socket.get_io_service(), journal)
+    : BaseWSPeer<Handler, PlainWSPeer>(
+          port,
+          handler,
+          socket.get_executor(),
+          beast::create_waitable_timer<waitable_timer>(socket),
+          remote_address,
+          std::move(request),
+          journal)
     , ws_(std::move(socket))
 {
 }

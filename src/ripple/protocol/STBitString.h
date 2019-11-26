@@ -21,6 +21,7 @@
 #define RIPPLE_PROTOCOL_STBITSTRING_H_INCLUDED
 
 #include <ripple/protocol/STBase.h>
+#include <ripple/beast/utility/Zero.h>
 
 namespace ripple {
 
@@ -101,7 +102,7 @@ public:
     template <typename Tag>
     void setValue (base_uint<Bits, Tag> const& v)
     {
-        value_.copyFrom(v);
+        value_ = v;
     }
 
     value_type const&
@@ -118,7 +119,7 @@ public:
     bool
     isDefault () const override
     {
-        return value_ == zero;
+        return value_ == beast::zero;
     }
 
 private:

@@ -17,14 +17,14 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/ledger/View.h>
 #include <ripple/app/paths/RippleCalc.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/Config.h>
 #include <ripple/protocol/st.h>
 #include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/app/ledger/LedgerMaster.h>
@@ -69,7 +69,7 @@ namespace ripple {
 		return false;
 	}
 
-    TER
+	NotTEC
         TableListSet::preflightHandler(const STTx & tx, Application& app)
     {
 		auto j = app.journal("preflightHandler");
@@ -205,7 +205,7 @@ namespace ripple {
         return tesSUCCESS;
     }
 
-    TER
+	NotTEC
         TableListSet::preflight(PreflightContext const& ctx)
     {
         auto const ret = preflight1(ctx);
@@ -233,10 +233,10 @@ namespace ripple {
         tableName = tables[0].getFieldVL(sfTableName);
 
         uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
-        uint8 isTableDeleted = 0;  //is not deleted
+        uint8_t isTableDeleted = 0;  //is not deleted
 
-        uint32 ledgerSequence = view.info().seq;
-        uint32 createledgerSequence = view.info().seq - 1;  
+        uint32_t ledgerSequence = view.info().seq;
+        uint32_t createledgerSequence = view.info().seq - 1;  
         ripple::uint256 txnLedgerHash = view.info().hash;
         ripple::uint256 createdLedgerHash = view.info().hash; createdLedgerHash--;       
         ripple::uint256 createdtxnHash = tx.isSubTransaction() ? tx.getParentTxID() : tx.getTransactionID(); 

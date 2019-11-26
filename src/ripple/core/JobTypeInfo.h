@@ -37,17 +37,18 @@ private:
     bool const m_special;
 
     /** Average and peak latencies for this job type. 0 is none specified */
-    std::uint64_t const m_avgLatency;
-    std::uint64_t const m_peakLatency;
+    std::chrono::milliseconds const m_avgLatency;
+    std::chrono::milliseconds const m_peakLatency;
 
 public:
     // Not default constructible
     JobTypeInfo () = delete;
 
     JobTypeInfo (JobType type, std::string name, int limit,
-            bool special, std::uint64_t avgLatency, std::uint64_t peakLatency)
+            bool special, std::chrono::milliseconds avgLatency,
+            std::chrono::milliseconds peakLatency)
         : m_type (type)
-        , m_name (name)
+        , m_name (std::move(name))
         , m_limit (limit)
         , m_special (special)
         , m_avgLatency (avgLatency)
@@ -61,7 +62,7 @@ public:
         return m_type;
     }
 
-    std::string name () const
+    std::string const& name () const
     {
         return m_name;
     }
@@ -76,12 +77,12 @@ public:
         return m_special;
     }
 
-    std::uint64_t getAverageLatency () const
+    std::chrono::milliseconds getAverageLatency () const
     {
         return m_avgLatency;
     }
 
-    std::uint64_t getPeakLatency () const
+    std::chrono::milliseconds getPeakLatency () const
     {
         return m_peakLatency;
     }

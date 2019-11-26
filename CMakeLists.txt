@@ -133,6 +133,7 @@ include_directories(
   src/beast/include
   src/beast/extras
   src/nudb/include
+  src/libarchive/libarchive
   src/soci/src
   src/soci/include
   src/evmjit
@@ -362,6 +363,7 @@ foreach(curdir
         rpc
         server
         shamap
+		unit_test
         vm)
     file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
     list(APPEND test_srcs "${cursrcs}")

@@ -103,6 +103,18 @@ struct EitherAmount
         else
             iou = a.iou;
     }
+
+#ifndef NDEBUG
+    friend std::ostream&
+    operator<<(std::ostream& stream, EitherAmount const& amt)
+    {
+        if (amt.native)
+            stream << to_string(amt.zxc);
+        else
+            stream << to_string(amt.iou);
+        return stream;
+    }
+#endif
 };
 
 template <class T>

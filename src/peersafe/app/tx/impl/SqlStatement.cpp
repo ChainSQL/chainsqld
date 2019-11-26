@@ -17,14 +17,14 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/ledger/View.h>
 #include <ripple/app/paths/RippleCalc.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/Config.h>
 #include <ripple/protocol/st.h>
 #include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/StringUtilities.h>
@@ -37,7 +37,7 @@
 #include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
-	TER
+	NotTEC
 		SqlStatement::preflightHandler(const STTx & tx, Application& app)
 	{
 		auto j = app.journal("preflightHandler");
@@ -101,7 +101,7 @@ namespace ripple {
 		return tesSUCCESS;
 	}
 
-	TER
+	NotTEC
 		SqlStatement::preflight(PreflightContext const& ctx)
 	{
 		auto const ret = preflight1(ctx);

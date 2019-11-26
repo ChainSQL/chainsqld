@@ -39,7 +39,7 @@ TableSync::TableSync(Application& app, Config& cfg, beast::Journal journal)
     : app_(app)
     , journal_(journal)
     , cfg_(cfg)    
-    , checkSkipNode_("SkipNode", 65536, 450, stopwatch(),
+	, checkSkipNode_("SkipNode", 65536, std::chrono::seconds{ 450 }, stopwatch(),
         app_.journal("TaggedCache"))
 {
     bTableSyncThread_ = false;
@@ -101,7 +101,7 @@ void TableSync::GetTxRecordInfo(LedgerIndex iCurSeq, AccountID accountID, std::s
     hash = iter->getFieldH256(sfTxnLedgerHash);
 }
 
-std::vector <uint256> TableSync::getTxsFromDb(uint32 TxnLgrSeq, std::string /*sAccountID*/)
+std::vector <uint256> TableSync::getTxsFromDb(uint32_t TxnLgrSeq, std::string /*sAccountID*/)
 {
     std::vector <uint256> txs;
 
@@ -273,7 +273,7 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
     return true;
 }
 
-bool TableSync::SendSeekResultReply(std::string sAccountID, bool bStop, uint32 time, std::weak_ptr<Peer> const& wPeer, std::string sNickName , TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB)
+bool TableSync::SendSeekResultReply(std::string sAccountID, bool bStop, uint32_t time, std::weak_ptr<Peer> const& wPeer, std::string sNickName , TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB)
 {
     protocol::TMTableData reply;
 
@@ -348,7 +348,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
     bool bSendEnd = false;
     LedgerIndex curLedgerIndex = 0;
     uint256 curLedgerHash;
-    uint32 time = 0;
+	uint32_t time = 0;
 
     for (int i = stItemInfo.u32SeqLedger + 1; i <= app_.getLedgerMaster().getPublishedLedger()->info().seq; i++)
     {
@@ -753,7 +753,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
 				if (boost::none == pUser)
 					return std::make_pair(pItem, tablename + ":user invalid!");
 				userAccountId = *pUser;
-                std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
+                std::string privateKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
                 SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
                 secret_key = tempSecKey;
             }
@@ -1458,7 +1458,7 @@ void TableSync::LocalSyncThread()
             tmList.push_back(*iter);
         }
     }
-	TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>> cache("TableLocalSync",100,10, stopwatch(), journal_);
+	TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>> cache("TableLocalSync", 100, std::chrono::seconds{ 10 }, stopwatch(), journal_);
     for (auto pItem : tmList)
     {
         pItem->GetBaseInfo(stItem);
@@ -1485,7 +1485,7 @@ bool TableSync::Is256thLedgerExist(LedgerIndex index)
     return true;
 }
 
-bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash,uint32 time, uint256 chainId)
+bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash, uint32_t time, uint256 chainId)
 {
     if (!bIsHaveSync_)                return false;
 
@@ -1729,7 +1729,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 	}
 }
 
-void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
+void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32_t time,uint256 const& chainId)
 {
 	AccountID accountID = tx.getAccountID(sfAccount);
 	auto tables = tx.getFieldArray(sfTables);

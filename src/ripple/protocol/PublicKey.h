@@ -67,6 +67,8 @@ protected:
     std::uint8_t buf_[65]; // should be large enough
 
 public:
+    using const_iterator = std::uint8_t const*;
+
     PublicKey() = default;
     PublicKey (PublicKey const& other);
     PublicKey& operator= (PublicKey const& other);
@@ -74,7 +76,7 @@ public:
     /** Create a public key.
 
         Preconditions:
-            publicKeyType(Slice(data, size)) != boost::none
+            publicKeyType(slice) != boost::none
     */
     explicit
     PublicKey (Slice const& slice);
@@ -89,6 +91,30 @@ public:
     size() const noexcept
     {
         return size_;
+    }
+
+    const_iterator
+    begin() const noexcept
+    {
+        return buf_;
+    }
+
+    const_iterator
+    cbegin() const noexcept
+    {
+        return buf_;
+    }
+
+    const_iterator
+    end() const noexcept
+    {
+        return buf_ + size_;
+    }
+
+    const_iterator
+    cend() const noexcept
+    {
+        return buf_ + size_;
     }
 
     bool
@@ -120,8 +146,7 @@ operator== (PublicKey const& lhs,
     PublicKey const& rhs)
 {
     return lhs.size() == rhs.size() &&
-        std::memcmp(lhs.data(),
-            rhs.data(), rhs.size()) == 0;
+        std::memcmp(lhs.data(), rhs.data(), rhs.size()) == 0;
 }
 
 inline
@@ -131,7 +156,7 @@ operator< (PublicKey const& lhs,
 {
     return std::lexicographical_compare(
         lhs.data(), lhs.data() + lhs.size(),
-            rhs.data(), rhs.data() + rhs.size());
+        rhs.data(), rhs.data() + rhs.size());
 }
 
 template <class Hasher>
@@ -145,6 +170,8 @@ hash_append (Hasher& h,
 template<>
 struct STExchange<STBlob, PublicKey>
 {
+    explicit STExchange() = default;
+
     using value_type = PublicKey;
 
     static

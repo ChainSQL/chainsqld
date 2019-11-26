@@ -17,12 +17,11 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/Log.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/Role.h>
@@ -179,8 +178,8 @@ Json::Value doUnsubscribe (RPC::Context& context)
             if (! jv.isObject() ||
                 ! jv.isMember(jss::taker_pays) ||
                 ! jv.isMember(jss::taker_gets) ||
-                ! jv[jss::taker_pays].isObject() ||
-                ! jv[jss::taker_gets].isObject())
+                ! jv[jss::taker_pays].isObjectOrNull() ||
+                ! jv[jss::taker_gets].isObjectOrNull())
             {
                 return rpcError(rpcINVALID_PARAMS);
             }

@@ -17,20 +17,20 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <peersafe/app/tx/SmartContract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/Config.h>
 #include <ripple/protocol/st.h>
 #include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <peersafe/app/misc/Executive.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
 
 namespace ripple {
 
-	TER SmartContract::preflight(PreflightContext const& ctx)
+	NotTEC SmartContract::preflight(PreflightContext const& ctx)
 	{
 		auto const ret = preflight1(ctx);
 		if (!isTesSuccess(ret))

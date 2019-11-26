@@ -17,10 +17,9 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/ledger/ReadView.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 
@@ -66,9 +65,10 @@ Json::Value doTransactionEntry (RPC::Context& context)
         }
         else
         {
-            jvResult[jss::tx_json]     = tx.first->getJson (0);
+            jvResult[jss::tx_json] = tx.first->getJson (JsonOptions::none);
             if (tx.second)
-                jvResult[jss::metadata]    = tx.second->getJson (0);
+                jvResult[jss::metadata] =
+                    tx.second->getJson (JsonOptions::none);
             // 'accounts'
             // 'engine_...'
             // 'ledger_...'

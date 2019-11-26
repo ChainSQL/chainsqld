@@ -18,7 +18,7 @@
 //==============================================================================
 
 #include <ripple/basics/StringUtilities.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <peersafe/rpc/impl/TxTransactionPrepare.h>
 #include <peersafe/rpc/impl/TxSingleTransPrepare.h>
 #include <peersafe/rpc/TableUtils.h>

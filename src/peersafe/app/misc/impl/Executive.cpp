@@ -86,7 +86,7 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 {
 	bool accountAlreadyExist = false;
 	do {
-		uint32 sequence = 1;
+		uint32_t sequence = 1;
 		if (m_depth == 1)
 		{
 			sequence = m_s.getTx().getFieldU32(sfSequence);
@@ -252,7 +252,7 @@ bool Executive::go()
 		{
 			auto str = _e.output().toString();
 			int n = atoi(str.c_str());
-			m_excepted = TER(n);
+			m_excepted = TER::fromInt(n);
 		}
 		catch (VMException const& _e)
 		{

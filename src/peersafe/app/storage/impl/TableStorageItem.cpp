@@ -103,7 +103,7 @@ namespace ripple {
     TER TableStorageItem::PutElem(ChainSqlTx& transactor, STTx const& tx, uint256 txhash)
     {
         std::pair<bool, std::string> ret = { true, "success" };
-        auto  result = tefTABLE_STORAGEERROR;
+        TER  result = tefTABLE_STORAGEERROR;
      
         if (getTxStoreDBConn().GetDBConn() == NULL)
         {

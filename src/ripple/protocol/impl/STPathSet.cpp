@@ -17,9 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/protocol/STPathSet.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/strHex.h>
@@ -92,13 +91,13 @@ STPathSet::STPathSet (SerialIter& sit, SField const& name)
             AccountID issuer;
 
             if (hasAccount)
-                account.copyFrom (sit.get160 ());
+                account = sit.get160();
 
             if (hasCurrency)
-                currency.copyFrom (sit.get160 ());
+                currency = sit.get160();
 
             if (hasIssuer)
-                issuer.copyFrom (sit.get160 ());
+                issuer = sit.get160();
 
             path.emplace_back (account, currency, issuer, hasCurrency);
         }
@@ -150,14 +149,14 @@ STPath::hasSeen (
 }
 
 Json::Value
-STPath::getJson (int) const
+STPath::getJson (JsonOptions) const
 {
     Json::Value ret (Json::arrayValue);
 
     for (auto it: mPath)
     {
         Json::Value elem (Json::objectValue);
-        int         iType   = it.getNodeType ();
+        auto const iType   = it.getNodeType ();
 
         elem[jss::type]      = iType;
         elem[jss::type_hex]  = strHex (iType);
@@ -178,7 +177,7 @@ STPath::getJson (int) const
 }
 
 Json::Value
-STPathSet::getJson (int options) const
+STPathSet::getJson (JsonOptions options) const
 {
     Json::Value ret (Json::arrayValue);
     for (auto it: value)

@@ -17,14 +17,13 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx.h>
 #include <test/jtx/Env.h>
 #include <test/jtx/PathSet.h>
 #include <ripple/beast/unit_test.h>
 #include <ripple/beast/core/LexicalCast.h>
-#include <ripple/protocol/JsonFields.h>
 #include <ripple/protocol/Feature.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/SField.h>
 
 namespace ripple {
@@ -37,11 +36,11 @@ class Discrepancy_test : public beast::unit_test::suite
     // A payment with path and sendmax is made and the transaction is queried
     // to verify that the net of balance changes match the fee charged.
     void
-    testZXCDiscrepancy (std::initializer_list<uint256> fs)
+    testZXCDiscrepancy (FeatureBitset features)
     {
         testcase ("Discrepancy test : ZXC Discrepancy");
         using namespace test::jtx;
-        Env env {*this, with_features(fs)};
+        Env env {*this, features};
 
         Account A1 {"A1"};
         Account A2 {"A2"};
@@ -100,7 +99,8 @@ class Discrepancy_test : public beast::unit_test::suite
 
         Json::Value jrq2;
         jrq2[jss::binary] = false;
-        jrq2[jss::transaction] = env.tx()->getJson(0)[jss::hash];
+        jrq2[jss::transaction] =
+            env.tx()->getJson(JsonOptions::none)[jss::hash];
         jrq2[jss::id] = 3;
         auto jrr = env.rpc ("json", "tx", to_string(jrq2))[jss::result];
         uint64_t fee { jrr[jss::Fee].asUInt() };
@@ -118,7 +118,7 @@ class Discrepancy_test : public beast::unit_test::suite
             else if(an.isMember(sfDeletedNode.fieldName))
                 node = an[sfDeletedNode.fieldName];
 
-            if(node && node[sfLedgerEntryType.fieldName] == "AccountRoot")
+            if(node && node[sfLedgerEntryType.fieldName] == jss::AccountRoot)
             {
                 Json::Value prevFields =
                     node.isMember(sfPreviousFields.fieldName) ?
@@ -142,12 +142,14 @@ class Discrepancy_test : public beast::unit_test::suite
     }
 
 public:
-    void run ()
+    void run () override
     {
-        testZXCDiscrepancy ({});
-        testZXCDiscrepancy ({featureFlow});
-        testZXCDiscrepancy ({featureFlow, fix1373});
-        testZXCDiscrepancy ({featureFlow, fix1373, featureFlowCross});
+        using namespace test::jtx;
+        auto const sa = supported_amendments();
+        testZXCDiscrepancy (sa - featureFlow - fix1373 - featureFlowCross);
+        testZXCDiscrepancy (sa               - fix1373 - featureFlowCross);
+        testZXCDiscrepancy (sa                         - featureFlowCross);
+        testZXCDiscrepancy (sa);
     }
 };
 

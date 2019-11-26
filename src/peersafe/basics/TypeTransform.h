@@ -3,7 +3,9 @@
 
 #include <ripple/protocol/AccountID.h>
 #include <ripple/basics/base_uint.h>
+#include <ripple/basics/ByteOrder.h>
 #include <peersafe/vm/Common.h>
+#include <ripple/basics/Blob.h>
 #include <evmc/evmc.h>
 
 namespace ripple {

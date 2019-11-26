@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx.h>
 #include <ripple/beast/unit_test.h>
 #include <algorithm>
@@ -35,7 +34,10 @@ public:
     {
         using namespace jtx;
         for (std::size_t i = 1; i <= n; ++i)
+        {
             env(offer("alice", ZXC(i), iou(1)));
+            env.close();
+        }
     }
 
     void
@@ -47,8 +49,8 @@ public:
         env.disable_sigs();
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
-        env.fund(ZXC(billion), gw, "alice", "bob", "carol");
-        env.trust(USD(billion), "alice", "bob", "carol");
+        env.fund(ZXC(billion), gw, "alice");
+        env.trust(USD(billion), "alice");
         env(pay(gw, "alice", USD(billion)));
         createOffers(env, USD, n);
     }
@@ -60,7 +62,7 @@ public:
     }
 };
 
-BEAST_DEFINE_TESTSUITE_MANUAL(PlumpBook,tx,ripple);
+BEAST_DEFINE_TESTSUITE_MANUAL_PRIO(PlumpBook,tx,ripple,5);
 
 //------------------------------------------------------------------------------
 
@@ -88,7 +90,10 @@ public:
     {
         using namespace jtx;
         for (std::size_t i = 1; i <= n; ++i)
+        {
             env(offer("alice", ZXC(1), iou(1)));
+            env.close();
+        }
     }
 
     void
@@ -101,8 +106,8 @@ public:
         env.disable_sigs();
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
-        env.fund(ZXC(billion), gw, "alice", "bob", "carol");
-        env.trust(USD(billion), "alice", "bob", "carol");
+        env.fund(ZXC(billion), gw, "alice");
+        env.trust(USD(billion), "alice");
         env(pay(gw, "alice", USD(billion)));
         createOffers(env, USD, n);
         env(pay("alice", gw, USD(billion)));
@@ -110,13 +115,13 @@ public:
     }
 
     void
-    run()
+    run() override
     {
         test();
     }
 };
 
-BEAST_DEFINE_TESTSUITE_MANUAL(OversizeMeta,tx,ripple);
+BEAST_DEFINE_TESTSUITE_MANUAL_PRIO(OversizeMeta,tx,ripple,3);
 
 //------------------------------------------------------------------------------
 
@@ -151,7 +156,10 @@ public:
     {
         using namespace jtx;
         for (std::size_t i = 1; i <= n; ++i)
+        {
             env(offer("alice", ZXC(i), iou(1)));
+            env.close();
+        }
     }
 
     bool
@@ -163,8 +171,8 @@ public:
         env.disable_sigs();
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
-        env.fund(ZXC(billion), gw, "alice", "bob", "carol");
-        env.trust(USD(billion), "alice", "bob", "carol");
+        env.fund(ZXC(billion), gw, "alice");
+        env.trust(USD(billion), "alice");
         env(pay(gw, "alice", USD(billion)));
         createOffers(env, USD, n);
         env(pay("alice", gw, USD(billion)));
@@ -173,7 +181,7 @@ public:
     }
 
     void
-    run()
+    run() override
     {
         auto const result = bfind(100, 9000,
             [&](std::size_t n) { return oversize(n); });
@@ -181,7 +189,7 @@ public:
     }
 };
 
-BEAST_DEFINE_TESTSUITE_MANUAL(FindOversizeCross,tx,ripple);
+BEAST_DEFINE_TESTSUITE_MANUAL_PRIO(FindOversizeCross,tx,ripple,50);
 
 } // test
 } // ripple

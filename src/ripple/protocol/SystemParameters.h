@@ -64,6 +64,11 @@ systemCurrencyCode ()
     return code;
 }
 
+/** The ZXC ledger network's earliest allowed sequence */
+static
+std::uint32_t constexpr
+ZXC_LEDGER_EARLIEST_SEQ {32570};
+
 } // ripple
 
 #endif

@@ -15,14 +15,13 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx.h>
 #include <test/jtx/envconfig.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/Feature.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 namespace test {
@@ -170,8 +169,7 @@ struct Regression_test : public beast::unit_test::suite
                 cfg->section("transaction_queue")
                     .set("minimum_txn_in_ledger_standalone", "3");
                 return cfg;
-            }),
-            with_features(featureFeeEscalation));
+            }));
         Env_ss envs(env);
 
         auto const alice = Account("alice");
@@ -200,6 +198,32 @@ struct Regression_test : public beast::unit_test::suite
         }
     }
 
+    void testFeeEscalationExtremeConfig()
+    {
+        testcase("Fee escalation shouldn't allocate extreme memory");
+        using clock_type = std::chrono::steady_clock;
+        using namespace jtx;
+        using namespace std::chrono_literals;
+
+        Env env(*this, envconfig([](std::unique_ptr<Config> cfg)
+        {
+            auto& s = cfg->section("transaction_queue");
+            s.set("minimum_txn_in_ledger_standalone", "4294967295");
+            s.set("minimum_txn_in_ledger", "4294967295");
+            s.set("target_txn_in_ledger", "4294967295");
+            s.set("normal_consensus_increase_percent", "4294967295");
+
+            return cfg;
+        }));
+
+        env(noop(env.master));
+        // This test will probably fail if any breakpoints are encountered,
+        // but should pass on even the slowest machines.
+        auto const start = clock_type::now();
+        env.close();
+        BEAST_EXPECT(clock_type::now() - start < 1s);
+    }
+
     void testJsonInvalid()
     {
         using namespace jtx;
@@ -214,8 +238,7 @@ struct Regression_test : public beast::unit_test::suite
         std::vector<boost::asio::const_buffer> buffers;
         buffers.emplace_back(buffer(request, 1024));
         buffers.emplace_back(buffer(request.data() + 1024, request.length() - 1024));
-        BEAST_EXPECT(jrReader.parse(jvRequest, buffers) &&
-            jvRequest && jvRequest.isObject());
+        BEAST_EXPECT(jrReader.parse(jvRequest, buffers) && jvRequest.isObject());
     }
 
     void run() override
@@ -224,6 +247,7 @@ struct Regression_test : public beast::unit_test::suite
         testLowBalanceDestroy();
         testSecp256r1key();
         testFeeEscalationAutofill();
+        testFeeEscalationExtremeConfig();
         testJsonInvalid();
     }
 };

@@ -19,7 +19,7 @@
 
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/rpc/impl/TableAssistant.h>

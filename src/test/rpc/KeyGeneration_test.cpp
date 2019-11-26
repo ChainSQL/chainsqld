@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/StringUtilities.h>
 #include <test/jtx/TestSuite.h>
 #include <ripple/json/json_value.h>
 #include <ripple/json/json_writer.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/handlers/WalletPropose.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 
@@ -108,7 +107,6 @@ public:
 
         BEAST_EXPECT(! contains_error (result));
         BEAST_EXPECT(result.isMember (jss::account_id));
-        BEAST_EXPECT(result.isMember (jss::master_key));
         BEAST_EXPECT(result.isMember (jss::master_seed));
         BEAST_EXPECT(result.isMember (jss::master_seed_hex));
         BEAST_EXPECT(result.isMember (jss::public_key));
@@ -134,7 +132,6 @@ public:
 
         BEAST_EXPECT(! contains_error (result));
         expectEquals (result[jss::account_id], s.account_id);
-        expectEquals (result[jss::master_key], s.master_key);
         expectEquals (result[jss::master_seed], s.master_seed);
         expectEquals (result[jss::master_seed_hex], s.master_seed_hex);
         expectEquals (result[jss::public_key], s.public_key);
@@ -308,7 +305,7 @@ public:
             (keyType ? *keyType : "no key_type"));
 
         auto const publicKey = parseBase58<PublicKey>(
-            TokenType::TOKEN_ACCOUNT_PUBLIC, strings.public_key);
+            TokenType::AccountPublic, strings.public_key);
         BEAST_EXPECT(publicKey);
 
         if (!keyType)
@@ -710,7 +707,87 @@ public:
         }
     }
 
-    void run()
+    void testRippleLibEd25519()
+    {
+        testcase ("ripple-lib encoded Ed25519 keys");
+
+        auto test = [this](char const* seed, char const* addr)
+        {
+            {
+                Json::Value params;
+                Json::Value error;
+
+                params[jss::passphrase] = seed;
+
+                auto ret = keypairForSignature(params, error);
+
+                BEAST_EXPECT(!contains_error(error));
+                BEAST_EXPECT(ret.first.size() != 0);
+                BEAST_EXPECT(toBase58(calcAccountID(ret.first)) == addr);
+            }
+
+            {
+                Json::Value params;
+                Json::Value error;
+
+                params[jss::key_type] = "secp256k1";
+                params[jss::passphrase] = seed;
+
+                auto ret = keypairForSignature(params, error);
+
+                BEAST_EXPECT(contains_error(error));
+                BEAST_EXPECT(error[jss::error_message] ==
+                             "Specified seed is for an Ed25519 wallet.");
+            }
+
+            {
+                Json::Value params;
+                Json::Value error;
+
+                params[jss::key_type] = "ed25519";
+                params[jss::seed] = seed;
+
+                auto ret = keypairForSignature(params, error);
+
+                BEAST_EXPECT(!contains_error(error));
+                BEAST_EXPECT(ret.first.size() != 0);
+                BEAST_EXPECT(toBase58(calcAccountID(ret.first)) == addr);
+            }
+
+            {
+                Json::Value params;
+                Json::Value error;
+
+                params[jss::key_type] = "secp256k1";
+                params[jss::seed] = seed;
+
+                auto ret = keypairForSignature(params, error);
+
+                BEAST_EXPECT(contains_error(error));
+                BEAST_EXPECT(error[jss::error_message] ==
+                    "Specified seed is for an Ed25519 wallet.");
+            }
+        };
+
+        test("sEdVWZmeUDgQdMEFKTK9kYVX71FKB7o", "r34XnDB2zS11NZ1wKJzpU1mjWExGVugTaQ");
+        test("sEd7zJoVnqg1FxB9EuaHC1AB5UPfHWz", "rDw51qRrBEeMw7Na1Nh79LN7HYZDo7nZFE");
+        test("sEdSxVntbihdLyabbfttMCqsaaucVR9", "rwiyBDfAYegXZyaQcN2L1vAbKRYn2wNFMq");
+        test("sEdSVwJjEXTYCztqDK4JD9WByH3otDX", "rQJ4hZzNGkLQhLtKPCmu1ywEw1ai2vgUJN");
+        test("sEdV3jXjKuUoQTSr1Rb4yw8Kyn9r46U", "rERRw2Pxbau4tevE61V5vZUwD7Rus5Y6vW");
+        test("sEdVeUZjuYT47Uy51FQCnzivsuWyiwB", "rszewT5gRjUgWNEmnfMjvVYzJCkhvWY32i");
+        test("sEd7MHTewdw4tFYeS7rk7XT4qHiA9jH", "rBB2rvnf4ztwjgNhinFXQJ91nAZjkFgR3p");
+        test("sEd7A5jFBSdWbNeKGriQvLr1thBScJh", "rLAXz8Nz7aDivz7PwThsLFqaKrizepNCdA");
+        test("sEdVPU9M2uyzVNT4Yb5Dn4tUtYjbFAw", "rHbHRFPCxD5fnn98TBzsQHJ7SsRq7eHkRj");
+        test("sEdVfF2zhAmS8gfMYzJ4yWBMeR4BZKc", "r9PsneKHcAE7kUfiTixomM5Mnwi28tCc7h");
+        test("sEdTjRtcsQkwthDXUSLi9DHNyJcR8GW", "rM4soF4XS3wZrmLurvE6ZmudG16Lk5Dur5");
+        test("sEdVNKeu1Lhpfh7Nf6tRDbxnmMyZ4Dv", "r4ZwJxq6FDtWjapDtCGhjG6mtNm1nWdJcD");
+        test("sEd7bK4gf5BHJ1WbaEWx8pKMA9MLHpC", "rD6tnn51m4o1uXeEK9CFrZ3HR7DcFhiYnp");
+        test("sEd7jCh3ppnQMsLdGcZ6TZayZaHhBLg", "rTcBkiRQ1EfFQ4FCCwqXNHpn1yUTAACkj");
+        test("sEdTFJezurQwSJAbkLygj2gQXBut2wh", "rnXaMacNbRwcJddbbPbqdcpSUQcfzFmrR8");
+        test("sEdSWajfQAAWFuDvVZF3AiGucReByLt", "rBJtow6V3GTdsWMamrxetRDwWs6wwTxcKa");
+    }
+
+    void run() override
     {
         testKeyType (boost::none, secp256k1_strings);
         testKeyType (std::string("secp256k1"), secp256k1_strings);
@@ -722,6 +799,9 @@ public:
         testKeypairForSignature (std::string("secp256k1"), secp256k1_strings);
         testKeypairForSignature (std::string("ed25519"), ed25519_strings);
         testKeypairForSignature (std::string("secp256k1"), strong_brain_strings);
+
+        testRippleLibEd25519();
+
         testKeypairForSignatureErrors ();
     }
 };

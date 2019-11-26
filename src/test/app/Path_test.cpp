@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/paths/AccountCurrencies.h>
 #include <ripple/basics/contract.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/to_string.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/STParsedJSON.h>
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/resource/Fees.h>
@@ -231,16 +230,17 @@ public:
         auto& app = env.app();
         Resource::Charge loadType = Resource::feeReferenceRPC;
         Resource::Consumer c;
-        RPC::Context context {beast::Journal(), {}, app, loadType,
+        RPC::Context context {env.journal, {}, app, loadType,
             app.getOPs(), app.getLedgerMaster(), c, Role::USER, {}};
 
         Json::Value params = Json::objectValue;
         params[jss::command] = "ripple_path_find";
         params[jss::source_account] = toBase58 (src);
         params[jss::destination_account] = toBase58 (dst);
-        params[jss::destination_amount] = saDstAmount.getJson(0);
+        params[jss::destination_amount] =
+            saDstAmount.getJson(JsonOptions::none);
         if(saSendMax)
-            params[jss::send_max] = saSendMax->getJson(0);
+            params[jss::send_max] = saSendMax->getJson(JsonOptions::none);
         if(saSrcCurrency)
         {
             auto& sc = params[jss::source_currencies] = Json::arrayValue;
@@ -260,6 +260,7 @@ public:
                 g.signal();
             });
 
+        using namespace std::chrono_literals;
         BEAST_EXPECT(g.wait_for(5s));
         BEAST_EXPECT(! result.isMember(jss::error));
         return result;
@@ -328,7 +329,7 @@ public:
         auto& app = env.app();
         Resource::Charge loadType = Resource::feeReferenceRPC;
         Resource::Consumer c;
-        RPC::Context context {beast::Journal(), {}, app, loadType,
+        RPC::Context context {env.journal, {}, app, loadType,
             app.getOPs(), app.getLedgerMaster(), c, Role::USER, {}};
         Json::Value result;
         gate g;
@@ -803,7 +804,7 @@ public:
             })", jv);
 
         auto const jv_l = env.le(keylet::line(Account("bob").id(),
-            Account("alice")["USD"].issue()))->getJson(0);
+            Account("alice")["USD"].issue()))->getJson(JsonOptions::none);
         for (auto it = jv.begin(); it != jv.end(); ++it)
             BEAST_EXPECT(*it == jv_l[it.memberName()]);
     }
@@ -842,7 +843,7 @@ public:
             })", jv);
 
         auto const jv_l = env.le(keylet::line(Account("bob").id(),
-            Account("alice")["USD"].issue()))->getJson(0);
+            Account("alice")["USD"].issue()))->getJson(JsonOptions::none);
         for (auto it = jv.begin(); it != jv.end(); ++it)
             BEAST_EXPECT(*it == jv_l[it.memberName()]);
 
@@ -890,7 +891,7 @@ public:
             })", jv);
 
         auto const jv_l = env.le(keylet::line(Account("alice").id(),
-            Account("bob")["USD"].issue()))->getJson(0);
+            Account("bob")["USD"].issue()))->getJson(JsonOptions::none);
         for (auto it = jv.begin(); it != jv.end(); ++it)
             BEAST_EXPECT(*it == jv_l[it.memberName()]);
 
@@ -1025,7 +1026,8 @@ public:
     {
         testcase("Path Find: CNY");
         using namespace jtx;
-        Env env{*this, all_features_except(featureFlow)};
+        Env env{*this,
+                supported_amendments().reset(featureFlow)};
 
         Account A1 {"A1"};
         Account A2 {"A2"};
@@ -1352,7 +1354,7 @@ public:
     }
 
     void
-    run()
+    run() override
     {
         source_currencies_limit();
         no_direct_path_no_intermediary_no_alternatives();

@@ -20,7 +20,7 @@
 
 #include <ripple/beast/unit_test.h>
 #include <ripple/protocol/AccountID.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/STAmount.h>
 
 namespace ripple {
@@ -121,24 +121,24 @@ class OwnerInfo_test : public beast::unit_test::suite
         BEAST_EXPECT (
             lines[0u][sfBalance.fieldName] ==
             (STAmount{Issue{to_currency("CNY"), noAccount()}, 0}
-                 .value().getJson(0)));
+                 .value().getJson(JsonOptions::none)));
         BEAST_EXPECT (
             lines[0u][sfHighLimit.fieldName] ==
-            alice["CNY"](1000).value().getJson(0));
+            alice["CNY"](1000).value().getJson(JsonOptions::none));
         BEAST_EXPECT (
             lines[0u][sfLowLimit.fieldName] ==
-            gw["CNY"](0).value().getJson(0));
+            gw["CNY"](0).value().getJson(JsonOptions::none));
 
         BEAST_EXPECT (
             lines[1u][sfBalance.fieldName] ==
             (STAmount{Issue{to_currency("USD"), noAccount()}, 0}
-                .value().getJson(0)));
+                .value().getJson(JsonOptions::none)));
         BEAST_EXPECT (
             lines[1u][sfHighLimit.fieldName] ==
-            alice["USD"](1000).value().getJson(0));
+            alice["USD"](1000).value().getJson(JsonOptions::none));
         BEAST_EXPECT (
             lines[1u][sfLowLimit.fieldName] ==
-            USD(0).value().getJson(0));
+            USD(0).value().getJson(JsonOptions::none));
 
         if (! BEAST_EXPECT (result[jss::accepted].isMember(jss::offers)))
             return;
@@ -149,9 +149,11 @@ class OwnerInfo_test : public beast::unit_test::suite
         BEAST_EXPECT (
             offers[0u][jss::Account] == alice.human());
         BEAST_EXPECT (
-            offers[0u][sfTakerGets.fieldName] == ZXC(1000).value().getJson(0));
+            offers[0u][sfTakerGets.fieldName] ==
+            ZXC(1000).value().getJson(JsonOptions::none));
         BEAST_EXPECT (
-            offers[0u][sfTakerPays.fieldName] == USD(1).value().getJson(0));
+            offers[0u][sfTakerPays.fieldName] ==
+            USD(1).value().getJson(JsonOptions::none));
 
 
         // current ledger entry
@@ -164,24 +166,24 @@ class OwnerInfo_test : public beast::unit_test::suite
         BEAST_EXPECT (
             lines[0u][sfBalance.fieldName] ==
             (STAmount{Issue{to_currency("CNY"), noAccount()}, -50}
-                 .value().getJson(0)));
+                 .value().getJson(JsonOptions::none)));
         BEAST_EXPECT (
             lines[0u][sfHighLimit.fieldName] ==
-            alice["CNY"](1000).value().getJson(0));
+            alice["CNY"](1000).value().getJson(JsonOptions::none));
         BEAST_EXPECT (
             lines[0u][sfLowLimit.fieldName] ==
-            gw["CNY"](0).value().getJson(0));
+            gw["CNY"](0).value().getJson(JsonOptions::none));
 
         BEAST_EXPECT (
             lines[1u][sfBalance.fieldName] ==
             (STAmount{Issue{to_currency("USD"), noAccount()}, -50}
-                .value().getJson(0)));
+                .value().getJson(JsonOptions::none)));
         BEAST_EXPECT (
             lines[1u][sfHighLimit.fieldName] ==
-            alice["USD"](1000).value().getJson(0));
+            alice["USD"](1000).value().getJson(JsonOptions::none));
         BEAST_EXPECT (
             lines[1u][sfLowLimit.fieldName] ==
-            gw["USD"](0).value().getJson(0));
+            gw["USD"](0).value().getJson(JsonOptions::none));
 
         if (! BEAST_EXPECT (result[jss::current].isMember(jss::offers)))
             return;
@@ -195,13 +197,15 @@ class OwnerInfo_test : public beast::unit_test::suite
         BEAST_EXPECT (
             offers[0u][jss::Account] == alice.human());
         BEAST_EXPECT (
-            offers[0u][sfTakerGets.fieldName] == ZXC(1000).value().getJson(0));
+            offers[0u][sfTakerGets.fieldName] ==
+            ZXC(1000).value().getJson(JsonOptions::none));
         BEAST_EXPECT (
-            offers[0u][sfTakerPays.fieldName] == CNY(2).value().getJson(0));
+            offers[0u][sfTakerPays.fieldName] ==
+            CNY(2).value().getJson(JsonOptions::none));
     }
 
 public:
-    void run ()
+    void run () override
     {
         testBadInput ();
         testBasic ();

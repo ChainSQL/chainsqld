@@ -27,6 +27,7 @@
 #include <test/jtx/amount.h>
 #include <test/jtx/balance.h>
 #include <test/jtx/delivermin.h>
+#include <test/jtx/deposit.h>
 #include <test/jtx/Env.h>
 #include <test/jtx/Env_ss.h>
 #include <test/jtx/fee.h>
@@ -56,5 +57,6 @@
 #include <test/jtx/trust.h>
 #include <test/jtx/txflags.h>
 #include <test/jtx/utility.h>
+#include <ripple/beast/unit_test.h>
 
 #endif

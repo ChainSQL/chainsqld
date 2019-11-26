@@ -17,14 +17,14 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/json/to_string.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <peersafe/protocol/STEntry.h>
 
 namespace ripple {
@@ -34,7 +34,7 @@ namespace ripple {
     {
 
     }
-    void STEntry::init(ripple::Blob tableName, uint160 nameInDB,uint8 deleted, uint32 createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash, uint32 txnLedgerSequence, uint256 txnLedgerhash,uint32 prevTxnLedgerSequence,uint256 prevTxnLedgerhash, uint256 txCheckhash, STArray users)
+    void STEntry::init(ripple::Blob tableName, uint160 nameInDB,uint8_t deleted, uint32_t createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash, uint32_t txnLedgerSequence, uint256 txnLedgerhash,uint32_t prevTxnLedgerSequence,uint256 prevTxnLedgerhash, uint256 txCheckhash, STArray users)
     {
         setFieldVL(sfTableName, tableName); //if (tableName == NUll ) then set to null ,no exception
         setFieldH160(sfNameInDB, nameInDB);
@@ -154,23 +154,21 @@ namespace ripple {
     {
         struct FormatHolder
         {
-            SOTemplate format;
-
-            FormatHolder()
+            SOTemplate format
             {
-                format.push_back(SOElement(sfTableName, SOE_REQUIRED));
-                format.push_back(SOElement(sfNameInDB, SOE_REQUIRED));
-                format.push_back(SOElement(sfCreateLgrSeq, SOE_REQUIRED));
-                format.push_back(SOElement(sfCreatedLedgerHash, SOE_REQUIRED));
-                format.push_back(SOElement(sfCreatedTxnHash, SOE_REQUIRED));
-                format.push_back(SOElement(sfTxnLgrSeq, SOE_REQUIRED));
-                format.push_back(SOElement(sfTxnLedgerHash, SOE_REQUIRED));
-                format.push_back(SOElement(sfPreviousTxnLgrSeq, SOE_REQUIRED));
-                format.push_back(SOElement(sfPrevTxnLedgerHash, SOE_REQUIRED));
-                format.push_back(SOElement(sfTxCheckHash, SOE_REQUIRED));
-                format.push_back(SOElement(sfUsers, SOE_REQUIRED));
-				format.push_back(SOElement(sfRules, SOE_REQUIRED));
-            }
+				{ sfTableName,			soeREQUIRED },
+                { sfNameInDB,			soeREQUIRED },
+				{ sfCreateLgrSeq,		soeREQUIRED },
+				{ sfCreatedLedgerHash,	soeREQUIRED },
+				{ sfCreatedTxnHash,		soeREQUIRED },
+				{ sfTxnLgrSeq,			soeREQUIRED },
+				{ sfTxnLedgerHash,		soeREQUIRED },
+				{ sfPreviousTxnLgrSeq,	soeREQUIRED },
+				{ sfPrevTxnLedgerHash,	soeREQUIRED },
+				{ sfTxCheckHash,		soeREQUIRED },
+				{ sfUsers,				soeREQUIRED },
+				{ sfRules,				soeREQUIRED }
+			};
         };
 
         static FormatHolder holder;

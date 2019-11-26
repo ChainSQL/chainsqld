@@ -25,6 +25,15 @@
 namespace ripple {
 namespace test {
 
+extern std::atomic<bool> envUseIPv4;
+
+inline
+const char *
+getEnvLocalhostAddr()
+{
+    return envUseIPv4 ? "127.0.0.1" : "::1";
+}
+
 /// @brief initializes a config object for use with jtx::Env
 ///
 /// @param config the configuration object to be initialized
@@ -76,6 +85,9 @@ envconfig(F&& modfunc, Args&&... args)
 /// @return unique_ptr to Config instance
 std::unique_ptr<Config>
 no_admin(std::unique_ptr<Config>);
+
+std::unique_ptr<Config>
+secure_gateway(std::unique_ptr<Config>);
 
 /// @brief adjust configuration with params needed to be a validator
 ///

@@ -17,10 +17,10 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/Buffer.h>
 #include <ripple/beast/unit_test.h>
 #include <cstdint>
+#include <type_traits>
 
 namespace ripple {
 namespace test {
@@ -35,7 +35,7 @@ struct Buffer_test : beast::unit_test::suite
         return b.data() != nullptr;
     }
 
-    void run()
+    void run() override
     {
         std::uint8_t const data[] =
         {
@@ -98,17 +98,33 @@ struct Buffer_test : beast::unit_test::suite
             x = b0;
             BEAST_EXPECT (x == b0);
             BEAST_EXPECT (sane (x));
+#if defined(__clang__) && \
+    (!defined(__APPLE__) && (__clang_major__ >= 7)) || \
+    (defined(__APPLE__) && (__apple_build_version__ >= 10010043))
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#endif
+
             x = x;
             BEAST_EXPECT (x == b0);
             BEAST_EXPECT (sane (x));
             y = y;
             BEAST_EXPECT (y == b3);
             BEAST_EXPECT (sane (y));
+
+#if defined(__clang__) && \
+    (!defined(__APPLE__) && (__clang_major__ >= 7)) || \
+    (defined(__APPLE__) && (__apple_build_version__ >= 10010043))
+#pragma clang diagnostic pop
+#endif
         }
 
         // Check move constructor & move assignments:
         {
             testcase ("Move Construction / Assignment");
+
+            static_assert(std::is_nothrow_move_constructible<Buffer>::value, "");
+            static_assert(std::is_nothrow_move_assignable<Buffer>::value, "");
 
             { // Move-construct from empty buf
                 Buffer x;

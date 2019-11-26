@@ -17,7 +17,7 @@
  */
 //==============================================================================
 
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <ripple/protocol/digest.h>
@@ -130,7 +130,7 @@ namespace ripple {
         return transactionType == "Contract";
     }
 
-	uint160 generateNameInDB(uint32 ledgerSeq, AccountID account, std::string sTableName)
+	uint160 generateNameInDB(uint32_t ledgerSeq, AccountID account, std::string sTableName)
 	{
 		std::string tmp = to_string(ledgerSeq) + to_string(account) + sTableName;
 		std::string str = hash(tmp);

@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <ripple/app/misc/Manifest.h>
+#include <ripple/basics/base64.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
@@ -26,47 +27,126 @@
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/Sign.h>
-#include <beast/core/detail/base64.hpp>
+#include <boost/algorithm/clamp.hpp>
 #include <boost/regex.hpp>
 #include <numeric>
 #include <stdexcept>
 
 namespace ripple {
 
-boost::optional<Manifest>
-Manifest::make_Manifest (std::string s)
+boost::optional<Manifest> deserializeManifest(Slice s)
 {
+    if (s.empty())
+        return boost::none;
+
+    static SOTemplate const manifestFormat {
+            // A manifest must include:
+            // - the master public key
+            {sfPublicKey,       soeREQUIRED},
+
+            // - a signature with that public key
+            {sfMasterSignature, soeREQUIRED},
+
+            // - a sequence number
+            {sfSequence,        soeREQUIRED},
+
+            // It may, optionally, contain:
+            // - a version number which defaults to 0
+            {sfVersion,         soeDEFAULT},
+
+            // - a domain name
+            {sfDomain,          soeOPTIONAL},
+
+            // - an ephemeral signing key that can be changed as necessary
+            {sfSigningPubKey,   soeOPTIONAL},
+
+            // - a signature using the ephemeral signing key, if it is present
+            {sfSignature,       soeOPTIONAL},
+        };
+
     try
     {
-        STObject st (sfGeneric);
-        SerialIter sit (s.data (), s.size ());
-        st.set (sit);
+        SerialIter sit{ s };
+        STObject st{ sit, sfGeneric };
+
+        st.applyTemplate(manifestFormat);
+
+        // We only understand "version 0" manifests at this time:
+        if (st.isFieldPresent(sfVersion) && st.getFieldU16(sfVersion) != 0)
+            return boost::none;
+
         auto const pk = st.getFieldVL (sfPublicKey);
+
         if (! publicKeyType (makeSlice(pk)))
             return boost::none;
 
-        auto const opt_seq = get (st, sfSequence);
-        auto const opt_msig = get (st, sfMasterSignature);
-        if (!opt_seq || !opt_msig)
-            return boost::none;
+        Manifest m;
+        m.serialized.assign(reinterpret_cast<char const*>(s.data()), s.size());
+        m.masterKey = PublicKey(makeSlice(pk));
+        m.sequence = st.getFieldU32 (sfSequence);
 
-        // Signing key and signature are not required for
-        // master key revocations
-        if (*opt_seq != std::numeric_limits<std::uint32_t>::max ())
+        if (st.isFieldPresent(sfDomain))
         {
-            auto const spk = st.getFieldVL (sfSigningPubKey);
-            if (! publicKeyType (makeSlice(spk)))
-                return boost::none;
-            auto const opt_sig = get (st, sfSignature);
-            if (! opt_sig)
+            auto const d = st.getFieldVL(sfDomain);
+
+            // The domain must be between 4 and 128 characters long
+            if (boost::algorithm::clamp(d.size(), 4, 128) != d.size())
                 return boost::none;
 
-            return Manifest (std::move (s), PublicKey (makeSlice(pk)),
-                PublicKey (makeSlice(spk)), *opt_seq);
+            m.domain.assign (reinterpret_cast<char const*>(d.data()), d.size());
+
+            // This regular expression should do a decent job of weeding out
+            // obviously wrong domain names but it isn't perfect. It does not
+            // really support IDNs. If this turns out to be an issue, a more
+            // thorough regex can be used or this check can just be removed.
+            static boost::regex const re(
+                "^"                     // Beginning of line
+                "("                     // Beginning of a segment
+                "(?!-)"                 //  - must not begin with '-'
+                "[a-zA-Z0-9-]{1,63}"    //  - only alphanumeric and '-'
+                "(?<!-)"                //  - must not end with '-'
+                "\\."                   // segment separator
+                ")+"                    // 1 or more segments
+                "[A-Za-z]{2,63}"        // TLD
+                "$"                     // End of line
+                , boost::regex_constants::optimize);
+
+            if (!boost::regex_match(m.domain, re))
+                return boost::none;
         }
 
-        return Manifest (std::move (s), PublicKey (makeSlice(pk)),
-            PublicKey(), *opt_seq);
+        bool const hasEphemeralKey = st.isFieldPresent(sfSigningPubKey);
+        bool const hasEphemeralSig = st.isFieldPresent(sfSignature);
+
+        if (m.revoked())
+        {
+            // Revocation manifests should not specify a new signing key
+            // or a signing key signature.
+            if (hasEphemeralKey)
+                return boost::none;
+
+            if (hasEphemeralSig)
+                return boost::none;
+        }
+        else
+        {
+            // Regular manifests should contain a signing key and an
+            // associated signature.
+            if (!hasEphemeralKey)
+                return boost::none;
+
+            if (!hasEphemeralSig)
+                return boost::none;
+
+            auto const spk = st.getFieldVL(sfSigningPubKey);
+
+            if (!publicKeyType (makeSlice(spk)))
+                return boost::none;
+
+            m.signingKey = PublicKey(makeSlice(spk));
+        }
+
+        return std::move(m);
     }
     catch (std::exception const&)
     {
@@ -83,7 +163,7 @@ logMftAct (
     std::uint32_t seq)
 {
     s << "Manifest: " << action <<
-         ";Pk: " << toBase58 (TokenType::TOKEN_NODE_PUBLIC, pk) <<
+         ";Pk: " << toBase58 (TokenType::NodePublic, pk) <<
          ";Seq: " << seq << ";";
     return s;
 }
@@ -97,21 +177,10 @@ Stream& logMftAct (
     std::uint32_t oldSeq)
 {
     s << "Manifest: " << action <<
-         ";Pk: " << toBase58 (TokenType::TOKEN_NODE_PUBLIC, pk) <<
+         ";Pk: " << toBase58 (TokenType::NodePublic, pk) <<
          ";Seq: " << seq <<
          ";OldSeq: " << oldSeq << ";";
     return s;
-}
-
-Manifest::Manifest (std::string s,
-                    PublicKey pk,
-                    PublicKey spk,
-                    std::uint32_t seq)
-    : serialized (std::move (s))
-    , masterKey (std::move (pk))
-    , signingKey (std::move (spk))
-    , sequence (seq)
-{
 }
 
 bool Manifest::verify () const
@@ -146,11 +215,13 @@ bool Manifest::revoked () const
     return sequence == std::numeric_limits<std::uint32_t>::max ();
 }
 
-Blob Manifest::getSignature () const
+boost::optional<Blob> Manifest::getSignature () const
 {
     STObject st (sfGeneric);
     SerialIter sit (serialized.data (), serialized.size ());
     st.set (sit);
+    if (!get(st, sfSignature))
+        return boost::none;
     return st.getFieldVL (sfSignature);
 }
 
@@ -184,7 +255,7 @@ ValidatorToken::make_ValidatorToken(std::vector<std::string> const& tokenBlob)
         for (auto const& line : tokenBlob)
             tokenStr += beast::rfc2616::trim(line);
 
-        tokenStr = beast::detail::base64_decode(tokenStr);
+        tokenStr = base64_decode(tokenStr);
 
         Json::Reader r;
         Json::Value token;
@@ -196,7 +267,7 @@ ValidatorToken::make_ValidatorToken(std::vector<std::string> const& tokenBlob)
             token["validation_secret_key"].isString())
         {
             auto const ret = strUnHex (token["validation_secret_key"].asString());
-            if (! ret.second || ! ret.first.size ())
+            if (! ret.second || ret.first.empty())
                 return boost::none;
 
             return ValidatorToken(
@@ -290,6 +361,19 @@ ManifestCache::applyManifest (Manifest m)
 
     bool const revoked = m.revoked();
 
+    if (revoked)
+    {
+        /*
+            A validator master key has been compromised, so its manifests
+            are now untrustworthy.  In order to prevent us from accepting
+            a forged manifest signed by the compromised master key, store
+            this manifest, which has the highest possible sequence number
+            and therefore can't be superseded by a forged one.
+        */
+        if (auto stream = j_.warn())
+            logMftAct(stream, "Revoked", m.masterKey, m.sequence);
+    }
+
     if (iter == map_.end ())
     {
         /*
@@ -303,7 +387,8 @@ ManifestCache::applyManifest (Manifest m)
         if (! revoked)
             signingToMasterKeys_[m.signingKey] = m.masterKey;
 
-        map_.emplace (std::make_pair(m.masterKey, std::move (m)));
+        auto masterKey = m.masterKey;
+        map_.emplace(std::move(masterKey), std::move(m));
     }
     else
     {
@@ -321,19 +406,6 @@ ManifestCache::applyManifest (Manifest m)
             signingToMasterKeys_[m.signingKey] = m.masterKey;
 
         iter->second = std::move (m);
-    }
-
-    if (revoked)
-    {
-        /*
-            A validator master key has been compromised, so its manifests
-            are now untrustworthy.  In order to prevent us from accepting
-            a forged manifest signed by the compromised master key, store
-            this manifest, which has the highest possible sequence number
-            and therefore can't be superseded by a forged one.
-        */
-        if (auto stream = j_.warn())
-            logMftAct(stream, "Revoked", m.masterKey, m.sequence);
     }
 
     return ManifestDisposition::accepted;
@@ -356,7 +428,7 @@ ManifestCache::load (
     {
         std::string serialized;
         convert (sociRawData, serialized);
-        if (auto mo = Manifest::make_Manifest (std::move (serialized)))
+        if (auto mo = deserializeManifest(serialized))
         {
             if (!mo->verify())
             {
@@ -385,8 +457,7 @@ ManifestCache::load (
 
     if (! configManifest.empty())
     {
-        auto mo = Manifest::make_Manifest (
-            beast::detail::base64_decode(configManifest));
+        auto mo = deserializeManifest(base64_decode(configManifest));
         if (! mo)
         {
             JLOG (j_.error()) << "Malformed validator_token in config";
@@ -420,8 +491,7 @@ ManifestCache::load (
         for (auto const& line : configRevocation)
             revocationStr += beast::rfc2616::trim(line);
 
-        auto mo = Manifest::make_Manifest (
-            beast::detail::base64_decode(revocationStr));
+        auto mo = deserializeManifest(base64_decode(revocationStr));
 
         if (! mo || ! mo->revoked() ||
             applyManifest (std::move(*mo)) == ManifestDisposition::invalid)

@@ -17,14 +17,14 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/tx/impl/Payment.h>
 #include <ripple/app/paths/RippleCalc.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/Config.h>
+#include <ripple/protocol/Feature.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/st.h>
 #include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/JsonFields.h>
 
 namespace ripple {
 
@@ -44,7 +44,7 @@ Payment::calculateMaxSpend(STTx const& tx)
     return saDstAmount.native() ? saDstAmount.zxc() : beast::zero;
 }
 
-TER
+NotTEC
 Payment::preflight (PreflightContext const& ctx)
 {
     auto const ret = preflight1 (ctx);
@@ -327,7 +327,7 @@ Payment::doApply ()
         maxSourceAmount = STAmount (
             {saDstAmount.getCurrency (), account_},
             saDstAmount.mantissa(), saDstAmount.exponent (),
-            saDstAmount < zero);
+            saDstAmount < beast::zero);
 
     JLOG(j_.trace()) <<
         "maxSourceAmount=" << maxSourceAmount.getFullText () <<
@@ -353,15 +353,37 @@ Payment::doApply ()
         view().update (sleDst);
     }
 
-    TER terResult;
+    // Determine whether the destination requires deposit authorization.
+    bool const reqDepositAuth = sleDst->getFlags() & lsfDepositAuth &&
+        view().rules().enabled(featureDepositAuth);
+
+    bool const depositPreauth = view().rules().enabled(featureDepositPreauth);
 
     bool const bRipple = paths || sendMax || !saDstAmount.native ();
-    // XXX Should sendMax be sufficient to imply ripple?
+
+    // If the destination has lsfDepositAuth set, then only direct ZXC
+    // payments (no intermediate steps) are allowed to the destination.
+    if (!depositPreauth && bRipple && reqDepositAuth)
+        return tecNO_PERMISSION;
 
     if (bRipple)
     {
         // Ripple payment with at least one intermediate step and uses
         // transitive balances.
+
+        if (depositPreauth && reqDepositAuth)
+        {
+            // If depositPreauth is enabled, then an account that requires
+            // authorization has two ways to get an IOU Payment in:
+            //  1. If Account == Destination, or
+            //  2. If Account is deposit preauthorized by destination.
+            if (uDstAccountID != account_)
+            {
+                if (! view().exists (
+                    keylet::depositPreauth (uDstAccountID, account_)))
+                    return tecNO_PERMISSION;
+            }
+        }
 
         // Copy paths into an editable class.
         STPathSet spsPaths = ctx_.tx.getFieldPathSet (sfPaths);
@@ -376,7 +398,8 @@ Payment::doApply ()
         {
             PaymentSandbox pv(&view());
             JLOG(j_.debug())
-                << "Entering RippleCalc in payment: " << ctx_.tx.getTransactionID();
+                << "Entering RippleCalc in payment: "
+                << ctx_.tx.getTransactionID();
             rc = path::RippleCalc::rippleCalculate (
                 pv,
                 maxSourceAmount,
@@ -404,7 +427,7 @@ Payment::doApply ()
                 ctx_.deliver (rc.actualAmountOut);
         }
 
-        terResult = rc.result ();
+        auto terResult = rc.result ();
 
         // Because of its overhead, if RippleCalc
         // fails with a retry code, claim a fee
@@ -412,60 +435,92 @@ Payment::doApply ()
         // careful with their path spec next time.
         if (isTerRetry (terResult))
             terResult = tecPATH_DRY;
+        return terResult;
     }
-    else
+
+    assert (saDstAmount.native ());
+
+    // Direct ZXC payment.
+
+    // uOwnerCount is the number of entries in this legder for this
+    // account that require a reserve.
+    auto const uOwnerCount = view().read(
+        keylet::account(account_))->getFieldU32 (sfOwnerCount);
+
+    // This is the total reserve in drops.
+    auto const reserve = view().fees().accountReserve(uOwnerCount);
+
+    // mPriorBalance is the balance on the sending account BEFORE the
+    // fees were charged. We want to make sure we have enough reserve
+    // to send. Allow final spend to use reserve for fee.
+    auto const mmm = std::max(reserve,
+        ctx_.tx.getFieldAmount (sfFee).zxc ());
+
+	//is src account a contract?
+	bool isContractSrc = view().read(
+		keylet::account(account_))->isFieldPresent(sfContractCode);
+    if ((!isContractSrc && mPriorBalance < saDstAmount.zxc () + mmm ) || 
+		(isContractSrc && mPriorBalance < saDstAmount.zxc()))
     {
-        assert (saDstAmount.native ());
+        // Vote no. However the transaction might succeed, if applied in
+        // a different order.
+        JLOG(j_.trace()) << "Delay transaction: Insufficient funds: " <<
+            " " <<   to_string (mPriorBalance) <<
+            " / " << to_string (saDstAmount.zxc () + mmm) <<
+            " (" <<  to_string (reserve) << ")";
 
-        // Direct ZXC payment.
+        return tecUNFUNDED_PAYMENT;
+    }
 
-        // uOwnerCount is the number of entries in this legder for this
-        // account that require a reserve.
-        auto const uOwnerCount = view().read(
-            keylet::account(account_))->getFieldU32 (sfOwnerCount);
-
-        // This is the total reserve in drops.
-        auto const reserve = view().fees().accountReserve(uOwnerCount);
-
-        // mPriorBalance is the balance on the sending account BEFORE the
-        // fees were charged. We want to make sure we have enough reserve
-        // to send. Allow final spend to use reserve for fee.
-        auto const mmm = std::max(reserve,
-            ctx_.tx.getFieldAmount (sfFee).zxc ());
-
-		//is src account a contract?
-		bool isContractSrc = view().read(
-			keylet::account(account_))->isFieldPresent(sfContractCode);
-        if ((!isContractSrc && mPriorBalance < saDstAmount.zxc () + mmm ) || 
-			(isContractSrc && mPriorBalance < saDstAmount.zxc()))
+     // The source account does have enough money.  Make sure the
+    // source account has authority to deposit to the destination.
+    if (reqDepositAuth)
+    {
+        // If depositPreauth is enabled, then an account that requires
+        // authorization has three ways to get an ZXC Payment in:
+        //  1. If Account == Destination, or
+        //  2. If Account is deposit preauthorized by destination, or
+        //  3. If the destination's ZXC balance is
+        //    a. less than or equal to the base reserve and
+        //    b. the deposit amount is less than or equal to the base reserve,
+        // then we allow the deposit.
+        //
+        // Rule 3 is designed to keep an account from getting wedged
+        // in an unusable state if it sets the lsfDepositAuth flag and
+        // then consumes all of its ZXC.  Without the rule if an
+        // account with lsfDepositAuth set spent all of its ZXC, it
+        // would be unable to acquire more ZXC required to pay fees.
+        //
+        // We choose the base reserve as our bound because it is
+        // a small number that seldom changes but is always sufficient
+        // to get the account un-wedged.
+        if (uDstAccountID != account_)
         {
-            // Vote no. However the transaction might succeed, if applied in
-            // a different order.
-            JLOG(j_.trace()) << "Delay transaction: Insufficient funds: " <<
-                " " <<   to_string (mPriorBalance) <<
-                " / " << to_string (saDstAmount.zxc () + mmm) <<
-                " (" <<  to_string (reserve) << ")";
+            if (! view().exists (
+                keylet::depositPreauth (uDstAccountID, account_)))
+            {
+                // Get the base reserve.
+                ZXCAmount const dstReserve {view().fees().accountReserve (0)};
 
-            terResult = tecUNFUNDED_PAYMENT;
-        }
-        else
-        {
-            // The source account does have enough money, so do the
-            // arithmetic for the transfer and make the ledger change.
-            view().peek(keylet::account(account_))->setFieldAmount (sfBalance,
-                mSourceBalance - saDstAmount);
-            sleDst->setFieldAmount (sfBalance,
-                sleDst->getFieldAmount (sfBalance) + saDstAmount);
-
-            // Re-arm the password change fee if we can and need to.
-            if ((sleDst->getFlags () & lsfPasswordSpent))
-                sleDst->clearFlag (lsfPasswordSpent);
-
-            terResult = tesSUCCESS;
+                if (saDstAmount > dstReserve ||
+                    sleDst->getFieldAmount (sfBalance) > dstReserve)
+                        return tecNO_PERMISSION;
+            }
         }
     }
 
-    return terResult;
+    // Do the arithmetic for the transfer and make the ledger change.
+    view()
+        .peek(keylet::account(account_))
+        ->setFieldAmount(sfBalance, mSourceBalance - saDstAmount);
+    sleDst->setFieldAmount(
+        sfBalance, sleDst->getFieldAmount(sfBalance) + saDstAmount);
+
+    // Re-arm the password change fee if we can and need to.
+    if ((sleDst->getFlags() & lsfPasswordSpent))
+        sleDst->clearFlag(lsfPasswordSpent);
+
+    return tesSUCCESS;
 }
 
 }  // ripple

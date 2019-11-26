@@ -20,7 +20,7 @@
 #ifndef RIPPLE_OVERLAY_PROTOCOLMESSAGE_H_INCLUDED
 #define RIPPLE_OVERLAY_PROTOCOLMESSAGE_H_INCLUDED
 
-#include "ripple.pb.h"
+#include <ripple/protocol/messages.h>
 #include <ripple/overlay/Message.h>
 #include <ripple/overlay/impl/ZeroCopyStream.h>
 #include <boost/asio/buffer.hpp>
@@ -46,6 +46,10 @@ protocolMessageName (int type)
     case protocol::mtPING:              return "ping";
     case protocol::mtPROOFOFWORK:       return "proof_of_work";
     case protocol::mtCLUSTER:           return "cluster";
+    case protocol::mtGET_SHARD_INFO:        return "get_shard_info";
+    case protocol::mtSHARD_INFO:            return "shard_info";
+    case protocol::mtGET_PEER_SHARD_INFO:   return "get_peer_shard_info";
+    case protocol::mtPEER_SHARD_INFO:       return "peer_shard_info";
     case protocol::mtGET_PEERS:         return "get_peers";
     case protocol::mtPEERS:             return "peers";
     case protocol::mtENDPOINTS:         return "endpoints";
@@ -106,12 +110,25 @@ invokeProtocolMessage (Buffers const& buffers, Handler& handler)
     std::pair<std::size_t,boost::system::error_code> result = { 0, {} };
     boost::system::error_code& ec = result.second;
 
-    auto const type = Message::type(buffers);
-    if (type == 0)
+    auto const bs = boost::asio::buffer_size(buffers);
+
+    // If we don't even have enough bytes for the header, there's no point
+    // in doing any work.
+    if (bs < Message::kHeaderBytes)
         return result;
+
+    if (bs > Message::kMaxMessageSize)
+    {
+        result.second = make_error_code(boost::system::errc::message_size);
+        return result;
+    }
+
     auto const size = Message::kHeaderBytes + Message::size(buffers);
-    if (boost::asio::buffer_size(buffers) < size)
+
+    if (bs < size)
         return result;
+
+    auto const type = Message::type(buffers);
 
     switch (type)
     {
@@ -119,6 +136,10 @@ invokeProtocolMessage (Buffers const& buffers, Handler& handler)
     case protocol::mtMANIFESTS:     ec = detail::invoke<protocol::TMManifests> (type, buffers, handler); break;
     case protocol::mtPING:          ec = detail::invoke<protocol::TMPing> (type, buffers, handler); break;
     case protocol::mtCLUSTER:       ec = detail::invoke<protocol::TMCluster> (type, buffers, handler); break;
+    case protocol::mtGET_SHARD_INFO:        ec = detail::invoke<protocol::TMGetShardInfo> (type, buffers, handler); break;
+    case protocol::mtSHARD_INFO:            ec = detail::invoke<protocol::TMShardInfo>(type, buffers, handler); break;
+    case protocol::mtGET_PEER_SHARD_INFO:   ec = detail::invoke<protocol::TMGetPeerShardInfo> (type, buffers, handler); break;
+    case protocol::mtPEER_SHARD_INFO:       ec = detail::invoke<protocol::TMPeerShardInfo>(type, buffers, handler); break;
     case protocol::mtGET_PEERS:     ec = detail::invoke<protocol::TMGetPeers> (type, buffers, handler); break;
     case protocol::mtPEERS:         ec = detail::invoke<protocol::TMPeers> (type, buffers, handler); break;
     case protocol::mtENDPOINTS:     ec = detail::invoke<protocol::TMEndpoints> (type, buffers, handler); break;

@@ -17,12 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 
 // This has to be included early to prevent an obscure MSVC compile error
 #include <boost/asio/deadline_timer.hpp>
 
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/RPCHandler.h>
 #include <ripple/rpc/handlers/Handlers.h>
 
@@ -40,6 +40,9 @@
 #include <ripple/rpc/handlers/CanDelete.cpp>
 #include <ripple/rpc/handlers/Connect.cpp>
 #include <ripple/rpc/handlers/ConsensusInfo.cpp>
+#include <ripple/rpc/handlers/CrawlShards.cpp>
+#include <ripple/rpc/handlers/DepositAuthorized.cpp>
+#include <ripple/rpc/handlers/DownloadShard.cpp>
 #include <ripple/rpc/handlers/Feature1.cpp>
 #include <ripple/rpc/handlers/Fee1.cpp>
 #include <ripple/rpc/handlers/FetchInfo.cpp>

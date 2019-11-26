@@ -17,17 +17,18 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/tx/impl/SetSignerList.h>
+
 #include <ripple/app/ledger/Ledger.h>
-#include <ripple/protocol/Feature.h>
-#include <ripple/protocol/STObject.h>
-#include <ripple/protocol/STArray.h>
-#include <ripple/protocol/STTx.h>
-#include <ripple/protocol/Indexes.h>
 #include <ripple/basics/Log.h>
-#include <cstdint>
+#include <ripple/ledger/ApplyView.h>
+#include <ripple/protocol/Feature.h>
+#include <ripple/protocol/Indexes.h>
+#include <ripple/protocol/STArray.h>
+#include <ripple/protocol/STObject.h>
+#include <ripple/protocol/STTx.h>
 #include <algorithm>
+#include <cstdint>
 
 namespace ripple {
 
@@ -36,7 +37,7 @@ namespace ripple {
 // setting the sfSignerListID to zero in all cases.
 static std::uint32_t const defaultSignerListID_ = 0;
 
-std::tuple<TER, std::uint32_t,
+std::tuple<NotTEC, std::uint32_t,
     std::vector<SignerEntries::SignerEntry>,
         SetSignerList::Operation>
 SetSignerList::determineOperation(STTx const& tx,
@@ -70,7 +71,7 @@ SetSignerList::determineOperation(STTx const& tx,
     return std::make_tuple(tesSUCCESS, quorum, sign, op);
 }
 
-TER
+NotTEC
 SetSignerList::preflight (PreflightContext const& ctx)
 {
     if (! ctx.rules.enabled(featureMultiSign))
@@ -96,7 +97,7 @@ SetSignerList::preflight (PreflightContext const& ctx)
     {
         // Validate our settings.
         auto const account = ctx.tx.getAccountID(sfAccount);
-        TER const ter =
+        NotTEC const ter =
             validateQuorumAndSignerEntries(std::get<1>(result),
                 std::get<2>(result), account, ctx.j);
         if (ter != tesSUCCESS)
@@ -142,7 +143,7 @@ SetSignerList::preCompute()
     return Transactor::preCompute();
 }
 
-TER
+NotTEC
 SetSignerList::validateQuorumAndSignerEntries (
     std::uint32_t quorum,
         std::vector<SignerEntries::SignerEntry> const& signers,
@@ -217,11 +218,19 @@ SetSignerList::replaceSignerList ()
     auto const sle = view().peek(accountKeylet);
 
     // Compute new reserve.  Verify the account has funds to meet the reserve.
-    auto const oldOwnerCount = (*sle)[sfOwnerCount];
-    std::uint32_t const addedOwnerCount = ownerCountDelta (signers_.size ());
+    std::uint32_t const oldOwnerCount {(*sle)[sfOwnerCount]};
 
-    auto const newReserve =
-        view().fees().accountReserve(oldOwnerCount + addedOwnerCount);
+    // The required reserve changes based on featureMultiSignReserve...
+    int addedOwnerCount {1};
+    std::uint32_t flags {lsfOneOwnerCount};
+    if (! ctx_.view().rules().enabled(featureMultiSignReserve))
+    {
+        addedOwnerCount = signerCountBasedOwnerCountDelta (signers_.size ());
+        flags = 0;
+    }
+
+    ZXCAmount const newReserve {
+        view().fees().accountReserve(oldOwnerCount + addedOwnerCount)};
 
     // We check the reserve against the starting balance because we want to
     // allow dipping into the reserve to pay fees.  This behavior is consistent
@@ -232,15 +241,15 @@ SetSignerList::replaceSignerList ()
     // Everything's ducky.  Add the ltSIGNER_LIST to the ledger.
     auto signerList = std::make_shared<SLE>(signerListKeylet);
     view().insert (signerList);
-    writeSignersToSLE (signerList);
+    writeSignersToSLE (signerList, flags);
 
     auto viewJ = ctx_.app.journal ("View");
     // Add the signer list to the account's directory.
-    auto page = dirAdd(ctx_.view (), ownerDirKeylet,
+    auto const page = dirAdd (ctx_.view (), ownerDirKeylet,
         signerListKeylet.key, false, describeOwnerDir (account_), viewJ);
 
     JLOG(j_.trace()) << "Create signer list for account " <<
-        toBase58(account_) << ": " << (page ? "success" : "failure");
+        toBase58 (account_) << ": " << (page ? "success" : "failure");
 
     if (!page)
         return tecDIR_FULL;
@@ -282,33 +291,44 @@ SetSignerList::removeSignersFromLedger (Keylet const& accountKeylet,
     if (!signers)
         return tesSUCCESS;
 
-    STArray const& actualList = signers->getFieldArray (sfSignerEntries);
-    int const removeFromOwnerCount = ownerCountDelta (actualList.size()) * -1;
+    // There are two different ways that the OwnerCount could be managed.
+    // If the lsfOneOwnerCount bit is set then remove just one owner count.
+    // Otherwise use the pre-MultiSignReserve amendment calculation.
+    int removeFromOwnerCount = -1;
+    if ((signers->getFlags() & lsfOneOwnerCount) == 0)
+    {
+        STArray const& actualList = signers->getFieldArray (sfSignerEntries);
+        removeFromOwnerCount =
+            signerCountBasedOwnerCountDelta (actualList.size()) * -1;
+    }
 
     // Remove the node from the account directory.
     auto const hint = (*signers)[sfOwnerNode];
 
-    auto viewJ = ctx_.app.journal ("View");
-    TER const result  = dirDelete(ctx_.view(), false, hint,
-        ownerDirKeylet, signerListKeylet.key, false, (hint == 0), viewJ);
+    if (! ctx_.view().dirRemove(
+            ownerDirKeylet, hint, signerListKeylet.key, false))
+    {
+        return tefBAD_LEDGER;
+    }
 
-    if (result == tesSUCCESS)
-        adjustOwnerCount(view(),
-            view().peek(accountKeylet), removeFromOwnerCount, viewJ);
+    auto viewJ = ctx_.app.journal("View");
+    adjustOwnerCount(
+        view(), view().peek(accountKeylet), removeFromOwnerCount, viewJ);
 
     ctx_.view().erase (signers);
 
-    return result;
+    return tesSUCCESS;
 }
 
 void
-SetSignerList::writeSignersToSLE (SLE::pointer const& ledgerEntry) const
+SetSignerList::writeSignersToSLE (
+    SLE::pointer const& ledgerEntry, std::uint32_t flags) const
 {
-    // Assign the quorum.
+    // Assign the quorum, default SignerListID, and flags.
     ledgerEntry->setFieldU32 (sfSignerQuorum, quorum_);
-
-    // For now, assign the default SignerListID.
     ledgerEntry->setFieldU32 (sfSignerListID, defaultSignerListID_);
+    if (flags) // Only set flags if they are non-default (default is zero).
+        ledgerEntry->setFieldU32 (sfFlags, flags);
 
     // Create the SignerListArray one SignerEntry at a time.
     STArray toLedger (signers_.size ());
@@ -327,8 +347,12 @@ SetSignerList::writeSignersToSLE (SLE::pointer const& ledgerEntry) const
 
 // The return type is signed so it is compatible with the 3rd argument
 // of adjustOwnerCount() (which must be signed).
+//
+// NOTE: This way of computing the OwnerCount associated with a SignerList
+// is valid until the featureMultiSignReserve amendment passes.  Once it
+// passes then just 1 OwnerCount is associated with a SignerList.
 int
-SetSignerList::ownerCountDelta (std::size_t entryCount)
+SetSignerList::signerCountBasedOwnerCountDelta (std::size_t entryCount)
 {
     // We always compute the full change in OwnerCount, taking into account:
     //  o The fact that we're adding/removing a SignerList and

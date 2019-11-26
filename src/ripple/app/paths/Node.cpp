@@ -17,10 +17,10 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/app/paths/Node.h>
 #include <ripple/app/paths/PathState.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 namespace path {

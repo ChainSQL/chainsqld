@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/basics/contract.h>
 #include <ripple/protocol/digest.h>
@@ -29,7 +28,6 @@ namespace ripple {
 //------------------------------------------------------------------------------
 
 constexpr char const* const detail::FeatureCollections::featureNames[];
-
 
 detail::FeatureCollections::FeatureCollections()
 {
@@ -78,6 +76,52 @@ detail::FeatureCollections::bitsetIndexToFeature(size_t i) const
 
 static detail::FeatureCollections const featureCollections;
 
+/** Amendments that this server supports, but doesn't enable by default */
+std::vector<std::string> const&
+detail::supportedAmendments ()
+{
+    // Commented out amendments will be supported in a future release (and
+    // uncommented at that time).
+    static std::vector<std::string> const supported
+    {
+//        "SHAMapV2",
+        "MultiSign",
+//        "Tickets",
+        "TrustSetAuth",
+        "FeeEscalation", // Looks unused, but do not remove; Servers will be amendment blocked.
+//        "OwnerPaysFee",
+        "PayChan",
+        "Flow",
+        "CryptoConditions",
+        "TickSize",
+        "fix1368",
+        "Escrow",
+        "CryptoConditionsSuite",
+        "fix1373",
+        "EnforceInvariants",
+        "FlowCross",
+        "SortedDirectories",
+        "fix1201",
+        "fix1512",
+        "fix1513",
+        "fix1523",
+        "fix1528",
+        "DepositAuth",
+        "Checks",
+        "fix1571",
+        "fix1543",
+        "fix1623",
+        "DepositPreauth",
+        // Use liquidity from strands that consume max offers, but mark as dry
+        "fix1515",
+        "fix1578",
+        "MultiSignReserve",
+        "fixTakerDryOfferRemoval",
+        "fixMasterKeyAsRegularKey",
+    };
+    return supported;
+}
+
 //------------------------------------------------------------------------------
 
 boost::optional<uint256>
@@ -119,7 +163,19 @@ uint256 const featureEnforceInvariants = *getRegisteredFeature("EnforceInvariant
 uint256 const featureSortedDirectories = *getRegisteredFeature("SortedDirectories");
 uint256 const fix1201 = *getRegisteredFeature("fix1201");
 uint256 const fix1512 = *getRegisteredFeature("fix1512");
+uint256 const fix1513 = *getRegisteredFeature("fix1513");
 uint256 const fix1523 = *getRegisteredFeature("fix1523");
 uint256 const fix1528 = *getRegisteredFeature("fix1528");
+uint256 const featureDepositAuth = *getRegisteredFeature("DepositAuth");
+uint256 const featureChecks = *getRegisteredFeature("Checks");
+uint256 const fix1571 = *getRegisteredFeature("fix1571");
+uint256 const fix1543 = *getRegisteredFeature("fix1543");
+uint256 const fix1623 = *getRegisteredFeature("fix1623");
+uint256 const featureDepositPreauth = *getRegisteredFeature("DepositPreauth");
+uint256 const fix1515 = *getRegisteredFeature("fix1515");
+uint256 const fix1578 = *getRegisteredFeature("fix1578");
+uint256 const featureMultiSignReserve = *getRegisteredFeature("MultiSignReserve");
+uint256 const fixTakerDryOfferRemoval = *getRegisteredFeature("fixTakerDryOfferRemoval");
+uint256 const fixMasterKeyAsRegularKey = *getRegisteredFeature("fixMasterKeyAsRegularKey");
 
 } // ripple

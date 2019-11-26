@@ -8,12 +8,14 @@
 // Test that header file is self-contained
 #include <nudb/error.hpp>
 
-#include <beast/unit_test/suite.hpp>
+#include "suite.hpp"
+
+#include <boost/beast/_experimental/unit_test/suite.hpp>
 
 namespace nudb {
 namespace test {
 
-class error_test : public beast::unit_test::suite
+class error_test : public boost::beast::unit_test::suite
 {
 public:
     void check(char const* name, error ev)
@@ -33,7 +35,6 @@ public:
     {
         nudb_category().message(0);
         nudb_category().message(99999);
-        check("nudb", error::success);
         check("nudb", error::key_not_found);
         check("nudb", error::key_exists);
         check("nudb", error::short_read);
@@ -76,7 +77,7 @@ public:
     }
 };
 
-BEAST_DEFINE_TESTSUITE(error, test, nudb);
+DEFINE_TESTSUITE(nudb, test, error);
 
 } // test
 } // nudb

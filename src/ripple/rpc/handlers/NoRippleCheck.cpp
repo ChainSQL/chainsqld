@@ -17,14 +17,13 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/paths/RippleState.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
@@ -122,7 +121,7 @@ Json::Value doNoRippleCheck (RPC::Context& context)
         if (transactions)
         {
             Json::Value& tx = jvTransactions.append (Json::objectValue);
-            tx["TransactionType"] = "AccountSet";
+            tx["TransactionType"] = jss::AccountSet;
             tx["SetFlag"] = 8;
             fillTransaction (context, tx, accountID, seq, *ledger);
         }
@@ -165,8 +164,9 @@ Json::Value doNoRippleCheck (RPC::Context& context)
                     limitAmount.setIssuer (peer);
 
                     Json::Value& tx = jvTransactions.append (Json::objectValue);
-                    tx["TransactionType"] = "TrustSet";
-                    tx["LimitAmount"] = limitAmount.getJson (0);
+                    tx["TransactionType"] = jss::TrustSet;
+                    tx["LimitAmount"] =
+                        limitAmount.getJson (JsonOptions::none);
                     tx["Flags"] = bNoRipple ? tfClearNoRipple : tfSetNoRipple;
                     fillTransaction(context, tx, accountID, seq, *ledger);
 

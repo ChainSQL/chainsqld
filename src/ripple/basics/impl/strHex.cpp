@@ -16,11 +16,10 @@
     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
-
-#include <BeastConfig.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/strHex.h>
 #include <algorithm>
+#include <string>
 
 namespace ripple {
 

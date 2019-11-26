@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/NetworkOPs.h>
@@ -26,10 +25,11 @@
 #include <ripple/ledger/ReadView.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
-#include <ripple/protocol/types.h>
+#include <ripple/protocol/jss.h>
+#include <ripple/protocol/UintTypes.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
+#include <ripple/rpc/DeliveredAmount.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/Role.h>
 
@@ -91,7 +91,8 @@ Json::Value doAccountTx (RPC::Context& context)
         if (uLedgerMax < uLedgerMin)
             return rpcError (rpcLGR_IDXS_INVALID);
     }
-    else
+    else if(params.isMember (jss::ledger_hash) ||
+            params.isMember (jss::ledger_index))
     {
         std::shared_ptr<ReadView const> ledger;
         auto ret = RPC::lookupLedger (ledger, context);
@@ -107,6 +108,11 @@ Json::Value doAccountTx (RPC::Context& context)
         }
 
         uLedgerMin = uLedgerMax = ledger->info().seq;
+    }
+    else
+    {
+        uLedgerMin = uValidatedMin;
+        uLedgerMax = uValidatedMax;
     }
 
     Json::Value resumeToken;
@@ -156,12 +162,13 @@ Json::Value doAccountTx (RPC::Context& context)
                 Json::Value& jvObj = jvTxns.append (Json::objectValue);
 
                 if (it.first)
-                    jvObj[jss::tx] = it.first->getJson (1);
+                    jvObj[jss::tx] =
+                        it.first->getJson (JsonOptions::include_date);
 
                 if (it.second)
                 {
-                    auto meta = it.second->getJson (1);
-                    addPaymentDeliveredAmount (meta, context, it.first, it.second);
+                    auto meta = it.second->getJson (JsonOptions::include_date);
+                    insertDeliveredAmount (meta, context, it.first, *it.second);
                     jvObj[jss::meta] = std::move(meta);
 
                     std::uint32_t uLedgerIndex = it.second->getLgrSeq ();

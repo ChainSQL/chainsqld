@@ -17,11 +17,10 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <ripple/core/Config.h>
 #include <ripple/protocol/HashPrefix.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/digest.h>
 
@@ -66,7 +65,7 @@ RCLCxPeerPos::getJson() const
     auto ret = proposal().getJson();
 
     if (publicKey().size())
-        ret[jss::peer_id] = toBase58(TokenType::TOKEN_NODE_PUBLIC, publicKey());
+        ret[jss::peer_id] = toBase58(TokenType::NodePublic, publicKey());
 
     return ret;
 }
@@ -98,7 +97,7 @@ RCLCxPeerPos::Data::Data(
     Proposal&& proposal)
     : publicKey_{publicKey}
     , signature_{signature}
-    , supression_{suppress}
+    , suppression_{suppress}
     , proposal_{std::move(proposal)}
 {
 }

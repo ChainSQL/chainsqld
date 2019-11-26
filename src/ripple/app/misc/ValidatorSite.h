@@ -20,7 +20,6 @@
 #ifndef RIPPLE_APP_MISC_VALIDATORSITE_H_INCLUDED
 #define RIPPLE_APP_MISC_VALIDATORSITE_H_INCLUDED
 
-#include <peersafe/app/misc/ConfigSite.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/misc/detail/Work.h>
 #include <ripple/basics/Log.h>
@@ -28,6 +27,7 @@
 #include <ripple/json/json_value.h>
 #include <boost/asio.hpp>
 #include <mutex>
+#include <memory>
 
 namespace ripple {
 
@@ -58,57 +58,83 @@ namespace ripple {
 
     @li @c "version": 1
 
-    @li @c "refreshInterval" (optional)
+    @li @c "refreshInterval" (optional, integer minutes).
+        This value is clamped internally to [1,1440] (1 min - 1 day)
 */
-class ValidatorSite : public ConfigSite
+class ValidatorSite
 {
-//    friend class Work;
-//
-//private:
-//    using error_code = boost::system::error_code;
-//    using clock_type = std::chrono::system_clock;
-//
-//    struct Site
-//    {
-//        struct Status
-//        {
-//            clock_type::time_point refreshed;
-//            ListDisposition disposition;
-//        };
-//
-//        std::string uri;
-//        parsedURL pUrl;
-//        std::chrono::minutes refreshInterval;
-//        clock_type::time_point nextRefresh;
-//        boost::optional<Status> lastRefreshStatus;
-//    };
-//
-//    boost::asio::io_service& ios_;
+    friend class Work;
+
+private:
+    using error_code = boost::system::error_code;
+    using clock_type = std::chrono::system_clock;
+
+    struct Site
+    {
+        struct Status
+        {
+            clock_type::time_point refreshed;
+            ListDisposition disposition;
+            std::string message;
+        };
+
+        struct Resource
+        {
+            explicit Resource(std::string uri_);
+            const std::string uri;
+            parsedURL pUrl;
+        };
+
+        explicit Site(std::string uri);
+
+        /// the original uri as loaded from config
+        std::shared_ptr<Resource> loadedResource;
+
+        /// the resource to request at <timer>
+        /// intervals. same as loadedResource
+        /// except in the case of a permanent redir.
+        std::shared_ptr<Resource> startingResource;
+
+        /// the active resource being requested.
+        /// same as startingResource except
+        /// when we've gotten a temp redirect
+        std::shared_ptr<Resource> activeResource;
+
+        unsigned short redirCount;
+        std::chrono::minutes refreshInterval;
+        clock_type::time_point nextRefresh;
+        boost::optional<Status> lastRefreshStatus;
+    };
+
+    boost::asio::io_service& ios_;
     ValidatorList& validators_;
-//    beast::Journal j_;
-//    std::mutex mutable sites_mutex_;
-//    std::mutex mutable state_mutex_;
-//
-//    std::condition_variable cv_;
-//    std::weak_ptr<detail::Work> work_;
-//    boost::asio::basic_waitable_timer<clock_type> timer_;
-//
-//    // A list is currently being fetched from a site
-//    std::atomic<bool> fetching_;
-//
-//    // One or more lists are due to be fetched
-//    std::atomic<bool> pending_;
-//    std::atomic<bool> stopping_;
-//
-//    // The configured list of URIs for fetching lists
-//    std::vector<Site> sites_;
+    beast::Journal j_;
+    std::mutex mutable sites_mutex_;
+    std::mutex mutable state_mutex_;
+
+    std::condition_variable cv_;
+    std::weak_ptr<detail::Work> work_;
+    boost::asio::basic_waitable_timer<clock_type> timer_;
+
+    // A list is currently being fetched from a site
+    std::atomic<bool> fetching_;
+
+    // One or more lists are due to be fetched
+    std::atomic<bool> pending_;
+    std::atomic<bool> stopping_;
+
+    // The configured list of URIs for fetching lists
+    std::vector<Site> sites_;
+
+    // time to allow for requests to complete
+    const std::chrono::seconds requestTimeout_;
 
 public:
     ValidatorSite (
-		ManifestCache& validatorManifests,
         boost::asio::io_service& ios,
         ValidatorList& validators,
-        beast::Journal j);
+        beast::Journal j,
+        std::chrono::seconds timeout = std::chrono::seconds{20});
     ~ValidatorSite ();
 
     /** Load configured site URIs.
@@ -121,9 +147,9 @@ public:
 
         @return `false` if an entry is invalid or unparsable
     */
-    //bool
-    //load (
-    //    std::vector<std::string> const& siteURIs);
+    bool
+    load (
+        std::vector<std::string> const& siteURIs);
 
     /** Start fetching lists from sites
 
@@ -133,17 +159,17 @@ public:
 
         May be called concurrently
     */
-    //void
-    //start ();
+    void
+    start ();
 
     /** Wait for current fetches from sites to complete
 
         @par Thread Safety
 
         May be called concurrently
-    //*/
-    //void
-    //join ();
+    */
+    void
+    join ();
 
     /** Stop fetching lists from sites
 
@@ -153,41 +179,69 @@ public:
 
         May be called concurrently
     */
-    //void
-    //stop ();
+    void
+    stop ();
 
     /** Return JSON representation of configured validator sites
      */
-	virtual  Json::Value
+    Json::Value
     getJson() const;
 
-public:
-    ///// Queue next site to be fetched
-    //void
-    //setTimer ();
+private:
+    /// Queue next site to be fetched
+    /// lock over state_mutex_ required
+    void
+    setTimer (std::lock_guard<std::mutex>&);
 
-    ///// Fetch site whose time has come
-    //void
-    //onTimer (
-    //    std::size_t siteIdx,
-    //    error_code const& ec);
+    /// request took too long
+    void
+    onRequestTimeout (
+        std::size_t siteIdx,
+        error_code const& ec);
 
-    ///// Store latest list fetched from site
-    //void
-    //onSiteFetch (
-    //    boost::system::error_code const& ec,
-    //    detail::response_type&& res,
-    //    std::size_t siteIdx);
+    /// Fetch site whose time has come
+    void
+    onTimer (
+        std::size_t siteIdx,
+        error_code const& ec);
 
+    /// Store latest list fetched from site
+    void
+    onSiteFetch (
+        boost::system::error_code const& ec,
+        detail::response_type&& res,
+        std::size_t siteIdx);
 
+    /// Store latest list fetched from anywhere
+    void
+    onTextFetch(
+        boost::system::error_code const& ec,
+        std::string const& res,
+        std::size_t siteIdx);
 
-	virtual  ListDisposition applyList(
-		std::string const& manifest,
-		std::string const& blob,
-		std::string const& signature,
-		std::uint32_t version) ;
+    /// Initiate request to given resource.
+    /// lock over sites_mutex_ required
+    void
+    makeRequest (
+        std::shared_ptr<Site::Resource> resource,
+        std::size_t siteIdx,
+        std::lock_guard<std::mutex>& lock);
 
+    /// Parse json response from validator list site.
+    /// lock over sites_mutex_ required
+    void
+    parseJsonResponse (
+        std::string const& res,
+        std::size_t siteIdx,
+        std::lock_guard<std::mutex>& lock);
 
+    /// Interpret a redirect response.
+    /// lock over sites_mutex_ required
+    std::shared_ptr<Site::Resource>
+    processRedirect (
+        detail::response_type& res,
+        std::size_t siteIdx,
+        std::lock_guard<std::mutex>& lock);
 };
 
 } // ripple

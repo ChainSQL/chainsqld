@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/ledger/Ledger.h>
 #include <ripple/app/ledger/LocalTxs.h>
 #include <ripple/app/main/Application.h>
@@ -151,8 +150,9 @@ public:
                 return true;
             if (view.txExists(txn.getID()))
                 return true;
-            auto const sle = cachedRead(view,
-                keylet::account(txn.getAccount()).key, ltACCOUNT_ROOT);
+
+            std::shared_ptr<SLE const> sle = view.read(
+                 keylet::account(txn.getAccount()));
             if (! sle)
                 return false;
             return sle->getFieldU32 (sfSequence) > txn.getSeq ();

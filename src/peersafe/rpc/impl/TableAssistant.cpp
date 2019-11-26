@@ -17,10 +17,10 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/TransactionMaster.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/digest.h>

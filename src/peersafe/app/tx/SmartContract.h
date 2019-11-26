@@ -40,7 +40,7 @@ namespace ripple {
 		}
 
 		static
-			TER
+			NotTEC
 			preflight(PreflightContext const& ctx);
 
 		static

@@ -17,9 +17,9 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/basics/base64.h>
 #include <ripple/beast/rfc2616.h>
 #include <ripple/beast/net/IPAddressConversion.h>
 #include <ripple/json/json_reader.h>
@@ -38,13 +38,13 @@
 #include <ripple/resource/ResourceManager.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/impl/Tuning.h>
+#include <ripple/rpc/Role.h>
 #include <ripple/rpc/RPCHandler.h>
 #include <ripple/server/SimpleWriter.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/basics/characterUtilities.h>
-#include <beast/core/detail/base64.hpp>
-#include <beast/http/fields.hpp>
-#include <beast/http/string_body.hpp>
+#include <boost/beast/http/fields.hpp>
+#include <boost/beast/http/string_body.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/type_traits.hpp>
 #include <boost/optional.hpp>
@@ -60,32 +60,32 @@ isStatusRequest(
     http_request_type const& request)
 {
     return
-        request.version >= 11 &&
+        request.version() >= 11 &&
         request.target() == "/" &&
-        request.body.size() == 0 &&
-        request.method() == beast::http::verb::get;
+        request.body().size() == 0 &&
+        request.method() == boost::beast::http::verb::get;
 }
 
 static
 Handoff
-unauthorizedResponse(
-    http_request_type const& request)
+statusRequestResponse(
+    http_request_type const& request, boost::beast::http::status status)
 {
-    using namespace beast::http;
+    using namespace boost::beast::http;
     Handoff handoff;
     response<string_body> msg;
-    msg.version = request.version;
-    msg.result(beast::http::status::unauthorized);
+    msg.version(request.version());
+    msg.result(status);
     msg.insert("Server", BuildInfo::getFullVersionString());
     msg.insert("Content-Type", "text/html");
     msg.insert("Connection", "close");
-    msg.body = "Invalid protocol.";
+    msg.body() = "Invalid protocol.";
     msg.prepare_payload();
     handoff.response = std::make_shared<SimpleWriter>(msg);
     return handoff;
 }
 
-// VFALCO TODO Rewrite to use beast::http::fields
+// VFALCO TODO Rewrite to use boost::beast::http::fields
 static
 bool
 authorized (
@@ -100,7 +100,7 @@ authorized (
         return false;
     std::string strUserPass64 = it->second.substr (6);
     boost::trim (strUserPass64);
-    std::string strUserPass = beast::detail::base64_decode (strUserPass64);
+    std::string strUserPass = base64_decode (strUserPass64);
     std::string::size_type nColon = strUserPass.find (":");
     if (nColon == std::string::npos)
         return false;
@@ -155,7 +155,7 @@ bool
 ServerHandlerImp::onAccept (Session& session,
     boost::asio::ip::tcp::endpoint endpoint)
 {
-    std::lock_guard<std::mutex> l(countlock_);
+    std::lock_guard<std::mutex> lock(countlock_);
 
     auto const c = ++count_[session.port()];
 
@@ -170,80 +170,59 @@ ServerHandlerImp::onAccept (Session& session,
     return true;
 }
 
-auto
-ServerHandlerImp::onHandoff (Session& session,
-    std::unique_ptr <beast::asio::ssl_bundle>&& bundle,
-        http_request_type&& request,
-            boost::asio::ip::tcp::endpoint remote_address) ->
-    Handoff
+Handoff
+ServerHandlerImp::onHandoff(
+    Session& session,
+    std::unique_ptr<beast::asio::ssl_bundle>&& bundle,
+    http_request_type&& request,
+    boost::asio::ip::tcp::endpoint const& remote_address)
 {
-    const bool is_ws =
-        (session.port().protocol.count("wss") > 0) ||
-        (session.port().protocol.count("wss2") > 0);
+    using namespace boost::beast;
+    auto const& p {session.port().protocol};
+    bool const is_ws {
+        p.count("ws") > 0 || p.count("ws2") > 0 ||
+        p.count("wss") > 0 || p.count("wss2") > 0};
 
-    if(beast::websocket::is_upgrade(request))
+    if(websocket::is_upgrade(request))
     {
-        if(is_ws)
+        if (!is_ws)
+            return statusRequestResponse(request, http::status::unauthorized);
+
+        std::shared_ptr<WSSession> ws;
+        try
         {
-            Handoff handoff;
-            auto const ws = session.websocketUpgrade();
-            auto is = std::make_shared<WSInfoSub>(m_networkOPs, ws);
-            is->getConsumer() = requestInboundEndpoint(
-                m_resourceManager,
-                    beast::IPAddressConversion::from_asio(remote_address),
-                        session.port(), is->user());
-            ws->appDefined = std::move(is);
-            ws->run();
-            handoff.moved = true;
-            return handoff;
+            ws = session.websocketUpgrade();
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(m_journal.error())
+                << "Exception upgrading websocket: " << e.what() << "\n";
+            return statusRequestResponse(request,
+                http::status::internal_server_error);
         }
 
-        return unauthorizedResponse(request);
+        auto is {std::make_shared<WSInfoSub>(m_networkOPs, ws)};
+        auto const beast_remote_address =
+            beast::IPAddressConversion::from_asio(remote_address);
+        is->getConsumer() = requestInboundEndpoint(
+            m_resourceManager, beast_remote_address,
+            requestRole(Role::GUEST, session.port(), Json::Value(),
+                beast_remote_address, is->user()),
+            is->user(),
+            is->forwarded_for());
+        ws->appDefined = std::move(is);
+        ws->run();
+
+        Handoff handoff;
+        handoff.moved = true;
+        return handoff;
     }
 
-    if(session.port().protocol.count("peer") > 0)
-    {
+    if (bundle && p.count("peer") > 0)
         return app_.overlay().onHandoff(std::move(bundle),
             std::move(request), remote_address);
-    }
 
     if (is_ws && isStatusRequest(request))
-        return statusResponse(request);
-
-    // Pass to legacy onRequest
-    return {};
-}
-
-auto
-ServerHandlerImp::onHandoff (Session& session,
-    boost::asio::ip::tcp::socket&& socket,
-        http_request_type&& request,
-            boost::asio::ip::tcp::endpoint remote_address) ->
-    Handoff
-{
-    if(beast::websocket::is_upgrade(request))
-    {
-        if (session.port().protocol.count("ws2") > 0 ||
-            session.port().protocol.count("ws") > 0)
-        {
-            Handoff handoff;
-            auto const ws = session.websocketUpgrade();
-            auto is = std::make_shared<WSInfoSub>(m_networkOPs, ws);
-            is->getConsumer() = requestInboundEndpoint(
-                m_resourceManager, beast::IPAddressConversion::from_asio(
-                    remote_address), session.port(), is->user());
-            ws->appDefined = std::move(is);
-            ws->run();
-            handoff.moved = true;
-            return handoff;
-        }
-
-        return unauthorizedResponse(request);
-    }
-
-    if ((session.port().protocol.count("ws") > 0 ||
-         session.port().protocol.count("ws2") > 0) &&
-       isStatusRequest(request))
         return statusResponse(request);
 
     // Otherwise pass to legacy onRequest or websocket
@@ -253,7 +232,7 @@ ServerHandlerImp::onHandoff (Session& session,
 static inline
 Json::Output makeOutput (Session& session)
 {
-    return [&](beast::string_view const& b)
+    return [&](boost::beast::string_view const& b)
     {
         session.write (b.data(), b.size());
     };
@@ -262,14 +241,18 @@ Json::Output makeOutput (Session& session)
 // HACK!
 static
 std::map<std::string, std::string>
-build_map(beast::http::fields const& h)
+build_map(boost::beast::http::fields const& h)
 {
     std::map <std::string, std::string> c;
     for (auto const& e : h)
     {
         auto key (e.name_string().to_string());
         // TODO Replace with safe C++14 version
-        std::transform (key.begin(), key.end(), key.begin(), ::tolower);
+        std::transform (key.begin(), key.end(), key.begin(),
+                        [](auto c)
+                        {
+                            return ::tolower(static_cast<unsigned char>(c));
+                        });
         c [key] = e.value().to_string();
     }
     return c;
@@ -336,14 +319,13 @@ ServerHandlerImp::onWSMessage(
     auto const size = boost::asio::buffer_size(buffers);
     if (size > RPC::Tuning::maxRequestSize ||
         ! Json::Reader{}.parse(jv, buffers) ||
-        ! jv ||
         ! jv.isObject())
     {
         Json::Value jvResult(Json::objectValue);
         jvResult[jss::type] = jss::error;
         jvResult[jss::error] = "jsonInvalid";
         jvResult[jss::value] = buffers_to_string(buffers);
-        beast::multi_buffer sb;
+        boost::beast::multi_buffer sb;
         Json::stream(jvResult,
             [&sb](auto const p, auto const n)
             {
@@ -369,7 +351,7 @@ ServerHandlerImp::onWSMessage(
                 this->processSession(session, coro, jv);
             auto const s = to_string(jr);
             auto const n = s.length();
-            beast::multi_buffer sb(n);
+            boost::beast::multi_buffer sb(n);
             sb.commit(boost::asio::buffer_copy(
                 sb.prepare(n), boost::asio::buffer(s.c_str(), n)));
             session->send(std::make_shared<
@@ -379,7 +361,7 @@ ServerHandlerImp::onWSMessage(
     if (postResult == nullptr)
     {
         // The coroutine was rejected, probably because we're shutting down.
-        session->close();
+        session->close({boost::beast::websocket::going_away, "Shutting Down"});
     }
 }
 
@@ -387,7 +369,7 @@ void
 ServerHandlerImp::onClose (Session& session,
     boost::system::error_code const&)
 {
-    std::lock_guard<std::mutex> l(countlock_);
+    std::lock_guard<std::mutex> lock(countlock_);
     --count_[session.port()];
 }
 
@@ -408,7 +390,7 @@ ServerHandlerImp::processSession(
     auto is = std::static_pointer_cast<WSInfoSub> (session->appDefined);
     if (is->getConsumer().disconnect())
     {
-        session->close();
+        session->close({boost::beast::websocket::policy_error, "threshold exceeded"});
         // FIX: This rpcError is not delivered since the session
         // was just closed.
         return rpcError(rpcSLOW_DOWN);
@@ -416,56 +398,68 @@ ServerHandlerImp::processSession(
 
     // Requests without "command" are invalid.
     Json::Value jr(Json::objectValue);
-    if ((!jv.isMember(jss::command) && !jv.isMember(jss::method)) ||
-        (jv.isMember(jss::command) && jv.isMember(jss::method) &&
-         jv[jss::command].asString() != jv[jss::method].asString()))
-    {
-        jr[jss::type] = jss::response;
-        jr[jss::status] = jss::error;
-        jr[jss::error] = jss::missingCommand;
-        jr[jss::request] = jv;
-        if (jv.isMember (jss::id))
-            jr[jss::id]  = jv[jss::id];
-        if (jv.isMember(jss::jsonrpc))
-            jr[jss::jsonrpc] = jv[jss::jsonrpc];
-        if (jv.isMember(jss::ripplerpc))
-            jr[jss::ripplerpc] = jv[jss::ripplerpc];
-
-        is->getConsumer().charge(Resource::feeInvalidRPC);
-        return jr;
-    }
-
     Resource::Charge loadType = Resource::feeReferenceRPC;
-    auto required = RPC::roleRequired(jv.isMember(jss::command) ?
-                                      jv[jss::command].asString() :
-                                      jv[jss::method].asString());
-    auto role = requestRole(
-        required,
-        session->port(),
-        jv,
-        beast::IP::from_asio(session->remote_endpoint().address()),
-        is->user());
-    if (Role::FORBID == role)
+    try
     {
-        loadType = Resource::feeInvalidRPC;
-        jr[jss::result] = rpcError (rpcFORBIDDEN);
-    }
-    else
-    {
-        RPC::Context context{
-            app_.journal("RPCHandler"),
+        if ((!jv.isMember(jss::command) && !jv.isMember(jss::method)) ||
+            (jv.isMember(jss::command) && !jv[jss::command].isString()) ||
+            (jv.isMember(jss::method) && !jv[jss::method].isString()) ||
+            (jv.isMember(jss::command) && jv.isMember(jss::method) &&
+             jv[jss::command].asString() != jv[jss::method].asString()))
+        {
+            jr[jss::type] = jss::response;
+            jr[jss::status] = jss::error;
+            jr[jss::error] = jss::missingCommand;
+            jr[jss::request] = jv;
+            if (jv.isMember (jss::id))
+                jr[jss::id]  = jv[jss::id];
+            if (jv.isMember(jss::jsonrpc))
+                jr[jss::jsonrpc] = jv[jss::jsonrpc];
+            if (jv.isMember(jss::ripplerpc))
+                jr[jss::ripplerpc] = jv[jss::ripplerpc];
+
+            is->getConsumer().charge(Resource::feeInvalidRPC);
+            return jr;
+        }
+
+        auto required = RPC::roleRequired(jv.isMember(jss::command) ?
+                                          jv[jss::command].asString() :
+                                          jv[jss::method].asString());
+        auto role = requestRole(
+            required,
+            session->port(),
             jv,
-            app_,
-            loadType,
-            app_.getOPs(),
-            app_.getLedgerMaster(),
-            is->getConsumer(),
-            role,
-            coro,
-            is,
-            {is->user(), is->forwarded_for()}
-            };
-        RPC::doCommand(context, jr[jss::result]);
+            beast::IP::from_asio(session->remote_endpoint().address()),
+            is->user());
+        if (Role::FORBID == role)
+        {
+            loadType = Resource::feeInvalidRPC;
+            jr[jss::result] = rpcError (rpcFORBIDDEN);
+        }
+        else
+        {
+            RPC::Context context{
+                app_.journal("RPCHandler"),
+                jv,
+                app_,
+                loadType,
+                app_.getOPs(),
+                app_.getLedgerMaster(),
+                is->getConsumer(),
+                role,
+                coro,
+                is,
+                {is->user(), is->forwarded_for()}
+                };
+            RPC::doCommand(context, jr[jss::result]);
+        }
+    }
+    catch (std::exception const& ex)
+    {
+        jr[jss::result] = RPC::make_error(rpcINTERNAL);
+        JLOG(m_journal.error())
+           << "Exception while processing WS: " << ex.what() << "\n"
+           << "Input JSON: " << Json::Compact{Json::Value{jv}};
     }
 
     is->getConsumer().charge(loadType);
@@ -481,17 +475,26 @@ ServerHandlerImp::processSession(
     {
         jr = jr[jss::result];
         jr[jss::status] = jss::error;
-        jr[jss::request] = jv;
 
+        auto rq = jv;
+
+        if (rq.isObject())
+        {
+            if (rq.isMember(jss::passphrase.c_str()))
+                rq[jss::passphrase.c_str()] = "<masked>";
+            if (rq.isMember(jss::secret.c_str()))
+                rq[jss::secret.c_str()] = "<masked>";
+            if (rq.isMember(jss::seed.c_str()))
+                rq[jss::seed.c_str()] = "<masked>";
+            if (rq.isMember(jss::seed_hex.c_str()))
+                rq[jss::seed_hex.c_str()] = "<masked>";
+        }
+
+        jr[jss::request] = rq;
     }
     else
     {
         jr[jss::status] = jss::success;
-
-        // For testing resource limits on this connection.
-        if (is->getConsumer().isUnlimited() &&
-            jv[jss::command].asString() == "ping")
-                jr[jss::unlimited] = true;
     }
 
     if (jv.isMember(jss::id))
@@ -511,26 +514,17 @@ ServerHandlerImp::processSession (std::shared_ptr<Session> const& session,
 {
     processRequest (
         session->port(), buffers_to_string(
-            session->request().body.data()),
+            session->request().body().data()),
                 session->remoteAddress().at_port (0),
                     makeOutput (*session), coro,
-        [&]
-        {
-            auto const iter =
-                session->request().find(
-                    "X-Forwarded-For");
-            if(iter != session->request().end())
-                return iter->value().to_string();
-            return std::string{};
-        }(),
-        [&]
-        {
+        forwardedFor(session->request()),
+        [&]{
             auto const iter =
                 session->request().find(
                     "X-User");
             if(iter != session->request().end())
-                return iter->value().to_string();
-            return std::string{};
+                return iter->value();
+            return boost::beast::string_view{};
         }());
 
     if(beast::rfc2616::is_keep_alive(session->request()))
@@ -539,219 +533,369 @@ ServerHandlerImp::processSession (std::shared_ptr<Session> const& session,
         session->close (true);
 }
 
+static
+Json::Value
+make_json_error(Json::Int code, Json::Value&& message)
+{
+    Json::Value sub{Json::objectValue};
+    sub["code"] = code;
+    sub["message"] = std::move(message);
+    Json::Value r{Json::objectValue};
+    r["error"] = sub;
+    return r;
+}
+
+Json::Int constexpr method_not_found  = -32601;
+Json::Int constexpr server_overloaded = -32604;
+Json::Int constexpr forbidden         = -32605;
+
 void
 ServerHandlerImp::processRequest (Port const& port,
     std::string const& request, beast::IP::Endpoint const& remoteIPAddress,
         Output&& output, std::shared_ptr<JobQueue::Coro> coro,
-        std::string forwardedFor, std::string user)
+        boost::string_view forwardedFor, boost::string_view user)
 {
     auto rpcJ = app_.journal ("RPC");
 
-    Json::Value jsonRPC;
+    Json::Value jsonOrig;
     {
         Json::Reader reader;
         if ((request.size () > RPC::Tuning::maxRequestSize) ||
-            ! reader.parse (request, jsonRPC) ||
-            ! jsonRPC ||
-            ! jsonRPC.isObject ())
+            ! reader.parse (request, jsonOrig) ||
+            ! jsonOrig ||
+            ! jsonOrig.isObject ())
         {
-            HTTPReply (400, "Unable to parse request", output, rpcJ);
+            HTTPReply (400, "Unable to parse request: " +
+                       reader.getFormatedErrorMessages(), output, rpcJ);
             return;
         }
     }
 
-    /* ---------------------------------------------------------------------- */
-    // Determine role/usage so we can charge for invalid requests
-    Json::Value const& method = jsonRPC [jss::method];
-
-    auto role = Role::FORBID;
-    auto required = RPC::roleRequired(method.asString());
-    if (jsonRPC.isMember(jss::params) &&
-        jsonRPC[jss::params].isArray() &&
-        jsonRPC[jss::params].size() > 0 &&
-        jsonRPC[jss::params][Json::UInt(0)].isObject())
+    bool batch = false;
+    unsigned size = 1;
+    if (jsonOrig.isMember(jss::method) && jsonOrig[jss::method] == "batch")
     {
-        role = requestRole(required, port, jsonRPC[jss::params][Json::UInt(0)],
-            remoteIPAddress, user);
-    }
-    else
-    {
-        role = requestRole(required, port, Json::objectValue,
-            remoteIPAddress, user);
-    }
-
-    Resource::Consumer usage;
-    if (isUnlimited(role))
-    {
-        usage = m_resourceManager.newUnlimitedEndpoint(
-            remoteIPAddress.to_string());
-    }
-    else
-    {
-        usage = m_resourceManager.newInboundEndpoint(remoteIPAddress);
-        if (usage.disconnect())
+        batch = true;
+        if(!jsonOrig.isMember(jss::params) || !jsonOrig[jss::params].isArray())
         {
-            HTTPReply(503, "Server is overloaded", output, rpcJ);
+            HTTPReply (400, "Malformed batch request", output, rpcJ);
             return;
         }
+        size = jsonOrig[jss::params].size();
     }
 
-    if (role == Role::FORBID)
+    Json::Value reply(batch ? Json::arrayValue : Json::objectValue);
+    auto const start (std::chrono::high_resolution_clock::now ());
+    for (unsigned i = 0; i < size; ++i)
     {
-        usage.charge(Resource::feeInvalidRPC);
-        HTTPReply (403, "Forbidden", output, rpcJ);
-        return;
-    }
+        Json::Value const& jsonRPC =
+            batch ? jsonOrig[jss::params][i] : jsonOrig;
 
-    if (method.isNull())
-    {
-        usage.charge(Resource::feeInvalidRPC);
-        HTTPReply (400, "Null method", output, rpcJ);
-        return;
-    }
+        if (!jsonRPC.isObject())
+        {
+            Json::Value r(Json::objectValue);
+            r[jss::request] = jsonRPC;
+            r[jss::error] = make_json_error(method_not_found, "Method not found");
+            reply.append(r);
+            continue;
+        }
 
-    if (! method.isString ())
-    {
-        usage.charge(Resource::feeInvalidRPC);
-        HTTPReply (400, "method is not string", output, rpcJ);
-        return;
-    }
+        /* ------------------------------------------------------------------ */
+        auto role = Role::FORBID;
+        auto required = Role::FORBID;
+        if (jsonRPC.isMember(jss::method) && jsonRPC[jss::method].isString())
+            required = RPC::roleRequired(jsonRPC[jss::method].asString());
 
-    std::string strMethod = method.asString ();
-    if (strMethod.empty())
-    {
-        usage.charge(Resource::feeInvalidRPC);
-        HTTPReply (400, "method is empty", output, rpcJ);
-        return;
-    }
+        if (jsonRPC.isMember(jss::params) &&
+            jsonRPC[jss::params].isArray() &&
+            jsonRPC[jss::params].size() > 0 &&
+            jsonRPC[jss::params][Json::UInt(0)].isObjectOrNull())
+        {
+            role = requestRole(
+                required,
+                port,
+                jsonRPC[jss::params][Json::UInt(0)],
+                remoteIPAddress,
+                user);
+        }
+        else
+        {
+            role = requestRole(required, port, Json::objectValue,
+                remoteIPAddress, user);
+        }
 
-    // Extract request parameters from the request Json as `params`.
-    //
-    // If the field "params" is empty, `params` is an empty object.
-    //
-    // Otherwise, that field must be an array of length 1 (why?)
-    // and we take that first entry and validate that it's an object.
-    Json::Value params = jsonRPC [jss::params];
+        Resource::Consumer usage;
+        if (isUnlimited(role))
+        {
+            usage = m_resourceManager.newUnlimitedEndpoint(remoteIPAddress);
+        }
+        else
+        {
+            usage = m_resourceManager.newInboundEndpoint(remoteIPAddress,
+                role == Role::PROXY, forwardedFor);
+            if (usage.disconnect())
+            {
+                if (!batch)
+                {
+                    HTTPReply(503, "Server is overloaded", output, rpcJ);
+                    return;
+                }
+                Json::Value r = jsonRPC;
+                r[jss::error] = make_json_error(server_overloaded, "Server is overloaded");
+                reply.append(r);
+                continue;
+            }
+        }
 
-    if (! params)
-        params = Json::Value (Json::objectValue);
-
-    else if (!params.isArray () || params.size() != 1)
-    {
-        usage.charge(Resource::feeInvalidRPC);
-        HTTPReply (400, "params unparseable", output, rpcJ);
-        return;
-    }
-    else
-    {
-        params = std::move (params[0u]);
-        if (!params.isObject())
+        if (role == Role::FORBID)
         {
             usage.charge(Resource::feeInvalidRPC);
-            HTTPReply (400, "params unparseable", output, rpcJ);
-            return;
+            if (!batch)
+            {
+                HTTPReply (403, "Forbidden", output, rpcJ);
+                return;
+            }
+            Json::Value r = jsonRPC;
+            r[jss::error] = make_json_error(forbidden, "Forbidden");
+            reply.append(r);
+            continue;
         }
-    }
 
-    /**
-     * Clear header-assigned values if not positively identified from a
-     * secure_gateway.
-     */
-    if (role != Role::IDENTIFIED)
-    {
-        forwardedFor.clear();
-        user.clear();
-    }
+        if (!jsonRPC.isMember(jss::method) || jsonRPC[jss::method].isNull())
+        {
+            usage.charge(Resource::feeInvalidRPC);
+            if (!batch)
+            {
+                HTTPReply (400, "Null method", output, rpcJ);
+                return;
+            }
+            Json::Value r = jsonRPC;
+            r[jss::error] = make_json_error(method_not_found, "Null method");
+            reply.append(r);
+            continue;
+        }
 
-    JLOG(m_journal.debug()) << "Query: " << strMethod << params;
+        Json::Value const& method = jsonRPC[jss::method];
+        if (! method.isString ())
+        {
+            usage.charge(Resource::feeInvalidRPC);
+            if (!batch)
+            {
+                HTTPReply (400, "method is not string", output, rpcJ);
+                return;
+            }
+            Json::Value r = jsonRPC;
+            r[jss::error] = make_json_error(method_not_found, "method is not string");
+            reply.append(r);
+            continue;
+        }
 
-    // Provide the JSON-RPC method as the field "command" in the request.
-    params[jss::command] = strMethod;
-    JLOG (m_journal.trace())
-        << "doRpcCommand:" << strMethod << ":" << params;
+        std::string strMethod = method.asString ();
+        if (strMethod.empty())
+        {
+            usage.charge(Resource::feeInvalidRPC);
+            if (!batch)
+            {
+                HTTPReply (400, "method is empty", output, rpcJ);
+                return;
+            }
+            Json::Value r = jsonRPC;
+            r[jss::error] = make_json_error(method_not_found, "method is empty");
+            reply.append(r);
+            continue;
+        }
 
-    Resource::Charge loadType = Resource::feeReferenceRPC;
-    auto const start (std::chrono::high_resolution_clock::now ());
+        // Extract request parameters from the request Json as `params`.
+        //
+        // If the field "params" is empty, `params` is an empty object.
+        //
+        // Otherwise, that field must be an array of length 1 (why?)
+        // and we take that first entry and validate that it's an object.
+        Json::Value params;
+        if (!batch)
+        {
+            params = jsonRPC [jss::params];
+            if (! params)
+                params = Json::Value (Json::objectValue);
 
-    RPC::Context context {m_journal, params, app_, loadType, m_networkOPs,
-        app_.getLedgerMaster(), usage, role, coro, InfoSub::pointer(),
-        {user, forwardedFor}};
-    Json::Value result;
-    RPC::doCommand (context, result);
+            else if (!params.isArray() || params.size() != 1)
+            {
+                usage.charge(Resource::feeInvalidRPC);
+                HTTPReply (400, "params unparseable", output, rpcJ);
+                return;
+            }
+            else
+            {
+                params = std::move (params[0u]);
+                if (!params.isObjectOrNull())
+                {
+                    usage.charge(Resource::feeInvalidRPC);
+                    HTTPReply (400, "params unparseable", output, rpcJ);
+                    return;
+                }
+            }
+        }
+        else  // batch
+        {
+            params = jsonRPC;
+        }
 
-    // Always report "status".  On an error report the request as received.
-    if (result.isMember (jss::error))
-    {
-        result[jss::status] = jss::error;
-        result[jss::request] = params;
-        JLOG (m_journal.debug())  <<
-            "rpcError: " << result [jss::error] <<
-            ": " << result [jss::error_message];
-    }
-    else
-    {
-        result[jss::status]  = jss::success;
-    }
+        std::string ripplerpc = "1.0";
+        if (params.isMember(jss::ripplerpc))
+        {
+            if (!params[jss::ripplerpc].isString())
+            {
+                usage.charge(Resource::feeInvalidRPC);
+                if (!batch)
+                {
+                    HTTPReply(400, "ripplerpc is not a string", output, rpcJ);
+                    return;
+                }
 
-    usage.charge (loadType);
-    if (usage.warn())
-        result[jss::warning] = jss::load;
+                Json::Value r = jsonRPC;
+                r[jss::error] = make_json_error(
+                    method_not_found, "ripplerpc is not a string");
+                reply.append(r);
+                continue;
+            }
+            ripplerpc = params[jss::ripplerpc].asString();
+        }
 
-	//if trasaction operation,
-	//remove tx_blob & tx_json field,and make tx_id parallel with result
-	Json::Value tx_id(Json::nullValue);
-	if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash) 
-		&& !result[jss::tx_json].isMember("Signers"))
-	{
-		std::string txType = result[jss::tx_json][jss::TransactionType].asString();
-		if (isChainSqlTableType(txType))
+        /**
+         * Clear header-assigned values if not positively identified from a
+         * secure_gateway.
+         */
+        if (role != Role::IDENTIFIED && role != Role::PROXY)
+        {
+            forwardedFor.clear();
+            user.clear();
+        }
+
+        JLOG(m_journal.debug()) << "Query: " << strMethod << params;
+
+        // Provide the JSON-RPC method as the field "command" in the request.
+        params[jss::command] = strMethod;
+        JLOG (m_journal.trace())
+            << "doRpcCommand:" << strMethod << ":" << params;
+
+        Resource::Charge loadType = Resource::feeReferenceRPC;
+
+        RPC::Context context {m_journal, params, app_, loadType, m_networkOPs,
+            app_.getLedgerMaster(), usage, role, coro, InfoSub::pointer(),
+            {user, forwardedFor}};
+        Json::Value result;
+        RPC::doCommand (context, result);
+        usage.charge (loadType);
+        if (usage.warn())
+            result[jss::warning] = jss::load;
+
+        Json::Value r(Json::objectValue);
+        if (ripplerpc >= "2.0")
+        {
+            if (result.isMember(jss::error))
+            {
+                result[jss::status] = jss::error;
+                result["code"] = result[jss::error_code];
+                result["message"] = result[jss::error_message];
+                result.removeMember(jss::error_message);
+                JLOG (m_journal.debug())  <<
+                    "rpcError: " << result [jss::error] <<
+                    ": " << result [jss::error_message];
+                r[jss::error] = std::move(result);
+            }
+            else
+            {
+                result[jss::status]  = jss::success;
+                r[jss::result] = std::move(result);
+            }
+        }
+        else
+        {
+            // Always report "status".  On an error report the request as received.
+            if (result.isMember (jss::error))
+            {
+                auto rq = params;
+
+                if (rq.isObject())
+                { // But mask potentially sensitive information.
+                    if (rq.isMember(jss::passphrase.c_str()))
+                        rq[jss::passphrase.c_str()] = "<masked>";
+                    if (rq.isMember(jss::secret.c_str()))
+                        rq[jss::secret.c_str()] = "<masked>";
+                    if (rq.isMember(jss::seed.c_str()))
+                        rq[jss::seed.c_str()] = "<masked>";
+                    if (rq.isMember(jss::seed_hex.c_str()))
+                        rq[jss::seed_hex.c_str()] = "<masked>";
+                }
+
+                result[jss::status] = jss::error;
+                result[jss::request] = rq;
+
+                JLOG (m_journal.debug())  <<
+                    "rpcError: " << result [jss::error] <<
+                    ": " << result [jss::error_message];
+            }
+            else
+            {
+                result[jss::status]  = jss::success;
+            }
+            r[jss::result] = std::move(result);
+        }
+		//if trasaction operation,
+		//remove tx_blob & tx_json field,and make tx_id parallel with result
+		Json::Value tx_id(Json::nullValue);
+		if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash)
+			&& !result[jss::tx_json].isMember("Signers"))
 		{
-			tx_id = std::move(result[jss::tx_json][jss::hash]);
-
-			result.removeMember(jss::tx_json);
-
-			if (result.isMember(jss::tx_blob))
+			std::string txType = result[jss::tx_json][jss::TransactionType].asString();
+			if (isChainSqlTableType(txType))
 			{
-				result.removeMember(jss::tx_blob);
+				tx_id = std::move(result[jss::tx_json][jss::hash]);
+
+				result.removeMember(jss::tx_json);
+
+				if (result.isMember(jss::tx_blob))
+				{
+					result.removeMember(jss::tx_blob);
+				}
 			}
 		}
-	}
-	if (result.isMember(jss::request) && result[jss::request].isMember(jss::tx_json))
-	{
-		if (strMethod == "t_dump" || strMethod == "t_dumpstop" || strMethod == "t_audit" || strMethod == "t_auditstop")
+		if (result.isMember(jss::request) && result[jss::request].isMember(jss::tx_json))
 		{
-			for (int i = 0; i < result[jss::request][jss::tx_json].size(); i++)
+			if (strMethod == "t_dump" || strMethod == "t_dumpstop" || strMethod == "t_audit" || strMethod == "t_auditstop")
 			{
-				std::string sDest = "";
-				TransGBK_UTF8(result[jss::request][jss::tx_json][i].asString(), sDest, false);
+				for (int i = 0; i < result[jss::request][jss::tx_json].size(); i++)
+				{
+					std::string sDest = "";
+					TransGBK_UTF8(result[jss::request][jss::tx_json][i].asString(), sDest, false);
 
-				result[jss::request][jss::tx_json][i] = sDest;
+					result[jss::request][jss::tx_json][i] = sDest;
+				}
 			}
 		}
-	}
+		if (tx_id != Json::Value(Json::nullValue))
+		{
+			reply[jss::tx_hash] = std::move(tx_id);
+		}
 
-    Json::Value reply (Json::objectValue);
-    reply[jss::result] = std::move (result);
-
-	if (tx_id != Json::Value(Json::nullValue))
-	{
-		reply[jss::tx_hash] = std::move(tx_id);
-	}
-
-    if (jsonRPC.isMember(jss::jsonrpc))
-        reply[jss::jsonrpc] = jsonRPC[jss::jsonrpc];
-    if (jsonRPC.isMember(jss::ripplerpc))
-        reply[jss::ripplerpc] = jsonRPC[jss::ripplerpc];
-    if (jsonRPC.isMember(jss::id))
-        reply[jss::id] = jsonRPC[jss::id];
+        if (params.isMember(jss::jsonrpc))
+            r[jss::jsonrpc] = params[jss::jsonrpc];
+        if (params.isMember(jss::ripplerpc))
+           r[jss::ripplerpc] = params[jss::ripplerpc];
+        if (params.isMember(jss::id))
+            r[jss::id] = params[jss::id];
+        if (batch)
+            reply.append(std::move(r));
+        else
+            reply = std::move(r);
+    }
     auto response = to_string (reply);
 
-    rpc_time_.notify (static_cast <beast::insight::Event::value_type> (
+    rpc_time_.notify (
         std::chrono::duration_cast <std::chrono::milliseconds> (
-            std::chrono::high_resolution_clock::now () - start)));
+            std::chrono::high_resolution_clock::now () - start));
     ++rpc_requests_;
-    rpc_size_.notify (static_cast <beast::insight::Event::value_type> (
-        response.size ()));
+    rpc_size_.notify (beast::insight::Event::value_type{response.size()});
 
     response += '\n';
 
@@ -777,25 +921,25 @@ Handoff
 ServerHandlerImp::statusResponse(
     http_request_type const& request) const
 {
-    using namespace beast::http;
+    using namespace boost::beast::http;
     Handoff handoff;
     response<string_body> msg;
     std::string reason;
     if (app_.serverOkay(reason))
     {
-        msg.result(beast::http::status::ok);
-        msg.body = "<!DOCTYPE html><html><head><title>" + systemName() +
+        msg.result(boost::beast::http::status::ok);
+        msg.body() = "<!DOCTYPE html><html><head><title>" + systemName() +
             " Test page for rippled</title></head><body><h1>" +
                 systemName() + " Test</h1><p>This page shows rippled http(s) "
                     "connectivity is working.</p></body></html>";
     }
     else
     {
-        msg.result(beast::http::status::internal_server_error);
-        msg.body = "<HTML><BODY>Server cannot accept clients: " +
+        msg.result(boost::beast::http::status::internal_server_error);
+        msg.body() = "<HTML><BODY>Server cannot accept clients: " +
             reason + "</BODY></HTML>";
     }
-    msg.version = request.version;
+    msg.version(request.version());
     msg.insert("Server", BuildInfo::getFullVersionString());
     msg.insert("Content-Type", "text/html");
     msg.insert("Connection", "close");
@@ -839,19 +983,19 @@ to_Port(ParsedPort const& parsed, std::ostream& log)
 
     if (! parsed.ip)
     {
-        log << "Missing 'ip' in [" << p.name << "]\n";
+        log << "Missing 'ip' in [" << p.name << "]";
         Throw<std::exception> ();
     }
     p.ip = *parsed.ip;
 
     if (! parsed.port)
     {
-        log << "Missing 'port' in [" << p.name << "]\n";
+        log << "Missing 'port' in [" << p.name << "]";
         Throw<std::exception> ();
     }
     else if (*parsed.port == 0)
     {
-        log << "Port " << *parsed.port << "in [" << p.name << "] is invalid\n";
+        log << "Port " << *parsed.port << "in [" << p.name << "] is invalid";
         Throw<std::exception> ();
     }
     p.port = *parsed.port;
@@ -862,7 +1006,7 @@ to_Port(ParsedPort const& parsed, std::ostream& log)
 
     if (parsed.protocol.empty())
     {
-        log << "Missing 'protocol' in [" << p.name << "]\n";
+        log << "Missing 'protocol' in [" << p.name << "]";
         Throw<std::exception> ();
     }
     p.protocol = parsed.protocol;
@@ -893,7 +1037,7 @@ parse_Ports (
     if (! config.exists("server"))
     {
         log <<
-            "Required section [server] is missing\n";
+            "Required section [server] is missing";
         Throw<std::exception> ();
     }
 
@@ -907,7 +1051,7 @@ parse_Ports (
         if (! config.exists(name))
         {
             log <<
-                "Missing section: [" << name << "]\n";
+                "Missing section: [" << name << "]";
             Throw<std::exception> ();
         }
         ParsedPort parsed = common;
@@ -943,12 +1087,12 @@ parse_Ports (
 
         if (count > 1)
         {
-            log << "Error: More than one peer protocol configured in [server]\n";
+            log << "Error: More than one peer protocol configured in [server]";
             Throw<std::exception> ();
         }
 
         if (count == 0)
-            log << "Warning: No peer protocol configured\n";
+            log << "Warning: No peer protocol configured";
     }
 
     return result;
@@ -969,10 +1113,11 @@ setup_Client (ServerHandler::Setup& setup)
         return;
     setup.client.secure =
         iter->protocol.count("https") > 0;
-    setup.client.ip = iter->ip.to_string();
-    // VFALCO HACK! to make localhost work
-    if (setup.client.ip == "0.0.0.0")
-        setup.client.ip = "127.0.0.1";
+    setup.client.ip =
+        beast::IP::is_unspecified(iter->ip) ?
+            // VFALCO HACK! to make localhost work
+            (iter->ip.is_v6() ? "::1" : "127.0.0.1") :
+            iter->ip.to_string();
     setup.client.port = iter->port;
     setup.client.user = iter->user;
     setup.client.password = iter->password;

@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/basics/Log.h>
@@ -26,7 +25,7 @@
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/protocol/Feature.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <boost/optional.hpp>
 
 namespace ripple {
@@ -64,18 +63,18 @@ void Transaction::setStatus (TransStatus ts, std::uint32_t lseq)
 TransStatus Transaction::sqlTransactionStatus(
     boost::optional<std::string> const& status)
 {
-    char const c = (status) ? (*status)[0] : TXN_SQL_UNKNOWN;
+    char const c = (status) ? (*status)[0] : txnSqlUnknown;
 
     switch (c)
     {
-    case TXN_SQL_NEW:       return NEW;
-    case TXN_SQL_CONFLICT:  return CONFLICTED;
-    case TXN_SQL_HELD:      return HELD;
-    case TXN_SQL_VALIDATED: return COMMITTED;
-    case TXN_SQL_INCLUDED:  return INCLUDED;
+    case txnSqlNew:       return NEW;
+    case txnSqlConflict:  return CONFLICTED;
+    case txnSqlHeld:      return HELD;
+    case txnSqlValidated: return COMMITTED;
+    case txnSqlIncluded:  return INCLUDED;
     }
 
-    assert (c == TXN_SQL_UNKNOWN);
+    assert (c == txnSqlUnknown);
     return INVALID;
 }
 
@@ -145,16 +144,16 @@ Transaction::pointer Transaction::load(uint256 const& id, Application& app)
 }
 
 // options 1 to include the date of the transaction
-Json::Value Transaction::getJson (int options, bool binary) const
+Json::Value Transaction::getJson (JsonOptions options, bool binary) const
 {
-    Json::Value ret (mTransaction->getJson (0, binary));
+    Json::Value ret (mTransaction->getJson (JsonOptions::none, binary));
 
     if (mInLedger)
     {
         ret[jss::inLedger] = mInLedger;        // Deprecated.
         ret[jss::ledger_index] = mInLedger;
 
-        if (options == 1)
+        if (options == JsonOptions::include_date)
         {
             auto ct = mApp.getLedgerMaster().
                 getCloseTimeBySeq (mInLedger);

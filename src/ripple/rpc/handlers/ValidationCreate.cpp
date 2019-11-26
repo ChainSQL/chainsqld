@@ -17,11 +17,10 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/Log.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/Seed.h>
 #include <ripple/rpc/Context.h>
 #include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
@@ -55,8 +54,8 @@ Json::Value doValidationCreate (RPC::Context& context)
 #ifdef GM_ALG_PROCESS
     auto publicPrivatePair = generateKeyPair(KeyType::gmalg, *seed);
 
-    obj[jss::validation_public_key] = toBase58(TokenType::TOKEN_NODE_PUBLIC, publicPrivatePair.first);
-    obj[jss::validation_private_key] = toBase58(TokenType::TOKEN_NODE_PRIVATE, publicPrivatePair.second);
+    obj[jss::validation_public_key] = toBase58(TokenType::NodePublic, publicPrivatePair.first);
+    obj[jss::validation_private_key] = toBase58(TokenType::NodePrivate, publicPrivatePair.second);
 
     return obj;
 #else
@@ -65,11 +64,11 @@ Json::Value doValidationCreate (RPC::Context& context)
 	obj[jss::validation_public_key_hex] = strHex(derivePublicKey(KeyType::secp256k1, private_key));
 
     obj[jss::validation_public_key] = toBase58 (
-        TokenType::TOKEN_NODE_PUBLIC,
+        TokenType::NodePublic,
         derivePublicKey (KeyType::secp256k1, private_key));
 
     obj[jss::validation_private_key] = toBase58 (
-        TokenType::TOKEN_NODE_PRIVATE, private_key);
+        TokenType::NodePrivate, private_key);
 
     obj[jss::validation_seed] = toBase58 (*seed);
     obj[jss::validation_key] = seedAs1751 (*seed);

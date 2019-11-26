@@ -17,9 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/shamap/SHAMap.h>
-#include <test/shamap/common.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/random.h>
@@ -27,6 +25,8 @@
 #include <ripple/basics/UnorderedContainers.h>
 #include <ripple/beast/xor_shift_engine.h>
 #include <ripple/beast/unit_test.h>
+#include <test/shamap/common.h>
+#include <test/unit_test/SuiteJournal.h>
 #include <functional>
 #include <stdexcept>
 
@@ -60,9 +60,10 @@ public:
         {
         }
 
-        void gotNode (bool fromFilter,
-            SHAMapHash const& nodeHash,
-                Blob&& nodeData, SHAMapTreeNode::TNType type) const override
+        void
+        gotNode(bool fromFilter, SHAMapHash const& nodeHash,
+            std::uint32_t ledgerSeq, Blob&& nodeData,
+                SHAMapTreeNode::TNType type) const override
         {
         }
 
@@ -114,10 +115,12 @@ public:
         map.emplace (hash, blob);
     }
 
-    void run ()
+    void run () override
     {
-        beast::Journal const j;                            // debug journal
-        TestFamily f(j);
+        using namespace beast::severities;
+        test::SuiteJournal journal ("FetchPack_test", *this);
+
+        TestFamily f(journal);
         std::shared_ptr <Table> t1 (std::make_shared <Table> (
             SHAMapType::FREE, f, SHAMap::version{2}));
 

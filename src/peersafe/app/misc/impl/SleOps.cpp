@@ -42,7 +42,7 @@ namespace ripple {
 		SLE::pointer pSle = getSle(addr);
 		if (pSle)
 		{
-			uint32 sequence = pSle->getFieldU32(sfSequence);
+			uint32_t sequence = pSle->getFieldU32(sfSequence);
 			{
 				pSle->setFieldU32(sfSequence, ++sequence);
 				ctx_.view().update(pSle);
@@ -50,7 +50,7 @@ namespace ripple {
 		}		
 	}
 
-	uint32 SleOps::getSequence(AccountID const& addr)
+	uint32_t SleOps::getSequence(AccountID const& addr)
 	{
 		SLE::pointer pSle = getSle(addr);
 		if (pSle)
@@ -356,7 +356,7 @@ namespace ripple {
 		{
 			ctx_.tx.addSubTx(tx);
 		}
-		return ret;
+		return TERtoInt(ret);
 	}
 
 	//table operation
@@ -604,7 +604,7 @@ namespace ripple {
 		}
 		Json::Value vec;
 		for (auto tx : sqlTxsStatements_) {
-			vec.append(tx.getJson(0));
+			vec.append(tx.getJson(JsonOptions::none));
 		}
 		Blob _statements = ripple::strCopy(vec.toStyledString());
 		STTx tx(ttSQLTRANSACTION,
@@ -633,7 +633,7 @@ namespace ripple {
 		}
 		//
 		resetTransactionCache();
-		return ret;
+		return TERtoInt(ret);
 	}
 
 	void SleOps::resetTransactionCache()
@@ -657,7 +657,7 @@ namespace ripple {
 		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
 		SleOps::addCommonFields(accountSetTx, _account);
 		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("SleOps"));
-		return ret;
+		return TERtoInt(ret);
 	}
 	
 	//   sRate  [1.0 - 2.0]
@@ -689,7 +689,7 @@ namespace ripple {
 		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
 		SleOps::addCommonFields(accountSetTx, _gateWay);
 		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("Executive"));
-		return ret;
+		return TERtoInt(ret);
 	}
 
     int64_t SleOps::trustSet(AccountID const& _account, std::string const& _value, std::string const& _sCurrency, AccountID const& _issuer)
@@ -707,7 +707,7 @@ namespace ripple {
 		accountSetTx.setParentTxID(ctx_.tx.getTransactionID());
 		SleOps::addCommonFields(accountSetTx, _account);
 		auto ret = applyDirect(ctx_.app, ctx_.view(), accountSetTx, ctx_.app.journal("Executive"));
-		return ret;	
+		return TERtoInt(ret);
 	}
 
     int64_t SleOps::trustLimit(AccountID const& _account, AccountID const& _issuer, std::string const& _sCurrency, uint64_t _power)

@@ -17,10 +17,10 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/TransactionMaster.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/RippleAddress.h>
 #include <ripple/json/json_reader.h>
@@ -239,7 +239,7 @@ void TxPrepareBase::preparePressData()
 	std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 	auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
 	auto& tx_json = getTxJson();
-	tx_json[jss::Flags] = (uint32)tmp.count();
+	tx_json[jss::Flags] = (uint32_t)tmp.count();
 }
 
 uint256 TxPrepareBase::getCheckHashOld(const std::string& sAccount, const std::string& sTableName)
@@ -569,7 +569,7 @@ Json::Value TxPrepareBase::prepareForCreate()
     PublicKey public_key;
     if (!public_.empty())
     {
-        std::string publicKeyDe58 = decodeBase58Token(public_, TOKEN_ACCOUNT_PUBLIC);
+        std::string publicKeyDe58 = decodeBase58Token(public_, TokenType::NodePublic);
         if (publicKeyDe58.empty() || publicKeyDe58.size() != 65)
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");
@@ -646,7 +646,7 @@ Json::Value TxPrepareBase::prepareForAssign()
 	std::string sPublic_key = tx_json_["PublicKey"].asString();
     if (nullptr == HardEncryptObj::getInstance())
     {
-        auto oPublicKey = parseBase58<PublicKey>(TOKEN_ACCOUNT_PUBLIC, sPublic_key);
+        auto oPublicKey = parseBase58<PublicKey>(TokenType::NodePublic, sPublic_key);
         if (!oPublicKey)
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");
@@ -671,7 +671,7 @@ Json::Value TxPrepareBase::prepareForAssign()
     }
     else
     {
-        std::string publicKeyDe58 = decodeBase58Token(sPublic_key, TOKEN_ACCOUNT_PUBLIC);
+        std::string publicKeyDe58 = decodeBase58Token(sPublic_key, TokenType::NodePublic);
         if (publicKeyDe58.empty())
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");
@@ -684,7 +684,7 @@ Json::Value TxPrepareBase::prepareForAssign()
         }
         public_key = tempPubKey;
 
-        std::string privateKeyStrDe58 = decodeBase58Token(secret_, TOKEN_ACCOUNT_SECRET);
+        std::string privateKeyStrDe58 = decodeBase58Token(secret_, TokenType::AccountSecret);
         if (privateKeyStrDe58.empty() || privateKeyStrDe58.size() != 32)
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
@@ -723,7 +723,7 @@ Json::Value TxPrepareBase::prepareForOperating()
     }
     else
     {
-        std::string privateKeyStrDe58 = decodeBase58Token(secret_, TOKEN_ACCOUNT_SECRET);
+        std::string privateKeyStrDe58 = decodeBase58Token(secret_, TokenType::AccountSecret);
         if (privateKeyStrDe58.empty() || privateKeyStrDe58.size() != 32)
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");

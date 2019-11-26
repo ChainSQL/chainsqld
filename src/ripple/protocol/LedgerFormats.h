@@ -83,6 +83,10 @@ enum LedgerEntryType
     // Simple unidirection zxc channel
     ltPAYCHAN           = 'x',
 
+    ltCHECK             = 'C',
+
+    ltDEPOSIT_PREAUTH   = 'p',
+
     // No longer used or supported. Left here to prevent accidental
     // reassignment of the ledger type.
     ltNICKNAME          = 'n',
@@ -120,6 +124,8 @@ enum LedgerNameSpace
     spaceTicket         = 'T',
     spaceSignerList     = 'S',
     spaceZXCUChannel    = 'x',
+    spaceCheck          = 'C',
+    spaceDepositPreauth = 'p',
 
     // No longer used or supported. Left here to reserve the space and
     // avoid accidental reuse of the space.
@@ -140,6 +146,7 @@ enum LedgerSpecificFlags
     lsfNoFreeze         = 0x00200000,   // True, cannot freeze ripple states
     lsfGlobalFreeze     = 0x00400000,   // True, all assets frozen
     lsfDefaultRipple    = 0x00800000,   // True, trust lines allow rippling by default
+    lsfDepositAuth      = 0x01000000,   // True, all deposits require authorization
 
     // ltOFFER
     lsfPassive          = 0x00010000,
@@ -154,6 +161,9 @@ enum LedgerSpecificFlags
     lsfHighNoRipple     = 0x00200000,
     lsfLowFreeze        = 0x00400000,   // True, low side has set freeze flag
     lsfHighFreeze       = 0x00800000,   // True, high side has set freeze flag
+
+    // ltSIGNER_LIST
+    lsfOneOwnerCount    = 0x00010000,   // True, uses only one OwnerCount
 };
 
 //------------------------------------------------------------------------------
@@ -163,13 +173,13 @@ enum LedgerSpecificFlags
 class LedgerFormats : public KnownFormats <LedgerEntryType>
 {
 private:
+    /** Create the object.
+        This will load the object with all the known ledger formats.
+    */
     LedgerFormats ();
 
 public:
     static LedgerFormats const& getInstance ();
-
-private:
-    void addCommonFields (Item& item);
 };
 
 } // ripple

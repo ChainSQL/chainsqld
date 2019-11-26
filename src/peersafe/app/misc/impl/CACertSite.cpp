@@ -21,7 +21,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <beast/core/detail/base64.hpp>
 
 
@@ -97,7 +97,7 @@ namespace ripple {
 
 		JLOG(j_.debug()) <<
 			"Removing validator list for revoked publisher " <<
-			toBase58(TokenType::TOKEN_NODE_PUBLIC, publisherKey);
+			toBase58(TokenType::NodePublic, publisherKey);
 
 		//for (auto const& val : iList->second.list)
 		//{
@@ -119,7 +119,7 @@ namespace ripple {
 
 	ripple::ListDisposition CACertSite::verify(Json::Value& list, PublicKey& pubKey, std::string const& manifest, std::string const& blob, std::string const& signature)
 	{
-		auto m = Manifest::make_Manifest(beast::detail::base64_decode(manifest));
+		auto m = deserializeManifest(beast::detail::base64_decode(manifest));
 
 		if (!m || !publisherLists_.count(m->masterKey))
 			return ListDisposition::untrusted;

@@ -70,7 +70,7 @@ namespace ripple
 
     evmc_status_code terToEvmcStatusCode(TER eState) noexcept
     {
-        switch (eState)
+        switch (TERtoInt(eState))
         {
         case tesSUCCESS:
             return EVMC_SUCCESS;
@@ -465,7 +465,7 @@ namespace ripple
     {
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
-        return oSle_.doPayment(fromEvmC(*address), fromEvmC(*receiver), _value.toString(), _sendMax.toString(), _currency.toString(), fromEvmC(*gateWay));
+        return TERtoInt(oSle_.doPayment(fromEvmC(*address), fromEvmC(*receiver), _value.toString(), _sendMax.toString(), _currency.toString(), fromEvmC(*gateWay)));
     }
 }
 

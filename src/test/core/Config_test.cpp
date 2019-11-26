@@ -17,11 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/contract.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/ConfigSections.h>
+#include <ripple/server/Port.h>
 #include <test/jtx/TestSuite.h>
+#include <test/unit_test/FileDirGuard.h>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <fstream>
@@ -41,7 +42,7 @@ port_wss_admin
 [port_rpc]
 port = 5005
 ip = 127.0.0.1
-admin = 127.0.0.1
+admin = 127.0.0.1, ::1
 protocol = https
 
 [port_peer]
@@ -122,87 +123,11 @@ backend=sqlite
 }
 
 /**
-   Write a config file and remove when done.
- */
-class ConfigGuard
-{
-private:
-    bool rmSubDir_{false};
-
-protected:
-    using path = boost::filesystem::path;
-    path subDir_;
-    beast::unit_test::suite& test_;
-
-    auto rmDir (path const& toRm)
-    {
-        if (is_directory (toRm) && is_empty (toRm))
-            remove (toRm);
-        else
-            test_.log << "Expected " << toRm.string ()
-                      << " to be an empty existing directory." << std::endl;
-    };
-
-public:
-    ConfigGuard (beast::unit_test::suite& test, path subDir,
-            bool useCounter = true)
-        : subDir_ (std::move (subDir))
-        , test_ (test)
-    {
-        using namespace boost::filesystem;
-        {
-            static auto subDirCounter = 0;
-            if (useCounter)
-                subDir_ += std::to_string(++subDirCounter);
-            if (!exists (subDir_))
-            {
-                create_directory (subDir_);
-                rmSubDir_ = true;
-            }
-            else if (is_directory (subDir_))
-                rmSubDir_ = false;
-            else
-            {
-                // Cannot run the test. Someone created a file where we want to
-                // put our directory
-                Throw<std::runtime_error> (
-                    "Cannot create directory: " + subDir_.string ());
-            }
-        }
-    }
-
-    ~ConfigGuard ()
-    {
-        try
-        {
-            using namespace boost::filesystem;
-
-            if (rmSubDir_)
-                rmDir (subDir_);
-            else
-                test_.log << "Skipping rm dir: "
-                          << subDir_.string () << std::endl;
-        }
-        catch (std::exception& e)
-        {
-            // if we throw here, just let it die.
-            test_.log << "Error in ~ConfigGuard: " << e.what () << std::endl;
-        };
-    }
-
-    path const& subdir() const
-    {
-        return subDir_;
-    }
-};
-
-/**
    Write a rippled config file and remove when done.
  */
-class RippledCfgGuard : public ConfigGuard
+class RippledCfgGuard : public ripple::test::detail::FileDirGuard
 {
 private:
-    path configFile_;
     path dataDir_;
 
     bool rmDataDir_{false};
@@ -214,28 +139,17 @@ public:
         path subDir, path const& dbPath,
             path const& validatorsFile,
                 bool useCounter = true)
-        : ConfigGuard (test, std::move (subDir), useCounter)
+        : FileDirGuard(test, std::move (subDir),
+            path (Config::configFileName),
+            configContents (dbPath.string (), validatorsFile.string ()),
+            useCounter)
         , dataDir_ (dbPath)
     {
         if (dbPath.empty ())
-            dataDir_ = subDir_ / path (Config::databaseDirName);
-
-        configFile_ = subDir_ / path (Config::configFileName);
-
-        if (!exists (configFile_))
-        {
-            std::ofstream o (configFile_.string ());
-            o << configContents (dbPath.string (), validatorsFile.string ());
-        }
-        else
-        {
-            Throw<std::runtime_error> (
-                "Refusing to overwrite existing config file: " +
-                    configFile_.string ());
-        }
+            dataDir_ = subdir() / path (Config::databaseDirName);
 
         rmDataDir_ = !exists (dataDir_);
-        config_.setup (configFile_.string (), /*bQuiet*/ true,
+        config_.setup (file_.string (), /*bQuiet*/ true,
             /* bSilent */ false, /* bStandalone */ false);
     }
 
@@ -246,7 +160,7 @@ public:
 
     std::string configFile() const
     {
-        return configFile_.string();
+        return file().string();
     }
 
     bool dataDirExists () const
@@ -256,7 +170,7 @@ public:
 
     bool configFileExists () const
     {
-        return boost::filesystem::exists (configFile_);
+        return fileExists();
     }
 
     ~RippledCfgGuard ()
@@ -264,12 +178,6 @@ public:
         try
         {
             using namespace boost::filesystem;
-            if (!boost::filesystem::exists (configFile_))
-                test_.log << "Expected " << configFile_.string ()
-                          << " to be an existing file." << std::endl;
-            else
-                remove (configFile_);
-
             if (rmDataDir_)
                 rmDir (dataDir_);
             else
@@ -314,65 +222,37 @@ moreripplevalidators.net
 /**
    Write a validators.txt file and remove when done.
  */
-class ValidatorsTxtGuard : public ConfigGuard
+class ValidatorsTxtGuard : public test::detail::FileDirGuard
 {
-private:
-    path validatorsFile_;
-
 public:
     ValidatorsTxtGuard (beast::unit_test::suite& test,
         path subDir, path const& validatorsFileName,
             bool useCounter = true)
-        : ConfigGuard (test, std::move (subDir), useCounter)
+        : FileDirGuard (test, std::move (subDir),
+            path (
+                validatorsFileName.empty () ? Config::validatorsFileName :
+                validatorsFileName),
+            valFileContents (),
+            useCounter)
     {
-        using namespace boost::filesystem;
-        validatorsFile_ = current_path () / subDir_ / path (
-            validatorsFileName.empty () ? Config::validatorsFileName :
-            validatorsFileName);
-
-        if (!exists (validatorsFile_))
-        {
-            std::ofstream o (validatorsFile_.string ());
-            o << valFileContents ();
-        }
-        else
-        {
-            Throw<std::runtime_error> (
-                "Refusing to overwrite existing config file: " +
-                    validatorsFile_.string ());
-        }
     }
 
     bool validatorsFileExists () const
     {
-        return boost::filesystem::exists (validatorsFile_);
+        return fileExists();
     }
 
     std::string validatorsFile () const
     {
-        return validatorsFile_.string ();
+        return absolute(file()).string();
     }
 
     ~ValidatorsTxtGuard ()
     {
-        try
-        {
-            using namespace boost::filesystem;
-            if (!boost::filesystem::exists (validatorsFile_))
-                test_.log << "Expected " << validatorsFile_.string ()
-                          << " to be an existing file." << std::endl;
-            else
-                remove (validatorsFile_);
-        }
-        catch (std::exception& e)
-        {
-            // if we throw here, just let it die.
-            test_.log << "Error in ~ValidatorsTxtGuard: "
-                      << e.what () << std::endl;
-        };
     }
 };
 }  // detail
+
 class Config_test final : public TestSuite
 {
 private:
@@ -440,7 +320,7 @@ port_wss_admin
         {
             // read from file absolute path
             auto const cwd = current_path ();
-            detail::ConfigGuard const g0(*this, "test_db");
+            ripple::test::detail::DirGuard const g0(*this, "test_db");
             path const dataDirRel ("test_data_dir");
             path const dataDirAbs(cwd / g0.subdir () / dataDirRel);
             detail::RippledCfgGuard const g (*this, g0.subdir(),
@@ -767,9 +647,9 @@ trustthesevalidators.gov
     {
         detail::RippledCfgGuard const cfg(*this, "testSetup",
             explicitPath ? "test_db" : "", "");
-        /* ConfigGuard has a Config object that gets loaded on construction,
-            but Config::setup is not reentrant, so we need a fresh config
-            for every test case, so ignore it.
+        /* RippledCfgGuard has a Config object that gets loaded on
+            construction, but Config::setup is not reentrant, so we
+            need a fresh config for every test case, so ignore it.
         */
         {
             Config config;
@@ -853,7 +733,61 @@ trustthesevalidators.gov
         }
     }
 
-    void run ()
+    void testPort ()
+    {
+        detail::RippledCfgGuard const cfg(*this, "testPort", "", "");
+        auto const& conf = cfg.config();
+        if (!BEAST_EXPECT(conf.exists("port_rpc")))
+            return;
+        if (!BEAST_EXPECT(conf.exists("port_wss_admin")))
+            return;
+        ParsedPort rpc;
+        if (!unexcept([&]() { parse_Port (rpc, conf["port_rpc"], log); }))
+            return;
+        BEAST_EXPECT(rpc.admin_ip && (rpc.admin_ip .get().size() == 2));
+        ParsedPort wss;
+        if (!unexcept([&]() { parse_Port (wss, conf["port_wss_admin"], log); }))
+            return;
+        BEAST_EXPECT(wss.admin_ip && (wss.admin_ip .get().size() == 1));
+    }
+
+    void testWhitespace()
+    {
+        Config cfg;
+        /* NOTE: this string includes some explicit
+         * space chars in order to verify proper trimming */
+        std::string toLoad(R"(
+[port_rpc])" "\x20" R"(
+# comment
+    # indented comment
+)" "\x20\x20" R"(
+[ips])" "\x20" R"(
+r.ripple.com 51235
+
+  [ips_fixed])" "\x20\x20" R"(
+    # COMMENT
+    s1.ripple.com 51235
+    s2.ripple.com 51235
+
+)");
+        cfg.loadFromString (toLoad);
+        BEAST_EXPECT (
+            cfg.exists ("port_rpc") &&
+            cfg.section ("port_rpc").lines ().empty () &&
+            cfg.section ("port_rpc").values ().empty ());
+        BEAST_EXPECT (
+            cfg.exists (SECTION_IPS) &&
+            cfg.section (SECTION_IPS).lines ().size () == 1 &&
+            cfg.section (SECTION_IPS).values ().size () == 1);
+        BEAST_EXPECT (
+            cfg.exists (SECTION_IPS_FIXED) &&
+            cfg.section (SECTION_IPS_FIXED).lines ().size () == 2 &&
+            cfg.section (SECTION_IPS_FIXED).values ().size () == 2);
+
+    }
+
+
+    void run () override
     {
         testLegacy ();
         testDbPath ();
@@ -861,6 +795,8 @@ trustthesevalidators.gov
         testValidatorsFile ();
         testSetup (false);
         testSetup (true);
+        testPort ();
+        testWhitespace ();
     }
 };
 

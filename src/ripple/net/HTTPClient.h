@@ -20,6 +20,7 @@
 #ifndef RIPPLE_NET_HTTPCLIENT_H_INCLUDED
 #define RIPPLE_NET_HTTPCLIENT_H_INCLUDED
 
+#include <ripple/basics/ByteUtilities.h>
 #include <ripple/core/Config.h>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -32,10 +33,9 @@ namespace ripple {
 class HTTPClient
 {
 public:
-    enum
-    {
-        maxClientHeaderBytes = 32 * 1024
-    };
+    explicit HTTPClient() = default;
+
+    static constexpr auto maxClientHeaderBytes = kilobytes(32);
 
     static void initializeSSLContext (Config const& config, beast::Journal j);
 

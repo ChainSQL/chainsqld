@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 
 #include <ripple/app/main/Amendments.cpp>
 #include <ripple/app/main/Application.cpp>

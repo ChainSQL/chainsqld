@@ -42,8 +42,6 @@ Stoppable::Stoppable (std::string name, Stoppable& parent)
 
 Stoppable::~Stoppable ()
 {
-    // Either we must not have started, or Children must be stopped.
-    assert (!m_root.started() || m_childrenStopped);
 }
 
 bool Stoppable::isStopping() const
@@ -63,7 +61,9 @@ bool Stoppable::areChildrenStopped () const
 
 void Stoppable::stopped ()
 {
-    m_stoppedEvent.signal();
+    std::lock_guard<std::mutex> lk{m_mut};
+    m_is_stopping = true;
+    m_cv.notify_all();
 }
 
 void Stoppable::onPrepare ()
@@ -103,20 +103,7 @@ void Stoppable::startRecursive ()
 
 void Stoppable::stopAsyncRecursive (beast::Journal j)
 {
-    using namespace std::chrono;
-    auto const start = high_resolution_clock::now();
     onStop ();
-    auto const ms = duration_cast<milliseconds>(
-        high_resolution_clock::now() - start);
-
-#ifdef NDEBUG
-    using namespace std::chrono_literals;
-    if (ms >= 10ms)
-        if (auto stream = j.fatal())
-            stream << m_name << "::onStop took " << ms.count() << "ms";
-#else
-    (void)ms;
-#endif
 
     for (Children::const_iterator iter (m_children.cbegin ());
         iter != m_children.cend(); ++iter)
@@ -136,17 +123,16 @@ void Stoppable::stopRecursive (beast::Journal j)
     m_childrenStopped = true;
     onChildrenStopped ();
 
-    // Now block on this Stoppable.
+    // Now block on this Stoppable until m_is_stopping is set by stopped().
     //
-    bool const timedOut (! m_stoppedEvent.wait (1 * 1000)); // milliseconds
-    if (timedOut)
+    using namespace std::chrono_literals;
+    std::unique_lock<std::mutex> lk{m_mut};
+    if (!m_cv.wait_for(lk, 1s, [this]{return m_is_stopping;}))
     {
         if (auto stream = j.error())
             stream << "Waiting for '" << m_name << "' to stop";
-        m_stoppedEvent.wait ();
+        m_cv.wait(lk, [this]{return m_is_stopping;});
     }
-
-    // once we get here, we know the stoppable has stopped.
     m_stopped = true;
 }
 

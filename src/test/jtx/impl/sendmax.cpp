@@ -17,9 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx/sendmax.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 namespace test {
@@ -28,7 +27,7 @@ namespace jtx {
 void
 sendmax::operator()(Env& env, JTx& jt) const
 {
-    jt.jv[jss::SendMax] = amount_.getJson(0);
+    jt.jv[jss::SendMax] = amount_.getJson(JsonOptions::none);
 }
 
 } // jtx

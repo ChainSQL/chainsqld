@@ -17,9 +17,9 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
+#include <ripple/basics/safe_cast.h>
 #include <ripple/protocol/LedgerFormats.h>
 #include <ripple/protocol/STInteger.h>
 #include <ripple/protocol/TxFormats.h>
@@ -49,7 +49,7 @@ STUInt8::getText () const
     {
         std::string token, human;
 
-        if (transResultInfo (static_cast<TER> (value_), token, human))
+        if (transResultInfo (TER::fromInt (value_), token, human))
             return human;
 
         JLOG (debugLog().error())
@@ -61,13 +61,13 @@ STUInt8::getText () const
 
 template <>
 Json::Value
-STUInt8::getJson (int) const
+STUInt8::getJson (JsonOptions) const
 {
     if (getFName () == sfTransactionResult)
     {
         std::string token, human;
 
-        if (transResultInfo (static_cast<TER> (value_), token, human))
+        if (transResultInfo (TER::fromInt (value_), token, human))
             return token;
 
         JLOG (debugLog().error())
@@ -99,7 +99,7 @@ STUInt16::getText () const
     if (getFName () == sfLedgerEntryType)
     {
         auto item = LedgerFormats::getInstance ().findByType (
-            static_cast <LedgerEntryType> (value_));
+            safe_cast<LedgerEntryType> (value_));
 
         if (item != nullptr)
             return item->getName ();
@@ -108,7 +108,7 @@ STUInt16::getText () const
     if (getFName () == sfTransactionType)
     {
         auto item =TxFormats::getInstance().findByType (
-            static_cast <TxType> (value_));
+            safe_cast<TxType> (value_));
 
         if (item != nullptr)
             return item->getName ();
@@ -119,12 +119,12 @@ STUInt16::getText () const
 
 template <>
 Json::Value
-STUInt16::getJson (int) const
+STUInt16::getJson (JsonOptions) const
 {
     if (getFName () == sfLedgerEntryType)
     {
         auto item = LedgerFormats::getInstance ().findByType (
-            static_cast <LedgerEntryType> (value_));
+            safe_cast<LedgerEntryType> (value_));
 
         if (item != nullptr)
             return item->getName ();
@@ -133,7 +133,7 @@ STUInt16::getJson (int) const
     if (getFName () == sfTransactionType)
     {
         auto item = TxFormats::getInstance().findByType (
-            static_cast <TxType> (value_));
+            safe_cast<TxType> (value_));
 
         if (item != nullptr)
             return item->getName ();
@@ -166,7 +166,7 @@ STUInt32::getText () const
 
 template <>
 Json::Value
-STUInt32::getJson (int) const
+STUInt32::getJson (JsonOptions) const
 {
     return value_;
 }
@@ -195,7 +195,7 @@ STUInt64::getText () const
 
 template <>
 Json::Value
-STUInt64::getJson (int) const
+STUInt64::getJson (JsonOptions) const
 {
     return strHex (value_);
 }

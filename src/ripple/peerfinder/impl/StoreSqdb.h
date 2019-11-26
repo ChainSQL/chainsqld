@@ -22,7 +22,6 @@
 
 #include <ripple/basics/contract.h>
 #include <ripple/core/SociDB.h>
-#include <ripple/beast/utility/Debug.h>
 #include <boost/optional.hpp>
 
 namespace ripple {
@@ -42,7 +41,8 @@ public:
         currentSchemaVersion = 4
     };
 
-    explicit StoreSqdb (beast::Journal journal = beast::Journal())
+    explicit StoreSqdb (beast::Journal journal =
+            beast::Journal {beast::Journal::getNullSink()})
         : m_journal (journal)
     {
     }
@@ -64,7 +64,7 @@ public:
 
     // Loads the bootstrap cache, calling the callback for each entry
     //
-    std::size_t load (load_callback const& cb)
+    std::size_t load (load_callback const& cb) override
     {
         std::size_t n (0);
         std::string s;
@@ -100,7 +100,7 @@ public:
 
     // Overwrites the stored bootstrap cache with the specified array.
     //
-    void save (std::vector <Entry> const& v)
+    void save (std::vector <Entry> const& v) override
     {
         soci::transaction tr (m_session);
         m_session <<

@@ -19,7 +19,7 @@
 
 #include <test/jtx.h>
 #include <test/jtx/Env.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/overlay/Cluster.h>
 #include <ripple/overlay/Overlay.h>
 #include <unordered_map>
@@ -52,13 +52,14 @@ class Peers_test : public beast::unit_test::suite
 
             std::string name = "Node " + std::to_string(i);
 
+            using namespace std::chrono_literals;
             env.app().cluster().update(
                 kp.first,
                 name,
                 200,
                 env.timeKeeper().now() - 10s);
             nodes.insert( std::make_pair(
-                toBase58(TokenType::TOKEN_NODE_PUBLIC, kp.first), name));
+                toBase58(TokenType::NodePublic, kp.first), name));
         }
 
         // make request, verify nodes we created match
@@ -85,7 +86,7 @@ class Peers_test : public beast::unit_test::suite
     }
 
 public:
-    void run ()
+    void run () override
     {
         testRequest();
     }

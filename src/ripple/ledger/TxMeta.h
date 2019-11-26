@@ -38,31 +38,31 @@ public:
     using ref = const pointer&;
 
 private:
-    struct CtorHelper{};
+    struct CtorHelper
+    {
+        explicit CtorHelper() = default;
+    };
     template<class T>
-    TxMeta (uint256 const& txID, std::uint32_t ledger, T const& data, beast::Journal j,
-                        CtorHelper);
+    TxMeta (uint256 const& txID, std::uint32_t ledger, T const& data, CtorHelper);
 public:
-    TxMeta (beast::Journal j)
+    TxMeta ()
         : mLedger (0)
         , mIndex (static_cast<std::uint32_t> (-1))
         , mResult (255)
-        , j_ (j)
     {
     }
 
-    TxMeta (uint256 const& txID, std::uint32_t ledger, std::uint32_t index, beast::Journal j)
+    TxMeta (uint256 const& txID, std::uint32_t ledger, std::uint32_t index)
         : mTransactionID (txID)
         , mLedger (ledger)
         , mIndex (static_cast<std::uint32_t> (-1))
         , mResult (255)
-        , j_(j)
     {
     }
 
-    TxMeta (uint256 const& txID, std::uint32_t ledger, Blob const&, beast::Journal j);
-    TxMeta (uint256 const& txID, std::uint32_t ledger, std::string const&, beast::Journal j);
-    TxMeta (uint256 const& txID, std::uint32_t ledger, STObject const&, beast::Journal j);
+    TxMeta (uint256 const& txID, std::uint32_t ledger, Blob const&);
+    TxMeta (uint256 const& txID, std::uint32_t ledger, std::string const&);
+    TxMeta (uint256 const& txID, std::uint32_t ledger, STObject const&);
 
     void init (uint256 const& transactionID, std::uint32_t ledger);
     void clear ()
@@ -85,7 +85,7 @@ public:
     }
     TER getResultTER () const
     {
-        return static_cast<TER> (mResult);
+        return TER::fromInt (mResult);
     }
     std::uint32_t getIndex () const
     {
@@ -101,9 +101,9 @@ public:
 
     /** Return a list of accounts affected by this transaction */
     boost::container::flat_set<AccountID>
-    getAffectedAccounts() const;
+    getAffectedAccounts(beast::Journal j) const;
 
-    Json::Value getJson (int p) const
+    Json::Value getJson (JsonOptions p) const
     {
         return getAsObject ().getJson (p);
     }
@@ -146,8 +146,6 @@ private:
     STArray mNodes;
 	ripple::Blob      contractTxsData;
     ripple::Blob      contractLogData;
-
-    beast::Journal j_;
 };
 
 } // ripple

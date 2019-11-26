@@ -50,6 +50,12 @@ public:
     */
     virtual std::string getName() = 0;
 
+    /** Open the backend.
+        @param createIfMissing Create the database files if necessary.
+        This allows the caller to catch exceptions.
+    */
+    virtual void open(bool createIfMissing = true) = 0;
+
     /** Close the backend.
         This allows the caller to catch exceptions.
     */
@@ -103,11 +109,18 @@ public:
     /** Remove contents on disk upon destruction. */
     virtual void setDeletePath() = 0;
 
-    /** Perform consistency checks on database .*/
+    /** Perform consistency checks on database. */
     virtual void verify() = 0;
 
-    /** Returns the number of file handles the backend expects to need */
+    /** Returns the number of file handles the backend expects to need. */
     virtual int fdlimit() const = 0;
+
+    /** Returns true if the backend uses permanent storage. */
+    bool
+    backed() const
+    {
+        return fdlimit();
+    }
 };
 
 }

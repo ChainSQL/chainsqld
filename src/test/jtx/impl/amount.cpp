@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+#include <ripple/basics/safe_cast.h>
 #include <test/jtx/Account.h>
 #include <test/jtx/amount.h>
 #include <cassert>
@@ -120,7 +120,7 @@ PrettyAmount
 IOU::operator()(detail::epsilon_multiple m) const
 {
     return { STAmount(issue(),
-        static_cast<std::uint64_t>(m.n), -81),
+        safe_cast<std::uint64_t>(m.n), -81),
             account.name() };
 }
 

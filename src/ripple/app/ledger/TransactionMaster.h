@@ -29,7 +29,6 @@ namespace ripple {
 class Application;
 class Transaction;
 class STTx;
-class ReadView;
 
 // Tracks all transactions in memory
 

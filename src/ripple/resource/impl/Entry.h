@@ -46,23 +46,14 @@ struct Entry
         : refcount (0)
         , local_balance (now)
         , remote_balance (0)
-        , lastWarningTime (0)
-        , whenExpires (0)
+        , lastWarningTime ()
+        , whenExpires ()
     {
     }
 
     std::string to_string() const
     {
-        switch (key->kind)
-        {
-        case kindInbound:   return key->address.to_string();
-        case kindOutbound:  return key->address.to_string();
-        case kindUnlimited: return std::string ("\"") + key->name + "\"";
-        default:
-            assert(false);
-        }
-
-        return "(undefined)";
+        return key->address.to_string();
     }
 
     /**
@@ -101,10 +92,10 @@ struct Entry
     int remote_balance;
 
     // Time of the last warning
-    clock_type::rep lastWarningTime;
+    clock_type::time_point lastWarningTime;
 
     // For inactive entries, time after which this entry will be erased
-    clock_type::rep whenExpires;
+    clock_type::time_point whenExpires;
 };
 
 inline std::ostream& operator<< (std::ostream& os, Entry const& v)

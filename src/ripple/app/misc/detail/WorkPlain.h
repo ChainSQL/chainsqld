@@ -36,23 +36,12 @@ public:
     WorkPlain(
         std::string const& host,
         std::string const& path, std::string const& port,
-        boost::asio::io_service& ios, callback_type cb)
-		: WorkBase(host, path, port, ios, cb)
-	{
-	}
-
-
+        boost::asio::io_service& ios, callback_type cb);
     ~WorkPlain() = default;
 
 private:
     void
-    onConnect(error_code const& ec)
-	{
-		if (ec)
-			return fail(ec);
-
-		onStart();
-	}
+    onConnect(error_code const& ec);
 
     socket_type&
     stream()
@@ -61,6 +50,24 @@ private:
     }
 };
 
+//------------------------------------------------------------------------------
+
+WorkPlain::WorkPlain(
+    std::string const& host,
+    std::string const& path, std::string const& port,
+    boost::asio::io_service& ios, callback_type cb)
+    : WorkBase (host, path, port, ios, cb)
+{
+}
+
+void
+WorkPlain::onConnect(error_code const& ec)
+{
+    if (ec)
+        return fail(ec);
+
+    onStart ();
+}
 
 } // detail
 

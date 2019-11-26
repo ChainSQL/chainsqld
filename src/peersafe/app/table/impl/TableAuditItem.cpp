@@ -17,7 +17,7 @@
  */
 //==============================================================================
 
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/beast/utility/rngfill.h>
 #include <ripple/crypto/csprng.h>
 #include <ripple/protocol/STTx.h>

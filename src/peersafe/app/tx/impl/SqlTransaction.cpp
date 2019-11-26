@@ -17,7 +17,7 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/ledger/View.h>
 #include <ripple/app/paths/RippleCalc.h>
 #include <ripple/basics/Log.h>
@@ -25,7 +25,7 @@
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/st.h>
 #include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/protocol/TxFormats.h>
@@ -269,7 +269,7 @@ namespace ripple {
         return saDstAmount.native() ? saDstAmount.zxc() : beast::zero;
     }
 
-    TER
+	NotTEC
         SqlTransaction::preflight(PreflightContext const& ctx)
     {
         auto  ret = preflight1(ctx);

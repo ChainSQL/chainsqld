@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 
 #include <ripple/app/paths/RippleState.cpp>
 #include <ripple/app/paths/AccountCurrencies.cpp>

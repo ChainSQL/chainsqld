@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/TxMeta.h>
 #include <ripple/basics/Log.h>
@@ -32,11 +31,10 @@ namespace ripple {
 
 template<class T>
 TxMeta::TxMeta (uint256 const& txid,
-    std::uint32_t ledger, T const& data, beast::Journal j, CtorHelper)
+    std::uint32_t ledger, T const& data, CtorHelper)
     : mTransactionID (txid)
     , mLedger (ledger)
     , mNodes (sfAffectedNodes, 32)
-    , j_ (j)
 {
     SerialIter sit (makeSlice(data));
 
@@ -49,12 +47,10 @@ TxMeta::TxMeta (uint256 const& txid,
         setDeliveredAmount (obj.getFieldAmount (sfDeliveredAmount));
 }
 
-TxMeta::TxMeta (uint256 const& txid, std::uint32_t ledger, STObject const& obj,
-    beast::Journal j)
+TxMeta::TxMeta (uint256 const& txid, std::uint32_t ledger, STObject const& obj)
     : mTransactionID (txid)
     , mLedger (ledger)
     , mNodes (obj.getFieldArray (sfAffectedNodes))
-    , j_ (j)
 {
     mResult = obj.getFieldU8 (sfTransactionResult);
     mIndex = obj.getFieldU32 (sfTransactionIndex);
@@ -71,17 +67,15 @@ TxMeta::TxMeta (uint256 const& txid, std::uint32_t ledger, STObject const& obj,
 
 TxMeta::TxMeta (uint256 const& txid,
     std::uint32_t ledger,
-    Blob const& vec,
-    beast::Journal j)
-    : TxMeta (txid, ledger, vec, j, CtorHelper ())
+    Blob const& vec)
+    : TxMeta (txid, ledger, vec, CtorHelper ())
 {
 }
 
 TxMeta::TxMeta (uint256 const& txid,
     std::uint32_t ledger,
-    std::string const& data,
-    beast::Journal j)
-    : TxMeta (txid, ledger, data, j, CtorHelper ())
+    std::string const& data)
+    : TxMeta (txid, ledger, data, CtorHelper ())
 {
 }
 
@@ -119,7 +113,7 @@ void TxMeta::setAffectedNode (uint256 const& node, SField const& type,
 }
 
 boost::container::flat_set<AccountID>
-TxMeta::getAffectedAccounts() const
+TxMeta::getAffectedAccounts(beast::Journal j) const
 {
     boost::container::flat_set<AccountID> list;
     list.reserve (10);
@@ -158,7 +152,8 @@ TxMeta::getAffectedAccounts() const
                         }
                         else
                         {
-                            JLOG (j_.fatal()) << "limit is not amount " << field.getJson (0);
+                            JLOG (j.fatal()) << "limit is not amount "
+                                << field.getJson (JsonOptions::none);
                         }
                     }
                 }
@@ -259,7 +254,7 @@ STObject TxMeta::getAsObject () const
 
 void TxMeta::addRaw (Serializer& s, TER result, std::uint32_t index)
 {
-    mResult = static_cast<int> (result);
+    mResult = TERtoInt (result);
     mIndex = index;
     assert ((mResult == 0) || ((mResult > 100) && (mResult <= 255)));
 
@@ -292,7 +287,7 @@ void TxMeta::setContractFieldData(STTx const& tx)
     //
     Json::Value vec;
     for (auto tx : vecTxs) {
-        vec.append(tx.getJson(0));
+        vec.append(tx.getJson(JsonOptions::none));
     }
     if (vec.size() > 0)
     {

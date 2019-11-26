@@ -36,7 +36,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <peersafe/crypto/ECDSACanonical.h>
 //#include <beast/unit_test/suite.h>
 #include <openssl/bn.h>

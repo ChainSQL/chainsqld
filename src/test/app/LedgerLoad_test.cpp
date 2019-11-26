@@ -17,12 +17,11 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/beast/unit_test.h>
 #include <test/jtx.h>
 #include <test/jtx/Env.h>
 #include <ripple/beast/utility/temp_dir.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/SField.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -86,7 +85,7 @@ class LedgerLoad_test : public beast::unit_test::suite
         retval.hashes = [&] {
             for(auto const& it : retval.ledger[jss::ledger][jss::accountState])
             {
-                if(it[sfLedgerEntryType.fieldName] == "LedgerHashes")
+                if(it[sfLedgerEntryType.fieldName] == jss::LedgerHashes)
                     return it[sfHashes.fieldName];
             }
             return Json::Value {};
@@ -218,7 +217,7 @@ class LedgerLoad_test : public beast::unit_test::suite
     }
 
 public:
-    void run ()
+    void run () override
     {
         beast::temp_dir td;
         auto sd = setupLedger(td);

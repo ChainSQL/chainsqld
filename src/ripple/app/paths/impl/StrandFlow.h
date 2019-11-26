@@ -20,10 +20,10 @@
 #ifndef RIPPLE_APP_PATHS_IMPL_STRANDFLOW_H_INCLUDED
 #define RIPPLE_APP_PATHS_IMPL_STRANDFLOW_H_INCLUDED
 
-#include <BeastConfig.h>
 #include <ripple/app/paths/Credit.h>
 #include <ripple/app/paths/Flow.h>
 #include <ripple/app/paths/impl/AmountSpec.h>
+#include <ripple/app/paths/impl/FlatSets.h>
 #include <ripple/app/paths/impl/FlowDebugInfo.h>
 #include <ripple/app/paths/impl/Steps.h>
 #include <ripple/basics/Log.h>
@@ -48,6 +48,8 @@ struct StrandResult
     TOutAmt out = beast::zero;                    ///< Currency amount out
     boost::optional<PaymentSandbox> sandbox;      ///< Resulting Sandbox state
     boost::container::flat_set<uint256> ofrsToRm; ///< Offers to remove
+    // strand can be inactive if there is no more liquidity or too many offers have been consumed
+    bool inactive = false; ///< Strand should not considered as a further source of liquidity (dry)
 
     /** Strand result constructor */
     StrandResult () = default;
@@ -55,12 +57,14 @@ struct StrandResult
     StrandResult (TInAmt const& in_,
         TOutAmt const& out_,
         PaymentSandbox&& sandbox_,
-        boost::container::flat_set<uint256> ofrsToRm_)
+        boost::container::flat_set<uint256> ofrsToRm_,
+        bool inactive_)
         : ter (tesSUCCESS)
         , in (in_)
         , out (out_)
         , sandbox (std::move (sandbox_))
         , ofrsToRm (std::move (ofrsToRm_))
+        , inactive(inactive_)
     {
     }
 
@@ -122,7 +126,7 @@ flow (
             for (auto i = s; i--;)
             {
                 auto r = strand[i]->rev (*sb, *afView, ofrsToRm, stepOut);
-                if (strand[i]->dry (r.second))
+                if (strand[i]->isZero (r.second))
                 {
                     JLOG (j.trace()) << "Strand found dry in rev";
                     return {tecPATH_DRY, std::move (ofrsToRm)};
@@ -140,14 +144,21 @@ flow (
                         *sb, *afView, ofrsToRm, EitherAmount (*maxIn));
                     limitStepOut = r.second;
 
-                    if (strand[i]->dry (r.second) ||
-                        get<TInAmt> (r.first) != *maxIn)
+                    if (strand[i]->isZero(r.second))
+                    {
+                        JLOG(j.trace()) << "First step found dry";
+                        return {tecPATH_DRY, std::move(ofrsToRm)};
+                    }
+                    if (get<TInAmt> (r.first) != *maxIn)
                     {
                         // Something is very wrong
                         // throwing out the sandbox can only increase liquidity
                         // yet the limiting is still limiting
-                        JLOG (j.fatal()) << "Re-executed limiting step failed";
-                        assert (0);
+                        JLOG(j.fatal())
+                            << "Re-executed limiting step failed. r.first: "
+                            << to_string(get<TInAmt>(r.first))
+                            << " maxIn: " << to_string(*maxIn);
+                        assert(0);
                         return {telFAILED_PROCESSING, std::move (ofrsToRm)};
                     }
                 }
@@ -164,13 +175,25 @@ flow (
                     r = strand[i]->rev (*sb, *afView, ofrsToRm, stepOut);
                     limitStepOut = r.second;
 
-                    if (strand[i]->dry (r.second) ||
-                        !strand[i]->equalOut (r.second, stepOut))
+                    if (strand[i]->isZero(r.second))
+                    {
+                        // A tiny input amount can cause this step to output zero.
+                        // I.e. 10^-80 IOU into an IOU -> ZXC offer.
+                        JLOG(j.trace()) << "Limiting step found dry";
+                        return {tecPATH_DRY, std::move(ofrsToRm)};
+                    }
+                    if (!strand[i]->equalOut (r.second, stepOut))
                     {
                         // Something is very wrong
                         // throwing out the sandbox can only increase liquidity
                         // yet the limiting is still limiting
+#ifndef NDEBUG
+                        JLOG(j.fatal())
+                            << "Re-executed limiting step failed. r.second: "
+                            << r.second << " stepOut: " << stepOut;
+#else
                         JLOG (j.fatal()) << "Re-executed limiting step failed";
+#endif
                         assert (0);
                         return {telFAILED_PROCESSING, std::move (ofrsToRm)};
                     }
@@ -185,13 +208,25 @@ flow (
             EitherAmount stepIn (limitStepOut);
             for (auto i = limitingStep + 1; i < s; ++i)
             {
-                auto const r = strand[i]->fwd (*sb, *afView, ofrsToRm, stepIn);
-                if (strand[i]->dry (r.second) ||
-                    !strand[i]->equalIn (r.first, stepIn))
+                auto const r = strand[i]->fwd(*sb, *afView, ofrsToRm, stepIn);
+                if (strand[i]->isZero(r.second))
+                {
+                    // A tiny input amount can cause this step to output zero.
+                    // I.e. 10^-80 IOU into an IOU -> ZXC offer.
+                    JLOG(j.trace()) << "Non-limiting step found dry";
+                    return {tecPATH_DRY, std::move(ofrsToRm)};
+                }
+                if (!strand[i]->equalIn (r.first, stepIn))
                 {
                     // The limits should already have been found, so executing a strand forward
                     // from the limiting step should not find a new limit
+#ifndef NDEBUG
+                    JLOG(j.fatal())
+                        << "Re-executed forward pass failed. r.first: "
+                        << r.first << " stepIn: " << stepIn;
+#else
                     JLOG (j.fatal()) << "Re-executed forward pass failed";
+#endif
                     assert (0);
                     return {telFAILED_PROCESSING, std::move (ofrsToRm)};
                 }
@@ -224,8 +259,17 @@ flow (
         }
 #endif
 
-        return Result (get<TInAmt> (strandIn), get<TOutAmt> (strandOut),
-            std::move (*sb), std::move (ofrsToRm));
+        bool const inactive = std::any_of(
+            strand.begin(),
+            strand.end(),
+            [](std::unique_ptr<Step> const& step) { return step->inactive(); });
+
+        return Result(
+            get<TInAmt>(strandIn),
+            get<TOutAmt>(strandOut),
+            std::move(*sb),
+            std::move(ofrsToRm),
+            inactive);
     }
     catch (FlowException const& e)
     {
@@ -340,6 +384,14 @@ public:
     auto size () const
     {
         return cur_.size ();
+    }
+
+    void
+    removeIndex(std::size_t i)
+    {
+        if (i >= next_.size())
+            return;
+        next_.erase(next_.begin() + i);
     }
 };
 /// @endcond
@@ -470,6 +522,10 @@ flow (PaymentSandbox const& baseView,
         boost::container::flat_set<uint256> ofrsToRm;
         boost::optional<BestStrand> best;
         if (flowDebugInfo) flowDebugInfo->newLiquidityPass();
+        // Index of strand to mark as inactive (remove from the active list) if the
+        // liquidity is used. This is used for strands that consume too many offers
+        // Constructed as `false,0` to workaround a gcc warning about uninitialized variables
+        boost::optional<std::size_t> markInactiveOnUse{false, 0};
         for (auto strand : activeStrands)
         {
             if (offerCrossing && limitQuality)
@@ -482,8 +538,7 @@ flow (PaymentSandbox const& baseView,
                 sb, *strand, remainingIn, remainingOut, j);
 
             // rm bad offers even if the strand fails
-            ofrsToRm.insert (boost::container::ordered_unique_range_t{},
-                f.ofrsToRm.begin (), f.ofrsToRm.end ());
+            SetUnion(ofrsToRm, f.ofrsToRm);
 
             if (f.ter != tesSUCCESS || f.out == beast::zero)
                 continue;
@@ -515,13 +570,30 @@ flow (PaymentSandbox const& baseView,
 
             if (!best || best->quality < q ||
                 (best->quality == q && best->out < f.out))
-                best.emplace (f.in, f.out, std::move (*f.sandbox), *strand, q);
+            {
+                // If this strand is inactive (because it consumed too many
+                // offers) and ends up having the best quality, remove it from
+                // the activeStrands. If it doesn't end up having the best
+                // quality, keep it active.
+
+                if (f.inactive)
+                    markInactiveOnUse = activeStrands.size() - 1;
+                else
+                    markInactiveOnUse.reset();
+
+                best.emplace(f.in, f.out, std::move(*f.sandbox), *strand, q);
+            }
         }
 
-        bool const shouldBreak = !bool(best);
+        bool const shouldBreak = !best;
 
         if (best)
         {
+            if (markInactiveOnUse)
+            {
+                activeStrands.removeIndex(*markInactiveOnUse);
+                markInactiveOnUse.reset();
+            }
             savedIns.insert (best->in);
             savedOuts.insert (best->out);
             remainingOut = outReq - sum (savedOuts);
@@ -548,8 +620,7 @@ flow (PaymentSandbox const& baseView,
                         // view
         if (!ofrsToRm.empty ())
         {
-            ofrsToRmOnFail.insert (boost::container::ordered_unique_range_t{},
-                ofrsToRm.begin (), ofrsToRm.end ());
+            SetUnion(ofrsToRmOnFail, ofrsToRm);
             for (auto const& o : ofrsToRm)
             {
                 if (auto ok = sb.peek (keylet::offer (o)))
@@ -594,7 +665,7 @@ flow (PaymentSandbox const& baseView,
         // we're handling a FillOrKill offer.  In this case remainingIn must
         // be zero (all funds must be consumed) or else we kill the offer.
         assert (remainingIn);
-        if (remainingIn && *remainingIn != zero)
+        if (remainingIn && *remainingIn != beast::zero)
             return {tecPATH_PARTIAL,
                 actualIn, actualOut, std::move(ofrsToRmOnFail)};
     }

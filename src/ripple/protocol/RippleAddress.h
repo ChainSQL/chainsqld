@@ -69,7 +69,7 @@ public:
     bool isSet () const;
 
     /** Returns the public key.
-        Precondition: version == TOKEN_NODE_PUBLIC
+        Precondition: version == TokenType::NodePublic
     */
     RipplePublicKey
     toPublicKey() const;
@@ -77,7 +77,6 @@ public:
     //
     // Node Public - Also used for Validators
     //
-    NodeID getNodeID () const;
     Blob const& getNodePublic () const;
 
     std::string humanNodePublic () const;

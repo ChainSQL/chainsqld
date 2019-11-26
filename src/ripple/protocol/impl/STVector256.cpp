@@ -17,10 +17,9 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/STVector256.h>
 
 namespace ripple {
@@ -59,7 +58,7 @@ STVector256::isEquivalent (const STBase& t) const
 }
 
 Json::Value
-STVector256::getJson (int) const
+STVector256::getJson (JsonOptions) const
 {
     Json::Value ret (Json::arrayValue);
 

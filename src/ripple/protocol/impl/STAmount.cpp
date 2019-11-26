@@ -17,13 +17,13 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 
+#include <ripple/protocol/STAmount.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/basics/safe_cast.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/SystemParameters.h>
-#include <ripple/protocol/STAmount.h>
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <boost/regex.hpp>
@@ -39,9 +39,11 @@ LocalValue<bool> stAmountCalcSwitchover(true);
 LocalValue<bool> stAmountCalcSwitchover2(true);
 
 using namespace std::chrono_literals;
+
+// Mon Dec 28, 2015 18:00:00 UTC
 const NetClock::time_point STAmountSO::soTime{504640800s};
 
-// Fri Feb 26, 2016 9:00:00pm PST
+// Sat Feb 27, 2016 05:00:00 UTC
 const NetClock::time_point STAmountSO::soTime2{509864400s};
 
 static const std::uint64_t tenTo14 = 100000000000000ull;
@@ -104,12 +106,12 @@ STAmount::STAmount(SerialIter& sit, SField const& name)
     }
 
     Issue issue;
-    issue.currency.copyFrom (sit.get160 ());
+    issue.currency = sit.get160();
 
     if (isZXC (issue.currency))
         Throw<std::runtime_error> ("invalid native currency");
 
-    issue.account.copyFrom (sit.get160 ());
+    issue.account = sit.get160();
 
     if (isZXC (issue.account))
         Throw<std::runtime_error> ("invalid native account");
@@ -247,13 +249,13 @@ STAmount::STAmount (Issue const& issue,
 
 STAmount::STAmount (Issue const& issue,
         std::uint32_t mantissa, int exponent, bool negative)
-    : STAmount (issue, static_cast<std::uint64_t>(mantissa), exponent, negative)
+    : STAmount (issue, safe_cast<std::uint64_t>(mantissa), exponent, negative)
 {
 }
 
 STAmount::STAmount (Issue const& issue,
         int mantissa, int exponent)
-    : STAmount (issue, static_cast<std::int64_t>(mantissa), exponent)
+    : STAmount (issue, safe_cast<std::int64_t>(mantissa), exponent)
 {
 }
 
@@ -262,7 +264,7 @@ STAmount::STAmount (IOUAmount const& amount, Issue const& issue)
     : mIssue (issue)
     , mOffset (amount.exponent ())
     , mIsNative (false)
-    , mIsNegative (amount < zero)
+    , mIsNegative (amount < beast::zero)
 {
     if (mIsNegative)
         mValue = static_cast<std::uint64_t> (-amount.mantissa ());
@@ -275,7 +277,7 @@ STAmount::STAmount (IOUAmount const& amount, Issue const& issue)
 STAmount::STAmount (ZXCAmount const& amount)
     : mOffset (0)
     , mIsNative (true)
-    , mIsNegative (amount < zero)
+    , mIsNegative (amount < beast::zero)
 {
     if (mIsNegative)
         mValue = static_cast<std::uint64_t> (-amount.drops ());
@@ -346,10 +348,10 @@ STAmount operator+ (STAmount const& v1, STAmount const& v2)
     if (!areComparable (v1, v2))
         Throw<std::runtime_error> ("Can't add amounts that are't comparable!");
 
-    if (v2 == zero)
+    if (v2 == beast::zero)
         return v1;
 
-    if (v1 == zero)
+    if (v1 == beast::zero)
     {
         // Result must be in terms of v1 currency and issuer.
         return { v1.getFName (), v1.issue (),
@@ -425,12 +427,12 @@ STAmount::setIssue (Issue const& issue)
 std::uint64_t
 getRate (STAmount const& offerOut, STAmount const& offerIn)
 {
-    if (offerOut == zero)
+    if (offerOut == beast::zero)
         return 0;
     try
     {
         STAmount r = divide (offerIn, offerOut, noIssue());
-        if (r == zero) // offer is too good
+        if (r == beast::zero) // offer is too good
             return 0;
         assert ((r.exponent() >= -100) && (r.exponent() <= 155));
         std::uint64_t ret = r.exponent() + 100;
@@ -495,7 +497,7 @@ std::string
 STAmount::getText () const
 {
     // keep full internal accuracy, but make more human friendly if posible
-    if (*this == zero)
+    if (*this == beast::zero)
         return "0";
 
     std::string const raw_value (std::to_string (mValue));
@@ -582,7 +584,7 @@ STAmount::getText () const
 }
 
 Json::Value
-STAmount::getJson (int) const
+STAmount::getJson (JsonOptions) const
 {
     Json::Value elem;
     setJson (elem);
@@ -603,7 +605,7 @@ STAmount::add (Serializer& s) const
     }
     else
     {
-        if (*this == zero)
+        if (*this == beast::zero)
             s.add64 (cNotNative);
         else if (mIsNegative) // 512 = not native
             s.add64 (mValue | (static_cast<std::uint64_t>(mOffset + 512 + 97) << (64 - 10)));
@@ -624,12 +626,22 @@ STAmount::isEquivalent (const STBase& t) const
 
 //------------------------------------------------------------------------------
 
-// amount = value * [10 ^ offset]
+// amount = mValue * [10 ^ mOffset]
 // Representation range is 10^80 - 10^(-80).
-// On the wire, high 8 bits are (offset+142), low 56 bits are value.
 //
-// Value is zero if amount is zero, otherwise value is 10^15 to (10^16 - 1)
-// inclusive.
+// On the wire:
+// - high bit is 0 for ZXC, 1 for issued currency
+// - next bit is 1 for positive, 0 for negative (except 0 issued currency, which
+//      is a special case of 0x8000000000000000
+// - for issued currencies, the next 8 bits are (mOffset+97).
+//   The +97 is so that this value is always positive.
+// - The remaining bits are significant digits (mantissa)
+//   That's 54 bits for issued currency and 62 bits for native
+//   (but ZXC only needs 57 bits for the max value of 10^17 drops)
+//
+// mValue is zero if the amount is zero, otherwise it's within the range
+//    10^15 to (10^16 - 1) inclusive.
+// mOffset is in the range -96 to +80.
 void STAmount::canonicalize ()
 {
     if (isZXC (*this))
@@ -806,13 +818,17 @@ amountFromJson (SField const& name, Json::Value const& v)
     Json::Value currency;
     Json::Value issuer;
 
-    if (v.isObject ())
+    if (v.isNull())
+    {
+        Throw<std::runtime_error> ("ZXC may not be specified with a null Json value");
+    }
+    else if (v.isObject())
     {
         value       = v[jss::value];
         currency    = v[jss::currency];
         issuer      = v[jss::issuer];
     }
-    else if (v.isArray ())
+    else if (v.isArray())
     {
         value = v.get (Json::UInt (0), 0);
         currency = v.get (Json::UInt (1), Json::nullValue);
@@ -846,7 +862,7 @@ amountFromJson (SField const& name, Json::Value const& v)
 
     if (native)
     {
-        if (v.isObject ())
+        if (v.isObjectOrNull ())
             Throw<std::runtime_error> ("ZXC may not be specified as an object");
         issue = zxcIssue ();
     }
@@ -1026,10 +1042,10 @@ muldiv_round(
 STAmount
 divide (STAmount const& num, STAmount const& den, Issue const& issue)
 {
-    if (den == zero)
+    if (den == beast::zero)
         Throw<std::runtime_error> ("division by zero");
 
-    if (num == zero)
+    if (num == beast::zero)
         return {issue};
 
     std::uint64_t numVal = num.mantissa();
@@ -1070,7 +1086,7 @@ divide (STAmount const& num, STAmount const& den, Issue const& issue)
 STAmount
 multiply (STAmount const& v1, STAmount const& v2, Issue const& issue)
 {
-    if (v1 == zero || v2 == zero)
+    if (v1 == beast::zero || v2 == beast::zero)
         return STAmount (issue);
 
     if (v1.native() && v2.native() && isZXC (issue))
@@ -1162,7 +1178,7 @@ STAmount
 mulRound (STAmount const& v1, STAmount const& v2, Issue const& issue,
     bool roundUp)
 {
-    if (v1 == zero || v2 == zero)
+    if (v1 == beast::zero || v2 == beast::zero)
         return {issue};
 
     bool const zxc = isZXC (issue);
@@ -1247,10 +1263,10 @@ STAmount
 divRound (STAmount const& num, STAmount const& den,
     Issue const& issue, bool roundUp)
 {
-    if (den == zero)
+    if (den == beast::zero)
         Throw<std::runtime_error> ("division by zero");
 
-    if (num == zero)
+    if (num == beast::zero)
         return {issue};
 
     std::uint64_t numVal = num.mantissa(), denVal = den.mantissa();

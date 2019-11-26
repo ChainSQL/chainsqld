@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/ledger/Ledger.h>
 #include <ripple/app/ledger/AcceptedLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
@@ -42,11 +41,11 @@
 #include <ripple/nodestore/Database.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/Indexes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/HashPrefix.h>
-#include <ripple/protocol/types.h>
+#include <ripple/protocol/UintTypes.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
@@ -83,7 +82,6 @@ class Ledger::sles_iter_impl
     : public sles_type::iter_base
 {
 private:
-    ReadView const* view_;
     SHAMap::const_iterator iter_;
 
 public:
@@ -92,10 +90,8 @@ public:
 
     sles_iter_impl (sles_iter_impl const&) = default;
 
-    sles_iter_impl (SHAMap::const_iterator iter,
-            ReadView const& view)
-        : view_ (&view)
-        , iter_ (iter)
+    sles_iter_impl (SHAMap::const_iterator iter)
+        : iter_ (iter)
     {
     }
 
@@ -137,7 +133,6 @@ class Ledger::txs_iter_impl
 {
 private:
     bool metadata_;
-    ReadView const* view_;
     SHAMap::const_iterator iter_;
 
 public:
@@ -146,12 +141,9 @@ public:
 
     txs_iter_impl (txs_iter_impl const&) = default;
 
-    txs_iter_impl (bool metadata,
-        SHAMap::const_iterator iter,
-            ReadView const& view)
-        : metadata_ (metadata)
-        , view_ (&view)
-        , iter_ (iter)
+    txs_iter_impl(bool metadata,
+        SHAMap::const_iterator iter)
+        : metadata_(metadata), iter_(iter)
     {
     }
 
@@ -242,6 +234,7 @@ Ledger::Ledger (
 Ledger::Ledger (
         LedgerInfo const& info,
         bool& loaded,
+        bool acquire,
         Config const& config,
         Family& family,
         beast::Journal j)
@@ -280,7 +273,8 @@ Ledger::Ledger (
     if (! loaded)
     {
         info_.hash = calculateLedgerHash(info_);
-        family.missing_node (info_.hash);
+        if (acquire)
+            family.missing_node (info_.hash, info_.seq);
     }
 }
 
@@ -329,9 +323,11 @@ Ledger::Ledger (
         Family& family)
     : mImmutable (true)
     , txMap_ (std::make_shared <SHAMap> (SHAMapType::TRANSACTION,
-        info.txHash, family, SHAMap::version{1}))
+        info.txHash, family,
+        SHAMap::version{getSHAMapV2(info) ? 2 : 1}))
     , stateMap_ (std::make_shared <SHAMap> (SHAMapType::STATE,
-        info.accountHash, family, SHAMap::version{1}))
+        info.accountHash, family,
+        SHAMap::version{getSHAMapV2(info) ? 2 : 1}))
     , rules_{config.features}
     , info_ (info)
 {
@@ -449,7 +445,7 @@ Ledger::succ (uint256 const& key,
 std::shared_ptr<SLE const>
 Ledger::read (Keylet const& k) const
 {
-    if (k.key == zero)
+    if (k.key == beast::zero)
     {
         assert(false);
         return nullptr;
@@ -474,43 +470,35 @@ auto
 Ledger::slesBegin() const ->
     std::unique_ptr<sles_type::iter_base>
 {
-    return std::make_unique<
-        sles_iter_impl>(
-            stateMap_->begin(), *this);
+    return std::make_unique<sles_iter_impl>(stateMap_->begin());
 }
 
 auto
 Ledger::slesEnd() const ->
     std::unique_ptr<sles_type::iter_base>
 {
-    return std::make_unique<
-        sles_iter_impl>(
-            stateMap_->end(), *this);
+    return std::make_unique<sles_iter_impl>(stateMap_->end());
 }
 
 auto
 Ledger::slesUpperBound(uint256 const& key) const ->
     std::unique_ptr<sles_type::iter_base>
 {
-    return std::make_unique<
-        sles_iter_impl>(
-            stateMap_->upper_bound(key), *this);
+    return std::make_unique<sles_iter_impl>(stateMap_->upper_bound(key));
 }
 
 auto
 Ledger::txsBegin() const ->
     std::unique_ptr<txs_type::iter_base>
 {
-    return std::make_unique<txs_iter_impl>(
-        !open(), txMap_->begin(), *this);
+    return std::make_unique<txs_iter_impl>(!open(), txMap_->begin());
 }
 
 auto
 Ledger::txsEnd() const ->
     std::unique_ptr<txs_type::iter_base>
 {
-    return std::make_unique<txs_iter_impl>(
-        !open(), txMap_->end(), *this);
+    return std::make_unique<txs_iter_impl>(!open(), txMap_->end());
 }
 
 bool
@@ -825,8 +813,8 @@ static bool saveValidatedLedger (
     bool current)
 {
     auto j = app.journal ("Ledger");
-
-    if (! app.pendingSaves().startWork (ledger->info().seq))
+    LedgerIndex seq = ledger->info().seq;
+    if (! app.pendingSaves().startWork (seq))
     {
         // The save was completed synchronously
         JLOG (j.debug()) << "Save aborted";
@@ -836,7 +824,7 @@ static bool saveValidatedLedger (
     // TODO(tom): Fix this hard-coded SQL!
     JLOG (j.trace())
         << "saveValidatedLedger "
-        << (current ? "" : "fromAcquire ") << ledger->info().seq;
+        << (current ? "" : "fromAcquire ") << seq;
     static boost::format deleteLedger (
         "DELETE FROM Ledgers WHERE LedgerSeq = %u;");
     static boost::format deleteTrans1 (
@@ -847,8 +835,6 @@ static bool saveValidatedLedger (
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
     static boost::format deleteTrans3(
         "DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
-
-    auto seq = ledger->info().seq;
 
     if (! ledger->info().accountHash.isNonZero ())
     {
@@ -873,10 +859,9 @@ static bool saveValidatedLedger (
         Serializer s (128);
         s.add32 (HashPrefix::ledgerMaster);
         addRaw(ledger->info(), s);
-        app.getNodeStore ().store (
-            hotLEDGER, std::move (s.modData ()), ledger->info().hash);
+        app.getNodeStore().store(hotLEDGER,
+            std::move(s.modData()), ledger->info().hash, seq);
     }
-
 
     AcceptedLedger::pointer aLedger;
     try
@@ -970,7 +955,7 @@ static bool saveValidatedLedger (
                     << "Transaction in ledger " << seq
                     << " affects no accounts";
                 JLOG (j.warn())
-                    << vt.second->getTxn()->getJson(0);
+                    << vt.second->getTxn()->getJson(JsonOptions::none);
             }
 
             *db <<
@@ -1144,10 +1129,12 @@ Ledger::invariants() const
  *
  * @param sqlSuffix: Additional string to append to the sql query.
  *        (typically a where clause).
+ * @param acquire: Acquire the ledger if not found locally.
  * @return The ledger, ledger sequence, and ledger hash.
  */
 std::tuple<std::shared_ptr<Ledger>, std::uint32_t, uint256>
-loadLedgerHelper(std::string const& sqlSuffix, Application& app)
+loadLedgerHelper(std::string const& sqlSuffix,
+    Application& app, bool acquire)
 {
     uint256 ledgerHash{};
     std::uint32_t ledgerSeq{0};
@@ -1216,11 +1203,11 @@ loadLedgerHelper(std::string const& sqlSuffix, Application& app)
     info.closeTimeResolution = duration{closeResolution.value_or(0)};
     info.seq = ledgerSeq;
 
-    bool loaded = false;
-
+    bool loaded;
     auto ledger = std::make_shared<Ledger>(
         info,
         loaded,
+        acquire,
         app.config(),
         app.family(),
         app.journal("Ledger"));
@@ -1249,14 +1236,15 @@ void finishLoadByIndexOrHash(
 }
 
 std::shared_ptr<Ledger>
-loadByIndex (std::uint32_t ledgerIndex, Application& app)
+loadByIndex (std::uint32_t ledgerIndex,
+    Application& app, bool acquire)
 {
     std::shared_ptr<Ledger> ledger;
     {
         std::ostringstream s;
         s << "WHERE LedgerSeq = " << ledgerIndex;
         std::tie (ledger, std::ignore, std::ignore) =
-            loadLedgerHelper (s.str (), app);
+            loadLedgerHelper (s.str (), app, acquire);
     }
 
     finishLoadByIndexOrHash (ledger, app.config(),
@@ -1265,14 +1253,15 @@ loadByIndex (std::uint32_t ledgerIndex, Application& app)
 }
 
 std::shared_ptr<Ledger>
-loadByHash (uint256 const& ledgerHash, Application& app)
+loadByHash (uint256 const& ledgerHash,
+    Application& app, bool acquire)
 {
     std::shared_ptr<Ledger> ledger;
     {
         std::ostringstream s;
         s << "WHERE LedgerHash = '" << ledgerHash << "'";
         std::tie (ledger, std::ignore, std::ignore) =
-            loadLedgerHelper (s.str (), app);
+            loadLedgerHelper (s.str (), app, acquire);
     }
 
     finishLoadByIndexOrHash (ledger, app.config(),

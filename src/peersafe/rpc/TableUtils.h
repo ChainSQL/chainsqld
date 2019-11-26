@@ -35,7 +35,7 @@ namespace ripple {
 	bool isChainSqlTableType(const std::string& transactionType);
     bool isChainsqlContractType(const std::string& transactionType);
 	std::string hash(std::string &pk);
-	uint160 generateNameInDB(uint32 ledgerSeq,AccountID account,std::string sTableName);
+	uint160 generateNameInDB(uint32_t ledgerSeq,AccountID account,std::string sTableName);
 	bool isDBConfigured(Application& app);
 }
 

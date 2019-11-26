@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/json/json_writer.h>
 #include <cassert>
 #include <iomanip>
@@ -182,9 +181,6 @@ std::string valueToQuotedString ( const char* value )
 // Class FastWriter
 // //////////////////////////////////////////////////////////////////
 
-FastWriter::FastWriter ()
-{
-}
 
 std::string
 FastWriter::write ( const Value& root )
@@ -426,7 +422,7 @@ StyledWriter::isMultineArray ( const Value& value )
     {
         const Value& childValue = value[index];
         isMultiLine = isMultiLine  ||
-                      ( (childValue.isArray ()  ||  childValue.isObject ())  &&
+                      ( (childValue.isArray()  ||  childValue.isObject())  &&
                         childValue.size () > 0 );
     }
 
@@ -660,7 +656,7 @@ StyledStreamWriter::isMultineArray ( const Value& value )
     {
         const Value& childValue = value[index];
         isMultiLine = isMultiLine  ||
-                      ( (childValue.isArray ()  ||  childValue.isObject ())  &&
+                      ( (childValue.isArray()  ||  childValue.isObject())  &&
                         childValue.size () > 0 );
     }
 
@@ -741,89 +737,6 @@ std::ostream& operator<< ( std::ostream& sout, const Value& root )
     Json::StyledStreamWriter writer;
     writer.write (sout, root);
     return sout;
-}
-
-//------------------------------------------------------------------------------
-
-namespace detail {
-
-inline
-void
-write_string (write_t write, std::string const& s)
-{
-    write(s.data(), s.size());
-}
-
-void
-write_value (write_t write, Value const& value)
-{
-    switch (value.type())
-    {
-    case nullValue:
-        write("null", 4);
-        break;
-
-    case intValue:
-        write_string(write, valueToString(value.asInt()));
-        break;
-
-    case uintValue:
-        write_string(write, valueToString(value.asUInt()));
-        break;
-
-    case realValue:
-        write_string(write, valueToString(value.asDouble()));
-        break;
-
-    case stringValue:
-        write_string(write, valueToQuotedString(value.asCString()));
-        break;
-
-    case booleanValue:
-        write_string(write, valueToString(value.asBool()));
-        break;
-
-    case arrayValue:
-    {
-        write("[", 1);
-        int const size = value.size();
-        for (int index = 0; index < size; ++index)
-        {
-            if (index > 0)
-                write(",", 1);
-            write_value(write, value[index]);
-        }
-        write("]", 1);
-        break;
-    }
-
-    case objectValue:
-    {
-        Value::Members const members = value.getMemberNames();
-        write("{", 1);
-        for (auto it = members.begin(); it != members.end(); ++it)
-        {
-            std::string const& name = *it;
-            if (it != members.begin())
-                write(",", 1);
-
-            write_string(write, valueToQuotedString(name.c_str()));
-            write(":", 1);
-            write_value(write, value[name]);
-        }
-        write("}", 1);
-        break;
-    }
-    }
-}
-
-} // detail
-
-void
-stream (Json::Value const& jv, write_t write)
-{
-    detail::write_value(write, jv);
-    write("\n", 1);
 }
 
 } // namespace Json

@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/ledger/BookDirs.h>
 #include <ripple/ledger/ReadView.h>
@@ -37,7 +36,7 @@ namespace ripple {
 NetClock::time_point const& fix1141Time ()
 {
     using namespace std::chrono_literals;
-    // Fri July 1, 2016 10:00:00am PDT
+    // Fri July 1, 2016 17:00:00 UTC
     static NetClock::time_point const soTime{520707600s};
     return soTime;
 }
@@ -50,7 +49,7 @@ bool fix1141 (NetClock::time_point const closeTime)
 NetClock::time_point const& fix1274Time ()
 {
     using namespace std::chrono_literals;
-    // Fri Sep 30, 2016 10:00:00am PDT
+    // Fri Sep 30, 2016 17:00:00 UTC
     static NetClock::time_point const soTime{528570000s};
 
     return soTime;
@@ -64,7 +63,7 @@ bool fix1274 (NetClock::time_point const closeTime)
 NetClock::time_point const& fix1298Time ()
 {
     using namespace std::chrono_literals;
-    // Wed Dec 21, 2016 10:00:00am PST
+    // Wed Dec 21, 2016 18:00:00 UTC
     static NetClock::time_point const soTime{535658400s};
 
     return soTime;
@@ -78,7 +77,7 @@ bool fix1298 (NetClock::time_point const closeTime)
 NetClock::time_point const& fix1443Time ()
 {
     using namespace std::chrono_literals;
-    // Sat Mar 11, 2017 05:00:00pm PST
+    // Sun Mar 12, 2017 01:00:00 UTC
     static NetClock::time_point const soTime{542595600s};
 
     return soTime;
@@ -92,7 +91,7 @@ bool fix1443 (NetClock::time_point const closeTime)
 NetClock::time_point const& fix1449Time ()
 {
     using namespace std::chrono_literals;
-    // Thurs, Mar 30, 2017 01:00:00pm PDT
+    // Thurs, Mar 30, 2017 20:00:00 UTC
     static NetClock::time_point const soTime{544219200s};
 
     return soTime;
@@ -243,7 +242,7 @@ static
 std::uint32_t
 confineOwnerCount (std::uint32_t current, std::int32_t adjustment,
     boost::optional<AccountID> const& id = boost::none,
-    beast::Journal j = beast::Journal{})
+    beast::Journal j = beast::Journal {beast::Journal::getNullSink()})
 {
     std::uint32_t adjusted {current + adjustment};
     if (adjustment > 0)
@@ -284,7 +283,7 @@ zxcLiquid (ReadView const& view, AccountID const& id,
 {
     auto const sle = view.read(keylet::account(id));
     if (sle == nullptr)
-        return zero;
+        return beast::zero;
 
     // Return balance minus reserve
     if (fix1141 (view.info ().parentCloseTime))
@@ -482,7 +481,7 @@ areCompatible (ReadView const& validLedger, ReadView const& testLedger,
     {
         // valid -> ... -> test
         auto hash = hashOfSeq (testLedger, validLedger.info().seq,
-            beast::Journal());
+            beast::Journal {beast::Journal::getNullSink()});
         if (hash && (*hash != validLedger.info().hash))
         {
             JLOG(s) << reason << " incompatible with valid ledger";
@@ -496,7 +495,7 @@ areCompatible (ReadView const& validLedger, ReadView const& testLedger,
     {
         // test -> ... -> valid
         auto hash = hashOfSeq (validLedger, testLedger.info().seq,
-            beast::Journal());
+            beast::Journal {beast::Journal::getNullSink()});
         if (hash && (*hash != testLedger.info().hash))
         {
             JLOG(s) << reason << " incompatible preceding ledger";
@@ -536,7 +535,7 @@ bool areCompatible (uint256 const& validHash, LedgerIndex validIndex,
     {
         // Ledger we are testing follows last valid ledger
         auto hash = hashOfSeq (testLedger, validIndex,
-            beast::Journal());
+            beast::Journal {beast::Journal::getNullSink()});
         if (hash && (*hash != validHash))
         {
             JLOG(s) << reason << " incompatible following ledger";
@@ -937,201 +936,6 @@ dirAdd (ApplyView& view,
     return uNodeDir;
 }
 
-// Ledger must be in a state for this to work.
-TER
-dirDelete (ApplyView& view,
-    const bool                      bKeepRoot,      // --> True, if we never completely clean up, after we overflow the root node.
-    std::uint64_t                   uNodeDir,       // --> Node containing entry.
-    Keylet const&                   root,           // --> The index of the base of the directory.  Nodes are based off of this.
-    uint256 const&                  uLedgerIndex,   // --> Value to remove from directory.
-    const bool                      bStable,        // --> True, not to change relative order of entries.
-    const bool                      bSoft,          // --> True, uNodeDir is not hard and fast (pass uNodeDir=0).
-    beast::Journal j)
-{
-    if (view.rules().enabled(featureSortedDirectories))
-    {
-        if (view.dirRemove(root, uNodeDir, uLedgerIndex, bKeepRoot))
-            return tesSUCCESS;
-
-        return tefBAD_LEDGER;
-    }
-
-    std::uint64_t uNodeCur = uNodeDir;
-    SLE::pointer sleNode =
-        view.peek(keylet::page(root, uNodeCur));
-
-    if (!sleNode)
-    {
-        JLOG (j.warn()) << "dirDelete: no such node:" <<
-            " root=" << to_string (root.key) <<
-            " uNodeDir=" << strHex (uNodeDir) <<
-            " uLedgerIndex=" << to_string (uLedgerIndex);
-
-        if (!bSoft)
-        {
-            assert (false);
-            return tefBAD_LEDGER;
-        }
-        else if (uNodeDir < 20)
-        {
-            // Go the extra mile. Even if node doesn't exist, try the next node.
-
-            return dirDelete (view, bKeepRoot,
-                uNodeDir + 1, root, uLedgerIndex, bStable, true, j);
-        }
-        else
-        {
-            return tefBAD_LEDGER;
-        }
-    }
-
-    STVector256 svIndexes = sleNode->getFieldV256 (sfIndexes);
-
-    auto it = std::find (svIndexes.begin (), svIndexes.end (), uLedgerIndex);
-
-    if (svIndexes.end () == it)
-    {
-        if (!bSoft)
-        {
-            assert (false);
-            JLOG (j.warn()) << "dirDelete: no such entry";
-            return tefBAD_LEDGER;
-        }
-
-        if (uNodeDir < 20)
-        {
-            // Go the extra mile. Even if entry not in node, try the next node.
-            return dirDelete (view, bKeepRoot, uNodeDir + 1,
-                root, uLedgerIndex, bStable, true, j);
-        }
-
-        return tefBAD_LEDGER;
-    }
-
-    // Remove the element.
-    if (svIndexes.size () > 1)
-    {
-        if (bStable)
-        {
-            svIndexes.erase (it);
-        }
-        else
-        {
-            *it = svIndexes[svIndexes.size () - 1];
-            svIndexes.resize (svIndexes.size () - 1);
-        }
-    }
-    else
-    {
-        svIndexes.clear ();
-    }
-
-    sleNode->setFieldV256 (sfIndexes, svIndexes);
-    view.update(sleNode);
-
-    if (svIndexes.empty ())
-    {
-        // May be able to delete nodes.
-        std::uint64_t       uNodePrevious   = sleNode->getFieldU64 (sfIndexPrevious);
-        std::uint64_t       uNodeNext       = sleNode->getFieldU64 (sfIndexNext);
-
-        if (!uNodeCur)
-        {
-            // Just emptied root node.
-
-            if (!uNodePrevious)
-            {
-                // Never overflowed the root node.  Delete it.
-                view.erase(sleNode);
-            }
-            // Root overflowed.
-            else if (bKeepRoot)
-            {
-                // If root overflowed and not allowed to delete overflowed root node.
-            }
-            else if (uNodePrevious != uNodeNext)
-            {
-                // Have more than 2 nodes.  Can't delete root node.
-            }
-            else
-            {
-                // Have only a root node and a last node.
-                auto sleLast = view.peek(keylet::page(root, uNodeNext));
-
-                assert (sleLast);
-
-                if (sleLast->getFieldV256 (sfIndexes).empty ())
-                {
-                    // Both nodes are empty.
-
-                    view.erase (sleNode);  // Delete root.
-                    view.erase (sleLast);  // Delete last.
-                }
-                else
-                {
-                    // Have an entry, can't delete root node.
-                }
-            }
-        }
-        // Just emptied a non-root node.
-        else if (uNodeNext)
-        {
-            // Not root and not last node. Can delete node.
-
-            auto slePrevious = view.peek(keylet::page(root, uNodePrevious));
-            auto sleNext = view.peek(keylet::page(root, uNodeNext));
-            assert (slePrevious);
-            if (!slePrevious)
-            {
-                JLOG (j.warn()) << "dirDelete: previous node is missing";
-                return tefBAD_LEDGER;
-            }
-            assert (sleNext);
-            if (!sleNext)
-            {
-                JLOG (j.warn()) << "dirDelete: next node is missing";
-                return tefBAD_LEDGER;
-            }
-
-            // Fix previous to point to its new next.
-            slePrevious->setFieldU64 (sfIndexNext, uNodeNext);
-            view.update (slePrevious);
-
-            // Fix next to point to its new previous.
-            sleNext->setFieldU64 (sfIndexPrevious, uNodePrevious);
-            view.update (sleNext);
-
-            view.erase(sleNode);
-        }
-        // Last node.
-        else if (bKeepRoot || uNodePrevious)
-        {
-            // Not allowed to delete last node as root was overflowed.
-            // Or, have pervious entries preventing complete delete.
-        }
-        else
-        {
-            // Last and only node besides the root.
-            auto sleRoot = view.peek(root);
-            assert (sleRoot);
-
-            if (sleRoot->getFieldV256 (sfIndexes).empty ())
-            {
-                // Both nodes are empty.
-
-                view.erase(sleRoot);  // Delete root.
-                view.erase(sleNode);  // Delete last.
-            }
-            else
-            {
-                // Root has an entry, can't delete.
-            }
-        }
-    }
-
-    return tesSUCCESS;
-}
-
 TER
 trustCreate (ApplyView& view,
     const bool      bSrcHigh,
@@ -1242,41 +1046,37 @@ trustDelete (ApplyView& view,
                  beast::Journal j)
 {
     // Detect legacy dirs.
-    bool        bLowNode    = sleRippleState->isFieldPresent (sfLowNode);
-    bool        bHighNode   = sleRippleState->isFieldPresent (sfHighNode);
     std::uint64_t uLowNode    = sleRippleState->getFieldU64 (sfLowNode);
     std::uint64_t uHighNode   = sleRippleState->getFieldU64 (sfHighNode);
-    TER         terResult;
 
     JLOG (j.trace())
         << "trustDelete: Deleting ripple line: low";
-    terResult   = dirDelete(view,
-        false,
-        uLowNode,
-        keylet::ownerDir (uLowAccountID),
-        sleRippleState->key(),
-        false,
-        !bLowNode,
-        j);
 
-    if (tesSUCCESS == terResult)
-    {
-        JLOG (j.trace())
-                << "trustDelete: Deleting ripple line: high";
-        terResult   = dirDelete (view,
-            false,
-            uHighNode,
-            keylet::ownerDir (uHighAccountID),
+    if (! view.dirRemove(
+            keylet::ownerDir(uLowAccountID),
+            uLowNode,
             sleRippleState->key(),
-            false,
-            !bHighNode,
-            j);
+            false))
+    {
+        return tefBAD_LEDGER;
+    }
+
+    JLOG (j.trace())
+            << "trustDelete: Deleting ripple line: high";
+
+    if (! view.dirRemove(
+            keylet::ownerDir(uHighAccountID),
+            uHighNode,
+            sleRippleState->key(),
+            false))
+    {
+        return tefBAD_LEDGER;
     }
 
     JLOG (j.trace()) << "trustDelete: Deleting ripple line: state";
     view.erase(sleRippleState);
 
-    return terResult;
+    return tesSUCCESS;
 }
 
 TER
@@ -1290,22 +1090,32 @@ offerDelete (ApplyView& view,
     auto owner = sle->getAccountID  (sfAccount);
 
     // Detect legacy directories.
-    bool bOwnerNode = sle->isFieldPresent (sfOwnerNode);
     uint256 uDirectory = sle->getFieldH256 (sfBookDirectory);
 
-    TER terResult  = dirDelete (view, false, sle->getFieldU64 (sfOwnerNode),
-        keylet::ownerDir (owner), offerIndex, false, !bOwnerNode, j);
-    TER terResult2 = dirDelete (view, false, sle->getFieldU64 (sfBookNode),
-        keylet::page (uDirectory), offerIndex, true, false, j);
+    if (! view.dirRemove(
+        keylet::ownerDir(owner),
+        sle->getFieldU64(sfOwnerNode),
+        offerIndex,
+        false))
+    {
+        return tefBAD_LEDGER;
+    }
 
-    if (tesSUCCESS == terResult)
-        adjustOwnerCount(view, view.peek(
-            keylet::account(owner)), -1, j);
+    if (! view.dirRemove(
+        keylet::page(uDirectory),
+        sle->getFieldU64(sfBookNode),
+        offerIndex,
+        false))
+    {
+        return tefBAD_LEDGER;
+    }
+
+    adjustOwnerCount(view, view.peek(
+        keylet::account(owner)), -1, j);
 
     view.erase(sle);
 
-    return (terResult == tesSUCCESS) ?
-        terResult2 : terResult;
+    return tesSUCCESS;
 }
 
 // Direct send w/o fees:
@@ -1396,9 +1206,9 @@ rippleCredit (ApplyView& view,
         bool bDelete = false;
 
         // YYY Could skip this if rippling in reverse.
-        if (saBefore > zero
+        if (saBefore > beast::zero
             // Sender balance was positive.
-            && saBalance <= zero
+            && saBalance <= beast::zero
             // Sender is zero or negative.
             && (uFlags & (!bSenderHigh ? lsfLowReserve : lsfHighReserve))
             // Sender reserve is set.
@@ -1542,7 +1352,7 @@ accountSend (ApplyView& view,
     AccountID const& uSenderID, AccountID const& uReceiverID,
     STAmount const& saAmount, beast::Journal j)
 {
-    assert (saAmount >= zero);
+    assert (saAmount >= beast::zero);
 
     /* If we aren't sending anything or if the sender is the same as the
      * receiver then we don't need to do anything.
@@ -1607,8 +1417,8 @@ accountSend (ApplyView& view,
             // VFALCO Its laborious to have to mutate the
             //        TER based on params everywhere
             terResult = view.open()
-                ? telFAILED_PROCESSING
-                : tecFAILED_PROCESSING;
+                ? TER {telFAILED_PROCESSING}
+                : TER {tecFAILED_PROCESSING};
         }
         else
         {
@@ -1671,9 +1481,9 @@ updateTrustLine (
     assert (sle);
 
     // YYY Could skip this if rippling in reverse.
-    if (before > zero
+    if (before > beast::zero
         // Sender balance was positive.
-        && after <= zero
+        && after <= beast::zero
         // Sender is zero or negative.
         && (flags & (!bSenderHigh ? lsfLowReserve : lsfHighReserve))
         // Sender reserve is set.
@@ -1873,8 +1683,8 @@ transferZXC (ApplyView& view,
         //        mutating these TER everywhere
         // FIXME: this logic should be moved to callers maybe?
         return view.open()
-            ? telFAILED_PROCESSING
-            : tecFAILED_PROCESSING;
+            ? TER {telFAILED_PROCESSING}
+            : TER {tecFAILED_PROCESSING};
     }
 
     // Decrement ZXC balance.

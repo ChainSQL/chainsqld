@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/basics/contract.h>
 #include <ripple/crypto/RandomNumbers.h>
 #include <openssl/rand.h>

@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/NetworkOPs.h>
@@ -25,9 +24,10 @@
 #include <ripple/ledger/ReadView.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
+#include <ripple/rpc/DeliveredAmount.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/Role.h>
 
@@ -177,14 +177,15 @@ Json::Value doAccountTxOld (RPC::Context& context)
                 Json::Value&    jvObj = jvTxns.append (Json::objectValue);
 
                 if (it->first)
-                    jvObj[jss::tx]             = it->first->getJson (1);
+                    jvObj[jss::tx] =
+                        it->first->getJson (JsonOptions::include_date);
 
                 if (it->second)
                 {
                     std::uint32_t uLedgerIndex = it->second->getLgrSeq ();
 
-                    auto meta = it->second->getJson(0);
-                    addPaymentDeliveredAmount(meta, context, it->first, it->second);
+                    auto meta = it->second->getJson(JsonOptions::none);
+                    insertDeliveredAmount(meta, context, it->first, *it->second);
                     jvObj[jss::meta] = std::move(meta);
 
                     jvObj[jss::validated]

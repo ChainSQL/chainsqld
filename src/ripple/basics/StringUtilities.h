@@ -20,10 +20,11 @@
 #ifndef RIPPLE_BASICS_STRINGUTILITIES_H_INCLUDED
 #define RIPPLE_BASICS_STRINGUTILITIES_H_INCLUDED
 
-#include <ripple/basics/ByteOrder.h>
 #include <ripple/basics/Blob.h>
 #include <ripple/basics/strHex.h>
+
 #include <boost/format.hpp>
+#include <boost/optional.hpp>
 #include <iterator>
 #include <sstream>
 #include <string>
@@ -73,13 +74,6 @@ inline const std::string strHex (std::string const& strSrc)
 inline std::string strHex (Blob const& vucData)
 {
     return strHex (vucData.begin (), vucData.size ());
-}
-
-inline std::string strHex (const std::uint64_t uiHost)
-{
-    uint64_t    uBig    = htobe64 (uiHost);
-
-    return strHex ((unsigned char*) &uBig, sizeof (uBig));
 }
 
 inline static std::string sqlEscape (std::string const& strSrc)
@@ -143,14 +137,31 @@ std::string strCopy(Blob const& vucSrc);
 
 struct parsedURL
 {
+    explicit parsedURL() = default;
+
     std::string scheme;
+    std::string username;
+    std::string password;
     std::string domain;
     boost::optional<std::uint16_t> port;
     std::string path;
+
+    bool
+    operator == (parsedURL const& other) const
+    {
+        return scheme == other.scheme &&
+            domain == other.domain &&
+            port == other.port &&
+            path == other.path;
+    }
 };
+
 bool parseUrl (parsedURL& pUrl, std::string const& strUrl);
 
 std::string trim_whitespace (std::string str);
+
+boost::optional<std::uint64_t> to_uint64(std::string const& s);
+
 } // ripple
 
 #endif

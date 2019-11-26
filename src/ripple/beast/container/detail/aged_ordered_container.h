@@ -22,9 +22,9 @@
 
 #include <ripple/beast/container/detail/aged_container_iterator.h>
 #include <ripple/beast/container/detail/aged_associative_container.h>
+#include <ripple/beast/container/detail/empty_base_optimization.h>
 #include <ripple/beast/container/aged_container.h>
 #include <ripple/beast/clock/abstract_clock.h>
-#include <beast/core/detail/empty_base_optimization.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/set.hpp>
 #include <boost/version.hpp>
@@ -44,19 +44,16 @@ namespace detail {
 template <class It>
 struct is_boost_reverse_iterator
     : std::false_type
-{};
+{
+    explicit is_boost_reverse_iterator() = default;
+};
 
-#if BOOST_VERSION >= 105800
 template <class It>
 struct is_boost_reverse_iterator<boost::intrusive::reverse_iterator<It>>
     : std::true_type
-{};
-#else
-template <class It>
-struct is_boost_reverse_iterator<boost::intrusive::detail::reverse_iterator<It>>
-    : std::true_type
-{};
-#endif
+{
+    explicit is_boost_reverse_iterator() = default;
+};
 
 /** Associative container where each element is also indexed by time.
 
@@ -125,6 +122,8 @@ private:
         // need to see the container declaration.
         struct stashed
         {
+            explicit stashed() = default;
+
             using value_type = typename aged_ordered_container::value_type;
             using time_point = typename aged_ordered_container::time_point;
         };
@@ -163,10 +162,18 @@ private:
 
     // VFALCO TODO This should only be enabled for maps.
     class pair_value_compare
-        : private empty_base_optimization <Compare>
+        : public beast::detail::empty_base_optimization <Compare>
+#ifdef _LIBCPP_VERSION
         , public std::binary_function <value_type, value_type, bool>
+#endif
     {
     public:
+#ifndef _LIBCPP_VERSION
+        using first_argument = value_type;
+        using second_argument = value_type;
+        using result_type = bool;
+#endif
+
         bool operator() (value_type const& lhs, value_type const& rhs) const
         {
             return this->member() (lhs.first, rhs.first);
@@ -177,7 +184,7 @@ private:
         }
 
         pair_value_compare (pair_value_compare const& other)
-            : empty_base_optimization <Compare> (other)
+            : beast::detail::empty_base_optimization <Compare> (other)
         {
         }
 
@@ -185,7 +192,7 @@ private:
         friend aged_ordered_container;
 
         pair_value_compare (Compare const& compare)
-            : empty_base_optimization <Compare> (compare)
+            : beast::detail::empty_base_optimization <Compare> (compare)
         {
         }
     };
@@ -193,14 +200,22 @@ private:
     // Compares value_type against element, used in insert_check
     // VFALCO TODO hoist to remove template argument dependencies
     class KeyValueCompare
-        : private empty_base_optimization <Compare>
+        : public beast::detail::empty_base_optimization <Compare>
+#ifdef _LIBCPP_VERSION
         , public std::binary_function <Key, element, bool>
+#endif
     {
     public:
+#ifndef _LIBCPP_VERSION
+        using first_argument = Key;
+        using second_argument = element;
+        using result_type = bool;
+#endif
+
         KeyValueCompare () = default;
 
         KeyValueCompare (Compare const& compare)
-            : empty_base_optimization <Compare> (compare)
+            : beast::detail::empty_base_optimization <Compare> (compare)
         {
         }
 
@@ -237,12 +252,12 @@ private:
 
         Compare& compare()
         {
-            return empty_base_optimization <Compare>::member();
+            return beast::detail::empty_base_optimization <Compare>::member();
         }
 
         Compare const& compare() const
         {
-            return empty_base_optimization <Compare>::member();
+            return beast::detail::empty_base_optimization <Compare>::member();
         }
     };
 
@@ -268,7 +283,7 @@ private:
 
     class config_t
         : private KeyValueCompare
-        , private empty_base_optimization <ElementAllocator>
+        , public beast::detail::empty_base_optimization <ElementAllocator>
     {
     public:
         explicit config_t (
@@ -288,7 +303,7 @@ private:
         config_t (
             clock_type& clock_,
             Allocator const& alloc_)
-            : empty_base_optimization <ElementAllocator> (alloc_)
+            : beast::detail::empty_base_optimization <ElementAllocator> (alloc_)
             , clock (clock_)
         {
         }
@@ -298,14 +313,14 @@ private:
             Compare const& comp,
             Allocator const& alloc_)
             : KeyValueCompare (comp)
-            , empty_base_optimization <ElementAllocator> (alloc_)
+            , beast::detail::empty_base_optimization <ElementAllocator> (alloc_)
             , clock (clock_)
         {
         }
 
         config_t (config_t const& other)
             : KeyValueCompare (other.key_compare())
-            , empty_base_optimization <ElementAllocator> (
+            , beast::detail::empty_base_optimization <ElementAllocator> (
                 ElementAllocatorTraits::
                     select_on_container_copy_construction (
                         other.alloc()))
@@ -315,14 +330,14 @@ private:
 
         config_t (config_t const& other, Allocator const& alloc)
             : KeyValueCompare (other.key_compare())
-            , empty_base_optimization <ElementAllocator> (alloc)
+            , beast::detail::empty_base_optimization <ElementAllocator> (alloc)
             , clock (other.clock)
         {
         }
 
         config_t (config_t&& other)
             : KeyValueCompare (std::move (other.key_compare()))
-            , empty_base_optimization <ElementAllocator> (
+            , beast::detail::empty_base_optimization <ElementAllocator> (
                 std::move (other))
             , clock (other.clock)
         {
@@ -330,7 +345,7 @@ private:
 
         config_t (config_t&& other, Allocator const& alloc)
             : KeyValueCompare (std::move (other.key_compare()))
-            , empty_base_optimization <ElementAllocator> (alloc)
+            , beast::detail::empty_base_optimization <ElementAllocator> (alloc)
             , clock (other.clock)
         {
         }
@@ -376,13 +391,13 @@ private:
 
         ElementAllocator& alloc()
         {
-            return empty_base_optimization <
+            return beast::detail::empty_base_optimization <
                 ElementAllocator>::member();
         }
 
         ElementAllocator const& alloc() const
         {
-            return empty_base_optimization <
+            return beast::detail::empty_base_optimization <
                 ElementAllocator>::member();
         }
 
@@ -1927,6 +1942,7 @@ struct is_aged_container <beast::detail::aged_ordered_container <
         IsMulti, IsMap, Key, T, Clock, Compare, Allocator>>
     : std::true_type
 {
+    explicit is_aged_container() = default;
 };
 
 // Free functions

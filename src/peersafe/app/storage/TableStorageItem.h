@@ -94,7 +94,7 @@ private:
     uint256                                                                    ledgerHash_;
     LedgerIndex                                                                LedgerSeq_;
     uint256                                                                    txUpdateHash_;
-	uint32                                                                     lastTxTm_;
+	uint32_t                                                                   lastTxTm_;
 
     Application&                                                                app_;
     beast::Journal                                                              journal_;

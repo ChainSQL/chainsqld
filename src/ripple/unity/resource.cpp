@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 
 #include <ripple/resource/impl/Charge.cpp>
 #include <ripple/resource/impl/Consumer.cpp>

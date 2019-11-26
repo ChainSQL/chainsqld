@@ -15,8 +15,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/core/ConfigSections.h>
+#include <ripple/protocol/jss.h>
 #include <test/jtx/WSClient.h>
 #include <test/jtx/JSONRPCClient.h>
 #include <test/jtx.h>
@@ -32,7 +32,11 @@ public:
     {
         testcase << "Overload " << (useWS ? "WS" : "HTTP") << " RPC client";
         using namespace jtx;
-        Env env {*this, envconfig(no_admin)};
+        Env env {*this, envconfig([](std::unique_ptr<Config> cfg)
+            {
+                cfg->loadFromString ("[" SECTION_SIGNING_SUPPORT "]\ntrue");
+                return no_admin(std::move(cfg));
+            })};
 
         Account const alice {"alice"};
         Account const bob {"bob"};
@@ -58,9 +62,13 @@ public:
             // When booted, we just get a null json response
             if(jv.isNull())
                 booted = true;
-            else
-                BEAST_EXPECT(jv.isMember(jss::status)
-                             && (jv[jss::status] == "success"));
+            else if (!(jv.isMember(jss::status) &&
+                       (jv[jss::status] == "success")))
+            {
+                // Don't use BEAST_EXPECT above b/c it will be called a non-deterministic number of times
+                // and the number of tests run should be deterministic
+                fail("", __FILE__, __LINE__);
+            }
 
             if(jv.isMember(jss::warning))
                 warned = jv[jss::warning] == jss::load;

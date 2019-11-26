@@ -23,7 +23,7 @@
 #include <ripple/server/Handoff.h>
 #include <ripple/server/Port.h>
 #include <ripple/server/Writer.h>
-#include <beast/core/buffer_prefix.hpp>
+#include <boost/beast/core/buffers_prefix.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/logic/tribool.hpp>
@@ -98,7 +98,7 @@ public:
             n_ = sb_.size();
             done = true;
         }
-        auto const pb = beast::buffer_prefix(n_, sb_.data());
+        auto const pb = boost::beast::buffers_prefix(n_, sb_.data());
         std::vector<boost::asio::const_buffer> vb (
             std::distance(pb.begin(), pb.end()));
         std::copy(pb.begin(), pb.end(), std::back_inserter(vb));
@@ -109,6 +109,11 @@ public:
 struct WSSession
 {
     std::shared_ptr<void> appDefined;
+
+    virtual ~WSSession () = default;
+    WSSession() = default;
+    WSSession(WSSession const&) = delete;
+    WSSession& operator=(WSSession const&) = delete;
 
     virtual
     void
@@ -131,9 +136,12 @@ struct WSSession
     void
     send(std::shared_ptr<WSMsg> w) = 0;
 
+    virtual void
+    close() = 0;
+
     virtual
     void
-    close() = 0;
+    close(boost::beast::websocket::close_reason const& reason) = 0;
 
     /** Indicate that the response is complete.
         The handler should call this when it has completed writing

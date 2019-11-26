@@ -66,6 +66,8 @@ public:
     static bool const is_steady = Clock::is_steady;
 
     virtual ~abstract_clock() = default;
+    abstract_clock() = default;
+    abstract_clock(abstract_clock const&) = default;
 
     /** Returns the current time. */
     virtual time_point now() const = 0;
@@ -79,6 +81,8 @@ template <class Facade, class Clock>
 struct abstract_clock_wrapper
     : public abstract_clock<Facade>
 {
+    explicit abstract_clock_wrapper() = default;
+
     using typename abstract_clock<Facade>::duration;
     using typename abstract_clock<Facade>::time_point;
 

@@ -17,8 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/contract.h>
+#include <ripple/basics/ByteUtilities.h>
 #include <ripple/crypto/csprng.h>
 #include <openssl/rand.h>
 #include <array>
@@ -48,27 +48,6 @@ csprng_engine::csprng_engine ()
 csprng_engine::~csprng_engine ()
 {
     RAND_cleanup ();
-}
-
-void
-csprng_engine::load_state (std::string const& file)
-{
-    if (!file.empty())
-    {
-        std::lock_guard<std::mutex> lock (mutex_);
-        RAND_load_file (file.c_str (), 1024);
-        RAND_write_file (file.c_str ());
-    }
-}
-
-void
-csprng_engine::save_state (std::string const& file)
-{
-    if (!file.empty())
-    {
-        std::lock_guard<std::mutex> lock (mutex_);
-        RAND_write_file (file.c_str ());
-    }
 }
 
 void

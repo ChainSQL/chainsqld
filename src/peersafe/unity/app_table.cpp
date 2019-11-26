@@ -1,4 +1,4 @@
-#include <BeastConfig.h>
+
 
 #include <peersafe/app/table/impl/TableStatusDB.cpp>
 #include <peersafe/app/table/impl/TableStatusDBSQLite.cpp>

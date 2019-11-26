@@ -17,12 +17,11 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx.h>
 #include <test/jtx/WSClient.h>
 #include <test/jtx/PathSet.h>
 #include <ripple/protocol/Feature.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/Quality.h>
 
 namespace ripple {
@@ -30,14 +29,6 @@ namespace test {
 
 class Offer_test : public beast::unit_test::suite
 {
-    static bool hasFeature(uint256 const& feat, std::initializer_list<uint256> args)
-    {
-        for(auto const& f : args)
-            if (f == feat)
-                return true;
-        return false;
-    }
-
     ZXCAmount reserve(jtx::Env& env, std::uint32_t count)
     {
         return env.current()->fees().accountReserve (count);
@@ -55,7 +46,7 @@ class Offer_test : public beast::unit_test::suite
         using namespace jtx;
         auto feeDrops = env.current()->fees().base;
         return drops (dropsPerZXC<std::int64_t>::value * zxcAmount - feeDrops);
-    };
+    }
 
     static auto
     ledgerEntryState(jtx::Env & env, jtx::Account const& acct_a,
@@ -69,7 +60,7 @@ class Offer_test : public beast::unit_test::suite
         jvParams[jss::ripple_state][jss::accounts].append(acct_b.human());
         return env.rpc ("json", "ledger_entry",
             to_string(jvParams))[jss::result];
-    };
+    }
 
     static auto
     ledgerEntryRoot (jtx::Env & env, jtx::Account const& acct)
@@ -79,7 +70,7 @@ class Offer_test : public beast::unit_test::suite
         jvParams[jss::account_root] = acct.human();
         return env.rpc ("json", "ledger_entry",
             to_string(jvParams))[jss::result];
-    };
+    }
 
     static auto
     ledgerEntryOffer (jtx::Env & env,
@@ -90,7 +81,7 @@ class Offer_test : public beast::unit_test::suite
         jvParams[jss::offer][jss::seq] = offer_seq;
         return env.rpc ("json", "ledger_entry",
             to_string(jvParams))[jss::result];
-    };
+    }
 
     static auto
     getBookOffers(jtx::Env & env,
@@ -106,7 +97,7 @@ class Offer_test : public beast::unit_test::suite
     }
 
 public:
-    void testRmFundedOffer (std::initializer_list<uint256> fs)
+    void testRmFundedOffer (FeatureBitset features)
     {
         testcase ("Incorrect Removal of Funded Offers");
 
@@ -120,7 +111,7 @@ public:
         // not used for the payment.
 
         using namespace jtx;
-        Env env {*this, with_features(fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -166,12 +157,12 @@ public:
             isOffer (env, carol, BTC (49), ZXC (49)));
     }
 
-    void testCanceledOffer (std::initializer_list<uint256> fs)
+    void testCanceledOffer (FeatureBitset features)
     {
         testcase ("Removing Canceled Offers");
 
         using namespace jtx;
-        Env env {*this, with_features(fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -182,51 +173,81 @@ public:
         auto const USD = gw["USD"];
 
         env.fund (ZXC (10000), alice, gw);
+        env.close();
         env.trust (USD (100), alice);
+        env.close();
 
         env (pay (gw, alice, USD (50)));
+        env.close();
 
-        auto const firstOfferSeq = env.seq (alice);
+        auto const offer1Seq = env.seq (alice);
 
         env (offer (alice, ZXC (500), USD (100)),
             require (offers (alice, 1)));
+        env.close();
 
         BEAST_EXPECT(isOffer (env, alice, ZXC (500), USD (100)));
 
         // cancel the offer above and replace it with a new offer
+        auto const offer2Seq = env.seq (alice);
+
         env (offer (alice, ZXC (300), USD (100)),
-             json (jss::OfferSequence, firstOfferSeq),
+             json (jss::OfferSequence, offer1Seq),
              require (offers (alice, 1)));
+        env.close();
 
         BEAST_EXPECT(isOffer (env, alice, ZXC (300), USD (100)) &&
             !isOffer (env, alice, ZXC (500), USD (100)));
 
         // Test canceling non-existent offer.
+//      auto const offer3Seq = env.seq (alice);
+
         env (offer (alice, ZXC (400), USD (200)),
-             json (jss::OfferSequence, firstOfferSeq),
+             json (jss::OfferSequence, offer1Seq),
              require (offers (alice, 2)));
+        env.close();
 
         BEAST_EXPECT(isOffer (env, alice, ZXC (300), USD (100)) &&
             isOffer (env, alice, ZXC (400), USD (200)));
 
         // Test cancellation now with OfferCancel tx
-        auto const nextOfferSeq = env.seq (alice);
+        auto const offer4Seq = env.seq (alice);
         env (offer (alice, ZXC (222), USD (111)),
             require (offers (alice, 3)));
+        env.close();
 
         BEAST_EXPECT(isOffer (env, alice, ZXC (222), USD (111)));
-
-        Json::Value cancelOffer;
-        cancelOffer[jss::Account] = alice.human();
-        cancelOffer[jss::OfferSequence] = nextOfferSeq;
-        cancelOffer[jss::TransactionType] = "OfferCancel";
-        env (cancelOffer);
-        BEAST_EXPECT(env.seq(alice) == nextOfferSeq + 2);
+        {
+            Json::Value cancelOffer;
+            cancelOffer[jss::Account] = alice.human();
+            cancelOffer[jss::OfferSequence] = offer4Seq;
+            cancelOffer[jss::TransactionType] = jss::OfferCancel;
+            env (cancelOffer);
+        }
+        env.close();
+        BEAST_EXPECT(env.seq(alice) == offer4Seq + 2);
 
         BEAST_EXPECT(!isOffer (env, alice, ZXC (222), USD (111)));
+
+        // Create an offer that both fails with a tecEXPIRED code and removes
+        // an offer.  Show that the attempt to remove the offer fails.
+        env.require (offers (alice, 2));
+
+        // featureDepositPreauths changes the return code on an expired Offer.
+        // Adapt to that.
+        bool const featPreauth {features[featureDepositPreauth]};
+        env (offer (alice, ZXC (5), USD (2)),
+            json (sfExpiration.fieldName, lastClose(env)),
+            json (jss::OfferSequence, offer2Seq),
+            ter (featPreauth ? TER {tecEXPIRED} : TER {tesSUCCESS}));
+        env.close();
+
+        env.require (offers (alice, 2));
+        BEAST_EXPECT( isOffer (env, alice, ZXC (300), USD (100))); // offer2
+        BEAST_EXPECT(!isOffer (env, alice, ZXC   (5), USD   (2))); // expired
     }
 
-    void testTinyPayment (std::initializer_list<uint256> fs)
+    void testTinyPayment (FeatureBitset features)
     {
         testcase ("Tiny payments");
 
@@ -241,7 +262,7 @@ public:
         auto const USD = gw["USD"];
         auto const EUR = gw["EUR"];
 
-        Env env {*this, with_features(fs)};
+        Env env {*this, features};
 
         env.fund (ZXC (10000), alice, bob, carol, gw);
         env.trust (USD (1000), alice, bob, carol);
@@ -253,21 +274,28 @@ public:
         for (int i=0;i<101;++i)
             env (offer (carol, USD (1), EUR (2)));
 
+        auto hasFeature = [](Env& env, uint256 const& f)
+        {
+            return (env.app().config().features.find(f) !=
+                env.app().config().features.end());
+        };
+
         for (auto d : {-1, 1})
         {
             auto const closeTime = STAmountSO::soTime +
                 d * env.closed()->info().closeTimeResolution;
             env.close (closeTime);
-            *stAmountCalcSwitchover = closeTime > STAmountSO::soTime;
+            *stAmountCalcSwitchover = closeTime > STAmountSO::soTime ||
+                !hasFeature(env, fix1513);
             // Will fail without the underflow fix
-            auto expectedResult = *stAmountCalcSwitchover ?
-                tesSUCCESS : tecPATH_PARTIAL;
+            TER const expectedResult = *stAmountCalcSwitchover ?
+                TER {tesSUCCESS} : TER {tecPATH_PARTIAL};
             env (pay (alice, bob, EUR (epsilon)), path (~EUR),
                 sendmax (USD (100)), ter (expectedResult));
         }
     }
 
-    void testZXCTinyPayment (std::initializer_list<uint256> fs)
+    void testZXCTinyPayment (FeatureBitset features)
     {
         testcase ("ZXC Tiny payments");
 
@@ -299,10 +327,10 @@ public:
 
         for (auto withFix : {false, true})
         {
-            if (!withFix && fs.size())
+            if (!withFix)
                 continue;
 
-            Env env {*this, with_features(fs)};
+            Env env {*this, features};
 
             auto closeTime = [&]
             {
@@ -366,7 +394,7 @@ public:
         }
     }
 
-    void testEnforceNoRipple (std::initializer_list<uint256> fs)
+    void testEnforceNoRipple (FeatureBitset features)
     {
         testcase ("Enforce No Ripple");
 
@@ -383,7 +411,7 @@ public:
 
         {
             // No ripple with an implied account step after an offer
-            Env env {*this, with_features (fs)};
+            Env env {*this, features};
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -412,7 +440,7 @@ public:
         }
         {
             // Make sure payment works with default flags
-            Env env {*this, with_features (fs)};
+            Env env {*this, features};
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -444,7 +472,7 @@ public:
     }
 
     void
-    testInsufficientReserve (std::initializer_list<uint256> fs)
+    testInsufficientReserve (FeatureBitset features)
     {
         testcase ("Insufficient Reserve");
 
@@ -467,7 +495,7 @@ public:
 
         // No crossing:
         {
-            Env env {*this, with_features (fs)};
+            Env env {*this, features};
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -492,7 +520,7 @@ public:
 
         // Partial cross:
         {
-            Env env {*this, with_features (fs)};
+            Env env {*this, features};
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -526,7 +554,7 @@ public:
         // if an offer were added. Attempt to sell IOUs to
         // buy ZXC. If it fully crosses, we succeed.
         {
-            Env env {*this, with_features (fs)};
+            Env env {*this, features};
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -577,7 +605,7 @@ public:
     }
 
     void
-    testFillModes (std::initializer_list<uint256> fs)
+    testFillModes (FeatureBitset features)
     {
         testcase ("Fill Modes");
 
@@ -589,10 +617,16 @@ public:
         auto const bob = Account {"bob"};
         auto const USD = gw["USD"];
 
-        // Fill or Kill - unless we fully cross, just charge
-        // a fee and not place the offer on the books:
+        // Fill or Kill - unless we fully cross, just charge a fee and don't
+        // place the offer on the books.  But also clean up expired offers
+        // that are discovered along the way.
+        //
+        // fix1578 changes the return code.  Verify expected behavior
+        // without and with fix1578.
+        for (auto const tweakedFeatures :
+            {features - fix1578, features | fix1578})
         {
-            Env env {*this, with_features (fs)};
+            Env env {*this, tweakedFeatures};
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -601,20 +635,41 @@ public:
             auto const f = env.current ()->fees ().base;
 
             env.fund (startBalance, gw, alice, bob);
+
+            // bob creates an offer that expires before the next ledger close.
+            env (offer (bob, USD (500), ZXC (500)),
+                json (sfExpiration.fieldName, lastClose(env) + 1),
+                ter(tesSUCCESS));
+
+            // The offer expires (it's not removed yet).
+            env.close ();
+            env.require (
+                owners (bob, 1),
+                offers (bob, 1));
+
+            // bob creates the offer that will be crossed.
             env (offer (bob, USD (500), ZXC (500)), ter(tesSUCCESS));
+            env.close();
+            env.require (
+                owners (bob, 2),
+                offers (bob, 2));
+
             env (trust (alice, USD (1000)),         ter(tesSUCCESS));
             env (pay (gw, alice, USD (1000)),       ter(tesSUCCESS));
 
-            // Order that can't be filled:
-            env (offer (alice, ZXC (1000), USD (1000)),
-                txflags (tfFillOrKill),              ter(tesSUCCESS));
-
+            // Order that can't be filled but will remove bob's expired offer:
+            {
+                TER const killedCode {tweakedFeatures[fix1578] ?
+                    TER {tecKILLED} : TER {tesSUCCESS}};
+                env (offer (alice, ZXC (1000), USD (1000)),
+                    txflags (tfFillOrKill),         ter(killedCode));
+            }
             env.require (
-                balance (alice, startBalance - f - f),
+                balance (alice, startBalance - (f * 2)),
                 balance (alice, USD (1000)),
                 owners (alice, 1),
                 offers (alice, 0),
-                balance (bob, startBalance - f),
+                balance (bob, startBalance - (f * 2)),
                 balance (bob, USD (none)),
                 owners (bob, 1),
                 offers (bob, 1));
@@ -624,11 +679,11 @@ public:
                 txflags (tfFillOrKill),              ter(tesSUCCESS));
 
             env.require (
-                balance (alice, startBalance - f - f - f + ZXC (500)),
+                balance (alice, startBalance - (f * 3) + ZXC (500)),
                 balance (alice, USD (500)),
                 owners (alice, 1),
                 offers (alice, 0),
-                balance (bob, startBalance - f - ZXC (500)),
+                balance (bob, startBalance - (f * 2) - ZXC (500)),
                 balance (bob, USD (500)),
                 owners (bob, 1),
                 offers (bob, 0));
@@ -637,7 +692,7 @@ public:
         // Immediate or Cancel - cross as much as possible
         // and add nothing on the books:
         {
-            Env env {*this, with_features (fs)};
+            Env env {*this, features};
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -652,7 +707,7 @@ public:
 
             // No cross:
             env (offer (alice, ZXC (1000), USD (1000)),
-                txflags (tfImmediateOrCancel),               ter(tesSUCCESS));
+                txflags (tfImmediateOrCancel),              ter(tesSUCCESS));
 
             env.require (
                 balance (alice, startBalance - f - f),
@@ -661,9 +716,9 @@ public:
                 offers (alice, 0));
 
             // Partially cross:
-            env (offer (bob, USD (50), ZXC (50)),            ter(tesSUCCESS));
+            env (offer (bob, USD (50), ZXC (50)),           ter(tesSUCCESS));
             env (offer (alice, ZXC (1000), USD (1000)),
-                txflags (tfImmediateOrCancel),               ter(tesSUCCESS));
+                txflags (tfImmediateOrCancel),              ter(tesSUCCESS));
 
             env.require (
                 balance (alice, startBalance - f - f - f + ZXC (50)),
@@ -676,9 +731,9 @@ public:
                 offers (bob, 0));
 
             // Fully cross:
-            env (offer (bob, USD (50), ZXC (50)),            ter(tesSUCCESS));
+            env (offer (bob, USD (50), ZXC (50)),           ter(tesSUCCESS));
             env (offer (alice, ZXC (50), USD (50)),
-                txflags (tfImmediateOrCancel),               ter(tesSUCCESS));
+                txflags (tfImmediateOrCancel),              ter(tesSUCCESS));
 
             env.require (
                 balance (alice, startBalance - f - f - f - f + ZXC (100)),
@@ -693,7 +748,7 @@ public:
 
         // tfPassive -- place the offer without crossing it.
         {
-            Env env (*this, with_features (fs));
+            Env env (*this, features);
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -750,7 +805,7 @@ public:
 
         // tfPassive -- cross only offers of better quality.
         {
-            Env env (*this, with_features (fs));
+            Env env (*this, features);
             auto const closeTime =
                 fix1449Time () +
                     100 * env.closed ()->info ().closeTimeResolution;
@@ -791,7 +846,7 @@ public:
     }
 
     void
-    testMalformed(std::initializer_list<uint256> fs)
+    testMalformed(FeatureBitset features)
     {
         testcase ("Malformed Detection");
 
@@ -802,7 +857,7 @@ public:
         auto const alice = Account {"alice"};
         auto const USD = gw["USD"];
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -858,10 +913,9 @@ public:
 
         // Offer with a bad expiration
         {
-            Json::StaticString const key {"Expiration"};
-
             env (offer (alice, USD (1000), ZXC (1000)),
-                json (key, std::uint32_t (0)), ter(temBAD_EXPIRATION));
+                json (sfExpiration.fieldName, std::uint32_t (0)),
+                ter(temBAD_EXPIRATION));
             env.require (
                 owners (alice, 1),
                 offers (alice, 0));
@@ -889,7 +943,7 @@ public:
     }
 
     void
-    testExpiration(std::initializer_list<uint256> fs)
+    testExpiration(FeatureBitset features)
     {
         testcase ("Offer Expiration");
 
@@ -904,9 +958,7 @@ public:
         auto const usdOffer = USD (1000);
         auto const zxcOffer = ZXC (1000);
 
-        Json::StaticString const key ("Expiration");
-
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -917,7 +969,6 @@ public:
 
         auto const f = env.current ()->fees ().base;
 
-        // Place an offer that should have already expired
         env (trust (alice, usdOffer),             ter(tesSUCCESS));
         env (pay (gw, alice, usdOffer),           ter(tesSUCCESS));
         env.close();
@@ -927,8 +978,14 @@ public:
             offers (alice, 0),
             owners (alice, 1));
 
+        // Place an offer that should have already expired.
+        // The DepositPreauth amendment changes the return code; adapt to that.
+        bool const featPreauth {features[featureDepositPreauth]};
+
         env (offer (alice, zxcOffer, usdOffer),
-            json (key, lastClose(env)),             ter(tesSUCCESS));
+            json (sfExpiration.fieldName, lastClose(env)),
+            ter (featPreauth ? TER {tecEXPIRED} : TER {tesSUCCESS}));
+
         env.require (
             balance (alice, startBalance - f - f),
             balance (alice, usdOffer),
@@ -936,9 +993,10 @@ public:
             owners (alice, 1));
         env.close();
 
-        // Add an offer that's expires before the next ledger close
+        // Add an offer that expires before the next ledger close
         env (offer (alice, zxcOffer, usdOffer),
-            json (key, lastClose(env) + 1),         ter(tesSUCCESS));
+            json (sfExpiration.fieldName, lastClose(env) + 1),
+            ter(tesSUCCESS));
         env.require (
             balance (alice, startBalance - f - f - f),
             balance (alice, usdOffer),
@@ -967,7 +1025,7 @@ public:
     }
 
     void
-    testUnfundedCross(std::initializer_list<uint256> fs)
+    testUnfundedCross(FeatureBitset features)
     {
         testcase ("Unfunded Crossing");
 
@@ -979,7 +1037,7 @@ public:
         auto const usdOffer = USD (1000);
         auto const zxcOffer = ZXC (1000);
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1033,7 +1091,7 @@ public:
     }
 
     void
-    testSelfCross(bool use_partner, std::initializer_list<uint256> fs)
+    testSelfCross(bool use_partner, FeatureBitset features)
     {
         testcase (std::string("Self-crossing") +
             (use_partner ? ", with partner account" : ""));
@@ -1045,7 +1103,7 @@ public:
         auto const USD = gw["USD"];
         auto const BTC = gw["BTC"];
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1068,15 +1126,15 @@ public:
         // PART 1:
         // we will make two offers that can be used to bridge BTC to USD
         // through ZXC
-        env (offer (account_to_test, BTC (250), ZXC (1000)),
-                 offers (account_to_test, 1));
+        env (offer (account_to_test, BTC (250), ZXC (1000)));
+        env.require (offers(account_to_test, 1));
 
         // validate that the book now shows a BTC for ZXC offer
         BEAST_EXPECT(isOffer(env, account_to_test, BTC(250), ZXC(1000)));
 
         auto const secondLegSeq = env.seq(account_to_test);
-        env (offer (account_to_test, ZXC(1000), USD (50)),
-                 offers (account_to_test, 2));
+        env (offer (account_to_test, ZXC(1000), USD (50)));
+        env.require (offers (account_to_test, 2));
 
         // validate that the book also shows a ZXC for USD offer
         BEAST_EXPECT(isOffer(env, account_to_test, ZXC(1000), USD(50)));
@@ -1094,16 +1152,19 @@ public:
         BEAST_EXPECT(jrr[jss::offers].size() == 0);
 
         // NOTE :
-        // at this point, all offers are expected to be consumed.
-        // alas, they are not - because of a bug in the Taker auto-bridging
-        // implementation (to be replaced in the not-so-distant future).
-        // the current implementation (incorrect) leaves an empty offer in the
-        // second leg of the bridge. validate both the old and the new
-        // behavior.
+        // At this point, all offers are expected to be consumed.
+        // Alas, they are not - because of a bug in the Taker auto-bridging
+        // implementation which is addressed by fixTakerDryOfferRemoval.
+        // The pre-fixTakerDryOfferRemoval implementation (incorrect) leaves
+        // an empty offer in the second leg of the bridge. Validate both the
+        // old and the new behavior.
         {
             auto acctOffers = offersOnAccount (env, account_to_test);
-            BEAST_EXPECT(acctOffers.size() ==
-                (hasFeature (featureFlowCross, fs) ? 0 : 1));
+            bool const noStaleOffers {
+                features[featureFlowCross] ||
+                features[fixTakerDryOfferRemoval]};
+
+            BEAST_EXPECT(acctOffers.size() == (noStaleOffers ? 0 : 1));
             for (auto const& offerPtr : acctOffers)
             {
                 auto const& offer = *offerPtr;
@@ -1119,15 +1180,15 @@ public:
         Json::Value cancelOffer;
         cancelOffer[jss::Account] = account_to_test.human();
         cancelOffer[jss::OfferSequence] = secondLegSeq;
-        cancelOffer[jss::TransactionType] = "OfferCancel";
+        cancelOffer[jss::TransactionType] = jss::OfferCancel;
         env (cancelOffer);
         env.require (offers (account_to_test, 0));
 
         // PART 2:
         // simple direct crossing  BTC to USD and then USD to BTC which causes
         // the first offer to be replaced
-        env (offer (account_to_test, BTC (250), USD (50)),
-                 offers (account_to_test, 1));
+        env (offer (account_to_test, BTC (250), USD (50)));
+        env.require (offers (account_to_test, 1));
 
         // validate that the book shows one BTC for USD offer and no USD for
         // BTC offers
@@ -1139,8 +1200,8 @@ public:
 
         // this second offer would self-cross directly, so it causes the first
         // offer by the same owner/taker to be removed
-        env (offer (account_to_test, USD (50), BTC (250)),
-                 offers (account_to_test, 1));
+        env (offer (account_to_test, USD (50), BTC (250)));
+        env.require (offers (account_to_test, 1));
 
         // validate that we now have just the second offer...the first
         // was removed
@@ -1152,7 +1213,7 @@ public:
     }
 
     void
-    testNegativeBalance(std::initializer_list<uint256> fs)
+    testNegativeBalance(FeatureBitset features)
     {
         // This test creates an offer test for negative balance
         // with transfer fees and miniscule funds.
@@ -1160,7 +1221,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1220,8 +1281,7 @@ public:
         // algorithms becomes apparent.  The old offer crossing would consume
         // small_amount and transfer no ZXC.  The new offer crossing transfers
         // a single drop, rather than no drops.
-        auto const crossingDelta =
-            (hasFeature (featureFlowCross, fs) ? drops (1) : drops (0));
+        auto const crossingDelta = features[featureFlowCross] ? drops (1) : drops (0);
 
         jrr = ledgerEntryState (env, alice, gw, "USD");
         BEAST_EXPECT(jrr[jss::node][sfBalance.fieldName][jss::value] == "50");
@@ -1239,7 +1299,7 @@ public:
     }
 
     void
-    testOfferCrossWithZXC(bool reverse_order, std::initializer_list<uint256> fs)
+    testOfferCrossWithZXC(bool reverse_order, FeatureBitset features)
     {
         testcase (std::string("Offer Crossing with ZXC, ") +
                 (reverse_order ? "Reverse" : "Normal") +
@@ -1247,7 +1307,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1301,13 +1361,13 @@ public:
     }
 
     void
-    testOfferCrossWithLimitOverride(std::initializer_list<uint256> fs)
+    testOfferCrossWithLimitOverride(FeatureBitset features)
     {
         testcase ("Offer Crossing with Limit Override");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1351,13 +1411,13 @@ public:
     }
 
     void
-    testOfferAcceptThenCancel(std::initializer_list<uint256> fs)
+    testOfferAcceptThenCancel(FeatureBitset features)
     {
         testcase ("Offer Accept then Cancel.");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1372,7 +1432,7 @@ public:
         Json::Value cancelOffer;
         cancelOffer[jss::Account] = env.master.human();
         cancelOffer[jss::OfferSequence] = nextOfferSeq;
-        cancelOffer[jss::TransactionType] = "OfferCancel";
+        cancelOffer[jss::TransactionType] = jss::OfferCancel;
         env (cancelOffer);
         BEAST_EXPECT(env.seq (env.master) == nextOfferSeq + 2);
 
@@ -1383,14 +1443,14 @@ public:
     }
 
     void
-    testOfferCancelPastAndFuture(std::initializer_list<uint256> fs)
+    testOfferCancelPastAndFuture(FeatureBitset features)
     {
 
         testcase ("Offer Cancel Past and Future Sequence.");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1404,7 +1464,7 @@ public:
         Json::Value cancelOffer;
         cancelOffer[jss::Account] = env.master.human();
         cancelOffer[jss::OfferSequence] = nextOfferSeq;
-        cancelOffer[jss::TransactionType] = "OfferCancel";
+        cancelOffer[jss::TransactionType] = jss::OfferCancel;
         env (cancelOffer);
 
         cancelOffer[jss::OfferSequence] = env.seq (env.master);
@@ -1418,13 +1478,13 @@ public:
     }
 
     void
-    testCurrencyConversionEntire(std::initializer_list<uint256> fs)
+    testCurrencyConversionEntire(FeatureBitset features)
     {
         testcase ("Currency Conversion: Entire Offer");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1456,7 +1516,8 @@ public:
         BEAST_EXPECT(
             jro[jss::node][jss::TakerGets] == ZXC (500).value ().getText ());
         BEAST_EXPECT(
-            jro[jss::node][jss::TakerPays] == USD (100).value ().getJson (0));
+            jro[jss::node][jss::TakerPays] ==
+            USD (100).value ().getJson (JsonOptions::none));
 
         env (pay (alice, alice, ZXC (500)), sendmax (USD (100)));
 
@@ -1483,13 +1544,13 @@ public:
     }
 
     void
-    testCurrencyConversionIntoDebt(std::initializer_list<uint256> fs)
+    testCurrencyConversionIntoDebt(FeatureBitset features)
     {
         testcase ("Currency Conversion: Offerer Into Debt");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1516,13 +1577,13 @@ public:
     }
 
     void
-    testCurrencyConversionInParts(std::initializer_list<uint256> fs)
+    testCurrencyConversionInParts(FeatureBitset features)
     {
         testcase ("Currency Conversion: In Parts");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1550,7 +1611,8 @@ public:
         BEAST_EXPECT(
             jro[jss::node][jss::TakerGets] == ZXC (300).value ().getText ());
         BEAST_EXPECT(
-            jro[jss::node][jss::TakerPays] == USD (60).value ().getJson (0));
+            jro[jss::node][jss::TakerPays] ==
+            USD (60).value ().getJson (JsonOptions::none));
 
         // the balance between alice and gw is 160 USD..200 less the 40 taken
         // by the offer
@@ -1608,13 +1670,13 @@ public:
     }
 
     void
-    testCrossCurrencyStartZXC(std::initializer_list<uint256> fs)
+    testCrossCurrencyStartZXC(FeatureBitset features)
     {
         testcase ("Cross Currency Payment: Start with ZXC");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1646,19 +1708,20 @@ public:
 
         auto jro = ledgerEntryOffer (env, carol, carolOfferSeq);
         BEAST_EXPECT(
-            jro[jss::node][jss::TakerGets] == USD (25).value ().getJson (0));
+            jro[jss::node][jss::TakerGets] ==
+            USD (25).value ().getJson (JsonOptions::none));
         BEAST_EXPECT(
             jro[jss::node][jss::TakerPays] == ZXC (250).value ().getText ());
     }
 
     void
-    testCrossCurrencyEndZXC(std::initializer_list<uint256> fs)
+    testCrossCurrencyEndZXC(FeatureBitset features)
     {
         testcase ("Cross Currency Payment: End with ZXC");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1700,17 +1763,18 @@ public:
         BEAST_EXPECT(
             jro[jss::node][jss::TakerGets] == ZXC (250).value ().getText ());
         BEAST_EXPECT(
-            jro[jss::node][jss::TakerPays] == USD (25).value ().getJson (0));
+            jro[jss::node][jss::TakerPays] ==
+            USD (25).value ().getJson (JsonOptions::none));
     }
 
     void
-    testCrossCurrencyBridged(std::initializer_list<uint256> fs)
+    testCrossCurrencyBridged(FeatureBitset features)
     {
         testcase ("Cross Currency Payment: Bridged");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1763,24 +1827,100 @@ public:
         BEAST_EXPECT(
             jro[jss::node][jss::TakerGets] == ZXC (200).value ().getText ());
         BEAST_EXPECT(
-            jro[jss::node][jss::TakerPays] == USD (20).value ().getJson (0));
+            jro[jss::node][jss::TakerPays] ==
+            USD (20).value ().getJson (JsonOptions::none));
 
         jro = ledgerEntryOffer (env, dan, danOfferSeq);
         BEAST_EXPECT(
             jro[jss::node][jss::TakerGets] ==
-            gw2["EUR"] (20).value ().getJson (0));
+            gw2["EUR"] (20).value ().getJson (JsonOptions::none));
         BEAST_EXPECT(
             jro[jss::node][jss::TakerPays] == ZXC (200).value ().getText ());
     }
 
     void
-    testOfferFeesConsumeFunds(std::initializer_list<uint256> fs)
+    testBridgedSecondLegDry(FeatureBitset features)
+    {
+        // At least with Taker bridging, a sensitivity was identified if the
+        // second leg goes dry before the first one.  This test exercises that
+        // case.
+        testcase ("Auto Bridged Second Leg Dry");
+
+        using namespace jtx;
+        Env env(*this, features);
+        auto const closeTime =
+            fix1449Time() +
+                100 * env.closed()->info().closeTimeResolution;
+        env.close (closeTime);
+
+        Account const alice {"alice"};
+        Account const bob {"bob"};
+        Account const carol {"carol"};
+        Account const gw {"gateway"};
+        auto const USD = gw["USD"];
+        auto const EUR = gw["EUR"];
+
+        env.fund(ZXC(100000000), alice, bob, carol, gw);
+
+        env.trust(USD(10), alice);
+        env.close();
+        env(pay(gw, alice, USD(10)));
+        env.trust(USD(10), carol);
+        env.close();
+        env(pay(gw, carol, USD(3)));
+
+        env (offer (alice, EUR(2), ZXC(1)));
+        env (offer (alice, EUR(2), ZXC(1)));
+
+        env (offer (alice, ZXC(1), USD(4)));
+        env (offer (carol, ZXC(1), USD(3)));
+        env.close();
+
+        // Bob offers to buy 10 USD for 10 EUR.
+        //  1. He spends 2 EUR taking Alice's auto-bridged offers and
+        //     gets 4 USD for that.
+        //  2. He spends another 2 EUR taking Alice's last EUR->ZXC offer and
+        //     Carol's ZXC-USD offer.  He gets 3 USD for that.
+        // The key for this test is that Alice's ZXC->USD leg goes dry before
+        // Alice's EUR->ZXC.  The ZXC->USD leg is the second leg which showed
+        // some sensitivity.
+        env.trust(EUR(10), bob);
+        env.close();
+        env(pay(gw, bob, EUR(10)));
+        env.close();
+        env(offer(bob, USD(10), EUR(10)));
+        env.close();
+
+        env.require (balance(bob, USD(7)));
+        env.require (balance(bob, EUR(6)));
+        env.require (offers (bob, 1));
+        env.require (owners (bob, 3));
+
+        env.require (balance(alice, USD(6)));
+        env.require (balance(alice, EUR(4)));
+        env.require (offers(alice, 0));
+        env.require (owners(alice, 2));
+
+        env.require (balance(carol, USD(0)));
+        env.require (balance(carol, EUR(none)));
+        // If neither featureFlowCross nor fixTakerDryOfferRemoval are defined
+        // then carol's offer will be left on the books, but with zero value.
+        int const emptyOfferCount {
+            features[featureFlowCross] ||
+            features[fixTakerDryOfferRemoval] ? 0 : 1};
+
+        env.require (offers(carol, 0 + emptyOfferCount));
+        env.require (owners(carol, 1 + emptyOfferCount));
+    }
+
+    void
+    testOfferFeesConsumeFunds(FeatureBitset features)
     {
         testcase ("Offer Fees Consume Funds");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1832,13 +1972,13 @@ public:
     }
 
     void
-    testOfferCreateThenCross(std::initializer_list<uint256> fs)
+    testOfferCreateThenCross(FeatureBitset features)
     {
         testcase ("Offer Create, then Cross");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1872,13 +2012,13 @@ public:
     }
 
     void
-    testSellFlagBasic(std::initializer_list<uint256> fs)
+    testSellFlagBasic(FeatureBitset features)
     {
         testcase ("Offer tfSell: Basic Sell");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1918,13 +2058,13 @@ public:
     }
 
     void
-    testSellFlagExceedLimit(std::initializer_list<uint256> fs)
+    testSellFlagExceedLimit(FeatureBitset features)
     {
         testcase ("Offer tfSell: 2x Sell Exceed Limit");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -1966,13 +2106,13 @@ public:
     }
 
     void
-    testGatewayCrossCurrency(std::initializer_list<uint256> fs)
+    testGatewayCrossCurrency(FeatureBitset features)
     {
         testcase ("Client Issue #535: Gateway Cross Currency");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -2016,7 +2156,7 @@ public:
         payment[jss::tx_json][jss::Fee] =
             std::to_string( env.current ()->fees ().base);
         payment[jss::tx_json][jss::SendMax] =
-            bob ["XTS"] (1.5).value ().getJson (0);
+            bob ["XTS"] (1.5).value ().getJson (JsonOptions::none);
         auto jrr = wsc->invoke("submit", payment);
         BEAST_EXPECT(jrr[jss::status] == "success");
         BEAST_EXPECT(jrr[jss::result][jss::engine_result] == "tesSUCCESS");
@@ -2069,7 +2209,7 @@ public:
         }
     }
 
-    void testPartialCross (std::initializer_list<uint256> fs)
+    void testPartialCross (FeatureBitset features)
     {
         // Test a number of different corner cases regarding adding a
         // possibly crossable offer to an account.  The test is table
@@ -2081,7 +2221,7 @@ public:
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -2229,7 +2369,7 @@ public:
     }
 
     void
-    testZXCDirectCross (std::initializer_list<uint256> fs)
+    testZXCDirectCross (FeatureBitset features)
     {
         testcase ("ZXC Direct Crossing");
 
@@ -2243,7 +2383,7 @@ public:
         auto const usdOffer = USD(1000);
         auto const zxcOffer = ZXC(1000);
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -2313,7 +2453,7 @@ public:
    }
 
     void
-    testDirectCross (std::initializer_list<uint256> fs)
+    testDirectCross (FeatureBitset features)
     {
         testcase ("Direct Crossing");
 
@@ -2328,7 +2468,7 @@ public:
         auto const usdOffer = USD(1000);
         auto const eurOffer = EUR(1000);
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -2409,7 +2549,7 @@ public:
     }
 
     void
-    testBridgedCross (std::initializer_list<uint256> fs)
+    testBridgedCross (FeatureBitset features)
     {
         testcase ("Bridged Crossing");
 
@@ -2425,7 +2565,7 @@ public:
         auto const usdOffer = USD(1000);
         auto const eurOffer = EUR(1000);
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -2511,7 +2651,7 @@ public:
     }
 
     void
-    testSellOffer (std::initializer_list<uint256> fs)
+    testSellOffer (FeatureBitset features)
     {
         // Test a number of different corner cases regarding offer crossing
         // when the tfSell flag is set.  The test is table driven so it
@@ -2523,7 +2663,7 @@ public:
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -2687,7 +2827,7 @@ public:
     }
 
     void
-    testSellWithFillOrKill (std::initializer_list<uint256> fs)
+    testSellWithFillOrKill (FeatureBitset features)
     {
         // Test a number of different corner cases regarding offer crossing
         // when both the tfSell flag and tfFillOrKill flags are set.
@@ -2700,13 +2840,17 @@ public:
         auto const bob   = Account("bob");
         auto const USD   = gw["USD"];
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
         env.close (closeTime);
 
         env.fund (ZXC(10000000), gw, alice, bob);
+
+        // Code returned if an offer is killed.
+        TER const killedCode {
+            features[fix1578] ? TER {tecKILLED} : TER {tesSUCCESS}};
 
         // bob offers ZXC for USD.
         env (trust(bob, USD(200)));
@@ -2717,8 +2861,8 @@ public:
         env.close();
         {
             // alice submits a tfSell | tfFillOrKill offer that does not cross.
-            // It's still a tesSUCCESS, since the offer was successfully killed.
-            env (offer(alice, USD(21), ZXC(2100), tfSell | tfFillOrKill));
+            env (offer(alice, USD(21), ZXC(2100),
+                tfSell | tfFillOrKill), ter (killedCode));
             env.close();
             env.require (balance (alice, USD(none)));
             env.require (offers (alice, 0));
@@ -2751,7 +2895,8 @@ public:
             // all of the offer is consumed.
 
             // We're using bob's left-over offer for ZXC(500), USD(5)
-            env (offer(alice, USD(1), ZXC(501), tfSell | tfFillOrKill));
+            env (offer(alice, USD(1), ZXC(501),
+                tfSell | tfFillOrKill), ter (killedCode));
             env.close();
             env.require (balance (alice, USD(35)));
             env.require (offers (alice, 0));
@@ -2771,7 +2916,7 @@ public:
     }
 
     void
-    testTransferRateOffer (std::initializer_list<uint256> fs)
+    testTransferRateOffer (FeatureBitset features)
     {
         testcase ("Transfer Rate Offer");
 
@@ -2780,7 +2925,7 @@ public:
         auto const gw1 = Account("gateway1");
         auto const USD = gw1["USD"];
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3084,7 +3229,7 @@ public:
     }
 
     void
-    testSelfCrossOffer1 (std::initializer_list<uint256> fs)
+    testSelfCrossOffer1 (FeatureBitset features)
     {
         // The following test verifies some correct but slightly surprising
         // behavior in offer crossing.  The scenario:
@@ -3105,7 +3250,7 @@ public:
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3158,7 +3303,7 @@ public:
     }
 
     void
-    testSelfCrossOffer2 (std::initializer_list<uint256> fs)
+    testSelfCrossOffer2 (FeatureBitset features)
     {
         using namespace jtx;
 
@@ -3168,7 +3313,7 @@ public:
         auto const USD = gw1["USD"];
         auto const EUR = gw2["EUR"];
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3273,15 +3418,15 @@ public:
     }
 
     void
-    testSelfCrossOffer (std::initializer_list<uint256> fs)
+    testSelfCrossOffer (FeatureBitset features)
     {
         testcase ("Self Cross Offer");
-        testSelfCrossOffer1 (fs);
-        testSelfCrossOffer2 (fs);
+        testSelfCrossOffer1 (features);
+        testSelfCrossOffer2 (features);
     }
 
     void
-    testSelfIssueOffer (std::initializer_list<uint256> fs)
+    testSelfIssueOffer (FeatureBitset features)
     {
         // Folks who issue their own currency have, in effect, as many
         // funds as they are trusted for.  This test used to fail because
@@ -3289,7 +3434,7 @@ public:
         // correctly now.
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3330,7 +3475,7 @@ public:
     }
 
     void
-    testBadPathAssert (std::initializer_list<uint256> fs)
+    testBadPathAssert (FeatureBitset features)
     {
         // At one point in the past this invalid path caused an assert.  It
         // should not be possible for user-supplied data to cause an assert.
@@ -3341,7 +3486,7 @@ public:
 
         // The problem was identified when featureOwnerPaysFee was enabled,
         // so make sure that gets included.
-        Env env {*this, with_features(fs) | with_features(featureOwnerPaysFee)};
+        Env env {*this, features | featureOwnerPaysFee};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3391,7 +3536,7 @@ public:
 
             // Determine which TEC code we expect.
             TER const tecExpect =
-                hasFeature(featureFlow, fs) ? temBAD_PATH : tecPATH_DRY;
+                features[featureFlow] ? TER {temBAD_PATH} : TER {tecPATH_DRY};
 
             // This payment caused the assert.
             env (pay (ann, ann, D_BUX(30)),
@@ -3409,7 +3554,7 @@ public:
         }
     }
 
-    void testDirectToDirectPath (std::initializer_list<uint256> fs)
+    void testDirectToDirectPath (FeatureBitset features)
     {
         // The offer crossing code expects that a DirectStep is always
         // preceded by a BookStep.  In one instance the default path
@@ -3419,7 +3564,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3465,7 +3610,7 @@ public:
         env.require (offers (cam, 0));
     }
 
-    void testSelfCrossLowQualityOffer (std::initializer_list<uint256> fs)
+    void testSelfCrossLowQualityOffer (FeatureBitset features)
     {
         // The Flow offer crossing code used to assert if an offer was made
         // for more ZXC than the offering account held.  This unit test
@@ -3474,7 +3619,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3504,7 +3649,7 @@ public:
             BTC(0.687), drops(20000000000)), ter (tecINSUF_RESERVE_OFFER));
     }
 
-    void testOfferInScaling (std::initializer_list<uint256> fs)
+    void testOfferInScaling (FeatureBitset features)
     {
         // The Flow offer crossing code had a case where it was not rounding
         // the offer crossing correctly after a partial crossing.  The
@@ -3514,7 +3659,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3554,7 +3699,7 @@ public:
         }
     }
 
-    void testOfferInScalingWithXferRate (std::initializer_list<uint256> fs)
+    void testOfferInScalingWithXferRate (FeatureBitset features)
     {
         // After adding the previous case, there were still failing rounding
         // cases in Flow offer crossing.  This one was because the gateway
@@ -3563,7 +3708,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3608,7 +3753,7 @@ public:
         }
     }
 
-    void testOfferThresholdWithReducedFunds (std::initializer_list<uint256> fs)
+    void testOfferThresholdWithReducedFunds (FeatureBitset features)
     {
         // Another instance where Flow offer crossing was not always
         // working right was if the Taker had fewer funds than the Offer
@@ -3617,7 +3762,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time () +
                 100 * env.closed ()->info ().closeTimeResolution;
@@ -3670,13 +3815,13 @@ public:
         }
     }
 
-    void testTinyOffer (std::initializer_list<uint256> fs)
+    void testTinyOffer (FeatureBitset features)
     {
         testcase ("Tiny Offer");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time() +
                 100 * env.closed()->info().closeTimeResolution;
@@ -3719,7 +3864,7 @@ public:
         env.require (balance (bob, startZxcBalance - (fee * 2) + drops(1)));
     }
 
-    void testSelfPayXferFeeOffer (std::initializer_list<uint256> fs)
+    void testSelfPayXferFeeOffer (FeatureBitset features)
     {
         testcase ("Self Pay Xfer Fee");
         // The old offer crossing code does not charge a transfer fee
@@ -3759,7 +3904,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time() +
                 100 * env.closed()->info().closeTimeResolution;
@@ -3875,7 +4020,7 @@ public:
         }
     }
 
-    void testSelfPayUnlimitedFunds (std::initializer_list<uint256> fs)
+    void testSelfPayUnlimitedFunds (FeatureBitset features)
     {
         testcase ("Self Pay Unlimited Funds");
         // The Taker offer crossing code recognized when Alice was paying
@@ -3911,7 +4056,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time() +
                 100 * env.closed()->info().closeTimeResolution;
@@ -3965,8 +4110,7 @@ public:
         };
 
         // Pick the right tests.
-        auto const& tests =
-            hasFeature(featureFlowCross, fs) ? flowTests : takerTests;
+        auto const& tests = features[featureFlowCross] ? flowTests : takerTests;
 
         for (auto const& t : tests)
         {
@@ -4034,13 +4178,13 @@ public:
         }
     }
 
-    void testRequireAuth (std::initializer_list<uint256> fs)
+    void testRequireAuth (FeatureBitset features)
     {
         testcase ("lsfRequireAuth");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time() +
                 100 * env.closed()->info().closeTimeResolution;
@@ -4088,7 +4232,7 @@ public:
         env.require (balance (bob, gwUSD(10)));
     }
 
-    void testMissingAuth (std::initializer_list<uint256> fs)
+    void testMissingAuth (FeatureBitset features)
     {
         testcase ("Missing Auth");
         // 1. alice creates an offer to acquire USD/gw, an asset for which
@@ -4112,7 +4256,7 @@ public:
 
         using namespace jtx;
 
-        Env env {*this, with_features(fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time() +
                 100 * env.closed()->info().closeTimeResolution;
@@ -4155,7 +4299,7 @@ public:
         env.close();
         std::uint32_t const bobOfferSeq = env.seq (bob) - 1;
 
-        bool const flowCross = hasFeature (featureFlowCross, fs);
+        bool const flowCross = features[featureFlowCross];
 
         env.require (offers (alice, 0));
         if (flowCross)
@@ -4229,12 +4373,12 @@ public:
         env.require (balance (bob, gwUSD(10)));
     }
 
-    void testRCSmoketest(std::initializer_list<uint256> fs)
+    void testRCSmoketest(FeatureBitset features)
     {
         testcase("RippleConnect Smoketest payment flow");
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time() +
                 100 * env.closed()->info().closeTimeResolution;
@@ -4321,13 +4465,13 @@ public:
         env (pay (hotUS, coldEU, EUR(10)), sendmax (USD(11.1223326)));
     }
 
-    void testSelfAuth (std::initializer_list<uint256> fs)
+    void testSelfAuth (FeatureBitset features)
     {
         testcase ("Self Auth");
 
         using namespace jtx;
 
-        Env env {*this, with_features (fs)};
+        Env env {*this, features};
         auto const closeTime =
             fix1449Time() +
                 100 * env.closed()->info().closeTimeResolution;
@@ -4360,21 +4504,20 @@ public:
         env(fset (gw, asfRequireAuth));
         env.close();
 
-        // The test behaves differently with or without FlowCross.
-        bool const flowCross =
-            std::find (fs.begin(), fs.end(), featureFlowCross) != fs.end();
+        // The test behaves differently with or without DepositPreauth.
+        bool const preauth = features[featureDepositPreauth];
 
-        // Before FlowCross an account with lsfRequireAuth set could not
-        // create an offer to buy their own currency.  After FlowCross
+        // Before DepositPreauth an account with lsfRequireAuth set could not
+        // create an offer to buy their own currency.  After DepositPreauth
         // they can.
         env (offer (gw, gwUSD(40), ZXC(4000)),
-            ter (flowCross ? tesSUCCESS : tecNO_LINE));
+            ter (preauth ? TER {tesSUCCESS} : TER {tecNO_LINE}));
         env.close();
 
-        env.require (offers (gw, flowCross ? 1 : 0));
+        env.require (offers (gw, preauth ? 1 : 0));
 
-        if (!flowCross)
-            // The rest of the test verifies FlowCross behavior.
+        if (!preauth)
+            // The rest of the test verifies DepositPreauth behavior.
             return;
 
         // Set up an authorized trust line and pay alice gwUSD 50.
@@ -4397,15 +4540,18 @@ public:
         env.require (offers (gw, 0));
     }
 
-    void testTickSize (std::initializer_list<uint256> fs)
+    void testTickSize (FeatureBitset features)
     {
         testcase ("Tick Size");
 
         using namespace jtx;
 
+        // Should be called with TickSize enabled.
+        BEAST_EXPECT(features[featureTickSize]);
+
         // Try to set tick size without enabling feature
         {
-            Env env {*this, with_features(fs)};
+            Env env{*this, features - featureTickSize};
             auto const gw = Account {"gateway"};
             env.fund (ZXC(10000), gw);
 
@@ -4414,11 +4560,9 @@ public:
             env(txn, ter(temDISABLED));
         }
 
-        auto const fsPlus = with_features(fs) | with_features(featureTickSize);
-
         // Try to set tick size out of range
         {
-            Env env {*this, fsPlus};
+            Env env {*this, features};
             auto const gw = Account {"gateway"};
             env.fund (ZXC(10000), gw);
 
@@ -4447,11 +4591,11 @@ public:
             env(txn, ter (temBAD_TICK_SIZE));
 
             txn[sfTickSize.fieldName] = 0;
-            env(txn, tesSUCCESS);
+            env(txn);
             BEAST_EXPECT (! env.le(gw)->isFieldPresent (sfTickSize));
         }
 
-        Env env {*this, fsPlus};
+        Env env {*this, features};
         auto const gw = Account {"gateway"};
         auto const alice = Account {"alice"};
         auto const XTS = gw["XTS"];
@@ -4519,74 +4663,111 @@ public:
         BEAST_EXPECT (++it == offers.end());
     }
 
-    void run ()
+    void testAll(FeatureBitset features)
     {
-        auto testAll = [this](std::initializer_list<uint256> fs) {
-            testCanceledOffer(fs);
-            testRmFundedOffer(fs);
-            testTinyPayment(fs);
-            testZXCTinyPayment(fs);
-            testEnforceNoRipple(fs);
-            testInsufficientReserve(fs);
-            testFillModes(fs);
-            testMalformed(fs);
-            testExpiration(fs);
-            testUnfundedCross(fs);
-            testSelfCross(false, fs);
-            testSelfCross(true, fs);
-            testNegativeBalance(fs);
-            testOfferCrossWithZXC(true, fs);
-            testOfferCrossWithZXC(false, fs);
-            testOfferCrossWithLimitOverride(fs);
-            testOfferAcceptThenCancel(fs);
-            testOfferCancelPastAndFuture(fs);
-            testCurrencyConversionEntire(fs);
-            testCurrencyConversionIntoDebt(fs);
-            testCurrencyConversionInParts(fs);
-            testCrossCurrencyStartZXC(fs);
-            testCrossCurrencyEndZXC(fs);
-            testCrossCurrencyBridged(fs);
-            testOfferFeesConsumeFunds(fs);
-            testOfferCreateThenCross(fs);
-            testSellFlagBasic(fs);
-            testSellFlagExceedLimit(fs);
-            testGatewayCrossCurrency(fs);
-            testPartialCross (fs);
-            testZXCDirectCross (fs);
-            testDirectCross (fs);
-            testBridgedCross (fs);
-            testSellOffer (fs);
-            testSellWithFillOrKill (fs);
-            testTransferRateOffer(fs);
-            testSelfCrossOffer (fs);
-            testSelfIssueOffer (fs);
-            testBadPathAssert (fs);
-            testDirectToDirectPath (fs);
-            testSelfCrossLowQualityOffer (fs);
-            testOfferInScaling (fs);
-            testOfferInScalingWithXferRate (fs);
-            testOfferThresholdWithReducedFunds (fs);
-            testTinyOffer (fs);
-            testSelfPayXferFeeOffer (fs);
-            testSelfPayUnlimitedFunds (fs);
-            testRequireAuth (fs);
-            testMissingAuth (fs);
-            testRCSmoketest (fs);
-            testSelfAuth (fs);
-            testTickSize (fs);
-        };
-// The first three test variants below passed at one time in the past (and
-// should still pass) but are commented out to conserve test time.
-//        testAll(jtx::no_features                         );
-//        testAll({                      featureFlowCross });
-//        testAll({featureFlow                            });
-        testAll({featureFlow,          featureFlowCross });
-        testAll({featureFlow, fix1373                   });
-        testAll({featureFlow, fix1373, featureFlowCross });
+        testCanceledOffer(features);
+        testRmFundedOffer(features);
+        testTinyPayment(features);
+        testZXCTinyPayment(features);
+        testEnforceNoRipple(features);
+        testInsufficientReserve(features);
+        testFillModes(features);
+        testMalformed(features);
+        testExpiration(features);
+        testUnfundedCross(features);
+        testSelfCross(false, features);
+        testSelfCross(true, features);
+        testNegativeBalance(features);
+        testOfferCrossWithZXC(true, features);
+        testOfferCrossWithZXC(false, features);
+        testOfferCrossWithLimitOverride(features);
+        testOfferAcceptThenCancel(features);
+        testOfferCancelPastAndFuture(features);
+        testCurrencyConversionEntire(features);
+        testCurrencyConversionIntoDebt(features);
+        testCurrencyConversionInParts(features);
+        testCrossCurrencyStartZXC(features);
+        testCrossCurrencyEndZXC(features);
+        testCrossCurrencyBridged(features);
+        testBridgedSecondLegDry(features);
+        testOfferFeesConsumeFunds(features);
+        testOfferCreateThenCross(features);
+        testSellFlagBasic(features);
+        testSellFlagExceedLimit(features);
+        testGatewayCrossCurrency(features);
+        testPartialCross (features);
+        testZXCDirectCross (features);
+        testDirectCross (features);
+        testBridgedCross (features);
+        testSellOffer (features);
+        testSellWithFillOrKill (features);
+        testTransferRateOffer(features);
+        testSelfCrossOffer (features);
+        testSelfIssueOffer (features);
+        testBadPathAssert (features);
+        testDirectToDirectPath (features);
+        testSelfCrossLowQualityOffer (features);
+        testOfferInScaling (features);
+        testOfferInScalingWithXferRate (features);
+        testOfferThresholdWithReducedFunds (features);
+        testTinyOffer (features);
+        testSelfPayXferFeeOffer (features);
+        testSelfPayUnlimitedFunds (features);
+        testRequireAuth (features);
+        testMissingAuth (features);
+        testRCSmoketest (features);
+        testSelfAuth (features);
+        testTickSize (features | featureTickSize);
+    }
+
+    void run () override
+    {
+        using namespace jtx;
+        FeatureBitset const all{supported_amendments()};
+        FeatureBitset const f1373{fix1373};
+        FeatureBitset const flowCross{featureFlowCross};
+        FeatureBitset const takerDryOffer{fixTakerDryOfferRemoval};
+
+        testAll(all - f1373             - takerDryOffer);
+        testAll(all         - flowCross - takerDryOffer);
+        testAll(all         - flowCross                );
+        testAll(all                                    );
     }
 };
 
-BEAST_DEFINE_TESTSUITE (Offer, tx, ripple);
+class Offer_manual_test : public Offer_test
+{
+    void run() override
+    {
+        using namespace jtx;
+        FeatureBitset const all{supported_amendments()};
+        FeatureBitset const flow{featureFlow};
+        FeatureBitset const f1373{fix1373};
+        FeatureBitset const flowCross{featureFlowCross};
+        FeatureBitset const f1513{fix1513};
+        FeatureBitset const takerDryOffer{fixTakerDryOfferRemoval};
+
+        testAll(all                - flow - f1373 - flowCross - f1513);
+        testAll(all                - flow - f1373 - flowCross        );
+        testAll(all                - flow - f1373             - f1513);
+        testAll(all                - flow - f1373                    );
+        testAll(all                       - f1373 - flowCross - f1513);
+        testAll(all                       - f1373 - flowCross        );
+        testAll(all                       - f1373             - f1513);
+        testAll(all                       - f1373                    );
+        testAll(all                               - flowCross - f1513);
+        testAll(all                               - flowCross        );
+        testAll(all                                           - f1513);
+        testAll(all                                                  );
+
+        testAll(all                - flow - f1373 - flowCross - takerDryOffer);
+        testAll(all                - flow - f1373             - takerDryOffer);
+        testAll(all                       - f1373 - flowCross - takerDryOffer);
+    }
+};
+
+BEAST_DEFINE_TESTSUITE_PRIO (Offer, tx, ripple, 4);
+BEAST_DEFINE_TESTSUITE_MANUAL_PRIO (Offer_manual, tx, ripple, 20);
 
 }  // test
 }  // ripple

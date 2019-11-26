@@ -20,7 +20,7 @@
 #ifndef RIPPLE_OVERLAY_MESSAGE_H_INCLUDED
 #define RIPPLE_OVERLAY_MESSAGE_H_INCLUDED
 
-#include "ripple.pb.h"
+#include <ripple/protocol/messages.h>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <algorithm>
@@ -51,8 +51,19 @@ public:
 
 public:
     /** Number of bytes in a message header.
+
+        A message will not be processed unless a full header is received and
+        no messages smaller than this will be serialized.
     */
-    static size_t const kHeaderBytes = 6;
+    static std::size_t constexpr kHeaderBytes = 6;
+
+    /** The largest size that a message can be.
+
+        Sending a message whose size exceeds this may result in the connection
+        being dropped. A larger message size may be supported in the future or
+        negotiated as part of a protocol upgrade.
+     */
+    static std::size_t constexpr kMaxMessageSize = 64 * 1024 * 1024;
 
     Message (::google::protobuf::Message const& message, int type);
 
@@ -64,7 +75,7 @@ public:
     }
 
     /** Get the traffic category */
-    int
+    std::size_t
     getCategory () const
     {
         return mCategory;
@@ -156,7 +167,7 @@ private:
 
     std::vector <uint8_t> mBuffer;
 
-    int mCategory;
+    std::size_t mCategory;
 };
 
 }

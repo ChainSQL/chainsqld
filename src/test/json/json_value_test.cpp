@@ -17,11 +17,14 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/json/json_value.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/json/json_writer.h>
 #include <ripple/beast/unit_test.h>
 #include <ripple/beast/type_name.h>
+
+#include <algorithm>
+#include <regex>
 
 namespace ripple {
 
@@ -222,7 +225,125 @@ struct json_value_test : beast::unit_test::suite
         testGreaterThan ("big");
     }
 
-    void run ()
+    void test_compact ()
+    {
+        Json::Value j;
+        Json::Reader r;
+        char const* s ("{\"array\":[{\"12\":23},{},null,false,0.5]}");
+
+        auto countLines = [](std::string const & s)
+        {
+            return 1 + std::count_if(s.begin(), s.end(), [](char c){
+                return c == '\n';
+            });
+        };
+
+        BEAST_EXPECT(r.parse(s,j));
+        {
+            std::stringstream ss;
+            ss << j;
+            BEAST_EXPECT(countLines(ss.str()) > 1);
+        }
+        {
+            std::stringstream ss;
+            ss << Json::Compact(std::move(j));
+            BEAST_EXPECT(countLines(ss.str()) == 1);
+        }
+    }
+
+    void test_conversions ()
+    {
+      // We have Json::Int, but not Json::Double or Json::Real.
+      // We have Json::Int, Json::Value::Int, and Json::ValueType::intValue.
+      // We have Json::ValueType::realValue but Json::Value::asDouble.
+      // TODO: What's the thinking here?
+      {
+        // null
+        Json::Value val;
+        BEAST_EXPECT(val.isNull());
+        BEAST_EXPECT(val.asString() == "");
+      }
+      {
+        // bool
+        Json::Value val = true;
+        BEAST_EXPECT(val.asString() == "true");
+      }
+      {
+        // int
+        Json::Value val = -1234;
+        BEAST_EXPECT(val.asString() == "-1234");
+      }
+      {
+        // uint
+        Json::Value val = 1234U;
+        BEAST_EXPECT(val.asString() == "1234");
+      }
+      {
+        // real
+        Json::Value val = 2.0;
+        BEAST_EXPECT(std::regex_match(
+              val.asString(), std::regex("^2\\.0*$")));
+      }
+    }
+
+    void test_nest_limits ()
+    {
+        Json::Reader r;
+        {
+            auto nest = [](std::uint32_t depth)->std::string {
+                    std::string s = "{";
+                    for (std::uint32_t i{1}; i <= depth; ++i)
+                        s += "\"obj\":{";
+                    for (std::uint32_t i{1}; i <= depth; ++i)
+                        s += "}";
+                    s += "}";
+                    return s;
+                };
+
+            {
+                // Within object nest limit
+                auto json{nest(std::min(10u, Json::Reader::nest_limit))};
+                Json::Value j;
+                BEAST_EXPECT(r.parse(json, j));
+            }
+
+            {
+                // Exceed object nest limit
+                auto json{nest(Json::Reader::nest_limit + 1)};
+                Json::Value j;
+                BEAST_EXPECT(!r.parse(json, j));
+            }
+        }
+
+        auto nest = [](std::uint32_t depth)->std::string {
+            std::string s = "{";
+                for (std::uint32_t i{1}; i <= depth; ++i)
+                    s += "\"array\":[{";
+                for (std::uint32_t i{1}; i <= depth; ++i)
+                    s += "]}";
+                s += "}";
+                return s;
+            };
+        {
+            // Exceed array nest limit
+            auto json{nest(Json::Reader::nest_limit + 1)};
+            Json::Value j;
+            BEAST_EXPECT(!r.parse(json, j));
+        }
+    }
+
+  void
+    test_leak()
+    {
+      // When run with the address sanitizer, this test confirms there is no
+      // memory leak with the scenario below.
+      Json::Value a;
+      a[0u] = 1;
+      a = std::move(a[0u]);
+      pass();
+    }
+
+    void run () override
     {
         test_bool ();
         test_bad_json ();
@@ -230,6 +351,10 @@ struct json_value_test : beast::unit_test::suite
         test_copy ();
         test_move ();
         test_comparisons ();
+        test_compact ();
+        test_conversions();
+        test_nest_limits ();
+        test_leak();
     }
 };
 

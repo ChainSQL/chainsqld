@@ -1,16 +1,19 @@
-# Part of nudb
+#
+# Copyright (c) 2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+# Official repository: https://github.com/vinniefalco/NuDB
+#
 
-GroupSources(test "/")
-GroupSources(include/nudb nudb)
-GroupSources(extras/nudb extras)
-GroupSources(extras/beast/include/beast beast)
-GroupSources(extras/beast/extras/beast beast)
+# FIXME: this _experimental path is not part of official boost beast yet.
+# Determine this path from one of the boost targets when it's official,
+# but for now get from our local FetchContent
+get_target_property(beast_extras_include beast_extras INTERFACE_INCLUDE_DIRECTORIES)
+set (TEST_MAIN ${beast_extras_include}/boost/beast/_experimental/unit_test/main.cpp)
 
-add_executable(test-all
-    ${EXTRAS_INCLUDES}
-    ${NUDB_INCLUDES}
-    ${BEAST_INCLUDES}
-    ../extras/beast/extras/beast/unit_test/main.cpp
+set (SOURCE_FILES
     basic_store.cpp
     buffer.cpp
     callgrind_test.cpp
@@ -31,8 +34,9 @@ add_executable(test-all
     xxhasher.cpp
 )
 
-if (WIN32)
-    target_link_libraries(test-all ${Boost_LIBRARIES})
-else ()
-    target_link_libraries(test-all ${Boost_LIBRARIES} rt Threads::Threads)
-endif ()
+add_executable(test-all ${SOURCE_FILES} ${TEST_MAIN})
+target_link_libraries(test-all NuDB::nudb NuDB::common)
+source_group ("" FILES ${TEST_MAIN} ${SOURCE_FILES})
+common_sources_tree (test-all)
+
+

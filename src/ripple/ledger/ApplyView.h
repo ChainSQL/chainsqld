@@ -20,6 +20,7 @@
 #ifndef RIPPLE_LEDGER_APPLYVIEW_H_INCLUDED
 #define RIPPLE_LEDGER_APPLYVIEW_H_INCLUDED
 
+#include <ripple/basics/safe_cast.h>
 #include <ripple/ledger/RawView.h>
 #include <ripple/ledger/ReadView.h>
 #include <boost/optional.hpp>
@@ -27,11 +28,12 @@
 namespace ripple {
 
 enum ApplyFlags
+    : std::uint32_t
 {
     tapNONE             = 0x00,
 
-    // Signature already checked
-    tapNO_CHECK_SIGN    = 0x01,
+	// Signature already checked
+	tapNO_CHECK_SIGN = 0x01,
 
     // This is not the transaction's last pass
     // Transaction can be retried, soft failures allowed
@@ -55,24 +57,63 @@ enum ApplyFlags
     tapByRelay = 0x4000,
 };
 
-inline
+constexpr
 ApplyFlags
 operator|(ApplyFlags const& lhs,
     ApplyFlags const& rhs)
 {
-    return static_cast<ApplyFlags>(
-        static_cast<int>(lhs) |
-            static_cast<int>(rhs));
+    return safe_cast<ApplyFlags>(
+        safe_cast<std::underlying_type_t<ApplyFlags>>(lhs) |
+            safe_cast<std::underlying_type_t<ApplyFlags>>(rhs));
 }
 
-inline
+static_assert((tapPREFER_QUEUE | tapRETRY) == safe_cast<ApplyFlags>(0x60u),
+    "ApplyFlags operator |");
+static_assert((tapRETRY | tapPREFER_QUEUE) == safe_cast<ApplyFlags>(0x60u),
+    "ApplyFlags operator |");
+
+constexpr
 ApplyFlags
 operator&(ApplyFlags const& lhs,
     ApplyFlags const& rhs)
 {
-    return static_cast<ApplyFlags>(
-        static_cast<int>(lhs) &
-            static_cast<int>(rhs));
+    return safe_cast<ApplyFlags>(
+        safe_cast<std::underlying_type_t<ApplyFlags>>(lhs) &
+            safe_cast<std::underlying_type_t<ApplyFlags>>(rhs));
+}
+
+static_assert((tapPREFER_QUEUE & tapRETRY) == tapNONE,
+    "ApplyFlags operator &");
+static_assert((tapRETRY & tapPREFER_QUEUE) == tapNONE,
+    "ApplyFlags operator &");
+
+constexpr
+ApplyFlags
+operator~(ApplyFlags const& flags)
+{
+    return safe_cast<ApplyFlags>(
+        ~safe_cast<std::underlying_type_t<ApplyFlags>>(flags));
+}
+
+static_assert(~tapRETRY == safe_cast<ApplyFlags>(0xFFFFFFDFu),
+    "ApplyFlags operator ~");
+
+inline
+ApplyFlags
+operator|=(ApplyFlags & lhs,
+    ApplyFlags const& rhs)
+{
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+inline
+ApplyFlags
+operator&=(ApplyFlags& lhs,
+    ApplyFlags const& rhs)
+{
+    lhs = lhs & rhs;
+    return lhs;
 }
 
 //------------------------------------------------------------------------------
@@ -235,7 +276,7 @@ public:
     virtual
     void adjustOwnerCountHook (AccountID const& account,
         std::uint32_t cur, std::uint32_t next)
-    {};
+    {}
 
     /** Append an entry to a directory
 

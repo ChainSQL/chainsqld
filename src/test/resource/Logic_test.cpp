@@ -17,21 +17,21 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/basics/random.h>
 #include <ripple/beast/unit_test.h>
-#include <boost/utility/base_from_member.hpp>
 #include <ripple/resource/Consumer.h>
 #include <ripple/resource/impl/Entry.h>
 #include <ripple/resource/impl/Logic.h>
+#include <test/unit_test/SuiteJournal.h>
 
+#include <boost/utility/base_from_member.hpp>
 
 
 namespace ripple {
 namespace Resource {
 
-class Manager_test : public beast::unit_test::suite
+class ResourceManager_test : public beast::unit_test::suite
 {
 public:
     class TestLogic
@@ -64,24 +64,28 @@ public:
 
     void createGossip (Gossip& gossip)
     {
-        int const v (10 + rand_int(9));
-        int const n (10 + rand_int(9));
+        std::uint8_t const v (10 + rand_int(9));
+        std::uint8_t const n (10 + rand_int(9));
         gossip.items.reserve (n);
-        for (int i = 0; i < n; ++i)
+        for (std::uint8_t i = 0; i < n; ++i)
         {
             Gossip::Item item;
             item.balance = 100 + rand_int(499);
-            item.address = beast::IP::Endpoint (
-                beast::IP::AddressV4 (192, 0, 2, v + i));
+            beast::IP::AddressV4::bytes_type d =
+                {{192,0,2,static_cast<std::uint8_t>(v + i)}};
+            item.address = beast::IP::Endpoint { beast::IP::AddressV4 {d} };
             gossip.items.push_back (item);
         }
     }
 
     //--------------------------------------------------------------------------
 
-    void testDrop (beast::Journal j)
+    void testDrop (beast::Journal j, bool limited)
     {
-        testcase ("Warn/drop");
+        if (limited)
+            testcase("Limited warn/drop");
+        else
+            testcase("Unlimited warn/drop");
 
         TestLogic logic (j);
 
@@ -89,8 +93,14 @@ public:
         beast::IP::Endpoint const addr (
             beast::IP::Endpoint::from_string ("192.0.2.2"));
 
+        using namespace std::placeholders;
+
+        std::function<Consumer(beast::IP::Endpoint)> ep = limited ?
+            std::bind(&TestLogic::newInboundEndpoint, &logic, _1) :
+            std::bind(&TestLogic::newUnlimitedEndpoint, &logic, _1);
+
         {
-            Consumer c (logic.newInboundEndpoint (addr));
+            Consumer c (ep(addr));
 
             // Create load until we get a warning
             int n = 10000;
@@ -99,13 +109,19 @@ public:
             {
                 if (n == 0)
                 {
-                    fail ("Loop count exceeded without warning");
+                    if (limited)
+                        fail ("Loop count exceeded without warning");
+                    else
+                        pass();
                     return;
                 }
 
                 if (c.charge (fee) == warn)
                 {
-                    pass ();
+                    if (limited)
+                       pass();
+                    else
+                        fail ("Should loop forever with no warning");
                     break;
                 }
                 ++logic.clock ();
@@ -116,14 +132,17 @@ public:
             {
                 if (n == 0)
                 {
-                    fail ("Loop count exceeded without dropping");
+                    if (limited)
+                        fail ("Loop count exceeded without dropping");
+                    else
+                        pass();
                     return;
                 }
 
                 if (c.charge (fee) == drop)
                 {
                     // Disconnect abusive Consumer
-                    BEAST_EXPECT(c.disconnect ());
+                    BEAST_EXPECT(c.disconnect () == limited);
                     break;
                 }
                 ++logic.clock ();
@@ -136,7 +155,10 @@ public:
             logic.periodicActivity();
             if (c.disposition () != drop)
             {
-                fail ("Dropped consumer not put on blacklist");
+                if (limited)
+                    fail ("Dropped consumer not put on blacklist");
+                else
+                    pass();
                 return;
             }
         }
@@ -144,10 +166,11 @@ public:
         // Makes sure the Consumer is eventually removed from blacklist
         bool readmitted = false;
         {
+            using namespace std::chrono_literals;
             // Give Consumer time to become readmitted.  Should never
             // exceed expiration time.
-            std::size_t n (secondsUntilExpiration + 1);
-            while (--n > 0)
+            auto n = secondsUntilExpiration + 1s;
+            while (--n > 0s)
             {
                 ++logic.clock ();
                 logic.periodicActivity();
@@ -193,8 +216,8 @@ public:
         Gossip g;
         Gossip::Item item;
         item.balance = 100;
-        item.address = beast::IP::Endpoint (
-            beast::IP::AddressV4 (192, 0, 2, 1));
+        beast::IP::AddressV4::bytes_type d = {{192, 0, 2, 1}};
+        item.address = beast::IP::Endpoint { beast::IP::AddressV4 {d} };
         g.items.push_back (item);
 
         logic.importConsumers ("g", g);
@@ -243,18 +266,20 @@ public:
         pass();
     }
 
-    void run()
+    void run() override
     {
-        beast::Journal j;
+        using namespace beast::severities;
+        test::SuiteJournal journal ("ResourceManager_test", *this);
 
-        testDrop (j);
-        testCharges (j);
-        testImports (j);
-        testImport (j);
+        testDrop (journal, true);
+        testDrop (journal, false);
+        testCharges (journal);
+        testImports (journal);
+        testImport (journal);
     }
 };
 
-BEAST_DEFINE_TESTSUITE(Manager,resource,ripple);
+BEAST_DEFINE_TESTSUITE(ResourceManager,resource,ripple);
 
 }
 }

@@ -17,12 +17,11 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/RippleAddress.h>
 #include <ripple/protocol/RipplePublicKey.h>
 #include <ripple/protocol/Serializer.h>
-#include <ripple/protocol/types.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/Seed.h>
 #include <ripple/basics/Log.h>

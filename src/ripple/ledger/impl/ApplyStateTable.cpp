@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/ledger/detail/ApplyStateTable.h>
 #include <ripple/basics/Log.h>
 #include <ripple/json/to_string.h>
@@ -117,7 +116,7 @@ ApplyStateTable::apply (OpenView& to,
     std::shared_ptr<Serializer> sMeta;
     if (!to.open())
     {
-        TxMeta meta(j);
+        TxMeta meta;
         // VFALCO Shouldn't TxMeta ctor do this?
         meta.init (tx.getTransactionID(), to.seq());
         if (deliver)
@@ -249,7 +248,7 @@ ApplyStateTable::apply (OpenView& to,
 		// VFALCO For diagnostics do we want to show
         //        metadata even when the base view is open?
         JLOG(j.trace()) <<
-            "metadata " << meta.getJson (0);
+            "metadata " << meta.getJson (JsonOptions::none);
     }
     to.rawTxInsert(
         tx.getTransactionID(),
@@ -662,5 +661,6 @@ ApplyStateTable::clear()
 {
 	items_.clear();
 }
+
 } // detail
 } // ripple

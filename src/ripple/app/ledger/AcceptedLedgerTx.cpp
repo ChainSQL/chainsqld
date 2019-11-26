@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/ledger/AcceptedLedgerTx.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
-#include <ripple/protocol/JsonFields.h>
-#include <ripple/protocol/types.h>
+#include <ripple/protocol/jss.h>
+#include <ripple/protocol/UintTypes.h>
 
 namespace ripple {
 
@@ -36,8 +35,8 @@ AcceptedLedgerTx::AcceptedLedgerTx (
     : mLedger (ledger)
     , mTxn (txn)
     , mMeta (std::make_shared<TxMeta> (
-        txn->getTransactionID(), ledger->seq(), *met, logs.journal ("View")))
-    , mAffected (mMeta->getAffectedAccounts ())
+        txn->getTransactionID(), ledger->seq(), *met))
+    , mAffected (mMeta->getAffectedAccounts (logs.journal("View")))
     , accountCache_ (accountCache)
     , logs_ (logs)
 {
@@ -78,11 +77,11 @@ std::string AcceptedLedgerTx::getEscMeta () const
 void AcceptedLedgerTx::buildJson ()
 {
     mJson = Json::objectValue;
-    mJson[jss::transaction] = mTxn->getJson (0);
+    mJson[jss::transaction] = mTxn->getJson (JsonOptions::none);
 
     if (mMeta)
     {
-        mJson[jss::meta] = mMeta->getJson (0);
+        mJson[jss::meta] = mMeta->getJson (JsonOptions::none);
         mJson[jss::raw_meta] = strHex (mRawMeta);
     }
 

@@ -15,12 +15,12 @@
 */
 //==============================================================================
 
-#include <ripple/beast/xor_shift_engine.h>
+#include <ripple/basics/random.h>
 #include <ripple/ledger/BookDirs.h>
 #include <ripple/ledger/Directory.h>
 #include <ripple/ledger/Sandbox.h>
 #include <ripple/protocol/Feature.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/Protocol.h>
 #include <test/jtx.h>
 #include <algorithm>
@@ -88,7 +88,9 @@ struct Directory_test : public beast::unit_test::suite
         {
             testcase ("Directory Ordering (without 'SortedDirectories' amendment");
 
-            Env env(*this, all_features_except(featureSortedDirectories));
+            Env env(
+                *this,
+                supported_amendments().reset(featureSortedDirectories));
             env.fund(ZXC(10000000), alice, bob, gw);
 
             // Insert 400 offers from Alice, then one from Bob:
@@ -116,7 +118,7 @@ struct Directory_test : public beast::unit_test::suite
         {
             testcase ("Directory Ordering (with 'SortedDirectories' amendment)");
 
-            Env env(*this, with_features(featureSortedDirectories));
+            Env env(*this);
             env.fund(ZXC(10000000), alice, gw);
 
             for (std::size_t i = 1; i <= 400; ++i)
@@ -182,9 +184,7 @@ struct Directory_test : public beast::unit_test::suite
         auto const charlie = Account ("charlie");
         auto const gw = Account ("gw");
 
-        beast::xor_shift_engine eng;
-
-        Env env(*this, with_features(featureSortedDirectories, featureMultiSign));
+        Env env(*this);
 
         env.fund(ZXC(1000000), alice, charlie, gw);
         env.close();
@@ -226,7 +226,7 @@ struct Directory_test : public beast::unit_test::suite
 
             BEAST_EXPECT(! dirIsEmpty (*env.closed(), keylet::ownerDir(alice)));
 
-            std::shuffle (cl.begin(), cl.end(), eng);
+            std::shuffle (cl.begin(), cl.end(), default_prng());
 
             for (auto const& c : cl)
             {
@@ -259,7 +259,7 @@ struct Directory_test : public beast::unit_test::suite
             // Now fill the offers in a random order. Offer
             // entries will drop, and be replaced by trust
             // lines that are implicitly created.
-            std::shuffle (cl.begin(), cl.end(), eng);
+            std::shuffle (cl.begin(), cl.end(), default_prng());
 
             for (auto const& c : cl)
             {
@@ -270,7 +270,7 @@ struct Directory_test : public beast::unit_test::suite
             // Finally, Alice now sends the funds back to
             // Charlie. The implicitly created trust lines
             // should drop away:
-            std::shuffle (cl.begin(), cl.end(), eng);
+            std::shuffle (cl.begin(), cl.end(), default_prng());
 
             for (auto const& c : cl)
             {
@@ -288,7 +288,7 @@ struct Directory_test : public beast::unit_test::suite
         testcase("RIPD-1353 Empty Offer Directories");
 
         using namespace jtx;
-        Env env(*this, with_features(featureSortedDirectories));
+        Env env(*this);
 
         auto const gw = Account{"gateway"};
         auto const alice = Account{"alice"};
@@ -315,7 +315,7 @@ struct Directory_test : public beast::unit_test::suite
                 cancelOffer[jss::Account] = alice.human();
                 cancelOffer[jss::OfferSequence] =
                     Json::UInt(firstOfferSeq + page * dirNodeMaxEntries + i);
-                cancelOffer[jss::TransactionType] = "OfferCancel";
+                cancelOffer[jss::TransactionType] = jss::OfferCancel;
                 env(cancelOffer);
                 env.close();
             }
@@ -348,7 +348,7 @@ struct Directory_test : public beast::unit_test::suite
         testcase("Empty Chain on Delete");
 
         using namespace jtx;
-        Env env(*this, with_features(featureSortedDirectories));
+        Env env(*this);
 
         auto const gw = Account{"gateway"};
         auto const alice = Account{"alice"};
@@ -439,7 +439,7 @@ struct Directory_test : public beast::unit_test::suite
     }
 };
 
-BEAST_DEFINE_TESTSUITE(Directory,ledger,ripple);
+BEAST_DEFINE_TESTSUITE_PRIO(Directory,ledger,ripple,1);
 
 }
 }

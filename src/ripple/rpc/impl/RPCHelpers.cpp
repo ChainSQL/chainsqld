@@ -17,13 +17,15 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/ledger/View.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/AccountID.h>
+#include <ripple/protocol/Feature.h>
 #include <ripple/rpc/Context.h>
+#include <ripple/rpc/DeliveredAmount.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <boost/algorithm/string/case_conv.hpp>
 
@@ -36,7 +38,7 @@ accountFromStringStrict(std::string const& account)
     boost::optional <AccountID> result;
 
     auto const publicKey = parseBase58<PublicKey> (
-        TokenType::TOKEN_ACCOUNT_PUBLIC,
+        TokenType::AccountPublic,
         account);
 
     if (publicKey)
@@ -125,7 +127,7 @@ getAccountObjects(ReadView const& ledger, AccountID const& account,
             auto const sleNode = ledger.read(keylet::child(*iter));
             if (type == ltINVALID || sleNode->getType () == type)
             {
-                jvObjects.append (sleNode->getJson (0));
+                jvObjects.append (sleNode->getJson (JsonOptions::none));
 
                 if (++i == limit)
                 {
@@ -401,70 +403,9 @@ parseAccountIds(Json::Value const& jvArray)
 }
 
 void
-addPaymentDeliveredAmount(Json::Value& meta, RPC::Context& context,
-    std::shared_ptr<Transaction> transaction, TxMeta::pointer transactionMeta)
-{
-    // We only want to add a "delivered_amount" field if the transaction
-    // succeeded - otherwise nothing could have been delivered.
-    if (! transaction)
-        return;
-
-    auto serializedTx = transaction->getSTransaction ();
-    if (! serializedTx || serializedTx->getTxnType () != ttPAYMENT)
-        return;
-
-    if (transactionMeta)
-    {
-        if (transactionMeta->getResultTER() != tesSUCCESS)
-            return;
-
-        // If the transaction explicitly specifies a DeliveredAmount in the
-        // metadata then we use it.
-        if (transactionMeta->hasDeliveredAmount ())
-        {
-            meta[jss::delivered_amount] =
-                transactionMeta->getDeliveredAmount ().getJson (1);
-            return;
-        }
-    }
-    else if (transaction->getResult() != tesSUCCESS)
-    {
-        return;
-    }
-
-    // Ledger 4594095 is the first ledger in which the DeliveredAmount field
-    // was present when a partial payment was made and its absence indicates
-    // that the amount delivered is listed in the Amount field.
-    if (transaction->getLedger () >= 4594095)
-    {
-        meta[jss::delivered_amount] =
-            serializedTx->getFieldAmount (sfAmount).getJson (1);
-        return;
-    }
-
-    // If the ledger closed long after the DeliveredAmount code was deployed
-    // then its absence indicates that the amount delivered is listed in the
-    // Amount field. DeliveredAmount went live January 24, 2014.
-    using namespace std::chrono_literals;
-    auto ct =
-        context.ledgerMaster.getCloseTimeBySeq (transaction->getLedger ());
-    if (ct && (*ct > NetClock::time_point{446000000s}))
-    {
-        // 446000000 is in Feb 2014, well after DeliveredAmount went live
-        meta[jss::delivered_amount] =
-            serializedTx->getFieldAmount (sfAmount).getJson (1);
-        return;
-    }
-
-    // Otherwise we report "unavailable" which cannot be parsed into a
-    // sensible amount.
-    meta[jss::delivered_amount] = Json::Value ("unavailable");
-}
-
-void
 injectSLE(Json::Value& jv, SLE const& sle)
 {
-    jv = sle.getJson(0);
+    jv = sle.getJson(JsonOptions::none);
     if (sle.getType() == ltACCOUNT_ROOT)
     {
         if (sle.isFieldPresent(sfEmailHash))
@@ -501,6 +442,25 @@ readLimitField(unsigned int& limit, Tuning::LimitRange const& range,
         if (! isUnlimited (context.role))
             limit = std::max(range.rmin, std::min(range.rmax, limit));
     }
+    return boost::none;
+}
+
+boost::optional<Seed>
+parseRippleLibSeed(Json::Value const& value)
+{
+    // ripple-lib encodes seed used to generate an Ed25519 wallet in a
+    // non-standard way. While rippled never encode seeds that way, we
+    // try to detect such keys to avoid user confusion.
+    if (!value.isString())
+        return boost::none;
+
+    auto const result = decodeBase58Token(value.asString(), TokenType::None);
+
+    if (result.size() == 18 &&
+            static_cast<std::uint8_t>(result[0]) == std::uint8_t(0xE1) &&
+            static_cast<std::uint8_t>(result[1]) == std::uint8_t(0x4B))
+        return Seed(makeSlice(result.substr(2)));
+
     return boost::none;
 }
 
@@ -611,7 +571,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
         return { };
     }
 
-    KeyType keyType = KeyType::secp256k1;
+    boost::optional<KeyType> keyType;
     boost::optional<Seed> seed;
 
     if (has_key_type)
@@ -623,10 +583,9 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             return { };
         }
 
-        keyType = keyTypeFromString (
-            params[jss::key_type].asString());
+        keyType = keyTypeFromString(params[jss::key_type].asString());
 
-        if (keyType == KeyType::invalid)
+        if (!keyType)
         {
             error = RPC::invalid_field_error(jss::key_type);
             return { };
@@ -639,29 +598,40 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
                 std::string(jss::key_type) + " is used.");
             return { };
         }
-
-        seed = getSeedFromRPC (params, error);
     }
-    else
+
+    // ripple-lib encodes seed used to generate an Ed25519 wallet in a
+    // non-standard way. While we never encode seeds that way, we try
+    // to detect such keys to avoid user confusion.
+    if (secretType != jss::seed_hex.c_str())
     {
-        if (! params[jss::secret].isString())
-        {
-            error = RPC::expected_field_error (
-                jss::secret, "string");
-            return { };
-        }
+        seed = RPC::parseRippleLibSeed(params[secretType]);
 
-        seed = parseGenericSeed (
-            params[jss::secret].asString ());
+        if (seed)
+        {
+            // If the user passed in an Ed25519 seed but *explicitly*
+            // requested another key type, return an error.
+            if (keyType.value_or(KeyType::ed25519) != KeyType::ed25519)
+            {
+                error = RPC::make_error (rpcBAD_SEED,
+                    "Specified seed is for an Ed25519 wallet.");
+                return { };
+            }
+
+            keyType = KeyType::ed25519;
+        }
     }
+
+    if (!keyType)
+        keyType = KeyType::secp256k1;
 
     HardEncrypt* hEObj = HardEncryptObj::getInstance();
     if (nullptr != hEObj)
     {
         std::string privateKeyStr = params[jss::secret].asString();
-        std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, TOKEN_ACCOUNT_SECRET);
+        std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, TokenType::AccountSecret);
         std::string publicKeyStr = params[jss::public_key].asString();
-        std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TOKEN_ACCOUNT_PUBLIC);
+        std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::NodePublic);
         if (privateKeyStrDe58.empty() || publicKeyDe58.empty() || publicKeyDe58.size() != 65)
         {
             error = RPC::missing_field_error(": 'public_key' field");
@@ -684,7 +654,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
 
         if (keyType != KeyType::secp256k1 && keyType != KeyType::ed25519)
             LogicError("keypairForSignature: invalid key type");
-        return generateKeyPair(keyType, *seed);
+        return generateKeyPair(*keyType, *seed);
     }
 }
 
@@ -695,10 +665,12 @@ chooseLedgerEntryType(Json::Value const& params)
     if (params.isMember(jss::type))
     {
         static
-            std::array<std::pair<char const *, LedgerEntryType>, 12> const types
+            std::array<std::pair<char const *, LedgerEntryType>, 14> const types
         { {
             { jss::account,         ltACCOUNT_ROOT },
             { jss::amendments,      ltAMENDMENTS },
+            { jss::check,           ltCHECK },
+            { jss::deposit_preauth, ltDEPOSIT_PREAUTH },
             { jss::directory,       ltDIR_NODE },
             { jss::fee,             ltFEE_SETTINGS },
             { jss::hashes,          ltLEDGER_HASHES },

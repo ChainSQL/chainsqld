@@ -37,7 +37,7 @@
 #include <ripple/protocol/STArray.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/impl/json_assert.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/net/RPCErr.h>
 

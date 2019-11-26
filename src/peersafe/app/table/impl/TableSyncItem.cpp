@@ -990,7 +990,7 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 	return ret;
 }
 
-void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledger_time)
+void TableSyncItem::InsertPressData(const STTx& tx, uint32_t ledger_seq, uint32_t ledger_time)
 {
 	std::string pressRealName;
 	if (tx.isFieldPresent(sfFlags) && tx.isFieldPresent(sfTables))
@@ -1011,8 +1011,8 @@ void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 		
 		std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 		auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-		uint32 submit_time = tx.getFieldU32(sfFlags);
-		uint32 db_time = tmp.count();
+		uint32_t submit_time = tx.getFieldU32(sfFlags);
+		uint32_t db_time = tmp.count();
 		submit_time -= std::chrono::seconds(days(10957)).count();
 		db_time -= std::chrono::seconds(days(10957)).count();
 
@@ -1230,7 +1230,7 @@ bool TableSyncItem::isJumpThisTx(uint256 txid)
     return false;
 }
 
-TableSyncItem::CheckConditionState TableSyncItem::CondFilter(uint32 time, uint32 ledgerIndex, uint256 txid)
+TableSyncItem::CheckConditionState TableSyncItem::CondFilter(uint32_t time, uint32_t ledgerIndex, uint256 txid)
 {
 	if (sCond_.eSyncType == SYNC_PRIOR)
 	{

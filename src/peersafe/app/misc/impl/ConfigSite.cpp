@@ -22,7 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/misc/detail/WorkSSL.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/json/json_reader.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <beast/core/detail/base64.hpp>
 #include <boost/regex.hpp>
 
@@ -282,7 +282,7 @@ namespace ripple {
 			detail::response_type&& res,
 			std::size_t siteIdx)
 	{
-		if (!ec && res.result() != beast::http::status::ok)
+		if (!ec && res.result() != boost::beast::http::status::ok)
 		{
 			std::lock_guard <std::mutex> lock{ sites_mutex_ };
 			JLOG(j_.warn()) <<
@@ -297,7 +297,7 @@ namespace ripple {
 			std::lock_guard <std::mutex> lock{ sites_mutex_ };
 			Json::Reader r;
 			Json::Value body;
-			if (r.parse(res.body.data(), body) &&
+			if (r.parse(res.body().data(), body) &&
 				body.isObject() &&
 				body.isMember("blob") && body["blob"].isString() &&
 				body.isMember("manifest") && body["manifest"].isString() &&

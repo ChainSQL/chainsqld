@@ -3,8 +3,8 @@
 namespace ripple {
 	ContractHelper::ContractHelper(Application& app)
 		:app_(app),
-		 mTxCache("ContractHelperTxCache", 100, 60, stopwatch(), app.journal("ContractHelper")),
-		 mRecordCache("ContractHelperTxCache", 100, 60, stopwatch(), app.journal("ContractHelper"))
+		mTxCache("ContractHelperTxCache", 100, std::chrono::seconds{ 60 }, stopwatch(), app.journal("ContractHelper")),
+		 mRecordCache("ContractHelperTxCache", 100, std::chrono::seconds{ 60 }, stopwatch(), app.journal("ContractHelper"))
 	{
 	}
 

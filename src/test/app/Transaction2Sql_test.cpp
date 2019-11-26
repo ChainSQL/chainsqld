@@ -23,12 +23,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <vector>
 #include <memory>
 
-#include <BeastConfig.h>
+
 #include <ripple/core/Config.h>
 #include <ripple/protocol/Sign.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/protocol/STParsedJSON.h>
-#include <ripple/protocol/types.h>
 #include <ripple/json/to_string.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/Output.h>
@@ -134,6 +133,14 @@ public:
 
 	~Transaction2Sql_test() {
 		txstore_.reset();
+	}
+
+	beast::Journal getJournal()
+	{
+		using namespace beast::severities;
+		Severity thresh = Severity::kInfo;
+		auto logs = std::make_unique<Logs>(thresh);
+		return logs->journal("TableStatusTest");
 	}
 
 	void init_env() {
@@ -746,7 +753,7 @@ public:
 		auto& app = env.app();
 		Resource::Charge loadType = Resource::feeReferenceRPC;
 		Resource::Consumer c;
-		RPC::Context context{ beast::Journal(),{}, app, loadType,
+		RPC::Context context{ getJournal(),{}, app, loadType,
 			app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 		Json::Value obj;
@@ -798,7 +805,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ beast::Journal(),{}, app, loadType,
+			RPC::Context context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -849,7 +856,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ beast::Journal(),{}, app, loadType,
+			RPC::Context context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -900,7 +907,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ beast::Journal(),{}, app, loadType,
+			RPC::Context context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -951,7 +958,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ beast::Journal(),{}, app, loadType,
+			RPC::Context context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -989,7 +996,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ beast::Journal(),{}, app, loadType,
+			RPC::Context context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -2698,6 +2705,13 @@ private:
 		auto result = getRecords(query);
 		BEAST_EXPECT(result["lines"].size() == 2);
 	}
+	beast::Journal getJournal()
+	{
+		using namespace beast::severities;
+		Severity thresh = Severity::kInfo;
+		auto logs = std::make_unique<Logs>(thresh);
+		return logs->journal("TableStatusTest");
+	}
 
 	Json::Value getRecords(const std::string& query_fields) {
 		using namespace test::jtx;
@@ -2706,7 +2720,7 @@ private:
 		auto& app = env.app();
 		Resource::Charge loadType = Resource::feeReferenceRPC;
 		Resource::Consumer c;
-		RPC::Context context{ beast::Journal(),{}, app, loadType,
+		RPC::Context context{ getJournal(),{}, app, loadType,
 			app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 		Json::Value obj;

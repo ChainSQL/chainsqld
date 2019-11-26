@@ -17,13 +17,11 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/impl/secp256k1.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/strHex.h>
-#include <ripple/beast/core/ByteOrder.h>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <ed25519-donna/ed25519.h>
 #include <type_traits>
@@ -34,22 +32,17 @@ namespace ripple {
 std::ostream&
 operator<<(std::ostream& os, PublicKey const& pk)
 {
-    os << strHex(pk.data(), pk.size());
+    os << strHex(pk);
     return os;
 }
-
-using uint264 = boost::multiprecision::number<
-    boost::multiprecision::cpp_int_backend<
-        264, 264, boost::multiprecision::signed_magnitude,
-            boost::multiprecision::unchecked, void>>;
 
 template<>
 boost::optional<PublicKey>
 parseBase58 (TokenType type, std::string const& s)
 {
-    auto const result =
-        decodeBase58Token(s, type);
-    if (result.empty())
+    auto const result = decodeBase58Token(s, type);
+    auto const pks = makeSlice(result);
+    if (!publicKeyType(pks))
         return boost::none;
     if (nullptr == HardEncryptObj::getInstance())
     {
@@ -91,8 +84,7 @@ sigPart (Slice& buf)
         if ((buf[1] & 0x80) == 0)
             return boost::none;
     }
-    boost::optional<Slice> number =
-        Slice(buf.data(), len);
+    boost::optional<Slice> number = Slice(buf.data(), len);
     buf += len;
     return number;
 }
@@ -135,6 +127,11 @@ sliceToHex (Slice const& slice)
 boost::optional<ECDSACanonicality>
 ecdsaCanonicality (Slice const& sig)
 {
+    using uint264 = boost::multiprecision::number<
+        boost::multiprecision::cpp_int_backend<
+            264, 264, boost::multiprecision::signed_magnitude,
+            boost::multiprecision::unchecked, void>>;
+
     static uint264 const G(
         "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
 
@@ -151,12 +148,13 @@ ecdsaCanonicality (Slice const& sig)
         return boost::none;
 
     uint264 R(sliceToHex(*r));
-    uint264 S(sliceToHex(*s));
-
     if (R >= G)
         return boost::none;
+
+    uint264 S(sliceToHex(*s));
     if (S >= G)
         return boost::none;
+
     // (R,S) and (R,G-S) are canonical,
     // but is fully canonical when S <= G-S
     auto const Sp = G - S;
@@ -196,21 +194,22 @@ PublicKey::PublicKey (Slice const& slice)
     if(! publicKeyType(slice))
         LogicError("PublicKey::PublicKey invalid type");
     size_ = slice.size();
-    std::memcpy(buf_, slice.data(), slice.size());
+    std::memcpy(buf_, slice.data(), size_);
 }
 
 PublicKey::PublicKey (PublicKey const& other)
     : size_ (other.size_)
 {
-    std::memcpy(buf_, other.buf_, size_);
+    if (size_)
+        std::memcpy(buf_, other.buf_, size_);
 };
 
 PublicKey&
-PublicKey::operator=(
-    PublicKey const& other)
+PublicKey::operator=(PublicKey const& other)
 {
     size_ = other.size_;
-    std::memcpy(buf_, other.buf_, size_);
+    if (size_)
+        std::memcpy(buf_, other.buf_, size_);
     return *this;
 }
 
