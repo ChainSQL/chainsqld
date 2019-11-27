@@ -520,11 +520,11 @@ public:
             *validatorManifests_, *publisherManifests_, *timeKeeper_,
             logs_->journal("ValidatorList"), config_->VALIDATION_QUORUM))
 
-        , validatorSites_ (std::make_unique<ValidatorSite> (
-            get_io_service (), *validators_, logs_->journal("ValidatorSite")))
+		, validatorSites_(std::make_unique<ValidatorSite>(
+			*validatorManifests_, get_io_service(), *validators_, logs_->journal("ValidatorSite")))
 
 		, caCertSites_(std::make_unique<CACertSite>(
-			 *validatorManifests_, *publisherManifests_, *timeKeeper_,
+			*validatorManifests_, *publisherManifests_, *timeKeeper_,
 			get_io_service(), config_->ROOT_CERTIFICATES, logs_->journal("CACertSite")))
 
         , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),

@@ -20,6 +20,7 @@
 #ifndef RIPPLE_APP_MISC_VALIDATORSITE_H_INCLUDED
 #define RIPPLE_APP_MISC_VALIDATORSITE_H_INCLUDED
 
+#include <peersafe/app/misc/ConfigSite.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/misc/detail/Work.h>
 #include <ripple/basics/Log.h>
@@ -61,76 +62,77 @@ namespace ripple {
     @li @c "refreshInterval" (optional, integer minutes).
         This value is clamped internally to [1,1440] (1 min - 1 day)
 */
-class ValidatorSite
+class ValidatorSite : public ConfigSite
 {
-    friend class Work;
+   // friend class Work;
 
 private:
-    using error_code = boost::system::error_code;
-    using clock_type = std::chrono::system_clock;
+    //using error_code = boost::system::error_code;
+    //using clock_type = std::chrono::system_clock;
 
-    struct Site
-    {
-        struct Status
-        {
-            clock_type::time_point refreshed;
-            ListDisposition disposition;
-            std::string message;
-        };
+    //struct Site
+    //{
+    //    struct Status
+    //    {
+    //        clock_type::time_point refreshed;
+    //        ListDisposition disposition;
+    //        std::string message;
+    //    };
 
-        struct Resource
-        {
-            explicit Resource(std::string uri_);
-            const std::string uri;
-            parsedURL pUrl;
-        };
+    //    struct Resource
+    //    {
+    //        explicit Resource(std::string uri_);
+    //        const std::string uri;
+    //        parsedURL pUrl;
+    //    };
 
-        explicit Site(std::string uri);
+    //    explicit Site(std::string uri);
 
-        /// the original uri as loaded from config
-        std::shared_ptr<Resource> loadedResource;
+    //    /// the original uri as loaded from config
+    //    std::shared_ptr<Resource> loadedResource;
 
-        /// the resource to request at <timer>
-        /// intervals. same as loadedResource
-        /// except in the case of a permanent redir.
-        std::shared_ptr<Resource> startingResource;
+    //    /// the resource to request at <timer>
+    //    /// intervals. same as loadedResource
+    //    /// except in the case of a permanent redir.
+    //    std::shared_ptr<Resource> startingResource;
 
-        /// the active resource being requested.
-        /// same as startingResource except
-        /// when we've gotten a temp redirect
-        std::shared_ptr<Resource> activeResource;
+    //    /// the active resource being requested.
+    //    /// same as startingResource except
+    //    /// when we've gotten a temp redirect
+    //    std::shared_ptr<Resource> activeResource;
 
-        unsigned short redirCount;
-        std::chrono::minutes refreshInterval;
-        clock_type::time_point nextRefresh;
-        boost::optional<Status> lastRefreshStatus;
-    };
+    //    unsigned short redirCount;
+    //    std::chrono::minutes refreshInterval;
+    //    clock_type::time_point nextRefresh;
+    //    boost::optional<Status> lastRefreshStatus;
+    //};
 
-    boost::asio::io_service& ios_;
+    //boost::asio::io_service& ios_;
     ValidatorList& validators_;
-    beast::Journal j_;
-    std::mutex mutable sites_mutex_;
-    std::mutex mutable state_mutex_;
+    //beast::Journal j_;
+    //std::mutex mutable sites_mutex_;
+    //std::mutex mutable state_mutex_;
 
-    std::condition_variable cv_;
-    std::weak_ptr<detail::Work> work_;
-    boost::asio::basic_waitable_timer<clock_type> timer_;
+    //std::condition_variable cv_;
+    //std::weak_ptr<detail::Work> work_;
+    //boost::asio::basic_waitable_timer<clock_type> timer_;
 
-    // A list is currently being fetched from a site
-    std::atomic<bool> fetching_;
+    //// A list is currently being fetched from a site
+    //std::atomic<bool> fetching_;
 
-    // One or more lists are due to be fetched
-    std::atomic<bool> pending_;
-    std::atomic<bool> stopping_;
+    //// One or more lists are due to be fetched
+    //std::atomic<bool> pending_;
+    //std::atomic<bool> stopping_;
 
-    // The configured list of URIs for fetching lists
-    std::vector<Site> sites_;
+    //// The configured list of URIs for fetching lists
+    //std::vector<Site> sites_;
 
-    // time to allow for requests to complete
-    const std::chrono::seconds requestTimeout_;
+    //// time to allow for requests to complete
+    //const std::chrono::seconds requestTimeout_;
 
 public:
     ValidatorSite (
+		ManifestCache& validatorManifests,
         boost::asio::io_service& ios,
         ValidatorList& validators,
         beast::Journal j,
@@ -147,101 +149,109 @@ public:
 
         @return `false` if an entry is invalid or unparsable
     */
-    bool
-    load (
-        std::vector<std::string> const& siteURIs);
+    ////bool
+    ////load (
+    ////    std::vector<std::string> const& siteURIs);
 
-    /** Start fetching lists from sites
+    /////** Start fetching lists from sites
 
-        This does nothing if list fetching has already started
+    ////    This does nothing if list fetching has already started
 
-        @par Thread Safety
+    ////    @par Thread Safety
 
-        May be called concurrently
-    */
-    void
-    start ();
+    ////    May be called concurrently
+    ////*/
+    ////void
+    ////start ();
 
-    /** Wait for current fetches from sites to complete
+    /////** Wait for current fetches from sites to complete
 
-        @par Thread Safety
+    ////    @par Thread Safety
 
-        May be called concurrently
-    */
-    void
-    join ();
+    ////    May be called concurrently
+    ////*/
+    ////void
+    ////join ();
 
-    /** Stop fetching lists from sites
+    /////** Stop fetching lists from sites
 
-        This blocks until list fetching has stopped
+    ////    This blocks until list fetching has stopped
 
-        @par Thread Safety
+    ////    @par Thread Safety
 
-        May be called concurrently
-    */
-    void
-    stop ();
+    ////    May be called concurrently
+    ////*/
+    ////void
+    ////stop ();
 
     /** Return JSON representation of configured validator sites
      */
     Json::Value
     getJson() const;
 
-private:
-    /// Queue next site to be fetched
-    /// lock over state_mutex_ required
+//private:
+  /*   Queue next site to be fetched
+     lock over state_mutex_ required
     void
     setTimer (std::lock_guard<std::mutex>&);
 
-    /// request took too long
+     request took too long
     void
     onRequestTimeout (
         std::size_t siteIdx,
         error_code const& ec);
 
-    /// Fetch site whose time has come
+     Fetch site whose time has come
     void
     onTimer (
         std::size_t siteIdx,
         error_code const& ec);
 
-    /// Store latest list fetched from site
+     Store latest list fetched from site
     void
     onSiteFetch (
         boost::system::error_code const& ec,
         detail::response_type&& res,
         std::size_t siteIdx);
 
-    /// Store latest list fetched from anywhere
+     Store latest list fetched from anywhere
     void
     onTextFetch(
         boost::system::error_code const& ec,
         std::string const& res,
         std::size_t siteIdx);
 
-    /// Initiate request to given resource.
-    /// lock over sites_mutex_ required
+     Initiate request to given resource.
+     lock over sites_mutex_ required
     void
     makeRequest (
         std::shared_ptr<Site::Resource> resource,
         std::size_t siteIdx,
         std::lock_guard<std::mutex>& lock);
 
-    /// Parse json response from validator list site.
-    /// lock over sites_mutex_ required
+     Parse json response from validator list site.
+     lock over sites_mutex_ required
     void
     parseJsonResponse (
         std::string const& res,
         std::size_t siteIdx,
         std::lock_guard<std::mutex>& lock);
 
-    /// Interpret a redirect response.
-    /// lock over sites_mutex_ required
+     Interpret a redirect response.
+     lock over sites_mutex_ required
     std::shared_ptr<Site::Resource>
     processRedirect (
         detail::response_type& res,
         std::size_t siteIdx,
-        std::lock_guard<std::mutex>& lock);
+        std::lock_guard<std::mutex>& lock);*/
+
+public :
+	virtual  ListDisposition applyList(
+		std::string const& manifest,
+		std::string const& blob,
+		std::string const& signature,
+		std::uint32_t version,
+		std::string siteUri);
 };
 
 } // ripple

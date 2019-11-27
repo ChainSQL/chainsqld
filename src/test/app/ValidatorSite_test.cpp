@@ -112,8 +112,7 @@ private:
         using namespace jtx;
 
         Env env (*this);
-        auto trustedSites = std::make_unique<ValidatorSite> (
-            env.app().getIOService(), env.app().validators(), env.journal);
+        auto trustedSites = std::make_unique<ValidatorSite> (env.app().validatorManifests(),env.app().getIOService(), env.app().validators(), env.journal);
 
         // load should accept empty sites list
         std::vector<std::string> emptyCfgSites;
@@ -269,7 +268,7 @@ private:
             emptyLocalKey, emptyCfgKeys, cfgPublishers));
 
         using namespace std::chrono_literals;
-        auto sites = std::make_unique<ValidatorSite> (
+        auto sites = std::make_unique<ValidatorSite> (env.app().validatorManifests(),
             env.app().getIOService(),
             env.app().validators(),
             journal,
@@ -370,7 +369,7 @@ private:
             item.uri = uri.str();
         }
 
-        auto sites = std::make_unique<ValidatorSite> (
+        auto sites = std::make_unique<ValidatorSite> (env.app().validatorManifests(),
             env.app().getIOService(), env.app().validators(), journal);
 
         std::vector<std::string> uris;
