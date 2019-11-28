@@ -18,8 +18,6 @@
 //==============================================================================
 
 
-
-#include <ripple/app/main/Amendments.cpp>
 #include <ripple/app/main/Application.cpp>
 #include <ripple/app/main/BasicApp.cpp>
 #include <ripple/app/main/CollectorManager.cpp>

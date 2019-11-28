@@ -23,6 +23,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/basics/contract.h>
 #include <test/jtx/TestSuite.h>
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/operations.hpp>
 
 namespace ripple {
 namespace test {
@@ -45,7 +46,7 @@ protected:
 
     auto rmDir (path const& toRm)
     {
-        if (is_directory (toRm) && is_empty (toRm))
+        if (is_directory (toRm) && boost::filesystem::is_empty (toRm))
             remove (toRm);
         else
             test_.log << "Expected " << toRm.string ()

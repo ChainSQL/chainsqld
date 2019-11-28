@@ -259,7 +259,7 @@ void do_register_backend(std::string const & name, std::string const & shared_ob
 
 } // unnamed namespace
 
-backend_factory const& dynamic_backends::get(std::string const& name)
+SOCI_DECL backend_factory const& dynamic_backends::get(std::string const& name)
 {
     scoped_lock lock(&mutex_);
 

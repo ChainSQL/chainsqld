@@ -133,7 +133,6 @@ include_directories(
   src/beast/include
   src/beast/extras
   src/nudb/include
-  src/libarchive/libarchive
   src/soci/src
   src/soci/include
   src/evmjit
@@ -185,6 +184,214 @@ if (is_clang)
 else()
   unset(rocks_db_system_header)
 endif()
+
+add_library (chainsql_libs INTERFACE)
+
+#[===================================================================[
+   NIH prefix path..this is where we will download
+   and build any ExternalProjects, and they will hopefully
+   survive across build directory deletion (manual cleans)
+#]===================================================================]
+get_property (is_multiconfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if (is_multiconfig STREQUAL "NOTFOUND")
+  if (${CMAKE_GENERATOR} STREQUAL "Xcode" OR ${CMAKE_GENERATOR} MATCHES "^Visual Studio")
+    set (is_multiconfig TRUE)
+  endif ()
+endif ()
+
+string (REGEX REPLACE "[ \\/%]+" "_" gen_for_path ${CMAKE_GENERATOR})
+string (TOLOWER ${gen_for_path} gen_for_path)
+# HACK: trying to shorten paths for windows CI (which hits 260 MAXPATH easily)
+# @see:  https://issues.jenkins-ci.org/browse/JENKINS-38706?focusedCommentId=339847
+string (REPLACE "visual_studio" "vs" gen_for_path ${gen_for_path})
+if (NOT DEFINED NIH_CACHE_ROOT)
+  if (DEFINED ENV{NIH_CACHE_ROOT})
+    set (NIH_CACHE_ROOT $ENV{NIH_CACHE_ROOT})
+  else ()
+    set (NIH_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.nih_c")
+  endif ()
+endif ()
+set (nih_cache_path
+  "${NIH_CACHE_ROOT}/${gen_for_path}/${CMAKE_CXX_COMPILER_ID}_${CMAKE_CXX_COMPILER_VERSION}")
+if (NOT is_multiconfig)
+  set (nih_cache_path "${nih_cache_path}/${CMAKE_BUILD_TYPE}")
+endif ()
+file(TO_CMAKE_PATH "${nih_cache_path}" nih_cache_path)
+message (STATUS "NIH-EP cache path: ${nih_cache_path}")
+## two convenience variables:
+set (ep_lib_prefix ${CMAKE_STATIC_LIBRARY_PREFIX})
+set (ep_lib_suffix ${CMAKE_STATIC_LIBRARY_SUFFIX})
+
+# this is a setting for FetchContent and needs to be
+# a cache variable
+# https://cmake.org/cmake/help/latest/module/FetchContent.html#populating-the-content
+set (FETCHCONTENT_BASE_DIR ${nih_cache_path} CACHE STRING "" FORCE)
+
+include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
+
+#[===================================================================[
+   NIH dep: lz4
+#]===================================================================]
+
+ExternalProject_Add (lz4
+  PREFIX ${nih_cache_path}
+  GIT_REPOSITORY https://github.com/lz4/lz4.git
+  GIT_TAG v1.8.2
+  SOURCE_SUBDIR contrib/cmake_unofficial
+  CMAKE_ARGS
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    $<$<BOOL:${CMAKE_VERBOSE_MAKEFILE}>:-DCMAKE_VERBOSE_MAKEFILE=ON>
+    -DCMAKE_DEBUG_POSTFIX=_d
+    $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}>
+    -DBUILD_STATIC_LIBS=ON
+    -DBUILD_SHARED_LIBS=OFF
+    $<$<BOOL:${MSVC}>:
+      "-DCMAKE_C_FLAGS=-GR -Gd -fp:precise -FS -MP"
+      "-DCMAKE_C_FLAGS_DEBUG=-MTd"
+      "-DCMAKE_C_FLAGS_RELEASE=-MT"
+    >
+  LOG_BUILD ON
+  LOG_CONFIGURE ON
+  BUILD_COMMAND
+    ${CMAKE_COMMAND}
+    --build .
+    --config $<CONFIG>
+    --target lz4_static
+    $<$<VERSION_GREATER_EQUAL:${CMAKE_VERSION},3.12>:--parallel ${ep_procs}>
+    $<$<BOOL:${is_multiconfig}>:
+      COMMAND
+        ${CMAKE_COMMAND} -E copy
+        <BINARY_DIR>/$<CONFIG>/${ep_lib_prefix}lz4$<$<CONFIG:Debug>:_d>${ep_lib_suffix}
+        <BINARY_DIR>
+      >
+  TEST_COMMAND ""
+  INSTALL_COMMAND ""
+  BUILD_BYPRODUCTS
+    <BINARY_DIR>/${ep_lib_prefix}lz4${ep_lib_suffix}
+    <BINARY_DIR>/${ep_lib_prefix}lz4_d${ep_lib_suffix}
+)
+ExternalProject_Get_Property (lz4 BINARY_DIR)
+ExternalProject_Get_Property (lz4 SOURCE_DIR)
+if (CMAKE_VERBOSE_MAKEFILE)
+  print_ep_logs (lz4)
+endif ()
+#message("xxx ${SOURCE_DIR}")
+add_library (lz4_lib STATIC IMPORTED GLOBAL)
+file (MAKE_DIRECTORY ${SOURCE_DIR}/lz4)
+set_target_properties (lz4_lib PROPERTIES
+  IMPORTED_LOCATION_DEBUG
+    ${BINARY_DIR}/${ep_lib_prefix}lz4_d${ep_lib_suffix}
+  IMPORTED_LOCATION_RELEASE
+    ${BINARY_DIR}/${ep_lib_prefix}lz4${ep_lib_suffix}
+  INTERFACE_INCLUDE_DIRECTORIES
+    ${SOURCE_DIR}/lib)
+add_dependencies (lz4_lib lz4)
+target_link_libraries (chainsql_libs INTERFACE lz4_lib)
+exclude_if_included (lz4)
+exclude_if_included (lz4_lib)
+
+
+#[===================================================================[
+   NIH dep: libarchive
+#]===================================================================]
+set (lib_post "")
+if (MSVC)
+  set (lib_post "_static")
+endif ()
+ExternalProject_Add (libarchive
+  PREFIX ${nih_cache_path}
+  GIT_REPOSITORY https://github.com/libarchive/libarchive.git
+  GIT_TAG v3.3.3
+  CMAKE_ARGS
+    # passing the compiler seems to be needed for windows CI, sadly
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    $<$<BOOL:${CMAKE_VERBOSE_MAKEFILE}>:-DCMAKE_VERBOSE_MAKEFILE=ON>
+    -DCMAKE_DEBUG_POSTFIX=_d
+    $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}>
+    -DENABLE_LZ4=ON
+    -ULZ4_*
+    -DLZ4_INCLUDE_DIR=$<JOIN:$<TARGET_PROPERTY:lz4_lib,INTERFACE_INCLUDE_DIRECTORIES>,::>
+    # because we are building a static lib, this lz4 library doesn't
+    # actually matter since you can't generally link static libs to other static
+    # libs. The include files are needed, but the library itself is not (until
+    # we link our application, at which point we use the lz4 we built above).
+    # nonetheless, we need to provide a library to libarchive else it will
+    # NOT include lz4 support when configuring
+    -DLZ4_LIBRARY=$<IF:$<CONFIG:Debug>,$<TARGET_PROPERTY:lz4_lib,IMPORTED_LOCATION_DEBUG>,$<TARGET_PROPERTY:lz4_lib,IMPORTED_LOCATION_RELEASE>>
+    -DENABLE_WERROR=OFF
+    -DENABLE_TAR=OFF
+    -DENABLE_TAR_SHARED=OFF
+    -DENABLE_INSTALL=ON
+    -DENABLE_NETTLE=OFF
+    -DENABLE_OPENSSL=OFF
+    -DENABLE_LZO=OFF
+    -DENABLE_LZMA=OFF
+    -DENABLE_ZLIB=OFF
+    -DENABLE_BZip2=OFF
+    -DENABLE_LIBXML2=OFF
+    -DENABLE_EXPAT=OFF
+    -DENABLE_PCREPOSIX=OFF
+    -DENABLE_LibGCC=OFF
+    -DENABLE_CNG=OFF
+    -DENABLE_CPIO=OFF
+    -DENABLE_CPIO_SHARED=OFF
+    -DENABLE_CAT=OFF
+    -DENABLE_CAT_SHARED=OFF
+    -DENABLE_XATTR=OFF
+    -DENABLE_ACL=OFF
+    -DENABLE_ICONV=OFF
+    -DENABLE_TEST=OFF
+    -DENABLE_COVERAGE=OFF
+    $<$<BOOL:${MSVC}>:
+      "-DCMAKE_C_FLAGS=-GR -Gd -fp:precise -FS -MP"
+      "-DCMAKE_C_FLAGS_DEBUG=-MTd"
+      "-DCMAKE_C_FLAGS_RELEASE=-MT"
+    >
+  LIST_SEPARATOR ::
+  LOG_BUILD ON
+  LOG_CONFIGURE ON
+  BUILD_COMMAND
+    ${CMAKE_COMMAND}
+    --build .
+    --config $<CONFIG>
+    --target archive_static
+    $<$<VERSION_GREATER_EQUAL:${CMAKE_VERSION},3.12>:--parallel ${ep_procs}>
+    $<$<BOOL:${is_multiconfig}>:
+      COMMAND
+        ${CMAKE_COMMAND} -E copy
+          <BINARY_DIR>/libarchive/$<CONFIG>/${ep_lib_prefix}archive${lib_post}$<$<CONFIG:Debug>:_d>${ep_lib_suffix}
+          <BINARY_DIR>/libarchive
+      >
+  TEST_COMMAND ""
+  INSTALL_COMMAND ""
+  DEPENDS lz4
+  BUILD_BYPRODUCTS
+    <BINARY_DIR>/libarchive/${ep_lib_prefix}archive${lib_post}${ep_lib_suffix}
+    <BINARY_DIR>/libarchive/${ep_lib_prefix}archive${lib_post}_d${ep_lib_suffix}
+)
+ExternalProject_Get_Property (libarchive BINARY_DIR)
+ExternalProject_Get_Property (libarchive SOURCE_DIR)
+if (CMAKE_VERBOSE_MAKEFILE)
+  print_ep_logs (libarchive)
+endif ()
+add_library (archive_lib STATIC IMPORTED GLOBAL)
+file (MAKE_DIRECTORY ${SOURCE_DIR}/libarchive)
+set_target_properties (archive_lib PROPERTIES
+  IMPORTED_LOCATION_DEBUG
+    ${BINARY_DIR}/libarchive/${ep_lib_prefix}archive${lib_post}_d${ep_lib_suffix}
+  IMPORTED_LOCATION_RELEASE
+    ${BINARY_DIR}/libarchive/${ep_lib_prefix}archive${lib_post}${ep_lib_suffix}
+  INTERFACE_INCLUDE_DIRECTORIES
+    ${SOURCE_DIR}/libarchive
+  INTERFACE_COMPILE_DEFINITIONS
+    LIBARCHIVE_STATIC)
+add_dependencies (archive_lib libarchive)
+target_link_libraries (archive_lib INTERFACE lz4_lib)
+target_link_libraries (chainsql_libs INTERFACE archive_lib)
+exclude_if_included (libarchive)
+exclude_if_included (archive_lib)
 
 set(soci_extra_includes
   -I"${CMAKE_SOURCE_DIR}"/src/soci/src/core
@@ -446,7 +653,6 @@ add_with_props(chainsqld_src_all src/ripple/unity/secp256k1.cpp
 foreach(cursrc
     src/ripple/beast/unity/beast_hash_unity.cpp
     src/ripple/unity/beast.cpp
-    src/ripple/unity/lz4.c
     src/ripple/unity/protobuf.cpp
     src/ripple/unity/ripple.proto.cpp
     src/ripple/unity/resource.cpp)
@@ -468,7 +674,7 @@ add_with_props(chainsqld_src_all src/sqlite/sqlite_unity.c
 
 add_with_props(chainsqld_src_all src/ripple/unity/ed25519_donna.c
   -I"${CMAKE_SOURCE_DIR}"/src/ed25519-donna)
-
+  
 if (is_gcc)
   set(no_init_w -Wno-maybe-uninitialized)
 else()
@@ -571,7 +777,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} evmjit)
+      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} evmjit chainsql_libs)
 
     link_common_libraries(${target})
 endforeach()

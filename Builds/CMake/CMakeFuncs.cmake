@@ -226,6 +226,13 @@ macro(append_flags name)
   endforeach()
 endmacro()
 
+macro (exclude_if_included target_)
+  get_directory_property(has_parent PARENT_DIRECTORY)
+  if (has_parent)
+    exclude_from_default (${target_})
+  endif ()
+endmacro ()
+
 macro(group_sources_in source_dir curdir)
   file(GLOB children RELATIVE ${source_dir}/${curdir}
     ${source_dir}/${curdir}/*)
