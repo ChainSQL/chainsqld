@@ -17,7 +17,9 @@
 */
 //==============================================================================
 
-
+//Include this file,or there will be an error:
+//"WinSock.h has already been included"
+#include <boost/asio.hpp>
 
 #include <ripple/crypto/impl/ec_key.cpp>
 #include <ripple/crypto/impl/GenerateDeterministicKey.cpp>
@@ -34,7 +36,7 @@
 #include <peersafe/crypto/impl/ECDSAKey.cpp>
 #include <peersafe/crypto/impl/ECIES.cpp>
 #include <peersafe/crypto/impl/X509.cpp>
-
+#include <peersafe/rpc/handlers/GenCsr.cpp>
 
 
 #if DOXYGEN

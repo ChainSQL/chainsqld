@@ -20,3 +20,4 @@
 
 
 #include <ripple/core/impl/SociDB.cpp>
+#include <ripple/core/impl/DummySociDynamicBackend.cpp>

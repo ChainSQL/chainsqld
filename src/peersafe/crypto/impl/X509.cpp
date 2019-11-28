@@ -240,7 +240,7 @@ namespace ripple {
 		int             ret = 0;
 		int             nVersion = 1;
 		X509_REQ        *x509_req = NULL;
-		X509_NAME       *x509_name = NULL;
+		X509_name_st    *x509_name = NULL;
 	//	RSA             *tem = NULL;
 		BIO             *out = NULL;
 
