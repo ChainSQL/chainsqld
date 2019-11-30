@@ -331,6 +331,7 @@ endmacro()
 ############################################################
 
 # Params: Boost components to search for.
+#cmake_policy(SET CMP<0074> NEW)
 macro(use_boost)
     if ((NOT DEFINED BOOST_ROOT) AND (DEFINED ENV{BOOST_ROOT}))
         set(BOOST_ROOT $ENV{BOOST_ROOT})
