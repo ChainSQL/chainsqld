@@ -67,7 +67,7 @@
 #
 # Don't put any code above or in this block, unless it
 # has similar constraints.
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.9.0)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Builds/CMake")
 include(CMakeFuncs)
 set(openssl_min 1.0.2)
@@ -178,12 +178,6 @@ use_mysql()
 setup_build_boilerplate()
 
 ############################################################
-
-if (is_clang)
-  set(rocks_db_system_header --system-header-prefix=rocksdb2)
-else()
-  unset(rocks_db_system_header)
-endif()
 
 add_library (chainsql_libs INTERFACE)
 
@@ -393,6 +387,182 @@ target_link_libraries (chainsql_libs INTERFACE archive_lib)
 exclude_if_included (libarchive)
 exclude_if_included (archive_lib)
 
+#[===================================================================[
+   NIH dep: snappy
+#]===================================================================]
+
+ExternalProject_Add (snappy
+  PREFIX ${nih_cache_path}
+  GIT_REPOSITORY https://github.com/google/snappy.git
+  GIT_TAG 1.1.7
+  CMAKE_ARGS
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    $<$<BOOL:${CMAKE_VERBOSE_MAKEFILE}>:-DCMAKE_VERBOSE_MAKEFILE=ON>
+    -DCMAKE_DEBUG_POSTFIX=_d
+    $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}>
+    -DBUILD_SHARED_LIBS=OFF
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    -DSNAPPY_BUILD_TESTS=OFF
+    $<$<BOOL:${MSVC}>:
+      "-DCMAKE_CXX_FLAGS=-GR -Gd -fp:precise -FS -MP"
+      "-DCMAKE_CXX_FLAGS_DEBUG=-MTd"
+      "-DCMAKE_CXX_FLAGS_RELEASE=-MT"
+    >
+  LOG_BUILD ON
+  LOG_CONFIGURE ON
+  BUILD_COMMAND
+    ${CMAKE_COMMAND}
+    --build .
+    --config $<CONFIG>
+    $<$<VERSION_GREATER_EQUAL:${CMAKE_VERSION},3.12>:--parallel ${ep_procs}>
+    $<$<BOOL:${is_multiconfig}>:
+      COMMAND
+        ${CMAKE_COMMAND} -E copy
+        <BINARY_DIR>/$<CONFIG>/${ep_lib_prefix}snappy$<$<CONFIG:Debug>:_d>${ep_lib_suffix}
+        <BINARY_DIR>
+      >
+  TEST_COMMAND ""
+  INSTALL_COMMAND ""
+  BUILD_BYPRODUCTS
+    <BINARY_DIR>/${ep_lib_prefix}snappy${ep_lib_suffix}
+    <BINARY_DIR>/${ep_lib_prefix}snappy_d${ep_lib_suffix}
+)
+ExternalProject_Get_Property (snappy BINARY_DIR)
+ExternalProject_Get_Property (snappy SOURCE_DIR)
+if (CMAKE_VERBOSE_MAKEFILE)
+  print_ep_logs (snappy)
+endif ()
+add_library (snappy_lib STATIC IMPORTED GLOBAL)
+file (MAKE_DIRECTORY ${SOURCE_DIR}/snappy)
+set_target_properties (snappy_lib PROPERTIES
+  IMPORTED_LOCATION_DEBUG
+    ${BINARY_DIR}/${ep_lib_prefix}snappy_d${ep_lib_suffix}
+  IMPORTED_LOCATION_RELEASE
+    ${BINARY_DIR}/${ep_lib_prefix}snappy${ep_lib_suffix}
+  INTERFACE_INCLUDE_DIRECTORIES
+    "${SOURCE_DIR};${BINARY_DIR}")
+add_dependencies (snappy_lib snappy)
+target_link_libraries (chainsql_libs INTERFACE snappy_lib)
+exclude_if_included (snappy)
+exclude_if_included (snappy_lib)
+
+#[===================================================================[
+   NIH dep: rocksdb
+#]===================================================================]
+
+ExternalProject_Add (rocksdb
+  PREFIX ${nih_cache_path}
+  GIT_REPOSITORY https://github.com/facebook/rocksdb.git
+  GIT_TAG v5.17.2
+  PATCH_COMMAND
+    # only used by windows build
+    ${CMAKE_COMMAND} -E copy
+    ${CMAKE_SOURCE_DIR}/Builds/CMake/rocks_thirdparty.inc
+    <SOURCE_DIR>/thirdparty.inc
+  COMMAND
+    # fixup their build version file to keep the values
+    # from changing always
+    ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_SOURCE_DIR}/Builds/CMake/rocksdb_build_version.cc.in
+    <SOURCE_DIR>/util/build_version.cc.in
+  CMAKE_ARGS
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    $<$<BOOL:${CMAKE_VERBOSE_MAKEFILE}>:-DCMAKE_VERBOSE_MAKEFILE=ON>
+    -DCMAKE_DEBUG_POSTFIX=_d
+    $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}>
+    -DBUILD_SHARED_LIBS=OFF
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    -DWITH_JEMALLOC=$<IF:$<BOOL:${jemalloc}>,ON,OFF>
+    -DWITH_SNAPPY=ON
+    -DWITH_LZ4=ON
+    -DWITH_ZLIB=OFF
+    -DUSE_RTTI=ON
+    -DWITH_ZSTD=OFF
+    -DWITH_GFLAGS=OFF
+    -DWITH_BZ2=OFF
+    -ULZ4_*
+    -DLZ4_INCLUDE_DIR=$<JOIN:$<TARGET_PROPERTY:lz4_lib,INTERFACE_INCLUDE_DIRECTORIES>,::>
+    -DLZ4_LIBRARIES=$<IF:$<CONFIG:Debug>,$<TARGET_PROPERTY:lz4_lib,IMPORTED_LOCATION_DEBUG>,$<TARGET_PROPERTY:lz4_lib,IMPORTED_LOCATION_RELEASE>>
+    -DLZ4_FOUND=ON
+    -USNAPPY_*
+    -DSNAPPY_INCLUDE_DIR=$<JOIN:$<TARGET_PROPERTY:snappy_lib,INTERFACE_INCLUDE_DIRECTORIES>,::>
+    -DSNAPPY_LIBRARIES=$<IF:$<CONFIG:Debug>,$<TARGET_PROPERTY:snappy_lib,IMPORTED_LOCATION_DEBUG>,$<TARGET_PROPERTY:snappy_lib,IMPORTED_LOCATION_RELEASE>>
+    -DSNAPPY_FOUND=ON
+    -DWITH_MD_LIBRARY=OFF
+    -DWITH_RUNTIME_DEBUG=$<IF:$<CONFIG:Debug>,ON,OFF>
+    -DFAIL_ON_WARNINGS=OFF
+    -DWITH_ASAN=OFF
+    -DWITH_TSAN=OFF
+    -DWITH_UBSAN=OFF
+    -DWITH_NUMA=OFF
+    -DWITH_TBB=OFF
+    -DWITH_WINDOWS_UTF8_FILENAMES=OFF
+    -DWITH_XPRESS=OFF
+    -DPORTABLE=ON
+    -DFORCE_SSE42=OFF
+    -DDISABLE_STALL_NOTIF=OFF
+    -DOPTDBG=ON
+    -DROCKSDB_LITE=OFF
+    -DWITH_FALLOCATE=ON
+    -DWITH_LIBRADOS=OFF
+    -DWITH_JNI=OFF
+    -DROCKSDB_INSTALL_ON_WINDOWS=OFF
+    -DWITH_TESTS=OFF
+    -DWITH_TOOLS=OFF
+    $<$<BOOL:${MSVC}>:
+      "-DCMAKE_CXX_FLAGS=-GR -Gd -fp:precise -FS -MP /DNDEBUG"
+    >
+    $<$<NOT:$<BOOL:${MSVC}>>:
+      "-DCMAKE_CXX_FLAGS=-DNDEBUG"
+    >
+  LOG_BUILD ON
+  LOG_CONFIGURE ON
+  BUILD_COMMAND
+    ${CMAKE_COMMAND}
+    --build .
+    --config $<CONFIG>
+    $<$<VERSION_GREATER_EQUAL:${CMAKE_VERSION},3.12>:--parallel ${ep_procs}>
+    $<$<BOOL:${is_multiconfig}>:
+      COMMAND
+        ${CMAKE_COMMAND} -E copy
+        <BINARY_DIR>/$<CONFIG>/${ep_lib_prefix}rocksdb$<$<CONFIG:Debug>:_d>${ep_lib_suffix}
+        <BINARY_DIR>
+      >
+  LIST_SEPARATOR ::
+  TEST_COMMAND ""
+  INSTALL_COMMAND ""
+  DEPENDS snappy lz4
+  BUILD_BYPRODUCTS
+    <BINARY_DIR>/${ep_lib_prefix}rocksdb${ep_lib_suffix}
+    <BINARY_DIR>/${ep_lib_prefix}rocksdb_d${ep_lib_suffix}
+)
+ExternalProject_Get_Property (rocksdb BINARY_DIR)
+ExternalProject_Get_Property (rocksdb SOURCE_DIR)
+if (CMAKE_VERBOSE_MAKEFILE)
+  print_ep_logs (rocksdb)
+endif ()
+add_library (rocksdb_lib STATIC IMPORTED GLOBAL)
+file (MAKE_DIRECTORY ${SOURCE_DIR}/include)
+set_target_properties (rocksdb_lib PROPERTIES
+  IMPORTED_LOCATION_DEBUG
+    ${BINARY_DIR}/${ep_lib_prefix}rocksdb_d${ep_lib_suffix}
+  IMPORTED_LOCATION_RELEASE
+    ${BINARY_DIR}/${ep_lib_prefix}rocksdb${ep_lib_suffix}
+  INTERFACE_INCLUDE_DIRECTORIES
+    ${SOURCE_DIR}/include
+  INTERFACE_COMPILE_DEFINITIONS
+    RIPPLE_ROCKSDB_AVAILABLE=1)
+add_dependencies (rocksdb_lib rocksdb)
+target_link_libraries (rocksdb_lib INTERFACE snappy_lib lz4_lib)
+if (MSVC)
+  target_link_libraries (rocksdb_lib INTERFACE rpcrt4)
+endif ()
+target_link_libraries (chainsql_libs INTERFACE rocksdb_lib)
+exclude_if_included (rocksdb)
+exclude_if_included (rocksdb_lib)
+
 set(soci_extra_includes
   -I"${CMAKE_SOURCE_DIR}"/src/soci/src/core
   -I"${CMAKE_SOURCE_DIR}"/src/soci/include/private
@@ -423,6 +593,7 @@ basics.cpp
 crypto.cpp
 ledger.cpp
 net.cpp
+nodestore.cpp
 overlay1.cpp
 overlay2.cpp
 peerfinder.cpp
@@ -445,6 +616,7 @@ consensus_test_unity.cpp
 core_test_unity.cpp
 json_test_unity.cpp
 ledger_test_unity.cpp
+nodestore_test_unity.cpp
 overlay_test_unity.cpp
 peerfinder_test_unity.cpp
 protocol_test_unity.cpp
@@ -469,24 +641,11 @@ app_sql.cpp)
 
 list(APPEND chainsqld_src_unity ${beast_unity_srcs} ${ripple_unity_srcs} ${peersafe_unity_srcs} ${test_unity_srcs})
 
-add_with_props(rippled_src_unity src/test/unity/nodestore_test_unity.cpp
--I"${CMAKE_SOURCE_DIR}/"src/rocksdb2/include
--I"${CMAKE_SOURCE_DIR}/"src/snappy/snappy
--I"${CMAKE_SOURCE_DIR}/"src/snappy/config
-${rocks_db_system_header})
-
-add_with_props(chainsqld_src_unity src/ripple/unity/nodestore.cpp
--I"${CMAKE_SOURCE_DIR}"/src/rocksdb2/include
--I"${CMAKE_SOURCE_DIR}"/src/snappy/snappy
--I"${CMAKE_SOURCE_DIR}"/src/snappy/config
-${rocks_db_system_header})
-
 add_with_props(chainsqld_src_unity src/ripple/unity/soci_ripple.cpp ${soci_extra_includes})
 
-list(APPEND ripple_unity_srcs ${beast_unity_srcs} ${test_unity_srcs}
-src/ripple/unity/nodestore.cpp
-src/ripple/unity/soci_ripple.cpp
-src/test/unity/nodestore_test_unity.cpp)
+#list(APPEND ripple_unity_srcs ${beast_unity_srcs} ${test_unity_srcs})
+#src/ripple/unity/soci_ripple.cpp
+#src/test/unity/nodestore_test_unity.cpp)
 
 ############################################################
 
@@ -515,6 +674,7 @@ foreach(curdir
         ledger
         legacy
         net
+        nodestore
         overlay
         peerfinder
         protocol
@@ -539,17 +699,6 @@ foreach(curdir
     list(APPEND non_unity_srcs "${cursrcs}")
 endforeach()
 
-file(GLOB_RECURSE nodestore_srcs src/ripple/nodestore/*.cpp
-    src/test/nodestore/*.cpp)
-
-add_with_props(chainsqld_src_nonunity "${nodestore_srcs}"
-    -I"${CMAKE_SOURCE_DIR}"/src/rocksdb2/include
-    -I"${CMAKE_SOURCE_DIR}"/src/snappy/snappy
-    -I"${CMAKE_SOURCE_DIR}"/src/snappy/config
-    ${rocks_db_system_header})
-
-list(APPEND non_unity_srcs "${nodestore_srcs}")
-
 # unit test sources
 foreach(curdir
         app
@@ -570,17 +719,13 @@ foreach(curdir
         rpc
         server
         shamap
-		unit_test
+		    unit_test
         vm)
     file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
     list(APPEND test_srcs "${cursrcs}")
 endforeach()
 
-add_with_props(chainsqld_src_nonunity "${test_srcs}"
-    -I"${CMAKE_SOURCE_DIR}"/src/rocksdb2/include
-    -I"${CMAKE_SOURCE_DIR}"/src/snappy/snappy
-    -I"${CMAKE_SOURCE_DIR}"/src/snappy/config
-    ${rocks_db_system_header})
+add_with_props(chainsqld_src_nonunity "${test_srcs}")
 
 list(APPEND non_unity_srcs "${test_srcs}")
 
@@ -650,6 +795,11 @@ add_with_props(chainsqld_src_all src/ripple/unity/secp256k1.cpp
   ${no_unused_w}
   )
 
+  #add_with_props(chainsqld_src_all src/ripple/unity/nodestore.cpp
+  #-I"${CMAKE_SOURCE_DIR}"src/ripple/nodestore
+  #${no_unused_w}
+  #)
+
 foreach(cursrc
     src/ripple/beast/unity/beast_hash_unity.cpp
     src/ripple/unity/beast.cpp
@@ -681,21 +831,10 @@ else()
   unset(no_init_w)
 endif()
 
-add_with_props(chainsqld_src_all src/ripple/unity/rocksdb.cpp
-  -I"${CMAKE_SOURCE_DIR}"/src/rocksdb2
-  -I"${CMAKE_SOURCE_DIR}"/src/rocksdb2/include
-  -I"${CMAKE_SOURCE_DIR}"/src/snappy/snappy
-  -I"${CMAKE_SOURCE_DIR}"/src/snappy/config
-  ${no_init_w} ${rocks_db_system_header})
-
 if (NOT is_msvc)
   set(no_unused_w -Wno-unused-function)
 endif()
 
-add_with_props(chainsqld_src_all src/ripple/unity/snappy.cpp
-  -I"${CMAKE_SOURCE_DIR}"/src/snappy/snappy
-  -I"${CMAKE_SOURCE_DIR}"/src/snappy/config
-  ${no_unused_w})
 
 if (APPLE AND is_clang)
   list(APPEND chainsqld_src_all src/ripple/unity/beastobjc.mm)
