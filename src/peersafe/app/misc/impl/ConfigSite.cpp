@@ -18,6 +18,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
 #include <peersafe/app/misc/ConfigSite.h>
+#include <ripple/app/misc/detail/WorkFile.h>
 #include <ripple/app/misc/detail/WorkPlain.h>
 #include <ripple/app/misc/detail/WorkSSL.h>
 #include <ripple/basics/Slice.h>
@@ -263,6 +264,23 @@ namespace ripple {
 				this->onTimer(idx, ec);
 			});
 		}
+	}
+
+	void ConfigSite::onRequestTimeout(std::size_t siteIdx, error_code const& ec)
+	{
+		if (ec)
+			return;
+
+		{
+			std::lock_guard <std::mutex> lock_site{ sites_mutex_ };
+			JLOG(j_.warn()) <<
+				"Request for " << sites_[siteIdx].activeResource->uri <<
+				" took too long";
+		}
+
+		std::lock_guard<std::mutex> lock_state{ state_mutex_ };
+		if (auto sp = work_.lock())
+			sp->cancel();
 	}
 
 	void
@@ -542,79 +560,79 @@ namespace ripple {
 		std::size_t siteIdx,
 		std::lock_guard<std::mutex>& sites_lock)
 	{
-		//fetching_ = true;
-		//sites_[siteIdx].activeResource = resource;
-		//std::shared_ptr<detail::Work> sp;
-		//auto timeoutCancel =
-		//	[this] ()
-		//	{
-		//		std::lock_guard <std::mutex> lock_state{state_mutex_};
-		//		// docs indicate cancel_one() can throw, but this
-		//		// should be reconsidered if it changes to noexcept
-		//		try
-		//		{
-		//			timer_.cancel_one();
-		//		}
-		//		catch (boost::system::system_error const&)
-		//		{
-		//		}
-		//	};
-		//auto onFetch =
-		//	[this, siteIdx, timeoutCancel] (
-		//		error_code const& err, detail::response_type&& resp)
-		//	{
-		//		timeoutCancel ();
-		//		onSiteFetch (err, std::move(resp), siteIdx);
-		//	};
+		fetching_ = true;
+		sites_[siteIdx].activeResource = resource;
+		std::shared_ptr<detail::Work> sp;
+		auto timeoutCancel =
+			[this] ()
+			{
+				std::lock_guard <std::mutex> lock_state{state_mutex_};
+				// docs indicate cancel_one() can throw, but this
+				// should be reconsidered if it changes to noexcept
+				try
+				{
+					timer_.cancel_one();
+				}
+				catch (boost::system::system_error const&)
+				{
+				}
+			};
+		auto onFetch =
+			[this, siteIdx, timeoutCancel] (
+				error_code const& err, detail::response_type&& resp)
+			{
+				timeoutCancel ();
+				onSiteFetch (err, std::move(resp), siteIdx);
+			};
 
-		//auto onFetchFile =
-		//	[this, siteIdx, timeoutCancel] (
-		//		error_code const& err, std::string const& resp)
-		//	{
-		//		timeoutCancel ();
-		//		onTextFetch (err, resp, siteIdx);
-		//	};
+		auto onFetchFile =
+			[this, siteIdx, timeoutCancel] (
+				error_code const& err, std::string const& resp)
+			{
+				timeoutCancel ();
+				onTextFetch (err, resp, siteIdx);
+			};
 
-		//JLOG (j_.debug()) << "Starting request for " << resource->uri;
+		JLOG (j_.debug()) << "Starting request for " << resource->uri;
 
-		//if (resource->pUrl.scheme == "https")
-		//{
-		//	sp = std::make_shared<detail::WorkSSL>(
-		//		resource->pUrl.domain,
-		//		resource->pUrl.path,
-		//		std::to_string(*resource->pUrl.port),
-		//		ios_,
-		//		j_,
-		//		onFetch);
-		//}
-		//else if(resource->pUrl.scheme == "http")
-		//{
-		//	sp = std::make_shared<detail::WorkPlain>(
-		//		resource->pUrl.domain,
-		//		resource->pUrl.path,
-		//		std::to_string(*resource->pUrl.port),
-		//		ios_,
-		//		onFetch);
-		//}
-		//else
-		//{
-		//	BOOST_ASSERT(resource->pUrl.scheme == "file");
-		//	sp = std::make_shared<detail::WorkFile>(
-		//		resource->pUrl.path,
-		//		ios_,
-		//		onFetchFile);
-		//}
+		if (resource->pUrl.scheme == "https")
+		{
+			sp = std::make_shared<detail::WorkSSL>(
+				resource->pUrl.domain,
+				resource->pUrl.path,
+				std::to_string(*resource->pUrl.port),
+				ios_,
+				j_,
+				onFetch);
+		}
+		else if(resource->pUrl.scheme == "http")
+		{
+			sp = std::make_shared<detail::WorkPlain>(
+				resource->pUrl.domain,
+				resource->pUrl.path,
+				std::to_string(*resource->pUrl.port),
+				ios_,
+				onFetch);
+		}
+		else
+		{
+			BOOST_ASSERT(resource->pUrl.scheme == "file");
+			sp = std::make_shared<detail::WorkFile>(
+				resource->pUrl.path,
+				ios_,
+				onFetchFile);
+		}
 
-		//work_ = sp;
-		//sp->run ();
-		//// start a timer for the request, which shouldn't take more
-		//// than requestTimeout_ to complete
-		//std::lock_guard <std::mutex> lock_state{state_mutex_};
-		//timer_.expires_after (requestTimeout_);
-		//timer_.async_wait ([this, siteIdx] (boost::system::error_code const& ec)
-		//	{
-		//		this->onRequestTimeout (siteIdx, ec);
-		//	});
+		work_ = sp;
+		sp->run ();
+		// start a timer for the request, which shouldn't take more
+		// than requestTimeout_ to complete
+		std::lock_guard <std::mutex> lock_state{state_mutex_};
+		timer_.expires_after (requestTimeout_);
+		timer_.async_wait ([this, siteIdx] (boost::system::error_code const& ec)
+			{
+				this->onRequestTimeout (siteIdx, ec);
+			});
 	}
 
 

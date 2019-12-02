@@ -124,6 +124,10 @@ private:
     std::atomic<bool> pending_;
     std::atomic<bool> stopping_;
 
+
+	// time to allow for requests to complete
+	const std::chrono::seconds requestTimeout_;
+
 public:
 
 	struct Site
