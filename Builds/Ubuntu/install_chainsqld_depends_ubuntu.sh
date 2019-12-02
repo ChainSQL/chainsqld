@@ -19,18 +19,6 @@ if [ -z "${ubuntu_release}" ]; then
     exit 1
 fi
 
-if [ ${ubuntu_release} == "12.04" ]; then
-    apt-get install python-software-properties
-    add-apt-repository ppa:afrank/boost
-    add-apt-repository ppa:ubuntu-toolchain-r/test
-    apt-get update
-    apt-get -y upgrade
-    apt-get -y install curl git scons ctags pkg-config protobuf-compiler libprotobuf-dev libssl-dev python-software-properties boost1.57-all-dev nodejs g++-5 g++-4.9 libmysqlclient-dev
-    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 99 --slave /usr/bin/g++ g++ /usr/bin/g++-5
-    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 99 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
-    exit 0
-fi
-
 if [ ${ubuntu_release} == "14.04" ] || [ ${ubuntu_release} == "15.04" ]; then
     apt-get install python-software-properties
     echo "deb [arch=amd64] https://mirrors.ripple.com/ubuntu/ trusty stable contrib" | sudo tee /etc/apt/sources.list.d/ripple.list

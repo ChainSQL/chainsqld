@@ -644,10 +644,6 @@ list(APPEND chainsqld_src_unity ${beast_unity_srcs} ${ripple_unity_srcs} ${peers
 
 add_with_props(chainsqld_src_unity src/ripple/unity/soci_ripple.cpp ${soci_extra_includes})
 
-#list(APPEND ripple_unity_srcs ${beast_unity_srcs} ${test_unity_srcs})
-#src/ripple/unity/soci_ripple.cpp
-#src/test/unity/nodestore_test_unity.cpp)
-
 ############################################################
 
 # Non-unity sources
@@ -757,29 +753,6 @@ if(WIN32 OR is_xcode)
         # Doesn't work
         # $<OR:$<CONFIG:Debug>,$<CONFIG:Release>>)
 endif()
-
-if (WIN32 OR is_xcode)
-  # Documentation sources. Only needed for IDEs.
-  #prepend(doc_srcs
-  #  docs/
-  #  Jamfile.v2
-  #  boostbook.dtd
-  #  consensus.qbk
-  #  index.xml
-  #  main.qbk
-  #  quickref.xml
-  #  reference.xsl
-  #  source.dox)
-
-  #set_property(
-  #  SOURCE ${doc_srcs}
-  #  APPEND
-  #  PROPERTY HEADER_FILE_ONLY
-  #  true)
-  #  # Doesn't work
-  #  # $<OR:$<CONFIG:Debug>,$<CONFIG:Release>>)
-endif()
-
 ############################################################
 
 add_with_props(chainsqld_src_all src/ripple/unity/soci.cpp
@@ -795,11 +768,6 @@ add_with_props(chainsqld_src_all src/ripple/unity/secp256k1.cpp
   -I"${CMAKE_SOURCE_DIR}"/src/secp256k1
   ${no_unused_w}
   )
-
-  #add_with_props(chainsqld_src_all src/ripple/unity/nodestore.cpp
-  #-I"${CMAKE_SOURCE_DIR}"src/ripple/nodestore
-  #${no_unused_w}
-  #)
 
 foreach(cursrc
     src/ripple/beast/unity/beast_hash_unity.cpp
