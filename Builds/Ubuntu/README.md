@@ -2,11 +2,11 @@
 ## 系统需求
 - 建议 Ubutun 16.04 及以上版本
 
-## 特殊系统依赖及版本
+## 需特殊注意的系统依赖项版本
 | Component | Minimum Recommended Version |
 |-----------|-----------------------|
 | gcc | 7.4.0 |
-| cmake | 1.2 |
+| cmake | 3.12 |
 | boost | 1.70.0 |
 
 
