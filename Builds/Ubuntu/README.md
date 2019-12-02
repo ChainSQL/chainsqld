@@ -92,14 +92,9 @@ gcc -v
 > cmake -DCMAKE_BUILD_TYPE=Release|Debug ..
 ```
 
-> 或
-
-```bash
-> cmake -Dtarget=gcc.debug.nounity|gcc.debug.unity|gcc.release.nounity|gcc.release.unity ..
-```
-
 - 编译
 
 ```base
-> make chainsqld -j2
+> make -j<Num Parallel>
 ```
+注意上面的Num Parallel需要指定一个并行编译数量，如：2
