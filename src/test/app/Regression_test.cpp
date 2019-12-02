@@ -71,7 +71,7 @@ struct Regression_test : public beast::unit_test::suite
 
             auto const result = ripple::apply(env.app(),
                 accum, *jt.stx, tapNONE, env.journal);
-            BEAST_EXPECT(result.first == tesSUCCESS);
+            BEAST_EXPECT(result.first.ter == tesSUCCESS);
             BEAST_EXPECT(result.second);
 
             accum.apply(*next);
@@ -97,7 +97,7 @@ struct Regression_test : public beast::unit_test::suite
 
             auto const result = ripple::apply(env.app(),
                 accum, *jt.stx, tapNONE, env.journal);
-            BEAST_EXPECT(result.first == tecINSUFF_FEE);
+            BEAST_EXPECT(result.first.ter == tecINSUFF_FEE);
             BEAST_EXPECT(result.second);
 
             accum.apply(*next);

@@ -164,6 +164,7 @@ use_boost(
   filesystem
   program_options
   regex
+  serialization
   system
   thread)
 

@@ -170,7 +170,7 @@ public:
     std::vector<Site> sites_;
 
 	// time to allow for requests to complete
-	const std::chrono::seconds requestTimeout_;
+	//const std::chrono::seconds requestTimeout_;
 
 public:
 

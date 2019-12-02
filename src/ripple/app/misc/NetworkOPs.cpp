@@ -1287,7 +1287,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                 {
                     // transaction should be held
                     JLOG(m_journal.debug())
-                        << "Transaction should be held: " << e.result;
+                        << "Transaction should be held: " << e.result.ter;
                     e.transaction->setStatus (HELD);
                     m_ledgerMaster.addHeldTransaction (e.transaction);
                 }
@@ -1299,7 +1299,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                     addLocal = false;
                 }
                 JLOG(m_journal.debug())
-                    << "Status other than success " << e.result;
+                    << "Status other than success " << e.result.ter;
                 e.transaction->setStatus (INVALID);
             }
 
