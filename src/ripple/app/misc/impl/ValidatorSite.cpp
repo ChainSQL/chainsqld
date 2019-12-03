@@ -90,7 +90,7 @@ ValidatorSite::ValidatorSite (
     ValidatorList& validators,
     beast::Journal j,
     std::chrono::seconds timeout)
-	: ConfigSite(ios, validatorManifests, j)
+	: ConfigSite(ios, validatorManifests, j,timeout)
 	, validators_(validators)
 {
 }

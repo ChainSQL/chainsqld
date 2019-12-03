@@ -201,18 +201,26 @@ Json::Value TxPrepareBase::prepareBase()
 
     //check the future hash
     ret = prepareFutureHash(tx_json_, app_, ws_);
-    if (ret.isMember(jss::error))
-        return ret;
+	if (ret.isMember(jss::error)) 
+	{
+		return ret;
+	}
 
 	//actually, this fun get base info: account ,stableName ,nameInDB
 	ret = prepareDBName();
-	if (ret.isMember(jss::error))
+	if (ret.isMember(jss::error)) 
+	{
 		return ret;
+	}
+	
     
 	//prepare raw for recreate operation
     ret = prepareGetRaw();
-    if (ret.isMember(jss::error))
-        return ret;	
+	if (ret.isMember(jss::error))
+	{
+		return ret;
+	}
+      
 
 	if (!ws_)
 	{
@@ -257,14 +265,19 @@ void TxPrepareBase::updateInfo(const std::string& sAccount, const std::string& s
 	sTableName_    = sTableName;
 	u160NameInDB_  = from_hex_text<uint160>(sNameInDB);
 	auto pOwner = ripple::parseBase58<AccountID>(sAccount);
-	if(boost::none != pOwner)
-		ownerID_   = *pOwner;
+	if (boost::none != pOwner) 
+	{
+		ownerID_ = *pOwner;
+	}
+	
 }
 
 std::string TxPrepareBase::getNameInDB(const std::string& sAccount, const std::string& sTableName)
 {
-    if (u160NameInDB_ == beast::zero)
-        return "";
+	if (u160NameInDB_ == beast::zero) 
+	{
+		return "";
+	}
 	return to_string(u160NameInDB_);
 }
 
@@ -299,15 +312,19 @@ Json::Value TxPrepareBase::prepareStrictMode()
 	{
 		auto retPair = getCheckHash(to_string(ownerID_), sTableName_);
 		if (retPair.first.isZero())
+		{
 			return RPC::make_error(rpcTAB_NOT_EXIST, "Please make sure table exist or to be created in this transaction");
+		}
 		checkHash = retPair.first;
 	}
 
 	ret = prepareCheckHash(sRaw, checkHash, checkHashNew);
 	if (ret.isMember(jss::error))
 		return ret;
-    if(isStrictModeOpType((TableOpType)(tx_json[jss::OpType].asInt())))
-        updateCheckHash(to_string(ownerID_), sTableName_, checkHashNew);
+	if (isStrictModeOpType((TableOpType)(tx_json[jss::OpType].asInt()))) 
+	{
+		updateCheckHash(to_string(ownerID_), sTableName_, checkHashNew);
+	}       
 	return ret;
 }
 
@@ -488,7 +505,10 @@ Json::Value TxPrepareBase::parseTableName()
 {
 	Json::Value json(Json::stringValue);
 	if (tx_json_[jss::Tables].size() == 0)
+	{
 		return RPC::missing_field_error(jss::Tables);
+	}
+		
 	auto sTableName = tx_json_[jss::Tables][0u][jss::Table][jss::TableName].asString();
 	if (sTableName.empty())
 		return RPC::make_error(rpcINVALID_PARAMS, "TableName is empty");
@@ -501,8 +521,11 @@ Json::Value TxPrepareBase::prepareCheckHash(const std::string& sRaw,const uint25
     int opType = tx_json_[jss::OpType].asInt();
     if (opType == T_CREATE)
         checkHashNew = sha512Half(makeSlice(sRaw));
-    else
-        checkHashNew = sha512Half(makeSlice(sRaw), checkHash);
+	else 
+	{
+		checkHashNew = sha512Half(makeSlice(sRaw), checkHash);
+	}
+        
 
 	if (tx_json_.isMember(jss::StrictMode))
 	{

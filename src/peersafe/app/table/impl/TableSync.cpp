@@ -58,8 +58,11 @@ TableSync::TableSync(Application& app, Config& cfg, beast::Journal journal)
         auto value = sync_section.values().at(0);
         bAutoLoadTable_ = atoi(value.c_str());
     }
-    else
-        bAutoLoadTable_ = false;
+	else 
+	{
+		bAutoLoadTable_ = false;
+	}
+      
 
 	auto press_switch = cfg_.section(ConfigSection::pressSwitch());
 	if (press_switch.values().size() > 0)

@@ -91,14 +91,16 @@ namespace ripple {
 	ConfigSite::ConfigSite(
 		boost::asio::io_service& ios,
 		ManifestCache& validatorManifests,
-		beast::Journal j)
+		beast::Journal j,
+		std::chrono::seconds timeout )
 		: ios_(ios)
-		,validatorManifests_(validatorManifests)
-		, j_(j)
+		, validatorManifests_(validatorManifests)
 		, timer_(ios_)
 		, fetching_(false)
 		, pending_(false)
 		, stopping_(false)
+		, requestTimeout_(timeout)
+		, j_(j)
 	{
 	}
 

@@ -39,8 +39,9 @@ void setStorage(
     uint256 uNewValue = fromEvmC(*_value);
     uint256 uOldValue = fromEvmC(env.store(*_key));
 
-    if (uNewValue == 0 && uOldValue != 0)       // If delete
-        env.sub.refunds += STORE_REFUND_GAS;    // Increase refund counter
+	if (uNewValue == 0 && uOldValue != 0) {      // If delete
+		env.sub.refunds += STORE_REFUND_GAS;    // Increase refund counter
+	} 
 
 	env.setStore(*_key, *_value);
 }

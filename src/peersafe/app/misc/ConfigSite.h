@@ -106,10 +106,8 @@ private:
     using clock_type = std::chrono::system_clock;
 
 
-
     boost::asio::io_service& ios_;
- //   ValidatorList& validators_;
-
+	ManifestCache& validatorManifests_;
 
     std::mutex mutable state_mutex_;
 
@@ -176,19 +174,17 @@ public:
 	// time to allow for requests to complete
 	//const std::chrono::seconds requestTimeout_;
 
-public:
-
 	beast::Journal j_;
-
 	// Published lists stored by publisher master public key
 	hash_map<PublicKey, PublisherLst> publisherLists_;
-	ManifestCache& validatorManifests_;
+
 
 public:
 	ConfigSite(
         boost::asio::io_service& ios,
 		ManifestCache& validatorManifests,
-        beast::Journal j);
+        beast::Journal j,
+		std::chrono::seconds timeout = std::chrono::seconds{ 20 });
     ~ConfigSite();
 
     /** Load configured site URIs.
