@@ -120,13 +120,11 @@ private:
 			std::string const& blob,
 			std::string const& signature);
 
-
-	std::vector<std::string>&    rootCerts_;
-
-
 	//ManifestCache& validatorManifests_;
 	ManifestCache& publisherManifests_;
 	TimeKeeper& timeKeeper_;
+
+	std::vector<std::string>&    rootCerts_;
 
 	boost::shared_mutex mutable mutex_;
 
@@ -136,5 +134,4 @@ private:
 };
 
 } // ripple
-
 #endif

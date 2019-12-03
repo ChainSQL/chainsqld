@@ -732,7 +732,7 @@ Transactor::operator()()
 
     // No transaction can return temUNKNOWN from apply,
     // and it can't be passed in from a preclaim.
-    assert(terResult != temUNKNOWN);
+    assert(terResult.ter != temUNKNOWN);
 
     if (auto stream = j_.debug())
     {

@@ -33,7 +33,7 @@ namespace ripple {
 		ManifestCache& publisherManifests,
 		TimeKeeper& timeKeeper,
 		boost::asio::io_service& ios,
-		std::vector<std::string>&    rootCerts,
+		std::vector<std::string>& rootCerts,
 		beast::Journal j)
 		: ConfigSite(ios, validatorManifests,j)
 		, publisherManifests_(publisherManifests)
