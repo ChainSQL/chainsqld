@@ -497,8 +497,11 @@ EscrowFinish::doApply()
     auto const k = keylet::escrow(
         ctx_.tx[sfOwner], ctx_.tx[sfOfferSequence]);
     auto const slep = ctx_.view().peek(k);
-    if (! slep)
-        return tecNO_TARGET;
+	if (!slep)
+	{
+		return tecNO_TARGET;
+	}
+       
 
 	AccountID const account = (*slep)[sfAccount];
 	STAmount const& amount = (*slep)[sfAmount];
