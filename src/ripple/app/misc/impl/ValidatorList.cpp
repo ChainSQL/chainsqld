@@ -668,6 +668,36 @@ ValidatorList::calculateQuorum (
     return quorum;
 }
 
+std::size_t
+ValidatorList::calculateMinimumQuorum(
+	std::size_t nListedKeys, bool unlistedLocal)
+{
+	// Only require 51% quorum for small number of validators to facilitate
+	// bootstrapping a network.
+	if (nListedKeys <= 6)
+		return nListedKeys / 2 + 1;
+
+	// The number of listed validators is increased to preserve the safety
+	// guarantee for two unlisted validators using the same set of listed
+	// validators.
+	if (unlistedLocal)
+		++nListedKeys;
+
+	// Guarantee safety with up to 1/3 listed validators being malicious.
+	// This prioritizes safety (Byzantine fault tolerance) over liveness.
+	// It takes at least as many malicious nodes to split/fork the network as
+	// to stall the network.
+	// At 67%, the overlap of two quorums is 34%
+	//   67 + 67 - 100 = 34
+	// So under certain conditions, 34% of validators could vote for two
+	// different ledgers and split the network.
+	// Similarly 34% could prevent quorum from being met (by not voting) and
+	// stall the network.
+	// If/when the quorum is subsequently raised to/towards 80%, it becomes
+	// harder to split the network (more safe) and easier to stall it (less live).
+	return nListedKeys * 2 / 3 + 1;
+}
+
 TrustChanges
 ValidatorList::updateTrusted(hash_set<NodeID> const& seenValidators)
 {
@@ -698,20 +728,59 @@ ValidatorList::updateTrusted(hash_set<NodeID> const& seenValidators)
         }
     }
 
+	bool localKeyListed = false;
+
     for (auto const& val : keyListings_)
     {
         if (! validatorManifests_.revoked(val.first) &&
                 trustedKeys_.emplace(val.first).second)
             trustChanges.added.insert(calcNodeID(val.first));
+
+		if (val.first == localPubKey_)
+			localKeyListed = val.second > 1;
     }
 
     JLOG (j_.debug()) <<
         trustedKeys_.size() << "  of " << keyListings_.size() <<
         " listed validators eligible for inclusion in the trusted set";
 
-    quorum_ = calculateQuorum (trustedKeys_.size(), seenValidators.size());
+    //quorum_ = calculateQuorum (trustedKeys_.size(), seenValidators.size());
 
-    JLOG(j_.debug()) << "Using quorum of " << quorum_ << " for new set of "
+	std::size_t quorum = calculateMinimumQuorum(trustedKeys_.size(),
+		localPubKey_.size() && !localKeyListed);
+
+	auto size = trustedKeys_.size();
+
+	// Require 80% quorum if there are lots of validators.
+	if (trustedKeys_.size() > BYZANTINE_THRESHOLD)
+	{
+		// Use all eligible keys if there is only one trusted list
+		if (publisherLists_.size() == 1 ||
+			keyListings_.size() < MINIMUM_RESIZEABLE_UNL)
+		{
+			// Try to raise the quorum to at least 80% of the trusted set
+			quorum = std::max(quorum, size - size / 5);
+		}
+	}
+
+	if (minimumQuorum_ && seenValidators.size() < quorum)
+	{
+		quorum = *minimumQuorum_;
+		JLOG(j_.warn())
+			<< "Using unsafe quorum of "
+			<< quorum_
+			<< " as specified in the command line";
+	}
+
+	for (auto const& list : publisherLists_)
+	{
+		if (!list.second.available)
+			quorum = std::numeric_limits<std::size_t>::max();
+	}
+
+	quorum_ = quorum;
+
+    JLOG(j_.info()) << "Using quorum of " << quorum_ << " for new set of "
                      << trustedKeys_.size() << " trusted validators ("
                      << trustChanges.added.size() << " added, "
                      << trustChanges.removed.size() << " removed)";
