@@ -12,6 +12,8 @@ uint32 StateManager::getAccountSeq(AccountID const& id)
 		return accountState_[id].sequence;
 	}
 
+	assert(app_.openLedger().current());
+	
 	auto sle = app_.openLedger().current()->read(keylet::account(id));
 	if (sle)
 	{
