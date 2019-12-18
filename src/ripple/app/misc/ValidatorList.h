@@ -448,9 +448,10 @@ ValidatorList::onConsensusStart (
         // no validations are being received, use all validators.
         // Otherwise, do not use validators whose validations aren't
         // being received.
-        else if (keyListings_.size() < MINIMUM_RESIZEABLE_UNL ||
-                 seenValidators.empty() ||
-                 seenValidators.find (val->first) != seenValidators.end ())
+        //else if (keyListings_.size() < MINIMUM_RESIZEABLE_UNL ||
+        //         seenValidators.empty() ||
+        //         seenValidators.find (val->first) != seenValidators.end ())
+        else
         {
             rankedKeys.insert (
                 std::pair<std::size_t,PublicKey>(val->second, val->first));
