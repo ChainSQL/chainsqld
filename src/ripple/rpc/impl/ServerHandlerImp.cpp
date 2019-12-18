@@ -843,40 +843,45 @@ ServerHandlerImp::processRequest (Port const& port,
         }
 		//if trasaction operation,
 		//remove tx_blob & tx_json field,and make tx_id parallel with result
-		Json::Value tx_id(Json::nullValue);
-		if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash)
-			&& !result[jss::tx_json].isMember("Signers"))
+		if (r.isMember(jss::result))
 		{
-			std::string txType = result[jss::tx_json][jss::TransactionType].asString();
-			if (isChainSqlTableType(txType))
+			Json::Value tx_id(Json::nullValue);
+			Json::Value& result = r[jss::result];
+			if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash)
+				&& !result[jss::tx_json].isMember("Signers"))
 			{
-				tx_id = std::move(result[jss::tx_json][jss::hash]);
-
-				result.removeMember(jss::tx_json);
-
-				if (result.isMember(jss::tx_blob))
+				std::string txType = result[jss::tx_json][jss::TransactionType].asString();
+				if (isChainSqlTableType(txType))
 				{
-					result.removeMember(jss::tx_blob);
+					tx_id = std::move(result[jss::tx_json][jss::hash]);
+
+					result.removeMember(jss::tx_json);
+
+					if (result.isMember(jss::tx_blob))
+					{
+						result.removeMember(jss::tx_blob);
+					}
 				}
 			}
-		}
-		if (result.isMember(jss::request) && result[jss::request].isMember(jss::tx_json))
-		{
-			if (strMethod == "t_dump" || strMethod == "t_dumpstop" || strMethod == "t_audit" || strMethod == "t_auditstop")
+			if (result.isMember(jss::request) && result[jss::request].isMember(jss::tx_json))
 			{
-				for (int i = 0; i < result[jss::request][jss::tx_json].size(); i++)
+				if (strMethod == "t_dump" || strMethod == "t_dumpstop" || strMethod == "t_audit" || strMethod == "t_auditstop")
 				{
-					std::string sDest = "";
-					TransGBK_UTF8(result[jss::request][jss::tx_json][i].asString(), sDest, false);
+					for (int i = 0; i < result[jss::request][jss::tx_json].size(); i++)
+					{
+						std::string sDest = "";
+						TransGBK_UTF8(result[jss::request][jss::tx_json][i].asString(), sDest, false);
 
-					result[jss::request][jss::tx_json][i] = sDest;
+						result[jss::request][jss::tx_json][i] = sDest;
+					}
 				}
 			}
+			if (tx_id != Json::Value(Json::nullValue))
+			{
+				r[jss::tx_hash] = std::move(tx_id);
+			}
 		}
-		if (tx_id != Json::Value(Json::nullValue))
-		{
-			reply[jss::tx_hash] = std::move(tx_id);
-		}
+		
 
         if (params.isMember(jss::jsonrpc))
             r[jss::jsonrpc] = params[jss::jsonrpc];

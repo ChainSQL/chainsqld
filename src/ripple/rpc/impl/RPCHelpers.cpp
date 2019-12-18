@@ -599,28 +599,40 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             return { };
         }
     }
+	else 
+	{
+		if (!params[jss::secret].isString())
+		{
+			error = RPC::expected_field_error(
+				jss::secret, "string");
+			return { };
+		}
 
-    // ripple-lib encodes seed used to generate an Ed25519 wallet in a
-    // non-standard way. While we never encode seeds that way, we try
-    // to detect such keys to avoid user confusion.
-    if (secretType != jss::seed_hex.c_str())
-    {
-        seed = RPC::parseRippleLibSeed(params[secretType]);
+		seed = parseGenericSeed(
+			params[jss::secret].asString());
+	}
 
-        if (seed)
-        {
-            // If the user passed in an Ed25519 seed but *explicitly*
-            // requested another key type, return an error.
-            if (keyType.value_or(KeyType::ed25519) != KeyType::ed25519)
-            {
-                error = RPC::make_error (rpcBAD_SEED,
-                    "Specified seed is for an Ed25519 wallet.");
-                return { };
-            }
+    //// ripple-lib encodes seed used to generate an Ed25519 wallet in a
+    //// non-standard way. While we never encode seeds that way, we try
+    //// to detect such keys to avoid user confusion.
+    //if (secretType != jss::seed_hex.c_str())
+    //{
+    //    seed = RPC::parseRippleLibSeed(params[secretType]);
 
-            keyType = KeyType::ed25519;
-        }
-    }
+    //    if (seed)
+    //    {
+    //        // If the user passed in an Ed25519 seed but *explicitly*
+    //        // requested another key type, return an error.
+    //        if (keyType.value_or(KeyType::ed25519) != KeyType::ed25519)
+    //        {
+    //            error = RPC::make_error (rpcBAD_SEED,
+    //                "Specified seed is for an Ed25519 wallet.");
+    //            return { };
+    //        }
+
+    //        keyType = KeyType::ed25519;
+    //    }
+    //}
 
     if (!keyType)
         keyType = KeyType::secp256k1;

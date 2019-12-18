@@ -506,6 +506,8 @@ EscrowFinish::doApply()
 	AccountID const account = (*slep)[sfAccount];
 	STAmount const& amount = (*slep)[sfAmount];
 
+	bool isZxc = isZXC(amount);
+
     // If a cancel time is present, a finish operation should only succeed prior
     // to that time. fix1571 corrects a logic error in the check that would make
     // a finish only succeed strictly after the cancel time.
@@ -606,33 +608,44 @@ EscrowFinish::doApply()
         }
     }
 
-    // NOTE: These payments cannot be used to fund accounts
-	bool isZxc = isZXC(amount);
+	// Remove escrow from owner directory
+	{
+		auto const page = (*slep)[sfOwnerNode];
+		if (!ctx_.view().dirRemove(
+			keylet::ownerDir(account), page, k.key, true))
+		{
+			return tefBAD_LEDGER;
+		}
+	}
+
+	// Remove escrow from recipient's owner directory, if present.
+	if (ctx_.view().rules().enabled(fix1523) && (*slep)[~sfDestinationNode])
+	{
+		auto const page = (*slep)[sfDestinationNode];
+		if (!ctx_.view().dirRemove(keylet::ownerDir(destID), page, k.key, true))
+		{
+			return tefBAD_LEDGER;
+		}
+	}
+
+	//Remove escrow from issuer's owner directory
+	if (!isZxc)
+	{
+		AccountID const destination = (*slep)[sfDestination];
+		if (amount.getIssuer() != account && amount.getIssuer() != destination)
+		{
+			auto const page = (*slep)[sfIssuerNode];
+			if (!ctx_.view().dirRemove(keylet::ownerDir(amount.getIssuer()), page, k.key, true))
+			{
+				return tefBAD_LEDGER;
+			}
+		}
+	}	
 
 	AccountID const& dest = (*slep)[sfDestination];
 	// Fetch Destination SLE,transfer amount to destination
 	if (isZxc)
 	{
-	    // Remove escrow from owner directory
-	    {
-	        auto const page = (*slep)[sfOwnerNode];
-	        if (! ctx_.view().dirRemove(
-	                keylet::ownerDir(account), page, k.key, true))
-	        {
-	            return tefBAD_LEDGER;
-	        }
-	    }
-
-	    // Remove escrow from recipient's owner directory, if present.
-	    if (ctx_.view ().rules().enabled(fix1523) && (*slep)[~sfDestinationNode])
-	    {
-	        auto const page = (*slep)[sfDestinationNode];
-	        if (! ctx_.view().dirRemove(keylet::ownerDir(destID), page, k.key, true))
-	        {
-	            return tefBAD_LEDGER;
-	        }
-	    }
-
 	    // Transfer amount to destination
 	    (*sled)[sfBalance] = (*sled)[sfBalance] + (*slep)[sfAmount];
 
@@ -742,7 +755,8 @@ EscrowCancel::doApply()
     }
 
     AccountID const account = (*slep)[sfAccount];
-	STAmount const& amount = (*slep)[sfAmount];
+	STAmount const& amount = (*slep)[sfAmount]; 
+	bool isZxc = isZXC(amount);
 
     // Remove escrow from owner directory
     {
@@ -764,9 +778,23 @@ EscrowCancel::doApply()
             return tefBAD_LEDGER;
         }
     }
+
+
+	if (!isZxc)
+	{
+		//Remove escrow from issuer's owner directory
+		AccountID const destination = (*slep)[sfDestination];
+		if (amount.getIssuer() != account && amount.getIssuer() != destination)
+		{
+			auto const page = (*slep)[sfIssuerNode];
+			if (!ctx_.view().dirRemove(keylet::ownerDir(amount.getIssuer()), page, k.key, true))
+			{
+				return tefBAD_LEDGER;
+			}
+		}
+	}
 	
     // Transfer amount back to owner, decrement owner count
-	bool isZxc = isZXC(amount);
 	// Fetch Destination SLE,transfer amount to src
 	if (isZxc)
 	{

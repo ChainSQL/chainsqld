@@ -54,6 +54,9 @@ LedgerFormats::LedgerFormats ()
             { sfTransferRate,        soeOPTIONAL },
             { sfDomain,              soeOPTIONAL },
             { sfTickSize,            soeOPTIONAL },
+			{ sfMemos,				 soeOPTIONAL },
+			{ sfStorageOverlay,		 soeOPTIONAL },
+			{ sfContractCode,		 soeOPTIONAL },
         },
         commonFields);
 
@@ -99,7 +102,8 @@ LedgerFormats::LedgerFormats ()
             { sfLowQualityOut,       soeOPTIONAL },
             { sfHighNode,            soeOPTIONAL },
             { sfHighQualityIn,       soeOPTIONAL },
-            { sfHighQualityOut,      soeOPTIONAL },
+			{ sfHighQualityOut,      soeOPTIONAL },
+			{ sfMemos,				 soeOPTIONAL },
         },
         commonFields);
 
@@ -116,7 +120,8 @@ LedgerFormats::LedgerFormats ()
             { sfOwnerNode,           soeREQUIRED },
             { sfPreviousTxnID,       soeREQUIRED },
             { sfPreviousTxnLgrSeq,   soeREQUIRED },
-            { sfDestinationNode,     soeOPTIONAL },
+			{ sfDestinationNode,     soeOPTIONAL },
+			{ sfIssuerNode,			 soeOPTIONAL },
         },
         commonFields);
 
@@ -140,7 +145,8 @@ LedgerFormats::LedgerFormats ()
             { sfBaseFee,             soeREQUIRED },
             { sfReferenceFeeUnits,   soeREQUIRED },
             { sfReserveBase,         soeREQUIRED },
-            { sfReserveIncrement,    soeREQUIRED },
+			{ sfReserveIncrement,    soeREQUIRED },
+			{ sfDropsPerByte,		 soeOPTIONAL },
         },
         commonFields);
 
