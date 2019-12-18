@@ -1285,7 +1285,8 @@ void TableSync::TableSyncThread()
                     }
 					pItem->SetPara(nameInDB, LedgerSeq, LedgerHash, TxnLedgerSeq, TxnLedgerHash, TxnUpdateHash);
 
-					if (pItem->InitPassphrase().first)
+					auto initPassRet = pItem->InitPassphrase();
+					if (initPassRet.first)
 					{
 						pItem->SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
 						bNeedReSync = true;
@@ -1293,7 +1294,9 @@ void TableSync::TableSyncThread()
 					}
 					else
 					{
-						pItem->SetSyncState(TableSyncItem::SYNC_STOP);
+						JLOG(journal_.warn()) << "InitPassphrase failed,tableName=" << stItem.sTableName << ",owner=" << to_string(stItem.accountID)
+							<< ", Fail reason: " << initPassRet.second;
+						break;
 					}
 				}
 				else if(!stItem.isDeleted)
