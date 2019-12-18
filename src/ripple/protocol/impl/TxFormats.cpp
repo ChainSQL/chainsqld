@@ -52,6 +52,8 @@ TxFormats::TxFormats ()
             { sfMessageKey,          soeOPTIONAL },
             { sfDomain,              soeOPTIONAL },
             { sfTransferRate,        soeOPTIONAL },
+			{ sfTransferFeeMin,		 soeOPTIONAL },
+			{ sfTransferFeeMax,		 soeOPTIONAL },
             { sfSetFlag,             soeOPTIONAL },
             { sfClearFlag,           soeOPTIONAL },
             { sfTickSize,            soeOPTIONAL },
@@ -140,6 +142,7 @@ TxFormats::TxFormats ()
             { sfReferenceFeeUnits,   soeREQUIRED },
             { sfReserveBase,         soeREQUIRED },
             { sfReserveIncrement,    soeREQUIRED },
+			{ sfDropsPerByte,		 soeOPTIONAL },
         },
         commonFields);
 
