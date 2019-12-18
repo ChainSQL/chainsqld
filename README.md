@@ -1,4 +1,4 @@
-English / [中文](docs/README_CN.md)
+English / [中文](doc/README_CN.md)
 
 ![Chainsql](/images/logo.png)
 
