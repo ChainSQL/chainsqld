@@ -32,6 +32,7 @@ private:
 	Application& app_;
 	beast::Journal j_;
 	std::map<AccountID, State> accountState_;
+	std::mutex mutex_;
 };
 }
 

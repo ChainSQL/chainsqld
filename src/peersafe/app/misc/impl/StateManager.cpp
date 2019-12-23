@@ -7,6 +7,7 @@ namespace ripple {
 
 uint32 StateManager::getAccountSeq(AccountID const& id)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	if (accountState_.find(id) != accountState_.end())
 	{
 		return accountState_[id].sequence;
@@ -28,6 +29,7 @@ uint32 StateManager::getAccountSeq(AccountID const& id)
 
 void StateManager::resetAccountSeq(AccountID const& id)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	if (accountState_.find(id) != accountState_.end())
 	{
 		accountState_.erase(id);
@@ -36,6 +38,7 @@ void StateManager::resetAccountSeq(AccountID const& id)
 
 void StateManager::incrementSeq(AccountID const& id)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	if (accountState_.find(id) != accountState_.end())
 	{
 		++accountState_[id].sequence;
@@ -50,6 +53,7 @@ void StateManager::incrementSeq(AccountID const& id)
 
 void StateManager::clear()
 {
+	std::lock_guard<std::mutex> lock(mutex_);
 	if (accountState_.size() > 0)
 	{
 		accountState_.clear();
