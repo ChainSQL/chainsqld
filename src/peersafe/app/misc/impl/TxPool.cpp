@@ -93,7 +93,10 @@ namespace ripple {
                 mTxsSet.erase(iterSet);
 
                 // remove from avoid set.
-                mAvoid.erase(item.key());
+                if (mAvoid.find(item.key()) != mAvoid.end())
+                    mAvoid.erase(item.key());
+                else
+                    JLOG(j_.warn()) << "TxPool::TX:" << item.key() << " not in mAvoid set";
 				count++;
             }
             catch (std::exception const& e)
@@ -174,6 +177,8 @@ namespace ripple {
 
 	void TxPool::clearAvoid()
 	{
+        std::lock_guard<std::mutex> lock(mutexTxPoll_);
+
 		mAvoid.clear();
 	}
 
