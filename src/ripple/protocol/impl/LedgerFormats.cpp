@@ -52,6 +52,8 @@ LedgerFormats::LedgerFormats ()
             { sfWalletSize,          soeOPTIONAL },
             { sfMessageKey,          soeOPTIONAL },
             { sfTransferRate,        soeOPTIONAL },
+            { sfTransferFeeMin,      soeOPTIONAL },
+            { sfTransferFeeMax,      soeOPTIONAL },
             { sfDomain,              soeOPTIONAL },
             { sfTickSize,            soeOPTIONAL },
 			{ sfMemos,				 soeOPTIONAL },
