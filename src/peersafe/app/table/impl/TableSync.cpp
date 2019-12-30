@@ -1485,25 +1485,27 @@ bool TableSync::Is256thLedgerExist(LedgerIndex index)
     return true;
 }
 
-bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash,uint32 time, uint256 chainId)
+std::pair<bool, std::string>
+	TableSync::InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash,uint32 time, uint256 chainId)
 {
-    if (!bIsHaveSync_)                return false;
+    if (!bIsHaveSync_)                return std::make_pair(false,"Table is not configured to sync.");
 
     std::lock_guard<std::mutex> lock(mutexCreateTable_);
     
     bool ret = false;
+	std::string err = "";
     try
     {
         //check formal tables
         if (isExist(listTableInfo_, accountID, sTableName, TableSyncItem::SyncTarget_db))
-            return false;
+            return std::make_pair(false,"Table exist in listTableInfo");
         //check temp tables
         auto it = std::find_if(listTempTable_.begin(), listTempTable_.end(),
             [sNameInDB](std::string sName) {
             return sName == sNameInDB;
         });
         if (it != listTempTable_.end())
-            return false;
+            return std::make_pair(false,err);
 
         std::shared_ptr<TableSyncItem> pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
         std::string PreviousCommit;
@@ -1523,8 +1525,9 @@ bool TableSync::InsertListDynamically(AccountID accountID, std::string sTableNam
         JLOG(journal_.error()) <<
             "InsertSnycDB exception " << e.what();
         ret = false;
+		err = e.what();
     }
-    return ret;
+    return std::make_pair(ret,err);
 }
 
 uint256 TableSync::GetLocalHash(LedgerIndex ledgerSeq)
@@ -1729,7 +1732,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 	}
 }
 
-void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
+bool TableSync::OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger,uint32 time,uint256 const& chainId)
 {
 	AccountID accountID = tx.getAccountID(sfAccount);
 	auto tables = tx.getFieldArray(sfTables);
@@ -1738,11 +1741,16 @@ void TableSync::OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const
 	auto tableBlob = tables[0].getFieldVL(sfTableName);
 	std::string tableName;
 	tableName.assign(tableBlob.begin(), tableBlob.end());
-	bool bInsertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
-	if (!bInsertRes)
+	auto insertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
+	if (!insertRes.first)
 	{
 		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
+
+		std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", insertRes.second);
+		app_.getOPs().pubTableTxs(accountID, tableName, tx, result, false);
 	}
+
+    return insertRes.first;
 }
 //////////////////
 bool TableSync::IsAutoLoadTable()
