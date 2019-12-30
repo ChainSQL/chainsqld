@@ -63,7 +63,7 @@ public:
 
     void SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo, TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>>& cache);
     void CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger);
-    bool OnCreateTableTx(STObject const& tx, std::shared_ptr<Ledger const> const& ledger, uint32 time, uint256 const& chainId);
+    bool OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32 time, uint256 const& chainId);
     bool ReStartOneTable(AccountID accountID, std::string sNameInDB, std::string sTableName, bool bDrop, bool bCommit);
     bool StopOneTable(AccountID accountID, std::string sNameInDB, bool bNewTable);
 
@@ -115,7 +115,8 @@ private:
 
     std::shared_ptr <TableSyncItem> GetRightItem(AccountID accountID, std::string sTableName, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, bool bByNameInDB = true);
 
-    bool InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash, uint32 time,uint256 chainId);
+    std::pair<bool,std::string>
+		InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash, uint32 time,uint256 chainId);
 
     bool IsAutoLoadTable();
 
