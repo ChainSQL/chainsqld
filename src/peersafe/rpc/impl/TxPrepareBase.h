@@ -101,6 +101,8 @@ namespace ripple {
 
 		//is table raw encoded
 		bool												m_bConfidential;
+
+        beast::Journal                                      m_journal;
 	};
 } // ripple
 

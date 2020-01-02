@@ -391,6 +391,7 @@ private:
         char* string_;
         ObjectValues* map_ {nullptr};
     } value_;
+    unsigned short length_ = 0;
     ValueType type_ : 8;
     int allocated_ : 1;     // Notes: if declared as bool, bitfield is useless.
 };

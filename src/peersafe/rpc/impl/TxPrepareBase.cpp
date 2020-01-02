@@ -40,7 +40,8 @@ TxPrepareBase::TxPrepareBase(Application& app, const std::string& secret, const 
     public_(publickey),
 	tx_json_(tx_json),
 	getCheckHashFunc_(func),
-	ws_(ws)
+	ws_(ws),
+    m_journal(app_.journal("TxPrepareBase"))
 {
 	m_bConfidential = false;
 	sTableName_ = "";
@@ -592,7 +593,7 @@ Json::Value TxPrepareBase::prepareForCreate()
     PublicKey public_key;
     if (!public_.empty())
     {
-        std::string publicKeyDe58 = decodeBase58Token(public_, TokenType::NodePublic);
+        std::string publicKeyDe58 = decodeBase58Token(public_, TokenType::AccountPublic);
         if (publicKeyDe58.empty() || publicKeyDe58.size() != 65)
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");
@@ -618,9 +619,14 @@ Json::Value TxPrepareBase::prepareForCreate()
     Blob raw_blob = strCopy(raw);
     Blob rawCipher;
     HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    Blob plainBlob;
+
     // get random password
     Blob passBlob = RippleAddress::getRandomPassword();
+
+    //JLOG(m_journal.error()) << "on prepareForCreate, gen plain password HEX: " << strHex(strCopy(passBlob)) << std::endl;
+    //JLOG(m_journal.error()) << "on prepareForCreate, plain raw: " << raw << std::endl;
+
+    // encrypt raw
     if (nullptr != hEObj)
     {
         //unsigned char sessionKey[512] = { 0 };
@@ -642,10 +648,12 @@ Json::Value TxPrepareBase::prepareForCreate()
     }
     else
     {
-        //get password cipher
         rawCipher = RippleAddress::encryptAES(passBlob, raw_blob);
     }
-    tx_json_[jss::Token] = strCopy(ripple::encrypt(passBlob, public_key));
+
+    //JLOG(m_journal.error()) << "on prepareForCreate, encrypted raw HEX: " << strHex(rawCipher);
+    //JLOG(m_journal.error()) << "on prepareForCreate, encrypted raw before len: " << rawCipher.size();
+
 	if (rawCipher.size() > 0)
 	{
 		tx_json_[jss::Raw] = strCopy(rawCipher);
@@ -654,7 +662,11 @@ Json::Value TxPrepareBase::prepareForCreate()
 	{
 		return RPC::make_error(rpcGENERAL, "encrypt raw failed,please checkout!");
 	}
-	
+
+    // password to token(cipher)
+    auto token = strCopy(ripple::encrypt(passBlob, public_key));
+    tx_json_[jss::Token] = token;
+
 	updatePassblob(to_string(ownerID_), sTableName_, passBlob);
 
 	return ret;
@@ -669,7 +681,7 @@ Json::Value TxPrepareBase::prepareForAssign()
 	std::string sPublic_key = tx_json_["PublicKey"].asString();
     if (nullptr == HardEncryptObj::getInstance())
     {
-        auto oPublicKey = parseBase58<PublicKey>(TokenType::NodePublic, sPublic_key);
+        auto oPublicKey = parseBase58<PublicKey>(TokenType::AccountPublic, sPublic_key);
         if (!oPublicKey)
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");
@@ -694,7 +706,7 @@ Json::Value TxPrepareBase::prepareForAssign()
     }
     else
     {
-        std::string publicKeyDe58 = decodeBase58Token(sPublic_key, TokenType::NodePublic);
+        std::string publicKeyDe58 = decodeBase58Token(sPublic_key, TokenType::AccountPublic);
         if (publicKeyDe58.empty())
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse publicKey failed, please checkout!");

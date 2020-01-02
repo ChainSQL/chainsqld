@@ -267,7 +267,7 @@ Value::Value ( std::string const& value )
 {
     value_.string_ = valueAllocator ()->duplicateStringValue ( value.c_str (),
                      (unsigned int)value.length () );
-
+    length_ = value.length();
 }
 
 Value::Value ( const StaticString& value )
@@ -367,8 +367,8 @@ Value::Value ( Value&& other ) noexcept
 Value&
 Value::operator=(Value&& other)
 {
-    Value tmp(std::move(other));
-    swap(tmp);
+    //Value tmp(std::move(other));
+    swap(other);
     return *this;
 }
 
@@ -384,6 +384,10 @@ Value::swap ( Value& other ) noexcept
     int temp2 = allocated_;
     allocated_ = other.allocated_;
     other.allocated_ = temp2;
+
+    unsigned short temp3 = length_;
+    length_ = other.length_;
+    other.length_ = temp3;
 }
 
 ValueType
@@ -514,7 +518,10 @@ Value::asString () const
         return "";
 
     case stringValue:
-        return value_.string_ ? value_.string_ : "";
+        if (length_ == 0)
+            return value_.string_ ? value_.string_ : "";
+        else
+            return value_.string_ ? std::string(value_.string_, length_) : "";
 
     case booleanValue:
         return value_.bool_ ? "true" : "false";

@@ -332,7 +332,7 @@ Blob const& RippleAddress::getAccountPublic () const
     case TokenType::AccountID:
         Throw<std::runtime_error> ("public not available from account id");
 
-    case TokenType::NodePublic:
+    case TokenType::AccountPublic:
         return vchData;
 
     default:
@@ -351,7 +351,7 @@ std::string RippleAddress::humanAccountPublic () const
     case TokenType::AccountID:
         Throw<std::runtime_error> ("public not available from account id");
 
-    case TokenType::NodePublic:
+    case TokenType::AccountPublic:
         return ToString ();
 
     default:
@@ -363,7 +363,7 @@ std::string RippleAddress::humanAccountPublic () const
 bool RippleAddress::setAccountPublic (std::string const& strPublic)
 {
     mIsValid = SetString (
-        strPublic, (unsigned char)TokenType::NodePublic, Base58::getRippleAlphabet ());
+        strPublic, (unsigned char)TokenType::AccountPublic, Base58::getRippleAlphabet ());
 
     return mIsValid;
 }
@@ -372,7 +372,7 @@ void RippleAddress::setAccountPublic (Blob const& vPublic)
 {
     mIsValid = true;
 
-    SetData ((int)TokenType::NodePublic, vPublic);
+    SetData ((int)TokenType::AccountPublic, vPublic);
 }
 
 void RippleAddress::setAccountPublic (RippleAddress const& generator, int seq)
@@ -719,7 +719,7 @@ uint128 RippleAddress::getSeed () const
     case TokenType::None:
         Throw<std::runtime_error> ("unset source - getSeed");
 
-    case TokenType::FamilyGenerator:
+    case TokenType::FamilySeed:
         return uint128 (vchData);
 
     default:
@@ -735,7 +735,7 @@ std::string RippleAddress::humanSeed1751 () const
     case TokenType::None:
         Throw<std::runtime_error> ("unset source - humanSeed1751");
 
-    case TokenType::FamilyGenerator:
+    case TokenType::FamilySeed:
     {
         std::string strHuman;
         std::string strLittle;
@@ -764,7 +764,7 @@ std::string RippleAddress::humanSeed () const
     case TokenType::None:
         Throw<std::runtime_error> ("unset source - humanSeed");
 
-    case TokenType::FamilyGenerator:
+    case TokenType::FamilySeed:
         return ToString ();
 
     default:

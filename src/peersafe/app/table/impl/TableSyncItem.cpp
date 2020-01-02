@@ -847,6 +847,10 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
 	{
 		return;
 	}
+
+    //JLOG(journal_.error()) << "on TableSyncItem, plain password Hex: " << strHex(passBlob_) << std::endl;
+    //JLOG(journal_.error()) << "on TableSyncItem, encrypted raw len: " << raw.size();
+    //JLOG(journal_.error()) << "on TableSyncItem, encrypted raw HEX: " << strHex(raw) << std::endl;
 	
 	if (user_accountID_ && user_secret_)
 	{
@@ -865,6 +869,8 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
             rawDecrypted = Blob(pPlainData, pPlainData + plainDataLen);
             delete[] pPlainData;
         }
+
+        //JLOG(journal_.error()) << "on TableSyncItem, plain raw: " << strCopy(rawDecrypted) << std::endl;
 
 		if (rawDecrypted.size() > 0)
 		{
