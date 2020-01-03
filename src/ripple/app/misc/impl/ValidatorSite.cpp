@@ -235,12 +235,13 @@ ValidatorSite::onSiteFetch(
             body.isMember("version") && body["version"].isInt())
         {
 
+			hash_set<PublicKey> validators;
             auto const disp = validators_.applyList (
                 body["manifest"].asString (),
                 body["blob"].asString (),
                 body["signature"].asString(),
                 body["version"].asUInt(),
-				!waitingBeginConsensus_);
+				&validators);
 
             sites_[siteIdx].lastRefreshStatus.emplace(
                 Site::Status{clock_type::now(), disp});
@@ -255,6 +256,10 @@ ValidatorSite::onSiteFetch(
 				{
 					app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
 					waitingBeginConsensus_ = false;
+				}
+				else
+				{
+					app_.validators().onConsensusStart(validators);
 				}
             }
             else if (ListDisposition::same_sequence == disp)

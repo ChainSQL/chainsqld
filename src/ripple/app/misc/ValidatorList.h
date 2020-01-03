@@ -203,7 +203,7 @@ public:
         std::string const& blob,
         std::string const& signature,
         std::uint32_t version,
-		bool needCalcQuorum = false);
+		hash_set<PublicKey>* set = nullptr);
 
     /** Update trusted keys
 
