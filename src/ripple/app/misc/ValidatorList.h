@@ -397,6 +397,9 @@ private:
     static std::size_t
     calculateMinimumQuorum (
         std::size_t nListedKeys, bool unlistedLocal=false);
+
+	//reset validators for consensus
+	void resetValidators();
 };
 
 //------------------------------------------------------------------------------

@@ -181,8 +181,6 @@ ValidatorList::load (
         if (id == localPubKey_ || id == localSigningKey)
             continue;
 
-        validators_.push_back(id);
-
         auto ret = keyListings_.insert ({id, 1});
         if (! ret.second)
         {
@@ -204,17 +202,7 @@ ValidatorList::load (
     JLOG (j_.debug()) <<
         "Loaded " << count << " entries";
 
-    // add self
-    if (localPubKey_.size())
-        validators_.push_back(localPubKey_);
-
-    std::sort(validators_.begin(), validators_.end(), publicKeyComp);
-
-    JLOG(j_.info()) << "validators_: ";
-    for (auto iter = validators_.begin(); iter != validators_.end(); ++iter)
-    {
-        JLOG(j_.info()) << toBase58(TOKEN_NODE_PUBLIC, *iter);
-    }
+	resetValidators();
 
     return true;
 }
@@ -348,6 +336,8 @@ ValidatorList::applyList (
 		}
 		onConsensusStart(keys);
 	}
+
+	resetValidators();
 
     return ListDisposition::accepted;
 }
@@ -642,6 +632,23 @@ ValidatorList::calculateMinimumQuorum (
     // If/when the quorum is subsequently raised to/towards 80%, it becomes
     // harder to split the network (more safe) and easier to stall it (less live).
     return nListedKeys * 2/3 + 1;
+}
+
+void ValidatorList::resetValidators()
+{
+	//reset validators_
+	validators_.clear();
+	for (auto iter = keyListings_.begin(); iter != keyListings_.end(); iter++)
+	{
+		validators_.push_back(iter->first);
+	}
+	std::sort(validators_.begin(), validators_.end(), publicKeyComp);
+
+	JLOG(j_.info()) << "validators_: ";
+	for (auto iter = validators_.begin(); iter != validators_.end(); ++iter)
+	{
+		JLOG(j_.info()) << toBase58(TOKEN_NODE_PUBLIC, *iter);
+	}
 }
 
 } // ripple
