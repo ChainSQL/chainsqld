@@ -533,8 +533,8 @@ EscrowFinish::doApply()
 
         // Too late?
         if ((*slep)[~sfCancelAfter] &&
-            ctx_.view().info().parentCloseTime.time_since_epoch().count() <=
-            (*slep)[sfCancelAfter])
+            (*slep)[sfCancelAfter] <=
+            ctx_.view().info().parentCloseTime.time_since_epoch().count())
             return tecNO_PERMISSION;
     }
 
