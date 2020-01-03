@@ -83,7 +83,7 @@ Json::Value doSubmit (RPC::Context& context)
     catch (std::exception& e)
     {
         jvResult[jss::error]        = "invalidTransaction";
-        jvResult[jss::error_exception] = e.what ();
+        jvResult[jss::error_message] = e.what ();
 
         return jvResult;
     }
@@ -99,7 +99,7 @@ Json::Value doSubmit (RPC::Context& context)
         if (validity.first != Validity::Valid)
         {
             jvResult[jss::error] = "invalidTransaction";
-            jvResult[jss::error_exception] = "fails local checks: " + validity.second;
+            jvResult[jss::error_message] = "fails local checks: " + validity.second;
 
             return jvResult;
         }
@@ -111,7 +111,7 @@ Json::Value doSubmit (RPC::Context& context)
     if (tpTrans->getStatus() != NEW)
     {
         jvResult[jss::error]            = "invalidTransaction";
-        jvResult[jss::error_exception] = "fails local checks: " + reason;
+        jvResult[jss::error_message] = "fails local checks: " + reason;
 
         return jvResult;
     }
@@ -126,7 +126,7 @@ Json::Value doSubmit (RPC::Context& context)
     catch (std::exception& e)
     {
         jvResult[jss::error]           = "internalSubmit";
-        jvResult[jss::error_exception] = e.what ();
+        jvResult[jss::error_message] = e.what ();
 
         return jvResult;
     }
@@ -158,7 +158,7 @@ Json::Value doSubmit (RPC::Context& context)
     catch (std::exception& e)
     {
         jvResult[jss::error]           = "internalJson";
-        jvResult[jss::error_exception] = e.what ();
+        jvResult[jss::error_message] = e.what ();
 
         return jvResult;
     }
