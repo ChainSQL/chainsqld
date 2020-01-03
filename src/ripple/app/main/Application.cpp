@@ -488,7 +488,7 @@ public:
             *validatorManifests_, *publisherManifests_, *timeKeeper_,
             logs_->journal("ValidatorList"), config_->VALIDATION_QUORUM))
 
-        , validatorSites_ (std::make_unique<ValidatorSite> (
+        , validatorSites_ (std::make_unique<ValidatorSite> (*this,
             get_io_service (), *validators_, logs_->journal("ValidatorSite")))
 
         , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
@@ -1345,11 +1345,18 @@ bool ApplicationImp::setup()
     validatorSites_->start ();
 
     // start first consensus round
-    if (! m_networkOPs->beginConsensus(m_ledgerMaster->getClosedLedger()->info().hash))
-    {
-        JLOG(m_journal.fatal()) << "Unable to start consensus";
-        return false;
-    }
+	if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
+	{
+		if (!m_networkOPs->beginConsensus(m_ledgerMaster->getClosedLedger()->info().hash))
+		{
+			JLOG(m_journal.fatal()) << "Unable to start consensus";
+			return false;
+		}
+	}
+	else {
+		validatorSites_->setWaitinBeginConsensus();
+	}
+
 
     {
         auto setup = setup_ServerHandler(

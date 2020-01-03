@@ -202,7 +202,8 @@ public:
         std::string const& manifest,
         std::string const& blob,
         std::string const& signature,
-        std::uint32_t version);
+        std::uint32_t version,
+		bool needCalcQuorum = false);
 
     /** Update trusted keys
 

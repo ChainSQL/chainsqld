@@ -26,6 +26,8 @@
 #include <ripple/protocol/JsonFields.h>
 #include <beast/core/detail/base64.hpp>
 #include <boost/regex.hpp>
+#include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 
 namespace ripple {
 
@@ -33,16 +35,19 @@ namespace ripple {
 auto constexpr DEFAULT_REFRESH_INTERVAL = std::chrono::minutes{5};
 
 ValidatorSite::ValidatorSite (
+	Application& app,
     boost::asio::io_service& ios,
     ValidatorList& validators,
     beast::Journal j)
-    : ios_ (ios)
+    : app_(app)
+	, ios_ (ios)
     , validators_ (validators)
     , j_ (j)
     , timer_ (ios_)
     , fetching_ (false)
     , pending_ (false)
     , stopping_ (false)
+	, waitingBeginConsensus_(false)
 {
 }
 
@@ -234,7 +239,8 @@ ValidatorSite::onSiteFetch(
                 body["manifest"].asString (),
                 body["blob"].asString (),
                 body["signature"].asString(),
-                body["version"].asUInt());
+                body["version"].asUInt(),
+				!waitingBeginConsensus_);
 
             sites_[siteIdx].lastRefreshStatus.emplace(
                 Site::Status{clock_type::now(), disp});
@@ -244,6 +250,12 @@ ValidatorSite::onSiteFetch(
                 JLOG (j_.debug()) <<
                     "Applied new validator list from " <<
                     sites_[siteIdx].uri;
+				//begin consensus after apply success
+				if (waitingBeginConsensus_)
+				{
+					app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+					waitingBeginConsensus_ = false;
+				}
             }
             else if (ListDisposition::same_sequence == disp)
             {
@@ -345,5 +357,9 @@ ValidatorSite::getJson() const
         }
     }
     return jrr;
+}
+void ValidatorSite::setWaitinBeginConsensus()
+{
+	waitingBeginConsensus_ = true;
 }
 } // ripple

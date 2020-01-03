@@ -225,7 +225,8 @@ ValidatorList::applyList (
     std::string const& manifest,
     std::string const& blob,
     std::string const& signature,
-    std::uint32_t version)
+    std::uint32_t version,
+	bool needCalcQuorum)
 {
     if (version != requiredListVersion)
         return ListDisposition::unsupported_version;
@@ -338,6 +339,15 @@ ValidatorList::applyList (
                 " contained invalid validator manifest";
         }
     }
+	if (needCalcQuorum)
+	{
+		hash_set<PublicKey> keys;
+		for (auto iter = keyListings_.begin(); iter != keyListings_.end(); iter++)
+		{
+			keys.emplace(iter->first);
+		}
+		onConsensusStart(keys);
+	}
 
     return ListDisposition::accepted;
 }

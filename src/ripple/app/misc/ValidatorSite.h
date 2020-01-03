@@ -102,8 +102,11 @@ private:
     // The configured list of URIs for fetching lists
     std::vector<Site> sites_;
 
+	std::atomic<bool> waitingBeginConsensus_;
+	Application& app_;
 public:
     ValidatorSite (
+		Application& app,
         boost::asio::io_service& ios,
         ValidatorList& validators,
         beast::Journal j);
@@ -159,6 +162,7 @@ public:
     Json::Value
     getJson() const;
 
+	void setWaitinBeginConsensus();
 private:
     /// Queue next site to be fetched
     void
