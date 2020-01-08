@@ -35,8 +35,7 @@ namespace ripple {
 
 #ifndef CACHED_LEDGER_AGE
 #define CACHED_LEDGER_AGE 120
-//#define CACHED_LEDGER_AGE_MAX 1800
-#define CACHED_LEDGER_AGE_MAX 60
+#define CACHED_LEDGER_AGE_MAX 1800
 #endif
 
 // FIXME: Need to clean up ledgers by index at some point
