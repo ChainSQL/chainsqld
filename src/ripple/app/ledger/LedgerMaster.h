@@ -271,6 +271,8 @@ public:
 
     std::size_t getFetchPackCacheSize () const;
 
+    std::uint32_t prevMissing(std::uint32_t v) const;
+
 private:
     using ScopedLockType = std::lock_guard <std::recursive_mutex>;
     using ScopedUnlockType = GenericScopedUnlock <std::recursive_mutex>;
@@ -343,6 +345,8 @@ private:
 
     std::recursive_mutex mCompleteLock;
     RangeSet mCompleteLedgers;
+    RangeSet mSkipBlocks;
+    std::map<LedgerIndex, LedgerHash> missingHashes;
 
     std::unique_ptr <detail::LedgerCleaner> mLedgerCleaner;
 
