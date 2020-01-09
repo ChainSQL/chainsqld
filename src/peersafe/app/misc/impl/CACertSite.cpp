@@ -36,9 +36,9 @@ namespace ripple {
 		std::vector<std::string>&    rootCerts,
 		beast::Journal j)
 		: ConfigSite(ios, validatorManifests,j)
+		, rootCerts_(rootCerts)
 		, publisherManifests_(publisherManifests)
 		, timeKeeper_(timeKeeper)
-		, rootCerts_(rootCerts)
 	{
 	}
 

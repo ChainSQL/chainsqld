@@ -60,12 +60,12 @@ namespace ripple {
 		ManifestCache& validatorManifests,
 		beast::Journal j)
 		: ios_(ios)
-		,validatorManifests_(validatorManifests)
-		, j_(j)
 		, timer_(ios_)
 		, fetching_(false)
 		, pending_(false)
 		, stopping_(false)
+		, j_(j)
+		, validatorManifests_(validatorManifests)
 	{
 	}
 

@@ -27,6 +27,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <openssl/pem.h>
 #include <openssl/x509_vfy.h>
 #include <openssl/ec.h>
+
 #include <ripple/crypto/impl/openssl.h>
 #include <ripple/crypto/GenerateDeterministicKey.h>
 #include <peersafe/crypto/X509.h>
@@ -98,7 +99,6 @@ namespace ripple {
 
 
 		int ret = 0;
-		int nX509Verify = 1;
 
 		//cert chain context
 		X509_STORE_CTX *ctx = NULL;
@@ -239,8 +239,8 @@ namespace ripple {
 		//int               eccgrp;
 		int             ret = 0;
 		int             nVersion = 1;
-		X509_REQ        *x509_req = NULL;
-		X509_NAME       *x509_name = NULL;
+		X509_REQ        *x509_req  = NULL;
+		X509_name_st    *x509_name = NULL;
 	//	RSA             *tem = NULL;
 		BIO             *out = NULL;
 
