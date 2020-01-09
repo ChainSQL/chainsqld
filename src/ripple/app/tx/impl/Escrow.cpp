@@ -324,8 +324,31 @@ EscrowCreate::doApply()
 
 			bool const bHigh = dest > amount.getIssuer();
 			auto limit = sleRippleStateDst->getFieldAmount(!bHigh ? sfLowLimit : sfHighLimit);
-			if (limit < amount)
-				return temBAD_PATH;
+
+            auto balance = sleRippleStateDst->getFieldAmount(sfBalance);
+            auto furBalance = balance;
+            if (furBalance.negative())
+                furBalance.negate();
+
+            forEachItem(ctx_.view(), amount.getIssuer(),
+                [&](std::shared_ptr<SLE const> const& sle)
+            {
+                //for escrow
+                if (sle->getType() == ltESCROW)
+                {
+                    auto amount1 = (*sle)[sfAmount];
+                    if (amount1.getIssuer() == amount.getIssuer() && AccountID((*sle)[sfDestination]) == dest)
+                    {
+                        furBalance += amount1;
+                    }
+                    return;
+                }
+            });
+
+            if (limit < amount + furBalance)
+            {
+                return tecPATH_PARTIAL;
+            }
 		}
     }
 
@@ -501,10 +524,24 @@ EscrowFinish::doApply()
 	{
 		return tecNO_TARGET;
 	}
-       
 
 	AccountID const account = (*slep)[sfAccount];
 	STAmount const& amount = (*slep)[sfAmount];
+    AccountID const& dest = (*slep)[sfDestination];
+
+    SLE::pointer sledl = ctx_.view().peek(
+        keylet::line((*slep)[sfDestination], amount.getIssuer(), amount.getCurrency()));
+    if (!sledl)
+        return tecNO_LINE;
+
+    bool const bHigh = dest > amount.getIssuer();
+    auto limit = sledl->getFieldAmount(!bHigh ? sfLowLimit : sfHighLimit);
+    auto balance = sledl->getFieldAmount(sfBalance);
+    auto dstBalance = balance;
+    if (dstBalance.negative())
+        dstBalance.negate();
+    if (limit < amount + dstBalance)
+        return tecPATH_DRY;
 
 	bool isZxc = isZXC(amount);
 
@@ -642,7 +679,6 @@ EscrowFinish::doApply()
 		}
 	}	
 
-	AccountID const& dest = (*slep)[sfDestination];
 	// Fetch Destination SLE,transfer amount to destination
 	if (isZxc)
 	{
@@ -653,15 +689,10 @@ EscrowFinish::doApply()
 	}
 	else
 	{
-		SLE::pointer sled = view().peek(
-			keylet::line((*slep)[sfDestination], amount.getIssuer(), amount.getCurrency()));
-		if (!sled)
-			return tecNO_LINE;
-
-		bool const bHigh = dest > amount.getIssuer();
-		auto limit = sled->getFieldAmount(!bHigh ? sfLowLimit : sfHighLimit);
-		if (limit < amount)
-			return tecPATH_DRY;
+        SLE::pointer sled = ctx_.view().peek(
+            keylet::line((*slep)[sfDestination], amount.getIssuer(), amount.getCurrency()));
+        if (!sled)
+            return tecNO_LINE;
 
 		// If the gateway has a transfer rate, accommodate that.
 		Rate gatewayXferRate{ QUALITY_ONE };
