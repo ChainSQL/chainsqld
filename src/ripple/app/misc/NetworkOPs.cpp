@@ -1103,7 +1103,7 @@ NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
 
     if (ter == tesSUCCESS)
     {
-        // after check and transaction's check result is tesSUCCESS£¬add it to TxPool:
+        // after check and transaction's check result is tesSUCCESSï¿½ï¿½add it to TxPool:
         ter = app_.getTxPool().insertTx(transaction,view.seq());
         if (ter != tesSUCCESS)
         {
@@ -1137,8 +1137,13 @@ TER NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     boost::optional<PreclaimContext const> pcctx;
     pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
 
-    ter = Transactor::checkSeq2(*pcctx);
+    ter = Transactor::checkSign(*pcctx);
+    if(ter != tesSUCCESS)
+    {
+        return ter;
+    }
 
+    ter = Transactor::checkSeq2(*pcctx);
     if (ter != tesSUCCESS)
     {
         return ter;
@@ -1151,12 +1156,6 @@ TER NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 	{
 		return ter;
 	}
-
-    //ter = Transactor::checkSign(*pcctx);
-    //if (ter != tesSUCCESS)
-    //{
-    //    return ter;
-    //}
 
     return ter;
 }
