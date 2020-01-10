@@ -94,6 +94,11 @@ preflight1 (PreflightContext const& ctx)
 NotTEC
 preflight2 (PreflightContext const& ctx)
 {
+    if (ctx.flags & tapNO_CHECK_SIGN)
+    {
+        return tesSUCCESS;
+    }
+
     auto const sigValid = checkValidity(ctx.app.getHashRouter(),
         ctx.tx, ctx.rules, ctx.app.config());
     if (sigValid.first == Validity::SigBad)
@@ -102,6 +107,7 @@ preflight2 (PreflightContext const& ctx)
             "preflight2: bad signature. " << sigValid.second;
         return temINVALID;
     }
+
     return tesSUCCESS;
 }
 
