@@ -347,7 +347,7 @@ EscrowCreate::doApply()
 
             if (limit < amount + furBalance)
             {
-                return tecPATH_PARTIAL;
+                return temBAD_PATH;
             }
 		}
     }

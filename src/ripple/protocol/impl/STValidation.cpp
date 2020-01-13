@@ -64,6 +64,9 @@ STValidation::STValidation(
     if (fees.reserveIncrement)
         setFieldU32(sfReserveIncrement, *fees.reserveIncrement);
 
+	if (fees.dropsPerByte)
+		setFieldU64(sfDropsPerByte, *fees.dropsPerByte);
+
     if (!amendments.empty())
         setFieldV256(sfAmendments, STVector256(sfAmendments, amendments));
 
