@@ -2954,7 +2954,7 @@ void NetworkOPsImp::pubValidatedTransaction (
 
     if (!mSubAccount.empty() || !mSubRTAccount.empty())
     {
-        if (alTx.getResult() == tesSUCCESS)
+        //if (alTx.getResult() == tesSUCCESS)
             pubAccountTransaction(alAccepted, alTx, true);
     }
 
