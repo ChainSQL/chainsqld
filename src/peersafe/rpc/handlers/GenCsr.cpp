@@ -40,8 +40,11 @@ Json::Value doGenCsr(RPC::Context& context)
 		return RPC::make_error(rpcINVALID_PARAMS, errMsg);
 	}
 
-
 	auto const seed = parseBase58<Seed>(sSeed);
+	if (!seed) {
+		return  rpcError(rpcBAD_SEED);
+	}
+		
 
 	std::string country         = vecX509Subject[0];
 	std::string province       = vecX509Subject[1];

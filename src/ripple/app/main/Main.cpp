@@ -171,7 +171,7 @@ void printHelp (const po::options_description& desc)
            "     validator_list_sites\n"
            "     version\n"
            "     wallet_propose [<passphrase>]\n"
-		   "     gen_csr <send> <x509_subject>\n";
+		   "     gen_csr <seed> <x509_subject>\n";
 }
 
 //------------------------------------------------------------------------------
