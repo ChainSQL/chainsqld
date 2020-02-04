@@ -1417,6 +1417,8 @@ LedgerMaster::getLedgerHashForHistory (LedgerIndex index)
 {
     // Try to get the hash of a ledger we need to fetch for history
     boost::optional<LedgerHash> ret;
+	if (missingHashes.count(index))
+		return missingHashes[index];
 
     if (mHistLedger && (mHistLedger->info().seq >= index))
     {
@@ -1427,9 +1429,6 @@ LedgerMaster::getLedgerHashForHistory (LedgerIndex index)
 
     if (! ret)
         ret = walkHashBySeq (index);
-
-    if (!ret && missingHashes.count(index))
-        ret = missingHashes[index];
 
     return ret;
 }
@@ -2096,7 +2095,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                                 }
                                 else
                                     JLOG (m_journal.debug()) <<
-                                    "tryAdvance found failed acquire";
+                                    "tryAdvance found failed acquire " << *hash;
                             }
                             if (ledger)
                             {
