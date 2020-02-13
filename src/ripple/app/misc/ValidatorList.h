@@ -27,6 +27,7 @@
 #include <ripple/crypto/csprng.h>
 #include <ripple/json/json_value.h>
 #include <ripple/protocol/PublicKey.h>
+#include <peersafe/app/misc/ConfigSite.h>
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/range/adaptors.hpp>
 #include <boost/thread/locks.hpp>
@@ -36,27 +37,27 @@
 
 namespace ripple {
 
-enum class ListDisposition
-{
-    /// List is valid
-    accepted = 0,
-
-    /// Same sequence as current list
-    same_sequence,
-
-    /// List version is not supported
-    unsupported_version,
-
-    /// List signed by untrusted publisher key
-    untrusted,
-
-    /// Trusted publisher key, but seq is too old
-    stale,
-
-    /// Invalid format or signature
-    invalid
-};
-
+//class ListDisposition;
+//{
+//    /// List is valid
+//    accepted = 0,
+//
+//    /// Same sequence as current list
+//    same_sequence,
+//
+//    /// List version is not supported
+//    unsupported_version,
+//
+//    /// List signed by untrusted publisher key
+//    untrusted,
+//
+//    /// Trusted publisher key, but seq is too old
+//    stale,
+//
+//    /// Invalid format or signature
+//    invalid
+//};
+//
 std::string
 to_string(ListDisposition disposition);
 

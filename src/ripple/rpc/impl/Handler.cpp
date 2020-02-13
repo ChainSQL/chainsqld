@@ -189,7 +189,8 @@ Handler handlerArray[] {
 	{	"contract_call",		byRef(&doContractCall),	       Role::USER,	NO_CONDITION  },
     // Evented methods
     {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION  },
-    {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION  },
+    {   "unsubscribe",        byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION  },
+	{    "gen_csr",              byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION }
 };
 
 } // namespace

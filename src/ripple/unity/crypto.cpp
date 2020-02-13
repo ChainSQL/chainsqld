@@ -34,6 +34,7 @@
 #include <peersafe/crypto/impl/ECDSACanonical.cpp>
 #include <peersafe/crypto/impl/ECDSAKey.cpp>
 #include <peersafe/crypto/impl/ECIES.cpp>
+#include <peersafe/crypto/impl/X509.cpp>
 
 
 
