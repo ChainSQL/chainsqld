@@ -911,7 +911,7 @@ bool InboundLedger::takeTxNode (const std::vector<SHAMapNodeID>& nodeIDs,
 bool InboundLedger::takeAsNode (const std::vector<SHAMapNodeID>& nodeIDs,
     const std::vector< Blob >& data, SHAMapAddNode& san)
 {
-    JLOG (m_journal.trace()) <<
+    JLOG (m_journal.info()) <<
         "got ASdata (" << nodeIDs.size () <<
         ") acquiring ledger " << mHash;
     if (nodeIDs.size () == 1)

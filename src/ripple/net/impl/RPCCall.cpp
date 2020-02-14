@@ -1302,7 +1302,7 @@ public:
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
 			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
 			{   "gen_csr",          &RPCParser::parseGenCsr,                   2,  2 },
-
+			{	"ledger_objects",	   &RPCParser::parseLedgerId,			   1,  1 },
         };
 
         auto const count = jvParams.size ();
