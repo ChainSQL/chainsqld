@@ -191,9 +191,8 @@ Handler handlerArray[] {
     // Evented methods
     {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION     },
     {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION     },
-
 	{    "gen_csr",             byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION },
-
+	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::USER,  NO_CONDITION     },
 };
 
 } // namespace
