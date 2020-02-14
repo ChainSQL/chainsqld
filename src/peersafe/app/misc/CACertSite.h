@@ -133,6 +133,9 @@ private:
 	// Currently supported version of publisher list format
 	static constexpr std::uint32_t requiredListVersion = 1;
 
+
+	virtual void onAccepted();
+
 };
 
 } // ripple

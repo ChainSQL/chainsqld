@@ -30,6 +30,7 @@
 #include <mutex>
 
 namespace ripple {
+class Application;
 
 /**
     Validator Sites
@@ -62,49 +63,13 @@ namespace ripple {
 */
 class ValidatorSite : public ConfigSite
 {
-//    friend class Work;
-//
-//private:
-//    using error_code = boost::system::error_code;
-//    using clock_type = std::chrono::system_clock;
-//
-//    struct Site
-//    {
-//        struct Status
-//        {
-//            clock_type::time_point refreshed;
-//            ListDisposition disposition;
-//        };
-//
-//        std::string uri;
-//        parsedURL pUrl;
-//        std::chrono::minutes refreshInterval;
-//        clock_type::time_point nextRefresh;
-//        boost::optional<Status> lastRefreshStatus;
-//    };
-//
-//    boost::asio::io_service& ios_;
+	Application& app_;
     ValidatorList& validators_;
-//    beast::Journal j_;
-//    std::mutex mutable sites_mutex_;
-//    std::mutex mutable state_mutex_;
-//
-//    std::condition_variable cv_;
-//    std::weak_ptr<detail::Work> work_;
-//    boost::asio::basic_waitable_timer<clock_type> timer_;
-//
-//    // A list is currently being fetched from a site
-//    std::atomic<bool> fetching_;
-//
-//    // One or more lists are due to be fetched
-//    std::atomic<bool> pending_;
-//    std::atomic<bool> stopping_;
-//
-//    // The configured list of URIs for fetching lists
-//    std::vector<Site> sites_;
 
+	std::atomic<bool> waitingBeginConsensus_;
 public:
     ValidatorSite (
+		Application& app,
 		ManifestCache& validatorManifests,
         boost::asio::io_service& ios,
         ValidatorList& validators,
@@ -161,6 +126,8 @@ public:
 	virtual  Json::Value
     getJson() const;
 
+	void setWaitinBeginConsensus();
+
 public:
     ///// Queue next site to be fetched
     //void
@@ -186,6 +153,11 @@ public:
 		std::string const& blob,
 		std::string const& signature,
 		std::uint32_t version) ;
+
+	virtual void onAccepted();
+
+
+
 
 
 };

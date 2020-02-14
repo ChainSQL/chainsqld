@@ -24,6 +24,8 @@
 #include <ripple/protocol/JsonFields.h>
 #include <beast/core/detail/base64.hpp>
 #include <boost/regex.hpp>
+#include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 
 namespace ripple {
 
@@ -31,12 +33,15 @@ namespace ripple {
 auto constexpr DEFAULT_REFRESH_INTERVAL = std::chrono::minutes{5};
 
 ValidatorSite::ValidatorSite (
+	Application& app,
 	ManifestCache& validatorManifests,
     boost::asio::io_service& ios,
     ValidatorList& validators,
     beast::Journal j)
     : ConfigSite(ios, validatorManifests, j)
+	, app_(app)
     , validators_ (validators)
+	, waitingBeginConsensus_(false)
 {
 }
 
@@ -73,9 +78,33 @@ ValidatorSite::getJson() const
     return jrr;
 }
 
+void ValidatorSite::setWaitinBeginConsensus()
+{
+		waitingBeginConsensus_ = true;
+}
+
 ripple::ListDisposition ValidatorSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature, std::uint32_t version)
 {
 	return  validators_.applyList(manifest, blob, signature, version);
+}
+
+void ValidatorSite::onAccepted()
+{
+	//begin consensus after apply success
+	if (waitingBeginConsensus_)
+	{
+		app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+		waitingBeginConsensus_ = false;
+	}
+	else
+	{
+		auto validators = validators_.validators();
+		hash_set<PublicKey> hashSetPub;
+		for (auto i =0 ; i<validators.size(); i++){
+			hashSetPub.emplace(validators[i]);
+		}
+		app_.validators().onConsensusStart(hashSetPub);
+	}
 }
 
 } // ripple

@@ -242,6 +242,8 @@ public:
 		std::string const& signature,
 		std::uint32_t version) = 0;
 
+	virtual void onAccepted() = 0;
+
 };
 
 } // ripple

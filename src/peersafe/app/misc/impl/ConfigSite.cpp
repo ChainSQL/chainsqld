@@ -319,6 +319,8 @@ namespace ripple {
 					JLOG(j_.debug()) <<
 						"Applied new validator list from " <<
 						sites_[siteIdx].uri;
+
+					onAccepted();
 				}
 				else if (ListDisposition::same_sequence == disp)
 				{

@@ -173,4 +173,9 @@ namespace ripple {
 		return ListDisposition::accepted;
 	}
 
+	void CACertSite::onAccepted()
+	{
+
+	}
+
 } // ripple

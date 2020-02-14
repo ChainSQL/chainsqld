@@ -494,7 +494,7 @@ public:
 
 
         , validatorSites_ (std::make_unique<ValidatorSite> (
-			*validatorManifests_, get_io_service (), *validators_, logs_->journal("ValidatorSite")))
+			*this,*validatorManifests_, get_io_service (), *validators_, logs_->journal("ValidatorSite")))
 
 		, caCertSites_(std::make_unique<CACertSite>(
 			 *validatorManifests_, *publisherManifests_, *timeKeeper_,
@@ -1345,6 +1345,9 @@ bool ApplicationImp::setup()
             "Invalid entry in [" << SECTION_VALIDATOR_LIST_SITES << "]";
         return false;
     }
+	else {
+		validatorSites_->setWaitinBeginConsensus();
+	}
 
 	if (!caCertSites_->load(
 		config().section(SECTION_CACERTS_LIST_KEYS).values(),
@@ -1378,9 +1381,6 @@ bool ApplicationImp::setup()
 			JLOG(m_journal.fatal()) << "Unable to start consensus";
 			return false;
 		}
-	}
-	else {
-		validatorSites_->setWaitinBeginConsensus();
 	}
 
 
