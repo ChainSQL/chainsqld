@@ -29,9 +29,6 @@
 
 namespace ripple {
 
-// default site query frequency - 5 minutes
-auto constexpr DEFAULT_REFRESH_INTERVAL = std::chrono::minutes{5};
-
 ValidatorSite::ValidatorSite (
 	Application& app,
 	ManifestCache& validatorManifests,
