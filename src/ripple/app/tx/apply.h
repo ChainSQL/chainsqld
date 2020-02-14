@@ -61,7 +61,7 @@ enum class Validity
     @see Validity
 */
 std::pair<Validity, std::string>
-checkValidity(HashRouter& router,
+checkValidity(Application& app, HashRouter& router,
     STTx const& tx, Rules const& rules,
         Config const& config);
 
@@ -154,7 +154,7 @@ applyTransaction(Application& app, OpenView& view,
 
 // ca verify
 bool 
-verifyCACert(std::string& certUser,Config const& config, std::string& sException);
+verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException);
 
 } // ripple
 

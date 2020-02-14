@@ -16,7 +16,7 @@
     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
-
+#include <ripple/app/main/Application.h>
 #include <BeastConfig.h>
 #include <ripple/basics/Log.h>
 #include <ripple/app/tx/apply.h>
@@ -24,6 +24,7 @@
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/protocol/Feature.h>
 #include <peersafe/crypto/X509.h>
+#include <peersafe/app/misc/CertList.h>
 
 namespace ripple {
 
@@ -36,7 +37,7 @@ namespace ripple {
 //------------------------------------------------------------------------------
 
 std::pair<Validity, std::string>
-checkValidity(HashRouter& router,
+checkValidity(Application& app, HashRouter& router,
     STTx const& tx, Rules const& rules,
         Config const& config)
 {
@@ -54,8 +55,10 @@ checkValidity(HashRouter& router,
     {
 		auto const certificate = tx.getFieldVL(sfCertificate);
 
+		std::vector<std::string> rootCertificates = app.certList().getCertList();
+
 		bool  bHasCert             = (!certificate.empty());
-		bool  bNeedCertVerify = (!config.ROOT_CERTIFICATES.empty());
+		bool  bNeedCertVerify = (!rootCertificates.empty());
 
 		if (bHasCert  && bNeedCertVerify) {
 
@@ -70,7 +73,7 @@ checkValidity(HashRouter& router,
 				std::string certInfo = sigCertVerify.second;
 
 				std::string sException;
-				if (!verifyCACert(certInfo, config, sException)) {
+				if (!verifyCACert(certInfo, rootCertificates, sException)) {
 
 					std::string errInfo = "Certificate authentication failed. " + sException;
 					return{ Validity::SigBad,errInfo };
@@ -195,9 +198,9 @@ applyTransaction (Application& app, OpenView& view,
     }
 }
 
-bool verifyCACert(std::string& certUser, Config const& config, std::string& sException)
+bool verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException)
 {
-	return verifyCert(config.ROOT_CERTIFICATES , certUser, sException);
+	return verifyCert(rootCerts, certUser, sException);
 }
 
 } // ripple

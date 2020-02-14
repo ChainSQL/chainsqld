@@ -18,6 +18,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
 #include <peersafe/app/misc/CACertSite.h>
+
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
@@ -31,12 +32,12 @@ namespace ripple {
 	CACertSite::CACertSite(
 		ManifestCache& validatorManifests,
 		ManifestCache& publisherManifests,
+		CertList& certList,
 		TimeKeeper& timeKeeper,
 		boost::asio::io_service& ios,
-		std::vector<std::string>&    rootCerts,
 		beast::Journal j)
 		: ConfigSite(ios, validatorManifests,j)
-		, rootCerts_(rootCerts)
+		, certList_(certList)
 		, publisherManifests_(publisherManifests)
 		, timeKeeper_(timeKeeper)
 	{
@@ -72,17 +73,17 @@ namespace ripple {
 		// update CA root certs
 		Json::Value const& newList = list["certs"];
 
-		rootCerts_.clear();
-
+		std::vector<std::string>    rootCertLst;
 		for (auto const& val : newList)
 		{
 			if (val.isObject() &&
 				val.isMember("cert") &&
 				val["cert"].isString())
 			{
-				rootCerts_.push_back(val["cert"].asString());
+				rootCertLst.push_back(val["cert"].asString());
 			}
 		}
+		certList_.setCertList(rootCertLst);
 
 		return ListDisposition::accepted;
 		 

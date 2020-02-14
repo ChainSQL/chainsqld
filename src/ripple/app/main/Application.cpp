@@ -343,6 +343,7 @@ public:
     std::unique_ptr <ManifestCache> publisherManifests_;
     std::unique_ptr <ValidatorList> validators_;
     std::unique_ptr <ValidatorSite> validatorSites_;
+	std::unique_ptr <CertList>          certList_;
 	std::unique_ptr <CACertSite>    caCertSites_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
@@ -492,13 +493,14 @@ public:
             *validatorManifests_, *publisherManifests_, *timeKeeper_,
             logs_->journal("ValidatorList"), config_->VALIDATION_QUORUM))
 
-
         , validatorSites_ (std::make_unique<ValidatorSite> (
 			*this,*validatorManifests_, get_io_service (), *validators_, logs_->journal("ValidatorSite")))
 
+		, certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES ,logs_->journal("CertList")))
+
 		, caCertSites_(std::make_unique<CACertSite>(
-			 *validatorManifests_, *publisherManifests_, *timeKeeper_,
-			get_io_service(), config_->ROOT_CERTIFICATES, logs_->journal("CACertSite")))
+			 *validatorManifests_, *publisherManifests_, *certList_, *timeKeeper_,
+			get_io_service(), logs_->journal("CACertSite")))
 
         , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
             *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
@@ -801,6 +803,11 @@ public:
         return *validatorSites_;
     }
 
+	CertList& certList() override
+	{
+		return *certList_;
+	}
+	
     ManifestCache& validatorManifests() override
     {
         return *validatorManifests_;

@@ -31,3 +31,4 @@
 
 #include <peersafe/app/misc/impl/ConfigSite.cpp>
 #include <peersafe/app/misc/impl/CACertSite.cpp>
+#include <peersafe/app/misc/impl/CertList.cpp>

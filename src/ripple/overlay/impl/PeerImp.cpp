@@ -1979,7 +1979,7 @@ PeerImp::checkTransaction (int flags,
         if (checkSignature)
         {
             // Check the signature before handing off to the job queue.
-            auto valid = checkValidity(app_.getHashRouter(), *stx,
+            auto valid = checkValidity(app_,app_.getHashRouter(), *stx,
                 app_.getLedgerMaster().getValidatedRules(),
                     app_.config());
             if (valid.first != Validity::Valid)

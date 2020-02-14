@@ -68,6 +68,7 @@ class TransactionMaster;
 class TxQ;
 class ValidatorList;
 class ValidatorSite;
+class CertList;
 class Cluster;
 class TxStoreDBConn;
 class TxStore;
@@ -143,6 +144,7 @@ public:
     virtual TxQ&                    getTxQ() = 0;
     virtual ValidatorList&          validators () = 0;
     virtual ValidatorSite&          validatorSites () = 0;
+	virtual CertList&                      certList() = 0;
     virtual ManifestCache&          validatorManifests () = 0;
     virtual ManifestCache&          publisherManifests () = 0;
     virtual Cluster&                cluster () = 0;

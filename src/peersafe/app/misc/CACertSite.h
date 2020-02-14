@@ -21,6 +21,7 @@
 #define PEERSAFE_APP_MISC_CACERTSITE_H_INCLUDED
 
 #include <peersafe/app/misc/ConfigSite.h>
+#include <peersafe/app/misc/CertList.h>
 #include <ripple/app/misc/Manifest.h>
 
 #include <ripple/core/TimeKeeper.h>
@@ -72,9 +73,9 @@ public:
 	CACertSite(
 		ManifestCache& validatorManifests,
 		ManifestCache& publisherManifests,
+		CertList& certList,
 		TimeKeeper& timeKeeper,
         boost::asio::io_service& ios,
-		std::vector<std::string>&    rootCerts,
         beast::Journal j);
     ~CACertSite();
 
@@ -120,9 +121,7 @@ private:
 			std::string const& blob,
 			std::string const& signature);
 
-
-	std::vector<std::string>&    rootCerts_;
-
+	CertList&   certList_;
 
 	//ManifestCache& validatorManifests_;
 	ManifestCache& publisherManifests_;
