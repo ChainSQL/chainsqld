@@ -305,6 +305,27 @@ void Config::loadFromString (std::string const& fileContents)
     if (auto s = getIniFileSection (secConfig, SECTION_SNTP))
         SNTP_SERVERS = *s;
 
+
+	if (auto s = getIniFileSection(secConfig, SECTION_PATH_X509)) {
+
+		auto const vecCrtPath = *s;
+		for (auto path : vecCrtPath) {
+
+			std::string rootCert;
+			std::ifstream ifsPath(path.c_str());
+			rootCert.assign(
+				std::istreambuf_iterator<char>(ifsPath),
+				std::istreambuf_iterator<char>());
+
+			if (rootCert.empty())
+				continue;
+
+			ROOT_CERTIFICATES.push_back(rootCert);
+		}
+
+	}
+		
+
     {
         std::string dbPath;
         if (getSingleSection (secConfig, "database_path", dbPath, j_))

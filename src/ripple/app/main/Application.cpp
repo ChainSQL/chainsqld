@@ -61,12 +61,14 @@
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/app/misc/CACertSite.h>
 #include <peersafe/app/table/TableTxAccumulator.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/optional.hpp>
 #include <fstream>
@@ -341,6 +343,8 @@ public:
     std::unique_ptr <ManifestCache> publisherManifests_;
     std::unique_ptr <ValidatorList> validators_;
     std::unique_ptr <ValidatorSite> validatorSites_;
+	std::unique_ptr <CertList>          certList_;
+	std::unique_ptr <CACertSite>    caCertSites_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
@@ -362,6 +366,7 @@ public:
     boost::asio::steady_timer sweepTimer_;
     boost::asio::steady_timer entropyTimer_;
     bool startTimers_;
+
 
     std::unique_ptr <DatabaseCon> mTxnDB;
     std::unique_ptr <DatabaseCon> mLedgerDB;
@@ -488,8 +493,14 @@ public:
             *validatorManifests_, *publisherManifests_, *timeKeeper_,
             logs_->journal("ValidatorList"), config_->VALIDATION_QUORUM))
 
-        , validatorSites_ (std::make_unique<ValidatorSite> (*this,
-            get_io_service (), *validators_, logs_->journal("ValidatorSite")))
+        , validatorSites_ (std::make_unique<ValidatorSite> (
+			*this,*validatorManifests_, get_io_service (), *validators_, logs_->journal("ValidatorSite")))
+
+		, certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES ,logs_->journal("CertList")))
+
+		, caCertSites_(std::make_unique<CACertSite>(
+			 *validatorManifests_, *publisherManifests_, *certList_, *timeKeeper_,
+			get_io_service(), logs_->journal("CACertSite")))
 
         , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
             *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
@@ -792,6 +803,11 @@ public:
         return *validatorSites_;
     }
 
+	CertList& certList() override
+	{
+		return *certList_;
+	}
+	
     ManifestCache& validatorManifests() override
     {
         return *validatorManifests_;
@@ -981,6 +997,8 @@ public:
 
         validatorSites_->stop ();
 
+		caCertSites_->stop();
+
         // TODO Store manifests in manifests.sqlite instead of wallet.db
         validatorManifests_->save (getWalletDB (), "ValidatorManifests",
             [this](PublicKey const& pubKey)
@@ -1120,6 +1138,8 @@ private:
     void startGenesisLedger ();
     bool setSynTable();
 
+	bool checkCertificate();
+
     std::shared_ptr<Ledger>
     getLastFullLedger();
 
@@ -1144,6 +1164,8 @@ private:
 bool ApplicationImp::setup()
 {
     if (!setSynTable())  return false;
+
+	if (!checkCertificate())  return false;
     
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());
@@ -1330,6 +1352,18 @@ bool ApplicationImp::setup()
             "Invalid entry in [" << SECTION_VALIDATOR_LIST_SITES << "]";
         return false;
     }
+	else {
+		validatorSites_->setWaitinBeginConsensus();
+	}
+
+	if (!caCertSites_->load(
+		config().section(SECTION_CACERTS_LIST_KEYS).values(),
+		config().section(SECTION_CACERTS_LIST_SITES).values()))
+	{
+		JLOG(m_journal.fatal()) <<
+			"Invalid entry in [" << SECTION_CACERTS_LIST_SITES << "]";
+		return false;
+	}
 
     m_nodeStore->tune (config_->getSize (siNodeCacheSize), config_->getSize (siNodeCacheAge));
     m_ledgerMaster->tune (config_->getSize (siLedgerSize), config_->getSize (siLedgerAge));
@@ -1344,6 +1378,8 @@ bool ApplicationImp::setup()
 
     validatorSites_->start ();
 
+	caCertSites_->start();
+
     // start first consensus round
 	if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
 	{
@@ -1352,9 +1388,6 @@ bool ApplicationImp::setup()
 			JLOG(m_journal.fatal()) << "Unable to start consensus";
 			return false;
 		}
-	}
-	else {
-		validatorSites_->setWaitinBeginConsensus();
 	}
 
 
@@ -2217,6 +2250,27 @@ bool ApplicationImp::setSynTable()
     }
     return true;
 }
+
+bool ApplicationImp::checkCertificate()
+{
+	auto const vecCrtPath = config_ ->section("x509_crt_path").values();
+	if (vecCrtPath.empty()) {
+		return true;
+	}
+	else if (!config_->ROOT_CERTIFICATES.empty()) {
+
+		OpenSSL_add_all_algorithms();
+		return true;
+	}	
+	else {
+	
+		std::cerr << "Root certificate configuration error ,please check cfg!" << std::endl;
+		return false;
+	}
+
+
+}
+
 //------------------------------------------------------------------------------
 
 Application::Application ()

@@ -17,44 +17,28 @@
 */
 //==============================================================================
 
-// Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2011 The Bitcoin developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file license.txt or http://www.opensource.org/licenses/mit-license.php.
+#ifndef RIPPLE_CRYPTO_X509_H_INCLUDED
+#define RIPPLE_CRYPTO_X509_H_INCLUDED
 
-#ifndef RIPPLE_CRYPTO_GENERATEDETERMINISTICKEY_H_INCLUDED
-#define RIPPLE_CRYPTO_GENERATEDETERMINISTICKEY_H_INCLUDED
-
-#include <ripple/basics/base_uint.h>
-#include <ripple/crypto/impl/openssl.h>
+#include <string>
+#include <ripple/protocol/Seed.h>
+#include <ripple/protocol/PublicKey.h>
+#include <openssl/x509.h>
 
 namespace ripple {
+	typedef struct {
+		std::string country;
+		std::string province;
+		std::string city;
+		std::string organization;
+		std::string common;
+	} x509_subject;
 
-	Blob
-		generateRootDeterministicPublicKey(
-			uint128 const& seed);
+	PublicKey getPublicKeyFromX509(std::string const& certificate);
 
-	uint256
-		generateRootDeterministicPrivateKey(
-			uint128 const& seed);
-
-	Blob
-		generatePublicDeterministicKey(
-			Blob const& generator,
-			int n);
-
-	uint256
-		generatePrivateDeterministicKey(
-			Blob const& family,
-			uint128 const& seed,
-			int n);
-
-	openssl::bignum generateECPrivateKey(uint128 const& seed);
-	openssl::ec_point generateECPublicKey(uint128 const& seed);
-
-	Blob  generateRipplePublicKey(openssl::ec_point const& ecPoint);
-
-
-} // ripple
+	bool verifyCert(std::vector<std::string> const& vecRootCert, std::string const& certStr, std::string & exception);
+	bool genCsr(Seed const& seed, x509_subject const& sub, std::string const& reqPath, std::string & exception);
+	X509* readCertFromFile(const char* filename);
+}
 
 #endif

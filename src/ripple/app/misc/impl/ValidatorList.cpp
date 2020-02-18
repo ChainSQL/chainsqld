@@ -27,26 +27,26 @@
 
 namespace ripple {
 
-std::string
-to_string(ListDisposition disposition)
-{
-    switch (disposition)
-    {
-        case ListDisposition::accepted:
-            return "accepted";
-        case ListDisposition::same_sequence:
-            return "same_sequence";
-        case ListDisposition::unsupported_version:
-            return "unsupported_version";
-        case ListDisposition::untrusted:
-            return "untrusted";
-        case ListDisposition::stale:
-            return "stale";
-        case ListDisposition::invalid:
-            return "invalid";
-    }
-    return "unknown";
-}
+	std::string
+		to_string(ListDisposition disposition)
+	{
+		switch (disposition)
+		{
+		case ListDisposition::accepted:
+			return "accepted";
+		case ListDisposition::same_sequence:
+			return "same_sequence";
+		case ListDisposition::unsupported_version:
+			return "unsupported_version";
+		case ListDisposition::untrusted:
+			return "untrusted";
+		case ListDisposition::stale:
+			return "stale";
+		case ListDisposition::invalid:
+			return "invalid";
+		}
+		return "unknown";
+	}
 
 ValidatorList::ValidatorList (
     ManifestCache& validatorManifests,

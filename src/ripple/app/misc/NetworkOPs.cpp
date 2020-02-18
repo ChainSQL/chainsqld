@@ -1004,7 +1004,7 @@ void NetworkOPsImp::submitTransaction (std::shared_ptr<STTx const> const& iTrans
     try
     {
         auto const validity = checkValidity(
-            app_.getHashRouter(), *trans,
+           app_, app_.getHashRouter(), *trans,
                 m_ledgerMaster.getValidatedRules(),
                     app_.config());
 
@@ -1055,6 +1055,7 @@ void NetworkOPsImp::processTransaction (std::shared_ptr<Transaction>& transactio
     // If so, only cost is looking up HashRouter flags.
     auto const view = m_ledgerMaster.getCurrentLedger();
     auto const validity = checkValidity(
+		app_,
         app_.getHashRouter(),
             *transaction->getSTransaction(),
                 view->rules(), app_.config());

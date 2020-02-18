@@ -86,13 +86,19 @@ Json::Value doSubmit (RPC::Context& context)
         if (!context.app.checkSigs())
             forceValidity(context.app.getHashRouter(),
                 stpTrans->getTransactionID(), Validity::SigGoodOnly);
-        auto validity = checkValidity(context.app.getHashRouter(),
+        auto validity = checkValidity(context.app,context.app.getHashRouter(),
             *stpTrans, context.ledgerMaster.getCurrentLedger()->rules(),
                 context.app.config());
         if (validity.first != Validity::Valid)
         {
-            jvResult[jss::error] = "invalidTransaction";
-            jvResult[jss::error_exception] = "fails local checks: " + validity.second;
+
+			auto j = context.app.journal("CheckValidity");
+			JLOG(j.warn())
+				<< "the error info of checkValidity £º "
+				<< validity.second;
+
+            jvResult[jss::error]                 = "invalidTransaction";
+            jvResult[jss::error_message] = "fails local checks: " + validity.second;
 
             return jvResult;
         }

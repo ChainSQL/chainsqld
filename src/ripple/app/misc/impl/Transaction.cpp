@@ -108,7 +108,7 @@ Transaction::pointer Transaction::transactionFromSQLValidated(
 {
     auto ret = transactionFromSQL(ledgerSeq, status, rawTxn, app);
 
-    if (checkValidity(app.getHashRouter(),
+    if (checkValidity(app,app.getHashRouter(),
             *ret->getSTransaction(), app.
                 getLedgerMaster().getValidatedRules(),
                     app.config()).first !=

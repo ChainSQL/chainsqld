@@ -28,3 +28,7 @@
 #include <ripple/app/misc/impl/ValidatorList.cpp>
 #include <ripple/app/misc/impl/ValidatorSite.cpp>
 #include <ripple/app/misc/impl/ValidatorKeys.cpp>
+
+#include <peersafe/app/misc/impl/ConfigSite.cpp>
+#include <peersafe/app/misc/impl/CACertSite.cpp>
+#include <peersafe/app/misc/impl/CertList.cpp>

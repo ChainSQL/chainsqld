@@ -191,6 +191,7 @@ void TxFormats::addCommonFields (Item& item)
         << SOElement(sfSigningPubKey,       SOE_REQUIRED)
         << SOElement(sfTxnSignature,        SOE_OPTIONAL)
         << SOElement(sfSigners,             SOE_OPTIONAL) // submit_multisigned
+		<< SOElement(sfCertificate,		    SOE_OPTIONAL)
         ;
 }
 

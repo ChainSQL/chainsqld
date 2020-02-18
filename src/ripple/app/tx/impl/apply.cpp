@@ -16,13 +16,15 @@
     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
-
+#include <ripple/app/main/Application.h>
 #include <BeastConfig.h>
 #include <ripple/basics/Log.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/app/tx/applySteps.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/protocol/Feature.h>
+#include <peersafe/crypto/X509.h>
+#include <peersafe/app/misc/CertList.h>
 
 namespace ripple {
 
@@ -35,13 +37,14 @@ namespace ripple {
 //------------------------------------------------------------------------------
 
 std::pair<Validity, std::string>
-checkValidity(HashRouter& router,
+checkValidity(Application& app, HashRouter& router,
     STTx const& tx, Rules const& rules,
         Config const& config)
 {
     auto const allowMultiSign =
         rules.enabled(featureMultiSign);
 
+	
     auto const id = tx.getTransactionID();
     auto const flags = router.getFlags(id);
     if (flags & SF_SIGBAD)
@@ -50,6 +53,40 @@ checkValidity(HashRouter& router,
 
     if (!(flags & SF_SIGGOOD))
     {
+		auto const certificate = tx.getFieldVL(sfCertificate);
+
+		std::vector<std::string> rootCertificates = app.certList().getCertList();
+
+		bool  bHasCert             = (!certificate.empty());
+		bool  bNeedCertVerify = (!rootCertificates.empty());
+
+		if (bHasCert  && bNeedCertVerify) {
+
+				auto const sigCertVerify = tx.checkCertSign();
+				if (!sigCertVerify.first) {
+
+					router.setFlags(id, SF_SIGBAD);
+					return{ Validity::SigBad, sigCertVerify.second };
+				}
+
+				// certification  au
+				std::string certInfo = sigCertVerify.second;
+
+				std::string sException;
+				if (!verifyCACert(certInfo, rootCertificates, sException)) {
+
+					std::string errInfo = "Certificate authentication failed. " + sException;
+					return{ Validity::SigBad,errInfo };
+				}
+		}
+		else if (bNeedCertVerify) {
+				return{ Validity::SigBad, "Missing Certificate field" };
+		}
+		else if(bHasCert){
+
+			return{ Validity::SigBad, "Root certificate has not been configurated" };
+		}
+
         // Don't know signature state. Check it.
         auto const sigVerify = tx.checkSign(allowMultiSign);
         if (! sigVerify.first)
@@ -159,6 +196,11 @@ applyTransaction (Application& app, OpenView& view,
         JLOG (j.warn()) << "Throws";
         return ApplyResult::Fail;
     }
+}
+
+bool verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException)
+{
+	return verifyCert(rootCerts, certUser, sException);
 }
 
 } // ripple

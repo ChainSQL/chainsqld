@@ -89,10 +89,9 @@ private:
         testcase ("Config Load");
 
         using namespace jtx;
-
         Env env (*this);
-        auto trustedSites = std::make_unique<ValidatorSite> (
-			env.app(),env.app().getIOService(), env.app().validators(), beast::Journal());
+        auto trustedSites = std::make_unique<ValidatorSite> (env.app(),env.app().validatorManifests(),
+            env.app().getIOService(), env.app().validators(), beast::Journal());
 
         // load should accept empty sites list
         std::vector<std::string> emptyCfgSites;
@@ -214,8 +213,8 @@ private:
             std::vector<std::string> cfgSites(
             {"http://127.0.0.1:" + std::to_string(port1) + "/validators"});
 
-            auto sites = std::make_unique<ValidatorSite> (
-				env.app(),env.app().getIOService(), env.app().validators(), journal);
+            auto sites = std::make_unique<ValidatorSite> (env.app(),env.app().validatorManifests(),
+                env.app().getIOService(), env.app().validators(), journal);
 
             sites->load (cfgSites);
             sites->start();
@@ -233,8 +232,8 @@ private:
             "http://127.0.0.1:" + std::to_string(port1) + "/validators",
             "http://127.0.0.1:" + std::to_string(port2) + "/validators"});
 
-            auto sites = std::make_unique<ValidatorSite> (
-				env.app(),env.app().getIOService(), env.app().validators(), journal);
+            auto sites = std::make_unique<ValidatorSite> (env.app(),env.app().validatorManifests(),
+                env.app().getIOService(), env.app().validators(), journal);
 
             sites->load (cfgSites);
             sites->start();
