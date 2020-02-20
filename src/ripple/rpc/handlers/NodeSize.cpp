@@ -45,13 +45,13 @@ namespace ripple {
             case 0:
                 ret[jss::node_size] = "tiny"; break;
             case 1:
-                ret[jss::node_size] = ""; break;
+                ret[jss::node_size] = "small"; break;
             case 2:
-                ret[jss::node_size] = ""; break;
+                ret[jss::node_size] = "medium"; break;
             case 3:
-                ret[jss::node_size] = ""; break;
+                ret[jss::node_size] = "large"; break;
             case 4:
-                ret[jss::node_size] = ""; break;
+                ret[jss::node_size] = "huge"; break;
             default:
                 ret[jss::node_size] = "unknown"; break;
             }
