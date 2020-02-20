@@ -343,6 +343,7 @@ JSS ( node_hit_rate );              // out: GetCounts
 JSS ( node_read_bytes );            // out: GetCounts
 JSS ( node_reads_hit );             // out: GetCounts
 JSS ( node_reads_total );           // out: GetCounts
+JSS ( node_size );                  // in: NodeSize
 JSS ( node_writes );                // out: GetCounts
 JSS ( node_written_bytes );         // out: GetCounts
 JSS ( nodes );                      // out: PathState
