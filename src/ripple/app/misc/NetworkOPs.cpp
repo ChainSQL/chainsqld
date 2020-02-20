@@ -2578,7 +2578,10 @@ std::string NetworkOPsImp::getServerStatus()
 		return "abnormal";
 	}
 	
-	if (pLedger && pLedger->info().seq == maxVal && strOperatingMode() == "proposing")
+	if (pLedger && pLedger->info().seq == maxVal && 
+        (strOperatingMode() == "proposing") || 
+        !mConsensus.validating() && mMode == omFULL)
+        )
 	{
 		return "normal";
 	}
