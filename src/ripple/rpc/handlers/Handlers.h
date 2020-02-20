@@ -89,6 +89,7 @@ Json::Value doWalletSeed            (RPC::Context&);
 Json::Value doWalletUnlock          (RPC::Context&);
 Json::Value doWalletVerify          (RPC::Context&);
 Json::Value doLedgerObjects			(RPC::Context&);
+Json::Value doNodeSize              (RPC::Context&);
 
 //for sql operation
 Json::Value doTableDump(RPC::Context&);

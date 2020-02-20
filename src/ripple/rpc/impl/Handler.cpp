@@ -192,6 +192,7 @@ Handler handlerArray[] {
     {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION     },
 	{    "gen_csr",             byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION },
 	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::USER,  NO_CONDITION     },
+    {   "node_size",            byRef (&doNodeSize),           Role::ADMIN,  NO_CONDITION    },
 };
 
 } // namespace
