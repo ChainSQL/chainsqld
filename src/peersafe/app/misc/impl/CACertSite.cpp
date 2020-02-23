@@ -56,7 +56,8 @@ namespace ripple {
 		return jrr;
 	}
 
-	ripple::ListDisposition CACertSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature, std::uint32_t version)
+	ripple::ListDisposition CACertSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature,
+																			std::uint32_t version, std::string siteUri)
 	{
 		if (version != requiredListVersion)
 			return ListDisposition::unsupported_version;

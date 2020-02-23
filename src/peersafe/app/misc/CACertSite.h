@@ -86,9 +86,8 @@ public:
 		std::string const& manifest,
 		std::string const& blob,
 		std::string const& signature,
-		std::uint32_t version);
-
-
+		std::uint32_t version,
+		std::string siteUri);
 
 	/** Stop trusting publisher's list of keys.
 
