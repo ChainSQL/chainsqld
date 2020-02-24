@@ -50,10 +50,9 @@ namespace ripple {
 		Json::Value& nodes = jvResult[jss::state];
 
 		std::map< LedgerEntryType, uint32_t> mapCount;
-		auto e = lpLedger->sles.end();
-		for (auto i = lpLedger->sles.begin(); i != e; ++i)
+		for (auto sle:lpLedger->sles)
 		{
-			auto sle = lpLedger->read(keylet::unchecked((*i)->key()));
+		//	auto sle = //lpLedger->read(keylet::unchecked((*i)->key()));
 			mapCount[sle->getType()] ++;
 		}
 
@@ -76,6 +75,10 @@ namespace ripple {
 			txCount++;
 		}
 		jvResult[jss::tx] = txCount;
+
+		auto j = context.app.journal("RPCHandler");
+		JLOG(j.info())<<"ledger_objects:"<<jvResult.toStyledString();
+
 		return jvResult;
 	}
 
