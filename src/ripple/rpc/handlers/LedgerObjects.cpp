@@ -76,8 +76,8 @@ namespace ripple {
 		}
 		jvResult[jss::tx] = txCount;
 
-		auto j = context.app.journal("RPCHandler");
-		JLOG(j.info())<<"ledger_objects:"<<jvResult.toStyledString();
+		//auto j = context.app.journal("RPCHandler");
+		//JLOG(j.info())<<"ledger_objects:"<<jvResult.toStyledString();
 
 		return jvResult;
 	}
