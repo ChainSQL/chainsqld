@@ -527,21 +527,7 @@ EscrowFinish::doApply()
 
 	AccountID const account = (*slep)[sfAccount];
 	STAmount const& amount = (*slep)[sfAmount];
-    AccountID const& dest = (*slep)[sfDestination];
-
-    SLE::pointer sledl = ctx_.view().peek(
-        keylet::line((*slep)[sfDestination], amount.getIssuer(), amount.getCurrency()));
-    if (!sledl)
-        return tecNO_LINE;
-
-    bool const bHigh = dest > amount.getIssuer();
-    auto limit = sledl->getFieldAmount(!bHigh ? sfLowLimit : sfHighLimit);
-    auto balance = sledl->getFieldAmount(sfBalance);
-    auto dstBalance = balance;
-    if (dstBalance.negative())
-        dstBalance.negate();
-    if (limit < amount + dstBalance)
-        return tecPATH_DRY;
+	AccountID const& dest = (*slep)[sfDestination];
 
 	bool isZxc = isZXC(amount);
 
@@ -689,6 +675,21 @@ EscrowFinish::doApply()
 	}
 	else
 	{
+
+		SLE::pointer sledl = ctx_.view().peek(
+			keylet::line((*slep)[sfDestination], amount.getIssuer(), amount.getCurrency()));
+		if (!sledl)
+			return tecNO_LINE;
+
+		bool const bHigh = dest > amount.getIssuer();
+		auto limit = sledl->getFieldAmount(!bHigh ? sfLowLimit : sfHighLimit);
+		auto balance = sledl->getFieldAmount(sfBalance);
+		auto dstBalance = balance;
+		if (dstBalance.negative())
+			dstBalance.negate();
+		if (limit < amount + dstBalance)
+			return tecPATH_DRY;
+
         SLE::pointer sled = ctx_.view().peek(
             keylet::line((*slep)[sfDestination], amount.getIssuer(), amount.getCurrency()));
         if (!sled)
