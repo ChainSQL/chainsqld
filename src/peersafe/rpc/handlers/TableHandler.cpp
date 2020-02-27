@@ -294,7 +294,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 		}
 
 		StringReplace(rule, "$account", tx_json["Account"].asString());
-		if (conditions.isArray())
+		if (conditions.isArrayOrNull())
 		{
 			Json::Value newRaw;
 			buildRaw(conditions, rule);

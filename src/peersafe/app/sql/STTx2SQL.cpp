@@ -2475,7 +2475,7 @@ namespace helper {
 				}
 			}
 
-			assert(conditions.isArray());
+			assert(conditions.isArrayOrNull());
 			size = conditions.size();
 			if (size > 0) {
 				buildsql.AddCondition(conditions);
