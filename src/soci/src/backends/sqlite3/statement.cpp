@@ -201,7 +201,9 @@ statement_backend::exec_fetch_result
 sqlite3_statement_backend::load_one()
 {
     statement_backend::exec_fetch_result retVal = ef_success;
-
+	
+	const int BUSY_TIMEOUT = 2000;
+	sqlite3_busy_timeout(session_.conn_, BUSY_TIMEOUT);
     int const res = sqlite3_step(stmt_);
 
     if (SQLITE_DONE == res)
