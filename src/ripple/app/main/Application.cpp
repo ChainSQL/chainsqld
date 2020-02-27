@@ -1545,7 +1545,7 @@ ApplicationImp::getLastFullLedger()
 			std::uint32_t seq;
 			uint256 hash;
 
-			int index = 1 + count++;
+			int index = count++;
 			std::stringstream ss;
 			ss << "order by LedgerSeq desc limit " << index << ",1";
 			std::string loadSql = ss.str();
