@@ -6,6 +6,7 @@
 namespace ripple {
 
 enum class VMKind {
+	Interpreter,
 	JIT
 };
 
