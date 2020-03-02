@@ -1,0 +1,3 @@
+[submodule "src/evmc"]
+	path = src/evmc
+	url = https://github.com/ethereum/evmc.git
