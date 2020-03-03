@@ -136,7 +136,7 @@ include_directories(
   src/soci/src
   src/soci/include
   src/evmjit
-  src/evmc/include/evmc)
+  src/eth/evmc/include/evmc)
 #  src/evmjit/evmc/include)
 
 special_build_flags()
@@ -294,7 +294,7 @@ add_with_props(chainsqld_src_nonunity "${core_srcs}"
 set(non_unity_srcs ${core_srcs})
 
 add_subdirectory(src/evmjit)
-add_subdirectory(src/evmc)
+add_subdirectory(src/eth)
 
 foreach(curdir
         beast/clock

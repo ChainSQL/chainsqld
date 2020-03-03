@@ -4,7 +4,8 @@
 #include <memory>
 #include <assert.h>
 
-#include <evmjit/evmc/include/evmc/evmc.h>
+//#include <evmjit/evmc/include/evmc/evmc.h>
+#include <evmc/include/evmc/evmc.h>
 
 #include "VMFace.h"
 
@@ -12,7 +13,7 @@ namespace ripple {
 
 class VM {
 public:
-	explicit VM(evmc_instance* _instance) noexcept;
+	explicit VM(evmc_vm* _instance) noexcept;
 
 	~VM() { m_instance->destroy(m_instance); }
 
@@ -76,12 +77,12 @@ public:
 	}
 
 private:
-	struct evmc_instance* m_instance = nullptr;
+	struct evmc_vm* m_instance = nullptr;
 };
 
 class VMC : public VM, public VMFace {
 public:
-	explicit VMC(struct evmc_instance* instance) :VM(instance) {};
+	explicit VMC(struct evmc_vm* instance) :VM(instance) {};
 	
 	owning_bytes_ref exec(int64_t& gas, ExtVMFace& ext) final;
 };
