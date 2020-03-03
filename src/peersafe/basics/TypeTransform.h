@@ -3,8 +3,8 @@
 
 #include <ripple/protocol/AccountID.h>
 #include <ripple/basics/base_uint.h>
-#include <peersafe/vm/Common.h>
-#include <evmc/evmc.h>
+#include <eth/vm/Common.h>
+#include <evmc/include/evmc/evmc.h>
 
 namespace ripple {
 
@@ -45,7 +45,7 @@ namespace ripple {
 		return fromUint256(n);
 	}
 
-	inline Blob fromEvmC(bytesConstRef const& data) {
+	inline Blob fromEvmC(eth::bytesConstRef const& data) {
 		return std::move(data.toBytes());
 	}
 

@@ -32,12 +32,12 @@ public:
 
 	bool addressHasCode(AccountID const& addr);
 	/// Sets the code of the account. Must only be called during / after contract creation.
-	void setCode(AccountID const& _address, bytes&& _code);
+	void setCode(AccountID const& _address, eth::bytes&& _code);
 	/// Get the code of an account.
 	/// @returns bytes() if no account exists at that address.
 	/// @warning The reference to the code is only valid until the access to
 	///          other account. Do not keep it.
-	bytes const& code(AccountID const& _addr);
+	eth::bytes const& code(AccountID const& _addr);
 	/// Get the code hash of an account.
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
 	uint256 codeHash(AccountID const& _contract);

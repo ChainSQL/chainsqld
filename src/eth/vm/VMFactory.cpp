@@ -2,9 +2,9 @@
 #include "VMC.h"
 
 #include <evmjit.h>
-#include <peersafe/vm/executor/interpreter/interpreter.h>
+#include <eth/vm/executor/interpreter/interpreter.h>
 
-namespace ripple {
+namespace eth {
 
 VMFace::pointer VMFactory::create(VMKind kind) {
 	switch (kind)

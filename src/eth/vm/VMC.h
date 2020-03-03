@@ -5,11 +5,11 @@
 #include <assert.h>
 
 //#include <evmjit/evmc/include/evmc/evmc.h>
-#include <evmc/include/evmc/evmc.h>
+#include <eth/evmc/include/evmc/evmc.h>
 
 #include "VMFace.h"
 
-namespace ripple {
+namespace eth {
 
 class VM {
 public:

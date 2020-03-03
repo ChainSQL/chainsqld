@@ -3,8 +3,8 @@
 // Licensed under the GNU General Public License, Version 3.
 #pragma once
 
-#include <evmc/include/evmc/evmc.h>
-#include <evmc/include/evmc/utils.h>
+#include <eth/evmc/include/evmc/evmc.h>
+#include <eth/evmc/include/evmc/utils.h>
 
 //#define EVMC_EXPORT
 //

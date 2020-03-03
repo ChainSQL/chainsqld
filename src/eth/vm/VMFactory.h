@@ -3,7 +3,7 @@
 
 #include "VMFace.h"
 
-namespace ripple {
+namespace eth {
 
 enum class VMKind {
 	Interpreter,

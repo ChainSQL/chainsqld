@@ -1,5 +1,5 @@
 #include <peersafe/app/misc/Executive.h>
-#include <peersafe/vm/VMFactory.h>
+#include <eth/vm/VMFactory.h>
 #include <peersafe/core/Tuning.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/main/Application.h>
@@ -10,7 +10,7 @@
 
 namespace ripple {
 
-Executive::Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level)
+Executive::Executive(SleOps & _s, eth::EnvInfo const& _envInfo, unsigned int _level)
 	:m_s(_s),m_envInfo(_envInfo),m_depth(_level)
 {
 }
@@ -76,13 +76,13 @@ bool Executive::execute() {
 }
 
 bool Executive::create(AccountID const& _txSender, uint256 const& _endowment,
-	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress)
+	uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress)
 {
 	return createOpcode(_txSender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
 
 bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment,
-	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress)
+	uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress)
 {
 	bool accountAlreadyExist = false;
 	uint32 sequence = 1;
@@ -108,7 +108,7 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 }
 
 bool Executive::call(AccountID const& _receiveAddress, AccountID const& _senderAddress,
-	uint256 const& _value, uint256 const& _gasPrice, bytesConstRef const& _data, int64_t const& _gas)
+	uint256 const& _value, uint256 const& _gasPrice, eth::bytesConstRef const& _data, int64_t const& _gas)
 {
 	CallParametersR params{ _senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas, _data };
 	return call(params, _gasPrice, _senderAddress);
@@ -131,7 +131,7 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 	m_gas = _p.gas;
 	if (m_s.addressHasCode(_p.codeAddress))
 	{
-		bytes const& c = m_s.code(_p.codeAddress);
+		eth::bytes const& c = m_s.code(_p.codeAddress);
 		if (c.size() == 0)
 		{
 			m_excepted = tefCONTRACT_NOT_EXIST;
@@ -147,7 +147,7 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 	{
 		// contract may be killed
 		auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));
-		m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
+		m_output = eth::owning_bytes_ref(std::move(blob), 0, blob.size());
 		m_excepted = tefCONTRACT_NOT_EXIST;
 		return true;
 	}
@@ -174,7 +174,7 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 }
 
 bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowment,
-	uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _origin)
+	uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _origin)
 {
 	auto j = getJ();
 
@@ -212,7 +212,7 @@ bool Executive::go()
 		try
 		{
 			// Create VM instance. Force Interpreter if tracing requested.
-			VMFace::pointer vmc = VMFactory::create(VMKind::JIT);
+			eth::VMFace::pointer vmc = eth::VMFactory::create(eth::VMKind::Interpreter);
 			if (m_isCreation)
 			{
 				m_s.clearStorage(m_ext->contractAddress());
@@ -223,7 +223,7 @@ bool Executive::go()
 				//	m_res->depositSize = out.size();
 				//}
 				if (out.size() > MAX_CODE_SIZE)
-					BOOST_THROW_EXCEPTION(OutOfGas());
+					BOOST_THROW_EXCEPTION(eth::OutOfGas());
 				else if (out.size() * CREATE_DATA_GAS <= m_gas)
 				{
 					//if (m_res)
@@ -232,7 +232,7 @@ bool Executive::go()
 				}
 				else
 				{
-					BOOST_THROW_EXCEPTION(OutOfGas());
+					BOOST_THROW_EXCEPTION(eth::OutOfGas());
 				}
 				//if (m_res)
 				//	m_res->output = out.toVector(); // copy output to execution result
@@ -243,19 +243,19 @@ bool Executive::go()
 				m_output = vmc->exec(m_gas, *m_ext);
 			}
 		}
-		catch (RevertInstruction& _e)
+		catch (eth::RevertInstruction& _e)
 		{
 			//revert();
 			formatOutput(_e.output());
 			m_excepted = tefCONTRACT_REVERT_INSTRUCTION;
 		}
-		catch (RevertDiyInstruction& _e)
+		catch (eth::RevertDiyInstruction& _e)
 		{
 			auto str = _e.output().toString();
 			int n = atoi(str.c_str());
 			m_excepted = TER(n);
 		}
-		catch (VMException const& _e)
+		catch (eth::VMException const& _e)
 		{
 			JLOG(j.warn()) << "Safe VM Exception. " << diagnostic_information(_e);
 			formatOutput(_e.what());
@@ -263,15 +263,15 @@ bool Executive::go()
 			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			//revert();
 		}
-		catch (InternalVMError const& _e)
+		catch (eth::InternalVMError const& _e)
 		{
-			JLOG(j.warn()) << "Internal VM Error (" << *boost::get_error_info<errinfo_evmcStatusCode>(_e) << ")\n"
+			JLOG(j.warn()) << "Internal VM Error (" << *boost::get_error_info<eth::errinfo_evmcStatusCode>(_e) << ")\n"
 				<< diagnostic_information(_e);
 			formatOutput(_e.what());
 			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
 			throw;
 		}
-		catch (Exception const& _e)
+		catch (eth::Exception const& _e)
 		{
 			// TODO: AUDIT: check that this can never reasonably happen. Consider what to do if it does.
 			JLOG(j.warn()) << "Unexpected exception in VM. There may be a bug in this implementation. " << diagnostic_information(_e);
@@ -337,7 +337,7 @@ TER Executive::finalize() {
 	return m_excepted;
 }
 
-void Executive::accrueSubState(SubState& _parentContext)
+void Executive::accrueSubState(eth::SubState& _parentContext)
 {
     if (m_ext)
         _parentContext += m_ext->sub;
@@ -351,14 +351,14 @@ beast::Journal Executive::getJ()
 void Executive::formatOutput(std::string msg)
 {
 	auto blob = strCopy(msg);
-	m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
+	m_output = eth::owning_bytes_ref(std::move(blob), 0, blob.size());
 }
 
-void Executive::formatOutput(owning_bytes_ref output)
+void Executive::formatOutput(eth::owning_bytes_ref output)
 {
 	if (output.empty())
 	{
-		m_output = owning_bytes_ref();
+		m_output = eth::owning_bytes_ref();
 		return;
 	}
 
@@ -380,7 +380,7 @@ void Executive::formatOutput(owning_bytes_ref output)
 	{
 		blob = strCopy(str);
 	}
-	m_output = owning_bytes_ref(std::move(blob), 0, blob.size());
+	m_output = eth::owning_bytes_ref(std::move(blob), 0, blob.size());
 }
 
 } // namespace ripple

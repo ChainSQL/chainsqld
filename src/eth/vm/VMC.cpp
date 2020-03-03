@@ -1,8 +1,8 @@
 #include "VMC.h"
 
-namespace ripple {
+namespace eth {
 
-VM::VM(evmc_instance* instance) noexcept 
+VM::VM(evmc_vm* instance) noexcept 
 : m_instance(instance) {
 	assert(m_instance != nullptr);
 	assert(m_instance->abi_version == EVMC_ABI_VERSION);

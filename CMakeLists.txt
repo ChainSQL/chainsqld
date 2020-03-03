@@ -294,7 +294,7 @@ add_with_props(chainsqld_src_nonunity "${core_srcs}"
 set(non_unity_srcs ${core_srcs})
 
 add_subdirectory(src/evmjit)
-add_subdirectory(src/eth)
+add_subdirectory(src/eth/evmc)
 
 foreach(curdir
         beast/clock
@@ -328,9 +328,15 @@ foreach(curdir
         crypto
         gmencrypt
         protocol
-        rpc
-        vm)
+        rpc)
     file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp)
+    list(APPEND chainsqld_src_nonunity "${cursrcs}")
+    list(APPEND non_unity_srcs "${cursrcs}")
+endforeach()
+
+foreach(curdir
+        vm)
+    file(GLOB_RECURSE cursrcs src/eth/${curdir}/*.cpp)
     list(APPEND chainsqld_src_nonunity "${cursrcs}")
     list(APPEND non_unity_srcs "${cursrcs}")
 endforeach()

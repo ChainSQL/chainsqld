@@ -13,7 +13,7 @@
 #pragma warning(disable:597) //will not be called for implicit or explicit conversions
 #endif
 
-namespace ripple {
+namespace eth {
 
 /**
  * A modifiable reference to an existing object or vector in memory.

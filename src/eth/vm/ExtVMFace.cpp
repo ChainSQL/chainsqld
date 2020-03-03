@@ -6,7 +6,7 @@
 #include "Common.h"
 #include <peersafe/core/Tuning.h>
 
-namespace ripple {
+namespace eth {
 
 int accountExists(evmc_context* _context, evmc_address const* _addr) noexcept
 {

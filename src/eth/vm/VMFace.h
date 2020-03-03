@@ -8,7 +8,7 @@
 #include "Common.h"
 #include "ExtVMFace.h"
 
-namespace ripple {
+namespace eth {
 
 /// Base class for all exceptions.
 struct Exception : virtual std::exception, virtual boost::exception

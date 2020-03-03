@@ -8,7 +8,7 @@
 #include <vector>
 #include "vector_ref.h"
 
-namespace ripple {
+namespace eth {
 	using byte = uint8_t;
 	using bytes = std::vector<byte>;
 	using bytesConstRef = vector_ref<byte const>;

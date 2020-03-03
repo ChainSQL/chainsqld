@@ -4,7 +4,7 @@
 #include "Common.h"
 #include <peersafe/basics/TypeTransform.h>
 
-namespace ripple {
+namespace eth {
 
 /// Reference to a slice of buffer that also owns the buffer.
 ///
@@ -57,7 +57,7 @@ private:
 
 struct SubState
 {
-    std::set<AccountID> suicides;			 ///< Any accounts that have suicided.
+    std::set<ripple::AccountID> suicides;			 ///< Any accounts that have suicided.
     uint64_t refunds = 0;                    ///< Refund counter of SSTORE nonzero->zero.
 
     SubState& operator+=(SubState const& _s)
@@ -182,7 +182,7 @@ public:
 	virtual bool exists(evmc_address const&) { return false; }
 
 	/// Suicide the associated contract and give proceeds to the given address.
-	virtual void suicide(evmc_address const&) { sub.suicides.insert(fromEvmC(myAddress)); }
+	virtual void suicide(evmc_address const&) { sub.suicides.insert(ripple::fromEvmC(myAddress)); }
 
 	/// Create a new (contract) account.
 	virtual CreateResult create(evmc_uint256be const&, int64_t&, 
