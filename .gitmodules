@@ -1,3 +1,6 @@
-[submodule "src/evmc"]
+[submodule "src/intx"]
+	path = src/intx
+	url = https://github.com/chfast/intx.git
+[submodule "src/eth/evmc"]
 	path = src/eth/evmc
 	url = https://github.com/ethereum/evmc.git
