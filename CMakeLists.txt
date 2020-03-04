@@ -136,7 +136,9 @@ include_directories(
   src/soci/src
   src/soci/include
   src/evmjit
-  src/eth/evmc/include/evmc)
+  src/eth/evmc/include
+  src/eth/ethash/include
+  src/intx/include)
 #  src/evmjit/evmc/include)
 
 special_build_flags()
@@ -295,6 +297,7 @@ set(non_unity_srcs ${core_srcs})
 
 add_subdirectory(src/evmjit)
 add_subdirectory(src/eth/evmc)
+#add_subdirectory(src/intx)
 
 foreach(curdir
         beast/clock

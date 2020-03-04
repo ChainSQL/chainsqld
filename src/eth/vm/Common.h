@@ -11,6 +11,7 @@
 namespace eth {
 	using byte = uint8_t;
 	using bytes = std::vector<byte>;
+	using bytesRef = vector_ref<byte>;
 	using bytesConstRef = vector_ref<byte const>;
 	bytes const NullBytes;
 
@@ -63,6 +64,7 @@ namespace eth {
 		EXTCODECOPY,        ///< copy external code (from another contract)
 		RETURNDATASIZE = 0x3d,  ///< size of data returned from previous call
 		RETURNDATACOPY = 0x3e,  ///< copy data returned from previous call to memory
+		EXTCODEHASH = 0x3f,     ///< get external code hash
 
 		BLOCKHASH = 0x40,   ///< get hash of most recent complete block
 		COINBASE,           ///< get the block's coinbase address
@@ -70,6 +72,8 @@ namespace eth {
 		NUMBER,             ///< get the block's number
 		DIFFICULTY,         ///< get the block's difficulty
 		GASLIMIT,           ///< get the block's gas limit
+		CHAINID,          ///< get the network's ChainID
+		SELFBALANCE,      ///< get balance of the current address
 
 		POP = 0x50,         ///< remove item from stack
 		MLOAD,              ///< load word from memory
@@ -216,7 +220,8 @@ namespace eth {
 		CREATE2 = 0xfb,		///< create a new account with associated code. sha3((sender + salt + sha3(code))
 		REVERT = 0xfd,      ///< stop execution and revert state changes, without consuming all provided gas
 		INVALID = 0xfe,     ///< dedicated invalid instruction
-		SUICIDE = 0xff      ///< halt execution and register account for later deletion
+		SELFDESTRUCT = 0xff      ///< halt execution and register account for later deletion
+		//SUICIDE = 0xff      ///< halt execution and register account for later deletion
 };
 } // namespace ripple
 

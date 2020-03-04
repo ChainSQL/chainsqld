@@ -5,18 +5,18 @@
 
 #include "VMConfig.h"
 
-#include <peersafe/vm/VMFace.h>
-#include <intx/intx.hpp>
+#include <eth/vm/VMFace.h>
+#include <intx/include/intx/intx.hpp>
 
-#include <evmc/include/evmc/evmc.h>
-#include <evmc/include/evmc/instructions.h>
+#include <eth/evmc/include/evmc/evmc.h>
+#include <eth/evmc/include/evmc/instructions.h>
 
 #include <boost/optional.hpp>
 
 //todo: the version should be in build info.
 #define INTERPRETER_VERSION "0.0.1"
 
-namespace ripple
+namespace eth
 {
 
 struct VMSchedule

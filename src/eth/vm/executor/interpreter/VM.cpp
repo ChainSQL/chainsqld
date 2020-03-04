@@ -3,6 +3,8 @@
 // Licensed under the GNU General Public License, Version 3.
 #include "interpreter.h"
 #include "VM.h"
+#include <eth/evmc/include/evmc/evmc.hpp>
+#include <eth/ethash/include/ethash/keccak.hpp>
 
 namespace
 {
@@ -27,10 +29,10 @@ evmc_result execute(evmc_vm* _instance, const evmc_host_interface* _host,
     size_t _codeSize) noexcept
 {
     (void)_instance;
-    std::unique_ptr<ripple::VM> vm{new ripple::VM};
+    std::unique_ptr<eth::VM> vm{new eth::VM};
 
     evmc_result result = {};
-    ripple::owning_bytes_ref output;
+	eth::owning_bytes_ref output;
 
     try
     {
@@ -38,45 +40,45 @@ evmc_result execute(evmc_vm* _instance, const evmc_host_interface* _host,
         result.status_code = EVMC_SUCCESS;
         result.gas_left = vm->m_io_gas;
     }
-    catch (ripple::RevertInstruction& ex)
+    catch (eth::RevertInstruction& ex)
     {
         result.status_code = EVMC_REVERT;
         result.gas_left = vm->m_io_gas;
         output = ex.output();  // This moves the output from the exception!
     }
-    catch (ripple::InvalidInstruction const&)
+    /*catch (eth::InvalidInstruction const&)
     {
         result.status_code = EVMC_INVALID_INSTRUCTION;
-    }
-    catch (ripple::BadInstruction const&)
+    }*/
+    catch (eth::BadInstruction const&)
     {
         result.status_code = EVMC_UNDEFINED_INSTRUCTION;
     }
-    catch (ripple::OutOfStack const&)
+    catch (eth::OutOfStack const&)
     {
         result.status_code = EVMC_STACK_OVERFLOW;
     }
-    catch (ripple::StackUnderflow const&)
+    catch (eth::StackUnderflow const&)
     {
         result.status_code = EVMC_STACK_UNDERFLOW;
     }
-    catch (ripple::BufferOverrun const&)
+    catch (eth::BufferOverrun const&)
     {
         result.status_code = EVMC_INVALID_MEMORY_ACCESS;
     }
-    catch (ripple::OutOfGas const&)
+    catch (eth::OutOfGas const&)
     {
         result.status_code = EVMC_OUT_OF_GAS;
     }
-    catch (ripple::BadJumpDestination const&)
+    catch (eth::BadJumpDestination const&)
     {
         result.status_code = EVMC_BAD_JUMP_DESTINATION;
     }
-    catch (ripple::DisallowedStateChange const&)
+    catch (eth::DisallowedStateChange const&)
     {
         result.status_code = EVMC_STATIC_MODE_VIOLATION;
     }
-    catch (ripple::VMException const&)
+    catch (eth::VMException const&)
     {
         result.status_code = EVMC_FAILURE;
     }
@@ -106,14 +108,14 @@ extern "C" evmc_vm* evmc_create_aleth_interpreter() noexcept
         EVMC_ABI_VERSION, "interpreter", INTERPRETER_VERSION, ::destroy, ::execute, getCapabilities,
         nullptr,  // set_option
     };
-    static bool metricsInited = ripple::VM::initMetrics();
+    static bool metricsInited = eth::VM::initMetrics();
     (void)metricsInited;
 
     return &s_vm;
 }
 
 
-namespace ripple
+namespace eth
 {
 uint64_t VM::memNeed(intx::uint256 const& _offset, intx::uint256 const& _size)
 {
@@ -351,7 +353,7 @@ void VM::interpretCases()
             if (m_rev >= EVMC_TANGERINE_WHISTLE)
             {
                 if (m_rev == EVMC_TANGERINE_WHISTLE ||
-                    fromEvmC(m_host->get_balance(m_context, &m_message->destination)) > 0)
+                    ripple::fromEvmC(m_host->get_balance(m_context, &m_message->destination)) > ripple::uint256(0))
                 {
                     if (!m_host->account_exists(m_context, &destination))
                     {
