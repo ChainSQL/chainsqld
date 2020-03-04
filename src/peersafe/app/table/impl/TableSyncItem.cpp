@@ -541,7 +541,8 @@ void TableSyncItem::SetSyncTxLedger(LedgerIndex iSeq, uint256 uHash)
 void TableSyncItem::SetSyncState(TableSyncState eState)
 {
     std::lock_guard<std::mutex> lock(mutexInfo_);
-    if(eState_ != SYNC_STOP)    eState_ = eState;
+    if(eState_ != SYNC_STOP || eState_ != SYNC_REMOVE || eState_ != SYNC_DELETING)    
+		eState_ = eState;                                 
 }
 
 void TableSyncItem::SetDeleted(bool deleted)
@@ -960,24 +961,25 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
             JLOG(journal_.trace()) << "Dispose error";
         }			
 	}
-    
-	if (ret.first)
+   
+	if (T_DROP == op_type)
 	{
+		this->ReSetContexAfterDrop();
+	}
 
-		if (T_DROP == op_type)
-		{
-			this->ReSetContexAfterDrop();
-		}
-		else if (T_RENAME == op_type)
-		{
+	if (ret.first && T_RENAME == op_type)
+	{
 			auto tables = tx.getFieldArray(sfTables);
 			if (tables.size() > 0)
 			{
 				auto newTableName = strCopy(tables[0].getFieldVL(sfTableNewName));
 				sTableName_ = newTableName;
-				getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
-			}
-		}
+				bool bRenameOk = getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
+				if (!bRenameOk) {
+					ret.first      = false;			
+					ret.second = (boost::format("account %1% renames table %2%  to %3% exception") % to_string(accountID_) % sTableNameInDB_ %newTableName).str();
+				}
+			}	
 	}
 	//else
 	//{
@@ -1168,7 +1170,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                 }
                 catch (std::exception const& e)
                 {
-                    JLOG(journal_.info()) <<
+                    JLOG(journal_.error()) <<
                         "Dispose exception" << e.what();
 
                     std::pair<std::string, std::string> result = std::make_pair("db_error", e.what());
