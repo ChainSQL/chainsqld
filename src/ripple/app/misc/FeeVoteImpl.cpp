@@ -233,12 +233,13 @@ FeeVoteImpl::doVoting(
     if ((baseFee != lastClosedLedger->fees().base) ||
             (baseReserve != lastClosedLedger->fees().accountReserve(0)) ||
             (incReserve != lastClosedLedger->fees().increment) ||
-		(dropsPerByte != lastClosedLedger->fees().drops_per_byte) )
+		   (dropsPerByte != lastClosedLedger->fees().drops_per_byte) )
     {
         JLOG(journal_.warn()) <<
             "We are voting for a fee change: " << baseFee <<
             "/" << baseReserve <<
-            "/" << incReserve;
+            "/" << incReserve    <<
+			"/" << dropsPerByte;
 
         STTx feeTx (ttFEE,
             [seq,baseFee,baseReserve,incReserve,feeUnits, dropsPerByte](auto& obj)
