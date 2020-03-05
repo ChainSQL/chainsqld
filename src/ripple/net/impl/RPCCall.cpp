@@ -1279,6 +1279,7 @@ public:
 			{   "gen_csr",          &RPCParser::parseGenCsr,                   2,  2 },
 			{	"ledger_objects",	   &RPCParser::parseLedgerId,			   1,  1 },
             {   "node_size",		   &RPCParser::parseNodeSize, 			   0,  1 },
+            {   "malloc_trim",		   &RPCParser::parseAsIs, 			       0,  0 },
         };
 
         auto const count = jvParams.size ();
