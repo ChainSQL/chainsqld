@@ -90,6 +90,7 @@ Json::Value doWalletUnlock          (RPC::Context&);
 Json::Value doWalletVerify          (RPC::Context&);
 Json::Value doLedgerObjects			(RPC::Context&);
 Json::Value doNodeSize              (RPC::Context&);
+Json::Value doMallocTrim            (RPC::Context&);
 
 //for sql operation
 Json::Value doTableDump(RPC::Context&);
