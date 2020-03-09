@@ -3,8 +3,6 @@
 // Licensed under the GNU General Public License, Version 3.
 #include "VM.h"
 
-namespace dev
-{
 namespace eth
 {
 std::array<std::array<evmc_instruction_metrics, 256>, EVMC_MAX_REVISION + 1> VM::s_metrics;
@@ -161,6 +159,5 @@ void VM::initEntry()
 {
     m_bounce = &VM::interpretCases;
     optimize();
-}
 }
 }

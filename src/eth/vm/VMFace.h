@@ -2,8 +2,11 @@
 #define _H_CHAINSQL_VMFACE_H__
 
 #include <memory>
+#include <boost/exception/errinfo_api_function.hpp>
+#include <boost/exception/errinfo_nested_exception.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/exception/exception.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include "Common.h"
 #include "ExtVMFace.h"
@@ -26,6 +29,7 @@ ETH_SIMPLE_EXCEPTION_VM(StackUnderflow);
 ETH_SIMPLE_EXCEPTION_VM(DisallowedStateChange);
 ETH_SIMPLE_EXCEPTION_VM(BufferOverrun);
 ETH_SIMPLE_EXCEPTION_VM(RejectJIT);
+ETH_SIMPLE_EXCEPTION_VM(InvalidInstruction);
 
 /// Reports VM internal error. This is not based on VMException because it must be handled
 /// differently than defined consensus exceptions.
@@ -33,6 +37,9 @@ struct InternalVMError : Exception {};
 
 /// Error info for EVMC status code.
 using errinfo_evmcStatusCode = boost::error_info<struct tag_evmcStatusCode, evmc_status_code>;
+using errinfo_required = boost::error_info<struct tag_required, bigint>;
+using errinfo_got = boost::error_info<struct tag_got, bigint>;
+using RequirementError = boost::tuple<errinfo_required, errinfo_got>;
 
 struct RevertInstruction : VMException
 {

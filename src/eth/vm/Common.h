@@ -6,6 +6,7 @@
 #endif
 
 #include <vector>
+#include <boost/multiprecision/cpp_int.hpp>
 #include "vector_ref.h"
 
 namespace eth {
@@ -15,6 +16,7 @@ namespace eth {
 	using bytesConstRef = vector_ref<byte const>;
 	bytes const NullBytes;
 
+	using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
 
 	/// Virtual machine bytecode instruction.
 	enum class Instruction : uint8_t
@@ -165,6 +167,7 @@ namespace eth {
 		PUSHC = 0xac,       ///< push value from constant pool
 		JUMPC,              ///< alter the program counter - pre-verified
 		JUMPCI,             ///< conditionally alter the program counter - pre-verified
+		UNDEFINED,          ///< Replaces PUSHC/JUMPC/JUMPCI in the original code
 
 		JUMPTO = 0xb0,      ///< alter the program counter to a jumpdest
 		JUMPIF,             ///< conditionally alter the program counter

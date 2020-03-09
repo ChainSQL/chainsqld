@@ -3,8 +3,6 @@
 // Licensed under the GNU General Public License, Version 3.
 #include "VM.h"
 
-namespace dev
-{
 namespace eth
 {
 void VM::copyDataToMemory(bytesConstRef _data, intx::uint256*_sp)
@@ -287,6 +285,5 @@ bool VM::caseCallSetup(evmc_message& o_msg, bytesRef& o_output)
         return true;
     }
     return false;
-}
 }
 }

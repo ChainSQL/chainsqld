@@ -3,8 +3,6 @@
 // Licensed under the GNU General Public License, Version 3.
 #pragma once
 
-namespace dev
-{
 namespace eth
 {
 ///////////////////////////////////////////////////////////////////////////////
@@ -416,5 +414,4 @@ namespace eth
 #else
 #error No opcode dispatch configured
 #endif
-}
 }
