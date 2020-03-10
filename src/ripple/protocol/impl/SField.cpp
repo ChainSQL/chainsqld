@@ -124,8 +124,9 @@ SF_U64 const sfHighNode         (access, STI_UINT64, 8, "HighNode");
 SF_U64 const sfDestinationNode  (access, STI_UINT64, 9, "DestinationNode");
 SF_U64 const sfCookie           (access, STI_UINT64, 10,"Cookie");
 
+SF_U64 const sfDropsPerByte(access, STI_UINT64, 11, "DropsPerByte");
 SF_U64 const sfIssuerNode	 (access, STI_UINT64, 21, "IssuerNode");
-SF_U64 const sfDropsPerByte  (access, STI_UINT64, 10, "DropsPerByte");
+
 
 
 
