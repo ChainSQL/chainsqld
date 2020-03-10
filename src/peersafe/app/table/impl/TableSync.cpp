@@ -484,10 +484,13 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
 				auto PrevTxnLedgerHash = pEntry->getFieldH256(sfPrevTxnLedgerHash);
 				auto uTxDBName = pEntry->getFieldH160(sfNameInDB);
 				bRet = MakeTableDataReply(toBase58(stItemInfo.accountID), false, time, stItemInfo.sNickName, pItem->TargetType(), TxnLgrSeq, TxnLgrHash, PreviousTxnLgrSeq, PrevTxnLedgerHash,to_string(uTxDBName), *pData);
+				lashTxChecHash = TxnLgrHash;
 			}
 			else
 			{
 				bRet = MakeTableDataReply(toBase58(stItemInfo.accountID), false, time, stItemInfo.sNickName, pItem->TargetType(),i, ledger->info().hash, lastTxChangeIndex, lashTxChecHash,pItem->TableNameInDB(), *pData);
+				lashTxChecHash = ledger->info().hash;
+
 			}
             if (!bRet)
             {
@@ -501,7 +504,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
             lastLedgerSeq = i;
             lastTxChangeIndex = i;
             lastLedgerHash = ledger->info().hash;
-            lashTxChecHash = ledger->info().hash;
+            //lashTxChecHash = ledger->info().hash;
 
 			//table dropped,break
 			if (!retPair.first)
@@ -623,7 +626,8 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
             iLastFindSeq = i;
             uLashFindHash = ledger->info().hash;
             lastTxChangeIndex = i;
-			lastTxChangeHash = ledger->info().hash;//retPair.second->getFieldH256(sfTxnLedgerHash);
+			//lastTxChangeHash = ledger->info().hash;//retPair.second->getFieldH256(sfTxnLedgerHash);
+			lastTxChangeHash = retPair.second->getFieldH256(sfTxnLedgerHash);
         }
         else if(iBlockEnd == i || (!bGetLost && i == stopIndex) || !retPair.first)
         {       
