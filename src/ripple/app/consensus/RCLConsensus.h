@@ -390,6 +390,8 @@ class RCLConsensus
 		*/
 		void
 			sendViewChange(ViewChange const& proposal);
+
+		void touchAcquringLedger(LedgerHash const& prevLedgerHash);
     };
 
 public:
@@ -500,7 +502,6 @@ public:
     {
         return consensus_->getConsensusTimeout();
     }
-
 private:
     // Since Consensus does not provide intrinsic thread-safety, this mutex
     // guards all calls to consensus_. adaptor_ uses atomics internally

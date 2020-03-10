@@ -620,6 +620,11 @@ PConsensus<Adaptor>::peerViewChange(ViewChange const& change)
 			checkLedger();
 		}
 	}
+	else if (previousLedger_.seq() == GENESIS_LEDGER_INDEX && change.prevSeq() > GENESIS_LEDGER_INDEX)
+	{
+		JLOG(j_.warn()) <<"touch inboundLedger for "<< change.prevHash();
+		adaptor_.touchAcquringLedger(change.prevHash());
+	}
 	
 	return true;
 }
@@ -957,7 +962,7 @@ PConsensus<Adaptor>::phaseCollecting()
 		sinceClose = sinceConsensus;
 	}
 
-	JLOG(j_.info()) << "phaseCollecting time sinceOpen:" << sinceOpen <<"ms";
+	JLOG(j_.debug()) << "phaseCollecting time sinceOpen:" << sinceOpen <<"ms";
 
 	// Decide if we should propose a tx-set
 	if (shouldPack() && !result_)

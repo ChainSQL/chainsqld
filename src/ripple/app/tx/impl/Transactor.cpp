@@ -509,6 +509,11 @@ Transactor::checkSingleSign (PreclaimContext const& ctx)
 
     auto const sle = ctx.view.read(
         keylet::account(id));
+    if(!sle)
+    {
+        return terNO_ACCOUNT;
+    }
+
     auto const hasAuthKey     = sle->isFieldPresent (sfRegularKey);
 
     // Consistency: Check signature

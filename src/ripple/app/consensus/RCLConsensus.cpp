@@ -105,6 +105,15 @@ RCLConsensus::Adaptor::Adaptor(
 {
 }
 
+void RCLConsensus::Adaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
+{
+	auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
+	if (inboundLedger)
+	{
+		inboundLedger->touch();
+	}
+}
+
 boost::optional<RCLCxLedger>
 RCLConsensus::Adaptor::acquireLedger(LedgerHash const& ledger)
 {
