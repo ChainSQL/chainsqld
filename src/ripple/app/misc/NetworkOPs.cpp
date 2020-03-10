@@ -2579,8 +2579,8 @@ std::string NetworkOPsImp::getServerStatus()
 	}
 	
 	if (pLedger && pLedger->info().seq == maxVal && 
-        (strOperatingMode() == "proposing") || 
-        !mConsensus.validating() && mMode == omFULL)
+        (strOperatingMode() == "proposing" || 
+        (!mConsensus.validating() && mMode == omFULL))
         )
 	{
 		return "normal";

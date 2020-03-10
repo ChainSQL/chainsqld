@@ -59,4 +59,3 @@
 #include <ripple/rpc/handlers/NoRippleCheck.cpp>
 #include <ripple/rpc/handlers/OwnerInfo.cpp>
 #include <ripple/rpc/handlers/LedgerObjects.cpp>
-#include <ripple/rpc/handlers/NodeByHash.cpp>
