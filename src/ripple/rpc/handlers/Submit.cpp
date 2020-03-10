@@ -94,7 +94,7 @@ Json::Value doSubmit (RPC::Context& context)
 
 			auto j = context.app.journal("CheckValidity");
 			JLOG(j.warn())
-				<< "the error info of checkValidity �� "
+				<< "the error info of checkValidity "
 				<< validity.second;
 
             jvResult[jss::error]                 = "invalidTransaction";
