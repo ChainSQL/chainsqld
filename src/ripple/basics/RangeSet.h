@@ -70,7 +70,8 @@ public:
 private:
     void simplify ();
 
-private:
+//private:
+public:
     using Map = std::map <std::uint32_t, std::uint32_t>;
 
     using const_iterator         = Map::const_iterator;

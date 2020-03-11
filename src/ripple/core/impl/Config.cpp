@@ -584,7 +584,7 @@ int Config::getSize (SizedItemName item) const
         { siSLECacheAge,        {   30,     60,     90,     120,        300     } },
 
         { siLedgerSize,         {   32,     128,    256,    384,        768     } },
-        { siLedgerAge,          {   30,     90,     180,    240,        900     } },
+        { siLedgerAge,          {   90,     180,    400,    600,        900     } },
 
         { siHashNodeDBCache,    {   4,      12,     24,     64,         128     } },
         { siTxnDBCache,         {   4,      12,     24,     64,         128     } },

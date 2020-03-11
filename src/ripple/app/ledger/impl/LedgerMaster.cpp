@@ -84,6 +84,64 @@ LedgerMaster::LedgerMaster (Application& app, Stopwatch& stopwatch,
     , fetch_packs_ ("FetchPack", 65536, 45, stopwatch,
         app_.journal("TaggedCache"))
 {
+    if (app_.config().exists(SECTION_LEDGER_ACQUIRE))
+    {
+        auto line = app_.config().section(SECTION_LEDGER_ACQUIRE).find("skip_blocks");
+        if (line.second)
+        {
+            std::string::size_type pos;
+            auto skip_blocks = line.first + ",";
+            int size = skip_blocks.size();
+
+            for (int i = 0; i < size; i++)
+            {
+                pos = skip_blocks.find(",", i);
+                if (pos < size)
+                {
+                    std::string range = skip_blocks.substr(i, pos - i);
+
+                    try
+                    {
+                        if (range.find("-", 0) != std::string::npos)
+                        {
+                            mSkipBlocks.setRange(std::atoi(range.c_str()), std::atoi(range.substr(range.find("-", 0) + 1).c_str()));
+                        }
+                        else
+                        {
+                            mSkipBlocks.setValue(std::atoi(range.c_str()));
+                        }
+                    }
+                    catch (std::exception const&)
+                    {
+                        JLOG(m_journal.error()) << "skip_blocks config error";
+                    }
+
+                    i = pos;
+                }
+            }
+        }
+    }
+
+    if (app_.config().exists(SECTION_MISSING_HASHES))
+    {
+        auto section = app_.config().section(SECTION_MISSING_HASHES);
+        const std::vector<std::string> lines = section.lines();
+
+        for (std::string line : lines)
+        {
+            try
+            {
+                if (line.find(":", 0) != std::string::npos)
+                {
+                    missingHashes[std::atoi(line.c_str())] = from_hex_text<uint256>(line.substr(line.find(":", 0) + 1));
+                }
+            }
+            catch (std::exception const&)
+            {
+                JLOG(m_journal.error()) << "missing_hashes config error";
+            }
+        }
+    }
 }
 
 LedgerIndex
@@ -1359,6 +1417,8 @@ LedgerMaster::getLedgerHashForHistory (LedgerIndex index)
 {
     // Try to get the hash of a ledger we need to fetch for history
     boost::optional<LedgerHash> ret;
+	if (missingHashes.count(index))
+		return missingHashes[index];
 
     if (mHistLedger && (mHistLedger->info().seq >= index))
     {
@@ -1988,7 +2048,8 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                 std::uint32_t missing;
                 {
                     ScopedLockType sl (mCompleteLock);
-                    missing = mCompleteLedgers.prevMissing(
+                    //missing = mCompleteLedgers.prevMissing(
+                    missing = prevMissing(
                         mPubLedger->info().seq);
                     // maybeMissing =
                     //     prevMissing(mCompleteLedgers, mPubLedger->info().seq);
@@ -2034,7 +2095,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                                 }
                                 else
                                     JLOG (m_journal.debug()) <<
-                                    "tryAdvance found failed acquire";
+                                    "tryAdvance found failed acquire " << *hash;
                             }
                             if (ledger)
                             {
@@ -2353,6 +2414,56 @@ std::size_t
 LedgerMaster::getFetchPackCacheSize () const
 {
     return fetch_packs_.getCacheSize ();
+}
+
+std::uint32_t
+LedgerMaster::prevMissing(std::uint32_t v) const
+{
+    static const std::uint32_t absent = static_cast <std::uint32_t> (-1);
+
+    using const_reverse_iterator = std::map <std::uint32_t, std::uint32_t>::const_reverse_iterator;
+
+    std::uint32_t result = absent;
+
+    if (v != 0)
+    {
+        //checkInternalConsistency();
+
+        // Handle the case where the loop reaches the terminating condition
+        //
+        result = v - 1;
+
+        for (const_reverse_iterator cur = mCompleteLedgers.mRanges.rbegin(); cur != mCompleteLedgers.mRanges.rend(); ++cur)
+        {
+            bool preRange = false;
+
+            // See if v-1 is in the range
+            if (RangeSet::contains(*cur, result))
+            {
+                result = cur->first - 1;
+
+                for (const_reverse_iterator it = mSkipBlocks.mRanges.rbegin(); it != mSkipBlocks.mRanges.rend(); ++it)
+                {
+                    if (RangeSet::contains(*it, result))
+                    {
+                        result = it->first - 1;
+                        preRange = true;
+                    }
+                }
+
+                if (preRange)
+                {
+                    continue;
+                }
+
+                break;
+            }
+        }
+    }
+
+    assert(result == absent || !mCompleteLedgers.hasValue(result));
+
+    return result;
 }
 
 } // ripple

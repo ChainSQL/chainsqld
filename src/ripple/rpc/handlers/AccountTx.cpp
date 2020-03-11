@@ -83,8 +83,9 @@ Json::Value doAccountTx (RPC::Context& context)
         std::int64_t iLedgerMax  = params.isMember (jss::ledger_index_max)
                 ? params[jss::ledger_index_max].asInt () : -1;
 
-        uLedgerMin  = iLedgerMin == -1 ? uValidatedMin :
-            ((iLedgerMin >= uValidatedMin) ? iLedgerMin : uValidatedMin);
+        //uLedgerMin  = iLedgerMin == -1 ? uValidatedMin :
+        //    ((iLedgerMin >= uValidatedMin) ? iLedgerMin : uValidatedMin);
+        uLedgerMin  = iLedgerMin == -1 ? 1 : iLedgerMin;
         uLedgerMax  = iLedgerMax == -1 ? uValidatedMax :
             ((iLedgerMax <= uValidatedMax) ? iLedgerMax : uValidatedMax);
 

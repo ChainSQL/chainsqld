@@ -1746,7 +1746,7 @@ bool TableSync::OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> co
 	{
 		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
 
-		std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", insertRes.second);
+		std::pair<std::string, std::string> result = std::make_pair("db_error", insertRes.second);
 		app_.getOPs().pubTableTxs(accountID, tableName, tx, result, false);
 	}
 
