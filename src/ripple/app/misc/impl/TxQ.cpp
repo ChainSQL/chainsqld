@@ -627,6 +627,13 @@ TxQ::apply(Application& app, OpenView& view,
     std::shared_ptr<STTx const> const& tx,
         ApplyFlags flags, beast::Journal j)
 {
+	auto const allowEscalation =
+        (view.rules().enabled(featureFeeEscalation));
+    if (!allowEscalation)
+    {
+        return ripple::apply(app, view, *tx, flags, j);
+    }
+
     auto const account = (*tx)[sfAccount];
     auto const transactionID = tx->getTransactionID();
     auto const tSeq = tx->getSequence();
