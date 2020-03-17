@@ -627,7 +627,7 @@ TxQ::apply(Application& app, OpenView& view,
     std::shared_ptr<STTx const> const& tx,
         ApplyFlags flags, beast::Journal j)
 {
-	auto const allowEscalation =
+    auto const allowEscalation =
         (view.rules().enabled(featureFeeEscalation));
     if (!allowEscalation)
     {
@@ -1192,6 +1192,13 @@ void
 TxQ::processClosedLedger(Application& app,
     ReadView const& view, bool timeLeap)
 {
+    auto const allowEscalation =
+        (view.rules().enabled(featureFeeEscalation));
+    if (!allowEscalation)
+    {
+        return;
+    }
+
     std::lock_guard<std::mutex> lock(mutex_);
 
     feeMetrics_.update(app, view, timeLeap, setup_);
@@ -1266,6 +1273,13 @@ bool
 TxQ::accept(Application& app,
     OpenView& view)
 {
+    auto const allowEscalation =
+        (view.rules().enabled(featureFeeEscalation));
+    if (!allowEscalation)
+    {
+        return false;
+    }
+
     /* Move transactions from the queue from largest fee level to smallest.
        As we add more transactions, the required fee level will increase.
        Stop when the transaction fee level gets lower than the required fee
@@ -1388,6 +1402,11 @@ TxQ::getMetrics(OpenView const& view) const
 {
     Metrics result;
 
+    auto const allowEscalation =
+        (view.rules().enabled(featureFeeEscalation));
+    if (!allowEscalation)
+        return result;
+
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto const snapshot = feeMetrics_.getSnapshot();
@@ -1409,6 +1428,11 @@ auto
 TxQ::getAccountTxs(AccountID const& account, ReadView const& view) const
 -> std::map<TxSeq, AccountTxDetails const>
 {
+    auto const allowEscalation =
+        (view.rules().enabled(featureFeeEscalation));
+    if (!allowEscalation)
+        return {};
+
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto accountIter = byAccount_.find(account);
@@ -1438,6 +1462,11 @@ auto
 TxQ::getTxs(ReadView const& view) const
 -> std::vector<TxDetails>
 {
+    auto const allowEscalation =
+        (view.rules().enabled(featureFeeEscalation));
+    if (!allowEscalation)
+        return {};
+
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (byFee_.empty())
