@@ -53,6 +53,7 @@
 #include <ripple/rpc/handlers/WalletPropose.cpp>
 #include <ripple/rpc/handlers/WalletSeed.cpp>
 #include <ripple/rpc/handlers/NodeSize.cpp>
+#include <ripple/rpc/handlers/TestLeak.cpp>
 
 #include <ripple/rpc/impl/Handler.cpp>
 #include <ripple/rpc/impl/LegacyPathFind.cpp>
