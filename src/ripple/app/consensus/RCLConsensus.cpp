@@ -722,7 +722,7 @@ RCLConsensus::Adaptor::buildLCL(
         if (auto const replayData = ledgerMaster_.releaseReplay())
         {
             assert(replayData->parent()->info().hash == previousLedger.id());
-            return buildLedger(*replayData, tapNONE, app_, j_);
+            return buildLedger(*replayData, tapNO_CHECK_SIGN | tapForConsensus, app_, j_);
         }
         return buildLedger(previousLedger.ledger_, closeTime, closeTimeCorrect,
             closeResolution, app_, retriableTxs, failedTxs, j_);
