@@ -67,12 +67,16 @@ public:
 		uint32_t flags = ext.staticCall ? EVMC_STATIC : 0;
 		assert(flags != EVMC_STATIC || kind == EVMC_CALL);  // STATIC implies a CALL.
 
-		evmc_message msg = { ext.myAddress, ext.caller, ext.value, 
-			ext.data.data(), ext.data.size(),ext.codeHash, 
-			gas,ext.envInfo().dropsPerByte(), ext.depth, kind, flags };
+		evmc_message msg = { kind, flags, ext.depth, gas,
+			ext.myAddress, ext.caller, 
+			ext.data.data(), ext.data.size(), ext.value, 
+			ext.envInfo().dropsPerByte()};
+		EvmCHost host{ ext };
 		return Result{
-			m_instance->execute(m_instance, &ext, EVMC_CONSTANTINOPLE,
-			&msg, ext.code.data(), ext.code.size())
+			m_instance->execute(m_instance, &evmc::Host::get_interface(), host.to_context(),
+			EVMC_CONSTANTINOPLE, &msg, ext.code.data(), ext.code.size())
+			/*m_instance->execute(m_instance, &ext, EVMC_CONSTANTINOPLE,
+				&msg, ext.code.data(), ext.code.size())*/
 		};
 	}
 

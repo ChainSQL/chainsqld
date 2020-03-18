@@ -17,7 +17,7 @@ namespace eth {
 	bytes const NullBytes;
 
 	using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
-
+	//using u256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
 	/// Virtual machine bytecode instruction.
 	enum class Instruction : uint8_t
 	{

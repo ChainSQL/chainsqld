@@ -59,7 +59,8 @@ struct CallParametersR
 		eth::bytesConstRef _data
 	) : senderAddress(_senderAddress), codeAddress(_codeAddress), receiveAddress(_receiveAddress),
 		valueTransfer(_valueTransfer), apparentValue(_apparentValue), gas(_gas), data(_data) {}
-	CallParametersR(CallParameters const& p) :senderAddress(fromEvmC(p.senderAddress)),
+
+	CallParametersR(eth::CallParameters const& p) :senderAddress(fromEvmC(p.senderAddress)),
 		codeAddress(fromEvmC(p.codeAddress)),receiveAddress(fromEvmC(p.receiveAddress)),
 		valueTransfer(fromEvmC(p.valueTransfer)), apparentValue(fromEvmC(p.apparentValue)),
 		gas(p.gas),data(p.data)
@@ -108,11 +109,14 @@ public:
     /// @returns the size of the code in bytes at the given address.
     virtual size_t codeSizeAt(evmc_address const& addr)  override final;
 
+	/// @returns the hash of the code at the given address.
+	virtual evmc_uint256be codeHashAt(evmc_address const& addr) override final;
+
     /// Does the account exist?
     virtual bool exists(evmc_address const& addr) override final;
 
     /// Suicide the associated contract and give proceeds to the given address.
-    virtual void suicide(evmc_address const& addr) override final;
+    virtual void selfdestruct(evmc_address const& addr) override final;
 
     /// Hash of a block if within the last 256 blocks, or h256() otherwise.
     virtual evmc_uint256be blockHash(int64_t  const& iSeq) override final;

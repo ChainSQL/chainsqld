@@ -2,7 +2,10 @@
 #define __H_CHAINSQL_VM_EXTVMFACE_H__
 
 #include "Common.h"
+#include <ripple/protocol/AccountID.h>
 #include <peersafe/basics/TypeTransform.h>
+//#include <eth/evmc/include/evmc/evmc.h>
+#include <eth/evmc/include/evmc/evmc.hpp>
 
 namespace eth {
 
@@ -21,6 +24,7 @@ namespace eth {
 /// with it was moved out of VM interface making VMs "stateless".
 ///
 /// The type is movable, but not copyable. Default constructor available.
+
 class owning_bytes_ref : public vector_ref<byte const>
 {
 public:
@@ -57,20 +61,20 @@ private:
 
 struct SubState
 {
-    std::set<ripple::AccountID> suicides;			 ///< Any accounts that have suicided.
+    std::set<ripple::AccountID> selfdestruct;			 ///< Any accounts that have suicided.
     uint64_t refunds = 0;                    ///< Refund counter of SSTORE nonzero->zero.
 
     SubState& operator+=(SubState const& _s)
     {
-        for (auto it = suicides.begin(); it != suicides.end(); ++it)
-            suicides.emplace(*it);        
+        for (auto it = selfdestruct.begin(); it != selfdestruct.end(); ++it)
+			selfdestruct.emplace(*it);
         refunds += _s.refunds;        
         return *this;
     }
 
     void clear()
     {
-        suicides.clear();        
+		selfdestruct.clear();
         refunds = 0;
     }
 };
@@ -152,7 +156,8 @@ public:
 
 };
 
-class ExtVMFace : public evmc_context {
+//class ExtVMFace : public evmc_context {
+class ExtVMFace {
 public:
 	ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,
 		evmc_uint256be _value, evmc_uint256be _gasPrice, 
@@ -178,11 +183,14 @@ public:
 	/// @returns the size of the code in bytes at the given address.
 	virtual size_t codeSizeAt(evmc_address const&) { return 0; }
 
+	/// @returns the hash of the code at the given address.
+	virtual evmc_uint256be codeHashAt(evmc_address const&) { return evmc_uint256be(); }
+
 	/// Does the account exist?
 	virtual bool exists(evmc_address const&) { return false; }
 
 	/// Suicide the associated contract and give proceeds to the given address.
-	virtual void suicide(evmc_address const&) { sub.suicides.insert(ripple::fromEvmC(myAddress)); }
+	virtual void selfdestruct(evmc_address const&) { sub.selfdestruct.insert(ripple::fromEvmC(myAddress)); }
 
 	/// Create a new (contract) account.
 	virtual CreateResult create(evmc_uint256be const&, int64_t&, 
@@ -280,6 +288,47 @@ public:
 
 private:
 	EnvInfo const& envInfo_;
+};
+
+class EvmCHost : public evmc::Host
+{
+public:
+	explicit EvmCHost(ExtVMFace& _extVM) : m_extVM{ _extVM } {}
+
+	bool account_exists(const evmc::address& _addr) const noexcept override;
+
+	evmc::bytes32 get_storage(const evmc::address& _addr, const evmc::bytes32& _key) const
+		noexcept override;
+
+	evmc_storage_status set_storage(const evmc::address& _addr, const evmc::bytes32& _key,
+		const evmc::bytes32& _value) noexcept override;
+
+	evmc::uint256be get_balance(const evmc::address& _addr) const noexcept override;
+
+	size_t get_code_size(const evmc::address& _addr) const noexcept override;
+
+	evmc::bytes32 get_code_hash(const evmc::address& _addr) const noexcept override;
+
+	size_t copy_code(const evmc::address& _addr, size_t _codeOffset, uint8_t* _bufferData,
+		size_t _bufferSize) const noexcept override;
+
+	void selfdestruct(
+		const evmc::address& _addr, const evmc::address& _beneficiary) noexcept override;
+
+	evmc::result call(const evmc_message& _msg) noexcept override;
+
+	evmc_tx_context get_tx_context() const noexcept override;
+
+	evmc::bytes32 get_block_hash(int64_t _blockNumber) const noexcept override;
+
+	void emit_log(const evmc::address& _addr, const uint8_t* _data, size_t _dataSize,
+		const evmc::bytes32 _topics[], size_t _numTopics) noexcept override;
+
+private:
+	evmc::result create(evmc_message const& _msg) noexcept;
+
+private:
+	ExtVMFace& m_extVM;
 };
 
 } // namespace ripple

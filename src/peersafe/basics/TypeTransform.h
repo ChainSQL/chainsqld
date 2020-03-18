@@ -4,7 +4,7 @@
 #include <ripple/protocol/AccountID.h>
 #include <ripple/basics/base_uint.h>
 #include <eth/vm/Common.h>
-#include <evmc/include/evmc/evmc.h>
+#include <eth/evmc/include/evmc/evmc.h>
 
 namespace ripple {
 

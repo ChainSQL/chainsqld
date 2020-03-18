@@ -135,10 +135,10 @@ include_directories(
   src/nudb/include
   src/soci/src
   src/soci/include
-  src/evmjit
   src/eth/evmc/include
   src/eth/ethash/include
   src/intx/include)
+#  src/evmjit
 #  src/evmjit/evmc/include)
 
 special_build_flags()
@@ -295,7 +295,7 @@ add_with_props(chainsqld_src_nonunity "${core_srcs}"
 
 set(non_unity_srcs ${core_srcs})
 
-add_subdirectory(src/evmjit)
+#add_subdirectory(src/evmjit)
 add_subdirectory(src/eth/evmc)
 #add_subdirectory(src/intx)
 
@@ -582,7 +582,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} evmjit)
+      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES})
 
     link_common_libraries(${target})
 endforeach()
