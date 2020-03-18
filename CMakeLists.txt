@@ -297,7 +297,7 @@ set(non_unity_srcs ${core_srcs})
 
 #add_subdirectory(src/evmjit)
 add_subdirectory(src/eth/evmc)
-add_subdirectory(src/intx)
+#add_subdirectory(src/intx)
 
 foreach(curdir
         beast/clock
