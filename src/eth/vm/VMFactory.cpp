@@ -1,7 +1,7 @@
 #include "VMFactory.h"
 #include "VMC.h"
 
-#include <evmjit.h>
+//#include <evmjit.h>
 #include <eth/vm/executor/interpreter/interpreter.h>
 
 namespace eth {
