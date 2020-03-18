@@ -333,6 +333,159 @@ public:
 	void emit_log(const evmc::address& _addr, const uint8_t* _data, size_t _dataSize,
 		const evmc::bytes32 _topics[], size_t _numTopics) noexcept override;
 
+	int64_t evm_executeSQL(
+		evmc_address const* _addr,
+		uint8_t _type,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize) noexcept;
+
+	int64_t table_create(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize);
+
+	int64_t table_rename(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize);
+	
+	int64_t table_insert(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize);
+
+	int64_t table_delete(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize);
+
+	int64_t table_drop(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize);
+
+	int64_t table_update(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw1,
+		size_t _rawSize1,
+		uint8_t const* _raw2,
+		size_t _rawSize2);
+
+	int64_t table_grant(
+		const struct evmc_address* address1,
+		const struct evmc_address* address2,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _row,
+		size_t _rowSize);
+
+	void table_get_handle(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize,
+		struct evmc_uint256be* result);
+
+	void table_get_lines(
+		const struct evmc_uint256be* handle,
+		struct evmc_uint256be* result);
+
+	void table_get_columns(
+		const struct evmc_uint256be* handle,
+		struct evmc_uint256be* result);
+
+	size_t get_column_by_name(
+		const evmc_uint256be* _handle,
+		size_t _row,
+		uint8_t const* _column,
+		size_t _columnSize,
+		uint8_t* _outBuf,
+		size_t _outSize);
+
+	size_t get_column_by_index(
+		const evmc_uint256be *_handle,
+		size_t _row,
+		size_t _column,
+		uint8_t *_outBuf,
+		size_t _outSize);
+
+	void db_trans_begin();
+
+	int64_t db_trans_submit();
+
+	void release_resource();
+
+	void get_column_len_by_name(
+		const evmc_uint256be *_handle,
+		size_t _row,
+		const uint8_t *_column,
+		size_t _size,
+		evmc_uint256be *_len);
+
+	void get_column_len_by_index(
+		const evmc_uint256be *_handle,
+		size_t _row,
+		size_t _column,
+		evmc_uint256be *_len);
+
+	int64_t account_set(
+		const struct evmc_address *_address,
+		uint32_t _uFlag,
+		bool _bSet
+	) noexcept;
+
+	int64_t transfer_fee_set(
+		const struct evmc_address *address,
+		uint8_t const *_pRate, size_t _rateLen,
+		uint8_t const *_pMin, size_t _minLen,
+		uint8_t const *_pMax, size_t _maxLen
+	) noexcept;
+
+	int64_t trust_set(
+		const struct evmc_address *address,
+		uint8_t const *_pValue, size_t _valueLen,
+		uint8_t const *_pCurrency, size_t _currencyLen,
+		const struct evmc_address *gateWay
+	) noexcept;
+
+	int64_t trust_limit(
+		/* evmc_uint256be* o_result, */
+		const struct evmc_address *address,
+		uint8_t const *_pCurrency, size_t _currencyLen,
+		uint64_t _power,
+		const struct evmc_address *gateWay
+	) noexcept;
+
+	int64_t gateway_balance(
+		/* evmc_uint256be* o_result, */
+		const struct evmc_address *address,
+		uint8_t const *_pCurrency, size_t _currencyLen,
+		uint64_t _power,
+		const struct evmc_address *gateWay
+	) noexcept;
+
+	int64_t pay(
+		const struct evmc_address *address,
+		const struct evmc_address *receiver,
+		uint8_t const *_pValue, size_t _valueLen,
+		uint8_t const *_pSendMax, size_t _sendMaxLen,
+		uint8_t const *_pCurrency, size_t _currencyLen,
+		const struct evmc_address *gateWay
+	) noexcept;
+
 private:
 	evmc::result create(evmc_message const& _msg) noexcept;
 

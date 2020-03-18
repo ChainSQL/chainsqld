@@ -14,7 +14,7 @@
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <ripple/json/json_reader.h>
-#include <peersafe/vm/VMFace.h>
+#include <eth/vm/VMFace.h>
 
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.

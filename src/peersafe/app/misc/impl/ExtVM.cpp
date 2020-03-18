@@ -132,7 +132,7 @@ namespace ripple
         return code.size();
     }
 
-	evmc_uint256be codeHashAt(evmc_address const& addr)
+	evmc_uint256be ExtVM::codeHashAt(evmc_address const& addr)
 	{ 
 		uint256 codeHash = oSle_.codeHash(fromEvmC(addr));
 		return toEvmC(codeHash); 

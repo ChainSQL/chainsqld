@@ -313,7 +313,7 @@ TER Executive::finalize() {
 
 	// Accumulate refunds for suicides.
 	if (m_ext)
-		m_ext->sub.refunds += SUICIDE_REFUND_GAS * m_ext->sub.suicides.size();
+		m_ext->sub.refunds += SUICIDE_REFUND_GAS * m_ext->sub.selfdestruct.size();
 
 	auto& tx = m_s.ctx().tx;
 	int64_t gas = tx.getFieldU32(sfGas);
@@ -332,7 +332,7 @@ TER Executive::finalize() {
 	m_s.addBalance(sender, m_gas * m_gasPrice);
 
 	// Suicides...
-	if (m_ext) for (auto a : m_ext->sub.suicides) m_s.kill(a);
+	if (m_ext) for (auto a : m_ext->sub.selfdestruct) m_s.kill(a);
 
 	return m_excepted;
 }

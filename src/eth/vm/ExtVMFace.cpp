@@ -8,311 +8,49 @@
 #include <eth/evmc/include/evmc/evmc.hpp>
 #include <peersafe/core/Tuning.h>
 
-namespace eth {
-
-int64_t evm_executeSQL(
-	evmc_context* _context,
-	evmc_address const* _addr,
-    uint8_t _type,
-	uint8_t const* _name,
-	size_t _nameSize,
-    uint8_t const* _raw,
-    size_t _rawSize
-) noexcept
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.executeSQL(_addr, _type, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });	
-}
-
-int64_t table_create(struct evmc_context* _context,
-        const struct evmc_address* address,
-        uint8_t const* _name,
-        size_t _nameSize,
-        uint8_t const* _raw,
-		size_t _rawSize) {
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_create(address, bytesConstRef{_name, _nameSize}, 
-            bytesConstRef{_raw, _rawSize});
-}
-
-int64_t table_rename(struct evmc_context* _context,
-    const struct evmc_address* address,
-    uint8_t const* _name,
-    size_t _nameSize,
-    uint8_t const* _raw,
-	size_t _rawSize)
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_rename(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
-}
-int64_t table_insert(struct evmc_context* _context,
-    const struct evmc_address* address,
-    uint8_t const* _name,
-    size_t _nameSize,
-    uint8_t const* _raw,
-	size_t _rawSize)
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_insert(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
-}
-
-int64_t table_delete(struct evmc_context* _context,
-    const struct evmc_address* address,
-    uint8_t const* _name,
-    size_t _nameSize,
-    uint8_t const* _raw,
-	size_t _rawSize)
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_delete(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
-}
-int64_t table_drop(struct evmc_context* _context,
-    const struct evmc_address* address,
-    uint8_t const* _name,
-    size_t _nameSize)
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_drop(address, bytesConstRef{ _name, _nameSize });
-}
-int64_t table_update(struct evmc_context* _context,
-    const struct evmc_address* address,
-    uint8_t const* _name,
-    size_t _nameSize,
-    uint8_t const* _raw1,
-    size_t _rawSize1,
-    uint8_t const* _raw2,
-    size_t _rawSize2)
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_update(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw1, _rawSize1 }, bytesConstRef{ _raw2, _rawSize2 });
-}
-
-int64_t table_grant(struct evmc_context* _context,
-    const struct evmc_address* address1,
-    const struct evmc_address* address2,
-    uint8_t const* _name,
-    size_t _nameSize,
-    uint8_t const* _row,
-    size_t _rowSize) {
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.table_grant(address1, address2, 
-            bytesConstRef{_name, _nameSize}, bytesConstRef{_row, _rowSize});
-}
-
-void table_get_handle(struct evmc_context* _context,
-    const struct evmc_address* address,
-    uint8_t const* _name,
-    size_t _nameSize,
-    uint8_t const* _raw,
-    size_t _rawSize,
-    struct evmc_uint256be* result) {
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    *result =  env.table_get_handle(address, 
-            bytesConstRef{_name, _nameSize}, bytesConstRef{_raw, _rawSize});
-}
-
-void table_get_lines(struct evmc_context* _context,
-    const struct evmc_uint256be* handle,
-    struct evmc_uint256be* result) {
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    *result = env.table_get_lines(handle);
-}
-
-void table_get_columns(struct evmc_context* _context,
-    const struct evmc_uint256be* handle,
-    struct evmc_uint256be* result) {
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    *result = env.table_get_columns(handle);
-}
-
-// TODO: Remove the copy to outBuf
-size_t get_column_by_name(evmc_context* _context,
-    const evmc_uint256be* _handle,
-    size_t _row,
-    uint8_t const* _column,
-    size_t _columnSize,
-    uint8_t* _outBuf, 
-    size_t _outSize) {
-    auto& env = static_cast<ExtVMFace&>(*_context);
-
-    size_t size = env.table_get_by_key(_handle, _row, 
-            bytesConstRef{_column, _columnSize}, _outBuf+32, _outSize-32);
-    memcpy(_outBuf, toEvmC((uint256)size).bytes, 32);
-    return size;
-}
-
-size_t get_column_by_index(evmc_context *_context,
-    const evmc_uint256be *_handle,
-    size_t _row,
-    size_t _column,
-    uint8_t *_outBuf, 
-    size_t _outSize) {
-    auto& env = static_cast<ExtVMFace&>(*_context);
-
-    size_t size = env.table_get_by_index(_handle, _row, _column, 
-            _outBuf+32, _outSize-32);
-    memcpy(_outBuf, toEvmC((uint256)size).bytes, 32);
-    return size;
-}
-
-void db_trans_begin(struct evmc_context* _context)
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    env.db_trans_begin();
-}
-int64_t db_trans_submit(struct evmc_context* _context)
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    return env.db_trans_submit();
-}
-
-void release_resource(struct evmc_context* _context)
-{
-    auto& env = static_cast<ExtVMFace&>(*_context);
-    env.release_resource();
-}
-
-void get_column_len_by_name(evmc_context*_context, 
-        const evmc_uint256be *_handle, 
-        size_t _row,
-        const uint8_t *_column, 
-        size_t _size, 
-        evmc_uint256be *_len) {
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    *_len = env.get_column_len(_handle, _row, bytesConstRef{_column, _size});
-}
-
-void get_column_len_by_index(evmc_context*_context, 
-        const evmc_uint256be *_handle, 
-        size_t _row,
-        size_t _column, 
-        evmc_uint256be *_len) {
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    *_len = env.get_column_len(_handle, _row, _column);
-}
-
-int64_t account_set(
-    struct evmc_context *_context,
-    const struct evmc_address *_address,
-    uint32_t _uFlag,
-    bool _bSet
-) noexcept
-{
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    return env.account_set(_address, _uFlag, _bSet);
-}
-
-int64_t transfer_fee_set(
-    struct evmc_context *_context,
-    const struct evmc_address *address, 
-    uint8_t const *_pRate, size_t _rateLen,
-    uint8_t const *_pMin, size_t _minLen,
-    uint8_t const *_pMax, size_t _maxLen
-) noexcept
-{
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    return env.transfer_fee_set(address, bytesConstRef{ _pRate, _rateLen }, bytesConstRef{ _pMin, _minLen }, bytesConstRef{ _pMax, _maxLen });
-}
-
-int64_t trust_set(
-    struct evmc_context *_context, 
-    const struct evmc_address *address,
-    uint8_t const *_pValue, size_t _valueLen,
-    uint8_t const *_pCurrency, size_t _currencyLen,
-    const struct evmc_address *gateWay
-) noexcept
-{
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    return env.trust_set(address, bytesConstRef{ _pValue, _valueLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
-}
-
-int64_t trust_limit(
-    /* evmc_uint256be* o_result, */
-    struct evmc_context *_context,
-    const struct evmc_address *address,
-    uint8_t const *_pCurrency, size_t _currencyLen,
-    uint64_t _power,
-    const struct evmc_address *gateWay
-) noexcept
-{
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    //*o_result = env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
-    return env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, _power, gateWay);
-}
-
-int64_t gateway_balance(
-    /* evmc_uint256be* o_result, */
-    struct evmc_context *_context,
-    const struct evmc_address *address,
-    uint8_t const *_pCurrency, size_t _currencyLen,
-    uint64_t _power,
-    const struct evmc_address *gateWay
-) noexcept
-{
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    //*o_result = env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
-    return env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, _power, gateWay);
-}
-
-int64_t pay(
-    struct evmc_context *_context, 
-    const struct evmc_address *address,
-    const struct evmc_address *receiver,
-    uint8_t const *_pValue, size_t _valueLen,
-    uint8_t const *_pSendMax, size_t _sendMaxLen,
-    uint8_t const *_pCurrency, size_t _currencyLen,
-    const struct evmc_address *gateWay
-) noexcept
-{
-    auto &env = static_cast<ExtVMFace&>(*_context);
-    return env.pay(address, receiver, bytesConstRef{ _pValue, _valueLen }, 
-            bytesConstRef{ _pSendMax, _sendMaxLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
-}
-
-
-evmc_context_fn_table const fnTable = {
-	accountExists,
-	getStorage,
-	setStorage,
-	getBalance,
-	getCodeSize,
-	copyCode,
-	selfdestruct,
-	call,
-	getTxContext,
-	getBlockHash,
-	log,
-	evm_executeSQL,
-
-    table_create,
-    table_rename,
-    table_insert,
-    table_delete,
-    table_drop,
-    table_update,
-    table_grant,
-
-    table_get_handle,
-    table_get_lines,
-    table_get_columns,
-    get_column_by_name,
-    get_column_by_index,
-
-    db_trans_begin,
-    db_trans_submit,
-
-    release_resource,
-
-    get_column_len_by_name,
-    get_column_len_by_index,
-
-    account_set,
-    transfer_fee_set,
-    trust_set,
-    trust_limit,
-    gateway_balance,
-    pay
-};
+//evmc_context_fn_table const fnTable = {
+//	accountExists,
+//	getStorage,
+//	setStorage,
+//	getBalance,
+//	getCodeSize,
+//	copyCode,
+//	selfdestruct,
+//	call,
+//	getTxContext,
+//	getBlockHash,
+//	log,
+//	evm_executeSQL,
+//
+//    table_create,
+//    table_rename,
+//    table_insert,
+//    table_delete,
+//    table_drop,
+//    table_update,
+//    table_grant,
+//
+//    table_get_handle,
+//    table_get_lines,
+//    table_get_columns,
+//    get_column_by_name,
+//    get_column_by_index,
+//
+//    db_trans_begin,
+//    db_trans_submit,
+//
+//    release_resource,
+//
+//    get_column_len_by_name,
+//    get_column_len_by_index,
+//
+//    account_set,
+//    transfer_fee_set,
+//    trust_set,
+//    trust_limit,
+//    gateway_balance,
+//    pay
+//};
 
 namespace eth {
 	bool EvmCHost::account_exists(evmc::address const& _addr) const noexcept
@@ -404,7 +142,6 @@ namespace eth {
 	{
 		evmc_tx_context result = {};
 
-		auto& env = static_cast<ExtVMFace&>(*_context);
 		result.tx_gas_price = m_extVM.gasPrice;
 		result.tx_origin = m_extVM.origin;
 		result.block_coinbase = m_extVM.envInfo().coin_base();
@@ -560,12 +297,246 @@ namespace eth {
 		return evmc::result{ evmcResult };
 	}
 
+	int64_t EvmCHost::evm_executeSQL(
+		evmc_address const* _addr,
+		uint8_t _type,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize
+	) noexcept
+	{
+		return m_extVM.executeSQL(_addr, _type, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+	}
+
+	int64_t EvmCHost::table_create(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize) 
+	{
+		return m_extVM.table_create(address, bytesConstRef{ _name, _nameSize },
+			bytesConstRef{ _raw, _rawSize });
+	}
+
+	int64_t EvmCHost::table_rename(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize)
+	{
+		return m_extVM.table_rename(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+	}
+	int64_t EvmCHost::table_insert(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize)
+	{
+		return m_extVM.table_insert(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+	}
+
+	int64_t EvmCHost::table_delete(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize)
+	{
+		return m_extVM.table_delete(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+	}
+	int64_t EvmCHost::table_drop(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize)
+	{
+		return m_extVM.table_drop(address, bytesConstRef{ _name, _nameSize });
+	}
+	int64_t EvmCHost::table_update(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw1,
+		size_t _rawSize1,
+		uint8_t const* _raw2,
+		size_t _rawSize2)
+	{
+		return m_extVM.table_update(address, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw1, _rawSize1 }, bytesConstRef{ _raw2, _rawSize2 });
+	}
+
+	int64_t EvmCHost::table_grant(
+		const struct evmc_address* address1,
+		const struct evmc_address* address2,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _row,
+		size_t _rowSize) 
+	{
+		return m_extVM.table_grant(address1, address2,
+			bytesConstRef{ _name, _nameSize }, bytesConstRef{ _row, _rowSize });
+	}
+
+	void EvmCHost::table_get_handle(
+		const struct evmc_address* address,
+		uint8_t const* _name,
+		size_t _nameSize,
+		uint8_t const* _raw,
+		size_t _rawSize,
+		struct evmc_uint256be* result) 
+	{
+		*result = m_extVM.table_get_handle(address,
+			bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
+	}
+
+	void EvmCHost::table_get_lines(
+		const struct evmc_uint256be* handle,
+		struct evmc_uint256be* result) 
+	{
+		*result = m_extVM.table_get_lines(handle);
+	}
+
+	void EvmCHost::table_get_columns(
+		const struct evmc_uint256be* handle,
+		struct evmc_uint256be* result) 
+	{
+		*result = m_extVM.table_get_columns(handle);
+	}
+
+	// TODO: Remove the copy to outBuf
+	size_t EvmCHost::get_column_by_name(
+		const evmc_uint256be* _handle,
+		size_t _row,
+		uint8_t const* _column,
+		size_t _columnSize,
+		uint8_t* _outBuf,
+		size_t _outSize) 
+	{
+		size_t size = m_extVM.table_get_by_key(_handle, _row,
+			bytesConstRef{ _column, _columnSize }, _outBuf + 32, _outSize - 32);
+		memcpy(_outBuf, ripple::toEvmC((ripple::uint256)size).bytes, 32);
+		return size;
+	}
+
+	size_t EvmCHost::get_column_by_index(
+		const evmc_uint256be *_handle,
+		size_t _row,
+		size_t _column,
+		uint8_t *_outBuf,
+		size_t _outSize) 
+	{
+		size_t size = m_extVM.table_get_by_index(_handle, _row, _column,
+			_outBuf + 32, _outSize - 32);
+		memcpy(_outBuf, ripple::toEvmC((ripple::uint256)size).bytes, 32);
+		return size;
+	}
+
+	void EvmCHost::db_trans_begin()
+	{
+		m_extVM.db_trans_begin();
+	}
+	int64_t EvmCHost::db_trans_submit()
+	{
+		return m_extVM.db_trans_submit();
+	}
+
+	void EvmCHost::release_resource()
+	{
+		m_extVM.release_resource();
+	}
+
+	void EvmCHost::get_column_len_by_name(
+		const evmc_uint256be *_handle,
+		size_t _row,
+		const uint8_t *_column,
+		size_t _size,
+		evmc_uint256be *_len) 
+	{
+		*_len = m_extVM.get_column_len(_handle, _row, bytesConstRef{ _column, _size });
+	}
+
+	void EvmCHost::get_column_len_by_index(
+		const evmc_uint256be *_handle,
+		size_t _row,
+		size_t _column,
+		evmc_uint256be *_len) 
+	{
+		*_len = m_extVM.get_column_len(_handle, _row, _column);
+	}
+
+	int64_t EvmCHost::account_set(
+		const struct evmc_address *_address,
+		uint32_t _uFlag,
+		bool _bSet
+	) noexcept
+	{
+		return m_extVM.account_set(_address, _uFlag, _bSet);
+	}
+
+	int64_t EvmCHost::transfer_fee_set(
+		const struct evmc_address *address,
+		uint8_t const *_pRate, size_t _rateLen,
+		uint8_t const *_pMin, size_t _minLen,
+		uint8_t const *_pMax, size_t _maxLen
+	) noexcept
+	{
+		return m_extVM.transfer_fee_set(address, bytesConstRef{ _pRate, _rateLen }, bytesConstRef{ _pMin, _minLen }, bytesConstRef{ _pMax, _maxLen });
+	}
+
+	int64_t EvmCHost::trust_set(
+		const struct evmc_address *address,
+		uint8_t const *_pValue, size_t _valueLen,
+		uint8_t const *_pCurrency, size_t _currencyLen,
+		const struct evmc_address *gateWay
+	) noexcept
+	{
+		return m_extVM.trust_set(address, bytesConstRef{ _pValue, _valueLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+	}
+
+	int64_t EvmCHost::trust_limit(
+		/* evmc_uint256be* o_result, */
+		const struct evmc_address *address,
+		uint8_t const *_pCurrency, size_t _currencyLen,
+		uint64_t _power,
+		const struct evmc_address *gateWay
+	) noexcept
+	{
+		//*o_result = env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+		return m_extVM.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, _power, gateWay);
+	}
+
+	int64_t EvmCHost::gateway_balance(
+		/* evmc_uint256be* o_result, */
+		const struct evmc_address *address,
+		uint8_t const *_pCurrency, size_t _currencyLen,
+		uint64_t _power,
+		const struct evmc_address *gateWay
+	) noexcept
+	{
+		//*o_result = env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+		return m_extVM.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, _power, gateWay);
+	}
+
+	int64_t EvmCHost::pay(
+		const struct evmc_address *address,
+		const struct evmc_address *receiver,
+		uint8_t const *_pValue, size_t _valueLen,
+		uint8_t const *_pSendMax, size_t _sendMaxLen,
+		uint8_t const *_pCurrency, size_t _currencyLen,
+		const struct evmc_address *gateWay
+	) noexcept
+	{
+		return m_extVM.pay(address, receiver, bytesConstRef{ _pValue, _valueLen },
+			bytesConstRef{ _pSendMax, _sendMaxLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+	}
+
 	ExtVMFace::ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,
 		evmc_uint256be _value, evmc_uint256be _gasPrice,
 		bytesConstRef _data, bytes _code, evmc_uint256be _codeHash, int32_t _depth,
 		bool _isCreate, bool _staticCall)
-		: evmc_context{ &fnTable }
-		, myAddress(_myAddress)
+		: myAddress(_myAddress)
 		, caller(_caller)
 		, origin(_origin)
 		, value(_value)
@@ -579,5 +550,4 @@ namespace eth {
 		, envInfo_(envInfo) {
 
 	}
-}
 } // namespace eth
