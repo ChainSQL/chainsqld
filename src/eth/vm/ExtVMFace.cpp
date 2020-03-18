@@ -10,18 +10,6 @@
 
 namespace eth {
 
-void log(
-	evmc_context* _context,
-	evmc_address const* _addr,
-	uint8_t const* _data,
-	size_t _dataSize,
-	evmc_uint256be const _topics[],
-	size_t _numTopics
-) noexcept
-{
-	
-}
-
 int64_t evm_executeSQL(
 	evmc_context* _context,
 	evmc_address const* _addr,
@@ -34,156 +22,6 @@ int64_t evm_executeSQL(
 {
     auto& env = static_cast<ExtVMFace&>(*_context);
     return env.executeSQL(_addr, _type, bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });	
-}
-
-void getTxContext(evmc_tx_context* result, evmc_context* _context) noexcept
-{
-	auto& env = static_cast<ExtVMFace&>(*_context);
-	result->tx_gas_price = env.gasPrice;
-	result->tx_origin = env.origin;
-	result->block_coinbase = env.envInfo().coin_base();
-	result->block_number = env.envInfo().block_number();
-	result->block_timestamp = env.envInfo().block_timestamp();
-	result->block_gas_limit = env.envInfo().gasLimit();
-    result->block_difficulty = evmc_uint256be{};
-}
-
-void getBlockHash(evmc_uint256be* o_hash, evmc_context* _envPtr, int64_t _number)
-{
-	auto& env = static_cast<ExtVMFace&>(*_envPtr);
-	*o_hash = env.blockHash(_number);
-}
-
-void create(evmc_result* o_result, ExtVMFace& _env, evmc_message const* _msg) noexcept
-{
-	int64_t gas = _msg->gas;
-	evmc_uint256be value = _msg->value;
-	bytesConstRef init = { _msg->input_data, _msg->input_size };
-	// ExtVM::create takes the sender address from .myAddress.
-	assert(std::memcmp(_msg->sender.bytes, _env.myAddress.bytes, sizeof(_env.myAddress)) == 0);
-
-	CreateResult result = _env.create(value, gas, init, Instruction::CREATE, { {0} });
-	o_result->status_code = result.status;
-	o_result->gas_left = static_cast<int64_t>(gas);
-	o_result->release = nullptr;
-
-	if (result.status == EVMC_SUCCESS)
-	{
-		o_result->create_address = result.address;
-		o_result->output_data = nullptr;
-		o_result->output_size = 0;
-	}
-	else
-	{
-		// Pass the output to the EVM without a copy. The EVM will delete it
-		// when finished with it.
-
-		// First assign reference. References are not invalidated when vector
-		// of bytes is moved. See `.takeBytes()` below.
-		o_result->output_data = result.output.data();
-		o_result->output_size = result.output.size();
-
-#ifdef DEBUG
-		if (o_result->output_size) {
-			// fix an issue that Stack around the variable 'result' was corrupted
-			evmc_get_optional_data(o_result)->pointer = std::malloc(o_result->output_size);
-			new(evmc_get_optional_data(o_result)->pointer) bytes(result.output.takeBytes());
-
-			o_result->release = [](evmc_result const* _result)
-			{
-				uint8_t* data = (uint8_t*)evmc_get_const_optional_data(_result)->pointer;
-				auto& output = reinterpret_cast<bytes const&>(*data);
-				// Explicitly call vector's destructor to release its data.
-				// This is normal pattern when placement new operator is used.
-				output.~bytes();
-				std::free(data);
-			};
-		}
-#else
-		// Place a new vector of bytes containing output in result's reserved memory.
-		auto* data = evmc_get_optional_data(o_result);
-		//static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
-		new(data) bytes(result.output.takeBytes());
-		// Set the destructor to delete the vector.
-		o_result->release = [](evmc_result const* _result)
-		{
-			auto* data = evmc_get_const_optional_data(_result);
-			auto& output = reinterpret_cast<bytes const&>(*data);
-			// Explicitly call vector's destructor to release its data.
-			// This is normal pattern when placement new operator is used.
-			output.~bytes();
-		};
-#endif // DEBUG
-	}
-}
-
-void call(evmc_result* o_result, evmc_context* _context, evmc_message const* _msg) noexcept
-{
-	assert(_msg->gas >= 0 && "Invalid gas value");
-	auto& env = static_cast<ExtVMFace&>(*_context);
-
-	if (_msg->kind == EVMC_CREATE)
-		return create(o_result, env, _msg);
-
-	CallParameters params;
-	params.gas = _msg->gas;
-	params.apparentValue = _msg->value;
-	if (_msg->kind == EVMC_DELEGATECALL)
-		params.valueTransfer = { {0} };
-	else
-		params.valueTransfer = params.apparentValue;
-	params.senderAddress = _msg->sender;
-	params.codeAddress = _msg->destination;
-	params.receiveAddress =
-		_msg->kind == EVMC_CALL ? params.codeAddress : env.myAddress;
-	params.data = { _msg->input_data, _msg->input_size };
-	params.staticCall = (_msg->flags & EVMC_STATIC) != 0;
-
-	CallResult result = env.call(params);
-	o_result->status_code = result.status;
-	o_result->gas_left = params.gas;
-	o_result->release = nullptr;
-
-	// Pass the output to the EVM without a copy. The EVM will delete it
-	// when finished with it.
-
-	// First assign reference. References are not invalidated when vector
-	// of bytes is moved. See `.takeBytes()` below.
-	o_result->output_data = result.output.data();
-	o_result->output_size = result.output.size();
-
-#ifdef DEBUG
-	if (o_result->output_size) {
-		// fix an issue that Stack around the variable 'result' was corrupted
-		evmc_get_optional_data(o_result)->pointer = std::malloc(o_result->output_size);
-		new(evmc_get_optional_data(o_result)->pointer) bytes(result.output.takeBytes());
-
-		o_result->release = [](evmc_result const* _result)
-		{
-			uint8_t* data = (uint8_t*)evmc_get_const_optional_data(_result)->pointer;
-			auto& output = reinterpret_cast<bytes const&>(*data);
-			// Explicitly call vector's destructor to release its data.
-			// This is normal pattern when placement new operator is used.
-			output.~bytes();
-			std::free(data);
-		};
-	}
-#else
-	// Place a new vector of bytes containing output in result's reserved memory.
-	auto* data = evmc_get_optional_data(o_result);
-	//static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
-	new(data) bytes(result.output.takeBytes());
-	// Set the destructor to delete the vector.
-	o_result->release = [](evmc_result const* _result)
-	{
-		auto* data = evmc_get_const_optional_data(_result);
-		auto& output = reinterpret_cast<bytes const&>(*data);
-		// Explicitly call vector's destructor to release its data.
-		// This is normal pattern when placement new operator is used.
-		output.~bytes();
-	};
-#endif
-
 }
 
 int64_t table_create(struct evmc_context* _context,
@@ -565,42 +403,46 @@ namespace eth {
 	evmc_tx_context EvmCHost::get_tx_context() const noexcept
 	{
 		evmc_tx_context result = {};
-		result.tx_gas_price = toEvmC(m_extVM.gasPrice);
-		result.tx_origin = toEvmC(m_extVM.origin);
 
-		auto const& envInfo = m_extVM.envInfo();
-		result.block_coinbase = toEvmC(envInfo.author());
-		result.block_number = envInfo.number();
-		result.block_timestamp = envInfo.timestamp();
-		result.block_gas_limit = static_cast<int64_t>(envInfo.gasLimit());
-		result.block_difficulty = toEvmC(envInfo.difficulty());
-		result.chain_id = toEvmC(envInfo.chainID());
+		auto& env = static_cast<ExtVMFace&>(*_context);
+		result.tx_gas_price = m_extVM.gasPrice;
+		result.tx_origin = m_extVM.origin;
+		result.block_coinbase = m_extVM.envInfo().coin_base();
+		result.block_number = m_extVM.envInfo().block_number();
+		result.block_timestamp = m_extVM.envInfo().block_timestamp();
+		result.block_gas_limit = m_extVM.envInfo().gasLimit();
+		result.block_difficulty = evmc_uint256be{};
+
 		return result;
 	}
 
 	evmc::bytes32 EvmCHost::get_block_hash(int64_t _number) const noexcept
 	{
-		return toEvmC(m_extVM.blockHash(_number));
+		return m_extVM.blockHash(_number);
 	}
 
 	evmc::result EvmCHost::create(evmc_message const& _msg) noexcept
 	{
-		u256 gas = _msg.gas;
-		u256 value = fromEvmC(_msg.value);
+		int64_t gas = _msg.gas;
+		evmc_uint256be value = _msg.value;
 		bytesConstRef init = { _msg.input_data, _msg.input_size };
-		u256 salt = fromEvmC(_msg.create2_salt);
+		// ExtVM::create takes the sender address from .myAddress.
+		assert(std::memcmp(_msg.sender.bytes, m_extVM.myAddress.bytes, sizeof(m_extVM.myAddress)) == 0);
+
 		Instruction opcode = _msg.kind == EVMC_CREATE ? Instruction::CREATE : Instruction::CREATE2;
 
-		// ExtVM::create takes the sender address from .myAddress.
-		assert(fromEvmC(_msg.sender) == m_extVM.myAddress);
-
-		CreateResult result = m_extVM.create(value, gas, init, opcode, salt, {});
+		CreateResult result = m_extVM.create(value, gas, init, opcode, { { 0 } });
 		evmc_result evmcResult = {};
 		evmcResult.status_code = result.status;
 		evmcResult.gas_left = static_cast<int64_t>(gas);
+		evmcResult.release = nullptr;
 
 		if (result.status == EVMC_SUCCESS)
-			evmcResult.create_address = toEvmC(result.address);
+		{
+			evmcResult.create_address = result.address;
+			evmcResult.output_data = nullptr;
+			evmcResult.output_size = 0;
+		}
 		else
 		{
 			// Pass the output to the EVM without a copy. The EVM will delete it
@@ -611,18 +453,37 @@ namespace eth {
 			evmcResult.output_data = result.output.data();
 			evmcResult.output_size = result.output.size();
 
+#ifdef DEBUG
+			if (evmcResult.output_size) {
+				// fix an issue that Stack around the variable 'result' was corrupted
+				evmc_get_optional_storage(&evmcResult)->pointer = std::malloc(evmcResult.output_size);
+				new(evmc_get_optional_storage(&evmcResult)->pointer) bytes(result.output.takeBytes());
+
+				evmcResult.release = [](evmc_result const* _result)
+				{
+					uint8_t* data = (uint8_t*)evmc_get_const_optional_storage(_result)->pointer;
+					auto& output = reinterpret_cast<bytes const&>(*data);
+					// Explicitly call vector's destructor to release its data.
+					// This is normal pattern when placement new operator is used.
+					output.~bytes();
+					std::free(data);
+				};
+			}
+#else
 			// Place a new vector of bytes containing output in result's reserved memory.
 			auto* data = evmc_get_optional_storage(&evmcResult);
-			static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
-			new (data) bytes(result.output.takeBytes());
+			//static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
+			new(data) bytes(result.output.takeBytes());
 			// Set the destructor to delete the vector.
-			evmcResult.release = [](evmc_result const* _result) {
+			evmcResult.release = [](evmc_result const* _result)
+			{
 				auto* data = evmc_get_const_optional_storage(_result);
 				auto& output = reinterpret_cast<bytes const&>(*data);
 				// Explicitly call vector's destructor to release its data.
 				// This is normal pattern when placement new operator is used.
 				output.~bytes();
 			};
+#endif // DEBUG
 		}
 		return evmc::result{ evmcResult };
 	}
@@ -631,18 +492,22 @@ namespace eth {
 	{
 		assert(_msg.gas >= 0 && "Invalid gas value");
 		assert(_msg.depth == static_cast<int>(m_extVM.depth) + 1);
-
+		
 		// Handle CREATE separately.
 		if (_msg.kind == EVMC_CREATE || _msg.kind == EVMC_CREATE2)
 			return create(_msg);
 
 		CallParameters params;
 		params.gas = _msg.gas;
-		params.apparentValue = fromEvmC(_msg.value);
-		params.valueTransfer = _msg.kind == EVMC_DELEGATECALL ? 0 : params.apparentValue;
-		params.senderAddress = fromEvmC(_msg.sender);
-		params.codeAddress = fromEvmC(_msg.destination);
-		params.receiveAddress = _msg.kind == EVMC_CALL ? params.codeAddress : m_extVM.myAddress;
+		params.apparentValue = _msg.value;
+		if (_msg.kind == EVMC_DELEGATECALL)
+			params.valueTransfer = { { 0 } };
+		else
+			params.valueTransfer = params.apparentValue;
+		params.senderAddress = _msg.sender;
+		params.codeAddress = _msg.destination;
+		params.receiveAddress =
+			_msg.kind == EVMC_CALL ? params.codeAddress : m_extVM.myAddress;
 		params.data = { _msg.input_data, _msg.input_size };
 		params.staticCall = (_msg.flags & EVMC_STATIC) != 0;
 		params.onOp = {};
@@ -650,7 +515,8 @@ namespace eth {
 		CallResult result = m_extVM.call(params);
 		evmc_result evmcResult = {};
 		evmcResult.status_code = result.status;
-		evmcResult.gas_left = static_cast<int64_t>(params.gas);
+		evmcResult.gas_left = params.gas;
+		evmcResult.release = nullptr;
 
 		// Pass the output to the EVM without a copy. The EVM will delete it
 		// when finished with it.
@@ -660,18 +526,37 @@ namespace eth {
 		evmcResult.output_data = result.output.data();
 		evmcResult.output_size = result.output.size();
 
+#ifdef DEBUG
+		if (evmcResult.output_size) {
+			// fix an issue that Stack around the variable 'result' was corrupted
+			evmc_get_optional_storage(&evmcResult)->pointer = std::malloc(evmcResult.output_size);
+			new(evmc_get_optional_storage(&evmcResult)->pointer) bytes(result.output.takeBytes());
+
+			evmcResult.release = [](evmc_result const* _result)
+			{
+				uint8_t* data = (uint8_t*)evmc_get_const_optional_storage(_result)->pointer;
+				auto& output = reinterpret_cast<bytes const&>(*data);
+				// Explicitly call vector's destructor to release its data.
+				// This is normal pattern when placement new operator is used.
+				output.~bytes();
+				std::free(data);
+			};
+		}
+#else
 		// Place a new vector of bytes containing output in result's reserved memory.
 		auto* data = evmc_get_optional_storage(&evmcResult);
-		static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
-		new (data) bytes(result.output.takeBytes());
+		//static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
+		new(data) bytes(result.output.takeBytes());
 		// Set the destructor to delete the vector.
-		evmcResult.release = [](evmc_result const* _result) {
+		o_result->release = [](evmc_result const* _result)
+		{
 			auto* data = evmc_get_const_optional_storage(_result);
 			auto& output = reinterpret_cast<bytes const&>(*data);
 			// Explicitly call vector's destructor to release its data.
 			// This is normal pattern when placement new operator is used.
 			output.~bytes();
 		};
+#endif
 		return evmc::result{ evmcResult };
 	}
 

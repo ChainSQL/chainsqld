@@ -4,7 +4,7 @@
 #include "Common.h"
 #include <ripple/protocol/AccountID.h>
 #include <peersafe/basics/TypeTransform.h>
-//#include <eth/evmc/include/evmc/evmc.h>
+#include <eth/evmc/include/evmc/evmc.h>
 #include <eth/evmc/include/evmc/evmc.hpp>
 
 namespace eth {
@@ -79,6 +79,13 @@ struct SubState
     }
 };
 
+class ExtVMFace;
+class LastBlockHashesFace;
+class VMFace;
+
+using OnOpFunc = std::function<void(uint64_t /*steps*/, uint64_t /* PC */, Instruction /*instr*/,
+	bigint /*newMemSize*/, bigint /*gasCost*/, bigint /*gas*/, VMFace const*, ExtVMFace const*)>;
+
 struct CallParameters
 {
 	CallParameters() = default;
@@ -89,9 +96,10 @@ struct CallParameters
 		evmc_uint256be _valueTransfer,
 		evmc_uint256be _apparentValue,
 		int64_t _gas,
-		bytesConstRef _data
+		bytesConstRef _data,
+		OnOpFunc _onOpFunc
 	) : senderAddress(_senderAddress), codeAddress(_codeAddress), receiveAddress(_receiveAddress),
-		valueTransfer(_valueTransfer), apparentValue(_apparentValue), gas(_gas), data(_data) {}
+		valueTransfer(_valueTransfer), apparentValue(_apparentValue), gas(_gas), data(_data), onOp(_onOpFunc) {}
 	evmc_address senderAddress;
 	evmc_address codeAddress;
 	evmc_address receiveAddress;
@@ -100,6 +108,7 @@ struct CallParameters
 	int64_t gas;
 	bytesConstRef data;
 	bool staticCall = false;
+	OnOpFunc onOp;
 };
 
 /// Represents a call result.
