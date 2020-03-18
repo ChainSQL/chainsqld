@@ -1204,8 +1204,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 			if (ret == soci_exception) {
 				SetSyncState(SYNC_STOP);
 			}
-			JLOG(journal_.info()) <<
-				"find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
+			//JLOG(journal_.info()) <<
+			//	"find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
 		}
 	}
 	return true;
