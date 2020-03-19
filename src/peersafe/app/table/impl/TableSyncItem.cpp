@@ -27,6 +27,7 @@
 #include <ripple/protocol/RippleAddress.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/protocol/TxFlags.h>
 #include <peersafe/app/table/TableSyncItem.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/protocol/STEntry.h>
@@ -1012,6 +1013,7 @@ void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 		std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 		auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
 		uint32 submit_time = tx.getFieldU32(sfFlags);
+		submit_time &= ~tfFullyCanonicalSig;
 		uint32 db_time = tmp.count();
 		submit_time -= std::chrono::seconds(days(10957)).count();
 		db_time -= std::chrono::seconds(days(10957)).count();
