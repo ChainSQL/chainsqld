@@ -55,9 +55,11 @@ void VM::throwBadStack(int _required, int _change)
 {
     bigint size = m_stackEnd - m_SPP;
     if (size < _required)
-        BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_required, size));
+        BOOST_THROW_EXCEPTION(StackUnderflow());
+        //BOOST_THROW_EXCEPTION(StackUnderflow() << RequirementError((bigint)_required, size));
     else
-        BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)_change, size));
+        BOOST_THROW_EXCEPTION(OutOfStack());
+        //BOOST_THROW_EXCEPTION(OutOfStack() << RequirementError((bigint)_change, size));
 }
 
 void VM::throwRevertInstruction(owning_bytes_ref&& _output)
@@ -69,9 +71,10 @@ void VM::throwRevertInstruction(owning_bytes_ref&& _output)
 
 void VM::throwBufferOverrun(intx::uint512 const& _endOfAccess)
 {
-    BOOST_THROW_EXCEPTION(
+    BOOST_THROW_EXCEPTION(BufferOverrun());
+    /*BOOST_THROW_EXCEPTION(
         BufferOverrun() << RequirementError(
-            bigint(std::string("0x") + intx::hex(_endOfAccess)), bigint(m_returnData.size())));
+            bigint(std::string("0x") + intx::hex(_endOfAccess)), bigint(m_returnData.size())));*/
 }
 
 int64_t VM::verifyJumpDest(intx::uint256 const& _dest, bool _throw)

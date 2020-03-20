@@ -97,10 +97,12 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     "3) Change to that directory.\n"
     "4) Run cmake targetting ${CMAKE_SOURCE_DIR}, for example: ${cmd}")
 endif()
-if("${CMAKE_GENERATOR}" MATCHES "Visual Studio" AND
-    NOT ("${CMAKE_GENERATOR}" MATCHES .*Win64.*))
-  message(FATAL_ERROR "Visual Studio 32-bit build is unsupported. Use
-    -G\"${CMAKE_GENERATOR} Win64\"")
+if("${CMAKE_GENERATOR}" MATCHES "Visual Studio")
+	if(NOT "${CMAKE_GENERATOR}" MATCHES "2019" AND
+		NOT ("${CMAKE_GENERATOR}" MATCHES .*Win64.*))
+	message(FATAL_ERROR "Visual Studio 32-bit build is unsupported. Use
+		-G\"${CMAKE_GENERATOR} Win64\"")
+	endif()
 endif()
 
 setup_build_cache()
@@ -297,7 +299,8 @@ set(non_unity_srcs ${core_srcs})
 
 #add_subdirectory(src/evmjit)
 add_subdirectory(src/eth/evmc)
-#add_subdirectory(src/intx)
+add_subdirectory(src/intx)
+add_subdirectory(src/eth/ethash)
 
 foreach(curdir
         beast/clock
@@ -582,7 +585,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES})
+      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} intx ethash instructions)
 
     link_common_libraries(${target})
 endforeach()

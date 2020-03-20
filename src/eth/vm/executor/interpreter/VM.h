@@ -86,8 +86,10 @@ private:
     bytes m_returnData;
 
     // space for data stack, grows towards smaller addresses from the end
-    intx::uint256 m_stack[VMSchedule::stackLimit];
-    intx::uint256 *m_stackEnd = &m_stack[VMSchedule::stackLimit];
+    /*intx::uint256 m_stack[VMSchedule::stackLimit];
+    intx::uint256 *m_stackEnd = &m_stack[VMSchedule::stackLimit];*/
+	intx::uint256 m_stack[VMSchedule::stackLimit];
+	intx::uint256 *m_stackEnd = &m_stack[VMSchedule::stackLimit];
     size_t stackSize() { return m_stackEnd - m_SP; }
     
     // constant pool
@@ -96,8 +98,8 @@ private:
     // interpreter state
     Instruction m_OP;         // current operation
     uint64_t m_PC = 0;        // program counter
-    intx::uint256* m_SP = m_stackEnd;  // stack pointer
-    intx::uint256* m_SPP = m_SP;       // stack pointer prime (next SP)
+	intx::uint256* m_SP = m_stackEnd;  // stack pointer
+	intx::uint256* m_SPP = m_SP;       // stack pointer prime (next SP)
 
     // metering and memory state
     uint64_t m_runGas = 0;
