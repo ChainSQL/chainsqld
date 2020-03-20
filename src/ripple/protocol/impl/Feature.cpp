@@ -84,7 +84,9 @@ detail::supportedAmendments ()
     // uncommented at that time).
     static std::vector<std::string> const supported
     {
-//        "SHAMapV2",
+        "SHAMapV2",
+        "DisableV2",
+        "DecreaseStorage",
         "MultiSign",
 //        "Tickets",
         "TrustSetAuth",
