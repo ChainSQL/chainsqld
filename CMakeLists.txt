@@ -67,7 +67,7 @@
 #
 # Don't put any code above or in this block, unless it
 # has similar constraints.
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.10.0)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Builds/CMake")
 include(CMakeFuncs)
 set(openssl_min 1.0.2)

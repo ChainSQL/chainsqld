@@ -15,7 +15,11 @@ class VM {
 public:
 	explicit VM(evmc_vm* _instance) noexcept;
 
-	~VM() { m_instance->destroy(m_instance); }
+	~VM()
+	{ 
+		if (m_instance != nullptr)
+			m_instance->destroy(m_instance);
+	}
 
 	VM(VM const&) = delete;
 	VM& operator=(VM) = delete;
@@ -72,6 +76,7 @@ public:
 			ext.data.data(), ext.data.size(), ext.value, 
 			ext.envInfo().dropsPerByte()};
 		EvmCHost host{ ext };
+
 		return Result{
 			m_instance->execute(m_instance, &evmc::Host::get_interface(), host.to_context(),
 			EVMC_CONSTANTINOPLE, &msg, ext.code.data(), ext.code.size())
@@ -84,7 +89,7 @@ private:
 	struct evmc_vm* m_instance = nullptr;
 };
 
-class VMC : public VM, public VMFace {
+class VMC : public evmc::VM, public VMFace {
 public:
 	explicit VMC(struct evmc_vm* instance) :VM(instance) {};
 	

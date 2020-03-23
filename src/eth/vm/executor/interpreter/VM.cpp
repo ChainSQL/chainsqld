@@ -28,7 +28,7 @@ evmc_result execute(evmc_vm* _instance, const evmc_host_interface* _host,
     evmc_host_context* _context, evmc_revision _rev, const evmc_message* _msg, uint8_t const* _code,
     size_t _codeSize) noexcept
 {
-    (void)_instance;
+    //(void)_instance;
     std::unique_ptr<eth::VM> vm{new eth::VM};
 
     evmc_result result = {};

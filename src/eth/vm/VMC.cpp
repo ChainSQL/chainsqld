@@ -16,18 +16,40 @@ owning_bytes_ref VMC::exec(int64_t& gas, ExtVMFace& ext) {
 	constexpr int64_t int64max = std::numeric_limits<int64_t>::max();
 	(void)int64max;
 	assert(gas <= int64max);
+	assert(ext.envInfo().gasLimit() <= int64max);
 	assert(ext.depth <= static_cast<size_t>(std::numeric_limits<int32_t>::max()));
 
-	VM::Result r = execute(ext, gas);
-	switch (r.status())
+	evmc_call_kind kind = ext.isCreate ? EVMC_CREATE : EVMC_CALL;
+	uint32_t flags = ext.staticCall ? EVMC_STATIC : 0;
+	assert(flags != EVMC_STATIC || kind == EVMC_CALL);  // STATIC implies a CALL.
+
+	evmc_message msg = { kind, flags, ext.depth, gas,
+		ext.myAddress, ext.caller,
+		ext.data.data(), ext.data.size(), ext.value,
+		ext.envInfo().dropsPerByte() };
+	EvmCHost host{ ext };
+
+	//return Result{
+		//m_instance->execute(m_instance, &evmc::Host::get_interface(), host.to_context(),
+		//EVMC_CONSTANTINOPLE, &msg, ext.code.data(), ext.code.size())
+		/*m_instance->execute(m_instance, &ext, EVMC_CONSTANTINOPLE,
+			&msg, ext.code.data(), ext.code.size())*/
+	//};
+
+	auto r = execute(host, EVMC_CONSTANTINOPLE, msg, ext.code.data(), ext.code.size());
+	// FIXME: Copy the output for now, but copyless version possible.
+	auto output = owning_bytes_ref{ {&r.output_data[0], &r.output_data[r.output_size]}, 0, r.output_size };
+
+	/*VM::Result r = execute(ext, gas);*/
+	switch (r.status_code)
 	{
 	case EVMC_SUCCESS:
-		gas = r.gasLeft();
+		gas = r.gas_left;
 		// FIXME: Copy the output for now, but copyless version possible.
-		return{ r.output().toVector(), 0, r.output().size() };
+		return output;
 	case EVMC_REVERT:
-		gas = r.gasLeft();
-		throw RevertInstruction{ { r.output().toVector(), 0, r.output().size() } };
+		gas = r.gas_left;
+		throw RevertInstruction{ std::move(output) };
 	/*case EVMC_REVERTDIY:
 		gas = r.gasLeft();
 		throw RevertDiyInstruction{ { r.output().toVector(), 0, r.output().size() } };
@@ -56,7 +78,7 @@ owning_bytes_ref VMC::exec(int64_t& gas, ExtVMFace& ext) {
 		//return VMFactory::create(VMKind::Legacy)->exec(io_gas, _ext, _onOp);
 		BOOST_THROW_EXCEPTION(RejectJIT());
 	default:
-		BOOST_THROW_EXCEPTION(InternalVMError{} << errinfo_evmcStatusCode(r.status()));
+		BOOST_THROW_EXCEPTION(InternalVMError{} << errinfo_evmcStatusCode(r.status_code));
 		break;
 	}
 }

@@ -1,6 +1,6 @@
 # windows 编译 
 ## 必备工具和开发库
-- [Visual studio 2015](README.md#install-visual-studio-2015)
+- [Visual studio 2017及以上版本](README.md#install-visual-studio-2017)
 - [Git for windows](README.md#install-git-for-windows)
 - [cmake](README.md#install-cmake-for-windows)
 - [Goole Protocol Buffers Complier](README.md#install-protocol)
@@ -9,8 +9,9 @@
 - [mysql](README.md#install-mysql)
 
 ## 安装工具
-### install visual studio 2015
-> [Visual Studio 2015 Download](https://www.visualstudio.com/downloads/download-visual-studio-vs) 
+### install visual studio 2017
+需要VisualStudio 2017 Version 15.3 及以上版本。
+> [Visual Studio 2017 Download](https://www.visualstudio.com/downloads/download-visual-studio-vs) 
 
 ### install git for windows
 > [Git for windows](https://git-scm.com/downloads)
@@ -46,21 +47,23 @@
 - git clone git@github.com:ChainSQL/chainsqld.git chainsqld
 
 ### 生成 chainsqld 解决方案
-> 1. 打开 Developer Command Prompt for VS2015
+> 1. 打开 Developer Command Prompt for VS2017 or VS2019
 > 2. 切换 Command Prompt 的工作目录
 ```
-> cd E:/work/chainsqld/Builds/VisualStudio2015
+> cd E:/work/chainsqld/Builds/WinVS
 ```
 
 > 3. 执行 cmake，target 可以为 msvc.debug.unity/msvc.debug.nounity/msvc.release.unity/msvc.release.nonity/msvc.debug/msvc.release
 
 ```
-# E:/work/chainsqld 为源码根目录
-> cmake -G"Visual Studio 14 2015 Win64" -Dtarget=msvc.debug.unity E:/work/chainsqld
+> # VS2017
+> cmake -G"Visual Studio 15 2017 Win64" -Dtarget=msvc.debug.unity ../..
+> # VS2019
+> cmake -G"Visual Studio 16 2019" -A x64  -Dtarget=msvc.debug.unity ../..
 ```
 
 ### 编译 chainsqld
-> 1. 进入 Builds/VisualStudio2015 目录
+> 1. 进入 Builds/WinVS 目录
 > 2. 打开 chainsqld.sln
 > 3. 如果要运行测试用例，编译 chainsqld-classic 工程；否则编译 chainsqld 工程
 > 4. 编译成功后 chainsqld 实例编译至 build/msvc.debug.unity/Debug 目录下，运行 chainsqld 实例前需要将 MYSQL_ROOT_DIR/lib 下的 libmysql.dll 拷贝至此 Debug 目录下
@@ -74,7 +77,7 @@ E:/work/chainsqld/build/chainsqld.cfg
 
 ![Visual Studio 2013 Command Args Prop Page](images/VSCommandArgsPropPage.png)
 
-> 3. chainsqld 在使用 Windows Debug Heap 调试程序的时候会导致运行非常慢。我们可以设置 _NO_DEBUG_HEAP 环境变量禁用 Debug Heap，如
+> 3. [可选] chainsqld 在使用 Windows Debug Heap 调试程序的时候会导致运行非常慢。我们可以设置 _NO_DEBUG_HEAP 环境变量禁用 Debug Heap，如
 
 ![Visual Studio 2013 No Debug Heap Prop Page](images/NoDebugHeapPropPage.png)
 
