@@ -45,6 +45,9 @@ struct VMSchedule
     static constexpr int64_t callStipend = 2300;
     static constexpr int64_t callNewAccount = 25000;
     static constexpr int64_t callSelfGas = 40;
+    static constexpr int64_t sqlGas = 100;
+    static constexpr int64_t sqlDataGas = 100;
+    static constexpr int64_t tokenGas = 100;
 };
 
 class VM
@@ -86,8 +89,6 @@ private:
     bytes m_returnData;
 
     // space for data stack, grows towards smaller addresses from the end
-    /*intx::uint256 m_stack[VMSchedule::stackLimit];
-    intx::uint256 *m_stackEnd = &m_stack[VMSchedule::stackLimit];*/
 	intx::uint256 m_stack[VMSchedule::stackLimit];
 	intx::uint256 *m_stackEnd = &m_stack[VMSchedule::stackLimit];
     size_t stackSize() { return m_stackEnd - m_SP; }

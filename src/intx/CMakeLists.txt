@@ -12,8 +12,8 @@ include(CableToolchains)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
-option(INTX_TESTING "Build intx with tests" ON)
-option(INTX_BENCHMARKING "Build intx with benchmark tools" ON)
+option(INTX_TESTING "Build intx with tests" OFF)
+option(INTX_BENCHMARKING "Build intx with benchmark tools" OFF)
 option(INTX_FUZZING "Build intx fuzzers" OFF)
 
 cable_configure_toolchain(DEFAULT cxx14)
@@ -37,7 +37,7 @@ if(INTX_FUZZING)
 endif()
 
 add_subdirectory(lib/intx)
-add_subdirectory(test)
+#add_subdirectory(test)
 
 write_basic_package_version_file(intxConfigVersion.cmake COMPATIBILITY ExactVersion)
 

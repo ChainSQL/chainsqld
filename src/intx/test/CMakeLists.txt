@@ -10,11 +10,11 @@ endif()
 
 if(INTX_TESTING)
     add_subdirectory(integration)
-    #add_subdirectory(unittests)
+    add_subdirectory(unittests)
 endif()
 
 if(INTX_BENCHMARKING)
-    #add_subdirectory(benchmarks)
+    add_subdirectory(benchmarks)
 endif()
 
 if(INTX_FUZZING)

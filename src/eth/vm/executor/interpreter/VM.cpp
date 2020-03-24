@@ -819,7 +819,7 @@ void VM::interpretCases()
         }
         NEXT
 
-        CASE(JUMPTO)
+        /*CASE(JUMPTO)
         CASE(JUMPIF)
         CASE(JUMPV)
         CASE(JUMPSUB)
@@ -870,7 +870,7 @@ void VM::interpretCases()
         {
             throwBadInstruction();
         }
-        CONTINUE
+        CONTINUE*/
 
         CASE(ADDRESS)
         {
@@ -1169,26 +1169,26 @@ void VM::interpretCases()
         }
         NEXT
 
-        CASE(PUSHC)
-        {
-#if EVM_USE_CONSTANT_POOL
-            ON_OP();
-            updateIOGas();
-
-            // get val at two-byte offset into const pool and advance pc by one-byte remainder
-            TRACE_OP(2, m_PC, m_OP);
-            unsigned off;
-            ++m_PC;
-            off = m_code[m_PC++] << 8;
-            off |= m_code[m_PC++];
-            m_PC += m_code[m_PC];
-            m_SPP[0] = m_pool[off];
-            TRACE_VAL(2, "Retrieved pooled const", m_SPP[0]);
-#else
-            throwBadInstruction();
-#endif
-        }
-        CONTINUE
+//        CASE(PUSHC)
+//        {
+//#if EVM_USE_CONSTANT_POOL
+//            ON_OP();
+//            updateIOGas();
+//
+//            // get val at two-byte offset into const pool and advance pc by one-byte remainder
+//            TRACE_OP(2, m_PC, m_OP);
+//            unsigned off;
+//            ++m_PC;
+//            off = m_code[m_PC++] << 8;
+//            off |= m_code[m_PC++];
+//            m_PC += m_code[m_PC];
+//            m_SPP[0] = m_pool[off];
+//            TRACE_VAL(2, "Retrieved pooled const", m_SPP[0]);
+//#else
+//            throwBadInstruction();
+//#endif
+//        }
+//        CONTINUE
 
         CASE(PUSH1)
         {
@@ -1264,7 +1264,7 @@ void VM::interpretCases()
         }
         CONTINUE
 
-        CASE(JUMPC)
+        /*CASE(JUMPC)
         {
 #if EVM_REPLACE_CONST_JUMP
             ON_OP();
@@ -1291,7 +1291,7 @@ void VM::interpretCases()
             throwBadInstruction();
 #endif
         }
-        CONTINUE
+        CONTINUE*/
 
         CASE(DUP1)
         CASE(DUP2)
@@ -1429,6 +1429,373 @@ void VM::interpretCases()
             updateIOGas();
         }
         NEXT
+
+        /*CASE(CREATETABLE)
+        {
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
+
+            //auto r = _ext.table_create(address, nameIdx, nameBytes, rawIdx, rawBytes);
+            auto r = m_host->table_create(m_context, m_SP[0], m_SP[1], m_SP[2], m_SP[3], m_SP[4]);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
+            break;
+        }
+        CASE(EXDROPTABLE)
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+
+            auto r = _ext.table_drop(address, nameIdx, nameBytes);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
+            break;
+        }
+        CASE(EXRENAMETABLE)
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
+
+            auto r = _ext.table_rename(address, nameIdx, nameBytes, rawIdx, rawBytes);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
+            break;
+        }
+        CASE(EXINSERTSQL)
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
+
+            auto r = _ext.table_insert(address, nameIdx, nameBytes, rawIdx, rawBytes);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
+            break;
+        }
+        CASE(EXDELETESQL)
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
+
+            auto r = _ext.table_delete(address, nameIdx, nameBytes, rawIdx, rawBytes);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
+            break;
+        }
+        CASE(EXUPDATESQL)
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx1 = stack.pop();
+            auto rawBytes1 = stack.pop();
+            auto rawIdx2 = stack.pop();
+            auto rawBytes2 = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx1, rawBytes1);
+            _memory.require(rawIdx2, rawBytes2);
+
+            _gasMeter.countSqlData(rawBytes1);
+            _gasMeter.countSqlData(rawBytes2);
+
+
+            auto r = _ext.table_update(address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
+            break;
+        }
+        CASE(EXSELECTSQL)
+        {
+            auto address = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
+
+            auto r = _ext.table_get_handle(address, nameIdx, nameBytes, rawIdx, rawBytes);
+            stack.push(r);
+            break;
+        }
+        CASE(EXGRANTSQL)
+        {
+            auto addOwner = stack.pop();
+            auto addDest = stack.pop();
+            auto nameIdx = stack.pop();
+            auto nameBytes = stack.pop();
+            auto rawIdx = stack.pop();
+            auto rawBytes = stack.pop();
+
+            _memory.require(nameIdx, nameBytes);
+            _memory.require(rawIdx, rawBytes);
+
+            _gasMeter.countSqlData(rawBytes);
+
+            auto r = _ext.table_grant(addOwner, addDest,
+                nameIdx, nameBytes, rawIdx, rawBytes);
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
+            break;
+        }
+        CASE(EXTRANSBEGIN)
+        {
+            _ext.db_trans_begin();
+            break;
+        }
+        CASE(EXTRANSCOMMIT)
+        {
+            auto r = _ext.db_trans_submit();
+
+            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
+            auto xx = m_builder.CreateZExt(ret, Type::Word);
+
+            stack.push(xx);
+            break;
+        }
+        CASE(EXGETROWSIZE)
+        {
+            auto handle = stack.pop();
+
+            auto r = _ext.table_get_lines(handle);
+            stack.push(r);
+            break;
+        }
+        CASE(EXGETCOLSIZE)
+        {
+            auto handle = stack.pop();
+
+            auto r = _ext.table_get_columns(handle);
+            stack.push(r);
+            break;
+        }
+        CASE(EXGETVALUEBYKEY)
+        {
+            auto handle = stack.pop();
+            auto row = stack.pop();
+            auto columnOff = stack.pop();
+            auto columnSize = stack.pop();
+            auto outOff = stack.pop();
+            auto outSize = stack.pop();
+
+            _memory.require(columnOff, columnSize);
+            _memory.require(outOff, outSize);
+
+            _ext.table_get_column(handle, row, columnOff, columnSize,
+                outOff, outSize);
+            stack.push(m_builder.CreateZExt(outOff, Type::Word));
+
+            break;
+        }
+        CASE(EXGETVALUEBYINDEX)
+        {
+            auto handle = stack.pop();
+            auto row = stack.pop();
+            auto colomn = stack.pop();
+            auto outOff = stack.pop();
+            auto outSize = stack.pop();
+
+            _memory.require(outOff, outSize);
+            _ext.table_get_column(handle, row, colomn, outOff, outSize);
+            stack.push(m_builder.CreateZExt(outOff, Type::Word));
+
+            break;
+        }
+        CASE(EXEXITFUNC)
+        {
+            _ext.exit_fun();
+            break;
+        }
+        CASE(EXGETLENBYKEY)
+        {
+            auto handle = stack.pop();
+            auto row = stack.pop();
+            auto columnOff = stack.pop();
+            auto columnSize = stack.pop();
+
+            _memory.require(columnOff, columnSize);
+            auto r = _ext.get_column_len(handle, row, columnOff, columnSize);
+            stack.push(r);
+
+            break;
+        }
+        CASE(EXGETLENBYINDEX)
+        {
+            auto handle = stack.pop();
+            auto row = stack.pop();
+            auto column = stack.pop();
+
+            auto r = _ext.get_column_len(handle, row, column);
+            stack.push(r);
+
+            break;
+        }
+
+        CASE(EXACCOUNTSET)
+        {
+            auto address = stack.pop();
+            auto flag = stack.pop();
+            auto set = stack.pop();
+
+            auto r = _ext.account_set(address, flag, set);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "accountset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
+
+            break;
+        }
+        CASE(EXTRANSFERFEESET)
+        {
+            auto address = stack.pop();
+            auto rateIdx = stack.pop();
+            auto rateLen = stack.pop();
+            auto minIdx = stack.pop();
+            auto minLen = stack.pop();
+            auto maxIdx = stack.pop();
+            auto maxLen = stack.pop();
+
+            _memory.require(rateIdx, rateLen);
+            _memory.require(minIdx, minLen);
+            _memory.require(maxIdx, maxLen);
+
+            auto r = _ext.transfer_fee_set(address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "txrangeset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
+
+            break;
+        }
+        CASE(EXTRUSTSET)
+        {
+            auto address = stack.pop();
+            auto valueIdx = stack.pop();
+            auto valueLen = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(valueIdx, valueLen);
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.trust_set(address, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "trustset.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
+
+            break;
+        }
+        CASE(EXTRUSTLIMIT)
+        {
+            auto address = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto power = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.trust_limit(address, currencyIdx, currencyLen, power, gateway);
+
+            stack.push(m_builder.CreateSExt(r, Type::Word));
+
+            break;
+        }
+        CASE(EXGATEWAYBALANCE)
+        {
+            auto address = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto power = stack.pop();
+            auto gateway = stack.pop();
+
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.gateway_balance(address, currencyIdx, currencyLen, power, gateway);
+
+            stack.push(m_builder.CreateSExt(r, Type::Word));
+
+            break;
+        }
+        CASE(EXPAY)
+        {
+            auto gateway = stack.pop();
+            auto currencyIdx = stack.pop();
+            auto currencyLen = stack.pop();
+            auto sendMaxIdx = stack.pop();
+            auto sendMaxLen = stack.pop();
+            auto valueIdx = stack.pop();
+            auto valueLen = stack.pop();
+            auto receiver = stack.pop();
+            auto address = stack.pop();
+
+            _memory.require(valueIdx, valueLen);
+            _memory.require(sendMaxIdx, sendMaxLen);
+            _memory.require(currencyIdx, currencyLen);
+
+            auto r = _ext.pay(address, receiver, valueIdx, valueLen, sendMaxIdx, sendMaxLen, currencyIdx, currencyLen, gateway);
+
+            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "pay.ret");
+
+            stack.push(m_builder.CreateZExt(isZero, Type::Word));
+
+            break;
+        }*/
 
         CASE(INVALID)
         DEFAULT
