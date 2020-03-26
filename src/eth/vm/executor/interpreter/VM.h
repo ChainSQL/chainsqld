@@ -48,6 +48,7 @@ struct VMSchedule
     static constexpr int64_t sqlGas = 100;
     static constexpr int64_t sqlDataGas = 100;
     static constexpr int64_t tokenGas = 100;
+    static uint64_t  dropsPerByte;
 };
 
 class VM
@@ -144,6 +145,7 @@ private:
     void updateGas();
     void updateMem(uint64_t _newMem);
     void logGasMem();
+    void tableGasMem(intx::uint256 memBegin, intx::uint256 byteLens);
     void fetchInstruction();
     
     uint64_t decodeJumpDest(const byte* const _code, uint64_t& _pc);

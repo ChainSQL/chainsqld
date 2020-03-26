@@ -33,6 +33,7 @@ evmc_result execute(evmc_vm* _instance, const evmc_host_interface* _host,
 
     evmc_result result = {};
 	eth::owning_bytes_ref output;
+    eth::VMSchedule::dropsPerByte = _msg->drops_per_byte;
 
     try
     {
@@ -117,6 +118,7 @@ extern "C" evmc_vm* evmc_create_aleth_interpreter() noexcept
 
 namespace eth
 {
+
 uint64_t VM::memNeed(intx::uint256 const& _offset, intx::uint256 const& _size)
 {
     return toInt63(_size ? intx::uint512(_offset) + _size : intx::uint512(0));
@@ -207,6 +209,13 @@ void VM::logGasMem()
     m_runGas = toInt63(
         VMSchedule::logGas + VMSchedule::logTopicGas * n + logDataGas * intx::uint512(m_SP[1]));
     updateMem(memNeed(m_SP[0], m_SP[1]));
+}
+
+void VM::tableGasMem(intx::uint256 memBegin, intx::uint256 byteLens)
+{
+    m_runGas = toInt63(
+        VMSchedule::dropsPerByte * intx::uint512(byteLens));
+    updateMem(memNeed(memBegin, byteLens));
 }
 
 void VM::fetchInstruction()
@@ -1430,274 +1439,238 @@ void VM::interpretCases()
         }
         NEXT
 
-        /*CASE(CREATETABLE)
+        CASE(CREATETABLE)
         {
-            _memory.require(nameIdx, nameBytes);
-            _memory.require(rawIdx, rawBytes);
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            tableGasMem(m_SP[3], m_SP[4]);
+            updateIOGas();
 
-            _gasMeter.countSqlData(rawBytes);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
+            auto nameBytes = size_t(m_SP[2]);
+            uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
+            auto rawBytes = size_t(m_SP[4]);
 
-            //auto r = _ext.table_create(address, nameIdx, nameBytes, rawIdx, rawBytes);
-            auto r = m_host->table_create(m_context, m_SP[0], m_SP[1], m_SP[2], m_SP[3], m_SP[4]);
+            auto r = m_host->table_create(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
 
-            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
-            auto xx = m_builder.CreateZExt(ret, Type::Word);
-
-            stack.push(xx);
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXDROPTABLE)
         {
-            auto address = stack.pop();
-            auto nameIdx = stack.pop();
-            auto nameBytes = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
 
-            _memory.require(nameIdx, nameBytes);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
+            auto nameBytes = size_t(m_SP[2]);
 
-            auto r = _ext.table_drop(address, nameIdx, nameBytes);
+            auto r = m_host->table_drop(m_context, &address, nameIdx, nameBytes);
 
-            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
-            auto xx = m_builder.CreateZExt(ret, Type::Word);
-
-            stack.push(xx);
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXRENAMETABLE)
         {
-            auto address = stack.pop();
-            auto nameIdx = stack.pop();
-            auto nameBytes = stack.pop();
-            auto rawIdx = stack.pop();
-            auto rawBytes = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            tableGasMem(m_SP[3], m_SP[4]);
+            updateIOGas();
 
-            _memory.require(nameIdx, nameBytes);
-            _memory.require(rawIdx, rawBytes);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
+            auto nameBytes = size_t(m_SP[2]);
+            uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
+            auto rawBytes = size_t(m_SP[4]);
 
-            _gasMeter.countSqlData(rawBytes);
+            auto r = m_host->table_rename(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
 
-            auto r = _ext.table_rename(address, nameIdx, nameBytes, rawIdx, rawBytes);
-
-            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
-            auto xx = m_builder.CreateZExt(ret, Type::Word);
-
-            stack.push(xx);
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXINSERTSQL)
         {
-            auto address = stack.pop();
-            auto nameIdx = stack.pop();
-            auto nameBytes = stack.pop();
-            auto rawIdx = stack.pop();
-            auto rawBytes = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            tableGasMem(m_SP[3], m_SP[4]);
+            updateIOGas();
 
-            _memory.require(nameIdx, nameBytes);
-            _memory.require(rawIdx, rawBytes);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
+            auto nameBytes = size_t(m_SP[2]);
+            uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
+            auto rawBytes = size_t(m_SP[4]);
 
-            _gasMeter.countSqlData(rawBytes);
+            auto r = m_host->table_insert(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
 
-            auto r = _ext.table_insert(address, nameIdx, nameBytes, rawIdx, rawBytes);
-
-            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
-            auto xx = m_builder.CreateZExt(ret, Type::Word);
-
-            stack.push(xx);
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXDELETESQL)
         {
-            auto address = stack.pop();
-            auto nameIdx = stack.pop();
-            auto nameBytes = stack.pop();
-            auto rawIdx = stack.pop();
-            auto rawBytes = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            tableGasMem(m_SP[3], m_SP[4]);
+            updateIOGas();
 
-            _memory.require(nameIdx, nameBytes);
-            _memory.require(rawIdx, rawBytes);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
+            auto nameBytes = size_t(m_SP[2]);
+            uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
+            auto rawBytes = size_t(m_SP[4]);
 
-            _gasMeter.countSqlData(rawBytes);
+            auto r = m_host->table_delete(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
 
-            auto r = _ext.table_delete(address, nameIdx, nameBytes, rawIdx, rawBytes);
-
-            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
-            auto xx = m_builder.CreateZExt(ret, Type::Word);
-
-            stack.push(xx);
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXUPDATESQL)
         {
-            auto address = stack.pop();
-            auto nameIdx = stack.pop();
-            auto nameBytes = stack.pop();
-            auto rawIdx1 = stack.pop();
-            auto rawBytes1 = stack.pop();
-            auto rawIdx2 = stack.pop();
-            auto rawBytes2 = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            tableGasMem(m_SP[3], m_SP[4]);
+            updateIOGas();
+            tableGasMem(m_SP[5], m_SP[6]);
+            updateIOGas();
 
-            _memory.require(nameIdx, nameBytes);
-            _memory.require(rawIdx1, rawBytes1);
-            _memory.require(rawIdx2, rawBytes2);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
+            auto nameBytes = size_t(m_SP[2]);
+            uint8_t const* rawIdx1 = m_mem.data() + size_t(m_SP[3]);
+            auto rawBytes1 = size_t(m_SP[4]);
+            uint8_t const* rawIdx2 = m_mem.data() + size_t(m_SP[3]);
+            auto rawBytes2 = size_t(m_SP[4]);
+ 
+            auto r = m_host->table_update(m_context, &address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
 
-            _gasMeter.countSqlData(rawBytes1);
-            _gasMeter.countSqlData(rawBytes2);
-
-
-            auto r = _ext.table_update(address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
-
-            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
-            auto xx = m_builder.CreateZExt(ret, Type::Word);
-
-            stack.push(xx);
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXSELECTSQL)
         {
-            auto address = stack.pop();
-            auto nameIdx = stack.pop();
-            auto nameBytes = stack.pop();
-            auto rawIdx = stack.pop();
-            auto rawBytes = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            tableGasMem(m_SP[3], m_SP[4]);
+            updateIOGas();
 
-            _memory.require(nameIdx, nameBytes);
-            _memory.require(rawIdx, rawBytes);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
+            auto nameBytes = size_t(m_SP[2]);
+            uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
+            auto rawBytes = size_t(m_SP[4]);
 
-            _gasMeter.countSqlData(rawBytes);
-
-            auto r = _ext.table_get_handle(address, nameIdx, nameBytes, rawIdx, rawBytes);
-            stack.push(r);
-            break;
+            m_SPP[0] = intx::be::load<intx::uint256>(m_host->table_get_handle(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes));
         }
+        NEXT
         CASE(EXGRANTSQL)
         {
-            auto addOwner = stack.pop();
-            auto addDest = stack.pop();
-            auto nameIdx = stack.pop();
-            auto nameBytes = stack.pop();
-            auto rawIdx = stack.pop();
-            auto rawBytes = stack.pop();
+            updateMem(memNeed(m_SP[2], m_SP[3]));
+            tableGasMem(m_SP[4], m_SP[5]);
+            updateIOGas();
 
-            _memory.require(nameIdx, nameBytes);
-            _memory.require(rawIdx, rawBytes);
+            auto const addOwner = intx::be::trunc<evmc::address>(m_SP[0]);
+            auto const addDest = intx::be::trunc<evmc::address>(m_SP[1]);
+            uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[2]);
+            auto nameBytes = size_t(m_SP[3]);
+            uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[4]);
+            auto rawBytes = size_t(m_SP[5]);
 
-            _gasMeter.countSqlData(rawBytes);
+            auto r = m_host->table_grant(m_context, &addOwner, &addDest, nameIdx, nameBytes, rawIdx, rawBytes);
 
-            auto r = _ext.table_grant(addOwner, addDest,
-                nameIdx, nameBytes, rawIdx, rawBytes);
-
-            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
-            auto xx = m_builder.CreateZExt(ret, Type::Word);
-
-            stack.push(xx);
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXTRANSBEGIN)
         {
-            _ext.db_trans_begin();
-            break;
+            m_host->db_trans_begin(m_context);
         }
+        NEXT
         CASE(EXTRANSCOMMIT)
         {
-            auto r = _ext.db_trans_submit();
+            auto r = m_host->db_trans_submit(m_context);
 
-            auto ret = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "createtable.ret");
-            auto xx = m_builder.CreateZExt(ret, Type::Word);
-
-            stack.push(xx);
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXGETROWSIZE)
         {
-            auto handle = stack.pop();
+            auto const handle = intx::be::store<evmc_uint256be>(m_SP[0]);
 
-            auto r = _ext.table_get_lines(handle);
-            stack.push(r);
-            break;
+            m_SPP[0] = intx::be::load<intx::uint256>(m_host->table_get_lines(m_context, &handle));
         }
+        NEXT
         CASE(EXGETCOLSIZE)
         {
-            auto handle = stack.pop();
+            auto const handle = intx::be::store<evmc_uint256be>(m_SP[0]);
 
-            auto r = _ext.table_get_columns(handle);
-            stack.push(r);
-            break;
+            m_SPP[0] = intx::be::load<intx::uint256>(m_host->table_get_columns(m_context, &handle));
         }
+        NEXT
         CASE(EXGETVALUEBYKEY)
         {
-            auto handle = stack.pop();
-            auto row = stack.pop();
-            auto columnOff = stack.pop();
-            auto columnSize = stack.pop();
-            auto outOff = stack.pop();
-            auto outSize = stack.pop();
+            updateMem(memNeed(m_SP[2], m_SP[3]));
+            updateMem(memNeed(m_SP[4], m_SP[5]));
 
-            _memory.require(columnOff, columnSize);
-            _memory.require(outOff, outSize);
+            auto const handle = intx::be::store<evmc_uint256be>(m_SP[0]);
+            auto row = size_t(m_SP[1]);
+            uint8_t const* columnOff = m_mem.data() + size_t(m_SP[2]);
+            auto columnSize = size_t(m_SP[3]);
+            uint8_t* outOff = m_mem.data() + size_t(m_SP[4]);
+            auto outSize = size_t(m_SP[5]);
 
-            _ext.table_get_column(handle, row, columnOff, columnSize,
+            m_host->get_column_by_name(m_context, &handle, row, columnOff, columnSize,
                 outOff, outSize);
-            stack.push(m_builder.CreateZExt(outOff, Type::Word));
-
-            break;
+            m_SPP[0] = *outOff;
         }
+        NEXT
         CASE(EXGETVALUEBYINDEX)
         {
-            auto handle = stack.pop();
-            auto row = stack.pop();
-            auto colomn = stack.pop();
-            auto outOff = stack.pop();
-            auto outSize = stack.pop();
+            updateMem(memNeed(m_SP[3], m_SP[4]));
 
-            _memory.require(outOff, outSize);
-            _ext.table_get_column(handle, row, colomn, outOff, outSize);
-            stack.push(m_builder.CreateZExt(outOff, Type::Word));
+            auto const handle = intx::be::store<evmc_uint256be>(m_SP[0]);
+            auto row = size_t(m_SP[1]);
+            auto colomn = size_t(m_SP[2]);
+            uint8_t* outOff = m_mem.data() + size_t(m_SP[3]);
+            auto outSize = size_t(m_SP[4]);
 
-            break;
+            m_host->get_column_by_index(m_context, &handle, row, colomn, outOff, outSize);
+            m_SPP[0] = *outOff;
         }
+        NEXT
         CASE(EXEXITFUNC)
         {
-            _ext.exit_fun();
-            break;
+            m_host->exit_fun(m_context);
         }
+        NEXT
         CASE(EXGETLENBYKEY)
         {
-            auto handle = stack.pop();
-            auto row = stack.pop();
-            auto columnOff = stack.pop();
-            auto columnSize = stack.pop();
+            updateMem(memNeed(m_SP[2], m_SP[3]));
 
-            _memory.require(columnOff, columnSize);
-            auto r = _ext.get_column_len(handle, row, columnOff, columnSize);
-            stack.push(r);
+            auto const handle = intx::be::store<evmc_uint256be>(m_SP[0]);
+            auto row = size_t(m_SP[1]);
+            uint8_t* columnOff = m_mem.data() + size_t(m_SP[2]);
+            auto columnSize = size_t(m_SP[3]);
 
-            break;
+            m_SPP[0] = intx::be::load<intx::uint256>(
+                m_host->get_column_len_by_name(m_context, &handle, row, columnOff, columnSize));
         }
+        NEXT
         CASE(EXGETLENBYINDEX)
         {
-            auto handle = stack.pop();
-            auto row = stack.pop();
-            auto column = stack.pop();
+            auto const handle = intx::be::store<evmc_uint256be>(m_SP[0]);
+            auto row = size_t(m_SP[1]);
+            auto column = size_t(m_SP[2]);
 
-            auto r = _ext.get_column_len(handle, row, column);
-            stack.push(r);
-
-            break;
+            m_SPP[0] = intx::be::load<intx::uint256>(
+                m_host->get_column_len_by_index(m_context, &handle, row, column));
         }
+        NEXT
 
-        CASE(EXACCOUNTSET)
+        /*CASE(EXACCOUNTSET)
         {
             auto address = stack.pop();
             auto flag = stack.pop();
             auto set = stack.pop();
 
-            auto r = _ext.account_set(address, flag, set);
+            auto r = m_host->account_set(m_context, address, flag, set);
 
-            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "accountset.ret");
-
-            stack.push(m_builder.CreateZExt(isZero, Type::Word));
-
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXTRANSFERFEESET)
         {
             auto address = stack.pop();
@@ -1712,14 +1685,11 @@ void VM::interpretCases()
             _memory.require(minIdx, minLen);
             _memory.require(maxIdx, maxLen);
 
-            auto r = _ext.transfer_fee_set(address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
+            auto r = m_host->transfer_fee_set(m_context, address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
 
-            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "txrangeset.ret");
-
-            stack.push(m_builder.CreateZExt(isZero, Type::Word));
-
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXTRUSTSET)
         {
             auto address = stack.pop();
@@ -1732,14 +1702,11 @@ void VM::interpretCases()
             _memory.require(valueIdx, valueLen);
             _memory.require(currencyIdx, currencyLen);
 
-            auto r = _ext.trust_set(address, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+            auto r = m_host->trust_set(m_context, address, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
 
-            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "trustset.ret");
-
-            stack.push(m_builder.CreateZExt(isZero, Type::Word));
-
-            break;
+            m_SPP[0] = r ? 0 : 1;
         }
+        NEXT
         CASE(EXTRUSTLIMIT)
         {
             auto address = stack.pop();
@@ -1750,12 +1717,13 @@ void VM::interpretCases()
 
             _memory.require(currencyIdx, currencyLen);
 
-            auto r = _ext.trust_limit(address, currencyIdx, currencyLen, power, gateway);
+            auto r = m_host->trust_limit(m_context, address, currencyIdx, currencyLen, power, gateway);
 
             stack.push(m_builder.CreateSExt(r, Type::Word));
 
             break;
         }
+        NEXT
         CASE(EXGATEWAYBALANCE)
         {
             auto address = stack.pop();
@@ -1766,12 +1734,13 @@ void VM::interpretCases()
 
             _memory.require(currencyIdx, currencyLen);
 
-            auto r = _ext.gateway_balance(address, currencyIdx, currencyLen, power, gateway);
+            auto r = m_host->gateway_balance(m_context, address, currencyIdx, currencyLen, power, gateway);
 
             stack.push(m_builder.CreateSExt(r, Type::Word));
 
             break;
         }
+        NEXT
         CASE(EXPAY)
         {
             auto gateway = stack.pop();
@@ -1788,14 +1757,11 @@ void VM::interpretCases()
             _memory.require(sendMaxIdx, sendMaxLen);
             _memory.require(currencyIdx, currencyLen);
 
-            auto r = _ext.pay(address, receiver, valueIdx, valueLen, sendMaxIdx, sendMaxLen, currencyIdx, currencyLen, gateway);
+            auto r = m_host->pay(m_context, address, receiver, valueIdx, valueLen, sendMaxIdx, sendMaxLen, currencyIdx, currencyLen, gateway);
 
-            auto isZero = m_builder.CreateICmpEQ(r, m_builder.getInt64(0), "pay.ret");
-
-            stack.push(m_builder.CreateZExt(isZero, Type::Word));
-
-            break;
-        }*/
+            m_SPP[0] = r ? 0 : 1;
+        }
+        NEXT*/
 
         CASE(INVALID)
         DEFAULT

@@ -379,30 +379,27 @@ namespace eth {
 			bytesConstRef{ _name, _nameSize }, bytesConstRef{ _row, _rowSize });
 	}
 
-	void EvmCHost::table_get_handle(
+	evmc_uint256be EvmCHost::table_get_handle(
 		const struct evmc_address* address,
 		uint8_t const* _name,
 		size_t _nameSize,
 		uint8_t const* _raw,
-		size_t _rawSize,
-		struct evmc_uint256be* result) 
+		size_t _rawSize) 
 	{
-		*result = m_extVM.table_get_handle(address,
+		return m_extVM.table_get_handle(address,
 			bytesConstRef{ _name, _nameSize }, bytesConstRef{ _raw, _rawSize });
 	}
 
-	void EvmCHost::table_get_lines(
-		const struct evmc_uint256be* handle,
-		struct evmc_uint256be* result) 
+	evmc_uint256be EvmCHost::table_get_lines(
+		const struct evmc_uint256be* handle) 
 	{
-		*result = m_extVM.table_get_lines(handle);
+		return m_extVM.table_get_lines(handle);
 	}
 
-	void EvmCHost::table_get_columns(
-		const struct evmc_uint256be* handle,
-		struct evmc_uint256be* result) 
+	evmc_uint256be EvmCHost::table_get_columns(
+		const struct evmc_uint256be* handle) 
 	{
-		*result = m_extVM.table_get_columns(handle);
+		return m_extVM.table_get_columns(handle);
 	}
 
 	// TODO: Remove the copy to outBuf
@@ -447,23 +444,21 @@ namespace eth {
 		m_extVM.release_resource();
 	}
 
-	void EvmCHost::get_column_len_by_name(
+	evmc_uint256be EvmCHost::get_column_len_by_name(
 		const evmc_uint256be *_handle,
 		size_t _row,
 		const uint8_t *_column,
-		size_t _size,
-		evmc_uint256be *_len) 
+		size_t _size) 
 	{
-		*_len = m_extVM.get_column_len(_handle, _row, bytesConstRef{ _column, _size });
+		return m_extVM.get_column_len(_handle, _row, bytesConstRef{ _column, _size });
 	}
 
-	void EvmCHost::get_column_len_by_index(
+	evmc_uint256be EvmCHost::get_column_len_by_index(
 		const evmc_uint256be *_handle,
 		size_t _row,
-		size_t _column,
-		evmc_uint256be *_len) 
+		size_t _column) 
 	{
-		*_len = m_extVM.get_column_len(_handle, _row, _column);
+		return m_extVM.get_column_len(_handle, _row, _column);
 	}
 
 	int64_t EvmCHost::account_set(

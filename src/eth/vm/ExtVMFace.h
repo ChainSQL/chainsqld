@@ -391,21 +391,18 @@ public:
 		uint8_t const* _row,
 		size_t _rowSize);
 
-	void table_get_handle(
+	evmc_uint256be table_get_handle(
 		const struct evmc_address* address,
 		uint8_t const* _name,
 		size_t _nameSize,
 		uint8_t const* _raw,
-		size_t _rawSize,
-		struct evmc_uint256be* result);
+		size_t _rawSize);
 
-	void table_get_lines(
-		const struct evmc_uint256be* handle,
-		struct evmc_uint256be* result);
+	evmc_uint256be table_get_lines(
+		const struct evmc_uint256be* handle);
 
-	void table_get_columns(
-		const struct evmc_uint256be* handle,
-		struct evmc_uint256be* result);
+	evmc_uint256be table_get_columns(
+		const struct evmc_uint256be* handle);
 
 	size_t get_column_by_name(
 		const evmc_uint256be* _handle,
@@ -428,18 +425,16 @@ public:
 
 	void release_resource();
 
-	void get_column_len_by_name(
+	evmc_uint256be get_column_len_by_name(
 		const evmc_uint256be *_handle,
 		size_t _row,
 		const uint8_t *_column,
-		size_t _size,
-		evmc_uint256be *_len);
+		size_t _size);
 
-	void get_column_len_by_index(
+	evmc_uint256be get_column_len_by_index(
 		const evmc_uint256be *_handle,
 		size_t _row,
-		size_t _column,
-		evmc_uint256be *_len);
+		size_t _column);
 
 	int64_t account_set(
 		const struct evmc_address *_address,

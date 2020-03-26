@@ -707,15 +707,14 @@ typedef int64_t (*evmc_emit_sql3_fn)(struct evmc_host_context* context,
  *  @param nameSize      The length of table name
  *  @param raw           The sql raw field
  *  @param rawSize       The length of raw
- *  @param result        handle
+ *  @return              handle
  */
-typedef void (*evmc_emit_sql4_fn)(struct evmc_host_context* context,
+typedef evmc_uint256be (*evmc_emit_sql4_fn)(struct evmc_host_context* context,
                                   const struct evmc_address* address,
                                   uint8_t const* _name,
                                   size_t _nameSize,
                                   uint8_t const* _raw,
-                                  size_t _rawSize,
-                                  struct evmc_uint256be* result);
+                                  size_t _rawSize);
 
 /**
  * sql5 callback function.
@@ -771,11 +770,10 @@ typedef int64_t (*evmc_emit_sql7_fn)(struct evmc_host_context* context);
  *  @param context       The pointer to the Host execution context.
  *                       @see ::evmc_context.
  *  @param handle        The handle for a table.
- *  @param result        line number or field number
+ *  @return        line number or field number
  */
-typedef void (*evmc_emit_sql8_fn)(struct evmc_host_context* context,
-                                  const struct evmc_uint256be* handle,
-                                  struct evmc_uint256be* result);
+typedef evmc_uint256be (*evmc_emit_sql8_fn)(struct evmc_host_context* context,
+                                  const struct evmc_uint256be* handle);
 
 /**
  * sql8 callback function.
@@ -810,15 +808,14 @@ typedef size_t (*evmc_emit_sql9_fn)(struct evmc_host_context* context,
  *  @param _handle       The handle for a inquery result set.
  *  @param _row          row number.
  *  @param _columnPtr    column name.
- *  @param _columnSize   lenght of column name.
- *  @param _len          length of column value.
+ *  @param _columnSize   lenght of column name.       
+ *  @return length of column value.
  */
-typedef void (*evmc_get_col_len_by_nm_fn)(struct evmc_host_context* context,
+typedef evmc_uint256be (*evmc_get_col_len_by_nm_fn)(struct evmc_host_context* context,
                                           const struct evmc_uint256be* _handle,
                                           size_t _row,
                                           uint8_t const* _columnPtr,
-                                          size_t _columnSize,
-                                          evmc_uint256be* _len);
+                                          size_t _columnSize);
 
 /**
  * sql8 callback function.
@@ -831,13 +828,12 @@ typedef void (*evmc_get_col_len_by_nm_fn)(struct evmc_host_context* context,
  *  @param _handle       The handle for a inquery result set.
  *  @param _row          row number.
  *  @param _column       column number.
- *  @param _len          length of column value.
+ *  @return          length of column value.
  */
-typedef void (*evmc_get_col_len_by_idx_fn)(struct evmc_host_context* context,
+typedef evmc_uint256be (*evmc_get_col_len_by_idx_fn)(struct evmc_host_context* context,
                                            const struct evmc_uint256be* _handle,
                                            size_t _row,
-                                           size_t _column,
-                                           evmc_uint256be* _len);
+                                           size_t _column);
 
 /**
  * sql8 callback function.
