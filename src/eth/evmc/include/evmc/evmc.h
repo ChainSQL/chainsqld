@@ -956,7 +956,7 @@ struct evmc_host_interface
     evmc_emit_log_fn emit_log;
 
     /** Emit execute sql callback function. */
-    evmc_emit_executesql_fn emit_executesql;
+    //evmc_emit_executesql_fn emit_executesql;
 
     evmc_emit_sql1_fn table_create;
     evmc_emit_sql1_fn table_rename;

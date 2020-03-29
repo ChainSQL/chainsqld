@@ -450,6 +450,109 @@ public:
                           size_t data_size,
                           const bytes32 topics[],
                           size_t num_topics) noexcept = 0;
+    virtual int64_t table_create(const struct evmc_address* address,
+                                 uint8_t const* _name,
+                                 size_t _nameSize,
+                                 uint8_t const* _raw,
+                                 size_t _rawSize) = 0;
+    virtual int64_t table_rename(const struct evmc_address* address,
+                                        uint8_t const* _name,
+                                        size_t _nameSize,
+                                        uint8_t const* _raw,
+                                        size_t _rawSize) = 0;
+    virtual int64_t table_insert(const struct evmc_address* address,
+                                        uint8_t const* _name,
+                                        size_t _nameSize,
+                                        uint8_t const* _raw,
+                                        size_t _rawSize) = 0;
+    virtual int64_t table_delete(const struct evmc_address* address,
+                                        uint8_t const* _name,
+                                        size_t _nameSize,
+                                        uint8_t const* _raw,
+                                        size_t _rawSize) = 0;
+    virtual int64_t table_drop(const struct evmc_address* address,
+                              uint8_t const* _name,
+                              size_t _nameSize) = 0;
+    virtual int64_t table_update(const struct evmc_address* address,
+                                        uint8_t const* _name,
+                                        size_t _nameSize,
+                                        uint8_t const* _raw1,
+                                        size_t _rawSize1,
+                                        uint8_t const* _raw2,
+                                        size_t _rawSize2) = 0;
+    virtual int64_t table_grant(const struct evmc_address* address1,
+                                       const struct evmc_address* address2,
+                                       uint8_t const* _name,
+                                       size_t _nameSize,
+                                       uint8_t const* _row,
+                                       size_t _rowSize) = 0;
+    virtual evmc_uint256be table_get_handle(const struct evmc_address* address,
+                                                   uint8_t const* _name,
+                                                   size_t _nameSize,
+                                                   uint8_t const* _raw,
+                                                   size_t _rawSize) = 0;
+    virtual evmc_uint256be table_get_lines(const struct evmc_uint256be* handle) = 0;
+    virtual evmc_uint256be table_get_columns(const struct evmc_uint256be* handle) = 0;
+    virtual size_t get_column_by_name(const evmc_uint256be* _handle,
+                              size_t _row,
+                              uint8_t const* _column,
+                              size_t _columnSize,
+                              uint8_t* _outBuf,
+                              size_t _outSize) = 0;
+    virtual size_t get_column_by_index(const evmc_uint256be* _handle,
+                                       size_t _row,
+                                       size_t _column,
+                                       uint8_t* _outBuf,
+                                       size_t _outSize) = 0;
+    virtual void db_trans_begin() = 0;
+    virtual int64_t db_trans_submit() = 0;
+    virtual void release_resource() = 0;
+    virtual evmc_uint256be get_column_len_by_name(const evmc_uint256be* _handle,
+                                                  size_t _row,
+                                                  const uint8_t* _column,
+                                                  size_t _size) = 0;
+    virtual evmc_uint256be get_column_len_by_index(const evmc_uint256be* _handle,
+                                           size_t _row,
+                                           size_t _column) = 0;
+    virtual int64_t account_set(const struct evmc_address* _address,
+                                uint32_t _uFlag,
+                                bool _bSet) noexcept = 0;
+    virtual int64_t transfer_fee_set(const struct evmc_address* address,
+                                     uint8_t const* _pRate,
+                                     size_t _rateLen,
+                                     uint8_t const* _pMin,
+                                     size_t _minLen,
+                                     uint8_t const* _pMax,
+                                     size_t _maxLen) noexcept = 0;
+    virtual int64_t trust_set(const struct evmc_address* address,
+                              uint8_t const* _pValue,
+                              size_t _valueLen,
+                              uint8_t const* _pCurrency,
+                              size_t _currencyLen,
+                              const struct evmc_address* gateWay) noexcept = 0;
+    virtual int64_t trust_limit(
+        /* evmc_uint256be* o_result, */
+        const struct evmc_address* address,
+        uint8_t const* _pCurrency,
+        size_t _currencyLen,
+        uint64_t _power,
+        const struct evmc_address* gateWay) noexcept = 0;
+    virtual int64_t gateway_balance(
+        /* evmc_uint256be* o_result, */
+        const struct evmc_address* address,
+        uint8_t const* _pCurrency,
+        size_t _currencyLen,
+        uint64_t _power,
+        const struct evmc_address* gateWay) noexcept = 0;
+    virtual int64_t pay(const struct evmc_address* address,
+                const struct evmc_address* receiver,
+                uint8_t const* _pValue,
+                size_t _valueLen,
+                uint8_t const* _pSendMax,
+                size_t _sendMaxLen,
+                uint8_t const* _pCurrency,
+                size_t _currencyLen,
+                const struct evmc_address* gateWay) noexcept = 0;
 };
 
 
@@ -790,6 +893,219 @@ inline void emit_log(evmc_host_context* h,
     Host::from_context(h)->emit_log(*addr, data, data_size, static_cast<const bytes32*>(topics),
                                     num_topics);
 }
+inline int64_t table_create(evmc_host_context* h,
+                            const struct evmc_address* address,
+                            uint8_t const* _name,
+                            size_t _nameSize,
+                            uint8_t const* _raw,
+                            size_t _rawSize)
+{
+    return Host::from_context(h)->table_create(address, _name, _nameSize, _raw, _rawSize);
+}
+
+inline int64_t table_rename(evmc_host_context* h,
+                            const struct evmc_address* address,
+                               uint8_t const* _name,
+                               size_t _nameSize,
+                               uint8_t const* _raw,
+                            size_t _rawSize) noexcept
+{
+    return Host::from_context(h)->table_rename(address, _name, _nameSize, _raw, _rawSize);
+}
+inline int64_t table_insert(evmc_host_context* h,
+                            const struct evmc_address* address,
+                               uint8_t const* _name,
+                               size_t _nameSize,
+                               uint8_t const* _raw,
+                            size_t _rawSize) noexcept
+{
+    return Host::from_context(h)->table_insert(address, _name, _nameSize, _raw, _rawSize);
+}
+
+inline int64_t table_delete(evmc_host_context* h,
+                            const struct evmc_address* address,
+                               uint8_t const* _name,
+                               size_t _nameSize,
+                               uint8_t const* _raw,
+                            size_t _rawSize) noexcept
+{
+    return Host::from_context(h)->table_delete(address, _name, _nameSize, _raw, _rawSize);
+}
+inline int64_t table_drop(evmc_host_context* h,
+                          const struct evmc_address* address,
+                             uint8_t const* _name,
+                          size_t _nameSize) noexcept
+{
+    return Host::from_context(h)->table_drop(address, _name, _nameSize);
+}
+inline int64_t table_update(evmc_host_context* h,
+                            const struct evmc_address* address,
+                               uint8_t const* _name,
+                               size_t _nameSize,
+                               uint8_t const* _raw1,
+                               size_t _rawSize1,
+                               uint8_t const* _raw2,
+                            size_t _rawSize2) noexcept
+{
+    return Host::from_context(h)->table_update(address, _name, _nameSize, _raw1, _rawSize1, _raw2, _rawSize2);
+}
+
+inline int64_t table_grant(evmc_host_context* h,
+                           const struct evmc_address* address1,
+                           const struct evmc_address* address2,
+                           uint8_t const* _name,
+                           size_t _nameSize,
+                           uint8_t const* _row,
+                           size_t _rowSize) noexcept
+{
+    return Host::from_context(h)->table_grant(address1, address2, _name, _nameSize, _row, _rowSize);
+}
+
+inline evmc_uint256be table_get_handle(evmc_host_context* h,
+                                       const struct evmc_address* address,
+                                       uint8_t const* _name,
+                                       size_t _nameSize,
+                                       uint8_t const* _raw,
+                                       size_t _rawSize) noexcept
+{
+    return Host::from_context(h)->table_get_handle(address, _name, _nameSize, _raw, _rawSize);
+}
+
+inline evmc_uint256be table_get_lines(evmc_host_context* h,
+                                      const struct evmc_uint256be* handle) noexcept
+{
+    return Host::from_context(h)->table_get_lines(handle);
+}
+
+inline evmc_uint256be table_get_columns(evmc_host_context* h,
+                                        const struct evmc_uint256be* handle) noexcept
+{
+    return Host::from_context(h)->table_get_columns(handle);
+}
+
+// TODO: Remove the copy to outBuf
+inline size_t get_column_by_name(evmc_host_context* h,
+                                 const evmc_uint256be* _handle,
+                                    size_t _row,
+                                    uint8_t const* _column,
+                                    size_t _columnSize,
+                                    uint8_t* _outBuf,
+                                 size_t _outSize) noexcept
+{
+    return Host::from_context(h)->get_column_by_name(
+        _handle, _row, _column, _columnSize, _outBuf, _outSize);
+}
+
+inline size_t get_column_by_index(evmc_host_context* h,
+                                  const evmc_uint256be* _handle,
+                                     size_t _row,
+                                     size_t _column,
+                                     uint8_t* _outBuf,
+                                  size_t _outSize) noexcept
+{
+    return Host::from_context(h)->get_column_by_index(_handle, _row, _column, _outBuf, _outSize);
+}
+
+inline void db_trans_begin(evmc_host_context* h) noexcept
+{
+    Host::from_context(h)->db_trans_begin();
+}
+inline int64_t db_trans_submit(evmc_host_context* h) noexcept
+{
+    return Host::from_context(h)->db_trans_submit();
+}
+
+inline void exit_fun(evmc_host_context* h) noexcept
+{
+    Host::from_context(h)->release_resource();
+}
+
+inline evmc_uint256be get_column_len_by_name(evmc_host_context* h,
+                                             const evmc_uint256be* _handle,
+                                                size_t _row,
+                                                const uint8_t* _column,
+                                             size_t _size) noexcept
+{
+    return Host::from_context(h)->get_column_len_by_name(_handle, _row, _column, _size);
+}
+
+inline evmc_uint256be get_column_len_by_index(evmc_host_context* h,
+                                              const evmc_uint256be* _handle,
+                                                 size_t _row,
+                                              size_t _column) noexcept
+{
+    return Host::from_context(h)->get_column_len_by_index(_handle, _row, _column);
+}
+
+inline int64_t account_set(evmc_host_context* h,
+                           const struct evmc_address* _address,
+                              uint32_t _uFlag,
+                              bool _bSet) noexcept
+{
+    return Host::from_context(h)->account_set(_address, _uFlag, _bSet);
+}
+
+inline int64_t transfer_fee_set(evmc_host_context* h,
+                                const struct evmc_address* address,
+                                   uint8_t const* _pRate,
+                                   size_t _rateLen,
+                                   uint8_t const* _pMin,
+                                   size_t _minLen,
+                                   uint8_t const* _pMax,
+                                   size_t _maxLen) noexcept
+{
+    return Host::from_context(h)->transfer_fee_set(address, _pRate, _rateLen, _pMin, _minLen, _pMax, _maxLen);
+}
+
+inline int64_t trust_set(evmc_host_context* h,
+                         const struct evmc_address* address,
+                            uint8_t const* _pValue,
+                            size_t _valueLen,
+                            uint8_t const* _pCurrency,
+                            size_t _currencyLen,
+                            const struct evmc_address* gateWay) noexcept
+{
+    return Host::from_context(h)->trust_set(address, _pValue, _valueLen, _pCurrency, _currencyLen, gateWay);
+}
+
+inline int64_t trust_limit(evmc_host_context* h,
+    /* evmc_uint256be* o_result, */
+    const struct evmc_address* address,
+    uint8_t const* _pCurrency,
+    size_t _currencyLen,
+    uint64_t _power,
+    const struct evmc_address* gateWay) noexcept
+{
+    //*o_result = env.trust_limit(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return Host::from_context(h)->trust_limit(address, _pCurrency, _currencyLen, _power, gateWay);
+}
+
+inline int64_t gateway_balance(evmc_host_context* h,
+    /* evmc_uint256be* o_result, */
+    const struct evmc_address* address,
+    uint8_t const* _pCurrency,
+    size_t _currencyLen,
+    uint64_t _power,
+    const struct evmc_address* gateWay) noexcept
+{
+    //*o_result = env.gateway_balance(address, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
+    return Host::from_context(h)->gateway_balance(address, _pCurrency, _currencyLen, _power, gateWay);
+}
+
+inline int64_t pay(evmc_host_context* h,
+                   const struct evmc_address* address,
+                      const struct evmc_address* receiver,
+                      uint8_t const* _pValue,
+                      size_t _valueLen,
+                      uint8_t const* _pSendMax,
+                      size_t _sendMaxLen,
+                      uint8_t const* _pCurrency,
+                      size_t _currencyLen,
+                      const struct evmc_address* gateWay) noexcept
+{
+    return Host::from_context(h)->pay(address, receiver, _pValue, _valueLen,
+                       _pSendMax, _sendMaxLen, _pCurrency, _currencyLen, gateWay);
+}
 }  // namespace internal
 
 inline const evmc_host_interface& Host::get_interface() noexcept
@@ -800,7 +1116,20 @@ inline const evmc_host_interface& Host::get_interface() noexcept
         ::evmc::internal::get_code_size,  ::evmc::internal::get_code_hash,
         ::evmc::internal::copy_code,      ::evmc::internal::selfdestruct,
         ::evmc::internal::call,           ::evmc::internal::get_tx_context,
-        ::evmc::internal::get_block_hash, ::evmc::internal::emit_log};
+        ::evmc::internal::get_block_hash, ::evmc::internal::emit_log,
+        ::evmc::internal::table_create,   ::evmc::internal::table_rename,
+        ::evmc::internal::table_insert,   ::evmc::internal::table_delete,
+        ::evmc::internal::table_drop,     ::evmc::internal::table_update,
+        ::evmc::internal::table_grant,    ::evmc::internal::table_get_handle,
+        ::evmc::internal::table_get_lines,::evmc::internal::table_get_columns,
+        ::evmc::internal::get_column_by_name, ::evmc::internal::get_column_by_index,
+        ::evmc::internal::db_trans_begin, ::evmc::internal::db_trans_submit,
+        ::evmc::internal::exit_fun,
+        ::evmc::internal::get_column_len_by_name, ::evmc::internal::get_column_len_by_index,
+        ::evmc::internal::account_set, ::evmc::internal::transfer_fee_set,
+        ::evmc::internal::trust_set, ::evmc::internal::trust_limit,
+        ::evmc::internal::gateway_balance, ::evmc::internal::pay
+    };
     return interface;
 }
 }  // namespace evmc

@@ -6,6 +6,7 @@
 #include <eth/evmc/include/evmc/evmc.hpp>
 #include <eth/ethash/include/ethash/keccak.hpp>
 
+uint64_t eth::VMSchedule::dropsPerByte = 1000;
 namespace
 {
 void destroy(evmc_vm* _instance)
@@ -329,6 +330,7 @@ void VM::interpretCases()
         BREAK
 
         CASE(REVERT)
+        CASE(REVERTDIY)
         {
             // Pre-byzantium
             if (m_rev < EVMC_BYZANTIUM)
@@ -1533,8 +1535,8 @@ void VM::interpretCases()
             auto nameBytes = size_t(m_SP[2]);
             uint8_t const* rawIdx1 = m_mem.data() + size_t(m_SP[3]);
             auto rawBytes1 = size_t(m_SP[4]);
-            uint8_t const* rawIdx2 = m_mem.data() + size_t(m_SP[3]);
-            auto rawBytes2 = size_t(m_SP[4]);
+            uint8_t const* rawIdx2 = m_mem.data() + size_t(m_SP[5]);
+            auto rawBytes2 = size_t(m_SP[6]);
  
             auto r = m_host->table_update(m_context, &address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
 
@@ -1614,7 +1616,7 @@ void VM::interpretCases()
 
             m_host->get_column_by_name(m_context, &handle, row, columnOff, columnSize,
                 outOff, outSize);
-            m_SPP[0] = *outOff;
+            m_SPP[0] = m_SP[4];
         }
         NEXT
         CASE(EXGETVALUEBYINDEX)
@@ -1628,7 +1630,8 @@ void VM::interpretCases()
             auto outSize = size_t(m_SP[4]);
 
             m_host->get_column_by_index(m_context, &handle, row, colomn, outOff, outSize);
-            m_SPP[0] = *outOff;
+            m_SPP[0] = m_SP[3];
+            //memcpy(m_SPP, outOff, 32);
         }
         NEXT
         CASE(EXEXITFUNC)
@@ -1660,108 +1663,105 @@ void VM::interpretCases()
         }
         NEXT
 
-        /*CASE(EXACCOUNTSET)
+        CASE(EXACCOUNTSET)
         {
-            auto address = stack.pop();
-            auto flag = stack.pop();
-            auto set = stack.pop();
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            auto flag = uint32_t(m_SP[1]);
+            auto set = bool(m_SP[2]);
 
-            auto r = m_host->account_set(m_context, address, flag, set);
+            auto r = m_host->account_set(m_context, &address, flag, set);
 
             m_SPP[0] = r ? 0 : 1;
         }
         NEXT
         CASE(EXTRANSFERFEESET)
         {
-            auto address = stack.pop();
-            auto rateIdx = stack.pop();
-            auto rateLen = stack.pop();
-            auto minIdx = stack.pop();
-            auto minLen = stack.pop();
-            auto maxIdx = stack.pop();
-            auto maxLen = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            updateMem(memNeed(m_SP[3], m_SP[4]));
+            updateMem(memNeed(m_SP[5], m_SP[6]));
 
-            _memory.require(rateIdx, rateLen);
-            _memory.require(minIdx, minLen);
-            _memory.require(maxIdx, maxLen);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* rateIdx = m_mem.data() + size_t(m_SP[1]);
+            auto rateLen = size_t(m_SP[2]);
+            uint8_t const* minIdx = m_mem.data() + size_t(m_SP[3]);
+            auto minLen = size_t(m_SP[4]);
+            uint8_t const* maxIdx = m_mem.data() + size_t(m_SP[5]);
+            auto maxLen = size_t(m_SP[6]);
 
-            auto r = m_host->transfer_fee_set(m_context, address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
+            auto r = m_host->transfer_fee_set(m_context, &address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
 
             m_SPP[0] = r ? 0 : 1;
         }
         NEXT
         CASE(EXTRUSTSET)
         {
-            auto address = stack.pop();
-            auto valueIdx = stack.pop();
-            auto valueLen = stack.pop();
-            auto currencyIdx = stack.pop();
-            auto currencyLen = stack.pop();
-            auto gateway = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            updateMem(memNeed(m_SP[3], m_SP[4]));
 
-            _memory.require(valueIdx, valueLen);
-            _memory.require(currencyIdx, currencyLen);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* valueIdx = m_mem.data() + size_t(m_SP[1]);
+            auto valueLen = size_t(m_SP[2]);
+            uint8_t const* currencyIdx = m_mem.data() + size_t(m_SP[3]);
+            auto currencyLen = size_t(m_SP[4]);
+            auto const gateway = intx::be::trunc<evmc::address>(m_SP[5]);
 
-            auto r = m_host->trust_set(m_context, address, valueIdx, valueLen, currencyIdx, currencyLen, gateway);
+            auto r = m_host->trust_set(m_context, &address, valueIdx, valueLen, currencyIdx, currencyLen, &gateway);
 
             m_SPP[0] = r ? 0 : 1;
         }
         NEXT
         CASE(EXTRUSTLIMIT)
         {
-            auto address = stack.pop();
-            auto currencyIdx = stack.pop();
-            auto currencyLen = stack.pop();
-            auto power = stack.pop();
-            auto gateway = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
 
-            _memory.require(currencyIdx, currencyLen);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* currencyIdx = m_mem.data() + size_t(m_SP[1]);
+            auto currencyLen = size_t(m_SP[2]);
+            auto power = uint64_t(m_SP[3]);
+            auto const gateway = intx::be::trunc<evmc::address>(m_SP[4]);
 
-            auto r = m_host->trust_limit(m_context, address, currencyIdx, currencyLen, power, gateway);
+            auto r = m_host->trust_limit(m_context, &address, currencyIdx, currencyLen, power, &gateway);
 
-            stack.push(m_builder.CreateSExt(r, Type::Word));
-
-            break;
+            m_SPP[0] = r;
         }
         NEXT
         CASE(EXGATEWAYBALANCE)
         {
-            auto address = stack.pop();
-            auto currencyIdx = stack.pop();
-            auto currencyLen = stack.pop();
-            auto power = stack.pop();
-            auto gateway = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
 
-            _memory.require(currencyIdx, currencyLen);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* currencyIdx = m_mem.data() + size_t(m_SP[1]);
+            auto currencyLen = size_t(m_SP[2]);
+            auto power = uint64_t(m_SP[3]);
+            auto const gateway = intx::be::trunc<evmc::address>(m_SP[4]);
 
-            auto r = m_host->gateway_balance(m_context, address, currencyIdx, currencyLen, power, gateway);
+            auto r = m_host->gateway_balance(m_context, &address, currencyIdx, currencyLen, power, &gateway);
 
-            stack.push(m_builder.CreateSExt(r, Type::Word));
-
-            break;
+            m_SPP[0] = r;
         }
         NEXT
         CASE(EXPAY)
         {
-            auto gateway = stack.pop();
-            auto currencyIdx = stack.pop();
-            auto currencyLen = stack.pop();
-            auto sendMaxIdx = stack.pop();
-            auto sendMaxLen = stack.pop();
-            auto valueIdx = stack.pop();
-            auto valueLen = stack.pop();
-            auto receiver = stack.pop();
-            auto address = stack.pop();
+            updateMem(memNeed(m_SP[1], m_SP[2]));
+            updateMem(memNeed(m_SP[3], m_SP[4]));
+            updateMem(memNeed(m_SP[5], m_SP[6]));
 
-            _memory.require(valueIdx, valueLen);
-            _memory.require(sendMaxIdx, sendMaxLen);
-            _memory.require(currencyIdx, currencyLen);
+            auto const gateway = intx::be::trunc<evmc::address>(m_SP[0]);
+            uint8_t const* currencyIdx = m_mem.data() + size_t(m_SP[1]);
+            auto currencyLen = size_t(m_SP[2]);
+            uint8_t const* sendMaxIdx = m_mem.data() + size_t(m_SP[3]);
+            auto sendMaxLen = size_t(m_SP[4]);
+            uint8_t const* valueIdx = m_mem.data() + size_t(m_SP[5]);
+            auto valueLen = size_t(m_SP[6]);
+            auto const receiver = intx::be::trunc<evmc::address>(m_SP[7]);
+            auto const address = intx::be::trunc<evmc::address>(m_SP[8]);
 
-            auto r = m_host->pay(m_context, address, receiver, valueIdx, valueLen, sendMaxIdx, sendMaxLen, currencyIdx, currencyLen, gateway);
+            auto r = m_host->pay(m_context, &address, &receiver, valueIdx, valueLen, 
+                sendMaxIdx, sendMaxLen, currencyIdx, currencyLen, &gateway);
 
             m_SPP[0] = r ? 0 : 1;
         }
-        NEXT*/
+        NEXT
 
         CASE(INVALID)
         DEFAULT
