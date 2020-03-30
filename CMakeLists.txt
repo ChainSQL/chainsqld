@@ -264,9 +264,13 @@ app_table.cpp
 app_contract.cpp
 app_sql.cpp)
 
+prepend(vm_unity_srcs
+src/eth/unity/
+vm_unity.cpp)
 
 
-list(APPEND chainsqld_src_unity ${beast_unity_srcs} ${ripple_unity_srcs} ${peersafe_unity_srcs} ${test_unity_srcs})
+
+list(APPEND chainsqld_src_unity ${beast_unity_srcs} ${ripple_unity_srcs} ${peersafe_unity_srcs} ${vm_unity_srcs} ${test_unity_srcs})
 
 add_with_props(rippled_src_unity src/test/unity/nodestore_test_unity.cpp
 -I"${CMAKE_SOURCE_DIR}/"src/rocksdb2/include

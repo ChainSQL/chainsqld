@@ -2,15 +2,15 @@
 
 namespace eth {
 
-VM::VM(evmc_vm* instance) noexcept 
-: m_instance(instance) {
-	assert(m_instance != nullptr);
-	assert(m_instance->abi_version == EVMC_ABI_VERSION);
-
-	// Set the options.
-	//for (auto& pair : evmcOptions())
-	//	m_instance->set_option(m_instance, pair.first.c_str(), pair.second.c_str());
-}
+//VM::VM(evmc_vm* instance) noexcept 
+//: m_instance(instance) {
+//	assert(m_instance != nullptr);
+//	assert(m_instance->abi_version == EVMC_ABI_VERSION);
+//
+//	// Set the options.
+//	//for (auto& pair : evmcOptions())
+//	//	m_instance->set_option(m_instance, pair.first.c_str(), pair.second.c_str());
+//}
 
 owning_bytes_ref VMC::exec(int64_t& gas, ExtVMFace& ext) {
 	constexpr int64_t int64max = std::numeric_limits<int64_t>::max();
