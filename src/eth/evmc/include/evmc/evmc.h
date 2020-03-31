@@ -297,6 +297,15 @@ enum evmc_status_code
      * reasons, including division by zero, validation errors, etc.
      */
     EVMC_WASM_TRAP = 16,
+    /**
+     * Execution terminated with self-defined REVERTDIY opcode.
+     *
+     * In this case the amount of gas left MAY be non-zero and additional output
+     * data MAY be provided in ::evmc_result.
+     *
+     * Used to throw real TER error code.
+     */
+    EVMC_REVERTDIY = 17,
 
     /** EVM implementation generic internal error. */
     EVMC_INTERNAL_ERROR = -1,

@@ -120,6 +120,7 @@ private:
     bool caseCallSetup(evmc_message& _msg, bytesRef& o_output);
     void caseCall();
 
+    void ter2ReturnData(int64_t);
     void copyDataToMemory(bytesConstRef _data, intx::uint256*_sp);
     uint64_t memNeed(intx::uint256 const& _offset, intx::uint256 const& _size);
 
@@ -131,6 +132,7 @@ private:
     void throwBadJumpDestination();
     void throwBadStack(int _removed, int _added);
     void throwRevertInstruction(owning_bytes_ref&& _output);
+    void throwRevertDiyInstruction(owning_bytes_ref&& _output);
     void throwDisallowedStateChange();
     void throwBufferOverrun(intx::uint512 const& _enfOfAccess);
 

@@ -48,6 +48,12 @@ evmc_result execute(evmc_vm* _instance, const evmc_host_interface* _host,
         result.gas_left = vm->m_io_gas;
         output = ex.output();  // This moves the output from the exception!
     }
+    catch (eth::RevertDiyInstruction& ex)
+    {
+        result.status_code = EVMC_REVERTDIY;
+        result.gas_left = vm->m_io_gas;
+        output = ex.output();  // This moves the output from the exception!
+    }
     /*catch (eth::InvalidInstruction const&)
     {
         result.status_code = EVMC_INVALID_INSTRUCTION;
@@ -344,7 +350,7 @@ void VM::interpretCases()
             uint64_t b = (uint64_t)m_SP[0];
             uint64_t s = (uint64_t)m_SP[1];
             owning_bytes_ref output{std::move(m_mem), b, s};
-            throwRevertInstruction(std::move(output));
+            m_OP == Instruction::REVERT ? throwRevertInstruction(std::move(output)) : throwRevertDiyInstruction(std::move(output));
         }
         BREAK;
 
@@ -1453,9 +1459,10 @@ void VM::interpretCases()
             uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
             auto rawBytes = size_t(m_SP[4]);
 
-            auto r = m_host->table_create(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
+            auto ter = m_host->table_create(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXDROPTABLE)
@@ -1466,9 +1473,10 @@ void VM::interpretCases()
             uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
             auto nameBytes = size_t(m_SP[2]);
 
-            auto r = m_host->table_drop(m_context, &address, nameIdx, nameBytes);
+            auto ter = m_host->table_drop(m_context, &address, nameIdx, nameBytes);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXRENAMETABLE)
@@ -1483,9 +1491,10 @@ void VM::interpretCases()
             uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
             auto rawBytes = size_t(m_SP[4]);
 
-            auto r = m_host->table_rename(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
+            auto ter = m_host->table_rename(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXINSERTSQL)
@@ -1500,9 +1509,10 @@ void VM::interpretCases()
             uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
             auto rawBytes = size_t(m_SP[4]);
 
-            auto r = m_host->table_insert(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
+            auto ter = m_host->table_insert(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXDELETESQL)
@@ -1517,9 +1527,10 @@ void VM::interpretCases()
             uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[3]);
             auto rawBytes = size_t(m_SP[4]);
 
-            auto r = m_host->table_delete(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
+            auto ter = m_host->table_delete(m_context, &address, nameIdx, nameBytes, rawIdx, rawBytes);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXUPDATESQL)
@@ -1538,9 +1549,10 @@ void VM::interpretCases()
             uint8_t const* rawIdx2 = m_mem.data() + size_t(m_SP[5]);
             auto rawBytes2 = size_t(m_SP[6]);
  
-            auto r = m_host->table_update(m_context, &address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
+            auto ter = m_host->table_update(m_context, &address, nameIdx, nameBytes, rawIdx1, rawBytes1, rawIdx2, rawBytes2);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXSELECTSQL)
@@ -1571,9 +1583,10 @@ void VM::interpretCases()
             uint8_t const* rawIdx = m_mem.data() + size_t(m_SP[4]);
             auto rawBytes = size_t(m_SP[5]);
 
-            auto r = m_host->table_grant(m_context, &addOwner, &addDest, nameIdx, nameBytes, rawIdx, rawBytes);
+            auto ter = m_host->table_grant(m_context, &addOwner, &addDest, nameIdx, nameBytes, rawIdx, rawBytes);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXTRANSBEGIN)
@@ -1583,9 +1596,10 @@ void VM::interpretCases()
         NEXT
         CASE(EXTRANSCOMMIT)
         {
-            auto r = m_host->db_trans_submit(m_context);
+            auto ter = m_host->db_trans_submit(m_context);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXGETROWSIZE)
@@ -1669,9 +1683,10 @@ void VM::interpretCases()
             auto flag = uint32_t(m_SP[1]);
             auto set = bool(m_SP[2]);
 
-            auto r = m_host->account_set(m_context, &address, flag, set);
+            auto ter = m_host->account_set(m_context, &address, flag, set);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXTRANSFERFEESET)
@@ -1688,9 +1703,10 @@ void VM::interpretCases()
             uint8_t const* maxIdx = m_mem.data() + size_t(m_SP[5]);
             auto maxLen = size_t(m_SP[6]);
 
-            auto r = m_host->transfer_fee_set(m_context, &address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
+            auto ter = m_host->transfer_fee_set(m_context, &address, rateIdx, rateLen, minIdx, minLen, maxIdx, maxLen);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXTRUSTSET)
@@ -1705,9 +1721,10 @@ void VM::interpretCases()
             auto currencyLen = size_t(m_SP[4]);
             auto const gateway = intx::be::trunc<evmc::address>(m_SP[5]);
 
-            auto r = m_host->trust_set(m_context, &address, valueIdx, valueLen, currencyIdx, currencyLen, &gateway);
+            auto ter = m_host->trust_set(m_context, &address, valueIdx, valueLen, currencyIdx, currencyLen, &gateway);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
         CASE(EXTRUSTLIMIT)
@@ -1756,10 +1773,11 @@ void VM::interpretCases()
             auto const receiver = intx::be::trunc<evmc::address>(m_SP[7]);
             auto const address = intx::be::trunc<evmc::address>(m_SP[8]);
 
-            auto r = m_host->pay(m_context, &address, &receiver, valueIdx, valueLen, 
+            auto ter = m_host->pay(m_context, &address, &receiver, valueIdx, valueLen, 
                 sendMaxIdx, sendMaxLen, currencyIdx, currencyLen, &gateway);
+            ter2ReturnData(ter);
 
-            m_SPP[0] = r ? 0 : 1;
+            m_SPP[0] = ter ? 0 : 1;
         }
         NEXT
 

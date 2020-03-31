@@ -20,6 +20,12 @@ void VM::copyDataToMemory(bytesConstRef _data, intx::uint256*_sp)
         std::memset(m_mem.data() + offset + sizeToBeCopied, 0, size - sizeToBeCopied);
 }
 
+void VM::ter2ReturnData(int64_t ter)
+{
+    auto terStr = std::to_string(ter);
+    m_returnData.clear();
+    m_returnData.assign(terStr.c_str(), terStr.c_str() + terStr.size());
+}
 
 // consolidate exception throws to avoid spraying boost code all over interpreter
 
@@ -67,6 +73,13 @@ void VM::throwRevertInstruction(owning_bytes_ref&& _output)
     // We can't use BOOST_THROW_EXCEPTION here because it makes a copy of exception inside and
     // RevertInstruction has no copy constructor
     throw RevertInstruction(std::move(_output));
+}
+
+void VM::throwRevertDiyInstruction(owning_bytes_ref&& _output)
+{
+    // We can't use BOOST_THROW_EXCEPTION here because it makes a copy of exception inside and
+    // RevertInstruction has no copy constructor
+    throw RevertDiyInstruction(std::move(_output));
 }
 
 void VM::throwBufferOverrun(intx::uint512 const& _endOfAccess)
