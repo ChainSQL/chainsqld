@@ -229,8 +229,8 @@ namespace eth
         &&MSIZE,                                \
         &&GAS,                                  \
         &&JUMPDEST,                             \
-        &&BEGINDATA,                            \
-        &&BEGINSUB,                             \
+        &&INVALID,                              \
+        &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \
         &&PUSH1, /* 60, */                      \
@@ -309,34 +309,11 @@ namespace eth
         &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \
-        &&PUSHC,                                \
-        &&JUMPC,                                \
-        &&JUMPCI,                               \
-        &&INVALID,                              \
-        &&JUMPTO, /* B0, */                     \
-        &&JUMPIF,                               \
-        &&JUMPSUB,                              \
-        &&JUMPV,                                \
-        &&JUMPSUBV,                             \
-        &&BEGINSUB,                             \
-        &&BEGINDATA,                            \
-        &&RETURNSUB,                            \
-        &&PUTLOCAL,                             \
-        &&GETLOCAL,                             \
-        &&INVALID,                              \
-        &&INVALID,                              \
-        &&INVALID,                              \
-        &&INVALID,                              \
-        &&INVALID,                              \
-        &&INVALID,                              \
-        &&INVALID, /* C0, */                    \
-        &&XADD,                                 \
-        &&XMUL,                                 \
-        &&XSUB,                                 \
-        &&XDIV,                                 \
-        &&XSDIV,                                \
-        &&XMOD,                                 \
-        &&XSMOD,                                \
+        &&INVALID,                                \
+        &&INVALID,                                \
+        &&INVALID,                               \
+        &&INVALID,                            \
+        &&INVALID, /* B0, */                    \
         &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \
@@ -345,34 +322,57 @@ namespace eth
         &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \
-        &&XLT, /* D0 */                         \
-        &&XGT,                                  \
-        &&XSLT,                                 \
-        &&XSGT,                                 \
-        &&XEQ,                                  \
-        &&XISZERO,                              \
-        &&XAND,                                 \
-        &&XOOR,                                 \
-        &&XXOR,                                 \
-        &&XNOT,                                 \
         &&INVALID,                              \
-        &&XSHL,                                 \
-        &&XSHR,                                 \
-        &&XSAR,                                 \
-        &&XROL,                                 \
-        &&XROR,                                 \
-        &&XPUSH, /* E0, */                      \
-        &&XMLOAD,                               \
-        &&XMSTORE,                              \
         &&INVALID,                              \
-        &&XSLOAD,                               \
-        &&XSSTORE,                              \
-        &&XVTOWIDE,                             \
-        &&XWIDETOV,                             \
-        &&XGET,                                 \
-        &&XPUT,                                 \
-        &&XSWIZZLE,                             \
-        &&XSHUFFLE,                             \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&CREATETABLE, /* C0, */                \
+		&&EXDROPTABLE,                          \
+		&&EXRENAMETABLE,                        \
+		&&EXINSERTSQL,                          \
+		&&EXDELETESQL,                          \
+		&&EXUPDATESQL,                          \
+		&&EXSELECTSQL,                          \
+		&&EXGRANTSQL,                           \
+		&&EXTRANSBEGIN,                         \
+		&&EXTRANSCOMMIT,                        \
+		&&EXGETROWSIZE,                         \
+		&&EXGETCOLSIZE,                         \
+		&&EXGETVALUEBYKEY,                      \
+		&&EXGETVALUEBYINDEX,                    \
+		&&EXEXITFUNC,                           \
+		&&EXGETLENBYKEY,                        \
+		&&EXGETLENBYINDEX, /* D0, */            \
+        &&REVERTDIY,                            \
+		&&EXACCOUNTSET,                         \
+		&&EXTRANSFERFEESET,                     \
+		&&EXTRUSTSET,                           \
+		&&EXTRUSTLIMIT,                         \
+		&&EXGATEWAYBALANCE,                     \
+		&&EXPAY,                                \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID, /* E0, */                    \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
+        &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \
         &&INVALID,                              \
