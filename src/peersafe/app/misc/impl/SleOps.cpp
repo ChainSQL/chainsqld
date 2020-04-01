@@ -97,7 +97,7 @@ namespace ripple {
 	uint256 SleOps::codeHash(AccountID const& addr)
 	{
         bytes const& code = SleOps::code(addr);
-		return sha512Half(code);
+		return sha512Half(makeSlice(code));
 	}
 
 	TER SleOps::transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value)
