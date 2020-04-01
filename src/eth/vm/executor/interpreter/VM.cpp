@@ -4,7 +4,8 @@
 #include "interpreter.h"
 #include "VM.h"
 #include <eth/evmc/include/evmc/evmc.hpp>
-#include <eth/ethash/include/ethash/keccak.hpp>
+#include <eth/vm/utils/keccak.h>
+// #include <eth/ethash/include/ethash/keccak.hpp>
 
 uint64_t eth::VMSchedule::dropsPerByte = 1000;
 namespace
@@ -440,8 +441,11 @@ void VM::interpretCases()
             uint64_t inOff = (uint64_t)m_SP[0];
             uint64_t inSize = (uint64_t)m_SP[1];
 
-            const auto h = ethash::keccak256(m_mem.data() + inOff, inSize);
-            m_SPP[0] = intx::be::load<intx::uint256>(h);
+            //char* hashRet = new char[32];
+            evmc_uint256be hashRet;
+            keccak(m_mem.data() + inOff, inSize, (uint8_t*)hashRet.bytes);
+            // const auto h = ethash::keccak256(m_mem.data() + inOff, inSize);
+            m_SPP[0] = intx::be::load<intx::uint256>(hashRet);
         }
         NEXT
 
