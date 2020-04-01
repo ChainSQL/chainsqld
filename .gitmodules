@@ -1,6 +1,0 @@
-[submodule "src/intx"]
-	path = src/intx
-	url = https://github.com/chfast/intx.git
-[submodule "src/eth/ethash"]
-	path = src/eth/ethash
-	url = https://github.com/chfast/ethash.git
