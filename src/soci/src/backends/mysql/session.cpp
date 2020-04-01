@@ -332,6 +332,34 @@ void mysql_session_backend::connect_mysql() {
                 "mysql_options() failed when trying to set local-infile.");
         }
     }
+
+    // RR-2056
+    /* The timeout in seconds for each attempt to read from the server.
+     * There are retries if necessary, so the total effective timeout value is
+     * three times the option value(old version).
+     * You can set the value so that a lost connection can be detected earlier
+     * than the TCP/IP Close_Wait_Timeout value of 10 minutes.
+     */
+    int read_timeout = 10;
+    if (0 != mysql_options(conn_, MYSQL_OPT_READ_TIMEOUT, &read_timeout))
+    {
+        clean_up();
+        throw soci_error(
+            "mysql_options() failed when trying to set read-timeout.");
+    }
+
+    /* The connect timeout in seconds.
+     * When mysql_real_query return CR_SERVER_LOST, we reconnect and try again once.
+     * And the mysql_real_connect maybe wait long time, so set this option.
+     */
+    int conn_timeout = 10;
+    if (0 != mysql_options(conn_, MYSQL_OPT_CONNECT_TIMEOUT, &conn_timeout))
+    {
+        clean_up();
+        throw soci_error(
+            "mysql_options() failed when trying to set connect-timeout.");
+    }
+
     if (mysql_real_connect(conn_,
             host_p ? host.c_str() : NULL,
             user_p ? user.c_str() : NULL,
