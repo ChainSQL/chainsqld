@@ -194,9 +194,9 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 
 	// Schedule _init execution if not empty.
 	Blob data;
-	if (!_code.empty())
-		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
-			value, _gasPrice, &data, _code, sha512Half(_code.toBytes()), m_depth, true, false);
+    if (!_code.empty())
+        m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
+            value, _gasPrice, &data, _code, sha512Half(makeSlice(_code.toBytes())), m_depth, true, false);
 
 	return !m_ext;
 }
