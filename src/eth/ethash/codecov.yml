@@ -1,7 +1,0 @@
-comment:
-  layout: "diff"
-ignore:
-  - "test/benchmarks/*"
-  - "test/fakeminer/*"
-  - "test/integration/*"
-  - "test/tools/*"
