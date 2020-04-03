@@ -541,7 +541,14 @@ void TableSyncItem::SetSyncTxLedger(LedgerIndex iSeq, uint256 uHash)
 void TableSyncItem::SetSyncState(TableSyncState eState)
 {
     std::lock_guard<std::mutex> lock(mutexInfo_);
-    if(eState_ != SYNC_STOP)    eState_ = eState;
+	if (eState_ == SYNC_DELETING) {
+		if ((eState == SYNC_INIT || eState == SYNC_REMOVE)) {
+			eState_ = eState;
+		}
+	}
+	else if (eState_ != SYNC_STOP || eState_ != SYNC_REMOVE) {
+		eState_ = eState;
+	}
 }
 
 void TableSyncItem::SetDeleted(bool deleted)
@@ -1065,8 +1072,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             if (ret == soci_exception) {
                 SetSyncState(SYNC_STOP);
             }
-            JLOG(journal_.info()) <<
-                "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
+            //JLOG(journal_.info()) <<
+            //    "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
 
             continue;
         }

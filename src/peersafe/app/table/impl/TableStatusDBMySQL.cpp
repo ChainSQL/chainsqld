@@ -317,6 +317,7 @@ namespace ripple {
         {
             JLOG(journal_.error()) <<
             "RenameRecord exception" << e.what();
+			ret = false;
         }
 
         return ret;
