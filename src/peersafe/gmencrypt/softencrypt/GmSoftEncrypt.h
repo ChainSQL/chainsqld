@@ -24,13 +24,13 @@
 #include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
 #ifdef GM_ALG_PROCESS
 
-//#define SOFTENCRYPT
+#define SOFTENCRYPT
 #ifdef SOFTENCRYPT
-#include <peersafe/gmencrypt/softencrypt/usr/include/openssl/engine.h>
-#include <peersafe/gmencrypt/softencrypt/usr/include/openssl/evp.h>
-#include <peersafe/gmencrypt/softencrypt/usr/include/openssl/rand.h>
-#include <peersafe/gmencrypt/softencrypt/usr/include/openssl/SMEngine.h>
-#include <peersafe/gmencrypt/softencrypt/usr/include/openssl/sm2.h>
+#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/engine.h>
+#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/evp.h>
+#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/rand.h>
+#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/SMEngine.h>
+#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm2.h>
 //#include <gmencrypt/softencrypt/usr/include/openssl/hmac.h>
 
 const char g_signId[] = "1234567812345678";
@@ -39,14 +39,14 @@ class SoftEncrypt : public HardEncrypt
 public:
     SoftEncrypt()
     {
-        priAndPubKey_ = NULL;
-        OpenSSL_add_all_algorithms();
-        ENGINE_load_dynamic();
-        sm_engine_ = ENGINE_by_id("CipherSuite_SM");
-        if (sm_engine_ == NULL)
-            DebugPrint("SM Engine is NULL.");
-        ENGINE_init(sm_engine_);
-        md_ = ENGINE_get_digest(sm_engine_, NID_sm3);
+        sm2Keypair_ = NULL;
+        // OpenSSL_add_all_algorithms();
+        // ENGINE_load_dynamic();
+        // sm_engine_ = ENGINE_by_id("CipherSuite_SM");
+        // if (sm_engine_ == NULL)
+        //     DebugPrint("SM Engine is NULL.");
+        // ENGINE_init(sm_engine_);
+        // md_ = ENGINE_get_digest(sm_engine_, NID_sm3);
         DebugPrint("SoftEncrypt ENGINE_init successfully!");
     }
     ~SoftEncrypt()
@@ -136,7 +136,8 @@ public:
 private:
     ENGINE *sm_engine_;
     const EVP_MD *md_;
-    EVP_PKEY *priAndPubKey_;
+    EC_KEY *sm2Keypair_;
+    unsigned char pubKeyUser_[PUBLIC_KEY_EXT_LEN];
 };
 
 #endif

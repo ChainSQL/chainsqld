@@ -35,13 +35,52 @@ unsigned long  SoftEncrypt::CloseDevice()
 
 std::pair<unsigned char*, int> SoftEncrypt::getPublicKey()
 {
-    mergePublicXYkey(pubKeyUser_, pubKeyUserExt_);
-    return std::make_pair(pubKeyUser_,sizeof(pubKeyUser_));
+    unsigned char* pubKeyUserTemp = NULL;
+    size_t pubLen = EC_KEY_key2buf(sm2Keypair_, &pubKeyUserTemp);
+    if(pubLen != 0)
+    {
+        DebugPrint("pubLen: %d", pubLen);
+        pubKeyUser_[0] = GM_ALG_MARK;
+        memcpy(pubKeyUser_+1, pubKeyUserTemp, pubLen);
+        return std::make_pair(pubKeyUser_, pubLen+1);
+    }
+    else return std::make_pair(NULL, 0);
 }
+size_t EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf)
+{
+    if (key == NULL || key->pub_key == NULL || key->group == NULL)
+        return 0;
+    
+    size_t len;
+    unsigned char *buf;
+    len = EC_POINT_point2oct(key->group, key->pub_key, key->conv_form, NULL, 0, NULL);
+    if (len == 0)
+        return 0;
+    buf = OPENSSL_malloc(len);
+    if (buf == NULL)
+        return 0;
+    len = EC_POINT_point2oct(key->group, key->pub_key, key->conv_form, buf, len, NULL);
+    if (len == 0) {
+        OPENSSL_free(buf);
+        return 0;
+    }
+    *pbuf = buf;
+    return len;
+}
+
 std::pair<unsigned char*, int> SoftEncrypt::getPrivateKey()
 {
-    priAndPubKey_->pkey.ec->pub_key;
-    return std::make_pair(priKeyUserExt_.D,sizeof(priKeyUserExt_.D));
+    unsigned char* priKeyUserTemp = NULL;
+    int priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair_), priKeyUserTemp);
+    DebugPrint("private key Len: %d", priLen);
+    if(0 == priLen)
+    {
+        return std::make_pair(NULL, 0);
+    }
+    else
+    {
+        return std::make_pair(priKeyUserTemp, priLen);    
+    }
 }
 void SoftEncrypt::mergePublicXYkey(unsigned char* publickey, ECCrefPublicKey& originalPublicKey)
 {
@@ -62,38 +101,18 @@ unsigned long SoftEncrypt::SM2GenECCKeyPair(
     unsigned long ulModulusLen)
 {
     int ok = 0;
-    EVP_PKEY_CTX *pkctx = NULL;
-
-    if (pkctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL))
+    sm2Keypair_ = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+    if (NULL == sm2key)
     {
-        if (EVP_PKEY_keygen_init(pkctx))
-        {
-            if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pkctx, NID_sm2p256v1))
-            {
-                if (EVP_PKEY_keygen(pkctx, &priAndPubKey_))
-                {
-                    DebugPrint("SM2GenECCKeyPair-EVP_PKEY_keygen() successful!");
-                    EVP_PKEY_CTX_free(pkctx);
-                    return 0;
-                }
-                else
-                {
-                    DebugPrint("SM2GenECCKeyPair-EVP_PKEY_keygen() failed!");
-                    if (priAndPubKey_)
-                    {
-                        EVP_PKEY_free(priAndPubKey_);
-                        priAndPubKey_ = NULL;
-                    }
-                }
-            }
-            else DebugPrint("SM2GenECCKeyPair-EVP_PKEY_CTX_set_ec_paramgen_curve_nid() failed!");
-        }
-        else DebugPrint("SM2GenECCKeyPair-EVP_PKEY_keygen_init() failed!");
+        DebugPrint("SM2GenECCKeyPair-EC_KEY_new_by_curve_name() failed!")
     }
-    else DebugPrint("SM2GenECCKeyPair-EVP_PKEY_CTX_new_id() failed!");
 
-    EVP_PKEY_CTX_free(pkctx);
-    return -1;
+    int genRet = EC_KEY_generate_key(sm2key);
+    if (0 == genRet) {
+        DebugPrint("SM2GenECCKeyPair-EC_KEY_generate_key() failed!");
+        return -1;
+    }
+    else return ok;
 }
 //SM2 Sign&Verify
 unsigned long SoftEncrypt::SM2ECCSign(
