@@ -138,7 +138,6 @@ include_directories(
   src/soci/src
   src/soci/include
   src/eth/evmc/include
-  src/eth/ethash/include
   src/intx/include)
 
 special_build_flags()
