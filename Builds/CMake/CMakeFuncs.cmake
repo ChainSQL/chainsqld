@@ -374,7 +374,7 @@ macro(use_pthread)
   endif()
 endmacro()
 
-macro(use_openssl openssl_min)
+macro(use_openssl openssl_min enableGmalg)
   if (APPLE AND NOT DEFINED ENV{OPENSSL_ROOT_DIR})
     find_program(HOMEBREW brew)
     if (NOT HOMEBREW STREQUAL "HOMEBREW-NOTFOUND")
@@ -390,31 +390,39 @@ macro(use_openssl openssl_min)
       link_directories($ENV{OPENSSL_ROOT}/lib)
     endif()
   else()
-    if (static)
-      set(tmp CMAKE_FIND_LIBRARY_SUFFIXES)
-      set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-    endif()
-
-    find_package(OpenSSL)
-    # depending on how openssl is built, it might depend
-    # on zlib. In fact, the openssl find package should
-    # figure this out for us, but it does not currently...
-    # so let's add zlib ourselves to the lib list
-    find_package(ZLIB)
-
-    if (static)
-      set(CMAKE_FIND_LIBRARY_SUFFIXES tmp)
-    endif()
-
-    if (OPENSSL_FOUND)
-      include_directories(${OPENSSL_INCLUDE_DIR})
-      list(APPEND OPENSSL_LIBRARIES ${ZLIB_LIBRARIES})
+    if (enableGmalg)
+        set(GMSSL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/gmAlgLib")
+        message(STATUS "GMSSL_LIBRARY_DIR: ${GMSSL_LIBRARY_DIR}")
+        #link_directories(${GMALG_LIBRARY_DIR})
+        set(OPENSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libcrypto.a" "${GMSSL_LIBRARY_DIR}/libssl.a")
+        message( STATUS "OPENSSL_LIBRARIES: ${OPENSSL_LIBRARIES}" )
     else()
-      message(FATAL_ERROR "OpenSSL not found")
-    endif()
-    if (UNIX AND NOT APPLE AND ${OPENSSL_VERSION} VERSION_LESS ${openssl_min})
-      message(FATAL_ERROR
-        "Your openssl is Version: ${OPENSSL_VERSION}, ${openssl_min} or better is required.")
+        if (static)
+            set(tmp CMAKE_FIND_LIBRARY_SUFFIXES)
+            set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+        endif()
+
+        find_package(OpenSSL)
+        # depending on how openssl is built, it might depend
+        # on zlib. In fact, the openssl find package should
+        # figure this out for us, but it does not currently...
+        # so let's add zlib ourselves to the lib list
+        find_package(ZLIB)
+
+        if (static)
+            set(CMAKE_FIND_LIBRARY_SUFFIXES tmp)
+        endif()
+
+        if (OPENSSL_FOUND)
+            include_directories(${OPENSSL_INCLUDE_DIR})
+            list(APPEND OPENSSL_LIBRARIES ${ZLIB_LIBRARIES})
+        else()
+            message(FATAL_ERROR "OpenSSL not found")
+        endif()
+        if (UNIX AND NOT APPLE AND ${OPENSSL_VERSION} VERSION_LESS ${openssl_min})
+            message(FATAL_ERROR
+                "Your openssl is Version: ${OPENSSL_VERSION}, ${openssl_min} or better is required.")
+        endif()
     endif()
   endif()
 endmacro()

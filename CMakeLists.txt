@@ -139,6 +139,7 @@ include_directories(
   src/nudb/include
   src/soci/src
   src/soci/include
+  src/peersafe/gmencrypt/softencrypt/GmSSL/include
   src/evmjit
   src/evmjit/evmc/include)
 
@@ -175,7 +176,7 @@ use_pthread()
 
 #use_tbb()
 
-use_openssl(${openssl_min})
+use_openssl(${openssl_min} ${enableGmalg})
 
 use_protobuf()
 
