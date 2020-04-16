@@ -102,7 +102,7 @@ Json::Value doSubmit (RPC::Context& context)
 
             return jvResult;
         }
-		JLOG(context.j.custom()) << "Signature and Acount check successfully!";
+		// JLOG(context.j.custom()) << "Signature and Acount check successfully!";
     }
 
     std::string reason;
