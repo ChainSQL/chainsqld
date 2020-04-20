@@ -56,7 +56,16 @@ TxMeta::TxMeta (uint256 const& txid, std::uint32_t ledger, STObject const& obj,
     , mNodes (obj.getFieldArray (sfAffectedNodes))
     , j_ (j)
 {
-    mResult = obj.getFieldU16 (sfTransactionResult);
+	try {
+		mResult = obj.getFieldU16(sfTransactionResult);
+	}
+	catch (std::exception const&)
+	{
+		//For compatibility with older-consensus versions
+		SF_U8 const sfTransactionResultOld = TypedField<SF_U8::type>(STI_UINT8, 3, "TransactionResult");
+		mResult = obj.getFieldU8(sfTransactionResultOld);
+	}
+    
     mIndex = obj.getFieldU32 (sfTransactionIndex);
 
     auto affectedNodes = dynamic_cast <STArray const*>
