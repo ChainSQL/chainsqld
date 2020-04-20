@@ -602,17 +602,23 @@ private:
 
 		jvParseLedger(jvRequest, jvParams[0u].asString());
 
-
-		if (jvParams.isMember(jss::include_success)) {
-
-			jvRequest[jss::include_success] = true;
-		}
-
-		if (jvParams.isMember(jss::include_failure)) {
-
-			jvRequest[jss::include_failure] = true;
-		}
-
+        switch (jvParams.size())
+        {
+        case 3:
+            if (jvParams[2u].asString() == jss::include_success || jvParams[2u].asString() == jss::include_failure)
+            {
+                jvRequest[jvParams[2u].asString()] = true;
+            }
+            // don't break;
+        case 2:
+            if (jvParams[1u].asString() == jss::include_success || jvParams[1u].asString() == jss::include_failure)
+            {
+                jvRequest[jvParams[1u].asString()] = true;
+            }
+            break;
+        default:
+            break;
+        }
 
 		return jvRequest;
 	}
