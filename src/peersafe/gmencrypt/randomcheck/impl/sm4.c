@@ -52,7 +52,7 @@
 // key:    01 23 45 67 89 ab cd ef fe dc ba 98 76 54 32 10
 // cypher: 59 52 98 c7 c6 fd 27 1f 04 02 f8 04 c3 3d 3f 66
 
-#include <gmencrypt/randomcheck/sm4.h>
+#include <peersafe/gmencrypt/randomcheck/sm4.h>
 #include <string.h>
 #include <stdio.h>
 

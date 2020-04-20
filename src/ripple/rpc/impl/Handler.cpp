@@ -190,7 +190,7 @@ Handler handlerArray[] {
     // Evented methods
     {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION  },
     {   "unsubscribe",        byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION  },
-	{    "gen_csr",              byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION }
+	{    "gen_csr",              byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION },
 
 	{   "g_createrandom",       byRef (&doCreateRandom),       Role::USER,   NO_CONDITION },
     {   "g_cryptdata",          byRef (&doCryptData),          Role::USER,   NO_CONDITION },

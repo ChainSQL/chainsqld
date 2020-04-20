@@ -139,9 +139,10 @@ include_directories(
   src/nudb/include
   src/soci/src
   src/soci/include
-  src/peersafe/gmencrypt/softencrypt/GmSSL/include
+  src/peersafe/gmencrypt/softencrypt/GmSSL
   src/evmjit
   src/evmjit/evmc/include)
+
 
 special_build_flags()
 
@@ -187,7 +188,7 @@ setup_build_boilerplate()
 if(enableGmalg)
   use_gmalg()
 else()
-  set(GMALG_LIBRARYS)
+  set(GMALG_LIBRARIES)
 endif()
 
 ############################################################
@@ -339,7 +340,7 @@ foreach(curdir
         protocol
         rpc
         vm)
-    file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp)
+    file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp src/peersafe/${curdir}/*.c)
     list(APPEND chainsqld_src_nonunity "${cursrcs}")
     list(APPEND non_unity_srcs "${cursrcs}")
 endforeach()
@@ -582,7 +583,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} ${GMALG_LIBRARYS} evmjit)
+      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} ${GMALG_LIBRARIES} evmjit)
 
     link_common_libraries(${target})
 endforeach()

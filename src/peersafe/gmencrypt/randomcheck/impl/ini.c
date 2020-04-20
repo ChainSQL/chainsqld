@@ -6,30 +6,30 @@
 * Date        By who     Desc
 * ----------  ---------  -------------------------------
 * 2009.04.19  Yaahao     Created
-* 2009.04.30  yaahao     ReadLine()ÖÐÈç¹ûÎÄ¼þ×îºóÎÞ¿ÕÐÐÊ±×îºóÒ»¸ö×Ö·û¶ªÊ§µÄ´íÎó
-* 2009.08.20  ......     ÐÞ¸ÄGetIniItem()ÕÒ²»µ½ÅäÖÃÏîÒÀÈ»ÕýÈ··µ»ØµÄ´íÎó
+* 2009.04.30  yaahao     ReadLine()ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½Þ¿ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½Ê§ï¿½Ä´ï¿½ï¿½ï¿½
+* 2009.08.20  ......     ï¿½Þ¸ï¿½GetIniItem()ï¿½Ò²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È»ï¿½ï¿½È·ï¿½ï¿½ï¿½ØµÄ´ï¿½ï¿½ï¿½
 * 2010.04.01  ......     Corrected GetIniItem() (not close(fp))
-* 2012/3/25   GAO        ÐÞ¸ÄÎªÍ¨ÓÃ°æ±¾ INI_H_COMMON_VERSION
-*                        Ôö¼ÓSetIniItem¹¦ÄÜ£º
-*                            Èç¹û value == NULL£¬ÔòÉ¾³ý item
-*                            Èç¹û item == NULL£¬ÔòÉ¾³ý section
+* 2012/3/25   GAO        ï¿½Þ¸ï¿½ÎªÍ¨ï¿½Ã°æ±¾ INI_H_COMMON_VERSION
+*                        ï¿½ï¿½ï¿½ï¿½SetIniItemï¿½ï¿½ï¿½Ü£ï¿½
+*                            ï¿½ï¿½ï¿½ value == NULLï¿½ï¿½ï¿½ï¿½É¾ï¿½ï¿½ item
+*                            ï¿½ï¿½ï¿½ item == NULLï¿½ï¿½ï¿½ï¿½É¾ï¿½ï¿½ section
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <gmencrypt/randomcheck/swsds.h>
-#include <gmencrypt/randomcheck/ini.h>
+#include <peersafe/gmencrypt/randomcheck/swsds.h>
+#include <peersafe/gmencrypt/randomcheck/ini.h>
 
 
 /******************************************************************************
  * Function: GetItemValue
- * Description: ¶ÁÅäÖÃÏîµÄÖµ
- * Input: char *stConfigFileName ÅäÖÃÎÄ¼þÃû
- *        char *item ÅäÖÃÏîÃû³Æ
- * Output:char *value ÅäÖÃÏîµÄÖµ
- * Return: SDR_OK ³É¹¦ ÆäËû Ê§°Ü
+ * Description: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
+ * Input: char *stConfigFileName ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½
+ *        char *item ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * Output:char *value ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Öµ
+ * Return: SDR_OK ï¿½É¹ï¿½ ï¿½ï¿½ï¿½ï¿½ Ê§ï¿½ï¿½
  * Others:
 ******************************************************************************/
 int GetItemValue(char *stConfigFileName, char *item, char *value)
@@ -89,7 +89,7 @@ int GetItemValue(char *stConfigFileName, char *item, char *value)
 		}
 	}
 
-	//Ã»ÓÐÕÒµ½ÅäÖÃÏî
+	//Ã»ï¿½ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	fclose(fp);
 
 	return -1;

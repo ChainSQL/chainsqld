@@ -29,7 +29,7 @@
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/engine.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/evp.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/rand.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/SMEngine.h>
+#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/obj_mac.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm2.h>
 //#include <gmencrypt/softencrypt/usr/include/openssl/hmac.h>
 
@@ -58,7 +58,24 @@ public:
     unsigned long  CloseDevice();
     std::pair<unsigned char*, int> getPublicKey();
     std::pair<unsigned char*, int> getPrivateKey();
+    //Generate random
+	unsigned long GenerateRandom(
+		unsigned int uiLength,
+		unsigned char * pucRandomBuf);
+	unsigned long GenerateRandom2File(
+		unsigned int uiLength,
+		unsigned char * pucRandomBuf,
+		int times);
     //SM2 interface
+    unsigned long getPrivateKeyRight(
+		unsigned int uiKeyIndex,
+		unsigned char *pucPassword = nullptr,
+		unsigned int uiPwdLength = 0);
+	//Release Private key access right
+	unsigned long releasePrivateKeyRight(
+		unsigned int uiKeyIndex);
+	std::pair<unsigned char*, int> getECCSyncTablePubKey(unsigned char* publicKeyTemp);
+	std::pair<unsigned char*, int> getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex);
     //Generate Publick&Secret Key
     unsigned long SM2GenECCKeyPair(
         unsigned long ulAlias,
@@ -66,6 +83,7 @@ public:
         unsigned long ulModulusLen);
     //SM2 Sign&Verify
     unsigned long SM2ECCSign(
+        std::pair<int, int> pri4SignInfo,
         std::pair<unsigned char*, int>& pri4Sign,
         unsigned char *pInData,
         unsigned long ulInDataLen,
@@ -91,11 +109,13 @@ public:
         unsigned long ulAlias,
         unsigned long ulKeyUse);
     unsigned long SM2ECCDecrypt(
+        std::pair<int, int> pri4DecryptInfo,
         std::pair<unsigned char*, int>& pri4Decrypt,
         unsigned char *pCipherData,
         unsigned long ulCipherDataLen,
         unsigned char *pPlainData,
         unsigned long *pulPlainDataLen,
+        bool isSymmertryKey,
         unsigned long ulAlias,
         unsigned long ulKeyUse);
     //SM3 interface
@@ -104,24 +124,29 @@ public:
         unsigned long ulInDataLen,
         unsigned char *pHashData,
         unsigned long *pulHashDataLen);
-    unsigned long SM3HashInit(EVP_MD_CTX *phSM3Handle);
+    // unsigned long SM3HashInit(EVP_MD_CTX *phSM3Handle);
+    unsigned long SM3HashInit(HANDLE *phSM3Handle);
     unsigned long SM3HashFinal(void* phSM3Handle, unsigned char *pHashData, unsigned long *pulHashDataLen);
     void operator()(void* phSM3Handle, void const* data, std::size_t size) noexcept;
     //SM4 Symetry Encrypt&Decrypt
     unsigned long SM4SymEncrypt(
-        unsigned char *pSessionKey,
-        unsigned long pSessionKeyLen,
-        unsigned char *pPlainData,
-        unsigned long ulPlainDataLen,
-        unsigned char *pCipherData,
-        unsigned long *pulCipherDataLen);
-    unsigned long SM4SymDecrypt(
-        unsigned char *pSessionKey,
-        unsigned long pSessionKeyLen,
-        unsigned char *pCipherData,
-        unsigned long ulCipherDataLen,
-        unsigned char *pPlainData,
-        unsigned long *pulPlainDataLen);
+		unsigned int  uiAlgMode,
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pPlainData,
+		unsigned long ulPlainDataLen,
+		unsigned char *pCipherData,
+		unsigned long *pulCipherDataLen,
+		int secKeyType);
+	unsigned long SM4SymDecrypt(
+		unsigned int  uiAlgMode,
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pCipherData,
+		unsigned long ulCipherDataLen,
+		unsigned char *pPlainData,
+		unsigned long *pulPlainDataLen,
+		int secKeyType);
     unsigned long SM4GenerateSessionKey(
         unsigned char *pSessionKey,
         unsigned long *pSessionKeyLen);
@@ -138,6 +163,9 @@ private:
     const EVP_MD *md_;
     EC_KEY *sm2Keypair_;
     unsigned char pubKeyUser_[PUBLIC_KEY_EXT_LEN];
+
+private:
+    size_t EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf);
 };
 
 #endif
