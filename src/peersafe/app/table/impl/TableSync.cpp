@@ -423,7 +423,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
 						lastLedgerHash = ledger->info().hash;
 
 						bSendEnd = true; 
-                        JLOG(journal_.info()) << "in local seekLedger, this ledger does not include tx : " << uStopIndex
+                        JLOG(journal_.debug()) << "in local seekLedger, this ledger does not include tx : " << uStopIndex
                             << " lashTxChecHash : " << lashTxChecHash
                             << " nameInDB : " << stItemInfo.sTableNameInDB;                            
 						continue;
