@@ -30,9 +30,9 @@ ShardManager::ShardManager(Application& app, Config& cfg, Logs& log)
     , cfg_(cfg)
 {
     mLookup = std::make_unique<ripple::Lookup>(*this, app, cfg, log.journal("Lookup"));
-    mNode = std::make_unique<ripple::Node>(*this, app, cfg, log.journal("Lookup"));
-    mCommittee = std::make_unique<ripple::Committee>(*this, app, cfg, log.journal("Lookup"));
-    mSync = std::make_unique<ripple::Sync>(*this, app, cfg, log.journal("Lookup"));
+    mNode = std::make_unique<ripple::Node>(*this, app, cfg, log.journal("Node"));
+    mCommittee = std::make_unique<ripple::Committee>(*this, app, cfg, log.journal("Committee"));
+    mSync = std::make_unique<ripple::Sync>(*this, app, cfg, log.journal("Sync"));
 
     // Initial my role(mShardRole)
     // TODO

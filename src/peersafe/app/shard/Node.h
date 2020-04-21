@@ -52,9 +52,9 @@ private:
 
     ShardManager&                                       mShardManager;
 
-    Application&										app_;
-    beast::Journal										journal_;
-    Config&												cfg_;
+    Application&                                        app_;
+    beast::Journal                                      journal_;
+    Config&                                             cfg_;
 
 
 public:

@@ -40,10 +40,10 @@ public:
     enum ShardRole {
         UNKNOWN = 0,
 
-        LOOKUP = 1 << 0,
-        SHARD = 1 << 1,
-        COMMITTEE = 1 << 2,
-        SYNC = 1 << 3,
+        LOOKUP      = 1 << 0,
+        SHARD       = 1 << 1,
+        COMMITTEE   = 1 << 2,
+        SYNC        = 1 << 3,
     };
 
 private:
@@ -58,8 +58,8 @@ private:
 
     std::unique_ptr<Sync>           mSync;
 
-    Application&					app_;
-    Config&							cfg_;
+    Application&                    app_;
+    Config&                         cfg_;
 
 public:
 
