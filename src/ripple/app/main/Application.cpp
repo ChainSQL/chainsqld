@@ -68,6 +68,7 @@
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/app/shard/ShardManager.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/optional.hpp>
@@ -383,6 +384,8 @@ public:
 
     io_latency_sampler m_io_latency_sampler;
 
+    std::unique_ptr <ShardManager> mShardManager;
+
     //--------------------------------------------------------------------------
 
     static
@@ -550,6 +553,8 @@ public:
 
         , m_io_latency_sampler (m_collectorManager->collector()->make_event ("ios_latency"),
             logs_->journal("Application"), std::chrono::milliseconds (100), get_io_service())
+
+        , mShardManager (std::make_unique<ShardManager>(*this, *config_, *logs_))
     {
         add (m_resourceManager.get ());
 
@@ -876,6 +881,12 @@ public:
     {
         assert (mWalletDB.get() != nullptr);
         return *mWalletDB;
+    }
+
+    ShardManager& getShardManager() override
+    {
+        assert(mShardManager.get() != nullptr);
+        return *mShardManager;
     }
 
     bool serverOkay (std::string& reason) override;

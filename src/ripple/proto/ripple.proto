@@ -23,6 +23,10 @@ enum MessageType
     mtVALIDATION            = 41;
     mtGET_OBJECTS           = 42;
 
+	mtMICROLEDGER_SUBMIT			= 50;	// from shard to committee
+	mtMICROLEDGERWITHTXS_SUBMIT		= 51;	// from shard to lookup
+	mtFINALLEDGER_SUBMIT			= 52;	// from committee to shard and lookup
+
     // <available>          = 10;
     // <available>          = 11;
     // <available>          = 14;
@@ -395,3 +399,54 @@ message TMViewChange
     required bytes 		signature           = 4;
 	required uint64 	toView				= 5;
 }
+
+//---------------------------------------------------------------------------------
+
+message MicroLedger {
+	required uint32		ledgerSeq			= 1;	// Ledger sequence
+	required uint32		shardID				= 2;	// The ID of the shard generated this MicroLedger
+
+	repeated bytes		txHashes			= 3;	// All transactions hash set in this MicroLedger
+	repeated bytes		stateDeltas			= 4;	// The state changes by the transactions in this MicroLedger
+	required bytes		txWMHashRoot		= 5;	// The transactions with meta data hash(Shamap not yet in use now)
+}
+
+message FinalLedger {
+	required uint32		ledgerSeq			= 1;	// Ledger sequence
+
+	repeated bytes		txHashes			= 2;	// All transactions hash set in this FinalBlock
+	required bytes		txShaMapRootHash	= 3;	// The final transactions Shamap root hash
+
+	repeated bytes		stateDeltas			= 4;	// The state changes by the transactions in this FinalLedger
+	required bytes		stateShaMapRootHash = 5;	// The final state Shamap root hash
+
+	// MicroLedger Info
+	message MLInfo {
+		required uint32		shardID		= 1;
+		required bytes		MBHash		= 2;
+	}
+
+	repeated MLInfo		microLedgers		= 6;	// The MicroLedger hash set in this FinalLedger
+}
+
+message Signature {
+	required string		publicKey       = 1;
+	required bytes 		signature		= 2;
+}
+
+message TMMicroLedgerSubmit {
+	required MicroLedger	microLedger		= 1;
+	repeated Signature		signatures		= 2;
+}
+
+message TMMicroLedgerWithTxsSubmit {
+	required MicroLedger	microLedger		= 1;
+	repeated Signature		signatures		= 2;
+	repeated TMTransaction	txWithMetas		= 3;	// 分片内所有交易详情和MetaData
+}
+
+message TMFinalLedgerSubmit {
+	required FinalLedger	finalLedger		= 1;
+	repeated Signature		signatures		= 2;
+}
+

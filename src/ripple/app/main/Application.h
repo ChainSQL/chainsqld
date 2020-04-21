@@ -84,6 +84,8 @@ class StateManager;
 class DatabaseCon;
 class SHAMapStore;
 
+class ShardManager;
+
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
 template <class StalePolicy, class Validation, class MutexType>
@@ -199,6 +201,8 @@ public:
     /** Ensure that a newly-started validator does not sign proposals older
      * than the last ledger it persisted. */
     virtual LedgerIndex getMaxDisallowedLedger() = 0;
+
+    virtual ShardManager& getShardManager() = 0;
 };
 
 std::unique_ptr <Application>

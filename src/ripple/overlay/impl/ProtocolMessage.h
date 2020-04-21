@@ -134,6 +134,10 @@ invokeProtocolMessage (Buffers const& buffers, Handler& handler)
     case protocol::mtVALIDATION:    ec = detail::invoke<protocol::TMValidation> (type, buffers, handler); break;
 	case protocol::mtVIEW_CHANGE:   ec = detail::invoke<protocol::TMViewChange>(type, buffers, handler); break;
     case protocol::mtGET_OBJECTS:   ec = detail::invoke<protocol::TMGetObjectByHash> (type, buffers, handler); break;
+
+    case protocol::mtMICROLEDGER_SUBMIT:            ec = detail::invoke<protocol::TMMicroLedgerSubmit> (type, buffers, handler); break;
+    case protocol::mtMICROLEDGERWITHTXS_SUBMIT:     ec = detail::invoke<protocol::TMMicroLedgerWithTxsSubmit> (type, buffers, handler); break;
+    case protocol::mtFINALLEDGER_SUBMIT:            ec = detail::invoke<protocol::TMFinalLedgerSubmit> (type, buffers, handler); break;
     default:
         ec = handler.onMessageUnknown (type);
         break;

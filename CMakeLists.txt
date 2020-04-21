@@ -257,7 +257,8 @@ src/peersafe/unity/
 gm_encrypt.cpp
 app_table.cpp
 app_contract.cpp
-app_sql.cpp)
+app_sql.cpp
+app_shard.cpp)
 
 
 

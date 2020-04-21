@@ -37,6 +37,11 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/shard/ShardManager.h>
+#include <peersafe/app/shard/Lookup.h>
+#include <peersafe/app/shard/Node.h>
+#include <peersafe/app/shard/Committee.h>
+#include <peersafe/app/shard/Sync.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <algorithm>
@@ -1900,6 +1905,68 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
         }
         if (packet.type () == protocol::TMGetObjectByHash::otFETCH_PACK)
             app_.getLedgerMaster ().gotFetchPack (progress, pLSeq);
+    }
+}
+
+void
+PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
+{
+    protocol::TMMicroLedgerSubmit& packet = *m;
+
+    switch (app_.getShardManager().myShardRole())
+    {
+    case ShardManager::COMMITTEE:
+        app_.getShardManager().Committee().onMessage(packet);
+        break;
+    default:
+        break;
+    }
+}
+
+void
+PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerWithTxsSubmit> const& m)
+{
+    protocol::TMMicroLedgerWithTxsSubmit& packet = *m;
+
+    switch (app_.getShardManager().myShardRole())
+    {
+    case ShardManager::LOOKUP:
+        app_.getShardManager().Lookup().onMessage(packet);
+        break;
+    case ShardManager::SYNC:
+        app_.getShardManager().Sync().onMessage(packet);
+        break;
+    case ShardManager::LOOKUP & ShardManager::SYNC:
+        app_.getShardManager().Lookup().onMessage(packet);
+        app_.getShardManager().Sync().onMessage(packet);
+        break;
+    default:
+        break;
+    }
+}
+
+void
+PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
+{
+    protocol::TMFinalLedgerSubmit& packet = *m;
+
+    switch (app_.getShardManager().myShardRole())
+    {
+    case ShardManager::LOOKUP:
+        app_.getShardManager().Lookup().onMessage(packet);
+        break;
+    case ShardManager::SHARD:
+        app_.getShardManager().Node().onMessage(packet);
+        break;
+    case ShardManager::SYNC:
+        app_.getShardManager().Sync().onMessage(packet);
+        break;
+    case ShardManager::LOOKUP & ShardManager::SYNC:
+        app_.getShardManager().Lookup().onMessage(packet);
+        app_.getShardManager().Sync().onMessage(packet);
+        break;
+    default:
+        break;
     }
 }
 
