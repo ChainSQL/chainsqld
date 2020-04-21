@@ -38,10 +38,6 @@
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/shard/ShardManager.h>
-#include <peersafe/app/shard/Lookup.h>
-#include <peersafe/app/shard/Node.h>
-#include <peersafe/app/shard/Committee.h>
-#include <peersafe/app/shard/Sync.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <algorithm>

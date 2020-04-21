@@ -30,19 +30,19 @@ class LedgerBase {
 
 protected:
 
-    LedgerHash                  mLedgerHash;
+    ripple::LedgerHash          mLedgerHash;
     std::map<PublicKey, Blob>   mSignatures;
 
 public:
     
     LedgerBase() {}
 
-    inline const uint256 & LedgerHash()
+    inline const ripple::LedgerHash& LedgerHash()
     {
         return mLedgerHash;
     }
 
-    inline void setLedgerHash(const uint256 &ledgerHash)
+    inline void setLedgerHash(const ripple::LedgerHash& ledgerHash)
     {
         mLedgerHash = ledgerHash;
     }

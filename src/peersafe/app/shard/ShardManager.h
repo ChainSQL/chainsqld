@@ -48,18 +48,18 @@ public:
 
 private:
 
-    ShardRole                       mShardRole;
+    ShardRole                           mShardRole;
 
-    std::unique_ptr<Lookup>         mLookup;
+    std::unique_ptr<ripple::Lookup>     mLookup;
 
-    std::unique_ptr<Node>           mNode;
+    std::unique_ptr<ripple::Node>       mNode;
 
-    std::unique_ptr<Committee>      mCommittee;
+    std::unique_ptr<ripple::Committee>  mCommittee;
 
-    std::unique_ptr<Sync>           mSync;
+    std::unique_ptr<ripple::Sync>       mSync;
 
-    Application&                    app_;
-    Config&                         cfg_;
+    Application&                        app_;
+    Config&                             cfg_;
 
 public:
 
@@ -72,22 +72,22 @@ public:
         return mShardRole;
     }
 
-    inline Node& Node()
+    inline ripple::Node& Node()
     {
         return *mNode;
     }
 
-    inline Lookup& Lookup()
+    inline ripple::Lookup& Lookup()
     {
         return *mLookup;
     }
 
-    inline Committee& Committee()
+    inline ripple::Committee& Committee()
     {
         return *mCommittee;
     }
 
-    inline Sync& Sync()
+    inline ripple::Sync& Sync()
     {
         return *mSync;
     }
