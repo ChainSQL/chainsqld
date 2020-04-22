@@ -30,7 +30,8 @@ extern "C" {
  * (Prior to 0.9.5a beta1, a different scheme was used: MMNNFFRBB for
  *  major minor fix final patch/beta)
  */
-# define OPENSSL_VERSION_NUMBER  0x10201000L
+# define OPENSSL_VERSION_NUMBER  0x1000207fL
+// # define OPENSSL_VERSION_NUMBER  0x10201000L
 # ifdef OPENSSL_FIPS
 #  define OPENSSL_VERSION_TEXT    "GmSSL 1.3.0 - OpenSSL 1.0.2d-fips 9 Jul 2015"
 # else

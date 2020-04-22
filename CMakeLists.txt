@@ -131,7 +131,10 @@ check_gcc4_abi()
 
 ############################################################
 
+set(CMAKE_INCLUDE_DIRECTORIES_BEFORE "ON")
 include_directories(
+    BEFORE
+    SYSTEM
   src
   src/beast
   src/beast/include
@@ -139,9 +142,11 @@ include_directories(
   src/nudb/include
   src/soci/src
   src/soci/include
-  src/peersafe/gmencrypt/softencrypt/GmSSL
+  src/peersafe/gmencrypt/softencrypt/GmSSL/include/
   src/evmjit
   src/evmjit/evmc/include)
+#   src/peersafe/gmencrypt/softencrypt/GmSSL/include/openssl
+#   src/peersafe/gmencrypt/softencrypt/GmSSL
 
 
 special_build_flags()
@@ -581,6 +586,7 @@ add_custom_target(docs
   )
 set_startup_project(chainsqld)
 
+message( STATUS "OPENSSL_INCLUDE_DIR: ${OPENSSL_INCLUDE_DIR}" )
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
       ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} ${GMALG_LIBRARIES} evmjit)

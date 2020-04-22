@@ -56,11 +56,11 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/kdf.h>
+#include <openssl/kdf.h>
 #include <openssl/x509.h>
 #include <openssl/asn1.h>
 #include <openssl/ecdsa.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm3.h>
+#include <openssl/sm3.h>
 
 #ifdef __cplusplus
 extern "C" {

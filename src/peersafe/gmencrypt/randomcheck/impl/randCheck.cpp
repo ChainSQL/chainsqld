@@ -10,7 +10,7 @@
 extern "C" {
 //#include <gmencrypt/randomcheck/impl/cephes.c>
 #include <peersafe/gmencrypt/randomcheck/cephes-protos.h>
-#include <peersafe/gmencrypt/randomcheck/impl/dfft.c>
+#include <peersafe/gmencrypt/randomcheck/impl/dfft.h>
 
 double igamc(double, double);
 // void  __ogg_fdrffti(int, double*, double*);

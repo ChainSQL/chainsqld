@@ -95,6 +95,22 @@ std::pair<unsigned char*, int> SoftEncrypt::getPrivateKey()
 //         memcpy(publickey + 33, originalPublicKey.y, sizeof(originalPublicKey.y));
 //     }
 // }
+unsigned long SoftEncrypt::GenerateRandom(unsigned int uiLength, unsigned char * pucRandomBuf)
+{}
+unsigned long SoftEncrypt::GenerateRandom2File(unsigned int uiLength, unsigned char * pucRandomBuf,int times)
+{}
+bool SoftEncrypt::randomSingleCheck(unsigned long randomCheckLen)
+{
+    return true;
+}
+unsigned long SoftEncrypt::getPrivateKeyRight(unsigned int uiKeyIndex, unsigned char * pucPassword, unsigned int uiPwdLength)
+{}
+unsigned long SoftEncrypt::releasePrivateKeyRight(unsigned int uiKeyIndex)
+{}
+std::pair<unsigned char*, int> SoftEncrypt::getECCSyncTablePubKey(unsigned char* publicKeyTemp)
+{}
+std::pair<unsigned char*, int> SoftEncrypt::getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex)
+{}
 //SM2 interface
 //Generate Publick&Secret Key
 unsigned long SoftEncrypt::SM2GenECCKeyPair(
@@ -230,31 +246,31 @@ unsigned long SoftEncrypt::SM2ECCVerify(
     // EVP_PKEY_CTX_free(pkctx);
     // return -1;
 
-	EC_KEY* pubkey = EC_KEY_new();
-	if (o2i_ECPublicKey(&pubkey, &(pub4Verify.first), pub4Verify.second) != nullptr){
+	// EC_KEY* pubkey = EC_KEY_new();
+	// if (o2i_ECPublicKey(&pubkey, &(pub4Verify.first), pub4Verify.second) != nullptr){
 
-		EC_KEY_set_conv_form(pubkey, POINT_CONVERSION_COMPRESSED);	
-	}
-	else {
-		EC_KEY_free(pubkey);
-		return 0;
-	}
+	// 	EC_KEY_set_conv_form(pubkey, POINT_CONVERSION_COMPRESSED);	
+	// }
+	// else {
+	// 	EC_KEY_free(pubkey);
+	// 	return 0;
+	// }
 		
 
-	int type     = NID_undef;
-	int dgestlen = uldgstLen;
-	int signLen  = ulSignValueLen;
+	// int type     = NID_undef;
+	// int dgestlen = uldgstLen;
+	// int signLen  = ulSignValueLen;
 
-	/* verify */
-	if (!SM2_verify(type, pdgst, dgestlen, pSignValue, signLen, pubkey)) {
-		DebugPrint("SM2ECCSign: SM2_sign failed");
-		return 0;
-	}
+	// /* verify */
+	// if (!SM2_verify(type, pdgst, dgestlen, pSignValue, signLen, pubkey)) {
+	// 	DebugPrint("SM2ECCSign: SM2_sign failed");
+	// 	return 0;
+	// }
 
-	if (pubkey)
-		EC_KEY_free(pubkey);
+	// if (pubkey)
+	// 	EC_KEY_free(pubkey);
 
-	return 1;
+	// return 1;
 }
 //SM2 Encrypt&Decrypt
 unsigned long SoftEncrypt::SM2ECCEncrypt(
@@ -286,31 +302,31 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
     // EVP_PKEY_CTX_free(pkctx);
     // return -1;
 
-	EC_KEY* pubkey = EC_KEY_new();
-	if (o2i_ECPublicKey(&pubkey, &(pub4Encrypt.first), pub4Encrypt.second) != nullptr) {
+	// EC_KEY* pubkey = EC_KEY_new();
+	// if (o2i_ECPublicKey(&pubkey, &(pub4Encrypt.first), pub4Encrypt.second) != nullptr) {
 
-		EC_KEY_set_conv_form(pubkey, POINT_CONVERSION_COMPRESSED);
-	}
-	else {
-		EC_KEY_free(pubkey);
-		return 0;
-	}
+	// 	EC_KEY_set_conv_form(pubkey, POINT_CONVERSION_COMPRESSED);
+	// }
+	// else {
+	// 	EC_KEY_free(pubkey);
+	// 	return 0;
+	// }
 
-	size_t outlen = 0;
-	if (!SM2_encrypt_with_recommended(pCipherData, &outlen,
-		(const unsigned char *)pPlainData, ulPlainDataLen, pubkey)) {
+	// size_t outlen = 0;
+	// if (!SM2_encrypt_with_recommended(pCipherData, &outlen,
+	// 	(const unsigned char *)pPlainData, ulPlainDataLen, pubkey)) {
 		
-		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended");
-		return 0;
-	}
+	// 	DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended");
+	// 	return 0;
+	// }
 
-	*pulCipherDataLen = outlen;
+	// *pulCipherDataLen = outlen;
 
 
-	if (pubkey)
-		EC_KEY_free(pubkey);
+	// if (pubkey)
+	// 	EC_KEY_free(pubkey);
 
-    return 1;
+    // return 1;
 }
 unsigned long SoftEncrypt::SM2ECCDecrypt(
     std::pair<int, int> pri4DecryptInfo,
@@ -344,35 +360,35 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
     // EVP_PKEY_CTX_free(pkctx);
     // return -1;
 
-	BIGNUM* bn = BN_bin2bn((const unsigned char *)(pri4Decrypt.first), (pri4Decrypt.second), nullptr);
-	if (bn == nullptr) {
-		DebugPrint("SM2ECCDecrypt: BN_bin2bn failed");
-		return 0;
-	}
+	// BIGNUM* bn = BN_bin2bn((const unsigned char *)(pri4Decrypt.first), (pri4Decrypt.second), nullptr);
+	// if (bn == nullptr) {
+	// 	DebugPrint("SM2ECCDecrypt: BN_bin2bn failed");
+	// 	return 0;
+	// }
 
-	EC_KEY* ec_key = EC_KEY_new();
-	const bool ok = EC_KEY_set_private_key(ec_key, bn);
-	BN_clear_free(bn);
+	// EC_KEY* ec_key = EC_KEY_new();
+	// const bool ok = EC_KEY_set_private_key(ec_key, bn);
+	// BN_clear_free(bn);
 
-	if (!ok) {
-		DebugPrint("SM2ECCSign: EC_KEY_set_private_key failed");
-		EC_KEY_free(ec_key);
-		return 0;
-	}
+	// if (!ok) {
+	// 	DebugPrint("SM2ECCSign: EC_KEY_set_private_key failed");
+	// 	EC_KEY_free(ec_key);
+	// 	return 0;
+	// }
 
-	size_t outlen = 0;
-	if (!SM2_decrypt_with_recommended(pPlainData, &outlen, pCipherData, ulCipherDataLen, ec_key)) {
-		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended failed");
-		EC_KEY_free(ec_key);
-		return 0;
-	}
+	// size_t outlen = 0;
+	// if (!SM2_decrypt_with_recommended(pPlainData, &outlen, pCipherData, ulCipherDataLen, ec_key)) {
+	// 	DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended failed");
+	// 	EC_KEY_free(ec_key);
+	// 	return 0;
+	// }
 
-	*pulPlainDataLen = outlen;
+	// *pulPlainDataLen = outlen;
 
-	if (ec_key)
-		EC_KEY_free(ec_key);
+	// if (ec_key)
+	// 	EC_KEY_free(ec_key);
 
-    return 1;
+    // return 1;
 }
 //SM3 interface
 unsigned long SoftEncrypt::SM3HashTotal(
@@ -403,12 +419,12 @@ unsigned long SoftEncrypt::SM3HashTotal(
     // EVP_MD_CTX_free((EVP_MD_CTX*)&hSessionHandle_);
     // return rv;
 
-	unsigned char dgst[SM3_DIGEST_LENGTH];
-	memset(dgst, 0, sizeof(dgst));
-	sm3(pInData, ulInDataLen, dgst);
-	memcpy(pHashData, dgst, SM3_DIGEST_LENGTH);
-	*pulHashDataLen = SM3_DIGEST_LENGTH;
-    return 1;
+	// unsigned char dgst[SM3_DIGEST_LENGTH];
+	// memset(dgst, 0, sizeof(dgst));
+	// sm3(pInData, ulInDataLen, dgst);
+	// memcpy(pHashData, dgst, SM3_DIGEST_LENGTH);
+	// *pulHashDataLen = SM3_DIGEST_LENGTH;
+    // return 1;
 }
 unsigned long SoftEncrypt::SM3HashInit(HANDLE *phSM3Handle)
 {
@@ -426,17 +442,18 @@ unsigned long SoftEncrypt::SM3HashInit(HANDLE *phSM3Handle)
     //     DebugPrint("EVP_DigestInit_ex() failed!");
     // } 
     // return !rv;
-	EVP_MD_CTX_init(phSM3Handle);
-    int  rv = EVP_DigestInit_ex(phSM3Handle, md_, sm_engine_);//(*phSM3Handle, SGD_SM3, NULL, NULL, 0);
-    if (rv)
-    {
-        DebugPrint("EVP_DigestInit_ex() OK!");
-    }
-    else
-    {
-        DebugPrint("EVP_DigestInit_ex() failed!");
-    } 
-    return !rv;
+
+	// EVP_MD_CTX_init(phSM3Handle);
+    // int  rv = EVP_DigestInit_ex(phSM3Handle, md_, sm_engine_);//(*phSM3Handle, SGD_SM3, NULL, NULL, 0);
+    // if (rv)
+    // {
+    //     DebugPrint("EVP_DigestInit_ex() OK!");
+    // }
+    // else
+    // {
+    //     DebugPrint("EVP_DigestInit_ex() failed!");
+    // } 
+    // return !rv;
 }
 
 unsigned long SoftEncrypt::SM3HashFinal(void* phSM3Handle, unsigned char *pHashData, unsigned long *pulHashDataLen)
@@ -465,30 +482,30 @@ unsigned long SoftEncrypt::SM3HashFinal(void* phSM3Handle, unsigned char *pHashD
     //     return -1;
     // }
 
-    int rv;
-    if (nullptr != phSM3Handle)
-    {
-        rv = EVP_DigestFinal_ex((EVP_MD_CTX*)&phSM3Handle, pHashData, (unsigned int*)pulHashDataLen);
-        //rv = SDF_HashFinal(phSM3Handle, pHashData, (SGD_UINT32*)pulHashDataLen);
-        if (rv)
-        {
-            DebugPrint("SM3soft Hash success!");
-        }
-        else
-        {
-            DebugPrint("SM3soft Hash failed!");
-        }
+    // int rv;
+    // if (nullptr != phSM3Handle)
+    // {
+    //     rv = EVP_DigestFinal_ex((EVP_MD_CTX*)&phSM3Handle, pHashData, (unsigned int*)pulHashDataLen);
+    //     //rv = SDF_HashFinal(phSM3Handle, pHashData, (SGD_UINT32*)pulHashDataLen);
+    //     if (rv)
+    //     {
+    //         DebugPrint("SM3soft Hash success!");
+    //     }
+    //     else
+    //     {
+    //         DebugPrint("SM3soft Hash failed!");
+    //     }
 
-		EVP_MD_CTX_cleanup((EVP_MD_CTX*)&phSM3Handle);
-        //ENGINE_finish(sm_engine);
-        //ENGINE_free(sm_engine);
-        return !rv;
-    }
-    else
-    {
-        DebugPrint("SessionHandle is null, please check!");
-        return -1;
-    }
+	// 	EVP_MD_CTX_cleanup((EVP_MD_CTX*)&phSM3Handle);
+    //     //ENGINE_finish(sm_engine);
+    //     //ENGINE_free(sm_engine);
+    //     return !rv;
+    // }
+    // else
+    // {
+    //     DebugPrint("SessionHandle is null, please check!");
+    //     return -1;
+    // }
 }
 void SoftEncrypt::operator()(void* phSM3Handle, void const* data, std::size_t size) noexcept
 {
