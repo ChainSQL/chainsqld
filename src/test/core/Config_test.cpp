@@ -853,8 +853,83 @@ trustthesevalidators.gov
         }
     }
 
+
+
+	void testShard()
+	{
+		testcase("shard");
+
+		{
+			Config c;
+			static boost::format configTemplate(R"rippleConfig(
+[shard]
+role = shard  
+shard_count = 3
+shard_index = 1
+
+)rippleConfig");
+			std::string error;
+			auto const expectedError =
+				"when the role is shard or committee, shared_file,lookup_file,sync_file must exist !";
+			try {
+				c.loadFromString(boost::str(
+					configTemplate));
+			}
+			catch (std::runtime_error& e) {
+				error = e.what();
+			}
+			BEAST_EXPECT(error == expectedError);
+
+
+			Config c2;
+			static boost::format configTemplate2(R"rippleConfig(
+[shard]
+shard_count = 3
+shard_index = 1
+
+)rippleConfig");
+			std::string error2;
+			auto const expectedError2 =
+				"the role must be set!";
+			try {
+				c2.loadFromString(boost::str(
+					configTemplate2));
+			}
+			catch (std::runtime_error& e) {
+				error2 = e.what();
+			}
+			BEAST_EXPECT(error2 == expectedError2);
+
+
+			Config c3;
+			static boost::format configTemplate3(R"rippleConfig(
+[shard]
+role = lookup  
+shard_count = 3
+shard_index = 1
+
+)rippleConfig");
+			std::string error3;
+			auto const expectedError3 =
+				"when the role is lookup, lookup_file must exist !";
+			try {
+				c3.loadFromString(boost::str(
+					configTemplate3));
+			}
+			catch (std::runtime_error& e) {
+				error3 = e.what();
+			}
+			BEAST_EXPECT(error3 == expectedError3);
+
+		}
+	}
+
+
+
+
     void run ()
     {
+		testShard();
         testLegacy ();
         testDbPath ();
         testValidatorKeys ();

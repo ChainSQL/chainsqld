@@ -77,8 +77,23 @@ namespace ripple {
 #define SECTION_VETO_AMENDMENTS         "veto_amendments"
 #define SECTION_WORKERS                 "workers"
 #define SECTION_PCONSENSUS              "pconsensus"
-
 #define SECTION_PATH_X509               "x509_crt_path"
+
+
+// shard related configuration items
+#define SECTION_SHARD                           "shard"
+#define SECTION_SHARD_FILE                      "shard_file"
+#define SECTION_LOOKUP_FILE                     "lookup_file"
+#define SECTION_SYNC_FILE                       "sync_file"
+#define SECTION_COMMITTEE_FILE                  "committee_file"
+#define SECTION_LOOKUP_IPS                      "lookup_ips"
+#define SECTION_LOOKUP_PUBLIC_KEYS              "lookup_public_keys"
+#define SECTION_SHARD_IPS                       "shard_ips"
+#define SECTION_SHARD_VALIDATORS                "shard_validators"
+#define SECTION_COMMITTEE_IPS                   "committee_ips"
+#define SECTION_COMMITTEE_VALIDATORS            "committee_validators"
+#define SECTION_SYNC_IPS                        "sync_ips"
+
 
 } // ripple
 

@@ -437,6 +437,69 @@ void Config::loadFromString (std::string const& fileContents)
     if (getSingleSection (secConfig, SECTION_WORKERS, strTemp, j_))
         WORKERS      = beast::lexicalCastThrow <std::size_t> (strTemp);
 
+
+	// shard related configuration items
+	{
+
+		const ripple::Section& shard        = section("shard");
+		std::pair<std::string, bool> role   = shard.find("role");
+		std::pair<std::string, bool> shard_count = shard.find("shard_count");
+		std::pair<std::string, bool> shard_index = shard.find("shard_index");
+
+		if (role.second) {	
+			std::vector<std::string> vecRoles;
+			boost::split(vecRoles, role.first, boost::is_any_of(","), boost::token_compress_on);
+
+
+			for (auto item : vecRoles) {
+
+				if      (item == std::string("lookup"))      SHARD_ROLE |= SHARD_ROLE_LOOKUP;
+				else if (item == std::string("shard"))       SHARD_ROLE |= SHARD_ROLE_SHARD;
+				else if (item == std::string("sync"))        SHARD_ROLE |= SHARD_ROLE_SYNC;
+				else if (item == std::string("committee"))   SHARD_ROLE |= SHARD_ROLE_COMMITTEE;
+			}
+
+		}
+
+		if ( SHARD_ROLE == SHARD_ROLE_UNDEFINED ) {
+			Throw<std::runtime_error>(
+				"the role must be set!");
+		}
+			
+		if (shard_count.second) {
+			SHARD_COUNT = beast::lexicalCastThrow <std::size_t>(shard_count.first);
+		}
+		
+		if (shard_index.second) {
+			SHARD_INDEX = beast::lexicalCastThrow <std::size_t>(shard_index.first);
+		}
+
+
+		bool bLookup    = loadLookupConfig(secConfig);
+		bool bShard     = loadShardConfig(secConfig);
+		bool bCommittee = loadCommitteeConfig(secConfig);
+		bool bSync      = loadSyncConfigConfig(secConfig);
+
+
+		if ((SHARD_ROLE & SHARD_ROLE_SHARD) || (SHARD_ROLE & SHARD_ROLE_COMMITTEE) ){
+
+			if ( !(bLookup && bShard && bCommittee && bSync) ){
+				Throw<std::runtime_error>(
+					"when the role is shard or committee, shared_file,lookup_file,sync_file must exist !");
+			}
+		}
+		else if (SHARD_ROLE & SHARD_ROLE_LOOKUP) {
+
+			if (!bLookup ) {
+				Throw<std::runtime_error>(
+					"when the role is lookup, lookup_file must exist !");
+			}
+		}
+		
+	}
+
+
+
     // Do not load trusted validator configuration for standalone mode
     if (! RUN_STANDALONE)
     {
@@ -563,6 +626,162 @@ void Config::loadFromString (std::string const& fileContents)
                     "Unknown feature: " + s + "  in config file.");
         }
     }
+}
+
+bool Config::loadLookupConfig(IniFileSections& secConfig)
+{
+	bool bLoad = false;
+	boost::filesystem::path lookupFile;
+	std::string strTemp;
+	if (getSingleSection(secConfig, SECTION_LOOKUP_FILE, strTemp, j_)){
+		lookupFile = strTemp;
+	}
+
+	if (boost::filesystem::exists(lookupFile)) {
+
+		std::ifstream ifsDefault(lookupFile.native().c_str());
+		std::string data;
+
+		data.assign(
+			std::istreambuf_iterator<char>(ifsDefault),
+			std::istreambuf_iterator<char>());
+
+		auto iniFile = parseIniFile(data, true);
+
+		if (auto s = getIniFileSection(iniFile, SECTION_LOOKUP_IPS))
+			LOOKUP_IPS = *s;
+
+		if (auto s = getIniFileSection(iniFile, SECTION_LOOKUP_PUBLIC_KEYS))
+			LOOKUP_PUBLIC_KEYS = *s;
+
+		bLoad = true;
+	}
+
+	return bLoad;
+}
+
+bool Config::loadShardConfig(IniFileSections& secConfig)
+{
+	bool bLoad = false;
+	boost::filesystem::path shardFile;
+	std::string strTemp;
+	if (getSingleSection(secConfig, SECTION_SHARD_FILE, strTemp, j_)) {
+		shardFile = strTemp;
+	}
+
+	if (boost::filesystem::exists(shardFile)) {
+
+		std::ifstream ifsDefault(shardFile.native().c_str());
+		std::string data;
+
+		data.assign(
+			std::istreambuf_iterator<char>(ifsDefault),
+			std::istreambuf_iterator<char>());
+
+		auto iniFile = parseIniFile(data, true);
+
+		std::vector<std::string>    shardIPs;
+		if (auto s = getIniFileSection(iniFile, SECTION_SHARD_IPS)) {
+
+			shardIPs = *s;
+			for (auto ip : shardIPs){
+
+				std::vector<std::string> vecIP;
+				boost::split(vecIP, ip, boost::is_any_of(","));
+				SHARD_IPS.push_back(vecIP);
+			
+			}		
+		}
+			
+		std::vector<std::string>    validators;
+		if (auto s = getIniFileSection(iniFile, SECTION_SHARD_VALIDATORS)) {
+
+			validators = *s;
+			for (auto validator : validators) {
+
+				std::vector<std::string> vecValidator;
+				boost::split(vecValidator, validator, boost::is_any_of(","));
+				SHARD_VALIDATORS.push_back(vecValidator);
+
+			}
+		}
+
+		bLoad = true;
+
+	}
+
+	return bLoad;
+
+}
+
+bool Config::loadCommitteeConfig(IniFileSections& secConfig)
+{
+
+	bool bLoad = false;
+
+	boost::filesystem::path committeeFile;
+	std::string strTemp;
+	if (getSingleSection(secConfig, SECTION_COMMITTEE_FILE, strTemp, j_)) {
+		committeeFile = strTemp;
+	}
+
+	if (boost::filesystem::exists(committeeFile)) {
+
+		std::ifstream ifsDefault(committeeFile.native().c_str());
+		std::string data;
+
+		data.assign(
+			std::istreambuf_iterator<char>(ifsDefault),
+			std::istreambuf_iterator<char>());
+
+		auto iniFile = parseIniFile(data, true);
+
+		if (auto s = getIniFileSection(iniFile, SECTION_COMMITTEE_IPS))
+			COMMITTEE_IPS = *s;
+
+		if (auto s = getIniFileSection(iniFile, SECTION_COMMITTEE_VALIDATORS))
+			COMMITTEE_VALIDATORS = *s;
+
+
+		bLoad = true;
+	}
+
+
+
+	return bLoad;
+}
+
+bool Config::loadSyncConfigConfig(IniFileSections& secConfig)
+{
+
+	bool bLoad = false;
+
+	boost::filesystem::path syncFile;
+	std::string strTemp;
+	if (getSingleSection(secConfig, SECTION_SYNC_FILE, strTemp, j_)) {
+		syncFile = strTemp;
+	}
+
+	if (boost::filesystem::exists(syncFile)) {
+
+		std::ifstream ifsDefault(syncFile.native().c_str());
+		std::string data;
+
+		data.assign(
+			std::istreambuf_iterator<char>(ifsDefault),
+			std::istreambuf_iterator<char>());
+
+		auto iniFile = parseIniFile(data, true);
+
+		if (auto s = getIniFileSection(iniFile, SECTION_SYNC_IPS))
+			SYNC_IPS = *s;
+
+
+		bLoad = true;
+	}
+
+
+	return bLoad;
 }
 
 int Config::getSize (SizedItemName item) const

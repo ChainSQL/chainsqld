@@ -183,6 +183,38 @@ public:
 
     std::unordered_set<uint256, beast::uhash<>> features;
 
+
+	// shard related configuration items
+
+	const int SHARD_ROLE_UNDEFINED = 0x00000000;
+	const int SHARD_ROLE_LOOKUP    = 0x00000001;
+	const int SHARD_ROLE_SYNC      = 0x00000010;
+	const int SHARD_ROLE_SHARD     = 0x00000100;
+	const int SHARD_ROLE_COMMITTEE = 0x00001000;
+
+
+	int                       SHARD_ROLE  = 0;
+	std::size_t               SHARD_COUNT = 1;
+	std::size_t               SHARD_INDEX = 1;
+
+
+
+	std::string               SHARD_FILE;
+	std::string               LOOKUP_FILE;
+	std::string               SYNC_FILE;
+
+
+	std::vector<std::string>    LOOKUP_IPS;                 
+	std::vector<std::string>    COMMITTEE_IPS;
+	std::vector<std::string>    SYNC_IPS;      
+
+	std::vector< std::vector<std::string> >   SHARD_IPS;
+	std::vector< std::vector<std::string> >   SHARD_VALIDATORS;
+
+	std::vector<std::string>    LOOKUP_PUBLIC_KEYS;
+	std::vector<std::string>    COMMITTEE_VALIDATORS;
+
+
 public:
     Config() = default;
 
@@ -204,6 +236,15 @@ public:
     bool quiet() const { return QUIET; }
     bool silent() const { return SILENT; }
     bool standalone() const { return RUN_STANDALONE; }
+
+
+
+	// shard related
+
+	bool loadLookupConfig(IniFileSections& secConfig);
+	bool loadShardConfig(IniFileSections& secConfig);
+	bool loadCommitteeConfig(IniFileSections& secConfig);
+	bool loadSyncConfigConfig(IniFileSections& secConfig);
 };
 
 } // ripple
