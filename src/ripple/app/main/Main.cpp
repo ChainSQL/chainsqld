@@ -308,8 +308,21 @@ int run (int argc, char** argv)
             vm["conf"].as<std::string> () : std::string();
 
     // config file, quiet flag.
-    config->setup (configFile, bool (vm.count ("quiet")),
-        bool(vm.count("silent")), bool(vm.count("standalone")));
+	{
+
+		try
+		{
+			config->setup(configFile, bool(vm.count("quiet")),
+				bool(vm.count("silent")), bool(vm.count("standalone")));
+		}
+		catch (std::exception const& e)
+		{
+			std::string error = e.what();
+			std::cerr << "Invalid cfg: " << error << std::endl;
+			return -1;
+		}
+
+	}
 
     {
         // Stir any previously saved entropy into the pool:

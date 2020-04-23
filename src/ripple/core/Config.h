@@ -193,7 +193,7 @@ public:
 	const int SHARD_ROLE_COMMITTEE = 0x00001000;
 
 
-	int                       SHARD_ROLE  = 0;
+	int                       SHARD_ROLE  = SHARD_ROLE_UNDEFINED;
 	std::size_t               SHARD_COUNT = 1;
 	std::size_t               SHARD_INDEX = 1;
 
@@ -245,6 +245,14 @@ public:
 	bool loadShardConfig(IniFileSections& secConfig);
 	bool loadCommitteeConfig(IniFileSections& secConfig);
 	bool loadSyncConfigConfig(IniFileSections& secConfig);
+
+	// get all shard related ips
+	void getShardRelatedIps(std::vector<std::string>& ips);
+
+
+
+	int          getShardRole()  const;
+	std::size_t  getShardIndex() const;
 };
 
 } // ripple

@@ -147,6 +147,10 @@ buildHello (
         h.set_ledgerprevious (hash.begin (), hash.size ());
     }
 
+	// shard related
+	h.set_shardrole(app.config().getShardRole());
+	h.set_shardindex(app.config().getShardIndex());
+
     return h;
 }
 
@@ -182,6 +186,13 @@ appendHello (beast::http::fields& h,
     if (hello.has_remote_ip())
         h.insert ("Remote-IP", beast::IP::to_string (
             beast::IP::AddressV4(hello.remote_ip())));
+
+	// shard related
+	if (hello.has_shardrole())
+		h.insert("Shard-Role", std::to_string(hello.shardrole()));
+
+	if (hello.has_shardindex())
+		h.insert("Shard-Index", std::to_string(hello.shardindex()));
 }
 
 std::vector<ProtocolVersion>
@@ -332,6 +343,33 @@ parseHello (bool request, beast::http::fields const& h, beast::Journal journal)
                 hello.set_remote_ip(address.to_v4().value);
         }
     }
+
+	// shard related
+	{
+		// Required
+		auto const iter = h.find("Shard-Role");
+		if (iter == h.end())
+			return boost::none;
+
+		std::uint32_t shardRole;
+		if (!beast::lexicalCastChecked(shardRole, iter->value().to_string()))
+			return boost::none;
+		hello.set_shardrole(shardRole);
+		
+	}
+
+	{
+		// Required
+		auto const iter = h.find("Shard-Index");
+		if (iter == h.end())
+			return boost::none;
+
+		std::uint32_t shardIndex;
+		if (!beast::lexicalCastChecked(shardIndex, iter->value().to_string()))
+			return boost::none;
+		hello.set_shardindex(shardIndex);
+		
+	}
 
     return hello;
 }

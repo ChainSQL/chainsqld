@@ -486,11 +486,16 @@ OverlayImpl::onPrepare()
     // Populate our boot cache: if there are no entries in [ips] then we use
     // the entries in [ips_fixed]. If both are empty, we resort to a round-robin
     // pool.
-    auto bootstrapIps = app_.config().IPS.empty()
-        ? app_.config().IPS_FIXED
-        : app_.config().IPS;
-    if (bootstrapIps.empty ())
-        bootstrapIps.push_back ("r.ripple.com 51235");
+    //auto bootstrapIps = app_.config().IPS.empty()
+    //    ? app_.config().IPS_FIXED
+    //    : app_.config().IPS;
+    //if (bootstrapIps.empty ())
+    //    bootstrapIps.push_back ("r.ripple.com 51235");
+
+
+	// get shard related ips
+	std::vector<std::string> bootstrapIps;
+	app_.config().getShardRelatedIps(bootstrapIps);
 
     m_resolver.resolve (bootstrapIps,
         [this](std::string const& name,

@@ -1925,9 +1925,9 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerWithTxsSubmit> const&
     protocol::TMMicroLedgerWithTxsSubmit& packet = *m;
 
     switch (app_.getShardManager().myShardRole())
-    {
+    {                                                                                                                                                                                                                      
     case ShardManager::LOOKUP:
-        app_.getShardManager().Lookup().onMessage(packet);
+        app_.getShardManager().Lookup().onMessage(packet);                                            
         break;
     case ShardManager::SYNC:
         app_.getShardManager().Sync().onMessage(packet);

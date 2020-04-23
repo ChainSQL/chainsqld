@@ -784,6 +784,30 @@ bool Config::loadSyncConfigConfig(IniFileSections& secConfig)
 	return bLoad;
 }
 
+void Config::getShardRelatedIps(std::vector<std::string>& ips)
+{
+	ips.insert(ips.end(), LOOKUP_IPS.begin(), LOOKUP_IPS.end());
+	ips.insert(ips.end(), COMMITTEE_IPS.begin(), COMMITTEE_IPS.end());
+	ips.insert(ips.end(), SYNC_IPS.begin(), SYNC_IPS.end());
+
+	for (auto item : SHARD_IPS) {
+		ips.insert(ips.end(), item.begin(), item.end());
+	}
+
+	std::sort(ips.begin(), ips.end());
+	ips.erase(std::unique(ips.begin(), ips.end()), ips.end());
+}
+
+int Config::getShardRole() const
+{
+	return SHARD_ROLE;
+}
+
+std::size_t Config::getShardIndex() const
+{
+	return SHARD_INDEX;
+}
+
 int Config::getSize (SizedItemName item) const
 {
     SizedItem sizeTable[] =   //    tiny    small   medium  large       huge
