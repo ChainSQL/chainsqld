@@ -67,7 +67,7 @@ public:
 		unsigned int uiLength,
 		unsigned char * pucRandomBuf,
 		int times);
-
+    bool randomSingleCheck(unsigned long randomCheckLen);
     //SM2 interface
 	//Get Private key access right
 	unsigned long getPrivateKeyRight(

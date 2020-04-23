@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/gmencrypt/hardencrypt/sjk1238_26.h>
+#include <peersafe/gmencrypt/hardencrypt/gmCheck.h>
 #include <cstdlib>
 #include <iostream>
 extern "C" {
@@ -171,6 +172,12 @@ unsigned long SJK1238::GenerateRandom2File(unsigned int uiLength, unsigned char 
 	SDF_DestroyKey(hSessionHandle_, hKey);
 	return 0;
 }
+
+bool SJK1238::randomSingleCheck(unsigned long randomCheckLen)
+{
+    return GMCheck::getInstance()->randomSingleCheck(randomCheckLen);
+}
+
 unsigned long SJK1238::getPrivateKeyRight(unsigned int uiKeyIndex, unsigned char * pucPassword, unsigned int uiPwdLength)
 {
 	int rv;

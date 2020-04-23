@@ -22,11 +22,26 @@
 #include <peersafe/gmencrypt/hardencrypt/sjk1238_26.h>
 #include <peersafe/gmencrypt/softencrypt/GmSoftEncrypt.h>
 
-#ifdef SD_KEY_SWITCH
-HardEncryptObj::hardEncryptType HardEncryptObj::hEType_ = HardEncryptObj::hardEncryptType::sdkeyType;
-#else
-HardEncryptObj::hardEncryptType HardEncryptObj::hEType_ = HardEncryptObj::hardEncryptType::sjk1238Type;
-#endif
+// #ifdef SD_KEY_SWITCH
+// HardEncryptObj::hardEncryptType HardEncryptObj::hEType_ = HardEncryptObj::hardEncryptType::sdkeyType;
+// #else
+// HardEncryptObj::hardEncryptType HardEncryptObj::hEType_ = HardEncryptObj::hardEncryptType::sjk1238Type;
+// #endif
+HardEncryptObj::gmAlgType HardEncryptObj::hEType_ = gmAlgType::soft;
+
+HardEncryptObj::gmAlgType HardEncryptObj::fromString(std::string gmAlgTypeStr)
+{
+    if(gmAlgTypeStr == "soft")
+        return gmAlgType::soft;
+    if(gmAlgTypeStr == "hard")
+        return gmAlgType::sjk1238Type;
+    return gmAlgType::unknown;
+}
+
+void HardEncryptObj::setGmAlgType(gmAlgType gmAlgType)
+{
+    HardEncryptObj::hEType_ = gmAlgType;
+}
 
 //HardEncrypt* HardEncryptObj::getInstance(hardEncryptType hEType)
 HardEncrypt* HardEncryptObj::getInstance()
@@ -35,11 +50,11 @@ HardEncrypt* HardEncryptObj::getInstance()
     switch (hEType_)
     {
 #ifdef BEGIN_SDKEY
-    case hardEncryptType::sdkeyType:
+    case gmAlgType::sdkeyType:
         static SDkey objSdkey;
         return &objSdkey;
 #endif
-    case hardEncryptType::sjk1238Type:
+    case gmAlgType::sjk1238Type:
     {
         static SJK1238 objSjk1238;
         if (objSjk1238.isHardEncryptExist())
@@ -55,6 +70,11 @@ HardEncrypt* HardEncryptObj::getInstance()
             return nullptr;//if the card is not exist,then return nullptr------this is function before
 #endif
         }
+    }
+    case gmAlgType::soft:
+    {
+        static SoftEncrypt objSoftEncrypt;
+        return &objSoftEncrypt;
     }
     default:
         std::cout << "hardEncryptType error!" << std::endl;

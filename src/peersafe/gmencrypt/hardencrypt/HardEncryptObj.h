@@ -29,11 +29,13 @@ private:
     HardEncryptObj();
 
 public:
-    enum hardEncryptType { unknown = -1, sdkeyType, sjk1238Type };
-    static hardEncryptType hEType_;
+    enum gmAlgType { unknown = -1, sdkeyType, sjk1238Type, soft };
+    static gmAlgType hEType_;
 
 public:
+    static void setGmAlgType(gmAlgType gmAlgType);
     static HardEncrypt* getInstance();
+    static gmAlgType fromString(std::string gmAlgTypeStr);
 };
 
 #endif

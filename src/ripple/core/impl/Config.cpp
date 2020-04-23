@@ -27,6 +27,7 @@
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
 #include <beast/core/string.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
@@ -324,7 +325,24 @@ void Config::loadFromString (std::string const& fileContents)
 		}
 
 	}
-		
+
+    auto gmSwitchSection = section( ConfigSection::gmSwitch() );
+    if (!gmSwitchSection.empty ())
+    {
+        if(gmSwitchSection.exists("gm_type"))
+        {
+            auto gmType = gmSwitchSection.get<std::string>("gm_type");
+            HardEncryptObj::setGmAlgType(HardEncryptObj::fromString(*gmType));
+        }
+        if(gmSwitchSection.exists("gm_self_check"))
+        {
+            auto gmSelfCheck = gmSwitchSection.get<bool>("gm_self_check");
+            GM_SELF_CHECK = *gmSelfCheck;
+        }
+    }	
+
+    // if (getSingleSection(secConfig, SECTION_GM_SELF_CHECK, strTemp, j_))
+	// 	GM_SELF_CHECK = beast::lexicalCastThrow <bool>(strTemp);
 
     {
         std::string dbPath;
@@ -337,9 +355,6 @@ void Config::loadFromString (std::string const& fileContents)
     }
 
     std::string strTemp;
-	
-	if (getSingleSection(secConfig, SECTION_GM_SELF_CHECK, strTemp, j_))
-		GM_SELF_CHECK = beast::lexicalCastThrow <bool>(strTemp);
 
     if (getSingleSection (secConfig, SECTION_PEER_PRIVATE, strTemp, j_))
         PEER_PRIVATE = beast::lexicalCastThrow <bool> (strTemp);

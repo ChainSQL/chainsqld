@@ -397,11 +397,12 @@ generateKeyPair (KeyType type, Seed const& seed)
     case KeyType::gmalg:
     {
 		const int randomCheckLen = 32; //256bit = 32 byte
-		if (!GMCheck::getInstance()->randomSingleCheck(randomCheckLen))
+        HardEncrypt* hEObj = HardEncryptObj::getInstance();
+		if (!hEObj->randomSingleCheck(randomCheckLen))
 		{
 			LogicError("randomSingleCheck failed!");
 		}
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
+        
         std::pair<unsigned char*, int> tempPublickey;
         std::pair<unsigned char*, int> tempPrivatekey;
         Seed rootSeed = generateSeed("masterpassphrase");

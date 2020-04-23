@@ -390,6 +390,10 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
 
 bool generateAddrAndPubFile(int pubType, int index, std::string filePath)
 {
+    if(HardEncryptObj::hEType_ == HardEncryptObj::gmAlgType::soft)
+    {
+        return true;
+    }
 	HardEncrypt* hEObj = HardEncryptObj::getInstance();
 	std::string fileName = "";
 	unsigned char publicKeyTemp[PUBLIC_KEY_EXT_LEN] = { 0 };

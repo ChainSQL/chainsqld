@@ -31,7 +31,7 @@
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/ec.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/rand.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/obj_mac.h>
-#include <openssl/sm2.h>
+#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm2.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm3.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sms4.h>
 //#include <gmencrypt/softencrypt/usr/include/openssl/hmac.h>

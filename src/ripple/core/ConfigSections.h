@@ -32,6 +32,7 @@ namespace ripple {
 		static std::string syncTables() { return "sync_tables"; }
 		static std::string autoSync() { return "auto_sync"; }
 		static std::string pressSwitch() { return "press_switch"; }
+        static std::string gmSwitch() { return "gm_switch"; }
 	};
 
 	// VFALCO TODO Rename and replace these macros with variables.
