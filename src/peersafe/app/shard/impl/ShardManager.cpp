@@ -19,7 +19,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <peersafe/app/shard/ShardManager.h>
-
+#include <ripple/core/Config.h>
 #include <memory>
 
 namespace ripple
@@ -36,6 +36,7 @@ ShardManager::ShardManager(Application& app, Config& cfg, Logs& log)
 
     // Initial my role(mShardRole)
     // TODO
+	mShardRole = (ShardRole)cfg.getShardRole();
 
 }
 

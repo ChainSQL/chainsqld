@@ -28,6 +28,10 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
     , cfg_(cfg)
 {
     // TODO initial peers and validators
+
+
+
+
 }
 
 void Lookup::onMessage(protocol::TMMicroLedgerWithTxsSubmit const& m)

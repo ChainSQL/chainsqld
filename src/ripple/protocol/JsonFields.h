@@ -537,7 +537,7 @@ JSS ( vetoed );                     // out: AmendmentTableImpl
 JSS ( vote );                       // in: Feature
 JSS ( warning );                    // rpc:
 JSS ( write_load );                 // out: GetCounts
-JSS (memos);                        // out: memos
+JSS ( memos );                        // out: memos
 JSS ( lastLedgerSequence );			//
 JSS ( metaChain );			        // out: table tx chain and contract
 JSS ( TableChain );                  // out: 
@@ -547,7 +547,11 @@ JSS ( NextHash );                   // out:
 JSS ( log );
 
 
-JSS(drops_per_byte);                       // out: LogLevel
+JSS(drops_per_byte);                // out: LogLevel
+
+
+JSS(shard_role);                    // out: PeerImp
+
 #undef JSS
 
 } // jss

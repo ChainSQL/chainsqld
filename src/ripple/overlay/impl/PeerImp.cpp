@@ -352,6 +352,9 @@ PeerImp::json()
         }
     }
 
+	std::uint32_t shardRole = hello_.shardrole();
+	ret[jss::shard_role]    = app_.config().shardRoleToString(shardRole);
+
     return ret;
 }
 
