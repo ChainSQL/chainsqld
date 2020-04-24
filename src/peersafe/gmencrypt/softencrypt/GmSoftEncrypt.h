@@ -43,13 +43,6 @@ public:
     SoftEncrypt()
     {
         sm2Keypair_ = NULL;
-        // OpenSSL_add_all_algorithms();
-        // ENGINE_load_dynamic();
-        // sm_engine_ = ENGINE_by_id("CipherSuite_SM");
-        // if (sm_engine_ == NULL)
-        //     DebugPrint("SM Engine is NULL.");
-        // ENGINE_init(sm_engine_);
-        // md_ = ENGINE_get_digest(sm_engine_, NID_sm3);
         DebugPrint("SoftEncrypt ENGINE_init successfully!");
     }
     ~SoftEncrypt()
@@ -166,10 +159,13 @@ private:
     ENGINE *sm_engine_;
     const EVP_MD *md_;
     EC_KEY *sm2Keypair_;
+    sm3_ctx_t sm3_ctx_;
     unsigned char pubKeyUser_[PUBLIC_KEY_EXT_LEN];
+    unsigned char priKeyUser_[PRIVATE_KEY_EXT_LEN];
 
 private:
     size_t EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf);
+    unsigned long generateIV(unsigned int uiAlgMode, unsigned char * pIV);
 };
 
 #endif
