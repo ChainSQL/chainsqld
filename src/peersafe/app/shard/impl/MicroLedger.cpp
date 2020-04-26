@@ -36,6 +36,15 @@ MicroLedger::MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view)
     computeHash();
 }
 
+MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m)
+{
+    readMicroLedger(m.microledger());
+    readSignature(m.signatures());
+
+    // maybe need or not
+    //computeHash();
+}
+
 void MicroLedger::computeHash()
 {
     using beast::hash_append;
@@ -46,12 +55,19 @@ void MicroLedger::computeHash()
     {
         hash_append(txRootHash, *iter);
 
-        hash_append(txWMRootHash, mTxWithMetas.at(*iter).first->slice());
-        hash_append(txWMRootHash, mTxWithMetas.at(*iter).second->slice());
+        if (mHashSet.TxWMRootHash != zero)
+        {
+            hash_append(txWMRootHash, mTxWithMetas.at(*iter).first->slice());
+            hash_append(txWMRootHash, mTxWithMetas.at(*iter).second->slice());
+        }
     }
 
     mHashSet.TxsRootHash = static_cast<typename sha512_half_hasher::result_type>(txRootHash);
-    mHashSet.TxWMRootHash = static_cast<typename sha512_half_hasher::result_type>(txWMRootHash);
+
+    if (mHashSet.TxWMRootHash != zero)
+    {
+        mHashSet.TxWMRootHash = static_cast<typename sha512_half_hasher::result_type>(txWMRootHash);
+    }
 
     sha512_half_hasher stateDeltaHash;
 
@@ -65,12 +81,53 @@ void MicroLedger::computeHash()
 
     sha512_half_hasher ledgerHash;
 
-    setLedgerHash(sha512Half(
-        mSeq,
-        mShardID,
-        mHashSet.TxsRootHash,
-        mHashSet.TxWMRootHash,
-        mHashSet.StateDeltaHash));
+    setLedgerHash( sha512Half(makeSlice(getSigningData())) );
+}
+
+void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
+{
+    protocol::MicroLedger& m = *(ms.mutable_microledger());
+
+    m.set_ledgerseq(mSeq);
+    m.set_shardid(mShardID);
+
+    // Transaction hashes.
+    for (auto it : mTxsHashes)
+    {
+        m.add_txhashes(it.data(), it.size());
+    }
+
+    // Transaction with meta data root hash.
+    m.set_txwmhashroot(mHashSet.TxWMRootHash.data(),
+        mHashSet.TxWMRootHash.size());
+
+    // Statedetals.
+    for (auto it : mStateDeltas)
+    {
+        protocol::StateDelta& s = *m.add_statedeltas();
+        s.set_action((uint32)it.second.first);                        // action
+        s.set_sle(it.second.second.data(), it.second.second.size());  // sle
+    }
+
+    // Signatures
+    for (auto it : signatures())
+    {
+        protocol::Signature& s = *ms.add_signatures();
+        s.set_publickey((const char *)it.first.data(), it.first.size());
+        s.set_signature(it.second.data(), it.second.size());
+    }
+
+    if (withTxMeta)
+    {
+        // add tx with meta and send to lookups.
+        for (auto it : mTxWithMetas)
+        {
+            protocol::TxWithMeta& tx = *m.add_txwithmetas();
+            tx.set_hash(it.first.data(), it.first.size());
+            tx.set_body(it.second.first->data(), it.second.first->size());
+            tx.set_meta(it.second.second->data(), it.second.second->size());
+        }
+    }
 }
 
 
@@ -102,71 +159,14 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
     }
 }
 
-void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
-{
-    protocol::MicroLedger& m = *(ms.mutable_microledger());
-
-    m.set_ledgerseq(mSeq);
-    m.set_shardid(mShardID);
-
-    // Transaction hashes.
-    for (auto it : mTxsHashes)
-    {
-        m.add_txhashes(it.data(), it.size());
-    }
-
-    // Transaction with meta data root hash.
-    m.set_txwmhashroot(mHashSet.TxWMRootHash.data(),
-        mHashSet.TxWMRootHash.size());
-
-    // Statedetals.
-    for (auto it : mStateDeltas)
-    {
-        protocol::StateDelta& s = *m.add_statedeltas();
-        s.set_action((uint32)it.second.first);                        // action
-        s.set_sle(it.second.second.data(), it.second.second.size());  // sle
-    }
-
-    // Signatures
-    for (auto it : Signatures())
-    {
-        protocol::Signature& s = *ms.add_signatures();
-        s.set_publickey((const char *)it.first.data(), it.first.size());
-        s.set_signature(it.second.data(), it.second.size());
-    }
-
-    if (withTxMeta)
-    {
-        // add tx with meta and send to lookups.
-        for (auto it : mTxWithMetas)
-        {
-            protocol::TxWithMeta& tx = *m.add_txwithmetas();
-            tx.set_hash(it.first.data(), it.first.size());
-            tx.set_body(it.second.first->data(), it.second.first->size());
-            tx.set_meta(it.second.second->data(), it.second.second->size());
-        }
-    }
-}
-
-MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m)
-{
-	readMicroLedger(m.microledger());
-	readSignature(m.signatures());
-}
-
-MicroLedger::MicroLedger(protocol::TMMicroLedgerWithTxsSubmit const& m)
-{
-	readMicroLedger(m.microledger());
-	readSignature(m.signatures());
-}
-
 void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
 {
 	mSeq = m.ledgerseq();
 	mShardID = m.shardid();
+	memcpy(mHashSet.TxWMRootHash.begin(), m.txwmhashroot().data(), 32);
 	readTxHashes(m.txhashes());
 	readStateDelta(m.statedeltas());
-	memcpy(mTxWMRootHash.begin(), m.txwmhashroot().data(), 32);
+	readTxWithMeta(m.txwithmetas());
 }
 void MicroLedger::readTxHashes(::google::protobuf::RepeatedPtrField< ::std::string> const& hashes)
 {
@@ -179,37 +179,40 @@ void MicroLedger::readTxHashes(::google::protobuf::RepeatedPtrField< ::std::stri
 	}
 }
 
-void MicroLedger::readStateDelta(::google::protobuf::RepeatedPtrField< ::std::string> const& stateDeltas)
+void MicroLedger::readStateDelta(::google::protobuf::RepeatedPtrField<::protocol::StateDelta> const& stateDeltas)
 {
 	for (int i = 0; i < stateDeltas.size(); i++)
 	{
-		Blob delta;
-		delta.assign(stateDeltas.Get(i).begin(), stateDeltas.Get(i).end());
-		mStateDeltas.push_back(delta);
+        const protocol::StateDelta& delta = stateDeltas.Get(i);
+
+        uint256 key;
+
+        memcpy(key.begin(), delta.key().data(), 32);
+        Action action = (Action)delta.action();
+        Serializer s(delta.sle().data(), delta.sle().size());
+
+		mStateDeltas.emplace(key, std::make_pair(action, std::move(s)));
 	}
 }
-LedgerIndex	MicroLedger::seq()
+
+void MicroLedger::readTxWithMeta(::google::protobuf::RepeatedPtrField <::protocol::TxWithMeta> const& txWithMetas)
 {
-	return mSeq;
-}
-uint32	MicroLedger::shardID()
-{
-	return mShardID;
-}
-std::vector<TxID> const& MicroLedger::txHashes()
-{
-	return mTxsHashes;
-}
-std::vector<Blob> const& MicroLedger::stateDeltas()
-{
-	return mStateDeltas;
-}
-uint256	MicroLedger::txRootHash()
-{
-	return mTxWMRootHash;
+	for (int i = 0; i < txWithMetas.size(); i++)
+	{
+        const protocol::TxWithMeta& tm = txWithMetas.Get(i);
+
+		TxID txHash;
+
+		memcpy(txHash.begin(), tm.hash().data(), 32);
+
+        std::shared_ptr<Serializer> body = std::make_shared<Serializer>(tm.body().data(), tm.body().size());
+        std::shared_ptr<Serializer> meta = std::make_shared<Serializer>(tm.meta().data(), tm.meta().size());
+
+		mTxWithMetas.emplace(txHash, std::make_pair(body, meta));
+	}
 }
 
-bool MicroLedger::checkValidity(ValidatorList const& list, Blob signingData)
+bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, Blob signingData)
 {
 	bool ret = LedgerBase::checkValidity(list, signingData);
 	if (!ret)
@@ -217,6 +220,30 @@ bool MicroLedger::checkValidity(ValidatorList const& list, Blob signingData)
 
 	//check tx-roothash
 
+	//
+	if (mTxWithMetas.size() > 0 && mTxsHashes.size() != mTxWithMetas.size())
+		return false;
+
+	//check all tx-meta corresponds to tx-hashes
+	for (TxID hash : mTxsHashes)
+	{
+		if (mTxWithMetas.find(hash) == mTxWithMetas.end())
+			return false;
+	}
+
+    return true;
+}
+
+const Blob& MicroLedger::getSigningData()
+{
+    Serializer s;
+    s.add32(mSeq);
+    s.add32(mShardID);
+    s.add256(mHashSet.TxsRootHash);
+    s.add256(mHashSet.TxWMRootHash);
+    s.add256(mHashSet.StateDeltaHash);
+
+    return s.peekData();
 }
 
 }

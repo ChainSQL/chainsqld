@@ -519,7 +519,7 @@ RCLConsensus::Adaptor::onCollectFinish(
 			closeTime,
 			app_.timeKeeper().closeTime(),
 			nodeID_, 
-            app_.getShardManager().Node().ShardID()} };
+            app_.getShardManager().node().shardID()} };
 }
 
 void
@@ -561,7 +561,7 @@ RCLConsensus::Adaptor::onAccept(
 			auto timeStart = utcTime();
             if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
             {
-                app_.getShardManager().Node().doAccept(
+                app_.getShardManager().node().doAccept(
                     result.set,
                     prevLedger,
                     result.position.closeTime());

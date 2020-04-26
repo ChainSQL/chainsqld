@@ -1314,14 +1314,14 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 
     if (set.shardid() == Node::CommitteeShardID)
     {
-        isTrusted = shardManager.Committee().Validators().trusted(publicKey);
+        isTrusted = shardManager.committee().validators().trusted(publicKey);
     }
     else
     {
-        if (shardManager.Node().ShardID() == set.shardid())
+        if (shardManager.node().shardID() == set.shardid())
         {
-            auto iter = shardManager.Node().ShardValidators().find(set.shardid());
-            if (iter != shardManager.Node().ShardValidators().end())
+            auto iter = shardManager.node().shardValidators().find(set.shardid());
+            if (iter != shardManager.node().shardValidators().end())
             {
                 isTrusted = iter->second->trusted(publicKey);
             }
@@ -1758,15 +1758,15 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
 
         if (shardId == Node::CommitteeShardID)
         {
-            isTrusted = shardManager.Committee().Validators().trusted(val->getSignerPublic());
+            isTrusted = shardManager.committee().validators().trusted(val->getSignerPublic());
         }
         else
         {
             // Our shard
-            if (shardId == shardManager.Node().ShardID())
+            if (shardId == shardManager.node().shardID())
             {
-                auto iter = shardManager.Node().ShardValidators().find(shardId);
-                if (iter != shardManager.Node().ShardValidators().end())
+                auto iter = shardManager.node().shardValidators().find(shardId);
+                if (iter != shardManager.node().shardValidators().end())
                 {
                     isTrusted = iter->second->trusted(val->getSignerPublic());
                 }
@@ -1954,30 +1954,11 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
     case ShardManager::LOOKUP:
     case ShardManager::SYNC:
     case ShardManager::LOOKUP & ShardManager::SYNC:
-        app_.getShardManager().Lookup().onMessage(packet);
+        app_.getShardManager().lookup().onMessage(packet);
         break;
     case ShardManager::COMMITTEE:
-        app_.getShardManager().Committee().onMessage(packet);
+        app_.getShardManager().committee().onMessage(packet);
         break;
-    default:
-        break;
-    }
-}
-
-void
-PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerWithTxsSubmit> const& m)
-{
-    protocol::TMMicroLedgerWithTxsSubmit& packet = *m;
-
-    switch (app_.getShardManager().myShardRole())
-    {
-	case ShardManager::LOOKUP:
-	case ShardManager::SYNC:
-	case ShardManager::LOOKUP & ShardManager::SYNC:
-	{
-		app_.getShardManager().Lookup().onMessage(packet);
-		break;
-	}
     default:
         break;
     }
@@ -1993,10 +1974,10 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
     case ShardManager::LOOKUP:
 	case ShardManager::SYNC:
 	case ShardManager::LOOKUP & ShardManager::SYNC:
-        app_.getShardManager().Lookup().onMessage(packet);
+        app_.getShardManager().lookup().onMessage(packet);
         break;
     case ShardManager::SHARD:
-        app_.getShardManager().Node().onMessage(packet);
+        app_.getShardManager().node().onMessage(packet);
         break;
     default:
         break;

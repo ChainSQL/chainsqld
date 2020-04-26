@@ -62,8 +62,7 @@ message TMManifests
 /*  Requests or responds to a proof of work.
     Unimplemented and unused currently.
 */
-message 
-
+message TMProofWork
 {
     required string token       = 1;
     optional uint32 iterations  = 2;
@@ -407,8 +406,9 @@ message TMViewChange
 //---------------------------------------------------------------------------------
 
 message StateDelta {
-    required uint32     action              = 1;
-    required bytes      sle                 = 2;
+	required bytes 		key					= 1;
+    required uint32     action              = 2;
+    required bytes      sle                 = 3;
 }
 
 message TxWithMeta {
@@ -459,18 +459,6 @@ message Signature {
 message TMMicroLedgerSubmit {
     required MicroLedger    microLedger     = 1;
     repeated Signature      signatures      = 2;
-}
-
-message TMTxWithMeta{
-	required bytes			txHash			= 1;
-	required bytes 			rawTransaction  = 2;
-	required bytes 			txMeta  		= 3;
-}
-
-message TMMicroLedgerWithTxsSubmit {
-    required MicroLedger    microLedger     = 1;
-    repeated Signature      signatures      = 2;
-    repeated TMTxWithMeta  	txWithMetas     = 3;    // All transactions with meta data in this MicroLedger
 }
 
 message TMFinalLedgerSubmit {

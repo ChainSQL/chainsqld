@@ -39,7 +39,7 @@ public:
     
     LedgerBase() {}
 
-    inline const ripple::LedgerHash& LedgerHash()
+    inline const ripple::LedgerHash& ledgerHash()
     {
         return mLedgerHash;
     }
@@ -49,7 +49,7 @@ public:
         mLedgerHash = ledgerHash;
     }
 
-    inline const std::map<PublicKey, Blob> & Signatures()
+    inline const std::map<PublicKey, Blob> & signatures()
     {
         return mSignatures;
     }
@@ -75,12 +75,12 @@ public:
 		}
 	}
 
-	inline virtual bool checkValidity(ValidatorList const& list,Blob signingData)
+	inline virtual bool checkValidity(std::unique_ptr <ValidatorList> const& list,Blob signingData)
 	{
 		//check signature
 		for (auto iter = mSignatures.begin(); iter != mSignatures.end(); iter++)
 		{
-			boost::optional<PublicKey> pubKey = list.getTrustedKey(iter->first);
+			boost::optional<PublicKey> pubKey = list->getTrustedKey(iter->first);
 			if (!pubKey)
 				return false;
 			bool validSig = verify(
@@ -90,7 +90,7 @@ public:
 			if (!validSig)
 				return false;
 		}
-		if (mSignatures.size() < list.quorum())
+		if (mSignatures.size() < list->quorum())
 			return false;
 
 		return true;
