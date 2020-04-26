@@ -23,6 +23,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/consensus/RCLConsensus.h>
 #include <ripple/app/consensus/RCLValidations.h>
+#include <peersafe/app/shard/FinalLedger.h>
+#include <peersafe/app/shard/ShardManager.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 
 namespace ripple {
 
@@ -235,7 +238,40 @@ void Node::submitMicroLedger(bool withTxMeta)
 
 void Node::onMessage(protocol::TMFinalLedgerSubmit const& m)
 {
+	auto finalLedger = std::make_shared<FinalLedger>(m);
+	bool valid = finalLedger->checkValidity(mShardManager.Committee().Validators(), finalLedger->getSigningData());
+	if (!valid)
+	{
+		return;
+	}
 
+	//build new ledger
+	auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
+	auto ledgerInfo = finalLedger->getLedgerInfo();
+	auto ledgerToSave =
+		std::make_shared<Ledger>(*previousLedger, ledgerInfo.closeTime);
+	finalLedger->getRawStateTable().apply(*ledgerToSave);
+	
+	//check hash
+	assert(ledgerInfo.accountHash == ledgerToSave->stateMap().getHash().as_uint256());
+
+	ledgerToSave->updateSkipList();
+	{
+		// Write the final version of all modified SHAMap
+		// nodes to the node store to preserve the new Ledger
+		// Note,didn't save tx-shamap,so don't load tx-shamap when load ledger.
+		int asf = ledgerToSave->stateMap().flushDirty(
+			hotACCOUNT_NODE, ledgerToSave->info().seq);
+		JLOG(journal_.debug()) << "Flushed " << asf << " accounts";
+	}
+	ledgerToSave->unshare();
+	ledgerToSave->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
+
+	//save ledger
+	app_.getLedgerMaster().accept(ledgerToSave);
+
+	//begin next round consensus
+	app_.getOPs().endConsensus();
 }
 
 

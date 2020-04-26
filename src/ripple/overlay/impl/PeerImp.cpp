@@ -1962,6 +1962,25 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
 }
 
 void
+PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerWithTxsSubmit> const& m)
+{
+    protocol::TMMicroLedgerWithTxsSubmit& packet = *m;
+
+    switch (app_.getShardManager().myShardRole())
+    {
+	case ShardManager::LOOKUP:
+	case ShardManager::SYNC:
+	case ShardManager::LOOKUP & ShardManager::SYNC:
+	{
+		app_.getShardManager().Lookup().onMessage(packet);
+		break;
+	}
+    default:
+        break;
+    }
+}
+
+void
 PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
 {
     protocol::TMFinalLedgerSubmit& packet = *m;
@@ -1969,8 +1988,8 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
     switch (app_.getShardManager().myShardRole())
     {
     case ShardManager::LOOKUP:
-    case ShardManager::SYNC:
-    case ShardManager::LOOKUP & ShardManager::SYNC:
+	case ShardManager::SYNC:
+	case ShardManager::LOOKUP & ShardManager::SYNC:
         app_.getShardManager().Lookup().onMessage(packet);
         break;
     case ShardManager::SHARD:

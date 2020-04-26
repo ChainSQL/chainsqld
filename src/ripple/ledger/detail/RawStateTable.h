@@ -42,6 +42,9 @@ public:
     RawStateTable& operator= (RawStateTable&&) = delete;
     RawStateTable& operator= (RawStateTable const&) = delete;
 
+	void deSerialize(std::vector<Blob> const& vecItems);
+	std::vector<Blob> getSerialized();
+
     void
     apply (RawView& to) const;
 

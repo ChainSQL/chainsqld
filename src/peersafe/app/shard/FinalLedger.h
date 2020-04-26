@@ -23,26 +23,39 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <peersafe/app/shard/LedgerBase.h>
 #include <ripple/protocol/Protocol.h>
-
+#include <ripple/ledger/detail/RawStateTable.h>
+#include "ripple.pb.h"
 
 namespace ripple {
 
+class ValidatorList;
 class FinalLedger : public LedgerBase {
 
 private:
     LedgerIndex                     mSeq;                       // Ledger sequence.
+	uint64							mDrops;
+	uint32							mCloseTime;
+	uint32							mCloseTimeResolution;
+	uint32							mCloseFlags;			
 
     std::vector<TxID>               mTxsHashes;                 // All transactions hash set in this FinalBlock.
     uint256                         mTxShaMapRootHash;          // The final transactions Shamap root hash.
 
-    Blob                            mStateDelta;                // The state changes by the transactions in this FinalLedger.
+    detail::RawStateTable           mStateDelta;                // The state changes by the transactions in this FinalLedger.
     uint256                         mStateShaMapRootHash;       // The final state Shamap root hash.
 
     std::map<uint32, ripple::LedgerHash>    mMicroLedgers;      // The MicroLedger hash set in this FinalLedger.
 
 public:
     FinalLedger();
+	FinalLedger(protocol::TMFinalLedgerSubmit const& m);
+	protocol::TMFinalLedgerSubmit ToTMMessage();
 
+	Blob getSigningData();
+
+	LedgerInfo getLedgerInfo();
+	detail::RawStateTable const& getRawStateTable();
+	std::vector<TxID> const& getTxHashes();
 };
 
 }

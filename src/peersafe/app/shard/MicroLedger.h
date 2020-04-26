@@ -33,7 +33,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 namespace ripple {
 
 class MicroLedger : public LedgerBase {
-
 public:
     struct MicroLedgerHashSet {
         uint256     TxsRootHash;        // Transactions hashes root hash(Shamap not yet in use now).
@@ -43,16 +42,16 @@ public:
 
     using Action = detail::RawStateTable::Action;
 
-private:
+protected:
     LedgerIndex                                 mSeq;               // Ledger sequence.
     uint32                                      mShardID;           // The ID of the shard generated this MicroLedger.
 
     std::vector<TxID>                           mTxsHashes;         // All transactions hash set in this MicroLedger.
-    std::unordered_map<TxID,
-        std::pair<
-        std::shared_ptr<Serializer const>,
-        std::shared_ptr<Serializer const>
-        >>                                      mTxWithMetas;       // Serialized transactions with meta data maped by TxID;
+    // std::unordered_map<TxID,
+    //     std::pair<
+    //     std::shared_ptr<Serializer const>,
+    //     std::shared_ptr<Serializer const>
+    //     >>                                      mTxWithMetas;       // Serialized transactions with meta data maped by TxID;
     std::map<uint256,
         std::pair<
         Action, Serializer>,
@@ -62,8 +61,16 @@ private:
 
 
     void computeHash();
+    // std::vector<Blob>       mStateDeltas;                // The state changes by the transactions in this MicroLedger.
+    // uint256                 mTxWMRootHash;              // The transactions with meta data hash(Shamap not yet in use now).
 
+	void readMicroLedger(protocol::MicroLedger const& m);
+	void readTxHashes(::google::protobuf::RepeatedPtrField< ::std::string> const& hashes);
+	void readStateDelta(::google::protobuf::RepeatedPtrField< ::std::string> const& stateDeltas);
 public:
+    MicroLedger();
+	MicroLedger(protocol::TMMicroLedgerSubmit const& m);
+	MicroLedger(protocol::TMMicroLedgerWithTxsSubmit const& m);
 
     explicit MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view);
 
@@ -107,6 +114,17 @@ public:
     void addStateDelta(ReadView const& base, uint256 key, Action action, std::shared_ptr<SLE> sle);
 
     void compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta);
+
+
+
+	// LedgerIndex			seq();
+	// uint32				shardID();
+	// std::vector<TxID> const& txHashes();
+	// std::vector<Blob> const& stateDeltas();
+	// uint256				txRootHash();
+
+	bool				checkValidity(ValidatorList const& list, Blob signingData);
+	Blob				signingData();
 };
 
 

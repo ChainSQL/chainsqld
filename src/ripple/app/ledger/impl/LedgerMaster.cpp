@@ -1229,48 +1229,52 @@ LedgerMaster::checkAccept (
         return;
     }
 
-    JLOG (m_journal.info())
-        << "Advancing accepted ledger to " << ledger->info().seq
-        << " with >= " << minVal << " validations";
+	JLOG(m_journal.info())
+		<< "Advancing accepted ledger to " << ledger->info().seq
+		<< " with >= " << minVal << " validations";
+	accept(ledger);
+}
 
-    mLastValidateHash = ledger->info().hash;
-    mLastValidateSeq = ledger->info().seq;
+void LedgerMaster::accept(std::shared_ptr<Ledger const> const& ledger)
+{
+	mLastValidateHash = ledger->info().hash;
+	mLastValidateSeq = ledger->info().seq;
 
-    ledger->setValidated();
-    ledger->setFull();
-    setValidLedger(ledger);
+	ledger->setValidated();
+	ledger->setFull();
+	setValidLedger(ledger);
 
-    app_.getTxPool().removeTxs(ledger->txMap(),ledger->info().seq,ledger->info().parentHash);
+	app_.getTxPool().removeTxs(ledger->txMap(), ledger->info().seq, ledger->info().parentHash);
 
-    if (!mPubLedger)
-    {
-        pendSaveValidated(app_, ledger, true, true);
-        setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
-    }
+	if (!mPubLedger)
+	{
+		pendSaveValidated(app_, ledger, true, true);
+		setPubLedger(ledger);
+		app_.getOrderBookDB().setup(ledger);
+	}
 
-    std::uint32_t const base = app_.getFeeTrack().getLoadBase();
-    auto fees = app_.getValidations().fees (ledger->info().hash, base);
-    {
-        auto fees2 = app_.getValidations().fees (
-            ledger->info(). parentHash, base);
-        fees.reserve (fees.size() + fees2.size());
-        std::copy (fees2.begin(), fees2.end(), std::back_inserter(fees));
-    }
-    std::uint32_t fee;
-    if (! fees.empty())
-    {
-        std::sort (fees.begin(), fees.end());
-        fee = fees[fees.size() / 2]; // median
-    }
-    else
-    {
-        fee = base;
-    }
+	std::uint32_t const base = app_.getFeeTrack().getLoadBase();
+	auto fees = app_.getValidations().fees(ledger->info().hash, base);
+	{
+		auto fees2 = app_.getValidations().fees(
+			ledger->info().parentHash, base);
+		fees.reserve(fees.size() + fees2.size());
+		std::copy(fees2.begin(), fees2.end(), std::back_inserter(fees));
+	}
+	std::uint32_t fee;
+	if (!fees.empty())
+	{
+		std::sort(fees.begin(), fees.end());
+		fee = fees[fees.size() / 2]; // median
+	}
+	else
+	{
+		fee = base;
+	}
 
-    app_.getFeeTrack().setRemoteFee(fee);
+	app_.getFeeTrack().setRemoteFee(fee);
 
-    tryAdvance ();
+	tryAdvance();
 }
 
 /** Report that the consensus process built a particular ledger */

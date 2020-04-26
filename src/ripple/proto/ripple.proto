@@ -62,7 +62,8 @@ message TMManifests
 /*  Requests or responds to a proof of work.
     Unimplemented and unused currently.
 */
-message TMProofWork
+message 
+
 {
     required string token       = 1;
     optional uint32 iterations  = 2;
@@ -429,12 +430,17 @@ message MicroLedger {
 
 message FinalLedger {
     required uint32     ledgerSeq           = 1;    // Ledger sequence
+	required bytes 		ledgerHash			= 2;
+	required uint64		drops				= 3;
+	required uint32 	closeTime			= 4;
+	required uint32     closeTimeResolution = 5;
+	required uint32 	closeFlags			= 6;
+	
+    repeated bytes      txHashes            = 7;    // All transactions hash set in this FinalBlock
+    required bytes      txShaMapRootHash    = 8;    // The final transactions Shamap root hash
 
-    repeated bytes      txHashes            = 2;    // All transactions hash set in this FinalBlock
-    required bytes      txShaMapRootHash    = 3;    // The final transactions Shamap root hash
-
-    repeated StateDelta stateDeltas         = 4;    // The state changes by the transactions in this FinalLedger
-    required bytes      stateShaMapRootHash = 5;    // The final state Shamap root hash
+    repeated bytes      stateDeltas         = 9;    // The state changes by the transactions in this FinalLedger
+    required bytes      stateShaMapRootHash = 10;    // The final state Shamap root hash
 
     // MicroLedger Info
     message MLInfo {
@@ -442,7 +448,7 @@ message FinalLedger {
         required bytes      MBHash      = 2;
     }
 
-    repeated MLInfo     microLedgers        = 6;    // The MicroLedger hash set in this FinalLedger
+    repeated MLInfo     microLedgers        = 11;    // The MicroLedger hash set in this FinalLedger
 }
 
 message Signature {
@@ -453,6 +459,18 @@ message Signature {
 message TMMicroLedgerSubmit {
     required MicroLedger    microLedger     = 1;
     repeated Signature      signatures      = 2;
+}
+
+message TMTxWithMeta{
+	required bytes			txHash			= 1;
+	required bytes 			rawTransaction  = 2;
+	required bytes 			txMeta  		= 3;
+}
+
+message TMMicroLedgerWithTxsSubmit {
+    required MicroLedger    microLedger     = 1;
+    repeated Signature      signatures      = 2;
+    repeated TMTxWithMeta  	txWithMetas     = 3;    // All transactions with meta data in this MicroLedger
 }
 
 message TMFinalLedgerSubmit {

@@ -92,6 +92,10 @@ public:
         return *mSync;
     }
 
+	inline uint32 shardCount()
+	{
+		return cfg_.SHARD_COUNT;
+	}
 };
 
 }

@@ -148,4 +148,75 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     }
 }
 
+MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m)
+{
+	readMicroLedger(m.microledger());
+	readSignature(m.signatures());
+}
+
+MicroLedger::MicroLedger(protocol::TMMicroLedgerWithTxsSubmit const& m)
+{
+	readMicroLedger(m.microledger());
+	readSignature(m.signatures());
+}
+
+void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
+{
+	mSeq = m.ledgerseq();
+	mShardID = m.shardid();
+	readTxHashes(m.txhashes());
+	readStateDelta(m.statedeltas());
+	memcpy(mTxWMRootHash.begin(), m.txwmhashroot().data(), 32);
+}
+void MicroLedger::readTxHashes(::google::protobuf::RepeatedPtrField< ::std::string> const& hashes)
+{
+	assert(hashes.size() % 256 == 0);
+	for (int i = 0; i < hashes.size(); i++)
+	{
+		TxID txHash;
+		memcpy(txHash.begin(), hashes.Get(i).data(), 32);
+		mTxsHashes.push_back(txHash);
+	}
+}
+
+void MicroLedger::readStateDelta(::google::protobuf::RepeatedPtrField< ::std::string> const& stateDeltas)
+{
+	for (int i = 0; i < stateDeltas.size(); i++)
+	{
+		Blob delta;
+		delta.assign(stateDeltas.Get(i).begin(), stateDeltas.Get(i).end());
+		mStateDeltas.push_back(delta);
+	}
+}
+LedgerIndex	MicroLedger::seq()
+{
+	return mSeq;
+}
+uint32	MicroLedger::shardID()
+{
+	return mShardID;
+}
+std::vector<TxID> const& MicroLedger::txHashes()
+{
+	return mTxsHashes;
+}
+std::vector<Blob> const& MicroLedger::stateDeltas()
+{
+	return mStateDeltas;
+}
+uint256	MicroLedger::txRootHash()
+{
+	return mTxWMRootHash;
+}
+
+bool MicroLedger::checkValidity(ValidatorList const& list, Blob signingData)
+{
+	bool ret = LedgerBase::checkValidity(list, signingData);
+	if (!ret)
+		return ret;
+
+	//check tx-roothash
+
+}
+
 }

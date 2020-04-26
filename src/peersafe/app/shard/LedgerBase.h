@@ -23,6 +23,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/RippleLedgerHash.h>
 #include <ripple/protocol/PublicKey.h>
+#include <ripple/app/misc/ValidatorList.h>
+#include "ripple.pb.h"
 
 namespace ripple {
 
@@ -56,6 +58,43 @@ public:
     {
         return mSignatures.emplace(pubkey, sign);
     }
+
+	inline void readSignature(const ::google::protobuf::RepeatedPtrField< ::protocol::Signature >& signatures)
+	{
+		for (int i = 0; i < signatures.size(); i++)
+		{
+			protocol::Signature const& sig = signatures.Get(i);
+			auto const publicKey = parseBase58<PublicKey>(
+				TokenType::TOKEN_NODE_PUBLIC, sig.publickey());
+			if (publicKey)
+			{
+				Blob signature;
+				signature.assign(sig.signature().begin(), sig.signature().end());
+				addSignature(*publicKey, signature);
+			}
+		}
+	}
+
+	inline virtual bool checkValidity(ValidatorList const& list,Blob signingData)
+	{
+		//check signature
+		for (auto iter = mSignatures.begin(); iter != mSignatures.end(); iter++)
+		{
+			boost::optional<PublicKey> pubKey = list.getTrustedKey(iter->first);
+			if (!pubKey)
+				return false;
+			bool validSig = verify(
+				iter->first,
+				makeSlice(signingData),
+				makeSlice(iter->second));
+			if (!validSig)
+				return false;
+		}
+		if (mSignatures.size() < list.quorum())
+			return false;
+
+		return true;
+	}
 };
 
 }
