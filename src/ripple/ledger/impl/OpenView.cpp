@@ -20,6 +20,7 @@
 #include <BeastConfig.h>
 #include <ripple/ledger/OpenView.h>
 #include <ripple/basics/contract.h>
+#include <peersafe/app/shard/MicroLedger.h>
 
 namespace ripple {
 
@@ -125,6 +126,25 @@ OpenView::apply (TxsRawView& to) const
         to.rawTxInsert (item.first,
             item.second.first,
                 item.second.second);
+}
+
+void
+OpenView::apply (MicroLedger& to) const
+{
+    for (auto const& item : txs_)
+    {
+        if (to.rawTxInsert(item.first,
+            item.second.first,
+            item.second.second))
+        {
+            to.addTxID(item.first);
+        }
+    }
+
+    for (auto const& item : items_.items())
+    {
+        to.addStateDelta(*base_, item.first, item.second.first, item.second.second);
+    }
 }
 
 //---

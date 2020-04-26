@@ -111,6 +111,8 @@ enum class ConsensusPhase {
     //! to startRound to begin the next consensus round.  No changes
     //! to consensus phase occur while in this phase.
     accepted,
+
+    waitingFinalLedger,
 };
 
 inline std::string
@@ -124,6 +126,8 @@ to_string(ConsensusPhase p)
             return "establish";
         case ConsensusPhase::accepted:
             return "accepted";
+        case ConsensusPhase::waitingFinalLedger:
+            return "waitingFinalLedger";
         default:
             return "unknown";
     }

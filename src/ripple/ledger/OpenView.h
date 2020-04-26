@@ -30,6 +30,8 @@
 
 namespace ripple {
 
+class MicroLedger;
+
 /** Open ledger construction tag.
 
     Views constructed with this tag will have the
@@ -153,6 +155,9 @@ public:
     /** Apply changes. */
     void
     apply (TxsRawView& to) const;
+
+    void
+    apply (MicroLedger& to) const;
 
     // ReadView
 

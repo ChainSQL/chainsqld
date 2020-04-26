@@ -30,6 +30,8 @@
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/TimeKeeper.h>
+#include <peersafe/app/shard/ShardManager.h>
+#include <peersafe/app/shard/Node.h>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -177,8 +179,27 @@ handleNewValidation(Application& app,
     PublicKey const& signer = val->getSignerPublic();
     uint256 const& hash = val->getLedgerHash();
 
+    ShardManager& shardManager = app.getShardManager();
+    uint32 shardID = shardManager.Node().ShardID();
+
+    if (shardID > 0)
+    {
+        assert(shardManager.Node().ShardValidators().find(shardID) !=
+        shardManager.Node().ShardValidators().end());
+    }
+
+    //ValidatorList& validators = *(iter->second);
+
     // Ensure validation is marked as trusted if signer currently trusted
-    boost::optional<PublicKey> pubKey = app.validators().getTrustedKey(signer);
+    boost::optional<PublicKey> pubKey;
+    if (shardID > 0)
+    {
+        pubKey = shardManager.Node().ShardValidators()[shardID]->getTrustedKey(signer);
+    }
+    else
+    {
+        pubKey = shardManager.Committee().Validators().getTrustedKey(signer);
+    }
     if (!val->isTrusted() && pubKey)
         val->setTrusted();
     RCLValidations& validations  = app.getValidations();
@@ -217,7 +238,16 @@ handleNewValidation(Application& app,
 
     // If not currently trusted, see if signer is currently listed
     if (!pubKey)
-        pubKey = app.validators().getListedKey(signer);
+    {
+        if (shardID > 0)
+        {
+            pubKey = shardManager.Node().ShardValidators()[shardID]->getListedKey(signer);
+        }
+        else
+        {
+            pubKey = shardManager.Committee().Validators().getListedKey(signer);
+        }
+    }
 
     bool shouldRelay = false;
 
@@ -254,8 +284,19 @@ handleNewValidation(Application& app,
         if (val->isTrusted() &&
             (res == AddOutcome::current || res == AddOutcome::sameSeq))
         {
-            app.getLedgerMaster().checkAccept(
-                hash, val->getFieldU32(sfLedgerSequence));
+            if (shardID > 0)
+            {
+                shardManager.Node().recvValidation(*pubKey, *val);
+
+                shardManager.Node().checkAccept();
+            }
+            else
+            {
+                ;// TODO for committee node;
+            }
+
+            //app.getLedgerMaster().checkAccept(
+            //    hash, val->getFieldU32(sfLedgerSequence));
 
             shouldRelay = true;
         }

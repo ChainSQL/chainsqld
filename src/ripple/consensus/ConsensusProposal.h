@@ -101,7 +101,8 @@ public:
         Position_t const& position,
         NetClock::time_point closeTime,
         NetClock::time_point now,
-        NodeID_t const& nodeID)
+        NodeID_t const& nodeID,
+        std::uint32_t shardID)
         : previousLedger_(prevLedger)
         , position_(position)
         , closeTime_(closeTime)
@@ -110,6 +111,7 @@ public:
         , nodeID_(nodeID)
 		, curLedgerSeq_(curLedgerSeq)
 		, view_(view)
+        , shardID_(shardID)
     {
     }
 
@@ -146,6 +148,11 @@ public:
 	{
 		return view_;
 	}
+
+    std::uint32_t const& shardID() const
+    {
+        return shardID_;
+    }
     /** Get the sequence number of this proposal
 
         Starting with an initial sequence number of `seqJoin`, successive
@@ -273,6 +280,8 @@ private:
 	std::uint32_t curLedgerSeq_ = 0;
 
 	std::uint64_t view_ = 0;
+
+    std::uint32_t shardID_;
 };
 
 template <class NodeID_t, class LedgerID_t, class Position_t>

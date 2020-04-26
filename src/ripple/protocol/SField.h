@@ -389,6 +389,7 @@ extern SF_U32 const sfFinishAfter;
 extern SF_U32 const sfSignerListID;
 extern SF_U32 const sfSettleDelay;
 extern SF_U32 const sfGas;
+extern SF_U32 const sfShardID;
 
 // 64-bit integers
 extern SF_U64 const sfIndexNext;
@@ -490,6 +491,9 @@ extern SF_Blob const sfTxOperateRule;
 extern SF_Blob const sfInsertCountMap;
 extern SF_Blob const sfContractTxs;
 extern SF_Blob const sfContractLogs;
+extern SF_Blob const sfMicroLedgerSign;
+extern SF_Blob const sfFinalLedgerSign;
+
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;

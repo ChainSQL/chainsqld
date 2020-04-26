@@ -205,6 +205,7 @@ message TMProposeSet
     optional uint32 hops                = 12;   // Number of hops traveled
 	optional uint32 curLedgerSeq		= 13; 	// Current ledger sequence
 	optional uint64 view				= 14; 	// Current view
+    required uint32 shardID             = 15;
 }
 
 enum TxSetStatus
@@ -404,13 +405,26 @@ message TMViewChange
 
 //---------------------------------------------------------------------------------
 
+message StateDelta {
+    required uint32     action              = 1;
+    required bytes      sle                 = 2;
+}
+
+message TxWithMeta {
+    required bytes      hash                = 1;
+    required bytes      body                = 2;
+    required bytes      meta                = 3;
+}
+
 message MicroLedger {
     required uint32     ledgerSeq           = 1;    // Ledger sequence
     required uint32     shardID             = 2;    // The ID of the shard generated this MicroLedger
 
     repeated bytes		txHashes            = 3;    // All transactions hash set in this MicroLedger
-    repeated bytes		stateDeltas         = 4;    // The state changes by the transactions in this MicroLedger
+    repeated StateDelta stateDeltas         = 4;    // The state changes by the transactions in this MicroLedger
     required bytes		txWMHashRoot        = 5;    // The transactions with meta data hash(Shamap not yet in use now)
+
+    repeated TxWithMeta txWithMetas         = 6;    // All transactions with meta data in this MicroLedger, when send to lookup
 }
 
 message FinalLedger {
@@ -419,7 +433,7 @@ message FinalLedger {
     repeated bytes      txHashes            = 2;    // All transactions hash set in this FinalBlock
     required bytes      txShaMapRootHash    = 3;    // The final transactions Shamap root hash
 
-    repeated bytes      stateDeltas         = 4;    // The state changes by the transactions in this FinalLedger
+    repeated StateDelta stateDeltas         = 4;    // The state changes by the transactions in this FinalLedger
     required bytes      stateShaMapRootHash = 5;    // The final state Shamap root hash
 
     // MicroLedger Info
@@ -439,12 +453,6 @@ message Signature {
 message TMMicroLedgerSubmit {
     required MicroLedger    microLedger     = 1;
     repeated Signature      signatures      = 2;
-}
-
-message TMMicroLedgerWithTxsSubmit {
-    required MicroLedger    microLedger     = 1;
-    repeated Signature      signatures      = 2;
-    repeated TMTransaction  txWithMetas     = 3;    // All transactions with meta data in this MicroLedger
 }
 
 message TMFinalLedgerSubmit {

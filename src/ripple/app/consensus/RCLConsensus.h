@@ -45,6 +45,15 @@ class InboundTransactions;
 class LocalTxs;
 class LedgerMaster;
 class ValidatorKeys;
+class CanonicalTXSet;
+class Application;
+
+CanonicalTXSet
+applyTransactions(
+    Application& app,
+    RCLTxSet const& cSet,
+    OpenView& view,
+    std::function<bool(uint256 const&)> txFilter);
 
 /** Manages the generic consensus algorithm for use by the RCL.
 */
@@ -161,6 +170,7 @@ class RCLConsensus
         friend class PConsensus<Adaptor>;
 		friend class Consensus<Adaptor>;
 		friend class RCLConsensus;
+        friend class Node;
 
         /** Attempt to acquire a specific ledger.
 
@@ -279,7 +289,7 @@ class RCLConsensus
 		Result
 		onCollectFinish(
 			RCLCxLedger const& ledger,
-			std::vector<uint256> const& transactions,
+            std::vector<uint256> const& transactions,
 			NetClock::time_point const& closeTime,
 			std::uint64_t const& view,
 			ConsensusMode mode);
@@ -515,6 +525,8 @@ private:
 	std::shared_ptr<ConsensusBase<Adaptor>> consensus_;
 	
     beast::Journal j_;
+
+    friend class Node;
 };
 }
 

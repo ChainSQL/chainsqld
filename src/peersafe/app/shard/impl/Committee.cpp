@@ -30,6 +30,29 @@ Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Jour
     // TODO
 }
 
+void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
+{
+    //mMicroLedger.reset();
+
+    auto const& validators = mValidators->validators();
+    assert(validators.size() > 0);
+    int index = (view + seq) % validators.size();
+
+    mIsLeader = (pubkey == validators[index]);
+
+}
+
+void Committee::sendMessage(std::shared_ptr<Message> const &m)
+{
+    std::lock_guard<std::mutex> lock(mPeersMutex);
+
+    for (auto w : mPeers)
+    {
+        if (auto p = w.lock())
+            p->send(m);
+    }
+}
+
 void Committee::onMessage(protocol::TMMicroLedgerSubmit const& m)
 {
 

@@ -30,7 +30,7 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
     // TODO initial peers and validators
 }
 
-void Lookup::onMessage(protocol::TMMicroLedgerWithTxsSubmit const& m)
+void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 {
 
 }

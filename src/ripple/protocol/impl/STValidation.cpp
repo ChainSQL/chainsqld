@@ -61,9 +61,21 @@ STValidation::STValidation (
         setFlag (kFullFlag);
 }
 
-uint256 STValidation::sign (SecretKey const& secretKey)
+uint256 STValidation::sign(SecretKey const& secretKey)
 {
-    setFlag (vfFullyCanonicalSig);
+    setFlag(vfFullyCanonicalSig);
+
+    // Add micro ledger or final ledger signature
+    if (getFieldU32(sfShardID) > 0)
+    {
+        setFieldVL(sfMicroLedgerSign, 
+            signDigest(getSignerPublic(), secretKey, getFieldH256(sfLedgerHash)));
+    }
+    else
+    {
+        setFieldVL(sfFinalLedgerSign, 
+            signDigest(getSignerPublic(), secretKey, getFieldH256(sfLedgerHash)));
+    }
 
     auto const signingHash = getSigningHash();
     setFieldVL (sfSignature,
@@ -106,6 +118,27 @@ bool STValidation::isValid (uint256 const& signingHash) const
 {
     try
     {
+        if (getFieldU32(sfShardID) > 0)
+        {
+            if (!verifyDigest(getSignerPublic(),
+                getFieldH256(sfLedgerHash),
+                makeSlice(getFieldVL(sfMicroLedgerSign)),
+                getFlags() & vfFullyCanonicalSig))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (!verifyDigest(getSignerPublic(),
+                getFieldH256(sfLedgerHash),
+                makeSlice(getFieldVL(sfFinalLedgerSign)),
+                getFlags() & vfFullyCanonicalSig))
+            {
+                return false;
+            }
+        }
+
         return verifyDigest (getSignerPublic(),
             signingHash,
             makeSlice(getFieldVL (sfSignature)),
@@ -132,6 +165,11 @@ bool STValidation::isFull () const
 Blob STValidation::getSignature () const
 {
     return getFieldVL (sfSignature);
+}
+
+std::uint32_t STValidation::getShardID() const
+{
+    return getFieldU32(sfShardID);
 }
 
 Blob STValidation::getSerialized () const
@@ -163,6 +201,9 @@ SOTemplate const& STValidation::getFormat ()
             format.push_back (SOElement (sfSignature,       SOE_OPTIONAL));
             format.push_back (SOElement (sfConsensusHash,   SOE_OPTIONAL));
 			format.push_back(SOElement  (sfDropsPerByte,    SOE_OPTIONAL));
+            format.push_back (SOElement (sfShardID,         SOE_REQUIRED));
+            format.push_back (SOElement (sfMicroLedgerSign, SOE_OPTIONAL));
+            format.push_back (SOElement (sfFinalLedgerSign, SOE_OPTIONAL));
         }
     };
 

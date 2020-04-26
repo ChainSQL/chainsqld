@@ -427,7 +427,6 @@ public:
     void onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m);
 	void onMessage (std::shared_ptr <protocol::TMViewChange> const& m);
     void onMessage (std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m);
-    void onMessage (std::shared_ptr <protocol::TMMicroLedgerWithTxsSubmit> const& m);
     void onMessage (std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m);
 
 private:

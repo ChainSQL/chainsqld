@@ -30,7 +30,7 @@ Sync::Sync(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
     // TODO
 }
 
-void Sync::onMessage(protocol::TMMicroLedgerWithTxsSubmit const& m)
+void Sync::onMessage(protocol::TMMicroLedgerSubmit const& m)
 {
 
 }
