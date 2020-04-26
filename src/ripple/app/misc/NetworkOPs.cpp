@@ -2427,7 +2427,7 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin, bool counters)
     auto const loadFactorFeeEscalation =
         escalationMetrics.openLedgerFeeLevel;
     auto const loadBaseFeeEscalation =
-        escalationMetrics.referenceFeeLevel;
+        (escalationMetrics.referenceFeeLevel > 0)? escalationMetrics.referenceFeeLevel:1;
 
     auto const loadFactor = std::max(safe_cast<std::uint64_t>(loadFactorServer),
         mulDiv(loadFactorFeeEscalation, loadBaseServer, loadBaseFeeEscalation).second);
