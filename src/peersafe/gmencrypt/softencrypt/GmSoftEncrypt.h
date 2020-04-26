@@ -31,6 +31,7 @@
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/ec.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/rand.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/obj_mac.h>
+#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/pem.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm2.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm3.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sms4.h>
@@ -165,6 +166,9 @@ private:
 
 private:
     size_t EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf);
+    EC_KEY* CreateEC(unsigned char *key, int is_public);
+    int computeDigestWithSm2(EC_KEY* ec_key, unsigned char* pInData, unsigned long ulInDataLen, 
+                            unsigned char* dgst, unsigned int*dgstLen);
     unsigned long generateIV(unsigned int uiAlgMode, unsigned char * pIV);
 };
 

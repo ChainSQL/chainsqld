@@ -180,14 +180,14 @@ unsigned long SoftEncrypt::SM2ECCSign(
 	{
         return 1;
 	}
-
+    
     BIGNUM* bn = BN_bin2bn((const unsigned char *)(pri4Sign.first), (pri4Sign.second), nullptr);
 	if (bn == nullptr) {
 		DebugPrint("SM2ECCSign: BN_bin2bn failed");
 		return 1;
 	}
 	
-	EC_KEY* ec_key = EC_KEY_new();
+	EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_sm2p256v1);
 	const bool ok = EC_KEY_set_private_key(ec_key, bn);
 	BN_clear_free(bn);
 	if (!ok) {
@@ -196,15 +196,34 @@ unsigned long SoftEncrypt::SM2ECCSign(
 		return 1;
 	}
 
-    int priLen = BN_num_bytes(EC_KEY_get0_private_key(ec_key));
-    unsigned char* priKeyUserTemp = new unsigned char[priLen];
-    int priLen2 = BN_bn2bin(EC_KEY_get0_private_key(ec_key), priKeyUserTemp);
-    memcpy(priKeyUser_, priKeyUserTemp, priLen2);
-    delete [] priKeyUserTemp;
+    int genRet = EC_KEY_generate_key(ec_key);
+    if (0 == genRet) {
+        DebugPrint("SM2GenECCKeyPair-EC_KEY_generate_key() failed!");
+        return -1;
+    }
 
-	int type = NID_undef;
+    unsigned char dgst[EVP_MAX_MD_SIZE];
+	unsigned int dgstlen;
+    if(computeDigestWithSm2(ec_key, pInData, ulInDataLen, dgst, &dgstlen))
+    {
+        return 1;
+    }
+    // const EVP_MD *id_md = EVP_sm3();
+    // const EVP_MD *msg_md = EVP_sm3();
+    // if (!SM2_compute_id_digest(id_md, dgst, &dgstlen, ec_key)) {
+	// 	return 1;
+	// }
+    // if (!SM2_compute_message_digest(id_md, msg_md, pInData, ulInDataLen, dgst, &dgstlen, ec_key)) {
+	// 	return 1;
+	// }
+    // int priLen = BN_num_bytes(EC_KEY_get0_private_key(ec_key));
+    // unsigned char* priKeyUserTemp = new unsigned char[priLen];
+    // int priLen2 = BN_bn2bin(EC_KEY_get0_private_key(ec_key), priKeyUserTemp);
+    // memcpy(priKeyUser_, priKeyUserTemp, priLen2);
+    // delete [] priKeyUserTemp;
+
 	/* sign */
-	if (!SM2_sign(type, pInData, ulInDataLen, pSignValue, (unsigned int*)pulSignValueLen, ec_key))
+	if (!SM2_sign(NID_undef, dgst, dgstlen, pSignValue, (unsigned int*)pulSignValueLen, ec_key))
     {
         EC_KEY_free(ec_key);
 		DebugPrint("SM2ECCSign: SM2_sign failed!");
@@ -236,9 +255,15 @@ unsigned long SoftEncrypt::SM2ECCVerify(
 		return 1;
 	}
 
-	int type     = NID_undef;
+    unsigned char dgst[EVP_MAX_MD_SIZE];
+	unsigned int dgstlen;
+    if(computeDigestWithSm2(pubkey, pInData, ulInDataLen, dgst, &dgstlen))
+    {
+        return 1;
+    }
+
 	/* verify */
-	if (!SM2_verify(type, pInData, ulInDataLen, pSignValue, ulSignValueLen, pubkey)) {
+	if (!SM2_verify(NID_undef, dgst, dgstlen, pSignValue, ulSignValueLen, pubkey)) {
 		DebugPrint("SM2ECCSign: SM2_sign failed");
         EC_KEY_free(pubkey);
 		return 1;
@@ -543,6 +568,43 @@ unsigned long SoftEncrypt::generateIV(unsigned int uiAlgMode, unsigned char * pI
 //         memcpy(sm2Privatekey.D, standPri, standPriLen);
 //     }
 // }
+EC_KEY* SoftEncrypt::CreateEC(unsigned char *key, int is_public) {
+    EC_KEY *ec_key = NULL;
+    BIO *keybio = NULL;
+    keybio = BIO_new_mem_buf(key, -1);
+ 
+    if (keybio == NULL) {
+        DebugPrint("%s", "[BIO_new_mem_buf]->key len=%d,Failed to Get Key", strlen((char *) key));
+        return NULL;
+    }
+ 
+    if (is_public) {
+        ec_key = PEM_read_bio_EC_PUBKEY(keybio, NULL, NULL, NULL);
+    } else {
+        ec_key = PEM_read_bio_ECPrivateKey(keybio, NULL, NULL, NULL);
+    }
+ 
+    if (ec_key == NULL) {
+        DebugPrint("Failed to Get Key");
+        return NULL;
+    }
+ 
+    return ec_key;
+}
+
+int SoftEncrypt::computeDigestWithSm2(EC_KEY* ec_key, unsigned char* pInData, unsigned long ulInDataLen, 
+                                        unsigned char* dgst, unsigned int*dgstLen) 
+{
+    const EVP_MD *id_md = EVP_sm3();
+    const EVP_MD *msg_md = EVP_sm3();
+    if (!SM2_compute_id_digest(id_md, dgst, dgstLen, ec_key)) {
+		return 1;
+	}
+    if (!SM2_compute_message_digest(id_md, msg_md, pInData, ulInDataLen, dgst, dgstLen, ec_key)) {
+		return 1;
+	}
+    return 0;
+}
 
 #endif
 #endif
