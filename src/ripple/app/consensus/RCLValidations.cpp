@@ -180,12 +180,12 @@ handleNewValidation(Application& app,
     uint256 const& hash = val->getLedgerHash();
 
     ShardManager& shardManager = app.getShardManager();
-    uint32 shardID = shardManager.Node().ShardID();
+    uint32 shardID = shardManager.node().shardID();
 
     if (shardID > 0)
     {
-        assert(shardManager.Node().ShardValidators().find(shardID) !=
-        shardManager.Node().ShardValidators().end());
+        assert(shardManager.node().shardValidators().find(shardID) !=
+        shardManager.node().shardValidators().end());
     }
 
     //ValidatorList& validators = *(iter->second);
@@ -194,11 +194,11 @@ handleNewValidation(Application& app,
     boost::optional<PublicKey> pubKey;
     if (shardID > 0)
     {
-        pubKey = shardManager.Node().ShardValidators()[shardID]->getTrustedKey(signer);
+        pubKey = shardManager.node().shardValidators()[shardID]->getTrustedKey(signer);
     }
     else
     {
-        pubKey = shardManager.Committee().Validators().getTrustedKey(signer);
+        pubKey = shardManager.committee().validators().getTrustedKey(signer);
     }
     if (!val->isTrusted() && pubKey)
         val->setTrusted();
@@ -241,11 +241,11 @@ handleNewValidation(Application& app,
     {
         if (shardID > 0)
         {
-            pubKey = shardManager.Node().ShardValidators()[shardID]->getListedKey(signer);
+            pubKey = shardManager.node().shardValidators()[shardID]->getListedKey(signer);
         }
         else
         {
-            pubKey = shardManager.Committee().Validators().getListedKey(signer);
+            pubKey = shardManager.committee().validators().getListedKey(signer);
         }
     }
 
@@ -286,9 +286,9 @@ handleNewValidation(Application& app,
         {
             if (shardID > 0)
             {
-                shardManager.Node().recvValidation(*pubKey, *val);
+                shardManager.node().recvValidation(*pubKey, *val);
 
-                shardManager.Node().checkAccept();
+                shardManager.node().checkAccept();
             }
             else
             {

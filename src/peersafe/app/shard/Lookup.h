@@ -24,6 +24,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/app/misc/ValidatorList.h>
+#include <peersafe/app/shard/MicroLedger.h>
+#include <peersafe/app/shard/FinalLedger.h>
 
 #include <vector>
 
@@ -32,8 +34,6 @@ namespace ripple {
 class Application;
 class Config;
 class ShardManager;
-class FinalLedger;
-class MicroLedgerWithMeta;
 
 class Lookup {
 
@@ -61,12 +61,12 @@ public:
     Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~Lookup() {}
 
-    inline std::vector<std::weak_ptr <PeerImp>>& Peers()
+    inline std::vector<std::weak_ptr <PeerImp>>& peers()
     {
         return mPeers;
     }
 
-    inline ValidatorList& Validators()
+    inline ValidatorList& validators()
     {
         return *mValidators;
     }

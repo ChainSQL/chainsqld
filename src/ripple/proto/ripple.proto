@@ -62,8 +62,7 @@ message TMManifests
 /*  Requests or responds to a proof of work.
     Unimplemented and unused currently.
 */
-message 
-
+message TMProofWork
 {
     required string token       = 1;
     optional uint32 iterations  = 2;

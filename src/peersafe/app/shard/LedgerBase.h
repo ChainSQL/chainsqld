@@ -39,7 +39,7 @@ public:
     
     LedgerBase() {}
 
-    inline const ripple::LedgerHash& LedgerHash()
+    inline const ripple::LedgerHash& ledgerHash()
     {
         return mLedgerHash;
     }
@@ -49,7 +49,7 @@ public:
         mLedgerHash = ledgerHash;
     }
 
-    inline const std::map<PublicKey, Blob> & Signatures()
+    inline const std::map<PublicKey, Blob> & signatures()
     {
         return mSignatures;
     }

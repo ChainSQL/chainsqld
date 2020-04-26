@@ -66,12 +66,17 @@ public:
         return mPeers;
     }
 
-    inline ValidatorList& Validators()
+    inline ValidatorList& validators()
     {
         return *mValidators;
     }
 
-    inline bool IsLeader()
+    inline std::unique_ptr<ValidatorList>& validatorsPtr()
+    {
+        return mValidators;
+    }
+
+    inline bool isLeader()
     {
         return mIsLeader;
     }

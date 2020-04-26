@@ -66,8 +66,9 @@ protected:
 
 	void readMicroLedger(protocol::MicroLedger const& m);
 	void readTxHashes(::google::protobuf::RepeatedPtrField<std::string> const& hashes);
-	void readStateDelta(::google::protobuf::RepeatedPtrField<std::string> const& stateDeltas);
-	void readTxWithMeta(protocol::MicroLedger_TxWithMeta const& txWithMetas);
+	void readStateDelta(::google::protobuf::RepeatedPtrField<::protocol::StateDelta> const& stateDeltas);
+    void readTxWithMeta(::google::protobuf::RepeatedPtrField <::protocol::TxWithMeta> const& txWithMetas);
+
 public:
     MicroLedger() = delete;
 	MicroLedger(protocol::TMMicroLedgerSubmit const& m);
@@ -97,6 +98,11 @@ public:
     inline MicroLedgerHashSet& hashSet()
     {
         return mHashSet;
+    }
+
+    inline uint256 txRootHash()
+    {
+        return mHashSet.TxsRootHash;
     }
 
     inline void addTxID(TxID txID)
@@ -135,7 +141,7 @@ public:
     void compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta);
 
 	bool checkValidity(std::unique_ptr <ValidatorList> const& list, Blob signingData);
-	Blob signingData();
+	const Blob& getSigningData();
 };
 
 

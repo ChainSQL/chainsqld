@@ -20,7 +20,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/Lookup.h>
 #include <peersafe/app/shard/ShardManager.h>
 #include <peersafe/app/shard/FinalLedger.h>
-#include <peersafe/app/shard/MicroLedgerWithMeta.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 
 namespace ripple {
@@ -78,10 +77,10 @@ void Lookup::saveLedger(LedgerIndex seq)
 			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(item))
 			{
 				auto txWithMeta = mMapMicroLedgers[seq][shardIndex]->getTxWithMeta(item);
-				auto tx = std::make_shared<Serializer>(txWithMeta.first);
-				auto meta = std::make_shared<Serializer>();
+				auto tx = txWithMeta.first;
+				auto meta = txWithMeta.second;
 				//txWithMeta.second->getAsObject().add(*meta);
-				ledgerToSave->rawTxInsert(item,tx,meta);
+				ledgerToSave->rawTxInsert(item, tx, meta);
 			}
 		}
 		
@@ -112,8 +111,8 @@ void Lookup::saveLedger(LedgerIndex seq)
 void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 {
 	auto microWithMeta = std::make_shared<MicroLedger>(m);
-	bool valid = microWithMeta->checkValidity(*mShardManager.Node().ShardValidators().at(microWithMeta->shardID()),
-		microWithMeta->signingData());
+	bool valid = microWithMeta->checkValidity(mShardManager.node().shardValidators().at(microWithMeta->shardID()),
+		microWithMeta->getSigningData());
 	if (!valid)
 	{
 		return;
@@ -126,7 +125,7 @@ void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
 {
 	auto finalLedger = std::make_shared<FinalLedger>(m);
-	bool valid = finalLedger->checkValidity(mShardManager.Committee().Validators());
+	bool valid = finalLedger->checkValidity(mShardManager.committee().validatorsPtr(), finalLedger->getSigningData());
 
 	if (valid)
 	{

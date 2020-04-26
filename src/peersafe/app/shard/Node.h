@@ -80,22 +80,22 @@ public:
     Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~Node() {}
 
-    inline uint32 ShardID()
+    inline uint32 shardID()
     { 
         return mShardID;
     }
 
-    inline MapOfShardPeers& ShardPeers()
+    inline MapOfShardPeers& shardPeers()
     {
         return mMapOfShardPeers;
     }
 
-    inline MapOfShardValidators& ShardValidators()
+    inline MapOfShardValidators& shardValidators()
     {
         return mMapOfShardValidators;
     }
 
-    inline bool IsLeader()
+    inline bool isLeader()
     {
         return mIsLeader;
     }

@@ -72,22 +72,22 @@ public:
         return mShardRole;
     }
 
-    inline ripple::Node& Node()
+    inline ripple::Node& node()
     {
         return *mNode;
     }
 
-    inline ripple::Lookup& Lookup()
+    inline ripple::Lookup& lookup()
     {
         return *mLookup;
     }
 
-    inline ripple::Committee& Committee()
+    inline ripple::Committee& committee()
     {
         return *mCommittee;
     }
 
-    inline ripple::Sync& Sync()
+    inline ripple::Sync& sync()
     {
         return *mSync;
     }

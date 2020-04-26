@@ -469,11 +469,11 @@ PConsensus<Adaptor>::startRoundInternal(
 
     if (shardRole == ShardManager::LOOKUP)
     {
-        shardManager.Node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
+        shardManager.node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
     }
     else if (shardRole == ShardManager::COMMITTEE)
     {
-        shardManager.Committee().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
+        shardManager.committee().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
     }
 
 	closeResolution_ = getNextLedgerTimeResolution(
@@ -599,11 +599,11 @@ PConsensus<Adaptor>::onViewChange()
 
     if (shardRole == ShardManager::SHARD)
     {
-        shardManager.Node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
+        shardManager.node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
     }
     else if (shardRole == ShardManager::COMMITTEE)
     {
-        shardManager.Committee().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
+        shardManager.committee().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
     }
 
 	viewChangeManager_.onViewChanged(view_);
@@ -834,7 +834,7 @@ PConsensus<Adaptor>::gotTxSet(
                         closeTime_,
                         now,
                         adaptor_.nodeID(),
-                        adaptor_.app_.getShardManager().Node().ShardID())));
+                        adaptor_.app_.getShardManager().node().shardID())));
 
 				if (phase_ == ConsensusPhase::open)
 					phase_ = ConsensusPhase::establish;
@@ -1186,11 +1186,11 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 
     if (shardManager.myShardRole() == ShardManager::SHARD)
     {
-        return shardManager.Node().IsLeader();
+        return shardManager.node().isLeader();
     }
     else if (shardManager.myShardRole() == ShardManager::COMMITTEE)
     {
-        return shardManager.Committee().IsLeader();
+        return shardManager.committee().isLeader();
     }
     else
     {

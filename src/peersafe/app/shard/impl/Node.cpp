@@ -90,9 +90,9 @@ void Node::doAccept(
 
     commitSignatureBuffer();
 
-    JLOG(journal_.info()) << "MicroLedger: " << mMicroLedger.get().LedgerHash();
+    JLOG(journal_.info()) << "MicroLedger: " << mMicroLedger->ledgerHash();
 
-    validate(mMicroLedger.get());
+    validate(*mMicroLedger);
 
     // See if we can submit this micro ledger.
     checkAccept();
@@ -104,12 +104,12 @@ void Node::commitSignatureBuffer()
 
     std::lock_guard<std::recursive_mutex> lock_(mSignsMutex);
 
-    auto iter = mSignatureBuffer.find(mMicroLedger.get().LedgerHash());
+    auto iter = mSignatureBuffer.find(mMicroLedger->ledgerHash());
     if (iter != mSignatureBuffer.end())
     {
         for (auto it = iter->second.begin(); it != iter->second.end(); ++it)
         {
-            mMicroLedger.get().addSignature(it->first, it->second);
+            mMicroLedger->addSignature(it->first, it->second);
         }
     }
 }
@@ -124,10 +124,10 @@ void Node::validate(MicroLedger &microLedger)
 
     // Build validation
     auto v = std::make_shared<STValidation>(
-        microLedger.LedgerHash(), validationTime, adaptor.valPublic_, true);
+        microLedger.ledgerHash(), validationTime, adaptor.valPublic_, true);
 
-    v->setFieldU32(sfLedgerSequence, microLedger.Seq());
-    v->setFieldU32(sfShardID, microLedger.ShardID());
+    v->setFieldU32(sfLedgerSequence, microLedger.seq());
+    v->setFieldU32(sfShardID, microLedger.shardID());
 
     // Add our load fee to the validation
     auto const& feeTrack = app_.getFeeTrack();
@@ -177,9 +177,9 @@ void Node::recvValidation(PublicKey& pubKey, STValidation& val)
 
     if (mMicroLedger)
     {
-        if (mMicroLedger.get().LedgerHash() == val.getFieldH256(sfLedgerHash))
+        if (mMicroLedger->ledgerHash() == val.getFieldH256(sfLedgerHash))
         {
-            mMicroLedger.get().addSignature(pubKey, val.getFieldVL(sfMicroLedgerSign));
+            mMicroLedger->addSignature(pubKey, val.getFieldVL(sfMicroLedgerSign));
         }
     }
     else
@@ -206,7 +206,7 @@ void Node::checkAccept()
 
     {
         std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        signCount = mMicroLedger.get().Signatures().size();
+        signCount = mMicroLedger->signatures().size();
     }
 
     if (signCount >= mMapOfShardValidators[mShardID]->quorum())
@@ -232,14 +232,14 @@ void Node::submitMicroLedger(bool withTxMeta)
     }
     else
     {
-        mShardManager.Committee().sendMessage(m);
+        mShardManager.committee().sendMessage(m);
     }
 }
 
 void Node::onMessage(protocol::TMFinalLedgerSubmit const& m)
 {
 	auto finalLedger = std::make_shared<FinalLedger>(m);
-	bool valid = finalLedger->checkValidity(mShardManager.Committee().Validators(), finalLedger->getSigningData());
+	bool valid = finalLedger->checkValidity(mShardManager.committee().validatorsPtr(), finalLedger->getSigningData());
 	if (!valid)
 	{
 		return;
