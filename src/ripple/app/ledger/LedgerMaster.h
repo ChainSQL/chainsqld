@@ -227,6 +227,7 @@ public:
     void checkAccept (std::shared_ptr<Ledger const> const& ledger);
     void checkAccept (uint256 const& hash, std::uint32_t seq);
     void consensusBuilt (std::shared_ptr<Ledger const> const& ledger, Json::Value consensus);
+	void accept(std::shared_ptr<Ledger const> const& ledger);
 
 	void storeLedgerTx(std::shared_ptr<Ledger const> const& ledger);
 

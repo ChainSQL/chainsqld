@@ -42,6 +42,9 @@ public:
     RawStateTable& operator= (RawStateTable&&) = delete;
     RawStateTable& operator= (RawStateTable const&) = delete;
 
+	void deSerialize(std::vector<Blob> const& vecItems);
+	std::vector<Blob> getSerialized();
+
     void
     apply (RawView& to) const;
 
@@ -79,7 +82,7 @@ public:
     std::unique_ptr<ReadView::sles_type::iter_base>
     slesUpperBound (ReadView const& base, uint256 const& key) const;
 
-private:
+public:
     enum class Action
     {
         erase,
@@ -87,6 +90,7 @@ private:
         replace,
     };
 
+private:
     class sles_iter_impl;
 
     using items_t = std::map<key_type,
@@ -96,6 +100,19 @@ private:
 
     items_t items_;
     ZXCAmount dropsDestroyed_ = 0;
+
+public:
+
+    inline const items_t& items() const
+    {
+        return items_;
+    }
+
+    inline const ZXCAmount dropsDestroyed() const 
+    {
+        return dropsDestroyed_;
+    }
+
 };
 
 } // detail

@@ -32,6 +32,8 @@ namespace ripple {
 class Application;
 class Config;
 class ShardManager;
+class FinalLedger;
+class MicroLedgerWithMeta;
 
 class Lookup {
 
@@ -49,7 +51,11 @@ private:
     beast::Journal                                      journal_;
     Config&                                             cfg_;
 
+	using MapFinalLedger = std::map<LedgerIndex, std::shared_ptr<FinalLedger>>;
+	MapFinalLedger										mMapFinalLedger;
 
+	using MapMicroLedgerWithMeta = std::map<uint32, std::shared_ptr<MicroLedgerWithMeta>>;
+	std::map<LedgerIndex, MapMicroLedgerWithMeta>		mMapMicroLedgers;
 public:
 
     Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
@@ -65,8 +71,12 @@ public:
         return *mValidators;
     }
 
-    void onMessage(protocol::TMMicroLedgerWithTxsSubmit const& m);
+    void onMessage(protocol::TMMicroLedgerSubmit const& m);
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
+
+	void checkSaveLedger();
+	void resetMetaIndex(LedgerIndex seq);
+	void saveLedger(LedgerIndex seq);
 };
 
 }

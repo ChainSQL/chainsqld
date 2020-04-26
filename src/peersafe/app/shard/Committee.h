@@ -26,6 +26,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/misc/ValidatorList.h>
 
 #include <vector>
+#include <mutex>
 
 
 namespace ripple {
@@ -39,8 +40,12 @@ class Committee {
 
 private:
 
+    // Used if I am a Committee node
+    bool                                                mIsLeader;
+
     // Hold all commmittee peers
     std::vector<std::weak_ptr <PeerImp>>                mPeers;
+    std::mutex                                          mPeersMutex;
 
     // Hold all committee validators
     std::unique_ptr <ValidatorList>                     mValidators;
@@ -65,6 +70,15 @@ public:
     {
         return *mValidators;
     }
+
+    inline bool IsLeader()
+    {
+        return mIsLeader;
+    }
+
+    void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
+
+    void sendMessage(std::shared_ptr<Message> const &m);
 
     void onMessage(protocol::TMMicroLedgerSubmit const& m);
 

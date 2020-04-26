@@ -136,6 +136,7 @@ SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,      
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
 SF_U32 const sfGas				   = make::one<SF_U32::type>(&sfGas,				 STI_UINT32, 55, "Gas");
+SF_U32 const sfShardID             = make::one<SF_U32::type>(&sfShardID,             STI_UINT32, 56, "Gas");
 
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
@@ -225,6 +226,8 @@ SF_Blob const sfCreateCode      = make::one<SF_Blob::type>(&sfCreateCode,    STI
 SF_Blob const sfMemoType        = make::one<SF_Blob::type>(&sfMemoType,      STI_VL, 12, "MemoType");
 SF_Blob const sfMemoData        = make::one<SF_Blob::type>(&sfMemoData,      STI_VL, 13, "MemoData");
 SF_Blob const sfMemoFormat		= make::one<SF_Blob::type>(&sfMemoFormat,	 STI_VL, 14, "MemoFormat");
+SF_Blob const sfMicroLedgerSign = make::one<SF_Blob::type>(&sfMicroLedgerSign, STI_VL, 15, "MicroLedgerSign");
+SF_Blob const sfFinalLedgerSign = make::one<SF_Blob::type>(&sfFinalLedgerSign, STI_VL, 16, "FinalLedgerSign");
 
 SF_Blob const sfCertificate = make::one<SF_Blob::type>(&sfCertificate, STI_VL, 15, "Certificate");
 

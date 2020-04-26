@@ -66,7 +66,7 @@ public:
         return *mValidators;
     }
 
-    void onMessage(protocol::TMMicroLedgerWithTxsSubmit const& m);
+    void onMessage(protocol::TMMicroLedgerSubmit const& m);
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
 };
 

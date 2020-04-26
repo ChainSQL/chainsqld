@@ -43,6 +43,7 @@ namespace ripple {
 	class Transaction;
 	class ValidatorKeys;
 	class ViewChange;
+    class RCLConsensus;
 
 	// This is the primary interface into the "client" portion of the program.
 	// Code that wants to do normal operations on the network such as
@@ -165,6 +166,7 @@ namespace ripple {
 			bool fromAcquire) = 0;
 
 		// network state machine
+        virtual RCLConsensus& getConsensus() = 0;
 		virtual bool beginConsensus(uint256 const& netLCL) = 0;
 		virtual void endConsensus() = 0;
 		virtual void setStandAlone() = 0;

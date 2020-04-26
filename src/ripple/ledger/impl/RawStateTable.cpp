@@ -154,6 +154,46 @@ private:
 
 // Base invariants are checked by the base during apply()
 
+void RawStateTable::deSerialize(std::vector<Blob> const& vecItems)
+{
+	assert(items_.size() == 0);
+	for (auto const&  item : vecItems)
+	{
+		key_type key;
+		uint8 action;
+		memcpy(key.begin(), item.data(), key.bytes);
+		memcpy(&action, item.data() + key.bytes, 1);
+		auto sle = std::make_shared<SLE>(
+			SerialIter{ item.data() + key.bytes+1,
+				item.size() - (key.bytes+1) }, key);
+
+		Action act = (Action)action;
+		items_.emplace(
+			std::piecewise_construct,
+			std::forward_as_tuple(sle->key()),
+			std::forward_as_tuple(
+				act, sle));
+	}
+}
+
+std::vector<Blob> RawStateTable::getSerialized()
+{
+	std::vector<Blob> ret;
+	for (auto const& elem : items_)
+	{
+		Serializer s;
+		auto sle = elem.second.second;
+		sle->add(s);
+
+		Blob item;
+		item.insert(item.begin(), elem.first.data(),elem.first.data() + elem.first.bytes);
+		item.insert(item.begin() + elem.first.bytes, (uint8)elem.second.first);
+		item.insert(item.begin() + elem.first.bytes + 1, s.peekData().begin(),s.peekData().end());
+		ret.push_back(item);
+	}
+	return ret;
+}
+
 void
 RawStateTable::apply (RawView& to) const
 {

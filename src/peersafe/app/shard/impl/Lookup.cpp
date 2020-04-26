@@ -18,6 +18,10 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
 #include <peersafe/app/shard/Lookup.h>
+#include <peersafe/app/shard/ShardManager.h>
+#include <peersafe/app/shard/FinalLedger.h>
+#include <peersafe/app/shard/MicroLedgerWithMeta.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 
 namespace ripple {
 
@@ -34,14 +38,105 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 
 }
 
+void Lookup::checkSaveLedger()
+{
+	LedgerIndex ledgerIndexToSave = app_.getLedgerMaster().getValidLedgerIndex() + 1;
+	if (mShardManager.shardCount() == mMapMicroLedgers[ledgerIndexToSave].size())
+	{
+		//reset tx-meta transactionIndex field
+		resetMetaIndex(ledgerIndexToSave);
+
+		//save this ledger
+		saveLedger(ledgerIndexToSave);
+	}
+}
+
+void Lookup::resetMetaIndex(LedgerIndex seq)
+{
+	auto vecHashes = mMapFinalLedger[seq]->getTxHashes();
+	for (int i = 0; i < vecHashes.size(); i++)
+	{
+		for (int shardIndex = 1; shardIndex < mShardManager.shardCount(); shardIndex++)
+		{
+			if (mMapMicroLedgers[seq][shardIndex]->hasTx(vecHashes[i]))
+				mMapMicroLedgers[seq][shardIndex]->setMetaIndex(vecHashes[i], i);
+		}
+	}
+}
+
+void Lookup::saveLedger(LedgerIndex seq)
+{
+	auto finalLedger = mMapFinalLedger[seq];
+	//build new ledger
+	auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
+	auto ledgerInfo = finalLedger->getLedgerInfo();
+	auto ledgerToSave =
+		std::make_shared<Ledger>(*previousLedger, ledgerInfo.closeTime);
+	//apply state
+	finalLedger->getRawStateTable().apply(*ledgerToSave);
+	//build tx-map
+	for (auto const& item : finalLedger->getTxHashes())
+	{
+		for (int shardIndex = 1; shardIndex < mShardManager.shardCount(); shardIndex++)
+		{
+			if (mMapMicroLedgers[seq][shardIndex]->hasTx(item))
+			{
+				auto txWithMeta = mMapMicroLedgers[seq][shardIndex]->getTxWithMeta(item);
+				auto tx = std::make_shared<Serializer>(txWithMeta.first);
+				auto meta = std::make_shared<Serializer>();
+				txWithMeta.second->getAsObject().add(*meta);
+				ledgerToSave->rawTxInsert(item,tx,meta);
+			}
+		}
+		
+	}
+
+
+	//check hash
+	assert(ledgerInfo.accountHash == ledgerToSave->stateMap().getHash().as_uint256());
+
+	ledgerToSave->updateSkipList();
+	{
+		// Write the final version of all modified SHAMap
+		// nodes to the node store to preserve the new Ledger
+		int asf = ledgerToSave->stateMap().flushDirty(
+			hotACCOUNT_NODE, ledgerToSave->info().seq);
+		int tmf = ledgerToSave->txMap().flushDirty(
+			hotTRANSACTION_NODE, ledgerToSave->info().seq);
+		JLOG(journal_.debug()) << "Flushed " << asf << " accounts and " << tmf
+			<< " transaction nodes";
+	}
+	ledgerToSave->unshare();
+	ledgerToSave->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
+
+	//save ledger
+	app_.getLedgerMaster().accept(ledgerToSave);
+}
+
 void Lookup::onMessage(protocol::TMMicroLedgerWithTxsSubmit const& m)
 {
+	auto microWithMeta = std::make_shared<MicroLedgerWithMeta>(m);
+	bool valid = microWithMeta->checkValidity(*mShardManager.Node().ShardValidators().at(microWithMeta->shardID()),
+		microWithMeta->signingData());
+	if (!valid)
+	{
+		return;
+	}
 
+	mMapMicroLedgers[microWithMeta->seq()][microWithMeta->shardID()] = microWithMeta;
+	checkSaveLedger();
 }
 
 void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
 {
+	auto finalLedger = std::make_shared<FinalLedger>(m);
+	bool valid = finalLedger->checkValidity(mShardManager.Committee().Validators());
 
+	if (valid)
+	{
+		mMapFinalLedger.emplace(finalLedger->getLedgerInfo().seq, finalLedger);
+	}
+	checkSaveLedger();
 }
 
 }

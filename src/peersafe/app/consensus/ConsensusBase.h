@@ -31,6 +31,8 @@
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/consensus/PConsensusParams.h>
+#include <ripple/app/consensus/RCLCxLedger.h>
+#include <ripple/app/consensus/RCLCxTx.h>
 
 namespace ripple {
 
@@ -76,6 +78,8 @@ namespace ripple {
 			getJson(bool full) const = 0;
 
         virtual bool waitingForInit() { return false; }
+
+        virtual void setPhase(ConsensusPhase phase) {}
 
         virtual std::chrono::milliseconds getConsensusTimeout() { return CONSENSUS_TIMEOUT; }
 	};

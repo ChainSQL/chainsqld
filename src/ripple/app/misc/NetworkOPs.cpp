@@ -355,6 +355,10 @@ private:
         const Overlay::PeerSequence&, uint256& networkClosed);
 
 public:
+    RCLConsensus &getConsensus() override
+    {
+        return mConsensus;
+    }
     bool beginConsensus (uint256 const& networkClosed) override;
     void endConsensus () override;
     void setStandAlone () override
@@ -1744,8 +1748,8 @@ bool NetworkOPsImp::beginConsensus (uint256 const& networkClosed)
     assert (closingInfo.parentHash ==
             m_ledgerMaster.getClosedLedger()->info().hash);
 
-    app_.validators().onConsensusStart (
-        app_.getValidations().getCurrentPublicKeys ());
+    //app_.validators().onConsensusStart (
+    //    app_.getValidations().getCurrentPublicKeys ());
 
     mConsensus.startRound (
         app_.timeKeeper().closeTime(),

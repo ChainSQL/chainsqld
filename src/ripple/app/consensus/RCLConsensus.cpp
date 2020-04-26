@@ -216,6 +216,7 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
 	prop.set_view(proposal.view());
     prop.set_proposeseq(proposal.proposeSeq());
     prop.set_closetime(proposal.closeTime().time_since_epoch().count());
+    prop.set_shardid(proposal.shardID());
 
     prop.set_nodepubkey(valPublic_.data(), valPublic_.size());
 
@@ -486,22 +487,22 @@ RCLConsensus::Adaptor::onCollectFinish(
 			false);
 	}
 
-	// Add pseudo-transactions to the set
-	if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
-		((prevLedger->info().seq % 256) == 0))
-	{
-		// previous ledger was flag ledger, add pseudo-transactions
-		auto const validations =
-			app_.getValidations().getTrustedForLedger(
-				prevLedger->info().parentHash);
+	//// Add pseudo-transactions to the set
+	//if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
+	//	((prevLedger->info().seq % 256) == 0))
+	//{
+	//	// previous ledger was flag ledger, add pseudo-transactions
+	//	auto const validations =
+	//		app_.getValidations().getTrustedForLedger(
+	//			prevLedger->info().parentHash);
 
-		if (validations.size() >= app_.validators().quorum())
-		{
-			feeVote_->doVoting(prevLedger, validations, initialSet);
-			app_.getAmendmentTable().doVoting(
-				prevLedger, validations, initialSet);
-		}
-	}
+	//	if (validations.size() >= app_.validators().quorum())
+	//	{
+	//		feeVote_->doVoting(prevLedger, validations, initialSet);
+	//		app_.getAmendmentTable().doVoting(
+	//			prevLedger, validations, initialSet);
+	//	}
+	//}
 
 	// Now we need an immutable snapshot
 	initialSet = initialSet->snapShot(false);
@@ -517,7 +518,8 @@ RCLConsensus::Adaptor::onCollectFinish(
 			setHash,
 			closeTime,
 			app_.timeKeeper().closeTime(),
-			nodeID_} };
+			nodeID_, 
+            app_.getShardManager().Node().ShardID()} };
 }
 
 void
@@ -557,15 +559,25 @@ RCLConsensus::Adaptor::onAccept(
             // will not change until startRound is called (which happens via
             // endConsensus).
 			auto timeStart = utcTime();
-            this->doAccept(
-                result,
-                prevLedger,
-                closeResolution,
-                rawCloseTimes,
-                mode,
-                std::move(cj));
+            if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
+            {
+                app_.getShardManager().Node().doAccept(
+                    result.set,
+                    prevLedger,
+                    result.position.closeTime());
+            }
+            else
+            {
+                this->doAccept(
+                    result,
+                    prevLedger,
+                    closeResolution,
+                    rawCloseTimes,
+                    mode,
+                    std::move(cj));
+                //this->app_.getOPs().endConsensus();
+            }
 			JLOG(j_.info()) << "doAccept time used:" << utcTime() - timeStart << "ms";
-            this->app_.getOPs().endConsensus();
         });
 }
 
@@ -616,6 +628,7 @@ RCLConsensus::Adaptor::doAccept(
     CanonicalTXSet retriableTxs{result.set.id()};
 	
 	auto timeStart = utcTime();
+
     auto sharedLCL = buildLCL(
         prevLedger,
         result.set,

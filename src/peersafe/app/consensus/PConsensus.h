@@ -35,6 +35,7 @@
 #include <peersafe/app/consensus/ViewChange.h>
 #include <peersafe/app/consensus/ViewChangeManager.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/shard/ShardManager.h>
 #include <atomic>
 
 namespace ripple {
@@ -159,6 +160,11 @@ public:
 		return prevLedgerID_;
 	}
 
+    void setPhase(ConsensusPhase phase)
+    {
+        phase_ = phase;
+    }
+
 	/** Get the Json state of the consensus process.
 
 		Called by the consensus_info RPC.
@@ -241,7 +247,7 @@ private:
 
     std::chrono::milliseconds getConsensusTimeout();
 
-	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
+	bool isLeader(PublicKey const& pub);
 
 	int getPubIndex(PublicKey const& pub);
 
@@ -391,6 +397,8 @@ PConsensus<Adaptor>::PConsensus(
             }
         }
     }
+
+    omitEmpty_ = false;
 }
 
 template <class Adaptor>
@@ -455,6 +463,18 @@ PConsensus<Adaptor>::startRoundInternal(
 	//reset view to 0 after a new close ledger.
 	view_ = 0;
 	toView_ = 0;
+
+    ShardManager& shardManager = adaptor_.app_.getShardManager();
+    ShardManager::ShardRole shardRole = shardManager.myShardRole();
+
+    if (shardRole == ShardManager::LOOKUP)
+    {
+        shardManager.Node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
+    }
+    else if (shardRole == ShardManager::COMMITTEE)
+    {
+        shardManager.Committee().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
+    }
 
 	closeResolution_ = getNextLedgerTimeResolution(
 		previousLedger_.closeTimeResolution(),
@@ -573,6 +593,18 @@ PConsensus<Adaptor>::onViewChange()
 
 	//clear avoid
 	adaptor_.app_.getTxPool().clearAvoid();
+
+    ShardManager& shardManager = adaptor_.app_.getShardManager();
+    ShardManager::ShardRole shardRole = shardManager.myShardRole();
+
+    if (shardRole == ShardManager::SHARD)
+    {
+        shardManager.Node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
+    }
+    else if (shardRole == ShardManager::COMMITTEE)
+    {
+        shardManager.Committee().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
+    }
 
 	viewChangeManager_.onViewChanged(view_);
 	if (bWaitingInit_)
@@ -791,17 +823,18 @@ PConsensus<Adaptor>::gotTxSet(
 
 				auto set = txSet.map_->snapShot(false);
 				//this place has a txSet copy,what's the time it costs?
-				result_.emplace(Result(
-					std::move(set),
-					RCLCxPeerPos::Proposal(
-						prevLedgerID_,
-						previousLedger_.seq() + 1,
-						view_,
-						RCLCxPeerPos::Proposal::seqJoin,
-						id,
-						closeTime_,
-						now,
-						adaptor_.nodeID())));
+                result_.emplace(Result(
+                    std::move(set),
+                    RCLCxPeerPos::Proposal(
+                        prevLedgerID_,
+                        previousLedger_.seq() + 1,
+                        view_,
+                        RCLCxPeerPos::Proposal::seqJoin,
+                        id,
+                        closeTime_,
+                        now,
+                        adaptor_.nodeID(),
+                        adaptor_.app_.getShardManager().Node().ShardID())));
 
 				if (phase_ == ConsensusPhase::open)
 					phase_ = ConsensusPhase::establish;
@@ -840,7 +873,8 @@ void
 PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 {
 	// Nothing to do if we are currently working on a ledger
-	if (phase_ == ConsensusPhase::accepted)
+	if (phase_ == ConsensusPhase::accepted ||
+        phase_ == ConsensusPhase::waitingFinalLedger)
 		return;
 	// Check we are on the proper ledger (this may change phase_)
 	checkLedger();
@@ -1145,17 +1179,23 @@ bool PConsensus<Adaptor>::shouldPack()
 }
 
 template <class Adaptor>
-bool PConsensus<Adaptor>::isLeader(PublicKey const& pub,bool bNextLeader /* = false */)
+bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 {
-	auto const& validators = adaptor_.app_.validators().validators();
-	LedgerIndex currentLedgerIndex = previousLedger_.seq() + 1;
-	if (bNextLeader)
-	{
-		currentLedgerIndex++;
-	}
-	assert(validators.size() > 0);
-	int leader_idx = (view_ + currentLedgerIndex) % validators.size();
-	return pub == validators[leader_idx];
+    ShardManager& shardManager = adaptor_.app_.getShardManager();
+    LedgerIndex currentLedgerIndex = previousLedger_.seq() + 1;
+
+    if (shardManager.myShardRole() == ShardManager::SHARD)
+    {
+        return shardManager.Node().IsLeader();
+    }
+    else if (shardManager.myShardRole() == ShardManager::COMMITTEE)
+    {
+        return shardManager.Committee().IsLeader();
+    }
+    else
+    {
+        return false;
+    }
 }
 
 template <class Adaptor>

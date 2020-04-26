@@ -1309,7 +1309,27 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 	JLOG(p_journal_.info()) << "PeerImpl recv peer proposal:" << proposeHash << " from public " << toBase58(TOKEN_NODE_PUBLIC, publicKey)
 		<< ",prevHash=" << to_string(prevLedger) << ",curSeq=" << set.curledgerseq();
 
-    auto const isTrusted = app_.validators().trusted (publicKey);
+    bool isTrusted = false;
+    ShardManager& shardManager = app_.getShardManager();
+
+    if (set.shardid() == Node::CommitteeShardID)
+    {
+        isTrusted = shardManager.Committee().Validators().trusted(publicKey);
+    }
+    else
+    {
+        if (shardManager.Node().ShardID() == set.shardid())
+        {
+            auto iter = shardManager.Node().ShardValidators().find(set.shardid());
+            if (iter != shardManager.Node().ShardValidators().end())
+            {
+                isTrusted = iter->second->trusted(publicKey);
+            }
+        }
+    }
+
+    JLOG(p_journal_.trace()) <<
+        "Proposal: " << (isTrusted ? "trusted" : "UNTRUSTED");
 
     if (!isTrusted)
     {
@@ -1324,15 +1344,14 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
             JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (load)";
             return;
         }
-    }
 
-    JLOG(p_journal_.trace()) <<
-        "Proposal: " << (isTrusted ? "trusted" : "UNTRUSTED");
+        return;
+    }
 
     auto proposal = RCLCxPeerPos(
         publicKey, signature, suppression,
         RCLCxPeerPos::Proposal{prevLedger, set.curledgerseq(),set.view(), set.proposeseq (), proposeHash, closeTime,
-            app_.timeKeeper().closeTime(),calcNodeID(publicKey)});
+            app_.timeKeeper().closeTime(),calcNodeID(publicKey), set.shardid()});
 
     std::weak_ptr<PeerImp> weak = shared_from_this();
     app_.getJobQueue ().addJob (
@@ -1733,8 +1752,26 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
             return;
         }
 
-        auto const isTrusted =
-            app_.validators().trusted(val->getSignerPublic ());
+        bool isTrusted = false;
+        ShardManager& shardManager = app_.getShardManager();
+        uint32 shardId = val->getShardID();
+
+        if (shardId == Node::CommitteeShardID)
+        {
+            isTrusted = shardManager.Committee().Validators().trusted(val->getSignerPublic());
+        }
+        else
+        {
+            // Our shard
+            if (shardId == shardManager.Node().ShardID())
+            {
+                auto iter = shardManager.Node().ShardValidators().find(shardId);
+                if (iter != shardManager.Node().ShardValidators().end())
+                {
+                    isTrusted = iter->second->trusted(val->getSignerPublic());
+                }
+            }
+        }
 
         if (!isTrusted && (sanity_.load () == Sanity::insane))
         {
@@ -1914,6 +1951,11 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
 
     switch (app_.getShardManager().myShardRole())
     {
+    case ShardManager::LOOKUP:
+    case ShardManager::SYNC:
+    case ShardManager::LOOKUP & ShardManager::SYNC:
+        app_.getShardManager().Lookup().onMessage(packet);
+        break;
     case ShardManager::COMMITTEE:
         app_.getShardManager().Committee().onMessage(packet);
         break;
@@ -1928,17 +1970,14 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerWithTxsSubmit> const&
     protocol::TMMicroLedgerWithTxsSubmit& packet = *m;
 
     switch (app_.getShardManager().myShardRole())
-    {                                                                                                                                                                                                                      
-    case ShardManager::LOOKUP:
-        app_.getShardManager().Lookup().onMessage(packet);                                            
-        break;
-    case ShardManager::SYNC:
-        app_.getShardManager().Sync().onMessage(packet);
-        break;
-    case ShardManager::LOOKUP & ShardManager::SYNC:
-        app_.getShardManager().Lookup().onMessage(packet);
-        app_.getShardManager().Sync().onMessage(packet);
-        break;
+    {
+	case ShardManager::LOOKUP:
+	case ShardManager::SYNC:
+	case ShardManager::LOOKUP & ShardManager::SYNC:
+	{
+		app_.getShardManager().Lookup().onMessage(packet);
+		break;
+	}
     default:
         break;
     }
@@ -1952,17 +1991,12 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
     switch (app_.getShardManager().myShardRole())
     {
     case ShardManager::LOOKUP:
+	case ShardManager::SYNC:
+	case ShardManager::LOOKUP & ShardManager::SYNC:
         app_.getShardManager().Lookup().onMessage(packet);
         break;
     case ShardManager::SHARD:
         app_.getShardManager().Node().onMessage(packet);
-        break;
-    case ShardManager::SYNC:
-        app_.getShardManager().Sync().onMessage(packet);
-        break;
-    case ShardManager::LOOKUP & ShardManager::SYNC:
-        app_.getShardManager().Lookup().onMessage(packet);
-        app_.getShardManager().Sync().onMessage(packet);
         break;
     default:
         break;

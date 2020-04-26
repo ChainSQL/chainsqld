@@ -24,8 +24,13 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/app/misc/ValidatorList.h>
+#include <ripple/protocol/STValidation.h>
+#include <peersafe/app/shard/MicroLedger.h>
+#include <ripple/app/consensus/RCLCxTx.h>
+#include <ripple/app/consensus/RCLCxLedger.h>
 
 #include <vector>
+#include <mutex>
 
 namespace ripple {
 
@@ -36,16 +41,30 @@ class ShardManager;
 
 class Node {
 
+public:
+    enum {
+        InvalidShardID   = -1,
+        CommitteeShardID = 0,
+    };
+
 private:
 
-    // Used if I am a shard node
-    uint32                                              mShardID;
+    // These field used if I'm a shard node.
+    uint32                                              mShardID        = InvalidShardID;
+    bool                                                mIsLeader       = false;
+    boost::optional<MicroLedger>                        mMicroLedger;
+    std::map<uint256,
+        std::vector<std::pair<PublicKey, Blob>>>        mSignatureBuffer;
+    std::recursive_mutex                                mSignsMutex;
+
 
     typedef std::map<uint32, std::vector<std::weak_ptr <PeerImp>>> MapOfShardPeers;
     typedef std::map<uint32, std::unique_ptr <ValidatorList>> MapOfShardValidators;
 
+    // Common field
     // Hold all shard peers
     MapOfShardPeers                                     mMapOfShardPeers;
+    std::mutex                                          mPeersMutex;
 
     // Hold all shard validators
     MapOfShardValidators                                mMapOfShardValidators;
@@ -56,13 +75,12 @@ private:
     beast::Journal                                      journal_;
     Config&                                             cfg_;
 
-
 public:
 
     Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~Node() {}
 
-    inline int32_t ShardID()
+    inline uint32 ShardID()
     { 
         return mShardID;
     }
@@ -77,7 +95,29 @@ public:
         return mMapOfShardValidators;
     }
 
+    inline bool IsLeader()
+    {
+        return mIsLeader;
+    }
+
+    void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
+
+    void doAccept(RCLTxSet const& set, RCLCxLedger const& previousLedger, NetClock::time_point closeTime);
+
+    void validate(MicroLedger &microLedger);
+
+    void commitSignatureBuffer();
+
+    void sendValidation(protocol::TMValidation& m);
+
+    void recvValidation(PublicKey& pubKey, STValidation& val);
+
+    void checkAccept();
+
+    void submitMicroLedger(bool withTxMeta);
+
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
+
 };
 
 }

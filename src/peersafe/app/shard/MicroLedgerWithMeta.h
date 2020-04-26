@@ -17,45 +17,35 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 //==============================================================================
 
-#include <peersafe/app/shard/Committee.h>
+#ifndef PEERSAFE_APP_SHARD_MICROLEDGER_WITHMETA_H_INCLUDED
+#define PEERSAFE_APP_SHARD_MICROLEDGER_WITHMETA_H_INCLUDED
+
+
+#include <peersafe/app/shard/LedgerBase.h>
+#include <peersafe/app/shard/MicroLedger.h>
+#include <ripple/protocol/Protocol.h>
+#include <ripple/protocol/STTx.h>
+#include <ripple/ledger/TxMeta.h>
+#include "ripple.pb.h"
+
 
 namespace ripple {
+class ValidatorList;
+using TxWithMeta = std::pair<Blob, std::shared_ptr<TxMeta>>;
+class MicroLedgerWithMeta : public MicroLedger {
+private:
+	std::map<TxID, TxWithMeta>	mMapTxWithMeta;
 
-Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
-    : mShardManager(m)
-    , app_(app)
-    , journal_(journal)
-    , cfg_(cfg)
-{
-    // TODO
-}
+public:
+	MicroLedgerWithMeta();
+	MicroLedgerWithMeta(protocol::TMMicroLedgerWithTxsSubmit const& m);
 
-void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
-{
-    //mMicroLedger.reset();
-
-    auto const& validators = mValidators->validators();
-    assert(validators.size() > 0);
-    int index = (view + seq) % validators.size();
-
-    mIsLeader = (pubkey == validators[index]);
+	bool hasTx(TxID const& hash);
+	void setMetaIndex(TxID const& hash,uint32 index);
+	bool checkValidity(ValidatorList const& list, Blob signingData);
+	TxWithMeta const& getTxWithMeta(TxID const& hash);
+};
 
 }
 
-void Committee::sendMessage(std::shared_ptr<Message> const &m)
-{
-    std::lock_guard<std::mutex> lock(mPeersMutex);
-
-    for (auto w : mPeers)
-    {
-        if (auto p = w.lock())
-            p->send(m);
-    }
-}
-
-void Committee::onMessage(protocol::TMMicroLedgerSubmit const& m)
-{
-
-}
-
-}
+#endif
