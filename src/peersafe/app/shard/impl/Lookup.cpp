@@ -54,8 +54,8 @@ void Lookup::resetMetaIndex(LedgerIndex seq)
 	{
 		for (int shardIndex = 1; shardIndex < mShardManager.shardCount(); shardIndex++)
 		{
-			if (mMapMicroLedgers[seq][shardIndex]->hasTx(vecHashes[i]))
-				mMapMicroLedgers[seq][shardIndex]->setMetaIndex(vecHashes[i], i);
+			//if (mMapMicroLedgers[seq][shardIndex]->hasTx(vecHashes[i]))
+			//	mMapMicroLedgers[seq][shardIndex]->setMetaIndex(vecHashes[i], i);
 		}
 	}
 }
@@ -75,12 +75,12 @@ void Lookup::saveLedger(LedgerIndex seq)
 	{
 		for (int shardIndex = 1; shardIndex < mShardManager.shardCount(); shardIndex++)
 		{
-			if (mMapMicroLedgers[seq][shardIndex]->hasTx(item))
+			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(item))
 			{
 				auto txWithMeta = mMapMicroLedgers[seq][shardIndex]->getTxWithMeta(item);
 				auto tx = std::make_shared<Serializer>(txWithMeta.first);
 				auto meta = std::make_shared<Serializer>();
-				txWithMeta.second->getAsObject().add(*meta);
+				//txWithMeta.second->getAsObject().add(*meta);
 				ledgerToSave->rawTxInsert(item,tx,meta);
 			}
 		}
@@ -109,9 +109,9 @@ void Lookup::saveLedger(LedgerIndex seq)
 	app_.getLedgerMaster().accept(ledgerToSave);
 }
 
-void Lookup::onMessage(protocol::TMMicroLedgerWithTxsSubmit const& m)
+void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 {
-	auto microWithMeta = std::make_shared<MicroLedgerWithMeta>(m);
+	auto microWithMeta = std::make_shared<MicroLedger>(m);
 	bool valid = microWithMeta->checkValidity(*mShardManager.Node().ShardValidators().at(microWithMeta->shardID()),
 		microWithMeta->signingData());
 	if (!valid)

@@ -154,19 +154,14 @@ MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m)
 	readSignature(m.signatures());
 }
 
-MicroLedger::MicroLedger(protocol::TMMicroLedgerWithTxsSubmit const& m)
-{
-	readMicroLedger(m.microledger());
-	readSignature(m.signatures());
-}
-
 void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
 {
 	mSeq = m.ledgerseq();
 	mShardID = m.shardid();
+	memcpy(mHashSet.TxWMRootHash.begin(), m.txwmhashroot().data(), 32);
 	readTxHashes(m.txhashes());
 	readStateDelta(m.statedeltas());
-	memcpy(mTxWMRootHash.begin(), m.txwmhashroot().data(), 32);
+	readTxWithMeta(m.txwithmetas());
 }
 void MicroLedger::readTxHashes(::google::protobuf::RepeatedPtrField< ::std::string> const& hashes)
 {
@@ -188,6 +183,24 @@ void MicroLedger::readStateDelta(::google::protobuf::RepeatedPtrField< ::std::st
 		mStateDeltas.push_back(delta);
 	}
 }
+
+void MicroLedger::readTxWithMeta(protocol::MicroLedger_TxWithMeta const& txWithMetas)
+{
+	for (int i = 0; i < m.txwithmetas().size(); i++)
+	{
+		TxID txHash;
+		protocol::TxWithMeta const& txWithMeta = m.txwithmetas(i);
+		memcpy(txHash.begin(), txWithMeta.hash().data(), 32);
+		Blob rawTx, rawMeta;
+		rawTx.assign(txWithMeta.body().begin(), txWithMeta.body().end());
+		rawMeta.assign(txWithMeta.meta().begin(), txWithMeta.meta().end());
+		//auto meta = std::make_shared<TxMeta>(txHash, mSeq, rawMeta);
+		//mMapTxWithMeta.emplace(txHash, std::make_pair(rawTx, meta));
+		mTxWithMetas.emplace(txHash, std::make_pair(std::make_shared<Serializer>(rawTx,rawTx.size()), 
+			std::make_shared<Serializer>(rawMeta,rawMeta.size())));
+	}
+}
+
 LedgerIndex	MicroLedger::seq()
 {
 	return mSeq;
@@ -196,20 +209,13 @@ uint32	MicroLedger::shardID()
 {
 	return mShardID;
 }
-std::vector<TxID> const& MicroLedger::txHashes()
-{
-	return mTxsHashes;
-}
-std::vector<Blob> const& MicroLedger::stateDeltas()
-{
-	return mStateDeltas;
-}
+
 uint256	MicroLedger::txRootHash()
 {
-	return mTxWMRootHash;
+	return mHashSet.TxsRootHash;
 }
 
-bool MicroLedger::checkValidity(ValidatorList const& list, Blob signingData)
+bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, Blob signingData)
 {
 	bool ret = LedgerBase::checkValidity(list, signingData);
 	if (!ret)
@@ -217,6 +223,16 @@ bool MicroLedger::checkValidity(ValidatorList const& list, Blob signingData)
 
 	//check tx-roothash
 
+	//
+	if (mTxWithMetas.size() > 0 && mTxsHashes.size() != mTxWithMetas.size())
+		return false;
+
+	//check all tx-meta corresponds to tx-hashes
+	for (TxID hash : mTxsHashes)
+	{
+		if (mTxWithMetas.find(hash) == mTxWithMetas.end())
+			return false;
+	}
 }
 
 }

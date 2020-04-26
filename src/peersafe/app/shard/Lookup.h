@@ -54,8 +54,8 @@ private:
 	using MapFinalLedger = std::map<LedgerIndex, std::shared_ptr<FinalLedger>>;
 	MapFinalLedger										mMapFinalLedger;
 
-	using MapMicroLedgerWithMeta = std::map<uint32, std::shared_ptr<MicroLedgerWithMeta>>;
-	std::map<LedgerIndex, MapMicroLedgerWithMeta>		mMapMicroLedgers;
+	using MapMicroLedger = std::map<uint32, std::shared_ptr<MicroLedger>>;
+	std::map<LedgerIndex, MapMicroLedger>				mMapMicroLedgers;
 public:
 
     Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
