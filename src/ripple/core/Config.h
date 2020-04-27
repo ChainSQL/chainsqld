@@ -186,14 +186,15 @@ public:
 
 	// shard related configuration items
 
-	const int SHARD_ROLE_UNDEFINED = 0x00000000;
-	const int SHARD_ROLE_LOOKUP    = 0x00000001;
-	const int SHARD_ROLE_SYNC      = 0x00000010;
-	const int SHARD_ROLE_SHARD     = 0x00000100;
-	const int SHARD_ROLE_COMMITTEE = 0x00001000;
+	const std::uint32_t SHARD_ROLE_UNDEFINED = 0x00000000;
+	const std::uint32_t SHARD_ROLE_LOOKUP    = 0x00000001;
+	const std::uint32_t SHARD_ROLE_SHARD     = 0x00000002;
+	const std::uint32_t SHARD_ROLE_COMMITTEE = 0x00000004;
+	const std::uint32_t SHARD_ROLE_SYNC	     = 0x00000008;
 
 
-	int                       SHARD_ROLE  = SHARD_ROLE_UNDEFINED;
+
+	std::uint32_t             SHARD_ROLE  = SHARD_ROLE_UNDEFINED;
 	std::size_t               SHARD_COUNT = 1;
 	std::size_t               SHARD_INDEX = 1;
 
@@ -249,7 +250,8 @@ public:
 	// get all shard related ips
 	void getShardRelatedIps(std::vector<std::string>& ips);
 
-
+	// get shard role string. example: "lookup,sync" "shard"
+	std::string shardRoleToString(std::uint32_t& shardRole);
 
 	int          getShardRole()  const;
 	std::size_t  getShardIndex() const;

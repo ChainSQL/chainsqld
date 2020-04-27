@@ -36,6 +36,35 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
     , cfg_(cfg)
 {
     // TODO
+
+
+	std::vector< std::vector<std::string> >& shardValidators = cfg_.SHARD_VALIDATORS;
+	for (size_t i = 1; i < shardValidators.size(); i++) {
+
+
+		mMapOfShardValidators[i] = std::make_unique<ValidatorList>(
+			app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
+			journal_, cfg_.VALIDATION_QUORUM);
+
+		std::vector<std::string>  publisherKeys;
+		// Setup trusted validators
+		if (!mMapOfShardValidators[i]->load(
+			app_.getValidationPublicKey(),
+			shardValidators[i],
+			publisherKeys)){
+			//JLOG(m_journal.fatal()) <<
+			//	"Invalid entry in validator configuration.";
+			//return false;
+			mMapOfShardValidators.erase(i);
+		}
+
+
+	}
+
+	
+
+
+
 }
 
 void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)

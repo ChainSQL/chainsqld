@@ -1108,7 +1108,7 @@ NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
 
     if (ter == tesSUCCESS)
     {
-        // after check and transaction's check result is tesSUCCESS��add it to TxPool:
+        // after check and transaction's check result is tesSUCCESS add it to TxPool:
         ter = app_.getTxPool().insertTx(transaction,view.seq());
         if (ter != tesSUCCESS)
         {

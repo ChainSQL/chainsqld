@@ -455,8 +455,9 @@ void Config::loadFromString (std::string const& fileContents)
 
 				if      (item == std::string("lookup"))      SHARD_ROLE |= SHARD_ROLE_LOOKUP;
 				else if (item == std::string("shard"))       SHARD_ROLE |= SHARD_ROLE_SHARD;
-				else if (item == std::string("sync"))        SHARD_ROLE |= SHARD_ROLE_SYNC;
 				else if (item == std::string("committee"))   SHARD_ROLE |= SHARD_ROLE_COMMITTEE;
+				else if (item == std::string("sync"))        SHARD_ROLE |= SHARD_ROLE_SYNC;
+
 			}
 
 		}
@@ -474,11 +475,21 @@ void Config::loadFromString (std::string const& fileContents)
 			SHARD_INDEX = beast::lexicalCastThrow <std::size_t>(shard_index.first);
 		}
 
+		if (SHARD_INDEX > SHARD_COUNT) {
+			Throw<std::runtime_error>(
+				"shard_index  cannot be greater than shard_count !");
+		}
+
 
 		bool bLookup    = loadLookupConfig(secConfig);
 		bool bShard     = loadShardConfig(secConfig);
 		bool bCommittee = loadCommitteeConfig(secConfig);
 		bool bSync      = loadSyncConfigConfig(secConfig);
+
+		if (SHARD_COUNT != SHARD_IPS.size()) {
+			Throw<std::runtime_error>(
+				"shard_count must be equal to the number of shard_ips configuration items !");
+		}
 
 
 		if ((SHARD_ROLE & SHARD_ROLE_SHARD) || (SHARD_ROLE & SHARD_ROLE_COMMITTEE) ){
@@ -796,6 +807,21 @@ void Config::getShardRelatedIps(std::vector<std::string>& ips)
 
 	std::sort(ips.begin(), ips.end());
 	ips.erase(std::unique(ips.begin(), ips.end()), ips.end());
+}
+
+std::string Config::shardRoleToString(std::uint32_t& shardRole)
+{
+	std::string roleString;
+	if (shardRole & SHARD_ROLE_LOOKUP)       roleString  += "lookup,";
+	if (shardRole & SHARD_ROLE_SHARD)        roleString  += "shard,";
+	if (shardRole & SHARD_ROLE_SYNC)         roleString  += "sync,";
+	if (shardRole & SHARD_ROLE_COMMITTEE)    roleString  += "committee,";
+
+	// erase the last ','
+	roleString.pop_back();
+
+	return roleString;
+
 }
 
 int Config::getShardRole() const

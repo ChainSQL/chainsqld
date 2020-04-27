@@ -22,6 +22,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/FinalLedger.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 
+#include <ripple/core/Config.h>
+#include <ripple/core/ConfigSections.h>
+
 namespace ripple {
 
 Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
@@ -31,6 +34,24 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
     , cfg_(cfg)
 {
     // TODO initial peers and validators
+
+	mValidators = std::make_unique<ValidatorList>(
+			app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
+			journal_, cfg_.VALIDATION_QUORUM);
+
+
+	std::vector<std::string>  publisherKeys;
+	// Setup trusted validators
+	if (!mValidators->load(
+		app_.getValidationPublicKey(),
+		cfg_.section(SECTION_LOOKUP_PUBLIC_KEYS).values(),
+		publisherKeys))
+	{
+		//JLOG(m_journal.fatal()) <<
+		//	"Invalid entry in validator configuration.";
+		//return false;
+	}
+
 }
 
 void Lookup::checkSaveLedger()

@@ -45,6 +45,7 @@ private:
     // Hold all Lookup validators
     std::unique_ptr <ValidatorList>                     mValidators;
 
+
     ShardManager&                                       mShardManager;
 
     Application&                                        app_;
