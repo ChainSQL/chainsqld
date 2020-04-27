@@ -23,6 +23,7 @@
 #include <ripple/overlay/Cluster.h>
 #include <ripple/json/json_reader.h>
 
+
 namespace ripple {
 
 ConnectAttempt::ConnectAttempt (Application& app, boost::asio::io_service& io_service,

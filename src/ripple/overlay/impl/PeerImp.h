@@ -326,6 +326,12 @@ public:
     void
     fail(std::string const& reason);
 
+	std::uint32_t
+	getShardRole() const;
+
+	std::uint32_t
+	getShardIndex() const;
+
 private:
     void
     close();

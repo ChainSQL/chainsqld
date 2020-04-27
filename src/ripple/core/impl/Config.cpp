@@ -834,6 +834,11 @@ std::size_t Config::getShardIndex() const
 	return SHARD_INDEX;
 }
 
+bool Config::isShardOrCommittee()
+{
+	return ( (SHARD_ROLE & SHARD_ROLE_SHARD) || (SHARD_ROLE & SHARD_ROLE_COMMITTEE) );
+}
+
 int Config::getSize (SizedItemName item) const
 {
     SizedItem sizeTable[] =   //    tiny    small   medium  large       huge

@@ -32,6 +32,9 @@
 #include <ripple/rpc/json_body.h>
 #include <ripple/server/SimpleWriter.h>
 
+
+#include <peersafe/app/shard/ShardManager.h>
+
 #include <boost/utility/in_place_factory.hpp>
 
 namespace ripple {
@@ -416,6 +419,11 @@ OverlayImpl::add_active (std::shared_ptr<PeerImp> const& peer)
         (void) result.second;
     }
 
+
+	{
+		app_.getShardManager().addActive(peer);
+	}
+
     list_.emplace(peer.get(), peer);
 
     JLOG(journal_.debug()) <<
@@ -625,6 +633,8 @@ OverlayImpl::onPeerDeactivate (Peer::id_t id)
 {
     std::lock_guard <decltype(mutex_)> lock (mutex_);
     ids_.erase(id);
+
+	app_.getShardManager().eraseDeactivate(id);
 }
 
 void

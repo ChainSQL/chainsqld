@@ -458,6 +458,16 @@ PeerImp::fail(std::string const& name, error_code ec)
     close();
 }
 
+std::uint32_t PeerImp::getShardRole() const
+{
+	return hello_.shardrole();
+}
+
+std::uint32_t PeerImp::getShardIndex() const
+{
+	return hello_.shardindex();
+}
+
 void
 PeerImp::gracefulClose()
 {

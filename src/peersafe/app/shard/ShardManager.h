@@ -31,7 +31,8 @@ namespace ripple {
 
 class Application;
 class Config;
-
+class PeerImp;
+class Peer;
 
 class ShardManager {
 
@@ -96,6 +97,10 @@ public:
 	{
 		return cfg_.SHARD_COUNT;
 	}
+
+	void addActive(std::shared_ptr<PeerImp> const& peer);
+
+	void eraseDeactivate(Peer::id_t id);
 };
 
 }

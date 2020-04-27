@@ -22,6 +22,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/core/Config.h>
 #include <ripple/core/ConfigSections.h>
 
+#include <ripple/overlay/Peer.h>
+#include <ripple/overlay/impl/PeerImp.h>
+
 namespace ripple {
 
 Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
@@ -51,6 +54,23 @@ Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Jour
 	}
 }
 
+void Committee::addActive(std::shared_ptr<PeerImp> const& peer)
+{
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	auto const result = mPeers.emplace(
+		std::piecewise_construct,
+		std::make_tuple(peer->id()),
+		std::make_tuple(peer));
+	assert(result.second);
+	(void)result.second;
+}
+
+void Committee::eraseDeactivate(Peer::id_t id)
+{
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	mPeers.erase(id);
+}
+
 void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
     //mMicroLedger.reset();
@@ -69,7 +89,7 @@ void Committee::sendMessage(std::shared_ptr<Message> const &m)
 
     for (auto w : mPeers)
     {
-        if (auto p = w.lock())
+        if (auto p = w.second.lock())
             p->send(m);
     }
 }

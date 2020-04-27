@@ -255,6 +255,8 @@ public:
 
 	int          getShardRole()  const;
 	std::size_t  getShardIndex() const;
+
+	bool         isShardOrCommittee();
 };
 
 } // ripple

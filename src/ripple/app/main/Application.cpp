@@ -602,7 +602,7 @@ public:
 
     Config&
     config() override
-    {
+     {
         return *config_;
     }
 
@@ -1391,10 +1391,12 @@ bool ApplicationImp::setup()
 
 	caCertSites_->start();
 
+
     // start first consensus round
-	if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
+	if (config().isShardOrCommittee())
 	{
-		if (!m_networkOPs->beginConsensus(m_ledgerMaster->getClosedLedger()->info().hash))
+
+		if (  !m_networkOPs->beginConsensus(m_ledgerMaster->getClosedLedger()->info().hash))
 		{
 			JLOG(m_journal.fatal()) << "Unable to start consensus";
 			return false;

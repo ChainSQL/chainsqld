@@ -25,6 +25,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/core/Config.h>
 #include <ripple/core/ConfigSections.h>
 
+#include <ripple/overlay/Peer.h>
+#include <ripple/overlay/impl/PeerImp.h>
+
 namespace ripple {
 
 Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
@@ -127,6 +130,22 @@ void Lookup::saveLedger(LedgerIndex seq)
 
 	//save ledger
 	app_.getLedgerMaster().accept(ledgerToSave);
+}
+
+void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)
+{
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	auto const result = mPeers.emplace(
+		std::piecewise_construct,
+		std::make_tuple(peer->id()),
+		std::make_tuple(peer));
+	assert(result.second);
+}
+
+void Lookup::eraseDeactivate(Peer::id_t id)
+{
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	mPeers.erase(id);
 }
 
 void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)

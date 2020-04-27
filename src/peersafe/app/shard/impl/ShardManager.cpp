@@ -20,6 +20,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <peersafe/app/shard/ShardManager.h>
 #include <ripple/core/Config.h>
+#include <ripple/overlay/Peer.h>
+#include <ripple/overlay/impl/PeerImp.h>
 #include <memory>
 
 namespace ripple
@@ -38,6 +40,39 @@ ShardManager::ShardManager(Application& app, Config& cfg, Logs& log)
     // TODO
 	mShardRole = (ShardRole)cfg.getShardRole();
 
+}
+
+void ShardManager::addActive(std::shared_ptr<PeerImp> const& peer)
+{
+	std::uint32_t peerRole = peer->getShardRole();
+	switch (peerRole){
+		case (std::uint32_t)(ShardManager::LOOKUP) :{
+			mLookup->addActive(peer);
+		}
+		break;
+		case (std::uint32_t)(ShardManager::SHARD) :{
+			mNode->addActive(peer);
+		}
+		break;
+		case (std::uint32_t)(ShardManager::COMMITTEE) :{
+			mCommittee->addActive(peer);
+		}
+		break;
+		case (std::uint32_t)(ShardManager::SYNC) :{
+			mSync->addActive(peer);
+		}
+		break;
+		default:
+		break;
+	}
+}
+
+void ShardManager::eraseDeactivate(Peer::id_t id)
+{
+	mNode->eraseDeactivate(id);
+	mLookup->eraseDeactivate(id);
+	mCommittee->eraseDeactivate(id);
+	mSync->eraseDeactivate(id);
 }
 
 }

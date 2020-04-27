@@ -50,7 +50,7 @@ public:
 private:
 
     // These field used if I'm a shard node.
-    uint32                                              mShardID        = InvalidShardID;
+    int                                                 mShardID        = InvalidShardID;
     bool                                                mIsLeader       = false;
     boost::optional<MicroLedger>                        mMicroLedger;
     std::map<uint256,
@@ -58,8 +58,9 @@ private:
     std::recursive_mutex                                mSignsMutex;
 
 
-    typedef std::map<uint32, std::vector<std::weak_ptr <PeerImp>>> MapOfShardPeers;
-    typedef std::map<uint32, std::unique_ptr <ValidatorList>> MapOfShardValidators;
+	typedef hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		HashMapOfPeers;
+    typedef std::map<std::uint32_t, HashMapOfPeers >			MapOfShardPeers;
+    typedef std::map<int, std::unique_ptr <ValidatorList>>      MapOfShardValidators;
 
     // Common field
     // Hold all shard peers
@@ -99,6 +100,10 @@ public:
     {
         return mIsLeader;
     }
+
+	void addActive(std::shared_ptr<PeerImp> const& peer);
+
+	void eraseDeactivate(Peer::id_t id);
 
     void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
 

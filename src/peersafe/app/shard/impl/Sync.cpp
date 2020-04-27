@@ -18,6 +18,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
 #include <peersafe/app/shard/Sync.h>
+#include <ripple/overlay/Peer.h>
+#include <ripple/overlay/impl/PeerImp.h>
 
 namespace ripple {
 
@@ -28,6 +30,22 @@ Sync::Sync(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
     , cfg_(cfg)
 {
     // TODO
+}
+
+void Sync::addActive(std::shared_ptr<PeerImp> const& peer)
+{
+	auto const result = mPeers.emplace(
+		std::piecewise_construct,
+		std::make_tuple(peer->id()),
+		std::make_tuple(peer));
+	assert(result.second);
+	(void)result.second;
+}
+
+void Sync::eraseDeactivate(Peer::id_t id)
+{
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	mPeers.erase(id);
 }
 
 void Sync::onMessage(protocol::TMMicroLedgerSubmit const& m)

@@ -21,11 +21,12 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #define PEERSAFE_APP_SHARD_COMMITTEE_H_INCLUDED
 
 #include "ripple.pb.h"
+#include <ripple/basics/UnorderedContainers.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/app/misc/ValidatorList.h>
 
-#include <vector>
+
 #include <mutex>
 
 
@@ -34,7 +35,8 @@ namespace ripple {
 class Application;
 class Config;
 class ShardManager;
-
+class PeerImp;
+class Peer;
 
 class Committee {
 
@@ -44,7 +46,7 @@ private:
     bool                                                mIsLeader;
 
     // Hold all commmittee peers
-    std::vector<std::weak_ptr <PeerImp>>                mPeers;
+	hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		mPeers;
     std::mutex                                          mPeersMutex;
 
     // Hold all committee validators
@@ -61,7 +63,7 @@ public:
     Committee(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~Committee() {}
 
-    inline std::vector<std::weak_ptr <PeerImp>>& Peers()
+	inline hash_map<Peer::id_t, std::weak_ptr<PeerImp>>& peers()
     {
         return mPeers;
     }
@@ -80,6 +82,10 @@ public:
     {
         return mIsLeader;
     }
+
+	void addActive(std::shared_ptr<PeerImp> const& peer);
+
+	void eraseDeactivate(Peer::id_t id);
 
     void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
 

@@ -27,6 +27,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/ShardManager.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 
+#include <ripple/overlay/Peer.h>
+#include <ripple/overlay/impl/PeerImp.h>
+
 namespace ripple {
 
 Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
@@ -36,34 +39,82 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
     , cfg_(cfg)
 {
     // TODO
+	if ( ShardManager::COMMITTEE == m.myShardRole()) {
+		mShardID = CommitteeShardID;
 
+	}else if (ShardManager::SHARD == m.myShardRole()){
+		mShardID = cfg_.SHARD_INDEX;
+	}
 
 	std::vector< std::vector<std::string> >& shardValidators = cfg_.SHARD_VALIDATORS;
-	for (size_t i = 1; i < shardValidators.size(); i++) {
+	for (size_t i = 0; i < shardValidators.size(); i++) {
 
-
-		mMapOfShardValidators[i] = std::make_unique<ValidatorList>(
+		// shardIndex = index + 1
+		mMapOfShardValidators[i+1] = std::make_unique<ValidatorList>(
 			app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
 			journal_, cfg_.VALIDATION_QUORUM);
 
 		std::vector<std::string>  publisherKeys;
 		// Setup trusted validators
-		if (!mMapOfShardValidators[i]->load(
+		if (!mMapOfShardValidators[i+1]->load(
 			app_.getValidationPublicKey(),
 			shardValidators[i],
 			publisherKeys)){
 			//JLOG(m_journal.fatal()) <<
 			//	"Invalid entry in validator configuration.";
 			//return false;
-			mMapOfShardValidators.erase(i);
+			mMapOfShardValidators.erase(i+1);
 		}
-
 
 	}
 
 	
 
 
+
+}
+
+void Node::addActive(std::shared_ptr<PeerImp> const& peer)
+{
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+
+	assert(peer->getShardRole() == ShardManager::SHARD);
+	std::uint32_t index = peer->getShardIndex();
+
+	auto iter = mMapOfShardPeers.find(index);
+	if (iter == mMapOfShardPeers.end()) {
+
+		hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		peers;
+		peers.emplace(
+			std::piecewise_construct,
+			std::make_tuple(peer->id()),
+			std::make_tuple(peer));
+
+		mMapOfShardPeers.emplace(
+			std::piecewise_construct,
+			std::make_tuple(index),
+			std::make_tuple(peers));
+	}
+	else {
+
+		iter->second.emplace(
+			std::piecewise_construct,
+			std::make_tuple(peer->id()),
+			std::make_tuple(peer));
+	}
+
+
+}
+
+void Node::eraseDeactivate(Peer::id_t id)
+{
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+
+	for (auto item : mMapOfShardPeers) {
+		// id is unique
+		if( item.second.erase(id) )
+			break;	
+	}
 
 }
 
@@ -74,14 +125,17 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
     mIsLeader = false;
 
     auto iter = mMapOfShardValidators.find(mShardID);
-    if (iter != mMapOfShardValidators.end())
-    {
-        auto const& validators = iter->second->validators();
-        assert(validators.size() > 0);
-        int index = (view + seq) % validators.size();
+	if (iter == mMapOfShardValidators.end()) {
+		assert(0);
+		return ;
+	}
 
-        mIsLeader = (pubkey == validators[index]);
-    }
+	auto const& validators = iter->second->validators();
+	assert(validators.size() > 0);
+	int index = (view + seq) % validators.size();
+
+	mIsLeader = (pubkey == validators[index]);
+    
 
     mMicroLedger.reset();
 
@@ -194,7 +248,7 @@ void Node::sendValidation(protocol::TMValidation& m)
 
         for (auto w : peers->second)
         {
-            if (auto p = w.lock())
+            if (auto p = w.second.lock())
                 p->send(sm);
         }
     }
