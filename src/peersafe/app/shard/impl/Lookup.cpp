@@ -53,8 +53,8 @@ void Lookup::resetMetaIndex(LedgerIndex seq)
 	{
 		for (int shardIndex = 1; shardIndex < mShardManager.shardCount(); shardIndex++)
 		{
-			//if (mMapMicroLedgers[seq][shardIndex]->hasTx(vecHashes[i]))
-			//	mMapMicroLedgers[seq][shardIndex]->setMetaIndex(vecHashes[i], i);
+			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(vecHashes[i]))
+				mMapMicroLedgers[seq][shardIndex]->setMetaIndex(vecHashes[i], i,app_.journal("TxMeta"));
 		}
 	}
 }

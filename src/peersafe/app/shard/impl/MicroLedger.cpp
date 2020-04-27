@@ -21,6 +21,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/MicroLedger.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/Keylet.h>
+#include <ripple/ledger/TxMeta.h>
 
 
 namespace ripple {
@@ -210,6 +211,18 @@ void MicroLedger::readTxWithMeta(::google::protobuf::RepeatedPtrField <::protoco
 
 		mTxWithMetas.emplace(txHash, std::make_pair(body, meta));
 	}
+}
+
+void MicroLedger::setMetaIndex(TxID const& hash, uint32 index, beast::Journal j)
+{
+	if (mTxWithMetas.find(hash) == mTxWithMetas.end())
+		return;
+	auto txMetaPair = mTxWithMetas[hash];
+	auto txMeta = std::make_shared<TxMeta>(hash, mSeq, txMetaPair.second->getData(), j);
+	// re-serialize
+	auto sMeta = std::make_shared<Serializer>();
+	txMeta->addRaw(*sMeta, txMeta->getResultTER(), index);
+	mTxWithMetas[hash].second = sMeta;
 }
 
 bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, Blob signingData)
