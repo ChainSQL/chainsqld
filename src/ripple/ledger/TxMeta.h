@@ -133,10 +133,6 @@ public:
         return static_cast <bool> (mDelivered);
     }
 
-	void resetIndex(std::uint32_t index)
-	{
-		mIndex = index;
-	}
     static bool thread (STObject& node, uint256 const& prevTxID, std::uint32_t prevLgrID);
 
 private:

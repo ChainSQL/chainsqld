@@ -41,17 +41,15 @@ public:
     };
 
     using Action = detail::RawStateTable::Action;
+	using TxMetaPair = std::pair<std::shared_ptr<Serializer const>,
+		std::shared_ptr<Serializer>>;
 
 protected:
     LedgerIndex                                 mSeq;               // Ledger sequence.
     uint32                                      mShardID;           // The ID of the shard generated this MicroLedger.
 
     std::vector<TxID>                           mTxsHashes;         // All transactions hash set in this MicroLedger.
-    std::unordered_map<TxID,
-         std::pair<
-         std::shared_ptr<Serializer const>,
-		 std::shared_ptr<Serializer const>
-         >>                                      mTxWithMetas;       // Serialized transactions with meta data maped by TxID;
+    std::unordered_map<TxID,TxMetaPair>         mTxWithMetas;       // Serialized transactions with meta data maped by TxID;
     std::map<uint256,
         std::pair<
         Action, Serializer>,
@@ -114,7 +112,8 @@ public:
         std::shared_ptr<Serializer const> const& txn,
         std::shared_ptr<Serializer const> const& metaData)
     {
-         return mTxWithMetas.emplace(key, std::make_pair(txn, metaData)).second;
+		std::shared_ptr<Serializer> meta = std::const_pointer_cast<Serializer>(metaData);
+        return mTxWithMetas.emplace(key, std::make_pair(txn, meta)).second;
     }
 
 	inline bool hasTxWithMeta(TxID const& hash)
@@ -124,18 +123,11 @@ public:
 		return false;
 	}
 
-	//inline void setMetaIndex(TxID const& hash, uint32 index)
-	//{
-	//	mMapTxWithMeta[hash].second->resetIndex(index);
-	//}
-	std::pair<
-		std::shared_ptr<Serializer const>,
-		std::shared_ptr<Serializer const>
-		> const& getTxWithMeta(TxID const& hash)
+	inline TxMetaPair const& getTxWithMeta(TxID const& hash)
 	{
 		return mTxWithMetas[hash];
 	}
-
+	void setMetaIndex(TxID const& hash, uint32 index, beast::Journal j);
     void addStateDelta(ReadView const& base, uint256 key, Action action, std::shared_ptr<SLE> sle);
 
     void compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta);
