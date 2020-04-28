@@ -860,6 +860,21 @@ private:
 
             return jvRequest;
         }
+        else if ((3 == jvParams.size() || bOffline)
+			&& reader.parse(jvParams[2u].asString(), txJSON))
+		{
+			// Signing or submitting tx_json.
+			Json::Value jvRequest;
+
+			jvRequest[jss::secret] = jvParams[0u].asString();
+			jvRequest[jss::public_key] = jvParams[1u].asString();
+			jvRequest[jss::tx_json] = txJSON;
+
+			if (bOffline)
+				jvRequest[jss::offline] = true;
+
+			return jvRequest;
+		}
 
         return rpcError (rpcINVALID_PARAMS);
     }

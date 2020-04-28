@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/gmencrypt/softencrypt/GmSoftEncrypt.h>
+#include <iostream>
 
 
 #ifdef GM_ALG_PROCESS
@@ -149,7 +150,7 @@ unsigned long SoftEncrypt::SM2GenECCKeyPair(
     sm2Keypair_ = EC_KEY_new_by_curve_name(NID_sm2p256v1);
     if (NULL == sm2Keypair_)
     {
-        DebugPrint("SM2GenECCKeyPair-EC_KEY_new_by_curve_name() failed!")
+        DebugPrint("SM2GenECCKeyPair-EC_KEY_new_by_curve_name() failed!");
     }
 
     int genRet = EC_KEY_generate_key(sm2Keypair_);
@@ -233,6 +234,16 @@ unsigned long SoftEncrypt::SM2ECCSign(
     {
         EC_KEY_free(ec_key);
         DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
+        // // std::string inDataRet((char*)pInData, ulInDataLen);
+        // std::vector<unsigned char> pInDataVec(pInData, ulInDataLen);
+        // std::string inDataRet = ripple::strHex(ripple::Blob(pInDataVec));
+        // std::cout<<inDataRet<<std::endl;
+        // // std::string dgstRet((char*)dgst, dgstlen);
+        // std::string dgstRet = ripple::strHex(ripple::Blob(std::vector(dgst, dgstlen)));
+        // std::cout<<dgstRet<<std::endl;
+        // // std::string signedRet((char*)pSignValue, ulSignValueLen);
+        // std::string signedRet = ripple::strHex(ripple::Blob(std::vector(pSignValue, *pulSignValueLen)));
+        // std::cout<<signedRet<<std::endl;
         return 0;
     }
 }
@@ -245,14 +256,10 @@ unsigned long SoftEncrypt::SM2ECCVerify(
     unsigned long ulAlias,
     unsigned long ulKeyUse)
 {
-	EC_KEY* pubkey = EC_KEY_new();
-	if (o2i_ECPublicKey(&pubkey, (const unsigned char**)&(pub4Verify.first), pub4Verify.second) != nullptr){
-
-		EC_KEY_set_conv_form(pubkey, POINT_CONVERSION_COMPRESSED);	
-	}
-	else {
-		EC_KEY_free(pubkey);
-		return 1;
+	EC_KEY* pubkey = standPubToSM2Pub(pub4Verify.first, pub4Verify.second);
+	if (pubkey == nullptr)
+    {
+        return 1;	
 	}
 
     unsigned char dgst[EVP_MAX_MD_SIZE];
@@ -262,16 +269,25 @@ unsigned long SoftEncrypt::SM2ECCVerify(
         return 1;
     }
 
+    // // std::string inDataRet((char*)pInData, ulInDataLen);
+    // std::string inDataRet = ripple::strHex(ripple::Blob(std::vector(pInData, ulInDataLen)));
+    // std::cout<<inDataRet<<std::endl;
+    // // std::string dgstRet((char*)dgst, dgstlen);
+    // std::string dgstRet = ripple::strHex(ripple::Blob(std::vector(dgst, dgstlen)));
+    // std::cout<<dgstRet<<std::endl;
+    // // std::string signedRet((char*)pSignValue, ulSignValueLen);
+    // std::string signedRet = ripple::strHex(ripple::Blob(std::vector(pSignValue, ulSignValueLen)));
+    // std::cout<<signedRet<<std::endl;
 	/* verify */
 	if (!SM2_verify(NID_undef, dgst, dgstlen, pSignValue, ulSignValueLen, pubkey)) {
-		DebugPrint("SM2ECCSign: SM2_sign failed");
+		DebugPrint("SM2ECCSign: SM2_verify failed");
         EC_KEY_free(pubkey);
 		return 1;
 	} 
     else
     {
         EC_KEY_free(pubkey);
-        DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
+        DebugPrint("SM2ECCSign: SM2 secret key verify successful!");
         return 0;
     }
 }
@@ -285,14 +301,19 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
     unsigned long ulAlias,
     unsigned long ulKeyUse)
 {
-	EC_KEY* pubkey = EC_KEY_new();
-	if (o2i_ECPublicKey(&pubkey, (const unsigned char**)&(pub4Encrypt.first), pub4Encrypt.second) != nullptr) {
+	// EC_KEY* pubkey = EC_KEY_new();
+	// if (o2i_ECPublicKey(&pubkey, (const unsigned char**)&(pub4Encrypt.first), pub4Encrypt.second) != nullptr) {
 
-		EC_KEY_set_conv_form(pubkey, POINT_CONVERSION_COMPRESSED);
-	}
-	else {
-		EC_KEY_free(pubkey);
-		return 1;
+	// 	EC_KEY_set_conv_form(pubkey, POINT_CONVERSION_COMPRESSED);
+	// }
+	// else {
+	// 	EC_KEY_free(pubkey);
+	// 	return 1;
+	// }
+    EC_KEY* pubkey = standPubToSM2Pub(pub4Encrypt.first, pub4Encrypt.second);
+	if (pubkey == nullptr) 
+    {
+        return 1;	
 	}
 
 	if (!SM2_encrypt_with_recommended(pCipherData, (size_t*)pulCipherDataLen,
@@ -325,13 +346,14 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
     {
         return 1;
     }
+	
 	BIGNUM* bn = BN_bin2bn((const unsigned char *)(pri4Decrypt.first), (pri4Decrypt.second), nullptr);
 	if (bn == nullptr) {
 		DebugPrint("SM2ECCDecrypt: BN_bin2bn failed");
 		return 1;
 	}
 
-	EC_KEY* ec_key = EC_KEY_new();
+	EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_sm2p256v1);
 	const bool ok = EC_KEY_set_private_key(ec_key, bn);
 	BN_clear_free(bn);
 
@@ -380,7 +402,7 @@ unsigned long SoftEncrypt::SM3HashInit(HANDLE *phSM3Handle)
     // *phSM3Handle = &ctx;
     if(phSM3Handle != nullptr)
     {
-        *phSM3Handle = &sm3_ctx_
+        *phSM3Handle = &sm3_ctx_;
         DebugPrint("SM3HashInit() OK!");
         return 0;
     }
@@ -550,13 +572,26 @@ unsigned long SoftEncrypt::generateIV(unsigned int uiAlgMode, unsigned char * pI
 	return rv;
 }
 
-// void SoftEncrypt::standPubToSM2Pub(unsigned char* standPub, int standPubLen, ECCrefPublicKey& sm2Publickey)
-// {
-//     //sm2Publickey.bits = standPubLen;
-//     sm2Publickey.bits = PUBLIC_KEY_BIT_LEN; //must be 256;
-//     memcpy(sm2Publickey.x, standPub + 1, 32);
-//     memcpy(sm2Publickey.y, standPub + 33, 32);
-// }
+EC_KEY* SoftEncrypt::standPubToSM2Pub(unsigned char* standPub, int standPubLen)
+{
+    // unsigned char pubKeyUserTemp[PUBLIC_KEY_EXT_LEN] = { 0 };
+    unsigned char *pubKeyUserTemp = new unsigned char[PUBLIC_KEY_EXT_LEN];
+    unsigned char* pubKeyUserTempBack = pubKeyUserTemp;
+    pubKeyUserTemp[0] = 4;
+    memcpy(pubKeyUserTemp+1, standPub + 1, 64);
+    
+    EC_KEY* ecKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+	if (o2i_ECPublicKey(&ecKey, (const unsigned char**)&pubKeyUserTemp, PUBLIC_KEY_EXT_LEN) != nullptr){
+
+		EC_KEY_set_conv_form(ecKey, POINT_CONVERSION_COMPRESSED);	
+	}
+	else {
+		EC_KEY_free(ecKey);
+	}
+
+    delete [] pubKeyUserTempBack; //cause addr of pubKeyUserTemp has been changed
+    return ecKey;
+}
 
 // void SoftEncrypt::standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefPrivateKey& sm2Privatekey)
 // {

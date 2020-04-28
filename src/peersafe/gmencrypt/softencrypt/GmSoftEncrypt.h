@@ -22,6 +22,7 @@
 #define SOFTENCRYPT_GMSOFTENCRYPT_H_INCLUDE
 
 #include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
+#include <ripple/basics/StringUtilities.h>
 #ifdef GM_ALG_PROCESS
 
 #define SOFTENCRYPT
@@ -55,6 +56,7 @@ public:
     unsigned long  CloseDevice();
     std::pair<unsigned char*, int> getPublicKey();
     std::pair<unsigned char*, int> getPrivateKey();
+    EC_KEY* standPubToSM2Pub(unsigned char* standPub, int standPubLen);
     //Generate random
 	unsigned long GenerateRandom(
 		unsigned int uiLength,
