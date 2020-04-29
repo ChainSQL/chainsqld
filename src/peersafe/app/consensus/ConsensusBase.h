@@ -53,6 +53,8 @@ namespace ripple {
 				bool proposing) = 0;
 		virtual void
 			gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet) = 0;
+        virtual void
+            gotMicroLedgerSet(NetClock::time_point const& now, uint256 const& txSet) {}
 
 		virtual void
 			simulate(

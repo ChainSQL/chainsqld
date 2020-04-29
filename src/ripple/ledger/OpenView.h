@@ -31,6 +31,7 @@
 namespace ripple {
 
 class MicroLedger;
+class FinalLedger;
 
 /** Open ledger construction tag.
 
@@ -159,6 +160,9 @@ public:
     void
     apply (MicroLedger& to) const;
 
+    void
+    apply (FinalLedger& to) const;
+
     // ReadView
 
     LedgerInfo const&
@@ -172,6 +176,16 @@ public:
 
     bool
     exists (Keylet const& k) const override;
+
+    inline detail::RawStateTable items()
+    {
+        return items_;
+    }
+
+    inline detail::RawStateTable items() const
+    {
+        return items_;
+    }
 
     boost::optional<key_type>
     succ (key_type const& key, boost::optional<

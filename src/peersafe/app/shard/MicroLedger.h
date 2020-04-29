@@ -41,15 +41,17 @@ public:
     };
 
     using Action = detail::RawStateTable::Action;
-	using TxMetaPair = std::pair<std::shared_ptr<Serializer const>,
+    using TxMetaPair = std::pair<std::shared_ptr<Serializer const>,
 		std::shared_ptr<Serializer>>;
 
 protected:
     LedgerIndex                                 mSeq;               // Ledger sequence.
     uint32                                      mShardID;           // The ID of the shard generated this MicroLedger.
+    ZXCAmount                                   mDropsDestroyed;    //
 
     std::vector<TxID>                           mTxsHashes;         // All transactions hash set in this MicroLedger.
-    std::unordered_map<TxID,TxMetaPair>         mTxWithMetas;       // Serialized transactions with meta data maped by TxID;
+    std::unordered_map<TxID, TxMetaPair>        mTxWithMetas;       // Serialized transactions with meta data maped by TxID;
+
     std::map<uint256,
         std::pair<
         Action, Serializer>,
@@ -58,9 +60,8 @@ protected:
     MicroLedgerHashSet                          mHashSet;
 
 
-    void computeHash();
-    // std::vector<Blob>       mStateDeltas;                // The state changes by the transactions in this MicroLedger.
-    // uint256                 mTxWMRootHash;              // The transactions with meta data hash(Shamap not yet in use now).
+    void computeHash(bool withTxMeta);
+    uint256 computeTxWithMetaHash();
 
 	void readMicroLedger(protocol::MicroLedger const& m);
 	void readTxHashes(::google::protobuf::RepeatedPtrField<std::string> const& hashes);
@@ -70,8 +71,7 @@ protected:
 public:
     MicroLedger() = delete;
 	MicroLedger(protocol::TMMicroLedgerSubmit const& m);
-
-    explicit MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view);
+    MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view);
 
     inline LedgerIndex seq()
     {
@@ -83,7 +83,17 @@ public:
         return mShardID;
     }
 
+    inline uint32 shardID() const
+    {
+        return mShardID;
+    }
+
     inline auto& txHashes()
+    {
+        return mTxsHashes;
+    }
+
+    inline auto const& txHashes() const
     {
         return mTxsHashes;
     }
@@ -118,22 +128,23 @@ public:
 
 	inline bool hasTxWithMeta(TxID const& hash)
 	{
-		if (mTxWithMetas.find(hash) != mTxWithMetas.end())
-			return true;
-		return false;
+        return (mTxWithMetas.find(hash) != mTxWithMetas.end()) ? true : false;
 	}
 
-	inline TxMetaPair const& getTxWithMeta(TxID const& hash)
-	{
-		return mTxWithMetas[hash];
-	}
+    inline TxMetaPair const& getTxWithMeta(TxID const& hash)
+    {
+        return mTxWithMetas[hash];
+    }
+
 	void setMetaIndex(TxID const& hash, uint32 index, beast::Journal j);
+
     void addStateDelta(ReadView const& base, uint256 key, Action action, std::shared_ptr<SLE> sle);
 
     void compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta);
 
-	bool checkValidity(std::unique_ptr <ValidatorList> const& list, Blob signingData);
-	const Blob& getSigningData();
+	bool checkValidity(std::unique_ptr <ValidatorList> const& list, bool withTxMeta);
+
+    void apply(OpenView& to) const;
 };
 
 

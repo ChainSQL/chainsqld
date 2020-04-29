@@ -506,7 +506,16 @@ RCLConsensus::Adaptor::onCollectFinish(
 
 	// Now we need an immutable snapshot
 	initialSet = initialSet->snapShot(false);
-	auto setHash = initialSet->getHash().as_uint256();
+
+    uint256 setHash;
+    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
+    {
+        setHash = initialSet->getHash().as_uint256();
+    }
+    else
+    {
+        setHash = app_.getShardManager().committee().microLedgerSetHash();
+    }
 
 	return Result{
 		std::move(initialSet),
@@ -575,7 +584,6 @@ RCLConsensus::Adaptor::onAccept(
                     rawCloseTimes,
                     mode,
                     std::move(cj));
-                //this->app_.getOPs().endConsensus();
             }
 			JLOG(j_.info()) << "doAccept time used:" << utcTime() - timeStart << "ms";
         });
@@ -824,8 +832,18 @@ RCLConsensus::Adaptor::notify(
     }
     s.set_firstseq(uMin);
     s.set_lastseq(uMax);
-    app_.overlay().foreach (
-        send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
+    //app_.overlay().foreach (
+    //    send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
+    uint32 shardID = app_.getShardManager().node().shardID();
+    if (shardID > Node::CommitteeShardID)
+    {
+        app_.getShardManager().committee().sendMessage(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
+    }
+    else
+    {
+        app_.getShardManager().node().sendMessage(shardID, std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
+    }
+
     JLOG(j_.trace()) << "send status change to peer";
 }
 
@@ -995,6 +1013,17 @@ applyTransactions(
     return retriableTxs;
 }
 
+void
+applyMicroLedgers(
+    std::vector<std::shared_ptr<MicroLedger const>>& microLedgers,
+    OpenView& view)
+{
+    for (auto& microLedger : microLedgers)
+    {
+        microLedger->apply(view);
+    }
+}
+
 #endif
 
 RCLCxLedger
@@ -1042,10 +1071,10 @@ RCLConsensus::Adaptor::buildLCL(
     JLOG(j_.debug()) << "Applying consensus set transactions to the"
                      << " last closed ledger";
 
-    {
-        OpenView accum(&*buildLCL);
-		assert(!accum.open());
+    OpenView accum(&*buildLCL);
+    assert(!accum.open());
 
+    {
 		auto timeStart = utcTime();
         if (replay)
         {
@@ -1057,10 +1086,12 @@ RCLConsensus::Adaptor::buildLCL(
         else
         {
             // Normal case, we are not replaying a ledger close
-            retriableTxs = applyTransactions(
-                app_, set, accum, [&buildLCL](uint256 const& txID) {
-                    return !buildLCL->txExists(txID);
-                });
+            //retriableTxs = applyTransactions(
+            //    app_, set, accum, [&buildLCL](uint256 const& txID) {
+            //        return !buildLCL->txExists(txID);
+            //    });
+            applyMicroLedgers(app_.getShardManager().committee().canonicalMicroLedgers(),
+                accum);
         }
 		JLOG(j_.info()) << "applyTransactions time used:" << utcTime() - timeStart << "ms";
 		timeStart = utcTime();
@@ -1096,6 +1127,9 @@ RCLConsensus::Adaptor::buildLCL(
     buildLCL->setAccepted(
         closeTime, closeResolution, closeTimeCorrect, app_.config());
 
+    // Genarate final ledger
+    app_.getShardManager().committee().buildFinalLedger(accum, buildLCL);
+
     // And stash the ledger in the ledger master
     if (ledgerMaster_.storeLedger(buildLCL))
         JLOG(j_.debug()) << "Consensus built ledger we already had";
@@ -1116,8 +1150,11 @@ RCLConsensus::Adaptor::validate(RCLCxLedger const& ledger, bool proposing)
 
     // Build validation
     auto v = std::make_shared<STValidation>(
-        ledger.id(), validationTime, valPublic_, proposing);
+        ledger.id(),
+        app_.getShardManager().committee().getFinalLedgerHash(),
+        validationTime, valPublic_, proposing);
     v->setFieldU32(sfLedgerSequence, ledger.seq());
+    v->setFieldU32(sfShardID, app_.getShardManager().node().shardID());
 
     // Add our load fee to the validation
     auto const& feeTrack = app_.getFeeTrack();
@@ -1143,8 +1180,11 @@ RCLConsensus::Adaptor::validate(RCLCxLedger const& ledger, bool proposing)
     Blob validation = v->getSerialized();
     protocol::TMValidation val;
     val.set_validation(&validation[0], validation.size());
-    // Send signed validation to all of our directly connected peers
-    app_.overlay().send(val);
+    // Send signed validation to all of our directly connected peers(committe node)
+    //app_.overlay().send(val);
+    auto const sm = std::make_shared<Message>(
+        val, protocol::mtVALIDATION);
+    app_.getShardManager().committee().sendMessage(sm);
 }
 
 void
@@ -1202,6 +1242,13 @@ RCLConsensus::gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet)
         JLOG(j_.error()) << "Missing node during consensus process " << mn;
         Rethrow();
     }
+}
+
+void
+RCLConsensus::gotMicroLedgerSet(NetClock::time_point const& now, uint256 const& mlSet)
+{
+    ScopedLockType _{ mutex_ };
+    consensus_->gotMicroLedgerSet(now, mlSet);
 }
 
 

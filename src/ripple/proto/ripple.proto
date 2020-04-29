@@ -24,8 +24,8 @@ enum MessageType
     mtGET_OBJECTS           = 42;
 
 	mtMICROLEDGER_SUBMIT			= 50;	// from shard to committee
-	mtMICROLEDGERWITHTXS_SUBMIT		= 51;	// from shard to lookup
-	mtFINALLEDGER_SUBMIT			= 52;	// from committee to shard and lookup
+	mtFINALLEDGER_SUBMIT			= 51;	// from committee to shard and lookup
+    mtMICROLEDGER_ACQUIRE           = 52;
 
     // <available>          = 10;
     // <available>          = 11;
@@ -439,13 +439,13 @@ message FinalLedger {
     repeated bytes      txHashes            = 7;    // All transactions hash set in this FinalBlock
     required bytes      txShaMapRootHash    = 8;    // The final transactions Shamap root hash
 
-    repeated bytes      stateDeltas         = 9;    // The state changes by the transactions in this FinalLedger
+    repeated StateDelta stateDeltas         = 9;    // The state changes by the transactions in this FinalLedger
     required bytes      stateShaMapRootHash = 10;    // The final state Shamap root hash
 
     // MicroLedger Info
     message MLInfo {
         required uint32     shardID     = 1;
-        required bytes      MBHash      = 2;
+        required bytes      MLHash      = 2;
     }
 
     repeated MLInfo     microLedgers        = 11;    // The MicroLedger hash set in this FinalLedger
@@ -466,3 +466,9 @@ message TMFinalLedgerSubmit {
     repeated Signature      signatures      = 2;
 }
 
+message TMMicroLedgerAcquire {
+    required uint32         ledgerIndex     = 1;
+    required uint32         shardID         = 2;
+    required bytes          nodePubKey      = 3;
+    required bytes          signature       = 4;
+}

@@ -136,7 +136,7 @@ SF_U32 const sfTxnLgrSeq           = make::one<SF_U32::type>(&sfTxnLgrSeq,      
 SF_U32 const sfCreateLgrSeq		   = make::one<SF_U32::type>(&sfCreateLgrSeq,		 STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       = make::one<SF_U32::type>(&sfNeedVerify,			 STI_UINT32, 52, "NeedVerify");
 SF_U32 const sfGas				   = make::one<SF_U32::type>(&sfGas,				 STI_UINT32, 55, "Gas");
-SF_U32 const sfShardID             = make::one<SF_U32::type>(&sfShardID,             STI_UINT32, 56, "Gas");
+SF_U32 const sfShardID             = make::one<SF_U32::type>(&sfShardID,             STI_UINT32, 56, "ShardID");
 
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
@@ -175,6 +175,7 @@ SF_U256 const sfLedgerIndex       = make::one<SF_U256::type>(&sfLedgerIndex,    
 SF_U256 const sfWalletLocator     = make::one<SF_U256::type>(&sfWalletLocator,      STI_HASH256, 7, "WalletLocator");
 SF_U256 const sfRootIndex         = make::one<SF_U256::type>(&sfRootIndex,          STI_HASH256, 8, "RootIndex", SField::sMD_Always);
 SF_U256 const sfAccountTxnID      = make::one<SF_U256::type>(&sfAccountTxnID,       STI_HASH256, 9, "AccountTxnID");
+SF_U256 const sfFinalLedgerHash   = make::one<SF_U256::type>(&sfFinalLedgerHash,    STI_HASH256, 10, "FinalLedgerHash");
 SF_U256 const sfPrevTxnLedgerHash = make::one<SF_U256::type>(&sfPrevTxnLedgerHash,  STI_HASH256, 50, "PrevTxnLedgerHash");
 SF_U256 const sfTxnLedgerHash     = make::one<SF_U256::type>(&sfTxnLedgerHash,      STI_HASH256, 51, "TxnLedgerHash");
 SF_U256 const sfTxCheckHash       = make::one<SF_U256::type>(&sfTxCheckHash,        STI_HASH256, 52, "TxCheckHash");

@@ -61,6 +61,18 @@ STValidation::STValidation (
         setFlag (kFullFlag);
 }
 
+STValidation::STValidation(
+    uint256 const& ledgerHash,
+    uint256 const& finalLedgerHash,
+    NetClock::time_point signTime,
+    PublicKey const& publicKey,
+    bool isFull)
+    : STValidation(ledgerHash, signTime, publicKey, isFull)
+{
+    // Does not sign
+    setFieldH256(sfFinalLedgerHash, finalLedgerHash);
+}
+
 uint256 STValidation::sign(SecretKey const& secretKey)
 {
     setFlag(vfFullyCanonicalSig);
@@ -74,7 +86,7 @@ uint256 STValidation::sign(SecretKey const& secretKey)
     else
     {
         setFieldVL(sfFinalLedgerSign, 
-            signDigest(getSignerPublic(), secretKey, getFieldH256(sfLedgerHash)));
+            signDigest(getSignerPublic(), secretKey, getFieldH256(sfFinalLedgerHash)));
     }
 
     auto const signingHash = getSigningHash();
@@ -131,7 +143,7 @@ bool STValidation::isValid (uint256 const& signingHash) const
         else
         {
             if (!verifyDigest(getSignerPublic(),
-                getFieldH256(sfLedgerHash),
+                getFieldH256(sfFinalLedgerHash),
                 makeSlice(getFieldVL(sfFinalLedgerSign)),
                 getFlags() & vfFullyCanonicalSig))
             {

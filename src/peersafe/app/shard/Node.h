@@ -28,9 +28,11 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/MicroLedger.h>
 #include <ripple/app/consensus/RCLCxTx.h>
 #include <ripple/app/consensus/RCLCxLedger.h>
+#include <ripple/overlay/Overlay.h>
 
 #include <vector>
 #include <mutex>
+
 
 namespace ripple {
 
@@ -50,12 +52,12 @@ public:
 private:
 
     // These field used if I'm a shard node.
-    int                                                 mShardID        = InvalidShardID;
-    bool                                                mIsLeader       = false;
-    boost::optional<MicroLedger>                        mMicroLedger;
-    std::map<uint256,
-        std::vector<std::pair<PublicKey, Blob>>>        mSignatureBuffer;
-    std::recursive_mutex                                mSignsMutex;
+    uint32                                                  mShardID        = InvalidShardID;
+    bool                                                    mIsLeader       = false;
+    boost::optional<MicroLedger>                            mMicroLedger;
+    std::map<LedgerIndex,
+        std::vector<std::tuple<uint256, PublicKey, Blob>>>  mSignatureBuffer;
+    std::recursive_mutex                                    mSignsMutex;
 
 
 	typedef hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		HashMapOfPeers;
@@ -65,7 +67,7 @@ private:
     // Common field
     // Hold all shard peers
     MapOfShardPeers                                     mMapOfShardPeers;
-    std::mutex                                          mPeersMutex;
+    std::recursive_mutex                                mPeersMutex;
 
     // Hold all shard validators
     MapOfShardValidators                                mMapOfShardValidators;
@@ -86,11 +88,6 @@ public:
         return mShardID;
     }
 
-    inline MapOfShardPeers& shardPeers()
-    {
-        return mMapOfShardPeers;
-    }
-
     inline MapOfShardValidators& shardValidators()
     {
         return mMapOfShardValidators;
@@ -104,6 +101,19 @@ public:
 	void addActive(std::shared_ptr<PeerImp> const& peer);
 
 	void eraseDeactivate(Peer::id_t id);
+
+    inline bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)
+    {
+        if (mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end())
+        {
+            auto const& validators = mMapOfShardValidators[mShardID]->validators();
+            assert(validators.size());
+            int index = (view + curSeq) % validators.size();
+            return pubkey == validators[index];
+        }
+
+        return false;
+    }
 
     void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
 
@@ -120,6 +130,11 @@ public:
     void checkAccept();
 
     void submitMicroLedger(bool withTxMeta);
+
+    Overlay::PeerSequence getActivePeers(uint32 shardID);
+
+    void sendMessage(uint32 shardID, std::shared_ptr<Message> const &m);    // To specified shard
+    void sendMessage(std::shared_ptr<Message> const &m);                    // To all shard
 
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
 

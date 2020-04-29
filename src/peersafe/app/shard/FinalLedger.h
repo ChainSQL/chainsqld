@@ -22,21 +22,24 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <peersafe/app/shard/LedgerBase.h>
+#include <peersafe/app/shard/MicroLedger.h>
+#include <ripple/ledger/OpenView.h>
+#include <ripple/app/ledger/Ledger.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/ledger/detail/RawStateTable.h>
 #include "ripple.pb.h"
 
 namespace ripple {
 
-class ValidatorList;
+
 class FinalLedger : public LedgerBase {
 
 private:
     LedgerIndex                     mSeq;                       // Ledger sequence.
-	uint64							mDrops;
-	uint32							mCloseTime;
-	uint32							mCloseTimeResolution;
-	uint32							mCloseFlags;			
+    uint64                          mDrops;
+    uint32                          mCloseTime;
+    uint32                          mCloseTimeResolution;
+    uint32                          mCloseFlags;
 
     std::vector<TxID>               mTxsHashes;                 // All transactions hash set in this FinalBlock.
     uint256                         mTxShaMapRootHash;          // The final transactions Shamap root hash.
@@ -45,17 +48,40 @@ private:
     uint256                         mStateShaMapRootHash;       // The final state Shamap root hash.
 
     std::map<uint32, ripple::LedgerHash>    mMicroLedgers;      // The MicroLedger hash set in this FinalLedger.
+    uint256                         mMicroLedgerSetHash;        // 
 
 public:
-    FinalLedger();
+    FinalLedger() = delete;
+    FinalLedger(
+        OpenView const& view,
+        std::shared_ptr<Ledger const>ledger,
+        std::vector<std::shared_ptr<MicroLedger const>>& microLedgers);
 	FinalLedger(protocol::TMFinalLedgerSubmit const& m);
-	protocol::TMFinalLedgerSubmit ToTMMessage();
+
+    void computeHash();
+
+    void compose(protocol::TMFinalLedgerSubmit& ms);
+
+    inline LedgerIndex seq()
+    {
+        return mSeq;
+    }
+
+    inline detail::RawStateTable const& FinalLedger::getRawStateTable()
+    {
+        return mStateDelta;
+    }
+
+    inline auto FinalLedger::getTxHashes()
+        -> std::vector<TxID> const&
+    {
+        return mTxsHashes;
+    }
 
 	Blob getSigningData();
 
 	LedgerInfo getLedgerInfo();
-	detail::RawStateTable const& getRawStateTable();
-	std::vector<TxID> const& getTxHashes();
+
 };
 
 }

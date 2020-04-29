@@ -137,6 +137,7 @@ invokeProtocolMessage (Buffers const& buffers, Handler& handler)
 
     case protocol::mtMICROLEDGER_SUBMIT:            ec = detail::invoke<protocol::TMMicroLedgerSubmit> (type, buffers, handler); break;
     case protocol::mtFINALLEDGER_SUBMIT:            ec = detail::invoke<protocol::TMFinalLedgerSubmit> (type, buffers, handler); break;
+    case protocol::mtMICROLEDGER_ACQUIRE:           ec = detail::invoke<protocol::TMMicroLedgerAcquire>(type, buffers, handler); break;
     default:
         ec = handler.onMessageUnknown (type);
         break;

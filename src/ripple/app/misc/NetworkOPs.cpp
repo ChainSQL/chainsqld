@@ -699,6 +699,8 @@ private:
 
     StateAccounting accounting_ {};
 
+    std::atomic_flag mConsensusEnded;
+
 private:
     SubInfoMapType& getCompatibleSubInfoMap(InfoSub::ACOUNT_TYPE eType);
 };
@@ -1814,9 +1816,26 @@ NetworkOPsImp::mapComplete (
 
 void NetworkOPsImp::endConsensus ()
 {
+    if (mConsensusEnded.test_and_set())
+    {
+        return;
+    }
+
     uint256 deadLedger = m_ledgerMaster.getClosedLedger ()->info().parentHash;
 
-    for (auto const& it : app_.overlay ().getActivePeers ())
+    ShardManager& shardMgr = app_.getShardManager();
+    Overlay::PeerSequence peers;
+
+    if (shardMgr.myShardRole() == ShardManager::SHARD)
+    {
+        peers = std::move(shardMgr.node().getActivePeers(shardMgr.node().shardID()));
+    }
+    else
+    {
+        peers = std::move(shardMgr.committee().getActivePeers());
+    }
+
+    for (auto const& it : peers)
     {
         if (it && (it->getClosedLedgerHash () == deadLedger))
         {
@@ -1827,7 +1846,7 @@ void NetworkOPsImp::endConsensus ()
 
     uint256 networkClosed;
     bool ledgerChange = checkLastClosedLedger (
-        app_.overlay ().getActivePeers (), networkClosed);
+        peers, networkClosed);
 
     if (networkClosed.isZero ())
         return;
@@ -1861,6 +1880,8 @@ void NetworkOPsImp::endConsensus ()
     }
 
     beginConsensus (networkClosed);
+
+    mConsensusEnded.clear();
 }
 
 void NetworkOPsImp::consensusViewChange ()

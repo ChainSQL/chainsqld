@@ -59,7 +59,7 @@ public:
     Sync(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~Sync() {}
 
-	inline hash_map<Peer::id_t, std::weak_ptr<PeerImp>>& peers()
+    inline hash_map<Peer::id_t, std::weak_ptr<PeerImp>>& peers()
     {
         return mPeers;
     }

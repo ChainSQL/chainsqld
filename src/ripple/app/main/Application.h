@@ -177,6 +177,9 @@ public:
     virtual
     PublicKey const &
     getValidationPublicKey() const  = 0;
+    virtual
+    SecretKey const &
+    getValidationSecretKey() const = 0;
     virtual Resource::Manager&      getResourceManager () = 0;
     virtual PathRequests&           getPathRequests () = 0;
     virtual SHAMapStore&            getSHAMapStore () = 0;

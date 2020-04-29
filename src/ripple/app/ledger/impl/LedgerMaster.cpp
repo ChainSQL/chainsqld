@@ -53,6 +53,7 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/shard/ShardManager.h>
 #include <algorithm>
 #include <cassert>
 #include <memory>
@@ -295,6 +296,7 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
     else
     {
         checkAccept (lastClosed);
+        // shard node and committee node no need to do this.
 		//app_.getTableStorage().TryTableStorage();
 		//app_.getTableAssistant().TryTableCheckHash();
 		////app_.getOPs().TryCheckSubTx();
@@ -790,7 +792,7 @@ LedgerMaster::checkAccept (uint256 const& hash, std::uint32_t seq)
             return;
 
         valCount = app_.getValidations().numTrustedForLedger (hash);
-        if (valCount >= app_.validators ().quorum ())
+        if (valCount >= app_.getShardManager().committee().validators().quorum())
         {
             ScopedLockType ml (m_mutex);
             if (seq > mLastValidLedger.second)
@@ -812,7 +814,7 @@ LedgerMaster::checkAccept (uint256 const& hash, std::uint32_t seq)
         if ((seq != 0) && (getValidLedgerIndex() == 0))
         {
             // Set peers sane early if we can
-            if (valCount >= app_.validators ().quorum ())
+            if (valCount >= app_.getShardManager().committee().validators().quorum())
                 app_.overlay().checkSanity (seq);
         }
 
@@ -834,7 +836,8 @@ LedgerMaster::checkAccept (uint256 const& hash, std::uint32_t seq)
 std::size_t
 LedgerMaster::getNeededValidations ()
 {
-    return standalone_ ? 0 : app_.validators().quorum ();
+    //return standalone_ ? 0 : app_.validators().quorum ();
+    return standalone_ ? 0 : app_.getShardManager().committee().validators().quorum();
 }
 
 ripple::uint160 LedgerMaster::getNameInDB(
@@ -1219,19 +1222,13 @@ LedgerMaster::checkAccept (
     if (ledger->info().seq <= mValidLedgerSeq)
         return;
 
-    auto const minVal = getNeededValidations();
-    auto const tvc = app_.getValidations().numTrustedForLedger(ledger->info().hash);
-    if (tvc < minVal) // nothing we can do
+    //auto const minVal = getNeededValidations();
+    //auto const tvc = app_.getValidations().numTrustedForLedger(ledger->info().hash);
+    if (!app_.getShardManager().committee().checkAccept()) // nothing we can do
     {
-        JLOG (m_journal.trace()) <<
-            "Only " << tvc <<
-            " validations for " << ledger->info().hash;
         return;
     }
 
-	JLOG(m_journal.info())
-		<< "Advancing accepted ledger to " << ledger->info().seq
-		<< " with >= " << minVal << " validations";
 	accept(ledger);
 }
 

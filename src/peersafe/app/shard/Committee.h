@@ -25,6 +25,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/app/misc/ValidatorList.h>
+#include <ripple/overlay/Overlay.h>
+#include <peersafe/app/shard/MicroLedger.h>
+#include <peersafe/app/shard/FinalLedger.h>
 
 
 #include <mutex>
@@ -43,7 +46,22 @@ class Committee {
 private:
 
     // Used if I am a Committee node
-    bool                                                mIsLeader;
+    bool                                                    mIsLeader;
+    std::map<uint32,
+        std::shared_ptr<MicroLedger>>                       mValidMicroLedgers;     // This round. mapping shardID --> MicroLedger
+    std::unordered_map<
+        LedgerIndex,
+        std::unordered_map<uint256,
+        std::shared_ptr<MicroLedger>>>                      mMicroLedgerBuffer;     // seq --> (hash, MicroLedger)
+    std::recursive_mutex                                    mMLBMutex;              // Micro ledger buffer mutex
+
+    boost::asio::basic_waitable_timer<
+        std::chrono::steady_clock>                          mTimer;
+
+    boost::optional<FinalLedger>                            mFinalLedger;
+    std::map<LedgerIndex,
+        std::vector<std::tuple<uint256, PublicKey, Blob>>>  mSignatureBuffer;
+    std::recursive_mutex                                    mSignsMutex;
 
     // Hold all committee peers
 	hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		mPeers;
@@ -62,11 +80,6 @@ public:
 
     Committee(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~Committee() {}
-
-	inline hash_map<Peer::id_t, std::weak_ptr<PeerImp>>& peers()
-    {
-        return mPeers;
-    }
 
     inline ValidatorList& validators()
     {
@@ -87,11 +100,53 @@ public:
 
 	void eraseDeactivate(Peer::id_t id);
 
+    inline bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)
+    {
+        auto const& validators = mValidators->validators();
+        assert(validators.size());
+        int index = (view + curSeq) % validators.size();
+
+        return pubkey == validators[index];
+    }
+
+    inline uint256 getFinalLedgerHash()
+    {
+        assert(mFinalLedger);
+        return mFinalLedger->ledgerHash();
+    }
+
+    inline bool microLedgersAllReady();
+
+    std::vector<std::shared_ptr<MicroLedger const>>& canonicalMicroLedgers();
+
+    uint32 firstMissingMicroLedger();
+
+    uint256 microLedgerSetHash();
+
     void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
+
+    void commitMicroLedgerBuffer(LedgerIndex seq);
+
+    boost::optional<uint256> acquireMicroLedgerSet();
+
+    void setTimer(uint32 repeats);
+
+    void buildFinalLedger(OpenView const& view, std::shared_ptr<Ledger const> ledger);
+
+    void commitSignatureBuffer();
+
+    void recvValidation(PublicKey& pubKey, STValidation& val);
+
+    bool checkAccept();
+
+    void submitFinalLedger();
+
+    Overlay::PeerSequence getActivePeers();
 
     void sendMessage(std::shared_ptr<Message> const &m);
 
     void onMessage(protocol::TMMicroLedgerSubmit const& m);
+    void onMessage(protocol::TMMicroLedgerAcquire const& m, std::weak_ptr<PeerImp> weak);
 
 };
 

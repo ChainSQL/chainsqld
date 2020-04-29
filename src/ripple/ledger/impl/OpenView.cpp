@@ -21,6 +21,7 @@
 #include <ripple/ledger/OpenView.h>
 #include <ripple/basics/contract.h>
 #include <peersafe/app/shard/MicroLedger.h>
+#include <peersafe/app/shard/FinalLedger.h>
 
 namespace ripple {
 
@@ -144,6 +145,15 @@ OpenView::apply (MicroLedger& to) const
     for (auto const& item : items_.items())
     {
         to.addStateDelta(*base_, item.first, item.second.first, item.second.second);
+    }
+}
+
+void
+OpenView::apply (FinalLedger& to) const
+{
+    for (auto const& item : items_.items())
+    {
+        //to.add
     }
 }
 

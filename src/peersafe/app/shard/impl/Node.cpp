@@ -26,6 +26,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/FinalLedger.h>
 #include <peersafe/app/shard/ShardManager.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/misc/HashRouter.h>
 
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
@@ -141,7 +142,7 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
 
     {
         std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        mSignatureBuffer.clear();
+        mSignatureBuffer.erase(seq - 1);
     }
 
     iter->second->onConsensusStart (
@@ -187,12 +188,15 @@ void Node::commitSignatureBuffer()
 
     std::lock_guard<std::recursive_mutex> lock_(mSignsMutex);
 
-    auto iter = mSignatureBuffer.find(mMicroLedger->ledgerHash());
+    auto iter = mSignatureBuffer.find(mMicroLedger->seq());
     if (iter != mSignatureBuffer.end())
     {
         for (auto it = iter->second.begin(); it != iter->second.end(); ++it)
         {
-            mMicroLedger->addSignature(it->first, it->second);
+            if (std::get<0>(*it) == mMicroLedger->ledgerHash())
+            {
+                mMicroLedger->addSignature(std::get<1>(*it), std::get<2>(*it));
+            }
         }
     }
 }
@@ -238,7 +242,7 @@ void Node::validate(MicroLedger &microLedger)
 
 void Node::sendValidation(protocol::TMValidation& m)
 {
-    std::lock_guard<std::mutex> lock(mPeersMutex);
+    std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
 
     auto peers = mMapOfShardPeers.find(mShardID);
     if (peers != mMapOfShardPeers.end())
@@ -276,27 +280,41 @@ void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransaction& m)
 
 void Node::recvValidation(PublicKey& pubKey, STValidation& val)
 {
-    std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
+    LedgerIndex seq = val.getFieldU32(sfLedgerSequence);
+    uint256 microLedgerHash = val.getFieldH256(sfLedgerHash);
+
+    if (seq <= app_.getLedgerMaster().getValidLedgerIndex())
+    {
+        JLOG(journal_.warn()) << "Validation for ledger seq(seq) from "
+            << toBase58(TokenType::TOKEN_NODE_PUBLIC, pubKey) << " is stale";
+        return;
+    }
 
     if (mMicroLedger)
     {
-        if (mMicroLedger->ledgerHash() == val.getFieldH256(sfLedgerHash))
+        if (mMicroLedger->seq() == seq &&
+            mMicroLedger->ledgerHash() == microLedgerHash)
         {
+            std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
+
             mMicroLedger->addSignature(pubKey, val.getFieldVL(sfMicroLedgerSign));
+            return;
         }
     }
-    else
+
+    // Buffer it
     {
-        uint256 ledgerHash = val.getFieldH256(sfLedgerHash);
-        if (mSignatureBuffer.find(ledgerHash) != mSignatureBuffer.end())
+        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
+
+        if (mSignatureBuffer.find(seq) != mSignatureBuffer.end())
         {
-            mSignatureBuffer[ledgerHash].push_back(std::make_pair(pubKey, val.getFieldVL(sfMicroLedgerSign)));
+            mSignatureBuffer[seq].push_back(std::make_tuple(microLedgerHash, pubKey, val.getFieldVL(sfMicroLedgerSign)));
         }
         else
         {
-            std::vector<std::pair<PublicKey, Blob>> v;
-            v.push_back(std::make_pair(pubKey, val.getFieldVL(sfMicroLedgerSign)));
-            mSignatureBuffer.emplace(ledgerHash, std::move(v));
+            std::vector<std::tuple<uint256, PublicKey, Blob>> v;
+            v.push_back(std::make_tuple(microLedgerHash, pubKey, val.getFieldVL(sfMicroLedgerSign)));
+            mSignatureBuffer.emplace(seq, std::move(v));
         }
     }
 }
@@ -315,14 +333,21 @@ void Node::checkAccept()
     if (signCount >= mMapOfShardValidators[mShardID]->quorum())
     {
         submitMicroLedger(false);
-    }
 
-    app_.getOPs().getConsensus().consensus_->setPhase(ConsensusPhase::waitingFinalLedger);
+        app_.getOPs().getConsensus().consensus_->setPhase(ConsensusPhase::waitingFinalLedger);
+    }
 }
 
 void Node::submitMicroLedger(bool withTxMeta)
 {
     protocol::TMMicroLedgerSubmit ms;
+
+    auto suppressionKey = sha512Half(mMicroLedger->ledgerHash(), withTxMeta);
+
+    if (!app_.getHashRouter().shouldRelay(suppressionKey))
+    {
+        return;
+    }
 
     mMicroLedger->compose(ms, withTxMeta);
 
@@ -339,12 +364,59 @@ void Node::submitMicroLedger(bool withTxMeta)
     }
 }
 
+void Node::sendMessage(uint32 shardID, std::shared_ptr<Message> const &m)
+{
+    std::lock_guard<std::recursive_mutex> _(mPeersMutex);
+
+    if (mMapOfShardPeers.find(shardID) != mMapOfShardPeers.end())
+    {
+        for (auto w : mMapOfShardPeers[shardID])
+        {
+            if (auto p = w.lock())
+                p->send(m);
+        }
+    }
+}
+
+void Node::sendMessage(std::shared_ptr<Message> const &m)
+{
+    std::lock_guard<std::recursive_mutex> _(mPeersMutex);
+
+    for (auto const& it : mMapOfShardPeers)
+    {
+        sendMessage(it.first, m);
+    }
+}
+
+Overlay::PeerSequence Node::getActivePeers(uint32 shardID)
+{
+    Overlay::PeerSequence ret;
+
+    std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+
+    if (mMapOfShardPeers.find(shardID) != mMapOfShardPeers.end())
+    {
+        ret.reserve(mMapOfShardPeers[shardID].size());
+
+        for (auto w : mMapOfShardPeers[shardID])
+        {
+            if (auto p = w.lock())
+            {
+                ret.emplace_back(std::move(p));
+            }
+        }
+    }
+
+    return ret;
+}
+
 void Node::onMessage(protocol::TMFinalLedgerSubmit const& m)
 {
 	auto finalLedger = std::make_shared<FinalLedger>(m);
-	bool valid = finalLedger->checkValidity(mShardManager.committee().validatorsPtr(), finalLedger->getSigningData());
-	if (!valid)
+
+	if (!finalLedger->checkValidity(mShardManager.committee().validatorsPtr()))
 	{
+        JLOG(journal_.info()) << "FinalLeger signature verification failed";
 		return;
 	}
 
