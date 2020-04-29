@@ -20,12 +20,62 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <peersafe/app/shard/FinalLedger.h>
 #include <ripple/basics/Slice.h>
+#include <ripple/protocol/digest.h>
 
 namespace ripple {
 
-FinalLedger::FinalLedger()
+FinalLedger::FinalLedger(
+    OpenView const& view,
+    std::shared_ptr<Ledger const>ledger,
+    std::vector<std::shared_ptr<MicroLedger const>>& microLedgers)
+    : mStateDelta(std::move(view.items()))
 {
+    mSeq = ledger->seq();
+    mDrops = ledger->info().drops.drops();
+    mCloseTime = ledger->info().closeTime.time_since_epoch().count();
+    mCloseTimeResolution = ledger->info().parentCloseTime.time_since_epoch().count();
+    mCloseFlags = ledger->info().closeFlags;
 
+    mTxShaMapRootHash = ledger->info().txHash;
+    mStateShaMapRootHash = ledger->info().accountHash;
+
+    for (auto const& microLedger : microLedgers)
+    {
+        mTxsHashes.insert(mTxsHashes.end(), microLedger->txHashes().begin(), microLedger->txHashes().end());
+
+        mMicroLedgers.emplace(microLedger->shardID(), microLedger->ledgerHash());
+    }
+
+    computeHash();
+}
+
+void FinalLedger::computeHash()
+{
+    using beast::hash_append;
+
+    if (mMicroLedgers.size() > 0)
+    {
+        sha512_half_hasher h;
+        for (auto const& it : mMicroLedgers)
+        {
+            hash_append(h, it.second);
+        }
+        mMicroLedgerSetHash = static_cast<typename sha512_half_hasher::result_type>(h);
+    }
+    else
+    {
+        mMicroLedgerSetHash = zero;
+    }
+
+    setLedgerHash(sha512Half(
+        mSeq,
+        mDrops,
+        mCloseTime,
+        mCloseTimeResolution,
+        mCloseFlags,
+        mTxShaMapRootHash,
+        mStateShaMapRootHash,
+        mMicroLedgerSetHash));
 }
 
 FinalLedger::FinalLedger(protocol::TMFinalLedgerSubmit const& m)
@@ -37,7 +87,6 @@ FinalLedger::FinalLedger(protocol::TMFinalLedgerSubmit const& m)
 	mCloseTimeResolution = finalLedger.closetimeresolution();
 	mCloseFlags = finalLedger.closeflags();
 
-	assert(finalLedger.txhashes().size() % 256 == 0);
 	for (int i = 0; i < finalLedger.txhashes().size(); i++)
 	{
 		TxID txHash;
@@ -48,31 +97,85 @@ FinalLedger::FinalLedger(protocol::TMFinalLedgerSubmit const& m)
 	memcpy(mTxShaMapRootHash.begin(), finalLedger.txshamaproothash().data(), 32);
 	memcpy(mStateShaMapRootHash.begin(), finalLedger.stateshamaproothash().data(), 32);
 
-	std::vector<Blob> vecDeltas;
-	for (int i = 0; i < finalLedger.statedeltas().size(); i++)
-	{
-		Blob delta;
-		delta.assign(finalLedger.statedeltas(i).begin(), finalLedger.statedeltas(i).end());
-		vecDeltas.push_back(delta);
-	}
-	mStateDelta.deSerialize(vecDeltas);
+    for (auto const& stateDelta : finalLedger.statedeltas())
+    {
+        uint256 key;
+        memcpy(key.begin(), stateDelta.key().data(), 32);
+
+        switch ((detail::RawStateTable::Action)stateDelta.action())
+        {
+        case detail::RawStateTable::Action::insert:
+            mStateDelta.insert(std::make_shared<SLE>(makeSlice(stateDelta.sle()), key));
+            break;
+        case detail::RawStateTable::Action::erase:
+            mStateDelta.erase(std::make_shared<SLE>(makeSlice(stateDelta.sle()), key));
+            break;
+        case detail::RawStateTable::Action::replace:
+            mStateDelta.replace(std::make_shared<SLE>(makeSlice(stateDelta.sle()), key));
+            break;
+        default:
+            break;
+        }
+    }
 
 	for (int i = 0; i < finalLedger.microledgers().size(); i++)
 	{
 		protocol::FinalLedger_MLInfo const& mbInfo = finalLedger.microledgers(i);
 		ripple::LedgerHash mbHash;
-		memcpy(mbHash.begin(), mbInfo.mbhash().data(), 32);
+		memcpy(mbHash.begin(), mbInfo.mlhash().data(), 32);
 		mMicroLedgers[mbInfo.shardid()] = mbHash;
 	}
 
 	readSignature(m.signatures());
+
+    computeHash();
 }
 
-protocol::TMFinalLedgerSubmit FinalLedger::ToTMMessage()
+void FinalLedger::compose(protocol::TMFinalLedgerSubmit& ms)
 {
-	protocol::TMFinalLedgerSubmit msg;
+    protocol::FinalLedger& m = *(ms.mutable_finalledger());
 
-	return msg;
+    m.set_ledgerseq(mSeq);
+    m.set_drops(mDrops);
+    m.set_closetime(mCloseTime);
+    m.set_closetimeresolution(mCloseTimeResolution);
+    m.set_closeflags(mCloseFlags);
+
+    // Transaction hashes
+    for (auto const& it : mTxsHashes)
+    {
+        m.add_txhashes(it.data(), it.size());
+    }
+
+    // Tx shamap root hash
+    m.set_txshamaproothash(mTxShaMapRootHash.data(),
+        mTxShaMapRootHash.size());
+
+    // Statedetals.
+    for (auto const& it : mStateDelta.items())
+    {
+        protocol::StateDelta& s = *m.add_statedeltas();
+        s.set_key(it.first.data(), it.first.size());                // key
+        s.set_action((uint32)it.second.first);                      // action
+        s.set_sle(it.second.second->getSerializer().data(),
+            it.second.second->getSerializer().size());              // sle
+    }
+
+    // Micro ledger infos.
+    for (auto const& microLeger : mMicroLedgers)
+    {
+        protocol::FinalLedger_MLInfo& mInfo = *m.add_microledgers();
+        mInfo.set_shardid(microLeger.first);
+        mInfo.set_mlhash(microLeger.second.data(), microLeger.second.size());
+    }
+
+    // Signatures
+    for (auto it : signatures())
+    {
+        protocol::Signature& s = *ms.add_signatures();
+        s.set_publickey((const char *)it.first.data(), it.first.size());
+        s.set_signature(it.second.data(), it.second.size());
+    }
 }
 
 Blob FinalLedger::getSigningData()
@@ -103,15 +206,7 @@ LedgerInfo FinalLedger::getLedgerInfo()
 	return std::move(info);
 }
 
-detail::RawStateTable const& FinalLedger::getRawStateTable()
-{
-	return mStateDelta;
-}
 
-std::vector<TxID> const& FinalLedger::getTxHashes()
-{
-	return mTxsHashes;
-}
 
 
 }

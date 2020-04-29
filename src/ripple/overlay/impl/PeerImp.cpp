@@ -1322,13 +1322,13 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
     bool isTrusted = false;
     ShardManager& shardManager = app_.getShardManager();
 
-    if (set.shardid() == Node::CommitteeShardID)
+    if (shardManager.node().shardID() == set.shardid())
     {
-        isTrusted = shardManager.committee().validators().trusted(publicKey);
-    }
-    else
-    {
-        if (shardManager.node().shardID() == set.shardid())
+        if (set.shardid() == Node::CommitteeShardID)
+        {
+            isTrusted = shardManager.committee().validators().trusted(publicKey);
+        }
+        else
         {
             auto iter = shardManager.node().shardValidators().find(set.shardid());
             if (iter != shardManager.node().shardValidators().end())
@@ -1967,7 +1967,11 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
         app_.getShardManager().lookup().onMessage(packet);
         break;
     case ShardManager::COMMITTEE:
-        app_.getShardManager().committee().onMessage(packet);
+        app_.getJobQueue().addJob(
+            jtMLSUBMIT, "recvMicroLedger",
+            [&](Job&) {
+            app_.getShardManager().committee().onMessage(packet);
+        });
         break;
     default:
         break;
@@ -1988,6 +1992,26 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
         break;
     case ShardManager::SHARD:
         app_.getShardManager().node().onMessage(packet);
+        break;
+    default:
+        break;
+    }
+}
+
+void
+PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerAcquire> const& m)
+{
+    protocol::TMMicroLedgerAcquire& packet = *m;
+    std::weak_ptr<PeerImp> weak = shared_from_this();
+
+    switch (app_.getShardManager().myShardRole())
+    {
+    case ShardManager::COMMITTEE:
+        app_.getJobQueue().addJob(
+            jtML_ACQUIRE, "Recv->MicroLedgerAcquire",
+            [&](Job&) {
+            app_.getShardManager().committee().onMessage(packet, weak);
+        });
         break;
     default:
         break;

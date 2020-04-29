@@ -691,6 +691,13 @@ public:
         return validatorKeys_.publicKey;
     }
 
+    virtual
+    SecretKey const &
+    getValidationSecretKey() const override
+    {
+        return validatorKeys_.secretKey;
+    }
+
     NetworkOPs& getOPs () override
     {
         return *m_networkOPs;

@@ -44,6 +44,11 @@ public:
         return mLedgerHash;
     }
 
+    inline const ripple::LedgerHash& ledgerHash() const
+    {
+        return mLedgerHash;
+    }
+
     inline void setLedgerHash(const ripple::LedgerHash& ledgerHash)
     {
         mLedgerHash = ledgerHash;
@@ -75,7 +80,7 @@ public:
 		}
 	}
 
-	inline virtual bool checkValidity(std::unique_ptr <ValidatorList> const& list,Blob signingData)
+	inline virtual bool checkValidity(std::unique_ptr <ValidatorList> const& list)
 	{
 		//check signature
 		for (auto iter = mSignatures.begin(); iter != mSignatures.end(); iter++)
@@ -83,9 +88,9 @@ public:
 			boost::optional<PublicKey> pubKey = list->getTrustedKey(iter->first);
 			if (!pubKey)
 				return false;
-			bool validSig = verify(
+			bool validSig = verifyDigest(
 				iter->first,
-				makeSlice(signingData),
+				mLedgerHash,
 				makeSlice(iter->second));
 			if (!validSig)
 				return false;

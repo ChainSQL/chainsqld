@@ -121,6 +121,9 @@ public:
 	void
 		gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet);
 
+    void
+        gotMicroLedgerSet(NetClock::time_point const& now, uint256 const& microLedgerSet);
+
 	void
 		simulate(
 			NetClock::time_point const& now,
@@ -467,7 +470,7 @@ PConsensus<Adaptor>::startRoundInternal(
     ShardManager& shardManager = adaptor_.app_.getShardManager();
     ShardManager::ShardRole shardRole = shardManager.myShardRole();
 
-    if (shardRole == ShardManager::LOOKUP)
+    if (shardRole == ShardManager::SHARD)
     {
         shardManager.node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
     }
@@ -776,7 +779,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 		++rawCloseTimes_.peers[newPeerProp.closeTime()];
 	}
 
-
+    if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::SHARD)
 	{
 		auto const ait = acquired_.find(newPeerProp.position());
 		if (ait == acquired_.end())
@@ -789,6 +792,13 @@ PConsensus<Adaptor>::peerProposalInternal(
 		if (auto set = adaptor_.acquireTxSet(newPeerProp.position()))
 			gotTxSet(now_, *set);
 	}
+    else
+    {
+        if (auto set = adaptor_.app_.getShardManager().committee().acquireMicroLedgerSet())
+        {
+            gotMicroLedgerSet(now_, *set);
+        }
+    }
 
 	return true;
 }
@@ -865,7 +875,72 @@ PConsensus<Adaptor>::gotTxSet(
 			checkVoting();
 		}
 	}
+}
 
+template <class Adaptor>
+void
+PConsensus<Adaptor>::gotMicroLedgerSet(
+    NetClock::time_point const& now,
+    uint256 const& microLedgerSet)
+{
+    // Nothing to do if we've finished work on a ledger
+    if (phase_ == ConsensusPhase::accepted)
+        return;
+
+    now_ = now;
+
+    if (setID_ && setID_ == microLedgerSet)
+    {
+        if (!adaptor_.app_.getShardManager().committee().isLeader()
+            && !result_)
+        {
+            auto initialSet = std::make_shared<SHAMap>(
+                SHAMapType::TRANSACTION, adaptor_.app_.family(), SHAMap::version{ 1 });
+            initialSet->setUnbacked();
+            auto set = initialSet->snapShot(false);
+            //this place has a txSet copy,what's the time it costs?
+            result_.emplace(Result(
+                std::move(set),
+                RCLCxPeerPos::Proposal(
+                    prevLedgerID_,
+                    previousLedger_.seq() + 1,
+                    view_,
+                    RCLCxPeerPos::Proposal::seqJoin,
+                    *setID_,
+                    closeTime_,
+                    now,
+                    adaptor_.nodeID(),
+                    adaptor_.app_.getShardManager().node().shardID())));
+
+            if (phase_ == ConsensusPhase::open)
+                phase_ = ConsensusPhase::establish;
+
+            JLOG(j_.info()) << "gotMicroLedgerSet time elapsed since receive set_id from leader: " 
+                << (now - rawCloseTimes_.self).count();
+
+            if (adaptor_.validating())
+            {
+                txSetVoted_[*setID_].insert(adaptor_.valPublic_);
+                adaptor_.propose(result_->position);
+
+                JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
+            }
+
+            result_->roundTime.reset(proposalTime_);
+
+            for (auto pub : txSetVoted_[*setID_])
+            {
+                JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
+            }
+            JLOG(j_.info()) << "We are not leader gotMicroLedgerSet, and proposing position:" << *setID_;
+        }
+
+        //check to see if final condition reached.
+        if (result_)
+        {
+            checkVoting();
+        }
+    }
 }
 
 template <class Adaptor>
@@ -998,22 +1073,27 @@ PConsensus<Adaptor>::phaseCollecting()
 
 	JLOG(j_.debug()) << "phaseCollecting time sinceOpen:" << sinceOpen <<"ms";
 
+    auto shardRole = adaptor_.app_.getShardManager().myShardRole();
+
 	// Decide if we should propose a tx-set
 	if (shouldPack() && !result_)
 	{
-		if (!adaptor_.app_.getTxPool().isAvailable())
-		{
-			return;
-		}
+        if (shardRole == ShardManager::SHARD)
+        {
+            if (!adaptor_.app_.getTxPool().isAvailable())
+            {
+                return;
+            }
 
-		int tx_count = transactions_.size();
+            int tx_count = transactions_.size();
 
-		//if time for this block's tx-set reached
-		bool bTimeReached = sinceOpen >= maxBlockTime_;
-		if (tx_count < maxTxsInLedger_ && !bTimeReached)
-		{
-			appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
-		}
+            //if time for this block's tx-set reached
+            bool bTimeReached = sinceOpen >= maxBlockTime_;
+            if (tx_count < maxTxsInLedger_ && !bTimeReached)
+            {
+                appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
+            }
+        }
 
 		if (finalCondReached(sinceOpen, sinceClose))
 		{
@@ -1027,7 +1107,7 @@ PConsensus<Adaptor>::phaseCollecting()
 
 			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
 			result_->roundTime.reset(clock_.now());
-			setID_ = result_->set.id();
+			setID_ = result_->position.position();
 			extraTimeOut_ = true;
 
 			// Share the newly created transaction set if we haven't already
@@ -1113,17 +1193,33 @@ PConsensus<Adaptor>::haveConsensus()
 	if (!result_)
 		return false;
 
+    ShardManager& shardMgr = adaptor_.app_.getShardManager();
+
+    int minVal = std::numeric_limits<std::size_t>::max();
+
+    if (shardMgr.myShardRole() == ShardManager::SHARD)
+    {
+        if (shardMgr.node().shardValidators().find(shardMgr.node().shardID()) !=
+            shardMgr.node().shardValidators().end())
+        {
+            minVal = shardMgr.node().shardValidators()[shardMgr.node().shardID()]->quorum();
+        }
+    }
+    else
+    {
+        minVal = shardMgr.committee().validators().quorum();
+    }
+
 	int agreed = txSetVoted_[*setID_].size();
-	int minVal = adaptor_.app_.validators().quorum();
 	auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
 
-	JLOG(j_.debug()) << "Checking for TX consensus: agree=" << agreed;
-	JLOG(j_.debug()) << "Checking for TX consensus: currentFinished=" << currentFinished;
+	JLOG(j_.debug()) << "Checking for TXSet/MicroLedgerSet consensus: agree=" << agreed;
+	JLOG(j_.debug()) << "Checking for TXSet/MicroLedgerSet consensus: currentFinished=" << currentFinished;
 
 	// Determine if we actually have consensus or not
 	if (agreed >= minVal)
 	{
-		JLOG(j_.info()) << "Consensus for tx-set reached with agreed = " << agreed;
+		JLOG(j_.info()) << "Consensus for TXSet/MicroLedgerSet reached with agreed = " << agreed;
 		result_->state = ConsensusState::Yes;
 		return true;
 	}
@@ -1175,14 +1271,7 @@ std::chrono::milliseconds PConsensus<Adaptor>::getConsensusTimeout()
 template <class Adaptor>
 bool PConsensus<Adaptor>::shouldPack()
 {
-	return isLeader(adaptor_.valPublic_);
-}
-
-template <class Adaptor>
-bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
-{
     ShardManager& shardManager = adaptor_.app_.getShardManager();
-    LedgerIndex currentLedgerIndex = previousLedger_.seq() + 1;
 
     if (shardManager.myShardRole() == ShardManager::SHARD)
     {
@@ -1191,6 +1280,25 @@ bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
     else if (shardManager.myShardRole() == ShardManager::COMMITTEE)
     {
         return shardManager.committee().isLeader();
+    }
+    else
+    {
+        return false;
+    }
+}
+
+template <class Adaptor>
+bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
+{
+    ShardManager& shardManager = adaptor_.app_.getShardManager();
+
+    if (shardManager.myShardRole() == ShardManager::SHARD)
+    {
+        return shardManager.node().isLeader(pub, previousLedger_.seq() + 1, view_);
+    }
+    else if (shardManager.myShardRole() == ShardManager::COMMITTEE)
+    {
+        return shardManager.committee().isLeader(pub, previousLedger_.seq() + 1, view_);
     }
     else
     {
@@ -1219,23 +1327,35 @@ int PConsensus<Adaptor>::getPubIndex(PublicKey const& pub)
 template <class Adaptor>
 bool PConsensus<Adaptor>::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
 {
-	if (sinceLastClose < 0)
-	{
-		sinceLastClose = sinceOpen;
-	}
+    ShardManager& shardMgr = adaptor_.app_.getShardManager();
 
-	if (sinceLastClose >= maxBlockTime_)
-		return true;
+    if (shardMgr.myShardRole() == ShardManager::SHARD)
+    {
+        if (sinceLastClose < 0)
+        {
+            sinceLastClose = sinceOpen;
+        }
 
-	if (maxTxsInLedger_ >= MinTxsInLedgerAdvance &&
-		transactions_.size() >= maxTxsInLedger_ &&
-		sinceLastClose >= minBlockTime_ / 2)
-	{
-		return true;
-	}
-		
-	if (transactions_.size() > 0 && sinceLastClose >= minBlockTime_)
-		return true;
+        if (sinceLastClose >= maxBlockTime_)
+            return true;
+
+        if (maxTxsInLedger_ >= MinTxsInLedgerAdvance &&
+            transactions_.size() >= maxTxsInLedger_ &&
+            sinceLastClose >= minBlockTime_ / 2)
+        {
+            return true;
+        }
+
+        if (transactions_.size() > 0 && sinceLastClose >= minBlockTime_)
+            return true;
+    }
+    else
+    {
+        if (shardMgr.committee().microLedgersAllReady())
+        {
+            return true;
+        }
+    }
 
 	return false;
 }
@@ -1466,7 +1586,8 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::checkTimeout()
 {
-	if (phase_ == ConsensusPhase::accepted)
+	if (phase_ == ConsensusPhase::accepted ||
+        phase_ == ConsensusPhase::waitingFinalLedger)
 		return;
 
 	auto timeOut = extraTimeOut_ ? timeOut_ * 1.5 : timeOut_;

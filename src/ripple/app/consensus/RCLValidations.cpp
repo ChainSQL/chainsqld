@@ -292,11 +292,11 @@ handleNewValidation(Application& app,
             }
             else
             {
-                ;// TODO for committee node;
-            }
+                shardManager.committee().recvValidation(*pubKey, *val);
 
-            //app.getLedgerMaster().checkAccept(
-            //    hash, val->getFieldU32(sfLedgerSequence));
+                app.getLedgerMaster().checkAccept(
+                    hash, val->getFieldU32(sfLedgerSequence));
+            }
 
             shouldRelay = true;
         }

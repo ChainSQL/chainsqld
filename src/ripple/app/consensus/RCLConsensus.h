@@ -55,6 +55,11 @@ applyTransactions(
     OpenView& view,
     std::function<bool(uint256 const&)> txFilter);
 
+void
+applyMicroLedgers(
+    std::vector<std::shared_ptr<MicroLedger const>>& microLedgers,
+    OpenView& view);
+
 /** Manages the generic consensus algorithm for use by the RCL.
 */
 class RCLConsensus
@@ -474,6 +479,9 @@ public:
     //! @see Consensus::gotTxSet
     void
     gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet);
+
+    void
+    gotMicroLedgerSet(NetClock::time_point const& now, uint256 const& mlSet);
 
     // @see Consensus::prevLedgerID
     RCLCxLedger::ID

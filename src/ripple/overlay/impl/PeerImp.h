@@ -434,6 +434,7 @@ public:
 	void onMessage (std::shared_ptr <protocol::TMViewChange> const& m);
     void onMessage (std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m);
     void onMessage (std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m);
+    void onMessage (std::shared_ptr <protocol::TMMicroLedgerAcquire> const& m);
 
 private:
     State state() const

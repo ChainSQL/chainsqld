@@ -59,6 +59,8 @@ enum JobType
     jtTRANSACTION,   // A transaction received from the network
     jtBATCH,         // Apply batched transactions
 
+    jtMLSUBMIT,      // received a micro ledger from shard node or a committee node.
+
     jtTABLESTORAGE,  // storage tables
     jtTableCheckHash,// check tx hash
     jtOPERATESQL,    // write table sync info
@@ -72,6 +74,7 @@ enum JobType
 	jtLEDGER_DATA,   // Received data for a ledger we're acquiring
 
 	jtVIEW_CHANGE,	 // Recv view_change msg.
+    jtML_ACQUIRE,    // Fetch a micro ledger.
     jtTXN_DATA,      // Fetch a proposed set
     jtWAL,           // Write-ahead logging
     jtWRITE,         // Write out hashed objects

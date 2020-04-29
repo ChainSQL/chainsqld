@@ -56,6 +56,13 @@ public:
         PublicKey const& raPub,
         bool isFull);
 
+    STValidation(
+        uint256 const& ledgerHash,
+        uint256 const& finalLedgerHash,
+        NetClock::time_point signTime,
+        PublicKey const& raPub,
+        bool isFull);
+
     STBase*
     copy (std::size_t n, void* buf) const override
     {

@@ -151,8 +151,9 @@ void Lookup::eraseDeactivate(Peer::id_t id)
 void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 {
 	auto microWithMeta = std::make_shared<MicroLedger>(m);
-	bool valid = microWithMeta->checkValidity(mShardManager.node().shardValidators().at(microWithMeta->shardID()),
-		microWithMeta->getSigningData());
+	bool valid = microWithMeta->checkValidity(
+        mShardManager.node().shardValidators().at(microWithMeta->shardID()),
+		true);
 	if (!valid)
 	{
 		return;
@@ -165,7 +166,7 @@ void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
 {
 	auto finalLedger = std::make_shared<FinalLedger>(m);
-	bool valid = finalLedger->checkValidity(mShardManager.committee().validatorsPtr(), finalLedger->getSigningData());
+	bool valid = finalLedger->checkValidity(mShardManager.committee().validatorsPtr());
 
 	if (valid)
 	{

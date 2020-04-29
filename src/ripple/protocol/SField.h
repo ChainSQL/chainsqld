@@ -425,6 +425,7 @@ extern SF_U256 const sfLedgerIndex;
 extern SF_U256 const sfWalletLocator;
 extern SF_U256 const sfRootIndex;
 extern SF_U256 const sfAccountTxnID;
+extern SF_U256 const sfFinalLedgerHash;
 extern SF_U256 const sfPrevTxnLedgerHash;
 extern SF_U256 const sfTxnLedgerHash;
 extern SF_U256 const sfCreatedLedgerHash;

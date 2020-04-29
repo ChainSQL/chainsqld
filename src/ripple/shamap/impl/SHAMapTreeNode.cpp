@@ -407,9 +407,10 @@ SHAMapTreeNode::updateHash()
     }
     else if (mType == tnTRANSACTION_MD)
     {
-        nh = sha512Half(HashPrefix::txNode,
-            makeSlice(mItem->peekData()),
-                mItem->key());
+        //nh = sha512Half(HashPrefix::txNode,
+        //    makeSlice(mItem->peekData()),
+        //        mItem->key());
+        nh = sha512Half(HashPrefix::txNode, mItem->key());
     }
     else
         assert (false);

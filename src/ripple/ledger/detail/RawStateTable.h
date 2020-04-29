@@ -108,6 +108,11 @@ public:
         return items_;
     }
 
+    inline items_t& items()
+    {
+        return items_;
+    }
+
     inline const ZXCAmount dropsDestroyed() const 
     {
         return dropsDestroyed_;

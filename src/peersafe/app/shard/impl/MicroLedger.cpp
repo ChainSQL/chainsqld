@@ -22,6 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/Keylet.h>
 #include <ripple/ledger/TxMeta.h>
+#include <peersafe/rpc/TableUtils.h>
 
 
 namespace ripple {
@@ -34,7 +35,7 @@ MicroLedger::MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view)
 
     view.apply(*this);
 
-    computeHash();
+    computeHash(true);
 }
 
 MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m)
@@ -42,47 +43,85 @@ MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m)
     readMicroLedger(m.microledger());
     readSignature(m.signatures());
 
-    // maybe need or not
-    //computeHash();
+    // The Message probably not have txWithMeta source data.
+    // But it contains txWithMeta root hash. So, don't compute
+    // txWithMeta root hash here, and check it late if it takes
+    // the source data.
+    computeHash(false);
 }
 
-void MicroLedger::computeHash()
+void MicroLedger::computeHash(bool withTxMeta)
 {
     using beast::hash_append;
-    sha512_half_hasher txRootHash;
+
+    if (mTxsHashes.size() > 0)
+    {
+        sha512_half_hasher txRootHash;
+        for (auto txHash : mTxsHashes)
+        {
+            hash_append(txRootHash, txHash);
+        }
+        mHashSet.TxsRootHash = static_cast<typename sha512_half_hasher::result_type>(txRootHash);
+    }
+    else
+    {
+        mHashSet.TxsRootHash = zero;
+    }
+
+    if (mStateDeltas.size() > 0)
+    {
+        sha512_half_hasher stateDeltaHash;
+        for (auto stateDelta : mStateDeltas)
+        {
+            hash_append(stateDeltaHash, stateDelta.first);
+            hash_append(stateDeltaHash, (uint8)stateDelta.second.first);
+            hash_append(stateDeltaHash, stateDelta.second.second.slice());
+        }
+        mHashSet.StateDeltaHash = static_cast<typename sha512_half_hasher::result_type>(stateDeltaHash);
+    }
+    else
+    {
+        mHashSet.StateDeltaHash = zero;
+    }
+
+    if (withTxMeta)
+    {
+        mHashSet.StateDeltaHash = computeTxWithMetaHash();
+    }
+
+    setLedgerHash( sha512Half(
+        mSeq,
+        mShardID,
+        mHashSet.TxsRootHash,
+        mHashSet.TxWMRootHash,
+        mHashSet.StateDeltaHash) );
+}
+
+uint256 MicroLedger::computeTxWithMetaHash()
+{
+    using beast::hash_append;
+
+    if (mTxsHashes.size() <= 0)
+    {
+        return zero;
+    }
+
     sha512_half_hasher txWMRootHash;
 
-    for (auto iter = mTxsHashes.begin(); iter != mTxsHashes.end(); iter++)
+    try
     {
-        hash_append(txRootHash, *iter);
-
-        if (mHashSet.TxWMRootHash != zero)
+        for (auto txHash : mTxsHashes)
         {
-            hash_append(txWMRootHash, mTxWithMetas.at(*iter).first->slice());
-            hash_append(txWMRootHash, mTxWithMetas.at(*iter).second->slice());
+            hash_append(txWMRootHash, mTxWithMetas.at(txHash).first->slice());
+            hash_append(txWMRootHash, mTxWithMetas.at(txHash).second->slice());
         }
     }
-
-    mHashSet.TxsRootHash = static_cast<typename sha512_half_hasher::result_type>(txRootHash);
-
-    if (mHashSet.TxWMRootHash != zero)
+    catch (std::exception const&)
     {
-        mHashSet.TxWMRootHash = static_cast<typename sha512_half_hasher::result_type>(txWMRootHash);
+        return zero;
     }
 
-    sha512_half_hasher stateDeltaHash;
-
-    for (auto iter = mStateDeltas.begin(); iter != mStateDeltas.end(); iter++)
-    {
-        hash_append(stateDeltaHash, (uint8)iter->second.first);
-        hash_append(stateDeltaHash, iter->second.second.slice());
-    }
-
-    mHashSet.StateDeltaHash = static_cast<typename sha512_half_hasher::result_type>(stateDeltaHash);
-
-    sha512_half_hasher ledgerHash;
-
-    setLedgerHash( sha512Half(makeSlice(getSigningData())) );
+    return static_cast<typename sha512_half_hasher::result_type>(txWMRootHash);
 }
 
 void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
@@ -106,6 +145,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     for (auto it : mStateDeltas)
     {
         protocol::StateDelta& s = *m.add_statedeltas();
+        s.set_key(it.first.data(), it.first.size());                  // key
         s.set_action((uint32)it.second.first);                        // action
         s.set_sle(it.second.second.data(), it.second.second.size());  // sle
     }
@@ -157,6 +197,181 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
         break;
     default:
         break;
+    }
+}
+
+void MicroLedger::apply(OpenView& to) const
+{
+    to.rawDestroyZXC(mDropsDestroyed);
+
+    for (auto& it : mStateDeltas)
+    {
+        std::shared_ptr<SLE> sle = std::make_shared<SLE>(std::move(it.second.second.slice()), it.first);
+        Keylet k(sle->getType(), sle->key());
+        std::shared_ptr<SLE const> base = to.read(k);
+        switch (sle->getType())
+        {
+        case ltACCOUNT_ROOT:
+            switch (it.second.first)
+            {
+            case detail::RawStateTable::Action::insert:
+            {
+                auto it = to.items().items().find(k.key);
+                if (it != to.items().items().end())
+                {
+                    if (it->second.first == detail::RawStateTable::Action::insert)
+                    {
+                        auto preSle = it->second.second;
+                        auto priorBlance = preSle->getFieldAmount(sfBalance);
+                        auto deltaBalance = sle->getFieldAmount(sfBalance);
+                        preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+                    }
+                    else
+                    {
+                        //LogicError("RawStateTable::");
+                    }
+                }
+                else
+                {
+                    to.rawInsert(sle);
+                }
+                break;
+            }
+            case detail::RawStateTable::Action::erase:
+            {
+                // Account root erase only occur with Contract, don't support it.
+                auto it = to.items().items().find(k.key);
+                if (it != to.items().items().end())
+                {
+                    //LogicError("RawStateTable::");
+                }
+                else
+                {
+                    to.rawInsert(sle);
+                }
+                break;
+            }
+            case detail::RawStateTable::Action::replace:
+            {
+                auto it = to.items().items().find(k.key);
+                if (it != to.items().items().end())
+                {
+                    if (it->second.first == detail::RawStateTable::Action::replace)
+                    {
+                        auto preSle = it->second.second;
+                        auto priorBlance = preSle->getFieldAmount(sfBalance);
+                        auto deltaBalance = sle->getFieldAmount(sfBalance);
+                        preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+                    }
+                    else
+                    {
+                        //LogicError("RawStateTable::");
+                    }
+                }
+                else
+                {
+                    auto priorBlance = base->getFieldAmount(sfBalance);
+                    auto deltaBalance = sle->getFieldAmount(sfBalance);
+                    sle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+                    to.rawReplace(sle);
+                }
+                break;
+            }
+            default:
+                break;
+            }
+            break;
+        case ltTABLELIST:
+            switch (it.second.first)
+            {
+            case detail::RawStateTable::Action::insert:
+            case detail::RawStateTable::Action::erase:
+            {
+                auto it = to.items().items().find(k.key);
+                if (it != to.items().items().end())
+                {
+                    //LogicError("RawStateTable::");
+                }
+                else
+                {
+                    to.rawInsert(sle);
+                }
+                break;
+            }
+            case detail::RawStateTable::Action::replace:
+            {
+                auto it = to.items().items().find(k.key);
+                if (it != to.items().items().end())
+                {
+                    if (it->second.first == detail::RawStateTable::Action::replace)
+                    {
+                        auto tableEntries = sle->getFieldArray(sfTableEntries);
+                        auto baseTableEntries = base->getFieldArray(sfTableEntries);
+                        // tableEntry.users modified or owner add/delete a table
+                        if ( [&]() -> bool {
+                                 if (tableEntries.size() != baseTableEntries.size())
+                                 {
+                                     return true;
+                                 }
+                                 for (auto const& table : tableEntries)
+                                 {
+                                     auto baseTable = getTableEntry(baseTableEntries, table.getFieldVL(sfTableName));
+                                     if (!baseTable || baseTable->getFieldArray(sfUsers) != table.getFieldArray(sfUsers))
+                                     {
+                                         return true;
+                                     }
+                                 }
+                                 return false;
+                             }() )
+                        {
+                            to.rawReplace(sle);
+                        }
+                    }
+                    else
+                    {
+                        //? LogicError("RawStateTable::");
+                    }
+                }
+                else
+                {
+                    to.rawReplace(sle);
+                }
+                break;
+            }
+            default:
+                break;
+            }
+            break;
+        case ltDIR_NODE:
+            switch (it.second.first)
+            {
+            case detail::RawStateTable::Action::insert:
+            case detail::RawStateTable::Action::erase:
+            case detail::RawStateTable::Action::replace:        // replace need any other handled?
+            {
+                auto it = to.items().items().find(k.key);
+                if (it != to.items().items().end())
+                {
+                    //LogicError("RawStateTable::");
+                }
+                else
+                {
+                    to.rawInsert(sle);
+                }
+                break;
+            }
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    for (auto const& it : mTxsHashes)
+    {
+        to.rawTxInsert(it,
+            std::make_shared<Serializer>(0),    // tx
+            std::make_shared<Serializer>(0));   // meta
     }
 }
 
@@ -225,38 +440,43 @@ void MicroLedger::setMetaIndex(TxID const& hash, uint32 index, beast::Journal j)
 	mTxWithMetas[hash].second = sMeta;
 }
 
-bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, Blob signingData)
+bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, bool withTxMeta)
 {
-	bool ret = LedgerBase::checkValidity(list, signingData);
-	if (!ret)
-		return ret;
+    // We have compute the ledger digest(hash) by ownself,
+    // only exclude the txWithMeta hash. Check it, if has TxWithMeta data.
+    if (withTxMeta)
+    {
+        if (mTxsHashes.size() != mTxWithMetas.size())
+        {
+            return false;
+        }
 
-	//check tx-roothash
+        // Check all tx-meta corresponds to tx-hashes
+        for (TxID hash : mTxsHashes)
+        {
+            if (!hasTxWithMeta(hash))
+                return false;
+        }
 
-	//
-	if (mTxWithMetas.size() > 0 && mTxsHashes.size() != mTxWithMetas.size())
-		return false;
+        if (computeTxWithMetaHash() != mHashSet.TxWMRootHash)
+        {
+            return false;
+        }
+    }
 
-	//check all tx-meta corresponds to tx-hashes
-	for (TxID hash : mTxsHashes)
-	{
-		if (mTxWithMetas.find(hash) == mTxWithMetas.end())
-			return false;
-	}
-
-    return true;
+    return LedgerBase::checkValidity(list);
 }
 
-const Blob& MicroLedger::getSigningData()
-{
-    Serializer s;
-    s.add32(mSeq);
-    s.add32(mShardID);
-    s.add256(mHashSet.TxsRootHash);
-    s.add256(mHashSet.TxWMRootHash);
-    s.add256(mHashSet.StateDeltaHash);
-
-    return s.peekData();
-}
+//const Blob& MicroLedger::getSigningData()
+//{
+//    Serializer s;
+//    s.add32(mSeq);
+//    s.add32(mShardID);
+//    s.add256(mHashSet.TxsRootHash);
+//    s.add256(mHashSet.TxWMRootHash);
+//    s.add256(mHashSet.StateDeltaHash);
+//
+//    return s.peekData();
+//}
 
 }
