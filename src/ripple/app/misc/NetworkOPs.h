@@ -95,7 +95,7 @@ namespace ripple {
 		static inline FailHard doFailHard(bool noMeansDont)
 		{
 			return noMeansDont ? FailHard::yes : FailHard::no;
-		}
+		};
 
 	public:
 		~NetworkOPs() override = default;

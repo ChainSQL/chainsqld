@@ -123,6 +123,10 @@ public:
 
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
 
+
+	void sendTransaction(unsigned int shardIndex,protocol::TMTransaction& m);
+
+
 };
 
 }

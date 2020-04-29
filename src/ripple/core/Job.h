@@ -50,6 +50,8 @@ enum JobType
     
     jtCheckSubTx,	 // check subscribe tx
 
+	jtRELAYTXS,	     //Relay txs to shard nodes
+
     jtCLIENT,        // A websocket command from the client
     jtRPC,           // A websocket command from the client
 
@@ -84,6 +86,7 @@ enum JobType
     jtSKIPNODE,      // skip node 
 
 
+					 
     // Special job types which are not dispatched by the job pool
     jtPEER          ,
     jtDISK          ,

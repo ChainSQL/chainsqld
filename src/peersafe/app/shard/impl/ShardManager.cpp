@@ -22,6 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/core/Config.h>
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
+#include <ripple/app/misc/Transaction.h>
 #include <memory>
 
 namespace ripple
@@ -73,6 +74,30 @@ void ShardManager::eraseDeactivate(Peer::id_t id)
 	mLookup->eraseDeactivate(id);
 	mCommittee->eraseDeactivate(id);
 	mSync->eraseDeactivate(id);
+}
+
+void ShardManager::relayTxs(std::vector< std::shared_ptr<Transaction> >& txs)
+{
+	for (auto tx : txs) {
+
+		auto txCur   = tx->getSTransaction();
+		auto account = txCur->getAccountID(sfAccount);
+
+		std::string strAccountID = toBase58(account);
+		auto shardIndex			 = getShardIndex(strAccountID, shardCount());
+
+		protocol::TMTransaction msg;
+		Serializer s;
+
+		tx->getSTransaction()->add(s);
+		msg.set_rawtransaction(s.data(), s.size());
+		msg.set_status(protocol::tsCURRENT);
+		msg.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
+
+		mNode->sendTransaction(shardIndex,msg);
+
+	}
+
 }
 
 }

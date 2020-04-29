@@ -254,6 +254,26 @@ void Node::sendValidation(protocol::TMValidation& m)
     }
 }
 
+void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransaction& m)
+{
+
+	std::lock_guard<std::mutex> lock(mPeersMutex);
+
+	auto peers = mMapOfShardPeers.find(shardIndex);
+	if (peers != mMapOfShardPeers.end())
+	{
+		auto const sm = std::make_shared<Message>(
+			m, protocol::mtVALIDATION);
+
+		for (auto w : peers->second)
+		{
+			if (auto p = w.second.lock())
+				p->send(sm);
+		}
+	}
+
+}
+
 void Node::recvValidation(PublicKey& pubKey, STValidation& val)
 {
     std::lock_guard<std::recursive_mutex> lock(mSignsMutex);

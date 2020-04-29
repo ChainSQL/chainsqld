@@ -68,6 +68,7 @@ add(    jtTABLESYNC,     "tableSync",               1,        false, 0,     0);
 add(    jtTABLESTORAGE,  "tableStorage",            1,        false, 0,     0);
 add(	jtTableCheckHash, "tableCheckHash",			1,		  false, 0,		0);
 add(	jtCheckSubTx,	  "checkSubTx",				1,		  false, 0,		0);
+add(	jtRELAYTXS,		  "relayTxs",				maxLimit, false, 2000, 5000);
 add(    jtTABLELOCALSYNC,"tableLocalSync",          1,        false, 0,     0);
 add(    jtOPERATESQL,    "operateSQL",              10,        false, 0,     0);
 add(    jtTABLE_REQ,     "tableRequest",            2,        false, 0,     0);
@@ -84,6 +85,7 @@ add(    jtGENERIC,       "generic",                 0,        true,  0,     0);
 add(    jtNS_SYNC_READ,  "SyncReadNode",            0,        true,  0,     0);
 add(    jtNS_ASYNC_READ, "AsyncReadNode",           0,        true,  0,     0);
 add(    jtNS_WRITE,      "WriteNode",               0,        true,  0,     0);
+
 
     }
 

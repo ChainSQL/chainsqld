@@ -45,7 +45,7 @@ private:
     // Used if I am a Committee node
     bool                                                mIsLeader;
 
-    // Hold all commmittee peers
+    // Hold all committee peers
 	hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		mPeers;
     std::mutex                                          mPeersMutex;
 

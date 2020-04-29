@@ -342,6 +342,9 @@ public:
         std::shared_ptr<SHAMap> const& map,
         bool fromAcquire) override;
 
+	// relay txs to shard nodes
+	void relayTxs(std::vector<TransactionStatus>& transactions);
+
     // Network state machine.
 
     // VFALCO TODO Try to make all these private since they seem to be...private
@@ -1266,41 +1269,48 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
         auto lock = make_lock(app_.getMasterMutex());
         bool changed = false;
         {
+
+			//shard related
+			m_job_queue.addJob(jtRELAYTXS, "NetOPs.relayTxs",
+				[this,&transactions](Job&) {
+				relayTxs(transactions);
+			});
+			
             //std::lock_guard <std::recursive_mutex> lock (
             //    m_ledgerMaster.peekMutex());
 
             //app_.openLedger().modify(
             //    [&](OpenView& view, beast::Journal j)
             //{
-                for (TransactionStatus& e : transactions)
-                {
-                    // we check before addingto the batch
-                    ApplyFlags flags = tapNO_CHECK_SIGN;
-                    if (e.local)
-                        flags = flags | tapFromClient;
-                    else
-                        flags = flags | tapByRelay;
+                //for (TransactionStatus& e : transactions)
+                //{
+                //    // we check before addingto the batch
+                //    ApplyFlags flags = tapNO_CHECK_SIGN;
+                //    if (e.local)
+                //        flags = flags | tapFromClient;
+                //    else
+                //        flags = flags | tapByRelay;
 
-                    if (e.admin)
-                        flags = flags | tapUNLIMITED;
+                //    if (e.admin)
+                //        flags = flags | tapUNLIMITED;
 
-                    //if (mConsensus.adaptor_.getUseNewConsensus())
-                    //{
-                        auto const result = doTransactionCheck(e.transaction, flags, *app_.openLedger().current());
-                    //}
-                    //else
-                    //{
-                    //    //auto const result = app_.getTxQ().apply(
-                    //    //    app_, view, e.transaction->getSTransaction(),
-                    //    //    flags, j);
-                    //}
-                    e.result = result.first;
-                    e.applied = result.second;
+                //    //if (mConsensus.adaptor_.getUseNewConsensus())
+                //    //{
+                //        auto const result = doTransactionCheck(e.transaction, flags, *app_.openLedger().current());
+                //    //}
+                //    //else
+                //    //{
+                //    //    //auto const result = app_.getTxQ().apply(
+                //    //    //    app_, view, e.transaction->getSTransaction(),
+                //    //    //    flags, j);
+                //    //}
+                //    e.result = result.first;
+                //    e.applied = result.second;
 
-                    if (e.result == tefTABLE_STORAGEERROR)
-                        e.failType = FailHard::yes;
-                    changed = changed || result.second;
-                }
+                //    if (e.result == tefTABLE_STORAGEERROR)
+                //        e.failType = FailHard::yes;
+                //    changed = changed || result.second;
+                //}
                 //return changed;
             //});
         }
@@ -2703,7 +2713,13 @@ std::string NetworkOPsImp::getServerStatus()
 
 bool NetworkOPsImp::waitingForInit()
 {
-    return mConsensus.waitingForInit();
+	if ( app_.config().isShardOrCommittee() ){
+		return mConsensus.waitingForInit();
+	}
+	else{
+		return false;
+	}
+   
 }
 
 std::chrono::milliseconds NetworkOPsImp::getConsensusTimeout()
@@ -4032,6 +4048,8 @@ void NetworkOPsImp::getBookPage (
     //  jvResult[jss::nodes]   = Json::Value(Json::arrayValue);
 }
 
+
+
 #endif
 
 //------------------------------------------------------------------------------
@@ -4082,6 +4100,45 @@ Json::Value NetworkOPsImp::StateAccounting::json() const
     }
 
     return ret;
+}
+
+
+
+// relay txs to shard nodes
+void  NetworkOPsImp::relayTxs(std::vector<TransactionStatus>& transactions) {
+
+	std::vector< std::shared_ptr<Transaction> > vecTxs;
+	// std::shared_ptr<Transaction> transaction;
+	for (TransactionStatus& e : transactions){
+		vecTxs.push_back(e.transaction);
+	}
+
+	if (!vecTxs.empty()) {
+		app_.getShardManager().relayTxs(vecTxs);
+	}
+
+
+
+
+	//auto account = txCur->getAccountID(sfAccount);
+
+	//auto shardIndex = getShardIndex(account, app_.getShardManager().shardCount());
+
+	// send by
+
+	//protocol::TMTransaction tx;
+	//Serializer s;
+
+	//e.transaction->getSTransaction()->add(s);
+	//tx.set_rawtransaction(s.data(), s.size());
+	//tx.set_status(protocol::tsCURRENT);
+	//tx.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
+	//tx.set_deferred(e.result == terQUEUED);
+	//// FIXME: This should be when we received it
+	//app_.overlay().foreach(send_if_not(
+	//	std::make_shared<Message>(tx, protocol::mtTRANSACTION),
+	//	peer_in_set(*toSkip)));
+
 }
 
 //------------------------------------------------------------------------------
