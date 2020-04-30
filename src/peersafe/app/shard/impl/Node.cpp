@@ -119,6 +119,52 @@ void Node::eraseDeactivate(Peer::id_t id)
 
 }
 
+bool Node::isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)
+{
+    if (mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end())
+    {
+        auto const& validators = mMapOfShardValidators[mShardID]->validators();
+        assert(validators.size());
+        int index = (view + curSeq) % validators.size();
+        return pubkey == validators[index];
+    }
+
+    return false;
+}
+
+std::unique_ptr<ValidatorList>& Node::validatorsPtr()
+{
+    assert(mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end());
+    return mMapOfShardValidators[mShardID];
+}
+
+std::size_t Node::quorum()
+{
+    if (mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end())
+    {
+        return mMapOfShardValidators[mShardID]->quorum();
+    }
+
+    return std::numeric_limits<std::size_t>::max();
+}
+
+std::int32_t Node::getPubkeyIndex(PublicKey const& pubkey)
+{
+    if (mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end())
+    {
+        auto& validators = mMapOfShardValidators[mShardID]->validators();
+        for (std::int32_t idx = 0; idx < validators.size(); idx++)
+        {
+            if (validators[idx] == pubkey)
+            {
+                return idx;
+            }
+        }
+    }
+
+    return -1;
+}
+
 void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
     assert(mShardID > CommitteeShardID && mShardID != InvalidShardID);

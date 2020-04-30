@@ -252,7 +252,7 @@ private:
 
 	bool isLeader(PublicKey const& pub);
 
-	int getPubIndex(PublicKey const& pub);
+	inline int getPubIndex(PublicKey const& pub);
 
 	bool finalCondReached(int64_t sinceOpen, int64_t sinceLastClose);
 
@@ -467,17 +467,10 @@ PConsensus<Adaptor>::startRoundInternal(
 	view_ = 0;
 	toView_ = 0;
 
-    ShardManager& shardManager = adaptor_.app_.getShardManager();
-    ShardManager::ShardRole shardRole = shardManager.myShardRole();
-
-    if (shardRole == ShardManager::SHARD)
-    {
-        shardManager.node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
-    }
-    else if (shardRole == ShardManager::COMMITTEE)
-    {
-        shardManager.committee().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
-    }
+    adaptor_.app_.getShardManager().nodeBase().onConsensusStart(
+        previousLedger_.seq() + 1, 
+        view_, 
+        adaptor_.valPublic_);
 
 	closeResolution_ = getNextLedgerTimeResolution(
 		previousLedger_.closeTimeResolution(),
@@ -507,7 +500,8 @@ PConsensus<Adaptor>::checkCache()
 		{
 			if (peerProposalInternal(now_, it->second))
 			{
-				JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
+				JLOG(j_.info()) << "Position " << it->second.proposal().position() << 
+                    " from " << getPubIndex(it->first) << " success";
 			}
 		}
 		auto iter = adaptor_.proposalCache_.begin();
@@ -539,7 +533,11 @@ PConsensus<Adaptor>::checkChangeView(uint64_t toView)
 	}
 	if (toView_ == toView)
 	{
-		if (viewChangeManager_.checkChange(toView, view_, prevLedgerID_, adaptor_.app_.validators().quorum()))
+		if (viewChangeManager_.checkChange(
+            toView,
+            view_,
+            prevLedgerID_,
+            adaptor_.app_.getShardManager().nodeBase().quorum()))
 		{
 			view_ = toView;
 			onViewChange();
@@ -553,7 +551,10 @@ PConsensus<Adaptor>::checkChangeView(uint64_t toView)
 		1. if previousLedgerSeq < ViewChange.previousLedgerSeq��handleWrong ledger
 		2. if previousLedgerSeq == ViewChange.previousLedgerSeq��change our view_ to new view.
 		*/
-		auto ret = viewChangeManager_.shouldTriggerViewChange(toView, previousLedger_, adaptor_.app_.validators().quorum());
+		auto ret = viewChangeManager_.shouldTriggerViewChange(
+            toView,
+            previousLedger_,
+            adaptor_.app_.getShardManager().nodeBase().quorum());
 		if (std::get<0>(ret))
 		{
 			if (previousLedger_.seq() < std::get<1>(ret))
@@ -597,17 +598,10 @@ PConsensus<Adaptor>::onViewChange()
 	//clear avoid
 	adaptor_.app_.getTxPool().clearAvoid();
 
-    ShardManager& shardManager = adaptor_.app_.getShardManager();
-    ShardManager::ShardRole shardRole = shardManager.myShardRole();
-
-    if (shardRole == ShardManager::SHARD)
-    {
-        shardManager.node().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
-    }
-    else if (shardRole == ShardManager::COMMITTEE)
-    {
-        shardManager.committee().onConsensusStart(previousLedger_.seq() + 1, view_, adaptor_.valPublic_);
-    }
+    adaptor_.app_.getShardManager().nodeBase().onConsensusStart(
+        previousLedger_.seq() + 1,
+        view_,
+        adaptor_.valPublic_);
 
 	viewChangeManager_.onViewChanged(view_);
 	if (bWaitingInit_)
@@ -1139,7 +1133,7 @@ PConsensus<Adaptor>::phaseCollecting()
 	{
 		//in case we are not leader,the proposal leader should propose not received,
 		// but other nodes have accepted the ledger of this sequence
-		int minVal = adaptor_.app_.validators().quorum();
+		int minVal = adaptor_.app_.getShardManager().nodeBase().quorum();
 		auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
 		if (currentFinished >= minVal)
 		{
@@ -1193,22 +1187,7 @@ PConsensus<Adaptor>::haveConsensus()
 	if (!result_)
 		return false;
 
-    ShardManager& shardMgr = adaptor_.app_.getShardManager();
-
-    int minVal = std::numeric_limits<std::size_t>::max();
-
-    if (shardMgr.myShardRole() == ShardManager::SHARD)
-    {
-        if (shardMgr.node().shardValidators().find(shardMgr.node().shardID()) !=
-            shardMgr.node().shardValidators().end())
-        {
-            minVal = shardMgr.node().shardValidators()[shardMgr.node().shardID()]->quorum();
-        }
-    }
-    else
-    {
-        minVal = shardMgr.committee().validators().quorum();
-    }
+    int minVal = adaptor_.app_.getShardManager().nodeBase().quorum();
 
 	int agreed = txSetVoted_[*setID_].size();
 	auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
@@ -1271,51 +1250,22 @@ std::chrono::milliseconds PConsensus<Adaptor>::getConsensusTimeout()
 template <class Adaptor>
 bool PConsensus<Adaptor>::shouldPack()
 {
-    ShardManager& shardManager = adaptor_.app_.getShardManager();
-
-    if (shardManager.myShardRole() == ShardManager::SHARD)
-    {
-        return shardManager.node().isLeader();
-    }
-    else if (shardManager.myShardRole() == ShardManager::COMMITTEE)
-    {
-        return shardManager.committee().isLeader();
-    }
-    else
-    {
-        return false;
-    }
+    return adaptor_.app_.getShardManager().nodeBase().isLeader();
 }
 
 template <class Adaptor>
 bool PConsensus<Adaptor>::isLeader(PublicKey const& pub)
 {
-    ShardManager& shardManager = adaptor_.app_.getShardManager();
-
-    if (shardManager.myShardRole() == ShardManager::SHARD)
-    {
-        return shardManager.node().isLeader(pub, previousLedger_.seq() + 1, view_);
-    }
-    else if (shardManager.myShardRole() == ShardManager::COMMITTEE)
-    {
-        return shardManager.committee().isLeader(pub, previousLedger_.seq() + 1, view_);
-    }
-    else
-    {
-        return false;
-    }
+    return adaptor_.app_.getShardManager().nodeBase().isLeader(
+        pub,
+        previousLedger_.seq() + 1,
+        view_);
 }
 
 template <class Adaptor>
 int PConsensus<Adaptor>::getPubIndex(PublicKey const& pub)
 {
-	auto const& validators = adaptor_.app_.validators().validators();
-	for (int i = 0; i < validators.size(); i++)
-	{
-		if (validators[i] == pub)
-			return i + 1;
-	}
-	return 0;
+    return adaptor_.app_.getShardManager().nodeBase().getPubkeyIndex(pub);
 }
 /** Is final condition reached for proposing.
 	We should check:
@@ -1505,7 +1455,7 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
                     count++;
                 }
             }
-			if (count >= adaptor_.app_.validators().quorum())
+			if (count >= adaptor_.app_.getShardManager().nodeBase().quorum())
 			{
 				adaptor_.acquireLedger(newPeerProp.prevLedger());
 			}

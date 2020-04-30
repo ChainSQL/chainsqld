@@ -1320,21 +1320,20 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 		<< ",prevHash=" << to_string(prevLedger) << ",curSeq=" << set.curledgerseq();
 
     bool isTrusted = false;
-    ShardManager& shardManager = app_.getShardManager();
+    ShardManager& shardMgr = app_.getShardManager();
 
-    if (shardManager.node().shardID() == set.shardid())
+    if (shardMgr.myShardRole() != ShardManager::SHARD &&
+        shardMgr.myShardRole() != ShardManager::COMMITTEE)
     {
-        if (set.shardid() == Node::CommitteeShardID)
+        return;
+    }
+
+    if (shardMgr.node().shardID() == set.shardid())
+    {
+        std::unique_ptr<ValidatorList>& validators = shardMgr.nodeBase().validatorsPtr();
+        if (validators)
         {
-            isTrusted = shardManager.committee().validators().trusted(publicKey);
-        }
-        else
-        {
-            auto iter = shardManager.node().shardValidators().find(set.shardid());
-            if (iter != shardManager.node().shardValidators().end())
-            {
-                isTrusted = iter->second->trusted(publicKey);
-            }
+            isTrusted = validators->trusted(publicKey);
         }
     }
 
@@ -1763,23 +1762,20 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
         }
 
         bool isTrusted = false;
-        ShardManager& shardManager = app_.getShardManager();
-        uint32 shardId = val->getShardID();
+        ShardManager& shardMgr = app_.getShardManager();
 
-        if (shardId == Node::CommitteeShardID)
+        if (shardMgr.myShardRole() != ShardManager::SHARD &&
+            shardMgr.myShardRole() != ShardManager::COMMITTEE)
         {
-            isTrusted = shardManager.committee().validators().trusted(val->getSignerPublic());
+            return;
         }
-        else
+
+        if (shardMgr.node().shardID() == val->getShardID())
         {
-            // Our shard
-            if (shardId == shardManager.node().shardID())
+            std::unique_ptr<ValidatorList>& validators = shardMgr.nodeBase().validatorsPtr();
+            if (validators)
             {
-                auto iter = shardManager.node().shardValidators().find(shardId);
-                if (iter != shardManager.node().shardValidators().end())
-                {
-                    isTrusted = iter->second->trusted(val->getSignerPublic());
-                }
+                isTrusted = validators->trusted(val->getSignerPublic());
             }
         }
 

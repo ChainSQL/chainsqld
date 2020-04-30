@@ -1824,16 +1824,7 @@ void NetworkOPsImp::endConsensus ()
     uint256 deadLedger = m_ledgerMaster.getClosedLedger ()->info().parentHash;
 
     ShardManager& shardMgr = app_.getShardManager();
-    Overlay::PeerSequence peers;
-
-    if (shardMgr.myShardRole() == ShardManager::SHARD)
-    {
-        peers = std::move(shardMgr.node().getActivePeers(shardMgr.node().shardID()));
-    }
-    else
-    {
-        peers = std::move(shardMgr.committee().getActivePeers());
-    }
+    Overlay::PeerSequence peers = std::move(shardMgr.nodeBase().getActivePeers(shardMgr.node().shardID()));
 
     for (auto const& it : peers)
     {

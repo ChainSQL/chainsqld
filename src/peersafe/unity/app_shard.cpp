@@ -19,7 +19,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <peersafe/app/shard/impl/ShardManager.cpp>
 #include <peersafe/app/shard/impl/Lookup.cpp>
-#include <peersafe/app/shard/impl/Sync.cpp>
 #include <peersafe/app/shard/impl/Node.cpp>
 #include <peersafe/app/shard/impl/Committee.cpp>
 #include <peersafe/app/shard/impl/MicroLedger.cpp>
