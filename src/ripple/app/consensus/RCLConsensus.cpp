@@ -584,6 +584,7 @@ RCLConsensus::Adaptor::onAccept(
                     rawCloseTimes,
                     mode,
                     std::move(cj));
+                app_.getShardManager().committee().checkAccept();
             }
 			JLOG(j_.info()) << "doAccept time used:" << utcTime() - timeStart << "ms";
         });

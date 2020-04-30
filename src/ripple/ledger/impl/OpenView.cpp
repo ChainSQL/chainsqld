@@ -132,6 +132,8 @@ OpenView::apply (TxsRawView& to) const
 void
 OpenView::apply (MicroLedger& to) const
 {
+    to.setDropsDestroyed(items_.dropsDestroyed().drops());
+
     for (auto const& item : txs_)
     {
         if (to.rawTxInsert(item.first,

@@ -34,18 +34,15 @@ Sync::Sync(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
 
 void Sync::addActive(std::shared_ptr<PeerImp> const& peer)
 {
-	auto const result = mPeers.emplace(
-		std::piecewise_construct,
-		std::make_tuple(peer->id()),
-		std::make_tuple(peer));
-	assert(result.second);
-	(void)result.second;
+	//auto const result = mPeers.emplace(peer);
+	//assert(result.second);
+	//(void)result.second;
 }
 
 void Sync::eraseDeactivate(Peer::id_t id)
 {
-	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	mPeers.erase(id);
+	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	//mPeers.erase(id);
 }
 
 void Sync::onMessage(protocol::TMMicroLedgerSubmit const& m)

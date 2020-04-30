@@ -64,7 +64,7 @@ private:
     std::recursive_mutex                                    mSignsMutex;
 
     // Hold all committee peers
-	hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		mPeers;
+	std::vector<std::weak_ptr <PeerImp>>				mPeers;
     std::mutex                                          mPeersMutex;
 
     // Hold all committee validators

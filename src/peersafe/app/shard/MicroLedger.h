@@ -47,7 +47,7 @@ public:
 protected:
     LedgerIndex                                 mSeq;               // Ledger sequence.
     uint32                                      mShardID;           // The ID of the shard generated this MicroLedger.
-    ZXCAmount                                   mDropsDestroyed;    //
+    std::int64_t                                mDropsDestroyed;    //
 
     std::vector<TxID>                           mTxsHashes;         // All transactions hash set in this MicroLedger.
     std::unordered_map<TxID, TxMetaPair>        mTxWithMetas;       // Serialized transactions with meta data maped by TxID;
@@ -70,7 +70,7 @@ protected:
 
 public:
     MicroLedger() = delete;
-	MicroLedger(protocol::TMMicroLedgerSubmit const& m);
+	MicroLedger(protocol::TMMicroLedgerSubmit const& m, bool withTxMeta = true);
     MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view);
 
     inline LedgerIndex seq()
@@ -116,6 +116,11 @@ public:
     inline void addTxID(TxID txID)
     {
         mTxsHashes.push_back(txID);
+    }
+
+    inline void setDropsDestroyed(std::int64_t drops)
+    {
+        mDropsDestroyed = drops;
     }
 
     inline bool rawTxInsert(TxID const& key,

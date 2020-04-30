@@ -38,7 +38,7 @@ MicroLedger::MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view)
     computeHash(true);
 }
 
-MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m)
+MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m, bool withTxMeta)
 {
     readMicroLedger(m.microledger());
     readSignature(m.signatures());
@@ -47,7 +47,7 @@ MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m)
     // But it contains txWithMeta root hash. So, don't compute
     // txWithMeta root hash here, and check it late if it takes
     // the source data.
-    computeHash(false);
+    computeHash(withTxMeta);
 }
 
 void MicroLedger::computeHash(bool withTxMeta)
@@ -86,12 +86,13 @@ void MicroLedger::computeHash(bool withTxMeta)
 
     if (withTxMeta)
     {
-        mHashSet.StateDeltaHash = computeTxWithMetaHash();
+        mHashSet.TxWMRootHash = computeTxWithMetaHash();
     }
 
     setLedgerHash( sha512Half(
         mSeq,
         mShardID,
+        mDropsDestroyed,
         mHashSet.TxsRootHash,
         mHashSet.TxWMRootHash,
         mHashSet.StateDeltaHash) );
@@ -130,6 +131,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
 
     m.set_ledgerseq(mSeq);
     m.set_shardid(mShardID);
+    m.set_dropsdestroyed(mDropsDestroyed);
 
     // Transaction hashes.
     for (auto it : mTxsHashes)
@@ -379,6 +381,7 @@ void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
 {
 	mSeq = m.ledgerseq();
 	mShardID = m.shardid();
+    mDropsDestroyed = m.dropsdestroyed();
 	memcpy(mHashSet.TxWMRootHash.begin(), m.txwmhashroot().data(), 32);
 	readTxHashes(m.txhashes());
 	readStateDelta(m.statedeltas());
@@ -386,7 +389,6 @@ void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
 }
 void MicroLedger::readTxHashes(::google::protobuf::RepeatedPtrField< ::std::string> const& hashes)
 {
-	assert(hashes.size() % 256 == 0);
 	for (int i = 0; i < hashes.size(); i++)
 	{
 		TxID txHash;

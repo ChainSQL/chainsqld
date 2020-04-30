@@ -1273,48 +1273,48 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
         {
 
 			//shard related
-			m_job_queue.addJob(jtRELAYTXS, "NetOPs.relayTxs",
-				[this,&transactions](Job&) {
-				relayTxs(transactions);
-			});
+			//m_job_queue.addJob(jtRELAYTXS, "NetOPs.relayTxs",
+			//	[this,&transactions](Job&) {
+			//	relayTxs(transactions);
+			//});
 			
-            //std::lock_guard <std::recursive_mutex> lock (
-            //    m_ledgerMaster.peekMutex());
+            std::lock_guard <std::recursive_mutex> lock (
+                m_ledgerMaster.peekMutex());
 
-            //app_.openLedger().modify(
-            //    [&](OpenView& view, beast::Journal j)
-            //{
-                //for (TransactionStatus& e : transactions)
-                //{
-                //    // we check before addingto the batch
-                //    ApplyFlags flags = tapNO_CHECK_SIGN;
-                //    if (e.local)
-                //        flags = flags | tapFromClient;
-                //    else
-                //        flags = flags | tapByRelay;
+            app_.openLedger().modify(
+                [&](OpenView& view, beast::Journal j)
+            {
+                for (TransactionStatus& e : transactions)
+                {
+                    // we check before add to the batch
+                    ApplyFlags flags = tapNO_CHECK_SIGN;
+                    if (e.local)
+                        flags = flags | tapFromClient;
+                    else
+                        flags = flags | tapByRelay;
 
-                //    if (e.admin)
-                //        flags = flags | tapUNLIMITED;
+                    if (e.admin)
+                        flags = flags | tapUNLIMITED;
 
-                //    //if (mConsensus.adaptor_.getUseNewConsensus())
-                //    //{
-                //        auto const result = doTransactionCheck(e.transaction, flags, *app_.openLedger().current());
-                //    //}
-                //    //else
-                //    //{
-                //    //    //auto const result = app_.getTxQ().apply(
-                //    //    //    app_, view, e.transaction->getSTransaction(),
-                //    //    //    flags, j);
-                //    //}
-                //    e.result = result.first;
-                //    e.applied = result.second;
+                    //if (mConsensus.adaptor_.getUseNewConsensus())
+                    //{
+                        auto const result = doTransactionCheck(e.transaction, flags, *app_.openLedger().current());
+                    //}
+                    //else
+                    //{
+                    //    //auto const result = app_.getTxQ().apply(
+                    //    //    app_, view, e.transaction->getSTransaction(),
+                    //    //    flags, j);
+                    //}
+                    e.result = result.first;
+                    e.applied = result.second;
 
-                //    if (e.result == tefTABLE_STORAGEERROR)
-                //        e.failType = FailHard::yes;
-                //    changed = changed || result.second;
-                //}
-                //return changed;
-            //});
+                    if (e.result == tefTABLE_STORAGEERROR)
+                        e.failType = FailHard::yes;
+                    changed = changed || result.second;
+                }
+                return changed;
+            });
         }
         //if (changed)
         //    reportFeeChange();
@@ -4134,9 +4134,9 @@ void  NetworkOPsImp::relayTxs(std::vector<TransactionStatus>& transactions) {
 		vecTxs.push_back(e.transaction);
 	}
 
-	if (!vecTxs.empty()) {
-		app_.getShardManager().relayTxs(vecTxs);
-	}
+	//if (!vecTxs.empty()) {
+	//	app_.getShardManager().relayTxs(vecTxs);
+	//}
 
 
 

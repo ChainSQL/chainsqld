@@ -420,9 +420,9 @@ OverlayImpl::add_active (std::shared_ptr<PeerImp> const& peer)
     }
 
 
-	{
-		app_.getShardManager().addActive(peer);
-	}
+	//{
+	//	app_.getShardManager().addActive(peer);
+	//}
 
     list_.emplace(peer.get(), peer);
 
@@ -634,7 +634,7 @@ OverlayImpl::onPeerDeactivate (Peer::id_t id)
     std::lock_guard <decltype(mutex_)> lock (mutex_);
     ids_.erase(id);
 
-	app_.getShardManager().eraseDeactivate(id);
+	//app_.getShardManager().eraseDeactivate(id);
 }
 
 void
