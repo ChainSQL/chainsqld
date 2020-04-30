@@ -28,6 +28,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
 
+#include <ripple/app/misc/Transaction.h>
+
 namespace ripple {
 
 Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
@@ -132,20 +134,95 @@ void Lookup::saveLedger(LedgerIndex seq)
 	app_.getLedgerMaster().accept(ledgerToSave);
 }
 
+void Lookup::timerEntry()
+{
+
+	if (!mTransactions.empty()) {
+
+		app_.getJobQueue().addJob(jtRELAYTXS, "Lookup.relayTxs",
+			[this](Job&) {
+			relayTxs();
+		});
+	}
+}
+
+void Lookup::relayTxs()
+{
+
+	std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
+	std::map < unsigned int, protocol::TMTransactions > mapShardIndexTxs;
+
+	for (auto tx : mTransactions) {
+
+
+		// tx shard
+		auto txCur = tx->getSTransaction();
+		auto account = txCur->getAccountID(sfAccount);
+		std::string strAccountID = toBase58(account);
+		auto shardIndex			 = getTxShardIndex(strAccountID, mShardManager.shardCount());
+
+		Serializer s;
+		tx->getSTransaction()->add(s);
+
+		auto item = mapShardIndexTxs.find(shardIndex);
+		if (item != mapShardIndexTxs.end()) {
+
+			protocol::TMTransaction& tmTx= *(item->second).add_transactions();
+			tmTx.set_rawtransaction(s.data(), s.size());
+			tmTx.set_status(protocol::tsCURRENT);
+			tmTx.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
+
+		}
+		else {
+
+			protocol::TMTransactions txs;
+			protocol::TMTransaction& tmTx = *txs.add_transactions();
+			tmTx.set_rawtransaction(s.data(), s.size());
+			tmTx.set_status(protocol::tsCURRENT);
+			tmTx.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
+
+			mapShardIndexTxs[shardIndex] = txs;
+		}
+
+	}
+
+
+	for (auto item : mapShardIndexTxs) {
+		mShardManager.node().sendTransaction(item.first, item.second);
+	}
+
+
+	mTransactions.clear();
+}
+
+void Lookup::addTxs(std::vector< std::shared_ptr<Transaction> >& txs)
+{
+
+	std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
+	mTransactions.insert(mTransactions.end(), txs.begin(), txs.end());
+}
+
 void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)
 {
-	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	//auto const result = mPeers.emplace(
-	//	std::piecewise_construct,
-	//	std::make_tuple(peer->id()),
-	//	std::make_tuple(peer));
-	//assert(result.second);
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	mPeers.emplace_back(std::move(peer));
 }
 
 void Lookup::eraseDeactivate(Peer::id_t id)
 {
-	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	//mPeers.erase(id);
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+
+	auto position = mPeers.begin();
+	while (position != mPeers.end()) {
+
+		auto spt = position->lock();
+		if (spt->id() == id) {
+			mPeers.erase(position);
+			break;
+		}
+
+		position++;
+	}
 }
 
 void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
@@ -202,14 +279,7 @@ void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
 //	}
 //}
 //
-//void ShardManager::eraseDeactivate(Peer::id_t id)
-//{
-//	mNode->eraseDeactivate(id);
-//	mLookup->eraseDeactivate(id);
-//	mCommittee->eraseDeactivate(id);
-//	mSync->eraseDeactivate(id);
-//}
-//
+
 //void ShardManager::relayTxs(std::vector< std::shared_ptr<Transaction> >& txs)
 //{
 //	for (auto tx : txs) {

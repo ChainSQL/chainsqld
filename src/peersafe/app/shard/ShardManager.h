@@ -40,8 +40,8 @@ public:
     enum ShardRole {
         UNKNOWN = 0,
 
-        LOOKUP      = 1 << 0,
-        SHARD       = 1 << 1,
+		LOOKUP = 1 << 0,
+		SHARD = 1 << 1,
         COMMITTEE   = 1 << 2,
         SYNC        = 1 << 3,
     };

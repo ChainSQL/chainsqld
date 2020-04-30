@@ -137,7 +137,7 @@ public:
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
 
 
-	void sendTransaction(unsigned int shardIndex,protocol::TMTransaction& m);
+	void sendTransaction(unsigned int shardIndex,protocol::TMTransactions& m);
 
 
 };

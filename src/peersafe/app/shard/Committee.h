@@ -45,6 +45,12 @@ class Committee {
 
 private:
 
+	ShardManager&											mShardManager;
+
+	Application&											app_;
+	beast::Journal											journal_;
+	Config&													cfg_;
+
     // Used if I am a Committee node
     bool                                                    mIsLeader;
     std::map<uint32,
@@ -70,11 +76,7 @@ private:
     // Hold all committee validators
     std::unique_ptr <ValidatorList>                     mValidators;
 
-    ShardManager&                                       mShardManager;
 
-    Application&                                        app_;
-    beast::Journal                                      journal_;
-    Config&                                             cfg_;
 
 public:
 

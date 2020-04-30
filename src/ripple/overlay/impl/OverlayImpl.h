@@ -308,6 +308,11 @@ public:
         bool isInbound,
         int bytes);
 
+	// shard related
+
+	void addShardRelatedActive(std::shared_ptr<PeerImp> const& peer);
+	void eraseShardRelatedDeactivate(Peer::id_t id);
+
 private:
     std::shared_ptr<Writer>
     makeRedirectResponse (PeerFinder::Slot::ptr const& slot,

@@ -68,19 +68,28 @@ Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Jour
 
 void Committee::addActive(std::shared_ptr<PeerImp> const& peer)
 {
-	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	//auto const result = mPeers.emplace(
-	//	std::piecewise_construct,
-	//	std::make_tuple(peer->id()),
-	//	std::make_tuple(peer));
-	//assert(result.second);
-	//(void)result.second;
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+
+	mPeers.emplace_back(std::move(peer));
+
+
 }
 
 void Committee::eraseDeactivate(Peer::id_t id)
 {
-	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	//mPeers.erase(id);
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+
+	auto position = mPeers.begin();
+	while (position != mPeers.end()) {
+
+		auto spt = position->lock();
+		if (spt->id() == id) {
+			mPeers.erase(position);
+			break;
+		}
+
+		position++;
+	}
 }
 
 void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)

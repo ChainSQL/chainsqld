@@ -864,13 +864,16 @@ void NetworkOPsImp::processHeartbeatTimer ()
 
     }
 
-    mConsensus.timerEntry (app_.timeKeeper().closeTime());
+	mConsensus.timerEntry(app_.timeKeeper().closeTime());
 
 	app_.getTxPool().timerEntry();
 
+	app_.getShardManager().lookup().timerEntry();
+
+
 	tryCheckSubTx();
 
-    setHeartbeatTimer ();
+	setHeartbeatTimer();
 }
 
 void NetworkOPsImp::tryCheckSubTx()
@@ -1272,11 +1275,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
         bool changed = false;
         {
 
-			//shard related
-			//m_job_queue.addJob(jtRELAYTXS, "NetOPs.relayTxs",
-			//	[this,&transactions](Job&) {
-			//	relayTxs(transactions);
-			//});
+
 			
             std::lock_guard <std::recursive_mutex> lock (
                 m_ledgerMaster.peekMutex());
@@ -1318,6 +1317,22 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
         }
         //if (changed)
         //    reportFeeChange();
+
+
+		// shard related
+		{
+			if (ShardManager::LOOKUP == app_.getShardManager().myShardRole()) {
+
+				std::vector< std::shared_ptr<Transaction> > txs;
+				for (TransactionStatus& item : transactions){
+					txs.emplace_back(item.transaction);
+				}
+
+				app_.getShardManager().lookup().addTxs(txs);
+			}
+
+		}
+
 
         auto newOL = app_.openLedger().current();
         for (TransactionStatus& e : transactions)

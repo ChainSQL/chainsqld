@@ -26,6 +26,7 @@ enum MessageType
 	mtMICROLEDGER_SUBMIT			= 50;	// from shard to committee
 	mtFINALLEDGER_SUBMIT			= 51;	// from committee to shard and lookup
     mtMICROLEDGER_ACQUIRE           = 52;
+	mtTRANSACTIONS					= 53;   // relay transactions
 
     // <available>          = 10;
     // <available>          = 11;
@@ -473,4 +474,10 @@ message TMMicroLedgerAcquire {
     required uint32         shardID         = 2;
     required bytes          nodePubKey      = 3;
     required bytes          signature       = 4;
+}
+
+
+message TMTransactions
+{
+    repeated TMTransaction transactions   = 1;
 }

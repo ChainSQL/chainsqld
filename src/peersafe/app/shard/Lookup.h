@@ -38,6 +38,7 @@ class ShardManager;
 
 class PeerImp;
 class Peer;
+class Transaction;
 
 class Lookup {
 
@@ -65,6 +66,10 @@ private:
 
 	using MapMicroLedger = std::map<uint32, std::shared_ptr<MicroLedger>>;
 	std::map<LedgerIndex, MapMicroLedger>				mMapMicroLedgers;
+
+	std::mutex											mTransactionsMutex;
+	std::vector< std::shared_ptr<Transaction> >			mTransactions;
+
 public:
 
     Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
@@ -92,25 +97,32 @@ public:
 	void saveLedger(LedgerIndex seq);
 
 
-	//// shard related
-	//static inline unsigned int getShardIndex(const std::string& strAddress, unsigned int numShards) {
+	void timerEntry();
+	void relayTxs();
 
-	//	uint32_t x = 0;
-	//	if (numShards == 0) {
-	//		// numShards  >0
-	//		return 0;
-	//	}
+	void addTxs(std::vector< std::shared_ptr<Transaction> >& txs);
+	//AddToTxnShardMap
 
-	//	unsigned int addressSize = strAddress.size();
-	//	assert(addressSize >= 4);
 
-	//	// Take the last four bytes of the address
-	//	for (unsigned int i = 0; i < 4; i++) {
-	//		x = (x << 8) | strAddress[addressSize - 4 + i];
-	//	}
+	// shard related
+	static inline unsigned int getTxShardIndex(const std::string& strAddress, unsigned int numShards) {
 
-	//	return (x % numShards + 1);
-	//};
+		uint32_t x = 0;
+		if (numShards == 0) {
+			// numShards  >0
+			return 0;
+		}
+
+		unsigned int addressSize = strAddress.size();
+		assert(addressSize >= 4);
+
+		// Take the last four bytes of the address
+		for (unsigned int i = 0; i < 4; i++) {
+			x = (x << 8) | strAddress[addressSize - 4 + i];
+		}
+
+		return (x % numShards + 1);
+	};
 
 	//void addActive(std::shared_ptr<PeerImp> const& peer);
 

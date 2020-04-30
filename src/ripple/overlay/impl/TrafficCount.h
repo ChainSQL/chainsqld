@@ -74,6 +74,7 @@ public:
         CT_get_trans,      // transaction sets we try to get
         CT_share_trans,    // transaction sets we get
 		CT_view_change,
+		CT_transactions,   
         CT_unknown         // must be last
     };
 

@@ -77,45 +77,53 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
 
 void Node::addActive(std::shared_ptr<PeerImp> const& peer)
 {
-	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
 
-	//assert(peer->getShardRole() == ShardManager::SHARD);
-	//std::uint32_t index = peer->getShardIndex();
 
-	//auto iter = mMapOfShardPeers.find(index);
-	//if (iter == mMapOfShardPeers.end()) {
+	std::uint32_t index = peer->getShardIndex();
 
-	//	hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		peers;
-	//	peers.emplace(
-	//		std::piecewise_construct,
-	//		std::make_tuple(peer->id()),
-	//		std::make_tuple(peer));
+	auto iter = mMapOfShardPeers.find(index);
+	if (iter == mMapOfShardPeers.end()) {
 
-	//	mMapOfShardPeers.emplace(
-	//		std::piecewise_construct,
-	//		std::make_tuple(index),
-	//		std::make_tuple(peers));
-	//}
-	//else {
+		std::vector<std::weak_ptr <PeerImp>>		peers;
+		peers.emplace_back(std::move(peer));
 
-	//	iter->second.emplace(
-	//		std::piecewise_construct,
-	//		std::make_tuple(peer->id()),
-	//		std::make_tuple(peer));
-	//}
+		mMapOfShardPeers.emplace(
+			std::piecewise_construct,
+			std::make_tuple(index),
+			std::make_tuple(peers));
+	}
+	else {
+
+		iter->second.emplace_back(std::move(peer));
+	}
 
 
 }
 
 void Node::eraseDeactivate(Peer::id_t id)
 {
-	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
 
-	//for (auto item : mMapOfShardPeers) {
-	//	// id is unique
-	//	if( item.second.erase(id) )
-	//		break;	
-	//}
+	bool bErase = false;
+
+	for (auto item : mMapOfShardPeers) {
+
+		if(bErase) break;
+		
+		// id is unique
+		auto position = item.second.begin();
+		while (position != item.second.end()) {
+
+			auto spt = position->lock();
+			if (spt->id() == id) {
+				item.second.erase(position);
+				bErase = true;
+				break;
+			}
+			position++;
+		}
+	}
 
 }
 
@@ -258,7 +266,7 @@ void Node::sendValidation(protocol::TMValidation& m)
     }
 }
 
-void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransaction& m)
+void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransactions& m)
 {
 
 	std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
@@ -267,7 +275,7 @@ void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransaction& m)
 	if (peers != mMapOfShardPeers.end())
 	{
 		auto const sm = std::make_shared<Message>(
-			m, protocol::mtVALIDATION);
+			m, protocol::mtTRANSACTIONS);
 
 		for (auto w : peers->second)
 		{

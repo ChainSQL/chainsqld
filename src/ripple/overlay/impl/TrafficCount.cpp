@@ -48,6 +48,8 @@ const char* TrafficCount::getName (category c)
             return "transaction_set_get";
         case category::CT_share_trans:
             return "transaction_set_share";
+		case category::CT_transactions:
+			return "relay_transactions";
         case category::CT_unknown:
             assert (false);
             return "unknown";
@@ -88,6 +90,9 @@ TrafficCount::category TrafficCount::categorize (
     if (type == protocol::mtHAVE_SET)
         return inbound ? TrafficCount::category::CT_get_trans :
             TrafficCount::category::CT_share_trans;
+
+	if (type == protocol::mtTRANSACTIONS)
+		return TrafficCount::category::CT_transactions;
 
     {
         auto msg = dynamic_cast
