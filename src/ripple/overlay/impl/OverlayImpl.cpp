@@ -739,9 +739,9 @@ namespace ripple {
 					app_.getShardManager().committee().addActive(peer);
 				}
 				break;
-				case (std::uint32_t)(ShardManager::SYNC) : {
-					app_.getShardManager().sync().addActive(peer);
-				}
+				//case (std::uint32_t)(ShardManager::SYNC) : {
+				//	app_.getShardManager().sync().addActive(peer);
+				//}
 				break;
 				default:
 				break;
@@ -754,7 +754,7 @@ namespace ripple {
 			app_.getShardManager().lookup().eraseDeactivate(id);
 			app_.getShardManager().node().eraseDeactivate(id);
 			app_.getShardManager().committee().eraseDeactivate(id);
-			app_.getShardManager().sync().eraseDeactivate(id);
+			//app_.getShardManager().sync().eraseDeactivate(id);
 		}
 
 		std::size_t

@@ -179,27 +179,24 @@ handleNewValidation(Application& app,
     PublicKey const& signer = val->getSignerPublic();
     uint256 const& hash = val->getLedgerHash();
 
-    ShardManager& shardManager = app.getShardManager();
-    uint32 shardID = shardManager.node().shardID();
+    ShardManager& shardMgr = app.getShardManager();
 
-    if (shardID > 0)
+    if (shardMgr.myShardRole() != ShardManager::SHARD &&
+        shardMgr.myShardRole() != ShardManager::COMMITTEE)
     {
-        assert(shardManager.node().shardValidators().find(shardID) !=
-        shardManager.node().shardValidators().end());
+        return false;
     }
 
-    //ValidatorList& validators = *(iter->second);
+    std::unique_ptr<ValidatorList>& validators = shardMgr.nodeBase().validatorsPtr();
+
+    if (!validators)
+    {
+        return false;
+    }
 
     // Ensure validation is marked as trusted if signer currently trusted
-    boost::optional<PublicKey> pubKey;
-    if (shardID > 0)
-    {
-        pubKey = shardManager.node().shardValidators()[shardID]->getTrustedKey(signer);
-    }
-    else
-    {
-        pubKey = shardManager.committee().validators().getTrustedKey(signer);
-    }
+    boost::optional<PublicKey> pubKey = validators->getTrustedKey(signer);
+    
     if (!val->isTrusted() && pubKey)
         val->setTrusted();
     RCLValidations& validations  = app.getValidations();
@@ -239,14 +236,7 @@ handleNewValidation(Application& app,
     // If not currently trusted, see if signer is currently listed
     if (!pubKey)
     {
-        if (shardID > 0)
-        {
-            pubKey = shardManager.node().shardValidators()[shardID]->getListedKey(signer);
-        }
-        else
-        {
-            pubKey = shardManager.committee().validators().getListedKey(signer);
-        }
+        pubKey = validators->getListedKey(signer);
     }
 
     bool shouldRelay = false;
@@ -284,15 +274,15 @@ handleNewValidation(Application& app,
         if (val->isTrusted() &&
             (res == AddOutcome::current || res == AddOutcome::sameSeq))
         {
-            if (shardID > 0)
+            if (shardMgr.myShardRole() == ShardManager::SHARD)
             {
-                shardManager.node().recvValidation(*pubKey, *val);
+                shardMgr.node().recvValidation(*pubKey, *val);
 
-                shardManager.node().checkAccept();
+                shardMgr.node().checkAccept();
             }
             else
             {
-                shardManager.committee().recvValidation(*pubKey, *val);
+                shardMgr.committee().recvValidation(*pubKey, *val);
 
                 app.getLedgerMaster().checkAccept(
                     hash, val->getFieldU32(sfLedgerSequence));

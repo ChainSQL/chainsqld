@@ -92,6 +92,35 @@ void Committee::eraseDeactivate(Peer::id_t id)
 	}
 }
 
+bool Committee::isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)
+{
+    auto const& validators = mValidators->validators();
+    assert(validators.size());
+    int index = (view + curSeq) % validators.size();
+
+    return pubkey == validators[index];
+}
+
+std::size_t Committee::quorum()
+{
+    return mValidators->quorum();
+}
+
+std::int32_t Committee::getPubkeyIndex(PublicKey const& pubkey)
+{
+    auto& validators = mValidators->validators();
+
+    for (std::int32_t idx = 0; idx < validators.size(); idx++)
+    {
+        if (validators[idx] == pubkey)
+        {
+            return idx;
+        }
+    }
+
+    return -1;
+}
+
 void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
     //mMicroLedger.reset();
@@ -373,7 +402,7 @@ void Committee::submitFinalLedger()
     mShardManager.node().sendMessage(m);
 }
 
-Overlay::PeerSequence Committee::getActivePeers()
+Overlay::PeerSequence Committee::getActivePeers(uint32 /* unused */)
 {
     Overlay::PeerSequence ret;
 

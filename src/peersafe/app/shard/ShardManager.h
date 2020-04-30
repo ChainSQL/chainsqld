@@ -21,10 +21,10 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #define PEERSAFE_APP_SHARD_SHARDMANAGER_H_INCLUDED
 
 #include <ripple/basics/Log.h>
+#include <peersafe/app/shard/NodeBase.h>
 #include <peersafe/app/shard/Lookup.h>
 #include <peersafe/app/shard/Node.h>
 #include <peersafe/app/shard/Committee.h>
-#include <peersafe/app/shard/Sync.h>
 
 
 namespace ripple {
@@ -50,13 +50,13 @@ private:
 
     ShardRole                           mShardRole;
 
-    std::unique_ptr<ripple::Lookup>     mLookup;
+    std::shared_ptr<ripple::Lookup>     mLookup;
 
-    std::unique_ptr<ripple::Node>       mNode;
+    std::shared_ptr<ripple::Node>       mNode;
 
-    std::unique_ptr<ripple::Committee>  mCommittee;
+    std::shared_ptr<ripple::Committee>  mCommittee;
 
-    std::unique_ptr<ripple::Sync>       mSync;
+    std::shared_ptr<ripple::NodeBase>   mNodeBase;
 
     Application&                        app_;
     Config&                             cfg_;
@@ -87,9 +87,9 @@ public:
         return *mCommittee;
     }
 
-    inline ripple::Sync& sync()
+    inline ripple::NodeBase& nodeBase()
     {
-        return *mSync;
+        return *mNodeBase;
     }
 
 	inline uint32 shardCount()

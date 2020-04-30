@@ -21,14 +21,13 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #define PEERSAFE_APP_SHARD_COMMITTEE_H_INCLUDED
 
 #include "ripple.pb.h"
+#include <peersafe/app/shard/NodeBase.h>
 #include <ripple/basics/UnorderedContainers.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/app/misc/ValidatorList.h>
-#include <ripple/overlay/Overlay.h>
 #include <peersafe/app/shard/MicroLedger.h>
 #include <peersafe/app/shard/FinalLedger.h>
-
 
 #include <mutex>
 
@@ -41,7 +40,7 @@ class ShardManager;
 class PeerImp;
 class Peer;
 
-class Committee {
+class Committee : public NodeBase {
 
 private:
 
@@ -88,28 +87,25 @@ public:
         return *mValidators;
     }
 
-    inline std::unique_ptr<ValidatorList>& validatorsPtr()
+    inline std::unique_ptr<ValidatorList>& validatorsPtr() override
     {
         return mValidators;
     }
 
-    inline bool isLeader()
+    inline bool isLeader() override
     {
         return mIsLeader;
     }
 
+    bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view) override; 
+
+    inline std::size_t quorum() override;
+
+    std::int32_t getPubkeyIndex(PublicKey const& pubkey) override;
+
 	void addActive(std::shared_ptr<PeerImp> const& peer);
 
 	void eraseDeactivate(Peer::id_t id);
-
-    inline bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)
-    {
-        auto const& validators = mValidators->validators();
-        assert(validators.size());
-        int index = (view + curSeq) % validators.size();
-
-        return pubkey == validators[index];
-    }
 
     inline uint256 getFinalLedgerHash()
     {
@@ -143,7 +139,7 @@ public:
 
     void submitFinalLedger();
 
-    Overlay::PeerSequence getActivePeers();
+    Overlay::PeerSequence getActivePeers(uint32);
 
     void sendMessage(std::shared_ptr<Message> const &m);
 

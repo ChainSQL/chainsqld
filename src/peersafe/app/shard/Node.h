@@ -21,6 +21,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #define PEERSAFE_APP_SHARD_NODE_H_INCLUDED
 
 #include "ripple.pb.h"
+#include <peersafe/app/shard/NodeBase.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/app/misc/ValidatorList.h>
@@ -28,7 +29,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/MicroLedger.h>
 #include <ripple/app/consensus/RCLCxTx.h>
 #include <ripple/app/consensus/RCLCxLedger.h>
-#include <ripple/overlay/Overlay.h>
 
 #include <vector>
 #include <mutex>
@@ -41,7 +41,7 @@ class Config;
 class ShardManager;
 
 
-class Node {
+class Node : public NodeBase {
 
 public:
     enum {
@@ -91,27 +91,22 @@ public:
         return mMapOfShardValidators;
     }
 
-    inline bool isLeader()
+    inline std::unique_ptr<ValidatorList>& validatorsPtr() override;
+
+    inline bool isLeader() override
     {
         return mIsLeader;
     }
 
+    bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view) override;
+
+    inline std::size_t quorum() override;
+
+    std::int32_t getPubkeyIndex(PublicKey const& pubkey) override;
+
 	void addActive(std::shared_ptr<PeerImp> const& peer);
 
 	void eraseDeactivate(Peer::id_t id);
-
-    inline bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)
-    {
-        if (mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end())
-        {
-            auto const& validators = mMapOfShardValidators[mShardID]->validators();
-            assert(validators.size());
-            int index = (view + curSeq) % validators.size();
-            return pubkey == validators[index];
-        }
-
-        return false;
-    }
 
     void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
 

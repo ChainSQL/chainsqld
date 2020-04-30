@@ -17,42 +17,41 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 //==============================================================================
 
-#include <peersafe/app/shard/Sync.h>
-#include <ripple/overlay/Peer.h>
-#include <ripple/overlay/impl/PeerImp.h>
+#ifndef PEERSAFE_APP_SHARD_NODEBASE_H_INCLUDED
+#define PEERSAFE_APP_SHARD_NODEBASE_H_INCLUDED
+
+#include <ripple/protocol/Protocol.h>
+#include <ripple/protocol/PublicKey.h>
+#include <ripple/overlay/Overlay.h>
+
 
 namespace ripple {
 
-Sync::Sync(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
-    : mShardManager(m)
-    , app_(app)
-    , journal_(journal)
-    , cfg_(cfg)
-{
-    // TODO
-}
+class NodeBase {
 
-void Sync::addActive(std::shared_ptr<PeerImp> const& peer)
-{
-	//auto const result = mPeers.emplace(peer);
-	//assert(result.second);
-	//(void)result.second;
-}
+public:
 
-void Sync::eraseDeactivate(Peer::id_t id)
-{
-	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	//mPeers.erase(id);
-}
+    NodeBase() {}
+    ~NodeBase() {}
 
-void Sync::onMessage(protocol::TMMicroLedgerSubmit const& m)
-{
+    inline
+    virtual bool isLeader() = 0;
 
-}
+    virtual bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view) = 0;
 
-void Sync::onMessage(protocol::TMFinalLedgerSubmit const& m)
-{
+    inline
+    virtual std::size_t quorum() = 0;
+
+    virtual void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey) = 0;
+
+    inline
+    virtual std::unique_ptr<ValidatorList>& validatorsPtr() = 0;
+
+    virtual Overlay::PeerSequence getActivePeers(uint32 shardID) = 0;
+
+    virtual std::int32_t getPubkeyIndex(PublicKey const& pubkey) = 0;
+};
 
 }
 
-}
+#endif
