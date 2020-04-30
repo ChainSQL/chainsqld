@@ -121,7 +121,7 @@ void Node::eraseDeactivate(Peer::id_t id)
 
 void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
-    assert(mShardID > 0);
+    assert(mShardID > CommitteeShardID && mShardID != InvalidShardID);
 
     mIsLeader = false;
 

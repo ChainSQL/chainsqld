@@ -45,7 +45,7 @@ class Node {
 
 public:
     enum {
-        InvalidShardID   = -1,
+        InvalidShardID   = std::numeric_limits<std::uint32_t>::max(),
         CommitteeShardID = 0,
     };
 
