@@ -60,6 +60,7 @@ enum JobType
     jtBATCH,         // Apply batched transactions
 
     jtMLSUBMIT,      // received a micro ledger from shard node or a committee node.
+    jtFLSUBMIT,      // received a final ledger from committee node.
 
     jtTABLESTORAGE,  // storage tables
     jtTableCheckHash,// check tx hash

@@ -1975,7 +1975,11 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
     case ShardManager::LOOKUP:
     case ShardManager::SYNC:
     case ShardManager::LOOKUP & ShardManager::SYNC:
-        app_.getShardManager().lookup().onMessage(packet);
+        app_.getJobQueue().addJob(
+            jtMLSUBMIT, "recvMicroLedger",
+            [&](Job&) {
+                app_.getShardManager().lookup().onMessage(packet);
+        });
         break;
     case ShardManager::COMMITTEE:
         app_.getJobQueue().addJob(
@@ -1999,10 +2003,18 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
     case ShardManager::LOOKUP:
 	case ShardManager::SYNC:
 	case ShardManager::LOOKUP & ShardManager::SYNC:
-        app_.getShardManager().lookup().onMessage(packet);
+        app_.getJobQueue().addJob(
+            jtFLSUBMIT, "recvFinalLedger",
+            [&](Job&) {
+            app_.getShardManager().lookup().onMessage(packet);
+        });
         break;
     case ShardManager::SHARD:
-        app_.getShardManager().node().onMessage(packet);
+        app_.getJobQueue().addJob(
+            jtFLSUBMIT, "recvFinalLedger",
+            [&](Job&) {
+            app_.getShardManager().node().onMessage(packet);
+        });
         break;
     default:
         break;

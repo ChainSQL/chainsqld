@@ -165,7 +165,8 @@ public:
 
     void setPhase(ConsensusPhase phase)
     {
-        phase_ = phase;
+        if (phase == (ConsensusPhase)((uint32)phase_ + 1))
+            phase_ = phase;
     }
 
 	/** Get the Json state of the consensus process.

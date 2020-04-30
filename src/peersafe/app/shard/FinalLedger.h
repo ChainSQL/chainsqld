@@ -78,9 +78,9 @@ public:
         return mTxsHashes;
     }
 
-	Blob getSigningData();
-
 	LedgerInfo getLedgerInfo();
+
+    void apply(Ledger& to);
 
 };
 

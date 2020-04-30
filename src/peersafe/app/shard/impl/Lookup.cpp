@@ -252,6 +252,16 @@ void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
 	checkSaveLedger();
 }
 
+void Lookup::sendMessage(std::shared_ptr<Message> const &m)
+{
+    std::lock_guard<std::recursive_mutex> _(mPeersMutex);
+
+    for (auto w : mPeers)
+    {
+        if (auto p = w.lock())
+            p->send(m);
+    }
+}
 
 
 //void ShardManager::addActive(std::shared_ptr<PeerImp> const& peer)

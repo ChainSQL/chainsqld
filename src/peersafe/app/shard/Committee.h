@@ -70,7 +70,7 @@ private:
 
     // Hold all committee peers
 	std::vector<std::weak_ptr <PeerImp>>				mPeers;
-    std::mutex                                          mPeersMutex;
+    std::recursive_mutex                                mPeersMutex;
 
     // Hold all committee validators
     std::unique_ptr <ValidatorList>                     mValidators;

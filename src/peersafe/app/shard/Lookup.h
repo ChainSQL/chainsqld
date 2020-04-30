@@ -46,7 +46,7 @@ private:
 
     // Hold all lookup peers
 	std::vector<std::weak_ptr <PeerImp>>				mPeers;
-	std::mutex											mPeersMutex;
+	std::recursive_mutex								mPeersMutex;
 
 
     // Hold all Lookup validators
@@ -75,11 +75,6 @@ public:
     Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~Lookup() {}
 
-    inline std::vector<std::weak_ptr <PeerImp>>& peers()
-    {
-        return mPeers;
-    }
-
     inline ValidatorList& validators()
     {
         return *mValidators;
@@ -91,6 +86,8 @@ public:
 
     void onMessage(protocol::TMMicroLedgerSubmit const& m);
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
+
+    void sendMessage(std::shared_ptr<Message> const &m);
 
 	void checkSaveLedger();
 	void resetMetaIndex(LedgerIndex seq);

@@ -178,20 +178,6 @@ void FinalLedger::compose(protocol::TMFinalLedgerSubmit& ms)
     }
 }
 
-Blob FinalLedger::getSigningData()
-{
-	Serializer s;
-	s.add32(mSeq);
-	s.add64(mDrops);
-	s.add32(mCloseTime);
-	s.add32(mCloseTimeResolution);
-	s.add32(mCloseFlags);
-	s.add256(mTxShaMapRootHash);
-	s.add256(mStateShaMapRootHash);
-
-	return s.getData();
-}
-
 LedgerInfo FinalLedger::getLedgerInfo()
 {
 	LedgerInfo info;
@@ -206,7 +192,19 @@ LedgerInfo FinalLedger::getLedgerInfo()
 	return std::move(info);
 }
 
+void FinalLedger::apply(Ledger& to)
+{
+    mStateDelta.destroyZXC(to.info().drops - mDrops);
 
+    mStateDelta.apply(to);
+
+    for (auto const& tx : mTxsHashes)
+    {
+        to.rawTxInsert(tx,
+            std::make_shared<Serializer>(0),
+            std::make_shared<Serializer>(0));
+    }
+}
 
 
 }

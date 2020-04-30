@@ -469,16 +469,5 @@ bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, boo
     return LedgerBase::checkValidity(list);
 }
 
-//const Blob& MicroLedger::getSigningData()
-//{
-//    Serializer s;
-//    s.add32(mSeq);
-//    s.add32(mShardID);
-//    s.add256(mHashSet.TxsRootHash);
-//    s.add256(mHashSet.TxWMRootHash);
-//    s.add256(mHashSet.StateDeltaHash);
-//
-//    return s.peekData();
-//}
 
 }

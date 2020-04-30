@@ -410,7 +410,7 @@ void Node::submitMicroLedger(bool withTxMeta)
 
     if (withTxMeta)
     {
-        // TODO send to lookup.
+        mShardManager.lookup().sendMessage(m);
     }
     else
     {
@@ -468,36 +468,63 @@ void Node::onMessage(protocol::TMFinalLedgerSubmit const& m)
 {
 	auto finalLedger = std::make_shared<FinalLedger>(m);
 
+    if (!app_.getHashRouter().shouldRelay(finalLedger->ledgerHash()))
+    {
+        return;
+    }
+
+    auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
+
+    if (finalLedger->seq() != previousLedger->seq() + 1)
+    {
+        return;
+    }
+
 	if (!finalLedger->checkValidity(mShardManager.committee().validatorsPtr()))
 	{
         JLOG(journal_.info()) << "FinalLeger signature verification failed";
 		return;
 	}
 
-	//build new ledger
-	auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
+	// build new ledger
 	auto ledgerInfo = finalLedger->getLedgerInfo();
-	auto ledgerToSave =
-		std::make_shared<Ledger>(*previousLedger, ledgerInfo.closeTime);
-	finalLedger->getRawStateTable().apply(*ledgerToSave);
-	
-	//check hash
-	assert(ledgerInfo.accountHash == ledgerToSave->stateMap().getHash().as_uint256());
+	auto buildLCL = std::make_shared<Ledger>(*previousLedger, ledgerInfo.closeTime);
+	finalLedger->apply(*buildLCL);
 
-	ledgerToSave->updateSkipList();
-	{
-		// Write the final version of all modified SHAMap
-		// nodes to the node store to preserve the new Ledger
-		// Note,didn't save tx-shamap,so don't load tx-shamap when load ledger.
-		int asf = ledgerToSave->stateMap().flushDirty(
-			hotACCOUNT_NODE, ledgerToSave->info().seq);
-		JLOG(journal_.debug()) << "Flushed " << asf << " accounts";
-	}
-	ledgerToSave->unshare();
-	ledgerToSave->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
+    buildLCL->updateSkipList();
 
+    // Write the final version of all modified SHAMap
+    // nodes to the node store to preserve the new Ledger
+    // Note,didn't save tx-shamap,so don't load tx-shamap when load ledger.
+    auto timeStart = utcTime();
+    int asf = buildLCL->stateMap().flushDirty(
+        hotACCOUNT_NODE, buildLCL->info().seq);
+    int tmf = buildLCL->txMap().flushDirty(
+        hotTRANSACTION_NODE, buildLCL->info().seq);
+    JLOG(journal_.debug()) << "Flushed " << asf << " accounts and " << tmf
+        << " transaction nodes";
+    JLOG(journal_.info()) << "flushDirty time used:" << utcTime() - timeStart << "ms";
+
+    // check hash
+    if (ledgerInfo.accountHash != buildLCL->stateMap().getHash().as_uint256() ||
+        ledgerInfo.txHash != buildLCL->txMap().getHash().as_uint256())
+    {
+        JLOG(journal_.warn()) << "Final ledger txs/accounts shamap root hash missmatch";
+        return;
+    }
+
+    submitMicroLedger(true);
+
+    buildLCL->unshare();
+    buildLCL->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
+
+    app_.getLedgerMaster().storeLedger(buildLCL);
+
+    app_.getOPs().getConsensus().adaptor_.notify(protocol::neACCEPTED_LEDGER, RCLCxLedger{std::move(buildLCL)}, true);
+
+    app_.getLedgerMaster().setBuildingLedger(0);
 	//save ledger
-	app_.getLedgerMaster().accept(ledgerToSave);
+	app_.getLedgerMaster().accept(buildLCL);
 
 	//begin next round consensus
 	app_.getOPs().endConsensus();

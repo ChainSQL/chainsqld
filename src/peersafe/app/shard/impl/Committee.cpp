@@ -241,7 +241,7 @@ void Committee::setTimer(uint32 repeats)
             auto const sm = std::make_shared<Message>(
                 m, protocol::mtMICROLEDGER_ACQUIRE);
             {
-                std::lock_guard<std::mutex> _(mPeersMutex);
+                std::lock_guard<std::recursive_mutex> _(mPeersMutex);
                 if (auto p = mPeers[rand_int((size_t)0, mPeers.size())].lock())
                 {
                     p->send(sm);
@@ -406,7 +406,7 @@ Overlay::PeerSequence Committee::getActivePeers(uint32 /* unused */)
 {
     Overlay::PeerSequence ret;
 
-    std::lock_guard<std::mutex> lock(mPeersMutex);
+    std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
 
     ret.reserve(mPeers.size());
 
@@ -423,7 +423,7 @@ Overlay::PeerSequence Committee::getActivePeers(uint32 /* unused */)
 
 void Committee::sendMessage(std::shared_ptr<Message> const &m)
 {
-    std::lock_guard<std::mutex> lock(mPeersMutex);
+    std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
 
     for (auto w : mPeers)
     {

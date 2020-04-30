@@ -51,6 +51,7 @@ add(    jtRPC,           "RPC",                     maxLimit, false, 0,     0);
 add(    jtUPDATE_PF,     "updatePaths",             maxLimit, false, 0,     0);
 add(    jtTRANSACTION,   "transaction",             maxLimit, false, 250,   1000);
 add(    jtMLSUBMIT,      "microledger",             maxLimit, false, 250,   1000);
+add(    jtFLSUBMIT,      "finalledger",             maxLimit, false, 250,   1000);
 add(    jtBATCH,         "batch",                   maxLimit, false, 250,   1000);
 add(    jtADVANCE,       "advanceLedger",           maxLimit, false, 0,     0);
 add(    jtPUBLEDGER,     "publishNewLedger",        maxLimit, false, 3000,  4500);
