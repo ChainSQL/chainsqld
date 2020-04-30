@@ -44,7 +44,7 @@ class Lookup {
 private:
 
     // Hold all lookup peers
-	hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		mPeers;
+	std::vector<std::weak_ptr <PeerImp>>				mPeers;
 	std::mutex											mPeersMutex;
 
 
@@ -70,7 +70,7 @@ public:
     Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~Lookup() {}
 
-    inline hash_map<Peer::id_t, std::weak_ptr<PeerImp>>& peers()
+    inline std::vector<std::weak_ptr <PeerImp>>& peers()
     {
         return mPeers;
     }
@@ -90,6 +90,37 @@ public:
 	void checkSaveLedger();
 	void resetMetaIndex(LedgerIndex seq);
 	void saveLedger(LedgerIndex seq);
+
+
+	//// shard related
+	//static inline unsigned int getShardIndex(const std::string& strAddress, unsigned int numShards) {
+
+	//	uint32_t x = 0;
+	//	if (numShards == 0) {
+	//		// numShards  >0
+	//		return 0;
+	//	}
+
+	//	unsigned int addressSize = strAddress.size();
+	//	assert(addressSize >= 4);
+
+	//	// Take the last four bytes of the address
+	//	for (unsigned int i = 0; i < 4; i++) {
+	//		x = (x << 8) | strAddress[addressSize - 4 + i];
+	//	}
+
+	//	return (x % numShards + 1);
+	//};
+
+	//void addActive(std::shared_ptr<PeerImp> const& peer);
+
+	//void eraseDeactivate(Peer::id_t id);
+
+
+	//void relayTxs(std::vector< std::shared_ptr<Transaction> >& txs);
+
+
+
 };
 
 }

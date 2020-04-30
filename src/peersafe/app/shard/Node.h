@@ -59,9 +59,7 @@ private:
         std::vector<std::tuple<uint256, PublicKey, Blob>>>  mSignatureBuffer;
     std::recursive_mutex                                    mSignsMutex;
 
-
-	typedef hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		HashMapOfPeers;
-    typedef std::map<std::uint32_t, HashMapOfPeers >			MapOfShardPeers;
+	typedef std::map<uint32, std::vector<std::weak_ptr <PeerImp>>> MapOfShardPeers;
     typedef std::map<int, std::unique_ptr <ValidatorList>>      MapOfShardValidators;
 
     // Common field

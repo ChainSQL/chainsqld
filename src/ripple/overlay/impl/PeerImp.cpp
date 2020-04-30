@@ -1055,7 +1055,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMTransaction> const& m)
 
     if (app_.getOPs().isNeedNetworkLedger ())
     {
-        // If we've never been in synch, there's nothing we can do
+        // If we've never been in sync, there's nothing we can do
         // with a transaction
         JLOG(p_journal_.debug()) << "Ignoring incoming transaction: " <<
             "Need network ledger";

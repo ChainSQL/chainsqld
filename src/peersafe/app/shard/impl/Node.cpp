@@ -77,45 +77,45 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
 
 void Node::addActive(std::shared_ptr<PeerImp> const& peer)
 {
-	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
 
-	assert(peer->getShardRole() == ShardManager::SHARD);
-	std::uint32_t index = peer->getShardIndex();
+	//assert(peer->getShardRole() == ShardManager::SHARD);
+	//std::uint32_t index = peer->getShardIndex();
 
-	auto iter = mMapOfShardPeers.find(index);
-	if (iter == mMapOfShardPeers.end()) {
+	//auto iter = mMapOfShardPeers.find(index);
+	//if (iter == mMapOfShardPeers.end()) {
 
-		hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		peers;
-		peers.emplace(
-			std::piecewise_construct,
-			std::make_tuple(peer->id()),
-			std::make_tuple(peer));
+	//	hash_map<Peer::id_t, std::weak_ptr<PeerImp>>		peers;
+	//	peers.emplace(
+	//		std::piecewise_construct,
+	//		std::make_tuple(peer->id()),
+	//		std::make_tuple(peer));
 
-		mMapOfShardPeers.emplace(
-			std::piecewise_construct,
-			std::make_tuple(index),
-			std::make_tuple(peers));
-	}
-	else {
+	//	mMapOfShardPeers.emplace(
+	//		std::piecewise_construct,
+	//		std::make_tuple(index),
+	//		std::make_tuple(peers));
+	//}
+	//else {
 
-		iter->second.emplace(
-			std::piecewise_construct,
-			std::make_tuple(peer->id()),
-			std::make_tuple(peer));
-	}
+	//	iter->second.emplace(
+	//		std::piecewise_construct,
+	//		std::make_tuple(peer->id()),
+	//		std::make_tuple(peer));
+	//}
 
 
 }
 
 void Node::eraseDeactivate(Peer::id_t id)
 {
-	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
 
-	for (auto item : mMapOfShardPeers) {
-		// id is unique
-		if( item.second.erase(id) )
-			break;	
-	}
+	//for (auto item : mMapOfShardPeers) {
+	//	// id is unique
+	//	if( item.second.erase(id) )
+	//		break;	
+	//}
 
 }
 
@@ -252,7 +252,7 @@ void Node::sendValidation(protocol::TMValidation& m)
 
         for (auto w : peers->second)
         {
-            if (auto p = w.second.lock())
+            if (auto p = w.lock())
                 p->send(sm);
         }
     }
@@ -261,7 +261,7 @@ void Node::sendValidation(protocol::TMValidation& m)
 void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransaction& m)
 {
 
-	std::lock_guard<std::mutex> lock(mPeersMutex);
+	std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
 
 	auto peers = mMapOfShardPeers.find(shardIndex);
 	if (peers != mMapOfShardPeers.end())
@@ -271,7 +271,7 @@ void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransaction& m)
 
 		for (auto w : peers->second)
 		{
-			if (auto p = w.second.lock())
+			if (auto p = w.lock())
 				p->send(sm);
 		}
 	}

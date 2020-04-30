@@ -134,18 +134,18 @@ void Lookup::saveLedger(LedgerIndex seq)
 
 void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)
 {
-	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	auto const result = mPeers.emplace(
-		std::piecewise_construct,
-		std::make_tuple(peer->id()),
-		std::make_tuple(peer));
-	assert(result.second);
+	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	//auto const result = mPeers.emplace(
+	//	std::piecewise_construct,
+	//	std::make_tuple(peer->id()),
+	//	std::make_tuple(peer));
+	//assert(result.second);
 }
 
 void Lookup::eraseDeactivate(Peer::id_t id)
 {
-	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	mPeers.erase(id);
+	//std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+	//mPeers.erase(id);
 }
 
 void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
@@ -174,5 +174,66 @@ void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
 	}
 	checkSaveLedger();
 }
+
+
+
+//void ShardManager::addActive(std::shared_ptr<PeerImp> const& peer)
+//{
+//	std::uint32_t peerRole = peer->getShardRole();
+//	switch (peerRole) {
+//		case (std::uint32_t)(ShardManager::LOOKUP) : {
+//			mLookup->addActive(peer);
+//		}
+//													 break;
+//													 case (std::uint32_t)(ShardManager::SHARD) : {
+//														 mNode->addActive(peer);
+//													 }
+//																								 break;
+//																								 case (std::uint32_t)(ShardManager::COMMITTEE) : {
+//																									 mCommittee->addActive(peer);
+//																								 }
+//																																				 break;
+//																																				 case (std::uint32_t)(ShardManager::SYNC) : {
+//																																					 mSync->addActive(peer);
+//																																				 }
+//																																															break;
+//																																				 default:
+//																																					 break;
+//	}
+//}
+//
+//void ShardManager::eraseDeactivate(Peer::id_t id)
+//{
+//	mNode->eraseDeactivate(id);
+//	mLookup->eraseDeactivate(id);
+//	mCommittee->eraseDeactivate(id);
+//	mSync->eraseDeactivate(id);
+//}
+//
+//void ShardManager::relayTxs(std::vector< std::shared_ptr<Transaction> >& txs)
+//{
+//	for (auto tx : txs) {
+//
+//		auto txCur = tx->getSTransaction();
+//		auto account = txCur->getAccountID(sfAccount);
+//
+//		std::string strAccountID = toBase58(account);
+//		auto shardIndex = getShardIndex(strAccountID, shardCount());
+//
+//		protocol::TMTransaction msg;
+//		Serializer s;
+//
+//		tx->getSTransaction()->add(s);
+//		msg.set_rawtransaction(s.data(), s.size());
+//		msg.set_status(protocol::tsCURRENT);
+//		msg.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
+//
+//		mNode->sendTransaction(shardIndex, msg);
+//
+//	}
+//
+//}
+
+
 
 }

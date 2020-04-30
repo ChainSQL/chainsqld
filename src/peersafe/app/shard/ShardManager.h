@@ -31,9 +31,6 @@ namespace ripple {
 
 class Application;
 class Config;
-class PeerImp;
-class Peer;
-class Transaction;
 
 
 class ShardManager {
@@ -101,32 +98,7 @@ public:
 	}
 
 
-	// shard related
-	static inline unsigned int getShardIndex(const std::string& strAddress, unsigned int numShards) {
 
-		uint32_t x = 0;
-		if (numShards == 0) {
-			// numShards  >0
-			return 0;
-		}
-
-		unsigned int addressSize = strAddress.size();
-		assert(addressSize >= 4);
-
-		// Take the last four bytes of the address
-		for (unsigned int i = 0; i < 4; i++) {
-			x = (x << 8) | strAddress[addressSize - 4 + i];
-		}
-
-		return (x % numShards + 1);
-	};
-
-	void addActive(std::shared_ptr<PeerImp> const& peer);
-
-	void eraseDeactivate(Peer::id_t id);
-
-
-	void relayTxs(std::vector< std::shared_ptr<Transaction> >& txs);
 
 };
 
