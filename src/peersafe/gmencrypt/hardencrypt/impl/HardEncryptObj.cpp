@@ -27,7 +27,7 @@
 // #else
 // HardEncryptObj::hardEncryptType HardEncryptObj::hEType_ = HardEncryptObj::hardEncryptType::sjk1238Type;
 // #endif
-HardEncryptObj::gmAlgType HardEncryptObj::hEType_ = gmAlgType::soft;
+HardEncryptObj::gmAlgType HardEncryptObj::hEType_ = gmAlgType::sjk1238Type;
 
 HardEncryptObj::gmAlgType HardEncryptObj::fromString(std::string gmAlgTypeStr)
 {
@@ -63,12 +63,13 @@ HardEncrypt* HardEncryptObj::getInstance()
         }
         else
         {
-#ifdef SOFTENCRYPT
+#ifndef SOFTENCRYPT
+            return nullptr;//if the card is not exist,then return nullptr------this is function before
+        }
+    }
+#else
             static SoftEncrypt objSoftEncrypt;
             return &objSoftEncrypt;
-#else
-            return nullptr;//if the card is not exist,then return nullptr------this is function before
-#endif
         }
     }
     case gmAlgType::soft:
@@ -76,6 +77,7 @@ HardEncrypt* HardEncryptObj::getInstance()
         static SoftEncrypt objSoftEncrypt;
         return &objSoftEncrypt;
     }
+#endif
     default:
         std::cout << "hardEncryptType error!" << std::endl;
     }

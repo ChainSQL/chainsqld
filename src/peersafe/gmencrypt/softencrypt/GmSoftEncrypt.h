@@ -25,7 +25,7 @@
 #include <ripple/basics/StringUtilities.h>
 #ifdef GM_ALG_PROCESS
 
-#define SOFTENCRYPT
+//#define SOFTENCRYPT
 #ifdef SOFTENCRYPT
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/engine.h>
 #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/evp.h>
