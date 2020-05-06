@@ -327,10 +327,10 @@ public:
     fail(std::string const& reason);
 
 	std::uint32_t
-	getShardRole() const;
+	getShardRole() const override ;
 
 	std::uint32_t
-	getShardIndex() const;
+	getShardIndex() const override;
 
 private:
     void

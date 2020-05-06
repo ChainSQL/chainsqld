@@ -92,6 +92,12 @@ public:
     virtual
     Json::Value json() = 0;
 
+	virtual
+	std::uint32_t getShardRole() const = 0;
+
+	virtual
+	std::uint32_t getShardIndex() const = 0;
+
     //
     // Ledger
     //

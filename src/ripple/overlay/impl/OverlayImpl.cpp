@@ -848,7 +848,60 @@ namespace ripple {
 		Json::Value
 			OverlayImpl::json()
 		{
-			return foreach(get_peer_json());
+
+			Json::Value json(Json::objectValue);
+			Json::Value lookups(Json::arrayValue);
+			Json::Value committees(Json::arrayValue);
+
+			std::map<std::uint32_t, Json::Value> mapIndex2Shard;
+
+
+			for (auto const& p : getActivePeers()) {
+
+				std::uint32_t peerIndex = p->getShardIndex();
+				std::uint32_t peerRole = p->getShardRole();
+				switch (peerRole) {
+					case (std::uint32_t)(ShardManager::SYNC):
+					case (std::uint32_t)(ShardManager::LOOKUP) : {
+						lookups.append(p->json());
+					}
+					break;
+					case (std::uint32_t)(ShardManager::SHARD) : {
+
+						auto iterFind = mapIndex2Shard.find(peerIndex);
+						if (iterFind == mapIndex2Shard.end()) {
+
+							Json::Value shard(Json::arrayValue);
+							shard.append(p->json());
+							mapIndex2Shard[peerIndex] = shard;					
+						}else{
+
+							iterFind->second.append(p->json());
+
+						}
+					}
+					break;
+					case (std::uint32_t)(ShardManager::COMMITTEE) : {
+						committees.append(p->json());
+					}
+					break;
+					default:
+						break;
+				}
+			}
+
+
+			json["lookups"]    = lookups;
+			json["committees"] = committees;
+
+
+			for (auto item : mapIndex2Shard) {
+
+				std::string shardName = (boost::format("shard%1%") % item.first ).str();
+				json[shardName] = item.second;
+			}
+
+			return json;
 		}
 
 		bool
