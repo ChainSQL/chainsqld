@@ -31,7 +31,7 @@ namespace ripple {
 	Json::Value generateError(const std::string& errMsg, bool ws = false);
 	STEntry * getTableEntry(const STArray & aTables, std::string sCheckName); 
 	STEntry *getTableEntry(ApplyView& view, const STTx& tx);
-	STEntry *getTableEntry(const STArray & aTables, Blob& vCheckName);
+	STEntry *getTableEntry(const STArray & aTables, Blob const& vCheckName);
 	bool isChainSqlTableType(const std::string& transactionType);
     bool isChainsqlContractType(const std::string& transactionType);
 	std::string hash(std::string &pk);

@@ -140,7 +140,8 @@ bool Node::isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)
     return false;
 }
 
-std::unique_ptr<ValidatorList>& Node::validatorsPtr()
+inline auto Node::validatorsPtr()
+	-> std::unique_ptr<ValidatorList>&
 {
     assert(mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end());
     return mMapOfShardValidators[mShardID];
@@ -160,7 +161,7 @@ std::int32_t Node::getPubkeyIndex(PublicKey const& pubkey)
 {
     if (mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end())
     {
-        auto& validators = mMapOfShardValidators[mShardID]->validators();
+        auto const & validators = mMapOfShardValidators[mShardID]->validators();
         for (std::int32_t idx = 0; idx < validators.size(); idx++)
         {
             if (validators[idx] == pubkey)

@@ -91,7 +91,7 @@ public:
         return mMapOfShardValidators;
     }
 
-    inline std::unique_ptr<ValidatorList>& validatorsPtr() override;
+    std::unique_ptr<ValidatorList>& validatorsPtr() override;
 
     inline bool isLeader() override
     {
@@ -100,7 +100,7 @@ public:
 
     bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view) override;
 
-    inline std::size_t quorum() override;
+    std::size_t quorum() override;
 
     std::int32_t getPubkeyIndex(PublicKey const& pubkey) override;
 

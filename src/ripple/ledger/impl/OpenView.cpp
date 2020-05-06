@@ -150,15 +150,6 @@ OpenView::apply (MicroLedger& to) const
     }
 }
 
-void
-OpenView::apply (FinalLedger& to) const
-{
-    for (auto const& item : items_.items())
-    {
-        //to.add
-    }
-}
-
 //---
 
 LedgerInfo const&

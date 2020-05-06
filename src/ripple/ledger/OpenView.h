@@ -160,9 +160,6 @@ public:
     void
     apply (MicroLedger& to) const;
 
-    void
-    apply (FinalLedger& to) const;
-
     // ReadView
 
     LedgerInfo const&

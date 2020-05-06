@@ -453,7 +453,7 @@ RCLConsensus::Adaptor::onCollectFinish(
 	ConsensusMode mode) -> Result
 {
 	const bool wrongLCL = mode == ConsensusMode::wrongLedger;
-	const bool proposing = mode == ConsensusMode::proposing;
+	//const bool proposing = mode == ConsensusMode::proposing;
 
 	notify(protocol::neCLOSING_LEDGER, ledger, !wrongLCL);
 
@@ -1016,7 +1016,7 @@ applyTransactions(
 
 void
 applyMicroLedgers(
-    std::vector<std::shared_ptr<MicroLedger const>>& microLedgers,
+    std::vector<std::shared_ptr<MicroLedger const>> const& microLedgers,
     OpenView& view)
 {
     for (auto& microLedger : microLedgers)

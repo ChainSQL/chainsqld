@@ -108,7 +108,7 @@ std::size_t Committee::quorum()
 
 std::int32_t Committee::getPubkeyIndex(PublicKey const& pubkey)
 {
-    auto& validators = mValidators->validators();
+    auto const& validators = mValidators->validators();
 
     for (std::int32_t idx = 0; idx < validators.size(); idx++)
     {
@@ -177,7 +177,7 @@ uint256 Committee::microLedgerSetHash()
     return static_cast<typename sha512_half_hasher::result_type>(microLedgerSetHash);
 }
 
-bool Committee::microLedgersAllReady()
+inline bool Committee::microLedgersAllReady()
 {
     std::lock_guard<std::recursive_mutex> _(mMLBMutex);
     return mValidMicroLedgers.size() == mShardManager.shardCount();
@@ -271,7 +271,7 @@ void Committee::setTimer(uint32 repeats)
 }
 
 auto Committee::canonicalMicroLedgers()
-    ->std::vector<std::shared_ptr<MicroLedger const>>&
+    ->std::vector<std::shared_ptr<MicroLedger const>> const&
 {
     std::vector<std::shared_ptr<MicroLedger const>> v;
     for (auto it : mValidMicroLedgers)

@@ -34,17 +34,14 @@ public:
     NodeBase() {}
     ~NodeBase() {}
 
-    inline
     virtual bool isLeader() = 0;
 
     virtual bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view) = 0;
 
-    inline
     virtual std::size_t quorum() = 0;
 
     virtual void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey) = 0;
 
-    inline
     virtual std::unique_ptr<ValidatorList>& validatorsPtr() = 0;
 
     virtual Overlay::PeerSequence getActivePeers(uint32 shardID) = 0;
