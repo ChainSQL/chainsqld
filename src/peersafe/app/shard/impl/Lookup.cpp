@@ -77,7 +77,7 @@ void Lookup::resetMetaIndex(LedgerIndex seq)
 	auto vecHashes = mMapFinalLedger[seq]->getTxHashes();
 	for (int i = 0; i < vecHashes.size(); i++)
 	{
-		for (int shardIndex = 1; shardIndex < mShardManager.shardCount(); shardIndex++)
+		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
 		{
 			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(vecHashes[i]))
 				mMapMicroLedgers[seq][shardIndex]->setMetaIndex(vecHashes[i], i,app_.journal("TxMeta"));
@@ -98,7 +98,7 @@ void Lookup::saveLedger(LedgerIndex seq)
 	//build tx-map
 	for (auto const& item : finalLedger->getTxHashes())
 	{
-		for (int shardIndex = 1; shardIndex < mShardManager.shardCount(); shardIndex++)
+		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
 		{
 			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(item))
 			{
