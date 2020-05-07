@@ -1609,21 +1609,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
         });
 }
 
-void PeerImp::onMessage(std::shared_ptr <protocol::TMTransactions> const& m)
-{
-	protocol::TMTransactions& packet = *m;
-	std::weak_ptr<PeerImp> weak = shared_from_this();
-
-	switch (app_.getShardManager().myShardRole())
-	{
-	case ShardManager::SHARD:
-			//  TODO
-		break;
-	default:
-		break;
-	}
-}
-
 void
 PeerImp::checkSanity (std::uint32_t validationSeq)
 {
@@ -1962,6 +1947,25 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
         }
         if (packet.type () == protocol::TMGetObjectByHash::otFETCH_PACK)
             app_.getLedgerMaster ().gotFetchPack (progress, pLSeq);
+    }
+}
+
+void PeerImp::onMessage(std::shared_ptr <protocol::TMTransactions> const& m)
+{
+    protocol::TMTransactions& packet = *m;
+    std::weak_ptr<PeerImp> weak = shared_from_this();
+
+    switch (app_.getShardManager().myShardRole())
+    {
+    case ShardManager::SHARD:
+        app_.getJobQueue().addJob(
+            jtTRANSACTION, "recvTransactions->checkTransactions",
+            [&](Job&) {
+            app_.getShardManager().node().onMessage(packet);
+        });
+        break;
+    default:
+        break;
     }
 }
 

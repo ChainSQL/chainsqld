@@ -92,30 +92,33 @@ void Lookup::saveLedger(LedgerIndex seq)
 	//build new ledger
 	auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
 	auto ledgerInfo = finalLedger->getLedgerInfo();
-	auto ledgerToSave =
-		std::make_shared<Ledger>(*previousLedger, ledgerInfo.closeTime);
+	auto ledgerToSave = std::make_shared<Ledger>(
+        *previousLedger, ledgerInfo.closeTime);
+
 	//apply state
-	finalLedger->getRawStateTable().apply(*ledgerToSave);
+    finalLedger->apply(*ledgerToSave);
+
 	//build tx-map
-	for (auto const& item : finalLedger->getTxHashes())
+	for (auto const& txID : finalLedger->getTxHashes())
 	{
 		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
 		{
-			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(item))
+			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(txID))
 			{
-				auto txWithMeta = mMapMicroLedgers[seq][shardIndex]->getTxWithMeta(item);
+				auto txWithMeta = mMapMicroLedgers[seq][shardIndex]->getTxWithMeta(txID);
 				auto tx = txWithMeta.first;
 				auto meta = txWithMeta.second;
-				//txWithMeta.second->getAsObject().add(*meta);
-				ledgerToSave->rawTxInsert(item, tx, meta);
+
+                Serializer s(tx->getDataLength() +
+                    meta->getDataLength() + 16);
+                s.addVL(tx->peekData());
+                s.addVL(meta->peekData());
+                auto item = std::make_shared<SHAMapItem const>(txID, std::move(s));
+                if (!ledgerToSave->txMap().updateGiveItem(std::move(item), true, true))
+                    LogicError("Ledger::rawReplace: key not found");
 			}
 		}
-		
 	}
-
-
-	//check hash
-	assert(ledgerInfo.accountHash == ledgerToSave->stateMap().getHash().as_uint256());
 
 	ledgerToSave->updateSkipList();
 	{
@@ -128,11 +131,23 @@ void Lookup::saveLedger(LedgerIndex seq)
 		JLOG(journal_.debug()) << "Flushed " << asf << " accounts and " << tmf
 			<< " transaction nodes";
 	}
+
+    if (ledgerInfo.accountHash != ledgerToSave->stateMap().getHash().as_uint256() ||
+        ledgerInfo.txHash != ledgerToSave->txMap().getHash().as_uint256())
+    {
+        JLOG(journal_.warn()) << "Final ledger txs/accounts shamap root hash missmatch";
+        return;
+    }
+
 	ledgerToSave->unshare();
 	ledgerToSave->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
 
 	//save ledger
 	app_.getLedgerMaster().accept(ledgerToSave);
+
+    // do clear
+    mMapFinalLedger.erase(seq);
+    mMapMicroLedgers.erase(seq);
 }
 
 void Lookup::timerEntry()
@@ -204,6 +219,8 @@ void Lookup::relayTxs()
 
 
 	mTransactions.clear();
+
+    // add signature
 }
 
 void Lookup::addTxs(std::vector< std::shared_ptr<Transaction> >& txs)
@@ -259,6 +276,12 @@ void Lookup::eraseDeactivate(Peer::id_t id)
 void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 {
 	auto microWithMeta = std::make_shared<MicroLedger>(m);
+
+    if (!app_.getHashRouter().shouldRelay(microWithMeta->ledgerHash()))
+    {
+        return;
+    }
+
 	bool valid = microWithMeta->checkValidity(
         mShardManager.node().shardValidators().at(microWithMeta->shardID()),
 		true);
@@ -274,6 +297,12 @@ void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
 {
 	auto finalLedger = std::make_shared<FinalLedger>(m);
+
+    if (!app_.getHashRouter().shouldRelay(finalLedger->ledgerHash()))
+    {
+        return;
+    }
+
 	bool valid = finalLedger->checkValidity(mShardManager.committee().validatorsPtr());
 
 	if (valid)
