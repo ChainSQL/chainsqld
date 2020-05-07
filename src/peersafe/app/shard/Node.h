@@ -129,11 +129,6 @@ public:
 
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
     void onMessage(protocol::TMTransactions const& m);
-
-
-	void sendTransaction(unsigned int shardIndex,protocol::TMTransactions& m);
-
-
 };
 
 }

@@ -298,26 +298,6 @@ void Node::validate(MicroLedger &microLedger)
     sendMessage(mShardID, m);
 }
 
-void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransactions& m)
-{
-
-	std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
-
-	auto peers = mMapOfShardPeers.find(shardIndex);
-	if (peers != mMapOfShardPeers.end())
-	{
-		auto const sm = std::make_shared<Message>(
-			m, protocol::mtTRANSACTIONS);
-
-		for (auto w : peers->second)
-		{
-			if (auto p = w.lock())
-				p->send(sm);
-		}
-	}
-
-}
-
 void Node::recvValidation(PublicKey& pubKey, STValidation& val)
 {
     LedgerIndex seq = val.getFieldU32(sfLedgerSequence);

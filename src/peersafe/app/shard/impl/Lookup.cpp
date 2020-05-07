@@ -24,6 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/misc/HashRouter.h>
+#include <ripple/protocol/digest.h>
 
 #include <ripple/basics/Slice.h>
 #include <ripple/core/Config.h>
@@ -164,89 +165,59 @@ void Lookup::relayTxs()
 {
 	std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
 
-	auto hTxSet = app_.getTxPool().topTransactions(std::numeric_limits<std::uint64_t>::max());
-
 	std::vector< std::shared_ptr<Transaction> > txs;
-	app_.getTxPool().getTransactions(hTxSet, txs); 
 
+    auto hTxSet = app_.getTxPool().topTransactions(std::numeric_limits<std::uint64_t>::max());
+	app_.getTxPool().getTransactions(hTxSet, txs);
 
-	std::map < unsigned int, protocol::TMTransactions > mapShardIndexTxs;
-	for (auto tx : txs) {
+    std::map < unsigned int, std::vector<std::shared_ptr<Transaction>> > mapShardIndexTxs;
 
-		// tx shard
+    // tx shard
+	for (auto tx : txs)
+    {
 		auto txCur = tx->getSTransaction();
 		auto account = txCur->getAccountID(sfAccount);
 		std::string strAccountID = toBase58(account);
 		auto shardIndex			 = getTxShardIndex(strAccountID, mShardManager.shardCount());
 
-		Serializer s;
-		tx->getSTransaction()->add(s);
-
-		auto item = mapShardIndexTxs.find(shardIndex);
-		if (item != mapShardIndexTxs.end()) {
-
-			protocol::TMTransaction& tmTx= *(item->second).add_transactions();
-			tmTx.set_rawtransaction(s.data(), s.size());
-			tmTx.set_status(protocol::tsCURRENT);
-			tmTx.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
-
-		}
-		else {
-
-			protocol::TMTransactions txs;
-			protocol::TMTransaction& tmTx = *txs.add_transactions();
-			tmTx.set_rawtransaction(s.data(), s.size());
-			tmTx.set_status(protocol::tsCURRENT);
-			tmTx.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
-
-			mapShardIndexTxs[shardIndex] = txs;
-		}
-
+        mapShardIndexTxs[shardIndex].push_back(tx);
 	}
 
-	for (auto item : mapShardIndexTxs) {
+    // send to shard
+    for (auto it : mapShardIndexTxs)
+    {
+        protocol::TMTransactions ts;
+        sha512_half_hasher signHash;
 
-		auto tmTxsHash = getTMTransactionsHash(item.second);
-		item.second.set_nodepubkey(app_.getValidationPublicKey().data(),
-			app_.getValidationPublicKey().size());
+        ts.set_nodepubkey(app_.getValidationPublicKey().data(),
+            app_.getValidationPublicKey().size());
 
-		auto sign = signDigest(app_.getValidationPublicKey(),
-			app_.getValidationSecretKey(),
-			tmTxsHash);
+        for (auto tx : it.second)
+        {
+            protocol::TMTransaction& t = *ts.add_transactions();
+            Serializer s;
+            tx->getSTransaction()->add(s);
+            t.set_rawtransaction(s.data(), s.size());
+            t.set_status(protocol::tsCURRENT);
+            t.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
 
-		item.second.set_signature(sign.data(), sign.size());
+            hash_append(signHash, tx->getID());
+        }
 
-		mShardManager.node().sendTransaction(item.first, item.second);
-	}
+        auto sign = signDigest(app_.getValidationPublicKey(),
+            app_.getValidationSecretKey(),
+            static_cast<typename sha512_half_hasher::result_type>(signHash));
+        ts.set_signature(sign.data(), sign.size());
 
-	//mTransactions.clear();
+        auto const m = std::make_shared<Message>(
+            ts, protocol::mtTRANSACTIONS);
+
+        mShardManager.node().sendMessage(it.first, m);
+    }
 
 	for (auto delHash : hTxSet) {
 		app_.getTxPool().removeTx(delHash);
 	}
-
-}
-
-
-
-ripple::uint256 Lookup::getTMTransactionsHash(protocol::TMTransactions& tmTxs)
-{
-
-	int numTxs = tmTxs.transactions_size();
-
-	sha512_half_hasher tmTxsHash;
-	for (int i = 0; i < numTxs; i++) {
-
-		auto tmTx = tmTxs.transactions(i);
-		SerialIter sit(makeSlice(tmTx.rawtransaction()));
-
-		auto stx = std::make_shared<STTx const>(sit);
-		uint256 txID = stx->getTransactionID();
-		hash_append(tmTxsHash, txID);
-	}
-
-	return static_cast<typename sha512_half_hasher::result_type>(tmTxsHash);
-
 }
 
 void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)

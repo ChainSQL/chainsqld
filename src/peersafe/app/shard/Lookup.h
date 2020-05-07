@@ -97,13 +97,6 @@ public:
 
 	void relayTxs();
 
-	void addTxs(std::vector< std::shared_ptr<Transaction> >& txs);
-	//AddToTxnShardMap
-
-
-	uint256 getTMTransactionsHash(protocol::TMTransactions& tmTxs);
-
-
 	void setTimer();
 	void onTimer(boost::system::error_code const& ec);
 
