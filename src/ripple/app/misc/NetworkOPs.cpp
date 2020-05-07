@@ -868,9 +868,6 @@ void NetworkOPsImp::processHeartbeatTimer ()
 
 	app_.getTxPool().timerEntry();
 
-	app_.getShardManager().lookup().timerEntry();
-
-
 	tryCheckSubTx();
 
 	setHeartbeatTimer();
@@ -1274,9 +1271,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
         auto lock = make_lock(app_.getMasterMutex());
         bool changed = false;
         {
-
-
-			
+		
             std::lock_guard <std::recursive_mutex> lock (
                 m_ledgerMaster.peekMutex());
 
@@ -1317,22 +1312,6 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
         }
         //if (changed)
         //    reportFeeChange();
-
-
-		// shard related
-		{
-			if (ShardManager::LOOKUP == app_.getShardManager().myShardRole()) {
-
-				std::vector< std::shared_ptr<Transaction> > txs;
-				for (TransactionStatus& item : transactions){
-					txs.emplace_back(item.transaction);
-				}
-
-				app_.getShardManager().lookup().addTxs(txs);
-			}
-
-		}
-
 
         auto newOL = app_.openLedger().current();
         for (TransactionStatus& e : transactions)
@@ -1432,29 +1411,29 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
 				//	e.transaction->getSTransaction());
             }
 
-            if (e.applied || ((mMode != omFULL) &&
-                (e.failType != FailHard::yes) && e.local) ||
-                    (e.result == terQUEUED))
-            {
-                auto const toSkip = app_.getHashRouter().shouldRelay(
-                    e.transaction->getID());
+            //if (e.applied || ((mMode != omFULL) &&
+            //    (e.failType != FailHard::yes) && e.local) ||
+            //        (e.result == terQUEUED))
+            //{
+            //    auto const toSkip = app_.getHashRouter().shouldRelay(
+            //        e.transaction->getID());
 
-                if (toSkip)
-                {
-                    protocol::TMTransaction tx;
-                    Serializer s;
+            //    if (toSkip)
+            //    {
+            //        protocol::TMTransaction tx;
+            //        Serializer s;
 
-                    e.transaction->getSTransaction()->add (s);
-                    tx.set_rawtransaction (s.data(), s.size());
-                    tx.set_status (protocol::tsCURRENT);
-                    tx.set_receivetimestamp (app_.timeKeeper().now().time_since_epoch().count());
-                    tx.set_deferred(e.result == terQUEUED);
-                    // FIXME: This should be when we received it
-                    app_.overlay().foreach (send_if_not (
-                        std::make_shared<Message> (tx, protocol::mtTRANSACTION),
-                        peer_in_set(*toSkip)));
-                }
-            }
+            //        e.transaction->getSTransaction()->add (s);
+            //        tx.set_rawtransaction (s.data(), s.size());
+            //        tx.set_status (protocol::tsCURRENT);
+            //        tx.set_receivetimestamp (app_.timeKeeper().now().time_since_epoch().count());
+            //        tx.set_deferred(e.result == terQUEUED);
+            //        // FIXME: This should be when we received it
+            //        app_.overlay().foreach (send_if_not (
+            //            std::make_shared<Message> (tx, protocol::mtTRANSACTION),
+            //            peer_in_set(*toSkip)));
+            //    }
+            //}
         }
     }
 

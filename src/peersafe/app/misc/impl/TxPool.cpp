@@ -30,7 +30,8 @@ namespace ripple {
         return ret;
     }
 
-    TER TxPool::insertTx(std::shared_ptr<Transaction> transaction,int ledgerSeq)
+
+	TER TxPool::insertTx(std::shared_ptr<Transaction> transaction, int ledgerSeq)
     {
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
@@ -157,7 +158,22 @@ namespace ripple {
 		}
 	}
 
-    void TxPool::updateAvoid(RCLTxSet const& cSet)
+	void TxPool::getTransactions(h256Set hSet, std::vector< std::shared_ptr<Transaction> >& txs)
+	{
+		std::lock_guard<std::mutex> lock(mutexTxPoll_);
+		for (auto txHash : hSet) {
+
+			if (mTxsHash.find(txHash) != mTxsHash.end()){
+			
+				auto iter = mTxsHash.at(txHash);
+				txs.emplace_back((*iter));
+			}
+
+		}
+
+	}
+
+	void TxPool::updateAvoid(RCLTxSet const& cSet)
     {
         // If the Tx set had be added into avoid set recently, don't add it again.
         // TODO

@@ -99,8 +99,9 @@ public:
 
 	virtual ~TxPool() {}
 
-    // Get at most specified counts of Tx fron TxPool.
+    // Get at most specified counts of Tx from TxPool.
 	h256Set topTransactions(uint64_t const& limit);
+
 
     // Insert a new Tx, return true if success else false.
 	TER insertTx(std::shared_ptr<Transaction> transaction,int ledgerSeq);
@@ -130,6 +131,9 @@ public:
 	std::size_t getTxCountInPool() { return mTxsSet.size();  }
 
 	void checkSyncStatus(int const ledgerSeq, uint256 const& prevHash);
+
+	// get txs from pool
+	void getTransactions(h256Set hSet, std::vector< std::shared_ptr<Transaction> >& txs);
 
 private:
 	Application& app_;

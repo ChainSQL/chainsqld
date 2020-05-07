@@ -20,6 +20,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/Lookup.h>
 #include <peersafe/app/shard/ShardManager.h>
 #include <peersafe/app/shard/FinalLedger.h>
+#include <peersafe/app/misc/TxPool.h>
+
 #include <ripple/app/ledger/LedgerMaster.h>
 
 #include <ripple/basics/Slice.h>
@@ -33,11 +35,15 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
+// Timeout interval in milliseconds
+auto constexpr ML_RELAYTXS_TIMEOUT = 300ms;
+
 Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
     : mShardManager(m)
     , app_(app)
     , journal_(journal)
     , cfg_(cfg)
+	, mTimer(app_.getIOService())
 {
     // TODO initial peers and validators
 
@@ -57,6 +63,8 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 		//	"Invalid entry in validator configuration.";
 		//return false;
 	}
+
+	setTimer();
 
 }
 
@@ -135,26 +143,19 @@ void Lookup::saveLedger(LedgerIndex seq)
 	app_.getLedgerMaster().accept(ledgerToSave);
 }
 
-void Lookup::timerEntry()
-{
-
-	if (!mTransactions.empty()) {
-
-		app_.getJobQueue().addJob(jtRELAYTXS, "Lookup.relayTxs",
-			[this](Job&) {
-			relayTxs();
-		});
-	}
-}
 
 void Lookup::relayTxs()
 {
-
 	std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
+
+	auto hTxSet = app_.getTxPool().topTransactions(std::numeric_limits<std::uint64_t>::max());
+
+	std::vector< std::shared_ptr<Transaction> > txs;
+	app_.getTxPool().getTransactions(hTxSet, txs); 
+
+
 	std::map < unsigned int, protocol::TMTransactions > mapShardIndexTxs;
-
-	for (auto tx : mTransactions) {
-
+	for (auto tx : txs) {
 
 		// tx shard
 		auto txCur = tx->getSTransaction();
@@ -202,16 +203,17 @@ void Lookup::relayTxs()
 		mShardManager.node().sendTransaction(item.first, item.second);
 	}
 
+	//mTransactions.clear();
 
-	mTransactions.clear();
+	for (auto delHash : hTxSet) {
+		app_.getTxPool().removeTx(delHash);
+	}
+
+
+
 }
 
-void Lookup::addTxs(std::vector< std::shared_ptr<Transaction> >& txs)
-{
 
-	std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
-	mTransactions.insert(mTransactions.end(), txs.begin(), txs.end());
-}
 
 ripple::uint256 Lookup::getTMTransactionsHash(protocol::TMTransactions& tmTxs)
 {
@@ -295,56 +297,28 @@ void Lookup::sendMessage(std::shared_ptr<Message> const &m)
 }
 
 
-//void ShardManager::addActive(std::shared_ptr<PeerImp> const& peer)
-//{
-//	std::uint32_t peerRole = peer->getShardRole();
-//	switch (peerRole) {
-//		case (std::uint32_t)(ShardManager::LOOKUP) : {
-//			mLookup->addActive(peer);
-//		}
-//													 break;
-//													 case (std::uint32_t)(ShardManager::SHARD) : {
-//														 mNode->addActive(peer);
-//													 }
-//																								 break;
-//																								 case (std::uint32_t)(ShardManager::COMMITTEE) : {
-//																									 mCommittee->addActive(peer);
-//																								 }
-//																																				 break;
-//																																				 case (std::uint32_t)(ShardManager::SYNC) : {
-//																																					 mSync->addActive(peer);
-//																																				 }
-//																																															break;
-//																																				 default:
-//																																					 break;
-//	}
-//}
-//
+void Lookup::setTimer()
+{
+	mTimer.expires_from_now(ML_RELAYTXS_TIMEOUT);
+	mTimer.async_wait(std::bind(&Lookup::onTimer, this, std::placeholders::_1));
+}
 
-//void ShardManager::relayTxs(std::vector< std::shared_ptr<Transaction> >& txs)
-//{
-//	for (auto tx : txs) {
-//
-//		auto txCur = tx->getSTransaction();
-//		auto account = txCur->getAccountID(sfAccount);
-//
-//		std::string strAccountID = toBase58(account);
-//		auto shardIndex = getShardIndex(strAccountID, shardCount());
-//
-//		protocol::TMTransaction msg;
-//		Serializer s;
-//
-//		tx->getSTransaction()->add(s);
-//		msg.set_rawtransaction(s.data(), s.size());
-//		msg.set_status(protocol::tsCURRENT);
-//		msg.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
-//
-//		mNode->sendTransaction(shardIndex, msg);
-//
-//	}
-//
-//}
+void Lookup::onTimer(boost::system::error_code const& ec)
+{
 
+	if (ec == boost::asio::error::operation_aborted)
+		return;
+
+	if (!app_.getTxPool().isEmpty()) {
+
+		app_.getJobQueue().addJob(jtRELAYTXS, "Lookup.relayTxs",
+			[this](Job&) {
+			relayTxs();
+		});
+	}
+
+	setTimer();
+}
 
 
 }

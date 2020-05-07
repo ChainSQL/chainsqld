@@ -68,7 +68,8 @@ private:
 	std::map<LedgerIndex, MapMicroLedger>				mMapMicroLedgers;
 
 	std::mutex											mTransactionsMutex;
-	std::vector< std::shared_ptr<Transaction> >			mTransactions;
+	boost::asio::basic_waitable_timer<
+		std::chrono::system_clock>                      mTimer;
 
 public:
 
@@ -94,7 +95,6 @@ public:
 	void saveLedger(LedgerIndex seq);
 
 
-	void timerEntry();
 	void relayTxs();
 
 	void addTxs(std::vector< std::shared_ptr<Transaction> >& txs);
@@ -102,6 +102,10 @@ public:
 
 
 	uint256 getTMTransactionsHash(protocol::TMTransactions& tmTxs);
+
+
+	void setTimer();
+	void onTimer(boost::system::error_code const& ec);
 
 	// shard related
 	static inline unsigned int getTxShardIndex(const std::string& strAddress, unsigned int numShards) {
@@ -122,14 +126,6 @@ public:
 
 		return (x % numShards + 1);
 	};
-
-	//void addActive(std::shared_ptr<PeerImp> const& peer);
-
-	//void eraseDeactivate(Peer::id_t id);
-
-
-	//void relayTxs(std::vector< std::shared_ptr<Transaction> >& txs);
-
 
 
 };
