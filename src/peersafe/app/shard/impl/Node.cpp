@@ -544,7 +544,7 @@ void Node::onMessage(protocol::TMTransactions const& m)
         SerialIter sit(makeSlice(TMTransaction.rawtransaction()));
         auto stx = std::make_shared<STTx const>(sit);
         std::string reason;
-        txs.emplace_back(stx, reason, app_);
+        txs.emplace_back(std::make_shared<Transaction>(stx, reason, app_));
         hash_append(checkHash, stx->getTransactionID());
     }
 

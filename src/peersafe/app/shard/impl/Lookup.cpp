@@ -21,6 +21,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/ShardManager.h>
 #include <peersafe/app/shard/FinalLedger.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/misc/HashRouter.h>
 
 #include <ripple/basics/Slice.h>
 #include <ripple/core/Config.h>
