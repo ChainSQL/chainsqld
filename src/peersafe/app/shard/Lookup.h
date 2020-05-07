@@ -83,7 +83,7 @@ public:
 
 	void addActive(std::shared_ptr<PeerImp> const& peer);
 
-	void eraseDeactivate(Peer::id_t id);
+	void eraseDeactivate();
 
     void onMessage(protocol::TMMicroLedgerSubmit const& m);
     void onMessage(protocol::TMFinalLedgerSubmit const& m);

@@ -864,7 +864,11 @@ void NetworkOPsImp::processHeartbeatTimer ()
 
     }
 
-	mConsensus.timerEntry(app_.timeKeeper().closeTime());
+    if (app_.getShardManager().myShardRole() == ShardManager::SHARD ||
+        app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
+    {
+        mConsensus.timerEntry(app_.timeKeeper().closeTime());
+    }
 
 	app_.getTxPool().timerEntry();
 

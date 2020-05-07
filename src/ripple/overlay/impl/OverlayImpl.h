@@ -216,7 +216,7 @@ public:
 
     // Called when an active peer is destroyed.
     void
-    onPeerDeactivate (Peer::id_t id);
+    onPeerDeactivate (Peer::id_t id, uint32 shardRole, uint32 shardIndex);
 
     // UnaryFunc will be called as
     //  void(std::shared_ptr<PeerImp>&&)
@@ -311,7 +311,7 @@ public:
 	// shard related
 
 	void addShardRelatedActive(std::shared_ptr<PeerImp> const& peer);
-	void eraseShardRelatedDeactivate(Peer::id_t id);
+	void eraseShardRelatedDeactivate(uint32 shardRole, uint32 shardIndex);
 
 private:
     std::shared_ptr<Writer>

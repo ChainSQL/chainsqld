@@ -226,21 +226,22 @@ void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)
 	mPeers.emplace_back(std::move(peer));
 }
 
-void Lookup::eraseDeactivate(Peer::id_t id)
+void Lookup::eraseDeactivate()
 {
 	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
 
-	auto position = mPeers.begin();
-	while (position != mPeers.end()) {
-
-		auto spt = position->lock();
-		if (spt->id() == id) {
-			mPeers.erase(position);
-			break;
-		}
-
-		position++;
-	}
+    for (auto w = mPeers.begin(); w != mPeers.end();)
+    {
+        auto p = w->lock();
+        if (!p)
+        {
+            w = mPeers.erase(w);
+        }
+        else
+        {
+            w++;
+        }
+    }
 }
 
 void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)

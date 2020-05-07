@@ -630,13 +630,13 @@ namespace ripple {
 	}
 
 	void
-		OverlayImpl::onPeerDeactivate(Peer::id_t id)
+		OverlayImpl::onPeerDeactivate(Peer::id_t id, uint32 shardRole, uint32 shardIndex)
 	{
 		std::lock_guard <decltype(mutex_)> lock(mutex_);
 		ids_.erase(id);
 
 		{
-			eraseShardRelatedDeactivate(id);
+			eraseShardRelatedDeactivate(shardRole, shardIndex);
 		}
 		
 	}
@@ -726,35 +726,42 @@ namespace ripple {
 		void OverlayImpl::addShardRelatedActive(std::shared_ptr<PeerImp> const& peer)
 		{
 			std::uint32_t peerRole = peer->getShardRole();
-			switch (peerRole) {
-				case (std::uint32_t)(ShardManager::LOOKUP) : {
+			switch (peerRole)
+            {
+			    case ShardManager::LOOKUP:
+                case ShardManager::SYNC:
+                case ShardManager::LOOKUP & ShardManager::SYNC:
 					app_.getShardManager().lookup().addActive(peer);
-				}
-				break;
-				case (std::uint32_t)(ShardManager::SHARD) : {
+				    break;
+				case ShardManager::SHARD:
 					app_.getShardManager().node().addActive(peer);
-				}
-				break;
-				case (std::uint32_t)(ShardManager::COMMITTEE) : {
+				    break;
+				case ShardManager::COMMITTEE:
 					app_.getShardManager().committee().addActive(peer);
-				}
-				break;
-				//case (std::uint32_t)(ShardManager::SYNC) : {
-				//	app_.getShardManager().sync().addActive(peer);
-				//}
-				break;
+				    break;
 				default:
-				break;
+				    break;
 			}																							
-
 		}
 
-		void OverlayImpl::eraseShardRelatedDeactivate(Peer::id_t id)
+		void OverlayImpl::eraseShardRelatedDeactivate(uint32 shardRole, uint32 shardIndex)
 		{
-			app_.getShardManager().lookup().eraseDeactivate(id);
-			app_.getShardManager().node().eraseDeactivate(id);
-			app_.getShardManager().committee().eraseDeactivate(id);
-			//app_.getShardManager().sync().eraseDeactivate(id);
+            switch (shardRole)
+            {
+            case ShardManager::LOOKUP:
+            case ShardManager::SYNC:
+            case ShardManager::LOOKUP & ShardManager::SYNC:
+                app_.getShardManager().lookup().eraseDeactivate();
+                break;
+            case ShardManager::SHARD:
+                app_.getShardManager().node().eraseDeactivate(shardIndex);
+                break;
+            case ShardManager::COMMITTEE:
+                app_.getShardManager().committee().eraseDeactivate();
+                break;
+            default:
+                break;
+            }
 		}
 
 		std::size_t

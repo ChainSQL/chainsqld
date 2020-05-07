@@ -75,20 +75,21 @@ void Committee::addActive(std::shared_ptr<PeerImp> const& peer)
 
 }
 
-void Committee::eraseDeactivate(Peer::id_t id)
+void Committee::eraseDeactivate()
 {
 	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
 
-	auto position = mPeers.begin();
-	while (position != mPeers.end()) {
-
-		auto spt = position->lock();
-		if (spt->id() == id) {
-			mPeers.erase(position);
-			break;
+    for (auto w = mPeers.begin(); w != mPeers.end();)
+    {
+		auto p = w->lock();
+		if (!p)
+        {
+			w = mPeers.erase(w);
 		}
-
-		position++;
+        else
+        {
+            w++;
+        }
 	}
 }
 

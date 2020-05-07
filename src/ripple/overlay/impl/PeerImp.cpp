@@ -91,7 +91,7 @@ PeerImp::~PeerImp ()
         JLOG(journal_.warn()) << name_ << " left cluster";
     }
     if (state_ == State::active)
-        overlay_.onPeerDeactivate(id_);
+        overlay_.onPeerDeactivate(id_, hello_.shardrole(), hello_.shardindex());
     overlay_.peerFinder().on_closed (slot_);
     overlay_.remove (slot_);
 }

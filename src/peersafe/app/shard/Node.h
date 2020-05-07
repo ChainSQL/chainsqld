@@ -106,7 +106,7 @@ public:
 
 	void addActive(std::shared_ptr<PeerImp> const& peer);
 
-	void eraseDeactivate(Peer::id_t id);
+	void eraseDeactivate(uint32 shardIndex);
 
     void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
 

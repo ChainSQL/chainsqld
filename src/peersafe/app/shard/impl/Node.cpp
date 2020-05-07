@@ -102,30 +102,25 @@ void Node::addActive(std::shared_ptr<PeerImp> const& peer)
 
 }
 
-void Node::eraseDeactivate(Peer::id_t id)
+void Node::eraseDeactivate(uint32 shardIndex)
 {
 	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
 
-	bool bErase = false;
-
-	for (auto item : mMapOfShardPeers) {
-
-		if(bErase) break;
-		
-		// id is unique
-		auto position = item.second.begin();
-		while (position != item.second.end()) {
-
-			auto spt = position->lock();
-			if (spt->id() == id) {
-				item.second.erase(position);
-				bErase = true;
-				break;
-			}
-			position++;
-		}
-	}
-
+    if (mMapOfShardPeers.find(shardIndex) != mMapOfShardPeers.end())
+    {
+        for (auto w = mMapOfShardPeers[shardIndex].begin(); w != mMapOfShardPeers[shardIndex].end();)
+        {
+            auto p = w->lock();
+            if (!p)
+            {
+                w = mMapOfShardPeers[shardIndex].erase(w);
+            }
+            else
+            {
+                w++;
+            }
+        }
+    }
 }
 
 bool Node::isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)

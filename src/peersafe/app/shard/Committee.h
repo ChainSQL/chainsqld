@@ -105,7 +105,7 @@ public:
 
 	void addActive(std::shared_ptr<PeerImp> const& peer);
 
-	void eraseDeactivate(Peer::id_t id);
+	void eraseDeactivate();
 
     inline uint256 getFinalLedgerHash()
     {
