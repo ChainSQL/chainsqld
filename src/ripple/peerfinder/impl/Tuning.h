@@ -54,10 +54,10 @@ enum
         This is enforced outside the Logic, so that the unit test
         can use any settings it wants.
     */
-    ,minOutCount = 10
+    ,minOutCount = 40
 
     /** The default value of Config::maxPeers. */
-    ,defaultMaxPeers = 21
+    ,defaultMaxPeers = 81
 
     /** Max redirects we will accept from one connection.
         Redirects are limited for security purposes, to prevent

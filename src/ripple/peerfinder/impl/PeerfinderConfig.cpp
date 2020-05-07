@@ -52,9 +52,9 @@ void Config::applyTuning ()
     if (ipLimit == 0)
     {
         // Unless a limit is explicitly set, we allow between
-        // 2 and 5 connections from non RFC-1918 "private"
+        // 10 and 15 connections from non RFC-1918 "private"
         // IP addresses.
-        ipLimit = 2;
+        ipLimit = 10;
 
         if (inPeers > Tuning::defaultMaxPeers)
             ipLimit += std::min(5,
