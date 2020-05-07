@@ -27,6 +27,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/ShardManager.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/misc/HashRouter.h>
+#include <ripple/protocol/digest.h>
 
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
@@ -292,25 +293,9 @@ void Node::validate(MicroLedger &microLedger)
     val.set_validation(&validation[0], validation.size());
 
     // Send signed validation to all of our directly connected peers
-    sendValidation(val);
-}
-
-void Node::sendValidation(protocol::TMValidation& m)
-{
-    std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
-
-    auto peers = mMapOfShardPeers.find(mShardID);
-    if (peers != mMapOfShardPeers.end())
-    {
-        auto const sm = std::make_shared<Message>(
-            m, protocol::mtVALIDATION);
-
-        for (auto w : peers->second)
-        {
-            if (auto p = w.lock())
-                p->send(sm);
-        }
-    }
+    auto const m = std::make_shared<Message>(
+        val, protocol::mtVALIDATION);
+    sendMessage(mShardID, m);
 }
 
 void Node::sendTransaction(unsigned int shardIndex, protocol::TMTransactions& m)
@@ -529,6 +514,54 @@ void Node::onMessage(protocol::TMFinalLedgerSubmit const& m)
 
 	//begin next round consensus
 	app_.getOPs().endConsensus();
+}
+
+void Node::onMessage(protocol::TMTransactions const& m)
+{
+    using beast::hash_append;
+
+    auto const publicKey = parseBase58<PublicKey>(
+        TokenType::TOKEN_NODE_PUBLIC, m.nodepubkey());
+    if (!publicKey)
+    {
+        JLOG(journal_.info()) << "Transactions package from lookup has illegal pubkey";
+        return;
+    }
+
+    boost::optional<PublicKey> pubKey =
+        mShardManager.lookup().validators().getTrustedKey(*publicKey);
+    if (!pubKey)
+    {
+        JLOG(journal_.info()) << "Transactions package from untrusted lookup node";
+        return;
+    }
+
+    sha512_half_hasher checkHash;
+    std::vector<std::shared_ptr<Transaction>> txs;
+
+    for (auto const& TMTransaction : m.transactions())
+    {
+        SerialIter sit(makeSlice(TMTransaction.rawtransaction()));
+        auto stx = std::make_shared<STTx const>(sit);
+        std::string reason;
+        txs.emplace_back(std::make_shared<Transaction>(stx, reason, app_));
+        hash_append(checkHash, stx->getTransactionID());
+    }
+
+    if (!verifyDigest(
+        *pubKey,
+        static_cast<typename sha512_half_hasher::result_type>(checkHash),
+        makeSlice(m.signature())))
+    {
+        JLOG(journal_.info()) << "Transactions package signature verification failed";
+        return;
+    }
+
+    for (auto tx : txs)
+    {
+        app_.getOPs().processTransaction(
+            tx, false, false, NetworkOPs::FailHard::no);
+    }
 }
 
 

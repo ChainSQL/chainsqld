@@ -116,8 +116,6 @@ public:
 
     void commitSignatureBuffer();
 
-    void sendValidation(protocol::TMValidation& m);
-
     void recvValidation(PublicKey& pubKey, STValidation& val);
 
     void checkAccept();
@@ -130,6 +128,7 @@ public:
     void sendMessage(std::shared_ptr<Message> const &m);                    // To all shard
 
     void onMessage(protocol::TMFinalLedgerSubmit const& m);
+    void onMessage(protocol::TMTransactions const& m);
 
 
 	void sendTransaction(unsigned int shardIndex,protocol::TMTransactions& m);

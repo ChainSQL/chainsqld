@@ -1406,7 +1406,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
 			//chainsql type tx will not retry.
             if (addLocal && !e.transaction->getSTransaction()->isChainSqlTableType())
             {
-				//m_localTX->push_back(
+				//m_localTX-git >push_back(
 				//	m_ledgerMaster.getCurrentLedgerIndex(),
 				//	e.transaction->getSTransaction());
             }
