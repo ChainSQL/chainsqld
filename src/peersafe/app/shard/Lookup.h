@@ -101,6 +101,8 @@ public:
 	//AddToTxnShardMap
 
 
+	uint256 getTMTransactionsHash(protocol::TMTransactions& tmTxs);
+
 	// shard related
 	static inline unsigned int getTxShardIndex(const std::string& strAddress, unsigned int numShards) {
 

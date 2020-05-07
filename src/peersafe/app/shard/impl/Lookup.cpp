@@ -22,6 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/FinalLedger.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 
+#include <ripple/basics/Slice.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/ConfigSections.h>
 
@@ -186,8 +187,18 @@ void Lookup::relayTxs()
 
 	}
 
-
 	for (auto item : mapShardIndexTxs) {
+
+		auto tmTxsHash = getTMTransactionsHash(item.second);
+		item.second.set_nodepubkey(app_.getValidationPublicKey().data(),
+			app_.getValidationPublicKey().size());
+
+		auto sign = signDigest(app_.getValidationPublicKey(),
+			app_.getValidationSecretKey(),
+			tmTxsHash);
+
+		item.second.set_signature(sign.data(), sign.size());
+
 		mShardManager.node().sendTransaction(item.first, item.second);
 	}
 
@@ -200,6 +211,26 @@ void Lookup::addTxs(std::vector< std::shared_ptr<Transaction> >& txs)
 
 	std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
 	mTransactions.insert(mTransactions.end(), txs.begin(), txs.end());
+}
+
+ripple::uint256 Lookup::getTMTransactionsHash(protocol::TMTransactions& tmTxs)
+{
+
+	int numTxs = tmTxs.transactions_size();
+
+	sha512_half_hasher tmTxsHash;
+	for (int i = 0; i < numTxs; i++) {
+
+		auto tmTx = tmTxs.transactions(i);
+		SerialIter sit(makeSlice(tmTx.rawtransaction()));
+
+		auto stx = std::make_shared<STTx const>(sit);
+		uint256 txID = stx->getTransactionID();
+		hash_append(tmTxsHash, txID);
+	}
+
+	return static_cast<typename sha512_half_hasher::result_type>(tmTxsHash);
+
 }
 
 void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)
