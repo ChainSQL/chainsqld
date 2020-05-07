@@ -57,7 +57,7 @@ applyTransactions(
 
 void
 applyMicroLedgers(
-    std::vector<std::shared_ptr<MicroLedger const>>& microLedgers,
+    std::vector<std::shared_ptr<MicroLedger const>> const& microLedgers,
     OpenView& view);
 
 /** Manages the generic consensus algorithm for use by the RCL.

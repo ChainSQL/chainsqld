@@ -78,7 +78,7 @@ namespace ripple {
 		return (STEntry*)(&(*iter));
 	}
 
-	STEntry * getTableEntry(const STArray & aTables, Blob& vCheckName)
+	STEntry * getTableEntry(const STArray & aTables, Blob const& vCheckName)
 	{
 		auto iter(aTables.end());
 		iter = std::find_if(aTables.begin(), aTables.end(),

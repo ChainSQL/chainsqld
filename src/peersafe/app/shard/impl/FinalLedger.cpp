@@ -27,7 +27,7 @@ namespace ripple {
 FinalLedger::FinalLedger(
     OpenView const& view,
     std::shared_ptr<Ledger const>ledger,
-    std::vector<std::shared_ptr<MicroLedger const>>& microLedgers)
+    std::vector<std::shared_ptr<MicroLedger const>> const& microLedgers)
     : mStateDelta(std::move(view.items()))
 {
     mSeq = ledger->seq();

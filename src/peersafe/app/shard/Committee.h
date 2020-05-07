@@ -99,7 +99,7 @@ public:
 
     bool isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view) override; 
 
-    inline std::size_t quorum() override;
+    std::size_t quorum() override;
 
     std::int32_t getPubkeyIndex(PublicKey const& pubkey) override;
 
@@ -113,9 +113,9 @@ public:
         return mFinalLedger->ledgerHash();
     }
 
-    inline bool microLedgersAllReady();
+    bool microLedgersAllReady();
 
-    std::vector<std::shared_ptr<MicroLedger const>>& canonicalMicroLedgers();
+    std::vector<std::shared_ptr<MicroLedger const>> const& canonicalMicroLedgers();
 
     uint32 firstMissingMicroLedger();
 

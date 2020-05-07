@@ -34,6 +34,7 @@
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/util/TableSyncUtil.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 TableSync::TableSync(Application& app, Config& cfg, beast::Journal journal)
@@ -1174,6 +1175,11 @@ bool TableSync::IsNeedSyn()
 
 void TableSync::TryTableSync()
 {
+	if (!(app_.getShardManager().myShardRole() & ShardManager::SYNC))
+	{
+		return;
+	}
+
     if (!bInitTableItems_ && bIsHaveSync_)
     {
 		if (app_.getLedgerMaster().getValidLedgerIndex() > 1)
@@ -1672,6 +1678,11 @@ std::shared_ptr <TableSyncItem> TableSync::GetRightItem(AccountID accountID, std
 // check and sync table
 void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 {    
+	if (!(app_.getShardManager().myShardRole() & ShardManager::SYNC))
+	{
+		return;
+	}
+
 	if (ledger == NULL)    return;
 
     std::shared_ptr<AcceptedLedger> alpAccepted =

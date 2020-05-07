@@ -55,7 +55,7 @@ public:
     FinalLedger(
         OpenView const& view,
         std::shared_ptr<Ledger const>ledger,
-        std::vector<std::shared_ptr<MicroLedger const>>& microLedgers);
+        std::vector<std::shared_ptr<MicroLedger const>> const& microLedgers);
 	FinalLedger(protocol::TMFinalLedgerSubmit const& m);
 
     void computeHash();
@@ -67,12 +67,12 @@ public:
         return mSeq;
     }
 
-    inline detail::RawStateTable const& FinalLedger::getRawStateTable()
+    inline detail::RawStateTable const& getRawStateTable()
     {
         return mStateDelta;
     }
 
-    inline auto FinalLedger::getTxHashes()
+    inline auto getTxHashes()
         -> std::vector<TxID> const&
     {
         return mTxsHashes;
