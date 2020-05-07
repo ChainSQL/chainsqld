@@ -476,8 +476,9 @@ message TMMicroLedgerAcquire {
     required bytes          signature       = 4;
 }
 
-
 message TMTransactions
 {
-    repeated TMTransaction transactions   = 1;
+    repeated TMTransaction  transactions    = 1;
+    required bytes          nodePubkey      = 2;
+    required bytes          signature       = 3;
 }
