@@ -53,11 +53,13 @@ Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Jour
 		journal_, cfg_.VALIDATION_QUORUM);
 
 
+
+	std::vector<std::string> & committeeValidators = cfg_.COMMITTEE_VALIDATORS;
 	std::vector<std::string>  publisherKeys;
 	// Setup trusted validators
 	if (!mValidators->load(
 		app_.getValidationPublicKey(),
-		cfg_.section(SECTION_COMMITTEE_VALIDATORS).values(),
+		committeeValidators,
 		publisherKeys))
 	{
 		//JLOG(m_journal.fatal()) <<

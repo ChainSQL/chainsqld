@@ -54,11 +54,12 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 			journal_, cfg_.VALIDATION_QUORUM);
 
 
+	std::vector<std::string> & lookupValidators = cfg_.LOOKUP_PUBLIC_KEYS;
 	std::vector<std::string>  publisherKeys;
 	// Setup trusted validators
 	if (!mValidators->load(
 		app_.getValidationPublicKey(),
-		cfg_.section(SECTION_LOOKUP_PUBLIC_KEYS).values(),
+		lookupValidators,
 		publisherKeys))
 	{
 		//JLOG(m_journal.fatal()) <<
