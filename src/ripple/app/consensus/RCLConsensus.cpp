@@ -231,7 +231,17 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
 
     prop.set_signature(sig.data(), sig.size());
 
-    app_.overlay().send(prop);
+    auto const m = std::make_shared<Message>(prop, protocol::mtPROPOSE_LEDGER);
+
+    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
+    {
+        app_.getShardManager().node().sendMessage(app_.getShardManager().node().shardID(), m);
+    }
+    else if (app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
+    {
+        app_.getShardManager().committee().sendMessage(m);
+    }
+    //app_.overlay().send(prop);
 }
 
 void
@@ -247,7 +257,17 @@ RCLConsensus::Adaptor::sendViewChange(ViewChange const& change)
 	msg.set_toview(change.toView());
 	msg.set_signature(sig.data(), sig.size());
 
-	app_.overlay().send(msg);
+    auto const m = std::make_shared<Message>(msg, protocol::mtVIEW_CHANGE);
+
+    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
+    {
+        app_.getShardManager().node().sendMessage(app_.getShardManager().node().shardID(), m);
+    }
+    else if (app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
+    {
+        app_.getShardManager().committee().sendMessage(m);
+    }
+	//app_.overlay().send(msg);
 }
 
 void

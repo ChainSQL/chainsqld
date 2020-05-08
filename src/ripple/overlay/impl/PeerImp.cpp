@@ -1259,6 +1259,12 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMTableData> const& m)
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 {
+    if (app_.getShardManager().myShardRole() != ShardManager::SHARD &&
+        app_.getShardManager().myShardRole() != ShardManager::COMMITTEE)
+    {
+        return;
+    }
+
     protocol::TMProposeSet& set = *m;
 
     if (set.has_hops() && ! slot_->cluster())
@@ -1374,6 +1380,12 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 void
 PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 {
+    if (app_.getShardManager().myShardRole() != ShardManager::SHARD &&
+        app_.getShardManager().myShardRole() != ShardManager::COMMITTEE)
+    {
+        return;
+    }
+
 	protocol::TMViewChange change = *m;
 	auto const type = publicKeyType(
 		makeSlice(change.nodepubkey()));
@@ -1978,7 +1990,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
     {
     case ShardManager::LOOKUP:
     case ShardManager::SYNC:
-    case ShardManager::LOOKUP & ShardManager::SYNC:
+    case ShardManager::LOOKUP | ShardManager::SYNC:
         app_.getJobQueue().addJob(
             jtMLSUBMIT, "recvMicroLedger",
             [&](Job&) {
@@ -2006,7 +2018,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
     {
     case ShardManager::LOOKUP:
 	case ShardManager::SYNC:
-	case ShardManager::LOOKUP & ShardManager::SYNC:
+	case ShardManager::LOOKUP | ShardManager::SYNC:
         app_.getJobQueue().addJob(
             jtFLSUBMIT, "recvFinalLedger",
             [&](Job&) {
