@@ -482,7 +482,7 @@ void Config::loadFromString (std::string const& fileContents)
 
 
 		bool bLookup    = loadLookupConfig(secConfig);
-		bool bShard     = loadShardConfig(secConfig);
+		bool bShard     = loadShardConfig(secConfig);        
 		bool bCommittee = loadCommitteeConfig(secConfig);
 		bool bSync      = loadSyncConfigConfig(secConfig);
 
@@ -494,16 +494,16 @@ void Config::loadFromString (std::string const& fileContents)
 
 		if ((SHARD_ROLE & SHARD_ROLE_SHARD) || (SHARD_ROLE & SHARD_ROLE_COMMITTEE) ){
 
-			if ( !(bLookup && bShard && bCommittee && bSync) ){
+			if ( !(bLookup && bShard && bCommittee ) ){
 				Throw<std::runtime_error>(
-					"when the role is shard or committee, shared_file,lookup_file,sync_file must exist !");
+					"when the role is shard or shared_file,committee_file,lookup_file,sync_file must exist !");
 			}
 		}
-		else if (SHARD_ROLE & SHARD_ROLE_LOOKUP) {
+		else if ( (SHARD_ROLE & SHARD_ROLE_LOOKUP) || (SHARD_ROLE & SHARD_ROLE_SYNC)){
 
-			if (!bLookup ) {
+			if ( !(bShard && bCommittee) ) {
 				Throw<std::runtime_error>(
-					"when the role is lookup, lookup_file must exist !");
+					"when the role is lookup or sync , shared_file,committee_file must exist !");
 			}
 		}
 		

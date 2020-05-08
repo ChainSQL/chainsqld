@@ -85,7 +85,7 @@ n9Kj61YFbTrA4aeQ3BZs5TpwUdrc5FZNRfiMTWQVVhPuQ52hyYS2
 n9LwSyouiaokQzRpQtDw14gSxhDgLP68W4mf8LkKzL9fXaL1oK64
 ```
 
-- sync_file.txt 
+- sync_file.txt  可选
 
 ```
 # sync节点的ips信息
@@ -97,7 +97,10 @@ n9LwSyouiaokQzRpQtDw14gSxhDgLP68W4mf8LkKzL9fXaL1oK64
 
 ### 配置项配置规则
 
-1 如果角色是 lookup      , 必须配置  ***[shard_file]***
-2 如果角色是 shard       , 必须配置  ***[lookup_file]*** ***[shard_file]*** ***[committee_file]*** ***[sync_file]***
-3 如果角色是 committee   , 必须配置  ***[lookup_file]*** ***[shard_file]*** ***[committee_file]*** ***[sync_file]***
-4 角色可以是 lookup shard committee  sync 的组合。
+
+1 如果角色是 lookup      , 必须配置  ***[shard_file]***  ***[committee_file]*** 
+2 如果角色是 shard       , 必须配置  ***[lookup_file]*** ***[shard_file]*** ***[committee_file]*** 
+3 如果角色是 committee   , 必须配置  ***[lookup_file]*** ***[shard_file]*** ***[committee_file]*** 
+4 如果角色是 sync        , 必须配置  ***[shard_file]***  ***[committee_file]*** 
+5 ***[sync_file]*** 的配置是可选的。
+6 角色可以是 lookup,sync,shard,committee以及 lookup和sync的组合。
