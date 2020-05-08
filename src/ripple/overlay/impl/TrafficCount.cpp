@@ -94,6 +94,15 @@ TrafficCount::category TrafficCount::categorize (
 	if (type == protocol::mtTRANSACTIONS)
 		return TrafficCount::category::CT_transactions;
 
+    if (type = protocol::mtMICROLEDGER_SUBMIT)
+        return TrafficCount::category::CT_micro_ledger;
+
+    if (type == protocol::mtFINALLEDGER_SUBMIT)
+        return TrafficCount::category::CT_final_ledger;
+
+    if (type == protocol::mtMICROLEDGER_ACQUIRE)
+        return TrafficCount::category::CT_micro_ledger_acquire;
+
     {
         auto msg = dynamic_cast
             <protocol::TMLedgerData const*> (&message);

@@ -75,6 +75,9 @@ public:
         CT_share_trans,    // transaction sets we get
 		CT_view_change,
 		CT_transactions,   
+        CT_micro_ledger,
+        CT_final_ledger,
+        CT_micro_ledger_acquire,
         CT_unknown         // must be last
     };
 

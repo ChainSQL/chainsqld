@@ -60,6 +60,10 @@ protocolMessageName (int type)
     case protocol::mtVALIDATION:        return "validation";
 	case protocol::mtVIEW_CHANGE:       return "view_change";
     case protocol::mtGET_OBJECTS:       return "get_objects";
+    case protocol::mtMICROLEDGER_SUBMIT:return "microledger_submit";
+    case protocol::mtFINALLEDGER_SUBMIT:return "finalledger_submit";
+    case protocol::mtMICROLEDGER_ACQUIRE:return "microledger_acquire";
+    case protocol::mtTRANSACTIONS:      return "transactions";
     default:
         break;
     };
