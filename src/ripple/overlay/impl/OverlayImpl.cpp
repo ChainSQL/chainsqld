@@ -730,7 +730,7 @@ namespace ripple {
             {
 			    case ShardManager::LOOKUP:
                 case ShardManager::SYNC:
-                case ShardManager::LOOKUP & ShardManager::SYNC:
+                case ShardManager::LOOKUP | ShardManager::SYNC:
 					app_.getShardManager().lookup().addActive(peer);
 				    break;
 				case ShardManager::SHARD:
@@ -750,7 +750,7 @@ namespace ripple {
             {
             case ShardManager::LOOKUP:
             case ShardManager::SYNC:
-            case ShardManager::LOOKUP & ShardManager::SYNC:
+            case ShardManager::LOOKUP | ShardManager::SYNC:
                 app_.getShardManager().lookup().eraseDeactivate();
                 break;
             case ShardManager::SHARD:
