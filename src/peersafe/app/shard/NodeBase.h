@@ -23,6 +23,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/overlay/Overlay.h>
+#include <ripple/app/misc/HashRouter.h>
 
 
 namespace ripple {
@@ -47,6 +48,10 @@ public:
     virtual Overlay::PeerSequence getActivePeers(uint32 shardID) = 0;
 
     virtual std::int32_t getPubkeyIndex(PublicKey const& pubkey) = 0;
+
+    virtual void relay(
+        boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
+        std::shared_ptr<Message> const &m) = 0;
 };
 
 }

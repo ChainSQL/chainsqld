@@ -94,8 +94,23 @@ FinalLedger::FinalLedger(protocol::TMFinalLedgerSubmit const& m)
 		mTxsHashes.push_back(txHash);
 	}
 
-	memcpy(mTxShaMapRootHash.begin(), finalLedger.txshamaproothash().data(), 32);
-	memcpy(mStateShaMapRootHash.begin(), finalLedger.stateshamaproothash().data(), 32);
+    if (finalLedger.has_txshamaproothash())
+    {
+        memcpy(mTxShaMapRootHash.begin(), finalLedger.txshamaproothash().data(), 32);
+    }
+    else
+    {
+        mTxShaMapRootHash = zero;
+    }
+
+    if (finalLedger.has_stateshamaproothash())
+    {
+        memcpy(mStateShaMapRootHash.begin(), finalLedger.stateshamaproothash().data(), 32);
+    }
+    else
+    {
+        mStateShaMapRootHash = zero;
+    }
 
     for (auto const& stateDelta : finalLedger.statedeltas())
     {
@@ -148,8 +163,17 @@ void FinalLedger::compose(protocol::TMFinalLedgerSubmit& ms)
     }
 
     // Tx shamap root hash
-    m.set_txshamaproothash(mTxShaMapRootHash.data(),
-        mTxShaMapRootHash.size());
+    if (mTxShaMapRootHash != zero)
+    {
+        m.set_txshamaproothash(mTxShaMapRootHash.data(),
+            mTxShaMapRootHash.size());
+    }
+
+    if (mStateShaMapRootHash != zero)
+    {
+        m.set_stateshamaproothash(mStateShaMapRootHash.data(),
+            mStateShaMapRootHash.size());
+    }
 
     // Statedetals.
     for (auto const& it : mStateDelta.items())

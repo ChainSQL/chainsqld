@@ -142,6 +142,9 @@ public:
     Overlay::PeerSequence getActivePeers(uint32);
 
     void sendMessage(std::shared_ptr<Message> const &m);
+    void relay(
+        boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
+        std::shared_ptr<Message> const &m) override;
 
     void onMessage(protocol::TMMicroLedgerSubmit const& m);
     void onMessage(protocol::TMMicroLedgerAcquire const& m, std::weak_ptr<PeerImp> weak);

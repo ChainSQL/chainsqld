@@ -140,8 +140,11 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     }
 
     // Transaction with meta data root hash.
-    m.set_txwmhashroot(mHashSet.TxWMRootHash.data(),
-        mHashSet.TxWMRootHash.size());
+    if (mHashSet.TxWMRootHash != zero)
+    {
+        m.set_txwmhashroot(mHashSet.TxWMRootHash.data(),
+            mHashSet.TxWMRootHash.size());
+    }
 
     // Statedetals.
     for (auto it : mStateDeltas)
@@ -382,7 +385,14 @@ void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
 	mSeq = m.ledgerseq();
 	mShardID = m.shardid();
     mDropsDestroyed = m.dropsdestroyed();
-	memcpy(mHashSet.TxWMRootHash.begin(), m.txwmhashroot().data(), 32);
+    if (m.has_txwmhashroot())
+    {
+        memcpy(mHashSet.TxWMRootHash.begin(), m.txwmhashroot().data(), 32);
+    }
+    else
+    {
+        mHashSet.TxWMRootHash = zero;
+    }
 	readTxHashes(m.txhashes());
 	readStateDelta(m.statedeltas());
 	readTxWithMeta(m.txwithmetas());

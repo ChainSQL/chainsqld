@@ -163,12 +163,6 @@ public:
 		return prevLedgerID_;
 	}
 
-    void setPhase(ConsensusPhase phase)
-    {
-        if (phase == (ConsensusPhase)((uint32)phase_ + 1))
-            phase_ = phase;
-    }
-
 	/** Get the Json state of the consensus process.
 
 		Called by the consensus_info RPC.
@@ -250,6 +244,10 @@ private:
     bool waitingForInit();
 
     std::chrono::milliseconds getConsensusTimeout();
+
+    void setPhase(ConsensusPhase phase);
+
+    uint64 getView();
 
 	bool isLeader(PublicKey const& pub);
 
@@ -805,7 +803,8 @@ PConsensus<Adaptor>::gotTxSet(
 	TxSet_t const& txSet)
 {
 	// Nothing to do if we've finished work on a ledger
-	if (phase_ == ConsensusPhase::accepted)
+	if (phase_ == ConsensusPhase::accepted ||
+        phase_ == ConsensusPhase::waitingFinalLedger)
 		return;
 
 	now_ = now;
@@ -942,12 +941,15 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 {
+    JLOG(j_.info()) << "timerEntry phase:" << to_string(phase_);
 	// Nothing to do if we are currently working on a ledger
-	if (phase_ == ConsensusPhase::accepted ||
-        phase_ == ConsensusPhase::waitingFinalLedger)
+	if (phase_ == ConsensusPhase::accepted)
 		return;
+
 	// Check we are on the proper ledger (this may change phase_)
-	checkLedger();
+    // TODO for shard peers
+    if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
+	    checkLedger();
 
     if (waitingForInit())
     {
@@ -1248,6 +1250,20 @@ std::chrono::milliseconds PConsensus<Adaptor>::getConsensusTimeout()
     return std::chrono::milliseconds(timeOut_);
 }
 
+template<class Adaptor>
+void PConsensus<Adaptor>::setPhase(ConsensusPhase phase)
+{
+    JLOG(j_.info()) << "Set phase " << to_string(phase_) << " -> " << to_string(phase);
+    if (phase == (ConsensusPhase)((uint32)phase_ + 1))
+        phase_ = phase;
+}
+
+template<class Adaptor>
+uint64 PConsensus<Adaptor>::getView()
+{
+    return view_;
+}
+
 template <class Adaptor>
 bool PConsensus<Adaptor>::shouldPack()
 {
@@ -1537,8 +1553,7 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::checkTimeout()
 {
-	if (phase_ == ConsensusPhase::accepted ||
-        phase_ == ConsensusPhase::waitingFinalLedger)
+	if (phase_ == ConsensusPhase::accepted)
 		return;
 
 	auto timeOut = extraTimeOut_ ? timeOut_ * 1.5 : timeOut_;

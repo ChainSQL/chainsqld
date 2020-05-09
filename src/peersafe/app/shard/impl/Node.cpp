@@ -26,8 +26,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/FinalLedger.h>
 #include <peersafe/app/shard/ShardManager.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/misc/HashRouter.h>
 #include <ripple/protocol/digest.h>
+#include <ripple/overlay/impl/TrafficCount.h>
 
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
@@ -349,7 +349,9 @@ void Node::checkAccept()
     {
         submitMicroLedger(false);
 
-        app_.getOPs().getConsensus().consensus_->setPhase(ConsensusPhase::waitingFinalLedger);
+        JLOG(journal_.info()) << "Set consensus phase to waitingFinalLedger";
+
+        app_.getOPs().getConsensus().setPhase(ConsensusPhase::waitingFinalLedger);
     }
 }
 
@@ -357,12 +359,20 @@ void Node::submitMicroLedger(bool withTxMeta)
 {
     protocol::TMMicroLedgerSubmit ms;
 
-    auto suppressionKey = sha512Half(mMicroLedger->ledgerHash(), withTxMeta);
+    auto suppressionKey = sha512Half(
+        mMicroLedger->ledgerHash(),
+        mMicroLedger->seq(),
+        app_.getOPs().getConsensus().getView(),
+        withTxMeta);
 
     if (!app_.getHashRouter().shouldRelay(suppressionKey))
     {
+        JLOG(journal_.info()) << "Repeat submit microledger, suppressed";
         return;
     }
+
+    JLOG(journal_.info()) << "Submit microledger(seq:" << mMicroLedger->seq() << ") to " 
+        << (withTxMeta ? "lookup" : "committee");
 
     mMicroLedger->compose(ms, withTxMeta);
 
@@ -388,7 +398,13 @@ void Node::sendMessage(uint32 shardID, std::shared_ptr<Message> const &m)
         for (auto w : mMapOfShardPeers[shardID])
         {
             if (auto p = w.lock())
+            {
+                JLOG(journal_.info()) << "sendMessage "
+                    << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+                    << " to shard[" << p->getShardRole() << ":" << p->getShardIndex()
+                    << ":" << p->getRemoteAddress() << "]";
                 p->send(m);
+            }
         }
     }
 }
@@ -400,6 +416,31 @@ void Node::sendMessage(std::shared_ptr<Message> const &m)
     for (auto const& it : mMapOfShardPeers)
     {
         sendMessage(it.first, m);
+    }
+}
+
+void Node::relay(
+    boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
+    std::shared_ptr<Message> const &m)
+{
+    std::lock_guard<std::recursive_mutex> _(mPeersMutex);
+
+    if (mMapOfShardPeers.find(mShardID) != mMapOfShardPeers.end())
+    {
+        for (auto w : mMapOfShardPeers[mShardID])
+        {
+            if (auto p = w.lock())
+            {
+                if (!toSkip || toSkip.get().find(p->id()) == toSkip.get().end())
+                {
+                    JLOG(journal_.info()) << "relay "
+                        << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+                        << " to shard[" << p->getShardRole() << ":" << p->getShardIndex()
+                        << ":" << p->getRemoteAddress() << "]";
+                    p->send(m);
+                }
+            }
+        }
     }
 }
 
@@ -431,6 +472,7 @@ void Node::onMessage(protocol::TMFinalLedgerSubmit const& m)
 
     if (!app_.getHashRouter().shouldRelay(finalLedger->ledgerHash()))
     {
+        JLOG(journal_.info()) << "FinalLeger: duplicate";
         return;
     }
 

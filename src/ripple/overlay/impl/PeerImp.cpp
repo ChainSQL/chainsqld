@@ -1259,8 +1259,10 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMTableData> const& m)
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 {
-    if (app_.getShardManager().myShardRole() != ShardManager::SHARD &&
-        app_.getShardManager().myShardRole() != ShardManager::COMMITTEE)
+    ShardManager& shardMgr = app_.getShardManager();
+
+    if (shardMgr.myShardRole() != ShardManager::SHARD &&
+        shardMgr.myShardRole() != ShardManager::COMMITTEE)
     {
         return;
     }
@@ -1326,13 +1328,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 		<< ",prevHash=" << to_string(prevLedger) << ",curSeq=" << set.curledgerseq();
 
     bool isTrusted = false;
-    ShardManager& shardMgr = app_.getShardManager();
-
-    if (shardMgr.myShardRole() != ShardManager::SHARD &&
-        shardMgr.myShardRole() != ShardManager::COMMITTEE)
-    {
-        return;
-    }
 
     if (shardMgr.node().shardID() == set.shardid())
     {
@@ -1380,8 +1375,10 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 void
 PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 {
-    if (app_.getShardManager().myShardRole() != ShardManager::SHARD &&
-        app_.getShardManager().myShardRole() != ShardManager::COMMITTEE)
+    ShardManager& shardMgr = app_.getShardManager();
+
+    if (shardMgr.myShardRole() != ShardManager::SHARD &&
+        shardMgr.myShardRole() != ShardManager::COMMITTEE)
     {
         return;
     }
@@ -1430,7 +1427,13 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 	JLOG(p_journal_.info()) << "PeerImpl recv view change from public " << toBase58(TOKEN_NODE_PUBLIC, publicKey)
 		<< ",prevHash=" << to_string(prevLedgerHash) << ",prevSeq=" << change.previousledgerseq() << ",toView = " << change.toview();
 
-	auto const isTrusted = app_.validators().trusted(publicKey);
+    bool isTrusted = false;
+
+    std::unique_ptr<ValidatorList>& validators = shardMgr.nodeBase().validatorsPtr();
+    if (validators)
+    {
+        isTrusted = validators->trusted(publicKey);
+    }
 
 	if (!isTrusted)
 	{
@@ -1445,6 +1448,8 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 			JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (load)";
 			return;
 		}
+
+        return;
 	}
 
 	ViewChange view_change(
@@ -1733,6 +1738,14 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMHaveTransactionSet> const& m)
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
 {
+    ShardManager& shardMgr = app_.getShardManager();
+
+    if (shardMgr.myShardRole() != ShardManager::SHARD &&
+        shardMgr.myShardRole() != ShardManager::COMMITTEE)
+    {
+        return;
+    }
+
     error_code ec;
     auto const closeTime = app_.timeKeeper().closeTime();
 
@@ -1774,13 +1787,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
         }
 
         bool isTrusted = false;
-        ShardManager& shardMgr = app_.getShardManager();
-
-        if (shardMgr.myShardRole() != ShardManager::SHARD &&
-            shardMgr.myShardRole() != ShardManager::COMMITTEE)
-        {
-            return;
-        }
 
         if (shardMgr.node().shardID() == val->getShardID())
         {
@@ -2244,9 +2250,15 @@ PeerImp::checkValidation (STValidation::pointer val,
             return;
         }
 
-        if (app_.getOPs ().recvValidation(
-                val, std::to_string(id())))
-            overlay_.relay(*packet, signingHash);
+        if (app_.getOPs().recvValidation(
+            val, std::to_string(id())))
+        {
+            auto toSkip = app_.getHashRouter().shouldRelay(signingHash);
+            auto const sm = std::make_shared<Message>(
+                *packet, protocol::mtVALIDATION);
+            app_.getShardManager().nodeBase().relay(toSkip, sm);
+            //overlay_.relay(*packet, signingHash);
+        }
     }
     catch (std::exception const&)
     {
@@ -2271,8 +2283,14 @@ PeerImp::checkViewChange(bool isTrusted, ViewChange const& change, uint256 suppr
 			return;
 		}
 
-		if (app_.getOPs().recvViewChange(change))
-			overlay_.relay(*packet, suppression);
+        if (app_.getOPs().recvViewChange(change))
+        {
+            auto toSkip = app_.getHashRouter().shouldRelay(suppression);
+            auto const sm = std::make_shared<Message>(
+                *packet, protocol::mtVIEW_CHANGE);
+            app_.getShardManager().nodeBase().relay(toSkip, sm);
+            //overlay_.relay(*packet, suppression);
+        }
 	}
 	catch (std::exception const&)
 	{

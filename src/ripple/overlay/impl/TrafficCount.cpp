@@ -50,6 +50,12 @@ const char* TrafficCount::getName (category c)
             return "transaction_set_share";
 		case category::CT_transactions:
 			return "relay_transactions";
+        case category::CT_micro_ledger:
+            return "microledger_submit";
+        case category::CT_final_ledger:
+            return "finalledger_submit";
+        case category::CT_micro_ledger_acquire:
+            return "microledger_acquire";
         case category::CT_unknown:
             assert (false);
             return "unknown";

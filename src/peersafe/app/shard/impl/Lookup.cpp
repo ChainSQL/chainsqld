@@ -53,13 +53,12 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 			app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
 			journal_, cfg_.VALIDATION_QUORUM);
 
-
-	std::vector<std::string> & lookupValidators = cfg_.LOOKUP_PUBLIC_KEYS;
+    std::vector<std::string> & lookupValidators = cfg_.LOOKUP_PUBLIC_KEYS;
 	std::vector<std::string>  publisherKeys;
 	// Setup trusted validators
 	if (!mValidators->load(
 		app_.getValidationPublicKey(),
-		lookupValidators,
+        lookupValidators,
 		publisherKeys))
 	{
 		//JLOG(m_journal.fatal()) <<
@@ -251,6 +250,7 @@ void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 
     if (!app_.getHashRouter().shouldRelay(microWithMeta->ledgerHash()))
     {
+        JLOG(journal_.info()) << "MicroLeger: duplicate";
         return;
     }
 
@@ -272,6 +272,7 @@ void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
 
     if (!app_.getHashRouter().shouldRelay(finalLedger->ledgerHash()))
     {
+        JLOG(journal_.info()) << "FinalLeger: duplicate";
         return;
     }
 

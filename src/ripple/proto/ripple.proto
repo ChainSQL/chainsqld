@@ -426,7 +426,7 @@ message MicroLedger {
 
     repeated bytes		txHashes            = 4;    // All transactions hash set in this MicroLedger
     repeated StateDelta stateDeltas         = 5;    // The state changes by the transactions in this MicroLedger
-    required bytes		txWMHashRoot        = 6;    // The transactions with meta data hash(Shamap not yet in use now)
+    optional bytes		txWMHashRoot        = 6;    // The transactions with meta data hash(Shamap not yet in use now)
 
     repeated TxWithMeta txWithMetas         = 7;    // All transactions with meta data in this MicroLedger, when send to lookup
 }
@@ -440,10 +440,10 @@ message FinalLedger {
 	required uint32 	closeFlags			= 6;
 	
     repeated bytes      txHashes            = 7;    // All transactions hash set in this FinalBlock
-    required bytes      txShaMapRootHash    = 8;    // The final transactions Shamap root hash
+    optional bytes      txShaMapRootHash    = 8;    // The final transactions Shamap root hash
 
     repeated StateDelta stateDeltas         = 9;    // The state changes by the transactions in this FinalLedger
-    required bytes      stateShaMapRootHash = 10;    // The final state Shamap root hash
+    optional bytes      stateShaMapRootHash = 10;    // The final state Shamap root hash
 
     // MicroLedger Info
     message MLInfo {
@@ -455,7 +455,7 @@ message FinalLedger {
 }
 
 message Signature {
-    required string     publicKey       = 1;
+    required bytes      publicKey       = 1;
     required bytes      signature       = 2;
 }
 

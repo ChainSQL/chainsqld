@@ -520,6 +520,17 @@ public:
     {
         return consensus_->getConsensusTimeout();
     }
+
+    void setPhase(ConsensusPhase phase)
+    {
+        return consensus_->setPhase(phase);
+    }
+
+    uint64 getView()
+    {
+        return consensus_->getView();
+    }
+
 private:
     // Since Consensus does not provide intrinsic thread-safety, this mutex
     // guards all calls to consensus_. adaptor_ uses atomics internally

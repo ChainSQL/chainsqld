@@ -24,7 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/random.h>
-#include <ripple/app/misc/HashRouter.h>
+#include <ripple/overlay/impl/TrafficCount.h>
 
 #include <ripple/core/Config.h>
 #include <ripple/core/ConfigSections.h>
@@ -394,6 +394,7 @@ void Committee::submitFinalLedger()
 
     if (!app_.getHashRouter().shouldRelay(mFinalLedger->ledgerHash()))
     {
+        JLOG(journal_.info()) << "Repeat submit finalledger, suppressed";
         return;
     }
 
@@ -431,13 +432,41 @@ void Committee::sendMessage(std::shared_ptr<Message> const &m)
     for (auto w : mPeers)
     {
         if (auto p = w.lock())
+        {
+            JLOG(journal_.info()) << "sendMessage "
+                << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+                << " to committee[" << p->getShardRole() << ":" << p->getShardIndex()
+                << ":" << p->getRemoteAddress() << "]";
             p->send(m);
+        }
+    }
+}
+
+void Committee::relay(
+    boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
+    std::shared_ptr<Message> const &m)
+{
+    std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+
+    for (auto w : mPeers)
+    {
+        if (auto p = w.lock())
+        {
+            if (!toSkip || toSkip.get().find(p->id()) == toSkip.get().end())
+            {
+                JLOG(journal_.info()) << "relay "
+                    << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+                    << " to committee[" << p->getShardRole() << ":" << p->getShardIndex()
+                    << ":" << p->getRemoteAddress() << "]";
+                p->send(m);
+            }
+        }
     }
 }
 
 void Committee::onMessage(protocol::TMMicroLedgerSubmit const& m)
 {
-    std::shared_ptr<MicroLedger> microLedger = std::make_shared<MicroLedger>(m);
+    std::shared_ptr<MicroLedger> microLedger = std::make_shared<MicroLedger>(m, false);
 
     uint32 shardID = microLedger->shardID();
 
@@ -470,6 +499,9 @@ void Committee::onMessage(protocol::TMMicroLedgerSubmit const& m)
     if (seq == curSeq)
     {
         std::lock_guard<std::recursive_mutex> _(mMLBMutex);
+
+        JLOG(journal_.info()) << "Recved valid microledger seq:" << microLedger->seq()
+            << " shardID:" << microLedger->shardID();
 
         mValidMicroLedgers.emplace(shardID, microLedger);
         return;

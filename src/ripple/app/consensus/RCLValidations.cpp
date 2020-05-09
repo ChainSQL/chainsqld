@@ -249,8 +249,8 @@ handleNewValidation(Application& app,
         AddOutcome const res = validations.add(*pubKey, val);
 
         // This is a duplicate validation
-        if (res == AddOutcome::repeat)
-            return false;
+        //if (res == AddOutcome::repeat)
+        //    return false;
 
         // This validation replaced a prior one with the same sequence number
         if (res == AddOutcome::sameSeq)
@@ -266,13 +266,13 @@ handleNewValidation(Application& app,
                     << toBase58(TokenType::TOKEN_NODE_PUBLIC, signer)
                     << " added "
                     << (val->isTrusted() ? "trusted/" : "UNtrusted/")
-                    << ((res == AddOutcome::current) ? "current" : "stale");
+                    << ((res == AddOutcome::current) ? "current" : ((res == AddOutcome::repeat) ? "repeat":"stale"));
 
         // Trusted current validations should be checked and relayed.
         // Trusted validations with sameSeq replaced an older validation
         // with that sequence number, so should still be checked and relayed.
         if (val->isTrusted() &&
-            (res == AddOutcome::current || res == AddOutcome::sameSeq))
+            (res == AddOutcome::current || res == AddOutcome::sameSeq || res == AddOutcome::repeat))
         {
             if (shardMgr.myShardRole() == ShardManager::SHARD)
             {

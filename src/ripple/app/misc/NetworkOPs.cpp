@@ -1783,7 +1783,11 @@ void NetworkOPsImp::processTrustedProposal (
     if (mConsensus.peerProposal(
             app_.timeKeeper().closeTime(), peerPos))
     {
-        app_.overlay().relay(*set, peerPos.suppressionID());
+        auto toSkip = app_.getHashRouter().shouldRelay(peerPos.suppressionID());
+        auto const sm = std::make_shared<Message>(
+            *set, protocol::mtPROPOSE_LEDGER);
+        app_.getShardManager().nodeBase().relay(toSkip, sm);
+        //app_.overlay().relay(*set, peerPos.suppressionID());
     }
     else
         JLOG(m_journal.info()) << "Not relaying trusted proposal";
@@ -1801,9 +1805,15 @@ NetworkOPsImp::mapComplete (
     protocol::TMHaveTransactionSet msg;
     msg.set_hash (map->getHash().as_uint256().begin(), 256 / 8);
     msg.set_status (protocol::tsHAVE);
-    app_.overlay().foreach (send_always (
-        std::make_shared<Message> (
-            msg, protocol::mtHAVE_SET)));
+    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
+    {
+        app_.getShardManager().node().sendMessage(
+            app_.getShardManager().node().shardID(),
+            std::make_shared<Message>(msg, protocol::mtHAVE_SET));
+    }
+    //app_.overlay().foreach (send_always (
+    //    std::make_shared<Message> (
+    //        msg, protocol::mtHAVE_SET)));
 
     // We acquired it because consensus asked us to
     if (fromAcquire)
