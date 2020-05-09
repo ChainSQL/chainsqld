@@ -69,14 +69,10 @@ public:
 		for (int i = 0; i < signatures.size(); i++)
 		{
 			protocol::Signature const& sig = signatures.Get(i);
-			auto const publicKey = parseBase58<PublicKey>(
-				TokenType::TOKEN_NODE_PUBLIC, sig.publickey());
-			if (publicKey)
-			{
-				Blob signature;
-				signature.assign(sig.signature().begin(), sig.signature().end());
-				addSignature(*publicKey, signature);
-			}
+            PublicKey const publicKey(makeSlice(sig.publickey()));
+            Blob signature;
+            signature.assign(sig.signature().begin(), sig.signature().end());
+            addSignature(publicKey, signature);
 		}
 	}
 

@@ -244,9 +244,9 @@ void Lookup::eraseDeactivate()
     }
 }
 
-void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
+void Lookup::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m)
 {
-	auto microWithMeta = std::make_shared<MicroLedger>(m);
+	auto microWithMeta = std::make_shared<MicroLedger>(*m);
 
     if (!app_.getHashRouter().shouldRelay(microWithMeta->ledgerHash()))
     {
@@ -266,9 +266,9 @@ void Lookup::onMessage(protocol::TMMicroLedgerSubmit const& m)
 	checkSaveLedger();
 }
 
-void Lookup::onMessage(protocol::TMFinalLedgerSubmit const& m)
+void Lookup::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 {
-	auto finalLedger = std::make_shared<FinalLedger>(m);
+	auto finalLedger = std::make_shared<FinalLedger>(*m);
 
     if (!app_.getHashRouter().shouldRelay(finalLedger->ledgerHash()))
     {

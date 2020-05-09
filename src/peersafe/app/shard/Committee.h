@@ -146,8 +146,8 @@ public:
         boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
         std::shared_ptr<Message> const &m) override;
 
-    void onMessage(protocol::TMMicroLedgerSubmit const& m);
-    void onMessage(protocol::TMMicroLedgerAcquire const& m, std::weak_ptr<PeerImp> weak);
+    void onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m);
+    void onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const& m, std::weak_ptr<PeerImp> weak);
 
 };
 

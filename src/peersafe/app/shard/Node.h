@@ -133,8 +133,8 @@ public:
         boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
         std::shared_ptr<Message> const &m) override;
 
-    void onMessage(protocol::TMFinalLedgerSubmit const& m);
-    void onMessage(protocol::TMTransactions const& m);
+    void onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m);
+    void onMessage(std::shared_ptr<protocol::TMTransactions> const& m);
 };
 
 }

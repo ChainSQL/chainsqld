@@ -1970,16 +1970,15 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 
 void PeerImp::onMessage(std::shared_ptr <protocol::TMTransactions> const& m)
 {
-    protocol::TMTransactions& packet = *m;
-    std::weak_ptr<PeerImp> weak = shared_from_this();
+    auto const pap = &app_;
 
     switch (app_.getShardManager().myShardRole())
     {
     case ShardManager::SHARD:
         app_.getJobQueue().addJob(
             jtTRANSACTION, "recvTransactions->checkTransactions",
-            [&](Job&) {
-            app_.getShardManager().node().onMessage(packet);
+            [pap, m](Job&) {
+            pap->getShardManager().node().onMessage(m);
         });
         break;
     default:
@@ -1990,7 +1989,7 @@ void PeerImp::onMessage(std::shared_ptr <protocol::TMTransactions> const& m)
 void
 PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
 {
-    protocol::TMMicroLedgerSubmit& packet = *m;
+    auto const pap = &app_;
 
     switch (app_.getShardManager().myShardRole())
     {
@@ -1999,15 +1998,15 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
     case ShardManager::LOOKUP | ShardManager::SYNC:
         app_.getJobQueue().addJob(
             jtMLSUBMIT, "recvMicroLedger",
-            [&](Job&) {
-                app_.getShardManager().lookup().onMessage(packet);
+            [pap, m](Job&) {
+            pap->getShardManager().lookup().onMessage(m);
         });
         break;
     case ShardManager::COMMITTEE:
         app_.getJobQueue().addJob(
             jtMLSUBMIT, "recvMicroLedger",
-            [&](Job&) {
-            app_.getShardManager().committee().onMessage(packet);
+            [pap, m](Job&) {
+            pap->getShardManager().committee().onMessage(m);
         });
         break;
     default:
@@ -2018,7 +2017,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
 void
 PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
 {
-    protocol::TMFinalLedgerSubmit& packet = *m;
+    auto const pap = &app_;
 
     switch (app_.getShardManager().myShardRole())
     {
@@ -2027,15 +2026,15 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
 	case ShardManager::LOOKUP | ShardManager::SYNC:
         app_.getJobQueue().addJob(
             jtFLSUBMIT, "recvFinalLedger",
-            [&](Job&) {
-            app_.getShardManager().lookup().onMessage(packet);
+            [pap, m](Job&) {
+            pap->getShardManager().lookup().onMessage(m);
         });
         break;
     case ShardManager::SHARD:
         app_.getJobQueue().addJob(
             jtFLSUBMIT, "recvFinalLedger",
-            [&](Job&) {
-            app_.getShardManager().node().onMessage(packet);
+            [pap, m](Job&) {
+            pap->getShardManager().node().onMessage(m);
         });
         break;
     default:
@@ -2046,7 +2045,8 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
 void
 PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerAcquire> const& m)
 {
-    protocol::TMMicroLedgerAcquire& packet = *m;
+    auto const pap = &app_;
+
     std::weak_ptr<PeerImp> weak = shared_from_this();
 
     switch (app_.getShardManager().myShardRole())
@@ -2054,8 +2054,8 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerAcquire> const& m)
     case ShardManager::COMMITTEE:
         app_.getJobQueue().addJob(
             jtML_ACQUIRE, "Recv->MicroLedgerAcquire",
-            [&](Job&) {
-            app_.getShardManager().committee().onMessage(packet, weak);
+            [pap, weak, m](Job&) {
+            pap->getShardManager().committee().onMessage(m, weak);
         });
         break;
     default:

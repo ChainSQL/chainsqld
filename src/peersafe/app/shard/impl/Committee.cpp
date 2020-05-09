@@ -464,9 +464,9 @@ void Committee::relay(
     }
 }
 
-void Committee::onMessage(protocol::TMMicroLedgerSubmit const& m)
+void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m)
 {
-    std::shared_ptr<MicroLedger> microLedger = std::make_shared<MicroLedger>(m, false);
+    std::shared_ptr<MicroLedger> microLedger = std::make_shared<MicroLedger>(*m, false);
 
     uint32 shardID = microLedger->shardID();
 
@@ -529,9 +529,9 @@ void Committee::onMessage(protocol::TMMicroLedgerSubmit const& m)
     }
 }
 
-void Committee::onMessage(protocol::TMMicroLedgerAcquire const& m, std::weak_ptr<PeerImp> weak)
+void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const& m, std::weak_ptr<PeerImp> weak)
 {
-    LedgerIndex seq = m.ledgerindex();
+    LedgerIndex seq = m->ledgerindex();
     if (seq != app_.getLedgerMaster().getValidLedgerIndex() + 1)
     {
         JLOG(journal_.info()) << "Recv micro ledger acquire, acquired seq(seq), but we are on "
@@ -539,14 +539,14 @@ void Committee::onMessage(protocol::TMMicroLedgerAcquire const& m, std::weak_ptr
         return;
     }
 
-    PublicKey const publicKey(makeSlice(m.nodepubkey()));
+    PublicKey const publicKey(makeSlice(m->nodepubkey()));
     if (!mValidators->trusted(publicKey))
     {
         JLOG(journal_.info()) << "Recv untrusted peer micro ledger acquire";
         return;
     }
 
-    uint32 shardID = m.shardid();
+    uint32 shardID = m->shardid();
     if (mValidMicroLedgers.find(shardID) == mValidMicroLedgers.end())
     {
         JLOG(journal_.info()) << "Recv micro ledger acquire, acquire shardID(shardID), missing too";
@@ -554,7 +554,7 @@ void Committee::onMessage(protocol::TMMicroLedgerAcquire const& m, std::weak_ptr
     }
 
     auto signingHash = sha512Half(seq, shardID);
-    if (!verifyDigest(publicKey, signingHash, makeSlice(m.signature()), false))
+    if (!verifyDigest(publicKey, signingHash, makeSlice(m->signature()), false))
     {
         JLOG(journal_.warn()) << "Recv micro ledger acquire fails sig check";
         return;

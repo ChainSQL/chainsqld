@@ -159,7 +159,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     for (auto it : signatures())
     {
         protocol::Signature& s = *ms.add_signatures();
-        s.set_publickey((const char *)it.first.data(), it.first.size());
+        s.set_publickey(it.first.data(), it.first.size());
         s.set_signature(it.second.data(), it.second.size());
     }
 

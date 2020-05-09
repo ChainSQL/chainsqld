@@ -466,9 +466,9 @@ Overlay::PeerSequence Node::getActivePeers(uint32 shardID)
     return ret;
 }
 
-void Node::onMessage(protocol::TMFinalLedgerSubmit const& m)
+void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 {
-	auto finalLedger = std::make_shared<FinalLedger>(m);
+	auto finalLedger = std::make_shared<FinalLedger>(*m);
 
     if (!app_.getHashRouter().shouldRelay(finalLedger->ledgerHash()))
     {
@@ -533,20 +533,14 @@ void Node::onMessage(protocol::TMFinalLedgerSubmit const& m)
 	app_.getOPs().endConsensus();
 }
 
-void Node::onMessage(protocol::TMTransactions const& m)
+void Node::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
 {
     using beast::hash_append;
 
-    auto const publicKey = parseBase58<PublicKey>(
-        TokenType::TOKEN_NODE_PUBLIC, m.nodepubkey());
-    if (!publicKey)
-    {
-        JLOG(journal_.info()) << "Transactions package from lookup has illegal pubkey";
-        return;
-    }
+    PublicKey const publicKey(makeSlice(m->nodepubkey()));
 
     boost::optional<PublicKey> pubKey =
-        mShardManager.lookup().validators().getTrustedKey(*publicKey);
+        mShardManager.lookup().validators().getTrustedKey(publicKey);
     if (!pubKey)
     {
         JLOG(journal_.info()) << "Transactions package from untrusted lookup node";
@@ -556,7 +550,7 @@ void Node::onMessage(protocol::TMTransactions const& m)
     sha512_half_hasher checkHash;
     std::vector<std::shared_ptr<Transaction>> txs;
 
-    for (auto const& TMTransaction : m.transactions())
+    for (auto const& TMTransaction : m->transactions())
     {
         SerialIter sit(makeSlice(TMTransaction.rawtransaction()));
         auto stx = std::make_shared<STTx const>(sit);
@@ -568,7 +562,7 @@ void Node::onMessage(protocol::TMTransactions const& m)
     if (!verifyDigest(
         *pubKey,
         static_cast<typename sha512_half_hasher::result_type>(checkHash),
-        makeSlice(m.signature())))
+        makeSlice(m->signature())))
     {
         JLOG(journal_.info()) << "Transactions package signature verification failed";
         return;
