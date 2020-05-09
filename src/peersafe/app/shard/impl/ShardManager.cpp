@@ -23,6 +23,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/app/misc/Transaction.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <memory>
 
 namespace ripple
@@ -47,6 +48,16 @@ ShardManager::ShardManager(Application& app, Config& cfg, Logs& log)
 	{
 		mNodeBase = mCommittee;
 	}
+
+    if (mShardRole == ShardRole::LOOKUP)
+    {
+        for (auto const& validators : mNode->shardValidators())
+        {
+            validators.second->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
+        }
+
+        mCommittee->validators().onConsensusStart(app_.getValidations().getCurrentPublicKeys());
+    }
 
 }
 

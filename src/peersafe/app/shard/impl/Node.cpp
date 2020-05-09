@@ -187,7 +187,6 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
 	int index = (view + seq) % validators.size();
 
 	mIsLeader = (pubkey == validators[index]);
-    
 
     mMicroLedger.reset();
 
@@ -198,6 +197,12 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
 
     iter->second->onConsensusStart (
         app_.getValidations().getCurrentPublicKeys ());
+
+    // Initial lookup and committee validators
+    mShardManager.lookup().validators().onConsensusStart(
+        app_.getValidations().getCurrentPublicKeys());
+    mShardManager.committee().validators().onConsensusStart(
+        app_.getValidations().getCurrentPublicKeys());
 }
 
 void Node::doAccept(

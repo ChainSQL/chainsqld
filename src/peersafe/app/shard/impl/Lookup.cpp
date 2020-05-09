@@ -66,8 +66,9 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 		//return false;
 	}
 
-	setTimer();
+    mValidators->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
 
+	setTimer();
 }
 
 void Lookup::checkSaveLedger()

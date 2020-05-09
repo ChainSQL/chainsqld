@@ -144,6 +144,12 @@ void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const p
     mValidators->onConsensusStart(
         app_.getValidations().getCurrentPublicKeys());
 
+    // Initial shards' validator(quorum and trustedKeys)
+    for (auto const& validators : mShardManager.node().shardValidators())
+    {
+        validators.second->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
+    }
+
     commitMicroLedgerBuffer(seq);
 }
 

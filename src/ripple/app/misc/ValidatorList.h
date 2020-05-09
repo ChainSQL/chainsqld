@@ -492,14 +492,14 @@ ValidatorList::onConsensusStart (
         }
     }
 
-    if (minimumQuorum_ && seenValidators.size() < quorum)
-    {
-        quorum = *minimumQuorum_;
-        JLOG (j_.warn())
-            << "Using unsafe quorum of "
-            << quorum_
-            << " as specified in the command line";
-    }
+    //if (minimumQuorum_ && seenValidators.size() < quorum)
+    //{
+    //    quorum = *minimumQuorum_;
+    //    JLOG (j_.warn())
+    //        << "Using unsafe quorum of "
+    //        << quorum_
+    //        << " as specified in the command line";
+    //}
 
     // Do not use achievable quorum until lists from all configured
     // publishers are available
