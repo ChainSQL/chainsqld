@@ -699,7 +699,7 @@ private:
 
     StateAccounting accounting_ {};
 
-    std::atomic_flag mConsensusEnded;
+    std::atomic_flag mConsensusEnded = ATOMIC_FLAG_INIT;
 
 private:
     SubInfoMapType& getCompatibleSubInfoMap(InfoSub::ACOUNT_TYPE eType);
@@ -1559,6 +1559,11 @@ bool NetworkOPsImp::checkLastClosedLedger (
     };
 
     hash_map<uint256, ValidationCount> ledgers;
+
+    // Committee use validations and peers closed
+    // Shard only used peers closed
+
+    if (app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
     {        
         hash_map<uint256, std::uint32_t> current =
             app_.getValidations().currentTrustedDistribution(
@@ -1725,8 +1730,10 @@ void NetworkOPsImp::switchLastClosedLedger (
         newLCL->info().hash.begin (),
         newLCL->info().hash.size ());
 
-    app_.overlay ().foreach (send_always (
-        std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
+    app_.getShardManager().nodeBase().relay(boost::none,
+        std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
+    //app_.overlay ().foreach (send_always (
+    //    std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
 }
 
 bool NetworkOPsImp::beginConsensus (uint256 const& networkClosed)

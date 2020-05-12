@@ -856,11 +856,11 @@ RCLConsensus::Adaptor::notify(
     //app_.overlay().foreach (
     //    send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
     uint32 shardID = app_.getShardManager().node().shardID();
-    if (shardID > Node::CommitteeShardID)
+    if (shardID == Node::CommitteeShardID)
     {
         app_.getShardManager().committee().sendMessage(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
     }
-    else
+    else if (shardID > Node::CommitteeShardID)
     {
         app_.getShardManager().node().sendMessage(shardID, std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
     }

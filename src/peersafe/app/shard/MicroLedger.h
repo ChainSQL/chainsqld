@@ -78,6 +78,11 @@ public:
         return mSeq;
     }
 
+    inline LedgerIndex seq() const
+    {
+        return mSeq;
+    }
+
     inline uint32 shardID()
     {
         return mShardID;

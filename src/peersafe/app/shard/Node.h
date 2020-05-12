@@ -54,7 +54,9 @@ private:
     // These field used if I'm a shard node.
     uint32                                                  mShardID        = InvalidShardID;
     bool                                                    mIsLeader       = false;
-    boost::optional<MicroLedger>                            mMicroLedger;
+    std::unordered_map<LedgerHash,
+        std::shared_ptr<MicroLedger>>                       mMicroLedgers;
+    std::recursive_mutex                                    mledgerMutex;
     std::map<LedgerIndex,
         std::vector<std::tuple<uint256, PublicKey, Blob>>>  mSignatureBuffer;
     std::recursive_mutex                                    mSignsMutex;
@@ -112,15 +114,15 @@ public:
 
     void doAccept(RCLTxSet const& set, RCLCxLedger const& previousLedger, NetClock::time_point closeTime);
 
-    void validate(MicroLedger &microLedger);
+    void validate(MicroLedger const& microLedger);
 
-    void commitSignatureBuffer();
+    void commitSignatureBuffer(std::shared_ptr<MicroLedger> &microLedger);
 
     void recvValidation(PublicKey& pubKey, STValidation& val);
 
-    void checkAccept();
+    void checkAccept(LedgerHash microLedgerHash);
 
-    void submitMicroLedger(bool withTxMeta);
+    void submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta);
 
     Overlay::PeerSequence getActivePeers(uint32 shardID);
 

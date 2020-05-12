@@ -1241,7 +1241,11 @@ void LedgerMaster::accept(std::shared_ptr<Ledger const> const& ledger)
 	ledger->setFull();
 	setValidLedger(ledger);
 
-	app_.getTxPool().removeTxs(ledger->txMap(), ledger->info().seq, ledger->info().parentHash);
+    if (app_.getShardManager().myShardRole() == ShardManager::LOOKUP ||
+        app_.getShardManager().myShardRole() == ShardManager::SHARD)
+    {
+        app_.getTxPool().removeTxs(ledger->txMap(), ledger->info().seq, ledger->info().parentHash);
+    }
 
 	if (!mPubLedger)
 	{

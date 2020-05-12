@@ -100,7 +100,7 @@ TrafficCount::category TrafficCount::categorize (
 	if (type == protocol::mtTRANSACTIONS)
 		return TrafficCount::category::CT_transactions;
 
-    if (type = protocol::mtMICROLEDGER_SUBMIT)
+    if (type == protocol::mtMICROLEDGER_SUBMIT)
         return TrafficCount::category::CT_micro_ledger;
 
     if (type == protocol::mtFINALLEDGER_SUBMIT)

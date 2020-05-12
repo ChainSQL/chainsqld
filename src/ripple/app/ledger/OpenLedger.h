@@ -167,6 +167,10 @@ public:
                     std::string const& suffix = "",
                         modify_type const& f = {});
 
+    void
+    accept(Rules const& rules,
+        std::shared_ptr<Ledger const> const& ledger);
+
 private:
     /** Algorithm for applying transactions.
 

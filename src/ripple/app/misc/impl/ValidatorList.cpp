@@ -71,7 +71,8 @@ bool
 ValidatorList::load (
     PublicKey const& localSigningKey,
     std::vector<std::string> const& configKeys,
-    std::vector<std::string> const& publisherKeys)
+    std::vector<std::string> const& publisherKeys,
+    bool addLocal)
 {
     static boost::regex const re (
         "[[:space:]]*"            // skip leading whitespace
@@ -131,7 +132,7 @@ ValidatorList::load (
     localPubKey_ = validatorManifests_.getMasterKey (localSigningKey);
 
     // Treat local validator key as though it was listed in the config
-    if (localPubKey_.size())
+    if (localPubKey_.size() && addLocal)
         keyListings_.insert ({ localPubKey_, 1 });
 
     JLOG (j_.debug()) <<

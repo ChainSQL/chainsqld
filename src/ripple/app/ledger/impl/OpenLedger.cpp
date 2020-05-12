@@ -170,6 +170,17 @@ OpenLedger::accept(Application& app, Rules const& rules,
     current_ = std::move(next);
 }
 
+void
+OpenLedger::accept(Rules const& rules,
+    std::shared_ptr<Ledger const> const& ledger)
+{
+    auto next = create(rules, ledger);
+    // Switch to the new open view
+    std::lock_guard<
+        std::mutex> lock2(current_mutex_);
+    current_ = std::move(next);
+}
+
 //------------------------------------------------------------------------------
 
 std::shared_ptr<OpenView>

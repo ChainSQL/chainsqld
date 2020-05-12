@@ -216,7 +216,8 @@ struct ConsensusResult
     ConsensusResult(TxSet_t&& s, Proposal_t&& p)
         : set{std::move(s)}, position{std::move(p)}
     {
-        assert(set.id() == position.position());
+        // position is microledger set hash on committee
+        //assert(set.id() == position.position());
     }
 
     //! The set of transactions consensus agrees go in the ledger

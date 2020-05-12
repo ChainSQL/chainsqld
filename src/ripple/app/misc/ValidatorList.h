@@ -180,7 +180,8 @@ public:
     load (
         PublicKey const& localSigningKey,
         std::vector<std::string> const& configKeys,
-        std::vector<std::string> const& publisherKeys);
+        std::vector<std::string> const& publisherKeys,
+        bool addLocal = true);
 
     /** Apply published list of public keys
 

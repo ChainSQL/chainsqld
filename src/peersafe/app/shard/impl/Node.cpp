@@ -28,6 +28,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/overlay/impl/TrafficCount.h>
+#include <ripple/basics/make_lock.h>
+#include <ripple/app/ledger/OpenLedger.h>
 
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
@@ -61,7 +63,9 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
 		if (!mMapOfShardValidators[i+1]->load(
 			app_.getValidationPublicKey(),
 			shardValidators[i],
-			publisherKeys)){
+			publisherKeys,
+            (mShardManager.myShardRole() == ShardManager::SHARD &&
+                mShardID == i + 1))){
 			//JLOG(m_journal.fatal()) <<
 			//	"Invalid entry in validator configuration.";
 			//return false;
@@ -188,7 +192,11 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
 
 	mIsLeader = (pubkey == validators[index]);
 
-    mMicroLedger.reset();
+    if (view == 0)
+    {
+        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
+        mMicroLedgers.clear();
+    }
 
     {
         std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
@@ -215,49 +223,53 @@ void Node::doAccept(
     auto buildLCL =
         std::make_shared<Ledger>(*previousLedger.ledger_, closeTime);
 
+    OpenView accum(&*buildLCL);
+    assert(!accum.open());
+
+    // Normal case, we are not replaying a ledger close
+    applyTransactions(
+        app_, set, accum, [&buildLCL](uint256 const& txID) {
+        return !buildLCL->txExists(txID);
+    });
+
+    auto microLedger = std::make_shared<MicroLedger>(mShardID, accum.info().seq, accum);
+
+    // After view change, If generate a same microledger with previous view.
+    // Use previous signatures, is this Ok?
     {
-        OpenView accum(&*buildLCL);
-        assert(!accum.open());
-
-        // Normal case, we are not replaying a ledger close
-        applyTransactions(
-            app_, set, accum, [&buildLCL](uint256 const& txID) {
-            return !buildLCL->txExists(txID);
-        });
-
-        mMicroLedger.emplace(mShardID, accum.info().seq, accum);
+        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
+        if (mMicroLedgers.emplace(microLedger->ledgerHash(), microLedger).second)
+        {
+            commitSignatureBuffer(microLedger);
+        }
     }
 
-    commitSignatureBuffer();
+    JLOG(journal_.info()) << "MicroLedger: " << microLedger->ledgerHash();
 
-    JLOG(journal_.info()) << "MicroLedger: " << mMicroLedger->ledgerHash();
-
-    validate(*mMicroLedger);
+    validate(*microLedger);
 
     // See if we can submit this micro ledger.
-    checkAccept();
+    checkAccept(microLedger->ledgerHash());
 }
 
-void Node::commitSignatureBuffer()
+void Node::commitSignatureBuffer(std::shared_ptr<MicroLedger> &microLedger)
 {
-    assert(mMicroLedger);
-
     std::lock_guard<std::recursive_mutex> lock_(mSignsMutex);
 
-    auto iter = mSignatureBuffer.find(mMicroLedger->seq());
+    auto iter = mSignatureBuffer.find(microLedger->seq());
     if (iter != mSignatureBuffer.end())
     {
         for (auto it = iter->second.begin(); it != iter->second.end(); ++it)
         {
-            if (std::get<0>(*it) == mMicroLedger->ledgerHash())
+            if (std::get<0>(*it) == microLedger->ledgerHash())
             {
-                mMicroLedger->addSignature(std::get<1>(*it), std::get<2>(*it));
+                microLedger->addSignature(std::get<1>(*it), std::get<2>(*it));
             }
         }
     }
 }
 
-void Node::validate(MicroLedger &microLedger)
+void Node::validate(MicroLedger const& microLedger)
 {
     RCLConsensus::Adaptor& adaptor = app_.getOPs().getConsensus().adaptor_;
     auto validationTime = app_.timeKeeper().closeTime();
@@ -310,16 +322,22 @@ void Node::recvValidation(PublicKey& pubKey, STValidation& val)
         return;
     }
 
-    if (mMicroLedger)
-    {
-        if (mMicroLedger->seq() == seq &&
-            mMicroLedger->ledgerHash() == microLedgerHash)
-        {
-            std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
+    std::shared_ptr<MicroLedger> microLedger = nullptr;
 
-            mMicroLedger->addSignature(pubKey, val.getFieldVL(sfMicroLedgerSign));
-            return;
+    {
+        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
+        if (mMicroLedgers.find(microLedgerHash) != mMicroLedgers.end())
+        {
+            microLedger = mMicroLedgers[microLedgerHash];
         }
+    }
+
+    if (microLedger)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
+
+        microLedger->addSignature(pubKey, val.getFieldVL(sfMicroLedgerSign));
+        return;
     }
 
     // Buffer it
@@ -339,20 +357,34 @@ void Node::recvValidation(PublicKey& pubKey, STValidation& val)
     }
 }
 
-void Node::checkAccept()
+void Node::checkAccept(LedgerHash microLedgerHash)
 {
     assert(mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end());
+
+    std::shared_ptr<MicroLedger> microLedger = nullptr;
+
+    {
+        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
+        if (mMicroLedgers.find(microLedgerHash) != mMicroLedgers.end())
+        {
+            microLedger = mMicroLedgers[microLedgerHash];
+        }
+        else
+        {
+            return;
+        }
+    }
 
     size_t signCount = 0;
 
     {
         std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        signCount = mMicroLedger->signatures().size();
+        signCount = microLedger->signatures().size();
     }
 
     if (signCount >= mMapOfShardValidators[mShardID]->quorum())
     {
-        submitMicroLedger(false);
+        submitMicroLedger(microLedger->ledgerHash(), false);
 
         JLOG(journal_.info()) << "Set consensus phase to waitingFinalLedger";
 
@@ -360,13 +392,25 @@ void Node::checkAccept()
     }
 }
 
-void Node::submitMicroLedger(bool withTxMeta)
+void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
 {
     protocol::TMMicroLedgerSubmit ms;
 
+    {
+        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
+        if (mMicroLedgers.find(microLedgerHash) == mMicroLedgers.end())
+        {
+            JLOG(journal_.info()) << "Can't Submit microledger " << microLedgerHash
+                << ", because I didn't built it";
+            return;
+        }
+    }
+
+    auto microLedger = mMicroLedgers[microLedgerHash];
+
     auto suppressionKey = sha512Half(
-        mMicroLedger->ledgerHash(),
-        mMicroLedger->seq(),
+        microLedger->ledgerHash(),
+        microLedger->seq(),
         app_.getOPs().getConsensus().getView(),
         withTxMeta);
 
@@ -376,10 +420,10 @@ void Node::submitMicroLedger(bool withTxMeta)
         return;
     }
 
-    JLOG(journal_.info()) << "Submit microledger(seq:" << mMicroLedger->seq() << ") to " 
+    JLOG(journal_.info()) << "Submit microledger(seq:" << microLedger->seq() << ") to "
         << (withTxMeta ? "lookup" : "committee");
 
-    mMicroLedger->compose(ms, withTxMeta);
+    microLedger->compose(ms, withTxMeta);
 
     auto const m = std::make_shared<Message>(
         ms, protocol::mtMICROLEDGER_SUBMIT);
@@ -513,26 +557,42 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         << " transaction nodes";
     JLOG(journal_.info()) << "flushDirty time used:" << utcTime() - timeStart << "ms";
 
+    buildLCL->unshare();
+    buildLCL->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
+
     // check hash
     if (ledgerInfo.accountHash != buildLCL->stateMap().getHash().as_uint256() ||
-        ledgerInfo.txHash != buildLCL->txMap().getHash().as_uint256())
+        ledgerInfo.txHash != buildLCL->txMap().getHash().as_uint256() ||
+        ledgerInfo.hash != buildLCL->info().hash)
     {
         JLOG(journal_.warn()) << "Final ledger txs/accounts shamap root hash missmatch";
         return;
     }
 
-    submitMicroLedger(true);
-
-    buildLCL->unshare();
-    buildLCL->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
+    submitMicroLedger(finalLedger->getMicroLedgerHash(mShardID), true);
 
     app_.getLedgerMaster().storeLedger(buildLCL);
 
-    app_.getOPs().getConsensus().adaptor_.notify(protocol::neACCEPTED_LEDGER, RCLCxLedger{std::move(buildLCL)}, true);
+    app_.getOPs().getConsensus().adaptor_.notify(protocol::neACCEPTED_LEDGER, RCLCxLedger{buildLCL}, true);
 
     app_.getLedgerMaster().setBuildingLedger(0);
 	//save ledger
 	app_.getLedgerMaster().accept(buildLCL);
+
+    // Build new open ledger for newRound
+    {
+        auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
+        auto sl = make_lock(app_.getLedgerMaster().peekMutex(), std::defer_lock);
+        std::lock(lock, sl);
+
+        auto const lastVal = app_.getLedgerMaster().getValidatedLedger();
+        boost::optional<Rules> rules;
+        rules.emplace(*lastVal, app_.config().features);
+
+        app_.openLedger().accept(*rules, buildLCL);
+    }
+
+    app_.getLedgerMaster().setClosedLedger(buildLCL);
 
 	//begin next round consensus
 	app_.getOPs().endConsensus();

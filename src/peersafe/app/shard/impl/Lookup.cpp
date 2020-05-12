@@ -59,7 +59,8 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 	if (!mValidators->load(
 		app_.getValidationPublicKey(),
         lookupValidators,
-		publisherKeys))
+		publisherKeys,
+        mShardManager.myShardRole() == ShardManager::LOOKUP))
 	{
 		//JLOG(m_journal.fatal()) <<
 		//	"Invalid entry in validator configuration.";
@@ -143,15 +144,16 @@ void Lookup::saveLedger(LedgerIndex seq)
 			<< " transaction nodes";
 	}
 
+    ledgerToSave->unshare();
+    ledgerToSave->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
+
     if (ledgerInfo.accountHash != ledgerToSave->stateMap().getHash().as_uint256() ||
-        ledgerInfo.txHash != ledgerToSave->txMap().getHash().as_uint256())
+        ledgerInfo.txHash != ledgerToSave->txMap().getHash().as_uint256() ||
+        ledgerInfo.hash != ledgerToSave->info().hash)
     {
         JLOG(journal_.warn()) << "Final ledger txs/accounts shamap root hash missmatch";
         return;
     }
-
-	ledgerToSave->unshare();
-	ledgerToSave->setAccepted(ledgerInfo.closeTime, ledgerInfo.closeTimeResolution, true, app_.config());
 
 	//save ledger
 	app_.getLedgerMaster().accept(ledgerToSave);

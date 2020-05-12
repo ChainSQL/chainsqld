@@ -35,7 +35,8 @@ namespace ripple {
 class FinalLedger : public LedgerBase {
 
 private:
-    LedgerIndex                     mSeq;                       // Ledger sequence.
+    LedgerIndex                     mSeq;                       // Ripple::Ledger sequence.
+    LedgerHash                      mHash;                      // Ripple::Ledger hash
     uint64                          mDrops;
     uint32                          mCloseTime;
     uint32                          mCloseTimeResolution;
@@ -76,6 +77,18 @@ public:
         -> std::vector<TxID> const&
     {
         return mTxsHashes;
+    }
+
+    inline LedgerHash getMicroLedgerHash(uint32 shardID)
+    {
+        if (mMicroLedgers.find(shardID) != mMicroLedgers.end())
+        {
+            return mMicroLedgers[shardID];
+        }
+        else
+        {
+            return zero;
+        }
     }
 
 	LedgerInfo getLedgerInfo();

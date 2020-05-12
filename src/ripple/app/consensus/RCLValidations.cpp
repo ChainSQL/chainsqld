@@ -278,7 +278,7 @@ handleNewValidation(Application& app,
             {
                 shardMgr.node().recvValidation(*pubKey, *val);
 
-                shardMgr.node().checkAccept();
+                shardMgr.node().checkAccept(hash);
             }
             else
             {

@@ -214,6 +214,7 @@ SOTemplate const& STValidation::getFormat ()
             format.push_back (SOElement (sfConsensusHash,   SOE_OPTIONAL));
 			format.push_back(SOElement  (sfDropsPerByte,    SOE_OPTIONAL));
             format.push_back (SOElement (sfShardID,         SOE_REQUIRED));
+            format.push_back (SOElement (sfFinalLedgerHash, SOE_OPTIONAL));
             format.push_back (SOElement (sfMicroLedgerSign, SOE_OPTIONAL));
             format.push_back (SOElement (sfFinalLedgerSign, SOE_OPTIONAL));
         }

@@ -31,9 +31,10 @@ FinalLedger::FinalLedger(
     : mStateDelta(std::move(view.items()))
 {
     mSeq = ledger->seq();
+    mHash = ledger->info().hash;
     mDrops = ledger->info().drops.drops();
     mCloseTime = ledger->info().closeTime.time_since_epoch().count();
-    mCloseTimeResolution = ledger->info().parentCloseTime.time_since_epoch().count();
+    mCloseTimeResolution = ledger->info().closeTimeResolution.count();
     mCloseFlags = ledger->info().closeFlags;
 
     mTxShaMapRootHash = ledger->info().txHash;
@@ -69,6 +70,7 @@ void FinalLedger::computeHash()
 
     setLedgerHash(sha512Half(
         mSeq,
+        mHash,
         mDrops,
         mCloseTime,
         mCloseTimeResolution,
@@ -82,6 +84,7 @@ FinalLedger::FinalLedger(protocol::TMFinalLedgerSubmit const& m)
 {
 	protocol::FinalLedger const& finalLedger = m.finalledger();
 	mSeq = finalLedger.ledgerseq();
+    memcpy(mHash.begin(), finalLedger.ledgerhash().data(), 32);
 	mDrops = finalLedger.drops();
 	mCloseTime = finalLedger.closetime();
 	mCloseTimeResolution = finalLedger.closetimeresolution();
@@ -151,6 +154,7 @@ void FinalLedger::compose(protocol::TMFinalLedgerSubmit& ms)
     protocol::FinalLedger& m = *(ms.mutable_finalledger());
 
     m.set_ledgerseq(mSeq);
+    m.set_ledgerhash(mHash.data(), mHash.size());
     m.set_drops(mDrops);
     m.set_closetime(mCloseTime);
     m.set_closetimeresolution(mCloseTimeResolution);
@@ -206,6 +210,7 @@ LedgerInfo FinalLedger::getLedgerInfo()
 {
 	LedgerInfo info;
 	info.seq = mSeq;
+    info.hash = mHash;
 	info.txHash = mTxShaMapRootHash;
 	info.drops = mDrops;
 	info.closeFlags = mCloseFlags;

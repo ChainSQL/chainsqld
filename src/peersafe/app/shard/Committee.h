@@ -115,7 +115,7 @@ public:
 
     bool microLedgersAllReady();
 
-    std::vector<std::shared_ptr<MicroLedger const>> const& canonicalMicroLedgers();
+    std::vector<std::shared_ptr<MicroLedger const>> const canonicalMicroLedgers();
 
     uint32 firstMissingMicroLedger();
 

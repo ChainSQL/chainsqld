@@ -119,6 +119,13 @@ public:
         return mClosedLedger.get();
     }
 
+    void
+    setClosedLedger(std::shared_ptr<Ledger const> const& lastClosed)
+    {
+        ScopedLockType ml(m_mutex);
+        mClosedLedger.set(lastClosed);
+    }
+
     // The validated ledger is the last fully validated ledger
     std::shared_ptr<Ledger const>
     getValidatedLedger ()

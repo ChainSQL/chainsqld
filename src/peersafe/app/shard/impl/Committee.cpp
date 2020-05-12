@@ -60,7 +60,8 @@ Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Jour
 	if (!mValidators->load(
 		app_.getValidationPublicKey(),
 		committeeValidators,
-		publisherKeys))
+		publisherKeys,
+        mShardManager.myShardRole() == ShardManager::COMMITTEE))
 	{
 		//JLOG(m_journal.fatal()) <<
 		//	"Invalid entry in validator configuration.";
@@ -280,7 +281,7 @@ void Committee::setTimer(uint32 repeats)
 }
 
 auto Committee::canonicalMicroLedgers()
-    ->std::vector<std::shared_ptr<MicroLedger const>> const&
+    ->std::vector<std::shared_ptr<MicroLedger const>> const
 {
     std::vector<std::shared_ptr<MicroLedger const>> v;
     for (auto it : mValidMicroLedgers)
