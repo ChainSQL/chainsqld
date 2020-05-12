@@ -62,14 +62,15 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 		publisherKeys,
         mShardManager.myShardRole() == ShardManager::LOOKUP))
 	{
-		//JLOG(m_journal.fatal()) <<
-		//	"Invalid entry in validator configuration.";
-		//return false;
+        Throw<std::runtime_error>("Lookup validators load failed");
 	}
 
     mValidators->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
 
-	setTimer();
+    if (mShardManager.myShardRole() == ShardManager::LOOKUP)
+    {
+        setTimer();
+    }
 }
 
 void Lookup::checkSaveLedger()

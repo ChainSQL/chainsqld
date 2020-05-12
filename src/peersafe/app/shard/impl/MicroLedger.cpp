@@ -209,24 +209,24 @@ void MicroLedger::apply(OpenView& to) const
 {
     to.rawDestroyZXC(mDropsDestroyed);
 
-    for (auto& it : mStateDeltas)
+    for (auto& stateDelta : mStateDeltas)
     {
-        std::shared_ptr<SLE> sle = std::make_shared<SLE>(std::move(it.second.second.slice()), it.first);
+        std::shared_ptr<SLE> sle = std::make_shared<SLE>(stateDelta.second.second.slice(), stateDelta.first);
         Keylet k(sle->getType(), sle->key());
         std::shared_ptr<SLE const> base = to.read(k);
         switch (sle->getType())
         {
         case ltACCOUNT_ROOT:
-            switch (it.second.first)
+            switch (stateDelta.second.first)
             {
             case detail::RawStateTable::Action::insert:
             {
-                auto it = to.items().items().find(k.key);
-                if (it != to.items().items().end())
+                if (to.items().items().count(k.key))
                 {
-                    if (it->second.first == detail::RawStateTable::Action::insert)
+                    auto item = to.items().items()[k.key];
+                    if (item.first == detail::RawStateTable::Action::insert)
                     {
-                        auto preSle = it->second.second;
+                        auto preSle = item.second;
                         auto priorBlance = preSle->getFieldAmount(sfBalance);
                         auto deltaBalance = sle->getFieldAmount(sfBalance);
                         preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
@@ -245,8 +245,7 @@ void MicroLedger::apply(OpenView& to) const
             case detail::RawStateTable::Action::erase:
             {
                 // Account root erase only occur with Contract, don't support it.
-                auto it = to.items().items().find(k.key);
-                if (it != to.items().items().end())
+                if (to.items().items().count(k.key))
                 {
                     //LogicError("RawStateTable::");
                 }
@@ -258,12 +257,12 @@ void MicroLedger::apply(OpenView& to) const
             }
             case detail::RawStateTable::Action::replace:
             {
-                auto it = to.items().items().find(k.key);
-                if (it != to.items().items().end())
+                if (to.items().items().count(k.key))
                 {
-                    if (it->second.first == detail::RawStateTable::Action::replace)
+                    auto item = to.items().items()[k.key];
+                    if (item.first == detail::RawStateTable::Action::replace)
                     {
-                        auto preSle = it->second.second;
+                        auto preSle = item.second;
                         auto priorBlance = preSle->getFieldAmount(sfBalance);
                         auto deltaBalance = sle->getFieldAmount(sfBalance);
                         preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
@@ -287,13 +286,12 @@ void MicroLedger::apply(OpenView& to) const
             }
             break;
         case ltTABLELIST:
-            switch (it.second.first)
+            switch (stateDelta.second.first)
             {
             case detail::RawStateTable::Action::insert:
             case detail::RawStateTable::Action::erase:
             {
-                auto it = to.items().items().find(k.key);
-                if (it != to.items().items().end())
+                if (to.items().items().count(k.key))
                 {
                     //LogicError("RawStateTable::");
                 }
@@ -305,10 +303,10 @@ void MicroLedger::apply(OpenView& to) const
             }
             case detail::RawStateTable::Action::replace:
             {
-                auto it = to.items().items().find(k.key);
-                if (it != to.items().items().end())
+                if (to.items().items().count(k.key))
                 {
-                    if (it->second.first == detail::RawStateTable::Action::replace)
+                    auto item = to.items().items()[k.key];
+                    if (item.first == detail::RawStateTable::Action::replace)
                     {
                         auto tableEntries = sle->getFieldArray(sfTableEntries);
                         auto baseTableEntries = base->getFieldArray(sfTableEntries);
@@ -348,14 +346,13 @@ void MicroLedger::apply(OpenView& to) const
             }
             break;
         case ltDIR_NODE:
-            switch (it.second.first)
+            switch (stateDelta.second.first)
             {
             case detail::RawStateTable::Action::insert:
             case detail::RawStateTable::Action::erase:
             case detail::RawStateTable::Action::replace:        // replace need any other handled?
             {
-                auto it = to.items().items().find(k.key);
-                if (it != to.items().items().end())
+                if (to.items().items().count(k.key))
                 {
                     //LogicError("RawStateTable::");
                 }

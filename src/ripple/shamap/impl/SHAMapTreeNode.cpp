@@ -85,7 +85,8 @@ SHAMapTreeNode::SHAMapTreeNode (std::shared_ptr<SHAMapItem const> const& item,
     : SHAMapAbstractNode(type, seq)
     , mItem (item)
 {
-    assert (item->peekData ().size () >= 12);
+    //assert (item->peekData ().size () >= 12);
+    assert(item->peekData().size() >= 2);
     updateHash();
 }
 
@@ -94,7 +95,8 @@ SHAMapTreeNode::SHAMapTreeNode (std::shared_ptr<SHAMapItem const> const& item,
     : SHAMapAbstractNode(type, seq, hash)
     , mItem (item)
 {
-    assert (item->peekData ().size () >= 12);
+    //assert (item->peekData ().size () >= 12);
+    assert(item->peekData().size() >= 2);
 }
 
 std::shared_ptr<SHAMapAbstractNode>

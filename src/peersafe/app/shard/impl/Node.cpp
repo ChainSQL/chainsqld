@@ -61,15 +61,13 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
 		std::vector<std::string>  publisherKeys;
 		// Setup trusted validators
 		if (!mMapOfShardValidators[i+1]->load(
-			app_.getValidationPublicKey(),
-			shardValidators[i],
-			publisherKeys,
-            (mShardManager.myShardRole() == ShardManager::SHARD &&
-                mShardID == i + 1))){
-			//JLOG(m_journal.fatal()) <<
-			//	"Invalid entry in validator configuration.";
-			//return false;
-			mMapOfShardValidators.erase(i+1);
+			    app_.getValidationPublicKey(),
+			    shardValidators[i],
+			    publisherKeys,
+                (mShardManager.myShardRole() == ShardManager::SHARD && mShardID == i + 1)))
+        {
+			mMapOfShardValidators.erase(i + 1);
+            Throw<std::runtime_error>("Shard validators load failed");
 		}
 
 	}

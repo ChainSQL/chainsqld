@@ -63,9 +63,7 @@ Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Jour
 		publisherKeys,
         mShardManager.myShardRole() == ShardManager::COMMITTEE))
 	{
-		//JLOG(m_journal.fatal()) <<
-		//	"Invalid entry in validator configuration.";
-		//return false;
+        Throw<std::runtime_error>("Committtee validators load failed");
 	}
 }
 
