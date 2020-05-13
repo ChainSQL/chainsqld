@@ -233,14 +233,7 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
 
     auto const m = std::make_shared<Message>(prop, protocol::mtPROPOSE_LEDGER);
 
-    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
-    {
-        app_.getShardManager().node().sendMessage(app_.getShardManager().node().shardID(), m);
-    }
-    else if (app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
-    {
-        app_.getShardManager().committee().sendMessage(m);
-    }
+    app_.getShardManager().nodeBase().sendMessage(m);
     //app_.overlay().send(prop);
 }
 
@@ -259,14 +252,7 @@ RCLConsensus::Adaptor::sendViewChange(ViewChange const& change)
 
     auto const m = std::make_shared<Message>(msg, protocol::mtVIEW_CHANGE);
 
-    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
-    {
-        app_.getShardManager().node().sendMessage(app_.getShardManager().node().shardID(), m);
-    }
-    else if (app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
-    {
-        app_.getShardManager().committee().sendMessage(m);
-    }
+    app_.getShardManager().nodeBase().sendMessage(m);
 	//app_.overlay().send(msg);
 }
 
@@ -855,14 +841,15 @@ RCLConsensus::Adaptor::notify(
     s.set_lastseq(uMax);
     //app_.overlay().foreach (
     //    send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
-    uint32 shardID = app_.getShardManager().node().shardID();
-    if (shardID == Node::CommitteeShardID)
+    // Maybe need to send to all peers
+    if (app_.getShardManager().myShardRole() == ShardManager::SHARD ||
+        app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
     {
-        app_.getShardManager().committee().sendMessage(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
+        app_.getShardManager().nodeBase().sendMessage(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
     }
-    else if (shardID > Node::CommitteeShardID)
+    else
     {
-        app_.getShardManager().node().sendMessage(shardID, std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
+        app_.getShardManager().lookup().sendMessage(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
     }
 
     JLOG(j_.trace()) << "send status change to peer";

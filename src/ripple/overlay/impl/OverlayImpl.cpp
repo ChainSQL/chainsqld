@@ -869,7 +869,8 @@ namespace ripple {
 				std::uint32_t peerRole = p->getShardRole();
 				switch (peerRole) {
 					case (std::uint32_t)(ShardManager::SYNC):
-					case (std::uint32_t)(ShardManager::LOOKUP) : {
+					case (std::uint32_t)(ShardManager::LOOKUP) : 
+                    case (std::uint32_t)(ShardManager::SYNC | ShardManager::LOOKUP) : {
 						lookups.append(p->json());
 					}
 					break;

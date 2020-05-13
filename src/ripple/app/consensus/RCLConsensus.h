@@ -176,6 +176,7 @@ class RCLConsensus
 		friend class Consensus<Adaptor>;
 		friend class RCLConsensus;
         friend class Node;
+        friend class Lookup;
 
         /** Attempt to acquire a specific ledger.
 
@@ -546,6 +547,7 @@ private:
     beast::Journal j_;
 
     friend class Node;
+    friend class Lookup;
 };
 }
 

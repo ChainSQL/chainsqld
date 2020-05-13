@@ -81,6 +81,32 @@ public:
         return *mValidators;
     }
 
+    inline void saveMicroLedger(std::shared_ptr<MicroLedger> microLedger)
+    {
+        std::lock_guard <std::recursive_mutex> lock(mutex_);
+        mMapMicroLedgers[microLedger->seq()][microLedger->shardID()] = microLedger;
+    }
+    inline void saveFinalLedger(std::shared_ptr<FinalLedger> finalLedger)
+    {
+        std::lock_guard <std::recursive_mutex> lock(mutex_);
+        mMapFinalLedger[finalLedger->seq()] = finalLedger;
+    }
+
+    inline std::shared_ptr<MicroLedger> getMicroLedger(LedgerIndex seq, uint32 shardID)
+    {
+        std::lock_guard <std::recursive_mutex> lock(mutex_);
+        assert(mMapMicroLedgers.count(seq));
+        assert(mMapMicroLedgers[seq].count(shardID));
+        return mMapMicroLedgers[seq][shardID];
+    }
+
+    inline std::shared_ptr<FinalLedger> getFinalLedger(LedgerIndex seq)
+    {
+        std::lock_guard <std::recursive_mutex> lock(mutex_);
+        assert(mMapFinalLedger.count(seq));
+        return mMapFinalLedger[seq];
+    }
+
 	void addActive(std::shared_ptr<PeerImp> const& peer);
 
 	void eraseDeactivate();
@@ -91,6 +117,7 @@ public:
     void sendMessage(std::shared_ptr<Message> const &m);
 
 	void checkSaveLedger();
+    bool checkLedger(LedgerIndex seq);
 	void resetMetaIndex(LedgerIndex seq);
 	void saveLedger(LedgerIndex seq);
 

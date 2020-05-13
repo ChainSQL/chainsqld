@@ -21,19 +21,21 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/ShardManager.h>
 #include <peersafe/app/shard/FinalLedger.h>
 #include <peersafe/app/misc/TxPool.h>
-
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/misc/HashRouter.h>
-#include <ripple/protocol/digest.h>
-
+#include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/misc/Transaction.h>
+#include <ripple/app/consensus/RCLConsensus.h>
+#include <ripple/app/consensus/RCLCxLedger.h>
+#include <ripple/basics/make_lock.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/ConfigSections.h>
-
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
+#include <ripple/protocol/digest.h>
 
-#include <ripple/app/misc/Transaction.h>
 
 namespace ripple {
 
@@ -60,14 +62,14 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 		app_.getValidationPublicKey(),
         lookupValidators,
 		publisherKeys,
-        mShardManager.myShardRole() == ShardManager::LOOKUP))
+        mShardManager.myShardRole() & ShardManager::LOOKUP))
 	{
         Throw<std::runtime_error>("Lookup validators load failed");
 	}
 
     mValidators->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
 
-    if (mShardManager.myShardRole() == ShardManager::LOOKUP)
+    if (mShardManager.myShardRole() & ShardManager::LOOKUP)
     {
         setTimer();
     }
@@ -75,33 +77,81 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 
 void Lookup::checkSaveLedger()
 {
-	LedgerIndex ledgerIndexToSave = app_.getLedgerMaster().getValidLedgerIndex() + 1;
-	if (mShardManager.shardCount() == mMapMicroLedgers[ledgerIndexToSave].size())
-	{
-		//reset tx-meta transactionIndex field
-		resetMetaIndex(ledgerIndexToSave);
+    LedgerIndex ledgerIndexToSave = app_.getLedgerMaster().getValidLedgerIndex() + 1;
 
-		//save this ledger
-		saveLedger(ledgerIndexToSave);
-	}
+    {
+        std::lock_guard <std::recursive_mutex> lock(mutex_);
+
+        if (!checkLedger(ledgerIndexToSave))
+        {
+            JLOG(journal_.info()) << "Ledger " << ledgerIndexToSave << " collected not fully";
+            return;
+        }
+
+        if (app_.getLedgerMaster().getBuildingLedger() == ledgerIndexToSave)
+        {
+            JLOG(journal_.warn()) << "Currently build ledger " << ledgerIndexToSave;
+            return;
+        }
+
+        app_.getLedgerMaster().setBuildingLedger(ledgerIndexToSave);
+    }
+
+    JLOG(journal_.info()) << "Building ledger " << ledgerIndexToSave;
+
+	//reset tx-meta transactionIndex field
+	resetMetaIndex(ledgerIndexToSave);
+
+	//save this ledger
+    saveLedger(ledgerIndexToSave);
+
+    {
+        // do clear
+        std::lock_guard <std::recursive_mutex> lock(mutex_);
+        mMapFinalLedger.erase(ledgerIndexToSave);
+        mMapMicroLedgers.erase(ledgerIndexToSave);
+    }
+
+    // Next ledger maybe collected fully
+    checkSaveLedger();
+}
+
+bool Lookup::checkLedger(LedgerIndex seq)
+{
+    std::lock_guard <std::recursive_mutex> lock(mutex_);
+    if (mMapMicroLedgers[seq].size() == mShardManager.shardCount() &&
+        mMapFinalLedger.count(seq))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 void Lookup::resetMetaIndex(LedgerIndex seq)
 {
-	auto vecHashes = mMapFinalLedger[seq]->getTxHashes();
+    auto timeStart = utcTime();
+
+    std::shared_ptr<FinalLedger> finalLedger = getFinalLedger(seq);
+
+	auto vecHashes = finalLedger->getTxHashes();
 	for (int i = 0; i < vecHashes.size(); i++)
 	{
 		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
 		{
-			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(vecHashes[i]))
-				mMapMicroLedgers[seq][shardIndex]->setMetaIndex(vecHashes[i], i,app_.journal("TxMeta"));
+            std::shared_ptr<MicroLedger> &microLedger = getMicroLedger(seq, shardIndex);
+			if (microLedger->hasTxWithMeta(vecHashes[i]))
+                microLedger->setMetaIndex(vecHashes[i], i, app_.journal("TxMeta"));
 		}
 	}
+
+    JLOG(journal_.info()) << "resetMetaIndex tx count: " << vecHashes.size()
+        << " time used: " << utcTime() - timeStart << "ms";
 }
 
 void Lookup::saveLedger(LedgerIndex seq)
 {
-	auto finalLedger = mMapFinalLedger[seq];
+	auto finalLedger = getFinalLedger(seq);
 	//build new ledger
 	auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
 	auto ledgerInfo = finalLedger->getLedgerInfo();
@@ -111,14 +161,16 @@ void Lookup::saveLedger(LedgerIndex seq)
 	//apply state
     finalLedger->apply(*ledgerToSave);
 
+    auto timeStart = utcTime();
 	//build tx-map
 	for (auto const& txID : finalLedger->getTxHashes())
 	{
 		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
 		{
-			if (mMapMicroLedgers[seq][shardIndex]->hasTxWithMeta(txID))
+            std::shared_ptr<MicroLedger> &microLedger = getMicroLedger(seq, shardIndex);
+			if (microLedger->hasTxWithMeta(txID))
 			{
-				auto txWithMeta = mMapMicroLedgers[seq][shardIndex]->getTxWithMeta(txID);
+				auto txWithMeta = microLedger->getTxWithMeta(txID);
 				auto tx = txWithMeta.first;
 				auto meta = txWithMeta.second;
 
@@ -132,6 +184,7 @@ void Lookup::saveLedger(LedgerIndex seq)
 			}
 		}
 	}
+    JLOG(journal_.info()) << "update tx map time used:" << utcTime() - timeStart << "ms";
 
 	ledgerToSave->updateSkipList();
 	{
@@ -156,12 +209,27 @@ void Lookup::saveLedger(LedgerIndex seq)
         return;
     }
 
-	//save ledger
-	app_.getLedgerMaster().accept(ledgerToSave);
+    app_.getLedgerMaster().storeLedger(ledgerToSave);
 
-    // do clear
-    mMapFinalLedger.erase(seq);
-    mMapMicroLedgers.erase(seq);
+    app_.getOPs().getConsensus().adaptor_.notify(protocol::neACCEPTED_LEDGER, RCLCxLedger{ ledgerToSave }, true);
+
+    //save ledger
+    app_.getLedgerMaster().accept(ledgerToSave);
+
+    // Build new open ledger for newRound
+    {
+        auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
+        auto sl = make_lock(app_.getLedgerMaster().peekMutex(), std::defer_lock);
+        std::lock(lock, sl);
+
+        auto const lastVal = app_.getLedgerMaster().getValidatedLedger();
+        boost::optional<Rules> rules;
+        rules.emplace(*lastVal, app_.config().features);
+
+        app_.openLedger().accept(*rules, ledgerToSave);
+    }
+
+    //app_.getLedgerMaster().setClosedLedger(ledgerToSave);
 }
 
 
@@ -258,11 +326,18 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m)
         return;
     }
 
+    if (microWithMeta->seq() <= app_.getLedgerMaster().getValidLedgerIndex())
+    {
+        JLOG(journal_.info()) << "MicroLeger: stale";
+        return;
+    }
+
 	bool valid = microWithMeta->checkValidity(
-        mShardManager.node().shardValidators().at(microWithMeta->shardID()),
+        mShardManager.node().shardValidators()[microWithMeta->shardID()],
 		true);
 	if (!valid)
 	{
+        JLOG(journal_.info()) << "Microledger signature verification failed";
 		return;
 	}
 
@@ -280,12 +355,21 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         return;
     }
 
+    if (finalLedger->seq() <= app_.getLedgerMaster().getValidLedgerIndex())
+    {
+        JLOG(journal_.info()) << "FinalLedger: stale";
+        return;
+    }
+
 	bool valid = finalLedger->checkValidity(mShardManager.committee().validatorsPtr());
 
-	if (valid)
+	if (!valid)
 	{
-		mMapFinalLedger.emplace(finalLedger->getLedgerInfo().seq, finalLedger);
+        JLOG(journal_.info()) << "FinalLeger signature verification failed";
+        return;
 	}
+
+    mMapFinalLedger.emplace(finalLedger->getLedgerInfo().seq, finalLedger);
 	checkSaveLedger();
 }
 
@@ -296,7 +380,13 @@ void Lookup::sendMessage(std::shared_ptr<Message> const &m)
     for (auto w : mPeers)
     {
         if (auto p = w.lock())
+        {
+            JLOG(journal_.info()) << "sendMessage "
+                << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+                << " to lookup[" << p->getShardRole() << ":" << p->getShardIndex()
+                << ":" << p->getRemoteAddress() << "]";
             p->send(m);
+        }
     }
 }
 

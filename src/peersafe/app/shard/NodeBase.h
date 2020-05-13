@@ -49,6 +49,8 @@ public:
 
     virtual std::int32_t getPubkeyIndex(PublicKey const& pubkey) = 0;
 
+    virtual void sendMessage(std::shared_ptr<Message> const &m) = 0;
+
     virtual void relay(
         boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
         std::shared_ptr<Message> const &m) = 0;

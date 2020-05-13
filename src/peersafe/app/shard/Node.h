@@ -54,6 +54,10 @@ private:
     // These field used if I'm a shard node.
     uint32                                                  mShardID        = InvalidShardID;
     bool                                                    mIsLeader       = false;
+    // Keep current round of micro ledgers, every view change can generate
+    // a micro ledger. The final ledger of this round only contains 
+    // one of the micro ledger, and not sure it will contains which one.
+    // So buffer all, and clear on next round.
     std::unordered_map<LedgerHash,
         std::shared_ptr<MicroLedger>>                       mMicroLedgers;
     std::recursive_mutex                                    mledgerMutex;
@@ -129,8 +133,10 @@ public:
     // To specified shard
     void sendMessage(uint32 shardID, std::shared_ptr<Message> const &m);
     // To all shard
-    void sendMessage(std::shared_ptr<Message> const &m);
-    // To specified shard and skip suppression
+    void sendMessageToAllShard(std::shared_ptr<Message> const &m);
+    // To our shard
+    void sendMessage(std::shared_ptr<Message> const &m) override;
+    // To our shard and skip suppression
     void relay(
         boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
         std::shared_ptr<Message> const &m) override;

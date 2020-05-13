@@ -141,7 +141,7 @@ public:
 
     Overlay::PeerSequence getActivePeers(uint32);
 
-    void sendMessage(std::shared_ptr<Message> const &m);
+    void sendMessage(std::shared_ptr<Message> const &m) override;
     void relay(
         boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
         std::shared_ptr<Message> const &m) override;

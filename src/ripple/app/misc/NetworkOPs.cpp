@@ -1730,7 +1730,7 @@ void NetworkOPsImp::switchLastClosedLedger (
         newLCL->info().hash.begin (),
         newLCL->info().hash.size ());
 
-    app_.getShardManager().nodeBase().relay(boost::none,
+    app_.getShardManager().nodeBase().sendMessage(
         std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
     //app_.overlay ().foreach (send_always (
     //    std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
@@ -1815,7 +1815,6 @@ NetworkOPsImp::mapComplete (
     if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
     {
         app_.getShardManager().node().sendMessage(
-            app_.getShardManager().node().shardID(),
             std::make_shared<Message>(msg, protocol::mtHAVE_SET));
     }
     //app_.overlay().foreach (send_always (

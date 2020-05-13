@@ -49,16 +49,31 @@ ShardManager::ShardManager(Application& app, Config& cfg, Logs& log)
 		mNodeBase = mCommittee;
 	}
 
-    if (mShardRole == ShardRole::LOOKUP)
+    // Initial other peers' validators(trustKey and quorum)
+    switch (mShardRole)
     {
+    case LOOKUP:
+    case SYNC:
+    case LOOKUP | SYNC:
         for (auto const& validators : mNode->shardValidators())
         {
             validators.second->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
         }
-
         mCommittee->validators().onConsensusStart(app_.getValidations().getCurrentPublicKeys());
+        break;
+    case SHARD:
+        mLookup->validators().onConsensusStart(app_.getValidations().getCurrentPublicKeys());
+        mCommittee->validators().onConsensusStart(app_.getValidations().getCurrentPublicKeys());
+        break;
+    case COMMITTEE:
+        for (auto const& validators : mNode->shardValidators())
+        {
+            validators.second->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
+        }
+        break;
+    default:
+        break;
     }
-
 }
 
 

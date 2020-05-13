@@ -46,6 +46,23 @@ public:
         SYNC        = 1 << 3,
     };
 
+    static std::string to_string(ShardRole role)
+    {
+        switch (role)
+        {
+        case LOOKUP:
+            return "LOOKUP";
+        case SHARD:
+            return "SHARD";
+        case COMMITTEE:
+            return "COMMITTEE";
+        case SYNC:
+            return "SYNC";
+        default:
+            return "UNKNOWN";
+        }
+    }
+
 private:
 
     ShardRole                           mShardRole;
@@ -96,9 +113,6 @@ public:
 	{
 		return cfg_.SHARD_COUNT;
 	}
-
-
-
 
 };
 

@@ -69,13 +69,7 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
 			mMapOfShardValidators.erase(i + 1);
             Throw<std::runtime_error>("Shard validators load failed");
 		}
-
 	}
-
-	
-
-
-
 }
 
 void Node::addActive(std::shared_ptr<PeerImp> const& peer)
@@ -203,12 +197,6 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
 
     iter->second->onConsensusStart (
         app_.getValidations().getCurrentPublicKeys ());
-
-    // Initial lookup and committee validators
-    mShardManager.lookup().validators().onConsensusStart(
-        app_.getValidations().getCurrentPublicKeys());
-    mShardManager.committee().validators().onConsensusStart(
-        app_.getValidations().getCurrentPublicKeys());
 }
 
 void Node::doAccept(
@@ -305,7 +293,7 @@ void Node::validate(MicroLedger const& microLedger)
     // Send signed validation to all of our directly connected peers
     auto const m = std::make_shared<Message>(
         val, protocol::mtVALIDATION);
-    sendMessage(mShardID, m);
+    sendMessage(m);
 }
 
 void Node::recvValidation(PublicKey& pubKey, STValidation& val)
@@ -436,6 +424,7 @@ void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
     }
 }
 
+// To specified shard
 void Node::sendMessage(uint32 shardID, std::shared_ptr<Message> const &m)
 {
     std::lock_guard<std::recursive_mutex> _(mPeersMutex);
@@ -456,7 +445,8 @@ void Node::sendMessage(uint32 shardID, std::shared_ptr<Message> const &m)
     }
 }
 
-void Node::sendMessage(std::shared_ptr<Message> const &m)
+// To all shard
+void Node::sendMessageToAllShard(std::shared_ptr<Message> const &m)
 {
     std::lock_guard<std::recursive_mutex> _(mPeersMutex);
 
@@ -466,6 +456,28 @@ void Node::sendMessage(std::shared_ptr<Message> const &m)
     }
 }
 
+// To our shard
+void Node::sendMessage(std::shared_ptr<Message> const &m)
+{
+    std::lock_guard<std::recursive_mutex> _(mPeersMutex);
+
+    if (mMapOfShardPeers.find(mShardID) != mMapOfShardPeers.end())
+    {
+        for (auto w : mMapOfShardPeers[mShardID])
+        {
+            if (auto p = w.lock())
+            {
+                JLOG(journal_.info()) << "sendMessage "
+                    << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+                    << " to our shard[" << p->getShardRole() << ":" << p->getShardIndex()
+                    << ":" << p->getRemoteAddress() << "]";
+                p->send(m);
+            }
+        }
+    }
+}
+
+// To our shard and skip suppression
 void Node::relay(
     boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
     std::shared_ptr<Message> const &m)
@@ -482,7 +494,7 @@ void Node::relay(
                 {
                     JLOG(journal_.info()) << "relay "
                         << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
-                        << " to shard[" << p->getShardRole() << ":" << p->getShardIndex()
+                        << " to our shard[" << p->getShardRole() << ":" << p->getShardIndex()
                         << ":" << p->getRemoteAddress() << "]";
                     p->send(m);
                 }
@@ -525,8 +537,15 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 
     auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
 
-    if (finalLedger->seq() != previousLedger->seq() + 1)
+    if (finalLedger->seq() < previousLedger->seq() + 1)
     {
+        JLOG(journal_.info()) << "FinalLeger: stale";
+        return;
+    }
+
+    if (finalLedger->seq() > previousLedger->seq() + 1)
+    {
+        Throw<std::runtime_error>("TODO: Buffer it OR handleWrongLedger");
         return;
     }
 

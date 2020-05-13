@@ -27,6 +27,7 @@
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/TransactionSign.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 
@@ -43,6 +44,18 @@ static NetworkOPs::FailHard getFailHard (RPC::Context const& context)
 // }
 Json::Value doSubmit (RPC::Context& context)
 {
+    Json::Value jvResult;
+
+    if (!(context.app.getShardManager().myShardRole() & ShardManager::LOOKUP))
+    {
+        jvResult[jss::error] = "InvalidSubmit";
+        jvResult[jss::error_message] = "I'm a " +
+            ShardManager::to_string(context.app.getShardManager().myShardRole())
+            + ", please submit to LOOKUP";
+
+        return jvResult;
+    }
+
     context.loadType = Resource::feeMediumBurdenRPC;
 
     if (!context.params.isMember (jss::tx_blob))
@@ -57,8 +70,6 @@ Json::Value doSubmit (RPC::Context& context)
         context.app,
         RPC::getProcessTxnFn (context.netOps));
     }
-
-    Json::Value jvResult;
 
     std::pair<Blob, bool> ret(strUnHex (context.params[jss::tx_blob].asString ()));
 
