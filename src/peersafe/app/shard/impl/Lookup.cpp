@@ -341,7 +341,7 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m)
 		return;
 	}
 
-	mMapMicroLedgers[microWithMeta->seq()][microWithMeta->shardID()] = microWithMeta;
+    saveMicroLedger(microWithMeta);
 	checkSaveLedger();
 }
 
@@ -369,7 +369,7 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         return;
 	}
 
-    mMapFinalLedger.emplace(finalLedger->getLedgerInfo().seq, finalLedger);
+    saveFinalLedger(finalLedger);
 	checkSaveLedger();
 }
 
