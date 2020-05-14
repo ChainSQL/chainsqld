@@ -21,6 +21,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #define PEERSAFE_APP_SHARD_SHARDMANAGER_H_INCLUDED
 
 #include <ripple/basics/Log.h>
+#include <ripple/core/Config.h>
 #include <peersafe/app/shard/NodeBase.h>
 #include <peersafe/app/shard/Lookup.h>
 #include <peersafe/app/shard/Node.h>
@@ -30,7 +31,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 namespace ripple {
 
 class Application;
-class Config;
 
 
 class ShardManager {
@@ -38,12 +38,12 @@ class ShardManager {
 public:
 
     enum ShardRole {
-        UNKNOWN = 0,
+        UNKNOWN     = Config::SHARD_ROLE_UNDEFINED,
 
-		LOOKUP = 1 << 0,
-		SHARD = 1 << 1,
-        COMMITTEE   = 1 << 2,
-        SYNC        = 1 << 3,
+        LOOKUP      = Config::SHARD_ROLE_LOOKUP,
+        SHARD       = Config::SHARD_ROLE_SHARD,
+        COMMITTEE   = Config::SHARD_ROLE_COMMITTEE,
+        SYNC        = Config::SHARD_ROLE_SYNC,
     };
 
     static std::string to_string(ShardRole role)

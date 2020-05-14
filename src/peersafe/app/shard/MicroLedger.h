@@ -146,6 +146,13 @@ public:
         return mTxWithMetas[hash];
     }
 
+    inline bool isEmptyLedger()
+    {
+        return mHashSet.TxsRootHash == zero &&
+            mHashSet.TxWMRootHash == zero &&
+            mHashSet.StateDeltaHash == zero;
+    }
+
 	void setMetaIndex(TxID const& hash, uint32 index, beast::Journal j);
 
     void addStateDelta(ReadView const& base, uint256 key, Action action, std::shared_ptr<SLE> sle);

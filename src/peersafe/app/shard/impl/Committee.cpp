@@ -163,17 +163,27 @@ void Committee::commitMicroLedgerBuffer(LedgerIndex seq)
 
 uint256 Committee::microLedgerSetHash()
 {
+    using beast::hash_append;
+
     std::lock_guard<std::recursive_mutex> _(mMLBMutex);
 
     assert(mValidMicroLedgers.size() == mShardManager.shardCount());
 
-    using beast::hash_append;
-
+    bool emptyLedger = true;
     sha512_half_hasher microLedgerSetHash;
 
     for (auto it : mValidMicroLedgers)
     {
+        if (!it.second->isEmptyLedger())
+        {
+            emptyLedger = false;
+        }
         hash_append(microLedgerSetHash, it.second->ledgerHash());
+    }
+
+    if (emptyLedger)
+    {
+        return zero;
     }
 
     return static_cast<typename sha512_half_hasher::result_type>(microLedgerSetHash);

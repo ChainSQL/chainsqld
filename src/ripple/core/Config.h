@@ -186,11 +186,11 @@ public:
 
 	// shard related configuration items
 
-	const std::uint32_t SHARD_ROLE_UNDEFINED = 0x00000000;
-	const std::uint32_t SHARD_ROLE_LOOKUP    = 0x00000001;
-	const std::uint32_t SHARD_ROLE_SHARD     = 0x00000002;
-	const std::uint32_t SHARD_ROLE_COMMITTEE = 0x00000004;
-	const std::uint32_t SHARD_ROLE_SYNC	     = 0x00000008;
+	static const std::uint32_t SHARD_ROLE_UNDEFINED = 0x00000000;
+    static const std::uint32_t SHARD_ROLE_LOOKUP    = 0x00000001;
+    static const std::uint32_t SHARD_ROLE_SHARD     = 0x00000002;
+    static const std::uint32_t SHARD_ROLE_COMMITTEE = 0x00000004;
+    static const std::uint32_t SHARD_ROLE_SYNC	    = 0x00000008;
 
 
 

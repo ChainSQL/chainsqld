@@ -363,6 +363,11 @@ PConsensus<Adaptor>::PConsensus(
 	timeOut_ = CONSENSUS_TIMEOUT.count();
     omitEmpty_ = true;
 
+    if (adaptor.app_.config().getShardRole() == ShardManager::SHARD)
+    {
+        omitEmpty_ = false;
+    }
+
     if (adaptor.app_.config().exists(SECTION_PCONSENSUS))
     {
 		minBlockTime_   = std::max(MinBlockTime, loadConfig("min_block_time"));
@@ -382,25 +387,23 @@ PConsensus<Adaptor>::PConsensus(
             timeOut_ = maxBlockTime_ * 2;
         }
 
-        {
-            auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("omit_empty_block");
-            if (result.second)
-            {
-                try
-                {
-                    omitEmpty_ = beast::lexicalCastThrow<bool>(result.first);
-                }
-                catch (std::exception const&)
-                {
-                    JLOG(j_.error()) <<
-                        "Invalid value '" << result.first << "' for key " <<
-                        "'empty_block' in [" << SECTION_PCONSENSUS << "]\n";
-                }
-            }
-        }
+        //{
+        //    auto const result = adaptor.app_.config().section(SECTION_PCONSENSUS).find("omit_empty_block");
+        //    if (result.second)
+        //    {
+        //        try
+        //        {
+        //            omitEmpty_ = beast::lexicalCastThrow<bool>(result.first);
+        //        }
+        //        catch (std::exception const&)
+        //        {
+        //            JLOG(j_.error()) <<
+        //                "Invalid value '" << result.first << "' for key " <<
+        //                "'empty_block' in [" << SECTION_PCONSENSUS << "]\n";
+        //        }
+        //    }
+        //}
     }
-
-    omitEmpty_ = false;
 }
 
 template <class Adaptor>
@@ -648,7 +651,10 @@ PConsensus<Adaptor>::peerViewChange(ViewChange const& change)
 		{
 			prevLedgerID_ = change.prevHash();
 			view_ = change.toView() - 1;
-			checkLedger();
+            if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
+            {
+                checkLedger();
+            }
 		}
 	}
 	else if (previousLedger_.seq() == GENESIS_LEDGER_INDEX && change.prevSeq() > GENESIS_LEDGER_INDEX)
@@ -967,10 +973,13 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 		if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
 		{
 			JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()<<":"<< prevLedgerID_;
-            adaptor_.app_.getTxPool().removeTxs(
-                newLedger->ledger_->txMap(),
-                newLedger->ledger_->info().seq,
-                newLedger->ledger_->info().parentHash);
+            if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::SHARD)
+            {
+                adaptor_.app_.getTxPool().removeTxs(
+                    newLedger->ledger_->txMap(),
+                    newLedger->ledger_->info().seq,
+                    newLedger->ledger_->info().parentHash);
+            }
 			startRoundInternal(
 				now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
 		}
