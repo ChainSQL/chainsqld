@@ -111,8 +111,10 @@ public:
 
 	void eraseDeactivate();
 
+    void onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m);
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m);
+
 
     void sendMessage(std::shared_ptr<Message> const &m);
 

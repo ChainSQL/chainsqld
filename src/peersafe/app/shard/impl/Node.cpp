@@ -657,5 +657,10 @@ void Node::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
     }
 }
 
+void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
+{
+    JLOG(journal_.info()) << "TODO";
+    return;
+}
 
 }

@@ -146,6 +146,28 @@ void ViewChangeManager::onNewRound(RCLCxLedger const& prevLedger)
 	}
 }
 
+std::shared_ptr<protocol::TMCommitteeViewChange>
+ViewChangeManager::makeCommitteeViewChange(uint64 view, LedgerIndex preSeq, RCLCxLedger::ID const& preHash)
+{
+    auto m = std::make_shared<protocol::TMCommitteeViewChange>();
+
+    m->set_toview(view);
+    m->set_previousledgerseq(preSeq);
+    m->set_previousledgerhash(preHash.data(), preHash.size());
+
+    for (auto it : viewChangeReq_[view])
+    {
+        if (it.second.prevSeq() == preSeq && it.second.prevHash() == preHash)
+        {
+            protocol::Signature& s = *m->add_signatures();
+            s.set_publickey(it.second.nodePublic().data(), it.second.nodePublic().size());
+            s.set_signature(it.second.signature().data(), it.second.signature().size());
+        }
+    }
+
+    return m;
+}
+
 void ViewChangeManager::clearCache()
 {
 	viewChangeReq_.clear();

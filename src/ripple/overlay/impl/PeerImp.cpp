@@ -2063,6 +2063,36 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerAcquire> const& m)
     }
 }
 
+
+void
+PeerImp::onMessage(std::shared_ptr <protocol::TMCommitteeViewChange> const& m)
+{
+    auto const pap = &app_;
+
+    switch (app_.getShardManager().myShardRole())
+    {
+    case ShardManager::LOOKUP:
+    case ShardManager::SYNC:
+    case ShardManager::LOOKUP | ShardManager::SYNC:
+        app_.getJobQueue().addJob(
+            jtCOMMITTEE_VIEWCHANGE, "Recv->CommitteeViewChange",
+            [pap, m](Job&) {
+            pap->getShardManager().lookup().onMessage(m);
+        });
+        break;
+    case ShardManager::SHARD:
+        app_.getJobQueue().addJob(
+            jtCOMMITTEE_VIEWCHANGE, "Recv->CommitteeViewChange",
+            [pap, m](Job&) {
+            pap->getShardManager().node().onMessage(m);
+        });
+        break;
+    default:
+        break;
+    }
+}
+
+
 //--------------------------------------------------------------------------
 
 void

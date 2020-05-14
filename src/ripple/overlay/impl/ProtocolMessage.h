@@ -64,6 +64,7 @@ protocolMessageName (int type)
     case protocol::mtFINALLEDGER_SUBMIT:return "finalledger_submit";
     case protocol::mtMICROLEDGER_ACQUIRE:return "microledger_acquire";
     case protocol::mtTRANSACTIONS:      return "transactions";
+    case protocol::mtCOMMITTEEVIEWCHANGE:return "committee_viewchange";
     default:
         break;
     };
@@ -143,6 +144,7 @@ invokeProtocolMessage (Buffers const& buffers, Handler& handler)
     case protocol::mtMICROLEDGER_SUBMIT:            ec = detail::invoke<protocol::TMMicroLedgerSubmit> (type, buffers, handler); break;
     case protocol::mtFINALLEDGER_SUBMIT:            ec = detail::invoke<protocol::TMFinalLedgerSubmit> (type, buffers, handler); break;
     case protocol::mtMICROLEDGER_ACQUIRE:           ec = detail::invoke<protocol::TMMicroLedgerAcquire>(type, buffers, handler); break;
+    case protocol::mtCOMMITTEEVIEWCHANGE:           ec = detail::invoke<protocol::TMCommitteeViewChange>(type, buffers, handler); break;
 
     default:
         ec = handler.onMessageUnknown (type);

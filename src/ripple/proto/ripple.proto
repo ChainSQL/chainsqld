@@ -27,6 +27,7 @@ enum MessageType
 	mtFINALLEDGER_SUBMIT			= 51;	// from committee to shard and lookup
     mtMICROLEDGER_ACQUIRE           = 52;
 	mtTRANSACTIONS					= 53;   // relay transactions
+    mtCOMMITTEEVIEWCHANGE           = 54;
 
     // <available>          = 10;
     // <available>          = 11;
@@ -481,4 +482,13 @@ message TMTransactions
     repeated TMTransaction  transactions    = 1;
     required bytes          nodePubkey      = 2;
     required bytes          signature       = 3;
+}
+
+message TMCommitteeViewChange
+{
+    required uint32     previousLedgerSeq   = 1;
+    required bytes      previousLedgerHash  = 2;
+    required uint64     toView              = 3;
+
+    repeated Signature  signatures          = 4;
 }

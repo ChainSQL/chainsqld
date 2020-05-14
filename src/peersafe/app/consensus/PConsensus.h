@@ -603,6 +603,18 @@ PConsensus<Adaptor>::onViewChange()
 	//clear avoid
 	adaptor_.app_.getTxPool().clearAvoid();
 
+    if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
+    {
+        std::shared_ptr<protocol::TMCommitteeViewChange> const& sm =
+            viewChangeManager_.makeCommitteeViewChange(view_, previousLedger_.seq(), prevLedgerID_);
+
+        auto const m = std::make_shared<Message>(
+            *sm, protocol::mtCOMMITTEEVIEWCHANGE);
+
+        adaptor_.app_.getShardManager().node().sendMessageToAll(m);
+        adaptor_.app_.getShardManager().lookup().sendMessage(m);
+    }
+
     adaptor_.app_.getShardManager().nodeBase().onConsensusStart(
         previousLedger_.seq() + 1,
         view_,

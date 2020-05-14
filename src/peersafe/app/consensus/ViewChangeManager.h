@@ -4,6 +4,7 @@
 
 #include <map>
 #include <cstdint>
+#include "ripple.pb.h"
 #include <ripple/basics/base_uint.h>
 #include <ripple/protocol/PublicKey.h>
 #include <peersafe/app/consensus/ViewChange.h>
@@ -37,6 +38,9 @@ namespace ripple {
 
 		//Erase invalid ViewChange object from the cache on new round started.
 		void onNewRound(RCLCxLedger const& ledger);
+
+        std::shared_ptr<protocol::TMCommitteeViewChange>
+        makeCommitteeViewChange(uint64 view, LedgerIndex preSeq, RCLCxLedger::ID const& preHash);
 
 		void clearCache();
 	private:

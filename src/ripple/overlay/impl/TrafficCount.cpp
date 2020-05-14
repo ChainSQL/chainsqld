@@ -56,6 +56,8 @@ const char* TrafficCount::getName (category c)
             return "finalledger_submit";
         case category::CT_micro_ledger_acquire:
             return "microledger_acquire";
+        case category::CT_committee_viewchange:
+            return "committee_viewchange";
         case category::CT_unknown:
             assert (false);
             return "unknown";
@@ -108,6 +110,9 @@ TrafficCount::category TrafficCount::categorize (
 
     if (type == protocol::mtMICROLEDGER_ACQUIRE)
         return TrafficCount::category::CT_micro_ledger_acquire;
+
+    if (type == protocol::mtCOMMITTEEVIEWCHANGE)
+        return TrafficCount::category::CT_committee_viewchange;
 
     {
         auto msg = dynamic_cast

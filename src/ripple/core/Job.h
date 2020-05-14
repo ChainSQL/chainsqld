@@ -74,6 +74,7 @@ enum JobType
 	jtLEDGER_REQ,    // Peer request ledger/txnset data
 	jtLEDGER_DATA,   // Received data for a ledger we're acquiring
 
+    jtCOMMITTEE_VIEWCHANGE, // Recv committee_viewchange msg.
 	jtVIEW_CHANGE,	 // Recv view_change msg.
     jtML_ACQUIRE,    // Fetch a micro ledger.
     jtTXN_DATA,      // Fetch a proposed set

@@ -373,6 +373,11 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 	checkSaveLedger();
 }
 
+void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
+{
+    return;
+}
+
 void Lookup::sendMessage(std::shared_ptr<Message> const &m)
 {
     std::lock_guard<std::recursive_mutex> _(mPeersMutex);

@@ -57,6 +57,11 @@ public:
 		return nodePublic_;
 	}
 
+    inline Buffer const& signature() const
+    {
+        return signature_;
+    }
+
 	std::uint64_t const& toView() const
 	{
 		return toView_;

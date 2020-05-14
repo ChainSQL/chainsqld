@@ -143,6 +143,7 @@ public:
 
     void onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMTransactions> const& m);
+    void onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m);
 };
 
 }

@@ -55,6 +55,7 @@ add(    jtFLSUBMIT,      "finalledger",             maxLimit, false, 250,   1000
 add(    jtBATCH,         "batch",                   maxLimit, false, 250,   1000);
 add(    jtADVANCE,       "advanceLedger",           maxLimit, false, 0,     0);
 add(    jtPUBLEDGER,     "publishNewLedger",        maxLimit, false, 3000,  4500);
+add(    jtCOMMITTEE_VIEWCHANGE, "committeeViewchange",maxLimit, false, 500, 1500);
 add(	jtVIEW_CHANGE,	 "viewchange",				maxLimit, false, 500,	1500);
 add(    jtML_ACQUIRE,    "fetchML",                 maxLimit, false, 500,   1500);
 add(    jtTXN_DATA,      "fetchTxnData",            1,        false, 0,     0);
