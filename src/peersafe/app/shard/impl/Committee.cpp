@@ -123,6 +123,22 @@ std::int32_t Committee::getPubkeyIndex(PublicKey const& pubkey)
     return -1;
 }
 
+void Committee::onViewChange(
+    ViewChangeManager& vcManager,
+    uint64 view,
+    LedgerIndex preSeq,
+    LedgerHash preHash)
+{
+    std::shared_ptr<protocol::TMCommitteeViewChange> const& sm =
+        vcManager.makeCommitteeViewChange(view, preSeq, preHash);
+
+    auto const m = std::make_shared<Message>(
+        *sm, protocol::mtCOMMITTEEVIEWCHANGE);
+
+    app_.getShardManager().node().sendMessageToAllShard(m);
+    app_.getShardManager().lookup().sendMessage(m);
+}
+
 void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
     //mMicroLedger.reset();

@@ -68,6 +68,11 @@ public:
         return mSeq;
     }
 
+    inline LedgerHash hash()
+    {
+        return mHash;
+    }
+
     inline detail::RawStateTable const& getRawStateTable()
     {
         return mStateDelta;

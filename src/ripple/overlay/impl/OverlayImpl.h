@@ -242,6 +242,31 @@ public:
         }
     }
 
+    // For acquire ledger and txset selectPeers
+    template <class UnaryFunc>
+    void
+    for_shard_role(UnaryFunc&& f)
+    {
+        auto role = app_.getShardManager().myShardRole();
+
+        switch (role)
+        {
+        case ShardManager::LOOKUP:
+        case ShardManager::SYNC:
+        case ShardManager::LOOKUP | ShardManager::SYNC:
+            app_.getShardManager().lookup().for_each(f);
+            break;
+        case ripple::ShardManager::SHARD:
+            app_.getShardManager().node().for_each(f);
+            break;
+        case ripple::ShardManager::COMMITTEE:
+            app_.getShardManager().committee().for_each(f);
+            break;
+        default:
+            break;
+        }
+    }
+
     std::size_t
     selectPeers (PeerSet& set, std::size_t limit, std::function<
         bool(std::shared_ptr<Peer> const&)> score) override;

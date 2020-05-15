@@ -111,14 +111,13 @@ public:
 
 	void eraseDeactivate();
 
-    void onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m);
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m);
-
+    void onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m);
 
     void sendMessage(std::shared_ptr<Message> const &m);
 
-	void checkSaveLedger();
+	void checkSaveLedger(LedgerIndex seq);
     bool checkLedger(LedgerIndex seq);
 	void resetMetaIndex(LedgerIndex seq);
 	void saveLedger(LedgerIndex seq);
@@ -130,26 +129,28 @@ public:
 	void onTimer(boost::system::error_code const& ec);
 
 	// shard related
-	static inline unsigned int getTxShardIndex(const std::string& strAddress, unsigned int numShards) {
+    static unsigned int getTxShardIndex(const std::string& strAddress, unsigned int numShards);
 
-		uint32_t x = 0;
-		if (numShards == 0) {
-			// numShards  >0
-			return 0;
-		}
+    template <class UnaryFunc>
+    void
+    for_each(UnaryFunc&& f)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
 
-		unsigned int addressSize = strAddress.size();
-		assert(addressSize >= 4);
+        // Iterate over a copy of the peer list because peer
+        // destruction can invalidate iterators.
+        std::vector<std::weak_ptr<PeerImp>> wp;
+        wp.reserve(mPeers.size());
 
-		// Take the last four bytes of the address
-		for (unsigned int i = 0; i < 4; i++) {
-			x = (x << 8) | strAddress[addressSize - 4 + i];
-		}
+        for (auto& x : mPeers)
+            wp.push_back(x);
 
-		return (x % numShards + 1);
-	};
-
-
+        for (auto& w : wp)
+        {
+            if (auto p = w.lock())
+                f(std::move(p));
+        }
+    }
 };
 
 }

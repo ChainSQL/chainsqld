@@ -432,6 +432,8 @@ void InboundLedger::done ()
     if (isComplete () && !isFailed () && mLedger)
     {
         mLedger->setImmutable (app_.config());
+        if (mReason == fcCURRENT)
+            app_.getLedgerMaster().accept(mLedger);
         if (mReason != fcHISTORY)
             app_.getLedgerMaster ().storeLedger (mLedger);
         app_.getInboundLedgers().onLedgerFetched(mReason);

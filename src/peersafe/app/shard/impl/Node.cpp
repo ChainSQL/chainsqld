@@ -25,6 +25,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/consensus/RCLValidations.h>
 #include <peersafe/app/shard/FinalLedger.h>
 #include <peersafe/app/shard/ShardManager.h>
+#include <peersafe/app/consensus/ViewChange.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/overlay/impl/TrafficCount.h>
@@ -545,7 +546,10 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 
     if (finalLedger->seq() > previousLedger->seq() + 1)
     {
-        Throw<std::runtime_error>("TODO: Buffer it OR handleWrongLedger");
+        JLOG(journal_.warn()) << "Got finalLeger, I'm on " << previousLedger->seq()
+            << ", trying to switch to " << finalLedger->seq();
+        app_.getOPs().consensusViewChange();
+        app_.getOPs().getConsensus().consensus_->handleWrongLedger(finalLedger->hash());
         return;
     }
 
@@ -659,7 +663,29 @@ void Node::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
 
 void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
 {
-    JLOG(journal_.info()) << "TODO";
+    auto committeeVC = std::make_shared<CommitteeViewChange>(*m);
+
+    if (!app_.getHashRouter().shouldRelay(committeeVC->suppressionID()))
+    {
+        JLOG(journal_.info()) << "Committee view change: duplicate";
+        return;
+    }
+
+    if (!committeeVC->checkValidity(mShardManager.committee().validatorsPtr()))
+    {
+        JLOG(journal_.info()) << "Committee view change signature verification failed";
+        return;
+    }
+
+    if (committeeVC->preSeq() > app_.getLedgerMaster().getValidLedgerIndex())
+    {
+        JLOG(journal_.warn()) << "Got CommitteeViewChange, I'm on " 
+            << app_.getLedgerMaster().getValidLedgerIndex()
+            << ", trying to switch to " << committeeVC->preSeq();
+        app_.getOPs().consensusViewChange();
+        app_.getOPs().getConsensus().consensus_->handleWrongLedger(committeeVC->preHash());
+    }
+
     return;
 }
 

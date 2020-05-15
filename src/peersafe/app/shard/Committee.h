@@ -28,6 +28,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/misc/ValidatorList.h>
 #include <peersafe/app/shard/MicroLedger.h>
 #include <peersafe/app/shard/FinalLedger.h>
+#include <peersafe/app/consensus/ViewChangeManager.h>
 
 #include <mutex>
 
@@ -121,6 +122,8 @@ public:
 
     uint256 microLedgerSetHash();
 
+    void onViewChange(ViewChangeManager& vcManager, uint64 view, LedgerIndex preSeq, LedgerHash preHash);
+
     void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
 
     void commitMicroLedgerBuffer(LedgerIndex seq);
@@ -149,6 +152,26 @@ public:
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const& m, std::weak_ptr<PeerImp> weak);
 
+    template <class UnaryFunc>
+    void
+    for_each(UnaryFunc&& f)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+
+        // Iterate over a copy of the peer list because peer
+        // destruction can invalidate iterators.
+        std::vector<std::weak_ptr<PeerImp>> wp;
+        wp.reserve(mPeers.size());
+
+        for (auto& x : mPeers)
+            wp.push_back(x);
+
+        for (auto& w : wp)
+        {
+            if (auto p = w.lock())
+                f(std::move(p));
+        }
+    }
 };
 
 }

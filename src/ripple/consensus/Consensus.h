@@ -394,6 +394,10 @@ public:
         NetClock::time_point const& now,
         boost::optional<std::chrono::milliseconds> consensusDelay);
 
+    // Change our view of the previous ledger
+    void
+    handleWrongLedger(typename Ledger_t::ID const& lgrId);
+
     /** Get the previous ledger ID.
 
         The previous ledger is the last ledger seen by the consensus code and
@@ -424,10 +428,6 @@ private:
         typename Ledger_t::ID const& prevLedgerID,
         Ledger_t const& prevLedger,
         ConsensusMode mode);
-
-    // Change our view of the previous ledger
-    void
-    handleWrongLedger(typename Ledger_t::ID const& lgrId);
 
     /** Check if our previous ledger matches the network's.
 

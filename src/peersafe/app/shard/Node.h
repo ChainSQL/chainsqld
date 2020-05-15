@@ -144,6 +144,32 @@ public:
     void onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMTransactions> const& m);
     void onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m);
+
+    template <class UnaryFunc>
+    void
+    for_each(UnaryFunc&& f)
+    {
+        if (!mMapOfShardPeers.count(mShardID))
+        {
+            return;
+        }
+
+        std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+
+        // Iterate over a copy of the peer list because peer
+        // destruction can invalidate iterators.
+        std::vector<std::weak_ptr<PeerImp>> wp;
+        wp.reserve(mMapOfShardPeers[mShardID].size());
+
+        for (auto& x : mMapOfShardPeers[mShardID])
+            wp.push_back(x);
+
+        for (auto& w : wp)
+        {
+            if (auto p = w.lock())
+                f(std::move(p));
+        }
+    }
 };
 
 }

@@ -1049,6 +1049,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMEndpoints> const& m)
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMTransaction> const& m)
 {
+    JLOG(p_journal_.warn()) << "Ignoring relayed transactions always!!!";
+    return;
 
     if (sanity_.load() == Sanity::insane)
         return;

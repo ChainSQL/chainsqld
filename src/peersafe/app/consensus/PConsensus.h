@@ -149,6 +149,10 @@ public:
 	bool
 		peerViewChange(ViewChange const& change);
 
+    // Change our view of the previous ledger
+    void
+    handleWrongLedger(typename Ledger_t::ID const& lgrId);
+
 	void launchViewChange();
 	/** Get the previous ledger ID.
 
@@ -186,10 +190,6 @@ private:
 		peerProposalInternal(
 			NetClock::time_point const& now,
 			PeerPosition_t const& newProposal);
-
-	// Change our view of the previous ledger
-	void
-		handleWrongLedger(typename Ledger_t::ID const& lgrId);
 
 	/** Check if our previous ledger matches the network's.
 
@@ -605,14 +605,11 @@ PConsensus<Adaptor>::onViewChange()
 
     if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
     {
-        std::shared_ptr<protocol::TMCommitteeViewChange> const& sm =
-            viewChangeManager_.makeCommitteeViewChange(view_, previousLedger_.seq(), prevLedgerID_);
-
-        auto const m = std::make_shared<Message>(
-            *sm, protocol::mtCOMMITTEEVIEWCHANGE);
-
-        adaptor_.app_.getShardManager().node().sendMessageToAll(m);
-        adaptor_.app_.getShardManager().lookup().sendMessage(m);
+        adaptor_.app_.getShardManager().committee().onViewChange(
+            viewChangeManager_,
+            view_,
+            previousLedger_.seq(),
+            prevLedgerID_);
     }
 
     adaptor_.app_.getShardManager().nodeBase().onConsensusStart(
@@ -1442,10 +1439,13 @@ PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 	if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
 	{
 		JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
-        adaptor_.app_.getTxPool().removeTxs(
-            newLedger->ledger_->txMap(),
-            newLedger->ledger_->info().seq,
-            newLedger->ledger_->info().parentHash);
+        if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::SHARD)
+        {
+            adaptor_.app_.getTxPool().removeTxs(
+                newLedger->ledger_->txMap(),
+                newLedger->ledger_->info().seq,
+                newLedger->ledger_->info().parentHash);
+        }
 		startRoundInternal(
 			now_, lgrId, *newLedger, ConsensusMode::switchedLedger);
 	}

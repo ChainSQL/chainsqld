@@ -839,18 +839,8 @@ RCLConsensus::Adaptor::notify(
     }
     s.set_firstseq(uMin);
     s.set_lastseq(uMax);
-    //app_.overlay().foreach (
-    //    send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
-    // Maybe need to send to all peers
-    if (app_.getShardManager().myShardRole() == ShardManager::SHARD ||
-        app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
-    {
-        app_.getShardManager().nodeBase().sendMessage(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
-    }
-    else
-    {
-        app_.getShardManager().lookup().sendMessage(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
-    }
+    app_.overlay().foreach (
+        send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
 
     JLOG(j_.trace()) << "send status change to peer";
 }

@@ -1730,10 +1730,8 @@ void NetworkOPsImp::switchLastClosedLedger (
         newLCL->info().hash.begin (),
         newLCL->info().hash.size ());
 
-    app_.getShardManager().nodeBase().sendMessage(
-        std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE));
-    //app_.overlay ().foreach (send_always (
-    //    std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
+    app_.overlay ().foreach (send_always (
+        std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
 }
 
 bool NetworkOPsImp::beginConsensus (uint256 const& networkClosed)

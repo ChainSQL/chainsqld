@@ -21,12 +21,15 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/ShardManager.h>
 #include <peersafe/app/shard/FinalLedger.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/consensus/ViewChange.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
+#include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/consensus/RCLConsensus.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/consensus/RCLCxLedger.h>
 #include <ripple/basics/make_lock.h>
 #include <ripple/basics/Slice.h>
@@ -75,45 +78,72 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
     }
 }
 
-void Lookup::checkSaveLedger()
+void Lookup::checkSaveLedger(LedgerIndex netLedger)
 {
-    LedgerIndex ledgerIndexToSave = app_.getLedgerMaster().getValidLedgerIndex() + 1;
+    LedgerIndex preSeq = app_.getLedgerMaster().getValidLedgerIndex();
 
     {
         std::lock_guard <std::recursive_mutex> lock(mutex_);
 
-        if (!checkLedger(ledgerIndexToSave))
+        if (!checkLedger(netLedger))
         {
-            JLOG(journal_.info()) << "Ledger " << ledgerIndexToSave << " collected not fully";
+            JLOG(journal_.info()) << "Net ledger " << netLedger << " collected not fully";
             return;
         }
 
-        if (app_.getLedgerMaster().getBuildingLedger() == ledgerIndexToSave)
+        if (app_.getLedgerMaster().getBuildingLedger() == netLedger)
         {
-            JLOG(journal_.warn()) << "Currently build ledger " << ledgerIndexToSave;
+            JLOG(journal_.warn()) << "Currently build ledger " << netLedger;
             return;
         }
 
-        app_.getLedgerMaster().setBuildingLedger(ledgerIndexToSave);
+        if (netLedger < preSeq + 1)
+        {
+            JLOG(journal_.warn()) << "Net ledger: " << netLedger << " too old, currently: " << preSeq + 1;
+            mMapFinalLedger.erase(netLedger);
+            mMapMicroLedgers.erase(netLedger);
+            return;
+        }
+        else if (netLedger == preSeq + 1)
+        {
+            app_.getLedgerMaster().setBuildingLedger(netLedger);
+        }
+        else
+        {
+            JLOG(journal_.warn()) << "CheckSaveLedger, I'm on "
+                << preSeq + 1 << ", trying to acquiring  " << netLedger;
+
+            auto app = &app_;
+            auto hash = getFinalLedger(netLedger)->hash();
+            app_.getJobQueue().addJob(
+                jtADVANCE, "getCurrentLedger", [app, hash](Job&) {
+                app->getInboundLedgers().acquire(
+                    hash, 0, InboundLedger::fcCURRENT);
+            });
+
+            for (int i = preSeq + 1; i <= netLedger; i++)
+            {
+                mMapFinalLedger.erase(i);
+                mMapMicroLedgers.erase(i);
+            }
+            return;
+        }
     }
 
-    JLOG(journal_.info()) << "Building ledger " << ledgerIndexToSave;
+    JLOG(journal_.info()) << "Building ledger " << netLedger;
 
 	//reset tx-meta transactionIndex field
-	resetMetaIndex(ledgerIndexToSave);
+	resetMetaIndex(netLedger);
 
 	//save this ledger
-    saveLedger(ledgerIndexToSave);
+    saveLedger(netLedger);
 
     {
         // do clear
         std::lock_guard <std::recursive_mutex> lock(mutex_);
-        mMapFinalLedger.erase(ledgerIndexToSave);
-        mMapMicroLedgers.erase(ledgerIndexToSave);
+        mMapFinalLedger.erase(netLedger);
+        mMapMicroLedgers.erase(netLedger);
     }
-
-    // Next ledger maybe collected fully
-    checkSaveLedger();
 }
 
 bool Lookup::checkLedger(LedgerIndex seq)
@@ -139,7 +169,7 @@ void Lookup::resetMetaIndex(LedgerIndex seq)
 	{
 		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
 		{
-            std::shared_ptr<MicroLedger> &microLedger = getMicroLedger(seq, shardIndex);
+            std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
 			if (microLedger->hasTxWithMeta(vecHashes[i]))
                 microLedger->setMetaIndex(vecHashes[i], i, app_.journal("TxMeta"));
 		}
@@ -167,7 +197,7 @@ void Lookup::saveLedger(LedgerIndex seq)
 	{
 		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
 		{
-            std::shared_ptr<MicroLedger> &microLedger = getMicroLedger(seq, shardIndex);
+            std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
 			if (microLedger->hasTxWithMeta(txID))
 			{
 				auto txWithMeta = microLedger->getTxWithMeta(txID);
@@ -342,7 +372,7 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m)
 	}
 
     saveMicroLedger(microWithMeta);
-	checkSaveLedger();
+	checkSaveLedger(microWithMeta->seq());
 }
 
 void Lookup::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
@@ -370,11 +400,49 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 	}
 
     saveFinalLedger(finalLedger);
-	checkSaveLedger();
+	checkSaveLedger(finalLedger->seq());
 }
 
 void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
 {
+    auto committeeVC = std::make_shared<CommitteeViewChange>(*m);
+
+    if (!app_.getHashRouter().shouldRelay(committeeVC->suppressionID()))
+    {
+        JLOG(journal_.info()) << "Committee view change: duplicate";
+        return;
+    }
+
+    if (!committeeVC->checkValidity(mShardManager.committee().validatorsPtr()))
+    {
+        JLOG(journal_.info()) << "Committee view change signature verification failed";
+        return;
+    }
+
+    if (committeeVC->preSeq() > app_.getLedgerMaster().getValidLedgerIndex())
+    {
+        JLOG(journal_.warn()) << "Got CommitteeViewChange, I'm on "
+            << app_.getLedgerMaster().getValidLedgerIndex()
+            << ", trying to acquiring  " << committeeVC->preSeq();
+
+        auto app = &app_;
+        auto hash = committeeVC->preHash();
+        app_.getJobQueue().addJob(
+            jtADVANCE, "getCurrentLedger", [app, hash](Job&) {
+            app->getInboundLedgers().acquire(
+                hash, 0, InboundLedger::fcCURRENT);
+        });
+    }
+    else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())
+    {
+        app_.getLedgerMaster().onViewChanged(false, app_.getLedgerMaster().getValidatedLedger());
+    }
+    else
+    {
+        JLOG(journal_.warn()) << "Committee view change: stale";
+        return;
+    }
+
     return;
 }
 
@@ -419,5 +487,23 @@ void Lookup::onTimer(boost::system::error_code const& ec)
 	setTimer();
 }
 
+unsigned int Lookup::getTxShardIndex(const std::string& strAddress, unsigned int numShards)
+{
+    uint32_t x = 0;
+    if (numShards == 0) {
+        // numShards  >0
+        return 0;
+    }
+
+    unsigned int addressSize = strAddress.size();
+    assert(addressSize >= 4);
+
+    // Take the last four bytes of the address
+    for (unsigned int i = 0; i < 4; i++) {
+        x = (x << 8) | strAddress[addressSize - 4 + i];
+    }
+
+    return (x % numShards + 1);
+};
 
 }

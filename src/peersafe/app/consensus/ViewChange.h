@@ -3,11 +3,15 @@
 #define PEERSAFE_APP_CONSENSUS_VIEWCHANGE_H
 
 #include <cstdint>
+#include "ripple.pb.h"
 #include <ripple/basics/base_uint.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/basics/Buffer.h>
+#include <ripple/app/misc/ValidatorList.h>
+#include <ripple/protocol/Protocol.h>
+#include <ripple/protocol/RippleLedgerHash.h>
 
 namespace ripple {
 class ViewChange {
@@ -96,6 +100,39 @@ viewChangeUniqueId(
 	PublicKey const nodePublic,
 	std::uint64_t const& toView
 );
+
+class CommitteeViewChange
+{
+private:
+    uint64                              mView;
+    LedgerIndex                         mPreSeq;
+    LedgerHash                          mPreHash;
+    std::map<PublicKey const, Slice>    mSignatures;
+
+public:
+    CommitteeViewChange(protocol::TMCommitteeViewChange const& m);
+
+
+    inline LedgerIndex preSeq()
+    {
+        return mPreSeq;
+    }
+
+    inline LedgerHash preHash()
+    {
+        return mPreHash;
+    }
+
+    inline uint256 suppressionID()
+    {
+        return sha512Half(
+            mView,
+            mPreSeq,
+            mPreHash);
+    }
+
+    bool checkValidity(std::unique_ptr<ValidatorList> const& list);
+};
 
 }
 

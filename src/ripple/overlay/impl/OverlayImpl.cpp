@@ -773,7 +773,7 @@ namespace ripple {
 			std::vector<item> v;
 			v.reserve(size());
 
-			for_each([&](std::shared_ptr<PeerImp>&& e)
+			for_shard_role([&](std::shared_ptr<PeerImp>&& e)
 			{
 				auto const s = e->getScore(score(e));
 				v.emplace_back(s, std::move(e));
@@ -1027,13 +1027,14 @@ namespace ripple {
 				return;
 			auto const sm = std::make_shared<Message>(
 				m, protocol::mtPROPOSE_LEDGER);
-			for_each([&](std::shared_ptr<PeerImp>&& p)
-			{
-				if (toSkip->find(p->id()) != toSkip->end())
-					return;
-				if (!m.has_hops() || p->hopsAware())
-					p->send(sm);
-			});
+            app_.getShardManager().nodeBase().relay(toSkip, sm);
+			//for_each([&](std::shared_ptr<PeerImp>&& p)
+			//{
+			//	if (toSkip->find(p->id()) != toSkip->end())
+			//		return;
+			//	if (!m.has_hops() || p->hopsAware())
+			//		p->send(sm);
+			//});
 		}
 
 		void
