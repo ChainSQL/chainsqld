@@ -251,15 +251,15 @@ public:
 
         switch (role)
         {
-        case ShardManager::LOOKUP:
-        case ShardManager::SYNC:
-        case ShardManager::LOOKUP | ShardManager::SYNC:
+        case Config::SHARD_ROLE_LOOKUP:
+        case Config::SHARD_ROLE_SYNC:
+        case Config::SHARD_ROLE_LOOKUP | Config::SHARD_ROLE_SYNC:
             app_.getShardManager().lookup().for_each(f);
             break;
-        case ripple::ShardManager::SHARD:
+        case Config::SHARD_ROLE_SHARD:
             app_.getShardManager().node().for_each(f);
             break;
-        case ripple::ShardManager::COMMITTEE:
+        case Config::SHARD_ROLE_COMMITTEE:
             app_.getShardManager().committee().for_each(f);
             break;
         default:
