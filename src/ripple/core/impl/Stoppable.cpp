@@ -44,6 +44,16 @@ Stoppable::~Stoppable ()
 {
 }
 
+void Stoppable::setParent(Stoppable& parent)
+{
+	assert(!hasParent_);
+	assert(!parent.isStopping());
+	assert(std::addressof(m_root) == std::addressof(parent.m_root));
+
+	parent.m_children.push_front(&m_child);
+	hasParent_ = true;
+}
+
 bool Stoppable::isStopping() const
 {
     return m_root.isStopping();

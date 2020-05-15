@@ -19,27 +19,33 @@
 
 #include <ripple/nodestore/impl/Shard.h>
 #include <ripple/app/ledger/InboundLedger.h>
+#include <ripple/app/main/DBInit.h>
+#include <ripple/basics/StringUtilities.h>
+#include <ripple/core/ConfigSections.h>
 #include <ripple/nodestore/impl/DatabaseShardImp.h>
 #include <ripple/nodestore/Manager.h>
+
+#include <boost/algorithm/string.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/range/adaptor/transformed.hpp>
 
 #include <fstream>
 
 namespace ripple {
 namespace NodeStore {
 
-Shard::Shard(DatabaseShard const& db, std::uint32_t index,
-    int cacheSz, std::chrono::seconds cacheAge, beast::Journal& j)
-    : index_(index)
+Shard::Shard(
+    Application& app,
+    DatabaseShard const& db,
+    std::uint32_t index,
+    beast::Journal j)
+    : app_(app)
+    , index_(index)
     , firstSeq_(db.firstLedgerSeq(index))
     , lastSeq_(std::max(firstSeq_, db.lastLedgerSeq(index)))
     , maxLedgers_(index == db.earliestShardIndex() ?
         lastSeq_ - firstSeq_ + 1 : db.ledgersPerShard())
-    , pCache_(std::make_shared<PCache>(
-        "shard " + std::to_string(index_),
-        cacheSz, cacheAge, stopwatch(), j))
-    , nCache_(std::make_shared<NCache>(
-        "shard " + std::to_string(index_),
-        stopwatch(), cacheSz, cacheAge))
     , dir_(db.getRootDir() / std::to_string(index_))
     , control_(dir_ / controlFileName)
     , j_(j)
@@ -49,49 +55,53 @@ Shard::Shard(DatabaseShard const& db, std::uint32_t index,
 }
 
 bool
-Shard::open(Section config, Scheduler& scheduler, nudb::context& ctx)
+Shard::open(Scheduler& scheduler, nudb::context& ctx)
 {
-    assert(!backend_);
     using namespace boost::filesystem;
-    using namespace boost::beast::detail;
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(!backend_);
 
-    std::string const type (get<std::string>(config, "type", "nudb"));
+    Config const& config {app_.config()};
+    Section section {config.section(ConfigSection::shardDatabase())};
+    std::string const type (get<std::string>(section, "type", "nudb"));
     auto factory {Manager::instance().find(type)};
     if (!factory)
     {
         JLOG(j_.error()) <<
             "shard " << index_ <<
-            ": failed to create shard store type " << type;
+            " failed to create backend type " << type;
         return false;
     }
 
-    boost::system::error_code ec;
-    auto const preexist {exists(dir_, ec)};
-    if (ec)
-    {
-        JLOG(j_.error()) <<
-            "shard " << index_ << ": " << ec.message();
-        return false;
-    }
-
-    config.set("path", dir_.string());
+    section.set("path", dir_.string());
     backend_ = factory->createInstance(
-        NodeObject::keyBytes, config, scheduler, ctx, j_);
+        NodeObject::keyBytes, section, scheduler, ctx, j_);
 
-    auto fail = [&](std::string msg)
+    auto const preexist {exists(dir_)};
+    auto fail = [this, preexist](std::string const& msg)
     {
+        pCache_.reset();
+        nCache_.reset();
+        backend_.reset();
+        lgrSQLiteDB_.reset();
+        txSQLiteDB_.reset();
+        storedSeqs_.clear();
+        lastStored_.reset();
+
+        if (!preexist)
+            removeAll(dir_, j_);
+
         if (!msg.empty())
         {
             JLOG(j_.error()) <<
-                "shard " << index_ << ": " << msg;
+                "shard " << index_ << " " << msg;
         }
-        if (!preexist)
-            removeAll(dir_, j_);
         return false;
     };
 
     try
     {
+        // Open/Create the NuDB key/value store for node objects
         backend_->open(!preexist);
 
         if (!backend_->backed())
@@ -100,7 +110,7 @@ Shard::open(Section config, Scheduler& scheduler, nudb::context& ctx)
         if (!preexist)
         {
             // New shard, create a control file
-            if (!saveControl())
+            if (!saveControl(lock))
                 return fail({});
         }
         else if (is_regular_file(control_))
@@ -117,100 +127,79 @@ Shard::open(Section config, Scheduler& scheduler, nudb::context& ctx)
                 if (boost::icl::first(storedSeqs_) < firstSeq_ ||
                     boost::icl::last(storedSeqs_) > lastSeq_)
                 {
-                    return fail("invalid control file");
+                    return fail("has an invalid control file");
                 }
 
                 if (boost::icl::length(storedSeqs_) >= maxLedgers_)
                 {
-                    JLOG(j_.error()) <<
+                    JLOG(j_.warn()) <<
                         "shard " << index_ <<
-                        ": found control file for complete shard";
-                    storedSeqs_.clear();
-                    complete_ = true;
-                    remove_all(control_);
+                        " has a control file for complete shard";
+                    setComplete(lock);
                 }
             }
         }
         else
-            complete_ = true;
+            setComplete(lock);
 
-        // Calculate file foot print of backend files
-        for (auto const& p : recursive_directory_iterator(dir_))
-            if (!is_directory(p))
-                fileSize_ += file_size(p);
+        if (!complete_)
+        {
+            setCache(lock);
+            if (!initSQLite(lock) ||!setFileStats(lock))
+                return fail({});
+        }
     }
     catch (std::exception const& e)
     {
-        return fail(e.what());
+        return fail(std::string("exception ") +
+            e.what() + " in function " + __func__);
     }
 
     return true;
 }
 
 bool
-Shard::setStored(std::shared_ptr<Ledger const> const& l)
+Shard::setStored(std::shared_ptr<Ledger const> const& ledger)
 {
-    assert(backend_&& !complete_);
-    if (boost::icl::contains(storedSeqs_, l->info().seq))
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(backend_ && !complete_);
+
+    if (boost::icl::contains(storedSeqs_, ledger->info().seq))
     {
         JLOG(j_.debug()) <<
             "shard " << index_ <<
-            " ledger seq " << l->info().seq <<
-            " already stored";
+            " has ledger sequence " << ledger->info().seq << " already stored";
         return false;
     }
+
+    if (!setSQLiteStored(ledger, lock))
+        return false;
+
+    // Check if the shard is complete
     if (boost::icl::length(storedSeqs_) >= maxLedgers_ - 1)
-    {
-        if (backend_->backed())
-        {
-            if (!removeAll(control_, j_))
-                return false;
-
-            // Update file foot print of backend files
-            using namespace boost::filesystem;
-            std::uint64_t sz {0};
-            try
-            {
-                for (auto const& p : recursive_directory_iterator(dir_))
-                    if (!is_directory(p))
-                        sz += file_size(p);
-            }
-            catch (const filesystem_error& e)
-            {
-                JLOG(j_.error()) <<
-                    "exception: " << e.what();
-                fileSize_ = std::max(fileSize_, sz);
-                return false;
-            }
-            fileSize_ = sz;
-        }
-        complete_ = true;
-        storedSeqs_.clear();
-
-        JLOG(j_.debug()) <<
-            "shard " << index_ <<
-            " ledger seq " << l->info().seq <<
-            " stored. Shard complete";
-    }
+        setComplete(lock);
     else
     {
-        storedSeqs_.insert(l->info().seq);
-        lastStored_ = l;
-        if (backend_->backed() && !saveControl())
+        storedSeqs_.insert(ledger->info().seq);
+        if (backend_->backed() && !saveControl(lock))
             return false;
-
-        JLOG(j_.debug()) <<
-            "shard " << index_ <<
-            " ledger seq " << l->info().seq <<
-            " stored";
     }
 
+    JLOG(j_.debug()) <<
+        "shard " << index_ <<
+        " stored ledger sequence " << ledger->info().seq <<
+        (complete_ ? " and is complete" : "");
+
+    lastStored_ = ledger;
     return true;
 }
 
 boost::optional<std::uint32_t>
 Shard::prepare()
 {
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(backend_ && !complete_);
+
     if (storedSeqs_.empty())
          return lastSeq_;
     return prevMissing(storedSeqs_, 1 + lastSeq_, firstSeq_);
@@ -221,64 +210,130 @@ Shard::contains(std::uint32_t seq) const
 {
     if (seq < firstSeq_ || seq > lastSeq_)
         return false;
-    if (complete_)
-        return true;
-    return boost::icl::contains(storedSeqs_, seq);
+
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(backend_);
+
+    return complete_ || boost::icl::contains(storedSeqs_, seq);
+}
+
+void
+Shard::sweep()
+{
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(pCache_ && nCache_);
+
+    pCache_->sweep();
+    nCache_->sweep();
+}
+
+std::shared_ptr<Backend> const&
+Shard::getBackend() const
+{
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(backend_);
+
+    return backend_;
 }
 
 bool
-Shard::validate(Application& app)
+Shard::complete() const
+{
+    std::lock_guard< std::mutex> lock(mutex_);
+    assert(backend_);
+
+    return complete_;
+}
+
+std::shared_ptr<PCache>
+Shard::pCache() const
+{
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(pCache_);
+
+    return pCache_;
+}
+
+std::shared_ptr<NCache>
+Shard::nCache() const
+{
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(nCache_);
+
+    return nCache_;
+}
+
+std::uint64_t
+Shard::fileSize() const
+{
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(backend_);
+
+    return fileSz_;
+}
+
+std::uint32_t
+Shard::fdRequired() const
+{
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(backend_);
+
+    return fdRequired_;
+}
+
+std::shared_ptr<Ledger const>
+Shard::lastStored() const
+{
+	std::lock_guard< std::mutex> lock(mutex_);
+    assert(backend_);
+
+    return lastStored_;
+}
+
+bool
+Shard::validate() const
 {
     uint256 hash;
-    std::uint32_t seq;
-    std::shared_ptr<Ledger> l;
+    std::uint32_t seq {0};
+    auto fail = [j = j_, index = index_, &hash, &seq](std::string const& msg)
+    {
+        JLOG(j.error()) <<
+            "shard " << index << ". " << msg <<
+            (hash.isZero() ? "" : ". Ledger hash " + to_string(hash)) <<
+            (seq == 0 ? "" : ". Ledger sequence " + std::to_string(seq));
+        return false;
+    };
+    std::shared_ptr<Ledger> ledger;
+
     // Find the hash of the last ledger in this shard
     {
-        std::tie(l, seq, hash) = loadLedgerHelper(
+        std::tie(ledger, seq, hash) = loadLedgerHelper(
             "WHERE LedgerSeq >= " + std::to_string(lastSeq_) +
-            " order by LedgerSeq desc limit 1", app, false);
-        if (!l)
-        {
-            JLOG(j_.error()) <<
-                "shard " << index_ <<
-                " unable to validate. No lookup data";
-            return false;
-        }
+            " order by LedgerSeq desc limit 1", app_, false);
+        if (!ledger)
+            return fail("Unable to validate due to lacking lookup data");
+
         if (seq != lastSeq_)
         {
-            l->setImmutable(app.config());
             boost::optional<uint256> h;
+
+            ledger->setImmutable(app_.config());
             try
             {
-                h = hashOfSeq(*l, lastSeq_, j_);
+                h = hashOfSeq(*ledger, lastSeq_, j_);
             }
             catch (std::exception const& e)
             {
-                JLOG(j_.error()) <<
-                    "exception: " << e.what();
-                return false;
+                return fail(std::string("exception ") +
+                    e.what() + " in function " + __func__);
             }
+
             if (!h)
-            {
-                JLOG(j_.error()) <<
-                    "shard " << index_ <<
-                    " No hash for last ledger seq " << lastSeq_;
-                return false;
-            }
+                return fail("Missing hash for last ledger sequence");
             hash = *h;
             seq = lastSeq_;
         }
     }
-
-    JLOG(j_.debug()) <<
-        "Validating shard " << index_ <<
-        " ledgers " << firstSeq_ <<
-        "-" << lastSeq_;
-
-    // Use a short age to keep memory consumption low
-    auto const savedAge {pCache_->getTargetAge()};
-    using namespace std::chrono_literals;
-    pCache_->setTargetAge(1s);
 
     // Validate every ledger stored in this shard
     std::shared_ptr<Ledger const> next;
@@ -286,187 +341,507 @@ Shard::validate(Application& app)
     {
         auto nObj = valFetch(hash);
         if (!nObj)
-            break;
-        l = std::make_shared<Ledger>(
-            InboundLedger::deserializeHeader(makeSlice(nObj->getData()),
-                true), app.config(), *app.shardFamily());
-        if (l->info().hash != hash || l->info().seq != seq)
+            return fail("Invalid ledger");
+
+        ledger = std::make_shared<Ledger>(
+            InboundLedger::deserializeHeader(makeSlice(nObj->getData()), true),
+            app_.config(),
+            *app_.shardFamily());
+        if (ledger->info().seq != seq)
+            return fail("Invalid ledger header sequence");
+        if (ledger->info().hash != hash)
+            return fail("Invalid ledger header hash");
+
+        ledger->stateMap().setLedgerSeq(seq);
+        ledger->txMap().setLedgerSeq(seq);
+        ledger->setImmutable(app_.config());
+        if (!ledger->stateMap().fetchRoot(
+            SHAMapHash {ledger->info().accountHash}, nullptr))
         {
-            JLOG(j_.error()) <<
-                "ledger seq " << seq <<
-                " hash " << hash <<
-                " cannot be a ledger";
-            break;
+            return fail("Missing root STATE node");
         }
-        l->stateMap().setLedgerSeq(seq);
-        l->txMap().setLedgerSeq(seq);
-        l->setImmutable(app.config());
-        if (!l->stateMap().fetchRoot(
-            SHAMapHash {l->info().accountHash}, nullptr))
+        if (ledger->info().txHash.isNonZero() &&
+            !ledger->txMap().fetchRoot(
+                SHAMapHash {ledger->info().txHash},
+                nullptr))
         {
-            JLOG(j_.error()) <<
-                "ledger seq " << seq <<
-                " missing Account State root";
-            break;
+            return fail("Missing root TXN node");
         }
-        if (l->info().txHash.isNonZero())
-        {
-            if (!l->txMap().fetchRoot(
-                SHAMapHash {l->info().txHash}, nullptr))
-            {
-                JLOG(j_.error()) <<
-                    "ledger seq " << seq <<
-                    " missing TX root";
-                break;
-            }
-        }
-        if (!valLedger(l, next))
-            break;
-        hash = l->info().parentHash;
+
+        if (!valLedger(ledger, next))
+            return false;
+
+        hash = ledger->info().parentHash;
         --seq;
-        next = l;
-        if (seq % 128 == 0)
-            pCache_->sweep();
+        next = ledger;
     }
 
-    pCache_->reset();
-    nCache_->reset();
-    pCache_->setTargetAge(savedAge);
-
-    if (seq >= firstSeq_)
     {
-        JLOG(j_.error()) <<
-            "shard " << index_ <<
-            (complete_ ? " is invalid, failed" : " is incomplete, stopped") <<
-            " at seq " << seq <<
-            " hash " << hash;
-        return false;
+		std::lock_guard< std::mutex> lock(mutex_);
+        pCache_->reset();
+        nCache_->reset();
     }
 
-    JLOG(j_.debug()) <<
-        "shard " << index_ <<
-        " is complete.";
+    JLOG(j_.debug()) << "shard " << index_ << " is valid";
     return true;
 }
 
 bool
-Shard::valLedger(std::shared_ptr<Ledger const> const& l,
-    std::shared_ptr<Ledger const> const& next)
+Shard::setComplete(std::lock_guard<std::mutex> const& lock)
 {
-    if (l->info().hash.isZero() || l->info().accountHash.isZero())
-    {
-        JLOG(j_.error()) <<
-            "invalid ledger";
-        return false;
-    }
-    bool error {false};
-    auto f = [&, this](SHAMapAbstractNode& node) {
-        if (!valFetch(node.getNodeHash().as_uint256()))
-            error = true;
-        return !error;
-    };
-    // Validate the state map
-    if (l->stateMap().getHash().isNonZero())
-    {
-        if (!l->stateMap().isValid())
-        {
-            JLOG(j_.error()) <<
-                "invalid state map";
-            return false;
-        }
-        try
-        {
-            if (next && next->info().parentHash == l->info().hash)
-                l->stateMap().visitDifferences(&next->stateMap(), f);
-            else
-                l->stateMap().visitNodes(f);
-        }
-        catch (std::exception const& e)
-        {
-            JLOG(j_.error()) <<
-                "exception: " << e.what();
-            return false;
-        }
-        if (error)
-            return false;
-    }
-    // Validate the tx map
-    if (l->info().txHash.isNonZero())
-    {
-        if (!l->txMap().isValid())
-        {
-            JLOG(j_.error()) <<
-                "invalid transaction map";
-            return false;
-        }
-        try
-        {
-            l->txMap().visitNodes(f);
-        }
-        catch (std::exception const& e)
-        {
-            JLOG(j_.error()) <<
-                "exception: " << e.what();
-            return false;
-        }
-        if (error)
-            return false;
-    }
-    return true;
-};
-
-std::shared_ptr<NodeObject>
-Shard::valFetch(uint256 const& hash)
-{
-    assert(backend_);
-    std::shared_ptr<NodeObject> nObj;
+    // Remove the control file if one exists
     try
     {
-        switch (backend_->fetch(hash.begin(), &nObj))
+        using namespace boost::filesystem;
+        if (is_regular_file(control_))
+            remove_all(control_);
+
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.error()) <<
+            "shard " << index_ <<
+            " exception " << e.what() <<
+            " in function " << __func__;
+        return false;
+    }
+
+    storedSeqs_.clear();
+    complete_ = true;
+
+    setCache(lock);
+    return initSQLite(lock) && setFileStats(lock);
+}
+
+void
+Shard::setCache(std::lock_guard<std::mutex> const&)
+{
+    // complete shards use the smallest cache and
+    // fastest expiration to reduce memory consumption.
+    // The incomplete shard is set according to configuration.
+    if (!pCache_)
+    {
+        auto const name {"shard " + std::to_string(index_)};
+        //auto const sz = app_.config().getValueFor(SizedItem::nodeCacheSize,
+        //    complete_ ? boost::optional<std::size_t>(0) : boost::none);
+        //auto const age = std::chrono::seconds{
+        //    app_.config().getValueFor(SizedItem::nodeCacheAge,
+        //        complete_ ? boost::optional<std::size_t>(0) : boost::none)};
+
+		auto const sz = app_.config().getSize(siNodeCacheSize);
+		auto const age = std::chrono::seconds{app_.config().getSize(siNodeCacheAge) };
+
+        pCache_ = std::make_shared<PCache>(name, sz, age, stopwatch(), j_);
+        nCache_ = std::make_shared<NCache>(name, stopwatch(), sz, age);
+    }
+    else
+    {
+        //auto const sz = app_.config().getValueFor(
+        //    SizedItem::nodeCacheSize, 0);
+		auto const sz = app_.config().getSize(siNodeCacheSize);
+        pCache_->setTargetSize(sz);
+        nCache_->setTargetSize(sz);
+
+        //auto const age = std::chrono::seconds{
+        //    app_.config().getValueFor(
+        //        SizedItem::nodeCacheAge, 0)};
+		auto const age = std::chrono::seconds{ app_.config().getSize(siNodeCacheAge) };
+        pCache_->setTargetAge(age);
+        nCache_->setTargetAge(age);
+    }
+}
+
+bool
+Shard::initSQLite(std::lock_guard<std::mutex> const&)
+{
+    Config const& config {app_.config()};
+    DatabaseCon::Setup setup;
+    setup.startUp = config.START_UP;
+    setup.standAlone = config.standalone();
+    setup.dataDir = dir_;
+
+    try
+    {
+        if (complete_)
         {
-        case ok:
-            break;
-        case notFound:
-        {
-            JLOG(j_.error()) <<
-                "NodeObject not found. hash " << hash;
-            break;
+            // Remove WAL files if they exist
+            using namespace boost::filesystem;
+            for (auto const& d : directory_iterator(dir_))
+            {
+                if (is_regular_file(d) &&
+                    boost::iends_with(extension(d), "-wal"))
+                {
+                    // Closing the session forces a checkpoint
+                    if (!lgrSQLiteDB_)
+                    {
+                        lgrSQLiteDB_ = std::make_unique <DatabaseCon>(
+                            setup,
+                            LgrDBName,
+                            LgrDBPragma,
+                            LgrDBInit);
+                    }
+                    lgrSQLiteDB_->getSession().close();
+
+                    if (!txSQLiteDB_)
+                    {
+                        txSQLiteDB_ = std::make_unique <DatabaseCon>(
+                            setup,
+                            TxDBName,
+                            TxDBPragma,
+                            TxDBInit);
+                    }
+                    txSQLiteDB_->getSession().close();
+                    break;
+                }
+            }
+
+            lgrSQLiteDB_ = std::make_unique <DatabaseCon>(
+                setup,
+                LgrDBName,
+                CompleteShardDBPragma,
+                LgrDBInit);
+            lgrSQLiteDB_->getSession() <<
+                boost::str(boost::format("PRAGMA cache_size=-%d;") %
+                kilobytes(config.getSize(siLgrDBCache)));
+
+            txSQLiteDB_ = std::make_unique <DatabaseCon>(
+                setup,
+                TxDBName,
+                CompleteShardDBPragma,
+                TxDBInit);
+            txSQLiteDB_->getSession() <<
+                boost::str(boost::format("PRAGMA cache_size=-%d;") %
+                kilobytes(config.getSize(siTxnDBCache)));
         }
-        case dataCorrupt:
+        else
         {
-            JLOG(j_.error()) <<
-                "NodeObject is corrupt. hash " << hash;
-            break;
-        }
-        default:
-        {
-            JLOG(j_.error()) <<
-                "unknown error. hash " << hash;
-        }
+            // The incomplete shard uses a Write Ahead Log for performance
+            lgrSQLiteDB_ = std::make_unique <DatabaseCon>(
+                setup,
+                LgrDBName,
+                LgrDBPragma,
+                LgrDBInit);
+            lgrSQLiteDB_->getSession() <<
+                boost::str(boost::format("PRAGMA cache_size=-%d;") %
+                kilobytes(config.getSize(siLgrDBCache)));
+            lgrSQLiteDB_->setupCheckpointing(&app_.getJobQueue(), app_.logs());
+
+            txSQLiteDB_ = std::make_unique <DatabaseCon>(
+                setup,
+                TxDBName,
+                TxDBPragma,
+                TxDBInit);
+            txSQLiteDB_->getSession() <<
+                boost::str(boost::format("PRAGMA cache_size=-%d;") %
+                kilobytes(config.getSize(siTxnDBCache)));
+            txSQLiteDB_->setupCheckpointing(&app_.getJobQueue(), app_.logs());
         }
     }
     catch (std::exception const& e)
     {
         JLOG(j_.error()) <<
-            "exception: " << e.what();
+            "shard " << index_ <<
+            " exception " << e.what() <<
+            " in function " << __func__;
+        return false;
     }
-    return nObj;
+    return true;
 }
 
 bool
-Shard::saveControl()
+Shard::setSQLiteStored(
+    std::shared_ptr<Ledger const> const& ledger,
+    std::lock_guard<std::mutex> const&)
+{
+    auto const seq {ledger->info().seq};
+    assert(backend_ && !complete_);
+    assert(!boost::icl::contains(storedSeqs_, seq));
+
+    try
+    {
+        {
+            auto& session {txSQLiteDB_->getSession()};
+            soci::transaction tr(session);
+
+            session <<
+                "DELETE FROM Transactions WHERE LedgerSeq = :seq;"
+                , soci::use(seq);
+            session <<
+                "DELETE FROM AccountTransactions WHERE LedgerSeq = :seq;"
+                , soci::use(seq);
+
+            if (ledger->info().txHash.isNonZero())
+            {
+                auto const sSeq {std::to_string(seq)};
+                if (!ledger->txMap().isValid())
+                {
+                    JLOG(j_.error()) <<
+                        "shard " << index_ <<
+                        " has an invalid transaction map" <<
+                        " on sequence " << sSeq;
+                    return false;
+                }
+
+                for (auto const& item : ledger->txs)
+                {
+                    auto const txID {item.first->getTransactionID()};
+                    auto const sTxID {to_string(txID)};
+                    auto const txMeta {std::make_shared<TxMeta>(
+                        txID, ledger->seq(), *item.second)};
+
+                    session <<
+                        "DELETE FROM AccountTransactions WHERE TransID = :txID;"
+                        , soci::use(sTxID);
+
+                    auto const& accounts = txMeta->getAffectedAccounts(j_);
+                    if (!accounts.empty())
+                    {
+                        auto const s(boost::str(boost::format(
+                            "('%s','%s',%s,%s)")
+                            % sTxID
+                            % "%s"
+                            % sSeq
+                            % std::to_string(txMeta->getIndex())));
+                        std::string sql;
+                        sql.reserve((accounts.size() + 1) * 128);
+                        sql = "INSERT INTO AccountTransactions "
+                            "(TransID, Account, LedgerSeq, TxnSeq) VALUES ";
+                        sql += boost::algorithm::join(
+                            accounts | boost::adaptors::transformed(
+                                [&](AccountID const& accountID)
+                                {
+                                    return boost::str(boost::format(s)
+                                        % ripple::toBase58(accountID));
+                                }),
+                                ",");
+                        sql += ';';
+                        session << sql;
+
+                        JLOG(j_.trace()) <<
+                            "shard " << index_ <<
+                            " account transaction: " << sql;
+                    }
+                    else
+                    {
+                        JLOG(j_.warn()) <<
+                            "shard " << index_ <<
+                            " transaction in ledger " << sSeq <<
+                            " affects no accounts";
+                    }
+
+                    Serializer s;
+                    item.second->add(s);
+                    session <<
+                       (STTx::getMetaSQLInsertReplaceHeader() +
+                           item.first->getMetaSQL(
+                               seq,
+                               sqlEscape(std::move(s.modData())))
+                           + ';');
+                }
+            }
+
+            tr.commit ();
+        }
+
+        auto& session {lgrSQLiteDB_->getSession()};
+        soci::transaction tr(session);
+
+        session <<
+            "DELETE FROM Ledgers WHERE LedgerSeq = :seq;"
+            , soci::use(seq);
+        session <<
+            "INSERT OR REPLACE INTO Ledgers ("
+                "LedgerHash, LedgerSeq, PrevHash, TotalCoins, ClosingTime,"
+                "PrevClosingTime, CloseTimeRes, CloseFlags, AccountSetHash,"
+                "TransSetHash)"
+            "VALUES ("
+                ":ledgerHash, :ledgerSeq, :prevHash, :totalCoins, :closingTime,"
+                ":prevClosingTime, :closeTimeRes, :closeFlags, :accountSetHash,"
+                ":transSetHash);",
+            soci::use(to_string(ledger->info().hash)),
+            soci::use(seq),
+            soci::use(to_string(ledger->info().parentHash)),
+            soci::use(to_string(ledger->info().drops)),
+            soci::use(ledger->info().closeTime.time_since_epoch().count()),
+            soci::use(ledger->info().parentCloseTime.time_since_epoch().count()),
+            soci::use(ledger->info().closeTimeResolution.count()),
+            soci::use(ledger->info().closeFlags),
+            soci::use(to_string(ledger->info().accountHash)),
+            soci::use(to_string(ledger->info().txHash));
+
+        tr.commit();
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.error()) <<
+            "shard " << index_ <<
+            " exception " << e.what() <<
+            " in function " << __func__;
+        return false;
+    }
+    return true;
+}
+
+bool
+Shard::setFileStats(std::lock_guard<std::mutex> const&)
+{
+    fileSz_ = 0;
+    fdRequired_ = 0;
+    if (backend_->backed())
+    {
+        try
+        {
+            using namespace boost::filesystem;
+            for (auto const& d : directory_iterator(dir_))
+            {
+                if (is_regular_file(d))
+                {
+                    fileSz_ += file_size(d);
+                    ++fdRequired_;
+                }
+            }
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(j_.error()) <<
+                "shard " << index_ <<
+                " exception " << e.what() <<
+                " in function " << __func__;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool
+Shard::saveControl(std::lock_guard<std::mutex> const&)
 {
     std::ofstream ofs {control_.string(), std::ios::trunc};
     if (!ofs.is_open())
     {
         JLOG(j_.fatal()) <<
-            "shard " << index_ <<
-            " unable to save control file";
+            "shard " << index_ << " is unable to save control file";
         return false;
     }
+
     boost::archive::text_oarchive ar(ofs);
     ar & storedSeqs_;
     return true;
+}
+
+bool
+Shard::valLedger(
+    std::shared_ptr<Ledger const> const& ledger,
+    std::shared_ptr<Ledger const> const& next) const
+{
+    auto fail = [j = j_, index = index_, &ledger](std::string const& msg)
+    {
+        JLOG(j.error()) <<
+            "shard " << index << ". " << msg <<
+            (ledger->info().hash.isZero() ?
+                "" : ". Ledger header hash " +
+                to_string(ledger->info().hash)) <<
+            (ledger->info().seq == 0 ?
+                "" : ". Ledger header sequence " +
+                std::to_string(ledger->info().seq));
+        return false;
+    };
+
+    if (ledger->info().hash.isZero())
+        return fail("Invalid ledger header hash");
+    if (ledger->info().accountHash.isZero())
+        return fail("Invalid ledger header account hash");
+
+    bool error {false};
+    auto visit = [this, &error](SHAMapAbstractNode& node)
+    {
+        if (!valFetch(node.getNodeHash().as_uint256()))
+            error = true;
+        return !error;
+    };
+
+    // Validate the state map
+    if (ledger->stateMap().getHash().isNonZero())
+    {
+        if (!ledger->stateMap().isValid())
+            return fail("Invalid state map");
+
+        try
+        {
+            if (next && next->info().parentHash == ledger->info().hash)
+                ledger->stateMap().visitDifferences(&next->stateMap(), visit);
+            else
+                ledger->stateMap().visitNodes(visit);
+        }
+        catch (std::exception const& e)
+        {
+            return fail(std::string("exception ") +
+                e.what() + " in function " + __func__);
+        }
+        if (error)
+            return fail("Invalid state map");
+    }
+
+    // Validate the transaction map
+    if (ledger->info().txHash.isNonZero())
+    {
+        if (!ledger->txMap().isValid())
+            return fail("Invalid transaction map");
+
+        try
+        {
+            ledger->txMap().visitNodes(visit);
+        }
+        catch (std::exception const& e)
+        {
+            return fail(std::string("exception ") +
+                e.what() + " in function " + __func__);
+        }
+        if (error)
+            return fail("Invalid transaction map");
+    }
+    return true;
+};
+
+std::shared_ptr<NodeObject>
+Shard::valFetch(uint256 const& hash) const
+{
+    std::shared_ptr<NodeObject> nObj;
+    auto fail = [j = j_, index = index_, &hash, &nObj](std::string const& msg)
+    {
+        JLOG(j.error()) <<
+            "shard " << index << ". " << msg <<
+            ". Node object hash " << to_string(hash);
+        nObj.reset();
+        return nObj;
+    };
+    Status status;
+
+    try
+    {
+        {
+			std::lock_guard< std::mutex> lock(mutex_);
+            status = backend_->fetch(hash.begin(), &nObj);
+        }
+
+        switch (status)
+        {
+        case ok:
+            break;
+        case notFound:
+            return fail("Missing node object");
+        case dataCorrupt:
+            return fail("Corrupt node object");
+        default:
+            return fail("Unknown error");
+        }
+    }
+    catch (std::exception const& e)
+    {
+        return fail(std::string("exception ") +
+            e.what() + " in function " + __func__);
+    }
+    return nObj;
 }
 
 } // NodeStore

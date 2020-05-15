@@ -42,7 +42,7 @@ class NuDBBackend
 public:
     static constexpr std::size_t currentType = 1;
 
-    beast::Journal j_;
+    beast::Journal const j_;
     size_t const keyBytes_;
     std::string const name_;
     nudb::store db_;
@@ -297,7 +297,7 @@ public:
     }
 
     int
-    fdlimit() const override
+    fdRequired() const override
     {
         return 3;
     }

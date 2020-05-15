@@ -61,8 +61,8 @@ enum SizedItemName
 
 struct SizedItem
 {
-    SizedItemName   item;
-    int             sizes[5];
+	SizedItemName   item;
+	int             sizes[5];
 };
 
 //  This entire derived class is deprecated.
@@ -215,6 +215,27 @@ public:
     bool standalone() const { return RUN_STANDALONE; }
 
     bool canSign() const { return signingEnabled_; }
+
+	/** Retrieve the default value for the item at the specified node size
+
+	@param item The item for which the default value is needed
+	@param node Optional value, used to adjust the result to match the
+				size of a node (0: tiny, ..., 4: huge). If unseated,
+				uses the configured size (NODE_SIZE).
+
+	@throw This method can throw std::out_of_range if you ask for values
+		   that it does not recognize or request a non-default node-size.
+
+	@return The value for the requested item.
+
+	@note The defaults are selected so as to be reasonable, but the node
+		  size is an imprecise metric that combines multiple aspects of
+		  the underlying system; this means that we can't provide optimal
+		  defaults in the code for every case.
+*/
+	//int
+	//	getValueFor(SizedItem item,
+	//		boost::optional<std::size_t> node = boost::none) const;
 };
 
 } // ripple

@@ -43,7 +43,7 @@ public:
     /** Create an instance of this factory's backend.
 
         @param keyBytes The fixed number of bytes per key.
-        @param keyValues A set of key/value configuration pairs.
+        @param parameters A set of key/value configuration pairs.
         @param scheduler The scheduler to use for running tasks.
         @return A pointer to the Backend object.
     */

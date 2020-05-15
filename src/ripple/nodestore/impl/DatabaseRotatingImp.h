@@ -137,7 +137,7 @@ private:
 
     Backends getBackends() const
     {
-        std::lock_guard <std::mutex> lock (rotateMutex_);
+        std::lock_guard<std::mutex> lock (rotateMutex_);
         return Backends {writableBackend_, archiveBackend_};
     }
 
