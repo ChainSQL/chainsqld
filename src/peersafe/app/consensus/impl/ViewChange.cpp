@@ -31,7 +31,8 @@ namespace ripple {
         for (auto it : m.signatures())
         {
             PublicKey const publicKey(makeSlice(it.publickey()));
-            Slice signature(it.signature().data(), it.signature().size());
+            Blob signature;
+            signature.assign(it.signature().begin(), it.signature().end());
 
             mSignatures.emplace(publicKey, signature);
         }
@@ -47,7 +48,7 @@ namespace ripple {
             {
                 return false;
             }
-            ViewChange viewChange{ mPreSeq, mPreHash, it.first, mView, it.second };
+            ViewChange viewChange{ mPreSeq, mPreHash, it.first, mView, makeSlice(it.second) };
             if (!viewChange.checkSign())
             {
                 return false;

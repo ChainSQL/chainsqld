@@ -238,11 +238,12 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
 }
 
 void
-RCLConsensus::Adaptor::sendViewChange(ViewChange const& change)
+RCLConsensus::Adaptor::sendViewChange(ViewChange& change)
 {
 	protocol::TMViewChange msg;
 	auto signingHash = change.signingHash();
 	auto sig = signDigest(valPublic_, valSecret_, signingHash);
+    change.setSignatrue(sig);
 
 	msg.set_previousledgerseq(change.prevSeq());
 	msg.set_previousledgerhash(change.prevHash().begin(), change.prevHash().size());

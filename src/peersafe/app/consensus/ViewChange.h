@@ -71,12 +71,17 @@ public:
 		return toView_;
 	}
 
+    void setSignatrue(const Buffer& sign)
+    {
+        signature_ = sign;
+    }
+
 	uint256 signingHash() const
 	{
 		return sha512Half(
 			prevSeq_,
 			prevHash_,
-			nodePublic_,
+			//nodePublic_,
 			toView_
 		);
 	}
@@ -107,7 +112,7 @@ private:
     uint64                              mView;
     LedgerIndex                         mPreSeq;
     LedgerHash                          mPreHash;
-    std::map<PublicKey const, Slice>    mSignatures;
+    std::map<PublicKey const, Blob>     mSignatures;
 
 public:
     CommitteeViewChange(protocol::TMCommitteeViewChange const& m);

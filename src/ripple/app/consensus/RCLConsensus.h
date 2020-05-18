@@ -405,7 +405,7 @@ class RCLConsensus
 		/** Send view change message.
 		*/
 		void
-			sendViewChange(ViewChange const& proposal);
+			sendViewChange(ViewChange& proposal);
 
 		void touchAcquringLedger(LedgerHash const& prevLedgerHash);
     };
