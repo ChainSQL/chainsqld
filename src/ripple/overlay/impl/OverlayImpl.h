@@ -245,27 +245,7 @@ public:
     // For acquire ledger and txset selectPeers
     template <class UnaryFunc>
     void
-    for_shard_role(UnaryFunc&& f)
-    {
-        auto role = app_.getShardManager().myShardRole();
-
-        switch (role)
-        {
-        case Config::SHARD_ROLE_LOOKUP:
-        case Config::SHARD_ROLE_SYNC:
-        case Config::SHARD_ROLE_LOOKUP | Config::SHARD_ROLE_SYNC:
-            app_.getShardManager().lookup().for_each(f);
-            break;
-        case Config::SHARD_ROLE_SHARD:
-            app_.getShardManager().node().for_each(f);
-            break;
-        case Config::SHARD_ROLE_COMMITTEE:
-            app_.getShardManager().committee().for_each(f);
-            break;
-        default:
-            break;
-        }
-    }
+    for_shard_role(UnaryFunc&& f);
 
     std::size_t
     selectPeers (PeerSet& set, std::size_t limit, std::function<

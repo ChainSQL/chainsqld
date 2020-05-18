@@ -1993,7 +1993,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m)
 {
     auto const pap = &app_;
 
-    switch (app_.getShardManager().myShardRole())
+    switch ((uint32)app_.getShardManager().myShardRole())
     {
     case ShardManager::LOOKUP:
     case ShardManager::SYNC:
@@ -2021,7 +2021,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m)
 {
     auto const pap = &app_;
 
-    switch (app_.getShardManager().myShardRole())
+    switch ((uint32)app_.getShardManager().myShardRole())
     {
     case ShardManager::LOOKUP:
 	case ShardManager::SYNC:
@@ -2071,7 +2071,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMCommitteeViewChange> const& m)
 {
     auto const pap = &app_;
 
-    switch (app_.getShardManager().myShardRole())
+    switch ((uint32)app_.getShardManager().myShardRole())
     {
     case ShardManager::LOOKUP:
     case ShardManager::SYNC:

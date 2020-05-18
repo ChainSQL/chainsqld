@@ -50,7 +50,7 @@ ShardManager::ShardManager(Application& app, Config& cfg, Logs& log)
 	}
 
     // Initial other peers' validators(trustKey and quorum)
-    switch (mShardRole)
+    switch ((uint32)mShardRole)
     {
     case LOOKUP:
     case SYNC:

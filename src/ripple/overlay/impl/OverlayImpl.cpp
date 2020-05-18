@@ -723,6 +723,28 @@ namespace ripple {
 		m_traffic.addCount(cat, isInbound, number);
 	}
 
+    template <class UnaryFunc>
+    void
+    OverlayImpl::for_shard_role(UnaryFunc&& f)
+    {
+        switch ((uint32)app_.getShardManager().myShardRole())
+        {
+        case Config::SHARD_ROLE_LOOKUP:
+        case Config::SHARD_ROLE_SYNC:
+        case Config::SHARD_ROLE_LOOKUP | Config::SHARD_ROLE_SYNC:
+            app_.getShardManager().lookup().for_each(f);
+            break;
+        case Config::SHARD_ROLE_SHARD:
+            app_.getShardManager().node().for_each(f);
+            break;
+        case Config::SHARD_ROLE_COMMITTEE:
+            app_.getShardManager().committee().for_each(f);
+            break;
+        default:
+            break;
+        }
+    }
+
 		void OverlayImpl::addShardRelatedActive(std::shared_ptr<PeerImp> const& peer)
 		{
 			std::uint32_t peerRole = peer->getShardRole();
@@ -1201,5 +1223,4 @@ namespace ripple {
 			return std::make_unique<OverlayImpl>(app, setup, parent, serverHandler,
 				resourceManager, resolver, io_service, config);
 		}
-
-	}
+}
