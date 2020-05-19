@@ -117,8 +117,11 @@ void Lookup::checkSaveLedger(LedgerIndex netLedger)
             auto hash = getFinalLedger(netLedger)->hash();
             app_.getJobQueue().addJob(
                 jtADVANCE, "getCurrentLedger", [app, hash](Job&) {
-                app->getInboundLedgers().acquire(
-                    hash, 0, InboundLedger::fcCURRENT);
+                if (auto ledger = app->getInboundLedgers().acquire(
+                    hash, 0, InboundLedger::fcCURRENT))
+                {
+                    app->getOPs().switchLastClosedLedger(ledger);
+                }
             });
 
             for (int i = preSeq + 1; i <= netLedger; i++)
@@ -429,8 +432,11 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
         auto hash = committeeVC->preHash();
         app_.getJobQueue().addJob(
             jtADVANCE, "getCurrentLedger", [app, hash](Job&) {
-            app->getInboundLedgers().acquire(
-                hash, 0, InboundLedger::fcCURRENT);
+            if (auto ledger = app->getInboundLedgers().acquire(
+                hash, 0, InboundLedger::fcCURRENT))
+            {
+                app->getOPs().switchLastClosedLedger(ledger);
+            }
         });
     }
     else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())

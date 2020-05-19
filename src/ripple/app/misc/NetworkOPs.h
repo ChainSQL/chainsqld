@@ -180,6 +180,7 @@ namespace ripple {
 		virtual bool isAmendmentBlocked() = 0;
 		virtual void setAmendmentBlocked() = 0;
 		virtual void consensusViewChange() = 0;
+        virtual void switchLastClosedLedger(std::shared_ptr<Ledger const> const& newLCL) = 0;
 
 		virtual Json::Value getConsensusInfo() = 0;
 		virtual Json::Value getServerInfo(bool human, bool admin) = 0;

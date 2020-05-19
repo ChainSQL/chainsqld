@@ -351,9 +351,10 @@ public:
     //
 
     // Used for the "jump" case.
-private:
     void switchLastClosedLedger (
         std::shared_ptr<Ledger const> const& newLCL);
+
+private:
     bool checkLastClosedLedger (
         const Overlay::PeerSequence&, uint256& networkClosed);
 
