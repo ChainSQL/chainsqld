@@ -1419,7 +1419,10 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 {
-	assert(lgrId != prevLedgerID_ || previousLedger_.id() != lgrId);
+    if (lgrId == prevLedgerID_ && previousLedger_.id() == lgrId)
+    {
+        return;
+    }
 
 	// Stop proposing because we are out of sync
 	leaveConsensus();

@@ -352,8 +352,8 @@ public:
             auto const iter (slots_.find (local_endpoint));
             if (iter != slots_.end ())
             {
-                assert (iter->second->local_endpoint ()
-                        == slot->remote_endpoint ());
+                //assert (iter->second->local_endpoint ()
+                //        == slot->remote_endpoint ());
                 JLOG(m_journal.warn()) << beast::leftw (18) <<
                     "Logic dropping " << slot->remote_endpoint () <<
                     " as self connect";
