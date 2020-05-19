@@ -494,6 +494,12 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& 
 {
     std::shared_ptr<MicroLedger> microLedger = std::make_shared<MicroLedger>(*m, false);
 
+    if (!app_.getHashRouter().shouldRelay(microLedger->ledgerHash()))
+    {
+        JLOG(journal_.info()) << "MicroLeger: duplicate";
+        return;
+    }
+
     uint32 shardID = microLedger->shardID();
 
     {
