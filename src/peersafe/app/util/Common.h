@@ -24,6 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 	using h256Set = std::unordered_set<uint256>;
+    using h256Vector = std::vector<uint256>;
 	/// Get the current time in seconds since the epoch in UTC(ms)
 	uint64_t utcTime();
 }

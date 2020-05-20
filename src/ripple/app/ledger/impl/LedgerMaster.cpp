@@ -733,8 +733,11 @@ LedgerMaster::setFullLedger (
             clearLedger (ledger->info().seq - 1);
     }
 
-
-    pendSaveValidated (app_, ledger, isSynchronous, isCurrent);
+    if (app_.getShardManager().myShardRole() & ShardManager::LOOKUP ||
+        app_.getShardManager().myShardRole() & ShardManager::SYNC)
+    {
+        pendSaveValidated(app_, ledger, isSynchronous, isCurrent);
+    }
 
     {
         ScopedLockType ml (mCompleteLock);

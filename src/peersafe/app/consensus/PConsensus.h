@@ -255,7 +255,7 @@ private:
 
 	bool finalCondReached(int64_t sinceOpen, int64_t sinceLastClose);
 
-	void appendTransactions(h256Set const& txSet);
+	void appendTransactions(h256Vector const&& txVector);
 
 	std::chrono::milliseconds timeSinceLastClose();
 	uint64 timeSinceOpen();
@@ -1025,9 +1025,9 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 
 template <class Adaptor>
 void
-PConsensus<Adaptor>::appendTransactions(h256Set const& txSet)
+PConsensus<Adaptor>::appendTransactions(h256Vector const&& txVector)
 {
-	for (auto const& trans : txSet)
+	for (auto const& trans : txVector)
 		transactions_.push_back(trans);
 }
 

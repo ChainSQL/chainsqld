@@ -80,10 +80,18 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 
 void Lookup::checkSaveLedger(LedgerIndex netLedger)
 {
-    LedgerIndex preSeq = app_.getLedgerMaster().getValidLedgerIndex();
+    LedgerIndex validSeq = app_.getLedgerMaster().getValidLedgerIndex();
 
     {
         std::lock_guard <std::recursive_mutex> lock(mutex_);
+
+        if (netLedger <= validSeq)
+        {
+            JLOG(journal_.warn()) << "Net ledger: " << netLedger << " too old, currently need: " << validSeq + 1;
+            mMapFinalLedger.erase(netLedger);
+            mMapMicroLedgers.erase(netLedger);
+            return;
+        }
 
         if (!checkLedger(netLedger))
         {
@@ -91,62 +99,99 @@ void Lookup::checkSaveLedger(LedgerIndex netLedger)
             return;
         }
 
-        if (app_.getLedgerMaster().getBuildingLedger() == netLedger)
+        if (netLedger > mNetLedger)
         {
-            JLOG(journal_.warn()) << "Currently build ledger " << netLedger;
-            return;
+            // Save the newest seq we collected fully.
+            mNetLedger = netLedger;
         }
 
-        if (netLedger < preSeq + 1)
+        if (!mSaveLedgerThread.test_and_set())
         {
-            JLOG(journal_.warn()) << "Net ledger: " << netLedger << " too old, currently: " << preSeq + 1;
-            mMapFinalLedger.erase(netLedger);
-            mMapMicroLedgers.erase(netLedger);
-            return;
+            app_.getJobQueue().addJob(
+                jtADVANCE, "saveLedger",
+                [this](Job&) { saveLedgerThread(); });
         }
-        else if (netLedger == preSeq + 1)
+    }
+}
+
+void Lookup::saveLedgerThread()
+{
+    LedgerIndex saveOrAcquire = 0;
+    bool shouldAcquire = findNewLedgerToSave(saveOrAcquire);
+
+    while (shouldAcquire || saveOrAcquire)
+    {
+        if (shouldAcquire)
         {
-            app_.getLedgerMaster().setBuildingLedger(netLedger);
+            auto validIndex = app_.getLedgerMaster().getValidLedgerIndex();
+            JLOG(journal_.warn()) << "SaveLedgerThread, I'm on "
+                << validIndex + 1 << ", trying to acquiring  " << saveOrAcquire;
+            {
+                // do clear
+                std::lock_guard <std::recursive_mutex> lock(mutex_);
+                for (auto seq = validIndex + 1; seq <= saveOrAcquire; seq++)
+                {
+                    mMapFinalLedger.erase(seq);
+                    mMapMicroLedgers.erase(seq);
+                }
+            }
+
+            // Should acquire.
+            auto hash = getFinalLedger(saveOrAcquire + 1)->parentHash();
+            if (!app_.getInboundLedgers().acquire(
+                hash, 0, InboundLedger::fcCURRENT))
+            {
+                break;
+            }
+
+            JLOG(journal_.warn()) << "Acquired " << saveOrAcquire << ", try local successed";
         }
         else
         {
-            JLOG(journal_.warn()) << "CheckSaveLedger, I'm on "
-                << preSeq + 1 << ", trying to acquiring  " << netLedger;
+            JLOG(journal_.info()) << "Building ledger " << saveOrAcquire;
+            // Reset tx-meta transactionIndex field
+            resetMetaIndex(saveOrAcquire);
+            // Save ledger.
+            saveLedger(saveOrAcquire);
 
-            auto app = &app_;
-            auto hash = getFinalLedger(netLedger)->hash();
-            app_.getJobQueue().addJob(
-                jtADVANCE, "getCurrentLedger", [app, hash](Job&) {
-                if (auto ledger = app->getInboundLedgers().acquire(
-                    hash, 0, InboundLedger::fcCURRENT))
-                {
-                    app->getOPs().switchLastClosedLedger(ledger);
-                }
-            });
-
-            for (int i = preSeq + 1; i <= netLedger; i++)
             {
-                mMapFinalLedger.erase(i);
-                mMapMicroLedgers.erase(i);
+                // do clear
+                std::lock_guard <std::recursive_mutex> lock(mutex_);
+                mMapFinalLedger.erase(saveOrAcquire);
+                mMapMicroLedgers.erase(saveOrAcquire);
             }
-            return;
+        }
+
+        shouldAcquire = findNewLedgerToSave(saveOrAcquire);
+    }
+
+    mSaveLedgerThread.clear();
+}
+
+bool Lookup::findNewLedgerToSave(LedgerIndex &toSaveOrAcquire)
+{
+    std::lock_guard <std::recursive_mutex> lock(mutex_);
+
+    LedgerIndex validSeq = app_.getLedgerMaster().getValidLedgerIndex();
+
+    if (checkLedger(validSeq + 1))
+    {
+        toSaveOrAcquire = validSeq + 1;
+        return false;
+    }
+
+    for (LedgerIndex seq = mNetLedger; seq > validSeq; seq--)
+    {
+        if (!checkLedger(seq))
+        {
+            assert(seq < mNetLedger);
+            toSaveOrAcquire = seq;
+            return true;
         }
     }
 
-    JLOG(journal_.info()) << "Building ledger " << netLedger;
-
-	//reset tx-meta transactionIndex field
-	resetMetaIndex(netLedger);
-
-	//save this ledger
-    saveLedger(netLedger);
-
-    {
-        // do clear
-        std::lock_guard <std::recursive_mutex> lock(mutex_);
-        mMapFinalLedger.erase(netLedger);
-        mMapMicroLedgers.erase(netLedger);
-    }
+    toSaveOrAcquire = 0;
+    return false;
 }
 
 bool Lookup::checkLedger(LedgerIndex seq)
@@ -266,65 +311,6 @@ void Lookup::saveLedger(LedgerIndex seq)
 }
 
 
-void Lookup::relayTxs()
-{
-	std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
-
-	std::vector< std::shared_ptr<Transaction> > txs;
-
-    auto hTxSet = app_.getTxPool().topTransactions(std::numeric_limits<std::uint64_t>::max());
-	app_.getTxPool().getTransactions(hTxSet, txs);
-
-    std::map < unsigned int, std::vector<std::shared_ptr<Transaction>> > mapShardIndexTxs;
-
-    // tx shard
-	for (auto tx : txs)
-    {
-		auto txCur = tx->getSTransaction();
-		auto account = txCur->getAccountID(sfAccount);
-		std::string strAccountID = toBase58(account);
-		auto shardIndex			 = getTxShardIndex(strAccountID, mShardManager.shardCount());
-
-        mapShardIndexTxs[shardIndex].push_back(tx);
-	}
-
-    // send to shard
-    for (auto it : mapShardIndexTxs)
-    {
-        protocol::TMTransactions ts;
-        sha512_half_hasher signHash;
-
-        ts.set_nodepubkey(app_.getValidationPublicKey().data(),
-            app_.getValidationPublicKey().size());
-
-        for (auto tx : it.second)
-        {
-            protocol::TMTransaction& t = *ts.add_transactions();
-            Serializer s;
-            tx->getSTransaction()->add(s);
-            t.set_rawtransaction(s.data(), s.size());
-            t.set_status(protocol::tsCURRENT);
-            t.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
-
-            hash_append(signHash, tx->getID());
-        }
-
-        auto sign = signDigest(app_.getValidationPublicKey(),
-            app_.getValidationSecretKey(),
-            static_cast<typename sha512_half_hasher::result_type>(signHash));
-        ts.set_signature(sign.data(), sign.size());
-
-        auto const m = std::make_shared<Message>(
-            ts, protocol::mtTRANSACTIONS);
-
-        mShardManager.node().sendMessage(it.first, m);
-    }
-
-	for (auto delHash : hTxSet) {
-		app_.getTxPool().removeTx(delHash);
-	}
-}
-
 void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)
 {
 	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
@@ -428,16 +414,21 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
             << app_.getLedgerMaster().getValidLedgerIndex()
             << ", trying to acquiring  " << committeeVC->preSeq();
 
-        auto app = &app_;
-        auto hash = committeeVC->preHash();
-        app_.getJobQueue().addJob(
-            jtADVANCE, "getCurrentLedger", [app, hash](Job&) {
-            if (auto ledger = app->getInboundLedgers().acquire(
-                hash, 0, InboundLedger::fcCURRENT))
-            {
-                app->getOPs().switchLastClosedLedger(ledger);
-            }
-        });
+        auto seq = committeeVC->preSeq();
+        if (checkLedger(seq))
+        {
+            checkSaveLedger(seq);
+        }
+        else
+        {
+            auto app = &app_;
+            auto hash = committeeVC->preHash();
+            app_.getJobQueue().addJob(
+                jtADVANCE, "getCurrentLedger", [app, hash](Job&) {
+                app->getInboundLedgers().acquire(
+                    hash, 0, InboundLedger::fcCURRENT);
+            });
+        }
     }
     else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())
     {
@@ -446,7 +437,6 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
     else
     {
         JLOG(journal_.warn()) << "Committee view change: stale";
-        return;
     }
 
     return;
@@ -469,6 +459,8 @@ void Lookup::sendMessage(std::shared_ptr<Message> const &m)
     }
 }
 
+// ------------------------------------------------------------------------------
+// Transactions relay
 
 void Lookup::setTimer()
 {
@@ -491,6 +483,70 @@ void Lookup::onTimer(boost::system::error_code const& ec)
 	}
 
 	setTimer();
+}
+
+void Lookup::relayTxs()
+{
+    std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
+
+    auto timeStart = utcTime();
+
+    std::vector< std::shared_ptr<Transaction> > txs;
+
+    auto hTxVector = app_.getTxPool().topTransactions(MinTxsInLedgerAdvance);
+    app_.getTxPool().getTransactions(hTxVector, txs);
+
+    std::map < unsigned int, std::vector<std::shared_ptr<Transaction>> > mapShardIndexTxs;
+
+    // tx shard
+    for (auto tx : txs)
+    {
+        auto txCur = tx->getSTransaction();
+        auto account = txCur->getAccountID(sfAccount);
+        std::string strAccountID = toBase58(account);
+        auto shardIndex = getTxShardIndex(strAccountID, mShardManager.shardCount());
+
+        mapShardIndexTxs[shardIndex].push_back(tx);
+    }
+
+    // send to shard
+    for (auto it : mapShardIndexTxs)
+    {
+        protocol::TMTransactions ts;
+        sha512_half_hasher signHash;
+
+        ts.set_nodepubkey(app_.getValidationPublicKey().data(),
+            app_.getValidationPublicKey().size());
+
+        for (auto tx : it.second)
+        {
+            protocol::TMTransaction& t = *ts.add_transactions();
+            Serializer s;
+            tx->getSTransaction()->add(s);
+            t.set_rawtransaction(s.data(), s.size());
+            t.set_status(protocol::tsCURRENT);
+            t.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
+
+            hash_append(signHash, tx->getID());
+        }
+
+        auto sign = signDigest(app_.getValidationPublicKey(),
+            app_.getValidationSecretKey(),
+            static_cast<typename sha512_half_hasher::result_type>(signHash));
+        ts.set_signature(sign.data(), sign.size());
+
+        auto const m = std::make_shared<Message>(
+            ts, protocol::mtTRANSACTIONS);
+
+        mShardManager.node().sendMessage(it.first, m);
+    }
+
+    JLOG(journal_.info()) << "relayTxs tx count: " << hTxVector.size()
+        << " time used: " << utcTime() - timeStart << "ms";
+
+    for (auto delHash : hTxVector) {
+        app_.getTxPool().removeTx(delHash);
+    }
 }
 
 unsigned int Lookup::getTxShardIndex(const std::string& strAddress, unsigned int numShards)

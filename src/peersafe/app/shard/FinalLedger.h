@@ -37,6 +37,7 @@ class FinalLedger : public LedgerBase {
 private:
     LedgerIndex                     mSeq;                       // Ripple::Ledger sequence.
     LedgerHash                      mHash;                      // Ripple::Ledger hash
+    LedgerHash                      mParentHash;
     uint64                          mDrops;
     uint32                          mCloseTime;
     uint32                          mCloseTimeResolution;
@@ -71,6 +72,11 @@ public:
     inline LedgerHash hash()
     {
         return mHash;
+    }
+
+    inline LedgerHash parentHash()
+    {
+        return mParentHash;
     }
 
     inline detail::RawStateTable const& getRawStateTable()

@@ -100,7 +100,10 @@ void InboundLedger::init (ScopedLockType& collectionLock)
         mLedger->setImmutable (app_.config());
 
         if (mReason == fcCURRENT)
+        {
             app_.getLedgerMaster().accept(mLedger);
+            app_.getOPs().switchLastClosedLedger(mLedger);
+        }
 
         if (mReason != fcHISTORY)
             app_.getLedgerMaster ().storeLedger (mLedger);
@@ -436,7 +439,10 @@ void InboundLedger::done ()
     {
         mLedger->setImmutable (app_.config());
         if (mReason == fcCURRENT)
+        {
             app_.getLedgerMaster().accept(mLedger);
+            app_.getOPs().switchLastClosedLedger(mLedger);
+        }
         if (mReason != fcHISTORY)
             app_.getLedgerMaster ().storeLedger (mLedger);
         app_.getInboundLedgers().onLedgerFetched(mReason);

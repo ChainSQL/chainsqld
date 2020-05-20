@@ -50,14 +50,14 @@ enum JobType
     
     jtCheckSubTx,	 // check subscribe tx
 
-	jtRELAYTXS,	     //Relay txs to shard nodes
-
     jtCLIENT,        // A websocket command from the client
     jtRPC,           // A websocket command from the client
 
     jtUPDATE_PF,     // Update pathfinding requests
     jtTRANSACTION,   // A transaction received from the network
     jtBATCH,         // Apply batched transactions
+
+    jtRELAYTXS,	     //Relay txs to shard nodes
 
     jtMLSUBMIT,      // received a micro ledger from shard node or a committee node.
     jtFLSUBMIT,      // received a final ledger from committee node.

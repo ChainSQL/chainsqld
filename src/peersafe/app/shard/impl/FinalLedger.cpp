@@ -32,6 +32,7 @@ FinalLedger::FinalLedger(
 {
     mSeq = ledger->seq();
     mHash = ledger->info().hash;
+    mParentHash = ledger->info().parentHash;
     mDrops = ledger->info().drops.drops();
     mCloseTime = ledger->info().closeTime.time_since_epoch().count();
     mCloseTimeResolution = ledger->info().closeTimeResolution.count();
@@ -71,6 +72,7 @@ void FinalLedger::computeHash()
     setLedgerHash(sha512Half(
         mSeq,
         mHash,
+        mParentHash,
         mDrops,
         mCloseTime,
         mCloseTimeResolution,
@@ -85,6 +87,7 @@ FinalLedger::FinalLedger(protocol::TMFinalLedgerSubmit const& m)
 	protocol::FinalLedger const& finalLedger = m.finalledger();
 	mSeq = finalLedger.ledgerseq();
     memcpy(mHash.begin(), finalLedger.ledgerhash().data(), 32);
+    memcpy(mParentHash.begin(), finalLedger.parenthash().data(), 32);
 	mDrops = finalLedger.drops();
 	mCloseTime = finalLedger.closetime();
 	mCloseTimeResolution = finalLedger.closetimeresolution();
@@ -155,6 +158,7 @@ void FinalLedger::compose(protocol::TMFinalLedgerSubmit& ms)
 
     m.set_ledgerseq(mSeq);
     m.set_ledgerhash(mHash.data(), mHash.size());
+    m.set_parenthash(mParentHash.data(), mParentHash.size());
     m.set_drops(mDrops);
     m.set_closetime(mCloseTime);
     m.set_closetimeresolution(mCloseTimeResolution);
@@ -211,6 +215,7 @@ LedgerInfo FinalLedger::getLedgerInfo()
 	LedgerInfo info;
 	info.seq = mSeq;
     info.hash = mHash;
+    info.parentHash = mParentHash;
 	info.txHash = mTxShaMapRootHash;
 	info.drops = mDrops;
 	info.closeFlags = mCloseFlags;

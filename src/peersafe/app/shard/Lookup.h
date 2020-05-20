@@ -48,10 +48,8 @@ private:
 	std::vector<std::weak_ptr <PeerImp>>				mPeers;
 	std::recursive_mutex								mPeersMutex;
 
-
     // Hold all Lookup validators
     std::unique_ptr <ValidatorList>                     mValidators;
-
 
     ShardManager&                                       mShardManager;
 
@@ -60,12 +58,13 @@ private:
     Config&                                             cfg_;
 
 	std::recursive_mutex								mutex_;
-
 	using MapFinalLedger = std::map<LedgerIndex, std::shared_ptr<FinalLedger>>;
 	MapFinalLedger										mMapFinalLedger;
-
 	using MapMicroLedger = std::map<uint32, std::shared_ptr<MicroLedger>>;
 	std::map<LedgerIndex, MapMicroLedger>				mMapMicroLedgers;
+
+    std::atomic_flag                                    mSaveLedgerThread = ATOMIC_FLAG_INIT;
+    LedgerIndex                                         mNetLedger = 0;
 
 	std::mutex											mTransactionsMutex;
 	boost::asio::basic_waitable_timer<
@@ -108,7 +107,6 @@ public:
     }
 
 	void addActive(std::shared_ptr<PeerImp> const& peer);
-
 	void eraseDeactivate();
 
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m);
@@ -118,15 +116,16 @@ public:
     void sendMessage(std::shared_ptr<Message> const &m);
 
 	void checkSaveLedger(LedgerIndex seq);
+    void saveLedgerThread();
+    bool findNewLedgerToSave(LedgerIndex &toSaveOrAcquire);
     bool checkLedger(LedgerIndex seq);
 	void resetMetaIndex(LedgerIndex seq);
 	void saveLedger(LedgerIndex seq);
 
-
-	void relayTxs();
-
 	void setTimer();
 	void onTimer(boost::system::error_code const& ec);
+
+    void relayTxs();
 
 	// shard related
     static unsigned int getTxShardIndex(const std::string& strAddress, unsigned int numShards);

@@ -5,9 +5,9 @@
 
 namespace ripple {
 
-    h256Set TxPool::topTransactions(uint64_t const& limit)
+    h256Vector TxPool::topTransactions(uint64_t const& limit)
     {
-        h256Set ret;
+        h256Vector ret;
         int txCnt = 0;
 
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
@@ -19,7 +19,7 @@ namespace ripple {
         {
             if (!mAvoid.count((*iter)->getID()))
             {
-                ret.insert((*iter)->getID());
+                ret.push_back((*iter)->getID());
                 txCnt++;
 
                 // update avoid set
@@ -27,7 +27,7 @@ namespace ripple {
             }
         }
 
-        return ret;
+        return std::move(ret);
     }
 
 
@@ -158,10 +158,10 @@ namespace ripple {
 		}
 	}
 
-	void TxPool::getTransactions(h256Set hSet, std::vector< std::shared_ptr<Transaction> >& txs)
+	void TxPool::getTransactions(h256Vector const& hVector, std::vector< std::shared_ptr<Transaction> >& txs)
 	{
 		std::lock_guard<std::mutex> lock(mutexTxPoll_);
-		for (auto txHash : hSet) {
+		for (auto txHash : hVector) {
 
 			if (mTxsHash.find(txHash) != mTxsHash.end()){
 			
