@@ -1393,9 +1393,9 @@ LedgerMaster::advanceThread()
     {
         doAdvance(sl);
     }
-    catch (std::exception const&)
+    catch (std::exception const& e)
     {
-        JLOG (m_journal.fatal()) << "doAdvance throws an exception";
+        JLOG (m_journal.fatal()) << "doAdvance throws an exception: " << e.what();
     }
 
     mAdvanceThread = false;
@@ -2196,12 +2196,16 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
 
                 setPubLedger(ledger);
 
+                if (app_.getShardManager().myShardRole() & ShardManager::LOOKUP ||
+                    app_.getShardManager().myShardRole() & ShardManager::SYNC)
                 {
-                    ScopedUnlockType sul(m_mutex);
-                    app_.getOPs().pubLedger(ledger);
+                    {
+                        ScopedUnlockType sul(m_mutex);
+                        app_.getOPs().pubLedger(ledger);
+                    }
+
+                    processFullLedgerTask(ledger);
                 }
-                
-				processFullLedgerTask(ledger);
             }
 			//move table_sync here,cause it used pub_ledger
 			app_.getTableSync().TryTableSync();

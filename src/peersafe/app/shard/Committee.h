@@ -64,6 +64,7 @@ private:
     boost::asio::basic_waitable_timer<
         std::chrono::steady_clock>                          mTimer;
 
+    bool                                                    mSubmitCompleted;
     boost::optional<FinalLedger>                            mFinalLedger;
     std::map<LedgerIndex,
         std::vector<std::tuple<uint256, PublicKey, Blob>>>  mSignatureBuffer;

@@ -149,6 +149,7 @@ void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const p
 
     mIsLeader = (pubkey == validators[index]);
 
+    mSubmitCompleted = false;
     mFinalLedger.reset();
 
     {
@@ -243,25 +244,26 @@ void Committee::setTimer(uint32 repeats)
 {
     bool shouldAcquire = !microLedgersAllReady();
 
+    auto app = &app_;
     app_.getJobQueue().addJob(
         jtML_ACQUIRE, "Send->MicroLedgerAcquire",
-        [&](Job&)
+        [this, app, shouldAcquire](Job&)
     {
         if (shouldAcquire)
         {
             protocol::TMMicroLedgerAcquire m;
-            m.set_ledgerindex(app_.getLedgerMaster().getValidLedgerIndex() + 1);
+            m.set_ledgerindex(app->getLedgerMaster().getValidLedgerIndex() + 1);
             m.set_shardid(firstMissingMicroLedger());
 
-            m.set_nodepubkey(app_.getValidationPublicKey().data(),
-                app_.getValidationPublicKey().size());
+            m.set_nodepubkey(app->getValidationPublicKey().data(),
+                app->getValidationPublicKey().size());
 
             auto signingHash = sha512Half(
                 m.ledgerindex(),
                 m.shardid());
 
-            auto sign = signDigest(app_.getValidationPublicKey(),
-                app_.getValidationSecretKey(),
+            auto sign = signDigest(app->getValidationPublicKey(),
+                app->getValidationSecretKey(),
                 signingHash);
 
             m.set_signature(sign.data(), sign.size());
@@ -278,8 +280,8 @@ void Committee::setTimer(uint32 repeats)
         }
         else
         {
-            app_.getOPs().getConsensus().gotMicroLedgerSet(
-                app_.timeKeeper().closeTime(),
+            app->getOPs().getConsensus().gotMicroLedgerSet(
+                app->timeKeeper().closeTime(),
                 microLedgerSetHash());
         }
     });
@@ -400,7 +402,8 @@ bool Committee::checkAccept()
 
         submitFinalLedger();
 
-        if (app_.getLedgerMaster().getClosedLedger()->seq() == mFinalLedger->seq())
+        if (app_.getLedgerMaster().getClosedLedger()->seq() == mFinalLedger->seq() &&
+            mSubmitCompleted)
         {
             app_.getOPs().endConsensus();
         }
@@ -430,6 +433,8 @@ void Committee::submitFinalLedger()
 
     mShardManager.node().sendMessageToAllShard(m);
     mShardManager.lookup().sendMessage(m);
+
+    mSubmitCompleted = true;
 }
 
 Overlay::PeerSequence Committee::getActivePeers(uint32 /* unused */)
