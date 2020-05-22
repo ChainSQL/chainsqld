@@ -42,9 +42,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-// Timeout interval in milliseconds
-auto constexpr ML_RELAYTXS_TIMEOUT = 500ms;
-
 Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
     : mShardManager(m)
     , app_(app)
@@ -52,7 +49,10 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
     , cfg_(cfg)
 	, mTimer(app_.getIOService())
 {
-    // TODO initial peers and validators
+    if (cfg_.LOOKUP_RELAY_INTERVAL)
+    {
+        mRelayInterval = cfg_.LOOKUP_RELAY_INTERVAL;
+    }
 
 	mValidators = std::make_unique<ValidatorList>(
 			app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
@@ -487,13 +487,12 @@ void Lookup::sendMessage(std::shared_ptr<Message> const &m)
 
 void Lookup::setTimer()
 {
-	mTimer.expires_from_now(ML_RELAYTXS_TIMEOUT);
+	mTimer.expires_from_now(std::chrono::milliseconds(mRelayInterval));
 	mTimer.async_wait(std::bind(&Lookup::onTimer, this, std::placeholders::_1));
 }
 
 void Lookup::onTimer(boost::system::error_code const& ec)
 {
-
 	if (ec == boost::asio::error::operation_aborted)
 		return;
 

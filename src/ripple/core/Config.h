@@ -214,7 +214,7 @@ public:
 
 	std::vector<std::string>    LOOKUP_PUBLIC_KEYS;
 	std::vector<std::string>    COMMITTEE_VALIDATORS;
-
+    std::uint32_t               LOOKUP_RELAY_INTERVAL = 0;
 
 public:
     Config() = default;

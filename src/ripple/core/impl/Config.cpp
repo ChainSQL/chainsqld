@@ -484,7 +484,7 @@ void Config::loadFromString (std::string const& fileContents)
 		bool bLookup    = loadLookupConfig(secConfig);
 		bool bShard     = loadShardConfig(secConfig);        
 		bool bCommittee = loadCommitteeConfig(secConfig);
-		bool bSync      = loadSyncConfigConfig(secConfig);
+		/*bool bSync      = */loadSyncConfigConfig(secConfig);
 
 		if (SHARD_COUNT != SHARD_IPS.size()) {
 			Throw<std::runtime_error>(
@@ -664,6 +664,11 @@ bool Config::loadLookupConfig(IniFileSections& secConfig)
 
 		if (auto s = getIniFileSection(iniFile, SECTION_LOOKUP_PUBLIC_KEYS))
 			LOOKUP_PUBLIC_KEYS = *s;
+
+        if (getSingleSection(iniFile, SECTION_LOOKUP_RELAY_INTERVAL, strTemp, j_))
+        {
+            LOOKUP_RELAY_INTERVAL = beast::lexicalCastThrow<std::uint32_t>(strTemp);
+        }
 
 		bLoad = true;
 	}

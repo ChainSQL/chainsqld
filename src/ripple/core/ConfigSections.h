@@ -93,6 +93,7 @@ namespace ripple {
 #define SECTION_COMMITTEE_IPS                   "committee_ips"
 #define SECTION_COMMITTEE_VALIDATORS            "committee_validators"
 #define SECTION_SYNC_IPS                        "sync_ips"
+#define SECTION_LOOKUP_RELAY_INTERVAL           "lookup_relay_interval"
 
 
 } // ripple

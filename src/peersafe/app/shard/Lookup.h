@@ -67,6 +67,7 @@ private:
     LedgerIndex                                         mNetLedger = 0;
 
 	std::mutex											mTransactionsMutex;
+    std::uint32_t                                       mRelayInterval = 500;   // ms
 	boost::asio::basic_waitable_timer<
 		std::chrono::system_clock>                      mTimer;
 
