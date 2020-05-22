@@ -729,15 +729,15 @@ namespace ripple {
     {
         switch ((uint32)app_.getShardManager().myShardRole())
         {
-        case Config::SHARD_ROLE_LOOKUP:
-        case Config::SHARD_ROLE_SYNC:
-        case Config::SHARD_ROLE_LOOKUP | Config::SHARD_ROLE_SYNC:
+        case ShardManager::LOOKUP:
+        case ShardManager::SYNC:
+        case ShardManager::LOOKUP | ShardManager::SYNC:
             app_.getShardManager().lookup().for_each(f);
             break;
-        case Config::SHARD_ROLE_SHARD:
+        case ShardManager::SHARD:
             app_.getShardManager().node().for_each(f);
             break;
-        case Config::SHARD_ROLE_COMMITTEE:
+        case ShardManager::COMMITTEE:
             app_.getShardManager().committee().for_each(f);
             break;
         default:

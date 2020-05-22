@@ -83,6 +83,8 @@ namespace ripple {
 
         virtual void setPhase(ConsensusPhase phase) {}
 
+        virtual void onCommitteeViewChange() {}
+
         virtual uint64 getView() { return std::numeric_limits<std::uint64_t>::max(); }
 
         virtual std::chrono::milliseconds getConsensusTimeout() { return CONSENSUS_TIMEOUT; }

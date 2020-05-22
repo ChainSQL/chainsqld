@@ -217,7 +217,7 @@ namespace ripple {
 		}
 	}
 
-	void TxPool::removeTx(uint256 hash)
+	void TxPool::removeTx(uint256 const& hash)
 	{
 		std::lock_guard<std::mutex> lock(mutexTxPoll_);
 		if(mTxsHash.find(hash) != mTxsHash.end())

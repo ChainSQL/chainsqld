@@ -104,7 +104,7 @@ public:
 
 	LedgerInfo getLedgerInfo();
 
-    void apply(Ledger& to);
+    void apply(Ledger& to, bool withTxs = true);
 
 };
 

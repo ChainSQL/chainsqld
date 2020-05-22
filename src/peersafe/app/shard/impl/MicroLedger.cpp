@@ -377,6 +377,14 @@ void MicroLedger::apply(OpenView& to) const
     }
 }
 
+void MicroLedger::apply(Ledger& to) const
+{
+    for (auto const& it : mTxWithMetas)
+    {
+        to.rawTxInsert(it.first, it.second.first, it.second.second);
+    }
+}
+
 void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
 {
 	mSeq = m.ledgerseq();
@@ -437,16 +445,15 @@ void MicroLedger::readTxWithMeta(::google::protobuf::RepeatedPtrField <::protoco
 	}
 }
 
-void MicroLedger::setMetaIndex(TxID const& hash, uint32 index, beast::Journal j)
+void MicroLedger::setMetaIndex(TxID const& hash, uint32 index, beast::Journal& j)
 {
-	if (mTxWithMetas.find(hash) == mTxWithMetas.end())
-		return;
-	auto txMetaPair = mTxWithMetas[hash];
+    assert(mTxWithMetas.find(hash) != mTxWithMetas.end());
+	auto& txMetaPair = mTxWithMetas[hash];
 	auto txMeta = std::make_shared<TxMeta>(hash, mSeq, txMetaPair.second->getData(), j);
 	// re-serialize
 	auto sMeta = std::make_shared<Serializer>();
 	txMeta->addRaw(*sMeta, txMeta->getResultTER(), index);
-	mTxWithMetas[hash].second = sMeta;
+    txMetaPair.second = sMeta;
 }
 
 bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, bool withTxMeta)

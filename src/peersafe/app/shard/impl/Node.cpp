@@ -685,6 +685,14 @@ void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
         app_.getOPs().consensusViewChange();
         app_.getOPs().getConsensus().consensus_->handleWrongLedger(committeeVC->preHash());
     }
+    else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())
+    {
+        app_.getOPs().getConsensus().onCommitteeViewChange();
+    }
+    else
+    {
+        JLOG(journal_.warn()) << "Committee view change: stale";
+    }
 
     return;
 }

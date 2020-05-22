@@ -206,7 +206,7 @@ uint256 Committee::microLedgerSetHash()
     return static_cast<typename sha512_half_hasher::result_type>(microLedgerSetHash);
 }
 
-inline bool Committee::microLedgersAllReady()
+bool Committee::microLedgersAllReady()
 {
     std::lock_guard<std::recursive_mutex> _(mMLBMutex);
     return mValidMicroLedgers.size() == mShardManager.shardCount();
@@ -272,7 +272,7 @@ void Committee::setTimer(uint32 repeats)
                 m, protocol::mtMICROLEDGER_ACQUIRE);
             {
                 std::lock_guard<std::recursive_mutex> _(mPeersMutex);
-                if (auto p = mPeers[rand_int((size_t)0, mPeers.size())].lock())
+                if (auto p = mPeers[mPeers.size() <= 1 ? 0 : rand_int((size_t)0, mPeers.size() - 1)].lock())
                 {
                     p->send(sm);
                 }
@@ -345,7 +345,7 @@ void Committee::recvValidation(PublicKey& pubKey, STValidation& val)
 
     if (seq <= app_.getLedgerMaster().getValidLedgerIndex())
     {
-        JLOG(journal_.warn()) << "Validation for ledger seq(seq) from "
+        JLOG(journal_.warn()) << "Validation for ledger seq(" << seq << ") from "
             << toBase58(TokenType::TOKEN_NODE_PUBLIC, pubKey) << " is stale";
         return;
     }
@@ -533,13 +533,14 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& 
         return;
     }
 
+    JLOG(journal_.info()) << "Recved valid microledger"
+        << "(contains " << microLedger->txCounts() << "txs)"
+        << " seq:" << microLedger->seq()
+        << " shardID:" << microLedger->shardID();
+
     if (seq == curSeq)
     {
         std::lock_guard<std::recursive_mutex> _(mMLBMutex);
-
-        JLOG(journal_.info()) << "Recved valid microledger seq:" << microLedger->seq()
-            << " shardID:" << microLedger->shardID();
-
         mValidMicroLedgers.emplace(shardID, microLedger);
         return;
     }

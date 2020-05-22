@@ -247,6 +247,8 @@ private:
 
     void setPhase(ConsensusPhase phase);
 
+    void onCommitteeViewChange();
+
     uint64 getView();
 
 	bool isLeader(PublicKey const& pub);
@@ -1278,6 +1280,16 @@ void PConsensus<Adaptor>::setPhase(ConsensusPhase phase)
     JLOG(j_.info()) << "Set phase " << to_string(phase_) << " -> " << to_string(phase);
     if (phase == (ConsensusPhase)((uint32)phase_ + 1))
         phase_ = phase;
+}
+
+template<class Adaptor>
+void PConsensus<Adaptor>::onCommitteeViewChange()
+{
+    if (phase_ == ConsensusPhase::waitingFinalLedger)
+    {
+        // trigger our view change
+        consensusTime_ = 0;
+    }
 }
 
 template<class Adaptor>

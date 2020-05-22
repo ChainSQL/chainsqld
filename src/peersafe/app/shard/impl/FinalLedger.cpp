@@ -226,17 +226,20 @@ LedgerInfo FinalLedger::getLedgerInfo()
 	return std::move(info);
 }
 
-void FinalLedger::apply(Ledger& to)
+void FinalLedger::apply(Ledger& to, bool withTxs)
 {
     mStateDelta.destroyZXC(to.info().drops - mDrops);
 
     mStateDelta.apply(to);
 
-    for (auto const& tx : mTxsHashes)
+    if (withTxs)
     {
-        to.rawTxInsert(tx,
-            std::make_shared<Serializer>(0),
-            std::make_shared<Serializer>(0));
+        for (auto const& tx : mTxsHashes)
+        {
+            to.rawTxInsert(tx,
+                std::make_shared<Serializer>(0),
+                std::make_shared<Serializer>(0));
+        }
     }
 }
 

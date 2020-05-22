@@ -108,7 +108,7 @@ public:
 
     // When block validated, remove Txs from pool and avoid set.
 	void removeTxs(SHAMap const& cSet,int const ledgerSeq,uint256 const& prevHash);
-	void removeTx(uint256 hash);
+	void removeTx(uint256 const& hash);
 
     // Update avoid set when receiving a Tx set from peers.
     void updateAvoid(RCLTxSet const& cSet);

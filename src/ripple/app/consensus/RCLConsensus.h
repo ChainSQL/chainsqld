@@ -527,6 +527,11 @@ public:
         return consensus_->setPhase(phase);
     }
 
+    void onCommitteeViewChange()
+    {
+        return consensus_->onCommitteeViewChange();
+    }
+
     uint64 getView()
     {
         return consensus_->getView();

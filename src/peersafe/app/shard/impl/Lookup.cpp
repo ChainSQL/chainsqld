@@ -43,7 +43,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 namespace ripple {
 
 // Timeout interval in milliseconds
-auto constexpr ML_RELAYTXS_TIMEOUT = 300ms;
+auto constexpr ML_RELAYTXS_TIMEOUT = 500ms;
 
 Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
     : mShardManager(m)
@@ -152,7 +152,9 @@ void Lookup::saveLedgerThread()
             // Reset tx-meta transactionIndex field
             resetMetaIndex(saveOrAcquire);
             // Save ledger.
+            auto timeStart = utcTime();
             saveLedger(saveOrAcquire);
+            JLOG(journal_.info()) << "saveLedger time used:" << utcTime() - timeStart << "ms";
 
             {
                 // do clear
@@ -208,22 +210,35 @@ bool Lookup::checkLedger(LedgerIndex seq)
 
 void Lookup::resetMetaIndex(LedgerIndex seq)
 {
+    uint32 metaIndex = 0;
+    beast::Journal j = app_.journal("TxMeta");
+
     auto timeStart = utcTime();
 
-    std::shared_ptr<FinalLedger> finalLedger = getFinalLedger(seq);
+    for (uint32 shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
+    {
+        std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
 
-	auto vecHashes = finalLedger->getTxHashes();
-	for (int i = 0; i < vecHashes.size(); i++)
-	{
-		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
-		{
-            std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
-			if (microLedger->hasTxWithMeta(vecHashes[i]))
-                microLedger->setMetaIndex(vecHashes[i], i, app_.journal("TxMeta"));
-		}
-	}
+        for (auto& txHash : microLedger->txHashes())
+        {
+            microLedger->setMetaIndex(txHash, metaIndex++, j);
+        }
+    }
 
-    JLOG(journal_.info()) << "resetMetaIndex tx count: " << vecHashes.size()
+ //   std::shared_ptr<FinalLedger> finalLedger = getFinalLedger(seq);
+
+	//auto vecHashes = finalLedger->getTxHashes();
+	//for (int i = 0; i < vecHashes.size(); i++)
+	//{
+	//	for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
+	//	{
+ //           std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
+	//		if (microLedger->hasTxWithMeta(vecHashes[i]))
+ //               microLedger->setMetaIndex(vecHashes[i], i, app_.journal("TxMeta"));
+	//	}
+	//}
+
+    JLOG(journal_.info()) << "resetMetaIndex tx count: " << metaIndex
         << " time used: " << utcTime() - timeStart << "ms";
 }
 
@@ -236,33 +251,41 @@ void Lookup::saveLedger(LedgerIndex seq)
 	auto ledgerToSave = std::make_shared<Ledger>(
         *previousLedger, ledgerInfo.closeTime);
 
-	//apply state
-    finalLedger->apply(*ledgerToSave);
-
     auto timeStart = utcTime();
-	//build tx-map
-	for (auto const& txID : finalLedger->getTxHashes())
-	{
-		for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
-		{
-            std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
-			if (microLedger->hasTxWithMeta(txID))
-			{
-				auto txWithMeta = microLedger->getTxWithMeta(txID);
-				auto tx = txWithMeta.first;
-				auto meta = txWithMeta.second;
 
-                Serializer s(tx->getDataLength() +
-                    meta->getDataLength() + 16);
-                s.addVL(tx->peekData());
-                s.addVL(meta->peekData());
-                auto item = std::make_shared<SHAMapItem const>(txID, std::move(s));
-                if (!ledgerToSave->txMap().updateGiveItem(std::move(item), true, true))
-                    LogicError("Ledger::rawReplace: key not found");
-			}
-		}
-	}
-    JLOG(journal_.info()) << "update tx map time used:" << utcTime() - timeStart << "ms";
+	//apply state
+    finalLedger->apply(*ledgerToSave, false);
+
+    for (uint32 shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
+    {
+        std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
+
+        microLedger->apply(*ledgerToSave);
+    }
+
+	//build tx-map
+	//for (auto const& txID : finalLedger->getTxHashes())
+	//{
+	//	for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
+	//	{
+ //           std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
+	//		if (microLedger->hasTxWithMeta(txID))
+	//		{
+	//			auto txWithMeta = microLedger->getTxWithMeta(txID);
+	//			auto tx = txWithMeta.first;
+	//			auto meta = txWithMeta.second;
+
+ //               Serializer s(tx->getDataLength() +
+ //                   meta->getDataLength() + 16);
+ //               s.addVL(tx->peekData());
+ //               s.addVL(meta->peekData());
+ //               auto item = std::make_shared<SHAMapItem const>(txID, std::move(s));
+ //               if (!ledgerToSave->txMap().updateGiveItem(std::move(item), true, true))
+ //                   LogicError("Ledger::rawReplace: key not found");
+	//		}
+	//	}
+	//}
+    JLOG(journal_.info()) << "Aplly state and tx map time used:" << utcTime() - timeStart << "ms";
 
 	ledgerToSave->updateSkipList();
 	{
@@ -493,13 +516,13 @@ void Lookup::relayTxs()
 
     std::vector< std::shared_ptr<Transaction> > txs;
 
-    auto hTxVector = app_.getTxPool().topTransactions(MinTxsInLedgerAdvance);
+    auto const& hTxVector = app_.getTxPool().topTransactions(MinTxsInLedgerAdvance);
     app_.getTxPool().getTransactions(hTxVector, txs);
 
     std::map < unsigned int, std::vector<std::shared_ptr<Transaction>> > mapShardIndexTxs;
 
     // tx shard
-    for (auto tx : txs)
+    for (auto& tx : txs)
     {
         auto txCur = tx->getSTransaction();
         auto account = txCur->getAccountID(sfAccount);
@@ -518,14 +541,14 @@ void Lookup::relayTxs()
         ts.set_nodepubkey(app_.getValidationPublicKey().data(),
             app_.getValidationPublicKey().size());
 
-        for (auto tx : it.second)
+        for (auto& tx : it.second)
         {
             protocol::TMTransaction& t = *ts.add_transactions();
             Serializer s;
             tx->getSTransaction()->add(s);
             t.set_rawtransaction(s.data(), s.size());
             t.set_status(protocol::tsCURRENT);
-            t.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
+            //t.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
 
             hash_append(signHash, tx->getID());
         }
@@ -541,12 +564,12 @@ void Lookup::relayTxs()
         mShardManager.node().sendMessage(it.first, m);
     }
 
-    JLOG(journal_.info()) << "relayTxs tx count: " << hTxVector.size()
-        << " time used: " << utcTime() - timeStart << "ms";
-
-    for (auto delHash : hTxVector) {
+    for (auto& delHash : hTxVector) {
         app_.getTxPool().removeTx(delHash);
     }
+
+    JLOG(journal_.info()) << "relayTxs tx count: " << hTxVector.size()
+        << " time used: " << utcTime() - timeStart << "ms";
 }
 
 unsigned int Lookup::getTxShardIndex(const std::string& strAddress, unsigned int numShards)

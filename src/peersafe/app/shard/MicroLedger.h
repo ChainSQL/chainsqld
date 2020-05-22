@@ -25,6 +25,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/protocol/Protocol.h>
 #include <ripple/ledger/OpenView.h>
 #include <ripple/ledger/detail/RawStateTable.h>
+#include <ripple/app/ledger/Ledger.h>
 
 #include <memory>
 #include <utility>
@@ -103,6 +104,11 @@ public:
         return mTxsHashes;
     }
 
+    inline size_t txCounts() const
+    {
+        return mTxsHashes.size();
+    }
+
     inline auto& stateDeltas()
     {
         return mStateDeltas;
@@ -153,7 +159,7 @@ public:
             mHashSet.StateDeltaHash == zero;
     }
 
-	void setMetaIndex(TxID const& hash, uint32 index, beast::Journal j);
+	void setMetaIndex(TxID const& hash, uint32 index, beast::Journal& j);
 
     void addStateDelta(ReadView const& base, uint256 key, Action action, std::shared_ptr<SLE> sle);
 
@@ -162,6 +168,8 @@ public:
 	bool checkValidity(std::unique_ptr <ValidatorList> const& list, bool withTxMeta);
 
     void apply(OpenView& to) const;
+
+    void apply(Ledger& to) const;
 };
 
 
