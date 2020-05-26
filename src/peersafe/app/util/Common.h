@@ -27,6 +27,7 @@ namespace ripple {
     using h256Vector = std::vector<uint256>;
 	/// Get the current time in seconds since the epoch in UTC(ms)
 	uint64_t utcTime();
+    uint64_t utcTimeUs();
 }
 
 #endif

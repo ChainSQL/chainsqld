@@ -57,6 +57,7 @@ applyTransactions(
 
 void
 applyMicroLedgers(
+    Application& app,
     std::vector<std::shared_ptr<MicroLedger const>> const& microLedgers,
     OpenView& view);
 

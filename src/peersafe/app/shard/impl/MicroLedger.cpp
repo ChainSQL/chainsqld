@@ -23,6 +23,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/protocol/Keylet.h>
 #include <ripple/ledger/TxMeta.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/util/Common.h>
 
 
 namespace ripple {
@@ -57,7 +58,7 @@ void MicroLedger::computeHash(bool withTxMeta)
     if (mTxsHashes.size() > 0)
     {
         sha512_half_hasher txRootHash;
-        for (auto txHash : mTxsHashes)
+        for (auto const& txHash : mTxsHashes)
         {
             hash_append(txRootHash, txHash);
         }
@@ -71,7 +72,7 @@ void MicroLedger::computeHash(bool withTxMeta)
     if (mStateDeltas.size() > 0)
     {
         sha512_half_hasher stateDeltaHash;
-        for (auto stateDelta : mStateDeltas)
+        for (auto const& stateDelta : mStateDeltas)
         {
             hash_append(stateDeltaHash, stateDelta.first);
             hash_append(stateDeltaHash, (uint8)stateDelta.second.first);
@@ -111,7 +112,7 @@ uint256 MicroLedger::computeTxWithMetaHash()
 
     try
     {
-        for (auto txHash : mTxsHashes)
+        for (auto const& txHash : mTxsHashes)
         {
             hash_append(txWMRootHash, mTxWithMetas.at(txHash).first->slice());
             hash_append(txWMRootHash, mTxWithMetas.at(txHash).second->slice());
@@ -134,7 +135,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     m.set_dropsdestroyed(mDropsDestroyed);
 
     // Transaction hashes.
-    for (auto it : mTxsHashes)
+    for (auto const& it : mTxsHashes)
     {
         m.add_txhashes(it.data(), it.size());
     }
@@ -147,7 +148,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     }
 
     // Statedetals.
-    for (auto it : mStateDeltas)
+    for (auto const& it : mStateDeltas)
     {
         protocol::StateDelta& s = *m.add_statedeltas();
         s.set_key(it.first.data(), it.first.size());                  // key
@@ -156,7 +157,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     }
 
     // Signatures
-    for (auto it : signatures())
+    for (auto const& it : signatures())
     {
         protocol::Signature& s = *ms.add_signatures();
         s.set_publickey(it.first.data(), it.first.size());
@@ -166,7 +167,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     if (withTxMeta)
     {
         // add tx with meta and send to lookups.
-        for (auto it : mTxWithMetas)
+        for (auto const& it : mTxWithMetas)
         {
             protocol::TxWithMeta& tx = *m.add_txwithmetas();
             tx.set_hash(it.first.data(), it.first.size());
@@ -185,12 +186,12 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
         if (action == detail::RawStateTable::Action::replace)
         {
             // For Account, only Balance need merge.
-            auto balance = sle->getFieldAmount(sfBalance);
-            auto oriSle = base.read(Keylet(sle->getType(), key));
+            auto& balance = sle->getFieldAmount(sfBalance);
+            auto const& oriSle = base.read(Keylet{sle->getType(), key});
             assert(oriSle);
-            auto priorBlance = oriSle->getFieldAmount(sfBalance);
-            auto deltaBalance = balance - priorBlance;
-            sle->setFieldAmount(sfBalance, deltaBalance);
+            auto& priorBlance = oriSle->getFieldAmount(sfBalance);
+            //auto deltaBalance = balance - priorBlance;
+            sle->setFieldAmount(sfBalance, balance - priorBlance);
         }
         mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
         break;
@@ -205,169 +206,215 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
     }
 }
 
-void MicroLedger::apply(OpenView& to) const
+void applyAccountRoot(
+    OpenView& to,
+    detail::RawStateTable::Action action,
+    std::shared_ptr<SLE>& sle,
+    beast::Journal& j)
+{
+    //auto st = utcTimeUs();
+
+    switch (action)
+    {
+    case detail::RawStateTable::Action::insert:
+    {
+        auto const& iter = to.items().items().find(sle->key());
+        if (iter != to.items().items().end())
+        {
+            auto& item = iter->second;
+            if (item.first == detail::RawStateTable::Action::insert)
+            {
+                auto& preSle = item.second;
+                auto& priorBlance = preSle->getFieldAmount(sfBalance);
+                auto& deltaBalance = sle->getFieldAmount(sfBalance);
+                preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+            }
+            else
+            {
+                //LogicError("RawStateTable::");
+            }
+        }
+        else
+        {
+            to.rawInsert(sle);
+        }
+        break;
+    }
+    case detail::RawStateTable::Action::erase:
+    {
+        // Account root erase only occur with Contract, don't support it.
+        if (to.items().items().count(sle->key()))
+        {
+            //LogicError("RawStateTable::");
+        }
+        else
+        {
+            to.rawInsert(sle);
+        }
+        break;
+    }
+    case detail::RawStateTable::Action::replace:
+    {
+        auto const& iter = to.items().items().find(sle->key());
+        if (iter != to.items().items().end())
+        {
+            auto& item = iter->second;
+            if (item.first == detail::RawStateTable::Action::replace)
+            {
+                auto& preSle = item.second;
+                auto& priorBlance = preSle->getFieldAmount(sfBalance);
+                auto& deltaBalance = sle->getFieldAmount(sfBalance);
+                preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+            }
+            else
+            {
+                //LogicError("RawStateTable::");
+            }
+        }
+        else
+        {
+            auto const& base = to.read(Keylet{sle->getType(), sle->key()});
+            auto& priorBlance = base->getFieldAmount(sfBalance);
+            auto& deltaBalance = sle->getFieldAmount(sfBalance);
+            sle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+            to.rawReplace(sle);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    //JLOG(j.info()) << "apply account root time used : " << utcTimeUs() - st << "us";
+}
+
+void applyTableList(
+    OpenView& to,
+    detail::RawStateTable::Action action,
+    std::shared_ptr<SLE>& sle,
+    beast::Journal& j)
+{
+    //auto st = utcTimeUs();
+
+    switch (action)
+    {
+    case detail::RawStateTable::Action::insert:
+    case detail::RawStateTable::Action::erase:
+    {
+        if (to.items().items().count(sle->key()))
+        {
+            //LogicError("RawStateTable::");
+        }
+        else
+        {
+            to.rawInsert(sle);
+        }
+        break;
+    }
+    case detail::RawStateTable::Action::replace:
+    {
+        auto const& iter = to.items().items().find(sle->key());
+        if (iter != to.items().items().end())
+        {
+            auto& item = iter->second;
+            if (item.first == detail::RawStateTable::Action::replace)
+            {
+                auto const& base = to.read(Keylet{sle->getType(), sle->key()});
+                auto& tableEntries = sle->getFieldArray(sfTableEntries);
+                auto& baseTableEntries = base->getFieldArray(sfTableEntries);
+                // tableEntry.users modified or owner add/delete a table
+                if ([&]() -> bool {
+                    if (tableEntries.size() != baseTableEntries.size())
+                    {
+                        return true;
+                    }
+                    for (auto const& table : tableEntries)
+                    {
+                        auto baseTable = getTableEntry(baseTableEntries, table.getFieldVL(sfTableName));
+                        if (!baseTable || baseTable->getFieldArray(sfUsers) != table.getFieldArray(sfUsers))
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }())
+                {
+                    to.rawReplace(sle);
+                }
+            }
+            else
+            {
+                //? LogicError("RawStateTable::");
+            }
+        }
+        else
+        {
+            to.rawReplace(sle);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
+}
+
+void applyDirNode(
+    OpenView& to,
+    detail::RawStateTable::Action action,
+    std::shared_ptr<SLE>& sle,
+    beast::Journal& j)
+{
+    //auto st = utcTimeUs();
+
+    switch (action)
+    {
+    case detail::RawStateTable::Action::insert:
+    case detail::RawStateTable::Action::erase:
+    case detail::RawStateTable::Action::replace:        // replace need any other handled?
+        if (to.items().items().count(sle->key()))
+        {
+            //LogicError("RawStateTable::");
+        }
+        else
+        {
+            to.rawInsert(sle);
+        }
+        break;
+    }
+
+    //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
+}
+
+void MicroLedger::apply(OpenView& to, beast::Journal& j) const
 {
     to.rawDestroyZXC(mDropsDestroyed);
 
-    for (auto& stateDelta : mStateDeltas)
+    auto st = utcTime();
+
+    for (auto const& stateDelta : mStateDeltas)
     {
         std::shared_ptr<SLE> sle = std::make_shared<SLE>(stateDelta.second.second.slice(), stateDelta.first);
-        Keylet k(sle->getType(), sle->key());
-        std::shared_ptr<SLE const> base = to.read(k);
         switch (sle->getType())
         {
         case ltACCOUNT_ROOT:
-            switch (stateDelta.second.first)
-            {
-            case detail::RawStateTable::Action::insert:
-            {
-                if (to.items().items().count(k.key))
-                {
-                    auto item = to.items().items()[k.key];
-                    if (item.first == detail::RawStateTable::Action::insert)
-                    {
-                        auto preSle = item.second;
-                        auto priorBlance = preSle->getFieldAmount(sfBalance);
-                        auto deltaBalance = sle->getFieldAmount(sfBalance);
-                        preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
-                    }
-                    else
-                    {
-                        //LogicError("RawStateTable::");
-                    }
-                }
-                else
-                {
-                    to.rawInsert(sle);
-                }
-                break;
-            }
-            case detail::RawStateTable::Action::erase:
-            {
-                // Account root erase only occur with Contract, don't support it.
-                if (to.items().items().count(k.key))
-                {
-                    //LogicError("RawStateTable::");
-                }
-                else
-                {
-                    to.rawInsert(sle);
-                }
-                break;
-            }
-            case detail::RawStateTable::Action::replace:
-            {
-                if (to.items().items().count(k.key))
-                {
-                    auto item = to.items().items()[k.key];
-                    if (item.first == detail::RawStateTable::Action::replace)
-                    {
-                        auto preSle = item.second;
-                        auto priorBlance = preSle->getFieldAmount(sfBalance);
-                        auto deltaBalance = sle->getFieldAmount(sfBalance);
-                        preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
-                    }
-                    else
-                    {
-                        //LogicError("RawStateTable::");
-                    }
-                }
-                else
-                {
-                    auto priorBlance = base->getFieldAmount(sfBalance);
-                    auto deltaBalance = sle->getFieldAmount(sfBalance);
-                    sle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
-                    to.rawReplace(sle);
-                }
-                break;
-            }
-            default:
-                break;
-            }
+            applyAccountRoot(to, stateDelta.second.first, sle, j);
             break;
         case ltTABLELIST:
-            switch (stateDelta.second.first)
-            {
-            case detail::RawStateTable::Action::insert:
-            case detail::RawStateTable::Action::erase:
-            {
-                if (to.items().items().count(k.key))
-                {
-                    //LogicError("RawStateTable::");
-                }
-                else
-                {
-                    to.rawInsert(sle);
-                }
-                break;
-            }
-            case detail::RawStateTable::Action::replace:
-            {
-                if (to.items().items().count(k.key))
-                {
-                    auto item = to.items().items()[k.key];
-                    if (item.first == detail::RawStateTable::Action::replace)
-                    {
-                        auto tableEntries = sle->getFieldArray(sfTableEntries);
-                        auto baseTableEntries = base->getFieldArray(sfTableEntries);
-                        // tableEntry.users modified or owner add/delete a table
-                        if ( [&]() -> bool {
-                                 if (tableEntries.size() != baseTableEntries.size())
-                                 {
-                                     return true;
-                                 }
-                                 for (auto const& table : tableEntries)
-                                 {
-                                     auto baseTable = getTableEntry(baseTableEntries, table.getFieldVL(sfTableName));
-                                     if (!baseTable || baseTable->getFieldArray(sfUsers) != table.getFieldArray(sfUsers))
-                                     {
-                                         return true;
-                                     }
-                                 }
-                                 return false;
-                             }() )
-                        {
-                            to.rawReplace(sle);
-                        }
-                    }
-                    else
-                    {
-                        //? LogicError("RawStateTable::");
-                    }
-                }
-                else
-                {
-                    to.rawReplace(sle);
-                }
-                break;
-            }
-            default:
-                break;
-            }
+            applyTableList(to, stateDelta.second.first, sle, j);
             break;
         case ltDIR_NODE:
-            switch (stateDelta.second.first)
-            {
-            case detail::RawStateTable::Action::insert:
-            case detail::RawStateTable::Action::erase:
-            case detail::RawStateTable::Action::replace:        // replace need any other handled?
-            {
-                if (to.items().items().count(k.key))
-                {
-                    //LogicError("RawStateTable::");
-                }
-                else
-                {
-                    to.rawInsert(sle);
-                }
-                break;
-            }
-            }
+            applyDirNode(to, stateDelta.second.first, sle, j);
             break;
         default:
             break;
         }
     }
+
+    JLOG(j.info()) << "apply " << mStateDeltas.size() << " stateDeltas time used: " << utcTime() - st << "ms";
+
+    st = utcTime();
 
     for (auto const& it : mTxsHashes)
     {
@@ -375,6 +422,8 @@ void MicroLedger::apply(OpenView& to) const
             std::make_shared<Serializer>(0),    // tx
             std::make_shared<Serializer>(0));   // meta
     }
+
+    JLOG(j.info()) << "apply " << mTxsHashes.size() << " txs time used: " << utcTime() - st << "ms";
 }
 
 void MicroLedger::apply(Ledger& to) const

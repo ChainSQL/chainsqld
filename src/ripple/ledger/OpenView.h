@@ -174,12 +174,12 @@ public:
     bool
     exists (Keylet const& k) const override;
 
-    inline detail::RawStateTable items()
+    inline detail::RawStateTable& items()
     {
         return items_;
     }
 
-    inline detail::RawStateTable items() const
+    inline detail::RawStateTable const& items() const
     {
         return items_;
     }

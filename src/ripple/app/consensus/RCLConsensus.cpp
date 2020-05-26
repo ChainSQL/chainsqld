@@ -1014,12 +1014,16 @@ applyTransactions(
 
 void
 applyMicroLedgers(
+    Application& app,
     std::vector<std::shared_ptr<MicroLedger const>> const& microLedgers,
     OpenView& view)
 {
+    //boost::ignore_unused(app);
+    auto j = app.journal("ApplyMicroLedger");
+
     for (auto& microLedger : microLedgers)
     {
-        microLedger->apply(view);
+        microLedger->apply(view, j);
     }
 }
 
@@ -1089,7 +1093,7 @@ RCLConsensus::Adaptor::buildLCL(
             //    app_, set, accum, [&buildLCL](uint256 const& txID) {
             //        return !buildLCL->txExists(txID);
             //    });
-            applyMicroLedgers(app_.getShardManager().committee().canonicalMicroLedgers(),
+            applyMicroLedgers(app_, app_.getShardManager().committee().canonicalMicroLedgers(),
                 accum);
         }
 		JLOG(j_.info()) << "applyTransactions time used:" << utcTime() - timeStart << "ms";

@@ -26,6 +26,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/ledger/OpenView.h>
 #include <ripple/ledger/detail/RawStateTable.h>
 #include <ripple/app/ledger/Ledger.h>
+#include <ripple/beast/utility/Journal.h>
 
 #include <memory>
 #include <utility>
@@ -167,7 +168,7 @@ public:
 
 	bool checkValidity(std::unique_ptr <ValidatorList> const& list, bool withTxMeta);
 
-    void apply(OpenView& to) const;
+    void apply(OpenView& to, beast::Journal& j) const;
 
     void apply(Ledger& to) const;
 };

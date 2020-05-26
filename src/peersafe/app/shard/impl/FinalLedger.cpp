@@ -202,7 +202,7 @@ void FinalLedger::compose(protocol::TMFinalLedgerSubmit& ms)
     }
 
     // Signatures
-    for (auto it : signatures())
+    for (auto const& it : signatures())
     {
         protocol::Signature& s = *ms.add_signatures();
         s.set_publickey((const char *)it.first.data(), it.first.size());

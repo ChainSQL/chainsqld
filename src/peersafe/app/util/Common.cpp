@@ -10,4 +10,11 @@ namespace ripple {
 		return tmp.count();
 		//std::time_t timestamp = std::chrono::system_clock::to_time_t(tp);
 	}
+
+    uint64_t utcTimeUs()
+    {
+        auto tp = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now());
+        auto tmp = std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch());
+        return tmp.count();
+    }
 }
