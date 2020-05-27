@@ -545,8 +545,11 @@ Json::Value STTx::getJson (int options, bool binary) const
 std::string const&
 STTx::getMetaSQLInsertReplaceHeader ()
 {
+    //static std::string const sql = "INSERT OR REPLACE INTO Transactions "
+    //    "(TransID, TransType, FromAcct, FromSeq, LedgerSeq, Status, RawTxn, TxnMeta)"
+    //    " VALUES ";
     static std::string const sql = "INSERT OR REPLACE INTO Transactions "
-        "(TransID, TransType, FromAcct, FromSeq, LedgerSeq, Status, RawTxn, TxnMeta)"
+        "(TransID, TransType, FromAcct, FromSeq, LedgerSeq, Status)"
         " VALUES ";
     
     return sql;
@@ -555,9 +558,9 @@ STTx::getMetaSQLInsertReplaceHeader ()
 std::string STTx::getMetaSQL (std::uint32_t inLedger,
                                                std::string const& escapedMetaData) const
 {
-    Serializer s;
-    add (s);
-    return getMetaSQL (s, inLedger, TXN_SQL_VALIDATED, escapedMetaData);
+    //Serializer s;
+    //add (s);
+    return getMetaSQL(Serializer{0}/*s*/, inLedger, TXN_SQL_VALIDATED, escapedMetaData);
 }
 
 // VFALCO This could be a free function elsewhere
@@ -565,8 +568,11 @@ std::string
 STTx::getMetaSQL (Serializer rawTxn,
     std::uint32_t inLedger, char status, std::string const& escapedMetaData) const
 {
-    static boost::format bfTrans ("('%s', '%s', '%s', '%d', '%d', '%c', %s, %s)");
-    std::string rTxn = sqlEscape (rawTxn.peekData ());
+    static boost::format bfTrans ("('%s', '%s', '%s', '%d', '%d', '%c')");
+    //static boost::format bfTrans ("('%s', '%s', '%s', '%d', '%d', '%c', %s, %s)");
+    //std::string rTxn = sqlEscape (rawTxn.peekData ());
+    boost::ignore_unused(rawTxn);
+    boost::ignore_unused(escapedMetaData);
 
     auto format = TxFormats::getInstance().findByType (tx_type_);
     assert (format != nullptr);
@@ -574,7 +580,7 @@ STTx::getMetaSQL (Serializer rawTxn,
     return str (boost::format (bfTrans)
                 % to_string (getTransactionID ()) % format->getName ()
                 % toBase58(getAccountID(sfAccount))
-                % getSequence () % inLedger % status % rTxn % escapedMetaData);
+                % getSequence () % inLedger % status /*% rTxn % escapedMetaData*/);
 }
 
 std::pair<bool, std::string> STTx::checkSingleSign () const

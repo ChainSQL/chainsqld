@@ -72,6 +72,7 @@ enum JobType
 
     jtADVANCE,       // Advance validated/acquired ledgers
     jtPUBLEDGER,     // Publish a fully-accepted ledger
+    jtSAVELEDGER,    // Lookup save/acquire validated ledgers
 
 	jtLEDGER_REQ,    // Peer request ledger/txnset data
 	jtLEDGER_DATA,   // Received data for a ledger we're acquiring

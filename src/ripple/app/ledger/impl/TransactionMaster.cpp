@@ -102,7 +102,7 @@ std::vector<STTx> TransactionMaster::getTxs(STTx const& stTx, std::string sTable
 	{
 		vecTxs = STTx::getTxs(stTx, sTableNameInDB,NULL,includeAssert);
 	}
-	return vecTxs;
+	return std::move(vecTxs);
 }
 std::shared_ptr<Transaction>
 TransactionMaster::fetch (uint256 const& txnID, bool checkDisk)

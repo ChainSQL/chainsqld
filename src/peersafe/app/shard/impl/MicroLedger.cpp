@@ -517,7 +517,7 @@ bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, boo
         }
 
         // Check all tx-meta corresponds to tx-hashes
-        for (TxID hash : mTxsHashes)
+        for (TxID const& hash : mTxsHashes)
         {
             if (!hasTxWithMeta(hash))
                 return false;

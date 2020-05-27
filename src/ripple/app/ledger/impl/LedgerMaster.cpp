@@ -733,11 +733,7 @@ LedgerMaster::setFullLedger (
             clearLedger (ledger->info().seq - 1);
     }
 
-    if (app_.getShardManager().myShardRole() & ShardManager::LOOKUP ||
-        app_.getShardManager().myShardRole() & ShardManager::SYNC)
-    {
-        pendSaveValidated(app_, ledger, isSynchronous, isCurrent);
-    }
+    pendSaveValidated(app_, ledger, isSynchronous, isCurrent);
 
     {
         ScopedLockType ml (mCompleteLock);
@@ -2196,19 +2192,23 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
 
                 setPubLedger(ledger);
 
-                if (app_.getShardManager().myShardRole() & ShardManager::LOOKUP ||
-                    app_.getShardManager().myShardRole() & ShardManager::SYNC)
+                if (app_.getShardManager().myShardRole() & ShardManager::LOOKUP)
                 {
-                    {
-                        ScopedUnlockType sul(m_mutex);
-                        app_.getOPs().pubLedger(ledger);
-                    }
+                    ScopedUnlockType sul(m_mutex);
+                    app_.getOPs().pubLedger(ledger);
+                }
 
+                if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
+                {
                     processFullLedgerTask(ledger);
                 }
             }
-			//move table_sync here,cause it used pub_ledger
-			app_.getTableSync().TryTableSync();
+
+            if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
+            {
+                //move table_sync here,cause it used pub_ledger
+                app_.getTableSync().TryTableSync();
+            }
 
             app_.getOPs().clearNeedNetworkLedger();
             progress = newPFWork ("pf:newLedger", sl);

@@ -50,6 +50,8 @@
 #include <ripple/beast/core/LexicalCast.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
+#include <peersafe/app/shard/ShardManager.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -819,17 +821,17 @@ void Ledger::updateSkipList ()
         rawReplace(sle);
 }
 
-static bool saveValidatedLedger (
+static bool saveValidatedLedger(
     Application& app,
     std::shared_ptr<Ledger const> const& ledger,
     bool current)
 {
-    auto j = app.journal ("Ledger");
+    auto j = app.journal("Ledger");
 
-    if (! app.pendingSaves().startWork (ledger->info().seq))
+    if (!app.pendingSaves().startWork(ledger->info().seq))
     {
         // The save was completed synchronously
-        JLOG (j.debug()) << "Save aborted";
+        JLOG(j.debug()) << "Save aborted";
         return true;
     }
 
@@ -837,108 +839,114 @@ static bool saveValidatedLedger (
     JLOG (j.trace())
         << "saveValidatedLedger "
         << (current ? "" : "fromAcquire ") << ledger->info().seq;
-    static boost::format deleteLedger (
+    static boost::format deleteLedger(
         "DELETE FROM Ledgers WHERE LedgerSeq = %u;");
-    static boost::format deleteTrans1 (
+    static boost::format deleteTrans1(
         "DELETE FROM Transactions WHERE LedgerSeq = %u;");
-    static boost::format deleteTrans2 (
+    static boost::format deleteTrans2(
         "DELETE FROM AccountTransactions WHERE LedgerSeq = %u;");
-    static boost::format deleteAcctTrans (
+    static boost::format deleteAcctTrans(
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
     static boost::format deleteTrans3(
         "DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
 
     auto seq = ledger->info().seq;
 
-    if (! ledger->info().accountHash.isNonZero ())
+    if (! ledger->info().accountHash.isNonZero())
     {
-        JLOG (j.fatal()) << "AH is zero: "
-                                   << getJson (*ledger);
-        assert (false);
+        JLOG (j.fatal()) << "AH is zero: " << getJson(*ledger);
+        assert(false);
     }
 
-    if (ledger->info().accountHash != ledger->stateMap().getHash ().as_uint256())
+    if (ledger->info().accountHash != ledger->stateMap().getHash().as_uint256())
     {
-        JLOG (j.fatal()) << "sAL: " << ledger->info().accountHash
-                                   << " != " << ledger->stateMap().getHash ();
-        JLOG (j.fatal()) << "saveAcceptedLedger: seq="
-                                   << seq << ", current=" << current;
-        assert (false);
+        JLOG(j.fatal()) << "sAL: " << ledger->info().accountHash
+            << " != " << ledger->stateMap().getHash();
+        JLOG(j.fatal()) << "saveAcceptedLedger: seq="
+            << seq << ", current=" << current;
+        assert(false);
     }
 
-    assert (ledger->info().txHash == ledger->txMap().getHash ().as_uint256());
+    assert(ledger->info().txHash == ledger->txMap().getHash().as_uint256());
 
     // Save the ledger header in the hashed object store
     {
-        Serializer s (128);
-        s.add32 (HashPrefix::ledgerMaster);
+        Serializer s(128);
+        s.add32(HashPrefix::ledgerMaster);
         addRaw(ledger->info(), s);
-        app.getNodeStore ().store (
-            hotLEDGER, std::move (s.modData ()), ledger->info().hash);
+        app.getNodeStore().store(
+            hotLEDGER, std::move(s.modData()), ledger->info().hash);
     }
-
 
     AcceptedLedger::pointer aLedger;
-    try
+
+    if (app.getShardManager().myShardRole() & ShardManager::LOOKUP ||
+        app.getShardManager().myShardRole() & ShardManager::SYNC)
     {
-        aLedger = app.getAcceptedLedgerCache().fetch (ledger->info().hash);
-        if (! aLedger)
+        try
         {
-            aLedger = std::make_shared<AcceptedLedger>(ledger, app.accountIDCache(), app.logs());
-            app.getAcceptedLedgerCache().canonicalize(ledger->info().hash, aLedger);
+            aLedger = app.getAcceptedLedgerCache().fetch(ledger->info().hash);
+            if (!aLedger)
+            {
+                aLedger = std::make_shared<AcceptedLedger>(ledger, app.accountIDCache(), app.logs());
+                app.getAcceptedLedgerCache().canonicalize(ledger->info().hash, aLedger);
+            }
+        }
+        catch (std::exception const&)
+        {
+            JLOG(j.warn()) << "An accepted ledger was missing nodes";
+            app.getLedgerMaster().failedSave(seq, ledger->info().hash);
+            // Clients can now trust the database for information about this
+            // ledger sequence.
+            app.pendingSaves().finishWork(seq);
+            return false;
         }
     }
-    catch (std::exception const&)
-    {
-        JLOG (j.warn()) << "An accepted ledger was missing nodes";
-        app.getLedgerMaster().failedSave(seq, ledger->info().hash);
-        // Clients can now trust the database for information about this
-        // ledger sequence.
-        app.pendingSaves().finishWork(seq);
-        return false;
-    }
 
+    // Only Lookup save transaction and meta into sqlite db.
+    if (app.getShardManager().myShardRole() & ShardManager::LOOKUP)
     {
-        auto db = app.getLedgerDB ().checkoutDb();
-        *db << boost::str (deleteLedger % seq);
-    }
+        auto st = utcTime();
 
-    {
-        auto db = app.getTxnDB ().checkoutDb ();
+        auto db = app.getTxnDB().checkoutDb();
 
         soci::transaction tr(*db);
 
-        *db << boost::str (deleteTrans1 % seq);
-        *db << boost::str (deleteTrans2 % seq);
-        *db << boost::str (deleteTrans3 % seq);
+        *db << boost::str(deleteTrans1 % seq);
+        *db << boost::str(deleteTrans2 % seq);
+        if (app.getShardManager().myShardRole() & ShardManager::SYNC)
+        {
+            *db << boost::str(deleteTrans3 % seq);
+        }
 
-        std::string const ledgerSeq (std::to_string (seq));
+        std::string const ledgerSeq(std::to_string(seq));
 
         std::uint64_t iTxSeq = uint64_t(seq) * 100000;
-        for (auto const& vt : aLedger->getMap ())
-        {
-            uint256 transactionID = vt.second->getTransactionID ();
 
-            app.getMasterTransaction ().inLedger (
+        for (auto const& vt : aLedger->getMap())
+        {
+            uint256 transactionID = vt.second->getTransactionID();
+
+            app.getMasterTransaction().inLedger(
                 transactionID, seq);
 
-            std::string const txnId (to_string (transactionID));
-            std::string const txnSeq (std::to_string (vt.second->getTxnSeq ()));
+            std::string const txnId(to_string(transactionID));
+            std::string const txnSeq(std::to_string(vt.second->getTxnSeq()));
 
-            *db << boost::str (deleteAcctTrans % transactionID);
+            *db << boost::str(deleteAcctTrans % transactionID);
 
-            auto const& accts = vt.second->getAffected ();
+            auto const& accts = vt.second->getAffected();
 
-            if (!accts.empty ())
+            if (!accts.empty())
             {
-                std::string sql (
+                std::string sql(
                     "INSERT INTO AccountTransactions "
                     "(TransID, Account, LedgerSeq, TxnSeq) VALUES ");
 
                 // Try to make an educated guess on how much space we'll need
                 // for our arguments. In argument order we have:
                 // 64 + 34 + 10 + 10 = 118 + 10 extra = 128 bytes
-                sql.reserve (sql.length () + (accts.size () * 128));
+                sql.reserve(sql.length() + (accts.size() * 128));
 
                 bool first = true;
                 for (auto const& account : accts)
@@ -961,31 +969,52 @@ static bool saveValidatedLedger (
                     sql += ")";
                 }
                 sql += ";";
-                JLOG (j.trace()) << "ActTx: " << sql;
+                JLOG(j.trace()) << "ActTx: " << sql;
                 *db << sql;
             }
             else
             {
-                JLOG (j.warn())
+                JLOG(j.warn())
                     << "Transaction in ledger " << seq
                     << " affects no accounts";
-                JLOG (j.warn())
+                JLOG(j.warn())
                     << vt.second->getTxn()->getJson(0);
             }
 
             *db <<
-               (STTx::getMetaSQLInsertReplaceHeader () +
-                vt.second->getTxn ()->getMetaSQL (
-                    seq, vt.second->getEscMeta ()) + ";");
-                        
-            storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq,app);
+                (STTx::getMetaSQLInsertReplaceHeader() +
+                    vt.second->getTxn()->getMetaSQL(seq, ""/*vt.second->getEscMeta ()*/) +
+                    ";");
 
-            iTxSeq++;
+            if (app.getShardManager().myShardRole() & ShardManager::SYNC)
+            {
+                storePeersafeSql(db, vt.second->getTxn(), iTxSeq++, seq, app);
+            }
         }
 
-        tr.commit ();
+        tr.commit();
+
+        JLOG(j.warn()) << "save " << aLedger->getTxnCount() << " txs into sqlite, time used: " << utcTime() - st << "ms";
     }
 
+    // Only a SYNC role
+    if (app.getShardManager().myShardRole() == ShardManager::SYNC)
+    {
+        auto db = app.getTxnDB().checkoutDb();
+        soci::transaction tr(*db);
+
+        *db << boost::str(deleteTrans3 % seq);
+
+        std::uint64_t iTxSeq = uint64_t(seq) * 100000;
+        for (auto const& vt : aLedger->getMap())
+        {
+            storePeersafeSql(db, vt.second->getTxn(), iTxSeq++, seq, app);
+        }
+
+        tr.commit();
+    }
+
+    // Save Ledger into sqlite db.
     {
         static std::string addLedger(
             R"sql(INSERT OR REPLACE INTO Ledgers
@@ -999,8 +1028,9 @@ static bool saveValidatedLedger (
                 WHERE LedgerHash = :ledgerHash;)sql");
 
         auto db (app.getLedgerDB ().checkoutDb ());
-
         soci::transaction tr(*db);
+
+        *db << boost::str(deleteLedger % seq);
 
         auto const hash = to_string (ledger->info().hash);
         auto const parentHash = to_string (ledger->info().parentHash);
@@ -1027,11 +1057,14 @@ static bool saveValidatedLedger (
             soci::use(accountHash),
             soci::use(txHash);
 
-
-        *db << updateVal,
-            soci::use(seq),
-            soci::use(seq),
-            soci::use(hash);
+        if (app.getShardManager().myShardRole() == ShardManager::SHARD ||
+            app.getShardManager().myShardRole() == ShardManager::COMMITTEE)
+        {
+            *db << updateVal,
+                soci::use(seq),
+                soci::use(seq),
+                soci::use(hash);
+        }
 
         tr.commit();
     }
@@ -1403,22 +1436,21 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
     auto format = TxFormats::getInstance().findByType(txType);
     assert(format != nullptr);
 
-	auto txsAll = app.getMasterTransaction().getTxs(*pTx, "", nullptr, inLedger);
+	auto const& txsAll = app.getMasterTransaction().getTxs(*pTx, "", nullptr, inLedger);
     std::vector<ripple::STTx> txsNoRepeat;
 
-    ripple::uint160 uDBNameN, uDBNameA;
     for (auto itA = txsAll.begin(); itA != txsAll.end(); itA++)
     {
         auto itN = txsNoRepeat.begin();
         while (itN != txsNoRepeat.end())
         {
-            auto& tablesN = (*itN).getFieldArray(sfTables);
+            auto const& tablesN = itN->getFieldArray(sfTables);
             if (tablesN.size() <= 0)  break;
-            auto uDBNameN = tablesN[0].getFieldH160(sfNameInDB);
+            auto const& uDBNameN = tablesN[0].getFieldH160(sfNameInDB);
 
-            auto& tablesA = (*itA).getFieldArray(sfTables);
+            auto const& tablesA = itA->getFieldArray(sfTables);
             if (tablesA.size() <= 0)  break;
-            auto uDBNameA = tablesA[0].getFieldH160(sfNameInDB);
+            auto const& uDBNameA = tablesA[0].getFieldH160(sfNameInDB);
 
             if (uDBNameA == uDBNameN)  break;
             itN++;
@@ -1428,9 +1460,8 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
 
 
     AccountID ownerID;
-    ripple::uint160 uDBName;
     std::string sqlBody = "", sqlExe = "";
-    for (auto tx : txsNoRepeat)
+    for (auto const& tx : txsNoRepeat)
     {
         if (tx.isFieldPresent(sfOwner))
         {
@@ -1442,7 +1473,7 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
         }
         auto& tables = tx.getFieldArray(sfTables);
         if (tables.size() <= 0)  continue;
-        uDBName = tables[0].getFieldH160(sfNameInDB);
+        uint160 const& uDBName = tables[0].getFieldH160(sfNameInDB);
 
 		auto format2 = TxFormats::getInstance().findByType(tx.getTxnType());
 		assert(format2 != nullptr);

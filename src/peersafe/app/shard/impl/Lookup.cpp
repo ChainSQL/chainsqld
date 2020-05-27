@@ -87,7 +87,7 @@ void Lookup::checkSaveLedger(LedgerIndex netLedger)
 
         if (netLedger <= validSeq)
         {
-            JLOG(journal_.warn()) << "Net ledger: " << netLedger << " too old, currently need: " << validSeq + 1;
+            JLOG(journal_.warn()) << "Net ledger: " << netLedger << " is stale, currently need: " << validSeq + 1;
             mMapFinalLedger.erase(netLedger);
             mMapMicroLedgers.erase(netLedger);
             return;
@@ -108,7 +108,7 @@ void Lookup::checkSaveLedger(LedgerIndex netLedger)
         if (!mSaveLedgerThread.test_and_set())
         {
             app_.getJobQueue().addJob(
-                jtADVANCE, "saveLedger",
+                jtSAVELEDGER, "saveLedger",
                 [this](Job&) { saveLedgerThread(); });
         }
     }
@@ -137,7 +137,7 @@ void Lookup::saveLedgerThread()
             }
 
             // Should acquire.
-            auto hash = getFinalLedger(saveOrAcquire + 1)->parentHash();
+            auto const& hash = getFinalLedger(saveOrAcquire + 1)->parentHash();
             if (!app_.getInboundLedgers().acquire(
                 hash, 0, InboundLedger::fcCURRENT))
             {
@@ -150,9 +150,12 @@ void Lookup::saveLedgerThread()
         {
             JLOG(journal_.info()) << "Building ledger " << saveOrAcquire;
             // Reset tx-meta transactionIndex field
-            resetMetaIndex(saveOrAcquire);
-            // Save ledger.
             auto timeStart = utcTime();
+            uint32 count = resetMetaIndex(saveOrAcquire);
+            JLOG(journal_.info()) << "resetMetaIndex tx count: " << count
+                << " time used: " << utcTime() - timeStart << "ms";
+            // Save ledger.
+            timeStart = utcTime();
             saveLedger(saveOrAcquire);
             JLOG(journal_.info()) << "saveLedger time used:" << utcTime() - timeStart << "ms";
 
@@ -208,46 +211,30 @@ bool Lookup::checkLedger(LedgerIndex seq)
     return false;
 }
 
-void Lookup::resetMetaIndex(LedgerIndex seq)
+uint32 Lookup::resetMetaIndex(LedgerIndex seq)
 {
     uint32 metaIndex = 0;
     beast::Journal j = app_.journal("TxMeta");
-
-    auto timeStart = utcTime();
 
     for (uint32 shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
     {
         std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
 
-        for (auto& txHash : microLedger->txHashes())
+        for (auto const& txHash : microLedger->txHashes())
         {
             microLedger->setMetaIndex(txHash, metaIndex++, j);
         }
     }
 
- //   std::shared_ptr<FinalLedger> finalLedger = getFinalLedger(seq);
-
-	//auto vecHashes = finalLedger->getTxHashes();
-	//for (int i = 0; i < vecHashes.size(); i++)
-	//{
-	//	for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
-	//	{
- //           std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
-	//		if (microLedger->hasTxWithMeta(vecHashes[i]))
- //               microLedger->setMetaIndex(vecHashes[i], i, app_.journal("TxMeta"));
-	//	}
-	//}
-
-    JLOG(journal_.info()) << "resetMetaIndex tx count: " << metaIndex
-        << " time used: " << utcTime() - timeStart << "ms";
+    return metaIndex;
 }
 
 void Lookup::saveLedger(LedgerIndex seq)
 {
 	auto finalLedger = getFinalLedger(seq);
 	//build new ledger
-	auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
-	auto ledgerInfo = finalLedger->getLedgerInfo();
+	auto const& previousLedger = app_.getLedgerMaster().getValidatedLedger();
+	auto const& ledgerInfo = finalLedger->getLedgerInfo();
 	auto ledgerToSave = std::make_shared<Ledger>(
         *previousLedger, ledgerInfo.closeTime);
 
@@ -263,28 +250,6 @@ void Lookup::saveLedger(LedgerIndex seq)
         microLedger->apply(*ledgerToSave);
     }
 
-	//build tx-map
-	//for (auto const& txID : finalLedger->getTxHashes())
-	//{
-	//	for (int shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
-	//	{
- //           std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
-	//		if (microLedger->hasTxWithMeta(txID))
-	//		{
-	//			auto txWithMeta = microLedger->getTxWithMeta(txID);
-	//			auto tx = txWithMeta.first;
-	//			auto meta = txWithMeta.second;
-
- //               Serializer s(tx->getDataLength() +
- //                   meta->getDataLength() + 16);
- //               s.addVL(tx->peekData());
- //               s.addVL(meta->peekData());
- //               auto item = std::make_shared<SHAMapItem const>(txID, std::move(s));
- //               if (!ledgerToSave->txMap().updateGiveItem(std::move(item), true, true))
- //                   LogicError("Ledger::rawReplace: key not found");
-	//		}
-	//	}
-	//}
     JLOG(journal_.info()) << "Aplly state and tx map time used:" << utcTime() - timeStart << "ms";
 
 	ledgerToSave->updateSkipList();
@@ -323,7 +288,7 @@ void Lookup::saveLedger(LedgerIndex seq)
         auto sl = make_lock(app_.getLedgerMaster().peekMutex(), std::defer_lock);
         std::lock(lock, sl);
 
-        auto const lastVal = app_.getLedgerMaster().getValidatedLedger();
+        auto const& lastVal = app_.getLedgerMaster().getValidatedLedger();
         boost::optional<Rules> rules;
         rules.emplace(*lastVal, app_.config().features);
 
@@ -433,21 +398,24 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
 
     if (committeeVC->preSeq() > app_.getLedgerMaster().getValidLedgerIndex())
     {
-        JLOG(journal_.warn()) << "Got CommitteeViewChange, I'm on "
-            << app_.getLedgerMaster().getValidLedgerIndex()
-            << ", trying to acquiring  " << committeeVC->preSeq();
-
         auto seq = committeeVC->preSeq();
         if (checkLedger(seq))
         {
+            JLOG(journal_.warn()) << "Got CommitteeViewChange preSeq " << seq
+                << ", I'm on " << app_.getLedgerMaster().getValidLedgerIndex()
+                << ", saveLedger job is lagging";
             checkSaveLedger(seq);
         }
         else
         {
+            JLOG(journal_.warn()) << "Got CommitteeViewChange, I'm on "
+                << app_.getLedgerMaster().getValidLedgerIndex()
+                << ", trying to acquiring  " << seq;
+
             auto app = &app_;
             auto hash = committeeVC->preHash();
             app_.getJobQueue().addJob(
-                jtADVANCE, "getCurrentLedger", [app, hash](Job&) {
+                jtSAVELEDGER, "getCurrentLedger", [app, hash](Job&) {
                 app->getInboundLedgers().acquire(
                     hash, 0, InboundLedger::fcCURRENT);
             });
@@ -523,16 +491,16 @@ void Lookup::relayTxs()
     // tx shard
     for (auto& tx : txs)
     {
-        auto txCur = tx->getSTransaction();
-        auto account = txCur->getAccountID(sfAccount);
-        std::string strAccountID = toBase58(account);
+        auto const& txCur = tx->getSTransaction();
+        auto const& account = txCur->getAccountID(sfAccount);
+        std::string const& strAccountID = toBase58(account);
         auto shardIndex = getTxShardIndex(strAccountID, mShardManager.shardCount());
 
         mapShardIndexTxs[shardIndex].push_back(tx);
     }
 
     // send to shard
-    for (auto it : mapShardIndexTxs)
+    for (auto const& it : mapShardIndexTxs)
     {
         protocol::TMTransactions ts;
         sha512_half_hasher signHash;
@@ -540,7 +508,7 @@ void Lookup::relayTxs()
         ts.set_nodepubkey(app_.getValidationPublicKey().data(),
             app_.getValidationPublicKey().size());
 
-        for (auto& tx : it.second)
+        for (auto const& tx : it.second)
         {
             protocol::TMTransaction& t = *ts.add_transactions();
             Serializer s;
@@ -563,12 +531,12 @@ void Lookup::relayTxs()
         mShardManager.node().sendMessage(it.first, m);
     }
 
-    for (auto& delHash : hTxVector) {
+    for (auto const& delHash : hTxVector) {
         app_.getTxPool().removeTx(delHash);
     }
 
-    JLOG(journal_.info()) << "relayTxs tx count: " << hTxVector.size()
-        << " time used: " << utcTime() - timeStart << "ms";
+    JLOG(journal_.info()) << "relayTxs " << hTxVector.size()
+        << " txs, time used: " << utcTime() - timeStart << "ms";
 }
 
 unsigned int Lookup::getTxShardIndex(const std::string& strAddress, unsigned int numShards)

@@ -120,7 +120,7 @@ public:
     void saveLedgerThread();
     bool findNewLedgerToSave(LedgerIndex &toSaveOrAcquire);
     bool checkLedger(LedgerIndex seq);
-	void resetMetaIndex(LedgerIndex seq);
+    uint32 resetMetaIndex(LedgerIndex seq);
 	void saveLedger(LedgerIndex seq);
 
 	void setTimer();
