@@ -994,7 +994,7 @@ static bool saveValidatedLedger(
 
         tr.commit();
 
-        JLOG(j.warn()) << "save " << aLedger->getTxnCount() << " txs into sqlite, time used: " << utcTime() - st << "ms";
+        JLOG(j.info()) << "save " << aLedger->getTxnCount() << " txs into sqlite, time used: " << utcTime() - st << "ms";
     }
 
     // Only a SYNC role
