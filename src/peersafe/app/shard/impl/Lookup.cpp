@@ -78,6 +78,36 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
     }
 }
 
+// ------------------------------------------------------------------------------
+// Peers related
+
+void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)
+{
+    std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+    mPeers.emplace_back(std::move(peer));
+}
+
+void Lookup::eraseDeactivate()
+{
+    std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
+
+    for (auto w = mPeers.begin(); w != mPeers.end();)
+    {
+        auto p = w->lock();
+        if (!p)
+        {
+            w = mPeers.erase(w);
+        }
+        else
+        {
+            w++;
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------
+// Ledger persistence
+
 void Lookup::checkSaveLedger(LedgerIndex netLedger)
 {
     LedgerIndex validSeq = app_.getLedgerMaster().getValidLedgerIndex();
@@ -298,30 +328,8 @@ void Lookup::saveLedger(LedgerIndex seq)
     //app_.getLedgerMaster().setClosedLedger(ledgerToSave);
 }
 
-
-void Lookup::addActive(std::shared_ptr<PeerImp> const& peer)
-{
-	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-	mPeers.emplace_back(std::move(peer));
-}
-
-void Lookup::eraseDeactivate()
-{
-	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
-
-    for (auto w = mPeers.begin(); w != mPeers.end();)
-    {
-        auto p = w->lock();
-        if (!p)
-        {
-            w = mPeers.erase(w);
-        }
-        else
-        {
-            w++;
-        }
-    }
-}
+// ------------------------------------------------------------------------------
+// Message interface
 
 void Lookup::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m)
 {
