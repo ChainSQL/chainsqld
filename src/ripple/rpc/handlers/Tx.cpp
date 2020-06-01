@@ -31,6 +31,7 @@
 #include <ripple/beast/core/LexicalCast.h>
 #include <boost/optional/optional_io.hpp>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/shard/ShardManager.h>
 #include <chrono>
 
 namespace ripple {
@@ -87,6 +88,44 @@ namespace ripple {
         SerialIter it(item->slice());
         it.getVL(); // skip transaction
         hex = strHex(makeSlice(it.getVL()));
+        return true;
+    }
+
+    bool getRawMetaHex(Ledger const& ledger,
+        uint256 const& transID, std::string& rawHex, std::string& metaHex)
+    {
+        SHAMapTreeNode::TNType type;
+        auto const item =
+            ledger.txMap().peekItem(transID, type);
+
+        if (!item)
+            return false;
+
+        if (type != SHAMapTreeNode::tnTRANSACTION_MD)
+            return false;
+
+        SerialIter it(item->slice());
+        rawHex = strHex(makeSlice(it.getVL()));
+        metaHex = strHex(makeSlice(it.getVL()));
+        return true;
+    }
+
+    bool getRawMeta(Ledger const& ledger,
+        uint256 const& transID, Blob& raw, Blob& meta)
+    {
+        SHAMapTreeNode::TNType type;
+        auto const item =
+            ledger.txMap().peekItem(transID, type);
+
+        if (!item)
+            return false;
+
+        if (type != SHAMapTreeNode::tnTRANSACTION_MD)
+            return false;
+
+        SerialIter it(item->slice());
+        raw = it.getVL();
+        meta = it.getVL();
         return true;
     }
 
@@ -165,6 +204,11 @@ namespace ripple {
 
 Json::Value doTx (RPC::Context& context)
 {
+    if (!(context.app.getShardManager().myShardRole() & ShardManager::LOOKUP))
+    {
+        return rpcError(rpcNOT_SUPPORTED);
+    }
+
     if (!context.params.isMember (jss::transaction))
         return rpcError (rpcINVALID_PARAMS);
 

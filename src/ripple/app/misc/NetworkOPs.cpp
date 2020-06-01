@@ -79,6 +79,9 @@ namespace ripple {
 
 #define EXPIRE_TIME 20
 
+bool getRawMetaHex(Ledger const& ledger,
+    uint256 const& transID, std::string& rawHex, std::string& metaHex);
+
 class NetworkOPsImp final
     : public NetworkOPs
 {
@@ -2275,7 +2278,7 @@ NetworkOPs::AccountTxs NetworkOPsImp::getAccountTxs (
     AccountTxs ret;
 
     std::string sql = transactionsSQL (
-        "AccountTransactions.LedgerSeq,Status,RawTxn,TxnMeta", account,
+        "AccountTransactions.LedgerSeq,AccountTransactions.TransID,Status", account,
         minLedger, maxLedger, descending, offset, limit, false, false,
         bUnlimited);
 
@@ -2283,51 +2286,52 @@ NetworkOPs::AccountTxs NetworkOPsImp::getAccountTxs (
         auto db = app_.getTxnDB ().checkoutDb ();
 
         boost::optional<std::uint64_t> ledgerSeq;
+        boost::optional<std::string> transID;
         boost::optional<std::string> status;
-        soci::blob sociTxnBlob (*db), sociTxnMetaBlob (*db);
-        soci::indicator rti, tmi;
-        Blob rawTxn, txnMeta;
 
         soci::statement st =
                 (db->prepare << sql,
                  soci::into(ledgerSeq),
-                 soci::into(status),
-                 soci::into(sociTxnBlob, rti),
-                 soci::into(sociTxnMetaBlob, tmi));
-
+                 soci::into(transID),
+                 soci::into(status));
         st.execute ();
+
+        std::map<uint32_t, std::shared_ptr<const ripple::Ledger>> ledgerCache;
         while (st.fetch ())
         {
-            if (soci::i_ok == rti)
-                convert(sociTxnBlob, rawTxn);
-            else
-                rawTxn.clear ();
+            auto const seq =
+                rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
+            auto const txID = from_hex_text<uint256>(transID.value());
 
-            if (soci::i_ok == tmi)
-                convert (sociTxnMetaBlob, txnMeta);
-            else
-                txnMeta.clear ();
+            std::shared_ptr<const ripple::Ledger> lgr = nullptr;
 
-            auto txn = Transaction::transactionFromSQL (
-                ledgerSeq, status, rawTxn, app_);
-
-            if (txnMeta.empty ())
-            { // Work around a bug that could leave the metadata missing
-                auto const seq = rangeCheckedCast<std::uint32_t>(
-                    ledgerSeq.value_or (0));
-
-                JLOG(m_journal.warn()) <<
-                    "Recovering ledger " << seq <<
-                    ", txn " << txn->getID();
-
-                if (auto l = m_ledgerMaster.getLedgerBySeq(seq))
-                    pendSaveValidated(app_, l, false, false);
+            if (ledgerCache.count(seq))
+            {
+                lgr = ledgerCache[seq];
+            }
+            else if (lgr = app_.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+            {
+                ledgerCache.emplace(seq, lgr);
             }
 
-            if (txn)
-                ret.emplace_back (txn, std::make_shared<TxMeta> (
-                    txn->getID (), txn->getLedger (), txnMeta,
-                        app_.journal("TxMeta")));
+            if (lgr)
+            {
+                auto sttx = lgr->txRead(txID).first;
+                if (sttx)
+                {
+                    std::string reason;
+                    auto txn = std::make_shared<Transaction>(
+                        sttx, reason, app_);
+                    txn->setStatus(txn->sqlTransactionStatus(status));
+                    txn->setLedger(seq);
+
+                    auto meta = lgr->txRead(txID).second;
+
+                    ret.emplace_back(txn, meta ? std::make_shared<TxMeta>(
+                        txn->getID(), txn->getLedger(), *meta,
+                        app_.journal("TxMeta")) : nullptr);
+                }
+            }
         }
     }
 
@@ -2343,7 +2347,7 @@ std::vector<NetworkOPsImp::txnMetaLedgerType> NetworkOPsImp::getAccountTxsB (
     std::vector<txnMetaLedgerType> ret;
 
     std::string sql = transactionsSQL (
-        "AccountTransactions.LedgerSeq,Status,RawTxn,TxnMeta", account,
+        "AccountTransactions.LedgerSeq,AccountTransactions.TransID,Status", account,
         minLedger, maxLedger, descending, offset, limit, true/*binary*/, false,
         bUnlimited);
 
@@ -2351,32 +2355,43 @@ std::vector<NetworkOPsImp::txnMetaLedgerType> NetworkOPsImp::getAccountTxsB (
         auto db = app_.getTxnDB ().checkoutDb ();
 
         boost::optional<std::uint64_t> ledgerSeq;
+        boost::optional<std::string> transID;
         boost::optional<std::string> status;
-        soci::blob sociTxnBlob (*db), sociTxnMetaBlob (*db);
-        soci::indicator rti, tmi;
 
         soci::statement st =
                 (db->prepare << sql,
                  soci::into(ledgerSeq),
-                 soci::into(status),
-                 soci::into(sociTxnBlob, rti),
-                 soci::into(sociTxnMetaBlob, tmi));
-
+                 soci::into(transID),
+                 soci::into(status));
         st.execute ();
+
+        std::map<uint32_t, std::shared_ptr<const ripple::Ledger>> ledgerCache;
         while (st.fetch ())
         {
-            Blob rawTxn;
-            if (soci::i_ok == rti)
-                convert (sociTxnBlob, rawTxn);
-            Blob txnMeta;
-            if (soci::i_ok == tmi)
-                convert (sociTxnMetaBlob, txnMeta);
-
             auto const seq =
                 rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or (0));
 
-            ret.emplace_back (
-                strHex (rawTxn), strHex (txnMeta), seq);
+            std::shared_ptr<const ripple::Ledger> lgr = nullptr;
+
+            if (ledgerCache.count(seq))
+            {
+                lgr = ledgerCache[seq];
+            }
+            else if (lgr = app_.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+            {
+                ledgerCache.emplace(seq, lgr);
+            }
+
+            if (lgr)
+            {
+                std::string rawHex;
+                std::string metaHex;
+
+                if (getRawMetaHex(*lgr, from_hex_text<uint256>(transID.value()), rawHex, metaHex))
+                {
+                    ret.emplace_back(rawHex, metaHex, seq);
+                }
+            }
         }
     }
 
@@ -2404,7 +2419,7 @@ NetworkOPsImp::getTxsAccount (
             ret, ledger_index, status, rawTxn, rawMeta, app);
     };
 
-    accountTxPage(app_.getTxnDB (), app_.accountIDCache(),
+    accountTxPage(app_, app_.getTxnDB (), app_.accountIDCache(),
         std::bind(saveLedgerAsync, std::ref(app_),
             std::placeholders::_1), bound, account, minLedger,
                 maxLedger, forward, token, limit, bUnlimited,
@@ -2432,7 +2447,7 @@ NetworkOPsImp::getTxsAccountB (
         ret.emplace_back (strHex(rawTxn), strHex (rawMeta), ledgerIndex);
     };
 
-    accountTxPage(app_.getTxnDB (), app_.accountIDCache(),
+    accountTxPage(app_, app_.getTxnDB (), app_.accountIDCache(),
         std::bind(saveLedgerAsync, std::ref(app_),
             std::placeholders::_1), bound, account, minLedger,
                 maxLedger, forward, token, limit, bUnlimited,
