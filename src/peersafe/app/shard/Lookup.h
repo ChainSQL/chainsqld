@@ -84,12 +84,30 @@ public:
     inline void saveMicroLedger(std::shared_ptr<MicroLedger> microLedger)
     {
         std::lock_guard <std::recursive_mutex> lock(mutex_);
+        // Check microLedger
+        if (mMapFinalLedger.count(microLedger->seq()))
+        {
+            if (microLedger->ledgerHash() != mMapFinalLedger[microLedger->seq()]->getMicroLedgerHash(microLedger->shardID()))
+            {
+                return;
+            }
+        }
+        // Save microLedger into map
         mMapMicroLedgers[microLedger->seq()][microLedger->shardID()] = microLedger;
     }
     inline void saveFinalLedger(std::shared_ptr<FinalLedger> finalLedger)
     {
         std::lock_guard <std::recursive_mutex> lock(mutex_);
+        // Save finalLedger into map
         mMapFinalLedger[finalLedger->seq()] = finalLedger;
+        // Check received microLedgers
+        for (auto const& m : mMapMicroLedgers[finalLedger->seq()])
+        {
+            if (m.second->ledgerHash() != finalLedger->getMicroLedgerHash(m.first))
+            {
+                mMapMicroLedgers[finalLedger->seq()].erase(m.first);
+            }
+        }
     }
 
     inline std::shared_ptr<MicroLedger> getMicroLedger(LedgerIndex seq, uint32 shardID)
