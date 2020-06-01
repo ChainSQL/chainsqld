@@ -201,6 +201,9 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
     case ltDIR_NODE:
         mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
         break;
+    case ltCHAINID:
+        mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
+        break;
     default:
         break;
     }
@@ -360,7 +363,7 @@ void applyTableList(
     //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
 }
 
-void applyDirNode(
+void applyCommons(
     OpenView& to,
     detail::RawStateTable::Action action,
     std::shared_ptr<SLE>& sle,
@@ -405,7 +408,8 @@ void MicroLedger::apply(OpenView& to, beast::Journal& j) const
             applyTableList(to, stateDelta.second.first, sle, j);
             break;
         case ltDIR_NODE:
-            applyDirNode(to, stateDelta.second.first, sle, j);
+        case ltCHAINID:
+            applyCommons(to, stateDelta.second.first, sle, j);
             break;
         default:
             break;
