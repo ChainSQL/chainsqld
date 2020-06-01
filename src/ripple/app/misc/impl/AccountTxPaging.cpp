@@ -30,6 +30,9 @@
 
 namespace ripple {
 
+bool getRawMeta(Ledger const& ledger,
+    uint256 const& transID, Blob& raw, Blob& meta);
+
 void
 convertBlobsToTxResult (
     NetworkOPs::AccountTxs& to,
@@ -63,6 +66,7 @@ saveLedgerAsync (Application& app, std::uint32_t seq)
 
 void
 accountTxPage (
+    Application& app,
     DatabaseCon& connection,
     AccountIDCache const& idCache,
     std::function<void (std::uint32_t)> const& onUnsavedLedger,
@@ -79,6 +83,8 @@ accountTxPage (
     bool bAdmin,
     std::uint32_t page_length)
 {
+    boost::ignore_unused(onUnsavedLedger);
+
     bool lookingForMarker =  !token.isNull() && token.isObject();
 
     std::uint32_t numberOfResults;
@@ -117,7 +123,7 @@ accountTxPage (
 
     static std::string const prefix (
         R"(SELECT AccountTransactions.LedgerSeq,AccountTransactions.TxnSeq,
-          Status,RawTxn,TxnMeta
+          AccountTransactions.TransID,Status
           FROM AccountTransactions INNER JOIN Transactions
           ON Transactions.TransID = AccountTransactions.TransID
           AND AccountTransactions.Account = '%s' WHERE
@@ -199,25 +205,20 @@ accountTxPage (
     {
         auto db (connection.checkoutDb());
 
-        Blob rawData;
-        Blob rawMeta;
-
         boost::optional<std::uint64_t> ledgerSeq;
         boost::optional<std::uint32_t> txnSeq;
+        boost::optional<std::string> transID;
         boost::optional<std::string> status;
-        soci::blob txnData (*db);
-        soci::blob txnMeta (*db);
-        soci::indicator dataPresent, metaPresent;
 
         soci::statement st = (db->prepare << sql,
             soci::into (ledgerSeq),
             soci::into (txnSeq),
-            soci::into (status),
-            soci::into (txnData, dataPresent),
-            soci::into (txnMeta, metaPresent));
+            soci::into (transID),
+            soci::into (status));
 
         st.execute ();
 
+        std::map<uint32_t, std::shared_ptr<const ripple::Ledger>> ledgerCache;
         while (st.fetch ())
         {
             if (lookingForMarker)
@@ -238,22 +239,26 @@ accountTxPage (
 
             if (!lookingForMarker)
             {
-                if (dataPresent == soci::i_ok)
-                    convert (txnData, rawData);
-                else
-                    rawData.clear ();
+                auto const seq =
+                    rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
+                auto const txID = from_hex_text<uint256>(transID.value());
 
-                if (metaPresent == soci::i_ok)
-                    convert (txnMeta, rawMeta);
-                else
-                    rawMeta.clear ();
+                std::shared_ptr<const ripple::Ledger> lgr = nullptr;
 
-                // Work around a bug that could leave the metadata missing
-                if (rawMeta.size() == 0)
-                    onUnsavedLedger(ledgerSeq.value_or (0));
+                if (ledgerCache.count(seq))
+                {
+                    lgr = ledgerCache[seq];
+                }
+                else if (lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+                {
+                    ledgerCache.emplace(seq, lgr);
+                }
 
-                onTransaction(rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or (0)),
-                    *status, rawData, rawMeta);
+                Blob txRaw, txMeta;
+                if (lgr && getRawMeta(*lgr, txID, txRaw, txMeta))
+                {
+                    onTransaction(seq, *status, txRaw, txMeta);
+                }
                 --numberOfResults;
             }
         }

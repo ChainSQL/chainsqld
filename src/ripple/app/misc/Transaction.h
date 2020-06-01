@@ -83,6 +83,22 @@ public:
         Application& app);
 
     static
+    Transaction::pointer
+    transactionFromSHAMap(
+        boost::optional<std::uint64_t> const& ledgerSeq,
+        boost::optional<std::string> const& status,
+        uint256 const& transID,
+        Application& app);
+
+    static
+    Transaction::pointer
+    transactionFromSHAMapValidated(
+        boost::optional<std::uint64_t> const& ledgerSeq,
+        boost::optional<std::string> const& status,
+        uint256 const& transID,
+        Application& app);
+
+    static
     TransStatus
     sqlTransactionStatus(boost::optional<std::string> const& status);
 

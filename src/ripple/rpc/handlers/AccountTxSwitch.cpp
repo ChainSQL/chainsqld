@@ -20,18 +20,25 @@
 #include <BeastConfig.h>
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>
+#include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/JsonFields.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 
 Json::Value doAccountTxOld (RPC::Context& context);
-        Json::Value doAccountTx (RPC::Context& context);
+Json::Value doAccountTx (RPC::Context& context);
 
 // Temporary switching code until the old account_tx is removed
 Json::Value doAccountTxSwitch (RPC::Context& context)
 {
+    if (!(context.app.getShardManager().myShardRole() & ShardManager::LOOKUP))
+    {
+        return rpcError(rpcNOT_SUPPORTED);
+    }
+
     if (context.params.isMember(jss::offset) ||
         context.params.isMember(jss::count) ||
         context.params.isMember(jss::descending) ||

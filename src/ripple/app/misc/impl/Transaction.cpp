@@ -122,31 +122,74 @@ Transaction::pointer Transaction::transactionFromSQLValidated(
     return ret;
 }
 
+Transaction::pointer Transaction::transactionFromSHAMap(
+    boost::optional<std::uint64_t> const& ledgerSeq,
+    boost::optional<std::string> const& status,
+    uint256 const& transID,
+    Application& app)
+{
+    std::uint32_t const inLedger =
+        rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
+
+    if (auto lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+    {
+        auto txn = lgr->txRead(transID).first;
+        std::string reason;
+        auto tr = std::make_shared<Transaction>(
+            txn, reason, app);
+
+        tr->setStatus(sqlTransactionStatus(status));
+        tr->setLedger(inLedger);
+        return tr;
+    }
+
+    return {};
+}
+
+Transaction::pointer Transaction::transactionFromSHAMapValidated(
+    boost::optional<std::uint64_t> const& ledgerSeq,
+    boost::optional<std::string> const& status,
+    uint256 const& transID,
+    Application& app)
+{
+    if (auto ret = transactionFromSHAMap(ledgerSeq, status, transID, app))
+    {
+        if (checkValidity(app, app.getHashRouter(),
+            *ret->getSTransaction(), app.
+            getLedgerMaster().getValidatedRules(),
+            app.config()).first !=
+            Validity::Valid)
+        {
+            return{};
+        }
+        else
+        {
+            return ret;
+        }
+    }
+
+    return {};
+}
+
 Transaction::pointer Transaction::load(uint256 const& id, Application& app)
 {
-    std::string sql = "SELECT LedgerSeq,Status,RawTxn "
+    std::string sql = "SELECT LedgerSeq,Status "
             "FROM Transactions WHERE TransID='";
     sql.append (to_string (id));
     sql.append ("';");
 
     boost::optional<std::uint64_t> ledgerSeq;
     boost::optional<std::string> status;
-    Blob rawTxn;
     {
         auto db = app.getTxnDB ().checkoutDb ();
-        soci::blob sociRawTxnBlob (*db);
-        soci::indicator rti;
 
-        *db << sql, soci::into (ledgerSeq), soci::into (status),
-                soci::into (sociRawTxnBlob, rti);
-        if (!db->got_data () || rti != soci::i_ok)
+        *db << sql, soci::into (ledgerSeq), soci::into (status);
+        if (!db->got_data ())
             return {};
-
-        convert(sociRawTxnBlob, rawTxn);
     }
 
-    return Transaction::transactionFromSQLValidated (
-        ledgerSeq, status, rawTxn, app);
+    return Transaction::transactionFromSHAMapValidated(
+        ledgerSeq, status, id, app);
 }
 
 // options 1 to include the date of the transaction
