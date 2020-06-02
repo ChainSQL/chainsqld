@@ -192,12 +192,13 @@ public:
     static const std::uint32_t SHARD_ROLE_COMMITTEE = 0x00000004;
     static const std::uint32_t SHARD_ROLE_SYNC	    = 0x00000008;
 
+    static const std::uint32_t SHARD_INDEX_UNDEFINED = std::numeric_limits<std::uint32_t>::max();
+    static const std::uint32_t SHARD_INDEX_COMMITTEE = 0;
 
 
 	std::uint32_t             SHARD_ROLE  = SHARD_ROLE_UNDEFINED;
-	std::size_t               SHARD_COUNT = 1;
-	std::size_t               SHARD_INDEX = 1;
-
+	std::uint32_t             SHARD_COUNT = 0;
+	std::uint32_t             SHARD_INDEX = SHARD_INDEX_UNDEFINED;
 
 
 	std::string               SHARD_FILE;

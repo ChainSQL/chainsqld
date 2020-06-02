@@ -2782,10 +2782,17 @@ PeerImp::getScore (bool haveItem) const
    // Penalty for unknown latency; should be roughly spRandomMax
    static const int spNoLatency = 8000;
 
+   static const int spSameShard = 1500;
+
    int score = rand_int(spRandomMax);
 
    if (haveItem)
        score += spHaveItem;
+
+   if (app_.getShardManager().node().shardID() == getShardIndex())
+   {
+       score += spSameShard;
+   }
 
    std::chrono::milliseconds latency;
    {

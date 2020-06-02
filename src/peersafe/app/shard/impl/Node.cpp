@@ -43,13 +43,7 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
     , journal_(journal)
     , cfg_(cfg)
 {
-    // TODO
-	if ( ShardManager::COMMITTEE == m.myShardRole()) {
-		mShardID = CommitteeShardID;
-
-	}else if (ShardManager::SHARD == m.myShardRole()){
-		mShardID = cfg_.SHARD_INDEX;
-	}
+    mShardID = cfg_.SHARD_INDEX;
 
 	std::vector< std::vector<std::string> >& shardValidators = cfg_.SHARD_VALIDATORS;
 	for (size_t i = 0; i < shardValidators.size(); i++) {
@@ -169,8 +163,6 @@ std::int32_t Node::getPubkeyIndex(PublicKey const& pubkey)
 
 void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
-    assert(mShardID > CommitteeShardID && mShardID != InvalidShardID);
-
     mIsLeader = false;
 
     auto iter = mMapOfShardValidators.find(mShardID);
@@ -381,8 +373,6 @@ void Node::checkAccept(LedgerHash microLedgerHash)
 
 void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
 {
-    protocol::TMMicroLedgerSubmit ms;
-
     {
         std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
         if (mMicroLedgers.find(microLedgerHash) == mMicroLedgers.end())
@@ -409,6 +399,8 @@ void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
 
     JLOG(journal_.info()) << "Submit microledger(seq:" << microLedger->seq() << ") to "
         << (withTxMeta ? "lookup" : "committee");
+
+    protocol::TMMicroLedgerSubmit ms;
 
     microLedger->compose(ms, withTxMeta);
 
@@ -544,6 +536,12 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         return;
     }
 
+    if (!finalLedger->checkValidity(mShardManager.committee().validatorsPtr()))
+    {
+        JLOG(journal_.info()) << "FinalLeger signature verification failed";
+        return;
+    }
+
     if (finalLedger->seq() > previousLedger->seq() + 1)
     {
         JLOG(journal_.warn()) << "Got finalLeger, I'm on " << previousLedger->seq()
@@ -552,12 +550,6 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         app_.getOPs().getConsensus().consensus_->handleWrongLedger(finalLedger->hash());
         return;
     }
-
-	if (!finalLedger->checkValidity(mShardManager.committee().validatorsPtr()))
-	{
-        JLOG(journal_.info()) << "FinalLeger signature verification failed";
-		return;
-	}
 
 	// build new ledger
 	auto ledgerInfo = finalLedger->getLedgerInfo();

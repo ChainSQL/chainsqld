@@ -466,20 +466,27 @@ void Config::loadFromString (std::string const& fileContents)
 			Throw<std::runtime_error>(
 				"the role must be set!");
 		}
-			
+
 		if (shard_count.second) {
 			SHARD_COUNT = beast::lexicalCastThrow <std::size_t>(shard_count.first);
 		}
-		
-		if (shard_index.second) {
-			SHARD_INDEX = beast::lexicalCastThrow <std::size_t>(shard_index.first);
-		}
 
-		if (SHARD_INDEX > SHARD_COUNT) {
-			Throw<std::runtime_error>(
-				"shard_index  cannot be greater than shard_count !");
-		}
-
+        if (SHARD_ROLE == SHARD_ROLE_COMMITTEE)
+        {
+            SHARD_INDEX = SHARD_INDEX_COMMITTEE;
+        }
+        else if (SHARD_ROLE == SHARD_ROLE_SHARD)
+        {
+            if (!shard_index.second)
+            {
+                Throw<std::runtime_error>("must specify the shard_index if I'm a shard node!");
+            }
+            SHARD_INDEX = beast::lexicalCastThrow <std::uint32_t>(shard_index.first);
+            if (SHARD_INDEX > SHARD_COUNT)
+            {
+                Throw<std::runtime_error>("shard_index must be less or equal to shard_count!");
+            }
+        }
 
 		bool bLookup    = loadLookupConfig(secConfig);
 		bool bShard     = loadShardConfig(secConfig);        
