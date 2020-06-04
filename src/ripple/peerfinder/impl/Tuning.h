@@ -41,7 +41,7 @@ enum
     secondsPerConnect = 10
 
     /** Maximum number of simultaneous connection attempts. */
-    ,maxConnectAttempts = 20
+    ,maxConnectAttempts = 60
 
     /** The percentage of total peer slots that are outbound.
         The number of outbound peers will be the larger of the
@@ -54,10 +54,10 @@ enum
         This is enforced outside the Logic, so that the unit test
         can use any settings it wants.
     */
-    ,minOutCount = 40
+    ,minOutCount = 60
 
     /** The default value of Config::maxPeers. */
-    ,defaultMaxPeers = 81
+    ,defaultMaxPeers = 121
 
     /** Max redirects we will accept from one connection.
         Redirects are limited for security purposes, to prevent
