@@ -116,6 +116,12 @@ public:
                         Blob&& data,
                         uint256 const& hash) = 0;
 
+    virtual bool syncWaitOn() = 0;
+
+    virtual void addWaitNode(uint32 lSeq, uint256 const& hash) = 0;
+
+    virtual void waitFor(uint32 lSeq) = 0;
+
     /** Visit every object in the database
         This is usually called during import.
 

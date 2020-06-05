@@ -108,6 +108,12 @@ public:
 
     /** Returns the number of file handles the backend expects to need */
     virtual int fdlimit() const = 0;
+
+    virtual bool syncWaitOn() { return false; }
+
+    virtual void addWaitNode(std::uint32_t lSeq, uint256 nodeHash) {}
+
+    virtual void waitFor(std::uint32_t lSeq) {}
 };
 
 }

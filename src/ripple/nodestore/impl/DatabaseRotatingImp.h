@@ -77,6 +77,21 @@ public:
         return writableBackend_;
     }
 
+    inline bool syncWaitOn() override
+    {
+        return writableBackend_->syncWaitOn();
+    }
+
+    inline void addWaitNode(uint32 lSeq, uint256 const& hash) override
+    {
+        return writableBackend_->addWaitNode(lSeq, hash);
+    }
+
+    inline void waitFor(uint32 lSeq) override
+    {
+        return writableBackend_->waitFor(lSeq);
+    }
+
     std::shared_ptr <Backend> const& getArchiveBackend() const override
     {
         std::lock_guard <std::mutex> lock (rotateMutex_);

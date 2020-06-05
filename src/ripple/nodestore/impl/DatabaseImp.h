@@ -108,6 +108,21 @@ public:
         return m_backend->getName ();
     }
 
+    inline bool syncWaitOn() override
+    {
+        return m_backend->syncWaitOn();
+    }
+
+    inline void addWaitNode(uint32 lSeq, uint256 const& hash) override
+    {
+        return m_backend->addWaitNode(lSeq, hash);
+    }
+
+    inline void waitFor(uint32 lSeq) override
+    {
+        return m_backend->waitFor(lSeq);
+    }
+
     //------------------------------------------------------------------------------
 
     bool asyncFetch (uint256 const& hash, std::shared_ptr<NodeObject>& object) override

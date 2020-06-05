@@ -288,7 +288,8 @@ private:
     /** write and canonicalize modified node */
     std::shared_ptr<SHAMapAbstractNode>
         writeNode(NodeObjectType t, std::uint32_t seq,
-                  std::shared_ptr<SHAMapAbstractNode> node) const;
+                  std::shared_ptr<SHAMapAbstractNode> node,
+                 bool isRoot = false) const;
 
     SHAMapTreeNode* firstBelow (std::shared_ptr<SHAMapAbstractNode>,
                                 SharedPtrNodeStack& stack, int branch = 0) const;

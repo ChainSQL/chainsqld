@@ -2194,6 +2194,10 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
 
                 if (app_.getShardManager().myShardRole() & ShardManager::LOOKUP)
                 {
+                    if (app_.family().db().syncWaitOn())
+                    {
+                        app_.family().db().waitFor(ledger->seq());
+                    }
                     ScopedUnlockType sul(m_mutex);
                     app_.getOPs().pubLedger(ledger);
                 }

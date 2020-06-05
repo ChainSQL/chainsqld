@@ -85,6 +85,107 @@ public:
 
 //------------------------------------------------------------------------------
 
+class SyncWait
+{
+protected:
+    class Entry
+    {
+    public:
+        std::map<uint256, bool> mWaitNodes;
+        bool mWriteCompleted;
+
+        Entry() : mWriteCompleted(true) {}
+
+        bool isWriteCompleted() { return mWriteCompleted; }
+
+        void addWaitNode(uint256 const& nodeHash)
+        {
+            if (mWaitNodes.emplace(nodeHash, false).second)
+            {
+                mWriteCompleted = false;
+            }
+        }
+
+        void writeCompleted(uint256 const& nodeHash)
+        {
+            bool allCompleted = true;
+            for (auto& it : mWaitNodes)
+            {
+                if (it.first == nodeHash)
+                {
+                    it.second = true;
+                }
+                else if (!it.second)
+                {
+                    allCompleted = false;
+                }
+            }
+            mWriteCompleted = allCompleted;
+        }
+    };
+
+public:
+    std::map<uint256, std::uint32_t> mWaitNodeLedgerSeq;
+    std::map<std::uint32_t, Entry> mWaitEntryByLedgerSeq;
+
+    std::recursive_mutex mWaitMutex;
+    std::condition_variable_any mWaitCondition;
+
+    SyncWait() = default;
+
+    void addWaitNode(std::uint32_t lSeq, uint256 const& nodeHash)
+    {
+        std::lock_guard<std::recursive_mutex> _(mWaitMutex);
+        if (mWaitNodeLedgerSeq.emplace(nodeHash, lSeq).second)
+        {
+            mWaitEntryByLedgerSeq[lSeq].addWaitNode(nodeHash);
+        }
+    }
+
+    inline bool isWaitingNode(uint256 const& nodeHash)
+    {
+        std::lock_guard<std::recursive_mutex> _(mWaitMutex);
+        return mWaitNodeLedgerSeq.count(nodeHash) != 0;
+    }
+
+    void writeCompleted(uint256 const& nodeHash)
+    {
+        assert(isWaitingNode(nodeHash));
+        std::lock_guard<std::recursive_mutex> _(mWaitMutex);
+        auto &entry = mWaitEntryByLedgerSeq[mWaitNodeLedgerSeq[nodeHash]];
+        entry.writeCompleted(nodeHash);
+        if (entry.isWriteCompleted())
+        {
+            mWaitCondition.notify_all();
+        }
+        mWaitNodeLedgerSeq.erase(nodeHash);
+    }
+
+    void waitFor(std::uint32_t lSeq)
+    {
+        std::unique_lock <decltype(mWaitMutex)> sl(mWaitMutex);
+        while (!mWaitEntryByLedgerSeq[lSeq].isWriteCompleted())
+        {
+            mWaitCondition.wait(sl);
+        }
+
+        for (auto iter = mWaitEntryByLedgerSeq.cbegin();
+            iter != mWaitEntryByLedgerSeq.cend();)
+        {
+            if (iter->first <= lSeq)
+            {
+                iter = mWaitEntryByLedgerSeq.erase(iter);
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+};
+
+//------------------------------------------------------------------------------
+
 class RocksDBBackend
     : public Backend
     , public BatchWriter::Callback
@@ -100,6 +201,8 @@ public:
     std::string m_name;
     std::unique_ptr <rocksdb::DB> m_db;
     int fdlimit_ = 2048;
+    bool m_syncWaitOn = false;
+    SyncWait m_syncWait;
 
     RocksDBBackend (int keyBytes, Section const& keyValues,
         Scheduler& scheduler, beast::Journal journal, RocksDBEnv* env)
@@ -178,6 +281,8 @@ public:
                 std::string("Unable to open/create RocksDB: ") + status.ToString());
 
         m_db.reset (db);
+
+        get_if_exists(keyValues, "sync_wait", m_syncWaitOn);
     }
 
     ~RocksDBBackend ()
@@ -280,6 +385,7 @@ public:
     storeBatch (Batch const& batch) override
     {
         rocksdb::WriteBatch wb;
+        std::vector<uint256> waitNodes;
 
         EncodedBlob encoded;
 
@@ -292,6 +398,11 @@ public:
                     encoded.getKey ()), m_keyBytes),
                 rocksdb::Slice (reinterpret_cast <char const*> (
                     encoded.getData ()), encoded.getSize ()));
+
+            if (m_syncWaitOn && m_syncWait.isWaitingNode(e->getHash()))
+            {
+                waitNodes.push_back(e->getHash());
+            }
         }
 
         rocksdb::WriteOptions const options;
@@ -300,6 +411,29 @@ public:
 
         if (! ret.ok ())
             Throw<std::runtime_error> ("storeBatch failed: " + ret.ToString());
+
+        if (m_syncWaitOn)
+        {
+            for (auto const& nodeHash : waitNodes)
+            {
+                m_syncWait.writeCompleted(nodeHash);
+            }
+        }
+    }
+
+    inline bool syncWaitOn() override
+    {
+        return m_syncWaitOn;
+    }
+
+    inline void addWaitNode(std::uint32_t lSeq, uint256 nodeHash) override
+    {
+        m_syncWait.addWaitNode(lSeq, nodeHash);
+    }
+
+    inline void waitFor(std::uint32_t lSeq) override
+    {
+        m_syncWait.waitFor(lSeq);
     }
 
     void

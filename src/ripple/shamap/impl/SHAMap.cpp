@@ -1106,7 +1106,7 @@ bool SHAMap::fetchRoot (SHAMapHash const& hash, SHAMapSyncFilter* filter)
 // a mutable snapshot of a mutable SHAMap.
 std::shared_ptr<SHAMapAbstractNode>
 SHAMap::writeNode (
-    NodeObjectType t, std::uint32_t seq, std::shared_ptr<SHAMapAbstractNode> node) const
+    NodeObjectType t, std::uint32_t seq, std::shared_ptr<SHAMapAbstractNode> node, bool isRoot) const
 {
     // Node is ours, so we can just make it shareable
     assert (node->getSeq() == seq_);
@@ -1117,6 +1117,10 @@ SHAMap::writeNode (
 
     Serializer s;
     node->addRaw (s, snfPREFIX);
+    if (isRoot && f_.db().syncWaitOn())
+    {
+        f_.db().addWaitNode(seq, node->getNodeHash().as_uint256());
+    }
     f_.db().store (t,
         std::move (s.modData ()), node->getNodeHash ().as_uint256());
     return node;
@@ -1169,7 +1173,7 @@ SHAMap::walkSubTree (bool doWrite, NodeObjectType t, std::uint32_t seq)
         root_ = preFlushNode (std::move(root_));
         root_->updateHash();
         if (doWrite && backed_)
-            root_ = writeNode(t, seq, std::move(root_));
+            root_ = writeNode(t, seq, std::move(root_), true);
         else
             root_->setSeq (0);
         return 1;
@@ -1251,7 +1255,7 @@ SHAMap::walkSubTree (bool doWrite, NodeObjectType t, std::uint32_t seq)
         // This inner node can now be shared
         if (doWrite && backed_)
             node = std::static_pointer_cast<SHAMapInnerNode>(writeNode(t, seq,
-                                                                       std::move(node)));
+                                                                       std::move(node), stack.empty()));
         else
             node->setSeq (0);
 
