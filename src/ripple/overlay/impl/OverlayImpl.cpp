@@ -735,9 +735,8 @@ namespace ripple {
             app_.getShardManager().lookup().for_each(f);
             break;
         case ShardManager::SHARD:
-            app_.getShardManager().node().for_each(f);
-            break;
         case ShardManager::COMMITTEE:
+            app_.getShardManager().node().for_each(f);
             app_.getShardManager().committee().for_each(f);
             break;
         default:
@@ -795,8 +794,8 @@ namespace ripple {
 			std::vector<item> v;
 			v.reserve(size());
 
-            //for_shard_role([&](std::shared_ptr<PeerImp>&& e)
-            for_each([&](std::shared_ptr<PeerImp>&& e)
+            for_shard_role([&](std::shared_ptr<PeerImp>&& e)
+            //for_each([&](std::shared_ptr<PeerImp>&& e)
 			{
 				auto const s = e->getScore(score(e));
 				v.emplace_back(s, std::move(e));
