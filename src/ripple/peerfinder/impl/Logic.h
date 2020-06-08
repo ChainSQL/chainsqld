@@ -487,10 +487,10 @@ public:
         // Make sure we don't connect to already-connected entries.
         for (auto const& s : slots_)
         {
-            auto const result (m_squelches.insert (
-                s.second->remote_endpoint().address()));
-            if (! result.second)
-                m_squelches.touch (result.first);
+            auto const result(
+                m_squelches.insert(s.second->remote_endpoint()));
+            if (!result.second)
+                m_squelches.touch(result.first);
         }
 
         // 1. Use Fixed if:
@@ -959,17 +959,18 @@ public:
         for (auto iter = fixed_.begin ();
             needed && iter != fixed_.end (); ++iter)
         {
-            auto const& address (iter->first.address());
-            if (iter->second.when() <= now && squelches.find(address) ==
-                    squelches.end() && std::none_of (
-                        slots_.cbegin(), slots_.cend(),
-                    [address](Slots::value_type const& v)
-                    {
-                        return address == v.first.address();
+            auto const& endpoint(iter->first);
+            if (iter->second.when() <= now &&
+                squelches.find(endpoint) == squelches.end() &&
+                std::none_of(
+                    slots_.cbegin(),
+                    slots_.cend(),
+                    [endpoint](Slots::value_type const& v) {
+                        return endpoint == v.first;
                     }))
             {
-                squelches.insert(iter->first.address());
-                c.push_back (iter->first);
+                squelches.insert(iter->first);
+                c.push_back(iter->first);
                 --needed;
             }
         }
