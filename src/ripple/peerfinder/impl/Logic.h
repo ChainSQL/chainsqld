@@ -474,7 +474,7 @@ public:
         for (auto const& s : slots_)
         {
             auto const result (m_squelches.insert (
-                s.second->remote_endpoint().address()));
+                s.second->remote_endpoint()));
             if (! result.second)
                 m_squelches.touch (result.first);
         }
@@ -942,19 +942,20 @@ public:
         typename ConnectHandouts::Squelches& squelches)
     {
         auto const now (m_clock.now());
-        for (auto iter = fixed_.begin ();
-            needed && iter != fixed_.end (); ++iter)
+        for (auto iter = fixed_.begin (); needed && iter != fixed_.end (); ++iter)
         {
-            auto const& address (iter->first.address());
-            if (iter->second.when() <= now && squelches.find(address) ==
-                    squelches.end() && std::none_of (
-                        slots_.cbegin(), slots_.cend(),
-                    [address](Slots::value_type const& v)
+            auto const& endpoint (iter->first);
+            if (iter->second.when() <= now &&
+                squelches.find(endpoint) == squelches.end() &&
+                std::none_of(
+                    slots_.cbegin(),
+                    slots_.cend(),
+                    [endpoint](Slots::value_type const& v)
                     {
-                        return address == v.first.address();
+                        return endpoint == v.first;
                     }))
             {
-                squelches.insert(iter->first.address());
+                squelches.insert(iter->first);
                 c.push_back (iter->first);
                 --needed;
             }
