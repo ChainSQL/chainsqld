@@ -32,6 +32,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/consensus/RCLCxLedger.h>
 #include <ripple/basics/make_lock.h>
+#include <ripple/basics/random.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/ConfigSections.h>
@@ -457,6 +458,76 @@ void Lookup::sendMessage(std::shared_ptr<Message> const &m)
         }
     }
 }
+
+void Lookup::distributeMessage(std::shared_ptr<Message> const &m, bool forceBroadcast)
+{
+    if (forceBroadcast)
+    {
+        sendMessage(m);
+        return;
+    }
+
+    auto senderCounts = mShardManager.nodeBase().validatorsPtr()->validators().size();
+    auto quorum = mShardManager.nodeBase().quorum();
+    auto maybeInsane = senderCounts - quorum;
+    auto groupMemberCounts = maybeInsane + 1;   // Make sure that each group has at least one sane node.
+    auto groupCounts = senderCounts / groupMemberCounts;
+
+    if (groupCounts <= 1)
+    {
+        sendMessage(m);
+        return;
+    }
+
+    auto myPubkeyIndex = mShardManager.nodeBase().getPubkeyIndex(app_.getValidationPublicKey());
+    auto myGroupIndex = myPubkeyIndex != -1 ? myPubkeyIndex / groupMemberCounts : rand_int(groupCounts - 1);
+    if (myGroupIndex >= groupCounts)
+    {
+        myGroupIndex = groupCounts - 1;
+    }
+    JLOG(journal_.info()) << "myPubkeyIndex:" << myPubkeyIndex << " myGroupIndex:" << myGroupIndex;
+
+    std::vector<std::shared_ptr<Peer>> LookupPeers;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+        for (auto w : mPeers)
+        {
+            if (auto p = w.lock())
+            {
+                LookupPeers.emplace_back(std::move(p));
+            }
+        }
+    }
+
+    std::sort(LookupPeers.begin(), LookupPeers.end(),
+        [](std::shared_ptr<Peer const> const& p1, std::shared_ptr<Peer const> const& p2) {
+        return publicKeyComp(p1->getNodePublic(), p2->getNodePublic());
+    });
+
+    auto dstGroupMemberCounts = LookupPeers.size() / groupCounts;
+    if (LookupPeers.size() % groupCounts > 0)
+    {
+        dstGroupMemberCounts++;
+    }
+
+    auto myDstPeersLo = myGroupIndex * dstGroupMemberCounts;
+    auto myDstPeersHi = myDstPeersLo + dstGroupMemberCounts;
+    if (myDstPeersHi > LookupPeers.size())
+    {
+        myDstPeersHi = LookupPeers.size();
+    }
+    JLOG(journal_.info()) << "myDstPeersLo:" << myDstPeersLo << " myDstPeersHi:" << myDstPeersHi;
+
+    for (auto i = myDstPeersLo; i < myDstPeersHi; i++)
+    {
+        JLOG(journal_.info()) << "distributeMessage "
+            << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+            << " to lookup[" << LookupPeers[i]->getShardRole() << ":" << LookupPeers[i]->getShardIndex()
+            << ":" << LookupPeers[i]->getRemoteAddress() << "]";
+        LookupPeers[i]->send(m);
+    }
+}
+
 
 // ------------------------------------------------------------------------------
 // Transactions relay

@@ -30,6 +30,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/protocol/digest.h>
 #include <ripple/overlay/impl/TrafficCount.h>
 #include <ripple/basics/make_lock.h>
+#include <ripple/basics/random.h>
 #include <ripple/app/ledger/OpenLedger.h>
 
 #include <ripple/overlay/Peer.h>
@@ -409,11 +410,11 @@ void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
 
     if (withTxMeta)
     {
-        mShardManager.lookup().sendMessage(m);
+        mShardManager.lookup().distributeMessage(m);
     }
     else
     {
-        mShardManager.committee().sendMessage(m);
+        mShardManager.committee().distributeMessage(m);
     }
 }
 
@@ -493,6 +494,78 @@ void Node::relay(
                 }
             }
         }
+    }
+}
+
+void Node::distributeMessage(std::shared_ptr<Message> const &m, bool forceBroadcast)
+{
+    if (forceBroadcast)
+    {
+        sendMessageToAllShard(m);
+        return;
+    }
+
+    auto senderCounts = mShardManager.nodeBase().validatorsPtr()->validators().size();
+    auto quorum = mShardManager.nodeBase().quorum();
+    auto maybeInsane = senderCounts - quorum;
+    auto groupMemberCounts = maybeInsane + 1;   // Make sure that each group has at least one sane node.
+    auto groupCounts = senderCounts / groupMemberCounts;
+
+    if (groupCounts <= 1)
+    {
+        sendMessageToAllShard(m);
+        return;
+    }
+
+    auto myPubkeyIndex = mShardManager.nodeBase().getPubkeyIndex(app_.getValidationPublicKey());
+    auto myGroupIndex = myPubkeyIndex != -1 ? myPubkeyIndex / groupMemberCounts : rand_int(groupCounts - 1);
+    if (myGroupIndex >= groupCounts)
+    {
+        myGroupIndex = groupCounts - 1;
+    }
+    JLOG(journal_.info()) << "myPubkeyIndex:" << myPubkeyIndex << " myGroupIndex:" << myGroupIndex;
+
+    std::vector<std::shared_ptr<Peer>> shardPeers;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+        for (auto const& it : mMapOfShardPeers)
+        {
+            for (auto w : it.second)
+            {
+                if (auto p = w.lock())
+                {
+                    shardPeers.emplace_back(std::move(p));
+                }
+            }
+        }
+    }
+
+    std::sort(shardPeers.begin(), shardPeers.end(),
+        [](std::shared_ptr<Peer const> const& p1, std::shared_ptr<Peer const> const& p2) {
+        return publicKeyComp(p1->getNodePublic(), p2->getNodePublic());
+    });
+
+    auto shardGroupMemberCounts = shardPeers.size() / groupCounts;
+    if (shardPeers.size() % groupCounts > 0)
+    {
+        shardGroupMemberCounts++;
+    }
+
+    auto myShardPeersLo = myGroupIndex * shardGroupMemberCounts;
+    auto myShardPeersHi = myShardPeersLo + shardGroupMemberCounts;
+    if (myShardPeersHi > shardPeers.size())
+    {
+        myShardPeersHi = shardPeers.size();
+    }
+    JLOG(journal_.info()) << "myDstPeersLo:" << myShardPeersLo << " myDstPeersHi:" << myShardPeersHi;
+
+    for (auto i = myShardPeersLo; i < myShardPeersHi; i++)
+    {
+        JLOG(journal_.info()) << "distributeMessage "
+            << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+            << " to shard[" << shardPeers[i]->getShardRole() << ":" << shardPeers[i]->getShardIndex()
+            << ":" << shardPeers[i]->getRemoteAddress() << "]";
+        shardPeers[i]->send(m);
     }
 }
 

@@ -133,6 +133,7 @@ public:
     void onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m);
 
     void sendMessage(std::shared_ptr<Message> const &m);
+    void distributeMessage(std::shared_ptr<Message> const &m, bool forceBroadcast = false);
 
 	void checkSaveLedger(LedgerIndex seq);
     void saveLedgerThread();

@@ -135,8 +135,8 @@ void Committee::onViewChange(
     auto const m = std::make_shared<Message>(
         *sm, protocol::mtCOMMITTEEVIEWCHANGE);
 
-    app_.getShardManager().node().sendMessageToAllShard(m);
-    app_.getShardManager().lookup().sendMessage(m);
+    app_.getShardManager().node().distributeMessage(m);
+    app_.getShardManager().lookup().distributeMessage(m);
 }
 
 void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
@@ -431,8 +431,8 @@ void Committee::submitFinalLedger()
     auto const m = std::make_shared<Message>(
         ms, protocol::mtFINALLEDGER_SUBMIT);
 
-    mShardManager.node().sendMessageToAllShard(m);
-    mShardManager.lookup().sendMessage(m);
+    mShardManager.node().distributeMessage(m);
+    mShardManager.lookup().distributeMessage(m);
 
     mSubmitCompleted = true;
 }
@@ -492,6 +492,75 @@ void Committee::relay(
                 p->send(m);
             }
         }
+    }
+}
+
+void Committee::distributeMessage(std::shared_ptr<Message> const &m, bool forceBroadcast)
+{
+    if (forceBroadcast)
+    {
+        sendMessage(m);
+        return;
+    }
+
+    auto senderCounts = mShardManager.nodeBase().validatorsPtr()->validators().size();
+    auto quorum = mShardManager.nodeBase().quorum();
+    auto maybeInsane = senderCounts - quorum;
+    auto groupMemberCounts = maybeInsane + 1;   // Make sure that each group has at least one sane node.
+    auto groupCounts = senderCounts / groupMemberCounts;
+
+    if (groupCounts <= 1)
+    {
+        sendMessage(m);
+        return;
+    }
+
+    auto myPubkeyIndex = mShardManager.nodeBase().getPubkeyIndex(app_.getValidationPublicKey());
+    auto myGroupIndex = myPubkeyIndex != -1 ? myPubkeyIndex / groupMemberCounts : rand_int(groupCounts - 1);
+    if (myGroupIndex >= groupCounts)
+    {
+        myGroupIndex = groupCounts - 1;
+    }
+    JLOG(journal_.info()) << "myPubkeyIndex:" << myPubkeyIndex << " myGroupIndex:" << myGroupIndex;
+
+    std::vector<std::shared_ptr<Peer>> committeePeers;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+        for (auto w : mPeers)
+        {
+            if (auto p = w.lock())
+            {
+                committeePeers.emplace_back(std::move(p));
+            }
+        }
+    }
+
+    std::sort(committeePeers.begin(), committeePeers.end(),
+        [](std::shared_ptr<Peer const> const& p1, std::shared_ptr<Peer const> const& p2) {
+        return publicKeyComp(p1->getNodePublic(), p2->getNodePublic());
+    });
+
+    auto dstGroupMemberCounts = committeePeers.size() / groupCounts;
+    if (committeePeers.size() % groupCounts > 0)
+    {
+        dstGroupMemberCounts++;
+    }
+
+    auto myDstPeersLo = myGroupIndex * dstGroupMemberCounts;
+    auto myDstPeersHi = myDstPeersLo + dstGroupMemberCounts;
+    if (myDstPeersHi > committeePeers.size())
+    {
+        myDstPeersHi = committeePeers.size();
+    }
+    JLOG(journal_.info()) << "myDstPeersLo:" << myDstPeersLo << " myDstPeersHi:" << myDstPeersHi;
+
+    for (auto i = myDstPeersLo; i < myDstPeersHi; i++)
+    {
+        JLOG(journal_.info()) << "distributeMessage "
+            << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
+            << " to committee[" << committeePeers[i]->getShardRole() << ":" << committeePeers[i]->getShardIndex()
+            << ":" << committeePeers[i]->getRemoteAddress() << "]";
+        committeePeers[i]->send(m);
     }
 }
 

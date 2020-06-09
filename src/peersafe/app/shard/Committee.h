@@ -149,6 +149,7 @@ public:
     void relay(
         boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
         std::shared_ptr<Message> const &m) override;
+    void distributeMessage(std::shared_ptr<Message> const &m, bool forceBroadcast = false);
 
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const& m, std::weak_ptr<PeerImp> weak);

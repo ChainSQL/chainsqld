@@ -134,6 +134,8 @@ public:
     void relay(
         boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
         std::shared_ptr<Message> const &m) override;
+    // Calculate which peers to send data to
+    void distributeMessage(std::shared_ptr<Message> const &m, bool forceBroadcast = false);
 
     void onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMTransactions> const& m);
