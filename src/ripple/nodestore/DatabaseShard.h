@@ -208,7 +208,7 @@ public:
     getRootDir() const = 0;
 
     /** The number of ledgers in a shard */
-    static constexpr std::uint32_t ledgersPerShardDefault {1024u};
+    static constexpr std::uint32_t ledgersPerShardDefault { 16384u};
 };
 
 constexpr
