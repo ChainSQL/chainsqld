@@ -421,15 +421,16 @@ message TxWithMeta {
 
 message MicroLedger {
     required uint32     ledgerSeq           = 1;    // Ledger sequence
-    required uint32     shardID             = 2;    // The ID of the shard generated this MicroLedger
+    required uint64     viewChange          = 2;
+    required uint32     shardID             = 3;    // The ID of the shard generated this MicroLedger
 
-    required int64      dropsDestroyed      = 3;
+    required int64      dropsDestroyed      = 4;
 
-    repeated bytes		txHashes            = 4;    // All transactions hash set in this MicroLedger
-    repeated StateDelta stateDeltas         = 5;    // The state changes by the transactions in this MicroLedger
-    optional bytes		txWMHashRoot        = 6;    // The transactions with meta data hash(Shamap not yet in use now)
+    repeated bytes		txHashes            = 5;    // All transactions hash set in this MicroLedger
+    repeated StateDelta stateDeltas         = 6;    // The state changes by the transactions in this MicroLedger
+    optional bytes		txWMHashRoot        = 7;    // The transactions with meta data hash(Shamap not yet in use now)
 
-    repeated TxWithMeta txWithMetas         = 7;    // All transactions with meta data in this MicroLedger, when send to lookup
+    repeated TxWithMeta txWithMetas         = 8;    // All transactions with meta data in this MicroLedger, when send to lookup
 }
 
 message FinalLedger {

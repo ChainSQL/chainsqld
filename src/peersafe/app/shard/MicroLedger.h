@@ -48,6 +48,7 @@ public:
 
 protected:
     LedgerIndex                                 mSeq;               // Ledger sequence.
+    uint64                                      mViewChange;        // View change sequence.
     uint32                                      mShardID;           // The ID of the shard generated this MicroLedger.
     std::int64_t                                mDropsDestroyed;    //
 
@@ -73,7 +74,7 @@ protected:
 public:
     MicroLedger() = delete;
 	MicroLedger(protocol::TMMicroLedgerSubmit const& m, bool withTxMeta = true);
-    MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view);
+    MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView &view);
 
     inline LedgerIndex seq()
     {

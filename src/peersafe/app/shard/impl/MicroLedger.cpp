@@ -28,9 +28,10 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-MicroLedger::MicroLedger(uint32 shardID_, LedgerIndex seq_, OpenView &view)
+MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView &view)
     : mSeq(seq_)
     , mShardID(shardID_)
+    , mViewChange(viewChange)
 {
     assert(!view.open());
 
@@ -91,6 +92,7 @@ void MicroLedger::computeHash(bool withTxMeta)
     }
 
     setLedgerHash( sha512Half(
+        mViewChange,
         mSeq,
         mShardID,
         mDropsDestroyed,
@@ -130,6 +132,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
 {
     protocol::MicroLedger& m = *(ms.mutable_microledger());
 
+    m.set_viewchange(mViewChange);
     m.set_ledgerseq(mSeq);
     m.set_shardid(mShardID);
     m.set_dropsdestroyed(mDropsDestroyed);
@@ -440,6 +443,7 @@ void MicroLedger::apply(Ledger& to) const
 
 void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
 {
+    mViewChange = m.viewchange();
 	mSeq = m.ledgerseq();
 	mShardID = m.shardid();
     mDropsDestroyed = m.dropsdestroyed();

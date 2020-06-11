@@ -212,7 +212,11 @@ void Node::doAccept(
         return !buildLCL->txExists(txID);
     });
 
-    auto microLedger = std::make_shared<MicroLedger>(mShardID, accum.info().seq, accum);
+    auto microLedger = std::make_shared<MicroLedger>(
+        app_.getOPs().getConsensus().getView(),
+        mShardID,
+        accum.info().seq,
+        accum);
 
     // After view change, If generate a same microledger with previous view.
     // Use previous signatures, is this Ok?
@@ -388,8 +392,6 @@ void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
 
     auto suppressionKey = sha512Half(
         microLedger->ledgerHash(),
-        microLedger->seq(),
-        app_.getOPs().getConsensus().getView(),
         withTxMeta);
 
     if (!app_.getHashRouter().shouldRelay(suppressionKey))
