@@ -476,6 +476,7 @@ void Node::relay(
     boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
     std::shared_ptr<Message> const &m)
 {
+    assert(toSkip);
     std::lock_guard<std::recursive_mutex> _(mPeersMutex);
 
     if (mMapOfShardPeers.find(mShardID) != mMapOfShardPeers.end())
@@ -484,7 +485,7 @@ void Node::relay(
         {
             if (auto p = w.lock())
             {
-                if (!toSkip || toSkip.get().find(p->id()) == toSkip.get().end())
+                if (toSkip->find(p->id()) == toSkip->end())
                 {
                     JLOG(journal_.info()) << "relay "
                         << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))

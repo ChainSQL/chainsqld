@@ -2285,7 +2285,9 @@ PeerImp::checkValidation (STValidation::pointer val,
         if (app_.getOPs().recvValidation(
             val, std::to_string(id())))
         {
-            auto toSkip = app_.getHashRouter().shouldRelay(signingHash);
+            //auto toSkip = app_.getHashRouter().shouldRelay(signingHash);
+            auto toSkip = app_.getHashRouter().shouldRelay(sha512Half(makeSlice(packet->validation())));
+            if (!toSkip) return;
             auto const sm = std::make_shared<Message>(
                 *packet, protocol::mtVALIDATION);
             app_.getShardManager().nodeBase().relay(toSkip, sm);
@@ -2318,6 +2320,7 @@ PeerImp::checkViewChange(bool isTrusted, ViewChange const& change, uint256 suppr
         if (app_.getOPs().recvViewChange(change))
         {
             auto toSkip = app_.getHashRouter().shouldRelay(suppression);
+            if (!toSkip) return;
             auto const sm = std::make_shared<Message>(
                 *packet, protocol::mtVIEW_CHANGE);
             app_.getShardManager().nodeBase().relay(toSkip, sm);

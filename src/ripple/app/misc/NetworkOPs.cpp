@@ -1793,6 +1793,7 @@ void NetworkOPsImp::processTrustedProposal (
             app_.timeKeeper().closeTime(), peerPos))
     {
         auto toSkip = app_.getHashRouter().shouldRelay(peerPos.suppressionID());
+        if (!toSkip) return;
         auto const sm = std::make_shared<Message>(
             *set, protocol::mtPROPOSE_LEDGER);
         app_.getShardManager().nodeBase().relay(toSkip, sm);
