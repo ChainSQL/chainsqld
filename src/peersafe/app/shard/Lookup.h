@@ -71,6 +71,8 @@ private:
 	boost::asio::basic_waitable_timer<
 		std::chrono::system_clock>                      mTimer;
 
+    bool                                                mInitialized = false;
+
 public:
 
     Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);

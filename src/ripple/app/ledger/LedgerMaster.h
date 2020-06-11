@@ -282,13 +282,14 @@ public:
 
 	void initGenesisLedger(std::shared_ptr<Ledger> const genesis);
 
+    void setPubLedger(
+        std::shared_ptr<Ledger const> const& l);
+
 private:
     using ScopedLockType = std::lock_guard <std::recursive_mutex>;
     using ScopedUnlockType = GenericScopedUnlock <std::recursive_mutex>;
 
     void setValidLedger(
-        std::shared_ptr<Ledger const> const& l);
-    void setPubLedger(
         std::shared_ptr<Ledger const> const& l);
 
     void tryFill(

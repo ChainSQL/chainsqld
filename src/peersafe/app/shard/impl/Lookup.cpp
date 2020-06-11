@@ -22,6 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/shard/FinalLedger.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/consensus/ViewChange.h>
+#include <peersafe/app/table/TableSync.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
@@ -136,7 +137,7 @@ void Lookup::checkSaveLedger(LedgerIndex netLedger)
             mNetLedger = netLedger;
         }
 
-        if (!mSaveLedgerThread.test_and_set())
+        if (!mSaveLedgerThread.test_and_set(std::memory_order_relaxed))
         {
             app_.getJobQueue().addJob(
                 jtSAVELEDGER, "saveLedger",
@@ -169,16 +170,35 @@ void Lookup::saveLedgerThread()
 
             // Should acquire.
             auto const& hash = getFinalLedger(saveOrAcquire + 1)->parentHash();
-            if (!app_.getInboundLedgers().acquire(
+            if (auto const& ledger = app_.getInboundLedgers().acquire(
                 hash, 0, InboundLedger::fcCURRENT))
+            {
+                JLOG(journal_.warn()) << "Acquired " << saveOrAcquire << ", try local successed";
+                if (mInitialized)
+                {
+                    app_.getLedgerMaster().accept(ledger);
+                }
+                else
+                {
+                    mInitialized = true;
+                    app_.getLedgerMaster().setFullLedger(ledger, false, true);
+                    app_.getLedgerMaster().setPubLedger(ledger);
+                    app_.getLedgerMaster().tryAdvance();
+                    if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
+                    {
+                        app_.getTableSync().TryTableSync();
+                    }
+                }
+                app_.getOPs().switchLastClosedLedger(ledger);
+            }
+            else
             {
                 break;
             }
-
-            JLOG(journal_.warn()) << "Acquired " << saveOrAcquire << ", try local successed";
         }
         else
         {
+            if (!mInitialized) mInitialized = true;
             JLOG(journal_.info()) << "Building ledger " << saveOrAcquire;
             // Reset tx-meta transactionIndex field
             auto timeStart = utcTime();
@@ -201,7 +221,7 @@ void Lookup::saveLedgerThread()
         shouldAcquire = findNewLedgerToSave(saveOrAcquire);
     }
 
-    mSaveLedgerThread.clear();
+    mSaveLedgerThread.clear(std::memory_order_relaxed);
 }
 
 bool Lookup::findNewLedgerToSave(LedgerIndex &toSaveOrAcquire)
@@ -421,13 +441,27 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
                 << app_.getLedgerMaster().getValidLedgerIndex()
                 << ", trying to acquiring  " << seq;
 
-            auto app = &app_;
             auto hash = committeeVC->preHash();
-            app_.getJobQueue().addJob(
-                jtSAVELEDGER, "getCurrentLedger", [app, hash](Job&) {
-                app->getInboundLedgers().acquire(
-                    hash, 0, InboundLedger::fcCURRENT);
-            });
+            if (auto const& ledger = app_.getInboundLedgers().acquire(
+                hash, 0, InboundLedger::fcCURRENT))
+            {
+                if (mInitialized)
+                {
+                    app_.getLedgerMaster().accept(ledger);
+                }
+                else
+                {
+                    mInitialized = true;
+                    app_.getLedgerMaster().setFullLedger(ledger, false, true);
+                    app_.getLedgerMaster().setPubLedger(ledger);
+                    app_.getLedgerMaster().tryAdvance();
+                    if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
+                    {
+                        app_.getTableSync().TryTableSync();
+                    }
+                }
+                app_.getOPs().switchLastClosedLedger(ledger);
+            }
         }
     }
     else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())

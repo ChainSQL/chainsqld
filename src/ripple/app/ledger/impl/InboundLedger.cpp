@@ -99,18 +99,18 @@ void InboundLedger::init (ScopedLockType& collectionLock)
             "Acquiring ledger we already have locally: " << getHash ();
         mLedger->setImmutable (app_.config());
 
-        if (mReason == fcCURRENT)
-        {
-            app_.getLedgerMaster().accept(mLedger);
-            app_.getOPs().switchLastClosedLedger(mLedger);
-        }
+        //if (mReason == fcCURRENT)
+        //{
+        //    app_.getLedgerMaster().accept(mLedger);
+        //    app_.getOPs().switchLastClosedLedger(mLedger);
+        //}
 
         if (mReason != fcHISTORY)
             app_.getLedgerMaster ().storeLedger (mLedger);
 
         // Check if this could be a newer fully-validated ledger
         if (mReason == fcVALIDATION ||
-            mReason == fcCURRENT ||
+            //mReason == fcCURRENT ||
             mReason == fcCONSENSUS)
         {
             app_.getLedgerMaster ().checkAccept (mLedger);
@@ -438,11 +438,11 @@ void InboundLedger::done ()
     if (isComplete () && !isFailed () && mLedger)
     {
         mLedger->setImmutable (app_.config());
-        if (mReason == fcCURRENT)
-        {
-            app_.getLedgerMaster().accept(mLedger);
-            app_.getOPs().switchLastClosedLedger(mLedger);
-        }
+        //if (mReason == fcCURRENT)
+        //{
+        //    app_.getLedgerMaster().accept(mLedger);
+        //    app_.getOPs().switchLastClosedLedger(mLedger);
+        //}
         if (mReason != fcHISTORY)
             app_.getLedgerMaster ().storeLedger (mLedger);
         app_.getInboundLedgers().onLedgerFetched(mReason);

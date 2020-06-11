@@ -1832,7 +1832,7 @@ NetworkOPsImp::mapComplete (
 
 void NetworkOPsImp::endConsensus ()
 {
-    if (mConsensusEnded.test_and_set())
+    if (mConsensusEnded.test_and_set(std::memory_order_relaxed))
     {
         return;
     }
@@ -1888,7 +1888,7 @@ void NetworkOPsImp::endConsensus ()
 
     beginConsensus (networkClosed);
 
-    mConsensusEnded.clear();
+    mConsensusEnded.clear(std::memory_order_relaxed);
 }
 
 void NetworkOPsImp::consensusViewChange ()

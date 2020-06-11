@@ -159,8 +159,11 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 			mCompleteLedgers.setValue(previousLedger->info().seq);
 		}
 	}
-	app_.getTableSync().TryTableSync();
-	tryAdvance();
+    tryAdvance();
+    if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
+    {
+        app_.getTableSync().TryTableSync();
+    }
 }
 
 std::chrono::seconds
@@ -290,17 +293,19 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
     {
         setFullLedger (lastClosed, true, false);
 		tryAdvance();
-		app_.getTableSync().TryTableSync();
-		app_.getTableStorage().TryTableStorage();
+        if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
+        {
+            app_.getTableSync().TryTableSync();
+            app_.getTableStorage().TryTableStorage();
+        }
     }
     else
     {
         checkAccept (lastClosed);
-        // shard node and committee node no need to do this.
-		//app_.getTableStorage().TryTableStorage();
-		//app_.getTableAssistant().TryTableCheckHash();
-		////app_.getOPs().TryCheckSubTx();
-		//app_.getTableTxAccumulator().trySweepCache();
+        //app_.getTableStorage().TryTableStorage();
+        //app_.getTableAssistant().TryTableCheckHash();
+        ////app_.getOPs().TryCheckSubTx();
+        //app_.getTableTxAccumulator().trySweepCache();
     }
 }
 
@@ -1213,6 +1218,11 @@ LedgerMaster::checkAccept (
 {
     if (ledger->info().seq <= mValidLedgerSeq)
         return;
+
+    if (app_.getShardManager().myShardRole() != ShardManager::COMMITTEE)
+    {
+        return;
+    }
 
     // Can we advance the last fully-validated ledger? If so, can we
     // publish?
