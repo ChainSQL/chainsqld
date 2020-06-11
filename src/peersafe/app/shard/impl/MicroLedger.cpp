@@ -30,8 +30,8 @@ namespace ripple {
 
 MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView &view)
     : mSeq(seq_)
-    , mShardID(shardID_)
     , mViewChange(viewChange)
+    , mShardID(shardID_)
 {
     assert(!view.open());
 
