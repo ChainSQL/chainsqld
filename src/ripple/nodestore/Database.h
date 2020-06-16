@@ -60,7 +60,8 @@ public:
         @param name The Stoppable name for this Database.
         @param parent The parent Stoppable.
         @param scheduler The scheduler to use for performing asynchronous tasks.
-        @param readThreads The number of async read threads to create.
+        @param readThreads The number of asynchronous read threads to create.
+        @param config The configuration settings
         @param journal Destination for logging output.
     */
     Database(std::string name, Stoppable& parent, Scheduler& scheduler,
@@ -203,9 +204,9 @@ public:
     std::uint32_t
     getFetchSize() const { return fetchSz_; }
 
-    /** Return the number of files needed by our backend(s) */
+    /** Returns the number of file descriptors the database expects to need */
     int
-    fdlimit() const { return fdLimit_; }
+    fdRequired() const { return fdRequired_; }
 
     void
     onStop() override;
@@ -219,9 +220,9 @@ public:
     }
 
 protected:
-    beast::Journal j_;
+    beast::Journal const j_;
     Scheduler& scheduler_;
-    int fdLimit_ {0};
+    int fdRequired_ {0};
 
     void
     stopThreads();
@@ -280,9 +281,9 @@ private:
     // current read generation
     uint64_t readGen_ {0};
 
-    // The default is 32570 to match the ZXC ledger network's earliest
+    // The default is 32570 to match the XRP ledger network's earliest
     // allowed sequence. Alternate networks may set this value.
-    std::uint32_t earliestSeq_ {ZXC_LEDGER_EARLIEST_SEQ};
+    std::uint32_t const earliestSeq_;
 
     virtual
     std::shared_ptr<NodeObject>

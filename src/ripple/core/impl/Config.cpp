@@ -38,11 +38,15 @@
 
 namespace ripple {
 
+
+
 //
 // TODO: Check permissions on config file before using it.
 //
 
 #define SECTION_DEFAULT_NAME    ""
+
+
 
 IniFileSections
 parseIniFile (std::string const& strInput, const bool bTrim)
@@ -650,5 +654,17 @@ boost::filesystem::path Config::getDebugLogFile () const
 
     return log_file;
 }
+
+//int
+//Config::getValueFor(SizedItem item, boost::optional<std::size_t> node) const
+//{
+//	assert(0);
+//	return 1;
+//	//auto const index = static_cast<std::underlying_type_t<SizedItem>>(item);
+//	//assert(index < sizedItems.size());
+//	//assert(!node || *node <= 4);
+//	//return sizedItems.at(index).second.at(node.value_or(NODE_SIZE));
+//}
+
 
 } // ripple

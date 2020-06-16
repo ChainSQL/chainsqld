@@ -270,7 +270,7 @@ SHAMapStoreImp::makeDatabase (std::string const& name,
             "NodeStore.main", scheduler_, readThreads, parent,
                 std::move(writableBackend), std::move(archiveBackend),
                     setup_.nodeDatabase, nodeStoreJournal_);
-        fdlimit_ += dbr->fdlimit();
+        fdlimit_ += dbr->fdRequired();
         dbRotating_ = dbr.get();
         db.reset(dynamic_cast<NodeStore::Database*>(dbr.release()));
     }
@@ -278,7 +278,7 @@ SHAMapStoreImp::makeDatabase (std::string const& name,
     {
         db = NodeStore::Manager::instance().make_Database (name, scheduler_,
             readThreads, parent, setup_.nodeDatabase, nodeStoreJournal_);
-        fdlimit_ += db->fdlimit();
+        fdlimit_ += db->fdRequired();
     }
     return db;
 }
@@ -291,10 +291,9 @@ SHAMapStoreImp::makeDatabaseShard(std::string const& name,
     if(! setup_.shardDatabase.empty())
     {
         db = std::make_unique<NodeStore::DatabaseShardImp>(
-            app_, name, parent, scheduler_, readThreads,
-                setup_.shardDatabase, app_.journal("ShardStore"));
+            app_, parent,  name, scheduler_, readThreads,app_.journal("ShardStore"));
         if (db->init())
-            fdlimit_ += db->fdlimit();
+            fdlimit_ += db->fdRequired();
         else
             db.reset();
     }
