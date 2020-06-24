@@ -285,7 +285,8 @@ namespace eth {
 		//static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
 		new(data) bytes(result.output.takeBytes());
 		// Set the destructor to delete the vector.
-		o_result->release = [](evmc_result const* _result)
+		//o_result->release = [](evmc_result const* _result)
+		evmcResult.release = [](evmc_result const* _result)
 		{
 			auto* data = evmc_get_const_optional_storage(_result);
 			auto& output = reinterpret_cast<bytes const&>(*data);
