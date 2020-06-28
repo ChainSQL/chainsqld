@@ -26,8 +26,9 @@ enum MessageType
 	mtMICROLEDGER_SUBMIT			= 50;	// from shard to committee
 	mtFINALLEDGER_SUBMIT			= 51;	// from committee to shard and lookup
     mtMICROLEDGER_ACQUIRE           = 52;
-	mtTRANSACTIONS					= 53;   // relay transactions
-    mtCOMMITTEEVIEWCHANGE           = 54;
+    mtMICROLEDGER_INFOS             = 53;
+	mtTRANSACTIONS					= 54;   // relay transactions
+    mtCOMMITTEEVIEWCHANGE           = 55;
 
     // <available>          = 10;
     // <available>          = 11;
@@ -433,6 +434,13 @@ message MicroLedger {
     repeated TxWithMeta txWithMetas         = 8;    // All transactions with meta data in this MicroLedger, when send to lookup
 }
 
+// MicroLedger Info
+message MLInfo
+{
+    required uint32     shardID     = 1;
+    required bytes      MLHash      = 2;
+}
+
 message FinalLedger {
     required uint32     ledgerSeq           = 1;    // Ledger sequence
 	required bytes 		ledgerHash			= 2;
@@ -447,12 +455,6 @@ message FinalLedger {
 
     repeated StateDelta stateDeltas         = 10;   // The state changes by the transactions in this FinalLedger
     optional bytes      stateShaMapRootHash = 11;   // The final state Shamap root hash
-
-    // MicroLedger Info
-    message MLInfo {
-        required uint32     shardID     = 1;
-        required bytes      MLHash      = 2;
-    }
 
     repeated MLInfo     microLedgers        = 12;    // The MicroLedger hash set in this FinalLedger
 }
@@ -474,9 +476,17 @@ message TMFinalLedgerSubmit {
 
 message TMMicroLedgerAcquire {
     required uint32         ledgerIndex     = 1;
-    required uint32         shardID         = 2;
-    required bytes          nodePubKey      = 3;
-    required bytes          signature       = 4;
+    required bytes          setID           = 2;
+    optional uint32         shardID         = 3;
+    required bytes          nodePubKey      = 4;
+    required bytes          signature       = 5;
+}
+
+message TMMicroLedgerInfos
+{
+    repeated MLInfo         microLedgers    = 1;
+    required bytes          nodePubKey      = 2;
+    required bytes          signature       = 3;
 }
 
 message TMTransactions

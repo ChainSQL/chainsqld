@@ -2065,6 +2065,24 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerAcquire> const& m)
     }
 }
 
+void
+PeerImp::onMessage(std::shared_ptr <protocol::TMMicroLedgerInfos> const& m)
+{
+    auto const pap = &app_;
+
+    switch (app_.getShardManager().myShardRole())
+    {
+    case ShardManager::COMMITTEE:
+        app_.getJobQueue().addJob(
+            jtML_ACQUIRE, "Recv->MicroLedgerInfos",
+            [pap, m](Job&) {
+            pap->getShardManager().committee().onMessage(m);
+        });
+        break;
+    default:
+        break;
+    }
+}
 
 void
 PeerImp::onMessage(std::shared_ptr <protocol::TMCommitteeViewChange> const& m)

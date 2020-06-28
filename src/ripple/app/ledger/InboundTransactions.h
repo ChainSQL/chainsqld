@@ -78,7 +78,7 @@ make_InboundTransactions (
     Stoppable& parent,
     beast::insight::Collector::ptr const& collector,
     std::function
-        <void (std::shared_ptr <SHAMap> const&,
+        <void (uint256, std::shared_ptr <SHAMap> const&,
             bool)> gotSet);
 
 

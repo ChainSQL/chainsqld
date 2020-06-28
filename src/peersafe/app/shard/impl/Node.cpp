@@ -164,19 +164,8 @@ std::int32_t Node::getPubkeyIndex(PublicKey const& pubkey)
 
 void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
-    mIsLeader = false;
-
-    auto iter = mMapOfShardValidators.find(mShardID);
-	if (iter == mMapOfShardValidators.end()) {
-		assert(0);
-		return ;
-	}
-
-	auto const& validators = iter->second->validators();
-	assert(validators.size() > 0);
-	int index = (view + seq) % validators.size();
-
-	mIsLeader = (pubkey == validators[index]);
+    mIsLeader = isLeader(pubkey, seq, view);
+    mPreSeq = seq - 1;
 
     if (view == 0)
     {
@@ -186,11 +175,24 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
 
     {
         std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        mSignatureBuffer.erase(seq - 1);
+        for (auto iter = mSignatureBuffer.begin(); iter != mSignatureBuffer.end();)
+        {
+            if (iter->first < seq)
+            {
+                iter = mSignatureBuffer.erase(iter);
+            }
+            else
+            {
+                iter++;
+            }
+        }
     }
 
-    iter->second->onConsensusStart (
-        app_.getValidations().getCurrentPublicKeys ());
+    auto iter = mMapOfShardValidators.find(mShardID);
+    if (iter != mMapOfShardValidators.end())
+    {
+        iter->second->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
+    }
 }
 
 void Node::doAccept(
@@ -299,9 +301,9 @@ void Node::recvValidation(PublicKey& pubKey, STValidation& val)
     LedgerIndex seq = val.getFieldU32(sfLedgerSequence);
     uint256 microLedgerHash = val.getFieldH256(sfLedgerHash);
 
-    if (seq <= app_.getLedgerMaster().getValidLedgerIndex())
+    if (seq <= mPreSeq)
     {
-        JLOG(journal_.warn()) << "Validation for ledger seq(seq) from "
+        JLOG(journal_.warn()) << "Validation for ledger seq(" << seq << ") from "
             << toBase58(TokenType::TOKEN_NODE_PUBLIC, pubKey) << " is stale";
         return;
     }
@@ -604,9 +606,7 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         return;
     }
 
-    auto previousLedger = app_.getLedgerMaster().getValidatedLedger();
-
-    if (finalLedger->seq() < previousLedger->seq() + 1)
+    if (finalLedger->seq() < mPreSeq + 1)
     {
         JLOG(journal_.info()) << "FinalLeger: stale";
         return;
@@ -618,9 +618,9 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         return;
     }
 
-    if (finalLedger->seq() > previousLedger->seq() + 1)
+    if (finalLedger->seq() > mPreSeq + 1)
     {
-        JLOG(journal_.warn()) << "Got finalLeger, I'm on " << previousLedger->seq()
+        JLOG(journal_.warn()) << "Got finalLeger, I'm on " << mPreSeq
             << ", trying to switch to " << finalLedger->seq();
         app_.getOPs().consensusViewChange();
         app_.getOPs().getConsensus().consensus_->handleWrongLedger(finalLedger->hash());
@@ -629,7 +629,7 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 
 	// build new ledger
 	auto ledgerInfo = finalLedger->getLedgerInfo();
-	auto buildLCL = std::make_shared<Ledger>(*previousLedger, ledgerInfo.closeTime);
+    auto buildLCL = std::make_shared<Ledger>(*app_.getLedgerMaster().getLedgerBySeq(mPreSeq), ledgerInfo.closeTime);
 	finalLedger->apply(*buildLCL);
 
     buildLCL->updateSkipList();
@@ -745,15 +745,19 @@ void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
         return;
     }
 
-    if (committeeVC->preSeq() > app_.getLedgerMaster().getValidLedgerIndex())
     {
-        JLOG(journal_.warn()) << "Got CommitteeViewChange, I'm on " 
-            << app_.getLedgerMaster().getValidLedgerIndex()
+        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
+        mMicroLedgers.clear();
+    }
+
+    if (committeeVC->preSeq() > mPreSeq)
+    {
+        JLOG(journal_.warn()) << "Got CommitteeViewChange, I'm on " << mPreSeq
             << ", trying to switch to " << committeeVC->preSeq();
         app_.getOPs().consensusViewChange();
         app_.getOPs().getConsensus().consensus_->handleWrongLedger(committeeVC->preHash());
     }
-    else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())
+    else if (committeeVC->preSeq() == mPreSeq)
     {
         app_.getOPs().getConsensus().onCommitteeViewChange();
     }

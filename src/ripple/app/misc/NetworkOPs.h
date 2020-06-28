@@ -162,7 +162,7 @@ namespace ripple {
 
 		virtual bool recvViewChange(ViewChange const& change) =  0;
 
-		virtual void mapComplete(std::shared_ptr<SHAMap> const& map,
+		virtual void mapComplete(uint256 hash, std::shared_ptr<SHAMap> const& map,
 			bool fromAcquire) = 0;
 
 		// network state machine

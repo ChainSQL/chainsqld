@@ -53,12 +53,15 @@ private:
 
     // Used if I am a Committee node
     bool                                                    mIsLeader;
+    LedgerIndex                                             mPreSeq;
     std::map<uint32,
         std::shared_ptr<MicroLedger>>                       mValidMicroLedgers;     // This round. mapping shardID --> MicroLedger
     std::unordered_map<
         LedgerIndex,
         std::unordered_map<uint256,
         std::shared_ptr<MicroLedger>>>                      mMicroLedgerBuffer;     // seq --> (hash, MicroLedger)
+    boost::optional<uint256>                                mAcquiring;
+    std::map<uint32, uint256>                               mAcquireMap;
     std::recursive_mutex                                    mMLBMutex;              // Micro ledger buffer mutex
 
     boost::asio::basic_waitable_timer<
@@ -115,6 +118,24 @@ public:
         return mFinalLedger->ledgerHash();
     }
 
+    inline void setAcquiring(uint256 hash)
+    {
+        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
+        mAcquiring.emplace(hash);
+    }
+
+    inline boost::optional<uint256> getAcquiring()
+    {
+        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
+        return mAcquiring;
+    }
+
+    inline bool hasAcquireMap()
+    {
+        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
+        return mAcquireMap.size();
+    }
+
     bool microLedgersAllReady();
 
     std::vector<std::shared_ptr<MicroLedger const>> const canonicalMicroLedgers();
@@ -129,9 +150,14 @@ public:
 
     void commitMicroLedgerBuffer(LedgerIndex seq);
 
-    boost::optional<uint256> acquireMicroLedgerSet();
+    boost::optional<uint256> acquireMicroLedgerSet(uint256 setID);
 
-    void setTimer(uint32 repeats);
+    void trigger(uint256 setID);
+
+    std::size_t selectPeers(
+        std::set<std::shared_ptr<Peer>>& set,
+        std::size_t limit,
+        std::function<bool(std::shared_ptr<Peer> const&)> score);
 
     void buildFinalLedger(OpenView const& view, std::shared_ptr<Ledger const> ledger);
 
@@ -153,6 +179,7 @@ public:
 
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const& m, std::weak_ptr<PeerImp> weak);
+    void onMessage(std::shared_ptr<protocol::TMMicroLedgerInfos> const& m);
 
     template <class UnaryFunc>
     void

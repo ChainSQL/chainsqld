@@ -45,14 +45,9 @@ Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Jour
     , cfg_(cfg)
     , mTimer(app_.getIOService())
 {
-    // TODO
-
-
 	mValidators = std::make_unique<ValidatorList>(
 		app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
 		journal_, cfg_.VALIDATION_QUORUM);
-
-
 
 	std::vector<std::string> & committeeValidators = cfg_.COMMITTEE_VALIDATORS;
 	std::vector<std::string>  publisherKeys;
@@ -72,8 +67,6 @@ void Committee::addActive(std::shared_ptr<PeerImp> const& peer)
 	std::lock_guard <decltype(mPeersMutex)> lock(mPeersMutex);
 
 	mPeers.emplace_back(std::move(peer));
-
-
 }
 
 void Committee::eraseDeactivate()
@@ -129,6 +122,11 @@ void Committee::onViewChange(
     LedgerIndex preSeq,
     LedgerHash preHash)
 {
+    {
+        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
+        mMicroLedgerBuffer.clear();
+    }
+
     std::shared_ptr<protocol::TMCommitteeViewChange> const& sm =
         vcManager.makeCommitteeViewChange(view, preSeq, preHash);
 
@@ -141,20 +139,28 @@ void Committee::onViewChange(
 
 void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
-    //mMicroLedger.reset();
-
-    auto const& validators = mValidators->validators();
-    assert(validators.size() > 0);
-    int index = (view + seq) % validators.size();
-
-    mIsLeader = (pubkey == validators[index]);
+    mIsLeader = isLeader(pubkey, seq, view);
+    mPreSeq = seq - 1;
 
     mSubmitCompleted = false;
     mFinalLedger.reset();
 
+    mAcquiring.reset();
+    mAcquireMap.clear();
+
     {
         std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        mSignatureBuffer.erase(seq - 1);
+        for (auto iter = mSignatureBuffer.begin(); iter != mSignatureBuffer.end(); )
+        {
+            if (iter->first < seq)
+            {
+                iter = mSignatureBuffer.erase(iter);
+            }
+            else
+            {
+                iter++;
+            }
+        }
     }
 
     mValidators->onConsensusStart(
@@ -169,10 +175,20 @@ void Committee::commitMicroLedgerBuffer(LedgerIndex seq)
 
     mValidMicroLedgers.clear();
 
-    mMicroLedgerBuffer.erase(seq - 1);
+    for (auto iter = mMicroLedgerBuffer.begin(); iter != mMicroLedgerBuffer.end();)
+    {
+        if (iter->first < seq)
+        {
+            iter = mMicroLedgerBuffer.erase(iter);
+        }
+        else
+        {
+            iter++;
+        }
+    }
 
     auto& microLedgersAtSeq = mMicroLedgerBuffer[seq];
-    for (auto it : microLedgersAtSeq)
+    for (auto const& it : microLedgersAtSeq)
     {
         mValidMicroLedgers.emplace(it.second->shardID(), it.second);
     }
@@ -227,76 +243,100 @@ uint32 Committee::firstMissingMicroLedger()
     return std::numeric_limits<std::uint32_t>::max();
 }
 
-boost::optional<uint256> Committee::acquireMicroLedgerSet()
+boost::optional<uint256> Committee::acquireMicroLedgerSet(uint256 setID)
 {
-    if (microLedgersAllReady())
+    if (microLedgersAllReady() && microLedgerSetHash() == setID)
     {
-        return microLedgerSetHash();
+        return setID;
     }
 
-    // Start timer. TODO: Adjust repeat counts.
-    setTimer(12);
+    setAcquiring(setID);
+
+    app_.getJobQueue().addJob(
+        jtML_ACQUIRE, "Send->MicroLedgerAcquire",
+        [this, setID](Job&)
+    {
+        trigger(setID);
+    });
 
     return boost::none;
 }
 
-void Committee::setTimer(uint32 repeats)
+std::size_t Committee::selectPeers(
+    std::set<std::shared_ptr<Peer>>& set,
+    std::size_t limit,
+    std::function<bool(std::shared_ptr<Peer> const&)> score)
 {
-    bool shouldAcquire = !microLedgersAllReady();
-
-    auto app = &app_;
-    app_.getJobQueue().addJob(
-        jtML_ACQUIRE, "Send->MicroLedgerAcquire",
-        [this, app, shouldAcquire](Job&)
+    using item = std::pair<int, std::shared_ptr<PeerImp>>;
+    std::vector<item> v;
     {
-        if (shouldAcquire)
-        {
-            protocol::TMMicroLedgerAcquire m;
-            m.set_ledgerindex(app->getLedgerMaster().getValidLedgerIndex() + 1);
-            m.set_shardid(firstMissingMicroLedger());
+        std::lock_guard<std::recursive_mutex> _(mPeersMutex);
+        v.reserve(mPeers.size());
+    }
 
-            m.set_nodepubkey(app->getValidationPublicKey().data(),
-                app->getValidationPublicKey().size());
-
-            auto signingHash = sha512Half(
-                m.ledgerindex(),
-                m.shardid());
-
-            auto sign = signDigest(app->getValidationPublicKey(),
-                app->getValidationSecretKey(),
-                signingHash);
-
-            m.set_signature(sign.data(), sign.size());
-
-            auto const sm = std::make_shared<Message>(
-                m, protocol::mtMICROLEDGER_ACQUIRE);
-            {
-                std::lock_guard<std::recursive_mutex> _(mPeersMutex);
-                if (auto p = mPeers[mPeers.size() <= 1 ? 0 : rand_int((size_t)0, mPeers.size() - 1)].lock())
-                {
-                    p->send(sm);
-                }
-            }
-        }
-        else
-        {
-            app->getOPs().getConsensus().gotMicroLedgerSet(
-                app->timeKeeper().closeTime(),
-                microLedgerSetHash());
-        }
+    for_each([&](std::shared_ptr<PeerImp>&& e)
+    {
+        auto const s = e->getScore(score(e));
+        v.emplace_back(s, std::move(e));
     });
 
-    if (--repeats > 0 && shouldAcquire)
+    std::sort(v.begin(), v.end(),
+        [](item const& lhs, item const&rhs)
     {
-        mTimer.expires_from_now(ML_ACQUIRE_TIMEOUT);
-        mTimer.async_wait(
-            [&](boost::system::error_code const& ec)
-        {
-            if (ec == boost::asio::error::operation_aborted)
-                return;
+        return lhs.first > rhs.first;
+    });
 
-            setTimer(repeats);
-        });
+    std::size_t accepted = 0;
+    for (auto const& e : v)
+    {
+        if (set.insert(e.second).second && ++accepted >= limit)
+            break;
+    }
+    return accepted;
+}
+
+void Committee::trigger(uint256 setID)
+{
+    if (microLedgersAllReady() && microLedgerSetHash() == setID)
+    {
+        app_.getOPs().getConsensus().gotMicroLedgerSet(
+            app_.timeKeeper().closeTime(),
+            setID);
+        return;
+    }
+
+    protocol::TMMicroLedgerAcquire m;
+    m.set_ledgerindex(mPreSeq + 1);
+    m.set_setid(setID.data(), setID.size());
+
+    m.set_nodepubkey(app_.getValidationPublicKey().data(),
+        app_.getValidationPublicKey().size());
+
+    auto signingHash = sha512Half(
+        m.ledgerindex(),
+        setID);
+
+    auto sign = signDigest(app_.getValidationPublicKey(),
+        app_.getValidationSecretKey(),
+        signingHash);
+
+    m.set_signature(sign.data(), sign.size());
+
+    if (hasAcquireMap())
+    {
+        m.set_shardid(firstMissingMicroLedger());
+    }
+
+    auto const sm = std::make_shared<Message>(m, protocol::mtMICROLEDGER_ACQUIRE);
+    std::set<std::shared_ptr<Peer>> peers;
+    selectPeers(peers, 1, ScoreHasTxSet(setID));
+    for (auto const& p : peers)
+    {
+        JLOG(journal_.info()) << "send "
+            << TrafficCount::getName(static_cast<TrafficCount::category>(sm->getCategory()))
+            << " to committee[" << p->getShardRole() << ":" << p->getShardIndex()
+            << ":" << p->getRemoteAddress() << "]";
+        p->send(sm);
     }
 }
 
@@ -328,11 +368,11 @@ void Committee::commitSignatureBuffer()
     auto iter = mSignatureBuffer.find(mFinalLedger->seq());
     if (iter != mSignatureBuffer.end())
     {
-        for (auto it = iter->second.begin(); it != iter->second.end(); ++it)
+        for (auto const& it : iter->second)
         {
-            if (std::get<0>(*it) == mFinalLedger->ledgerHash())
+            if (std::get<0>(it) == mFinalLedger->ledgerHash())
             {
-                mFinalLedger->addSignature(std::get<1>(*it), std::get<2>(*it));
+                mFinalLedger->addSignature(std::get<1>(it), std::get<2>(it));
             }
         }
     }
@@ -343,7 +383,7 @@ void Committee::recvValidation(PublicKey& pubKey, STValidation& val)
     LedgerIndex seq = val.getFieldU32(sfLedgerSequence);
     uint256 finalLedgerHash = val.getFieldH256(sfFinalLedgerHash);
 
-    if (seq <= app_.getLedgerMaster().getValidLedgerIndex())
+    if (seq <= mPreSeq)
     {
         JLOG(journal_.warn()) << "Validation for ledger seq(" << seq << ") from "
             << toBase58(TokenType::TOKEN_NODE_PUBLIC, pubKey) << " is stale";
@@ -576,19 +616,8 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& 
     }
 
     uint32 shardID = microLedger->shardID();
-
-    {
-        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
-
-        if (mValidMicroLedgers.find(shardID) != mValidMicroLedgers.end())
-        {
-            JLOG(journal_.info()) << "Duplicate microledger received for shard " << shardID;
-            return;
-        }
-    }
-
     LedgerIndex seq = microLedger->seq();
-    LedgerIndex curSeq = app_.getLedgerMaster().getValidLedgerIndex() + 1;
+    LedgerIndex curSeq = mPreSeq + 1;
     if (seq < curSeq)
     {
         JLOG(journal_.info()) << "This microledger submission is too late";
@@ -611,13 +640,44 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& 
     if (seq == curSeq)
     {
         std::lock_guard<std::recursive_mutex> _(mMLBMutex);
-        mValidMicroLedgers.emplace(shardID, microLedger);
-        return;
+        auto setID = mAcquiring;
+        if (setID && mAcquireMap.size())
+        {
+            if (microLedger->ledgerHash() == mAcquireMap[shardID])
+            {
+                mValidMicroLedgers.emplace(shardID, microLedger);
+                app_.getJobQueue().addJob(
+                    jtML_ACQUIRE, "Send->MicroLedgerAcquire",
+                    [this, setID](Job&)
+                {
+                    trigger(*setID);
+                });
+            }
+            else
+            {
+                JLOG(journal_.info()) << "Discard this microledger, because finalLedger will don't contain it";
+            }
+            return;
+        }
+        else
+        {
+            if (mValidMicroLedgers.emplace(shardID, microLedger).second)
+            {
+                return;
+            }
+            else
+            {
+                JLOG(journal_.info()) << "Duplicate microledger received for shard " << shardID << ", buffer it";
+            }
+        }
     }
 
-    JLOG(journal_.info()) << "This microledger submission is advancing, buffer it";
+    if (seq > curSeq)
+    {
+        JLOG(journal_.info()) << "This microledger submission is advancing, buffer it";
+    }
 
-    // seq big than curSeq, buffer it.
+    // seq big than curSeq or duplicate microledger, buffer it.
     {
         std::lock_guard<std::recursive_mutex> _(mMLBMutex);
 
@@ -640,10 +700,18 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& 
 void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const& m, std::weak_ptr<PeerImp> weak)
 {
     LedgerIndex seq = m->ledgerindex();
-    if (seq != app_.getLedgerMaster().getValidLedgerIndex() + 1)
+    if (seq != mPreSeq + 1)
     {
-        JLOG(journal_.info()) << "Recv micro ledger acquire, acquired seq(seq), but we are on "
-            << app_.getLedgerMaster().getValidLedgerIndex() + 1;
+        JLOG(journal_.info()) << "Recv micro ledger acquire, acquired seq(" << seq <<
+            "), but we are on " << mPreSeq + 1;
+        return;
+    }
+
+    uint256 setID;
+    memcpy(setID.begin(), m->setid().data(), 32);
+    if (!microLedgersAllReady() || setID != microLedgerSetHash())
+    {
+        JLOG(journal_.info()) << "Recv micro ledger acquire, acquired setID missing too or mismatch";
         return;
     }
 
@@ -654,28 +722,142 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const&
         return;
     }
 
-    uint32 shardID = m->shardid();
-    if (mValidMicroLedgers.find(shardID) == mValidMicroLedgers.end())
-    {
-        JLOG(journal_.info()) << "Recv micro ledger acquire, acquire shardID(shardID), missing too";
-        return;
-    }
-
-    auto signingHash = sha512Half(seq, shardID);
+    auto signingHash = sha512Half(seq, setID);
     if (!verifyDigest(publicKey, signingHash, makeSlice(m->signature()), false))
     {
         JLOG(journal_.warn()) << "Recv micro ledger acquire fails sig check";
         return;
     }
 
-    protocol::TMMicroLedgerSubmit ms;
+    std::shared_ptr<Message> msg;
 
-    mValidMicroLedgers.find(shardID)->second->compose(ms, false);
-
-    if (auto peer = weak.lock())
+    if (m->has_shardid())
     {
-        peer->send(std::make_shared<Message>(ms, protocol::mtMICROLEDGER_SUBMIT));
+        uint32 shardID = m->shardid();
+        if (mValidMicroLedgers.find(shardID) == mValidMicroLedgers.end())
+        {
+            JLOG(journal_.info()) << "Recv micro ledger acquire, acquire shardID(" << shardID << "), missing too";
+            return;
+        }
+
+        protocol::TMMicroLedgerSubmit ms;
+        mValidMicroLedgers[shardID]->compose(ms, false);
+        msg = std::make_shared<Message>(ms, protocol::mtMICROLEDGER_SUBMIT);
     }
+    else
+    {
+        protocol::TMMicroLedgerInfos mi;
+
+        for (auto const& it : mValidMicroLedgers)
+        {
+            protocol::MLInfo& mInfo = *mi.add_microledgers();
+            mInfo.set_shardid(it.first);
+            mInfo.set_mlhash(it.second->ledgerHash().data(), it.second->ledgerHash().size());
+        }
+
+        mi.set_nodepubkey(app_.getValidationPublicKey().data(),
+            app_.getValidationPublicKey().size());
+        auto sign = signDigest(app_.getValidationPublicKey(),
+            app_.getValidationSecretKey(),
+            setID);
+        mi.set_signature(sign.data(), sign.size());
+        msg = std::make_shared<Message>(mi, protocol::mtMICROLEDGER_INFOS);
+    }
+
+    if (auto p = weak.lock())
+    {
+        JLOG(journal_.info()) << "send "
+            << TrafficCount::getName(static_cast<TrafficCount::category>(msg->getCategory()))
+            << " to committee[" << p->getShardRole() << ":" << p->getShardIndex()
+            << ":" << p->getRemoteAddress() << "]";
+        p->send(msg);
+    }
+}
+
+void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerInfos> const& m)
+{
+    if (!getAcquiring())
+    {
+        JLOG(journal_.info()) << "Recv microledger_infos, but I'm not acquiring";
+        return;
+    }
+
+    std::map<uint32, uint256> microLedgerInfos;
+    for (int i = 0; i < m->microledgers().size(); i++)
+    {
+        protocol::MLInfo const& mbInfo = m->microledgers(i);
+        ripple::LedgerHash mbHash;
+        memcpy(mbHash.begin(), mbInfo.mlhash().data(), 32);
+        microLedgerInfos[mbInfo.shardid()] = mbHash;
+    }
+
+    using beast::hash_append;
+    uint256 setID = zero;
+    if (microLedgerInfos.size() > 0)
+    {
+        sha512_half_hasher h;
+        for (auto const& it : microLedgerInfos)
+        {
+            hash_append(h, it.second);
+        }
+        setID = static_cast<typename sha512_half_hasher::result_type>(h);
+    }
+
+    if (!app_.getHashRouter().shouldRelay(setID))
+    {
+        JLOG(journal_.info()) << "MicroLegerInfos: duplicate";
+        return;
+    }
+
+    PublicKey const publicKey(makeSlice(m->nodepubkey()));
+    if (!mValidators->trusted(publicKey))
+    {
+        JLOG(journal_.info()) << "Recv untrusted peer microledger_infos";
+        return;
+    }
+
+    if (!verifyDigest(publicKey, setID, makeSlice(m->signature()), false))
+    {
+        JLOG(journal_.warn()) << "Recv microledger_infos fails sig check";
+        return;
+    }
+
+    if (!getAcquiring() || getAcquiring().get() != setID)
+    {
+        JLOG(journal_.info()) << "Recv microledger_infos, mismatch";
+        return;
+    }
+
+    {
+        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
+        for (auto const& it : microLedgerInfos)
+        {
+            mAcquireMap[it.first] = it.second;
+            if (mValidMicroLedgers.find(it.first) != mValidMicroLedgers.end() &&
+                mValidMicroLedgers[it.first]->ledgerHash() != it.second)
+            {
+                // erase wrong
+                mValidMicroLedgers.erase(it.first);
+            }
+            if (mValidMicroLedgers.find(it.first) == mValidMicroLedgers.end())
+            {
+                for (auto const& buffed : mMicroLedgerBuffer[mPreSeq + 1])
+                {
+                    if (it.first == buffed.second->shardID() && it.second == buffed.first)
+                    {
+                        mValidMicroLedgers.emplace(it.first, buffed.second);
+                    }
+                }
+            }
+        }
+    }
+
+    app_.getJobQueue().addJob(
+        jtML_ACQUIRE, "Send->MicroLedgerAcquire",
+        [this, setID](Job&)
+    {
+        trigger(setID);
+    });
 }
 
 }

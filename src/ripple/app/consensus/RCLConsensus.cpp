@@ -258,6 +258,12 @@ RCLConsensus::Adaptor::sendViewChange(ViewChange& change)
 }
 
 void
+RCLConsensus::Adaptor::relay(uint256 setID, RCLTxSet const& set)
+{
+    inboundTransactions_.giveSet(setID, set.map_, false);
+}
+
+void
 RCLConsensus::Adaptor::relay(RCLTxSet const& set)
 {
     inboundTransactions_.giveSet(set.id(), set.map_, false);

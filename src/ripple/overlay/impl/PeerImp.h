@@ -435,6 +435,7 @@ public:
     void onMessage (std::shared_ptr <protocol::TMMicroLedgerSubmit> const& m);
     void onMessage (std::shared_ptr <protocol::TMFinalLedgerSubmit> const& m);
     void onMessage (std::shared_ptr <protocol::TMMicroLedgerAcquire> const& m);
+    void onMessage (std::shared_ptr <protocol::TMMicroLedgerInfos> const& m);
 	void onMessage (std::shared_ptr <protocol::TMTransactions> const& m);
     void onMessage (std::shared_ptr <protocol::TMCommitteeViewChange> const& m);
 

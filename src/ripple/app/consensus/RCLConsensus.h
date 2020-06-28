@@ -251,6 +251,9 @@ class RCLConsensus
             @param set The TxSet to share.
         */
         void
+        relay(uint256 setID, RCLTxSet const& set);
+
+        void
         relay(RCLTxSet const& set);
 
         /** Get the ID of the previous ledger/last closed ledger(LCL) on the

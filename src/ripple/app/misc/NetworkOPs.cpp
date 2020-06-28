@@ -342,6 +342,7 @@ public:
         protocol::TxSetStatus status);
 
     void mapComplete (
+        uint256 hash,
         std::shared_ptr<SHAMap> const& map,
         bool fromAcquire) override;
 
@@ -1805,7 +1806,7 @@ void NetworkOPsImp::processTrustedProposal (
 
 void
 NetworkOPsImp::mapComplete (
-    std::shared_ptr<SHAMap> const& map, bool fromAcquire)
+    uint256 hash, std::shared_ptr<SHAMap> const& map, bool fromAcquire)
 {
     // We now have an additional transaction set
     // either created locally during the consensus process
@@ -1813,13 +1814,11 @@ NetworkOPsImp::mapComplete (
 
     // Inform peers we have this set
     protocol::TMHaveTransactionSet msg;
-    msg.set_hash (map->getHash().as_uint256().begin(), 256 / 8);
+    //msg.set_hash (map->getHash().as_uint256().begin(), 256 / 8);
+    msg.set_hash(hash.begin(), 256 / 8);
     msg.set_status (protocol::tsHAVE);
-    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
-    {
-        app_.getShardManager().node().sendMessage(
-            std::make_shared<Message>(msg, protocol::mtHAVE_SET));
-    }
+    app_.getShardManager().nodeBase().sendMessage(
+        std::make_shared<Message>(msg, protocol::mtHAVE_SET));
     //app_.overlay().foreach (send_always (
     //    std::make_shared<Message> (
     //        msg, protocol::mtHAVE_SET)));

@@ -469,10 +469,10 @@ public:
             ( *this, stopwatch()
             , *m_jobQueue
             , m_collectorManager->collector ()
-            , [this](std::shared_ptr <SHAMap> const& set,
+            , [this](uint256 setID, std::shared_ptr <SHAMap> const& set,
                 bool fromAcquire)
             {
-                gotTXSet (set, fromAcquire);
+                gotTXSet (setID, set, fromAcquire);
             }))
 
         , m_acceptedLedgerCache("AcceptedLedger", /*4*/16, /*60*/600, stopwatch(),
@@ -733,10 +733,10 @@ public:
         return m_acceptedLedgerCache;
     }
 
-    void gotTXSet (std::shared_ptr<SHAMap> const& set, bool fromAcquire)
+    void gotTXSet (uint256 setID, std::shared_ptr<SHAMap> const& set, bool fromAcquire)
     {
         if (set)
-            m_networkOPs->mapComplete (set, fromAcquire);
+            m_networkOPs->mapComplete (setID, set, fromAcquire);
     }
 
     TransactionMaster& getMasterTransaction () override

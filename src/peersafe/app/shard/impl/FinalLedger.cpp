@@ -141,7 +141,7 @@ FinalLedger::FinalLedger(protocol::TMFinalLedgerSubmit const& m)
 
 	for (int i = 0; i < finalLedger.microledgers().size(); i++)
 	{
-		protocol::FinalLedger_MLInfo const& mbInfo = finalLedger.microledgers(i);
+		protocol::MLInfo const& mbInfo = finalLedger.microledgers(i);
 		ripple::LedgerHash mbHash;
 		memcpy(mbHash.begin(), mbInfo.mlhash().data(), 32);
 		mMicroLedgers[mbInfo.shardid()] = mbHash;
@@ -196,7 +196,7 @@ void FinalLedger::compose(protocol::TMFinalLedgerSubmit& ms)
     // Micro ledger infos.
     for (auto const& microLeger : mMicroLedgers)
     {
-        protocol::FinalLedger_MLInfo& mInfo = *m.add_microledgers();
+        protocol::MLInfo& mInfo = *m.add_microledgers();
         mInfo.set_shardid(microLeger.first);
         mInfo.set_mlhash(microLeger.second.data(), microLeger.second.size());
     }

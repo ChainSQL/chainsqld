@@ -48,6 +48,7 @@ private:
     // These field used if I'm a shard node.
     uint32                                                  mShardID;
     bool                                                    mIsLeader       = false;
+    LedgerIndex                                             mPreSeq;
     // Keep current round of micro ledgers, every view change can generate
     // a micro ledger. The final ledger of this round only contains 
     // one of the micro ledger, and not sure it will contains which one.

@@ -78,6 +78,7 @@ public:
         CT_micro_ledger,
         CT_final_ledger,
         CT_micro_ledger_acquire,
+        CT_micro_ledger_infos,
         CT_committee_viewchange,
         CT_unknown         // must be last
     };

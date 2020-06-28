@@ -807,7 +807,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 	}
     else
     {
-        if (auto set = adaptor_.app_.getShardManager().committee().acquireMicroLedgerSet())
+        if (auto set = adaptor_.app_.getShardManager().committee().acquireMicroLedgerSet(newPeerProp.position()))
         {
             gotMicroLedgerSet(now_, *set);
         }
@@ -961,7 +961,7 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 {
-    JLOG(j_.info()) << "timerEntry phase:" << to_string(phase_);
+    JLOG(j_.debug()) << "timerEntry phase:" << to_string(phase_);
 	// Nothing to do if we are currently working on a ledger
 	if (phase_ == ConsensusPhase::accepted)
 		return;
@@ -1133,7 +1133,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			// Share the newly created transaction set if we haven't already
 			// received it from a peer
 			if (acquired_.emplace(*setID_, result_->set).second)
-				adaptor_.relay(result_->set);
+				adaptor_.relay(*setID_, result_->set);
 
 			adaptor_.propose(result_->position);
 
