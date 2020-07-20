@@ -831,7 +831,7 @@ static bool saveValidatedLedger (
     }
 
     // TODO(tom): Fix this hard-coded SQL!
-    JLOG (j.trace())
+    JLOG (j.info())
         << "saveValidatedLedger "
         << (current ? "" : "fromAcquire ") << ledger->info().seq;
     static boost::format deleteLedger (
@@ -1035,6 +1035,8 @@ static bool saveValidatedLedger (
 
     // Clients can now trust the database for
     // information about this ledger sequence.
+	JLOG(j.info())
+		<< "saveValidatedLedger finishWork: " << seq;
     app.pendingSaves().finishWork(seq);
     return true;
 }
@@ -1178,7 +1180,7 @@ loadLedgerHelper(std::string const& sqlSuffix, Application& app)
 
     if (!db->got_data ())
     {
-        auto stream = app.journal("Ledger").debug();
+        auto stream = app.journal("Ledger").info();
         JLOG (stream) << "Ledger not found: " << sqlSuffix;
         return std::make_tuple (
             std::shared_ptr<Ledger>(),

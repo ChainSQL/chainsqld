@@ -492,6 +492,7 @@ LedgerMaster::tryFill (
     Job& job,
     std::shared_ptr<Ledger const> ledger)
 {
+	JLOG(m_journal.info()) << "tryFill:" << ledger->info().seq;
     std::uint32_t seq = ledger->info().seq;
     uint256 prevHash = ledger->info().parentHash;
 
@@ -576,6 +577,7 @@ LedgerMaster::tryFill (
 
 			{
 				ScopedLockType ml(mCompleteLock);
+				JLOG(m_journal.info()) << "tryFill setRange [" << minHas<<","<<maxHas<<"]";
 				mCompleteLedgers.setRange(minHas, maxHas);
 				// ScopedLockType ml(mCompleteLock);
 				// mCompleteLedgers.insert(range(minHas, maxHas));
@@ -598,6 +600,7 @@ LedgerMaster::tryFill (
 
     {
         ScopedLockType ml (mCompleteLock);
+		JLOG(m_journal.info()) << "tryFill setRange [" << minHas << "," << maxHas << "]";
         mCompleteLedgers.setRange (minHas, maxHas);
         // mCompleteLedgers.insert(range(minHas, maxHas));
     }
@@ -720,7 +723,7 @@ LedgerMaster::setFullLedger (
         bool isSynchronous, bool isCurrent)
 {
     // A new ledger has been accepted as part of the trusted chain
-    JLOG (m_journal.debug()) <<
+    JLOG (m_journal.info()) <<
         "Ledger " << ledger->info().seq <<
         " accepted :" << ledger->info().hash;
     assert (ledger->stateMap().getHash ().isNonZero ());
@@ -2008,7 +2011,7 @@ LedgerMaster::shouldAcquire (
             (candidateLedger > ledgerHistoryIndex)) ||
         (currentLedger - candidateLedger) <= ledgerHistory);
 
-    JLOG (m_journal.trace())
+    JLOG (m_journal.info())
         << "Missing ledger "
         << candidateLedger
         << (ret ? " should" : " should NOT")
@@ -2042,14 +2045,14 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                     // maybeMissing =
                     //     prevMissing(mCompleteLedgers, mPubLedger->info().seq);
                 }
-                JLOG (m_journal.trace())
+                JLOG (m_journal.info())
                     << "tryAdvance discovered missing " << missing;
                 if ((missing != RangeSet::absent) && (missing > 0) &&
                     shouldAcquire (mValidLedgerSeq, ledger_history_,
                         app_.getSHAMapStore ().getCanDelete (), missing) &&
                     ((mFillInProgress == 0) || (missing > mFillInProgress)))
                 {
-                    JLOG (m_journal.trace())
+                    JLOG (m_journal.info())
                         << "advanceThread should acquire";
                     {
                         ScopedUnlockType sl(m_mutex);
@@ -2063,6 +2066,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                                 if (!app_.getInboundLedgers().isFailure (
                                         *hash))
                                 {
+									JLOG(m_journal.info()) << "";
                                     ledger =
                                         app_.getInboundLedgers().acquire(
                                             *hash, missing,
@@ -2089,7 +2093,7 @@ void LedgerMaster::doAdvance (ScopedLockType& sl)
                             {
                                 auto seq = ledger->info().seq;
                                 assert(seq == missing);
-                                JLOG (m_journal.trace())
+                                JLOG (m_journal.info())
                                         << "tryAdvance acquired "
                                         << ledger->info().seq;
                                 setFullLedger(
