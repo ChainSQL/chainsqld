@@ -760,7 +760,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
     }
     else accountID = *oAccountID;
 	
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     if (hEObj != NULL)
     {
         try

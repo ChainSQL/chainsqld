@@ -591,7 +591,7 @@ Json::Value TxPrepareBase::prepareForCreate()
     std::string raw = tx_json_[jss::Raw].toStyledString();
     Blob raw_blob = strCopy(raw);
     Blob rawCipher;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     Blob plainBlob;
     // get random password
     Blob passBlob = RippleAddress::getRandomPassword();
@@ -634,7 +634,7 @@ Json::Value TxPrepareBase::prepareForAssign()
     PublicKey public_key;
     SecretKey secret_key;
 	std::string sPublic_key = tx_json_["PublicKey"].asString();
-	HardEncrypt* hEObj = HardEncryptObj::getInstance();
+	GmEncrypt* hEObj = GmEncryptObj::getInstance();
     if (nullptr == hEObj)
     {
         auto oPublicKey = parseBase58<PublicKey>(TOKEN_ACCOUNT_PUBLIC, sPublic_key);
@@ -701,7 +701,7 @@ Json::Value TxPrepareBase::prepareForAssign()
 Json::Value TxPrepareBase::prepareForOperating()
 {
 	Json::Value ret;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     SecretKey secret_key;
     if (nullptr == hEObj)
     {

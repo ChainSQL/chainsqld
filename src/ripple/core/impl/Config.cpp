@@ -27,7 +27,7 @@
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/beast/core/LexicalCast.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <beast/core/string.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
@@ -332,7 +332,7 @@ void Config::loadFromString (std::string const& fileContents)
         if(gmSwitchSection.exists("gm_type"))
         {
             auto gmType = gmSwitchSection.get<std::string>("gm_type");
-            HardEncryptObj::setGmAlgType(HardEncryptObj::fromString(*gmType));
+            GmEncryptObj::setGmAlgType(GmEncryptObj::fromString(*gmType));
         }
         if(gmSwitchSection.exists("gm_self_check"))
         {

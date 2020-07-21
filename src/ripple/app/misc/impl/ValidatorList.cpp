@@ -154,7 +154,7 @@ ValidatorList::load (
         }
 
         PublicKey id;
-        if (nullptr == HardEncryptObj::getInstance())
+        if (nullptr == GmEncryptObj::getInstance())
         {
             auto const oId = parseBase58<PublicKey>(
                 TokenType::TOKEN_NODE_PUBLIC, match[1]);

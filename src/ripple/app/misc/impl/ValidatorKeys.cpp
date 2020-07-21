@@ -70,7 +70,7 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
     }
     else if (config.exists(SECTION_VALIDATION_SEED))
     {
-		HardEncrypt* hEObj = HardEncryptObj::getInstance();
+		GmEncrypt* hEObj = GmEncryptObj::getInstance();
 		if (nullptr == hEObj)
 		{
 			auto const seed = parseBase58<Seed>(

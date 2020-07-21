@@ -28,7 +28,7 @@
 #include <ripple/protocol/RippleAddress.h>
 #include <ripple/protocol/Seed.h>
 //#include <ripple/protocol/SecretKey.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <boost/optional.hpp>
 #include <algorithm>
 #include <cstdint>

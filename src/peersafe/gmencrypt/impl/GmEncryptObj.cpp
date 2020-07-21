@@ -17,34 +17,34 @@
  */
 //==============================================================================
 
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 //#include <gmencrypt/hardencrypt/sdkey.h>
-#include <peersafe/gmencrypt/hardencrypt/sjk1238_26.h>
+#include <peersafe/gmencrypt/hardencrypt/sjkCard.h>
 #include <peersafe/gmencrypt/softencrypt/GmSoftEncrypt.h>
 
 // #ifdef SD_KEY_SWITCH
-// HardEncryptObj::hardEncryptType HardEncryptObj::hEType_ = HardEncryptObj::hardEncryptType::sdkeyType;
+// GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = GmEncryptObj::gmAlgType::sdkeyType;
 // #else
-// HardEncryptObj::hardEncryptType HardEncryptObj::hEType_ = HardEncryptObj::hardEncryptType::sjk1238Type;
+// GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = GmEncryptObj::gmAlgType::sjkCardType;
 // #endif
-HardEncryptObj::gmAlgType HardEncryptObj::hEType_ = gmAlgType::sjk1238Type;
+GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = gmAlgType::sjkCardType;
 
-HardEncryptObj::gmAlgType HardEncryptObj::fromString(std::string gmAlgTypeStr)
+GmEncryptObj::gmAlgType GmEncryptObj::fromString(std::string gmAlgTypeStr)
 {
     if(gmAlgTypeStr == "soft")
         return gmAlgType::soft;
     if(gmAlgTypeStr == "hard")
-        return gmAlgType::sjk1238Type;
+        return gmAlgType::sjkCardType;
     return gmAlgType::unknown;
 }
 
-void HardEncryptObj::setGmAlgType(gmAlgType gmAlgType)
+void GmEncryptObj::setGmAlgType(gmAlgType gmAlgType)
 {
-    HardEncryptObj::hEType_ = gmAlgType;
+    GmEncryptObj::hEType_ = gmAlgType;
 }
 
-//HardEncrypt* HardEncryptObj::getInstance(hardEncryptType hEType)
-HardEncrypt* HardEncryptObj::getInstance()
+//GmEncrypt* GmEncryptObj::getInstance(gmAlgType hEType)
+GmEncrypt* GmEncryptObj::getInstance()
 {
 #ifdef GM_ALG_PROCESS
     switch (hEType_)
@@ -54,12 +54,12 @@ HardEncrypt* HardEncryptObj::getInstance()
         static SDkey objSdkey;
         return &objSdkey;
 #endif
-    case gmAlgType::sjk1238Type:
+    case gmAlgType::sjkCardType:
     {
-        static SJK1238 objSjk1238;
-        if (objSjk1238.isHardEncryptExist())
+        static SJKCard objSjkCard;
+        if (objSjkCard.isHardEncryptExist())
         {
-            return &objSjk1238;
+            return &objSjkCard;
         }
         else
         {
@@ -79,7 +79,7 @@ HardEncrypt* HardEncryptObj::getInstance()
     }
 #endif
     default:
-        std::cout << "hardEncryptType error!" << std::endl;
+        std::cout << "GmEncryptType error!" << std::endl;
     }
 #endif
     return nullptr;

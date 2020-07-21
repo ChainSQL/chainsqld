@@ -24,7 +24,7 @@
 #include <ripple/beast/crypto/ripemd.h>
 #include <ripple/beast/crypto/sha2.h>
 #include <ripple/beast/hash/endian.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <algorithm>
 #include <array>
 
@@ -269,8 +269,8 @@ sha512_half_hasher::result_type
 sha512Half (Args const&... args)
 {
     using beast::hash_append;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    HardEncrypt::SM3Hash objSM3(hEObj);//refObjSM3 = hEObj->getSM3Obj();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
+    GmEncrypt::SM3Hash objSM3(hEObj);//refObjSM3 = hEObj->getSM3Obj();
 
     if (nullptr != hEObj)
     {

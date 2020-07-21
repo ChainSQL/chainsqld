@@ -857,7 +857,7 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
 	{
 		//decrypt passphrase
         Blob rawDecrypted = tokenProcObj_.symmertryDecrypt(raw);
-        //HardEncrypt* hEObj = HardEncryptObj::getInstance();
+        //GmEncrypt* hEObj = GmEncryptObj::getInstance();
         //if (nullptr == hEObj)
         //{
         //    rawDecrypted = RippleAddress::decryptAES(passBlob_, raw);

@@ -17,8 +17,8 @@
  */
 //==============================================================================
 
-#include <peersafe/gmencrypt/hardencrypt/sjk1238_26.h>
-#include <peersafe/gmencrypt/hardencrypt/gmCheck.h>
+#include <peersafe/gmencrypt/hardencrypt/sjkCard.h>
+#include <peersafe/gmencrypt/GmCheck.h>
 #include <cstdlib>
 #include <iostream>
 extern "C" {
@@ -27,7 +27,7 @@ extern "C" {
 
 #ifdef GM_ALG_PROCESS
 
-unsigned long  SJK1238::OpenDevice()
+unsigned long  SJKCard::OpenDevice()
 {
     unsigned int rv = 0;
     rv = SDF_OpenDevice((SGD_HANDLE*)&hEkey_);
@@ -41,7 +41,7 @@ unsigned long  SJK1238::OpenDevice()
     SDF_OpenSession((SGD_HANDLE)hEkey_, (SGD_HANDLE*)&hSessionHandle_);
     return 0;
 }
-unsigned long  SJK1238::CloseDevice()
+unsigned long  SJKCard::CloseDevice()
 {
     if(!CloseSession(hSessionHandle_))
         return -1;
@@ -60,7 +60,7 @@ unsigned long  SJK1238::CloseDevice()
     DebugPrint("device handle is null.");
     return -1;
 }
-unsigned long SJK1238::OpenSession(HANDLE hKey, SGD_HANDLE *phSessionHandle)
+unsigned long SJKCard::OpenSession(HANDLE hKey, SGD_HANDLE *phSessionHandle)
 {
     int rv;
     rv = SDF_OpenSession(hKey, phSessionHandle);
@@ -70,7 +70,7 @@ unsigned long SJK1238::OpenSession(HANDLE hKey, SGD_HANDLE *phSessionHandle)
     }
     return rv;
 }
-unsigned long  SJK1238::CloseSession(HANDLE hSession)
+unsigned long  SJKCard::CloseSession(HANDLE hSession)
 {
     int rv;
     if (hSession != nullptr)
@@ -85,16 +85,16 @@ unsigned long  SJK1238::CloseSession(HANDLE hSession)
     }
 }
 
-std::pair<unsigned char*, int> SJK1238::getPublicKey()
+std::pair<unsigned char*, int> SJKCard::getPublicKey()
 {
     mergePublicXYkey(pubKeyUser_, pubKeyUserExt_);
     return std::make_pair(pubKeyUser_,sizeof(pubKeyUser_));
 }
-std::pair<unsigned char*, int> SJK1238::getPrivateKey()
+std::pair<unsigned char*, int> SJKCard::getPrivateKey()
 {
     return std::make_pair(priKeyUserExt_.D,sizeof(priKeyUserExt_.D));
 }
-void SJK1238::mergePublicXYkey(unsigned char* publickey, ECCrefPublicKey& originalPublicKey)
+void SJKCard::mergePublicXYkey(unsigned char* publickey, ECCrefPublicKey& originalPublicKey)
 {
     if (GM_ALG_MARK == publickey[0])
         return;
@@ -105,7 +105,7 @@ void SJK1238::mergePublicXYkey(unsigned char* publickey, ECCrefPublicKey& origin
         memcpy(publickey + 33, originalPublicKey.y, sizeof(originalPublicKey.y));
     }
 }
-unsigned long SJK1238::GenerateRandom(unsigned int uiLength, unsigned char * pucRandomBuf)
+unsigned long SJKCard::GenerateRandom(unsigned int uiLength, unsigned char * pucRandomBuf)
 {
 	int rv;
 	memset(pucRandomBuf, 0, sizeof(pucRandomBuf));
@@ -123,7 +123,7 @@ unsigned long SJK1238::GenerateRandom(unsigned int uiLength, unsigned char * puc
 		return 0;
 	}
 }
-unsigned long SJK1238::GenerateRandom2File(unsigned int uiLength, unsigned char * pucRandomBuf,int times)
+unsigned long SJKCard::GenerateRandom2File(unsigned int uiLength, unsigned char * pucRandomBuf,int times)
 {
 	int rv, tmpLen;
 	unsigned char pbtmpBuffer[1024];
@@ -173,12 +173,12 @@ unsigned long SJK1238::GenerateRandom2File(unsigned int uiLength, unsigned char 
 	return 0;
 }
 
-bool SJK1238::randomSingleCheck(unsigned long randomCheckLen)
+bool SJKCard::randomSingleCheck(unsigned long randomCheckLen)
 {
     return GMCheck::getInstance()->randomSingleCheck(randomCheckLen);
 }
 
-unsigned long SJK1238::getPrivateKeyRight(unsigned int uiKeyIndex, unsigned char * pucPassword, unsigned int uiPwdLength)
+unsigned long SJKCard::getPrivateKeyRight(unsigned int uiKeyIndex, unsigned char * pucPassword, unsigned int uiPwdLength)
 {
 	int rv;
 	rv = SDF_GetPrivateKeyAccessRight(hSessionHandle_, uiKeyIndex, (unsigned char*)priKeyAccessCode_g.c_str(), priKeyAccessCode_g.size());
@@ -195,7 +195,7 @@ unsigned long SJK1238::getPrivateKeyRight(unsigned int uiKeyIndex, unsigned char
 	return 0;
 }
 
-unsigned long SJK1238::releasePrivateKeyRight(unsigned int uiKeyIndex)
+unsigned long SJKCard::releasePrivateKeyRight(unsigned int uiKeyIndex)
 {
 	int rv;
 	rv = SDF_ReleasePrivateKeyAccessRight(hSessionHandle_, uiKeyIndex);
@@ -211,7 +211,7 @@ unsigned long SJK1238::releasePrivateKeyRight(unsigned int uiKeyIndex)
 	}
 	return 0;
 }
-std::pair<unsigned char*, int> SJK1238::getECCSyncTablePubKey(unsigned char* publicKeyTemp)
+std::pair<unsigned char*, int> SJKCard::getECCSyncTablePubKey(unsigned char* publicKeyTemp)
 {
 	int rv = 0;
 	ECCrefPublicKey pucPublicKey;
@@ -228,7 +228,7 @@ std::pair<unsigned char*, int> SJK1238::getECCSyncTablePubKey(unsigned char* pub
 		return std::make_pair(publicKeyTemp, PUBLIC_KEY_EXT_LEN);
 	}
 }
-std::pair<unsigned char*, int> SJK1238::getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex)
+std::pair<unsigned char*, int> SJKCard::getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex)
 {
 	int rv = 0;
 	ECCrefPublicKey pucPublicKey;
@@ -248,7 +248,7 @@ std::pair<unsigned char*, int> SJK1238::getECCNodeVerifyPubKey(unsigned char* pu
 
 //SM2 interface
 //Generate Publick&Secret Key
-unsigned long SJK1238::SM2GenECCKeyPair(
+unsigned long SJKCard::SM2GenECCKeyPair(
     unsigned long ulAlias,
     unsigned long ulKeyUse,
     unsigned long ulModulusLen)
@@ -269,7 +269,7 @@ unsigned long SJK1238::SM2GenECCKeyPair(
     }
 }
 //SM2 Sign&Verify
-unsigned long SJK1238::SM2ECCSign(
+unsigned long SJKCard::SM2ECCSign(
 	std::pair<int, int> pri4SignInfo,
     std::pair<unsigned char*, int>& pri4Sign,
     unsigned char *pInData,
@@ -301,7 +301,7 @@ unsigned long SJK1238::SM2ECCSign(
 	return rv;
 }
 
-unsigned long SJK1238::SM2ECCExternalSign(
+unsigned long SJKCard::SM2ECCExternalSign(
 	std::pair<unsigned char*, int>& pri4Sign,
 	unsigned char *pInData,
 	unsigned long ulInDataLen,
@@ -323,7 +323,7 @@ unsigned long SJK1238::SM2ECCExternalSign(
 	return rv;
 }
 
-unsigned long SJK1238::SM2ECCInternalSign(
+unsigned long SJKCard::SM2ECCInternalSign(
 	int pri4SignIndex,
 	unsigned char *pInData,
 	unsigned long ulInDataLen,
@@ -343,7 +343,7 @@ unsigned long SJK1238::SM2ECCInternalSign(
 	return rv;
 }
 
-unsigned long SJK1238::SM2ECCVerify(
+unsigned long SJKCard::SM2ECCVerify(
     std::pair<unsigned char*, int>& pub4Verify,
     unsigned char *pInData,
     unsigned long ulInDataLen,
@@ -370,7 +370,7 @@ unsigned long SJK1238::SM2ECCVerify(
 	return rv;
 }
 //SM2 Encrypt&Decrypt
-unsigned long SJK1238::SM2ECCEncrypt(
+unsigned long SJKCard::SM2ECCEncrypt(
     std::pair<unsigned char*, int>& pub4Encrypt,
     unsigned char * pPlainData,
     unsigned long ulPlainDataLen,
@@ -393,7 +393,7 @@ unsigned long SJK1238::SM2ECCEncrypt(
     }
 	return rv;
 }
-unsigned long SJK1238::SM2ECCDecrypt(
+unsigned long SJKCard::SM2ECCDecrypt(
 	std::pair<int, int> pri4DecryptInfo,
     std::pair<unsigned char*, int>& pri4Decrypt,
     unsigned char *pCipherData,
@@ -432,7 +432,7 @@ unsigned long SJK1238::SM2ECCDecrypt(
 	return rv;
 }
 
-unsigned long SJK1238::SM2ECCExternalDecrypt(
+unsigned long SJKCard::SM2ECCExternalDecrypt(
 	std::pair<unsigned char*, int>& pri4Decrypt,
 	unsigned char *pCipherData,
 	unsigned long ulCipherDataLen,
@@ -453,7 +453,7 @@ unsigned long SJK1238::SM2ECCExternalDecrypt(
 	}
 	return rv;
 }
-unsigned long SJK1238::SM2ECCInternalDecrypt(
+unsigned long SJKCard::SM2ECCInternalDecrypt(
 	int pri4DecryptIndex,
 	unsigned char *pCipherData,
 	unsigned long ulCipherDataLen,
@@ -472,7 +472,7 @@ unsigned long SJK1238::SM2ECCInternalDecrypt(
 	}
 	return rv;
 }
-unsigned long SJK1238::SM2ECCInterDecryptSyncKey(
+unsigned long SJKCard::SM2ECCInterDecryptSyncKey(
 	int pri4DecryptIndex,
 	unsigned char * pCipherData, 
 	unsigned long ulCipherDataLen,
@@ -493,7 +493,7 @@ unsigned long SJK1238::SM2ECCInterDecryptSyncKey(
 	return rv;
 }
 //SM3 interface
-unsigned long SJK1238::SM3HashTotal(
+unsigned long SJKCard::SM3HashTotal(
     unsigned char *pInData,
     unsigned long ulInDataLen,
     unsigned char *pHashData,
@@ -531,7 +531,7 @@ unsigned long SJK1238::SM3HashTotal(
 	CloseSession(pSM3TotalSesHandle);
     return rv;
 }
-unsigned long SJK1238::SM3HashInit(SGD_HANDLE *phSM3Handle)
+unsigned long SJKCard::SM3HashInit(SGD_HANDLE *phSM3Handle)
 {
     int rv;
     OpenSession(hEkey_, phSM3Handle);
@@ -547,7 +547,7 @@ unsigned long SJK1238::SM3HashInit(SGD_HANDLE *phSM3Handle)
     return rv;
 }
 
-unsigned long SJK1238::SM3HashFinal(SGD_HANDLE phSM3Handle, unsigned char *pHashData, unsigned long *pulHashDataLen)
+unsigned long SJKCard::SM3HashFinal(SGD_HANDLE phSM3Handle, unsigned char *pHashData, unsigned long *pulHashDataLen)
 {
     int rv;
     if (nullptr != phSM3Handle)
@@ -570,7 +570,7 @@ unsigned long SJK1238::SM3HashFinal(SGD_HANDLE phSM3Handle, unsigned char *pHash
         return -1;
     }
 }
-void SJK1238::operator()(SGD_HANDLE phSM3Handle, void const* data, std::size_t size) noexcept
+void SJKCard::operator()(SGD_HANDLE phSM3Handle, void const* data, std::size_t size) noexcept
 {
     int rv;
     if (nullptr != phSM3Handle)
@@ -591,7 +591,7 @@ void SJK1238::operator()(SGD_HANDLE phSM3Handle, void const* data, std::size_t s
     }
 }
 
-unsigned long SJK1238::SM4SymEncrypt(unsigned int uiAlgMode, unsigned char * pSessionKey, unsigned long pSessionKeyLen,  unsigned char * pPlainData, unsigned long ulPlainDataLen, unsigned char * pCipherData, unsigned long * pulCipherDataLen, int secKeyType)
+unsigned long SJKCard::SM4SymEncrypt(unsigned int uiAlgMode, unsigned char * pSessionKey, unsigned long pSessionKeyLen,  unsigned char * pPlainData, unsigned long ulPlainDataLen, unsigned char * pCipherData, unsigned long * pulCipherDataLen, int secKeyType)
 {
 	int rv = 0;
 	if (SeckeyType::gmInCard == secKeyType)
@@ -621,7 +621,7 @@ unsigned long SJK1238::SM4SymEncrypt(unsigned int uiAlgMode, unsigned char * pSe
 	return 0;
 }
 
-unsigned long SJK1238::SM4SymDecrypt(unsigned int uiAlgMode, unsigned char * pSessionKey, unsigned long pSessionKeyLen, unsigned char * pCipherData, unsigned long ulCipherDataLen, unsigned char * pPlainData, unsigned long * pulPlainDataLen, int secKeyType)
+unsigned long SJKCard::SM4SymDecrypt(unsigned int uiAlgMode, unsigned char * pSessionKey, unsigned long pSessionKeyLen, unsigned char * pCipherData, unsigned long ulCipherDataLen, unsigned char * pPlainData, unsigned long * pulPlainDataLen, int secKeyType)
 {
 	int rv = 0;
 	if (SeckeyType::gmInCard == secKeyType)
@@ -651,7 +651,7 @@ unsigned long SJK1238::SM4SymDecrypt(unsigned int uiAlgMode, unsigned char * pSe
 }
 
 //SM4 Symetry Encrypt&Decrypt
-unsigned long SJK1238::generateIV(unsigned int uiAlgMode, unsigned char * pIV)
+unsigned long SJKCard::generateIV(unsigned int uiAlgMode, unsigned char * pIV)
 {
 	int rv = 0;
 	if (pIV != NULL)
@@ -675,7 +675,7 @@ unsigned long SJK1238::generateIV(unsigned int uiAlgMode, unsigned char * pIV)
 	else rv = -1;
 	return rv;
 }
-unsigned long SJK1238::SM4ExternalSymEncrypt(
+unsigned long SJKCard::SM4ExternalSymEncrypt(
 	unsigned int uiAlgMode,
     unsigned char *pSessionKey,
     unsigned long pSessionKeyLen,
@@ -730,7 +730,7 @@ unsigned long SJK1238::SM4ExternalSymEncrypt(
     return rv;
 }
 
-unsigned long SJK1238::SM4ExternalSymDecrypt(
+unsigned long SJKCard::SM4ExternalSymDecrypt(
 	unsigned int uiAlgMode,
     unsigned char *pSessionKey,
     unsigned long pSessionKeyLen,
@@ -784,7 +784,7 @@ unsigned long SJK1238::SM4ExternalSymDecrypt(
     return rv;
 }
 
-unsigned long SJK1238::SM4InternalSymEncrypt(unsigned int uiAlgMode, void * hSM4Handle, unsigned char * pPlainData, unsigned long ulPlainDataLen, unsigned char * pCipherData, unsigned long * pulCipherDataLen)
+unsigned long SJKCard::SM4InternalSymEncrypt(unsigned int uiAlgMode, void * hSM4Handle, unsigned char * pPlainData, unsigned long ulPlainDataLen, unsigned char * pCipherData, unsigned long * pulCipherDataLen)
 {
 	int rv;  //Candidate algorithm:SGD_SMS4_ECB,SGD_SMS4_CBC,SGD_SM1_ECB,SGD_SM1_CBC
 	unsigned char pIv[16];
@@ -812,7 +812,7 @@ unsigned long SJK1238::SM4InternalSymEncrypt(unsigned int uiAlgMode, void * hSM4
 	return rv;
 }
 
-unsigned long SJK1238::SM4InternalSymDecrypt(unsigned int uiAlgMode, void * hSM4Handle, unsigned char * pCipherData, unsigned long ulCipherDataLen, unsigned char * pPlainData, unsigned long * pulPlainDataLen)
+unsigned long SJKCard::SM4InternalSymDecrypt(unsigned int uiAlgMode, void * hSM4Handle, unsigned char * pCipherData, unsigned long ulCipherDataLen, unsigned char * pPlainData, unsigned long * pulPlainDataLen)
 {
 	int rv;
 	unsigned char pIv[16];
@@ -839,7 +839,7 @@ unsigned long SJK1238::SM4InternalSymDecrypt(unsigned int uiAlgMode, void * hSM4
 	return rv;
 }
 
-unsigned long SJK1238::SM4GenerateSessionKey(
+unsigned long SJKCard::SM4GenerateSessionKey(
     unsigned char *pSessionKey,
     unsigned long *pSessionKeyLen)
 {
@@ -874,7 +874,7 @@ unsigned long SJK1238::SM4GenerateSessionKey(
     return rv;
 }
 
-unsigned long SJK1238::SM4SymEncryptEx(
+unsigned long SJKCard::SM4SymEncryptEx(
     unsigned char *pPlainData,
     unsigned long ulPlainDataLen,
     unsigned char *pSessionKey,
@@ -922,7 +922,7 @@ unsigned long SJK1238::SM4SymEncryptEx(
     return rv;
 }
 
-void SJK1238::standPubToSM2Pub(unsigned char* standPub, int standPubLen, ECCrefPublicKey& sm2Publickey)
+void SJKCard::standPubToSM2Pub(unsigned char* standPub, int standPubLen, ECCrefPublicKey& sm2Publickey)
 {
     //sm2Publickey.bits = standPubLen;
     sm2Publickey.bits = PUBLIC_KEY_BIT_LEN; //must be 256;
@@ -930,7 +930,7 @@ void SJK1238::standPubToSM2Pub(unsigned char* standPub, int standPubLen, ECCrefP
     memcpy(sm2Publickey.y, standPub + 33, 32);
 }
 
-void SJK1238::standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefPrivateKey& sm2Privatekey)
+void SJKCard::standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefPrivateKey& sm2Privatekey)
 {
     if (standPriLen > 32)
         return;

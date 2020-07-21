@@ -18,23 +18,23 @@
 //==============================================================================
 
 #pragma once
-#ifndef HARDENCRYPT_HARDENCRYPT_OBJ_H_INCLUDE
-#define HARDENCRYPT_HARDENCRYPT_OBJ_H_INCLUDE
-#include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
+#ifndef GMENCRYPT_GMENCRYPT_OBJ_H_INCLUDE
+#define GMENCRYPT_GMENCRYPT_OBJ_H_INCLUDE
+#include <peersafe/gmencrypt/GmEncrypt.h>
 #include <iostream>
 
-class HardEncryptObj
+class GmEncryptObj
 {
 private:
-    HardEncryptObj();
+    GmEncryptObj();
 
 public:
-    enum gmAlgType { unknown = -1, sdkeyType, sjk1238Type, soft };
+    enum gmAlgType { unknown = -1, sdkeyType, sjkCardType, soft };
     static gmAlgType hEType_;
 
 public:
     static void setGmAlgType(gmAlgType gmAlgType);
-    static HardEncrypt* getInstance();
+    static GmEncrypt* getInstance();
     static gmAlgType fromString(std::string gmAlgTypeStr);
 };
 

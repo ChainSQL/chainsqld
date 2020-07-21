@@ -29,7 +29,7 @@
 #include <ripple/beast/utility/rngfill.h>
 #include <ed25519-donna/ed25519.h>
 #include <cstring>
-#include <peersafe/gmencrypt/hardencrypt/gmCheck.h>
+#include <peersafe/gmencrypt/GmCheck.h>
 
 namespace ripple {
 
@@ -106,7 +106,7 @@ signDigest (PublicKey const& pk, SecretKey const& sk,
 {
     unsigned char sig[72];
     size_t len = sizeof(sig);
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     if (nullptr == hEObj)
     {
         if (publicKeyType(pk.slice()) != KeyType::secp256k1)
@@ -204,7 +204,7 @@ sign (PublicKey const& pk,
         unsigned char hashData[32] = { 0 };
         unsigned long hashDataLen = 32;
 
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
         hEObj->SM3HashTotal((unsigned char*)m.data(), m.size(), hashData, &hashDataLen);
 
 		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt, sk.encrytCardIndex);
@@ -226,7 +226,7 @@ sign (PublicKey const& pk,
 Blob
 decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
 {
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     if (nullptr != hEObj) //GM Algorithm
     {
         unsigned long rv = 0;
@@ -254,7 +254,7 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
 boost::optional<SecretKey> getSecretKey(const std::string& secret)
 {
     //tx_secret is acturally masterseed
-    if (HardEncryptObj::getInstance())
+    if (GmEncryptObj::getInstance())
     {
         std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
         return SecretKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
@@ -279,7 +279,7 @@ boost::optional<PublicKey> getPublicKey(const std::string& secret)
     if (secret.size() > 0)
     {
         KeyType keyType = KeyType::secp256k1;
-        if (HardEncryptObj::getInstance())
+        if (GmEncryptObj::getInstance())
         {
             keyType = KeyType::gmalg;
             Seed seed = randomSeed();
@@ -397,7 +397,7 @@ generateKeyPair (KeyType type, Seed const& seed)
     case KeyType::gmalg:
     {
 		const int randomCheckLen = 32; //256bit = 32 byte
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
 		if (!hEObj->randomSingleCheck(randomCheckLen))
 		{
 			LogicError("randomSingleCheck failed!");
@@ -437,7 +437,7 @@ randomKeyPair (KeyType type)
 		{
 			LogicError("randomSingleCheck failed!");
 		}
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::pair<unsigned char*, int> tempPublickey;
         std::pair<unsigned char*, int> tempPrivatekey;
         hEObj->SM2GenECCKeyPair();

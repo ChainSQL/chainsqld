@@ -21,7 +21,7 @@
 #ifndef SOFTENCRYPT_GMSOFTENCRYPT_H_INCLUDE
 #define SOFTENCRYPT_GMSOFTENCRYPT_H_INCLUDE
 
-#include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
+#include <peersafe/gmencrypt/GmEncrypt.h>
 #include <ripple/basics/StringUtilities.h>
 #ifdef GM_ALG_PROCESS
 
@@ -39,7 +39,7 @@
 //#include <gmencrypt/softencrypt/usr/include/openssl/hmac.h>
 
 const char g_signId[] = "1234567812345678";
-class SoftEncrypt : public HardEncrypt
+class SoftEncrypt : public GmEncrypt
 {
 public:
     SoftEncrypt()

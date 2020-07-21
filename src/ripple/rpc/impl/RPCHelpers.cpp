@@ -71,7 +71,7 @@ accountFromString(
         return rpcError (rpcBAD_SEED);
 
     std::pair<PublicKey, SecretKey> keypair;
-    if (nullptr == HardEncryptObj::getInstance())
+    if (nullptr == GmEncryptObj::getInstance())
     {
         keypair = generateKeyPair(
             KeyType::secp256k1,
@@ -655,7 +655,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             params[jss::secret].asString ());
     }
 
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     if (nullptr != hEObj)
     {
         std::string privateKeyStr = params[jss::secret].asString();

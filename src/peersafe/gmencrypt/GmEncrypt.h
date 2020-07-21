@@ -18,8 +18,8 @@
 //==============================================================================
 
 #pragma once
-#ifndef HARDENCRYPT_HARDENCRYPT_H_INCLUDE
-#define HARDENCRYPT_HARDENCRYPT_H_INCLUDE
+#ifndef GMENCRYPT_GMENCRYPT_H_INCLUDE
+#define GMENCRYPT_GMENCRYPT_H_INCLUDE
 
 #define GM_ALG_PROCESS
 
@@ -37,8 +37,6 @@
 #define DebugPrint(fmt,...)
 #endif // DEBUGLC_PRINTF
 
-//#include <hardencrypt/skj1238_26/swsds.h>
-//#include <hardencrypt/sdkey/swsdkey.h>
 #include <ripple/beast/hash/endian.h>
 #include <utility>
 #include <mutex>
@@ -54,20 +52,20 @@ typedef void* HANDLE;
 #define SYNC_TABLE_KEY_INDEX 1
 #define NODE_VERIFY_KEY_INDEX 2
 
-class HardEncrypt
+class GmEncrypt
 {
 public:
     class SM3Hash
     {
     public:
-        SM3Hash(HardEncrypt *pEncrypt);
+        SM3Hash(GmEncrypt *pEncrypt);
         ~SM3Hash();
         
         void SM3HashInitFun();
         void SM3HashFinalFun(unsigned char *pHashData, unsigned long *pulHashDataLen);
         void operator()(void const* data, std::size_t size) noexcept;
     private:
-        HardEncrypt *pHardEncrypt_;
+        GmEncrypt *pGmEncrypt_;
         static std::mutex mutexSM3_;
     protected:
         HANDLE hSM3Handle_;
@@ -77,8 +75,8 @@ public:
 
 public:
     friend class SM3Hash;
-    HardEncrypt();
-    ~HardEncrypt();    
+    GmEncrypt();
+    ~GmEncrypt();    
     enum KeyType { userKey, rootKey };
 	enum SeckeyType { gmInCard, gmOutCard, comKey };
 	enum PubKeyType { syncTableKey, nodeVerifyKey };

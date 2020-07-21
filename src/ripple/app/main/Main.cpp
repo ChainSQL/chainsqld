@@ -46,8 +46,8 @@
 #include <test/quiet_reporter.h>
 #include <google/protobuf/stubs/common.h>
 #include <boost/program_options.hpp>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
-#include <peersafe/gmencrypt/hardencrypt/gmCheck.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
+#include <peersafe/gmencrypt/GmCheck.h>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
@@ -453,11 +453,11 @@ int run (int argc, char** argv)
 #ifdef GM_ALG_PROCESS
 	setDebugLogSink(logs->makeSink(
 		"Debug", beast::severities::kTrace));
-	auto hardEncryptJournal = logs->journal("HardEncrypt");
-	HardEncrypt* hEObj = HardEncryptObj::getInstance();
+	auto GmEncryptJournal = logs->journal("GmEncrypt");
+	GmEncrypt* hEObj = GmEncryptObj::getInstance();
 	if (nullptr == hEObj)
 	{
-		JLOG(hardEncryptJournal.info()) << "No EncryptCard! Please Check!";
+		JLOG(GmEncryptJournal.info()) << "No EncryptCard! Please Check!";
 		return -1;
 	}
 #endif
@@ -476,17 +476,17 @@ int run (int argc, char** argv)
 				checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
 				if (checkResult)
 				{
-					JLOG(hardEncryptJournal.info()) << "SM2/SM3/SM4 and random check successful!";
+					JLOG(GmEncryptJournal.info()) << "SM2/SM3/SM4 and random check successful!";
 				}
 				else
 				{
-					JLOG(hardEncryptJournal.info()) << "SM2/SM3/SM4 and random check failed!";
+					JLOG(GmEncryptJournal.info()) << "SM2/SM3/SM4 and random check failed!";
 					return -1;
 				}
 			}
 			else
 			{
-				JLOG(hardEncryptJournal.info()) << "Get check obj failed! Please Check!";
+				JLOG(GmEncryptJournal.info()) << "Get check obj failed! Please Check!";
 				return -1;
 			}
 		}

@@ -32,7 +32,7 @@ namespace ripple {
 std::pair<PublicKey, SecretKey>
 loadNodeIdentity (Application& app)
 {
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     if (nullptr != hEObj)
     {
         return randomKeyPair(KeyType::gmalg);

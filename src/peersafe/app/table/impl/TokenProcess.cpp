@@ -1,5 +1,5 @@
 #include <peersafe/app/table/TokenProcess.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 
 namespace ripple {
 	TokenProcess::TokenProcess():sm4Handle(nullptr), isValidate(false)
@@ -11,7 +11,7 @@ namespace ripple {
 	}
 	bool TokenProcess::setSymmertryKey(const Blob& cipherBlob, const SecretKey& secret_key)
 	{
-		HardEncrypt* hEObj = HardEncryptObj::getInstance();
+		GmEncrypt* hEObj = GmEncryptObj::getInstance();
 		if (nullptr == hEObj)
 		{
 			passBlob = ripple::decrypt(cipherBlob, secret_key);
@@ -70,7 +70,7 @@ namespace ripple {
 		if (isValidate)
 		{
 			Blob rawDecrypted;
-			HardEncrypt* hEObj = HardEncryptObj::getInstance();
+			GmEncrypt* hEObj = GmEncryptObj::getInstance();
 			if (nullptr == hEObj)
 			{
 				rawDecrypted = RippleAddress::decryptAES(passBlob, rawEncrept);

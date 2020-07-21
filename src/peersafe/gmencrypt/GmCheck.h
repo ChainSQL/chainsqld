@@ -2,8 +2,8 @@
 
 #ifndef GM_CHECK_H_INCLUDE
 #define GM_CHECK_H_INCLUDE
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
+#include <peersafe/gmencrypt/GmEncrypt.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/Log.h>
 #include <ripple/beast/utility/Journal.h>
@@ -16,6 +16,12 @@ const int MAX_LEN_4_GMSTD = 232;
 #ifdef GM_ALG_PROCESS
 
 class GMCheck {
+
+public:
+	static GMCheck* getInstance();
+    static std::unique_ptr <ripple::Logs> logs;
+private:
+    static GMCheck* gmInstance;
 
 public:
 	bool sm2EncryptAndDecryptCheck(unsigned long plainDataLen=0);
@@ -42,9 +48,6 @@ public:
 	int getDataSM3(int dataSetCnt, unsigned int plainLen);
 	int getDataSMALL(int dataSetCnt, unsigned int plainLen);
 	std::pair<bool, std::string> getAlgTypeData(int algType, int dataSetCnt, unsigned int plainDataLen);
-	//void setLogJournal(beast::Journal* journal);
-public:
-	static GMCheck* getInstance();
 	
 public:
 	enum rpcAlgType
@@ -72,24 +75,23 @@ public:
 	};
 
 private:
-	GMCheck();
+	GMCheck(beast::Journal gmCheckJournal);
 	void cipherConstruct(ripple::Blob &cipher);
 	void cipher2GMStand(unsigned char* cardCipher, unsigned char* gmStdCipher, unsigned int plainDataLen);
 	int dataFolderCheck(std::string foldername);
-	int FileWrite(char *filename, char *mode, unsigned char *buffer, size_t size);
+	int FileWrite(char *filename, const char *mode, unsigned char *buffer, size_t size);
 	int Data_Bin2Txt(unsigned char *binData, int binDataLen, char *txtData, int *txtDataLen);
-	int PrintData(char *itemName, unsigned char *sourceData, unsigned int dataLength, unsigned int rowCount);
+	int PrintData(const char *itemName, unsigned char *sourceData, unsigned int dataLength, unsigned int rowCount);
 
 	static void* randomCycheckThreadFun(void *arg);
 	static void* randomGenerateThreadFun(void *arg);
 	
 private:
-	HardEncrypt* hEObj;
-	static GMCheck* gmInstance;
+	GmEncrypt* hEObj;
+	beast::Journal gmCheckJournal_;
 	bool isRandomCycleCheckThread;
 	bool isRandomGenerateThread;
 	unsigned int parentTid;
-	//beast::Journal*	journal_;
 };
 
 #endif

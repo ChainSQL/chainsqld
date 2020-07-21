@@ -24,6 +24,7 @@ double igamc(double, double);
 #define RanSuccPrint(fmt,...)
 #endif // DEBUGLC_PRINTF
 
+std::unique_ptr <ripple::Logs> logsNull;
 double g_dSigLevel = 0.01; //显著性水平，用α表示
 
 //for test
@@ -38,24 +39,33 @@ char G_error_str[][50] = { "MonobitFrequency", "BlockFrequency", "Poker", \
 "LinearComplexity", "Maurer", "DiscreteFourierTransform",\
 };
 RandCheck* RandCheck::rcInstance = nullptr;
-RandCheck * RandCheck::getInstance()
+std::unique_ptr <ripple::Logs> RandCheck::logs_ = nullptr;
+RandCheck * RandCheck::getInstance(std::unique_ptr <ripple::Logs>& logs)
 {
 	if (rcInstance == nullptr)
 	{
-		rcInstance = new RandCheck();
+        if (logs == nullptr)
+        {
+            RandCheck::logs_ = std::make_unique<ripple::Logs>(beast::severities::kInfo);
+            rcInstance = new RandCheck(logs_->journal("RandomCheck"));
+        }
+        else
+        {
+            rcInstance = new RandCheck(logs->journal("RandomCheck"));
+        }
 	}
 	return rcInstance;
 }
 
 //void RandCheck::setLogJournal(beast::Journal * journal)
 //{
-//	if (journal != nullptr && journal_ == nullptr)
+//	if (journal != nullptr && randCheckJournal_ == nullptr)
 //	{
-//		journal_ = journal;
+//		randCheckJournal_ = journal;
 //	}
 //}
 
-int RandCheck::RandTest(HardEncrypt * hEObj, int randomTestSetCnt, int randomLen, bool isCycleCheck)
+int RandCheck::RandTest(GmEncrypt * hEObj, int randomTestSetCnt, int randomLen, bool isCycleCheck)
 {
 	int i = 0;
 	int rv = 0;
@@ -67,9 +77,9 @@ int RandCheck::RandTest(HardEncrypt * hEObj, int randomTestSetCnt, int randomLen
 	isCycleCheck_ = isCycleCheck;
 	SGD_UCHAR *pbSampleBuffer = NULL;
 
-	/*JLOG(journal_->info()) << "RandTest starting...";
-	JLOG(journal_->info()) << ripple::stdStringFormat("RandTest: iSampleLength : [%d]", iSampleLen);
-	JLOG(journal_->info()) << ripple::stdStringFormat("RandTest: iSampleSize : [%d]", iSampleSize);*/
+	/*JLOG(randCheckJournal_->info()) << "RandTest starting...";
+	JLOG(randCheckJournal_->info()) << ripple::stdStringFormat("RandTest: iSampleLength : [%d]", iSampleLen);
+	JLOG(randCheckJournal_->info()) << ripple::stdStringFormat("RandTest: iSampleSize : [%d]", iSampleSize);*/
 
 	LOGP(LOG_INFO, 0, "RandTest starting...");
 	LOGPX(LOG_INFO, 0, "RandTest: iSampleLength : [%d]", iSampleLen);
@@ -82,20 +92,20 @@ int RandCheck::RandTest(HardEncrypt * hEObj, int randomTestSetCnt, int randomLen
 		iLevel -= iSampleSize / 10;
 	}
 
-	//JLOG(journal_->info()) << ripple::stdStringFormat("RandTest: iLevel : [%d]", iLevel);
+	//JLOG(randCheckJournal_->info()) << ripple::stdStringFormat("RandTest: iLevel : [%d]", iLevel);
 	LOGPX(LOG_INFO, 0, "RandTest: iLevel : [%d]", iLevel);
 	
 	pbSampleBuffer = (SGD_UCHAR*)malloc(sizeof(SGD_UCHAR) * iSampleLen);
 	if (pbSampleBuffer == NULL)
 	{
-		//JLOG(journal_->error()) << "RandTest: malloc sample buffer error";
+		//JLOG(randCheckJournal_->error()) << "RandTest: malloc sample buffer error";
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "RandTest: malloc sample buffer error");
 		return SWR_HOST_MEMORY;
 	}
 
 	for (i = 0; i < iSampleSize; ++i)
 	{
-		//JLOG(journal_->info()) << ripple::stdStringFormat("RandTest: round:[%d] start......", i + 1);
+		//JLOG(randCheckJournal_->info()) << ripple::stdStringFormat("RandTest: round:[%d] start......", i + 1);
 		LOGPX(LOG_INFO, 0, "RandTest: round:[%d] start......", i + 1);
 		//1 采样
 		rv = hEObj->GenerateRandom(randomLen, pbSampleBuffer);
@@ -108,7 +118,7 @@ int RandCheck::RandTest(HardEncrypt * hEObj, int randomTestSetCnt, int randomLen
 				free(pbSampleBuffer);
 				pbSampleBuffer = NULL;
 			}
-			//JLOG(journal_->error()) << "RandTest: GetSample error";
+			//JLOG(randCheckJournal_->error()) << "RandTest: GetSample error";
 			LOGP(LOG_ERROR, rv, "RandTest: GetSample error");
 			return rv;
 		}
@@ -127,12 +137,12 @@ int RandCheck::RandTest(HardEncrypt * hEObj, int randomTestSetCnt, int randomLen
 				pbSampleBuffer = NULL;
 			}
 
-			//JLOG(journal_->error()) << "RandTest: memory error";
+			//JLOG(randCheckJournal_->error()) << "RandTest: memory error";
 			LOGP(LOG_ERROR, SWR_HOST_MEMORY, "RandTest: memory error");
 			return SWR_HOST_MEMORY;
 		}
 
-		//JLOG(journal_->info()) << ripple::stdStringFormat("RandTest: round:[%d] ......end", i + 1);
+		//JLOG(randCheckJournal_->info()) << ripple::stdStringFormat("RandTest: round:[%d] ......end", i + 1);
 		LOGPX(LOG_INFO, 0, "RandTest: round:[%d] ......end", i + 1);
 	}
 
@@ -143,10 +153,10 @@ int RandCheck::RandTest(HardEncrypt * hEObj, int randomTestSetCnt, int randomLen
 		if (G_errno[i] >= (iSampleSize - iLevel))
 		{
 			//未通过该项检测
-			/*JLOG(journal_->error()) << ripple::stdStringFormat("RandTest: iSampleSize[%d], iLevel[%d]", iSampleSize, iLevel);
-			JLOG(journal_->error()) << ripple::stdStringFormat("RandTest: G_errno[%d]:[%d] >= %d", i, G_errno[i], (iSampleSize - iLevel));
-			JLOG(journal_->error()) << ripple::stdStringFormat("RandTest: failed %s test", G_error_str[i]);
-			JLOG(journal_->error()) << ripple::stdStringFormat("RandTest: failed!!!!!!, do something");*/
+			/*JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandTest: iSampleSize[%d], iLevel[%d]", iSampleSize, iLevel);
+			JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandTest: G_errno[%d]:[%d] >= %d", i, G_errno[i], (iSampleSize - iLevel));
+			JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandTest: failed %s test", G_error_str[i]);
+			JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandTest: failed!!!!!!, do something");*/
 			LOGPX(LOG_ERROR, 0, "RandTest: iSampleSize[%d], iLevel[%d]", iSampleSize, iLevel);
 			LOGPX(LOG_ERROR, 0, "RandTest: G_errno[%d]:[%d] >= %d", i, G_errno[i], (iSampleSize - iLevel));
 			LOGPX(LOG_ERROR, 0, "RandTest: failed %s test", G_error_str[i]);
@@ -159,20 +169,20 @@ int RandCheck::RandTest(HardEncrypt * hEObj, int randomTestSetCnt, int randomLen
 
 	//5 记录测试信息
 	{
-		//JLOG(journal_->info()) << "RandTest result:";
+		//JLOG(randCheckJournal_->info()) << "RandTest result:";
 		LOGP(LOG_INFO, 0, "RandTest result:");
 
 		//记录总测试次数
 		G_TotalSampleSize += iSampleSize;
-		//JLOG(journal_->info()) << ripple::stdStringFormat("iSampleSize:[%d], total:[%d]", iSampleSize, G_TotalSampleSize);
+		//JLOG(randCheckJournal_->info()) << ripple::stdStringFormat("iSampleSize:[%d], total:[%d]", iSampleSize, G_TotalSampleSize);
 		LOGPX(LOG_INFO, 0, "iSampleSize:[%d], total:[%d]", iSampleSize, G_TotalSampleSize);
 
-		//JLOG(journal_->warn()) << "error info:";
+		//JLOG(randCheckJournal_->warn()) << "error info:";
 		LOGP(LOG_WARNING, 0, "error info:");
 		for (i = 0; i < 15; ++i)
 		{
 			G_TotalErrno[i] += G_errno[i];
-			//JLOG(journal_->warn()) << ripple::stdStringFormat("%s error num:[%d], totalErrno:[%d]", G_error_str[i], G_errno[i], G_TotalErrno[i]);
+			//JLOG(randCheckJournal_->warn()) << ripple::stdStringFormat("%s error num:[%d], totalErrno:[%d]", G_error_str[i], G_errno[i], G_TotalErrno[i]);
 			LOGPX(LOG_WARNING, 0, "%s error count:[%d], totalErrCnt:[%d]", G_error_str[i], G_errno[i], G_TotalErrno[i]);
 		}
 	}
@@ -189,7 +199,7 @@ int RandCheck::RandTest(HardEncrypt * hEObj, int randomTestSetCnt, int randomLen
 		free(pbSampleBuffer);
 	}
 
-	//JLOG(journal_->info()) << "RandTest ...complete";
+	//JLOG(randCheckJournal_->info()) << "RandTest ...complete";
 	LOGP(LOG_INFO, 0, "RandTest complete!");
 	//return rv;
 	return checkResult;
@@ -211,7 +221,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	obStream = (OneBit *)calloc((nBufferLen * 8), sizeof(OneBit));
 	if (obStream == NULL)
 	{
-		//JLOG(journal_->error()) << "RandomnessTest: calloc obStream error!";
+		//JLOG(randCheckJournal_->error()) << "RandomnessTest: calloc obStream error!";
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "RandomnessTest: calloc obStream error!");
 		return SWR_HOST_MEMORY;
 	}
@@ -242,9 +252,9 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 
 	//for test, output bsTestStream
 
-	/*JLOG(journal_->trace()) << ripple::stdStringFormat("RandomnessTest: bsTestStream.bitsNumber : [%d]", bsTestStream.bitsNumber);
-	JLOG(journal_->trace()) << ripple::stdStringFormat("RandomnessTest: bsTestStream n0 : [%d]", n0);
-	JLOG(journal_->trace()) << ripple::stdStringFormat("RandomnessTest: bsTestStream n1 : [%d]", n1);*/
+	/*JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("RandomnessTest: bsTestStream.bitsNumber : [%d]", bsTestStream.bitsNumber);
+	JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("RandomnessTest: bsTestStream n0 : [%d]", n0);
+	JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("RandomnessTest: bsTestStream n1 : [%d]", n1);*/
 	LOGPX(LOG_TRACE, 0, "RandomnessTest: bsTestStream.bitsNumber : [%d]", bsTestStream.bitsNumber);
 	LOGPX(LOG_TRACE, 0, "RandomnessTest: bsTestStream n0 : [%d]", n0);
 	LOGPX(LOG_TRACE, 0, "RandomnessTest: bsTestStream n1 : [%d]", n1);
@@ -272,7 +282,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_MONOBIT_FREQUENCY];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: MonobitFrequencyTest error, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: MonobitFrequencyTest error, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: MonobitFrequencyTest error, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -284,7 +294,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_BLOCK_FREQUENCY];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: FrequencyTestWithinABlock error, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: FrequencyTestWithinABlock error, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: FrequencyTestWithinABlock error, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -308,7 +318,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 		++G_errno[INDEX_POKER];
 
 		LOGPX(LOG_ERROR, index, "RandomnessTest: PokerTest error, m = 4, failed number:[0x%08x]", rv);
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: PokerTest error, m = 4, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: PokerTest error, m = 4, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
 	}
@@ -319,7 +329,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_SERIAL];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: SerialTest error, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: SerialTest error, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: SerialTest error, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -333,7 +343,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 		++G_errno[INDEX_RUNS];
 
 		//LOG(LOG_ERROR,index, "---------------RandomnessTest: RunsTest error");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: RunsTest error, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: RunsTest error, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: RunsTest error, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -355,7 +365,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 		}
 
 		++G_errno[INDEX_RUNS_DISTRIBUTION];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: RunsDistributionTest error, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: RunsDistributionTest error, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: RunsDistributionTest error, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -367,7 +377,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_LONGEST_RUN_OF_ONES];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: LongestRunOfOnesTest error, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: LongestRunOfOnesTest error, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: LongestRunOfOnesTest error, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -389,7 +399,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 		}
 
 		++G_errno[INDEX_BINARY_DERIVATIVE];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: BinaryDerivativeTest error, k=3, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: BinaryDerivativeTest error, k=3, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: BinaryDerivativeTest error, k=3, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -410,7 +420,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 		}
 
 		++G_errno[INDEX_BINARY_DERIVATIVE];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: BinaryDerivativeTest error, k= 7, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: BinaryDerivativeTest error, k= 7, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: BinaryDerivativeTest error, k= 7, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -422,7 +432,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_AUTO_CORRELATION];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: AutocorrelationTest error, d = 1, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: AutocorrelationTest error, d = 1, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: AutocorrelationTest error, d = 1, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -433,7 +443,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_AUTO_CORRELATION];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: AutocorrelationTest error, d = 2, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: AutocorrelationTest error, d = 2, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: AutocorrelationTest error, d = 2, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -444,7 +454,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_AUTO_CORRELATION];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: AutocorrelationTest error, d = 8, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: AutocorrelationTest error, d = 8, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: AutocorrelationTest error, d = 8, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -455,7 +465,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_AUTO_CORRELATION];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: AutocorrelationTest error, d = 16, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: AutocorrelationTest error, d = 16, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: AutocorrelationTest error, d = 16, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -477,7 +487,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 		}
 
 		++G_errno[INDEX_BINARY_MATRIX_RANK];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: BinaryMatrixRankTest error, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: BinaryMatrixRankTest error, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: BinaryMatrixRankTest error, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -489,7 +499,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 	if (rv != SWR_OK)
 	{
 		++G_errno[INDEX_CUMULATIVE];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("--------RandomnessTest: CumulativeTest error, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("--------RandomnessTest: CumulativeTest error, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "--------RandomnessTest: CumulativeTest error, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -511,7 +521,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 		}
 
 		++G_errno[INDEX_APPROXIMATE_ENTROPY];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("--------RandomnessTest: ApproximateEntropyTest error, m = 2, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("--------RandomnessTest: ApproximateEntropyTest error, m = 2, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "--------RandomnessTest: ApproximateEntropyTest error, m = 2, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -532,7 +542,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 		}
 
 		++G_errno[INDEX_APPROXIMATE_ENTROPY];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: ApproximateEntropyTest error, m = 5, failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: ApproximateEntropyTest error, m = 5, failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, index, "RandomnessTest: ApproximateEntropyTest error, m = 5, failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -557,7 +567,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 			}
 
 			++G_errno[INDEX_LINEAR_COMPLEXITY];
-			//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: LinearComplexityTest error, failed number:[0x%08x]", rv);
+			//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: LinearComplexityTest error, failed number:[0x%08x]", rv);
 			LOGPX(LOG_ERROR, index, "RandomnessTest: LinearComplexityTest error, failed number:[0x%08x]", rv);
 			//goto RandTest_end;
 			return rv;
@@ -581,7 +591,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 			}
 
 			++G_errno[INDEX_MAURER];
-			//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: MaurerTest error, failed number:[0x%08x]", rv);
+			//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: MaurerTest error, failed number:[0x%08x]", rv);
 			LOGPX(LOG_ERROR, index, "RandomnessTest: MaurerTest error, failed number:[0x%08x]", rv);
 			//goto RandTest_end;
 			return rv;
@@ -605,7 +615,7 @@ int RandCheck::RandomnessTest(unsigned char * pbBuffer, int nBufferLen, int inde
 			}
 
 			++G_errno[INDEX_DISCRETE_FOURIER_TRANSFORM];
-			//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: DiscreteFourierTransformTest error, failed number:[0x%08x]", rv);
+			//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: DiscreteFourierTransformTest error, failed number:[0x%08x]", rv);
 			LOGPX(LOG_ERROR, index, "RandomnessTest: DiscreteFourierTransformTest error, failed number:[0x%08x]", rv);
 			//goto RandTest_end;
 			return rv;
@@ -641,7 +651,7 @@ int RandCheck::RandomnessSingleCheck(unsigned char * pbBuffer, int nBufferLen)
 	obStream = (OneBit *)calloc((nBufferLen * 8), sizeof(OneBit));
 	if (obStream == NULL)
 	{
-		//JLOG(journal_->error()) << "RandomnessTest: calloc obStream error!";
+		//JLOG(randCheckJournal_->error()) << "RandomnessTest: calloc obStream error!";
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "RandomnessTest: calloc obStream error!");
 		return SWR_HOST_MEMORY;
 	}
@@ -684,7 +694,7 @@ int RandCheck::RandomnessSingleCheck(unsigned char * pbBuffer, int nBufferLen)
 		}
 
 		++G_errno[INDEX_POKER];
-		//JLOG(journal_->error()) << ripple::stdStringFormat("RandomnessTest: PokerTest error! failed number:[0x%08x]", rv);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("RandomnessTest: PokerTest error! failed number:[0x%08x]", rv);
 		LOGPX(LOG_ERROR, 0, "RandomnessTest: PokerTest error! failed number:[0x%08x]", rv);
 		//goto RandTest_end;
 		return rv;
@@ -698,7 +708,9 @@ int RandCheck::RandomnessSingleCheck(unsigned char * pbBuffer, int nBufferLen)
 	return SWR_OK;
 }
 
-RandCheck::RandCheck(): isCycleCheck_(false)
+RandCheck::RandCheck(beast::Journal randCheckJournal)
+                :isCycleCheck_(false)
+                ,randCheckJournal_(randCheckJournal)
 {
 }
 
@@ -732,7 +744,7 @@ int RandCheck::MonobitFrequency(BinarySequence* pbsTestStream)
 
 	if (pbsTestStream == NULL)
 	{
-		//JLOG(journal_->error()) << "MonobitFrequency pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "MonobitFrequency pbsTestStream is null";
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "MonobitFrequency pbsTestStream is null");
 		return SWR_INVALID_PARAMS;
 	}
@@ -743,29 +755,29 @@ int RandCheck::MonobitFrequency(BinarySequence* pbsTestStream)
 	}
 
 	LOGPX(LOG_TRACE, 0, "MonobitFrequency: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("MonobitFrequency: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("MonobitFrequency: sum : [%f]", sum);
 
 	sum = fabs(sum);
 
 	LOGPX(LOG_TRACE, 0, "MonobitFrequency: after fabs, sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("MonobitFrequency: after fabs, sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("MonobitFrequency: after fabs, sum : [%f]", sum);
 
 	v = sum / (sqrt(pbsTestStream->bitsNumber));
 
 	LOGPX(LOG_TRACE, 0, "MonobitFrequency: v : [%f]", v);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("MonobitFrequency: v : [%f]", v);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("MonobitFrequency: v : [%f]", v);
 
 	dPValue = erfc(v / dSqrt2);
 
 	LOGPX(LOG_TRACE, 0, "MonobitFrequency: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("MonobitFrequency: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("MonobitFrequency: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "MonobitFrequency: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed MonobitFrequency~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("MonobitFrequency: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed MonobitFrequency~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("MonobitFrequency: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed MonobitFrequency~~~";
 
 		return SWR_OK;
 	}
@@ -773,8 +785,8 @@ int RandCheck::MonobitFrequency(BinarySequence* pbsTestStream)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "MonobitFrequency: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed MonobitFrequency!!!");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("MonobitFrequency: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("pbsTestStream failed MonobitFrequency!!!");
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("MonobitFrequency: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("pbsTestStream failed MonobitFrequency!!!");
 
 		return SWR_TEST_FAILED;
 	}
@@ -793,19 +805,19 @@ int RandCheck::BlockFrequency(BinarySequence * pbsTestStream, int m)
 
 	if (pbsTestStream == NULL)
 	{
-		//JLOG(journal_->error()) << "BlockFrequency pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "BlockFrequency pbsTestStream is null";
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "BlockFrequency pbsTestStream is null");
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "BlockFrequency: m : [%d]", m);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BlockFrequency: m : [%d]", m);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BlockFrequency: m : [%d]", m);
 
 	//
 	nBlocksNumber = (int)floor((double)pbsTestStream->bitsNumber / (double)m);
 
 	LOGPX(LOG_TRACE, 0, "BlockFrequency: nBlocksNumber : [%d]", nBlocksNumber);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BlockFrequency: nBlocksNumber: [%d]", nBlocksNumber);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BlockFrequency: nBlocksNumber: [%d]", nBlocksNumber);
 
 	for (i = 0; i < nBlocksNumber; ++i)
 	{
@@ -820,25 +832,25 @@ int RandCheck::BlockFrequency(BinarySequence * pbsTestStream, int m)
 	}
 
 	LOGPX(LOG_TRACE, 0, "BlockFrequency: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BlockFrequency: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BlockFrequency: sum : [%f]", sum);
 
 	v = 4.0 * m * sum;
 
 	LOGPX(LOG_TRACE, 0, "BlockFrequency: v : [%f]", v);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BlockFrequency: v : [%f]", v);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BlockFrequency: v : [%f]", v);
 
 	dPValue = igamc((double)nBlocksNumber / 2, v / 2);
 	//dPValue = 1.0;
 
 	LOGPX(LOG_TRACE, 0, "BlockFrequency: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BlockFrequency: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BlockFrequency: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "BlockFrequency: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed BlockFrequency~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("BlockFrequency: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed BlockFrequency~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BlockFrequency: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed BlockFrequency~~~";
 
 		return SWR_OK;
 	}
@@ -846,8 +858,8 @@ int RandCheck::BlockFrequency(BinarySequence * pbsTestStream, int m)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "BlockFrequency: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed BlockFrequency!!!");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("BlockFrequency: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream failed BlockFrequency!!!";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BlockFrequency: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream failed BlockFrequency!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -867,28 +879,28 @@ int RandCheck::Poker(BinarySequence * pbsTestStream, int m)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "Poker pbsTestStream is null");
-		//JLOG(journal_->error()) << "Poker pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "Poker pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "Poker: m : [%d]", m);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: m : [%d]", m);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: m : [%d]", m);
 
 	nBlocksNumber = (int)floor((double)pbsTestStream->bitsNumber / (double)m);
 
 	LOGPX(LOG_TRACE, 0, "Poker: nBlocksNumber : [%d]", nBlocksNumber);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: nBlocksNumber : [%d]", nBlocksNumber);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: nBlocksNumber : [%d]", nBlocksNumber);
 
 	nNArraySize = (int)pow(2, m);
 
 	LOGPX(LOG_TRACE, 0, "Poker: nNArraySize : [%d]", nNArraySize);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: nNArraySize : [%d]", nNArraySize);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: nNArraySize : [%d]", nNArraySize);
 
 	n = (long*)calloc(nNArraySize, sizeof(long));
 	if (n == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "Poker calloc n error");
-		//JLOG(journal_->error()) << "Poker calloc n error";
+		//JLOG(randCheckJournal_->error()) << "Poker calloc n error";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -911,8 +923,8 @@ int RandCheck::Poker(BinarySequence * pbsTestStream, int m)
 	{
 		LOGPX(LOG_TRACE, 0, "Poker: n[%d] : [%u]", i, n[i]);
 		LOGPX(LOG_TRACE, 0, "Poker: sum : [%f]", sum);
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: n[%d] : [%u]", i, n[i]);
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: sum : [%f]", sum);
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: n[%d] : [%u]", i, n[i]);
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: sum : [%f]", sum);
 
 		sum += pow(n[i], 2);
 	}
@@ -921,12 +933,12 @@ int RandCheck::Poker(BinarySequence * pbsTestStream, int m)
 	sum = sum - (double)pbsTestStream->bitsNumber;
 
 	LOGPX(LOG_TRACE, 0, "Poker: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: sum : [%f]", sum);
 
 	dPValue = igamc(((nNArraySize - 1) / 2), sum / 2);
 
 	LOGPX(LOG_TRACE, 0, "Poker: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: dPValue : [%f]", dPValue);
 
 	//free
 	if (n != NULL) free(n);
@@ -935,8 +947,8 @@ int RandCheck::Poker(BinarySequence * pbsTestStream, int m)
 	{
 		LOGPX(LOG_TRACE, 0, "Poker: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed Poker~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed Poker~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed Poker~~~";
 
 		return SWR_OK;
 	}
@@ -944,8 +956,8 @@ int RandCheck::Poker(BinarySequence * pbsTestStream, int m)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "Poker: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed Poker!!!");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("Poker: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream failed Poker!!!";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Poker: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream failed Poker!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -965,18 +977,18 @@ int RandCheck::Serial(BinarySequence* pbsTestStream, int nBlockSize)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "Serial pbsTestStream is null");
-		//JLOG(journal_->error()) << "Serial pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "Serial pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "Serial: nBlockSize : [%d]", nBlockSize);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Serial: nBlockSize : [%d]", nBlockSize);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Serial: nBlockSize : [%d]", nBlockSize);
 
 	//
 	nBlocksNumber = (int)floor((double)pbsTestStream->bitsNumber / (double)nBlockSize);
 
 	LOGPX(LOG_TRACE, 0, "Serial: nBlocksNumber : [%d]", nBlocksNumber);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Serial: nBlocksNumber : [%d]", nBlocksNumber);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Serial: nBlocksNumber : [%d]", nBlocksNumber);
 
 	for (i = 0; i < nBlocksNumber; ++i)
 	{
@@ -991,25 +1003,25 @@ int RandCheck::Serial(BinarySequence* pbsTestStream, int nBlockSize)
 	}
 
 	LOGPX(LOG_TRACE, 0, "Serial: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Serial: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Serial: sum : [%f]", sum);
 
 	v = 4.0 * nBlockSize * sum;
 
 	LOGPX(LOG_TRACE, 0, "Serial: v : [%f]", v);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Serial: v : [%f]", v);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Serial: v : [%f]", v);
 
 	dPValue = igamc((double)nBlocksNumber / 2, v / 2);
 	//dPValue = 1.0;
 
 	LOGPX(LOG_TRACE, 0, "Serial: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Serial: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Serial: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "Serial: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed Serial~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("Serial: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed Serial~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Serial: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed Serial~~~";
 		
 		return SWR_OK;
 	}
@@ -1017,8 +1029,8 @@ int RandCheck::Serial(BinarySequence* pbsTestStream, int nBlockSize)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "BlockFrequencyTest: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed BlockFrequencyTest!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("BlockFrequencyTest: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed BlockFrequencyTest!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("BlockFrequencyTest: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed BlockFrequencyTest!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1036,7 +1048,7 @@ int RandCheck::Runs(BinarySequence * pbsTestStream)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "Runs pbsTestStream is null");
-		//JLOG(journal_->error()) << "Runs pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "Runs pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
@@ -1056,23 +1068,23 @@ int RandCheck::Runs(BinarySequence * pbsTestStream)
 	LOGPX(LOG_TRACE, 0, "Runs: sum : [%f]", sum);
 	LOGPX(LOG_TRACE, 0, "Runs: v : [%f]", v);
 	LOGPX(LOG_TRACE, 0, "Runs: pi : [%f]", pi);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Runs: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Runs: v : [%f]", v);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Runs: pi : [%f]", pi);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Runs: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Runs: v : [%f]", v);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Runs: pi : [%f]", pi);
 
 	pi = pi * (1 - pi);
 	dInterValue = fabs(v - 2 * pbsTestStream->bitsNumber * pi) / (2 * sqrt(2 * pbsTestStream->bitsNumber) * pi);
 	dPValue = erfc(dInterValue);
 
 	LOGPX(LOG_TRACE, 0, "Runs: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Runs: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Runs: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "Runs: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed Runs~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("Runs: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed Runs~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Runs: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed Runs~~~";
 
 		return SWR_OK;
 	}
@@ -1080,8 +1092,8 @@ int RandCheck::Runs(BinarySequence * pbsTestStream)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "Runs: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed Runs!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("Runs: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed Runs!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("Runs: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed Runs!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1103,7 +1115,7 @@ int RandCheck::RunsDistribution(BinarySequence * pbsTestStream)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "RunsDistribution pbsTestStream is null");
-		//JLOG(journal_->error()) << "RunsDistribution pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "RunsDistribution pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
@@ -1116,13 +1128,13 @@ int RandCheck::RunsDistribution(BinarySequence * pbsTestStream)
 	}
 
 	LOGPX(LOG_TRACE, 0, "RunsDistribution: k : [%d]", k);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("RunsDistribution: k : [%d]", k);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("RunsDistribution: k : [%d]", k);
 
 	b = (unsigned int*)calloc(k, sizeof(unsigned int));
 	if (b == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "RunsDistribution calloc b array error");
-		//JLOG(journal_->error()) << "RunsDistribution calloc b array error";
+		//JLOG(randCheckJournal_->error()) << "RunsDistribution calloc b array error";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -1132,7 +1144,7 @@ int RandCheck::RunsDistribution(BinarySequence * pbsTestStream)
 		if (b != NULL) free(b);
 
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "RunsDistribution calloc g array error");
-		//JLOG(journal_->error()) << "RunsDistribution calloc g array error";
+		//JLOG(randCheckJournal_->error()) << "RunsDistribution calloc g array error";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -1201,13 +1213,13 @@ int RandCheck::RunsDistribution(BinarySequence * pbsTestStream)
 	}//end for(i = 1;i <= k; ++i)
 
 	LOGPX(LOG_TRACE, 0, "RunsDistribution: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("RunsDistribution: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("RunsDistribution: sum : [%f]", sum);
 
 	dPValue = igamc(k - 1, sum / (double)2);
 	//dPValue = 0;
 
 	LOGPX(LOG_TRACE, 0, "RunsDistribution: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("RunsDistribution: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("RunsDistribution: dPValue : [%f]", dPValue);
 
 	if (b != NULL) free(b);
 	if (g != NULL) free(g);
@@ -1216,8 +1228,8 @@ int RandCheck::RunsDistribution(BinarySequence * pbsTestStream)
 	{
 		LOGPX(LOG_TRACE, 0, "RunsDistribution: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed RunsDistribution~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("RunsDistribution: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed RunsDistribution~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("RunsDistribution: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed RunsDistribution~~~";
 
 		return SWR_OK;
 	}
@@ -1225,8 +1237,8 @@ int RandCheck::RunsDistribution(BinarySequence * pbsTestStream)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "RunsDistribution: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed RunsDistribution!!!");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("RunsDistribution: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream failed RunsDistribution!!!";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("RunsDistribution: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream failed RunsDistribution!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1249,12 +1261,12 @@ int RandCheck::LongestRunOfOnes(BinarySequence * pbsTestStream, int m)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "LongestRunOfOnes pbsTestStream is null");
-		//JLOG(journal_->error()) << "LongestRunOfOnes pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "LongestRunOfOnes pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "LongestRunOfOnes: m : [%d]", m);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: m : [%d]", m);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: m : [%d]", m);
 
 	switch (m)
 	{
@@ -1325,13 +1337,13 @@ int RandCheck::LongestRunOfOnes(BinarySequence * pbsTestStream, int m)
 	default:
 		//m value error
 		LOGPX(LOG_ERROR, 0, "LongestRunOfOnes invalid m value : [%d]", m);
-		//JLOG(journal_->error()) << ripple::stdStringFormat("LongestRunOfOnes invalid m value : [%d]", m);
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("LongestRunOfOnes invalid m value : [%d]", m);
 		return -1;
 	}
 
 	nBlocksNumber = (int)floor((double)pbsTestStream->bitsNumber / (double)m);
 	LOGPX(LOG_TRACE, 0, "LongestRunOfOnes: nBlocksNumber : [%d]", nBlocksNumber);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: nBlocksNumber : [%d]", nBlocksNumber);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: nBlocksNumber : [%d]", nBlocksNumber);
 
 	for (i = 0; i < nBlocksNumber; ++i)
 	{
@@ -1372,27 +1384,27 @@ int RandCheck::LongestRunOfOnes(BinarySequence * pbsTestStream, int m)
 	}
 
 	LOGP(LOG_TRACE, 0, "LongestRunOfOnes: start count sum");
-	//JLOG(journal_->trace()) << "LongestRunOfOnes: start count sum";
+	//JLOG(randCheckJournal_->trace()) << "LongestRunOfOnes: start count sum";
 	sum = 0.0;
 	for (i = 0; i <= K; ++i)
 	{
 		sum += pow(((double)v[i] - (double)nBlocksNumber*pi[i]), 2) / ((double)nBlocksNumber*pi[i]);
 	}
 	LOGPX(LOG_TRACE, 0, "LongestRunOfOnes: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: sum : [%f]", sum);
 
 	dPValue = igamc(3, sum / 2.0);
 	//dPValue = 1.0;
 
 	LOGPX(LOG_TRACE, 0, "LongestRunOfOnes: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "LongestRunOfOnes: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed LongestRunOfOnes~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed LongestRunOfOnes~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed LongestRunOfOnes~~~";
 
 		return SWR_OK;
 	}
@@ -1400,8 +1412,8 @@ int RandCheck::LongestRunOfOnes(BinarySequence * pbsTestStream, int m)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "LongestRunOfOnes: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed LongestRunOfOnes!!!");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream failed LongestRunOfOnes!!!";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LongestRunOfOnes: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream failed LongestRunOfOnes!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1421,19 +1433,19 @@ int RandCheck::BinaryDerivative(BinarySequence * pbsTestStream, int k)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "BinaryDerivative pbsTestStream is null");
-		//JLOG(journal_->error()) << "BinaryDerivative pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "BinaryDerivative pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "BinaryDerivative: k : [%d]", k);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryDerivative: k : [%d]", k);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryDerivative: k : [%d]", k);
 
 	//create new pbsStream
 	obTmpStream = (OneBit *)calloc(pbsTestStream->bitsNumber, sizeof(OneBit));
 	if (obTmpStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "BinaryDerivative: calloc obTmpStream error!");
-		//JLOG(journal_->error()) << "BinaryDerivative: calloc obTmpStream error!";
+		//JLOG(randCheckJournal_->error()) << "BinaryDerivative: calloc obTmpStream error!";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -1469,29 +1481,29 @@ int RandCheck::BinaryDerivative(BinarySequence * pbsTestStream, int k)
 	}
 
 	LOGPX(LOG_TRACE, 0, "BinaryDerivative: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryDerivative: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryDerivative: sum : [%f]", sum);
 
 	sum = fabs(sum);
 
 	LOGPX(LOG_TRACE, 0, "BinaryDerivative: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryDerivative: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryDerivative: sum : [%f]", sum);
 
 	sum = sum / sqrt(pbsTestStream->bitsNumber - k);
 
 	LOGPX(LOG_TRACE, 0, "BinaryDerivative: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryDerivative: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryDerivative: sum : [%f]", sum);
 
 	dPValue = erfc(fabs(sum) / dSqrt2);
 
 	LOGPX(LOG_TRACE, 0, "BinaryDerivative: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryDerivative: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryDerivative: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "BinaryDerivative: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed BinaryDerivative~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryDerivative: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed BinaryDerivative~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryDerivative: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed BinaryDerivative~~~";
 
 		return SWR_OK;
 	}
@@ -1499,8 +1511,8 @@ int RandCheck::BinaryDerivative(BinarySequence * pbsTestStream, int k)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "BinaryDerivative: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed BinaryDerivative!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("BinaryDerivative: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed BinaryDerivative!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("BinaryDerivative: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed BinaryDerivative!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1516,12 +1528,12 @@ int RandCheck::Autocorrelation(BinarySequence * pbsTestStream, int d)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "AutocorrelationTest pbsTestStream is null");
-		//JLOG(journal_->error()) << "AutocorrelationTest pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "AutocorrelationTest pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "AutocorrelationTest: d : [%d]", d);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: d : [%d]", d);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: d : [%d]", d);
 
 	//异或k次得到新序列
 	for (i = 0; i < pbsTestStream->bitsNumber - d; ++i)
@@ -1530,26 +1542,26 @@ int RandCheck::Autocorrelation(BinarySequence * pbsTestStream, int d)
 	}
 
 	LOGPX(LOG_TRACE, 0, "AutocorrelationTest: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: sum : [%f]", sum);
 
 	sum -= (pbsTestStream->bitsNumber - d) / 2;
 	sum *= 2;
 	sum /= sqrt(pbsTestStream->bitsNumber - d);
 
 	LOGPX(LOG_TRACE, 0, "AutocorrelationTest: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: sum : [%f]", sum);
 
 	dPValue = erfc(fabs(sum) / dSqrt2);
 
 	LOGPX(LOG_TRACE, 0, "AutocorrelationTest: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "AutocorrelationTest: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed AutocorrelationTest~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed AutocorrelationTest~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("AutocorrelationTest: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed AutocorrelationTest~~~";
 
 		return SWR_OK;
 	}
@@ -1557,8 +1569,8 @@ int RandCheck::Autocorrelation(BinarySequence * pbsTestStream, int d)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "AutocorrelationTest: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed AutocorrelationTest!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("AutocorrelationTest: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed AutocorrelationTest!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("AutocorrelationTest: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed AutocorrelationTest!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1584,22 +1596,22 @@ int RandCheck::BinaryMatrixRank(BinarySequence * pbsTestStream, int m, int q)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "BinaryMatrixRank pbsTestStream is null");
-		//JLOG(journal_->error()) << "BinaryMatrixRank pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "BinaryMatrixRank pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "BinaryMatrixRank: m : [%d], q : [%d]", m, q);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: m : [%d], q : [%d]", m, q);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: m : [%d], q : [%d]", m, q);
 
 	nMatrixNumber = (int)floor((double)pbsTestStream->bitsNumber / ((double)m * (double)q));
 
 	LOGPX(LOG_TRACE, 0, "BinaryMatrixRank: nMatrixNumber : [%d]", nMatrixNumber);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: nMatrixNumber : [%d]", nMatrixNumber);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: nMatrixNumber : [%d]", nMatrixNumber);
 
 	if (nMatrixNumber <= 0)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "BinaryMatrixRank nMatrixNumber <= 0");
-		//JLOG(journal_->error()) << "BinaryMatrixRank nMatrixNumber <= 0";
+		//JLOG(randCheckJournal_->error()) << "BinaryMatrixRank nMatrixNumber <= 0";
 		return SWR_INVALID_PARAMS;
 	}
 
@@ -1607,7 +1619,7 @@ int RandCheck::BinaryMatrixRank(BinarySequence * pbsTestStream, int m, int q)
 	if (matrix == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "BinaryMatrixRank create_matrix error!!!");
-		//JLOG(journal_->error()) << "BinaryMatrixRank create_matrix error!!!";
+		//JLOG(randCheckJournal_->error()) << "BinaryMatrixRank create_matrix error!!!";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -1624,22 +1636,22 @@ int RandCheck::BinaryMatrixRank(BinarySequence * pbsTestStream, int m, int q)
 	LOGPX(LOG_TRACE, 0, "BinaryMatrixRank: dFM30 : [%f]", dFM30);
 	LOGPX(LOG_TRACE, 0, "BinaryMatrixRank: dFM31 : [%f]", dFM31);
 	LOGPX(LOG_TRACE, 0, "BinaryMatrixRank: dFM32 : [%f]", dFM32);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dFM30 : [%f]", dFM30);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dFM31 : [%f]", dFM31);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dFM32 : [%f]", dFM32);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dFM30 : [%f]", dFM30);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dFM31 : [%f]", dFM31);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dFM32 : [%f]", dFM32);
 
 	sum = (pow(dFM32 - dP32*nMatrixNumber, 2) / (double)(nMatrixNumber * dP32)) +
 		(pow(dFM31 - dP31*nMatrixNumber, 2) / (double)(nMatrixNumber * dFM31)) +
 		(pow(dFM30 - dP30*nMatrixNumber, 2) / (double)(nMatrixNumber * dFM30));
 
 	LOGPX(LOG_TRACE, 0, "BinaryMatrixRank: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: sum : [%f]", sum);
 
 	dPValue = igamc((double)1, sum / (double)2);
 	//dPValue = 1.0;
 
 	LOGPX(LOG_TRACE, 0, "BinaryMatrixRank: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dPValue : [%f]", dPValue);
 
 #if 0
 	//free MATRIX
@@ -1655,8 +1667,8 @@ int RandCheck::BinaryMatrixRank(BinarySequence * pbsTestStream, int m, int q)
 	{
 		LOGPX(LOG_TRACE, 0, "BinaryMatrixRank: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed BinaryMatrixRank~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed BinaryMatrixRank~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("BinaryMatrixRank: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed BinaryMatrixRank~~~";
 
 		return SWR_OK;
 	}
@@ -1664,8 +1676,8 @@ int RandCheck::BinaryMatrixRank(BinarySequence * pbsTestStream, int m, int q)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "BinaryMatrixRank: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed BinaryMatrixRank!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("BinaryMatrixRank: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed BinaryMatrixRank!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("BinaryMatrixRank: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed BinaryMatrixRank!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1686,7 +1698,7 @@ int RandCheck::Cumulative(BinarySequence * pbsTestStream)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "Cumulative pbsTestStream is null");
-		//JLOG(journal_->error()) << "Cumulative pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "Cumulative pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
@@ -1700,8 +1712,8 @@ int RandCheck::Cumulative(BinarySequence * pbsTestStream)
 
 	LOGPX(LOG_TRACE, 0, "Cumulative: sum : [%f]", sum);
 	LOGPX(LOG_TRACE, 0, "Cumulative: z : [%f]", z);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Cumulative: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Cumulative: z : [%f]", z);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Cumulative: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Cumulative: z : [%f]", z);
 
 	sum1 = 0.0;
 	iStart = (-pbsTestStream->bitsNumber / (int)z + 1) / 4;
@@ -1716,20 +1728,20 @@ int RandCheck::Cumulative(BinarySequence * pbsTestStream)
 
 	LOGPX(LOG_TRACE, 0, "Cumulative: sum1 : [%f]", sum1);
 	LOGPX(LOG_TRACE, 0, "Cumulative: sum2 : [%f]", sum2);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Cumulative: sum1 : [%f]", sum1);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Cumulative: sum2 : [%f]", sum2);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Cumulative: sum1 : [%f]", sum1);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Cumulative: sum2 : [%f]", sum2);
 
 	dPValue = 1.0 - sum1 + sum2;
 
 	LOGPX(LOG_TRACE, 0, "Cumulative: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Cumulative: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Cumulative: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "Cumulative: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed Cumulative~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("Cumulative: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed Cumulative~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Cumulative: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed Cumulative~~~";
 
 		return SWR_OK;
 	}
@@ -1737,8 +1749,8 @@ int RandCheck::Cumulative(BinarySequence * pbsTestStream)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "Cumulative: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed Cumulative!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("Cumulative: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed Cumulative!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("Cumulative: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed Cumulative!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1758,18 +1770,18 @@ int RandCheck::ApproximateEntropy(BinarySequence * pbsTestStream, int m)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "ApproximateEntropy pbsTestStream is null");
-		//JLOG(journal_->error()) << "ApproximateEntropy pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "ApproximateEntropy pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "ApproximateEntropy: m : [%d]", m);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: m : [%d]", m);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: m : [%d]", m);
 
 	v = (unsigned int*)calloc((int)pow(2, (m + 1)), sizeof(unsigned int));
 	if (v == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "ApproximateEntropy calloc v error");
-		//JLOG(journal_->error()) << "ApproximateEntropy calloc v error";
+		//JLOG(randCheckJournal_->error()) << "ApproximateEntropy calloc v error";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -1798,7 +1810,7 @@ int RandCheck::ApproximateEntropy(BinarySequence * pbsTestStream, int m)
 		for (i = 0; i < (int)pow(2, nBlockSize); ++i)
 		{
 			LOGPX(LOG_TRACE, 0, "ApproximateEntropy: v[%d] : [%u]", i, v[i]);
-			//JLOG(journal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: v[%d] : [%u]", i, v[i]);
+			//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: v[%d] : [%u]", i, v[i]);
 
 			sum += ((double)v[i] / (double)pbsTestStream->bitsNumber)*log((double)v[i] / (double)pbsTestStream->bitsNumber);
 		}
@@ -1806,24 +1818,24 @@ int RandCheck::ApproximateEntropy(BinarySequence * pbsTestStream, int m)
 		dApEn[nBlockSize - m] = sum;
 
 		LOGPX(LOG_TRACE, 0, "ApproximateEntropy: dApEn[%d] : [%f]", (nBlockSize - m), dApEn[nBlockSize - m]);
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: dApEn[%d] : [%f]", (nBlockSize - m), dApEn[nBlockSize - m]);
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: dApEn[%d] : [%f]", (nBlockSize - m), dApEn[nBlockSize - m]);
 	} //end for(nBlockSize = m;nBlockSize <= (m+1); ++nBlockSize)
 
 	sum = dApEn[0] - dApEn[1];
 
 	LOGPX(LOG_TRACE, 0, "ApproximateEntropy: dApEn : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: dApEn : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: dApEn : [%f]", sum);
 
 	sum = 2.0 * pbsTestStream->bitsNumber * (log(2) - sum);
 
 	LOGPX(LOG_TRACE, 0, "ApproximateEntropy: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: sum : [%f]", sum);
 
 	dPValue = igamc(pow(2, m - 1), sum / 2.0);
 	//dPValue = 1.0;
 
 	LOGPX(LOG_TRACE, 0, "ApproximateEntropy: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: dPValue : [%f]", dPValue);
 
 	//free
 	if (v != NULL) free(v);
@@ -1832,8 +1844,8 @@ int RandCheck::ApproximateEntropy(BinarySequence * pbsTestStream, int m)
 	{
 		LOGPX(LOG_TRACE, 0, "ApproximateEntropy: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed ApproximateEntropy~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed ApproximateEntropy~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("ApproximateEntropy: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed ApproximateEntropy~~~";
 
 		return SWR_OK;
 	}
@@ -1841,8 +1853,8 @@ int RandCheck::ApproximateEntropy(BinarySequence * pbsTestStream, int m)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "ApproximateEntropy: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed ApproximateEntropy!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("ApproximateEntropy: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed ApproximateEntropy!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("ApproximateEntropy: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed ApproximateEntropy!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -1876,17 +1888,17 @@ int RandCheck::LinearComplexity(BinarySequence* pbsTestStream, int m)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "LinearComplexity pbsTestStream is null");
-		//JLOG(journal_->error()) << "LinearComplexity pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "LinearComplexity pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "LinearComplexity: m : [%d]", m);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("LinearComplexity: m : [%d]", m);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LinearComplexity: m : [%d]", m);
 
 	nBlocksNumber = (int)floor((double)pbsTestStream->bitsNumber / (double)m);
 
 	LOGPX(LOG_TRACE, 0, "LinearComplexity: nBlocksNumber : [%d]", nBlocksNumber);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("LinearComplexity: nBlocksNumber : [%d]", nBlocksNumber);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LinearComplexity: nBlocksNumber : [%d]", nBlocksNumber);
 
 	//计算u中-1指数值
 	if (m % 2 == 0)
@@ -1901,7 +1913,7 @@ int RandCheck::LinearComplexity(BinarySequence* pbsTestStream, int m)
 	dUValue = m / 2. + (9. + sign) / 36. - 1. / pow(2, m) * (m / 3. + 2. / 9.);
 
 	LOGPX(LOG_TRACE, 0, "LinearComplexity: dUValue : [%f]", dUValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("LinearComplexity: dUValue : [%f]", dUValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LinearComplexity: dUValue : [%f]", dUValue);
 
 	//计算Ti中-1指数值
 	if (m % 2 == 0)
@@ -1930,7 +1942,7 @@ int RandCheck::LinearComplexity(BinarySequence* pbsTestStream, int m)
 		if (obT != NULL) free(obT);
 
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "LinearComplexity calloc obB obC obP obT error");
-		//JLOG(journal_->error()) << "LinearComplexity calloc obB obC obP obT error";
+		//JLOG(randCheckJournal_->error()) << "LinearComplexity calloc obB obC obP obT error";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -2001,8 +2013,8 @@ int RandCheck::LinearComplexity(BinarySequence* pbsTestStream, int m)
 	{
 		LOGPX(LOG_TRACE, 0, "LinearComplexity: pi[i] : [%f]", pi[i]);
 		LOGPX(LOG_TRACE, 0, "LinearComplexity: v[i] : [%d]", v[i]);
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("LinearComplexity: pi[i] : [%f]", pi[i]);
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("LinearComplexity: v[i] : [%d]", v[i]);
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LinearComplexity: pi[i] : [%f]", pi[i]);
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LinearComplexity: v[i] : [%d]", v[i]);
 
 		sum += pow((v[i] - nBlocksNumber*pi[i]), 2) / (nBlocksNumber*pi[i]);
 	}
@@ -2017,14 +2029,14 @@ int RandCheck::LinearComplexity(BinarySequence* pbsTestStream, int m)
 	//dPValue = 1.0;
 
 	LOGPX(LOG_TRACE, 0, "LinearComplexity: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("LinearComplexity: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LinearComplexity: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "LinearComplexity: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed LinearComplexity~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("LinearComplexity: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed LinearComplexity~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("LinearComplexity: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed LinearComplexity~~~";
 
 		return SWR_OK;
 	}
@@ -2032,8 +2044,8 @@ int RandCheck::LinearComplexity(BinarySequence* pbsTestStream, int m)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "LinearComplexity: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed LinearComplexity!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("LinearComplexity: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed LinearComplexity!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("LinearComplexity: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed LinearComplexity!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -2063,37 +2075,37 @@ int RandCheck::Maurer(BinarySequence * pbsTestStream, int L, int Q)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "Maurer pbsTestStream is null");
-		//JLOG(journal_->error()) << "Maurer pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "Maurer pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
 	if (L < 6 || L > 16)
 	{
 		LOGP(LOG_ERROR, L, "L out of range");
-		//JLOG(journal_->error()) << "L out of range";
+		//JLOG(randCheckJournal_->error()) << "L out of range";
 		return SWR_INVALID_PARAMS;
 	}
 
 	LOGPX(LOG_TRACE, 0, "Maurer: L : [%d]", L);
 	LOGPX(LOG_TRACE, 0, "Maurer: Q : [%d]", Q);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: L : [%d]", L);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: Q : [%d]", Q);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: L : [%d]", L);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: Q : [%d]", Q);
 
 	K = (int)floor((double)pbsTestStream->bitsNumber / (double)L) - Q;
 
 	LOGPX(LOG_TRACE, 0, "Maurer: K : [%d]", K);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: K : [%d]", K);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: K : [%d]", K);
 
 	p = (int)pow(2, L);
 
 	LOGPX(LOG_TRACE, 0, "Maurer: p : [%d]", p);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: p : [%d]", p);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: p : [%d]", p);
 
 	T = (long*)calloc(p, sizeof(long));
 	if (T == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "Maurer calloc T array error");
-		//JLOG(journal_->error()) << "Maurer calloc T array error";
+		//JLOG(randCheckJournal_->error()) << "Maurer calloc T array error";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -2126,28 +2138,28 @@ int RandCheck::Maurer(BinarySequence * pbsTestStream, int L, int Q)
 	}
 
 	LOGPX(LOG_TRACE, 0, "Maurer: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: sum : [%f]", sum);
 
 	sum = sum / (double)K;
 
 	LOGPX(LOG_TRACE, 0, "Maurer: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: sum : [%f]", sum);
 
 	c = 0.7 - 0.8 / (double)L + (4 + 32 / (double)L)*pow(K, -3 / (double)L) / 15;
 
 	LOGPX(LOG_TRACE, 0, "Maurer: c : [%f]", c);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: c : [%f]", c);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: c : [%f]", c);
 
 	c = c * sqrt(variance[L] / (double)K);
 
 	LOGPX(LOG_TRACE, 0, "Maurer: c : [%f]", c);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: c : [%f]", c);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: c : [%f]", c);
 
 	//dPValue = 1.0;
 	dPValue = erfc(fabs((sum - expected_value[L])) / (dSqrt2 * c));
 
 	LOGPX(LOG_TRACE, 0, "Maurer: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: dPValue : [%f]", dPValue);
 
 	if (T != NULL) free(T);
 
@@ -2155,8 +2167,8 @@ int RandCheck::Maurer(BinarySequence * pbsTestStream, int L, int Q)
 	{
 		LOGPX(LOG_TRACE, 0, "Maurer: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed Maurer~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("Maurer: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed Maurer~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("Maurer: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed Maurer~~~";
 
 		return SWR_OK;
 	}
@@ -2164,8 +2176,8 @@ int RandCheck::Maurer(BinarySequence * pbsTestStream, int L, int Q)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "Maurer: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed Maurer!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("Maurer: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed Maurer!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("Maurer: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed Maurer!!!";
 
 		return SWR_TEST_FAILED;
 	}
@@ -2189,7 +2201,7 @@ int RandCheck::DiscreteFourierTransform(BinarySequence * pbsTestStream, int d)
 	if (pbsTestStream == NULL)
 	{
 		LOGP(LOG_ERROR, SWR_INVALID_PARAMS, "DiscreteFourierTransform pbsTestStream is null");
-		//JLOG(journal_->error()) << "DiscreteFourierTransform pbsTestStream is null";
+		//JLOG(randCheckJournal_->error()) << "DiscreteFourierTransform pbsTestStream is null";
 		return SWR_INVALID_PARAMS;
 	}
 
@@ -2204,7 +2216,7 @@ int RandCheck::DiscreteFourierTransform(BinarySequence * pbsTestStream, int d)
 		if (dm != NULL) free(dm);
 
 		LOGP(LOG_ERROR, SWR_HOST_MEMORY, "DiscreteFourierTransform calloc dX dwsave difac dm error");
-		//JLOG(journal_->error()) << "DiscreteFourierTransform calloc dX dwsave difac dm error";
+		//JLOG(randCheckJournal_->error()) << "DiscreteFourierTransform calloc dX dwsave difac dm error";
 		return SWR_HOST_MEMORY;
 	}
 
@@ -2233,17 +2245,17 @@ int RandCheck::DiscreteFourierTransform(BinarySequence * pbsTestStream, int d)
 		if (dm[i] < upperBound) count++;
 
 	LOGPX(LOG_TRACE, 0, "DiscreteFourierTransform: count : [%d]", count);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: count : [%d]", count);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: count : [%d]", count);
 
 	N0 = (double)0.95*pbsTestStream->bitsNumber / 2.;
 
 	LOGPX(LOG_TRACE, 0, "DiscreteFourierTransform: N0 : [%f]", N0);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: N0 : [%f]", N0);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: N0 : [%f]", N0);
 
 	sum = (count - N0) / sqrt(pbsTestStream->bitsNumber / 2.*0.95*0.05);
 
 	LOGPX(LOG_TRACE, 0, "DiscreteFourierTransform: sum : [%f]", sum);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: sum : [%f]", sum);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: sum : [%f]", sum);
 
 	//free
 	if (dX != NULL) free(dX);
@@ -2254,14 +2266,14 @@ int RandCheck::DiscreteFourierTransform(BinarySequence * pbsTestStream, int d)
 	dPValue = erfc(fabs(sum) / dSqrt2);
 
 	LOGPX(LOG_TRACE, 0, "DiscreteFourierTransform: dPValue : [%f]", dPValue);
-	//JLOG(journal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: dPValue : [%f]", dPValue);
+	//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: dPValue : [%f]", dPValue);
 
 	if (dPValue >= g_dSigLevel)
 	{
 		LOGPX(LOG_TRACE, 0, "DiscreteFourierTransform: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_TRACE, 0, "pbsTestStream passed DiscreteFourierTransform~~~");
-		//JLOG(journal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->trace()) << "pbsTestStream passed DiscreteFourierTransform~~~";
+		//JLOG(randCheckJournal_->trace()) << ripple::stdStringFormat("DiscreteFourierTransform: dPValue[%f] >= g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->trace()) << "pbsTestStream passed DiscreteFourierTransform~~~";
 
 		return SWR_OK;
 	}
@@ -2269,8 +2281,8 @@ int RandCheck::DiscreteFourierTransform(BinarySequence * pbsTestStream, int d)
 	{
 		LOGPX(LOG_ERROR, SWR_TEST_FAILED, "DiscreteFourierTransform: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
 		LOGP(LOG_ERROR, SWR_TEST_FAILED, "pbsTestStream failed DiscreteFourierTransform!!!");
-		//JLOG(journal_->error()) << ripple::stdStringFormat("DiscreteFourierTransform: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
-		//JLOG(journal_->error()) << "pbsTestStream failed DiscreteFourierTransform!!!";
+		//JLOG(randCheckJournal_->error()) << ripple::stdStringFormat("DiscreteFourierTransform: dPValue[%f] < g_dSigLevel[%f]", dPValue, g_dSigLevel);
+		//JLOG(randCheckJournal_->error()) << "pbsTestStream failed DiscreteFourierTransform!!!";
 
 		return SWR_TEST_FAILED;
 	}

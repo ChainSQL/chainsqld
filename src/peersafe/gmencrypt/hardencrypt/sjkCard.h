@@ -18,11 +18,11 @@
 //==============================================================================
 
 #pragma once
-#ifndef HARDENCRYPT_SJK1238_26_H_INCLUDE
-#define HARDENCRYPT_SJK1238_26_H_INCLUDE
+#ifndef HARDENCRYPT_SJKCARD_H_INCLUDE
+#define HARDENCRYPT_SJKCARD_H_INCLUDE
 
-#include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
-#include <peersafe/gmencrypt/hardencrypt/sjk1238_26/swsds.h>
+#include <peersafe/gmencrypt/GmEncrypt.h>
+#include <peersafe/gmencrypt/hardencrypt/sjkCard/swsds.h>
 #include <cstring>
 
 #define SESSION_KEY_INDEX  1
@@ -32,10 +32,10 @@ const std::string priKeyAccessCode_g = "peersafe";
 
 #ifdef GM_ALG_PROCESS
 
-class SJK1238 : public HardEncrypt
+class SJKCard : public GmEncrypt
 {
 public:
-    SJK1238()
+    SJKCard()
     {
         memset(pubKeyUser_, 0, PUBLIC_KEY_EXT_LEN);
         if (!OpenDevice())
@@ -47,7 +47,7 @@ public:
             isHardEncryptExist_ = false;
         }
     }
-    ~SJK1238()
+    ~SJKCard()
     {
         CloseDevice();
     }

@@ -4,7 +4,9 @@
 #define RAND_CHECK_H_INCLUDE
 
 //#include <ripple/beast/utility/Journal.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
+#include <peersafe/gmencrypt/GmEncrypt.h>
+#include <ripple/basics/Log.h>
+#include <ripple/beast/utility/Journal.h>
 
 extern "C" {
 #include <peersafe/gmencrypt/randomcheck/matrix.h>
@@ -56,23 +58,25 @@ typedef struct {
 	int bitsNumber; // Number of bits in the 'bits' sequence
 }BinarySequence;
 
+extern std::unique_ptr <ripple::Logs> logsNull;
 class RandCheck
 {
 public:
-	static RandCheck* getInstance();
+	static RandCheck* getInstance(std::unique_ptr <ripple::Logs>& logs = logsNull);
 	//void setLogJournal(beast::Journal* journal);
 
-	int RandTest(HardEncrypt* hEObj, int randomTestSetCnt, int randomLen, bool isCycleCheck = false);
+	int RandTest(GmEncrypt* hEObj, int randomTestSetCnt, int randomLen, bool isCycleCheck = false);
 	int RandomnessTest(unsigned char* pbBuffer, int nBufferLen, int index);
 	int RandomnessSingleCheck(unsigned char *pbBuffer, int nBufferLen);
 
 private:
 	static RandCheck* rcInstance;
 	bool isCycleCheck_;
-	//beast::Journal*	journal_;
+    static std::unique_ptr <ripple::Logs> logs_;
+    beast::Journal randCheckJournal_;
 
 private:
-	RandCheck();
+	RandCheck(beast::Journal randCheckJournal);
 	double normal(double x);
 	//单比特频数检测
 	int MonobitFrequency(BinarySequence* pbsTestStream);

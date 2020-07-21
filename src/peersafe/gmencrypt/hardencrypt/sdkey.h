@@ -24,11 +24,11 @@
 
 #ifdef BEGIN_SDKEY
 
-#include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
+#include <peersafe/gmencrypt/GmEncrypt.h>
 #include <peersafe/gmencrypt/hardencrypt/sdkey/swsdkey.h>
 #include <cstring>
 
-class SDkey : public HardEncrypt
+class SDkey : public GmEncrypt
 {
 public:
     SDkey() :pubKeyLen_(512),priKeyLen_(512)

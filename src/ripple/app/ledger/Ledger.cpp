@@ -211,7 +211,7 @@ Ledger::Ledger (
     info_.closeTimeResolution = ledgerDefaultTimeResolution;
 
     KeyType keyType = KeyType::secp256k1;
-    if (nullptr != HardEncryptObj::getInstance())
+    if (nullptr != GmEncryptObj::getInstance())
     {
         keyType = KeyType::gmalg;
     }

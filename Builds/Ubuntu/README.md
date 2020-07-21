@@ -40,7 +40,7 @@ export BOOST_ROOT=/home/dbliu/work/chainSQL/Builds/Ubuntu/boost_1_63_0
 ```
 - 如需编译国密版本，请在代码中开启国密算法宏，否则跳过此步
 ```
-Path: chainsqld\src\peersafe\gmencrypt\hardencrypt\HardEncrypt.h
+Path: chainsqld\src\peersafe\gmencrypt\GmEncrypt.h
 将 “#define GM_ALG_PROCESS” 宏开启
 ```
 

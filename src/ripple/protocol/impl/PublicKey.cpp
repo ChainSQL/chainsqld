@@ -27,7 +27,6 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <ed25519-donna/ed25519.h>
 #include <type_traits>
-//#include <gmencrypt/hardencrypt/HardEncryptObj.h>
 
 namespace ripple {
 
@@ -56,7 +55,7 @@ parseBase58 (TokenType type, std::string const& s)
         decodeBase58Token(s, type);
     if (result.empty())
         return boost::none;
-    if (nullptr == HardEncryptObj::getInstance())
+    if (nullptr == GmEncryptObj::getInstance())
     {
         if (result.size() != 33)
             return boost::none;
@@ -242,7 +241,7 @@ verifyDigest (PublicKey const& publicKey,
     Slice const& sig,
     bool mustBeFullyCanonical)
 {
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
 	if (nullptr == hEObj)
 	{
 		if (publicKeyType(publicKey) != KeyType::secp256k1)
@@ -343,7 +342,7 @@ verify (PublicKey const& publicKey,
             unsigned char hashData[32] = { 0 };
             unsigned long hashDataLen = 32;
 
-            HardEncrypt* hEObj = HardEncryptObj::getInstance();
+            GmEncrypt* hEObj = GmEncryptObj::getInstance();
             std::pair<unsigned char*, int> pub4Verify = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
             hEObj->SM3HashTotal((unsigned char*)m.data(), m.size(), hashData, &hashDataLen);
             rv = hEObj->SM2ECCVerify(pub4Verify, hashData, hashDataLen, (unsigned char*)sig.data(), sig.size());
@@ -367,7 +366,7 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
     unsigned long rv = 0;
     unsigned char outData[512] = { 0 };
     unsigned long outDataLen = 512;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     std::pair<unsigned char*, int> pub4Encrypt;
     switch (*type)
     {
@@ -390,11 +389,11 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
 
 bool generateAddrAndPubFile(int pubType, int index, std::string filePath)
 {
-    if(HardEncryptObj::hEType_ == HardEncryptObj::gmAlgType::soft)
+    if(GmEncryptObj::hEType_ == GmEncryptObj::gmAlgType::soft)
     {
         return true;
     }
-	HardEncrypt* hEObj = HardEncryptObj::getInstance();
+	GmEncrypt* hEObj = GmEncryptObj::getInstance();
 	std::string fileName = "";
 	unsigned char publicKeyTemp[PUBLIC_KEY_EXT_LEN] = { 0 };
 	if (hEObj != NULL)

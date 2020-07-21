@@ -74,7 +74,7 @@ Json::Value walletPropose (Json::Value const& params)
     boost::optional<Seed> seed;
 
     KeyType keyType = KeyType::unknown;
-    if(nullptr == HardEncryptObj::getInstance())
+    if(nullptr == GmEncryptObj::getInstance())
         keyType = KeyType::secp256k1;
     else keyType = KeyType::gmalg;
 

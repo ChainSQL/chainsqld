@@ -17,7 +17,7 @@
  */
 //==============================================================================
 
-#include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
+#include <peersafe/gmencrypt/GmEncrypt.h>
 #include <string.h>
 #ifdef _WIN64 //== _WIN32
 #include <Userenv.h>
@@ -40,9 +40,9 @@ const unsigned char g_gmRootPrivateKey_[32] = { 0x32,0xbb,0xdc,0x4c,0xf2,0x66,0x
 //"Root private_key": "p97evg5Rht7ZB7DbEpVqmV3yiSBMsR3pRBKJyLaRWt7SL5gEeBb"
 //"Root public_key" : "pYvWhW4crFwcnovo5MhL71j5PyTWSJi2NVuzPYUzE9UYcSVLp29RhtssQB7seGvFmdjbtKRrBQ4g9bCW5hjBQSeb7LePMwFM"
 //static CRITICAL_SECTION csSM3;
-std::mutex HardEncrypt::SM3Hash::mutexSM3_;
+std::mutex GmEncrypt::SM3Hash::mutexSM3_;
 
-HardEncrypt::HardEncrypt() : hEkey_(nullptr)
+GmEncrypt::GmEncrypt() : hEkey_(nullptr)
 , hSessionHandle_(nullptr)
 , hashType_(SM3_HASH_TYPE)
 , symAlgFlag_(SM4_SYM_ALG)
@@ -52,16 +52,16 @@ HardEncrypt::HardEncrypt() : hEkey_(nullptr)
     memset(pubKeyRoot_, 0, sizeof(pubKeyRoot_));
 }
 
-HardEncrypt::~HardEncrypt()
+GmEncrypt::~GmEncrypt()
 {
 }
 
-bool HardEncrypt::isHardEncryptExist()
+bool GmEncrypt::isHardEncryptExist()
 {
     return isHardEncryptExist_;
 }
 
-std::string HardEncrypt::GetHomePath() {
+std::string GmEncrypt::GetHomePath() {
 	std::string homeStr = "";
 #ifdef _WIN64
 	char lpProfileDir[512];
@@ -79,7 +79,7 @@ std::string HardEncrypt::GetHomePath() {
 	return homeStr;
 }
 
-std::pair<unsigned char*, int> HardEncrypt::getRootPublicKey()
+std::pair<unsigned char*, int> GmEncrypt::getRootPublicKey()
 {
     pubKeyRoot_[0] = GM_ALG_MARK;
     memcpy(pubKeyRoot_ + 1, g_gmRootPublicKeyX_,32);
@@ -87,12 +87,12 @@ std::pair<unsigned char*, int> HardEncrypt::getRootPublicKey()
     return std::make_pair(pubKeyRoot_, sizeof(pubKeyRoot_));
 }
 
-std::pair<unsigned char*, int> HardEncrypt::getRootPrivateKey()
+std::pair<unsigned char*, int> GmEncrypt::getRootPrivateKey()
 {
     return std::make_pair((unsigned char*)g_gmRootPrivateKey_, sizeof(g_gmRootPrivateKey_));
 }
 
-void HardEncrypt::pkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, unsigned char* dstUC, unsigned long* dstUCLen)
+void GmEncrypt::pkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, unsigned char* dstUC, unsigned long* dstUCLen)
 {
     int paddingData = 16 - srcUCLen % 16;
     int lenTimes = srcUCLen / 16;
@@ -104,14 +104,14 @@ void HardEncrypt::pkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, uns
     *dstUCLen = (lenTimes + 1) * 16;
 }
 
-void HardEncrypt::dePkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, unsigned char* dstUC, unsigned long* dstUCLen)
+void GmEncrypt::dePkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, unsigned char* dstUC, unsigned long* dstUCLen)
 {
     int dePaddingData = srcUC[srcUCLen - 1];
     *dstUCLen = srcUCLen - dePaddingData;
     memcpy(dstUC, srcUC, *dstUCLen);
 }
 
-int HardEncrypt::FileWrite(const char *filename, char *mode, unsigned char *buffer, size_t size)
+int GmEncrypt::FileWrite(const char *filename, char *mode, unsigned char *buffer, size_t size)
 {
 	FILE *fp;
 	int rw, rwed;
@@ -132,37 +132,37 @@ int HardEncrypt::FileWrite(const char *filename, char *mode, unsigned char *buff
 	fclose(fp);
 	return rwed;
 }
-/*HardEncrypt::SM3Hash &HardEncrypt::getSM3Obj()
+/*GmEncrypt::SM3Hash &GmEncrypt::getSM3Obj()
 {
     return objSM3_;
 }*/
 
-HardEncrypt::SM3Hash::SM3Hash(HardEncrypt *pEncrypt)
+GmEncrypt::SM3Hash::SM3Hash(GmEncrypt *pEncrypt)
 {
 #ifdef SD_KEY_SWITCH
     mutexSM3_.lock();
 #endif
-    pHardEncrypt_ = pEncrypt;
+    pGmEncrypt_ = pEncrypt;
 }
 
-HardEncrypt::SM3Hash::~SM3Hash()
+GmEncrypt::SM3Hash::~SM3Hash()
 {
 #ifdef SD_KEY_SWITCH
     mutexSM3_.unlock();
 #endif
 }
 
-void HardEncrypt::SM3Hash::SM3HashInitFun()
+void GmEncrypt::SM3Hash::SM3HashInitFun()
 {
-    pHardEncrypt_->SM3HashInit(&hSM3Handle_);
+    pGmEncrypt_->SM3HashInit(&hSM3Handle_);
 }
 
-void HardEncrypt::SM3Hash::SM3HashFinalFun(unsigned char *pHashData, unsigned long *pulHashDataLen)
+void GmEncrypt::SM3Hash::SM3HashFinalFun(unsigned char *pHashData, unsigned long *pulHashDataLen)
 {
-    pHardEncrypt_->SM3HashFinal(hSM3Handle_, pHashData,pulHashDataLen);
+    pGmEncrypt_->SM3HashFinal(hSM3Handle_, pHashData,pulHashDataLen);
 }
 
-void HardEncrypt::SM3Hash::operator()(void const* data, std::size_t size) noexcept
+void GmEncrypt::SM3Hash::operator()(void const* data, std::size_t size) noexcept
 {
-    pHardEncrypt_->operator()(hSM3Handle_, data,size);
+    pGmEncrypt_->operator()(hSM3Handle_, data,size);
 }

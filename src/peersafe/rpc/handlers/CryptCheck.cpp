@@ -23,7 +23,7 @@
 #include <ripple/protocol/JsonFields.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
-#include <peersafe/gmencrypt/hardencrypt/gmCheck.h>
+#include <peersafe/gmencrypt/GmCheck.h>
 
 
 namespace ripple {
