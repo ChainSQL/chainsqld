@@ -599,17 +599,12 @@ void Lookup::relayTxs()
     auto const& hTxVector = app_.getTxPool().topTransactions(MinTxsInLedgerAdvance);
     app_.getTxPool().getTransactions(hTxVector, txs);
 
-    std::map < unsigned int, std::vector<std::shared_ptr<Transaction>> > mapShardIndexTxs;
+    std::map <std::uint32_t, std::vector<std::shared_ptr<Transaction>> > mapShardIndexTxs;
 
     // tx shard
     for (auto& tx : txs)
     {
-        auto const& txCur = tx->getSTransaction();
-        auto const& account = txCur->getAccountID(sfAccount);
-        std::string const& strAccountID = toBase58(account);
-        auto shardIndex = getTxShardIndex(strAccountID, mShardManager.shardCount());
-
-        mapShardIndexTxs[shardIndex].push_back(tx);
+        mapShardIndexTxs[tx->getShardIndex()].push_back(tx);
     }
 
     // send to shard
@@ -652,23 +647,5 @@ void Lookup::relayTxs()
         << " txs, time used: " << utcTime() - timeStart << "ms";
 }
 
-unsigned int Lookup::getTxShardIndex(const std::string& strAddress, unsigned int numShards)
-{
-    uint32_t x = 0;
-    if (numShards == 0) {
-        // numShards  >0
-        return 0;
-    }
-
-    unsigned int addressSize = strAddress.size();
-    assert(addressSize >= 4);
-
-    // Take the last four bytes of the address
-    for (unsigned int i = 0; i < 4; i++) {
-        x = (x << 8) | strAddress[addressSize - 4 + i];
-    }
-
-    return (x % numShards + 1);
-};
 
 }

@@ -239,11 +239,10 @@ accountFunds (ReadView const& view, AccountID const& id,
 // If id != boost.none, then do error reporting.
 //
 // Returns adjusted owner count.
-static
 std::uint32_t
 confineOwnerCount (std::uint32_t current, std::int32_t adjustment,
-    boost::optional<AccountID> const& id = boost::none,
-    beast::Journal j = beast::Journal{})
+    boost::optional<AccountID> const& id,
+    beast::Journal j)
 {
     std::uint32_t adjusted {current + adjustment};
     if (adjustment > 0)

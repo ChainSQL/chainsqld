@@ -200,6 +200,11 @@ bool areCompatible (uint256 const& validHash, LedgerIndex validIndex,
 //
 //------------------------------------------------------------------------------
 
+std::uint32_t
+confineOwnerCount(std::uint32_t current, std::int32_t adjustment,
+    boost::optional<AccountID> const& id = boost::none,
+    beast::Journal j = beast::Journal{});
+
 /** Adjust the owner count up or down. */
 void
 adjustOwnerCount (ApplyView& view,

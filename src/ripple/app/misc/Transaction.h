@@ -181,6 +181,8 @@ public:
 
     static Transaction::pointer load (uint256 const& id, Application& app);
 
+    std::uint32_t getShardIndex() const;
+
 private:
     uint256         mTransactionID;
 

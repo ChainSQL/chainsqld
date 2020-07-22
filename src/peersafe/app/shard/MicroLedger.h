@@ -34,6 +34,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
+class Application;
+
 class MicroLedger : public LedgerBase {
 public:
     struct MicroLedgerHashSet {
@@ -169,7 +171,25 @@ public:
 
 	bool checkValidity(std::unique_ptr <ValidatorList> const& list, bool withTxMeta);
 
-    void apply(OpenView& to, beast::Journal& j) const;
+    bool sameShard(std::shared_ptr<SLE>& sle, Application& app) const;
+
+    void applyAccountRoot(
+        OpenView& to,
+        detail::RawStateTable::Action action,
+        std::shared_ptr<SLE>& sle,
+        beast::Journal& j,
+        Application& app) const;
+    void applyTableList(
+        OpenView& to,
+        detail::RawStateTable::Action action,
+        std::shared_ptr<SLE>& sle,
+        beast::Journal& j) const;
+    void applyCommons(
+        OpenView& to,
+        detail::RawStateTable::Action action,
+        std::shared_ptr<SLE>& sle,
+        beast::Journal& j) const;
+    void apply(OpenView& to, beast::Journal& j, Application& app) const;
 
     void apply(Ledger& to) const;
 };

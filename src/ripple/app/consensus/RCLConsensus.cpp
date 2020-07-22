@@ -1027,9 +1027,9 @@ applyMicroLedgers(
     //boost::ignore_unused(app);
     auto j = app.journal("ApplyMicroLedger");
 
-    for (auto& microLedger : microLedgers)
+    for (auto const& microLedger : microLedgers)
     {
-        microLedger->apply(view, j);
+        microLedger->apply(view, j, app);
     }
 }
 

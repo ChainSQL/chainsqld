@@ -24,6 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/ledger/TxMeta.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/util/Common.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 
 namespace ripple {
@@ -188,13 +189,16 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
     case ltACCOUNT_ROOT:
         if (action == detail::RawStateTable::Action::replace)
         {
-            // For Account, only Balance need merge.
-            auto& balance = sle->getFieldAmount(sfBalance);
-            auto const& oriSle = base.read(Keylet{sle->getType(), key});
+            auto const& oriSle = base.read(Keylet{ sle->getType(), key });
             assert(oriSle);
-            auto& priorBlance = oriSle->getFieldAmount(sfBalance);
-            //auto deltaBalance = balance - priorBlance;
-            sle->setFieldAmount(sfBalance, balance - priorBlance);
+
+            auto& balance = sle->getFieldAmount(sfBalance);
+            auto& priorBalance = oriSle->getFieldAmount(sfBalance);
+            sle->setFieldAmount(sfBalance, balance - priorBalance);
+
+            std::uint32_t ownerCount = sle->getFieldU32(sfOwnerCount);
+            std::uint32_t priorOwnerCount = oriSle->getFieldU32(sfOwnerCount);
+            sle->setFieldU32(sfOwnerCount, ownerCount - priorOwnerCount);
         }
         mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
         break;
@@ -212,11 +216,33 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
     }
 }
 
-void applyAccountRoot(
+bool MicroLedger::sameShard(std::shared_ptr<SLE>& sle, Application& app) const
+{
+    std::uint32_t shardCount = app.getShardManager().shardCount();
+
+    if (shardCount == 0) return false;
+
+    std::uint32_t x = 0;
+
+    std::string sAccountID = toBase58(sle->getAccountID(sfAccount));
+    std::uint32_t len = sAccountID.size();
+    assert(len >= 4);
+
+    // Take the last four bytes of the address
+    for (std::uint32_t i = 0; i < 4; i++)
+    {
+        x = (x << 8) | sAccountID[len - 4 + i];
+    }
+
+    return (x % shardCount + 1) == mShardID;
+}
+
+void MicroLedger::applyAccountRoot(
     OpenView& to,
     detail::RawStateTable::Action action,
     std::shared_ptr<SLE>& sle,
-    beast::Journal& j)
+    beast::Journal& j,
+    Application& app) const
 {
     //auto st = utcTimeUs();
 
@@ -231,13 +257,27 @@ void applyAccountRoot(
             if (item.first == detail::RawStateTable::Action::insert)
             {
                 auto& preSle = item.second;
+
                 auto& priorBlance = preSle->getFieldAmount(sfBalance);
                 auto& deltaBalance = sle->getFieldAmount(sfBalance);
                 preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+
+                std::int32_t deltaOwnerCount = (std::int32_t)sle->getFieldU32(sfOwnerCount);
+                if (deltaOwnerCount)
+                {
+                    std::uint32_t const adjusted = confineOwnerCount(
+                        preSle->getFieldU32(sfOwnerCount),
+                        deltaOwnerCount,
+                        preSle->getAccountID(sfAccount),
+                        j);
+                    preSle->setFieldU32(sfOwnerCount, adjusted);
+                }
+
+                preSle->setFieldH256(sfPreviousTxnID, sle->getFieldH256(sfPreviousTxnID));
             }
             else
             {
-                //LogicError("RawStateTable::");
+                LogicError("RawStateTable::ltACCOUNT_ROOT insert action conflict with other action");
             }
         }
         else
@@ -248,14 +288,22 @@ void applyAccountRoot(
     }
     case detail::RawStateTable::Action::erase:
     {
-        // Account root erase only occur with Contract, don't support it.
-        if (to.items().items().count(sle->key()))
+        // Account root erase only occur with Contract.
+        if (sle->isFieldPresent(sfContractCode))
         {
-            //LogicError("RawStateTable::");
+            // TODO
+            //if (to.items().items().count(sle->key()))
+            //{
+            //    //LogicError("RawStateTable::");
+            //}
+            //else
+            //{
+            //    to.rawErase(sle);
+            //}
         }
         else
         {
-            to.rawInsert(sle);
+            LogicError("RawStateTable::ltACCOUNT_ROOT erase action occurred with non-contract account");
         }
         break;
     }
@@ -268,21 +316,84 @@ void applyAccountRoot(
             if (item.first == detail::RawStateTable::Action::replace)
             {
                 auto& preSle = item.second;
+
                 auto& priorBlance = preSle->getFieldAmount(sfBalance);
                 auto& deltaBalance = sle->getFieldAmount(sfBalance);
                 preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+
+                std::int32_t deltaOwnerCount = (std::int32_t)sle->getFieldU32(sfOwnerCount);
+                if (deltaOwnerCount)
+                {
+                    std::uint32_t const adjusted = confineOwnerCount(
+                        preSle->getFieldU32(sfOwnerCount),
+                        deltaOwnerCount,
+                        preSle->getAccountID(sfAccount),
+                        j);
+                    preSle->setFieldU32(sfOwnerCount, adjusted);
+                }
+
+                preSle->setFieldH256(sfPreviousTxnID, sle->getFieldH256(sfPreviousTxnID));
+
+                if (sameShard(sle, app))
+                {
+                    preSle->setFieldU32(sfSequence, sle->getFieldU32(sfSequence));
+                    preSle->setFieldU32(sfFlags, sle->getFieldU32(sfFlags));
+                    if (sle->isFieldPresent(sfAccountTxnID))
+                        preSle->setFieldH256(sfAccountTxnID, sle->getFieldH256(sfAccountTxnID));
+                    if (sle->isFieldPresent(sfRegularKey))
+                        preSle->setAccountID(sfRegularKey, sle->getAccountID(sfRegularKey));
+                    if (sle->isFieldPresent(sfEmailHash))
+                        preSle->setFieldH128(sfEmailHash, sle->getFieldH128(sfEmailHash));
+                    if (sle->isFieldPresent(sfWalletLocator))
+                        preSle->setFieldH256(sfWalletLocator, sle->getFieldH256(sfWalletLocator));
+                    //if (sle->isFieldPresent(sfWalletSize))    // Not used
+                    //    preSle->setFieldU32(sfWalletSize, sle->getFieldU32(sfWalletSize));
+                    if (sle->isFieldPresent(sfMessageKey))
+                        preSle->setFieldVL(sfMessageKey, sle->getFieldVL(sfWalletLocator));
+                    if (sle->isFieldPresent(sfTransferRate))
+                        preSle->setFieldU32(sfTransferRate, sle->getFieldU32(sfTransferRate));
+                    if (sle->isFieldPresent(sfTransferFeeMin))
+                        preSle->setFieldVL(sfTransferFeeMin, sle->getFieldVL(sfTransferFeeMin));
+                    if (sle->isFieldPresent(sfTransferFeeMax))
+                        preSle->setFieldVL(sfTransferFeeMax, sle->getFieldVL(sfTransferFeeMax));
+                    if (sle->isFieldPresent(sfDomain))
+                        preSle->setFieldVL(sfDomain, sle->getFieldVL(sfDomain));
+                    if (sle->isFieldPresent(sfMemos))
+                        preSle->setFieldArray(sfMemos, sle->getFieldArray(sfMemos));
+                    if (sle->isFieldPresent(sfTickSize))
+                        preSle->setFieldU8(sfTickSize, sle->getFieldU8(sfTickSize));
+                }
+            }
+            else if (item.first == detail::RawStateTable::Action::erase)
+            {
+                auto& preSle = item.second;
+                JLOG(j.warn()) << "RawStateTable::ltACCOUNT_ROOT account "
+                    << toBase58(preSle->getAccountID(sfAccount))
+                    << " deleted on other shard";
             }
             else
             {
-                //LogicError("RawStateTable::");
+                LogicError("RawStateTable::ltACCOUNT_ROOT replace action conflact with insert action");
             }
         }
         else
         {
             auto const& base = to.read(Keylet{sle->getType(), sle->key()});
+
             auto& priorBlance = base->getFieldAmount(sfBalance);
             auto& deltaBalance = sle->getFieldAmount(sfBalance);
             sle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+
+            std::int32_t deltaOwnerCount = (std::int32_t)sle->getFieldU32(sfOwnerCount);
+            if (deltaOwnerCount)
+            {
+                std::uint32_t const adjusted = confineOwnerCount(
+                    base->getFieldU32(sfOwnerCount),
+                    deltaOwnerCount,
+                    base->getAccountID(sfAccount),
+                    j);
+                sle->setFieldU32(sfOwnerCount, adjusted);
+            }
             to.rawReplace(sle);
         }
         break;
@@ -294,11 +405,11 @@ void applyAccountRoot(
     //JLOG(j.info()) << "apply account root time used : " << utcTimeUs() - st << "us";
 }
 
-void applyTableList(
+void MicroLedger::applyTableList(
     OpenView& to,
     detail::RawStateTable::Action action,
     std::shared_ptr<SLE>& sle,
-    beast::Journal& j)
+    beast::Journal& j) const
 {
     //auto st = utcTimeUs();
 
@@ -366,11 +477,11 @@ void applyTableList(
     //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
 }
 
-void applyCommons(
+void MicroLedger::applyCommons(
     OpenView& to,
     detail::RawStateTable::Action action,
     std::shared_ptr<SLE>& sle,
-    beast::Journal& j)
+    beast::Journal& j) const
 {
     //auto st = utcTimeUs();
 
@@ -393,7 +504,7 @@ void applyCommons(
     //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
 }
 
-void MicroLedger::apply(OpenView& to, beast::Journal& j) const
+void MicroLedger::apply(OpenView& to, beast::Journal& j, Application& app) const
 {
     to.rawDestroyZXC(mDropsDestroyed);
 
@@ -405,7 +516,7 @@ void MicroLedger::apply(OpenView& to, beast::Journal& j) const
         switch (sle->getType())
         {
         case ltACCOUNT_ROOT:
-            applyAccountRoot(to, stateDelta.second.first, sle, j);
+            applyAccountRoot(to, stateDelta.second.first, sle, j, app);
             break;
         case ltTABLELIST:
             applyTableList(to, stateDelta.second.first, sle, j);

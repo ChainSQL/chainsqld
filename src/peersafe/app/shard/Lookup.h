@@ -149,9 +149,6 @@ public:
 
     void relayTxs();
 
-	// shard related
-    static unsigned int getTxShardIndex(const std::string& strAddress, unsigned int numShards);
-
     template <class UnaryFunc>
     void
     for_each(UnaryFunc&& f)
