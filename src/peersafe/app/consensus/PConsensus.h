@@ -1260,8 +1260,8 @@ bool PConsensus<Adaptor>::waitingForInit()
 {
 	// This code is for initialization,wait 60 seconds for loading ledger before real start-mode.
 	if (previousLedger_.seq() == GENESIS_LEDGER_INDEX && 
-		timeSinceOpen()/1000 < 3 * previousLedger_.closeTimeResolution().count())
-        //timeSinceOpen() / 1000 < previousLedger_.closeTimeResolution().count() / 3) // for debug
+		//timeSinceOpen()/1000 < 3 * previousLedger_.closeTimeResolution().count())
+        timeSinceOpen() / 1000 < previousLedger_.closeTimeResolution().count() / 3) // for debug
 	{
 		return true;
 	}
