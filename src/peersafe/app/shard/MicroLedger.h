@@ -179,6 +179,12 @@ public:
         std::shared_ptr<SLE>& sle,
         beast::Journal& j,
         Application& app) const;
+    void applyRippleState(
+        OpenView& to,
+        detail::RawStateTable::Action action,
+        std::shared_ptr<SLE>& sle,
+        beast::Journal& j,
+        Application& app) const;
     void applyTableList(
         OpenView& to,
         detail::RawStateTable::Action action,

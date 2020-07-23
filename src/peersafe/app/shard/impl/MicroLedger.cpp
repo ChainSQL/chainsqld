@@ -200,20 +200,26 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
             std::uint32_t priorOwnerCount = oriSle->getFieldU32(sfOwnerCount);
             sle->setFieldU32(sfOwnerCount, ownerCount - priorOwnerCount);
         }
-        mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
         break;
-    case ltTABLELIST:
-        mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
+    case ltRIPPLE_STATE:
+        if (action == detail::RawStateTable::Action::replace)
+        {
+            auto const& oriSle = base.read(Keylet{ sle->getType(), key });
+            assert(oriSle);
+
+            auto& balance = sle->getFieldAmount(sfBalance);
+            auto& priorBalance = oriSle->getFieldAmount(sfBalance);
+            sle->setFieldAmount(sfBalance, balance - priorBalance);
+        }
         break;
     case ltDIR_NODE:
-        mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
-        break;
+    case ltTABLELIST:
     case ltCHAINID:
-        mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
-        break;
     default:
         break;
     }
+
+    mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
 }
 
 bool MicroLedger::sameShard(std::shared_ptr<SLE>& sle, Application& app) const
@@ -224,7 +230,18 @@ bool MicroLedger::sameShard(std::shared_ptr<SLE>& sle, Application& app) const
 
     std::uint32_t x = 0;
 
-    std::string sAccountID = toBase58(sle->getAccountID(sfAccount));
+    std::string sAccountID;
+    switch (sle->getType())
+    {
+    case ltACCOUNT_ROOT:
+        sAccountID = toBase58(sle->getAccountID(sfAccount));
+        break;
+    case ltRIPPLE_STATE:
+        sAccountID = toBase58(sle->getAccountID(sfOwner));
+        break;
+    default:
+        return false;
+    }
     std::uint32_t len = sAccountID.size();
     assert(len >= 4);
 
@@ -405,6 +422,116 @@ void MicroLedger::applyAccountRoot(
     //JLOG(j.info()) << "apply account root time used : " << utcTimeUs() - st << "us";
 }
 
+void MicroLedger::applyRippleState(
+    OpenView& to,
+    detail::RawStateTable::Action action,
+    std::shared_ptr<SLE>& sle,
+    beast::Journal& j,
+    Application& app) const
+{
+    //auto st = utcTimeUs();
+
+    switch (action)
+    {
+    case detail::RawStateTable::Action::insert:
+    {
+        auto const& iter = to.items().items().find(sle->key());
+        if (iter != to.items().items().end())
+        {
+            LogicError("RawStateTable::ltRIPPLE_STATE insert action conflict with other action");
+        }
+        else
+        {
+            to.rawInsert(sle);
+        }
+        break;
+    }
+    case detail::RawStateTable::Action::erase:
+    {
+        auto const& iter = to.items().items().find(sle->key());
+        if (iter != to.items().items().end())
+        {
+            auto& item = iter->second;
+            if (item.first == detail::RawStateTable::Action::replace)
+            {
+                to.rawErase(sle);
+            }
+            else
+            {
+                LogicError("RawStateTable::ltRIPPLE_STATE erase action conflict with other action");
+            }
+        }
+        else
+        {
+            to.rawErase(sle);
+        }
+        break;
+    }
+    case detail::RawStateTable::Action::replace:
+    {
+        auto const& iter = to.items().items().find(sle->key());
+        if (iter != to.items().items().end())
+        {
+            auto& item = iter->second;
+            if (item.first == detail::RawStateTable::Action::replace)
+            {
+                auto& preSle = item.second;
+
+                auto& priorBlance = preSle->getFieldAmount(sfBalance);
+                auto& deltaBalance = sle->getFieldAmount(sfBalance);
+                preSle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+
+                preSle->setFieldH256(sfPreviousTxnID, sle->getFieldH256(sfPreviousTxnID));
+
+                if (sameShard(sle, app))
+                {
+                    preSle->setFieldU32(sfFlags, sle->getFieldU32(sfFlags));
+                    preSle->setFieldAmount(sfLowLimit, sle->getFieldAmount(sfLowLimit));
+                    preSle->setFieldAmount(sfHighLimit, sle->getFieldAmount(sfHighLimit));
+                    if (sle->isFieldPresent(sfLowNode))
+                        preSle->setFieldU64(sfLowNode, sle->getFieldU64(sfLowNode));
+                    if (sle->isFieldPresent(sfLowQualityIn))
+                        preSle->setFieldU32(sfLowQualityIn, sle->getFieldU32(sfLowQualityIn));
+                    if (sle->isFieldPresent(sfLowQualityOut))
+                        preSle->setFieldU32(sfLowQualityOut, sle->getFieldU32(sfLowQualityOut));
+                    if (sle->isFieldPresent(sfHighNode))
+                        preSle->setFieldU64(sfHighNode, sle->getFieldU64(sfHighNode));
+                    if (sle->isFieldPresent(sfHighQualityIn))
+                        preSle->setFieldU32(sfHighQualityIn, sle->getFieldU32(sfHighQualityIn));
+                    if (sle->isFieldPresent(sfHighQualityOut))
+                        preSle->setFieldU32(sfHighQualityOut, sle->getFieldU32(sfHighQualityOut));
+                    if (sle->isFieldPresent(sfMemos))
+                        preSle->setFieldArray(sfMemos, sle->getFieldArray(sfMemos));
+                }
+            }
+            else if (item.first == detail::RawStateTable::Action::erase)
+            {
+                JLOG(j.warn()) << "RawStateTable::ltRIPPLE_STATE "
+                    << " deleted on other shard";
+            }
+            else
+            {
+                LogicError("RawStateTable::ltRIPPLE_STATE replace action conflact with insert action");
+            }
+        }
+        else
+        {
+            auto const& base = to.read(Keylet{ sle->getType(), sle->key() });
+
+            auto& priorBlance = base->getFieldAmount(sfBalance);
+            auto& deltaBalance = sle->getFieldAmount(sfBalance);
+            sle->setFieldAmount(sfBalance, priorBlance + deltaBalance);
+            to.rawReplace(sle);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    //JLOG(j.info()) << "apply account root time used : " << utcTimeUs() - st << "us";
+}
+
 void MicroLedger::applyTableList(
     OpenView& to,
     detail::RawStateTable::Action action,
@@ -517,6 +644,9 @@ void MicroLedger::apply(OpenView& to, beast::Journal& j, Application& app) const
         {
         case ltACCOUNT_ROOT:
             applyAccountRoot(to, stateDelta.second.first, sle, j, app);
+            break;
+        case ltRIPPLE_STATE:
+            applyRippleState(to, stateDelta.second.first, sle, j, app);
             break;
         case ltTABLELIST:
             applyTableList(to, stateDelta.second.first, sle, j);

@@ -1227,6 +1227,8 @@ trustCreate (ApplyView& view,
     // ONLY: Create ripple balance.
     sleRippleState->setFieldAmount (sfBalance, bSetHigh ? -saBalance : saBalance);
 
+    sleRippleState->setAccountID(sfOwner, uSrcAccountID);
+
     view.creditHook (uSrcAccountID,
         uDstAccountID, saBalance, saBalance.zeroed());
 
