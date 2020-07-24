@@ -27,7 +27,8 @@
 // #else
 // GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = GmEncryptObj::gmAlgType::sjkCardType;
 // #endif
-GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = gmAlgType::sjkCardType;
+// GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = gmAlgType::sjkCardType;
+GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = gmAlgType::soft;
 
 GmEncryptObj::gmAlgType GmEncryptObj::fromString(std::string gmAlgTypeStr)
 {

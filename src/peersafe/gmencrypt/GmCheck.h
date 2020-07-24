@@ -76,7 +76,7 @@ public:
 
 private:
 	GMCheck(beast::Journal gmCheckJournal);
-	void cipherConstruct(ripple::Blob &cipher);
+	void gmStand2Cipher(ripple::Blob &cipher);
 	void cipher2GMStand(unsigned char* cardCipher, unsigned char* gmStdCipher, unsigned int plainDataLen);
 	int dataFolderCheck(std::string foldername);
 	int FileWrite(char *filename, const char *mode, unsigned char *buffer, size_t size);

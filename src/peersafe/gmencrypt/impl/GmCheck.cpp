@@ -181,39 +181,45 @@ GMCheck::GMCheck(beast::Journal gmCheckJournal):gmCheckJournal_(gmCheckJournal)
 //	}
 //}
 
-void GMCheck::cipherConstruct(ripple::Blob &cipher)
+void GMCheck::gmStand2Cipher(ripple::Blob &cipher)
 {
-	const std::string cipherStart = "20000000";
-	const int zeroPaddingNum = 104;
-	auto cipherStartBlob = ripple::strUnHex(cipherStart).first;
-	ripple::Blob cParam(cipher.end()-32, cipher.end());
-	cipher.erase(cipher.end() - 32, cipher.end());
-	cipher.insert(cipher.end() - 32, cParam.begin(), cParam.end());
-	cipher.insert(cipher.begin(), cipherStartBlob.begin(), cipherStartBlob.end());
+    if ( GmEncryptObj::hEType_ != GmEncryptObj::soft )
+    {
+        const std::string cipherStart = "20000000";
+        const int zeroPaddingNum = 104;
+        auto cipherStartBlob = ripple::strUnHex(cipherStart).first;
+        ripple::Blob cParam(cipher.end() - 32, cipher.end());
+        cipher.erase(cipher.end() - 32, cipher.end());
+        cipher.insert(cipher.end() - 32, cParam.begin(), cParam.end());
+        cipher.insert(cipher.begin(), cipherStartBlob.begin(), cipherStartBlob.end());
 
-	for (int i = 0; i < zeroPaddingNum; i++)
-	{
-		cipher.insert(cipher.end() - 32, 0);
-	}
+        for (int i = 0; i < zeroPaddingNum; i++)
+        {
+            cipher.insert(cipher.end() - 32, 0);
+        }
+    }
 }
 
 void GMCheck::cipher2GMStand(unsigned char* cardCipher, unsigned char* gmStdCipher, unsigned int plainDataLen)
 {
-	//max length of encryptCard for asymmetric encrypt cipherdata
-	for (int i = 4; i<68; i++)
-	{
-		gmStdCipher[i - 4] = cardCipher[i];
-	}
-	for (int i = 204; i < 236; i++)
-	{
-		//begin from 64
-		gmStdCipher[i-140] = cardCipher[i];
-	}
-	for (int i = 68; i < 68 + plainDataLen; i++)
-	{
-		//begin from 96
-		gmStdCipher[i + 28] = cardCipher[i];
-	}
+    if ( GmEncryptObj::hEType_ != GmEncryptObj::soft )
+    {
+        //max length of encryptCard for asymmetric encrypt cipherdata
+        for (int i = 4; i < 68; i++)
+        {
+            gmStdCipher[i - 4] = cardCipher[i];
+        }
+        for (int i = 204; i < 236; i++)
+        {
+            //begin from 64
+            gmStdCipher[i - 140] = cardCipher[i];
+        }
+        for (int i = 68; i < 68 + plainDataLen; i++)
+        {
+            //begin from 96
+            gmStdCipher[i + 28] = cardCipher[i];
+        }
+    }
 }
 
 bool GMCheck::sm2EncryptAndDecryptCheck(unsigned long plainDataLen)
@@ -228,7 +234,7 @@ bool GMCheck::sm2EncryptAndDecryptCheck(unsigned long plainDataLen)
 		auto tempPub = ripple::strUnHex(g_PublicED[i]).first;
 		tempPub.insert(tempPub.begin(), 0x47);
 		auto tempCipher = ripple::strUnHex(g_CipherED[i]).first;
-		cipherConstruct(tempCipher);
+		gmStand2Cipher(tempCipher);
 		auto tempPlain = ripple::strUnHex(g_PlainED[i]).first;
 		unsigned char deResult[1024];
 		unsigned long deResultLen = 1024;
@@ -381,9 +387,10 @@ bool GMCheck::sm4EncryptAndDecryptCheck(unsigned long plainDataLen)
 		auto tempCipher = ripple::strUnHex(g_sm4ECBCipher[i]).first;
 		unsigned long cipherLen = tempCipher.size();
 		unsigned long resultLen = tempPlain.size();
-		unsigned char* pCipherBuf = new unsigned char[2*cipherLen];
+        unsigned long cipherBufLen = (cipherLen/16 + 1) * 16;
+		unsigned char* pCipherBuf = new unsigned char[cipherBufLen];
 		unsigned char* pResultPlain = new unsigned char[resultLen];
-		JLOG(gmCheckJournal_.info()) << "Begin to encrypt data with SM4 for" << i+1 << "times";
+		JLOG(gmCheckJournal_.info()) << "Begin to encrypt data with SM4 for " << i+1 << " times";
 		hEObj->SM4SymEncrypt(hEObj->ECB, tempPwd.data(), tempPwd.size(), tempPlain.data(), tempPlain.size(), pCipherBuf, &cipherLen);
 		if (memcmp(pCipherBuf, tempCipher.data(), tempCipher.size()))
 		{
@@ -399,7 +406,7 @@ bool GMCheck::sm4EncryptAndDecryptCheck(unsigned long plainDataLen)
 			result = true;
 		}
 		JLOG(gmCheckJournal_.info()) << "Begin to decrypt data with SM4 in " << i+1 << " times";
-		hEObj->SM4SymDecrypt(hEObj->ECB, tempPwd.data(), tempPwd.size(), pCipherBuf, cipherLen, pResultPlain, &resultLen);
+		hEObj->SM4SymDecrypt(hEObj->ECB, tempPwd.data(), tempPwd.size(), pCipherBuf, cipherBufLen, pResultPlain, &resultLen);
 		if (memcmp(pResultPlain, tempPlain.data(), tempPlain.size()))
 		{
 			JLOG(gmCheckJournal_.error()) << "SM4 decrypt result comparision failed in " << i+1 << " times";
