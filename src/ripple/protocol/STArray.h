@@ -102,9 +102,9 @@ public:
         v_.push_back(std::move(object));
     }
 
-	void erase(iterator iter) 
+    iterator erase(iterator iter)
 	{
-		v_.erase(iter);
+		return v_.erase(iter);
 	}
 
     iterator begin ()

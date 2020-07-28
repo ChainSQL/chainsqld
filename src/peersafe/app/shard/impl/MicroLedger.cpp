@@ -302,6 +302,7 @@ bool MicroLedger::sameShard(std::shared_ptr<SLE>& sle, Application& app) const
         sAccountID = toBase58(sle->getAccountID(sfAccount));
         break;
     case ltRIPPLE_STATE:
+    case ltTABLELIST:
         sAccountID = toBase58(sle->getAccountID(sfOwner));
         break;
     default:
@@ -660,23 +661,28 @@ void MicroLedger::applyTableList(
     OpenView& to,
     detail::RawStateTable::Action action,
     std::shared_ptr<SLE>& sle,
-    beast::Journal& j) const
+    beast::Journal& j,
+    Application& app) const
 {
     //auto st = utcTimeUs();
 
     switch (action)
     {
     case detail::RawStateTable::Action::insert:
-    case detail::RawStateTable::Action::erase:
     {
         if (to.items().items().count(sle->key()))
         {
-            //LogicError("RawStateTable::");
+            LogicError("RawStateTable::ltTABLELIST insert action conflact with other action");
         }
         else
         {
             to.rawInsert(sle);
         }
+        break;
+    }
+    case detail::RawStateTable::Action::erase:
+    {
+        LogicError("RawStateTable::ltTABLELIST erase action can't happend");
         break;
     }
     case detail::RawStateTable::Action::replace:
@@ -687,32 +693,85 @@ void MicroLedger::applyTableList(
             auto& item = iter->second;
             if (item.first == detail::RawStateTable::Action::replace)
             {
-                auto const& base = to.read(Keylet{sle->getType(), sle->key()});
-                auto& tableEntries = sle->getFieldArray(sfTableEntries);
-                auto& baseTableEntries = base->getFieldArray(sfTableEntries);
-                // tableEntry.users modified or owner add/delete a table
-                if ([&]() -> bool {
-                    if (tableEntries.size() != baseTableEntries.size())
+                auto &preSle = item.second;
+
+                bool sameShard = this->sameShard(sle, app);
+                auto& priorTableEntries = preSle->peekFieldArray(sfTableEntries);
+                auto const& curTableEntries = sle->getFieldArray(sfTableEntries);
+
+                for (auto priorTable = priorTableEntries.begin(); priorTable != priorTableEntries.end(); )
+                {
+                    auto curTable = getTableEntry(curTableEntries, priorTable->getFieldH160(sfNameInDB));
+                    if (curTable)
                     {
-                        return true;
-                    }
-                    for (auto const& table : tableEntries)
-                    {
-                        auto baseTable = getTableEntry(baseTableEntries, table.getFieldVL(sfTableName));
-                        if (!baseTable || baseTable->getFieldArray(sfUsers) != table.getFieldArray(sfUsers))
+                        std::uint32_t priorTxnLrgSeq = priorTable->getFieldU32(sfTxnLgrSeq);
+                        std::uint32_t curTxnLrgSeq = curTable->getFieldU32(sfTxnLgrSeq);
+                        if (curTxnLrgSeq >= priorTxnLrgSeq)
                         {
-                            return true;
+                            if (curTxnLrgSeq > priorTxnLrgSeq)
+                            {
+                                priorTable->setFieldU32(sfTxnLgrSeq, curTxnLrgSeq);
+                                priorTable->setFieldH256(sfTxnLedgerHash, curTable->getFieldH256(sfTxnLedgerHash));
+                                priorTable->setFieldU32(sfPreviousTxnLgrSeq, curTable->getFieldU32(sfPreviousTxnLgrSeq));
+                                priorTable->setFieldH256(sfPrevTxnLedgerHash, curTable->getFieldH256(sfPrevTxnLedgerHash));
+                            }
+                            priorTable->setFieldH256(sfTxCheckHash, curTable->getFieldH256(sfTxCheckHash));
+
+                            if (sameShard)
+                            {
+                                // Table owner did rename, recreate or grant table action.
+                                Blob const& curTableName = curTable->getFieldVL(sfTableName);
+                                std::uint32_t curCreateLgrSeq = curTable->getFieldU32(sfCreateLgrSeq);
+                                STArray const& curUsers = curTable->getFieldArray(sfUsers);
+                                if (priorTable->getFieldVL(sfTableName) != curTableName)
+                                {
+                                    priorTable->setFieldVL(sfTableName, curTableName);
+                                }
+                                if (curCreateLgrSeq > priorTable->getFieldU32(sfCreateLgrSeq))
+                                {
+                                    priorTable->setFieldU32(sfCreateLgrSeq, curCreateLgrSeq);
+                                    priorTable->setFieldH256(sfCreatedLedgerHash, curTable->getFieldH256(sfCreatedLedgerHash));
+                                    priorTable->setFieldH256(sfCreatedTxnHash, curTable->getFieldH256(sfCreatedTxnHash));
+                                }
+                                if (priorTable->getFieldArray(sfUsers) != curUsers)
+                                {
+                                    priorTable->setFieldArray(sfUsers, curUsers);
+                                }
+                            }
                         }
                     }
-                    return false;
-                }())
-                {
-                    to.rawReplace(sle);
+                    else if (sameShard)
+                    {
+                        // Table owner deleted table.
+                        priorTable = priorTableEntries.erase(priorTable);
+                        continue;
+                    }
+                    else
+                    {
+                        // MicroLedger which contains preSle is same shard with table owner Account.
+                        // And this table entry is created on the MicroLedger.
+                    }
+                    priorTable++;
                 }
+
+                // Check whether the owner created tables.
+                if (sameShard)
+                {
+                    for (auto const& curTable : curTableEntries)
+                    {
+                        auto priorTable = getTableEntry(priorTableEntries, curTable.getFieldH160(sfNameInDB));
+                        if (!priorTable)
+                        {
+                            priorTableEntries.push_back(curTable);
+                        }
+                    }
+                }
+
+                preSle->setFieldH256(sfPreviousTxnID, sle->getFieldH256(sfPreviousTxnID));
             }
             else
             {
-                //? LogicError("RawStateTable::");
+                LogicError("RawStateTable::ltTABLELIST replace action conflict with other action");
             }
         }
         else
@@ -739,17 +798,26 @@ void MicroLedger::applyCommons(
     switch (action)
     {
     case detail::RawStateTable::Action::insert:
-    case detail::RawStateTable::Action::erase:
-    case detail::RawStateTable::Action::replace:        // replace need any other handled?
-        if (to.items().items().count(sle->key()))
-        {
-            //LogicError("RawStateTable::");
-        }
-        else
+    {
+        if (!to.items().items().count(sle->key()))
         {
             to.rawInsert(sle);
         }
         break;
+    }
+    case detail::RawStateTable::Action::erase:
+    {
+        if (!to.items().items().count(sle->key()))
+        {
+            to.rawErase(sle);
+        }
+        break;
+    }
+    case detail::RawStateTable::Action::replace:
+    {
+        to.rawReplace(sle);
+        break;
+    }
     }
 
     //JLOG(j.info()) << "apply other commons sle time used : " << utcTimeUs() - st << "us";
@@ -776,7 +844,7 @@ void MicroLedger::apply(OpenView& to, beast::Journal& j, Application& app) const
             applyDirNode(to, stateDelta.second.first, sle, j);
             break;
         case ltTABLELIST:
-            applyTableList(to, stateDelta.second.first, sle, j);
+            applyTableList(to, stateDelta.second.first, sle, j, app);
             break;
         case ltCHAINID:
             applyCommons(to, stateDelta.second.first, sle, j);

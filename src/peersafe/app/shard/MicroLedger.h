@@ -194,7 +194,8 @@ public:
         OpenView& to,
         detail::RawStateTable::Action action,
         std::shared_ptr<SLE>& sle,
-        beast::Journal& j) const;
+        beast::Journal& j,
+        Application& app) const;
     void applyCommons(
         OpenView& to,
         detail::RawStateTable::Action action,

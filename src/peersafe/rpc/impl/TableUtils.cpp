@@ -78,7 +78,7 @@ namespace ripple {
 		return (STEntry*)(&(*iter));
 	}
 
-	STEntry * getTableEntry(const STArray & aTables, Blob const& vCheckName)
+	STEntry* getTableEntry(const STArray & aTables, Blob const& vCheckName)
 	{
 		auto iter(aTables.end());
 		iter = std::find_if(aTables.begin(), aTables.end(),
@@ -92,6 +92,19 @@ namespace ripple {
 
 		return (STEntry*)(&(*iter));
 	}
+
+    STEntry* getTableEntry(const STArray & aTables, uint160 const& nameInDB)
+    {
+        auto iter(aTables.end());
+        iter = std::find_if(aTables.begin(), aTables.end(),
+            [nameInDB](STObject const &item) {
+            return item.getFieldH160(sfNameInDB) == nameInDB;
+        });
+
+        if (iter == aTables.end())  return NULL;
+
+        return (STEntry*)(&(*iter));
+    }
 
 	STEntry * getTableEntry(ApplyView& view, const STTx& tx)
 	{

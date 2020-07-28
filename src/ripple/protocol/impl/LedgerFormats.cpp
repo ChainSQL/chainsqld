@@ -165,6 +165,7 @@ LedgerFormats::LedgerFormats ()
             ;
 
     add("TableList", ltTABLELIST)
+        << SOElement(sfOwner, SOE_REQUIRED)
         << SOElement(sfOwnerNode, SOE_REQUIRED)
         << SOElement(sfPreviousTxnID, SOE_REQUIRED)
         << SOElement(sfPreviousTxnLgrSeq, SOE_REQUIRED)
