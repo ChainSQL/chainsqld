@@ -154,6 +154,10 @@ enum LedgerSpecificFlags
     lsfHighNoRipple     = 0x00200000,
     lsfLowFreeze        = 0x00400000,   // True, low side has set freeze flag
     lsfHighFreeze       = 0x00800000,   // True, high side has set freeze flag
+
+    // ltDIR_NODE
+    lsfAddIndex         = 0x00010000,
+    lsfDeleteIndex      = 0x00020000,
 };
 
 //------------------------------------------------------------------------------

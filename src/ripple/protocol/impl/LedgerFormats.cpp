@@ -63,6 +63,7 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfRootIndex,           SOE_REQUIRED)
             << SOElement (sfIndexNext,           SOE_OPTIONAL)
             << SOElement (sfIndexPrevious,       SOE_OPTIONAL)
+            << SOElement (sfOwnerNode,           SOE_REQUIRED)  // for compute delta
             ;
 
     add ("Offer", ltOFFER)

@@ -358,6 +358,21 @@ bool fix1443 (NetClock::time_point const closeTime);
 NetClock::time_point const& fix1449Time ();
 bool fix1449 (NetClock::time_point const closeTime);
 
+
+//------------------------------------------------------------------------------
+
+// Committee merge ltDirNode change
+
+void dirAdd(OpenView &to,
+    std::shared_ptr<SLE>& sle,
+    std::vector<uint256>& indexes,
+    beast::Journal& j);
+
+void dirDelete(OpenView &to,
+    std::shared_ptr<SLE>& sle,
+    std::vector<uint256>& indexes,
+    beast::Journal& j);
+
 } // ripple
 
 #endif

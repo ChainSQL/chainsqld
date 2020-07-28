@@ -213,10 +213,75 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
         }
         break;
     case ltDIR_NODE:
+        if (action == detail::RawStateTable::Action::insert)
+        {
+            STVector256 const& svIndexes = sle->getFieldV256(sfIndexes);
+            if (svIndexes.size())
+            {
+                sle->setFlag(lsfAddIndex);
+            }
+            else
+            {
+                return;
+            }
+        }
+        else if (action == detail::RawStateTable::Action::erase)
+        {
+            STVector256 svIndexes = sle->getFieldV256(sfIndexes);
+            assert(svIndexes.size() == 0);
+            if (svIndexes.size() == 0)
+            {
+                auto const& oriSle = base.read(Keylet{ sle->getType(), key });
+                auto& priorIndexes = oriSle->getFieldV256(sfIndexes);
+                for (auto const& key : priorIndexes)
+                {
+                    svIndexes.push_back(key);
+                }
+                if (svIndexes.size())
+                {
+                    sle->setFieldV256(sfIndexes, svIndexes);
+                    sle->setFlag(lsfDeleteIndex);
+                }
+                else
+                {
+                    return;
+                }
+            }
+            else
+            {
+                LogicError("RawStateTable::ltDIR_NODE earsed, but it contains any indexes");
+                return;
+            }
+        }
+        else
+        {
+            auto const& oriSle = base.read(Keylet{ sle->getType(), key });
+
+            STVector256 svIndexes = sle->getFieldV256(sfIndexes);
+            STVector256 priorIndexes = oriSle->getFieldV256(sfIndexes);
+
+            // Only IndexNext or IndexPrevious changed.
+            if (svIndexes.isEquivalent(priorIndexes)) return;
+
+            std::vector<uint256> symDifference;
+            std::sort(svIndexes.begin(), svIndexes.end());
+            std::sort(priorIndexes.begin(), priorIndexes.end());
+            std::set_symmetric_difference(
+                svIndexes.begin(), svIndexes.end(),
+                priorIndexes.begin(), priorIndexes.end(),
+                std::back_inserter(symDifference));
+            assert(symDifference.size());
+            svIndexes = std::move(symDifference);
+            sle->setFieldV256(sfIndexes, svIndexes);
+            sle->setFlag(lsfAddIndex | lsfDeleteIndex);
+        }
+        break;
     case ltTABLELIST:
     case ltCHAINID:
-    default:
         break;
+    default:
+        // Don't case other type of sle.
+        return;
     }
 
     mStateDeltas.emplace(key, std::make_pair(action, std::move(sle->getSerializer())));
@@ -529,7 +594,66 @@ void MicroLedger::applyRippleState(
         break;
     }
 
-    //JLOG(j.info()) << "apply account root time used : " << utcTimeUs() - st << "us";
+    //JLOG(j.info()) << "apply ripple state time used : " << utcTimeUs() - st << "us";
+}
+
+void MicroLedger::applyDirNode(
+    OpenView& to,
+    detail::RawStateTable::Action action,
+    std::shared_ptr<SLE>& sle,
+    beast::Journal& j) const
+{
+    //auto st = utcTimeUs();
+
+    switch (sle->getFlags())
+    {
+    case lsfAddIndex:
+    {
+        std::vector<uint256> addIndexes = sle->getFieldV256(sfIndexes).value();
+        dirAdd(to, sle, addIndexes, j);
+        break;
+    }
+    case lsfDeleteIndex:
+    {
+        std::vector<uint256> deleteIndexes = sle->getFieldV256(sfIndexes).value();
+        dirDelete(to, sle, deleteIndexes, j);
+        break;
+    }
+    case lsfAddIndex | lsfDeleteIndex:
+    {
+        auto const& base = to.base().read(Keylet{ sle->getType(), sle->key() });
+        assert(base);
+        if (!base) LogicError("RawStateTable::ltDIR_NODE replace base sle is not found");
+        auto const& priorIndexes = base->getFieldV256(sfIndexes);
+        std::vector<uint256> addIndexes, deleteIndexes;
+        std::vector<uint256> const& samDifference = sle->getFieldV256(sfIndexes).value();
+        for (auto const& key : samDifference)
+        {
+            auto it = std::find(priorIndexes.begin(), priorIndexes.end(), key);
+            if (it == priorIndexes.end())
+            {
+                addIndexes.push_back(key);
+            }
+            else
+            {
+                deleteIndexes.push_back(key);
+            }
+        }
+        if (addIndexes.size())
+        {
+            dirAdd(to, sle, addIndexes, j);
+        }
+        if (deleteIndexes.size())
+        {
+            dirDelete(to, sle, deleteIndexes, j);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    //JLOG(j.info()) << "apply dir node time used : " << utcTimeUs() - st << "us";
 }
 
 void MicroLedger::applyTableList(
@@ -628,7 +752,7 @@ void MicroLedger::applyCommons(
         break;
     }
 
-    //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
+    //JLOG(j.info()) << "apply other commons sle time used : " << utcTimeUs() - st << "us";
 }
 
 void MicroLedger::apply(OpenView& to, beast::Journal& j, Application& app) const
@@ -648,10 +772,12 @@ void MicroLedger::apply(OpenView& to, beast::Journal& j, Application& app) const
         case ltRIPPLE_STATE:
             applyRippleState(to, stateDelta.second.first, sle, j, app);
             break;
+        case ltDIR_NODE:
+            applyDirNode(to, stateDelta.second.first, sle, j);
+            break;
         case ltTABLELIST:
             applyTableList(to, stateDelta.second.first, sle, j);
             break;
-        case ltDIR_NODE:
         case ltCHAINID:
             applyCommons(to, stateDelta.second.first, sle, j);
             break;

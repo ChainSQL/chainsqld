@@ -184,6 +184,11 @@ public:
         return items_;
     }
 
+    inline ReadView const& base() const
+    {
+        return *base_;
+    }
+
     boost::optional<key_type>
     succ (key_type const& key, boost::optional<
         key_type> const& last = boost::none) const override;

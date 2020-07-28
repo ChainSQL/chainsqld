@@ -185,6 +185,11 @@ public:
         std::shared_ptr<SLE>& sle,
         beast::Journal& j,
         Application& app) const;
+    void applyDirNode(
+        OpenView& to,
+        detail::RawStateTable::Action action,
+        std::shared_ptr<SLE>& sle,
+        beast::Journal& j) const;
     void applyTableList(
         OpenView& to,
         detail::RawStateTable::Action action,

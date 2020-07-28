@@ -45,6 +45,8 @@ ApplyView::dirAdd (
         v.push_back (key);
         root->setFieldV256 (sfIndexes, v);
 
+        root->setFieldU64(sfOwnerNode, 0);
+
         insert (root);
         return std::uint64_t{0};
     }
@@ -116,6 +118,7 @@ ApplyView::dirAdd (
     // it's the default.
     if (page != 1)
         node->setFieldU64 (sfIndexPrevious, page - 1);
+    node->setFieldU64(sfOwnerNode, page);
     describe (node);
     insert (node);
 

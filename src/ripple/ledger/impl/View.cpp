@@ -22,6 +22,7 @@
 #include <ripple/ledger/BookDirs.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/View.h>
+#include <ripple/ledger/ApplyViewImpl.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
@@ -863,6 +864,8 @@ dirAdd (ApplyView& view,
         v.push_back (uLedgerIndex);
         sleRoot->setFieldV256 (sfIndexes, v);
 
+        sleRoot->setFieldU64(sfOwnerNode, uNodeDir);
+
         JLOG (j.trace()) <<
             "dirAdd: created root " << to_string (dir.key) <<
             " for entry " << to_string (uLedgerIndex);
@@ -889,7 +892,7 @@ dirAdd (ApplyView& view,
 
     svIndexes = sleNode->getFieldV256 (sfIndexes);
 
-    if (dirNodeMaxEntries != svIndexes.size ())
+    if (dirNodeMaxEntries > svIndexes.size ())
     {
         // Add to current node.
         view.update(sleNode);
@@ -913,6 +916,7 @@ dirAdd (ApplyView& view,
         sleNode = std::make_shared<SLE>(
             keylet::page(dir, uNodeDir));
         sleNode->setFieldH256 (sfRootIndex, dir.key);
+        sleNode->setFieldU64(sfOwnerNode, uNodeDir);
         view.insert (sleNode);
 
         if (uNodeDir != 1)
@@ -1888,6 +1892,240 @@ transferZXC (ApplyView& view,
     view.update (receiver);
 
     return tesSUCCESS;
+}
+
+
+//------------------------------------------------------------------------------
+
+// Committee merge ltDirNode changes
+
+void dirAdd(OpenView &to,
+    std::shared_ptr<SLE>& sle,
+    std::vector<uint256>& indexes,
+    beast::Journal& j)
+{
+    ApplyViewImpl view_(&to, tapNO_CHECK_SIGN | tapForConsensus);
+
+    std::uint64_t uNodeCur = sle->getFieldU64(sfOwnerNode);
+    SLE::pointer sleNode = view_.peek(Keylet{ sle->getType(), sle->key() });
+    STVector256 svIndexes;
+
+    if (sleNode)
+    {
+        svIndexes = sleNode->getFieldV256(sfIndexes);
+
+        view_.update(sleNode);
+    }
+    else
+    {
+        std::uint64_t uNodeDir;
+        SLE::pointer sleRoot, sleNext, slePrevious;
+        const uint256& dir = sle->getFieldH256(sfRootIndex);
+
+        sleNode = std::make_shared<SLE>(Keylet{ sle->getType(), sle->key() });
+
+        view_.insert(sleNode);
+
+        sleNode->setFieldH256(sfRootIndex, dir);
+        sleNode->setAccountID(sfOwner, sle->getAccountID(sfOwner));
+        sleNode->setFieldU64(sfOwnerNode, uNodeCur);
+
+        if (sle->isFieldPresent(sfIndexNext))
+        {
+            uNodeDir = sle->getFieldU64(sfIndexNext);
+            sleNode->setFieldU64(sfIndexNext, uNodeDir);
+
+            if (uNodeDir != 1)
+            {
+                sleNext = view_.peek(keylet::page(dir, uNodeDir));
+                if (sleNext)
+                {
+                    sleNext->setFieldU64(sfIndexPrevious, uNodeCur);
+                    view_.update(sleNext);
+                }
+            }
+        }
+        else // sfIndexNext isn't present, this is a Last page.
+        {
+            sleRoot = view_.peek(Keylet{ sle->getType(), dir });
+
+            if (uNodeCur == 0)
+            {
+
+            }
+            else if (uNodeCur == 1 && sleRoot)
+            {
+                sleRoot->setFieldU64(sfIndexNext, uNodeCur);
+                sleRoot->setFieldU64(sfIndexPrevious, uNodeCur);
+                view_.update(sleRoot);
+            }
+            else if (sleRoot)
+            {
+                sleRoot->setFieldU64(sfIndexPrevious, uNodeCur);
+                view_.update(sleRoot);
+            }
+        }
+
+        if (sle->isFieldPresent(sfIndexPrevious))
+        {
+            uNodeDir = sle->getFieldU64(sfIndexPrevious);
+            sleNode->setFieldU64(sfIndexPrevious, uNodeDir);
+
+            if (uNodeCur)
+            {
+                slePrevious = view_.peek(keylet::page(dir, uNodeDir));
+                if (slePrevious)
+                {
+                    slePrevious->setFieldU64(sfIndexNext, uNodeCur);
+                    view_.update(slePrevious);
+                }
+            }
+        }
+        else
+        {
+            sleRoot = view_.peek(Keylet{ sle->getType(), dir });
+            if (uNodeCur == 1 && sleRoot)
+            {
+                sleRoot->setFieldU64(sfIndexNext, uNodeCur);
+                view_.update(sleRoot);
+            }
+        }
+    }
+
+    for (auto const& key : indexes)
+    {
+        svIndexes.push_back(key);
+    }
+
+    if (view_.rules().enabled(featureSortedDirectories))
+    {
+        std::sort(indexes.begin(), indexes.end());
+    }
+
+    sleNode->setFieldV256(sfIndexes, svIndexes);
+
+    view_.items().apply(to);
+}
+
+void dirDelete(OpenView &to,
+    std::shared_ptr<SLE>& sle,
+    std::vector<uint256>& indexes,
+    beast::Journal& j)
+{
+    ApplyViewImpl view_(&to, tapNO_CHECK_SIGN | tapForConsensus);
+
+    SLE::pointer sleNode = view_.peek(Keylet{ sle->getType(), sle->key() });
+
+    if (!sleNode)
+    {
+        JLOG(j.warn()) << "dirDelete: no such node:" <<
+            " root=" << to_string(sle->getFieldH256(sfRootIndex)) <<
+            " uNodeDir=" << strHex(sle->getFieldU64(sfOwnerNode));
+        return;
+    }
+
+    STVector256 svPriorIndexes, svIndexes;
+
+    svPriorIndexes = sleNode->getFieldV256(sfIndexes);
+
+    std::vector<uint256> diff;
+    std::sort(svPriorIndexes.begin(), svPriorIndexes.end());
+    std::sort(indexes.begin(), indexes.end());
+    std::set_difference(
+        svPriorIndexes.begin(), svPriorIndexes.end(),
+        indexes.begin(), indexes.end(),
+        std::inserter(diff, diff.begin()));
+    svIndexes = std::move(diff);
+
+    sleNode->setFieldV256(sfIndexes, svIndexes);
+    view_.update(sleNode);
+
+    if (svIndexes.empty())
+    {
+        // May be able to delete nodes.
+        uint256 root = sle->getFieldH256(sfRootIndex);
+        std::uint64_t uNodePrevious = sleNode->getFieldU64(sfIndexPrevious);
+        std::uint64_t uNodeNext = sleNode->getFieldU64(sfIndexNext);
+        std::uint64_t uNodeCur = sle->getFieldU64(sfOwnerNode);
+
+        if (!uNodeCur)
+        {
+            // Just emptied root node.
+
+            if (!uNodePrevious)
+            {
+                // Never overflowed the root node.  Delete it.
+                view_.erase(sleNode);
+            }
+            else if (uNodePrevious != uNodeNext)
+            {
+                // Have more than 2 nodes.  Can't delete root node.
+            }
+            else
+            {
+                // Have only a root node and a last node.
+                auto sleLast = view_.peek(keylet::page(root, uNodeNext));
+
+                if (sleLast && sleLast->getFieldV256(sfIndexes).empty())
+                {
+                    // Both nodes are empty.
+
+                    view_.erase(sleNode);  // Delete root.
+                    view_.erase(sleLast);  // Delete last.
+                }
+                else
+                {
+                    // Have an entry, can't delete root node.
+                }
+            }
+        }
+        // Just emptied a non-root node.
+        else if (uNodeNext)
+        {
+            // Not root and not last node. Can delete node.
+
+            auto slePrevious = view_.peek(keylet::page(root, uNodePrevious));
+            auto sleNext = view_.peek(keylet::page(root, uNodeNext));
+            if (slePrevious)
+            {
+                // Fix previous to point to its new next.
+                slePrevious->setFieldU64(sfIndexNext, uNodeNext);
+                view_.update(slePrevious);
+            }
+            if (sleNext)
+            {
+                // Fix next to point to its new previous.
+                sleNext->setFieldU64(sfIndexPrevious, uNodePrevious);
+                view_.update(sleNext);
+            }
+            view_.erase(sleNode);
+        }
+        // Last node.
+        else if (uNodePrevious)
+        {
+            // Not allowed to delete last node as root was overflowed.
+            // Or, have pervious entries preventing complete delete.
+        }
+        else
+        {
+            // Last and only node besides the root.
+            auto sleRoot = view_.peek(Keylet({ sle->getType(), root }));
+
+            if (sleRoot && sleRoot->getFieldV256(sfIndexes).empty())
+            {
+                // Both nodes are empty.
+
+                view_.erase(sleRoot);  // Delete root.
+                view_.erase(sleNode);  // Delete last.
+            }
+            else
+            {
+                // Root has an entry, can't delete.
+            }
+        }
+    }
+
+    view_.items().apply(to);
 }
 
 } // ripple
