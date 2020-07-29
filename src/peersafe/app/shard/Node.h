@@ -36,11 +36,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-class Application;
-class Config;
-class ShardManager;
-
-
 class Node : public NodeBase {
 
 private:
@@ -70,12 +65,6 @@ private:
 
     // Hold all shard validators
     MapOfShardValidators                                mMapOfShardValidators;
-
-    ShardManager&                                       mShardManager;
-
-    Application&                                        app_;
-    beast::Journal                                      journal_;
-    Config&                                             cfg_;
 
 public:
 
@@ -139,7 +128,6 @@ public:
     void distributeMessage(std::shared_ptr<Message> const &m, bool forceBroadcast = false);
 
     void onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m);
-    void onMessage(std::shared_ptr<protocol::TMTransactions> const& m);
     void onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m);
 
     template <class UnaryFunc>

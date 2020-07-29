@@ -39,10 +39,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 namespace ripple {
 
 Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
-    : mShardManager(m)
-    , app_(app)
-    , journal_(journal)
-    , cfg_(cfg)
+    : NodeBase(m, app, cfg, journal)
 {
     mShardID = cfg_.SHARD_INDEX;
 
@@ -685,48 +682,6 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 
 	//begin next round consensus
 	app_.getOPs().endConsensus();
-}
-
-void Node::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
-{
-    using beast::hash_append;
-
-    PublicKey const publicKey(makeSlice(m->nodepubkey()));
-
-    boost::optional<PublicKey> pubKey =
-        mShardManager.lookup().validators().getTrustedKey(publicKey);
-    if (!pubKey)
-    {
-        JLOG(journal_.info()) << "Transactions package from untrusted lookup node";
-        return;
-    }
-
-    sha512_half_hasher checkHash;
-    std::vector<std::shared_ptr<Transaction>> txs;
-
-    for (auto const& TMTransaction : m->transactions())
-    {
-        SerialIter sit(makeSlice(TMTransaction.rawtransaction()));
-        auto stx = std::make_shared<STTx const>(sit);
-        std::string reason;
-        txs.emplace_back(std::make_shared<Transaction>(stx, reason, app_));
-        hash_append(checkHash, stx->getTransactionID());
-    }
-
-    if (!verifyDigest(
-        *pubKey,
-        static_cast<typename sha512_half_hasher::result_type>(checkHash),
-        makeSlice(m->signature())))
-    {
-        JLOG(journal_.info()) << "Transactions package signature verification failed";
-        return;
-    }
-
-    for (auto tx : txs)
-    {
-        app_.getOPs().processTransaction(
-            tx, false, false, NetworkOPs::FailHard::no);
-    }
 }
 
 void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)

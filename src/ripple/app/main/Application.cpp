@@ -362,6 +362,7 @@ public:
 	std::unique_ptr <ContractHelper> m_pContractHelper;
 	std::unique_ptr <TableTxAccumulator> m_pTableTxAccumulator;
     std::unique_ptr <TxPool> m_pTxPool;
+    std::unique_ptr <TxPool> m_pPreTxPool;  // Private for committee node save transactions from lookup
 	std::unique_ptr <StateManager> m_pStateManager;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
     boost::asio::steady_timer sweepTimer_;
@@ -537,6 +538,8 @@ public:
 
         , m_pTxPool(std::make_unique<TxPool>(*this, logs_->journal("TxPool")))
 
+        , m_pPreTxPool(std::make_unique<TxPool>(*this, logs_->journal("PreTxPool")))
+
 		, m_pStateManager(std::make_unique<StateManager>(*this, logs_->journal("StateManager")))
 
         , sweepTimer_ (get_io_service())
@@ -677,6 +680,11 @@ public:
     TxPool& getTxPool() override
     {
         return *m_pTxPool;
+    }
+
+    TxPool& getPreTxPool() override
+    {
+        return *m_pPreTxPool;
     }
 
 	StateManager& getStateManager() override

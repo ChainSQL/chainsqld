@@ -24,15 +24,28 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/overlay/Overlay.h>
 #include <ripple/app/misc/HashRouter.h>
+#include <ripple/beast/utility/Journal.h>
 
 
 namespace ripple {
 
+class Application;
+class Config;
+class ShardManager;
+
+
 class NodeBase {
 
 public:
+    ShardManager&                                       mShardManager;
 
-    NodeBase() {}
+    Application&                                        app_;
+    beast::Journal                                      journal_;
+    Config&                                             cfg_;
+
+public:
+
+    NodeBase(ShardManager& m, Application& app, Config& cfg, beast::Journal journal);
     ~NodeBase() {}
 
     virtual bool isLeader() = 0;
@@ -54,6 +67,8 @@ public:
     virtual void relay(
         boost::optional<std::set<HashRouter::PeerShortID>> toSkip,
         std::shared_ptr<Message> const &m) = 0;
+
+    virtual void onMessage(std::shared_ptr<protocol::TMTransactions> const& m);
 };
 
 }

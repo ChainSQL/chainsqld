@@ -53,7 +53,7 @@ namespace ripple {
             {
                 ter = tesSUCCESS;
 				// Init sync_status
-				if (mSyncStatus.pool_start_seq == 0)
+				if (ledgerSeq && mSyncStatus.pool_start_seq == 0)
 				{
 					mSyncStatus.pool_start_seq = ledgerSeq;
 				}

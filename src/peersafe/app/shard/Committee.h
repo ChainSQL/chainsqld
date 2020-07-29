@@ -35,22 +35,12 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-class Application;
-class Config;
-class ShardManager;
 class PeerImp;
 class Peer;
 
 class Committee : public NodeBase {
 
 private:
-
-	ShardManager&											mShardManager;
-
-	Application&											app_;
-	beast::Journal											journal_;
-	Config&													cfg_;
-
     // Used if I am a Committee node
     bool                                                    mIsLeader;
     LedgerIndex                                             mPreSeq;
@@ -79,7 +69,6 @@ private:
 
     // Hold all committee validators
     std::unique_ptr <ValidatorList>                     mValidators;
-
 
 
 public:

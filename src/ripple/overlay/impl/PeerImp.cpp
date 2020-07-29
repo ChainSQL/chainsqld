@@ -1977,10 +1977,11 @@ void PeerImp::onMessage(std::shared_ptr <protocol::TMTransactions> const& m)
     switch (app_.getShardManager().myShardRole())
     {
     case ShardManager::SHARD:
+    case ShardManager::COMMITTEE:
         app_.getJobQueue().addJob(
             jtTRANSACTION, "recvTransactions->checkTransactions",
             [pap, m](Job&) {
-            pap->getShardManager().node().onMessage(m);
+            pap->getShardManager().nodeBase().onMessage(m);
         });
         break;
     default:

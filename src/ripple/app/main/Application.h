@@ -169,6 +169,7 @@ public:
 	virtual ContractHelper&			getContractHelper() = 0;
 	virtual TableTxAccumulator&		getTableTxAccumulator() = 0;
 	virtual TxPool&					getTxPool() = 0;
+    virtual TxPool&					getPreTxPool() = 0;
 	virtual StateManager&			getStateManager() = 0;
 	virtual
     std::pair<PublicKey, SecretKey> const&

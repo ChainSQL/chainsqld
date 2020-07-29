@@ -39,10 +39,7 @@ auto constexpr ML_ACQUIRE_TIMEOUT = 250ms;
 
 
 Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
-    : mShardManager(m)
-    , app_(app)
-    , journal_(journal)
-    , cfg_(cfg)
+    : NodeBase(m, app, cfg, journal)
     , mTimer(app_.getIOService())
 {
 	mValidators = std::make_unique<ValidatorList>(
