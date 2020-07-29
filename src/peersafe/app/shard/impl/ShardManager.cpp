@@ -66,6 +66,7 @@ ShardManager::ShardManager(Application& app, Config& cfg, Logs& log)
         mCommittee->validators().onConsensusStart(app_.getValidations().getCurrentPublicKeys());
         break;
     case COMMITTEE:
+        mLookup->validators().onConsensusStart(app_.getValidations().getCurrentPublicKeys());
         for (auto const& validators : mNode->shardValidators())
         {
             validators.second->onConsensusStart(app_.getValidations().getCurrentPublicKeys());

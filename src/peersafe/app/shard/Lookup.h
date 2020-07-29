@@ -147,6 +147,7 @@ public:
 	void setTimer();
 	void onTimer(boost::system::error_code const& ec);
 
+    std::uint32_t getShardIndex(AccountID const& fromAddr) const;
     void relayTxs();
 
     template <class UnaryFunc>

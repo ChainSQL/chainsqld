@@ -108,6 +108,11 @@ public:
         return checkChainsqlTableType(tx_type_);
 	}
 
+    bool isChainSQLContractType() const
+    {
+        return checkChainsqlContractType(tx_type_);
+    }
+
 	void addSubTx(STTx const& tx) const
 	{
 		pTxs_->push_back(tx);

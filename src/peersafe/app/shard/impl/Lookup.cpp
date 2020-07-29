@@ -588,6 +588,27 @@ void Lookup::onTimer(boost::system::error_code const& ec)
 	setTimer();
 }
 
+std::uint32_t Lookup::getShardIndex(AccountID const& fromAddr) const
+{
+    std::uint32_t shardCount = mShardManager.shardCount();
+
+    if (shardCount == 0) return 0;
+
+    std::string sAccountID = toBase58(fromAddr);
+    std::uint32_t len = sAccountID.size();
+    assert(len >= 4);
+
+    std::uint32_t x = 0;
+
+    // Take the last four bytes of the address
+    for (std::uint32_t i = 0; i < 4; i++)
+    {
+        x = (x << 8) | sAccountID[len - 4 + i];
+    }
+
+    return x % shardCount + 1;
+}
+
 void Lookup::relayTxs()
 {
     std::lock_guard <decltype(mTransactionsMutex)> lock(mTransactionsMutex);
@@ -636,7 +657,14 @@ void Lookup::relayTxs()
         auto const m = std::make_shared<Message>(
             ts, protocol::mtTRANSACTIONS);
 
-        mShardManager.node().sendMessage(it.first, m);
+        if (it.first)
+        {
+            mShardManager.node().sendMessage(it.first, m);
+        }
+        else
+        {
+            mShardManager.committee().sendMessage(m);
+        }
     }
 
     for (auto const& delHash : hTxVector) {

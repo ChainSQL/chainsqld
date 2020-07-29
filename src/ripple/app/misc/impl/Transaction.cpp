@@ -30,6 +30,7 @@
 #include <boost/optional.hpp>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/shard/ShardManager.h>
+#include <peersafe/protocol/ContractDefines.h>
 
 namespace ripple {
 
@@ -213,23 +214,18 @@ Json::Value Transaction::getJson (int options, bool binary) const
 
 std::uint32_t Transaction::getShardIndex() const
 {
-    std::uint32_t shardCount = mApp.getShardManager().shardCount();
+    Lookup& lookup = mApp.getShardManager().lookup();
 
-    if (shardCount == 0) return 0;
+    std::uint32_t shardID = lookup.getShardIndex(mTransaction->getAccountID(sfAccount));
 
-    std::uint32_t x = 0;
-
-    std::string sAccountID = toBase58(mTransaction->getAccountID(sfAccount));
-    std::uint32_t len = sAccountID.size();
-    assert(len >= 4);
-
-    // Take the last four bytes of the address
-    for (std::uint32_t i = 0; i < 4; i++)
+    if (mTransaction->isChainSQLContractType() &&
+        mTransaction->getFieldU16(sfContractOpType) == MessageCall)
     {
-        x = (x << 8) | sAccountID[len - 4 + i];
+        std::uint32_t dstShardID = lookup.getShardIndex(mTransaction->getAccountID(sfContractAddress));
+        return shardID == dstShardID ? shardID : 0;
     }
 
-    return (x % shardCount + 1);
+    return shardID;
 }
 
 } // ripple
