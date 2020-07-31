@@ -35,6 +35,7 @@
 #include <ripple/protocol/types.h>
 #include <ripple/rpc/ServerHandler.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <ripple/rpc/handlers/ValidationCreate.h>
 #include <peersafe/basics/characterUtilities.h>
 #include <beast/core/string.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -1555,26 +1556,12 @@ rpcClient(std::vector<std::string> const& args,
                 jvParams.append(params[0u]);
             }
 
-			if (args.size() == 1 && args[0] == "validation_create")
+			if (args[0] == "validation_create")
 			{
-				Json::Value     obj(Json::objectValue);
-				auto seed = randomSeed();
-
-				auto const private_key = generateSecretKey(KeyType::secp256k1, seed);
-
-				obj[jss::validation_public_key] = toBase58(
-					TokenType::TOKEN_NODE_PUBLIC,
-					derivePublicKey(KeyType::secp256k1, private_key));
-
-				obj[jss::validation_public_key_hex] = strHex(derivePublicKey(KeyType::secp256k1, private_key));
-
-				obj[jss::validation_private_key] = toBase58(
-					TokenType::TOKEN_NODE_PRIVATE, private_key);
-
-				obj[jss::validation_seed] = toBase58(seed);
-				obj[jss::validation_key] = seedAs1751(seed);
-
-				jvOutput["result"] = obj;
+                std::string seedStr;
+                if (args.size() == 2)
+                    seedStr = args[1];
+                jvOutput["result"] = doFillValidationJson(seedStr);
 			}
 			else
             {
