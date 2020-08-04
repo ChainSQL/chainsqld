@@ -126,6 +126,8 @@ public:
     bool
     modify (modify_type const& f);
 
+    void replace(OpenView const& view);
+
     /** Accept a new ledger.
 
         Thread safety:

@@ -57,6 +57,8 @@ private:
     boost::asio::basic_waitable_timer<
         std::chrono::steady_clock>                          mTimer;
 
+    boost::optional<MicroLedger>                            mMicroLedger;
+
     bool                                                    mSubmitCompleted;
     boost::optional<FinalLedger>                            mFinalLedger;
     std::map<LedgerIndex,
@@ -107,6 +109,12 @@ public:
         return mFinalLedger->ledgerHash();
     }
 
+    inline uint256 getMicroLedgerHash()
+    {
+        assert(mMicroLedger);
+        return mMicroLedger->ledgerHash();
+    }
+
     inline void setAcquiring(uint256 hash)
     {
         std::lock_guard<std::recursive_mutex> _(mMLBMutex);
@@ -131,7 +139,7 @@ public:
 
     uint32 firstMissingMicroLedger();
 
-    uint256 microLedgerSetHash();
+    std::pair<uint256, bool> microLedgerSetHash();
 
     void onViewChange(ViewChangeManager& vcManager, uint64 view, LedgerIndex preSeq, LedgerHash preHash);
 
@@ -147,6 +155,8 @@ public:
         std::set<std::shared_ptr<Peer>>& set,
         std::size_t limit,
         std::function<bool(std::shared_ptr<Peer> const&)> score);
+
+    void buildMicroLedger(OpenView const& view, CanonicalTXSet const* txSet);
 
     void buildFinalLedger(OpenView const& view, std::shared_ptr<Ledger const> ledger);
 

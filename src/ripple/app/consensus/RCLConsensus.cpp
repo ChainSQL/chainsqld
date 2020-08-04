@@ -43,6 +43,7 @@
 #include <ripple/protocol/digest.h>
 #include <ripple/app/misc/Transaction.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <utility>
 #if USE_TBB
 #ifdef _CRTDBG_MAP_ALLOC
 #pragma push_macro("free")
@@ -210,6 +211,9 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
 
     prop.set_currenttxhash(
         proposal.position().begin(), proposal.position().size());
+    prop.set_microledgersethash(
+        proposal.position2().first.begin(), proposal.position2().first.size());
+    prop.set_emptyledgers(proposal.position2().second);
     prop.set_previousledger(
         proposal.prevLedger().begin(), proposal.position().size());
 	prop.set_curledgerseq(proposal.curLedgerSeq());
@@ -225,7 +229,9 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
         std::uint32_t(proposal.proposeSeq()),
         proposal.closeTime().time_since_epoch().count(),
         proposal.prevLedger(),
-        proposal.position());
+        proposal.position(),
+        proposal.position2().first,
+        proposal.position2().second);
 
     auto sig = signDigest(valPublic_, valSecret_, signingHash);
 
@@ -417,7 +423,7 @@ RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 	app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
 	//Try to clear state cache.
 	if (app_.getLedgerMaster().getPublishedLedgerAge() > 3 * app_.getOPs().getConsensusTimeout() &&
-		app_.getTxPool().isEmpty())
+		app_.getTxPool().isEmpty() && app_.getPreTxPool().isEmpty())
 	{
 		app_.getStateManager().clear();
 	}
@@ -460,7 +466,7 @@ RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 auto
 RCLConsensus::Adaptor::onCollectFinish(
 	RCLCxLedger const& ledger,
-	std::vector<uint256> const& transactions,
+	std::vector<uint256>& transactions,
 	NetClock::time_point const& closeTime,
 	std::uint64_t const& view,
 	ConsensusMode mode) -> Result
@@ -477,6 +483,33 @@ RCLConsensus::Adaptor::onCollectFinish(
 	ledgerMaster_.setBuildingLedger(prevLedger->info().seq + 1);
 	//auto initialLedger = app_.openLedger().current();
 
+    ShardManager& shardMgr = app_.getShardManager();
+
+    std::pair<uint256, bool> position2 = std::make_pair(beast::zero, true);
+    if (shardMgr.myShardRole() == ShardManager::COMMITTEE)
+    {
+        position2 = shardMgr.committee().microLedgerSetHash();
+
+        // All microLedger is empty, pre-execute transactions
+        if (position2.second)
+        {
+            std::vector< std::shared_ptr<Transaction> > txs;
+            app_.getPreTxPool().getTransactions(transactions, txs);
+            for (auto& tx : txs)
+            {
+                app_.getOPs().doTransactionAsync(tx, false, NetworkOPs::FailHard::no);
+            }
+            app_.getOPs().waitBatchComplete();
+
+            transactions.clear();
+            auto const& hTxVector = app_.getTxPool().topTransactions(maxTxsInLedger_);
+            for (auto const& tx : hTxVector)
+            {
+                transactions.push_back(tx);
+            }
+        }
+    }
+
 	auto initialSet = std::make_shared<SHAMap>(
 		SHAMapType::TRANSACTION, app_.family(), SHAMap::version{ 1 });
 	initialSet->setUnbacked();
@@ -490,7 +523,7 @@ RCLConsensus::Adaptor::onCollectFinish(
 			JLOG(j_.error()) << "fetch transaction " + to_string(txID) + "failed";
 			continue;
 		}
-			
+
 		JLOG(j_.trace()) << "Adding open ledger TX " << txID;
 		Serializer s(2048);
 		tx->getSTransaction()->add(s);
@@ -500,35 +533,30 @@ RCLConsensus::Adaptor::onCollectFinish(
 			false);
 	}
 
-	//// Add pseudo-transactions to the set
-	//if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
-	//	((prevLedger->info().seq % 256) == 0))
-	//{
-	//	// previous ledger was flag ledger, add pseudo-transactions
-	//	auto const validations =
-	//		app_.getValidations().getTrustedForLedger(
-	//			prevLedger->info().parentHash);
+	// Add pseudo-transactions to the set
+    //if (shardMgr.myShardRole() == ShardManager::SHARD)
+    //{
+    //    if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
+    //        ((prevLedger->info().seq % 256) == 0))
+    //    {
+    //        // previous ledger was flag ledger, add pseudo-transactions
+    //        auto const validations =
+    //            app_.getValidations().getTrustedForLedger(
+    //                prevLedger->info().parentHash);
 
-	//	if (validations.size() >= app_.validators().quorum())
-	//	{
-	//		feeVote_->doVoting(prevLedger, validations, initialSet);
-	//		app_.getAmendmentTable().doVoting(
-	//			prevLedger, validations, initialSet);
-	//	}
-	//}
+    //        if (validations.size() >= app_.validators().quorum())
+    //        {
+    //            feeVote_->doVoting(prevLedger, validations, initialSet);
+    //            app_.getAmendmentTable().doVoting(
+    //                prevLedger, validations, initialSet);
+    //        }
+    //    }
+    //}
 
 	// Now we need an immutable snapshot
 	initialSet = initialSet->snapShot(false);
 
-    uint256 setHash;
-    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
-    {
-        setHash = initialSet->getHash().as_uint256();
-    }
-    else
-    {
-        setHash = app_.getShardManager().committee().microLedgerSetHash();
-    }
+    uint256 position = initialSet->getHash().as_uint256();
 
 	return Result{
 		std::move(initialSet),
@@ -537,7 +565,8 @@ RCLConsensus::Adaptor::onCollectFinish(
 			prevLedger->info().seq + 1,
 			view,
 			RCLCxPeerPos::Proposal::seqJoin,
-			setHash,
+            position,
+            position2,
 			closeTime,
 			app_.timeKeeper().closeTime(),
 			nodeID_, 
@@ -1018,6 +1047,8 @@ applyTransactions(
     return retriableTxs;
 }
 
+#endif
+
 void
 applyMicroLedgers(
     Application& app,
@@ -1033,7 +1064,51 @@ applyMicroLedgers(
     }
 }
 
-#endif
+void PreExecTransactions(Application& app, OpenView const& view, RCLTxSet& cSet, unsigned maxTxsInLedger)
+{
+    auto j = app.journal("PreExecTransactions");
+
+    auto current_ = app.openLedger().current();
+    app.openLedger().replace(view);
+
+    int count = 0;
+
+    for (auto const& item : *(cSet.map_))
+    {
+        count++;
+        auto tx = app.getMasterTransaction().fetch(item.key(), false);
+        if (!tx)
+        {
+            JLOG(j.error()) << "fetch transaction " + to_string(item.key()) + "failed";
+            continue;
+        }
+        app.getOPs().doTransactionAsync(tx, false, NetworkOPs::FailHard::no);
+    }
+    app.getOPs().waitBatchComplete();
+
+    app.openLedger().replace(*current_);
+
+    auto const& hTxVector = app.getTxPool().topTransactions(maxTxsInLedger);
+
+    // Re-build cSet use hTxVector Or Remove transactions which Pre-exec failed.
+    // Perfer the second method, Does this cause bugs?
+    std::vector<uint256> failedTxs;
+
+    if (count != hTxVector.size())
+    {
+        for (auto const& item : *(cSet.map_))
+        {
+            if (std::find(hTxVector.begin(), hTxVector.end(), item.key()) == hTxVector.end())
+            {
+                failedTxs.push_back(item.key());
+            }
+        }
+    }
+    for (auto const& key : failedTxs)
+    {
+        cSet.map_->delItem(key);
+    }
+}
 
 RCLCxLedger
 RCLConsensus::Adaptor::buildLCL(
@@ -1084,7 +1159,7 @@ RCLConsensus::Adaptor::buildLCL(
     assert(!accum.open());
 
     {
-		auto timeStart = utcTime();
+        auto timeStart = utcTime();
         if (replay)
         {
             // Special case, we are replaying a ledger close
@@ -1094,20 +1169,28 @@ RCLConsensus::Adaptor::buildLCL(
         }
         else
         {
-            // Normal case, we are not replaying a ledger close
-            //retriableTxs = applyTransactions(
-            //    app_, set, accum, [&buildLCL](uint256 const& txID) {
-            //        return !buildLCL->txExists(txID);
-            //    });
             applyMicroLedgers(app_, app_.getShardManager().committee().canonicalMicroLedgers(),
                 accum);
+            JLOG(j_.info()) << "applyMicroLedgers time used:" << utcTime() - timeStart << "ms";
+
+            timeStart = utcTime();
+            PreExecTransactions(app_, accum, (RCLTxSet&)(*(&set)), maxTxsInLedger_);
+            JLOG(j_.info()) << "PreExecTransactions time used:" << utcTime() - timeStart << "ms";
+
+            timeStart = utcTime();
+            auto canonicalTXSet = applyTransactions(
+                app_, set, accum, [&buildLCL](uint256 const& txID) {
+                    return !buildLCL->txExists(txID);
+                });
+            JLOG(j_.info()) << "applyTransactions time used:" << utcTime() - timeStart << "ms";
+
+            app_.getShardManager().committee().buildMicroLedger(accum, &canonicalTXSet);
         }
-		JLOG(j_.info()) << "applyTransactions time used:" << utcTime() - timeStart << "ms";
-		timeStart = utcTime();
         // Update fee computations.
         app_.getTxQ().processClosedLedger(app_, accum, roundTime > 5s);
-        accum.apply(*buildLCL);
 
+        timeStart = utcTime();
+        accum.apply(*buildLCL);
 		JLOG(j_.info()) << "apply sle time used:" << utcTime() - timeStart << "ms";
     }
 
@@ -1161,6 +1244,7 @@ RCLConsensus::Adaptor::validate(RCLCxLedger const& ledger, bool proposing)
     auto v = std::make_shared<STValidation>(
         ledger.id(),
         app_.getShardManager().committee().getFinalLedgerHash(),
+        app_.getShardManager().committee().getMicroLedgerHash(),
         validationTime, valPublic_, proposing);
     v->setFieldU32(sfLedgerSequence, ledger.seq());
     v->setFieldU32(sfShardID, app_.getShardManager().node().shardID());
@@ -1173,13 +1257,13 @@ RCLConsensus::Adaptor::validate(RCLCxLedger const& ledger, bool proposing)
     if (fee > feeTrack.getLoadBase())
         v->setFieldU32(sfLoadFee, fee);
 
-    if (((ledger.seq() + 1) % 256) == 0)
-    // next ledger is flag ledger
-    {
-        // Suggest fee changes and new features
-        feeVote_->doValidation(ledger.ledger_, *v);
-        app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
-    }
+    //if (((ledger.seq() + 1) % 256) == 0)
+    //// next ledger is flag ledger
+    //{
+    //    // Suggest fee changes and new features
+    //    feeVote_->doValidation(ledger.ledger_, *v);
+    //    app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
+    //}
 
     auto const signingHash = v->sign(valSecret_);
     v->setTrusted();

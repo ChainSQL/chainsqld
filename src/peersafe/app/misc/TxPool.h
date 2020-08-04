@@ -108,6 +108,7 @@ public:
 
     // When block validated, remove Txs from pool and avoid set.
 	void removeTxs(SHAMap const& cSet,int const ledgerSeq,uint256 const& prevHash);
+    void removeTxs(std::vector<TxID> const& txHashes, int const ledgerSeq, uint256 const& prevHash);
 	void removeTx(uint256 const& hash);
 
     // Update avoid set when receiving a Tx set from peers.
@@ -117,18 +118,18 @@ public:
     inline bool txExists(uint256 hash) { return mTxsHash.count(hash); }
 
 	// Set pool limit.
-    void setTxLimitInPool(std::size_t const& maxTxs) { mMaxTxsInPool = maxTxs; }
+    inline void setTxLimitInPool(std::size_t const& maxTxs) { mMaxTxsInPool = maxTxs; }
 
     // Get pool limit.
-    std::size_t const& getTxLimitInPool() { return mMaxTxsInPool; }
+    inline std::size_t const& getTxLimitInPool() { return mMaxTxsInPool; }
 
-	bool isEmpty() { return mTxsSet.size() == 0; }
+	inline bool isEmpty() { return mTxsSet.size() == 0; }
+
+    inline std::size_t getTxCountInPool() { return mTxsSet.size(); }
 
 	bool isAvailable();
 
 	void timerEntry();
-
-	std::size_t getTxCountInPool() { return mTxsSet.size();  }
 
 	void checkSyncStatus(int const ledgerSeq, uint256 const& prevHash);
 

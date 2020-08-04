@@ -287,7 +287,7 @@ public:
      * @param failType fail_hard setting from transaction submission.
      */
     void doTransactionAsync (std::shared_ptr<Transaction> transaction,
-        bool bUnlimited, FailHard failtype);
+        bool bUnlimited, FailHard failtype) override;
 
     std::pair<STer, bool> 
     doTransactionCheck(std::shared_ptr<Transaction> transaction,
@@ -299,6 +299,8 @@ public:
      * Apply transactions in batches. Continue until none are queued.
      */
     void transactionBatch();
+
+    void waitBatchComplete() override;
 
     /**
      * Attempt to apply transactions and post-process based on the results.
@@ -336,18 +338,10 @@ public:
 
 	bool recvViewChange(ViewChange const& change) override;
 
-    std::shared_ptr<SHAMap> getTXMap (uint256 const& hash);
-    bool hasTXSet (
-        const std::shared_ptr<Peer>& peer, uint256 const& set,
-        protocol::TxSetStatus status);
-
     void mapComplete (
         uint256 hash,
         std::shared_ptr<SHAMap> const& map,
         bool fromAcquire) override;
-
-	// relay txs to shard nodes
-	void relayTxs(std::vector<TransactionStatus>& transactions);
 
     // Network state machine.
 
@@ -876,6 +870,7 @@ void NetworkOPsImp::processHeartbeatTimer ()
     }
 
 	app_.getTxPool().timerEntry();
+    app_.getPreTxPool().timerEntry();
 
 	tryCheckSubTx();
 
@@ -1094,10 +1089,18 @@ void NetworkOPsImp::processTransaction (std::shared_ptr<Transaction>& transactio
     // canonicalize can change our pointer
     app_.getMasterTransaction ().canonicalize (&transaction);
 
-    if (bLocal)
-        doTransactionSync (transaction, bUnlimited, failType);
+    if (app_.getShardManager().myShardRole() != ShardManager::COMMITTEE)
+    {
+        if (bLocal)
+            doTransactionSync(transaction, bUnlimited, failType);
+        else
+            doTransactionAsync(transaction, bUnlimited, failType);
+    }
     else
-        doTransactionAsync (transaction, bUnlimited, failType);
+    {
+        // Pre-execute should after all microLedgers applied on committee
+        app_.getPreTxPool().insertTx(transaction, app_.openLedger().current()->seq());
+    }
 }
 
 std::pair<STer, bool>
@@ -1264,6 +1267,16 @@ void NetworkOPsImp::transactionBatch()
     }
 }
 
+void NetworkOPsImp::waitBatchComplete()
+{
+    std::unique_lock<std::mutex> lock(mMutex);
+
+    while (mTransactions.size())
+    {
+        mCond.wait(lock);
+    }
+}
+
 void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
 {
     std::vector<TransactionStatus> submit_held;
@@ -1375,6 +1388,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                 // duplicate or conflict
                 JLOG(m_journal.info()) << "Transaction is obsolete";
                 e.transaction->setStatus (OBSOLETE);
+                app_.getPreTxPool().removeTx(e.transaction->getID());
             }
             else if (e.result == terQUEUED)
             {
@@ -1410,6 +1424,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                 JLOG(m_journal.info())
                     << "Status other than success " << e.result;
                 e.transaction->setStatus (INVALID);
+                app_.getPreTxPool().removeTx(e.transaction->getID());
             }
 
 			//chainsql type tx will not retry.
@@ -4140,45 +4155,6 @@ Json::Value NetworkOPsImp::StateAccounting::json() const
     }
 
     return ret;
-}
-
-
-
-// relay txs to shard nodes
-void  NetworkOPsImp::relayTxs(std::vector<TransactionStatus>& transactions) {
-
-	std::vector< std::shared_ptr<Transaction> > vecTxs;
-	// std::shared_ptr<Transaction> transaction;
-	for (TransactionStatus& e : transactions){
-		vecTxs.push_back(e.transaction);
-	}
-
-	//if (!vecTxs.empty()) {
-	//	app_.getShardManager().relayTxs(vecTxs);
-	//}
-
-
-
-
-	//auto account = txCur->getAccountID(sfAccount);
-
-	//auto shardIndex = getShardIndex(account, app_.getShardManager().shardCount());
-
-	// send by
-
-	//protocol::TMTransaction tx;
-	//Serializer s;
-
-	//e.transaction->getSTransaction()->add(s);
-	//tx.set_rawtransaction(s.data(), s.size());
-	//tx.set_status(protocol::tsCURRENT);
-	//tx.set_receivetimestamp(app_.timeKeeper().now().time_since_epoch().count());
-	//tx.set_deferred(e.result == terQUEUED);
-	//// FIXME: This should be when we received it
-	//app_.overlay().foreach(send_if_not(
-	//	std::make_shared<Message>(tx, protocol::mtTRANSACTION),
-	//	peer_in_set(*toSkip)));
-
 }
 
 //------------------------------------------------------------------------------

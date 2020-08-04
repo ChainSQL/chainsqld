@@ -29,14 +29,14 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView &view)
+MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView const& view, CanonicalTXSet const* txSet)
     : mSeq(seq_)
     , mViewChange(viewChange)
     , mShardID(shardID_)
 {
     assert(!view.open());
 
-    view.apply(*this);
+    view.apply(*this, txSet);
 
     computeHash(true);
 }

@@ -1305,18 +1305,29 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
     NetClock::time_point const closeTime { NetClock::duration{set.closetime()} };
     Slice signature (set.signature().data(), set.signature ().size());
 
-    uint256 proposeHash, prevLedger;
+    uint256 proposeHash, prevLedger, microLedgerSetHash;
     memcpy (proposeHash.begin (), set.currenttxhash ().data (), 32);
     memcpy (prevLedger.begin (), set.previousledger ().data (), 32);
+    memcpy (microLedgerSetHash.begin(), set.microledgersethash().data(), 32);
+    bool emptyLedgers = set.emptyledgers();
 
     uint256 suppression = proposalUniqueId (
-        proposeHash, prevLedger, set.proposeseq(),
+        proposeHash, microLedgerSetHash, emptyLedgers, prevLedger, set.proposeseq(),
         closeTime, publicKey.slice(), signature);
 
     if (! app_.getHashRouter ().addSuppressionPeer (suppression, id_))
     {
         JLOG(p_journal_.trace()) << "Proposal: duplicate";
         return;
+    }
+
+    if (shardMgr.myShardRole() == ShardManager::SHARD)
+    {
+        if (!emptyLedgers || microLedgerSetHash != beast::zero)
+        {
+            JLOG(p_journal_.warn()) << "Proposal: microledger set is not zero on shard";
+            return;
+        }
     }
 
     if (!app_.getValidationPublicKey().empty() &&
@@ -1362,7 +1373,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
 
     auto proposal = RCLCxPeerPos(
         publicKey, signature, suppression,
-        RCLCxPeerPos::Proposal{prevLedger, set.curledgerseq(),set.view(), set.proposeseq (), proposeHash, closeTime,
+        RCLCxPeerPos::Proposal{prevLedger, set.curledgerseq(),set.view(), set.proposeseq (), proposeHash,
+            std::make_pair(microLedgerSetHash, emptyLedgers), closeTime,
             app_.timeKeeper().closeTime(),calcNodeID(publicKey), set.shardid()});
 
     std::weak_ptr<PeerImp> weak = shared_from_this();

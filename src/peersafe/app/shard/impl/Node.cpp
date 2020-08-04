@@ -375,7 +375,7 @@ void Node::checkAccept(LedgerHash microLedgerHash)
     }
 }
 
-void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
+std::shared_ptr<MicroLedger> Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
 {
     {
         std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
@@ -383,7 +383,7 @@ void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
         {
             JLOG(journal_.info()) << "Can't Submit microledger " << microLedgerHash
                 << ", because I didn't built it";
-            return;
+            return nullptr;
         }
     }
 
@@ -396,7 +396,7 @@ void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
     if (!app_.getHashRouter().shouldRelay(suppressionKey))
     {
         JLOG(journal_.info()) << "Repeat submit microledger, suppressed";
-        return;
+        return nullptr;
     }
 
     JLOG(journal_.info()) << "Submit microledger(seq:" << microLedger->seq() << ") to "
@@ -417,6 +417,8 @@ void Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
     {
         mShardManager.committee().distributeMessage(m);
     }
+
+    return microLedger;
 }
 
 // To specified shard
@@ -655,7 +657,7 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         return;
     }
 
-    submitMicroLedger(finalLedger->getMicroLedgerHash(mShardID), true);
+    auto microLedger = submitMicroLedger(finalLedger->getMicroLedgerHash(mShardID), true);
 
     app_.getLedgerMaster().storeLedger(buildLCL);
 
@@ -679,6 +681,15 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
     }
 
     app_.getLedgerMaster().setClosedLedger(buildLCL);
+
+    if (microLedger)
+    {
+        app_.getTxPool().removeTxs(microLedger->txHashes(), buildLCL->info().seq, buildLCL->info().parentHash);
+    }
+    else
+    {
+        app_.getTxPool().removeTxs(buildLCL->txMap(), buildLCL->info().seq, buildLCL->info().parentHash);
+    }
 
 	//begin next round consensus
 	app_.getOPs().endConsensus();

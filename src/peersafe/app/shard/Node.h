@@ -110,7 +110,7 @@ public:
 
     void checkAccept(LedgerHash microLedgerHash);
 
-    void submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta);
+    std::shared_ptr<MicroLedger> submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta);
 
     Overlay::PeerSequence getActivePeers(uint32 shardID);
 

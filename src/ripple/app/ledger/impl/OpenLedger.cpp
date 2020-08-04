@@ -77,6 +77,15 @@ OpenLedger::modify (modify_type const& f)
     return changed;
 }
 
+void OpenLedger::replace(OpenView const& view)
+{
+    std::lock_guard<
+        std::mutex> lock1(modify_mutex_);
+    auto next = std::make_shared<
+        OpenView>(view);
+    current_ = std::move(next);
+}
+
 void
 OpenLedger::accept(Application& app, Rules const& rules,
     std::shared_ptr<Ledger const> const& ledger,

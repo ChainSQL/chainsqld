@@ -253,7 +253,7 @@ bool Lookup::findNewLedgerToSave(LedgerIndex &toSaveOrAcquire)
 bool Lookup::checkLedger(LedgerIndex seq)
 {
     std::lock_guard <std::recursive_mutex> lock(mutex_);
-    if (mMapMicroLedgers[seq].size() == mShardManager.shardCount() &&
+    if (mMapMicroLedgers[seq].size() == mShardManager.shardCount() + 1 &&
         mMapFinalLedger.count(seq))
     {
         return true;
@@ -270,11 +270,16 @@ uint32 Lookup::resetMetaIndex(LedgerIndex seq)
     for (uint32 shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
     {
         std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
-
         for (auto const& txHash : microLedger->txHashes())
         {
             microLedger->setMetaIndex(txHash, metaIndex++, j);
         }
+    }
+
+    std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, 0);
+    for (auto const& txHash : microLedger->txHashes())
+    {
+        microLedger->setMetaIndex(txHash, metaIndex++, j);
     }
 
     return metaIndex;
@@ -297,9 +302,10 @@ void Lookup::saveLedger(LedgerIndex seq)
     for (uint32 shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
     {
         std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
-
         microLedger->apply(*ledgerToSave);
     }
+    std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, 0);
+    microLedger->apply(*ledgerToSave);
 
     JLOG(journal_.info()) << "Aplly state and tx map time used:" << utcTime() - timeStart << "ms";
 
@@ -368,9 +374,19 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m)
         return;
     }
 
-	bool valid = microWithMeta->checkValidity(
-        mShardManager.node().shardValidators()[microWithMeta->shardID()],
-		true);
+    bool valid = false;
+    if (microWithMeta->shardID())
+    {
+        valid = microWithMeta->checkValidity(
+            mShardManager.node().shardValidators()[microWithMeta->shardID()],
+            true);
+    }
+    else
+    {
+        valid = microWithMeta->checkValidity(
+            mShardManager.committee().validatorsPtr(),
+            true);
+    }
 	if (!valid)
 	{
         JLOG(journal_.info()) << "Microledger signature verification failed";

@@ -98,6 +98,9 @@ class RCLConsensus
         std::atomic<ConsensusMode> mode_{ConsensusMode::observing};
 
     public:
+        unsigned maxTxsInLedger_;
+
+    public:
         using Ledger_t = RCLCxLedger;
         using NodeID_t = NodeID;
         using TxSet_t = RCLTxSet;
@@ -299,7 +302,7 @@ class RCLConsensus
 		Result
 		onCollectFinish(
 			RCLCxLedger const& ledger,
-            std::vector<uint256> const& transactions,
+            std::vector<uint256>& transactions,
 			NetClock::time_point const& closeTime,
 			std::uint64_t const& view,
 			ConsensusMode mode);

@@ -76,7 +76,7 @@ protected:
 public:
     MicroLedger() = delete;
 	MicroLedger(protocol::TMMicroLedgerSubmit const& m, bool withTxMeta = true);
-    MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView &view);
+    MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView const& view, CanonicalTXSet const* txSet = nullptr);
 
     inline LedgerIndex seq()
     {

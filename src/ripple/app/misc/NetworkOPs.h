@@ -128,6 +128,11 @@ namespace ripple {
 		virtual void processTransaction(std::shared_ptr<Transaction>& transaction,
 			bool bUnlimited, bool bLocal, FailHard failType) = 0;
 
+        virtual void doTransactionAsync(std::shared_ptr<Transaction> transaction,
+            bool bUnlimited, FailHard failtype) = 0;
+
+        virtual void waitBatchComplete() = 0;
+
 		//--------------------------------------------------------------------------
 		//
 		// Owner functions

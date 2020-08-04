@@ -64,6 +64,7 @@ STValidation::STValidation (
 STValidation::STValidation(
     uint256 const& ledgerHash,
     uint256 const& finalLedgerHash,
+    uint256 const& microLedgerHash,
     NetClock::time_point signTime,
     PublicKey const& publicKey,
     bool isFull)
@@ -71,6 +72,7 @@ STValidation::STValidation(
 {
     // Does not sign
     setFieldH256(sfFinalLedgerHash, finalLedgerHash);
+    setFieldH256(sfMicroLedgerHash, microLedgerHash);
 }
 
 uint256 STValidation::sign(SecretKey const& secretKey)
@@ -85,6 +87,8 @@ uint256 STValidation::sign(SecretKey const& secretKey)
     }
     else
     {
+        setFieldVL(sfMicroLedgerSign,
+            signDigest(getSignerPublic(), secretKey, getFieldH256(sfMicroLedgerHash)));
         setFieldVL(sfFinalLedgerSign, 
             signDigest(getSignerPublic(), secretKey, getFieldH256(sfFinalLedgerHash)));
     }
@@ -145,6 +149,13 @@ bool STValidation::isValid (uint256 const& signingHash) const
             if (!verifyDigest(getSignerPublic(),
                 getFieldH256(sfFinalLedgerHash),
                 makeSlice(getFieldVL(sfFinalLedgerSign)),
+                getFlags() & vfFullyCanonicalSig))
+            {
+                return false;
+            }
+            if (!verifyDigest(getSignerPublic(),
+                getFieldH256(sfMicroLedgerHash),
+                makeSlice(getFieldVL(sfMicroLedgerSign)),
                 getFlags() & vfFullyCanonicalSig))
             {
                 return false;
@@ -214,6 +225,7 @@ SOTemplate const& STValidation::getFormat ()
             format.push_back (SOElement (sfConsensusHash,   SOE_OPTIONAL));
 			format.push_back(SOElement  (sfDropsPerByte,    SOE_OPTIONAL));
             format.push_back (SOElement (sfShardID,         SOE_REQUIRED));
+            format.push_back (SOElement (sfMicroLedgerHash, SOE_OPTIONAL));
             format.push_back (SOElement (sfFinalLedgerHash, SOE_OPTIONAL));
             format.push_back (SOElement (sfMicroLedgerSign, SOE_OPTIONAL));
             format.push_back (SOElement (sfFinalLedgerSign, SOE_OPTIONAL));

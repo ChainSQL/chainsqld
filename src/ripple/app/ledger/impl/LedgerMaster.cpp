@@ -1250,11 +1250,6 @@ void LedgerMaster::accept(std::shared_ptr<Ledger const> const& ledger)
 	ledger->setFull();
 	setValidLedger(ledger);
 
-    if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
-    {
-        app_.getTxPool().removeTxs(ledger->txMap(), ledger->info().seq, ledger->info().parentHash);
-    }
-
 	if (!mPubLedger)
 	{
 		pendSaveValidated(app_, ledger, true, true);

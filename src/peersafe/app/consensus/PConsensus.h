@@ -310,6 +310,9 @@ private:
 	//current setID proposed by leader.
 	boost::optional<typename TxSet_t::ID> setID_;
 
+    boost::optional<typename TxSet_t::ID> microLedgerSetID_;
+    bool emptyLedgers_;
+
 	ConsensusCloseTimes rawCloseTimes_;
 
 	// Transaction hashes that have packaged in packaging block.
@@ -381,6 +384,8 @@ PConsensus<Adaptor>::PConsensus(
         {
             maxTxsInLedger_ = TxPoolCapacity;
         }
+
+        adaptor_.maxTxsInLedger_ = maxTxsInLedger_;
 
 		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
@@ -464,6 +469,8 @@ PConsensus<Adaptor>::startRoundInternal(
 	txSetVoted_.clear();
     transactions_.clear();
     setID_.reset();
+    microLedgerSetID_.reset();
+    emptyLedgers_ = false;
 	leaderFailed_ = false;
 	extraTimeOut_ = false;
 	timeOutCount_ = 0;
@@ -473,6 +480,7 @@ PConsensus<Adaptor>::startRoundInternal(
 
     //clear avoid
     adaptor_.app_.getTxPool().clearAvoid();
+    adaptor_.app_.getPreTxPool().clearAvoid();
 
     adaptor_.app_.getShardManager().nodeBase().onConsensusStart(
         previousLedger_.seq() + 1, 
@@ -598,12 +606,15 @@ PConsensus<Adaptor>::onViewChange()
 	txSetVoted_.clear();
 	transactions_.clear();
 	setID_.reset();
+    microLedgerSetID_.reset();
+    emptyLedgers_ = false;
 	leaderFailed_ = false;
 	extraTimeOut_ = false;
 	timeOutCount_ = 0;
 
 	//clear avoid
 	adaptor_.app_.getTxPool().clearAvoid();
+    adaptor_.app_.getPreTxPool().clearAvoid();
 
     if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
     {
@@ -725,9 +736,13 @@ PConsensus<Adaptor>::peerProposalInternal(
 	JLOG(j_.info()) << "Processing peer proposal " << newPeerProp.proposeSeq()
 		<< "/" << newPeerProp.position();
 
+    ShardManager& shardMgr = adaptor_.app_.getShardManager();
+    auto newSetID = newPeerProp.position();
+    auto microLedgerSet = newPeerProp.position2();
+
 	{
 		PublicKey pub = newPeerPos.publicKey();
-		auto newSetID = newPeerProp.position();
+
 		auto iter = txSetVoted_.find(newSetID);
 		if (iter != txSetVoted_.end())
 		{
@@ -740,7 +755,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 			{
 				JLOG(j_.info()) << "Got proposal from leader,time since consensus:"<< timeSinceConsensus() <<"ms.";
 
-				if (omitEmpty_ && newSetID == beast::zero)
+				if (omitEmpty_ && newSetID == beast::zero && microLedgerSet.second)
 				{
 					consensusTime_ = 0;
 					leaderFailed_ = true;
@@ -751,6 +766,8 @@ PConsensus<Adaptor>::peerProposalInternal(
 
 				txSetVoted_[newSetID] = std::set<PublicKey>{pub};
 				setID_ = newSetID;
+                microLedgerSetID_ = microLedgerSet.first;
+                emptyLedgers_ = microLedgerSet.second;
 				rawCloseTimes_.self = now_;
 				closeTime_ = newPeerProp.closeTime();
 				proposalTime_ = clock_.now();
@@ -792,22 +809,20 @@ PConsensus<Adaptor>::peerProposalInternal(
 		++rawCloseTimes_.peers[newPeerProp.closeTime()];
 	}
 
-    if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::SHARD)
+	auto const ait = acquired_.find(newSetID);
+	if (ait == acquired_.end())
 	{
-		auto const ait = acquired_.find(newPeerProp.position());
-		if (ait == acquired_.end())
-		{
-			JLOG(j_.debug()) << "Don't have tx set for peer_position:" << newPeerProp.position();
-		}
-		// acquireTxSet will return the set if it is available, or
-		// spawn a request for it and return none/nullptr.  It will call
-		// gotTxSet once it arrives
-		if (auto set = adaptor_.acquireTxSet(newPeerProp.position()))
-			gotTxSet(now_, *set);
+		JLOG(j_.debug()) << "Don't have tx set for peer_position:" << newSetID;
 	}
-    else
+	// acquireTxSet will return the set if it is available, or
+	// spawn a request for it and return none/nullptr.  It will call
+	// gotTxSet once it arrives
+	if (auto set = adaptor_.acquireTxSet(newSetID))
+		gotTxSet(now_, *set);
+
+    if (shardMgr.myShardRole() == ShardManager::COMMITTEE)
     {
-        if (auto set = adaptor_.app_.getShardManager().committee().acquireMicroLedgerSet(newPeerProp.position()))
+        if (auto set = shardMgr.committee().acquireMicroLedgerSet(microLedgerSet.first))
         {
             gotMicroLedgerSet(now_, *set);
         }
@@ -835,30 +850,38 @@ PConsensus<Adaptor>::gotTxSet(
 	{
 		acquired_.emplace(id, txSet);
 	}
-	if (setID_ && setID_ == id)
+	if (setID_ && microLedgerSetID_ &&
+        *setID_ == id &&
+        (*microLedgerSetID_ == beast::zero || acquired_.find(*microLedgerSetID_) != acquired_.end()))
 	{
 		if (!isLeader(adaptor_.valPublic_))
 		{
-			if (!result_)
-			{
-				//update avoid if we got the right tx-set
-                if (adaptor_.validating())
-				    adaptor_.app_.getTxPool().updateAvoid(txSet);
+            if (!result_)
+            {
+                auto set = txSet.map_->snapShot(false);
 
-				auto set = txSet.map_->snapShot(false);
-				//this place has a txSet copy,what's the time it costs?
-                result_.emplace(Result(
+                std::pair<uint256, bool> position2 = std::make_pair(beast::zero, true);
+                if (*microLedgerSetID_ != beast::zero && acquired_.find(*microLedgerSetID_) != acquired_.end())
+                {
+                    position2.first = *microLedgerSetID_;
+                    position2.second = emptyLedgers_;
+                }
+
+                //this place has a txSet copy,what's the time it costs?
+                result_.emplace(Result{
                     std::move(set),
-                    RCLCxPeerPos::Proposal(
+                    RCLCxPeerPos::Proposal{
                         prevLedgerID_,
                         previousLedger_.seq() + 1,
                         view_,
                         RCLCxPeerPos::Proposal::seqJoin,
                         id,
+                        position2,
                         closeTime_,
                         now,
                         adaptor_.nodeID(),
-                        adaptor_.app_.getShardManager().node().shardID())));
+                        adaptor_.app_.getShardManager().node().shardID()}
+                });
 
 				if (phase_ == ConsensusPhase::open)
 					phase_ = ConsensusPhase::establish;
@@ -903,28 +926,38 @@ PConsensus<Adaptor>::gotMicroLedgerSet(
 
     now_ = now;
 
-    if (setID_ && setID_ == microLedgerSet)
+    if (acquired_.find(microLedgerSet) == acquired_.end())
+    {
+        auto emptySet = std::make_shared<SHAMap>(
+            SHAMapType::TRANSACTION, adaptor_.app_.family(), SHAMap::version{ 1 });
+        emptySet->setUnbacked();
+        emptySet = emptySet->snapShot(false);
+        acquired_.emplace(microLedgerSet, emptySet);
+    }
+
+    if (setID_ && microLedgerSetID_ &&
+        acquired_.find(*setID_) != acquired_.end() &&
+        *microLedgerSetID_ == microLedgerSet)
     {
         if (!adaptor_.app_.getShardManager().committee().isLeader()
             && !result_)
         {
-            auto initialSet = std::make_shared<SHAMap>(
-                SHAMapType::TRANSACTION, adaptor_.app_.family(), SHAMap::version{ 1 });
-            initialSet->setUnbacked();
-            auto set = initialSet->snapShot(false);
+            auto set = acquired_.find(*setID_)->second.map_->snapShot(false);
             //this place has a txSet copy,what's the time it costs?
-            result_.emplace(Result(
+            result_.emplace(Result{
                 std::move(set),
-                RCLCxPeerPos::Proposal(
+                RCLCxPeerPos::Proposal{
                     prevLedgerID_,
                     previousLedger_.seq() + 1,
                     view_,
                     RCLCxPeerPos::Proposal::seqJoin,
                     *setID_,
+                    std::make_pair(microLedgerSet, emptyLedgers_),
                     closeTime_,
                     now,
                     adaptor_.nodeID(),
-                    adaptor_.app_.getShardManager().node().shardID())));
+                    adaptor_.app_.getShardManager().node().shardID()}
+            });
 
             if (phase_ == ConsensusPhase::open)
                 phase_ = ConsensusPhase::establish;
@@ -984,13 +1017,14 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 		if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
 		{
 			JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()<<":"<< prevLedgerID_;
-            if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::SHARD)
-            {
-                adaptor_.app_.getTxPool().removeTxs(
-                    newLedger->ledger_->txMap(),
-                    newLedger->ledger_->info().seq,
-                    newLedger->ledger_->info().parentHash);
-            }
+            adaptor_.app_.getTxPool().removeTxs(
+                newLedger->ledger_->txMap(),
+                newLedger->ledger_->info().seq,
+                newLedger->ledger_->info().parentHash);
+            adaptor_.app_.getPreTxPool().removeTxs(
+                newLedger->ledger_->txMap(),
+                newLedger->ledger_->info().seq,
+                newLedger->ledger_->info().parentHash);
 			startRoundInternal(
 				now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
 		}
@@ -1098,20 +1132,28 @@ PConsensus<Adaptor>::phaseCollecting()
 	// Decide if we should propose a tx-set
 	if (shouldPack() && !result_)
 	{
+        if (!adaptor_.app_.getTxPool().isAvailable() || !adaptor_.app_.getPreTxPool().isAvailable())
+        {
+            return;
+        }
+
+        int tx_count = transactions_.size();
+
         if (shardRole == ShardManager::SHARD)
         {
-            if (!adaptor_.app_.getTxPool().isAvailable())
-            {
-                return;
-            }
-
-            int tx_count = transactions_.size();
-
             //if time for this block's tx-set reached
             bool bTimeReached = sinceOpen >= maxBlockTime_;
             if (tx_count < maxTxsInLedger_ && !bTimeReached)
             {
                 appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
+            }
+        }
+        else
+        {
+            assert(shardRole == ShardManager::COMMITTEE);
+            if (tx_count < maxTxsInLedger_)
+            {
+                appendTransactions(adaptor_.app_.getPreTxPool().topTransactions(maxTxsInLedger_ - tx_count));
             }
         }
 
@@ -1127,23 +1169,32 @@ PConsensus<Adaptor>::phaseCollecting()
 
 			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
 			result_->roundTime.reset(clock_.now());
-			setID_ = result_->position.position();
+            setID_ = result_->position.position();
+            microLedgerSetID_ = result_->position.position2().first;
+            emptyLedgers_ = result_->position.position2().second;
 			extraTimeOut_ = true;
+
+            auto emptySet = std::make_shared<SHAMap>(
+                SHAMapType::TRANSACTION, adaptor_.app_.family(), SHAMap::version{ 1 });
+            emptySet->setUnbacked();
+            emptySet = emptySet->snapShot(false);
 
 			// Share the newly created transaction set if we haven't already
 			// received it from a peer
-			if (acquired_.emplace(*setID_, result_->set).second)
-				adaptor_.relay(*setID_, result_->set);
+            if (acquired_.emplace(*setID_, result_->set).second)
+                adaptor_.relay(*setID_, result_->set);
+            if (acquired_.emplace(*microLedgerSetID_, RCLTxSet{ emptySet }).second)
+                adaptor_.relay(*microLedgerSetID_, RCLTxSet{ emptySet });
 
 			adaptor_.propose(result_->position);
 
 			//Omit empty block ,launch view-change
-			if (omitEmpty_ && *setID_ == beast::zero)
+			if (omitEmpty_ && *setID_ == beast::zero && emptyLedgers_)
 			{
 				//set zero,trigger time-out
 				consensusTime_ = 0;
 				leaderFailed_ = true;
-				JLOG(j_.info()) << "Empty transaction-set from self,will trigger view_change.";
+				JLOG(j_.info()) << "Empty transaction-set and microledger-set from self,will trigger view_change.";
 				return;
 			}
 
@@ -1454,13 +1505,14 @@ PConsensus<Adaptor>::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 	if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
 	{
 		JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
-        if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::SHARD)
-        {
-            adaptor_.app_.getTxPool().removeTxs(
-                newLedger->ledger_->txMap(),
-                newLedger->ledger_->info().seq,
-                newLedger->ledger_->info().parentHash);
-        }
+        adaptor_.app_.getTxPool().removeTxs(
+            newLedger->ledger_->txMap(),
+            newLedger->ledger_->info().seq,
+            newLedger->ledger_->info().parentHash);
+        adaptor_.app_.getPreTxPool().removeTxs(
+            newLedger->ledger_->txMap(),
+            newLedger->ledger_->info().seq,
+            newLedger->ledger_->info().parentHash);
 		startRoundInternal(
 			now_, lgrId, *newLedger, ConsensusMode::switchedLedger);
 	}

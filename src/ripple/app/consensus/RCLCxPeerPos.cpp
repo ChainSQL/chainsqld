@@ -49,7 +49,9 @@ RCLCxPeerPos::signingHash() const
         std::uint32_t(proposal().proposeSeq()),
         proposal().closeTime().time_since_epoch().count(),
         proposal().prevLedger(),
-        proposal().position());
+        proposal().position(),
+        proposal().position2().first,
+        proposal().position2().second);
 }
 
 bool
@@ -74,6 +76,8 @@ RCLCxPeerPos::getJson() const
 uint256
 proposalUniqueId(
     uint256 const& proposeHash,
+    uint256 const& microLedgerSetHash,
+    bool emptyLedgers,
     uint256 const& previousLedger,
     std::uint32_t proposeSeq,
     NetClock::time_point closeTime,
@@ -82,6 +86,8 @@ proposalUniqueId(
 {
     Serializer s(512);
     s.add256(proposeHash);
+    s.add256(microLedgerSetHash);
+    s.add8(emptyLedgers);
     s.add256(previousLedger);
     s.add32(proposeSeq);
     s.add32(closeTime.time_since_epoch().count());

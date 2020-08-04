@@ -59,6 +59,7 @@ public:
     STValidation(
         uint256 const& ledgerHash,
         uint256 const& finalLedgerHash,
+        uint256 const& microLedgerHash,
         NetClock::time_point signTime,
         PublicKey const& raPub,
         bool isFull);

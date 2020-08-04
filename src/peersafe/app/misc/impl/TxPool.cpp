@@ -77,6 +77,12 @@ namespace ripple {
     {
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
+        if (isEmpty())
+        {
+            checkSyncStatus(ledgerSeq, prevHash);
+            return;
+        }
+
 		int count = 0;
 		TransactionSet::iterator iterSet;
         for (auto const& item : cSet)
@@ -109,6 +115,51 @@ namespace ripple {
 		JLOG(j_.info()) << "Remove " << count << " txs for ledger " << ledgerSeq;
 
 		checkSyncStatus(ledgerSeq, prevHash);
+    }
+
+    void TxPool::removeTxs(std::vector<TxID> const& txHashes, int const ledgerSeq, uint256 const& prevHash)
+    {
+        std::lock_guard<std::mutex> lock(mutexTxPoll_);
+
+        if (isEmpty())
+        {
+            mAvoid.clear();
+            checkSyncStatus(ledgerSeq, prevHash);
+            return;
+        }
+
+        int count = 0;
+        TransactionSet::iterator iterSet;
+        for (auto const& txHash : txHashes)
+        {
+            try
+            {
+                if (!txExists(txHash))
+                    continue;
+
+                // If not exist, throw std::out_of_range exception.
+                iterSet = mTxsHash.at(txHash);
+
+                // remove from Tx pool.
+                mTxsHash.erase(txHash);
+                mTxsSet.erase(iterSet);
+
+                // remove from avoid set.
+                if (mAvoid.find(txHash) != mAvoid.end())
+                    mAvoid.erase(txHash);
+                else
+                    JLOG(j_.warn()) << "TxPool::TX:" << txHash << " not in mAvoid set";
+                count++;
+            }
+            catch (std::exception const& e)
+            {
+                JLOG(j_.warn()) << "TxPool::removeTxs exception:" << e.what();
+            }
+        }
+
+        JLOG(j_.info()) << "Remove " << count << " txs for ledger " << ledgerSeq;
+
+        checkSyncStatus(ledgerSeq, prevHash);
     }
 
 	void TxPool::checkSyncStatus(int const ledgerSeq, uint256 const& prevHash)

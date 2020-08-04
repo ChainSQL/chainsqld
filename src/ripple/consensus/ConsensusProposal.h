@@ -99,12 +99,14 @@ public:
 		std::uint64_t view,
         std::uint32_t seq,
         Position_t const& position,
+        std::pair<Position_t, bool> const& position2,
         NetClock::time_point closeTime,
         NetClock::time_point now,
         NodeID_t const& nodeID,
         std::uint32_t shardID)
         : previousLedger_(prevLedger)
         , position_(position)
+        , position2_(position2)
         , closeTime_(closeTime)
         , time_(now)
         , proposeSeq_(seq)
@@ -127,6 +129,12 @@ public:
     position() const
     {
         return position_;
+    }
+
+    std::pair<Position_t, bool> const&
+        position2() const
+    {
+        return position2_;
     }
 
     //! Get the prior accepted ledger this position is based on.
@@ -264,6 +272,10 @@ private:
 
     //! Unique identifier of the position this proposal is taking
     Position_t position_;
+
+    // first: microledger set hash
+    // second: whether all microledger is empty
+    std::pair<Position_t, bool> position2_;
 
     //! The ledger close time this position is taking
     NetClock::time_point closeTime_;

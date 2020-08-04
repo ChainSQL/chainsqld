@@ -130,23 +130,45 @@ OpenView::apply (TxsRawView& to) const
 }
 
 void
-OpenView::apply (MicroLedger& to) const
+OpenView::apply (MicroLedger& to, CanonicalTXSet const* txSet) const
 {
-    to.setDropsDestroyed(items_.dropsDestroyed().drops());
-
-    for (auto const& item : txs_)
+    if (txSet)
     {
-        if (to.rawTxInsert(item.first,
-            item.second.first,
-            item.second.second))
+        // committee microledger transactions
+        for (auto const& item : *txSet)
         {
-            to.addTxID(item.first);
+            auto const& txID = item.second->getTransactionID();
+            auto iter = txs_.find(txID);
+            if (iter != txs_.end())
+            {
+                if (to.rawTxInsert(iter->first,
+                    iter->second.first,
+                    iter->second.second))
+                {
+                    to.addTxID(txID);
+                }
+            }
         }
     }
-
-    for (auto const& item : items_.items())
+    else
     {
-        to.addStateDelta(*base_, item.first, item.second.first, item.second.second);
+        // shard
+        to.setDropsDestroyed(items_.dropsDestroyed().drops());
+
+        for (auto const& item : txs_)
+        {
+            if (to.rawTxInsert(item.first,
+                item.second.first,
+                item.second.second))
+            {
+                to.addTxID(item.first);
+            }
+        }
+
+        for (auto const& item : items_.items())
+        {
+            to.addStateDelta(*base_, item.first, item.second.first, item.second.second);
+        }
     }
 }
 

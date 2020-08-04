@@ -312,8 +312,8 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 {
 	auto const id = ctx.tx.getAccountID(sfAccount);
 
-	std::uint32_t const t_seq = ctx.tx.getSequence();
-	std::uint32_t const a_seq = ctx.app.getStateManager().getAccountSeq(id);
+	std::uint32_t t_seq = ctx.tx.getSequence();
+	std::uint32_t a_seq = ctx.app.getStateManager().getAccountSeq(id);
 	if(a_seq == 0)
 	{
 		JLOG(ctx.j.info()) <<
@@ -322,24 +322,30 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 		return terNO_ACCOUNT;
 	}
 
+    if (a_seq < t_seq)
+    {
+        // re-fetch
+        ctx.app.getStateManager().resetAccountSeq(id);
+        a_seq = ctx.app.getStateManager().getAccountSeq(id);
+    }
+
 	if (t_seq != a_seq)
 	{
-		if (a_seq < t_seq)
-		{
-			//if pre-seq,just reset ,to re-fetch next time.
-			//ctx.app.getStateManager().resetAccountSeq(id);
-
+        if (a_seq < t_seq)
+        {
 			JLOG(ctx.j.info()) <<
 				"applyTransaction: has future sequence number, Account: " << 
                 toBase58(ctx.tx.getAccountID(sfAccount)) << 
 				" a_seq=" << a_seq << " t_seq=" << t_seq;
 			return terPRE_SEQ;
 		}
-
-		JLOG(ctx.j.info()) << "applyTransaction: has past sequence number, Account: " <<
-            toBase58(ctx.tx.getAccountID(sfAccount)) <<
-			" a_seq=" << a_seq << " t_seq=" << t_seq;
-		return tefPAST_SEQ;
+        else
+        {
+            JLOG(ctx.j.info()) << "applyTransaction: has past sequence number, Account: " <<
+                toBase58(ctx.tx.getAccountID(sfAccount)) <<
+                " a_seq=" << a_seq << " t_seq=" << t_seq;
+            return tefPAST_SEQ;
+        }
 	}
 
 	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&

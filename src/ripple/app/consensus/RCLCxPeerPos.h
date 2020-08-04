@@ -157,6 +157,8 @@ private:
 uint256
 proposalUniqueId(
     uint256 const& proposeHash,
+    uint256 const& microLedgerSetHash,
+    bool emptyLedgers,
     uint256 const& previousLedger,
     std::uint32_t proposeSeq,
     NetClock::time_point closeTime,

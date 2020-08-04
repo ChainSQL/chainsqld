@@ -23,6 +23,7 @@
 #include <ripple/ledger/RawView.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/detail/RawStateTable.h>
+#include <ripple/app/misc/CanonicalTXSet.h>
 #include <ripple/basics/qalloc.h>
 #include <ripple/protocol/ZXCAmount.h>
 #include <functional>
@@ -158,7 +159,7 @@ public:
     apply (TxsRawView& to) const;
 
     void
-    apply (MicroLedger& to) const;
+    apply (MicroLedger& to, CanonicalTXSet const* txSet = nullptr) const;
 
     // ReadView
 

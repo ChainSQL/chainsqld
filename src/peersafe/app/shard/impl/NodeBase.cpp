@@ -68,21 +68,10 @@ void NodeBase::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
         return;
     }
 
-    if (mShardManager.myShardRole() == ShardManager::SHARD)
+    for (auto& tx : txs)
     {
-        for (auto& tx : txs)
-        {
-            app_.getOPs().processTransaction(
-                tx, false, false, NetworkOPs::FailHard::no);
-        }
-    }
-    else
-    {
-        assert(mShardManager.myShardRole() == ShardManager::COMMITTEE);
-        for (auto& tx : txs)
-        {
-            app_.getPreTxPool().insertTx(tx, 0);
-        }
+        app_.getOPs().processTransaction(
+            tx, false, false, NetworkOPs::FailHard::no);
     }
 }
 
