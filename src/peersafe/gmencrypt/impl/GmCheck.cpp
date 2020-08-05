@@ -241,24 +241,24 @@ bool GMCheck::sm2EncryptAndDecryptCheck(unsigned long plainDataLen)
 		memset(deResult, 0, strlen((char*)deResult));
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(hEObj->gmOutCard, 0);
 		std::pair<unsigned char*, int> pri4Decrypt = std::make_pair(tempPri.data(), tempPri.size());
-		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, tempCipher.data(), tempCipher.size(), deResult, &deResultLen);
-		if (rv)
-		{
-			result = false;
-			return result;
-		}
-		if (memcmp(deResult, tempPlain.data(), tempPlain.size()))
-		{
-			JLOG(gmCheckJournal_.error()) << "SM2 decrypt result comparision failed";
-			result = false;
-			return result;
-		}
-		else
-		{
-			JLOG(gmCheckJournal_.info()) << "SM2 decrypt result comparision successful";
-			//JLOG(journal_.error()) << "SM2 decrypt result comparision successful";
-			result = true;
-		}
+		// rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, tempCipher.data(), tempCipher.size(), deResult, &deResultLen);
+		// if (rv)
+		// {
+		// 	result = false;
+		// 	return result;
+		// }
+		// if (memcmp(deResult, tempPlain.data(), tempPlain.size()))
+		// {
+		// 	JLOG(gmCheckJournal_.error()) << "SM2 decrypt result comparision failed";
+		// 	result = false;
+		// 	return result;
+		// }
+		// else
+		// {
+		// 	JLOG(gmCheckJournal_.info()) << "SM2 decrypt result comparision successful";
+		// 	//JLOG(journal_.error()) << "SM2 decrypt result comparision successful";
+		// 	result = true;
+		// }
 
 		unsigned char pCipherBuf[1024] = {0};
 		unsigned long cipherLen = 1024;
