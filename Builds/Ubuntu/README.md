@@ -38,17 +38,13 @@ export BOOST_ROOT=/home/dbliu/work/chainSQL/Builds/Ubuntu/boost_1_63_0
 ```bash
 > mkdir build && cd build
 ```
-- 如需编译国密版本，请在代码中开启国密算法宏，否则跳过此步
-```
-Path: chainsqld\src\peersafe\gmencrypt\GmEncrypt.h
-将 “#define GM_ALG_PROCESS” 宏开启
-```
 
 - 执行 cmake
 ```bash
 > cmake -Dtarget=gcc.debug.nounity|gcc.debug.unity|gcc.release.nounity|gcc.release.unity ..
 > #或者使用以下命令编译国密版本：
-> cmake -Dtarget=gcc.debug.nounity|gcc.debug.unity|gcc.release.nounity|gcc.release.unity -DenableGmalg=TRUE ..
+> #enableSFGm控制开启软国密，enableHDGm控制同时开启硬国密和软国密
+> cmake -Dtarget=gcc.debug.nounity|gcc.debug.unity|gcc.release.nounity|gcc.release.unity -DenableSFGm=TRUE ..
 ```
 
 > 或
@@ -56,7 +52,7 @@ Path: chainsqld\src\peersafe\gmencrypt\GmEncrypt.h
 ```bash
 > cmake -DCMAKE_BUILD_TYPE=Release|Debug ..
 > #或者使用以下命令编译国密版本：
-> cmake -DCMAKE_BUILD_TYPE=Release|Debug -DenableGmalg=TRUE ..
+> cmake -DCMAKE_BUILD_TYPE=Release|Debug -DenableSFGm=TRUE ..
 ```
 
 - 编译

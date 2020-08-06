@@ -75,7 +75,8 @@ parse_target()
 project(chainsqld)
 #########################################################
 
-set(enableGmalg FALSE CACHE BOOL "Enable GM algorithm")
+set(enableSFGm FALSE CACHE BOOL "Enable soft GM algorithm")
+set(enableHDGm FALSE CACHE BOOL "Enable hard GM algorithm")
 
 #########################################################
 
@@ -190,11 +191,13 @@ use_mysql()
 
 setup_build_boilerplate()
 
-if(enableGmalg)
-  use_gmalg()
-else()
-  set(GMALG_LIBRARIES)
-endif()
+use_gmalg(${enableSFGm} ${enableHDGm})
+# if(enableGmalg)
+#   use_gmalg()
+# else()
+#   set(GMALG_LIBRARIES)
+#   set(GMSSL_LIBRARIES)
+# endif()
 
 ############################################################
 
@@ -586,10 +589,9 @@ add_custom_target(docs
   )
 set_startup_project(chainsqld)
 
-message( STATUS "OPENSSL_INCLUDE_DIR: ${OPENSSL_INCLUDE_DIR}" )
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} ${GMALG_LIBRARIES} evmjit)
+      ${GMSSL_LIBRARIES} ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} ${GMALG_LIBRARIES} evmjit)
 
     link_common_libraries(${target})
 endforeach()

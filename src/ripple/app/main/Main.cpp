@@ -469,8 +469,6 @@ int run (int argc, char** argv)
 		{
 			bool checkResult = false;
 			GMCheck *gmCheckObj = GMCheck::getInstance();
-			//beast::Journal checkJournal(logs->journal("GMAlgorithmCheck"));
-			//gmCheckObj->setLogJournal(&checkJournal);
 			if (gmCheckObj != nullptr)
 			{
 				checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
@@ -499,13 +497,13 @@ int run (int argc, char** argv)
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))
             return -1;
 
-        // if (HaveSustain() && !vm.count ("fg") && !config->standalone())
-        // {
-        //     auto const ret = DoSustain ();
+        if (HaveSustain() && !vm.count ("fg") && !config->standalone())
+        {
+            auto const ret = DoSustain ();
 
-        //     if (!ret.empty ())
-        //         std::cerr << "Watchdog: " << ret << std::endl;
-        // }
+            if (!ret.empty ())
+                std::cerr << "Watchdog: " << ret << std::endl;
+        }
 
         if (vm.count ("debug"))
         {

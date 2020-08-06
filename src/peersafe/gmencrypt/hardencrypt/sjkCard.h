@@ -31,6 +31,7 @@
 const std::string priKeyAccessCode_g = "peersafe";
 
 #ifdef GM_ALG_PROCESS
+#ifdef HARD_GM
 
 class SJKCard : public GmEncrypt
 {
@@ -234,5 +235,6 @@ private:
     SGD_HANDLE      hSessionKeyHandle_;
     unsigned char pubKeyUser_[PUBLIC_KEY_EXT_LEN];
 };
+#endif
 #endif
 #endif

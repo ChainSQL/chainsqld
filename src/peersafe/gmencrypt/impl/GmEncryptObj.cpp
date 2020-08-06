@@ -27,8 +27,11 @@
 // #else
 // GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = GmEncryptObj::gmAlgType::sjkCardType;
 // #endif
-// GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = gmAlgType::sjkCardType;
+#ifdef HARD_GM
+GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = gmAlgType::sjkCardType;
+#else
 GmEncryptObj::gmAlgType GmEncryptObj::hEType_ = gmAlgType::soft;
+#endif
 
 GmEncryptObj::gmAlgType GmEncryptObj::fromString(std::string gmAlgTypeStr)
 {
@@ -52,11 +55,15 @@ GmEncrypt* GmEncryptObj::getInstance()
     {
 #ifdef BEGIN_SDKEY
     case gmAlgType::sdkeyType:
+    {
         static SDkey objSdkey;
         return &objSdkey;
+    }
 #endif
+#ifdef HARD_GM
     case gmAlgType::sjkCardType:
     {
+
         static SJKCard objSjkCard;
         if (objSjkCard.isHardEncryptExist())
         {
@@ -64,21 +71,16 @@ GmEncrypt* GmEncryptObj::getInstance()
         }
         else
         {
-#ifndef SOFTENCRYPT
-            return nullptr;//if the card is not exist,then return nullptr------this is function before
-        }
-    }
-#else
             static SoftEncrypt objSoftEncrypt;
             return &objSoftEncrypt;
         }
     }
+#endif
     case gmAlgType::soft:
     {
         static SoftEncrypt objSoftEncrypt;
         return &objSoftEncrypt;
     }
-#endif
     default:
         std::cout << "GmEncryptType error!" << std::endl;
     }

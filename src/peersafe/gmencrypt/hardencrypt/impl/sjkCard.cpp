@@ -26,6 +26,7 @@ extern "C" {
 }
 
 #ifdef GM_ALG_PROCESS
+#ifdef HARD_GM
 
 unsigned long  SJKCard::OpenDevice()
 {
@@ -941,4 +942,5 @@ void SJKCard::standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefP
     }
 }
 
+#endif
 #endif
