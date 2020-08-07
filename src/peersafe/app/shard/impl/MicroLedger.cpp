@@ -276,6 +276,7 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
             sle->setFlag(lsfAddIndex | lsfDeleteIndex);
         }
         break;
+    case ltESCROW:
     case ltTABLELIST:
     case ltCHAINID:
         break;
@@ -289,35 +290,22 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
 
 bool MicroLedger::sameShard(std::shared_ptr<SLE>& sle, Application& app) const
 {
-    std::uint32_t shardCount = app.getShardManager().shardCount();
-
-    if (shardCount == 0) return false;
-
-    std::uint32_t x = 0;
-
-    std::string sAccountID;
+    AccountID sAccountID;
     switch (sle->getType())
     {
     case ltACCOUNT_ROOT:
-        sAccountID = toBase58(sle->getAccountID(sfAccount));
+    case ltESCROW:
+        sAccountID = sle->getAccountID(sfAccount);
         break;
     case ltRIPPLE_STATE:
     case ltTABLELIST:
-        sAccountID = toBase58(sle->getAccountID(sfOwner));
+        sAccountID = sle->getAccountID(sfOwner);
         break;
     default:
         return false;
     }
-    std::uint32_t len = sAccountID.size();
-    assert(len >= 4);
 
-    // Take the last four bytes of the address
-    for (std::uint32_t i = 0; i < 4; i++)
-    {
-        x = (x << 8) | sAccountID[len - 4 + i];
-    }
-
-    return (x % shardCount + 1) == mShardID;
+    return app.getShardManager().lookup().getShardIndex(sAccountID) == mShardID;
 }
 
 void MicroLedger::applyAccountRoot(
@@ -656,6 +644,59 @@ void MicroLedger::applyDirNode(
     //JLOG(j.info()) << "apply dir node time used : " << utcTimeUs() - st << "us";
 }
 
+void MicroLedger::applyEscrow(
+    OpenView& to,
+    detail::RawStateTable::Action action,
+    std::shared_ptr<SLE>& sle,
+    beast::Journal& j,
+    Application& app) const
+{
+    //auto st = utcTimeUs();
+
+    switch (action)
+    {
+    case detail::RawStateTable::Action::insert:
+    {
+        if (!to.items().items().count(sle->key()))
+        {
+            assert(sameShard(sle, app));
+            to.rawInsert(sle);
+        }
+        else
+        {
+            LogicError("RawStateTable::ltESCROW insert action conflict with other action");
+        }
+        break;
+    }
+    case detail::RawStateTable::Action::erase:
+    {
+        auto const& iter = to.items().items().find(sle->key());
+        if (iter == to.items().items().end())
+        {
+            to.rawErase(sle);
+        }
+        else
+        {
+            auto& item = iter->second;
+            if (item.first != detail::RawStateTable::Action::erase)
+            {
+                LogicError("RawStateTable::ltESCROW erase action conflict with other action");
+            }
+        }
+        break;
+    }
+    case detail::RawStateTable::Action::replace:
+    {
+        LogicError("RawStateTable::ltESCROW could never occur replace action");
+        break;
+    }
+    default:
+        break;
+    }
+
+    //JLOG(j.info()) << "apply escrow used : " << utcTimeUs() - st << "us";
+}
+
 void MicroLedger::applyTableList(
     OpenView& to,
     detail::RawStateTable::Action action,
@@ -841,6 +882,9 @@ void MicroLedger::apply(OpenView& to, beast::Journal& j, Application& app) const
             break;
         case ltDIR_NODE:
             applyDirNode(to, stateDelta.second.first, sle, j);
+            break;
+        case ltESCROW:
+            applyEscrow(to, stateDelta.second.first, sle, j, app);
             break;
         case ltTABLELIST:
             applyTableList(to, stateDelta.second.first, sle, j, app);
