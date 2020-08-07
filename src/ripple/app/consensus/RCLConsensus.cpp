@@ -961,7 +961,8 @@ applyTransactions(
 }
 
 #else
-CanonicalTXSet
+
+std::shared_ptr<CanonicalTXSet>
 applyTransactions(
     Application& app,
     RCLTxSet const& cSet,
@@ -972,6 +973,7 @@ applyTransactions(
 
     auto& set = *(cSet.map_);
     CanonicalTXSet retriableTxs(set.getHash().as_uint256());
+    std::shared_ptr<CanonicalTXSet> processedTxs = std::make_shared<CanonicalTXSet>(set.getHash().as_uint256());
 
     for (auto const& item : set)
     {
@@ -1010,11 +1012,13 @@ applyTransactions(
                     app, view, *it->second, certainRetry, tapNO_CHECK_SIGN | tapForConsensus, j))
                 {
                 case ApplyResult::Success:
+                    processedTxs->insert(it->second);
                     it = retriableTxs.erase(it);
                     ++changes;
                     break;
 
                 case ApplyResult::Fail:
+                    processedTxs->insert(it->second);
                     it = retriableTxs.erase(it);
                     break;
 
@@ -1025,6 +1029,7 @@ applyTransactions(
             catch (std::exception const&)
             {
                 JLOG(j.warn()) << "Transaction throws";
+                processedTxs->insert(it->second);
                 it = retriableTxs.erase(it);
             }
         }
@@ -1034,7 +1039,7 @@ applyTransactions(
 
         // A non-retry pass made no changes
         if (!changes && !certainRetry)
-            return retriableTxs;
+            return processedTxs;
 
         // Stop retriable passes
         if (!changes || (pass >= LEDGER_RETRY_PASSES))
@@ -1044,7 +1049,7 @@ applyTransactions(
     // If there are any transactions left, we must have
     // tried them in at least one final pass
     assert(retriableTxs.empty() || !certainRetry);
-    return retriableTxs;
+    return processedTxs;
 }
 
 #endif
@@ -1173,9 +1178,12 @@ RCLConsensus::Adaptor::buildLCL(
                 accum);
             JLOG(j_.info()) << "applyMicroLedgers time used:" << utcTime() - timeStart << "ms";
 
-            timeStart = utcTime();
-            PreExecTransactions(app_, accum, (RCLTxSet&)(*(&set)), maxTxsInLedger_);
-            JLOG(j_.info()) << "PreExecTransactions time used:" << utcTime() - timeStart << "ms";
+            if (set.map_->isMutable())
+            {
+                timeStart = utcTime();
+                PreExecTransactions(app_, accum, (RCLTxSet&)(*(&set)), maxTxsInLedger_);
+                JLOG(j_.info()) << "PreExecTransactions time used:" << utcTime() - timeStart << "ms";
+            }
 
             timeStart = utcTime();
             auto canonicalTXSet = applyTransactions(
@@ -1184,7 +1192,7 @@ RCLConsensus::Adaptor::buildLCL(
                 });
             JLOG(j_.info()) << "applyTransactions time used:" << utcTime() - timeStart << "ms";
 
-            app_.getShardManager().committee().buildMicroLedger(accum, &canonicalTXSet);
+            app_.getShardManager().committee().buildMicroLedger(accum, canonicalTXSet);
         }
         // Update fee computations.
         app_.getTxQ().processClosedLedger(app_, accum, roundTime > 5s);

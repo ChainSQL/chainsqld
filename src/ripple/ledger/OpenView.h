@@ -146,6 +146,11 @@ public:
         return open_;
     }
 
+    inline void forceOpen()
+    {
+        open_ = true;
+    }
+
     /** Return the number of tx inserted since creation.
 
         This is used to set the "apply ordinal"
@@ -159,7 +164,7 @@ public:
     apply (TxsRawView& to) const;
 
     void
-    apply (MicroLedger& to, CanonicalTXSet const* txSet = nullptr) const;
+    apply (MicroLedger& to, std::shared_ptr<CanonicalTXSet const> txSet = nullptr) const;
 
     // ReadView
 

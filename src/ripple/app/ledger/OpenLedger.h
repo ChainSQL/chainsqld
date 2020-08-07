@@ -126,7 +126,7 @@ public:
     bool
     modify (modify_type const& f);
 
-    void replace(OpenView const& view);
+    void replace(OpenView const& view, bool open = true);
 
     /** Accept a new ledger.
 

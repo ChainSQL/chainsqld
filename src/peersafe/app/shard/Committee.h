@@ -156,7 +156,7 @@ public:
         std::size_t limit,
         std::function<bool(std::shared_ptr<Peer> const&)> score);
 
-    void buildMicroLedger(OpenView const& view, CanonicalTXSet const* txSet);
+    void buildMicroLedger(OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet);
 
     void buildFinalLedger(OpenView const& view, std::shared_ptr<Ledger const> ledger);
 

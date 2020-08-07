@@ -367,7 +367,7 @@ auto Committee::canonicalMicroLedgers()
     return std::move(v);
 }
 
-void Committee::buildMicroLedger(OpenView const& view, CanonicalTXSet const* txSet)
+void Committee::buildMicroLedger(OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet)
 {
     auto microLedger = std::make_shared<MicroLedger>(
         app_.getOPs().getConsensus().getView(),

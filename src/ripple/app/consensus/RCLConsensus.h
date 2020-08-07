@@ -48,7 +48,7 @@ class ValidatorKeys;
 class CanonicalTXSet;
 class Application;
 
-CanonicalTXSet
+std::shared_ptr<CanonicalTXSet>
 applyTransactions(
     Application& app,
     RCLTxSet const& cSet,

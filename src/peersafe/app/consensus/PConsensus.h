@@ -385,8 +385,6 @@ PConsensus<Adaptor>::PConsensus(
             maxTxsInLedger_ = TxPoolCapacity;
         }
 
-        adaptor_.maxTxsInLedger_ = maxTxsInLedger_;
-
 		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
 
         if (timeOut_ <= maxBlockTime_)
@@ -411,6 +409,8 @@ PConsensus<Adaptor>::PConsensus(
         //    }
         //}
     }
+
+    adaptor_.maxTxsInLedger_ = maxTxsInLedger_;
 }
 
 template <class Adaptor>
@@ -896,6 +896,11 @@ PConsensus<Adaptor>::gotTxSet(
                     JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
 				}
 
+                if (!emptyLedgers_)
+                {
+                    result_->set.map_->setMutable();
+                }
+
                 result_->roundTime.reset(proposalTime_);
 
 				for (auto pub : txSetVoted_[*setID_])
@@ -971,6 +976,11 @@ PConsensus<Adaptor>::gotMicroLedgerSet(
                 adaptor_.propose(result_->position);
 
                 JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
+            }
+
+            if (!emptyLedgers_)
+            {
+                result_->set.map_->setMutable();
             }
 
             result_->roundTime.reset(proposalTime_);
@@ -1197,6 +1207,11 @@ PConsensus<Adaptor>::phaseCollecting()
 				JLOG(j_.info()) << "Empty transaction-set and microledger-set from self,will trigger view_change.";
 				return;
 			}
+
+            if (!emptyLedgers_)
+            {
+                result_->set.map_->setMutable();
+            }
 
 			txSetVoted_[*setID_] = std::set<PublicKey>{ adaptor_.valPublic_ };
 

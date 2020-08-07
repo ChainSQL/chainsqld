@@ -29,7 +29,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView const& view, CanonicalTXSet const* txSet)
+MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet)
     : mSeq(seq_)
     , mViewChange(viewChange)
     , mShardID(shardID_)
@@ -374,15 +374,14 @@ void MicroLedger::applyAccountRoot(
         // Account root erase only occur with Contract.
         if (sle->isFieldPresent(sfContractCode))
         {
-            // TODO
-            //if (to.items().items().count(sle->key()))
-            //{
-            //    //LogicError("RawStateTable::");
-            //}
-            //else
-            //{
-            //    to.rawErase(sle);
-            //}
+            if (to.items().items().count(sle->key()))
+            {
+                LogicError("RawStateTable::ltACCOUNT_ROOT Contract account erase action conflict with other action");
+            }
+            else
+            {
+                to.rawErase(sle);
+            }
         }
         else
         {
@@ -447,13 +446,13 @@ void MicroLedger::applyAccountRoot(
                         preSle->setFieldU8(sfTickSize, sle->getFieldU8(sfTickSize));
                 }
             }
-            else if (item.first == detail::RawStateTable::Action::erase)
-            {
-                auto& preSle = item.second;
-                JLOG(j.warn()) << "RawStateTable::ltACCOUNT_ROOT account "
-                    << toBase58(preSle->getAccountID(sfAccount))
-                    << " deleted on other shard";
-            }
+            //else if (item.first == detail::RawStateTable::Action::erase)
+            //{
+            //    auto& preSle = item.second;
+            //    JLOG(j.warn()) << "RawStateTable::ltACCOUNT_ROOT account "
+            //        << toBase58(preSle->getAccountID(sfAccount))
+            //        << " deleted on other shard";
+            //}
             else
             {
                 LogicError("RawStateTable::ltACCOUNT_ROOT replace action conflact with insert action");

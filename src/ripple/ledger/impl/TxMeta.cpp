@@ -45,8 +45,20 @@ TxMeta::TxMeta (uint256 const& txid,
     mIndex = obj.getFieldU32 (sfTransactionIndex);
     mNodes = * dynamic_cast<STArray*> (&obj.getField (sfAffectedNodes));
 
-    if (obj.isFieldPresent (sfDeliveredAmount))
-        setDeliveredAmount (obj.getFieldAmount (sfDeliveredAmount));
+    if (obj.isFieldPresent(sfDeliveredAmount))
+    {
+        setDeliveredAmount(obj.getFieldAmount(sfDeliveredAmount));
+    }
+
+    if (obj.isFieldPresent(sfContractTxs))
+    {
+        contractTxsData = std::move(obj.getFieldVL(sfContractTxs));
+    }
+
+    if (obj.isFieldPresent(sfContractLogs))
+    {
+        contractLogData = std::move(obj.getFieldVL(sfContractLogs));
+    }
 }
 
 TxMeta::TxMeta (uint256 const& txid, std::uint32_t ledger, STObject const& obj,
@@ -63,10 +75,24 @@ TxMeta::TxMeta (uint256 const& txid, std::uint32_t ledger, STObject const& obj,
         (obj.peekAtPField (sfAffectedNodes));
     assert (affectedNodes);
     if (affectedNodes)
+    {
         mNodes = *affectedNodes;
+    }
 
-    if (obj.isFieldPresent (sfDeliveredAmount))
-        setDeliveredAmount (obj.getFieldAmount (sfDeliveredAmount));
+    if (obj.isFieldPresent(sfDeliveredAmount))
+    {
+        setDeliveredAmount(obj.getFieldAmount(sfDeliveredAmount));
+    }
+
+    if (obj.isFieldPresent(sfContractTxs))
+    {
+        contractTxsData = std::move(obj.getFieldVL(sfContractTxs));
+    }
+
+    if (obj.isFieldPresent(sfContractLogs))
+    {
+        contractLogData = std::move(obj.getFieldVL(sfContractLogs));
+    }
 }
 
 TxMeta::TxMeta (uint256 const& txid,

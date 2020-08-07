@@ -77,13 +77,17 @@ OpenLedger::modify (modify_type const& f)
     return changed;
 }
 
-void OpenLedger::replace(OpenView const& view)
+void OpenLedger::replace(OpenView const& view, bool open)
 {
     std::lock_guard<
         std::mutex> lock1(modify_mutex_);
     auto next = std::make_shared<
         OpenView>(view);
     current_ = std::move(next);
+    if (open && !current_->open())
+    {
+        std::const_pointer_cast<OpenView>(current_)->forceOpen();
+    }
 }
 
 void

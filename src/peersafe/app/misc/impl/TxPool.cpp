@@ -103,7 +103,7 @@ namespace ripple {
                 if (mAvoid.find(item.key()) != mAvoid.end())
                     mAvoid.erase(item.key());
                 else
-                    JLOG(j_.warn()) << "TxPool::TX:" << item.key() << " not in mAvoid set";
+                    JLOG(j_.info()) << "TxPool::TX:" << item.key() << " not in mAvoid set";
 				count++;
             }
             catch (std::exception const& e)

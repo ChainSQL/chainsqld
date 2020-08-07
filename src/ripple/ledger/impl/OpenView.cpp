@@ -130,8 +130,10 @@ OpenView::apply (TxsRawView& to) const
 }
 
 void
-OpenView::apply (MicroLedger& to, CanonicalTXSet const* txSet) const
+OpenView::apply (MicroLedger& to, std::shared_ptr<CanonicalTXSet const> txSet) const
 {
+    to.setDropsDestroyed(items_.dropsDestroyed().drops());
+
     if (txSet)
     {
         // committee microledger transactions
@@ -153,7 +155,6 @@ OpenView::apply (MicroLedger& to, CanonicalTXSet const* txSet) const
     else
     {
         // shard
-        to.setDropsDestroyed(items_.dropsDestroyed().drops());
 
         for (auto const& item : txs_)
         {

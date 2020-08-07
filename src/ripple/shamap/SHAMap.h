@@ -212,6 +212,8 @@ public:
 
     // status functions
     void setImmutable ();
+    void setMutable();
+    bool isMutable();
     bool isSynching () const;
     void setSynching ();
     void clearSynching ();
@@ -396,6 +398,20 @@ SHAMap::setImmutable ()
 {
     assert (state_ != SHAMapState::Invalid);
     state_ = SHAMapState::Immutable;
+}
+
+inline
+void
+SHAMap::setMutable()
+{
+    state_ = SHAMapState::Modifying;
+}
+
+inline
+bool
+SHAMap::isMutable()
+{
+    return state_ != SHAMapState::Immutable;
 }
 
 inline
