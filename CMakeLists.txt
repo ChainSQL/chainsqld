@@ -183,7 +183,7 @@ use_pthread()
 
 #use_tbb()
 
-use_openssl(${openssl_min} ${enableGmalg})
+use_openssl(${openssl_min})
 
 use_protobuf()
 
