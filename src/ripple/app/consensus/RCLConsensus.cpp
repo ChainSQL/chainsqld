@@ -421,12 +421,6 @@ void
 RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 {
 	app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
-	//Try to clear state cache.
-	if (app_.getLedgerMaster().getPublishedLedgerAge() > 3 * app_.getOPs().getConsensusTimeout() &&
-		app_.getTxPool().isEmpty() && app_.getPreTxPool().isEmpty())
-	{
-		app_.getStateManager().clear();
-	}
 	
 	if (bWaitingInit)
 	{
@@ -787,6 +781,8 @@ RCLConsensus::Adaptor::doAccept(
         // Signal a potential fee change to subscribers after the open ledger
         // is created
         app_.getOPs().reportFeeChange();
+
+        app_.getLedgerMaster().processHeldTransactions();
     }
 	JLOG(j_.info()) << "openLedger().accept time used:" << utcTime() - timeStart << "ms";
     //-------------------------------------------------------------------------

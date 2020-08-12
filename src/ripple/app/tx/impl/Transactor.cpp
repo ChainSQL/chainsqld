@@ -310,10 +310,18 @@ Transactor::checkSeq (PreclaimContext const& ctx)
 TER
 Transactor::checkSeq2(PreclaimContext const& ctx)
 {
+    if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
+        (ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
+    {
+        JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
+            "view.seq=" << ctx.view.seq();
+        return tefMAX_LEDGER;
+    }
+
 	auto const id = ctx.tx.getAccountID(sfAccount);
 
 	std::uint32_t t_seq = ctx.tx.getSequence();
-	std::uint32_t a_seq = ctx.app.getStateManager().getAccountSeq(id);
+	std::uint32_t a_seq = ctx.app.getStateManager().getAccountSeq(id, false);
 	if(a_seq == 0)
 	{
 		JLOG(ctx.j.info()) <<
@@ -324,9 +332,8 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 
     if (a_seq < t_seq)
     {
-        // re-fetch
-        ctx.app.getStateManager().resetAccountSeq(id);
-        a_seq = ctx.app.getStateManager().getAccountSeq(id);
+        // Re-fetch once
+        a_seq = ctx.app.getStateManager().getAccountSeq(id, true);
     }
 
 	if (t_seq != a_seq)
@@ -347,15 +354,6 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
             return tefPAST_SEQ;
         }
 	}
-
-	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
-		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
-	{
-		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
-			"view.seq=" << ctx.view.seq();
-		return tefMAX_LEDGER;
-	}
-
 
 	return tesSUCCESS;
 }

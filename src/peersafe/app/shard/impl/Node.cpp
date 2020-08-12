@@ -691,6 +691,8 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
         app_.getTxPool().removeTxs(buildLCL->txMap(), buildLCL->info().seq, buildLCL->info().parentHash);
     }
 
+    app_.getLedgerMaster().processHeldTransactions();
+
 	//begin next round consensus
 	app_.getOPs().endConsensus();
 }

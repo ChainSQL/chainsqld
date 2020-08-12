@@ -5,59 +5,42 @@
 
 namespace ripple {
 
-uint32 StateManager::getAccountSeq(AccountID const& id)
+uint32 StateManager::getAccountSeq(AccountID const& id, bool refresh)
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-	if (accountState_.find(id) != accountState_.end())
-	{
-		return accountState_[id].sequence;
-	}
+    State state;
 
-	assert(app_.openLedger().current());
-	
-	auto sle = app_.openLedger().current()->read(keylet::account(id));
-	if (sle)
-	{
-		accountState_[id].sequence = sle->getFieldU32(sfSequence);
-		return sle->getFieldU32(sfSequence);
-	}
-	else
-	{
-		return 0;
-	}
-}
+    bool cached = accountState_.retrieve(id, state);
 
-void StateManager::resetAccountSeq(AccountID const& id)
-{
-	std::lock_guard<std::mutex> lock(mutex_);
-	if (accountState_.find(id) != accountState_.end())
-	{
-		accountState_.erase(id);
-	}	
+    if (refresh || !cached)
+    {
+        auto sle = app_.openLedger().current()->read(keylet::account(id));
+        if (sle)
+        {
+            uint32 curSequence = sle->getFieldU32(sfSequence);
+            if (curSequence > state.sequence)
+            {
+                state.sequence = curSequence;
+                auto newState = std::make_shared<State>(state);
+                accountState_.canonicalize(id, newState, refresh);
+            }
+        }
+    }
+
+	return state.sequence;
 }
 
 void StateManager::incrementSeq(AccountID const& id)
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-	if (accountState_.find(id) != accountState_.end())
-	{
-		++accountState_[id].sequence;
-		return;
-	}
-	auto sle = app_.openLedger().current()->read(keylet::account(id));
-	if (sle)
-	{
-		accountState_[id].sequence = sle->getFieldU32(sfSequence) + 1;
-	}
+    auto state = accountState_.fetch(id);
+    if (state)
+    {
+        state->sequence++;
+    }
 }
 
-void StateManager::clear()
+void StateManager::sweep()
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-	if (accountState_.size() > 0)
-	{
-		accountState_.clear();
-	}
+    accountState_.sweep();
 }
 
 }

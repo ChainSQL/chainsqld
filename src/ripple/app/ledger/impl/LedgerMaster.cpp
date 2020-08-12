@@ -364,6 +364,34 @@ LedgerMaster::pruneHeldTransactions(AccountID const& account,
     return mHeldTransactions.prune(account, seq);
 }
 
+void LedgerMaster::processHeldTransactions()
+{
+    ScopedLockType sl(m_mutex);
+
+    std::string reason;
+    if (app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
+    {
+        LedgerIndex seq = app_.openLedger().current()->seq();
+        for (auto const& it : mHeldTransactions)
+        {
+            auto tx = std::make_shared<Transaction>(it.second, reason, app_);
+            app_.getPreTxPool().insertTx(tx, seq);
+        }
+
+        mHeldTransactions.reset(
+            app_.openLedger().current()->info().parentHash);
+    }
+    else if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
+    {
+        auto vec = mHeldTransactions.prune();
+        for (auto const& it : *vec)
+        {
+            auto tx = std::make_shared<Transaction>(it, reason, app_);
+            app_.getOPs().doTransactionAsync(tx, false, NetworkOPs::FailHard::no);
+        }
+    }
+}
+
 LedgerIndex
 LedgerMaster::getBuildingLedger ()
 {

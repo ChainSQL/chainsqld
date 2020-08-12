@@ -88,6 +88,8 @@ public:
 
     std::vector<std::shared_ptr<STTx const>>
     prune(AccountID const& account, std::uint32_t const seq);
+    std::shared_ptr<std::vector<std::shared_ptr<STTx const>>>
+    prune();
 
     // VFALCO TODO remove this function
     void reset (LedgerHash const& saltHash)

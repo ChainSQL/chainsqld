@@ -276,6 +276,12 @@ checkTxJsonFields (
         return ret;
     }
 
+    if (!tx_json.isMember(jss::Sequence))
+    {
+        ret.first = RPC::missing_field_error("tx_json.Sequence");
+        return ret;
+    }
+
     auto const srcAddressID = parseBase58<AccountID>(
         tx_json[jss::Account].asString());
 
@@ -440,8 +446,6 @@ transactionPreProcessImpl (
 
                 return rpcError (rpcSRC_ACT_NOT_FOUND);
             }
-			//use new consensus
-			tx_json[jss::Sequence] = app.getStateManager().getAccountSeq(srcAddressID);
 			//use old consensus
 			/*
             auto seq = (*sle)[sfSequence];

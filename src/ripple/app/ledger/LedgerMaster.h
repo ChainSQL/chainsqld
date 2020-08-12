@@ -177,6 +177,8 @@ public:
     pruneHeldTransactions(AccountID const& account,
         std::uint32_t const seq);
 
+    void processHeldTransactions();
+
     /** Get a ledger's hash by sequence number using the cache
     */
     uint256 getHashBySeq (std::uint32_t index);

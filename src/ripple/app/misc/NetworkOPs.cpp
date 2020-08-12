@@ -1135,6 +1135,14 @@ NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
 		app_.getStateManager().incrementSeq(txCur->getAccountID(sfAccount));
         return{ tesSUCCESS, true };
     }
+    else if (ter == terPRE_SEQ && app_.getShardManager().myShardRole() & ShardManager::LOOKUP)
+    {
+        ter = app_.getTxPool().insertTx(transaction, view.seq());
+        if (ter == tesSUCCESS)
+        {
+            return { tesSUCCESS, true };
+        }
+    }
 
     return{ ter, false };
 }
@@ -1165,12 +1173,6 @@ TER NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
         return ter;
     }
 
-    ter = Transactor::checkSeq2(*pcctx);
-    if (ter != tesSUCCESS)
-    {
-        return ter;
-    }
-
     auto const baseFee = Transactor::calculateBaseFee(*pcctx);
 
 	ter = Transactor::checkFee(*pcctx, baseFee);
@@ -1179,7 +1181,7 @@ TER NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 		return ter;
 	}
 
-    return ter;
+    return Transactor::checkSeq2(*pcctx);
 }
 
 void NetworkOPsImp::doTransactionAsync (std::shared_ptr<Transaction> transaction,
