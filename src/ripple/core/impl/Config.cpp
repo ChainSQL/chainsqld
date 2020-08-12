@@ -437,86 +437,148 @@ void Config::loadFromString (std::string const& fileContents)
     if (getSingleSection (secConfig, SECTION_WORKERS, strTemp, j_))
         WORKERS      = beast::lexicalCastThrow <std::size_t> (strTemp);
 
+    // shard related configuration items
+	const ripple::Section& shard = section("shard");
 
-	// shard related configuration items
-	{
+	std::pair<std::string, bool> role        = shard.find("role");
+	std::pair<std::string, bool> shard_count = shard.find("shard_count");
+	std::pair<std::string, bool> shard_index = shard.find("shard_index");
 
-		const ripple::Section& shard        = section("shard");
-		std::pair<std::string, bool> role   = shard.find("role");
-		std::pair<std::string, bool> shard_count = shard.find("shard_count");
-		std::pair<std::string, bool> shard_index = shard.find("shard_index");
+    // [shard].role
+	if (role.second)
+    {
+		std::vector<std::string> vecRoles;
+		boost::split(vecRoles, role.first, boost::is_any_of(","), boost::token_compress_on);
 
-		if (role.second) {	
-			std::vector<std::string> vecRoles;
-			boost::split(vecRoles, role.first, boost::is_any_of(","), boost::token_compress_on);
-
-
-			for (auto item : vecRoles) {
-
-				if      (item == std::string("lookup"))      SHARD_ROLE |= SHARD_ROLE_LOOKUP;
-				else if (item == std::string("shard"))       SHARD_ROLE |= SHARD_ROLE_SHARD;
-				else if (item == std::string("committee"))   SHARD_ROLE |= SHARD_ROLE_COMMITTEE;
-				else if (item == std::string("sync"))        SHARD_ROLE |= SHARD_ROLE_SYNC;
-
-			}
-
-		}
-
-		if ( SHARD_ROLE == SHARD_ROLE_UNDEFINED ) {
-			Throw<std::runtime_error>(
-				"the role must be set!");
-		}
-
-		if (shard_count.second) {
-			SHARD_COUNT = beast::lexicalCastThrow <std::size_t>(shard_count.first);
-		}
-
-        if (SHARD_ROLE == SHARD_ROLE_COMMITTEE)
+		for (auto item : vecRoles)
         {
-            SHARD_INDEX = SHARD_INDEX_COMMITTEE;
-        }
-        else if (SHARD_ROLE == SHARD_ROLE_SHARD)
+			if      (item == std::string("lookup"))    SHARD_ROLE |= SHARD_ROLE_LOOKUP;
+			else if (item == std::string("shard"))     SHARD_ROLE |= SHARD_ROLE_SHARD;
+			else if (item == std::string("committee")) SHARD_ROLE |= SHARD_ROLE_COMMITTEE;
+			else if (item == std::string("sync"))      SHARD_ROLE |= SHARD_ROLE_SYNC;
+		}
+
+        if (SHARD_ROLE & SHARD_ROLE_SHARD && SHARD_ROLE ^ SHARD_ROLE_SHARD)
         {
-            if (!shard_index.second)
-            {
-                Throw<std::runtime_error>("must specify the shard_index if I'm a shard node!");
-            }
-            SHARD_INDEX = beast::lexicalCastThrow <std::uint32_t>(shard_index.first);
-            if (SHARD_INDEX > SHARD_COUNT)
-            {
-                Throw<std::runtime_error>("shard_index must be less or equal to shard_count!");
-            }
+            Throw<std::runtime_error>("shard role cannot combine other roles!");
         }
-
-		bool bLookup    = loadLookupConfig(secConfig);
-		bool bShard     = loadShardConfig(secConfig);        
-		bool bCommittee = loadCommitteeConfig(secConfig);
-		/*bool bSync      = */loadSyncConfigConfig(secConfig);
-
-		if (SHARD_COUNT != SHARD_IPS.size()) {
-			Throw<std::runtime_error>(
-				"shard_count must be equal to the number of shard_ips configuration items !");
-		}
-
-
-		if ((SHARD_ROLE & SHARD_ROLE_SHARD) || (SHARD_ROLE & SHARD_ROLE_COMMITTEE) ){
-
-			if ( !(bLookup && bShard && bCommittee ) ){
-				Throw<std::runtime_error>(
-					"when the role is shard or shared_file,committee_file,lookup_file,sync_file must exist !");
-			}
-		}
-		else if ( (SHARD_ROLE & SHARD_ROLE_LOOKUP) || (SHARD_ROLE & SHARD_ROLE_SYNC)){
-
-			if ( !(bShard && bCommittee) ) {
-				Throw<std::runtime_error>(
-					"when the role is lookup or sync , shared_file,committee_file must exist !");
-			}
-		}
-		
+        if (SHARD_ROLE & SHARD_ROLE_COMMITTEE && SHARD_ROLE ^ SHARD_ROLE_COMMITTEE)
+        {
+            Throw<std::runtime_error>("committee role cannot combine other roles!");
+        }
+	}
+	if (SHARD_ROLE == SHARD_ROLE_UNDEFINED)
+    {
+		Throw<std::runtime_error>("the role must be set!");
 	}
 
+    // [shard].shard_count
+	if (shard_count.second)
+    {
+		SHARD_COUNT = beast::lexicalCastThrow <std::size_t>(shard_count.first);
+	}
+    if (!SHARD_COUNT)
+    {
+        Throw<std::runtime_error>("shard_count at least 1!");
+    }
 
+    // [shard].shard_index
+    if (SHARD_ROLE == SHARD_ROLE_COMMITTEE)
+    {
+        SHARD_INDEX = SHARD_INDEX_COMMITTEE;
+    }
+    else if (SHARD_ROLE == SHARD_ROLE_SHARD)
+    {
+        if (!shard_index.second)
+        {
+            Throw<std::runtime_error>("must specify the shard_index if I'm a shard node!");
+        }
+        SHARD_INDEX = beast::lexicalCastThrow <std::uint32_t>(shard_index.first);
+        if (!SHARD_INDEX || SHARD_INDEX > SHARD_COUNT)
+        {
+            Throw<std::runtime_error>("shard_index must be less or equal to shard_count and cannot be zero!");
+        }
+    }
+
+    // [lookup_ips]
+    if (auto s = getIniFileSection(secConfig, SECTION_LOOKUP_IPS))
+    {
+        LOOKUP_IPS = *s;
+    }
+
+    // [lookup_public_keys]
+    if (auto s = getIniFileSection(secConfig, SECTION_LOOKUP_PUBLIC_KEYS))
+    {
+        LOOKUP_PUBLIC_KEYS = *s;
+    }
+
+    // [lookup_relay_interval]
+    if (getSingleSection(secConfig, SECTION_LOOKUP_RELAY_INTERVAL, strTemp, j_))
+    {
+        LOOKUP_RELAY_INTERVAL = beast::lexicalCastThrow<std::uint32_t>(strTemp);
+    }
+
+    // [sync_ips]
+    if (auto s = getIniFileSection(secConfig, SECTION_SYNC_IPS))
+    {
+        SYNC_IPS = *s;
+    }
+
+    // [shard_ips]
+    if (auto s = getIniFileSection(secConfig, SECTION_SHARD_IPS))
+    {
+        std::vector<std::string> shardIPs = *s;
+        for (auto IPs : shardIPs)
+        {
+            std::vector<std::string> vecIP;
+            boost::split(vecIP, IPs, boost::is_any_of(","));
+            SHARD_IPS.push_back(vecIP);
+        }
+    }
+
+    // [shard_validators]
+    if (auto s = getIniFileSection(secConfig, SECTION_SHARD_VALIDATORS))
+    {
+        std::vector<std::string> shardValidators = *s;
+        for (auto validators : shardValidators)
+        {
+            std::vector<std::string> vecValidator;
+            boost::split(vecValidator, validators, boost::is_any_of(","));
+            SHARD_VALIDATORS.push_back(vecValidator);
+        }
+    }
+
+    // [committee_ips]
+    if (auto s = getIniFileSection(secConfig, SECTION_COMMITTEE_IPS))
+    {
+        COMMITTEE_IPS = *s;
+    }
+
+    // [committee_validators]
+    if (auto s = getIniFileSection(secConfig, SECTION_COMMITTEE_VALIDATORS))
+    {
+        COMMITTEE_VALIDATORS = *s;
+    }
+
+	loadLookupConfig(secConfig);
+	loadShardConfig(secConfig);
+	loadCommitteeConfig(secConfig);
+	loadSyncConfigConfig(secConfig);
+
+	if (SHARD_IPS.size() != SHARD_COUNT)
+    {
+		Throw<std::runtime_error>("shard_count must be equal to the number of shard_ips configuration items!");
+	}
+
+    if (!SHARD_VALIDATORS.size() || !COMMITTEE_VALIDATORS.size())
+    {
+        Throw<std::runtime_error>("shard_validators and committee_validators must be configured!");
+    }
+
+    if (isShardOrCommittee() && !LOOKUP_PUBLIC_KEYS.size())
+    {
+        Throw<std::runtime_error>("lookup_public_keys must be configured!");
+    }
 
     // Do not load trusted validator configuration for standalone mode
     if (! RUN_STANDALONE)
@@ -666,14 +728,30 @@ bool Config::loadLookupConfig(IniFileSections& secConfig)
 
 		auto iniFile = parseIniFile(data, true);
 
-		if (auto s = getIniFileSection(iniFile, SECTION_LOOKUP_IPS))
-			LOOKUP_IPS = *s;
+        if (auto s = getIniFileSection(iniFile, SECTION_LOOKUP_IPS))
+        {
+            if (LOOKUP_IPS.size())
+            {
+                Throw<std::runtime_error>("[lookup_ips] config ambiguous!");
+            }
+            LOOKUP_IPS = *s;
+        }
 
-		if (auto s = getIniFileSection(iniFile, SECTION_LOOKUP_PUBLIC_KEYS))
-			LOOKUP_PUBLIC_KEYS = *s;
+        if (auto s = getIniFileSection(iniFile, SECTION_LOOKUP_PUBLIC_KEYS))
+        {
+            if (LOOKUP_PUBLIC_KEYS.size())
+            {
+                Throw<std::runtime_error>("[lookup_public_keys] config ambiguous!");
+            }
+            LOOKUP_PUBLIC_KEYS = *s;
+        }
 
         if (getSingleSection(iniFile, SECTION_LOOKUP_RELAY_INTERVAL, strTemp, j_))
         {
+            if (LOOKUP_RELAY_INTERVAL)
+            {
+                Throw<std::runtime_error>("[lookup_relay_interval] config ambiguous!");
+            }
             LOOKUP_RELAY_INTERVAL = beast::lexicalCastThrow<std::uint32_t>(strTemp);
         }
 
@@ -704,37 +782,41 @@ bool Config::loadShardConfig(IniFileSections& secConfig)
 		auto iniFile = parseIniFile(data, true);
 
 		std::vector<std::string>    shardIPs;
-		if (auto s = getIniFileSection(iniFile, SECTION_SHARD_IPS)) {
-
+		if (auto s = getIniFileSection(iniFile, SECTION_SHARD_IPS))
+        {
 			shardIPs = *s;
-			for (auto ip : shardIPs){
-
+            if (SHARD_IPS.size() && shardIPs.size())
+            {
+                Throw<std::runtime_error>("[shard_ips] config ambiguous!");
+            }
+			for (auto ip : shardIPs)
+            {
 				std::vector<std::string> vecIP;
 				boost::split(vecIP, ip, boost::is_any_of(","));
 				SHARD_IPS.push_back(vecIP);
-			
-			}		
+			}
 		}
-			
+
 		std::vector<std::string>    validators;
-		if (auto s = getIniFileSection(iniFile, SECTION_SHARD_VALIDATORS)) {
-
+		if (auto s = getIniFileSection(iniFile, SECTION_SHARD_VALIDATORS))
+        {
 			validators = *s;
-			for (auto validator : validators) {
-
+            if (SHARD_VALIDATORS.size() && validators.size())
+            {
+                Throw<std::runtime_error>("[shard_validators] config ambiguous!");
+            }
+			for (auto validator : validators)
+            {
 				std::vector<std::string> vecValidator;
 				boost::split(vecValidator, validator, boost::is_any_of(","));
 				SHARD_VALIDATORS.push_back(vecValidator);
-
 			}
 		}
 
 		bLoad = true;
-
 	}
 
 	return bLoad;
-
 }
 
 bool Config::loadCommitteeConfig(IniFileSections& secConfig)
@@ -759,17 +841,26 @@ bool Config::loadCommitteeConfig(IniFileSections& secConfig)
 
 		auto iniFile = parseIniFile(data, true);
 
-		if (auto s = getIniFileSection(iniFile, SECTION_COMMITTEE_IPS))
-			COMMITTEE_IPS = *s;
+        if (auto s = getIniFileSection(iniFile, SECTION_COMMITTEE_IPS))
+        {
+            if (COMMITTEE_IPS.size())
+            {
+                Throw<std::runtime_error>("[committee_ips] config ambiguous!");
+            }
+            COMMITTEE_IPS = *s;
+        }
 
-		if (auto s = getIniFileSection(iniFile, SECTION_COMMITTEE_VALIDATORS))
-			COMMITTEE_VALIDATORS = *s;
-
+        if (auto s = getIniFileSection(iniFile, SECTION_COMMITTEE_VALIDATORS))
+        {
+            if (COMMITTEE_VALIDATORS.size())
+            {
+                Throw<std::runtime_error>("[committee_validators] config ambiguous!");
+            }
+            COMMITTEE_VALIDATORS = *s;
+        }
 
 		bLoad = true;
 	}
-
-
 
 	return bLoad;
 }
@@ -796,13 +887,17 @@ bool Config::loadSyncConfigConfig(IniFileSections& secConfig)
 
 		auto iniFile = parseIniFile(data, true);
 
-		if (auto s = getIniFileSection(iniFile, SECTION_SYNC_IPS))
-			SYNC_IPS = *s;
-
+        if (auto s = getIniFileSection(iniFile, SECTION_SYNC_IPS))
+        {
+            if (SYNC_IPS.size())
+            {
+                Throw<std::runtime_error>("[sync_ips] config ambiguous!");
+            }
+            SYNC_IPS = *s;
+        }
 
 		bLoad = true;
 	}
-
 
 	return bLoad;
 }
@@ -859,7 +954,7 @@ std::size_t Config::getShardIndex() const
 
 bool Config::isShardOrCommittee()
 {
-	return ( (SHARD_ROLE & SHARD_ROLE_SHARD) || (SHARD_ROLE & SHARD_ROLE_COMMITTEE) );
+	return SHARD_ROLE == SHARD_ROLE_SHARD || SHARD_ROLE == SHARD_ROLE_COMMITTEE;
 }
 
 int Config::getSize (SizedItemName item) const

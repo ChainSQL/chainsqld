@@ -183,9 +183,7 @@ public:
 
     std::unordered_set<uint256, beast::uhash<>> features;
 
-
 	// shard related configuration items
-
 	static const std::uint32_t SHARD_ROLE_UNDEFINED = 0x00000000;
     static const std::uint32_t SHARD_ROLE_LOOKUP    = 0x00000001;
     static const std::uint32_t SHARD_ROLE_SHARD     = 0x00000002;
@@ -200,21 +198,19 @@ public:
 	std::uint32_t             SHARD_COUNT = 0;
 	std::uint32_t             SHARD_INDEX = SHARD_INDEX_UNDEFINED;
 
-
 	std::string               SHARD_FILE;
 	std::string               LOOKUP_FILE;
 	std::string               SYNC_FILE;
 
-
-	std::vector<std::string>    LOOKUP_IPS;                 
+	std::vector<std::string>    LOOKUP_IPS;
 	std::vector<std::string>    COMMITTEE_IPS;
-	std::vector<std::string>    SYNC_IPS;      
-
+	std::vector<std::string>    SYNC_IPS;
 	std::vector< std::vector<std::string> >   SHARD_IPS;
-	std::vector< std::vector<std::string> >   SHARD_VALIDATORS;
 
 	std::vector<std::string>    LOOKUP_PUBLIC_KEYS;
 	std::vector<std::string>    COMMITTEE_VALIDATORS;
+    std::vector< std::vector<std::string> >   SHARD_VALIDATORS;
+
     std::uint32_t               LOOKUP_RELAY_INTERVAL = 0;
 
 public:
@@ -239,10 +235,7 @@ public:
     bool silent() const { return SILENT; }
     bool standalone() const { return RUN_STANDALONE; }
 
-
-
 	// shard related
-
 	bool loadLookupConfig(IniFileSections& secConfig);
 	bool loadShardConfig(IniFileSections& secConfig);
 	bool loadCommitteeConfig(IniFileSections& secConfig);
