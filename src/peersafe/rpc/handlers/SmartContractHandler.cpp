@@ -82,7 +82,7 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 	}
 
 	TER terResult = e.getException();
-	owning_bytes_ref localCallRet = e.takeOutput();;
+	eth::owning_bytes_ref localCallRet = e.takeOutput();;
 	std::string localCallRetStr = "";
 	if (terResult == tesSUCCESS)
 		localCallRetStr = "0x" + strHex(localCallRet.takeBytes());

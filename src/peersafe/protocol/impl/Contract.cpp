@@ -18,18 +18,18 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 //==============================================================================
 
 #include <peersafe/protocol/Contract.h>
-#include <peersafe/vm/Common.h>
+#include <eth/vm/Common.h>
 #include <ripple/protocol/digest.h>
 
 namespace ripple {
 
     AccountID Contract::calcNewAddress(AccountID sender, int nonce)
     {
-        bytes data(sender.begin(), sender.end());
-        data.push_back((byte)((nonce >> 24) & 0xff));
-        data.push_back((byte)((nonce >> 16) & 0xff));
-        data.push_back((byte)((nonce >> 8) & 0xff));
-        data.push_back((byte)(nonce & 0xff));
+        eth::bytes data(sender.begin(), sender.end());
+        data.push_back((eth::byte)((nonce >> 24) & 0xff));
+        data.push_back((eth::byte)((nonce >> 16) & 0xff));
+        data.push_back((eth::byte)((nonce >> 8) & 0xff));
+        data.push_back((eth::byte)(nonce & 0xff));
 
         ripesha_hasher rsh;
         rsh(data.data(), data.size());

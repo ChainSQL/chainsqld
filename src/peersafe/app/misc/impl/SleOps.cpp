@@ -14,7 +14,7 @@
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <ripple/json/json_reader.h>
-#include <peersafe/vm/VMFace.h>
+#include <eth/vm/VMFace.h>
 
 namespace ripple {
     //just raw function for zxc, all paras should be tranformed in extvmFace modules.
@@ -72,14 +72,14 @@ namespace ripple {
 		return false;
 	}
 
-	void SleOps::setCode(AccountID const& addr, bytes&& code)
+	void SleOps::setCode(AccountID const& addr, eth::bytes&& code)
 	{
 		SLE::pointer pSle = getSle(addr);
 		if(pSle)
 			pSle->setFieldVL(sfContractCode,code);
 	}
 
-	bytes const& SleOps::code(AccountID const& addr) 	
+	eth::bytes const& SleOps::code(AccountID const& addr) 	
     {
 		if (contractCacheCode_.find(addr) == contractCacheCode_.end())
 		{
@@ -96,7 +96,7 @@ namespace ripple {
 
 	uint256 SleOps::codeHash(AccountID const& addr)
 	{
-        bytes const& code = SleOps::code(addr);
+        eth::bytes const& code = SleOps::code(addr);
 		return sha512Half(makeSlice(code));
 	}
 
