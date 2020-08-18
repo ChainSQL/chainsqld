@@ -590,8 +590,6 @@ private:
         return jvRequest;
     }
 
-
-
 	Json::Value parseLedgerTxs(Json::Value const& jvParams)
 	{
 		Json::Value     jvRequest(Json::objectValue);
@@ -624,7 +622,17 @@ private:
 		return jvRequest;
 	}
 
+    Json::Value parseNodeSize(Json::Value const& jvParams)
+    {
+        Json::Value     jvRequest(Json::objectValue);
 
+        if (jvParams.size() == 1)
+        {
+            jvRequest[jss::node_size] = jvParams[0u].asString();
+        }
+
+        return jvRequest;
+    }
 
     // log_level:                           Get log levels
     // log_level <severity>:                Set master log level to the specified severity
@@ -1318,7 +1326,9 @@ public:
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
 			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
 			{   "gen_csr",          &RPCParser::parseGenCsr,                   2,  2 },
-
+			{	"ledger_objects",	   &RPCParser::parseLedgerId,			   1,  1 },
+            {   "node_size",		   &RPCParser::parseNodeSize, 			   0,  1 },
+            {   "malloc_trim",		   &RPCParser::parseAsIs, 			       0,  0 },
         };
 
         auto const count = jvParams.size ();

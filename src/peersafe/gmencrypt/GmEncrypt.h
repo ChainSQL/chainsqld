@@ -30,7 +30,7 @@
 #endif
 #endif
 
-#define DEBUG_PRINTF
+//#define DEBUG_PRINTF
 #ifdef DEBUG_PRINTF
 #define DebugPrint(fmt,...) printf(fmt"\n",##__VA_ARGS__)
 #else

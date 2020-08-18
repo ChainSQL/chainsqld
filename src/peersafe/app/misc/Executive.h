@@ -29,7 +29,7 @@ class STTx;
 class Executive {
 public:
 	// Simple constructor; executive will operate on given state, with the given environment info.
-	Executive(SleOps & _s, EnvInfo const& _envInfo, unsigned int _level);
+	Executive(SleOps & _s, eth::EnvInfo const& _envInfo, unsigned int _level);
 
 	//No default constructor
 	Executive() = delete;
@@ -60,19 +60,19 @@ public:
 	/// Set up the executive for evaluating a bare CREATE (contract-creation) operation.
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool create(AccountID const& _txSender, uint256 const& _endowment,
-		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress);
 
 	/// @returns false iff go() must be called (and thus a VM execution in required).
 	bool createOpcode(AccountID const& _sender, uint256 const& _endowment,
-		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress);
 
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool call(AccountID const& _receiveAddress, AccountID const& _txSender, 
-		uint256 const& _txValue, uint256 const& _gasPrice, bytesConstRef const& _txData, int64_t const& _gas);
+		uint256 const& _txValue, uint256 const& _gasPrice, eth::bytesConstRef const& _txData, int64_t const& _gas);
 	bool call(CallParametersR const& _cp, uint256 const& _gasPrice, AccountID const& _origin);
 
-    void accrueSubState(SubState& _parentContext);
+    void accrueSubState(eth::SubState& _parentContext);
 
 	/// Executes (or continues execution of) the VM.
 	/// @returns false iff go() must be called again to finish the transaction.
@@ -91,25 +91,25 @@ public:
 	/// @warning Only valid after finalise().
 	int64_t gasUsed() const;
 
-	owning_bytes_ref takeOutput() { return std::move(m_output); }
+	eth::owning_bytes_ref takeOutput() { return std::move(m_output); }
 
 	/// @returns The exception that has happened during the execution if any.
 	TER getException() const noexcept { return m_excepted; }
 private:
 	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool executeCreate(AccountID const& _txSender, uint256 const& _endowment,
-		uint256 const& _gasPrice, int64_t const& _gas, bytesConstRef const& _code, AccountID const& _originAddress);
+		uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress);
 
 	beast::Journal getJ();
 	void formatOutput(std::string msg);
-	void formatOutput(owning_bytes_ref output);
+	void formatOutput(eth::owning_bytes_ref output);
 private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										
-	EnvInfo const& m_envInfo;					///< Information on the runtime environment.
+	eth::EnvInfo const& m_envInfo;					///< Information on the runtime environment.
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
-	owning_bytes_ref m_output;			///< Execution output.
-	bytes m_input;						///< Execution input.
+	eth::owning_bytes_ref m_output;			///< Execution output.
+	eth::bytes m_input;						///< Execution input.
 	//ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 
 	unsigned m_depth = 0;				///< The context's call-depth.
