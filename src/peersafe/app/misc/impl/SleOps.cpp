@@ -96,7 +96,7 @@ namespace ripple {
 
 	uint256 SleOps::codeHash(AccountID const& addr)
 	{
-        bytes const& code = SleOps::code(addr);
+        eth::bytes const& code = SleOps::code(addr);
 		return sha512Half(makeSlice(code));
 	}
 
