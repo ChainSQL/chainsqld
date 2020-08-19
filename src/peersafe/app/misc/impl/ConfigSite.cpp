@@ -316,7 +316,7 @@ namespace ripple {
 
 				if (ListDisposition::accepted == disp)
 				{
-					JLOG(j_.debug()) <<
+					JLOG(j_.info()) <<
 						"Applied new validator list from " <<
 						sites_[siteIdx].uri;
 

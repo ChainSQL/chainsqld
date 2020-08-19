@@ -29,10 +29,11 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet)
+MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, uint32 shardCount, LedgerIndex seq_, OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet)
     : mSeq(seq_)
     , mViewChange(viewChange)
     , mShardID(shardID_)
+    , mShardCount(shardCount)
 {
     assert(!view.open());
 
@@ -96,6 +97,7 @@ void MicroLedger::computeHash(bool withTxMeta)
         mViewChange,
         mSeq,
         mShardID,
+        mShardCount,
         mDropsDestroyed,
         mHashSet.TxsRootHash,
         mHashSet.TxWMRootHash,
@@ -136,6 +138,7 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
     m.set_viewchange(mViewChange);
     m.set_ledgerseq(mSeq);
     m.set_shardid(mShardID);
+    m.set_shardcount(mShardCount);
     m.set_dropsdestroyed(mDropsDestroyed);
 
     // Transaction hashes.
@@ -924,6 +927,7 @@ void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
     mViewChange = m.viewchange();
 	mSeq = m.ledgerseq();
 	mShardID = m.shardid();
+    mShardCount = m.shardcount();
     mDropsDestroyed = m.dropsdestroyed();
     if (m.has_txwmhashroot())
     {

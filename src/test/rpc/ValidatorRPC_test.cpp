@@ -312,7 +312,7 @@ public:
             for (auto const& val : validators)
                 startKeys.insert(val.masterPublic);
 
-            env.app().validators().onConsensusStart(startKeys);
+            env.app().validators().onConsensusStart();
 
             {
                 auto const jrr = env.rpc("server_info")[jss::result];

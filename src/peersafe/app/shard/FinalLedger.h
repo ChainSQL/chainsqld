@@ -90,6 +90,11 @@ public:
         return mTxsHashes;
     }
 
+    inline std::uint32_t getMicroLedgerCount() const
+    {
+        return mMicroLedgers.size();
+    }
+
     inline LedgerHash getMicroLedgerHash(uint32 shardID)
     {
         if (mMicroLedgers.find(shardID) != mMicroLedgers.end())

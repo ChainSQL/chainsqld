@@ -342,6 +342,94 @@ ValidatorList::applyList (
 }
 
 ListDisposition
+ValidatorList::applyList(
+    std::string const& manifest,
+    std::string const& blob,
+    std::string const& signature,
+    std::uint32_t version,
+    Json::Value& list,
+    PublicKey& pubKey)
+{
+    if (version != requiredListVersion)
+        return ListDisposition::unsupported_version;
+
+    boost::unique_lock<boost::shared_mutex> lock{ mutex_ };
+
+    auto const result = verify(list, pubKey, manifest, blob, signature);
+    if (result != ListDisposition::accepted)
+        return result;
+
+    publisherLists_[pubKey].available = true;
+    publisherLists_[pubKey].sequence = list["sequence"].asUInt();
+    publisherLists_[pubKey].expiration = TimeKeeper::time_point{
+        TimeKeeper::duration{ list["expiration"].asUInt() } };
+
+    return ListDisposition::accepted;
+}
+
+void ValidatorList::applyNewList(Json::Value const& list, PublicKey const& pubKey, std::vector<PublicKey> const& newList)
+{
+    boost::unique_lock<boost::shared_mutex> lock{ mutex_ };
+
+    // Update publisher's list
+    publisherLists_[pubKey].available = true;
+    publisherLists_[pubKey].sequence = list["sequence"].asUInt();
+    publisherLists_[pubKey].expiration = TimeKeeper::time_point{
+        TimeKeeper::duration{ list["expiration"].asUInt() } };
+
+    std::vector<PublicKey>& publisherList = publisherLists_[pubKey].list;
+
+    std::vector<PublicKey> oldList = publisherList;
+    publisherList = newList;
+
+    // Update keyListings_ for added and removed keys
+    std::sort(
+        publisherList.begin(),
+        publisherList.end());
+
+    if (publisherList != oldList)
+    {
+        auto iNew = publisherList.begin();
+        auto iOld = oldList.begin();
+        while (iNew != publisherList.end() ||
+            iOld != oldList.end())
+        {
+            if (iOld == oldList.end() ||
+                (iNew != publisherList.end() &&
+                    *iNew < *iOld))
+            {
+                // Increment list count for added keys
+                ++keyListings_[*iNew];
+                ++iNew;
+            }
+            else if (iNew == publisherList.end() ||
+                (iOld != oldList.end() && *iOld < *iNew))
+            {
+                // Decrement list count for removed keys
+                if (keyListings_[*iOld] <= 1)
+                    keyListings_.erase(*iOld);
+                else
+                    --keyListings_[*iOld];
+                ++iOld;
+            }
+            else
+            {
+                ++iNew;
+                ++iOld;
+            }
+        }
+    }
+
+    if (publisherList.empty())
+    {
+        JLOG(j_.warn()) <<
+            "No validator keys included in valid list";
+    }
+
+    shouldUpdate_ = true;
+}
+
+ListDisposition
 ValidatorList::verify (
     Json::Value& list,
     PublicKey& pubKey,
@@ -649,5 +737,130 @@ void ValidatorList::resetValidators()
 		JLOG(j_.info()) << toBase58(TOKEN_NODE_PUBLIC, *iter);
 	}
 }
+
+//------------------------------------------------------------------------------
+
+void ValidatorList::onConsensusStart()
+{
+    boost::unique_lock<boost::shared_mutex> lock{ mutex_ };
+
+    // Check that lists from all configured publishers are available
+    bool allListsAvailable = true;
+
+    for (auto const& list : publisherLists_)
+    {
+        // Remove any expired published lists
+        if (TimeKeeper::time_point{} < list.second.expiration &&
+            list.second.expiration <= timeKeeper_.now())
+            removePublisherList(list.first);
+
+        if (!list.second.available)
+            allListsAvailable = false;
+    }
+
+    std::multimap<std::size_t, PublicKey> rankedKeys;
+    bool localKeyListed = false;
+
+    // "Iterate" the listed keys in random order so that the rank of multiple
+    // keys with the same number of listings is not deterministic
+    std::vector<std::size_t> indexes(keyListings_.size());
+    std::iota(indexes.begin(), indexes.end(), 0);
+    std::shuffle(indexes.begin(), indexes.end(), crypto_prng());
+
+    for (auto const& index : indexes)
+    {
+        auto const& val = std::next(keyListings_.begin(), index);
+
+        if (validatorManifests_.revoked(val->first))
+            continue;
+
+        if (val->first == localPubKey_)
+        {
+            localKeyListed = val->second > 1;
+            rankedKeys.insert(
+                std::pair<std::size_t, PublicKey>(
+                    std::numeric_limits<std::size_t>::max(), localPubKey_));
+        }
+        // If the total number of validators is too small, or
+        // no validations are being received, use all validators.
+        // Otherwise, do not use validators whose validations aren't
+        // being received.
+        //else if (keyListings_.size() < MINIMUM_RESIZEABLE_UNL ||
+        //         seenValidators.empty() ||
+        //         seenValidators.find (val->first) != seenValidators.end ())
+        else
+        {
+            rankedKeys.insert(
+                std::pair<std::size_t, PublicKey>(val->second, val->first));
+        }
+    }
+
+    // This minimum quorum guarantees safe overlap with the trusted sets of
+    // other nodes using the same set of published lists.
+    std::size_t quorum = calculateMinimumQuorum(keyListings_.size(),
+        localPubKey_.size() && !localKeyListed);
+
+    JLOG(j_.debug()) <<
+        rankedKeys.size() << "  of " << keyListings_.size() <<
+        " listed validators eligible for inclusion in the trusted set";
+
+    auto size = rankedKeys.size();
+
+    // Require 80% quorum if there are lots of validators.
+    if (rankedKeys.size() > BYZANTINE_THRESHOLD)
+    {
+        // Use all eligible keys if there is only one trusted list
+        if (publisherLists_.size() == 1 ||
+            keyListings_.size() < MINIMUM_RESIZEABLE_UNL)
+        {
+            // Try to raise the quorum to at least 80% of the trusted set
+            quorum = std::max(quorum, size - size / 5);
+        }
+        else
+        {
+            // Reduce the trusted set size so that the quorum represents
+            // at least 80%
+            size = quorum * 1.25;
+        }
+    }
+
+    //if (minimumQuorum_ && seenValidators.size() < quorum)
+    //{
+    //    quorum = *minimumQuorum_;
+    //    JLOG (j_.warn())
+    //        << "Using unsafe quorum of "
+    //        << quorum_
+    //        << " as specified in the command line";
+    //}
+
+    // Do not use achievable quorum until lists from all configured
+    // publishers are available
+    if (!allListsAvailable)
+        quorum = std::numeric_limits<std::size_t>::max();
+
+    trustedKeys_.clear();
+    quorum_ = quorum;
+
+    for (auto const& val : boost::adaptors::reverse(rankedKeys))
+    {
+        if (size <= trustedKeys_.size())
+            break;
+
+        trustedKeys_.insert(val.second);
+    }
+
+    JLOG(j_.debug()) <<
+        "Using quorum of " << quorum_ << " for new set of " <<
+        trustedKeys_.size() << " trusted validators";
+
+    if (trustedKeys_.size() < quorum_)
+    {
+        JLOG(j_.warn()) <<
+            "New quorum of " << quorum_ <<
+            " exceeds the number of trusted validators (" <<
+            trustedKeys_.size() << ")";
+    }
+}
+
 
 } // ripple

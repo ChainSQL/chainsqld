@@ -77,6 +77,9 @@ private:
 
     Application&                        app_;
     Config&                             cfg_;
+    beast::Journal                      j_;
+
+    boost::shared_mutex mutable         mutex_;
 
 public:
 
@@ -114,6 +117,8 @@ public:
 		return cfg_.SHARD_COUNT;
 	}
 
+    void applyList(Json::Value const& list, PublicKey const& pubKey);
+    void checkValidatorLists();
 };
 
 }

@@ -1279,9 +1279,9 @@ PConsensus<Adaptor>::haveConsensus()
 	if (!result_)
 		return false;
 
-    int minVal = adaptor_.app_.getShardManager().nodeBase().quorum();
+    std::size_t minVal = adaptor_.app_.getShardManager().nodeBase().quorum();
 
-	int agreed = txSetVoted_[*setID_].size();
+    std::size_t agreed = txSetVoted_[*setID_].size();
 	auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
 
 	JLOG(j_.debug()) << "Checking for TXSet/MicroLedgerSet consensus: agree=" << agreed;

@@ -438,6 +438,13 @@ void Config::loadFromString (std::string const& fileContents)
         WORKERS      = beast::lexicalCastThrow <std::size_t> (strTemp);
 
     // shard related configuration items
+    bool strongCheck = true;
+    if (!section(SECTION_VALIDATOR_LIST_SITES).lines().empty() &&
+        !section(SECTION_VALIDATOR_LIST_KEYS).lines().empty())
+    {
+        strongCheck = false;
+    }
+
 	const ripple::Section& shard = section("shard");
 
 	std::pair<std::string, bool> role        = shard.find("role");
@@ -477,7 +484,7 @@ void Config::loadFromString (std::string const& fileContents)
     {
 		SHARD_COUNT = beast::lexicalCastThrow <std::size_t>(shard_count.first);
 	}
-    if (!SHARD_COUNT)
+    if (!SHARD_COUNT && strongCheck)
     {
         Throw<std::runtime_error>("shard_count at least 1!");
     }
@@ -494,7 +501,7 @@ void Config::loadFromString (std::string const& fileContents)
             Throw<std::runtime_error>("must specify the shard_index if I'm a shard node!");
         }
         SHARD_INDEX = beast::lexicalCastThrow <std::uint32_t>(shard_index.first);
-        if (!SHARD_INDEX || SHARD_INDEX > SHARD_COUNT)
+        if (!SHARD_INDEX || (SHARD_INDEX > SHARD_COUNT && strongCheck))
         {
             Throw<std::runtime_error>("shard_index must be less or equal to shard_count and cannot be zero!");
         }
@@ -565,12 +572,12 @@ void Config::loadFromString (std::string const& fileContents)
 	loadCommitteeConfig(secConfig);
 	loadSyncConfigConfig(secConfig);
 
-	if (SHARD_IPS.size() != SHARD_COUNT)
+	if (strongCheck && (SHARD_IPS.size() != SHARD_COUNT || SHARD_VALIDATORS.size() != SHARD_COUNT))
     {
-		Throw<std::runtime_error>("shard_count must be equal to the number of shard_ips configuration items!");
+		Throw<std::runtime_error>("shard_count must be equal to the number of shard_ips and shard_validators configuration items!");
 	}
 
-    if (!SHARD_VALIDATORS.size() || !COMMITTEE_VALIDATORS.size())
+    if (strongCheck && (!SHARD_VALIDATORS.size() || !COMMITTEE_VALIDATORS.size()))
     {
         Throw<std::runtime_error>("shard_validators and committee_validators must be configured!");
     }

@@ -543,7 +543,7 @@ private:
 
             // onConsensusStart should make all available configured
             // validators trusted
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             // Add 1 to n because I'm not on a published list.
             BEAST_EXPECT(trustedKeys->quorum () == n + 1 - f);
             std::size_t i = 0;
@@ -568,7 +568,7 @@ private:
                 for (auto const valKey : cfgKeys)
                     activeValidators.emplace (*parseBase58<PublicKey>(
                         TokenType::TOKEN_NODE_PUBLIC, valKey));
-                trustedKeys->onConsensusStart (activeValidators);
+                trustedKeys->onConsensusStart ();
                 BEAST_EXPECT(trustedKeys->quorum () == cfgKeys.size() * 4/5);
             }
         }
@@ -589,7 +589,7 @@ private:
             activeValidators.emplace (masterPublic);
 
             // Should not trust ephemeral signing key if there is no manifest
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(trustedKeys->listed (masterPublic));
             BEAST_EXPECT(trustedKeys->trusted (masterPublic));
             BEAST_EXPECT(!trustedKeys->listed (signingPublic1));
@@ -603,7 +603,7 @@ private:
             BEAST_EXPECT(
                 manifests.applyManifest(std::move (*m1)) ==
                     ManifestDisposition::accepted);
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(trustedKeys->quorum () == n + 2 - f);
             BEAST_EXPECT(trustedKeys->listed (masterPublic));
             BEAST_EXPECT(trustedKeys->trusted (masterPublic));
@@ -620,7 +620,7 @@ private:
             BEAST_EXPECT(
                 manifests.applyManifest(std::move (*m2)) ==
                     ManifestDisposition::accepted);
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(trustedKeys->quorum () == n + 2 - f);
             BEAST_EXPECT(trustedKeys->listed (masterPublic));
             BEAST_EXPECT(trustedKeys->trusted (masterPublic));
@@ -644,7 +644,7 @@ private:
                     ManifestDisposition::accepted);
             BEAST_EXPECT(manifests.getSigningKey (masterPublic) == masterPublic);
             BEAST_EXPECT(manifests.revoked (masterPublic));
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(trustedKeys->quorum () == n + 1 - f);
             BEAST_EXPECT(trustedKeys->listed (masterPublic));
             BEAST_EXPECT(!trustedKeys->trusted (masterPublic));
@@ -670,7 +670,7 @@ private:
             BEAST_EXPECT(trustedKeys->load (
                 emptyLocalKey, emptyCfgKeys, cfgPublishers));
 
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(trustedKeys->quorum () ==
                 std::numeric_limits<std::size_t>::max());
         }
@@ -688,7 +688,7 @@ private:
             BEAST_EXPECT(trustedKeys->load (
                 emptyLocalKey, cfgKeys, cfgPublishers));
 
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
 
             BEAST_EXPECT(trustedKeys->quorum () == 2);
             for (auto const& key : keys)
@@ -709,11 +709,11 @@ private:
             BEAST_EXPECT(trustedKeys->load (
                 emptyLocalKey, cfgKeys, cfgPublishers));
 
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(trustedKeys->quorum () == minQuorum);
 
             activeValidators.emplace (node);
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(trustedKeys->quorum () == 1);
         }
         {
@@ -731,7 +731,7 @@ private:
             BEAST_EXPECT(trustedKeys->load (
                 localKey, cfgKeys, cfgPublishers));
 
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(trustedKeys->quorum () == 2);
 
             // local validator key is always trusted
@@ -773,7 +773,7 @@ private:
                 trustedKeys->applyList (
                     manifest, blob, sig, version));
 
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
 			for(Validator const & val : list)
 	        {
 			    BEAST_EXPECT(trustedKeys->trusted (val.masterPublic));
@@ -782,7 +782,7 @@ private:
             BEAST_EXPECT(trustedKeys->quorum () == 2);
 
             env.timeKeeper().set(expiration);
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
             BEAST_EXPECT(! trustedKeys->trusted (list[0].masterPublic));
             BEAST_EXPECT(! trustedKeys->trusted (list[1].masterPublic));
             BEAST_EXPECT(trustedKeys->quorum () ==
@@ -802,7 +802,7 @@ private:
                 trustedKeys->applyList (
                     manifest, blob2, sig2, version));
 
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
 			for(Validator const & val : list2)
 	        {
 			    BEAST_EXPECT(trustedKeys->trusted (val.masterPublic));
@@ -832,7 +832,7 @@ private:
 
                 BEAST_EXPECT(trustedKeys->load (
                     emptyLocalKey, cfgKeys, cfgPublishers));
-                trustedKeys->onConsensusStart (activeValidators);
+                trustedKeys->onConsensusStart ();
                 BEAST_EXPECT(trustedKeys->quorum () ==
                     ((cfgKeys.size() <= 6) ? cfgKeys.size()/2 + 1 :
                         cfgKeys.size() * 2/3 + 1));
@@ -862,7 +862,7 @@ private:
 
                 BEAST_EXPECT(trustedKeys->load (
                     localKey, cfgKeys, cfgPublishers));
-                trustedKeys->onConsensusStart (activeValidators);
+                trustedKeys->onConsensusStart ();
 
                 BEAST_EXPECT(trustedKeys->quorum () ==
                     ((cfgKeys.size() <= 6) ? cfgKeys.size()/2 + 1 :
@@ -923,7 +923,7 @@ private:
             for (auto i = 0; i < 3; ++i)
                 addPublishedList();
 
-            trustedKeys->onConsensusStart (activeValidators);
+            trustedKeys->onConsensusStart ();
 
             // Minimum quorum should be used
             BEAST_EXPECT(trustedKeys->quorum () == (valKeys.size() * 2/3 + 1));
@@ -1053,7 +1053,7 @@ private:
             // Advance past the first list's expiration, but it remains the
             // earliest expiration
             env.timeKeeper().set(prep1.expiration + 1s);
-            trustedKeys->onConsensusStart(activeKeys);
+            trustedKeys->onConsensusStart();
             BEAST_EXPECT(
                 trustedKeys->expires() &&
                 trustedKeys->expires().get() == prep1.expiration);

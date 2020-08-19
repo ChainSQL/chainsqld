@@ -44,19 +44,18 @@ Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journa
     mShardID = cfg_.SHARD_INDEX;
 
 	std::vector< std::vector<std::string> >& shardValidators = cfg_.SHARD_VALIDATORS;
-	for (size_t i = 0; i < shardValidators.size(); i++) {
-
+	for (size_t i = 0; i < shardValidators.size(); i++)
+    {
 		// shardIndex = index + 1
 		mMapOfShardValidators[i+1] = std::make_unique<ValidatorList>(
 			app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
 			journal_, cfg_.VALIDATION_QUORUM);
 
-		std::vector<std::string>  publisherKeys;
-		// Setup trusted validators
+		// Setup validators
 		if (!mMapOfShardValidators[i+1]->load(
 			    app_.getValidationPublicKey(),
 			    shardValidators[i],
-			    publisherKeys,
+                cfg_.section(SECTION_VALIDATOR_LIST_KEYS).values(),
                 (mShardManager.myShardRole() == ShardManager::SHARD && mShardID == i + 1)))
         {
 			mMapOfShardValidators.erase(i + 1);
@@ -128,7 +127,19 @@ bool Node::isLeader(PublicKey const& pubkey, LedgerIndex curSeq, uint64 view)
 inline auto Node::validatorsPtr()
 	-> std::unique_ptr<ValidatorList>&
 {
-    assert(mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end());
+    if (mMapOfShardValidators.find(mShardID) == mMapOfShardValidators.end())
+    {
+        mMapOfShardValidators[mShardID] = std::make_unique<ValidatorList>(
+            app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
+            journal_, cfg_.VALIDATION_QUORUM);
+        mMapOfShardValidators[mShardID]->load(
+            app_.getValidationPublicKey(),
+            std::vector<std::string>{},
+            cfg_.section(SECTION_VALIDATOR_LIST_KEYS).values(),
+            (mShardManager.myShardRole() == ShardManager::SHARD));
+        mShardManager.checkValidatorLists();
+    }
+
     return mMapOfShardValidators[mShardID];
 }
 
@@ -184,12 +195,6 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
             }
         }
     }
-
-    auto iter = mMapOfShardValidators.find(mShardID);
-    if (iter != mMapOfShardValidators.end())
-    {
-        iter->second->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
-    }
 }
 
 void Node::doAccept(
@@ -214,6 +219,7 @@ void Node::doAccept(
     auto microLedger = std::make_shared<MicroLedger>(
         app_.getOPs().getConsensus().getView(),
         mShardID,
+        mShardManager.shardCount(),
         accum.info().seq,
         accum);
 
@@ -359,13 +365,16 @@ void Node::checkAccept(LedgerHash microLedgerHash)
     }
 
     size_t signCount = 0;
+    size_t minVal = mMapOfShardValidators[mShardID]->quorum();
 
     {
         std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
         signCount = microLedger->signatures().size();
     }
 
-    if (signCount >= mMapOfShardValidators[mShardID]->quorum())
+    JLOG(journal_.info()) << "MicroLedger sign count: " << signCount << " quorum: " << minVal;
+
+    if (signCount >= minVal)
     {
         submitMicroLedger(microLedger->ledgerHash(), false);
 
@@ -733,6 +742,8 @@ void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
     {
         JLOG(journal_.warn()) << "Committee view change: stale";
     }
+
+    mShardManager.checkValidatorLists();
 
     return;
 }

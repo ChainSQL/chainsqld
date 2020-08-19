@@ -2748,6 +2748,8 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
 	//comprehensive judgement for server_status
 	info[jss::server_status] = getServerStatus();
 
+    info[jss::shard_count] = app_.getShardManager().shardCount();
+
     return info;
 }
 

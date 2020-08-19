@@ -46,13 +46,11 @@ Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Jour
 		app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
 		journal_, cfg_.VALIDATION_QUORUM);
 
-	std::vector<std::string> & committeeValidators = cfg_.COMMITTEE_VALIDATORS;
-	std::vector<std::string>  publisherKeys;
-	// Setup trusted validators
+	// Setup validators
 	if (!mValidators->load(
 		app_.getValidationPublicKey(),
-		committeeValidators,
-		publisherKeys,
+        cfg_.COMMITTEE_VALIDATORS,
+        cfg_.section(SECTION_VALIDATOR_LIST_KEYS).values(),
         mShardManager.myShardRole() == ShardManager::COMMITTEE))
 	{
         Throw<std::runtime_error>("Committtee validators load failed");
@@ -130,8 +128,10 @@ void Committee::onViewChange(
     auto const m = std::make_shared<Message>(
         *sm, protocol::mtCOMMITTEEVIEWCHANGE);
 
-    app_.getShardManager().node().distributeMessage(m);
-    app_.getShardManager().lookup().distributeMessage(m);
+    mShardManager.node().distributeMessage(m);
+    mShardManager.lookup().distributeMessage(m);
+
+    mShardManager.checkValidatorLists();
 }
 
 void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
@@ -161,9 +161,6 @@ void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const p
             }
         }
     }
-
-    mValidators->onConsensusStart(
-        app_.getValidations().getCurrentPublicKeys());
 
     commitMicroLedgerBuffer(seq);
 }
@@ -372,6 +369,7 @@ void Committee::buildMicroLedger(OpenView const& view, std::shared_ptr<Canonical
     auto microLedger = std::make_shared<MicroLedger>(
         app_.getOPs().getConsensus().getView(),
         0,
+        mShardManager.shardCount(),
         view.info().seq,
         view,
         txSet);
@@ -675,6 +673,13 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& 
     if (seq < curSeq)
     {
         JLOG(journal_.info()) << "This microledger submission is too late";
+        return;
+    }
+
+    if (microLedger->shardCount() != mShardManager.shardCount())
+    {
+        JLOG(journal_.info()) << "Shard count is " << mShardManager.shardCount() <<
+            " now, But " << microLedger->shardCount() << " in shard " << shardID;
         return;
     }
 

@@ -60,19 +60,15 @@ Lookup::Lookup(ShardManager& m, Application& app, Config& cfg, beast::Journal jo
 			app_.validatorManifests(), app_.publisherManifests(), app_.timeKeeper(),
 			journal_, cfg_.VALIDATION_QUORUM);
 
-    std::vector<std::string> & lookupValidators = cfg_.LOOKUP_PUBLIC_KEYS;
-	std::vector<std::string>  publisherKeys;
-	// Setup trusted validators
+	// Setup validators
 	if (!mValidators->load(
 		app_.getValidationPublicKey(),
-        lookupValidators,
-		publisherKeys,
+        cfg_.LOOKUP_PUBLIC_KEYS,
+		cfg_.section(SECTION_VALIDATOR_LIST_KEYS).values(),
         mShardManager.myShardRole() & ShardManager::LOOKUP))
 	{
         Throw<std::runtime_error>("Lookup validators load failed");
 	}
-
-    mValidators->onConsensusStart(app_.getValidations().getCurrentPublicKeys());
 
     if (mShardManager.myShardRole() & ShardManager::LOOKUP)
     {
@@ -253,8 +249,9 @@ bool Lookup::findNewLedgerToSave(LedgerIndex &toSaveOrAcquire)
 bool Lookup::checkLedger(LedgerIndex seq)
 {
     std::lock_guard <std::recursive_mutex> lock(mutex_);
-    if (mMapMicroLedgers[seq].size() == mShardManager.shardCount() + 1 &&
-        mMapFinalLedger.count(seq))
+
+    if (mMapFinalLedger.count(seq) &&
+        mMapMicroLedgers[seq].size() == mMapFinalLedger[seq]->getMicroLedgerCount())
     {
         return true;
     }
@@ -267,7 +264,9 @@ uint32 Lookup::resetMetaIndex(LedgerIndex seq)
     uint32 metaIndex = 0;
     beast::Journal j = app_.journal("TxMeta");
 
-    for (uint32 shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
+    std::uint32_t shardCount = getFinalLedger(seq)->getMicroLedgerCount() - 1;
+
+    for (uint32 shardIndex = 1; shardIndex <= shardCount; shardIndex++)
     {
         std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
         for (auto const& txHash : microLedger->txHashes())
@@ -299,7 +298,9 @@ void Lookup::saveLedger(LedgerIndex seq)
 	//apply state
     finalLedger->apply(*ledgerToSave, false);
 
-    for (uint32 shardIndex = 1; shardIndex <= mShardManager.shardCount(); shardIndex++)
+    std::uint32_t shardCount = finalLedger->getMicroLedgerCount() - 1;
+
+    for (uint32 shardIndex = 1; shardIndex <= shardCount; shardIndex++)
     {
         std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
         microLedger->apply(*ledgerToSave);
@@ -423,6 +424,8 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 
     saveFinalLedger(finalLedger);
 	checkSaveLedger(finalLedger->seq());
+
+    mShardManager.checkValidatorLists();
 }
 
 void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
@@ -483,6 +486,8 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
     else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())
     {
         app_.getLedgerMaster().onViewChanged(false, app_.getLedgerMaster().getValidatedLedger());
+
+        mShardManager.checkValidatorLists();
     }
     else
     {

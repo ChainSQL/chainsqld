@@ -52,6 +52,7 @@ protected:
     LedgerIndex                                 mSeq;               // Ledger sequence.
     uint64                                      mViewChange;        // View change sequence.
     uint32                                      mShardID;           // The ID of the shard generated this MicroLedger.
+    uint32                                      mShardCount;
     std::int64_t                                mDropsDestroyed;    //
 
     std::vector<TxID>                           mTxsHashes;         // All transactions hash set in this MicroLedger.
@@ -76,7 +77,7 @@ protected:
 public:
     MicroLedger() = delete;
 	MicroLedger(protocol::TMMicroLedgerSubmit const& m, bool withTxMeta = true);
-    MicroLedger(uint64 viewChange, uint32 shardID_, LedgerIndex seq_, OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet = nullptr);
+    MicroLedger(uint64 viewChange, uint32 shardID_, uint32 shardCount, LedgerIndex seq_, OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet = nullptr);
 
     inline LedgerIndex seq()
     {
@@ -96,6 +97,11 @@ public:
     inline uint32 shardID() const
     {
         return mShardID;
+    }
+
+    inline uint32 shardCount() const
+    {
+        return mShardCount;
     }
 
     inline auto& txHashes()

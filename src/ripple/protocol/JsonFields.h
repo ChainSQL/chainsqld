@@ -552,6 +552,7 @@ JSS(drops_per_byte);                // out: LogLevel
 
 
 JSS(shard_role);                    // out: PeerImp
+JSS(shard_count);                   // out: server_info
 
 #undef JSS
 

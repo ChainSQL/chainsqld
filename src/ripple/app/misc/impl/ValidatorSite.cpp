@@ -26,6 +26,7 @@
 #include <boost/regex.hpp>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 
@@ -82,7 +83,17 @@ void ValidatorSite::setWaitinBeginConsensus()
 
 ripple::ListDisposition ValidatorSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature, std::uint32_t version)
 {
-	return  validators_.applyList(manifest, blob, signature, version);
+    Json::Value list;
+    PublicKey pubKey;
+    auto const result = validators_.applyList(manifest, blob, signature, version, list, pubKey);
+    if (result != ListDisposition::accepted)
+    {
+        return result;
+    }
+
+    app_.getShardManager().applyList(list, pubKey);
+
+    return ListDisposition::accepted;
 }
 
 void ValidatorSite::onAccepted()
@@ -90,18 +101,19 @@ void ValidatorSite::onAccepted()
 	//begin consensus after apply success
 	if (waitingBeginConsensus_)
 	{
-		app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+		//app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+        app_.getShardManager().checkValidatorLists();
 		waitingBeginConsensus_ = false;
 	}
-	else
-	{
-		auto validators = validators_.validators();
-		hash_set<PublicKey> hashSetPub;
-		for (auto i =0 ; i<validators.size(); i++){
-			hashSetPub.emplace(validators[i]);
-		}
-		app_.validators().onConsensusStart(hashSetPub);
-	}
+	//else
+	//{
+	//	auto validators = validators_.validators();
+	//	hash_set<PublicKey> hashSetPub;
+	//	for (auto i =0 ; i<validators.size(); i++){
+	//		hashSetPub.emplace(validators[i]);
+	//	}
+	//	app_.validators().onConsensusStart();
+	//}
 }
 
 } // ripple
