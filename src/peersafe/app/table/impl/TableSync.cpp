@@ -1335,6 +1335,7 @@ void TableSync::TableSyncThread()
 					else
 					{
 						pItem->SetSyncState(TableSyncItem::SYNC_STOP);
+                        break;
 					}
 				}
 				else if(!stItem.isDeleted)

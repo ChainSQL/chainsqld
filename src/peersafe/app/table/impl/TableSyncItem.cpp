@@ -546,9 +546,10 @@ void TableSyncItem::SetSyncState(TableSyncState eState)
 			eState_ = eState;
 		}
 	}
-	else if (eState_ != SYNC_STOP || eState_ != SYNC_REMOVE) {
-		eState_ = eState;
-	}
+    else if (!(eState_ == SYNC_STOP || eState_ == SYNC_REMOVE))
+    {
+        eState_ = eState;
+    }
 }
 
 void TableSyncItem::SetDeleted(bool deleted)
@@ -857,21 +858,6 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
 	{
 		//decrypt passphrase
         Blob rawDecrypted = tokenProcObj_.symmertryDecrypt(raw);
-        //GmEncrypt* hEObj = GmEncryptObj::getInstance();
-        //if (nullptr == hEObj)
-        //{
-        //    rawDecrypted = RippleAddress::decryptAES(passBlob_, raw);
-        //}
-        //else
-        //{
-        //    //unsigned char plainData[512] = { 0 };
-        //    //unsigned long plainDataLen = 512;
-        //    unsigned char* pPlainData = new unsigned char[raw.size()];
-        //    unsigned long plainDataLen = raw.size();
-        //    hEObj->SM4SymDecrypt(hEObj->ECB, passBlob_.data(),passBlob_.size(),raw.data(),raw.size(),pPlainData,&plainDataLen);
-        //    rawDecrypted = Blob(pPlainData, pPlainData + plainDataLen);
-        //    delete[] pPlainData;
-        //}
 
 		if (rawDecrypted.size() > 0)
 		{
