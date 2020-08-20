@@ -78,6 +78,7 @@ project(chainsqld)
 set(enableSFGm FALSE CACHE BOOL "Enable soft GM algorithm")
 set(enableHDGm FALSE CACHE BOOL "Enable hard GM algorithm")
 
+set(enableTest FALSE CACHE BOOL "Enable Unit Test Module")
 #########################################################
 
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
@@ -248,30 +249,34 @@ rpcx2.cpp
 shamap.cpp
 server.cpp)
 
-prepend(test_unity_srcs
-src/test/unity/
-app_test_unity1.cpp
-app_test_unity2.cpp
-basics_test_unity.cpp
-beast_test_unity1.cpp
-beast_test_unity2.cpp
-conditions_test_unity.cpp
-consensus_test_unity.cpp
-core_test_unity.cpp
-json_test_unity.cpp
-ledger_test_unity.cpp
-overlay_test_unity.cpp
-peerfinder_test_unity.cpp
-protocol_test_unity.cpp
-resource_test_unity.cpp
-rpc_test_unity.cpp
-server_test_unity.cpp
-server_status_test_unity.cpp
-shamap_test_unity.cpp
-jtx_unity1.cpp
-jtx_unity2.cpp
-csf_unity.cpp
-vm_test_unity.cpp)
+if(enableTest)
+    prepend(test_unity_srcs
+    src/test/unity/
+    app_test_unity1.cpp
+    app_test_unity2.cpp
+    basics_test_unity.cpp
+    beast_test_unity1.cpp
+    beast_test_unity2.cpp
+    conditions_test_unity.cpp
+    consensus_test_unity.cpp
+    core_test_unity.cpp
+    json_test_unity.cpp
+    ledger_test_unity.cpp
+    overlay_test_unity.cpp
+    peerfinder_test_unity.cpp
+    protocol_test_unity.cpp
+    resource_test_unity.cpp
+    rpc_test_unity.cpp
+    server_test_unity.cpp
+    server_status_test_unity.cpp
+    shamap_test_unity.cpp
+    jtx_unity1.cpp
+    jtx_unity2.cpp
+    csf_unity.cpp
+    vm_test_unity.cpp)
+else()
+    set(test_unity_srcs)
+endif()
 
 prepend(peersafe_unity_srcs
 src/peersafe/unity/
@@ -377,37 +382,39 @@ add_with_props(chainsqld_src_nonunity "${nodestore_srcs}"
 list(APPEND non_unity_srcs "${nodestore_srcs}")
 
 # unit test sources
-foreach(curdir
-        app
-        basics
-        beast
-        conditions
-        consensus
-        core
-        csf
-        json
-        jtx
-        ledger
-        nodestore
-        overlay
-        peerfinder
-        protocol
-        resource
-        rpc
-        server
-        shamap
-        vm)
-    file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
-    list(APPEND test_srcs "${cursrcs}")
-endforeach()
+if(enableTest)
+    foreach(curdir
+            app
+            basics
+            beast
+            conditions
+            consensus
+            core
+            csf
+            json
+            jtx
+            ledger
+            nodestore
+            overlay
+            peerfinder
+            protocol
+            resource
+            rpc
+            server
+            shamap
+            vm)
+        file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
+        list(APPEND test_srcs "${cursrcs}")
+    endforeach()
 
-add_with_props(chainsqld_src_nonunity "${test_srcs}"
+    add_with_props(chainsqld_src_nonunity "${test_srcs}"
     -I"${CMAKE_SOURCE_DIR}"/src/rocksdb2/include
     -I"${CMAKE_SOURCE_DIR}"/src/snappy/snappy
     -I"${CMAKE_SOURCE_DIR}"/src/snappy/config
     ${rocks_db_system_header})
 
-list(APPEND non_unity_srcs "${test_srcs}")
+    list(APPEND non_unity_srcs "${test_srcs}")
+endif()
 
 if(WIN32 OR is_xcode)
     # chainsqld headers. Only needed for IDEs.
