@@ -20,8 +20,13 @@
 #include <BeastConfig.h>
 #include <ripple/ledger/OpenView.h>
 #include <ripple/basics/contract.h>
+#include <ripple/core/Config.h>
 #include <peersafe/app/shard/MicroLedger.h>
 #include <peersafe/app/shard/FinalLedger.h>
+#include <peersafe/app/shard/ShardManager.h>
+#include <ripple/app/misc/AmendmentTable.h>
+#include <ripple/app/misc/NetworkOPs.h>
+
 
 namespace ripple {
 
@@ -322,6 +327,171 @@ OpenView::rawTxInsert (key_type const& key,
     if (! result.second)
         LogicError("rawTxInsert: duplicate TX id" +
             to_string(key));
+}
+
+void OpenView::initFeeShardVoting(Application& app)
+{
+    feeShardVoting_ = std::make_shared<FeeShardVoting>(
+        base_->fees(),
+        setup_FeeVote(app.config().section("voting")));
+}
+
+void OpenView::initAmendmentSet()
+{
+    amendmentSet_ = std::make_shared<AmendmentSet>();
+}
+
+void OpenView::finalVote(MicroLedger const& microLedger0, Application& app)
+{
+    assert(feeShardVoting_);
+    assert(amendmentSet_);
+
+    auto j = app.journal("finalVote");
+
+    // Voting fee settings
+    auto const k1 = keylet::fees();
+    auto iter1 = items_.items().find(k1.key);
+    assert(iter1 != items_.items().end());
+    if (iter1 != items_.items().end())
+    {
+        SLE::pointer feeObject = iter1->second.second;
+        microLedger0.applyFeeSetting(*this, feeObject, j);
+
+        feeObject->setFieldU64(sfBaseFee, feeShardVoting_->baseFeeVote.getVotes());
+        feeObject->setFieldU32(sfReserveBase, feeShardVoting_->baseReserveVote.getVotes());
+        feeObject->setFieldU32(sfReserveIncrement, feeShardVoting_->incReserveVote.getVotes());
+        feeObject->setFieldU64(sfDropsPerByte, feeShardVoting_->dropsPerByteVote.getVotes());
+
+        rawReplace(feeObject);
+    }
+
+    // Voting amendments
+    auto const k2 = keylet::amendments();
+
+    auto iter2 = items_.items().find(k2.key);
+    if (iter2 != items_.items().end())
+    {
+        SLE::pointer amendmentObject = iter2->second.second;
+        microLedger0.applyAmendments(*this, amendmentObject, j);
+    }
+
+    amendmentSet_->mTrustedValidations = app.getShardManager().shardCount();
+    amendmentSet_->mThreshold = std::max(1,
+        (amendmentSet_->mTrustedValidations * app.getAmendmentTable().majorityFraction()) / 256);
+
+    JLOG(j.info()) << "Final voting amendment, shardCount is: "
+        << amendmentSet_->mTrustedValidations <<
+        " , threshold is: " << amendmentSet_->mThreshold;
+
+    std::set<uint256> oldAmendments;
+    majorityAmendments_t oldMajorities;
+
+    SLE::pointer sle = std::const_pointer_cast<SLE>(base().read(k2));
+    if (!sle)
+    {
+        sle = std::make_shared<SLE>(k2);
+    }
+
+    STVector256 newAmendments = sle->getFieldV256(sfAmendments);
+    oldAmendments.insert(newAmendments.begin(), newAmendments.end());
+
+    STArray newMajorities = sle->getFieldArray(sfMajorities);
+    {
+        using tp = NetClock::time_point;
+        using d = tp::duration;
+
+        for (auto const& m : newMajorities)
+        {
+            oldMajorities[m.getFieldH256(sfAmendment)] = tp(d(m.getFieldU32(sfCloseTime)));
+        }
+    }
+
+    for (auto const& entry : amendmentSet_->votes())
+    {
+        NetClock::time_point majorityTime = {};
+
+        bool const hasValMajority = (amendmentSet_->votes(entry.first) >= amendmentSet_->mThreshold);
+
+        {
+            auto const it = oldMajorities.find(entry.first);
+            if (it != oldMajorities.end())
+                majorityTime = it->second;
+        }
+
+        if (oldAmendments.count(entry.first) != 0)
+        {
+            JLOG(j.debug()) << entry.first << ": amendment already enabled";
+        }
+        else if (hasValMajority && (majorityTime == NetClock::time_point{}))
+        {
+            // Ledger says no majority, validators say yes
+            JLOG(j.debug()) << entry.first << ": amendment got majority";
+            // This amendment now has a majority
+            newMajorities.push_back(STObject(sfMajority));
+            auto& object = newMajorities.back();
+            object.emplace_back(STHash256(sfAmendment, entry.first));
+            object.emplace_back(STUInt32(sfCloseTime, base().parentCloseTime().time_since_epoch().count()));
+            if (!app.getAmendmentTable().isSupported(entry.first))
+            {
+                JLOG(j.warn()) << "Unsupported amendment " << entry.first << " received a majority.";
+            }
+        }
+        else if (!hasValMajority &&
+            (majorityTime != NetClock::time_point{}))
+        {
+            // Ledger says majority, validators say no
+            JLOG(j.debug()) << entry.first << ": amendment lost majority";
+            for (auto it = newMajorities.begin(); it != newMajorities.end(); it++)
+            {
+                if (it->getFieldH256(sfAmendment) == entry.first)
+                {
+                    newMajorities.erase(it);
+                    break;
+                }
+            }
+        }
+        else if ((majorityTime != NetClock::time_point{}) &&
+            ((majorityTime + app.getAmendmentTable().majorityTime()) <= base().parentCloseTime()))
+        {
+            // Enable amendment
+            newAmendments.push_back(entry.first);
+
+            app.getAmendmentTable().enable(entry.first);
+
+            if (!app.getAmendmentTable().isSupported(entry.first))
+            {
+                JLOG (j.error()) << "Unsupported amendment " << entry.first << " activated: server blocked.";
+                app.getOPs().setAmendmentBlocked();
+            }
+        }
+    }
+
+    if (newAmendments.empty())
+    {
+        sle->makeFieldAbsent(sfAmendments);
+    }
+    else
+    {
+        sle->setFieldV256(sfAmendments, newAmendments);
+    }
+
+    if (newMajorities.empty())
+    {
+        sle->makeFieldAbsent(sfMajorities);
+    }
+    else
+    {
+        sle->setFieldArray(sfMajorities, newMajorities);
+    }
+
+    if (base().exists(k2))
+    {
+        rawReplace(sle);
+    }
+    else
+    {
+        rawInsert(sle);
+    }
 }
 
 } // ripple

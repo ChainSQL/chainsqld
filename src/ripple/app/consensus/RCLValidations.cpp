@@ -246,7 +246,10 @@ handleNewValidation(Application& app,
     {
         using AddOutcome = RCLValidations::AddOutcome;
 
-        AddOutcome const res = validations.add(*pubKey, val);
+        AddOutcome const res =
+            shardMgr.myShardRole() == ShardManager::SHARD
+            ? validations.add(*pubKey, val, true)
+            : validations.add(*pubKey, val, false);
 
         // This is a duplicate validation
         //if (res == AddOutcome::repeat)

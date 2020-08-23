@@ -21,6 +21,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
+#include <ripple/app/misc/AmendmentTable.h>
 #include <ripple/app/consensus/RCLConsensus.h>
 #include <ripple/app/consensus/RCLValidations.h>
 #include <peersafe/app/shard/FinalLedger.h>
@@ -280,6 +281,15 @@ void Node::validate(MicroLedger const& microLedger)
 
     if (fee > feeTrack.getLoadBase())
         v->setFieldU32(sfLoadFee, fee);
+
+    if (((microLedger.seq() + 1) % 256) == 0)
+    // next ledger is flag ledger
+    {
+        // Suggest fee changes and new features
+        std::shared_ptr<Ledger const> ledger = app_.getLedgerMaster().getLedgerBySeq(mPreSeq);
+        adaptor.feeVote_->doValidation(ledger, *v);
+        app_.getAmendmentTable().doValidation(ledger, *v);
+    }
 
     auto const signingHash = v->sign(adaptor.valSecret_);
     v->setTrusted();
@@ -640,6 +650,7 @@ void Node::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
     auto buildLCL = std::make_shared<Ledger>(*app_.getLedgerMaster().getLedgerBySeq(mPreSeq), ledgerInfo.closeTime);
 	finalLedger->apply(*buildLCL);
 
+    buildLCL->updateAmendments(app_);
     buildLCL->updateSkipList();
 
     // Write the final version of all modified SHAMap

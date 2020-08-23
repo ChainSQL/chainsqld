@@ -208,6 +208,14 @@ public:
         std::shared_ptr<SLE>& sle,
         beast::Journal& j,
         Application& app) const;
+    void applyFeeSetting(
+        OpenView& to,
+        std::shared_ptr<SLE>& sle,
+        beast::Journal& j) const;
+    void applyAmendments(
+        OpenView& to,
+        std::shared_ptr<SLE>& sle,
+        beast::Journal& j) const;
     void applyCommons(
         OpenView& to,
         detail::RawStateTable::Action action,

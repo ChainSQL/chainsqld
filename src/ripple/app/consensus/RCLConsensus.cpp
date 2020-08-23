@@ -466,7 +466,7 @@ RCLConsensus::Adaptor::onCollectFinish(
 	ConsensusMode mode) -> Result
 {
 	const bool wrongLCL = mode == ConsensusMode::wrongLedger;
-	//const bool proposing = mode == ConsensusMode::proposing;
+	const bool proposing = mode == ConsensusMode::proposing;
 
 	notify(protocol::neCLOSING_LEDGER, ledger, !wrongLCL);
 
@@ -528,24 +528,24 @@ RCLConsensus::Adaptor::onCollectFinish(
 	}
 
 	// Add pseudo-transactions to the set
-    //if (shardMgr.myShardRole() == ShardManager::SHARD)
-    //{
-    //    if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
-    //        ((prevLedger->info().seq % 256) == 0))
-    //    {
-    //        // previous ledger was flag ledger, add pseudo-transactions
-    //        auto const validations =
-    //            app_.getValidations().getTrustedForLedger(
-    //                prevLedger->info().parentHash);
+    if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
+        ((prevLedger->info().seq % 256) == 0))
+    {
+        // previous ledger was flag ledger, add pseudo-transactions
+        auto const validations =
+            app_.getShardManager().myShardRole() == ShardManager::SHARD
+            ? app_.getValidations().getTrustedForLedgerSeq(
+                prevLedger->seq() - 1)
+            : app_.getValidations().getTrustedForLedger(
+                prevLedger->info().parentHash);
 
-    //        if (validations.size() >= app_.validators().quorum())
-    //        {
-    //            feeVote_->doVoting(prevLedger, validations, initialSet);
-    //            app_.getAmendmentTable().doVoting(
-    //                prevLedger, validations, initialSet);
-    //        }
-    //    }
-    //}
+        if (validations.size() >= app_.validators().quorum())
+        {
+            feeVote_->doVoting(prevLedger, validations, initialSet);
+            app_.getAmendmentTable().doVoting(
+                prevLedger, validations, initialSet);
+        }
+    }
 
 	// Now we need an immutable snapshot
 	initialSet = initialSet->snapShot(false);
@@ -1059,6 +1059,13 @@ applyMicroLedgers(
     //boost::ignore_unused(app);
     auto j = app.journal("ApplyMicroLedger");
 
+    // flag ledger
+    if (((view.info().seq - 1) % 256) == 0)
+    {
+        view.initFeeShardVoting(app);
+        view.initAmendmentSet();
+    }
+
     for (auto const& microLedger : microLedgers)
     {
         microLedger->apply(view, j, app);
@@ -1188,7 +1195,12 @@ RCLConsensus::Adaptor::buildLCL(
                 });
             JLOG(j_.info()) << "applyTransactions time used:" << utcTime() - timeStart << "ms";
 
-            app_.getShardManager().committee().buildMicroLedger(accum, canonicalTXSet);
+            auto const& microLedger0 = app_.getShardManager().committee().buildMicroLedger(accum, canonicalTXSet);
+
+            if (((accum.info().seq - 1) % 256) == 0)
+            {
+                accum.finalVote(microLedger0, app_);
+            }
         }
         // Update fee computations.
         app_.getTxQ().processClosedLedger(app_, accum, roundTime > 5s);
@@ -1261,13 +1273,13 @@ RCLConsensus::Adaptor::validate(RCLCxLedger const& ledger, bool proposing)
     if (fee > feeTrack.getLoadBase())
         v->setFieldU32(sfLoadFee, fee);
 
-    //if (((ledger.seq() + 1) % 256) == 0)
-    //// next ledger is flag ledger
-    //{
-    //    // Suggest fee changes and new features
-    //    feeVote_->doValidation(ledger.ledger_, *v);
-    //    app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
-    //}
+    if (((ledger.seq() + 1) % 256) == 0)
+    // next ledger is flag ledger
+    {
+        // Suggest fee changes and new features
+        feeVote_->doValidation(ledger.ledger_, *v);
+        app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
+    }
 
     auto const signingHash = v->sign(valSecret_);
     v->setTrusted();

@@ -27,66 +27,6 @@
 
 namespace ripple {
 
-namespace detail {
-
-template <typename Integer>
-class VotableInteger
-{
-private:
-    using map_type = std::map <Integer, int>;
-    Integer mCurrent;   // The current setting
-    Integer mTarget;    // The setting we want
-    map_type mVoteMap;
-
-public:
-    VotableInteger (Integer current, Integer target)
-        : mCurrent (current)
-        , mTarget (target)
-    {
-        // Add our vote
-        ++mVoteMap[mTarget];
-    }
-
-    void
-    addVote(Integer vote)
-    {
-        ++mVoteMap[vote];
-    }
-
-    void
-    noVote()
-    {
-        addVote (mCurrent);
-    }
-
-    Integer
-    getVotes() const;
-};
-
-template <class Integer>
-Integer
-VotableInteger <Integer>::getVotes() const
-{
-    Integer ourVote = mCurrent;
-    int weight = 0;
-    for (auto const& e : mVoteMap)
-    {
-        // Take most voted value between current and target, inclusive
-        if ((e.first <= std::max (mTarget, mCurrent)) &&
-                (e.first >= std::min (mTarget, mCurrent)) &&
-                (e.second > weight))
-        {
-            ourVote = e.first;
-            weight = e.second;
-        }
-    }
-
-    return ourVote;
-}
-
-}
-
-//------------------------------------------------------------------------------
 
 class FeeVoteImpl : public FeeVote
 {
@@ -173,7 +113,6 @@ FeeVoteImpl::doVoting(
     detail::VotableInteger<std::uint32_t> incReserveVote (
         lastClosedLedger->fees().increment, target_.owner_reserve);
 
-
 	detail::VotableInteger<std::uint64_t> dropsPerByteVote(
 		lastClosedLedger->fees().drops_per_byte, target_.drops_per_byte);
 
@@ -208,7 +147,6 @@ FeeVoteImpl::doVoting(
                 incReserveVote.noVote ();
             }
 
-
 			if (val->isFieldPresent(sfDropsPerByte))
 			{
 				dropsPerByteVote.addVote(val->getFieldU64(sfDropsPerByte));
@@ -217,8 +155,6 @@ FeeVoteImpl::doVoting(
 			{
 				dropsPerByteVote.noVote();
 			}
-
-
         }
     }
 
@@ -232,45 +168,39 @@ FeeVoteImpl::doVoting(
 
     auto const seq = lastClosedLedger->info().seq + 1;
 
-    // add transactions to our position
-    if ((baseFee != lastClosedLedger->fees().base) ||
-            (baseReserve != lastClosedLedger->fees().accountReserve(0)) ||
-            (incReserve != lastClosedLedger->fees().increment) ||
-		   (dropsPerByte != lastClosedLedger->fees().drops_per_byte) )
+    // Always add psudeo transaction for submit our current fee voting
+    JLOG(journal_.warn()) <<
+        "We are voting for a fee change: " << baseFee <<
+        "/" << baseReserve <<
+        "/" << incReserve    <<
+		"/" << dropsPerByte;
+
+    STTx feeTx (ttFEE,
+        [seq,baseFee,baseReserve,incReserve,feeUnits, dropsPerByte](auto& obj)
+        {
+            obj[sfAccount] = AccountID();
+            obj[sfLedgerSequence] = seq;
+            obj[sfBaseFee] = baseFee;
+            obj[sfReserveBase] = baseReserve;
+            obj[sfReserveIncrement] = incReserve;
+            obj[sfReferenceFeeUnits] = feeUnits;
+			obj[sfDropsPerByte] = dropsPerByte;
+        });
+
+    uint256 txID = feeTx.getTransactionID ();
+
+    JLOG(journal_.warn()) <<
+        "Vote: " << txID;
+
+    Serializer s;
+    feeTx.add (s);
+
+    auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
+
+    if (!initialPosition->addGiveItem (tItem, true, false))
     {
         JLOG(journal_.warn()) <<
-            "We are voting for a fee change: " << baseFee <<
-            "/" << baseReserve <<
-            "/" << incReserve    <<
-			"/" << dropsPerByte;
-
-        STTx feeTx (ttFEE,
-            [seq,baseFee,baseReserve,incReserve,feeUnits, dropsPerByte](auto& obj)
-            {
-                obj[sfAccount] = AccountID();
-                obj[sfLedgerSequence] = seq;
-                obj[sfBaseFee] = baseFee;
-                obj[sfReserveBase] = baseReserve;
-                obj[sfReserveIncrement] = incReserve;
-                obj[sfReferenceFeeUnits] = feeUnits;
-				obj[sfDropsPerByte] = dropsPerByte;
-            });
-
-        uint256 txID = feeTx.getTransactionID ();
-
-        JLOG(journal_.warn()) <<
-            "Vote: " << txID;
-
-        Serializer s;
-        feeTx.add (s);
-
-        auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
-
-        if (!initialPosition->addGiveItem (tItem, true, false))
-        {
-            JLOG(journal_.warn()) <<
-                "Ledger already had fee change";
-        }
+            "Ledger already had fee change";
     }
 }
 

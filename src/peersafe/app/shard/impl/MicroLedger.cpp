@@ -22,6 +22,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/Keylet.h>
 #include <ripple/ledger/TxMeta.h>
+#include <ripple/app/misc/AmendmentTable.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/shard/ShardManager.h>
@@ -282,6 +283,8 @@ void MicroLedger::addStateDelta(ReadView const& base, uint256 key, Action action
     case ltESCROW:
     case ltTABLELIST:
     case ltCHAINID:
+    case ltFEE_SETTINGS:
+    case ltAMENDMENTS:
         break;
     default:
         // Don't case other type of sle.
@@ -830,6 +833,54 @@ void MicroLedger::applyTableList(
     //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
 }
 
+void MicroLedger::applyFeeSetting(
+    OpenView& to,
+    std::shared_ptr<SLE>& sle,
+    beast::Journal& j) const
+{
+    //auto st = utcTimeUs();
+
+    auto feeShardVoting = to.getFeeShardVoting();
+
+    assert(feeShardVoting);
+    if (feeShardVoting)
+    {
+        feeShardVoting->baseFeeVote.addVote(sle->getFieldU64(sfBaseFee));
+        //sle->getFieldU32(sfReferenceFeeUnits);
+        feeShardVoting->baseReserveVote.addVote(sle->getFieldU32(sfReserveBase));
+        feeShardVoting->incReserveVote.addVote(sle->getFieldU32(sfReserveIncrement));
+        feeShardVoting->dropsPerByteVote.addVote(sle->getFieldU64(sfDropsPerByte));
+    }
+
+    //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
+}
+
+void MicroLedger::applyAmendments(
+    OpenView& to,
+    std::shared_ptr<SLE>& sle,
+    beast::Journal& j) const
+{
+    //auto st = utcTimeUs();
+
+    auto amendmentSet = to.getAmendmentSet();
+
+    assert(amendmentSet);
+    if (amendmentSet && sle->isFieldPresent(sfMajorities))
+    {
+        std::set<uint256> ballot;
+        const STArray &majorities = sle->getFieldArray(sfMajorities);
+        for (auto const& majority : majorities)
+        {
+            ballot.insert(majority.getFieldH256(sfAmendment));
+        }
+
+        amendmentSet->tally(ballot);
+    }
+
+    //JLOG(j.info()) << "apply table list time used : " << utcTimeUs() - st << "us";
+}
+
+
 void MicroLedger::applyCommons(
     OpenView& to,
     detail::RawStateTable::Action action,
@@ -891,6 +942,12 @@ void MicroLedger::apply(OpenView& to, beast::Journal& j, Application& app) const
             break;
         case ltTABLELIST:
             applyTableList(to, stateDelta.second.first, sle, j, app);
+            break;
+        case ltFEE_SETTINGS:
+            applyFeeSetting(to, sle, j);
+            break;
+        case ltAMENDMENTS:
+            applyAmendments(to, sle, j);
             break;
         case ltCHAINID:
             applyCommons(to, stateDelta.second.first, sle, j);

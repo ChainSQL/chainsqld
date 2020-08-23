@@ -68,6 +68,12 @@ public:
         return *view_;
     }
 
+    OpenView&
+    base()
+    {
+        return base_;
+    }
+
     /** Sets the DeliveredAmount field in the metadata */
     void
     deliver (STAmount const& amount)

@@ -20,10 +20,12 @@
 #ifndef RIPPLE_LEDGER_OPENVIEW_H_INCLUDED
 #define RIPPLE_LEDGER_OPENVIEW_H_INCLUDED
 
+#include <ripple/app/main/Application.h>
 #include <ripple/ledger/RawView.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/detail/RawStateTable.h>
 #include <ripple/app/misc/CanonicalTXSet.h>
+#include <ripple/app/misc/FeeVote.h>
 #include <ripple/basics/qalloc.h>
 #include <ripple/protocol/ZXCAmount.h>
 #include <functional>
@@ -31,6 +33,7 @@
 
 namespace ripple {
 
+struct AmendmentSet;
 class MicroLedger;
 class FinalLedger;
 
@@ -71,6 +74,8 @@ private:
     detail::RawStateTable items_;
     std::shared_ptr<void const> hold_;
     bool open_ = true;
+    std::shared_ptr<FeeShardVoting> feeShardVoting_;
+    std::shared_ptr<AmendmentSet> amendmentSet_;
 
 public:
     OpenView() = delete;
@@ -249,6 +254,21 @@ public:
             const& txn, std::shared_ptr<
                 Serializer const>
                     const& metaData) override;
+
+    void initFeeShardVoting(Application& app);
+    void initAmendmentSet();
+
+    inline std::shared_ptr<FeeShardVoting> getFeeShardVoting()
+    {
+        return feeShardVoting_;
+    }
+
+    inline std::shared_ptr<AmendmentSet> getAmendmentSet()
+    {
+        return amendmentSet_;
+    }
+
+    void finalVote(MicroLedger const& microLedger0, Application& app);
 };
 
 } // ripple

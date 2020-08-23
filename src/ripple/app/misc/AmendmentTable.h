@@ -55,6 +55,10 @@ public:
      */
     virtual bool hasUnsupportedEnabled () = 0;
 
+    virtual int majorityFraction() const = 0;
+
+    virtual std::chrono::seconds majorityTime() const = 0;
+
     virtual Json::Value getJson (int) = 0;
 
     /** Returns a Json::objectValue. */
@@ -156,6 +160,46 @@ public:
         }
     }
 
+};
+
+/** The status of all amendments requested in a given window. */
+struct AmendmentSet
+{
+private:
+    // How many yes votes each amendment received
+    hash_map<uint256, int> votes_;
+
+public:
+    // number of trusted validations
+    int mTrustedValidations = 0;
+
+    // number of votes needed
+    int mThreshold = 0;
+
+    AmendmentSet() = default;
+
+    inline hash_map<uint256, int> const& votes()
+    {
+        return votes_;
+    }
+
+    void tally(std::set<uint256> const& amendments)
+    {
+        ++mTrustedValidations;
+
+        for (auto const& amendment : amendments)
+            ++votes_[amendment];
+    }
+
+    int votes(uint256 const& amendment) const
+    {
+        auto const& it = votes_.find(amendment);
+
+        if (it == votes_.end())
+            return 0;
+
+        return it->second;
+    }
 };
 
 std::unique_ptr<AmendmentTable> make_AmendmentTable (

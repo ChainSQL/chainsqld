@@ -310,6 +310,7 @@ void Lookup::saveLedger(LedgerIndex seq)
 
     JLOG(journal_.info()) << "Aplly state and tx map time used:" << utcTime() - timeStart << "ms";
 
+    ledgerToSave->updateAmendments(app_);
 	ledgerToSave->updateSkipList();
 	{
 		// Write the final version of all modified SHAMap

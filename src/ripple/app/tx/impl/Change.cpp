@@ -25,6 +25,7 @@
 #include <ripple/basics/Log.h>
 #include <ripple/protocol/Indexes.h>
 #include <ripple/protocol/TxFlags.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 
@@ -175,22 +176,6 @@ Change::applyAmendment()
                 " received a majority.";
         }
     }
-    else if (!lostMajority)
-    {
-        // No flags, enable amendment
-        amendments.push_back (amendment);
-        amendmentObject->setFieldV256 (sfAmendments, amendments);
-
-        ctx_.app.getAmendmentTable ().enable (amendment);
-
-        if (!ctx_.app.getAmendmentTable ().isSupported (amendment))
-        {
-            JLOG (j_.error()) <<
-                "Unsupported amendment " << amendment <<
-                " activated: server blocked.";
-            ctx_.app.getOPs ().setAmendmentBlocked ();
-        }
-    }
 
     if (newMajorities.empty ())
         amendmentObject->makeFieldAbsent (sfMajorities);
@@ -215,17 +200,17 @@ Change::applyFee()
         view().insert(feeObject);
     }
 
-    feeObject->setFieldU64 (
-        sfBaseFee, ctx_.tx.getFieldU64 (sfBaseFee));
-    feeObject->setFieldU32 (
-        sfReferenceFeeUnits, ctx_.tx.getFieldU32 (sfReferenceFeeUnits));
-    feeObject->setFieldU32 (
-        sfReserveBase, ctx_.tx.getFieldU32 (sfReserveBase));
-    feeObject->setFieldU32 (
-        sfReserveIncrement, ctx_.tx.getFieldU32 (sfReserveIncrement));
+    feeObject->setFieldU64(
+        sfBaseFee, ctx_.tx.getFieldU64(sfBaseFee));
+    feeObject->setFieldU32(
+        sfReferenceFeeUnits, ctx_.tx.getFieldU32(sfReferenceFeeUnits));
+    feeObject->setFieldU32(
+        sfReserveBase, ctx_.tx.getFieldU32(sfReserveBase));
+    feeObject->setFieldU32(
+        sfReserveIncrement, ctx_.tx.getFieldU32(sfReserveIncrement));
 
-	feeObject->setFieldU64(
-		sfDropsPerByte, ctx_.tx.getFieldU64(sfDropsPerByte));
+    feeObject->setFieldU64(
+        sfDropsPerByte, ctx_.tx.getFieldU64(sfDropsPerByte));
 
     view().update (feeObject);
 

@@ -301,6 +301,8 @@ public:
 
     void updateSkipList ();
 
+    void updateAmendments(Application& app);
+
     bool walkLedger (beast::Journal j) const;
 
     bool assertSane (beast::Journal ledgerJ) const;

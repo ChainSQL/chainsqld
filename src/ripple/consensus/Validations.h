@@ -190,6 +190,7 @@ class Validations
         decay_result_t<decltype (&Validation::unwrap)(Validation)>;
     using LedgerID =
         decay_result_t<decltype (&Validation::ledgerID)(Validation)>;
+    using LedgerSeq = decay_result_t<decltype (&Validation::seq)(Validation)>;
     using NodeKey = decay_result_t<decltype (&Validation::key)(Validation)>;
     using NodeID = decay_result_t<decltype (&Validation::nodeID)(Validation)>;
 
@@ -221,6 +222,13 @@ class Validations
         std::chrono::steady_clock,
         beast::uhash<>>
         byLedger_;
+
+    beast::aged_unordered_map<
+        LedgerSeq,
+        hash_map<NodeKey, Validation>,
+        std::chrono::steady_clock,
+        std::hash<std::uint32_t>>
+        byLedgerSeq_;
 
     //! Parameters to determine validation staleness
     ValidationParms const parms_;
@@ -304,6 +312,22 @@ private:
         }
     }
 
+    template <class Pre, class F>
+    void
+    byLedgerSeq(LedgerSeq const& ledgerSeq, Pre&& pre, F&& f)
+    {
+        ScopedLock lock{ mutex_ };
+        auto it = byLedgerSeq_.find(ledgerSeq);
+        if (it != byLedgerSeq_.end())
+        {
+            // Update set time since it is being used
+            byLedgerSeq_.touch(it);
+            pre(it->second.size());
+            for (auto const& keyVal : it->second)
+                f(keyVal.first, keyVal.second);
+        }
+    }
+
 public:
     /** Constructor
 
@@ -318,7 +342,7 @@ public:
         beast::abstract_clock<std::chrono::steady_clock>& c,
         beast::Journal j,
         Ts&&... ts)
-        : byLedger_(c), parms_(p), j_(j), stalePolicy_(std::forward<Ts>(ts)...)
+        : byLedger_(c), byLedgerSeq_(c), parms_(p), j_(j), stalePolicy_(std::forward<Ts>(ts)...)
     {
     }
 
@@ -365,13 +389,14 @@ public:
 
     */
     AddOutcome
-    add(NodeKey const& key, Validation const& val)
+    add(NodeKey const& key, Validation const& val, bool addByLedgerSeq = false)
     {
         NetClock::time_point t = stalePolicy_.now();
         if (!isCurrent(parms_, t, val.signTime(), val.seenTime()))
             return AddOutcome::stale;
 
         LedgerID const& id = val.ledgerID();
+        LedgerSeq const seq = val.seq();
 
         // This is only seated if a validation became stale
         boost::optional<Validation> maybeStaleValidation;
@@ -380,6 +405,11 @@ public:
 
         {
             ScopedLock lock{mutex_};
+
+            if (addByLedgerSeq)
+            {
+                byLedgerSeq_[seq].emplace(key, val);
+            }
 
             auto const ret = byLedger_[id].emplace(key, val);
 
@@ -483,6 +513,7 @@ public:
     {
         ScopedLock lock{mutex_};
         beast::expire(byLedger_, parms_.validationSET_EXPIRES);
+        beast::expire(byLedgerSeq_, parms_.validationSET_EXPIRES);
     }
 
     /** Distribution of current trusted validations
@@ -650,6 +681,21 @@ public:
                 if (v.trusted())
                     res.emplace_back(v.unwrap());
             });
+
+        return res;
+    }
+
+    std::vector<WrappedValidationType>
+    getTrustedForLedgerSeq(LedgerSeq const& ledgerSeq)
+    {
+        std::vector<WrappedValidationType> res;
+        byLedgerSeq(
+            ledgerSeq,
+            [&](std::size_t numValidations) { res.reserve(numValidations); },
+            [&](NodeKey const&, Validation const& v) {
+            if (v.trusted())
+                res.emplace_back(v.unwrap());
+        });
 
         return res;
     }

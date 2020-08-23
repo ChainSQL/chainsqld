@@ -94,40 +94,6 @@ struct AmendmentState
     AmendmentState () = default;
 };
 
-/** The status of all amendments requested in a given window. */
-struct AmendmentSet
-{
-private:
-    // How many yes votes each amendment received
-    hash_map<uint256, int> votes_;
-
-public:
-    // number of trusted validations
-    int mTrustedValidations = 0;
-
-    // number of votes needed
-    int mThreshold = 0;
-
-    AmendmentSet () = default;
-
-    void tally (std::set<uint256> const& amendments)
-    {
-        ++mTrustedValidations;
-
-        for (auto const& amendment : amendments)
-            ++votes_[amendment];
-    }
-
-    int votes (uint256 const& amendment) const
-    {
-        auto const& it = votes_.find (amendment);
-
-        if (it == votes_.end())
-            return 0;
-
-        return it->second;
-    }
-};
 
 //------------------------------------------------------------------------------
 
@@ -191,6 +157,10 @@ public:
     bool isSupported (uint256 const& amendment) override;
 
     bool hasUnsupportedEnabled () override;
+
+    int majorityFraction() const override;
+
+    std::chrono::seconds majorityTime() const override;
 
     Json::Value getJson (int) override;
     Json::Value getJson (uint256 const&) override;
@@ -393,6 +363,16 @@ AmendmentTableImpl::hasUnsupportedEnabled ()
     return unsupportedEnabled_;
 }
 
+int AmendmentTableImpl::majorityFraction() const
+{
+    return majorityFraction_;
+}
+
+std::chrono::seconds AmendmentTableImpl::majorityTime() const
+{
+    return majorityTime_;
+}
+
 std::vector <uint256>
 AmendmentTableImpl::doValidation (
     std::set<uint256> const& enabled)
@@ -509,15 +489,6 @@ AmendmentTableImpl::doVoting (
                 JLOG (j_.debug()) <<
                     entry.first << ": amendment lost majority";
                 actions[entry.first] = tfLostMajority;
-            }
-            else if ((majorityTime != NetClock::time_point{}) &&
-                ((majorityTime + majorityTime_) <= closeTime) &&
-                ! entry.second.vetoed)
-            {
-                // Ledger says majority held
-                JLOG (j_.debug()) <<
-                    entry.first << ": amendment majority held";
-                actions[entry.first] = 0;
             }
         }
 

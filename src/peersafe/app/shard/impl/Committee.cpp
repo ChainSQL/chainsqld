@@ -364,7 +364,8 @@ auto Committee::canonicalMicroLedgers()
     return std::move(v);
 }
 
-void Committee::buildMicroLedger(OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet)
+MicroLedger const&
+Committee::buildMicroLedger(OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet)
 {
     auto microLedger = std::make_shared<MicroLedger>(
         app_.getOPs().getConsensus().getView(),
@@ -377,6 +378,8 @@ void Committee::buildMicroLedger(OpenView const& view, std::shared_ptr<Canonical
     mMicroLedger = *microLedger;
 
     mValidMicroLedgers.emplace(0, microLedger);
+
+    return *mMicroLedger;
 }
 
 void Committee::buildFinalLedger(OpenView const& view, std::shared_ptr<Ledger const> ledger)

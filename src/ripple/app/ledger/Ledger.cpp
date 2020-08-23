@@ -31,6 +31,7 @@
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/misc/AmendmentTable.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
@@ -819,6 +820,24 @@ void Ledger::updateSkipList ()
         rawInsert(sle);
     else
         rawReplace(sle);
+}
+
+void Ledger::updateAmendments(Application& app)
+{
+    if (((info_.seq - 1) % 256) != 0)
+    {
+        return;
+    }
+
+    auto const k = keylet::amendments();
+    auto sle = peek(k);
+
+    STVector256 amendments = sle->getFieldV256(sfAmendments);
+
+    for (auto const& amendment : amendments)
+    {
+        app.getAmendmentTable().enable(amendment);
+    }
 }
 
 static bool saveValidatedLedger(

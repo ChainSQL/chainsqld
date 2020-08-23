@@ -39,6 +39,8 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/shard/ShardManager.h>
+#include <peersafe/protocol/ContractDefines.h>
 
 
 namespace ripple {
