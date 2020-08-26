@@ -188,8 +188,7 @@ public:
                 "Incorrect 1751 seed");
         }
 
-		std::string secret = "sp5fghtJtpUorTwvof1NpDXAzNwf5";
-		//auto publicKey = RippleAddress::getPublicKey(secret);
+		std::string secret = "xxFnCAD6PRFuesaHmosETp744nx4Z";
         auto publicKey = ripple::getPublicKey(secret);
 		if (publicKey)
 		{
@@ -197,7 +196,6 @@ public:
 			//auto passBlob = RippleAddress::getPasswordCipher(strCopy(str), *publicKey);
             auto passBlob = ripple::encrypt(strCopy(str), *publicKey);
 			auto strPass = strHex(passBlob);
-			//auto secretKey = RippleAddress::getSecretKey(secret);
             auto secretKey = ripple::getSecretKey(secret);
 
 			//auto plainText = RippleAddress::decryptPassword(passBlob, *secretKey);

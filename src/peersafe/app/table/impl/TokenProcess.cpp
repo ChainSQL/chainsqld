@@ -12,7 +12,8 @@ namespace ripple {
 	bool TokenProcess::setSymmertryKey(const Blob& cipherBlob, const SecretKey& secret_key)
 	{
 		GmEncrypt* hEObj = GmEncryptObj::getInstance();
-		if (nullptr == hEObj)
+		// if (nullptr == hEObj)
+        if (secret_key.keyTypeInt == hEObj->comKey)
 		{
 			passBlob = ripple::decrypt(cipherBlob, secret_key);
 			if (passBlob.size() > 0)
@@ -71,7 +72,7 @@ namespace ripple {
 		{
 			Blob rawDecrypted;
 			GmEncrypt* hEObj = GmEncryptObj::getInstance();
-			if (nullptr == hEObj)
+            if (secretkeyType == hEObj->comKey)
 			{
 				rawDecrypted = RippleAddress::decryptAES(passBlob, rawEncrept);
 			}

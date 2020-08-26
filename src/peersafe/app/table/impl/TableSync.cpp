@@ -760,18 +760,19 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
     }
     else accountID = *oAccountID;
 	
-    GmEncrypt* hEObj = GmEncryptObj::getInstance();
-    if (hEObj != NULL)
+    // if (hEObj != NULL)
+    if (!secret.empty() && ('p' == secret[0] || secret.size() <= 3))
     {
         try
         { 
-            if(!user.empty() && !secret.empty())
+            if(!user.empty())
             {
 				auto pUser = ripple::parseBase58<AccountID>(user);
 				if (boost::none == pUser)
 					return std::make_pair(pItem, tablename + ":user invalid!");
 				userAccountId = *pUser;
                 
+                GmEncrypt* hEObj = GmEncryptObj::getInstance();
 				if (secret.size() <= 3)
 				{
 					//add a try catch to judge whether the index is a number.
@@ -804,22 +805,19 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
             return std::make_pair(pItem, sLastErr_);
         }
     }
-    else
+    else if (!secret.empty() && 'x' == secret[0])
     {
         try
-        {   
-            if (secret.size() > 0)
+        {
+            //create secret key from given secret
+            auto seed = parseBase58<Seed>(secret);
+            if (seed)
             {
-                //create secret key from given secret
-                auto seed = parseBase58<Seed>(secret);
-                if (seed)
-                {
-                    KeyType keyType = KeyType::secp256k1;
-                    std::pair<PublicKey, SecretKey> key_pair = generateKeyPair(keyType, *seed);
-                    public_key = key_pair.first;
-                    secret_key = key_pair.second;
-                    userAccountId = calcAccountID(public_key);
-                }
+                KeyType keyType = KeyType::secp256k1;
+                std::pair<PublicKey, SecretKey> key_pair = generateKeyPair(keyType, *seed);
+                public_key = key_pair.first;
+                secret_key = key_pair.second;
+                userAccountId = calcAccountID(public_key);
             }
         }
         catch (std::exception const& e)

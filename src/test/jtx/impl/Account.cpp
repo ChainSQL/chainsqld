@@ -31,8 +31,9 @@ std::unordered_map<
     std::pair<std::string, KeyType>,
         Account, beast::uhash<>> Account::cache_;
 
+//according your test to choose gmalg or secp256k1
 Account const Account::master("master",
-    generateKeyPair(GmEncryptObj::getInstance() ? KeyType::gmalg : KeyType::secp256k1,
+    generateKeyPair(KeyType::secp256k1,
         generateSeed("masterpassphrase")), Account::privateCtorTag{});
 
 Account::Account(std::string name,

@@ -450,11 +450,12 @@ int run (int argc, char** argv)
         thresh = kTrace;
 
     auto logs = std::make_unique<Logs>(thresh);
-#ifdef GM_ALG_PROCESS
+#ifdef HARD_GM
 	setDebugLogSink(logs->makeSink(
 		"Debug", beast::severities::kTrace));
 	auto GmEncryptJournal = logs->journal("GmEncrypt");
 	GmEncrypt* hEObj = GmEncryptObj::getInstance();
+    // need judge the chainsqld.cfg validation_seed whether is a number,if number and must have card
 	if (nullptr == hEObj)
 	{
 		JLOG(GmEncryptJournal.info()) << "No EncryptCard! Please Check!";
@@ -464,7 +465,7 @@ int run (int argc, char** argv)
     // No arguments. Run server.
     if (!vm.count ("parameters"))
     {
-#ifdef GM_ALG_PROCESS
+#ifdef HARD_GM
 		if (config->GM_SELF_CHECK)
 		{
 			bool checkResult = false;
@@ -497,13 +498,13 @@ int run (int argc, char** argv)
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))
             return -1;
 
-        if (HaveSustain() && !vm.count ("fg") && !config->standalone())
-        {
-            auto const ret = DoSustain ();
+        // if (HaveSustain() && !vm.count ("fg") && !config->standalone())
+        // {
+        //     auto const ret = DoSustain ();
 
-            if (!ret.empty ())
-                std::cerr << "Watchdog: " << ret << std::endl;
-        }
+        //     if (!ret.empty ())
+        //         std::cerr << "Watchdog: " << ret << std::endl;
+        // }
 
         if (vm.count ("debug"))
         {
