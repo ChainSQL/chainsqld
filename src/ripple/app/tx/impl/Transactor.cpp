@@ -360,6 +360,37 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 	return tesSUCCESS;
 }
 
+TER Transactor::checkShard(PreclaimContext const& ctx)
+{
+    if (ctx.app.getShardManager().myShardRole() & ShardManager::LOOKUP)
+    {
+        return tesSUCCESS;
+    }
+
+    Lookup& lookup = ctx.app.getShardManager().lookup();
+
+    std::uint32_t shardID = lookup.getShardIndex(ctx.tx.getAccountID(sfAccount));
+
+    if (ctx.tx.isChainSQLContractType() &&
+        ctx.tx.getFieldU16(sfContractOpType) == MessageCall)
+    {
+        std::uint32_t dstShardID = lookup.getShardIndex(ctx.tx.getAccountID(sfContractAddress));
+        if (shardID != dstShardID)
+        {
+            shardID = 0;
+        }
+    }
+
+    if (shardID != ctx.app.getShardManager().node().shardID())
+    {
+        JLOG(ctx.j.warn()) <<
+            "checkShard: Inconformity shard " << shardID;
+        return tefINCONFORMITY_SHARD;
+    }
+
+    return tesSUCCESS;
+}
+
 void Transactor::setExtraMsg(std::string msg)
 {
 	mDetailMsg = msg;

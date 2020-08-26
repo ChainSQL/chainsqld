@@ -123,6 +123,10 @@ public:
 
     static
     TER
+    checkShard(PreclaimContext const& ctx);
+
+    static
+    TER
     checkFee (PreclaimContext const& ctx, std::uint64_t baseFee);
 
     static
