@@ -21,7 +21,6 @@ namespace ripple {
 
 	const std::chrono::seconds INIT_TIME{ 90 };
 
-
 	const std::chrono::milliseconds CONSENSUS_TIMEOUT{ 3000 };
 
 	const unsigned TimeOutCountRollback = 5;
