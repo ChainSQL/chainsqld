@@ -316,6 +316,8 @@ private:
 
 	unsigned timeOut_;
 
+	unsigned initTime_;
+
 	bool omitEmpty_ = true;
 
 	bool bWaitingInit_ = true;
@@ -354,6 +356,7 @@ PConsensus<Adaptor>::PConsensus(
     maxBlockTime_   = MaxBlockTime;
     maxTxsInLedger_ = MaxTxsInLedger;
 	timeOut_ = CONSENSUS_TIMEOUT.count();
+	initTime_ = INIT_TIME.count();
     omitEmpty_ = true;
 
     if (adaptor.app_.config().exists(SECTION_PCONSENSUS))
@@ -373,6 +376,12 @@ PConsensus<Adaptor>::PConsensus(
         if (timeOut_ <= maxBlockTime_)
         {
             timeOut_ = maxBlockTime_ * 2;
+        }
+
+        initTime_ = loadConfig("init_time");
+        if (!initTime_)
+        {
+             initTime_ = INIT_TIME.count();
         }
 
         {
@@ -1127,7 +1136,7 @@ bool PConsensus<Adaptor>::waitingForInit()
 {
 	// This code is for initialization,wait 60 seconds for loading ledger before real start-mode.
 	if (previousLedger_.seq() == GENESIS_LEDGER_INDEX && 
-		timeSinceOpen()/1000 < 3 * previousLedger_.closeTimeResolution().count())
+		timeSinceOpen()/1000 < initTime_)
 	{
 		return true;
 	}
