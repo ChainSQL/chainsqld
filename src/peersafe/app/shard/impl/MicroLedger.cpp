@@ -301,12 +301,36 @@ bool MicroLedger::sameShard(std::shared_ptr<SLE>& sle, Application& app) const
     {
     case ltACCOUNT_ROOT:
     case ltESCROW:
+    {
         sAccountID = sle->getAccountID(sfAccount);
         break;
+    }
     case ltRIPPLE_STATE:
-    case ltTABLELIST:
-        sAccountID = sle->getAccountID(sfOwner);
+    {
+        STAmount limit = sle->getFieldAmount(sfLowLimit);
+        if (limit > zero)
+        {
+            sAccountID = limit.getIssuer();
+        }
+        else
+        {
+            sAccountID = sle->getFieldAmount(sfHighLimit).getIssuer();
+        }
         break;
+    }
+    case ltTABLELIST:
+    {
+        sAccountID = sle->getAccountID(sfOwner);
+        auto &aTableEntries = sle->peekFieldArray(sfTableEntries);
+        if (aTableEntries.size() == 0)
+        {
+            // Owner drops all tables.
+            return true;
+        }
+        auto& users = aTableEntries[0].peekFieldArray(sfUsers);
+        sAccountID = users[0].getAccountID(sfUser);
+        break;
+    }
     default:
         return false;
     }
@@ -449,7 +473,7 @@ void MicroLedger::applyAccountRoot(
             //}
             else
             {
-                LogicError("RawStateTable::ltACCOUNT_ROOT replace action conflact with insert action");
+                LogicError("RawStateTable::ltACCOUNT_ROOT replace action conflict with insert action");
             }
         }
         else
@@ -570,7 +594,7 @@ void MicroLedger::applyRippleState(
             }
             else
             {
-                LogicError("RawStateTable::ltRIPPLE_STATE replace action conflact with insert action");
+                LogicError("RawStateTable::ltRIPPLE_STATE replace action conflict with insert action");
             }
         }
         else
@@ -718,7 +742,7 @@ void MicroLedger::applyTableList(
     {
         if (to.items().items().count(sle->key()))
         {
-            LogicError("RawStateTable::ltTABLELIST insert action conflact with other action");
+            LogicError("RawStateTable::ltTABLELIST insert action conflict with other action");
         }
         else
         {

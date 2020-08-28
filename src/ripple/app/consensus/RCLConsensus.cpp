@@ -1072,9 +1072,9 @@ applyMicroLedgers(
     }
 }
 
-void PreExecTransactions(Application& app, OpenView const& view, RCLTxSet& cSet, unsigned maxTxsInLedger)
+void preExecTransactions(Application& app, OpenView const& view, RCLTxSet& cSet, unsigned maxTxsInLedger)
 {
-    auto j = app.journal("PreExecTransactions");
+    auto j = app.journal("preExecTransactions");
 
     auto current_ = app.openLedger().current();
     app.openLedger().replace(view);
@@ -1184,8 +1184,8 @@ RCLConsensus::Adaptor::buildLCL(
             if (set.map_->isMutable())
             {
                 timeStart = utcTime();
-                PreExecTransactions(app_, accum, (RCLTxSet&)(*(&set)), maxTxsInLedger_);
-                JLOG(j_.info()) << "PreExecTransactions time used:" << utcTime() - timeStart << "ms";
+                preExecTransactions(app_, accum, (RCLTxSet&)(*(&set)), maxTxsInLedger_);
+                JLOG(j_.info()) << "preExecTransactions time used:" << utcTime() - timeStart << "ms";
             }
 
             timeStart = utcTime();

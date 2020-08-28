@@ -383,10 +383,10 @@ void LedgerMaster::processHeldTransactions()
     }
     else if (app_.getShardManager().myShardRole() == ShardManager::SHARD)
     {
-        auto vec = mHeldTransactions.prune();
-        for (auto const& it : *vec)
+        auto const&& vec = mHeldTransactions.prune();
+        for (auto const& sttx : vec)
         {
-            auto tx = std::make_shared<Transaction>(it, reason, app_);
+            auto tx = std::make_shared<Transaction>(sttx, reason, app_);
             app_.getOPs().doTransactionAsync(tx, false, NetworkOPs::FailHard::no);
         }
     }

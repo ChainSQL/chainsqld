@@ -208,9 +208,9 @@ message TMProposeSet
     optional uint32 hops                = 12;   // Number of hops traveled
 	optional uint32 curLedgerSeq		= 13; 	// Current ledger sequence
 	optional uint64 view				= 14; 	// Current view
-    required uint32 shardID             = 15;
-    required bytes microLedgerSetHash   = 16;
-    required bool emptyLedgers          = 17;
+    optional uint32 shardID             = 15;
+    optional bytes microLedgerSetHash   = 16;
+    optional bool emptyLedgers          = 17;
 }
 
 enum TxSetStatus

@@ -124,14 +124,14 @@ CanonicalTXSet::prune(AccountID const& account,
     return result;
 }
 
-std::shared_ptr<std::vector<std::shared_ptr<STTx const>>>
+std::vector<std::shared_ptr<STTx const>>
 CanonicalTXSet::prune()
 {
-    auto result = std::make_shared<std::vector<std::shared_ptr<STTx const>>>();
+    std::vector<std::shared_ptr<STTx const>> result;
 
     for (auto it = begin(); it != end();)
     {
-        result->push_back(it->second);
+        result.push_back(it->second);
 
         // Find next account's first transaction
         AccountID account = it->second->getAccountID(sfAccount);
@@ -141,7 +141,7 @@ CanonicalTXSet::prune()
         it = mMap.upper_bound(keyHigh);
     }
 
-    return result;
+    return std::move(result);
 }
 
 CanonicalTXSet::iterator CanonicalTXSet::erase (iterator const& it)

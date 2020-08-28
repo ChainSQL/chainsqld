@@ -63,7 +63,7 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfRootIndex,           SOE_REQUIRED)
             << SOElement (sfIndexNext,           SOE_OPTIONAL)
             << SOElement (sfIndexPrevious,       SOE_OPTIONAL)
-            << SOElement (sfOwnerNode,           SOE_REQUIRED)  // for compute delta
+            << SOElement (sfOwnerNode,           SOE_OPTIONAL)  // for compute delta
             ;
 
     add ("Offer", ltOFFER)
@@ -80,7 +80,6 @@ LedgerFormats::LedgerFormats ()
             ;
 
     add ("RippleState", ltRIPPLE_STATE)
-            << SOElement (sfOwner,               SOE_REQUIRED)
             << SOElement (sfBalance,             SOE_REQUIRED)
             << SOElement (sfLowLimit,            SOE_REQUIRED)
             << SOElement (sfHighLimit,           SOE_REQUIRED)
@@ -165,7 +164,6 @@ LedgerFormats::LedgerFormats ()
             ;
 
     add("TableList", ltTABLELIST)
-        << SOElement(sfOwner, SOE_REQUIRED)
         << SOElement(sfOwnerNode, SOE_REQUIRED)
         << SOElement(sfPreviousTxnID, SOE_REQUIRED)
         << SOElement(sfPreviousTxnLgrSeq, SOE_REQUIRED)

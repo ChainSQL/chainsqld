@@ -166,28 +166,7 @@ void Lookup::saveLedgerThread()
 
             // Should acquire.
             auto const& hash = getFinalLedger(saveOrAcquire + 1)->parentHash();
-            if (auto const& ledger = app_.getInboundLedgers().acquire(
-                hash, 0, InboundLedger::fcCURRENT))
-            {
-                JLOG(journal_.warn()) << "Acquired " << saveOrAcquire << ", try local successed";
-                if (mInitialized)
-                {
-                    app_.getLedgerMaster().accept(ledger);
-                }
-                else
-                {
-                    mInitialized = true;
-                    app_.getLedgerMaster().setFullLedger(ledger, false, true);
-                    app_.getLedgerMaster().setPubLedger(ledger);
-                    app_.getLedgerMaster().tryAdvance();
-                    if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
-                    {
-                        app_.getTableSync().TryTableSync();
-                    }
-                }
-                app_.getOPs().switchLastClosedLedger(ledger);
-            }
-            else
+            if (!doAcquire(hash, saveOrAcquire))
             {
                 break;
             }
@@ -300,13 +279,11 @@ void Lookup::saveLedger(LedgerIndex seq)
 
     std::uint32_t shardCount = finalLedger->getMicroLedgerCount() - 1;
 
-    for (uint32 shardIndex = 1; shardIndex <= shardCount; shardIndex++)
+    for (uint32 shardIndex = 0; shardIndex <= shardCount; shardIndex++)
     {
         std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
         microLedger->apply(*ledgerToSave);
     }
-    std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, 0);
-    microLedger->apply(*ledgerToSave);
 
     JLOG(journal_.info()) << "Aplly state and tx map time used:" << utcTime() - timeStart << "ms";
 
@@ -355,6 +332,35 @@ void Lookup::saveLedger(LedgerIndex seq)
     }
 
     //app_.getLedgerMaster().setClosedLedger(ledgerToSave);
+}
+
+bool Lookup::doAcquire(LedgerHash const& hash, LedgerIndex seq)
+{
+    if (auto const& ledger = app_.getInboundLedgers().acquire(
+        hash, 0, InboundLedger::fcCURRENT))
+    {
+        JLOG(journal_.warn()) << "Acquired " << seq << ", try local successed";
+        if (mInitialized)
+        {
+            app_.getLedgerMaster().accept(ledger);
+        }
+        else
+        {
+            mInitialized = true;
+            app_.getLedgerMaster().setFullLedger(ledger, false, true);
+            app_.getLedgerMaster().setPubLedger(ledger);
+            app_.getLedgerMaster().tryAdvance();
+            if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
+            {
+                app_.getTableSync().TryTableSync();
+            }
+        }
+        app_.getOPs().switchLastClosedLedger(ledger);
+
+        return true;
+    }
+
+    return false;
 }
 
 // ------------------------------------------------------------------------------
@@ -461,27 +467,7 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
                 << app_.getLedgerMaster().getValidLedgerIndex()
                 << ", trying to acquiring  " << seq;
 
-            auto hash = committeeVC->preHash();
-            if (auto const& ledger = app_.getInboundLedgers().acquire(
-                hash, 0, InboundLedger::fcCURRENT))
-            {
-                if (mInitialized)
-                {
-                    app_.getLedgerMaster().accept(ledger);
-                }
-                else
-                {
-                    mInitialized = true;
-                    app_.getLedgerMaster().setFullLedger(ledger, false, true);
-                    app_.getLedgerMaster().setPubLedger(ledger);
-                    app_.getLedgerMaster().tryAdvance();
-                    if (app_.getShardManager().myShardRole() & ShardManager::SYNC)
-                    {
-                        app_.getTableSync().TryTableSync();
-                    }
-                }
-                app_.getOPs().switchLastClosedLedger(ledger);
-            }
+            doAcquire(committeeVC->preHash(), seq);
         }
     }
     else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())
@@ -543,34 +529,34 @@ void Lookup::distributeMessage(std::shared_ptr<Message> const &m, bool forceBroa
     }
     JLOG(journal_.info()) << "myPubkeyIndex:" << myPubkeyIndex << " myGroupIndex:" << myGroupIndex;
 
-    std::vector<std::shared_ptr<Peer>> LookupPeers;
+    std::vector<std::shared_ptr<Peer>> lookupPeers;
     {
         std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
         for (auto w : mPeers)
         {
             if (auto p = w.lock())
             {
-                LookupPeers.emplace_back(std::move(p));
+                lookupPeers.emplace_back(std::move(p));
             }
         }
     }
 
-    std::sort(LookupPeers.begin(), LookupPeers.end(),
+    std::sort(lookupPeers.begin(), lookupPeers.end(),
         [](std::shared_ptr<Peer const> const& p1, std::shared_ptr<Peer const> const& p2) {
         return publicKeyComp(p1->getNodePublic(), p2->getNodePublic());
     });
 
-    auto dstGroupMemberCounts = LookupPeers.size() / groupCounts;
-    if (LookupPeers.size() % groupCounts > 0)
+    auto dstGroupMemberCounts = lookupPeers.size() / groupCounts;
+    if (lookupPeers.size() % groupCounts > 0)
     {
         dstGroupMemberCounts++;
     }
 
     auto myDstPeersLo = myGroupIndex * dstGroupMemberCounts;
     auto myDstPeersHi = myDstPeersLo + dstGroupMemberCounts;
-    if (myDstPeersHi > LookupPeers.size())
+    if (myDstPeersHi > lookupPeers.size())
     {
-        myDstPeersHi = LookupPeers.size();
+        myDstPeersHi = lookupPeers.size();
     }
     JLOG(journal_.info()) << "myDstPeersLo:" << myDstPeersLo << " myDstPeersHi:" << myDstPeersHi;
 
@@ -578,9 +564,9 @@ void Lookup::distributeMessage(std::shared_ptr<Message> const &m, bool forceBroa
     {
         JLOG(journal_.info()) << "distributeMessage "
             << TrafficCount::getName(static_cast<TrafficCount::category>(m->getCategory()))
-            << " to lookup[" << LookupPeers[i]->getShardRole() << ":" << LookupPeers[i]->getShardIndex()
-            << ":" << LookupPeers[i]->getRemoteAddress() << "]";
-        LookupPeers[i]->send(m);
+            << " to lookup[" << lookupPeers[i]->getShardRole() << ":" << lookupPeers[i]->getShardIndex()
+            << ":" << lookupPeers[i]->getRemoteAddress() << "]";
+        lookupPeers[i]->send(m);
     }
 }
 

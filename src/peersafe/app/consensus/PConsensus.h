@@ -124,6 +124,9 @@ public:
     void
         gotMicroLedgerSet(NetClock::time_point const& now, uint256 const& microLedgerSet);
 
+    void
+        backupDoPropose(std::pair<uint256, bool> const& position2);
+
 	void
 		simulate(
 			NetClock::time_point const& now,
@@ -673,6 +676,10 @@ PConsensus<Adaptor>::peerViewChange(ViewChange const& change)
 		{
 			prevLedgerID_ = change.prevHash();
 			view_ = change.toView() - 1;
+            // Vaidatoion key in shard peers are microLedger hash.
+            // checkLedger don't work correctly, and it's not necessary,
+            // because shard peers checked ledger on committee view change
+            // and finalLedger.
             if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
             {
                 checkLedger();
@@ -852,13 +859,15 @@ PConsensus<Adaptor>::gotTxSet(
 	}
 	if (setID_ && microLedgerSetID_ &&
         *setID_ == id &&
+        // microLedgerSetID_ is always zero in the shard, and in the committee is not zero.
         (*microLedgerSetID_ == beast::zero || acquired_.find(*microLedgerSetID_) != acquired_.end()))
 	{
 		if (!isLeader(adaptor_.valPublic_))
 		{
             if (!result_)
             {
-                auto set = txSet.map_->snapShot(false);
+                JLOG(j_.info()) << "gotTxSet time elapsed since receive set_id from leader:"
+                    << (now - rawCloseTimes_.self).count();
 
                 std::pair<uint256, bool> position2 = std::make_pair(beast::zero, true);
                 if (*microLedgerSetID_ != beast::zero && acquired_.find(*microLedgerSetID_) != acquired_.end())
@@ -867,46 +876,8 @@ PConsensus<Adaptor>::gotTxSet(
                     position2.second = emptyLedgers_;
                 }
 
-                //this place has a txSet copy,what's the time it costs?
-                result_.emplace(Result{
-                    std::move(set),
-                    RCLCxPeerPos::Proposal{
-                        prevLedgerID_,
-                        previousLedger_.seq() + 1,
-                        view_,
-                        RCLCxPeerPos::Proposal::seqJoin,
-                        id,
-                        position2,
-                        closeTime_,
-                        now,
-                        adaptor_.nodeID(),
-                        adaptor_.app_.getShardManager().node().shardID()}
-                });
+                backupDoPropose(position2);
 
-				if (phase_ == ConsensusPhase::open)
-					phase_ = ConsensusPhase::establish;
-
-				JLOG(j_.info()) << "gotTxSet time elapsed since receive set_id from leader:" << (now - rawCloseTimes_.self).count();
-
-				if (adaptor_.validating())
-				{
-                    txSetVoted_[*setID_].insert(adaptor_.valPublic_);
-					adaptor_.propose(result_->position);
-
-                    JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
-				}
-
-                if (!emptyLedgers_)
-                {
-                    result_->set.map_->setMutable();
-                }
-
-                result_->roundTime.reset(proposalTime_);
-
-				for (auto pub : txSetVoted_[*setID_])
-				{
-					JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
-				}
 				JLOG(j_.info()) << "We are not leader gotTxSet,and proposing position:" << id;
 			}
 		}
@@ -947,48 +918,11 @@ PConsensus<Adaptor>::gotMicroLedgerSet(
         if (!adaptor_.app_.getShardManager().committee().isLeader()
             && !result_)
         {
-            auto set = acquired_.find(*setID_)->second.map_->snapShot(false);
-            //this place has a txSet copy,what's the time it costs?
-            result_.emplace(Result{
-                std::move(set),
-                RCLCxPeerPos::Proposal{
-                    prevLedgerID_,
-                    previousLedger_.seq() + 1,
-                    view_,
-                    RCLCxPeerPos::Proposal::seqJoin,
-                    *setID_,
-                    std::make_pair(microLedgerSet, emptyLedgers_),
-                    closeTime_,
-                    now,
-                    adaptor_.nodeID(),
-                    adaptor_.app_.getShardManager().node().shardID()}
-            });
-
-            if (phase_ == ConsensusPhase::open)
-                phase_ = ConsensusPhase::establish;
-
-            JLOG(j_.info()) << "gotMicroLedgerSet time elapsed since receive set_id from leader: " 
+            JLOG(j_.info()) << "gotMicroLedgerSet time elapsed since receive set_id from leader: "
                 << (now - rawCloseTimes_.self).count();
 
-            if (adaptor_.validating())
-            {
-                txSetVoted_[*setID_].insert(adaptor_.valPublic_);
-                adaptor_.propose(result_->position);
+            backupDoPropose(std::make_pair(microLedgerSet, emptyLedgers_));
 
-                JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
-            }
-
-            if (!emptyLedgers_)
-            {
-                result_->set.map_->setMutable();
-            }
-
-            result_->roundTime.reset(proposalTime_);
-
-            for (auto pub : txSetVoted_[*setID_])
-            {
-                JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
-            }
             JLOG(j_.info()) << "We are not leader gotMicroLedgerSet, and proposing position:" << *setID_;
         }
 
@@ -1002,6 +936,52 @@ PConsensus<Adaptor>::gotMicroLedgerSet(
 
 template <class Adaptor>
 void
+PConsensus<Adaptor>::backupDoPropose(std::pair<uint256, bool> const& position2)
+{
+    auto set = acquired_.find(*setID_)->second.map_->snapShot(false);
+    //this place has a txSet copy,what's the time it costs?
+    result_.emplace(Result{
+        std::move(set),
+        RCLCxPeerPos::Proposal{
+        prevLedgerID_,
+        previousLedger_.seq() + 1,
+        view_,
+        RCLCxPeerPos::Proposal::seqJoin,
+        *setID_,
+        position2,
+        closeTime_,
+        now_,
+        adaptor_.nodeID(),
+        adaptor_.app_.getShardManager().node().shardID() }
+    });
+
+    if (phase_ == ConsensusPhase::open)
+        phase_ = ConsensusPhase::establish;
+
+    if (adaptor_.validating())
+    {
+        txSetVoted_[*setID_].insert(adaptor_.valPublic_);
+        adaptor_.propose(result_->position);
+
+        JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
+    }
+
+    if (!emptyLedgers_)
+    {
+        result_->set.map_->setMutable();
+    }
+
+    result_->roundTime.reset(proposalTime_);
+
+    for (auto pub : txSetVoted_[*setID_])
+    {
+        JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
+    }
+}
+
+
+template <class Adaptor>
+void
 PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 {
     JLOG(j_.debug()) << "timerEntry phase:" << to_string(phase_);
@@ -1011,6 +991,10 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 
 	// Check we are on the proper ledger (this may change phase_)
     // TODO for shard peers
+    // Vaidatoion key in shard peers are microLedger hash.
+    // checkLedger don't work correctly, and it's not necessary,
+    // because shard peers checked ledger on committee view change
+    // and finalLedger.
     if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
 	    checkLedger();
 
@@ -1326,8 +1310,8 @@ bool PConsensus<Adaptor>::waitingForInit()
 {
 	// This code is for initialization,wait 60 seconds for loading ledger before real start-mode.
 	if (previousLedger_.seq() == GENESIS_LEDGER_INDEX && 
-		//timeSinceOpen()/1000 < 3 * previousLedger_.closeTimeResolution().count())
-        timeSinceOpen() / 1000 < previousLedger_.closeTimeResolution().count() / 3) // for debug
+		timeSinceOpen()/1000 < 3 * previousLedger_.closeTimeResolution().count())
+        //timeSinceOpen() / 1000 < previousLedger_.closeTimeResolution().count() / 3) // for debug
 	{
 		return true;
 	}

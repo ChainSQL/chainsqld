@@ -223,6 +223,9 @@ class Validations
         beast::uhash<>>
         byLedger_;
 
+    //! Recent validations from nodes, indexed by ledger Sequence
+    // Add for shard nodes. Validations' key in shard is micro ledger
+    // hash, cannot be used to retrieve.
     beast::aged_unordered_map<
         LedgerSeq,
         hash_map<NodeKey, Validation>,

@@ -572,7 +572,6 @@ namespace ripple {
 			if (!result)
 				return tecDIR_FULL;
 			(*tablesle)[sfOwnerNode] = *result;
-            (*tablesle)[sfOwner] = accountId;
 
 			STArray tablentries;
             STObject obj = generateTableEntry(tx, view);

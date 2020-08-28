@@ -1231,8 +1231,6 @@ trustCreate (ApplyView& view,
     // ONLY: Create ripple balance.
     sleRippleState->setFieldAmount (sfBalance, bSetHigh ? -saBalance : saBalance);
 
-    sleRippleState->setAccountID(sfOwner, uSrcAccountID);
-
     view.creditHook (uSrcAccountID,
         uDstAccountID, saBalance, saBalance.zeroed());
 
@@ -1928,7 +1926,6 @@ void dirAdd(OpenView &to,
 
         sleNode->setFieldH256(sfRootIndex, dir);
         sleNode->setAccountID(sfOwner, sle->getAccountID(sfOwner));
-        sleNode->setFieldU64(sfOwnerNode, uNodeCur);
 
         if (sle->isFieldPresent(sfIndexNext))
         {

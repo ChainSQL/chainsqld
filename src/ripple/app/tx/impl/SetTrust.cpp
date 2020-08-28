@@ -67,7 +67,7 @@ SetTrust::preflight (PreflightContext const& ctx)
         return temBAD_CURRENCY;
     }
 
-    if (saLimitAmount < zero)
+    if (saLimitAmount <= zero)
     {
         JLOG(j.trace()) <<
             "Malformed transaction: Negative credit limit.";

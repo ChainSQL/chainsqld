@@ -143,6 +143,7 @@ public:
     bool checkLedger(LedgerIndex seq);
     uint32 resetMetaIndex(LedgerIndex seq);
 	void saveLedger(LedgerIndex seq);
+    bool doAcquire(LedgerHash const& hash, LedgerIndex seq);
 
 	void setTimer();
 	void onTimer(boost::system::error_code const& ec);

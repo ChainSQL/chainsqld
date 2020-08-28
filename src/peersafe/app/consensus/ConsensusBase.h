@@ -56,6 +56,9 @@ namespace ripple {
         virtual void
             gotMicroLedgerSet(NetClock::time_point const& now, uint256 const& txSet) {}
 
+        virtual void
+            backupDoPropose(std::pair<uint256, bool> const& position2) {}
+
 		virtual void
 			simulate(
 				NetClock::time_point const& now,
