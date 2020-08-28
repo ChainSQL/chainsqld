@@ -10,24 +10,30 @@ namespace ripple {
     class hashBaseObj
     {
     public:
-        static hashBase *getHasher(CommonKey::HashType hashType = CommonKey::hashTypeGlobal)
+        static hashBase* getHasher(CommonKey::HashType hashType = CommonKey::hashTypeGlobal)
         {
             switch (hashType)
             {
             case CommonKey::sm3:
             {
                 GmEncrypt *hEObj = GmEncryptObj::getInstance();
-                GmEncrypt::SM3Hash objSM3(hEObj);
-                return &objSM3;
+                // GmEncrypt::SM3Hash objSM3(hEObj);
+                GmEncrypt::SM3Hash* pObjSM3 = new GmEncrypt::SM3Hash(hEObj);
+                return pObjSM3;
             }
             case CommonKey::sha:
             default:
             {
-                sha512_half_hasher h;
-                return &h;
+                sha512_half_hasher* ph = new sha512_half_hasher();
+                return ph;
             }
             }
         };
+
+        static void releaseHasher(hashBase* phasher)
+        {
+            delete phasher;
+        }
     };
 }
 

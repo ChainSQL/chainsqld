@@ -51,7 +51,9 @@ getInsertIndex(AccountID const& account)
 	using beast::hash_append;
     hash_append(*phasher, spaceInsertLimit);
     hash_append(*phasher, account);
-    return static_cast<uint256>(*phasher);
+    uint256 hashRet = static_cast<uint256>(*phasher);
+    hashBaseObj::releaseHasher(phasher);
+    return hashRet;
 	// hash_append(h, spaceInsertLimit);
 	// hash_append(h, account);
 	// return static_cast<uint256>(h);
@@ -92,12 +94,15 @@ getTableIndex(AccountID const& account)
     // hash_append(h, spaceTableList);
     // hash_append(h, account);
     // return static_cast<uint256>(h);
-    
+
     hashBase* phasher = hashBaseObj::getHasher();
 	using beast::hash_append;
     hash_append(*phasher, spaceTableList);
     hash_append(*phasher, account);
-    return static_cast<uint256>(*phasher);
+    // return static_cast<uint256>(*phasher);
+    uint256 hashRet = static_cast<uint256>(*phasher);
+    hashBaseObj::releaseHasher(phasher);
+    return hashRet;
 }
 
 uint256
@@ -382,7 +387,9 @@ escrow (AccountID const& source, std::uint32_t seq)
     hash_append(*phasher, std::uint16_t(spaceEscrow));
     hash_append(*phasher, source);
     hash_append(*phasher, seq);
-    return { ltESCROW, static_cast<uint256>(*phasher) };
+    uint256 hashRet = static_cast<uint256>(*phasher);
+    hashBaseObj::releaseHasher(phasher);
+    return { ltESCROW, hashRet };
 }
 
 Keylet
@@ -402,7 +409,9 @@ payChan (AccountID const& source, AccountID const& dst, std::uint32_t seq)
     hash_append(*phasher, source);
     hash_append(*phasher, dst);
     hash_append(*phasher, seq);
-    return { ltPAYCHAN, static_cast<uint256>(*phasher) };
+    uint256 hashRet = static_cast<uint256>(*phasher);
+    hashBaseObj::releaseHasher(phasher);
+    return { ltPAYCHAN, hashRet };
 }
 
 } // keylet

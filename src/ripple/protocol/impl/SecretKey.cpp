@@ -187,6 +187,7 @@ sign (PublicKey const& pk,
         hashBase* phasher = hashBaseObj::getHasher(CommonKey::sha);
         (*phasher)(m.data(), m.size());
         auto const digest = sha512_half_hasher::result_type(*phasher);
+        hashBaseObj::releaseHasher(phasher);
 
         secp256k1_ecdsa_signature sig_imp;
         if(secp256k1_ecdsa_sign(

@@ -374,12 +374,13 @@ SHAMapInnerNode::updateHash()
         // nh = static_cast<typename
         //     sha512_half_hasher::result_type>(h);
 
-        hashBase* hasher = hashBaseObj::getHasher();
+        hashBase* phasher = hashBaseObj::getHasher();
         using beast::hash_append;
-        hash_append(*hasher, HashPrefix::innerNode);
+        hash_append(*phasher, HashPrefix::innerNode);
         for(auto const& hh : mHashes)
-            hash_append(*hasher, hh);
-        nh = static_cast<typename sha512_half_hasher::result_type>(*hasher);
+            hash_append(*phasher, hh);
+        nh = static_cast<typename sha512_half_hasher::result_type>(*phasher);
+        hashBaseObj::releaseHasher(phasher);
     }
     if (nh == mHash.as_uint256())
         return false;

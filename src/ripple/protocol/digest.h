@@ -265,37 +265,6 @@ sha512_deprecatedMSVCWorkaround()
 }
 #endif
 
-// template <class T> T getHasher(CommonKey::HashType hashType)
-// {
-//     if(CommonKey::sm3 == hashType)
-//     {
-//         GmEncrypt* hEObj = GmEncryptObj::getInstance();
-//         GmEncrypt::SM3Hash objSM3(hEObj);//refObjSM3 = hEObj->getSM3Obj();
-//         objSM3.SM3HashInitFun();
-//         return objSM3;
-//     }
-
-//     sha512_half_hasher h;
-//     return h;
-// }
-
-// template <typename T>
-// sha512_half_hasher::result_type getHashResult(T& obj, CommonKey::HashType hashType)
-// {
-//     if (CommonKey::sm3 == hashType)
-//     {
-//         unsigned char hashData[128] = {0};
-//         int HashDataLen = 0;
-//         obj.SM3HashFinalFun(hashData, (unsigned long*)&HashDataLen);
-
-//         sha512_half_hasher::result_type result;
-//         std::copy(hashData, hashData + 32, result.begin());
-//         return result;
-//     }
-//     return static_cast<typename
-//             sha512_half_hasher::result_type>(obj);
-// }
-
 // sha512Half can use different hasher like sm3/sha
 // the function name is old, but don't want to change.
 /** Returns the SHA512-Half of a series of objects. */

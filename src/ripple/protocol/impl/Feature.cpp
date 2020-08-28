@@ -48,6 +48,7 @@ detail::FeatureCollections::FeatureCollections()
         hashBase* phasher = hashBaseObj::getHasher();
         (*phasher)(name, std::strlen (name));
         auto const f = static_cast<uint256>(*phasher);
+        hashBaseObj::releaseHasher(phasher);
 
         features.push_back(f);
         featureToIndex[f] = i;
