@@ -32,7 +32,7 @@ namespace ripple {
 		static std::string syncTables() { return "sync_tables"; }
 		static std::string autoSync() { return "auto_sync"; }
 		static std::string pressSwitch() { return "press_switch"; }
-        static std::string gmSwitch() { return "gm_switch"; }
+        static std::string cryptoAlg() { return "crypto_alg"; }
 	};
 
 	// VFALCO TODO Rename and replace these macros with variables.
@@ -46,6 +46,7 @@ namespace ripple {
 #define SECTION_FEE_OWNER_RESERVE       "fee_owner_reserve"
 #define SECTION_FETCH_DEPTH             "fetch_depth"
 #define SECTION_GM_SELF_CHECK           "gm_self_check"
+#define SECTION_HASH_ALG                "hash_alg"
 #define SECTION_LEDGER_HISTORY          "ledger_history"
 #define SECTION_INSIGHT                 "insight"
 #define SECTION_IPS                     "ips"

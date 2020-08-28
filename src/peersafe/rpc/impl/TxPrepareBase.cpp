@@ -681,7 +681,7 @@ Json::Value TxPrepareBase::prepareForAssign()
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
         SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
-		tempSecKey.keyTypeInt = hEObj->gmOutCard;
+		tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
         secret_key = tempSecKey;
     }
 	std::pair<Blob, Json::Value> result = getPassBlob(ownerID_, ownerID_, secret_key);
@@ -721,7 +721,7 @@ Json::Value TxPrepareBase::prepareForOperating()
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
         SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
-		tempSecKey.keyTypeInt = hEObj->gmOutCard;
+		tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
         secret_key = tempSecKey;
     }
 

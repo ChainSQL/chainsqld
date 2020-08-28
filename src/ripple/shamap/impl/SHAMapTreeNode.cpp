@@ -26,6 +26,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <peersafe/crypto/hashBaseObj.h>
 #include <mutex>
 
 #include <openssl/sha.h>
@@ -365,13 +366,20 @@ SHAMapInnerNode::updateHash()
     uint256 nh;
     if (mIsBranch != 0)
     {
-        sha512_half_hasher h;
+        // sha512_half_hasher h;
+        // using beast::hash_append;
+        // hash_append(h, HashPrefix::innerNode);
+        // for(auto const& hh : mHashes)
+        //     hash_append(h, hh);
+        // nh = static_cast<typename
+        //     sha512_half_hasher::result_type>(h);
+
+        hashBase* hasher = hashBaseObj::getHasher();
         using beast::hash_append;
-        hash_append(h, HashPrefix::innerNode);
+        hash_append(*hasher, HashPrefix::innerNode);
         for(auto const& hh : mHashes)
-            hash_append(h, hh);
-        nh = static_cast<typename
-            sha512_half_hasher::result_type>(h);
+            hash_append(*hasher, hh);
+        nh = static_cast<typename sha512_half_hasher::result_type>(*hasher);
     }
     if (nh == mHash.as_uint256())
         return false;

@@ -27,6 +27,7 @@
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <ripple/protocol/CommonKey.h>
 #include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <beast/core/string.hpp>
 #include <boost/algorithm/string.hpp>
@@ -326,20 +327,26 @@ void Config::loadFromString (std::string const& fileContents)
 
 	}
 
-    auto gmSwitchSection = section( ConfigSection::gmSwitch() );
-    if (!gmSwitchSection.empty ())
+    auto cryptoAlgSection = section( ConfigSection::cryptoAlg() );
+    if (!cryptoAlgSection.empty ())
     {
-        if(gmSwitchSection.exists("gm_type"))
+        if(cryptoAlgSection.exists("hash_type"))
         {
-            auto gmType = gmSwitchSection.get<std::string>("gm_type");
-            GmEncryptObj::setGmAlgType(GmEncryptObj::fromString(*gmType));
+            auto hashType = cryptoAlgSection.get<std::string>("hash_type");
+            if (!CommonKey::setHashType(*hashType))
+            {
+                Throw<std::runtime_error> ("hash_type is invalid");
+            }
+            // GmEncryptObj::setGmAlgType(GmEncryptObj::fromString(*gmType));
         }
-        if(gmSwitchSection.exists("gm_self_check"))
+        else CommonKey::hashTypeGlobal = CommonKey::sha;
+
+        if(cryptoAlgSection.exists("gm_self_check"))
         {
-            auto gmSelfCheck = gmSwitchSection.get<bool>("gm_self_check");
+            auto gmSelfCheck = cryptoAlgSection.get<bool>("gm_self_check");
             GM_SELF_CHECK = *gmSelfCheck;
         }
-    }	
+    }
 
     // if (getSingleSection(secConfig, SECTION_GM_SELF_CHECK, strTemp, j_))
 	// 	GM_SELF_CHECK = beast::lexicalCastThrow <bool>(strTemp);

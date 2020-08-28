@@ -674,7 +674,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             return{};
         }
 		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-		secretkeyTemp.keyTypeInt = hEObj->gmOutCard;
+		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
         return std::make_pair(PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size())),
 			secretkeyTemp);
     }

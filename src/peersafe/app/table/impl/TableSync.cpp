@@ -782,8 +782,8 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
 					char* temp4Secret = new char[32];
 					memset(temp4Secret, index, 32);
 					SecretKey tempSecKey(Slice(temp4Secret, 32));
-					tempSecKey.encrytCardIndex = index;
-					tempSecKey.keyTypeInt = hEObj->gmInCard;
+					tempSecKey.encrytCardIndex_ = index;
+					tempSecKey.keyTypeInt_ = hEObj->gmInCard;
 					hEObj->getPrivateKeyRight(index);
 					secret_key = tempSecKey;
 					delete[] temp4Secret;
@@ -792,7 +792,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
 				{
 					std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
 					SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
-					tempSecKey.keyTypeInt = hEObj->gmOutCard;
+					tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
 					secret_key = tempSecKey;
 				}
             }

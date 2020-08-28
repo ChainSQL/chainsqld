@@ -334,7 +334,7 @@ verify (PublicKey const& publicKey,
         if (*type == KeyType::secp256k1)
         {
             return verifyDigest (publicKey,
-                sha512Half(m), sig, mustBeFullyCanonical);
+                sha512Half<CommonKey::sha>(m), sig, mustBeFullyCanonical);
         }
         else if (*type == KeyType::ed25519)
         {

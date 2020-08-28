@@ -46,6 +46,7 @@
 #include <test/quiet_reporter.h>
 #include <google/protobuf/stubs/common.h>
 #include <boost/program_options.hpp>
+#include <ripple/protocol/CommonKey.h>
 #include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <peersafe/gmencrypt/GmCheck.h>
 #include <cstdlib>
@@ -176,6 +177,8 @@ void printHelp (const po::options_description& desc)
 		   "     gen_csr <seed> <x509_subject>\n";
 }
 
+KeyType CommonKey::algTypeGlobal = KeyType::unknown;
+CommonKey::HashType CommonKey::hashTypeGlobal = CommonKey::HashType::unknown;
 //------------------------------------------------------------------------------
 
 static int runUnitTests(

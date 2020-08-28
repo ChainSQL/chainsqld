@@ -210,14 +210,15 @@ Ledger::Ledger (
     info_.drops = SYSTEM_CURRENCY_START;
     info_.closeTimeResolution = ledgerDefaultTimeResolution;
 
-    KeyType keyType = KeyType::secp256k1;
-    if (nullptr != GmEncryptObj::getInstance())
-    {
-        keyType = KeyType::gmalg;
-    }
+    // KeyType keyType = KeyType::secp256k1;
+
+    // if (nullptr != GmEncryptObj::getInstance())
+    // {
+    //     keyType = KeyType::gmalg;
+    // }
 
     static auto const id = calcAccountID(
-        generateKeyPair(keyType,
+        generateKeyPair(CommonKey::algTypeGlobal,
             generateSeed("masterpassphrase")).first);
     auto const sle = std::make_shared<SLE>(keylet::account(id));
     sle->setFieldU32 (sfSequence, 1);

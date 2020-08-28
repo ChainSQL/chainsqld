@@ -143,6 +143,7 @@ GmEncrypt::SM3Hash::SM3Hash(GmEncrypt *pEncrypt)
     mutexSM3_.lock();
 #endif
     pGmEncrypt_ = pEncrypt;
+    SM3HashInitFun();
 }
 
 GmEncrypt::SM3Hash::~SM3Hash()
@@ -165,4 +166,15 @@ void GmEncrypt::SM3Hash::SM3HashFinalFun(unsigned char *pHashData, unsigned long
 void GmEncrypt::SM3Hash::operator()(void const* data, std::size_t size) noexcept
 {
     pGmEncrypt_->operator()(hSM3Handle_, data,size);
+}
+
+GmEncrypt::SM3Hash::operator result_type() noexcept
+{
+    unsigned char hashData[128] = {0};
+    int HashDataLen = 0;
+    pGmEncrypt_->SM3HashFinal(hSM3Handle_, hashData, (unsigned long *)&HashDataLen);
+
+    SM3Hash::result_type result;
+    std::copy(hashData, hashData + 32, result.begin());
+    return result;
 }
