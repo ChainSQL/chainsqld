@@ -456,12 +456,12 @@ int run (int argc, char** argv)
 #ifdef HARD_GM
 	setDebugLogSink(logs->makeSink(
 		"Debug", beast::severities::kTrace));
-	auto GmEncryptJournal = logs->journal("GmEncrypt");
+	auto GmCheckJournal = logs->journal("GmCheck");
 	GmEncrypt* hEObj = GmEncryptObj::getInstance();
     // need judge the chainsqld.cfg validation_seed whether is a number,if number and must have card
 	if (nullptr == hEObj)
 	{
-		JLOG(GmEncryptJournal.info()) << "No EncryptCard! Please Check!";
+		JLOG(GmCheckJournal.info()) << "No EncryptCard! Please Check!";
 		return -1;
 	}
 #endif
@@ -478,17 +478,17 @@ int run (int argc, char** argv)
 				checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
 				if (checkResult)
 				{
-					JLOG(GmEncryptJournal.info()) << "SM2/SM3/SM4 and random check successful!";
+					JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check successful!";
 				}
 				else
 				{
-					JLOG(GmEncryptJournal.info()) << "SM2/SM3/SM4 and random check failed!";
+					JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check failed!";
 					return -1;
 				}
 			}
 			else
 			{
-				JLOG(GmEncryptJournal.info()) << "Get check obj failed! Please Check!";
+				JLOG(GmCheckJournal.info()) << "Get check obj failed! Please Check!";
 				return -1;
 			}
 		}

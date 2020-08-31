@@ -183,7 +183,13 @@ GMCheck::GMCheck(beast::Journal gmCheckJournal):gmCheckJournal_(gmCheckJournal)
 
 void GMCheck::gmStand2Cipher(ripple::Blob &cipher)
 {
-    if ( GmEncryptObj::hEType_ != GmEncryptObj::soft )
+    if ( GmEncryptObj::hEType_ = GmEncryptObj::soft )
+    {
+        ripple::Blob cParam(cipher.end() - 32, cipher.end());
+        cipher.erase(cipher.end() - 32, cipher.end());
+        cipher.insert(cipher.end() - 32, cParam.begin(), cParam.end());
+    }
+    else
     {
         const std::string cipherStart = "20000000";
         const int zeroPaddingNum = 104;
@@ -241,24 +247,23 @@ bool GMCheck::sm2EncryptAndDecryptCheck(unsigned long plainDataLen)
 		memset(deResult, 0, strlen((char*)deResult));
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(hEObj->gmOutCard, 0);
 		std::pair<unsigned char*, int> pri4Decrypt = std::make_pair(tempPri.data(), tempPri.size());
-		// rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, tempCipher.data(), tempCipher.size(), deResult, &deResultLen);
-		// if (rv)
-		// {
-		// 	result = false;
-		// 	return result;
-		// }
-		// if (memcmp(deResult, tempPlain.data(), tempPlain.size()))
-		// {
-		// 	JLOG(gmCheckJournal_.error()) << "SM2 decrypt result comparision failed";
-		// 	result = false;
-		// 	return result;
-		// }
-		// else
-		// {
-		// 	JLOG(gmCheckJournal_.info()) << "SM2 decrypt result comparision successful";
-		// 	//JLOG(journal_.error()) << "SM2 decrypt result comparision successful";
-		// 	result = true;
-		// }
+		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, tempCipher.data(), tempCipher.size(), deResult, &deResultLen);
+		if (rv)
+		{
+			result = false;
+			return result;
+		}
+		if (memcmp(deResult, tempPlain.data(), tempPlain.size()))
+		{
+			JLOG(gmCheckJournal_.error()) << "SM2 decrypt result comparision failed";
+			result = false;
+			return result;
+		}
+		else
+		{
+			JLOG(gmCheckJournal_.info()) << "SM2 decrypt result comparision successful";
+			result = true;
+		}
 
 		unsigned char pCipherBuf[1024] = {0};
 		unsigned long cipherLen = 1024;
@@ -271,7 +276,8 @@ bool GMCheck::sm2EncryptAndDecryptCheck(unsigned long plainDataLen)
 			return result;
 		}
 		memset(deResult, 0, strlen((char*)deResult));
-		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, pCipherBuf, strlen((char*)pCipherBuf), deResult, &deResultLen);
+		// rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, pCipherBuf, strlen((char*)pCipherBuf), deResult, &deResultLen);
+		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, pCipherBuf, cipherLen, deResult, &deResultLen);
 		if (rv)
 		{
 			result = false;
