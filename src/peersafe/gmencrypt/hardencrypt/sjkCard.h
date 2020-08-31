@@ -27,6 +27,7 @@
 
 #define SESSION_KEY_INDEX  1
 #define SESSION_KEY_LEN    16
+#define CARD_CIPHER_LEN 236
 
 const std::string priKeyAccessCode_g = "peersafe";
 
@@ -171,6 +172,7 @@ public:
 private:
     void standPubToSM2Pub(unsigned char* standPub, int standPubLen, ECCrefPublicKey&);
     void standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefPrivateKey&);
+    void c1c2c3ToCardCipher(unsigned char* pCardCipher, usigned long cardCipherLen, unsigned char* pCipher, unsigned long cipherLen);
 	unsigned long SM2ECCExternalSign(
 		std::pair<unsigned char*, int>& pri4Sign,
 		unsigned char *pInData,
