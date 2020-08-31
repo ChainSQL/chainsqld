@@ -41,7 +41,16 @@ TxMeta::TxMeta (uint256 const& txid,
     SerialIter sit (makeSlice(data));
 
     STObject obj(sit, sfMetadata);
-    mResult = obj.getFieldU16 (sfTransactionResult);
+    try
+    {
+        mResult = obj.getFieldU16(sfTransactionResult);
+    }
+    catch (const std::exception&)
+    {
+        //For compatibility with older-consensus versions
+        SF_U8 const sfTransactionResultOld = TypedField<SF_U8::type>(STI_UINT8, 3, "TransactionResult");
+        mResult = obj.getFieldU8(sfTransactionResultOld);
+    }
     mIndex = obj.getFieldU32 (sfTransactionIndex);
     mNodes = * dynamic_cast<STArray*> (&obj.getField (sfAffectedNodes));
 
