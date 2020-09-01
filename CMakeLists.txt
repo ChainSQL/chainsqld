@@ -722,6 +722,7 @@ endforeach()
 foreach(curdir
         app
         basics
+        consensus
         crypto
         gmencrypt
         protocol
