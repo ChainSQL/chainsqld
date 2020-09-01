@@ -474,6 +474,11 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
     {
         app_.getLedgerMaster().onViewChanged(false, app_.getLedgerMaster().getValidatedLedger());
 
+        app_.getOPs().getConsensus().adaptor_.notify(
+            protocol::neACCEPTED_LEDGER,
+            RCLCxLedger{ app_.getLedgerMaster().getValidatedLedger() },
+            true);
+
         mShardManager.checkValidatorLists();
     }
     else
