@@ -1138,8 +1138,16 @@ private:
     {
         Json::Value jvRequest;
 
-        if (jvParams.size ())
-            jvRequest[jss::passphrase]     = jvParams[0u].asString ();
+        
+        if (1 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+        }
+        else if (2 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+            jvRequest[jss::passphrase]     = jvParams[1u].asString ();
+        }
 
         return jvRequest;
     }
@@ -1295,7 +1303,7 @@ public:
             {   "validation_create",    &RPCParser::parseValidationCreate,      0,  1   },
             {   "validation_seed",      &RPCParser::parseValidationSeed,        0,  1   },
             {   "version",              &RPCParser::parseAsIs,                  0,  0   },
-            {   "wallet_propose",       &RPCParser::parseWalletPropose,         0,  1   },
+            {   "wallet_propose",       &RPCParser::parseWalletPropose,         0,  2   },
             {   "wallet_seed",          &RPCParser::parseWalletSeed,            0,  1   },
             {   "internal",             &RPCParser::parseInternal,              1,  -1  },
 
