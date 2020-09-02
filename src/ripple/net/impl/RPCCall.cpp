@@ -1111,9 +1111,17 @@ private:
     Json::Value parseValidationCreate (Json::Value const& jvParams)
     {
         Json::Value jvRequest;
+    
 
-        if (jvParams.size ())
-            jvRequest[jss::secret]     = jvParams[0u].asString ();
+        if (1 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+        }
+        else if (2 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+            jvRequest[jss::secret]     = jvParams[1u].asString ();
+        }
 
         return jvRequest;
     }
@@ -1577,9 +1585,17 @@ rpcClient(std::vector<std::string> const& args,
 			if (args[0] == "validation_create")
 			{
                 std::string seedStr;
+                KeyType keyType = KeyType::secp256k1;
                 if (args.size() == 2)
-                    seedStr = args[1];
-                jvOutput["result"] = doFillValidationJson(seedStr);
+                {
+                    keyType = keyTypeFromString(args[1]);
+                }
+                if (args.size() == 3)
+                {
+                    keyType = keyTypeFromString(args[1]);
+                    seedStr = args[2];
+                }
+                jvOutput["result"] = doFillValidationJson(keyType, seedStr);
 			}
 			else
             {

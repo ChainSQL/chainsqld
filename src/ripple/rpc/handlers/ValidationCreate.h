@@ -24,7 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-Json::Value doFillValidationJson (std::string const &str);
+Json::Value doFillValidationJson (KeyType keyType, std::string const &str);
 
 } // ripple
 

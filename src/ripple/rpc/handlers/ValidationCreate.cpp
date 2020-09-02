@@ -58,13 +58,16 @@ validationSeed (std::string const &str)
 Json::Value doValidationCreate (RPC::Context& context)
 {
     std::string seedStr;
+    KeyType keyType = CommonKey::algTypeGlobal;
     if (context.params.isMember (jss::secret))
         seedStr = context.params[jss::secret].asString ();
+    if (context.params.isMember (jss::key_type))
+        keyType = keyTypeFromString(context.params[jss::key_type].asString());
 
-    return doFillValidationJson(seedStr);
+    return doFillValidationJson(keyType, seedStr);
 }
 
-Json::Value doFillValidationJson(std::string const &str)
+Json::Value doFillValidationJson(KeyType keyType, std::string const &str)
 {
     Json::Value     obj(Json::objectValue);
     
@@ -72,26 +75,38 @@ Json::Value doFillValidationJson(std::string const &str)
     if (!seed)
         return rpcError(rpcBAD_SEED);
 
-#ifdef GM_ALG_PROCESS
-    auto publicPrivatePair = generateKeyPair(KeyType::gmalg, *seed);
+    switch (keyType)
+    {
+        case KeyType::gmalg:
+        {
+            auto publicPrivatePair = generateKeyPair(keyType, *seed);
 
-    obj[jss::validation_public_key] = toBase58(TokenType::TOKEN_NODE_PUBLIC, publicPrivatePair.first);
-    obj[jss::validation_private_key] = toBase58(TokenType::TOKEN_NODE_PRIVATE, publicPrivatePair.second);
-#else
-    auto const private_key = generateSecretKey (KeyType::secp256k1, *seed);
+            obj[jss::validation_public_key] = toBase58(TokenType::TOKEN_NODE_PUBLIC, publicPrivatePair.first);
+            obj[jss::validation_private_key] = toBase58(TokenType::TOKEN_NODE_PRIVATE, publicPrivatePair.second);
+            break;
+        }
+        case KeyType::secp256k1:
+        case KeyType::ed25519:
+        default:
+        {
+            auto const private_key = generateSecretKey(keyType, *seed);
 
-	obj[jss::validation_public_key_hex] = strHex(derivePublicKey(KeyType::secp256k1, private_key));
+            obj[jss::validation_public_key_hex] = strHex(derivePublicKey(keyType, private_key));
 
-    obj[jss::validation_public_key] = toBase58 (
-        TokenType::TOKEN_NODE_PUBLIC,
-        derivePublicKey (KeyType::secp256k1, private_key));
+            obj[jss::validation_public_key] = toBase58(
+                TokenType::TOKEN_NODE_PUBLIC,
+                derivePublicKey(keyType, private_key));
 
-    obj[jss::validation_private_key] = toBase58 (
-        TokenType::TOKEN_NODE_PRIVATE, private_key);
+            obj[jss::validation_private_key] = toBase58(
+                TokenType::TOKEN_NODE_PRIVATE, private_key);
 
-    obj[jss::validation_seed] = toBase58 (*seed);
-    obj[jss::validation_key] = seedAs1751 (*seed); 
-#endif
+            obj[jss::validation_seed] = toBase58(*seed);
+            obj[jss::validation_key] = seedAs1751(*seed);
+
+            break;
+        }
+    }
+
     return obj;
 }
 
