@@ -12,7 +12,8 @@ namespace ripple {
 	bool TokenProcess::setSymmertryKey(const Blob& cipherBlob, const SecretKey& secret_key)
 	{
 		GmEncrypt* hEObj = GmEncryptObj::getInstance();
-		if (nullptr == hEObj)
+		// if (nullptr == hEObj)
+        if (secret_key.keyTypeInt_ == hEObj->comKey)
 		{
 			passBlob = ripple::decrypt(cipherBlob, secret_key);
 			if (passBlob.size() > 0)
@@ -27,7 +28,7 @@ namespace ripple {
 		}
 		else
 		{
-			if (secret_key.keyTypeInt == hEObj->gmOutCard)
+			if (secret_key.keyTypeInt_ == hEObj->gmOutCard)
 			{
 				secretkeyType = hEObj->gmOutCard;
 				passBlob = ripple::decrypt(cipherBlob, secret_key);
@@ -40,10 +41,10 @@ namespace ripple {
 					isValidate = false;
 				}
 			}
-			else if (secret_key.keyTypeInt == hEObj->gmInCard)
+			else if (secret_key.keyTypeInt_ == hEObj->gmInCard)
 			{
 				secretkeyType = hEObj->gmInCard;
-				std::pair<int, int> pri4DecryptInfo = std::make_pair(secret_key.keyTypeInt, secret_key.encrytCardIndex);
+				std::pair<int, int> pri4DecryptInfo = std::make_pair(secret_key.keyTypeInt_, secret_key.encrytCardIndex_);
 				std::pair<unsigned char*, int> pri4Decrypt = std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
 				unsigned long lHandle = 0; 
 				int rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), (unsigned char*)(&lHandle) , nullptr, true);
@@ -71,7 +72,7 @@ namespace ripple {
 		{
 			Blob rawDecrypted;
 			GmEncrypt* hEObj = GmEncryptObj::getInstance();
-			if (nullptr == hEObj)
+            if (secretkeyType == hEObj->comKey)
 			{
 				rawDecrypted = RippleAddress::decryptAES(passBlob, rawEncrept);
 			}

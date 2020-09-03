@@ -295,13 +295,14 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
     }
     else
     {
+#ifdef HARD_GM
 		LedgerInfo ledgerInfo = lastClosed->info();
-		if (nullptr != GmEncryptObj::getInstance())
+		if (nullptr != GmEncryptObj::getInstance() && GmEncryptObj::hEType_ == GmEncryptObj::gmAlgType::sjkCardType)
 		{
 			GMCheck* gmCheckObj = GMCheck::getInstance();
 			gmCheckObj->tryRandomCycleCheck(ledgerInfo.seq);
 		}
-
+#endif
         checkAccept (lastClosed);
 		//app_.getTableStorage().TryTableStorage();
 		//app_.getTableAssistant().TryTableCheckHash();

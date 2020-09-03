@@ -55,16 +55,18 @@ parseBase58 (TokenType type, std::string const& s)
         decodeBase58Token(s, type);
     if (result.empty())
         return boost::none;
-    if (nullptr == GmEncryptObj::getInstance())
-    {
-        if (result.size() != 33)
-            return boost::none;
-    }
-    else
-    {
-        if (result.size() != 65)
-            return boost::none;
-    }    
+    if (result.size() != 33 && result.size() != 65)
+        return boost::none;
+    // if (nullptr == GmEncryptObj::getInstance())
+    // {
+    //     if (result.size() != 33)
+    //         return boost::none;
+    // }
+    // else
+    // {
+    //     if (result.size() != 65)
+    //         return boost::none;
+    // }    
     
     return PublicKey(makeSlice(result));
 }
@@ -241,11 +243,18 @@ verifyDigest (PublicKey const& publicKey,
     Slice const& sig,
     bool mustBeFullyCanonical)
 {
-    GmEncrypt* hEObj = GmEncryptObj::getInstance();
-	if (nullptr == hEObj)
+    
+    auto const type =
+        publicKeyType(publicKey.slice());
+    if (! type)
+        LogicError("verifyDigest: invalid type");
+    switch(*type)
+    {
+    case KeyType::secp256k1:
+	// if (nullptr == hEObj)
 	{
-		if (publicKeyType(publicKey) != KeyType::secp256k1)
-			LogicError("sign: secp256k1 required for digest signing");
+		// if (publicKeyType(publicKey) != KeyType::secp256k1)
+		// 	LogicError("sign: secp256k1 required for digest signing");
 		auto const canonicality = ecdsaCanonicality(sig);
 		if (!canonicality)
 			return false;
@@ -292,10 +301,11 @@ verifyDigest (PublicKey const& publicKey,
 				digest.data()),
 			&pubkey_imp) == 1;
 	}
-	else
+	case KeyType::gmalg:
 	{
-		if (publicKeyType(publicKey.slice()) != KeyType::gmalg)
-			LogicError("sign: GM algorithm required for digest signing");
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+		// if (publicKeyType(publicKey.slice()) != KeyType::gmalg)
+		// 	LogicError("sign: GM algorithm required for digest signing");
 		unsigned long rv = 0;
 
 		std::pair<unsigned char*, int> pub4Verify = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
@@ -308,6 +318,9 @@ verifyDigest (PublicKey const& publicKey,
 		DebugPrint("ECCVerify Digest OK!");
 		return true;
 	}
+    default:
+        LogicError("verifyDigest: invalid type");
+    }
 }
 
 bool
@@ -321,7 +334,7 @@ verify (PublicKey const& publicKey,
         if (*type == KeyType::secp256k1)
         {
             return verifyDigest (publicKey,
-                sha512Half(m), sig, mustBeFullyCanonical);
+                sha512Half<CommonKey::sha>(m), sig, mustBeFullyCanonical);
         }
         else if (*type == KeyType::ed25519)
         {
@@ -366,11 +379,12 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
     unsigned long rv = 0;
     unsigned char outData[512] = { 0 };
     unsigned long outDataLen = 512;
-    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     std::pair<unsigned char*, int> pub4Encrypt;
     switch (*type)
     {
     case KeyType::gmalg:
+    {
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
         pub4Encrypt = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
         rv = hEObj->SM2ECCEncrypt(pub4Encrypt,(unsigned char*)&passBlob[0], passBlob.size(), outData, &outDataLen);
         if (rv)
@@ -381,6 +395,7 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
         DebugPrint("ECCEncrypt OK!");
         //Blob vucCipherText(outData, outData + outDataLen);
         return Blob(outData, outData + outDataLen);//vucCipherText;
+    }
     default:
         Blob publickBlob(publicKey.data(), publicKey.data()+publicKey.size());
         return RippleAddress::getPasswordCipher(passBlob, publickBlob);

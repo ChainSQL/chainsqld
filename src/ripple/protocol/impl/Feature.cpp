@@ -20,7 +20,8 @@
 #include <BeastConfig.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/basics/contract.h>
-#include <ripple/protocol/digest.h>
+// #include <ripple/protocol/digest.h>
+#include <peersafe/crypto/hashBaseObj.h>
 
 #include <cstring>
 
@@ -40,9 +41,14 @@ detail::FeatureCollections::FeatureCollections()
     for (std::size_t i = 0; i < numFeatures(); ++i)
     {
         auto const name = featureNames[i];
-        sha512_half_hasher h;
-        h (name, std::strlen (name));
-        auto const f = static_cast<uint256>(h);
+        // sha512_half_hasher h;
+        // h (name, std::strlen (name));
+        // auto const f = static_cast<uint256>(h);
+
+        hashBase* phasher = hashBaseObj::getHasher();
+        (*phasher)(name, std::strlen (name));
+        auto const f = static_cast<uint256>(*phasher);
+        hashBaseObj::releaseHasher(phasher);
 
         features.push_back(f);
         featureToIndex[f] = i;

@@ -20,7 +20,8 @@
 #include <BeastConfig.h>
 #include <ripple/basics/strHex.h>
 #include <ripple/protocol/SecretKey.h>
-#include <ripple/protocol/digest.h>
+#include <peersafe/crypto/hashBaseObj.h>
+// #include <ripple/protocol/digest.h>
 #include <ripple/protocol/impl/secp256k1.h>
 #include <ripple/basics/contract.h>
 #include <ripple/crypto/GenerateDeterministicKey.h>
@@ -106,11 +107,16 @@ signDigest (PublicKey const& pk, SecretKey const& sk,
 {
     unsigned char sig[72];
     size_t len = sizeof(sig);
-    GmEncrypt* hEObj = GmEncryptObj::getInstance();
-    if (nullptr == hEObj)
+    // if (nullptr == hEObj)
+    auto const type = publicKeyType(pk.slice());
+    if (! type)
+        LogicError("signDigest: invalid type");
+    switch(*type)
     {
-        if (publicKeyType(pk.slice()) != KeyType::secp256k1)
-            LogicError("sign: secp256k1 required for digest signing");
+    case KeyType::secp256k1:
+    {
+        // if (publicKeyType(pk.slice()) != KeyType::secp256k1)
+        //     LogicError("sign: secp256k1 required for digest signing");
         BOOST_ASSERT(sk.size() == 32);
         secp256k1_ecdsa_signature sig_imp;
         if (secp256k1_ecdsa_sign(
@@ -130,13 +136,15 @@ signDigest (PublicKey const& pk, SecretKey const& sk,
 			&len,
 			&sig_imp) != 1)
 			LogicError("sign: secp256k1_ecdsa_signature_serialize_der failed");
+        break;
 	}
-	else
+	case KeyType::gmalg:
 	{
-		if (publicKeyType(pk.slice()) != KeyType::gmalg)
-			LogicError("sign: GM algorithm required for digest signing");
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+		// if (publicKeyType(pk.slice()) != KeyType::gmalg)
+		// 	LogicError("sign: GM algorithm required for digest signing");
 		BOOST_ASSERT(sk.size() == 32);
-		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt, sk.encrytCardIndex);
+		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt_, sk.encrytCardIndex_);
 		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
 		unsigned long rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, (unsigned char*)digest.data(), digest.bytes, sig, (unsigned long*)&len);
 		if (rv)
@@ -144,7 +152,11 @@ signDigest (PublicKey const& pk, SecretKey const& sk,
 			DebugPrint("ECCSign error! rv = 0x%04x", rv);
 			LogicError("sign: SM2ECCsign failed");
 		}
+        break;
 	}
+    default:
+        LogicError("signDigest: invalid type");
+    }
 
     return Buffer{sig, len};
 }
@@ -168,10 +180,14 @@ sign (PublicKey const& pk,
     }
     case KeyType::secp256k1:
     {
-        sha512_half_hasher h;
-        h(m.data(), m.size());
-        auto const digest =
-            sha512_half_hasher::result_type(h);
+        // sha512_half_hasher h;
+        // h(m.data(), m.size());
+        // auto const digest =
+        //     sha512_half_hasher::result_type(h);
+        hashBase* phasher = hashBaseObj::getHasher(CommonKey::sha);
+        (*phasher)(m.data(), m.size());
+        auto const digest = sha512_half_hasher::result_type(*phasher);
+        hashBaseObj::releaseHasher(phasher);
 
         secp256k1_ecdsa_signature sig_imp;
         if(secp256k1_ecdsa_sign(
@@ -207,7 +223,7 @@ sign (PublicKey const& pk,
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
         hEObj->SM3HashTotal((unsigned char*)m.data(), m.size(), hashData, &hashDataLen);
 
-		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt, sk.encrytCardIndex);
+		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt_, sk.encrytCardIndex_);
 		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
 
         rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, hashData, hashDataLen, outData, &outDataLen);
@@ -227,12 +243,18 @@ Blob
 decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
 {
     GmEncrypt* hEObj = GmEncryptObj::getInstance();
-    if (nullptr != hEObj) //GM Algorithm
+    // if (nullptr != hEObj) //GM Algorithm
+    if (hEObj->comKey == secret_key.keyTypeInt_)
+    {
+        Blob secretBlob(secret_key.data(), secret_key.data() +secret_key.size());
+        return RippleAddress::decryptPassword(cipherBlob, secretBlob);
+    }
+    else
     {
         unsigned long rv = 0;
         unsigned char plain[512] = { 0 };
         unsigned long plainLen = 512;
-		std::pair<int, int> pri4DecryptInfo = std::make_pair(secret_key.keyTypeInt, secret_key.encrytCardIndex);
+		std::pair<int, int> pri4DecryptInfo = std::make_pair(secret_key.keyTypeInt_, secret_key.encrytCardIndex_);
         std::pair<unsigned char*, int> pri4Decrypt = std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
         rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), plain, &plainLen);
         if (rv)
@@ -244,22 +266,18 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
         //Blob    vucPlainText(plain, plain + plainLen);
         return Blob(plain, plain + plainLen);
     }
-    else
-    {
-        Blob secretBlob(secret_key.data(), secret_key.data() +secret_key.size());
-        return RippleAddress::decryptPassword(cipherBlob, secretBlob);
-    }
 }
 
 boost::optional<SecretKey> getSecretKey(const std::string& secret)
 {
     //tx_secret is acturally masterseed
-    if (GmEncryptObj::getInstance())
+    // if (GmEncryptObj::getInstance())
+    if ('p' == secret[0])
     {
         std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
         return SecretKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
     }
-    else
+    else if ('x' == secret[0])
     {
         boost::optional<SecretKey> oSecret_key;
         if (secret.size() > 0)
@@ -279,13 +297,14 @@ boost::optional<PublicKey> getPublicKey(const std::string& secret)
     if (secret.size() > 0)
     {
         KeyType keyType = KeyType::secp256k1;
-        if (GmEncryptObj::getInstance())
+        // if (GmEncryptObj::getInstance())
+        if ('p' == secret[0])
         {
             keyType = KeyType::gmalg;
             Seed seed = randomSeed();
             oPublic_key = generateKeyPair(keyType, seed).first;
         }
-        else
+        else if ('x' == secret[0])
         {
             auto seed = parseBase58<Seed>(secret);
             oPublic_key = generateKeyPair(keyType, *seed).first;
@@ -420,7 +439,7 @@ generateKeyPair (KeyType type, Seed const& seed)
             tempPrivatekey = hEObj->getRootPrivateKey();
         }
 		SecretKey secretkeyTemp(Slice(tempPrivatekey.first, tempPrivatekey.second));
-		secretkeyTemp.keyTypeInt = hEObj->gmOutCard;
+		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
         return std::make_pair(PublicKey(Slice(tempPublickey.first, tempPublickey.second)),
 			secretkeyTemp);
     }
@@ -444,7 +463,7 @@ randomKeyPair (KeyType type)
         tempPublickey = hEObj->getPublicKey();
         tempPrivatekey = hEObj->getPrivateKey();
 		SecretKey secretkeyTemp(Slice(tempPrivatekey.first, tempPrivatekey.second));
-		secretkeyTemp.keyTypeInt = hEObj->gmOutCard;
+		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
         return std::make_pair(PublicKey(Slice(tempPublickey.first, tempPublickey.second)),
 			secretkeyTemp);
     }

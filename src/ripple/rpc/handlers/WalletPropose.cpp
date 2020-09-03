@@ -73,10 +73,12 @@ Json::Value walletPropose (Json::Value const& params)
 {
     boost::optional<Seed> seed;
 
-    KeyType keyType = KeyType::unknown;
-    if(nullptr == GmEncryptObj::getInstance())
-        keyType = KeyType::secp256k1;
-    else keyType = KeyType::gmalg;
+#ifdef HARD_GM
+    KeyType keyType = KeyType::gmalg;
+#else
+    // KeyType keyType = KeyType::secp256k1;
+    KeyType keyType = CommonKey::algTypeGlobal;
+#endif
 
     if (params.isMember (jss::key_type))
     {
@@ -108,14 +110,12 @@ Json::Value walletPropose (Json::Value const& params)
     }
 
     auto const publicPrivatePair = generateKeyPair(keyType, *seed);
-    //auto const publicKey = generateKeyPair (keyType, *seed).first;
 
     Json::Value obj (Json::objectValue);
 
     if (keyType == KeyType::gmalg)
     {
         obj[jss::private_key] = toBase58(TOKEN_ACCOUNT_SECRET, publicPrivatePair.second);
-        //std::string private_keyDe58 = decodeBase58Token(private_keyStr, TOKEN_NODE_PRIVATE);
     }
     else
     {

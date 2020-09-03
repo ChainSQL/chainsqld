@@ -333,6 +333,7 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
     {
         *pulCipherDataLen = cipherDataTempLen - 1;
         memcpy(pCipherData, pCipherDataTemp + 1, *pulCipherDataLen);
+        // cipherReEncode(pCipherData, *pulCipherDataLen);
         delete [] pCipherDataTemp;
         DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended successfully");
         EC_KEY_free(pubkey);
@@ -381,6 +382,7 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 	}
 
     unsigned char* pCipherDataTemp = new unsigned char[ulCipherDataLen + 1];
+    // cipherReDecode(pCipherData, ulCipherDataLen);
     pCipherDataTemp[0] = 4;
     memcpy(pCipherDataTemp + 1, pCipherData, ulCipherDataLen);
 	if (!SM2_decrypt_with_recommended(pPlainData, (size_t*)pulPlainDataLen, pCipherDataTemp, ulCipherDataLen + 1, ec_key))
@@ -676,6 +678,33 @@ int SoftEncrypt::computeDigestWithSm2(EC_KEY* ec_key, unsigned char* pInData, un
 		return 1;
 	}
     return 0;
+}
+
+void SoftEncrypt::cipherReEncode(unsigned char* pCipher, unsigned long cipherLen)
+{
+    unsigned long realCipherLen = cipherLen - 96;
+    unsigned char* pRealCipher = new unsigned char[realCipherLen];
+    memcpy(pRealCipher, pCipher + 64, realCipherLen);
+    unsigned char* pC3 = new unsigned char[32];
+    memcpy(pC3, pCipher + 64 + realCipherLen, 32);
+    
+    memcpy(pCipher + 64, pC3, 32);
+    memcpy(pCipher + 96, pRealCipher, realCipherLen);
+    delete pRealCipher;
+    delete pC3;
+}
+void SoftEncrypt::cipherReDecode(unsigned char* pCipher, unsigned long cipherLen)
+{
+    unsigned long realCipherLen = cipherLen - 96;
+    unsigned char* pRealCipher = new unsigned char[realCipherLen];
+    memcpy(pRealCipher, pCipher + 96, realCipherLen);
+    unsigned char* pC3 = new unsigned char[32];
+    memcpy(pC3, pCipher + 64, 32);
+    
+    memcpy(pCipher + 64, pRealCipher, realCipherLen);
+    memcpy(pCipher + 64 + realCipherLen, pC3, 32);
+    delete pRealCipher;
+    delete pC3;
 }
 
 #endif

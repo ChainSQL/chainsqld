@@ -75,7 +75,7 @@ parse_target()
 project(chainsqld)
 #########################################################
 
-set(enableSFGm FALSE CACHE BOOL "Enable soft GM algorithm")
+#set(enableSFGm FALSE CACHE BOOL "Enable soft GM algorithm")
 set(enableHDGm FALSE CACHE BOOL "Enable hard GM algorithm")
 
 set(enableTest FALSE CACHE BOOL "Enable Unit Test Module")
@@ -193,13 +193,7 @@ use_mysql()
 
 setup_build_boilerplate()
 
-use_gmalg(${enableSFGm} ${enableHDGm})
-# if(enableGmalg)
-#   use_gmalg()
-# else()
-#   set(GMALG_LIBRARIES)
-#   set(GMSSL_LIBRARIES)
-# endif()
+use_gmalg(${enableHDGm})
 
 ############################################################
 

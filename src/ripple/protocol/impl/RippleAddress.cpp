@@ -571,32 +571,6 @@ Blob RippleAddress::getRandomPassword()
 	return randomBlob;
 }
 
-/*boost::optional<PublicKey> RippleAddress::getPublicKey(const std::string& secret)
-{
-	//tx_secret is acturally masterseed
-	boost::optional<PublicKey> oPublic_key;
-	if (secret.size() > 0)
-	{
-		auto seed = parseBase58<Seed>(secret);
-		KeyType keyType = KeyType::secp256k1;
-		oPublic_key = generateKeyPair(keyType, *seed).first;
-	}
-	return oPublic_key;
-}
-
-boost::optional<SecretKey> RippleAddress::getSecretKey(const std::string& secret)
-{
-	//tx_secret is acturally masterseed
-	boost::optional<SecretKey> oSecret_key;
-	if (secret.size() > 0)
-	{
-		auto seed = parseBase58<Seed>(secret);
-		KeyType keyType = KeyType::secp256k1;
-		oSecret_key = generateKeyPair(keyType, *seed).second;
-	}
-	return oSecret_key;
-}*/
-
 Blob RippleAddress::getPasswordCipher(const Blob& passBlob, const Blob& public_key)
 {
 	//get crypted password

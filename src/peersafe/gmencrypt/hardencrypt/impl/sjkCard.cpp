@@ -443,7 +443,17 @@ unsigned long SJKCard::SM2ECCExternalDecrypt(
 	int rv;
 	ECCrefPrivateKey pri4DecryptTemp;
 	standPriToSM2Pri(pri4Decrypt.first, pri4Decrypt.second, pri4DecryptTemp);
-	rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCipherData, pPlainData, (SGD_UINT32*)pulPlainDataLen);
+    if(pCipherData[1] != 0 || pCipherData[2] != 0 || pCipherData[3] != 0)
+    {
+        unsigned char* pCardCipher = new unsigned char[CARD_CIPHER_LEN]
+        c1c2c3ToCardCipher(pCardCipher, CARD_CIPHER_LEN, pCipherData, ulCipherDataLen);
+        rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCardCipher, pPlainData, (SGD_UINT32*)pulPlainDataLen);
+    }
+    else
+    {
+        rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCipherData, pPlainData, (SGD_UINT32*)pulPlainDataLen);
+    }
+	
 	if (rv != SDR_OK)
 	{
 		DebugPrint("SM2 External secret key decrypt failed, failed number:[0x%08x]", rv);
@@ -940,6 +950,16 @@ void SJKCard::standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefP
         sm2Privatekey.bits = standPriLen*8;
         memcpy(sm2Privatekey.D, standPri, standPriLen);
     }
+}
+
+void SJKCard::c1c2c3ToCardCipher(unsigned char* pCardCipher, usigned long cardCipherLen, unsigned char* pCipher, unsigned long cipherLen)
+{
+    unsigned long realCipherLen = cipherLen - 96;
+
+    memset(pCardCipher, 0, cardCipherLen);
+    pCardCipher[0] = realCipherLen;
+    memcpy(pCardCipher + 4, pCipher, 64 + realCipherLen);
+    memcpy(pCardCipher + 204, pCipher + 64 + realCipherLen, 32);
 }
 
 #endif

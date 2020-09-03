@@ -169,6 +169,8 @@ private:
 private:
     size_t EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf);
     EC_KEY* CreateEC(unsigned char *key, int is_public);
+    void cipherReEncode(unsigned char* pCipher, unsigned long cipherLen);
+    void cipherReDecode(unsigned char* pCipher, unsigned long cipherLen);
     int computeDigestWithSm2(EC_KEY* ec_key, unsigned char* pInData, unsigned long ulInDataLen, 
                             unsigned char* dgst, unsigned int*dgstLen);
     unsigned long generateIV(unsigned int uiAlgMode, unsigned char * pIV);

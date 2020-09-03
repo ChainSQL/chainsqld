@@ -154,10 +154,12 @@ ValidatorList::load (
         }
 
         PublicKey id;
-        if (nullptr == GmEncryptObj::getInstance())
+        // if (nullptr == GmEncryptObj::getInstance())
+        std::string publicKeyStr = match[1];
+        if ('n' == publicKeyStr[0])
         {
             auto const oId = parseBase58<PublicKey>(
-                TokenType::TOKEN_NODE_PUBLIC, match[1]);
+                TokenType::TOKEN_NODE_PUBLIC, publicKeyStr);
             if (!oId)
             {
                 JLOG(j_.error()) << "Invalid node identity: " << match[1];
@@ -165,9 +167,9 @@ ValidatorList::load (
             }
             id = *oId;
         }
-        else
+        else if('p' == publicKeyStr[0])
         {
-            std::string publicKeyStr = match[1];
+            // std::string publicKeyStr = match[1];
             std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TOKEN_NODE_PUBLIC);
             if (publicKeyDe58.empty() || publicKeyDe58.size() != 65)
             {

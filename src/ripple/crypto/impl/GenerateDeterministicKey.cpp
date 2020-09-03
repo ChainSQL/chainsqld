@@ -92,7 +92,7 @@ namespace ripple {
 			std::array<std::uint8_t, 20> buf;
 			std::copy(seed.begin(), seed.end(), buf.begin());
 			copy_uint32(buf.begin() + 16, seq++);
-			auto root = sha512Half(buf);
+			auto root = sha512Half<CommonKey::sha>(buf);
 			beast::secure_erase(buf.data(), buf.size());
 			privKey.assign(root.data(), root.size());
 			beast::secure_erase(root.data(), root.size());

@@ -152,8 +152,6 @@ public:
     Blob accountPrivateSign (Blob const& message) const;
 
 	static Blob getRandomPassword();
-	//static boost::optional<PublicKey> getPublicKey(const std::string& secret);
-	//static boost::optional<SecretKey> getSecretKey(const std::string& secret);
 
     // Encrypt a message.Using ECIES algorithm.
     Blob accountPrivateEncrypt (

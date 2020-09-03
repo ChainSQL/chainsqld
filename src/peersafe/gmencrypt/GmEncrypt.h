@@ -37,7 +37,8 @@
 #define DebugPrint(fmt,...)
 #endif // DEBUGLC_PRINTF
 
-#include <ripple/beast/hash/endian.h>
+// #include <ripple/beast/hash/endian.h>
+#include <peersafe/crypto/hashBase.h>
 #include <utility>
 #include <mutex>
 
@@ -55,7 +56,7 @@ typedef void* HANDLE;
 class GmEncrypt
 {
 public:
-    class SM3Hash
+    class SM3Hash : public ripple::hashBase
     {
     public:
         SM3Hash(GmEncrypt *pEncrypt);
@@ -64,13 +65,14 @@ public:
         void SM3HashInitFun();
         void SM3HashFinalFun(unsigned char *pHashData, unsigned long *pulHashDataLen);
         void operator()(void const* data, std::size_t size) noexcept;
+        explicit operator result_type() noexcept;
     private:
         GmEncrypt *pGmEncrypt_;
         static std::mutex mutexSM3_;
     protected:
         HANDLE hSM3Handle_;
-    public:
-        static beast::endian const endian = beast::endian::big;
+    // public:
+    //     static beast::endian const endian = beast::endian::big;
     };
 
 public:
