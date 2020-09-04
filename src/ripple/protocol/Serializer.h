@@ -26,6 +26,7 @@
 #include <ripple/basics/Buffer.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/beast/crypto/secure_erase.h>
+#include <ripple/protocol/CommonKey.h>
 #include <cassert>
 #include <cstdint>
 #include <iomanip>
@@ -161,7 +162,7 @@ public:
     }
 
     // DEPRECATED
-    uint256 getSHA512Half() const;
+    uint256 getSHA512Half(CommonKey::HashType hashType = CommonKey::hashTypeGlobal) const;
 
     // totality functions
     Blob const& peekData () const
