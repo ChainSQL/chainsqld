@@ -20,7 +20,7 @@ namespace ripple {
 		TokenProcess();
 		~TokenProcess();
 		bool setSymmertryKey(const Blob& cipherBlob, const SecretKey& secret_key);
-		Blob symmertryDecrypt(Blob rawEncrept);
+		Blob symmertryDecrypt(Blob rawEncrept, const PublicKey& publicKey);
 	};
 
 }

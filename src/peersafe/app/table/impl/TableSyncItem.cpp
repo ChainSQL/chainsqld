@@ -856,13 +856,17 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
 	
 	if (user_accountID_ && user_secret_)
 	{
-		//decrypt passphrase
-        Blob rawDecrypted = tokenProcObj_.symmertryDecrypt(raw);
-
-		if (rawDecrypted.size() > 0)
-		{
-			tx.setFieldVL(sfRaw, rawDecrypted);
-		}
+        if (tx.isFieldPresent(sfSigningPubKey))
+        {
+            auto const pk = tx.getFieldVL (sfSigningPubKey);
+            PublicKey publicKey(makeSlice(pk));
+		    //decrypt passphrase
+            Blob rawDecrypted = tokenProcObj_.symmertryDecrypt(raw, publicKey);
+            if (rawDecrypted.size() > 0)
+		    {
+			    tx.setFieldVL(sfRaw, rawDecrypted);
+		    }
+        }
 	}
 }
 

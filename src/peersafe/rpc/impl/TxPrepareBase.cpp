@@ -600,6 +600,7 @@ Json::Value TxPrepareBase::prepareForCreate()
     {
         //get password cipher
         rawCipher = RippleAddress::encryptAES(passBlob, raw_blob);
+        break;
     }
     case KeyType::gmalg:
     {

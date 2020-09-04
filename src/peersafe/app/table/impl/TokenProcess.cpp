@@ -15,6 +15,7 @@ namespace ripple {
 		// if (nullptr == hEObj)
         if (secret_key.keyTypeInt_ == hEObj->comKey)
 		{
+            secretkeyType = hEObj->comKey;
 			passBlob = ripple::decrypt(cipherBlob, secret_key);
 			if (passBlob.size() > 0)
 			{
@@ -66,31 +67,46 @@ namespace ripple {
 		return false;
 	}
 
-	Blob TokenProcess::symmertryDecrypt(Blob rawEncrept)
+	Blob TokenProcess::symmertryDecrypt(Blob rawEncrept, const PublicKey& publicKey)
 	{
 		if (isValidate)
 		{
 			Blob rawDecrypted;
-			GmEncrypt* hEObj = GmEncryptObj::getInstance();
-            if (secretkeyType == hEObj->comKey)
-			{
-				rawDecrypted = RippleAddress::decryptAES(passBlob, rawEncrept);
-			}
-			else
-			{
-				unsigned char* pPlainData = new unsigned char[rawEncrept.size()];
-				unsigned long plainDataLen = rawEncrept.size();
-				if (secretkeyType == hEObj->gmInCard && sm4Handle != nullptr )
-				{
-					hEObj->SM4SymDecrypt(hEObj->ECB, (unsigned char*)sm4Handle, 0, rawEncrept.data(), rawEncrept.size(), pPlainData, &plainDataLen, hEObj->gmInCard);
-				}
-				else if(secretkeyType == hEObj->gmOutCard && passBlob.size() > 0)
-				{
-					hEObj->SM4SymDecrypt(hEObj->ECB, passBlob.data(), passBlob.size(), rawEncrept.data(), rawEncrept.size(), pPlainData, &plainDataLen);
-				}
-				rawDecrypted = Blob(pPlainData, pPlainData + plainDataLen);
-				delete[] pPlainData;
-			}
+            // if (secretkeyType == hEObj->comKey)
+            auto const type = publicKeyType(publicKey);
+            switch(*type)
+            {
+                case KeyType::gmalg:
+                {
+                    GmEncrypt* hEObj = GmEncryptObj::getInstance();
+                    unsigned char *pPlainData = new unsigned char[rawEncrept.size()];
+                    unsigned long plainDataLen = rawEncrept.size();
+                    if (secretkeyType == hEObj->gmInCard && sm4Handle != nullptr)
+                    {
+                        hEObj->SM4SymDecrypt(hEObj->ECB, (unsigned char *)sm4Handle, 0, 
+                            rawEncrept.data(), rawEncrept.size(), pPlainData, &plainDataLen, hEObj->gmInCard);
+                    }
+                    else if (passBlob.size() > 0)
+                    {
+                        /* both support gmOutCard and comKey, when comKey user grant to gmOutCard user, 
+                        item use comkey, token secretType is comKey, gmOutCard user operate table, need
+                        decrypt the raw. by LC */
+                        hEObj->SM4SymDecrypt(hEObj->ECB, passBlob.data(), passBlob.size(), 
+                            rawEncrept.data(), rawEncrept.size(), pPlainData, &plainDataLen);
+                    }
+                    rawDecrypted = Blob(pPlainData, pPlainData + plainDataLen);
+                    delete[] pPlainData;
+                    break;
+                }
+                case KeyType::secp256k1:
+                case KeyType::ed25519:
+                {
+                    rawDecrypted = RippleAddress::decryptAES(passBlob, rawEncrept);
+                    break;
+                }
+                default:
+                    break;
+            }
 			return rawDecrypted;
 		}
 	}
