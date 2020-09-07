@@ -501,13 +501,13 @@ int run (int argc, char** argv)
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))
             return -1;
 
-        // if (HaveSustain() && !vm.count ("fg") && !config->standalone())
-        // {
-        //     auto const ret = DoSustain ();
+        if (HaveSustain() && !vm.count ("fg") && !config->standalone())
+        {
+            auto const ret = DoSustain ();
 
-        //     if (!ret.empty ())
-        //         std::cerr << "Watchdog: " << ret << std::endl;
-        // }
+            if (!ret.empty ())
+                std::cerr << "Watchdog: " << ret << std::endl;
+        }
 
         if (vm.count ("debug"))
         {
