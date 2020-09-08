@@ -5,6 +5,7 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/protocol/TableDefines.h>
 
+#include <eth/vm/Common.h>
 #include <boost/thread.hpp>
 #include <exception>
 
@@ -120,23 +121,29 @@ namespace ripple
 		oSle_.ctx().view().update(pSle);
     }
 
-    bytes const& ExtVM::codeAt(evmc_address const& addr)
+    eth::bytes const& ExtVM::codeAt(evmc_address const& addr)
     { 
         return oSle_.code(fromEvmC(addr));
     }
 
     size_t ExtVM::codeSizeAt(evmc_address const& addr) 
     { 
-        bytes const& code = oSle_.code(fromEvmC(addr));
+        eth::bytes const& code = oSle_.code(fromEvmC(addr));
         return code.size();
     }
+
+	evmc_uint256be ExtVM::codeHashAt(evmc_address const& addr)
+	{ 
+		uint256 codeHash = oSle_.codeHash(fromEvmC(addr));
+		return toEvmC(codeHash); 
+	}
 
     bool ExtVM::exists(evmc_address const& addr) { 
         SLE::pointer pSle = oSle_.getSle(fromEvmC(addr));
         return pSle != nullptr;
     }
 
-    void ExtVM::suicide(evmc_address const& addr) 
+    void ExtVM::selfdestruct(evmc_address const& addr)
     {
         SLE::pointer sleContract = oSle_.getSle(fromEvmC(myAddress));
         SLE::pointer sleTo = oSle_.getSle(fromEvmC(addr));
@@ -145,16 +152,16 @@ namespace ripple
         auto& stBalanceMy = sleTo->getFieldAmount(sfBalance);
 		sleTo->setFieldAmount(sfBalance, stBalanceContract + stBalanceMy);
 
-        ExtVMFace::suicide(addr);
+        ExtVMFace::selfdestruct(addr);
     }
 
-    CreateResult ExtVM::create(evmc_uint256be const& endowment, int64_t& ioGas,
-        bytesConstRef const& code, Instruction op, evmc_uint256be const& /*salt*/)
+    eth::CreateResult ExtVM::create(evmc_uint256be const& endowment, int64_t& ioGas,
+		eth::bytesConstRef const& code, eth::Instruction op, evmc_uint256be const& /*salt*/)
     {
         //CreateResult ret(EVMC_SUCCESS, owning_bytes_ref(),evmc_address());
         
         Executive e(oSle_, envInfo(), depth + 1);
-        assert(op == Instruction::CREATE);
+        assert(op == eth::Instruction::CREATE);
         bool result = e.createOpcode(fromEvmC(myAddress), fromEvmC(endowment), fromEvmC(gasPrice),
 			ioGas, code, fromEvmC(origin));
 
@@ -169,7 +176,7 @@ namespace ripple
         return{ terToEvmcStatusCode(e.getException()), e.takeOutput(), toEvmC(e.newAddress()) };
     }
 
-    CallResult ExtVM::call(CallParameters& oPara)
+	eth::CallResult ExtVM::call(eth::CallParameters& oPara)
     {
         //CallResult ret(EVMC_SUCCESS, owning_bytes_ref());
 
@@ -187,7 +194,7 @@ namespace ripple
         return{ terToEvmcStatusCode(e.getException()), e.takeOutput() };
     }
 
-    void ExtVM::log(evmc_uint256be const* topics, size_t numTopics, bytesConstRef const& data) 
+    void ExtVM::log(evmc_uint256be const* topics, size_t numTopics, eth::bytesConstRef const& data)
     {
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
@@ -199,7 +206,7 @@ namespace ripple
         JLOG(j.trace()) << data.toString();
     }
     
-    int64_t ExtVM::executeSQL(evmc_address const* _addr, uint8_t _type, bytesConstRef const& _name, bytesConstRef const& _raw)
+    int64_t ExtVM::executeSQL(evmc_address const* _addr, uint8_t _type, eth::bytesConstRef const& _name, eth::bytesConstRef const& _raw)
     {
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
@@ -219,7 +226,7 @@ namespace ripple
         return iRet;
     }
 
-	int64_t ExtVM::table_create(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	int64_t ExtVM::table_create(const struct evmc_address* address, eth::bytesConstRef const& _name, eth::bytesConstRef const& _raw)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
@@ -227,7 +234,7 @@ namespace ripple
 		return oSle_.createTable(fromEvmC(*address), _name.toString(), _raw.toString());
 	}
 
-	int64_t ExtVM::table_rename(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	int64_t ExtVM::table_rename(const struct evmc_address* address, eth::bytesConstRef const& _name, eth::bytesConstRef const& _raw)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
@@ -235,7 +242,7 @@ namespace ripple
 		return oSle_.renameTable(fromEvmC(*address), _name.toString(), _raw.toString());
 	}
 
-	int64_t ExtVM::table_insert(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	int64_t ExtVM::table_insert(const struct evmc_address* address, eth::bytesConstRef const& _name, eth::bytesConstRef const& _raw)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
@@ -243,7 +250,7 @@ namespace ripple
 		return oSle_.insertData(fromEvmC(caller), fromEvmC(*address), _name.toString(), _raw.toString());
 	}
 
-	int64_t ExtVM::table_delete(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	int64_t ExtVM::table_delete(const struct evmc_address* address, eth::bytesConstRef const& _name, eth::bytesConstRef const& _raw)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
@@ -251,7 +258,7 @@ namespace ripple
 		return oSle_.deleteData(fromEvmC(caller), fromEvmC(*address), _name.toString(), _raw.toString());
 	}
 
-	int64_t ExtVM::table_drop(const struct evmc_address* address, bytesConstRef const& _name)
+	int64_t ExtVM::table_drop(const struct evmc_address* address, eth::bytesConstRef const& _name)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
@@ -259,7 +266,7 @@ namespace ripple
 		return oSle_.dropTable(fromEvmC(*address), _name.toString());
 	}
 
-	int64_t ExtVM::table_update(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _rawUpdate, bytesConstRef const& _rawCondition)
+	int64_t ExtVM::table_update(const struct evmc_address* address, eth::bytesConstRef const& _name, eth::bytesConstRef const& _rawUpdate, eth::bytesConstRef const& _rawCondition)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
@@ -267,7 +274,7 @@ namespace ripple
 		return oSle_.updateData(fromEvmC(caller), fromEvmC(*address), _name.toString(), _rawCondition.toString(), _rawUpdate.toString());
 	}
 
-	int64_t ExtVM::table_grant(const struct evmc_address* address1, const struct evmc_address* address2, bytesConstRef const& _name, bytesConstRef const& _raw)
+	int64_t ExtVM::table_grant(const struct evmc_address* address1, const struct evmc_address* address2, eth::bytesConstRef const& _name, eth::bytesConstRef const& _raw)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
@@ -275,7 +282,7 @@ namespace ripple
 		return oSle_.grantTable(fromEvmC(*address1), fromEvmC(*address2), _name.toString(), _raw.toString());
 	}
 
-	evmc_uint256be ExtVM::table_get_handle(const struct evmc_address* address, bytesConstRef const& _name, bytesConstRef const& _raw)
+	evmc_uint256be ExtVM::table_get_handle(const struct evmc_address* address, eth::bytesConstRef const& _name, eth::bytesConstRef const& _raw)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
@@ -305,7 +312,7 @@ namespace ripple
 	}
 	
 	size_t ExtVM::table_get_by_key(const evmc_uint256be *_handle,
-			size_t _row, bytesConstRef const& _column,
+			size_t _row, eth::bytesConstRef const& _column,
 			uint8_t *_outBuf, size_t _outSize)
 	{
 		ApplyContext const& ctx = oSle_.ctx();
@@ -358,7 +365,7 @@ namespace ripple
 	}
 
 	evmc_uint256be ExtVM::get_column_len(const evmc_uint256be *_handle,
-			size_t _row, bytesConstRef const &_column) {
+			size_t _row, eth::bytesConstRef const &_column) {
 		ApplyContext const& ctx = oSle_.ctx();
 		auto j = ctx.app.journal("ExtVM");
 		uint256 rel = fromEvmC(*_handle);
@@ -406,7 +413,7 @@ namespace ripple
     }
 
     int64_t ExtVM::transfer_fee_set(const struct evmc_address *address,
-        bytesConstRef const& _Rate, bytesConstRef const& _Min, bytesConstRef const& _Max)
+		eth::bytesConstRef const& _Rate, eth::bytesConstRef const& _Min, eth::bytesConstRef const& _Max)
     {
         ApplyContext const& ctx = oSle_.ctx();
         auto j = ctx.app.journal("ExtVM");
@@ -418,7 +425,7 @@ namespace ripple
     }
 
     int64_t ExtVM::trust_set(const struct evmc_address *address,
-        bytesConstRef const& _value, bytesConstRef const& _currency,
+		eth::bytesConstRef const& _value, eth::bytesConstRef const& _currency,
         const struct evmc_address *gateWay)
     {
         ApplyContext const& ctx = oSle_.ctx();
@@ -431,7 +438,7 @@ namespace ripple
 	}
 
     int64_t ExtVM::trust_limit(const struct evmc_address *address,
-        bytesConstRef const& _currency,
+		eth::bytesConstRef const& _currency,
         uint64_t _power,
         const struct evmc_address *gateWay)
     {
@@ -445,7 +452,7 @@ namespace ripple
     }
 
     int64_t ExtVM::gateway_balance(const struct evmc_address *address,
-        bytesConstRef const& _currency,
+		eth::bytesConstRef const& _currency,
         uint64_t _power,
         const struct evmc_address *gateWay)
     {
@@ -460,7 +467,7 @@ namespace ripple
 
     int64_t ExtVM::pay(const struct evmc_address *address,
         const struct evmc_address *receiver,
-        bytesConstRef const& _value, bytesConstRef const& _sendMax, bytesConstRef const& _currency,
+		eth::bytesConstRef const& _value, eth::bytesConstRef const& _sendMax, eth::bytesConstRef const& _currency,
         const struct evmc_address *gateWay)
     {
         ApplyContext const& ctx = oSle_.ctx();

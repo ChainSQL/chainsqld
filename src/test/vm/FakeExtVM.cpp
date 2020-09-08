@@ -8,9 +8,9 @@
 
 #include "FakeExtVM.h"
 
-#include <peersafe/vm/VMFactory.h>
+#include <eth/vm/VMFactory.h>
 
-namespace ripple {
+namespace eth {
 
 namespace test {
 	template <class T, class _In>
@@ -36,8 +36,7 @@ namespace test {
 		//return reinterpret_cast<evmc_uint256be const&>(_h);
 	}
 
-    inline 
-    evmc_uint256be & toEvmC(uint256 const &_h) {
+    inline evmc_uint256be & toEvmC(ripple::uint256 const &_h) {
         return const_cast<evmc_uint256be&>(
                 reinterpret_cast<evmc_uint256be const&>(_h));
     }
@@ -101,7 +100,7 @@ CreateResult FakeExtVM::create(evmc_uint256be const& endowment, int64_t & gas,
 }
 
 CallResult FakeExtVM::call(CallParameters& p) {
-	auto it = FakeExtVM::m_s.find(AccountID::fromVoid(p.codeAddress.bytes));
+	auto it = FakeExtVM::m_s.find(ripple::AccountID::fromVoid(p.codeAddress.bytes));
 	if (it != FakeExtVM::m_s.end()) {
 		bytes code = it->second;
 		if (code.size()) {
@@ -115,7 +114,7 @@ CallResult FakeExtVM::call(CallParameters& p) {
 }
 
 bool FakeExtVM::exists(evmc_address const& addr) {
-	auto it = FakeExtVM::m_s.find(AccountID::fromVoid(addr.bytes));
+	auto it = FakeExtVM::m_s.find(ripple::AccountID::fromVoid(addr.bytes));
 	if (it != FakeExtVM::m_s.end()) {
 		return true;
 	}
@@ -123,7 +122,7 @@ bool FakeExtVM::exists(evmc_address const& addr) {
 }
 
 size_t FakeExtVM::codeSizeAt(evmc_address const& addr) {
-	auto it = FakeExtVM::m_s.find(AccountID::fromVoid(addr.bytes));
+	auto it = FakeExtVM::m_s.find(ripple::AccountID::fromVoid(addr.bytes));
 	if (it != FakeExtVM::m_s.end()) {
 		return it->second.size();
 	}
@@ -242,14 +241,14 @@ evmc_uint256be FakeExtVM::table_get_handle(const evmc_address *address,
              {"tableName", name.toString()}, 
              {"condition", stmt.toString()}}
             );
-    return test::toEvmC((uint256)10);
+    return test::toEvmC((ripple::uint256)10);
 }
 
 evmc_uint256be FakeExtVM::table_get_lines(const evmc_uint256be *handle) {
     test::PrintInputParams<const char*, u256>("GetRowSize", 
             {{"handle", test::fromEvmC(*handle)}}
             );
-    return test::toEvmC((uint256)20);
+    return test::toEvmC((ripple::uint256)20);
 }
 
 evmc_uint256be FakeExtVM::table_get_columns(
@@ -257,7 +256,7 @@ evmc_uint256be FakeExtVM::table_get_columns(
     test::PrintInputParams<const char*, u256>("GetColSize", 
             {{"handle", test::fromEvmC(*handle)}}
             );
-    return test::toEvmC((uint256)30);
+    return test::toEvmC((ripple::uint256)30);
 }
 
 size_t FakeExtVM::table_get_by_key(const evmc_uint256be *_handle, 
@@ -325,7 +324,7 @@ evmc_uint256be FakeExtVM::get_column_len(
              {"rowNum", std::to_string(_rowNum)}, 
              {"colName", _column.toString()}}
             );
-    return test::toEvmC((uint256)(_column.size()));
+    return test::toEvmC((ripple::uint256)(_column.size()));
 }
 
 evmc_uint256be FakeExtVM::get_column_len(
@@ -339,7 +338,7 @@ evmc_uint256be FakeExtVM::get_column_len(
              {"rowNum", std::to_string(_row)}, 
              {"colNum", std::to_string(_column)}}
             );
-    return test::toEvmC((uint256)100);
+    return test::toEvmC((ripple::uint256)100);
 }
 
 // NOTE:this function is limited to only one parameter,
@@ -373,7 +372,7 @@ FakeExecutive::FakeExecutive(const bytes& code)
 
 FakeExecutive::FakeExecutive(const bytesConstRef& data, const evmc_address& contractAddress)
 : data_(data)
-, code_(FakeExtVM::m_s.find(AccountID::fromVoid(contractAddress.bytes))->second) {
+, code_(FakeExtVM::m_s.find(ripple::AccountID::fromVoid(contractAddress.bytes))->second) {
 }
 
 owning_bytes_ref FakeExecutive::create(const evmc_address& contractAddress, int64_t& gas) {
@@ -394,7 +393,7 @@ owning_bytes_ref FakeExecutive::create(const evmc_address& contractAddress, int6
 	FakeExtVM ext(info, myAddress, caller, origin, value, gasPrice,
 		data_, code_, codeHash, depth, isCreate, staticCall);
 	owning_bytes_ref result = vmc->exec(gas, ext);
-	FakeExtVM::m_s[AccountID::fromVoid(myAddress.bytes)] = result.toBytes();
+	FakeExtVM::m_s[ripple::AccountID::fromVoid(myAddress.bytes)] = result.toBytes();
 	return result;
 }
 
@@ -414,7 +413,7 @@ owning_bytes_ref FakeExecutive::create(const evmc_address& contractAddress,
 	FakeExtVM ext(info, myAddress, caller, origin, value, gasPrice,
 		data_, code_, codeHash, depth, isCreate, staticCall);
 	owning_bytes_ref result = vmc->exec(gas, ext);
-	FakeExtVM::m_s[AccountID::fromVoid(myAddress.bytes)] = result.toBytes();
+	FakeExtVM::m_s[ripple::AccountID::fromVoid(myAddress.bytes)] = result.toBytes();
 	return result;
 }
 
