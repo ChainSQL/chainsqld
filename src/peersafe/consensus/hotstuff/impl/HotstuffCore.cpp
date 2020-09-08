@@ -23,9 +23,13 @@ namespace ripple { namespace hotstuff {
 
 HotstuffCore::HotstuffCore(
     const ReplicaID& id,
+    const beast::Journal& journal,
+    Signal* signal,
     Storage* storage,
     Executor* executor)
 : id_(id)
+, mutex_()
+, journal_(journal)
 , vHeight_(1)
 , genesis_()
 , lock_()
@@ -33,6 +37,7 @@ HotstuffCore::HotstuffCore(
 , leaf_()
 , hight_qc_()
 , pendingQCs_()
+, signal_(signal)
 , storage_(storage)
 , executor_(executor) {
     
@@ -55,28 +60,56 @@ Block HotstuffCore::CreatePropose() {
     Command cmd;
     storage_->command(5, cmd);
     Block block = CreateLeaf(leaf_, cmd, hight_qc_, leaf_.height + 1);
+    storage_->addBlock(block);
     return block;
 }
 
 bool HotstuffCore::OnReceiveProposal(const Block &block, PartialCert& cert) {
+    JLOG(journal_.debug()) 
+        << "Receive a proposal that hash is " 
+        << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+        << " and height is " << block.height;
+
+    const std::lock_guard<std::mutex> lock(mutex_);
     bool safe = false;
     do {
-        if (executor_->accept(block.cmd) == false)
+        if (executor_->accept(block.cmd) == false) {
+            JLOG(journal_.error()) 
+                << "checking cmd failed that the hash of the block is "
+                << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+                << " and height is " << block.height;
             break;
+        }
 
         storage_->addBlock(block);
 
-        if (block.height <= vHeight_)
+        if (block.height <= vHeight_) {
+            JLOG(journal_.error()) 
+                << "Block's Height is less that vHeight,"
+                << "the hash of the block is " 
+                << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+                << " and height is " << block.height;
             break;
+        }
 
         Block qcBlock;
-        if (storage_->getBlock(block.justify.hash(), qcBlock) == false)
+        if (storage_->getBlock(block.justify.hash(), qcBlock) == false) {
+            JLOG(journal_.error()) 
+                << "Missing a block that hash is "
+                << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+                << " and height is " << block.height;
             break;
+        }
 
         if (qcBlock.height > lock_.height) {
             safe = true;
         }
         else {
+            JLOG(journal_.warn()) 
+                << "liveness condition failed."
+                << "the hash of the block is "
+                << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+                << " and height is " << block.height;
             Block b = block;
             bool bOk = true;
             for (;;) {
@@ -88,22 +121,48 @@ bool HotstuffCore::OnReceiveProposal(const Block &block, PartialCert& cert) {
 
             if (bOk && b.parent == lock_.hash)
                 safe = true;
+            else
+                JLOG(journal_.error()) 
+                    << "safety condition failed."
+                    << "the hash of the block is "
+                    << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+                    << " and height is " << block.height;
         }
 
-        if (safe == false)
+        if (safe == false) {
+            JLOG(journal_.error()) 
+                << "the block that hash is "
+                << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+                << " and height is " << block.height
+                << " was not safe.";
             break;
+        }
 
         vHeight_ = block.height;
 
         PartialSig sig;
         if (executor_->signature(id_, Block::blockHash(block), sig) == false) {
             safe = false;
+            JLOG(journal_.error()) 
+                << "the replica that id is " << id_ << " signed to fail in block "
+                << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()));
             break;
         }
 
         cert.partialSig = sig;
         cert.blockHash = block.hash;
         safe = true;
+
+        if(signal_) {
+            Event evnet{Event::ReceiveProposal, QuorumCert(), block, id_};
+            signal_->emitEvent(evnet);
+        }
+
+        JLOG(journal_.debug())
+            << "successfully generated a vote for a block that hash is "
+            << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+            << " and height is " << block.height;
+
     } while (false);
 
     update(block);
@@ -112,17 +171,43 @@ bool HotstuffCore::OnReceiveProposal(const Block &block, PartialCert& cert) {
 }
 
 void HotstuffCore::OnReceiveVote(const PartialCert& cert) {
-    if(executor_->verifySignature(cert.partialSig, cert.blockHash) == false)
+    JLOG(journal_.debug()) 
+        << "Receive a vote for a block that hash is " 
+        << ripple::strHex(ripple::Slice(cert.blockHash.data(), cert.blockHash.size()));
+
+    if (signal_) {
+        Event evnet{Event::ReceiveVote, QuorumCert(), Block(), cert.partialSig.ID};
+        signal_->emitEvent(evnet);
+    }
+
+    const std::lock_guard<std::mutex> lock(mutex_);
+    if(executor_->verifySignature(cert.partialSig, cert.blockHash) == false) {
+        JLOG(journal_.error())
+            << "A block that hash is "
+            << ripple::strHex(ripple::Slice(cert.blockHash.data(), cert.blockHash.size()))
+            << " verified to fail";
+             
         return;
+    }
 
     auto qcs = pendingQCs_.find(cert.blockHash);
     if(qcs == pendingQCs_.end()) {
         Block expect_block;
-        if(storage_->getBlock(cert.blockHash, expect_block) == false)
+        if(storage_->getBlock(cert.blockHash, expect_block) == false) {
+            JLOG(journal_.error())
+                << "Missing a block that hash is "
+                << ripple::strHex(ripple::Slice(cert.blockHash.data(), cert.blockHash.size()));
             return;
+        }
         
-        if(expect_block.height <= leaf_.height)
+        if(expect_block.height <= leaf_.height) {
+            JLOG(journal_.error())
+                << "The height of the expected block is less that height of leaf."
+                << "The hash of the expected block is "
+                << ripple::strHex(ripple::Slice(cert.blockHash.data(), cert.blockHash.size()))
+                << " and height is " << expect_block.height;
             return;
+        }
 
         QuorumCert qc = QuorumCert(expect_block.hash);
         qc.addPartiSig(cert);
@@ -133,7 +218,24 @@ void HotstuffCore::OnReceiveVote(const PartialCert& cert) {
 
     if(qcs->second.sizeOfSig() >= executor_->quorumSize()) {
         updateHighQC(qcs->second);
+
+        if (signal_) {
+            Event evnet{Event::QCFinish, qcs->second, Block(), id_};
+            signal_->emitEvent(evnet);
+        }
     }
+}
+
+void HotstuffCore::OnReceiveNewView(const QuorumCert &qc) {
+    JLOG(journal_.debug()) 
+        << "Receive a new view that hash of block is " 
+        << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()));
+    const std::lock_guard<std::mutex> lock(mutex_);
+    if (signal_) {
+        Event evnet{Event::ReceiveNewView, qc, Block(), id_};
+        signal_->emitEvent(evnet);
+    }
+    updateHighQC(qc);
 }
 
 Block HotstuffCore::CreateLeaf(const Block& leaf, 
@@ -146,7 +248,8 @@ Block HotstuffCore::CreateLeaf(const Block& leaf,
     block.parent = leaf.hash;
     block.cmd = cmd;
     block.height = height;
-    block.justify = qc;
+    if(qc.isZero() == false)
+        block.justify = qc;
 
     block.hash = Block::blockHash(block);
 
@@ -158,17 +261,33 @@ void HotstuffCore::update(const Block &block) {
     // b' <- b''.justify.node;
     // b <- b'.justify.node;
     // block1 = b'', block2 = b', block3 = b
+
+    JLOG(journal_.debug()) 
+        << "update a block that hash is " 
+        << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+        << " and height is " << block.height;
+
     Block block1, block2, block3;
-    if(storage_->getBlock(block.justify.hash(), block1) == false)
+    if(storage_->getBlock(block.justify.hash(), block1) == false) {
+        JLOG(journal_.debug()) 
+            << "Missing a block that hash is " 
+            << ripple::strHex(ripple::Slice(block.justify.hash().data(), block.justify.hash().size()))
+            << " when updating a block.";
         return;
+    }
     if(block1.committed)
         return;
 
     // pre-commit on block1
     updateHighQC(block.justify);
 
-    if(storage_->getBlock(block1.justify.hash(), block2) == false)
+    if(storage_->getBlock(block1.justify.hash(), block2) == false) {
+        JLOG(journal_.debug()) 
+            << "Missing a block that hash is " 
+            << ripple::strHex(ripple::Slice(block1.justify.hash().data(), block1.justify.hash().size()))
+            << " when updating a block.";
         return;
+    }
     if(block2.committed)
         return;
 
@@ -177,8 +296,13 @@ void HotstuffCore::update(const Block &block) {
         lock_ = block2;
     }
 
-    if(storage_->getBlock(block2.justify.hash(), block3) == false)
+    if(storage_->getBlock(block2.justify.hash(), block3) == false) {
+        JLOG(journal_.debug()) 
+            << "Missing a block that hash is " 
+            << ripple::strHex(ripple::Slice(block2.justify.hash().data(), block2.justify.hash().size()))
+            << " when updating a block.";
         return;
+    }
     if(block3.committed)
         return;
 
@@ -197,15 +321,39 @@ void HotstuffCore::commit(Block &block) {
         if(storage_->getBlock(block.parent, parent)) {
             commit(parent);
         }
+
+        JLOG(journal_.debug())
+            << "committed a block that height is " << block.height << " and "
+            << "the hash is "
+            << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()));
+
         block.committed = true;
         executor_->consented(block);
+    } else {
+        JLOG(journal_.error())
+            << "The height of a executed block is more than "
+            << "the height of the current block that hash is "
+            << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
+            << " and height is " << block.height;
     }
 }
 
 bool HotstuffCore::updateHighQC(const QuorumCert &qc) {
+
+    JLOG(journal_.debug()) 
+        << "update high QC that hash is " 
+        << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()));
+
+    if(qc.isZero())
+        return false;
+
     if (qc.sizeOfSig() < executor_->quorumSize()) {
+        JLOG(journal_.error()) 
+            << "The size of collecting QC was insufficient, the hash of qc is "
+            << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()));
         return false;
     }
+
     int numVerified = 0;
     auto sigs = qc.sigs();
     for(auto it = sigs.begin(); it != sigs.end(); it++) {
@@ -214,18 +362,43 @@ bool HotstuffCore::updateHighQC(const QuorumCert &qc) {
     }
 
     if(numVerified < executor_->quorumSize()) {
+        JLOG(journal_.error()) 
+            << "The size of verifing signature was insufficient, the hash of qc is "
+            << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()));
         return false;
     }
 
     Block newBlock;
-    if(storage_->getBlock(qc.hash(), newBlock) == false)
+    if(storage_->getBlock(qc.hash(), newBlock) == false) {
+        JLOG(journal_.debug()) 
+            << "Missing a block that hash is " 
+            << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()));
         return false;
+    }
 
     Block oldBlock;
-    if(storage_->getBlock(hight_qc_.hash(), oldBlock) == false)
+    if(storage_->getBlock(hight_qc_.hash(), oldBlock) == false) {
+        JLOG(journal_.debug()) 
+            << "Missing a block that hash is " 
+            << ripple::strHex(ripple::Slice(hight_qc_.hash().data(), hight_qc_.hash().size()));
         return false;
+    }
     
     if(newBlock.height > oldBlock.height) {
+
+        JLOG(journal_.debug())
+            << "updated high QC was successful."
+            << "old high qc is " 
+            << ripple::strHex(ripple::Slice(hight_qc_.hash().data(), hight_qc_.hash().size()))
+            << ", new high qc is " 
+            << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()))
+            << ". the heigh of old leaf is " << leaf_.height << " and "
+            << "the hash of old leaf is "
+            << ripple::strHex(ripple::Slice(leaf_.hash.data(), leaf_.hash.size()))
+            << ", the height of new leaf is " << newBlock.height << " and " 
+            << "the hash of new leaf is "
+            << ripple::strHex(ripple::Slice(newBlock.hash.data(), newBlock.hash.size()));
+
         hight_qc_ = qc;
         leaf_ = newBlock;
         return true;

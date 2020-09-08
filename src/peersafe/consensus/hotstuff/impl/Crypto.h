@@ -53,6 +53,7 @@ public:
 	std::size_t sizeOfSig() const;
 	const BlockHash& hash() const;
 	const std::map<key, value>& sigs() const;
+	const bool isZero() const;
 
 	ripple::Blob toBytes() const;
 

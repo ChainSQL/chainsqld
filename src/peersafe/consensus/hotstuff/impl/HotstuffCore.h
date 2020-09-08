@@ -20,8 +20,13 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_CORE_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_CORE_H
 
+#include <mutex>
+
+#include <boost/signals2.hpp>
+
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 #include <peersafe/consensus/hotstuff/impl/Crypto.h>
+#include <ripple/basics/Log.h>
 
 namespace ripple { namespace hotstuff {
 
@@ -54,10 +59,50 @@ protected:
     Executor() {}
 };
 
+struct Event
+{
+    enum Type {
+        QCFinish,
+        ReceiveProposal,
+        ReceiveVote,
+        ReceiveNewView,
+    };
+    
+    Type type;
+    QuorumCert QC;
+    Block block;
+    ReplicaID replica;
+};
+class Signal {
+    using OnEmit = boost::signals2::signal<void(const Event& event)>;
+public:
+    using OnEmitSlotType = OnEmit::slot_type;
+
+    Signal()
+    : onEmit_() {
+
+    }
+
+    ~Signal() {}
+
+    void emitEvent(const Event& event) {
+        onEmit_(event);
+    }
+
+    boost::signals2::connection doOnEmitEvent(const OnEmitSlotType& slot) {
+        return onEmit_.connect(slot);
+    }
+
+private:
+    OnEmit onEmit_;
+};
+
 class HotstuffCore {
 public: 
     HotstuffCore(
         const ReplicaID& id,
+        const beast::Journal& journal,
+        Signal* signal,
         Storage* storage,
         Executor* executor);
     ~HotstuffCore();
@@ -66,21 +111,40 @@ public:
 
     bool OnReceiveProposal(const Block& block, PartialCert& cert);
     void OnReceiveVote(const PartialCert& cert);
+    void OnReceiveNewView(const QuorumCert& qc);
 
-    const int& Height() const {
-        return vHeight_;
+    const Block leaf() {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return leaf_;
     }
 
-private:
+    void setLeaf(const Block& block) {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        leaf_ = block;
+    }
+
+    const int Height() {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return leaf_.height;
+    }
+    
+    const QuorumCert HightQC() {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return hight_qc_;
+    }
+
     Block CreateLeaf(const Block& leaf, 
         const Command& cmd, 
         const QuorumCert& qc, 
         int height);
+private:
     void update(const Block& block);
     void commit(Block& block);
     bool updateHighQC(const QuorumCert& qc);
 
     const ReplicaID& id_;
+    std::mutex mutex_;
+    beast::Journal journal_;
     int vHeight_;
     Block genesis_;
     Block lock_;
@@ -92,6 +156,7 @@ private:
     using PendingValue = QuorumCert;
     std::map<PendingKey, PendingValue> pendingQCs_;
 
+    Signal* signal_;
     Storage* storage_;
     Executor* executor_;
 };

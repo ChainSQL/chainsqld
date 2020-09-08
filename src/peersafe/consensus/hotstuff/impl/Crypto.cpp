@@ -75,6 +75,10 @@ const std::map<QuorumCert::key, QuorumCert::value>& QuorumCert::sigs() const {
     return sigs_;
 }
 
+const bool QuorumCert::isZero() const {
+    return blockHash_.isZero();
+}
+
 ripple::Blob QuorumCert::toBytes() const {
     ripple::Blob blob;
 

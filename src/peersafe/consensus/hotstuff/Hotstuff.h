@@ -22,6 +22,7 @@
 
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
+#include <ripple/basics/Log.h>
 
 namespace ripple { namespace hotstuff {
 
@@ -33,18 +34,20 @@ public:
 
     virtual void proposal(ReplicaID id, const Block& block) = 0;
     virtual void vote(ReplicaID id, const PartialCert& cert) = 0;
+    virtual void newView(const QuorumCert& qc) = 0;
 protected:
     Sender() {}
 };
 
 class Hotstuff {
-public: 
+public:
     Hotstuff(
-        ReplicaID id, 
-        Sender* sender,
-        Storage* storage,
-        Executor* executor,
-        Pacemaker* pacemaker);
+        const ReplicaID &id,
+        const beast::Journal &journal,
+        Sender *sender,
+        Storage *storage,
+        Executor *executor,
+        Pacemaker *pacemaker);
 
     ~Hotstuff();
 
@@ -52,15 +55,18 @@ public:
         return id_;
     }
 
-    void Propose();
+    void propose();
+    void nextSyncNewView();
 
     void handlePropose(const Block& block);
     void handleVote(const PartialCert& cert);
+    void handleNewView(const QuorumCert& qc);
 private:
     void broadCast(const Block& block);
 
     ReplicaID id_;
-    HotstuffCore hotstuff_core_;
+    Signal signal_;
+    HotstuffCore* hotstuff_core_;
     Sender* sender_;
     Pacemaker* pacemaker_;
 };

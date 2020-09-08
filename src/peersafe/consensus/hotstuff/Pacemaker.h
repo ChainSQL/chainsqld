@@ -32,7 +32,7 @@ public:
 	virtual ~Pacemaker(){};
 
 	virtual ReplicaID GetLeader(int height) = 0;
-	virtual void init(Hotstuff* hotstuff) = 0;
+	virtual void init(Hotstuff* hotstuff, Signal* signal) = 0;
 
 protected:
 	Pacemaker() {}
@@ -40,15 +40,19 @@ protected:
 
 class FixedLeader : public Pacemaker {
 public:
-	FixedLeader();
+	FixedLeader(const ReplicaID& leader);
 	virtual ~FixedLeader();
 
 	ReplicaID GetLeader(int height) override;
-	void init(Hotstuff* hotstuff) override;
+	void init(Hotstuff* hotstuff, Signal* signal) override;
 
 	void run();
 
 private:
+	void beat();
+	void onHandleEmitEvent(const Event& event);
+
+	ReplicaID leader_;
 	Hotstuff* hotstuff_;
 };
 

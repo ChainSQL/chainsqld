@@ -17,12 +17,15 @@
  */
 //==============================================================================
 
+#include <functional>
+
 #include <peersafe/consensus/hotstuff/Pacemaker.h>
 
 namespace ripple { namespace hotstuff {
 
-FixedLeader::FixedLeader()
-: hotstuff_(nullptr) {
+FixedLeader::FixedLeader(const ReplicaID& leader)
+: leader_(leader)
+, hotstuff_(nullptr) {
 
 }
 
@@ -30,20 +33,37 @@ FixedLeader::~FixedLeader() {
 
 }
 
-ReplicaID FixedLeader::GetLeader(int height) {
-	return 1;
+ReplicaID FixedLeader::GetLeader(int /*height*/) {
+	return leader_;
 }
 
-void FixedLeader::init(Hotstuff* hotstuff) {
+void FixedLeader::init(Hotstuff* hotstuff, Signal* signal) {
+	assert(hotstuff);
+	assert(signal);
+
 	hotstuff_ = hotstuff;
+	if(signal) {
+		signal->doOnEmitEvent(
+			std::bind(&FixedLeader::onHandleEmitEvent, this, std::placeholders::_1));
+	}
 }
 
 void FixedLeader::run() {
+	beat();
+}
+
+void FixedLeader::beat() {
 	if(hotstuff_ == nullptr)
 		return;
 
 	if(hotstuff_->id() == GetLeader(0))
-		hotstuff_->Propose();
+		hotstuff_->propose();
+}
+
+void FixedLeader::onHandleEmitEvent(const Event &event) {
+	if(event.type == Event::QCFinish) {
+		beat();
+	}
 }
 
 } // namespace hotstuff

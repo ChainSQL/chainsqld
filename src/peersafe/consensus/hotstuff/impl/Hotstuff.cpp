@@ -24,36 +24,45 @@
 namespace ripple { namespace hotstuff {
 
 Hotstuff::Hotstuff(
-    ReplicaID id, 
+    const ReplicaID& id, 
+    const beast::Journal& journal,
     Sender* sender,
     Storage* storage,
     Executor* executor,
     Pacemaker* pacemaker)
 : id_(id)
-, hotstuff_core_(HotstuffCore(id, storage, executor))
+, signal_()
+, hotstuff_core_(new HotstuffCore(id, journal, &signal_, storage, executor))
 , sender_(sender)
 , pacemaker_(pacemaker) {
-    pacemaker_->init(this);
+    pacemaker_->init(this, &signal_);
 }
 
 Hotstuff::~Hotstuff() {
+    delete hotstuff_core_;
 }
 
-void Hotstuff::Propose() {
-    Block block = hotstuff_core_.CreatePropose();
+void Hotstuff::propose() {
+    Block block = hotstuff_core_->CreatePropose();
     // broadcast the block to all replicas
     broadCast(block);
     handlePropose(block);
 }
 
+void Hotstuff::nextSyncNewView() {
+    const QuorumCert& qc = hotstuff_core_->HightQC();
+    if(id_ == pacemaker_->GetLeader(hotstuff_core_->Height() + 1))
+        sender_->newView(qc);
+}
+
 void Hotstuff::handlePropose(const Block &block) {
     PartialCert cert;
-    if(hotstuff_core_.OnReceiveProposal(block, cert) == false)
+    if(hotstuff_core_->OnReceiveProposal(block, cert) == false)
         return;
 
     int nextLeader = pacemaker_->GetLeader(block.height);
     if (id() == nextLeader) {
-        hotstuff_core_.OnReceiveVote(cert);
+        hotstuff_core_->OnReceiveVote(cert);
     } else {
         // send votemsg to next leader
         sender_->vote(nextLeader, cert);
@@ -61,7 +70,11 @@ void Hotstuff::handlePropose(const Block &block) {
 }
 
 void Hotstuff::handleVote(const PartialCert& cert) {
-    hotstuff_core_.OnReceiveVote(cert);
+    hotstuff_core_->OnReceiveVote(cert);
+}
+
+void Hotstuff::handleNewView(const QuorumCert &qc) {
+    hotstuff_core_->OnReceiveNewView(qc);
 }
 
 void Hotstuff::broadCast(const Block& block) {
