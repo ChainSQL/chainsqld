@@ -56,7 +56,7 @@ private:
 	int GenerateCreateTableSql(const Json::Value& raw, BuildSQL *buildsql);
 	//int GenerateRenameTableSql(const Json::Value& tx_json, std::string& sql);
 	int GenerateInsertSql(const Json::Value& raw, BuildSQL *buildsql);
-	int GenerateUpdateSql(const Json::Value& raw, BuildSQL *buildsql);
+	//int GenerateUpdateSql(const Json::Value& raw, BuildSQL *buildsql);
 	int GenerateDeleteSql(const Json::Value& raw, BuildSQL *buildsql);
 	int GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql);
 

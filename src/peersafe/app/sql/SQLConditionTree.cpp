@@ -259,6 +259,11 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 					s.insert(s.end(), fv.begin() + 3, fv.end() - 2);
 					fv = s + "'";
 				}
+				else if( fv[1] == '/' && fv[fv.size() - 3] == '^' && fv[fv.size() - 2] == '/') {
+					std::string s("'");
+					s.insert(s.end(), fv.begin() + 2, fv.end() - 3);
+					fv = s + "%'";
+				}
 				else if (fv[1] == '/' && fv[fv.size() - 2] == '/') {
 					fv[1] = '%';
 					fv[fv.size() - 2] = '%';
@@ -272,6 +277,10 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 					std::string s("%");
 					s.insert(s.end(), fv.begin() + 2, fv.end() - 1);
 					fv = s;
+				}else if (fv[0] == '/' && fv[fv.size() - 2] == '^' && fv[fv.size() - 1] == '/') {
+					std::string s;
+					s.insert(s.end(), fv.begin() + 1, fv.end() - 2);
+					fv = s + "%";
 				}
 				else if (fv[0] == '/' && fv[fv.size() - 1] == '/') {
 					fv[0] = '%';
