@@ -3250,6 +3250,11 @@ void NetworkOPsImp::pubAccountTransaction (
 void NetworkOPsImp::pubTableTxs(const AccountID& owner, const std::string& sTableName,
 	const STTx& stTxn, const std::tuple<std::string, std::string, std::string>& res,bool bValidated)
 {
+    if (!(app_.getShardManager().myShardRole() & ShardManager::LOOKUP))
+    {
+        return;
+    }
+
 	//db_success come,but validate_success not processed
 	if (!bValidated && mSubTx.find(stTxn.getTransactionID()) != mSubTx.end())
 	{
