@@ -27,7 +27,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/rpc/Context.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <ripple/beast/core/LexicalCast.h>
-#ifdef __GNUC__
+#ifdef __GLIBC__
 #include <malloc.h>
 #endif
 
@@ -37,7 +37,7 @@ namespace ripple {
     {
         Json::Value ret(Json::objectValue);
 
-        #ifdef __GNUC__
+        #ifdef __GLIBC__
         ret[jss::value] = malloc_trim(0);
         #endif
 
