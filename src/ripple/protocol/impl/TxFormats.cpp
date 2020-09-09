@@ -142,7 +142,8 @@ TxFormats::TxFormats ()
 			SOElement(sfContractData,		SOE_REQUIRED) <<
 			SOElement(sfGas,				SOE_REQUIRED) <<
 			SOElement(sfContractAddress,	SOE_OPTIONAL) <<
-			SOElement(sfContractValue,		SOE_OPTIONAL) 
+			SOElement(sfContractValue,		SOE_OPTIONAL) <<
+            SOElement(sfPriority,           SOE_OPTIONAL)
 		;
 
 

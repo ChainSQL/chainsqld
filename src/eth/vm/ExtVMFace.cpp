@@ -225,7 +225,7 @@ namespace eth {
 		return evmc::result{ evmcResult };
 	}
 
-	evmc::result EvmCHost::call(evmc_message const& _msg) noexcept
+	evmc::result EvmCHost::call(evmc_message const& _msg)
 	{
 		assert(_msg.gas >= 0 && "Invalid gas value");
 		assert(_msg.depth == static_cast<int>(m_extVM.depth) + 1);

@@ -362,22 +362,29 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 
 TER Transactor::checkShard(PreclaimContext const& ctx)
 {
-    if (ctx.app.getShardManager().myShardRole() & ShardManager::LOOKUP)
+    auto &shardMgr = ctx.app.getShardManager();
+
+    if (shardMgr.myShardRole() & ShardManager::LOOKUP)
     {
         return tesSUCCESS;
     }
 
-    Lookup& lookup = ctx.app.getShardManager().lookup();
-
-    std::uint32_t shardID = lookup.getShardIndex(ctx.tx.getAccountID(sfAccount));
+    std::uint32_t shardID = shardMgr.lookup().getShardIndex(ctx.tx.getAccountID(sfAccount));
 
     if (ctx.tx.isChainSQLContractType() &&
         ctx.tx.getFieldU16(sfContractOpType) == MessageCall)
     {
-        std::uint32_t dstShardID = lookup.getShardIndex(ctx.tx.getAccountID(sfContractAddress));
-        if (shardID != dstShardID)
+        if (ctx.tx.isFieldPresent(sfPriority) && ctx.tx.getFieldU8(sfPriority))
         {
             shardID = 0;
+        }
+        else
+        {
+            std::uint32_t dstShardID = shardMgr.lookup().getShardIndex(ctx.tx.getAccountID(sfContractAddress));
+            if (shardID != dstShardID)
+            {
+                shardID = 0;
+            }
         }
     }
 

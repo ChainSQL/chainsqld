@@ -180,6 +180,7 @@ namespace ripple {
     //invalid currency
     tefINVALID_CURRENY = 191,
     tefINCONFORMITY_SHARD,
+    tefCONTRACT_INCONFORMITY_SHARD,
 
     // 200 .. 299: M Malformed (bad signature)
     // Causes:

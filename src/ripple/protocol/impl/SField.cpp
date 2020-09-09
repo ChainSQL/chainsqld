@@ -83,6 +83,7 @@ SF_U8 const sfMethod            = make::one<SF_U8::type>(&sfMethod,            S
 
 // 8-bit integers (uncommon)
 SF_U8 const sfTickSize          = make::one<SF_U8::type>(&sfTickSize,          STI_UINT8, 16, "TickSize");
+SF_U8 const sfPriority          = make::one<SF_U8::type>(&sfPriority,          STI_UINT8, 17, "Priority");
 
 // 16-bit integers
 SF_U16 const sfLedgerEntryType = make::one<SF_U16::type>(&sfLedgerEntryType, STI_UINT16, 1, "LedgerEntryType", SField::sMD_Never);

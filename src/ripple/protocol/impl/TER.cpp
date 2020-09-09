@@ -100,7 +100,9 @@ transResults()
 		{ tefCONTRACT_CANNOT_BEPAYED ,{ "tefCONTRACT_CANNOT_BEPAYED","Contract address cannot be 'Destination' for 'Payment'." } },
 		{ tefCONTRACT_NOT_EXIST ,	 {"tefCONTRACT_NOT_EXIST",		"Contract does not exist,maybe destructed."				}},
 
-		{ tefINVALID_CURRENY ,{ "tefINVALID_CURRENY",		"Invalid currency" } },
+		{ tefINVALID_CURRENY,        { "tefINVALID_CURRENY",        "Invalid currency."                                                            } },
+        { tefINCONFORMITY_SHARD,     { "tefINCONFORMITY_SHARD",     "Transaction can not process in this shard."                                   } },
+        { tefCONTRACT_INCONFORMITY_SHARD, { "tefCONTRACT_INCONFORMITY_SHARD", "Add priority flag, try again."                                      } },
         
 		{ telLOCAL_ERROR,            { "telLOCAL_ERROR",           "Local failure."                                                                } },
 		{ telBAD_DOMAIN,             { "telBAD_DOMAIN",            "Domain too long."                                                              } },

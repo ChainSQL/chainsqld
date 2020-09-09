@@ -337,6 +337,7 @@ extern SField const sfMetadata;
 extern SF_U8 const sfCloseResolution;
 extern SF_U8 const sfMethod;
 extern SF_U8 const sfTickSize;
+extern SF_U8 const sfPriority;
 // 16-bit integers
 extern SF_U16 const sfLedgerEntryType;
 extern SF_U16 const sfTransactionType;

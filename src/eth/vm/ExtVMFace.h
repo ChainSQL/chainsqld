@@ -324,7 +324,7 @@ public:
 	void selfdestruct(
 		const evmc::address& _addr, const evmc::address& _beneficiary) noexcept override;
 
-	evmc::result call(const evmc_message& _msg) noexcept override;
+	evmc::result call(const evmc_message& _msg) override;
 
 	evmc_tx_context get_tx_context() const noexcept override;
 

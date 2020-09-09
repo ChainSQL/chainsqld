@@ -221,8 +221,15 @@ std::uint32_t Transaction::getShardIndex() const
     if (mTransaction->isChainSQLContractType() &&
         mTransaction->getFieldU16(sfContractOpType) == MessageCall)
     {
-        std::uint32_t dstShardID = lookup.getShardIndex(mTransaction->getAccountID(sfContractAddress));
-        return shardID == dstShardID ? shardID : 0;
+        if (mTransaction->isFieldPresent(sfPriority) && mTransaction->getFieldU8(sfPriority))
+        {
+            return 0;
+        }
+        else
+        {
+            std::uint32_t dstShardID = lookup.getShardIndex(mTransaction->getAccountID(sfContractAddress));
+            return shardID == dstShardID ? shardID : 0;
+        }
     }
 
     return shardID;

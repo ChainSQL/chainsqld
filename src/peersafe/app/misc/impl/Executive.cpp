@@ -7,6 +7,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 
@@ -127,6 +128,18 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 	//}
 
 	//m_savepoint = m_s.savepoint();
+
+    if (m_depth > 1)
+    {
+        auto& shardMgr = m_s.ctx().app.getShardManager();
+        if (shardMgr.myShardRole() == ShardManager::SHARD &&
+            shardMgr.lookup().getShardIndex(_p.senderAddress) != shardMgr.lookup().getShardIndex(_p.codeAddress))
+        {
+            auto blob = strCopy(to_string((int)tefCONTRACT_INCONFORMITY_SHARD));
+            m_output = eth::owning_bytes_ref(std::move(blob), 0, blob.size());
+            throw eth::RevertDiyInstruction{ std::move(m_output) };
+        }
+    }
 
 	m_gas = _p.gas;
 	if (m_s.addressHasCode(_p.codeAddress))

@@ -436,7 +436,7 @@ public:
     virtual void selfdestruct(const address& addr, const address& beneficiary) noexcept = 0;
 
     /// @copydoc evmc_host_interface::call
-    virtual result call(const evmc_message& msg) noexcept = 0;
+    virtual result call(const evmc_message& msg) = 0;
 
     /// @copydoc evmc_host_interface::get_tx_context
     virtual evmc_tx_context get_tx_context() const noexcept = 0;
@@ -868,7 +868,7 @@ inline void selfdestruct(evmc_host_context* h,
     Host::from_context(h)->selfdestruct(*addr, *beneficiary);
 }
 
-inline evmc_result call(evmc_host_context* h, const evmc_message* msg) noexcept
+inline evmc_result call(evmc_host_context* h, const evmc_message* msg)
 {
     return Host::from_context(h)->call(*msg).release_raw();
 }
