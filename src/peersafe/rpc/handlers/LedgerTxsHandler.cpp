@@ -28,14 +28,24 @@
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/Role.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 
 
 	Json::Value doLedgerTxs(RPC::Context& context)
 	{
-
 		Json::Value jvResult;
+
+        if (!(context.app.getShardManager().myShardRole() & ShardManager::LOOKUP))
+        {
+            jvResult[jss::error] = "InvalidRequest";
+            jvResult[jss::error_message] = "I'm a " +
+                ShardManager::to_string(context.app.getShardManager().myShardRole())
+                + ", please send request to LOOKUP";
+
+            return jvResult;
+        }
 
 		auto const& params = context.params;
 		bool needsLedger = params.isMember(jss::ledger) ||
