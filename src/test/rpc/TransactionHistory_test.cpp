@@ -20,7 +20,7 @@
 #include <test/jtx.h>
 #include <test/jtx/Env.h>
 #include <test/jtx/envconfig.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <boost/container/static_vector.hpp>
 #include <algorithm>
 
@@ -91,7 +91,7 @@ class TransactionHistory_test : public beast::unit_test::suite
 
             // search for a tx in history matching the last offer
             bool const txFound = [&] {
-                auto const toFind = env.tx()->getJson(0);
+                auto const toFind = env.tx()->getJson(JsonOptions::none);
                 for (auto tx : result[jss::txs])
                 {
                     tx.removeMember(jss::inLedger);
@@ -125,10 +125,10 @@ class TransactionHistory_test : public beast::unit_test::suite
             }
         }
         BEAST_EXPECT(total == 117);
-        BEAST_EXPECT(typeCounts["AccountSet"] == 20);
-        BEAST_EXPECT(typeCounts["TrustSet"] == 19);
-        BEAST_EXPECT(typeCounts["Payment"] == 58);
-        BEAST_EXPECT(typeCounts["OfferCreate"] == 20);
+        BEAST_EXPECT(typeCounts[jss::AccountSet.c_str()] == 20);
+        BEAST_EXPECT(typeCounts[jss::TrustSet.c_str()] == 19);
+        BEAST_EXPECT(typeCounts[jss::Payment.c_str()] == 58);
+        BEAST_EXPECT(typeCounts[jss::OfferCreate.c_str()] == 20);
 
         // also, try a request with max non-admin start value
         {
@@ -142,7 +142,7 @@ class TransactionHistory_test : public beast::unit_test::suite
     }
 
 public:
-    void run ()
+    void run () override
     {
         testBadInput();
         testRequest();

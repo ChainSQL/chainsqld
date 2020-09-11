@@ -17,9 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx/fee.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 namespace test {
@@ -33,7 +32,7 @@ fee::operator()(Env&, JTx& jt) const
     jt.fill_fee = false;
     if (amount_)
         jt[jss::Fee] =
-            amount_->getJson(0);
+            amount_->getJson(JsonOptions::none);
 }
 
 } // jtx

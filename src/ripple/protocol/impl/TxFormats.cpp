@@ -17,192 +17,268 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/protocol/TxFormats.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 
 TxFormats::TxFormats ()
 {
-    add ("AccountSet", ttACCOUNT_SET)
-        << SOElement (sfEmailHash,           SOE_OPTIONAL)
-        << SOElement (sfWalletLocator,       SOE_OPTIONAL)
-        << SOElement (sfWalletSize,          SOE_OPTIONAL)
-        << SOElement (sfMessageKey,          SOE_OPTIONAL)
-        << SOElement (sfDomain,              SOE_OPTIONAL)
-        << SOElement (sfTransferRate,        SOE_OPTIONAL)
-		<< SOElement (sfTransferFeeMin,		 SOE_OPTIONAL)
-		<< SOElement (sfTransferFeeMax,		 SOE_OPTIONAL)
-        << SOElement (sfSetFlag,             SOE_OPTIONAL)
-        << SOElement (sfClearFlag,           SOE_OPTIONAL)
-        << SOElement (sfTickSize,            SOE_OPTIONAL)
-        ;
+    // Fields shared by all txFormats:
+    static const std::initializer_list<SOElement> commonFields
+    {
+        { sfTransactionType,      soeREQUIRED },
+        { sfFlags,                soeOPTIONAL },
+        { sfSourceTag,            soeOPTIONAL },
+        { sfAccount,              soeREQUIRED },
+        { sfSequence,             soeREQUIRED },
+        { sfPreviousTxnID,        soeOPTIONAL }, // emulate027
+        { sfLastLedgerSequence,   soeOPTIONAL },
+        { sfAccountTxnID,         soeOPTIONAL },
+        { sfFee,                  soeREQUIRED },
+        { sfOperationLimit,       soeOPTIONAL },
+        { sfMemos,                soeOPTIONAL },
+        { sfSigningPubKey,        soeREQUIRED },
+        { sfTxnSignature,         soeOPTIONAL },
+        { sfSigners,              soeOPTIONAL }, // submit_multisigned
+		{ sfCertificate,		  soeOPTIONAL }
+    };
 
-    add ("TrustSet", ttTRUST_SET)
-        << SOElement (sfLimitAmount,         SOE_OPTIONAL)
-        << SOElement (sfQualityIn,           SOE_OPTIONAL)
-        << SOElement (sfQualityOut,          SOE_OPTIONAL)
-        ;
+    add (jss::AccountSet, ttACCOUNT_SET,
+        {
+            { sfEmailHash,           soeOPTIONAL },
+            { sfWalletLocator,       soeOPTIONAL },
+            { sfWalletSize,          soeOPTIONAL },
+            { sfMessageKey,          soeOPTIONAL },
+            { sfDomain,              soeOPTIONAL },
+            { sfTransferRate,        soeOPTIONAL },
+			{ sfTransferFeeMin,		 soeOPTIONAL },
+			{ sfTransferFeeMax,		 soeOPTIONAL },
+            { sfSetFlag,             soeOPTIONAL },
+            { sfClearFlag,           soeOPTIONAL },
+            { sfTickSize,            soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("OfferCreate", ttOFFER_CREATE)
-        << SOElement (sfTakerPays,           SOE_REQUIRED)
-        << SOElement (sfTakerGets,           SOE_REQUIRED)
-        << SOElement (sfExpiration,          SOE_OPTIONAL)
-        << SOElement (sfOfferSequence,       SOE_OPTIONAL)
-        ;
+    add (jss::TrustSet, ttTRUST_SET,
+        {
+            { sfLimitAmount,         soeOPTIONAL },
+            { sfQualityIn,           soeOPTIONAL },
+            { sfQualityOut,          soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("OfferCancel", ttOFFER_CANCEL)
-        << SOElement (sfOfferSequence,       SOE_REQUIRED)
-        ;
+    add (jss::OfferCreate, ttOFFER_CREATE,
+        {
+            { sfTakerPays,           soeREQUIRED },
+            { sfTakerGets,           soeREQUIRED },
+            { sfExpiration,          soeOPTIONAL },
+            { sfOfferSequence,       soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("SetRegularKey", ttREGULAR_KEY_SET)
-        << SOElement (sfRegularKey,          SOE_OPTIONAL)
-        ;
+    add (jss::OfferCancel, ttOFFER_CANCEL,
+        {
+            { sfOfferSequence,       soeREQUIRED },
+        },
+        commonFields);
 
-    add ("Payment", ttPAYMENT)
-        << SOElement (sfDestination,         SOE_REQUIRED)
-        << SOElement (sfAmount,              SOE_REQUIRED)
-        << SOElement (sfSendMax,             SOE_OPTIONAL)
-        << SOElement (sfPaths,               SOE_DEFAULT)
-        << SOElement (sfInvoiceID,           SOE_OPTIONAL)
-        << SOElement (sfDestinationTag,      SOE_OPTIONAL)
-        << SOElement (sfDeliverMin,          SOE_OPTIONAL)
-        ;
+    add (jss::SetRegularKey, ttREGULAR_KEY_SET,
+        {
+            { sfRegularKey,          soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("EscrowCreate", ttESCROW_CREATE) <<
-        SOElement (sfDestination,       SOE_REQUIRED) <<
-        SOElement (sfAmount,            SOE_REQUIRED) <<
-        SOElement (sfCondition,         SOE_OPTIONAL) <<
-        SOElement (sfCancelAfter,       SOE_OPTIONAL) <<
-        SOElement (sfFinishAfter,       SOE_OPTIONAL) <<
-        SOElement (sfDestinationTag,    SOE_OPTIONAL);
+    add (jss::Payment, ttPAYMENT,
+        {
+            { sfDestination,         soeREQUIRED },
+            { sfAmount,              soeREQUIRED },
+            { sfSendMax,             soeOPTIONAL },
+            { sfPaths,               soeDEFAULT  },
+            { sfInvoiceID,           soeOPTIONAL },
+            { sfDestinationTag,      soeOPTIONAL },
+            { sfDeliverMin,          soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("EscrowFinish", ttESCROW_FINISH) <<
-        SOElement (sfOwner,               SOE_REQUIRED) <<
-        SOElement (sfOfferSequence,       SOE_REQUIRED) <<
-        SOElement (sfFulfillment,         SOE_OPTIONAL) <<
-        SOElement (sfCondition,           SOE_OPTIONAL);
+    add (jss::EscrowCreate, ttESCROW_CREATE,
+        {
+            { sfDestination,         soeREQUIRED },
+            { sfAmount,              soeREQUIRED },
+            { sfCondition,           soeOPTIONAL },
+            { sfCancelAfter,         soeOPTIONAL },
+            { sfFinishAfter,         soeOPTIONAL },
+            { sfDestinationTag,      soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("EscrowCancel", ttESCROW_CANCEL) <<
-        SOElement (sfOwner,               SOE_REQUIRED) <<
-        SOElement (sfOfferSequence,       SOE_REQUIRED);
+    add (jss::EscrowFinish, ttESCROW_FINISH,
+        {
+            { sfOwner,               soeREQUIRED },
+            { sfOfferSequence,       soeREQUIRED },
+            { sfFulfillment,         soeOPTIONAL },
+            { sfCondition,           soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("EnableAmendment", ttAMENDMENT)
-        << SOElement (sfLedgerSequence,      SOE_REQUIRED)
-        << SOElement (sfAmendment,           SOE_REQUIRED)
-        ;
+    add (jss::EscrowCancel, ttESCROW_CANCEL,
+        {
+            { sfOwner,               soeREQUIRED },
+            { sfOfferSequence,       soeREQUIRED },
+        },
+        commonFields);
 
-    add ("SetFee", ttFEE)
-        << SOElement (sfLedgerSequence,      SOE_OPTIONAL)
-        << SOElement (sfBaseFee,             SOE_REQUIRED)
-        << SOElement (sfReferenceFeeUnits,   SOE_REQUIRED)
-        << SOElement (sfReserveBase,         SOE_REQUIRED)
-        << SOElement (sfReserveIncrement,    SOE_REQUIRED)
-		<< SOElement (sfDropsPerByte,		 SOE_OPTIONAL)
-        ;
+    add (jss::EnableAmendment, ttAMENDMENT,
+        {
+            { sfLedgerSequence,      soeREQUIRED },
+            { sfAmendment,           soeREQUIRED },
+        },
+        commonFields);
 
-    add ("TicketCreate", ttTICKET_CREATE)
-        << SOElement (sfTarget,              SOE_OPTIONAL)
-        << SOElement (sfExpiration,          SOE_OPTIONAL)
-        ;
+    add (jss::SetFee, ttFEE,
+        {
+            { sfLedgerSequence,      soeOPTIONAL },
+            { sfBaseFee,             soeREQUIRED },
+            { sfReferenceFeeUnits,   soeREQUIRED },
+            { sfReserveBase,         soeREQUIRED },
+            { sfReserveIncrement,    soeREQUIRED },
+			{ sfDropsPerByte,		 soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("TicketCancel", ttTICKET_CANCEL)
-        << SOElement (sfTicketID,            SOE_REQUIRED)
-        ;
+    add (jss::TicketCreate, ttTICKET_CREATE,
+        {
+            { sfTarget,              soeOPTIONAL },
+            { sfExpiration,          soeOPTIONAL },
+        },
+        commonFields);
+
+    add (jss::TicketCancel, ttTICKET_CANCEL,
+        {
+            { sfTicketID,            soeREQUIRED },
+        },
+        commonFields);
 
     // The SignerEntries are optional because a SignerList is deleted by
     // setting the SignerQuorum to zero and omitting SignerEntries.
-    add ("SignerListSet", ttSIGNER_LIST_SET)
-        << SOElement (sfSignerQuorum,        SOE_REQUIRED)
-        << SOElement (sfSignerEntries,       SOE_OPTIONAL)
-        ;
+    add (jss::SignerListSet, ttSIGNER_LIST_SET,
+        {
+            { sfSignerQuorum,        soeREQUIRED },
+            { sfSignerEntries,       soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("PaymentChannelCreate", ttPAYCHAN_CREATE) <<
-            SOElement (sfDestination,       SOE_REQUIRED) <<
-            SOElement (sfAmount,            SOE_REQUIRED) <<
-            SOElement (sfSettleDelay,       SOE_REQUIRED) <<
-            SOElement (sfPublicKey,         SOE_REQUIRED) <<
-            SOElement (sfCancelAfter,       SOE_OPTIONAL) <<
-            SOElement (sfDestinationTag,    SOE_OPTIONAL);
+    add (jss::PaymentChannelCreate, ttPAYCHAN_CREATE,
+        {
+            { sfDestination,         soeREQUIRED },
+            { sfAmount,              soeREQUIRED },
+            { sfSettleDelay,         soeREQUIRED },
+            { sfPublicKey,           soeREQUIRED },
+            { sfCancelAfter,         soeOPTIONAL },
+            { sfDestinationTag,      soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("PaymentChannelFund", ttPAYCHAN_FUND) <<
-            SOElement (sfPayChannel,        SOE_REQUIRED) <<
-            SOElement (sfAmount,            SOE_REQUIRED) <<
-            SOElement (sfExpiration,        SOE_OPTIONAL);
+    add (jss::PaymentChannelFund, ttPAYCHAN_FUND,
+        {
+            { sfPayChannel,          soeREQUIRED },
+            { sfAmount,              soeREQUIRED },
+            { sfExpiration,          soeOPTIONAL },
+        },
+        commonFields);
 
-    add ("PaymentChannelClaim", ttPAYCHAN_CLAIM) <<
-            SOElement (sfPayChannel,        SOE_REQUIRED) <<
-            SOElement (sfAmount,            SOE_OPTIONAL) <<
-            SOElement (sfBalance,           SOE_OPTIONAL) <<
-            SOElement (sfSignature,         SOE_OPTIONAL) <<
-            SOElement (sfPublicKey,         SOE_OPTIONAL);
+    add (jss::PaymentChannelClaim, ttPAYCHAN_CLAIM,
+        {
+            { sfPayChannel,          soeREQUIRED },
+            { sfAmount,              soeOPTIONAL },
+            { sfBalance,             soeOPTIONAL },
+            { sfSignature,           soeOPTIONAL },
+            { sfPublicKey,           soeOPTIONAL },
+        },
+        commonFields);
 
-	add ("Contract", ttCONTRACT) <<
-			SOElement(sfContractOpType,		SOE_REQUIRED) <<
-			SOElement(sfContractData,		SOE_REQUIRED) <<
-			SOElement(sfGas,				SOE_REQUIRED) <<
-			SOElement(sfContractAddress,	SOE_OPTIONAL) <<
-			SOElement(sfContractValue,		SOE_OPTIONAL) 
-		;
+    add (jss::CheckCreate, ttCHECK_CREATE,
+        {
+            { sfDestination,         soeREQUIRED },
+            { sfSendMax,             soeREQUIRED },
+            { sfExpiration,          soeOPTIONAL },
+            { sfDestinationTag,      soeOPTIONAL },
+            { sfInvoiceID,           soeOPTIONAL },
+        },
+        commonFields);
 
+    add (jss::CheckCash, ttCHECK_CASH,
+        {
+            { sfCheckID,             soeREQUIRED },
+            { sfAmount,              soeOPTIONAL },
+            { sfDeliverMin,          soeOPTIONAL },
+        },
+        commonFields);
 
-    Item &itemTableListSet = add("TableListSet", ttTABLELISTSET)
-		<< SOElement(sfTables,              SOE_REQUIRED)
-		<< SOElement(sfUser,                SOE_OPTIONAL)
-		<< SOElement(sfRaw,                 SOE_OPTIONAL)
-		<< SOElement(sfToken,               SOE_OPTIONAL)
-        << SOElement(sfOpType,              SOE_REQUIRED)
-		<< SOElement(sfTxCheckHash,         SOE_OPTIONAL)
-		<< SOElement(sfOperationRule,		SOE_OPTIONAL)
-        ;
-    addChainSqlCommondFields(itemTableListSet);
+    add (jss::CheckCancel, ttCHECK_CANCEL,
+        {
+            { sfCheckID,             soeREQUIRED },
+        },
+        commonFields);
 
-    Item &itemSqlStatement = add("SQLStatement", ttSQLSTATEMENT)
-		<< SOElement(sfOwner,               SOE_REQUIRED)
-		<< SOElement(sfTables,              SOE_REQUIRED)
-		<< SOElement(sfRaw,                 SOE_REQUIRED)
-        << SOElement(sfOpType,              SOE_REQUIRED)
-        << SOElement(sfAutoFillField,       SOE_OPTIONAL)
-		<< SOElement(sfTxCheckHash,         SOE_OPTIONAL)
-        ;
-    addChainSqlCommondFields(itemSqlStatement);
+    add (jss::DepositPreauth, ttDEPOSIT_PREAUTH,
+        {
+            { sfAuthorize,           soeOPTIONAL },
+            { sfUnauthorize,         soeOPTIONAL },
+        },
+        commonFields);
+	
+	add(jss::Contract, ttCONTRACT,
+		{
+			{ sfContractOpType,		 soeREQUIRED },
+			{ sfContractData,		 soeREQUIRED },
+			{ sfGas,				 soeREQUIRED },
+			{ sfContractAddress,	 soeOPTIONAL },
+			{ sfContractValue,		 soeOPTIONAL },
+		},
+		commonFields);
 
-    Item &itemSqlTransaction = add("SQLTransaction", ttSQLTRANSACTION)
-        << SOElement(sfStatements,          SOE_REQUIRED)
-        << SOElement(sfNeedVerify,          SOE_REQUIRED)
-        ;
-    addChainSqlCommondFields(itemSqlTransaction);
-}
+	add(jss::TableListSet, ttTABLELISTSET,
+		{
+			{ sfTables,				 soeREQUIRED },
+			{ sfUser,				 soeOPTIONAL },
+			{ sfRaw,				 soeOPTIONAL },
+			{ sfToken,				 soeOPTIONAL },
+			{ sfOpType,				 soeREQUIRED },
+			{ sfTxCheckHash,		 soeOPTIONAL },
+			{ sfOperationRule,		 soeOPTIONAL },
+			{ sfOriginalAddress,     soeOPTIONAL },
+			{ sfTxnLgrSeq,			 soeOPTIONAL },
+			{ sfCurTxHash,			 soeOPTIONAL },
+			{ sfFutureTxHash,		 soeOPTIONAL }
+		},
+		commonFields);
 
-void TxFormats::addCommonFields (Item& item)
-{
-    item
-        << SOElement(sfTransactionType,     SOE_REQUIRED)
-        << SOElement(sfFlags,               SOE_OPTIONAL)
-        << SOElement(sfSourceTag,           SOE_OPTIONAL)
-        << SOElement(sfAccount,             SOE_REQUIRED)
-        << SOElement(sfSequence,            SOE_REQUIRED)
-        << SOElement(sfPreviousTxnID,       SOE_OPTIONAL) // emulate027
-        << SOElement(sfLastLedgerSequence,  SOE_OPTIONAL)
-        << SOElement(sfAccountTxnID,        SOE_OPTIONAL)
-        << SOElement(sfFee,                 SOE_REQUIRED)
-        << SOElement(sfOperationLimit,      SOE_OPTIONAL)
-        << SOElement(sfMemos,               SOE_OPTIONAL)
-        << SOElement(sfSigningPubKey,       SOE_REQUIRED)
-        << SOElement(sfTxnSignature,        SOE_OPTIONAL)
-        << SOElement(sfSigners,             SOE_OPTIONAL) // submit_multisigned
-		<< SOElement(sfCertificate,		    SOE_OPTIONAL)
-        ;
-}
+	add(jss::SQLStatement, ttSQLSTATEMENT,
+		{
+			{ sfOwner,				 soeREQUIRED },
+			{ sfTables,				 soeREQUIRED },
+			{ sfRaw,				 soeREQUIRED },
+			{ sfOpType,				 soeREQUIRED },
+			{ sfTxCheckHash,		 soeOPTIONAL },
+			{ sfAutoFillField,		 soeOPTIONAL },
+			{ sfOriginalAddress,     soeOPTIONAL },
+			{ sfTxnLgrSeq,			 soeOPTIONAL },
+			{ sfCurTxHash,			 soeOPTIONAL },
+			{ sfFutureTxHash,		 soeOPTIONAL }
+		},
+		commonFields);
 
-void TxFormats::addChainSqlCommondFields(Item& item)
-{
-    item
-        << SOElement(sfOriginalAddress,     SOE_OPTIONAL)
-        << SOElement(sfTxnLgrSeq,           SOE_OPTIONAL)
-        << SOElement(sfCurTxHash,           SOE_OPTIONAL)
-        << SOElement(sfFutureTxHash,        SOE_OPTIONAL)
-        ;
+	add(jss::SQLTransaction, ttSQLTRANSACTION,
+		{
+			{ sfStatements,			 soeREQUIRED },
+			{ sfNeedVerify,			 soeREQUIRED },
+			{ sfOriginalAddress,     soeOPTIONAL },
+			{ sfTxnLgrSeq,			 soeOPTIONAL },
+			{ sfCurTxHash,			 soeOPTIONAL },
+			{ sfFutureTxHash,		 soeOPTIONAL }
+		},
+		commonFields);
 }
 
 TxFormats const&

@@ -17,7 +17,7 @@
  */
 //==============================================================================
 
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/app/ledger/LedgerMaster.h>
@@ -225,7 +225,7 @@ std::string TableDumpItem::ConstructTxStr(std::vector<STTx> &vecTxs, const STTx 
 
 		for (int i = 0; i < vecTxs.size(); i++)
 		{
-			Json::Value jsonTx = vecTxs[i].getJson(0);
+			Json::Value jsonTx = vecTxs[i].getJson(JsonOptions::none);
 			UnHexTableName(jsonTx);
 			Json::Value jsonRaw = TransRaw2Json(vecTxs[i]);
 			if (!jsonRaw.isNull())		jsonTx[jss::Raw] = jsonRaw;
@@ -238,7 +238,7 @@ std::string TableDumpItem::ConstructTxStr(std::vector<STTx> &vecTxs, const STTx 
 		assert(vecTxs.size() > 0);
 		if (vecTxs.size() > 0)
 		{
-			Json::Value jsonTx = vecTxs[0].getJson(0);
+			Json::Value jsonTx = vecTxs[0].getJson(JsonOptions::none);
 			UnHexTableName(jsonTx);
 			Json::Value jsonRaw = TransRaw2Json(vecTxs[0]);
 			if (!jsonRaw.isNull())		jsonTx[jss::Raw] = jsonRaw;

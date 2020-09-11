@@ -1,19 +1,19 @@
 //------------------------------------------------------------------------------
 /*
-    This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2016 Ripple Labs Inc.
+	This file is part of rippled: https://github.com/ripple/rippled
+	Copyright (c) 2016 Ripple Labs Inc.
 
-    Permission to use, copy, modify, and/or distribute this software for any
-    purpose  with  or without fee is hereby granted, provided that the above
-    copyright notice and this permission notice appear in all copies.
+	Permission to use, copy, modify, and/or distribute this software for any
+	purpose  with  or without fee is hereby granted, provided that the above
+	copyright notice and this permission notice appear in all copies.
 
-    THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-    WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
-    MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-    ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-    WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
-    ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+	THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+	WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
+	MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+	ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+	WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
+	ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+	OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
@@ -28,139 +28,234 @@
 #include <ripple/json/json_value.h>
 #include <boost/asio.hpp>
 #include <mutex>
+#include <memory>
 
 namespace ripple {
-class Application;
 
-/**
-    Validator Sites
-    ---------------
+	/**
+		Validator Sites
+		---------------
 
-    This class manages the set of configured remote sites used to fetch the
-    latest published recommended validator lists.
+		This class manages the set of configured remote sites used to fetch the
+		latest published recommended validator lists.
 
-    Lists are fetched at a regular interval.
-    Fetched lists are expected to be in JSON format and contain the following
-    fields:
+		Lists are fetched at a regular interval.
+		Fetched lists are expected to be in JSON format and contain the following
+		fields:
 
-    @li @c "blob": Base64-encoded JSON string containing a @c "sequence", @c
-        "expiration", and @c "validators" field. @c "expiration" contains the
-        Ripple timestamp (seconds since January 1st, 2000 (00:00 UTC)) for when
-        the list expires. @c "validators" contains an array of objects with a
-        @c "validation_public_key" and optional @c "manifest" field.
-        @c "validation_public_key" should be the hex-encoded master public key.
-        @c "manifest" should be the base64-encoded validator manifest.
+		@li @c "blob": Base64-encoded JSON string containing a @c "sequence", @c
+			"expiration", and @c "validators" field. @c "expiration" contains the
+			Ripple timestamp (seconds since January 1st, 2000 (00:00 UTC)) for when
+			the list expires. @c "validators" contains an array of objects with a
+			@c "validation_public_key" and optional @c "manifest" field.
+			@c "validation_public_key" should be the hex-encoded master public key.
+			@c "manifest" should be the base64-encoded validator manifest.
 
-    @li @c "manifest": Base64-encoded serialization of a manifest containing the
-        publisher's master and signing public keys.
+		@li @c "manifest": Base64-encoded serialization of a manifest containing the
+			publisher's master and signing public keys.
 
-    @li @c "signature": Hex-encoded signature of the blob using the publisher's
-        signing key.
+		@li @c "signature": Hex-encoded signature of the blob using the publisher's
+			signing key.
 
-    @li @c "version": 1
+		@li @c "version": 1
 
-    @li @c "refreshInterval" (optional)
-*/
-class ValidatorSite : public ConfigSite
-{
-	Application& app_;
-    ValidatorList& validators_;
+		@li @c "refreshInterval" (optional, integer minutes).
+			This value is clamped internally to [1,1440] (1 min - 1 day)
+	*/
+	class ValidatorSite : public ConfigSite
+	{
+		// friend class Work;
+		//Application& app_;
+		//ValidatorList& validators_;
 
-	std::atomic<bool> waitingBeginConsensus_;
-public:
-    ValidatorSite (
-		Application& app,
-		ManifestCache& validatorManifests,
-        boost::asio::io_service& ios,
-        ValidatorList& validators,
-        beast::Journal j);
-    ~ValidatorSite ();
+		std::atomic<bool> waitingBeginConsensus_;
+	private:
+		//using error_code = boost::system::error_code;
+		//using clock_type = std::chrono::system_clock;
 
-    /** Load configured site URIs.
+		//struct Site
+		//{
+		//    struct Status
+		//    {
+		//        clock_type::time_point refreshed;
+		//        ListDisposition disposition;
+		//        std::string message;
+		//    };
 
-        @param siteURIs List of URIs to fetch published validator lists
+		//    struct Resource
+		//    {
+		//        explicit Resource(std::string uri_);
+		//        const std::string uri;
+		//        parsedURL pUrl;
+		//    };
 
-        @par Thread Safety
+		//    explicit Site(std::string uri);
 
-        May be called concurrently
+		//    /// the original uri as loaded from config
+		//    std::shared_ptr<Resource> loadedResource;
 
-        @return `false` if an entry is invalid or unparsable
-    */
-    //bool
-    //load (
-    //    std::vector<std::string> const& siteURIs);
+		//    /// the resource to request at <timer>
+		//    /// intervals. same as loadedResource
+		//    /// except in the case of a permanent redir.
+		//    std::shared_ptr<Resource> startingResource;
 
-    /** Start fetching lists from sites
+		//    /// the active resource being requested.
+		//    /// same as startingResource except
+		//    /// when we've gotten a temp redirect
+		//    std::shared_ptr<Resource> activeResource;
 
-        This does nothing if list fetching has already started
+		//    unsigned short redirCount;
+		//    std::chrono::minutes refreshInterval;
+		//    clock_type::time_point nextRefresh;
+		//    boost::optional<Status> lastRefreshStatus;
+		//};
 
-        @par Thread Safety
+		//boost::asio::io_service& ios_;
+		ValidatorList& validators_;
+		//beast::Journal j_;
+		//std::mutex mutable sites_mutex_;
+		//std::mutex mutable state_mutex_;
 
-        May be called concurrently
-    */
-    //void
-    //start ();
+		//std::condition_variable cv_;
+		//std::weak_ptr<detail::Work> work_;
+		//boost::asio::basic_waitable_timer<clock_type> timer_;
 
-    /** Wait for current fetches from sites to complete
+		//// A list is currently being fetched from a site
+		//std::atomic<bool> fetching_;
 
-        @par Thread Safety
+		//// One or more lists are due to be fetched
+		//std::atomic<bool> pending_;
+		//std::atomic<bool> stopping_;
 
-        May be called concurrently
-    //*/
-    //void
-    //join ();
+		//// The configured list of URIs for fetching lists
+		//std::vector<Site> sites_;
 
-    /** Stop fetching lists from sites
+		//// time to allow for requests to complete
+		//const std::chrono::seconds requestTimeout_;
+		
+	public:
+		ValidatorSite(
+			ManifestCache& validatorManifests,
+			boost::asio::io_service& ios,
+			ValidatorList& validators,
+			beast::Journal j,
+			std::chrono::seconds timeout = std::chrono::seconds{ 20 });
+		~ValidatorSite();
 
-        This blocks until list fetching has stopped
+		/** Load configured site URIs.
 
-        @par Thread Safety
+			@param siteURIs List of URIs to fetch published validator lists
 
-        May be called concurrently
-    */
-    //void
-    //stop ();
+			@par Thread Safety
 
-    /** Return JSON representation of configured validator sites
-     */
-	virtual  Json::Value
-    getJson() const;
+			May be called concurrently
 
-	void setWaitinBeginConsensus();
+			@return `false` if an entry is invalid or unparsable
+		*/
+		////bool
+		////load (
+		////    std::vector<std::string> const& siteURIs);
 
-public:
-    ///// Queue next site to be fetched
-    //void
-    //setTimer ();
+		/////** Start fetching lists from sites
 
-    ///// Fetch site whose time has come
-    //void
-    //onTimer (
-    //    std::size_t siteIdx,
-    //    error_code const& ec);
+		////    This does nothing if list fetching has already started
 
-    ///// Store latest list fetched from site
-    //void
-    //onSiteFetch (
-    //    boost::system::error_code const& ec,
-    //    detail::response_type&& res,
-    //    std::size_t siteIdx);
+		////    @par Thread Safety
 
+		////    May be called concurrently
+		////*/
+		////void
+		////start ();
 
+		/////** Wait for current fetches from sites to complete
 
-	virtual  ListDisposition applyList(
-		std::string const& manifest,
-		std::string const& blob,
-		std::string const& signature,
-		std::uint32_t version) ;
+		////    @par Thread Safety
 
-	virtual void onAccepted();
+		////    May be called concurrently
+		////*/
+		////void
+		////join ();
 
+		/////** Stop fetching lists from sites
 
+		////    This blocks until list fetching has stopped
 
+		////    @par Thread Safety
 
+		////    May be called concurrently
+		////*/
+		////void
+		////stop ();
 
-};
+		/** Return JSON representation of configured validator sites
+		 */
+		Json::Value
+			getJson() const;
+
+		//private:
+		  /*   Queue next site to be fetched
+			 lock over state_mutex_ required
+			void
+			setTimer (std::lock_guard<std::mutex>&);
+
+			 request took too long
+			void
+			onRequestTimeout (
+				std::size_t siteIdx,
+				error_code const& ec);
+
+			 Fetch site whose time has come
+			void
+			onTimer (
+				std::size_t siteIdx,
+				error_code const& ec);
+
+			 Store latest list fetched from site
+			void
+			onSiteFetch (
+				boost::system::error_code const& ec,
+				detail::response_type&& res,
+				std::size_t siteIdx);
+
+			 Store latest list fetched from anywhere
+			void
+			onTextFetch(
+				boost::system::error_code const& ec,
+				std::string const& res,
+				std::size_t siteIdx);
+
+			 Initiate request to given resource.
+			 lock over sites_mutex_ required
+			void
+			makeRequest (
+				std::shared_ptr<Site::Resource> resource,
+				std::size_t siteIdx,
+				std::lock_guard<std::mutex>& lock);
+
+			 Parse json response from validator list site.
+			 lock over sites_mutex_ required
+			void
+			parseJsonResponse (
+				std::string const& res,
+				std::size_t siteIdx,
+				std::lock_guard<std::mutex>& lock);
+
+			 Interpret a redirect response.
+			 lock over sites_mutex_ required
+			std::shared_ptr<Site::Resource>
+			processRedirect (
+				detail::response_type& res,
+				std::size_t siteIdx,
+				std::lock_guard<std::mutex>& lock);*/
+		void setWaitinBeginConsensus();
+	public:
+		virtual  ListDisposition applyList(
+			std::string const& manifest,
+			std::string const& blob,
+			std::string const& signature,
+			std::uint32_t version,
+			std::string siteUri);
+	};
 
 } // ripple
 

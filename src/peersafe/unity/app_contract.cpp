@@ -1,4 +1,4 @@
-#include <BeastConfig.h>
+
 
 // #include <peersafe/vm/VMC.cpp>
 // #include <peersafe/vm/ExtVMFace.cpp>

@@ -19,9 +19,54 @@
 
 #include <ripple/app/tx/impl/InvariantCheck.h>
 #include <ripple/basics/Log.h>
-#include <peersafe/core/Tuning.h>
 
 namespace ripple {
+
+void
+TransactionFeeCheck::visitEntry(
+    uint256 const&,
+    bool,
+    std::shared_ptr<SLE const> const&,
+    std::shared_ptr<SLE const> const&)
+{
+    // nothing to do
+}
+
+bool
+TransactionFeeCheck::finalize(
+    STTx const& tx,
+    TER const result,
+    ZXCAmount const fee,
+    beast::Journal const& j)
+{
+    // We should never charge a negative fee
+    if (fee.drops() < 0)
+    {
+        JLOG(j.fatal()) << "Invariant failed: fee paid was negative: " << fee.drops();
+        return false;
+    }
+
+    // We should never charge a fee that's greater than or equal to the
+    // entire ZXC supply.
+    if (fee.drops() >= SYSTEM_CURRENCY_START)
+    {
+        JLOG(j.fatal()) << "Invariant failed: fee paid exceeds system limit: " << fee.drops();
+        return false;
+    }
+
+    // We should never charge more for a transaction than the transaction
+    // authorizes. It's possible to charge less in some circumstances.
+    if (fee > tx.getFieldAmount(sfFee).zxc())
+    {
+        JLOG(j.fatal()) << "Invariant failed: fee paid is " << fee.drops() <<
+            " exceeds fee specified in transaction.";
+        return false;
+    }
+
+    return true;
+}
+
+//------------------------------------------------------------------------------
 
 void
 ZXCNotCreated::visitEntry(
@@ -30,6 +75,13 @@ ZXCNotCreated::visitEntry(
     std::shared_ptr <SLE const> const& before,
     std::shared_ptr <SLE const> const& after)
 {
+    /* We go through all modified ledger entries, looking only at account roots,
+     * escrow payments, and payment channels. We remove from the total any
+     * previous ZXC values and add to the total any new ZXC values. The net
+     * balance of a payment channel is computed from two fields (amount and
+     * balance) and deletions are ignored for paychan and escrow because the
+     * amount fields have not been adjusted for those in the case of deletion.
+     */
     if(before)
     {
         switch (before->getType())
@@ -72,9 +124,13 @@ ZXCNotCreated::visitEntry(
 }
 
 bool
-ZXCNotCreated::finalize(STTx const& tx, TER /*tec*/, beast::Journal const& j)
+ZXCNotCreated::finalize(
+    STTx const& tx,
+    TER const,
+    ZXCAmount const fee,
+    beast::Journal const& j)
 {
-	auto fee = tx.getFieldAmount(sfFee).zxc().drops();
+
 	// contract have extra fee
 	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT)
 	{
@@ -84,12 +140,25 @@ ZXCNotCreated::finalize(STTx const& tx, TER /*tec*/, beast::Journal const& j)
 		//fee += gas * GAS_PRICE;
 	}
 
-	if (-1 * fee <= drops_ && drops_ <= 0)
-		return true;
+    // The net change should never be positive, as this would mean that the
+    // transaction created ZXC out of thin air. That's not possible.
+    if (drops_ > 0)
+    {
+        JLOG(j.fatal()) <<
+            "Invariant failed: ZXC net change was positive: " << drops_;
+        return false;
+    }
+	
+    // The negative of the net change should be equal to actual fee charged.
+    if (-drops_ != fee.drops())
+    {
+        JLOG(j.fatal()) <<
+            "Invariant failed: ZXC net change of " << drops_ <<
+            " doesn't match fee " << fee.drops();
+        return false;
+    }
 
-    JLOG(j.fatal()) << "Invariant failed: ZXC net change was " << drops_ <<
-        " on a fee of " << fee;
-    return false;
+    return true;
 }
 
 //------------------------------------------------------------------------------
@@ -128,7 +197,7 @@ ZXCBalanceChecks::visitEntry(
 }
 
 bool
-ZXCBalanceChecks::finalize(STTx const&, TER, beast::Journal const& j)
+ZXCBalanceChecks::finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const& j)
 {
     if (bad_)
     {
@@ -169,7 +238,7 @@ NoBadOffers::visitEntry(
 }
 
 bool
-NoBadOffers::finalize(STTx const& tx, TER, beast::Journal const& j)
+NoBadOffers::finalize(STTx const& tx, TER const, ZXCAmount const, beast::Journal const& j)
 {
     if (bad_)
     {
@@ -214,7 +283,7 @@ NoZeroEscrow::visitEntry(
 }
 
 bool
-NoZeroEscrow::finalize(STTx const& tx, TER, beast::Journal const& j)
+NoZeroEscrow::finalize(STTx const& tx, TER const, ZXCAmount const, beast::Journal const& j)
 {
     if (bad_)
     {
@@ -239,13 +308,19 @@ AccountRootsNotDeleted::visitEntry(
 }
 
 bool
-AccountRootsNotDeleted::finalize(STTx const& tx, TER, beast::Journal const& j)
+AccountRootsNotDeleted::finalize(STTx const& tx, TER const, ZXCAmount const, beast::Journal const& j)
 {
-    if (! accountDeleted_)
-        return true;
-
-	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT)
+	if (!accountDeleted_) 
+	{
 		return true;
+	}
+        
+
+	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT) 
+	{
+		return true;
+	}
+		
 
     JLOG(j.fatal()) << "Invariant failed: an account root was deleted";
     return false;
@@ -278,6 +353,8 @@ LedgerEntryTypesMatch::visitEntry(
         case ltFEE_SETTINGS:
         case ltESCROW:
         case ltPAYCHAN:
+		case ltCHECK:
+        case ltDEPOSIT_PREAUTH:
 		case ltTABLELIST:
 		case ltINSERTMAP:
 		case ltCHAINID:
@@ -290,7 +367,7 @@ LedgerEntryTypesMatch::visitEntry(
 }
 
 bool
-LedgerEntryTypesMatch::finalize(STTx const&, TER, beast::Journal const& j)
+LedgerEntryTypesMatch::finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const& j)
 {
     if ((! typeMismatch_) && (! invalidTypeAdded_))
         return true;
@@ -329,7 +406,7 @@ NoZXCTrustLines::visitEntry(
 }
 
 bool
-NoZXCTrustLines::finalize(STTx const&, TER, beast::Journal const& j)
+NoZXCTrustLines::finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const& j)
 {
     if (! zxcTrustLine_)
         return true;

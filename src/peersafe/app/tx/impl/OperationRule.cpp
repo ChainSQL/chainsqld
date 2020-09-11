@@ -17,13 +17,13 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/ledger/View.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/Config.h>
 #include <ripple/protocol/st.h>
 #include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>

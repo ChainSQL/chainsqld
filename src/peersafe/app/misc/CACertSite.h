@@ -21,7 +21,6 @@
 #define PEERSAFE_APP_MISC_CACERTSITE_H_INCLUDED
 
 #include <peersafe/app/misc/ConfigSite.h>
-#include <peersafe/app/misc/CertList.h>
 #include <ripple/app/misc/Manifest.h>
 
 #include <ripple/core/TimeKeeper.h>
@@ -37,106 +36,101 @@
 
 namespace ripple {
 
-/**
-    CA Cert Sites
-    ---------------
+	/**
+		CA Cert Sites
+		---------------
 
-    This class manages the set of configured remote sites used to fetch the
-    latest published recommended validator lists.
+		This class manages the set of configured remote sites used to fetch the
+		latest published recommended validator lists.
 
-    Lists are fetched at a regular interval.
-    Fetched lists are expected to be in JSON format and contain the following
-    fields:
+		Lists are fetched at a regular interval.
+		Fetched lists are expected to be in JSON format and contain the following
+		fields:
 
-    @li @c "blob": Base64-encoded JSON string containing a @c "sequence", @c
-        "expiration", and @c "validators" field. @c "expiration" contains the
-        Ripple timestamp (seconds since January 1st, 2000 (00:00 UTC)) for when
-        the list expires. @c "certs" contains an array of objects with a
-        @c "cert" and optional @c "manifest" field.
-        @c "cert" should be the hex-encoded master public key.
-        @c "manifest" should be the base64-encoded validator manifest.
+		@li @c "blob": Base64-encoded JSON string containing a @c "sequence", @c
+			"expiration", and @c "validators" field. @c "expiration" contains the
+			Ripple timestamp (seconds since January 1st, 2000 (00:00 UTC)) for when
+			the list expires. @c "certs" contains an array of objects with a
+			@c "cert" and optional @c "manifest" field.
+			@c "cert" should be the hex-encoded master public key.
+			@c "manifest" should be the base64-encoded validator manifest.
 
-    @li @c "manifest": Base64-encoded serialization of a manifest containing the
-        publisher's master and signing public keys.
+		@li @c "manifest": Base64-encoded serialization of a manifest containing the
+			publisher's master and signing public keys.
 
-    @li @c "signature": Hex-encoded signature of the blob using the publisher's
-        signing key.
+		@li @c "signature": Hex-encoded signature of the blob using the publisher's
+			signing key.
 
-    @li @c "version": 1
+		@li @c "version": 1
 
-    @li @c "refreshInterval" (optional)
-*/
+		@li @c "refreshInterval" (optional)
+	*/
 	class CACertSite : public ConfigSite
-{
-   
-public:
-	CACertSite(
-		ManifestCache& validatorManifests,
-		ManifestCache& publisherManifests,
-		CertList& certList,
-		TimeKeeper& timeKeeper,
-        boost::asio::io_service& ios,
-        beast::Journal j);
-    ~CACertSite();
+	{
+
+	public:
+		CACertSite(
+			ManifestCache& validatorManifests,
+			ManifestCache& publisherManifests,
+			TimeKeeper& timeKeeper,
+			boost::asio::io_service& ios,
+			std::vector<std::string>&    rootCerts,
+			beast::Journal j);
+		~CACertSite();
 
 
-	virtual Json::Value
-		getJson() const ;
+		virtual Json::Value
+			getJson() const;
 
-	virtual  ListDisposition applyList(
-		std::string const& manifest,
-		std::string const& blob,
-		std::string const& signature,
-		std::uint32_t version);
-
-
-
-	/** Stop trusting publisher's list of keys.
-
-	@param publisherKey Publisher public key
-
-	@return `false` if key was not trusted
-
-	@par Thread Safety
-
-	Calling public member function is expected to lock mutex
-	*/
-	bool
-		removePublisherList(PublicKey const& publisherKey);
-
-private:
-	/** Check response for trusted valid published list
-
-	@return `ListDisposition::accepted` if list can be applied
-
-	@par Thread Safety
-
-	Calling public member function is expected to lock mutex
-	*/
-	ListDisposition
-		verify(
-			Json::Value& list,
-			PublicKey& pubKey,
+		virtual  ListDisposition applyList(
 			std::string const& manifest,
 			std::string const& blob,
-			std::string const& signature);
+			std::string const& signature,
+			std::uint32_t version,
+			std::string siteUri);
 
-	CertList&   certList_;
+		/** Stop trusting publisher's list of keys.
 
-	//ManifestCache& validatorManifests_;
-	ManifestCache& publisherManifests_;
-	TimeKeeper& timeKeeper_;
+		@param publisherKey Publisher public key
 
-	boost::shared_mutex mutable mutex_;
+		@return `false` if key was not trusted
 
-	// Currently supported version of publisher list format
-	static constexpr std::uint32_t requiredListVersion = 1;
+		@par Thread Safety
 
+		Calling public member function is expected to lock mutex
+		*/
+		bool
+			removePublisherList(PublicKey const& publisherKey);
 
-	virtual void onAccepted();
+	private:
+		/** Check response for trusted valid published list
 
-};
+		@return `ListDisposition::accepted` if list can be applied
+
+		@par Thread Safety
+
+		Calling public member function is expected to lock mutex
+		*/
+		ListDisposition
+			verify(
+				Json::Value& list,
+				PublicKey& pubKey,
+				std::string const& manifest,
+				std::string const& blob,
+				std::string const& signature);
+
+		//ManifestCache& validatorManifests_;
+		ManifestCache& publisherManifests_;
+		TimeKeeper& timeKeeper_;
+
+		std::vector<std::string>&    rootCerts_;
+
+		boost::shared_mutex mutable mutex_;
+
+		// Currently supported version of publisher list format
+		static constexpr std::uint32_t requiredListVersion = 1;
+
+	};
 
 } // ripple
-
 #endif

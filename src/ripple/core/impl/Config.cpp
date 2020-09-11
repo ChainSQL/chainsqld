@@ -17,31 +17,36 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/basics/contract.h>
+#include <ripple/basics/FileUtilities.h>
 #include <ripple/basics/Log.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/beast/core/LexicalCast.h>
-#include <beast/core/string.hpp>
+#include <boost/beast/core/string.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
+#include <boost/system/error_code.hpp>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 
 namespace ripple {
 
+
+
 //
 // TODO: Check permissions on config file before using it.
 //
 
 #define SECTION_DEFAULT_NAME    ""
+
+
 
 IniFileSections
 parseIniFile (std::string const& strInput, const bool bTrim)
@@ -68,6 +73,9 @@ parseIniFile (std::string const& strInput, const bool bTrim)
     // Parse each line.
     for (auto& strValue : vLines)
     {
+        if (bTrim)
+            boost::algorithm::trim (strValue);
+
         if (strValue.empty () || strValue[0] == '#')
         {
             // Blank line or comment, do nothing.
@@ -81,9 +89,6 @@ parseIniFile (std::string const& strInput, const bool bTrim)
         else
         {
             // Another line for Section.
-            if (bTrim)
-                boost::algorithm::trim (strValue);
-
             if (!strValue.empty ())
                 secResult[strSection].push_back (strValue);
         }
@@ -269,21 +274,13 @@ void Config::load ()
     if (!QUIET)
         std::cerr << "Loading: " << CONFIG_FILE << "\n";
 
-    std::ifstream ifsConfig (CONFIG_FILE.c_str (), std::ios::in);
+    boost::system::error_code ec;
+    auto const fileContents = getFileContents(ec, CONFIG_FILE);
 
-    if (!ifsConfig)
+    if (ec)
     {
-        std::cerr << "Failed to open '" << CONFIG_FILE << "'." << std::endl;
-        return;
-    }
-
-    std::string fileContents;
-    fileContents.assign ((std::istreambuf_iterator<char>(ifsConfig)),
-                          std::istreambuf_iterator<char>());
-
-    if (ifsConfig.bad ())
-    {
-        std::cerr << "Failed to read '" << CONFIG_FILE << "'." << std::endl;
+        std::cerr << "Failed to read '" << CONFIG_FILE << "'." <<
+            ec.value() << ": " << ec.message() << std::endl;
         return;
     }
 
@@ -342,19 +339,19 @@ void Config::loadFromString (std::string const& fileContents)
         PEER_PRIVATE = beast::lexicalCastThrow <bool> (strTemp);
 
     if (getSingleSection (secConfig, SECTION_PEERS_MAX, strTemp, j_))
-        PEERS_MAX = std::max (0, beast::lexicalCastThrow <int> (strTemp));
+        PEERS_MAX = beast::lexicalCastThrow <std::size_t> (strTemp);
 
     if (getSingleSection (secConfig, SECTION_NODE_SIZE, strTemp, j_))
     {
-        if (beast::detail::iequals(strTemp, "tiny"))
+        if (boost::beast::detail::iequals(strTemp, "tiny"))
             NODE_SIZE = 0;
-        else if (beast::detail::iequals(strTemp, "small"))
+        else if (boost::beast::detail::iequals(strTemp, "small"))
             NODE_SIZE = 1;
-        else if (beast::detail::iequals(strTemp, "medium"))
+        else if (boost::beast::detail::iequals(strTemp, "medium"))
             NODE_SIZE = 2;
-        else if (beast::detail::iequals(strTemp, "large"))
+        else if (boost::beast::detail::iequals(strTemp, "large"))
             NODE_SIZE = 3;
-        else if (beast::detail::iequals(strTemp, "huge"))
+        else if (boost::beast::detail::iequals(strTemp, "huge"))
             NODE_SIZE = 4;
         else
         {
@@ -366,6 +363,9 @@ void Config::loadFromString (std::string const& fileContents)
                 NODE_SIZE = 4;
         }
     }
+
+    if (getSingleSection (secConfig, SECTION_SIGNING_SUPPORT, strTemp, j_))
+        signingEnabled_     = beast::lexicalCastThrow <bool> (strTemp);
 
     if (getSingleSection (secConfig, SECTION_ELB_SUPPORT, strTemp, j_))
         ELB_SUPPORT         = beast::lexicalCastThrow <bool> (strTemp);
@@ -385,7 +385,7 @@ void Config::loadFromString (std::string const& fileContents)
             "and [" SECTION_VALIDATOR_TOKEN "] config sections");
 
     if (getSingleSection (secConfig, SECTION_NETWORK_QUORUM, strTemp, j_))
-        NETWORK_QUORUM      = beast::lexicalCastThrow <std::size_t> (strTemp);
+        NETWORK_QUORUM      = beast::lexicalCastThrow<std::size_t>(strTemp);
 
     if (getSingleSection (secConfig, SECTION_FEE_ACCOUNT_RESERVE, strTemp, j_))
         FEE_ACCOUNT_RESERVE = beast::lexicalCastThrow <std::uint64_t> (strTemp);
@@ -401,9 +401,9 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_LEDGER_HISTORY, strTemp, j_))
     {
-        if (beast::detail::iequals(strTemp, "full"))
+        if (boost::beast::detail::iequals(strTemp, "full"))
             LEDGER_HISTORY = 1000000000u;
-        else if (beast::detail::iequals(strTemp, "none"))
+        else if (boost::beast::detail::iequals(strTemp, "none"))
             LEDGER_HISTORY = 0;
         else
             LEDGER_HISTORY = beast::lexicalCastThrow <std::uint32_t> (strTemp);
@@ -411,9 +411,9 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_FETCH_DEPTH, strTemp, j_))
     {
-        if (beast::detail::iequals(strTemp, "none"))
+        if (boost::beast::detail::iequals(strTemp, "none"))
             FETCH_DEPTH = 0;
-        else if (beast::detail::iequals(strTemp, "full"))
+        else if (boost::beast::detail::iequals(strTemp, "full"))
             FETCH_DEPTH = 1000000000u;
         else
             FETCH_DEPTH = beast::lexicalCastThrow <std::uint32_t> (strTemp);
@@ -491,13 +491,14 @@ void Config::loadFromString (std::string const& fileContents)
                 (boost::filesystem::is_regular_file (validatorsFile) ||
                 boost::filesystem::is_symlink (validatorsFile)))
         {
-            std::ifstream ifsDefault (validatorsFile.native().c_str());
-
-            std::string data;
-
-            data.assign (
-                std::istreambuf_iterator<char>(ifsDefault),
-                std::istreambuf_iterator<char>());
+            boost::system::error_code ec;
+            auto const data = getFileContents(ec, validatorsFile);
+            if (ec)
+            {
+                Throw<std::runtime_error>("Failed to read '" +
+                    validatorsFile.string() + "'." +
+                    std::to_string(ec.value()) + ": " + ec.message());
+            }
 
             auto iniFile = parseIniFile (data, true);
 
@@ -561,6 +562,24 @@ void Config::loadFromString (std::string const& fileContents)
             else
                 Throw<std::runtime_error>(
                     "Unknown feature: " + s + "  in config file.");
+        }
+    }
+
+    // This doesn't properly belong here, but check to make sure that the
+    // value specified for network_quorum is achievable:
+    {
+        auto pm = PEERS_MAX;
+
+        // FIXME this apparently magic value is actually defined as a constant
+        //       elsewhere (see defaultMaxPeers) but we handle this check here.
+        if (pm == 0)
+            pm = 21;
+
+        if (NETWORK_QUORUM > pm)
+        {
+            Throw<std::runtime_error>(
+                "The minimum number of required peers (network_quorum) exceeds "
+                "the maximum number of allowed peers (peers_max)");
         }
     }
 }
@@ -635,5 +654,17 @@ boost::filesystem::path Config::getDebugLogFile () const
 
     return log_file;
 }
+
+//int
+//Config::getValueFor(SizedItem item, boost::optional<std::size_t> node) const
+//{
+//	assert(0);
+//	return 1;
+//	//auto const index = static_cast<std::underlying_type_t<SizedItem>>(item);
+//	//assert(index < sizedItems.size());
+//	//assert(!node || *node <= 4);
+//	//return sizedItems.at(index).second.at(node.value_or(NODE_SIZE));
+//}
+
 
 } // ripple

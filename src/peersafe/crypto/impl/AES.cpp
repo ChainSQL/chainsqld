@@ -17,7 +17,7 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/basics/contract.h>
 #include <openssl/pem.h>
 #include <peersafe/crypto/AES.h>

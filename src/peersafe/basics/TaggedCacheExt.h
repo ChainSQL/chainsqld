@@ -53,9 +53,9 @@ public:
 	using clock_type = beast::abstract_clock <std::chrono::steady_clock>;
 public:
 	TaggedCacheExt(std::string const& name, int size,
-		clock_type::rep expiration_seconds,clock_type::rep expiration_seconds_max, clock_type& clock, std::function<bool(std::shared_ptr<T>)> func, beast::Journal journal) :
+		clock_type::duration expiration_seconds,clock_type::duration expiration_seconds_max, clock_type& clock, std::function<bool(std::shared_ptr<T>)> func, beast::Journal journal) :
 		TaggedCache<Key,T>(name, size, expiration_seconds, clock, journal),
-		m_target_age_max(std::chrono::seconds(expiration_seconds_max)),
+		m_target_age_max(expiration_seconds_max),
 		m_judge_func(func)
 	{
 	}

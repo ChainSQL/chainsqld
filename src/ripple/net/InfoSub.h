@@ -62,7 +62,8 @@ public:
     protected:
         Source (char const* name, Stoppable& parent);
 
-    public:        
+    public:
+
         // For some reason, these were originally called "rt"
         // for "real time". They actually refer to whether
         // you get transactions as they occur or once their

@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/make_SSLContext.h>
 #include <ripple/beast/rfc2616.h>
 #include <ripple/server/Server.h>
@@ -26,6 +25,7 @@
 #include <ripple/core/ConfigSections.h>
 #include <test/jtx.h>
 #include <test/jtx/envconfig.h>
+#include <test/unit_test/SuiteJournal.h>
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
 #include <boost/utility/in_place_factory.hpp>
@@ -39,10 +39,6 @@ namespace test {
 class Server_test : public beast::unit_test::suite
 {
 public:
-    enum
-    {
-        testPort = 40000
-    };
 
     class TestThread
     {
@@ -78,7 +74,7 @@ public:
         beast::unit_test::suite& suite_;
 
     public:
-        TestSink (beast::unit_test::suite& suite)
+        explicit TestSink (beast::unit_test::suite& suite)
             : Sink (beast::severities::kWarning, false)
             , suite_ (suite)
         {
@@ -91,7 +87,7 @@ public:
             if (level < threshold())
                 return;
 
-            suite_.log << text;
+            suite_.log << text << std::endl;
         }
     };
 
@@ -116,9 +112,8 @@ public:
         }
 
         Handoff
-        onHandoff (Session& session, boost::asio::ip::tcp::socket&& socket,
-            http_request_type&& request,
-                boost::asio::ip::tcp::endpoint remote_address)
+        onHandoff (Session& session, http_request_type&& request,
+            boost::asio::ip::tcp::endpoint remote_address)
         {
             return Handoff{};
         }
@@ -156,12 +151,10 @@ public:
     // Connect to an address
     template <class Socket>
     bool
-    connect (Socket& s, std::string const& addr, int port)
+    connect (Socket& s, typename Socket::endpoint_type const& ep)
     {
         try
         {
-            typename Socket::endpoint_type ep (
-                boost::asio::ip::address::from_string (addr), port);
             s.connect (ep);
             pass();
             return true;
@@ -222,13 +215,13 @@ public:
     }
 
     void
-    test_request()
+    test_request(boost::asio::ip::tcp::endpoint const& ep)
     {
         boost::asio::io_service ios;
         using socket = boost::asio::ip::tcp::socket;
         socket s (ios);
 
-        if (! connect (s, "127.0.0.1", testPort))
+        if (! connect (s, ep))
             return;
 
         if (! write (s,
@@ -247,13 +240,13 @@ public:
     }
 
     void
-    test_keepalive()
+    test_keepalive(boost::asio::ip::tcp::endpoint const& ep)
     {
         boost::asio::io_service ios;
         using socket = boost::asio::ip::tcp::socket;
         socket s (ios);
 
-        if (! connect (s, "127.0.0.1", testPort))
+        if (! connect (s, ep))
             return;
 
         if (! write (s,
@@ -280,6 +273,7 @@ public:
 
     void basicTests()
     {
+        testcase("Basic client/server");
         TestSink sink {*this};
         TestThread thread;
         sink.threshold (beast::severities::Severity::kAll);
@@ -287,24 +281,23 @@ public:
         TestHandler handler;
         auto s = make_Server (handler,
             thread.get_io_service(), journal);
-        std::vector<Port> list;
-        list.resize(1);
-        list.back().port = testPort;
-        list.back().ip = boost::asio::ip::address::from_string (
-            "127.0.0.1");
-        list.back().protocol.insert("http");
-        s->ports (list);
-
-        test_request();
-        //test_keepalive();
+        std::vector<Port> serverPort(1);
+        serverPort.back().ip =
+            beast::IP::Address::from_string (getEnvLocalhostAddr()),
+        serverPort.back().port = 0;
+        serverPort.back().protocol.insert("http");
+        auto eps = s->ports (serverPort);
+        log << "server listening on port " << eps[0].port() << std::endl;
+        test_request(eps[0]);
+        test_keepalive(eps[0]);
         //s->close();
         s = nullptr;
-
         pass();
     }
 
     void stressTest()
     {
+        testcase("stress test");
         struct NullHandler
         {
             bool
@@ -324,9 +317,8 @@ public:
             }
 
             Handoff
-            onHandoff (Session& session, boost::asio::ip::tcp::socket&& socket,
-                http_request_type&& request,
-                    boost::asio::ip::tcp::endpoint remote_address)
+            onHandoff (Session& session, http_request_type&& request,
+                boost::asio::ip::tcp::endpoint remote_address)
             {
                 return Handoff{};
             }
@@ -354,20 +346,23 @@ public:
             }
         };
 
+        using namespace beast::severities;
+        SuiteJournal journal ("Server_test", *this);
+
         NullHandler h;
         for(int i = 0; i < 1000; ++i)
         {
             TestThread thread;
             auto s = make_Server(h,
-                thread.get_io_service(), {});
-            std::vector<Port> list;
-            list.resize(1);
-            list.back().port = testPort;
-            list.back().ip = boost::asio::ip::address::from_string (
-                "127.0.0.1");
-            list.back().protocol.insert("http");
-            s->ports (list);
+                thread.get_io_service(), journal);
+            std::vector<Port> serverPort(1);
+            serverPort.back().ip =
+                beast::IP::Address::from_string (getEnvLocalhostAddr()),
+            serverPort.back().port = 0;
+            serverPort.back().protocol.insert("http");
+            s->ports (serverPort);
         }
+        pass();
     }
 
     /**
@@ -403,7 +398,7 @@ public:
         std::string& result_;
 
     public:
-        CaptureLogs(std::string& result)
+        explicit CaptureLogs(std::string& result)
             : Logs (beast::severities::kInfo)
             , result_(result)
         {
@@ -448,7 +443,7 @@ public:
             Env env {*this,
                 envconfig([](std::unique_ptr<Config> cfg) {
                     (*cfg).deprecatedClearSection("port_rpc");
-                    (*cfg)["port_rpc"].set("ip", "127.0.0.1");
+                    (*cfg)["port_rpc"].set("ip", getEnvLocalhostAddr());
                     return cfg;
                 }),
                 std::make_unique<CaptureLogs>(messages)};
@@ -462,7 +457,7 @@ public:
             Env env {*this,
                 envconfig([](std::unique_ptr<Config> cfg) {
                     (*cfg).deprecatedClearSection("port_rpc");
-                    (*cfg)["port_rpc"].set("ip", "127.0.0.1");
+                    (*cfg)["port_rpc"].set("ip", getEnvLocalhostAddr());
                     (*cfg)["port_rpc"].set("port", "0");
                     return cfg;
                 }),
@@ -477,7 +472,7 @@ public:
             Env env {*this,
                 envconfig([](std::unique_ptr<Config> cfg) {
                     (*cfg).deprecatedClearSection("port_rpc");
-                    (*cfg)["port_rpc"].set("ip", "127.0.0.1");
+                    (*cfg)["port_rpc"].set("ip", getEnvLocalhostAddr());
                     (*cfg)["port_rpc"].set("port", "8081");
                     (*cfg)["port_rpc"].set("protocol", "");
                     return cfg;
@@ -502,17 +497,17 @@ public:
                         ConfigSection::importNodeDatabase ());
                     cfg->legacy("database_path", "");
                     cfg->setupControl(true, true, true);
-                    (*cfg)["port_peer"].set("ip", "127.0.0.1");
+                    (*cfg)["port_peer"].set("ip", getEnvLocalhostAddr());
                     (*cfg)["port_peer"].set("port", "8080");
                     (*cfg)["port_peer"].set("protocol", "peer");
-                    (*cfg)["port_rpc"].set("ip", "127.0.0.1");
+                    (*cfg)["port_rpc"].set("ip", getEnvLocalhostAddr());
                     (*cfg)["port_rpc"].set("port", "8081");
                     (*cfg)["port_rpc"].set("protocol", "http,ws2");
-                    (*cfg)["port_rpc"].set("admin", "127.0.0.1");
-                    (*cfg)["port_ws"].set("ip", "127.0.0.1");
+                    (*cfg)["port_rpc"].set("admin", getEnvLocalhostAddr());
+                    (*cfg)["port_ws"].set("ip", getEnvLocalhostAddr());
                     (*cfg)["port_ws"].set("port", "8082");
                     (*cfg)["port_ws"].set("protocol", "ws");
-                    (*cfg)["port_ws"].set("admin", "127.0.0.1");
+                    (*cfg)["port_ws"].set("admin", getEnvLocalhostAddr());
                     return cfg;
                 }),
                 std::make_unique<CaptureLogs>(messages)};
@@ -545,7 +540,7 @@ public:
     }
 
     void
-    run()
+    run() override
     {
         basicTests();
         stressTest();

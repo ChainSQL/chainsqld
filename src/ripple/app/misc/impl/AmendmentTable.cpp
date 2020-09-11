@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/AmendmentTable.h>
 #include <ripple/protocol/STValidation.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/ConfigSections.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/TxFlags.h>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
@@ -91,7 +90,7 @@ struct AmendmentState
     /** The name of this amendment, possibly empty. */
     std::string name;
 
-    AmendmentState () = default;
+    explicit AmendmentState () = default;
 };
 
 /** The status of all amendments requested in a given window. */

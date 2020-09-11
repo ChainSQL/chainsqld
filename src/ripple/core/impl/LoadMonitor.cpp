@@ -17,10 +17,9 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/Log.h>
-#include <ripple/basics/UptimeTimer.h>
-#include <ripple/beast/clock/chrono_util.h>
+#include <ripple/basics/UptimeClock.h>
+#include <ripple/basics/date.h>
 #include <ripple/core/LoadMonitor.h>
 
 namespace ripple {
@@ -53,7 +52,7 @@ LoadMonitor::LoadMonitor (beast::Journal j)
     , mLatencyMSPeak (0)
     , mTargetLatencyAvg (0)
     , mTargetLatencyPk (0)
-    , mLastUpdate (UptimeTimer::getInstance ().getElapsedSeconds ())
+    , mLastUpdate (UptimeClock::now())
     , j_ (j)
 {
 }
@@ -66,18 +65,19 @@ LoadMonitor::LoadMonitor (beast::Journal j)
 // call with the mutex
 void LoadMonitor::update ()
 {
-    int now = UptimeTimer::getInstance ().getElapsedSeconds ();
+    using namespace std::chrono_literals;
+    auto now = UptimeClock::now();
     if (now == mLastUpdate) // current
         return;
 
     // VFALCO TODO Why 8?
-    if ((now < mLastUpdate) || (now > (mLastUpdate + 8)))
+    if ((now < mLastUpdate) || (now > (mLastUpdate + 8s)))
     {
         // way out of date
         mCounts = 0;
         mLatencyEvents = 0;
-        mLatencyMSAvg = 0;
-        mLatencyMSPeak = 0;
+        mLatencyMSAvg = 0ms;
+        mLatencyMSPeak = 0ms;
         mLastUpdate = now;
         // VFALCO TODO don't return from the middle...
         return;
@@ -93,7 +93,7 @@ void LoadMonitor::update ()
     */
     do
     {
-        ++mLastUpdate;
+        mLastUpdate += 1s;
         mCounts -= ((mCounts + 3) / 4);
         mLatencyEvents -= ((mLatencyEvents + 3) / 4);
         mLatencyMSAvg -= (mLatencyMSAvg / 4);
@@ -108,14 +108,15 @@ void LoadMonitor::addLoadSample (LoadEvent const& s)
 
     auto const total = s.runTime() + s.waitTime();
     // Don't include "jitter" as part of the latency
-    auto const latency = total < 2ms ? 0ms : round<milliseconds>(total);
+    auto const latency = total < 2ms ? 0ms : date::round<milliseconds>(total);
 
     if (latency > 500ms)
     {
         auto mj = (latency > 1s) ? j_.warn() : j_.info();
         JLOG (mj) << "Job: " << s.name() <<
-            " run: " << round<milliseconds>(s.runTime()).count() << "ms" <<
-            " wait: " << round<milliseconds>(s.waitTime()).count() << "ms";
+            " run: " << date::round<milliseconds>(s.runTime()).count() <<
+            "ms" << " wait: " <<
+            date::round<milliseconds>(s.waitTime()).count() << "ms";
     }
 
     addSamples (1, latency);
@@ -132,25 +133,28 @@ void LoadMonitor::addSamples (int count, std::chrono::milliseconds latency)
     update ();
     mCounts += count;
     mLatencyEvents += count;
-    mLatencyMSAvg += latency.count();
-    mLatencyMSPeak += latency.count();
+    mLatencyMSAvg += latency;
+    mLatencyMSPeak += latency;
 
-    int const latencyPeak = mLatencyEvents * latency.count() * 4 / count;
+    auto const latencyPeak = mLatencyEvents * latency * 4 / count;
 
     if (mLatencyMSPeak < latencyPeak)
         mLatencyMSPeak = latencyPeak;
 }
 
-void LoadMonitor::setTargetLatency (std::uint64_t avg, std::uint64_t pk)
+void LoadMonitor::setTargetLatency (std::chrono::milliseconds avg,
+                                    std::chrono::milliseconds pk)
 {
     mTargetLatencyAvg  = avg;
     mTargetLatencyPk = pk;
 }
 
-bool LoadMonitor::isOverTarget (std::uint64_t avg, std::uint64_t peak)
+bool LoadMonitor::isOverTarget (std::chrono::milliseconds avg,
+                                std::chrono::milliseconds peak)
 {
-    return (mTargetLatencyPk && (peak > mTargetLatencyPk)) ||
-           (mTargetLatencyAvg && (avg > mTargetLatencyAvg));
+    using namespace std::chrono_literals;
+    return (mTargetLatencyPk > 0ms && (peak > mTargetLatencyPk)) ||
+           (mTargetLatencyAvg > 0ms && (avg > mTargetLatencyAvg));
 }
 
 bool LoadMonitor::isOver ()
@@ -167,6 +171,7 @@ bool LoadMonitor::isOver ()
 
 LoadMonitor::Stats LoadMonitor::getStats ()
 {
+    using namespace std::chrono_literals;
     Stats stats;
 
     std::lock_guard<std::mutex> sl (mutex_);
@@ -177,8 +182,8 @@ LoadMonitor::Stats LoadMonitor::getStats ()
 
     if (mLatencyEvents == 0)
     {
-        stats.latencyAvg = 0;
-        stats.latencyPeak = 0;
+        stats.latencyAvg = 0ms;
+        stats.latencyPeak = 0ms;
     }
     else
     {

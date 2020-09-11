@@ -17,9 +17,9 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/basics/StringUtilities.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <peersafe/rpc/impl/TxCommonPrepare.h>
 #include <peersafe/rpc/TableUtils.h>
 //#include <ripple/protocol/TableDefines.h>

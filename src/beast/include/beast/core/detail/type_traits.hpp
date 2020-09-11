@@ -18,26 +18,26 @@
 
 // A few workarounds to keep things working
 
-namespace boost {
-namespace asio {
-
-// for has_get_io_service
-class io_service;
-
-// for is_dynamic_buffer
-template<class Allocator>
-class basic_streambuf;
-
-namespace detail {
-
-// for is_buffer_sequence
-template<class Buffer, class Buffers>
-class consuming_buffers;
-
-} // detail
-
-} // asio
-} // boost
+//namespace boost {
+//namespace asio {
+//
+//// for has_get_io_service
+//class io_service;
+//
+//// for is_dynamic_buffer
+//template<class Allocator>
+//class basic_streambuf;
+//
+//namespace detail {
+//
+//// for is_buffer_sequence
+//template<class Buffer, class Buffers>
+//class consuming_buffers;
+//
+//} // detail
+//
+//} // asio
+//} // boost
 
 //------------------------------------------------------------------------------
 

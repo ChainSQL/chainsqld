@@ -66,7 +66,6 @@ private:
     hash_map<std::uint64_t, InfoSub::wptr> mListeners;
 };
 
-
 }  // namespace ripple
 
 #endif

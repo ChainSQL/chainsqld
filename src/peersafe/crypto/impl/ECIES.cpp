@@ -36,7 +36,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/basics/contract.h>
 #include <ripple/crypto/impl/ec_key.h>
 #include <ripple/crypto/RandomNumbers.h>

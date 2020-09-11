@@ -226,6 +226,13 @@ macro(append_flags name)
   endforeach()
 endmacro()
 
+macro (exclude_if_included target_)
+  get_directory_property(has_parent PARENT_DIRECTORY)
+  if (has_parent)
+    exclude_from_default (${target_})
+  endif ()
+endmacro ()
+
 macro(group_sources_in source_dir curdir)
   file(GLOB children RELATIVE ${source_dir}/${curdir}
     ${source_dir}/${curdir}/*)
@@ -324,6 +331,7 @@ endmacro()
 ############################################################
 
 # Params: Boost components to search for.
+#cmake_policy(SET CMP<0074> NEW)
 macro(use_boost)
     if ((NOT DEFINED BOOST_ROOT) AND (DEFINED ENV{BOOST_ROOT}))
         set(BOOST_ROOT $ENV{BOOST_ROOT})
@@ -387,6 +395,9 @@ macro(use_openssl openssl_min)
     if (DEFINED ENV{OPENSSL_ROOT})
       include_directories($ENV{OPENSSL_ROOT}/include)
       link_directories($ENV{OPENSSL_ROOT}/lib)
+    else()
+      include_directories($ENV{OPENSSL_ROOT_DIR}/include)
+      link_directories($ENV{OPENSSL_ROOT_DIR}/lib)
     endif()
   else()
     if (static)

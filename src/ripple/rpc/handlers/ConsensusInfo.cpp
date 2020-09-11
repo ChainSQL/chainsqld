@@ -17,11 +17,10 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/json/json_value.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/basics/make_lock.h>
 
@@ -31,10 +30,7 @@ Json::Value doConsensusInfo (RPC::Context& context)
 {
     Json::Value ret (Json::objectValue);
 
-    {
-        auto lock = make_lock(context.app.getMasterMutex());
-        ret[jss::info] = context.netOps.getConsensusInfo ();
-    }
+    ret[jss::info] = context.netOps.getConsensusInfo ();
 
     return ret;
 }

@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/TxQ.h>
@@ -25,8 +24,8 @@
 #include <ripple/ledger/ReadView.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/Indexes.h>
-#include <ripple/protocol/JsonFields.h>
-#include <ripple/protocol/types.h>
+#include <ripple/protocol/jss.h>
+#include <ripple/protocol/UintTypes.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/basics/StringUtilities.h>
@@ -117,7 +116,7 @@ Json::Value doAccountInfo (RPC::Context& context)
             // multiple SignerLists on one account.
             auto const sleSigners = ledger->read (keylet::signers (accountID));
             if (sleSigners)
-                jvSignerList.append (sleSigners->getJson (0));
+                jvSignerList.append (sleSigners->getJson (JsonOptions::none));
 
             result[jss::account_data][jss::signer_lists] =
                 std::move(jvSignerList);

@@ -55,7 +55,7 @@ public:
     bool isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType);
     //get reply
     bool GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, std::weak_ptr<Peer> const& wPeer);
-    bool SendSeekResultReply(std::string sAccountID, bool bStop, uint32 time, std::weak_ptr<Peer> const& wPeer, std::string sNickName , TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB);
+    bool SendSeekResultReply(std::string sAccountID, bool bStop, uint32_t time, std::weak_ptr<Peer> const& wPeer, std::string sNickName , TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB);
     bool SendSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string tablename, std::string nickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, std::weak_ptr<Peer> const& wPeer);
 
     bool SendLedgerRequest(LedgerIndex iSeq, uint256 hash, std::shared_ptr <TableSyncItem> pItem);
@@ -63,7 +63,7 @@ public:
 
     void SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo, TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>>& cache);
     void CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger);
-    bool OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32 time, uint256 const& chainId);
+    bool OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32_t time, uint256 const& chainId);
     bool ReStartOneTable(AccountID accountID, std::string sNameInDB, std::string sTableName, bool bDrop, bool bCommit);
     bool StopOneTable(AccountID accountID, std::string sNameInDB, bool bNewTable);
 
@@ -83,7 +83,7 @@ public:
 
     void SetHaveSyncFlag(bool haveSync);
 
-	std::vector <uint256> getTxsFromDb(uint32 TxnLgrSeq, std::string sAccountID);
+	std::vector <uint256> getTxsFromDb(uint32_t TxnLgrSeq, std::string sAccountID);
 	//press test table name
 	std::string GetPressTableName();
 	bool IsPressSwitchOn();
@@ -116,7 +116,7 @@ private:
     std::shared_ptr <TableSyncItem> GetRightItem(AccountID accountID, std::string sTableName, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, bool bByNameInDB = true);
 
     std::pair<bool,std::string>
-		InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash, uint32 time,uint256 chainId);
+		InsertListDynamically(AccountID accountID, std::string sTableName, std::string sNameInDB, LedgerIndex seq, uint256 uHash, uint32_t time,uint256 chainId);
 
     bool IsAutoLoadTable();
 

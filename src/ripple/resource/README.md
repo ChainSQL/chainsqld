@@ -12,7 +12,7 @@ The ResourceManager module has these responsibilities:
 To prevent monopolization of server resources or attacks on servers,
 resource consumption is monitored at each endpoint. When consumption
 exceeds certain thresholds, costs are imposed. Costs could include charging
-additional ZXC for transactions, requiring a proof of work to be
+additional XRP for transactions, requiring a proof of work to be
 performed, or simply disconnecting the endpoint.
 
 Currently, consumption endpoints include websocket connections used to

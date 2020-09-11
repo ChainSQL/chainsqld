@@ -851,6 +851,10 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
 	{
 		return;
 	}
+
+    //JLOG(journal_.error()) << "on TableSyncItem, plain password Hex: " << strHex(passBlob_) << std::endl;
+    //JLOG(journal_.error()) << "on TableSyncItem, encrypted raw len: " << raw.size();
+    //JLOG(journal_.error()) << "on TableSyncItem, encrypted raw HEX: " << strHex(raw) << std::endl;
 	
 	if (user_accountID_ && user_secret_)
 	{
@@ -869,6 +873,8 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
             rawDecrypted = Blob(pPlainData, pPlainData + plainDataLen);
             delete[] pPlainData;
         }
+
+        //JLOG(journal_.error()) << "on TableSyncItem, plain raw: " << strCopy(rawDecrypted) << std::endl;
 
 		if (rawDecrypted.size() > 0)
 		{
@@ -958,24 +964,25 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
             JLOG(journal_.trace()) << "Dispose error";
         }			
 	}
-    
-	if (ret.first)
+   
+	if (T_DROP == op_type)
 	{
+		this->ReSetContexAfterDrop();
+	}
 
-		if (T_DROP == op_type)
-		{
-			this->ReSetContexAfterDrop();
-		}
-		else if (T_RENAME == op_type)
-		{
+	if (ret.first && T_RENAME == op_type)
+	{
 			auto tables = tx.getFieldArray(sfTables);
 			if (tables.size() > 0)
 			{
 				auto newTableName = strCopy(tables[0].getFieldVL(sfTableNewName));
 				sTableName_ = newTableName;
-				getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
-			}
-		}
+				bool bRenameOk = getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
+				if (!bRenameOk) {
+					ret.first      = false;			
+					ret.second = (boost::format("account %1% renames table %2%  to %3% exception") % to_string(accountID_) % sTableNameInDB_ %newTableName).str();
+				}
+			}	
 	}
 	//else
 	//{
@@ -994,7 +1001,7 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 	return ret;
 }
 
-void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledger_time)
+void TableSyncItem::InsertPressData(const STTx& tx, uint32_t ledger_seq, uint32_t ledger_time)
 {
 	std::string pressRealName;
 	if (tx.isFieldPresent(sfFlags) && tx.isFieldPresent(sfTables))
@@ -1015,8 +1022,8 @@ void TableSyncItem::InsertPressData(const STTx& tx,uint32 ledger_seq,uint32 ledg
 		
 		std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
 		auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-		uint32 submit_time = tx.getFieldU32(sfFlags);
-		uint32 db_time = tmp.count();
+		uint32_t submit_time = tx.getFieldU32(sfFlags);
+		uint32_t db_time = tmp.count();
 		submit_time -= std::chrono::seconds(days(10957)).count();
 		db_time -= std::chrono::seconds(days(10957)).count();
 
@@ -1236,7 +1243,7 @@ bool TableSyncItem::isJumpThisTx(uint256 txid)
     return false;
 }
 
-TableSyncItem::CheckConditionState TableSyncItem::CondFilter(uint32 time, uint32 ledgerIndex, uint256 txid)
+TableSyncItem::CheckConditionState TableSyncItem::CondFilter(uint32_t time, uint32_t ledgerIndex, uint256 txid)
 {
 	if (sCond_.eSyncType == SYNC_PRIOR)
 	{

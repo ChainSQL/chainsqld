@@ -53,7 +53,7 @@ public:
     STArray (STArray&&);
     STArray (STArray const&) = default;
     STArray (SField const& f, int n);
-    STArray (SerialIter& sit, SField const& f);
+    STArray (SerialIter& sit, SField const& f, int depth = 0);
     explicit STArray (int n);
     explicit STArray (SField const& f);
     STArray& operator= (STArray const&) = default;
@@ -152,7 +152,7 @@ public:
     virtual std::string getFullText () const override;
     virtual std::string getText () const override;
 
-    virtual Json::Value getJson (int index) const override;
+    virtual Json::Value getJson (JsonOptions index) const override;
     virtual void add (Serializer & s) const override;
 
     void sort (bool (*compare) (const STObject & o1, const STObject & o2));

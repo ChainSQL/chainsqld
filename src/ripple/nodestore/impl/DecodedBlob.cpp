@@ -17,9 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+#include <ripple/basics/safe_cast.h>
 #include <ripple/nodestore/impl/DecodedBlob.h>
-#include <ripple/beast/core/ByteOrder.h>
 #include <algorithm>
 #include <cassert>
 
@@ -32,8 +31,7 @@ DecodedBlob::DecodedBlob (void const* key, void const* value, int valueBytes)
 
         Bytes
 
-        0...3       LedgerIndex     32-bit big endian integer
-        4...7       Unused?         An unused copy of the LedgerIndex
+        0...7       Unused
         8           char            One of NodeObjectType
         9...end                     The body of the object data
     */
@@ -50,7 +48,7 @@ DecodedBlob::DecodedBlob (void const* key, void const* value, int valueBytes)
     if (valueBytes > 8)
     {
         unsigned char const* byte = static_cast <unsigned char const*> (value);
-        m_objectType = static_cast <NodeObjectType> (byte [8]);
+        m_objectType = safe_cast <NodeObjectType> (byte [8]);
     }
 
     if (valueBytes > 9)

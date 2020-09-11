@@ -15,7 +15,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx.h>
 #include <ripple/ledger/BookDirs.h>
 #include <ripple/protocol/Feature.h>
@@ -25,10 +24,10 @@ namespace test {
 
 struct BookDirs_test : public beast::unit_test::suite
 {
-    void test_bookdir(std::initializer_list<uint256> fs)
+    void test_bookdir(FeatureBitset features)
     {
         using namespace jtx;
-        Env env(*this, with_features(fs));
+        Env env(*this, features);
         auto gw = Account("gw");
         auto USD = gw["USD"];
         env.fund(ZXC(1000000), "alice", "bob", "gw");
@@ -94,9 +93,11 @@ struct BookDirs_test : public beast::unit_test::suite
 
     void run() override
     {
-        test_bookdir({});
-        test_bookdir({featureFlow, fix1373});
-        test_bookdir({featureFlow, fix1373, featureFlowCross});
+        using namespace jtx;
+        auto const sa = supported_amendments();
+        test_bookdir(sa - featureFlow - fix1373 - featureFlowCross);
+        test_bookdir(sa                         - featureFlowCross);
+        test_bookdir(sa);
     }
 };
 

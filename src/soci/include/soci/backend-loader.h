@@ -20,7 +20,7 @@ namespace dynamic_backends
 {
 
 // used internally by session
-backend_factory const & get(std::string const & name);
+SOCI_DECL backend_factory const & get(std::string const & name);
 
 // provided for advanced user-level management
 SOCI_DECL std::vector<std::string> & search_paths();

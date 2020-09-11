@@ -18,7 +18,8 @@
 //==============================================================================
 
 #include <test/jtx.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/core/ConfigSections.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <test/jtx/WSClient.h>
 
@@ -29,7 +30,11 @@ class AmendmentBlocked_test : public beast::unit_test::suite
     void testBlockedMethods()
     {
         using namespace test::jtx;
-        Env env {*this};
+        Env env {*this, envconfig([](std::unique_ptr<Config> cfg)
+            {
+                cfg->loadFromString ("[" SECTION_SIGNING_SUPPORT "]\ntrue");
+                return cfg;
+            })};
         auto const gw = Account {"gateway"};
         auto const USD = gw["USD"];
         auto const alice = Account {"alice"};
@@ -61,10 +66,11 @@ class AmendmentBlocked_test : public beast::unit_test::suite
         pf_req[jss::subcommand] = "create";
         pf_req[jss::source_account] = alice.human();
         pf_req[jss::destination_account] = bob.human();
-        pf_req[jss::destination_amount] = bob["USD"](20).value ().getJson (0);
+        pf_req[jss::destination_amount] =
+            bob["USD"](20).value ().getJson (JsonOptions::none);
         jr = wsc->invoke("path_find", pf_req) [jss::result];
         BEAST_EXPECT (jr.isMember (jss::alternatives) &&
-            jr[jss::alternatives].isArray () &&
+            jr[jss::alternatives].isArray() &&
             jr[jss::alternatives].size () == 1);
 
         // submit
@@ -83,7 +89,7 @@ class AmendmentBlocked_test : public beast::unit_test::suite
 
         Json::Value set_tx;
         set_tx[jss::Account] = bob.human();
-        set_tx[jss::TransactionType] = "AccountSet";
+        set_tx[jss::TransactionType] = jss::AccountSet;
         set_tx[jss::Fee] =
             static_cast<uint32_t>(8 * env.current()->fees().base);
         set_tx[jss::Sequence] = env.seq(bob);
@@ -157,7 +163,7 @@ class AmendmentBlocked_test : public beast::unit_test::suite
     }
 
 public:
-    void run()
+    void run() override
     {
         testBlockedMethods();
     }

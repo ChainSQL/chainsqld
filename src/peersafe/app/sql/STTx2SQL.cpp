@@ -37,7 +37,7 @@
 #include <ripple/protocol/STArray.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/impl/json_assert.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/net/RPCErr.h>
 
@@ -2475,7 +2475,7 @@ namespace helper {
 				}
 			}
 
-			assert(conditions.isArray());
+			assert(conditions.isArrayOrNull());
 			size = conditions.size();
 			if (size > 0) {
 				buildsql.AddCondition(conditions);
@@ -3612,8 +3612,11 @@ std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory
 
 Json::Value TxStore::txHistory(std::string sql) {
     Json::Value obj;
-    if (databasecon_ == nullptr)
-        return rpcError(rpcNODB);
+	if (databasecon_ == nullptr) {
+		return rpcError(rpcNODB);
+	}
+      
+
 	std::shared_ptr<BuildSQL> buildsql = nullptr;
 	
 	if (boost::iequals(db_type_, "sqlite"))

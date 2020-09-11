@@ -27,39 +27,27 @@
 #include <ripple/crypto/csprng.h>
 #include <ripple/json/json_value.h>
 #include <ripple/protocol/PublicKey.h>
-#include <peersafe/app/misc/ConfigSite.h>
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/range/adaptors.hpp>
-#include <boost/thread/locks.hpp>
-#include <boost/thread/shared_mutex.hpp>
 #include <mutex>
+#include <shared_mutex>
 #include <numeric>
+#include <peersafe/app/misc/ConfigSite.h>
 
 namespace ripple {
 
-//class ListDisposition;
-//{
-//    /// List is valid
-//    accepted = 0,
-//
-//    /// Same sequence as current list
-//    same_sequence,
-//
-//    /// List version is not supported
-//    unsupported_version,
-//
-//    /// List signed by untrusted publisher key
-//    untrusted,
-//
-//    /// Trusted publisher key, but seq is too old
-//    stale,
-//
-//    /// Invalid format or signature
-//    invalid
-//};
-//
 std::string
 to_string(ListDisposition disposition);
+
+/** Changes in trusted nodes after updating validator list
+*/
+struct TrustChanges
+{
+    explicit TrustChanges() = default;
+
+    hash_set<NodeID> added;
+    hash_set<NodeID> removed;
+};
 
 /**
     Trusted Validators List
@@ -108,17 +96,20 @@ class ValidatorList
 {
     struct PublisherList
     {
+        explicit PublisherList() = default;
+
         bool available;
         std::vector<PublicKey> list;
         std::size_t sequence;
         TimeKeeper::time_point expiration;
+        std::string siteUri;
     };
 
     ManifestCache& validatorManifests_;
     ManifestCache& publisherManifests_;
     TimeKeeper& timeKeeper_;
     beast::Journal j_;
-    boost::shared_mutex mutable mutex_;
+    std::shared_timed_mutex mutable mutex_;
 
     std::atomic<std::size_t> quorum_;
     boost::optional<std::size_t> minimumQuorum_;
@@ -139,16 +130,9 @@ class ValidatorList
     // Currently supported version of publisher list format
     static constexpr std::uint32_t requiredListVersion = 1;
 
-    // The minimum number of listed validators required to allow removing
-    // non-communicative validators from the trusted set. In other words, if the
-    // number of listed validators is less, then use all of them in the
-    // trusted set.
-    std::size_t const MINIMUM_RESIZEABLE_UNL {25};
-    // The maximum size of a trusted set for which greater than Byzantine fault
-    // tolerance isn't needed.
-    std::size_t const BYZANTINE_THRESHOLD {32};
-
-
+	// The maximum size of a trusted set for which greater than Byzantine fault
+	// tolerance isn't needed.
+	std::size_t const BYZANTINE_THRESHOLD{ 10 };
 
 public:
     ValidatorList (
@@ -157,7 +141,7 @@ public:
         TimeKeeper& timeKeeper,
         beast::Journal j,
         boost::optional<std::size_t> minimumQuorum = boost::none);
-    ~ValidatorList ();
+    ~ValidatorList () = default;
 
     /** Load configured trusted keys.
 
@@ -206,22 +190,23 @@ public:
         std::uint32_t version,
 		hash_set<PublicKey>* set = nullptr);
 
-    /** Update trusted keys
+    /** Update trusted nodes
 
-        Reset the trusted keys based on latest manifests, received validations,
+        Reset the trusted nodes based on latest manifests, received validations,
         and lists.
 
-        @param seenValidators Set of public keys used to sign recently
-        received validations
+        @param seenValidators Set of NodeIDs of validators that have signed
+        recently received validations
+
+        @return TrustedKeyChanges instance with newly trusted or untrusted
+        node identities.
 
         @par Thread Safety
 
         May be called concurrently
     */
-    template<class KeySet>
-    void
-    onConsensusStart (
-        KeySet const& seenValidators);
+    TrustChanges
+    updateTrusted (hash_set<NodeID> const& seenValidators);
 
     /** Get quorum value for current trusted key set
 
@@ -240,7 +225,7 @@ public:
     quorum () const
     {
         return quorum_;
-    };
+    }
 
 	std::vector<PublicKey> validators()
 	{
@@ -339,6 +324,10 @@ public:
     for_each_listed (
         std::function<void(PublicKey const&, bool)> func) const;
 
+    /** Return the number of configured validator list sites. */
+    std::size_t
+    count() const;
+
     /** Return the time when the validator list will expire
 
         @note This may be a time in the past if a published list has not
@@ -358,6 +347,19 @@ public:
     */
     Json::Value
     getJson() const;
+
+    using QuorumKeys = std::pair<std::size_t const, hash_set<PublicKey>>;
+    /** Get the quorum and all of the trusted keys.
+     *
+     * @return quorum and keys.
+     */
+    QuorumKeys
+    getQuorumKeys() const
+    {
+        std::shared_lock<std::shared_timed_mutex> read_lock{mutex_};
+        return {quorum_, trustedKeys_};
+    }
+
 
 private:
     /** Check response for trusted valid published list
@@ -389,10 +391,20 @@ private:
     bool
     removePublisherList (PublicKey const& publisherKey);
 
-    /** Return safe minimum quorum for listed validator set
+    /** Return quorum for trusted validator set
 
-        @param nListedKeys Number of list validator keys
+        @param trusted Number of trusted validator keys
 
+        @param seen Number of trusted validators that have signed
+        recently received validations */
+    std::size_t
+    calculateQuorum (
+        std::size_t trusted, std::size_t seen);
+		
+    /** Return quorum for trusted validator set
+
+        @param trusted Number of trusted validator keys
+		
         @param unListedLocal Whether the local node is an unlisted validator
     */
     static std::size_t
@@ -401,6 +413,23 @@ private:
 
 	//reset validators for consensus
 	void resetValidators();
+	
+	 /** Update trusted keys
+
+        Reset the trusted keys based on latest manifests, received validations,
+        and lists.
+
+        @param seenValidators Set of public keys used to sign recently
+        received validations
+
+        @par Thread Safety
+
+        May be called concurrently
+    */
+    template<class KeySet>
+    void
+    onConsensusStart (
+        KeySet const& seenValidators);
 };
 
 //------------------------------------------------------------------------------

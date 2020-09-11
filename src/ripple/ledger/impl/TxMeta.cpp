@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/TxMeta.h>
 #include <ripple/basics/Log.h>
@@ -47,7 +46,7 @@ TxMeta::TxMeta (uint256 const& txid,
     }
     catch (const std::exception&)
     {
-        //For compatibility with older-consensus versions
+        //For compatibility with older-consensus 
         SF_U8 const sfTransactionResultOld = TypedField<SF_U8::type>(STI_UINT8, 3, "TransactionResult");
         mResult = obj.getFieldU8(sfTransactionResultOld);
     }
@@ -137,7 +136,7 @@ void TxMeta::setAffectedNode (uint256 const& node, SField const& type,
 }
 
 boost::container::flat_set<AccountID>
-TxMeta::getAffectedAccounts() const
+TxMeta::getAffectedAccounts(beast::Journal j) const
 {
     boost::container::flat_set<AccountID> list;
     list.reserve (10);
@@ -176,7 +175,8 @@ TxMeta::getAffectedAccounts() const
                         }
                         else
                         {
-                            JLOG (j_.fatal()) << "limit is not amount " << field.getJson (0);
+                            JLOG (j.fatal()) << "limit is not amount "
+                                << field.getJson (JsonOptions::none);
                         }
                     }
                 }
@@ -277,7 +277,7 @@ STObject TxMeta::getAsObject () const
 
 void TxMeta::addRaw (Serializer& s, TER result, std::uint32_t index)
 {
-    mResult = static_cast<int> (result);
+    mResult = TERtoInt (result);
     mIndex = index;
     //assert ((mResult == tesSUCCESS) || ((mResult >= tecCLAIM) && (mResult < tefFAILURE)));
 
@@ -310,7 +310,7 @@ void TxMeta::setContractFieldData(STTx const& tx)
     //
     Json::Value vec;
     for (auto tx : vecTxs) {
-        vec.append(tx.getJson(0));
+        vec.append(tx.getJson(JsonOptions::none));
     }
     if (vec.size() > 0)
     {

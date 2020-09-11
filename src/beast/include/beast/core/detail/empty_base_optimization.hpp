@@ -58,34 +58,34 @@ public:
 //------------------------------------------------------------------------------
 
 template<
-    class T,
-    int UniqueID
+	class T,
+	int UniqueID
 >
 class empty_base_optimization <T, UniqueID, false>
 {
 public:
-    empty_base_optimization() = default;
+	empty_base_optimization() = default;
 
-    empty_base_optimization(T const& t)
-        : m_t (t)
-    {}
+	empty_base_optimization(T const& t)
+		: m_t(t)
+	{}
 
-    empty_base_optimization(T&& t)
-        : m_t (std::move (t))
-    {}
+	empty_base_optimization(T&& t)
+		: m_t(std::move(t))
+	{}
 
-    T& member() noexcept
-    {
-        return m_t;
-    }
+	T& member() noexcept
+	{
+		return m_t;
+	}
 
-    T const& member() const noexcept
-    {
-        return m_t;
-    }
+	T const& member() const noexcept
+	{
+		return m_t;
+	}
 
 private:
-    T m_t;
+	T m_t;
 };
 
 } // detail

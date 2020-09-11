@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/paths/RippleState.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
@@ -60,7 +59,7 @@ void addLine (Json::Value& jsonLines, RippleState const& line)
     jPeer[jss::quality_out] = line.getQualityOut ().value;
    
     if (line.getMemos().size()) {
-        jPeer[jss::memos] = line.getMemos().getJson(0);
+        jPeer[jss::memos] = line.getMemos().getJson(JsonOptions::none);
     }
 
     if (line.getAuth ())

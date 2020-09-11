@@ -23,7 +23,7 @@
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/sql/STTx2SQL.h>
 #include <ripple/json/Output.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/rpc/impl/RPCHelpers.h>

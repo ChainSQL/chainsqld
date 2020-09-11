@@ -29,7 +29,7 @@ namespace ripple {
     protected:        
         explicit ChainSqlTx(ApplyContext& ctx);
 
-        static TER preflight(PreflightContext const& ctx);
+        static NotTEC preflight(PreflightContext const& ctx);
         static TER preclaim(PreclaimContext const& ctx);
 		TER doApply();	
 

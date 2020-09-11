@@ -24,19 +24,20 @@
 #include <ripple/shamap/TreeNodeCache.h>
 #include <ripple/basics/TaggedCache.h>
 #include <ripple/core/Config.h>
+#include <ripple/protocol/Protocol.h>
 #include <ripple/beast/utility/PropertyStream.h>
 #include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
 #include <ripple/protocol/Protocol.h>
+#include <boost/asio.hpp>
 #include <memory>
 #include <mutex>
-
-namespace boost { namespace asio { class io_service; } }
 
 namespace ripple {
 
 namespace unl { class Manager; }
 namespace Resource { class Manager; }
-namespace NodeStore { class Database; }
+namespace NodeStore { class Database; class DatabaseShard; }
+namespace perf { class PerfLog; }
 
 // VFALCO TODO Fix forward declares required for header dependency loops
 class AmendmentTable;
@@ -86,12 +87,10 @@ class SHAMapStore;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
-template <class StalePolicy, class Validation, class MutexType>
+template <class Adaptor>
 class Validations;
-class RCLValidation;
-class RCLValidationsPolicy;
-using RCLValidations =
-    Validations<RCLValidationsPolicy, RCLValidation, std::mutex>;
+class RCLValidationsAdaptor;
+using RCLValidations = Validations<RCLValidationsAdaptor>;
 
 class Application : public beast::PropertyStream::Source
 {
@@ -132,6 +131,7 @@ public:
     virtual boost::asio::io_service& getIOService () = 0;
     virtual CollectorManager&       getCollectorManager () = 0;
     virtual Family&                 family() = 0;
+	virtual Family*                 shardFamily() = 0;
     virtual TimeKeeper&             timeKeeper() = 0;
     virtual JobQueue&               getJobQueue () = 0;
     virtual NodeCache&              getTempNodeCache () = 0;
@@ -150,6 +150,7 @@ public:
     virtual Cluster&                cluster () = 0;
     virtual RCLValidations&         getValidations () = 0;
     virtual NodeStore::Database&    getNodeStore () = 0;
+	virtual NodeStore::DatabaseShard*   getShardStore() = 0;
     virtual InboundLedgers&         getInboundLedgers () = 0;
     virtual InboundTransactions&    getInboundTransactions () = 0;
     virtual TaggedCache <uint256, AcceptedLedger>&
@@ -158,6 +159,8 @@ public:
     virtual NetworkOPs&             getOPs () = 0;
     virtual OrderBookDB&            getOrderBookDB () = 0;
     virtual TransactionMaster&      getMasterTransaction () = 0;
+	virtual perf::PerfLog&          getPerfLog () = 0;
+	
 	virtual TxStoreDBConn&			getTxStoreDBConn() = 0;
 	virtual TxStore&                getTxStore() = 0;
     virtual TableStatusDB&          getTableStatusDB() = 0;
@@ -182,9 +185,12 @@ public:
     virtual AccountIDCache const&   accountIDCache() const = 0;
     virtual OpenLedger&             openLedger() = 0;
     virtual OpenLedger const&       openLedger() const = 0;
-    virtual DatabaseCon& getTxnDB () = 0;
-    virtual DatabaseCon& getLedgerDB () = 0;
-    virtual std::chrono::milliseconds getIOLatency () = 0;
+    virtual DatabaseCon&            getTxnDB () = 0;
+    virtual DatabaseCon&            getLedgerDB () = 0;
+
+    virtual
+    std::chrono::milliseconds
+    getIOLatency () = 0;
 
     virtual bool serverOkay (std::string& reason) = 0;
 

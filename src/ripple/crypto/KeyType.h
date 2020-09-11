@@ -21,6 +21,7 @@
 #define RIPPLE_CRYPTO_KEYTYPE_H_INCLUDED
 
 #include <string>
+#include <boost/optional.hpp>
 
 namespace ripple {
 
@@ -34,9 +35,26 @@ enum class KeyType
     gmalg     = 2,
 };
 
-KeyType keyTypeFromString (std::string const& s);
+inline
+boost::optional<KeyType>
+keyTypeFromString (std::string const& s)
+{
+	if (s == "secp256k1")  return KeyType::secp256k1;
+	if (s == "ed25519")  return KeyType::ed25519;
+	if (s == "gmalg")      return KeyType::gmalg;
 
-const char* to_string (KeyType type);
+	return KeyType::invalid;
+}
+
+inline
+char const*
+to_string (KeyType type)
+{
+	return   type == KeyType::secp256k1 ? "secp256k1"
+		: type == KeyType::ed25519 ? "ed25519"
+		: type == KeyType::gmalg ? "gmalg"
+		: "INVALID";
+}
 
 template <class Stream>
 inline

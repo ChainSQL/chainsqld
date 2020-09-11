@@ -121,7 +121,7 @@ private:
 
 	//std::shared_ptr<const STTx> m_t;        ///< The original transaction.
 	int64_t m_gasCost;
-	uint32 m_gasPrice;
+	uint32_t m_gasPrice;
 
 	bool m_isCreation = false;
 	AccountID m_newAddress;

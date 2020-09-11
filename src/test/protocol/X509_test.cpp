@@ -19,7 +19,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <fstream>
 #include <iostream>
-#include <BeastConfig.h>
+
 #include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/protocol/Seed.h>
 #include <ripple/beast/unit_test.h>
@@ -92,7 +92,7 @@ namespace ripple {
 				generateSecretKey(KeyType::secp256k1, generateSeed("masterpassphrase"));
 			auto const seedPublicKey =
 				derivePublicKey(KeyType::secp256k1, seedSecretKey);
-			auto retPB = toBase58(TokenType::TOKEN_ACCOUNT_PUBLIC, seedPublicKey);
+			auto retPB = toBase58(TokenType::NodePublic, seedPublicKey);
 
 			// compare  public keys from CA and sign
 			PublicKey pubKey = getPublicKeyFromX509(certCA);
@@ -102,7 +102,7 @@ namespace ripple {
 			bool ret = verifyCert(vecRootCa,certUser,strExcept);		
 			BEAST_EXPECT(ret);
 
-			//auto retPB2 = toBase58(TokenType::TOKEN_ACCOUNT_PUBLIC, pubKeyFromFile);
+			//auto retPB2 = toBase58(TokenType::NodePublic, pubKeyFromFile);
 			//BEAST_EXPECT(pubKeyFromFile == seedPublicKey);
 			//std::cout << "public key "<< strHex (seedPublicKey) << "  " << strHex(pubKeyFromFile) <<std::endl;
 

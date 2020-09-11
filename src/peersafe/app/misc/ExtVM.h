@@ -191,7 +191,6 @@ public:
 	AccountID contractAddress() { return fromEvmC(myAddress); }
 private:
 	SleOps&                                                      oSle_;
-    beast::Journal                                               journal_;
 };
 
 }

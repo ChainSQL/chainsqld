@@ -20,24 +20,27 @@
 #ifndef RIPPLE_PEERFINDER_LOGIC_H_INCLUDED
 #define RIPPLE_PEERFINDER_LOGIC_H_INCLUDED
 
-#include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
+#include <ripple/basics/random.h>
+#include <ripple/basics/contract.h>
+#include <ripple/beast/container/aged_container_utility.h>
+#include <ripple/beast/net/IPAddressConversion.h>
 #include <ripple/peerfinder/PeerfinderManager.h>
 #include <ripple/peerfinder/impl/Bootcache.h>
 #include <ripple/peerfinder/impl/Counts.h>
 #include <ripple/peerfinder/impl/Fixed.h>
-#include <ripple/peerfinder/impl/iosformat.h>
 #include <ripple/peerfinder/impl/Handouts.h>
 #include <ripple/peerfinder/impl/Livecache.h>
 #include <ripple/peerfinder/impl/Reporting.h>
 #include <ripple/peerfinder/impl/SlotImp.h>
 #include <ripple/peerfinder/impl/Source.h>
 #include <ripple/peerfinder/impl/Store.h>
-#include <ripple/beast/net/IPAddressConversion.h>
-#include <ripple/beast/container/aged_container_utility.h>
-#include <ripple/beast/core/SharedPtr.h>
+#include <ripple/peerfinder/impl/iosformat.h>
+
+#include <algorithm>
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 
 namespace ripple {
@@ -54,8 +57,8 @@ public:
     // Maps remote endpoints to slots. Since a slot has a
     // remote endpoint upon construction, this holds all counts.
     //
-    using Slots = std::map <beast::IP::Endpoint,
-        std::shared_ptr <SlotImp>>;
+    using Slots = std::map<beast::IP::Endpoint,
+        std::shared_ptr<SlotImp>>;
 
     beast::Journal m_journal;
     clock_type& m_clock;
@@ -69,7 +72,7 @@ public:
 
     // The source we are currently fetching.
     // This is used to cancel I/O during program exit.
-    beast::SharedPtr <Source> fetchSource_;
+    std::shared_ptr<Source> fetchSource_;
 
     // Configuration settings
     Config config_;
@@ -78,7 +81,7 @@ public:
     Counts counts_;
 
     // A list of slots that should always be connected
-    std::map <beast::IP::Endpoint, Fixed> fixed_;
+    std::map<beast::IP::Endpoint, Fixed> fixed_;
 
     // Live livecache from mtENDPOINTS messages
     Livecache <> livecache_;
@@ -92,13 +95,13 @@ public:
     // The addresses (but not port) we are connected to. This includes
     // outgoing connection attempts. Note that this set can contain
     // duplicates (since the port is not set)
-    std::multiset <beast::IP::Address> connectedAddresses_;
+    std::multiset<beast::IP::Address> connectedAddresses_;
 
     // Set of public keys belonging to active peers
-    std::set <PublicKey> keys_;
+    std::set<PublicKey> keys_;
 
     // A list of dynamic sources to consult as a fallback
-    std::vector <beast::SharedPtr <Source>> m_sources;
+    std::vector<std::shared_ptr<Source>> m_sources;
 
     clock_type::time_point m_whenBroadcast;
 
@@ -389,6 +392,11 @@ public:
         if (keys_.find (key) != keys_.end())
             return Result::duplicate;
 
+        // If the peer belongs to a cluster, update the slot to reflect that.
+        counts_.remove (*slot);
+        slot->cluster (cluster);
+        counts_.add (*slot);
+
         // See if we have an open space for this slot
         if (! counts_.can_activate (*slot))
         {
@@ -398,18 +406,15 @@ public:
             return Result::full;
         }
 
-        // Set key and cluster right before adding to the map
-        // otherwise we could assert later when erasing the key.
-        counts_.remove (*slot);
+        // Set the key right before adding to the map, otherwise we might
+        // assert later when erasing the key.
         slot->public_key (key);
-        slot->cluster (cluster);
-        counts_.add (*slot);
-
-        // Add the public key to the active set
-        auto const result = keys_.insert (key);
-        // Public key must not already exist
-        assert (result.second);
-        (void) result.second;
+        {
+            auto const result = keys_.insert(key);
+            // Public key must not already exist
+            assert (result.second);
+            (void)result.second;
+        }
 
         // Change state and update counts
         counts_.remove (*slot);
@@ -590,7 +595,7 @@ public:
                         if (value.second->state() == Slot::active)
                             slots.emplace_back (value.second);
                     });
-                std::random_shuffle (slots.begin(), slots.end());
+                std::shuffle (slots.begin(), slots.end(), default_prng());
 
                 // build target vector
                 targets.reserve (slots.size());
@@ -618,8 +623,15 @@ public:
             {
                 Endpoint ep;
                 ep.hops = 0;
+                // we use the unspecified (0) address here because the value is
+                // irrelevant to recipients. When peers receive an endpoint
+                // with 0 hops, they use the socket remote_addr instead of the
+                // value in the message. Furthermore, since the address value
+                // is ignored, the type/version (ipv4 vs ipv6) doesn't matter
+                // either. ipv6 has a slightly more compact string
+                // representation of 0, so use that for self entries.
                 ep.address = beast::IP::Endpoint (
-                    beast::IP::AddressV4 ()).at_port (
+                    beast::IP::AddressV6 ()).at_port (
                         config_.listeningPort);
                 for (auto& t : targets)
                     t.insert (ep);
@@ -964,13 +976,13 @@ public:
     //--------------------------------------------------------------------------
 
     void
-    addStaticSource (beast::SharedPtr <Source> const& source)
+    addStaticSource (std::shared_ptr<Source> const& source)
     {
         fetch (source);
     }
 
     void
-    addSource (beast::SharedPtr <Source> const& source)
+    addSource (std::shared_ptr<Source> const& source)
     {
         m_sources.push_back (source);
     }
@@ -990,14 +1002,15 @@ public:
         std::lock_guard<std::recursive_mutex> _(lock_);
         for (auto addr : list)
         {
-			if (bootcache_.insertStatic(addr))
+            if (bootcache_.insertStatic (addr))
                 ++count;
         }
         return count;
     }
 
     // Fetch bootcache addresses from the specified source.
-    void fetch (beast::SharedPtr <Source> const& source)
+    void
+    fetch (std::shared_ptr<Source> const& source)
     {
         Source::Results results;
 

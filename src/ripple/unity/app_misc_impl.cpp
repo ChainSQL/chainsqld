@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 
 #include <ripple/app/misc/impl/AccountTxPaging.cpp>
 #include <ripple/app/misc/impl/AmendmentTable.cpp>

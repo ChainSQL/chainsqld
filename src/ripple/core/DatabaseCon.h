@@ -79,6 +79,8 @@ class DatabaseCon
 public:
     struct Setup
     {
+        explicit Setup() = default;
+
         Config::StartUpType startUp = Config::NORMAL;
         bool standAlone = false;
         boost::filesystem::path dataDir;
@@ -89,6 +91,36 @@ public:
                  std::string const& name,
                  const char* initString[],
                  int countInit, std::string sDBType = "sqlite");
+
+	template<std::size_t N, std::size_t M>
+	DatabaseCon(
+		Setup const& setup,
+		std::string const& DBName,
+		std::array<char const*, N> const& pragma,
+		std::array<char const*, M> const& initSQL)
+	{
+		// Use temporary files or regular DB files?
+		auto const useTempFiles =
+			setup.standAlone &&
+			setup.startUp != Config::LOAD &&
+			setup.startUp != Config::LOAD_FILE &&
+			setup.startUp != Config::REPLAY;
+		boost::filesystem::path pPath =
+			useTempFiles ? "" : (setup.dataDir / DBName);
+
+		open(session_, "sqlite", pPath.string());
+
+		for (auto const& p : pragma)
+		{
+			soci::statement st = session_.prepare << p;
+			st.execute(true);
+		}
+		for (auto const& sql : initSQL)
+		{
+			soci::statement st = session_.prepare << sql;
+			st.execute(true);
+		}
+	}
 
     soci::session& getSession()
     {

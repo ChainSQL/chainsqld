@@ -69,7 +69,7 @@ public:
     Path& push_back (STPathElement const& pe);
     Json::Value json () const;
  private:
-    Path& addHelper (){return *this;};
+    Path& addHelper (){return *this;}
     template <class First, class... Rest>
     Path& addHelper (First&& first, Rest&&... rest);
 };
@@ -83,14 +83,14 @@ inline Path& Path::push_back (STPathElement const& pe)
 inline Path& Path::push_back (Issue const& iss)
 {
     path.emplace_back (STPathElement::typeCurrency | STPathElement::typeIssuer,
-        zero, iss.currency, iss.account);
+        beast::zero, iss.currency, iss.account);
     return *this;
 }
 
 inline
 Path& Path::push_back (jtx::Account const& account)
 {
-    path.emplace_back (account.id (), zero, zero);
+    path.emplace_back (account.id (), beast::zero, beast::zero);
     return *this;
 }
 
@@ -104,7 +104,7 @@ Path& Path::addHelper (First&& first, Rest&&... rest)
 inline
 Json::Value Path::json () const
 {
-    return path.getJson (0);
+    return path.getJson (JsonOptions::none);
 }
 
 class PathSet
@@ -126,14 +126,14 @@ public:
     Json::Value json () const
     {
         Json::Value v;
-        v["Paths"] = paths.getJson (0);
+        v["Paths"] = paths.getJson (JsonOptions::none);
         return v;
     }
 private:
     PathSet& addHelper ()
     {
         return *this;
-    };
+    }
     template <class First, class... Rest>
     PathSet& addHelper (First first, Rest... rest)
     {

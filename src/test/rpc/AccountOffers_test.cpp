@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <test/jtx.h>
 
 namespace ripple {
@@ -197,10 +197,10 @@ public:
 
         {
             // no account field
-            auto const jrr = env.rpc ("account_offers")[jss::result];
-            BEAST_EXPECT(jrr[jss::error]         == "invalidParams");
+            auto const jrr = env.rpc ("account_offers");
+            BEAST_EXPECT(jrr[jss::error]         == "badSyntax");
             BEAST_EXPECT(jrr[jss::status]        == "error");
-            BEAST_EXPECT(jrr[jss::error_message] == "Missing field 'account'.");
+            BEAST_EXPECT(jrr[jss::error_message] == "Syntax error.");
         }
 
         {
@@ -267,7 +267,7 @@ public:
 
     }
 
-    void run()
+    void run() override
     {
         testSequential(true);
         testSequential(false);

@@ -110,7 +110,7 @@ namespace ripple {
         }
     }
 
-    void TableStorage::GetTxParam(STTx const & tx, uint256 &txshash, uint160 &uTxDBName, std::string &sTableName, AccountID &accountID,uint32 &lastLedgerSequence)
+    void TableStorage::GetTxParam(STTx const & tx, uint256 &txshash, uint160 &uTxDBName, std::string &sTableName, AccountID &accountID, uint32_t &lastLedgerSequence)
     {
         txshash = tx.getTransactionID();
         
@@ -138,7 +138,7 @@ namespace ripple {
         uint160 uTxDBName;
         std::string sTableName;
         AccountID accountID;
-        uint32 lastLedgerSequence;
+        uint32_t lastLedgerSequence;
 		ChainSqlTx& chainSqlTx = dynamic_cast<ChainSqlTx&>(transactor);
 		//skip if confidential
 		if (app_.getLedgerMaster().isConfidential(tx))
@@ -158,7 +158,7 @@ namespace ripple {
 		return tesSUCCESS;
     }
 
-	TER TableStorage::TableStorageHandlePut(ChainSqlTx& transactor,uint160 uTxDBName, AccountID accountID,std::string sTableName,uint32 lastLedgerSequence,uint256 txhash, STTx const & tx)
+	TER TableStorage::TableStorageHandlePut(ChainSqlTx& transactor,uint160 uTxDBName, AccountID accountID,std::string sTableName, uint32_t lastLedgerSequence,uint256 txhash, STTx const & tx)
     {
         std::lock_guard<std::mutex> lock(mutexMap_);
 

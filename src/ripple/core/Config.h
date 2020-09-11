@@ -24,9 +24,8 @@
 #include <ripple/basics/base_uint.h>
 #include <ripple/protocol/SystemParameters.h> // VFALCO Breaks levelization
 #include <ripple/beast/net/IPEndpoint.h>
-#include <beast/core/string.hpp>
+#include <boost/beast/core/string.hpp>
 #include <ripple/beast/utility/Journal.h>
-#include <boost/asio/ip/tcp.hpp> // VFALCO FIX: This include should not be here
 #include <boost/filesystem.hpp> // VFALCO FIX: This include should not be here
 #include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
@@ -38,8 +37,6 @@
 #include <vector>
 
 namespace ripple {
-
-using namespace std::chrono_literals;
 
 class Rules;
 
@@ -64,8 +61,8 @@ enum SizedItemName
 
 struct SizedItem
 {
-    SizedItemName   item;
-    int             sizes[5];
+	SizedItemName   item;
+	int             sizes[5];
 };
 
 //  This entire derived class is deprecated.
@@ -84,12 +81,11 @@ public:
     /** Returns the full path and filename of the debug log file. */
     boost::filesystem::path getDebugLogFile () const;
 
-    /** Returns the full path and filename of the entropy seed file. */
-    boost::filesystem::path getEntropyFile () const;
-
 private:
     boost::filesystem::path CONFIG_FILE;
+public:
     boost::filesystem::path CONFIG_DIR;
+private:
     boost::filesystem::path DEBUG_LOGFILE;
 
     void load ();
@@ -108,8 +104,18 @@ private:
     */
     bool                        RUN_STANDALONE = false;
 
+    /** Determines if the server will sign a tx, given an account's secret seed.
+
+        In the past, this was allowed, but this functionality can have security
+        implications. The new default is to not allow this functionality, but
+        a config option is included to enable this.
+    */
+    bool signingEnabled_ = false;
+
 public:
     bool doImport = false;
+    bool nodeToShard = false;
+    bool validateShards = false;
     bool ELB_SUPPORT = false;
 
     std::vector<std::string>    IPS;                    // Peer IPs from rippled.cfg.
@@ -138,13 +144,14 @@ public:
     int const                   TRANSACTION_FEE_BASE = 10;   // The number of fee units a reference transaction costs
 
     // Note: The following parameters do not relate to the UNL or trust at all
-    std::size_t                 NETWORK_QUORUM = 0;         // Minimum number of nodes to consider the network present
+    // Minimum number of nodes to consider the network present
+    std::size_t                 NETWORK_QUORUM = 1;
 
     // Peer networking parameters
     bool                        PEER_PRIVATE = false;           // True to ask peers not to relay current IP.
-    int                         PEERS_MAX = 0;
+    std::size_t                 PEERS_MAX = 0;
 
-    std::chrono::seconds        WEBSOCKET_PING_FREQ = 5min;
+    std::chrono::seconds        WEBSOCKET_PING_FREQ = std::chrono::minutes {5};
 
     // Path searching
     int                         PATH_SEARCH_OLD = 7;
@@ -153,9 +160,10 @@ public:
     int                         PATH_SEARCH_MAX = 10;
 
     // Validation
-    boost::optional<std::size_t> VALIDATION_QUORUM;     // Minimum validations to consider ledger authoritative
+    boost::optional<std::size_t> VALIDATION_QUORUM;     // validations to consider ledger authoritative
 
     std::uint64_t                      FEE_DEFAULT = 10;
+
     std::uint64_t                      FEE_ACCOUNT_RESERVE = 5*SYSTEM_CURRENCY_PARTS;
     std::uint64_t                      FEE_OWNER_RESERVE = 1*SYSTEM_CURRENCY_PARTS;
 
@@ -173,18 +181,19 @@ public:
     std::string                 SSL_VERIFY_FILE;
     std::string                 SSL_VERIFY_DIR;
 
-
     // Thread pool configuration
     std::size_t                 WORKERS = 0;
 
     // These override the command line client settings
-    boost::optional<boost::asio::ip::address_v4> rpc_ip;
+    boost::optional<beast::IP::Endpoint> rpc_ip;
     boost::optional<std::uint16_t> rpc_port;
 
     std::unordered_set<uint256, beast::uhash<>> features;
 
 public:
-    Config() = default;
+    Config()
+    : j_ {beast::Journal::getNullSink()}
+    { }
 
     int getSize (SizedItemName) const;
     /* Be very careful to make sure these bool params
@@ -204,6 +213,29 @@ public:
     bool quiet() const { return QUIET; }
     bool silent() const { return SILENT; }
     bool standalone() const { return RUN_STANDALONE; }
+
+    bool canSign() const { return signingEnabled_; }
+
+	/** Retrieve the default value for the item at the specified node size
+
+	@param item The item for which the default value is needed
+	@param node Optional value, used to adjust the result to match the
+				size of a node (0: tiny, ..., 4: huge). If unseated,
+				uses the configured size (NODE_SIZE).
+
+	@throw This method can throw std::out_of_range if you ask for values
+		   that it does not recognize or request a non-default node-size.
+
+	@return The value for the requested item.
+
+	@note The defaults are selected so as to be reasonable, but the node
+		  size is an imprecise metric that combines multiple aspects of
+		  the underlying system; this means that we can't provide optimal
+		  defaults in the code for every case.
+*/
+	//int
+	//	getValueFor(SizedItem item,
+	//		boost::optional<std::size_t> node = boost::none) const;
 };
 
 } // ripple

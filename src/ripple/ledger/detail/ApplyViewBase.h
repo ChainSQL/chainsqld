@@ -59,7 +59,9 @@ public:
     Rules const&
     rules() const override;
 
-	detail::ApplyStateTable& items() {
+	detail::ApplyStateTable&
+	items()
+	{
 		return items_;
 	}
 

@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/core/TimeKeeper.h>
 #include <ripple/overlay/Cluster.h>
 #include <ripple/overlay/Overlay.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/basics/make_lock.h>
 
@@ -34,8 +33,6 @@ Json::Value doPeers (RPC::Context& context)
     Json::Value jvResult (Json::objectValue);
 
     {
-        auto lock = make_lock(context.app.getMasterMutex());
-
         jvResult[jss::peers] = context.app.overlay ().json ();
 
         auto const now = context.app.timeKeeper().now();
@@ -52,7 +49,7 @@ Json::Value doPeers (RPC::Context& context)
 
                 Json::Value& json = cluster[
                     toBase58(
-                        TokenType::TOKEN_NODE_PUBLIC,
+                        TokenType::NodePublic,
                         node.identity())];
 
                 if (!node.name().empty())

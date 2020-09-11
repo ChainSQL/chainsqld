@@ -22,7 +22,6 @@
 
 #include <ripple/peerfinder/Slot.h>
 #include <ripple/peerfinder/PeerfinderManager.h>
-#include <ripple/beast/core/CompilerConfig.h>
 #include <ripple/beast/container/aged_unordered_map.h>
 #include <ripple/beast/container/aged_container_utility.h>
 #include <boost/optional.hpp>
@@ -48,42 +47,42 @@ public:
     SlotImp (beast::IP::Endpoint const& remote_endpoint,
         bool fixed, clock_type& clock);
 
-    bool inbound () const
+    bool inbound () const override
     {
         return m_inbound;
     }
 
-    bool fixed () const
+    bool fixed () const override
     {
         return m_fixed;
     }
 
-    bool cluster () const
+    bool cluster () const override
     {
         return m_cluster;
     }
 
-    State state () const
+    State state () const override
     {
         return m_state;
     }
 
-    beast::IP::Endpoint const& remote_endpoint () const
+    beast::IP::Endpoint const& remote_endpoint () const override
     {
         return m_remote_endpoint;
     }
 
-    boost::optional <beast::IP::Endpoint> const& local_endpoint () const
+    boost::optional <beast::IP::Endpoint> const& local_endpoint () const override
     {
         return m_local_endpoint;
     }
 
-    boost::optional <PublicKey> const& public_key () const
+    boost::optional <PublicKey> const& public_key () const override
     {
         return m_public_key;
     }
 
-    boost::optional<std::uint16_t> listening_port () const
+    boost::optional<std::uint16_t> listening_port () const override
     {
         std::uint32_t const value = m_listening_port;
         if (value == unknownPort)

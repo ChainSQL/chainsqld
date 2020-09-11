@@ -118,8 +118,9 @@ public:
     }
 
     STPathElement(STPathElement const&) = default;
+    STPathElement& operator=(STPathElement const&) = default;
 
-    int
+    auto
     getNodeType () const
     {
         return mType;
@@ -141,18 +142,19 @@ public:
     hasIssuer () const
     {
         return getNodeType () & STPathElement::typeIssuer;
-    };
+    }
+
     bool
     hasCurrency () const
     {
         return getNodeType () & STPathElement::typeCurrency;
-    };
+    }
 
     bool
     isNone () const
     {
         return getNodeType () == STPathElement::typeNone;
-    };
+    }
 
     // Nodes are either an account ID or a offer prefix. Offer prefixs denote a
     // class of offers.
@@ -239,7 +241,7 @@ public:
         AccountID const& issuer) const;
 
     Json::Value
-    getJson (int) const;
+    getJson (JsonOptions) const;
 
     std::vector<STPathElement>::const_iterator
     begin () const
@@ -320,7 +322,7 @@ public:
     add (Serializer& s) const override;
 
     Json::Value
-    getJson (int) const override;
+    getJson (JsonOptions) const override;
 
     SerializedTypeID
     getSType () const override

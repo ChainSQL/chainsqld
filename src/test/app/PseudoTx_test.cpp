@@ -15,7 +15,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/protocol/STAccount.h>
 #include <string>
@@ -39,7 +38,6 @@ struct PseudoTx_test : public beast::unit_test::suite
             obj[sfReserveBase] = 0;
             obj[sfReserveIncrement] = 0;
             obj[sfReferenceFeeUnits] = 0;
-			obj[sfDropsPerByte] = 0;
         }));
 
         res.emplace_back(STTx(ttAMENDMENT, [&](auto& obj) {
@@ -84,7 +82,7 @@ struct PseudoTx_test : public beast::unit_test::suite
                 [&](OpenView& view, beast::Journal j) {
                     auto const result =
                         ripple::apply(env.app(), view, stx, tapNONE, j);
-                    BEAST_EXPECT(!result.second && result.first == temINVALID);
+                    BEAST_EXPECT(!result.second && result.first.ter == temINVALID);
                     return result.second;
                 });
         }

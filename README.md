@@ -4,7 +4,8 @@
 
 Basing on the ripple's source code, we added chainsql's own database related modules. The DB operating log will be stored in the chainsql chain, then you can acquire the visual data in traditional DB.
 
-# Details of ChainSQL
+## Details of ChainSQL
+Detailed online-document can be found [here](http://docs.chainsql.net).
 
 By setting the sync_tables, sync_db and auto_sync, you can restore the real DB tables you wanted from block chain. You can set the DB type arbitrarily, includeing mysql, sqlite, oracle and so on.
 
@@ -13,7 +14,7 @@ We defined three new transaction types for the DB operation, named sqlStatement,
 You can operate the DB or send DB operations to the block chain by the following four ways.
 
 1. RPC API , supplied by the RPC modules.
-2. Web sockets API, developed using javascript and java. Refer to [API in javascript](http://www.chainsql.net/api_javascript.html) and [API in java](http://www.chainsql.net/api_java.html) .
+2. Web sockets API, developed using javascript and java. Refer to [API in javascript](http://docs.chainsql.net/interface/nodeAPI.html) and [API in java](http://docs.chainsql.net/interface/javaAPI.html) .
 3. Commandline, access to the node directly.
 4. By kingshrad, using db's primitive sql clause. Refer to[Access by sql](http://www.chainsql.net/api_mysql.html).
 

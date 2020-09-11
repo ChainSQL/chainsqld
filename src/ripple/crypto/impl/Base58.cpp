@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/basics/contract.h>
 #include <ripple/crypto/Base58.h>
 #include <ripple/crypto/CAutoBN_CTX.h>

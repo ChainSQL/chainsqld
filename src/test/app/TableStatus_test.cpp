@@ -22,12 +22,11 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <list>
 #include <memory>
 
-#include <BeastConfig.h>
+
 #include <ripple/core/Config.h>
 #include <ripple/protocol/Sign.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/protocol/STParsedJSON.h>
-#include <ripple/protocol/types.h>
 #include <ripple/json/to_string.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/Output.h>
@@ -37,6 +36,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/basics/base_uint.h>
 #include <ripple/basics/Log.h>
 #include <ripple/beast/unit_test.h>
+#include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/AccountID.h>
 #include <peersafe/app/sql/SQLConditionTree.h>
 #include <boost/algorithm/string.hpp>
@@ -176,11 +176,19 @@ namespace ripple {
 			}
 		}
 
+		beast::Journal getJournal() 
+		{
+			using namespace beast::severities;
+			Severity thresh = Severity::kInfo;
+			auto logs = std::make_unique<Logs>(thresh);
+			return logs->journal("TableStatusTest");
+		}
+
 		void initDB() {
 			DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(config_);
 			std::pair<std::string, bool> result = setup.sync_db.find("type");
 
-			beast::Journal j;
+			beast::Journal j = getJournal();
 			if (result.first.compare("sqlite") == 0)
                 m_pTableStatusDB = std::make_unique<TableStatusDBSQLite>(txstore_dbconn_->GetDBConn(), (ripple::Application*)this, j);				
 			else

@@ -17,9 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx/trust.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/basics/contract.h>
 #include <stdexcept>
 
@@ -37,8 +36,8 @@ trust (Account const& account,
             "trust() requires IOU");
     Json::Value jv;
     jv[jss::Account] = account.human();
-    jv[jss::LimitAmount] = amount.getJson(0);
-    jv[jss::TransactionType] = "TrustSet";
+    jv[jss::LimitAmount] = amount.getJson(JsonOptions::none);
+    jv[jss::TransactionType] = jss::TrustSet;
     jv[jss::Flags] = flags;
     return jv;
 }
@@ -55,10 +54,10 @@ trust (Account const& account,
     Json::Value jv;
     jv[jss::Account] = account.human();
     {
-        auto& ja = jv[jss::LimitAmount] = amount.getJson(0);
+        auto& ja = jv[jss::LimitAmount] = amount.getJson(JsonOptions::none);
         ja[jss::issuer] = peer.human();
     }
-    jv[jss::TransactionType] = "TrustSet";
+    jv[jss::TransactionType] = jss::TrustSet;
     jv[jss::Flags] = flags;
     return jv;
 }

@@ -28,6 +28,7 @@
 #include <test/jtx/tags.h>
 #include <test/jtx/AbstractClient.h>
 #include <test/jtx/ManualTimeKeeper.h>
+#include <test/unit_test/SuiteJournal.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/ledger/Ledger.h>
 #include <ripple/app/ledger/OpenLedger.h>
@@ -44,25 +45,16 @@
 #include <ripple/protocol/STAmount.h>
 #include <ripple/protocol/STObject.h>
 #include <ripple/protocol/STTx.h>
-#include <beast/core/detail/type_traits.hpp>
-#include <ripple/beast/unit_test.h>
 #include <functional>
 #include <string>
 #include <tuple>
-#include <type_traits>
+#include <ripple/beast/cxx17/type_traits.h> // <type_traits>
 #include <utility>
 #include <unordered_map>
 #include <vector>
 
 
 namespace ripple {
-
-namespace detail {
-extern
-std::vector<std::string>
-supportedAmendments ();
-}
-
 namespace test {
 namespace jtx {
 
@@ -74,42 +66,9 @@ noripple (Account const& account, Args const&... args)
     return {{account, args...}};
 }
 
-/**
- * @brief create collection of features to pass to Env ctor
- *
- * The resulting collection will contain *only* the features
- * passed as arguments.
- *
- * @param key+args features to include in resulting collection
- */
-template <class... Args>
-FeatureBitset
-with_features (uint256 const& key, Args const&... args)
-{
-    return makeFeatureBitset(
-        std::array<uint256, 1 + sizeof...(args)>{{key, args...}});
-}
-
-/**
- * @brief create collection of features to pass to Env ctor
- *
- * The resulting collection will contain *only* the features
- * passed as arguments.
- *
- * @param keys features to include in resulting collection
- */
-template<class Col>
-FeatureBitset
-with_features (Col&& keys)
-{
-    return makeFeatureBitset(std::forward<Col>(keys));
-}
-
-constexpr FeatureBitset no_features = {};
-
 inline
 FeatureBitset
-all_amendments()
+supported_amendments()
 {
     static const FeatureBitset ids = []{
         auto const& sa = ripple::detail::supportedAmendments();
@@ -117,71 +76,17 @@ all_amendments()
         feats.reserve(sa.size());
         for (auto const& s : sa)
         {
-            if (auto const f = getRegisteredFeature(s.substr(65)))
+            if (auto const f = getRegisteredFeature(s))
                 feats.push_back(*f);
             else
                 Throw<std::runtime_error> ("Unknown feature: " + s + "  in supportedAmendments.");
         }
-        return makeFeatureBitset(feats);
+        return FeatureBitset(feats);
     }();
     return ids;
 }
 
-/**
- * @brief create collection of features to pass to Env ctor
- *
- * The resulting collection will contain *all supported amendments* minus
- * the features passed as arguments.
- *
- * @param keys features to exclude from the resulting collection
- */
-template<class Col>
-FeatureBitset
-all_features_except (Col const& keys)
-{
-    return all_amendments() & ~makeFeatureBitset(keys);
-}
-
-/**
- *
- * @brief create collection of features to pass to Env ctor
- * The resulting collection will contain *all supported amendments* minus
- * the features passed as arguments.
- *
- * @param key+args features to exclude from the resulting collection
- */
-template <class... Args>
-FeatureBitset
-all_features_except (uint256 const& key, Args const&... args)
-{
-    return all_features_except(
-        std::array<uint256, 1 + sizeof...(args)>{{key, args...}});
-}
-
-class SuiteSink : public beast::Journal::Sink
-{
-    std::string partition_;
-    beast::unit_test::suite& suite_;
-
-public:
-    SuiteSink(std::string const& partition,
-            beast::severities::Severity threshold,
-            beast::unit_test::suite& suite)
-        : Sink (threshold, false)
-        , partition_(partition + " ")
-        , suite_ (suite)
-    {
-    }
-
-    // For unit testing, always generate logging text.
-    inline bool active(beast::severities::Severity level) const override
-    {
-        return true;
-    }
-
-    void
-    write(beast::severities::Severity level, std::string const& text) override;
-};
+//------------------------------------------------------------------------------
 
 class SuiteLogs : public Logs
 {
@@ -201,7 +106,8 @@ public:
     makeSink(std::string const& partition,
         beast::severities::Severity threshold) override
     {
-        return std::make_unique<SuiteSink>(partition, threshold, suite_);
+        return std::make_unique<SuiteJournalSink>(
+            partition, threshold, suite_);
     }
 };
 
@@ -213,15 +119,12 @@ class Env
 public:
     beast::unit_test::suite& test;
 
-    beast::Journal const journal;
-
     Account const& master = Account::master;
 
 private:
     struct AppBundle
     {
         Application* app;
-        std::unique_ptr<Logs> logs;
         std::unique_ptr<Application> owned;
         ManualTimeKeeper* timeKeeper;
         std::thread thread;
@@ -236,6 +139,8 @@ private:
     AppBundle bundle_;
 
 public:
+    beast::Journal const journal;
+
     Env() = delete;
     Env& operator= (Env const&) = delete;
     Env (Env const&) = delete;
@@ -250,8 +155,8 @@ public:
      * @param suite_ the current unit_test::suite
      * @param config The desired Config - ownership will be taken by moving
      * the pointer. See envconfig and related functions for common config tweaks.
-     * @param args with_features() to explicitly enable or all_features_except() to
-     * enable all and disable specific features
+     * @param args with_only_features() to explicitly enable or
+     * supported_features_except() to enable all and disable specific features.
      */
     // VFALCO Could wrap the suite::log in a Journal here
     Env (beast::unit_test::suite& suite_,
@@ -263,6 +168,7 @@ public:
             suite_,
             std::move(config),
             logs ? std::move(logs) : std::make_unique<SuiteLogs>(suite_))
+        , journal {bundle_.app->journal ("Env")}
     {
         memoize(Account::master);
         Pathfinder::initPathTable();
@@ -277,9 +183,9 @@ public:
      * features.
      *
      * This constructor will create an Env with the standard Env configuration
-     * (from envconfig()) and features explicitly specified. Use with_features(...)
-     * or all_features_except(...) to create a collection of features appropriate
-     * for passing here.
+     * (from envconfig()) and features explicitly specified. Use
+     * with_only_features(...) or supported_features_except(...) to create a
+     * collection of features appropriate for passing here.
      *
      * @param suite_ the current unit_test::suite
      * @param args collection of features
@@ -305,7 +211,8 @@ public:
     Env (beast::unit_test::suite& suite_,
         std::unique_ptr<Config> config,
         std::unique_ptr<Logs> logs = nullptr)
-        : Env(suite_, std::move(config), all_amendments(), std::move(logs))
+        : Env(suite_, std::move(config),
+            supported_amendments(), std::move(logs))
     {
     }
 
@@ -322,6 +229,8 @@ public:
         : Env(suite_, envconfig())
     {
     }
+
+    virtual ~Env() = default;
 
     Application&
     app()
@@ -364,6 +273,12 @@ public:
         The command is examined and used to build
         the correct JSON as per the arguments.
     */
+    template<class... Args>
+    Json::Value
+    rpc(std::unordered_map<std::string, std::string> const& headers,
+        std::string const& cmd,
+        Args&&... args);
+
     template<class... Args>
     Json::Value
     rpc(std::string const& cmd, Args&&... args);
@@ -732,7 +647,8 @@ protected:
     TER ter_ = tesSUCCESS;
 
     Json::Value
-    do_rpc(std::vector<std::string> const& args);
+    do_rpc(std::vector<std::string> const& args,
+        std::unordered_map<std::string, std::string> const& headers = {});
 
     void
     autofill_sig (JTx& jt);
@@ -751,73 +667,25 @@ protected:
     std::shared_ptr<STTx const>
     st (JTx const& jt);
 
-    inline
-    void
-    invoke (STTx& stx)
-    {
-    }
-
-    template <class F>
-    inline
-    void
-    maybe_invoke (STTx& stx, F const& f,
-        std::false_type)
-    {
-    }
-
-    template <class F>
-    void
-    maybe_invoke (STTx& stx, F const& f,
-        std::true_type)
-    {
-        f(*this, stx);
-    }
-
     // Invoke funclets on stx
     // Note: The STTx may not be modified
-    template <class F, class... FN>
+    template <class... FN>
     void
-    invoke (STTx& stx, F const& f,
-        FN const&... fN)
+    invoke (STTx& stx, FN const&... fN)
     {
-        maybe_invoke(stx, f,
-            beast::detail::is_invocable<F,
-                void(Env&, STTx const&)>());
-        invoke(stx, fN...);
-    }
-
-    inline
-    void
-    invoke (JTx&)
-    {
-    }
-
-    template <class F>
-    inline
-    void
-    maybe_invoke (JTx& jt, F const& f,
-        std::false_type)
-    {
-    }
-
-    template <class F>
-    void
-    maybe_invoke (JTx& jt, F const& f,
-        std::true_type)
-    {
-        f(*this, jt);
+        // Sean Parent for_each_argument trick (C++ fold expressions would be
+        // nice here)
+        (void)std::array<int, sizeof...(fN)>{{((fN(*this, stx)), 0)...}};
     }
 
     // Invoke funclets on jt
-    template <class F, class... FN>
+    template <class... FN>
     void
-    invoke (JTx& jt, F const& f,
-        FN const&... fN)
+    invoke (JTx& jt, FN const&... fN)
     {
-        maybe_invoke(jt, f,
-            beast::detail::is_invocable<F,
-                void(Env&, JTx&)>());
-        invoke(jt, fN...);
+        // Sean Parent for_each_argument trick (C++ fold expressions would be
+        // nice here)
+        (void)std::array<int, sizeof...(fN)>{{((fN(*this, jt)), 0)...}};
     }
 
     // Map of account IDs to Account
@@ -827,11 +695,20 @@ protected:
 
 template<class... Args>
 Json::Value
+Env::rpc(std::unordered_map<std::string, std::string> const& headers,
+    std::string const& cmd,
+    Args&&... args)
+{
+    return do_rpc(std::vector<std::string>{cmd, std::forward<Args>(args)...},
+        headers);
+}
+
+template<class... Args>
+Json::Value
 Env::rpc(std::string const& cmd, Args&&... args)
 {
-    std::vector<std::string> vs{cmd,
-        std::forward<Args>(args)...};
-    return do_rpc(vs);
+    return rpc(std::unordered_map<std::string, std::string>(), cmd,
+        std::forward<Args>(args)...);
 }
 
 } // jtx

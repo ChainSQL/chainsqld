@@ -17,9 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <test/jtx.h>
 #include <ripple/beast/unit_test.h>
 #include <ripple/app/ledger/LedgerMaster.h>
@@ -150,7 +149,7 @@ public:
     void testEvolution()
     {
         using namespace test::jtx;
-        Env env {*this, no_features}; //the hashes being checked below assume
+        Env env {*this, FeatureBitset{}}; //the hashes being checked below assume
                                      //no amendments
         Account const gw { "gateway" };
         auto const USD = gw["USD"];
@@ -250,9 +249,10 @@ public:
     void testMoreThan256Closed()
     {
         using namespace test::jtx;
+        using namespace std::chrono_literals;
         Env env {*this};
         Account const gw {"gateway"};
-        env.app().getLedgerMaster().tune(0, 3600);
+        env.app().getLedgerMaster().tune(0, 1h);
         auto const USD = gw["USD"];
         env.fund(ZXC(100000), gw);
 
@@ -292,7 +292,7 @@ public:
 
     }
 
-    void run ()
+    void run () override
     {
         testLedgerRequest();
         testEvolution();

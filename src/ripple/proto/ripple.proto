@@ -22,6 +22,10 @@ enum MessageType
 	mtVIEW_CHANGE			= 38;
     mtVALIDATION            = 41;
     mtGET_OBJECTS           = 42;
+    mtGET_SHARD_INFO        = 50;
+    mtSHARD_INFO            = 51;
+    mtGET_PEER_SHARD_INFO   = 52;
+    mtPEER_SHARD_INFO       = 53;
 
     // <available>          = 10;
     // <available>          = 11;
@@ -92,15 +96,17 @@ message TMHello
     required bytes          nodeProof       = 4;
     optional string         fullVersion     = 5;
     optional uint64         netTime         = 6;
-    optional uint32         ipv4Port        = 7;
+    optional uint32         ipv4Port        = 7;  // NOT USED
     optional uint32         ledgerIndex     = 8;
     optional bytes          ledgerClosed    = 9;  // our last closed ledger
     optional bytes          ledgerPrevious  = 10; // the ledger before the last closed ledger
     optional bool           nodePrivate     = 11; // Request to not forward IP.
     optional TMProofWork    proofOfWork     = 12; // request/provide proof of work
     optional bool           testNet         = 13; // Running as testnet.
-    optional uint32         local_ip        = 14; // our public IP
-    optional uint32         remote_ip       = 15; // IP we see connection from
+    optional uint32         local_ip        = 14; // NOT USED -- our public IP
+    optional uint32         remote_ip       = 15; // NOT USED -- IP we see connection from
+    optional string         local_ip_str    = 16; // our public IP
+    optional string         remote_ip_str   = 17; // IP we see connection from
 }
 
 // The status of a node in our cluster
@@ -128,6 +134,47 @@ message TMCluster
     repeated TMLoadSource    loadSources     = 2;
 }
 
+// Request info on shards held
+message TMGetShardInfo
+{
+    required uint32 hops            = 1 [deprecated=true]; // number of hops to travel
+    optional bool lastLink          = 2 [deprecated=true]; // true if last link in the peer chain
+    repeated uint32 peerchain       = 3 [deprecated=true]; // IDs used to route messages
+}
+
+// Info about shards held
+message TMShardInfo
+{
+    required string shardIndexes    = 1 [deprecated=true]; // rangeSet of shard indexes
+    optional bytes nodePubKey       = 2 [deprecated=true]; // The node's public key
+    optional string endpoint        = 3 [deprecated=true]; // ipv6 or ipv4 address
+    optional bool lastLink          = 4 [deprecated=true]; // true if last link in the peer chain
+    repeated uint32 peerchain       = 5 [deprecated=true]; // IDs used to route messages
+}
+
+// Node public key
+message TMLink
+{
+    required bytes nodePubKey       = 1; // node public key
+}
+
+// Request info on shards held
+message TMGetPeerShardInfo
+{
+    required uint32 hops            = 1; // number of hops to travel
+    optional bool lastLink          = 2; // true if last link in the peer chain
+    repeated TMLink peerChain       = 3; // public keys used to route messages
+}
+
+// Info about shards held
+message TMPeerShardInfo
+{
+    required string shardIndexes    = 1; // rangeSet of shard indexes
+    optional bytes nodePubKey       = 2; // node public key
+    optional string endpoint        = 3; // ipv6 or ipv4 address
+    optional bool lastLink          = 4; // true if last link in the peer chain
+    repeated TMLink peerChain       = 5; // public keys used to route messages
+}
 
 // A transaction can have only one input and one output.
 // If you want to send an amount that is greater than any single address of yours
@@ -238,6 +285,7 @@ message TMIPv4Endpoint
     required uint32 ipv4Port        = 2;
 }
 
+// this message is obsolete/no longer procesed
 message TMPeers
 {
     repeated TMIPv4Endpoint nodes   = 1;
@@ -254,10 +302,19 @@ message TMEndpoint
 message TMEndpoints
 {
     // This field is used to allow the TMEndpoints message format to be
-    // modified as necessary in the future. 
+    // modified as necessary in the future.
     required uint32         version = 1;
 
     repeated TMEndpoint     endpoints = 2;
+
+    // An update to the Endpoint type that uses a string
+    // to represent endpoints, thus allowing ipv6 or ipv4 addresses
+    message TMEndpointv2
+    {
+        required string endpoint = 1;
+        required uint32 hops     = 2;
+    }
+    repeated TMEndpointv2   endpoints_v2 = 3;
 };
 
 message TMIndexedObject

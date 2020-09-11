@@ -19,6 +19,7 @@
 
 #include <ripple/core/Stoppable.h>
 #include <ripple/beast/unit_test.h>
+#include <test/unit_test/SuiteJournal.h>
 #include <thread>
 
 namespace ripple {
@@ -187,7 +188,7 @@ class Stoppable_test
             , test_(test)
             , stop_(running)
         {}
-        ~A()
+        ~A() override
         {
             while (stop_ != stopped)
                 ;
@@ -399,20 +400,23 @@ class Stoppable_test
         B b_;
         C c_;
         Stoppable_test& test_;
+        SuiteJournal journal_;
+
     public:
-        Root(Stoppable_test& test)
+        explicit Root(Stoppable_test& test)
             : RootStoppable("R")
             , a_(&A::run, std::make_unique<A>(*this, test))
             , b_(*this, test)
             , c_(*this, test)
             , test_(test)
+            , journal_("Stoppable_test", test)
         {}
 
         void run()
         {
             prepare();
             start();
-            stop({});
+            stop (journal_);
         }
 
         void onPrepare() override
@@ -441,12 +445,12 @@ class Stoppable_test
         {
             // Calling stop() a second time should have no negative
             // consequences.
-            stop({});
+            stop (journal_);
         }
     };
 
 public:
-    void run()
+    void run() override
     {
         {
             Root rt(*this);

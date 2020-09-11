@@ -30,6 +30,8 @@
 #include <ripple/consensus/DisputedTx.h>
 #include <ripple/json/json_writer.h>
 #include <peersafe/app/consensus/ConsensusBase.h>
+#include <boost/logic/tribool.hpp>
+#include <sstream>
 
 namespace ripple {
 
@@ -177,10 +179,11 @@ checkConsensus(
   struct Ledger
   {
     using ID = ...;
+    using Seq = ...;
 
     // Unique identifier of ledgerr
     ID const id() const;
-    auto seq() const;
+    Seq seq() const;
     auto closeTimeResolution() const;
     auto closeAgree() const;
     auto closeTime() const;
@@ -225,8 +228,10 @@ checkConsensus(
       std::size_t proposersValidated(Ledger::ID const & prevLedger) const;
 
       // Number of proposers that have validated a ledger descended from the
-      // given ledger
-      std::size_t proposersFinished(Ledger::ID const & prevLedger) const;
+      // given ledger; if prevLedger.id() != prevLedgerID, use prevLedgerID
+      // for the determination
+      std::size_t proposersFinished(Ledger const & prevLedger,
+                                    Ledger::ID const & prevLedger) const;
 
       // Return the ID of the last closed (and validated) ledger that the
       // application thinks consensus should use as the prior ledger.
@@ -258,14 +263,14 @@ checkConsensus(
       // Propose the position to peers.
       void propose(ConsensusProposal<...> const & pos);
 
-      // Relay a received peer proposal on to other peer's.
-      void relay(PeerPosition_t const & prop);
+      // Share a received peer proposal with other peer's.
+      void share(PeerPosition_t const & prop);
 
-      // Relay a disputed transaction to peers
-      void relay(Txn const & tx);
+      // Share a disputed transaction with peers
+      void share(Txn const & tx);
 
       // Share given transaction set with peers
-      void relay(TxSet const &s);
+      void share(TxSet const &s);
 
       // Consensus timing parameters and constants
       ConsensusParms const &
@@ -291,7 +296,7 @@ class Consensus : public ConsensusBase<Adaptor>
 
     using Result = ConsensusResult<Adaptor>;
 
-    // Helper class to ensure adaptor is notified whenever the ConsensusMode
+    // Helper class to ensure adaptor is notified whenver the ConsensusMode
     // changes
     class MonitoredMode
     {
@@ -318,7 +323,7 @@ public:
     //! Clock type for measuring time within the consensus code
     using clock_type = beast::abstract_clock<std::chrono::steady_clock>;
 
-    Consensus(Consensus&&) = default;
+    Consensus(Consensus&&) noexcept = default;
 
     /** Constructor.
 
@@ -335,6 +340,7 @@ public:
         @param now The network adjusted time
         @param prevLedgerID the ID of the last ledger
         @param prevLedger The last ledger
+        @param nowUntrusted ID of nodes that are newly untrusted this round
         @param proposing Whether we want to send proposals to peers this round.
 
         @note @b prevLedgerID is not required to the ID of @b prevLedger since
@@ -345,6 +351,7 @@ public:
         NetClock::time_point const& now,
         typename Ledger_t::ID const& prevLedgerID,
         Ledger_t prevLedger,
+        hash_set<NodeID_t> const & nowUntrusted,
         bool proposing);
 
     /** A peer has proposed a new position, adjust our tracking.
@@ -470,6 +477,31 @@ private:
     void
     phaseEstablish();
 
+    /** Evaluate whether pausing increases likelihood of validation.
+     *
+     *  As a validator that has previously synced to the network, if our most
+     *  recent locally-validated ledger did not also achieve
+     *  full validation, then consider pausing for awhile based on
+     *  the state of other validators.
+     *
+     *  Pausing may be beneficial in this situation if at least one validator
+     *  is known to be on a sequence number earlier than ours. The minimum
+     *  number of validators on the same sequence number does not guarantee
+     *  consensus, and waiting for all validators may be too time-consuming.
+     *  Therefore, a variable threshold is enacted based on the number
+     *  of ledgers past network validation that we are on. For the first phase,
+     *  the threshold is also the minimum required for quorum. For the last,
+     *  no online validators can have a lower sequence number. For intermediate
+     *  phases, the threshold is linear between the minimum required for
+     *  quorum and 100%. For example, with 3 total phases and a quorum of
+     *  80%, the 2nd phase would be 90%. Once the final phase is reached,
+     *  if consensus still fails to occur, the cycle is begun again at phase 1.
+     *
+     * @return Whether to pause to wait for lagging proposers.
+     */
+    bool
+    shouldPause() const;
+
     // Close the open ledger and establish initial position.
     void
     closeLedger();
@@ -550,7 +582,7 @@ private:
     hash_map<NodeID_t, PeerPosition_t> currPeerPositions_;
 
     // Recently received peer positions, available when transitioning between
-    // ledgers or roundss
+    // ledgers or rounds
     hash_map<NodeID_t, std::deque<PeerPosition_t>> recentPeerPositions_;
 
     // The number of proposers who participated in the last consensus round
@@ -581,6 +613,7 @@ Consensus<Adaptor>::startRound(
     NetClock::time_point const& now,
     typename Ledger_t::ID const& prevLedgerID,
     Ledger_t prevLedger,
+    hash_set<NodeID_t> const& nowUntrusted,
     bool proposing)
 {
     if (firstRound_)
@@ -594,6 +627,9 @@ Consensus<Adaptor>::startRound(
     {
         prevCloseTime_ = rawCloseTimes_.self;
     }
+
+    for(NodeID_t const& n : nowUntrusted)
+        recentPeerPositions_.erase(n);
 
     ConsensusMode startMode =
         proposing ? ConsensusMode::proposing : ConsensusMode::observing;
@@ -643,7 +679,7 @@ Consensus<Adaptor>::startRoundInternal(
     closeResolution_ = getNextLedgerTimeResolution(
         previousLedger_.closeTimeResolution(),
         previousLedger_.closeAgree(),
-        previousLedger_.seq() + 1);
+        previousLedger_.seq() + typename Ledger_t::Seq{1});
 
     playbackProposals();
     if (currPeerPositions_.size() > (prevProposers_ / 2))
@@ -847,6 +883,7 @@ Consensus<Adaptor>::simulate(
     NetClock::time_point const& now,
     boost::optional<std::chrono::milliseconds> consensusDelay)
 {
+    using namespace std::chrono_literals;
     JLOG(j_.info()) << "Simulating consensus";
     now_ = now;
     closeLedger();
@@ -879,7 +916,7 @@ Consensus<Adaptor>::getJson(bool full) const
     if (mode_.get() != ConsensusMode::wrongLedger)
     {
         ret["synched"] = true;
-        ret["ledger_seq"] = previousLedger_.seq() + 1;
+        ret["ledger_seq"] = static_cast<std::uint32_t>(previousLedger_.seq())+ 1;
         ret["close_granularity"] = static_cast<Int>(closeResolution_.count());
     }
     else
@@ -1020,8 +1057,9 @@ Consensus<Adaptor>::checkLedger()
                         << ", "
                         << " mode=" << to_string(mode_.get());
         JLOG(j_.warn()) << prevLedgerID_ << " to " << netLgr;
-        JLOG(j_.warn()) << previousLedger_.getJson();
-        JLOG(j_.debug()) << "State on consensus change " << getJson(true);
+        JLOG(j_.warn()) << Json::Compact{previousLedger_.getJson()};
+        JLOG(j_.debug()) << "State on consensus change "
+                         << Json::Compact{getJson(true)};
         handleWrongLedger(netLgr);
     }
     else if (previousLedger_.id() != prevLedgerID_)
@@ -1039,7 +1077,7 @@ Consensus<Adaptor>::playbackProposals()
             if (pos.proposal().prevLedger() == prevLedgerID_)
             {
                 if (peerProposalInternal(now_, pos))
-                    adaptor_.relay(pos);
+                    adaptor_.share(pos);
             }
         }
     }
@@ -1099,6 +1137,124 @@ Consensus<Adaptor>::phaseOpen()
 }
 
 template <class Adaptor>
+bool
+Consensus<Adaptor>::shouldPause() const
+{
+    auto const& parms = adaptor_.parms();
+    std::uint32_t const ahead (previousLedger_.seq() -
+        std::min(adaptor_.getValidLedgerIndex(), previousLedger_.seq()));
+    auto quorumKeys = adaptor_.getQuorumKeys();
+    auto const& quorum = quorumKeys.first;
+    auto& trustedKeys = quorumKeys.second;
+    std::size_t const totalValidators = trustedKeys.size();
+    std::size_t laggards = adaptor_.laggards(previousLedger_.seq(),
+        trustedKeys);
+    std::size_t const offline = trustedKeys.size();
+
+    std::stringstream vars;
+    vars << " (working seq: " << previousLedger_.seq() << ", "
+         << "validated seq: " << adaptor_.getValidLedgerIndex() << ", "
+         << "am validator: " << adaptor_.validator() << ", "
+         << "have validated: " << adaptor_.haveValidated() << ", "
+         << "roundTime: " << result_->roundTime.read().count() << ", "
+         << "max consensus time: " << parms.ledgerMAX_CONSENSUS.count() << ", "
+         << "validators: " << totalValidators << ", "
+         << "laggards: " << laggards << ", "
+         << "offline: " << offline << ", "
+         << "quorum: " << quorum << ")";
+
+    if (!ahead ||
+        !laggards ||
+        !totalValidators ||
+        !adaptor_.validator() ||
+        !adaptor_.haveValidated() ||
+        result_->roundTime.read() > parms.ledgerMAX_CONSENSUS)
+    {
+        j_.debug() << "not pausing" << vars.str();
+        return false;
+    }
+
+    bool willPause = false;
+
+    /** Maximum phase with distinct thresholds to determine how
+     *  many validators must be on our same ledger sequence number.
+     *  The threshold for the 1st (0) phase is >= the minimum number that
+     *  can achieve quorum. Threshold for the maximum phase is 100%
+     *  of all trusted validators. Progression from min to max phase is
+     *  simply linear. If there are 5 phases (maxPausePhase = 4)
+     *  and minimum quorum is 80%, then thresholds progress as follows:
+     *  0: >=80%
+     *  1: >=85%
+     *  2: >=90%
+     *  3: >=95%
+     *  4: =100%
+     */
+    constexpr static std::size_t maxPausePhase = 4;
+
+    /**
+     * No particular threshold guarantees consensus. Lower thresholds
+     * are easier to achieve than higher, but higher thresholds are
+     * more likely to reach consensus. Cycle through the phases if
+     * lack of synchronization continues.
+     *
+     * Current information indicates that no phase is likely to be intrinsically
+     * better than any other: the lower the threshold, the less likely that
+     * up-to-date nodes will be able to reach consensus without the laggards.
+     * But the higher the threshold, the longer the likely resulting pause.
+     * 100% is slightly less desirable in the long run because the potential
+     * of a single dawdling peer to slow down everything else. So if we
+     * accept that no phase is any better than any other phase, but that
+     * all of them will potentially enable us to arrive at consensus, cycling
+     * through them seems to be appropriate. Further, if we do reach the
+     * point of having to cycle back around, then it's likely that something
+     * else out of the scope of this delay mechanism is wrong with the
+     * network.
+     */
+    std::size_t const phase = (ahead - 1) % (maxPausePhase + 1);
+
+    // validators that remain after the laggards() function are considered
+    // offline, and should be considered as laggards for purposes of
+    // evaluating whether the threshold for non-laggards has been reached.
+    switch (phase)
+    {
+        case 0:
+            // Laggards and offline shouldn't preclude consensus.
+            if (laggards + offline > totalValidators - quorum)
+                willPause = true;
+            break;
+        case maxPausePhase:
+            // No tolerance.
+            willPause = true;
+            break;
+        default:
+            // Ensure that sufficient validators are known to be not lagging.
+            // Their sufficiently most recent validation sequence was equal to
+            // or greater than our own.
+            //
+            // The threshold is the amount required for quorum plus
+            // the proportion of the remainder based on number of intermediate
+            // phases between 0 and max.
+            float const nonLaggards = totalValidators - (laggards + offline);
+            float const quorumRatio =
+                static_cast<float>(quorum) / totalValidators;
+            float const allowedDissent = 1.0f - quorumRatio;
+            float const phaseFactor = static_cast<float>(phase) / maxPausePhase;
+
+            if (nonLaggards / totalValidators <
+                quorumRatio + (allowedDissent * phaseFactor))
+            {
+                willPause = true;
+            }
+    }
+
+    if (willPause)
+        j_.warn() << "pausing" << vars.str();
+    else
+        j_.debug() << "not pausing" << vars.str();
+    return willPause;
+}
+
+template <class Adaptor>
 void
 Consensus<Adaptor>::phaseEstablish()
 {
@@ -1120,8 +1276,8 @@ Consensus<Adaptor>::phaseEstablish()
 
     updateOurPositions();
 
-    // Nothing to do if we don't have consensus.
-    if (!haveConsensus())
+    // Nothing to do if too many laggards or we don't have consensus.
+    if (shouldPause() || !haveConsensus())
         return;
 
     if (!haveCloseTimeConsensus_)
@@ -1158,8 +1314,8 @@ Consensus<Adaptor>::closeLedger()
     result_->roundTime.reset(clock_.now());
     // Share the newly created transaction set if we haven't already
     // received it from a peer
-    if (acquired_.emplace(result_->set.id(), result_->set).second)
-        adaptor_.relay(result_->set);
+    if (acquired_.emplace(result_->txns.id(), result_->txns).second)
+        adaptor_.share(result_->txns);
 
     if (mode_.get() == ConsensusMode::proposing)
         adaptor_.propose(result_->position);
@@ -1249,7 +1405,7 @@ Consensus<Adaptor>::updateOurPositions()
                     parms))
             {
                 if (!mutableSet)
-                    mutableSet.emplace(result_->set);
+                    mutableSet.emplace(result_->txns);
 
                 if (it.second.getOurVote())
                 {
@@ -1265,7 +1421,7 @@ Consensus<Adaptor>::updateOurPositions()
         }
 
         if (mutableSet)
-            ourNewSet.emplace(*mutableSet);
+            ourNewSet.emplace(std::move(*mutableSet));
     }
 
     NetClock::time_point consensusCloseTime = {};
@@ -1311,7 +1467,8 @@ Consensus<Adaptor>::updateOurPositions()
         for (auto const& it : closeTimeVotes)
         {
             JLOG(j_.debug())
-                << "CCTime: seq " << previousLedger_.seq() + 1 << ": "
+                << "CCTime: seq "
+                << static_cast<std::uint32_t>(previousLedger_.seq()) + 1 << ": "
                 << it.first.time_since_epoch().count() << " has " << it.second
                 << ", " << threshVote << " required";
 
@@ -1342,14 +1499,14 @@ Consensus<Adaptor>::updateOurPositions()
          result_->position.isStale(ourCutoff)))
     {
         // close time changed or our position is stale
-        ourNewSet.emplace(result_->set);
+        ourNewSet.emplace(result_->txns);
     }
 
     if (ourNewSet)
     {
         auto newID = ourNewSet->id();
 
-        result_->set = std::move(*ourNewSet);
+        result_->txns = std::move(*ourNewSet);
 
         JLOG(j_.info()) << "Position change: CTime "
                         << consensusCloseTime.time_since_epoch().count()
@@ -1359,16 +1516,16 @@ Consensus<Adaptor>::updateOurPositions()
 
         // Share our new transaction set and update disputes
         // if we haven't already received it
-        if (acquired_.emplace(newID, result_->set).second)
+        if (acquired_.emplace(newID, result_->txns).second)
         {
             if (!result_->position.isBowOut())
-                adaptor_.relay(result_->set);
+                adaptor_.share(result_->txns);
 
             for (auto const& it : currPeerPositions_)
             {
                 Proposal_t const& p = it.second.proposal();
                 if (p.position() == newID)
-                    updateDisputes(it.first, result_->set);
+                    updateDisputes(it.first, result_->txns);
             }
         }
 
@@ -1408,7 +1565,8 @@ Consensus<Adaptor>::haveConsensus()
             ++disagree;
         }
     }
-    auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
+    auto currentFinished =
+        adaptor_.proposersFinished(previousLedger_, prevLedgerID_);
 
     JLOG(j_.debug()) << "Checking for TX consensus: agree=" << agree
                      << ", disagree=" << disagree;
@@ -1433,7 +1591,7 @@ Consensus<Adaptor>::haveConsensus()
     if (result_->state == ConsensusState::MovedOn)
     {
         JLOG(j_.error()) << "Unable to reach consensus";
-        JLOG(j_.error()) << getJson(true);
+        JLOG(j_.error()) << Json::Compact{getJson(true)};
     }
 
     return true;
@@ -1468,13 +1626,13 @@ Consensus<Adaptor>::createDisputes(TxSet_t const& o)
         return;
 
     // Nothing to dispute if we agree
-    if (result_->set.id() == o.id())
+    if (result_->txns.id() == o.id())
         return;
 
-    JLOG(j_.debug()) << "createDisputes " << result_->set.id() << " to "
+    JLOG(j_.debug()) << "createDisputes " << result_->txns.id() << " to "
                      << o.id();
 
-    auto differences = result_->set.compare(o);
+    auto differences = result_->txns.compare(o);
 
     int dc = 0;
 
@@ -1483,10 +1641,10 @@ Consensus<Adaptor>::createDisputes(TxSet_t const& o)
         ++dc;
         // create disputed transactions (from the ledger that has them)
         assert(
-            (id.second && result_->set.find(id.first) && !o.find(id.first)) ||
-            (!id.second && !result_->set.find(id.first) && o.find(id.first)));
+            (id.second && result_->txns.find(id.first) && !o.find(id.first)) ||
+            (!id.second && !result_->txns.find(id.first) && o.find(id.first)));
 
-        Tx_t tx = id.second ? *result_->set.find(id.first) : *o.find(id.first);
+        Tx_t tx = id.second ? *result_->txns.find(id.first) : *o.find(id.first);
         auto txID = tx.id();
 
         if (result_->disputes.find(txID) != result_->disputes.end())
@@ -1494,7 +1652,8 @@ Consensus<Adaptor>::createDisputes(TxSet_t const& o)
 
         JLOG(j_.debug()) << "Transaction " << txID << " is disputed";
 
-        typename Result::Dispute_t dtx{tx, result_->set.exists(txID), j_};
+        typename Result::Dispute_t dtx{tx, result_->txns.exists(txID),
+         std::max(prevProposers_, currPeerPositions_.size()), j_};
 
         // Update all of the available peer's votes on the disputed transaction
         for (auto const& pit : currPeerPositions_)
@@ -1504,7 +1663,7 @@ Consensus<Adaptor>::createDisputes(TxSet_t const& o)
             if (cit != acquired_.end())
                 dtx.setVote(pit.first, cit->second.exists(txID));
         }
-        adaptor_.relay(dtx.tx());
+        adaptor_.share(dtx.tx());
 
         result_->disputes.emplace(txID, std::move(dtx));
     }

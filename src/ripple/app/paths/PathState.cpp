@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/paths/Credit.h>
 #include <ripple/app/paths/PathState.h>
 #include <ripple/basics/Log.h>
 #include <ripple/json/to_string.h>
 #include <ripple/protocol/Indexes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <boost/lexical_cast.hpp>
 
 namespace ripple {
@@ -53,7 +52,7 @@ void PathState::reset(STAmount const& in, STAmount const& out)
     saInAct = in;
     saOutAct = out;
 
-    if (inReq() > zero && inAct() >= inReq())
+    if (inReq() > beast::zero && inAct() >= inReq())
     {
         JLOG (j_.warn())
             <<  "rippleCalc: DONE:"
@@ -61,7 +60,7 @@ void PathState::reset(STAmount const& in, STAmount const& out)
             << " inReq()=" << inReq();
     }
 
-    assert (inReq() < zero || inAct() < inReq());
+    assert (inReq() < beast::zero || inAct() < inReq());
     // Error if done.
 
     if (outAct() >= outReq())
@@ -311,7 +310,7 @@ TER PathState::pushNode (
                     else if ((sleBck->getFieldU32 (sfFlags) & lsfRequireAuth) &&
                              !(sleRippleState->getFieldU32 (sfFlags) &
                                   (bHigh ? lsfHighAuth : lsfLowAuth)) &&
-                             sleRippleState->getFieldAmount(sfBalance) == zero)
+                             sleRippleState->getFieldAmount(sfBalance) == beast::zero)
                     {
                         JLOG (j_.warn())
                                 << "pushNode: delay: can't receive IOUs from "
@@ -327,7 +326,7 @@ TER PathState::pushNode (
                             node.issue_.currency);
                         STAmount saLimit;
 
-                        if (saOwed <= zero)
+                        if (saOwed <= beast::zero)
                         {
                             saLimit = creditLimit (view(),
                                 node.account_,
@@ -433,7 +432,7 @@ TER PathState::expandPath (
     // Sender is always issuer for non-ZXC.
 
     JLOG (j_.trace())
-        << "expandPath> " << spSourcePath.getJson (0);
+        << "expandPath> " << spSourcePath.getJson (JsonOptions::none);
 
     terStatus = tesSUCCESS;
 
@@ -836,22 +835,22 @@ Json::Value PathState::getJson () const
     jvPathState[jss::nodes]    = jvNodes;
 
     if (saInReq)
-        jvPathState["in_req"]   = saInReq.getJson (0);
+        jvPathState["in_req"]   = saInReq.getJson (JsonOptions::none);
 
     if (saInAct)
-        jvPathState["in_act"]   = saInAct.getJson (0);
+        jvPathState["in_act"]   = saInAct.getJson (JsonOptions::none);
 
     if (saInPass)
-        jvPathState["in_pass"]  = saInPass.getJson (0);
+        jvPathState["in_pass"]  = saInPass.getJson (JsonOptions::none);
 
     if (saOutReq)
-        jvPathState["out_req"]  = saOutReq.getJson (0);
+        jvPathState["out_req"]  = saOutReq.getJson (JsonOptions::none);
 
     if (saOutAct)
-        jvPathState["out_act"]  = saOutAct.getJson (0);
+        jvPathState["out_act"]  = saOutAct.getJson (JsonOptions::none);
 
     if (saOutPass)
-        jvPathState["out_pass"] = saOutPass.getJson (0);
+        jvPathState["out_pass"] = saOutPass.getJson (JsonOptions::none);
 
     if (uQuality)
         jvPathState["uQuality"] = boost::lexical_cast<std::string>(uQuality);

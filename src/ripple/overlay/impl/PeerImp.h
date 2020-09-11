@@ -20,15 +20,14 @@
 #ifndef RIPPLE_OVERLAY_PEERIMP_H_INCLUDED
 #define RIPPLE_OVERLAY_PEERIMP_H_INCLUDED
 
-#include <ripple/basics/Log.h> // deprecated
-#include <ripple/nodestore/Database.h>
-#include <ripple/overlay/predicates.h>
+#include <ripple/app/consensus/RCLCxPeerPos.h>
+#include <ripple/basics/Log.h>
+#include <ripple/basics/RangeSet.h>
+#include <ripple/beast/asio/waitable_timer.h>
+#include <ripple/beast/utility/WrappedSink.h>
 #include <ripple/overlay/impl/ProtocolMessage.h>
 #include <ripple/overlay/impl/OverlayImpl.h>
-#include <ripple/resource/Fees.h>
-#include <ripple/core/Config.h>
-#include <ripple/core/Job.h>
-#include <ripple/core/LoadEvent.h>
+#include <ripple/peerfinder/PeerfinderManager.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/protocol/STValidation.h>
@@ -39,9 +38,14 @@
 #include <ripple/beast/utility/WrappedSink.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <peersafe/app/consensus/ViewChange.h>
+#include <ripple/resource/Fees.h>
+
+#include <boost/endian/conversion.hpp>
+#include <boost/optional.hpp>
 #include <cstdint>
 #include <deque>
 #include <queue>
+#include <shared_mutex>
 
 namespace ripple {
 
@@ -49,10 +53,10 @@ class PeerImp
     : public Peer
     , public std::enable_shared_from_this <PeerImp>
     , public OverlayImpl::Child
-{ 
+{
 public:
     /** Type of connection.
-        The affects how messages are routed.
+        This affects how messages are routed.
     */
     enum class Type
     {
@@ -84,6 +88,12 @@ public:
         ,sane
     };
 
+    struct ShardInfo
+    {
+        beast::IP::Endpoint endpoint;
+        RangeSet<std::uint32_t> shardIndexes;
+    };
+
     using ptr = std::shared_ptr <PeerImp>;
 
 private:
@@ -93,6 +103,7 @@ private:
     using stream_type   = boost::asio::ssl::stream <socket_type&>;
     using address_type  = boost::asio::ip::address;
     using endpoint_type = boost::asio::ip::tcp::endpoint;
+    using waitable_timer = boost::asio::basic_waitable_timer<std::chrono::steady_clock>;
 
     // The length of the smallest valid finished message
     static const size_t sslMinimumFinishedLength = 12;
@@ -106,28 +117,27 @@ private:
     std::unique_ptr<beast::asio::ssl_bundle> ssl_bundle_;
     socket_type& socket_;
     stream_type& stream_;
-    boost::asio::io_service::strand strand_;
-    boost::asio::basic_waitable_timer<
-        std::chrono::steady_clock> timer_;
+    boost::asio::strand<boost::asio::executor> strand_;
+    waitable_timer timer_;
 
     //Type type_ = Type::legacy;
 
     // Updated at each stage of the connection process to reflect
     // the current conditions as closely as possible.
-    beast::IP::Endpoint remote_address_;
+    beast::IP::Endpoint const remote_address_;
 
     // These are up here to prevent warnings about order of initializations
     //
     OverlayImpl& overlay_;
-    bool m_inbound;
+    bool const m_inbound;
     State state_;          // Current state
     std::atomic<Sanity> sanity_;
     clock_type::time_point insaneTime_;
     bool detaching_ = false;
     // Node public key of peer.
-    PublicKey publicKey_;
+    PublicKey const publicKey_;
     std::string name_;
-    uint256 sharedValue_;
+    std::shared_timed_mutex mutable nameMutex_;
 
     // The indices of the smallest and largest ledgers this peer has available
     //
@@ -138,28 +148,60 @@ private:
     std::deque<uint256> recentLedgers_;
     std::deque<uint256> recentTxSets_;
 
-    std::chrono::milliseconds latency_ = std::chrono::milliseconds (-1);
-    std::uint64_t lastPingSeq_ = 0;
+    boost::optional<std::chrono::milliseconds> latency_;
+    boost::optional<std::uint32_t> lastPingSeq_;
     clock_type::time_point lastPingTime_;
-    clock_type::time_point creationTime_;
+    clock_type::time_point const creationTime_;
+
+    // Notes on thread locking:
+    //
+    // During an audit it was noted that some member variables that looked
+    // like they need thread protection were not receiving it.  And, indeed,
+    // that was correct.  But the multi-phase initialization of PeerImp
+    // makes such an audit difficult.  A further audit suggests that the
+    // locking is now protecting variables that don't need it.  We're
+    // leaving that locking in place (for now) as a form of future proofing.
+    //
+    // Here are the variables that appear to need locking currently:
+    //
+    // o closedLedgerHash_
+    // o previousLedgerHash_
+    // o minLedger_
+    // o maxLedger_
+    // o recentLedgers_
+    // o recentTxSets_
+    // o insaneTime_
+    // o latency_
+    //
+    // The following variables are being protected preemptively:
+    //
+    // o name_
+    // o last_status_
+    // o lastPingSeq_
+    // o lastPingTime_
+    // o no_ping_
+    // 
+    // June 2019
 
     std::mutex mutable recentLock_;
     protocol::TMStatusChange last_status_;
-    protocol::TMHello hello_;
+    protocol::TMHello const hello_;
     Resource::Consumer usage_;
     Resource::Charge fee_;
-    PeerFinder::Slot::ptr slot_;
-    beast::multi_buffer read_buffer_;
+    PeerFinder::Slot::ptr const slot_;
+    boost::beast::multi_buffer read_buffer_;
     http_request_type request_;
     http_response_type response_;
-    beast::http::fields const& headers_;
-    beast::multi_buffer write_buffer_;
+    boost::beast::http::fields const& headers_;
+    boost::beast::multi_buffer write_buffer_;
     std::queue<Message::pointer> send_queue_;
     bool gracefulClose_ = false;
     int large_sendq_ = 0;
     int no_ping_ = 0;
     std::unique_ptr <LoadEvent> load_event_;
-    bool hopsAware_ = false;
+
+    std::mutex mutable shardInfoMutex_;
+    hash_map<PublicKey, ShardInfo> shardInfo_;
 
     friend class OverlayImpl;
 
@@ -241,6 +283,7 @@ public:
         return id_;
     }
 
+    /** Returns `true` if this connection will publicly share its IP address. */
     bool
     crawl() const;
 
@@ -248,12 +291,6 @@ public:
     cluster() const override
     {
         return slot_->cluster();
-    }
-
-    bool
-    hopsAware() const
-    {
-        return hopsAware_;
     }
 
     void
@@ -305,6 +342,9 @@ public:
     ledgerRange (std::uint32_t& minSeq, std::uint32_t& maxSeq) const override;
 
     bool
+    hasShard (std::uint32_t shardIndex) const override;
+
+    bool
     hasTxSet (uint256 const& hash) const override;
 
     void
@@ -325,6 +365,14 @@ public:
 
     void
     fail(std::string const& reason);
+
+    /** Return a range set of known shard indexes from this peer. */
+    boost::optional<RangeSet<std::uint32_t>>
+    getShardIndexes() const;
+
+    /** Return any known shard info from this peer and its sub peers. */
+    boost::optional<hash_map<PublicKey, ShardInfo>>
+    getPeerShardInfo() const;
 
 private:
     void
@@ -364,6 +412,10 @@ private:
 
     void
     onWriteResponse (error_code ec, std::size_t bytes_transferred);
+
+    // A thread-safe way of getting the name.
+    std::string
+    getName() const;
 
     //
     // protocol message loop
@@ -412,6 +464,10 @@ public:
     void onMessage (std::shared_ptr <protocol::TMManifests> const& m);
     void onMessage (std::shared_ptr <protocol::TMPing> const& m);
     void onMessage (std::shared_ptr <protocol::TMCluster> const& m);
+    void onMessage (std::shared_ptr <protocol::TMGetShardInfo> const& m);
+    void onMessage (std::shared_ptr <protocol::TMShardInfo> const& m);
+    void onMessage (std::shared_ptr <protocol::TMGetPeerShardInfo> const& m);
+    void onMessage (std::shared_ptr <protocol::TMPeerShardInfo> const& m);
     void onMessage (std::shared_ptr <protocol::TMGetPeers> const& m);
     void onMessage (std::shared_ptr <protocol::TMPeers> const& m);
     void onMessage (std::shared_ptr <protocol::TMEndpoints> const& m);
@@ -440,8 +496,11 @@ private:
 
     //--------------------------------------------------------------------------
 
+    // lockedRecentLock is passed as a reminder to callers that recentLock_
+    // must be locked.
     void
-    addLedger (uint256 const& hash);
+    addLedger (uint256 const& hash,
+        std::lock_guard<std::mutex> const& lockedRecentLock);
 
     void
     doFetchPack (const std::shared_ptr<protocol::TMGetObjectByHash>& packet);
@@ -453,7 +512,7 @@ private:
     void
     checkPropose (Job& job,
         std::shared_ptr<protocol::TMProposeSet> const& packet,
-            RCLCxPeerPos peerPos);
+            RCLCxPeerPos const& peerPos);
 
 	void
 		checkViewChange(bool isTrusted,ViewChange const& change, uint256 suppression,
@@ -461,7 +520,7 @@ private:
 
     void
     checkValidation (STValidation::pointer val,
-        bool isTrusted, std::shared_ptr<protocol::TMValidation> const& packet);
+        std::shared_ptr<protocol::TMValidation> const& packet);
 
     void
     getLedger (std::shared_ptr<protocol::TMGetLedger> const&packet);
@@ -472,6 +531,7 @@ private:
         std::shared_ptr <protocol::TMLedgerData> const& pPacket,
             beast::Journal journal);
 };
+
 
 //------------------------------------------------------------------------------
 
@@ -492,8 +552,8 @@ PeerImp::PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& s
     , ssl_bundle_(std::move(ssl_bundle))
     , socket_ (ssl_bundle_->socket)
     , stream_ (ssl_bundle_->stream)
-    , strand_ (socket_.get_io_service())
-    , timer_ (socket_.get_io_service())
+    , strand_ (socket_.get_executor())
+    , timer_ (beast::create_waitable_timer<waitable_timer>(socket_))
     , remote_address_ (slot->remote_endpoint())
     , overlay_ (overlay)
     , m_inbound (false)
@@ -521,16 +581,24 @@ PeerImp::sendEndpoints (FwdIt first, FwdIt last)
     for (;first != last; ++first)
     {
         auto const& ep = *first;
+        // eventually remove endpoints and just keep endpoints_v2
+        // (once we are sure the entire network understands endpoints_v2)
         protocol::TMEndpoint& tme (*tm.add_endpoints());
         if (ep.address.is_v4())
             tme.mutable_ipv4()->set_ipv4(
-                beast::toNetworkByteOrder (ep.address.to_v4().value));
+                boost::endian::native_to_big(
+                    static_cast<std::uint32_t>(ep.address.to_v4().to_ulong())));
         else
             tme.mutable_ipv4()->set_ipv4(0);
         tme.mutable_ipv4()->set_ipv4port (ep.address.port());
         tme.set_hops (ep.hops);
+
+        // add v2 endpoints (strings)
+        auto& tme2 (*tm.add_endpoints_v2());
+        tme2.set_endpoint(ep.address.to_string());
+        tme2.set_hops (ep.hops);
     }
-    tm.set_version (1);
+    tm.set_version (2);
 
     send (std::make_shared <Message> (tm, protocol::mtENDPOINTS));
 }

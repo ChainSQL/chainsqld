@@ -27,7 +27,7 @@
 #include <ripple/basics/Log.h>
 #include <ripple/basics/UnorderedContainers.h>
 #include <ripple/json/json_value.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/beast/clock/abstract_clock.h>
 #include <ripple/beast/insight/Insight.h>
 #include <ripple/beast/utility/PropertyStream.h>
@@ -172,7 +172,7 @@ public:
      * restrictions, such as permission to perform certain RPC calls, may be
      * enabled.
      */
-    Consumer newUnlimitedEndpoint (std::string const& name)
+    Consumer newUnlimitedEndpoint (beast::IP::Endpoint const& address)
     {
         Entry* entry (nullptr);
 
@@ -180,7 +180,7 @@ public:
             std::lock_guard<std::recursive_mutex> _(lock_);
             auto result =
                 table_.emplace (std::piecewise_construct,
-                    std::make_tuple (name),                             // Key
+                    std::make_tuple (kindUnlimited, address.at_port(1)),// Key
                     std::make_tuple (m_clock.now()));                   // Entry
 
             entry = &result.first->second;
@@ -281,7 +281,7 @@ public:
 
     void importConsumers (std::string const& origin, Gossip const& gossip)
     {
-        clock_type::rep const elapsed (m_clock.now().time_since_epoch().count());
+        auto const elapsed = m_clock.now();
         {
             std::lock_guard<std::recursive_mutex> _(lock_);
             auto result =
@@ -341,7 +341,7 @@ public:
     {
         std::lock_guard<std::recursive_mutex> _(lock_);
 
-        clock_type::rep const elapsed (m_clock.now().time_since_epoch().count());
+        auto const elapsed = m_clock.now();
 
         for (auto iter (inactive_.begin()); iter != inactive_.end();)
         {
@@ -435,7 +435,7 @@ public:
                 break;
             }
             inactive_.push_back (entry);
-            entry.whenExpires = m_clock.now().time_since_epoch().count() + secondsUntilExpiration;
+            entry.whenExpires = m_clock.now() + secondsUntilExpiration;
         }
     }
 
@@ -456,7 +456,7 @@ public:
 
         std::lock_guard<std::recursive_mutex> _(lock_);
         bool notify (false);
-        clock_type::rep const elapsed (m_clock.now().time_since_epoch().count());
+        auto const elapsed = m_clock.now();
         if (entry.balance (m_clock.now()) >= warningThreshold &&
             elapsed != entry.lastWarningTime)
         {

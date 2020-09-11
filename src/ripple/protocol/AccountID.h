@@ -35,13 +35,16 @@ namespace ripple {
 
 namespace detail {
 
-class AccountIDTag { };
+class AccountIDTag
+{
+public:
+    explicit AccountIDTag() = default;
+};
 
 } // detail
 
 /** A 160-bit unsigned that uniquely identifies an account. */
-using AccountID = base_uint<
-    160, detail::AccountIDTag>;
+using AccountID = base_uint<160, detail::AccountIDTag>;
 
 /** Convert AccountID to base58 checked string */
 std::string
@@ -116,7 +119,7 @@ inline
 bool
 isZXC(AccountID const& c)
 {
-    return c == zero;
+    return c == beast::zero;
 }
 
 // DEPRECATED
@@ -183,6 +186,7 @@ namespace std {
 template <>
 struct hash <ripple::AccountID> : ripple::AccountID::hasher
 {
+    explicit hash() = default;
 };
 
 } // std

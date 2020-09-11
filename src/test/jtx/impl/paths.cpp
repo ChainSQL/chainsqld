@@ -17,10 +17,9 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/paths/Pathfinder.h>
 #include <test/jtx/paths.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 namespace test {
@@ -51,7 +50,7 @@ paths::operator()(Env& env, JTx& jt) const
     // VFALCO TODO API to allow caller to examine the STPathSet
     // VFALCO isDefault should be renamed to empty()
     if (! found.isDefault())
-        jv[jss::Paths] = found.getJson(0);
+        jv[jss::Paths] = found.getJson(JsonOptions::none);
 }
 
 //------------------------------------------------------------------------------

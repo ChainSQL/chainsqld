@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/protocol/TER.h>
 #include <boost/range/adaptor/transformed.hpp>
 #include <unordered_map>
@@ -29,16 +28,17 @@ namespace detail {
 
 static
 std::unordered_map<
-    std::underlying_type_t<TER>,
+    TERUnderlyingType,
     std::pair<char const* const, char const* const>> const&
 transResults()
 {
     static
     std::unordered_map<
-        std::underlying_type_t<TER>,
+        TERUnderlyingType,
         std::pair<char const* const, char const* const>> const
     results
     {
+		
         { tecCLAIM,                  { "tecCLAIM",                 "Fee claimed. Sequence used. No action."                                        } },
         { tecDIR_FULL,               { "tecDIR_FULL",              "Can not add entry to full directory."                                          } },
         { tecFAILED_PROCESSING,      { "tecFAILED_PROCESSING",     "Failed to correctly process transaction."                                      } },
@@ -68,13 +68,14 @@ transResults()
         { tecNO_PERMISSION,          { "tecNO_PERMISSION",         "No permission to perform requested operation."                                 } },
         { tecNO_ENTRY,               { "tecNO_ENTRY",              "No matching entry found."                                                      } },
         { tecINSUFFICIENT_RESERVE,   { "tecINSUFFICIENT_RESERVE",  "Insufficient reserve to complete requested operation."                         } },
-		{ tefTABLE_GRANTFULL,		 { "tefTABLE_GRANTFULL",	   "A table can only grant 500 uses."												} },
-		{ tefTABLE_COUNTFULL,		 { "tefTABLE_COUNTFULL",	   "One account can own at most 100 tables,now you are creating the 101 one."		} },
         { tecNEED_MASTER_KEY,        { "tecNEED_MASTER_KEY",       "The operation requires the use of the Master Key."                             } },
 		{ tecDST_TAG_NEEDED, { "tecDST_TAG_NEEDED",        "A destination tag is required." } },
 		{ tecINTERNAL,               { "tecINTERNAL",              "An internal error has occurred during processing."                             } },
 		{ tecCRYPTOCONDITION_ERROR,  { "tecCRYPTOCONDITION_ERROR", "Malformed, invalid, or mismatched conditional or fulfillment."                 } },
 		{ tecINVARIANT_FAILED,		 { "tecINVARIANT_FAILED",      "One or more invariants for the transaction were not satisfied."				   } },
+        { tecEXPIRED,                { "tecEXPIRED",               "Expiration time is passed."                                                    } },
+        { tecDUPLICATE,              { "tecDUPLICATE",             "Ledger object already exists."                                                 } },
+		{ tecKILLED,                 { "tecKILLED",                "FillOrKill offer killed."    } },
 		{ tefALREADY,                { "tefALREADY",               "The exact transaction was already in this ledger."                             } },
 		{ tefBAD_ADD_AUTH,           { "tefBAD_ADD_AUTH",          "Not authorized to add account."                                                } },
 		{ tefBAD_AUTH,               { "tefBAD_AUTH",              "Transaction's public key is not authorized."                                   } },
@@ -91,17 +92,18 @@ transResults()
 		{ tefMAX_LEDGER,             { "tefMAX_LEDGER",            "Ledger sequence too high."                                                     } },
 		{ tefNO_AUTH_REQUIRED,       { "tefNO_AUTH_REQUIRED",      "Auth is not required."                                                         } },
 		{ tefNOT_MULTI_SIGNING,      { "tefNOT_MULTI_SIGNING",     "Account has no appropriate list of multi-signers."                             } },
-		{ tefPAST_SEQ,               { "tefPAST_SEQ",              "This sequence number has already past."                                        } },
+		{ tefPAST_SEQ,               { "tefPAST_SEQ",              "This sequence number has already passed."                                        } },
 		{ tefWRONG_PRIOR,            { "tefWRONG_PRIOR",           "This previous transaction does not match."                                     } },
 		{ tefBAD_AUTH_MASTER,        { "tefBAD_AUTH_MASTER",       "Auth for unclaimed account needs correct master key."                          } },
+		{ tefTABLE_GRANTFULL,		 { "tefTABLE_GRANTFULL",	   "A table can only grant 500 uses."												} },
+		{ tefTABLE_COUNTFULL,		 { "tefTABLE_COUNTFULL",	   "One account can own at most 100 tables,now you are creating the 101 one."		} },
 		{ tefGAS_INSUFFICIENT,		 { "tefGAS_INSUFFICIENT",	   "Gas insufficient." } },
 		{ tefCONTRACT_EXEC_EXCEPTION,{ "tefCONTRACT_EXEC_EXCEPTION","Exception occurred while executing contract ." } },
 		{ tefCONTRACT_REVERT_INSTRUCTION,{ "tefCONTRACT_REVERT_INSTRUCTION","Contract reverted,maybe 'require' condition not satisfied." } },
 		{ tefCONTRACT_CANNOT_BEPAYED ,{ "tefCONTRACT_CANNOT_BEPAYED","Contract address cannot be 'Destination' for 'Payment'." } },
 		{ tefCONTRACT_NOT_EXIST ,	 {"tefCONTRACT_NOT_EXIST",		"Contract does not exist,maybe destructed."				}},
-
-		{ tefINVALID_CURRENY ,{ "tefINVALID_CURRENY",		"Invalid currency" } },
-        
+		{ tefINVALID_CURRENY ,		 { "tefINVALID_CURRENY",		"Invalid currency" } },
+        { tefINVARIANT_FAILED,       { "tefINVARIANT_FAILED",      "Fee claim violated invariants for the transaction."                            } },
 		{ telLOCAL_ERROR,            { "telLOCAL_ERROR",           "Local failure."                                                                } },
 		{ telBAD_DOMAIN,             { "telBAD_DOMAIN",            "Domain too long."                                                              } },
 		{ telBAD_PATH_COUNT,         { "telBAD_PATH_COUNT",        "Malformed: Too many paths."                                                    } },
@@ -127,6 +129,7 @@ transResults()
 		{ temBAD_OFFER,              { "temBAD_OFFER",             "Malformed: Bad offer."                                                         } },
 		{ temBAD_PATH,               { "temBAD_PATH",              "Malformed: Bad path."                                                          } },
 		{ temBAD_PATH_LOOP,          { "temBAD_PATH_LOOP",         "Malformed: Loop in path."                                                      } },
+		{ temBAD_REGKEY,             { "temBAD_REGKEY",            "Malformed: Regular key cannot be same as master key."                          } },
 		{ temBAD_QUORUM,             { "temBAD_QUORUM",            "Malformed: Quorum is unreachable."                                             } },
 		{ temBAD_SEND_ZXC_LIMIT,     { "temBAD_SEND_ZXC_LIMIT",    "Malformed: Limit quality is not allowed for ZXC to ZXC."                       } },
 		{ temBAD_SEND_ZXC_MAX,       { "temBAD_SEND_ZXC_MAX",      "Malformed: Send max is not allowed for ZXC to ZXC."                            } },
@@ -172,6 +175,7 @@ transResults()
 		{ temBAD_RULEANDTOKEN,		 { "temBAD_RULEANDTOKEN",	   "Malformed: OperationRule and Confidential are not supported in the mean time."} },
 		{ temBAD_TICK_SIZE,          { "temBAD_TICK_SIZE",         "Malformed: Tick size out of range."                                            } },
 		{ temBAD_NEEDVERIFY_OPERRULE ,{ "temBAD_NEEDVERIFY_OPERRULE","Malformed: NeedVerify must be 1 if there is table has OperatinRule."                                            } },
+		
 		{ terRETRY,                  { "terRETRY",                 "Retry transaction."                                                            } },
 		{ terFUNDS_SPENT,            { "terFUNDS_SPENT",           "Can't set password, password set funds already spent."                         } },
 		{ terINSUF_FEE_B,            { "terINSUF_FEE_B",           "Account balance can't pay fee."                                                } },
@@ -191,13 +195,13 @@ transResults()
 		{ tefTABLE_STORAGEERROR,     { "tefTABLE_STORAGEERROR",    "Table storage error." } },
 		{ tefTABLE_STORAGENORMALERROR,{ "tefTABLE_STORAGENORMALERROR",    "Table storage normal error." } },
 		{ tefTABLE_TXDISPOSEERROR,	 { "tefTABLE_TXDISPOSEERROR",	"Tx Dispose error." } },
-		{ tefTABLE_RULEDISSATISFIED,  { "tefTABLE_RULEDISSATISFIED",	"Operation rule not satisfied."}},        
+		{ tefTABLE_RULEDISSATISFIED, { "tefTABLE_RULEDISSATISFIED",	"Operation rule not satisfied."}},        
 		{ tefINSUFFICIENT_RESERVE,	 { "tefINSUFFICIENT_RESERVE",  "Insufficient reserve to complete requested operation." } },
-		{ tefINSU_RESERVE_TABLE,	{ "tefINSU_RESERVE_TABLE",		"Insufficient reserve to create a table." } },
+		{ tefINSU_RESERVE_TABLE,	 { "tefINSU_RESERVE_TABLE",		"Insufficient reserve to create a table." } },
 		{ tefDBNOTCONFIGURED,		 { "tefDBNOTCONFIGURED",       "DB is not connected,please checkout 'sync_db'in config file." } },
-		{ tefBAD_DBNAME,			{ "tefBAD_DBNAME",            "NameInDB does not match tableName." } },
-		{ tefBAD_STATEMENT,			{ "tefBAD_STATEMENT",	       "Statement is error." } },
-        { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } },
+		{ tefBAD_DBNAME,			 { "tefBAD_DBNAME",            "NameInDB does not match tableName." } },
+		{ tefBAD_STATEMENT,			 { "tefBAD_STATEMENT",	       "Statement is error." } },
+        { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } }
     };
     return results;
 }
@@ -208,8 +212,7 @@ bool transResultInfo (TER code, std::string& token, std::string& text)
 {
     auto& results = detail::transResults();
 
-    auto const r = results.find (
-        static_cast<std::underlying_type_t<TER>> (code));
+    auto const r = results.find (TERtoInt (code));
 
     if (r == results.end())
         return false;
@@ -253,7 +256,7 @@ transCode(std::string const& token)
         );
         std::unordered_map<
             std::string,
-            std::underlying_type_t<TER>> const
+            TERUnderlyingType> const
         byToken(tRange.begin(), tRange.end());
         return byToken;
     }();
@@ -263,6 +266,6 @@ transCode(std::string const& token)
     if (r == results.end())
         return boost::none;
 
-    return static_cast<TER>(r->second);
+    return TER::fromInt (r->second);
 }
 } // ripple

@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
     This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2012, 2013 Ripple Labs Inc.
+    Copyright (c) 2012 - 2019 Ripple Labs Inc.
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose  with  or without fee is hereby granted, provided that the above
@@ -20,133 +20,147 @@
 #ifndef RIPPLE_PROTOCOL_ERRORCODES_H_INCLUDED
 #define RIPPLE_PROTOCOL_ERRORCODES_H_INCLUDED
 
-#include <ripple/protocol/JsonFields.h>
 #include <ripple/json/json_value.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 
 // VFALCO NOTE These are outside the RPC namespace
 
+// NOTE: Although the precise numeric values of these codes were never
+// intended to be stable, several API endpoints include the numeric values.
+// Some users came to rely on the values, meaning that renumbering would be
+// a breaking change for those users.
+//
+// We therefore treat the range of values as stable although they are not
+// and are subject to change.
+//
+// Please only append to this table. Do not "fill-in" gaps and do not re-use
+// or repurpose error code values.
 enum error_code_i
 {
-    rpcUNKNOWN = -1,     // Represents codes not listed in this enumeration
+    // -1 represents codes not listed in this enumeration
+    rpcUNKNOWN               = -1,
 
-    rpcSUCCESS = 0,
+    rpcSUCCESS               = 0,
 
-    rpcBAD_SYNTAX,  // Must be 1 to print usage to command line.
-    rpcJSON_RPC,
-    rpcFORBIDDEN,
-
-    // Error numbers beyond this line are not stable between versions.
-    // Programs should use error tokens.
+    rpcBAD_SYNTAX            = 1,
+    rpcJSON_RPC              = 2,
+    rpcFORBIDDEN             = 3,
 
     // Misc failure
-    rpcGENERAL,
-    rpcLOAD_FAILED,
-    rpcNO_PERMISSION,
-    rpcNO_EVENTS,
-    rpcNOT_STANDALONE,
-    rpcTOO_BUSY,
-    rpcSLOW_DOWN,
-    rpcHIGH_FEE,
-    rpcNOT_ENABLED,
-    rpcNOT_READY,
-    rpcAMENDMENT_BLOCKED,
+    // unused                  4,
+    // unused                  5,
+    rpcNO_PERMISSION         = 6,
+    rpcNO_EVENTS             = 7,
+    // unused                  8,
+    rpcTOO_BUSY              = 9,
+    rpcSLOW_DOWN             = 10,
+    rpcHIGH_FEE              = 11,
+    rpcNOT_ENABLED           = 12,
+    rpcNOT_READY             = 13,
+    rpcAMENDMENT_BLOCKED     = 14,
 
     // Networking
-    rpcNO_CLOSED,
-    rpcNO_CURRENT,
-    rpcNO_NETWORK,
+    rpcNO_CLOSED             = 15,
+    rpcNO_CURRENT            = 16,
+    rpcNO_NETWORK            = 17,
 
     // Ledger state
-    rpcACT_EXISTS,
-    rpcACT_NOT_FOUND,
-    rpcINSUF_FUNDS,
-    rpcLGR_NOT_FOUND,
-	rpcLGR_NOT_VALIDATED,
-    rpcMASTER_DISABLED,
-    rpcNO_ACCOUNT,
-    rpcNO_PATH,
-    rpcPASSWD_CHANGED,
-    rpcSRC_MISSING,
-    rpcSRC_UNCLAIMED,
-    rpcTXN_NOT_FOUND,
-    rpcWRONG_SEED,
+    // unused                  18,
+    rpcACT_NOT_FOUND         = 19,
+    // unused                  20,
+    rpcLGR_NOT_FOUND         = 21,
+    rpcLGR_NOT_VALIDATED     = 22,
+    rpcMASTER_DISABLED       = 23,
+    // unused                  24,
+    // unused                  25,
+    // unused                  26,
+    // unused                  27,
+    // unused                  28,
+    rpcTXN_NOT_FOUND         = 29,
+    // unused                  30,
 
     // Malformed command
-    rpcINVALID_PARAMS,
-    rpcUNKNOWN_COMMAND,
-    rpcNO_PF_REQUEST,
+    rpcINVALID_PARAMS        = 31,
+    rpcUNKNOWN_COMMAND       = 32,
+    rpcNO_PF_REQUEST         = 33,
 
     // Bad parameter
-    rpcACT_BITCOIN,
-    rpcACT_MALFORMED,
-	rpcACT_NOT_MATCH_PUBKEY,
-    rpcQUALITY_MALFORMED,
-    rpcBAD_BLOB,
-    rpcBAD_FEATURE,
-    rpcBAD_ISSUER,
-    rpcBAD_MARKET,
-    rpcBAD_SECRET,
-    rpcBAD_SEED,
-    rpcCHANNEL_MALFORMED,
-    rpcCHANNEL_AMT_MALFORMED,
-    rpcCOMMAND_MISSING,
-    rpcDST_ACT_MALFORMED,
-    rpcDST_ACT_MISSING,
-    rpcDST_AMT_MALFORMED,
-    rpcDST_AMT_MISSING,
-    rpcDST_ISR_MALFORMED,
-    rpcGETS_ACT_MALFORMED,
-    rpcGETS_AMT_MALFORMED,
-    rpcHOST_IP_MALFORMED,
-    rpcLGR_IDXS_INVALID,
-    rpcLGR_IDX_MALFORMED,
-    rpcPAYS_ACT_MALFORMED,
-    rpcPAYS_AMT_MALFORMED,
-    rpcPORT_MALFORMED,
-    rpcPUBLIC_MALFORMED,
-    rpcSIGN_FOR_MALFORMED,
-    rpcSENDMAX_MALFORMED,
-    rpcSRC_ACT_MALFORMED,
-    rpcSRC_ACT_MISSING,
-    rpcSRC_ACT_NOT_FOUND,
-    rpcSRC_AMT_MALFORMED,
-    rpcSRC_CUR_MALFORMED,
-    rpcSRC_ISR_MALFORMED,
-    rpcSTREAM_MALFORMED,
-    rpcATX_DEPRECATED,
+    rpcACT_BITCOIN           = 34,
+    rpcACT_MALFORMED         = 35,
+    rpcALREADY_MULTISIG      = 36,
+    rpcALREADY_SINGLE_SIG    = 37,
+    rpcACT_NOT_MATCH_PUBKEY  = 38,
+    // unused                  39,
+    rpcBAD_FEATURE           = 40,
+    rpcBAD_ISSUER            = 41,
+    rpcBAD_MARKET            = 42,
+    rpcBAD_SECRET            = 43,
+    rpcBAD_SEED              = 44,
+    rpcCHANNEL_MALFORMED     = 45,
+    rpcCHANNEL_AMT_MALFORMED = 46,
+    rpcCOMMAND_MISSING       = 47,
+    rpcDST_ACT_MALFORMED     = 48,
+    rpcDST_ACT_MISSING       = 49,
+    rpcDST_ACT_NOT_FOUND     = 50,
+    rpcDST_AMT_MALFORMED     = 51,
+    rpcDST_AMT_MISSING       = 52,
+    rpcDST_ISR_MALFORMED     = 53,
+    // unused                  54,
+    // unused                  55,
+    // unused                  56,
+    rpcLGR_IDXS_INVALID      = 57,
+    rpcLGR_IDX_MALFORMED     = 58,
+    // unused                  59,
+    // unused                  60,
+    // unused                  61,
+    rpcPUBLIC_MALFORMED      = 62,
+    rpcSIGNING_MALFORMED     = 63,
+    rpcSENDMAX_MALFORMED     = 64,
+    rpcSRC_ACT_MALFORMED     = 65,
+    rpcSRC_ACT_MISSING       = 66,
+    rpcSRC_ACT_NOT_FOUND     = 67,
+    // unused                  68,
+    rpcSRC_CUR_MALFORMED     = 69,
+    rpcSRC_ISR_MALFORMED     = 70,
+    rpcSTREAM_MALFORMED      = 71,
+    rpcATX_DEPRECATED        = 72,
 
-	rpcJSON_PARSED_ERR,
-	rpcSQL_DISPOSE_ERR,
-	rpcSQL_SELECT_ONLY,
-	rpcDB_NOT_SUPPORT,
-	rpcDB_CONNECT_FAILED,
-	rpcTAB_NOT_EXIST,
-	rpcTAB_UNAUTHORIZED,
-	rpcRAW_INVALID,
-	rpcNAMEINDB_NOT_MATCH,
-	rpcSLE_TOKEN_MISSING,
-	rpcSIGN_NOT_MATCH,
-	rpcSIGN_NOT_IN_HEX,
-	rpcGET_VALUE_INVALID,
-	rpcGET_LGR_FAILED,
-	rpcDUMP_GENERAL_ERR,
-	rpcDUMPSTOP_GENERAL_ERR,
-	rpcAUDIT_GENERAL_ERR,
-	rpcAUDITSTOP_GENERAL_ERR,
-	rpcFIELD_CONTENT_EMPTY,
+	// Internal error (should never happen)
+	rpcINTERNAL				 = 73,  // Generic internal error.
+	rpcNOT_IMPL				 = 74,
+	rpcNODB					 = 76,
 
-	rpcSQL_MULQUERY_NOT_SUPPORT,
+	// ChainSql related error
+	rpcJSON_PARSED_ERR		 = 101,
+	rpcSQL_DISPOSE_ERR		 = 102,
+	rpcSQL_SELECT_ONLY		 = 103,
+	rpcDB_NOT_SUPPORT		 = 104,
+	rpcDB_CONNECT_FAILED	 = 105,
+	rpcTAB_NOT_EXIST		 = 106,
+	rpcTAB_UNAUTHORIZED		 = 107,
+	rpcRAW_INVALID			 = 108,
+	rpcNAMEINDB_NOT_MATCH	 = 109,
+	rpcSLE_TOKEN_MISSING	 = 110,
+	rpcSIGN_NOT_MATCH		 = 111,
+	rpcSIGN_NOT_IN_HEX		 = 112,
+	rpcGET_VALUE_INVALID	 = 113,
+	rpcGET_LGR_FAILED		 = 114,
+	rpcDUMP_GENERAL_ERR		 = 115,
+	rpcDUMPSTOP_GENERAL_ERR  = 116,
+	rpcAUDIT_GENERAL_ERR	 = 117,
+	rpcAUDITSTOP_GENERAL_ERR = 118,
+	rpcFIELD_CONTENT_EMPTY	 = 119,
 
-	rpcCTR_EVMEXE_EXCEPTION,
-	rpcCTR_EVMCALL_EXCEPTION,
+	rpcSQL_MULQUERY_NOT_SUPPORT = 120,
 
-    // Internal error (should never happen)
-    rpcINTERNAL,        // Generic internal error.
-    rpcNOT_IMPL,
-    rpcNOT_SUPPORTED,
-	rpcNODB,
+	rpcCTR_EVMEXE_EXCEPTION  = 121,
+	rpcCTR_EVMCALL_EXCEPTION = 122,
+	rpcGENERAL				 = 123,
+
+	rpcNOT_SUPPORTED		 = 124,
+    rpcLAST					 = rpcNOT_SUPPORTED   // rpcLAST should always equal the last code.
 };
 
 //------------------------------------------------------------------------------
@@ -158,16 +172,23 @@ namespace RPC {
 /** Maps an rpc error code to its token and default message. */
 struct ErrorInfo
 {
-    ErrorInfo (error_code_i code_, std::string const& token_,
-        std::string const& message_)
+    // Default ctor needed to produce an empty std::array during constexpr eval.
+    constexpr ErrorInfo ()
+    : code (rpcUNKNOWN)
+    , token ("unknown")
+    , message ("An unknown error code.")
+    { }
+
+    constexpr ErrorInfo (error_code_i code_, char const* token_,
+        char const* message_)
         : code (code_)
         , token (token_)
         , message (message_)
     { }
 
     error_code_i code;
-    std::string token;
-    std::string message;
+    Json::StaticString token;
+    Json::StaticString message;
 };
 
 /** Returns an ErrorInfo that reflects the error code. */

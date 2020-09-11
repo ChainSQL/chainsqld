@@ -1,4 +1,4 @@
-#include <BeastConfig.h>
+
 
 #include <peersafe/gmencrypt/hardencrypt/impl/HardEncrypt.cpp>
 #include <peersafe/gmencrypt/hardencrypt/impl/HardEncryptObj.cpp>

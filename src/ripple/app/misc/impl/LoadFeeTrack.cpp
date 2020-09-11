@@ -17,14 +17,14 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
+#include <ripple/basics/safe_cast.h>
 #include <ripple/core/Config.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/protocol/STAmount.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <cstdint>
 #include <type_traits>
 
@@ -124,7 +124,6 @@ void lowestTerms(T1& a,  T2& b)
     b /= x;
 }
 
-
 // Scale using load as well as base rate
 std::uint64_t
 scaleFeeLoad(std::uint64_t fee, LoadFeeTrack const& feeTrack,
@@ -151,8 +150,8 @@ scaleFeeLoad(std::uint64_t fee, LoadFeeTrack const& feeTrack,
     // The denominator of the fraction we're trying to compute.
     // fees.units and lftNormalFee are both 32 bit,
     //  so the multiplication can't overflow.
-    auto den = static_cast<std::uint64_t>(fees.units)
-        * static_cast<std::uint64_t>(feeTrack.getLoadBase());
+    auto den = safe_cast<std::uint64_t>(fees.units)
+        * safe_cast<std::uint64_t>(feeTrack.getLoadBase());
     // Reduce fee * baseFee * feeFactor / (fees.units * lftNormalFee)
     // to lowest terms.
     lowestTerms(fee, den);
@@ -196,9 +195,9 @@ std::uint64_t scaleGasLoad(std::uint64_t gasPrice, LoadFeeTrack const& feeTrack,
 	//calc gas_price
 	auto fee = scaleFeeLoad(fees.base, feeTrack,
 		fees, false);
-	auto gasPriceRet = (uint32)fee / fees.base *(float)gasPrice;
+	auto gasPriceRet = (uint32_t)fee / fees.base *(float)gasPrice;
 	if (gasPriceRet > gasPrice)
-		gasPriceRet -= (uint64)(gasPriceRet - gasPrice) * 0.99;
+		gasPriceRet -= (uint64_t)(gasPriceRet - gasPrice) * 0.99;
 	gasPriceRet = std::min((uint64_t)gasPriceRet, 2 * gasPrice);
 	return gasPriceRet;
 }

@@ -17,9 +17,9 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/Indexes.h>
+#include <boost/endian/conversion.hpp>
 #include <cassert>
 
 namespace ripple {
@@ -152,7 +152,7 @@ getQualityIndex (uint256 const& uBase, const std::uint64_t uNodeDir)
 
     // TODO(tom): there must be a better way.
     // VFALCO [base_uint] This assumes a certain storage format
-    ((std::uint64_t*) uNode.end ())[-1] = htobe64 (uNodeDir);
+    ((std::uint64_t*) uNode.end ())[-1] = boost::endian::native_to_big (uNodeDir);
 
     return uNode;
 }
@@ -169,7 +169,7 @@ std::uint64_t
 getQuality (uint256 const& uBase)
 {
     // VFALCO [base_uint] This assumes a certain storage format
-    return be64toh (((std::uint64_t*) uBase.end ())[-1]);
+    return boost::endian::big_to_native (((std::uint64_t*) uBase.end ())[-1]);
 }
 
 uint256
@@ -214,6 +214,24 @@ getSignerListIndex (AccountID const& account)
         std::uint16_t(spaceSignerList),
         account,
         std::uint32_t (0));  // 0 == default SignerList ID.
+}
+
+uint256
+getCheckIndex (AccountID const& account, std::uint32_t uSequence)
+{
+    return sha512Half(
+        std::uint16_t(spaceCheck),
+        account,
+        std::uint32_t(uSequence));
+}
+
+uint256
+getDepositPreauthIndex (AccountID const& owner, AccountID const& preauthorized)
+{
+    return sha512Half(
+        std::uint16_t(spaceDepositPreauth),
+        owner,
+        preauthorized);
 }
 
 //------------------------------------------------------------------------------
@@ -327,6 +345,20 @@ Keylet signers_t::operator()(AccountID const& id) const
 {
     return { ltSIGNER_LIST,
         getSignerListIndex(id) };
+}
+
+Keylet check_t::operator()(AccountID const& id,
+    std::uint32_t seq) const
+{
+    return { ltCHECK,
+        getCheckIndex(id, seq) };
+}
+
+Keylet depositPreauth_t::operator()(AccountID const& owner,
+    AccountID const& preauthorized) const
+{
+    return { ltDEPOSIT_PREAUTH,
+        getDepositPreauthIndex(owner, preauthorized) };
 }
 
 //------------------------------------------------------------------------------

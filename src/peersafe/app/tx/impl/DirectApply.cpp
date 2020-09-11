@@ -16,7 +16,7 @@ ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
-#include <BeastConfig.h>
+
 #include <peersafe/app/tx/DirectApply.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/app/tx/impl/CancelOffer.h>
@@ -44,7 +44,7 @@ namespace ripple {
 	{
 		// If the transactor requires a valid account and the transaction doesn't
 		// list one, preflight will have already a flagged a failure.
-		auto const baseFee = T::calculateBaseFee(ctx);
+		auto const baseFee = T::calculateBaseFee(ctx.view, ctx.tx);
 
 		return{ T::preclaim(ctx), baseFee };
 	}
@@ -88,14 +88,14 @@ namespace ripple {
 		try
 		{
 			if (ctx->preflightResult != tesSUCCESS)
-				return{ *ctx, ctx->preflightResult, 0 };
-			return{ *ctx, invoke_preclaim_direct(*ctx) };
+				return { *ctx, ctx->preflightResult };
+			return { *ctx, invoke_preclaim_direct(*ctx).first };
 		}
 		catch (std::exception const& e)
 		{
 			JLOG(ctx->j.fatal()) <<
 				"apply: " << e.what();
-			return{ *ctx, tefEXCEPTION, 0 };
+			return{ *ctx, tefEXCEPTION};
 		}
 	}
 
@@ -141,8 +141,8 @@ namespace ripple {
 				return preclaimResult.ter;
 			ApplyContext ctx(app, view.openView(),
 				preclaimResult.tx, preclaimResult.ter,
-				preclaimResult.baseFee, preclaimResult.flags,
-				preclaimResult.j);
+				calculateBaseFee(view, preclaimResult.tx), 
+				preclaimResult.flags, preclaimResult.j);
 			ApplyViewImpl& viewImpl = (ApplyViewImpl&)view;
 			ApplyViewImpl& applyView = (ApplyViewImpl&)(ctx.view());
 			

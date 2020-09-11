@@ -50,7 +50,10 @@ enum TxType
     ttPAYCHAN_CREATE    = 13,
     ttPAYCHAN_FUND      = 14,
     ttPAYCHAN_CLAIM     = 15,
-
+    ttCHECK_CREATE       =  16,
+    ttCHECK_CASH         =  17,
+    ttCHECK_CANCEL       =  18,
+    ttDEPOSIT_PREAUTH    =  19,
     ttTRUST_SET         = 20,
     ttTABLELISTSET      = 21,
     ttSQLSTATEMENT      = 22,
@@ -65,15 +68,12 @@ enum TxType
 class TxFormats : public KnownFormats <TxType>
 {
 private:
-    void addCommonFields (Item& item);
-    void addChainSqlCommondFields(Item& item);
-
-public:
     /** Create the object.
-        This will load the object will all the known transaction formats.
+        This will load the object with all the known transaction formats.
     */
     TxFormats ();
 
+public:
     static TxFormats const& getInstance ();
 };
 

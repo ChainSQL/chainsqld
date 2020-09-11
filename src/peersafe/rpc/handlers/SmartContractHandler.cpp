@@ -19,7 +19,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/app/ledger/LedgerMaster.h>

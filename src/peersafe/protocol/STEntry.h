@@ -46,7 +46,7 @@ namespace ripple {
 
 
         STEntry();  
-		void init(ripple::Blob tableName, uint160 nameInDB, uint8 deleted, uint32 createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash, uint32 txnLedgerSequence, uint256 txnLedgerhash, uint32 prevTxnLedgerSequence, uint256 prevTxnLedgerhash, uint256 txCheckhash, STArray users);
+		void init(ripple::Blob tableName, uint160 nameInDB, uint8_t deleted, uint32_t createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash, uint32_t txnLedgerSequence, uint256 txnLedgerhash, uint32_t prevTxnLedgerSequence, uint256 prevTxnLedgerhash, uint256 txCheckhash, STArray users);
 
 		void initOperationRule(ripple::Blob operationRule);
 

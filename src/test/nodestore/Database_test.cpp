@@ -17,18 +17,24 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/nodestore/TestBase.h>
 #include <ripple/nodestore/DummyScheduler.h>
 #include <ripple/nodestore/Manager.h>
 #include <ripple/beast/utility/temp_dir.h>
+#include <test/unit_test/SuiteJournal.h>
 
 namespace ripple {
 namespace NodeStore {
 
 class Database_test : public TestBase
 {
+    test::SuiteJournal journal_;
+
 public:
+    Database_test ()
+    : journal_ ("Database_test", *this)
+    { }
+
     void testImport (std::string const& destBackendType,
         std::string const& srcBackendType, std::int64_t seedValue)
     {
@@ -44,12 +50,10 @@ public:
         auto batch = createPredictableBatch (
             numObjectsToTest, seedValue);
 
-        beast::Journal j;
-
         // Write to source db
         {
             std::unique_ptr <Database> src = Manager::instance().make_Database (
-                "test", scheduler, 2, parent, srcParams, j);
+                "test", scheduler, 2, parent, srcParams, journal_);
             storeBatch (*src, batch);
         }
 
@@ -58,7 +62,7 @@ public:
         {
             // Re-open the db
             std::unique_ptr <Database> src = Manager::instance().make_Database (
-                "test", scheduler, 2, parent, srcParams, j);
+                "test", scheduler, 2, parent, srcParams, journal_);
 
             // Set up the destination database
             beast::temp_dir dest_db;
@@ -67,7 +71,7 @@ public:
             destParams.set ("path", dest_db.path());
 
             std::unique_ptr <Database> dest = Manager::instance().make_Database (
-                "test", scheduler, 2, parent, destParams, j);
+                "test", scheduler, 2, parent, destParams, journal_);
 
             testcase ("import into '" + destBackendType +
                 "' from '" + srcBackendType + "'");
@@ -110,12 +114,10 @@ public:
         auto batch = createPredictableBatch (
             numObjectsToTest, rng());
 
-        beast::Journal j;
-
         {
             // Open the database
             std::unique_ptr <Database> db = Manager::instance().make_Database (
-                "test", scheduler, 2, parent, nodeParams, j);
+                "test", scheduler, 2, parent, nodeParams, journal_);
 
             // Write the batch
             storeBatch (*db, batch);
@@ -141,60 +143,104 @@ public:
 
         if (testPersistence)
         {
+            // Re-open the database without the ephemeral DB
+            std::unique_ptr <Database> db = Manager::instance().make_Database (
+                "test", scheduler, 2, parent, nodeParams, journal_);
+
+            // Read it back in
+            Batch copy;
+            fetchCopyOfBatch (*db, &copy, batch);
+
+            // Canonicalize the source and destination batches
+            std::sort (batch.begin (), batch.end (), LessThan{});
+            std::sort (copy.begin (), copy.end (), LessThan{});
+            BEAST_EXPECT(areBatchesEqual (batch, copy));
+        }
+
+        if (type == "memory")
+        {
+            // Earliest ledger sequence tests
             {
-                // Re-open the database without the ephemeral DB
-                std::unique_ptr <Database> db = Manager::instance().make_Database (
-                    "test", scheduler, 2, parent, nodeParams, j);
+                // Verify default earliest ledger sequence
+                std::unique_ptr<Database> db =
+                    Manager::instance().make_Database(
+                        "test", scheduler, 2, parent, nodeParams, journal_);
+                BEAST_EXPECT(db->earliestSeq() == ZXC_LEDGER_EARLIEST_SEQ);
+            }
 
-                // Read it back in
-                Batch copy;
-                fetchCopyOfBatch (*db, &copy, batch);
+            // Set an invalid earliest ledger sequence
+            try
+            {
+                nodeParams.set("earliest_seq", "0");
+                std::unique_ptr<Database> db =
+                    Manager::instance().make_Database(
+                        "test", scheduler, 2, parent, nodeParams, journal_);
+            }
+            catch (std::runtime_error const& e)
+            {
+                BEAST_EXPECT(std::strcmp(e.what(),
+                    "Invalid earliest_seq") == 0);
+            }
 
-                // Canonicalize the source and destination batches
-                std::sort (batch.begin (), batch.end (), LessThan{});
-                std::sort (copy.begin (), copy.end (), LessThan{});
-                BEAST_EXPECT(areBatchesEqual (batch, copy));
+            {
+                // Set a valid earliest ledger sequence
+                nodeParams.set("earliest_seq", "1");
+                std::unique_ptr<Database> db =
+                    Manager::instance().make_Database(
+                        "test", scheduler, 2, parent, nodeParams, journal_);
+
+                // Verify database uses the earliest ledger sequence setting
+                BEAST_EXPECT(db->earliestSeq() == 1);
+            }
+
+
+            // Create another database that attempts to set the value again
+            try
+            {
+                // Set to default earliest ledger sequence
+                nodeParams.set("earliest_seq",
+                    std::to_string(ZXC_LEDGER_EARLIEST_SEQ));
+                std::unique_ptr<Database> db2 =
+                    Manager::instance().make_Database(
+                        "test", scheduler, 2, parent, nodeParams, journal_);
+            }
+            catch (std::runtime_error const& e)
+            {
+                BEAST_EXPECT(std::strcmp(e.what(),
+                    "earliest_seq set more than once") == 0);
             }
         }
     }
 
     //--------------------------------------------------------------------------
 
-    void runBackendTests (std::int64_t const seedValue)
-    {
-        testNodeStore ("nudb", true, seedValue);
-
-    #if RIPPLE_ROCKSDB_AVAILABLE
-        testNodeStore ("rocksdb", true, seedValue);
-    #endif
-    }
-
-    //--------------------------------------------------------------------------
-
-    void runImportTests (std::int64_t const seedValue)
-    {
-        testImport ("nudb", "nudb", seedValue);
-
-    #if RIPPLE_ROCKSDB_AVAILABLE
-        testImport ("rocksdb", "rocksdb", seedValue);
-    #endif
-
-    #if RIPPLE_ENABLE_SQLITE_BACKEND_TESTS
-        testImport ("sqlite", "sqlite", seedValue);
-    #endif
-    }
-
-    //--------------------------------------------------------------------------
-
-    void run ()
+    void run () override
     {
         std::int64_t const seedValue = 50;
 
         testNodeStore ("memory", false, seedValue);
 
-        runBackendTests (seedValue);
+        // Persistent backend tests
+        {
+            testNodeStore ("nudb", true, seedValue);
 
-        runImportTests (seedValue);
+        #if RIPPLE_ROCKSDB_AVAILABLE
+            testNodeStore ("rocksdb", true, seedValue);
+        #endif
+        }
+
+        // Import tests
+        {
+            testImport ("nudb", "nudb", seedValue);
+
+        #if RIPPLE_ROCKSDB_AVAILABLE
+            testImport ("rocksdb", "rocksdb", seedValue);
+        #endif
+
+        #if RIPPLE_ENABLE_SQLITE_BACKEND_TESTS
+            testImport ("sqlite", "sqlite", seedValue);
+        #endif
+        }
     }
 };
 

@@ -18,11 +18,10 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
 #include <peersafe/app/misc/CACertSite.h>
-
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <beast/core/detail/base64.hpp>
 
 
@@ -32,14 +31,14 @@ namespace ripple {
 	CACertSite::CACertSite(
 		ManifestCache& validatorManifests,
 		ManifestCache& publisherManifests,
-		CertList& certList,
 		TimeKeeper& timeKeeper,
 		boost::asio::io_service& ios,
+		std::vector<std::string>& rootCerts,
 		beast::Journal j)
-		: ConfigSite(ios, validatorManifests,j)
-		, certList_(certList)
+		: ConfigSite(ios, validatorManifests, j)
 		, publisherManifests_(publisherManifests)
 		, timeKeeper_(timeKeeper)
+		, rootCerts_(rootCerts)
 	{
 	}
 
@@ -57,7 +56,8 @@ namespace ripple {
 		return jrr;
 	}
 
-	ripple::ListDisposition CACertSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature, std::uint32_t version)
+	ripple::ListDisposition CACertSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature,
+		std::uint32_t version, std::string siteUri)
 	{
 		if (version != requiredListVersion)
 			return ListDisposition::unsupported_version;
@@ -73,23 +73,23 @@ namespace ripple {
 		// update CA root certs
 		Json::Value const& newList = list["certs"];
 
-		std::vector<std::string>    rootCertLst;
+		rootCerts_.clear();
+
 		for (auto const& val : newList)
 		{
 			if (val.isObject() &&
 				val.isMember("cert") &&
 				val["cert"].isString())
 			{
-				rootCertLst.push_back(val["cert"].asString());
+				rootCerts_.push_back(val["cert"].asString());
 			}
 		}
-		certList_.setCertList(rootCertLst);
 
 		return ListDisposition::accepted;
-		 
+
 	}
 
-	
+
 	bool CACertSite::removePublisherList(PublicKey const& publisherKey)
 	{
 		auto const iList = publisherLists_.find(publisherKey);
@@ -98,7 +98,7 @@ namespace ripple {
 
 		JLOG(j_.debug()) <<
 			"Removing validator list for revoked publisher " <<
-			toBase58(TokenType::TOKEN_NODE_PUBLIC, publisherKey);
+			toBase58(TokenType::NodePublic, publisherKey);
 
 		//for (auto const& val : iList->second.list)
 		//{
@@ -120,7 +120,7 @@ namespace ripple {
 
 	ripple::ListDisposition CACertSite::verify(Json::Value& list, PublicKey& pubKey, std::string const& manifest, std::string const& blob, std::string const& signature)
 	{
-		auto m = Manifest::make_Manifest(beast::detail::base64_decode(manifest));
+		auto m = deserializeManifest(beast::detail::base64_decode(manifest));
 
 		if (!m || !publisherLists_.count(m->masterKey))
 			return ListDisposition::untrusted;
@@ -172,11 +172,6 @@ namespace ripple {
 		}
 
 		return ListDisposition::accepted;
-	}
-
-	void CACertSite::onAccepted()
-	{
-
 	}
 
 } // ripple

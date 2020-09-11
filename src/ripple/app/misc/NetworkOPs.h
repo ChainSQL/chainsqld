@@ -27,11 +27,12 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/ledger/ReadView.h>
 #include <ripple/net/InfoSub.h>
 #include <ripple/protocol/STValidation.h>
+#include <boost/asio.hpp>
 #include <memory>
 #include <deque>
 #include <tuple>
 
-#include "ripple.pb.h"
+#include <ripple/protocol/messages.h>
 
 namespace ripple {
 
@@ -104,8 +105,8 @@ namespace ripple {
 		// Network information
 		//
 
-		virtual OperatingMode getOperatingMode() const = 0;
-		virtual std::string strOperatingMode() const = 0;
+    virtual OperatingMode getOperatingMode () const = 0;
+    virtual std::string strOperatingMode (bool admin = false) const = 0;
 
 		//--------------------------------------------------------------------------
 		//
@@ -151,10 +152,9 @@ namespace ripple {
 
 		//--------------------------------------------------------------------------
 
-		// ledger proposal/close functions
-		virtual void processTrustedProposal(RCLCxPeerPos peerPos,
-			std::shared_ptr<protocol::TMProposeSet> set,
-			NodeID const& node) = 0;
+    // ledger proposal/close functions
+    virtual void processTrustedProposal (RCLCxPeerPos peerPos,
+        std::shared_ptr<protocol::TMProposeSet> set) = 0;
 
 		virtual bool recvValidation(STValidation::ref val,
 			std::string const& source) = 0;
@@ -170,19 +170,19 @@ namespace ripple {
 		virtual void setStandAlone() = 0;
 		virtual void setStateTimer() = 0;
 
-		// VFALCO TODO rename to setNeedNetworkLedger
-		virtual void needNetworkLedger() = 0;
-		virtual void clearNeedNetworkLedger() = 0;
-		virtual bool isNeedNetworkLedger() = 0;
-		virtual bool isFull() = 0;
-		virtual bool isAmendmentBlocked() = 0;
-		virtual void setAmendmentBlocked() = 0;
-		virtual void consensusViewChange() = 0;
+    virtual void setNeedNetworkLedger () = 0;
+    virtual void clearNeedNetworkLedger () = 0;
+    virtual bool isNeedNetworkLedger () = 0;
+    virtual bool isFull () = 0;
+    virtual bool isAmendmentBlocked () = 0;
+    virtual void setAmendmentBlocked () = 0;
+    virtual void consensusViewChange () = 0;
 
-		virtual Json::Value getConsensusInfo() = 0;
-		virtual Json::Value getServerInfo(bool human, bool admin) = 0;
-		virtual void clearLedgerFetch() = 0;
-		virtual Json::Value getLedgerFetchInfo() = 0;
+    virtual Json::Value getConsensusInfo () = 0;
+    virtual Json::Value getServerInfo (
+        bool human, bool admin, bool counters) = 0;
+    virtual void clearLedgerFetch () = 0;
+    virtual Json::Value getLedgerFetchInfo () = 0;
 
 		/** Accepts the current transaction tree, return the new ledger's sequence
 
@@ -251,14 +251,14 @@ namespace ripple {
         virtual std::chrono::milliseconds getConsensusTimeout() = 0;
 	};
 
-	//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
-	std::unique_ptr<NetworkOPs>
-		make_NetworkOPs(Application& app, NetworkOPs::clock_type& clock,
-			bool standalone, std::size_t network_quorum, bool start_valid,
-			JobQueue& job_queue, LedgerMaster& ledgerMaster, Stoppable& parent,
-			ValidatorKeys const & validatorKeys, boost::asio::io_service& io_svc,
-			beast::Journal journal);
+std::unique_ptr<NetworkOPs>
+make_NetworkOPs (Application& app, NetworkOPs::clock_type& clock,
+    bool standalone, std::size_t minPeerCount, bool start_valid,
+    JobQueue& job_queue, LedgerMaster& ledgerMaster, Stoppable& parent,
+    ValidatorKeys const & validatorKeys, boost::asio::io_service& io_svc,
+    beast::Journal journal);
 
 } // ripple
 

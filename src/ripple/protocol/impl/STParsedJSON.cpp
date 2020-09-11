@@ -17,8 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/contract.h>
+#include <ripple/basics/safe_cast.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/LedgerFormats.h>
@@ -33,7 +33,7 @@
 #include <ripple/protocol/STPathSet.h>
 #include <ripple/protocol/TER.h>
 #include <ripple/protocol/TxFormats.h>
-#include <ripple/protocol/types.h>
+#include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/impl/STVar.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <cassert>
@@ -203,14 +203,16 @@ static boost::optional<detail::STVar> parseLeaf (
                     {
                         auto ter = transCode(strValue);
 
-                        if (!ter || *ter < minValue || *ter > maxValue)
+                        if (!ter ||
+                            TERtoInt (*ter) < minValue ||
+                            TERtoInt (*ter) > maxValue)
                         {
                             error = out_of_range(json_name, fieldName);
                             return ret;
                         }
 
                         ret = detail::make_stvar<STUInt8>(field,
-                            static_cast<std::uint8_t>(*ter));
+                            static_cast<std::uint8_t>(TERtoInt (*ter)));
                     }
                     else
                     {
@@ -274,6 +276,9 @@ static boost::optional<detail::STVar> parseLeaf (
                         TxType const txType (TxFormats::getInstance().
                             findTypeByName (strValue));
 
+                        if (txType == ttINVALID)
+                             Throw<std::runtime_error>(
+                                "Invalid transaction format name");
                         ret = detail::make_stvar <STUInt16> (field,
                             static_cast <std::uint16_t> (txType));
 
@@ -291,6 +296,13 @@ static boost::optional<detail::STVar> parseLeaf (
                             LedgerFormats::getInstance().
                                 findTypeByName (strValue));
 
+                        if (!(0u <= type &&
+                            type <= std::min<unsigned>(
+                                     std::numeric_limits<std::uint16_t>::max(),
+                                     std::numeric_limits<std::underlying_type_t
+                                           <LedgerEntryType>>::max())))
+                                 Throw<std::runtime_error>(
+                                     "Invalid ledger entry type: out of range");
                         ret = detail::make_stvar <STUInt16> (field,
                             static_cast <std::uint16_t> (type));
 
@@ -360,7 +372,7 @@ static boost::optional<detail::STVar> parseLeaf (
             else if (value.isUInt ())
             {
                 ret = detail::make_stvar <STUInt32> (field,
-                    static_cast <std::uint32_t> (value.asUInt ()));
+                    safe_cast <std::uint32_t> (value.asUInt ()));
             }
             else
             {
@@ -392,7 +404,7 @@ static boost::optional<detail::STVar> parseLeaf (
             else if (value.isUInt ())
             {
                 ret = detail::make_stvar <STUInt64> (field,
-                    static_cast <std::uint64_t> (value.asUInt ()));
+                    safe_cast <std::uint64_t> (value.asUInt ()));
             }
             else
             {
@@ -510,7 +522,7 @@ static boost::optional<detail::STVar> parseLeaf (
         break;
 
     case STI_VECTOR256:
-        if (! value.isArray ())
+        if (! value.isArrayOrNull ())
         {
             error = array_expected (json_name, fieldName);
             return ret;
@@ -536,7 +548,7 @@ static boost::optional<detail::STVar> parseLeaf (
         break;
 
     case STI_PATHSET:
-        if (!value.isArray ())
+        if (!value.isArrayOrNull ())
         {
             error = array_expected (json_name, fieldName);
             return ret;
@@ -550,7 +562,7 @@ static boost::optional<detail::STVar> parseLeaf (
             {
                 STPath p;
 
-                if (!value[i].isArray ())
+                if (!value[i].isArrayOrNull ())
                 {
                     std::stringstream ss;
                     ss << fieldName << "[" << i << "]";
@@ -570,7 +582,7 @@ static boost::optional<detail::STVar> parseLeaf (
 
                     Json::Value pathEl = value[i][j];
 
-                    if (!pathEl.isObject ())
+                    if (!pathEl.isObject())
                     {
                         error = not_an_object (element_name);
                         return ret;
@@ -724,7 +736,7 @@ static boost::optional <STObject> parseObject (
     int depth,
     Json::Value& error)
 {
-    if (! json.isObject ())
+    if (! json.isObjectOrNull ())
     {
         error = not_an_object (json_name);
         return boost::none;
@@ -736,92 +748,101 @@ static boost::optional <STObject> parseObject (
         return boost::none;
     }
 
-    STObject data (inName);
-
-    for (auto const& fieldName : json.getMemberNames ())
+    try
     {
-        Json::Value const& value = json [fieldName];
 
-        auto const& field = SField::getField (fieldName);
+        STObject data (inName);
 
-        if (field == sfInvalid)
+        for (auto const& fieldName : json.getMemberNames ())
         {
-            error = unknown_field (json_name, fieldName);
-            return boost::none;
+            Json::Value const& value = json [fieldName];
+
+            auto const& field = SField::getField (fieldName);
+
+            if (field == sfInvalid)
+            {
+                error = unknown_field (json_name, fieldName);
+                return boost::none;
+            }
+
+            switch (field.fieldType)
+            {
+
+            // Object-style containers (which recurse).
+            case STI_OBJECT:
+            case STI_TRANSACTION:
+            case STI_LEDGERENTRY:
+            case STI_VALIDATION:
+                if (! value.isObject ())
+                {
+                    error = not_an_object (json_name, fieldName);
+                    return boost::none;
+                }
+
+                try
+                {
+                    auto ret = parseObject (json_name + "." + fieldName,
+                        value, field, depth + 1, error);
+                    if (! ret)
+                        return boost::none;
+                    data.emplace_back (std::move (*ret));
+                }
+                catch (std::exception const&)
+                {
+                    error = invalid_data (json_name, fieldName);
+                    return boost::none;
+                }
+
+                break;
+
+            // Array-style containers (which recurse).
+            case STI_ARRAY:
+                try
+                {
+                    auto array = parseArray (json_name + "." + fieldName,
+                        value, field, depth + 1, error);
+                    if (array == boost::none)
+                        return boost::none;
+                    data.emplace_back (std::move (*array));
+                }
+                catch (std::exception const&)
+                {
+                    error = invalid_data (json_name, fieldName);
+                    return boost::none;
+                }
+
+                break;
+
+            // Everything else (types that don't recurse).
+            default:
+                {
+                    auto leaf =
+                        parseLeaf (json_name, fieldName, &inName, value, error);
+
+                    if (!leaf)
+                        return boost::none;
+
+                    data.emplace_back (std::move (*leaf));
+                }
+
+                break;
+            }
         }
 
-        switch (field.fieldType)
-        {
+        // Some inner object types have templates.  Attempt to apply that.
+        data.applyTemplateFromSField (inName);  // May throw
 
-        // Object-style containers (which recurse).
-        case STI_OBJECT:
-        case STI_TRANSACTION:
-        case STI_LEDGERENTRY:
-        case STI_VALIDATION:
-            if (! value.isObject ())
-            {
-                error = not_an_object (json_name, fieldName);
-                return boost::none;
-            }
-
-            try
-            {
-                auto ret = parseObject (json_name + "." + fieldName,
-                    value, field, depth + 1, error);
-                if (! ret)
-                    return boost::none;
-                data.emplace_back (std::move (*ret));
-            }
-            catch (std::exception const&)
-            {
-                error = invalid_data (json_name, fieldName);
-                return boost::none;
-            }
-
-            break;
-
-        // Array-style containers (which recurse).
-        case STI_ARRAY:
-            try
-            {
-                auto array = parseArray (json_name + "." + fieldName,
-                    value, field, depth + 1, error);
-                if (array == boost::none)
-                    return boost::none;
-                data.emplace_back (std::move (*array));
-            }
-            catch (std::exception const&)
-            {
-                error = invalid_data (json_name, fieldName);
-                return boost::none;
-            }
-
-            break;
-
-        // Everything else (types that don't recurse).
-        default:
-            {
-                auto leaf =
-                    parseLeaf (json_name, fieldName, &inName, value, error);
-
-                if (!leaf)
-                    return boost::none;
-
-                data.emplace_back (std::move (*leaf));
-            }
-
-            break;
-        }
+        return std::move (data);
     }
-
-    // Some inner object types have templates.  Attempt to apply that.
-    if (data.setTypeFromSField (inName) == STObject::typeSetFail)
+    catch (STObject::FieldErr const&)
     {
         error = template_mismatch (inName);
-        return boost::none;
     }
-
-    return std::move (data);
+    catch (std::exception const&)
+    {
+        error = invalid_data (json_name);
+    }
+    return boost::none;
 }
 
 static boost::optional <detail::STVar> parseArray (
@@ -831,7 +852,7 @@ static boost::optional <detail::STVar> parseArray (
     int depth,
     Json::Value& error)
 {
-    if (! json.isArray ())
+    if (! json.isArrayOrNull ())
     {
         error = not_an_array (json_name);
         return boost::none;
@@ -849,11 +870,12 @@ static boost::optional <detail::STVar> parseArray (
 
         for (Json::UInt i = 0; json.isValidIndex (i); ++i)
         {
-            bool const isObject (json[i].isObject());
-            bool const singleKey (isObject ? json[i].size() == 1 : true);
+            bool const isObjectOrNull (json[i].isObjectOrNull());
+            bool const singleKey (isObjectOrNull ? json[i].size() == 1 : true);
 
-            if (!isObject || !singleKey)
+            if (!isObjectOrNull || !singleKey)
             {
+                // null values are !singleKey
                 error = singleton_expected (json_name, i);
                 return boost::none;
             }

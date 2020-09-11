@@ -28,6 +28,11 @@
     This module requires the @ref beast_sqlite external module.
 */
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated"
+#endif
+
 #include <ripple/basics/Log.h>
 #include <ripple/core/JobQueue.h>
 #define SOCI_USE_BOOST
@@ -133,9 +138,8 @@ std::unique_ptr <Checkpointer> makeCheckpointer (soci::session&, JobQueue&, Logs
 
 } // ripple
 
-// Do not remove this dead code. It forces `scons vcxproj` to include version.h.
-#if 0
-#include "version.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
 #endif
 
 #endif

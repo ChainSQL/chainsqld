@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/app/tx/impl/CreateOffer.h>
 #include <ripple/app/ledger/OrderBookDB.h>
 #include <ripple/app/paths/Flow.h>
@@ -39,7 +39,7 @@ CreateOffer::calculateMaxSpend(STTx const& tx)
         saTakerGets.zxc() : beast::zero;
 }
 
-TER
+NotTEC
 CreateOffer::preflight (PreflightContext const& ctx)
 {
     auto const ret = preflight1 (ctx);
@@ -98,7 +98,7 @@ CreateOffer::preflight (PreflightContext const& ctx)
             "Malformed offer: redundant (ZXC for ZXC)";
         return temBAD_OFFER;
     }
-    if (saTakerPays <= zero || saTakerGets <= zero)
+    if (saTakerPays <= beast::zero || saTakerGets <= beast::zero)
     {
         JLOG(j.debug()) <<
             "Malformed offer: bad amount";
@@ -160,13 +160,13 @@ CreateOffer::preclaim(PreclaimContext const& ctx)
     if (isGlobalFrozen(ctx.view, uPaysIssuerID) ||
         isGlobalFrozen(ctx.view, uGetsIssuerID))
     {
-        JLOG(ctx.j.warn()) <<
+        JLOG(ctx.j.info()) <<
             "Offer involves frozen asset";
 
         return tecFROZEN;
     }
     else if (accountFunds(ctx.view, id, saTakerGets,
-        fhZERO_IF_FROZEN, viewJ) <= zero)
+        fhZERO_IF_FROZEN, viewJ) <= beast::zero)
     {
         JLOG(ctx.j.debug()) <<
             "delay: Offers must be at least partially funded.";
@@ -194,10 +194,14 @@ CreateOffer::preclaim(PreclaimContext const& ctx)
     if (expiration &&
         (ctx.view.parentCloseTime() >= tp{d{*expiration}}))
     {
-        // Note that this will get checked again in applyGuts,
-        // but it saves us a call to checkAcceptAsset and
-        // possible false negative.
-        return tesSUCCESS;
+        // Note that this will get checked again in applyGuts, but it saves
+        // us a call to checkAcceptAsset and possible false negative.
+        //
+        // The return code change is attached to featureChecks as a convenience.
+        // The change is not big enough to deserve its own amendment.
+        return ctx.view.rules().enabled(featureDepositPreauth)
+            ? TER {tecEXPIRED}
+            : TER {tesSUCCESS};
     }
 
     // Make sure that we are authorized to hold what the taker will pay us.
@@ -230,14 +234,14 @@ CreateOffer::checkAcceptAsset(ReadView const& view,
             to_string (issue.account);
 
         return (flags & tapRETRY)
-            ? terNO_ACCOUNT
-            : tecNO_ISSUER;
+            ? TER {terNO_ACCOUNT}
+            : TER {tecNO_ISSUER};
     }
 
-    // This code is attached to the FlowCross amendment as a matter of
+    // This code is attached to the DepositPreauth amendment as a matter of
     // convenience.  The change is not significant enough to deserve its
     // own amendment.
-    if (view.rules().enabled(featureFlowCross) && (issue.account == id))
+    if (view.rules().enabled(featureDepositPreauth) && (issue.account == id))
         // An account can always accept its own issuance.
         return tesSUCCESS;
 
@@ -249,8 +253,8 @@ CreateOffer::checkAcceptAsset(ReadView const& view,
         if (!trustLine)
         {
             return (flags & tapRETRY)
-                ? terNO_LINE
-                : tecNO_LINE;
+                ? TER {terNO_LINE}
+                : TER {tecNO_LINE};
         }
 
         // Entries have a canonical representation, determined by a
@@ -267,8 +271,8 @@ CreateOffer::checkAcceptAsset(ReadView const& view,
                 "delay: can't receive IOUs from issuer without auth.";
 
             return (flags & tapRETRY)
-                ? terNO_AUTH
-                : tecNO_AUTH;
+                ? TER {terNO_AUTH}
+                : TER {tecNO_AUTH};
         }
     }
 
@@ -282,7 +286,7 @@ CreateOffer::dry_offer (ApplyView& view, Offer const& offer)
         return true;
     auto const amount = accountFunds(view, offer.owner(),
         offer.amount().out, fhZERO_IF_FROZEN, ctx_.app.journal ("View"));
-    return (amount <= zero);
+    return (amount <= beast::zero);
 }
 
 std::pair<bool, Quality>
@@ -443,15 +447,32 @@ CreateOffer::bridged_cross (
 
             JLOG (j_.debug()) << "Bridge Result: " << transToken (cross_result);
 
-            if (dry_offer (view, offers_leg1.tip ()))
+            if (view.rules().enabled (fixTakerDryOfferRemoval))
             {
-                leg1_consumed = true;
-                have_bridge = (have_bridge && offers_leg1.step ());
+                // have_bridge can be true the next time 'round only if
+                // neither of the OfferStreams are dry.
+                leg1_consumed = dry_offer (view, offers_leg1.tip());
+                if (leg1_consumed)
+                    have_bridge &= offers_leg1.step();
+
+                leg2_consumed = dry_offer (view, offers_leg2.tip());
+                if (leg2_consumed)
+                    have_bridge &= offers_leg2.step();
             }
-            if (dry_offer (view, offers_leg2.tip ()))
+            else
             {
-                leg2_consumed = true;
-                have_bridge = (have_bridge && offers_leg2.step ());
+                // This old behavior may leave an empty offer in the book for
+                // the second leg.
+                if (dry_offer (view, offers_leg1.tip ()))
+                {
+                    leg1_consumed = true;
+                    have_bridge = (have_bridge && offers_leg1.step ());
+                }
+                if (dry_offer (view, offers_leg2.tip ()))
+                {
+                    leg2_consumed = true;
+                    have_bridge = (have_bridge && offers_leg2.step ());
+                }
             }
         }
 
@@ -650,7 +671,7 @@ CreateOffer::flowCross (
         // below the reserve) so we check this case again.
         STAmount const inStartBalance = accountFunds (
             psb, account_, takerAmount.in, fhZERO_IF_FROZEN, j_);
-        if (inStartBalance <= zero)
+        if (inStartBalance <= beast::zero)
         {
             // The account balance can't cover even part of the offer.
             JLOG (j_.debug()) <<
@@ -742,7 +763,7 @@ CreateOffer::flowCross (
             STAmount const takerInBalance = accountFunds (
                 psb, account_, takerAmount.in, fhZERO_IF_FROZEN, j_);
 
-            if (takerInBalance <= zero)
+            if (takerInBalance <= beast::zero)
             {
                 // If offer crossing exhausted the account's funds don't
                 // create the offer.
@@ -773,7 +794,7 @@ CreateOffer::flowCross (
 
                     // It's possible that the divRound will cause our subtract
                     // to go slightly negative.  So limit afterCross.in to zero.
-                    if (afterCross.in < zero)
+                    if (afterCross.in < beast::zero)
                         // We should verify that the difference *is* small, but
                         // what is a good threshold to check?
                         afterCross.in.clear();
@@ -787,8 +808,8 @@ CreateOffer::flowCross (
                     // remaining output.  This too preserves the offer
                     // Quality.
                     afterCross.out -= result.actualAmountOut;
-                    assert (afterCross.out >= zero);
-                    if (afterCross.out < zero)
+                    assert (afterCross.out >= beast::zero);
+                    if (afterCross.out < beast::zero)
                         afterCross.out.clear();
                     afterCross.in = mulRound (afterCross.out,
                         rate, takerAmount.in.issue(), true);
@@ -812,6 +833,7 @@ enum class SBoxCmp
     same,
     dustDiff,
     offerDelDiff,
+    zxcRound,
     diff
 };
 
@@ -825,6 +847,8 @@ static std::string to_string (SBoxCmp c)
         return "dust diffs";
     case SBoxCmp::offerDelDiff:
         return "offer del diffs";
+    case SBoxCmp::zxcRound:
+        return "ZXC round to zero";
     case SBoxCmp::diff:
         return "different";
     }
@@ -843,6 +867,19 @@ static SBoxCmp compareSandboxes (char const* name, ApplyContext const& ctx,
     if (diff.hasDiff())
     {
         using namespace beast::severities;
+        // There is a special case of an offer with ZXC on one side where
+        // the ZXC gets rounded to zero.  It mostly looks like dust-level
+        // differences.  It is easier to detect if we look for it before
+        // removing the dust differences.
+        if (int const side = diff.zxcRoundToZero())
+        {
+            char const* const whichSide = side > 0 ? "; Flow" : "; Taker";
+            j.stream (kWarning) << "FlowCross: " << name << " different" <<
+                whichSide << " ZXC rounded to zero.  tx: " <<
+                ctx.tx.getTransactionID();
+            return SBoxCmp::zxcRound;
+        }
+
         c = SBoxCmp::dustDiff;
         Severity s = kInfo;
         std::string diffDesc = ", but only dust.";
@@ -894,6 +931,8 @@ CreateOffer::cross (
     Sandbox& sbCancel,
     Amounts const& takerAmount)
 {
+    using beast::zero;
+
     // There are features for Flow offer crossing and for comparing results
     // between Taker and Flow offer crossing.  Turn those into bools.
     bool const useFlowCross { sb.rules().enabled (featureFlowCross) };
@@ -1048,6 +1087,8 @@ CreateOffer::preCompute()
 std::pair<TER, bool>
 CreateOffer::applyGuts (Sandbox& sb, Sandbox& sbCancel)
 {
+    using beast::zero;
+
     std::uint32_t const uTxFlags = ctx_.tx.getFlags ();
 
     bool const bPassive (uTxFlags & tfPassive);
@@ -1072,7 +1113,7 @@ CreateOffer::applyGuts (Sandbox& sb, Sandbox& sbCancel)
 
     auto viewJ = ctx_.app.journal("View");
 
-    auto result = tesSUCCESS;
+    TER result = tesSUCCESS;
 
     // Process a cancellation request that's passed along with an offer.
     if (cancelSequence)
@@ -1102,7 +1143,12 @@ CreateOffer::applyGuts (Sandbox& sb, Sandbox& sbCancel)
     {
         // If the offer has expired, the transaction has successfully
         // done nothing, so short circuit from here.
-        return{ tesSUCCESS, true };
+        //
+        // The return code change is attached to featureDepositPreauth as a
+        // convenience.  The change is not big enough to deserve a fix code.
+        TER const ter {ctx_.view().rules().enabled(
+            featureDepositPreauth) ? TER {tecEXPIRED} : TER {tesSUCCESS}};
+        return{ ter, true };
     }
 
     bool const bOpenLedger = ctx_.view().open();
@@ -1254,14 +1300,16 @@ CreateOffer::applyGuts (Sandbox& sb, Sandbox& sbCancel)
     if (bFillOrKill)
     {
         JLOG (j_.trace()) << "Fill or Kill: offer killed";
+        if (sb.rules().enabled (fix1578))
+            return { tecKILLED, false };
         return { tesSUCCESS, false };
     }
 
     // For 'immediate or cancel' offers, the amount remaining doesn't get
-    // placed - it gets cancelled and the operation succeeds.
+    // placed - it gets canceled and the operation succeeds.
     if (bImmediateOrCancel)
     {
-        JLOG (j_.trace()) << "Immediate or cancel: offer cancelled";
+        JLOG (j_.trace()) << "Immediate or cancel: offer canceled";
         return { tesSUCCESS, true };
     }
 

@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/protocol/ZXCAmount.h>
 #include <ripple/beast/unit_test.h>
 

@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/protocol/STAccount.h>
 
 namespace ripple {
@@ -61,9 +60,9 @@ STAccount::STAccount (SerialIter& sit, SField const& name)
 
 STAccount::STAccount (SField const& n, AccountID const& v)
     : STBase (n)
+    , value_(v)
     , default_ (false)
 {
-    value_.copyFrom (v);
 }
 
 std::string STAccount::getText () const

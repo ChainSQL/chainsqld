@@ -17,17 +17,16 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/Log.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/st.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/to_string.h>
 #include <ripple/beast/unit_test.h>
-#include <peersafe/protocol/STMap256.h>
 #include <test/jtx.h>
 
+#include <array>
 #include <memory>
 #include <type_traits>
 
@@ -39,9 +38,7 @@ public:
     bool parseJSONString (std::string const& json, Json::Value& to)
     {
         Json::Reader reader;
-        return reader.parse(json, to) &&
-                bool (to) &&
-                to.isObject();
+        return reader.parse(json, to) && to.isObject();
     }
 
     void testParseJSONArrayWithInvalidChildrenObjects ()
@@ -92,7 +89,7 @@ public:
             STParsedJSONObject parsed ("test", jsonObject);
             BEAST_EXPECT(parsed.object);
             std::string const& serialized (
-                to_string (parsed.object->getJson(0)));
+                to_string (parsed.object->getJson(JsonOptions::none)));
             BEAST_EXPECT(serialized == json);
         }
         else
@@ -117,7 +114,7 @@ public:
                 if (BEAST_EXPECT(parsed.object))
                 {
                     std::string const& serialized(
-                        to_string(parsed.object->getJson(0)));
+                        to_string(parsed.object->getJson(JsonOptions::none)));
                     BEAST_EXPECT(serialized == goodJson);
                 }
             }
@@ -141,7 +138,7 @@ public:
                 if (BEAST_EXPECT(parsed.object))
                 {
                     std::string const& serialized(
-                        to_string(parsed.object->getJson(0)));
+                        to_string(parsed.object->getJson(JsonOptions::none)));
                     BEAST_EXPECT(serialized == expectedJson);
                 }
             }
@@ -238,19 +235,62 @@ public:
         testcase ("serialization");
 
         unexpected (sfGeneric.isUseful (), "sfGeneric must not be useful");
+        {
+            // Try to put sfGeneric in an SOTemplate.
+            except<std::runtime_error>( [&]()
+                {
+                    SOTemplate elements {{ sfGeneric, soeREQUIRED }};
+                });
+        }
 
-        SField const& sfTestVL = SField::getField (STI_VL, 255);
-        SField const& sfTestH256 = SField::getField (STI_HASH256, 255);
-        SField const& sfTestU32 = SField::getField (STI_UINT32, 255);
-        SField const& sfTestV256 = SField::getField(STI_VECTOR256, 255);
-        SField const& sfTestObject = SField::getField (STI_OBJECT, 255);
+        unexpected (sfInvalid.isUseful (), "sfInvalid must not be useful");
+        {
+            // Test return of sfInvalid.
+            auto testInvalid = [this] (SerializedTypeID tid, int fv)
+            {
+                SField const& shouldBeInvalid {SField::getField (tid, fv)};
+                BEAST_EXPECT (shouldBeInvalid == sfInvalid);
+            };
+            testInvalid (STI_VL, 255);
+            testInvalid (STI_HASH256, 255);
+            testInvalid (STI_UINT32, 255);
+            testInvalid (STI_VECTOR256, 255);
+            testInvalid (STI_OBJECT, 255);
+        }
+        {
+            // Try to put sfInvalid in an SOTemplate.
+            except<std::runtime_error>( [&]()
+                {
+                    SOTemplate elements {{ sfInvalid, soeREQUIRED }};
+                });
+        }
+        {
+            // Try to put the same SField into an SOTemplate twice.
+            except<std::runtime_error>( [&]()
+                {
+                    SOTemplate elements {
+                        { sfAccount, soeREQUIRED },
+                        { sfAccount, soeREQUIRED },
+                    };
+                });
+        }
 
-        SOTemplate elements;
-        elements.push_back (SOElement (sfFlags, SOE_REQUIRED));
-        elements.push_back (SOElement (sfTestVL, SOE_REQUIRED));
-        elements.push_back (SOElement (sfTestH256, SOE_OPTIONAL));
-        elements.push_back (SOElement (sfTestU32, SOE_REQUIRED));
-        elements.push_back (SOElement (sfTestV256, SOE_OPTIONAL));
+        // Put a variety of SFields of different types in an SOTemplate.
+        SField const& sfTestVL = sfMasterSignature;
+        SField const& sfTestH256 = sfCheckID;
+        SField const& sfTestU32 = sfSettleDelay;
+        SField const& sfTestV256 = sfAmendments;
+        SField const& sfTestObject = sfMajority;
+
+
+        SOTemplate const elements
+            {
+                { sfFlags,    soeREQUIRED },
+                { sfTestVL,   soeREQUIRED },
+                { sfTestH256, soeOPTIONAL },
+                { sfTestU32,  soeREQUIRED },
+                { sfTestV256, soeOPTIONAL },
+            };
 
         STObject object1 (elements, sfTestObject);
         STObject object2 (object1);
@@ -271,8 +311,8 @@ public:
         if (object1.getSerializer () == object2.getSerializer ())
         {
             log <<
-                "O1: " << object1.getJson (0) << '\n' <<
-                "O2: " << object2.getJson (0) << std::endl;
+                "O1: " << object1.getJson (JsonOptions::none) << '\n' <<
+                "O2: " << object2.getJson (JsonOptions::none) << std::endl;
             fail ("STObject error 4");
         }
         else
@@ -367,7 +407,7 @@ public:
 
             BEAST_EXPECT(st[sf1] == 1);
             BEAST_EXPECT(st[sf2] == 2);
-            except<missing_field_error>([&]()
+            except<STObject::FieldErr>([&]()
                 { st[sf3]; });
             BEAST_EXPECT(*st[~sf1] == 1);
             BEAST_EXPECT(*st[~sf2] == 2);
@@ -380,17 +420,14 @@ public:
         }
 
         // read templated object
-
-        auto const sot = [&]()
-        {
-            SOTemplate sot;
-            sot.push_back(SOElement(sf1, SOE_REQUIRED));
-            sot.push_back(SOElement(sf2, SOE_OPTIONAL));
-            sot.push_back(SOElement(sf3, SOE_DEFAULT));
-            sot.push_back(SOElement(sf4, SOE_OPTIONAL));
-            sot.push_back(SOElement(sf5, SOE_DEFAULT));
-            return sot;
-        }();
+        SOTemplate const sot
+            {
+                { sf1, soeREQUIRED },
+                { sf2, soeOPTIONAL },
+                { sf3, soeDEFAULT },
+                { sf4, soeOPTIONAL },
+                { sf5, soeDEFAULT },
+            };
 
         {
             auto const st = [&]()
@@ -604,14 +641,13 @@ public:
             auto const& sf1 = sfIndexes;
             auto const& sf2 = sfHashes;
             auto const& sf3 = sfAmendments;
-            auto const sot = [&]()
-            {
-                SOTemplate sot;
-                sot.push_back(SOElement(sf1, SOE_REQUIRED));
-                sot.push_back(SOElement(sf2, SOE_OPTIONAL));
-                sot.push_back(SOElement(sf3, SOE_DEFAULT));
-                return sot;
-            }();
+            SOTemplate const sot
+                {
+                    { sf1, soeREQUIRED },
+                    { sf2, soeOPTIONAL },
+                    { sf3, soeDEFAULT  },
+                };
+
             STObject st(sot, sfGeneric);
             auto const& cst(st);
             BEAST_EXPECT(cst[sf1].size() == 0);
@@ -635,32 +671,49 @@ public:
         }
     }
 
-	void testSTMap256() {
-		STMap256 map256;
-		map256[beast::zero] = uint256(1);
-		map256[uint256(1)] = uint256(2);
-		Json::Value json = map256.getJson(0);
-		std::cout<< json.toStyledString()<<std::endl;
-		
-		map256.insert(uint256(3), uint256(4));
-		map256.erase(uint256(1));
-		std::cout << map256.getJson(0).toStyledString() << std::endl;
+    void
+    testMalformed()
+    {
+        testcase ("Malformed serialized forms");
 
-		std::cout << map256.at(uint256(3)) << std::endl;
-	}
+        try
+        {
+            std::array<std::uint8_t, 7> const payload {
+                { 0xe9, 0x12, 0xab, 0xcd, 0x12, 0xfe, 0xdc }};
+            SerialIter sit{makeSlice(payload)};
+            auto obj = std::make_shared<STArray>(sit, sfMetadata);
+            BEAST_EXPECT(!obj);
+        }
+        catch (std::exception const& e)
+        {
+            BEAST_EXPECT(strcmp(e.what(), "Duplicate field detected") == 0);
+        }
+
+        try
+        {
+            std::array<std::uint8_t, 3> const payload {{ 0xe2, 0xe1, 0xe2 }};
+            SerialIter sit{makeSlice(payload)};
+            auto obj = std::make_shared<STObject>(sit, sfMetadata);
+               BEAST_EXPECT(!obj);
+        }
+        catch (std::exception const& e)
+        {
+            BEAST_EXPECT(strcmp(e.what(), "Duplicate field detected") == 0);
+        }
+    }
 
     void
-    run()
+    run() override
     {
         // Instantiate a jtx::Env so debugLog writes are exercised.
         test::jtx::Env env (*this);
 
-		testSTMap256();
         testFields();
         testSerialization();
         testParseJSONArray();
         testParseJSONArrayWithInvalidChildrenObjects();
         testParseJSONEdgeCases();
+        testMalformed();
     }
 };
 

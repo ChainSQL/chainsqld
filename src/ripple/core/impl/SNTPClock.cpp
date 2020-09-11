@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/core/impl/SNTPClock.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/random.h>
@@ -32,8 +31,6 @@
 #include <thread>
 
 namespace ripple {
-
-// #define SNTP_DEBUG
 
 static uint8_t SNTPQueryData[48] =
 { 0x1B, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -83,7 +80,7 @@ private:
         sys_seconds sent;
         std::uint32_t nonce;
 
-        Query (sys_seconds j = sys_seconds::max())
+        explicit Query (sys_seconds j = sys_seconds::max())
             : replied (false)
             , sent (j)
         {
@@ -124,7 +121,7 @@ public:
     {
     }
 
-    ~SNTPClientImp ()
+    ~SNTPClientImp () override
     {
         if (thread_.joinable())
         {
@@ -160,6 +157,7 @@ public:
 
         using namespace boost::asio;
         socket_.open (ip::udp::v4 ());
+        socket_.bind (ep_);
         socket_.async_receive_from (buffer (buf_, 256),
             ep_, std::bind(
                 &SNTPClientImp::onRead, this,
@@ -170,9 +168,6 @@ public:
             &SNTPClientImp::onTimer, this,
                 std::placeholders::_1));
 
-        // VFALCO Is it correct to launch the thread
-        //        here after queuing I/O?
-        //
         thread_ = std::thread(&SNTPClientImp::doRun, this);
     }
 

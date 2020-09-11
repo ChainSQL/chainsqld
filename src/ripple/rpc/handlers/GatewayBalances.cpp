@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/paths/RippleState.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/protocol/AccountID.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
@@ -93,7 +92,7 @@ Json::Value doGatewayBalances (RPC::Context& context)
             if (j.isString())
             {
                 auto const pk = parseBase58<PublicKey>(
-                    TokenType::TOKEN_ACCOUNT_PUBLIC,
+                    TokenType::AccountPublic,
                     j.asString ());
                 if (pk)
                 {
@@ -116,7 +115,8 @@ Json::Value doGatewayBalances (RPC::Context& context)
         Json::Value const& hw = params[jss::hotwallet];
         bool valid = true;
 
-        if (hw.isArray())
+        // null is treated as a valid 0-sized array of hotwallet
+        if (hw.isArrayOrNull())
         {
             for (unsigned i = 0; i < hw.size(); ++i)
                 valid &= addHotWallet (hw[i]);
@@ -206,7 +206,7 @@ Json::Value doGatewayBalances (RPC::Context& context)
                 {
                     // normal negative balance, obligation to customer
                     auto& bal = sums[rs->getBalance().getCurrency()];
-                    if (bal == zero)
+                    if (bal == beast::zero)
                     {
                         // This is needed to set the currency code correctly
                         bal = -rs->getBalance();

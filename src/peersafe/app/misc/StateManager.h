@@ -12,7 +12,7 @@ class StateManager
 {
 	struct State
 	{
-		uint32 sequence;
+		uint32_t sequence;
 	};
 public:
 	StateManager(Application& app, beast::Journal j)
@@ -21,7 +21,7 @@ public:
 	{
 	}
 
-	uint32 getAccountSeq(AccountID const& id);
+	uint32_t getAccountSeq(AccountID const& id);
 	void resetAccountSeq(AccountID const& id);
 
 	void incrementSeq(AccountID const& id);

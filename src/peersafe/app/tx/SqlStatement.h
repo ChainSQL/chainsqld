@@ -40,10 +40,10 @@ public:
     }
 
     static
-    TER
+	NotTEC
     preflightHandler(const STTx & tx, Application& app);
     static
-    TER
+	NotTEC
     preflight (PreflightContext const& ctx);
 
     static

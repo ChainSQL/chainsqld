@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/core/Config.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/overlay/Overlay.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/Handler.h>
 #include <ripple/basics/make_lock.h>
@@ -37,7 +36,6 @@ namespace ripple {
 // XXX Might allow domain for manual connections.
 Json::Value doConnect (RPC::Context& context)
 {
-    auto lock = make_lock(context.app.getMasterMutex());
     if (context.app.config().standalone())
         return "cannot connect in standalone mode";
 

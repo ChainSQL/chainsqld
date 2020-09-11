@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/protocol/STBase.h>
@@ -63,7 +62,7 @@ STArray::STArray (SField const& f, int n)
     v_.reserve(n);
 }
 
-STArray::STArray (SerialIter& sit, SField const& f)
+STArray::STArray (SerialIter& sit, SField const& f, int depth)
     : STBase(f)
 {
     while (!sit.empty ())
@@ -97,13 +96,11 @@ STArray::STArray (SerialIter& sit, SField const& f)
             Throw<std::runtime_error> ("Non-object in array");
         }*/
 
-        v_.emplace_back(fn);
-        v_.back().set (sit, 1);
-        
-        if (v_.back().setTypeFromSField (fn) == STObject::typeSetFail)
-        {
-            Throw<std::runtime_error> ("Malformed object in array");
-        }
+
+        v_.emplace_back(sit, fn, depth+1);
+
+        v_.back().applyTemplateFromSField (fn);  // May throw
+
     }
 }
 
@@ -143,19 +140,15 @@ std::string STArray::getText () const
     return r;
 }
 
-Json::Value STArray::getJson (int p) const
+Json::Value STArray::getJson (JsonOptions p) const
 {
     Json::Value v = Json::arrayValue;
-    int index = 1;
     for (auto const& object: v_)
     {
         if (object.getSType () != STI_NOTPRESENT)
         {
             Json::Value& inner = v.append (Json::objectValue);
-            auto const& fname = object.getFName ();
-            auto k = fname.hasName () ? fname.fieldName : std::to_string(index);
-            inner[k] = object.getJson (p);
-            index++;
+            inner [object.getFName().getJsonName()] = object.getJson (p);
         }
     }
     return v;

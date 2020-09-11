@@ -17,7 +17,7 @@
  */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 #include <ripple/core/Config.h>
 #include <peersafe/basics/characterUtilities.h>
 #ifndef _WIN32

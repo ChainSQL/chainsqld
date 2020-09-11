@@ -17,13 +17,14 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/shamap/SHAMap.h>
 #include <ripple/shamap/SHAMapItem.h>
-#include <test/shamap/common.h>
 #include <ripple/basics/random.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/beast/unit_test.h>
+#include <ripple/beast/xor_shift_engine.h>
+#include <test/shamap/common.h>
+#include <test/unit_test/SuiteJournal.h>
 
 namespace ripple {
 namespace tests {
@@ -31,12 +32,14 @@ namespace tests {
 class sync_test : public beast::unit_test::suite
 {
 public:
-    static std::shared_ptr<SHAMapItem> makeRandomAS ()
+    beast::xor_shift_engine eng_;
+
+    std::shared_ptr<SHAMapItem> makeRandomAS ()
     {
         Serializer s;
 
         for (int d = 0; d < 3; ++d)
-            s.add32 (rand_int<std::uint32_t>());
+            s.add32 (rand_int<std::uint32_t>(eng_));
 
         return std::make_shared<SHAMapItem>(
             s.getSHA512Half(), s.peekData ());
@@ -82,19 +85,21 @@ public:
         return true;
     }
 
-    void run()
+    void run() override
     {
+        using namespace beast::severities;
+        test::SuiteJournal journal ("SHAMapSync_test", *this);
+
         log << "Run, version 1\n" << std::endl;
-        run(SHAMap::version{1});
+        run(SHAMap::version{1}, journal);
 
         log << "Run, version 2\n" << std::endl;
-        run(SHAMap::version{2});
+        run(SHAMap::version{2}, journal);
     }
 
-    void run(SHAMap::version v)
+    void run(SHAMap::version v, beast::Journal const& journal)
     {
-        beast::Journal const j; // debug journal
-        TestFamily f(j), f2(j);
+        TestFamily f(journal), f2(journal);
         SHAMap source (SHAMapType::FREE, f, v);
         SHAMap destination (SHAMapType::FREE, f2, v);
 
@@ -127,9 +132,6 @@ public:
         std::vector< Blob > gotNodes;
         std::vector<uint256> hashes;
 
-        std::vector<SHAMapNodeID>::iterator nodeIDIterator;
-        std::vector< Blob >::iterator rawNodeIterator;
-
         destination.setSynching ();
 
         {
@@ -140,8 +142,8 @@ public:
                 SHAMapNodeID (),
                 gotNodeIDs_a,
                 gotNodes_a,
-                rand_bool(),
-                rand_int(2)));
+                rand_bool(eng_),
+                rand_int(eng_, 2)));
 
             unexpected (gotNodes_a.size () < 1, "NodeSize");
 
@@ -168,24 +170,32 @@ public:
 
             for (auto& it : nodesMissing)
             {
-                BEAST_EXPECT(source.getNodeFat (
-                    it.first,
-                    gotNodeIDs_b,
-                    gotNodes_b,
-                    rand_bool(),
-                    rand_int(2)));
+                // Don't use BEAST_EXPECT here b/c it will be called a non-deterministic number of times
+                // and the number of tests run should be deterministic
+                if (!source.getNodeFat(
+                        it.first,
+                        gotNodeIDs_b,
+                        gotNodes_b,
+                        rand_bool(eng_),
+                        rand_int(eng_, 2)))
+                    fail("", __FILE__, __LINE__);
             }
 
-            BEAST_EXPECT(gotNodeIDs_b.size () == gotNodes_b.size ());
-            BEAST_EXPECT(!gotNodeIDs_b.empty ());
+            // Don't use BEAST_EXPECT here b/c it will be called a non-deterministic number of times
+            // and the number of tests run should be deterministic
+            if (gotNodeIDs_b.size() != gotNodes_b.size() ||
+                gotNodeIDs_b.empty())
+                fail("", __FILE__, __LINE__);
 
             for (std::size_t i = 0; i < gotNodeIDs_b.size(); ++i)
             {
-                BEAST_EXPECT(
-                    destination.addKnownNode (
-                        gotNodeIDs_b[i],
-                        makeSlice(gotNodes_b[i]),
-                        nullptr).isUseful ());
+                // Don't use BEAST_EXPECT here b/c it will be called a non-deterministic number of times
+                // and the number of tests run should be deterministic
+                if (!destination
+                         .addKnownNode(
+                             gotNodeIDs_b[i], makeSlice(gotNodes_b[i]), nullptr)
+                         .isUseful())
+                    fail("", __FILE__, __LINE__);
             }
         }
         while (true);

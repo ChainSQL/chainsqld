@@ -17,12 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
+
 
 // This has to be included early to prevent an obscure MSVC compile error
 #include <boost/asio/deadline_timer.hpp>
 
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/rpc/RPCHandler.h>
 #include <ripple/rpc/handlers/Handlers.h>
 
@@ -47,24 +47,24 @@
 #include <ripple/rpc/handlers/UnlList.cpp>
 #include <ripple/rpc/handlers/Unsubscribe.cpp>
 #include <ripple/rpc/handlers/ValidationCreate.cpp>
-#include <ripple/rpc/handlers/ValidationSeed.cpp>
 #include <ripple/rpc/handlers/Validators.cpp>
 #include <ripple/rpc/handlers/ValidatorListSites.cpp>
 #include <ripple/rpc/handlers/WalletPropose.cpp>
-#include <ripple/rpc/handlers/WalletSeed.cpp>
-#include <ripple/rpc/handlers/NodeSize.cpp>
-#include <ripple/rpc/handlers/TestLeak.cpp>
 
+#include <ripple/rpc/impl/DeliveredAmount.cpp>
 #include <ripple/rpc/impl/Handler.cpp>
 #include <ripple/rpc/impl/LegacyPathFind.cpp>
 #include <ripple/rpc/impl/Role.cpp>
 #include <ripple/rpc/impl/RPCHandler.cpp>
 #include <ripple/rpc/impl/RPCHelpers.cpp>
 #include <ripple/rpc/impl/ServerHandlerImp.cpp>
+#include <ripple/rpc/impl/ShardArchiveHandler.cpp>
 #include <ripple/rpc/impl/Status.cpp>
 #include <ripple/rpc/impl/TransactionSign.cpp>
 
-#include <ripple/rpc/handlers/AccountTables.cpp>
+#include <ripple/rpc/handlers/NodeSize.cpp>
+#include <ripple/rpc/handlers/TestLeak.cpp>
+#include <peersafe/rpc/handlers/AccountTables.cpp>
 #include <peersafe/rpc/handlers/TableHandler.cpp>
 #include <peersafe/rpc/handlers/TableDump.cpp>
 #include <peersafe/rpc/handlers/TableAudit.cpp>
@@ -79,4 +79,3 @@
 #include <peersafe/rpc/impl/TxTransactionPrepare.cpp>
 #include <peersafe/rpc/handlers/SmartContractHandler.cpp>
 #include <peersafe/rpc/handlers/LedgerTxsHandler.cpp>
-#include <peersafe/rpc/handlers/GenCsr.cpp>

@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/paths/AccountCurrencies.h>
 #include <ripple/app/paths/RippleCalc.h>
 #include <ripple/app/paths/PathRequest.h>
@@ -169,7 +168,7 @@ bool PathRequest::isValid (std::shared_ptr<RippleLineCache> const& crCache)
     if (! raSrcAccount || ! raDstAccount)
         return false;
 
-    if (! convert_all_ && (saSendMax || saDstAmount <= zero))
+    if (! convert_all_ && (saSendMax || saDstAmount <= beast::zero))
     {
         // If send max specified, dst amt must be -1.
         jvStatus = rpcError(rpcDST_AMT_MALFORMED);
@@ -317,7 +316,7 @@ int PathRequest::parseJson (Json::Value const& jvParams)
     if ((saDstAmount.getCurrency ().isZero () &&
             saDstAmount.getIssuer ().isNonZero ()) ||
         (saDstAmount.getCurrency () == badCurrency ()) ||
-        (! convert_all_ && saDstAmount <= zero))
+        (! convert_all_ && saDstAmount <= beast::zero))
     {
         jvStatus = rpcError (rpcDST_AMT_MALFORMED);
         return PFR_PJ_INVALID;
@@ -338,7 +337,7 @@ int PathRequest::parseJson (Json::Value const& jvParams)
             (saSendMax->getCurrency().isZero() &&
                 saSendMax->getIssuer().isNonZero()) ||
             (saSendMax->getCurrency() == badCurrency()) ||
-            (*saSendMax <= zero &&
+            (*saSendMax <= beast::zero &&
                 *saSendMax != STAmount(saSendMax->issue(), 1u, 0, true)))
         {
             jvStatus = rpcError(rpcSENDMAX_MALFORMED);
@@ -364,6 +363,7 @@ int PathRequest::parseJson (Json::Value const& jvParams)
             Currency srcCurrencyID;
             if (! c.isObject() ||
                 ! c.isMember(jss::currency) ||
+                ! c[jss::currency].isString() ||
                 ! to_currency(srcCurrencyID, c[jss::currency].asString()))
             {
                 jvStatus = rpcError (rpcSRC_CUR_MALFORMED);
@@ -585,11 +585,13 @@ PathRequest::findPaths (std::shared_ptr<RippleLineCache> const& cache,
         {
             Json::Value jvEntry (Json::objectValue);
             rc.actualAmountIn.setIssuer (sourceAccount);
-            jvEntry[jss::source_amount] = rc.actualAmountIn.getJson (0);
-            jvEntry[jss::paths_computed] = ps.getJson(0);
+            jvEntry[jss::source_amount] =
+                rc.actualAmountIn.getJson (JsonOptions::none);
+            jvEntry[jss::paths_computed] = ps.getJson(JsonOptions::none);
 
             if (convert_all_)
-                jvEntry[jss::destination_amount] = rc.actualAmountOut.getJson(0);
+                jvEntry[jss::destination_amount] =
+                    rc.actualAmountOut.getJson(JsonOptions::none);
 
             if (hasCompletion ())
             {
@@ -643,7 +645,8 @@ Json::Value PathRequest::doUpdate(
 
     newStatus[jss::source_account] = app_.accountIDCache().toBase58(*raSrcAccount);
     newStatus[jss::destination_account] = app_.accountIDCache().toBase58(*raDstAccount);
-    newStatus[jss::destination_amount] = saDstAmount.getJson (0);
+    newStatus[jss::destination_amount] =
+        saDstAmount.getJson (JsonOptions::none);
     newStatus[jss::full_reply] = ! fast;
 
     if (jvId)

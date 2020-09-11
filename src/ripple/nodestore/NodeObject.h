@@ -20,6 +20,7 @@
 #ifndef RIPPLE_NODESTORE_NODEOBJECT_H_INCLUDED
 #define RIPPLE_NODESTORE_NODEOBJECT_H_INCLUDED
 
+#include <ripple/basics/Blob.h>
 #include <ripple/basics/CountedObject.h>
 #include <ripple/protocol/Protocol.h>
 
@@ -29,16 +30,16 @@ namespace ripple {
 
 /** The types of node objects. */
 enum NodeObjectType
+    : std::uint32_t
 {
     hotUNKNOWN = 0,
     hotLEDGER = 1,
-    //hotTRANSACTION = 2        // Not used
     hotACCOUNT_NODE = 3,
     hotTRANSACTION_NODE = 4
 };
 
 /** A simple object that the Ledger uses to store entries.
-    NodeObjects are comprised of a type, a hash, a ledger index and a blob.
+    NodeObjects are comprised of a type, a hash, and a blob.
     They can be uniquely identified by the hash, which is a half-SHA512 of
     the blob. The blob is a variable length block of serialized data. The
     type identifies what the blob contains.
@@ -51,22 +52,16 @@ class NodeObject : public CountedObject <NodeObject>
 public:
     static char const* getCountedObjectName () { return "NodeObject"; }
 
-    enum
-    {
-        /** Size of the fixed keys, in bytes.
-
-            We use a 256-bit hash for the keys.
-
-            @see NodeObject
-        */
-        keyBytes = 32,
-    };
+    static constexpr std::size_t keyBytes = 32;
 
 private:
     // This hack is used to make the constructor effectively private
     // except for when we use it in the call to make_shared.
     // There's no portable way to make make_shared<> a friend work.
-    struct PrivateAccess { };
+    struct PrivateAccess
+    {
+        explicit PrivateAccess() = default;
+    };
 public:
     // This constructor is private, use createObject instead.
     NodeObject (NodeObjectType type,

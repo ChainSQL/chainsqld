@@ -265,7 +265,7 @@ public:
     void ReSetContexAfterDrop();
 
 protected:
-    CheckConditionState CondFilter(uint32 time, uint32 ledgerIndex, uint256 txid);
+    CheckConditionState CondFilter(uint32_t time, uint32_t ledgerIndex, uint256 txid);
     bool isJumpThisTx(uint256 txid);
     std::string GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedgerHash, LedgerIndex iCurLedger, std::string sCurLedgerHash, bool bStop, std::string sMsg);
 
@@ -282,7 +282,7 @@ private:
 	std::pair<bool, std::string> DealTranCommonTx(const STTx &tx);
 	std::pair<bool, std::string> DealWithTx(const std::vector<STTx>& vecTxs);
 
-	void InsertPressData(const STTx& tx,uint32 ledgerSeq,uint32 ledgerTime);
+	void InsertPressData(const STTx& tx, uint32_t ledgerSeq,uint32_t ledgerTime);
 	virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);
 public:
     LedgerIndex                                                  u32SeqLedger_;  //seq of ledger, last syned ledger seq 

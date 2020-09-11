@@ -11,7 +11,7 @@
 #include <beast/config.hpp>
 #include <beast/core/type_traits.hpp>
 #include <boost/asio/async_result.hpp>
-#include <boost/asio/handler_type.hpp>
+//#include <boost/asio/handler_type.hpp>
 #include <type_traits>
 #include <utility>
 

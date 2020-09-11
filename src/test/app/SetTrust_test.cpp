@@ -17,8 +17,8 @@
 */
 //==============================================================================
 #include <test/jtx.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/JsonFields.h>
 
 namespace ripple {
 
@@ -104,8 +104,8 @@ public:
     {
         Json::Value jv;
         jv[jss::Account] = a.human();
-        jv[jss::LimitAmount] = amt.getJson(0);
-        jv[jss::TransactionType] = "TrustSet";
+        jv[jss::LimitAmount] = amt.getJson(JsonOptions::none);
+        jv[jss::TransactionType] = jss::TrustSet;
         jv[jss::Flags] = 0;
         return jv;
     }
@@ -204,7 +204,7 @@ public:
 
     }
 
-    void run()
+    void run() override
     {
         testFreeTrustlines(true, false);
         testFreeTrustlines(false, true);

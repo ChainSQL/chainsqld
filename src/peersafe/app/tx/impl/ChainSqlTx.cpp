@@ -32,7 +32,7 @@ namespace ripple {
 
 	}
 
-	TER ChainSqlTx::preflight(PreflightContext const& ctx)
+	NotTEC ChainSqlTx::preflight(PreflightContext const& ctx)
 	{
 		const STTx & tx = ctx.tx;
 		Application& app = ctx.app;

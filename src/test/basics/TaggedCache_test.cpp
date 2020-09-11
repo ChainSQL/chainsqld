@@ -17,11 +17,11 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/basics/TaggedCache.h>
 #include <ripple/beast/unit_test.h>
 #include <ripple/beast/clock/manual_clock.h>
+#include <test/unit_test/SuiteJournal.h>
 
 namespace ripple {
 
@@ -38,9 +38,11 @@ original object.
 class TaggedCache_test : public beast::unit_test::suite
 {
 public:
-    void run ()
+    void run () override
     {
-        beast::Journal const j;
+        using namespace std::chrono_literals;
+        using namespace beast::severities;
+        test::SuiteJournal journal ("TaggedCache_test", *this);
 
         TestStopwatch clock;
         clock.set (0);
@@ -49,7 +51,7 @@ public:
         using Value = std::string;
         using Cache = TaggedCache <Key, Value>;
 
-        Cache c ("test", 1, 1, clock, j);
+        Cache c ("test", 1, 1s, clock, journal);
 
         // Insert an item, retrieve it, and age it so it gets purged.
         {

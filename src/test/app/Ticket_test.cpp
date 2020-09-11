@@ -17,10 +17,9 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx.h>
-#include <ripple/protocol/JsonFields.h>
 #include <ripple/protocol/Feature.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 
@@ -52,42 +51,36 @@ class Ticket_test : public beast::unit_test::suite
         bool expiration = false)
     {
         using namespace std::string_literals;
-        auto const& tx = env.tx ()->getJson (0);
-        bool is_cancel = tx[jss::TransactionType] == "TicketCancel";
+        auto const& tx = env.tx ()->getJson (JsonOptions::none);
+        bool is_cancel = tx[jss::TransactionType] == jss::TicketCancel;
 
-        auto const& jvm = env.meta ()->getJson (0);
+        auto const& jvm = env.meta ()->getJson (JsonOptions::none);
         std::array<Json::Value, 4> retval;
 
         // these are the affected nodes that we expect for
         // a few different scenarios.
         // tuple is index, field name, and label (LedgerEntryType)
         std::vector<
-            std::tuple<std::size_t, std::string, std::string>
+            std::tuple<std::size_t, std::string, Json::StaticString>
         > expected_nodes;
 
         if (is_cancel && other_target)
         {
             expected_nodes = {
-                std::make_tuple(0, sfModifiedNode.fieldName, "AccountRoot"s),
-                std::make_tuple(
-                    expiration ? 2: 1, sfModifiedNode.fieldName, "AccountRoot"s),
-                std::make_tuple(
-                    expiration ? 1: 2, sfDeletedNode.fieldName, "Ticket"s),
-                std::make_tuple(3, sfDeletedNode.fieldName, "DirectoryNode"s)
+                {0, sfModifiedNode.fieldName, jss::AccountRoot},
+                {expiration ? 2: 1, sfModifiedNode.fieldName, jss::AccountRoot},
+                {expiration ? 1: 2, sfDeletedNode.fieldName, jss::Ticket},
+                {3, sfDeletedNode.fieldName, jss::DirectoryNode}
             };
         }
         else
         {
             expected_nodes = {
-                std::make_tuple(0, sfModifiedNode.fieldName, "AccountRoot"s),
-                std::make_tuple(1,
-                    is_cancel ?
-                        sfDeletedNode.fieldName : sfCreatedNode.fieldName,
-                    "Ticket"s),
-                std::make_tuple(2,
-                    is_cancel ?
-                        sfDeletedNode.fieldName : sfCreatedNode.fieldName,
-                 "DirectoryNode"s)
+                {0, sfModifiedNode.fieldName, jss::AccountRoot},
+                {1, is_cancel ? sfDeletedNode.fieldName :
+                    sfCreatedNode.fieldName, jss::Ticket},
+                {2, is_cancel ? sfDeletedNode.fieldName :
+                    sfCreatedNode.fieldName, jss::DirectoryNode}
             };
         }
 
@@ -115,7 +108,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Feature Not Enabled");
 
         using namespace test::jtx;
-        Env env {*this, no_features};
+        Env env {*this, FeatureBitset{}};
 
         env (ticket::create (env.master), ter(temDISABLED));
         env (ticket::cancel (env.master, idOne), ter (temDISABLED));
@@ -126,7 +119,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Cancel Nonexistent");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
         env (ticket::cancel (env.master, idOne), ter (tecNO_ENTRY));
     }
 
@@ -135,7 +128,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create/Cancel Ticket with Bad Fee, Fail Preflight");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
 
         env (ticket::create (env.master), fee (ZXC (-1)), ter (temBAD_FEE));
         env (ticket::cancel (env.master, idOne), fee (ZXC (-1)), ter (temBAD_FEE));
@@ -146,7 +139,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Tickets with Nonexistent Accounts");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
         Account alice {"alice"};
         env.memoize (alice);
 
@@ -162,7 +155,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Tickets with Same Account and Target");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
 
         env (ticket::create (env.master, env.master));
         auto cr = checkTicketMeta (env);
@@ -183,7 +176,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Ticket and Then Cancel by Creator");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
 
         // create and verify
         env (ticket::create (env.master));
@@ -215,7 +208,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Ticket Insufficient Reserve");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
         Account alice {"alice"};
 
         env.fund (env.current ()->fees ().accountReserve (0), alice);
@@ -229,7 +222,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Ticket and Then Cancel by Target");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
         Account alice {"alice"};
 
         env.fund (ZXC (10000), alice);
@@ -242,7 +235,7 @@ class Ticket_test : public beast::unit_test::suite
         auto const& jticket = cr[1];
         BEAST_EXPECT(
             jacct[sfFinalFields.fieldName][sfOwnerCount.fieldName] == 1);
-        BEAST_EXPECT(jticket[sfLedgerEntryType.fieldName] == "Ticket");
+        BEAST_EXPECT(jticket[sfLedgerEntryType.fieldName] == jss::Ticket);
         BEAST_EXPECT(jticket[sfLedgerIndex.fieldName] ==
             "C231BA31A0E13A4D524A75F990CE0D6890B800FF1AE75E51A2D33559547AC1A2");
         BEAST_EXPECT(jticket[sfNewFields.fieldName][jss::Account] ==
@@ -275,9 +268,10 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Ticket with Future Expiration");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
 
         // create and verify
+        using namespace std::chrono_literals;
         uint32_t expire =
             (env.timeKeeper ().closeTime () + 60s)
             .time_since_epoch ().count ();
@@ -300,7 +294,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Ticket with Zero Expiration");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
 
         // create and verify
         env (ticket::create (env.master, 0u), ter (temBAD_EXPIRATION));
@@ -311,7 +305,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Ticket with Past Expiration");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
 
         env.timeKeeper ().adjustCloseTime (days {2});
         env.close ();
@@ -321,7 +315,7 @@ class Ticket_test : public beast::unit_test::suite
         env (ticket::create (env.master, expire));
         // in the case of past expiration, we only get
         // one meta node entry returned
-        auto const& jvm = env.meta ()->getJson (0);
+        auto const& jvm = env.meta ()->getJson (JsonOptions::none);
         BEAST_EXPECT(jvm.isMember(sfAffectedNodes.fieldName));
         BEAST_EXPECT(jvm[sfAffectedNodes.fieldName].isArray());
         BEAST_EXPECT(jvm[sfAffectedNodes.fieldName].size() == 1);
@@ -330,7 +324,7 @@ class Ticket_test : public beast::unit_test::suite
         auto const& jacct =
             jvm[sfAffectedNodes.fieldName][0u][sfModifiedNode.fieldName];
         BEAST_EXPECT(
-            jacct[sfLedgerEntryType.fieldName] == "AccountRoot");
+            jacct[sfLedgerEntryType.fieldName] == jss::AccountRoot);
         BEAST_EXPECT(jacct[sfFinalFields.fieldName][jss::Account] ==
             env.master.human());
     }
@@ -340,7 +334,7 @@ class Ticket_test : public beast::unit_test::suite
         testcase ("Create Ticket and Allow to Expire");
 
         using namespace test::jtx;
-        Env env {*this, with_features (featureTickets)};
+        Env env {*this, supported_amendments().set(featureTickets)};
 
         // create and verify
         uint32_t expire =
@@ -380,7 +374,7 @@ class Ticket_test : public beast::unit_test::suite
     }
 
 public:
-    void run ()
+    void run () override
     {
         testTicketNotEnabled ();
         testTicketCancelNonexistent ();

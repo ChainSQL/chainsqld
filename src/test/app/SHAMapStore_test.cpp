@@ -17,13 +17,12 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/SHAMapStore.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/SociDB.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <test/jtx.h>
 #include <test/jtx/envconfig.h>
 
@@ -624,7 +623,7 @@ public:
         lastRotated = ledgerSeq - 1;
     }
 
-    void run()
+    void run() override
     {
         testClear();
         testAutomatic();

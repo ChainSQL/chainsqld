@@ -17,8 +17,8 @@
 */
 //==============================================================================
 
-#include <ripple/protocol/JsonFields.h>
 #include <ripple/protocol/Feature.h>
+#include <ripple/protocol/jss.h>
 #include <test/jtx.h>
 
 namespace ripple {
@@ -30,7 +30,7 @@ public:
     void testMonitorRoot()
     {
         using namespace test::jtx;
-        Env env {*this, no_features};
+        Env env {*this, FeatureBitset{}};
         Account const alice {"alice"};
         env.fund(ZXC(10000), alice);
 
@@ -52,7 +52,7 @@ public:
         BEAST_EXPECT(lc_result[jss::ledger_index] == 3);
     }
 
-    void run()
+    void run() override
     {
         testMonitorRoot();
     }

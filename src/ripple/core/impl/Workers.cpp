@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <ripple/core/impl/Workers.h>
+#include <ripple/basics/PerfLog.h>
 #include <ripple/beast/core/CurrentThreadName.h>
 #include <cassert>
 
@@ -25,11 +26,13 @@ namespace ripple {
 
 Workers::Workers (
     Callback& callback,
+    perf::PerfLog& perfLog,
     std::string const& threadNames,
     int numberOfThreads)
         : m_callback (callback)
+        , perfLog_ (perfLog)
         , m_threadNames (threadNames)
-        , m_allPaused (true, true)
+        , m_allPaused (true)
         , m_semaphore (0)
         , m_numberOfThreads (0)
         , m_activeCount (0)
@@ -57,12 +60,14 @@ int Workers::getNumberOfThreads () const noexcept
 //
 void Workers::setNumberOfThreads (int numberOfThreads)
 {
+    static int instance {0};
     if (m_numberOfThreads != numberOfThreads)
     {
+        perfLog_.resizeJobs(numberOfThreads);
+
         if (numberOfThreads > m_numberOfThreads)
         {
             // Increasing the number of working threads
-
             int const amount = numberOfThreads - m_numberOfThreads;
 
             for (int i = 0; i < amount; ++i)
@@ -79,15 +84,14 @@ void Workers::setNumberOfThreads (int numberOfThreads)
                 }
                 else
                 {
-                    worker = new Worker (*this, m_threadNames);
+                    worker = new Worker (*this, m_threadNames, instance++);
                     m_everyone.push_front (worker);
                 }
             }
         }
-        else if (numberOfThreads < m_numberOfThreads)
+        else
         {
             // Decreasing the number of working threads
-
             int const amount = m_numberOfThreads - numberOfThreads;
 
             for (int i = 0; i < amount; ++i)
@@ -107,7 +111,9 @@ void Workers::pauseAllThreadsAndWait ()
 {
     setNumberOfThreads (0);
 
-    m_allPaused.wait ();
+    std::unique_lock<std::mutex> lk{m_mut};
+    m_cv.wait(lk, [this]{return m_allPaused;});
+    lk.unlock();
 
     assert (numberOfCurrentlyRunningTasks () == 0);
 }
@@ -142,9 +148,11 @@ void Workers::deleteWorkers (beast::LockFreeStack <Worker>& stack)
 
 //------------------------------------------------------------------------------
 
-Workers::Worker::Worker (Workers& workers, std::string const& threadName)
+Workers::Worker::Worker (Workers& workers, std::string const& threadName,
+    int const instance)
     : m_workers {workers}
     , threadName_ {threadName}
+    , instance_ {instance}
     , wakeCount_ {0}
     , shouldExit_ {false}
 {
@@ -179,7 +187,10 @@ void Workers::Worker::run ()
         // we are the first one then reset the "all paused" event
         //
         if (++m_workers.m_activeCount == 1)
-            m_workers.m_allPaused.reset ();
+        {
+            std::lock_guard<std::mutex> lk{m_workers.m_mut};
+            m_workers.m_allPaused = false;
+        }
 
         for (;;)
         {
@@ -216,7 +227,7 @@ void Workers::Worker::run ()
             // unblocked in order to process a task.
             //
             ++m_workers.m_runningTaskCount;
-            m_workers.m_callback.processTask ();
+            m_workers.m_callback.processTask (instance_);
             --m_workers.m_runningTaskCount;
         }
 
@@ -230,7 +241,11 @@ void Workers::Worker::run ()
         // are the last one then signal the "all paused" event.
         //
         if (--m_workers.m_activeCount == 0)
-            m_workers.m_allPaused.signal ();
+        {
+            std::lock_guard<std::mutex> lk{m_workers.m_mut};
+            m_workers.m_allPaused = true;
+            m_workers.m_cv.notify_all();
+        }
 
         // Set inactive thread name.
         beast::setCurrentThreadName ("(" + threadName_ + ")");

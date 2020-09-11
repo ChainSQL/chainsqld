@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx/balance.h>
 #include <test/jtx/Env.h>
 #include <test/jtx/fee.h>
@@ -39,42 +38,21 @@
 #include <ripple/net/HTTPClient.h>
 #include <ripple/net/RPCCall.h>
 #include <ripple/protocol/ErrorCodes.h>
+#include <ripple/protocol/Feature.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/Indexes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/protocol/LedgerFormats.h>
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/protocol/TER.h>
 #include <ripple/protocol/TxFlags.h>
-#include <ripple/protocol/types.h>
-#include <ripple/protocol/Feature.h>
+#include <ripple/protocol/UintTypes.h>
 #include <memory>
 
 namespace ripple {
 namespace test {
 namespace jtx {
-
-void
-SuiteSink::write(beast::severities::Severity level, std::string const& text)
-{
-    using namespace beast::severities;
-    std::string s;
-    switch(level)
-    {
-    case kTrace:    s = "TRC:"; break;
-    case kDebug:    s = "DBG:"; break;
-    case kInfo:     s = "INF:"; break;
-    case kWarning:  s = "WRN:"; break;
-    case kError:    s = "ERR:"; break;
-    default:
-    case kFatal:    s = "FTL:"; break;
-    }
-
-    // Only write the string if the level at least equals the threshold.
-    if (level >= threshold())
-        suite_.log << s << partition_ << text << std::endl;
-}
 
 //------------------------------------------------------------------------------
 
@@ -84,7 +62,8 @@ Env::AppBundle::AppBundle(beast::unit_test::suite& suite,
 {
     using namespace beast::severities;
     // Use kFatal threshold to reduce noise from STObject.
-    setDebugLogSink (std::make_unique<SuiteSink>("Debug", kFatal, suite));
+    setDebugLogSink (std::make_unique<SuiteJournalSink>(
+        "Debug", kFatal, suite));
     auto timeKeeper_ =
         std::make_unique<ManualTimeKeeper>();
     timeKeeper = timeKeeper_.get();
@@ -131,6 +110,7 @@ Env::close(NetClock::time_point closeTime,
     boost::optional<std::chrono::milliseconds> consensusDelay)
 {
     // Round up to next distinguishable value
+    using namespace std::chrono_literals;
     closeTime += closed()->info().closeTimeResolution - 1s;
     timeKeeper().set(closeTime);
     // Go through the rpc interface unless we need to simulate
@@ -279,8 +259,7 @@ Env::parseResult(Json::Value const& jr)
     TER ter;
     if (jr.isObject() && jr.isMember(jss::result) &&
         jr[jss::result].isMember(jss::engine_result_code))
-        ter = static_cast<TER>(
-            jr[jss::result][jss::engine_result_code].asInt());
+        ter = TER::fromInt (jr[jss::result][jss::engine_result_code].asInt());
     else
         ter = temINVALID;
     return std::make_pair(ter,
@@ -463,33 +442,10 @@ Env::st (JTx const& jt)
 }
 
 Json::Value
-Env::do_rpc(std::vector<std::string> const& args)
+Env::do_rpc(std::vector<std::string> const& args,
+    std::unordered_map<std::string, std::string> const& headers)
 {
-    auto jv = cmdLineToJSONRPC(args, journal);
-    if (!jv.isMember(jss::jsonrpc))
-    {
-        jv[jss::jsonrpc] = "2.0";
-        jv[jss::ripplerpc] = "2.0";
-        jv[jss::id] = 5;
-    }
-    auto response = client().invoke(
-        jv[jss::method].asString(),
-        jv[jss::params][0U]);
-
-    if (jv.isMember(jss::jsonrpc))
-    {
-        response[jss::jsonrpc] = jv[jss::jsonrpc];
-        response[jss::ripplerpc] = jv[jss::ripplerpc];
-        response[jss::id] = jv[jss::id];
-    }
-
-    if (jv[jss::params][0u].isMember(jss::error) &&
-        (! response.isMember(jss::error)))
-    {
-        response["client_error"] = jv[jss::params][0u];
-    }
-
-    return response;
+    return rpcClient(args, app().config(), app().logs(), headers).second;
 }
 
 void

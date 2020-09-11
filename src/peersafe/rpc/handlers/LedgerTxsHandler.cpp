@@ -17,14 +17,13 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/rpc/handlers/LedgerHandler.h>
 #include <ripple/app/ledger/LedgerToJson.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/json/Object.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/Role.h>

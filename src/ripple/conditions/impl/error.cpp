@@ -17,6 +17,7 @@
 */
 //==============================================================================
 
+#include <ripple/basics/safe_cast.h>
 #include <ripple/conditions/impl/error.h>
 #include <system_error>
 #include <string>
@@ -30,6 +31,8 @@ class cryptoconditions_error_category
     : public std::error_category
 {
 public:
+    explicit cryptoconditions_error_category() = default;
+
     const char*
     name() const noexcept override
     {
@@ -39,7 +42,7 @@ public:
     std::string
     message(int ev) const override
     {
-        switch (static_cast<error>(ev))
+        switch (safe_cast<error>(ev))
         {
         case error::unsupported_type:
             return "Specification: Requested type not supported.";
@@ -134,7 +137,7 @@ std::error_code
 make_error_code(error ev)
 {
     return std::error_code {
-        static_cast<std::underlying_type<error>::type>(ev),
+        safe_cast<std::underlying_type<error>::type>(ev),
         detail::get_cryptoconditions_error_category()
     };
 }

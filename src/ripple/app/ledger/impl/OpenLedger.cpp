@@ -17,7 +17,6 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/app/misc/HashRouter.h>
@@ -197,12 +196,12 @@ OpenLedger::apply_one (Application& app, OpenView& view,
         // If the transaction can't get into the queue for intrinsic
         // reasons, and it can still be recovered, try to put it
         // directly into the open ledger, else drop it.
-        if (queueResult.first == telCAN_NOT_QUEUE && shouldRecover)
+        if (queueResult.first.ter == telCAN_NOT_QUEUE && shouldRecover)
             return ripple::apply(app, view, *tx, flags, j);
         return queueResult;
     }();
     if (result.second ||
-            result.first == terQUEUED)
+            result.first.ter == terQUEUED)
         return Result::success;
     if (isTefFailure (result.first) ||
         isTemMalformed (result.first) ||

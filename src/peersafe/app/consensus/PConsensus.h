@@ -110,6 +110,7 @@ public:
 			NetClock::time_point const& now,
 			typename Ledger_t::ID const& prevLedgerID,
 			Ledger_t prevLedger,
+			hash_set<NodeID> const& nowUntrusted,
 			bool proposing);
 
 	/** Process a transaction set acquired from the network
@@ -250,14 +251,14 @@ private:
 	void appendTransactions(h256Set const& txSet);
 
 	std::chrono::milliseconds timeSinceLastClose();
-	uint64 timeSinceOpen();
-	uint64 timeSinceConsensus();
+	uint64_t timeSinceOpen();
+	uint64_t timeSinceConsensus();
 
 	void leaveConsensus();
 
 	void checkSaveNextProposal(PeerPosition_t const& newPeerPos);
 
-	uint32 loadConfig(std::string configName);
+	uint32_t loadConfig(std::string configName);
 private:
 	Adaptor& adaptor_;
 
@@ -275,8 +276,8 @@ private:
 	NetClock::time_point closeTime_; 
 	NetClock::time_point openTime_;
 	std::chrono::steady_clock::time_point proposalTime_;
-	uint64 openTimeMilli_;
-	uint64 consensusTime_;
+	uint64_t openTimeMilli_;
+	uint64_t consensusTime_;
 
 	//-------------------------------------------------------------------------
 	// Non-peer (self) consensus data
@@ -328,8 +329,8 @@ private:
 
 	std::recursive_mutex lock_;
 
-	uint64 view_ = 0;
-	uint64 toView_ = 0;
+	uint64_t view_ = 0;
+	uint64_t toView_ = 0;
 
 	// Journal for debugging
 	beast::Journal j_;
@@ -399,6 +400,7 @@ PConsensus<Adaptor>::startRound(
 	NetClock::time_point const& now,
 	typename Ledger_t::ID const& prevLedgerID,
 	Ledger_t prevLedger,
+	hash_set<NodeID> const& nowUntrusted,
 	bool proposing)
 {
 	ConsensusMode startMode =
@@ -930,7 +932,7 @@ PConsensus<Adaptor>::timeSinceLastClose()
 }
 
 template <class Adaptor>
-uint64
+uint64_t
 PConsensus<Adaptor>::timeSinceOpen()
 {
 	//using namespace std::chrono;
@@ -938,7 +940,7 @@ PConsensus<Adaptor>::timeSinceOpen()
 }
 
 template <class Adaptor>
-uint64
+uint64_t
 PConsensus<Adaptor>::timeSinceConsensus()
 {
 	//using namespace std::chrono;
@@ -993,13 +995,13 @@ PConsensus<Adaptor>::phaseCollecting()
 
 			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
 			result_->roundTime.reset(clock_.now());
-			setID_ = result_->set.id();
+			setID_ = result_->txns.id();
 			extraTimeOut_ = true;
 
 			// Share the newly created transaction set if we haven't already
 			// received it from a peer
-			if (acquired_.emplace(*setID_, result_->set).second)
-				adaptor_.relay(result_->set);
+			if (acquired_.emplace(*setID_, result_->txns).second)
+				adaptor_.relay(result_->txns);
 
 			adaptor_.propose(result_->position);
 
@@ -1026,7 +1028,7 @@ PConsensus<Adaptor>::phaseCollecting()
 		//in case we are not leader,the proposal leader should propose not received,
 		// but other nodes have accepted the ledger of this sequence
 		int minVal = adaptor_.app_.validators().quorum();
-		auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
+		auto currentFinished = adaptor_.proposersFinished(previousLedger_,prevLedgerID_);
 		if (currentFinished >= minVal)
 		{
 			//result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
@@ -1081,7 +1083,7 @@ PConsensus<Adaptor>::haveConsensus()
 
 	int agreed = txSetVoted_[*setID_].size();
 	int minVal = adaptor_.app_.validators().quorum();
-	auto currentFinished = adaptor_.proposersFinished(prevLedgerID_);
+	auto currentFinished = adaptor_.proposersFinished(previousLedger_,prevLedgerID_);
 
 	JLOG(j_.debug()) << "Checking for TX consensus: agree=" << agreed;
 	JLOG(j_.debug()) << "Checking for TX consensus: currentFinished=" << currentFinished;
@@ -1362,7 +1364,7 @@ PConsensus<Adaptor>::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 }
 
 template <class Adaptor>
-uint32 
+uint32_t
 PConsensus<Adaptor>::loadConfig(std::string configName)
 {
 	auto const result = adaptor_.app_.config().section(SECTION_PCONSENSUS).find(configName);

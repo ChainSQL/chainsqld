@@ -17,23 +17,29 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <ripple/basics/BasicConfig.h>
-#include <test/jtx/TestSuite.h>
 #include <ripple/overlay/Cluster.h>
 #include <ripple/overlay/ClusterNode.h>
 #include <ripple/protocol/SecretKey.h>
+#include <test/jtx/TestSuite.h>
+#include <test/unit_test/SuiteJournal.h>
 
 namespace ripple {
 namespace tests {
 
 class cluster_test : public ripple::TestSuite
 {
+    test::SuiteJournal journal_;
+
 public:
+    cluster_test ()
+    : journal_ ("cluster_test", *this)
+    { }
+
     std::unique_ptr<Cluster>
     create (std::vector<PublicKey> const& nodes)
     {
-        auto cluster = std::make_unique <Cluster> (beast::Journal ());
+        auto cluster = std::make_unique <Cluster> (journal_);
 
         for (auto const& n : nodes)
             cluster->update (n, "Test");
@@ -133,7 +139,7 @@ public:
 
         auto const node = randomNode ();
         auto const name = toBase58(
-            TokenType::TOKEN_NODE_PUBLIC,
+            TokenType::NodePublic,
             node);
         std::uint32_t load = 0;
         NetClock::time_point tick = {};
@@ -189,7 +195,7 @@ public:
     {
         testcase ("Config Load");
 
-        auto c = std::make_unique <Cluster> (beast::Journal ());
+        auto c = std::make_unique <Cluster> (journal_);
 
         // The servers on the network
         std::vector<PublicKey> network;
@@ -202,7 +208,7 @@ public:
             char const* comment = nullptr)
         {
             auto ret = toBase58(
-                TokenType::TOKEN_NODE_PUBLIC,
+                TokenType::NodePublic,
                 publicKey);
 
             if (comment)

@@ -17,9 +17,8 @@
 */
 //==============================================================================
 
-#include <BeastConfig.h>
 #include <test/jtx/regkey.h>
-#include <ripple/protocol/JsonFields.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 namespace test {
@@ -31,7 +30,7 @@ regkey (Account const& account,
 {
     Json::Value jv;
     jv[jss::Account] = account.human();
-    jv[jss::TransactionType] = "SetRegularKey";
+    jv[jss::TransactionType] = jss::SetRegularKey;
     return jv;
 }
 
@@ -42,7 +41,7 @@ regkey (Account const& account,
     Json::Value jv;
     jv[jss::Account] = account.human();
     jv["RegularKey"] = to_string(signer.id());
-    jv[jss::TransactionType] = "SetRegularKey";
+    jv[jss::TransactionType] = jss::SetRegularKey;
     return jv;
 }
 

@@ -22,7 +22,7 @@
 
 #include <ripple/basics/Log.h>
 #include <ripple/beast/net/IPAddressConversion.h>
-#include <beast/core/bind_handler.hpp>
+#include <boost/beast/core/bind_handler.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl.hpp>
@@ -52,6 +52,7 @@ public:
             bool plainOnly)
         : mSecure (secureOnly)
         , mBuffer ((plainOnly || secureOnly) ? 0 : 4)
+        , j_ {beast::Journal::getNullSink()}
     {
         mSocket = std::make_unique<ssl_socket> (s, c);
     }
@@ -61,11 +62,6 @@ public:
             boost::asio::ssl::context& c)
         : AutoSocket (s, c, false, false)
     {
-    }
-
-    boost::asio::io_service& get_io_service () noexcept
-    {
-        return mSocket->get_io_service ();
     }
 
     bool            isSecure ()
@@ -176,8 +172,9 @@ public:
         {
             // must be plain
             mSecure = false;
-            mSocket->get_io_service ().post (
-                beast::bind_handler (cbFunc, error_code()));
+            post(
+                mSocket->get_executor(),
+                boost::beast::bind_handler(cbFunc, error_code()));
         }
         else
         {
@@ -209,8 +206,9 @@ public:
             {
                 ec = e.code();
             }
-            mSocket->get_io_service ().post (
-                beast::bind_handler (handler, ec));
+            post(
+                mSocket->get_executor(),
+                boost::beast::bind_handler(handler, ec));
         }
     }
 

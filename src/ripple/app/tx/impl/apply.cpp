@@ -17,7 +17,6 @@
 */
 //==============================================================================
 #include <ripple/app/main/Application.h>
-#include <BeastConfig.h>
 #include <ripple/basics/Log.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/app/tx/applySteps.h>
@@ -169,8 +168,7 @@ applyTransaction (Application& app, OpenView& view,
 
     try
     {
-        auto const result = apply(app,
-            view, txn, flags, j);
+        auto const result = apply(app, view, txn, flags, j);
         if (result.second)
         {
             JLOG (j.debug())

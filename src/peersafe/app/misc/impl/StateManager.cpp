@@ -5,7 +5,7 @@
 
 namespace ripple {
 
-uint32 StateManager::getAccountSeq(AccountID const& id)
+uint32_t StateManager::getAccountSeq(AccountID const& id)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 	if (accountState_.find(id) != accountState_.end())

@@ -20,6 +20,7 @@
 #ifndef RIPPLE_RESOURCE_IMPORT_H_INCLUDED
 #define RIPPLE_RESOURCE_IMPORT_H_INCLUDED
 
+#include <ripple/resource/impl/Entry.h>
 #include <ripple/resource/Consumer.h>
 
 namespace ripple {
@@ -30,18 +31,20 @@ struct Import
 {
     struct Item
     {
+        explicit Item() = default;
+
         int balance;
         Consumer consumer;
     };
 
     // Dummy argument required for zero-copy construction
     Import (int = 0)
-        : whenExpires (0)
+        : whenExpires ()
     {
     }
 
     // When the imported data expires
-    clock_type::rep whenExpires;
+    clock_type::time_point whenExpires;
 
     // List of remote entries
     std::vector <Item> items;
