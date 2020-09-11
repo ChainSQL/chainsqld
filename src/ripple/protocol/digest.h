@@ -294,7 +294,7 @@ sha512Half (Args const&... args)
         // std::copy(hashData, hashData + 32, result.begin());
         // return result;
     }
-    else if (hashType == CommonKey::sha)
+    else if (hashTypeTemp == CommonKey::sha)
     {
         sha512_half_hasher h;
         hash_append(h, args...);
