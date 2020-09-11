@@ -414,26 +414,26 @@ private:
 	//reset validators for consensus
 	void resetValidators();
 	
-	 /** Update trusted keys
+	 ///** Update trusted keys
 
-        Reset the trusted keys based on latest manifests, received validations,
-        and lists.
+  //      Reset the trusted keys based on latest manifests, received validations,
+  //      and lists.
 
-        @param seenValidators Set of public keys used to sign recently
-        received validations
+  //      @param seenValidators Set of public keys used to sign recently
+  //      received validations
 
-        @par Thread Safety
+  //      @par Thread Safety
 
-        May be called concurrently
-    */
-    template<class KeySet>
-    void
-    onConsensusStart (
-        KeySet const& seenValidators);
+  //      May be called concurrently
+  //  */
+  //  template<class KeySet>
+  //  void
+  //  onConsensusStart (
+  //      KeySet const& seenValidators);
 };
 
 //------------------------------------------------------------------------------
-
+/*
 template<class KeySet>
 void
 ValidatorList::onConsensusStart (
@@ -558,7 +558,7 @@ ValidatorList::onConsensusStart (
             trustedKeys_.size() << ")";
     }
 }
-
+*/
 } // ripple
 
 #endif

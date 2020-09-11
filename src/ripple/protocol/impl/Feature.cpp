@@ -86,9 +86,8 @@ detail::supportedAmendments ()
     {
         "SHAMapV2",
         "DisableV2",
-        "DecreaseStorage",
+        //"DecreaseStorage",
         "MultiSign",
-//        "Tickets",
         "TrustSetAuth",
         "FeeEscalation", // Looks unused, but do not remove; Servers will be amendment blocked.
 //        "OwnerPaysFee",
