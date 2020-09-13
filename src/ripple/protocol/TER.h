@@ -598,7 +598,14 @@ struct STer {
 	{
 		return this->ter == rhs;
 	}
+	
+	friend std::ostream &operator<<(std::ostream &os,const STer &ster)
+	{
+		os<<transToken(ster.ter);
+		return os;
+	}
 };
+
 
 } // ripple
 

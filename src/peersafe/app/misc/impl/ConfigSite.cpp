@@ -99,6 +99,7 @@ namespace ripple {
 		, pending_(false)
 		, stopping_(false)
 		, validatorManifests_(validatorManifests)
+		, requestTimeout_(timeout)
 		, j_(j)
 	{
 	}
