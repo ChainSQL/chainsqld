@@ -19,10 +19,10 @@ namespace ripple {
 
     const std::size_t TxPoolCapacity = 100000;
 
-       const std::chrono::seconds INIT_TIME = 90s;
+	const std::chrono::seconds INIT_TIME{ 90 };
 
 
-	const std::chrono::milliseconds CONSENSUS_TIMEOUT = std::chrono::milliseconds(3);
+	const std::chrono::milliseconds CONSENSUS_TIMEOUT{ 3000 };
 
 	const unsigned TimeOutCountRollback = 5;
 

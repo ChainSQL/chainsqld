@@ -2691,6 +2691,9 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin, bool counters)
     info[jss::peer_disconnects_resources] = std::to_string(
         app_.overlay().getPeerDisconnectCharges());
 
+	//comprehensive judgement for server_status
+	info[jss::server_status] = getServerStatus();
+
     return info;
 }
 

@@ -1092,7 +1092,8 @@ PConsensus<Adaptor>::haveConsensus()
 
 	int agreed = txSetVoted_[*setID_].size();
 	int minVal = adaptor_.app_.validators().quorum();
-	auto currentFinished = adaptor_.proposersFinished(previousLedger_,prevLedgerID_);
+	auto currentFinished = previousLedger_.seq() == GENESIS_LEDGER_INDEX ? 0 :
+		adaptor_.proposersFinished(previousLedger_,prevLedgerID_);
 
 	JLOG(j_.debug()) << "Checking for TX consensus: agree=" << agreed;
 	JLOG(j_.debug()) << "Checking for TX consensus: currentFinished=" << currentFinished;
@@ -1415,6 +1416,9 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::checkLedger()
 {
+	if (previousLedger_.seq() == GENESIS_LEDGER_INDEX)
+		return;
+
 	auto netLgr =
 		adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
 
