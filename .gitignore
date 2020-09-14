@@ -85,20 +85,13 @@ chainsqld-build.log
 
 /Builds/XCode/*
 !/Builds/XCode/README.md
-/Builds/VisualStudio2015/*
-!/Builds/VisualStudio2015/README.md
-!/Builds/VisualStudio2015/images
-/Builds/WinVS/*
-!/Builds/WinVS/README.md
-!/Builds/WinVS/images
+/Builds/VisualStudio2017/*
+!/Builds/VisualStudio2017/README.md
+!/Builds/VisualStudio2017/images
 /Builds/Ubuntu/*
 !/Builds/Ubuntu/*.sh
 !/Builds/Ubuntu/README.md
 
-Builds/VisualStudio2015/*.db
-Builds/VisualStudio2015/*.user
-Builds/VisualStudio2015/*.opendb
-Builds/VisualStudio2015/*.sdf
 
 # ignore
 third_party/
