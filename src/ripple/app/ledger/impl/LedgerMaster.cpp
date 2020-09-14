@@ -282,7 +282,7 @@ LedgerMaster::addHeldTransaction (
 }
 
 // Validate a ledger's close time and sequence number if we're considering
-// jumping to that ledger. This helps defend agains some rare hostile or
+// jumping to that ledger. This helps defend against some rare hostile or
 // insane majority scenarios.
 bool
 LedgerMaster::canBeCurrent (std::shared_ptr<Ledger const> const& ledger)
@@ -1262,8 +1262,10 @@ LedgerMaster::checkAccept (
 {
     // Can we accept this ledger as our new last fully-validated ledger
 
-    if (! canBeCurrent (ledger))
-        return;
+	// Comment by ljl: this judgment is for RPCA or other consensus algorithm
+	// that can validate empty ledgers.
+    //if (! canBeCurrent (ledger))
+    //    return;
 
     // Can we advance the last fully-validated ledger? If so, can we
     // publish?
