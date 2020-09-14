@@ -7,6 +7,7 @@
 #include <memory>
 #include <functional>
 #include <unordered_map>
+#include <map>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/basics/base_uint.h>
@@ -15,6 +16,7 @@
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/app/consensus/RCLCxTx.h>
 #include <ripple/protocol/TER.h>
+#include <ripple/protocol/Protocol.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/consensus/PConsensusParams.h>
 
@@ -100,7 +102,7 @@ public:
 	virtual ~TxPool() {}
 
     // Get at most specified counts of Tx fron TxPool.
-	h256Set topTransactions(uint64_t const& limit);
+	h256Set topTransactions(uint64_t const& limit, LedgerIndex seq);
 
     // Insert a new Tx, return true if success else false.
 	TER insertTx(std::shared_ptr<Transaction> transaction,int ledgerSeq);
@@ -110,8 +112,8 @@ public:
 	void removeTx(uint256 hash);
 
     // Update avoid set when receiving a Tx set from peers.
-    void updateAvoid(RCLTxSet const& cSet);
-	void clearAvoid();
+    void updateAvoid(RCLTxSet const& cSet, LedgerIndex seq);
+	void clearAvoid(LedgerIndex seq);
 
     inline bool txExists(uint256 hash) { return mTxsHash.count(hash); }
 
@@ -143,7 +145,8 @@ private:
 	TransactionSet mTxsSet;
     std::unordered_map<uint256, TransactionSet::iterator> mTxsHash;
 
-    h256Set mAvoid;
+    std::map<LedgerIndex, h256Set> mAvoidBySeq;
+    std::unordered_map<uint256, LedgerIndex> mAvoidByHash;
 
 	sync_status mSyncStatus;
 
