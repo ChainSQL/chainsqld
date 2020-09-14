@@ -722,6 +722,14 @@ public:
 		}
 
 		{
+			std::string field_str = "[[\"id\",\"name\"],{\"name\":{\"$regex\":\"/test^/\"}}]";
+			Json::Value result = getRecords(field_str);
+			std::string result_sql = Json::jsonAsString(result);
+			std::string expected_sql = "{\"lines\":null,\"status\":\"success\"}";
+			BEAST_EXPECT(boost::iequals(expected_sql, result_sql));
+		}
+
+		{
 			std::string field_str = "[[\"id\",\"name\"],{\"name\":{\"$regex\":\"/^test/\"}}]";
 			Json::Value result = getRecords(field_str);
 			std::string result_sql = Json::jsonAsString(result);

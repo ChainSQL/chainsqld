@@ -188,9 +188,12 @@ Handler handlerArray[] {
 	//Contract methods
 	{	"contract_call",		byRef(&doContractCall),	       Role::USER,	NO_CONDITION  },
     // Evented methods
-    {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION  },
-    {   "unsubscribe",        byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION  },
-	{    "gen_csr",              byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION }
+    {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION     },
+    {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION     },
+	{    "gen_csr",             byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION },
+	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::USER,  NO_CONDITION     },
+    {   "node_size",            byRef (&doNodeSize),           Role::ADMIN,  NO_CONDITION    },
+    {   "malloc_trim",          byRef (&doMallocTrim),         Role::ADMIN,  NO_CONDITION    },
 };
 
 } // namespace

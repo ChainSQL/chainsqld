@@ -152,7 +152,7 @@ namespace ripple {
 					e.go();
 					if (e.getException() != tesSUCCESS)
 					{
-						bytes out = e.takeOutput().toBytes();
+						eth::bytes out = e.takeOutput().toBytes();
 						std::cout << "exception:" << std::string(out.begin(), out.end()) << std::endl;
 						return std::make_pair(beast::zero, false);
 					}
@@ -181,7 +181,7 @@ namespace ripple {
 					e.go();
 					if (e.getException() != tesSUCCESS)
 					{
-						bytes out = e.takeOutput().toBytes();
+						eth::bytes out = e.takeOutput().toBytes();
 						std::cout << "exception:" << std::string(out.begin(), out.end()) << std::endl;
 						return false;
 					}

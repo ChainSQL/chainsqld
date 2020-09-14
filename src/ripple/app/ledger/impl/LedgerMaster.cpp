@@ -151,7 +151,7 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 
 	if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
 	{
-		setValidLedger(previousLedger);
+        setFullLedger(previousLedger, false, true);
 		setPubLedger(previousLedger);
 		{
 			ScopedLockType ml(mCompleteLock);

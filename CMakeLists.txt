@@ -67,12 +67,15 @@
 #
 # Don't put any code above or in this block, unless it
 # has similar constraints.
-cmake_minimum_required(VERSION 3.1.0)
+cmake_minimum_required(VERSION 3.10.0)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Builds/CMake")
 include(CMakeFuncs)
 set(openssl_min 1.0.2)
 parse_target()
 project(chainsqld)
+#########################################################
+
+set(enableTest FALSE CACHE BOOL "Enable Unit Test Module")
 #########################################################
 
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
@@ -97,10 +100,12 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     "3) Change to that directory.\n"
     "4) Run cmake targetting ${CMAKE_SOURCE_DIR}, for example: ${cmd}")
 endif()
-if("${CMAKE_GENERATOR}" MATCHES "Visual Studio" AND
-    NOT ("${CMAKE_GENERATOR}" MATCHES .*Win64.*))
-  message(FATAL_ERROR "Visual Studio 32-bit build is unsupported. Use
-    -G\"${CMAKE_GENERATOR} Win64\"")
+if("${CMAKE_GENERATOR}" MATCHES "Visual Studio")
+	if(NOT "${CMAKE_GENERATOR}" MATCHES "2019" AND
+		NOT ("${CMAKE_GENERATOR}" MATCHES .*Win64.*))
+	message(FATAL_ERROR "Visual Studio 32-bit build is unsupported. Use
+		-G\"${CMAKE_GENERATOR} Win64\"")
+	endif()
 endif()
 
 setup_build_cache()
@@ -135,8 +140,8 @@ include_directories(
   src/nudb/include
   src/soci/src
   src/soci/include
-  src/evmjit
-  src/evmjit/evmc/include)
+  src/eth/evmc/include
+  src/intx/include)
 
 special_build_flags()
 
@@ -227,30 +232,34 @@ rpcx2.cpp
 shamap.cpp
 server.cpp)
 
-prepend(test_unity_srcs
-src/test/unity/
-app_test_unity1.cpp
-app_test_unity2.cpp
-basics_test_unity.cpp
-beast_test_unity1.cpp
-beast_test_unity2.cpp
-conditions_test_unity.cpp
-consensus_test_unity.cpp
-core_test_unity.cpp
-json_test_unity.cpp
-ledger_test_unity.cpp
-overlay_test_unity.cpp
-peerfinder_test_unity.cpp
-protocol_test_unity.cpp
-resource_test_unity.cpp
-rpc_test_unity.cpp
-server_test_unity.cpp
-server_status_test_unity.cpp
-shamap_test_unity.cpp
-jtx_unity1.cpp
-jtx_unity2.cpp
-csf_unity.cpp
-vm_test_unity.cpp)
+if(enableTest)
+    prepend(test_unity_srcs
+    src/test/unity/
+    app_test_unity1.cpp
+    app_test_unity2.cpp
+    basics_test_unity.cpp
+    beast_test_unity1.cpp
+    beast_test_unity2.cpp
+    conditions_test_unity.cpp
+    consensus_test_unity.cpp
+    core_test_unity.cpp
+    json_test_unity.cpp
+    ledger_test_unity.cpp
+    overlay_test_unity.cpp
+    peerfinder_test_unity.cpp
+    protocol_test_unity.cpp
+    resource_test_unity.cpp
+    rpc_test_unity.cpp
+    server_test_unity.cpp
+    server_status_test_unity.cpp
+    shamap_test_unity.cpp
+    jtx_unity1.cpp
+    jtx_unity2.cpp
+    csf_unity.cpp
+    vm_test_unity.cpp)
+else()
+    set(test_unity_srcs)
+endif()
 
 prepend(peersafe_unity_srcs
 src/peersafe/unity/
@@ -259,9 +268,13 @@ app_table.cpp
 app_contract.cpp
 app_sql.cpp)
 
+prepend(vm_unity_srcs
+src/eth/unity/
+vm_unity.cpp)
 
 
-list(APPEND chainsqld_src_unity ${beast_unity_srcs} ${ripple_unity_srcs} ${peersafe_unity_srcs} ${test_unity_srcs})
+
+list(APPEND chainsqld_src_unity ${beast_unity_srcs} ${ripple_unity_srcs} ${peersafe_unity_srcs} ${vm_unity_srcs} ${test_unity_srcs})
 
 add_with_props(rippled_src_unity src/test/unity/nodestore_test_unity.cpp
 -I"${CMAKE_SOURCE_DIR}/"src/rocksdb2/include
@@ -292,7 +305,8 @@ add_with_props(chainsqld_src_nonunity "${core_srcs}"
 
 set(non_unity_srcs ${core_srcs})
 
-add_subdirectory(src/evmjit)
+add_subdirectory(src/eth/evmc)
+add_subdirectory(src/intx)
 
 foreach(curdir
         beast/clock
@@ -326,9 +340,15 @@ foreach(curdir
         crypto
         gmencrypt
         protocol
-        rpc
-        vm)
+        rpc)
     file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp)
+    list(APPEND chainsqld_src_nonunity "${cursrcs}")
+    list(APPEND non_unity_srcs "${cursrcs}")
+endforeach()
+
+foreach(curdir
+        vm)
+    file(GLOB_RECURSE cursrcs src/eth/${curdir}/*.cpp)
     list(APPEND chainsqld_src_nonunity "${cursrcs}")
     list(APPEND non_unity_srcs "${cursrcs}")
 endforeach()
@@ -345,37 +365,39 @@ add_with_props(chainsqld_src_nonunity "${nodestore_srcs}"
 list(APPEND non_unity_srcs "${nodestore_srcs}")
 
 # unit test sources
-foreach(curdir
-        app
-        basics
-        beast
-        conditions
-        consensus
-        core
-        csf
-        json
-        jtx
-        ledger
-        nodestore
-        overlay
-        peerfinder
-        protocol
-        resource
-        rpc
-        server
-        shamap
-        vm)
-    file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
-    list(APPEND test_srcs "${cursrcs}")
-endforeach()
+if(enableTest)
+    foreach(curdir
+            app
+            basics
+            beast
+            conditions
+            consensus
+            core
+            csf
+            json
+            jtx
+            ledger
+            nodestore
+            overlay
+            peerfinder
+            protocol
+            resource
+            rpc
+            server
+            shamap
+            vm)
+        file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
+        list(APPEND test_srcs "${cursrcs}")
+    endforeach()
 
-add_with_props(chainsqld_src_nonunity "${test_srcs}"
+    add_with_props(chainsqld_src_nonunity "${test_srcs}"
     -I"${CMAKE_SOURCE_DIR}"/src/rocksdb2/include
     -I"${CMAKE_SOURCE_DIR}"/src/snappy/snappy
     -I"${CMAKE_SOURCE_DIR}"/src/snappy/config
     ${rocks_db_system_header})
 
-list(APPEND non_unity_srcs "${test_srcs}")
+    list(APPEND non_unity_srcs "${test_srcs}")
+endif()
 
 if(WIN32 OR is_xcode)
     # chainsqld headers. Only needed for IDEs.
@@ -571,7 +593,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} evmjit)
+      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} intx instructions)
 
     link_common_libraries(${target})
 endforeach()
