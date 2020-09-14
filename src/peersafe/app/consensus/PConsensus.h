@@ -572,7 +572,7 @@ PConsensus<Adaptor>::onViewChange()
 	timeOutCount_ = 0;
 
 	//clear avoid
-	adaptor_.app_.getTxPool().clearAvoid();
+	adaptor_.app_.getTxPool().clearAvoid(previousLedger_.seq());
 
 	viewChangeManager_.onViewChanged(view_);
 	if (bWaitingInit_)
@@ -787,7 +787,7 @@ PConsensus<Adaptor>::gotTxSet(
 			{
 				//update avoid if we got the right tx-set
                 if (adaptor_.validating())
-				    adaptor_.app_.getTxPool().updateAvoid(txSet);
+				    adaptor_.app_.getTxPool().updateAvoid(txSet, previousLedger_.seq());
 
 				auto set = txSet.map_->snapShot(false);
 				//this place has a txSet copy,what's the time it costs?
@@ -978,7 +978,7 @@ PConsensus<Adaptor>::phaseCollecting()
 		bool bTimeReached = sinceOpen >= maxBlockTime_;
 		if (tx_count < maxTxsInLedger_ && !bTimeReached)
 		{
-			appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count));
+			appendTransactions(adaptor_.app_.getTxPool().topTransactions(maxTxsInLedger_ - tx_count, previousLedger_.seq() + 1));
 		}
 
 		if (finalCondReached(sinceOpen, sinceClose))

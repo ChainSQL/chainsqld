@@ -5,25 +5,26 @@
 
 namespace ripple {
 
-    h256Set TxPool::topTransactions(uint64_t const& limit)
+    h256Set TxPool::topTransactions(uint64_t const& limit, LedgerIndex seq)
     {
         h256Set ret;
         int txCnt = 0;
 
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
-        JLOG(j_.info()) << "Currently mTxsSet size: " << mTxsSet.size() 
-            << ", mAvoid size: " << mAvoid.size();
+        JLOG(j_.info()) << "Currently mTxsSet size: " << mTxsSet.size()
+            << ", mAvoid size: " << mAvoidByHash.size();
 
         for (auto iter = mTxsSet.begin(); txCnt < limit && iter != mTxsSet.end(); ++iter)
         {
-            if (!mAvoid.count((*iter)->getID()))
+            if (!mAvoidByHash.count((*iter)->getID()))
             {
                 ret.insert((*iter)->getID());
                 txCnt++;
 
                 // update avoid set
-                mAvoid.insert((*iter)->getID());
+                mAvoidBySeq[seq].insert((*iter)->getID());
+                mAvoidByHash.emplace((*iter)->getID(), seq);
             }
         }
 
@@ -93,10 +94,20 @@ namespace ripple {
                 mTxsSet.erase(iterSet);
 
                 // remove from avoid set.
-                if (mAvoid.find(item.key()) != mAvoid.end())
-                    mAvoid.erase(item.key());
+                if (mAvoidByHash.find(item.key()) != mAvoidByHash.end())
+                {
+                    LedgerIndex seq = mAvoidByHash[item.key()];
+                    mAvoidBySeq[seq].erase(item.key());
+                    if (!mAvoidBySeq[seq].size())
+                    {
+                        mAvoidBySeq.erase(seq);
+                    }
+                    mAvoidByHash.erase(item.key());
+                }
                 else
+                {
                     JLOG(j_.warn()) << "TxPool::TX:" << item.key() << " not in mAvoid set";
+                }
 				count++;
             }
             catch (std::exception const& e)
@@ -157,7 +168,7 @@ namespace ripple {
 		}
 	}
 
-    void TxPool::updateAvoid(RCLTxSet const& cSet)
+    void TxPool::updateAvoid(RCLTxSet const& cSet, LedgerIndex seq)
     {
         // If the Tx set had be added into avoid set recently, don't add it again.
         // TODO
@@ -171,15 +182,22 @@ namespace ripple {
         for (auto const& item : *(cSet.map_))
         {
             if (txExists(item.key()))
-                mAvoid.insert(item.key());
+            {
+                mAvoidBySeq[seq].insert(item.key());
+                mAvoidByHash.emplace(item.key(), seq);
+            }
         }
     }
 
-	void TxPool::clearAvoid()
+	void TxPool::clearAvoid(LedgerIndex seq)
 	{
         std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
-		mAvoid.clear();
+        for (auto const& hash : mAvoidBySeq[seq])
+        {
+            mAvoidByHash.erase(hash);
+        }
+        mAvoidBySeq.erase(seq);
 	}
 
 	bool TxPool::isAvailable()
@@ -212,9 +230,15 @@ namespace ripple {
 			mTxsSet.erase(iter);
 
 			// remove from avoid set.
-			if (mAvoid.find(hash) != mAvoid.end())
+			if (mAvoidByHash.find(hash) != mAvoidByHash.end())
 			{
-				mAvoid.erase(hash);
+                LedgerIndex seq = mAvoidByHash[hash];
+                mAvoidBySeq[seq].erase(hash);
+                if (mAvoidBySeq[seq].size())
+                {
+                    mAvoidBySeq.erase(seq);
+                }
+				mAvoidByHash.erase(hash);
 			}			
 
 			if (mTxsSet.size() == 0)
