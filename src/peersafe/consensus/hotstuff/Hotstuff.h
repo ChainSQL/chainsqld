@@ -50,6 +50,17 @@ struct Config {
     std::vector<ReplicaID> leader_schedule;
     // generate a dummy block after timeout (seconds)
     int timeout;
+    // commands batch size
+    int cmd_batch_size;
+
+    Config()
+    : id(0)
+    , view_change(1)
+    , leader_schedule()
+    , timeout(60)
+    , cmd_batch_size(100) {
+
+    }
 };
 
 class Hotstuff {

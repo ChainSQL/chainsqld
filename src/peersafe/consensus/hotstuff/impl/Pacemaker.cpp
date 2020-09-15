@@ -105,6 +105,9 @@ void RoundRobinLeader::init(Hotstuff* hotstuff, Signal* signal) {
 }
 
 void RoundRobinLeader::run() {
+	if(running_ == true)
+		return;
+
 	running_ = true;
 	// setup timer for generate dummy blocks
 	setUpDummyBlockTimer();

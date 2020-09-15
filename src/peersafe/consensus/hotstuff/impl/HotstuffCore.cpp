@@ -59,9 +59,12 @@ HotstuffCore::HotstuffCore(
 HotstuffCore::~HotstuffCore() {
 }
 
-Block HotstuffCore::CreatePropose() {
+Block HotstuffCore::CreatePropose(int batch_size) {
+    if(batch_size <= 0)
+        batch_size = 500;
+
     Command cmd;
-    storage_->command(5, cmd);
+    storage_->command(batch_size, cmd);
     Block block = CreateLeaf(leaf_, cmd, hight_qc_, leaf_.height + 1);
     block.id = id_;
     block.hash = Block::blockHash(block);
@@ -98,7 +101,7 @@ bool HotstuffCore::OnReceiveProposal(const Block &block, PartialCert& cert) {
         }
 
         Block qcBlock;
-        if (storage_->getBlock(block.justify.hash(), qcBlock) == false) {
+        if (storage_->expectBlock(block.justify.hash(), qcBlock) == false) {
             JLOG(journal_.error()) 
                 << "Missing a block that hash is "
                 << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()))
@@ -119,7 +122,7 @@ bool HotstuffCore::OnReceiveProposal(const Block &block, PartialCert& cert) {
             bool bOk = true;
             for (;;) {
                 if (bOk && b.height > lock_.height + 1)
-                    bOk = storage_->getBlock(b.parent, b);
+                    bOk = storage_->blockOf(b.parent, b);
                 else
                     break;
             }
@@ -194,9 +197,9 @@ void HotstuffCore::OnReceiveVote(const PartialCert& cert) {
 
     // 当前 leader 收到其他 replicas 发送的 vote 消息的时候，
     // 可能此 leader 还没收到 proposal 消息，也就意味着 cert.blockHash
-    // 指向的 block 在本地还没有(storage_->getBlock 获取失败)
+    // 指向的 block 在本地还没有(storage_->expectBlock 获取失败)
     Block expect_block;
-    if(storage_->getBlock(cert.blockHash, expect_block) == false) {
+    if(storage_->expectBlock(cert.blockHash, expect_block) == false) {
         auto it = pendingPartialCerts_.find(cert.blockHash);
         if(it == pendingPartialCerts_.end()) {
             std::vector<PartialCert> partialCerts;
@@ -250,7 +253,7 @@ void HotstuffCore::handleVote(const PartialCert& cert) {
     auto qcs = pendingQCs_.find(cert.blockHash);
     if(qcs == pendingQCs_.end()) {
         Block expect_block;
-        if(storage_->getBlock(cert.blockHash, expect_block) == false) {
+        if(storage_->expectBlock(cert.blockHash, expect_block) == false) {
             JLOG(journal_.error())
                 << "Missing a block that hash is "
                 << ripple::strHex(ripple::Slice(cert.blockHash.data(), cert.blockHash.size()));
@@ -293,7 +296,7 @@ void HotstuffCore::update(const Block &block) {
         << " and height is " << block.height;
 
     Block block1, block2, block3;
-    if(storage_->getBlock(block.justify.hash(), block1) == false) {
+    if(storage_->blockOf(block.justify.hash(), block1) == false) {
         JLOG(journal_.debug()) 
             << "Missing a block that hash is " 
             << ripple::strHex(ripple::Slice(block.justify.hash().data(), block.justify.hash().size()))
@@ -306,7 +309,7 @@ void HotstuffCore::update(const Block &block) {
     // pre-commit on block1
     updateHighQC(block.justify);
 
-    if(storage_->getBlock(block1.justify.hash(), block2) == false) {
+    if(storage_->blockOf(block1.justify.hash(), block2) == false) {
         JLOG(journal_.debug()) 
             << "Missing a block that hash is " 
             << ripple::strHex(ripple::Slice(block1.justify.hash().data(), block1.justify.hash().size()))
@@ -321,7 +324,7 @@ void HotstuffCore::update(const Block &block) {
         lock_ = block2;
     }
 
-    if(storage_->getBlock(block2.justify.hash(), block3) == false) {
+    if(storage_->blockOf(block2.justify.hash(), block3) == false) {
         JLOG(journal_.debug()) 
             << "Missing a block that hash is " 
             << ripple::strHex(ripple::Slice(block2.justify.hash().data(), block2.justify.hash().size()))
@@ -346,7 +349,7 @@ void HotstuffCore::commit(Block &block) {
     //    return;
     if(exec_.height < block.height) {
         Block parent;
-        if(storage_->getBlock(block.parent, parent)) {
+        if(storage_->blockOf(block.parent, parent)) {
             commit(parent);
         }
 
@@ -397,7 +400,7 @@ bool HotstuffCore::updateHighQC(const QuorumCert &qc) {
     }
 
     Block newBlock;
-    if(storage_->getBlock(qc.hash(), newBlock) == false) {
+    if(storage_->blockOf(qc.hash(), newBlock) == false) {
         JLOG(journal_.debug()) 
             << "Missing a block that hash is " 
             << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()));
@@ -405,7 +408,7 @@ bool HotstuffCore::updateHighQC(const QuorumCert &qc) {
     }
 
     Block oldBlock;
-    if(storage_->getBlock(hight_qc_.hash(), oldBlock) == false) {
+    if(storage_->blockOf(hight_qc_.hash(), oldBlock) == false) {
         JLOG(journal_.debug()) 
             << "Missing a block that hash is " 
             << ripple::strHex(ripple::Slice(hight_qc_.hash().data(), hight_qc_.hash().size()));

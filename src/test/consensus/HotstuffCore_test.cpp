@@ -126,7 +126,7 @@ public:
         return true;
     }
 
-    bool getBlock(const ripple::hotstuff::BlockHash& hash, 
+    bool blockOf(const ripple::hotstuff::BlockHash& hash, 
         ripple::hotstuff::Block& block) const {
         auto it = blocks_.find(hash);
         if(it == blocks_.end()) {
@@ -135,6 +135,15 @@ public:
         
         block = it->second;
         return true;
+    }
+
+    bool expectBlock(const ripple::hotstuff::BlockHash& hash, 
+        ripple::hotstuff::Block& block) {
+
+        if(blockOf(hash, block))
+            return true;
+        // sync blocks
+        return false;
     }
 
     std::map<Key, Value>& blocks() {
@@ -226,7 +235,7 @@ public:
     }
 
     ripple::hotstuff::Block CreatePropose() {
-        return hotstuffCore_.CreatePropose();
+        return hotstuffCore_.CreatePropose(5);
     }
 
     bool OnReceiveProposal(const ripple::hotstuff::Block& block, ripple::hotstuff::PartialCert& cert) {

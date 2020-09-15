@@ -40,12 +40,11 @@ Hotstuff::Hotstuff(
 }
 
 Hotstuff::~Hotstuff() {
-    //delete signal_;
     delete hotstuff_core_;
 }
 
 void Hotstuff::propose() {
-    Block block = hotstuff_core_->CreatePropose();
+    Block block = hotstuff_core_->CreatePropose(config_.cmd_batch_size);
     // broadcast the block to all replicas
     broadCast(block);
     handlePropose(block);

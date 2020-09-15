@@ -42,7 +42,11 @@ public:
 
     // for blocks
     virtual bool addBlock(const Block& block) = 0;
-    virtual bool getBlock(const BlockHash& hash, Block& block) const = 0;
+
+    // 通过 block hash 获取 block，如果本地没有函数返回 false
+    virtual bool blockOf(const BlockHash& hash, Block& block) const = 0;
+    // 通过 block hash 获取 block, 如果本地没有则需要从网络同步
+    virtual bool expectBlock(const BlockHash& hash, Block& block) = 0;
 protected:
     Storage() {}
 };
@@ -123,7 +127,7 @@ public:
         Executor* executor);
     ~HotstuffCore();
 
-    Block CreatePropose();
+    Block CreatePropose(int batch_size);
 
     bool OnReceiveProposal(const Block& block, PartialCert& cert);
     void OnReceiveVote(const PartialCert& cert);

@@ -172,18 +172,32 @@ public:
         return true;
     }
 
-    bool getBlock(
+    bool blockOf(
         const ripple::hotstuff::BlockHash& hash, 
         ripple::hotstuff::Block& block) const {
-
         auto it = cache_blocks_.find(hash);
         if(it == cache_blocks_.end()) {
             return false;
         }
         
         block = it->second;
-        return true;;
+        return true;
+    }
 
+    bool expectBlock(
+        const ripple::hotstuff::BlockHash& hash, 
+        ripple::hotstuff::Block& block) {
+        if(blockOf(hash, block))
+            return true;
+
+        // sync block
+        for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+            if(it->second->blockOf(hash, block)) {
+                addBlock(block);
+                return true;
+            }
+        }
+        return false;
     }
 
     // for ripple::hotstuff::Executor
@@ -262,6 +276,10 @@ public:
         return malicious_;
     }
 
+    std::vector<ReplicaID>& leader_schedule() {
+        return config_.leader_schedule;
+    } 
+
 private:
     boost::asio::io_service io_service_;
     std::thread worker_;
@@ -286,6 +304,7 @@ public:
     , replicas_(false_replicas_*3 + 1)
     , blocks_(4)
     , view_change_(1)
+    , cmd_batch_size_(100)
     , timeout_(7)
     , disable_log_(false)
     , logs_(std::make_unique<SuiteLogs>(*this)) {
@@ -323,12 +342,22 @@ public:
                 view_change_ = std::atoi(arg_value.c_str());
             } else if (arg_key.compare("timeout") == 0) {
                 timeout_ = std::atoi(arg_value.c_str());
+            } else if (arg_key.compare("batch_size") == 0) {
+                cmd_batch_size_ = std::atoi(arg_value.c_str());
             }
         }
     }
 
+    // initial a replica
+    Replica* initReplica(jtx::Env* env, const ripple::hotstuff::Config& config) {
+        Replica* r = new Replica(env, config);
+        r->init();
+        return r;
+    }
+
     // create replica instances by parameter
     std::size_t newReplicas(jtx::Env* env, int replicas) {
+        //return addReplicas(env, replicas);
         ripple::hotstuff::Config config;
         config.view_change = view_change_;
         config.timeout = timeout_;
@@ -338,11 +367,32 @@ public:
         
         for(int i = 0; i < replicas; i++) {
             config.id = config.leader_schedule[i];
-            new Replica(env, config);
+            initReplica(env, config);
+        }
+        return Replica::replicas.size();
+    }
+
+    // add replicas adn run replicas
+    std::size_t addReplicas(jtx::Env* env, int replicas) {
+        // update old replicas' leader schedule
+        for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+            std::size_t size = it->second->leader_schedule().size();
+            for(int i = 0; i < replicas; i++) {
+                it->second->leader_schedule().push_back(size + i + 1);
+            }
         }
 
-        for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-            it->second->init();
+        ripple::hotstuff::Config config;
+        config.view_change = view_change_;
+        config.timeout = timeout_;
+        config.cmd_batch_size = cmd_batch_size_;
+        if(Replica::replicas.size() > 0)
+            config.leader_schedule = Replica::replicas[1]->leader_schedule();
+
+        std::size_t size = config.leader_schedule.size();
+        for(int i = size - replicas; i < size; i++) {
+            config.id = config.leader_schedule[i];
+            initReplica(env, config);
         }
         return Replica::replicas.size();
     }
@@ -490,6 +540,28 @@ public:
         BEAST_EXPECT(Replica::replicas.size() == 0);
     }
 
+    // 测试增加 replicas
+    void testAddReplicasRoundRobinLeader() {
+        jtx::Env env{*this};
+        if(disable_log_ == true)
+            env.app().logs().threshold(beast::severities::kDisabled);
+        // create replicas
+        newReplicas(&env, replicas_);
+
+        runReplicas();
+        BEAST_EXPECT(waitUntilConsentedBlocks(blocks_) == true);
+
+        // add some replicas
+        addReplicas(&env, 2);
+        runReplicas();
+        BEAST_EXPECT(waitUntilConsentedBlocks(2*blocks_) == true);
+
+        stopReplicas(&env);
+        //env.app().signalStop();
+        freeReplicas();
+        BEAST_EXPECT(Replica::replicas.size() == 0);
+    }
+
     // 有恶意节点测试用例
     // 恶意节点不发送 proposal
     void testMaliciousRoundRobinLeader() {
@@ -512,19 +584,18 @@ public:
             std::cout << "malicious id -> " << (*it) << std::endl;
         }
 
+        runReplicas();
+        BEAST_EXPECT(waitUntilConsentedBlocks(4) == true);
         // 设置 maliciousIDs 的节点为恶意节点
         for(auto it = maliciousIDs.begin(); it != maliciousIDs.end(); it++) {
             setReplicaMalicious(*it, true);
         }
-
-        runReplicas();
         for(auto it = maliciousIDs.begin(); it != maliciousIDs.end(); it++) {
             stopReplicas(&env, *it);
             clearReplicas(*it);
         }
+        BEAST_EXPECT(waitUntilConsentedBlocks(4 + blocks_) == true);
 
-
-        BEAST_EXPECT(waitUntilConsentedBlocks(blocks_) == true);
         stopReplicas(&env);
         //env.app().signalStop();
         freeReplicas();
@@ -536,6 +607,7 @@ public:
 
         testElectLeader();
         testNormalRoundRobinLeader();
+        //testAddReplicasRoundRobinLeader();
         testMaliciousRoundRobinLeader();
     }
 
@@ -544,6 +616,7 @@ private:
     int replicas_;
     int blocks_;
     int view_change_;
+    int cmd_batch_size_;
     int timeout_;
     bool disable_log_;
     std::unique_ptr<ripple::Logs> logs_;
