@@ -20,6 +20,9 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_PACEMAKER_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_PACEMAKER_H
 
+#include <boost/asio.hpp>
+#include <boost/asio/steady_timer.hpp>
+
 #include <peersafe/consensus/hotstuff/Hotstuff.h>
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 
@@ -31,7 +34,7 @@ class Pacemaker {
 public: 
 	virtual ~Pacemaker(){};
 
-	virtual ReplicaID GetLeader(int height) = 0;
+	virtual ReplicaID GetLeader(int view) = 0;
 	virtual void init(Hotstuff* hotstuff, Signal* signal) = 0;
 
 protected:
@@ -43,7 +46,7 @@ public:
 	FixedLeader(const ReplicaID& leader);
 	virtual ~FixedLeader();
 
-	ReplicaID GetLeader(int height) override;
+	ReplicaID GetLeader(int view) override;
 	void init(Hotstuff* hotstuff, Signal* signal) override;
 
 	void run();
@@ -54,6 +57,32 @@ private:
 
 	ReplicaID leader_;
 	Hotstuff* hotstuff_;
+};
+
+class RoundRobinLeader : public Pacemaker {
+public:
+	RoundRobinLeader(boost::asio::io_service* io_service);
+	virtual ~RoundRobinLeader();
+
+	ReplicaID GetLeader(int view) override;
+	void init(Hotstuff* hotstuff, Signal* signal) override;
+
+	void run();
+	void stop();
+
+private:
+	void beat();
+	void onHandleEmitEvent(const Event& event);
+
+	void setUpDummyBlockTimer();
+	void closeDummyBlockTimer();
+	void generateDummyBlock(const boost::system::error_code& ec);
+
+	Hotstuff* hotstuff_;
+	boost::asio::io_service* io_service_;
+	boost::asio::steady_timer dummy_block_timer_;
+	int last_beat_;
+	bool running_;
 };
 
 } // namespace hotstuff

@@ -27,7 +27,11 @@
 >>>>>>> 18d38fee0... implement master logic of hotstuff and some tests for hotstuff
 =======
 #include <test/consensus/HotstuffCore_test.cpp>
+<<<<<<< HEAD
 >>>>>>> 07f480cac... implement signals for hotstuffcore
+=======
+#include <test/consensus/Hotstuff_test.cpp>
+>>>>>>> 5832836fc... implement roundRobin
 #include <test/consensus/LedgerTiming_test.cpp>
 #include <test/consensus/LedgerTrie_test.cpp>
 #include <test/consensus/ScaleFreeSim_test.cpp>

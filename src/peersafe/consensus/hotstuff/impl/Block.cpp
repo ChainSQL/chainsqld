@@ -26,6 +26,7 @@ namespace ripple { namespace hotstuff {
 Block::Block()
 : hash()
 , height(0)
+, id(0)
 , parent()
 , justify()
 , cmd()
@@ -44,6 +45,7 @@ BlockHash Block::blockHash(const Block& block) {
     ripple::sha512_half_hasher h;
     hash_append(h, block.height);
     hash_append(h, block.parent);
+    hash_append(h, block.id);
     hash_append(h, block.justify.toBytes());
     
     for(std::size_t i = 0; i < block.cmd.size(); i++) {

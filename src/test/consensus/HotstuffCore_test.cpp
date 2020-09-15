@@ -217,7 +217,7 @@ public:
         Replicas* replicas)
     : storage_()
     , executor_(replicas)
-    , hotstuffCore_(id, journal, nullptr, &storage_, &executor_) {
+    , hotstuffCore_(id, journal, ripple::hotstuff::Signal::weak(), &storage_, &executor_) {
 
     }
 
@@ -261,6 +261,10 @@ public:
         return hotstuffCore_.leaf();
     }
 
+    const ripple::hotstuff::Block& votedBlock() {
+        return hotstuffCore_.votedBlock();
+    }
+
     void setLeaf(const ripple::hotstuff::Block &block) {
         hotstuffCore_.setLeaf(block);
     }
@@ -269,7 +273,9 @@ public:
         const ripple::hotstuff::Command& cmd, 
         const ripple::hotstuff::QuorumCert& qc, 
         int height) {
-        return hotstuffCore_.CreateLeaf(leaf, cmd, qc, height);
+        ripple::hotstuff::Block block = hotstuffCore_.CreateLeaf(leaf, cmd, qc, height);
+        block.hash = ripple::hotstuff::Block::blockHash(block);
+        return block;
     }
 
 private:
@@ -281,7 +287,8 @@ private:
 class HotstuffCore_test : public beast::unit_test::suite {
 public:
     HotstuffCore_test()
-    : replicas_(4)
+    : false_replicas_(1)
+    , replicas_(false_replicas_*3 + 1)
     , blocks_(4)
     , logs_(std::make_unique<SuiteLogs>(*this)) {
         logs_->threshold(beast::severities::kAll);
@@ -308,14 +315,15 @@ public:
 
             std::string arg_key = token.substr(0, npos);
             std::string arg_value = token.substr(npos + 1);
-            if (arg_key.compare("block") == 0) {
+            if (arg_key.compare("blocks") == 0) {
                 blocks_ = std::atoi(arg_value.c_str());
-            } else if (arg_key.compare("replicas") == 0) {
-                replicas_ = std::atoi(arg_value.c_str());
             } else if (arg_key.compare("disable_log") == 0) {
                 if(arg_value.compare("1") == 0) {
                     logs_->threshold(beast::severities::kDisabled);
                 }
+            } else if (arg_key.compare("false_repplicas") == 0) {
+                false_replicas_ = std::atoi(arg_value.c_str());
+                replicas_ = false_replicas_*3 + 1;
             }
         }
     }
@@ -763,63 +771,92 @@ public:
                 &replicas));
         }
 
-        ripple::hotstuff::ReplicaID next_header = 0;
         int quorum_size = quorumSize();
-        while(true) {
-            ripple::hotstuff::Block block = hotstuffs[next_header]->CreatePropose();
-            std::vector<ripple::hotstuff::PartialCert> paritalCerts;
-            for(int id = 0; id < quorum_size; id ++) {
-                ripple::hotstuff::PartialCert cert;
-                if(hotstuffs[id]->OnReceiveProposal(block, cert))
-                    paritalCerts.push_back(cert);
-            }
-
-            next_header = (next_header + 1) % replicas_;
-            for(std::size_t i = 0; i < paritalCerts.size(); i++) {
-                hotstuffs[next_header]->OnReceiveVote(paritalCerts[i]);
-            }
-
-            if(paritalCerts.size() == 0) {
-                // create a dummy block for replicas
+        std::map<ripple::hotstuff::ReplicaID,ripple::hotstuff::PartialCert> lastParitalCerts;
+        for(int view = 1; view < blocks_; view++) {
+            ripple::hotstuff::ReplicaID next_header = (view - 1) % replicas_;
+            if(next_header == 3) {
                 for (int id = 0; id < quorum_size; id++) {
                     ripple::hotstuff::Command cmd;
                     TestHotstuffCore::pointer& hotstuff = hotstuffs[id];
-                    ripple::hotstuff::Block leaf = hotstuff->CreateLeaf(
-                        hotstuff->leaf(), 
-                        cmd, 
-                        ripple::hotstuff::QuorumCert(), 
-                        hotstuff->Height() + 1
-                    );
-                    hotstuff->setLeaf(leaf);
-                }
-            }
+                    ripple::hotstuff::Block votedBlock = hotstuff->votedBlock();
 
-            bool hasConsented = true;
-            for(int id = 0; id < quorum_size; id++) {
-                if(hotstuffs[id]->consentedSize() == 0) {
-                    hasConsented = false;
-                    break;
+                    next_header = (votedBlock.height + 1) % replicas_;
+                    hotstuffs[next_header]->OnReceiveVote(lastParitalCerts.find(id)->second);
+                }
+
+                ripple::hotstuff::Block block = hotstuffs[next_header]->CreatePropose();
+                std::vector<ripple::hotstuff::PartialCert> paritalCerts;
+                for(int id = 0; id < quorum_size; id ++) {
+                    ripple::hotstuff::PartialCert cert;
+                    if(hotstuffs[id]->OnReceiveProposal(block, cert)) {
+                        paritalCerts.push_back(cert);
+                    }
+                }
+
+                for(std::size_t i = 0; i < paritalCerts.size(); i++) {
+                    hotstuffs[next_header]->OnReceiveVote(paritalCerts[i]);
+                }
+            } else {
+                ripple::hotstuff::Block block = hotstuffs[next_header]->CreatePropose();
+                std::vector<ripple::hotstuff::PartialCert> paritalCerts;
+                lastParitalCerts.clear();
+                for(int id = 0; id < quorum_size; id ++) {
+                    ripple::hotstuff::PartialCert cert;
+                    if(hotstuffs[id]->OnReceiveProposal(block, cert)) {
+                        paritalCerts.push_back(cert);
+                        lastParitalCerts[id] = cert;
+                    }
+                }
+
+                for(std::size_t i = 0; i < paritalCerts.size(); i++) {
+                    hotstuffs[next_header + 1]->OnReceiveVote(paritalCerts[i]);
                 }
             }
-            if(hasConsented)
-                break;
         }
+
+        bool bok = true;
+        int count = hotstuffs[0]->consentedSize();
+        std::cout << "0 -> " << count << std::endl;
+        for (int id = 1; id < quorum_size; id++) {
+            std::cout << id << " -> " << hotstuffs[id]->consentedSize() << std::endl;
+            if(count != hotstuffs[id]->consentedSize()) {
+                bok = false;
+                break;
+            }
+        }
+
+        if(bok == false) {
+            BEAST_EXPECT(bok);
+            return;
+        }
+
+        const ripple::hotstuff::Block& last = hotstuffs[0]->last();
+        for (int id = 1; id < quorum_size; id++) {
+            if(last.hash != hotstuffs[id]->last().hash) {
+                bok = false;
+                break;
+            }
+        }
+
+        BEAST_EXPECT(bok);
     }
 
     void run() override {
         parse_args();
 
-        testFixedLeaderChainedHotstuff();
-        testRoundRobinLeaderChainedHotstuff();
+        //testFixedLeaderChainedHotstuff();
+        //testRoundRobinLeaderChainedHotstuff();
 
-        testVoteOfChainedHotstuffInNetworkAnomaly();
-        testMissProposalChainedHotstuff();
-        testFixedMissProposalChainedHotstuff();
-        testAddReplicaChainedHotstuff();
-        //testBenchmarkChainedHotstuff();
+        //testVoteOfChainedHotstuffInNetworkAnomaly();
+        //testMissProposalChainedHotstuff();
+        //testFixedMissProposalChainedHotstuff();
+        //testAddReplicaChainedHotstuff();
+        testBenchmarkChainedHotstuff();
     }
 
 private:
+    int false_replicas_;
     int replicas_;
     int blocks_;
     std::unique_ptr<ripple::Logs> logs_;

@@ -20,6 +20,8 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_H
 
+#include <vector>
+
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
 #include <ripple/basics/Log.h>
@@ -32,40 +34,73 @@ class Sender {
 public:
     virtual ~Sender() {}
 
-    virtual void proposal(ReplicaID id, const Block& block) = 0;
-    virtual void vote(ReplicaID id, const PartialCert& cert) = 0;
-    virtual void newView(const QuorumCert& qc) = 0;
+    virtual void proposal(const ReplicaID& id, const Block& block) = 0;
+    virtual void vote(const ReplicaID& id, const PartialCert& cert) = 0;
+    virtual void newView(const ReplicaID& id, const QuorumCert& qc) = 0;
 protected:
     Sender() {}
+};
+
+struct Config {
+    // self id
+    ReplicaID id;
+    // change a new leader per view_change
+    int view_change;
+    // schedule for electing a new leader
+    std::vector<ReplicaID> leader_schedule;
+    // generate a dummy block after timeout (seconds)
+    int timeout;
 };
 
 class Hotstuff {
 public:
     Hotstuff(
-        const ReplicaID &id,
-        const beast::Journal &journal,
-        Sender *sender,
-        Storage *storage,
-        Executor *executor,
-        Pacemaker *pacemaker);
+        ripple::JobQueue* jobQueue,
+        const Config& config,
+        const beast::Journal& journal,
+        Sender* sender,
+        Storage* storage,
+        Executor* executor,
+        Pacemaker* pacemaker);
 
     ~Hotstuff();
 
     ReplicaID id() const {
-        return id_;
+        return config_.id;
     }
 
     void propose();
-    void nextSyncNewView();
+    void nextSyncNewView(int height);
 
     void handlePropose(const Block& block);
     void handleVote(const PartialCert& cert);
     void handleNewView(const QuorumCert& qc);
+
 private:
+    friend class RoundRobinLeader;
+     // operate hotstuffcore
+    const Block leaf();
+    void setLeaf(const Block& block);
+    const int Height();  
+    const Block& votedBlock();
+    const QuorumCert HightQC();
+    Block CreateLeaf(const Block& leaf, 
+        const Command& cmd, 
+        const QuorumCert& qc, 
+        int height);
+
+    const Config& config() const {
+        return config_;
+    }
+
+    Config& config() {
+        return config_;
+    }
+
     void broadCast(const Block& block);
 
-    ReplicaID id_;
-    Signal signal_;
+    Config config_;
+    Signal::pointer signal_;
     HotstuffCore* hotstuff_core_;
     Sender* sender_;
     Pacemaker* pacemaker_;

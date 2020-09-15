@@ -34,6 +34,7 @@ public:
 
     BlockHash hash;
     int height;
+	ReplicaID id;
     BlockHash parent;
     QuorumCert justify;
     Command cmd;

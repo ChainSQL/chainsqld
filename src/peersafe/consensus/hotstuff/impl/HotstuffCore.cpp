@@ -24,25 +24,28 @@ namespace ripple { namespace hotstuff {
 HotstuffCore::HotstuffCore(
     const ReplicaID& id,
     const beast::Journal& journal,
-    Signal* signal,
+    const Signal::weak& signal,
     Storage* storage,
     Executor* executor)
 : id_(id)
 , mutex_()
 , journal_(journal)
-, vHeight_(1)
+//, vHeight_(0)
+, votedBlock_()
 , genesis_()
 , lock_()
 , exec_()
 , leaf_()
 , hight_qc_()
+, pendingPartialCerts_()
 , pendingQCs_()
 , signal_(signal)
 , storage_(storage)
 , executor_(executor) {
-    
+
     genesis_.committed = true;
-    genesis_.height = vHeight_;
+    genesis_.height = 0;
+    genesis_.id = 0;
     
     genesis_.hash = Block::blockHash(genesis_);
     storage_->addBlock(genesis_);
@@ -60,6 +63,8 @@ Block HotstuffCore::CreatePropose() {
     Command cmd;
     storage_->command(5, cmd);
     Block block = CreateLeaf(leaf_, cmd, hight_qc_, leaf_.height + 1);
+    block.id = id_;
+    block.hash = Block::blockHash(block);
     storage_->addBlock(block);
     return block;
 }
@@ -83,7 +88,7 @@ bool HotstuffCore::OnReceiveProposal(const Block &block, PartialCert& cert) {
 
         storage_->addBlock(block);
 
-        if (block.height <= vHeight_) {
+        if (block.height <= votedBlock_.height) {
             JLOG(journal_.error()) 
                 << "Block's Height is less that vHeight,"
                 << "the hash of the block is " 
@@ -138,7 +143,8 @@ bool HotstuffCore::OnReceiveProposal(const Block &block, PartialCert& cert) {
             break;
         }
 
-        vHeight_ = block.height;
+        //vHeight_ = block.height;
+        votedBlock_ = block;
 
         PartialSig sig;
         if (executor_->signature(id_, Block::blockHash(block), sig) == false) {
@@ -153,10 +159,8 @@ bool HotstuffCore::OnReceiveProposal(const Block &block, PartialCert& cert) {
         cert.blockHash = block.hash;
         safe = true;
 
-        if(signal_) {
-            Event evnet{Event::ReceiveProposal, QuorumCert(), block, id_};
-            signal_->emitEvent(evnet);
-        }
+        Event evnet{Event::ReceiveProposal, QuorumCert(), block, id_};
+        emitEvent(evnet);
 
         JLOG(journal_.debug())
             << "successfully generated a vote for a block that hash is "
@@ -175,10 +179,8 @@ void HotstuffCore::OnReceiveVote(const PartialCert& cert) {
         << "Receive a vote for a block that hash is " 
         << ripple::strHex(ripple::Slice(cert.blockHash.data(), cert.blockHash.size()));
 
-    if (signal_) {
-        Event evnet{Event::ReceiveVote, QuorumCert(), Block(), cert.partialSig.ID};
-        signal_->emitEvent(evnet);
-    }
+    Event event{Event::ReceiveVote, QuorumCert(), Block(), cert.partialSig.ID};
+    emitEvent(event);
 
     const std::lock_guard<std::mutex> lock(mutex_);
     if(executor_->verifySignature(cert.partialSig, cert.blockHash) == false) {
@@ -190,6 +192,61 @@ void HotstuffCore::OnReceiveVote(const PartialCert& cert) {
         return;
     }
 
+    // 当前 leader 收到其他 replicas 发送的 vote 消息的时候，
+    // 可能此 leader 还没收到 proposal 消息，也就意味着 cert.blockHash
+    // 指向的 block 在本地还没有(storage_->getBlock 获取失败)
+    Block expect_block;
+    if(storage_->getBlock(cert.blockHash, expect_block) == false) {
+        auto it = pendingPartialCerts_.find(cert.blockHash);
+        if(it == pendingPartialCerts_.end()) {
+            std::vector<PartialCert> partialCerts;
+            it = pendingPartialCerts_.emplace(cert.blockHash, partialCerts).first;
+        }
+        it->second.push_back(cert);
+    } else {
+        auto it = pendingPartialCerts_.find(cert.blockHash);
+        if(it != pendingPartialCerts_.end()) {
+            const std::vector<PartialCert>& partialCerts = it->second;
+            std::size_t size = partialCerts.size();
+            for(std::size_t i = 0; i < size; i++) {
+                handleVote(partialCerts[i]);
+            }
+            pendingPartialCerts_.erase(it);
+        }
+        handleVote(cert);
+    }
+}
+
+void HotstuffCore::OnReceiveNewView(const QuorumCert &qc) {
+    JLOG(journal_.debug()) 
+        << "Receive a new view that hash of block is " 
+        << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()));
+
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        updateHighQC(qc);
+    }
+
+    Event evnet{Event::ReceiveNewView, qc, Block(), id_};
+    emitEvent(evnet);
+}
+
+Block HotstuffCore::CreateLeaf(const Block& leaf, 
+    const Command& cmd, 
+    const QuorumCert& qc, 
+    int height) {
+
+    Block block;
+
+    block.parent = leaf.hash;
+    block.cmd = cmd;
+    block.height = height;
+    if(qc.isZero() == false)
+        block.justify = qc;
+    return block;
+}
+
+void HotstuffCore::handleVote(const PartialCert& cert) {
     auto qcs = pendingQCs_.find(cert.blockHash);
     if(qcs == pendingQCs_.end()) {
         Block expect_block;
@@ -219,41 +276,9 @@ void HotstuffCore::OnReceiveVote(const PartialCert& cert) {
     if(qcs->second.sizeOfSig() >= executor_->quorumSize()) {
         updateHighQC(qcs->second);
 
-        if (signal_) {
-            Event evnet{Event::QCFinish, qcs->second, Block(), id_};
-            signal_->emitEvent(evnet);
-        }
+        Event evnet{Event::QCFinish, qcs->second, Block(), id_};
+        emitEvent(evnet);
     }
-}
-
-void HotstuffCore::OnReceiveNewView(const QuorumCert &qc) {
-    JLOG(journal_.debug()) 
-        << "Receive a new view that hash of block is " 
-        << ripple::strHex(ripple::Slice(qc.hash().data(), qc.hash().size()));
-    const std::lock_guard<std::mutex> lock(mutex_);
-    if (signal_) {
-        Event evnet{Event::ReceiveNewView, qc, Block(), id_};
-        signal_->emitEvent(evnet);
-    }
-    updateHighQC(qc);
-}
-
-Block HotstuffCore::CreateLeaf(const Block& leaf, 
-    const Command& cmd, 
-    const QuorumCert& qc, 
-    int height) {
-
-    Block block;
-
-    block.parent = leaf.hash;
-    block.cmd = cmd;
-    block.height = height;
-    if(qc.isZero() == false)
-        block.justify = qc;
-
-    block.hash = Block::blockHash(block);
-
-    return block;
 }
 
 void HotstuffCore::update(const Block &block) {
@@ -306,7 +331,8 @@ void HotstuffCore::update(const Block &block) {
     if(block3.committed)
         return;
 
-    if(block1.parent == block2.hash && block2.parent == block3.hash) {
+    //if(block1.parent == block2.hash && block2.parent == block3.hash) {
+    if(block1.justify.hash() == block2.hash && block2.justify.hash() == block3.hash) {
         commit(block3);
         // decided on block3
         exec_ = block3;
@@ -316,6 +342,8 @@ void HotstuffCore::update(const Block &block) {
 }
 
 void HotstuffCore::commit(Block &block) {
+    //if(block.isDummy())
+    //    return;
     if(exec_.height < block.height) {
         Block parent;
         if(storage_->getBlock(block.parent, parent)) {
@@ -404,6 +432,13 @@ bool HotstuffCore::updateHighQC(const QuorumCert &qc) {
         return true;
     }
     return false;
+}
+
+void HotstuffCore::emitEvent(const Event& event) {
+    Signal::pointer signal = signal_.lock();
+    if(signal) {
+        signal->emitEvent(event);
+    }
 }
 
 } // namespace hotstuff
