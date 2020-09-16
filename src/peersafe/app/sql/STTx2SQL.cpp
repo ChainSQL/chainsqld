@@ -48,7 +48,7 @@ namespace ripple {
 
 class BuildField {
 
-// propertiese of field
+// properties of field
 #define PK	0x00000001		// primary key
 #define NN	0x00000002		// not null 
 #define UQ	0x00000004		// unique
@@ -341,8 +341,13 @@ public:
 		return value_.isDate();
 	}
 
+
 	bool isNull() {
 		return value_.isNull();
+	}
+
+	bool isCommand() {
+		return value_.isCommand();
 	}
 
 	void SetPrimaryKey() {
@@ -444,7 +449,7 @@ std::pair<int, std::string> parseField(const Json::Value& json, BuildField& fiel
 		InnerNull value;
 		field.SetFieldValue(value);
 	}else {
-		std::string error = (boost::format("Unkown type when parsing fields.[%s]") 
+		std::string error = (boost::format("Unknown type when parsing fields.[%s]") 
 			%Json::jsonAsString(val)).str();
 		return{ -1, error };
 	}
@@ -1075,6 +1080,10 @@ private:
 				update_fields += (boost::format("%1%=%2%")
 					%field.Name()
 					%field.asInt64()).str();
+			}else if (field.isCommand()) {
+				update_fields += (boost::format("%1%=%2%")
+					% field.Name()
+					% field.asString()).str();
 			}
 			else if (field.isNull()) {
 				update_fields += (boost::format("%1%=%2%")
@@ -1121,10 +1130,16 @@ private:
 
 		std::string& tablename = tables_[0];
 		std::string update_fields;
+
+		std::string update_command_fields;
 		
 		index_ = 0;
 		for (size_t idx = 0; idx < fields_.size(); idx++) {
 			BuildField& field = fields_[idx];
+			if (field.isCommand()) {
+				update_command_fields = field.Name() + std::string("=") + field.asString();
+				continue;
+			}
 			update_fields += field.Name() + std::string("=:") + std::to_string(++index_);
 			if (idx != fields_.size() - 1)
 				update_fields += ",";
@@ -1133,16 +1148,23 @@ private:
 		auto conditions = build_execute_conditions();
 		if (std::get<0>(conditions) == 0) {
 			const std::string& c = std::get<1>(conditions);
+
+			// similar to this sql statement £º update table_01 set age=1,name=concat("a_",name);
+			if (!update_command_fields.empty()) {
+				std::string extraComma = (update_fields.back() == ',' ? std::string("") : std::string(","));
+				update_fields += extraComma + update_command_fields;
+			}
+
 			if (c.empty()) {
 				sql_str = (boost::format("update %s set %s")
 					% tablename
-					%update_fields).str();
+					% update_fields).str();
 			}
 			else {
 				sql_str = (boost::format("update %s set %s where %s")
 					% tablename
-					%update_fields
-					%c).str();
+					% update_fields
+					% c).str();
 			}
 
 			LockedSociSession sql = db_conn_->checkoutDb();
@@ -1157,7 +1179,7 @@ private:
 					}
 			}
 			// fix an issue that we can't catch an exception on top-level,
-			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
+			// because destructor of one-temp-type driver to execute actual SQL-engine API.
 			// however destructor can catch an exception but can't throw an exception that was catched by destructor.
 			//if (db_conn_->getSession().last_error().first != 0) {
 			//	last_error(db_conn_->getSession().last_error());
@@ -1652,8 +1674,9 @@ private:
 		for (size_t idx = 0; idx < fields_.size(); idx++) {
 			BuildField& field = fields_[idx];
 			if (field.isString() || field.isVarchar()
-				|| field.isBlob() || field.isText())
+				|| field.isBlob() || field.isText()) {
 				t = t, soci::use(field.asString());
+			}
 			else if (field.isInt())
 				t = t, soci::use(field.asInt());
 			else if (field.isFloat())
@@ -1668,7 +1691,7 @@ private:
 	}
 
 	BuildSQL::BUILDTYPE build_type_;
-	int index_;
+	int index_; 
 	BuildSQL::OrConditionsType conditions_;
 	DatabaseCon* db_conn_;
 	Json::Value condition_;
@@ -2353,7 +2376,9 @@ private:
 
 namespace helper {
 
+
 	std::pair<int, std::string> ParseQueryJson(const Json::Value& tx_json, BuildSQL &buildsql) {
+
 		std::string error = "Unknown Error when parse json";
 		int code = 0;
 		do {
@@ -3325,13 +3350,13 @@ std::pair<bool, std::string> STTx2SQL::check_optionalRule(const std::string& opt
 }
 
 std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const ripple::STTx& tx, const std::string& sOperationRule /* = "" */,
-	bool bVerifyAffectedRows /* = false */){
+	bool bVerifyAffectedRows /* = false */) {
 	std::pair<int, std::string> ret = { -1, "inner error" };
 	if (tx.getTxnType() != ttTABLELISTSET && tx.getTxnType() != ttSQLSTATEMENT) {
 		ret = { -1, "Transaction's type is error." };
 		return ret;
 	}
-     
+
 	uint16_t optype = tx.getFieldU16(sfOpType);
 	const ripple::STArray& tables = tx.getFieldArray(sfTables);
 	ripple::uint160 hex_tablename = tables[0].getFieldH160(sfNameInDB);
@@ -3356,7 +3381,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 	Json::Value raw_json;
 	if (sRaw.size()) {
 		if (Json::Reader().parse(sRaw, raw_json) == false) {
-			ret = { -1, "parase Raw unsuccessfully." };
+			ret = { -1, "parse Raw unsuccessfully." };
 			return ret;
 		}
 	}
@@ -3366,7 +3391,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 	}
 
 	if (check_raw(raw_json, optype) == false) {
-		ret = { -1, (boost::format("Raw data is malformed. %s") %Json::jsonAsString(raw_json)).str() };
+		ret = { -1, (boost::format("Raw data is malformed. %s") % Json::jsonAsString(raw_json)).str() };
 		return ret;
 	}
 
@@ -3400,9 +3425,9 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 	case 10:
 		build_type = BuildSQL::BUILD_ASSERT_STATEMENT;
 		break;
-    case 12:
-        build_type = BuildSQL::BUILD_RECREATE_SQL;
-        break;
+	case 12:
+		build_type = BuildSQL::BUILD_RECREATE_SQL;
+		break;
 	default:
 		break;
 	}
@@ -3436,6 +3461,22 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 	}
 
 
+	bool bHasTxsHashField = false;
+	std::string sTxsHashFillField;
+	if (tx.isFieldPresent(sfTxsHashFillField))
+	{
+		auto blob = tx.getFieldVL(sfTxsHashFillField);;
+		sTxsHashFillField.assign(blob.begin(), blob.end());
+		auto sql_str = (boost::format("select * from information_schema.columns WHERE table_name ='%s'AND column_name ='%s'")
+			% txt_tablename
+			% sTxsHashFillField).str();
+		LockedSociSession sql = db_conn_->checkoutDb();
+		soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
+
+		bHasTxsHashField = records.end() != records.begin();
+	}
+
+
 	if (build_type == BuildSQL::BUILD_INSERT_SQL) {
 		std::string sql;
 
@@ -3444,26 +3485,34 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 			auto& v = raw_json[idx];
 			if (v.isObject() == false) {
 				//JSON_ASSERT(v.isObject());
-				ret = { -1, "Element of raw may be malformal." };
+				ret = { -1, "Element of raw may be malformed." };
 				return ret;
 			}
 
 			auto retPair = GenerateInsertSql(v, buildsql.get());
-			if(retPair.first != 0) {
+			if (retPair.first != 0) {
 				return retPair;
 			}
-            if (bHasAutoField)
-            {
-                BuildField insert_field(sAutoFillField);
-                insert_field.SetFieldValue(to_string(tx.getTransactionID()));
-                buildsql->AddField(insert_field);
-            }
-			
+
+			if (bHasAutoField)
+			{
+				BuildField insert_field(sAutoFillField);
+				insert_field.SetFieldValue(to_string(tx.getTransactionID()));
+				buildsql->AddField(insert_field);
+			}
+
+			if (bHasTxsHashField)
+			{
+				BuildField insert_tx_field(sTxsHashFillField);
+				insert_tx_field.SetFieldValue(to_string(tx.getTransactionID()));
+				buildsql->AddField(insert_tx_field);
+			}
+
 			sql += buildsql->asString();
-			if(buildsql->execSQL() != 0) {
+			if (buildsql->execSQL() != 0) {
 				//ret = { -1, std::string("Executing SQL was failure.") + sql };
 				ret = { -1, (boost::format("Executing `%1%` was failure. %2%")
-					%sql 
+					% sql
 					%buildsql->last_error().second).str() };
 				return ret;
 			}
@@ -3476,38 +3525,38 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 			if (idx != raw_json.size() - 1)
 				sql += ";";
 		}
-		if(bVerifyAffectedRows && affected_rows == 0)
-				return{ -1, "insert operation affect 0 rows." };
-		
-		return{0, sql};
+
+		if (bVerifyAffectedRows && affected_rows == 0)
+			return{ -1, "insert operation affect 0 rows." };
+
+		return{ 0, sql };
 	}
 	else if (build_type == BuildSQL::BUILD_ASSERT_STATEMENT) {
 		auto result = handle_assert_statement(raw_json, buildsql.get());
 		if (result.first) {
-			return{0, result.second};
+			return{ 0, result.second };
 		}
-		return{1, result.second};
+		return{ 1, result.second };
 	}
 
 
 	int result = -1;
 
-	if (build_type == BuildSQL::BUILD_UPDATE_SQL){
+	if (build_type == BuildSQL::BUILD_UPDATE_SQL) {
 
 		Json::Value conditions;
-
 		// parse record
 		for (Json::UInt idx = 0; idx < raw_json.size(); idx++) {
 			auto& v = raw_json[idx];
 			if (v.isObject() == false) {
 				//JSON_ASSERT(v.isObject());
-				result=  -1;
+				result = -1;
 			}
 
 			if (idx == 0) {
 				std::vector<std::string> members = v.getMemberNames();
 
-				if (bHasAutoField){
+				if (bHasAutoField) {
 					BuildField update_field(sAutoFillField);
 					update_field.SetFieldValue(to_string(tx.getTransactionID()));
 					buildsql->AddField(update_field);
@@ -3525,7 +3574,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 					BuildField field(field_name);
 					std::pair<int, std::string> ret = parseField(v[field_name], field);
 					if (ret.first != 0) {
-						result =  ret.first;
+						result = ret.first;
 					}
 					buildsql->AddField(field);
 				}
@@ -3533,6 +3582,13 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 			else {
 				conditions.append(v);
 			}
+		}
+
+		if (bHasTxsHashField) {
+			BuildField update_field(sTxsHashFillField);
+			std::string updateStr = (boost::format("concat(%1%,\",%2%\")") % sTxsHashFillField % to_string(tx.getTransactionID())).str();
+			update_field.SetFieldValue(updateStr, FieldValue::fCommand);
+			buildsql->AddField(update_field);
 		}
 
 		if (conditions.isArray() && conditions.size() > 0)
@@ -3557,15 +3613,15 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		break;
 	case BuildSQL::BUILD_CANCEL_ASSIGN_SQL:
 		break;
-	//case BuildSQL::BUILD_UPDATE_SQL:
-	//	result = GenerateUpdateSql(raw_json, buildsql.get());
-	//	break;
+		//case BuildSQL::BUILD_UPDATE_SQL:
+		//	result = GenerateUpdateSql(raw_json, buildsql.get());
+		//	break;
 	case BuildSQL::BUILD_DELETE_SQL:
 		result = GenerateDeleteSql(raw_json, buildsql.get());
 		break;
-    case BuildSQL::BUILD_RECREATE_SQL:
-        result = GenerateCreateTableSql(raw_json, buildsql.get());
-        break;
+	case BuildSQL::BUILD_RECREATE_SQL:
+		result = GenerateCreateTableSql(raw_json, buildsql.get());
+		break;
 	default:
 		break;
 	}
@@ -3585,7 +3641,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		ret = { -1, (boost::format("Execute `%1%` unsuccessfully. %2%")
 			% buildsql->asString()
 			% buildsql->last_error().second).str() };
-	}	
+	}
 
 	return ret;
 }
