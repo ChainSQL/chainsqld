@@ -83,6 +83,10 @@ void Hotstuff::handleNewView(const QuorumCert &qc) {
     hotstuff_core_->OnReceiveNewView(qc);
 }
 
+void Hotstuff::updateConfig(const Config& config) {
+    config_ = config;
+}
+
 const Block Hotstuff::leaf() {
     return hotstuff_core_->leaf();
 }

@@ -87,6 +87,7 @@ public:
     void handleVote(const PartialCert& cert);
     void handleNewView(const QuorumCert& qc);
 
+    void updateConfig(const Config& config);
 private:
     friend class RoundRobinLeader;
      // operate hotstuffcore

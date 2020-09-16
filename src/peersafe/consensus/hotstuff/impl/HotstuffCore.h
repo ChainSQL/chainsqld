@@ -151,12 +151,6 @@ public:
         return leaf_.height;
     }
 
-    //const int votedHeight() {
-    //    const std::lock_guard<std::mutex> lock(mutex_);
-    //    //return vHeight_;
-    //    return votedBlock_.height;
-    //}
-
     const Block& votedBlock() {
         const std::lock_guard<std::mutex> lock(mutex_);
         return votedBlock_;

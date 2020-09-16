@@ -349,7 +349,7 @@ void HotstuffCore::commit(Block &block) {
     //    return;
     if(exec_.height < block.height) {
         Block parent;
-        if(storage_->blockOf(block.parent, parent)) {
+        if(storage_->expectBlock(block.parent, parent)) {
             commit(parent);
         }
 

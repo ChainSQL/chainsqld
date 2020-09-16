@@ -23,6 +23,7 @@
 #include <thread>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
 
 #include <BeastConfig.h>
 #include <peersafe/consensus/hotstuff/Pacemaker.h>
@@ -33,6 +34,7 @@
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/beast/unit_test.h>
+#include <ripple/basics/StringUtilities.h>
 
 #include <test/app/SuitLogs.h>
 #include <test/jtx/Env.h>
@@ -76,6 +78,7 @@ public:
     , pacemaker_(&io_service_)
     , hotstuff_(nullptr)
     , key_pair_(ripple::randomKeyPair(ripple::KeyType::secp256k1))
+    , update_config_(nullptr)
     , malicious_(false)
     , cache_blocks_()
     , consented_blocks_() {
@@ -164,6 +167,12 @@ public:
 
     // for blocks
     bool addBlock(const ripple::hotstuff::Block& block) {
+        //if(hotstuff_) {
+        //    std::cout 
+        //        << hotstuff_->id() << " add a block "
+        //        << block.height << ", id " << block.id
+        //        << std::endl;
+        //}
 
         if(cache_blocks_.find(block.hash) != cache_blocks_.end())
             return false;
@@ -190,7 +199,7 @@ public:
         if(blockOf(hash, block))
             return true;
 
-        // sync block
+        // simulate sync blocks from network
         for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
             if(it->second->blockOf(hash, block)) {
                 addBlock(block);
@@ -206,10 +215,28 @@ public:
     }
 
     void consented(const ripple::hotstuff::Block& block) {
-        std::cout 
+        std::size_t size = consented_blocks_.size();
+        for(std::size_t i = 0; i < size; i++) {
+            if(consented_blocks_[i].hash == block.hash)
+                return;
+        }
+
+        std::cout
             << hotstuff_->id()
-            << " consented block -> " << block.height << std::endl;
+            << " consented block -> " << block.height
+            << ", id " << block.id
+            << ", hash " << ripple::strHex(std::string((const char *)block.hash.data(), block.hash.size()))
+            << std::endl;
+
         consented_blocks_.push_back(block);
+
+        if(update_config_) {
+            assert(update_config_->id == hotstuff_->id());
+            config_ = *update_config_;
+            hotstuff_->updateConfig(config_);
+            delete update_config_;
+            update_config_ = nullptr;
+        }
     }
 
     int quorumSize() {
@@ -276,9 +303,32 @@ public:
         return malicious_;
     }
 
-    std::vector<ReplicaID>& leader_schedule() {
+    const std::vector<ReplicaID>& leader_schedule() const {
         return config_.leader_schedule;
     } 
+
+    const std::map<BlockHash, Block>& cache_blocks() const {
+        return cache_blocks_;
+    }
+
+    const ripple::hotstuff::Config& config() const {
+        return config_;
+    }
+
+    void updateConfig(const ripple::hotstuff::Config& config) {
+        if(update_config_ == nullptr)
+            update_config_ = new ripple::hotstuff::Config();
+        *update_config_ = config;
+    }
+
+    void syncConsentedBlocks(const std::vector<Block>& blocks) {
+        consented_blocks_.assign(blocks.begin(), blocks.end());
+    }
+
+    void syncCacheBlocks(const std::map<BlockHash, Block>& blocks) {
+        auto swap = blocks;
+        cache_blocks_.swap(swap);
+    }
 
 private:
     boost::asio::io_service io_service_;
@@ -289,6 +339,7 @@ private:
     ripple::hotstuff::RoundRobinLeader pacemaker_;
     ripple::hotstuff::Hotstuff* hotstuff_;
     KeyPair key_pair_;
+    ripple::hotstuff::Config* update_config_;
     bool malicious_;
 
     std::map<BlockHash, Block> cache_blocks_;
@@ -357,7 +408,6 @@ public:
 
     // create replica instances by parameter
     std::size_t newReplicas(jtx::Env* env, int replicas) {
-        //return addReplicas(env, replicas);
         ripple::hotstuff::Config config;
         config.view_change = view_change_;
         config.timeout = timeout_;
@@ -373,27 +423,71 @@ public:
     }
 
     // add replicas adn run replicas
-    std::size_t addReplicas(jtx::Env* env, int replicas) {
-        // update old replicas' leader schedule
-        for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-            std::size_t size = it->second->leader_schedule().size();
+    std::size_t addAndRunReplicas(jtx::Env* env, int replicas) {
+        // 更新现有节点的本地配置，当共识区块中有更新配置的交易时，
+        // 再调用 hotstuff.updateConfig 接口 
+        if(replicas <= 0)
+            return Replica::replicas.size();
+
+        ripple::hotstuff::Config newConfig = Replica::replicas[1]->config();
+        if(replicas > 0) {
+            // 增加节点
+            std::size_t size = newConfig.leader_schedule.size();
             for(int i = 0; i < replicas; i++) {
-                it->second->leader_schedule().push_back(size + i + 1);
+                newConfig.leader_schedule.push_back(size + i + 1);
             }
+        }    
+
+        for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+            newConfig.id = it->first;
+            it->second->updateConfig(newConfig);
         }
 
-        ripple::hotstuff::Config config;
-        config.view_change = view_change_;
-        config.timeout = timeout_;
-        config.cmd_batch_size = cmd_batch_size_;
-        if(Replica::replicas.size() > 0)
-            config.leader_schedule = Replica::replicas[1]->leader_schedule();
+        std::size_t size = newConfig.leader_schedule.size();
+        for(std::size_t i = size - replicas; i < size; i++) {
+            newConfig.id = newConfig.leader_schedule[i];
+            Replica* r = initReplica(env, newConfig);
 
-        std::size_t size = config.leader_schedule.size();
-        for(int i = size - replicas; i < size; i++) {
-            config.id = config.leader_schedule[i];
-            initReplica(env, config);
+            // sync consented blocks
+            r->syncConsentedBlocks(Replica::replicas[1]->consentedBlocks());
+            auto cache_blocks = Replica::replicas[1]->cache_blocks();
+            r->syncCacheBlocks(cache_blocks);
+
+            r->run();
         }
+
+        return Replica::replicas.size();
+    }
+
+    std::size_t removeAndStopReplicas(jtx::Env* env, int replicas) {
+        // 更新现有节点的本地配置，当共识区块中有更新配置的交易时，
+        // 再调用 hotstuff.updateConfig 接口      
+        if(replicas <= 0)
+            return Replica::replicas.size();
+
+        ripple::hotstuff::Config newConfig = Replica::replicas[1]->config();
+
+        unsigned int seed = std::time(nullptr);
+        for(int i = 0; i < replicas; i++) {
+            std::srand(seed);
+            int rand = std::rand();
+            seed = (unsigned int)rand;
+            
+            int remove_index = rand % newConfig.leader_schedule.size();
+            auto removing_replica_id = newConfig.leader_schedule.begin() + remove_index;
+
+            stopReplicas(env, *removing_replica_id);
+            //freeReplicas(*removing_replica_id);
+            clearReplicas(*removing_replica_id);
+        
+            newConfig.leader_schedule.erase(removing_replica_id);
+        }
+
+        for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+            newConfig.id = it->first;
+            it->second->updateConfig(newConfig);
+        }        
+
         return Replica::replicas.size();
     }
 
@@ -552,8 +646,27 @@ public:
         BEAST_EXPECT(waitUntilConsentedBlocks(blocks_) == true);
 
         // add some replicas
-        addReplicas(&env, 2);
+        addAndRunReplicas(&env, 2);
+        BEAST_EXPECT(waitUntilConsentedBlocks(2*blocks_) == true);
+
+        stopReplicas(&env);
+        //env.app().signalStop();
+        freeReplicas();
+        BEAST_EXPECT(Replica::replicas.size() == 0);
+    }
+
+    void testRemoveReplicasRoundRobinLeader() {
+        jtx::Env env{*this};
+        if(disable_log_ == true)
+            env.app().logs().threshold(beast::severities::kDisabled);
+        // create replicas
+        newReplicas(&env, replicas_);
+
         runReplicas();
+        BEAST_EXPECT(waitUntilConsentedBlocks(blocks_) == true);
+
+        // add some replicas
+        removeAndStopReplicas(&env, 1);
         BEAST_EXPECT(waitUntilConsentedBlocks(2*blocks_) == true);
 
         stopReplicas(&env);
@@ -607,7 +720,8 @@ public:
 
         testElectLeader();
         testNormalRoundRobinLeader();
-        //testAddReplicasRoundRobinLeader();
+        testAddReplicasRoundRobinLeader();
+        testRemoveReplicasRoundRobinLeader();
         testMaliciousRoundRobinLeader();
     }
 
