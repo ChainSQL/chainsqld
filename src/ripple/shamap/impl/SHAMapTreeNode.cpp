@@ -405,8 +405,9 @@ SHAMapTreeNode::updateHash()
     uint256 nh;
     if (mType == tnTRANSACTION_NM)
     {
-        nh = sha512Half(HashPrefix::transactionID,
-            makeSlice(mItem->peekData()));
+        // nh = sha512Half(HashPrefix::transactionID,
+        //     makeSlice(mItem->peekData()));
+        nh = mItem->key();
     }
     else if (mType == tnACCOUNT_STATE)
     {
