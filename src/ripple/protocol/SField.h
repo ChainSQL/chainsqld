@@ -496,6 +496,7 @@ extern SF_Blob const sfContractTxs;
 extern SF_Blob const sfContractLogs;
 extern SF_Blob const sfMicroLedgerSign;
 extern SF_Blob const sfFinalLedgerSign;
+extern SF_Blob const sfTxsHashFillField;
 
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;

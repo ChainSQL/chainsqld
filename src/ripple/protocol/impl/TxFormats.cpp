@@ -165,6 +165,7 @@ TxFormats::TxFormats ()
         << SOElement(sfOpType,              SOE_REQUIRED)
         << SOElement(sfAutoFillField,       SOE_OPTIONAL)
 		<< SOElement(sfTxCheckHash,         SOE_OPTIONAL)
+		<< SOElement(sfTxsHashFillField,    SOE_OPTIONAL)
         ;
     addChainSqlCommondFields(itemSqlStatement);
 

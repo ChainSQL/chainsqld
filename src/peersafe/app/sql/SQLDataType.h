@@ -105,7 +105,7 @@ public:
 		}
 	}
 
-	enum { fVARCHAR, fCHAR, fTEXT, fBLOB };
+	enum { fVARCHAR, fCHAR, fTEXT, fBLOB,fCommand };
 	explicit FieldValue(const std::string& value, int flag)
 		: value_type_(STRING) {
 
@@ -117,6 +117,8 @@ public:
 			value_type_ = TEXT;
 		else if (flag == fBLOB)
 			value_type_ = BLOB;
+		else if (flag == fCommand)
+			value_type_ = COMMAND;
 
 		value_.str = new std::string;
 		if (value_.str) {
@@ -189,7 +191,7 @@ public:
 		}
 		else if (value_type_ == STRING || value_type_ == VARCHAR
 			|| value_type_ == TEXT || value_type_ == BLOB
-			|| value_type_ == CHAR) {
+			|| value_type_ == CHAR || value_type_ == COMMAND) {
 
 			value_.str = new std::string;
 			if (value_.str) {
@@ -560,8 +562,14 @@ public:
 		return value_type_ == DATE;
 	}
 
+
 	bool isNull() {
 		return value_type_ == NULLTYPE;
+	}
+
+	bool isCommand() const {
+		return value_type_ == COMMAND;
+
 	}
 
 	const int& asInt() {
@@ -644,6 +652,7 @@ private:
 		BLOB,
 		STRING,
 		NULLTYPE,
+		COMMAND
 	};
 
 	int value_type_;
