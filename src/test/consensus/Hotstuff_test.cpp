@@ -125,7 +125,15 @@ public:
         auto it = Replica::replicas.find(id);
         if(it != Replica::replicas.end()) {
             if(it->second->malicious() == false)
-                it->second->hotstuff_->handlePropose(block);
+                //it->second->hotstuff_->handlePropose(block);
+                jobQueue_->addJob(
+                    jtPROPOSAL_t,
+                    "sendNewView",
+                    [this, it, block](Job&) {
+                        //it->second->hotstuff_->handleVote(cert);
+                        it->second->hotstuff_->handlePropose(block);
+                    }
+                );
         }
     }
 
@@ -136,7 +144,14 @@ public:
         auto it = Replica::replicas.find(id);
         if(it != Replica::replicas.end()) {
             if(it->second->malicious() == false)
-                it->second->hotstuff_->handleVote(cert);
+                //it->second->hotstuff_->handleVote(cert);
+                jobQueue_->addJob(
+                    jtPROPOSAL_t,
+                    "sendNewView",
+                    [this, it, cert](Job&) {
+                        it->second->hotstuff_->handleVote(cert);
+                    }
+                );
         }
     }
 
@@ -220,7 +235,6 @@ public:
             << ", hash " << ripple::strHex(std::string((const char *)block.hash.data(), block.hash.size()))
             << std::endl;
 
-        consented_blocks_.push_back(block);
 
         if(update_config_) {
             assert(update_config_->id == hotstuff_->id());
@@ -229,6 +243,8 @@ public:
             delete update_config_;
             update_config_ = nullptr;
         }
+
+        consented_blocks_.push_back(block);
     }
 
     int quorumSize() {
@@ -312,16 +328,6 @@ public:
             update_config_ = new ripple::hotstuff::Config();
         *update_config_ = config;
     }
-
-    void syncConsentedBlocks(const std::vector<Block>& blocks) {
-        consented_blocks_.assign(blocks.begin(), blocks.end());
-    }
-
-    void syncCacheBlocks(const std::map<BlockHash, Block>& blocks) {
-        auto swap = blocks;
-        cache_blocks_.swap(swap);
-    }
-
 private:
     boost::asio::io_service io_service_;
     std::thread worker_;
@@ -439,12 +445,6 @@ public:
         for(std::size_t i = size - replicas; i < size; i++) {
             newConfig.id = newConfig.leader_schedule[i];
             Replica* r = initReplica(env, newConfig);
-
-            // sync consented blocks
-            r->syncConsentedBlocks(Replica::replicas[1]->consentedBlocks());
-            auto cache_blocks = Replica::replicas[1]->cache_blocks();
-            r->syncCacheBlocks(cache_blocks);
-
             r->run();
         }
 
@@ -563,20 +563,31 @@ public:
         }
 
         // 判断 consentedBlocks 块是否相等
-        for(std::size_t block = 0; block < consentedBlockNumber; block ++) {
-            auto begin = Replica::replicas.begin();
-            if(begin->second->malicious())
+        std::vector<Replica::BlockHash> blocks_hash;
+        for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+            if(it->second->malicious())
                 continue;
-            ripple::hotstuff::BlockHash hash = begin->second->consentedBlocks()[block].hash;
-            begin++;
-            for(;begin != Replica::replicas.end(); begin++) {
-                if(begin->second->malicious())
-                    continue;
-                if(hash != begin->second->consentedBlocks()[block].hash) {
-                    return false;
-                }
+            auto block = it->second->consentedBlocks().rbegin();
+            using beast::hash_append;
+            ripple::sha512_half_hasher h;
+            for(std::size_t i = 0; i < consentedBlockNumber; i++,block++) {
+                hash_append(h, block->hash);
             }
+
+            blocks_hash.push_back(
+                static_cast<typename sha512_half_hasher::result_type>(h)
+            );
         }
+
+        if(blocks_hash.size() < 3)
+            return false;
+
+        Replica::BlockHash hash = blocks_hash[0];
+        for(std::size_t i = 1; i < blocks_hash.size(); i++) {
+            if(hash != blocks_hash[i])
+                return false;
+        }
+        
         return true;
     }
 

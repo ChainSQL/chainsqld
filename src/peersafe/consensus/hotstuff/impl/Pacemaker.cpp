@@ -77,7 +77,8 @@ RoundRobinLeader::RoundRobinLeader(boost::asio::io_service* io_service)
 , io_service_(io_service)
 , dummy_block_timer_(*io_service_)
 , last_beat_(0)
-, running_(false) {
+, running_(false)
+, reset_view_(false) {
 
 }
 
@@ -112,7 +113,7 @@ void RoundRobinLeader::run() {
 	// setup timer for generate dummy blocks
 	setUpDummyBlockTimer();
 
-	if(hotstuff_->id() == GetLeader(1)) {
+	if(hotstuff_->id() == GetLeader(0)) {
 		hotstuff_->propose();
 	}
 }
@@ -140,7 +141,8 @@ void RoundRobinLeader::onHandleEmitEvent(const Event& event) {
 	if(running_ == false)
 		return;
 	if(event.type == Event::QCFinish) {
-		beat();
+		if(!reset_view_)
+			beat();
 	} else if (event.type == Event::ReceiveNewView) {
 		//std::cout
 		//	<< hotstuff_->id() << " receive a newView, begin beat("
@@ -150,6 +152,15 @@ void RoundRobinLeader::onHandleEmitEvent(const Event& event) {
 	} else if(event.type == Event::ReceiveProposal) {
 		closeDummyBlockTimer();
 		setUpDummyBlockTimer();
+	} else if(event.type == Event::Commit) {
+		if(reset_view_) {
+			last_beat_ = 0;
+			reset_view_ = false;
+			hotstuff_->reset();
+			if(hotstuff_->id() == GetLeader(0)) {
+				hotstuff_->propose();
+			}
+		}
 	}
 }
 

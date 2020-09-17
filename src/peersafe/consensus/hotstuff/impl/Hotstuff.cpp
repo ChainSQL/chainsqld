@@ -85,6 +85,12 @@ void Hotstuff::handleNewView(const QuorumCert &qc) {
 
 void Hotstuff::updateConfig(const Config& config) {
     config_ = config;
+    //hotstuff_core_->reset();
+    pacemaker_->reset();
+}
+
+void Hotstuff::reset() {
+    hotstuff_core_->reset();
 }
 
 const Block Hotstuff::leaf() {

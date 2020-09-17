@@ -91,6 +91,7 @@ public:
 private:
     friend class RoundRobinLeader;
      // operate hotstuffcore
+    void reset();
     const Block leaf();
     void setLeaf(const Block& block);
     const int Height();  

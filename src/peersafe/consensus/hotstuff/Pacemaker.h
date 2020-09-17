@@ -36,6 +36,8 @@ public:
 
 	virtual ReplicaID GetLeader(int view) = 0;
 	virtual void init(Hotstuff* hotstuff, Signal* signal) = 0;
+	// 配置更新时候需要重置相关状态
+	virtual void reset() = 0;
 
 protected:
 	Pacemaker() {}
@@ -48,6 +50,7 @@ public:
 
 	ReplicaID GetLeader(int view) override;
 	void init(Hotstuff* hotstuff, Signal* signal) override;
+	void reset() override {}
 
 	void run();
 
@@ -66,6 +69,9 @@ public:
 
 	ReplicaID GetLeader(int view) override;
 	void init(Hotstuff* hotstuff, Signal* signal) override;
+	void reset() override {
+		reset_view_ = true;
+	}
 
 	void run();
 	void stop();
@@ -83,6 +89,7 @@ private:
 	boost::asio::steady_timer dummy_block_timer_;
 	int last_beat_;
 	bool running_;
+	bool reset_view_;
 };
 
 } // namespace hotstuff

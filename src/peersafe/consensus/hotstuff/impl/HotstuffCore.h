@@ -73,6 +73,7 @@ struct Event
         ReceiveProposal,
         ReceiveVote,
         ReceiveNewView,
+        Commit,
     };
     
     Type type;
@@ -132,6 +133,8 @@ public:
     bool OnReceiveProposal(const Block& block, PartialCert& cert);
     void OnReceiveVote(const PartialCert& cert);
     void OnReceiveNewView(const QuorumCert& qc);
+
+    void reset();
 
     const Block leaf() {
         const std::lock_guard<std::mutex> lock(mutex_);

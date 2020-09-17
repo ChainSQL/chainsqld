@@ -59,6 +59,14 @@ HotstuffCore::HotstuffCore(
 HotstuffCore::~HotstuffCore() {
 }
 
+void HotstuffCore::reset() {
+    lock_ = genesis_;
+    exec_ = genesis_;
+    leaf_ = genesis_;
+    hight_qc_ = QuorumCert(genesis_.hash);
+    votedBlock_ = Block();
+}
+
 Block HotstuffCore::CreatePropose(int batch_size) {
     if(batch_size <= 0)
         batch_size = 500;
@@ -339,6 +347,9 @@ void HotstuffCore::update(const Block &block) {
         commit(block3);
         // decided on block3
         exec_ = block3;
+
+        Event evnet{Event::Commit, QuorumCert(), exec_, id_};
+        emitEvent(evnet);
     }
 
     // free up space by deleting old data
