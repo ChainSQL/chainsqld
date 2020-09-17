@@ -18,7 +18,7 @@
 //==============================================================================
 
 #include <ripple/json/json_writer.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>

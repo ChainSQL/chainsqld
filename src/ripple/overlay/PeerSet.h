@@ -20,7 +20,7 @@
 #ifndef RIPPLE_APP_PEERS_PEERSET_H_INCLUDED
 #define RIPPLE_APP_PEERS_PEERSET_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/beast/clock/abstract_clock.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/overlay/Peer.h>
@@ -103,7 +103,7 @@ public:
         return mComplete || mFailed;
     }
 
-    Application&
+	Schema&
     app()
     {
         return app_;
@@ -112,7 +112,7 @@ public:
 protected:
     using ScopedLockType = std::unique_lock <std::recursive_mutex>;
 
-    PeerSet (Application& app, uint256 const& hash, std::chrono::milliseconds interval,
+    PeerSet (Schema& app, uint256 const& hash, std::chrono::milliseconds interval,
         clock_type& clock, beast::Journal journal);
 
     virtual ~PeerSet() = 0;
@@ -150,7 +150,7 @@ protected:
     std::size_t getPeerCount () const;
 
 protected:
-    Application& app_;
+	Schema& app_;
     beast::Journal m_journal;
     clock_type& m_clock;
 

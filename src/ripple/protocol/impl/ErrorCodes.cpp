@@ -111,7 +111,8 @@ constexpr static ErrorInfo unorderedErrorInfos[]
 	{ rpcFIELD_CONTENT_EMPTY,   "fieldContentEmpty",	   "Field content is empty." },
 	{ rpcCTR_EVMEXE_EXCEPTION,  "contractEVMexeError",  "Contract execution exception." },
 	{ rpcCTR_EVMCALL_EXCEPTION, "contractEVMcallError", "Contract execution exception." },
-	{ rpcSQL_MULQUERY_NOT_SUPPORT, "mulQueryNotSupport", "OperationRule Table not support multi_table sql_query." }
+	{ rpcSQL_MULQUERY_NOT_SUPPORT, "mulQueryNotSupport", "OperationRule Table not support multi_table sql_query." },
+	{ rpcNo_Schema,			    "schemaNotExist",		"No schema with the specified shema_id exist." }
 };
 
 // C++ does not allow you to return an array from a function.  You must

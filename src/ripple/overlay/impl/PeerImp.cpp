@@ -40,6 +40,7 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/schema/Schema.h>
 
 #include <boost/algorithm/clamp.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -52,7 +53,7 @@ using namespace std::chrono_literals;
 
 namespace ripple {
 
-PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
+PeerImp::PeerImp (Schema& app, id_t id, endpoint_type remote_endpoint,
     PeerFinder::Slot::ptr const& slot, http_request_type&& request,
         protocol::TMHello const& hello, PublicKey const& publicKey,
             Resource::Consumer consumer,

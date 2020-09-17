@@ -20,7 +20,7 @@
 #ifndef RIPPLE_TX_APPLYCONTEXT_H_INCLUDED
 #define RIPPLE_TX_APPLYCONTEXT_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/ledger/ApplyViewImpl.h>
 #include <ripple/core/Config.h>
 #include <ripple/protocol/STTx.h>
@@ -38,12 +38,12 @@ class ApplyContext
 {
 public:
     explicit
-    ApplyContext (Application& app, OpenView& base,
+    ApplyContext (Schema& app, OpenView& base,
         STTx const& tx, TER preclaimResult,
             std::uint64_t baseFee, ApplyFlags flags,
                 beast::Journal = beast::Journal{beast::Journal::getNullSink()});
 
-    Application& app;
+    Schema& app;
     STTx const& tx;
     TER const preclaimResult;
     std::uint64_t const baseFee;

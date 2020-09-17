@@ -31,6 +31,7 @@
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/rpc/impl/Tuning.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/algorithm/clamp.hpp>
 #include <boost/optional.hpp>
 #include <tuple>
@@ -38,7 +39,7 @@
 namespace ripple {
 
 PathRequest::PathRequest (
-    Application& app,
+    Schema& app,
     const std::shared_ptr<InfoSub>& subscriber,
     int id,
     PathRequests& owner,
@@ -61,7 +62,7 @@ PathRequest::PathRequest (
 }
 
 PathRequest::PathRequest (
-    Application& app,
+    Schema& app,
     std::function <void(void)> const& completion,
     Resource::Consumer& consumer,
     int id,

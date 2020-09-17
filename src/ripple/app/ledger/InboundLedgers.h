@@ -81,7 +81,7 @@ public:
 };
 
 std::unique_ptr<InboundLedgers>
-make_InboundLedgers (Application& app,
+make_InboundLedgers (Schema& app,
     InboundLedgers::clock_type& clock, Stoppable& parent,
     beast::insight::Collector::ptr const& collector);
 

@@ -17,7 +17,7 @@
  */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/json/json_reader.h>
@@ -36,7 +36,7 @@
 
 namespace ripple {    
     
-    TableStorageItem::TableStorageItem(Application& app, Config& cfg, beast::Journal journal)
+    TableStorageItem::TableStorageItem(Schema& app, Config& cfg, beast::Journal journal)
         : app_(app)
         , journal_(journal)
         , cfg_(cfg)

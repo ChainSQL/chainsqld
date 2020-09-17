@@ -35,7 +35,7 @@ class InboundLedger;
 //             derived class. Why not just make the timer callback
 //             function pure virtual?
 //
-PeerSet::PeerSet (Application& app, uint256 const& hash,
+PeerSet::PeerSet (Schema& app, uint256 const& hash,
     std::chrono::milliseconds interval, clock_type& clock,
     beast::Journal journal)
     : app_ (app)
@@ -47,7 +47,7 @@ PeerSet::PeerSet (Application& app, uint256 const& hash,
     , mComplete (false)
     , mFailed (false)
     , mProgress (false)
-    , mTimer (app_.getIOService ())
+    , mTimer (app_.app().getIOService ())
 {
     mLastAction = m_clock.now();
     assert ((mTimerInterval > 10ms) && (mTimerInterval < 30s));

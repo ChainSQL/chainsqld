@@ -21,7 +21,7 @@
 #define RIPPLE_APP_TABLE_TABLESYNC_ITEM_H_INCLUDED
 
 #include <ripple/beast/utility/PropertyStream.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/beast/clock/abstract_clock.h>
 #include <ripple/beast/core/WaitableEvent.h>
 #include <ripple/protocol/AccountID.h>
@@ -155,7 +155,7 @@ public:
     };
 
 public:     
-    TableSyncItem(Application& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType = SyncTarget_db);
+    TableSyncItem(Schema& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType = SyncTarget_db);
     virtual ~TableSyncItem();
 
     TxStoreDBConn& getTxStoreDBConn();
@@ -291,7 +291,7 @@ public:
     std::string                                                  sTableName_;
     std::string                                                  sNickName_;
 protected:
-	Application &                                                app_;
+	Schema &													 app_;
 	beast::Journal                                               journal_;
 	Config&                                                      cfg_;
 	std::string                                                  sTableNameInDB_;

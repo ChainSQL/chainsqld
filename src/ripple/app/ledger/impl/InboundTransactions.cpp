@@ -20,7 +20,7 @@
 #include <ripple/app/ledger/InboundTransactions.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/impl/TransactionAcquire.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/JobQueue.h>
@@ -62,10 +62,10 @@ class InboundTransactionsImp
     , public Stoppable
 {
 public:
-    Application& app_;
+    Schema& app_;
 
     InboundTransactionsImp (
-            Application& app,
+            Schema& app,
             clock_type& clock,
             Stoppable& parent,
             beast::insight::Collector::ptr const& collector,
@@ -293,7 +293,7 @@ InboundTransactions::~InboundTransactions() = default;
 
 std::unique_ptr <InboundTransactions>
 make_InboundTransactions (
-    Application& app,
+    Schema& app,
     InboundLedgers::clock_type& clock,
     Stoppable& parent,
     beast::insight::Collector::ptr const& collector,

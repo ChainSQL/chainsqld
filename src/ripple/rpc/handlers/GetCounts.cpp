@@ -20,7 +20,7 @@
 #include <ripple/app/ledger/AcceptedLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/UptimeClock.h>
 #include <ripple/core/DatabaseCon.h>
@@ -58,7 +58,7 @@ textTime(std::string& text, UptimeClock::time_point& seconds,
         text += "s";
 }
 
-Json::Value getCountsJson(Application& app, int minObjectCount)
+Json::Value getCountsJson(Schema& app, int minObjectCount)
 {
     auto objectCounts = CountedObjects::getInstance().getCounts(minObjectCount);
 

@@ -26,6 +26,7 @@
 #include <peersafe/app/table/TableAuditItem.h>
 #include <peersafe/app/table/TableDumpItem.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <peersafe/schema/Schema.h>
 #include <fstream>
 #include <boost/filesystem.hpp>
 
@@ -38,7 +39,7 @@ TableAuditItem::~TableAuditItem()
 {
 }
 
-TableAuditItem::TableAuditItem(Application& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
+TableAuditItem::TableAuditItem(Schema& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
 	:TableDumpItem(app,journal,cfg, eTargetType)
 {      
 	

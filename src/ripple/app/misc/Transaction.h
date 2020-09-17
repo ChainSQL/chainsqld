@@ -33,7 +33,7 @@ namespace ripple {
 // obtain a binary version.
 //
 
-class Application;
+class Schema;
 class Database;
 class Rules;
 
@@ -64,7 +64,7 @@ public:
 
 public:
     Transaction (
-        std::shared_ptr<STTx const> const&, std::string&, Application&) noexcept;
+        std::shared_ptr<STTx const> const&, std::string&, Schema&) noexcept;
 
     static
     Transaction::pointer
@@ -72,7 +72,7 @@ public:
         boost::optional<std::uint64_t> const& ledgerSeq,
         boost::optional<std::string> const& status,
         Blob const& rawTxn,
-        Application& app);
+		Schema& schema);
 
     static
     Transaction::pointer
@@ -80,7 +80,7 @@ public:
         boost::optional<std::uint64_t> const& ledgerSeq,
         boost::optional<std::string> const& status,
         Blob const& rawTxn,
-        Application& app);
+        Schema& schema);
 
     static
     TransStatus
@@ -161,7 +161,7 @@ public:
 
     Json::Value getJson (JsonOptions options, bool binary = false) const;
 
-    static Transaction::pointer load (uint256 const& id, Application& app);
+    static Transaction::pointer load (uint256 const& id, Schema& schema);
 
 private:
     uint256         mTransactionID;
@@ -173,7 +173,7 @@ private:
 	uint64_t		mTimeCreate;
 
     std::shared_ptr<STTx const>   mTransaction;
-    Application&    mApp;
+	Schema&		mSchema;
     beast::Journal  j_;
 };
 

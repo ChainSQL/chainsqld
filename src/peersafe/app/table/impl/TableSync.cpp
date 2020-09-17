@@ -34,9 +34,10 @@
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/util/TableSyncUtil.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
-TableSync::TableSync(Application& app, Config& cfg, beast::Journal journal)
+TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
     : app_(app)
     , journal_(journal)
     , cfg_(cfg)    

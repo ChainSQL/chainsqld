@@ -27,7 +27,7 @@ namespace ripple {
 class TableStatusDBMySQL : public TableStatusDB
 {
 public:
-    TableStatusDBMySQL(DatabaseCon* dbconn, Application * app, beast::Journal& journal);
+    TableStatusDBMySQL(DatabaseCon* dbconn, Schema * app, beast::Journal& journal);
     ~TableStatusDBMySQL();
 
     bool InitDB(DatabaseCon::Setup setup);

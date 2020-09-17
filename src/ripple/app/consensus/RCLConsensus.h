@@ -56,7 +56,7 @@ class RCLConsensus
     // Implements the Adaptor template interface required by Consensus.
     class Adaptor
     {
-        Application& app_;
+        Schema& app_;
         std::unique_ptr<FeeVote> feeVote_;
         LedgerMaster& ledgerMaster_;
         LocalTxs& localTxs_;
@@ -97,7 +97,7 @@ class RCLConsensus
         using Result = ConsensusResult<Adaptor>;
 
         Adaptor(
-            Application& app,
+            Schema& app,
             std::unique_ptr<FeeVote>&& feeVote,
             LedgerMaster& ledgerMaster,
             LocalTxs& localTxs,
@@ -448,7 +448,7 @@ class RCLConsensus
 public:
     //! Constructor
     RCLConsensus(
-        Application& app,
+        Schema& app,
         std::unique_ptr<FeeVote>&& feeVote,
         LedgerMaster& ledgerMaster,
         LocalTxs& localTxs,

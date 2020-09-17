@@ -32,13 +32,13 @@ namespace ripple {
 struct PreflightContext
 {
 public:
-    Application& app;
+    Schema& app;
     STTx const& tx;
     Rules const rules;
     ApplyFlags flags;
     beast::Journal j;
 
-    PreflightContext(Application& app_, STTx const& tx_,
+    PreflightContext(Schema& app_, STTx const& tx_,
         Rules const& rules_, ApplyFlags flags_,
             beast::Journal j_);
 
@@ -49,14 +49,14 @@ public:
 struct PreclaimContext
 {
 public:
-    Application& app;
+    Schema& app;
     ReadView const& view;
     TER preflightResult;
     STTx const& tx;
     ApplyFlags flags;
     beast::Journal j;
 
-    PreclaimContext(Application& app_, ReadView const& view_,
+    PreclaimContext(Schema& app_, ReadView const& view_,
         TER preflightResult_, STTx const& tx_,
             ApplyFlags flags_,
             beast::Journal j_ = beast::Journal{beast::Journal::getNullSink()})
@@ -198,7 +198,7 @@ protected:
      */
     static
    ZXCAmount
-    minimumFee (Application& app, std::uint64_t baseFee,
+    minimumFee (Schema& app, std::uint64_t baseFee,
         Fees const& fees, ApplyFlags flags);
 
 private:

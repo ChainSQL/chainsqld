@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/core/Config.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/overlay/Overlay.h>

@@ -24,6 +24,7 @@
 #include <ripple/app/ledger/Ledger.h>
 #include <ripple/overlay/PeerSet.h>
 #include <ripple/basics/CountedObject.h>
+#include <peersafe/Schema/Schema.h>
 #include <mutex>
 #include <set>
 #include <utility>
@@ -52,7 +53,7 @@ public:
         CONSENSUS // We believe the consensus round requires this ledger
     };
 
-    InboundLedger(Application& app, uint256 const& hash,
+    InboundLedger(Schema& app, uint256 const& hash,
         std::uint32_t seq, Reason reason, clock_type&);
 
     ~InboundLedger ();

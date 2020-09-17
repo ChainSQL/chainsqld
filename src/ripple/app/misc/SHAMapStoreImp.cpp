@@ -25,6 +25,7 @@
 #include <ripple/core/ConfigSections.h>
 #include <ripple/nodestore/impl/DatabaseRotatingImp.h>
 #include <ripple/nodestore/impl/DatabaseShardImp.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 void SHAMapStoreImp::SavedStateDB::init (BasicConfig const& config,
@@ -161,7 +162,7 @@ SHAMapStoreImp::SavedStateDB::setLastRotated (LedgerIndex seq)
 //------------------------------------------------------------------------------
 
 SHAMapStoreImp::SHAMapStoreImp (
-        Application& app,
+        Schema& schema,
         Setup const& setup,
         Stoppable& parent,
         NodeStore::Scheduler& scheduler,
@@ -170,7 +171,7 @@ SHAMapStoreImp::SHAMapStoreImp (
         TransactionMaster& transactionMaster,
         BasicConfig const& config)
     : SHAMapStore (parent)
-    , app_ (app)
+    , app_ (schema)
     , setup_ (setup)
     , scheduler_ (scheduler)
     , journal_ (journal)
@@ -879,7 +880,7 @@ setup_SHAMapStore (Config const& c)
 }
 
 std::unique_ptr<SHAMapStore>
-make_SHAMapStore (Application& app,
+make_SHAMapStore (Schema& schema,
         SHAMapStore::Setup const& setup,
         Stoppable& parent,
         NodeStore::Scheduler& scheduler,
@@ -888,7 +889,7 @@ make_SHAMapStore (Application& app,
         TransactionMaster& transactionMaster,
         BasicConfig const& config)
 {
-    return std::make_unique<SHAMapStoreImp>(app, setup, parent, scheduler,
+    return std::make_unique<SHAMapStoreImp>(schema, setup, parent, scheduler,
         journal, nodeStoreJournal, transactionMaster, config);
 }
 

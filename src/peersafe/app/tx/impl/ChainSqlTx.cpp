@@ -20,8 +20,8 @@
 #include <peersafe/app/tx/ChainSqlTx.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/sql/TxStore.h>
-#include <ripple/app/main/Application.h>
 #include <peersafe/app/storage/TableStorage.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 
 namespace ripple {
@@ -35,7 +35,7 @@ namespace ripple {
 	NotTEC ChainSqlTx::preflight(PreflightContext const& ctx)
 	{
 		const STTx & tx = ctx.tx;
-		Application& app = ctx.app;
+		Schema& app = ctx.app;
 		auto j = app.journal("preflightChainSql");
 
 		if (tx.isCrossChainUpload() || (tx.isFieldPresent(sfOpType) && tx.getFieldU16(sfOpType) == T_REPORT))
@@ -57,7 +57,7 @@ namespace ripple {
 	TER ChainSqlTx::preclaim(PreclaimContext const& ctx)
 	{
 		const STTx & tx = ctx.tx;
-		Application& app = ctx.app;
+		Schema& app = ctx.app;
 		auto j = app.journal("preflightChainSql");
 
 		auto const sleAccount = ctx.view.read(keylet::account(tx.getAccountID(sfAccount)));

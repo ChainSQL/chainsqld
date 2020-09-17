@@ -35,10 +35,11 @@
 #include <peersafe/app/tx/SqlStatement.h>
 #include <peersafe/app/tx/OperationRule.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 	NotTEC
-		SqlStatement::preflightHandler(const STTx & tx, Application& app)
+		SqlStatement::preflightHandler(const STTx & tx, Schema& app)
 	{
 		auto j = app.journal("preflightHandler");
 		//check myown special fields
@@ -120,7 +121,7 @@ namespace ripple {
 	}
 
 	TER
-		SqlStatement::preclaimHandler(ReadView const& view, const STTx & tx, Application& app)
+		SqlStatement::preclaimHandler(ReadView const& view, const STTx & tx, Schema& app)
 	{
 		auto j = app.journal("preclaimHandler");
 		AccountID const uOwnerID(tx[sfOwner]);
@@ -203,7 +204,7 @@ namespace ripple {
 	}
 
 	TER
-		SqlStatement::applyHandler(ApplyView& view, const STTx & tx, Application& app)
+		SqlStatement::applyHandler(ApplyView& view, const STTx & tx, Schema& app)
 	{
 		ripple::uint160  nameInDB;
 
@@ -261,7 +262,7 @@ namespace ripple {
 	TER SqlStatement::preApplyForOperationRule(const STTx & tx)
 	{
 		ApplyView& view = ctx_.view();
-		Application& app = ctx_.app;
+		Schema& app = ctx_.app;
 
 		if(!OperationRule::hasOperationRule(view,tx))
 			return tesSUCCESS;

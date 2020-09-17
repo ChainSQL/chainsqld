@@ -30,7 +30,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 
 /** Wrapper over STValidation for generic Validation code
 
@@ -204,7 +204,7 @@ public:
     using Validation = RCLValidation;
     using Ledger = RCLValidatedLedger;
 
-    RCLValidationsAdaptor(Application& app, beast::Journal j);
+    RCLValidationsAdaptor(Schema& app, beast::Journal j);
 
     /** Current time used to determine if validations are stale.
      */
@@ -243,7 +243,7 @@ private:
     using ScopedLockType = std::lock_guard<Mutex>;
     using ScopedUnlockType = GenericScopedUnlock<Mutex>;
 
-    Application& app_;
+    Schema& app_;
     beast::Journal j_;
 
     // Lock for managing staleValidations_ and writing_
@@ -275,7 +275,7 @@ using RCLValidations = Validations<RCLValidationsAdaptor>;
 */
 bool
 handleNewValidation(
-    Application& app,
+    Schema& app,
     STValidation::ref val,
     std::string const& source);
 

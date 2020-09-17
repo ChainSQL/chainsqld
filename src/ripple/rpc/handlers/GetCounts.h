@@ -21,11 +21,11 @@
 #define RIPPLE_RPC_HANDLERS_GETCOUNTS_H_INCLUDED
 
 #include <ripple/json/Object.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
-Json::Value getCountsJson(Application& app, int minObjectCount);
+Json::Value getCountsJson(Schema& app, int minObjectCount);
 
 }
 

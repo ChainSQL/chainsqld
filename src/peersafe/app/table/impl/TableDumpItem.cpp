@@ -37,7 +37,7 @@ TableDumpItem::~TableDumpItem()
 {
 }
 
-TableDumpItem::TableDumpItem(Application& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
+TableDumpItem::TableDumpItem(Schema& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
 	:TableSyncItem(app,journal,cfg, eTargetType)
 {       
 	sDumpPath_            = "";

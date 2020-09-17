@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/View.h>
 #include <ripple/net/RPCErr.h>

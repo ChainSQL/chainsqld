@@ -21,7 +21,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <ripple/protocol/digest.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <ripple/protocol/ErrorCodes.h>
 
@@ -137,7 +137,7 @@ namespace ripple {
 		return from_hex_text<uint160>(str);
 	}
 
-	bool isDBConfigured(Application& app)
+	bool isDBConfigured(Schema& app)
 	{
 		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
 			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)

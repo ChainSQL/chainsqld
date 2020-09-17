@@ -159,7 +159,9 @@ enum error_code_i
 	rpcCTR_EVMCALL_EXCEPTION = 122,
 	rpcGENERAL				 = 123,
 
-	rpcNOT_SUPPORTED		 = 124,
+	rpcNo_Schema			 = 124,
+	rpcNOT_SUPPORTED		 = 125,
+
     rpcLAST					 = rpcNOT_SUPPORTED   // rpcLAST should always equal the last code.
 };
 

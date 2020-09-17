@@ -108,7 +108,7 @@ private:
     // The length of the smallest valid finished message
     static const size_t sslMinimumFinishedLength = 12;
 
-    Application& app_;
+    Schema& app_;
     id_t const id_;
     beast::WrappedSink sink_;
     beast::WrappedSink p_sink_;
@@ -210,7 +210,7 @@ public:
     PeerImp& operator= (PeerImp const&) = delete;
 
     /** Create an active incoming peer from an established ssl connection. */
-    PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
+    PeerImp (Schema& app, id_t id, endpoint_type remote_endpoint,
         PeerFinder::Slot::ptr const& slot, http_request_type&& request,
             protocol::TMHello const& hello, PublicKey const& publicKey,
                 Resource::Consumer consumer,
@@ -220,7 +220,7 @@ public:
     /** Create outgoing, handshaked peer. */
     // VFALCO legacyPublicKey should be implied by the Slot
     template <class Buffers>
-    PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
+    PeerImp (Schema& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
         Buffers const& buffers, PeerFinder::Slot::ptr&& slot,
             http_response_type&& response, Resource::Consumer usage,
                 protocol::TMHello const& hello,
@@ -536,7 +536,7 @@ private:
 //------------------------------------------------------------------------------
 
 template <class Buffers>
-PeerImp::PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
+PeerImp::PeerImp (Schema& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
     Buffers const& buffers, PeerFinder::Slot::ptr&& slot,
         http_response_type&& response, Resource::Consumer usage,
             protocol::TMHello const& hello,

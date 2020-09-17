@@ -1,7 +1,8 @@
 #include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
-	ContractHelper::ContractHelper(Application& app)
+	ContractHelper::ContractHelper(Schema& app)
 		:app_(app),
 		mTxCache("ContractHelperTxCache", 100, std::chrono::seconds{ 60 }, stopwatch(), app.journal("ContractHelper")),
 		 mRecordCache("ContractHelperTxCache", 100, std::chrono::seconds{ 60 }, stopwatch(), app.journal("ContractHelper"))

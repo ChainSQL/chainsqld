@@ -7,14 +7,14 @@
 #include <ripple/basics/TaggedCache.h>
 #include <ripple/json/json_value.h>
 #include <ripple/basics/base_uint.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
 class ContractHelper
 {
 public:
-	ContractHelper(Application& app);
+	ContractHelper(Schema& app);
 
 	
 	//new tx when smart contract executing
@@ -28,7 +28,7 @@ public:
 	uint256 genRandomUniqueHandle();
 
 private:
-	Application&							app_;
+	Schema&									app_;
 	TaggedCache<uint256, std::vector<STTx>>	mTxCache;
 	TaggedCache<uint256, std::vector<std::vector<Json::Value>>>		
 											mRecordCache;

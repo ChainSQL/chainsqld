@@ -1,7 +1,7 @@
 
 #include <peersafe/app/misc/StateManager.h>
 #include <ripple/app/ledger/OpenLedger.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 

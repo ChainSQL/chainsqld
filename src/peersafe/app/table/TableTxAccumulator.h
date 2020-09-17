@@ -28,7 +28,7 @@
 
 namespace ripple {
 	class STTx;
-	class Application;
+	class Schema;
 	/*
 	This class is used to statistic the db_success count of subTransaction of Contract/SqlTransaction tx .
 	Will trigger db_success of Contract/SqlTransaction for all tables if all subTransaction return db_success.
@@ -44,7 +44,7 @@ namespace ripple {
 			int						startLedgerSeq;		//the ledger sequence when first subTx db_success triggered.
 		};
 	public:
-		TableTxAccumulator(Application& app);
+		TableTxAccumulator(Schema& app);
 		void onSubtxResponse(STTx const& tx, AccountID const& owner, std::string tableName, int subTxCount,std::pair<bool, std::string> result);
 
 		void pubTableTxSuccess(STTx const& tx, AccountID const& owner, std::string tableName);
@@ -58,7 +58,7 @@ namespace ripple {
 	private:
 		std::mutex                              mutexTxCache_;
 		bool									sweepingThread_;
-		Application&							app_;
+		Schema&									app_;
 		std::map<uint256, SubTxInfo>			mapTxAccumulator_;	//key : transactionId
 																	//value: first	total sub_tx count
 																	//		 second current db_success_count

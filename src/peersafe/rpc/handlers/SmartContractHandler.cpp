@@ -23,7 +23,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <peersafe/app/misc/SleOps.h>
@@ -120,7 +120,7 @@ Json::Value checkJsonFields(Json::Value originJson)
 
 Json::Value doContractCall(RPC::Context& context)
 {
-	Application& appTemp = context.app;
+	Schema& appTemp = context.app;
 	std::string errMsgStr("");
 
 	//Json::Value jsonRpcObj = context.params[jss::tx_json];

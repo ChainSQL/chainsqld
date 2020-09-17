@@ -33,7 +33,7 @@
 
 namespace ripple {
 
-	class Application;
+	class Schema;
 	class Config;
 	class SecretKey;
 	class STTx;
@@ -61,7 +61,7 @@ namespace ripple {
 		}checkInfo;
 
 	public:
-		TableAssistant(Application& app, Config& cfg, beast::Journal journal);
+		TableAssistant(Schema& app, Config& cfg, beast::Journal journal);
 		~TableAssistant() {}
 
 		//prepare json
@@ -81,7 +81,7 @@ namespace ripple {
         Config& GetConfig() {return cfg_;}
 
 	private:
-		Application&										app_;
+		Schema&												app_;
 		beast::Journal										journal_;
 		Config&												cfg_;
 

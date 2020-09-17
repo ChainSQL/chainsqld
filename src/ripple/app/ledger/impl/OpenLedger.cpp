@@ -18,7 +18,6 @@
 //==============================================================================
 
 #include <ripple/app/ledger/OpenLedger.h>
-#include <ripple/app/main/Application.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/TxQ.h>
 #include <ripple/app/tx/apply.h>
@@ -27,6 +26,7 @@
 #include <ripple/overlay/Overlay.h>
 #include <ripple/overlay/predicates.h>
 #include <ripple/protocol/Feature.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/range/adaptor/transformed.hpp>
 
 namespace ripple {
@@ -77,7 +77,7 @@ OpenLedger::modify (modify_type const& f)
 }
 
 void
-OpenLedger::accept(Application& app, Rules const& rules,
+OpenLedger::accept(Schema& app, Rules const& rules,
     std::shared_ptr<Ledger const> const& ledger,
         OrderedTxs const& locals, bool retriesFirst,
             OrderedTxs& retries, ApplyFlags flags,
@@ -182,7 +182,7 @@ OpenLedger::create (Rules const& rules,
 }
 
 auto
-OpenLedger::apply_one (Application& app, OpenView& view,
+OpenLedger::apply_one (Schema& app, OpenView& view,
     std::shared_ptr<STTx const> const& tx,
         bool retry, ApplyFlags flags, bool shouldRecover,
             beast::Journal j) -> Result

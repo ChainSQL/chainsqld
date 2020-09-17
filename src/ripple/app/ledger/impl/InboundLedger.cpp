@@ -23,7 +23,7 @@
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/TransactionStateSF.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/JobQueue.h>
@@ -66,7 +66,7 @@ enum
 // millisecond for each ledger timeout
 auto constexpr ledgerAcquireTimeout = 2500ms;
 
-InboundLedger::InboundLedger(Application& app, uint256 const& hash,
+InboundLedger::InboundLedger(Schema& app, uint256 const& hash,
     std::uint32_t seq, Reason reason, clock_type& clock)
     : PeerSet (app, hash, ledgerAcquireTimeout, clock,
         app.journal("InboundLedger"))

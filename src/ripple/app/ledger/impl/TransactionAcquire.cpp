@@ -21,7 +21,7 @@
 #include <ripple/app/ledger/ConsensusTransSetSF.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/InboundTransactions.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/overlay/Overlay.h>
 #include <ripple/basics/make_lock.h>
@@ -40,7 +40,7 @@ enum
     MAX_TIMEOUTS = 20,
 };
 
-TransactionAcquire::TransactionAcquire (Application& app, uint256 const& hash, clock_type& clock)
+TransactionAcquire::TransactionAcquire (Schema& app, uint256 const& hash, clock_type& clock)
     : PeerSet (app, hash, TX_ACQUIRE_TIMEOUT, clock,
         app.journal("TransactionAcquire"))
     , mHaveRoot (false)

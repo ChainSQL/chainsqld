@@ -35,6 +35,7 @@
 #include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/tx/apply.h>
+#include <ripple/app/main/Application.h>
 #include <ripple/basics/make_lock.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/consensus/LedgerTiming.h>
@@ -45,6 +46,7 @@
 #include <ripple/protocol/digest.h>
 #include <ripple/app/misc/Transaction.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/schema/Schema.h>
 #if USE_TBB
 #ifdef _CRTDBG_MAP_ALLOC
 #pragma push_macro("free")
@@ -62,7 +64,7 @@
 namespace ripple {
 
 RCLConsensus::RCLConsensus(
-    Application& app,
+    Schema& app,
     std::unique_ptr<FeeVote>&& feeVote,
     LedgerMaster& ledgerMaster,
     LocalTxs& localTxs,
@@ -88,7 +90,7 @@ RCLConsensus::RCLConsensus(
 }
 
 RCLConsensus::Adaptor::Adaptor(
-    Application& app,
+    Schema& app,
     std::unique_ptr<FeeVote>&& feeVote,
     LedgerMaster& ledgerMaster,
     LocalTxs& localTxs,
@@ -816,7 +818,7 @@ RCLConsensus::Adaptor::doAccept(
         }
 
         // Build new open ledger
-        auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
+        auto lock = make_lock(app_.app().getMasterMutex(), std::defer_lock);
         auto sl = make_lock(ledgerMaster_.peekMutex(), std::defer_lock);
         std::lock(lock, sl);
 
@@ -948,7 +950,7 @@ RCLConsensus::Adaptor::notify(
 #if USE_TBB
 CanonicalTXSet
 applyTransactions(
-    Application& app,
+    Schema& app,
     RCLTxSet const& cSet,
     OpenView& view,
     std::function<bool(uint256 const&)> txFilter)
@@ -1017,7 +1019,7 @@ applyTransactions(
 #else
 CanonicalTXSet
 applyTransactions(
-    Application& app,
+    Schema& app,
     RCLTxSet const& cSet,
     OpenView& view,
     std::function<bool(uint256 const&)> txFilter)

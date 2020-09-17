@@ -36,7 +36,7 @@ public:
     DatabaseShardImp& operator=(DatabaseShardImp&&) = delete;
 
     DatabaseShardImp(
-        Application& app,
+        Schema& schema,
         Stoppable& parent,
         std::string const& name,
         Scheduler& scheduler,
@@ -163,7 +163,7 @@ public:
     sweep() override;
 
 private:
-    Application& app_;
+    Schema& app_;
     mutable std::mutex m_;
     bool init_ {false};
 

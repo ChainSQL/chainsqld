@@ -26,7 +26,7 @@
 
 namespace ripple {
 
-	class Application;
+	class Schema;
 
 	Json::Value generateError(const std::string& errMsg, bool ws = false);
 	STEntry * getTableEntry(const STArray & aTables, std::string sCheckName); 
@@ -36,7 +36,7 @@ namespace ripple {
     bool isChainsqlContractType(const std::string& transactionType);
 	std::string hash(std::string &pk);
 	uint160 generateNameInDB(uint32_t ledgerSeq,AccountID account,std::string sTableName);
-	bool isDBConfigured(Application& app);
+	bool isDBConfigured(Schema& app);
 }
 
 #endif

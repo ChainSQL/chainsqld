@@ -30,7 +30,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 class Config;
 
 /**
@@ -280,7 +280,7 @@ public:
                 will return `{ terQUEUED, false }`.
     */
     std::pair<STer, bool>
-    apply(Application& app, OpenView& view,
+    apply(Schema& app, OpenView& view,
         std::shared_ptr<STTx const> const& tx,
             ApplyFlags flags, beast::Journal j);
 
@@ -296,7 +296,7 @@ public:
         @return Whether any transactions were added to the `view`.
     */
     bool
-    accept(Application& app, OpenView& view);
+    accept(Schema& app, OpenView& view);
 
     /**
         Update fee metrics and clean up the queue in preparation for
@@ -311,7 +311,7 @@ public:
         that have no candidates under them are removed.
     */
     void
-    processClosedLedger(Application& app,
+    processClosedLedger(Schema& app,
         ReadView const& view, bool timeLeap);
 
     /** Returns fee metrics in reference fee level units.
@@ -342,7 +342,7 @@ public:
         @returns a `Json objectvalue`
     */
     Json::Value
-    doRPC(Application& app) const;
+    doRPC(Schema& app) const;
 
 private:
     /**
@@ -403,7 +403,7 @@ private:
             @param setup Customization params.
         */
         std::size_t
-        update(Application& app,
+        update(Schema& app,
             ReadView const& view, bool timeLeap,
             TxQ::Setup const& setup);
 
@@ -565,7 +565,7 @@ private:
 
         /// Attempt to apply the queued transaction to the open ledger.
         std::pair<TER, bool>
-        apply(Application& app, OpenView& view, beast::Journal j);
+        apply(Schema& app, OpenView& view, beast::Journal j);
     };
 
     /// Used for sorting @ref MaybeTx by `feeLevel`
@@ -718,7 +718,7 @@ private:
         up to and including `tx`.
     */
     std::pair<TER, bool>
-    tryClearAccountQueue(Application& app, OpenView& view,
+    tryClearAccountQueue(Schema& app, OpenView& view,
         STTx const& tx, AccountMap::iterator const& accountIter,
             TxQAccount::TxMap::iterator, std::uint64_t feeLevelPaid,
                 PreflightResult const& pfresult,

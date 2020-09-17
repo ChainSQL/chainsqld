@@ -31,7 +31,7 @@ public:
 	using funDumpCB = std::function<void(AccountID, std::string, int, bool)>;	
 
 public:     
-    TableDumpItem(Application& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType);
+    TableDumpItem(Schema& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType);
     virtual ~TableDumpItem();
 
 	std::pair<bool, std::string> SetDumpPara(std::string sPath, funDumpCB funCB);

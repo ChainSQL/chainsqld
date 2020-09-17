@@ -29,6 +29,7 @@
 #include <ripple/overlay/Overlay.h>
 #include <ripple/overlay/predicates.h>
 #include <ripple/protocol/HashPrefix.h>
+#include <peersafe/schema/Schema.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -36,7 +37,7 @@ namespace ripple {
 namespace NodeStore {
 
 DatabaseShardImp::DatabaseShardImp(
-    Application& app,
+    Schema& app,
     Stoppable& parent,
     std::string const& name,
     Scheduler& scheduler,
@@ -86,7 +87,7 @@ DatabaseShardImp::init()
     if (init_)
         return fail("already initialized");
 
-    Config const& config {app_.config()};
+    Config const& config { app_.config()};
     Section const& section {config.section(ConfigSection::shardDatabase())};
     if (section.empty())
         return fail("missing configuration");
@@ -1185,7 +1186,7 @@ DatabaseShardImp::available() const
 
 std::unique_ptr<DatabaseShard>
 make_ShardStore(
-    Application& app,
+    Schema& app,
     Stoppable& parent,
     Scheduler& scheduler,
     int readThreads,

@@ -24,10 +24,11 @@
 #include <ripple/core/Config.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/protocol/Indexes.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
-OrderBookDB::OrderBookDB (Application& app, Stoppable& parent)
+OrderBookDB::OrderBookDB (Schema& app, Stoppable& parent)
     : Stoppable ("OrderBookDB", parent)
     , app_ (app)
     , mSeq (0)

@@ -21,13 +21,13 @@
 #include <ripple/protocol/STTx.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/main/Application.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <peersafe/core/Tuning.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
-	TableTxAccumulator::TableTxAccumulator(Application& app)
+	TableTxAccumulator::TableTxAccumulator(Schema& app)
 		:app_(app)
 	{
 		sweepingThread_ = false;

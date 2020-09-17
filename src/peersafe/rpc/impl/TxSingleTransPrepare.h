@@ -31,14 +31,14 @@
 
 namespace ripple {
 
-	class Application;
+	class Schema;
 	class SecretKey;
 	class TxTransactionPrepare;
 
 	class TxSingleTransPrepare : public TxPrepareBase
 	{
 	public:
-		TxSingleTransPrepare(Application& app, TxTransactionPrepare* trans, 
+		TxSingleTransPrepare(Schema& app, TxTransactionPrepare* trans, 
 			const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func,bool ws);
 
 	private:

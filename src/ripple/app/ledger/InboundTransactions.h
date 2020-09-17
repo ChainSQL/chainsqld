@@ -28,7 +28,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 
 /** Manages the acquisition and lifetime of transaction sets.
 */
@@ -73,7 +73,7 @@ public:
 
 std::unique_ptr <InboundTransactions>
 make_InboundTransactions (
-    Application& app,
+    Schema& app,
     InboundTransactions::clock_type& clock,
     Stoppable& parent,
     beast::insight::Collector::ptr const& collector,

@@ -32,9 +32,10 @@
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/table/TableSync.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
-TxPrepareBase::TxPrepareBase(Application& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws):
+TxPrepareBase::TxPrepareBase(Schema& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws):
 	app_(app),
 	secret_(secret),
     public_(publickey),
@@ -829,7 +830,7 @@ bool TxPrepareBase::checkConfidentialBase(const AccountID& owner, const std::str
 	return pEntry ? pEntry->isConfidential():false;
 }
 
-Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Application& app, bool bWs)
+Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Schema& app, bool bWs)
 {
 	Json::Value jsonRet(Json::objectValue);
 	AccountID accountID;
@@ -860,7 +861,7 @@ Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Application
 	return jsonRet;
 }
 
-Json::Value TxPrepareBase::prepareFutureHash(const Json::Value& tx_json, Application& app,bool bWs)
+Json::Value TxPrepareBase::prepareFutureHash(const Json::Value& tx_json, Schema& app,bool bWs)
 {
     Json::Value jsonRet(Json::objectValue);
     

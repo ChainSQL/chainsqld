@@ -26,6 +26,8 @@
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/TransactionSign.h>
+#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
@@ -90,7 +92,7 @@ Json::Value doSubmit (RPC::Context& context)
 
 
     {
-        if (!context.app.checkSigs())
+        if (!context.app.app().checkSigs())
             forceValidity(context.app.getHashRouter(),
                 stpTrans->getTransactionID(), Validity::SigGoodOnly);
         auto validity = checkValidity(context.app,context.app.getHashRouter(),

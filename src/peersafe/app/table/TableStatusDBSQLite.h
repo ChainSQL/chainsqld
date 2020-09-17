@@ -27,7 +27,7 @@ namespace ripple {
     class TableStatusDBSQLite : public TableStatusDB
     {
     public:
-        TableStatusDBSQLite(DatabaseCon* dbconn, Application *app, beast::Journal& journal);
+        TableStatusDBSQLite(DatabaseCon* dbconn, Schema *app, beast::Journal& journal);
         ~TableStatusDBSQLite();
 
         bool InitDB(DatabaseCon::Setup setup);

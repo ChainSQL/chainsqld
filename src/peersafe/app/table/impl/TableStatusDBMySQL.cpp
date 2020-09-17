@@ -19,11 +19,12 @@
 
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <ripple/basics/ToString.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/format.hpp>
 
 namespace ripple {
 
-    TableStatusDBMySQL::TableStatusDBMySQL(DatabaseCon* dbconn, Application * app, beast::Journal& journal) : TableStatusDB(dbconn,app,journal)
+    TableStatusDBMySQL::TableStatusDBMySQL(DatabaseCon* dbconn, Schema * app, beast::Journal& journal) : TableStatusDB(dbconn,app,journal)
     {
     }
 

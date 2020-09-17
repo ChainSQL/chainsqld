@@ -22,7 +22,7 @@
 
 #include <ripple/app/ledger/AcceptedLedgerTx.h>
 #include <ripple/app/ledger/BookListeners.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/OrderBook.h>
 #include <mutex>
 
@@ -32,7 +32,7 @@ class OrderBookDB
     : public Stoppable
 {
 public:
-    OrderBookDB (Application& app, Stoppable& parent);
+    OrderBookDB (Schema& app, Stoppable& parent);
 
     void setup (std::shared_ptr<ReadView const> const& ledger);
     void update (std::shared_ptr<ReadView const> const& ledger);
@@ -65,7 +65,7 @@ public:
 private:
     void rawAddBook(Book const&);
 
-    Application& app_;
+    Schema& app_;
 
     // by ci/ii
     IssueToOrderBook mSourceMap;

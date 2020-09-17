@@ -28,15 +28,16 @@
 #include <ripple/protocol/jss.h>
 #include <boost/optional.hpp>
 #include <peersafe/app/util/Common.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
 Transaction::Transaction (std::shared_ptr<STTx const> const& stx,
-    std::string& reason, Application& app)
+    std::string& reason, Schema& schema)
     noexcept
     : mTransaction (stx)
-    , mApp (app)
-    , j_ (app.journal ("Ledger"))
+    , mSchema (schema)
+    , j_ (schema.journal ("Ledger"))
 {
     try
     {
@@ -83,7 +84,7 @@ Transaction::pointer Transaction::transactionFromSQL (
     boost::optional<std::uint64_t> const& ledgerSeq,
     boost::optional<std::string> const& status,
     Blob const& rawTxn,
-    Application& app)
+	Schema& schema)
 {
     std::uint32_t const inLedger =
         rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or (0));
@@ -92,7 +93,7 @@ Transaction::pointer Transaction::transactionFromSQL (
     auto txn = std::make_shared<STTx const> (it);
     std::string reason;
     auto tr = std::make_shared<Transaction> (
-        txn, reason, app);
+        txn, reason, schema);
 
     tr->setStatus (sqlTransactionStatus (status));
     tr->setLedger (inLedger);
@@ -103,21 +104,21 @@ Transaction::pointer Transaction::transactionFromSQLValidated(
     boost::optional<std::uint64_t> const& ledgerSeq,
     boost::optional<std::string> const& status,
     Blob const& rawTxn,
-    Application& app)
+	Schema& schema)
 {
-    auto ret = transactionFromSQL(ledgerSeq, status, rawTxn, app);
+    auto ret = transactionFromSQL(ledgerSeq, status, rawTxn, schema);
 
-    if (checkValidity(app,app.getHashRouter(),
-            *ret->getSTransaction(), app.
+    if (checkValidity(schema, schema.getHashRouter(),
+            *ret->getSTransaction(), schema.
                 getLedgerMaster().getValidatedRules(),
-                    app.config()).first !=
+                    schema.config()).first !=
                         Validity::Valid)
         return {};
 
     return ret;
 }
 
-Transaction::pointer Transaction::load(uint256 const& id, Application& app)
+Transaction::pointer Transaction::load(uint256 const& id, Schema& schema)
 {
     std::string sql = "SELECT LedgerSeq,Status,RawTxn "
             "FROM Transactions WHERE TransID='";
@@ -128,7 +129,7 @@ Transaction::pointer Transaction::load(uint256 const& id, Application& app)
     boost::optional<std::string> status;
     Blob rawTxn;
     {
-        auto db = app.getTxnDB ().checkoutDb ();
+        auto db = schema.getTxnDB ().checkoutDb ();
         soci::blob sociRawTxnBlob (*db);
         soci::indicator rti;
 
@@ -141,7 +142,7 @@ Transaction::pointer Transaction::load(uint256 const& id, Application& app)
     }
 
     return Transaction::transactionFromSQLValidated (
-        ledgerSeq, status, rawTxn, app);
+        ledgerSeq, status, rawTxn, schema);
 }
 
 // options 1 to include the date of the transaction
@@ -156,7 +157,7 @@ Json::Value Transaction::getJson (JsonOptions options, bool binary) const
 
         if (options == JsonOptions::include_date)
         {
-            auto ct = mApp.getLedgerMaster().
+            auto ct = mSchema.getLedgerMaster().
                 getCloseTimeBySeq (mInLedger);
             if (ct)
                 ret[jss::date] = ct->time_since_epoch().count();

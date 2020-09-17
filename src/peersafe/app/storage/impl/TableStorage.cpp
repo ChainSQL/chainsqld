@@ -28,10 +28,11 @@
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/tx/ChainSqlTx.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/ledger/impl/Tuning.h>
 
 namespace ripple {
-    TableStorage::TableStorage(Application& app, Config& cfg, beast::Journal journal)
+    TableStorage::TableStorage(Schema& app, Config& cfg, beast::Journal journal)
         : app_(app)
         , journal_(journal)
         , cfg_(cfg)

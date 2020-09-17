@@ -17,17 +17,18 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/core/Job.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/rpc/impl/LegacyPathFind.h>
 #include <ripple/rpc/impl/Tuning.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 namespace RPC {
 
-LegacyPathFind::LegacyPathFind (bool isAdmin, Application& app) : m_isOk (false)
+LegacyPathFind::LegacyPathFind (bool isAdmin, Schema& app) : m_isOk (false)
 {
     if (isAdmin)
     {

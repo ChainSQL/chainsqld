@@ -6,7 +6,7 @@
 #include <ripple/beast/utility/Journal.h>
 
 namespace ripple {
-class Application;
+class Schema;
 
 class StateManager
 {
@@ -15,7 +15,7 @@ class StateManager
 		uint32_t sequence;
 	};
 public:
-	StateManager(Application& app, beast::Journal j)
+	StateManager(Schema& app, beast::Journal j)
 		: app_(app)
 		, j_(j)
 	{
@@ -29,7 +29,7 @@ public:
 	void clear();
 
 private:
-	Application& app_;
+	Schema& app_;
 	beast::Journal j_;
 	std::map<AccountID, State> accountState_;
 	std::mutex mutex_;

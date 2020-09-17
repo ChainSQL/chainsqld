@@ -31,7 +31,7 @@
 
 namespace ripple {
 
-	class Application;
+	class Schema;
 	class TxPrepareBase;
 
 	class TxTransactionPrepare
@@ -45,7 +45,7 @@ namespace ripple {
 		}transInfo;
 
 	public:
-		TxTransactionPrepare(Application& app, const std::string& secret,const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func,bool ws);
+		TxTransactionPrepare(Schema& app, const std::string& secret,const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func,bool ws);
 		virtual ~TxTransactionPrepare();
 
 		Json::Value prepare();
@@ -64,7 +64,7 @@ namespace ripple {
 		//key: table_name,value:transInfo
 		std::shared_ptr<std::map<std::string,std::map<std::string, transInfo>>>	m_pMap;
 
-		Application&										app_;
+		Schema&												app_;
 		const std::string&									secret_;
         const std::string&                                  public_;
 		Json::Value&										tx_json_;

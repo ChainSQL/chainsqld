@@ -19,7 +19,7 @@
 
 #include <ripple/app/misc/TxQ.h>
 #include <ripple/app/ledger/OpenLedger.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/protocol/Feature.h>
@@ -79,7 +79,7 @@ increase(std::uint64_t level,
 //////////////////////////////////////////////////////////////////////////
 
 std::size_t
-TxQ::FeeMetrics::update(Application& app,
+TxQ::FeeMetrics::update(Schema& app,
     ReadView const& view, bool timeLeap,
     TxQ::Setup const& setup)
 {
@@ -275,7 +275,7 @@ TxQ::MaybeTx::MaybeTx(
 }
 
 std::pair<TER, bool>
-TxQ::MaybeTx::apply(Application& app, OpenView& view, beast::Journal j)
+TxQ::MaybeTx::apply(Schema& app, OpenView& view, beast::Journal j)
 {
     boost::optional<STAmountSO> saved;
     if (view.rules().enabled(fix1513))
@@ -482,7 +482,7 @@ TxQ::erase(TxQ::TxQAccount& txQAccount,
 }
 
 std::pair<TER, bool>
-TxQ::tryClearAccountQueue(Application& app, OpenView& view,
+TxQ::tryClearAccountQueue(Schema& app, OpenView& view,
     STTx const& tx, TxQ::AccountMap::iterator const& accountIter,
         TxQAccount::TxMap::iterator beginTxIter, std::uint64_t feeLevelPaid,
             PreflightResult const& pfresult, std::size_t const txExtraCount,
@@ -623,7 +623,7 @@ TxQ::tryClearAccountQueue(Application& app, OpenView& view,
     8. Put `txn` in the queue.
 */
 std::pair<STer, bool>
-TxQ::apply(Application& app, OpenView& view,
+TxQ::apply(Schema& app, OpenView& view,
     std::shared_ptr<STTx const> const& tx,
         ApplyFlags flags, beast::Journal j)
 {
@@ -1189,7 +1189,7 @@ TxQ::apply(Application& app, OpenView& view,
 
 */
 void
-TxQ::processClosedLedger(Application& app,
+TxQ::processClosedLedger(Schema& app,
     ReadView const& view, bool timeLeap)
 {
     auto const allowEscalation =
@@ -1270,7 +1270,7 @@ TxQ::processClosedLedger(Application& app,
         * the next tx in the queue, simply ordered by fee.
 */
 bool
-TxQ::accept(Application& app,
+TxQ::accept(Schema& app,
     OpenView& view)
 {
     auto const allowEscalation =
@@ -1500,7 +1500,7 @@ TxQ::getTxs(ReadView const& view) const
 
 
 Json::Value
-TxQ::doRPC(Application& app) const
+TxQ::doRPC(Schema& app) const
 {
     using std::to_string;
 

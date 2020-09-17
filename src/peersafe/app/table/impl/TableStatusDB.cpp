@@ -24,7 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace ripple {
 
-TableStatusDB::TableStatusDB(DatabaseCon* dbconn, Application*  app, beast::Journal& journal)
+TableStatusDB::TableStatusDB(DatabaseCon* dbconn, Schema*  app, beast::Journal& journal)
     : databasecon_(dbconn),app_(app),journal_(journal){
 }
 

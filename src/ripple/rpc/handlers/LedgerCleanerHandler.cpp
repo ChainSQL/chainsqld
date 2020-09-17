@@ -18,7 +18,7 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/json/json_value.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/Handler.h>

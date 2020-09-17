@@ -74,7 +74,7 @@ namespace ripple {
 		class AppFamily : public Family
 		{
 		private:
-			Application& app_;
+			Schema& app_;
 			TreeNodeCache treecache_;
 			FullBelowCache fullbelow_;
 			NodeStore::Database& db_;
@@ -107,7 +107,7 @@ namespace ripple {
 			AppFamily(AppFamily const&) = delete;
 			AppFamily& operator= (AppFamily const&) = delete;
 
-			AppFamily(Application& app, NodeStore::Database& db,
+			AppFamily(Schema& app, NodeStore::Database& db,
 				CollectorManager& collectorManager)
 				: app_(app)
 				, treecache_("TreeNodeCache", 65536, std::chrono::minutes{ 1 },
@@ -320,9 +320,9 @@ namespace ripple {
 		, m_journal(j)
 		, config_(std::move(config))
 
-		, m_txMaster(app)
+		, m_txMaster(*this)
 
-		, m_shaMapStore(make_SHAMapStore(app, setup_SHAMapStore(config_),
+		, m_shaMapStore(make_SHAMapStore(*this, setup_SHAMapStore(config_),
 			dynamic_cast<Stoppable&>(app_), app_.nodeStoreScheduler(), app_.logs().journal("SHAMapStore"),
 			app_.logs().journal("NodeObject"), m_txMaster, config_))
 
@@ -344,25 +344,25 @@ namespace ripple {
 		, shardStore_(
 			m_shaMapStore->makeDatabaseShard("ShardStore", 4, app_.getJobQueue()))
 
-		, family_(app, *m_nodeStore, app.getCollectorManager())
+		, family_(*this, *m_nodeStore, app.getCollectorManager())
 
-		, m_orderBookDB(app, app_.getJobQueue())
+		, m_orderBookDB(*this, app_.getJobQueue())
 
 		, m_pathRequests(std::make_unique<PathRequests>(
-			app, app_.logs().journal("PathRequest"), app.getCollectorManager().collector()))
+			*this, app_.logs().journal("PathRequest"), app.getCollectorManager().collector()))
 
-		, m_ledgerMaster(std::make_unique<LedgerMaster>(app, stopwatch(),
+		, m_ledgerMaster(std::make_unique<LedgerMaster>(*this, stopwatch(),
 			app_.getJobQueue(), app.getCollectorManager().collector(),
 			app_.logs().journal("LedgerMaster")))
 
 		// VFALCO NOTE must come before NetworkOPs to prevent a crash due
 		//             to dependencies in the destructor.
 		//
-		, m_inboundLedgers(make_InboundLedgers(app, stopwatch(),
+		, m_inboundLedgers(make_InboundLedgers(*this, stopwatch(),
 			app_.getJobQueue(), app.getCollectorManager().collector()))
 
 		, m_inboundTransactions(make_InboundTransactions
-			(app, stopwatch()
+			(*this, stopwatch()
 				, app_.getJobQueue()
 				, app.getCollectorManager().collector()
 				, [this](std::shared_ptr <SHAMap> const& set,
@@ -374,7 +374,7 @@ namespace ripple {
 		, m_acceptedLedgerCache("AcceptedLedger", /*4*/16, std::chrono::minutes{ 10 }, stopwatch(),
 			app_.logs().journal("TaggedCache"))
 
-		, m_networkOPs(make_NetworkOPs(app, stopwatch(),
+		, m_networkOPs(make_NetworkOPs(*this, stopwatch(),
 			config_.standalone(), config_.NETWORK_QUORUM, config_.START_VALID,
 			app_.getJobQueue(), *m_ledgerMaster, app_.getJobQueue(), app_.getValidatorKeys(),
 			dynamic_cast<BasicApp&>(app_).get_io_service(), app_.logs().journal("NetworkOPs")))
@@ -407,7 +407,7 @@ namespace ripple {
 			stopwatch(), HashRouter::getDefaultHoldTime(),
 			HashRouter::getDefaultRecoverLimit()))
 
-		, mValidations(ValidationParms(), stopwatch(), app, app_.logs().journal("Validations"))
+		, mValidations(ValidationParms(), stopwatch(), *this, app_.logs().journal("Validations"))
 
 		, txQ_(make_TxQ(setup_TxQ(config_), app_.logs().journal("TxQ")))
 
@@ -415,24 +415,89 @@ namespace ripple {
 
 		, m_pTxStore(std::make_unique<TxStore>(m_pTxStoreDBConn->GetDBConn(), config_, app_.logs().journal("TxStore")))
 
-		, m_pTableSync(std::make_unique<TableSync>(app, config_, app_.logs().journal("TableSync")))
+		, m_pTableSync(std::make_unique<TableSync>(*this, config_, app_.logs().journal("TableSync")))
 
-		, m_pTableStorage(std::make_unique<TableStorage>(app, config_, app_.logs().journal("TableStorage")))
+		, m_pTableStorage(std::make_unique<TableStorage>(*this, config_, app_.logs().journal("TableStorage")))
 
-		, m_pTableAssistant(std::make_unique<TableAssistant>(app, config_, app_.logs().journal("TableAssistant")))
+		, m_pTableAssistant(std::make_unique<TableAssistant>(*this, config_, app_.logs().journal("TableAssistant")))
 
-		, m_pContractHelper(std::make_unique<ContractHelper>(app))
+		, m_pContractHelper(std::make_unique<ContractHelper>(*this))
 
-		, m_pTableTxAccumulator(std::make_unique<TableTxAccumulator>(app))
+		, m_pTableTxAccumulator(std::make_unique<TableTxAccumulator>(*this))
 
-		, m_pTxPool(std::make_unique<TxPool>(app, app_.logs().journal("TxPool")))
+		, m_pTxPool(std::make_unique<TxPool>(*this, app_.logs().journal("TxPool")))
 
-		, m_pStateManager(std::make_unique<StateManager>(app, app_.logs().journal("StateManager")))
+		, m_pStateManager(std::make_unique<StateManager>(*this, app_.logs().journal("StateManager")))
 	{
 		if (shardStore_)
 			sFamily_ = std::make_unique<detail::AppFamily>(
-				app_, *shardStore_, app_.getCollectorManager());
+				*this, *shardStore_, app_.getCollectorManager());
 	}
+
+	Application& app() override
+	{
+		return app_;
+	}
+
+	Logs& logs() override
+	{
+		return app_.logs();
+	}
+
+	beast::Journal journal(std::string const& name)
+	{
+		return logs().journal(name);
+	}
+
+	CollectorManager& getCollectorManager() override
+	{
+		return app_.getCollectorManager();
+	}
+
+	TimeKeeper&
+		timeKeeper() override
+	{
+		return app_.timeKeeper();
+	}
+
+	JobQueue& getJobQueue() override
+	{
+		return app_.getJobQueue();
+	}
+
+	LoadManager& getLoadManager() override
+	{
+		return app_.getLoadManager();
+	}
+
+	Resource::Manager& getResourceManager() override
+	{
+		return app_.getResourceManager();
+	}
+
+	perf::PerfLog& getPerfLog() override
+	{
+		return app_.getPerfLog();
+	}
+
+	std::pair<PublicKey, SecretKey> const&
+		nodeIdentity() override
+	{
+		return app_.nodeIdentity();
+	}
+
+	virtual
+		PublicKey const &
+		getValidationPublicKey() const override
+	{
+		return app_.getValidationPublicKey();
+	}
+
+	ValidatorKeys const& getValidatorKeys()const override
+	{
+		return app_.getValidatorKeys();
+	}
+
 	Config&
 		config() override
 	{
@@ -880,7 +945,7 @@ private:
 		//             move the instantiation inside a conditional:
 		//
 		//             if (!config_.standalone())
-		m_overlay = make_Overlay(app_, setup_Overlay(config_), app_.getJobQueue(),
+		m_overlay = make_Overlay(*this, setup_Overlay(config_), app_.getJobQueue(),
 			app_.getServerHandler(), app_.getResourceManager(), app_.getResolver(), dynamic_cast<BasicApp&>(app_).get_io_service(),
 			config_);
 		//add(*m_overlay); // add to PropertyStream
@@ -1090,7 +1155,7 @@ private:
 
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ app_.journal("RPCHandler"), jvCommand, app_,
+			RPC::Context context{ app_.journal("RPCHandler"), jvCommand, *this,
 				loadType, getOPs(), getLedgerMaster(), c, Role::ADMIN };
 
 			Json::Value jvResult;
@@ -1162,7 +1227,7 @@ private:
 			//ss << "order by LedgerSeq desc limit " << index << ",1";
 			//std::string loadSql = ss.str();
 			std::string loadSql = "order by LedgerSeq desc limit 1";
-			std::tie(ledger, seq, hash) = loadLedgerHelper(loadSql, app_);
+			std::tie(ledger, seq, hash) = loadLedgerHelper(loadSql, *this);
 
 			//if (!ledger)
 			//	continue;
@@ -1363,13 +1428,13 @@ private:
 
 				if (hash.SetHex(ledgerID))
 				{
-					loadLedger = loadByHash(hash, app_);
+					loadLedger = loadByHash(hash, *this);
 
 					if (!loadLedger)
 					{
 						// Try to build the ledger from the back end
 						auto il = std::make_shared <InboundLedger>(
-							app_, hash, 0, InboundLedger::Reason::GENERIC,
+							*this, hash, 0, InboundLedger::Reason::GENERIC,
 							stopwatch());
 						if (il->checkLocal())
 							loadLedger = il->getLedger();
@@ -1386,7 +1451,7 @@ private:
 				std::uint32_t index;
 
 				if (beast::lexicalCastChecked(index, ledgerID))
-					loadLedger = loadByIndex(index, app_);
+					loadLedger = loadByIndex(index, *this);
 			}
 
 			if (!loadLedger)
@@ -1401,14 +1466,14 @@ private:
 
 				JLOG(m_journal.info()) << "Loading parent ledger";
 
-				loadLedger = loadByHash(replayLedger->info().parentHash, app_);
+				loadLedger = loadByHash(replayLedger->info().parentHash, *this);
 				if (!loadLedger)
 				{
 					JLOG(m_journal.info()) << "Loading parent ledger from node store";
 
 					// Try to build the ledger from the back end
 					auto il = std::make_shared <InboundLedger>(
-						app_, replayLedger->info().parentHash,
+						*this, replayLedger->info().parentHash,
 						0, InboundLedger::Reason::GENERIC, stopwatch());
 
 					if (il->checkLocal())
@@ -1775,9 +1840,9 @@ private:
 			std::pair<std::string, bool> result = setup.sync_db.find("type");
 
 			if (result.first.compare("sqlite") == 0 || result.first.empty() || !result.second)
-				m_pTableStatusDB = std::make_unique<TableStatusDBSQLite>(conn, (ripple::Application*)this, m_journal);
+				m_pTableStatusDB = std::make_unique<TableStatusDBSQLite>(conn, this, m_journal);
 			else
-				m_pTableStatusDB = std::make_unique<TableStatusDBMySQL>(conn, (ripple::Application*)this, m_journal);
+				m_pTableStatusDB = std::make_unique<TableStatusDBMySQL>(conn, this, m_journal);
 
 			if (m_pTableStatusDB)
 			{

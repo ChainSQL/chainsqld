@@ -11,7 +11,7 @@
 #include <ripple/core/ConfigSections.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/basics/base_uint.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/app/consensus/RCLCxTx.h>
@@ -19,6 +19,7 @@
 #include <ripple/protocol/Protocol.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/consensus/PConsensusParams.h>
+#include <peersafe/schema/Schema.h>
 
 
 namespace ripple {
@@ -70,7 +71,7 @@ struct sync_status
 class TxPool
 {
 public:
-    TxPool(Application& app, beast::Journal j)
+    TxPool(Schema& app, beast::Journal j)
         : app_(app)
         , j_(j)
     {
@@ -134,7 +135,7 @@ public:
 	void checkSyncStatus(int const ledgerSeq, uint256 const& prevHash);
 
 private:
-	Application& app_;
+	Schema& app_;
 
     std::mutex mutexTxPoll_;
 

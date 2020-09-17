@@ -23,9 +23,10 @@
 #include <peersafe/rpc/impl/TxSingleTransPrepare.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <ripple/protocol/ErrorCodes.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
-	TxTransactionPrepare::TxTransactionPrepare(Application& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func,bool ws):
+	TxTransactionPrepare::TxTransactionPrepare(Schema& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func,bool ws):
 		app_(app),
 		secret_(secret),
         public_(publickey),

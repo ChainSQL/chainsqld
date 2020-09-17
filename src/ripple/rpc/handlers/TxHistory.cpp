@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/SociDB.h>

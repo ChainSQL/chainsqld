@@ -36,7 +36,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 class Job;
 class TransactionMaster;
 
@@ -353,7 +353,7 @@ using CachedLedger = CachedView<Ledger>;
 extern
 bool
 pendSaveValidated(
-    Application& app,
+    Schema& app,
     std::shared_ptr<Ledger const> const& ledger,
     bool isSynchronous,
     bool isCurrent);
@@ -361,32 +361,32 @@ pendSaveValidated(
 extern
 std::shared_ptr<Ledger>
 loadByIndex (std::uint32_t ledgerIndex,
-    Application& app, bool acquire = true);
+    Schema& app, bool acquire = true);
 
 extern
 std::tuple<std::shared_ptr<Ledger>, std::uint32_t, uint256>
 loadLedgerHelper(std::string const& sqlSuffix,
-    Application& app, bool acquire = true);
+    Schema& app, bool acquire = true);
 
 extern
 std::shared_ptr<Ledger>
 loadByHash (uint256 const& ledgerHash,
-    Application& app, bool acquire = true);
+    Schema& app, bool acquire = true);
 
 extern
 uint256
-getHashByIndex(std::uint32_t index, Application& app);
+getHashByIndex(std::uint32_t index, Schema& app);
 
 extern
 bool
 getHashesByIndex(std::uint32_t index,
     uint256 &ledgerHash, uint256& parentHash,
-        Application& app);
+	Schema& app);
 
 extern
 std::map< std::uint32_t, std::pair<uint256, uint256>>
 getHashesByIndex (std::uint32_t minSeq, std::uint32_t maxSeq,
-    Application& app);
+    Schema& app);
 
 /** Deserialize a SHAMapItem containing a single STTx
 

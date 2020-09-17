@@ -39,6 +39,7 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/schema/Schema.h>
 
 
 namespace ripple {
@@ -123,7 +124,7 @@ preflight2 (PreflightContext const& ctx)
 
 //------------------------------------------------------------------------------
 
-PreflightContext::PreflightContext(Application& app_, STTx const& tx_,
+PreflightContext::PreflightContext(Schema& app_, STTx const& tx_,
     Rules const& rules_, ApplyFlags flags_,
         beast::Journal j_)
     : app(app_)
@@ -170,7 +171,7 @@ Transactor::calculateFeePaid(STTx const& tx)
 }
 
 ZXCAmount
-Transactor::minimumFee (Application& app, std::uint64_t baseFee,
+Transactor::minimumFee (Schema& app, std::uint64_t baseFee,
     Fees const& fees, ApplyFlags flags)
 {
     return scaleFeeLoad (baseFee, app.getFeeTrack (),

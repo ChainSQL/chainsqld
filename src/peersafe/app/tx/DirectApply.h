@@ -23,17 +23,18 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/ledger/ApplyViewImpl.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/app/tx/applySteps.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 PreclaimResult
 preclaimDirect(PreflightResult const& preflightResult,
-	Application& app, OpenView const& view);
+	Schema& app, OpenView const& view);
 
 TER
 doApplyDirect(PreclaimResult const& preclaimResult,
-	Application& app, ApplyView& view);
+	Schema& app, ApplyView& view);
 
 TER
-applyDirect(Application& app, ApplyView& view, STTx const& tx, beast::Journal j);
+applyDirect(Schema& app, ApplyView& view, STTx const& tx, beast::Journal j);
 }
 #endif

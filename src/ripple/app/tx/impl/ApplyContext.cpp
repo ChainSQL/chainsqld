@@ -24,11 +24,12 @@
 #include <ripple/json/to_string.h>
 #include <ripple/protocol/Indexes.h>
 #include <ripple/protocol/Feature.h>
+#include <peersafe/schema/Schema.h>
 #include <cassert>
 
 namespace ripple {
 
-ApplyContext::ApplyContext(Application& app_,
+ApplyContext::ApplyContext(Schema& app_,
     OpenView& base, STTx const& tx_, TER preclaimResult_,
         std::uint64_t baseFee_, ApplyFlags flags,
             beast::Journal journal_)

@@ -21,7 +21,6 @@
 #include <ripple/app/ledger/InboundLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/main/Application.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/basics/Log.h>
@@ -31,6 +30,7 @@
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/TimeKeeper.h>
+#include <peersafe/schema/Schema.h>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -111,7 +111,7 @@ mismatch(RCLValidatedLedger const& a, RCLValidatedLedger const& b)
     return (curr < lower) ? Seq{1} : (curr + Seq{1});
 }
 
-RCLValidationsAdaptor::RCLValidationsAdaptor(Application& app, beast::Journal j)
+RCLValidationsAdaptor::RCLValidationsAdaptor(Schema& app, beast::Journal j)
     : app_(app),  j_(j)
 {
     staleValidations_.reserve(512);
@@ -132,7 +132,7 @@ RCLValidationsAdaptor::acquire(LedgerHash const & hash)
         JLOG(j_.debug())
             << "Need validated ledger for preferred ledger analysis " << hash;
 
-        Application * pApp = &app_;
+        Schema * pApp = &app_;
 
         app_.getJobQueue().addJob(
             jtADVANCE, "getConsensusLedger", [pApp, hash](Job&) {
@@ -274,7 +274,7 @@ RCLValidationsAdaptor::doStaleWrite(ScopedLockType&)
 }
 
 bool
-handleNewValidation(Application& app,
+handleNewValidation(Schema& app,
     STValidation::ref val,
     std::string const& source)
 {

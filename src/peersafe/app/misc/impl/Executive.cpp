@@ -2,7 +2,7 @@
 #include <eth/vm/VMFactory.h>
 #include <peersafe/core/Tuning.h>
 #include <ripple/protocol/digest.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/protocol/ContractDefines.h>

@@ -38,10 +38,10 @@ convertBlobsToTxResult (
     std::string const& status,
     Blob const& rawTxn,
     Blob const& rawMeta,
-    Application& app);
+    Schema& app);
 
 void
-saveLedgerAsync (Application& app, std::uint32_t seq);
+saveLedgerAsync (Schema& app, std::uint32_t seq);
 
 void
 accountTxPage (

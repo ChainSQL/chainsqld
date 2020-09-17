@@ -20,7 +20,7 @@
 #ifndef RIPPLE_APP_LEDGER_TRANSACTIONACQUIRE_H_INCLUDED
 #define RIPPLE_APP_LEDGER_TRANSACTIONACQUIRE_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/overlay/PeerSet.h>
 #include <ripple/shamap/SHAMap.h>
 
@@ -39,7 +39,7 @@ public:
     using pointer = std::shared_ptr<TransactionAcquire>;
 
 public:
-    TransactionAcquire (Application& app, uint256 const& hash, clock_type& clock);
+    TransactionAcquire (Schema& app, uint256 const& hash, clock_type& clock);
     ~TransactionAcquire () = default;
 
     std::shared_ptr<SHAMap> const& getMap ()

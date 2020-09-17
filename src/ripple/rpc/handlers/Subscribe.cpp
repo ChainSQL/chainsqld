@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/basics/Log.h>
@@ -73,7 +73,7 @@ Json::Value doSubscribe (RPC::Context& context)
             try
             {
                 auto rspSub = make_RPCSub (context.app.getOPs (),
-                    context.app.getIOService (), context.app.getJobQueue (),
+                    context.app.app().getIOService (), context.app.getJobQueue (),
                         strUrl, strUsername, strPassword, context.app.logs ());
                 ispSub  = context.netOps.addRpcSub (
                     strUrl, std::dynamic_pointer_cast<InfoSub> (rspSub));

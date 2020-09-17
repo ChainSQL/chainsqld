@@ -20,7 +20,7 @@
 #ifndef RIPPLE_APP_TABLE_TABLESTATUSDB_H_INCLUDED
 #define RIPPLE_APP_TABLE_TABLESTATUSDB_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/protocol/AccountID.h>
 #include <ripple/protocol/Protocol.h>
@@ -33,7 +33,7 @@ namespace ripple {
 	};
 class TableStatusDB {
 public:
-    TableStatusDB(DatabaseCon* dbconn, Application*  app,beast::Journal& journal);
+    TableStatusDB(DatabaseCon* dbconn, Schema*  app,beast::Journal& journal);
     virtual ~TableStatusDB();
 
     virtual bool InitDB(DatabaseCon::Setup setup) = 0;
@@ -76,7 +76,7 @@ public:
 
 protected:
     DatabaseCon*                                                 databasecon_;
-    Application*                                                 app_;
+	Schema*		                                                 app_;
     beast::Journal&                                              journal_;
 }; // class TxStoreStatus
 

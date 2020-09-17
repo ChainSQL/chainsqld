@@ -35,6 +35,7 @@
 #include <peersafe/rpc/impl/TxCommonPrepare.h>
 #include <peersafe/rpc/impl/TxTransactionPrepare.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/schema/Schema.h>
 
 
 namespace ripple {
@@ -43,7 +44,7 @@ namespace ripple {
 #define EXPIRE_TIME 300
 
 
-TableAssistant::TableAssistant(Application& app, Config& cfg, beast::Journal journal)
+TableAssistant::TableAssistant(Schema& app, Config& cfg, beast::Journal journal)
 	: app_(app)
 	, journal_(journal)
 	, cfg_(cfg)

@@ -27,7 +27,7 @@
 namespace ripple {
 
 // Forward declarations
-class Application;
+class Schema;
 class LoadFeeTrack;
 class Transaction;
 class TxQ;
@@ -95,7 +95,7 @@ Json::Value transactionSign (
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
-    Application& app);
+    Schema& app);
 
 /** Returns a Json::objectValue. */
 Json::Value transactionSubmit (
@@ -103,7 +103,7 @@ Json::Value transactionSubmit (
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
-    Application& app,
+    Schema& app,
     ProcessTransactionFn const& processTransaction);
 
 /** Returns a Json::objectValue. */
@@ -112,7 +112,7 @@ Json::Value transactionSignFor (
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
-    Application& app);
+    Schema& app);
 
 /** Returns a Json::objectValue. */
 Json::Value transactionSubmitMultiSigned (
@@ -120,7 +120,7 @@ Json::Value transactionSubmitMultiSigned (
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
-    Application& app,
+    Schema& app,
     ProcessTransactionFn const& processTransaction);
 
 } // RPC

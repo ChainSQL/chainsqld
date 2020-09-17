@@ -27,7 +27,7 @@ namespace ripple {
 class TableAuditItem : public TableDumpItem
 {
 public:     
-    TableAuditItem(Application& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType);
+    TableAuditItem(Schema& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType);
     virtual ~TableAuditItem();
 
     std::pair<bool, std::string> SetAuditPara(std::string sPath, const std::list<int>& idArray, const std::list<std::string> & fieldArray);

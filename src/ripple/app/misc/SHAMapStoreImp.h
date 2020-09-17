@@ -71,7 +71,7 @@ private:
         void setLastRotated (LedgerIndex seq);
     };
 
-    Application& app_;
+    Schema& app_;
 
     // name of state database
     std::string const dbName_ = "state";
@@ -111,7 +111,7 @@ private:
     int fdlimit_ = 0;
 
 public:
-    SHAMapStoreImp (Application& app,
+    SHAMapStoreImp (Schema& schema,
             Setup const& setup,
             Stoppable& parent,
             NodeStore::Scheduler& scheduler,

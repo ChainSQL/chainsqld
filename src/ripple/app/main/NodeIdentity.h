@@ -20,7 +20,7 @@
 #ifndef RIPPLE_APP_MAIN_NODEIDENTITY_H_INCLUDED
 #define RIPPLE_APP_MAIN_NODEIDENTITY_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
 #include <utility>
@@ -29,7 +29,7 @@ namespace ripple {
 
 /** The cryptographic credentials identifying this server instance. */
 std::pair<PublicKey, SecretKey>
-loadNodeIdentity (Application& app);
+loadNodeIdentity (Schema& app);
 
 } // ripple
 

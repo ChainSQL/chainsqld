@@ -2,7 +2,7 @@
 #define CHAINSQL_APP_TX_PARALLELAPPLY_H_INCLUDED
 
 #if USE_TBB
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/ledger/ApplyView.h>
@@ -18,7 +18,7 @@ public:
 
     ParallelApply(
         Txs &a, Txs &r, bool &certainRetry, int &changes, 
-        Application& app, OpenView& view, beast::Journal j
+        Schema& app, OpenView& view, beast::Journal j
     )
         : certainRetry_(certainRetry)
         , changes_(changes)
@@ -42,7 +42,7 @@ private:
     Txs &shouldApplyTxs_;
     Txs &retryTxs_;
 
-    Application& app_;
+    Schema& app_;
     OpenView& view_;
     beast::Journal j;
 

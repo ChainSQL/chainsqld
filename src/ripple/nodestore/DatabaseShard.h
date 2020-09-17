@@ -222,7 +222,7 @@ seqToShardIndex(std::uint32_t seq,
 extern
 std::unique_ptr<DatabaseShard>
 make_ShardStore(
-    Application& app,
+    Schema& app,
     Stoppable& parent,
     Scheduler& scheduler,
     int readThreads,

@@ -31,7 +31,7 @@ class Transactor;
 class TableStorage
 {
 public:
-    TableStorage(Application& app, Config& cfg, beast::Journal journal);
+    TableStorage(Schema& app, Config& cfg, beast::Journal journal);
     virtual ~TableStorage();
 
     std::shared_ptr<TableStorageItem> GetItem(uint160 nameInDB);
@@ -49,7 +49,7 @@ private:
     TER TableStorageHandlePut(ChainSqlTx& transactor,uint160 uTxDBName, AccountID accountID, std::string sTableName, uint32_t lastLedgerSequence, uint256 txhash, STTx const & tx);
 
 private:
-    Application&                                                                app_;
+	Schema&																		app_;
     beast::Journal                                                              journal_;
     Config&                                                                     cfg_;
 

@@ -49,6 +49,7 @@
 #include <ripple/beast/core/LexicalCast.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -56,7 +57,7 @@
 namespace ripple {
 
 create_genesis_t const create_genesis {};
-bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Application& app);
+bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Schema& app);
 
 static
 uint256
@@ -808,7 +809,7 @@ void Ledger::updateSkipList ()
 }
 
 static bool saveValidatedLedger (
-    Application& app,
+    Schema& app,
     std::shared_ptr<Ledger const> const& ledger,
     bool current)
 {
@@ -1031,7 +1032,7 @@ static bool saveValidatedLedger (
     Returns false on error
 */
 bool pendSaveValidated (
-    Application& app,
+    Schema& app,
     std::shared_ptr<Ledger const> const& ledger,
     bool isSynchronous,
     bool isCurrent)
@@ -1134,7 +1135,7 @@ Ledger::invariants() const
  */
 std::tuple<std::shared_ptr<Ledger>, std::uint32_t, uint256>
 loadLedgerHelper(std::string const& sqlSuffix,
-    Application& app, bool acquire)
+    Schema& app, bool acquire)
 {
     uint256 ledgerHash{};
     std::uint32_t ledgerSeq{0};
@@ -1237,7 +1238,7 @@ void finishLoadByIndexOrHash(
 
 std::shared_ptr<Ledger>
 loadByIndex (std::uint32_t ledgerIndex,
-    Application& app, bool acquire)
+    Schema& app, bool acquire)
 {
     std::shared_ptr<Ledger> ledger;
     {
@@ -1254,7 +1255,7 @@ loadByIndex (std::uint32_t ledgerIndex,
 
 std::shared_ptr<Ledger>
 loadByHash (uint256 const& ledgerHash,
-    Application& app, bool acquire)
+	Schema& app, bool acquire)
 {
     std::shared_ptr<Ledger> ledger;
     {
@@ -1273,7 +1274,7 @@ loadByHash (uint256 const& ledgerHash,
 }
 
 uint256
-getHashByIndex (std::uint32_t ledgerIndex, Application& app)
+getHashByIndex (std::uint32_t ledgerIndex, Schema& app)
 {
     uint256 ret;
 
@@ -1305,7 +1306,7 @@ getHashByIndex (std::uint32_t ledgerIndex, Application& app)
 bool
 getHashesByIndex(std::uint32_t ledgerIndex,
     uint256& ledgerHash, uint256& parentHash,
-        Application& app)
+	Schema& app)
 {
     auto db = app.getLedgerDB ().checkoutDb ();
 
@@ -1333,7 +1334,7 @@ getHashesByIndex(std::uint32_t ledgerIndex,
 
 std::map< std::uint32_t, std::pair<uint256, uint256> >
 getHashesByIndex (std::uint32_t minSeq, std::uint32_t maxSeq,
-    Application& app)
+	Schema& app)
 {
     std::map< std::uint32_t, std::pair<uint256, uint256> > ret;
 
@@ -1376,7 +1377,7 @@ getHashesByIndex (std::uint32_t minSeq, std::uint32_t maxSeq,
     return ret;
 }
 
-bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Application& app)
+bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Schema& app)
 {
     std::string retSql = "";
     if (pTx == nullptr)  return false;

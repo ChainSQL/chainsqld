@@ -26,6 +26,7 @@
 #include <ripple/beast/insight/Collector.h>
 #include <ripple/beast/insight/Event.h>
 #include <peersafe/basics/TaggedCacheExt.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
@@ -36,7 +37,7 @@ class LedgerHistory
 {
 public:
     LedgerHistory (beast::insight::Collector::ptr const& collector,
-        Application& app);
+        Schema& app);
 
     /** Track a ledger
         @return `true` if the ledger was already tracked
@@ -120,7 +121,7 @@ private:
         boost::optional<uint256> const& validatedConsensusHash,
         Json::Value const& consensus);
 
-    Application& app_;
+    Schema& app_;
     beast::insight::Collector::ptr collector_;
     beast::insight::Counter mismatch_counter_;
 

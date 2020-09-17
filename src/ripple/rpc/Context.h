@@ -29,7 +29,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 class NetworkOPs;
 class LedgerMaster;
 
@@ -49,7 +49,7 @@ struct Context
 
     beast::Journal j;
     Json::Value params;
-    Application& app;
+    Schema& app;
     Resource::Charge& loadType;
     NetworkOPs& netOps;
     LedgerMaster& ledgerMaster;

@@ -24,6 +24,7 @@
 #include <ripple/basics/chrono.h>
 #include <ripple/basics/contract.h>
 #include <ripple/json/to_string.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
@@ -42,7 +43,7 @@ namespace ripple {
 
 LedgerHistory::LedgerHistory (
     beast::insight::Collector::ptr const& collector,
-        Application& app)
+        Schema& app)
     : app_ (app)
     , collector_ (collector)
     , mismatch_counter_ (collector->make_counter ("ledger.history", "mismatch"))

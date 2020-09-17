@@ -68,7 +68,7 @@ namespace ripple {
 	}
 	PreclaimResult
 		preclaimDirect(PreflightResult const& preflightResult,
-			Application& app, OpenView const& view)
+			Schema& app, OpenView const& view)
 	{
 		boost::optional<PreclaimContext const> ctx;
 		if (preflightResult.rules != view.rules())
@@ -120,7 +120,7 @@ namespace ripple {
 
 	TER
 		doApplyDirect(PreclaimResult const& preclaimResult,
-			Application& app, ApplyView& view)
+			Schema& app, ApplyView& view)
 	{
 		detail::ApplyStateTable table;
 		if (preclaimResult.view.seq() != view.seq())
@@ -166,7 +166,7 @@ namespace ripple {
 	}
 
 	TER
-		applyDirect(Application& app, ApplyView& view, STTx const& tx, beast::Journal j)
+		applyDirect(Schema& app, ApplyView& view, STTx const& tx, beast::Journal j)
 	{
 		auto pfresult = preflight(app, view.openView().rules(), tx, view.flags()| tapNO_CHECK_SIGN, j);
 		auto pcresult = preclaimDirect(pfresult, app, view.openView());

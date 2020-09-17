@@ -40,21 +40,21 @@ public:
 
     static
 	NotTEC
-    preflightHandler(const STTx & tx, Application& app);
+    preflightHandler(const STTx & tx, Schema& app);
     static
 	NotTEC
     preflight (PreflightContext const& ctx);
 
     static
     TER
-    preclaimHandler(ReadView const& view, const STTx & tx, Application& app);
+    preclaimHandler(ReadView const& view, const STTx & tx, Schema& app);
     static
     TER
     preclaim(PreclaimContext const& ctx);
 
 	static
     TER
-    applyHandler(ApplyView& view, const STTx & tx, Application& app);
+    applyHandler(ApplyView& view, const STTx & tx, Schema& app);
     TER doApply () override;
 
     static

@@ -54,6 +54,7 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/schema/Schema.h>
 #include <algorithm>
 #include <cassert>
 #include <memory>
@@ -72,7 +73,7 @@ auto constexpr MAX_LEDGER_AGE_ACQUIRE = 1min;
 // Don't acquire history if write load is too high
 auto constexpr MAX_WRITE_LOAD_ACQUIRE = 8192;
 
-LedgerMaster::LedgerMaster (Application& app, Stopwatch& stopwatch,
+LedgerMaster::LedgerMaster (Schema& app, Stopwatch& stopwatch,
     Stoppable& parent,
     beast::insight::Collector::ptr const& collector, beast::Journal journal)
     : Stoppable ("LedgerMaster", parent)
@@ -244,10 +245,10 @@ LedgerMaster::setValidLedger(
 
     mValidLedger.set (l);
     mValidLedgerSign = signTime.time_since_epoch().count();
-    //assert (mValidLedgerSeq ||
-    //        !app_.getMaxDisallowedLedger() ||
-    //        l->info().seq + max_ledger_difference_ >
-    //                app_.getMaxDisallowedLedger());
+	assert(mValidLedgerSeq ||
+		!app_.getMaxDisallowedLedger() ||
+		l->info().seq + max_ledger_difference_ >
+		app_.getMaxDisallowedLedger());
     (void) max_ledger_difference_;
     mValidLedgerSeq = l->info().seq;
 
@@ -592,7 +593,7 @@ LedgerMaster::tryFill (
 
         if (it == ledgerHashes.end ())
         {
-            if (app_.isShutdown ())
+            if (app_.app().isShutdown ())
                 return;
 
             {

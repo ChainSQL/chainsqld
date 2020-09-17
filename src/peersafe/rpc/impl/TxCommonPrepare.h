@@ -31,12 +31,12 @@
 
 namespace ripple {
 
-	class Application;
+	class Schema;
 
 	class TxCommonPrepare : public TxPrepareBase
 	{
 	public:
-		TxCommonPrepare(Application& app, const std::string& secret,const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws);
+		TxCommonPrepare(Schema& app, const std::string& secret,const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws);
 		virtual ~TxCommonPrepare();
 	};
 } // ripple

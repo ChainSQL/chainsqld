@@ -28,7 +28,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 class CanonicalTXSet;
 class Ledger;
 class LedgerReplay;
@@ -57,7 +57,7 @@ buildLedger(
     NetClock::time_point closeTime,
     const bool closeTimeCorrect,
     NetClock::duration closeResolution,
-    Application& app,
+    Schema& app,
     CanonicalTXSet& txns,
 	std::set<TxID>& failedTxns,
     beast::Journal j);
@@ -76,7 +76,7 @@ std::shared_ptr<Ledger>
 buildLedger(
     LedgerReplay const& replayData,
     ApplyFlags applyFlags,
-    Application& app,
+    Schema& app,
     beast::Journal j);
 
 }  // namespace ripple

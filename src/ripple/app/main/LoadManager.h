@@ -106,7 +106,7 @@ private:
 
 std::unique_ptr<LoadManager>
 make_LoadManager (
-    Application& app, Stoppable& parent, beast::Journal journal);
+	Application& app, Stoppable& parent, beast::Journal journal);
 
 } // ripple
 

@@ -160,7 +160,7 @@ public:
         @param ledger A new closed ledger
     */
     void
-    accept (Application& app, Rules const& rules,
+    accept (Schema& app, Rules const& rules,
         std::shared_ptr<Ledger const> const& ledger,
             OrderedTxs const& locals, bool retriesFirst,
                 OrderedTxs& retries, ApplyFlags flags,
@@ -176,7 +176,7 @@ private:
     template <class FwdRange>
     static
     void
-    apply (Application& app, OpenView& view,
+    apply (Schema& app, OpenView& view,
         ReadView const& check, FwdRange const& txs,
             OrderedTxs& retries, ApplyFlags flags,
                 std::map<uint256, bool>& shouldRecover,
@@ -195,7 +195,7 @@ private:
 
     static
     Result
-    apply_one (Application& app, OpenView& view,
+    apply_one (Schema& app, OpenView& view,
         std::shared_ptr< STTx const> const& tx,
             bool retry, ApplyFlags flags,
                 bool shouldRecover, beast::Journal j);
@@ -205,7 +205,7 @@ private:
 
 template <class FwdRange>
 void
-OpenLedger::apply (Application& app, OpenView& view,
+OpenLedger::apply (Schema& app, OpenView& view,
     ReadView const& check, FwdRange const& txs,
         OrderedTxs& retries, ApplyFlags flags,
             std::map<uint256, bool>& shouldRecover,

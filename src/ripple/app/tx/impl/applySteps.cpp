@@ -39,6 +39,7 @@
 #include <peersafe/app/tx/SqlStatement.h>
 #include <peersafe/app/tx/SqlTransaction.h>
 #include <peersafe/app/tx/SmartContract.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
@@ -281,7 +282,7 @@ invoke_apply (ApplyContext& ctx)
 }
 
 PreflightResult
-preflight(Application& app, Rules const& rules,
+preflight(Schema& app, Rules const& rules,
     STTx const& tx, ApplyFlags flags,
         beast::Journal j)
 {
@@ -301,7 +302,7 @@ preflight(Application& app, Rules const& rules,
 
 PreclaimResult
 preclaim (PreflightResult const& preflightResult,
-    Application& app, OpenView const& view)
+    Schema& app, OpenView const& view)
 {
     boost::optional<PreclaimContext const> ctx;
     if (preflightResult.rules != view.rules())
@@ -352,7 +353,7 @@ calculateConsequences(PreflightResult const& preflightResult)
 
 std::pair<STer, bool>
 doApply(PreclaimResult const& preclaimResult,
-    Application& app, OpenView& view)
+    Schema& app, OpenView& view)
 {
     if (preclaimResult.view.seq() != view.seq())
     {

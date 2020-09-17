@@ -69,7 +69,7 @@ class Shard
 {
 public:
     Shard(
-        Application& app,
+        Schema& app,
         DatabaseShard const& db,
         std::uint32_t index,
         beast::Journal j);
@@ -122,7 +122,7 @@ public:
 private:
     static constexpr auto controlFileName = "control.txt";
 
-    Application& app_;
+    Schema& app_;
     mutable std::mutex mutex_;
 
     // Shard Index

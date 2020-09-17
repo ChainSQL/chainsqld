@@ -19,7 +19,7 @@
 
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/DecayingSample.h>
 #include <ripple/basics/Log.h>
@@ -38,7 +38,7 @@ class InboundLedgersImp
     , public Stoppable
 {
 private:
-    Application& app_;
+    Schema& app_;
     std::mutex fetchRateMutex_;
     // measures ledgers per second, constants are important
     DecayWindow<30, clock_type> fetchRate_;
@@ -52,7 +52,7 @@ public:
     // How long before we try again to acquire the same ledger
     static const std::chrono::minutes kReacquireInterval;
 
-    InboundLedgersImp (Application& app, clock_type& clock, Stoppable& parent,
+    InboundLedgersImp (Schema& app, clock_type& clock, Stoppable& parent,
                        beast::insight::Collector::ptr const& collector)
         : Stoppable ("InboundLedgers", parent)
         , app_ (app)
@@ -443,7 +443,7 @@ InboundLedgersImp::kReacquireInterval{5};
 InboundLedgers::~InboundLedgers() = default;
 
 std::unique_ptr<InboundLedgers>
-make_InboundLedgers (Application& app,
+make_InboundLedgers (Schema& app,
     InboundLedgers::clock_type& clock, Stoppable& parent,
     beast::insight::Collector::ptr const& collector)
 {

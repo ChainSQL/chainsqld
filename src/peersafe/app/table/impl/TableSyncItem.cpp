@@ -23,7 +23,7 @@
 #include <boost/optional.hpp>
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/Overlay.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/protocol/RippleAddress.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/app/misc/NetworkOPs.h>
@@ -52,7 +52,7 @@ TableSyncItem::~TableSyncItem()
 {
 }
 
-TableSyncItem::TableSyncItem(Application& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
+TableSyncItem::TableSyncItem(Schema& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
     : app_(app)
     ,journal_(journal)
     ,cfg_(cfg)

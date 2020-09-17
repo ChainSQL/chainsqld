@@ -22,6 +22,7 @@
 #include <ripple/protocol/Quality.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/ledger/AcceptedLedger.h>
 #include <ripple/app/ledger/InboundLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
@@ -218,7 +219,7 @@ class NetworkOPsImp final
 public:
     // VFALCO TODO Make LedgerMaster a SharedPtr or a reference.
     //
-    NetworkOPsImp (Application& app, NetworkOPs::clock_type& clock,
+    NetworkOPsImp (Schema& app, NetworkOPs::clock_type& clock,
         bool standalone, std::size_t minPeerCount, bool start_valid,
         JobQueue& job_queue, LedgerMaster& ledgerMaster, Stoppable& parent,
         ValidatorKeys const & validatorKeys, boost::asio::io_service& io_svc,
@@ -631,7 +632,7 @@ private:
     // XXX Split into more locks.
     using ScopedLockType = std::lock_guard <std::recursive_mutex>;
 
-    Application& app_;
+    Schema& app_;
     clock_type& m_clock;
     beast::Journal m_journal;
 
@@ -833,7 +834,7 @@ void NetworkOPsImp::setClusterTimer ()
 void NetworkOPsImp::processHeartbeatTimer ()
 {
     {
-        auto lock = make_lock(app_.getMasterMutex());
+        auto lock = make_lock(app_.app().getMasterMutex());
 
         // VFALCO NOTE This is for diagnosing a crash on exit
         LoadManager& mgr (app_.getLoadManager ());
@@ -1282,7 +1283,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
     batchLock.unlock();
 
     {
-        auto masterLock = make_lock(app_.getMasterMutex(), std::defer_lock);
+        auto masterLock = make_lock(app_.app().getMasterMutex(), std::defer_lock);
         bool changed = false;
         {
             //std::lock_guard <std::recursive_mutex> lock (
@@ -2339,7 +2340,7 @@ NetworkOPsImp::getTxsAccount (
 {
     static std::uint32_t const page_length (200);
 
-    Application& app = app_;
+    Schema& app = app_;
     NetworkOPsImp::AccountTxs ret;
 
     auto bound = [&ret, &app](
@@ -2471,7 +2472,7 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin, bool counters)
         }
     }
     info[jss::io_latency_ms] = static_cast<Json::UInt> (
-        app_.getIOLatency().count());
+        app_.app().getIOLatency().count());
 
     if (admin)
     {
@@ -4117,7 +4118,7 @@ NetworkOPsImp::StateAccounting::json() const
 //------------------------------------------------------------------------------
 
 std::unique_ptr<NetworkOPs>
-make_NetworkOPs (Application& app, NetworkOPs::clock_type& clock,
+make_NetworkOPs (Schema& app, NetworkOPs::clock_type& clock,
     bool standalone, std::size_t minPeerCount, bool startvalid,
     JobQueue& job_queue, LedgerMaster& ledgerMaster, Stoppable& parent,
     ValidatorKeys const & validatorKeys, boost::asio::io_service& io_svc,

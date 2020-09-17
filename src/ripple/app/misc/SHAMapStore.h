@@ -93,7 +93,7 @@ setup_SHAMapStore(Config const& c);
 
 std::unique_ptr<SHAMapStore>
 make_SHAMapStore(
-    Application& app,
+    Schema& schema,
     SHAMapStore::Setup const& s,
     Stoppable& parent,
     NodeStore::Scheduler& scheduler,

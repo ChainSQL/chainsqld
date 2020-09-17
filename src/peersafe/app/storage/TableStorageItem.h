@@ -49,7 +49,7 @@ class TableStorageItem
     }txInfo;
 
 public:    
-    TableStorageItem(Application& app, Config& cfg, beast::Journal journal);
+    TableStorageItem(Schema& app, Config& cfg, beast::Journal journal);
     void InitItem(AccountID account ,std::string nameInDB, std::string tableName);
     void SetItemParam(LedgerIndex txnLedgerSeq, uint256 txnHash, LedgerIndex LedgerSeq, uint256 ledgerHash);
     virtual ~TableStorageItem();
@@ -96,7 +96,7 @@ private:
     uint256                                                                    txUpdateHash_;
 	uint32_t                                                                   lastTxTm_;
 
-    Application&                                                                app_;
+	Schema&																		app_;
     beast::Journal                                                              journal_;
     Config&                                                                     cfg_;
 };

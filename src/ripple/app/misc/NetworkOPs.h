@@ -254,7 +254,7 @@ namespace ripple {
 //------------------------------------------------------------------------------
 
 std::unique_ptr<NetworkOPs>
-make_NetworkOPs (Application& app, NetworkOPs::clock_type& clock,
+make_NetworkOPs (Schema& app, NetworkOPs::clock_type& clock,
     bool standalone, std::size_t minPeerCount, bool start_valid,
     JobQueue& job_queue, LedgerMaster& ledgerMaster, Stoppable& parent,
     ValidatorKeys const & validatorKeys, boost::asio::io_service& io_svc,

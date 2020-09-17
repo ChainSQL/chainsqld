@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/ledger/AcceptedLedgerTx.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>

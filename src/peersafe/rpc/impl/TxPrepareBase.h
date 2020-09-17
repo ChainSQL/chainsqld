@@ -30,7 +30,7 @@
 
 namespace ripple {
 
-	class Application;
+	class Schema;
 	class Config;
 	class SecretKey;
 
@@ -39,11 +39,11 @@ namespace ripple {
 	class TxPrepareBase
 	{
 	public:
-		TxPrepareBase(Application& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws);
+		TxPrepareBase(Schema& app, const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws);
 		virtual ~TxPrepareBase();
 
 		virtual Json::Value prepare();	
-        static Json::Value prepareFutureHash(const Json::Value& tx_json, Application& app, bool bWs);     //just check future hash is right.
+        static Json::Value prepareFutureHash(const Json::Value& tx_json, Schema& app, bool bWs);     //just check future hash is right.
 
 		bool isConfidential();
 	protected:
@@ -51,7 +51,7 @@ namespace ripple {
 		Json::Value prepareBase();
         Json::Value prepareGetRaw();        
 
-		Json::Value checkBaseInfo(const Json::Value& tx_json, Application& app, bool bWs);
+		Json::Value checkBaseInfo(const Json::Value& tx_json, Schema& app, bool bWs);
 		bool checkConfidentialBase(const AccountID& owner, const std::string& tableName);
 		//get decrypted pass_blob
 		std::pair<Blob, Json::Value> getPassBlobBase(AccountID& ownerId, AccountID& userId, boost::optional<SecretKey> secret_key);
@@ -87,7 +87,7 @@ namespace ripple {
 		std::pair<Blob, Json::Value> getPassBlob(
 			AccountID& ownerId, AccountID& userId, boost::optional<SecretKey> secret_key);
 	protected:
-		Application&										app_;
+		Schema&												app_;
 		const std::string&									secret_;
         const std::string&                                  public_;
 		Json::Value&										tx_json_;

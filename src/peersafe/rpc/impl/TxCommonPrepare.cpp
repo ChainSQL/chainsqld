@@ -22,12 +22,10 @@
 #include <ripple/protocol/jss.h>
 #include <peersafe/rpc/impl/TxCommonPrepare.h>
 #include <peersafe/rpc/TableUtils.h>
-//#include <ripple/protocol/TableDefines.h>
-//#include <ripple/protocol/digest.h>
-//#include <ripple/basics/Slice.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
-	TxCommonPrepare::TxCommonPrepare(Application& app, const std::string& secret,const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws):
+	TxCommonPrepare::TxCommonPrepare(Schema& app, const std::string& secret,const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func, bool ws):
 		TxPrepareBase(app,secret,publickey,tx_json,func,ws)
 	{
 	}

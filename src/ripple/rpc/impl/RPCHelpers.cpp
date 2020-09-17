@@ -286,7 +286,7 @@ ledgerFromRequest(T& ledger, Context& context)
 
 bool
 isValidated(LedgerMaster& ledgerMaster, ReadView const& ledger,
-    Application& app)
+    Schema& app)
 {
     if (ledger.open())
         return false;

@@ -20,6 +20,7 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/core/Config.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
@@ -32,7 +33,7 @@ namespace ripple {
 
 Json::Value doLedgerAccept (RPC::Context& context)
 {
-    auto lock = make_lock(context.app.getMasterMutex());
+    auto lock = make_lock(context.app.app().getMasterMutex());
     Json::Value jvResult;
 
     if (!context.app.config().standalone())

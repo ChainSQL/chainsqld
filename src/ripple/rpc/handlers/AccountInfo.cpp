@@ -18,7 +18,7 @@
 //==============================================================================
 
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/TxQ.h>
 #include <ripple/json/json_value.h>
 #include <ripple/ledger/ReadView.h>

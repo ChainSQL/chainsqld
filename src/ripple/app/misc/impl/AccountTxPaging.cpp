@@ -24,6 +24,7 @@
 #include <ripple/app/misc/impl/AccountTxPaging.h>
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/UintTypes.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/format.hpp>
 #include <memory>
 
@@ -36,7 +37,7 @@ convertBlobsToTxResult (
     std::string const& status,
     Blob const& rawTxn,
     Blob const& rawMeta,
-    Application& app)
+    Schema& app)
 {
     SerialIter it (makeSlice(rawTxn));
     auto txn = std::make_shared<STTx const> (it);
@@ -54,7 +55,7 @@ convertBlobsToTxResult (
 };
 
 void
-saveLedgerAsync (Application& app, std::uint32_t seq)
+saveLedgerAsync (Schema& app, std::uint32_t seq)
 {
     if (auto l = app.getLedgerMaster().getLedgerBySeq(seq))
         pendSaveValidated(app, l, false, false);

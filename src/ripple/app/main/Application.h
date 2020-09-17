@@ -149,6 +149,7 @@ public:
 	virtual ServerHandler&			getServerHandler() = 0;
 	virtual SchemaManager&			getSchemaManager() = 0;
 
+	virtual std::shared_ptr<Schema> getSchema(SchemaID const& id = beast::zero) = 0;
     virtual Config&					config(SchemaID const& id = beast::zero) = 0;
     virtual Family&                 family(SchemaID const& id = beast::zero) = 0;
 	virtual Family*                 shardFamily(SchemaID const& id = beast::zero) = 0;

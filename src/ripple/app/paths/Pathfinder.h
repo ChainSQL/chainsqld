@@ -46,7 +46,7 @@ public:
         boost::optional<AccountID> const& uSrcIssuer,
         STAmount const& dstAmount,
         boost::optional<STAmount> const& srcAmount,
-        Application& app);
+        Schema& app);
     Pathfinder (Pathfinder const&) = delete;
     Pathfinder& operator= (Pathfinder const&) = delete;
     ~Pathfinder() = default;
@@ -193,7 +193,7 @@ private:
 
     hash_map<Issue, int> mPathsOutCountMap;
 
-    Application& app_;
+    Schema& app_;
     beast::Journal j_;
 
     // Add ripple paths

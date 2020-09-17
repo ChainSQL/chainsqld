@@ -27,10 +27,11 @@
 #include <ripple/core/JobQueue.h>
 #include <ripple/nodestore/Database.h>
 #include <ripple/protocol/HashPrefix.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
-ConsensusTransSetSF::ConsensusTransSetSF (Application& app, NodeCache& nodeCache)
+ConsensusTransSetSF::ConsensusTransSetSF (Schema& app, NodeCache& nodeCache)
     : app_ (app)
     , m_nodeCache (nodeCache)
     , j_ (app.journal ("TransactionAcquire"))

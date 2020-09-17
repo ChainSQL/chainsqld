@@ -25,6 +25,7 @@
 #include <ripple/app/misc/CanonicalTXSet.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/protocol/Feature.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
@@ -41,7 +42,7 @@ buildLedgerImpl(
     NetClock::time_point closeTime,
     const bool closeTimeCorrect,
     NetClock::duration closeResolution,
-    Application& app,
+    Schema& app,
     beast::Journal j,
     ApplyTxs&& applyTxs)
 {
@@ -93,7 +94,7 @@ buildLedgerImpl(
 
 std::size_t
 applyTransactions(
-    Application& app,
+    Schema& app,
     std::shared_ptr<Ledger const> const& built,
     CanonicalTXSet& txns,
     std::set<TxID>& failed,
@@ -176,7 +177,7 @@ buildLedger(
     NetClock::time_point closeTime,
     const bool closeTimeCorrect,
     NetClock::duration closeResolution,
-    Application& app,
+    Schema& app,
     CanonicalTXSet& txns,
     std::set<TxID>& failedTxns,
     beast::Journal j)
@@ -213,7 +214,7 @@ std::shared_ptr<Ledger>
 buildLedger(
     LedgerReplay const& replayData,
     ApplyFlags applyFlags,
-    Application& app,
+    Schema& app,
     beast::Journal j)
 {
     auto const& replayLedger = replayData.replay();

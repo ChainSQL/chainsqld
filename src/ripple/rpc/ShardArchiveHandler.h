@@ -42,7 +42,7 @@ public:
     ShardArchiveHandler& operator= (ShardArchiveHandler const&) = delete;
 
     /** @param validate if shard data should be verified with network. */
-    ShardArchiveHandler(Application& app, bool validate);
+    ShardArchiveHandler(Schema& app, bool validate);
 
     ~ShardArchiveHandler();
 
@@ -77,7 +77,7 @@ private:
     remove(std::lock_guard<std::mutex>&);
 
     std::mutex mutable m_;
-    Application& app_;
+    Schema& app_;
     std::shared_ptr<SSLHTTPDownloader> downloader_;
     boost::filesystem::path const downloadDir_;
     bool const validate_;

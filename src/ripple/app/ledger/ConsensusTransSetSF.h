@@ -36,7 +36,7 @@ class ConsensusTransSetSF : public SHAMapSyncFilter
 public:
     using NodeCache = TaggedCache <SHAMapHash, Blob>;
 
-    ConsensusTransSetSF (Application& app, NodeCache& nodeCache);
+    ConsensusTransSetSF (Schema& app, NodeCache& nodeCache);
 
     // Note that the nodeData is overwritten by this call
     void
@@ -48,7 +48,7 @@ public:
     getNode (SHAMapHash const& nodeHash) const override;
 
 private:
-    Application& app_;
+	Schema& app_;
     NodeCache& m_nodeCache;
     beast::Journal j_;
 };

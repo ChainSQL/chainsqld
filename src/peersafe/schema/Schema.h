@@ -7,6 +7,8 @@
 #include <ripple/protocol/Protocol.h>
 
 namespace ripple {
+namespace perf { class PerfLog; }
+namespace Resource { class Manager; }
 namespace NodeStore { class Database; class DatabaseShard; }
 class Application;
 class Config;
@@ -51,6 +53,8 @@ class ContractHelper;
 class TableTxAccumulator;
 class TxPool;
 class StateManager;
+class LoadManager;
+class ValidatorKeys;
 
 class DatabaseCon;
 class SHAMapStore;
@@ -68,6 +72,24 @@ public:
 	virtual void doSweep() = 0;
 	virtual void onStop() = 0;
 
+
+	virtual beast::Journal journal(std::string const& name) = 0;
+
+	//Share the same one from Application
+	virtual Application&			app() = 0;
+	virtual Logs&					logs() = 0;
+	virtual CollectorManager&       getCollectorManager() = 0;
+	virtual TimeKeeper&             timeKeeper() = 0;
+	virtual JobQueue&               getJobQueue() = 0;
+	virtual LoadManager&            getLoadManager() = 0;
+	virtual perf::PerfLog&          getPerfLog() = 0;
+	virtual Resource::Manager&      getResourceManager() = 0;
+	virtual std::pair<PublicKey, SecretKey> const&
+		nodeIdentity() = 0;
+	virtual	PublicKey const &		getValidationPublicKey() const = 0;
+	virtual ValidatorKeys const&	getValidatorKeys() const = 0;
+
+	// Different shema by schema
 	virtual Config&					config() = 0;
 	virtual Family&                 family() = 0;
 	virtual Family*                 shardFamily() = 0;

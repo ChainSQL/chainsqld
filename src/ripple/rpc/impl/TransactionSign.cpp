@@ -22,6 +22,7 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/misc/TxQ.h>
@@ -154,7 +155,7 @@ static Json::Value checkPayment(
     Json::Value& tx_json,
     AccountID const& srcAddressID,
     Role const role,
-    Application& app,
+    Schema& app,
     std::shared_ptr<ReadView const> const& ledger,
     bool doPath)
 {
@@ -349,7 +350,7 @@ transactionPreProcessImpl (
     Role role,
     SigningForParams& signingArgs,
     std::chrono::seconds validatedLedgerAge,
-    Application& app,
+    Schema& app,
     std::shared_ptr<OpenView const> const& ledger)
 {
     auto j = app.journal ("RPCHandler");
@@ -567,7 +568,7 @@ transactionPreProcessImpl (
 static
 std::pair <Json::Value, Transaction::pointer>
 transactionConstructImpl (std::shared_ptr<STTx const> const& stpTrans,
-    Rules const& rules, Application& app)
+    Rules const& rules, Schema& app)
 {
     std::pair <Json::Value, Transaction::pointer> ret;
 
@@ -598,7 +599,7 @@ transactionConstructImpl (std::shared_ptr<STTx const> const& stpTrans,
 
             // Check the signature if that's called for.
             auto sttxNew = std::make_shared<STTx const> (sit);
-            if (!app.checkSigs())
+            if (!app.app().checkSigs())
                 forceValidity(app.getHashRouter(),
                     sttxNew->getTransactionID(), Validity::SigGoodOnly);
             if (checkValidity(app,app.getHashRouter(),
@@ -817,7 +818,7 @@ Json::Value transactionSign (
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
-    Application& app)
+    Schema& app)
 {
     using namespace detail;
 
@@ -851,7 +852,7 @@ Json::Value transactionSubmit (
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
-    Application& app,
+    Schema& app,
     ProcessTransactionFn const& processTransaction)
 {
     using namespace detail;
@@ -979,7 +980,7 @@ Json::Value transactionSignFor (
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
-    Application& app)
+    Schema& app)
 {
     auto const& ledger = app.openLedger().current();
     auto j = app.journal ("RPCHandler");
@@ -1092,7 +1093,7 @@ Json::Value transactionSubmitMultiSigned (
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
-    Application& app,
+    Schema& app,
     ProcessTransactionFn const& processTransaction)
 {
     auto const& ledger = app.openLedger().current();

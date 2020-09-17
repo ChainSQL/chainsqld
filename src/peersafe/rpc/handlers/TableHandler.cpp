@@ -30,7 +30,7 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/SecretKey.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 
 #include <peersafe/app/storage/TableStorage.h> 
 #include <peersafe/app/sql/STTx2SQL.h>

@@ -26,17 +26,18 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/chrono.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
-TransactionMaster::TransactionMaster (Application& app)
-    : mApp (app)
+TransactionMaster::TransactionMaster (Schema& schema)
+    : mSchema(schema)
 	, mCache("TransactionCache", 65536, std::chrono::seconds{ 1800 }, stopwatch(),
-        mApp.journal("TaggedCache"))
-    , m_pClientTxStoreDBConn(std::make_unique<TxStoreDBConn>(app.config()))
-    , m_pClientTxStoreDB(std::make_unique<TxStore>(m_pClientTxStoreDBConn->GetDBConn(), app.config(), app.logs().journal("TxStore")))
-    , m_pConsensusTxStoreDBConn(std::make_unique<TxStoreDBConn>(app.config()))
-    , m_pConsensusTxStoreDB(std::make_unique<TxStore>(m_pConsensusTxStoreDBConn->GetDBConn(), app.config(), app.logs().journal("TxStore")))
+		mSchema.app().journal("TaggedCache"))
+    , m_pClientTxStoreDBConn(std::make_unique<TxStoreDBConn>(mSchema.config()))
+    , m_pClientTxStoreDB(std::make_unique<TxStore>(m_pClientTxStoreDBConn->GetDBConn(), mSchema.config(), mSchema.logs().journal("TxStore")))
+    , m_pConsensusTxStoreDBConn(std::make_unique<TxStoreDBConn>(mSchema.config()))
+    , m_pConsensusTxStoreDB(std::make_unique<TxStore>(m_pConsensusTxStoreDBConn->GetDBConn(), mSchema.config(), mSchema.logs().journal("TxStore")))
 {
 }
 
@@ -62,7 +63,7 @@ int TransactionMaster::getTxCount(bool chainsql)
 
 	boost::optional<int> txCount;
 	{
-		auto db = mApp.getTxnDB().checkoutDb();
+		auto db = mSchema.getTxnDB().checkoutDb();
 		*db << sql,
 			soci::into(txCount);
 
@@ -89,7 +90,7 @@ std::vector<STTx> TransactionMaster::getTxs(STTx const& stTx, std::string sTable
 			}
 			if(ledgerSeq != 0)
 			{
-				ledger = mApp.getLedgerMaster().getLedgerBySeq(ledgerSeq);
+				ledger = mSchema.getLedgerMaster().getLedgerBySeq(ledgerSeq);
 			}
 		}
 		if (ledger != nullptr)
@@ -112,7 +113,7 @@ TransactionMaster::fetch (uint256 const& txnID, bool checkDisk)
     if (!checkDisk || txn)
         return txn;
 
-    txn = Transaction::load (txnID, mApp);
+    txn = Transaction::load (txnID, mSchema);
 
     if (!txn)
         return txn;

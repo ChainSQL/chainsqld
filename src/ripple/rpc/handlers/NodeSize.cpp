@@ -17,7 +17,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/basics/Log.h>
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>

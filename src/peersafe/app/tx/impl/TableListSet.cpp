@@ -29,7 +29,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/basics/Slice.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/json/json_reader.h>
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/protocol/TableDefines.h>
@@ -70,7 +70,7 @@ namespace ripple {
 	}
 
 	NotTEC
-        TableListSet::preflightHandler(const STTx & tx, Application& app)
+        TableListSet::preflightHandler(const STTx & tx, Schema& app)
     {
 		auto j = app.journal("preflightHandler");
 
@@ -273,7 +273,7 @@ namespace ripple {
     }
 
     TER
-        TableListSet::preclaimHandler(ReadView const& view, const STTx & tx, Application& app)
+        TableListSet::preclaimHandler(ReadView const& view, const STTx & tx, Schema& app)
     {
 		auto j = app.journal("preclaimHandler");
         JLOG(j.trace()) <<  "preclaimHandler begin";
@@ -549,7 +549,7 @@ namespace ripple {
     }
 
     TER
-        TableListSet::applyHandler(ApplyView& view,const STTx & tx, Application& app)
+        TableListSet::applyHandler(ApplyView& view,const STTx & tx, Schema& app)
     {
 		auto accountId = tx.getAccountID(sfAccount);
         auto optype = tx.getFieldU16(sfOpType);

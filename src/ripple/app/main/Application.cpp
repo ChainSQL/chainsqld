@@ -73,6 +73,7 @@
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/schema/Schema.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/system/error_code.hpp>
@@ -305,6 +306,14 @@ public:
     {
         return *logs_;
     }
+
+	std::shared_ptr<Schema> getSchema(SchemaID const& id)override
+	{
+		if (m_schemaManager->contains(id))
+			return m_schemaManager->getSchema(id);
+		else
+			return nullptr;
+	}
 
     Config&
     config(SchemaID const& id) override

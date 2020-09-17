@@ -136,7 +136,7 @@ OverlayImpl::Timer::on_timer (error_code ec)
 //------------------------------------------------------------------------------
 
 OverlayImpl::OverlayImpl (
-    Application& app,
+    Schema& app,
     Setup const& setup,
     Stoppable& parent,
     ServerHandler& serverHandler,
@@ -1346,7 +1346,7 @@ setup_Overlay (BasicConfig const& config)
 
 std::unique_ptr <Overlay>
 make_Overlay (
-    Application& app,
+    Schema& app,
     Overlay::Setup const& setup,
     Stoppable& parent,
     ServerHandler& serverHandler,

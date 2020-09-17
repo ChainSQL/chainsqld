@@ -19,12 +19,13 @@
 
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <ripple/basics/ToString.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/format.hpp>
 
 
 namespace ripple {
 
-    TableStatusDBSQLite::TableStatusDBSQLite(DatabaseCon* dbconn, Application * app, beast::Journal& journal) : TableStatusDB(dbconn,app,journal)
+    TableStatusDBSQLite::TableStatusDBSQLite(DatabaseCon* dbconn, Schema * app, beast::Journal& journal) : TableStatusDB(dbconn,app,journal)
     {
     }
 

@@ -24,14 +24,14 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 
 namespace RPC {
 
 class LegacyPathFind
 {
 public:
-    LegacyPathFind (bool isAdmin, Application& app);
+    LegacyPathFind (bool isAdmin, Schema& app);
     ~LegacyPathFind ();
 
     bool isOk () const

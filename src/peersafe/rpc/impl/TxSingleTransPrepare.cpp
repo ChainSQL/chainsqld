@@ -24,9 +24,10 @@
 #include <peersafe/rpc/impl/TxPrepareBase.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
-	TxSingleTransPrepare::TxSingleTransPrepare(Application& app, TxTransactionPrepare* trans,
+	TxSingleTransPrepare::TxSingleTransPrepare(Schema& app, TxTransactionPrepare* trans,
 		const std::string& secret, const std::string& publickey, Json::Value& tx_json, getCheckHashFunc func,bool ws) :
 		TxPrepareBase(app, secret, publickey, tx_json, func,ws),
 		m_pTransaction(trans)

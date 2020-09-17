@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>

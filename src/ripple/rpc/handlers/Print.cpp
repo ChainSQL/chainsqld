@@ -17,6 +17,7 @@
 */
 //==============================================================================
 
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/json/JsonPropertyStream.h>
 #include <ripple/json/json_value.h>
@@ -32,11 +33,11 @@ Json::Value doPrint (RPC::Context& context)
         && context.params[jss::params].isArray()
         && context.params[jss::params][0u].isString ())
     {
-        context.app.write (stream, context.params[jss::params][0u].asString());
+        context.app.app().write (stream, context.params[jss::params][0u].asString());
     }
     else
     {
-        context.app.write (stream);
+        context.app.app().write (stream);
     }
 
     return stream.top();

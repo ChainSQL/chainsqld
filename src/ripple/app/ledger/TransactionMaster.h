@@ -26,7 +26,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 class Transaction;
 class STTx;
 
@@ -35,7 +35,7 @@ class STTx;
 class TransactionMaster
 {
 public:
-    TransactionMaster (Application& app);
+    TransactionMaster (Schema& schema);
     TransactionMaster (TransactionMaster const&) = delete;
     TransactionMaster& operator= (TransactionMaster const&) = delete;
 
@@ -78,7 +78,7 @@ public:
 								int ledgerSeq = 0,
 								bool includeAssert = true);
 private:
-    Application& mApp;
+    Schema& mSchema;
     TaggedCache <uint256, Transaction> mCache;
 
     std::unique_ptr <TxStoreDBConn> m_pClientTxStoreDBConn;

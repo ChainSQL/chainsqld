@@ -18,7 +18,7 @@
 //==============================================================================
 
 #include <ripple/app/ledger/OpenLedger.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/TxQ.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/protocol/ErrorCodes.h>

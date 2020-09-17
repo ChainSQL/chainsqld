@@ -25,6 +25,7 @@
 #include <ripple/beast/rfc2616.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/protocol/digest.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/regex.hpp>
 #include <algorithm>
 
@@ -97,7 +98,7 @@ buildHello (
     uint256 const& sharedValue,
     beast::IP::Address public_ip,
     beast::IP::Endpoint remote,
-    Application& app)
+    Schema& app)
 {
     protocol::TMHello h;
 
@@ -339,7 +340,7 @@ verifyHello (protocol::TMHello const& h,
     beast::IP::Address public_ip,
     beast::IP::Endpoint remote,
     beast::Journal journal,
-    Application& app)
+    Schema& app)
 {
     if (h.has_nettime ())
     {

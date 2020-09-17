@@ -24,6 +24,7 @@
 #include <ripple/core/ConfigSections.h>
 #include <ripple/nodestore/impl/DatabaseShardImp.h>
 #include <ripple/nodestore/Manager.h>
+#include <peersafe/schema/Schema.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/archive/text_iarchive.hpp>
@@ -36,7 +37,7 @@ namespace ripple {
 namespace NodeStore {
 
 Shard::Shard(
-    Application& app,
+    Schema& app,
     DatabaseShard const& db,
     std::uint32_t index,
     beast::Journal j)

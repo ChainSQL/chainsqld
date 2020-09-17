@@ -17,6 +17,7 @@
 */
 //==============================================================================
 
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/json/json_value.h>
 #include <ripple/rpc/impl/Handler.h>
@@ -30,8 +31,8 @@ struct Context;
 
 Json::Value doStop (RPC::Context& context)
 {
-    auto lock = make_lock(context.app.getMasterMutex());
-    context.app.signalStop ();
+    auto lock = make_lock(context.app.app().getMasterMutex());
+    context.app.app().signalStop ();
 
     return RPC::makeObjectValue (systemName () + " server stopping");
 }

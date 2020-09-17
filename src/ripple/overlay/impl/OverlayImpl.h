@@ -32,6 +32,7 @@
 #include <ripple/overlay/impl/TMHello.h>
 #include <ripple/peerfinder/PeerfinderManager.h>
 #include <ripple/resource/ResourceManager.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/strand.hpp>
@@ -96,7 +97,7 @@ private:
         on_timer (error_code ec);
     };
 
-    Application& app_;
+    Schema& app_;
     boost::asio::io_service& io_service_;
     boost::optional<boost::asio::io_service::work> work_;
     boost::asio::io_service::strand strand_;
@@ -131,7 +132,7 @@ private:
     //--------------------------------------------------------------------------
 
 public:
-    OverlayImpl (Application& app, Setup const& setup, Stoppable& parent,
+    OverlayImpl (Schema& app, Setup const& setup, Stoppable& parent,
         ServerHandler& serverHandler, Resource::Manager& resourceManager,
         Resolver& resolver, boost::asio::io_service& io_service,
         BasicConfig const& config);

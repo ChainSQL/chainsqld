@@ -20,7 +20,6 @@
 #ifndef RIPPLE_APP_LEDGER_LEDGERMASTER_H_INCLUDED
 #define RIPPLE_APP_LEDGER_LEDGERMASTER_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
 #include <ripple/app/ledger/AbstractFetchPackContainer.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/Ledger.h>
@@ -42,6 +41,7 @@
 #include <ripple/beast/utility/PropertyStream.h>
 #include <mutex>
 #include <peersafe/protocol/TableDefines.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/protocol/Protocol.h>
 
 namespace ripple {
@@ -64,7 +64,7 @@ class LedgerMaster
 {
 public:
     explicit
-    LedgerMaster(Application& app, Stopwatch& stopwatch,
+    LedgerMaster(Schema& app, Stopwatch& stopwatch,
         Stoppable& parent,
             beast::insight::Collector::ptr const& collector,
                 beast::Journal journal);
@@ -331,7 +331,7 @@ private:
 	bool isConfidentialUnit(const STTx& tx);
 
 private:
-    Application& app_;
+    Schema& app_;
     beast::Journal m_journal;
 
     std::recursive_mutex mutable m_mutex;

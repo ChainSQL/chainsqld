@@ -18,7 +18,7 @@
 //==============================================================================
 
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/paths/Tuning.h>
 #include <ripple/app/paths/Pathfinder.h>
 #include <ripple/app/paths/RippleCalc.h>
@@ -150,7 +150,7 @@ Pathfinder::Pathfinder (
     boost::optional<AccountID> const& uSrcIssuer,
     STAmount const& saDstAmount,
     boost::optional<STAmount> const& srcAmount,
-    Application& app)
+    Schema& app)
     :   mSrcAccount (uSrcAccount),
         mDstAccount (uDstAccount),
         mEffectiveDst (isZXC(saDstAmount.getIssuer ()) ?

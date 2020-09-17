@@ -27,7 +27,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 
 namespace RPC {
 
@@ -62,7 +62,7 @@ struct Request
     Json::Value result;
 
     // [in] The Application instance
-    Application& app;
+    Schema& app;
 
 private:
     Request& operator= (Request const&);

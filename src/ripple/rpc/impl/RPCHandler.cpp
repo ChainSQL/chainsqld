@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/rpc/RPCHandler.h>
 #include <ripple/rpc/impl/Tuning.h>
 #include <ripple/rpc/impl/Handler.h>

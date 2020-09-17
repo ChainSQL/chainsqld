@@ -22,6 +22,8 @@
 #include <ripple/core/ConfigSections.h>
 #include <ripple/nodestore/DatabaseShard.h>
 #include <ripple/rpc/ShardArchiveHandler.h>
+#include <peersafe/schema/Schema.h>
+#include <ripple/app/main/Application.h>
 
 #include <memory>
 
@@ -31,12 +33,12 @@ namespace RPC {
 using namespace boost::filesystem;
 using namespace std::chrono_literals;
 
-ShardArchiveHandler::ShardArchiveHandler(Application& app, bool validate)
+ShardArchiveHandler::ShardArchiveHandler(Schema& app, bool validate)
     : app_(app)
     , downloadDir_(get(app_.config().section(
         ConfigSection::shardDatabase()), "path", "") + "/download")
     , validate_(validate)
-    , timer_(app_.getIOService())
+    , timer_(app_.app().getIOService())
     , process_(false)
     , j_(app.journal("ShardArchiveHandler"))
 {
@@ -124,7 +126,7 @@ ShardArchiveHandler::start()
     if (!downloader_)
     {
         downloader_ = std::make_shared<SSLHTTPDownloader>(
-            app_.getIOService(), j_);
+            app_.app().getIOService(), j_);
         if (!downloader_->init(app_.config()))
         {
             downloader_.reset();

@@ -30,7 +30,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 class HashRouter;
 
 /** Describes the pre-processing validity of a transaction.
@@ -61,7 +61,7 @@ enum class Validity
     @see Validity
 */
 std::pair<Validity, std::string>
-checkValidity(Application& app, HashRouter& router,
+checkValidity(Schema& schema, HashRouter& router,
     STTx const& tx, Rules const& rules,
         Config const& config);
 
@@ -121,7 +121,7 @@ forceValidity(HashRouter& router, uint256 const& txid,
             whether or not the transaction was applied.
 */
 std::pair<STer, bool>
-apply (Application& app, OpenView& view,
+apply (Schema& app, OpenView& view,
     STTx const& tx, ApplyFlags flags,
         beast::Journal journal);
 
@@ -148,7 +148,7 @@ enum class ApplyResult
     @see ApplyResult
 */
 ApplyResult
-applyTransaction(Application& app, OpenView& view,
+applyTransaction(Schema& app, OpenView& view,
     STTx const& tx, bool retryAssured, ApplyFlags flags,
     beast::Journal journal);
 

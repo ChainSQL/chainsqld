@@ -24,6 +24,7 @@
 #include <ripple/protocol/Feature.h>
 #include <peersafe/crypto/X509.h>
 #include <peersafe/app/misc/CertList.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
@@ -36,7 +37,7 @@ namespace ripple {
 //------------------------------------------------------------------------------
 
 std::pair<Validity, std::string>
-checkValidity(Application& app, HashRouter& router,
+checkValidity(Schema& schema, HashRouter& router,
     STTx const& tx, Rules const& rules,
         Config const& config)
 {
@@ -54,7 +55,7 @@ checkValidity(Application& app, HashRouter& router,
     {
 		auto const certificate = tx.getFieldVL(sfCertificate);
 
-		std::vector<std::string> rootCertificates = app.certList().getCertList();
+		std::vector<std::string> rootCertificates = schema.certList().getCertList();
 
 		bool  bHasCert             = (!certificate.empty());
 		bool  bNeedCertVerify = (!rootCertificates.empty());
@@ -140,7 +141,7 @@ forceValidity(HashRouter& router, uint256 const& txid,
 }
 
 std::pair<STer, bool>
-apply (Application& app, OpenView& view,
+apply (Schema& app, OpenView& view,
     STTx const& tx, ApplyFlags flags,
         beast::Journal j)
 {
@@ -151,7 +152,7 @@ apply (Application& app, OpenView& view,
 }
 
 ApplyResult
-applyTransaction (Application& app, OpenView& view,
+applyTransaction (Schema& app, OpenView& view,
     STTx const& txn,
         bool retryAssured, ApplyFlags flags,
             beast::Journal j)

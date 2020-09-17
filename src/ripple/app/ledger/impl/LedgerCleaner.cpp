@@ -43,7 +43,7 @@ Cleans up the ledger. Specifically, resolves these issues:
 
 class LedgerCleanerImp : public LedgerCleaner
 {
-    Application& app_;
+    Schema& app_;
     beast::Journal j_;
     mutable std::mutex mutex_;
 
@@ -77,7 +77,7 @@ class LedgerCleanerImp : public LedgerCleaner
     //--------------------------------------------------------------------------
 public:
     LedgerCleanerImp (
-        Application& app,
+        Schema& app,
         Stoppable& stoppable,
         beast::Journal journal)
         : LedgerCleaner (stoppable)
@@ -495,7 +495,7 @@ LedgerCleaner::LedgerCleaner (Stoppable& parent)
 LedgerCleaner::~LedgerCleaner() = default;
 
 std::unique_ptr<LedgerCleaner>
-make_LedgerCleaner (Application& app,
+make_LedgerCleaner (Schema& app,
     Stoppable& parent, beast::Journal journal)
 {
     return std::make_unique<LedgerCleanerImp>(app, parent, journal);

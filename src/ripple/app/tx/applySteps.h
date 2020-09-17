@@ -25,7 +25,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 class STTx;
 
 /** Return true if the transaction can claim a fee (tec),
@@ -182,7 +182,7 @@ struct TxConsequences
     other things, the `TER` code.
 */
 PreflightResult
-preflight(Application& app, Rules const& rules,
+preflight(Schema& app, Rules const& rules,
     STTx const& tx, ApplyFlags flags,
         beast::Journal j);
 
@@ -216,7 +216,7 @@ preflight(Application& app, Rules const& rules,
 */
 PreclaimResult
 preclaim(PreflightResult const& preflightResult,
-    Application& app, OpenView const& view);
+    Schema& app, OpenView const& view);
 
 /** Compute only the expected base fee for a transaction.
 
@@ -274,7 +274,7 @@ calculateConsequences(PreflightResult const& preflightResult);
 */
 std::pair<STer, bool>
 doApply(PreclaimResult const& preclaimResult,
-    Application& app, OpenView& view);
+    Schema& app, OpenView& view);
 
 }
 

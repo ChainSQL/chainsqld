@@ -25,7 +25,7 @@
 #include <ripple/protocol/Protocol.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/TaggedCache.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <peersafe/app/table/TableSyncItem.h>
 #include <peersafe/app/table/TableDumpItem.h>
 #include <peersafe/app/table/TableAuditItem.h>
@@ -43,7 +43,7 @@ class TableSync
 public:
     using clock_type = beast::abstract_clock <std::chrono::steady_clock>;
 
-    TableSync(Application& app, Config& cfg, beast::Journal journal);
+    TableSync(Schema& app, Config& cfg, beast::Journal journal);
     virtual ~TableSync();
 
     //receiver find the ledger which includes the tableNode TX
@@ -121,7 +121,7 @@ private:
     bool IsAutoLoadTable();
 
 private:
-    Application&                                app_;
+	Schema&										app_;
     beast::Journal                              journal_;
     Config&                                     cfg_;
 
