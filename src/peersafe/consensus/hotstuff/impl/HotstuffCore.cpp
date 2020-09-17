@@ -17,6 +17,8 @@
  */
 //==============================================================================
 
+#include <functional>
+
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
 
 namespace ripple { namespace hotstuff {
@@ -72,7 +74,7 @@ Block HotstuffCore::CreatePropose(int batch_size) {
         batch_size = 500;
 
     Command cmd;
-    storage_->command(batch_size, cmd);
+    executor_->extractCommad(batch_size, cmd);
     Block block = CreateLeaf(leaf_, cmd, hight_qc_, leaf_.height + 1);
     block.id = id_;
     block.hash = Block::blockHash(block);
@@ -353,6 +355,8 @@ void HotstuffCore::update(const Block &block) {
     }
 
     // free up space by deleting old data
+    evictOldQCs(block3);
+    storage_->gcBlocks(block3);
 }
 
 void HotstuffCore::commit(Block &block) {
@@ -454,6 +458,27 @@ void HotstuffCore::emitEvent(const Event& event) {
     if(signal) {
         signal->emitEvent(event);
     }
+}
+
+void HotstuffCore::evictOldQCs(const Block& block) {
+    // 基于 block 前 50 个块
+    Block parent = block;
+    for(int i = 0; i < 50; i++) {
+        if(storage_->blockOf(parent.parent, parent) == false)
+            return;
+    }
+    recurseEvictOldQcs(parent);
+}
+
+void HotstuffCore::recurseEvictOldQcs(const Block& block){
+    Block parent;
+    if(storage_->blockOf(block.parent, parent)) {
+        recurseEvictOldQcs(parent);
+    }
+
+    auto it = pendingQCs_.find(block.hash);
+    if(it != pendingQCs_.end())
+        pendingQCs_.erase(it);
 }
 
 } // namespace hotstuff

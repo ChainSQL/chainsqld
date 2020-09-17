@@ -37,12 +37,10 @@ class Storage {
 public:
     virtual ~Storage() {}
 
-    // for transactions
-    virtual void command(std::size_t batch_size, Command& cmd) = 0;
-
     // for blocks
     virtual bool addBlock(const Block& block) = 0;
-
+    // 基于某块释放不再需要用到的区块
+    virtual void gcBlocks(const Block& block) = 0;
     // 通过 block hash 获取 block，如果本地没有函数返回 false
     virtual bool blockOf(const BlockHash& hash, Block& block) const = 0;
     // 通过 block hash 获取 block, 如果本地没有则需要从网络同步
@@ -54,7 +52,7 @@ protected:
 class Executor {
 public:
     virtual ~Executor() {}
-
+    virtual void extractCommad(std::size_t batch_size, Command& cmd) = 0;
     virtual bool accept(const Command& cmd) = 0;
     virtual void consented(const Block& block) = 0;
 
@@ -174,6 +172,10 @@ private:
     void commit(Block& block);
     bool updateHighQC(const QuorumCert& qc);
     void emitEvent(const Event& event);
+
+    // 基于当前块清理过久的 QCs
+    void evictOldQCs(const Block& block);
+    void recurseEvictOldQcs(const Block& block);
 
     const ReplicaID& id_;
     std::mutex mutex_;

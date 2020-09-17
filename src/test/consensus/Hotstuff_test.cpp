@@ -29,6 +29,7 @@
 #include <peersafe/consensus/hotstuff/Pacemaker.h>
 #include <peersafe/consensus/hotstuff/impl/Types.h>
 #include <peersafe/consensus/hotstuff/impl/Block.h>
+#include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
 #include <peersafe/consensus/hotstuff/impl/Crypto.h>
 
 #include <ripple/protocol/SecretKey.h>
@@ -57,7 +58,6 @@ std::string generate_random_string(size_t size) {
 }
 
 class Replica : public ripple::hotstuff::Sender
-                , public ripple::hotstuff::Storage
                 , public ripple::hotstuff::Executor {
 public:
     using ReplicaID = ripple::hotstuff::ReplicaID;
@@ -77,6 +77,7 @@ public:
     , journal_(env->app().journal("testHotstuff"))
     , pacemaker_(&io_service_)
     , hotstuff_(nullptr)
+    , block_storage_()
     , key_pair_(ripple::randomKeyPair(ripple::KeyType::secp256k1))
     , update_config_(nullptr)
     , malicious_(false)
@@ -100,7 +101,7 @@ public:
             config_, 
             journal_, 
             this, 
-            this, 
+            &block_storage_, 
             this, 
             &pacemaker_);
     }
@@ -170,9 +171,8 @@ public:
         }
     }
 
-    // for ripple::hotstuff::Storage
-    // for transactions
-    void command(std::size_t batch_size, ripple::hotstuff::Command& cmd) {
+    // for ripple::hotstuff::Executor
+    void extractCommad(std::size_t batch_size, ripple::hotstuff::Command& cmd) {
         cmd.clear();
 
         for(std::size_t i = 0; i < batch_size; i ++) {
@@ -180,43 +180,6 @@ public:
         }
     }
 
-    // for blocks
-    bool addBlock(const ripple::hotstuff::Block& block) {
-        //if(hotstuff_) {
-        //    std::cout 
-        //        << hotstuff_->id() << " add a block "
-        //        << block.height << ", id " << block.id
-        //        << std::endl;
-        //}
-
-        if(cache_blocks_.find(block.hash) != cache_blocks_.end())
-            return false;
-        
-        cache_blocks_[block.hash] = block;
-        return true;
-    }
-
-    bool blockOf(
-        const ripple::hotstuff::BlockHash& hash, 
-        ripple::hotstuff::Block& block) const {
-        auto it = cache_blocks_.find(hash);
-        if(it == cache_blocks_.end()) {
-            return false;
-        }
-        
-        block = it->second;
-        return true;
-    }
-
-    bool expectBlock(
-        const ripple::hotstuff::BlockHash& hash, 
-        ripple::hotstuff::Block& block) {
-        if(blockOf(hash, block))
-            return true;
-        return false;
-    }
-
-    // for ripple::hotstuff::Executor
     bool accept(const ripple::hotstuff::Command& cmd) {
         return true;
     }
@@ -336,6 +299,7 @@ private:
     beast::Journal journal_;
     ripple::hotstuff::RoundRobinLeader pacemaker_;
     ripple::hotstuff::Hotstuff* hotstuff_;
+    ripple::hotstuff::BlockStorage block_storage_;
     KeyPair key_pair_;
     ripple::hotstuff::Config* update_config_;
     bool malicious_;
@@ -596,6 +560,7 @@ public:
         boost::asio::io_service ios;
         ripple::hotstuff::RoundRobinLeader rrl(&ios);
         ripple::hotstuff::Config config;
+        ripple::hotstuff::BlockStorage storage;
         config.id = 1;
         config.view_change = 1;
         config.leader_schedule.push_back(config.id);
@@ -609,7 +574,7 @@ public:
             config,
             logs_->journal("testElectLeader"),
             &replica,
-            &replica,
+            &storage,
             &replica,
             &rrl
         );

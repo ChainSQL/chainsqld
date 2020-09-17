@@ -90,31 +90,12 @@ public:
     using Value = ripple::hotstuff::Block;
 
     FakeStorage()
-    : base_size_(1)
-    , blocks_() {
+    : blocks_() {
 
     }
 
     ~FakeStorage() {
 
-    }
-
-    // for transactions
-    void command(std::size_t batch_size, 
-        ripple::hotstuff::Command& cmd) {
-        std::size_t counts = base_size_ + batch_size;
-        for(std::size_t i = base_size_; i < counts; i ++) {
-            using beast::hash_append;
-
-            std::srand(std::time(nullptr));
-            ripple::sha512_half_hasher h;
-            hash_append(h, i*std::rand());
-            sha512_half_hasher::result_type hash = 
-                static_cast<typename sha512_half_hasher::result_type>(h);
-
-            cmd.push_back(std::string((const char*)hash.data(), hash.size()));
-        }
-        base_size_ += batch_size;
     }
 
     // for blocks
@@ -124,6 +105,10 @@ public:
         
         blocks_[block.hash] = block;
         return true;
+    }
+
+    void gcBlocks(const ripple::hotstuff::Block& block) {
+
     }
 
     bool blockOf(const ripple::hotstuff::BlockHash& hash, 
@@ -151,14 +136,14 @@ public:
     }
 
 private:
-    std::size_t base_size_;
     std::map<Key, Value> blocks_;
 };
 
 class FakeExecutor : public ripple::hotstuff::Executor {
 public:
     FakeExecutor(Replicas* replicas)
-    : replicas_(replicas)
+    : base_size_(1)
+    , replicas_(replicas)
     , last_()
     , consented_counts_(0) {
 
@@ -166,6 +151,24 @@ public:
 
     ~FakeExecutor() {
 
+    }
+
+    // for transactions
+    void extractCommad(std::size_t batch_size, 
+        ripple::hotstuff::Command& cmd) {
+        std::size_t counts = base_size_ + batch_size;
+        for(std::size_t i = base_size_; i < counts; i ++) {
+            using beast::hash_append;
+
+            std::srand(std::time(nullptr));
+            ripple::sha512_half_hasher h;
+            hash_append(h, i*std::rand());
+            sha512_half_hasher::result_type hash = 
+                static_cast<typename sha512_half_hasher::result_type>(h);
+
+            cmd.push_back(std::string((const char*)hash.data(), hash.size()));
+        }
+        base_size_ += batch_size;
     }
 
     bool accept(const ripple::hotstuff::Command& cmd) {
@@ -211,6 +214,7 @@ public:
     }
 
 private:
+    std::size_t base_size_;
     Replicas* replicas_;
     ripple::hotstuff::Block last_;
     int consented_counts_;
