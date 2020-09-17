@@ -88,6 +88,7 @@ class DatabaseCon;
 class SHAMapStore;
 class ResolverAsio;
 class ValidatorKeys;
+class SchemaManager;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
@@ -146,6 +147,7 @@ public:
 	virtual ValidatorKeys const&	getValidatorKeys() const = 0;
 	virtual ResolverAsio&			getResolver() = 0;
 	virtual ServerHandler&			getServerHandler() = 0;
+	virtual SchemaManager&			getSchemaManager() = 0;
 
     virtual Config&					config(SchemaID const& id = beast::zero) = 0;
     virtual Family&                 family(SchemaID const& id = beast::zero) = 0;
@@ -194,8 +196,7 @@ public:
     virtual DatabaseCon&            getTxnDB (SchemaID const& id = beast::zero) = 0;
     virtual DatabaseCon&            getLedgerDB (SchemaID const& id = beast::zero) = 0;
     /** Retrieve the "wallet database" */
-    virtual DatabaseCon&			getWalletDB (SchemaID const& id = beast::zero) = 0;			
-
+    virtual DatabaseCon&			getWalletDB (SchemaID const& id = beast::zero) = 0;	
 
     virtual
     std::chrono::milliseconds

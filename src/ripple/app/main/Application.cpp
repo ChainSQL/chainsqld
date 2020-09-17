@@ -162,40 +162,31 @@ private:
 
 public:
 	std::unique_ptr<Config>		config_;
-    std::unique_ptr<Logs> logs_;
-    std::unique_ptr<TimeKeeper> timeKeeper_;
-
-    beast::Journal m_journal;
-    std::unique_ptr<perf::PerfLog> perfLog_;
-    Application::MutexType m_masterMutex;
-
- 
-    ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
-    boost::asio::steady_timer sweepTimer_;
-    boost::asio::steady_timer entropyTimer_;
-    bool startTimers_;
-
-
-    boost::asio::signal_set m_signals;
-
-    std::condition_variable cv_;
-    std::mutex mut_;
-    bool isTimeToStop = false;
-
-    std::atomic<bool> checkSigs_;
-
-    std::unique_ptr <ResolverAsio> m_resolver;
-
-    io_latency_sampler m_io_latency_sampler;
-
-	std::unique_ptr <SchemaManager>		m_schemaManager;
+	std::unique_ptr<Logs> logs_;
+	beast::Journal m_journal;
+	std::unique_ptr<TimeKeeper> timeKeeper_;
+	std::unique_ptr <CollectorManager>	m_collectorManager;
 	std::unique_ptr <Resource::Manager> m_resourceManager;
-	std::unique_ptr <CollectorManager>	m_collectorManager;		
+	std::unique_ptr <SchemaManager>		m_schemaManager;
 	std::unique_ptr <NodeStoreScheduler>	m_nodeStoreScheduler;
 	std::unique_ptr <JobQueue>			m_jobQueue;
 	std::unique_ptr <LoadManager>		m_loadManager;
 	std::unique_ptr <ServerHandler>		serverHandler_;
+	std::unique_ptr <perf::PerfLog>		perfLog_;
+	std::unique_ptr <ResolverAsio>		m_resolver;
 
+    Application::MutexType m_masterMutex;
+
+    ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
+    boost::asio::steady_timer sweepTimer_;
+    boost::asio::steady_timer entropyTimer_;
+    bool startTimers_;
+    boost::asio::signal_set m_signals;
+    std::condition_variable cv_;
+    std::mutex mut_;
+    bool isTimeToStop = false;
+    std::atomic<bool> checkSigs_;
+    io_latency_sampler m_io_latency_sampler;
 	std::pair<PublicKey, SecretKey>		nodeIdentity_;
 	ValidatorKeys const validatorKeys_;
     //--------------------------------------------------------------------------
@@ -441,6 +432,11 @@ public:
 	ServerHandler& getServerHandler()override
 	{
 		return *serverHandler_;
+	}
+
+	SchemaManager&	getSchemaManager() override
+	{
+		return *m_schemaManager;
 	}
 
     NetworkOPs& getOPs (SchemaID const& id) override
@@ -763,7 +759,12 @@ public:
         using namespace std::chrono_literals;
         waitHandlerCounter_.join("Application", 1s, m_journal);
 
-		//todo by ljl:foreach schema
+		//foreach schema
+		for (auto iter = m_schemaManager->begin(); iter != m_schemaManager->end(); iter++)
+		{
+			auto schema = (*iter).second;
+			schema->onStop();
+		}
         stopped ();
     }
 
@@ -840,8 +841,12 @@ public:
 
     void doSweep ()
     {
-		//todo by ljl: foreach schema do sweep
-
+		//by ljl: foreach schema do sweep
+		for (auto iter = m_schemaManager->begin(); iter != m_schemaManager->end(); iter++)
+		{
+			auto schema = (*iter).second;
+			schema->doSweep();
+		}
         // Set timer to do another sweep later.
         setSweepTimer();
     }
@@ -856,6 +861,8 @@ public:
 //
 bool ApplicationImp::setup()
 {   
+	auto schema_main = m_schemaManager->createSchemaMain(*config_);
+
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());
 
@@ -885,8 +892,6 @@ bool ApplicationImp::setup()
     // Optionally turn off logging to console.
     logs_->silent (config_->silent());
 
-    m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());
-
     if (!config_->standalone())
         timeKeeper_->run(config_->SNTP_SERVERS);
 
@@ -910,7 +915,6 @@ bool ApplicationImp::setup()
 		}
 	}
 
-	auto schema_main = m_schemaManager->createSchemaMain(*config_);
 	schema_main->setup();
 
     return true;
