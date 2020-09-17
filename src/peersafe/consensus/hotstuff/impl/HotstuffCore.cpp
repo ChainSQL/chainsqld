@@ -349,7 +349,7 @@ void HotstuffCore::commit(Block &block) {
     //    return;
     if(exec_.height < block.height) {
         Block parent;
-        if(storage_->expectBlock(block.parent, parent)) {
+        if(storage_->blockOf(block.parent, parent)) {
             commit(parent);
         }
 
@@ -359,7 +359,8 @@ void HotstuffCore::commit(Block &block) {
             << ripple::strHex(ripple::Slice(block.hash.data(), block.hash.size()));
 
         block.committed = true;
-        executor_->consented(block);
+        if(block.cmd.empty() == false)
+            executor_->consented(block);
     } else {
         JLOG(journal_.error())
             << "The height of a executed block is more than "

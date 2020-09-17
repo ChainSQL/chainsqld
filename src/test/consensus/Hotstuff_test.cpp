@@ -198,14 +198,6 @@ public:
         ripple::hotstuff::Block& block) {
         if(blockOf(hash, block))
             return true;
-
-        // simulate sync blocks from network
-        for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-            if(it->second->blockOf(hash, block)) {
-                addBlock(block);
-                return true;
-            }
-        }
         return false;
     }
 
@@ -554,6 +546,8 @@ public:
         while(true) {
             bool satisfied = true;
             for(auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+                if(it->second->malicious())
+                    continue;
                 const std::vector<Replica::Block>& consentedBlocks = it->second->consentedBlocks();
                 if(consentedBlocks.size() < consentedBlockNumber) {
                     satisfied = false;
@@ -571,9 +565,13 @@ public:
         // 判断 consentedBlocks 块是否相等
         for(std::size_t block = 0; block < consentedBlockNumber; block ++) {
             auto begin = Replica::replicas.begin();
+            if(begin->second->malicious())
+                continue;
             ripple::hotstuff::BlockHash hash = begin->second->consentedBlocks()[block].hash;
             begin++;
             for(;begin != Replica::replicas.end(); begin++) {
+                if(begin->second->malicious())
+                    continue;
                 if(hash != begin->second->consentedBlocks()[block].hash) {
                     return false;
                 }
@@ -702,10 +700,6 @@ public:
         // 设置 maliciousIDs 的节点为恶意节点
         for(auto it = maliciousIDs.begin(); it != maliciousIDs.end(); it++) {
             setReplicaMalicious(*it, true);
-        }
-        for(auto it = maliciousIDs.begin(); it != maliciousIDs.end(); it++) {
-            stopReplicas(&env, *it);
-            clearReplicas(*it);
         }
         BEAST_EXPECT(waitUntilConsentedBlocks(4 + blocks_) == true);
 
