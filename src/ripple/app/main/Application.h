@@ -23,11 +23,13 @@
 #include <ripple/shamap/FullBelowCache.h>
 #include <ripple/shamap/TreeNodeCache.h>
 #include <ripple/basics/TaggedCache.h>
+#include <ripple/rpc/ServerHandler.h>
 #include <ripple/core/Config.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/beast/utility/PropertyStream.h>
 #include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
 #include <ripple/protocol/Protocol.h>
+#include <peersafe/schema/SchemaBase.h>
 #include <boost/asio.hpp>
 #include <memory>
 #include <mutex>
@@ -81,9 +83,11 @@ class ContractHelper;
 class TableTxAccumulator;
 class TxPool;
 class StateManager;
-
+class NodeStoreScheduler;
 class DatabaseCon;
 class SHAMapStore;
+class ResolverAsio;
+class ValidatorKeys;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
@@ -91,6 +95,7 @@ template <class Adaptor>
 class Validations;
 class RCLValidationsAdaptor;
 using RCLValidations = Validations<RCLValidationsAdaptor>;
+
 
 class Application : public beast::PropertyStream::Source
 {
@@ -127,66 +132,70 @@ public:
     //
 
     virtual Logs& logs() = 0;
-    virtual Config& config() = 0;
     virtual boost::asio::io_service& getIOService () = 0;
-    virtual CollectorManager&       getCollectorManager () = 0;
-    virtual Family&                 family() = 0;
-	virtual Family*                 shardFamily() = 0;
-    virtual TimeKeeper&             timeKeeper() = 0;
-    virtual JobQueue&               getJobQueue () = 0;
-    virtual NodeCache&              getTempNodeCache () = 0;
-    virtual CachedSLEs&             cachedSLEs() = 0;
-    virtual AmendmentTable&         getAmendmentTable() = 0;
-    virtual HashRouter&             getHashRouter () = 0;
-    virtual LoadFeeTrack&           getFeeTrack () = 0;
-    virtual LoadManager&            getLoadManager () = 0;
-    virtual Overlay&                overlay () = 0;
-    virtual TxQ&                    getTxQ() = 0;
-    virtual ValidatorList&          validators () = 0;
-    virtual ValidatorSite&          validatorSites () = 0;
-	virtual CertList&                      certList() = 0;
-    virtual ManifestCache&          validatorManifests () = 0;
-    virtual ManifestCache&          publisherManifests () = 0;
-    virtual Cluster&                cluster () = 0;
-    virtual RCLValidations&         getValidations () = 0;
-    virtual NodeStore::Database&    getNodeStore () = 0;
-	virtual NodeStore::DatabaseShard*   getShardStore() = 0;
-    virtual InboundLedgers&         getInboundLedgers () = 0;
-    virtual InboundTransactions&    getInboundTransactions () = 0;
-    virtual TaggedCache <uint256, AcceptedLedger>&
-                                    getAcceptedLedgerCache () = 0;
-    virtual LedgerMaster&           getLedgerMaster () = 0;
-    virtual NetworkOPs&             getOPs () = 0;
-    virtual OrderBookDB&            getOrderBookDB () = 0;
-    virtual TransactionMaster&      getMasterTransaction () = 0;
-	virtual perf::PerfLog&          getPerfLog () = 0;
-	
-	virtual TxStoreDBConn&			getTxStoreDBConn() = 0;
-	virtual TxStore&                getTxStore() = 0;
-    virtual TableStatusDB&          getTableStatusDB() = 0;
-    virtual TableSync&              getTableSync() = 0;
-    virtual TableStorage&           getTableStorage() = 0;
-	virtual TableAssistant&			getTableAssistant() = 0;
-	virtual ContractHelper&			getContractHelper() = 0;
-	virtual TableTxAccumulator&		getTableTxAccumulator() = 0;
-	virtual TxPool&					getTxPool() = 0;
-	virtual StateManager&			getStateManager() = 0;
-	virtual
-    std::pair<PublicKey, SecretKey> const&
-    nodeIdentity () = 0;
+	virtual CollectorManager&       getCollectorManager() = 0;
+	virtual TimeKeeper&             timeKeeper() = 0;
+	virtual JobQueue&               getJobQueue() = 0;
+	virtual LoadManager&            getLoadManager() = 0;
+	virtual perf::PerfLog&          getPerfLog() = 0;
+	virtual Resource::Manager&      getResourceManager() = 0;
+	virtual NodeStoreScheduler&		nodeStoreScheduler() = 0;
+	virtual std::pair<PublicKey, SecretKey> const&
+									nodeIdentity() = 0;
+	virtual	PublicKey const &		getValidationPublicKey() const = 0;
+	virtual ValidatorKeys const&	getValidatorKeys() const = 0;
+	virtual ResolverAsio&			getResolver() = 0;
+	virtual ServerHandler&			getServerHandler() = 0;
 
-    virtual
-    PublicKey const &
-    getValidationPublicKey() const  = 0;
-    virtual Resource::Manager&      getResourceManager () = 0;
-    virtual PathRequests&           getPathRequests () = 0;
-    virtual SHAMapStore&            getSHAMapStore () = 0;
-    virtual PendingSaves&           pendingSaves() = 0;
-    virtual AccountIDCache const&   accountIDCache() const = 0;
-    virtual OpenLedger&             openLedger() = 0;
-    virtual OpenLedger const&       openLedger() const = 0;
-    virtual DatabaseCon&            getTxnDB () = 0;
-    virtual DatabaseCon&            getLedgerDB () = 0;
+    virtual Config&					config(SchemaID const& id = beast::zero) = 0;
+    virtual Family&                 family(SchemaID const& id = beast::zero) = 0;
+	virtual Family*                 shardFamily(SchemaID const& id = beast::zero) = 0;
+    virtual NodeCache&              getTempNodeCache (SchemaID const& id = beast::zero) = 0;
+    virtual CachedSLEs&             cachedSLEs(SchemaID const& id = beast::zero) = 0;
+    virtual AmendmentTable&         getAmendmentTable(SchemaID const& id = beast::zero) = 0;
+    virtual HashRouter&             getHashRouter (SchemaID const& id = beast::zero) = 0;
+    virtual LoadFeeTrack&           getFeeTrack (SchemaID const& id = beast::zero) = 0;
+    virtual Overlay&                overlay (SchemaID const& id = beast::zero) = 0;
+    virtual TxQ&                    getTxQ(SchemaID const& id = beast::zero) = 0;
+    virtual ValidatorList&          validators (SchemaID const& id = beast::zero) = 0;
+    virtual ValidatorSite&          validatorSites (SchemaID const& id = beast::zero) = 0;
+	virtual CertList&               certList(SchemaID const& id = beast::zero) = 0;
+    virtual ManifestCache&          validatorManifests (SchemaID const& id = beast::zero) = 0;
+    virtual ManifestCache&          publisherManifests (SchemaID const& id = beast::zero) = 0;
+    virtual Cluster&                cluster (SchemaID const& id = beast::zero) = 0;
+    virtual RCLValidations&         getValidations (SchemaID const& id = beast::zero) = 0;
+    virtual NodeStore::Database&    getNodeStore (SchemaID const& id = beast::zero) = 0;
+	virtual NodeStore::DatabaseShard*   getShardStore(SchemaID const& id = beast::zero) = 0;
+    virtual InboundLedgers&         getInboundLedgers (SchemaID const& id = beast::zero) = 0;
+    virtual InboundTransactions&    getInboundTransactions (SchemaID const& id = beast::zero) = 0;
+    virtual TaggedCache <uint256, AcceptedLedger>&
+                                    getAcceptedLedgerCache (SchemaID const& id = beast::zero) = 0;
+    virtual LedgerMaster&           getLedgerMaster (SchemaID const& id = beast::zero) = 0;
+    virtual NetworkOPs&             getOPs (SchemaID const& id = beast::zero) = 0;
+    virtual OrderBookDB&            getOrderBookDB (SchemaID const& id = beast::zero) = 0;
+    virtual TransactionMaster&      getMasterTransaction (SchemaID const& id = beast::zero) = 0;
+	
+	virtual TxStoreDBConn&			getTxStoreDBConn(SchemaID const& id = beast::zero) = 0;
+	virtual TxStore&                getTxStore(SchemaID const& id = beast::zero) = 0;
+    virtual TableStatusDB&          getTableStatusDB(SchemaID const& id = beast::zero) = 0;
+    virtual TableSync&              getTableSync(SchemaID const& id = beast::zero) = 0;
+    virtual TableStorage&           getTableStorage(SchemaID const& id = beast::zero) = 0;
+	virtual TableAssistant&			getTableAssistant(SchemaID const& id = beast::zero) = 0;
+	virtual ContractHelper&			getContractHelper(SchemaID const& id = beast::zero) = 0;
+	virtual TableTxAccumulator&		getTableTxAccumulator(SchemaID const& id = beast::zero) = 0;
+	virtual TxPool&					getTxPool(SchemaID const& id = beast::zero) = 0;
+	virtual StateManager&			getStateManager(SchemaID const& id = beast::zero) = 0;
+    virtual PathRequests&           getPathRequests (SchemaID const& id = beast::zero) = 0;
+    virtual SHAMapStore&            getSHAMapStore (SchemaID const& id = beast::zero) = 0;
+    virtual PendingSaves&           pendingSaves(SchemaID const& id = beast::zero) = 0;
+    virtual AccountIDCache const&   accountIDCache(SchemaID const& id = beast::zero) const = 0;
+    virtual OpenLedger&             openLedger(SchemaID const& id = beast::zero) = 0;
+    virtual OpenLedger const&       openLedger(SchemaID const& id = beast::zero) const = 0;
+    virtual DatabaseCon&            getTxnDB (SchemaID const& id = beast::zero) = 0;
+    virtual DatabaseCon&            getLedgerDB (SchemaID const& id = beast::zero) = 0;
+    /** Retrieve the "wallet database" */
+    virtual DatabaseCon&			getWalletDB (SchemaID const& id = beast::zero) = 0;			
+
 
     virtual
     std::chrono::milliseconds
@@ -198,13 +207,6 @@ public:
 
     /* Returns the number of file descriptors the application wants */
     virtual int fdlimit () const = 0;
-
-    /** Retrieve the "wallet database" */
-    virtual DatabaseCon& getWalletDB () = 0;
-
-    /** Ensure that a newly-started validator does not sign proposals older
-     * than the last ledger it persisted. */
-    virtual LedgerIndex getMaxDisallowedLedger() = 0;
 };
 
 std::unique_ptr <Application>

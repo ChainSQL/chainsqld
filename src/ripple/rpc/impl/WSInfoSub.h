@@ -38,20 +38,30 @@ class WSInfoSub : public InfoSub
     std::string fwdfor_;
 
 public:
+	WSInfoSub(std::shared_ptr<WSSession> const& ws)
+		:ws_(ws)
+	{
+		init(ws);
+	}
     WSInfoSub(Source& source, std::shared_ptr<WSSession> const& ws)
         : InfoSub(source)
         , ws_(ws)
     {
-        auto const& h = ws->request();
-        if (ipAllowed(beast::IPAddressConversion::from_asio(
-            ws->remote_endpoint()).address(), ws->port().secure_gateway_ip))
-        {
-            auto it = h.find("X-User");
-            if (it != h.end())
-                user_ = it->value().to_string();
-            fwdfor_ = std::string(forwardedFor(h));
-        }
+		init(ws);
     }
+
+	void init(std::shared_ptr<WSSession> const& ws)
+	{
+		auto const& h = ws->request();
+		if (ipAllowed(beast::IPAddressConversion::from_asio(
+			ws->remote_endpoint()).address(), ws->port().secure_gateway_ip))
+		{
+			auto it = h.find("X-User");
+			if (it != h.end())
+				user_ = it->value().to_string();
+			fwdfor_ = std::string(forwardedFor(h));
+		}
+	}
 
     boost::string_view
     user() const

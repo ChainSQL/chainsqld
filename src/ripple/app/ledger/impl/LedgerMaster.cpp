@@ -244,10 +244,10 @@ LedgerMaster::setValidLedger(
 
     mValidLedger.set (l);
     mValidLedgerSign = signTime.time_since_epoch().count();
-    assert (mValidLedgerSeq ||
-            !app_.getMaxDisallowedLedger() ||
-            l->info().seq + max_ledger_difference_ >
-                    app_.getMaxDisallowedLedger());
+    //assert (mValidLedgerSeq ||
+    //        !app_.getMaxDisallowedLedger() ||
+    //        l->info().seq + max_ledger_difference_ >
+    //                app_.getMaxDisallowedLedger());
     (void) max_ledger_difference_;
     mValidLedgerSeq = l->info().seq;
 

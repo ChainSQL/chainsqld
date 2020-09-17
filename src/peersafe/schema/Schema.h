@@ -1,0 +1,131 @@
+#pragma once
+
+#include <ripple/shamap/TreeNodeCache.h>
+#include <ripple/basics/TaggedCache.h>
+#include <ripple/core/Config.h>
+#include <peersafe/schema/SchemaParams.h>
+#include <ripple/protocol/Protocol.h>
+
+namespace ripple {
+namespace NodeStore { class Database; class DatabaseShard; }
+class Application;
+class Config;
+class AmendmentTable;
+class CachedSLEs;
+class CollectorManager;
+class Family;
+class HashRouter;
+class Logs;
+class LoadFeeTrack;
+class JobQueue;
+class InboundLedgers;
+class InboundTransactions;
+class AcceptedLedger;
+class LedgerMaster;
+class ManifestCache;
+class NetworkOPs;
+class OpenLedger;
+class OrderBookDB;
+class Overlay;
+class PathRequests;
+class PendingSaves;
+class PublicKey;
+class SecretKey;
+class AccountIDCache;
+class STLedgerEntry;
+class TimeKeeper;
+class TransactionMaster;
+class TxQ;
+class ValidatorList;
+class ValidatorSite;
+class CertList;
+class Cluster;
+class NodeStoreScheduler;
+class TxStoreDBConn;
+class TxStore;
+class TableStatusDB;
+class TableSync;
+class TableStorage;
+class TableAssistant;
+class ContractHelper;
+class TableTxAccumulator;
+class TxPool;
+class StateManager;
+
+class DatabaseCon;
+class SHAMapStore;
+
+using NodeCache = TaggedCache <SHAMapHash, Blob>;
+
+template <class Adaptor>
+class Validations;
+class RCLValidationsAdaptor;
+using RCLValidations = Validations<RCLValidationsAdaptor>;
+
+class Schema {
+public:
+	virtual bool setup() = 0;
+	virtual void doSweep() = 0;
+	virtual void onStop() = 0;
+
+	virtual Config&					config() = 0;
+	virtual Family&                 family() = 0;
+	virtual Family*                 shardFamily() = 0;
+	virtual AmendmentTable&         getAmendmentTable() = 0;
+	virtual HashRouter&             getHashRouter() = 0;
+	virtual LoadFeeTrack&           getFeeTrack() = 0;
+	virtual Overlay&                overlay() = 0;
+	virtual TxQ&                    getTxQ() = 0;
+	virtual ValidatorList&          validators() = 0;
+	virtual ValidatorSite&          validatorSites() = 0;
+	virtual CertList&               certList() = 0;
+	virtual ManifestCache&          validatorManifests() = 0;
+	virtual ManifestCache&          publisherManifests() = 0;
+	virtual Cluster&                cluster() = 0;
+	virtual RCLValidations&         getValidations() = 0;
+	virtual NodeStore::Database&    getNodeStore() = 0;
+	virtual NodeStore::DatabaseShard*   getShardStore() = 0;
+	virtual InboundLedgers&         getInboundLedgers() = 0;
+	virtual InboundTransactions&    getInboundTransactions() = 0;
+	virtual TaggedCache <uint256, AcceptedLedger>&
+								getAcceptedLedgerCache() = 0;
+	virtual LedgerMaster&           getLedgerMaster() = 0;
+	virtual NetworkOPs&             getOPs() = 0;
+	virtual OrderBookDB&            getOrderBookDB() = 0;
+	virtual TransactionMaster&      getMasterTransaction() = 0;
+	virtual TxStoreDBConn&			getTxStoreDBConn() = 0;
+	virtual TxStore&                getTxStore() = 0;
+	virtual TableStatusDB&          getTableStatusDB() = 0;
+	virtual TableSync&              getTableSync() = 0;
+	virtual TableStorage&           getTableStorage() = 0;
+	virtual TableAssistant&			getTableAssistant() = 0;
+	virtual ContractHelper&			getContractHelper() = 0;
+	virtual TableTxAccumulator&		getTableTxAccumulator() = 0;
+	virtual TxPool&					getTxPool() = 0;
+	virtual StateManager&			getStateManager() = 0;
+
+	virtual PathRequests&           getPathRequests() = 0;
+	virtual SHAMapStore&            getSHAMapStore() = 0;
+	virtual PendingSaves&           pendingSaves() = 0;
+	virtual AccountIDCache const&   accountIDCache() const = 0;
+	virtual OpenLedger&             openLedger() = 0;
+	virtual OpenLedger const&       openLedger() const = 0;
+	virtual NodeCache&              getTempNodeCache() = 0;
+	virtual CachedSLEs&             cachedSLEs() = 0;
+
+	virtual DatabaseCon&            getTxnDB() = 0;
+	virtual DatabaseCon&            getLedgerDB() = 0;
+	virtual DatabaseCon&			getWalletDB() = 0;
+	/** Ensure that a newly-started validator does not sign proposals older
+	* than the last ledger it persisted. */
+	virtual LedgerIndex				getMaxDisallowedLedger() = 0;
+	virtual SchemaParams			getSchemaParams() = 0;
+};
+
+std::shared_ptr <Schema>
+make_Schema(
+	SchemaParams const& params,
+	Config& config,
+	Application& app,
+	beast::Journal j);
+}

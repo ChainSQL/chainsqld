@@ -41,39 +41,46 @@ InfoSub::Source::Source (char const* name, Stoppable& parent)
 }
 
 //------------------------------------------------------------------------------
-
+InfoSub::InfoSub()
+	: m_source(nullptr)
+	, mSeq(assign_id())
+{
+}
 InfoSub::InfoSub(Source& source)
-    : m_source(source)
+    : m_source(&source)
     , mSeq(assign_id())
 {
 }
 
 InfoSub::InfoSub(Source& source, Consumer consumer)
     : m_consumer(consumer)
-    , m_source(source)
+    , m_source(&source)
     , mSeq(assign_id())
 {
 }
 
 InfoSub::~InfoSub ()
 {
-    m_source.unsubTransactions (mSeq);
-    m_source.unsubRTTransactions (mSeq);
-    m_source.unsubLedger (mSeq);
-    m_source.unsubManifests (mSeq);
-    m_source.unsubServer (mSeq);
-    m_source.unsubValidations (mSeq);
-    m_source.unsubPeerStatus (mSeq);
+	if (m_source != nullptr)
+	{
+		m_source->unsubTransactions(mSeq);
+		m_source->unsubRTTransactions(mSeq);
+		m_source->unsubLedger(mSeq);
+		m_source->unsubManifests(mSeq);
+		m_source->unsubServer(mSeq);
+		m_source->unsubValidations(mSeq);
+		m_source->unsubPeerStatus(mSeq);
 
-    // Use the internal unsubscribe so that it won't call
-    // back to us and modify its own parameter
-    if (! realTimeSubscriptions_.empty ())
-        m_source.unsubAccountInternal
-            (mSeq, realTimeSubscriptions_, ACCOUNT_REALTIME);
+		// Use the internal unsubscribe so that it won't call
+		// back to us and modify its own parameter
+		if (!realTimeSubscriptions_.empty())
+			m_source->unsubAccountInternal
+			(mSeq, realTimeSubscriptions_, ACCOUNT_REALTIME);
 
-    if (! normalSubscriptions_.empty ())
-        m_source.unsubAccountInternal
-            (mSeq, normalSubscriptions_, ACCOUNT_NORMANT);
+		if (!normalSubscriptions_.empty())
+			m_source->unsubAccountInternal
+			(mSeq, normalSubscriptions_, ACCOUNT_NORMANT);
+	}
 }
 
 Resource::Consumer& InfoSub::getConsumer()
@@ -121,6 +128,16 @@ void InfoSub::setPathRequest (const std::shared_ptr<PathRequest>& req)
 const std::shared_ptr<PathRequest>& InfoSub::getPathRequest ()
 {
     return mPathRequest;
+}
+
+void InfoSub::setSource(InfoSub::Source& source)
+{
+	m_source = &source;
+}
+
+InfoSub::Source* InfoSub::getSource()
+{
+	return m_source;
 }
 
 hash_set <AccountID>& InfoSub::getCompatibleAccountSet(ACOUNT_TYPE eType)

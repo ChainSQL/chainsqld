@@ -112,13 +112,11 @@ authorized (
 
 ServerHandlerImp::ServerHandlerImp (Application& app, Stoppable& parent,
     boost::asio::io_service& io_service, JobQueue& jobQueue,
-        NetworkOPs& networkOPs, Resource::Manager& resourceManager,
-            CollectorManager& cm)
+        Resource::Manager& resourceManager,CollectorManager& cm)
     : Stoppable("ServerHandler", parent)
     , app_ (app)
     , m_resourceManager (resourceManager)
     , m_journal (app_.journal("Server"))
-    , m_networkOPs (networkOPs)
     , m_server (make_Server(
         *this, io_service, app_.journal("Server")))
     , m_jobQueue (jobQueue)
@@ -201,7 +199,7 @@ ServerHandlerImp::onHandoff(
                 http::status::internal_server_error);
         }
 
-        auto is {std::make_shared<WSInfoSub>(m_networkOPs, ws)};
+        auto is {std::make_shared<WSInfoSub>(ws)};
         auto const beast_remote_address =
             beast::IPAddressConversion::from_asio(remote_address);
         is->getConsumer() = requestInboundEndpoint(
@@ -395,6 +393,24 @@ ServerHandlerImp::processSession(
         // was just closed.
         return rpcError(rpcSLOW_DOWN);
     }
+	
+	// take out schema_id
+	uint256 schema_id = beast::zero;
+	if (jv.isMember(jss::params) && jv[jss::params].isMember(jss::schema_id))
+	{
+		try {
+			schema_id = from_hex_text<uint256>(jv[jss::params][jss::schema_id].asString());
+		}
+		catch (std::exception) {
+			schema_id = beast::zero;
+			JLOG(m_journal.error()) << "Exception when parse schema_id in processSession,set beast::zero";
+		}
+	}
+	// move NetworkOps setting from onHandOff to here.
+	if (is->getSource() == nullptr)
+	{
+		is->setSource(app_.getOPs(schema_id));
+	}
 
     // Requests without "command" are invalid.
     Json::Value jr(Json::objectValue);
@@ -443,8 +459,8 @@ ServerHandlerImp::processSession(
                 jv,
                 app_,
                 loadType,
-                app_.getOPs(),
-                app_.getLedgerMaster(),
+                app_.getOPs(schema_id),
+                app_.getLedgerMaster(schema_id),
                 is->getConsumer(),
                 role,
                 coro,
@@ -779,9 +795,20 @@ ServerHandlerImp::processRequest (Port const& port,
             << "doRpcCommand:" << strMethod << ":" << params;
 
         Resource::Charge loadType = Resource::feeReferenceRPC;
-
-        RPC::Context context {m_journal, params, app_, loadType, m_networkOPs,
-            app_.getLedgerMaster(), usage, role, coro, InfoSub::pointer(),
+		// take out schema_id
+		uint256 schema_id = beast::zero;
+		if (params.isMember(jss::params) && params[jss::params].isMember(jss::schema_id))
+		{
+			try {
+				schema_id = from_hex_text<uint256>(params[jss::params][jss::schema_id].asString());
+			}
+			catch (std::exception) {
+				schema_id = beast::zero;
+				JLOG(m_journal.error()) << "Exception when parse schema_id in processRequest,set beast::zero";
+			}
+		}
+        RPC::Context context {m_journal, params, app_, loadType, app_.getOPs(schema_id),
+            app_.getLedgerMaster(schema_id), usage, role, coro, InfoSub::pointer(),
             {user, forwardedFor}};
         Json::Value result;
         RPC::doCommand (context, result);
@@ -1167,11 +1194,10 @@ setup_ServerHandler(
 std::unique_ptr <ServerHandler>
 make_ServerHandler (Application& app, Stoppable& parent,
     boost::asio::io_service& io_service, JobQueue& jobQueue,
-        NetworkOPs& networkOPs, Resource::Manager& resourceManager,
-            CollectorManager& cm)
+	Resource::Manager& resourceManager,CollectorManager& cm)
 {
     return std::make_unique<ServerHandlerImp>(app, parent,
-        io_service, jobQueue, networkOPs, resourceManager, cm);
+        io_service, jobQueue, resourceManager, cm);
 }
 
 } // ripple

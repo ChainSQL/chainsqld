@@ -72,6 +72,7 @@
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/schema/SchemaManager.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/system/error_code.hpp>
@@ -84,170 +85,9 @@
 
 namespace ripple {
 
-// 204/256 about 80%
-static int const MAJORITY_FRACTION (204);
+
 
 //------------------------------------------------------------------------------
-
-namespace detail {
-
-class AppFamily : public Family
-{
-private:
-    Application& app_;
-    TreeNodeCache treecache_;
-    FullBelowCache fullbelow_;
-    NodeStore::Database& db_;
-    bool const shardBacked_;
-    beast::Journal j_;
-
-    // missing node handler
-    LedgerIndex maxSeq = 0;
-    std::mutex maxSeqLock;
-
-    void acquire (
-        uint256 const& hash,
-        std::uint32_t seq)
-    {
-        if (hash.isNonZero())
-        {
-            auto j = app_.journal ("Ledger");
-
-            JLOG (j.error()) <<
-                "Missing node in " << to_string (hash);
-
-            app_.getInboundLedgers ().acquire (
-                hash, seq, shardBacked_ ?
-                InboundLedger::Reason::SHARD :
-                InboundLedger::Reason::GENERIC);
-        }
-    }
-
-public:
-    AppFamily (AppFamily const&) = delete;
-    AppFamily& operator= (AppFamily const&) = delete;
-
-    AppFamily (Application& app, NodeStore::Database& db,
-            CollectorManager& collectorManager)
-        : app_ (app)
-        , treecache_ ("TreeNodeCache", 65536, std::chrono::minutes {1},
-            stopwatch(), app.journal("TaggedCache"))
-        , fullbelow_ ("full_below", stopwatch(),
-            collectorManager.collector(),
-                fullBelowTargetSize, fullBelowExpiration)
-        , db_ (db)
-        , shardBacked_ (
-            dynamic_cast<NodeStore::DatabaseShard*>(&db) != nullptr)
-        , j_ (app.journal("SHAMap"))
-    {
-    }
-
-    beast::Journal const&
-    journal() override
-    {
-        return j_;
-    }
-
-    FullBelowCache&
-    fullbelow() override
-    {
-        return fullbelow_;
-    }
-
-    FullBelowCache const&
-    fullbelow() const override
-    {
-        return fullbelow_;
-    }
-
-    TreeNodeCache&
-    treecache() override
-    {
-        return treecache_;
-    }
-
-    TreeNodeCache const&
-    treecache() const override
-    {
-        return treecache_;
-    }
-
-    NodeStore::Database&
-    db() override
-    {
-        return db_;
-    }
-
-    NodeStore::Database const&
-    db() const override
-    {
-        return db_;
-    }
-
-    bool
-    isShardBacked() const override
-    {
-        return shardBacked_;
-    }
-
-    void
-    missing_node (std::uint32_t seq) override
-    {
-        auto j = app_.journal ("Ledger");
-
-        JLOG (j.error()) <<
-            "Missing node in " << seq;
-
-        // prevent recursive invocation
-        std::unique_lock <std::mutex> lock (maxSeqLock);
-
-        if (maxSeq == 0)
-        {
-            maxSeq = seq;
-
-            do
-            {
-                // Try to acquire the most recent missing ledger
-                seq = maxSeq;
-
-                lock.unlock();
-
-                // This can invoke the missing node handler
-                acquire (
-                    app_.getLedgerMaster().getHashBySeq (seq),
-                    seq);
-
-                lock.lock();
-            }
-            while (maxSeq != seq);
-        }
-        else if (maxSeq < seq)
-        {
-            // We found a more recent ledger with a
-            // missing node
-            maxSeq = seq;
-        }
-    }
-
-    void
-    missing_node (uint256 const& hash, std::uint32_t seq) override
-    {
-        acquire (hash, seq);
-    }
-
-    void
-    reset () override
-    {
-        {
-            std::lock_guard<std::mutex> lock(maxSeqLock);
-            maxSeq = 0;
-        }
-        fullbelow_.reset();
-        treecache_.reset();
-    }
-};
-
-} // detail
 
 //------------------------------------------------------------------------------
 
@@ -321,7 +161,7 @@ private:
     };
 
 public:
-    std::unique_ptr<Config> config_;
+	std::unique_ptr<Config>		config_;
     std::unique_ptr<Logs> logs_;
     std::unique_ptr<TimeKeeper> timeKeeper_;
 
@@ -329,73 +169,12 @@ public:
     std::unique_ptr<perf::PerfLog> perfLog_;
     Application::MutexType m_masterMutex;
 
-    // Required by the SHAMapStore
-    TransactionMaster m_txMaster;
-
-    NodeStoreScheduler m_nodeStoreScheduler;
-    std::unique_ptr <SHAMapStore> m_shaMapStore;
-    PendingSaves pendingSaves_;
-    AccountIDCache accountIDCache_;
-    boost::optional<OpenLedger> openLedger_;
-
-    // These are not Stoppable-derived
-    NodeCache m_tempNodeCache;
-    std::unique_ptr <CollectorManager> m_collectorManager;
-    CachedSLEs cachedSLEs_;
-    std::pair<PublicKey, SecretKey> nodeIdentity_;
-    ValidatorKeys const validatorKeys_;
-
-    std::unique_ptr <Resource::Manager> m_resourceManager;
-
-    // These are Stoppable-related
-    std::unique_ptr <JobQueue> m_jobQueue;
-    std::unique_ptr <NodeStore::Database> m_nodeStore;
-    std::unique_ptr <NodeStore::DatabaseShard> shardStore_;
-    detail::AppFamily family_;
-    std::unique_ptr <detail::AppFamily> sFamily_;
-    // VFALCO TODO Make OrderBookDB abstract
-    OrderBookDB m_orderBookDB;
-    std::unique_ptr <PathRequests> m_pathRequests;
-    std::unique_ptr <LedgerMaster> m_ledgerMaster;
-    std::unique_ptr <InboundLedgers> m_inboundLedgers;
-    std::unique_ptr <InboundTransactions> m_inboundTransactions;
-    TaggedCache <uint256, AcceptedLedger> m_acceptedLedgerCache;
-    std::unique_ptr <NetworkOPs> m_networkOPs;
-    std::unique_ptr <Cluster> cluster_;
-    std::unique_ptr <ManifestCache> validatorManifests_;
-    std::unique_ptr <ManifestCache> publisherManifests_;
-    std::unique_ptr <ValidatorList> validators_;
-    std::unique_ptr <ValidatorSite> validatorSites_;
-	std::unique_ptr <CertList>          certList_;
-	std::unique_ptr <CACertSite>    caCertSites_;
-    std::unique_ptr <ServerHandler> serverHandler_;
-    std::unique_ptr <AmendmentTable> m_amendmentTable;
-    std::unique_ptr <LoadFeeTrack> mFeeTrack;
-    std::unique_ptr <HashRouter> mHashRouter;
-	RCLValidations mValidations;
-    std::unique_ptr <LoadManager> m_loadManager;
-    std::unique_ptr <TxQ> txQ_;
-	std::unique_ptr <TxStoreDBConn> m_pTxStoreDBConn;
-    std::unique_ptr <TxStore> m_pTxStore;
-    std::unique_ptr <TableStatusDB> m_pTableStatusDB;
-    std::unique_ptr <TableSync> m_pTableSync;
-    std::unique_ptr <TableStorage> m_pTableStorage;
-	std::unique_ptr <TableAssistant> m_pTableAssistant;
-	std::unique_ptr <ContractHelper> m_pContractHelper;
-	std::unique_ptr <TableTxAccumulator> m_pTableTxAccumulator;
-    std::unique_ptr <TxPool> m_pTxPool;
-	std::unique_ptr <StateManager> m_pStateManager;
+ 
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
     boost::asio::steady_timer sweepTimer_;
     boost::asio::steady_timer entropyTimer_;
     bool startTimers_;
 
-
-    std::unique_ptr <DatabaseCon> mTxnDB;
-    std::unique_ptr <DatabaseCon> mLedgerDB;
-    std::unique_ptr <DatabaseCon> mWalletDB;
-    std::unique_ptr <Overlay> m_overlay;
-    std::vector <std::unique_ptr<Stoppable>> websocketServers_;
 
     boost::asio::signal_set m_signals;
 
@@ -409,6 +188,16 @@ public:
 
     io_latency_sampler m_io_latency_sampler;
 
+	std::unique_ptr <SchemaManager>		m_schemaManager;
+	std::unique_ptr <Resource::Manager> m_resourceManager;
+	std::unique_ptr <CollectorManager>	m_collectorManager;		
+	std::unique_ptr <NodeStoreScheduler>	m_nodeStoreScheduler;
+	std::unique_ptr <JobQueue>			m_jobQueue;
+	std::unique_ptr <LoadManager>		m_loadManager;
+	std::unique_ptr <ServerHandler>		serverHandler_;
+
+	std::pair<PublicKey, SecretKey>		nodeIdentity_;
+	ValidatorKeys const validatorKeys_;
     //--------------------------------------------------------------------------
 
     static
@@ -424,150 +213,45 @@ public:
 
     //--------------------------------------------------------------------------
 
-    ApplicationImp (
-            std::unique_ptr<Config> config,
-            std::unique_ptr<Logs> logs,
-            std::unique_ptr<TimeKeeper> timeKeeper)
-        : RootStoppable ("Application")
-        , BasicApp (numberOfThreads(*config))
-        , config_ (std::move(config))
-        , logs_ (std::move(logs))
-        , timeKeeper_ (std::move(timeKeeper))
+	ApplicationImp(
+		std::unique_ptr<Config> config,
+		std::unique_ptr<Logs> logs,
+		std::unique_ptr<TimeKeeper> timeKeeper)
+		: RootStoppable("Application")
+		, BasicApp(numberOfThreads(*config))
+		, config_(std::move(config))
+		, logs_(std::move(logs))
+		, m_journal(logs_->journal("Application"))
 
-        , m_journal (logs_->journal("Application"))
+		, timeKeeper_(std::move(timeKeeper))
+		// PerfLog must be started before any other threads are launched.
+		, perfLog_(perf::make_PerfLog(
+			perf::setup_PerfLog(config_->section("perf"), config_->CONFIG_DIR),
+			*this, logs_->journal("PerfLog"), [this]() { signalStop(); }))
 
-        // PerfLog must be started before any other threads are launched.
-        , perfLog_ (perf::make_PerfLog(
-            perf::setup_PerfLog(config_->section("perf"), config_->CONFIG_DIR),
-            *this, logs_->journal("PerfLog"), [this] () { signalStop(); }))
+		, m_collectorManager(CollectorManager::New(
+			config_->section(SECTION_INSIGHT), logs_->journal("Collector")))
 
-        , m_txMaster (*this)
+		, m_resourceManager(Resource::make_Manager(
+			m_collectorManager->collector(), logs_->journal("Resource")))
 
-        , m_nodeStoreScheduler (*this)
+		// The JobQueue has to come pretty early since
+		// almost everything is a Stoppable child of the JobQueue.
+		//
+		, m_jobQueue(std::make_unique<JobQueue>(
+			m_collectorManager->group("jobq"), *m_nodeStoreScheduler,
+			logs_->journal("JobQueue"), *logs_, *perfLog_))
 
-        , m_shaMapStore (make_SHAMapStore (*this, setup_SHAMapStore (*config_),
-            *this, m_nodeStoreScheduler, logs_->journal("SHAMapStore"),
-            logs_->journal("NodeObject"), m_txMaster, *config_))
+		, serverHandler_(make_ServerHandler(*this, *this, get_io_service(),
+			*m_jobQueue, *m_resourceManager,
+			*m_collectorManager))
 
-        , accountIDCache_(128000)
+		, m_nodeStoreScheduler(std::make_unique<NodeStoreScheduler>(*this))
 
-        , m_tempNodeCache ("NodeCache", 16384, std::chrono::seconds {90},
-            stopwatch(), logs_->journal("TaggedCache"))
+		, m_loadManager(make_LoadManager(*this, *this, logs_->journal("LoadManager")))
 
-        , m_collectorManager (CollectorManager::New (
-            config_->section (SECTION_INSIGHT), logs_->journal("Collector")))
-        , cachedSLEs_ (std::chrono::minutes(1), stopwatch())
-        , validatorKeys_(*config_, m_journal)
-
-        , m_resourceManager (Resource::make_Manager (
-            m_collectorManager->collector(), logs_->journal("Resource")))
-
-        // The JobQueue has to come pretty early since
-        // almost everything is a Stoppable child of the JobQueue.
-        //
-        , m_jobQueue (std::make_unique<JobQueue>(
-            m_collectorManager->group ("jobq"), m_nodeStoreScheduler,
-            logs_->journal("JobQueue"), *logs_, *perfLog_))
-
-        //
-        // Anything which calls addJob must be a descendant of the JobQueue
-        //
-        , m_nodeStore (
-            m_shaMapStore->makeDatabase ("NodeStore.main", 4, *m_jobQueue))
-
-        , shardStore_ (
-            m_shaMapStore->makeDatabaseShard ("ShardStore", 4, *m_jobQueue))
-
-        , family_ (*this, *m_nodeStore, *m_collectorManager)
-
-        , m_orderBookDB (*this, *m_jobQueue)
-
-        , m_pathRequests (std::make_unique<PathRequests> (
-            *this, logs_->journal("PathRequest"), m_collectorManager->collector ()))
-
-        , m_ledgerMaster (std::make_unique<LedgerMaster> (*this, stopwatch (),
-            *m_jobQueue, m_collectorManager->collector (),
-            logs_->journal("LedgerMaster")))
-
-        // VFALCO NOTE must come before NetworkOPs to prevent a crash due
-        //             to dependencies in the destructor.
-        //
-        , m_inboundLedgers (make_InboundLedgers (*this, stopwatch(),
-            *m_jobQueue, m_collectorManager->collector ()))
-
-        , m_inboundTransactions (make_InboundTransactions
-            ( *this, stopwatch()
-            , *m_jobQueue
-            , m_collectorManager->collector ()
-            , [this](std::shared_ptr <SHAMap> const& set,
-                bool fromAcquire)
-            {
-                gotTXSet (set, fromAcquire);
-            }))
-
-        , m_acceptedLedgerCache("AcceptedLedger", /*4*/16, std::chrono::minutes{ 10 }, stopwatch(),
-            logs_->journal("TaggedCache"))
-
-        , m_networkOPs (make_NetworkOPs (*this, stopwatch(),
-            config_->standalone(), config_->NETWORK_QUORUM, config_->START_VALID,
-            *m_jobQueue, *m_ledgerMaster, *m_jobQueue, validatorKeys_,
-            get_io_service(), logs_->journal("NetworkOPs")))
-
-        , cluster_ (std::make_unique<Cluster> (
-            logs_->journal("Overlay")))
-
-        , validatorManifests_ (std::make_unique<ManifestCache> (
-            logs_->journal("ManifestCache")))
-
-        , publisherManifests_ (std::make_unique<ManifestCache> (
-            logs_->journal("ManifestCache")))
-
-        , validators_ (std::make_unique<ValidatorList> (
-            *validatorManifests_, *publisherManifests_, *timeKeeper_,
-            logs_->journal("ValidatorList"), config_->VALIDATION_QUORUM))
-
-		, validatorSites_(std::make_unique<ValidatorSite>(
-			*validatorManifests_, get_io_service(), *validators_, logs_->journal("ValidatorSite")))
-
-		, caCertSites_(std::make_unique<CACertSite>(
-			*validatorManifests_, *publisherManifests_, *timeKeeper_,
-			get_io_service(), config_->ROOT_CERTIFICATES, logs_->journal("CACertSite")))
-
-		, certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES ,logs_->journal("CertList")))
-
-        , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
-            *m_jobQueue, *m_networkOPs, *m_resourceManager,
-            *m_collectorManager))
-
-        , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
-
-        , mHashRouter (std::make_unique<HashRouter>(
-            stopwatch(), HashRouter::getDefaultHoldTime (),
-            HashRouter::getDefaultRecoverLimit ()))
-
-        , mValidations (ValidationParms(),stopwatch(), *this, logs_->journal("Validations"))
-
-        , m_loadManager (make_LoadManager (*this, *this, logs_->journal("LoadManager")))
-
-        , txQ_(make_TxQ(setup_TxQ(*config_), logs_->journal("TxQ")))
-
-		, m_pTxStoreDBConn(std::make_unique<TxStoreDBConn>(*config_))
-
-        , m_pTxStore(std::make_unique<TxStore>(m_pTxStoreDBConn->GetDBConn(), *config_, logs_->journal("TxStore")))		
-
-        , m_pTableSync(std::make_unique<TableSync>(*this, *config_, logs_->journal("TableSync")))
-
-        , m_pTableStorage(std::make_unique<TableStorage>(*this, *config_, logs_->journal("TableStorage")))
-
-		, m_pTableAssistant(std::make_unique<TableAssistant>(*this, *config_, logs_->journal("TableAssistant")))
-
-		, m_pContractHelper(std::make_unique<ContractHelper>(*this))
-
-		, m_pTableTxAccumulator(std::make_unique<TableTxAccumulator>(*this))
-
-        , m_pTxPool(std::make_unique<TxPool>(*this, logs_->journal("TxPool")))
-
-		, m_pStateManager(std::make_unique<StateManager>(*this, logs_->journal("StateManager")))
+		, m_schemaManager(std::make_unique<SchemaManager>(
+			*this, logs_->journal("SchemaManager")))
 
         , sweepTimer_ (get_io_service())
 
@@ -579,14 +263,14 @@ public:
 
         , checkSigs_(true)
 
+		, validatorKeys_(*config_, m_journal)
+
         , m_resolver (ResolverAsio::New (get_io_service(), logs_->journal("Resolver")))
 
         , m_io_latency_sampler (m_collectorManager->collector()->make_event ("ios_latency"),
             logs_->journal("Application"), std::chrono::milliseconds (100), get_io_service())
     {
-        if (shardStore_)
-            sFamily_ = std::make_unique<detail::AppFamily>(
-                *this, *shardStore_, *m_collectorManager);
+
         add (m_resourceManager.get ());
 
         //
@@ -605,9 +289,9 @@ public:
         //
 
         // VFALCO HACK
-        m_nodeStoreScheduler.setJobQueue (*m_jobQueue);
+        m_nodeStoreScheduler->setJobQueue (*m_jobQueue);
 
-        add (m_ledgerMaster->getPropertySource ());
+        //add (m_ledgerMaster->getPropertySource ());
 
 		logs_->setApplication(this);
     }
@@ -632,9 +316,10 @@ public:
     }
 
     Config&
-    config() override
+    config(SchemaID const& id) override
     {
-        return *config_;
+		assert(m_schemaManager->contains(id));
+        return m_schemaManager->getSchema(id)->config();
     }
 
     CollectorManager& getCollectorManager () override
@@ -642,15 +327,22 @@ public:
         return *m_collectorManager;
     }
 
-    Family& family() override
-    {
-        return family_;
-    }
+	NodeStoreScheduler& nodeStoreScheduler() override
+	{
+		return *m_nodeStoreScheduler;
+	}
 
-    Family* shardFamily() override
-    {
-        return sFamily_.get();
-    }
+	Family& family(SchemaID const& id) override
+	{
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->family();
+	}
+
+	Family* shardFamily(SchemaID const& id) override
+	{
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->shardFamily();
+	}
 
     TimeKeeper&
     timeKeeper() override
@@ -669,54 +361,64 @@ public:
         return nodeIdentity_;
     }
 
-	TxStoreDBConn& getTxStoreDBConn() override
+	TxStoreDBConn& getTxStoreDBConn(SchemaID const& id) override
 	{
-		return *m_pTxStoreDBConn;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTxStoreDBConn();
 	}
 
-	TxStore& getTxStore() override
+	TxStore& getTxStore(SchemaID const& id) override
 	{
-		return *m_pTxStore;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTxStore();
 	}
 
-    TableStatusDB& getTableStatusDB() override
+    TableStatusDB& getTableStatusDB(SchemaID const& id) override
 	{
-		return *m_pTableStatusDB;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTableStatusDB();
 	}
 
-    TableSync& getTableSync() override
+    TableSync& getTableSync(SchemaID const& id) override
     {
-        return *m_pTableSync;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTableSync();
     }
 
-    TableStorage& getTableStorage() override
+    TableStorage& getTableStorage(SchemaID const& id) override
     {
-        return *m_pTableStorage;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTableStorage();
     }
 
-	TableAssistant& getTableAssistant() override
+	TableAssistant& getTableAssistant(SchemaID const& id) override
 	{
-		return *m_pTableAssistant;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTableAssistant();
 	}
 
-	ContractHelper& getContractHelper() override
+	ContractHelper& getContractHelper(SchemaID const& id) override
 	{
-		return *m_pContractHelper;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getContractHelper();
 	}
 
-	TableTxAccumulator& getTableTxAccumulator() override
+	TableTxAccumulator& getTableTxAccumulator(SchemaID const& id) override
 	{
-		return *m_pTableTxAccumulator;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTableTxAccumulator();
 	}
 
-    TxPool& getTxPool() override
+    TxPool& getTxPool(SchemaID const& id) override
     {
-        return *m_pTxPool;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTxPool();
     }
 
-	StateManager& getStateManager() override
+	StateManager& getStateManager(SchemaID const& id) override
 	{
-		return *m_pStateManager;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getStateManager();
 	}
 
     virtual
@@ -726,9 +428,25 @@ public:
         return validatorKeys_.publicKey;
     }
 
-    NetworkOPs& getOPs () override
+	ValidatorKeys const& getValidatorKeys()const override
+	{
+		return validatorKeys_;
+	}
+
+	ResolverAsio& getResolver() override
+	{
+		return *m_resolver;
+	}
+
+	ServerHandler& getServerHandler()override
+	{
+		return *serverHandler_;
+	}
+
+    NetworkOPs& getOPs (SchemaID const& id) override
     {
-        return *m_networkOPs;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getOPs();
     }
 
     boost::asio::io_service& getIOService () override
@@ -741,35 +459,34 @@ public:
         return m_io_latency_sampler.get ();
     }
 
-    LedgerMaster& getLedgerMaster () override
+    LedgerMaster& getLedgerMaster (SchemaID const& id) override
     {
-        return *m_ledgerMaster;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getLedgerMaster();
     }
 
-    InboundLedgers& getInboundLedgers () override
+    InboundLedgers& getInboundLedgers (SchemaID const& id) override
     {
-        return *m_inboundLedgers;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getInboundLedgers();
     }
 
-    InboundTransactions& getInboundTransactions () override
+    InboundTransactions& getInboundTransactions (SchemaID const& id) override
     {
-        return *m_inboundTransactions;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getInboundTransactions();
     }
 
-    TaggedCache <uint256, AcceptedLedger>& getAcceptedLedgerCache () override
+    TaggedCache <uint256, AcceptedLedger>& getAcceptedLedgerCache (SchemaID const& id) override
     {
-        return m_acceptedLedgerCache;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getAcceptedLedgerCache();
     }
 
-    void gotTXSet (std::shared_ptr<SHAMap> const& set, bool fromAcquire)
+    TransactionMaster& getMasterTransaction (SchemaID const& id) override
     {
-        if (set)
-            m_networkOPs->mapComplete (set, fromAcquire);
-    }
-
-    TransactionMaster& getMasterTransaction () override
-    {
-        return m_txMaster;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getMasterTransaction();
     }
 
     perf::PerfLog& getPerfLog () override
@@ -777,19 +494,22 @@ public:
         return *perfLog_;
     }
 
-    NodeCache& getTempNodeCache () override
+    NodeCache& getTempNodeCache (SchemaID const& id) override
     {
-        return m_tempNodeCache;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTempNodeCache();
     }
 
-    NodeStore::Database& getNodeStore () override
+    NodeStore::Database& getNodeStore (SchemaID const& id) override
     {
-        return *m_nodeStore;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getNodeStore();
     }
 
-    NodeStore::DatabaseShard* getShardStore () override
+    NodeStore::DatabaseShard* getShardStore (SchemaID const& id) override
     {
-        return shardStore_.get();
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getShardStore();
     }
 
     Application::MutexType& getMasterMutex () override
@@ -807,125 +527,144 @@ public:
         return *m_resourceManager;
     }
 
-    OrderBookDB& getOrderBookDB () override
+    OrderBookDB& getOrderBookDB (SchemaID const& id) override
     {
-        return m_orderBookDB;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getOrderBookDB();
     }
 
-    PathRequests& getPathRequests () override
+    PathRequests& getPathRequests (SchemaID const& id) override
     {
-        return *m_pathRequests;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getPathRequests();
     }
 
     CachedSLEs&
-    cachedSLEs() override
+    cachedSLEs(SchemaID const& id) override
     {
-        return cachedSLEs_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->cachedSLEs();
     }
 
-    AmendmentTable& getAmendmentTable() override
+    AmendmentTable& getAmendmentTable(SchemaID const& id) override
     {
-        return *m_amendmentTable;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getAmendmentTable();
     }
 
-    LoadFeeTrack& getFeeTrack () override
+    LoadFeeTrack& getFeeTrack (SchemaID const& id) override
     {
-        return *mFeeTrack;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getFeeTrack();
     }
 
-    HashRouter& getHashRouter () override
+    HashRouter& getHashRouter (SchemaID const& id) override
     {
-        return *mHashRouter;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getHashRouter();
     }
 
-    RCLValidations& getValidations () override
+    RCLValidations& getValidations (SchemaID const& id) override
     {
-        return mValidations;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getValidations();
     }
 
-    ValidatorList& validators () override
+    ValidatorList& validators (SchemaID const& id) override
     {
-        return *validators_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->validators();
     }
 
-    ValidatorSite& validatorSites () override
+    ValidatorSite& validatorSites (SchemaID const& id) override
     {
-        return *validatorSites_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->validatorSites();
     }
 
-	CertList& certList() override
+	CertList& certList(SchemaID const& id) override
 	{
-		return *certList_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->certList();;
 	}
 	
-    ManifestCache& validatorManifests() override
+    ManifestCache& validatorManifests(SchemaID const& id) override
     {
-        return *validatorManifests_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->validatorManifests();
     }
 
-    ManifestCache& publisherManifests() override
+    ManifestCache& publisherManifests(SchemaID const& id) override
     {
-        return *publisherManifests_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->publisherManifests();
     }
 
-    Cluster& cluster () override
+    Cluster& cluster (SchemaID const& id) override
     {
-        return *cluster_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->cluster();
     }
 
-    SHAMapStore& getSHAMapStore () override
+    SHAMapStore& getSHAMapStore (SchemaID const& id) override
     {
-        return *m_shaMapStore;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getSHAMapStore();
     }
 
-    PendingSaves& pendingSaves() override
+    PendingSaves& pendingSaves(SchemaID const& id) override
     {
-        return pendingSaves_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->pendingSaves();
     }
 
     AccountIDCache const&
-    accountIDCache() const override
+    accountIDCache(SchemaID const& id) const override
     {
-        return accountIDCache_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->accountIDCache();
     }
 
     OpenLedger&
-    openLedger() override
+    openLedger(SchemaID const& id) override
     {
-        return *openLedger_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->openLedger();
     }
 
     OpenLedger const&
-    openLedger() const override
+    openLedger(SchemaID const& id) const override
     {
-        return *openLedger_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->openLedger();
     }
 
-    Overlay& overlay () override
+    Overlay& overlay (SchemaID const& id) override
     {
-        return *m_overlay;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->overlay();
     }
 
-    TxQ& getTxQ() override
+    TxQ& getTxQ(SchemaID const& id) override
     {
-        assert(txQ_.get() != nullptr);
-        return *txQ_;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTxQ();
     }
 
-    DatabaseCon& getTxnDB () override
+    DatabaseCon& getTxnDB (SchemaID const& id) override
     {
-        assert (mTxnDB.get() != nullptr);
-        return *mTxnDB;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getTxnDB();
     }
-    DatabaseCon& getLedgerDB () override
+    DatabaseCon& getLedgerDB (SchemaID const& id) override
     {
-        assert (mLedgerDB.get() != nullptr);
-        return *mLedgerDB;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getLedgerDB();
     }
-    DatabaseCon& getWalletDB () override
+    DatabaseCon& getWalletDB (SchemaID const& id) override
     {
-        assert (mWalletDB.get() != nullptr);
-        return *mWalletDB;
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->getWalletDB();
     }
 
     bool serverOkay (std::string& reason) override;
@@ -933,26 +672,6 @@ public:
     beast::Journal journal (std::string const& name) override;
 
     //--------------------------------------------------------------------------
-    bool initSqliteDbs ()
-    {
-        assert (mTxnDB.get () == nullptr);
-        assert (mLedgerDB.get () == nullptr);
-        assert (mWalletDB.get () == nullptr);
-
-        DatabaseCon::Setup setup = setup_DatabaseCon (*config_);
-        mTxnDB = std::make_unique <DatabaseCon> (setup, TxnDBName,
-                TxnDBInit, TxnDBCount);
-        mLedgerDB = std::make_unique <DatabaseCon> (setup, "ledger.db",
-                LedgerDBInit, LedgerDBCount);
-        mWalletDB = std::make_unique <DatabaseCon> (setup, "wallet.db",
-                WalletDBInit, WalletDBCount);
-
-        return
-            mTxnDB.get () != nullptr &&
-            mLedgerDB.get () != nullptr &&
-            mWalletDB.get () != nullptr;
-    }
-
     void signalled(const boost::system::error_code& ec, int signal_number)
     {
         if (ec == boost::asio::error::operation_aborted)
@@ -1044,27 +763,7 @@ public:
         using namespace std::chrono_literals;
         waitHandlerCounter_.join("Application", 1s, m_journal);
 
-        JLOG(m_journal.debug()) << "Flushing validations";
-        mValidations.flush ();
-        JLOG(m_journal.debug()) << "Validations flushed";
-
-        validatorSites_->stop ();
-
-		caCertSites_->stop();
-
-        // TODO Store manifests in manifests.sqlite instead of wallet.db
-        validatorManifests_->save (getWalletDB (), "ValidatorManifests",
-            [this](PublicKey const& pubKey)
-            {
-                return validators().listed (pubKey);
-            });
-
-        publisherManifests_->save (getWalletDB (), "PublisherManifests",
-            [this](PublicKey const& pubKey)
-            {
-                return validators().trustedPublisher (pubKey);
-            });
-
+		//todo by ljl:foreach schema
         stopped ();
     }
 
@@ -1141,127 +840,12 @@ public:
 
     void doSweep ()
     {
-        if (! config_->standalone())
-        {
-            boost::filesystem::space_info space =
-                boost::filesystem::space (config_->legacy ("database_path"));
-
-            if (space.available < megabytes(512))
-            {
-                JLOG(m_journal.fatal())
-                    << "Remaining free disk space is less than 512MB";
-                signalStop ();
-            }
-
-            DatabaseCon::Setup dbSetup = setup_DatabaseCon(*config_);
-            boost::filesystem::path dbPath = dbSetup.dataDir / TxnDBName;
-            boost::system::error_code ec;
-            boost::optional<std::uint64_t> dbSize = boost::filesystem::file_size(dbPath, ec);
-            if (ec)
-            {
-                JLOG(m_journal.error())
-                    << "Error checking transaction db file size: "
-                    << ec.message();
-                dbSize.reset();
-            }
-
-            auto db = mTxnDB->checkoutDb();
-            static auto const pageSize = [&]{
-                std::uint32_t ps;
-                *db << "PRAGMA page_size;", soci::into(ps);
-                return ps;
-            }();
-            static auto const maxPages = [&]{
-                std::uint32_t mp;
-                *db << "PRAGMA max_page_count;" , soci::into(mp);
-                return mp;
-            }();
-            std::uint32_t pageCount;
-            *db << "PRAGMA page_count;", soci::into(pageCount);
-            std::uint32_t freePages = maxPages - pageCount;
-            std::uint64_t freeSpace =
-                safe_cast<std::uint64_t>(freePages) * pageSize;
-            JLOG(m_journal.info())
-               << "Transaction DB pathname: " << dbPath.string()
-               << "; file size: " << dbSize.value_or(-1) << " bytes"
-               << "; SQLite page size: " << pageSize  << " bytes"
-               << "; Free pages: " << freePages
-               << "; Free space: " << freeSpace << " bytes; "
-               << "Note that this does not take into account available disk "
-                  "space.";
-
-            if (freeSpace < megabytes(512))
-            {
-                JLOG(m_journal.fatal())
-                    << "Free SQLite space for transaction db is less than "
-                       "512MB. To fix this, rippled must be executed with the "
-                       "vacuum <sqlitetmpdir> parameter before restarting. "
-                       "Note that this activity can take multiple days, "
-                       "depending on database size.";
-                signalStop();
-            }
-        }
-
-        // VFALCO NOTE Does the order of calls matter?
-        // VFALCO TODO fix the dependency inversion using an observer,
-        //         have listeners register for "onSweep ()" notification.
-
-        family().fullbelow().sweep();
-        if (sFamily_)
-            sFamily_->fullbelow().sweep();
-        getMasterTransaction().sweep();
-        getNodeStore().sweep();
-        if (shardStore_)
-            shardStore_->sweep();
-        getLedgerMaster().sweep();
-        getTempNodeCache().sweep();
-        getValidations().expire();
-        getInboundLedgers().sweep();
-        getTableSync().sweep();
-        m_acceptedLedgerCache.sweep();
-        family().treecache().sweep();
-        if (sFamily_)
-            sFamily_->treecache().sweep();
-        cachedSLEs_.expire();
+		//todo by ljl: foreach schema do sweep
 
         // Set timer to do another sweep later.
         setSweepTimer();
     }
 
-    LedgerIndex getMaxDisallowedLedger() override
-    {
-        return maxDisallowedLedger_;
-    }
-
-
-private:
-    // For a newly-started validator, this is the greatest persisted ledger
-    // and new validations must be greater than this.
-    std::atomic<LedgerIndex> maxDisallowedLedger_ {0};
-
-    void addTxnSeqField();
-    void addValidationSeqFields();
-    bool updateTables ();
-    bool nodeToShards ();
-    bool validateShards ();
-    void startGenesisLedger ();
-    bool setSynTable();
-
-	bool checkCertificate();
-
-    std::shared_ptr<Ledger>
-    getLastFullLedger();
-
-    std::shared_ptr<Ledger>
-    loadLedgerFromFile (
-        std::string const& ledgerID);
-
-    bool loadOldLedger (
-        std::string const& ledgerID,
-        bool replay,
-        bool isFilename);
-
-    void setMaxDisallowedLedger();
 };
 
 //------------------------------------------------------------------------------
@@ -1271,11 +855,7 @@ private:
 //             which are members of the Application object.
 //
 bool ApplicationImp::setup()
-{
-    if (!setSynTable())  return false;
-
-	if (!checkCertificate())  return false;
-    
+{   
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());
 
@@ -1284,8 +864,6 @@ bool ApplicationImp::setup()
 
     m_signals.async_wait(std::bind(&ApplicationImp::signalled, this,
         std::placeholders::_1, std::placeholders::_2));
-
-    assert (mTxnDB == nullptr);
 
     auto debug_log = config_->getDebugLogFile ();
 
@@ -1312,306 +890,28 @@ bool ApplicationImp::setup()
     if (!config_->standalone())
         timeKeeper_->run(config_->SNTP_SERVERS);
 
-    if (!initSqliteDbs ())
-    {
-        JLOG(m_journal.fatal()) << "Cannot create database connections!";
-        return false;
-    }
-
-    if (validatorKeys_.publicKey.size())
-        setMaxDisallowedLedger();
-
-    getLedgerDB ().getSession ()
-        << boost::str (boost::format ("PRAGMA cache_size=-%d;") %
-                        (config_->getSize (siLgrDBCache) * kilobytes(1)));
-
-    getTxnDB ().getSession ()
-            << boost::str (boost::format ("PRAGMA cache_size=-%d;") %
-                            (config_->getSize (siTxnDBCache) * kilobytes(1)));
-
-    mTxnDB->setupCheckpointing (m_jobQueue.get(), logs());
-    mLedgerDB->setupCheckpointing (m_jobQueue.get(), logs());
-
-    if (!updateTables ())
-        return false;
-
-    // Configure the amendments the server supports
-    {
-        auto const& sa = detail::supportedAmendments();
-        std::vector<std::string> saHashes;
-        saHashes.reserve(sa.size());
-        for (auto const& name : sa)
-        {
-            auto const f = getRegisteredFeature(name);
-            BOOST_ASSERT(f);
-            if (f)
-                saHashes.push_back(to_string(*f) + " " + name);
-        }
-        Section supportedAmendments ("Supported Amendments");
-        supportedAmendments.append (saHashes);
-
-        Section enabledAmendments = config_->section (SECTION_AMENDMENTS);
-
-        m_amendmentTable = make_AmendmentTable (
-			weeks{ 2 },//std::chrono::minutes{10},
-            MAJORITY_FRACTION,
-            supportedAmendments,
-            enabledAmendments,
-            config_->section (SECTION_VETO_AMENDMENTS),
-            logs_->journal("Amendments"));
-    }
-
-    Pathfinder::initPathTable();
-
-
-    // VFALCO NOTE Unfortunately, in stand-alone mode some code still
-    //             foolishly calls overlay(). When this is fixed we can
-    //             move the instantiation inside a conditional:
-    //
-    //             if (!config_.standalone())
-    m_overlay = make_Overlay (*this, setup_Overlay(*config_), *m_jobQueue,
-        *serverHandler_, *m_resourceManager, *m_resolver, get_io_service(),
-        *config_);
-    add (*m_overlay); // add to PropertyStream
-	
-
-    auto const startUp = config_->START_UP;
-    if (startUp == Config::FRESH)
-    {
-        JLOG(m_journal.info()) << "Starting new Ledger";
-
-        startGenesisLedger ();
-    }
-    else if (startUp == Config::LOAD ||
-                startUp == Config::LOAD_FILE ||
-                startUp == Config::REPLAY)
-    {
-        JLOG(m_journal.info()) <<
-            "Loading specified Ledger";
-
-        if (!loadOldLedger (config_->START_LEDGER,
-                            startUp == Config::REPLAY,
-                            startUp == Config::LOAD_FILE))
-        {
-            JLOG(m_journal.error()) <<
-                "The specified ledger could not be loaded.";
-            return false;
-        }
-    }
-    else if (startUp == Config::NETWORK)
-    {
-        // This should probably become the default once we have a stable network.
-        if (!config_->standalone())
-            m_networkOPs->setNeedNetworkLedger();
-
-        startGenesisLedger ();
-    }
-    else
-    {
-        startGenesisLedger ();
-    }
-
-    m_orderBookDB.setup (getLedgerMaster ().getCurrentLedger ());
-
-    nodeIdentity_ = loadNodeIdentity (*this);
-
-    if (!cluster_->load (config().section(SECTION_CLUSTER_NODES)))
-    {
-        JLOG(m_journal.fatal()) << "Invalid entry in cluster configuration.";
-        return false;
-    }
-
-    {
-        if(validatorKeys_.configInvalid())
-            return false;
-
-        if (!validatorManifests_->load (
-            getWalletDB (), "ValidatorManifests", validatorKeys_.manifest,
-            config().section (SECTION_VALIDATOR_KEY_REVOCATION).values ()))
-        {
-            JLOG(m_journal.fatal()) << "Invalid configured validator manifest.";
-            return false;
-        }
-
-        publisherManifests_->load (
-            getWalletDB (), "PublisherManifests");
-
-        // Setup trusted validators
-        if (!validators_->load (
-                validatorKeys_.publicKey,
-                config().section (SECTION_VALIDATORS).values (),
-                config().section (SECTION_VALIDATOR_LIST_KEYS).values ()))
-        {
-            JLOG(m_journal.fatal()) <<
-                "Invalid entry in validator configuration.";
-            return false;
-        }
-    }
-
-    if (!validatorSites_->load (
-        config().section (SECTION_VALIDATOR_LIST_SITES).values ()))
-    {
-        JLOG(m_journal.fatal()) <<
-            "Invalid entry in [" << SECTION_VALIDATOR_LIST_SITES << "]";
-        return false;
-    }
-	else {
-		validatorSites_->setWaitinBeginConsensus();
-	}
-
-	if (!caCertSites_->load(
-		config().section(SECTION_CACERTS_LIST_KEYS).values(),
-		config().section(SECTION_CACERTS_LIST_SITES).values()))
 	{
-		JLOG(m_journal.fatal()) <<
-			"Invalid entry in [" << SECTION_CACERTS_LIST_SITES << "]";
-		return false;
-	}
-
-    using namespace std::chrono;
-    m_nodeStore->tune(config_->getSize(siNodeCacheSize),
-                      seconds{config_->getSize(siNodeCacheAge)});
-    m_ledgerMaster->tune(config_->getSize(siLedgerSize),
-                         seconds{config_->getSize(siLedgerAge)});
-    family().treecache().setTargetSize(config_->getSize (siTreeCacheSize));
-    family().treecache().setTargetAge(
-        seconds{config_->getSize(siTreeCacheAge)});
-    if (shardStore_)
-    {
-        shardStore_->tune(config_->getSize(siNodeCacheSize),
-            seconds{config_->getSize(siNodeCacheAge)});
-        sFamily_->treecache().setTargetSize(config_->getSize(siTreeCacheSize));
-        sFamily_->treecache().setTargetAge(
-            seconds{config_->getSize(siTreeCacheAge)});
-    }
-
-    //----------------------------------------------------------------------
-    //
-    // Server
-    //
-    //----------------------------------------------------------------------
-
-
-    if (!config_->standalone())
-    {
-        // validation and node import require the sqlite db
-        if (config_->nodeToShard && !nodeToShards())
-            return false;
-
-        if (config_->validateShards && !validateShards())
-            return false;
-    }
-
-    validatorSites_->start ();
-
-	caCertSites_->start();
-
-    // start first consensus round
-	if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
-	{
-		if (!m_networkOPs->beginConsensus(m_ledgerMaster->getClosedLedger()->info().hash))
+		try
 		{
-			JLOG(m_journal.fatal()) << "Unable to start consensus";
+			auto setup = setup_ServerHandler(
+				*config_, beast::logstream{ m_journal.error() });
+			setup.makeContexts();
+			serverHandler_->setup(setup, m_journal);
+		}
+		catch (std::exception const& e)
+		{
+			if (auto stream = m_journal.fatal())
+			{
+				stream << "Unable to setup server handler";
+				if (std::strlen(e.what()) > 0)
+					stream << ": " << e.what();
+			}
 			return false;
 		}
 	}
 
-
-    {
-        try
-        {
-            auto setup = setup_ServerHandler(
-                *config_, beast::logstream{m_journal.error()});
-            setup.makeContexts();
-            serverHandler_->setup(setup, m_journal);
-        }
-        catch (std::exception const& e)
-        {
-            if (auto stream = m_journal.fatal())
-            {
-                stream << "Unable to setup server handler";
-                if(std::strlen(e.what()) > 0)
-                    stream << ": " << e.what();
-            }
-            return false;
-        }
-    }
-
-    // Begin connecting to network.
-    if (!config_->standalone())
-    {
-        // Should this message be here, conceptually? In theory this sort
-        // of message, if displayed, should be displayed from PeerFinder.
-        if (config_->PEER_PRIVATE && config_->IPS_FIXED.empty ())
-        {
-            JLOG(m_journal.warn())
-                << "No outbound peer connections will be made";
-        }
-
-        // VFALCO NOTE the state timer resets the deadlock detector.
-        //
-        m_networkOPs->setStateTimer ();
-    }
-    else
-    {
-        JLOG(m_journal.warn()) << "Running in standalone mode";
-
-        m_networkOPs->setStandAlone ();
-    }
-
-    if (config_->canSign())
-    {
-        JLOG(m_journal.warn()) <<
-            "*** The server is configured to allow the 'sign' and 'sign_for'";
-        JLOG(m_journal.warn()) <<
-            "*** commands. These commands have security implications and have";
-        JLOG(m_journal.warn()) <<
-            "*** been deprecated. They will be removed in a future release of";
-        JLOG(m_journal.warn()) <<
-            "*** rippled.";
-        JLOG(m_journal.warn()) <<
-            "*** If you do not use them to sign transactions please edit your";
-        JLOG(m_journal.warn()) <<
-            "*** configuration file and remove the [enable_signing] stanza.";
-        JLOG(m_journal.warn()) <<
-            "*** If you do use them to sign transactions please migrate to a";
-        JLOG(m_journal.warn()) <<
-            "*** standalone signing solution as soon as possible.";
-    }
-
-    //
-    // Execute start up rpc commands.
-    //
-    for (auto cmd : config_->section(SECTION_RPC_STARTUP).lines())
-    {
-        Json::Reader jrReader;
-        Json::Value jvCommand;
-
-        if (! jrReader.parse (cmd, jvCommand))
-        {
-            JLOG(m_journal.fatal()) <<
-                "Couldn't parse entry in [" << SECTION_RPC_STARTUP <<
-                "]: '" << cmd;
-        }
-
-        if (!config_->quiet())
-        {
-            JLOG(m_journal.fatal()) << "Startup RPC: " << jvCommand << std::endl;
-        }
-
-        Resource::Charge loadType = Resource::feeReferenceRPC;
-        Resource::Consumer c;
-        RPC::Context context { journal ("RPCHandler"), jvCommand, *this,
-            loadType, getOPs (), getLedgerMaster(), c, Role::ADMIN };
-
-        Json::Value jvResult;
-        RPC::doCommand (context, jvResult);
-
-        if (!config_->quiet())
-        {
-            JLOG(m_journal.fatal()) << "Result: " << jvResult << std::endl;
-        }
-    }
+	auto schema_main = m_schemaManager->createSchemaMain(*config_);
+	schema_main->setup();
 
     return true;
 }
@@ -1680,12 +980,15 @@ int ApplicationImp::fdlimit() const
     // Standard handles, config file, misc I/O etc:
     int needed = 128;
 
-    // 1.5 times the configured peer limit for peer connections:
-    needed += static_cast<int>(0.5 + (1.5 * m_overlay->limit()));
-
-    // the number of fds needed by the backend (internally
-    // doubled if online delete is enabled).
-    needed += std::max(5, m_shaMapStore->fdlimit());
+	for (auto iter = m_schemaManager->begin(); iter != m_schemaManager->end(); iter++)
+	{
+		auto schema = (*iter).second;
+		// 1.5 times the configured peer limit for peer connections:
+		needed += static_cast<int>(0.5 + (1.5 * schema->overlay().limit()));
+		// the number of fds needed by the backend (internally
+		// doubled if online delete is enabled).
+		needed += std::max(5, schema->getSHAMapStore().fdlimit());
+	}
 
     // One fd per incoming connection a port can accept, or
     // if no limit is set, assume it'll handle 256 clients.
@@ -1698,406 +1001,11 @@ int ApplicationImp::fdlimit() const
 
 //------------------------------------------------------------------------------
 
-void
-ApplicationImp::startGenesisLedger()
-{
-    std::vector<uint256> initialAmendments =
-        (config_->START_UP == Config::FRESH) ?
-            m_amendmentTable->getDesired() :
-            std::vector<uint256>{};
 
-    std::shared_ptr<Ledger> const genesis =
-        std::make_shared<Ledger>(
-            create_genesis,
-            *config_,
-            initialAmendments,
-            family());
-    m_ledgerMaster->storeLedger (genesis);
-
-	genesis->setImmutable(*config_);
-	openLedger_.emplace(genesis, cachedSLEs_,
-		logs_->journal("OpenLedger"));
-	m_ledgerMaster->switchLCL(genesis);
-	//set valid ledger
-	m_ledgerMaster->initGenesisLedger(genesis);
-	/*
-    auto const next = std::make_shared<Ledger>(
-        *genesis, timeKeeper().closeTime());
-	next->updateSkipList();
-
-	//store ledger 2 account_node
-	next->stateMap().flushDirty(
-		hotACCOUNT_NODE, next->info().seq);
-    next->setImmutable (*config_);
-    openLedger_.emplace(next, cachedSLEs_,
-        logs_->journal("OpenLedger"));
-    m_ledgerMaster->storeLedger(next);
-    m_ledgerMaster->switchLCL (next);
-	*/
-}
-
-std::shared_ptr<Ledger>
-ApplicationImp::getLastFullLedger()
-{
-    auto j = journal ("Ledger");
-
-	//int count = 0;
-	//while (count < 3)
-	//{
-		try
-		{
-			std::shared_ptr<Ledger> ledger;
-			std::uint32_t seq;
-			uint256 hash;
-
-			//int index = 1 + count++;
-			std::stringstream ss;
-			//ss << "order by LedgerSeq desc limit " << index << ",1";
-			//std::string loadSql = ss.str();
-			std::string loadSql = "order by LedgerSeq desc limit 1";
-			std::tie(ledger, seq, hash) = loadLedgerHelper(loadSql, *this);
-
-			//if (!ledger)
-			//	continue;
-
-			ledger->setImmutable(*config_);
-
-			if (getLedgerMaster().haveLedger(seq))
-				ledger->setValidated();
-
-			if (ledger->info().hash == hash)
-			{
-				JLOG(j.trace()) << "Loaded ledger: " << hash;
-				return ledger;
-			}
-
-			if (auto stream = j.error())
-			{
-				stream << "Failed on ledger";
-				Json::Value p;
-				addJson(p, { *ledger, LedgerFill::full });
-				stream << p;
-			}
-
-			return {};
-		}
-		catch (SHAMapMissingNode& sn)
-		{
-			JLOG(j.warn()) <<
-				"Ledger with missing nodes in database: " << sn;
-			//continue;
-		}
-	//}
-	return{};
-}
-
-std::shared_ptr<Ledger>
-ApplicationImp::loadLedgerFromFile (
-    std::string const& name)
-{
-    try
-    {
-        std::ifstream ledgerFile (name, std::ios::in);
-
-        if (!ledgerFile)
-        {
-            JLOG(m_journal.fatal()) <<
-                "Unable to open file '" << name << "'";
-            return nullptr;
-        }
-
-        Json::Reader reader;
-        Json::Value jLedger;
-
-        if (!reader.parse (ledgerFile, jLedger))
-        {
-            JLOG(m_journal.fatal()) <<
-                "Unable to parse ledger JSON";
-            return nullptr;
-        }
-
-        std::reference_wrapper<Json::Value> ledger (jLedger);
-
-         // accept a wrapped ledger
-         if (ledger.get().isMember  ("result"))
-            ledger = ledger.get()["result"];
-
-         if (ledger.get().isMember ("ledger"))
-            ledger = ledger.get()["ledger"];
-
-        std::uint32_t seq = 1;
-        auto closeTime = timeKeeper().closeTime();
-        using namespace std::chrono_literals;
-        auto closeTimeResolution = 30s;
-        bool closeTimeEstimated = false;
-        std::uint64_t totalDrops = 0;
-
-        if (ledger.get().isMember ("accountState"))
-        {
-            if (ledger.get().isMember (jss::ledger_index))
-            {
-                seq = ledger.get()[jss::ledger_index].asUInt();
-            }
-
-            if (ledger.get().isMember ("close_time"))
-            {
-                using tp = NetClock::time_point;
-                using d = tp::duration;
-                closeTime = tp{d{ledger.get()["close_time"].asUInt()}};
-            }
-            if (ledger.get().isMember ("close_time_resolution"))
-            {
-                using namespace std::chrono;
-                closeTimeResolution = seconds{
-                    ledger.get()["close_time_resolution"].asUInt()};
-            }
-            if (ledger.get().isMember ("close_time_estimated"))
-            {
-                closeTimeEstimated =
-                    ledger.get()["close_time_estimated"].asBool();
-            }
-            if (ledger.get().isMember ("total_coins"))
-            {
-                totalDrops =
-                    beast::lexicalCastThrow<std::uint64_t>
-                        (ledger.get()["total_coins"].asString());
-            }
-
-            ledger = ledger.get()["accountState"];
-        }
-
-        if (!ledger.get().isArrayOrNull ())
-        {
-            JLOG(m_journal.fatal())
-               << "State nodes must be an array";
-            return nullptr;
-        }
-
-        auto loadLedger = std::make_shared<Ledger> (
-            seq, closeTime, *config_, family());
-        loadLedger->setTotalDrops(totalDrops);
-
-        for (Json::UInt index = 0; index < ledger.get().size(); ++index)
-        {
-            Json::Value& entry = ledger.get()[index];
-
-            if (!entry.isObjectOrNull())
-            {
-                JLOG(m_journal.fatal())
-                    << "Invalid entry in ledger";
-                return nullptr;
-            }
-
-            uint256 uIndex;
-
-            if (!uIndex.SetHex (entry[jss::index].asString()))
-            {
-                JLOG(m_journal.fatal())
-                    << "Invalid entry in ledger";
-                return nullptr;
-            }
-
-            entry.removeMember (jss::index);
-
-            STParsedJSONObject stp ("sle", ledger.get()[index]);
-
-            if (!stp.object || uIndex.isZero ())
-            {
-                JLOG(m_journal.fatal())
-                   << "Invalid entry in ledger";
-                return nullptr;
-            }
-
-            // VFALCO TODO This is the only place that
-            //             constructor is used, try to remove it
-            STLedgerEntry sle (*stp.object, uIndex);
-
-            if (! loadLedger->addSLE (sle))
-            {
-                JLOG(m_journal.fatal())
-                   << "Couldn't add serialized ledger: "
-                   << uIndex;
-                return nullptr;
-            }
-        }
-
-        loadLedger->stateMap().flushDirty (
-            hotACCOUNT_NODE, loadLedger->info().seq);
-
-        loadLedger->setAccepted (closeTime,
-            closeTimeResolution, ! closeTimeEstimated,
-               *config_);
-
-        return loadLedger;
-    }
-    catch (std::exception const& x)
-    {
-        JLOG (m_journal.fatal()) <<
-            "Ledger contains invalid data: " << x.what();
-        return nullptr;
-    }
-}
-
-bool ApplicationImp::loadOldLedger (
-    std::string const& ledgerID, bool replay, bool isFileName)
-{
-    try
-    {
-        std::shared_ptr<Ledger const> loadLedger, replayLedger;
-
-        if (isFileName)
-        {
-            if (!ledgerID.empty())
-                loadLedger = loadLedgerFromFile (ledgerID);
-        }
-        else if (ledgerID.length () == 64)
-        {
-            uint256 hash;
-
-            if (hash.SetHex (ledgerID))
-            {
-                loadLedger = loadByHash (hash, *this);
-
-                if (!loadLedger)
-                {
-                    // Try to build the ledger from the back end
-                    auto il = std::make_shared <InboundLedger> (
-                        *this, hash, 0, InboundLedger::Reason::GENERIC,
-                        stopwatch());
-                    if (il->checkLocal ())
-                        loadLedger = il->getLedger ();
-                }
-            }
-        }
-        else if (ledgerID.empty () || boost::beast::detail::iequals(ledgerID, "latest"))
-        {
-            loadLedger = getLastFullLedger ();
-        }
-        else
-        {
-            // assume by sequence
-            std::uint32_t index;
-
-            if (beast::lexicalCastChecked (index, ledgerID))
-                loadLedger = loadByIndex (index, *this);
-        }
-
-        if (!loadLedger)
-            return false;
-
-        if (replay)
-        {
-            // Replay a ledger close with same prior ledger and transactions
-
-            // this ledger holds the transactions we want to replay
-            replayLedger = loadLedger;
-
-            JLOG(m_journal.info()) << "Loading parent ledger";
-
-            loadLedger = loadByHash (replayLedger->info().parentHash, *this);
-            if (!loadLedger)
-            {
-                JLOG(m_journal.info()) << "Loading parent ledger from node store";
-
-                // Try to build the ledger from the back end
-                auto il = std::make_shared <InboundLedger> (
-                    *this, replayLedger->info().parentHash,
-                    0, InboundLedger::Reason::GENERIC, stopwatch());
-
-                if (il->checkLocal ())
-                    loadLedger = il->getLedger ();
-
-                if (!loadLedger)
-                {
-                    JLOG(m_journal.fatal()) << "Replay ledger missing/damaged";
-                    assert (false);
-                    return false;
-                }
-            }
-        }
-
-        JLOG(m_journal.info()) <<
-            "Loading ledger " << loadLedger->info().hash <<
-            " seq:" << loadLedger->info().seq;
-
-        if (loadLedger->info().accountHash.isZero ())
-        {
-            JLOG(m_journal.fatal()) << "Ledger is empty.";
-            assert (false);
-            return false;
-        }
-
-        if (!loadLedger->walkLedger (journal ("Ledger")))
-        {
-            JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
-            assert(false);
-            return false;
-        }
-
-        if (!loadLedger->assertSane (journal ("Ledger")))
-        {
-            JLOG(m_journal.fatal()) << "Ledger is not sane.";
-            assert(false);
-            return false;
-        }
-
-        m_ledgerMaster->setLedgerRangePresent (
-            loadLedger->info().seq,
-            loadLedger->info().seq);
-
-        m_ledgerMaster->switchLCL (loadLedger);
-        loadLedger->setValidated();
-        m_ledgerMaster->setFullLedger(loadLedger, true, false);
-        openLedger_.emplace(loadLedger, cachedSLEs_,
-            logs_->journal("OpenLedger"));
-        if (replay)
-        {
-            // inject transaction(s) from the replayLedger into our open ledger
-            // and build replay structure
-            auto replayData =
-                std::make_unique<LedgerReplay>(loadLedger, replayLedger);
-
-            for (auto const& it : replayData->orderedTxns())
-            {
-                std::shared_ptr<STTx const> const& tx = it.second;
-                auto txID = tx->getTransactionID();
-
-                auto s = std::make_shared <Serializer> ();
-                tx->add(*s);
-
-                forceValidity(getHashRouter(),
-                    txID, Validity::SigGoodOnly);
-
-                openLedger_->modify(
-                    [&txID, &s](OpenView& view, beast::Journal j)
-                    {
-                        view.rawTxInsert (txID, std::move (s), nullptr);
-                        return true;
-                    });
-            }
-
-            m_ledgerMaster->takeReplay (std::move (replayData));
-        }
-    }
-    catch (SHAMapMissingNode&)
-    {
-        JLOG(m_journal.fatal()) <<
-            "Data is missing for selected ledger";
-        return false;
-    }
-    catch (boost::bad_lexical_cast&)
-    {
-        JLOG(m_journal.fatal())
-            << "Ledger specified '" << ledgerID << "' is not valid";
-        return false;
-    }
-
-    return true;
-}
 
 bool ApplicationImp::serverOkay (std::string& reason)
 {
-    if (! config().ELB_SUPPORT)
+    if (! config(beast::zero).ELB_SUPPORT)
         return true;
 
     if (isShutdown ())
@@ -2106,28 +1014,28 @@ bool ApplicationImp::serverOkay (std::string& reason)
         return false;
     }
 
-    if (getOPs ().isNeedNetworkLedger ())
+    if (getOPs (beast::zero).isNeedNetworkLedger ())
     {
         reason = "Not synchronized with network yet";
         return false;
     }
 
-    if (getOPs ().getOperatingMode () < NetworkOPs::omSYNCING)
+    if (getOPs (beast::zero).getOperatingMode () < NetworkOPs::omSYNCING)
     {
         reason = "Not synchronized with network";
         return false;
     }
 
-    if (!getLedgerMaster().isCaughtUp(reason))
+    if (!getLedgerMaster(beast::zero).isCaughtUp(reason))
         return false;
 
-    if (getFeeTrack ().isLoadedLocal ())
+    if (getFeeTrack (beast::zero).isLoadedLocal ())
     {
         reason = "Too much load";
         return false;
     }
 
-    if (getOPs ().isAmendmentBlocked ())
+    if (getOPs (beast::zero).isAmendmentBlocked ())
     {
         reason = "Server version too old";
         return false;
@@ -2144,331 +1052,7 @@ ApplicationImp::journal (std::string const& name)
 
 //VFALCO TODO clean this up since it is just a file holding a single member function definition
 
-static
-std::vector<std::string>
-getSchema (DatabaseCon& dbc, std::string const& dbName)
-{
-    std::vector<std::string> schema;
-    schema.reserve(32);
 
-    std::string sql = "SELECT sql FROM sqlite_master WHERE tbl_name='";
-    sql += dbName;
-    sql += "';";
-
-    std::string r;
-    soci::statement st = (dbc.getSession ().prepare << sql,
-                          soci::into(r));
-    st.execute ();
-    while (st.fetch ())
-    {
-        schema.emplace_back (r);
-    }
-
-    return schema;
-}
-
-static bool schemaHas (
-    DatabaseCon& dbc, std::string const& dbName, int line,
-    std::string const& content, beast::Journal j)
-{
-    std::vector<std::string> schema = getSchema (dbc, dbName);
-
-    if (static_cast<int> (schema.size ()) <= line)
-    {
-        JLOG (j.fatal()) << "Schema for " << dbName << " has too few lines";
-        Throw<std::runtime_error> ("bad schema");
-    }
-
-    return schema[line].find (content) != std::string::npos;
-}
-
-void ApplicationImp::addTxnSeqField ()
-{
-    if (schemaHas (getTxnDB (), "AccountTransactions", 0, "TxnSeq", m_journal))
-        return;
-
-    JLOG (m_journal.warn()) << "Transaction sequence field is missing";
-
-    auto& session = getTxnDB ().getSession ();
-
-    std::vector< std::pair<uint256, int> > txIDs;
-    txIDs.reserve (300000);
-
-    JLOG (m_journal.info()) << "Parsing transactions";
-    int i = 0;
-    uint256 transID;
-
-    boost::optional<std::string> strTransId;
-    soci::blob sociTxnMetaBlob(session);
-    soci::indicator tmi;
-    Blob txnMeta;
-
-    soci::statement st =
-            (session.prepare <<
-             "SELECT TransID, TxnMeta FROM Transactions;",
-             soci::into(strTransId),
-             soci::into(sociTxnMetaBlob, tmi));
-
-    st.execute ();
-    while (st.fetch ())
-    {
-        if (soci::i_ok == tmi)
-            convert (sociTxnMetaBlob, txnMeta);
-        else
-            txnMeta.clear ();
-
-        std::string tid = strTransId.value_or("");
-        transID.SetHex (tid, true);
-
-        if (txnMeta.size () == 0)
-        {
-            txIDs.push_back (std::make_pair (transID, -1));
-            JLOG (m_journal.info()) << "No metadata for " << transID;
-        }
-        else
-        {
-            TxMeta m (transID, 0, txnMeta, journal("TxMeta"));
-            txIDs.push_back (std::make_pair (transID, m.getIndex ()));
-        }
-
-        if ((++i % 1000) == 0)
-        {
-            JLOG (m_journal.info()) << i << " transactions read";
-        }
-    }
-
-    JLOG (m_journal.info()) << "All " << i << " transactions read";
-
-    soci::transaction tr(session);
-
-    JLOG (m_journal.info()) << "Dropping old index";
-    session << "DROP INDEX AcctTxIndex;";
-
-    JLOG (m_journal.info()) << "Altering table";
-    session << "ALTER TABLE AccountTransactions ADD COLUMN TxnSeq INTEGER;";
-
-    boost::format fmt ("UPDATE AccountTransactions SET TxnSeq = %d WHERE TransID = '%s';");
-    i = 0;
-    for (auto& t : txIDs)
-    {
-        session << boost::str (fmt % t.second % to_string (t.first));
-
-        if ((++i % 1000) == 0)
-        {
-            JLOG (m_journal.info()) << i << " transactions updated";
-        }
-    }
-
-    JLOG (m_journal.info()) << "Building new index";
-    session << "CREATE INDEX AcctTxIndex ON AccountTransactions(Account, LedgerSeq, TxnSeq, TransID);";
-
-    tr.commit ();
-}
-
-void ApplicationImp::addValidationSeqFields ()
-{
-    if (schemaHas(getLedgerDB(), "Validations", 0, "LedgerSeq", m_journal))
-    {
-        assert(schemaHas(getLedgerDB(), "Validations", 0, "InitialSeq", m_journal));
-        return;
-    }
-
-    JLOG(m_journal.warn()) << "Validation sequence fields are missing";
-    assert(!schemaHas(getLedgerDB(), "Validations", 0, "InitialSeq", m_journal));
-
-    auto& session = getLedgerDB().getSession();
-
-    soci::transaction tr(session);
-
-    JLOG(m_journal.info()) << "Altering table";
-    session << "ALTER TABLE Validations "
-        "ADD COLUMN LedgerSeq       BIGINT UNSIGNED;";
-    session << "ALTER TABLE Validations "
-        "ADD COLUMN InitialSeq      BIGINT UNSIGNED;";
-
-    // Create the indexes, too, so we don't have to
-    // wait for the next startup, which may be a while.
-    // These should be identical to those in LedgerDBInit
-    JLOG(m_journal.info()) << "Building new indexes";
-    session << "CREATE INDEX IF NOT EXISTS "
-        "ValidationsBySeq ON Validations(LedgerSeq);";
-    session << "CREATE INDEX IF NOT EXISTS ValidationsByInitialSeq "
-        "ON Validations(InitialSeq, LedgerSeq);";
-
-    tr.commit();
-}
-
-bool ApplicationImp::updateTables ()
-{
-    if (config_->section (ConfigSection::nodeDatabase ()).empty ())
-    {
-        JLOG (m_journal.fatal()) << "The [node_db] configuration setting has been updated and must be set";
-        return false;
-    }
-
-    // perform any needed table updates
-    assert (schemaHas (getTxnDB (), "AccountTransactions", 0, "TransID", m_journal));
-    assert (!schemaHas (getTxnDB (), "AccountTransactions", 0, "foobar", m_journal));
-    addTxnSeqField ();
-
-    if (schemaHas (getTxnDB (), "AccountTransactions", 0, "PRIMARY", m_journal))
-    {
-        JLOG (m_journal.fatal()) << "AccountTransactions database should not have a primary key";
-        return false;
-    }
-
-    addValidationSeqFields ();
-
-    if (config_->doImport)
-    {
-        auto j = logs_->journal("NodeObject");
-        NodeStore::DummyScheduler scheduler;
-        std::unique_ptr <NodeStore::Database> source =
-            NodeStore::Manager::instance().make_Database ("NodeStore.import",
-                scheduler, 0, *m_jobQueue,
-                config_->section(ConfigSection::importNodeDatabase ()), j);
-
-        JLOG (j.warn())
-            << "Node import from '" << source->getName () << "' to '"
-            << getNodeStore ().getName () << "'.";
-
-        getNodeStore().import (*source);
-    }
-
-    return true;
-}
-
-bool ApplicationImp::nodeToShards()
-{
-    assert(m_overlay);
-    assert(!config_->standalone());
-
-    if (config_->section(ConfigSection::shardDatabase()).empty())
-    {
-        JLOG (m_journal.fatal()) <<
-            "The [shard_db] configuration setting must be set";
-        return false;
-    }
-    if (!shardStore_)
-    {
-        JLOG(m_journal.fatal()) <<
-            "Invalid [shard_db] configuration";
-        return false;
-    }
-    shardStore_->import(getNodeStore());
-    return true;
-}
-
-bool ApplicationImp::validateShards()
-{
-    assert(m_overlay);
-    assert(!config_->standalone());
-
-    if (config_->section(ConfigSection::shardDatabase()).empty())
-    {
-        JLOG (m_journal.fatal()) <<
-            "The [shard_db] configuration setting must be set";
-        return false;
-    }
-    if (!shardStore_)
-    {
-        JLOG(m_journal.fatal()) <<
-            "Invalid [shard_db] configuration";
-        return false;
-    }
-    shardStore_->validate();
-    return true;
-}
-
-void ApplicationImp::setMaxDisallowedLedger()
-{
-    boost::optional <LedgerIndex> seq;
-    {
-        auto db = getLedgerDB().checkoutDb();
-        *db << "SELECT MAX(LedgerSeq) FROM Ledgers;", soci::into(seq);
-    }
-    if (seq)
-        maxDisallowedLedger_ = *seq;
-
-    JLOG (m_journal.trace()) << "Max persisted ledger is "
-                             << maxDisallowedLedger_;
-}
-
-bool ApplicationImp::setSynTable()
-{
-    auto conn = m_pTxStoreDBConn->GetDBConn();
-
-	DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(*config_);
-	//sync_db not configured
-	if (setup.sync_db.name() == "" && setup.sync_db.lines().size() == 0)
-		return true;
-
-	//sync_db configured,but not connected
-    if (conn == nullptr || conn->getSession().get_backend() == NULL)
-    {
-        m_pTableSync->SetHaveSyncFlag(false);
-        m_pTableStorage->SetHaveSyncFlag(false);
-        //JLOG(m_journal.trace()) << "make db backends error,please check cfg!"; //can not log now!
-		std::cerr << "make db backends error,please check cfg!" << std::endl;
-        return false;
-    }
-    else
-    {
-        std::pair<std::string, bool> result = setup.sync_db.find("type");
-
-        if (result.first.compare("sqlite") == 0 || result.first.empty() || !result.second)
-            m_pTableStatusDB = std::make_unique<TableStatusDBSQLite>(conn, (ripple::Application*)this, m_journal);            
-        else
-            m_pTableStatusDB = std::make_unique<TableStatusDBMySQL>(conn, (ripple::Application*)this, m_journal);
-
-        if (m_pTableStatusDB)
-        {
-            bool bInitRet = m_pTableStatusDB->InitDB(setup);
-            if(bInitRet)
-                //JLOG(m_journal.info()) << "InitDB success";
-				std::cout << "InitDB success" << std::endl;
-            else
-            {
-                //JLOG(m_journal.info()) << "InitDB error";
-				std::cerr << "InitDB error" << std::endl;
-                return false;
-            }   
-        }
-        else
-        {
-            m_pTableSync->SetHaveSyncFlag(false);
-            m_pTableStorage->SetHaveSyncFlag(false);
-            //JLOG(m_journal.info()) << "fail to create sycstate table calss.";
-			std::cerr << "fail to create sycstate table calss." << std::endl;
-            return false;
-        }
-
-        if (m_txMaster.getClientTxStoreDBConn().GetDBConn() == NULL || m_txMaster.getConsensusTxStoreDBConn().GetDBConn() == NULL)
-        {
-            std::cerr << "db connection for consensus or tx check is null" << std::endl;
-            return false;
-        }
-    }
-    return true;
-}
-
-bool ApplicationImp::checkCertificate()
-{
-	auto const vecCrtPath = config_ ->section("x509_crt_path").values();
-	if (vecCrtPath.empty()) {
-		return true;
-	}
-	else if (!config_->ROOT_CERTIFICATES.empty()) {
-
-		OpenSSL_add_all_algorithms();
-		return true;
-	}	
-	else {
-	
-		std::cerr << "Root certificate configuration error ,please check cfg!" << std::endl;
-		return false;
-	}
-}
 
 //------------------------------------------------------------------------------
 

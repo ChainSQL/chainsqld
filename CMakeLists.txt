@@ -665,6 +665,7 @@ endif()
 prepend(peersafe_unity_srcs
 src/peersafe/unity/
 gm_encrypt.cpp
+app_schema.cpp
 app_table.cpp
 app_contract.cpp
 app_sql.cpp)
@@ -725,7 +726,8 @@ foreach(curdir
         crypto
         gmencrypt
         protocol
-        rpc)
+        rpc
+		schema)
     file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp)
     list(APPEND chainsqld_src_nonunity "${cursrcs}")
     list(APPEND non_unity_srcs "${cursrcs}")
@@ -761,7 +763,7 @@ if(enableTest)
             shamap
             unit_test
             vm)
-        file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp)
+        file(GLOB_RECURSE cursrcs src/test/${curdir}/*.cpp) 
         list(APPEND test_srcs "${cursrcs}")
     endforeach()
 

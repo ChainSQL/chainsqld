@@ -88,7 +88,6 @@ private:
     Application& app_;
     Resource::Manager& m_resourceManager;
     beast::Journal m_journal;
-    NetworkOPs& m_networkOPs;
     std::unique_ptr<Server> m_server;
     Setup setup_;
     JobQueue& m_jobQueue;
@@ -101,8 +100,7 @@ private:
 public:
     ServerHandlerImp (Application& app, Stoppable& parent,
         boost::asio::io_service& io_service, JobQueue& jobQueue,
-            NetworkOPs& networkOPs, Resource::Manager& resourceManager,
-                CollectorManager& cm);
+        Resource::Manager& resourceManager,CollectorManager& cm);
 
     ~ServerHandlerImp();
 

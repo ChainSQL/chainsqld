@@ -131,6 +131,7 @@ public:
     };
 
 public:
+	InfoSub();
     InfoSub (Source& source);
     InfoSub (Source& source, Consumer consumer);
 
@@ -158,6 +159,8 @@ public:
 
     std::shared_ptr <PathRequest> const& getPathRequest ();
 
+	void setSource(Source& source);
+	Source* getSource();
 protected:
     using LockType = std::mutex;
     using ScopedLockType = std::lock_guard <LockType>;
@@ -166,7 +169,7 @@ protected:
 
 private:
     Consumer                      m_consumer;
-    Source&                       m_source;
+    Source*                       m_source;
     hash_set <AccountID> realTimeSubscriptions_;
     hash_set <AccountID> normalSubscriptions_;
     hash_set <AccountID> contractSubscriptions_;
