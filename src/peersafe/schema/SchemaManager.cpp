@@ -25,7 +25,10 @@ namespace ripple {
 
 	std::shared_ptr<Schema> SchemaManager::getSchema(uint256 const& schemaId)
 	{
-		return nullptr;
+		if (schemas_.find(schemaId) != schemas_.end())
+			return schemas_[schemaId];
+		else
+			return nullptr;
 	}
 
 	bool SchemaManager::contains(uint256 const& id)

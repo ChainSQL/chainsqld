@@ -19,7 +19,6 @@
 
 
 #include <ripple/core/DatabaseCon.h>
-#include <peersafe/schema/Schema.h>
 #include <ripple/app/main/NodeIdentity.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/Config.h>
@@ -30,7 +29,7 @@
 namespace ripple {
 
 std::pair<PublicKey, SecretKey>
-loadNodeIdentity (Schema& app)
+loadNodeIdentity (Application& app)
 {
     HardEncrypt* hEObj = HardEncryptObj::getInstance();
     if (nullptr != hEObj)

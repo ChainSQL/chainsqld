@@ -170,10 +170,10 @@ public:
 	std::unique_ptr <Resource::Manager> m_resourceManager;
 	std::unique_ptr <SchemaManager>		m_schemaManager;
 	std::unique_ptr <NodeStoreScheduler>	m_nodeStoreScheduler;
+	std::unique_ptr <perf::PerfLog>		perfLog_;
 	std::unique_ptr <JobQueue>			m_jobQueue;
 	std::unique_ptr <LoadManager>		m_loadManager;
 	std::unique_ptr <ServerHandler>		serverHandler_;
-	std::unique_ptr <perf::PerfLog>		perfLog_;
 	std::unique_ptr <ResolverAsio>		m_resolver;
 
     Application::MutexType m_masterMutex;
@@ -871,6 +871,10 @@ public:
 bool ApplicationImp::setup()
 {   
 	auto schema_main = m_schemaManager->createSchemaMain(*config_);
+
+	schema_main->initBeforeSetup();
+
+	nodeIdentity_ = loadNodeIdentity(*this);
 
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());

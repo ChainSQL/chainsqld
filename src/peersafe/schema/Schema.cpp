@@ -231,7 +231,9 @@ namespace ripple {
 	{
 	public:
 
-		bool setup() override;    void addTxnSeqField();
+		bool setup() override;    
+		bool initBeforeSetup() override;
+		void addTxnSeqField();
 		void addValidationSeqFields();
 		bool updateTables();
 		bool nodeToShards();
@@ -318,7 +320,7 @@ namespace ripple {
 		: schema_params_(params)
 		, app_(app)
 		, m_journal(j)
-		, config_(std::move(config))
+		, config_(config)
 
 		, m_txMaster(*this)
 
@@ -880,20 +882,22 @@ private:
 
 	};
 
-	bool SchemaImp::setup()
+	bool SchemaImp::initBeforeSetup()
 	{
-		if (!setSynTable())  return false;
-
-		if (!checkCertificate())  return false;
-
 		assert(mTxnDB == nullptr);
-
-
 		if (!initSqliteDbs())
 		{
 			JLOG(m_journal.fatal()) << "Cannot create database connections!";
 			return false;
 		}
+		return true;
+	}
+
+	bool SchemaImp::setup()
+	{
+		if (!setSynTable())  return false;
+
+		if (!checkCertificate())  return false;
 
 		setMaxDisallowedLedger();
 

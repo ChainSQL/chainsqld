@@ -142,6 +142,7 @@ public:
 	* than the last ledger it persisted. */
 	virtual LedgerIndex				getMaxDisallowedLedger() = 0;
 	virtual SchemaParams			getSchemaParams() = 0;
+	virtual bool					initBeforeSetup() = 0;
 };
 
 std::shared_ptr <Schema>
