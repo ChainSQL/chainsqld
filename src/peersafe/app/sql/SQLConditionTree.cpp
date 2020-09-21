@@ -947,6 +947,12 @@ namespace conditionParse {
 				break;
 			}
 			const std::string& key = keys[0];
+			//check blank space
+			if (key.find(' ') != std::string::npos) {
+				result = { -1, (boost::format("Field [%s] contains blank space.")
+					% key).str() };
+				break;
+			}
 			Json::Value value = condition[key];
 			if (value.isObject()) {
 				if (value.getMemberNames().size() != 1) {

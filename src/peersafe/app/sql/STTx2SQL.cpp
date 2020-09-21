@@ -415,6 +415,11 @@ private:
 };
 
 std::pair<int, std::string> parseField(const Json::Value& json, BuildField& field) {
+	//check blank space
+	if (field.Name().find(' ') != std::string::npos) {
+		return { -1, (boost::format("Field [%s] contains blank space.")
+				 % field.Name()).str() };
+	}
 	Json::Value val;
 	if (json.type() == Json::ValueType::objectValue) {
 		val = json["value"];
@@ -2448,7 +2453,14 @@ namespace helper {
 							code = -3;
 							break;
 						}
-						BuildField field(fieldname.asString());
+						//check blank space
+						auto field_name_str = fieldname.asString();
+						if (field_name_str.find(' ') != std::string::npos){
+							error = (boost::format("Field [%s] contains blank space.")
+								% field_name_str).str();
+							break;
+						}
+						BuildField field(field_name_str);
 						buildsql.AddField(field);
 					}
 				}
@@ -2783,7 +2795,7 @@ bool STTx2SQL::IsTableExistBySelect(DatabaseCon* dbconn, std::string sTable)
     LockedSociSession sql_session = dbconn->checkoutDb();
     bool bExist = false;
     try {
-        std::string sSql = "SELECT * FROM " + sTable;
+        std::string sSql = "SELECT * FROM " + sTable + " LIMIT 1";
         boost::optional<std::string> r;
         soci::statement st = (sql_session->prepare << sSql, soci::into(r));
         st.execute(true);
@@ -2935,56 +2947,56 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
 	return ret;
 }
 
-int STTx2SQL::GenerateInsertSql(const Json::Value& raw, BuildSQL *buildsql) {
+std::pair<int, std::string> STTx2SQL::GenerateInsertSql(const Json::Value& raw, BuildSQL *buildsql) {
 	std::vector<std::string> members = raw.getMemberNames();
 	// retrieve members in object
 	for (size_t i = 0; i < members.size(); i++) {
 		std::string field_name = members[i];
-
+		
 		BuildField insert_field(field_name);
 		std::pair<int, std::string> result = parseField(raw[field_name], insert_field);
 		if (result.first != 0) {
-			return result.first;
+			return result;
 		}
 		buildsql->AddField(insert_field);
 	}
-	return 0;
+	return std::make_pair(0,"");
 
 }
 
-int STTx2SQL::GenerateUpdateSql(const Json::Value& raw, BuildSQL *buildsql) {
-
-	Json::Value conditions;
-	// parse record
-	for (Json::UInt idx = 0; idx < raw.size(); idx++) {
-		auto& v = raw[idx];
-		if (v.isObject() == false) {
-			//JSON_ASSERT(v.isObject());
-			return -1;
-		}
-
-		if (idx == 0) {
-			std::vector<std::string> members = v.getMemberNames();
-			for (size_t i = 0; i < members.size(); i++) {
-				std::string field_name = members[i];
-				BuildField field(field_name);
-				std::pair<int, std::string> result = parseField(v[field_name], field);
-				if (result.first != 0) {
-					return result.first;
-				}
-				buildsql->AddField(field);
-			}
-		}
-		else {
-			conditions.append(v);
-		}
-	}
-
-	if (conditions.isArray() && conditions.size() > 0)
-		buildsql->AddCondition(conditions);
-
-	return 0;
-}
+//int STTx2SQL::GenerateUpdateSql(const Json::Value& raw, BuildSQL *buildsql) {
+//
+//	Json::Value conditions;
+//	// parse record
+//	for (Json::UInt idx = 0; idx < raw.size(); idx++) {
+//		auto& v = raw[idx];
+//		if (v.isObject() == false) {
+//			//JSON_ASSERT(v.isObject());
+//			return -1;
+//		}
+//
+//		if (idx == 0) {
+//			std::vector<std::string> members = v.getMemberNames();
+//			for (size_t i = 0; i < members.size(); i++) {
+//				std::string field_name = members[i];
+//				BuildField field(field_name);
+//				std::pair<int, std::string> result = parseField(v[field_name], field);
+//				if (result.first != 0) {
+//					return result.first;
+//				}
+//				buildsql->AddField(field);
+//			}
+//		}
+//		else {
+//			conditions.append(v);
+//		}
+//	}
+//
+//	if (conditions.isArray() && conditions.size() > 0)
+//		buildsql->AddCondition(conditions);
+//
+//	return 0;
+//}
 
 int STTx2SQL::GenerateDeleteSql(const Json::Value& raw, BuildSQL *buildsql) {
 
@@ -2992,7 +3004,7 @@ int STTx2SQL::GenerateDeleteSql(const Json::Value& raw, BuildSQL *buildsql) {
 	return 0;
 }
 
-int STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
+std::pair<int, std::string> STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
 	//BuildSQL::AndCondtionsType and_conditions;
 	Json::Value conditions;
 	// parse record
@@ -3002,13 +3014,18 @@ int STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
 			if (v.isArray()) {
 				for (Json::UInt i = 0; i < v.size(); i++) {
 					std::string field_name = v[i].asString();
+					//check blank space
+					if (field_name.find(' ') != std::string::npos) {
+						return { -1, (boost::format("Field [%s] contains blank space.")
+								 % field_name).str() };
+					}
 					BuildField field(field_name);
 					buildsql->AddField(field);
 				}
 			}
 		} else {
 			if (v.isObject() == false)
-				return -1;
+				return { -1,"Condition field is not a json-object." };
 
 			int code = -1;
 			std::string error;
@@ -3053,7 +3070,7 @@ int STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
 	}
 	if (conditions.isArray() && conditions.size() > 0)
 		buildsql->AddCondition(conditions);
-	return 0;
+	return { 0,"" };
 }
 
 std::pair<bool, std::string> STTx2SQL::handle_assert_statement(const Json::Value& raw, BuildSQL *buildsql) {
@@ -3085,8 +3102,9 @@ std::pair<bool, std::string> STTx2SQL::handle_assert_statement(const Json::Value
 				ajuested_raw.append(raw[assert_index]);
 			}
 			BuildSQL::BUILDTYPE old = buildsql->build_type(BuildSQL::BUILD_SELECT_SQL);
-			if (GenerateSelectSql(ajuested_raw, buildsql) != 0) {
-				result = { false, "Generate a SQL unsuccessfully." };
+			auto ret = GenerateSelectSql(ajuested_raw, buildsql);
+			if (ret.first != 0) {
+				result = { false, ret.second};
 				break;
 			}
 			query_sql = buildsql->asString();
@@ -3403,23 +3421,25 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		return ret;
 	}
 	buildsql->AddTable(txt_tablename);
-   
+
+	bool bHasAutoField = false;
+	std::string sAutoFillField;
+	if (tx.isFieldPresent(sfAutoFillField))
+	{
+		auto blob = tx.getFieldVL(sfAutoFillField);;
+		sAutoFillField.assign(blob.begin(), blob.end());
+		auto sql_str = (boost::format("select * from information_schema.columns WHERE table_name ='%s'AND column_name ='%s'")
+			% txt_tablename
+			% sAutoFillField).str();
+		LockedSociSession sql = db_conn_->checkoutDb();
+		soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
+		bHasAutoField = records.end() != records.begin();
+	}
+
+
 	if (build_type == BuildSQL::BUILD_INSERT_SQL) {
 		std::string sql;
-        bool bHasAutoField = false;
-        std::string sAutoFillField;
-        if (tx.isFieldPresent(sfAutoFillField))
-        {
-            auto blob = tx.getFieldVL(sfAutoFillField);;
-            sAutoFillField.assign(blob.begin(), blob.end());
-            auto sql_str = (boost::format("select * from information_schema.columns WHERE table_name ='%s'AND column_name ='%s'")
-                % txt_tablename
-                % sAutoFillField).str();
-            LockedSociSession sql = db_conn_->checkoutDb();
-            soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
-            bHasAutoField = records.end() != records.begin();
-        }
-		
+
 		int affected_rows = 0;
 		for (Json::UInt idx = 0; idx < raw_json.size(); idx++) {
 			auto& v = raw_json[idx];
@@ -3429,9 +3449,9 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 				return ret;
 			}
 
-			if(GenerateInsertSql(v, buildsql.get()) != 0) {
-				ret = { -1, "Insert-sql was generated unssuccessfully,transaction may be malformal." };
-				return ret;
+			auto retPair = GenerateInsertSql(v, buildsql.get());
+			if(retPair.first != 0) {
+				return retPair;
 			}
             if (bHasAutoField)
             {
@@ -3470,7 +3490,60 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		return{1, result.second};
 	}
 
+
 	int result = -1;
+
+	if (build_type == BuildSQL::BUILD_UPDATE_SQL){
+
+		Json::Value conditions;
+
+		// parse record
+		for (Json::UInt idx = 0; idx < raw_json.size(); idx++) {
+			auto& v = raw_json[idx];
+			if (v.isObject() == false) {
+				//JSON_ASSERT(v.isObject());
+				result=  -1;
+			}
+
+			if (idx == 0) {
+				std::vector<std::string> members = v.getMemberNames();
+
+				if (bHasAutoField){
+					BuildField update_field(sAutoFillField);
+					update_field.SetFieldValue(to_string(tx.getTransactionID()));
+					buildsql->AddField(update_field);
+				}
+
+				for (size_t i = 0; i < members.size(); i++) {
+					std::string field_name = members[i];
+
+					//check blank space
+					if (field_name.find(' ') != std::string::npos) {
+						return { -1, (boost::format("Field [%s] contains blank space.")
+								 % field_name).str() };
+					}
+
+					BuildField field(field_name);
+					std::pair<int, std::string> ret = parseField(v[field_name], field);
+					if (ret.first != 0) {
+						result =  ret.first;
+					}
+					buildsql->AddField(field);
+				}
+			}
+			else {
+				conditions.append(v);
+			}
+		}
+
+		if (conditions.isArray() && conditions.size() > 0)
+			buildsql->AddCondition(conditions);
+
+		result = 0;
+	}
+
+
+
 	switch (build_type)
 	{
 	case BuildSQL::BUILD_CREATETABLE_SQL:
@@ -3485,9 +3558,9 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		break;
 	case BuildSQL::BUILD_CANCEL_ASSIGN_SQL:
 		break;
-	case BuildSQL::BUILD_UPDATE_SQL:
-		result = GenerateUpdateSql(raw_json, buildsql.get());
-		break;
+	//case BuildSQL::BUILD_UPDATE_SQL:
+	//	result = GenerateUpdateSql(raw_json, buildsql.get());
+	//	break;
 	case BuildSQL::BUILD_DELETE_SQL:
 		result = GenerateDeleteSql(raw_json, buildsql.get());
 		break;
