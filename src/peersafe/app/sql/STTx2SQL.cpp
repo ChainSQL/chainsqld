@@ -125,6 +125,10 @@ public:
 		value_ = value;
 	}
 
+	void SetFieldValue(const InnerNull& value) {
+		value_ = value;
+	}
+
 	void setCompareOperator(const std::string& op) {
 		std::string trim_op = op;
 		boost::algorithm::trim(trim_op);
@@ -337,6 +341,10 @@ public:
 		return value_.isDate();
 	}
 
+	bool isNull() {
+		return value_.isNull();
+	}
+
 	void SetPrimaryKey() {
 		flag_ |= PK;
 	}
@@ -408,7 +416,7 @@ private:
 
 std::pair<int, std::string> parseField(const Json::Value& json, BuildField& field) {
 	Json::Value val;
-	if (json.isObject()) {
+	if (json.type() == Json::ValueType::objectValue) {
 		val = json["value"];
 		Json::Value op = json["op"];
 		if (op.isString() == false)
@@ -427,7 +435,10 @@ std::pair<int, std::string> parseField(const Json::Value& json, BuildField& fiel
 		field.SetFieldValue(val.asUInt());
 	else if (val.isDouble())
 		field.SetFieldValue(val.asDouble());
-	else {
+	else if (val.isNull()){
+		InnerNull value;
+		field.SetFieldValue(value);
+	}else {
 		std::string error = (boost::format("Unkown type when parsing fields.[%s]") 
 			%Json::jsonAsString(val)).str();
 		return{ -1, error };
@@ -549,7 +560,8 @@ public:
 	, db_conn_(dbconn)
 	, condition_(Json::ValueType::nullValue)
 	, join_on_condition_(Json::ValueType::nullValue)
-	, last_error_() {
+	, last_error_()
+	, indi_null(soci::i_null){
 
 	}
 
@@ -874,6 +886,7 @@ protected:
 	Json::Value limit_;
 	Json::Value group_;
 	Json::Value having_;
+	soci::indicator indi_null;
 
 	int execute_droptable_sql() {
 		if (tables_.size() == 0)
@@ -949,7 +962,7 @@ private:
 		for (size_t idx = 0; idx < fields_.size(); idx++) {
 			BuildField& field = fields_[idx];
 			fields_str += field.Name();
-			if(field.isString() || field.isVarchar() 
+			if (field.isString() || field.isVarchar()
 				|| field.isBlob() || field.isText())
 				values_str += (boost::format("\"%1%\"") % field.asString()).str();
 			else if (field.isInt())
@@ -958,8 +971,10 @@ private:
 				values_str += (boost::format("%f") % field.asFloat()).str();
 			else if (field.isDouble() || field.isDecimal())
 				values_str += (boost::format("%f") % field.asDouble()).str();
-			else if(field.isInt64() || field.isDateTime())
+			else if (field.isInt64() || field.isDateTime())
 				values_str += (boost::format("%1%") % field.asInt64()).str();
+			else if (field.isNull())
+				values_str += "NULL";
 
 			if (idx != fields_.size() - 1) {
 				fields_str += ",";
@@ -1055,6 +1070,11 @@ private:
 				update_fields += (boost::format("%1%=%2%")
 					%field.Name()
 					%field.asInt64()).str();
+			}
+			else if (field.isNull()) {
+				update_fields += (boost::format("%1%=%2%")
+					% field.Name()
+					% "NULL").str();
 			}
 
 			if (idx != fields_.size() - 1)
@@ -1637,6 +1657,8 @@ private:
 				t = t, soci::use(field.asDouble());
 			else if (field.isInt64() || field.isDateTime())
 				t = t, soci::use(field.asInt64());
+			else if (field.isNull())
+				t = t, soci::use(0, indi_null);
 		}
 	}
 
@@ -2498,36 +2520,30 @@ namespace helper {
 			for (size_t i = 0; i < r->size(); i++) {
 				Json::Value e;
 				std::string key = r->get_properties(i).get_name();
+				if (r->get_indicator(i) == soci::i_null || r->get_indicator(i) == soci::i_truncated)
+				{
+					e[r->get_properties(i).get_name()] = Json::Value::null;
+				}
 				if (r->get_properties(i).get_data_type() == soci::dt_string
 					|| r->get_properties(i).get_data_type() == soci::dt_blob) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = r->get<std::string>(i);
-					else
-						e[key] = "null";
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = r->get<int>(i);
-					else
-						e[key] = 0;
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_double) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = r->get<double>(i);
-					else
-						e[key] = 0.0;
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = static_cast<int>(r->get<long long>(i));
-					else
-						e[key] = 0;
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = static_cast<int>(r->get<unsigned long long>(i));
-					else
-						e[key] = 0;
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_date) {
 					std::tm tm = { 0 };
@@ -2556,36 +2572,31 @@ namespace helper {
 			for (; r != records.end(); r++) {
 				Json::Value e;
 				for (size_t i = 0; i < r->size(); i++) {
+					if (r->get_indicator(i) == soci::i_null || r->get_indicator(i) == soci::i_truncated)
+					{
+						e[r->get_properties(i).get_name()] = Json::Value::null;
+					}
+
 					if (r->get_properties(i).get_data_type() == soci::dt_string
 						|| r->get_properties(i).get_data_type() == soci::dt_blob) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<std::string>(i);
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<int>(i);
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_double) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<double>(i);
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<long long>(i));
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<unsigned long long>(i));
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
 						std::tm tm = { 0 };
