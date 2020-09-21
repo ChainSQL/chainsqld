@@ -21,8 +21,8 @@
 #define RIPPLE_CONSENSUS_CONSENSUS_TYPES_H_INCLUDED
 
 #include <ripple/basics/chrono.h>
-#include <ripple/consensus/ConsensusProposal.h>
-#include <ripple/consensus/DisputedTx.h>
+#include <peersafe/consensus/ConsensusProposal.h>
+#include <peersafe/consensus/rpca/DisputedTx.h>
 #include <chrono>
 #include <map>
 

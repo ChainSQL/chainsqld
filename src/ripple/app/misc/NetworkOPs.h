@@ -27,14 +27,16 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/ledger/ReadView.h>
 #include <ripple/net/InfoSub.h>
 #include <ripple/protocol/STValidation.h>
+#include <ripple/protocol/messages.h>
+#include <peersafe/consensus/ConsensusParams.h>
 #include <boost/asio.hpp>
 #include <deque>
 #include <memory>
 #include <tuple>
 
-#include <ripple/protocol/messages.h>
 
 namespace ripple {
+
 
 // Operations that clients may wish to perform against the network
 // Master operational handler, server sequencer, network tracker
@@ -215,6 +217,8 @@ public:
     virtual void
     consensusViewChange() = 0;
 
+    virtual ConsensusParms const&
+    getConsensusParms() = 0;
     virtual Json::Value
     getConsensusInfo() = 0;
     virtual Json::Value
@@ -223,22 +227,30 @@ public:
     clearLedgerFetch() = 0;
     virtual Json::Value
     getLedgerFetchInfo() = 0;
+    virtual bool
+    checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) = 0;
 
-		/** Accepts the current transaction tree, return the new ledger's sequence
+	/** Accepts the current transaction tree, return the new ledger's sequence
 
-		This API is only used via RPC with the server in STANDALONE mode and
-		performs a virtual consensus round, with all the transactions we are
-		proposing being accepted.
-		*/
-		virtual std::uint32_t acceptLedger(
-			boost::optional<std::chrono::milliseconds> consensusDelay = boost::none) = 0;
+        This API is only used via RPC with the server in STANDALONE mode and
+        performs a virtual consensus round, with all the transactions we are
+        proposing being accepted.
+    */	
+    virtual std::uint32_t
+    acceptLedger(
+        boost::optional<std::chrono::milliseconds> consensusDelay =
+            boost::none) = 0;
 
-		virtual uint256 getConsensusLCL() = 0;
+    virtual uint256
+    getConsensusLCL() = 0;
 
-		virtual void reportFeeChange() = 0;
+    virtual void
+    reportFeeChange() = 0;
 
-		virtual void updateLocalTx(ReadView const& newValidLedger) = 0;
-		virtual std::size_t getLocalTxCount() = 0;
+    virtual void
+    updateLocalTx(ReadView const& newValidLedger) = 0;
+    virtual std::size_t
+    getLocalTxCount() = 0;
 
     struct AccountTxMarker
     {

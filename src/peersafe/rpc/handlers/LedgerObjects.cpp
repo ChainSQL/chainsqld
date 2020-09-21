@@ -72,6 +72,7 @@ namespace ripple {
 		int txCount = 0;
 		for (auto const& tx : lpLedger->txs)
 		{
+            (void)tx;
 			txCount++;
 		}
 		jvResult[jss::tx] = txCount;

@@ -21,10 +21,11 @@
 #define RIPPLE_APP_CONSENSUSS_VALIDATIONS_H_INCLUDED
 
 #include <ripple/app/ledger/Ledger.h>
-#include <ripple/consensus/Validations.h>
+#include <ripple/basics/ScopedLock.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/RippleLedgerHash.h>
 #include <ripple/protocol/STValidation.h>
+#include <peersafe/consensus/Validations.h>
 #include <vector>
 
 namespace ripple {
@@ -235,20 +236,6 @@ private:
 /// Alias for RCL-specific instantiation of generic Validations
 using RCLValidations = Validations<RCLValidationsAdaptor>;
 
-/** Handle a new validation
-
-    Also sets the trust status of a validation based on the validating node's
-    public key and this node's current UNL.
-
-    @param app Schema object containing validations and ledgerMaster
-    @param val The validation to add
-    @param source Name associated with validation used in logging
-*/
-void
-handleNewValidation(
-    Schema& app,
-    std::shared_ptr<STValidation> const& val,
-    std::string const& source);
 
 }  // namespace ripple
 

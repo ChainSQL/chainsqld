@@ -45,6 +45,7 @@
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/PeerManagerImp.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/consensus/ViewChange.h>
 #include <boost/algorithm/clamp.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -1976,7 +1977,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 	uint256 prevLedgerHash;
 	memcpy(prevLedgerHash.begin(), change.previousledgerhash().data(), 32);
 
-	uint256 suppression = viewChangeUniqueId(
+	uint256 suppression = ViewChange::viewChangeUniqueId(
 		change.previousledgerseq(),prevLedgerHash, publicKey, toView);
 
 	if (!app_.getHashRouter(schemaId).addSuppressionPeer(suppression, id_))

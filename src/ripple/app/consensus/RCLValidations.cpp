@@ -26,11 +26,11 @@
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/chrono.h>
-#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/TimeKeeper.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -152,74 +152,129 @@ RCLValidationsAdaptor::acquire(LedgerHash const& hash)
 }
 
 void
-handleNewValidation(
-    Schema& app,
-    std::shared_ptr<STValidation> const& val,
-    std::string const& source)
+RCLValidationsAdaptor::onStale(RCLValidation&& v)
 {
-    PublicKey const& signingKey = val->getSignerPublic();
-    uint256 const& hash = val->getLedgerHash();
+    // Store the newly stale validation; do not do significant work in this
+    // function since this is a callback from Validations, which may be
+    // doing other work.
 
-    // Ensure validation is marked as trusted if signer currently trusted
-    auto masterKey = app.validators().getTrustedKey(signingKey);
-    if (!val->isTrusted() && masterKey)
-        val->setTrusted();
+    ScopedLockType sl(staleLock_);
+    staleValidations_.emplace_back(std::move(v));
+    if (staleWriting_)
+        return;
 
-    // If not currently trusted, see if signer is currently listed
-    if (!masterKey)
-        masterKey = app.validators().getListedKey(signingKey);
+    // addJob() may return false (Job not added) at shutdown.
+    staleWriting_ = app_.getJobQueue().addJob(
+        jtWRITE, "Validations::doStaleWrite", [this](Job&) {
+            auto event =
+                app_.getJobQueue().makeLoadEvent(jtDISK, "ValidationWrite");
+            ScopedLockType sl(staleLock_);
+            doStaleWrite(sl);
+        });
+}
 
-    RCLValidations& validations = app.getValidations();
-    beast::Journal const j = validations.adaptor().journal();
-
-    auto dmp = [&](beast::Journal::Stream s, std::string const& msg) {
-        std::string id = toBase58(TokenType::NodePublic, signingKey);
-
-        if (masterKey)
-            id += ":" + toBase58(TokenType::NodePublic, *masterKey);
-
-        s << (val->isTrusted() ? "trusted" : "untrusted") << " "
-          << (val->isFull() ? "full" : "partial") << " validation: " << hash
-          << " from " << id << " via " << source << ": " << msg << "\n"
-          << " [" << val->getSerializer().slice() << "]";
-    };
-
-    // masterKey is seated only if validator is trusted or listed
-    if (masterKey)
+void
+RCLValidationsAdaptor::flush(hash_map<NodeID, RCLValidation>&& remaining)
+{
+    bool anyNew = false;
     {
-        ValStatus const outcome = validations.add(calcNodeID(*masterKey), val);
-        auto const seq = val->getFieldU32(sfLedgerSequence);
+        ScopedLockType sl(staleLock_);
 
-        if (j.debug())
-            dmp(j.debug(), to_string(outcome));
-
-        // One might think that we would not wish to relay validations that
-        // fail these checks. Somewhat counterintuitively, we actually want
-        // to do it for validations that we receive but deem suspicious, so
-        // that our peers will also observe them and realize they're bad.
-        if (outcome == ValStatus::conflicting && j.warn())
+        for (auto const& keyVal : remaining)
         {
-            dmp(j.warn(),
-                "conflicting validations issued for " + to_string(seq) +
-                    " (likely from a Byzantine validator)");
+            staleValidations_.emplace_back(std::move(keyVal.second));
+            anyNew = true;
         }
 
-        if (outcome == ValStatus::multiple && j.warn())
+        // If we have new validations to write and there isn't a write in
+        // progress already, then write to the database synchronously.
+        if (anyNew && !staleWriting_)
         {
-            dmp(j.warn(),
-                "multiple validations issued for " + to_string(seq) +
-                    " (multiple validators operating with the same key?)");
+            staleWriting_ = true;
+            doStaleWrite(sl);
         }
 
-        if (val->isTrusted() && outcome == ValStatus::current)
-            app.getLedgerMaster().checkAccept(hash, seq);
-    }
-    else
-    {
-        JLOG(j.debug()) << "Val for " << hash << " from "
-                        << toBase58(TokenType::NodePublic, signingKey)
-                        << " not added UNlisted";
+        // In the case when a prior asynchronous doStaleWrite was scheduled,
+        // this loop will block until all validations have been flushed.
+        // This ensures that all validations are written upon return from
+        // this function.
+
+        while (staleWriting_)
+        {
+            ScopedUnlockType sul(staleLock_);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
 }
+
+// NOTE: doStaleWrite() must be called with staleLock_ *locked*.  The passed
+// ScopedLockType& acts as a reminder to future maintainers.
+void
+RCLValidationsAdaptor::doStaleWrite(ScopedLockType&)
+{
+    static const std::string insVal(
+        "INSERT INTO Validations "
+        "(InitialSeq, LedgerSeq, LedgerHash,NodePubKey,SignTime,RawData) "
+        "VALUES (:initialSeq, :ledgerSeq, "
+        ":ledgerHash,:nodePubKey,:signTime,:rawData);");
+    static const std::string findSeq(
+        "SELECT LedgerSeq FROM Ledgers WHERE Ledgerhash=:ledgerHash;");
+
+    assert(staleWriting_);
+
+    while (!staleValidations_.empty())
+    {
+        std::vector<RCLValidation> currentStale;
+        currentStale.reserve(512);
+        staleValidations_.swap(currentStale);
+
+        {
+            ScopedUnlockType sul(staleLock_);
+            {
+                auto db = app_.getLedgerDB().checkoutDb();
+
+                Serializer s(1024);
+                soci::transaction tr(*db);
+                for (RCLValidation const& wValidation : currentStale)
+                {
+                    // Only save full validations until we update the schema
+                    if(!wValidation.full())
+                        continue;
+                    s.erase();
+                    STValidation::pointer const& val = wValidation.unwrap();
+                    val->add(s);
+
+                    auto const ledgerHash = to_string(val->getLedgerHash());
+
+                    boost::optional<std::uint64_t> ledgerSeq;
+                    *db << findSeq, soci::use(ledgerHash),
+                        soci::into(ledgerSeq);
+
+                    auto const initialSeq = ledgerSeq.value_or(
+                        app_.getLedgerMaster().getCurrentLedgerIndex());
+                    auto const nodePubKey = toBase58(
+                        TokenType::NodePublic, val->getSignerPublic());
+                    auto const signTime =
+                        val->getSignTime().time_since_epoch().count();
+
+                    soci::blob rawData(*db);
+                    rawData.append(
+                        reinterpret_cast<const char*>(s.peekData().data()),
+                        s.peekData().size());
+                    assert(rawData.get_len() == s.peekData().size());
+
+                    *db << insVal, soci::use(initialSeq), soci::use(ledgerSeq),
+                        soci::use(ledgerHash), soci::use(nodePubKey),
+                        soci::use(signTime), soci::use(rawData);
+                }
+
+                tr.commit();
+            }
+        }
+    }
+
+    staleWriting_ = false;
+}
+
 
 }  // namespace ripple

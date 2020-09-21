@@ -48,6 +48,8 @@
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/jss.h>
+#include <ripple/beast/core/LexicalCast.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
 #include <peersafe/schema/Schema.h>

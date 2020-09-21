@@ -109,6 +109,8 @@ struct ConfigSection
 
 #define SECTION_CACERTS_LIST_KEYS       "ca_certs_keys"
 #define SECTION_CACERTS_LIST_SITES		"ca_certs_sites"
+
+#define SECTION_CONSENSUS               "consensus"
 #define SECTION_PCONSENSUS              "pconsensus"
 #define SECTION_PATH_X509               "x509_crt_path"
 #define SECTION_SCHEMAS					"schemas"

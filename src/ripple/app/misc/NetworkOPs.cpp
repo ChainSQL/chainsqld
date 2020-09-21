@@ -28,11 +28,8 @@
 #include <ripple/app/ledger/InboundLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/consensus/LedgerTiming.h>
-#include <ripple/consensus/Consensus.h>
 #include <ripple/app/consensus/RCLConsensus.h>
 #include <ripple/app/consensus/RCLValidations.h>
-#include <ripple/consensus/ConsensusParms.h>
 #include <ripple/app/ledger/LedgerToJson.h>
 #include <ripple/app/ledger/LocalTxs.h>
 #include <ripple/app/ledger/OpenLedger.h>
@@ -78,8 +75,9 @@
 #include <ripple/basics/base64.h>
 #include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/StateManager.h>
-#include <peersafe/app/consensus/ViewChange.h>
 #include <peersafe/schema/PeerManager.h>
+#include <peersafe/consensus/ViewChange.h>
+//#include <peersafe/consensus/LedgerTiming.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -405,6 +403,8 @@ public:
         std::shared_ptr<STValidation> const& val,
         std::string const& source) override;
 
+	inline bool recvViewChange(ViewChange const& change) override;
+
     bool
     recvViewChange(ViewChange const& change) override;
 
@@ -486,6 +486,11 @@ public:
     void
     consensusViewChange() override;
 
+    inline ConsensusParms const&
+    getConsensusParms() override
+    {
+        return mConsensus.parms();
+    }
     Json::Value
     getConsensusInfo() override;
     Json::Value
@@ -494,6 +499,8 @@ public:
     clearLedgerFetch() override;
     Json::Value
     getLedgerFetchInfo() override;
+    bool
+    checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) override;
     std::uint32_t
     acceptLedger(
         boost::optional<std::chrono::milliseconds> consensusDelay) override;
@@ -2773,16 +2780,10 @@ NetworkOPsImp::recvValidation(
     std::shared_ptr<STValidation> const& val,
     std::string const& source)
 {
-    JLOG(m_journal.debug())
-        << "recvValidation " << val->getLedgerHash() << " from " << source;
-
-    handleNewValidation(app_, val, source);
-
-    pubValidation(val);
-
-    // We will always relay trusted validations; if configured, we will
-    // also relay all untrusted validations.
-    return app_.config().RELAY_UNTRUSTED_VALIDATIONS || val->isTrusted();
+    JLOG(m_journal.debug()) << "recvValidation " << val->getLedgerHash ()
+                          << " from " << source;
+    pubValidation (val);
+    return mConsensus.peerValidation(val, source);
 }
 
 bool NetworkOPsImp::recvViewChange(ViewChange const& change)
@@ -3157,6 +3158,12 @@ Json::Value
 NetworkOPsImp::getLedgerFetchInfo()
 {
     return app_.getInboundLedgers().getInfo();
+}
+
+bool
+NetworkOPsImp::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
+{
+    return mConsensus.checkLedgerAccept(ledger);
 }
 
 void

@@ -428,11 +428,6 @@ target_sources (chainsqld PRIVATE
   src/ripple/core/impl/Workers.cpp
   #[===============================[
      main sources:
-       subdir: consensus
-  #]===============================]
-  src/ripple/consensus/Consensus.cpp
-  #[===============================[
-     main sources:
        subdir: ledger
   #]===============================]
   src/ripple/ledger/impl/ApplyStateTable.cpp
@@ -615,8 +610,6 @@ target_sources (chainsqld PRIVATE
      main sources:
        subdir: peersafe
   #]===============================]
-  src/peersafe/app/consensus/impl/ViewChange.cpp
-  src/peersafe/app/consensus/impl/ViewChangeManager.cpp
   src/peersafe/app/misc/impl/CACertSite.cpp
   src/peersafe/app/misc/impl/CertList.cpp
   src/peersafe/app/misc/impl/ConfigSite.cpp
@@ -663,6 +656,12 @@ target_sources (chainsqld PRIVATE
   src/peersafe/protocol/impl/Contract.cpp
   src/peersafe/protocol/impl/STEntry.cpp
   src/peersafe/protocol/impl/STMap256.cpp
+  src/peersafe/consensus/impl/ViewChange.cpp
+  src/peersafe/consensus/impl/ViewChangeManager.cpp
+  src/peersafe/consensus/impl/Adaptor.cpp
+  src/peersafe/consensus/rpca/impl/RpcaAdaptor.cpp
+  src/peersafe/consensus/pop/impl/PopAdaptor.cpp
+  src/peersafe/consensus/pop/impl/PopConsensus.cpp
   src/peersafe/rpc/handlers/AccountTables.cpp
   src/peersafe/rpc/handlers/GenCsr.cpp
   src/peersafe/rpc/handlers/LedgerTxsHandler.cpp
