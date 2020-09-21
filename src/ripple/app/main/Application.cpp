@@ -997,9 +997,9 @@ int ApplicationImp::fdlimit() const
     // Standard handles, config file, misc I/O etc:
     int needed = 128;
 
-	for (auto iter = m_schemaManager->begin(); iter != m_schemaManager->end(); iter++)
+	for (auto item : *m_schemaManager)
 	{
-		auto schema = (*iter).second;
+		auto schema = item.second;
 		// 1.5 times the configured peer limit for peer connections:
 		needed += static_cast<int>(0.5 + (1.5 * schema->overlay().limit()));
 		// the number of fds needed by the backend (internally
