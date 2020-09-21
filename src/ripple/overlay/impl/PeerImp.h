@@ -37,8 +37,8 @@
 #include <beast/http/message.hpp>
 #include <ripple/beast/utility/WrappedSink.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
-#include <peersafe/app/consensus/ViewChange.h>
 #include <ripple/resource/Fees.h>
+#include <peersafe/consensus/ViewChange.h>
 
 #include <boost/endian/conversion.hpp>
 #include <boost/optional.hpp>

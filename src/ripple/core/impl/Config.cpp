@@ -21,12 +21,10 @@
 #include <ripple/core/ConfigSections.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/FileUtilities.h>
-#include <ripple/basics/Log.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/net/HTTPClient.h>
-#include <ripple/beast/core/LexicalCast.h>
 #include <boost/beast/core/string.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>

@@ -80,6 +80,7 @@ struct ConfigSection
 #define SECTION_VALIDATOR_TOKEN         "validator_token"
 #define SECTION_VETO_AMENDMENTS         "veto_amendments"
 #define SECTION_WORKERS                 "workers"
+#define SECTION_CONSENSUS               "consensus"
 #define SECTION_PCONSENSUS              "pconsensus"
 
 #define SECTION_PATH_X509               "x509_crt_path"

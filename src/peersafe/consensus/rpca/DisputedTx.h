@@ -24,10 +24,10 @@
 #include <ripple/basics/Log.h>
 #include <ripple/basics/base_uint.h>
 #include <ripple/beast/utility/Journal.h>
-#include <ripple/consensus/ConsensusParms.h>
 #include <ripple/json/json_writer.h>
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/UintTypes.h>
+#include <peersafe/consensus/rpca/RpcaConsensusParams.h>
 #include <memory>
 
 namespace ripple {
@@ -120,7 +120,7 @@ public:
         @return Whether our vote changed
     */
     bool
-    updateVote(int percentTime, bool proposing, ConsensusParms const& p);
+    updateVote(int percentTime, bool proposing, RpcaConsensusParms const& p);
 
     //! JSON representation of dispute, used for debugging
     Json::Value
@@ -197,7 +197,7 @@ bool
 DisputedTx<Tx_t, NodeID_t>::updateVote(
     int percentTime,
     bool proposing,
-    ConsensusParms const& p)
+    RpcaConsensusParms const& p)
 {
     if (ourVote_ && (nays_ == 0))
         return false;

@@ -2,23 +2,21 @@
 #define CHAINSQL_APP_MISC_TXPOOL_H_INCLUDED
 
 
+#include <ripple/basics/base_uint.h>
+#include <ripple/app/main/Application.h>
+#include <ripple/app/misc/Transaction.h>
+#include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/consensus/RCLCxTx.h>
+#include <ripple/beast/utility/Journal.h>
+#include <ripple/protocol/TER.h>
+#include <ripple/protocol/Protocol.h>
+#include <peersafe/app/util/Common.h>
 #include <set>
+#include <map>
 #include <mutex>
 #include <memory>
 #include <functional>
 #include <unordered_map>
-#include <map>
-#include <ripple/core/ConfigSections.h>
-#include <ripple/beast/core/LexicalCast.h>
-#include <ripple/basics/base_uint.h>
-#include <ripple/app/main/Application.h>
-#include <ripple/app/misc/Transaction.h>
-#include <ripple/beast/utility/Journal.h>
-#include <ripple/app/consensus/RCLCxTx.h>
-#include <ripple/protocol/TER.h>
-#include <ripple/protocol/Protocol.h>
-#include <peersafe/app/util/Common.h>
-#include <peersafe/app/consensus/PConsensusParams.h>
 
 
 namespace ripple {
@@ -72,34 +70,17 @@ class TxPool
 public:
     TxPool(Application& app, beast::Journal j)
         : app_(app)
+        , mMaxTxsInPool(app.getOPs().getConsensusParms().txPOOL_CAPACITY)
         , j_(j)
     {
-        mMaxTxsInPool = TxPoolCapacity;
-
-        if (app.config().exists(SECTION_PCONSENSUS))
-        {
-            auto const result = app.config().section(SECTION_PCONSENSUS).find("max_txs_in_pool");
-            if (result.second)
-            {
-                try
-                {
-                    mMaxTxsInPool = beast::lexicalCastThrow<std::uint32_t>(result.first);
-
-                    if (mMaxTxsInPool == 0)
-                        Throw<std::exception>();
-                }
-                catch (std::exception const&)
-                {
-                    JLOG(j_.error()) <<
-                        "Invalid value '" << result.first << "' for key " <<
-                        "'max_tx_in_pool' in [" << SECTION_PCONSENSUS << "]\n";
-                    Rethrow();
-                }
-            }
-        }
     }
 
 	virtual ~TxPool() {}
+
+    inline bool txExists(uint256 hash) const { return mTxsHash.count(hash); }
+    inline std::size_t const& getTxLimitInPool() const { return mMaxTxsInPool; }
+    inline bool isEmpty() const { return mTxsSet.size() == 0; }
+    inline std::size_t getTxCountInPool() const { return mTxsSet.size(); }
 
     // Get at most specified counts of Tx fron TxPool.
 	h256Set topTransactions(uint64_t const& limit, LedgerIndex seq);
@@ -115,21 +96,9 @@ public:
     void updateAvoid(RCLTxSet const& cSet, LedgerIndex seq);
 	void clearAvoid(LedgerIndex seq);
 
-    inline bool txExists(uint256 hash) { return mTxsHash.count(hash); }
-
-	// Set pool limit.
-    void setTxLimitInPool(std::size_t const& maxTxs) { mMaxTxsInPool = maxTxs; }
-
-    // Get pool limit.
-    std::size_t const& getTxLimitInPool() { return mMaxTxsInPool; }
-
-	bool isEmpty() { return mTxsSet.size() == 0; }
-
 	bool isAvailable();
 
 	void timerEntry();
-
-	std::size_t getTxCountInPool() { return mTxsSet.size();  }
 
 	void checkSyncStatus(int const ledgerSeq, uint256 const& prevHash);
 

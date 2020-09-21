@@ -25,8 +25,8 @@
 #include <ripple/basics/chrono.h>
 #include <ripple/beast/container/aged_container_utility.h>
 #include <ripple/beast/container/aged_unordered_map.h>
-#include <ripple/consensus/LedgerTrie.h>
 #include <ripple/protocol/PublicKey.h>
+#include <peersafe/consensus/LedgerTrie.h>
 #include <boost/optional.hpp>
 #include <mutex>
 #include <utility>

@@ -17,8 +17,8 @@
 */
 //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_CONSENSUS_PARMS_H_INCLUDED
-#define RIPPLE_CONSENSUS_CONSENSUS_PARMS_H_INCLUDED
+#ifndef RIPPLE_CONSENSUS_RPCA_PARMS_H_INCLUDED
+#define RIPPLE_CONSENSUS_RPCA_PARMS_H_INCLUDED
 
 #include <chrono>
 #include <cstddef>
@@ -30,9 +30,9 @@ namespace ripple {
     Parameters which control the consensus algorithm.  This are not
     meant to be changed arbitrarily.
 */
-struct ConsensusParms
+struct RpcaConsensusParms
 {
-    explicit ConsensusParms() = default;
+    explicit RpcaConsensusParms() = default;
 
     //-------------------------------------------------------------------------
     // Validation and proposal durations are relative to NetClock times, so use
@@ -93,9 +93,6 @@ struct ConsensusParms
 
     //! Minimum number of seconds to wait to ensure others have computed the LCL
     std::chrono::milliseconds ledgerMIN_CLOSE = std::chrono::seconds {2};
-
-    //! How often we check state or change positions
-	std::chrono::milliseconds ledgerGRANULARITY{ 200 };
 
     /** The minimum amount of time to consider the previous round
         to have taken.

@@ -91,16 +91,11 @@ LedgerMaster::LedgerMaster (Application& app, Stopwatch& stopwatch,
 {
 }
 
-LedgerIndex
-LedgerMaster::getCurrentLedgerIndex ()
+void LedgerMaster::setLastValidLedger(uint256 const& hash, std::uint32_t seq)
 {
-    return app_.openLedger().current()->info().seq;
-}
-
-LedgerIndex
-LedgerMaster::getValidLedgerIndex ()
-{
-    return mValidLedgerSeq;
+    ScopedLockType ml(m_mutex);
+    if (seq > mLastValidLedger.second)
+        mLastValidLedger = std::make_pair(hash, seq);
 }
 
 bool
@@ -369,14 +364,6 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
 		app_.getTableSync().TryTableSync();
 		app_.getTableStorage().TryTableStorage();
     }
-    else
-    {
-        checkAccept (lastClosed);
-		//app_.getTableStorage().TryTableStorage();
-		//app_.getTableAssistant().TryTableCheckHash();
-		////app_.getOPs().TryCheckSubTx();
-		//app_.getTableTxAccumulator().trySweepCache();
-    }
 }
 
 bool
@@ -432,19 +419,6 @@ LedgerMaster::pruneHeldTransactions(AccountID const& account,
     ScopedLockType sl(m_mutex);
 
     return mHeldTransactions.prune(account, seq);
-}
-
-LedgerIndex
-LedgerMaster::getBuildingLedger ()
-{
-    // The ledger we are currently building, 0 of none
-    return mBuildingLedgerSeq.load ();
-}
-
-void
-LedgerMaster::setBuildingLedger (LedgerIndex i)
-{
-    mBuildingLedgerSeq.store (i);
 }
 
 bool
@@ -825,69 +799,6 @@ LedgerMaster::failedSave(std::uint32_t seq, uint256 const& hash)
         hash, seq, InboundLedger::Reason::GENERIC);
 }
 
-// Check if the specified ledger can become the new last fully-validated
-// ledger.
-void
-LedgerMaster::checkAccept (uint256 const& hash, std::uint32_t seq)
-{
-    std::size_t valCount = 0;
-
-    if (seq != 0)
-    {
-        // Ledger is too old
-        if (seq < mValidLedgerSeq)
-            return;
-
-        valCount =
-            app_.getValidations().numTrustedForLedger (hash);
-
-        if (valCount >= app_.validators ().quorum ())
-        {
-            ScopedLockType ml (m_mutex);
-            if (seq > mLastValidLedger.second)
-                mLastValidLedger = std::make_pair (hash, seq);
-        }
-
-        if (seq == mValidLedgerSeq)
-            return;
-
-        // Ledger could match the ledger we're already building
-        if (seq == mBuildingLedgerSeq)
-            return;
-    }
-
-    auto ledger = mLedgerHistory.getLedgerByHash (hash);
-
-    if (!ledger)
-    {
-        if ((seq != 0) && (getValidLedgerIndex() == 0))
-        {
-            // Set peers sane early if we can
-            if (valCount >= app_.validators ().quorum ())
-                app_.overlay().checkSanity (seq);
-        }
-
-        // FIXME: We may not want to fetch a ledger with just one
-        // trusted validation
-        ledger = app_.getInboundLedgers().acquire(
-            hash, seq, InboundLedger::Reason::GENERIC);
-    }
-
-    if (ledger)
-        checkAccept (ledger);
-}
-
-/**
-    * Determines how many validations are needed to fully validate a ledger
-    *
-    * @return Number of validations needed
-    */
-std::size_t
-LedgerMaster::getNeededValidations ()
-{
-    return standalone_ ? 0 : app_.validators().quorum ();
-}
-
 ripple::uint160 LedgerMaster::getNameInDB(
     LedgerIndex index, AccountID accountID,std::string sTableName)
 {
@@ -1257,178 +1168,6 @@ LedgerMaster::storeLedgerTx(
 }
 
 void
-LedgerMaster::checkAccept (
-    std::shared_ptr<Ledger const> const& ledger)
-{
-    // Can we accept this ledger as our new last fully-validated ledger
-
-	// Comment by ljl: this judgment is for RPCA or other consensus algorithm
-	// that can validate empty ledgers.
-    //if (! canBeCurrent (ledger))
-    //    return;
-
-    // Can we advance the last fully-validated ledger? If so, can we
-    // publish?
-    ScopedLockType ml (m_mutex);
-
-    if (ledger->info().seq <= mValidLedgerSeq)
-        return;
-
-    auto const minVal = getNeededValidations();
-    auto const tvc = app_.getValidations().numTrustedForLedger(ledger->info().hash);
-    if (tvc < minVal) // nothing we can do
-    {
-        JLOG (m_journal.trace()) <<
-            "Only " << tvc <<
-            " validations for " << ledger->info().hash;
-        return;
-    }
-
-    JLOG (m_journal.info())
-        << "Advancing accepted ledger to " << ledger->info().seq
-        << " with >= " << minVal << " validations";
-
-    ledger->setValidated();
-    ledger->setFull();
-    setValidLedger(ledger);
-
-    app_.getTxPool().removeTxs(ledger->txMap(),ledger->info().seq,ledger->info().parentHash);
-
-    if (!mPubLedger)
-    {
-        pendSaveValidated(app_, ledger, true, true);
-        setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
-    }
-
-    std::uint32_t const base = app_.getFeeTrack().getLoadBase();
-    auto fees = app_.getValidations().fees (ledger->info().hash, base);
-    {
-        auto fees2 = app_.getValidations().fees (
-            ledger->info(). parentHash, base);
-        fees.reserve (fees.size() + fees2.size());
-        std::copy (fees2.begin(), fees2.end(), std::back_inserter(fees));
-    }
-    std::uint32_t fee;
-    if (! fees.empty())
-    {
-        std::sort (fees.begin(), fees.end());
-        fee = fees[fees.size() / 2]; // median
-    }
-    else
-    {
-        fee = base;
-    }
-
-    app_.getFeeTrack().setRemoteFee(fee);
-
-    tryAdvance ();
-}
-
-/** Report that the consensus process built a particular ledger */
-void
-LedgerMaster::consensusBuilt(
-    std::shared_ptr<Ledger const> const& ledger,
-    uint256 const& consensusHash,
-    Json::Value consensus)
-{
-
-    // Because we just built a ledger, we are no longer building one
-    setBuildingLedger (0);
-
-    // No need to process validations in standalone mode
-    if (standalone_)
-        return;
-
-    mLedgerHistory.builtLedger (ledger, consensusHash, std::move (consensus));
-
-    if (ledger->info().seq <= mValidLedgerSeq)
-    {
-        auto stream = app_.journal ("LedgerConsensus").info();
-        JLOG (stream)
-            << "Consensus built old ledger: "
-            << ledger->info().seq << " <= " << mValidLedgerSeq;
-        return;
-    }
-
-    // See if this ledger can be the new fully-validated ledger
-    checkAccept (ledger);
-
-    if (ledger->info().seq <= mValidLedgerSeq)
-    {
-        auto stream = app_.journal ("LedgerConsensus").debug();
-        JLOG (stream)
-            << "Consensus ledger fully validated";
-        return;
-    }
-
-    // This ledger cannot be the new fully-validated ledger, but
-    // maybe we saved up validations for some other ledger that can be
-
-    auto const val =
-        app_.getValidations().currentTrusted();
-
-    // Track validation counts with sequence numbers
-    class valSeq
-    {
-        public:
-
-        valSeq () : valCount_ (0), ledgerSeq_ (0) { ; }
-
-        void mergeValidation (LedgerIndex seq)
-        {
-            valCount_++;
-
-            // If we didn't already know the sequence, now we do
-            if (ledgerSeq_ == 0)
-                ledgerSeq_ = seq;
-        }
-
-        std::size_t valCount_;
-        LedgerIndex ledgerSeq_;
-    };
-
-    // Count the number of current, trusted validations
-    hash_map <uint256, valSeq> count;
-    for (auto const& v : val)
-    {
-        valSeq& vs = count[v->getLedgerHash()];
-        vs.mergeValidation (v->getFieldU32 (sfLedgerSequence));
-    }
-
-    auto const neededValidations = getNeededValidations ();
-    auto maxSeq = mValidLedgerSeq.load();
-    auto maxLedger = ledger->info().hash;
-
-    // Of the ledgers with sufficient validations,
-    // find the one with the highest sequence
-    for (auto& v : count)
-        if (v.second.valCount_ > neededValidations)
-        {
-            // If we still don't know the sequence, get it
-            if (v.second.ledgerSeq_ == 0)
-            {
-                if (auto ledger = getLedgerByHash (v.first))
-                    v.second.ledgerSeq_ = ledger->info().seq;
-            }
-
-            if (v.second.ledgerSeq_ > maxSeq)
-            {
-                maxSeq = v.second.ledgerSeq_;
-                maxLedger = v.first;
-            }
-        }
-
-    if (maxSeq > mValidLedgerSeq)
-    {
-        auto stream = app_.journal ("LedgerConsensus").debug();
-        JLOG (stream)
-            << "Consensus triggered check of ledger";
-        checkAccept (maxLedger, maxSeq);
-    }
-}
-
-void
 LedgerMaster::advanceThread()
 {
     ScopedLockType sl (m_mutex);
@@ -1757,19 +1496,6 @@ LedgerMaster::newPFWork (const char *name, ScopedLockType&)
     return mPathFindThread > 0 && !isStopping();
 }
 
-std::recursive_mutex&
-LedgerMaster::peekMutex ()
-{
-    return m_mutex;
-}
-
-// The current ledger is the ledger we believe new transactions should go in
-std::shared_ptr<ReadView const>
-LedgerMaster::getCurrentLedger ()
-{
-    return app_.openLedger().current();
-}
-
 Rules
 LedgerMaster::getValidatedRules ()
 {
@@ -1808,8 +1534,7 @@ LedgerMaster::getCloseTimeBySeq (LedgerIndex ledgerIndex)
 }
 
 boost::optional <NetClock::time_point>
-LedgerMaster::getCloseTimeByHash(LedgerHash const& ledgerHash,
-    std::uint32_t index)
+LedgerMaster::getCloseTimeByHash(LedgerHash const& ledgerHash, LedgerIndex index)
 {
     auto node = app_.getNodeStore().fetch(ledgerHash, index);
     if (node &&
@@ -2171,6 +1896,45 @@ LedgerMaster::fetchForHistory(
         clearLedger(missing + 1);
         progress = true;
     }
+}
+
+void LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
+{
+    ledger->setValidated();
+    ledger->setFull();
+    setValidLedger(ledger);
+
+    app_.getTxPool().removeTxs(ledger->txMap(), ledger->info().seq, ledger->info().parentHash);
+
+    if (!mPubLedger)
+    {
+        pendSaveValidated(app_, ledger, true, true);
+        setPubLedger(ledger);
+        app_.getOrderBookDB().setup(ledger);
+    }
+
+    std::uint32_t const base = app_.getFeeTrack().getLoadBase();
+    auto fees = app_.getValidations().fees(ledger->info().hash, base);
+    {
+        auto fees2 = app_.getValidations().fees(
+            ledger->info().parentHash, base);
+        fees.reserve(fees.size() + fees2.size());
+        std::copy(fees2.begin(), fees2.end(), std::back_inserter(fees));
+    }
+    std::uint32_t fee;
+    if (!fees.empty())
+    {
+        std::sort(fees.begin(), fees.end());
+        fee = fees[fees.size() / 2]; // median
+    }
+    else
+    {
+        fee = base;
+    }
+
+    app_.getFeeTrack().setRemoteFee(fee);
+
+    tryAdvance();
 }
 
 // Try to publish ledgers, acquire missing ledgers

@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
     This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2012-2016 Ripple Labs Inc.
+    Copyright (c) 2012-2017 Ripple Labs Inc.
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose  with  or without fee is hereby granted, provided that the above
@@ -17,13 +17,27 @@
 */
 //==============================================================================
 
+#ifndef PEERSAFE_CONSENSUS_PARMS_H_INCLUDED
+#define PEERSAFE_CONSENSUS_PARMS_H_INCLUDED
 
-#include <peersafe/consensus/impl/ViewChange.cpp>
-#include <peersafe/consensus/impl/ViewChangeManager.cpp>
 
-#include <peersafe/consensus/impl/Adaptor.cpp>
+#include <chrono>
 
-#include <peersafe/consensus/rpca/impl/RpcaAdaptor.cpp>
-#include <peersafe/consensus/rpca/impl/RpcaConsensus.cpp>
-#include <peersafe/consensus/pop/impl/PopAdaptor.cpp>
-#include <peersafe/consensus/pop/impl/PopConsensus.cpp>
+
+namespace ripple {
+
+
+struct ConsensusParms
+{
+    explicit ConsensusParms() = default;
+
+    unsigned txPOOL_CAPACITY = 100000;
+
+    //! How often we check state or change positions
+    const std::chrono::milliseconds ledgerGRANULARITY = std::chrono::milliseconds {200};
+};
+
+}
+
+
+#endif

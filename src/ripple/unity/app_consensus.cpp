@@ -23,6 +23,4 @@
 #include <ripple/app/consensus/RCLValidations.cpp>
 #include <peersafe/app/misc/impl/TxPool.cpp>
 #include <peersafe/app/misc/impl/StateManager.cpp>
-#include <peersafe/app/consensus/impl/ViewChange.cpp>
-#include <peersafe/app/consensus/impl/ViewChangeManager.cpp>
 

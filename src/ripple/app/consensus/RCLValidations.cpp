@@ -27,10 +27,10 @@
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/chrono.h>
-#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/TimeKeeper.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -271,85 +271,6 @@ RCLValidationsAdaptor::doStaleWrite(ScopedLockType&)
     }
 
     staleWriting_ = false;
-}
-
-bool
-handleNewValidation(Application& app,
-    STValidation::ref val,
-    std::string const& source)
-{
-    PublicKey const& signingKey = val->getSignerPublic();
-    uint256 const& hash = val->getLedgerHash();
-
-    // Ensure validation is marked as trusted if signer currently trusted
-    boost::optional<PublicKey> masterKey =
-        app.validators().getTrustedKey(signingKey);
-    if (!val->isTrusted() && masterKey)
-        val->setTrusted();
-
-    // If not currently trusted, see if signer is currently listed
-    if (!masterKey)
-        masterKey = app.validators().getListedKey(signingKey);
-
-    bool shouldRelay = false;
-    RCLValidations& validations = app.getValidations();
-    beast::Journal j = validations.adaptor().journal();
-
-    auto dmp = [&](beast::Journal::Stream s, std::string const& msg) {
-        s << "Val for " << hash
-          << (val->isTrusted() ? " trusted/" : " UNtrusted/")
-          << (val->isFull() ? "full" : "partial") << " from "
-          << (masterKey ? toBase58(TokenType::NodePublic, *masterKey)
-                        : "unknown")
-          << " signing key "
-          << toBase58(TokenType::NodePublic, signingKey) << " " << msg
-          << " src=" << source;
-    };
-
-    if(!val->isFieldPresent(sfLedgerSequence))
-    {
-        if(j.error())
-            dmp(j.error(), "missing ledger sequence field");
-        return false;
-    }
-
-    // masterKey is seated only if validator is trusted or listed
-    if (masterKey)
-    {
-        ValStatus const outcome = validations.add(calcNodeID(*masterKey), val);
-        if(j.debug())
-            dmp(j.debug(), to_string(outcome));
-
-        if (outcome == ValStatus::badSeq && j.warn())
-        {
-            auto const seq = val->getFieldU32(sfLedgerSequence);
-            dmp(j.warn(),
-                "already validated sequence at or past " + to_string(seq));
-        }
-
-        if (val->isTrusted() && outcome == ValStatus::current)
-        {
-            app.getLedgerMaster().checkAccept(
-                hash, val->getFieldU32(sfLedgerSequence));
-            shouldRelay = true;
-        }
-    }
-    else
-    {
-        JLOG(j.debug()) << "Val for " << hash << " from "
-                    << toBase58(TokenType::NodePublic, signingKey)
-                    << " not added UNlisted";
-    }
-
-    // This currently never forwards untrusted validations, though we may
-    // reconsider in the future. From @JoelKatz:
-    // The idea was that we would have a certain number of validation slots with
-    // priority going to validators we trusted. Remaining slots might be
-    // allocated to validators that were listed by publishers we trusted but
-    // that we didn't choose to trust. The shorter term plan was just to forward
-    // untrusted validations if peers wanted them or if we had the
-    // ability/bandwidth to. None of that was implemented.
-    return shouldRelay;
 }
 
 

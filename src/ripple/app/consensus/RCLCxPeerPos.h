@@ -23,11 +23,11 @@
 #include <ripple/basics/CountedObject.h>
 #include <ripple/basics/base_uint.h>
 #include <ripple/beast/hash/hash_append.h>
-#include <ripple/consensus/ConsensusProposal.h>
 #include <ripple/json/json_value.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
+#include <peersafe/consensus/ConsensusProposal.h>
 #include <chrono>
 #include <cstdint>
 #include <string>

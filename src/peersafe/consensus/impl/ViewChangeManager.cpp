@@ -1,12 +1,9 @@
-#include <peersafe/app/consensus/ViewChangeManager.h>
+
+#include <peersafe/consensus/ViewChangeManager.h>
 #include <ripple/basics/Log.h>
 
 namespace ripple {
 
-ViewChangeManager::ViewChangeManager(beast::Journal const& j):
-	j_(j)
-{
-}
 
 bool ViewChangeManager::recvViewChange(ViewChange const& change)
 {

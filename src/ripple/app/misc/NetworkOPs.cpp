@@ -26,11 +26,8 @@
 #include <ripple/app/ledger/InboundLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/consensus/LedgerTiming.h>
-#include <ripple/consensus/Consensus.h>
 #include <ripple/app/consensus/RCLConsensus.h>
 #include <ripple/app/consensus/RCLValidations.h>
-#include <ripple/consensus/ConsensusParms.h>
 #include <ripple/app/ledger/LedgerToJson.h>
 #include <ripple/app/ledger/LocalTxs.h>
 #include <ripple/app/ledger/OpenLedger.h>
@@ -78,7 +75,8 @@
 #include <boost/asio/steady_timer.hpp>
 #include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/StateManager.h>
-#include <peersafe/app/consensus/ViewChange.h>
+#include <peersafe/consensus/ViewChange.h>
+//#include <peersafe/consensus/LedgerTiming.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -348,7 +346,7 @@ public:
     bool recvValidation (
         STValidation::ref val, std::string const& source) override;
 
-	bool recvViewChange(ViewChange const& change) override;
+	inline bool recvViewChange(ViewChange const& change) override;
 
     std::shared_ptr<SHAMap> getTXMap (uint256 const& hash);
     bool hasTXSet (
@@ -407,10 +405,15 @@ public:
     void setAmendmentBlocked () override;
     void consensusViewChange () override;
 
-    Json::Value getConsensusInfo () override;
+    inline ConsensusParms const& getConsensusParms() override
+    {
+        return mConsensus.parms();
+    }
+    inline Json::Value getConsensusInfo () override;
     Json::Value getServerInfo (bool human, bool admin, bool counters) override;
     void clearLedgerFetch () override;
     Json::Value getLedgerFetchInfo () override;
+    bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) override;
     std::uint32_t acceptLedger (
         boost::optional<std::chrono::milliseconds> consensusDelay) override;
     uint256 getConsensusLCL () override;
@@ -2394,7 +2397,7 @@ bool NetworkOPsImp::recvValidation (
     JLOG(m_journal.debug()) << "recvValidation " << val->getLedgerHash ()
                           << " from " << source;
     pubValidation (val);
-    return handleNewValidation(app_, val, source);
+    return mConsensus.peerValidation(val, source);
 }
 
 bool NetworkOPsImp::recvViewChange(ViewChange const& change)
@@ -2732,6 +2735,11 @@ void NetworkOPsImp::clearLedgerFetch ()
 Json::Value NetworkOPsImp::getLedgerFetchInfo ()
 {
     return app_.getInboundLedgers().getInfo();
+}
+
+bool NetworkOPsImp::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
+{
+    return mConsensus.checkLedgerAccept(ledger);
 }
 
 void NetworkOPsImp::pubProposedTransaction (

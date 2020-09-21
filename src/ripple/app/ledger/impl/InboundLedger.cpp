@@ -141,7 +141,12 @@ InboundLedger::init(ScopedLockType& collectionLock)
 
     // Check if this could be a newer fully-validated ledger
     if (mReason == Reason::CONSENSUS)
-        app_.getLedgerMaster().checkAccept(mLedger);
+    {
+        if (app_.getOPs().checkLedgerAccept(mLedger))
+        {
+            app_.getLedgerMaster().doValid(mLedger);
+        }
+    }
 }
 
 void InboundLedger::execute ()
@@ -492,8 +497,10 @@ void InboundLedger::done ()
         {
             if (self->mComplete && !self->mFailed)
             {
-                self->app().getLedgerMaster().checkAccept(
-                    self->getLedger());
+                if (self->app().getOPs().checkLedgerAccept(self->getLedger()))
+                {
+                    self->app().getLedgerMaster().doValid(self->getLedger());
+                }
                 self->app().getLedgerMaster().tryAdvance();
             }
             else

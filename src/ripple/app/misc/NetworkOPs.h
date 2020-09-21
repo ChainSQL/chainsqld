@@ -27,12 +27,13 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/ledger/ReadView.h>
 #include <ripple/net/InfoSub.h>
 #include <ripple/protocol/STValidation.h>
+#include <ripple/protocol/messages.h>
+#include <peersafe/consensus/ConsensusParams.h>
 #include <boost/asio.hpp>
 #include <memory>
 #include <deque>
 #include <tuple>
 
-#include <ripple/protocol/messages.h>
 
 namespace ripple {
 
@@ -105,8 +106,8 @@ namespace ripple {
 		// Network information
 		//
 
-    virtual OperatingMode getOperatingMode () const = 0;
-    virtual std::string strOperatingMode (bool admin = false) const = 0;
+        virtual OperatingMode getOperatingMode () const = 0;
+        virtual std::string strOperatingMode (bool admin = false) const = 0;
 
 		//--------------------------------------------------------------------------
 		//
@@ -152,8 +153,8 @@ namespace ripple {
 
 		//--------------------------------------------------------------------------
 
-    // ledger proposal/close functions
-    virtual void processTrustedProposal (RCLCxPeerPos peerPos,
+        // ledger proposal/close functions
+        virtual void processTrustedProposal (RCLCxPeerPos peerPos,
         std::shared_ptr<protocol::TMProposeSet> set) = 0;
 
 		virtual bool recvValidation(STValidation::ref val,
@@ -170,19 +171,21 @@ namespace ripple {
 		virtual void setStandAlone() = 0;
 		virtual void setStateTimer() = 0;
 
-    virtual void setNeedNetworkLedger () = 0;
-    virtual void clearNeedNetworkLedger () = 0;
-    virtual bool isNeedNetworkLedger () = 0;
-    virtual bool isFull () = 0;
-    virtual bool isAmendmentBlocked () = 0;
-    virtual void setAmendmentBlocked () = 0;
-    virtual void consensusViewChange () = 0;
+        virtual void setNeedNetworkLedger () = 0;
+        virtual void clearNeedNetworkLedger () = 0;
+        virtual bool isNeedNetworkLedger () = 0;
+        virtual bool isFull () = 0;
+        virtual bool isAmendmentBlocked () = 0;
+        virtual void setAmendmentBlocked () = 0;
+        virtual void consensusViewChange () = 0;
 
-    virtual Json::Value getConsensusInfo () = 0;
-    virtual Json::Value getServerInfo (
-        bool human, bool admin, bool counters) = 0;
-    virtual void clearLedgerFetch () = 0;
-    virtual Json::Value getLedgerFetchInfo () = 0;
+        virtual ConsensusParms const& getConsensusParms() = 0;
+        virtual Json::Value getConsensusInfo () = 0;
+        virtual Json::Value getServerInfo (
+            bool human, bool admin, bool counters) = 0;
+        virtual void clearLedgerFetch () = 0;
+        virtual Json::Value getLedgerFetchInfo () = 0;
+        virtual bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) = 0;
 
 		/** Accepts the current transaction tree, return the new ledger's sequence
 

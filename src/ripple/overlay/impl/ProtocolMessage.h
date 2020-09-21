@@ -149,11 +149,11 @@ invokeProtocolMessage (Buffers const& buffers, Handler& handler)
     case protocol::mtGET_TABLE:     ec = detail::invoke<protocol::TMGetTable> (type, buffers, handler); break;
     case protocol::mtLEDGER_DATA:   ec = detail::invoke<protocol::TMLedgerData> (type, buffers, handler); break;
     case protocol::mtTABLE_DATA:    ec = detail::invoke<protocol::TMTableData>(type, buffers, handler); break;
-    case protocol::mtPROPOSE_LEDGER:ec = detail::invoke<protocol::TMProposeSet> (type, buffers, handler); break;
+    case protocol::mtPROPOSE_LEDGER:ec = detail::invoke<protocol::TMProposeSet> (type, buffers, handler); break;    //
     case protocol::mtSTATUS_CHANGE: ec = detail::invoke<protocol::TMStatusChange> (type, buffers, handler); break;
     case protocol::mtHAVE_SET:      ec = detail::invoke<protocol::TMHaveTransactionSet> (type, buffers, handler); break;
-    case protocol::mtVALIDATION:    ec = detail::invoke<protocol::TMValidation> (type, buffers, handler); break;
-	case protocol::mtVIEW_CHANGE:   ec = detail::invoke<protocol::TMViewChange>(type, buffers, handler); break;
+    case protocol::mtVALIDATION:    ec = detail::invoke<protocol::TMValidation> (type, buffers, handler); break;    //
+	case protocol::mtVIEW_CHANGE:   ec = detail::invoke<protocol::TMViewChange>(type, buffers, handler); break;     //
     case protocol::mtGET_OBJECTS:   ec = detail::invoke<protocol::TMGetObjectByHash> (type, buffers, handler); break;
     default:
         ec = handler.onMessageUnknown (type);

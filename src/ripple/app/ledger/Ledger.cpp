@@ -21,7 +21,6 @@
 #include <ripple/app/ledger/AcceptedLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/app/ledger/LedgerToJson.h>
 #include <ripple/app/ledger/OrderBookDB.h>
 #include <ripple/app/ledger/PendingSaves.h>
@@ -47,6 +46,7 @@
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
 #include <boost/optional.hpp>
