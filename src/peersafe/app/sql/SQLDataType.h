@@ -40,6 +40,12 @@ public:
 	~InnerDate() {}
 };
 
+class InnerNull {
+public:
+	InnerNull() {}
+	~InnerNull() {}
+};
+
 class InnerDecimal
 {
 public:
@@ -163,6 +169,11 @@ public:
 		assign(value);
 	}
 
+	explicit FieldValue(const InnerNull& value)
+		:value_type_(NULLTYPE)
+	{
+	}
+
 	FieldValue& operator =(const FieldValue& value) {
 		value_type_ = value.value_type_;
 		assign(value);
@@ -259,6 +270,12 @@ public:
 	FieldValue& operator =(const int64_t value) {
 		value_type_ = LONG64;
 		value_.i64 = value;
+		return *this;
+	}
+
+	FieldValue& operator = (const InnerNull &value)
+	{
+		value_type_ = NULLTYPE;
 		return *this;
 	}
 
@@ -543,6 +560,10 @@ public:
 		return value_type_ == DATE;
 	}
 
+	bool isNull() {
+		return value_type_ == NULLTYPE;
+	}
+
 	const int& asInt() {
 		return value_.i;
 	}
@@ -621,7 +642,8 @@ private:
 		VARCHAR,
 		CHAR,
 		BLOB,
-		STRING
+		STRING,
+		NULLTYPE,
 	};
 
 	int value_type_;
