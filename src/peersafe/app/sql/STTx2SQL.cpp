@@ -1791,12 +1791,10 @@ protected:
 					str = (boost::format("DEFAULT %d") % field.asInt()).str();
 				}
 				else if (field.isString()) {
-					std::string default_value = field.asString();
-					if (boost::iequals(default_value, "null")
-						|| boost::iequals(default_value, "nil"))
-						str = "DEFAULT NULL";
-					else
-						str = (boost::format("DEFAULT '%1%'") % default_value).str();
+					str = (boost::format("DEFAULT '%1%'") % field.asString()).str();
+				}
+				else if (field.isNull()) {
+					str = "DEFAULT NULL";
 				}
 				fields.push_back(str);
 			}
