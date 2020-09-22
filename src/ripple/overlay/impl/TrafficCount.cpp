@@ -53,8 +53,8 @@ TrafficCount::category TrafficCount::categorize (
     if (type == protocol::mtVALIDATION)
         return TrafficCount::category::validation;
 
-	if (type == protocol::mtVIEW_CHANGE)
-		return TrafficCount::category::view_change;
+    if (type == protocol::mtVIEW_CHANGE)
+        return TrafficCount::category::view_change;
 
     if(type == protocol::mtGET_TABLE)
         return TrafficCount::category::get_table;

@@ -492,8 +492,8 @@ int run (int argc, char** argv)
     if (vm.count ("import"))
         config->doImport = true;
 
-	if (vm.count("nodetoshard"))
-		config->nodeToShard = true;
+    if (vm.count("nodetoshard"))
+        config->nodeToShard = true;
 
     if (vm.count ("ledger"))
     {

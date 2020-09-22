@@ -529,11 +529,11 @@ public:
 		, validatorSites_(std::make_unique<ValidatorSite>(
 			*validatorManifests_, get_io_service(), *validators_, logs_->journal("ValidatorSite")))
 
+        , certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES, logs_->journal("CertList")))
+
 		, caCertSites_(std::make_unique<CACertSite>(
 			*validatorManifests_, *publisherManifests_, *timeKeeper_,
 			get_io_service(), config_->ROOT_CERTIFICATES, logs_->journal("CACertSite")))
-
-		, certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES ,logs_->journal("CertList")))
 
         , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
             *m_jobQueue, *m_networkOPs, *m_resourceManager,

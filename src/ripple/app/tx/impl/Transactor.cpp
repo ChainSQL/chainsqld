@@ -301,11 +301,13 @@ Transactor::checkSeq (PreclaimContext const& ctx)
         return tefPAST_SEQ;
     }
 
-    if (ctx.tx.isFieldPresent (sfAccountTxnID) &&
-            (sle->getFieldH256 (sfAccountTxnID) != ctx.tx.getFieldH256 (sfAccountTxnID)))
+    if (ctx.tx.isFieldPresent(sfAccountTxnID) &&
+        sle->getFieldH256(sfAccountTxnID) != ctx.tx.getFieldH256(sfAccountTxnID))
+    {
         return tefWRONG_PRIOR;
+    }
 
-	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
+    if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
 		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
 	{
 		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
@@ -851,7 +853,9 @@ Transactor::operator()()
     auto fee = ctx_.tx.getFieldAmount(sfFee).zxc ();
 
     if (ctx_.size() > oversizeMetaDataCap)
+    {
         terResult.ter = tecOVERSIZE;
+    }
 
 	//if ((terResult == tecOVERSIZE) ||
 	//    (!isTecClaim (terResult) && !(view().flags() & tapRETRY)))

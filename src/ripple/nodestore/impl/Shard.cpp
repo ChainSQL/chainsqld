@@ -211,7 +211,7 @@ Shard::contains(std::uint32_t seq) const
     if (seq < firstSeq_ || seq > lastSeq_)
         return false;
 
-	std::lock_guard< std::mutex> lock(mutex_);
+    std::lock_guard< std::mutex> lock(mutex_);
     assert(backend_);
 
     return complete_ || boost::icl::contains(storedSeqs_, seq);

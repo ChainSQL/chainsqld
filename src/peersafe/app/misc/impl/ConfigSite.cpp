@@ -94,11 +94,11 @@ namespace ripple {
 		beast::Journal j,
 		std::chrono::seconds timeout)
 		: ios_(ios)
+        , validatorManifests_(validatorManifests)
 		, timer_(ios_)
 		, fetching_(false)
 		, pending_(false)
 		, stopping_(false)
-		, validatorManifests_(validatorManifests)
 		, requestTimeout_(timeout)
 		, j_(j)
 	{

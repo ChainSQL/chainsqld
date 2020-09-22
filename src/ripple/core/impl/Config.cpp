@@ -300,8 +300,7 @@ void Config::loadFromString (std::string const& fileContents)
     if (auto s = getIniFileSection (secConfig, SECTION_SNTP))
         SNTP_SERVERS = *s;
 
-
-	if (auto s = getIniFileSection(secConfig, SECTION_PATH_X509)) {
+    if (auto s = getIniFileSection(secConfig, SECTION_PATH_X509)) {
 
 		auto const vecCrtPath = *s;
 		for (auto path : vecCrtPath) {
