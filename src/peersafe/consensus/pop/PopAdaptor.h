@@ -32,7 +32,7 @@ namespace ripple {
 class PopAdaptor : public Adaptor
 {
 private:
-    RopConsensusParms                          parms_;
+    PopConsensusParms                          parms_;
 
 public:
     PopAdaptor(PopAdaptor&) = default;
@@ -47,7 +47,7 @@ public:
         ValidatorKeys const & validatorKeys,
         beast::Journal journal);
 
-    inline RopConsensusParms const& parms() const
+    inline PopConsensusParms const& parms() const
     {
         return parms_;
     }

@@ -486,7 +486,7 @@ Adaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
     if (seq != 0)
     {
         // Ledger is too old
-        if (seq < ledgerMaster_.getValidLedgerIndex())
+        if (seq < getValidLedgerIndex())
             return { nullptr, false };
 
         valCount = app_.getValidations().numTrustedForLedger(hash);
@@ -496,7 +496,7 @@ Adaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
             ledgerMaster_.setLastValidLedger(hash, seq);
         }
 
-        if (seq == ledgerMaster_.getValidLedgerIndex())
+        if (seq == getValidLedgerIndex())
             return { nullptr, false };
 
         // Ledger could match the ledger we're already building
@@ -531,7 +531,7 @@ bool Adaptor::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
 {
     LedgerMaster::ScopedLockType ml(ledgerMaster_.peekMutex());
 
-    if (ledger->info().seq <= ledgerMaster_.getValidLedgerIndex())
+    if (ledger->info().seq <= getValidLedgerIndex())
         return false;
 
     auto const minVal = getNeededValidations();
@@ -721,12 +721,12 @@ void Adaptor::consensusBuilt(
 
     ledgerMaster_.getLedgerHistory().builtLedger(ledger, consensusHash, std::move(consensus));
 
-    if (ledger->info().seq <= ledgerMaster_.getValidLedgerIndex())
+    if (ledger->info().seq <= getValidLedgerIndex())
     {
         auto stream = app_.journal("LedgerConsensus").info();
         JLOG(stream)
             << "Consensus built old ledger: "
-            << ledger->info().seq << " <= " << ledgerMaster_.getValidLedgerIndex();
+            << ledger->info().seq << " <= " << getValidLedgerIndex();
         return;
     }
 
@@ -736,7 +736,7 @@ void Adaptor::consensusBuilt(
         ledgerMaster_.doValid(ledger);
     }
 
-    if (ledger->info().seq <= ledgerMaster_.getValidLedgerIndex())
+    if (ledger->info().seq <= getValidLedgerIndex())
     {
         auto stream = app_.journal("LedgerConsensus").debug();
         JLOG(stream) << "Consensus ledger fully validated";
@@ -777,7 +777,7 @@ void Adaptor::consensusBuilt(
     }
 
     auto const neededValidations = getNeededValidations();
-    auto maxSeq = ledgerMaster_.getValidLedgerIndex();
+    auto maxSeq = getValidLedgerIndex();
     auto maxLedger = ledger->info().hash;
 
     // Of the ledgers with sufficient validations,
@@ -809,11 +809,6 @@ void Adaptor::consensusBuilt(
             ledgerMaster_.doValid(result.first);
         }
     }
-}
-
-std::size_t Adaptor::getNeededValidations()
-{
-    return app_.config().standalone() ? 0 : app_.validators().quorum();
 }
 
 void Adaptor::validate(RCLCxLedger const& ledger, RCLTxSet const& txns, bool proposing)
@@ -854,11 +849,11 @@ void Adaptor::validate(RCLCxLedger const& ledger, RCLTxSet const& txns, bool pro
         fees,
         amendments);
 
+    Blob validation = v->getSerialized();
     // suppress it if we receive it
     app_.getHashRouter().addSuppression(
-        sha512Half(makeSlice(v->getSerialized())));
+        sha512Half(makeSlice(validation)));
     handleNewValidation(v, "local");
-    Blob validation = v->getSerialized();
     protocol::TMValidation val;
     val.set_validation(&validation[0], validation.size());
     // Send signed validation to all of our directly connected peers

@@ -15,9 +15,9 @@ namespace ripple {
  * init_time=90
  */
 
-struct RopConsensusParms
+struct PopConsensusParms
 {
-    explicit RopConsensusParms() = default;
+    explicit PopConsensusParms() = default;
 
     // The minimum and maximum block generation time(ms)
     unsigned minBLOCK_TIME = 1000;

@@ -35,14 +35,22 @@ namespace ripple {
 class ViewChange;
 
 
+enum MessageType
+{
+    mtPROPOSESET    = 0,
+    mtVALIDATION    = 1,
+    mtVIEWCHANGE    = 2,
+};
+
+
 class ConsensusBase
 {
 public:
-	using TxSet_t           = typename Adaptor::TxSet_t;
+    using TxSet_t           = typename Adaptor::TxSet_t;
     using Tx_t              = typename TxSet_t::Tx;
-	using Ledger_t          = typename Adaptor::Ledger_t;
+    using Ledger_t          = typename Adaptor::Ledger_t;
     using NodeID_t          = typename Adaptor::NodeID_t;
-	using PeerPosition_t    = typename Adaptor::PeerPosition_t;
+    using PeerPosition_t    = typename Adaptor::PeerPosition_t;
     using Result            = typename Adaptor::Result;
     using Proposal_t        = ConsensusProposal<NodeID_t, typename Ledger_t::ID, typename TxSet_t::ID>;
     //! Clock type for measuring time within the consensus code

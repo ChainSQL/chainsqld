@@ -27,6 +27,8 @@ enum MessageType
     mtGET_PEER_SHARD_INFO   = 52;
     mtPEER_SHARD_INFO       = 53;
 
+    mtCONSENSUS             = 54;
+
     // <available>          = 10;
     // <available>          = 11;
     // <available>          = 14;
@@ -451,4 +453,10 @@ message TMViewChange
     required bytes 		nodePubKey          = 3;
     required bytes 		signature           = 4;
 	required uint64 	toView				= 5;
+}
+
+message TMCONSENSUS
+{
+    required bytes      msg             = 1;
+    required uint32     msgType         = 2;
 }

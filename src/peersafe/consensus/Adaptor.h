@@ -297,20 +297,6 @@ public:
     */
     virtual bool handleNewValidation(STValidation::ref val, std::string const& source);
 
-private:
-    /** Accept a new ledger based on the given transactions.
-
-        @ref onAccept
-    */
-    virtual void doAccept(
-        Result const& result,
-        RCLCxLedger const& prevLedger,
-        NetClock::duration closeResolution,
-        ConsensusCloseTimes const& rawCloseTimes,
-        ConsensusMode const& mode,
-        Json::Value&& consensusJson)
-    {}
-
 protected:
     /** Build the new last closed ledger.
 
@@ -348,13 +334,6 @@ protected:
         uint256 const& consensusHash,
         Json::Value consensus);
 
-    /**
-     * Determines how many validations are needed to fully validate a ledger
-     *
-     * @return Number of validations needed
-     */
-    virtual inline std::size_t getNeededValidations();
-
     /** Validate the given ledger and share with peers as necessary
 
         @param ledger The ledger to validate
@@ -366,6 +345,30 @@ protected:
                          but are still around and trying to catch up.
     */
     virtual void validate(RCLCxLedger const& ledger, RCLTxSet const& txns, bool proposing);
+
+private:
+    /**
+     * Determines how many validations are needed to fully validate a ledger
+     *
+     * @return Number of validations needed
+     */
+    virtual inline std::size_t getNeededValidations()
+    {
+        return app_.config().standalone() ? 0 : app_.validators().quorum();
+    }
+
+    /** Accept a new ledger based on the given transactions.
+
+        @ref onAccept
+    */
+    virtual void doAccept(
+        Result const& result,
+        RCLCxLedger const& prevLedger,
+        NetClock::duration closeResolution,
+        ConsensusCloseTimes const& rawCloseTimes,
+        ConsensusMode const& mode,
+        Json::Value&& consensusJson)
+    {}
 };
 
 
