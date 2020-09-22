@@ -421,7 +421,7 @@ std::pair<int, std::string> parseField(const Json::Value& json, BuildField& fiel
 				 % field.Name()).str() };
 	}
 	Json::Value val;
-	if (json.type() == Json::ValueType::objectValue) {
+	if (json.isObject()) {
 		val = json["value"];
 		Json::Value op = json["op"];
 		if (op.isString() == false)
@@ -1594,28 +1594,28 @@ private:
 	
 	std::pair<int, std::string> build_conditions() {
 		std::pair<int, std::string> result = { 0, "" };
-		if (condition_.type() == Json::ValueType::nullValue)
+		if (condition_.isNull())
 			return result;
 		return impl_build_condtions(condition_);
 	}
 
 	std::pair<int, std::string> build_having_conditions() {
 		std::pair<int, std::string> result = { 0, "" };
-		if (having_.type() == Json::ValueType::nullValue)
+		if (having_.isNull())
 			return result;
 		return impl_build_condtions(having_);
 	}
 
 	std::pair<int, std::string> build_join_on_condition() {
 		std::pair<int, std::string> result = { 0, "" };
-		if (join_on_condition_.type() == Json::ValueType::nullValue)
+		if (join_on_condition_.isNull())
 			return result;
 		return impl_build_condtions(join_on_condition_);
 	}
 
 	std::tuple<int, std::string, conditionTree> build_execute_conditions() {
 		do {
-			if (condition_.type() == Json::ValueType::nullValue)
+			if (condition_.isNull())
 				break;
 			if (condition_.isArray() == false)
 				return std::make_tuple(0, "",conditionTree(conditionTree::NodeType::Expression));

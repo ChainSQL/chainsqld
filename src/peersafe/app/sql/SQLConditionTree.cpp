@@ -494,7 +494,7 @@ conditionTree::expression_result conditionTree::parse_expression(const Json::Val
 		if (v.isObject()) {
 			const std::vector<std::string>& ops = v.getMemberNames();
 			op = ops[0];
-			if (v[op].type() == Json::ValueType::arrayValue) {
+			if (v[op].isArray()) {
 				if (parse_array(v[op], value) != 0)
 					break;
 			}else {

@@ -71,12 +71,12 @@ bool OperationRule::checkRuleFields(std::vector<std::string>& vecFields, Json::V
 				return false;
 		}
 		Json::Value& value = condition[fieldName];
-		if (value.type() == Json::objectValue)
+		if (value.isObject())
 		{
 			if (!checkRuleFields(vecFields, value))
 				return false;
 		}
-		else if (value.type() == Json::arrayValue)
+		else if (value.isArray())
 		{
 			//eg:{'or':[{'id':1},{'name':'123'}]}
 			for (auto &valueItem : value)
