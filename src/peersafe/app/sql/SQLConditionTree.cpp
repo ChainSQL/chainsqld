@@ -317,18 +317,21 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 				sub = (boost::format("%1% %2% %3%")
 					% keyname %op %element).str();
             } else if (op == "is" || op == "is not") {
-                if (!(value[0].isString() || value[0].isBlob() ||
-                      value[0].isText() || value[0].isVarchar())) {
-                    return false;
-                }
+                //if (!(value[0].isString() || value[0].isBlob() ||
+                //      value[0].isText() || value[0].isVarchar())) {
+                //    return false;
+                //}
 
-                std::string s = value[0].asString();
-                transform(s.begin(), s.end(), s.begin(), ::toupper);
-                if (s != "NULL") {
-                    return false;
-                }
+                //std::string s = value[0].asString();
+                //transform(s.begin(), s.end(), s.begin(), ::toupper);
+                //if (s != "NULL") {
+                //    return false;
+                //}
 
-                sub += (boost::format("%1% %2% %3%") %keyname %op %s).str();
+                //sub += (boost::format("%1% %2% %3%") %keyname %op %s).str();
+				if (!value[0].isNull())
+					return false;
+				sub += (boost::format("%1% %2% %3%") % keyname %op %"null").str();
             } else {
 				//assert(value.size() == 1);
 				assert(op != "in" && op != "not in");
@@ -467,7 +470,10 @@ int conditionTree::parse_value(const Json::Value& j, BindValue& v) {
 		v = BindValue(j.asUInt());
 	else if (j.isDouble())
 		v = BindValue(j.asDouble());
-	else
+	else if (j.isNull()) {
+		InnerNull nullValue;
+		v = BindValue(nullValue);
+	}else
 		v = BindValue(j.asString());
 	return result;
 }
@@ -488,11 +494,10 @@ conditionTree::expression_result conditionTree::parse_expression(const Json::Val
 		if (v.isObject()) {
 			const std::vector<std::string>& ops = v.getMemberNames();
 			op = ops[0];
-			if (v[op].isArray()) {
+			if (v[op].type() == Json::ValueType::arrayValue) {
 				if (parse_array(v[op], value) != 0)
 					break;
-			}
-			else {
+			}else {
 				value.push_back(BindValue());
 				if (parse_value(v[op], value[0]) != 0)
 					break;

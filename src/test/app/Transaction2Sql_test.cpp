@@ -1373,7 +1373,7 @@ public:
 
 		for (size_t i = 6; i < 8; i++)
 		{
-			std::string raw_string = (boost::format("[{\"age\":{\"%1%\":\"null\"}}]") % ops[i]).str();
+			std::string raw_string = (boost::format("[{\"age\":{\"%1%\":null}}]") % ops[i]).str();
 			Json::Reader reader = Json::Reader();
 			Json::Value conditions;
 			if (reader.parse(raw_string, conditions) == false) {
