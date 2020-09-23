@@ -988,7 +988,12 @@ private:
 		}
 		else
 		{
-			startGenesisLedger();
+			if (!loadOldLedger(config_.START_LEDGER,
+				startUp == Config::REPLAY,
+				startUp == Config::LOAD_FILE))
+			{
+				startGenesisLedger();
+			}
 		}
 
 		m_orderBookDB.setup(getLedgerMaster().getCurrentLedger());
