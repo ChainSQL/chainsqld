@@ -1238,8 +1238,8 @@ private:
 			std::string loadSql = "order by LedgerSeq desc limit 1";
 			std::tie(ledger, seq, hash) = loadLedgerHelper(loadSql, *this);
 
-			//if (!ledger)
-			//	continue;
+			if (!ledger)
+				return {};
 
 			ledger->setImmutable(config_);
 
