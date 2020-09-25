@@ -22,6 +22,7 @@
 #include <ripple/app/misc/NetworkOPs.h>
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/consensus/ConsensusParams.h>
+#include <peersafe/app/misc/StateManager.h>
 
 
 namespace ripple {
@@ -31,18 +32,18 @@ PopAdaptor::PopAdaptor(
     Application& app,
     std::unique_ptr<FeeVote>&& feeVote,
     LedgerMaster& ledgerMaster,
-    LocalTxs& localTxs,
     InboundTransactions& inboundTransactions,
     ValidatorKeys const & validatorKeys,
-    beast::Journal journal)
-    : Adaptor(
+    beast::Journal journal,
+    LocalTxs& localTxs)
+    : RpcaPopAdaptor(
         app,
         std::move(feeVote),
         ledgerMaster,
-        localTxs,
         inboundTransactions,
         validatorKeys,
-        journal)
+        journal,
+        localTxs)
 {
     if (app_.config().exists(SECTION_PCONSENSUS))
     {
@@ -66,6 +67,187 @@ PopAdaptor::PopAdaptor(
         parms_.initTIME = std::chrono::seconds{ app.config().loadConfig(SECTION_PCONSENSUS, "init_time", parms_.initTIME.count()) };
 
         parms_.omitEMPTY = app.config().loadConfig(SECTION_PCONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+    }
+}
+
+bool PopAdaptor::isLeader(PublicKey const& publicKey, LedgerIndex curSeq, std::uint64_t view)
+{
+    auto const& validators = app_.validators().validators();
+    assert(validators.size() > 0);
+
+    int leaderIndex = (view + curSeq) % validators.size();
+
+    return publicKey == validators[leaderIndex];
+}
+
+inline bool PopAdaptor::isLeader(LedgerIndex curSeq, std::uint64_t view)
+{
+    return isLeader(valPublic_, curSeq, view);
+}
+
+int PopAdaptor::getPubIndex(PublicKey const& publicKey)
+{
+    auto const& validators = app_.validators().validators();
+
+    for (int i = 0; i < validators.size(); i++)
+    {
+        if (validators[i] == publicKey)
+            return i + 1;
+    }
+
+    return 0;
+}
+
+inline int PopAdaptor::getPubIndex()
+{
+    return getPubIndex(valPublic_);
+}
+
+auto PopAdaptor::onCollectFinish(
+    RCLCxLedger const& ledger,
+    std::vector<uint256> const& transactions,
+    NetClock::time_point const& closeTime,
+    std::uint64_t const& view,
+    ConsensusMode mode) -> Result
+{
+    const bool wrongLCL = mode == ConsensusMode::wrongLedger;
+    const bool proposing = mode == ConsensusMode::proposing;
+
+    notify(protocol::neCLOSING_LEDGER, ledger, !wrongLCL);
+
+    auto const& prevLedger = ledger.ledger_;
+
+    //ledgerMaster_.applyHeldTransactions();
+    // Tell the ledger master not to acquire the ledger we're probably building
+    ledgerMaster_.setBuildingLedger(prevLedger->info().seq + 1);
+    //auto initialLedger = app_.openLedger().current();
+
+    auto initialSet = std::make_shared<SHAMap>(
+        SHAMapType::TRANSACTION, app_.family(), SHAMap::version{ 1 });
+    initialSet->setUnbacked();
+
+    // Build SHAMap containing all transactions in our open ledger
+    for (auto const& txID : transactions)
+    {
+        auto tx = app_.getMasterTransaction().fetch(txID, false);
+        if (!tx)
+        {
+            JLOG(j_.error()) << "fetch transaction " + to_string(txID) + "failed";
+            continue;
+        }
+
+        JLOG(j_.trace()) << "Adding open ledger TX " << txID;
+        Serializer s(2048);
+        tx->getSTransaction()->add(s);
+        initialSet->addItem(
+            SHAMapItem(tx->getID(), std::move(s)),
+            true,
+            false);
+    }
+
+    // Add pseudo-transactions to the set
+    if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
+        ((prevLedger->info().seq % 256) == 0))
+    {
+        // previous ledger was flag ledger, add pseudo-transactions
+        auto const validations =
+            app_.getValidations().getTrustedForLedger(
+                prevLedger->info().parentHash);
+
+        if (validations.size() >= app_.validators().quorum())
+        {
+            feeVote_->doVoting(prevLedger, validations, initialSet);
+            app_.getAmendmentTable().doVoting(
+                prevLedger, validations, initialSet);
+        }
+    }
+
+    // Now we need an immutable snapshot
+    initialSet = initialSet->snapShot(false);
+    auto setHash = initialSet->getHash().as_uint256();
+
+    return Result{
+        std::move(initialSet),
+        RCLCxPeerPos::Proposal{
+            RCLCxPeerPos::Proposal::seqJoin,
+            setHash,
+            prevLedger->info().hash,
+            closeTime,
+            app_.timeKeeper().closeTime(),
+            nodeID_,
+            valPublic_,
+            prevLedger->info().seq + 1,
+            view} };
+}
+
+STViewChange::ref
+PopAdaptor::launchViewChange(LedgerIndex preSeq, uint256 preHash, std::uint64_t toView)
+{
+    auto v = std::make_shared<STViewChange>(preSeq, preHash, toView, valPublic_);
+
+    Blob viewChange = v->getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&viewChange[0], viewChange.size());
+    consensus.set_msgtype(ConsensusMessageType::mtVIEWCHANGE);
+
+    signAndSendMessage(consensus);
+
+    return std::move(v);
+}
+
+void PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
+{
+    app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
+    //Try to clear state cache.
+    if (app_.getLedgerMaster().getPublishedLedgerAge() > 3 * parms_.consensusTIMEOUT
+        && app_.getTxPool().isEmpty())
+    {
+        app_.getStateManager().clear();
+    }
+
+    if (bWaitingInit)
+    {
+        notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
+    }
+    if (app_.openLedger().current()->info().seq != previousLedger.seq() + 1)
+    {
+        //Generate new openLedger
+        CanonicalTXSet retriableTxs{ beast::zero };
+        auto const lastVal = ledgerMaster_.getValidatedLedger();
+        boost::optional<Rules> rules;
+        if (lastVal)
+            rules.emplace(*lastVal, app_.config().features);
+        else
+            rules.emplace(app_.config().features);
+        app_.openLedger().accept(
+            app_,
+            *rules,
+            previousLedger.ledger_,
+            localTxs_.getTxSet(),
+            false,
+            retriableTxs,
+            tapNONE,
+            "consensus",
+            [&](OpenView& view, beast::Journal j) {
+            // Stuff the ledger with transactions from the queue.
+            return app_.getTxQ().accept(app_, view);
+        });
+    }
+
+    if (!validating())
+    {
+        notify(protocol::neCLOSING_LEDGER, previousLedger, mode() != ConsensusMode::wrongLedger);
+    }
+}
+
+void PopAdaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
+{
+    auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
+    if (inboundLedger)
+    {
+        inboundLedger->touch();
     }
 }
 

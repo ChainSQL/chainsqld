@@ -18,10 +18,6 @@
 //==============================================================================
 
 #include <ripple/protocol/STValidation.h>
-#include <ripple/protocol/HashPrefix.h>
-#include <ripple/basics/contract.h>
-#include <ripple/basics/Log.h>
-#include <ripple/json/to_string.h>
 
 namespace ripple {
 
@@ -29,24 +25,22 @@ STValidation::STValidation(
     uint256 const& ledgerHash,
     std::uint32_t ledgerSeq,
     uint256 const& consensusHash,
+    PublicKey const& publickey,
     NetClock::time_point signTime,
-    PublicKey const& publicKey,
-    SecretKey const& secretKey,
     NodeID const& nodeID,
     bool isFull,
     FeeSettings const& fees,
     std::vector<uint256> const& amendments)
-    : STObject(getFormat(), sfValidation), mNodeID(nodeID), mSeen(signTime)
+    : STObject(getFormat(), sfValidation)
+    , mNodeID(nodeID)
+    , mSeen(signTime)
+    , mSignerPublic(publickey)
 {
-    // This is our own public key and it should always be valid.
-    if (!publicKeyType(publicKey))
-        LogicError("Invalid validation public key");
     assert(mNodeID.isNonZero());
     setFieldH256(sfLedgerHash, ledgerHash);
     setFieldH256(sfConsensusHash, consensusHash);
     setFieldU32(sfSigningTime, signTime.time_since_epoch().count());
 
-    setFieldVL(sfSigningPubKey, publicKey.slice());
     if (isFull)
         setFlag(kFullFlag);
 
@@ -72,16 +66,7 @@ STValidation::STValidation(
 
     setFlag(vfFullyCanonicalSig);
 
-    auto const signingHash = getSigningHash();
-    setFieldVL(
-        sfSignature, signDigest(getSignerPublic(), secretKey, signingHash));
-
     setTrusted();
-}
-
-uint256 STValidation::getSigningHash () const
-{
-    return STObject::getSigningHash (HashPrefix::validation);
 }
 
 uint256 STValidation::getLedgerHash () const
@@ -100,43 +85,9 @@ STValidation::getSignTime () const
     return NetClock::time_point{NetClock::duration{getFieldU32(sfSigningTime)}};
 }
 
-NetClock::time_point STValidation::getSeenTime () const
-{
-    return mSeen;
-}
-
-bool STValidation::isValid () const
-{
-    try
-    {
-        if (publicKeyType(getSignerPublic()) != KeyType::secp256k1)
-            return false;
-
-        return verifyDigest (getSignerPublic(), getSigningHash(),
-            makeSlice(getFieldVL (sfSignature)),
-            getFlags () & vfFullyCanonicalSig);
-    }
-    catch (std::exception const&)
-    {
-        JLOG (debugLog().error())
-            << "Exception validating validation";
-        return false;
-    }
-}
-
-PublicKey STValidation::getSignerPublic () const
-{
-    return PublicKey(makeSlice (getFieldVL (sfSigningPubKey)));
-}
-
 bool STValidation::isFull () const
 {
     return (getFlags () & kFullFlag) != 0;
-}
-
-Blob STValidation::getSignature () const
-{
-    return getFieldVL (sfSignature);
 }
 
 Blob STValidation::getSerialized () const
@@ -162,8 +113,6 @@ SOTemplate const& STValidation::getFormat ()
             { sfReserveBase,      soeOPTIONAL },
             { sfReserveIncrement, soeOPTIONAL },
             { sfSigningTime,      soeREQUIRED },
-            { sfSigningPubKey,    soeREQUIRED },
-            { sfSignature,        soeOPTIONAL },
             { sfConsensusHash,    soeOPTIONAL },
             { sfCookie,           soeOPTIONAL },
 			{ sfDropsPerByte,	  soeOPTIONAL }

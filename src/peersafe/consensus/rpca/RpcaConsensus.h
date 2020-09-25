@@ -232,15 +232,10 @@ public:
     */
     void timerEntry(NetClock::time_point const& now) override final;
 
-    /** A peer has proposed a new position, adjust our tracking.
-
-        @param now The network adjusted time
-        @param newProposal The new proposal from a peer
-        @return Whether we should do delayed relay of this proposal.
-    */
-    bool peerProposal(
-        NetClock::time_point const& now,
-        PeerPosition_t const& newProposal) override final;
+    bool peerConsensusMessage(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m) override final;
 
     /** Process a transaction set acquired from the network
 
@@ -360,15 +355,30 @@ private:
 
     bool haveConsensus();
 
-    /** Handle a replayed or a new peer proposal.
+    // Update our disputes given that this node has adopted a new position.
+    // Will call createDisputes as needed.
+    void updateDisputes(NodeID_t const& node, TxSet_t const& other);
+
+    /** A peer has proposed a new position, adjust our tracking.
+
+        @param now The network adjusted time
+        @param newProposal The new proposal from a peer
+        @return Whether we should do delayed relay of this proposal.
     */
+    bool peerProposal(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    /** Handle a replayed or a new peer proposal. */
     bool peerProposalInternal(
         NetClock::time_point const& now,
         PeerPosition_t const& newProposal);
 
-    // Update our disputes given that this node has adopted a new position.
-    // Will call createDisputes as needed.
-    void updateDisputes(NodeID_t const& node, TxSet_t const& other);
+    bool peerValidation(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
 };
 
 

@@ -18,12 +18,15 @@
 //==============================================================================
 
 
-#include <peersafe/consensus/impl/ViewChange.cpp>
-#include <peersafe/consensus/impl/ViewChangeManager.cpp>
+
 
 #include <peersafe/consensus/impl/Adaptor.cpp>
+#include <peersafe/consensus/impl/RpcaPopAdaptor.cpp>
 
 #include <peersafe/consensus/rpca/impl/RpcaAdaptor.cpp>
 #include <peersafe/consensus/rpca/impl/RpcaConsensus.cpp>
+
+#include <peersafe/consensus/pop/impl/ViewChangeManager.cpp>
 #include <peersafe/consensus/pop/impl/PopAdaptor.cpp>
 #include <peersafe/consensus/pop/impl/PopConsensus.cpp>
+

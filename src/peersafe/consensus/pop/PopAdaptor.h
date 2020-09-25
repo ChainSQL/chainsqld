@@ -22,14 +22,16 @@
 #define PEERSAFE_CONSENSUS_POPADAPTOR_H_INCLUDE
 
 
-#include <peersafe/consensus/Adaptor.h>
+#include <peersafe/protocol/STViewChange.h>
+#include <peersafe/consensus/RpcaPopAdaptor.h>
 #include <peersafe/consensus/pop/PopConsensusParams.h>
 
 
 namespace ripple {
 
 
-class PopAdaptor : public Adaptor
+class PopAdaptor final
+    : public RpcaPopAdaptor
 {
 private:
     PopConsensusParms                          parms_;
@@ -42,15 +44,39 @@ public:
         Application& app,
         std::unique_ptr<FeeVote>&& feeVote,
         LedgerMaster& ledgerMaster,
-        LocalTxs& localTxs,
         InboundTransactions& inboundTransactions,
         ValidatorKeys const & validatorKeys,
-        beast::Journal journal);
+        beast::Journal journal,
+        LocalTxs& localTxs);
 
     inline PopConsensusParms const& parms() const
     {
         return parms_;
     }
+
+    inline std::size_t getQuorum() const
+    {
+        return app_.validators().quorum();
+    }
+
+    bool isLeader(PublicKey const& publicKey, LedgerIndex curSeq, std::uint64_t view);
+    bool isLeader(LedgerIndex curSeq, std::uint64_t view);
+
+    int getPubIndex(PublicKey const& publicKey);
+    int getPubIndex();
+
+    Result onCollectFinish(
+        RCLCxLedger const& ledger,
+        std::vector<uint256> const& transactions,
+        NetClock::time_point const& closeTime,
+        std::uint64_t const& view,
+        ConsensusMode mode);
+
+    STViewChange::ref
+    launchViewChange(LedgerIndex preSeq, uint256 preHash, std::uint64_t toView);
+    void onViewChanged(bool bWaitingInit, Ledger_t previousLedger);
+
+    void touchAcquringLedger(LedgerHash const& prevLedgerHash);
 
 private:
     void doAccept(

@@ -21,9 +21,8 @@
 #define RIPPLE_PROTOCOL_STVALIDATION_H_INCLUDED
 
 #include <ripple/basics/Log.h>
-#include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/STObject.h>
-#include <ripple/protocol/SecretKey.h>
+#include <ripple/protocol/PublicKey.h>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -67,29 +66,12 @@ public:
     template <class LookupNodeID>
     STValidation(
         SerialIter& sit,
-        LookupNodeID&& lookupNodeID,
-        bool checkSignature)
+        PublicKey const& publicKey,
+        LookupNodeID&& lookupNodeID)
         : STObject(getFormat(), sit, sfValidation)
+        , mSignerPublic(publicKey)
     {
-        auto const spk = getFieldVL(sfSigningPubKey);
-
-        if (publicKeyType(makeSlice(spk)) != KeyType::secp256k1)
-        {
-            JLOG (debugLog().error())
-                << "Invalid public key in validation"
-                << getJson (JsonOptions::none);
-            Throw<std::runtime_error> ("Invalid public key in validation");
-        }
-
-        if  (checkSignature && !isValid ())
-        {
-            JLOG (debugLog().error())
-                << "Invalid signature in validation"
-                << getJson (JsonOptions::none);
-            Throw<std::runtime_error> ("Invalid signature in validation");
-        }
-
-        mNodeID = lookupNodeID(PublicKey(makeSlice(spk)));
+        mNodeID = lookupNodeID(publicKey);
         assert(mNodeID.isNonZero());
     }
 
@@ -129,9 +111,8 @@ public:
         uint256 const& ledgerHash,
         std::uint32_t ledgerSeq,
         uint256 const& consensusHash,
+        PublicKey const& publickey,
         NetClock::time_point signTime,
-        PublicKey const& publicKey,
-        SecretKey const& secretKey,
         NodeID const& nodeID,
         bool isFull,
         FeeSettings const& fees,
@@ -150,66 +131,25 @@ public:
     }
 
     // Hash of the validated ledger
-    uint256
-    getLedgerHash() const;
+    uint256 getLedgerHash() const;
 
     // Hash of consensus transaction set used to generate ledger
-    uint256
-    getConsensusHash() const;
+    uint256 getConsensusHash() const;
 
-    NetClock::time_point
-    getSignTime() const;
+    NetClock::time_point getSignTime() const;
 
-    NetClock::time_point
-    getSeenTime() const;
+    bool isFull() const;
 
-    PublicKey
-    getSignerPublic() const;
+    NetClock::time_point getSeenTime() const { return mSeen; }
+    PublicKey const& getSignerPublic() const { return mSignerPublic; };
+    NodeID getNodeID() const { return mNodeID; }
+    bool isTrusted() const { return mTrusted; }
 
-    NodeID
-    getNodeID() const
-    {
-        return mNodeID;
-    }
+    void setTrusted() { mTrusted = true; }
+    void setUntrusted() { mTrusted = false; }
+    void setSeen(NetClock::time_point s) { mSeen = s; }
 
-    bool
-    isValid() const;
-
-    bool
-    isFull() const;
-
-    bool
-    isTrusted() const
-    {
-        return mTrusted;
-    }
-
-    uint256
-    getSigningHash() const;
-
-    void
-    setTrusted()
-    {
-        mTrusted = true;
-    }
-
-    void
-    setUntrusted()
-    {
-        mTrusted = false;
-    }
-
-    void
-    setSeen(NetClock::time_point s)
-    {
-        mSeen = s;
-    }
-
-    Blob
-    getSerialized() const;
-
-    Blob
-    getSignature() const;
+    Blob getSerialized() const;
 
 private:
 
@@ -219,6 +159,7 @@ private:
     NodeID mNodeID;
     bool mTrusted = false;
     NetClock::time_point mSeen = {};
+    PublicKey mSignerPublic;
 };
 
 } // ripple

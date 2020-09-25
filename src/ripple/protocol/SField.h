@@ -86,6 +86,8 @@ enum SerializedTypeID
     STI_LEDGERENTRY = 10002,
     STI_VALIDATION  = 10003,
     STI_METADATA    = 10004,
+    STI_PROPOSESET  = 10005,
+    STI_VIEWCHANGE  = 10006,
 };
 
 // constexpr
@@ -329,6 +331,8 @@ extern SField const sfLedgerEntry;
 extern SField const sfTransaction;
 extern SField const sfValidation;
 extern SField const sfMetadata;
+extern SField const sfProposeSet;
+extern SField const sfViewChange;
 
 // 8-bit integers
 extern SF_U8 const sfCloseResolution;
@@ -402,6 +406,7 @@ extern SF_U64 const sfIssuerNode;
 extern SF_U64 const sfDestinationNode;
 extern SF_U64 const sfCookie;
 extern SF_U64 const sfDropsPerByte;
+extern SF_U64 const sfView;
 
 // 128-bit
 extern SF_U128 const sfEmailHash;

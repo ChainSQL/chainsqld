@@ -80,58 +80,7 @@ public:
 
     RCLConsensus& operator=(RCLConsensus const&) = delete;
 
-    inline ConsensusParms const& parms() const
-    {
-        return parms_;
-    }
-
-    //! Whether we are validating consensus ledgers.
-    inline bool validating() const
-    {
-        return adaptor_->validating();
-    }
-
-    //! Get the number of proposing peers that participated in the previous
-    //! round.
-    inline std::size_t prevProposers() const
-    {
-        return adaptor_->prevProposers();
-    }
-
-    /** Get duration of the previous round.
-
-        The duration of the round is the establish phase, measured from closing
-        the open ledger to accepting the consensus result.
-
-        @return Last round duration in milliseconds
-    */
-    inline std::chrono::milliseconds prevRoundTime() const
-    {
-        return adaptor_->prevRoundTime();
-    }
-
-    //! @see Consensus::mode
-    inline ConsensusMode mode() const
-    {
-        return adaptor_->mode();
-    }
-
-    inline bool waitingForInit()
-    {
-        return consensus_->waitingForInit();
-    }
-
-    inline std::chrono::milliseconds getConsensusTimeout()
-    {
-        return consensus_->getConsensusTimeout();
-    }
-
-    // @see Consensus::prevLedgerID
-    RCLCxLedger::ID prevLedgerID() const
-    {
-        ScopedLockType _{ mutex_ };
-        return consensus_->prevLedgerID();
-    }
+    inline ConsensusParms const& parms() const { return parms_; }
 
     //! @see Consensus::startRound
     void startRound(
@@ -143,27 +92,46 @@ public:
     //! @see Consensus::timerEntry
     void timerEntry(NetClock::time_point const& now);
 
+    bool peerConsensusMessage(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
     //! @see Consensus::gotTxSet
     void gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet);
 
-    //! @see Consensus::simulate
+    //! @see Consensus::getJson
+    Json::Value getJson(bool full) const;
+
+    // ----------------------------------------------------------------------
+    // RPC server_status interfaces
+
+    //! Whether we are validating consensus ledgers.
+    inline bool validating() const { return adaptor_->validating(); }
+
+    //! Get the number of proposing peers that participated in the previous
+    //! round.
+    inline std::size_t prevProposers() const { return adaptor_->prevProposers(); }
+
+    /** Get duration of the previous round.
+
+        The duration of the round is the establish phase, measured from closing
+        the open ledger to accepting the consensus result.
+
+        @return Last round duration in milliseconds
+    */
+    inline std::chrono::milliseconds prevRoundTime() const { return adaptor_->prevRoundTime(); }
+
+    inline ConsensusMode mode() const { return adaptor_->mode(); }
+
+    // ----------------------------------------------------------------------
+    // RPC ledger_accept interfaces
     void simulate(
         NetClock::time_point const& now,
         boost::optional<std::chrono::milliseconds> consensusDelay);
 
-    //! @see Consensus::proposal
-    bool peerProposal(
-        NetClock::time_point const& now,
-        RCLCxPeerPos const& newProposal);
-
-    bool peerValidation(STValidation::ref val, std::string const& source);
-
-	bool peerViewChange(ViewChange const& change);
-
     bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger);
 
-    //! @see Consensus::getJson
-    Json::Value getJson(bool full) const;
 
     static ConsensusType stringToConsensusType(std::string const& s);
 };

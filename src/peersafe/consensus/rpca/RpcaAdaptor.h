@@ -23,14 +23,15 @@
 
 
 #include <ripple/app/consensus/RCLCensorshipDetector.h>
-#include <peersafe/consensus/Adaptor.h>
+#include <peersafe/consensus/RpcaPopAdaptor.h>
 #include <peersafe/consensus/rpca/RpcaConsensusParams.h>
 
 
 namespace ripple {
 
 
-class RpcaAdaptor : public Adaptor
+class RpcaAdaptor final
+    : public RpcaPopAdaptor
 {
 private:
     /** Warn for transactions that haven't been included every so many ledgers. */
@@ -47,10 +48,10 @@ public:
         Application& app,
         std::unique_ptr<FeeVote>&& feeVote,
         LedgerMaster& ledgerMaster,
-        LocalTxs& localTxs,
         InboundTransactions& inboundTransactions,
         ValidatorKeys const & validatorKeys,
-        beast::Journal journal);
+        beast::Journal journal,
+        LocalTxs& localTxs);
 
     bool preStartRound(RCLCxLedger const & prevLgr) override final;
     boost::optional<RCLCxLedger> acquireLedger(LedgerHash const& hash) override final;
@@ -60,6 +61,65 @@ public:
     {
         return parms_;
     }
+
+    inline std::pair<std::size_t, hash_set<NodeKey_t>> getQuorumKeys() const
+    {
+        return app_.validators().getQuorumKeys();
+    }
+
+    inline std::size_t laggards(Ledger_t::Seq const seq, hash_set<NodeKey_t >& trustedKeys) const
+    {
+        return app_.getValidations().laggards(seq, trustedKeys);
+    }
+
+    /** Number of proposers that have vallidated the given ledger
+
+        @param h The hash of the ledger of interest
+        @return the number of proposers that validated a ledger
+    */
+    inline std::size_t proposersValidated(LedgerHash const& h) const
+    {
+        return app_.getValidations().numTrustedForLedger(h);
+    }
+
+    inline bool validator() const
+    {
+        return !valPublic_.empty();
+    }
+
+    /** Whether the open ledger has any transactions */
+    inline bool hasOpenTransactions() const
+    {
+        return !app_.openLedger().empty();
+    }
+
+    /** Relay the given proposal to all peers
+
+    @param peerPos The peer position to relay.
+    */
+    void relay(RCLCxPeerPos const& peerPos);
+
+
+    /** Relay disputed transacction to peers.
+
+        Only relay if the provided transaction hasn't been shared recently.
+
+        @param tx The disputed transaction to relay.
+    */
+    void relay(RCLCxTx const& tx);
+
+    /** Process the accepted ledger that was a result of simulation/force
+        accept.
+
+        @ref onAccept
+    */
+    void onForceAccept(
+        Result const& result,
+        RCLCxLedger const& prevLedger,
+        NetClock::duration const& closeResolution,
+        ConsensusCloseTimes const& rawCloseTimes,
+        ConsensusMode const& mode,
+        Json::Value&& consensusJson);
 
     /** Close the open ledger and return initial consensus position.
 

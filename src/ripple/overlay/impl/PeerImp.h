@@ -38,7 +38,6 @@
 #include <ripple/beast/utility/WrappedSink.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <ripple/resource/Fees.h>
-#include <peersafe/consensus/ViewChange.h>
 
 #include <boost/endian/conversion.hpp>
 #include <boost/optional.hpp>
@@ -234,6 +233,12 @@ public:
     pjournal() const
     {
         return p_journal_;
+    }
+
+    Sanity
+    sanity() const
+    {
+        return sanity_.load();
     }
 
     PeerFinder::Slot::ptr const&
@@ -476,12 +481,10 @@ public:
     void onMessage (std::shared_ptr <protocol::TMGetTable> const& m);
     void onMessage (std::shared_ptr <protocol::TMLedgerData> const& m);
     void onMessage (std::shared_ptr <protocol::TMTableData> const& m);
-    void onMessage (std::shared_ptr <protocol::TMProposeSet> const& m);
     void onMessage (std::shared_ptr <protocol::TMStatusChange> const& m);
     void onMessage (std::shared_ptr <protocol::TMHaveTransactionSet> const& m);
-    void onMessage (std::shared_ptr <protocol::TMValidation> const& m);
     void onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m);
-	void onMessage (std::shared_ptr <protocol::TMViewChange> const& m);
+    void onMessage (std::shared_ptr <protocol::TMConsensus> const& m);
 
 private:
     State state() const
@@ -510,17 +513,7 @@ private:
         std::shared_ptr<STTx const> const& stx);
 
     void
-    checkPropose (Job& job,
-        std::shared_ptr<protocol::TMProposeSet> const& packet,
-            RCLCxPeerPos const& peerPos);
-
-	void
-		checkViewChange(bool isTrusted,ViewChange const& change, uint256 suppression,
-			std::shared_ptr<protocol::TMViewChange> const& packet);
-
-    void
-    checkValidation (STValidation::pointer val,
-        std::shared_ptr<protocol::TMValidation> const& packet);
+    checkConsensus(Job& job, std::shared_ptr<protocol::TMConsensus> const& packet);
 
     void
     getLedger (std::shared_ptr<protocol::TMGetLedger> const&packet);

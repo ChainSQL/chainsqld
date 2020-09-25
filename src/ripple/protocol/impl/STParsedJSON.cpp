@@ -773,6 +773,8 @@ static boost::optional <STObject> parseObject (
             case STI_TRANSACTION:
             case STI_LEDGERENTRY:
             case STI_VALIDATION:
+            case STI_PROPOSESET:
+            case STI_VIEWCHANGE:
                 if (! value.isObject ())
                 {
                     error = not_an_object (json_name, fieldName);

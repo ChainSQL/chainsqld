@@ -41,12 +41,11 @@ enum JobType
 
     jtPACK,          // Make a fetch pack for a peer
     jtPUBOLDLEDGER,  // An old ledger has been accepted
-    jtVALIDATION_ut, // A validation from an untrusted source
+    jtCONSENSUS_ut,  // A consensus message from an untrusted source
     jtTRANSACTION_l, // A local transaction
     
     jtTABLE_REQ,     // Peer request table data
     jtTABLE_DATA,    // Peer request table data
-    jtPROPOSAL_ut,   // A proposal from an untrusted source
     
     jtCheckSubTx,	 // check subscribe tx
 
@@ -74,13 +73,12 @@ enum JobType
     jtWAL,           // Write-ahead logging
     jtWRITE,         // Write out hashed objects
     jtACCEPT,        // Accept a consensus ledger
-    jtPROPOSAL_t,    // A proposal from a trusted source
     jtSWEEP,         // Sweep for stale structures
     jtNETOP_CLUSTER, // NetworkOPs cluster peer report
     jtNETOP_TIMER,   // NetworkOPs net timer processing
     jtADMIN,         // An administrative operation
 
-	jtVALIDATION_t,  // A validation from a trusted source
+    jtCONSENSUS_t,   // A consensus message from a trusted source
     jtSKIPNODE,      // skip node 
 
 

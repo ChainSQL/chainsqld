@@ -23,6 +23,7 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/misc/AmendmentTable.h>
+#include <ripple/overlay/impl/PeerImp.h>
 #include <peersafe/consensus/LedgerTiming.h>
 #include <peersafe/consensus/rpca/RpcaConsensus.h>
 
@@ -240,20 +241,22 @@ void RpcaConsensus::timerEntry(NetClock::time_point const& now)
     }
 }
 
-bool RpcaConsensus::peerProposal(NetClock::time_point const& now, PeerPosition_t const& newPeerPos)
+bool RpcaConsensus::peerConsensusMessage(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    NodeID_t const& peerID = newPeerPos.proposal().nodeID();
-
-    // Always need to store recent positions
+    switch (m->msgtype())
     {
-        auto& props = recentPeerPositions_[peerID];
-
-        if (props.size() >= 10)
-            props.pop_front();
-
-        props.push_back(newPeerPos);
+    case ConsensusMessageType::mtPROPOSESET:
+        return peerProposal(peer, isTrusted, m);
+    case ConsensusMessageType::mtVALIDATION:
+        return peerValidation(peer, isTrusted, m);
+    default:
+        break;
     }
-    return peerProposalInternal(now, newPeerPos);
+
+    return false;
 }
 
 void RpcaConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
@@ -611,7 +614,7 @@ void RpcaConsensus::closeLedger()
     // Share the newly created transaction set if we haven't already
     // received it from a peer
     if (acquired_.emplace(result_->txns.id(), result_->txns).second)
-        adaptor_.relay(result_->txns);
+        adaptor_.RpcaPopAdaptor::Adaptor::relay(result_->txns);
 
     if (mode_.get() == ConsensusMode::proposing)
         adaptor_.propose(result_->position);
@@ -891,7 +894,7 @@ void RpcaConsensus::updateOurPositions()
         if (acquired_.emplace(newID, result_->txns).second)
         {
             if (!result_->position.isBowOut())
-                adaptor_.relay(result_->txns);
+                adaptor_.RpcaPopAdaptor::Adaptor::relay(result_->txns);
 
             for (auto const& it : currPeerPositions_)
             {
@@ -1091,6 +1094,84 @@ NetClock::time_point RpcaConsensus::asCloseTime(NetClock::time_point raw) const
         return effCloseTime(raw, closeResolution_, previousLedger_.closeTime());
 }
 
+void RpcaConsensus::updateDisputes(NodeID_t const& node, TxSet_t const& other)
+{
+    // Cannot updateDisputes without our stance
+    assert(result_);
+
+    // Ensure we have created disputes against this set if we haven't seen
+    // it before
+    if (result_->compares.find(other.id()) == result_->compares.end())
+        createDisputes(other);
+
+    for (auto& it : result_->disputes)
+    {
+        auto& d = it.second;
+        d.setVote(node, other.exists(d.tx().id()));
+    }
+}
+
+bool RpcaConsensus::peerProposal(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    try
+    {
+        STProposeSet::pointer propose;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+
+        propose = std::make_shared<STProposeSet>(
+            sit,
+            adaptor_.closeTime(),
+            calcNodeID(publicKey),
+            publicKey);
+
+        auto newPeerPos = RCLCxPeerPos(
+            publicKey, makeSlice(m->signature()), consensusMessageUniqueId(*m),
+            std::move(*propose));
+
+        if (isTrusted)
+        {
+            NodeID_t const& peerID = newPeerPos.proposal().nodeID();
+
+            // Always need to store recent positions
+            {
+                auto& props = recentPeerPositions_[peerID];
+
+                if (props.size() >= 10)
+                    props.pop_front();
+
+                props.push_back(newPeerPos);
+            }
+
+            return peerProposalInternal(adaptor_.closeTime(), newPeerPos);
+        }
+        else
+        {
+            if (peer->cluster() || prevLedgerID_ == newPeerPos.proposal().prevLedger())
+            {
+                // relay untrusted proposal
+                JLOG(j_.trace()) << "relaying UNTRUSTED proposal";
+                return true;
+            }
+            else
+            {
+                JLOG(j_.debug()) << "Not relaying UNTRUSTED proposal";
+            }
+        }
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "ProposeSet: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return false;
+}
+
 bool RpcaConsensus::peerProposalInternal(
     NetClock::time_point const& now,
     PeerPosition_t const& newPeerPos)
@@ -1187,21 +1268,47 @@ bool RpcaConsensus::peerProposalInternal(
     return true;
 }
 
-void RpcaConsensus::updateDisputes(NodeID_t const& node, TxSet_t const& other)
+bool RpcaConsensus::peerValidation(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    // Cannot updateDisputes without our stance
-    assert(result_);
-
-    // Ensure we have created disputes against this set if we haven't seen
-    // it before
-    if (result_->compares.find(other.id()) == result_->compares.end())
-        createDisputes(other);
-
-    for (auto& it : result_->disputes)
+    if (m->msg().size() < 50)
     {
-        auto& d = it.second;
-        d.setVote(node, other.exists(d.tx().id()));
+        JLOG(j_.warn()) << "Validation: Too small";
+        peer->charge(Resource::feeInvalidRequest);
+        return false;
     }
+
+    try
+    {
+        STValidation::pointer val;
+        {
+            SerialIter sit(makeSlice(m->msg()));
+            PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+            val = std::make_shared<STValidation>(
+                std::ref(sit),
+                publicKey,
+                [&](PublicKey const& pk) {
+                    return calcNodeID(adaptor_.getMasterKey(pk));
+                });
+            val->setSeen(adaptor_.closeTime());
+            if (isTrusted)
+            {
+                val->setTrusted();
+            }
+        }
+
+        return adaptor_.peerValidation(peer, val);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "Validation: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return false;
 }
+
 
 }  // namespace ripple

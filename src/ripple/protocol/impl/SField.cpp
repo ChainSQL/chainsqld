@@ -46,6 +46,8 @@ SField const sfLedgerEntry  (access, STI_LEDGERENTRY, 257, "LedgerEntry");
 SField const sfTransaction  (access, STI_TRANSACTION, 257, "Transaction");
 SField const sfValidation   (access, STI_VALIDATION,  257, "Validation");
 SField const sfMetadata     (access, STI_METADATA,    257, "Metadata");
+SField const sfProposeSet   (access, STI_PROPOSESET,  257, "ProposeSet");
+SField const sfViewChange   (access, STI_VIEWCHANGE,  257, "ViewChange");
 SField const sfHash         (access, STI_HASH256,     257, "hash");
 SField const sfIndex        (access, STI_HASH256,     258, "index");
 
@@ -113,21 +115,21 @@ SF_U32 const sfGas				   (access,	STI_UINT32, 55, "Gas");
 
 
 // 64-bit integers
-SF_U64 const sfIndexNext        (access, STI_UINT64, 1, "IndexNext");
-SF_U64 const sfIndexPrevious    (access, STI_UINT64, 2, "IndexPrevious");
-SF_U64 const sfBookNode         (access, STI_UINT64, 3, "BookNode");
-SF_U64 const sfOwnerNode        (access, STI_UINT64, 4, "OwnerNode");
-SF_U64 const sfBaseFee          (access, STI_UINT64, 5, "BaseFee");
-SF_U64 const sfExchangeRate     (access, STI_UINT64, 6, "ExchangeRate");
-SF_U64 const sfLowNode          (access, STI_UINT64, 7, "LowNode");
-SF_U64 const sfHighNode         (access, STI_UINT64, 8, "HighNode");
-SF_U64 const sfDestinationNode  (access, STI_UINT64, 9, "DestinationNode");
-SF_U64 const sfCookie           (access, STI_UINT64, 10,"Cookie");
+SF_U64 const sfIndexNext        (access, STI_UINT64,  1, "IndexNext");
+SF_U64 const sfIndexPrevious    (access, STI_UINT64,  2, "IndexPrevious");
+SF_U64 const sfBookNode         (access, STI_UINT64,  3, "BookNode");
+SF_U64 const sfOwnerNode        (access, STI_UINT64,  4, "OwnerNode");
+SF_U64 const sfBaseFee          (access, STI_UINT64,  5, "BaseFee");
+SF_U64 const sfExchangeRate     (access, STI_UINT64,  6, "ExchangeRate");
+SF_U64 const sfLowNode          (access, STI_UINT64,  7, "LowNode");
+SF_U64 const sfHighNode         (access, STI_UINT64,  8, "HighNode");
+SF_U64 const sfDestinationNode  (access, STI_UINT64,  9, "DestinationNode");
+SF_U64 const sfCookie           (access, STI_UINT64, 10, "Cookie");
 
-SF_U64 const sfDropsPerByte(access, STI_UINT64, 11, "DropsPerByte");
-SF_U64 const sfIssuerNode	 (access, STI_UINT64, 21, "IssuerNode");
+SF_U64 const sfDropsPerByte     (access, STI_UINT64, 11, "DropsPerByte");
+SF_U64 const sfIssuerNode	    (access, STI_UINT64, 21, "IssuerNode");
 
-
+SF_U64 const sfView             (access, STI_UINT64, 22, "View");
 
 
 // 128-bit

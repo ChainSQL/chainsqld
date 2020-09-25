@@ -40,7 +40,7 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/misc/TxPool.h>
-#include <peersafe/consensus/ViewChange.h>
+#include <peersafe/consensus/Adaptor.h>
 
 #include <boost/algorithm/clamp.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -965,7 +965,7 @@ PeerImp::onMessage (std::shared_ptr<protocol::TMManifests> const& m)
     // VFALCO What's the right job type?
     auto that = shared_from_this();
     app_.getJobQueue().addJob (
-        jtVALIDATION_ut, "receiveManifests",
+        jtCONSENSUS_ut, "receiveManifests",
         [this, that, m] (Job&) { overlay_.onManifests(m, that); });
 }
 
@@ -1658,191 +1658,6 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMTableData> const& m)
     });
 }
 
-
-void
-PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
-{
-    protocol::TMProposeSet& set = *m;
-
-    if (set.has_hops() && ! slot_->cluster())
-        set.set_hops(set.hops() + 1);
-
-    auto const sig = makeSlice(set.signature());
-
-    // Preliminary check for the validity of the signature: A DER encoded
-    // signature can't be longer than 72 bytes.
-    if ((boost::algorithm::clamp(sig.size(), 64, 72) != sig.size()) ||
-        (publicKeyType(makeSlice(set.nodepubkey())) != KeyType::secp256k1))
-    {
-        JLOG(p_journal_.warn()) << "Proposal: malformed";
-        fee_ = Resource::feeInvalidSignature;
-        return;
-    }
-
-    if (! stringIsUint256Sized (set.currenttxhash()) ||
-        ! stringIsUint256Sized (set.previousledger()))
-    {
-        JLOG(p_journal_.warn()) << "Proposal: malformed";
-        fee_ = Resource::feeInvalidRequest;
-        return;
-    }
-
-	uint256 proposeHash, prevLedger;
-	memcpy(proposeHash.begin(), set.currenttxhash().data(), 32);
-	memcpy(prevLedger.begin(), set.previousledger().data(), 32);
-
-    PublicKey const publicKey {makeSlice(set.nodepubkey())};
-    NetClock::time_point const closeTime { NetClock::duration{set.closetime()} };
-	Slice signature(set.signature().data(), set.signature().size());
-
-    uint256 const suppression = proposalUniqueId (
-        proposeHash, prevLedger, set.proposeseq(),
-        closeTime, publicKey.slice(), sig);
-
-    if (! app_.getHashRouter ().addSuppressionPeer (suppression, id_))
-    {
-        JLOG(p_journal_.trace()) << "Proposal: duplicate";
-        return;
-    }
-
-    if (!app_.getValidationPublicKey().empty() &&
-        publicKey == app_.getValidationPublicKey())
-    {
-        JLOG(p_journal_.trace()) << "Proposal: self";
-        return;
-    }
-
-	JLOG(p_journal_.info()) << "PeerImpl recv peer proposal:" << proposeHash << " from public " << toBase58(TokenType::NodePublic, publicKey)
-		<< ",prevHash=" << to_string(prevLedger) << ",curSeq=" << set.curledgerseq();
-
-    auto const isTrusted = app_.validators().trusted (publicKey);
-
-    if (!isTrusted)
-    {
-        if (sanity_.load() == Sanity::insane)
-        {
-            JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (insane)";
-            return;
-        }
-
-        if (! cluster() && app_.getFeeTrack ().isLoadedLocal())
-        {
-            JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (load)";
-            return;
-        }
-    }
-
-    JLOG(p_journal_.trace()) <<
-        "Proposal: " << (isTrusted ? "trusted" : "UNTRUSTED");
-
-    auto proposal = RCLCxPeerPos(
-        publicKey, signature, suppression,
-        RCLCxPeerPos::Proposal{prevLedger, set.curledgerseq(),set.view(), set.proposeseq (), proposeHash, closeTime,
-            app_.timeKeeper().closeTime(),calcNodeID(publicKey)});
-
-    std::weak_ptr<PeerImp> weak = shared_from_this();
-    app_.getJobQueue ().addJob (
-        isTrusted ? jtPROPOSAL_t : jtPROPOSAL_ut, "recvPropose->checkPropose",
-        [weak, m, proposal] (Job& job) {
-            if (auto peer = weak.lock())
-                peer->checkPropose(job, m, proposal);
-        });
-}
-
-void
-PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
-{
-	protocol::TMViewChange change = *m;
-	auto const type = publicKeyType(
-		makeSlice(change.nodepubkey()));
-
-	// VFALCO Magic numbers are bad
-	// Roll this into a validation function
-	if ((!type) ||
-		(change.previousledgerhash().size() != 32) ||
-		(change.signature().size() < 56) ||
-		(change.signature().size() > 128)
-		)
-	{
-		JLOG(p_journal_.warn()) << "Proposal: malformed";
-		fee_ = Resource::feeInvalidSignature;
-		return;
-	}
-
-	uint32_t prevSeq = change.previousledgerseq();
-	uint64_t toView = change.toview();
-	PublicKey const publicKey(makeSlice(change.nodepubkey()));
-	Slice signature(change.signature().data(), change.signature().size());
-
-	uint256 prevLedgerHash;
-	memcpy(prevLedgerHash.begin(), change.previousledgerhash().data(), 32);
-
-	uint256 suppression = ViewChange::viewChangeUniqueId(
-		change.previousledgerseq(),prevLedgerHash, publicKey, toView);
-
-	if (!app_.getHashRouter().addSuppressionPeer(suppression, id_))
-	{
-		JLOG(p_journal_.trace()) << "View change: duplicate";
-		//return;
-	}
-
-	if (!app_.getValidationPublicKey().empty() &&
-		publicKey == app_.getValidationPublicKey())
-	{
-		JLOG(p_journal_.trace()) << "Proposal: self";
-		return;
-	}
-
-	JLOG(p_journal_.info()) << "PeerImpl recv view change from public " << toBase58(TokenType::NodePublic, publicKey)
-		<< ",prevHash=" << to_string(prevLedgerHash) << ",prevSeq=" << change.previousledgerseq() << ",toView = " << change.toview();
-
-	auto const isTrusted = app_.validators().trusted(publicKey);
-
-	if (!isTrusted)
-	{
-		if (sanity_.load() == Sanity::insane)
-		{
-			JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (insane)";
-			return;
-		}
-
-		if (app_.getFeeTrack().isLoadedLocal())
-		{
-			JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (load)";
-			return;
-		}
-	}
-
-	ViewChange view_change(
-		prevSeq,
-		prevLedgerHash,
-		publicKey,
-		toView,
-		signature
-		);
-	if (isTrusted || !app_.getFeeTrack().isLoadedLocal())
-	{
-		std::weak_ptr<PeerImp> weak = shared_from_this();
-		app_.getJobQueue().addJob(
-			jtVIEW_CHANGE,
-			"recvViewChange->checkViewChange",
-			[weak, view_change, isTrusted, m,suppression](Job&)
-		{
-			if (auto peer = weak.lock())
-				peer->checkViewChange(
-					isTrusted,
-					view_change,
-					suppression,
-					m);
-		});
-	}
-	else
-	{
-		JLOG(p_journal_.debug()) <<
-			"Validation: Dropping UNTRUSTED (load)";
-	}
-
-}
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
 {
@@ -2131,88 +1946,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMHaveTransactionSet> const& m)
 }
 
 void
-PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
-{
-    auto const closeTime = app_.timeKeeper().closeTime();
-
-    if (m->has_hops() && ! slot_->cluster())
-        m->set_hops(m->hops() + 1);
-
-    if (m->validation ().size () < 50)
-    {
-        JLOG(p_journal_.warn()) << "Validation: Too small";
-        fee_ = Resource::feeInvalidRequest;
-        return;
-    }
-
-    try
-    {
-        STValidation::pointer val;
-        {
-            SerialIter sit (makeSlice(m->validation()));
-            val = std::make_shared<STValidation>(
-                std::ref(sit),
-                [this](PublicKey const& pk) {
-                    return calcNodeID(
-                        app_.validatorManifests().getMasterKey(pk));
-                },
-                false);
-            val->setSeen (closeTime);
-        }
-
-        if (! isCurrent(app_.getValidations().parms(),
-            app_.timeKeeper().closeTime(),
-            val->getSignTime(),
-            val->getSeenTime()))
-        {
-            JLOG(p_journal_.trace()) << "Validation: Not current";
-            fee_ = Resource::feeUnwantedData;
-            return;
-        }
-
-        if (! app_.getHashRouter ().addSuppressionPeer(
-            sha512Half(makeSlice(m->validation())), id_))
-        {
-            JLOG(p_journal_.trace()) << "Validation: duplicate";
-            return;
-        }
-
-        auto const isTrusted =
-            app_.validators().trusted(val->getSignerPublic ());
-
-        if (!isTrusted && (sanity_.load () == Sanity::insane))
-        {
-            JLOG(p_journal_.debug()) <<
-                "Validation: dropping untrusted from insane peer";
-        }
-        if (isTrusted || cluster() ||
-            ! app_.getFeeTrack ().isLoadedLocal ())
-        {
-            std::weak_ptr<PeerImp> weak = shared_from_this();
-            app_.getJobQueue ().addJob (
-                isTrusted ? jtVALIDATION_t : jtVALIDATION_ut,
-                "recvValidation->checkValidation",
-                [weak, val, m] (Job&)
-                {
-                    if (auto peer = weak.lock())
-                        peer->checkValidation(val, m);
-                });
-        }
-        else
-        {
-            JLOG(p_journal_.debug()) <<
-                "Validation: Dropping UNTRUSTED (load)";
-        }
-    }
-    catch (std::exception const& e)
-    {
-        JLOG(p_journal_.warn()) <<
-            "Validation: Exception, " << e.what();
-        fee_ = Resource::feeInvalidRequest;
-    }
-}
-
-void
 PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 {
     protocol::TMGetObjectByHash& packet = *m;
@@ -2347,6 +2080,66 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
     }
 }
 
+void
+PeerImp::onMessage (std::shared_ptr <protocol::TMConsensus> const& m)
+{
+    if (m->has_hops() && !slot_->cluster())
+        m->set_hops(m->hops() + 1);
+
+    PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+    auto const sig = makeSlice(m->signature());
+
+    // Preliminary check for the validity of the signature: A DER encoded
+    // signature can't be longer than 72 bytes.
+    if ((boost::algorithm::clamp(sig.size(), 64, 72) != sig.size()) ||
+        (publicKeyType(publicKey) != KeyType::secp256k1))
+    {
+        JLOG(p_journal_.warn()) << "Consensus message: malformed";
+        fee_ = Resource::feeInvalidSignature;
+        return;
+    }
+
+    if (!app_.getValidationPublicKey().empty() &&
+        publicKey == app_.getValidationPublicKey())
+    {
+        JLOG(p_journal_.info()) << "Consensus message: self";
+        return;
+    }
+
+    if (!app_.getHashRouter().addSuppressionPeer(
+        consensusMessageUniqueId(*m), id_))
+    {
+        JLOG(p_journal_.info()) << "Consensus message: duplicate";
+        return;
+    }
+
+    auto const isTrusted = app_.validators().trusted(publicKey);
+
+    if (!isTrusted)
+    {
+        if (sanity_.load() == Sanity::insane)
+        {
+            JLOG(p_journal_.debug()) << "Consensus message: Dropping UNTRUSTED (insane)";
+            return;
+        }
+
+        if (!cluster() && app_.getFeeTrack().isLoadedLocal())
+        {
+            JLOG(p_journal_.debug()) << "Consensus message: Dropping UNTRUSTED (load)";
+            return;
+        }
+    }
+
+    std::weak_ptr<PeerImp> weak = shared_from_this();
+    app_.getJobQueue().addJob(
+        isTrusted ? jtCONSENSUS_t : jtCONSENSUS_ut, "recvConsensus->checkConsensus",
+        [weak, m](Job& job) {
+        if (auto peer = weak.lock())
+            peer->checkConsensus(job, m);
+    });
+}
+
+
 //--------------------------------------------------------------------------
 
 void
@@ -2477,105 +2270,33 @@ PeerImp::checkTransaction (int flags,
     }
 }
 
-// Called from our JobQueue
 void
-PeerImp::checkPropose (Job& job,
-    std::shared_ptr <protocol::TMProposeSet> const& packet,
-        RCLCxPeerPos const& peerPos)
+PeerImp::checkConsensus(
+    Job& job,
+    std::shared_ptr<protocol::TMConsensus> const& packet)
 {
-    bool isTrusted = (job.getType () == jtPROPOSAL_t);
+    bool isTrusted = (job.getType() == jtCONSENSUS_t);
 
-    JLOG(p_journal_.trace()) <<
-        "Checking " << (isTrusted ? "trusted" : "UNTRUSTED") << " proposal";
+    JLOG(p_journal_.info()) <<
+        "Checking " << (isTrusted ? "trusted" : "UNTRUSTED") << " consensus message";
 
-    assert (packet);
-    protocol::TMProposeSet& set = *packet;
+    PublicKey const publicKey{ makeSlice(packet->signerpubkey()) };
+    auto const sig = makeSlice(packet->signature());
 
-    if (! cluster() && !peerPos.checkSign ())
+    bool sigValid = verify(
+        publicKey,
+        makeSlice(packet->msg()),
+        sig,
+        packet->signflags() & vfFullyCanonicalSig);
+
+    if (!cluster() && !sigValid)
     {
-        JLOG(p_journal_.warn()) <<
-            "Proposal fails sig check";
-        charge (Resource::feeInvalidSignature);
+        JLOG(p_journal_.warn()) << "Consensus message : signature invalid";
+        charge(Resource::feeInvalidRequest);
         return;
     }
 
-    if (isTrusted)
-    {
-        app_.getOPs ().processTrustedProposal (peerPos, packet);
-    }
-    else
-    {
-        if (cluster() ||
-            (app_.getOPs().getConsensusLCL() == peerPos.proposal().prevLedger()))
-        {
-            // relay untrusted proposal
-            JLOG(p_journal_.trace()) <<
-                "relaying UNTRUSTED proposal";
-            overlay_.relay(set, peerPos.suppressionID());
-        }
-        else
-        {
-            JLOG(p_journal_.debug()) <<
-                "Not relaying UNTRUSTED proposal";
-        }
-    }
-}
-
-void
-PeerImp::checkValidation (STValidation::pointer val,
-    std::shared_ptr<protocol::TMValidation> const& packet)
-{
-    try
-    {
-        // VFALCO Which functions throw?
-        if (! cluster() && !val->isValid())
-        {
-            JLOG(p_journal_.warn()) <<
-                "Validation is invalid";
-            charge (Resource::feeInvalidRequest);
-            return;
-        }
-
-        if (app_.getOPs ().recvValidation(val, std::to_string(id())) ||
-            cluster())
-        {
-            auto const suppression = sha512Half(
-                makeSlice(val->getSerialized()));
-            overlay_.relay(*packet, suppression);
-        }
-    }
-    catch (std::exception const&)
-    {
-        JLOG(p_journal_.trace()) <<
-            "Exception processing validation";
-        charge (Resource::feeInvalidRequest);
-    }
-}
-
-void
-PeerImp::checkViewChange(bool isTrusted, ViewChange const& change, uint256 suppression,
-	std::shared_ptr<protocol::TMViewChange> const& packet)
-{
-	try
-	{
-		// VFALCO Which functions throw?
-		if (!cluster() && !change.checkSign())
-		{
-			JLOG(p_journal_.warn()) <<
-				"Validation is invalid";
-			charge(Resource::feeInvalidRequest);
-			return;
-		}
-
-		if (app_.getOPs().recvViewChange(change))
-			overlay_.relay(*packet, suppression);
-	}
-	catch (std::exception const&)
-	{
-		JLOG(p_journal_.trace()) <<
-			"Exception processing validation";
-		charge(Resource::feeInvalidRequest);
-	}
+    app_.getOPs().peerConsensusMessage(shared_from_this(), isTrusted, packet);
 }
 
 // Returns the set of peers that can help us get

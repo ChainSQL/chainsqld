@@ -18,6 +18,7 @@
 //==============================================================================
 
 
+#include <ripple/app/ledger/LocalTxs.h>
 #include <peersafe/consensus/rpca/RpcaAdaptor.h>
 
 
@@ -28,18 +29,18 @@ RpcaAdaptor::RpcaAdaptor(
     Application& app,
     std::unique_ptr<FeeVote>&& feeVote,
     LedgerMaster& ledgerMaster,
-    LocalTxs& localTxs,
     InboundTransactions& inboundTransactions,
     ValidatorKeys const & validatorKeys,
-    beast::Journal journal)
-    : Adaptor(
+    beast::Journal journal,
+    LocalTxs& localTxs)
+    : RpcaPopAdaptor(
         app,
         std::move(feeVote),
         ledgerMaster,
-        localTxs,
         inboundTransactions,
         validatorKeys,
-        journal)
+        journal,
+        localTxs)
 {
 }
 
@@ -62,6 +63,58 @@ boost::optional<RCLCxLedger> RpcaAdaptor::acquireLedger(LedgerHash const& hash)
     }
 
     return built;
+}
+
+void RpcaAdaptor::relay(RCLCxPeerPos const& peerPos)
+{
+    Blob p = peerPos.proposal().getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&p[0], p.size());
+    consensus.set_msgtype(ConsensusMessageType::mtPROPOSESET);
+    consensus.set_signerpubkey(peerPos.publicKey().data(), peerPos.publicKey().size());
+    consensus.set_signature(peerPos.signature().data(), peerPos.signature().size());
+
+    app_.overlay().relay(consensus, peerPos.suppressionID());
+}
+
+void RpcaAdaptor::relay(RCLCxTx const& tx)
+{
+    // If we didn't relay this transaction recently, relay it to all peers
+    if (app_.getHashRouter().shouldRelay(tx.id()))
+    {
+        JLOG(j_.debug()) << "Relaying disputed tx " << tx.id();
+        auto const slice = tx.tx_.slice();
+        protocol::TMTransaction msg;
+        msg.set_rawtransaction(slice.data(), slice.size());
+        msg.set_status(protocol::tsNEW);
+        msg.set_receivetimestamp(
+            app_.timeKeeper().now().time_since_epoch().count());
+        app_.overlay().foreach(send_always(
+            std::make_shared<Message>(msg, protocol::mtTRANSACTION)));
+    }
+    else
+    {
+        JLOG(j_.debug()) << "Not relaying disputed tx " << tx.id();
+    }
+}
+
+void RpcaAdaptor::onForceAccept(
+    Result const& result,
+    RCLCxLedger const& prevLedger,
+    NetClock::duration const& closeResolution,
+    ConsensusCloseTimes const& rawCloseTimes,
+    ConsensusMode const& mode,
+    Json::Value && consensusJson)
+{
+    doAccept(
+        result,
+        prevLedger,
+        closeResolution,
+        rawCloseTimes,
+        mode,
+        std::move(consensusJson));
 }
 
 auto RpcaAdaptor::onClose(
@@ -139,12 +192,13 @@ auto RpcaAdaptor::onClose(
     return Result{
         std::move(initialSet),
         RCLCxPeerPos::Proposal{
-            initialLedger->info().parentHash,
             RCLCxPeerPos::Proposal::seqJoin,
             setHash,
+            prevLedger->info().hash,
             closeTime,
             app_.timeKeeper().closeTime(),
-            nodeID_} };
+            nodeID_,
+            valPublic_} };
 }
 
 // ----------------------------------------------------------------------------

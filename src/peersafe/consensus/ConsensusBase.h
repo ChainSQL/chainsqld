@@ -24,23 +24,23 @@
 #include <ripple/basics/chrono.h>
 #include <ripple/json/json_value.h>
 #include <ripple/beast/utility/Journal.h>
+#include <peersafe/protocol/STProposeSet.h>
 #include <peersafe/consensus/Adaptor.h>
-#include <peersafe/consensus/ConsensusProposal.h>
 #include <peersafe/consensus/ConsensusTypes.h>
 
 
 namespace ripple {
 
 
-class ViewChange;
-
-
-enum MessageType
+enum ConsensusMessageType
 {
     mtPROPOSESET    = 0,
     mtVALIDATION    = 1,
     mtVIEWCHANGE    = 2,
 };
+
+
+class PeerImp;
 
 
 class ConsensusBase
@@ -52,7 +52,7 @@ public:
     using NodeID_t          = typename Adaptor::NodeID_t;
     using PeerPosition_t    = typename Adaptor::PeerPosition_t;
     using Result            = typename Adaptor::Result;
-    using Proposal_t        = ConsensusProposal<NodeID_t, typename Ledger_t::ID, typename TxSet_t::ID>;
+    using Proposal_t        = STProposeSet;
     //! Clock type for measuring time within the consensus code
     using clock_type        = beast::abstract_clock<std::chrono::steady_clock>;
     using ScopedLockType    = std::lock_guard<std::recursive_mutex>;
@@ -88,25 +88,12 @@ public:
 
 	virtual void timerEntry(NetClock::time_point const& now) = 0;
 
-    /** TODO!!! Abstract message interface */
-	virtual bool peerProposal(NetClock::time_point const& now, PeerPosition_t const& newProposal) = 0;
-    //virtual bool peerValidation(STValidation::ref val, std::string const& source) = 0;
+    virtual bool peerConsensusMessage(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m) = 0;
 
     virtual void gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet) = 0;
-
-    /** Get the previous ledger ID.
-
-        The previous ledger is the last ledger seen by the consensus code and
-        should correspond to the most recent validated ledger seen by this peer.
-
-        @return ID of previous ledger
-    */
-    virtual inline typename Ledger_t::ID prevLedgerID() const { return prevLedgerID_; }
-
-    virtual inline std::chrono::milliseconds getConsensusTimeout()
-    {
-        return std::chrono::milliseconds{ std::numeric_limits<std::int32_t>::max() };
-    }
 
     virtual Json::Value getJson(bool full) const = 0;
 
@@ -116,10 +103,6 @@ public:
     virtual void simulate(
         NetClock::time_point const& now,
         boost::optional<std::chrono::milliseconds> consensusDelay) {}
-
-    // Pop specific
-	virtual bool peerViewChange(ViewChange const& change) { return true; }
-    virtual bool waitingForInit() { return false; }
 };
 
 

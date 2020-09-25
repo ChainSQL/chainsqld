@@ -142,38 +142,16 @@ public:
     std::shared_ptr<Peer>
     findPeerByPublicKey (PublicKey const& pubKey) = 0;
 
-    /** Broadcast a proposal. */
+    /** Broadcast a consensus meessage. */
     virtual
     void
-    send (protocol::TMProposeSet& m) = 0;
+    send (protocol::TMConsensus& m) = 0;
 
-    /** Broadcast a validation. */
+    /** Relay a consensus meessage. */
     virtual
     void
-    send (protocol::TMValidation& m) = 0;
+    relay(protocol::TMConsensus& m, uint256 const& uid) = 0;
 
-	/* Broadcast a view change*/
-	virtual
-	void
-	send(protocol::TMViewChange& m) = 0;
-
-    /** Relay a proposal. */
-    virtual
-    void
-    relay (protocol::TMProposeSet& m,
-        uint256 const& uid) = 0;
-
-    /** Relay a validation. */
-    virtual
-    void
-    relay (protocol::TMValidation& m,
-        uint256 const& uid) = 0;
-
-	/** Relay a view change. */
-	virtual
-		void
-		relay(protocol::TMViewChange& m,
-			uint256 const& uid) = 0;
     /** Visit every active peer and return a value
         The functor must:
         - Be callable as:

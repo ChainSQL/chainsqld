@@ -65,6 +65,8 @@
 #include <ripple/protocol/impl/RippleAddress.cpp>
 #include <peersafe/protocol/impl/STEntry.cpp>
 #include <peersafe/protocol/impl/Contract.cpp>
+#include <peersafe/protocol/impl/STProposeSet.cpp>
+#include <peersafe/protocol/impl/STViewChange.cpp>
 
 #if DOXYGEN
 #include <ripple/protocol/README.md>

@@ -198,26 +198,11 @@ public:
     findPeerByPublicKey (PublicKey const& pubKey) override;
 
     void
-    send (protocol::TMProposeSet& m) override;
+    send (protocol::TMConsensus& m) override;
 
     void
-    send (protocol::TMValidation& m) override;
+    relay(protocol::TMConsensus& m, uint256 const& uid) override;
 
-	void
-	send(protocol::TMViewChange& m) override;
-
-    void
-    relay (protocol::TMProposeSet& m,
-        uint256 const& uid) override;
-
-    void
-    relay (protocol::TMValidation& m,
-        uint256 const& uid) override;
-
-
-	void
-		relay(protocol::TMViewChange& m,
-			uint256 const& uid) override;
     //--------------------------------------------------------------------------
     //
     // OverlayImpl

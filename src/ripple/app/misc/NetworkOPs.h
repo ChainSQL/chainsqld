@@ -28,6 +28,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/net/InfoSub.h>
 #include <ripple/protocol/STValidation.h>
 #include <ripple/protocol/messages.h>
+#include <ripple/overlay/impl/PeerImp.h>
 #include <peersafe/consensus/ConsensusParams.h>
 #include <boost/asio.hpp>
 #include <memory>
@@ -153,21 +154,16 @@ namespace ripple {
 
 		//--------------------------------------------------------------------------
 
-        // ledger proposal/close functions
-        virtual void processTrustedProposal (RCLCxPeerPos peerPos,
-        std::shared_ptr<protocol::TMProposeSet> set) = 0;
-
-		virtual bool recvValidation(STValidation::ref val,
-			std::string const& source) = 0;
-
-		virtual bool recvViewChange(ViewChange const& change) =  0;
-
 		virtual void mapComplete(std::shared_ptr<SHAMap> const& map,
 			bool fromAcquire) = 0;
 
 		// network state machine
 		virtual bool beginConsensus(uint256 const& netLCL) = 0;
 		virtual void endConsensus() = 0;
+        virtual void peerConsensusMessage(
+            std::shared_ptr<PeerImp> peer,
+            bool isTrusted,
+            std::shared_ptr<protocol::TMConsensus> const& m) = 0;
 		virtual void setStandAlone() = 0;
 		virtual void setStateTimer() = 0;
 
@@ -180,9 +176,8 @@ namespace ripple {
         virtual void consensusViewChange () = 0;
 
         virtual ConsensusParms const& getConsensusParms() = 0;
-        virtual Json::Value getConsensusInfo () = 0;
-        virtual Json::Value getServerInfo (
-            bool human, bool admin, bool counters) = 0;
+        virtual Json::Value getConsensusInfo(bool full = true) = 0;
+        virtual Json::Value getServerInfo (bool human, bool admin, bool counters) = 0;
         virtual void clearLedgerFetch () = 0;
         virtual Json::Value getLedgerFetchInfo () = 0;
         virtual bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) = 0;
@@ -195,8 +190,6 @@ namespace ripple {
 		*/
 		virtual std::uint32_t acceptLedger(
 			boost::optional<std::chrono::milliseconds> consensusDelay = boost::none) = 0;
-
-		virtual uint256 getConsensusLCL() = 0;
 
 		virtual void reportFeeChange() = 0;
 
@@ -248,10 +241,6 @@ namespace ripple {
 		virtual void tryCheckSubTx() = 0;
 
         virtual bool hasChainSQLTxListener() = 0;
-
-        virtual bool waitingForInit() = 0;
-
-        virtual std::chrono::milliseconds getConsensusTimeout() = 0;
 	};
 
 //------------------------------------------------------------------------------

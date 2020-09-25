@@ -455,8 +455,12 @@ message TMViewChange
 	required uint64 	toView				= 5;
 }
 
-message TMCONSENSUS
+message TMConsensus
 {
     required bytes      msg             = 1;
     required uint32     msgType         = 2;
+    required bytes      signerPubKey    = 3;
+    required bytes      signature       = 4;
+    optional uint32     signFlags       = 5;
+    optional uint32     hops            = 6;
 }

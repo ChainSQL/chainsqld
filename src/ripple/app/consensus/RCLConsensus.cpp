@@ -54,16 +54,25 @@ RCLConsensus::RCLConsensus(
     switch (type_)
     {
     case ConsensusType::RPCA:
+        adaptor_ = std::make_shared<RpcaAdaptor>(
+            app,
+            std::move(feeVote),
+            ledgerMaster,
+            inboundTransactions,
+            validatorKeys,
+            journal,
+            localTxs);
+        consensus_ = std::make_shared<RpcaConsensus>(*adaptor_, clock, journal);
         break;
     case ConsensusType::POP:
         adaptor_ = std::make_shared<PopAdaptor>(
             app,
             std::move(feeVote),
             ledgerMaster,
-            localTxs,
             inboundTransactions,
             validatorKeys,
-            journal);
+            journal,
+            localTxs);
         consensus_ = std::make_shared<PopConsensus>(*adaptor_, clock, journal);
         break;
     default:
@@ -97,6 +106,25 @@ void RCLConsensus::timerEntry(NetClock::time_point const& now)
     }
 }
 
+bool RCLConsensus::peerConsensusMessage(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    return consensus_->peerConsensusMessage(peer, isTrusted, m);
+}
+
+Json::Value RCLConsensus::getJson(bool full) const
+{
+    Json::Value ret;
+    {
+        ScopedLockType _{ mutex_ };
+        ret = consensus_->getJson(full);
+    }
+    ret["validating"] = adaptor_->validating();
+    return ret;
+}
+
 void RCLConsensus::gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet)
 {
     try
@@ -121,37 +149,9 @@ void RCLConsensus::simulate(
     consensus_->simulate(now, consensusDelay);
 }
 
-bool RCLConsensus::peerProposal(NetClock::time_point const& now, RCLCxPeerPos const& newProposal)
-{
-    ScopedLockType _{mutex_};
-    return consensus_->peerProposal(now, newProposal);
-}
-
-bool RCLConsensus::peerValidation(STValidation::ref val, std::string const& source)
-{
-    return adaptor_->handleNewValidation(val, source);
-}
-
-bool RCLConsensus::peerViewChange(ViewChange const& change)
-{
-	ScopedLockType _{ mutex_ };
-	return consensus_->peerViewChange(change);
-}
-
 bool RCLConsensus::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
 {
     return adaptor_->checkLedgerAccept(ledger);
-}
-
-Json::Value RCLConsensus::getJson(bool full) const
-{
-    Json::Value ret;
-    {
-        ScopedLockType _{ mutex_ };
-        ret = consensus_->getJson(full);
-    }
-    ret["validating"] = adaptor_->validating();
-    return ret;
 }
 
 ConsensusType RCLConsensus::stringToConsensusType(std::string const& s)

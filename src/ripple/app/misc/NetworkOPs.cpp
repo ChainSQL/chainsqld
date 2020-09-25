@@ -75,8 +75,6 @@
 #include <boost/asio/steady_timer.hpp>
 #include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/StateManager.h>
-#include <peersafe/consensus/ViewChange.h>
-//#include <peersafe/consensus/LedgerTiming.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -338,16 +336,6 @@ public:
                       Json::Value const& jvMarker, Json::Value& jvResult)
             override;
 
-    // Ledger proposal/close functions.
-    void processTrustedProposal (
-        RCLCxPeerPos proposal,
-        std::shared_ptr<protocol::TMProposeSet> set) override;
-
-    bool recvValidation (
-        STValidation::ref val, std::string const& source) override;
-
-	inline bool recvViewChange(ViewChange const& change) override;
-
     std::shared_ptr<SHAMap> getTXMap (uint256 const& hash);
     bool hasTXSet (
         const std::shared_ptr<Peer>& peer, uint256 const& set,
@@ -372,6 +360,11 @@ private:
 public:
     bool beginConsensus (uint256 const& networkClosed) override;
     void endConsensus () override;
+    void peerConsensusMessage(
+        std::shared_ptr<PeerImp> peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m) override;
+
     void setStandAlone () override
     {
         setMode (omFULL);
@@ -405,18 +398,16 @@ public:
     void setAmendmentBlocked () override;
     void consensusViewChange () override;
 
-    inline ConsensusParms const& getConsensusParms() override
-    {
-        return mConsensus.parms();
-    }
-    inline Json::Value getConsensusInfo () override;
+    ConsensusParms const& getConsensusParms() override;
+    Json::Value getConsensusInfo(bool full = true) override;
     Json::Value getServerInfo (bool human, bool admin, bool counters) override;
+    std::string getServerStatus();
+
     void clearLedgerFetch () override;
     Json::Value getLedgerFetchInfo () override;
     bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) override;
     std::uint32_t acceptLedger (
         boost::optional<std::chrono::milliseconds> consensusDelay) override;
-    uint256 getConsensusLCL () override;
     void reportFeeChange () override;
 
     void updateLocalTx (ReadView const& view) override
@@ -472,12 +463,6 @@ public:
         std::shared_ptr<STTx const> const& stTxn, TER terResult) override;
     void pubValidation (
         STValidation::ref val) override;
-
-	std::string getServerStatus();
-
-    bool waitingForInit();
-
-    std::chrono::milliseconds getConsensusTimeout();
 
 	void tryCheckSubTx() override;
 
@@ -1744,47 +1729,6 @@ bool NetworkOPsImp::beginConsensus (uint256 const& networkClosed)
     return true;
 }
 
-uint256 NetworkOPsImp::getConsensusLCL ()
-{
-    return mConsensus.prevLedgerID ();
-}
-
-void NetworkOPsImp::processTrustedProposal (
-    RCLCxPeerPos peerPos,
-    std::shared_ptr<protocol::TMProposeSet> set)
-{
-    if (mConsensus.peerProposal(
-            app_.timeKeeper().closeTime(), peerPos))
-    {
-        app_.overlay().relay(*set, peerPos.suppressionID());
-    }
-    else
-        JLOG(m_journal.info()) << "Not relaying trusted proposal";
-}
-
-void
-NetworkOPsImp::mapComplete (
-    std::shared_ptr<SHAMap> const& map, bool fromAcquire)
-{
-    // We now have an additional transaction set
-    // either created locally during the consensus process
-    // or acquired from a peer
-
-    // Inform peers we have this set
-    protocol::TMHaveTransactionSet msg;
-    msg.set_hash (map->getHash().as_uint256().begin(), 256 / 8);
-    msg.set_status (protocol::tsHAVE);
-    app_.overlay().foreach (send_always (
-        std::make_shared<Message> (
-            msg, protocol::mtHAVE_SET)));
-
-    // We acquired it because consensus asked us to
-    if (fromAcquire)
-        mConsensus.gotTxSet (
-            app_.timeKeeper().closeTime(),
-            RCLTxSet{map});
-}
-
 void NetworkOPsImp::endConsensus ()
 {
     uint256 deadLedger = m_ledgerMaster.getClosedLedger ()->info().parentHash;
@@ -1834,6 +1778,41 @@ void NetworkOPsImp::endConsensus ()
     }
 
     beginConsensus (networkClosed);
+}
+
+inline
+void NetworkOPsImp::peerConsensusMessage(
+    std::shared_ptr<PeerImp> peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (mConsensus.peerConsensusMessage(peer, isTrusted, m))
+    {
+        app_.overlay().relay(*m, consensusMessageUniqueId(*m));
+    }
+}
+
+void
+NetworkOPsImp::mapComplete(
+    std::shared_ptr<SHAMap> const& map, bool fromAcquire)
+{
+    // We now have an additional transaction set
+    // either created locally during the consensus process
+    // or acquired from a peer
+
+    // Inform peers we have this set
+    protocol::TMHaveTransactionSet msg;
+    msg.set_hash(map->getHash().as_uint256().begin(), 256 / 8);
+    msg.set_status(protocol::tsHAVE);
+    app_.overlay().foreach(send_always(
+        std::make_shared<Message>(
+            msg, protocol::mtHAVE_SET)));
+
+    // We acquired it because consensus asked us to
+    if (fromAcquire)
+        mConsensus.gotTxSet(
+            app_.timeKeeper().closeTime(),
+            RCLTxSet{ map });
 }
 
 void NetworkOPsImp::consensusViewChange ()
@@ -1997,7 +1976,7 @@ void NetworkOPsImp::pubValidation (STValidation::ref val)
             TokenType::NodePublic,
             val->getSignerPublic());
         jvObj [jss::ledger_hash]           = to_string (val->getLedgerHash ());
-        jvObj [jss::signature]             = strHex (val->getSignature ());
+        //jvObj [jss::signature]             = strHex (val->getSignature ());
         jvObj [jss::full]                  = val->isFull();
         jvObj [jss::flags]                 = val->getFlags();
         jvObj [jss::signing_time]          = *(*val)[~sfSigningTime];
@@ -2391,23 +2370,14 @@ NetworkOPsImp::getTxsAccountB (
     return ret;
 }
 
-bool NetworkOPsImp::recvValidation (
-    STValidation::ref val, std::string const& source)
+inline ConsensusParms const& NetworkOPsImp::getConsensusParms()
 {
-    JLOG(m_journal.debug()) << "recvValidation " << val->getLedgerHash ()
-                          << " from " << source;
-    pubValidation (val);
-    return mConsensus.peerValidation(val, source);
+    return mConsensus.parms();
 }
 
-bool NetworkOPsImp::recvViewChange(ViewChange const& change)
+inline Json::Value NetworkOPsImp::getConsensusInfo (bool full)
 {
-	return mConsensus.peerViewChange(change);
-}
-
-Json::Value NetworkOPsImp::getConsensusInfo ()
-{
-    return mConsensus.getJson (true);
+    return mConsensus.getJson (full);
 }
 
 Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin, bool counters)
@@ -2702,12 +2672,18 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin, bool counters)
 
 std::string NetworkOPsImp::getServerStatus()
 {
-	bool bConsensusValid = m_ledgerMaster.getValidatedLedgerAge() < 2 * mConsensus.getConsensusTimeout();
-	auto const mode = mConsensus.mode();
-	if (bConsensusValid && 
-		(mode == ConsensusMode::proposing || mode == ConsensusMode::switchedLedger || 
-            (!mConsensus.validating() && mode == ConsensusMode::observing))
-	)
+    auto const& consensusInfo = getConsensusInfo(false);
+
+    // Time out in milliseconds
+    auto const& timeOut = consensusInfo.get("time_out", std::numeric_limits<Json::Value::Int>::max());
+
+	bool consensusValid = m_ledgerMaster.getValidatedLedgerAge().count() * 1000 < 2 * timeOut.asInt();
+	auto mode = mConsensus.mode();
+
+	if (consensusValid &&
+		(mode == ConsensusMode::proposing ||
+         mode == ConsensusMode::switchedLedger ||
+         (mode == ConsensusMode::observing && !mConsensus.validating())))
 	{
 		return "normal";
 	}
@@ -2717,15 +2693,6 @@ std::string NetworkOPsImp::getServerStatus()
 	}
 }
 
-bool NetworkOPsImp::waitingForInit()
-{
-    return mConsensus.waitingForInit();
-}
-
-std::chrono::milliseconds NetworkOPsImp::getConsensusTimeout()
-{
-    return mConsensus.getConsensusTimeout();
-}
 
 void NetworkOPsImp::clearLedgerFetch ()
 {

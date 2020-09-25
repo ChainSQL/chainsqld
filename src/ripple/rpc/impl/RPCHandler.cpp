@@ -159,14 +159,6 @@ error_code_i fillHandler (Context& context,
         return rpcNO_NETWORK;
     }
 
-    if (handler->condition_ & NEEDS_CURRENT_LEDGER &&
-        context.netOps.waitingForInit())
-    {
-        JLOG(context.j.info()) << "Waitint for init";
-
-        return rpcNO_CURRENT;
-    }
-
     if (context.app.getOPs().isAmendmentBlocked() &&
          (handler->condition_ & NEEDS_CURRENT_LEDGER ||
           handler->condition_ & NEEDS_CLOSED_LEDGER))
@@ -174,23 +166,33 @@ error_code_i fillHandler (Context& context,
         return rpcAMENDMENT_BLOCKED;
     }
 
-    if (!context.app.config().standalone() &&
-        handler->condition_ & NEEDS_CURRENT_LEDGER)
+    if (handler->condition_ & NEEDS_CURRENT_LEDGER)
     {
-        if (context.ledgerMaster.getValidatedLedgerAge () >
-            Tuning::maxValidatedLedgerAge)
+        auto const& consensusInfo = context.netOps.getConsensusInfo(false);
+        bool initialized = consensusInfo.get("initialized", true).asBool();
+        if (!initialized)
         {
+            JLOG(context.j.info()) << "Waitint for init";
             return rpcNO_CURRENT;
         }
 
-        auto const cID = context.ledgerMaster.getCurrentLedgerIndex ();
-        auto const vID = context.ledgerMaster.getValidLedgerIndex ();
-
-        if (cID + 10 < vID)
+        if (!context.app.config().standalone())
         {
-            JLOG (context.j.debug()) << "Current ledger ID(" << cID <<
-                ") is less than validated ledger ID(" << vID << ")";
-            return rpcNO_CURRENT;
+            if (context.ledgerMaster.getValidatedLedgerAge() >
+                Tuning::maxValidatedLedgerAge)
+            {
+                return rpcNO_CURRENT;
+            }
+
+            auto const cID = context.ledgerMaster.getCurrentLedgerIndex();
+            auto const vID = context.ledgerMaster.getValidLedgerIndex();
+
+            if (cID + 10 < vID)
+            {
+                JLOG(context.j.debug()) << "Current ledger ID(" << cID <<
+                    ") is less than validated ledger ID(" << vID << ")";
+                return rpcNO_CURRENT;
+            }
         }
     }
 
