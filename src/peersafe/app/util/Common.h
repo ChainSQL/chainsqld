@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 //==============================================================================
+
+
 #ifndef RIPPLE_RPC_COMMON_UTIL_H_INCLUDED
 #define RIPPLE_RPC_COMMON_UTIL_H_INCLUDED
 
@@ -23,9 +25,14 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/basics/base_uint.h>
 
 namespace ripple {
-	using h256Set = std::unordered_set<uint256>;
-	/// Get the current time in seconds since the epoch in UTC(ms)
-	uint64_t utcTime();
+
+
+using H256Set = std::unordered_set<uint256>;
+
+// Get the current time in seconds since the epoch in UTC(ms)
+uint64_t utcTime();
+
+
 }
 
 #endif

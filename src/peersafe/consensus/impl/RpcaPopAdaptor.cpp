@@ -326,7 +326,7 @@ void RpcaPopAdaptor::consensusBuilt(
     // See if this ledger can be the new fully-validated ledger
     if (checkLedgerAccept(ledger))
     {
-        ledgerMaster_.doValid(ledger);
+        doValidLedger(ledger);
     }
 
     if (ledger->info().seq <= getValidLedgerIndex())
@@ -399,7 +399,7 @@ void RpcaPopAdaptor::consensusBuilt(
         auto result = checkLedgerAccept(maxLedger, maxSeq);
         if (result.first && result.second)
         {
-            ledgerMaster_.doValid(result.first);
+            doValidLedger(result.first);
         }
     }
 }
@@ -463,7 +463,7 @@ bool RpcaPopAdaptor::handleNewValidation(STValidation::ref val, std::string cons
             auto result = checkLedgerAccept(hash, val->getFieldU32(sfLedgerSequence));
             if (result.first && result.second)
             {
-                ledgerMaster_.doValid(result.first);
+                doValidLedger(result.first);
             }
             shouldRelay = true;
         }

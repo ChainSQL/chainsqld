@@ -431,7 +431,7 @@ void PopAdaptor::doAccept(
 
         if (checkLedgerAccept(built.ledger_))
         {
-            ledgerMaster_.doValid(built.ledger_);
+            doValidLedger(built.ledger_);
         }
 
         // Do these need to exist?

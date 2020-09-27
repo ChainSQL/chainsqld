@@ -180,8 +180,6 @@ private:
     */
     void phaseCollecting();
 
-    void appendTransactions(h256Set const& txSet);
-
     /** Is final condition reached for proposing.
         We should check:
         1. Is maxBlockTime reached.

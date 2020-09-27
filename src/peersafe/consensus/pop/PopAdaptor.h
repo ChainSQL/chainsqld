@@ -54,10 +54,7 @@ public:
         return parms_;
     }
 
-    inline std::size_t getQuorum() const
-    {
-        return app_.validators().quorum();
-    }
+    inline void flushValidations() const { app_.getValidations().flush(); }
 
     bool isLeader(PublicKey const& publicKey, LedgerIndex curSeq, std::uint64_t view);
     bool isLeader(LedgerIndex curSeq, std::uint64_t view);

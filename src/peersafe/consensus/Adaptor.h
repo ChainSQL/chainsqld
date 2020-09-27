@@ -34,6 +34,8 @@
 #include <ripple/app/misc/FeeVote.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <peersafe/consensus/ConsensusTypes.h>
+#include <peersafe/app/util/Common.h>
+#include <peersafe/app/misc/TxPool.h>
 #include <boost/optional.hpp>
 #include <memory>
 
@@ -55,7 +57,7 @@ public:
     using PeerPosition_t    = RCLCxPeerPos;
     using Result            = ConsensusResult<Adaptor>;
 
-public:
+protected:
     Application&                app_;
     beast::Journal              j_;
     std::unique_ptr<FeeVote>    feeVote_;
@@ -85,18 +87,59 @@ public:
         ValidatorKeys const & validatorKeys,
         beast::Journal journal);
 
-    virtual inline bool validating() const { return validating_; }
-    virtual inline std::size_t prevProposers() const { return prevProposers_; }
-    virtual inline std::chrono::milliseconds prevRoundTime() const { return prevRoundTime_; }
-    virtual inline ConsensusMode mode() const { return mode_; }
-    virtual inline NodeID_t const& nodeID() const { return nodeID_; }
+    inline NodeID_t const& nodeID() const { return nodeID_; }
+    inline PublicKey const& valPublic() const { return valPublic_; }
 
-    virtual inline bool haveValidated() const { return ledgerMaster_.haveValidated(); };
-    virtual inline LedgerIndex getValidLedgerIndex() const { return ledgerMaster_.getValidLedgerIndex(); }
+    inline bool validating() const { return validating_; }
+    inline std::size_t prevProposers() const { return prevProposers_; }
+    inline std::chrono::milliseconds prevRoundTime() const { return prevRoundTime_; }
+    inline ConsensusMode mode() const { return mode_; }
 
-    virtual inline NetClock::time_point closeTime() const { return app_.timeKeeper().closeTime(); }
+    inline bool haveValidated() const { return ledgerMaster_.haveValidated(); };
+    inline LedgerIndex getValidLedgerIndex() const { return ledgerMaster_.getValidLedgerIndex(); }
+    inline std::shared_ptr<Ledger const> getValidatedLedger() const { return ledgerMaster_.getValidatedLedger(); }
 
-    virtual inline PublicKey getMasterKey(PublicKey pk) const { return app_.validatorManifests().getMasterKey(pk); }
+    inline NetClock::time_point closeTime() const { return app_.timeKeeper().closeTime(); }
+
+    inline std::size_t getQuorum() const { return app_.validators().quorum(); }
+
+    inline PublicKey getMasterKey(PublicKey pk) const { return app_.validatorManifests().getMasterKey(pk); }
+
+    // Transaction pool interfaces for consensus
+    inline bool isPoolAvailable()
+    {
+        return app_.getTxPool().isAvailable();
+    }
+    inline std::size_t getPoolTxCount()
+    {
+        return app_.getTxPool().getTxCountInPool();
+    }
+    inline std::uint64_t topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set)
+    {
+        return app_.getTxPool().topTransactions(limit, seq, set);
+    }
+    inline void removePoolTxs(SHAMap const& cSet, LedgerIndex ledgerSeq, uint256 const& prevHash)
+    {
+        app_.getTxPool().removeTxs(cSet, ledgerSeq, prevHash);
+    }
+    inline void updatePoolAvoid(RCLTxSet const& cSet, LedgerIndex seq)
+    {
+        app_.getTxPool().updateAvoid(cSet, seq);
+    }
+    inline void clearPoolAvoid(LedgerIndex seq)
+    {
+        app_.getTxPool().clearAvoid(seq);
+    }
+
+
+    /** Relay the given tx set to peers.
+
+        @param set The TxSet to share.
+    */
+    inline void relay(RCLTxSet const& set)
+    {
+        inboundTransactions_.giveSet(set.id(), set.map_, false);
+    }
 
     /** Called before kicking off a new consensus round.
 
@@ -111,21 +154,12 @@ public:
         @param ledger The ledger at the time of the state change
         @param haveCorrectLCL Whether we believ we have the correct LCL.
     */
-    virtual void notify(
+    void notify(
         protocol::NodeEvent ne,
         RCLCxLedger const& ledger,
         bool haveCorrectLCL);
 
-    /** Relay the given tx set to peers.
-
-        @param set The TxSet to share.
-    */
-    virtual inline void relay(RCLTxSet const& set)
-    {
-        inboundTransactions_.giveSet(set.id(), set.map_, false);
-    }
-
-    virtual void signAndSendMessage(protocol::TMConsensus &consensus);
+    void signAndSendMessage(protocol::TMConsensus &consensus);
 
     /** Acquire the transaction set associated with a proposal.
 
@@ -135,7 +169,7 @@ public:
         @param setId The transaction set ID associated with the proposal
         @return Optional set of transactions, seated if available.
     */
-    virtual boost::optional<RCLTxSet> acquireTxSet(RCLTxSet::ID const& setId);
+    boost::optional<RCLTxSet> acquireTxSet(RCLTxSet::ID const& setId);
 
     /** Attempt to acquire a specific ledger.
 
@@ -168,12 +202,17 @@ public:
 
     virtual bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) = 0;
 
+    inline void doValidLedger(std::shared_ptr<Ledger const> const& ledger)
+    {
+        ledgerMaster_.doValid(ledger);
+    }
+
     /** Notified of change in consensus mode
 
         @param before The prior consensus mode
         @param after The new consensus mode
     */
-    virtual void onModeChange(ConsensusMode before, ConsensusMode after);
+    void onModeChange(ConsensusMode before, ConsensusMode after);
 };
 
 

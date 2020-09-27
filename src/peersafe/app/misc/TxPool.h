@@ -1,3 +1,23 @@
+//------------------------------------------------------------------------------
+/*
+    This file is part of rippled: https://github.com/ripple/rippled
+    Copyright (c) 2012, 2013 Ripple Labs Inc.
+
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose  with  or without fee is hereby granted, provided that the above
+    copyright notice and this permission notice appear in all copies.
+
+    THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+    WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
+    MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+    ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
+    ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+*/
+//==============================================================================
+
+
 #ifndef CHAINSQL_APP_MISC_TXPOOL_H_INCLUDED
 #define CHAINSQL_APP_MISC_TXPOOL_H_INCLUDED
 
@@ -43,12 +63,11 @@ struct transactionCompare
 
 struct sync_status
 {
-	int pool_start_seq;
-	int max_advance_seq;
-	uint256 prevHash;
-	int prevSeq;
-	std::map<int, uint256> mapSynced;
-
+    LedgerIndex pool_start_seq;
+    LedgerIndex max_advance_seq;
+    uint256 prevHash;
+    LedgerIndex prevSeq;
+    std::map<LedgerIndex, uint256> mapSynced;
 
 	sync_status()
 	{
@@ -83,13 +102,13 @@ public:
     inline std::size_t getTxCountInPool() const { return mTxsSet.size(); }
 
     // Get at most specified counts of Tx fron TxPool.
-	h256Set topTransactions(uint64_t const& limit, LedgerIndex seq);
+    uint64_t topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set);
 
     // Insert a new Tx, return true if success else false.
-	TER insertTx(std::shared_ptr<Transaction> transaction,int ledgerSeq);
+	TER insertTx(std::shared_ptr<Transaction> transaction, LedgerIndex ledgerSeq);
 
     // When block validated, remove Txs from pool and avoid set.
-	void removeTxs(SHAMap const& cSet,int const ledgerSeq,uint256 const& prevHash);
+	void removeTxs(SHAMap const& cSet, LedgerIndex ledgerSeq, uint256 const& prevHash);
 	void removeTx(uint256 hash);
 
     // Update avoid set when receiving a Tx set from peers.
@@ -100,7 +119,7 @@ public:
 
 	void timerEntry();
 
-	void checkSyncStatus(int const ledgerSeq, uint256 const& prevHash);
+	void checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash);
 
 private:
 	Application& app_;
@@ -114,7 +133,7 @@ private:
 	TransactionSet mTxsSet;
     std::unordered_map<uint256, TransactionSet::iterator> mTxsHash;
 
-    std::map<LedgerIndex, h256Set> mAvoidBySeq;
+    std::map<LedgerIndex, H256Set> mAvoidBySeq;
     std::unordered_map<uint256, LedgerIndex> mAvoidByHash;
 
 	sync_status mSyncStatus;
