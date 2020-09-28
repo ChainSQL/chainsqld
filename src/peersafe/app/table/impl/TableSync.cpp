@@ -1194,7 +1194,7 @@ void TableSync::TryTableSync()
 {
     if (!bInitTableItems_ && bIsHaveSync_)
     {
-		if (app_.getLedgerMaster().getValidLedgerIndex() > 1)
+		if (app_.getLedgerMaster().getValidatedLedger()!=nullptr)
 		{
 			CreateTableItems();
 			bInitTableItems_ = true;
@@ -1332,6 +1332,7 @@ void TableSync::TableSyncThread()
 					}
 					else
 					{
+						JLOG(journal_.error()) << pItem->InitPassphrase().second;
 						pItem->SetSyncState(TableSyncItem::SYNC_STOP);
                         break;
 					}
@@ -1541,8 +1542,19 @@ std::pair<bool, std::string>
     {
         //check formal tables
         if (isExist(listTableInfo_, accountID, sTableName, TableSyncItem::SyncTarget_db))
-            return std::make_pair(false,"Table exist in listTableInfo");
-        //check temp tables
+        {
+          std::string temKey = to_string(accountID) + sTableName;
+          if (setTableInCfg.end() == std::find(setTableInCfg.begin(), setTableInCfg.end(), temKey))
+          {
+            return std::make_pair(false, "Table exist in listTableInfo");
+          }
+          else
+          {
+            return std::make_pair(true, err);
+          }
+        }
+	
+	//check temp tables
         auto it = std::find_if(listTempTable_.begin(), listTempTable_.end(),
             [sNameInDB](std::string sName) {
             return sName == sNameInDB;

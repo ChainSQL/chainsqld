@@ -338,6 +338,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 	std::vector<STTx> vec;
 	if (tx.getTxnType() == ttSQLTRANSACTION)
 	{
+	        Blob publicKey = tx.getFieldVL(sfSigningPubKey);	
 		Blob txs_blob = tx.getFieldVL(sfStatements);
 		std::string txs_str;
 
@@ -357,6 +358,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 			if (tx_pair.first)
 			{
 				auto tx = *tx_pair.first;
+				tx.setFieldVL(sfSigningPubKey, publicKey);
 				getOneTx(vec, tx, sTableNameInDB);
 			}
 		}
@@ -375,6 +377,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 		if (!contractRawMetadata->isFieldPresent(sfContractTxs))
 			return vec;
 		Blob txs_blob = contractRawMetadata->getFieldVL(sfContractTxs);
+		Blob publicKey = tx.getFieldVL(sfSigningPubKey);
 		std::string txs_str;
 		txs_str.assign(txs_blob.begin(), txs_blob.end());
 		Json::Value objs;
@@ -389,6 +392,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 			if (!tx_pair.first)
 				continue;
 			auto tx_ = *tx_pair.first;
+			tx_.setFieldVL(sfSigningPubKey, publicKey);
 			auto vecTxs = getTxs(tx_, sTableNameInDB);
 			for (auto subTx : vecTxs)
 			{
