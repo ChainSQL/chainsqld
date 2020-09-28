@@ -35,7 +35,7 @@ namespace ripple {
 // Public member functions
 
 PopConsensus::PopConsensus(Adaptor& adaptor, clock_type const& clock, beast::Journal journal)
-    : ConsensusBase(clock_, journal)
+    : ConsensusBase(clock, journal)
     , adaptor_(*(PopAdaptor*)(&adaptor))
     , viewChangeManager_{ journal }
 {
@@ -172,13 +172,6 @@ void PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSe
         return;
     }
 
-    //check to see if final condition reached.
-    if (result_)
-    {
-        checkVoting();
-        return;
-    }
-
     if (!adaptor_.isLeader(previousLedger_.seq() + 1, view_))
     {
         //update avoid if we got the right tx-set
@@ -207,10 +200,9 @@ void PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSe
 
         if (adaptor_.validating())
         {
+            JLOG(j_.info()) << "We are not leader gotTxSet, and proposing position: " << id;
             txSetVoted_[*setID_].insert(adaptor_.valPublic());
             adaptor_.propose(result_->position);
-
-            JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
         }
 
         result_->roundTime.reset(proposalTime_);
@@ -221,8 +213,13 @@ void PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSe
         {
             JLOG(j_.info()) << "PublicKey index: " << adaptor_.getPubIndex(publicKey);
         }
+    }
 
-        JLOG(j_.info()) << "We are not leader gotTxSet, and proposing position: " << id;
+    //check to see if final condition reached.
+    if (result_)
+    {
+        checkVoting();
+        return;
     }
 }
 
@@ -683,9 +680,11 @@ void PopConsensus::launchViewChange()
         << " PublicKey index=" << adaptor_.getPubIndex()
         << ", sending ViewChange toView=" << toView_;
 
-    auto v = adaptor_.launchViewChange(previousLedger_.seq(), prevLedgerID_, toView_);
+    auto viewChange = std::make_shared<STViewChange>(previousLedger_.seq(), prevLedgerID_, toView_, adaptor_.valPublic());
 
-    peerViewChangeInternal(v);
+    adaptor_.launchViewChange(*viewChange);
+
+    peerViewChangeInternal(viewChange);
 }
 
 void PopConsensus::leaveConsensus()
@@ -968,7 +967,7 @@ bool PopConsensus::peerViewChange(
 
 bool PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
 {
-    JLOG(j_.info()) << "ViewChange toView=" << viewChange->toView()
+    JLOG(j_.info()) << "Processing peer ViewChange toView=" << viewChange->toView()
         << ", PublicKey index=" << adaptor_.getPubIndex(viewChange->nodePublic());
 
     bool saved = viewChangeManager_.recvViewChange(viewChange);

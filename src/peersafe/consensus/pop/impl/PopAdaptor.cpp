@@ -18,10 +18,16 @@
 //==============================================================================
 
 
+#include <ripple/basics/make_lock.h>
+#include <ripple/core/ConfigSections.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/app/misc/NetworkOPs.h>
-#include <peersafe/consensus/pop/PopAdaptor.h>
+#include <ripple/app/misc/AmendmentTable.h>
+#include <ripple/app/ledger/TransactionMaster.h>
+#include <ripple/app/ledger/LocalTxs.h>
+#include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/ConsensusParams.h>
+#include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/app/misc/StateManager.h>
 
 
@@ -35,7 +41,8 @@ PopAdaptor::PopAdaptor(
     InboundTransactions& inboundTransactions,
     ValidatorKeys const & validatorKeys,
     beast::Journal journal,
-    LocalTxs& localTxs)
+    LocalTxs& localTxs,
+    ConsensusParms const& consensusParms)
     : RpcaPopAdaptor(
         app,
         std::move(feeVote),
@@ -53,7 +60,7 @@ PopAdaptor::PopAdaptor(
 
         parms_.maxTXS_IN_LEDGER = std::min(
             app.config().loadConfig(SECTION_PCONSENSUS, "max_txs_per_ledger", parms_.maxTXS_IN_LEDGER),
-            app_.getOPs().getConsensusParms().txPOOL_CAPACITY);
+            consensusParms.txPOOL_CAPACITY);
 
         parms_.consensusTIMEOUT = std::chrono::milliseconds {
             std::max(
@@ -180,21 +187,16 @@ auto PopAdaptor::onCollectFinish(
             view} };
 }
 
-STViewChange::ref
-PopAdaptor::launchViewChange(LedgerIndex preSeq, uint256 preHash, std::uint64_t toView)
+void PopAdaptor::launchViewChange(STViewChange const& viewChange)
 {
-    auto v = std::make_shared<STViewChange>(preSeq, preHash, toView, valPublic_);
-
-    Blob viewChange = v->getSerialized();
+    Blob v = viewChange.getSerialized();
 
     protocol::TMConsensus consensus;
 
-    consensus.set_msg(&viewChange[0], viewChange.size());
+    consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVIEWCHANGE);
 
     signAndSendMessage(consensus);
-
-    return std::move(v);
 }
 
 void PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)

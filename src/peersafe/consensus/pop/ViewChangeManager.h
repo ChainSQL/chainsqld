@@ -37,7 +37,7 @@ namespace ripple {
 class ViewChangeManager
 {
 	using VIEWTYPE = std::uint64_t;
-    using ViewChange = STViewChange::ref;
+    using ViewChange = STViewChange::pointer;
 
 private:
     std::map<VIEWTYPE, std::map<PublicKey, ViewChange>> viewChangeReq_;

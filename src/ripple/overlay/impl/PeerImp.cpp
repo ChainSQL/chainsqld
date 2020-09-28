@@ -2277,8 +2277,8 @@ PeerImp::checkConsensus(
 {
     bool isTrusted = (job.getType() == jtCONSENSUS_t);
 
-    JLOG(p_journal_.info()) <<
-        "Checking " << (isTrusted ? "trusted" : "UNTRUSTED") << " consensus message";
+    JLOG(p_journal_.info()) << "Checking " << (isTrusted ? "trusted" : "UNTRUSTED")
+        << " consensus message mt(" <<  packet->msgtype() << ")";
 
     PublicKey const publicKey{ makeSlice(packet->signerpubkey()) };
     auto const sig = makeSlice(packet->signature());

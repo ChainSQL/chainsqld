@@ -24,6 +24,7 @@
 
 #include <peersafe/protocol/STViewChange.h>
 #include <peersafe/consensus/RpcaPopAdaptor.h>
+#include <peersafe/consensus/ConsensusParams.h>
 #include <peersafe/consensus/pop/PopConsensusParams.h>
 
 
@@ -47,7 +48,8 @@ public:
         InboundTransactions& inboundTransactions,
         ValidatorKeys const & validatorKeys,
         beast::Journal journal,
-        LocalTxs& localTxs);
+        LocalTxs& localTxs,
+        ConsensusParms const& consensusParms);
 
     inline PopConsensusParms const& parms() const
     {
@@ -69,8 +71,7 @@ public:
         std::uint64_t const& view,
         ConsensusMode mode);
 
-    STViewChange::ref
-    launchViewChange(LedgerIndex preSeq, uint256 preHash, std::uint64_t toView);
+    void launchViewChange(STViewChange const& viewChange);
     void onViewChanged(bool bWaitingInit, Ledger_t previousLedger);
 
     void touchAcquringLedger(LedgerHash const& prevLedgerHash);

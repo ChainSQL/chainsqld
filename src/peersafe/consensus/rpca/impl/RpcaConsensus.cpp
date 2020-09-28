@@ -169,7 +169,7 @@ ConsensusState checkConsensus(
 // Public member functions
 
 RpcaConsensus::RpcaConsensus(Adaptor& adaptor, clock_type const& clock, beast::Journal journal)
-    : ConsensusBase(clock_, journal)
+    : ConsensusBase(clock, journal)
     , adaptor_(*(RpcaAdaptor*)(&adaptor))
 {
     JLOG(j_.info()) << "Creating RPCA consensus object";
