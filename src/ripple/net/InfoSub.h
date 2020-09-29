@@ -86,6 +86,9 @@ public:
         virtual bool subLedger (ref ispListener, Json::Value& jvResult) = 0;
         virtual bool unsubLedger (std::uint64_t uListener) = 0;
 
+		virtual bool subViewChange(ref ispListener) = 0;
+		virtual bool unsubViewChange(std::uint64_t uListener) = 0;
+
 		//for all txs which changes the table
 		virtual void subTable(ref ispListener, AccountID const& accountID,std::string const& sTableName) = 0;
 		virtual void unsubTable(ref isplistener, AccountID const& accountID, std::string const& sNameInDB) = 0;

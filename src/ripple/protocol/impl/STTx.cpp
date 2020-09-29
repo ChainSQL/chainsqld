@@ -74,7 +74,7 @@ STTx::STTx (STObject&& object)
     paJsonLog_ = std::make_shared<Json::Value>();    
 }
 
-std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, AccountID accountID)
+std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, AccountID accountID, Blob publicKey)
 {
 	std::string err_message;
 	int transactionType = 0;
@@ -338,6 +338,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 	std::vector<STTx> vec;
 	if (tx.getTxnType() == ttSQLTRANSACTION)
 	{
+		Blob publicKey = tx.getFieldVL(sfSigningPubKey);
 		Blob txs_blob = tx.getFieldVL(sfStatements);
 		std::string txs_str;
 
@@ -353,10 +354,11 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 			if (!includeAssert && type == T_ASSERT)
 				continue;
 
-			auto tx_pair = parseSTTx(obj, accountID);
+			auto tx_pair = parseSTTx(obj, accountID,publicKey);
 			if (tx_pair.first)
 			{
 				auto tx = *tx_pair.first;
+				tx.setFieldVL(sfSigningPubKey, publicKey);
 				getOneTx(vec, tx, sTableNameInDB);
 			}
 		}

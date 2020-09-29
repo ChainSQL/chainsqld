@@ -546,6 +546,7 @@ JSS ( ContractChain );               // out:
 JSS ( PreviousHash );               // out: 
 JSS ( NextHash );                   // out: 
 JSS ( log );
+JSS ( view );
 
 
 JSS(drops_per_byte);                       // out: LogLevel
