@@ -421,12 +421,14 @@ unsigned long SoftEncrypt::SM3HashTotal(
 
 unsigned long SoftEncrypt::SM3HashInit(HANDLE *phSM3Handle)
 {
+    sm3_ctx_t* psm3_ctx_tmp = new sm3_ctx_t;
     // sm3_init((sm3_ctx_t*)*phSM3Handle);
-    sm3_init(&sm3_ctx_);
+    sm3_init(psm3_ctx_tmp);
     // *phSM3Handle = &ctx;
     if(phSM3Handle != nullptr)
     {
-        *phSM3Handle = &sm3_ctx_;
+        // *phSM3Handle = &sm3_ctx_;
+        *phSM3Handle = psm3_ctx_tmp;
         DebugPrint("SM3HashInit() OK!");
         return 0;
     }
@@ -441,11 +443,14 @@ unsigned long SoftEncrypt::SM3HashFinal(void* phSM3Handle, unsigned char *pHashD
 {
     if (nullptr != phSM3Handle)
     {
-        sm3_final(&sm3_ctx_, pHashData);
+        // sm3_final(&sm3_ctx_, pHashData);
+        sm3_final((sm3_ctx_t*)phSM3Handle, pHashData);
         if (pHashData != nullptr)
         {
             *pulHashDataLen = SM3_DIGEST_LENGTH;
-            memset(&sm3_ctx_, 0, sizeof(sm3_ctx_t));
+            // memset(&sm3_ctx_, 0, sizeof(sm3_ctx_t));
+            // memset(phSM3Handle, 0, sizeof(sm3_ctx_t));
+            delete phSM3Handle;
             DebugPrint("sm3_final Hash success!");
             return 0;
         }
@@ -465,7 +470,8 @@ void SoftEncrypt::operator()(void* phSM3Handle, void const* data, std::size_t si
 {
     if (nullptr != phSM3Handle)
     {
-        sm3_update(&sm3_ctx_, (const unsigned char*)data, size);
+        // sm3_update(&sm3_ctx_, (const unsigned char*)data, size);
+        sm3_update((sm3_ctx_t*)phSM3Handle, (const unsigned char*)data, size);
         DebugPrint("SM3soft sm3_update() success!");
     }
     else

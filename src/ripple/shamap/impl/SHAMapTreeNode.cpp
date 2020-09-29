@@ -117,10 +117,12 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
         if (type == 0)
         {
             // transaction
+            // auto item = std::make_shared<SHAMapItem const>(
+            //     sha512Half(HashPrefix::transactionID,
+            //         Slice(s.data(), s.size())),
+            //             s.peekData());
             auto item = std::make_shared<SHAMapItem const>(
-                sha512Half(HashPrefix::transactionID,
-                    Slice(s.data(), s.size())),
-                        s.peekData());
+                hash.as_uint256(), s.peekData());
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq, hash);
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq);
@@ -265,9 +267,11 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
 
         if (prefix == HashPrefix::transactionID)
         {
+            // auto item = std::make_shared<SHAMapItem const>(
+            //     sha512Half(rawNode),
+            //         s.peekData ());
             auto item = std::make_shared<SHAMapItem const>(
-                sha512Half(rawNode),
-                    s.peekData ());
+                hash.as_uint256(), s.peekData ());
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq, hash);
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq);
@@ -405,8 +409,9 @@ SHAMapTreeNode::updateHash()
     uint256 nh;
     if (mType == tnTRANSACTION_NM)
     {
-        nh = sha512Half(HashPrefix::transactionID,
-            makeSlice(mItem->peekData()));
+        // nh = sha512Half(HashPrefix::transactionID,
+        //     makeSlice(mItem->peekData()));
+        nh = mItem->key();
     }
     else if (mType == tnACCOUNT_STATE)
     {

@@ -170,7 +170,7 @@ void GmEncrypt::SM3Hash::operator()(void const* data, std::size_t size) noexcept
 
 GmEncrypt::SM3Hash::operator result_type() noexcept
 {
-    unsigned char hashData[128] = {0};
+    unsigned char hashData[32] = {0};
     unsigned long HashDataLen = 0;
     pGmEncrypt_->SM3HashFinal(hSM3Handle_, hashData, &HashDataLen);
 

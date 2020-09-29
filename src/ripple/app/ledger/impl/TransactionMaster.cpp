@@ -179,6 +179,10 @@ void
 TransactionMaster::canonicalize(std::shared_ptr<Transaction>* pTransaction)
 {
     uint256 const tid = (*pTransaction)->getID();
+    // Serializer s;
+    // s.add32 (HashPrefix::transactionID);
+    // (*pTransaction)->getSTransaction ()->add (s);
+    // uint256 const tid = sha512Half(s.slice());
     if (tid != zero)
     {
         auto txn = *pTransaction;

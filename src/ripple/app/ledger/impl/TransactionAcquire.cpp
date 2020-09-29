@@ -104,7 +104,6 @@ void TransactionAcquire::onTimer (bool progress, ScopedLockType& psl)
     if (getTimeouts () >= NORM_TIMEOUTS)
     {
         aggressive = true;
-
         if (getTimeouts () > MAX_TIMEOUTS)
         {
             mFailed = true;
