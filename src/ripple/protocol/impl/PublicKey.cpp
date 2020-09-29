@@ -377,24 +377,36 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
 {
     auto const type = publicKeyType(publicKey);
     unsigned long rv = 0;
-    unsigned char outData[512] = { 0 };
-    unsigned long outDataLen = 512;
+
+
     std::pair<unsigned char*, int> pub4Encrypt;
     switch (*type)
     {
     case KeyType::gmalg:
     {
+		//unsigned char outData[512] = { 0 };
+		//unsigned long outDataLen = 512;
+		unsigned long recommendedOutDataLen = std::max(std::size_t(512), passBlob.size() * 10);
+		unsigned char *outData = new unsigned char[recommendedOutDataLen];
+		memset(outData, 0, recommendedOutDataLen);
+
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
         pub4Encrypt = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
-        rv = hEObj->SM2ECCEncrypt(pub4Encrypt,(unsigned char*)&passBlob[0], passBlob.size(), outData, &outDataLen);
+        rv = hEObj->SM2ECCEncrypt(pub4Encrypt,(unsigned char*)&passBlob[0], passBlob.size(), outData, &recommendedOutDataLen);
+
         if (rv)
         {
             DebugPrint("ECCEncrypt error! rv = 0x%04x", rv);
             return Blob();
         }
         DebugPrint("ECCEncrypt OK!");
+
+
+		Blob    resPlainText(outData, outData + recommendedOutDataLen);
+		delete[] outData;
+		return resPlainText;
         //Blob vucCipherText(outData, outData + outDataLen);
-        return Blob(outData, outData + outDataLen);//vucCipherText;
+       // return Blob(outData, outData + outDataLen);//vucCipherText;
     }
     default:
         Blob publickBlob(publicKey.data(), publicKey.data()+publicKey.size());
