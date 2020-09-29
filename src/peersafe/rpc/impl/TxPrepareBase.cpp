@@ -681,7 +681,7 @@ Json::Value TxPrepareBase::prepareForAssign()
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
-        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
+        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
 		tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
         secret_key = tempSecKey;
     }
@@ -721,7 +721,7 @@ Json::Value TxPrepareBase::prepareForOperating()
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
-        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
+        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
 		tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
         secret_key = tempSecKey;
     }

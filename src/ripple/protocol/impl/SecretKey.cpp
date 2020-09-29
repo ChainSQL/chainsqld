@@ -281,7 +281,7 @@ boost::optional<SecretKey> getSecretKey(const std::string& secret)
     if ('p' == secret[0])
     {
         std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
-        return SecretKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
+        return SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
     }
     else if ('x' == secret[0])
     {
