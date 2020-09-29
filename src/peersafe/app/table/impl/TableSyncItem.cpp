@@ -840,6 +840,9 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
 	if (!user_accountID_ || !tokenProcObj_.isValidate)
 		return;
 
+	if (T_GRANT == tx.getFieldU16(sfOpType))
+		return;
+
 	Blob raw;
 	if (tx.isFieldPresent(sfRaw))  //check sfTables
 	{
