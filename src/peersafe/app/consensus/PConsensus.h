@@ -639,13 +639,13 @@ PConsensus<Adaptor>::onViewChange()
 	{
 		if (mode_.get() != ConsensusMode::wrongLedger)
 		{
-			adaptor_.onViewChanged(bWaitingInit_, previousLedger_);
+			adaptor_.onViewChanged(bWaitingInit_, previousLedger_,view_);
 			bWaitingInit_ = false;
 		}		
 	}
 	else
 	{
-		adaptor_.onViewChanged(bWaitingInit_, previousLedger_);
+		adaptor_.onViewChanged(bWaitingInit_, previousLedger_,view_);
 	}
 
     if (mode_.get() == ConsensusMode::proposing)

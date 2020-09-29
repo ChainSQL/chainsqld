@@ -480,6 +480,8 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
             RCLCxLedger{ app_.getLedgerMaster().getValidatedLedger() },
             true);
 
+        app_.getOPs().pubViewChange(committeeVC->preSeq(), committeeVC->view());
+
         mShardManager.checkValidatorLists();
     }
     else

@@ -117,6 +117,10 @@ private:
 public:
     CommitteeViewChange(protocol::TMCommitteeViewChange const& m);
 
+    inline uint64 view()
+    {
+        return mView;
+    }
 
     inline LedgerIndex preSeq()
     {

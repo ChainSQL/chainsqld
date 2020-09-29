@@ -418,10 +418,10 @@ RCLConsensus::Adaptor::onClose(
 }
 
 void 
-RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
+RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView)
 {
 	app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
-	
+
 	if (bWaitingInit)
 	{
 		notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
