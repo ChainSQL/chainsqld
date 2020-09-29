@@ -79,8 +79,8 @@ namespace ripple {
                 case KeyType::gmalg:
                 {
                     GmEncrypt* hEObj = GmEncryptObj::getInstance();
-                    unsigned char *pPlainData = new unsigned char[2 * rawEncrept.size()];
-                    unsigned long plainDataLen = 2 * rawEncrept.size();
+                    unsigned char *pPlainData = new unsigned char[rawEncrept.size()];
+                    unsigned long plainDataLen = rawEncrept.size();
                     if (secretkeyType == hEObj->gmInCard && sm4Handle != nullptr)
                     {
                         hEObj->SM4SymDecrypt(hEObj->ECB, (unsigned char *)sm4Handle, 0, 
