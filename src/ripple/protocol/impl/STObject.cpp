@@ -25,6 +25,7 @@
 #include <ripple/protocol/STBlob.h>
 #include <peersafe/protocol/STMap256.h>
 #include <ripple/basics/Log.h>
+#include <ripple/protocol/PublicKey.h>
 
 namespace ripple {
 

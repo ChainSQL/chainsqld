@@ -1,4 +1,4 @@
-#include <peersafe/gmencrypt/GmCheck.h>
+﻿#include <peersafe/gmencrypt/GmCheck.h>
 #include <peersafe/gmencrypt/randomcheck/randCheck.h>
 #include <iomanip>
 #include <string.h>
@@ -491,6 +491,7 @@ void* GMCheck::randomCycheckThreadFun(void *arg) {
 	}
 	ptrGMC->isRandomCycleCheckThread = false;
 #endif
+	return nullptr;
 }
 
 bool GMCheck::randomCycleCheck(unsigned long dataLen, unsigned long cycleTimes)
@@ -622,6 +623,7 @@ void* GMCheck::randomGenerateThreadFun(void *arg)
 	}
 
 	ptrGMC->isRandomGenerateThread = false;
+	return nullptr;
 }
 
 bool GMCheck::handleGenerateRandom2File()
