@@ -20,7 +20,26 @@ namespace ripple {
 		CommonKey() { keyTypeInt_ = GmEncrypt::comKey; encrytCardIndex_ = 0; };
 		CommonKey(int keyType, int index):keyTypeInt_(keyType), encrytCardIndex_(index){ };
 
-        static void setAlgType(KeyType algTypeCnf) { algTypeGlobal = algTypeCnf; };
+        // static void setAlgType(KeyType algTypeCnf) { algTypeGlobal = algTypeCnf; };
+        static bool setAlgType(std::string& nodeAlgTypeStr)
+        {
+            if (nodeAlgTypeStr == "secp256k1")
+            {
+                algTypeGlobal = KeyType::secp256k1;
+                return true;
+            }
+            else if (nodeAlgTypeStr == "ed25519")
+            {
+                algTypeGlobal = KeyType::ed25519;
+                return true;
+            }
+            else if (nodeAlgTypeStr == "gmalg")
+            {
+                algTypeGlobal = KeyType::gmalg;
+                return true;
+            }
+            else return false;
+        }
         static bool setHashType(std::string& hashTypeStr)
         {
             if (hashTypeStr == "sha")

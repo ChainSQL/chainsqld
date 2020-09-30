@@ -330,6 +330,20 @@ void Config::loadFromString (std::string const& fileContents)
     auto cryptoAlgSection = section( ConfigSection::cryptoAlg() );
     if (!cryptoAlgSection.empty ())
     {
+        if(cryptoAlgSection.exists("node_alg_type"))
+        {
+            auto nodeAlgType = cryptoAlgSection.get<std::string>("node_alg_type");
+            if (!CommonKey::setAlgType(*nodeAlgType))
+            {
+                Throw<std::runtime_error> ("node_alg_type is invalid");
+            }
+        }
+        else
+        {
+            std::string defaultNodeAlgType("secp256k1");
+            CommonKey::setAlgType(defaultNodeAlgType);
+        }
+
         if(cryptoAlgSection.exists("hash_type"))
         {
             auto hashType = cryptoAlgSection.get<std::string>("hash_type");
