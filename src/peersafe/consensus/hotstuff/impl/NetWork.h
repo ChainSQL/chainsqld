@@ -17,41 +17,25 @@
  */
 //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_TYPES_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_TYPES_H
+#ifndef RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
+#define RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
 
-#include <vector>
-#include <string>
+#include <peersafe/consensus/hotstuff/impl/Block.h>
+#include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
 
-#include <ripple/basics/Buffer.h>
-#include <ripple/basics/Slice.h>
-#include <ripple/basics/Blob.h>
-#include <ripple/protocol/digest.h>
+namespace ripple {
+namespace hotstuff {
 
-namespace ripple { namespace hotstuff {
-
-using BlockHash = sha512_half_hasher::result_type; 
-using Command = std::vector<std::string>;
-
-using Author = std::string;
-using ReplicaID = int;
-using Epoch = int64_t;
-using Round = int64_t;
-using Version = int;
-using PublicKey = ripple::Slice;
-using PrivateKey = ripple::Slice;
-using Signature = ripple::Buffer;
-
-
-class CommandManager {
+class NetWork { 
 public:
-	virtual ~CommandManager() {};
-	virtual void extract(Command& cmd) = 0;
+    virtual void broadcast(const Block& proposal, const SyncInfo& sync_info) = 0;
+    
+    virtual ~NetWork() {}
 protected:
-	CommandManager() {};
+    NetWork() {}
 };
 
 } // namespace hotstuff
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_TYPES_H
+#endif // RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H

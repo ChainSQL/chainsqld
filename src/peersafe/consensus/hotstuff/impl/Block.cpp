@@ -23,37 +23,51 @@
 
 namespace ripple { namespace hotstuff {
 
+Author BlockData::NONEAUTHOR = Author();
+
+
+BlockHash BlockData::hash(const BlockData& block_data) {
+	using beast::hash_append;
+	ripple::sha512_half_hasher h;
+	hash_append(h, block_data.epoch);
+	hash_append(h, block_data.round);
+	hash_append(h, block_data.timestamp_usecs);
+	hash_append(h, block_data.block_type);
+
+	if (block_data.block_type == BlockData::Proposal) {
+		for (std::size_t i = 0; i < block_data.payload->cmd.size(); i++) {
+			hash_append(h, block_data.payload->cmd[i]);
+		}
+	}
+
+	return static_cast<typename	sha512_half_hasher::result_type>(h);
+}
+
 Block::Block()
-: hash()
-, height(0)
-, id(0)
-, parent()
-, justify()
-, cmd()
-, committed(false) {
+: id_()
+, block_data_()
+, signature_() {
 }
 
 Block::~Block() {
 }
 
-BlockHash Block::blockHash(const Block& block) {
-    using beast::hash_append;
+Block Block::empty() {
+	return Block();
+}
 
-    if(block.hash.isNonZero())
-        return block.hash;
+Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier* verifier) {
+	Block block;
 
-    ripple::sha512_half_hasher h;
-    hash_append(h, block.height);
-    hash_append(h, block.parent);
-    hash_append(h, block.id);
-    hash_append(h, block.justify.toBytes());
-    
-    for(std::size_t i = 0; i < block.cmd.size(); i++) {
-        hash_append(h, block.cmd[i]);
-    }
+	block.id_ = BlockData::hash(block_data);
+	block.block_data_ = block_data;
+	ripple::Slice message = ripple::Slice((const void*)block.id_.data(), block.id_.size());
+	Signature signature;
+	if (verifier->signature(block_data.author(), message, signature) == false)
+		return Block::empty();
+	block.signature_ = signature;
 
-    return static_cast<typename
-        sha512_half_hasher::result_type>(h);
+	return block;
 }
 
 } // namespace hotstuff

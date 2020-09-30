@@ -17,52 +17,28 @@
  */
 //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_CRYPTO_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_CRYPTO_H
+#include <peersafe/consensus/hotstuff/impl/VoteData.h>
 
-#include <map>
+namespace ripple {
+namespace hotstuff {
 
-#include <peersafe/consensus/hotstuff/impl/Types.h>
+VoteData::VoteData()
+: proposed_()
+, parent_() {
 
-namespace ripple { namespace hotstuff {
+}
 
-struct PartialSig {
-	ReplicaID ID;
-	Signature sig;
-};
+VoteData::~VoteData() {
+}
 
-class PartialCert {
-public:
-	PartialCert();
-	~PartialCert();
+BlockHash VoteData::hash() {
+	using beast::hash_append;
+	ripple::sha512_half_hasher h;
+	hash_append(h, BlockInfo::hash(proposed()));
+	hash_append(h, BlockInfo::hash(parent()));
 
-	struct PartialSig partialSig;
-	BlockHash blockHash;
-};
-
-class QuorumCert {
-public:
-	using key = ReplicaID;
-	using value = PartialSig;
-
-	QuorumCert();
-	QuorumCert(const BlockHash& hash);
-	~QuorumCert();
-
-	bool addPartiSig(const PartialCert& cert);
-	std::size_t sizeOfSig() const;
-	const BlockHash& hash() const;
-	const std::map<key, value>& sigs() const;
-	const bool isZero() const;
-
-	ripple::Blob toBytes() const;
-
-private:
-	std::map<key, value> sigs_;
-	BlockHash blockHash_;
-};
+	return static_cast<typename	sha512_half_hasher::result_type>(h);
+}
 
 } // namespace hotstuff
 } // namespace ripple
-
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_CRYPTO_H

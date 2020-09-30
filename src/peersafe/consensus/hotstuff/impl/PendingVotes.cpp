@@ -17,41 +17,17 @@
  */
 //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_TYPES_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_TYPES_H
+#include <peersafe/consensus/hotstuff/impl/PendingVotes.h>
 
-#include <vector>
-#include <string>
+namespace ripple {
+namespace hotstuff {
+    
+PendingVotes::PendingVotes() {
+}
 
-#include <ripple/basics/Buffer.h>
-#include <ripple/basics/Slice.h>
-#include <ripple/basics/Blob.h>
-#include <ripple/protocol/digest.h>
+PendingVotes::~PendingVotes() {
+}
 
-namespace ripple { namespace hotstuff {
-
-using BlockHash = sha512_half_hasher::result_type; 
-using Command = std::vector<std::string>;
-
-using Author = std::string;
-using ReplicaID = int;
-using Epoch = int64_t;
-using Round = int64_t;
-using Version = int;
-using PublicKey = ripple::Slice;
-using PrivateKey = ripple::Slice;
-using Signature = ripple::Buffer;
-
-
-class CommandManager {
-public:
-	virtual ~CommandManager() {};
-	virtual void extract(Command& cmd) = 0;
-protected:
-	CommandManager() {};
-};
 
 } // namespace hotstuff
 } // namespace ripple
-
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_TYPES_H

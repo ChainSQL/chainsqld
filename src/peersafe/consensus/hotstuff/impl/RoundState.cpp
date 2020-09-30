@@ -17,37 +17,47 @@
  */
 //==============================================================================
 
-#include <peersafe/consensus/hotstuff/Hotstuff.h>
-#include <peersafe/consensus/hotstuff/impl/Block.h>
+#include <peersafe/consensus/hotstuff/impl/RoundState.h>
 
-namespace ripple { namespace hotstuff {
+namespace ripple {
+namespace hotstuff {
 
-Hotstuff::Hotstuff(
-    const beast::Journal& journal,
-	BlockStorage* storage,
-	EpochState* epoch_state,
-	RoundState* round_state,
-	ProposalGenerator* proposal_generator,
-	ProposerElection* proposer_election,
-	NetWork* network)
-: hotstuff_core_(journal, epoch_state)
-, round_manager_(nullptr) {
+RoundState::RoundState(boost::asio::io_service* io_service)
+: current_round_(0)
+, round_timeout_timer_(*io_service)
+, pending_votes_()
+, send_vote_() {
 
-	round_manager_ = new RoundManager(
-		storage, 
-		round_state, 
-		&hotstuff_core_,
-		proposal_generator,
-		proposer_election,
-		network);
 }
 
-Hotstuff::~Hotstuff() {
-    delete round_manager_;
+RoundState::~RoundState() {
+
 }
 
-int Hotstuff::start() {
-	return round_manager_->start();
+boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& sync_info) {
+	Round new_round = sync_info.HighestRound() + 1;
+	if (new_round > current_round_) {
+		// reset timeout
+		CancelRoundTimeout();
+		current_round_ = new_round;
+		pending_votes_ = PendingVotes();
+		send_vote_ = boost::optional<Vote>();
+
+		NewRoundEvent new_round_event;
+		new_round_event.reason = NewRoundEvent::QCRead;
+		new_round_event.round = current_round_;
+
+		return boost::optional<NewRoundEvent>(new_round_event);
+	}
+
+	return boost::optional<NewRoundEvent>();
+}
+
+void RoundState::CancelRoundTimeout() {
+	for (;;) {
+		if (round_timeout_timer_.cancel() == 0)
+			break;
+	}
 }
 
 } // namespace hotstuff

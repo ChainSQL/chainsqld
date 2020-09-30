@@ -22,101 +22,63 @@
 
 #include <vector>
 
-#include <peersafe/consensus/hotstuff/impl/Block.h>
-#include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
+#include <peersafe/consensus/hotstuff/impl/RoundManager.h>
+
 #include <ripple/basics/Log.h>
+#include <ripple/core/JobQueue.h>
 
 namespace ripple { namespace hotstuff {
 
-class Pacemaker;
+//class Sender {
+//public:
+//    virtual ~Sender() {}
+//
+//    virtual void proposal(const ReplicaID& id, const Block& block) = 0;
+//    //virtual void vote(const ReplicaID& id, const PartialCert& cert) = 0;
+//    //virtual void newView(const ReplicaID& id, const QuorumCert& qc) = 0;
+//protected:
+//    Sender() {}
+//};
 
-class Sender {
-public:
-    virtual ~Sender() {}
-
-    virtual void proposal(const ReplicaID& id, const Block& block) = 0;
-    virtual void vote(const ReplicaID& id, const PartialCert& cert) = 0;
-    virtual void newView(const ReplicaID& id, const QuorumCert& qc) = 0;
-protected:
-    Sender() {}
-};
-
-struct Config {
-    // self id
-    ReplicaID id;
-    // change a new leader per view_change
-    int view_change;
-    // schedule for electing a new leader
-    std::vector<ReplicaID> leader_schedule;
-    // generate a dummy block after timeout (seconds)
-    int timeout;
-    // commands batch size
-    int cmd_batch_size;
-
-    Config()
-    : id(0)
-    , view_change(1)
-    , leader_schedule()
-    , timeout(60)
-    , cmd_batch_size(100) {
-
-    }
-};
+//struct Config {
+//    // self id
+//    ReplicaID id;
+//    // change a new leader per view_change
+//    int view_change;
+//    // schedule for electing a new leader
+//    std::vector<ReplicaID> leader_schedule;
+//    // generate a dummy block after timeout (seconds)
+//    int timeout;
+//    // commands batch size
+//    int cmd_batch_size;
+//
+//    Config()
+//    : id(0)
+//    , view_change(1)
+//    , leader_schedule()
+//    , timeout(60)
+//    , cmd_batch_size(100) {
+//
+//    }
+//};
 
 class Hotstuff {
 public:
     Hotstuff(
-        ripple::JobQueue* jobQueue,
-        const Config& config,
         const beast::Journal& journal,
-        Sender* sender,
-        Storage* storage,
-        Executor* executor,
-        Pacemaker* pacemaker);
+        BlockStorage* storage,
+		EpochState* epoch_state,
+		RoundState* round_state,
+		ProposalGenerator* proposal_generator,
+		ProposerElection* proposer_election,
+		NetWork* network);
 
     ~Hotstuff();
 
-    ReplicaID id() const {
-        return config_.id;
-    }
-
-    void propose();
-    void nextSyncNewView(int height);
-
-    void handlePropose(const Block& block);
-    void handleVote(const PartialCert& cert);
-    void handleNewView(const QuorumCert& qc);
-
-    void updateConfig(const Config& config);
+	int start();
 private:
-    friend class RoundRobinLeader;
-     // operate hotstuffcore
-    void reset();
-    const Block leaf();
-    void setLeaf(const Block& block);
-    const int Height();  
-    const Block& votedBlock();
-    const QuorumCert HightQC();
-    Block CreateLeaf(const Block& leaf, 
-        const Command& cmd, 
-        const QuorumCert& qc, 
-        int height);
-
-    const Config& config() const {
-        return config_;
-    }
-
-    Config& config() {
-        return config_;
-    }
-
-    void broadCast(const Block& block);
-
-    Config config_;
-    Signal::pointer signal_;
-    HotstuffCore* hotstuff_core_;
-    Sender* sender_;
-    Pacemaker* pacemaker_;
+	HotstuffCore hotstuff_core_;
+	RoundManager* round_manager_;
 };
 
 } // namespace hotstuff

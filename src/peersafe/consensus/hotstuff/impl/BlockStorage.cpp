@@ -23,8 +23,19 @@
 
 namespace ripple { namespace hotstuff {
 
-BlockStorage::BlockStorage()
-: cache_blocks_() {
+//BlockStorage::BlockStorage()
+//: cache_blocks_()
+//, highest_quorum_cert_()
+//, highest_commit_cert_() {
+//
+//}
+
+BlockStorage::BlockStorage(
+	const QuorumCertificate& highest_quorum_cert, 
+	const QuorumCertificate& highest_commit_cert) 
+: cache_blocks_()
+, highest_quorum_cert_(highest_quorum_cert)
+, highest_commit_cert_(highest_commit_cert) {
 
 }
 
@@ -32,52 +43,52 @@ BlockStorage::~BlockStorage() {
 
 }
 
-bool BlockStorage::addBlock(const Block& block) {
-    if(cache_blocks_.find(block.hash) != cache_blocks_.end())
-        return false;
-    
-    cache_blocks_[block.hash] = block;
-    return true;
-}
-
-void BlockStorage::gcBlocks(const Block& block) {
-    Block parent = block;
-    for(int i = 0; i < 50; i++) {
-        if(blockOf(parent.parent, parent) == false)
-            return;
-    }
-
-    recurseGCBlocks(parent);
-}
-
-// 通过 block hash 获取 block，如果本地没有函数返回 false
-bool BlockStorage::blockOf(const BlockHash& hash, Block& block) const {
-    auto it = cache_blocks_.find(hash);
-    if(it == cache_blocks_.end()) {
-        return false;
-    }
-    
-    block = it->second;
-    return true;
-}
-
-// 通过 block hash 获取 block, 如果本地没有则需要从网络同步
-bool BlockStorage::expectBlock(const BlockHash& hash, Block& block) {
-    if(blockOf(hash, block))
-        return true;
-    return false;
-}
-
-void BlockStorage::recurseGCBlocks(const Block& block) {
-    Block parent;
-    if(blockOf(block.parent, parent)) {
-        recurseGCBlocks(parent);
-    }
-
-    auto it = cache_blocks_.find(block.hash);
-    if(it != cache_blocks_.end())
-        cache_blocks_.erase(it);
-}
+//bool BlockStorage::addBlock(const Block& block) {
+//    if(cache_blocks_.find(block.hash) != cache_blocks_.end())
+//        return false;
+//    
+//    cache_blocks_[block.hash] = block;
+//    return true;
+//}
+//
+//void BlockStorage::gcBlocks(const Block& block) {
+//    Block parent = block;
+//    for(int i = 0; i < 50; i++) {
+//        if(blockOf(parent.parent, parent) == false)
+//            return;
+//    }
+//
+//    recurseGCBlocks(parent);
+//}
+//
+//// 通过 block hash 获取 block，如果本地没有函数返回 false
+//bool BlockStorage::blockOf(const BlockHash& hash, Block& block) const {
+//    auto it = cache_blocks_.find(hash);
+//    if(it == cache_blocks_.end()) {
+//        return false;
+//    }
+//    
+//    block = it->second;
+//    return true;
+//}
+//
+//// 通过 block hash 获取 block, 如果本地没有则需要从网络同步
+//bool BlockStorage::expectBlock(const BlockHash& hash, Block& block) {
+//    if(blockOf(hash, block))
+//        return true;
+//    return false;
+//}
+//
+//void BlockStorage::recurseGCBlocks(const Block& block) {
+//    Block parent;
+//    if(blockOf(block.parent, parent)) {
+//        recurseGCBlocks(parent);
+//    }
+//
+//    auto it = cache_blocks_.find(block.hash);
+//    if(it != cache_blocks_.end())
+//        cache_blocks_.erase(it);
+//}
 
 } // hotstuff
 } // ripple

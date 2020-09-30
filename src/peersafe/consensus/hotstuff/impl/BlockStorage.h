@@ -24,26 +24,46 @@
 
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
 #include <peersafe/consensus/hotstuff/impl/Block.h>
+#include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
+#include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
 
 namespace ripple { namespace hotstuff {
 
-class BlockStorage : public Storage {
+class BlockStorage {
 public:
-    BlockStorage();
-    virtual ~BlockStorage();
+    //BlockStorage();
+	BlockStorage(
+		const QuorumCertificate& highest_quorum_cert, 
+		const QuorumCertificate& highest_commit_cert);
+    ~BlockStorage();
 
-    // for blocks
-    bool addBlock(const Block& block) override;
-    // 基于区块高度释放不再需要用到的区块
-    void gcBlocks(const Block& block) override;
-    // 通过 block hash 获取 block，如果本地没有函数返回 false
-    bool blockOf(const BlockHash& hash, Block& block) const override;
-    // 通过 block hash 获取 block, 如果本地没有则需要从网络同步
-    bool expectBlock(const BlockHash& hash, Block& block) override;
+    //// for blocks
+    //bool addBlock(const Block& block);
+    //// 基于区块高度释放不再需要用到的区块
+    //void gcBlocks(const Block& block);
+    //// 通过 block hash 获取 block，如果本地没有函数返回 false
+    //bool blockOf(const BlockHash& hash, Block& block) const;
+    //// 通过 block hash 获取 block, 如果本地没有则需要从网络同步
+    //bool expectBlock(const BlockHash& hash, Block& block);
+
+	const QuorumCertificate& HighestQuorumCert() const {
+		return highest_quorum_cert_;
+	}
+
+	const QuorumCertificate& HighestCommitCert() const {
+		return highest_commit_cert_;
+	}
+
+	SyncInfo sync_info() {
+		return SyncInfo(HighestQuorumCert(), HighestCommitCert());
+	}
 
 private:
-    void recurseGCBlocks(const Block& block);
+    //void recurseGCBlocks(const Block& block);
     std::map<BlockHash, Block> cache_blocks_;
+
+	QuorumCertificate highest_quorum_cert_;
+	QuorumCertificate highest_commit_cert_;
 };
 
 } // namespace hotstuff

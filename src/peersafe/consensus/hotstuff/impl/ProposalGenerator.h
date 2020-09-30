@@ -17,54 +17,44 @@
  */
 //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_CORE_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_CORE_H
+#ifndef RIPPLE_CONSENSUS_HOTSTUFF_PROPOSAL_GENERATOR_H
+#define RIPPLE_CONSENSUS_HOTSTUFF_PROPOSAL_GENERATOR_H
+
+#include <atomic>
 
 #include <boost/optional.hpp>
 
 #include <peersafe/consensus/hotstuff/impl/Block.h>
-#include <peersafe/consensus/hotstuff/impl/Vote.h>
 #include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
-#include <peersafe/consensus/hotstuff/impl/EpochState.h>
-
-#include <ripple/basics/Log.h>
-#include <ripple/core/JobQueue.h>
+#include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
 
 namespace ripple { namespace hotstuff {
 
-struct SafetyData {
-	Epoch epoch;
-	Round last_voted_round;
-	Round preferred_round;
-	boost::optional<Vote> last_vote;
+class ProposalGenerator {
+public:
+    ProposalGenerator(
+		CommandManager* cm, 
+		BlockStorage* block_store,
+		const Author& author);
+    ~ProposalGenerator();
 
-	SafetyData()
-	: epoch(0)
-	, last_voted_round(0)
-	, preferred_round(0)
-	, last_vote() {
+	boost::optional<Block> GenerateNilBlock(Round round);
+	boost::optional<BlockData> Proposal(Round round);
 
+	const Author& author() const {
+		return author_;
 	}
-};
 
-class HotstuffCore {
-public: 
-	HotstuffCore(const beast::Journal& journal, EpochState* epoch_state);
-    ~HotstuffCore();
-
-	Block SignProposal(const BlockData& proposal);
 private:
-	bool VerifyAuthor(const Author& author);
-	bool VerifyEpoch(const Epoch epoch);
-	bool VerifyQC(const QuorumCertificate& qc);
+	QuorumCertificate HighestQuorumCert(Round round);
 
-	SafetyData safety_data_;
-	beast::Journal journal_;
-	EpochState* epoch_state_;
-
+	CommandManager* command_manager_;
+	BlockStorage* block_store_;
+	Author author_;
+	std::atomic<Round> last_round_generated_;
 };
 
 } // namespace hotstuff
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_CORE_H
+#endif // RIPPLE_CONSENSUS_HOTSTUFF_PROPOSAL_GENERATOR_H
