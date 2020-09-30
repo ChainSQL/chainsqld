@@ -791,7 +791,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
 				else
 				{
 					std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
-					SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
+					SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
 					tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
 					secret_key = tempSecKey;
 				}

@@ -252,19 +252,25 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
     else
     {
         unsigned long rv = 0;
-        unsigned char plain[512] = { 0 };
-        unsigned long plainLen = 512;
+
+		unsigned long recommendedPlainLen = std::max(std::size_t(512), cipherBlob.size()*10);
+		unsigned char *plain = new unsigned char[recommendedPlainLen];
+		memset(plain, 0, recommendedPlainLen);
+
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(secret_key.keyTypeInt_, secret_key.encrytCardIndex_);
         std::pair<unsigned char*, int> pri4Decrypt = std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
-        rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), plain, &plainLen);
+        rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), plain, &recommendedPlainLen);
+		
         if (rv)
         {
             DebugPrint("ECCDecrypt error! rv = 0x%04x", rv);
             return Blob();
         }
         DebugPrint("ECCDecrypt OK!");
-        //Blob    vucPlainText(plain, plain + plainLen);
-        return Blob(plain, plain + plainLen);
+
+		Blob    resPlainText(plain, plain + recommendedPlainLen);
+		delete[] plain;
+        return resPlainText;
     }
 }
 
@@ -275,7 +281,7 @@ boost::optional<SecretKey> getSecretKey(const std::string& secret)
     if ('p' == secret[0])
     {
         std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
-        return SecretKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
+        return SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
     }
     else if ('x' == secret[0])
     {
