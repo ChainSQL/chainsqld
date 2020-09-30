@@ -74,7 +74,7 @@ STTx::STTx (STObject&& object)
     paJsonLog_ = std::make_shared<Json::Value>();    
 }
 
-std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, AccountID accountID, Blob publicKey)
+std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, AccountID accountID)
 {
 	std::string err_message;
 	int transactionType = 0;
@@ -354,7 +354,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 			if (!includeAssert && type == T_ASSERT)
 				continue;
 
-			auto tx_pair = parseSTTx(obj, accountID,publicKey);
+			auto tx_pair = parseSTTx(obj, accountID);
 			if (tx_pair.first)
 			{
 				auto tx = *tx_pair.first;
