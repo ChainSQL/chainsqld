@@ -1166,6 +1166,8 @@ bool ApplicationImp::setup()
     if (!setSynTable())  return false;
 
 	if (!checkCertificate())  return false;
+
+    if(validatorKeys_.configInvalid()) return false;
     
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());
@@ -1319,8 +1321,8 @@ bool ApplicationImp::setup()
     }
 
     {
-        if(validatorKeys_.configInvalid())
-            return false;
+        // if(validatorKeys_.configInvalid())
+        //     return false;
 
         if (!validatorManifests_->load (
             getWalletDB (), "ValidatorManifests", validatorKeys_.manifest,
