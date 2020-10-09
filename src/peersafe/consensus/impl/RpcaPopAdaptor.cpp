@@ -231,10 +231,15 @@ uint256 RpcaPopAdaptor::getPrevLedger(
     RCLCxLedger const& ledger,
     ConsensusMode mode)
 {
-    RCLValidations& vals = app_.getValidations();
-    uint256 netLgr = vals.getPreferred(
-        RCLValidatedLedger{ ledger.ledger_, vals.adaptor().journal() },
-        getValidLedgerIndex());
+    uint256 netLgr = ledgerID;
+
+    if (ledger.seq() > 1)
+    {
+        RCLValidations& vals = app_.getValidations();
+        netLgr = vals.getPreferred(
+            RCLValidatedLedger{ ledger.ledger_, vals.adaptor().journal() },
+            getValidLedgerIndex());
+    }
 
     if (netLgr != ledgerID)
     {

@@ -48,7 +48,8 @@ public:
         std::uint32_t const prevSeq,
         uint256 const& prevHash,
         std::uint64_t const& toView,
-        PublicKey const nodePublic);
+        PublicKey const nodePublic,
+        NetClock::time_point signTime);
 
     STBase*
     copy(std::size_t n, void* buf) const override

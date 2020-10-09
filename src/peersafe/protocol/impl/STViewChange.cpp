@@ -39,7 +39,8 @@ STViewChange::STViewChange(
     std::uint32_t const prevSeq,
     uint256 const& prevHash,
     std::uint64_t const& toView,
-    PublicKey const nodePublic)
+    PublicKey const nodePublic,
+    NetClock::time_point signTime)
     : STObject(getFormat(), sfViewChange)
     , prevSeq_(prevSeq)
     , prevHash_(prevHash)
@@ -53,6 +54,7 @@ STViewChange::STViewChange(
     setFieldU32(sfSequence, prevSeq);
     setFieldH256(sfParentHash, prevHash);
     setFieldU64(sfView, toView);
+    setFieldU32(sfSigningTime, signTime.time_since_epoch().count());
 }
 
 Blob STViewChange::getSerialized() const
@@ -70,8 +72,8 @@ SOTemplate const& STViewChange::getFormat()
         {
             { sfSequence,         soeREQUIRED },    // previousledger Sequence
             { sfParentHash,       soeREQUIRED },    // previousledger Hash
-            { sfView,             soeREQUIRED }
-
+            { sfView,             soeREQUIRED },    // toView
+            { sfSigningTime,      soeREQUIRED }     // compute unique ID
         };
     };
 

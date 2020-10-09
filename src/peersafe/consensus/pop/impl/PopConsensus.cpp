@@ -374,9 +374,6 @@ void PopConsensus::startRoundInternal(
 
 void PopConsensus::checkLedger()
 {
-    if (previousLedger_.seq() == GENESIS_LEDGER_INDEX)
-        return;
-
     auto netLgr =
         adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
 
@@ -680,7 +677,12 @@ void PopConsensus::launchViewChange()
         << " PublicKey index=" << adaptor_.getPubIndex()
         << ", sending ViewChange toView=" << toView_;
 
-    auto viewChange = std::make_shared<STViewChange>(previousLedger_.seq(), prevLedgerID_, toView_, adaptor_.valPublic());
+    auto viewChange = std::make_shared<STViewChange>(
+        previousLedger_.seq(),
+        prevLedgerID_,
+        toView_,
+        adaptor_.valPublic(),
+        adaptor_.closeTime());
 
     adaptor_.launchViewChange(*viewChange);
 
