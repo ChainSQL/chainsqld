@@ -311,6 +311,7 @@ void Config::loadFromString (std::string const& fileContents)
 	if (auto s = getIniFileSection(secConfig, SECTION_PATH_X509)) {
 
 		auto const vecCrtPath = *s;
+		std::set<std::string> setRootCert;
 		for (auto path : vecCrtPath) {
 
 			std::string rootCert;
@@ -319,9 +320,10 @@ void Config::loadFromString (std::string const& fileContents)
 				std::istreambuf_iterator<char>(ifsPath),
 				std::istreambuf_iterator<char>());
 
-			if (rootCert.empty())
+			if (rootCert.empty() || setRootCert.count(rootCert) !=0 )
 				continue;
 
+			setRootCert.insert(rootCert);
 			ROOT_CERTIFICATES.push_back(rootCert);
 		}
 
