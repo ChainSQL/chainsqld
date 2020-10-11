@@ -152,6 +152,10 @@ public:
     // Handles copy on write for mutable snapshots.
     std::shared_ptr<SHAMap> snapShot (bool isMutable) const;
 
+
+	// Returns a new sub chain genesis SHAMap that's a snapshot of this one.
+	std::shared_ptr<SHAMap> genesisSnapShot(Family& f) const;
+
     /*  Mark this SHAMap as "should be full", indicating
         that the local server wants all the corresponding nodes
         in durable storage.

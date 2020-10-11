@@ -84,6 +84,12 @@ operator<< (std::ostream& os, Section const& section)
 {
     for (auto const& kv : section.cont())
         os << kv.first << "=" << kv.second << "\n";
+
+	for (auto const& item : section.values())
+		os << item << "\n";
+
+	os << "\n";
+
     return os;
 }
 
@@ -154,8 +160,10 @@ BasicConfig::build (IniFileSections const& ifs)
 std::ostream&
 operator<< (std::ostream& ss, BasicConfig const& c)
 {
-    for (auto const& s : c.map_)
-        ss << "[" << s.first << "]\n" << s.second;
+	for (auto const& s : c.map_) {
+		if(s.first.empty()) continue;
+		ss << "[" << s.first << "]\n" << s.second;
+	}      
     return ss;
 }
 

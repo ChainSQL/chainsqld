@@ -802,10 +802,10 @@ ServerHandlerImp::processRequest (Port const& port,
         Resource::Charge loadType = Resource::feeReferenceRPC;
 		// take out schema_id
 		uint256 schema_id = beast::zero;
-		if (params.isMember(jss::params) && params[jss::params].isMember(jss::schema_id))
+		if (params.isMember(jss::schema_id))
 		{
 			try {
-				schema_id = from_hex_text<uint256>(params[jss::params][jss::schema_id].asString());
+				schema_id = from_hex_text<uint256>(params[jss::schema_id].asString());
 			}
 			catch (std::exception) {
 				schema_id = beast::zero;

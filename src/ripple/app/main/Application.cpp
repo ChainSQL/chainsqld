@@ -77,6 +77,7 @@
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/algorithm/string.hpp>
 #include <condition_variable>
 #include <cstring>
 #include <fstream>
@@ -298,6 +299,11 @@ public:
     bool checkSigs() const override;
     void checkSigs(bool) override;
     int fdlimit () const override;
+
+
+	void loadSubChains();
+
+
 
     //--------------------------------------------------------------------------
 
@@ -930,6 +936,8 @@ bool ApplicationImp::setup()
 
 	schema_main->setup();
 
+	loadSubChains();
+
     return true;
 }
 
@@ -1014,6 +1022,100 @@ int ApplicationImp::fdlimit() const
 
     // The minimum number of file descriptors we need is 1024:
     return std::max(1024, needed);
+}
+
+void ApplicationImp::loadSubChains()
+{
+	// return;
+	// 1 parse the schema_info
+	// 2 create the sub chain 
+
+	boost::filesystem::path schemaPath =  config_->SCHEMA_PATH;
+
+	if (schemaPath.empty()) {
+		return;
+	}
+
+	std::string schemaInfo("schema_info");
+
+	std::vector< boost::filesystem::path> paths;
+
+	for (auto const & entry : boost::filesystem::recursive_directory_iterator(schemaPath))
+	{
+		std::string fileName = entry.path().filename().string();
+		if (boost::filesystem::is_regular_file(entry) && schemaInfo == fileName) {
+			paths.emplace_back(entry.path());
+			//std::cout << entry.path().string()<< std::endl;
+		}
+			
+	}
+
+	for (auto item : paths) {
+
+		boost::filesystem::ifstream file(item);
+		std::string str;
+		std::vector<std::string> filenames;
+		while (getline(file, str)) {
+			filenames.push_back(str);
+		}
+
+		if (filenames.size() != 6)
+			Throw<std::runtime_error>(
+				"Invalid info in schema_info");
+
+		std::string sSchemaName = filenames[0];
+		std::string sAcountID   = filenames[1];
+		std::string sStragegy   = filenames[2];
+
+	    std::string sAnchorLedgerHash = filenames[3];
+		std::string sValidatorInfo    = filenames[4];
+		std::string sPeerListInfo     = filenames[5];
+
+
+
+		SchemaParams params{};
+		params.account = *ripple::parseBase58<AccountID>(sAcountID);
+		params.admin = params.account;
+		params.schema_id = ripple::from_hex_text<ripple::uint256>(sSchemaName);
+		params.schema_name = to_string(params.schema_id);
+		params.anchor_ledger_hash = ripple::from_hex_text<ripple::uint256>(sAnchorLedgerHash);
+		params.strategy = boost::iequals(sStragegy, "1")? SchemaStragegy::new_chain : SchemaStragegy::with_state;
+
+		boost::split(params.peer_list, sPeerListInfo, boost::is_any_of(";"));
+	
+		std::vector<std::string> vValidatorInfo;
+		boost::split(vValidatorInfo, sValidatorInfo, boost::is_any_of(";"));
+
+		for (auto item : vValidatorInfo) {
+
+			std::vector<std::string> vValidator;
+			boost::split(vValidator, item, boost::is_any_of(" "));
+			
+			if (vValidator.size() != 2)
+				Throw<std::runtime_error>(
+					"Invalid validator info in schema_info");
+
+			boost::optional<PublicKey> pk = parseBase58<PublicKey>(TokenType::NodePublic, vValidator[0]);
+			bool bValid = boost::iequals(vValidator[0], "1") ? true : false;
+
+			std::pair<PublicKey, bool> validator = std::make_pair(*pk, bValid);
+			params.validator_list.push_back(validator);
+		}
+	
+		//auto seed = parseBase58<Seed>("xn2LEqGs7Xpz1DMYqYJjiP5727h8c");
+		//auto const private_key = generateSecretKey(KeyType::secp256k1, *seed);
+		//auto base58NodePublic = derivePublicKey(KeyType::secp256k1, private_key);
+		//std::cout << strHex(base58NodePublic) << std::endl;
+
+		//auto oPublic_key = ripple::getPublicKey("xn2LEqGs7Xpz1DMYqYJjiP5727h8c");
+		//std::cout << strHex(*oPublic_key) << std::endl;
+
+		auto newSchema = getSchemaManager().createSchema(*config_, params,true);
+		newSchema->initBeforeSetup();
+		newSchema->setup();
+	}
+
+
 }
 
 //------------------------------------------------------------------------------

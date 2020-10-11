@@ -255,6 +255,10 @@ namespace ripple {
 			bool replay,
 			bool isFilename);
 
+		void
+			startGenesisLedger(
+				std::shared_ptr<Ledger const> curLedger);
+
 	private:
 		Application& app_;
 		beast::Journal m_journal;
@@ -986,6 +990,21 @@ private:
 
 			startGenesisLedger();
 		}
+		else if (startUp == Config::NEWCHAIN_WITHSTATE) {
+
+			auto validLedger = app_.getLedgerMaster().getValidatedLedger();
+			JLOG(m_journal.info()) << "NEWCHAIN_WITHSTATE from seq=" << validLedger->info().seq;
+			startGenesisLedger(validLedger);
+		}
+		else if (startUp == Config::NEWCHAIN_LOAD) {
+			if (!loadOldLedger(config_.START_LEDGER,
+				startUp == Config::REPLAY,
+				startUp == Config::LOAD_FILE))
+			{
+				JLOG(m_journal.fatal()) << "Invalid NEWCHAIN_LOAD.";
+				return false;
+			}
+		}
 		else
 		{
 			if (!loadOldLedger(config_.START_LEDGER,
@@ -1576,6 +1595,19 @@ private:
 		return true;
 	}
 
+	void SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
+	{
+		auto genesis = std::make_shared<Ledger>(*curLedger, family_);
+		genesis->setImmutable(config_);
+	
+		openLedger_.emplace(genesis, cachedSLEs_,
+			app_.logs().journal("OpenLedger"));
+		m_ledgerMaster->switchLCL(genesis);
+
+		//set valid ledger
+		m_ledgerMaster->initGenesisLedger(genesis);
+	}
+
 	static
 		std::vector<std::string>
 		getSchema(DatabaseCon& dbc, std::string const& dbName)
@@ -1909,6 +1941,7 @@ private:
 			Application& app,
 			beast::Journal j)
 	{
+
 		return std::make_shared<SchemaImp>(params, config, app, j);
 	}
 }

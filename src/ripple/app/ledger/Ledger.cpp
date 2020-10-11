@@ -255,14 +255,14 @@ Ledger::Ledger (
         !txMap_->fetchRoot (SHAMapHash{info_.txHash}, nullptr))
     {
         loaded = false;
-        JLOG (j.warn()) << "Don't have TX root for ledger";
+		JLOG(j.warn()) << "Don't have TX root for ledger ";
     }
 
     if (info_.accountHash.isNonZero () &&
         !stateMap_->fetchRoot (SHAMapHash{info_.accountHash}, nullptr))
     {
         loaded = false;
-        JLOG (j.warn()) << "Don't have AS root for ledger";
+        JLOG (j.warn()) << "Don't have AS root for ledger ";
     }
 
     txMap_->setImmutable ();
@@ -292,9 +292,9 @@ Ledger::Ledger (Ledger const& prevLedger,
     , rules_(prevLedger.rules_)
 {
     info_.seq = prevLedger.info_.seq + 1;
-    info_.parentCloseTime =
-        prevLedger.info_.closeTime;
-    info_.hash = prevLedger.info().hash + uint256(1);
+	info_.parentCloseTime =
+		prevLedger.info_.closeTime;
+	info_.hash = prevLedger.info().hash + uint256(1);
     info_.drops = prevLedger.info().drops;
     info_.closeTimeResolution = prevLedger.info_.closeTimeResolution;
     info_.parentHash = prevLedger.info().hash;
@@ -316,6 +316,9 @@ Ledger::Ledger (Ledger const& prevLedger,
         info_.closeTime =
             prevLedger.info_.closeTime + info_.closeTimeResolution;
     }
+
+
+
 }
 
 Ledger::Ledger (
@@ -349,6 +352,32 @@ Ledger::Ledger (std::uint32_t ledgerSeq,
     info_.closeTime = closeTime;
     info_.closeTimeResolution = ledgerDefaultTimeResolution;
     setup(config);
+}
+
+Ledger::Ledger(Ledger const& ledger, Family& f)
+	: mImmutable(false)
+	, txMap_(std::make_shared <SHAMap>(
+		SHAMapType::TRANSACTION,
+		ledger.stateMap_->family(),
+		ledger.stateMap_->get_version()))
+	, stateMap_(ledger.stateMap_->genesisSnapShot(f))
+	, fees_(ledger.fees_)
+	, rules_(ledger.rules_)
+{
+	info_.seq = 1;
+	info_.drops = ledger.info().drops;
+	info_.closeTimeResolution = ledger.info_.closeTimeResolution;
+	info_.closeTimeResolution = getNextLedgerTimeResolution(
+		ledger.info_.closeTimeResolution,
+		getCloseAgree(ledger.info()), info_.seq);
+
+	if (stateMap_->is_v2())
+	{
+		info_.closeFlags |= sLCF_SHAMapV2;
+	}
+
+	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
+	stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
 }
 
 void Ledger::setImmutable (Config const& config)

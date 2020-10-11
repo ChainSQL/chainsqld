@@ -84,6 +84,8 @@ struct ConfigSection
 
 #define SECTION_PATH_X509               "x509_crt_path"
 
+#define SECTION_SCHEMA					"schema"
+
 } // ripple
 
 #endif

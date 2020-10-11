@@ -1,5 +1,6 @@
 #include <peersafe/schema/SchemaManager.h>
 
+
 namespace ripple {
 	SchemaManager::SchemaManager(Application & app, beast::Journal j):
 		app_(app),
@@ -8,9 +9,19 @@ namespace ripple {
 
 	}
 
-	std::shared_ptr<Schema> SchemaManager::createSchema(SchemaParams const& param)
-	{
-		return nullptr;
+	std::shared_ptr<Schema> SchemaManager::createSchema(Config& config,SchemaParams const& params, bool loadFromFile /*= false*/)
+	{	
+		auto schemaConfig = std::make_unique<Config>();	
+		schemaConfig->initSchemaConfig(config, params);
+
+		if (loadFromFile) {
+			schemaConfig->START_UP = Config::NEWCHAIN_LOAD;
+		}
+	
+		auto schema = make_Schema(params, *schemaConfig, app_, j_);
+		schemas_[params.schema_id] = schema;
+
+		return schema;
 	}
 
 	std::shared_ptr<Schema> SchemaManager::createSchemaMain(

@@ -32,6 +32,7 @@
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -162,6 +163,136 @@ void Config::setupControl(bool bQuiet,
     SILENT = bSilent;
     RUN_STANDALONE = bStandalone;
 }
+
+ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
+{
+
+	{
+		// test standalone
+		START_VALID = true;
+	}
+
+	if (schemaParams.strategy == SchemaStragegy::with_state) {
+		START_UP = NEWCHAIN_WITHSTATE;
+	}
+
+	 CONFIG_DIR = config.CONFIG_DIR / to_string(schemaParams.schema_id);
+
+	 auto fileContents =  config.getConfigFileContents();
+	 if (fileContents.empty()) {
+
+		 // error msg
+		 return ;
+	 }
+
+	 // copy fileContents from config
+	 build(fileContents);
+
+	 std::string const node_db_type{ get<std::string>(section(ConfigSection::nodeDatabase()), "type") };
+
+	 // ./AB868A6CFEEC779C2FF845C0AF00A642259986AF40C01976A7F842B6918936C7/db/NuDB
+	 std::string node_db_path = (boost::format("./%1%/db/%2%")
+		 % schemaParams.schema_name
+		 % node_db_type).str();
+	 overwrite(ConfigSection::nodeDatabase(), "path", node_db_path);
+
+
+	 std::string database_path = (boost::format("./%1%") %schemaParams.schema_name).str();
+	 deprecatedClearSection(std::string("database_path"));
+	 section(std::string("database_path")).append(database_path);
+
+
+	 std::string debug_logfile = (boost::format("./%1%/debug.log") % schemaParams.schema_name).str();
+	 deprecatedClearSection(std::string("debug_logfile"));
+	 section(std::string("debug_logfile")).append(debug_logfile);
+
+
+	 deprecatedClearSection(std::string("ips"));
+	 section(std::string("ips")).append(schemaParams.peer_list);
+
+
+	 deprecatedClearSection(std::string("validators"));
+	 std::vector<std::string>   validatorList;
+	 for (auto item : schemaParams.validator_list) {
+		 if (item.second) {
+			 std::string sPublicKey = toBase58(TokenType::NodePublic, item.first);
+			 validatorList.push_back(sPublicKey);
+		 }
+	 }
+	 section(std::string("validators")).append(validatorList);
+
+
+	 CONFIG_FILE = (CONFIG_DIR / "chainsqld.cfg").string();
+
+
+	 if (!exists(CONFIG_DIR.string()))
+	 {
+		 boost::filesystem::create_directory(CONFIG_DIR.string());
+	 }
+
+	 {
+		 std::ofstream outfile(CONFIG_FILE.string());
+		 outfile << *this;
+		 outfile.close();
+	 }
+
+
+	 {
+		 // save schema_info
+		 boost::filesystem::path schema_info_file = CONFIG_DIR / "schema_info";
+
+		 assert(schemaParams.validator_list.size() > 0);
+		 std::string sValidatorInfo;
+		 for (auto i = 0; i < schemaParams.validator_list.size(); i++) {
+
+			 if (i > 0) {
+				 sValidatorInfo += ";";
+			 }
+
+			 std::string sNodePublic = toBase58(TokenType::NodePublic, schemaParams.validator_list[i].first);
+			 std::string sValidate = schemaParams.validator_list[i].second ? "1" : "0";
+
+			 sValidatorInfo += (boost::format("%s %s") % sNodePublic % sValidate).str();
+		 }
+
+		 assert(schemaParams.peer_list.size() > 0);
+		 std::string sPeerListInfo;
+		 for (auto i = 0; i < schemaParams.peer_list.size(); i++) {
+
+			 if (i > 0) {
+				 sPeerListInfo += ";";
+			 }
+			 sPeerListInfo += schemaParams.peer_list[i];
+		 }
+
+		 std::ofstream infofile(schema_info_file.string());
+		 infofile << schemaParams.schema_name << std::endl;
+		 infofile << to_string(schemaParams.account) << std::endl;
+		 infofile << (int)schemaParams.strategy << std::endl;
+		 infofile << to_string(schemaParams.anchor_ledger_hash) << std::endl;
+		 infofile << sValidatorInfo << std::endl;
+		 infofile << sPeerListInfo;
+
+		 infofile.close();
+	 }
+
+}
+
+IniFileSections Config::getConfigFileContents() const
+ {
+	IniFileSections fileContents;
+	 boost::system::error_code ec;
+	 auto const strFileContents = getFileContents(ec, CONFIG_FILE);
+	 if (ec)
+	 {
+		 std::cerr << "Failed to read '" << CONFIG_FILE << "'." <<
+			 ec.value() << ": " << ec.message() << std::endl;
+		 return fileContents;
+	 }
+
+	 fileContents = parseIniFile(strFileContents, true);
+	 return fileContents;
+ }
 
 void Config::setup (std::string const& strConf, bool bQuiet,
     bool bSilent, bool bStandalone)
@@ -436,6 +567,40 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_WORKERS, strTemp, j_))
         WORKERS      = beast::lexicalCastThrow <std::size_t> (strTemp);
+
+
+	auto const result = section(SECTION_SCHEMA).find("schema_path");
+	if (result.second)
+	{
+		try
+		{
+			SCHEMA_PATH = result.first;
+
+		}
+		catch (std::exception const&)
+		{
+			JLOG(j_.error()) <<
+				"Invalid value '" << result.first << "' for key " <<
+				"'schema_path' in [" << SECTION_PCONSENSUS << "]\n";
+			Rethrow();
+		}
+	}
+
+	auto const resSchema = section(SECTION_SCHEMA).find("auto_accept_new_schema");
+	if (resSchema.second)
+	{
+		try
+		{
+			AUTO_ACCEPT_NEW_SCHEMA = (beast::lexicalCastThrow <int>(resSchema.first) == 1);
+		}
+		catch (std::exception const&)
+		{
+			JLOG(j_.error()) <<
+				"Invalid value '" << resSchema.first << "' for key " <<
+				"'auto_accept_new_schema' in [" << SECTION_PCONSENSUS << "]\n";
+			Rethrow();
+		}
+	}
 
     // Do not load trusted validator configuration for standalone mode
     if (! RUN_STANDALONE)

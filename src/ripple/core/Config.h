@@ -26,6 +26,7 @@
 #include <ripple/beast/net/IPEndpoint.h>
 #include <boost/beast/core/string.hpp>
 #include <ripple/beast/utility/Journal.h>
+#include <peersafe/schema/SchemaParams.h>
 #include <boost/filesystem.hpp> // VFALCO FIX: This include should not be here
 #include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
@@ -123,7 +124,7 @@ public:
     std::vector<std::string>    SNTP_SERVERS;           // SNTP servers from rippled.cfg.
 
 
-	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
+ 	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
 
     enum StartUpType
     {
@@ -132,7 +133,10 @@ public:
         LOAD,
         LOAD_FILE,
         REPLAY,
-        NETWORK
+        NETWORK,
+		NEWCHAIN,
+		NEWCHAIN_WITHSTATE,
+		NEWCHAIN_LOAD
     };
     StartUpType                 START_UP = NORMAL;
 
@@ -190,6 +194,11 @@ public:
 
     std::unordered_set<uint256, beast::uhash<>> features;
 
+
+	// schema
+	std::string					 SCHEMA_PATH;
+	bool					     AUTO_ACCEPT_NEW_SCHEMA = true;
+
 public:
     Config()
     : j_ {beast::Journal::getNullSink()}
@@ -202,6 +211,11 @@ public:
         bool bSilent, bool bStandalone);
     void setupControl (bool bQuiet,
         bool bSilent, bool bStandalone);
+
+
+	void initSchemaConfig(Config& config, SchemaParams const& schemaParams);
+
+	IniFileSections getConfigFileContents() const;
 
     /**
      *  Load the config from the contents of the string.

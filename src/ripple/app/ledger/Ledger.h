@@ -132,6 +132,11 @@ public:
     Ledger (Ledger const& previous,
         NetClock::time_point closeTime);
 
+	/** Create a new ledger from an exist ledger
+	*/
+	Ledger(Ledger const& ledger,
+		Family& f);
+
     // used for database ledgers
     Ledger (std::uint32_t ledgerSeq,
         NetClock::time_point closeTime, Config const& config,

@@ -7,12 +7,13 @@
 namespace ripple {
 class SchemaParams;
 class Application;
+class Config;
 
 class SchemaManager
 {
 public:
 	SchemaManager(Application &app,beast::Journal j);
-	std::shared_ptr<Schema> createSchema(SchemaParams const& param);
+	std::shared_ptr<Schema> createSchema(Config& config,SchemaParams const& param,bool loadFromFile=false);
 	std::shared_ptr<Schema> createSchemaMain(Config& config);
 	std::shared_ptr<Schema> getSchema(uint256 const& schemaId);
 	bool contains(uint256 const& id);
