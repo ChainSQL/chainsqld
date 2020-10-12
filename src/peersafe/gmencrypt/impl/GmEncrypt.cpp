@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/gmencrypt/GmEncrypt.h>
+#include <ripple/basics/contract.h>
 #include <string.h>
 #ifdef _WIN64 //== _WIN32
 #include <Userenv.h>
@@ -107,6 +108,10 @@ void GmEncrypt::pkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, unsig
 void GmEncrypt::dePkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, unsigned char* dstUC, unsigned long* dstUCLen)
 {
     int dePaddingData = srcUC[srcUCLen - 1];
+    if (dePaddingData > 16)
+    {
+        ripple::Throw <std::runtime_error>("plaintext had bad padding");
+    }
     *dstUCLen = srcUCLen - dePaddingData;
     memcpy(dstUC, srcUC, *dstUCLen);
 }

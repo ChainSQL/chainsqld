@@ -468,7 +468,6 @@ int run (int argc, char** argv)
     // No arguments. Run server.
     if (!vm.count ("parameters"))
     {
-#ifdef HARD_GM
 		if (config->GM_SELF_CHECK)
 		{
 			bool checkResult = false;
@@ -478,20 +477,24 @@ int run (int argc, char** argv)
 				checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
 				if (checkResult)
 				{
-					JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check successful!";
+					// JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check successful!";
+                    std::cout << "SM2/SM3/SM4 and random check successful!" << std::endl;
 				}
 				else
 				{
-					JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check failed!";
+					// JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check failed!";
+                    std::cerr << "SM2/SM3/SM4 and random check failed!" << std::endl;
 					return -1;
 				}
 			}
 			else
 			{
-				JLOG(GmCheckJournal.info()) << "Get check obj failed! Please Check!";
+				// JLOG(GmCheckJournal.info()) << "Get check obj failed! Please Check!";
+                std::cerr << "Get check obj failed! Please Check!" << std::endl;
 				return -1;
 			}
 		}
+#ifdef HARD_GM
 		//std::string filePath = GetHomePath();
 		generateAddrAndPubFile(hEObj->syncTableKey, SYNC_TABLE_KEY_INDEX);
 		//generateAddrAndPubFile(filePath, hEObj->nodeVerifyKey);
