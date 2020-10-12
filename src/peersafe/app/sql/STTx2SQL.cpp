@@ -2353,8 +2353,8 @@ private:
 
 namespace helper {
 
-	std::pair<int, std::string> ParseTxJson(const Json::Value& tx_json, BuildSQL &buildsql) {
-		std::string error = "Unkown Error when parse json";
+	std::pair<int, std::string> ParseQueryJson(const Json::Value& tx_json, BuildSQL &buildsql) {
+		std::string error = "Unknown Error when parse json";
 		int code = 0;
 		do {
 			Json::Value obj_tables = tx_json["Tables"];
@@ -2451,13 +2451,14 @@ namespace helper {
 							code = -3;
 							break;
 						}
-						//check blank space
+						////check blank space
+						//auto field_name_str = fieldname.asString();
+						//if (field_name_str.find(' ') != std::string::npos){
+						//	error = (boost::format("Field [%s] contains blank space.")
+						//		% field_name_str).str();
+						//	break;
+						//}
 						auto field_name_str = fieldname.asString();
-						if (field_name_str.find(' ') != std::string::npos){
-							error = (boost::format("Field [%s] contains blank space.")
-								% field_name_str).str();
-							break;
-						}
 						BuildField field(field_name_str);
 						buildsql.AddField(field);
 					}
@@ -2717,7 +2718,7 @@ namespace helper {
 
 	Json::Value query_directly(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql, int selectLimit) {
 		Json::Value obj;
-		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
+		std::pair<int, std::string> result = ParseQueryJson(tx_json, *buildsql);
 		if (result.first != 0) {
 			return RPC::make_error(rpcJSON_PARSED_ERR, result.second);
 		}
@@ -2742,7 +2743,7 @@ namespace helper {
 	}
 	std::pair<std::vector<std::vector<Json::Value>>, std::string> query_directly2d(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql, int selectLimit) {
 		std::vector<std::vector<Json::Value>> obj;
-		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
+		std::pair<int, std::string> result = ParseQueryJson(tx_json, *buildsql);
 		if (result.first != 0) {
 			return std::make_pair(obj,result.second);
 		}
