@@ -571,7 +571,11 @@ bool GMCheck::startAlgRanCheck(int checkType)
 			if (sm2SignedAndVerifyCheck()) {
 				if (sm3HashCheck()) {
 					if (sm4EncryptAndDecryptCheck()) {
+#ifdef HARD_GM
 						return randomCheck();
+#else
+                        return true;
+#endif
 					}
 					return false;
 				}

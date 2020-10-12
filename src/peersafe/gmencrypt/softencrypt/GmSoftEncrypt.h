@@ -167,6 +167,7 @@ private:
     unsigned char priKeyUser_[PRIVATE_KEY_EXT_LEN];
 
 private:
+    bool setPubfromPri(EC_KEY* pEcKey);
     size_t EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf);
     EC_KEY* CreateEC(unsigned char *key, int is_public);
     void cipherReEncode(unsigned char* pCipher, unsigned long cipherLen);
