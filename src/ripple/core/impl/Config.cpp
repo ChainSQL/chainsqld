@@ -452,6 +452,9 @@ void Config::loadFromString (std::string const& fileContents)
 		}
 
 	}
+
+	if (auto s = getIniFileSection(secConfig, SECTION_SCHEMAS)) 
+		SCHEMA_IDS = *s;
 		
 
     {

@@ -23,10 +23,10 @@
 #include <ripple/app/tx/apply.h>
 #include <ripple/ledger/CachedView.h>
 #include <ripple/overlay/Message.h>
-#include <ripple/overlay/Overlay.h>
 #include <ripple/overlay/predicates.h>
 #include <ripple/protocol/Feature.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/schema/PeerManager.h>
 #include <boost/range/adaptor/transformed.hpp>
 
 namespace ripple {
@@ -157,7 +157,8 @@ OpenLedger::accept(Schema& app, Rules const& rules,
             msg.set_status(protocol::tsNEW);
             msg.set_receivetimestamp(
                 app.timeKeeper().now().time_since_epoch().count());
-            app.overlay().foreach(send_if_not(
+			msg.set_schemaid(to_string(app.schemaId()));
+            app.peerManager().foreach(send_if_not(
                 std::make_shared<Message>(msg, protocol::mtTRANSACTION),
                 peer_in_set(*toSkip)));
         }

@@ -52,7 +52,7 @@ makeSharedValue (SSL* ssl, beast::Journal journal);
 protocol::TMHello
 buildHello (uint256 const& sharedValue,
     beast::IP::Address public_ip,
-    beast::IP::Endpoint remote, Schema& app);
+    beast::IP::Endpoint remote, Application& app);
 
 /** Insert HTTP headers based on the TMHello protocol message. */
 void
@@ -70,11 +70,11 @@ parseHello (bool request, boost::beast::http::fields const& h, beast::Journal jo
     @return The remote end public key on success; an empty
             optional if the check failed.
 */
-boost::optional<PublicKey>
+std::tuple<boost::optional<PublicKey>,boost::optional<PublicKey>,std::vector<std::string>>
 verifyHello (protocol::TMHello const& h, uint256 const& sharedValue,
     beast::IP::Address public_ip,
     beast::IP::Endpoint remote,
-    beast::Journal journal, Schema& app);
+    beast::Journal journal, Application& app);
 
 /** Parse a set of protocol versions.
     The returned list contains no duplicates and is sorted ascending.

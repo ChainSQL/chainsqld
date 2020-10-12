@@ -74,6 +74,7 @@
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/schema/SchemaManager.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/schema/PeerManager.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/system/error_code.hpp>
@@ -176,6 +177,7 @@ public:
 	std::unique_ptr <LoadManager>		m_loadManager;
 	std::unique_ptr <ServerHandler>		serverHandler_;
 	std::unique_ptr <ResolverAsio>		m_resolver;
+	std::unique_ptr <Overlay>			m_overlay;
 
     Application::MutexType m_masterMutex;
 
@@ -313,12 +315,24 @@ public:
         return *logs_;
     }
 
-	std::shared_ptr<Schema> getSchema(SchemaID const& id)override
+	bool hasSchema(SchemaID const& id /* = beast::zero */)override
 	{
 		if (m_schemaManager->contains(id))
-			return m_schemaManager->getSchema(id);
+			return true;
 		else
-			return nullptr;
+			return false;
+	}
+
+	Schema& getSchema(SchemaID const& id)override
+	{
+		assert(m_schemaManager->contains(id));
+		return *m_schemaManager->getSchema(id);
+	}
+
+	PeerManager& peerManager(SchemaID const& id /* = beast::zero */) override 
+	{
+		assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->peerManager();
 	}
 
     Config&
@@ -360,6 +374,11 @@ public:
     {
         return *m_jobQueue;
     }
+
+	Overlay& overlay() override
+	{
+		return *m_overlay;
+	}
 
     std::pair<PublicKey, SecretKey> const&
     nodeIdentity () override
@@ -650,12 +669,6 @@ public:
 		return m_schemaManager->getSchema(id)->openLedger();
     }
 
-    Overlay& overlay (SchemaID const& id) override
-    {
-		assert(m_schemaManager->contains(id));
-		return m_schemaManager->getSchema(id)->overlay();
-    }
-
     TxQ& getTxQ(SchemaID const& id) override
     {
 		assert(m_schemaManager->contains(id));
@@ -878,7 +891,19 @@ bool ApplicationImp::setup()
 {   
 	auto schema_main = m_schemaManager->createSchemaMain(*config_);
 
-	schema_main->initBeforeSetup();
+	if (!schema_main->initBeforeSetup())
+		return false;
+
+	// VFALCO NOTE Unfortunately, in stand-alone mode some code still
+	//             foolishly calls overlay(). When this is fixed we can
+	//             move the instantiation inside a conditional:
+	//
+	//             if (!config_.standalone())
+	m_overlay = make_Overlay(*this, setup_Overlay(*config_), *m_jobQueue,
+		*serverHandler_, *m_resourceManager, *m_resolver, getIOService(),
+		*config_);
+	add(*m_overlay); // add to PropertyStream
+
 
 	nodeIdentity_ = loadNodeIdentity(*this);
 
@@ -934,7 +959,8 @@ bool ApplicationImp::setup()
 		}
 	}
 
-	schema_main->setup();
+	if (!schema_main->setup())
+		return false;
 
 	loadSubChains();
 
@@ -1005,11 +1031,11 @@ int ApplicationImp::fdlimit() const
     // Standard handles, config file, misc I/O etc:
     int needed = 128;
 
+	// 1.5 times the configured peer limit for peer connections:
+	needed += static_cast<int>(0.5 + (1.5 * m_overlay ->limit()));
 	for (auto item : *m_schemaManager)
 	{
 		auto schema = item.second;
-		// 1.5 times the configured peer limit for peer connections:
-		needed += static_cast<int>(0.5 + (1.5 * schema->overlay().limit()));
 		// the number of fds needed by the backend (internally
 		// doubled if online delete is enabled).
 		needed += std::max(5, schema->getSHAMapStore().fdlimit());

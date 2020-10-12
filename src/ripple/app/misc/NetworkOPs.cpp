@@ -64,8 +64,8 @@
 #include <ripple/crypto/RFC1751.h>
 #include <ripple/json/to_string.h>
 #include <ripple/overlay/Cluster.h>
-#include <ripple/overlay/Overlay.h>
 #include <ripple/overlay/predicates.h>
+#include <ripple/overlay/Overlay.h>
 #include <ripple/protocol/BuildInfo.h>
 #include <ripple/resource/ResourceManager.h>
 #include <ripple/rpc/DeliveredAmount.h>
@@ -81,6 +81,7 @@
 #include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/consensus/ViewChange.h>
+#include <peersafe/schema/PeerManager.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -371,7 +372,7 @@ private:
     void switchLastClosedLedger (
         std::shared_ptr<Ledger const> const& newLCL);
     bool checkLastClosedLedger (
-        const Overlay::PeerSequence&, uint256& networkClosed);
+        const PeerManager::PeerSequence&, uint256& networkClosed);
 
 public:
     bool beginConsensus (uint256 const& networkClosed) override;
@@ -841,7 +842,7 @@ void NetworkOPsImp::processHeartbeatTimer ()
         LoadManager& mgr (app_.getLoadManager ());
         mgr.resetDeadlockDetector ();
 
-        std::size_t const numPeers = app_.overlay ().size ();
+        std::size_t const numPeers = app_.peerManager().size ();
 
         // do we have sufficient peers? If not, we are disconnected.
         if (numPeers < minPeerCount_)
@@ -979,7 +980,7 @@ void NetworkOPsImp::processClusterTimer ()
         node.set_name (to_string (item.address));
         node.set_cost (item.balance);
     }
-    app_.overlay ().foreach (send_if (
+    app_.peerManager().foreach (send_if (
         std::make_shared<Message>(cluster, protocol::mtCLUSTER),
         peer_in_cluster ()));
     setClusterTimer ();
@@ -1443,8 +1444,9 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                     tx.set_status (protocol::tsCURRENT);
                     tx.set_receivetimestamp (app_.timeKeeper().now().time_since_epoch().count());
                     tx.set_deferred(e.result.ter == terQUEUED);
+					tx.set_schemaid(to_string(app_.schemaId()));
                     // FIXME: This should be when we received it
-                    app_.overlay().foreach (send_if_not (
+                    app_.peerManager().foreach (send_if_not (
                         std::make_shared<Message> (tx, protocol::mtTRANSACTION),
                         peer_in_set(*toSkip)));
                 }
@@ -1546,7 +1548,7 @@ void NetworkOPsImp::setAmendmentBlocked ()
 }
 
 bool NetworkOPsImp::checkLastClosedLedger (
-    const Overlay::PeerSequence& peerList, uint256& networkClosed)
+    const PeerManager::PeerSequence& peerList, uint256& networkClosed)
 {
     // Returns true if there's an *abnormal* ledger issue, normal changing in
     // TRACKING mode should return false.  Do we have sufficient validations for
@@ -1580,7 +1582,7 @@ bool NetworkOPsImp::checkLastClosedLedger (
 
     for (auto& peer : peerList)
     {
-        uint256 peerLedger = peer->getClosedLedgerHash();
+        uint256 peerLedger = peer->getClosedLedgerHash(app_.schemaId());
 
         if (peerLedger.isNonZero())
             ++peerCounts[peerLedger];
@@ -1693,8 +1695,9 @@ void NetworkOPsImp::switchLastClosedLedger (
     s.set_ledgerhash (
         newLCL->info().hash.begin (),
         newLCL->info().hash.size ());
+	s.set_schemaid(to_string(app_.schemaId()));
 
-    app_.overlay ().foreach (send_always (
+    app_.peerManager().foreach (send_always (
         std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
 }
 
@@ -1755,7 +1758,7 @@ void NetworkOPsImp::processTrustedProposal (
     if (mConsensus.peerProposal(
             app_.timeKeeper().closeTime(), peerPos))
     {
-        app_.overlay().relay(*set, peerPos.suppressionID());
+        app_.peerManager().relay(*set, peerPos.suppressionID());
     }
     else
         JLOG(m_journal.info()) << "Not relaying trusted proposal";
@@ -1773,7 +1776,8 @@ NetworkOPsImp::mapComplete (
     protocol::TMHaveTransactionSet msg;
     msg.set_hash (map->getHash().as_uint256().begin(), 256 / 8);
     msg.set_status (protocol::tsHAVE);
-    app_.overlay().foreach (send_always (
+	msg.set_schemaid(to_string(app_.schemaId()));
+    app_.peerManager().foreach (send_always (
         std::make_shared<Message> (
             msg, protocol::mtHAVE_SET)));
 
@@ -1788,18 +1792,18 @@ void NetworkOPsImp::endConsensus ()
 {
     uint256 deadLedger = m_ledgerMaster.getClosedLedger ()->info().parentHash;
 
-    for (auto const& it : app_.overlay ().getActivePeers ())
+    for (auto const& it : app_.peerManager ().getActivePeers ())
     {
-        if (it && (it->getClosedLedgerHash () == deadLedger))
+        if (it && (it->getClosedLedgerHash (app_.schemaId()) == deadLedger))
         {
             JLOG(m_journal.trace()) << "Killing obsolete peer status";
-            it->cycleStatus ();
+            it->cycleStatus (app_.schemaId());
         }
     }
 
     uint256 networkClosed;
     bool ledgerChange = checkLastClosedLedger (
-        app_.overlay ().getActivePeers (), networkClosed);
+        app_.peerManager().getActivePeers (), networkClosed);
 
     if (networkClosed.isZero ())
         return;
@@ -2510,7 +2514,7 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin, bool counters)
     if (fp != 0)
         info[jss::fetch_pack] = Json::UInt (fp);
 
-    info[jss::peers] = Json::UInt (app_.overlay ().size ());
+    info[jss::peers] = Json::UInt (app_.peerManager().size ());
 
     Json::Value lastClose = Json::objectValue;
     lastClose[jss::proposers] = Json::UInt(mConsensus.prevProposers());
@@ -2687,11 +2691,11 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin, bool counters)
         info[jss::server_state_duration_us]) = accounting_.json();
     info[jss::uptime] = UptimeClock::now().time_since_epoch().count();
     info[jss::jq_trans_overflow] = std::to_string(
-        app_.overlay().getJqTransOverflow());
+        app_.app().overlay().getJqTransOverflow());
     info[jss::peer_disconnects] = std::to_string(
-        app_.overlay().getPeerDisconnect());
+        app_.app().overlay().getPeerDisconnect());
     info[jss::peer_disconnects_resources] = std::to_string(
-        app_.overlay().getPeerDisconnectCharges());
+        app_.app().overlay().getPeerDisconnectCharges());
 
 	//comprehensive judgement for server_status
 	info[jss::server_status] = getServerStatus();

@@ -20,7 +20,7 @@
 #include <ripple/overlay/PeerSet.h>
 #include <ripple/app/main/Application.h>
 #include <ripple/core/JobQueue.h>
-#include <ripple/overlay/Overlay.h>
+#include <peersafe/schema/PeerManager.h>
 
 namespace ripple {
 
@@ -130,7 +130,7 @@ void PeerSet::sendRequest (const protocol::TMGetLedger& tmGL)
 
     for (auto id : mPeers)
     {
-        if (auto peer = app_.overlay ().findPeerByShortID (id))
+        if (auto peer = app_.peerManager().findPeerByShortID (id))
             peer->send (packet);
     }
 }
@@ -141,7 +141,7 @@ std::size_t PeerSet::getPeerCount () const
 
     for (auto id : mPeers)
     {
-        if (app_.overlay ().findPeerByShortID (id))
+        if (app_.peerManager().findPeerByShortID (id))
             ++ret;
     }
 

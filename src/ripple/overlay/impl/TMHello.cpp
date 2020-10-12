@@ -20,6 +20,7 @@
 #include <ripple/overlay/impl/TMHello.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/main/Application.h>
+#include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/basics/base64.h>
 #include <ripple/basics/safe_cast.h>
 #include <ripple/beast/rfc2616.h>
@@ -98,7 +99,7 @@ buildHello (
     uint256 const& sharedValue,
     beast::IP::Address public_ip,
     beast::IP::Endpoint remote,
-    Schema& app)
+    Application& app)
 {
     protocol::TMHello h;
 
@@ -107,6 +108,7 @@ buildHello (
         app.nodeIdentity().second,
         sharedValue);
 
+
     h.set_protoversion (to_packed (BuildInfo::getCurrentProtocol()));
     h.set_protoversionmin (to_packed (BuildInfo::getMinimumProtocol()));
     h.set_fullversion (BuildInfo::getFullVersionString ());
@@ -114,8 +116,36 @@ buildHello (
     h.set_nodepublic (
         toBase58 (
             TokenType::NodePublic,
-            app.nodeIdentity().first));
-    h.set_nodeproof (sig.data(), sig.size());
+			app.nodeIdentity().first));
+	h.set_nodeproof(sig.data(), sig.size());
+
+	//set validate-public and proof for validator
+	if (app.getValidationPublicKey().size() != 0)
+	{
+		auto const sig2 = signDigest(
+			app.getValidatorKeys().publicKey,
+			app.getValidatorKeys().secretKey,
+			sharedValue);
+		h.set_validatepublic(
+			toBase58(
+				TokenType::AccountPublic,
+				app.getValidationPublicKey()));
+		h.set_validateproof(sig2.data(), sig2.size());
+	}
+	else
+	{
+		std::string schemaIds; 
+		for (int i = 0; i < app.config().SCHEMA_IDS.size(); i++)
+		{
+			schemaIds += app.config().SCHEMA_IDS[i];
+			if (i != app.config().SCHEMA_IDS.size() - 1)
+			{
+				schemaIds += ",";
+			}
+		}
+		h.set_schemaids(schemaIds);
+	}
+
     h.set_testnet (false);
 
     if (beast::IP::is_public (remote))
@@ -153,7 +183,16 @@ appendHello (boost::beast::http::fields& h,
     //h.append ("Protocol-Versions",...
 
     h.insert ("Public-Key", hello.nodepublic());
-
+	if (hello.has_validatepublic())
+	{
+		h.insert("Validate-PublicKey", hello.validatepublic());
+		h.insert("Validate-Proof", hello.validateproof());
+	}
+	else if(hello.has_schemaids())
+	{
+		h.insert("SchemaIDs", hello.schemaids());
+	}
+	
     h.insert ("Session-Signature", base64_encode (
         hello.nodeproof()));
 
@@ -247,6 +286,18 @@ parseHello (bool request, boost::beast::http::fields const& h, beast::Journal jo
         hello.set_nodepublic (iter->value().to_string());
     }
 
+	{
+		// Required
+		auto const iter = h.find("Validate-PublicKey");
+		if (iter == h.end())
+			return boost::none;
+		auto const pk = parseBase58<PublicKey>(
+			TokenType::AccountPublic, iter->value().to_string());
+		if (!pk)
+			return boost::none;
+		hello.set_validatepublic(iter->value().to_string());
+	}
+
     {
         // Required
         auto const iter = h.find ("Session-Signature");
@@ -334,14 +385,15 @@ parseHello (bool request, boost::beast::http::fields const& h, beast::Journal jo
     return hello;
 }
 
-boost::optional<PublicKey>
+std::tuple<boost::optional<PublicKey>, boost::optional<PublicKey>, std::vector<std::string>>
 verifyHello (protocol::TMHello const& h,
     uint256 const& sharedValue,
     beast::IP::Address public_ip,
     beast::IP::Endpoint remote,
     beast::Journal journal,
-    Schema& app)
+    Application& app)
 {
+	std::vector<std::string> vecIds;
     if (h.has_nettime ())
     {
         auto const ourTime = app.timeKeeper().now().time_since_epoch().count();
@@ -352,14 +404,14 @@ verifyHello (protocol::TMHello const& h,
         {
             JLOG(journal.info()) <<
                 "Clock for is off by +" << h.nettime() - ourTime;
-            return boost::none;
+            return std::make_tuple(boost::none, boost::none, vecIds);
         }
 
         if (h.nettime () < minTime)
         {
             JLOG(journal.info()) <<
                 "Clock is off by -" << ourTime - h.nettime();
-            return boost::none;
+            return std::make_tuple(boost::none, boost::none, vecIds);
         }
 
         JLOG(journal.trace()) <<
@@ -375,7 +427,7 @@ verifyHello (protocol::TMHello const& h,
                 BuildInfo::make_protocol(h.protoversion())) <<
             " and we run " << to_string (
                 BuildInfo::getCurrentProtocol()) << "]";
-        return boost::none;
+        return std::make_tuple(boost::none,boost::none,vecIds);
     }
 
     auto const publicKey = parseBase58<PublicKey>(
@@ -385,21 +437,21 @@ verifyHello (protocol::TMHello const& h,
     {
         JLOG(journal.info()) <<
             "Hello: Disconnect: Bad node public key.";
-        return boost::none;
+		return std::make_tuple(boost::none, boost::none, vecIds);
     }
 
     if (publicKeyType(*publicKey) != KeyType::secp256k1)
     {
         JLOG(journal.info()) <<
             "Hello: Disconnect: Unsupported public key type.";
-        return boost::none;
+		return std::make_tuple(boost::none, boost::none, vecIds);
     }
 
     if (*publicKey == app.nodeIdentity().first)
     {
         JLOG(journal.info()) <<
             "Hello: Disconnect: Self connection.";
-        return boost::none;
+		return std::make_tuple(boost::none, boost::none, vecIds);
     }
 
     if (! verifyDigest (*publicKey, sharedValue,
@@ -408,7 +460,7 @@ verifyHello (protocol::TMHello const& h,
         // Unable to verify they have private key for claimed public key.
         JLOG(journal.info()) <<
             "Hello: Disconnect: Failed to verify session.";
-        return boost::none;
+		return std::make_tuple(boost::none, boost::none, vecIds);
     }
 
     if (h.has_local_ip_str () &&
@@ -420,7 +472,7 @@ verifyHello (protocol::TMHello const& h,
         if (ec)
         {
             JLOG(journal.warn()) << "invalid local-ip: " << h.local_ip_str();
-            return boost::none;
+            return std::make_tuple(boost::none, boost::none, vecIds);
         }
 
         if (remote.address() != local_ip)
@@ -429,7 +481,7 @@ verifyHello (protocol::TMHello const& h,
             JLOG(journal.info()) <<
                 "Hello: Disconnect: Peer IP is " << remote.address().to_string()
                 << " not " << local_ip.to_string();
-            return boost::none;
+            return std::make_tuple(boost::none, boost::none, vecIds);
         }
     }
 
@@ -443,7 +495,7 @@ verifyHello (protocol::TMHello const& h,
         if (ec)
         {
             JLOG(journal.warn()) << "invalid remote-ip: " << h.remote_ip_str();
-            return boost::none;
+            return std::make_tuple(boost::none, boost::none, vecIds);
         }
 
         if (remote_ip != public_ip)
@@ -453,11 +505,44 @@ verifyHello (protocol::TMHello const& h,
             JLOG(journal.info()) <<
                 "Hello: Disconnect: Our IP is " << public_ip.to_string()
                 << " not " << remote_ip.to_string();
-            return boost::none;
+            return std::make_tuple(boost::none, boost::none, vecIds);
         }
     }
 
-    return publicKey;
+	if (h.has_validatepublic())
+	{
+		auto const publicValidate = parseBase58<PublicKey>(
+			TokenType::AccountPublic, h.validatepublic());
+
+		if (!publicValidate)
+		{
+			JLOG(journal.info()) <<
+				"Hello: Disconnect: Bad node public key.";
+			return std::make_tuple(boost::none, boost::none, vecIds);
+		}
+
+		if (publicKeyType(*publicValidate) != KeyType::secp256k1)
+		{
+			JLOG(journal.info()) <<
+				"Hello: Disconnect: Unsupported public key type.";
+			return std::make_tuple(boost::none, boost::none, vecIds);
+		}
+
+		if (!verifyDigest(*publicValidate, sharedValue,
+			makeSlice(h.validateproof()), false))
+		{
+			// Unable to verify they have private key for claimed public key.
+			JLOG(journal.info()) <<
+				"Hello: Disconnect: Failed to verify session.";
+			return std::make_tuple(boost::none, boost::none, vecIds);
+		}
+		return std::make_tuple(publicKey, publicValidate, vecIds);
+	}
+	else
+	{
+		vecIds = beast::rfc2616::split_commas(h.schemaids().begin(), h.schemaids().end());
+		return std::make_tuple(publicKey, boost::none, vecIds);
+	}
 }
 
 }

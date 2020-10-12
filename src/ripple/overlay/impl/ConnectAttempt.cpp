@@ -25,7 +25,7 @@
 
 namespace ripple {
 
-ConnectAttempt::ConnectAttempt (Schema& app, boost::asio::io_service& io_service,
+ConnectAttempt::ConnectAttempt (Application& app, boost::asio::io_service& io_service,
     endpoint_type const& remote_endpoint, Resource::Consumer usage,
         beast::asio::ssl_bundle::shared_context const& context,
             std::uint32_t id, PeerFinder::Slot::ptr const& slot,
@@ -353,13 +353,20 @@ ConnectAttempt::processResponse()
     if(! sharedValue)
         return close(); // makeSharedValue logs
 
-    auto publicKey = verifyHello (*hello,
+    auto tupRet = verifyHello (*hello,
         *sharedValue,
         overlay_.setup().public_ip,
         beast::IPAddressConversion::from_asio(remote_endpoint_),
         journal_, app_);
+	auto publicKey = get<0>(tupRet);
+	auto publicValidate = get<1>(tupRet);
+	auto vecIds = get<2>(tupRet);
+
     if(! publicKey)
         return close(); // verifyHello logs
+	if (!publicValidate && vecIds.size() == 0)
+		return close();
+
     JLOG(journal_.info()) <<
         "Public Key: " << toBase58 (
             TokenType::NodePublic,
@@ -385,7 +392,7 @@ ConnectAttempt::processResponse()
     auto const peer = std::make_shared<PeerImp>(app_,
         std::move(ssl_bundle_), read_buf_.data(),
             std::move(slot_), std::move(response_),
-                usage_, *hello, *publicKey, id_, overlay_);
+                usage_, *hello, *publicKey,publicValidate,vecIds ,id_, overlay_);
 
     overlay_.add_active (peer);
 }

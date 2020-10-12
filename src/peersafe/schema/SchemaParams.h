@@ -2,9 +2,10 @@
 
 #include <ripple/protocol/AccountID.h>
 #include <ripple/protocol/PublicKey.h>
-#include <peersafe/schema/SchemaBase.h>
 
 namespace ripple {
+	using SchemaID = uint256;
+
 	enum class SchemaStragegy {
 		new_chain = 1,
 		with_state = 2,
@@ -20,6 +21,11 @@ namespace ripple {
 		uint256			anchor_ledger_hash;
 		std::vector<std::pair<PublicKey, bool>> validator_list;
 		std::vector<std::string>				peer_list;
+	public:
+		SchemaID schemaId()
+		{
+			return schema_id;
+		}
 	};
 
 }

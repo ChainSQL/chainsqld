@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/schema/Schema.h>
+#include <ripple/app/main/Application.h>
 #include <ripple/core/Config.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/overlay/Overlay.h>
@@ -59,7 +60,7 @@ Json::Value doConnect (RPC::Context& context)
         context.params[jss::ip].asString ());
 
     if (! is_unspecified (ip))
-        context.app.overlay ().connect (ip.at_port(iPort));
+        context.app.app().overlay ().connect (ip.at_port(iPort));
 
     return RPC::makeObjectValue ("connecting");
 }

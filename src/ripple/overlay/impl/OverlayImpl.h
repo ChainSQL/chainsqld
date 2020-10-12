@@ -32,7 +32,6 @@
 #include <ripple/overlay/impl/TMHello.h>
 #include <ripple/peerfinder/PeerfinderManager.h>
 #include <ripple/resource/ResourceManager.h>
-#include <peersafe/schema/Schema.h>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/strand.hpp>
@@ -54,6 +53,29 @@ class BasicConfig;
 
 constexpr std::uint32_t maxTTL = 2;
 
+/** A functor to visit all active peers and retrieve their JSON data */
+struct get_peer_json
+{
+	using return_type = Json::Value;
+
+	Json::Value json;
+	uint256 schemaId;
+
+	get_peer_json(uint256 schemaId):schemaId(schemaId)
+	{
+	}
+
+	void operator() (std::shared_ptr<Peer> const& peer)
+	{
+		json.append(peer->json(schemaId));
+	}
+
+	Json::Value operator() ()
+	{
+		return json;
+	}
+};
+
 class OverlayImpl : public Overlay
 {
 public:
@@ -72,7 +94,7 @@ public:
     };
 
 private:
-    using clock_type = std::chrono::steady_clock;
+	using clock_type = std::chrono::steady_clock;
     using socket_type = boost::asio::ip::tcp::socket;
     using address_type = boost::asio::ip::address;
     using endpoint_type = boost::asio::ip::tcp::endpoint;
@@ -97,7 +119,7 @@ private:
         on_timer (error_code ec);
     };
 
-    Schema& app_;
+    Application& app_;
     boost::asio::io_service& io_service_;
     boost::optional<boost::asio::io_service::work> work_;
     boost::asio::io_service::strand strand_;
@@ -122,17 +144,10 @@ private:
     std::atomic <uint64_t> peerDisconnects_ {0};
     std::atomic <uint64_t> peerDisconnectsCharges_ {0};
 
-    // Last time we crawled peers for shard info. 'cs' = crawl shards
-    std::atomic<std::chrono::seconds> csLast_{std::chrono::seconds{0}};
-    std::mutex csMutex_;
-    std::condition_variable csCV_;
-    // Peer IDs expecting to receive a last link notification
-    std::set<std::uint32_t> csIDs_;
-
     //--------------------------------------------------------------------------
 
 public:
-    OverlayImpl (Schema& app, Setup const& setup, Stoppable& parent,
+    OverlayImpl (Application& app, Setup const& setup, Stoppable& parent,
         ServerHandler& serverHandler, Resource::Manager& resourceManager,
         Resolver& resolver, boost::asio::io_service& io_service,
         BasicConfig const& config);
@@ -183,42 +198,43 @@ public:
     Json::Value
     json() override;
 
-    PeerSequence
-    getActivePeers() override;
-
-    void
-    check () override;
-
-    void
-    checkSanity (std::uint32_t) override;
-
-    std::shared_ptr<Peer>
-    findPeerByShortID (Peer::id_t const& id) override;
-
-    std::shared_ptr<Peer>
-    findPeerByPublicKey (PublicKey const& pubKey) override;
-
-    void
-    send (protocol::TMProposeSet& m) override;
-
-    void
-    send (protocol::TMValidation& m) override;
+	PeerSequence
+		getActivePeers() override;
 
 	void
-	send(protocol::TMViewChange& m) override;
+		check() override;
 
-    void
-    relay (protocol::TMProposeSet& m,
-        uint256 const& uid) override;
+ //   void
+ //   checkSanity (std::uint32_t) override;
 
-    void
-    relay (protocol::TMValidation& m,
-        uint256 const& uid) override;
+ //   std::shared_ptr<Peer>
+ //   findPeerByShortID (Peer::id_t const& id) override;
+
+ //   std::shared_ptr<Peer>
+ //   findPeerByPublicKey (PublicKey const& pubKey) override;
+
+ //   void
+ //   send (protocol::TMProposeSet& m) override;
+
+ //   void
+ //   send (protocol::TMValidation& m) override;
+
+	//void
+	//send(protocol::TMViewChange& m) override;
+
+ //   void
+ //   relay (protocol::TMProposeSet& m,
+ //       uint256 const& uid) override;
+
+ //   void
+ //   relay (protocol::TMValidation& m,
+ //       uint256 const& uid) override;
 
 
-	void
-		relay(protocol::TMViewChange& m,
-			uint256 const& uid) override;
+	//void
+	//	relay(protocol::TMViewChange& m,
+	//		uint256 const& uid) override;
+
     //--------------------------------------------------------------------------
     //
     // OverlayImpl
@@ -242,9 +258,9 @@ public:
     void
     onPeerDeactivate (Peer::id_t id);
 
-    // UnaryFunc will be called as
-    //  void(std::shared_ptr<PeerImp>&&)
-    //
+    //// UnaryFunc will be called as
+    ////  void(std::shared_ptr<PeerImp>&&)
+    ////
     template <class UnaryFunc>
     void
     for_each (UnaryFunc&& f)
@@ -268,15 +284,15 @@ public:
         }
     }
 
-    std::size_t
-    selectPeers (PeerSet& set, std::size_t limit, std::function<
-        bool(std::shared_ptr<Peer> const&)> score) override;
+    //std::size_t
+    //selectPeers (PeerSet& set, std::size_t limit, std::function<
+    //    bool(std::shared_ptr<Peer> const&)> score) override;
 
     // Called when TMManifests is received from a peer
-    void
-    onManifests (
-        std::shared_ptr<protocol::TMManifests> const& m,
-            std::shared_ptr<PeerImp> const& from);
+    //void
+    //onManifests (
+    //    std::shared_ptr<protocol::TMManifests> const& m,
+    //        std::shared_ptr<PeerImp> const& from);
 
     static
     bool
@@ -370,16 +386,9 @@ public:
         return peerDisconnectsCharges_;
     }
 
-    Json::Value
-    crawlShards(bool pubKey, std::uint32_t hops) override;
+    //Json::Value
+    //crawlShards(bool pubKey, std::uint32_t hops) override;
 
-
-    /** Called when the last link from a peer chain is received.
-
-        @param id peer id that received the shard info.
-    */
-    void
-    lastLink(std::uint32_t id);
 
 private:
     std::shared_ptr<Writer>
@@ -395,33 +404,33 @@ private:
     processRequest (http_request_type const& req,
         Handoff& handoff);
 
-    /** Returns information about peers on the overlay network.
-        Reported through the /crawl API
-        Controlled through the config section [crawl] overlay=[0|1]
-    */
-    Json::Value
-    getOverlayInfo();
+    ///** Returns information about peers on the overlay network.
+    //    Reported through the /crawl API
+    //    Controlled through the config section [crawl] overlay=[0|1]
+    //*/
+    //Json::Value
+    //getOverlayInfo();
 
-    /** Returns information about the local server.
-        Reported through the /crawl API
-        Controlled through the config section [crawl] server=[0|1]
-    */
-    Json::Value
-    getServerInfo();
+    ///** Returns information about the local server.
+    //    Reported through the /crawl API
+    //    Controlled through the config section [crawl] server=[0|1]
+    //*/
+    //Json::Value
+    //getServerInfo();
 
-    /** Returns information about the local server's performance counters.
-        Reported through the /crawl API
-        Controlled through the config section [crawl] counts=[0|1]
-    */
-    Json::Value
-    getServerCounts();
+    ///** Returns information about the local server's performance counters.
+    //    Reported through the /crawl API
+    //    Controlled through the config section [crawl] counts=[0|1]
+    //*/
+    //Json::Value
+    //getServerCounts();
 
-    /** Returns information about the local server's UNL.
-        Reported through the /crawl API
-        Controlled through the config section [crawl] unl=[0|1]
-    */
-    Json::Value
-    getUnlInfo();
+    ///** Returns information about the local server's UNL.
+    //    Reported through the /crawl API
+    //    Controlled through the config section [crawl] unl=[0|1]
+    //*/
+    //Json::Value
+    //getUnlInfo();
 
     //--------------------------------------------------------------------------
 

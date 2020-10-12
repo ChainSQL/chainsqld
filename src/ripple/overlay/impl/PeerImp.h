@@ -96,6 +96,29 @@ public:
 
     using ptr = std::shared_ptr <PeerImp>;
 
+	struct SchemaInfo
+	{
+		SchemaInfo()
+		{}
+		SchemaInfo(const SchemaInfo& info)
+		{
+			this->minLedger_ = info.minLedger_;
+			this->maxLedger_ = info.maxLedger_;
+			this->closedLedgerHash_ = info.closedLedgerHash_;
+			this->previousLedgerHash_ = info.previousLedgerHash_;
+			this->recentLedgers_ = info.recentLedgers_;
+			this->recentTxSets_ = info.recentTxSets_;
+			this->shardInfo_ = info.shardInfo_;
+		}
+		LedgerIndex minLedger_ = 0;
+		LedgerIndex maxLedger_ = 0;
+		uint256 closedLedgerHash_ = beast::zero;
+		uint256 previousLedgerHash_ = beast::zero;
+		std::deque<uint256> recentLedgers_;
+		std::deque<uint256> recentTxSets_;
+		std::mutex mutable shardInfoMutex_;
+		hash_map<PublicKey, ShardInfo> shardInfo_;
+	};
 private:
     using clock_type    = std::chrono::steady_clock;
     using error_code    = boost::system::error_code;
@@ -108,7 +131,7 @@ private:
     // The length of the smallest valid finished message
     static const size_t sslMinimumFinishedLength = 12;
 
-    Schema& app_;
+    Application& app_;
     id_t const id_;
     beast::WrappedSink sink_;
     beast::WrappedSink p_sink_;
@@ -136,17 +159,20 @@ private:
     bool detaching_ = false;
     // Node public key of peer.
     PublicKey const publicKey_;
+	boost::optional<PublicKey> publicValidate_;
+	std::vector<uint256> schemaIds_;
     std::string name_;
     std::shared_timed_mutex mutable nameMutex_;
 
     // The indices of the smallest and largest ledgers this peer has available
     //
-    LedgerIndex minLedger_ = 0;
-    LedgerIndex maxLedger_ = 0;
-    uint256 closedLedgerHash_;
-    uint256 previousLedgerHash_;
-    std::deque<uint256> recentLedgers_;
-    std::deque<uint256> recentTxSets_;
+	hash_map<uint256,SchemaInfo> schemaInfo_;
+    //LedgerIndex minLedger_ = 0;
+    //LedgerIndex maxLedger_ = 0;
+    //uint256 closedLedgerHash_;
+    //uint256 previousLedgerHash_;
+    //std::deque<uint256> recentLedgers_;
+    //std::deque<uint256> recentTxSets_;
 
     boost::optional<std::chrono::milliseconds> latency_;
     boost::optional<std::uint32_t> lastPingSeq_;
@@ -200,19 +226,21 @@ private:
     int no_ping_ = 0;
     std::unique_ptr <LoadEvent> load_event_;
 
-    std::mutex mutable shardInfoMutex_;
-    hash_map<PublicKey, ShardInfo> shardInfo_;
+    //std::mutex mutable shardInfoMutex_;
+    //hash_map<PublicKey, ShardInfo> shardInfo_;
 
     friend class OverlayImpl;
+	friend class PeerManagerImpl;
 
 public:
     PeerImp (PeerImp const&) = delete;
     PeerImp& operator= (PeerImp const&) = delete;
 
     /** Create an active incoming peer from an established ssl connection. */
-    PeerImp (Schema& app, id_t id, endpoint_type remote_endpoint,
+    PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
         PeerFinder::Slot::ptr const& slot, http_request_type&& request,
             protocol::TMHello const& hello, PublicKey const& publicKey,
+			boost::optional<PublicKey> publicValidate,std::vector<std::string> vecIds,
                 Resource::Consumer consumer,
                     std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
                         OverlayImpl& overlay);
@@ -220,12 +248,12 @@ public:
     /** Create outgoing, handshaked peer. */
     // VFALCO legacyPublicKey should be implied by the Slot
     template <class Buffers>
-    PeerImp (Schema& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
+    PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
         Buffers const& buffers, PeerFinder::Slot::ptr&& slot,
             http_response_type&& response, Resource::Consumer usage,
-                protocol::TMHello const& hello,
-                    PublicKey const& publicKey, id_t id,
-                        OverlayImpl& overlay);
+                protocol::TMHello const& hello,PublicKey const& publicKey,
+				boost::optional<PublicKey> publicValidate, std::vector<std::string> vecIds,
+				id_t id,OverlayImpl& overlay);
 
     virtual
     ~PeerImp();
@@ -250,6 +278,9 @@ public:
     void
     stop() override;
 
+	// Dispatch PeerImp objects to different Schema
+	void
+	dispatch();;
     //
     // Network
     //
@@ -300,7 +331,7 @@ public:
         @param validationSeq The ledger sequence of a recently-validated ledger
     */
     void
-    checkSanity (std::uint32_t validationSeq);
+    checkSanity (uint256 const& schemaId,std::uint32_t validationSeq);
 
     void
     checkSanity (std::uint32_t seq1, std::uint32_t seq2);
@@ -323,38 +354,40 @@ public:
     }
 
     Json::Value
-    json() override;
+    json(uint256 const& schemaId) override;
 
     //
     // Ledger
     //
 
-    uint256 const&
-    getClosedLedgerHash () const override
+    uint256 
+    getClosedLedgerHash (uint256 const& schemaId) const override
     {
-        return closedLedgerHash_;
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return beast::zero;
+        return schemaInfo_.at(schemaId).closedLedgerHash_;
     }
 
     bool
-    hasLedger (uint256 const& hash, std::uint32_t seq) const override;
+    hasLedger (uint256 const& schemaId,uint256 const& hash, std::uint32_t seq) const override;
 
     void
-    ledgerRange (std::uint32_t& minSeq, std::uint32_t& maxSeq) const override;
+    ledgerRange (uint256 const& schemaId, std::uint32_t& minSeq, std::uint32_t& maxSeq) const override;
 
     bool
-    hasShard (std::uint32_t shardIndex) const override;
+    hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const override;
 
     bool
-    hasTxSet (uint256 const& hash) const override;
+    hasTxSet (uint256 const& schemaId, uint256 const& hash) const override;
 
     void
-    cycleStatus () override;
+    cycleStatus (uint256 const& schemaId) override;
 
     bool
     supportsVersion (int version) override;
 
     bool
-    hasRange (std::uint32_t uMin, std::uint32_t uMax) override;
+    hasRange (uint256 const& schemaId, std::uint32_t uMin, std::uint32_t uMax) override;
 
     // Called to determine our priority for querying
     int
@@ -368,12 +401,14 @@ public:
 
     /** Return a range set of known shard indexes from this peer. */
     boost::optional<RangeSet<std::uint32_t>>
-    getShardIndexes() const;
+    getShardIndexes(uint256 const& schemaId) const;
 
     /** Return any known shard info from this peer and its sub peers. */
     boost::optional<hash_map<PublicKey, ShardInfo>>
-    getPeerShardInfo() const;
+    getPeerShardInfo(uint256 const& schemaId) const;
 
+	std::tuple<bool,uint256, SchemaInfo*> 
+		getSchemaInfo(std::string prefix, std::string const& schemaIdBuffer);
 private:
     void
     close();
@@ -499,27 +534,27 @@ private:
     // lockedRecentLock is passed as a reminder to callers that recentLock_
     // must be locked.
     void
-    addLedger (uint256 const& hash,
+    addLedger (SchemaInfo& info, uint256 const& hash,
         std::lock_guard<std::mutex> const& lockedRecentLock);
 
     void
     doFetchPack (const std::shared_ptr<protocol::TMGetObjectByHash>& packet);
 
     void
-    checkTransaction (int flags, bool checkSignature,
+    checkTransaction (uint256 schemaId,int flags, bool checkSignature,
         std::shared_ptr<STTx const> const& stx);
 
     void
-    checkPropose (Job& job,
+    checkPropose (uint256 schemaId, Job& job,
         std::shared_ptr<protocol::TMProposeSet> const& packet,
             RCLCxPeerPos const& peerPos);
 
 	void
-		checkViewChange(bool isTrusted,ViewChange const& change, uint256 suppression,
+		checkViewChange(uint256 schemaId, bool isTrusted,ViewChange const& change, uint256 suppression,
 			std::shared_ptr<protocol::TMViewChange> const& packet);
 
     void
-    checkValidation (STValidation::pointer val,
+    checkValidation (uint256 schemaId, STValidation::pointer val,
         std::shared_ptr<protocol::TMValidation> const& packet);
 
     void
@@ -527,7 +562,7 @@ private:
 
     // Called when we receive tx set data.
     void
-    peerTXData (uint256 const& hash,
+    peerTXData (uint256 const& schemaId, uint256 const& hash,
         std::shared_ptr <protocol::TMLedgerData> const& pPacket,
             beast::Journal journal);
 };
@@ -536,12 +571,13 @@ private:
 //------------------------------------------------------------------------------
 
 template <class Buffers>
-PeerImp::PeerImp (Schema& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
+PeerImp::PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bundle,
     Buffers const& buffers, PeerFinder::Slot::ptr&& slot,
         http_response_type&& response, Resource::Consumer usage,
             protocol::TMHello const& hello,
-                PublicKey const& publicKey, id_t id,
-                    OverlayImpl& overlay)
+                PublicKey const& publicKey,
+				boost::optional<PublicKey> publicValidate, std::vector<std::string> vecIds,
+                   id_t id, OverlayImpl& overlay)
     : Child (overlay)
     , app_ (app)
     , id_ (id)
@@ -561,6 +597,7 @@ PeerImp::PeerImp (Schema& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bu
     , sanity_ (Sanity::unknown)
     , insaneTime_ (clock_type::now())
     , publicKey_ (publicKey)
+	, publicValidate_(publicValidate)
     , creationTime_ (clock_type::now())
     , hello_ (hello)
     , usage_ (usage)
@@ -571,6 +608,8 @@ PeerImp::PeerImp (Schema& app, std::unique_ptr<beast::asio::ssl_bundle>&& ssl_bu
 {
     read_buffer_.commit (boost::asio::buffer_copy(read_buffer_.prepare(
         boost::asio::buffer_size(buffers)), buffers));
+	for (auto id : vecIds)
+		schemaIds_.push_back(from_hex_text<uint256>(id));
 }
 
 template <class FwdIt, class>

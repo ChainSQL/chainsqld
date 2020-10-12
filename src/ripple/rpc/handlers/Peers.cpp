@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/schema/Schema.h>
+#include <peersafe/schema/PeerManager.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/core/TimeKeeper.h>
 #include <ripple/overlay/Cluster.h>
@@ -33,7 +34,7 @@ Json::Value doPeers (RPC::Context& context)
     Json::Value jvResult (Json::objectValue);
 
     {
-        jvResult[jss::peers] = context.app.overlay ().json ();
+        jvResult[jss::peers] = context.app.peerManager ().json ();
 
         auto const now = context.app.timeKeeper().now();
         auto const self = context.app.nodeIdentity().first;

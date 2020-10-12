@@ -42,7 +42,6 @@
 #include <ripple/basics/UptimeClock.h>
 #include <ripple/core/TimeKeeper.h>
 #include <ripple/nodestore/DatabaseShard.h>
-#include <ripple/overlay/Overlay.h>
 #include <ripple/overlay/Peer.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/HashPrefix.h>
@@ -55,6 +54,7 @@
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/schema/PeerManager.h>
 #include <algorithm>
 #include <cassert>
 #include <memory>
@@ -671,10 +671,10 @@ LedgerMaster::getFetchPack (LedgerIndex missing,
     std::shared_ptr<Peer> target;
     {
         int maxScore = 0;
-        auto peerList = app_.overlay ().getActivePeers();
+        auto peerList = app_.peerManager().getActivePeers();
         for (auto const& peer : peerList)
         {
-            if (peer->hasRange (missing, missing + 1))
+            if (peer->hasRange (app_.schemaId(),missing, missing + 1))
             {
                 int score = peer->getScore (true);
                 if (! target || (score > maxScore))
@@ -692,6 +692,7 @@ LedgerMaster::getFetchPack (LedgerIndex missing,
         tmBH.set_query (true);
         tmBH.set_type (protocol::TMGetObjectByHash::otFETCH_PACK);
         tmBH.set_ledgerhash (haveHash->begin(), 32);
+		tmBH.set_schemaid(to_string(app_.schemaId()));
         auto packet = std::make_shared<Message> (
             tmBH, protocol::mtGET_OBJECTS);
 
@@ -865,7 +866,7 @@ LedgerMaster::checkAccept (uint256 const& hash, std::uint32_t seq)
         {
             // Set peers sane early if we can
             if (valCount >= app_.validators ().quorum ())
-                app_.overlay().checkSanity (seq);
+                app_.peerManager().checkSanity (seq);
         }
 
         // FIXME: We may not want to fetch a ledger with just one
@@ -2396,7 +2397,7 @@ LedgerMaster::makeFetchPack (
     {
         protocol::TMGetObjectByHash reply;
         reply.set_query (false);
-
+		reply.set_schemaid(to_string(app_.schemaId()));
         if (request->has_seq ())
             reply.set_seq (request->seq ());
 

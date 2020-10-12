@@ -28,8 +28,8 @@
 #include <ripple/protocol/Protocol.h>
 #include <ripple/beast/utility/PropertyStream.h>
 #include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/schema/SchemaParams.h>
 #include <ripple/protocol/Protocol.h>
-#include <peersafe/schema/SchemaBase.h>
 #include <boost/asio.hpp>
 #include <memory>
 #include <mutex>
@@ -89,6 +89,7 @@ class SHAMapStore;
 class ResolverAsio;
 class ValidatorKeys;
 class SchemaManager;
+class PeerManager;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
@@ -138,6 +139,7 @@ public:
 	virtual TimeKeeper&             timeKeeper() = 0;
 	virtual JobQueue&               getJobQueue() = 0;
 	virtual LoadManager&            getLoadManager() = 0;
+	virtual Overlay&                overlay() = 0;
 	virtual perf::PerfLog&          getPerfLog() = 0;
 	virtual Resource::Manager&      getResourceManager() = 0;
 	virtual NodeStoreScheduler&		nodeStoreScheduler() = 0;
@@ -149,7 +151,9 @@ public:
 	virtual ServerHandler&			getServerHandler() = 0;
 	virtual SchemaManager&			getSchemaManager() = 0;
 
-	virtual std::shared_ptr<Schema> getSchema(SchemaID const& id = beast::zero) = 0;
+	virtual bool					hasSchema(SchemaID const& id = beast::zero) = 0;
+	virtual Schema&					getSchema(SchemaID const& id = beast::zero) = 0;
+	virtual PeerManager&			peerManager(SchemaID const& id = beast::zero) = 0;
     virtual Config&					config(SchemaID const& id = beast::zero) = 0;
     virtual Family&                 family(SchemaID const& id = beast::zero) = 0;
 	virtual Family*                 shardFamily(SchemaID const& id = beast::zero) = 0;
@@ -158,7 +162,6 @@ public:
     virtual AmendmentTable&         getAmendmentTable(SchemaID const& id = beast::zero) = 0;
     virtual HashRouter&             getHashRouter (SchemaID const& id = beast::zero) = 0;
     virtual LoadFeeTrack&           getFeeTrack (SchemaID const& id = beast::zero) = 0;
-    virtual Overlay&                overlay (SchemaID const& id = beast::zero) = 0;
     virtual TxQ&                    getTxQ(SchemaID const& id = beast::zero) = 0;
     virtual ValidatorList&          validators (SchemaID const& id = beast::zero) = 0;
     virtual ValidatorSite&          validatorSites (SchemaID const& id = beast::zero) = 0;

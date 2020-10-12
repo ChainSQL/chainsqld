@@ -28,7 +28,7 @@ class ManifestCache;
 class NetworkOPs;
 class OpenLedger;
 class OrderBookDB;
-class Overlay;
+class PeerManager;
 class PathRequests;
 class PendingSaves;
 class PublicKey;
@@ -96,7 +96,7 @@ public:
 	virtual AmendmentTable&         getAmendmentTable() = 0;
 	virtual HashRouter&             getHashRouter() = 0;
 	virtual LoadFeeTrack&           getFeeTrack() = 0;
-	virtual Overlay&                overlay() = 0;
+	virtual PeerManager&            peerManager() = 0;
 	virtual TxQ&                    getTxQ() = 0;
 	virtual ValidatorList&          validators() = 0;
 	virtual ValidatorSite&          validatorSites() = 0;
@@ -143,6 +143,7 @@ public:
 	virtual LedgerIndex				getMaxDisallowedLedger() = 0;
 	virtual SchemaParams			getSchemaParams() = 0;
 	virtual bool					initBeforeSetup() = 0;
+	virtual SchemaID				schemaId() = 0;
 };
 
 std::shared_ptr <Schema>

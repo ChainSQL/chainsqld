@@ -93,20 +93,20 @@ public:
     getNodePublic() const = 0;
 
     virtual
-    Json::Value json() = 0;
+    Json::Value json(uint256 const& schemaId) = 0;
 
     //
     // Ledger
     //
 
-    virtual uint256 const& getClosedLedgerHash () const = 0;
-    virtual bool hasLedger (uint256 const& hash, std::uint32_t seq) const = 0;
-    virtual void ledgerRange (std::uint32_t& minSeq, std::uint32_t& maxSeq) const = 0;
-    virtual bool hasShard (std::uint32_t shardIndex) const = 0;
-    virtual bool hasTxSet (uint256 const& hash) const = 0;
-    virtual void cycleStatus () = 0;
+    virtual uint256 getClosedLedgerHash (uint256 const& schemaId) const = 0;
+    virtual bool hasLedger (uint256 const& schemaId, uint256 const& hash, std::uint32_t seq) const = 0;
+    virtual void ledgerRange (uint256 const& schemaId, std::uint32_t& minSeq, std::uint32_t& maxSeq) const = 0;
+    virtual bool hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const = 0;
+    virtual bool hasTxSet (uint256 const& schemaId, uint256 const& hash) const = 0;
+    virtual void cycleStatus (uint256 const& schemaId) = 0;
     virtual bool supportsVersion (int version) = 0;
-    virtual bool hasRange (std::uint32_t uMin, std::uint32_t uMax) = 0;
+    virtual bool hasRange (uint256 const& schemaId, std::uint32_t uMin, std::uint32_t uMax) = 0;
 };
 
 }

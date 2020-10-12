@@ -22,8 +22,9 @@
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/InboundTransactions.h>
 #include <peersafe/schema/Schema.h>
-#include <ripple/app/misc/NetworkOPs.h>
+#include <peersafe/schema/PeerManager.h>
 #include <ripple/overlay/Overlay.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/make_lock.h>
 #include <memory>
 
@@ -136,6 +137,7 @@ void TransactionAcquire::trigger (std::shared_ptr<Peer> const& peer)
     {
         JLOG (j_.trace()) << "TransactionAcquire::trigger " << (peer ? "havePeer" : "noPeer") << " no root";
         protocol::TMGetLedger tmGL;
+		tmGL.set_schemaid(to_string(app_.schemaId()));
         tmGL.set_ledgerhash (mHash.begin (), mHash.size ());
         tmGL.set_itype (protocol::liTS_CANDIDATE);
         tmGL.set_querydepth (3); // We probably need the whole thing
@@ -168,6 +170,7 @@ void TransactionAcquire::trigger (std::shared_ptr<Peer> const& peer)
         }
 
         protocol::TMGetLedger tmGL;
+		tmGL.set_schemaid(to_string(app_.schemaId()));
         tmGL.set_ledgerhash (mHash.begin (), mHash.size ());
         tmGL.set_itype (protocol::liTS_CANDIDATE);
 
@@ -245,7 +248,7 @@ SHAMapAddNode TransactionAcquire::takeNodes (const std::list<SHAMapNodeID>& node
 
 void TransactionAcquire::addPeers (int numPeers)
 {
-    app_.overlay().selectPeers (*this, numPeers, ScoreHasTxSet (getHash()));
+    app_.peerManager().selectPeers (*this, numPeers, ScoreHasTxSet (app_.schemaId(),getHash()));
 }
 
 void TransactionAcquire::init (int numPeers)

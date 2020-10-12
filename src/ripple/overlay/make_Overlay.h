@@ -36,7 +36,7 @@ setup_Overlay (BasicConfig const& config);
 /** Creates the implementation of Overlay. */
 std::unique_ptr <Overlay>
 make_Overlay (
-    Schema& app,
+    Application& app,
     Overlay::Setup const& setup,
     Stoppable& parent,
     ServerHandler& serverHandler,

@@ -452,7 +452,7 @@ ServerHandlerImp::processSession(
             loadType = Resource::feeInvalidRPC;
             jr[jss::result] = rpcError (rpcFORBIDDEN);
         }
-		else if (app_.getSchema(schema_id) == nullptr)
+		else if (!app_.hasSchema(schema_id))
 		{
 			loadType = Resource::feeInvalidRPC;
 			jr[jss::result] = rpcError(rpcNo_Schema);
@@ -462,7 +462,7 @@ ServerHandlerImp::processSession(
             RPC::Context context{
                 app_.journal("RPCHandler"),
                 jv,
-				*app_.getSchema(schema_id),
+				app_.getSchema(schema_id),
                 loadType,
                 app_.getOPs(schema_id),
                 app_.getLedgerMaster(schema_id),
@@ -812,7 +812,7 @@ ServerHandlerImp::processRequest (Port const& port,
 				JLOG(m_journal.error()) << "Exception when parse schema_id in processRequest,set beast::zero";
 			}
 		}
-		if (app_.getSchema(schema_id) == nullptr)
+		if (!app_.hasSchema(schema_id))
 		{
 			Json::Value r = jsonRPC;
 			r[jss::error] = make_json_error(forbidden, "Schema with specified schema_id not found.");
@@ -820,7 +820,7 @@ ServerHandlerImp::processRequest (Port const& port,
 			continue;
 		}
 
-        RPC::Context context {m_journal, params, *app_.getSchema(schema_id), loadType, app_.getOPs(schema_id),
+        RPC::Context context {m_journal, params, app_.getSchema(schema_id), loadType, app_.getOPs(schema_id),
             app_.getLedgerMaster(schema_id), usage, role, coro, InfoSub::pointer(),
             {user, forwardedFor}};
         Json::Value result;

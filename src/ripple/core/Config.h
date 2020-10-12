@@ -124,7 +124,8 @@ public:
     std::vector<std::string>    SNTP_SERVERS;           // SNTP servers from rippled.cfg.
 
 
- 	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
+	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
+	std::vector <std::string>	SCHEMA_IDS;
 
     enum StartUpType
     {

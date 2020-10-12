@@ -40,12 +40,12 @@
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/consensus/LedgerTiming.h>
 #include <ripple/nodestore/DatabaseShard.h>
-#include <ripple/overlay/Overlay.h>
 #include <ripple/overlay/predicates.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/app/misc/Transaction.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/Schema.h>
 #if USE_TBB
 #ifdef _CRTDBG_MAP_ALLOC
@@ -176,7 +176,9 @@ RCLConsensus::Adaptor::share(RCLCxPeerPos const& peerPos)
     auto const sig = peerPos.signature();
     prop.set_signature(sig.data(), sig.size());
 
-    app_.overlay().relay(prop, peerPos.suppressionID());
+	prop.set_schemaid(to_string(app_.schemaId()));
+
+    app_.peerManager().relay(prop, peerPos.suppressionID());
 }
 
 void
@@ -192,7 +194,8 @@ RCLConsensus::Adaptor::share(RCLCxTx const& tx)
         msg.set_status(protocol::tsNEW);
         msg.set_receivetimestamp(
             app_.timeKeeper().now().time_since_epoch().count());
-        app_.overlay().foreach (send_always(
+		msg.set_schemaid(to_string(app_.schemaId()));
+        app_.peerManager().foreach (send_always(
             std::make_shared<Message>(msg, protocol::mtTRANSACTION)));
     }
     else
@@ -228,7 +231,7 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
     prop.set_closetime(proposal.closeTime().time_since_epoch().count());
 
     prop.set_nodepubkey(valPublic_.data(), valPublic_.size());
-
+	prop.set_schemaid(to_string(app_.schemaId()));
     auto signingHash = sha512Half(
         HashPrefix::proposal,
         std::uint32_t(proposal.proposeSeq()),
@@ -250,7 +253,7 @@ RCLConsensus::Adaptor::propose(RCLCxPeerPos::Proposal const& proposal)
 
     app_.getHashRouter ().addSuppression (suppression);
 
-    app_.overlay().send(prop);
+    app_.peerManager().send(prop);
 }
 
 void
@@ -265,8 +268,9 @@ RCLConsensus::Adaptor::sendViewChange(ViewChange const& change)
 	msg.set_nodepubkey(valPublic_.data(),valPublic_.size());
 	msg.set_toview(change.toView());
 	msg.set_signature(sig.data(), sig.size());
+	msg.set_schemaid(to_string(app_.schemaId()));
 
-	app_.overlay().send(msg);
+	app_.peerManager().send(msg);
 }
 
 void
@@ -296,7 +300,9 @@ RCLConsensus::Adaptor::relay(RCLCxPeerPos const& peerPos)
 	auto const sig = peerPos.signature();
 	prop.set_signature(sig.data(), sig.size());
 
-	app_.overlay().relay(prop, peerPos.suppressionID());
+	prop.set_schemaid(to_string(app_.schemaId()));
+
+	app_.peerManager().relay(prop, peerPos.suppressionID());
 }
 
 void
@@ -312,7 +318,8 @@ RCLConsensus::Adaptor::relay(RCLCxTx const& tx)
 		msg.set_status(protocol::tsNEW);
 		msg.set_receivetimestamp(
 			app_.timeKeeper().now().time_since_epoch().count());
-		app_.overlay().foreach(send_always(
+		msg.set_schemaid(to_string(app_.schemaId()));
+		app_.peerManager().foreach(send_always(
 			std::make_shared<Message>(msg, protocol::mtTRANSACTION)));
 	}
 	else
@@ -918,6 +925,7 @@ RCLConsensus::Adaptor::notify(
         std::decay_t<decltype(ledger.parentID())>::bytes);
     s.set_ledgerhash(
         ledger.id().begin(), std::decay_t<decltype(ledger.id())>::bytes);
+	s.set_schemaid(to_string(app_.schemaId()));
 
     std::uint32_t uMin, uMax;
     if (!ledgerMaster_.getFullValidatedRange(uMin, uMax))
@@ -932,7 +940,7 @@ RCLConsensus::Adaptor::notify(
     }
     s.set_firstseq(uMin);
     s.set_lastseq(uMax);
-    app_.overlay().foreach (
+    app_.peerManager().foreach (
         send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
     JLOG(j_.trace()) << "send status change to peer";
 }
@@ -1203,8 +1211,9 @@ RCLConsensus::Adaptor::validate(RCLCxLedger const& ledger,
     Blob validation = v->getSerialized();
     protocol::TMValidation val;
     val.set_validation(&validation[0], validation.size());
+	val.set_schemaid(to_string(app_.schemaId()));
     // Send signed validation to all of our directly connected peers
-    app_.overlay().send(val);
+    app_.peerManager().send(val);
 }
 
 void

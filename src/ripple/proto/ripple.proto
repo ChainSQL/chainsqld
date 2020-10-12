@@ -55,6 +55,7 @@ message TMManifests
 
     // The manifests sent when a peer first connects to another peer are `history`.
     optional bool history = 2 [deprecated=true];
+	required bytes schemaId	= 3;
 }
 
 //------------------------------------------------------------------------------
@@ -107,6 +108,9 @@ message TMHello
     optional uint32         remote_ip       = 15; // NOT USED -- IP we see connection from
     optional string         local_ip_str    = 16; // our public IP
     optional string         remote_ip_str   = 17; // IP we see connection from
+	optional bytes 			validatePublic  = 18; 
+	optional bytes 			validateProof   = 19; 
+	optional bytes 			schemaIds		= 20;
 }
 
 // The status of a node in our cluster
@@ -164,6 +168,7 @@ message TMGetPeerShardInfo
     required uint32 hops            = 1; // number of hops to travel
     optional bool lastLink          = 2; // true if last link in the peer chain
     repeated TMLink peerChain       = 3; // public keys used to route messages
+	required bytes schemaId			= 4;
 }
 
 // Info about shards held
@@ -174,6 +179,7 @@ message TMPeerShardInfo
     optional string endpoint        = 3; // ipv6 or ipv4 address
     optional bool lastLink          = 4; // true if last link in the peer chain
     repeated TMLink peerChain       = 5; // public keys used to route messages
+	required bytes schemaId			= 6;
 }
 
 // A transaction can have only one input and one output.
@@ -198,6 +204,7 @@ message TMTransaction
     required TransactionStatus status       = 2;
     optional uint64 receiveTimestamp        = 3;
     optional bool deferred                  = 4;    // not applied to open ledger
+	required bytes schemaId			  		= 5;
 }
 
 
@@ -228,6 +235,7 @@ message TMStatusChange
     optional uint64 networkTime         = 6;
     optional uint32 firstSeq            = 7;
     optional uint32 lastSeq             = 8;
+	required bytes 	schemaId			= 9;
 }
 
 
@@ -246,6 +254,7 @@ message TMProposeSet
     optional uint32 hops                = 12;   // Number of hops traveled
 	optional uint32 curLedgerSeq		= 13; 	// Current ledger sequence
 	optional uint64 view				= 14; 	// Current view
+	required bytes schemaId			  	= 15;
 }
 
 enum TxSetStatus
@@ -259,6 +268,7 @@ message TMHaveTransactionSet
 {
     required TxSetStatus status     = 1;
     required bytes hash             = 2;
+	required bytes schemaId			= 3;
 }
 
 
@@ -268,6 +278,7 @@ message TMValidation
     required bytes validation       = 1;    // in STValidation signed form
     optional bool checkedSignature  = 2;    // node vouches signature is correct
     optional uint32 hops            = 3;    // Number of hops traveled
+	required bytes schemaId			= 4;
 }
 
 message TMGetPeers
@@ -344,6 +355,7 @@ message TMGetObjectByHash
     optional bytes ledgerHash           = 4;    // the hash of the ledger these queries are for
     optional bool fat                   = 5;    // return related nodes
     repeated TMIndexedObject objects    = 6;    // the specific objects requested
+	required bytes 	schemaId			= 7;
 }
 
 
@@ -384,6 +396,7 @@ message TMGetLedger
     optional uint64 requestCookie   = 6;
     optional TMQueryType queryType  = 7;
     optional uint32 queryDepth      = 8;    // How deep to go, number of extra levels
+	required bytes schemaId			= 9;
 }
 
 message TMGetTable
@@ -398,6 +411,7 @@ message TMGetTable
     required bool getLost           = 8;
 	required uint32 eTargetType     = 9;     //0 for table sync , 1 for dump table operation
 	optional bytes nickName         = 10;    //identity task
+	required bytes schemaId			= 11;
 }
 
 enum TMReplyError
@@ -414,6 +428,7 @@ message TMLedgerData
     repeated TMLedgerNode nodes     = 4;
     optional uint32 requestCookie   = 5;
     optional TMReplyError error     = 6;
+	required bytes schemaId			= 7;
 }
 
 message TMTableData
@@ -430,6 +445,7 @@ message TMTableData
 	optional uint32       closetime           = 10;
 	required uint32       eTargetType         = 11;     //0 for table sync , 1 for dump table operation
 	optional bytes        nickName            = 12;    //identity task
+	required bytes 		  schemaId			  = 13;
 }
 
 message TMPing
@@ -451,4 +467,5 @@ message TMViewChange
     required bytes 		nodePubKey          = 3;
     required bytes 		signature           = 4;
 	required uint64 	toView				= 5;
+	required bytes 		schemaId			= 6;
 }

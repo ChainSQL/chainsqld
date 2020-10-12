@@ -83,6 +83,7 @@ struct ConfigSection
 #define SECTION_PCONSENSUS              "pconsensus"
 
 #define SECTION_PATH_X509               "x509_crt_path"
+#define SECTION_SCHEMAS					"schemas"
 
 #define SECTION_SCHEMA					"schema"
 

@@ -22,7 +22,7 @@
 #include <ripple/core/JobQueue.h>
 #include <boost/optional.hpp>
 #include <ripple/overlay/Peer.h>
-#include <ripple/overlay/Overlay.h>
+#include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/protocol/RippleAddress.h>
 #include <ripple/json/json_reader.h>
@@ -580,7 +580,7 @@ bool TableSyncItem::IsInFailList(beast::IP::Endpoint& peerAddr)
 
 std::shared_ptr<Peer> TableSyncItem::GetRightPeerTarget(LedgerIndex iSeq)
 {  
-    auto peerList = app_.overlay().getActivePeers();
+    auto peerList = app_.peerManager().getActivePeers();
 
     bool isChange = GetIsChange();
     if (!isChange)

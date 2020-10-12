@@ -18,9 +18,9 @@
 //==============================================================================
 
 #include <peersafe/schema/Schema.h>
+#include <peersafe/schema/PeerManager.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/nodestore/DatabaseShard.h>
-#include <ripple/overlay/Overlay.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/resource/Fees.h>
@@ -61,7 +61,7 @@ doCrawlShards(RPC::Context& context)
         context.params[jss::public_key].asBool()};
 
     // Collect shard info from peers connected to this server
-    Json::Value jvResult {context.app.overlay().crawlShards(pubKey, hops)};
+    Json::Value jvResult {context.app.peerManager().crawlShards(pubKey, hops)};
 
     // Collect shard info from this server
     if (auto shardStore = context.app.getShardStore())

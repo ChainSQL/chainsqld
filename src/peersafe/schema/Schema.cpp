@@ -54,7 +54,7 @@
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/schema/Schema.h>
-#include <peersafe/schema/SchemaBase.h>
+#include <peersafe/schema/PeerManager.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/system/error_code.hpp>
@@ -318,7 +318,7 @@ namespace ripple {
 		std::unique_ptr <DatabaseCon> mTxnDB;
 		std::unique_ptr <DatabaseCon> mLedgerDB;
 		std::unique_ptr <DatabaseCon> mWalletDB;
-		std::unique_ptr <Overlay> m_overlay;
+		std::unique_ptr <PeerManager> m_peerManager;
 	public:
 	SchemaImp(SchemaParams const& params, Config& config, Application & app, beast::Journal j) 
 		: schema_params_(params)
@@ -710,9 +710,9 @@ namespace ripple {
 		return *openLedger_;
 	}
 
-	Overlay& overlay() override
+	PeerManager& peerManager() override
 	{
-		return *m_overlay;
+		return *m_peerManager;
 	}
 
 	TxQ& getTxQ() override
@@ -877,6 +877,11 @@ namespace ripple {
 	{
 		return schema_params_;
 	}
+
+	SchemaID schemaId()
+	{
+		return schema_params_.schemaId();
+	}
 private:
 	// For a newly-started validator, this is the greatest persisted ledger
 	// and new validations must be greater than this.
@@ -948,16 +953,7 @@ private:
 		Pathfinder::initPathTable();
 
 
-		// VFALCO NOTE Unfortunately, in stand-alone mode some code still
-		//             foolishly calls overlay(). When this is fixed we can
-		//             move the instantiation inside a conditional:
-		//
-		//             if (!config_.standalone())
-		m_overlay = make_Overlay(*this, setup_Overlay(config_), app_.getJobQueue(),
-			app_.getServerHandler(), app_.getResourceManager(), app_.getResolver(), dynamic_cast<BasicApp&>(app_).get_io_service(),
-			config_);
-		//add(*m_overlay); // add to PropertyStream
-
+		m_peerManager = make_PeerManager(*this);
 
 		auto const startUp = config_.START_UP;
 		if (startUp == Config::FRESH)
@@ -1691,8 +1687,8 @@ private:
 			}
 			else
 			{
-				TxMeta m(transID, 0, txnMeta, app_.journal("TxMeta"));
-				txIDs.push_back(std::make_pair(transID, m.getIndex()));
+				TxMeta _(transID, 0, txnMeta, app_.journal("TxMeta"));
+				txIDs.push_back(std::make_pair(transID, _.getIndex()));
 			}
 
 			if ((++i % 1000) == 0)
@@ -1804,7 +1800,6 @@ private:
 
 	bool SchemaImp::nodeToShards()
 	{
-		assert(m_overlay);
 		assert(!config_.standalone());
 
 		if (config_.section(ConfigSection::shardDatabase()).empty())
@@ -1825,7 +1820,6 @@ private:
 
 	bool SchemaImp::validateShards()
 	{
-		assert(m_overlay);
 		assert(!config_.standalone());
 
 		if (config_.section(ConfigSection::shardDatabase()).empty())

@@ -44,6 +44,7 @@ class Overlay
     , public beast::PropertyStream::Source
 {
 protected:
+	using PeerSequence = std::vector <std::shared_ptr<Peer>>;
     // VFALCO NOTE The requirement of this constructor is an
     //             unfortunate problem with the API for
     //             Stoppable and PropertyStream
@@ -73,7 +74,7 @@ public:
         std::uint32_t crawlOptions = 0;
     };
 
-    using PeerSequence = std::vector <std::shared_ptr<Peer>>;
+    //using PeerSequence = std::vector <std::shared_ptr<Peer>>;
 
     virtual ~Overlay() = default;
 
@@ -119,127 +120,127 @@ public:
     PeerSequence
     getActivePeers () = 0;
 
-    /** Calls the checkSanity function on each peer
-        @param index the value to pass to the peer's checkSanity function
-    */
-    virtual
-    void
-    checkSanity (std::uint32_t index) = 0;
+    ///** Calls the checkSanity function on each peer
+    //    @param index the value to pass to the peer's checkSanity function
+    //*/
+    //virtual
+    //void
+    //checkSanity (std::uint32_t index) = 0;
 
-    /** Calls the check function on each peer
-    */
-    virtual
-    void
-    check () = 0;
-
-    /** Returns the peer with the matching short id, or null. */
-    virtual
-    std::shared_ptr<Peer>
-    findPeerByShortID (Peer::id_t const& id) = 0;
-
-    /** Returns the peer with the matching public key, or null. */
-    virtual
-    std::shared_ptr<Peer>
-    findPeerByPublicKey (PublicKey const& pubKey) = 0;
-
-    /** Broadcast a proposal. */
-    virtual
-    void
-    send (protocol::TMProposeSet& m) = 0;
-
-    /** Broadcast a validation. */
-    virtual
-    void
-    send (protocol::TMValidation& m) = 0;
-
-	/* Broadcast a view change*/
+    ///** Calls the check function on each peer
+    //*/
 	virtual
 	void
-	send(protocol::TMViewChange& m) = 0;
+		check() = 0;
 
-    /** Relay a proposal. */
-    virtual
-    void
-    relay (protocol::TMProposeSet& m,
-        uint256 const& uid) = 0;
+ //   /** Returns the peer with the matching short id, or null. */
+ //   virtual
+ //   std::shared_ptr<Peer>
+ //   findPeerByShortID (Peer::id_t const& id) = 0;
 
-    /** Relay a validation. */
-    virtual
-    void
-    relay (protocol::TMValidation& m,
-        uint256 const& uid) = 0;
+ //   /** Returns the peer with the matching public key, or null. */
+ //   virtual
+ //   std::shared_ptr<Peer>
+ //   findPeerByPublicKey (PublicKey const& pubKey) = 0;
 
-	/** Relay a view change. */
-	virtual
-		void
-		relay(protocol::TMViewChange& m,
-			uint256 const& uid) = 0;
-    /** Visit every active peer and return a value
-        The functor must:
-        - Be callable as:
-            void operator()(std::shared_ptr<Peer> const& peer);
-         - Must have the following type alias:
-            using return_type = void;
-         - Be callable as:
-            Function::return_type operator()() const;
+ //   /** Broadcast a proposal. */
+ //   virtual
+ //   void
+ //   send (protocol::TMProposeSet& m) = 0;
 
-        @param f the functor to call with every peer
-        @returns `f()`
+ //   /** Broadcast a validation. */
+ //   virtual
+ //   void
+ //   send (protocol::TMValidation& m) = 0;
 
-        @note The functor is passed by value!
-    */
-    template <typename UnaryFunc>
-    std::enable_if_t<! std::is_void<
-            typename UnaryFunc::return_type>::value,
-                typename UnaryFunc::return_type>
-    foreach (UnaryFunc f)
-    {
-        for (auto const& p : getActivePeers())
-            f (p);
-        return f();
-    }
+	///* Broadcast a view change*/
+	//virtual
+	//void
+	//send(protocol::TMViewChange& m) = 0;
 
-    /** Visit every active peer
-        The visitor functor must:
-         - Be callable as:
-            void operator()(std::shared_ptr<Peer> const& peer);
-         - Must have the following type alias:
-            using return_type = void;
+ //   /** Relay a proposal. */
+ //   virtual
+ //   void
+ //   relay (protocol::TMProposeSet& m,
+ //       uint256 const& uid) = 0;
 
-        @param f the functor to call with every peer
-    */
-    template <class Function>
-    std::enable_if_t <
-        std::is_void <typename Function::return_type>::value,
-        typename Function::return_type
-    >
-    foreach(Function f)
-    {
-        for (auto const& p : getActivePeers())
-            f (p);
-    }
+ //   /** Relay a validation. */
+ //   virtual
+ //   void
+ //   relay (protocol::TMValidation& m,
+ //       uint256 const& uid) = 0;
 
-    /** Select from active peers
+	///** Relay a view change. */
+	//virtual
+	//	void
+	//	relay(protocol::TMViewChange& m,
+	//		uint256 const& uid) = 0;
+ //   /** Visit every active peer and return a value
+ //       The functor must:
+ //       - Be callable as:
+ //           void operator()(std::shared_ptr<Peer> const& peer);
+ //        - Must have the following type alias:
+ //           using return_type = void;
+ //        - Be callable as:
+ //           Function::return_type operator()() const;
 
-        Scores all active peers.
-        Tries to accept the highest scoring peers, up to the requested count,
-        Returns the number of selected peers accepted.
+ //       @param f the functor to call with every peer
+ //       @returns `f()`
 
-        The score function must:
-        - Be callable as:
-           bool (PeerImp::ptr)
-        - Return a true if the peer is prefered
+ //       @note The functor is passed by value!
+ //   */
+	template <typename UnaryFunc>
+	std::enable_if_t<!std::is_void<
+		typename UnaryFunc::return_type>::value,
+		typename UnaryFunc::return_type>
+		foreach(UnaryFunc f)
+	{
+		for (auto const& p : getActivePeers())
+			f(p);
+		return f();
+	}
 
-        The accept function must:
-        - Be callable as:
-           bool (PeerImp::ptr)
-        - Return a true if the peer is accepted
+ //   /** Visit every active peer
+ //       The visitor functor must:
+ //        - Be callable as:
+ //           void operator()(std::shared_ptr<Peer> const& peer);
+ //        - Must have the following type alias:
+ //           using return_type = void;
 
-    */
-    virtual
-    std::size_t
-    selectPeers (PeerSet& set, std::size_t limit, std::function<
-        bool(std::shared_ptr<Peer> const&)> score) = 0;
+ //       @param f the functor to call with every peer
+ //   */
+ //   template <class Function>
+ //   std::enable_if_t <
+ //       std::is_void <typename Function::return_type>::value,
+ //       typename Function::return_type
+ //   >
+ //   foreach(Function f)
+ //   {
+ //       for (auto const& p : getActivePeers())
+ //           f (p);
+ //   }
+
+ //   /** Select from active peers
+
+ //       Scores all active peers.
+ //       Tries to accept the highest scoring peers, up to the requested count,
+ //       Returns the number of selected peers accepted.
+
+ //       The score function must:
+ //       - Be callable as:
+ //          bool (PeerImp::ptr)
+ //       - Return a true if the peer is prefered
+
+ //       The accept function must:
+ //       - Be callable as:
+ //          bool (PeerImp::ptr)
+ //       - Return a true if the peer is accepted
+
+ //   */
+ //   virtual
+ //   std::size_t
+ //   selectPeers (PeerSet& set, std::size_t limit, std::function<
+ //       bool(std::shared_ptr<Peer> const&)> score) = 0;
 
     /** Increment and retrieve counter for transaction job queue overflows. */
     virtual void incJqTransOverflow() = 0;
@@ -253,33 +254,35 @@ public:
     virtual void incPeerDisconnectCharges() = 0;
     virtual std::uint64_t getPeerDisconnectCharges() const = 0;
 
-    /** Returns information reported to the crawl shard RPC command.
+    ///** Returns information reported to the crawl shard RPC command.
 
-        @param hops the maximum jumps the crawler will attempt.
-        The number of hops achieved is not guaranteed.
-    */
-    virtual
-    Json::Value
-    crawlShards(bool pubKey, std::uint32_t hops) = 0;
+    //    @param hops the maximum jumps the crawler will attempt.
+    //    The number of hops achieved is not guaranteed.
+    //*/
+    //virtual
+    //Json::Value
+    //crawlShards(bool pubKey, std::uint32_t hops) = 0;
 };
 
 struct ScoreHasLedger
 {
+	uint256 const& schemaId_;
     uint256 const& hash_;
     std::uint32_t seq_;
     bool operator()(std::shared_ptr<Peer> const&) const;
 
-    ScoreHasLedger (uint256 const& hash, std::uint32_t seq)
-        : hash_ (hash), seq_ (seq)
+    ScoreHasLedger (uint256 const& schemaId, uint256 const& hash, std::uint32_t seq)
+        : schemaId_(schemaId_), hash_ (hash), seq_ (seq)
     {}
 };
 
 struct ScoreHasTxSet
 {
+	SchemaID const& schemaId_;
     uint256 const& hash_;
     bool operator()(std::shared_ptr<Peer> const&) const;
 
-    ScoreHasTxSet (uint256 const& hash) : hash_ (hash)
+    ScoreHasTxSet (uint256 const& schemaId, uint256 const& hash) : schemaId_(schemaId_), hash_ (hash)
     {}
 };
 

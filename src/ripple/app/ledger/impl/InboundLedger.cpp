@@ -24,10 +24,12 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/TransactionStateSF.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/schema/PeerManager.h>
+#include <peersafe/schema/SchemaParams.h>
+#include <ripple/overlay/Overlay.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/Log.h>
 #include <ripple/core/JobQueue.h>
-#include <ripple/overlay/Overlay.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/jss.h>
@@ -440,9 +442,9 @@ void InboundLedger::onTimer (bool wasProgress, ScopedLockType&)
 /** Add more peers to the set, if possible */
 void InboundLedger::addPeers ()
 {
-    app_.overlay().selectPeers (*this,
+    app_.peerManager().selectPeers (*this,
         (getPeerCount() == 0) ? peerCountStart : peerCountAdd,
-        ScoreHasLedger (getHash(), mSeq));
+        ScoreHasLedger (app_.schemaId(),getHash(), mSeq));
 }
 
 std::weak_ptr<PeerSet> InboundLedger::pmDowncast ()
@@ -549,6 +551,7 @@ void InboundLedger::trigger (std::shared_ptr<Peer> const& peer, TriggerReason re
 
     protocol::TMGetLedger tmGL;
     tmGL.set_ledgerhash (mHash.begin (), mHash.size ());
+	tmGL.set_schemaid(to_string(app_.schemaId()));
 
     if (getTimeouts () != 0)
     { // Be more aggressive if we've timed out at least once
@@ -565,6 +568,7 @@ void InboundLedger::trigger (std::shared_ptr<Peer> const& peer, TriggerReason re
                 bool typeSet = false;
                 tmBH.set_query (true);
                 tmBH.set_ledgerhash (mHash.begin (), mHash.size ());
+				tmBH.set_schemaid(to_string(app_.schemaId()));
                 for (auto const& p : need)
                 {
                     JLOG (m_journal.warn()) <<
@@ -590,7 +594,7 @@ void InboundLedger::trigger (std::shared_ptr<Peer> const& peer, TriggerReason re
 
                 for (auto id : mPeers)
                 {
-                    if (auto p = app_.overlay ().findPeerByShortID (id))
+                    if (auto p = app_.peerManager().findPeerByShortID (id))
                     {
                         mByHash = false;
                         p->send (packet);
