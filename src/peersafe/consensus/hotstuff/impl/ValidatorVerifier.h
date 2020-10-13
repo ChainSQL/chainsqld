@@ -20,9 +20,14 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_VALIDATOR_VERIFIER_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_VALIDATOR_VERIFIER_H
 
+#include <map>
+
 #include <boost/optional.hpp>
 
+#include <ripple/ledger/ReadView.h>
+
 #include <peersafe/consensus/hotstuff/impl/Types.h>
+#include <peersafe/consensus/hotstuff/impl/BlockInfo.h>
 
 namespace ripple {
 namespace hotstuff {
@@ -32,8 +37,15 @@ public:
     virtual ~ValidatorVerifier() {};
     
 	//virtual boost::optional<PublicKey> getPublicKey(const Author& author) = 0;
-	virtual bool signature(const Author& author, const ripple::Slice& message, Signature& signature) = 0;
+	virtual const Author& Self() const = 0;
+	virtual bool signature(const ripple::Slice& message, Signature& signature) = 0;
 	virtual bool verifySignature(const Author& author, const Signature& signature, const ripple::Slice& message) = 0;
+	virtual const bool verifyLedgerInfo(
+		const BlockInfo& commit_info,
+		const HashValue& consensus_data_hash,
+		const std::map<Author,Signature>& signatures) const = 0;
+
+	virtual const bool checkVotingPower(const std::map<Author, Signature>& signatures) const = 0;
 
 protected:
     ValidatorVerifier(){}

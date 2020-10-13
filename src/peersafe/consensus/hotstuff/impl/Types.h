@@ -30,7 +30,13 @@
 
 namespace ripple { namespace hotstuff {
 
-using BlockHash = sha512_half_hasher::result_type; 
+using HashValue = sha512_half_hasher::result_type;
+
+inline HashValue ZeroHash() {
+	return HashValue();
+}
+
+//using BlockHash = sha512_half_hasher::result_type; 
 using Command = std::vector<std::string>;
 
 using Author = std::string;

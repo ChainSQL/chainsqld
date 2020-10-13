@@ -24,6 +24,7 @@
 #include <peersafe/consensus/hotstuff/impl/RoundState.h>
 #include <peersafe/consensus/hotstuff/impl/ProposerElection.h>
 #include <peersafe/consensus/hotstuff/impl/ProposalGenerator.h>
+#include <peersafe/consensus/hotstuff/impl/StateCompute.h>
 #include <peersafe/consensus/hotstuff/impl/NetWork.h>
 
 namespace ripple {
@@ -42,9 +43,22 @@ public:
 	
 	int start();
 	int ProcessProposal(const Block& proposal, const SyncInfo& sync_info);
+	int ProcessVote(const Vote& vote, const SyncInfo& sync_info);
 private:
+	int ProcessProposal(const Block& proposal);
+	int ProcessVote(const Vote& vote);
+	bool ExecuteAndVote(const Block& proposal, Vote& vote);
 	int ProcessNewRoundEvent(const NewRoundEvent& event);
 	boost::optional<Block> GenerateProposal(const NewRoundEvent& event);
+	bool EnsureRoundAndSyncUp(
+		Round round,
+		const SyncInfo& sync_info,
+		const Author& author);
+	int SyncUp(
+		const SyncInfo& sync_info,
+		const Author& author);
+	int ProcessCertificates();
+	int NewQCAggregated(const QuorumCertificate& quorumCert);
 
 	void ProcessLocalTimeout(const boost::system::error_code& ec, Round round);
 

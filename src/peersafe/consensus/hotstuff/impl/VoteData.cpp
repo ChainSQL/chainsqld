@@ -22,22 +22,45 @@
 namespace ripple {
 namespace hotstuff {
 
-VoteData::VoteData()
-: proposed_()
-, parent_() {
+VoteData::VoteData(
+	const BlockInfo& proposed,
+	const BlockInfo& parent)
+: proposed_(proposed)
+, parent_(parent) {
 
 }
 
 VoteData::~VoteData() {
 }
 
-BlockHash VoteData::hash() {
+VoteData VoteData::New(
+	const BlockInfo& proposed,
+	const BlockInfo& parent) {
+	VoteData vote_data(proposed, parent);
+	//vote_data.proposed_ = proposed;
+	//vote_data.parent_ = parent;
+	return vote_data;
+}
+
+HashValue VoteData::hash() {
 	using beast::hash_append;
 	ripple::sha512_half_hasher h;
-	hash_append(h, BlockInfo::hash(proposed()));
-	hash_append(h, BlockInfo::hash(parent()));
+	hash_append(h, proposed().id);
+	hash_append(h, parent().id);
 
 	return static_cast<typename	sha512_half_hasher::result_type>(h);
+}
+
+const bool VoteData::Verify() const {
+	if (parent().epoch != proposed().epoch)
+		return false;
+	if (parent().round >= proposed().round)
+		return false;
+	if (parent().timestamp_usecs > proposed().timestamp_usecs)
+		return false;
+	if (parent().version > proposed().version)
+		return false;
+	return true;
 }
 
 } // namespace hotstuff

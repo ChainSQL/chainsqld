@@ -24,27 +24,50 @@
 
 #include <peersafe/consensus/hotstuff/impl/Types.h>
 #include <peersafe/consensus/hotstuff/impl/VoteData.h>
+#include <peersafe/consensus/hotstuff/impl/BlockInfo.h>
+#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
 
 namespace ripple {
 namespace hotstuff {
+
+struct LedgerInfoWithSignatures {
+	using Signatures = std::map<Author, Signature>;
+
+	struct LedgerInfo {
+		BlockInfo commit_info;
+		HashValue consensus_data_hash;
+	} ledger_info;
+	Signatures signatures;
+
+	void addSignature(const Author& author, const Signature& signature);
+	bool Verify(const ValidatorVerifier* validator);
+
+	LedgerInfoWithSignatures(const LedgerInfo& li)
+	: ledger_info(li)
+	, signatures() {
+	}
+};
 
 class QuorumCertificate {
 public:
 	using Signatures = std::map<Author, Signature>;
 
 	QuorumCertificate();
+	QuorumCertificate(
+		const VoteData& vote_data, 
+		const LedgerInfoWithSignatures& signed_ledger_info);
 	~QuorumCertificate();
 
 	const VoteData& vote_data() const {
 		return vote_data_;
 	}
 
-	Signatures& signatures() {
-		return signatures_;
+	LedgerInfoWithSignatures::Signatures& signatures() {
+		return signed_ledger_info_.signatures;
 	}
 
-	const Signatures& signatures() const {
-		return signatures_;
+	const LedgerInfoWithSignatures::Signatures& signatures() const {
+		return signed_ledger_info_.signatures;
 	}
 
 	const BlockInfo& certified_block() const {
@@ -55,9 +78,19 @@ public:
 		return vote_data_.parent();
 	}
 
+	const LedgerInfoWithSignatures& ledger_info() const {
+		return signed_ledger_info_;
+	};
+
+	LedgerInfoWithSignatures& ledger_info() {
+		return signed_ledger_info_;
+	}
+
+	bool Verify(const ValidatorVerifier* validator);
+
 private:
 	VoteData vote_data_;
-	Signatures signatures_;
+	LedgerInfoWithSignatures signed_ledger_info_;
 };
 
 } // namespace hotstuff

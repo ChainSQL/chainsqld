@@ -27,8 +27,11 @@ namespace hotstuff {
 
 class VoteData { 
 public:
-	VoteData();
 	~VoteData();
+
+	static VoteData New(
+		const BlockInfo& proposed,
+		const BlockInfo& parent);
 
 	BlockInfo& proposed() {
 		return proposed_;
@@ -46,9 +49,15 @@ public:
 		return parent_;
 	}
 
-	BlockHash hash();
+	HashValue hash();
+
+	const bool Verify() const;
 
 private:
+	VoteData(
+		const BlockInfo& proposed,
+		const BlockInfo& parent);
+
 	/// Contains all the block information needed for voting for the proposed round.
 	BlockInfo proposed_;
 	/// Contains all the block information for the block the proposal is extending.

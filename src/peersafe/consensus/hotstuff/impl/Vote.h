@@ -33,6 +33,12 @@ public:
 	Vote();
 	~Vote();
 
+	static Vote New(
+		const Author author,
+		const VoteData& vote_data,
+		const LedgerInfoWithSignatures::LedgerInfo& ledger_info,
+		const Signature& signature);
+
 	VoteData& vote_data() {
 		return vote_data_;
 	}
@@ -65,11 +71,16 @@ public:
 		return timeout_signature_;
 	}
 
+	const LedgerInfoWithSignatures::LedgerInfo& ledger_info() const {
+		return ledger_info_;
+	}
 private:
 	/// The data of the vote
 	VoteData vote_data_;
 	/// The identity of the voter.
 	Author author_;
+	/// LedgerInfo of a block that is going to be committed in case this vote gathers QC.
+	LedgerInfoWithSignatures::LedgerInfo ledger_info_;
 	/// Signature of the LedgerInfo
 	Signature signature_;
 	/// The round signatures can be aggregated into a timeout certificate if present.

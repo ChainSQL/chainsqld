@@ -18,16 +18,54 @@
 //==============================================================================
 
 #include <peersafe/consensus/hotstuff/impl/PendingVotes.h>
+#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
 
 namespace ripple {
 namespace hotstuff {
     
-PendingVotes::PendingVotes() {
+PendingVotes::PendingVotes()
+: author_to_vote_()
+, li_digest_to_votes_() {
 }
 
 PendingVotes::~PendingVotes() {
 }
 
+int PendingVotes::insertVote(
+	const Vote& vote,
+	ValidatorVerifier* verifer,
+	QuorumCertificate& quorumCert) {
+	HashValue li_digest = const_cast<BlockInfo&>(vote.ledger_info().commit_info).id;
+
+	// Has the author already voted for this round?
+	auto previously_seen_vote = author_to_vote_.find(vote.author());
+	if (previously_seen_vote != author_to_vote_.end()) {
+		if (li_digest != const_cast<BlockInfo&>(previously_seen_vote->second.ledger_info().commit_info).id) {
+			return VoteReceptionResult::EquivocateVote;
+		}
+		else {
+			return VoteReceptionResult::DuplicateVote; // DuplicateVote
+		}
+	}
+
+	// Store a new vote(or update in case it's a new timeout vote)
+	author_to_vote_.emplace(std::make_pair(vote.author(), vote));
+
+	auto it = li_digest_to_votes_.find(li_digest);
+	if (it == li_digest_to_votes_.end()) {
+		LedgerInfoWithSignatures ledger_info = LedgerInfoWithSignatures(vote.ledger_info());
+		//ledger_info.ledger_info = vote.ledger_info();
+		it = li_digest_to_votes_.emplace(std::make_pair(li_digest, ledger_info)).first;
+	}
+	it->second.addSignature(vote.author(), vote.signature());
+
+	if (verifer->checkVotingPower(it->second.signatures) == false) {
+		return VoteReceptionResult::VoteAdded;
+	}
+	
+	quorumCert = QuorumCertificate(vote.vote_data(), it->second);
+	return VoteReceptionResult::NewQuorumCertificate;
+}
 
 } // namespace hotstuff
 } // namespace ripple

@@ -27,7 +27,6 @@
 #include <boost/optional.hpp>
 
 #include <peersafe/consensus/hotstuff/impl/Types.h>
-#include <peersafe/consensus/hotstuff/impl/Vote.h>
 #include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
 #include <peersafe/consensus/hotstuff/impl/PendingVotes.h>
 
@@ -43,6 +42,8 @@ struct NewRoundEvent {
 	Reason reason;
 };
 
+class ValidatorVerifier;
+
 class RoundState {
 public:
 	RoundState(boost::asio::io_service* io_service);
@@ -53,9 +54,22 @@ public:
 	boost::asio::steady_timer& RoundTimeoutTimer() {
 		return round_timeout_timer_;
 	}
+
+	const Round current_round() const {
+		return current_round_;
+	}
+
+	void recordVote(const Vote& vote) {
+		send_vote_ = vote;
+	}
+
+	int insertVote(
+		const Vote& vote, 
+		ValidatorVerifier* verifer, 
+		QuorumCertificate& quorumCert);
 private:
 	void CancelRoundTimeout();
-	int current_round_;
+	Round current_round_;
 	boost::asio::steady_timer round_timeout_timer_;
 	PendingVotes pending_votes_;
 	boost::optional<Vote> send_vote_;

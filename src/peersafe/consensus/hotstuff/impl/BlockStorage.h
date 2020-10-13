@@ -22,6 +22,8 @@
 
 #include <map>
 
+#include <ripple/ledger/ReadView.h>
+
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 #include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
@@ -29,22 +31,36 @@
 
 namespace ripple { namespace hotstuff {
 
+struct ExecutedBlock {
+	Block block;
+	ripple::LedgerInfo state_compute_result;
+
+	ExecutedBlock() 
+	: block(Block::empty())
+	, state_compute_result() {
+	}
+};
+
+class StateCompute;
+
 class BlockStorage {
 public:
     //BlockStorage();
 	BlockStorage(
+		StateCompute* state_compute,
 		const QuorumCertificate& highest_quorum_cert, 
 		const QuorumCertificate& highest_commit_cert);
     ~BlockStorage();
 
-    //// for blocks
+    // for blocks
     //bool addBlock(const Block& block);
-    //// 基于区块高度释放不再需要用到的区块
+	ExecutedBlock executeAndAddBlock(const Block& block);
+    // 基于区块高度释放不再需要用到的区块
     //void gcBlocks(const Block& block);
-    //// 通过 block hash 获取 block，如果本地没有函数返回 false
-    //bool blockOf(const BlockHash& hash, Block& block) const;
-    //// 通过 block hash 获取 block, 如果本地没有则需要从网络同步
-    //bool expectBlock(const BlockHash& hash, Block& block);
+    // 通过 block hash 获取 block，如果本地没有函数返回 false
+    bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
+    // 通过 block hash 获取 block, 如果本地没有则需要从网络同步
+    bool expectBlock(const HashValue& hash, ExecutedBlock& block);
 
 	const QuorumCertificate& HighestQuorumCert() const {
 		return highest_quorum_cert_;
@@ -58,9 +74,17 @@ public:
 		return SyncInfo(HighestQuorumCert(), HighestCommitCert());
 	}
 
+	int addCerts(const SyncInfo& sync_info);
+
+	int insertQuorumCert(const QuorumCertificate& quorumCeret);
+
+	// 目前主要功能是 commit 共识过的 block
+	int saveVote(const Vote& vote);
+
 private:
     //void recurseGCBlocks(const Block& block);
-    std::map<BlockHash, Block> cache_blocks_;
+	StateCompute* state_compute_;
+    std::map<HashValue, ExecutedBlock> cache_blocks_;
 
 	QuorumCertificate highest_quorum_cert_;
 	QuorumCertificate highest_commit_cert_;

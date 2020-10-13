@@ -46,9 +46,20 @@ public:
 		return highest_quorum_cert_;
 	}
 
-	const boost::optional<QuorumCertificate>& HighestCommitCert() const {
-		return highest_commit_cert_;
+	const QuorumCertificate HighestCommitCert() const {
+		if (highest_commit_cert_)
+			return highest_commit_cert_.get();
+		return highest_quorum_cert_;
 	}
+
+	const bool hasNewerCertificate(const SyncInfo& sync_info) const {
+		if (highest_quorum_cert_.certified_block().round > sync_info.highest_quorum_cert_.certified_block().round
+			|| HighestCommitCert().certified_block().round > sync_info.HighestCommitCert().certified_block().round)
+			return true;
+		return false;
+	}
+
+	bool Verify(const ValidatorVerifier* validator);
 
 private:
 	QuorumCertificate highest_quorum_cert_;

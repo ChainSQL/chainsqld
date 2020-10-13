@@ -21,10 +21,12 @@
 #define RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
 
 #include <peersafe/consensus/hotstuff/impl/Types.h>
-#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
+//#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
 
 namespace ripple {
 namespace hotstuff {
+
+class ValidatorVerifier;
 
 class EpochState {
 public:

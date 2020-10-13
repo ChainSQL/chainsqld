@@ -20,12 +20,15 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_CORE_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_CORE_H
 
+#include <tuple>
+
 #include <boost/optional.hpp>
 
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 #include <peersafe/consensus/hotstuff/impl/Vote.h>
 #include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
 #include <peersafe/consensus/hotstuff/impl/EpochState.h>
+#include <peersafe/consensus/hotstuff/impl/StateCompute.h>
 
 #include <ripple/basics/Log.h>
 #include <ripple/core/JobQueue.h>
@@ -47,19 +50,34 @@ struct SafetyData {
 	}
 };
 
+struct ExecutedBlock;
+
 class HotstuffCore {
 public: 
-	HotstuffCore(const beast::Journal& journal, EpochState* epoch_state);
+	HotstuffCore(
+		const beast::Journal& journal, 
+		StateCompute* state_compute,
+		EpochState* epoch_state);
     ~HotstuffCore();
 
 	Block SignProposal(const BlockData& proposal);
+	bool ConstructAndSignVote(const ExecutedBlock& executed_block, Vote& vote);
+
+	EpochState* epochState() {
+		return epoch_state_;
+	}
 private:
 	bool VerifyAuthor(const Author& author);
 	bool VerifyEpoch(const Epoch epoch);
 	bool VerifyQC(const QuorumCertificate& qc);
+	bool VerifyAndUpdatePreferredRound(const QuorumCertificate& qc);
+	bool VerifyAndUpdateLastVoteRound(Round round);
+	std::tuple<bool, VoteData> ExtensionCheck(const ExecutedBlock& executed_block);
+	LedgerInfoWithSignatures::LedgerInfo ConstructLedgerInfo(const Block& proposed_block);
 
 	SafetyData safety_data_;
 	beast::Journal journal_;
+	StateCompute* state_compute_;
 	EpochState* epoch_state_;
 
 };

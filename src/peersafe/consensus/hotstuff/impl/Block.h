@@ -22,7 +22,8 @@
 
 #include <boost/optional.hpp>
 
-//#include <peersafe/consensus/hotstuff/impl/Crypto.h>
+#include <ripple/ledger/ReadView.h>
+
 #include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
 #include <peersafe/consensus/hotstuff/impl/EpochState.h>
 
@@ -67,7 +68,7 @@ public:
 		return  BlockData::NONEAUTHOR;
 	}
 
-	static BlockHash hash(const BlockData& block_data);
+	static HashValue hash(const BlockData& block_data);
 
 	BlockData()
 	: epoch(0)
@@ -89,7 +90,7 @@ public:
 		const BlockData& block_data, 
 		ValidatorVerifier* verifier);
 
-	const BlockHash& id() const {
+	const HashValue& id() const {
 		return id_;
 	}
 
@@ -100,10 +101,12 @@ public:
 	const boost::optional<Signature>& signature() const {
 		return signature_;
 	}
+
+	BlockInfo gen_block_info(const ripple::LedgerInfo& ledger_info);
 private:
     Block();
 
-	BlockHash id_;
+	HashValue id_;
 	BlockData block_data_;
 	boost::optional<Signature> signature_;
 };

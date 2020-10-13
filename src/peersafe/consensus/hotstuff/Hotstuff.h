@@ -65,18 +65,33 @@ namespace ripple { namespace hotstuff {
 class Hotstuff {
 public:
     Hotstuff(
+		boost::asio::io_service& ios,
         const beast::Journal& journal,
-        BlockStorage* storage,
-		EpochState* epoch_state,
-		RoundState* round_state,
-		ProposalGenerator* proposal_generator,
+		const Author& author,
+		CommandManager* cm,
 		ProposerElection* proposer_election,
+		StateCompute* state_compute,
+		ValidatorVerifier* verifier,
 		NetWork* network);
 
     ~Hotstuff();
 
 	int start();
+	
+	int handleProposal(
+		const ripple::hotstuff::Block& proposal,
+		const ripple::hotstuff::SyncInfo& sync_info);
+
+	int handleVote(
+		const ripple::hotstuff::Vote& vote,
+		const ripple::hotstuff::SyncInfo& sync_info);
 private:
+	VoteData init_vote_data_;
+	LedgerInfoWithSignatures init_ledgerinfo_;
+	BlockStorage storage_;
+	EpochState epoch_state_;
+	RoundState round_state_;
+	ProposalGenerator proposal_generator_;
 	HotstuffCore hotstuff_core_;
 	RoundManager* round_manager_;
 };

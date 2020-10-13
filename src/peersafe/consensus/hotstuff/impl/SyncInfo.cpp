@@ -17,28 +17,26 @@
  */
 //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
-
-#include <peersafe/consensus/hotstuff/impl/Block.h>
-#include <peersafe/consensus/hotstuff/impl/Vote.h>
 #include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
 
 namespace ripple {
 namespace hotstuff {
 
-class NetWork { 
-public:
-	// 广播给每一个节点，包括自身
-    virtual void broadcast(const Block& proposal, const SyncInfo& sync_info) = 0;
-	virtual void sendVote(const Author& author, const Vote& vote, const SyncInfo& sync_info) = 0;
-    
-    virtual ~NetWork() {}
-protected:
-    NetWork() {}
-};
+bool SyncInfo::Verify(const ValidatorVerifier* validator) {
+	Epoch epoch = highest_quorum_cert_.certified_block().epoch;
+	if (epoch != HighestCommitCert().certified_block().epoch)
+		return false;
+	if (highest_quorum_cert_.certified_block().round < HighestCommitCert().certified_block().round)
+		return false;
 
+	if (highest_quorum_cert_.Verify(validator) == false)
+		return false;
+
+	if (highest_commit_cert_ && highest_commit_cert_->Verify(validator) == false)
+		return false;
+	
+	return true;
+}
+    
 } // namespace hotstuff
 } // namespace ripple
-
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H

@@ -53,6 +53,7 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 	blockData.epoch = hqc.certified_block().epoch;
 	blockData.round = round;
 	blockData.timestamp_usecs = 0;
+	blockData.quorum_cert = hqc;
 	blockData.block_type = BlockData::Proposal;
 	
 	BlockData::Payload payload;

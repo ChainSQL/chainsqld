@@ -26,7 +26,7 @@ namespace ripple { namespace hotstuff {
 Author BlockData::NONEAUTHOR = Author();
 
 
-BlockHash BlockData::hash(const BlockData& block_data) {
+HashValue BlockData::hash(const BlockData& block_data) {
 	using beast::hash_append;
 	ripple::sha512_half_hasher h;
 	hash_append(h, block_data.epoch);
@@ -63,11 +63,20 @@ Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier*
 	block.block_data_ = block_data;
 	ripple::Slice message = ripple::Slice((const void*)block.id_.data(), block.id_.size());
 	Signature signature;
-	if (verifier->signature(block_data.author(), message, signature) == false)
+	if (verifier->signature(message, signature) == false)
 		return Block::empty();
 	block.signature_ = signature;
 
 	return block;
+}
+
+BlockInfo Block::gen_block_info(const ripple::LedgerInfo& ledger_info) {
+	BlockInfo block_info(id_);
+	block_info.epoch = block_data_.epoch;
+	block_info.round = block_data_.round;
+	block_info.ledger_info = ledger_info;
+
+	return block_info;
 }
 
 } // namespace hotstuff

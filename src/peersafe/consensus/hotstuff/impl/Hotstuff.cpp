@@ -23,21 +23,34 @@
 namespace ripple { namespace hotstuff {
 
 Hotstuff::Hotstuff(
+	boost::asio::io_service& ios,
     const beast::Journal& journal,
-	BlockStorage* storage,
-	EpochState* epoch_state,
-	RoundState* round_state,
-	ProposalGenerator* proposal_generator,
+	const Author& author,
+	CommandManager* cm,
 	ProposerElection* proposer_election,
+	StateCompute* state_compute,
+	ValidatorVerifier* verifier,
 	NetWork* network)
-: hotstuff_core_(journal, epoch_state)
+: init_vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
+, init_ledgerinfo_(LedgerInfoWithSignatures::LedgerInfo{ init_vote_data_.proposed(), init_vote_data_.hash() })
+, storage_(
+	state_compute, 
+	QuorumCertificate(init_vote_data_, init_ledgerinfo_),
+	QuorumCertificate(init_vote_data_, init_ledgerinfo_))
+, epoch_state_()
+, round_state_(&ios)
+, proposal_generator_(cm, &storage_, author)
+, hotstuff_core_(journal, state_compute, &epoch_state_)
 , round_manager_(nullptr) {
 
+	epoch_state_.epoch = 0;
+	epoch_state_.verifier = verifier;
+
 	round_manager_ = new RoundManager(
-		storage, 
-		round_state, 
+		&storage_, 
+		&round_state_, 
 		&hotstuff_core_,
-		proposal_generator,
+		&proposal_generator_,
 		proposer_election,
 		network);
 }
@@ -49,6 +62,19 @@ Hotstuff::~Hotstuff() {
 int Hotstuff::start() {
 	return round_manager_->start();
 }
+
+int Hotstuff::handleProposal(
+	const ripple::hotstuff::Block& proposal,
+	const ripple::hotstuff::SyncInfo& sync_info) {
+	return round_manager_->ProcessProposal(proposal, sync_info);
+}
+
+int Hotstuff::handleVote(
+	const ripple::hotstuff::Vote& vote,
+	const ripple::hotstuff::SyncInfo& sync_info) {
+	return round_manager_->ProcessVote(vote, sync_info);
+}
+
 
 } // namespace hotstuff
 } // namespace ripple

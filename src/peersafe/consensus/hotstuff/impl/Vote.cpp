@@ -23,8 +23,9 @@ namespace ripple {
 namespace hotstuff {
 
 Vote::Vote()
-: vote_data_()
+: vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
 , author_()
+, ledger_info_(LedgerInfoWithSignatures::LedgerInfo{BlockInfo(ZeroHash()), ZeroHash()})
 , signature_()
 , timeout_signature_() {
 
@@ -32,6 +33,19 @@ Vote::Vote()
 
 Vote::~Vote() {
 
+}
+
+Vote Vote::New(
+	const Author author,
+	const VoteData& vote_data,
+	const LedgerInfoWithSignatures::LedgerInfo& ledger_info,
+	const Signature& signature) {
+	Vote vote;
+	vote.vote_data_ = vote_data;
+	vote.author_ = author;
+	vote.ledger_info_ = ledger_info;
+	vote.signature_ = signature;
+	return vote;
 }
 
 } // namespace hotstuff

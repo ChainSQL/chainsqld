@@ -22,6 +22,8 @@
 
 #include <boost/optional.hpp>
 
+#include <ripple/ledger/ReadView.h>
+
 #include <peersafe/consensus/hotstuff/impl/Types.h>
 #include <peersafe/consensus/hotstuff/impl/EpochState.h>
 
@@ -36,9 +38,9 @@ public:
 	/// protocol.
 	Round round;
 	/// The identifier (hash) of the block.
-	BlockHash id;
-	/// The accumulator root hash after executing this block.
-	BlockHash executed_state_id;
+	HashValue id;
+	/// ledger info
+	ripple::LedgerInfo ledger_info;
 	/// The version of the latest transaction after executing this block.
 	Version version;
 	/// The timestamp this block was proposed by a proposer.
@@ -46,23 +48,33 @@ public:
 	/// An optional field containing the next epoch info
 	boost::optional<EpochState> next_epoch_state;
 
-	static BlockHash BlockInfo::hash(const BlockInfo& block_info) {
-		using beast::hash_append;
-		ripple::sha512_half_hasher h;
-		hash_append(h, block_info.epoch);
-		hash_append(h, block_info.round);
-		hash_append(h, block_info.hash);
-		hash_append(h, block_info.executed_state_id);
-		hash_append(h, block_info.version);
-		hash_append(h, block_info.timestamp_usecs);
-		return static_cast<typename	sha512_half_hasher::result_type>(h);
-	}
+	//HashValue hash() {
+	//	if (id.isNonZero())
+	//		return id;
 
-	BlockInfo()
+	//	using beast::hash_append;
+	//	ripple::sha512_half_hasher h;
+	//	hash_append(h, epoch);
+	//	hash_append(h, round);
+	//	hash_append(h, executed_state_id);
+	//	hash_append(h, ledger_info.seq);
+	//	hash_append(h, ledger_info.hash);
+	//	hash_append(h, ledger_info.txHash);
+	//	hash_append(h, ledger_info.accountHash);
+	//	hash_append(h, ledger_info.parentHash);
+	//	hash_append(h, version);
+	//	hash_append(h, timestamp_usecs);
+
+	//	id = static_cast<typename sha512_half_hasher::result_type>(h);
+
+	//	return id;
+	//}
+
+	BlockInfo(const HashValue& block_hash)
 	: epoch(0)
 	, round(0)
-	, id()
-	, executed_state_id()
+	, id(block_hash)
+	, ledger_info()
 	, version(0)
 	, timestamp_usecs(0)
 	, next_epoch_state() {

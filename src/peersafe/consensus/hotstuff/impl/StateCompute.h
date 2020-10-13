@@ -2,12 +2,12 @@
 /*
  This file is part of chainsqld: https://github.com/chainsql/chainsqld
  Copyright (c) 2016-2018 Peersafe Technology Co., Ltd.
- 
+
 	chainsqld is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
- 
+
 	chainsqld is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -15,30 +15,31 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-//==============================================================================
+ //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
+#ifndef RIPPLE_CONSENSUS_HOTSTUFF_STATECOMPUTE_H
+#define RIPPLE_CONSENSUS_HOTSTUFF_STATECOMPUTE_H
+
+#include <ripple/ledger/ReadView.h>
 
 #include <peersafe/consensus/hotstuff/impl/Block.h>
-#include <peersafe/consensus/hotstuff/impl/Vote.h>
-#include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
 
 namespace ripple {
-namespace hotstuff {
+namespace hotstuff { 
 
-class NetWork { 
+class StateCompute {
 public:
-	// 广播给每一个节点，包括自身
-    virtual void broadcast(const Block& proposal, const SyncInfo& sync_info) = 0;
-	virtual void sendVote(const Author& author, const Vote& vote, const SyncInfo& sync_info) = 0;
-    
-    virtual ~NetWork() {}
+	virtual ~StateCompute() {}
+	
+	virtual bool compute(const Block& block, ripple::LedgerInfo& ledger_info) = 0;
+	virtual bool verify(const ripple::LedgerInfo& ledger_info, const ripple::LedgerInfo& parent_ledger_info) = 0;
+	virtual int commit(const Block& block) = 0;
+
 protected:
-    NetWork() {}
+	StateCompute() {}
 };
 
 } // namespace hotstuff
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
+#endif // RIPPLE_CONSENSUS_HOTSTUFF_STATECOMPUTE_H

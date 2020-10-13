@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/consensus/hotstuff/impl/RoundState.h>
+#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
 
 namespace ripple {
 namespace hotstuff {
@@ -58,6 +59,15 @@ void RoundState::CancelRoundTimeout() {
 		if (round_timeout_timer_.cancel() == 0)
 			break;
 	}
+}
+
+int RoundState::insertVote(
+	const Vote& vote, 
+	ValidatorVerifier* verifer, 
+	QuorumCertificate& quorumCert) {
+	if (vote.vote_data().proposed().round != current_round())
+		return 1;
+	return pending_votes_.insertVote(vote, verifer, quorumCert);
 }
 
 } // namespace hotstuff

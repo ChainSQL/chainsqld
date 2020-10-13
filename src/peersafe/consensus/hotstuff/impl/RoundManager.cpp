@@ -46,19 +46,18 @@ int RoundManager::start() {
 	// open a new round
 	boost::optional<NewRoundEvent> new_round_event = round_state_->ProcessCertificates(block_store_->sync_info());
 	if (new_round_event) {
-		int ret = ProcessNewRoundEvent(new_round_event.get());
-		// setup round timeout
-		boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
-		roundTimeoutTimer.expires_from_now(std::chrono::seconds(7));
-		roundTimeoutTimer.async_wait(
-			std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, new_round_event->round));
-
-		return ret;
+		return ProcessNewRoundEvent(new_round_event.get());
 	}
 	return 1;
 }
 
 int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
+	// setup round timeout
+	boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
+	roundTimeoutTimer.expires_from_now(std::chrono::seconds(7));
+	roundTimeoutTimer.async_wait(
+		std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, new_round_event.round));
+
 	if (!proposer_election_->IsValidProposer(proposal_generator_->author(), new_round_event.round)) {
 		return 1;
 	}
@@ -85,6 +84,126 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 }
 
 int RoundManager::ProcessProposal(const Block& proposal, const SyncInfo& sync_info) {
+	if (EnsureRoundAndSyncUp(
+		proposal.block_data().round,
+		sync_info,
+		proposal.block_data().author()) == false) {
+		return 1;
+	}
+	return ProcessProposal(proposal);
+}
+
+int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
+	if (EnsureRoundAndSyncUp(
+		vote.vote_data().proposed().round,
+		sync_info,
+		vote.author()) == false) {
+		return 1;
+	}
+	return ProcessVote(vote);
+}
+
+int RoundManager::ProcessProposal(const Block& proposal) {
+	if (proposer_election_->IsValidProposal(proposal) == false)
+		return 1;
+
+	Round proposal_round = proposal.block_data().round;
+	Vote vote;
+	if (ExecuteAndVote(proposal, vote) == false) {
+		return 1;
+	}
+
+	Author next_leader = proposer_election_->GetValidProposer(proposal_round + 1);
+	round_state_->recordVote(vote);
+	network_->sendVote(next_leader, vote, block_store_->sync_info());
+	return 0;
+}
+
+int RoundManager::ProcessVote(const Vote& vote) {
+	Round next_round = vote.vote_data().proposed().round + 1;
+	if (proposer_election_->IsValidProposer(proposal_generator_->author(), next_round) == false) {
+		return 1;
+	}
+
+	// TODO
+	// Get QC from block storage
+
+	// Add the vote and check whether it completes a new QC or a TC
+	QuorumCertificate quorumCert;
+	if (round_state_->insertVote(
+		vote, 
+		hotstuff_core_->epochState()->verifier,
+		quorumCert) == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
+
+		NewQCAggregated(quorumCert);
+		return 0;
+	}
+	return 1;
+}
+
+/// The function generates a VoteMsg for a given proposed_block:
+/// * first execute the block and add it to the block store
+/// * then verify the voting rules
+bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
+	ExecutedBlock executed_block = block_store_->executeAndAddBlock(proposal);
+	if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false)
+		return false;
+	block_store_->saveVote(vote);
+	return true;
+}
+
+bool RoundManager::EnsureRoundAndSyncUp(
+		Round round,
+		const SyncInfo& sync_info,
+		const Author& author) {
+	if (round < round_state_->current_round()) {
+		return false;
+	}
+
+	if (SyncUp(sync_info, author) != 0)
+		return false;
+
+	if (round != round_state_->current_round()) {
+		assert(round == round_state_->current_round());
+		return false;
+	}
+	return true;
+}
+
+int RoundManager::SyncUp(
+	const SyncInfo& sync_info,
+	const Author& author) {
+	SyncInfo local_sync_info = block_store_->sync_info();
+
+	// TODO
+	// if local_sync_info is newer than sync_info, 
+	// then local send local_sync_info to remote peer
+
+
+	if (sync_info.hasNewerCertificate(local_sync_info)) {
+		if (const_cast<SyncInfo&>(sync_info).Verify(hotstuff_core_->epochState()->verifier) == false)
+			return 1;
+		block_store_->addCerts(sync_info);
+		// open a new round
+		ProcessCertificates();
+	}
+
+	return 0;
+}
+
+int RoundManager::ProcessCertificates() {
+	SyncInfo sync_info = block_store_->sync_info();
+	boost::optional<NewRoundEvent> new_round_event = round_state_->ProcessCertificates(sync_info);
+	if (new_round_event) {
+		ProcessNewRoundEvent(new_round_event.get());
+	}
+	return 0;
+}
+
+int RoundManager::NewQCAggregated(const QuorumCertificate& quorumCert) {
+	if (block_store_->insertQuorumCert(quorumCert) == 0) {
+		ProcessCertificates();
+	}
 	return 0;
 }
 
