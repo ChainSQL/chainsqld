@@ -138,7 +138,7 @@ macro(parse_target)
   else()
     set(CMAKE_BUILD_TYPE Debug)
     set(LLVM_BUILD_TYPE Debug)
-    add_definitions(-DDEBUG)
+    add_definitions(-DDEBUGMOD)
   endif()
 
   # ensure that the unity flags are set and exclusive

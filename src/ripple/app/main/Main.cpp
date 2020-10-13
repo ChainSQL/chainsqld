@@ -504,7 +504,7 @@ int run (int argc, char** argv)
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))
             return -1;
 
-#ifndef DEBUG
+#ifndef DEBUGMOD
         if (HaveSustain() && !vm.count ("fg") && !config->standalone())
         {
             auto const ret = DoSustain ();

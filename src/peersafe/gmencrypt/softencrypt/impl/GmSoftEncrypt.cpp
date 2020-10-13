@@ -288,7 +288,7 @@ unsigned long SoftEncrypt::SM2ECCVerify(
         int verifyRet = SM2_verify(NID_undef, pInData, ulInDataLen, derlSig, derSigLen, pubkey);
         if (verifyRet != SM2_VERIFY_SUCCESS)
         {
-            DebugPrint("SM2ECCSign: SM2_verify failed"); 
+            DebugPrint("SM2ECCSign: SM2_verify failed");
         }
         else
         {
