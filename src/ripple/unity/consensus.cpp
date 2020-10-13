@@ -30,3 +30,18 @@
 #include <peersafe/consensus/pop/impl/PopAdaptor.cpp>
 #include <peersafe/consensus/pop/impl/PopConsensus.cpp>
 
+#include <peersafe/consensus/hotstuff/impl/Block.cpp>
+#include <peersafe/consensus/hotstuff/impl/BlockStorage.cpp>
+#include <peersafe/consensus/hotstuff/impl/EpochState.cpp>
+#include <peersafe/consensus/hotstuff/impl/HotstuffCore.cpp>
+#include <peersafe/consensus/hotstuff/impl/PendingVotes.cpp>
+#include <peersafe/consensus/hotstuff/impl/ProposalGenerator.cpp>
+#include <peersafe/consensus/hotstuff/impl/QuorumCert.cpp>
+#include <peersafe/consensus/hotstuff/impl/RoundManager.cpp>
+#include <peersafe/consensus/hotstuff/impl/RoundState.cpp>
+#include <peersafe/consensus/hotstuff/impl/SyncInfo.cpp>
+#include <peersafe/consensus/hotstuff/impl/Vote.cpp>
+#include <peersafe/consensus/hotstuff/impl/VoteData.cpp>
+#include <peersafe/consensus/hotstuff/impl/HotstuffAdaptor.cpp>
+#include <peersafe/consensus/hotstuff/impl/Hotstuff.cpp>
+

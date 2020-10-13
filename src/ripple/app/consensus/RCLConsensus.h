@@ -37,7 +37,9 @@ enum ConsensusType
 {
     RPCA        = 0,
     POP         = 1,
-    UNKNOWN     = 2,
+    HOTSTUFF    = 2,
+
+    UNKNOWN,
 };
 
 class InboundTransactions;

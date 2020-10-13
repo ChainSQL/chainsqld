@@ -27,6 +27,7 @@
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/Blob.h>
 #include <ripple/protocol/digest.h>
+#include <ripple/protocol/PublicKey.h>
 
 namespace ripple { namespace hotstuff {
 
@@ -39,7 +40,7 @@ inline HashValue ZeroHash() {
 //using BlockHash = sha512_half_hasher::result_type; 
 using Command = std::vector<std::string>;
 
-using Author = std::string;
+using Author = ripple::PublicKey;
 using ReplicaID = int;
 using Epoch = int64_t;
 using Round = int64_t;

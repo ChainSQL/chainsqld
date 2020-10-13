@@ -23,58 +23,138 @@
 namespace ripple { namespace hotstuff {
 
 Hotstuff::Hotstuff(
-	boost::asio::io_service& ios,
-    const beast::Journal& journal,
-	const Author& author,
-	CommandManager* cm,
-	ProposerElection* proposer_election,
-	StateCompute* state_compute,
-	ValidatorVerifier* verifier,
-	NetWork* network)
-: init_vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
-, init_ledgerinfo_(LedgerInfoWithSignatures::LedgerInfo{ init_vote_data_.proposed(), init_vote_data_.hash() })
-, storage_(
-	state_compute, 
-	QuorumCertificate(init_vote_data_, init_ledgerinfo_),
-	QuorumCertificate(init_vote_data_, init_ledgerinfo_))
-, epoch_state_()
-, round_state_(&ios)
-, proposal_generator_(cm, &storage_, author)
-, hotstuff_core_(journal, state_compute, &epoch_state_)
-, round_manager_(nullptr) {
-
+    ripple::Adaptor& adaptor,
+    clock_type const& clock,
+    beast::Journal j)
+    : ConsensusBase(clock, j)
+    , adaptor_(*(HotstuffAdaptor*)(&adaptor))
+    , init_vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
+    , init_ledgerinfo_(LedgerInfoWithSignatures::LedgerInfo{ init_vote_data_.proposed(), init_vote_data_.hash() })
+    , storage_(
+	    this, 
+	    QuorumCertificate(init_vote_data_, init_ledgerinfo_),
+	    QuorumCertificate(init_vote_data_, init_ledgerinfo_))
+    , epoch_state_()
+    , round_state_(adaptor_.getIOService())
+    , proposal_generator_(this, &storage_, adaptor_.valPublic())
+    , hotstuff_core_(j, this, &epoch_state_)
+    , round_manager_(nullptr)
+{
 	epoch_state_.epoch = 0;
-	epoch_state_.verifier = verifier;
+	epoch_state_.verifier = this;
 
 	round_manager_ = new RoundManager(
 		&storage_, 
 		&round_state_, 
 		&hotstuff_core_,
 		&proposal_generator_,
-		proposer_election,
-		network);
+		&adaptor_,
+        &adaptor_);
 }
 
 Hotstuff::~Hotstuff() {
     delete round_manager_;
 }
 
-int Hotstuff::start() {
-	return round_manager_->start();
+void Hotstuff::startRound(
+    NetClock::time_point const& now,
+    typename Ledger_t::ID const& prevLedgerID,
+    Ledger_t prevLedger,
+    hash_set<NodeID> const& nowUntrusted,
+    bool proposing)
+{
+	round_manager_->start();
 }
 
+void Hotstuff::timerEntry(NetClock::time_point const& now)
+{
+    (void)now;
+}
+
+bool Hotstuff::peerConsensusMessage(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    return true;
+}
+
+void Hotstuff::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
+{
+
+}
+
+Json::Value Hotstuff::getJson(bool full) const
+{
+    Json::Value ret(Json::objectValue);
+
+    return ret;
+}
+
+void Hotstuff::extract(ripple::hotstuff::Command& cmd)
+{
+
+}
+
+bool Hotstuff::compute(const Block& block, ripple::LedgerInfo& ledger_info)
+{
+    return false;
+}
+
+bool Hotstuff::verify(const ripple::LedgerInfo& ledger_info, const ripple::LedgerInfo& parent_ledger_info)
+{
+    return false;
+}
+
+int Hotstuff::commit(const Block& block)
+{
+    return false;
+}
+
+const Author& Hotstuff::Self() const
+{
+    return adaptor_.valPublic();
+}
+
+bool Hotstuff::signature(const ripple::Slice& message, Signature& signature)
+{
+    return false;
+}
+
+bool Hotstuff::verifySignature(const Author& author, const Signature& signature, const ripple::Slice& message)
+{
+    return false;
+}
+
+const bool Hotstuff::verifyLedgerInfo(
+    const BlockInfo& commit_info,
+    const HashValue& consensus_data_hash,
+    const std::map<Author, Signature>& signatures) const
+{
+    return false;
+}
+
+const bool Hotstuff::checkVotingPower(const std::map<Author, Signature>& signatures) const
+{
+    return false;
+}
+
+// -------------------------------------------------------------------
+// Private member functions
+
 int Hotstuff::handleProposal(
-	const ripple::hotstuff::Block& proposal,
-	const ripple::hotstuff::SyncInfo& sync_info) {
-	return round_manager_->ProcessProposal(proposal, sync_info);
+    const ripple::hotstuff::Block& proposal,
+    const ripple::hotstuff::SyncInfo& sync_info)
+{
+    return round_manager_->ProcessProposal(proposal, sync_info);
 }
 
 int Hotstuff::handleVote(
-	const ripple::hotstuff::Vote& vote,
-	const ripple::hotstuff::SyncInfo& sync_info) {
-	return round_manager_->ProcessVote(vote, sync_info);
+    const ripple::hotstuff::Vote& vote,
+    const ripple::hotstuff::SyncInfo& sync_info)
+{
+    return round_manager_->ProcessVote(vote, sync_info);
 }
-
 
 } // namespace hotstuff
 } // namespace ripple

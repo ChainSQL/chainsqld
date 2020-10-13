@@ -24,6 +24,8 @@
 #include <peersafe/consensus/rpca/RpcaConsensus.h>
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/consensus/pop/PopConsensus.h>
+#include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
+#include <peersafe/consensus/hotstuff/Hotstuff.h>
 
 
 namespace ripple {
@@ -76,7 +78,18 @@ RCLConsensus::RCLConsensus(
             parms_);
         consensus_ = std::make_shared<PopConsensus>(*adaptor_, clock, journal);
         break;
+    case ConsensusType::HOTSTUFF:
+        adaptor_ = std::make_shared<HotstuffAdaptor>(
+            app,
+            std::move(feeVote),
+            ledgerMaster,
+            inboundTransactions,
+            validatorKeys,
+            journal);
+        consensus_ = std::make_shared<hotstuff::Hotstuff>(*adaptor_, clock, journal);
+        break;
     default:
+        Throw<std::runtime_error>("bad consensus type");
         break;
     }
 }
@@ -157,8 +170,9 @@ bool RCLConsensus::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger
 
 ConsensusType RCLConsensus::stringToConsensusType(std::string const& s)
 {
-    if (s == "RPCA")    return ConsensusType::RPCA;
-    if (s == "POP")     return ConsensusType::POP;
+    if (s == "RPCA")        return ConsensusType::RPCA;
+    if (s == "POP")         return ConsensusType::POP;
+    if (s == "HOTSTUFF")    return ConsensusType::HOTSTUFF;
 
     return ConsensusType::UNKNOWN;
 }
