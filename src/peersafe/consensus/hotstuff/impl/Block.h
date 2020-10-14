@@ -80,7 +80,6 @@ public:
 	}
 };
 
-
 class Block {
 public: 
     ~Block();
@@ -89,6 +88,7 @@ public:
 	static Block new_from_block_data(
 		const BlockData& block_data, 
 		ValidatorVerifier* verifier);
+	static Block new_genesis_block();
 
 	const HashValue& id() const {
 		return id_;
@@ -110,8 +110,6 @@ private:
 	BlockData block_data_;
 	boost::optional<Signature> signature_;
 };
-
-
 
 } // namespace hotstuff 
 } // namespace ripple

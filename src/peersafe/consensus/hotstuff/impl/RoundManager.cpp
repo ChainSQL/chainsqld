@@ -34,12 +34,13 @@ RoundManager::RoundManager(
 , hotstuff_core_(hotstuff_core)
 , proposal_generator_(proposal_generator)
 , proposer_election_(proposer_election)
-, network_(network) {
+, network_(network)
+, stop_(false) {
 
 }
 
 RoundManager::~RoundManager() {
-
+	assert(stop_ == true);
 }
 
 int RoundManager::start() {
@@ -49,6 +50,15 @@ int RoundManager::start() {
 		return ProcessNewRoundEvent(new_round_event.get());
 	}
 	return 1;
+}
+
+void RoundManager::stop() {
+	stop_ = true;
+
+	for (;;) {
+		if (round_state_->RoundTimeoutTimer().cancel() == 0)
+			break;
+	}
 }
 
 int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
@@ -84,6 +94,9 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 }
 
 int RoundManager::ProcessProposal(const Block& proposal, const SyncInfo& sync_info) {
+	if (stop_)
+		return 1;
+
 	if (EnsureRoundAndSyncUp(
 		proposal.block_data().round,
 		sync_info,
@@ -94,6 +107,9 @@ int RoundManager::ProcessProposal(const Block& proposal, const SyncInfo& sync_in
 }
 
 int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
+	if (stop_)
+		return 1;
+
 	if (EnsureRoundAndSyncUp(
 		vote.vote_data().proposed().round,
 		sync_info,

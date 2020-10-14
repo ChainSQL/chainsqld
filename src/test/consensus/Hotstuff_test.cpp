@@ -74,12 +74,14 @@ public:
 	, author_(author)
 	, key_pair_(ripple::randomKeyPair(ripple::KeyType::secp256k1))
 	, env_(env)
-	, hotstuff_(io_service_, journal, author_, this, this, this, this, this) {
+	, committed_blocks_() 
+	, hotstuff_(io_service_, journal, author_, this, this, this, this, this){
 		Replica::replicas[Replica::index++] = this;
 	}
 
 	~Replica() {
 		Replica::index = 1;
+		committed_blocks_.clear();
 	}
 
 	// for StateCompute
@@ -92,7 +94,14 @@ public:
 	}
 
 	int commit(const ripple::hotstuff::Block& block) {
+		auto it = committed_blocks_.find(block.id());
+		if (it == committed_blocks_.end())
+			committed_blocks_.emplace(std::make_pair(block.id(), block));
 		return 0;
+	}
+
+	const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& committedBlocks() const {
+		return committed_blocks_;
 	}
 
 	// for CommandManager
@@ -134,10 +143,10 @@ public:
 		return true;
 	}
 
-	bool verifySignature(
+	const bool verifySignature(
 		const ripple::hotstuff::Author& author, 
 		const ripple::hotstuff::Signature& signature, 
-		const ripple::Slice& message) {
+		const ripple::Slice& message) const {
 
 		Replica* replica = nullptr;
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
@@ -160,6 +169,12 @@ public:
 		const ripple::hotstuff::BlockInfo& commit_info,
 		const ripple::hotstuff::HashValue& consensus_data_hash,
 		const std::map<ripple::hotstuff::Author, ripple::hotstuff::Signature>& signatures) const {
+
+		ripple::Slice message(consensus_data_hash.data(), consensus_data_hash.size());
+		for (auto it = signatures.begin(); it != signatures.end(); it++) {
+			if (verifySignature(it->first, it->second, message) == false)
+				return false;
+		}
 		return true;
 	}
 
@@ -206,7 +221,7 @@ public:
 	}
 
 	void stop() {
-
+		hotstuff_.stop();
 	}
 
 	const ripple::hotstuff::Author& author() const {
@@ -221,6 +236,7 @@ private:
 	ripple::hotstuff::Author author_;
 	KeyPair key_pair_;
 	jtx::Env* env_;
+	std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committed_blocks_;
 	ripple::hotstuff::Hotstuff hotstuff_;
 
 	static int index;
@@ -230,23 +246,57 @@ int Replica::index = 1;
 
 class Hotstuff_test : public beast::unit_test::suite {
 public:
-	void runReplicas(jtx::Env* env, beast::Journal& journal, int replicas) {
+
+	void parse_args() {
+		std::istringstream is(arg());
+		std::string token;
+		std::vector<std::string> tokens;
+		while (std::getline(is, token, ' ')) {
+			tokens.push_back(token);
+		}
+
+		for (std::size_t i = 0; i < tokens.size(); i++) {
+			const std::string& token = tokens[i];
+			std::size_t npos = token.find("=");
+			if (npos == -1) {
+				continue;
+			}
+
+			std::string arg_key = token.substr(0, npos);
+			std::string arg_value = token.substr(npos + 1);
+			if (arg_key.compare("disable_log") == 0) {
+				if (arg_value.compare("1") == 0) {
+					disable_log_ = true;
+				}
+			}
+			else if (arg_key.compare("replicas") == 0) {
+				replicas_ = std::atoi(arg_value.c_str());
+			}
+			else if (arg_key.compare("blocks") == 0) {
+				blocks_ = std::atoi(arg_value.c_str());
+			}
+		}
+	}
+
+	void newAndRunReplicas(jtx::Env* env, beast::Journal& journal, int replicas) {
 		for (int i = 0; i < replicas; i++) {
 			ripple::hotstuff::Author author = (boost::format("%1%") %(i + 1)).str();
 			new Replica(author, env, journal);
 		}
 
+		// 本地测试第一次启动的时候需要保证非 Leader 节点先 run 起来
+		// 然后 leader 节点再 run，原因是 leader 节点 run 起来后会立刻发起
+		// proposal，而此时非 leader 节点可能会没有 run，从而导致 assert
 		for (auto it = Replica::replicas.begin();
 			it != Replica::replicas.end(); 
 			it++) {
-			it->second->run();
+			if(it->first != 1)
+				it->second->run();
 		}
+		Replica::replicas[1]->run();
 	}
 
 	void stopReplicas(jtx::Env* env, int replicas) {
-
-		BEAST_EXPECT(replicas == Replica::replicas.size());
-
 		for (auto it = Replica::replicas.begin();
 			it != Replica::replicas.end(); 
 			it++) {
@@ -257,29 +307,93 @@ public:
 			if (env->app().getJobQueue().getJobCountTotal(jtPROPOSAL_t) == 0)
 				break;
 		}
+	}
 
+	void releaseReplicas(int replicas) {
 		for (auto it = Replica::replicas.begin();
 			it != Replica::replicas.end(); 
 			it++) {
 			delete it->second;
 		}
-
 		Replica::replicas.clear();
 	}
-	
-	void testCase() {
-		jtx::Env env{ *this };
-		env.app().logs().threshold(beast::severities::kDisabled);
 
-		runReplicas(&env, env.app().journal("testCase"), 4);
-		stopReplicas(&env, 4);
+	bool waitUntilCommittedBlocks(int committedBlocks) {
+		while (true) {
+			bool satisfied = true;
+			for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+				if (it->second->committedBlocks().size() < committedBlocks) {
+					satisfied = false;
+					continue;
+				}
+			}
+
+			if (satisfied)
+				break;
+		}
+		return true;
 	}
+
+	bool hasConsensusedCommittedBlocks(int committedBlocks) {
+		std::vector<ripple::hotstuff::HashValue> summary_hash;
+
+		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+			const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& committedBlocksContainer = it->second->committedBlocks();
+			using beast::hash_append;
+			ripple::sha512_half_hasher h;
+			for (int i = 0; i < committedBlocks; i++) {
+				for (auto block_it = committedBlocksContainer.begin(); block_it != committedBlocksContainer.end(); block_it++) {
+					if ((i + 1) == block_it->second.block_data().round) {
+						hash_append(h, block_it->first);
+					}
+				}
+			}
+
+			summary_hash.push_back(
+				static_cast<typename sha512_half_hasher::result_type>(h)
+			);
+		}
+
+		if (summary_hash.size() != Replica::replicas.size())
+			return false;
+		ripple::hotstuff::HashValue hash = summary_hash[0];
+		for (std::size_t i = 1; i < summary_hash.size(); i++) {
+			if (hash != summary_hash[i])
+				return false;
+		}
+		return true;
+	}
+	
+	void testNormalRound() {
+		jtx::Env env{ *this };
+		if(disable_log_)
+			env.app().logs().threshold(beast::severities::kDisabled);
+
+		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_);
+		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_) == true);
+		stopReplicas(&env, replicas_);
+		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
+		releaseReplicas(replicas_);
+	}
+
+
     void run() override {
-		testCase();
-		BEAST_EXPECT(false);
+		parse_args();
+
+		testNormalRound();
     }
 
+	Hotstuff_test()
+	: replicas_(4)
+	, blocks_(4)
+	, disable_log_(false) {
+
+	}
+
 private:
+	int replicas_;
+	int blocks_;
+	bool disable_log_;
 };
 
 BEAST_DEFINE_TESTSUITE(Hotstuff, consensus, ripple);

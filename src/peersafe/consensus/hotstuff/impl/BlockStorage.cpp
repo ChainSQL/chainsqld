@@ -42,6 +42,16 @@ BlockStorage::BlockStorage(
 
 }
 
+BlockStorage::BlockStorage(
+	StateCompute* state_compute,
+	const Block& genesis_block)
+: state_compute_(state_compute)
+, cache_blocks_()
+, highest_quorum_cert_(genesis_block.block_data().quorum_cert)
+, highest_commit_cert_(genesis_block.block_data().quorum_cert) {
+	executeAndAddBlock(genesis_block);
+}
+
 BlockStorage::~BlockStorage() {
 
 }

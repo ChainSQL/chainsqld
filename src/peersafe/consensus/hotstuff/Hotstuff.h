@@ -122,12 +122,17 @@ public:
     // Overwrite ValidatorVerifier interfaces.
     const Author& Self() const override final;
     bool signature(const ripple::Slice& message, Signature& signature) override final;
-    bool verifySignature(const Author& author, const Signature& signature, const ripple::Slice& message) override final;
+    const bool verifySignature(
+        const Author& author,
+        const Signature& signature,
+        const ripple::Slice& message) const override final;
     const bool verifyLedgerInfo(
         const BlockInfo& commit_info,
         const HashValue& consensus_data_hash,
         const std::map<Author, Signature>& signatures) const override final;
     const bool checkVotingPower(const std::map<Author, Signature>& signatures) const override final;
+
+	void stop();
 
 private:
     int handleProposal(
@@ -141,8 +146,8 @@ private:
 private:
     ripple::HotstuffAdaptor& adaptor_;
 
-    VoteData init_vote_data_;
-    LedgerInfoWithSignatures init_ledgerinfo_;
+    //VoteData init_vote_data_;
+    //LedgerInfoWithSignatures init_ledgerinfo_;
     BlockStorage storage_;
     EpochState epoch_state_;
     RoundState round_state_;

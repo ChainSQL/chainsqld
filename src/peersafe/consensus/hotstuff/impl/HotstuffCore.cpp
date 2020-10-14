@@ -134,7 +134,7 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 }
 
 bool HotstuffCore::VerifyAuthor(const Author& author) {
-	return true;
+	return author == epoch_state_->verifier->Self();
 }
 
 bool HotstuffCore::VerifyEpoch(const Epoch epoch) {

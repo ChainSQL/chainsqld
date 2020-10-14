@@ -50,6 +50,9 @@ public:
 		StateCompute* state_compute,
 		const QuorumCertificate& highest_quorum_cert, 
 		const QuorumCertificate& highest_commit_cert);
+	BlockStorage(
+		StateCompute* state_compute,
+		const Block& genesis_block);
     ~BlockStorage();
 
     // for blocks

@@ -28,12 +28,7 @@ Hotstuff::Hotstuff(
     beast::Journal j)
     : ConsensusBase(clock, j)
     , adaptor_(*(HotstuffAdaptor*)(&adaptor))
-    , init_vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
-    , init_ledgerinfo_(LedgerInfoWithSignatures::LedgerInfo{ init_vote_data_.proposed(), init_vote_data_.hash() })
-    , storage_(
-	    this, 
-	    QuorumCertificate(init_vote_data_, init_ledgerinfo_),
-	    QuorumCertificate(init_vote_data_, init_ledgerinfo_))
+    , storage_(this, Block::new_genesis_block())
     , epoch_state_()
     , round_state_(adaptor_.getIOService())
     , proposal_generator_(this, &storage_, adaptor_.valPublic())
@@ -121,7 +116,10 @@ bool Hotstuff::signature(const ripple::Slice& message, Signature& signature)
     return false;
 }
 
-bool Hotstuff::verifySignature(const Author& author, const Signature& signature, const ripple::Slice& message)
+const bool Hotstuff::verifySignature(
+    const Author& author,
+    const Signature& signature,
+    const ripple::Slice& message) const
 {
     return false;
 }
@@ -137,6 +135,10 @@ const bool Hotstuff::verifyLedgerInfo(
 const bool Hotstuff::checkVotingPower(const std::map<Author, Signature>& signatures) const
 {
     return false;
+}
+
+void Hotstuff::stop() {
+    round_manager_->stop();
 }
 
 // -------------------------------------------------------------------

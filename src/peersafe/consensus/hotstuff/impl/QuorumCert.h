@@ -74,7 +74,15 @@ public:
 		return vote_data_.proposed();
 	}
 
+	BlockInfo& certified_block() {
+		return vote_data_.proposed();
+	}
+
 	const BlockInfo& parent_block() const {
+		return vote_data_.parent();
+	}
+
+	BlockInfo& parent_block() {
 		return vote_data_.parent();
 	}
 

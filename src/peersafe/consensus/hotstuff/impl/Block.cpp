@@ -70,6 +70,25 @@ Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier*
 	return block;
 }
 
+Block Block::new_genesis_block() {
+	Block block;
+	VoteData init_vote_data(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())));
+	LedgerInfoWithSignatures::LedgerInfo init_ledger{ init_vote_data.proposed(), init_vote_data.hash()};
+	QuorumCertificate qc(init_vote_data, init_ledger);
+
+	BlockData block_data;
+	block_data.epoch = 0;
+	block_data.round = 0;
+	block_data.timestamp_usecs = 0;
+	block_data.quorum_cert = qc;
+	block_data.block_type = BlockData::Genesis;
+
+	block.id_ = BlockData::hash(block_data);
+	block.block_data_ = block_data;
+
+	return block;
+}
+
 BlockInfo Block::gen_block_info(const ripple::LedgerInfo& ledger_info) {
 	BlockInfo block_info(id_);
 	block_info.epoch = block_data_.epoch;

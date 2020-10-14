@@ -42,6 +42,8 @@ public:
 	~RoundManager();
 	
 	int start();
+	void stop();
+
 	int ProcessProposal(const Block& proposal, const SyncInfo& sync_info);
 	int ProcessVote(const Vote& vote, const SyncInfo& sync_info);
 private:
@@ -68,6 +70,8 @@ private:
 	ProposalGenerator* proposal_generator_;
 	ProposerElection* proposer_election_;
 	NetWork* network_;
+
+	bool stop_;
 };
 
 } // namespace hotstuff
