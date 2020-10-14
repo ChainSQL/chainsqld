@@ -39,6 +39,7 @@ Hotstuff::Hotstuff(
 	epoch_state_.verifier = this;
 
 	round_manager_ = new RoundManager(
+		j,
 		&storage_, 
 		&round_state_, 
 		&hotstuff_core_,

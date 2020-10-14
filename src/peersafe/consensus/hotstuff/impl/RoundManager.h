@@ -33,6 +33,7 @@ namespace hotstuff {
 class RoundManager {
 public:
 	RoundManager(
+		const beast::Journal& journal,
 		BlockStorage* block_store,
 		RoundState* round_state,
 		HotstuffCore* hotstuff_core,
@@ -64,6 +65,7 @@ private:
 
 	void ProcessLocalTimeout(const boost::system::error_code& ec, Round round);
 
+	beast::Journal journal_;
 	BlockStorage* block_store_;
 	RoundState* round_state_;
 	HotstuffCore* hotstuff_core_;

@@ -23,13 +23,15 @@ namespace ripple {
 namespace hotstuff {
 
 RoundManager::RoundManager(
+	const beast::Journal& journal,
 	BlockStorage* block_store,
 	RoundState* round_state,
 	HotstuffCore* hotstuff_core,
 	ProposalGenerator* proposal_generator,
 	ProposerElection* proposer_election,
 	NetWork* network)
-: block_store_(block_store)
+: journal_(journal)
+, block_store_(block_store)
 , round_state_(round_state)
 , hotstuff_core_(hotstuff_core)
 , proposal_generator_(proposal_generator)
@@ -69,6 +71,10 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
 		std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, new_round_event.round));
 
 	if (!proposer_election_->IsValidProposer(proposal_generator_->author(), new_round_event.round)) {
+		JLOG(journal_.error())
+			<< "ProcessNewRoundEvent: invalidProposel."
+			<< " New round is " << new_round_event.round
+			<< " and proposal's author is " << proposal_generator_->author();
 		return 1;
 	}
 	boost::optional<Block> proposal = GenerateProposal(new_round_event);
@@ -101,6 +107,9 @@ int RoundManager::ProcessProposal(const Block& proposal, const SyncInfo& sync_in
 		proposal.block_data().round,
 		sync_info,
 		proposal.block_data().author()) == false) {
+		JLOG(journal_.error())
+			<< "Stale proposal, current round " 
+			<< round_state_->current_round();
 		return 1;
 	}
 	return ProcessProposal(proposal);
@@ -120,12 +129,20 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 }
 
 int RoundManager::ProcessProposal(const Block& proposal) {
-	if (proposer_election_->IsValidProposal(proposal) == false)
+	if (proposer_election_->IsValidProposal(proposal) == false) {
+		JLOG(journal_.error())
+			<< "Proposer " << proposal.block_data().author()
+			<< " for the proposal"
+			<< " is not a valid proposer for this round "
+			<< proposal.block_data().round;
 		return 1;
+	}
 
 	Round proposal_round = proposal.block_data().round;
 	Vote vote;
 	if (ExecuteAndVote(proposal, vote) == false) {
+		JLOG(journal_.error())
+			<< "Execute and vote failed for the proposal";
 		return 1;
 	}
 
@@ -138,6 +155,9 @@ int RoundManager::ProcessProposal(const Block& proposal) {
 int RoundManager::ProcessVote(const Vote& vote) {
 	Round next_round = vote.vote_data().proposed().round + 1;
 	if (proposer_election_->IsValidProposer(proposal_generator_->author(), next_round) == false) {
+		JLOG(journal_.warn())
+			<< "Received a vote, but i am not a valid proposer for this round "
+			<< next_round << ", ignore.";
 		return 1;
 	}
 
@@ -173,6 +193,10 @@ bool RoundManager::EnsureRoundAndSyncUp(
 		const SyncInfo& sync_info,
 		const Author& author) {
 	if (round < round_state_->current_round()) {
+		JLOG(journal_.error())
+			<< "EnsureRoundAndSyncUp: Invalid round."
+			<< "Round is " << round
+			<< " and local round is " << round_state_->current_round();
 		return false;
 	}
 
@@ -180,6 +204,9 @@ bool RoundManager::EnsureRoundAndSyncUp(
 		return false;
 
 	if (round != round_state_->current_round()) {
+		JLOG(journal_.error())
+			<< "After sync, round " << round 
+			<< " dosen't match local round " << round_state_->current_round();
 		assert(round == round_state_->current_round());
 		return false;
 	}
@@ -197,8 +224,14 @@ int RoundManager::SyncUp(
 
 
 	if (sync_info.hasNewerCertificate(local_sync_info)) {
-		if (const_cast<SyncInfo&>(sync_info).Verify(hotstuff_core_->epochState()->verifier) == false)
+		JLOG(journal_.debug())
+			<< "local sync info is stale than remote stale";
+
+		if (const_cast<SyncInfo&>(sync_info).Verify(hotstuff_core_->epochState()->verifier) == false) {
+			JLOG(journal_.error())
+				<< "Verifing sync_info failed";
 			return 1;
+		}
 		block_store_->addCerts(sync_info);
 		// open a new round
 		ProcessCertificates();

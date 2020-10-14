@@ -146,8 +146,6 @@ private:
 private:
     ripple::HotstuffAdaptor& adaptor_;
 
-    //VoteData init_vote_data_;
-    //LedgerInfoWithSignatures init_ledgerinfo_;
     BlockStorage storage_;
     EpochState epoch_state_;
     RoundState round_state_;
