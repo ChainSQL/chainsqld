@@ -55,6 +55,8 @@ SF_U8 const sfMethod            (access, STI_UINT8, 2, "Method");
 
 // 8-bit integers (uncommon)
 SF_U8 const sfTickSize          (access, STI_UINT8, 16, "TickSize");
+SF_U8 const sfSchemaStrategy    (access, STI_UINT8, 17, "SchemaStrategy");
+SF_U8 const sfSigned            (access, STI_UINT8, 18, "Signed");
 
 // 16-bit integers
 SF_U16 const sfLedgerEntryType (access, STI_UINT16, 1, "LedgerEntryType", SField::sMD_Never);
@@ -151,13 +153,14 @@ SF_U256 const sfWalletLocator   (access, STI_HASH256, 7, "WalletLocator");
 SF_U256 const sfRootIndex       (access, STI_HASH256, 8, "RootIndex", SField::sMD_Always);
 SF_U256 const sfAccountTxnID    (access, STI_HASH256, 9, "AccountTxnID");
 SF_U256 const sfPrevTxnLedgerHash(access,  STI_HASH256, 50, "PrevTxnLedgerHash");
-SF_U256 const sfTxnLedgerHash    (access,    STI_HASH256, 51, "TxnLedgerHash");
-SF_U256 const sfTxCheckHash      (access,    STI_HASH256, 52, "TxCheckHash");
+SF_U256 const sfTxnLedgerHash    (access,  STI_HASH256, 51, "TxnLedgerHash");
+SF_U256 const sfTxCheckHash      (access,  STI_HASH256, 52, "TxCheckHash");
 SF_U256 const sfCreatedLedgerHash(access,  STI_HASH256, 53, "CreatedLedgerHash");
-SF_U256 const sfCreatedTxnHash   (access,    STI_HASH256, 54, "CreatedTxnHash");
-SF_U256 const sfCurTxHash        (access,    STI_HASH256, 55, "CurTxHash");
-SF_U256 const sfFutureTxHash     (access,    STI_HASH256, 56, "FutureTxHash");
-SF_U256 const sfChainId			 (access,	STI_HASH256, 57, "ChainId");
+SF_U256 const sfCreatedTxnHash   (access,  STI_HASH256, 54, "CreatedTxnHash");
+SF_U256 const sfCurTxHash        (access,  STI_HASH256, 55, "CurTxHash");
+SF_U256 const sfFutureTxHash     (access,  STI_HASH256, 56, "FutureTxHash");
+SF_U256 const sfChainId			 (access,  STI_HASH256, 57, "ChainId");
+SF_U256 const sfAnchorLedgerHash (access,  STI_HASH256, 58, "AnchorLedgerHash");
 
 // 256-bit (uncommon)
 SF_U256 const sfBookDirectory (access, STI_HASH256, 16, "BookDirectory");
@@ -227,6 +230,7 @@ SF_Blob const sfContractCode	(access, STI_VL, 64, "ContractCode");
 SF_Blob const sfContractData	(access, STI_VL, 65, "ContractData");
 SF_Blob const sfContractTxs     (access, STI_VL, 66, "ContractTxs");
 SF_Blob const sfContractLogs    (access, STI_VL, 67, "ContractLogs");
+SF_Blob const sfSchemaName      (access, STI_VL, 68, "SchemaName");
 
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");
@@ -240,6 +244,7 @@ SF_Account const sfRegularKey  (access, STI_ACCOUNT, 8, "RegularKey");
 SF_Account const sfUser		   (access, STI_ACCOUNT, 50, "User");
 SF_Account const sfOriginalAddress (access, STI_ACCOUNT, 51, "OriginalAddress");
 SF_Account const sfContractAddress (access, STI_ACCOUNT, 52, "ContractAddress");
+SF_Account const sfSchemaAdmin     (access, STI_ACCOUNT, 53, "SchemaAdmin");
 
 SF_Entry const sfEntry			(access, STI_ENTRY, 1, "Entry");
 

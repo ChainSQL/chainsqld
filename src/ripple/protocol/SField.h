@@ -334,6 +334,8 @@ extern SField const sfMetadata;
 extern SF_U8 const sfCloseResolution;
 extern SF_U8 const sfMethod;
 extern SF_U8 const sfTickSize;
+extern SF_U8 const sfSchemaStrategy;
+extern SF_U8 const sfSigned;
 // 16-bit integers
 extern SF_U16 const sfLedgerEntryType;
 extern SF_U16 const sfTransactionType;
@@ -431,6 +433,7 @@ extern SF_U256 const sfCreatedTxnHash;
 extern SF_U256 const sfCurTxHash;
 extern SF_U256 const sfFutureTxHash;
 extern SF_U256 const sfChainId;
+extern SF_U256 const sfAnchorLedgerHash;
 
 // 256-bit (uncommon)
 extern SF_U256 const sfBookDirectory;
@@ -499,6 +502,7 @@ extern SF_Blob const sfTransferFeeMin;
 extern SF_Blob const sfTransferFeeMax;
 extern SF_Blob const sfContractCode;
 extern SF_Blob const sfContractData;
+extern SF_Blob const sfSchemaName;
 
 // account
 extern SF_Account const sfAccount;
@@ -512,6 +516,7 @@ extern SF_Account const sfRegularKey;
 extern SF_Account const sfUser;
 extern SF_Account const sfOriginalAddress;
 extern SF_Account const sfContractAddress;
+extern SF_Account const sfSchemaAdmin;
 
 // Table Entry
 extern SF_Entry const sfEntry;

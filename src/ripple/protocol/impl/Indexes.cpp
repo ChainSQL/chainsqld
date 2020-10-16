@@ -411,6 +411,16 @@ payChan (AccountID const& source, AccountID const& dst, std::uint32_t seq)
     return { ltPAYCHAN, static_cast<uint256>(h) };
 }
 
+Keylet
+schema(AccountID const& account, std::uint32_t seq)
+{
+	sha512_half_hasher h;
+	using beast::hash_append;
+	hash_append(h, std::uint16_t(spaceSchema));
+	hash_append(h, account);
+	hash_append(h, seq);
+	return { ltSCHEMA, static_cast<uint256>(h) };
+}
 } // keylet
 
 } // ripple

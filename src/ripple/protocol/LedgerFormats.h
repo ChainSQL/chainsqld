@@ -98,6 +98,8 @@ enum LedgerEntryType
 	ltINSERTMAP			= 'i',
 
 	ltCHAINID			= 'b',
+
+	ltSCHEMA            = 'h',
 };
 
 /**
@@ -126,6 +128,7 @@ enum LedgerNameSpace
     spaceZXCUChannel    = 'x',
     spaceCheck          = 'C',
     spaceDepositPreauth = 'p',
+	spaceSchema         = 'h',
 
     // No longer used or supported. Left here to reserve the space and
     // avoid accidental reuse of the space.
