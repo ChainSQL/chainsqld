@@ -88,13 +88,17 @@ public:
 	static Block new_from_block_data(
 		const BlockData& block_data, 
 		ValidatorVerifier* verifier);
-	static Block new_genesis_block();
+	static Block new_genesis_block(const ripple::LedgerInfo& ledger_info);
 
 	const HashValue& id() const {
 		return id_;
 	}
 
 	const BlockData& block_data() const {
+		return block_data_;
+	}
+
+	BlockData& block_data() {
 		return block_data_;
 	}
 

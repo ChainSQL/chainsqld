@@ -87,6 +87,7 @@ public:
 private:
     //void recurseGCBlocks(const Block& block);
 	StateCompute* state_compute_;
+	HashValue genesis_block_id_;
     std::map<HashValue, ExecutedBlock> cache_blocks_;
 
 	QuorumCertificate highest_quorum_cert_;

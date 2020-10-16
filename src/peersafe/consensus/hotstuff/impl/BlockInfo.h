@@ -80,6 +80,15 @@ public:
 	, next_epoch_state() {
 
 	}
+
+	const bool empty() const {
+		return id.isZero()
+			&& ledger_info.txHash.isZero()
+			&& ledger_info.hash.isZero()
+			&& ledger_info.accountHash.isZero()
+			&& ledger_info.parentHash.isZero()
+			&& ledger_info.seq == 0;
+	}
 };
     
 } // namespace hotstuff

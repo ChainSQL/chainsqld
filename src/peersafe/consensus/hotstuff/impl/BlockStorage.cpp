@@ -46,6 +46,7 @@ BlockStorage::BlockStorage(
 	StateCompute* state_compute,
 	const Block& genesis_block)
 : state_compute_(state_compute)
+, genesis_block_id_(genesis_block.id())
 , cache_blocks_()
 , highest_quorum_cert_(genesis_block.block_data().quorum_cert)
 , highest_commit_cert_(genesis_block.block_data().quorum_cert) {
@@ -144,11 +145,19 @@ int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert) {
 
 int BlockStorage::saveVote(const Vote& vote) {
 	HashValue block_hash = vote.ledger_info().commit_info.id;
-	if (block_hash.isNonZero()) {
-		ExecutedBlock executed_block;
-		if (blockOf(block_hash, executed_block)) {
+
+	if (block_hash.isZero() 
+		&& vote.ledger_info().commit_info.empty() == false) {
+		// handle genesis block info
+		block_hash = genesis_block_id_;
+	}
+
+	if (block_hash.isZero())
+		return 1;
+
+	ExecutedBlock executed_block;
+	if (blockOf(block_hash, executed_block)) {
 			state_compute_->commit(executed_block.block);
-		}
 	}
 	return 0;
 }

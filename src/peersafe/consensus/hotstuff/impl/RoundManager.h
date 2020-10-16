@@ -21,6 +21,7 @@
 #define RIPPLE_CONSENSUS_HOTSTUFF_ROUND_MANAGER_H
 
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
+#include <peersafe/consensus/hotstuff/impl/RecoverData.h>
 #include <peersafe/consensus/hotstuff/impl/RoundState.h>
 #include <peersafe/consensus/hotstuff/impl/ProposerElection.h>
 #include <peersafe/consensus/hotstuff/impl/ProposalGenerator.h>

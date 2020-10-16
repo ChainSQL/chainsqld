@@ -70,23 +70,47 @@ Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier*
 	return block;
 }
 
-Block Block::new_genesis_block() {
-	Block block;
-	VoteData init_vote_data(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())));
-	LedgerInfoWithSignatures::LedgerInfo init_ledger{ init_vote_data.proposed(), init_vote_data.hash()};
-	QuorumCertificate qc(init_vote_data, init_ledger);
+Block Block::new_genesis_block(const ripple::LedgerInfo& ledger_info) {
 
-	BlockData block_data;
-	block_data.epoch = 0;
-	block_data.round = 0;
-	block_data.timestamp_usecs = 0;
-	block_data.quorum_cert = qc;
-	block_data.block_type = BlockData::Genesis;
+	// genesis blockinfo
+	BlockInfo genesis_block_info(ZeroHash());
+	genesis_block_info.ledger_info = ledger_info;
 
-	block.id_ = BlockData::hash(block_data);
-	block.block_data_ = block_data;
+	// genesis VoteData
+	VoteData genesis_vote_data = VoteData::New(genesis_block_info, genesis_block_info);
+	// genesis LedgerInfo
+	LedgerInfoWithSignatures::LedgerInfo genesis_ledger{genesis_block_info, genesis_vote_data.hash()};
+	// genesis QuorumCertificate
+	QuorumCertificate genesis_qc(genesis_vote_data, genesis_ledger);
 
-	return block;
+	// genesis BlockDate
+	BlockData genesis_block_data;
+	genesis_block_data.epoch = genesis_block_info.epoch;
+	genesis_block_data.round = genesis_block_info.round;
+	genesis_block_data.timestamp_usecs = genesis_block_info.timestamp_usecs;
+	genesis_block_data.quorum_cert = genesis_qc;
+	genesis_block_data.block_type = BlockData::Genesis;
+
+
+	Block genesis_block;
+	genesis_block.id_ = BlockData::hash(genesis_block_data);
+	genesis_block.block_data_ = genesis_block_data;
+
+	//VoteData init_vote_data(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())));
+	//LedgerInfoWithSignatures::LedgerInfo init_ledger{ init_vote_data.proposed(), init_vote_data.hash()};
+	//QuorumCertificate qc(init_vote_data, init_ledger);
+
+	//BlockData block_data;
+	//block_data.epoch = 0;
+	//block_data.round = 0;
+	//block_data.timestamp_usecs = 0;
+	//block_data.quorum_cert = qc;
+	//block_data.block_type = BlockData::Genesis;
+
+	//block.id_ = BlockData::hash(block_data);
+	//block.block_data_ = block_data;
+
+	return genesis_block;
 }
 
 BlockInfo Block::gen_block_info(const ripple::LedgerInfo& ledger_info) {
