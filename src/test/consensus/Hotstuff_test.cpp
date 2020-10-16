@@ -63,6 +63,7 @@ class Replica
 	, public ripple::hotstuff::NetWork {
 public:
 	static std::map<ripple::hotstuff::Round, Replica*> replicas;
+	static ripple::LedgerInfo genesis_ledger_info;
 
 	using KeyPair = std::pair<ripple::PublicKey, ripple::SecretKey>;
 
@@ -71,11 +72,23 @@ public:
 		jtx::Env* env,
 		const beast::Journal& journal)
 	: io_service_()
+	, recover_data_(ripple::hotstuff::RecoverData{ Replica::genesis_ledger_info })
 	, author_(author)
 	, key_pair_(ripple::randomKeyPair(ripple::KeyType::secp256k1))
 	, env_(env)
 	, committed_blocks_() 
-	, hotstuff_(io_service_, journal, author_, this, this, this, this, this){
+	, hotstuff_(nullptr) {
+		
+		hotstuff_ = ripple::hotstuff::Hotstuff::Builder(io_service_, journal)
+			.setRecoverData(recover_data_)
+			.setAuthor(author_)
+			.setCommandManager(this)
+			.setNetWork(this)
+			.setProposerElection(this)
+			.setStateCompute(this)
+			.setValidatorVerifier(this)
+			.build();
+
 		Replica::replicas[Replica::index++] = this;
 	}
 
@@ -194,7 +207,7 @@ public:
 				jtPROPOSAL_t,
 				"broadcast_proposal",
 				[this, it, proposal, sync_info](Job&) {
-					it->second->hotstuff_.handleProposal(proposal, sync_info);
+					it->second->hotstuff_->handleProposal(proposal, sync_info);
 				});
 		}
 	}
@@ -210,18 +223,18 @@ public:
 					jtPROPOSAL_t,
 					"send_vote",
 					[this, it, vote, sync_info](Job&) {
-						it->second->hotstuff_.handleVote(vote, sync_info);
+						it->second->hotstuff_->handleVote(vote, sync_info);
 					});
 			}
 		}
 	}
 
 	void run() {
-		hotstuff_.start();
+		hotstuff_->start();
 	}
 
 	void stop() {
-		hotstuff_.stop();
+		hotstuff_->stop();
 	}
 
 	const ripple::hotstuff::Author& author() const {
@@ -233,15 +246,17 @@ public:
 	}
 private:
 	boost::asio::io_service io_service_;
+	ripple::hotstuff::RecoverData recover_data_;
 	ripple::hotstuff::Author author_;
 	KeyPair key_pair_;
 	jtx::Env* env_;
 	std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committed_blocks_;
-	ripple::hotstuff::Hotstuff hotstuff_;
+	ripple::hotstuff::Hotstuff::pointer hotstuff_;
 
 	static int index;
 };
 std::map<ripple::hotstuff::Round, Replica*> Replica::replicas;
+ripple::LedgerInfo Replica::genesis_ledger_info;
 int Replica::index = 1;
 
 class Hotstuff_test : public beast::unit_test::suite {
@@ -343,8 +358,12 @@ public:
 			ripple::sha512_half_hasher h;
 			for (int i = 0; i < committedBlocks; i++) {
 				for (auto block_it = committedBlocksContainer.begin(); block_it != committedBlocksContainer.end(); block_it++) {
-					if ((i + 1) == block_it->second.block_data().round) {
+					if (i == block_it->second.block_data().round) {
 						hash_append(h, block_it->first);
+
+						if (i == 0) {
+							BEAST_EXPECT(block_it->second.block_data().block_type == ripple::hotstuff::BlockData::Genesis);
+						}
 					}
 				}
 			}
@@ -387,7 +406,11 @@ public:
 	: replicas_(4)
 	, blocks_(4)
 	, disable_log_(false) {
-
+		std::string genesis_info = "This is a test for hotstuff";
+		using beast::hash_append;
+		ripple::sha512_half_hasher h;
+		hash_append(h, genesis_info);
+		Replica::genesis_ledger_info.txHash = static_cast<typename sha512_half_hasher::result_type>(h);
 	}
 
 private:

@@ -31,15 +31,14 @@ HotstuffConsensus::HotstuffConsensus(
     : ConsensusBase(clock, j)
     , adaptor_(*(HotstuffAdaptor*)(&adaptor))
 {
-    hotstuff_ = std::make_shared<hotstuff::Hotstuff>(
-        adaptor_.getIOService(),
-        j,
-        adaptor_.valPublic(),
-        this,
-        adaptor_,
-        this,
-        this,
-        adaptor_);
+    hotstuff_ = hotstuff::Hotstuff::Builder(adaptor_.getIOService(), j)
+        .setAuthor(adaptor_.valPublic())
+        .setCommandManager(this)
+        .setStateCompute(this)
+        .setValidatorVerifier(this)
+        .setProposerElection(&adaptor_)
+        .setNetWork(&adaptor_)
+        .build();
 }
 
 void HotstuffConsensus::startRound(

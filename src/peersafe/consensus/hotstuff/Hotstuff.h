@@ -21,6 +21,7 @@
 #define RIPPLE_CONSENSUS_HOTSTUFF_H
 
 #include <vector>
+#include <memory>
 
 #include <peersafe/consensus/hotstuff/impl/RoundManager.h>
 
@@ -28,17 +29,6 @@
 #include <ripple/core/JobQueue.h>
 
 namespace ripple { namespace hotstuff {
-
-//class Sender {
-//public:
-//    virtual ~Sender() {}
-//
-//    virtual void proposal(const ReplicaID& id, const Block& block) = 0;
-//    //virtual void vote(const ReplicaID& id, const PartialCert& cert) = 0;
-//    //virtual void newView(const ReplicaID& id, const QuorumCert& qc) = 0;
-//protected:
-//    Sender() {}
-//};
 
 //struct Config {
 //    // self id
@@ -64,15 +54,35 @@ namespace ripple { namespace hotstuff {
 
 class Hotstuff {
 public:
-    Hotstuff(
-        boost::asio::io_service& ios,
-        const beast::Journal& journal,
-        const Author& author,
-        CommandManager* cm,
-        ProposerElection* proposer_election,
-        StateCompute* state_compute,
-        ValidatorVerifier* verifier,
-        NetWork* network);
+	using pointer = std::shared_ptr<Hotstuff>;
+
+	class Builder {
+	public:
+		Builder(
+			boost::asio::io_service& ios,
+			const beast::Journal& journal);
+
+		Builder& setRecoverData(const RecoverData& recover_data);
+		Builder& setAuthor(const Author& author);
+		Builder& setCommandManager(CommandManager* cm);
+		Builder& setProposerElection(ProposerElection* proposer_election);
+		Builder& setStateCompute(StateCompute* state_compute);
+		Builder& setValidatorVerifier(ValidatorVerifier* verifier);
+		Builder& setNetWork(NetWork* network);
+
+		Hotstuff::pointer build();
+
+	private:
+		boost::asio::io_service* io_service_;
+		beast::Journal journal_;
+		RecoverData recover_data_;
+		Author author_;
+		CommandManager* command_manager_;
+		ProposerElection* proposer_election_;
+		StateCompute* state_compute_;
+		ValidatorVerifier* verifier_;
+		NetWork* network_;
+	};
 
     ~Hotstuff();
 
@@ -86,13 +96,25 @@ public:
     int handleVote(
         const ripple::hotstuff::Vote& vote,
         const ripple::hotstuff::SyncInfo& sync_info);
+
 private:
-    BlockStorage storage_;
-    EpochState epoch_state_;
-    RoundState round_state_;
-    ProposalGenerator proposal_generator_;
-    HotstuffCore hotstuff_core_;
-    RoundManager* round_manager_;
+    Hotstuff(
+		boost::asio::io_service& ios,
+        const beast::Journal& journal,
+		const RecoverData& recover_data,
+		const Author& author,
+		CommandManager* cm,
+		ProposerElection* proposer_election,
+		StateCompute* state_compute,
+		ValidatorVerifier* verifier,
+		NetWork* network);
+
+	BlockStorage storage_;
+	EpochState epoch_state_;
+	RoundState round_state_;
+	ProposalGenerator proposal_generator_;
+	HotstuffCore hotstuff_core_;
+	RoundManager* round_manager_;
 };
 
 } // namespace hotstuff
