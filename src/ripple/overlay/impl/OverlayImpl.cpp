@@ -264,6 +264,21 @@ OverlayImpl::onHandoff (std::unique_ptr <beast::asio::ssl_bundle>&& ssl_bundle,
         return handoff;
     }
 
+	JLOG(journal_.info()) <<
+		"Public Key: " << toBase58(
+			TokenType::NodePublic,
+			*publicKey);
+	if (publicValidate)
+	{
+		JLOG(journal_.info()) << "PublicKey Validate:" << toBase58(
+			TokenType::NodePublic,
+			*publicValidate);
+	}
+	else
+	{
+		for (auto& str : vecIds)
+			JLOG(journal_.info()) << "SchemaId:" << str;
+	}
 
     auto const result = m_peerFinder->activate (slot, *publicKey,
         static_cast<bool>(app_.cluster().member(*publicKey)));
@@ -500,38 +515,40 @@ OverlayImpl::onPrepare()
         : app_.config().IPS;
 
 
-    // If nothing is specified, default to several well-known high-capacity
-    // servers to serve as bootstrap:
-    if (bootstrapIps.empty ())
-    {
-        // Pool of servers operated by Ripple Labs Inc. - https://ripple.com
-        bootstrapIps.push_back("r.ripple.com 51235");
+    //// If nothing is specified, default to several well-known high-capacity
+    //// servers to serve as bootstrap:
+    //if (bootstrapIps.empty ())
+    //{
+    //    // Pool of servers operated by Ripple Labs Inc. - https://ripple.com
+    //    bootstrapIps.push_back("r.ripple.com 51235");
 
-        // Pool of servers operated by Alloy Networks - https://www.alloy.ee
-        bootstrapIps.push_back("zaphod.alloy.ee 51235");
-    }
+    //    // Pool of servers operated by Alloy Networks - https://www.alloy.ee
+    //    bootstrapIps.push_back("zaphod.alloy.ee 51235");
+    //}
+	if (bootstrapIps.size() > 0)
+	{
+		m_resolver.resolve(bootstrapIps,
+			[this](std::string const& name,
+				std::vector <beast::IP::Endpoint> const& addresses)
+		{
+			std::vector <std::string> ips;
+			ips.reserve(addresses.size());
+			for (auto const& addr : addresses)
+			{
+				if (addr.port() == 0)
+				{
+					Throw<std::runtime_error>("Port not specified for "
+						"address:" + addr.to_string());
+				}
 
-    m_resolver.resolve (bootstrapIps,
-        [this](std::string const& name,
-            std::vector <beast::IP::Endpoint> const& addresses)
-        {
-            std::vector <std::string> ips;
-            ips.reserve(addresses.size());
-            for (auto const& addr : addresses)
-            {
-                if (addr.port () == 0)
-                {
-                    Throw<std::runtime_error> ("Port not specified for "
-                        "address:" + addr.to_string ());
-                }
+				ips.push_back(to_string(addr));
+			}
 
-                ips.push_back (to_string (addr));
-            }
-
-            std::string const base ("config: ");
-            if (!ips.empty ())
-                m_peerFinder->addFallbackStrings (base + name, ips);
-        });
+			std::string const base("config: ");
+			if (!ips.empty())
+				m_peerFinder->addFallbackStrings(base + name, ips);
+		});
+	}
 
     // Add the ips_fixed from the rippled.cfg file
     if (! app_.config().standalone() && !app_.config().IPS_FIXED.empty ())

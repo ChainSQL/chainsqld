@@ -101,7 +101,7 @@ ConnectAttempt::fail (std::string const& reason)
     assert(strand_.running_in_this_thread());
     if (stream_.next_layer().is_open())
     {
-        JLOG(journal_.debug()) <<
+        JLOG(journal_.info()) <<
             reason;
     }
     close();
@@ -113,8 +113,8 @@ ConnectAttempt::fail (std::string const& name, error_code ec)
     assert(strand_.running_in_this_thread());
     if (stream_.next_layer().is_open())
     {
-        JLOG(journal_.debug()) <<
-            name << ": " << ec.message();
+        JLOG(journal_.info()) <<
+            name << ": value= "<< ec.value()<<",msg=" << ec.message();
     }
     close();
 }
@@ -371,6 +371,17 @@ ConnectAttempt::processResponse()
         "Public Key: " << toBase58 (
             TokenType::NodePublic,
             *publicKey);
+	if (publicValidate)
+	{
+		JLOG(journal_.info()) << "PublicKey Validate:"<<toBase58(
+			TokenType::NodePublic,
+			*publicValidate);
+	}
+	else
+	{
+		for(auto& str : vecIds)
+			JLOG(journal_.info()) << "SchemaId:" << str;
+	}
 
     auto const protocol =
         BuildInfo::make_protocol(hello->protoversion());

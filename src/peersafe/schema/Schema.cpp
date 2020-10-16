@@ -799,15 +799,14 @@ namespace ripple {
 			std::uint32_t freePages = maxPages - pageCount;
 			std::uint64_t freeSpace =
 				safe_cast<std::uint64_t>(freePages) * pageSize;
-			JLOG(m_journal.info())
-				<< "Transaction DB pathname: " << dbPath.string()
-				<< "; file size: " << dbSize.value_or(-1) << " bytes"
-				<< "; SQLite page size: " << pageSize << " bytes"
-				<< "; Free pages: " << freePages
-				<< "; Free space: " << freeSpace << " bytes; "
-				<< "Note that this does not take into account available disk "
-				"space.";
-
+			//JLOG(m_journal.info())
+			//	<< "Transaction DB pathname: " << dbPath.string()
+			//	<< "; file size: " << dbSize.value_or(-1) << " bytes"
+			//	<< "; SQLite page size: " << pageSize << " bytes"
+			//	<< "; Free pages: " << freePages
+			//	<< "; Free space: " << freeSpace << " bytes; "
+			//	<< "Note that this does not take into account available disk "
+			//	"space.";
 			if (freeSpace < megabytes(512))
 			{
 				JLOG(m_journal.fatal())

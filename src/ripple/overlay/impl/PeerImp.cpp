@@ -161,11 +161,12 @@ PeerImp::run()
         doProtocolStart();
     }
 
-    // Request shard info from peer
-    protocol::TMGetPeerShardInfo tmGPS;
-    tmGPS.set_hops(0);
-	tmGPS.set_schemaid(to_string((uint256)beast::zero));
-    send(std::make_shared<Message>(tmGPS, protocol::mtGET_PEER_SHARD_INFO));
+	//Comment by ljl:this msg may interrupt the async_write_some  call in onWriteResponse.
+ //   // Request shard info from peer
+ //   protocol::TMGetPeerShardInfo tmGPS;
+ //   tmGPS.set_hops(0);
+	//tmGPS.set_schemaid(to_string((uint256)beast::zero));
+ //   send(std::make_shared<Message>(tmGPS, protocol::mtGET_PEER_SHARD_INFO));
 
     setTimer();
 }
@@ -180,7 +181,7 @@ PeerImp::dispatch()
 			auto& vecKeys = item.second->validators().validators();
 			if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_) != vecKeys.end())
 			{
-				//schemaInfo_.emplace(item.first, *std::make_shared<SchemaInfo>());
+				schemaInfo_.emplace(item.first, SchemaInfo());
 				item.second->peerManager().add(shared_from_this());
 			}
 		}
@@ -189,7 +190,6 @@ PeerImp::dispatch()
 	{
 		for (auto id : schemaIds_)
 		{
-			//auto pair = std::make_pair(id, *std::make_shared<SchemaInfo>());
 			schemaInfo_.emplace(std::make_pair(id, SchemaInfo()));
 			app_.peerManager(id).add(shared_from_this());
 		}
@@ -255,7 +255,6 @@ PeerImp::send (Message::pointer const& m)
     }
 
     send_queue_.push(m);
-
     if(sendq_size != 0)
         return;
 
@@ -557,7 +556,7 @@ PeerImp::fail(std::string const& name, error_code ec)
         JLOG(journal_.warn()) << name << " from " <<
             toBase58(TokenType::NodePublic, publicKey_) <<
             " at " << remote_address_.to_string() <<
-            ": " << ec.message();
+            ":value = " << ec.value() << ", msg = " << ec.message();
     }
     close();
 }
@@ -857,15 +856,17 @@ PeerImp::onWriteResponse (error_code ec, std::size_t bytes_transferred)
     if (write_buffer_.size() == 0)
         return doProtocolStart();
 
-    stream_.async_write_some(
-        write_buffer_.data(),
-        bind_executor(
-            strand_,
-            std::bind(
-                &PeerImp::onWriteResponse,
-                shared_from_this(),
-                std::placeholders::_1,
-                std::placeholders::_2)));
+	journal_.trace() << "onWriteResponse:write_buffer_.size()= " << write_buffer_.size();
+	//Note:async_write_some may write at most 512 bytes data one time.
+	stream_.async_write_some(
+		write_buffer_.data(),
+		bind_executor(
+			strand_,
+			std::bind(
+				&PeerImp::onWriteResponse,
+				shared_from_this(),
+				std::placeholders::_1,
+				std::placeholders::_2)));
 }
 
 std::string

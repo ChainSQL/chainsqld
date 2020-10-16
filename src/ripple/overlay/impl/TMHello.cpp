@@ -128,7 +128,7 @@ buildHello (
 			sharedValue);
 		h.set_validatepublic(
 			toBase58(
-				TokenType::AccountPublic,
+				TokenType::NodePublic,
 				app.getValidationPublicKey()));
 		h.set_validateproof(sig2.data(), sig2.size());
 	}
@@ -183,12 +183,13 @@ appendHello (boost::beast::http::fields& h,
     //h.append ("Protocol-Versions",...
 
     h.insert ("Public-Key", hello.nodepublic());
+	h.insert("SchemaIDs", "12345678901234567890123");
 	if (hello.has_validatepublic())
 	{
 		h.insert("Validate-PublicKey", hello.validatepublic());
-		h.insert("Validate-Proof", hello.validateproof());
+		h.insert("Validate-Proof", base64_encode(hello.validateproof()));
 	}
-	else if(hello.has_schemaids())
+	else if (hello.has_schemaids())
 	{
 		h.insert("SchemaIDs", hello.schemaids());
 	}
@@ -286,16 +287,31 @@ parseHello (bool request, boost::beast::http::fields const& h, beast::Journal jo
         hello.set_nodepublic (iter->value().to_string());
     }
 
+	if (h.find("Validate-PublicKey") == h.end() && h.find("SchemaIDs") == h.end())
+	{
+		return boost::none;
+	}
+	if(h.find("Validate-PublicKey") != h.end())
 	{
 		// Required
 		auto const iter = h.find("Validate-PublicKey");
 		if (iter == h.end())
 			return boost::none;
 		auto const pk = parseBase58<PublicKey>(
-			TokenType::AccountPublic, iter->value().to_string());
+			TokenType::NodePublic, iter->value().to_string());
 		if (!pk)
 			return boost::none;
 		hello.set_validatepublic(iter->value().to_string());
+
+		auto const iter2 = h.find("Validate-Proof");
+		if (iter2 == h.end())
+			return boost::none;
+		hello.set_validateproof(base64_decode(iter2->value().to_string()));
+	}
+	else
+	{
+		auto const iter = h.find("SchemaIDs");
+		hello.set_schemaids(iter->value().to_string().data());
 	}
 
     {
@@ -508,11 +524,10 @@ verifyHello (protocol::TMHello const& h,
             return std::make_tuple(boost::none, boost::none, vecIds);
         }
     }
-
 	if (h.has_validatepublic())
 	{
 		auto const publicValidate = parseBase58<PublicKey>(
-			TokenType::AccountPublic, h.validatepublic());
+			TokenType::NodePublic, h.validatepublic());
 
 		if (!publicValidate)
 		{
@@ -540,7 +555,8 @@ verifyHello (protocol::TMHello const& h,
 	}
 	else
 	{
-		vecIds = beast::rfc2616::split_commas(h.schemaids().begin(), h.schemaids().end());
+		if (h.has_schemaids())
+			vecIds = beast::rfc2616::split_commas(h.schemaids().begin(), h.schemaids().end());
 		return std::make_tuple(publicKey, boost::none, vecIds);
 	}
 }
