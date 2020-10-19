@@ -252,6 +252,7 @@ LedgerFormats::LedgerFormats ()
 			{ sfSchemaAdmin,		 soeOPTIONAL },
 			{ sfValidators,          soeREQUIRED },
 			{ sfPeerList,            soeREQUIRED },
+			{ sfOwnerNode,           soeREQUIRED },
 		}, commonFields);
 }
 

@@ -67,6 +67,7 @@ namespace ripple {
 		nodes[jss::ticket] = mapCount[ltTICKET];
 		nodes[jss::payment_channel] = mapCount[ltPAYCHAN];
 		nodes[jss::table] = mapCount[ltTABLELIST];
+		nodes[jss::schema] = mapCount[ltSCHEMA];
 
 		int txCount = 0;
 		for (auto const& tx : lpLedger->txs)

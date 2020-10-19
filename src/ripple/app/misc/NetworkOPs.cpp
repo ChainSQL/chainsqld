@@ -490,6 +490,7 @@ public:
 		const STTx& stTxn, const std::tuple<std::string, std::string, std::string>& disposRes);
 
     void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue);
+
     //--------------------------------------------------------------------------
     //
     // InfoSub::Source.
@@ -625,6 +626,8 @@ private:
 
     std::string getHostId (bool forAdmin);
 
+	void checkSchemaTx(std::shared_ptr<ReadView const> const& alAccepted,
+		const AcceptedLedgerTx& alTransaction);
 private:
     using SubMapType = hash_map <std::uint64_t, InfoSub::wptr>;
     using SubInfoMapType = hash_map <AccountID, SubMapType>;
@@ -2860,7 +2863,11 @@ void NetworkOPsImp::pubLedger (
         JLOG(m_journal.info()) << "pub all Txs, time used: " << utcTime() - timeStart << "ms";
     }
 
-	// test createSchema code
+	for (auto const& vt : alpAccepted->getMap())
+	{
+		checkSchemaTx(lpAccepted, *vt.second);
+	}
+	//// test createSchema code
 	//{
 	//		//return;
 	//		SchemaParams params{};
@@ -2869,16 +2876,20 @@ void NetworkOPsImp::pubLedger (
 	//		params.schema_id = lpAccepted->info().hash;
 	//		params.schema_name = to_string(params.schema_id);
 	//		params.anchor_ledger_hash = params.schema_id;
-	//		params.peer_list = { "192.168.29.69 5125" };
+	//		params.peer_list = { "127.0.0.1 5127" };
 	//		params.strategy = SchemaStragegy::with_state;
 
-	//		auto seed = parseBase58<Seed>("xn2LEqGs7Xpz1DMYqYJjiP5727h8c");
-	//		auto const private_key = generateSecretKey(KeyType::secp256k1, *seed);
+	//		auto seed = parseBase58<Seed>("xnGpDQqYxMguNsMaGqgFvDJ93Gzkf");
+	//		auto private_key = generateSecretKey(KeyType::secp256k1, *seed);
 	//		auto base58NodePublic = derivePublicKey(KeyType::secp256k1, private_key);
 	//		std::cout << strHex(base58NodePublic) <<std::endl;
 
-	//		auto oPublic_key = ripple::getPublicKey("xn2LEqGs7Xpz1DMYqYJjiP5727h8c"); 
-	//		std::cout << strHex(*oPublic_key) << std::endl;
+	//		seed = parseBase58<Seed>("xxHnJmmnyqXeQiPPFYjE54whuQKCN");
+	//		private_key = generateSecretKey(KeyType::secp256k1, *seed);
+	//		base58NodePublic = derivePublicKey(KeyType::secp256k1, private_key);
+	//		std::cout << strHex(base58NodePublic) << std::endl;
+	//		//auto oPublic_key = ripple::getPublicKey("xn2LEqGs7Xpz1DMYqYJjiP5727h8c"); 
+	//		//std::cout << strHex(*oPublic_key) << std::endl;
 	//		                                         
 	//		std::pair<PublicKey, bool> validator = std::make_pair(base58NodePublic, true);
 	//		params.validator_list.push_back(validator);
@@ -2899,7 +2910,7 @@ void NetworkOPsImp::pubLedger (
 	//			}
 	//		}
 	//}
-	// test code end
+	//// test code end
 }
 
 void NetworkOPsImp::reportFeeChange ()
@@ -2971,6 +2982,77 @@ Json::Value NetworkOPsImp::transJson(
     return jvObj;
 }
 
+void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccepted,
+	const AcceptedLedgerTx& alTx)
+{
+	if (alTx.getResult() != tesSUCCESS)
+		return;
+	std::shared_ptr<STTx const> stTxn = alTx.getTxn();
+	if (stTxn->getTxnType() == ttSCHEMA_CREATE)
+	{
+		auto const account = stTxn->getAccountID(sfAccount);
+		auto const sle = alAccepted->read(keylet::account(account));
+		auto sleKey = keylet::schema(
+			account, (*sle)[sfSequence] - 1, alAccepted->info().parentHash);
+		auto const sleSchema = alAccepted->read(sleKey);
+
+		SchemaParams params{};
+		auto validators = sleSchema->getFieldArray(sfValidators);
+		bool bShouldCreate = false;
+		for (auto& validator : validators)
+		{
+			auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
+			//auto signedVal = (validator.getFieldU8(sfSigned) == 1);
+			bool signedVal = true;
+			params.validator_list.push_back(std::make_pair(publicKey, signedVal));
+			if (!bShouldCreate && 
+				app_.app().getValidationPublicKey().size() != 0 &&
+				publicKey == app_.app().getValidationPublicKey())
+			{
+				bShouldCreate = true;
+			}
+		}
+		if (!bShouldCreate)
+			return;
+
+		params.account = account;
+		params.schema_id = sleKey.key;
+		params.schema_name = strCopy(sleSchema->getFieldVL(sfSchemaName));
+		params.strategy = sleSchema->getFieldU8(sfSchemaStrategy) == 1 ? 
+			SchemaStragegy::new_chain : SchemaStragegy::with_state;
+		if (params.strategy == SchemaStragegy::with_state)
+		{
+			params.anchor_ledger_hash = sleSchema->getFieldH256(sfAnchorLedgerHash);
+		}
+		if (sleSchema->isFieldPresent(sfSchemaAdmin))
+			params.admin = sleSchema->getAccountID(sfSchemaAdmin);
+
+		auto peers = sleSchema->getFieldArray(sfPeerList);
+		for (auto& peer : peers)
+		{
+			params.peer_list.push_back(strCopy(peer.getFieldVL(sfEndpoint)));
+		}
+		
+		if (!app_.app().getSchemaManager().contains(params.schema_id))
+		{
+			try
+			{
+				auto newSchema = app_.app().getSchemaManager().createSchema(app_.app().config(), params);
+				newSchema->initBeforeSetup();
+				newSchema->setup();
+			}
+			catch (std::exception const& e)
+			{
+				JLOG(m_journal.fatal()) << e.what();
+			}
+		}
+	}
+	else if (stTxn->getTxnType() == ttSCHEMA_MODIFY)
+	{
+
+	}
+}
+
 void NetworkOPsImp::pubValidatedTransaction (
     std::shared_ptr<ReadView const> const& alAccepted,
     const AcceptedLedgerTx& alTx)
@@ -3034,9 +3116,6 @@ void NetworkOPsImp::pubValidatedTransaction (
     {
             PubValidatedTxForTable(alTx);
     }
-
-
-
 }
 
 std::tuple<std::string, std::string, std::string> NetworkOPsImp::get_res(TER ter)
@@ -3155,6 +3234,7 @@ void NetworkOPsImp::PubContractEvents(const AccountID& contractID,uint256 const 
             isrListener->send(jvObj, true);
     }
 }
+
 void NetworkOPsImp::pubAccountTransaction (
     std::shared_ptr<ReadView const> const& lpCurrent,
     const AcceptedLedgerTx& alTx,

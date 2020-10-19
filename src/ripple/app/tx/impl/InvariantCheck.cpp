@@ -358,6 +358,7 @@ LedgerEntryTypesMatch::visitEntry(
 		case ltTABLELIST:
 		case ltINSERTMAP:
 		case ltCHAINID:
+		case ltSCHEMA:
             break;
         default:
             invalidTypeAdded_ = true;

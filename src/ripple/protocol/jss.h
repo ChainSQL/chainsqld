@@ -534,6 +534,7 @@ JSS ( taker_pays );                 // in: Subscribe, Unsubscribe, BookOffers
 JSS ( taker_pays_funded );          // out: NetworkOPs
 JSS ( threshold );                  // in: Blacklist
 JSS ( table );
+JSS ( schema );
 JSS ( ticket );                     // in: AccountObjects
 JSS ( time );
 JSS ( timeouts );                   // out: InboundLedger
