@@ -26,8 +26,8 @@ namespace ripple { namespace hotstuff {
 
 BlockStorage::BlockStorage(StateCompute* state_compute) 
 : state_compute_(state_compute)
-, cache_blocks_()
 , genesis_block_id_()
+, cache_blocks_()
 , highest_quorum_cert_()
 , highest_commit_cert_()
 , highest_timeout_cert_() {

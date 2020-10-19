@@ -18,6 +18,8 @@
 //==============================================================================
 
 
+#include <peersafe/consensus/hotstuff/impl/Config.h>
+#include <peersafe/consensus/hotstuff/impl/RecoverData.h>
 #include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
 
 
@@ -31,8 +33,15 @@ HotstuffConsensus::HotstuffConsensus(
     : ConsensusBase(clock, j)
     , adaptor_(*(HotstuffAdaptor*)(&adaptor))
 {
+    hotstuff::Config config;
+
+    config.id = adaptor_.valPublic();
+
+    // TODO
+    // HotstuffConsensusParms to hotstuff::Config
+
     hotstuff_ = hotstuff::Hotstuff::Builder(adaptor_.getIOService(), j)
-        .setAuthor(adaptor_.valPublic())
+        .setConfig(config)
         .setCommandManager(this)
         .setStateCompute(this)
         .setValidatorVerifier(this)
@@ -48,7 +57,7 @@ void HotstuffConsensus::startRound(
     hash_set<NodeID> const& nowUntrusted,
     bool proposing)
 {
-    hotstuff_->start();
+    hotstuff_->start(hotstuff::RecoverData{ prevLedger.ledger_->info() });
 }
 
 void HotstuffConsensus::timerEntry(NetClock::time_point const& now)

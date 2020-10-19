@@ -84,6 +84,7 @@ public:
 
     // Overwrite NetWork interfaces.
     void broadcast(const Block& proposal, const SyncInfo& sync_info) override final;
+    void broadcast(const Vote& vote, const SyncInfo& sync_info) override final;
     void sendVote(const Author& author, const Vote& vote, const SyncInfo& sync_info) override final;
 
 private:

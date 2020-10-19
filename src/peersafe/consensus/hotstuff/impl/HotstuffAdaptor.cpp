@@ -18,6 +18,7 @@
 //==============================================================================
 
 
+#include <ripple/core/ConfigSections.h>
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
 
 
@@ -69,6 +70,11 @@ HotstuffAdaptor::Author HotstuffAdaptor::GetValidProposer(Round round) const
 }
 
 void HotstuffAdaptor::broadcast(const Block& proposal, const SyncInfo& sync_info)
+{
+
+}
+
+void HotstuffAdaptor::broadcast(const Vote& vote, const SyncInfo& sync_info)
 {
 
 }

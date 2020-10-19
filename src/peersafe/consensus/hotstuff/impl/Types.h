@@ -45,8 +45,8 @@ using ReplicaID = int;
 using Epoch = int64_t;
 using Round = int64_t;
 using Version = int;
-using PublicKey = ripple::Slice;
-using PrivateKey = ripple::Slice;
+using PublicKey = ripple::PublicKey;
+using PrivateKey = ripple::SecretKey;
 using Signature = ripple::Buffer;
 
 

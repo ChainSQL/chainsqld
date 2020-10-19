@@ -170,7 +170,7 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 int RoundManager::ProcessProposal(const Block& proposal) {
 	if (proposer_election_->IsValidProposal(proposal) == false) {
 		JLOG(journal_.error())
-			<< "Proposer " << proposal.block_data().author()
+			<< "Proposer " << "" << proposal.block_data().author()
 			<< " for the proposal"
 			<< " is not a valid proposer for this round "
 			<< proposal.block_data().round;
