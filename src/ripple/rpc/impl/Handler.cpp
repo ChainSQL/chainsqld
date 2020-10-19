@@ -156,6 +156,7 @@ Handler const handlerArray[] {
 	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::USER,  NO_CONDITION     },
     {   "node_size",            byRef (&doNodeSize),           Role::ADMIN,  NO_CONDITION    },
     {   "malloc_trim",          byRef (&doMallocTrim),         Role::ADMIN,  NO_CONDITION    },
+	{   "schema_list",          byRef (&doSchemaList),         Role::USER,  NO_CONDITION    },
 };
 
 class HandlerTable {

@@ -626,7 +626,12 @@ JSS ( NextHash );                   // out:
 JSS ( log );
 
 JSS (schema_id);
-
+JSS (schemas);
+JSS (schema_name);
+JSS (schema_strategy);
+JSS (schema_admin);
+JSS (anchor_ledge_hash);
+JSS (peer_list);
 
 JSS(drops_per_byte);                       // out: LogLevel
 #undef JSS
