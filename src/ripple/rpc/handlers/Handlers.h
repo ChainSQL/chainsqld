@@ -87,6 +87,7 @@ Json::Value doWalletPropose         (RPC::Context&);
 Json::Value doLedgerObjects			(RPC::Context&);
 Json::Value doNodeSize              (RPC::Context&);
 Json::Value doMallocTrim            (RPC::Context&);
+Json::Value doSchemaList			(RPC::Context&);
 
 //for sql operation
 Json::Value doTableDump(RPC::Context&);
