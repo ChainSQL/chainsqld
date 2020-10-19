@@ -26,6 +26,7 @@
 #include <peersafe/consensus/hotstuff/impl/VoteData.h>
 #include <peersafe/consensus/hotstuff/impl/BlockInfo.h>
 #include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
+#include <peersafe/consensus/hotstuff/impl/timeout.h>
 
 namespace ripple {
 namespace hotstuff {
@@ -99,6 +100,28 @@ public:
 private:
 	VoteData vote_data_;
 	LedgerInfoWithSignatures signed_ledger_info_;
+};
+
+class TimeoutCertificate {
+public:
+	using Signatures = std::map<Author, Signature>;
+	TimeoutCertificate(const Timeout& timeout);
+	~TimeoutCertificate();
+
+	const Timeout& timeout() const {
+		return timeout_;
+	}
+
+	const Signatures& signatures() const {
+		return signatures_;
+	}
+
+	void addSignature(const Author& author, const Signature& signature);
+	bool Verify(const ValidatorVerifier* validator);
+
+private:
+	Timeout timeout_;
+	Signatures signatures_;
 };
 
 } // namespace hotstuff

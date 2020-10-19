@@ -31,39 +31,21 @@ class SyncInfo
 {
 public:
 	SyncInfo(
-		const QuorumCertificate& highest_qc_cert, 
-		const QuorumCertificate& highest_commit_cert)
-	: highest_quorum_cert_(highest_qc_cert)
-	, highest_commit_cert_(highest_commit_cert) {
+		const QuorumCertificate& highest_qc_cert,
+		const QuorumCertificate& highest_commit_cert,
+		const boost::optional<TimeoutCertificate> highest_timeout_cert);
 
-	}
-
-	const Round HighestRound() const {
-		return highest_quorum_cert_.certified_block().round;
-	}
-
-	const QuorumCertificate& HighestQuorumCert() const {
-		return highest_quorum_cert_;
-	}
-
-	const QuorumCertificate HighestCommitCert() const {
-		if (highest_commit_cert_)
-			return highest_commit_cert_.get();
-		return highest_quorum_cert_;
-	}
-
-	const bool hasNewerCertificate(const SyncInfo& sync_info) const {
-		if (highest_quorum_cert_.certified_block().round > sync_info.highest_quorum_cert_.certified_block().round
-			|| HighestCommitCert().certified_block().round > sync_info.HighestCommitCert().certified_block().round)
-			return true;
-		return false;
-	}
-
+	const Round HighestRound() const;
+	const QuorumCertificate& HighestQuorumCert() const;
+	const QuorumCertificate HighestCommitCert() const;
+	const TimeoutCertificate HighestTimeoutCert() const;
+	const bool hasNewerCertificate(const SyncInfo& sync_info) const;
 	bool Verify(const ValidatorVerifier* validator);
 
 private:
 	QuorumCertificate highest_quorum_cert_;
 	boost::optional<QuorumCertificate> highest_commit_cert_;
+	boost::optional<TimeoutCertificate> highest_timeout_cert_;
 };
 
 } // namespace hotstuff

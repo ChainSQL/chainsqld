@@ -57,11 +57,13 @@ public:
 	int insertVote(
 		const Vote& vote,
 		ValidatorVerifier* verifer,
-		QuorumCertificate& quorumCert);
+		QuorumCertificate& quorumCert, 
+		boost::optional<TimeoutCertificate>& timeoutCert);
 
 private:
 	std::map<Author, Vote> author_to_vote_;
 	std::map<HashValue, LedgerInfoWithSignatures> li_digest_to_votes_;
+	boost::optional<TimeoutCertificate> maybe_partial_timeout_cert_;
 };
 
 } // namespace hotstuff

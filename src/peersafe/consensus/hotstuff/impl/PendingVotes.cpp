@@ -25,7 +25,8 @@ namespace hotstuff {
     
 PendingVotes::PendingVotes()
 : author_to_vote_()
-, li_digest_to_votes_() {
+, li_digest_to_votes_()
+, maybe_partial_timeout_cert_() {
 }
 
 PendingVotes::~PendingVotes() {
@@ -34,7 +35,8 @@ PendingVotes::~PendingVotes() {
 int PendingVotes::insertVote(
 	const Vote& vote,
 	ValidatorVerifier* verifer,
-	QuorumCertificate& quorumCert) {
+	QuorumCertificate& quorumCert,
+	boost::optional<TimeoutCertificate>& timeoutCert) {
 	HashValue li_digest = const_cast<BlockInfo&>(vote.ledger_info().commit_info).id;
 
 	// Has the author already voted for this round?
@@ -44,7 +46,10 @@ int PendingVotes::insertVote(
 			return VoteReceptionResult::EquivocateVote;
 		}
 		else {
-			return VoteReceptionResult::DuplicateVote; // DuplicateVote
+			// we've already seen an equivalent vote before
+			bool new_timeout_vote = vote.isTimeout() && (previously_seen_vote->second.isTimeout() == false);
+			if(new_timeout_vote == false)
+				return VoteReceptionResult::DuplicateVote; // DuplicateVote
 		}
 	}
 
@@ -59,12 +64,26 @@ int PendingVotes::insertVote(
 	}
 	it->second.addSignature(vote.author(), vote.signature());
 
-	if (verifer->checkVotingPower(it->second.signatures) == false) {
-		return VoteReceptionResult::VoteAdded;
+	// check if we have enough signatures to create a QC
+	if (verifer->checkVotingPower(it->second.signatures)) {
+		quorumCert = QuorumCertificate(vote.vote_data(), it->second);
+		return VoteReceptionResult::NewQuorumCertificate;
 	}
 	
-	quorumCert = QuorumCertificate(vote.vote_data(), it->second);
-	return VoteReceptionResult::NewQuorumCertificate;
+	// We couldn't form a QuorumCertificate, 
+	// let's check if we can create a TimeoutCertificate
+	if (vote.isTimeout()) {
+		Timeout timoeut = vote.timeout();
+		Signature signature = vote.timeout_signature().get();
+		TimeoutCertificate partial_tc = maybe_partial_timeout_cert_.get_value_or(TimeoutCertificate(timoeut));
+		partial_tc.addSignature(vote.author(), signature);
+		if (verifer->checkVotingPower(partial_tc.signatures())) {
+			timeoutCert = partial_tc;
+			return VoteReceptionResult::NewTimeoutCertificate;
+		}
+	}
+
+	return VoteReceptionResult::VoteAdded;
 }
 
 } // namespace hotstuff

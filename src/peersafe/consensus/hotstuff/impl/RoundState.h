@@ -63,10 +63,15 @@ public:
 		send_vote_ = vote;
 	}
 
+	const boost::optional<Vote>& send_vote() const {
+		return send_vote_;
+	}
+
 	int insertVote(
 		const Vote& vote, 
 		ValidatorVerifier* verifer, 
-		QuorumCertificate& quorumCert);
+		QuorumCertificate& quorumCert,
+		boost::optional<TimeoutCertificate>& timeoutCert);
 private:
 	void CancelRoundTimeout();
 	Round current_round_;

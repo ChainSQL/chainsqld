@@ -212,6 +212,20 @@ public:
 		}
 	}
 
+	void broadcast(
+		const ripple::hotstuff::Vote& vote, 
+		const ripple::hotstuff::SyncInfo& sync_info) {
+
+		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+			env_->app().getJobQueue().addJob(
+				jtPROPOSAL_t,
+				"broadcast_proposal",
+				[this, it, vote, sync_info](Job&) {
+					it->second->hotstuff_->handleVote(vote, sync_info);
+				});
+		}
+	}
+
 	void sendVote(
 		const ripple::hotstuff::Author& author, 
 		const ripple::hotstuff::Vote& vote, 

@@ -2,12 +2,12 @@
 /*
  This file is part of chainsqld: https://github.com/chainsql/chainsqld
  Copyright (c) 2016-2018 Peersafe Technology Co., Ltd.
- 
+
 	chainsqld is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
- 
+
 	chainsqld is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -15,31 +15,34 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-//==============================================================================
+ //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
+#ifndef RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H
+#define RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H
 
-#include <peersafe/consensus/hotstuff/impl/Block.h>
-#include <peersafe/consensus/hotstuff/impl/Vote.h>
-#include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
+#include <peersafe/consensus/hotstuff/impl/Types.h>
+#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
 
 namespace ripple {
 namespace hotstuff {
 
-class NetWork { 
-public:
-	// 广播给每一个节点，包括自身
-    virtual void broadcast(const Block& proposal, const SyncInfo& sync_info) = 0;
-    virtual void broadcast(const Vote& vote, const SyncInfo& sync_info) = 0;
-	virtual void sendVote(const Author& author, const Vote& vote, const SyncInfo& sync_info) = 0;
-    
-    virtual ~NetWork() {}
-protected:
-    NetWork() {}
+struct Timeout {
+	Epoch epoch;
+	Round round;
+
+	bool sign(ValidatorVerifier* verifier, Signature& signature) {
+		using beast::hash_append;
+		ripple::sha512_half_hasher h;
+		hash_append(h, epoch);
+		hash_append(h, round);
+
+		HashValue hash = static_cast<typename sha512_half_hasher::result_type>(h);
+		ripple::Slice message(hash.data(), hash.size());
+		return verifier->signature(message, signature);
+	}
 };
 
 } // namespace hotstuff
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_NETWORK_H
+#endif // RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H

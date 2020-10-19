@@ -85,6 +85,7 @@ public:
     ~Block();
 
 	static Block empty();
+	static Block nil_block(Round round, const QuorumCertificate& hqc);
 	static Block new_from_block_data(
 		const BlockData& block_data, 
 		ValidatorVerifier* verifier);

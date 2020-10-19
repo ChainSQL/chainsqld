@@ -100,5 +100,45 @@ bool QuorumCertificate::Verify(const ValidatorVerifier* validator) {
 	return true;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////
+// TimeoutCertificate
+///////////////////////////////////////////////////////////////////////////////////////
+
+TimeoutCertificate::TimeoutCertificate(const Timeout& timeout)
+: timeout_(timeout)
+, signatures_() {
+
+}
+
+TimeoutCertificate::~TimeoutCertificate() {
+
+}
+
+void TimeoutCertificate::addSignature(const Author& author, const Signature& signature) {
+	if (signatures_.find(author) == signatures_.end()) {
+		signatures_.emplace(std::make_pair(author, signature));
+	}
+}
+
+bool TimeoutCertificate::Verify(const ValidatorVerifier* validator) {
+	if (signatures_.empty()) {
+		assert(signatures_.empty() == false);
+		return false;
+	}
+
+	using beast::hash_append;
+	ripple::sha512_half_hasher h;
+	hash_append(h, timeout_.epoch);
+	hash_append(h, timeout_.round);
+	HashValue hash = static_cast<typename sha512_half_hasher::result_type>(h);
+	ripple::Slice message(hash.data(), hash.size());
+
+	for (auto it = signatures_.begin(); it != signatures_.end(); it++) {
+		if (validator->verifySignature(it->first, it->second, message) == false)
+			return false;
+	}
+	return true;
+}
+
 } // namespace hotstuff
 } // namespace ripple

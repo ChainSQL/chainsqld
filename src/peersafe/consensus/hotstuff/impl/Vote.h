@@ -24,6 +24,7 @@
 
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 #include <peersafe/consensus/hotstuff/impl/VoteData.h>
+#include <peersafe/consensus/hotstuff/impl/timeout.h>
 
 namespace ripple {
 namespace hotstuff {
@@ -63,6 +64,10 @@ public:
 		return signature_;
 	}
 
+	void addTimeoutSignature(const Signature& signature) {
+		timeout_signature_ = boost::optional<Signature>(signature);
+	}
+
 	boost::optional<Signature>& timeout_signature() {
 		return timeout_signature_;
 	}
@@ -74,6 +79,9 @@ public:
 	const LedgerInfoWithSignatures::LedgerInfo& ledger_info() const {
 		return ledger_info_;
 	}
+
+	const bool isTimeout() const;
+	Timeout timeout() const;
 private:
 	/// The data of the vote
 	VoteData vote_data_;

@@ -56,6 +56,20 @@ Block Block::empty() {
 	return Block();
 }
 
+Block Block::nil_block(Round round, const QuorumCertificate& hqc) {
+	Block block = Block::empty();
+
+	BlockData block_data;
+	block_data.round = round;
+	block_data.quorum_cert = hqc;
+	block_data.block_type = BlockData::NilBlock;
+
+	block.id_ = BlockData::hash(block_data);
+	block.block_data_ = block_data;
+
+	return block;
+}
+
 Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier* verifier) {
 	Block block;
 

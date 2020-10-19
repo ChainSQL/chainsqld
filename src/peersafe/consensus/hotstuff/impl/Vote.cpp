@@ -48,5 +48,17 @@ Vote Vote::New(
 	return vote;
 }
 
+const bool Vote::isTimeout() const {
+	if (timeout_signature_)
+		return true;
+	return false;
+}
+
+Timeout Vote::timeout() const {
+	return Timeout{
+		vote_data_.proposed().epoch,
+		vote_data_.proposed().round};
+}
+
 } // namespace hotstuff
 } // namespace ripple

@@ -39,7 +39,9 @@ ProposalGenerator::~ProposalGenerator() {
 }
 
 boost::optional<Block> ProposalGenerator::GenerateNilBlock(Round round) {
-	return boost::optional<Block>();
+	QuorumCertificate hqc = HighestQuorumCert(round);
+	Block block = Block::nil_block(round, hqc);
+	return boost::optional<Block>(block);
 }
 
 boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {

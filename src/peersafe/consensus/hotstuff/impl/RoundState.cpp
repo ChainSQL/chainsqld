@@ -64,10 +64,11 @@ void RoundState::CancelRoundTimeout() {
 int RoundState::insertVote(
 	const Vote& vote, 
 	ValidatorVerifier* verifer, 
-	QuorumCertificate& quorumCert) {
+	QuorumCertificate& quorumCert,
+	boost::optional<TimeoutCertificate>& timeoutCert) {
 	if (vote.vote_data().proposed().round != current_round())
 		return 1;
-	return pending_votes_.insertVote(vote, verifer, quorumCert);
+	return pending_votes_.insertVote(vote, verifer, quorumCert, timeoutCert);
 }
 
 } // namespace hotstuff

@@ -93,10 +93,47 @@ boost::optional<Block> RoundManager::GenerateProposal(const NewRoundEvent& event
 	return boost::optional<Block>();
 }
 
+/// The replica broadcasts a "timeout vote message", which includes the round signature, which
+/// can be aggregated to a TimeoutCertificate.
+/// The timeout vote message can be one of the following three options:
+/// 1) In case a validator has previously voted in this round, it repeats the same vote and sign
+/// a timeout.
+/// 2) Otherwise vote for a NIL block and sign a timeout.
 void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Round round) {
-	if (ec) {
+	if (ec)
 		return;
+
+	if (round != round_state_->current_round())
+		return;
+
+	Vote timeout_vote;
+	if (round_state_->send_vote()) {
+		timeout_vote = round_state_->send_vote().get();
 	}
+	else {
+		// generates a dummy block
+		// Didn't vote in this round yet, generate a backup vote
+		Block nil_block = proposal_generator_->GenerateNilBlock(round).get();
+		assert(nil_block.block_data().block_type == BlockData::NilBlock);
+		if (ExecuteAndVote(nil_block, timeout_vote) == false)
+			return;
+	}
+
+	if (timeout_vote.isTimeout() == false) {
+		Timeout timeout = timeout_vote.timeout();
+		Signature signature;
+		if (timeout.sign(hotstuff_core_->epochState()->verifier, signature))
+			timeout_vote.addTimeoutSignature(signature);
+	}
+	round_state_->recordVote(timeout_vote);
+	// broadcast vote
+	network_->broadcast(timeout_vote, block_store_->sync_info());
+
+	// setup round timeout
+	boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
+	roundTimeoutTimer.expires_from_now(std::chrono::seconds(7));
+	roundTimeoutTimer.async_wait(
+		std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, round));
 }
 
 int RoundManager::ProcessProposal(const Block& proposal, const SyncInfo& sync_info) {
@@ -153,12 +190,14 @@ int RoundManager::ProcessProposal(const Block& proposal) {
 }
 
 int RoundManager::ProcessVote(const Vote& vote) {
-	Round next_round = vote.vote_data().proposed().round + 1;
-	if (proposer_election_->IsValidProposer(proposal_generator_->author(), next_round) == false) {
-		JLOG(journal_.warn())
-			<< "Received a vote, but i am not a valid proposer for this round "
-			<< next_round << ", ignore.";
-		return 1;
+	if (vote.isTimeout() == false) {
+		Round next_round = vote.vote_data().proposed().round + 1;
+		if (proposer_election_->IsValidProposer(proposal_generator_->author(), next_round) == false) {
+			JLOG(journal_.warn())
+				<< "Received a vote, but i am not a valid proposer for this round "
+				<< next_round << ", ignore.";
+			return 1;
+		}
 	}
 
 	// TODO
@@ -166,12 +205,18 @@ int RoundManager::ProcessVote(const Vote& vote) {
 
 	// Add the vote and check whether it completes a new QC or a TC
 	QuorumCertificate quorumCert;
-	if (round_state_->insertVote(
-		vote, 
+	boost::optional<TimeoutCertificate> timeoutCert;
+	int ret = round_state_->insertVote(
+		vote,
 		hotstuff_core_->epochState()->verifier,
-		quorumCert) == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
-
+		quorumCert, timeoutCert);
+	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
 		NewQCAggregated(quorumCert);
+		return 0;
+	}
+	else if (ret == PendingVotes::VoteReceptionResult::NewTimeoutCertificate) {
+		assert(timeoutCert);
+		NewTCAggregated(timeoutCert.get());
 		return 0;
 	}
 	return 1;
@@ -251,6 +296,13 @@ int RoundManager::ProcessCertificates() {
 
 int RoundManager::NewQCAggregated(const QuorumCertificate& quorumCert) {
 	if (block_store_->insertQuorumCert(quorumCert) == 0) {
+		ProcessCertificates();
+	}
+	return 0;
+}
+
+int RoundManager::NewTCAggregated(const TimeoutCertificate& timeoutCert) {
+	if (block_store_->insertTimeoutCert(timeoutCert) == 0) {
 		ProcessCertificates();
 	}
 	return 0;

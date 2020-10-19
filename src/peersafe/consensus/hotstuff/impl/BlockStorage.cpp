@@ -38,7 +38,8 @@ BlockStorage::BlockStorage(
 : state_compute_(state_compute)
 , cache_blocks_()
 , highest_quorum_cert_(highest_quorum_cert)
-, highest_commit_cert_(highest_commit_cert) {
+, highest_commit_cert_(highest_commit_cert)
+, highest_timeout_cert_() {
 
 }
 
@@ -49,7 +50,8 @@ BlockStorage::BlockStorage(
 , genesis_block_id_(genesis_block.id())
 , cache_blocks_()
 , highest_quorum_cert_(genesis_block.block_data().quorum_cert)
-, highest_commit_cert_(genesis_block.block_data().quorum_cert) {
+, highest_commit_cert_(genesis_block.block_data().quorum_cert)
+, highest_timeout_cert_() {
 	executeAndAddBlock(genesis_block);
 }
 
@@ -140,6 +142,17 @@ int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert) {
 		highest_commit_cert_ = quorumCert;
 	}
 
+	return 0;
+}
+
+int BlockStorage::insertTimeoutCert(const TimeoutCertificate& timeoutCeret) {
+	if (highest_timeout_cert_) {
+		if (highest_timeout_cert_->timeout().round < timeoutCeret.timeout().round) {
+			highest_timeout_cert_ = timeoutCeret;
+		}
+	} else {
+		highest_timeout_cert_ = timeoutCeret;
+	}
 	return 0;
 }
 

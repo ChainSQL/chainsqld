@@ -73,13 +73,21 @@ public:
 		return highest_commit_cert_;
 	}
 
+	const boost::optional<TimeoutCertificate>& HighestTimeoutCert() const {
+		return highest_timeout_cert_;
+	}
+
 	SyncInfo sync_info() {
-		return SyncInfo(HighestQuorumCert(), HighestCommitCert());
+		return SyncInfo(
+			HighestQuorumCert(), 
+			HighestCommitCert(), 
+			HighestTimeoutCert());
 	}
 
 	int addCerts(const SyncInfo& sync_info);
 
 	int insertQuorumCert(const QuorumCertificate& quorumCeret);
+	int insertTimeoutCert(const TimeoutCertificate& timeoutCeret);
 
 	// 目前主要功能是 commit 共识过的 block
 	int saveVote(const Vote& vote);
@@ -92,6 +100,7 @@ private:
 
 	QuorumCertificate highest_quorum_cert_;
 	QuorumCertificate highest_commit_cert_;
+	boost::optional<TimeoutCertificate> highest_timeout_cert_;
 };
 
 } // namespace hotstuff

@@ -63,6 +63,7 @@ private:
 		const Author& author);
 	int ProcessCertificates();
 	int NewQCAggregated(const QuorumCertificate& quorumCert);
+	int NewTCAggregated(const TimeoutCertificate& timeoutCert);
 
 	void ProcessLocalTimeout(const boost::system::error_code& ec, Round round);
 
