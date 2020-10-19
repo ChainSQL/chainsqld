@@ -70,7 +70,7 @@ Hotstuff::pointer Hotstuff::Builder::build() {
 	Hotstuff::pointer hotstuff = nullptr;
 	if (io_service_ == nullptr
 		|| config_.id.empty()
-		|| config_.timeout < 7
+		|| config_.timeout <= 0
 		|| command_manager_ == nullptr
 		|| proposer_election_ == nullptr
 		|| state_compute_ == nullptr

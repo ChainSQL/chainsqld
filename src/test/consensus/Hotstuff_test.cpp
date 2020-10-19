@@ -73,6 +73,7 @@ public:
 		const beast::Journal& journal,
 		bool malicious = false)
 	: io_service_()
+	, worker_()
 	, config_(config)
 	, recover_data_(ripple::hotstuff::RecoverData{ Replica::genesis_ledger_info })
 	, key_pair_(ripple::randomKeyPair(ripple::KeyType::secp256k1))
@@ -94,6 +95,15 @@ public:
 	}
 
 	~Replica() {
+		io_service_.stop();
+		while (true) {
+			if (io_service_.stopped())
+				break;
+		}
+
+		if (worker_.joinable())
+			worker_.join();
+		
 		Replica::index = 1;
 		committed_blocks_.clear();
 	}
@@ -257,6 +267,12 @@ public:
 	}
 
 	void run() {
+		// initial 
+		worker_ = std::thread([this]() {
+			boost::asio::io_service::work work(io_service_);
+			io_service_.run();
+		});
+
 		hotstuff_->start(recover_data_);
 	}
 
@@ -277,6 +293,7 @@ public:
 	}
 private:
 	boost::asio::io_service io_service_;
+	std::thread worker_;
 	ripple::hotstuff::Config config_;
 	ripple::hotstuff::RecoverData recover_data_;
 	KeyPair key_pair_;
@@ -464,13 +481,16 @@ public:
 
 		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_, false_replicas_);
 		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_) == true);
+		stopReplicas(&env, replicas_);
+		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
+		releaseReplicas(replicas_);
 	}
 
     void run() override {
 		parse_args();
 
 		testNormalRound();
-		//testTimeoutRound();
+		testTimeoutRound();
     }
 
 	Hotstuff_test()
