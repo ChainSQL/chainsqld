@@ -53,6 +53,8 @@ JSS ( Escrow );                     // ledger type.
 JSS ( EscrowCancel );               // transaction type.
 JSS ( EscrowCreate );               // transaction type.
 JSS ( EscrowFinish );               // transaction type.
+JSS ( SchemaCreate );
+JSS ( SchemaModify );
 JSS ( Fee );                        // in/out: TransactionSign; field.
 JSS ( FeeSettings );                // ledger type.
 JSS ( Flags );                      // in/out: TransactionSign; field.
@@ -77,6 +79,7 @@ JSS ( SQLTransaction );				// transaction type.
 JSS ( TableList );					// ledger type.
 JSS ( InsertLimt );					// ledger type.
 JSS ( ChainId );					// ledger type.
+JSS ( Schema );
 JSS ( RippleState );                // ledger type.
 JSS ( TransferRate );               // in: TransferRate
 JSS (TransferFeeMin);

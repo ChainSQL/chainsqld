@@ -59,6 +59,8 @@ enum TxType
     ttSQLSTATEMENT      = 22,
     ttSQLTRANSACTION    = 23,
 	ttCONTRACT			= 24,
+	ttSCHEMA_CREATE		= 25,
+	ttSCHEMA_MODIFY		= 26,
     ttAMENDMENT         = 100,
     ttFEE               = 101,
 };

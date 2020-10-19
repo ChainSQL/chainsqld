@@ -279,6 +279,27 @@ TxFormats::TxFormats ()
 			{ sfFutureTxHash,		 soeOPTIONAL }
 		},
 		commonFields);
+
+	add(jss::SchemaCreate, ttSCHEMA_CREATE,
+		{
+			{ sfSchemaName,			 soeREQUIRED },
+			{ sfSchemaStrategy,		 soeREQUIRED },
+			{ sfSchemaAdmin,		 soeOPTIONAL },
+			{ sfAnchorLedgerHash,	 soeOPTIONAL },
+			{ sfValidators,			 soeREQUIRED },
+			{ sfPeerList,			 soeREQUIRED }
+		},
+		commonFields);
+
+	add(jss::SchemaModify,  ttSCHEMA_MODIFY,
+		{
+			{ sfSchemaName,			 soeREQUIRED },
+			{ sfOpType,				 soeREQUIRED },
+			{ sfValidators,			 soeREQUIRED },
+			{ sfPeerList,			 soeREQUIRED },
+			{ sfSchemaID,			 soeREQUIRED }
+		},
+		commonFields);
 }
 
 TxFormats const&

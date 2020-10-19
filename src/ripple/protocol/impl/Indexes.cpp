@@ -412,13 +412,14 @@ payChan (AccountID const& source, AccountID const& dst, std::uint32_t seq)
 }
 
 Keylet
-schema(AccountID const& account, std::uint32_t seq)
+schema(AccountID const& account, std::uint32_t seq, uint256 const& prevLedgerHash)
 {
 	sha512_half_hasher h;
 	using beast::hash_append;
 	hash_append(h, std::uint16_t(spaceSchema));
 	hash_append(h, account);
 	hash_append(h, seq);
+	hash_append(h, prevLedgerHash);
 	return { ltSCHEMA, static_cast<uint256>(h) };
 }
 } // keylet

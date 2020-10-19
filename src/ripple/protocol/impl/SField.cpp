@@ -172,6 +172,8 @@ SF_U256 const sfDigest        (access, STI_HASH256, 21, "Digest");
 SF_U256 const sfPayChannel    (access, STI_HASH256, 22, "Channel");
 SF_U256 const sfConsensusHash (access, STI_HASH256, 23, "ConsensusHash");
 SF_U256 const sfCheckID       (access, STI_HASH256, 24, "CheckID");
+SF_U256 const sfSchemaID	  (access, STI_HASH256, 25, "SchemaID");
+
 
 // currency amount (common)
 SF_Amount const sfAmount      (access, STI_AMOUNT,  1, "Amount");
@@ -231,6 +233,7 @@ SF_Blob const sfContractData	(access, STI_VL, 65, "ContractData");
 SF_Blob const sfContractTxs     (access, STI_VL, 66, "ContractTxs");
 SF_Blob const sfContractLogs    (access, STI_VL, 67, "ContractLogs");
 SF_Blob const sfSchemaName      (access, STI_VL, 68, "SchemaName");
+SF_Blob const sfPeer			(access, STI_VL, 69, "Peer");
 
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");

@@ -324,6 +324,10 @@ Keylet page (uint256 const& key)
 Keylet
 escrow (AccountID const& source, std::uint32_t seq);
 
+/** An Schema entry */
+Keylet
+schema(AccountID const& source, std::uint32_t seq, uint256 const& prevLedgerHash);
+
 /** A PaymentChannel */
 Keylet
 payChan (AccountID const& source, AccountID const& dst, std::uint32_t seq);

@@ -242,6 +242,17 @@ LedgerFormats::LedgerFormats ()
 			{ sfChainId,          soeREQUIRED },
 		},
 		commonFields);
+
+	add(jss::Schema, ltSCHEMA,
+		{
+			{ sfAccount,             soeREQUIRED },
+			{ sfSchemaName,          soeREQUIRED },
+			{ sfSchemaStrategy,      soeREQUIRED },
+			{ sfAnchorLedgerHash,    soeOPTIONAL },
+			{ sfSchemaAdmin,		 soeOPTIONAL },
+			{ sfValidators,          soeREQUIRED },
+			{ sfPeerList,            soeREQUIRED },
+		}, commonFields);
 }
 
 LedgerFormats const&

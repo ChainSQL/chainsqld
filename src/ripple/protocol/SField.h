@@ -446,6 +446,7 @@ extern SF_U256 const sfPayChannel;
 extern SF_U256 const sfTxCheckHash;
 extern SF_U256 const sfConsensusHash;
 extern SF_U256 const sfCheckID;
+extern SF_U256 const sfSchemaID;
 
 // currency amount (common)
 extern SF_Amount const sfAmount;
@@ -503,6 +504,7 @@ extern SF_Blob const sfTransferFeeMax;
 extern SF_Blob const sfContractCode;
 extern SF_Blob const sfContractData;
 extern SF_Blob const sfSchemaName;
+extern SF_Blob const sfPeer;
 
 // account
 extern SF_Account const sfAccount;
@@ -563,7 +565,8 @@ extern SField const sfMajorities;
 extern SField const sfTableEntries;
 extern SField const sfTables;
 extern SField const sfUsers;
-
+extern SField const sfValidators;
+extern SField const sfPeerList;
 
 // certificate
 extern SF_Blob const sfCertificate;
