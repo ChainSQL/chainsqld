@@ -67,7 +67,7 @@ Json::Value doSchemaList(RPC::Context&  context)
 			Json::Value& jvPeers = (schema[jss::peer_list] = Json::arrayValue);
 			for (auto& peer : sle->getFieldArray(sfPeerList))
 			{
-				jvPeers.append(Json::Value(strCopy(peer.getFieldVL(sfEndPoint))));
+				jvPeers.append(Json::Value(strCopy(peer.getFieldVL(sfEndpoint))));
 			}
 			ret[jss::schemas].append(schema);
 		}
