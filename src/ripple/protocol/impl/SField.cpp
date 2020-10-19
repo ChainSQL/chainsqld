@@ -233,7 +233,7 @@ SF_Blob const sfContractData	(access, STI_VL, 65, "ContractData");
 SF_Blob const sfContractTxs     (access, STI_VL, 66, "ContractTxs");
 SF_Blob const sfContractLogs    (access, STI_VL, 67, "ContractLogs");
 SF_Blob const sfSchemaName      (access, STI_VL, 68, "SchemaName");
-SF_Blob const sfPeer			(access, STI_VL, 69, "Peer");
+SF_Blob const sfEndPoint		(access, STI_VL, 69, "Endpoint");
 
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");
@@ -276,6 +276,8 @@ SField const sfMemo                (access, STI_OBJECT, 10, "Memo");
 SField const sfSignerEntry         (access, STI_OBJECT, 11, "SignerEntry");
 SField const sfTable			   (access, STI_OBJECT, 50, "Table");
 SField const sfRules			   (access, STI_OBJECT, 51, "Rule");
+SField const sfValidator           (access, STI_OBJECT, 52, "Validator");
+SField const sfPeer                (access, STI_OBJECT, 53, "Peer");
 
 // inner object (uncommon)
 SField const sfSigner              (access, STI_OBJECT, 16, "Signer");
@@ -295,6 +297,7 @@ SField const sfMemos           (access, STI_ARRAY, 9, "Memos");
 SField const sfTableEntries    (access, STI_ARRAY, 50,"TableEntries");
 SField const sfTables          (access, STI_ARRAY, 51, "Tables");
 SField const sfUsers           (access, STI_ARRAY, 52, "Users");	
+SField const sfValidators      (access, STI_ARRAY, 53, "Validators");
 
 // array of objects (uncommon)
 SField const sfMajorities      (access, STI_ARRAY, 16, "Majorities");

@@ -11,6 +11,11 @@ namespace ripple {
 		with_state = 2,
 	};
 
+	enum class SchemaModifyOp {
+		add = 1,
+		del = 2,
+	};
+
 	class SchemaParams {
 	public:
 		SchemaID		schema_id;

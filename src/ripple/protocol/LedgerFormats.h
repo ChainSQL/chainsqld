@@ -99,7 +99,7 @@ enum LedgerEntryType
 
 	ltCHAINID			= 'b',
 
-	ltSCHEMA            = 'h',
+	ltSCHEMA            = 'm',
 };
 
 /**
