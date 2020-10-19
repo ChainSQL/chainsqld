@@ -40,6 +40,7 @@
 #include <peersafe/app/tx/SqlTransaction.h>
 #include <peersafe/app/tx/SmartContract.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/tx/SchemaTx.h>
 
 namespace ripple {
 
@@ -74,6 +75,8 @@ invoke_preflight (PreflightContext const& ctx)
     case ttSQLSTATEMENT:		 return SqlStatement      ::preflight(ctx);
     case ttSQLTRANSACTION:		 return SqlTransaction    ::preflight(ctx);
 	case ttCONTRACT:			 return SmartContract	  ::preflight(ctx);
+	case ttSCHEMA_CREATE:		 return SchemaCreate	  ::preflight(ctx);
+	case ttSCHEMA_MODIFY:		 return SchemaModify	  ::preflight(ctx);
     default:
         assert(false);
         return temUNKNOWN;
@@ -142,11 +145,13 @@ invoke_preclaim (PreclaimContext const& ctx)
     case ttTICKET_CREATE:        return invoke_preclaim<CreateTicket>(ctx);
     case ttTRUST_SET:            return invoke_preclaim<SetTrust>(ctx);
     case ttAMENDMENT:
-    case ttFEE:             return invoke_preclaim<Change>(ctx);;
-    case ttTABLELISTSET:    return invoke_preclaim<TableListSet>(ctx);
-    case ttSQLSTATEMENT:    return invoke_preclaim<SqlStatement>(ctx);
-    case ttSQLTRANSACTION:  return invoke_preclaim<SqlTransaction>(ctx); 
-	case ttCONTRACT:		return invoke_preclaim<SmartContract>(ctx);
+    case ttFEE:					 return invoke_preclaim<Change>(ctx);;
+    case ttTABLELISTSET:		 return invoke_preclaim<TableListSet>(ctx);
+    case ttSQLSTATEMENT:		 return invoke_preclaim<SqlStatement>(ctx);
+    case ttSQLTRANSACTION:		 return invoke_preclaim<SqlTransaction>(ctx); 
+	case ttCONTRACT:			 return invoke_preclaim<SmartContract>(ctx);
+	case ttSCHEMA_CREATE:		 return invoke_preclaim <SchemaCreate>(ctx);
+	case ttSCHEMA_MODIFY:		 return invoke_preclaim <SchemaModify>(ctx);
     default:
         assert(false);
         return temUNKNOWN;
@@ -181,11 +186,13 @@ invoke_calculateBaseFee(
     case ttTICKET_CREATE:        return CreateTicket::calculateBaseFee(view, tx);
     case ttTRUST_SET:            return SetTrust::calculateBaseFee(view, tx);
     case ttAMENDMENT:
-    case ttFEE:             return Change::calculateBaseFee(view,tx);
-    case ttTABLELISTSET:    return TableListSet::calculateBaseFee(view,tx);
-    case ttSQLSTATEMENT:    return SqlStatement::calculateBaseFee(view,tx);
-	case ttSQLTRANSACTION:  return SqlTransaction::calculateBaseFee(view,tx);
-	case ttCONTRACT:		return SmartContract::calculateBaseFee(view,tx);
+    case ttFEE:					 return Change::calculateBaseFee(view,tx);
+    case ttTABLELISTSET:		 return TableListSet::calculateBaseFee(view,tx);
+    case ttSQLSTATEMENT:		 return SqlStatement::calculateBaseFee(view,tx);
+	case ttSQLTRANSACTION:		 return SqlTransaction::calculateBaseFee(view,tx);
+	case ttCONTRACT:			 return SmartContract::calculateBaseFee(view,tx);
+	case ttSCHEMA_CREATE:		 return SchemaCreate::calculateBaseFee(view,tx);
+	case ttSCHEMA_MODIFY:		 return SchemaModify::calculateBaseFee(view,tx);
     default:
         assert(false);
         return 0;
@@ -230,10 +237,12 @@ invoke_calculateConsequences(STTx const& tx)
     case ttTICKET_CANCEL:        return invoke_calculateConsequences<CancelTicket>(tx);
     case ttTICKET_CREATE:        return invoke_calculateConsequences<CreateTicket>(tx);
     case ttTRUST_SET:            return invoke_calculateConsequences<SetTrust>(tx);    
-	case ttTABLELISTSET:    return invoke_calculateConsequences<TableListSet>(tx);
-    case ttSQLSTATEMENT:    return invoke_calculateConsequences<SqlStatement>(tx);
-    case ttSQLTRANSACTION:  return invoke_calculateConsequences<SqlTransaction>(tx);
-	case ttCONTRACT:		return invoke_calculateConsequences<SmartContract>(tx);
+	case ttTABLELISTSET:		 return invoke_calculateConsequences<TableListSet>(tx);
+    case ttSQLSTATEMENT:		 return invoke_calculateConsequences<SqlStatement>(tx);
+    case ttSQLTRANSACTION:		 return invoke_calculateConsequences<SqlTransaction>(tx);
+	case ttCONTRACT:			 return invoke_calculateConsequences<SmartContract>(tx);
+	case ttSCHEMA_CREATE:		 return invoke_calculateConsequences <SchemaCreate>(tx);
+	case ttSCHEMA_MODIFY:		 return invoke_calculateConsequences <SchemaModify>(tx);
     case ttAMENDMENT:
     case ttFEE:
         // fall through to default
@@ -270,11 +279,13 @@ invoke_apply (ApplyContext& ctx)
     case ttTICKET_CREATE:        { CreateTicket       p(ctx); return p(); }
     case ttTRUST_SET:            { SetTrust           p(ctx); return p(); }
     case ttAMENDMENT:
-    case ttFEE:             { Change        p(ctx); return p(); }
-    case ttTABLELISTSET:    { TableListSet  p(ctx); return p(); }
-    case ttSQLSTATEMENT:    { SqlStatement  p(ctx); return p(); }
-    case ttSQLTRANSACTION:  { SqlTransaction p(ctx); return p(); } 
-	case ttCONTRACT:		{ SmartContract p(ctx); return p(); }
+    case ttFEE:					 { Change			  p(ctx); return p(); }
+    case ttTABLELISTSET:		 { TableListSet		  p(ctx); return p(); }
+    case ttSQLSTATEMENT:		 { SqlStatement		  p(ctx); return p(); }
+    case ttSQLTRANSACTION:		 { SqlTransaction	  p(ctx); return p(); } 
+	case ttCONTRACT:			 { SmartContract	  p(ctx); return p(); }
+	case ttSCHEMA_CREATE:		 { SchemaCreate		  p(ctx); return p(); }
+	case ttSCHEMA_MODIFY:		 { SchemaModify		  p(ctx); return p(); }
     default:
         assert(false);
 		return std::make_pair(temUNKNOWN, false);

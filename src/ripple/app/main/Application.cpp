@@ -1058,7 +1058,7 @@ void ApplicationImp::loadSubChains()
 
 	boost::filesystem::path schemaPath =  config_->SCHEMA_PATH;
 
-	if (schemaPath.empty()) {
+	if (schemaPath.empty() || !boost::filesystem::exists(schemaPath)) {
 		return;
 	}
 

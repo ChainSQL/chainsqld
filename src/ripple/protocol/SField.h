@@ -504,7 +504,7 @@ extern SF_Blob const sfTransferFeeMax;
 extern SF_Blob const sfContractCode;
 extern SF_Blob const sfContractData;
 extern SF_Blob const sfSchemaName;
-extern SF_Blob const sfPeer;
+extern SF_Blob const sfEndPoint;
 
 // account
 extern SF_Account const sfAccount;
@@ -550,6 +550,8 @@ extern SField const sfTable;
 extern SField const sfSigner;
 extern SField const sfMajority;
 extern SField const sfRules;
+extern SField const sfValidator;
+extern SField const sfPeer;
 
 // array of objects
 // ARRAY/1 is reserved for end of array
