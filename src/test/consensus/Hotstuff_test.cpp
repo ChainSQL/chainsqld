@@ -68,20 +68,21 @@ public:
 	using KeyPair = std::pair<ripple::PublicKey, ripple::SecretKey>;
 
 	Replica(
-		const ripple::hotstuff::Author& author, 
+		const ripple::hotstuff::Config& config,
 		jtx::Env* env,
-		const beast::Journal& journal)
+		const beast::Journal& journal,
+		bool malicious = false)
 	: io_service_()
+	, config_(config)
 	, recover_data_(ripple::hotstuff::RecoverData{ Replica::genesis_ledger_info })
-	, author_(author)
 	, key_pair_(ripple::randomKeyPair(ripple::KeyType::secp256k1))
 	, env_(env)
 	, committed_blocks_() 
-	, hotstuff_(nullptr) {
+	, hotstuff_(nullptr)
+	, malicious_(malicious) {
 		
 		hotstuff_ = ripple::hotstuff::Hotstuff::Builder(io_service_, journal)
-			.setRecoverData(recover_data_)
-			.setAuthor(author_)
+			.setConfig(config_)
 			.setCommandManager(this)
 			.setNetWork(this)
 			.setProposerElection(this)
@@ -135,7 +136,7 @@ public:
 
 	// for ValidatorVerifier
 	const ripple::hotstuff::Author& Self() const {
-		return author_;
+		return config_.id;
 	}
 
 	bool signature(
@@ -143,7 +144,7 @@ public:
 		ripple::hotstuff::Signature& signature) {
 		Replica* replica = nullptr;
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			if (it->second->author() == author_) {
+			if (it->second->author() == config_.id) {
 				replica = it->second;
 				break;
 			}
@@ -201,6 +202,9 @@ public:
 	void broadcast(
 		const ripple::hotstuff::Block& proposal, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
+
+		if (malicious())
+			return;
 		
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			env_->app().getJobQueue().addJob(
@@ -215,6 +219,9 @@ public:
 	void broadcast(
 		const ripple::hotstuff::Vote& vote, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
+
+		if (malicious())
+			return;
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			env_->app().getJobQueue().addJob(
@@ -231,6 +238,9 @@ public:
 		const ripple::hotstuff::Vote& vote, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
 
+		if (malicious())
+			return;
+
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			if (it->second->author() == author) {
 				env_->app().getJobQueue().addJob(
@@ -244,7 +254,7 @@ public:
 	}
 
 	void run() {
-		hotstuff_->start();
+		hotstuff_->start(recover_data_);
 	}
 
 	void stop() {
@@ -252,20 +262,25 @@ public:
 	}
 
 	const ripple::hotstuff::Author& author() const {
-		return author_;
+		return config_.id;
 	}
 	
 	const KeyPair& keyPair() const {
 		return key_pair_;
 	}
+
+	const bool malicious() const {
+		return malicious_;
+	}
 private:
 	boost::asio::io_service io_service_;
+	ripple::hotstuff::Config config_;
 	ripple::hotstuff::RecoverData recover_data_;
-	ripple::hotstuff::Author author_;
 	KeyPair key_pair_;
 	jtx::Env* env_;
 	std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committed_blocks_;
 	ripple::hotstuff::Hotstuff::pointer hotstuff_;
+	bool malicious_;
 
 	static int index;
 };
@@ -298,19 +313,49 @@ public:
 					disable_log_ = true;
 				}
 			}
-			else if (arg_key.compare("replicas") == 0) {
-				replicas_ = std::atoi(arg_value.c_str());
+			else if (arg_key.compare("false_replicas") == 0) {
+				false_replicas_ = std::atoi(arg_value.c_str());
+				replicas_ = 3 * false_replicas_ + 1;
 			}
 			else if (arg_key.compare("blocks") == 0) {
 				blocks_ = std::atoi(arg_value.c_str());
 			}
+			else if (arg_key.compare("timeout") == 0) {
+				timeout_ = std::atoi(arg_value.c_str());
+			}
 		}
 	}
 
-	void newAndRunReplicas(jtx::Env* env, beast::Journal& journal, int replicas) {
+	void newAndRunReplicas(
+		jtx::Env* env, 
+		beast::Journal& journal, 
+		int replicas,
+		int malicious = 0) {
+
+		// 随机设置异常节点
+		std::set<int> maliciousAuthors;
+		if (malicious > 0) {
+			for (;;) {
+				// use current time as seed for random generator
+				std::srand(std::time(nullptr));
+				int id = (std::rand() % replicas) + 1;
+				maliciousAuthors.insert(id);
+
+				if (maliciousAuthors.size() == malicious)
+					break;
+			}
+		}
+
+		ripple::hotstuff::Config config;
+		config.timeout = timeout_;
 		for (int i = 0; i < replicas; i++) {
-			ripple::hotstuff::Author author = (boost::format("%1%") %(i + 1)).str();
-			new Replica(author, env, journal);
+			int index = i + 1;
+			config.id = (boost::format("%1%") % index).str();
+			bool fake_malicious_replica = std::find(
+				maliciousAuthors.begin(), 
+				maliciousAuthors.end(), 
+				index) != maliciousAuthors.end();
+			new Replica(config, env, journal, fake_malicious_replica);
 		}
 
 		// 本地测试第一次启动的时候需要保证非 Leader 节点先 run 起来
@@ -409,16 +454,27 @@ public:
 		releaseReplicas(replicas_);
 	}
 
+	void testTimeoutRound() {
+		jtx::Env env{ *this };
+		if(disable_log_)
+			env.app().logs().threshold(beast::severities::kDisabled);
+
+		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_, false_replicas_);
+		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_) == true);
+	}
 
     void run() override {
 		parse_args();
 
 		testNormalRound();
+		//testTimeoutRound();
     }
 
 	Hotstuff_test()
-	: replicas_(4)
+	: false_replicas_(1)
+	, replicas_(3* false_replicas_ + 1)
 	, blocks_(4)
+	, timeout_(60)
 	, disable_log_(false) {
 		std::string genesis_info = "This is a test for hotstuff";
 		using beast::hash_append;
@@ -428,8 +484,10 @@ public:
 	}
 
 private:
+	int false_replicas_;
 	int replicas_;
 	int blocks_;
+	int timeout_;
 	bool disable_log_;
 };
 

@@ -24,6 +24,7 @@ namespace hotstuff {
 
 RoundManager::RoundManager(
 	const beast::Journal& journal,
+	const Config& config,
 	BlockStorage* block_store,
 	RoundState* round_state,
 	HotstuffCore* hotstuff_core,
@@ -31,6 +32,7 @@ RoundManager::RoundManager(
 	ProposerElection* proposer_election,
 	NetWork* network)
 : journal_(journal)
+, config_(config)
 , block_store_(block_store)
 , round_state_(round_state)
 , hotstuff_core_(hotstuff_core)
@@ -66,7 +68,7 @@ void RoundManager::stop() {
 int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
 	// setup round timeout
 	boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
-	roundTimeoutTimer.expires_from_now(std::chrono::seconds(7));
+	roundTimeoutTimer.expires_from_now(std::chrono::seconds(config_.timeout));
 	roundTimeoutTimer.async_wait(
 		std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, new_round_event.round));
 
@@ -131,7 +133,7 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 
 	// setup round timeout
 	boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
-	roundTimeoutTimer.expires_from_now(std::chrono::seconds(7));
+	roundTimeoutTimer.expires_from_now(std::chrono::seconds(config_.timeout));
 	roundTimeoutTimer.async_wait(
 		std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, round));
 }

@@ -27,8 +27,7 @@ Hotstuff::Builder::Builder(
 	const beast::Journal& journal)
 : io_service_(&ios)
 , journal_(journal)
-, recover_data_()
-, author_()
+, config_()
 , command_manager_(nullptr)
 , proposer_election_(nullptr)
 , state_compute_(nullptr)
@@ -37,13 +36,8 @@ Hotstuff::Builder::Builder(
 
 }
 
-Hotstuff::Builder& Hotstuff::Builder::setRecoverData(const RecoverData& recover_data) {
-	recover_data_ = recover_data;
-	return *this;
-}
-
-Hotstuff::Builder& Hotstuff::Builder::setAuthor(const Author& author) {
-	author_ = author;
+Hotstuff::Builder& Hotstuff::Builder::setConfig(const Config& config) {
+	config_ = config;
 	return *this;
 }
 
@@ -75,7 +69,8 @@ Hotstuff::Builder& Hotstuff::Builder::setNetWork(NetWork* network) {
 Hotstuff::pointer Hotstuff::Builder::build() {
 	Hotstuff::pointer hotstuff = nullptr;
 	if (io_service_ == nullptr
-		|| author_.empty()
+		|| config_.id.empty()
+		|| config_.timeout < 7
 		|| command_manager_ == nullptr
 		|| proposer_election_ == nullptr
 		|| state_compute_ == nullptr
@@ -86,8 +81,7 @@ Hotstuff::pointer Hotstuff::Builder::build() {
 	hotstuff = Hotstuff::pointer( new Hotstuff(
 		*io_service_,
 		journal_,
-		recover_data_,
-		author_,
+		config_,
 		command_manager_,
 		proposer_election_,
 		state_compute_,
@@ -100,39 +94,40 @@ Hotstuff::pointer Hotstuff::Builder::build() {
 Hotstuff::Hotstuff(
     boost::asio::io_service& ios,
     const beast::Journal& journal,
-	const RecoverData& recover_data,
-	const Author& author,
+	const Config config,
 	CommandManager* cm,
 	ProposerElection* proposer_election,
 	StateCompute* state_compute,
 	ValidatorVerifier* verifier,
 	NetWork* network)
-    : storage_(state_compute, Block::new_genesis_block(recover_data.init_ledger_info))
-    , epoch_state_()
-    , round_state_(&ios)
-    , proposal_generator_(cm, &storage_, author)
-    , hotstuff_core_(journal, state_compute, &epoch_state_)
-    , round_manager_(nullptr)
-{
-    epoch_state_.epoch = 0;
-    epoch_state_.verifier = verifier;
+: storage_(state_compute)
+, epoch_state_()
+, round_state_(&ios)
+, proposal_generator_(cm, &storage_, config.id)
+, hotstuff_core_(journal, state_compute, &epoch_state_)
+, round_manager_(nullptr) {
 
-    round_manager_ = new RoundManager(
-        journal,
-        &storage_,
-        &round_state_,
-        &hotstuff_core_,
-        &proposal_generator_,
-        proposer_election,
-        network);
+	epoch_state_.epoch = 0;
+	epoch_state_.verifier = verifier;
+
+	round_manager_ = new RoundManager(
+		journal,
+		config,
+		&storage_, 
+		&round_state_, 
+		&hotstuff_core_,
+		&proposal_generator_,
+		proposer_election,
+		network);
 }
 
 Hotstuff::~Hotstuff() {
     delete round_manager_;
 }
 
-int Hotstuff::start() {
-    return round_manager_->start();
+int Hotstuff::start(const RecoverData& recover_data) {
+	storage_.updateCeritificates(Block::new_genesis_block(recover_data.init_ledger_info));
+	return round_manager_->start();
 }
 
 void Hotstuff::stop() {

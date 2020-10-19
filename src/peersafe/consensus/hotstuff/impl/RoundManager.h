@@ -20,6 +20,7 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_ROUND_MANAGER_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_ROUND_MANAGER_H
 
+#include <peersafe/consensus/hotstuff/impl/Config.h>
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
 #include <peersafe/consensus/hotstuff/impl/RecoverData.h>
 #include <peersafe/consensus/hotstuff/impl/RoundState.h>
@@ -35,6 +36,7 @@ class RoundManager {
 public:
 	RoundManager(
 		const beast::Journal& journal,
+		const Config& config,
 		BlockStorage* block_store,
 		RoundState* round_state,
 		HotstuffCore* hotstuff_core,
@@ -68,6 +70,7 @@ private:
 	void ProcessLocalTimeout(const boost::system::error_code& ec, Round round);
 
 	beast::Journal journal_;
+	Config config_;
 	BlockStorage* block_store_;
 	RoundState* round_state_;
 	HotstuffCore* hotstuff_core_;

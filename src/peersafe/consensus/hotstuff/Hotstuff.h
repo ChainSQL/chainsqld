@@ -30,28 +30,6 @@
 
 namespace ripple { namespace hotstuff {
 
-//struct Config {
-//    // self id
-//    ReplicaID id;
-//    // change a new leader per view_change
-//    int view_change;
-//    // schedule for electing a new leader
-//    std::vector<ReplicaID> leader_schedule;
-//    // generate a dummy block after timeout (seconds)
-//    int timeout;
-//    // commands batch size
-//    int cmd_batch_size;
-//
-//    Config()
-//    : id(0)
-//    , view_change(1)
-//    , leader_schedule()
-//    , timeout(60)
-//    , cmd_batch_size(100) {
-//
-//    }
-//};
-
 class Hotstuff {
 public:
 	using pointer = std::shared_ptr<Hotstuff>;
@@ -62,8 +40,7 @@ public:
 			boost::asio::io_service& ios,
 			const beast::Journal& journal);
 
-		Builder& setRecoverData(const RecoverData& recover_data);
-		Builder& setAuthor(const Author& author);
+		Builder& setConfig(const Config& config);
 		Builder& setCommandManager(CommandManager* cm);
 		Builder& setProposerElection(ProposerElection* proposer_election);
 		Builder& setStateCompute(StateCompute* state_compute);
@@ -75,8 +52,7 @@ public:
 	private:
 		boost::asio::io_service* io_service_;
 		beast::Journal journal_;
-		RecoverData recover_data_;
-		Author author_;
+		Config config_;
 		CommandManager* command_manager_;
 		ProposerElection* proposer_election_;
 		StateCompute* state_compute_;
@@ -86,29 +62,28 @@ public:
 
     ~Hotstuff();
 
-    int start();
-    void stop();
+	int start(const RecoverData& recover_data);
+	void stop();
+	
+	int handleProposal(
+		const ripple::hotstuff::Block& proposal,
+		const ripple::hotstuff::SyncInfo& sync_info);
 
-    int handleProposal(
-        const ripple::hotstuff::Block& proposal,
-        const ripple::hotstuff::SyncInfo& sync_info);
-
-    int handleVote(
-        const ripple::hotstuff::Vote& vote,
-        const ripple::hotstuff::SyncInfo& sync_info);
+	int handleVote(
+		const ripple::hotstuff::Vote& vote,
+		const ripple::hotstuff::SyncInfo& sync_info);
 
 private:
     Hotstuff(
 		boost::asio::io_service& ios,
         const beast::Journal& journal,
-		const RecoverData& recover_data,
-		const Author& author,
+		const Config config,
 		CommandManager* cm,
 		ProposerElection* proposer_election,
 		StateCompute* state_compute,
 		ValidatorVerifier* verifier,
 		NetWork* network);
-
+	
 	BlockStorage storage_;
 	EpochState epoch_state_;
 	RoundState round_state_;

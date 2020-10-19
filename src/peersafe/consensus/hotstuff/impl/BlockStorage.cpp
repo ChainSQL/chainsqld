@@ -24,21 +24,12 @@
 
 namespace ripple { namespace hotstuff {
 
-//BlockStorage::BlockStorage()
-//: cache_blocks_()
-//, highest_quorum_cert_()
-//, highest_commit_cert_() {
-//
-//}
-
-BlockStorage::BlockStorage(
-	StateCompute* state_compute,
-	const QuorumCertificate& highest_quorum_cert, 
-	const QuorumCertificate& highest_commit_cert) 
+BlockStorage::BlockStorage(StateCompute* state_compute) 
 : state_compute_(state_compute)
 , cache_blocks_()
-, highest_quorum_cert_(highest_quorum_cert)
-, highest_commit_cert_(highest_commit_cert)
+, genesis_block_id_()
+, highest_quorum_cert_()
+, highest_commit_cert_()
 , highest_timeout_cert_() {
 
 }
@@ -47,26 +38,23 @@ BlockStorage::BlockStorage(
 	StateCompute* state_compute,
 	const Block& genesis_block)
 : state_compute_(state_compute)
-, genesis_block_id_(genesis_block.id())
+, genesis_block_id_()
 , cache_blocks_()
-, highest_quorum_cert_(genesis_block.block_data().quorum_cert)
-, highest_commit_cert_(genesis_block.block_data().quorum_cert)
+, highest_quorum_cert_()
+, highest_commit_cert_()
 , highest_timeout_cert_() {
-	executeAndAddBlock(genesis_block);
+	updateCeritificates(genesis_block);
 }
 
 BlockStorage::~BlockStorage() {
-
 }
 
-//bool BlockStorage::addBlock(const Block& block) {
-//    if(cache_blocks_.find(block.id()) != cache_blocks_.end())
-//        return false;
-//    
-//    //cache_blocks_[block.id()] = block;
-//	cache_blocks_.emplace(std::make_pair(block.id(), block));
-//    return true;
-//}
+void BlockStorage::updateCeritificates(const Block& block) {
+	genesis_block_id_ = block.id();
+	highest_quorum_cert_ = QuorumCertificate(block.block_data().quorum_cert);
+	highest_commit_cert_  = QuorumCertificate(block.block_data().quorum_cert);
+	executeAndAddBlock(block);
+}
 
 ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 	ExecutedBlock executed_block;
@@ -81,16 +69,6 @@ ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 
 	return executed_block;
 }
-
-//void BlockStorage::gcBlocks(const Block& block) {
-//    Block parent = block;
-//    for(int i = 0; i < 50; i++) {
-//        if(blockOf(parent.parent, parent) == false)
-//            return;
-//    }
-//
-//    recurseGCBlocks(parent);
-//}
 
 // 通过 block hash 获取 block，如果本地没有函数返回 false
 bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
@@ -109,17 +87,6 @@ bool BlockStorage::expectBlock(const HashValue& hash, ExecutedBlock& block) {
         return true;
     return false;
 }
-//
-//void BlockStorage::recurseGCBlocks(const Block& block) {
-//    Block parent;
-//    if(blockOf(block.parent, parent)) {
-//        recurseGCBlocks(parent);
-//    }
-//
-//    auto it = cache_blocks_.find(block.hash);
-//    if(it != cache_blocks_.end())
-//        cache_blocks_.erase(it);
-//}
 
 int BlockStorage::addCerts(const SyncInfo& sync_info) {
 	highest_quorum_cert_ = sync_info.HighestQuorumCert();

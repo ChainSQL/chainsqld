@@ -46,14 +46,13 @@ class StateCompute;
 class BlockStorage {
 public:
     //BlockStorage();
-	BlockStorage(
-		StateCompute* state_compute,
-		const QuorumCertificate& highest_quorum_cert, 
-		const QuorumCertificate& highest_commit_cert);
+	BlockStorage(StateCompute* state_compute);
 	BlockStorage(
 		StateCompute* state_compute,
 		const Block& genesis_block);
     ~BlockStorage();
+
+	void updateCeritificates(const Block& block);
 
     // for blocks
     //bool addBlock(const Block& block);
@@ -91,6 +90,7 @@ public:
 
 	// 目前主要功能是 commit 共识过的 block
 	int saveVote(const Vote& vote);
+
 
 private:
     //void recurseGCBlocks(const Block& block);
