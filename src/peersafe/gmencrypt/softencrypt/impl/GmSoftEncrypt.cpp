@@ -231,8 +231,27 @@ unsigned long SoftEncrypt::SM2ECCSign(
                     }
                     else
                     {
-                        *pulSignValueLen = BN_bn2bin(sm2sig->r, pSignValue);
-                        *pulSignValueLen += BN_bn2bin(sm2sig->s, pSignValue + *pulSignValueLen);
+						unsigned int rSize = BN_num_bytes(sm2sig->r);
+						unsigned int sSize = BN_num_bytes(sm2sig->s);
+
+						if (rSize > 32 || sSize > 32) {
+							delete[] pSignedBufTemp;
+							ripple::Throw <std::runtime_error>("The length of raw signature is wrong");
+						}
+						
+						// left pad 0x0
+						unsigned char signedTmp[64] = { 0 };
+						unsigned char rTmp[32] = { 0 };
+						unsigned char sTmp[32] = { 0 };
+
+						rSize = BN_bn2bin(sm2sig->r, rTmp);
+						sSize = BN_bn2bin(sm2sig->s, sTmp);
+
+						memcpy(signedTmp + (32 - rSize), rTmp, rSize);
+						memcpy(signedTmp + (64 - sSize), sTmp, sSize);
+						memcpy(pSignValue, signedTmp, 64);
+						*pulSignValueLen = 64;
+
                         delete[] pSignedBufTemp;
                         ret = 0;
                         DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
