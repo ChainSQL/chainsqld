@@ -64,9 +64,9 @@ public:
         return parms_;
     }
 
-    inline boost::asio::io_service* getIOService() const
+    inline boost::asio::io_service& getIOService() const
     {
-        return &app_.getIOService();
+        return app_.getIOService();
     }
 
     void onAccept(

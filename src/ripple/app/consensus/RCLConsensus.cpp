@@ -25,7 +25,7 @@
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/consensus/pop/PopConsensus.h>
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
-#include <peersafe/consensus/hotstuff/Hotstuff.h>
+#include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
 
 
 namespace ripple {
@@ -86,7 +86,7 @@ RCLConsensus::RCLConsensus(
             inboundTransactions,
             validatorKeys,
             journal);
-        consensus_ = std::make_shared<hotstuff::Hotstuff>(*adaptor_, clock, journal);
+        consensus_ = std::make_shared<HotstuffConsensus>(*adaptor_, clock, journal);
         break;
     default:
         Throw<std::runtime_error>("bad consensus type");

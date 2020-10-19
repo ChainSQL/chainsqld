@@ -44,4 +44,5 @@
 #include <peersafe/consensus/hotstuff/impl/VoteData.cpp>
 #include <peersafe/consensus/hotstuff/impl/HotstuffAdaptor.cpp>
 #include <peersafe/consensus/hotstuff/impl/Hotstuff.cpp>
+#include <peersafe/consensus/hotstuff/impl/HotstuffConsensus.cpp>
 
