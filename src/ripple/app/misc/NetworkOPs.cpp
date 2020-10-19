@@ -2859,11 +2859,14 @@ void NetworkOPsImp::pubLedger (
         {
             JLOG(m_journal.trace()) << "pubAccepted: " << vt.second->getJson();
             pubValidatedTransaction(lpAccepted, *vt.second);
-			checkSchemaTx(lpAccepted, *vt.second);
         }
         JLOG(m_journal.info()) << "pub all Txs, time used: " << utcTime() - timeStart << "ms";
     }
 
+	for (auto const& vt : alpAccepted->getMap())
+	{
+		checkSchemaTx(lpAccepted, *vt.second);
+	}
 	//// test createSchema code
 	//{
 	//		//return;
@@ -2998,13 +3001,13 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 		bool bShouldCreate = false;
 		for (auto& validator : validators)
 		{
-			auto const& valObj = validator.getFieldObject(sfValidator);
-			auto publicKey = parseBase58<PublicKey>(TokenType::AccountPublic, strCopy(valObj.getFieldVL(sfPublicKey)));
-			auto signedVal = (valObj.getFieldU8(sfSigned) == 1);
-			params.validator_list.push_back(std::make_pair(*publicKey, signedVal));
+			auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
+			//auto signedVal = (validator.getFieldU8(sfSigned) == 1);
+			bool signedVal = true;
+			params.validator_list.push_back(std::make_pair(publicKey, signedVal));
 			if (!bShouldCreate && 
 				app_.app().getValidationPublicKey().size() != 0 &&
-				*publicKey == app_.app().getValidationPublicKey())
+				publicKey == app_.app().getValidationPublicKey())
 			{
 				bShouldCreate = true;
 			}
@@ -3027,8 +3030,7 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 		auto peers = sleSchema->getFieldArray(sfPeerList);
 		for (auto& peer : peers)
 		{
-			auto const& peerObj = peer.getFieldObject(sfPeer);
-			params.peer_list.push_back(strCopy(peerObj.getFieldVL(sfEndPoint)));
+			params.peer_list.push_back(strCopy(peer.getFieldVL(sfEndPoint)));
 		}
 		
 		if (!app_.app().getSchemaManager().contains(params.schema_id))
