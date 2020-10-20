@@ -138,7 +138,11 @@ enum TEMcodes : TERUnderlyingType
 		temBAD_RULEANDTOKEN,
 		temBAD_INSERTLIMIT,
 		temBAD_NEEDVERIFY_OPERRULE,
-
+		temBAD_VALIDATOR,
+		temBAD_PEERLIST,
+		temBAD_ANCHORLEDGER,
+		temBAD_SIGNERFORVAL,
+		
 		// An intermediate result used internally, should never be returned.
 		temUNCERTAIN,
 		temUNKNOWN
@@ -203,7 +207,11 @@ enum TEFcodes : TERUnderlyingType
 	tefINSU_RESERVE_TABLE,
 	tefDBNOTCONFIGURED,
 	tefBAD_DBNAME,
-	tefBAD_STATEMENT
+	tefBAD_STATEMENT,
+	tefSCHEMA_VALIDATOREXIST,
+	tefSCHEMA_NOVALIDATOR,
+	tefSCHEMA_PEEREXIST,
+	tefSCHEMA_NOPEER
 };
 
 //------------------------------------------------------------------------------

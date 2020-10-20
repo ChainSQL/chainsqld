@@ -50,6 +50,7 @@
 #include <peersafe/app/tx/impl/SqlTransaction.cpp>
 #include <peersafe/app/tx/impl/OperationRule.cpp>
 #include <peersafe/app/tx/impl/SmartContract.cpp>
+#include <peersafe/app/tx/impl/SchemaTx.cpp>
 #include <peersafe/app/tx/impl/DirectApply.cpp>
 #if USE_TBB
 #include <peersafe/app/tx/impl/ParallelApply.cpp>

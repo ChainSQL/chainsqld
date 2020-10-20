@@ -174,8 +174,11 @@ transResults()
 		{ temBAD_INSERTLIMIT,		 { "temBAD_INSERTLIMIT",	   "Malformed: Deal with insert count limit error." } },
 		{ temBAD_RULEANDTOKEN,		 { "temBAD_RULEANDTOKEN",	   "Malformed: OperationRule and Confidential are not supported in the mean time."} },
 		{ temBAD_TICK_SIZE,          { "temBAD_TICK_SIZE",         "Malformed: Tick size out of range."                                            } },
-		{ temBAD_NEEDVERIFY_OPERRULE ,{ "temBAD_NEEDVERIFY_OPERRULE","Malformed: NeedVerify must be 1 if there is table has OperatinRule."                                            } },
-		
+		{ temBAD_NEEDVERIFY_OPERRULE,{ "temBAD_NEEDVERIFY_OPERRULE","Malformed: NeedVerify must be 1 if there is table has OperatinRule."         } },
+		{ temBAD_VALIDATOR ,         { "temBAD_VALITOR",           "Malformed: No publickey field or publickey is null."                         } },
+		{ temBAD_PEERLIST ,          { "temBAD_PEERLIST",          "Malformed: No peer field or peer is null"                                    } },
+		{ temBAD_SIGNERFORVAL,       { "temBAD_SIGNERFORVAL",      "Malformed: Singer is not in the validator list."                                    } },
+		{ temBAD_ANCHORLEDGER,       { "temBAD_ANCHORLEDGER",      "Malformed: Anchor ledger is null"                                    } },
 		{ terRETRY,                  { "terRETRY",                 "Retry transaction."                                                            } },
 		{ terFUNDS_SPENT,            { "terFUNDS_SPENT",           "Can't set password, password set funds already spent."                         } },
 		{ terINSUF_FEE_B,            { "terINSUF_FEE_B",           "Account balance can't pay fee."                                                } },
@@ -201,6 +204,10 @@ transResults()
 		{ tefDBNOTCONFIGURED,		 { "tefDBNOTCONFIGURED",       "DB is not connected,please checkout 'sync_db'in config file." } },
 		{ tefBAD_DBNAME,			 { "tefBAD_DBNAME",            "NameInDB does not match tableName." } },
 		{ tefBAD_STATEMENT,			 { "tefBAD_STATEMENT",	       "Statement is error." } },
+		{ tefSCHEMA_VALIDATOREXIST,  { "tefSCHEMA_VALIDATOREXIST", "Validator has existed." } },
+		{ tefSCHEMA_NOVALIDATOR,	 { "tefSCHEMA_NOVALIDATOR",    "There is no corresponding validator." } },
+		{ tefSCHEMA_PEEREXIST,       { "tefSCHEMA_PEEREXIST",      "Peer has existed." } },
+		{ tefSCHEMA_NOPEER,   	     { "tefSCHEMA_NOPEER",         "There is no corresponding peer" } },
         { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } }
     };
     return results;

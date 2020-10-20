@@ -3030,7 +3030,7 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 		auto peers = sleSchema->getFieldArray(sfPeerList);
 		for (auto& peer : peers)
 		{
-			params.peer_list.push_back(strCopy(peer.getFieldVL(sfEndPoint)));
+			params.peer_list.push_back(strCopy(peer.getFieldVL(sfEndpoint)));
 		}
 		
 		if (!app_.app().getSchemaManager().contains(params.schema_id))

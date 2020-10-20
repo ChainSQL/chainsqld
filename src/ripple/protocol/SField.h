@@ -504,7 +504,7 @@ extern SF_Blob const sfTransferFeeMax;
 extern SF_Blob const sfContractCode;
 extern SF_Blob const sfContractData;
 extern SF_Blob const sfSchemaName;
-extern SF_Blob const sfEndPoint;
+extern SF_Blob const sfEndpoint;
 
 // account
 extern SF_Account const sfAccount;
