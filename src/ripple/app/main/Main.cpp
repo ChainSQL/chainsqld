@@ -331,6 +331,7 @@ int run (int argc, char** argv)
     ("standalone,a", "Run with no peers.")
     ("verbose,v", "Verbose logging.")
     ("version", "Display the build version.")
+	("schemaid", po::value<std::string>(), "Specify the schemaid.")
     ;
 
     po::options_description data ("Ledger/Data Options");
@@ -661,12 +662,18 @@ int run (int argc, char** argv)
         return 0;
     }
 
-    // We have an RPC command to process:
-    beast::setCurrentThreadName ("chainsqld: rpc");
-    return RPCCall::fromCommandLine (
-        *config,
-        vm["parameters"].as<std::vector<std::string>>(),
-        *logs);
+	// We have an RPC command to process:
+	beast::setCurrentThreadName("chainsqld: rpc");
+	std::string schemaid;
+	if (vm.count("schemaid") != 0)
+		schemaid = vm["schemaid"].as<std::string>();
+	return RPCCall::fromCommandLine(
+		*config,
+		vm["parameters"].as<std::vector<std::string>>(),
+		schemaid,
+		*logs);
+
+
 }
 
 } // ripple

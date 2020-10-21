@@ -1573,7 +1573,7 @@ cmdLineToJSONRPC (std::vector<std::string> const& args, beast::Journal j)
 
 std::pair<int, Json::Value>
 rpcClient(std::vector<std::string> const& args,
-    Config const& config, Logs& logs,
+    Config const& config, std::string schema_id, Logs& logs,
     std::unordered_map<std::string, std::string> const& headers)
 {
     static_assert(rpcBAD_SYNTAX == 1 && rpcSUCCESS == 0,
@@ -1624,8 +1624,12 @@ rpcClient(std::vector<std::string> const& args,
             if (!setup.client.admin_password.empty ())
                 jvRequest["admin_password"] = setup.client.admin_password;
 
-            if (jvRequest.isObject())
-                jvParams.append (jvRequest);
+			if (jvRequest.isObject())
+			{
+				if(!schema_id.empty())
+					jvRequest[jss::schema_id] = schema_id;
+				jvParams.append(jvRequest);
+			}                
             else if (jvRequest.isArray())
             {
                 auto const& params = jvRequest[jss::params];
@@ -1739,10 +1743,11 @@ namespace RPCCall {
 
 int fromCommandLine (
     Config const& config,
-    const std::vector<std::string>& vCmd,
+	const std::vector<std::string>& vCmd,
+	const std::string schema_id,
     Logs& logs)
 {
-    auto const result = rpcClient(vCmd, config, logs);
+    auto const result = rpcClient(vCmd, config,schema_id, logs);
 
     if (result.first != rpcBAD_SYNTAX)
         std::cout << result.second.toStyledString ();
