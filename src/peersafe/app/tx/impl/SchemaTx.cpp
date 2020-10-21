@@ -12,13 +12,8 @@ namespace ripple {
 		auto const& vals = ctx.tx.getFieldArray(sfValidators);
 		for (auto val : vals)
 		{
-			// check the construct of the validtors object
-			if (val.getCount() != 1 || !val.isFieldPresent(sfValidator))
-			{
-				return temBAD_VALIDATOR;
-			}
-			auto const& oVal = val.getFieldObject(sfValidator);
-			if (oVal.getCount() != 1 || !oVal.isFieldPresent(sfPublicKey) || oVal.getFieldVL(sfPublicKey).size() == 0)
+			// check the construct of the validators object
+			if (val.getCount() != 1 || !val.isFieldPresent(sfPublicKey) || val.getFieldVL(sfPublicKey).size() == 0)
 			{
 				return temBAD_VALIDATOR;
 			}
@@ -27,14 +22,9 @@ namespace ripple {
 		auto const& peers = ctx.tx.getFieldArray(sfPeerList);
 		for (auto peer : peers)
 		{
-			// check the construct of the validtors object
-			if (peer.getCount() != 1 || !peer.isFieldPresent(sfPeer))
-			{
-				return temBAD_PEERLIST;
-			}
-
-			auto const& oPeer = peer.getFieldObject(sfPeer);
-			if (oPeer.getCount() != 1 || !oPeer.isFieldPresent(sfEndpoint) || oPeer.getFieldVL(sfEndpoint).size() == 0)
+			// check the construct of the validators object
+			if (peer.getCount() != 1 || !peer.isFieldPresent(sfEndpoint) || 
+				peer.getFieldVL(sfEndpoint).size() == 0)
 			{
 				return temBAD_PEERLIST;
 			}
@@ -52,8 +42,7 @@ namespace ripple {
 				auto iter(vals.end());
 				iter = std::find_if(vals.begin(), vals.end(),
 					[spk](STObject const &val) {
-					auto const& oVal = val.getFieldObject(sfValidator);
-					if (oVal.getFieldVL(sfPublicKey) == spk) return true;
+					if (val.getFieldVL(sfPublicKey) == spk) return true;
 					return false;
 				});
 				if (iter == vals.end())
@@ -86,13 +75,15 @@ namespace ripple {
 	{
 		auto j = ctx.app.journal("preclaimSchema");
 
-		if ((uint8_t)SchemaStragegy::with_state == ctx.tx.getFieldU8(sfSchemaStrategy) && !ctx.tx.isFieldPresent(sfAnchorLedgerHash))
+		if ((uint8_t)SchemaStragegy::with_state == ctx.tx.getFieldU8(sfSchemaStrategy) &&
+			!ctx.tx.isFieldPresent(sfAnchorLedgerHash))
 		{
 			JLOG(j.trace()) << "anchor ledger is not match the schema strategy.";
 			return temBAD_ANCHORLEDGER;
 		}
 
-		if (ctx.tx.getFieldArray(sfValidators).size() <= 0 || ctx.tx.getFieldArray(sfPeerList).size() <= 0)
+		if (ctx.tx.getFieldArray(sfValidators).size() <= 0 || 
+			ctx.tx.getFieldArray(sfPeerList).size() <= 0)
 		{
 			return temMALFORMED;
 		}
@@ -116,30 +107,29 @@ namespace ripple {
 		(*slep)[~sfSchemaAdmin] = ctx_.tx[~sfSchemaAdmin];
 		(*slep)[~sfAnchorLedgerHash] = ctx_.tx[~sfAnchorLedgerHash];
 
-		STArray vals = ctx_.tx.getFieldArray(sfValidators);
-		
-		// Multi-Sign
-		if (ctx_.tx.getSigningPubKey().empty())
+		//Reset validators
 		{
-			// Get the array of transaction signers.
-			STArray const& txSigners(ctx_.tx.getFieldArray(sfSigners));
-			
+			STArray vals = ctx_.tx.getFieldArray(sfValidators);
 			for (auto& val : vals)
 			{
-				auto& oVal = val.peekFieldObject(sfValidator);
-				oVal.setFieldU8(sfSigned, (uint8_t)0);
-
-				auto const &spk = oVal.getFieldVL(sfPublicKey);
-				for (auto const& txSigner : txSigners)
+				val.setFieldU8(sfSigned, (uint8_t)0);
+				// Multi-Sign
+				if (ctx_.tx.getSigningPubKey().empty())
 				{
-					if (txSigner.getFieldVL(sfSigningPubKey) == spk)
+					// Get the array of transaction signers.
+					STArray const& txSigners(ctx_.tx.getFieldArray(sfSigners));
+					auto const &spk = val.getFieldVL(sfPublicKey);
+					for (auto const& txSigner : txSigners)
 					{
-						oVal.setFieldU8(sfSigned, 1);
+						if (txSigner.getFieldVL(sfSigningPubKey) == spk)
+						{
+							val.setFieldU8(sfSigned, 1);
+						}
 					}
 				}
-			}	
+			}
+			slep->setFieldArray(sfValidators, vals);
 		}
-		slep->setFieldArray(sfValidators, vals);
 
 		STArray const& peerList = ctx_.tx.getFieldArray(sfPeerList);
 		slep->setFieldArray(sfPeerList, peerList);
@@ -184,13 +174,15 @@ namespace ripple {
 	{
 		auto j = ctx.app.journal("schemaModifyPreclaim");
 
-		if (ctx.tx.getFieldU16(sfOpType) != (UINT16)SchemaModifyOp::add && ctx.tx.getFieldU16(sfOpType) != (UINT16)SchemaModifyOp::del)
+		if (ctx.tx.getFieldU16(sfOpType) != (uint16_t)SchemaModifyOp::add && 
+			ctx.tx.getFieldU16(sfOpType) != (uint16_t)SchemaModifyOp::del)
 		{
 			JLOG(j.trace()) << "modify operator is not valid.";
 			return temBAD_OPTYPE;
 		}
 
-		if (ctx.tx.getFieldArray(sfValidators).size() <= 0 && ctx.tx.getFieldArray(sfPeerList).size() <= 0)
+		if (ctx.tx.getFieldArray(sfValidators).size() <= 0 && 
+			ctx.tx.getFieldArray(sfPeerList).size() <= 0)
 		{
 			return temMALFORMED;
 		}
@@ -233,14 +225,10 @@ namespace ripple {
 			auto iter(vals.end());
 			iter = std::find_if(vals.begin(), vals.end(),
 				[valTx](STObject const &val) {
-				auto const& oVal = val.getFieldObject(sfValidator);
-				auto const& spk = oVal.getFieldVL(sfPublicKey);
+				auto const& spk = val.getFieldVL(sfPublicKey);
+				auto const& spkTx = valTx.getFieldVL(sfPublicKey);
 
-				auto const& oValTx = valTx.getFieldObject(sfValidator);
-				auto const& spkTx = oValTx.getFieldVL(sfPublicKey);
-
-				if (spk == spkTx) return true;
-				return false;
+				return spk == spkTx;
 			});
 			if (ctx_.tx.getFieldU16(sfOpType) == (UINT16)SchemaModifyOp::add)
 			{
@@ -265,14 +253,10 @@ namespace ripple {
 			auto iter(peers.end());
 			iter = std::find_if(peers.begin(), peers.end(),
 				[peerTx](STObject const &peer) {
-				auto const& oPeer = peer.getFieldObject(sfPeer);
-				auto const& sEndpoint = oPeer.getFieldVL(sfEndpoint);
+				auto const& sEndpoint = peer.getFieldVL(sfEndpoint);
+				auto const& sEndpointTx = peerTx.getFieldVL(sfEndpoint);
 
-				auto const& oPeerTx = peerTx.getFieldObject(sfPeer);
-				auto const& sEndpointTx = oPeerTx.getFieldVL(sfEndpoint);
-
-				if (sEndpoint == sEndpointTx) return true;
-				return false;
+				return sEndpoint == sEndpointTx;
 			});
 			if (ctx_.tx.getFieldU16(sfOpType) == (UINT16)SchemaModifyOp::add)
 			{

@@ -455,7 +455,7 @@ ServerHandlerImp::processSession(
 		else if (!app_.hasSchema(schema_id))
 		{
 			loadType = Resource::feeInvalidRPC;
-			jr[jss::result] = rpcError(rpcNo_Schema);
+			jr[jss::result] = rpcError(rpcNO_SCHEMA);
 		}
         else
         {

@@ -2990,10 +2990,10 @@ std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<S
 	for (auto& validator : validators)
 	{
 		auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
-		//auto signedVal = (validator.getFieldU8(sfSigned) == 1);
-		bool signedVal = true;
+		auto signedVal = (validator.getFieldU8(sfSigned) == 1);
 		params.validator_list.push_back(std::make_pair(publicKey, signedVal));
 		if (!bShouldCreate &&
+			signedVal &&
 			app_.app().getValidationPublicKey().size() != 0 &&
 			publicKey == app_.app().getValidationPublicKey())
 		{

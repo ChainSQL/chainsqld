@@ -175,7 +175,7 @@ transResults()
 		{ temBAD_RULEANDTOKEN,		 { "temBAD_RULEANDTOKEN",	   "Malformed: OperationRule and Confidential are not supported in the mean time."} },
 		{ temBAD_TICK_SIZE,          { "temBAD_TICK_SIZE",         "Malformed: Tick size out of range."                                            } },
 		{ temBAD_NEEDVERIFY_OPERRULE,{ "temBAD_NEEDVERIFY_OPERRULE","Malformed: NeedVerify must be 1 if there is table has OperatinRule."         } },
-		{ temBAD_VALIDATOR ,         { "temBAD_VALITOR",           "Malformed: No publickey field or publickey is null."                         } },
+		{ temBAD_VALIDATOR ,         { "temBAD_VALIDATOR",         "Malformed: No publickey field or publickey is null."                         } },
 		{ temBAD_PEERLIST ,          { "temBAD_PEERLIST",          "Malformed: No peer field or peer is null"                                    } },
 		{ temBAD_SIGNERFORVAL,       { "temBAD_SIGNERFORVAL",      "Malformed: Singer is not in the validator list."                                    } },
 		{ temBAD_ANCHORLEDGER,       { "temBAD_ANCHORLEDGER",      "Malformed: Anchor ledger is null"                                    } },

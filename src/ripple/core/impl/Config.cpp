@@ -164,7 +164,7 @@ void Config::setupControl(bool bQuiet,
     RUN_STANDALONE = bStandalone;
 }
 
- void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
+void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 {
 
 	{
@@ -176,8 +176,16 @@ void Config::setupControl(bool bQuiet,
 		START_UP = NEWCHAIN_WITHSTATE;
 	}
 
-	 CONFIG_DIR = config.CONFIG_DIR / to_string(schemaParams.schema_id);
+	CONFIG_DIR = boost::filesystem::path(config.SCHEMA_PATH) / to_string(schemaParams.schema_id);
+	if(!boost::filesystem::exists(CONFIG_DIR))
+	{
+		boost::system::error_code ec;
+		boost::filesystem::create_directories(CONFIG_DIR, ec);
 
+		if (ec)
+			Throw<std::runtime_error>(
+				boost::str(boost::format("Can not create %s") % CONFIG_DIR));
+	}
 	 auto fileContents =  config.getConfigFileContents();
 	 if (fileContents.empty()) {
 

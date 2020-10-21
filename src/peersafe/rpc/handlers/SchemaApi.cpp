@@ -24,6 +24,7 @@
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/main/Application.h>
 
 namespace ripple {
 /** General RPC command that can retrieve schema list.
@@ -47,7 +48,7 @@ Json::Value getSchemaFromSle(std::shared_ptr<SLE const> & sle)
 	schema[jss::schema_name]                 = strCopy(sle->getFieldVL(sfSchemaName));
 	schema[jss::schema_strategy]             = sle->getFieldU8(sfSchemaStrategy);
 	if (sle->isFieldPresent(sfSchemaAdmin))
-		schema[jss::schema_admin]            = to_string(sle->getAccountID(sfAccount));
+		schema[jss::schema_admin]            = to_string(sle->getAccountID(sfSchemaAdmin));
 	if (sle->isFieldPresent(sfAnchorLedgerHash))
 		schema[jss::anchor_ledge_hash]       = to_string(sle->getFieldH256(sfAnchorLedgerHash));
 
@@ -109,7 +110,7 @@ Json::Value doSchemaInfo(RPC::Context& context)
 	auto sle = ledger->read(key);
 	if (!sle)
 	{
-		return rpcError(rpcNo_Schema);
+		return rpcError(rpcNO_SCHEMA);
 	}
 
 	return getSchemaFromSle(sle);
@@ -127,13 +128,15 @@ Json::Value doSchemaAccept(RPC::Context& context)
 		return result;
 
 
-	auto const schemaID = context.params[jss::schema_id].asString();
-	auto sleKey = Keylet(ltSCHEMA, from_hex_text<uint256>(schemaID));
+	auto const schemaID = from_hex_text<uint256>(context.params[jss::schema_id].asString());
+	auto sleKey = Keylet(ltSCHEMA, schemaID);
 	auto sleSchema = ledger->read(sleKey);
 	if (!sleSchema)
 	{
-		return rpcError(rpcNo_Schema);
+		return rpcError(rpcNO_SCHEMA);
 	}
+	if (context.app.app().hasSchema(schemaID))
+		return rpcError(rpcSCHEMA_CREATED);
 
 	Json::Value jvResult(Json::objectValue);
 
