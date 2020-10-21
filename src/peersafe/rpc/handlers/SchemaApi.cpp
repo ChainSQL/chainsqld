@@ -137,8 +137,7 @@ Json::Value doSchemaAccept(RPC::Context& context)
 
 	Json::Value jvResult(Json::objectValue);
 
-	AccountID account;
-	auto ret = context.app.getOPs().createSchema(account, sleKey, sleSchema, true);
+	auto ret = context.app.getOPs().createSchema(sleSchema, true);
 	if (!ret.first)
 	{
 		jvResult[jss::error] = "internal error";

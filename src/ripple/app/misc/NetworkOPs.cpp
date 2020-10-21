@@ -558,7 +558,7 @@ public:
     {
         return  !mSubTable.empty() || !mSubTx.empty() || !mValidatedSubTx.empty();
     }
-	std::pair<bool, std::string> createSchema(AccountID account, Keylet sleKey, const std::shared_ptr<SLE const> &schema, bool bForce);
+	std::pair<bool, std::string> createSchema(const std::shared_ptr<SLE const> &schema, bool bForce);
     //--------------------------------------------------------------------------
     //
     // Stoppable.
@@ -2982,7 +2982,7 @@ Json::Value NetworkOPsImp::transJson(
     return jvObj;
 }
 
-std::pair<bool, std::string> NetworkOPsImp::createSchema(AccountID account, Keylet sleKey, const std::shared_ptr<SLE const> &sleSchema, bool bForce)
+std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<SLE const> &sleSchema, bool bForce)
 {
 	SchemaParams params{};
 	auto validators = sleSchema->getFieldArray(sfValidators);
@@ -3003,8 +3003,8 @@ std::pair<bool, std::string> NetworkOPsImp::createSchema(AccountID account, Keyl
 	if (!bShouldCreate)
 		return std::make_pair(true, "");
 
-	params.account = account;
-	params.schema_id = sleKey.key;
+	params.account = sleSchema->getAccountID(sfAccount);
+	params.schema_id = sleSchema->key();
 	params.schema_name = strCopy(sleSchema->getFieldVL(sfSchemaName));
 	params.strategy = sleSchema->getFieldU8(sfSchemaStrategy) == 1 ?
 		SchemaStragegy::new_chain : SchemaStragegy::with_state;
@@ -3053,7 +3053,7 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 			account, (*sle)[sfSequence] - 1, alAccepted->info().parentHash);
 		auto const sleSchema = alAccepted->read(sleKey);
 
-		this->createSchema(account, sleKey, sleSchema, false);
+		this->createSchema(sleSchema, false);
 	}
 	else if (stTxn->getTxnType() == ttSCHEMA_MODIFY)
 	{
