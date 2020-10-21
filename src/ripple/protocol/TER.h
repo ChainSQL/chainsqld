@@ -211,7 +211,9 @@ enum TEFcodes : TERUnderlyingType
 	tefSCHEMA_VALIDATOREXIST,
 	tefSCHEMA_NOVALIDATOR,
 	tefSCHEMA_PEEREXIST,
-	tefSCHEMA_NOPEER
+	tefSCHEMA_NOPEER,
+	tefBAD_SCHEMAID,
+	tefBAD_SCHEMAADMIN
 };
 
 //------------------------------------------------------------------------------

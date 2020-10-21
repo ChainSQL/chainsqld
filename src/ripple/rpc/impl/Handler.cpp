@@ -152,11 +152,14 @@ Handler const handlerArray[] {
     // Evented methods
     {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION     },
     {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION     },
-	{    "gen_csr",             byRef(&doGenCsr),              Role::ADMIN,  NO_CONDITION },
+	{    "gen_csr",             byRef(&doGenCsr),              Role::ADMIN, NO_CONDITION },
 	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::USER,  NO_CONDITION     },
-    {   "node_size",            byRef (&doNodeSize),           Role::ADMIN,  NO_CONDITION    },
-    {   "malloc_trim",          byRef (&doMallocTrim),         Role::ADMIN,  NO_CONDITION    },
+    {   "node_size",            byRef (&doNodeSize),           Role::ADMIN, NO_CONDITION    },
+    {   "malloc_trim",          byRef (&doMallocTrim),         Role::ADMIN, NO_CONDITION    },
 	{   "schema_list",          byRef (&doSchemaList),         Role::USER,  NO_CONDITION    },
+	{   "schema_info",          byRef(&doSchemaInfo),          Role::USER,  NO_CONDITION },
+	{   "schema_accept",        byRef(&doSchemaAccept),        Role::ADMIN, NO_CONDITION },
+	{   "sign_for_node",        byRef(&doSignNode),            Role::USER,  NO_CONDITION },
 };
 
 class HandlerTable {

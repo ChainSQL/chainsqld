@@ -208,6 +208,8 @@ transResults()
 		{ tefSCHEMA_NOVALIDATOR,	 { "tefSCHEMA_NOVALIDATOR",    "There is no corresponding validator." } },
 		{ tefSCHEMA_PEEREXIST,       { "tefSCHEMA_PEEREXIST",      "Peer has existed." } },
 		{ tefSCHEMA_NOPEER,   	     { "tefSCHEMA_NOPEER",         "There is no corresponding peer" } },
+		{ tefBAD_SCHEMAID,           { "tefBAD_SCHEMAID",          "Schema id may be error, there is no corresponding schema." } },
+		{ tefBAD_SCHEMAADMIN, 	     { "tefBAD_SCHEMAADMIN",       "Incorrect schema admin." } },
         { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } }
     };
     return results;

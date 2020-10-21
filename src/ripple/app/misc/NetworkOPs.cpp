@@ -558,7 +558,7 @@ public:
     {
         return  !mSubTable.empty() || !mSubTx.empty() || !mValidatedSubTx.empty();
     }
-
+	std::pair<bool, std::string> createSchema(AccountID account, Keylet sleKey, const std::shared_ptr<SLE const> &schema, bool bForce);
     //--------------------------------------------------------------------------
     //
     // Stoppable.
@@ -2982,6 +2982,63 @@ Json::Value NetworkOPsImp::transJson(
     return jvObj;
 }
 
+std::pair<bool, std::string> NetworkOPsImp::createSchema(AccountID account, Keylet sleKey, const std::shared_ptr<SLE const> &sleSchema, bool bForce)
+{
+	SchemaParams params{};
+	auto validators = sleSchema->getFieldArray(sfValidators);
+	bool bShouldCreate = bForce;
+	for (auto& validator : validators)
+	{
+		auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
+		//auto signedVal = (validator.getFieldU8(sfSigned) == 1);
+		bool signedVal = true;
+		params.validator_list.push_back(std::make_pair(publicKey, signedVal));
+		if (!bShouldCreate &&
+			app_.app().getValidationPublicKey().size() != 0 &&
+			publicKey == app_.app().getValidationPublicKey())
+		{
+			bShouldCreate = true;
+		}
+	}
+	if (!bShouldCreate)
+		return std::make_pair(true, "");
+
+	params.account = account;
+	params.schema_id = sleKey.key;
+	params.schema_name = strCopy(sleSchema->getFieldVL(sfSchemaName));
+	params.strategy = sleSchema->getFieldU8(sfSchemaStrategy) == 1 ?
+		SchemaStragegy::new_chain : SchemaStragegy::with_state;
+	if (params.strategy == SchemaStragegy::with_state)
+	{
+		params.anchor_ledger_hash = sleSchema->getFieldH256(sfAnchorLedgerHash);
+	}
+	if (sleSchema->isFieldPresent(sfSchemaAdmin))
+		params.admin = sleSchema->getAccountID(sfSchemaAdmin);
+
+	auto peers = sleSchema->getFieldArray(sfPeerList);
+	for (auto& peer : peers)
+	{
+		params.peer_list.push_back(strCopy(peer.getFieldVL(sfEndpoint)));
+	}
+
+	if (!app_.app().getSchemaManager().contains(params.schema_id))
+	{
+		try
+		{
+			auto newSchema = app_.app().getSchemaManager().createSchema(app_.app().config(), params);
+			newSchema->initBeforeSetup();
+			newSchema->setup();
+		}
+		catch (std::exception const& e)
+		{
+			JLOG(m_journal.fatal()) << e.what();
+			return std::make_pair(false, e.what());
+		}
+	}
+
+	return std::make_pair(true, "");
+}
+
 void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccepted,
 	const AcceptedLedgerTx& alTx)
 {
@@ -2996,56 +3053,7 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 			account, (*sle)[sfSequence] - 1, alAccepted->info().parentHash);
 		auto const sleSchema = alAccepted->read(sleKey);
 
-		SchemaParams params{};
-		auto validators = sleSchema->getFieldArray(sfValidators);
-		bool bShouldCreate = false;
-		for (auto& validator : validators)
-		{
-			auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
-			//auto signedVal = (validator.getFieldU8(sfSigned) == 1);
-			bool signedVal = true;
-			params.validator_list.push_back(std::make_pair(publicKey, signedVal));
-			if (!bShouldCreate && 
-				app_.app().getValidationPublicKey().size() != 0 &&
-				publicKey == app_.app().getValidationPublicKey())
-			{
-				bShouldCreate = true;
-			}
-		}
-		if (!bShouldCreate)
-			return;
-
-		params.account = account;
-		params.schema_id = sleKey.key;
-		params.schema_name = strCopy(sleSchema->getFieldVL(sfSchemaName));
-		params.strategy = sleSchema->getFieldU8(sfSchemaStrategy) == 1 ? 
-			SchemaStragegy::new_chain : SchemaStragegy::with_state;
-		if (params.strategy == SchemaStragegy::with_state)
-		{
-			params.anchor_ledger_hash = sleSchema->getFieldH256(sfAnchorLedgerHash);
-		}
-		if (sleSchema->isFieldPresent(sfSchemaAdmin))
-			params.admin = sleSchema->getAccountID(sfSchemaAdmin);
-
-		auto peers = sleSchema->getFieldArray(sfPeerList);
-		for (auto& peer : peers)
-		{
-			params.peer_list.push_back(strCopy(peer.getFieldVL(sfEndpoint)));
-		}
-		
-		if (!app_.app().getSchemaManager().contains(params.schema_id))
-		{
-			try
-			{
-				auto newSchema = app_.app().getSchemaManager().createSchema(app_.app().config(), params);
-				newSchema->initBeforeSetup();
-				newSchema->setup();
-			}
-			catch (std::exception const& e)
-			{
-				JLOG(m_journal.fatal()) << e.what();
-			}
-		}
+		this->createSchema(account, sleKey, sleSchema, false);
 	}
 	else if (stTxn->getTxnType() == ttSCHEMA_MODIFY)
 	{

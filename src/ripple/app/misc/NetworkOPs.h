@@ -249,6 +249,8 @@ namespace ripple {
         virtual bool waitingForInit() = 0;
 
         virtual std::chrono::milliseconds getConsensusTimeout() = 0;
+
+		virtual std::pair<bool, std::string> createSchema(AccountID account, Keylet sleKey, const std::shared_ptr<SLE const> &schema, bool bForce) = 0;
 	};
 
 //------------------------------------------------------------------------------

@@ -88,6 +88,9 @@ Json::Value doLedgerObjects			(RPC::Context&);
 Json::Value doNodeSize              (RPC::Context&);
 Json::Value doMallocTrim            (RPC::Context&);
 Json::Value doSchemaList			(RPC::Context&);
+Json::Value doSchemaInfo            (RPC::Context&);
+Json::Value doSchemaAccept          (RPC::Context&);
+Json::Value doSignNode              (RPC::Context&);
 
 //for sql operation
 Json::Value doTableDump(RPC::Context&);

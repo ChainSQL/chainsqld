@@ -202,11 +202,27 @@ namespace ripple {
 	{
 		auto j = ctx_.app.journal("schemaModifyApply");
 		auto sleSchema = ctx_.view().peek(Keylet(ltSCHEMA, ctx_.tx.getFieldH256(sfSchemaID)));
+		if (sleSchema == nullptr)
+		{
+			return tefBAD_SCHEMAID;
+		}
+
+		auto const account = ctx_.tx[sfAccount];
+		if (!ctx_.tx.getSigningPubKey().empty())
+		{
+			if (!sleSchema->isFieldPresent(sfSchemaAdmin))
+			{
+				return tefBAD_SCHEMAADMIN;
+			}
+			if (sleSchema->getAccountID(sfSchemaAdmin) != ctx_.tx.getAccountID(sfAccount))
+			{
+				return tefBAD_SCHEMAADMIN;
+			}
+		}
+
 		//for sle
 		auto & peers = sleSchema->peekFieldArray(sfPeerList);
 		auto & vals = sleSchema->peekFieldArray(sfValidators);
-
-		//auto const account = ctx_.tx[sfAccount];
 
 		//for tx
 		STArray const & peersTx = ctx_.tx.getFieldArray(sfPeerList);

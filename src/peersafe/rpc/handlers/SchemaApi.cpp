@@ -1,0 +1,159 @@
+//------------------------------------------------------------------------------
+/*
+	This file is part of rippled: https://github.com/ripple/rippled
+	Copyright (c) 2012-2014 Ripple Labs Inc.
+
+	Permission to use, copy, modify, and/or distribute this software for any
+	purpose  with  or without fee is hereby granted, provided that the above
+	copyright notice and this permission notice appear in all copies.
+
+	THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+	WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
+	MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+	ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+	WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
+	ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+	OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+*/
+//==============================================================================
+
+#include <ripple/json/json_value.h>
+#include <ripple/net/RPCErr.h>
+#include <ripple/protocol/jss.h>
+#include <ripple/rpc/Context.h>
+#include <ripple/rpc/handlers/Handlers.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/app/misc/NetworkOPs.h>
+
+namespace ripple {
+/** General RPC command that can retrieve schema list.
+	{
+		account: <account>|<account_public_key>// optional
+		ledger_hash: <string> // optional
+		ledger_index: <string | unsigned integer> // optional
+	}
+*/
+
+Json::Value getSchemaFromSle(std::shared_ptr<SLE const> & sle)
+{
+	Json::Value schema(Json::objectValue);
+
+	if (!sle)
+	{
+		return schema;
+	}
+
+	schema[jss::schema_id]                   = to_string(sle->key());
+	schema[jss::schema_name]                 = strCopy(sle->getFieldVL(sfSchemaName));
+	schema[jss::schema_strategy]             = sle->getFieldU8(sfSchemaStrategy);
+	if (sle->isFieldPresent(sfSchemaAdmin))
+		schema[jss::schema_admin]            = to_string(sle->getAccountID(sfAccount));
+	if (sle->isFieldPresent(sfAnchorLedgerHash))
+		schema[jss::anchor_ledge_hash]       = to_string(sle->getFieldH256(sfAnchorLedgerHash));
+
+	Json::Value& jvValidators = (schema[jss::validators] = Json::arrayValue);
+	for (auto& validator : sle->getFieldArray(sfValidators))
+	{
+		Json::Value val(Json::objectValue);
+		auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
+		val[jss::pubkey_validator] = Json::Value(toBase58(TokenType::NodePublic, publicKey));
+		val[jss::val_signed] = validator.getFieldU8(sfSigned);
+
+		jvValidators.append(val);
+	}
+
+	Json::Value& jvPeers = (schema[jss::peer_list] = Json::arrayValue);
+	for (auto& peer : sle->getFieldArray(sfPeerList))
+	{
+		jvPeers.append(Json::Value(strCopy(peer.getFieldVL(sfEndpoint))));
+	}
+
+	return schema;
+}
+
+Json::Value doSchemaList(RPC::Context&  context)
+{
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (ledger == nullptr)
+		return result;
+
+	Json::Value ret(Json::objectValue);
+	ret[jss::schemas] = Json::Value(Json::arrayValue);
+
+	//This is a time-consuming process for a project that has many sles.
+	for (auto sle : ledger->sles)
+	{
+		if (sle->getType() == ltSCHEMA)
+		{
+			auto &schema = getSchemaFromSle(sle);	
+			ret[jss::schemas].append(schema);
+		}
+	}
+	return ret;
+}
+
+Json::Value doSchemaInfo(RPC::Context& context)
+{
+	if (!context.params.isMember(jss::schema_id))
+		return rpcError(rpcINVALID_PARAMS);
+
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (ledger == nullptr)
+		return result;
+
+
+	auto const schemaID = context.params[jss::schema_id].asString();
+	auto key = Keylet(ltSCHEMA, from_hex_text<uint256>(schemaID));
+	auto sle = ledger->read(key);
+	if (!sle)
+	{
+		return rpcError(rpcNo_Schema);
+	}
+
+	return getSchemaFromSle(sle);
+
+}
+
+Json::Value doSchemaAccept(RPC::Context& context)
+{
+	if (!context.params.isMember(jss::schema_id))
+		return rpcError(rpcINVALID_PARAMS);
+
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (ledger == nullptr)
+		return result;
+
+
+	auto const schemaID = context.params[jss::schema_id].asString();
+	auto sleKey = Keylet(ltSCHEMA, from_hex_text<uint256>(schemaID));
+	auto sleSchema = ledger->read(sleKey);
+	if (!sleSchema)
+	{
+		return rpcError(rpcNo_Schema);
+	}
+
+	Json::Value jvResult(Json::objectValue);
+
+	AccountID account;
+	auto ret = context.app.getOPs().createSchema(account, sleKey, sleSchema, true);
+	if (!ret.first)
+	{
+		jvResult[jss::error] = "internal error";
+		jvResult[jss::error_message] = ret.second;
+	}
+	
+	jvResult[jss::status] = jss::success;
+
+	return jvResult;
+}
+
+Json::Value doSignNode(RPC::Context& context)
+{
+	Json::Value ret(Json::objectValue);
+	return ret;
+}
+
+}
