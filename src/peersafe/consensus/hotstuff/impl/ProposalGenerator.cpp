@@ -39,9 +39,12 @@ ProposalGenerator::~ProposalGenerator() {
 }
 
 boost::optional<Block> ProposalGenerator::GenerateNilBlock(Round round) {
-	QuorumCertificate hqc = HighestQuorumCert(round);
-	Block block = Block::nil_block(round, hqc);
-	return boost::optional<Block>(block);
+	boost::optional<QuorumCertificate> hqc = EnsureHighestQuorumCert(round);
+	if (hqc) {
+		Block block = Block::nil_block(round, hqc.get());
+		return boost::optional<Block>(block);
+	}
+	return boost::optional<Block>();
 }
 
 boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
@@ -50,33 +53,44 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 	}
 	last_round_generated_.store(round);
 
-	QuorumCertificate hqc = HighestQuorumCert(round);
-	BlockData blockData;
-	blockData.epoch = hqc.certified_block().epoch;
-	blockData.round = round;
-	blockData.timestamp_usecs = 0;
-	blockData.quorum_cert = hqc;
-	blockData.block_type = BlockData::Proposal;
+	boost::optional<QuorumCertificate> hqc = EnsureHighestQuorumCert(round);
+	if (hqc) {
+		BlockData blockData;
+		blockData.block_type = BlockData::Proposal;
+		BlockData::Payload payload;
+		payload.author = author_;
+		blockData.round = round;
+		blockData.epoch = hqc->certified_block().epoch;
+		blockData.quorum_cert = hqc.get();
+		blockData.timestamp_usecs = 0;
+		if (hqc->certified_block().hasReconfiguration()) {
+			blockData.timestamp_usecs = hqc->certified_block().timestamp_usecs;
+		}
+		else {
+			// extrats txs
+            auto cmd = command_manager_->extract(blockData);
+            if (!cmd)
+            {
+                return boost::none;
+            }
+            payload.cmd = cmd.get();
+			blockData.payload = payload;
+		}
+
+		return boost::optional<BlockData>(blockData);
+	}
 	
-	BlockData::Payload payload;
-	payload.author = author_;
-	// extrats txs
-	auto cmd = command_manager_->extract(blockData);
-    if (!cmd)
-    {
-        return boost::none;
-    }
-    payload.cmd = cmd.get();
+	return boost::optional<BlockData>();
 
-	blockData.payload = payload;
-
-	return boost::optional<BlockData>(blockData);
 }
 
-QuorumCertificate ProposalGenerator::HighestQuorumCert(Round round) {
+boost::optional<QuorumCertificate> ProposalGenerator::EnsureHighestQuorumCert(Round round) {
 	QuorumCertificate hqc = block_store_->HighestQuorumCert();
-	assert(hqc.certified_block().round < round);
-	return hqc;
+	if (hqc.certified_block().round >= round)
+		return boost::optional<QuorumCertificate>();
+	if (hqc.endsEpoch())
+		return boost::optional<QuorumCertificate>();
+	return boost::optional<QuorumCertificate>(hqc);
 }
 
 } // namespace hotstuff

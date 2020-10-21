@@ -17,32 +17,27 @@
  */
  //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H
+#ifndef RIPPLE_CONSENSUS_HOTSTUFF_EXECUTEBLOCK_H
+#define RIPPLE_CONSENSUS_HOTSTUFF_EXECUTEBLOCK_H
 
-#include <peersafe/consensus/hotstuff/impl/Types.h>
-#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
+
+#include <peersafe/consensus/hotstuff/impl/StateCompute.h>
 
 namespace ripple {
 namespace hotstuff {
 
-struct Timeout {
-	Epoch epoch;
-	Round round;
 
-	bool sign(ValidatorVerifier* verifier, Signature& signature) {
-		using beast::hash_append;
-		ripple::sha512_half_hasher h;
-		hash_append(h, epoch);
-		hash_append(h, round);
+struct ExecutedBlock {
+	Block block;
+	StateComputeResult state_compute_result;
 
-		HashValue hash = static_cast<typename sha512_half_hasher::result_type>(h);
-
-		return verifier->signature(hash, signature);
+	ExecutedBlock() 
+	: block(Block::empty())
+	, state_compute_result() {
 	}
 };
 
 } // namespace hotstuff
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H
+#endif // RIPPLE_CONSENSUS_HOTSTUFF_EXECUTEBLOCK_H

@@ -27,11 +27,14 @@ namespace ripple { namespace hotstuff {
 struct Config {
 	// self id
 	Author id;
+	// epoch in current runtime
+	Epoch epoch;
 	// generate a dummy block after timeout (seconds)
 	int timeout;
 
 	Config()
 		: id()
+		, epoch(0)
 		, timeout(60) {
 
 	}

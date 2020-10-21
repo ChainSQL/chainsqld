@@ -89,6 +89,12 @@ public:
 			&& ledger_info.parentHash.isZero()
 			&& ledger_info.seq == 0;
 	}
+
+	const bool hasReconfiguration() const {
+		if (next_epoch_state)
+			return true;
+		return false;
+	}
 };
     
 } // namespace hotstuff

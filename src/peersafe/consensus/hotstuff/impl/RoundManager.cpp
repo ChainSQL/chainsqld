@@ -48,6 +48,7 @@ RoundManager::~RoundManager() {
 }
 
 int RoundManager::start() {
+	assert(stop_ == false);
 	// open a new round
 	boost::optional<NewRoundEvent> new_round_event = round_state_->ProcessCertificates(block_store_->sync_info());
 	if (new_round_event) {
@@ -57,6 +58,9 @@ int RoundManager::start() {
 }
 
 void RoundManager::stop() {
+	if (stop_ == true)
+		return;
+
 	stop_ = true;
 
 	for (;;) {
@@ -115,10 +119,15 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 	else {
 		// generates a dummy block
 		// Didn't vote in this round yet, generate a backup vote
-		Block nil_block = proposal_generator_->GenerateNilBlock(round).get();
-		assert(nil_block.block_data().block_type == BlockData::NilBlock);
-		if (ExecuteAndVote(nil_block, timeout_vote) == false)
+		boost::optional<Block> nil_block = proposal_generator_->GenerateNilBlock(round);
+		if (nil_block) {
+			assert(nil_block->block_data().block_type == BlockData::NilBlock);
+			if (ExecuteAndVote(nil_block.get(), timeout_vote) == false)
+				return;
+		}
+		else {
 			return;
+		}
 	}
 
 	if (timeout_vote.isTimeout() == false) {
@@ -232,7 +241,7 @@ bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
 	ExecutedBlock executed_block = block_store_->executeAndAddBlock(proposal);
 	if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false)
 		return false;
-	block_store_->saveVote(vote);
+	//block_store_->saveVote(vote);
 	return true;
 }
 
@@ -280,7 +289,7 @@ int RoundManager::SyncUp(
 				<< "Verifing sync_info failed";
 			return 1;
 		}
-		block_store_->addCerts(sync_info);
+		block_store_->addCerts(sync_info, network_);
 		// open a new round
 		ProcessCertificates();
 	}
@@ -298,7 +307,7 @@ int RoundManager::ProcessCertificates() {
 }
 
 int RoundManager::NewQCAggregated(const QuorumCertificate& quorumCert) {
-	if (block_store_->insertQuorumCert(quorumCert) == 0) {
+	if (block_store_->insertQuorumCert(quorumCert, network_) == 0) {
 		ProcessCertificates();
 	}
 	return 0;

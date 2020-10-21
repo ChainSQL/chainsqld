@@ -46,7 +46,7 @@ public:
 	}
 
 private:
-	QuorumCertificate HighestQuorumCert(Round round);
+	boost::optional<QuorumCertificate> EnsureHighestQuorumCert(Round round);
 
 	CommandManager* command_manager_;
 	BlockStorage* block_store_;

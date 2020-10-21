@@ -32,6 +32,7 @@ public:
 	// 广播给每一个节点，包括自身
     virtual void broadcast(const Block& proposal, const SyncInfo& sync_info) = 0;
     virtual void broadcast(const Vote& vote, const SyncInfo& sync_info) = 0;
+	virtual void broadcast(const EpochChange& epoch_change) = 0;
 	virtual void sendVote(const Author& author, const Vote& vote, const SyncInfo& sync_info) = 0;
     
     virtual ~NetWork() {}

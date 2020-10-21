@@ -22,10 +22,13 @@
 
 #include <ripple/ledger/ReadView.h>
 
+#include <peersafe/consensus/hotstuff/impl/EpochState.h>
+
 namespace ripple { namespace hotstuff {
 
 struct RecoverData {
 	ripple::LedgerInfo init_ledger_info;
+	EpochState epoch_state;
 }; 
  
 } // namespace hotstuff

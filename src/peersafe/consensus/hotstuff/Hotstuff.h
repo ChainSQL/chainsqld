@@ -44,7 +44,7 @@ public:
 		Builder& setCommandManager(CommandManager* cm);
 		Builder& setProposerElection(ProposerElection* proposer_election);
 		Builder& setStateCompute(StateCompute* state_compute);
-		Builder& setValidatorVerifier(ValidatorVerifier* verifier);
+		//Builder& setValidatorVerifier(ValidatorVerifier* verifier);
 		Builder& setNetWork(NetWork* network);
 
 		Hotstuff::pointer build();
@@ -56,7 +56,7 @@ public:
 		CommandManager* command_manager_;
 		ProposerElection* proposer_election_;
 		StateCompute* state_compute_;
-		ValidatorVerifier* verifier_;
+		//ValidatorVerifier* verifier_;
 		NetWork* network_;
 	};
 
@@ -83,13 +83,17 @@ private:
 		CommandManager* cm,
 		ProposerElection* proposer_election,
 		StateCompute* state_compute,
-		ValidatorVerifier* verifier,
+		//ValidatorVerifier* verifier,
 		NetWork* network);
 	
+	beast::Journal journal_;
+	Config config_;
 	BlockStorage storage_;
 	EpochState epoch_state_;
 	RoundState round_state_;
 	ProposalGenerator proposal_generator_;
+	ProposerElection* proposer_election_;
+	NetWork* network_;
 	HotstuffCore hotstuff_core_;
 	RoundManager* round_manager_;
 };

@@ -89,6 +89,7 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 	}
 	
 	HashValue id = proposed_block.id();
+
 	if (proposed_block.signature()
 		&& epoch_state_->verifier->verifySignature(
 			proposed_block.block_data().author(),
@@ -198,9 +199,7 @@ bool HotstuffCore::VerifyAndUpdateLastVoteRound(Round round) {
 
 std::tuple<bool, VoteData> HotstuffCore::ExtensionCheck(const ExecutedBlock& executed_block) {
 	Block proposed_block = executed_block.block;
-	if (state_compute_->verify(
-		executed_block.state_compute_result,
-		proposed_block.block_data().quorum_cert.certified_block().ledger_info) == false) {
+	if (state_compute_->verify(executed_block.state_compute_result) == false) {
 		JLOG(journal_.error())
 			<< "extension check falled."
 			<< "Round is " << executed_block.block.block_data().round;
@@ -212,7 +211,9 @@ std::tuple<bool, VoteData> HotstuffCore::ExtensionCheck(const ExecutedBlock& exe
 	return std::make_tuple(
 		true,
 		VoteData::New(
-			proposed_block.gen_block_info(executed_block.state_compute_result),
+			proposed_block.gen_block_info(
+				executed_block.state_compute_result.ledger_info, 
+				executed_block.state_compute_result.epoch_state),
 			proposed_block.block_data().quorum_cert.certified_block())
 	);
 }

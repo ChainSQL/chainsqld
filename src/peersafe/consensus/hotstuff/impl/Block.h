@@ -123,7 +123,11 @@ public:
 		return signature_;
 	}
 
-	BlockInfo gen_block_info(const ripple::LedgerInfo& ledger_info);
+	BlockInfo gen_block_info(
+		const ripple::LedgerInfo& ledger_info,
+		const boost::optional<EpochState>& next_epoch_state);
+private:
+    Block();
 
 private:
 	HashValue id_;

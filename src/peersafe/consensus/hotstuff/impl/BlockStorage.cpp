@@ -20,6 +20,7 @@
 
 #include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
 #include <peersafe/consensus/hotstuff/impl/StateCompute.h>
+#include <peersafe/consensus/hotstuff/impl/NetWork.h>
 
 
 namespace ripple { namespace hotstuff {
@@ -30,7 +31,8 @@ BlockStorage::BlockStorage(StateCompute* state_compute)
 , cache_blocks_()
 , highest_quorum_cert_()
 , highest_commit_cert_()
-, highest_timeout_cert_() {
+, highest_timeout_cert_()
+, committed_round_(0) {
 
 }
 
@@ -42,7 +44,8 @@ BlockStorage::BlockStorage(
 , cache_blocks_()
 , highest_quorum_cert_()
 , highest_commit_cert_()
-, highest_timeout_cert_() {
+, highest_timeout_cert_() 
+, committed_round_(0) {
 	updateCeritificates(genesis_block);
 }
 
@@ -50,7 +53,8 @@ BlockStorage::~BlockStorage() {
 }
 
 void BlockStorage::updateCeritificates(const Block& block) {
-	genesis_block_id_ = block.id();
+	committed_round_ = block.block_data().round;
+	genesis_block_id_  = block.id();
 	highest_quorum_cert_ = QuorumCertificate(block.block_data().quorum_cert);
 	highest_commit_cert_  = QuorumCertificate(block.block_data().quorum_cert);
 	executeAndAddBlock(block);
@@ -88,14 +92,13 @@ bool BlockStorage::expectBlock(const HashValue& hash, ExecutedBlock& block) {
     return false;
 }
 
-int BlockStorage::addCerts(const SyncInfo& sync_info) {
-	highest_quorum_cert_ = sync_info.HighestQuorumCert();
-	if (highest_commit_cert_.certified_block().round < sync_info.HighestCommitCert().certified_block().round)
-		highest_commit_cert_ = sync_info.HighestCommitCert();
+int BlockStorage::addCerts(const SyncInfo& sync_info, NetWork* network) {
+	insertQuorumCert(sync_info.HighestCommitCert(), network);
+	insertQuorumCert(sync_info.HighestQuorumCert(), network);
 	return 0;
 }
 
-int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert) {
+int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert, NetWork* network) {
 	ExecutedBlock executed_block;
 	HashValue expected_block_id = const_cast<BlockInfo&>(quorumCert.certified_block()).id;
 	if (blockOf(expected_block_id, executed_block) == false)
@@ -108,7 +111,18 @@ int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert) {
 	if (highest_commit_cert_.ledger_info().ledger_info.commit_info.round < quorumCert.ledger_info().ledger_info.commit_info.round) {
 		highest_commit_cert_ = quorumCert;
 	}
+	
+	Round commtiting_round = quorumCert.ledger_info().ledger_info.commit_info.round;
+	if (committed_round_ < commtiting_round) {
+		commit(quorumCert.ledger_info());
 
+		if (quorumCert.endsEpoch()) {
+			EpochChange epoch_change;
+			epoch_change.ledger_info = quorumCert.ledger_info().ledger_info.commit_info.ledger_info;
+			epoch_change.epoch = quorumCert.ledger_info().ledger_info.commit_info.next_epoch_state->epoch;
+			network->broadcast(epoch_change);
+		}
+	}
 	return 0;
 }
 
@@ -123,23 +137,44 @@ int BlockStorage::insertTimeoutCert(const TimeoutCertificate& timeoutCeret) {
 	return 0;
 }
 
-int BlockStorage::saveVote(const Vote& vote) {
-	HashValue block_hash = vote.ledger_info().commit_info.id;
+//int BlockStorage::saveVote(const Vote& vote) {
+//	Round commtiting_round = vote.ledger_info().commit_info.round;
+//	HashValue block_hash = vote.ledger_info().commit_info.id;
+//
+//	if (block_hash.isZero() 
+//		&& vote.ledger_info().commit_info.empty() == false) {
+//		// handle genesis block info
+//		block_hash = genesis_block_id_;
+//	}
+//
+//	if (block_hash.isZero())
+//		return 1;
+//
+//	ExecutedBlock executed_block;
+//	if (blockOf(block_hash, executed_block)
+//		&& committed_round_ < commtiting_round) {
+//		state_compute_->commit(executed_block.block);
+//		committed_round_ = committed_round_;
+//	}
+//	return 0;
+//}
 
+void BlockStorage::commit(const LedgerInfoWithSignatures& ledger_info_with_sigs) {
+	HashValue block_hash = ledger_info_with_sigs.ledger_info.commit_info.id;
 	if (block_hash.isZero() 
-		&& vote.ledger_info().commit_info.empty() == false) {
+		&& ledger_info_with_sigs.ledger_info.commit_info.empty() == false) {
 		// handle genesis block info
 		block_hash = genesis_block_id_;
 	}
 
 	if (block_hash.isZero())
-		return 1;
+		return;
 
 	ExecutedBlock executed_block;
 	if (blockOf(block_hash, executed_block)) {
-			state_compute_->commit(executed_block.block);
+		state_compute_->commit(executed_block.block);
+		committed_round_ = committed_round_;
 	}
-	return 0;
 }
 
 } // hotstuff

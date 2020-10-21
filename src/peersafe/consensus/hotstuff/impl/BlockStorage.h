@@ -22,26 +22,14 @@
 
 #include <map>
 
-#include <ripple/ledger/ReadView.h>
-
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
-#include <peersafe/consensus/hotstuff/impl/Block.h>
-#include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
+#include <peersafe/consensus/hotstuff/impl/ExecuteBlock.h>
 #include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
 
 namespace ripple { namespace hotstuff {
 
-struct ExecutedBlock {
-	Block block;
-	ripple::LedgerInfo state_compute_result;
-
-	ExecutedBlock() 
-	: block(Block::empty())
-	, state_compute_result() {
-	}
-};
-
 class StateCompute;
+class NetWork;
 
 class BlockStorage {
 public:
@@ -83,16 +71,15 @@ public:
 			HighestTimeoutCert());
 	}
 
-	int addCerts(const SyncInfo& sync_info);
+	int addCerts(const SyncInfo& sync_info, NetWork* network);
 
-	int insertQuorumCert(const QuorumCertificate& quorumCeret);
+	int insertQuorumCert(const QuorumCertificate& quorumCeret, NetWork* network);
 	int insertTimeoutCert(const TimeoutCertificate& timeoutCeret);
 
 	// 目前主要功能是 commit 共识过的 block
-	int saveVote(const Vote& vote);
-
-
+	//int saveVote(const Vote& vote);
 private:
+	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);
     //void recurseGCBlocks(const Block& block);
 	StateCompute* state_compute_;
 	HashValue genesis_block_id_;
@@ -101,6 +88,7 @@ private:
 	QuorumCertificate highest_quorum_cert_;
 	QuorumCertificate highest_commit_cert_;
 	boost::optional<TimeoutCertificate> highest_timeout_cert_;
+	Round committed_round_;
 };
 
 } // namespace hotstuff

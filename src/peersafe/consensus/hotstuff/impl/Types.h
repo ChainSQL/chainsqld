@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 
+#include <ripple/ledger/ReadView.h>
 #include <ripple/basics/Buffer.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/Blob.h>
@@ -39,8 +40,7 @@ inline HashValue ZeroHash() {
 	return HashValue();
 }
 
-//using BlockHash = sha512_half_hasher::result_type; 
-//using Command = std::vector<std::string>;
+
 using Command = ripple::Adaptor::TxSet_t::ID;
 
 using Author = ripple::PublicKey;
@@ -55,12 +55,24 @@ using Signature = ripple::Buffer;
 
 class BlockData;
 
+
+///////////////////////////////////////////////////////////////////////
+// for extracting txs
+///////////////////////////////////////////////////////////////////////
 class CommandManager {
 public:
 	virtual ~CommandManager() {};
 	virtual boost::optional<Command> extract(BlockData &block_data) = 0;
 protected:
 	CommandManager() {};
+};
+
+///////////////////////////////////////////////////////////////////////
+// for epoch changing
+///////////////////////////////////////////////////////////////////////
+struct EpochChange {
+	ripple::LedgerInfo ledger_info;
+	Epoch epoch;
 };
 
 } // namespace hotstuff

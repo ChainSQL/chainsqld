@@ -20,6 +20,8 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_STATECOMPUTE_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_STATECOMPUTE_H
 
+#include <boost/optional.hpp>
+
 #include <ripple/ledger/ReadView.h>
 
 #include <peersafe/consensus/hotstuff/impl/Block.h>
@@ -27,12 +29,25 @@
 namespace ripple {
 namespace hotstuff { 
 
+struct StateComputeResult {
+	/// ledgen info on application
+	ripple::LedgerInfo ledger_info;
+	/// If set, this is the new epoch info that should be changed to if this block is committed
+	boost::optional<EpochState> epoch_state;
+
+	StateComputeResult()
+		: ledger_info()
+		, epoch_state() {
+
+	}
+};
+
 class StateCompute {
 public:
 	virtual ~StateCompute() {}
 	
-	virtual bool compute(const Block& block, ripple::LedgerInfo& ledger_info) = 0;
-	virtual bool verify(const ripple::LedgerInfo& ledger_info, const ripple::LedgerInfo& parent_ledger_info) = 0;
+	virtual bool compute(const Block& block, StateComputeResult& state_compute_result) = 0;
+	virtual bool verify(const StateComputeResult& state_compute_result) = 0;
 	virtual int commit(const Block& block) = 0;
 
 protected:

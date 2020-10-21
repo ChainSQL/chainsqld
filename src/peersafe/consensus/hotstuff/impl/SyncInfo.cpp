@@ -78,6 +78,11 @@ bool SyncInfo::Verify(ValidatorVerifier* validator) {
 	Epoch epoch = highest_quorum_cert_.certified_block().epoch;
 	if (epoch != HighestCommitCert().certified_block().epoch)
 		return false;
+
+	if (highest_timeout_cert_
+		&& epoch != highest_timeout_cert_->timeout().epoch)
+		return false;
+
 	if (highest_quorum_cert_.certified_block().round < HighestCommitCert().certified_block().round)
 		return false;
 

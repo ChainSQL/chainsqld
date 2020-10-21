@@ -95,6 +95,12 @@ public:
 		return signed_ledger_info_;
 	}
 
+	const bool endsEpoch() const {
+		if (signed_ledger_info_.ledger_info.commit_info.next_epoch_state)
+			return true;
+		return false;
+	}
+
 	bool Verify(ValidatorVerifier* validator);
 
 private:

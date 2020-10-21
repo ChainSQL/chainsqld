@@ -34,7 +34,8 @@ HashValue BlockData::hash(const BlockData& block_data) {
 	hash_append(h, block_data.timestamp_usecs);
 	hash_append(h, block_data.block_type);
 
-	if (block_data.block_type == BlockData::Proposal) {
+	if (block_data.block_type == BlockData::Proposal
+		&& block_data.payload) {
 		hash_append(h, block_data.payload->cmd);
 	}
 
@@ -73,6 +74,7 @@ Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier*
 
 	block.id_ = BlockData::hash(block_data);
 	block.block_data_ = block_data;
+
 	Signature signature;
 	if (verifier->signature(block.id_, signature) == false)
 		return Block::empty();
@@ -124,11 +126,14 @@ Block Block::new_genesis_block(const ripple::LedgerInfo& ledger_info) {
 	return genesis_block;
 }
 
-BlockInfo Block::gen_block_info(const ripple::LedgerInfo& ledger_info) {
+BlockInfo Block::gen_block_info(
+	const ripple::LedgerInfo& ledger_info,
+		const boost::optional<EpochState>& next_epoch_state) {
 	BlockInfo block_info(id_);
 	block_info.epoch = block_data_.epoch;
 	block_info.round = block_data_.round;
 	block_info.ledger_info = ledger_info;
+	block_info.next_epoch_state = next_epoch_state;
 
 	return block_info;
 }

@@ -31,7 +31,7 @@ Hotstuff::Builder::Builder(
 , command_manager_(nullptr)
 , proposer_election_(nullptr)
 , state_compute_(nullptr)
-, verifier_(nullptr)
+//, verifier_(nullptr)
 , network_(nullptr) {
 
 }
@@ -56,10 +56,10 @@ Hotstuff::Builder& Hotstuff::Builder::setStateCompute(StateCompute* state_comput
 	return *this;
 }
 
-Hotstuff::Builder& Hotstuff::Builder::setValidatorVerifier(ValidatorVerifier* verifier) {
-	verifier_ = verifier;
-	return *this;
-}
+//Hotstuff::Builder& Hotstuff::Builder::setValidatorVerifier(ValidatorVerifier* verifier) {
+//	verifier_ = verifier;
+//	return *this;
+//}
 
 Hotstuff::Builder& Hotstuff::Builder::setNetWork(NetWork* network) {
 	network_ = network;
@@ -74,7 +74,7 @@ Hotstuff::pointer Hotstuff::Builder::build() {
 		|| command_manager_ == nullptr
 		|| proposer_election_ == nullptr
 		|| state_compute_ == nullptr
-		|| verifier_ == nullptr
+		//|| verifier_ == nullptr
 		|| network_ == nullptr)
 		return hotstuff;
 
@@ -85,7 +85,7 @@ Hotstuff::pointer Hotstuff::Builder::build() {
 		command_manager_,
 		proposer_election_,
 		state_compute_,
-		verifier_,
+		//verifier_,
 		network_));
 
 	return hotstuff;
@@ -98,27 +98,31 @@ Hotstuff::Hotstuff(
 	CommandManager* cm,
 	ProposerElection* proposer_election,
 	StateCompute* state_compute,
-	ValidatorVerifier* verifier,
+	//ValidatorVerifier* verifier,
 	NetWork* network)
-: storage_(state_compute)
+: journal_(journal)
+, config_(config)
+, storage_(state_compute)
 , epoch_state_()
 , round_state_(&ios)
 , proposal_generator_(cm, &storage_, config.id)
+, proposer_election_(proposer_election)
+, network_(network)
 , hotstuff_core_(journal, state_compute, &epoch_state_)
 , round_manager_(nullptr) {
 
-	epoch_state_.epoch = 0;
-	epoch_state_.verifier = verifier;
+	//epoch_state_.epoch = 0;
+	//epoch_state_.verifier = verifier;
 
-	round_manager_ = new RoundManager(
-		journal,
-		config,
-		&storage_, 
-		&round_state_, 
-		&hotstuff_core_,
-		&proposal_generator_,
-		proposer_election,
-		network);
+	//round_manager_ = new RoundManager(
+	//	journal,
+	//	config,
+	//	&storage_, 
+	//	&round_state_, 
+	//	&hotstuff_core_,
+	//	&proposal_generator_,
+	//	proposer_election,
+	//	network);
 }
 
 Hotstuff::~Hotstuff() {
@@ -126,7 +130,22 @@ Hotstuff::~Hotstuff() {
 }
 
 int Hotstuff::start(const RecoverData& recover_data) {
+	assert(round_manager_ == nullptr);
+
 	storage_.updateCeritificates(Block::new_genesis_block(recover_data.init_ledger_info));
+	epoch_state_ = recover_data.epoch_state;
+	
+	if (round_manager_ == nullptr) {
+		round_manager_ = new RoundManager(
+			journal_,
+			config_,
+			&storage_,
+			&round_state_,
+			&hotstuff_core_,
+			&proposal_generator_,
+			proposer_election_,
+			network_);
+	}
 	return round_manager_->start();
 }
 

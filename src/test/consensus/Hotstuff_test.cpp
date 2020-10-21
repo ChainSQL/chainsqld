@@ -64,6 +64,7 @@ class Replica
 public:
 	static std::map<ripple::hotstuff::Round, Replica*> replicas;
 	static ripple::LedgerInfo genesis_ledger_info;
+	static std::string epoch_change;
 
 	using KeyPair = std::pair<ripple::PublicKey, ripple::SecretKey>;
 
@@ -75,52 +76,92 @@ public:
 	: io_service_()
 	, worker_()
 	, config_(config)
-	, recover_data_(ripple::hotstuff::RecoverData{ Replica::genesis_ledger_info })
 	, key_pair_(ripple::randomKeyPair(ripple::KeyType::secp256k1))
 	, env_(env)
 	, committed_blocks_() 
 	, hotstuff_(nullptr)
-	, malicious_(malicious) {
-		
+	, malicious_(malicious)
+	, epoch_change_hash_()
+	, committing_epoch_change_(false) {
+
+		std::string epoch_change = "EPOCHCHANGE";
+		using beast::hash_append;
+		ripple::sha512_half_hasher h;
+		hash_append(h, epoch_change);
+		epoch_change_hash_ = static_cast<typename sha512_half_hasher::result_type>(h);
+
 		hotstuff_ = ripple::hotstuff::Hotstuff::Builder(io_service_, journal)
 			.setConfig(config_)
 			.setCommandManager(this)
 			.setNetWork(this)
 			.setProposerElection(this)
 			.setStateCompute(this)
-			.setValidatorVerifier(this)
+			//.setValidatorVerifier(this)
 			.build();
 
 		Replica::replicas[Replica::index++] = this;
 	}
 
 	~Replica() {
-		io_service_.stop();
-		while (true) {
-			if (io_service_.stopped())
-				break;
-		}
+		//io_service_.stop();
+		//while (true) {
+		//	if (io_service_.stopped())
+		//		break;
+		//}
 
-		if (worker_.joinable())
-			worker_.join();
+		//if (worker_.joinable())
+		//	worker_.join();
 		
 		Replica::index = 1;
 		committed_blocks_.clear();
 	}
 
 	// for StateCompute
-	bool compute(const ripple::hotstuff::Block& block, ripple::LedgerInfo& ledger_info) {
+	bool compute(
+		const ripple::hotstuff::Block& block, 
+		ripple::hotstuff::StateComputeResult& state_compute_result) {
+		if (block.block_data().block_type == ripple::hotstuff::BlockData::Proposal) {
+			auto payload = block.block_data().payload;
+			ripple::hotstuff::Command cmd;
+			if (payload)
+				cmd = payload->cmd;
+			bool has_reconfig = false;
+			for (std::size_t i = 0; i < cmd.size(); i++) {
+				if (cmd == epoch_change_hash_) {
+					std::cout
+						<< config_.id << ": "
+						<< "change reconfiguration" 
+						<< std::endl;
+					has_reconfig = true;
+					break;
+				}
+			}
+
+			if (has_reconfig) {
+				ripple::hotstuff::EpochState epoch_state;
+				epoch_state.epoch = block.block_data().epoch;
+				epoch_state.verifier = this;
+
+				state_compute_result.ledger_info = ripple::LedgerInfo();
+				state_compute_result.epoch_state = epoch_state;
+			}
+		}
 		return true;
 	}
 
-	bool verify(const ripple::LedgerInfo& ledger_info, const ripple::LedgerInfo& parent_ledger_info) {
+	bool verify(const ripple::hotstuff::StateComputeResult& state_compute_result) {
 		return true;
 	}
 
 	int commit(const ripple::hotstuff::Block& block) {
 		auto it = committed_blocks_.find(block.id());
-		if (it == committed_blocks_.end())
+		if (it == committed_blocks_.end()) {
+			//std::cout
+			//	<< config_.id << ": "
+			//	<< block.block_data().round << "," << block.id()
+			//	<< std::endl;
 			committed_blocks_.emplace(std::make_pair(block.id(), block));
+		}
 		return 0;
 	}
 
@@ -130,11 +171,17 @@ public:
 
 	// for CommandManager
 	void extract(ripple::hotstuff::Command& cmd) {
-		cmd.clear();
 
-		for (std::size_t i = 0; i < 100; i++) {
-			cmd.push_back(generate_random_string(32));
+		if (committing_epoch_change_) {
+			cmd = epoch_change_hash_;
+			committing_epoch_change(false);
+			return;
 		}
+
+		using beast::hash_append;
+		ripple::sha512_half_hasher h;
+		hash_append(h, generate_random_string(32));
+		cmd = static_cast<typename sha512_half_hasher::result_type>(h);
 	}
 
 	// for ProposerElection
@@ -150,7 +197,7 @@ public:
 	}
 
 	bool signature(
-		const ripple::Slice& message, 
+		const ripple::hotstuff::HashValue& message, 
 		ripple::hotstuff::Signature& signature) {
 		Replica* replica = nullptr;
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
@@ -163,14 +210,14 @@ public:
 			return false;
 
 		const KeyPair& keyPair = replica->keyPair();
-		signature = ripple::sign(ripple::KeyType::secp256k1, keyPair.second, message);
+		signature = ripple::signDigest(ripple::KeyType::secp256k1, keyPair.second, message);
 		return true;
 	}
 
 	const bool verifySignature(
 		const ripple::hotstuff::Author& author, 
 		const ripple::hotstuff::Signature& signature, 
-		const ripple::Slice& message) const {
+		const ripple::hotstuff::HashValue& message) const {
 
 		Replica* replica = nullptr;
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
@@ -183,7 +230,7 @@ public:
 			return false;
 
 		const KeyPair& keyPair = replica->keyPair();
-		return ripple::verify(
+		return ripple::verifyDigest(
 			keyPair.first, 
 			message, 
 			ripple::Slice((const void*)signature.data(), signature.size()));
@@ -246,6 +293,34 @@ public:
 		}
 	}
 
+	void broadcast(const ripple::hotstuff::EpochChange& epoch_change) {
+
+		ripple::hotstuff::EpochState next_epoch_state;
+		next_epoch_state.epoch = epoch_change.epoch + 1;
+
+		// 模拟新增一个节点
+		Replica* new_replica = new Replica(config_, env_, env_->app().journal("testcase"));
+		ripple::hotstuff::RecoverData recover_data{epoch_change.ledger_info, next_epoch_state};
+
+		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+			env_->app().getJobQueue().addJob(
+				jtPROPOSAL_t,
+				"broadcast_proposal",
+				[this, it, recover_data](Job&) {
+					std::cout
+						<< it->second->author() << ": "
+						<< "changing epoch and next epoch is " << recover_data.epoch_state.epoch
+						<< std::endl;
+					
+					ripple::hotstuff::RecoverData rd = recover_data;
+					it->second->stop();
+					it->second->run(rd);
+				});
+		}
+		
+		new_replica->run(recover_data);
+	}
+
 	void sendVote(
 		const ripple::hotstuff::Author& author, 
 		const ripple::hotstuff::Vote& vote, 
@@ -266,17 +341,27 @@ public:
 		}
 	}
 
-	void run() {
+	void run(ripple::hotstuff::RecoverData& recover_data) {
 		// initial 
 		worker_ = std::thread([this]() {
 			boost::asio::io_service::work work(io_service_);
 			io_service_.run();
 		});
-
-		hotstuff_->start(recover_data_);
+		
+		recover_data.epoch_state.verifier = this;
+		hotstuff_->start(recover_data);
 	}
 
 	void stop() {
+		io_service_.stop();
+		while (true) {
+			if (io_service_.stopped())
+				break;
+		}
+
+		if (worker_.joinable())
+			worker_.join();
+
 		hotstuff_->stop();
 	}
 
@@ -291,16 +376,21 @@ public:
 	const bool malicious() const {
 		return malicious_;
 	}
+	
+	void committing_epoch_change(bool change) {
+		committing_epoch_change_ = change;
+	}
 private:
 	boost::asio::io_service io_service_;
 	std::thread worker_;
 	ripple::hotstuff::Config config_;
-	ripple::hotstuff::RecoverData recover_data_;
 	KeyPair key_pair_;
 	jtx::Env* env_;
 	std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committed_blocks_;
 	ripple::hotstuff::Hotstuff::pointer hotstuff_;
 	bool malicious_;
+	ripple::hotstuff::HashValue epoch_change_hash_;
+	bool committing_epoch_change_;
 
 	static int index;
 };
@@ -352,13 +442,15 @@ public:
 		int replicas,
 		int malicious = 0) {
 
+		std::size_t base = Replica::replicas.size();
+
 		// 随机设置异常节点
-		std::set<int> maliciousAuthors;
+		std::set<std::size_t> maliciousAuthors;
 		if (malicious > 0) {
 			for (;;) {
 				// use current time as seed for random generator
 				std::srand(std::time(nullptr));
-				int id = (std::rand() % replicas) + 1;
+				std::size_t id = (std::rand() % replicas) + 1;
 				maliciousAuthors.insert(id);
 
 				if (maliciousAuthors.size() == malicious)
@@ -367,9 +459,10 @@ public:
 		}
 
 		ripple::hotstuff::Config config;
+		config.epoch = 0;
 		config.timeout = timeout_;
-		for (int i = 0; i < replicas; i++) {
-			int index = i + 1;
+		for (std::size_t i = base; i < (replicas + base); i++) {
+			std::size_t index = i + 1;
 			config.id = (boost::format("%1%") % index).str();
 			bool fake_malicious_replica = std::find(
 				maliciousAuthors.begin(), 
@@ -378,6 +471,13 @@ public:
 			new Replica(config, env, journal, fake_malicious_replica);
 		}
 
+		ripple::hotstuff::EpochState init_epoch_state;
+		init_epoch_state.epoch = config.epoch;
+		init_epoch_state.verifier = nullptr;
+
+		ripple::hotstuff::RecoverData recover_data = 
+			ripple::hotstuff::RecoverData{ Replica::genesis_ledger_info, init_epoch_state };
+
 		// 本地测试第一次启动的时候需要保证非 Leader 节点先 run 起来
 		// 然后 leader 节点再 run，原因是 leader 节点 run 起来后会立刻发起
 		// proposal，而此时非 leader 节点可能会没有 run，从而导致 assert
@@ -385,9 +485,9 @@ public:
 			it != Replica::replicas.end(); 
 			it++) {
 			if(it->first != 1)
-				it->second->run();
+				it->second->run(recover_data);
 		}
-		Replica::replicas[1]->run();
+		Replica::replicas[1]->run(recover_data);
 	}
 
 	void stopReplicas(jtx::Env* env, int replicas) {
@@ -435,14 +535,15 @@ public:
 			const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& committedBlocksContainer = it->second->committedBlocks();
 			using beast::hash_append;
 			ripple::sha512_half_hasher h;
-			for (int i = 0; i < committedBlocks; i++) {
+			committedBlocks += 1;
+			for (int i = 1; i < committedBlocks; i++) {
 				for (auto block_it = committedBlocksContainer.begin(); block_it != committedBlocksContainer.end(); block_it++) {
 					if (i == block_it->second.block_data().round) {
 						hash_append(h, block_it->first);
 
-						if (i == 0) {
-							BEAST_EXPECT(block_it->second.block_data().block_type == ripple::hotstuff::BlockData::Genesis);
-						}
+						//if (i == 0) {
+						//	BEAST_EXPECT(block_it->second.block_data().block_type == ripple::hotstuff::BlockData::Genesis);
+						//}
 					}
 				}
 			}
@@ -486,11 +587,30 @@ public:
 		releaseReplicas(replicas_);
 	}
 
+	void testAddReplicas() {
+
+		jtx::Env env{ *this };
+		if(disable_log_)
+			env.app().logs().threshold(beast::severities::kDisabled);
+
+		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_, false_replicas_);
+		BEAST_EXPECT(waitUntilCommittedBlocks(2) == true);
+
+		Replica::replicas[1]->committing_epoch_change(true);
+		waitUntilCommittedBlocks(blocks_);
+
+		stopReplicas(&env, replicas_);
+		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
+		releaseReplicas(replicas_);
+
+	}
+
     void run() override {
 		parse_args();
 
 		testNormalRound();
 		testTimeoutRound();
+		//testAddReplicas();
     }
 
 	Hotstuff_test()
