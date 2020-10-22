@@ -293,7 +293,6 @@ TxFormats::TxFormats ()
 
 	add(jss::SchemaModify,  ttSCHEMA_MODIFY,
 		{
-			{ sfSchemaName,			 soeREQUIRED },
 			{ sfOpType,				 soeREQUIRED },
 			{ sfValidators,			 soeREQUIRED },
 			{ sfPeerList,			 soeREQUIRED },
