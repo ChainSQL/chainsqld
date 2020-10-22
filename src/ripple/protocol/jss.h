@@ -633,6 +633,7 @@ JSS (schema_admin);
 JSS (anchor_ledge_hash);
 JSS (peer_list);
 JSS (val_signed);
+JSS (for_node);
 
 JSS(drops_per_byte);                       // out: LogLevel
 #undef JSS

@@ -498,7 +498,7 @@ private:
     // sign_for <account> <secret> <json>
     Json::Value parseSignFor (Json::Value const& jvParams)
     {
-        bool const bOffline = 4 == jvParams.size () && jvParams[3u].asString () == "offline";
+        bool const bOffline = 5 == jvParams.size () && jvParams[4u].asString () == "offline";
 
         if (3 == jvParams.size () || bOffline)
         {
@@ -509,8 +509,9 @@ private:
                 // sign_for txJSON.
                 Json::Value jvRequest{Json::objectValue};
 
-                jvRequest[jss::account] = jvParams[0u].asString ();
-                jvRequest[jss::secret]  = jvParams[1u].asString ();
+                jvRequest[jss::account]  = jvParams[0u].asString ();
+                jvRequest[jss::secret]   = jvParams[1u].asString ();
+				jvRequest[jss::for_node] = jvParams[2u].asBool();
                 jvRequest[jss::tx_json] = txJSON;
 
                 if (bOffline)
@@ -1332,7 +1333,7 @@ public:
             {   "random",               &RPCParser::parseAsIs,                  0,  0   },
             {   "ripple_path_find",     &RPCParser::parseRipplePathFind,        1,  2   },
             {   "sign",                 &RPCParser::parseSignSubmit,            2,  3   },
-            {   "sign_for",             &RPCParser::parseSignFor,               3,  4   },
+            {   "sign_for",             &RPCParser::parseSignFor,               4,  5   },
             {   "submit",               &RPCParser::parseSignSubmit,            1,  3   },
             {   "submit_multisigned",   &RPCParser::parseSubmitMultiSigned,     1,  1   },
             {   "server_info",          &RPCParser::parseServerInfo,            0,  1   },
