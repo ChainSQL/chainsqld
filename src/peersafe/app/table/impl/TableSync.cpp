@@ -668,7 +668,7 @@ bool TableSync::SendSyncRequest(AccountID accountID, std::string sTableName, Led
     tmGT.set_getlost(bGetLost);
 	tmGT.set_etargettype(pItem->TargetType());
     tmGT.set_nickname(pItem->GetNickName());
-	tmGT.set_schemaid(to_string(app_.schemaId()));
+	tmGT.set_schemaid(app_.schemaId().begin(),uint256::size());
 
     pItem->SendTableMessage(std::make_shared<Message>(tmGT, protocol::mtGET_TABLE));
     return true;
@@ -1638,7 +1638,7 @@ bool TableSync::SendLedgerRequest(LedgerIndex iSeq, uint256 hash, std::shared_pt
     tmGL.set_ledgerhash(to_string(hash));
     tmGL.set_itype(protocol::liSKIP_NODE);
     tmGL.set_querydepth(3); // We probably need the whole thing
-	tmGL.set_schemaid(to_string(app_.schemaId()));
+	tmGL.set_schemaid(app_.schemaId().begin(), uint256::size());
 
     Message::pointer oPacket = std::make_shared<Message>(
         tmGL, protocol::mtGET_LEDGER);

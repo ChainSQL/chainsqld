@@ -380,6 +380,8 @@ namespace ripple {
 		, m_acceptedLedgerCache("AcceptedLedger", /*4*/16, std::chrono::minutes{ 10 }, stopwatch(),
 			app_.logs().journal("TaggedCache"))
 
+		, m_peerManager(make_PeerManager(*this))
+					
 		, m_networkOPs(make_NetworkOPs(*this, stopwatch(),
 			config_.standalone(), config_.NETWORK_QUORUM, config_.START_VALID,
 			app_.getJobQueue(), *m_ledgerMaster, app_.getJobQueue(), app_.getValidatorKeys(),
@@ -950,9 +952,6 @@ private:
 		}
 
 		Pathfinder::initPathTable();
-
-
-		m_peerManager = make_PeerManager(*this);
 
 		auto const startUp = config_.START_UP;
 		if (startUp == Config::FRESH)

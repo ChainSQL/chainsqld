@@ -1220,6 +1220,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetPeerShardInfo> const& m)
 	if (!get<0>(tup))
 		return;
 	uint256 schemaId = get<1>(tup);
+	m->set_schemaid(schemaId.begin(), uint256::size());
 
     // Reply with shard info we may have
     if (auto shardStore = app_.getShardStore(schemaId))
@@ -1230,6 +1231,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetPeerShardInfo> const& m)
         {
             protocol::TMPeerShardInfo reply;
             reply.set_shardindexes(shards);
+			reply.set_schemaid(schemaId.begin(), uint256::size());
 
             if (m->has_lastlink())
                 reply.set_lastlink(true);
@@ -1760,7 +1762,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMGetTable> const& m)
     fee_ = Resource::feeMediumBurdenPeer;
     std::weak_ptr<PeerImp> weak = shared_from_this();
 
-	auto tup = getSchemaInfo("TMProposeSet:", m->schemaid());
+	auto tup = getSchemaInfo("TMGetTable:", m->schemaid());
 	if (!get<0>(tup))
 		return;
 	uint256 schemaId = get<1>(tup);
@@ -1780,7 +1782,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMTableData> const& m)
     fee_ = Resource::feeMediumBurdenPeer;   
     std::weak_ptr<PeerImp> weak = shared_from_this();
 
-	auto tup = getSchemaInfo("TMProposeSet:", m->schemaid());
+	auto tup = getSchemaInfo("TMTableData:", m->schemaid());
 	if (!get<0>(tup))
 		return;
 	uint256 schemaId = get<1>(tup);
@@ -1909,7 +1911,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 		return;
 	}
 
-	auto tup = getSchemaInfo("TMProposeSet:", m->schemaid());
+	auto tup = getSchemaInfo("TMViewChange:", m->schemaid());
 	if (!get<0>(tup))
 		return;
 	uint256 schemaId = get<1>(tup);
@@ -2409,6 +2411,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
         protocol::TMGetObjectByHash reply;
 
         reply.set_query (false);
+		reply.set_schemaid(schemaId.begin(), uint256::size());
 
         if (packet.has_seq())
             reply.set_seq(packet.seq());
@@ -2833,6 +2836,7 @@ PeerImp::getLedger (std::shared_ptr<protocol::TMGetLedger> const& m)
 	}
 	uint256 schemaId;
 	memcpy(schemaId.begin(), packet.schemaid().data(), 32);
+	reply.set_schemaid(schemaId.begin(), uint256::size());
 
     if (packet.itype () == protocol::liTS_CANDIDATE)
     {

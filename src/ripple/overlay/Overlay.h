@@ -272,7 +272,7 @@ struct ScoreHasLedger
     bool operator()(std::shared_ptr<Peer> const&) const;
 
     ScoreHasLedger (uint256 const& schemaId, uint256 const& hash, std::uint32_t seq)
-        : schemaId_(schemaId_), hash_ (hash), seq_ (seq)
+        : schemaId_(schemaId), hash_ (hash), seq_ (seq)
     {}
 };
 
@@ -282,7 +282,7 @@ struct ScoreHasTxSet
     uint256 const& hash_;
     bool operator()(std::shared_ptr<Peer> const&) const;
 
-    ScoreHasTxSet (uint256 const& schemaId, uint256 const& hash) : schemaId_(schemaId_), hash_ (hash)
+    ScoreHasTxSet (uint256 const& schemaId, uint256 const& hash) : schemaId_(schemaId), hash_ (hash)
     {}
 };
 

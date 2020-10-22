@@ -157,7 +157,7 @@ OpenLedger::accept(Schema& app, Rules const& rules,
             msg.set_status(protocol::tsNEW);
             msg.set_receivetimestamp(
                 app.timeKeeper().now().time_since_epoch().count());
-			msg.set_schemaid(to_string(app.schemaId()));
+			msg.set_schemaid(app.schemaId().begin(), uint256::size());
             app.peerManager().foreach(send_if_not(
                 std::make_shared<Message>(msg, protocol::mtTRANSACTION),
                 peer_in_set(*toSkip)));

@@ -692,7 +692,7 @@ LedgerMaster::getFetchPack (LedgerIndex missing,
         tmBH.set_query (true);
         tmBH.set_type (protocol::TMGetObjectByHash::otFETCH_PACK);
         tmBH.set_ledgerhash (haveHash->begin(), 32);
-		tmBH.set_schemaid(to_string(app_.schemaId()));
+		tmBH.set_schemaid(app_.schemaId().begin(), uint256::size());
         auto packet = std::make_shared<Message> (
             tmBH, protocol::mtGET_OBJECTS);
 
@@ -2397,7 +2397,7 @@ LedgerMaster::makeFetchPack (
     {
         protocol::TMGetObjectByHash reply;
         reply.set_query (false);
-		reply.set_schemaid(to_string(app_.schemaId()));
+		reply.set_schemaid(app_.schemaId().begin(), uint256::size());
         if (request->has_seq ())
             reply.set_seq (request->seq ());
 

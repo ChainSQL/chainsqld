@@ -215,6 +215,7 @@ public:
 
 
 	void initSchemaConfig(Config& config, SchemaParams const& schemaParams);
+	void initSchemaInfo(boost::filesystem::path config_dir, SchemaParams const& schemaParams);
 
 	IniFileSections getConfigFileContents() const;
 

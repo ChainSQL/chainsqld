@@ -47,15 +47,18 @@ RCLValidatedLedger::RCLValidatedLedger(
     beast::Journal j)
     : ledgerID_{ledger->info().hash}, ledgerSeq_{ledger->seq()}, j_{j}
 {
-    auto const hashIndex = ledger->read(keylet::skip());
-    if (hashIndex)
-    {
-        assert(hashIndex->getFieldU32(sfLastLedgerSequence) == (seq() - 1));
-        ancestors_ = hashIndex->getFieldV256(sfHashes).value();
-    }
-    else
-        JLOG(j_.warn()) << "Ledger " << ledgerSeq_ << ":" << ledgerID_
-                        << " missing recent ancestor hashes";
+	if (ledger->seq() > 1)
+	{
+		auto const hashIndex = ledger->read(keylet::skip());
+		if (hashIndex)
+		{
+			assert(hashIndex->getFieldU32(sfLastLedgerSequence) == (seq() - 1));
+			ancestors_ = hashIndex->getFieldV256(sfHashes).value();
+		}
+		else
+			JLOG(j_.warn()) << "Ledger " << ledgerSeq_ << ":" << ledgerID_
+			<< " missing recent ancestor hashes";
+	}
 }
 
 auto

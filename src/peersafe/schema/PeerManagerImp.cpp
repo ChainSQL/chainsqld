@@ -174,7 +174,7 @@ namespace ripple {
 					// Relay request to active peers
 					protocol::TMGetPeerShardInfo tmGPS;
 					tmGPS.set_hops(hops);
-					tmGPS.set_schemaid(to_string(app_.schemaId()));
+					tmGPS.set_schemaid(app_.schemaId().begin(), uint256::size());
 					foreach(send_always(std::make_shared<Message>(
 						tmGPS, protocol::mtGET_PEER_SHARD_INFO)));
 

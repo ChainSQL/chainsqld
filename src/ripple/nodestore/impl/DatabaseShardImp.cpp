@@ -588,7 +588,7 @@ DatabaseShardImp::setStored(std::shared_ptr<Ledger const> const& ledger)
         PublicKey const& publicKey {app_.nodeIdentity().first};
         message.set_nodepubkey(publicKey.data(), publicKey.size());
         message.set_shardindexes(std::to_string(shardIndex));
-		message.set_schemaid(to_string(app_.schemaId()));
+		message.set_schemaid(app_.schemaId().begin(), uint256::size());
         app_.peerManager().foreach(send_always(
             std::make_shared<Message>(message, protocol::mtPEER_SHARD_INFO)));
     }

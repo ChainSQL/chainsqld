@@ -166,7 +166,6 @@ void Config::setupControl(bool bQuiet,
 
 void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 {
-
 	{
 		// test standalone
 		START_VALID = true;
@@ -176,15 +175,15 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 		START_UP = NEWCHAIN_WITHSTATE;
 	}
 
-	CONFIG_DIR = boost::filesystem::path(config.SCHEMA_PATH) / to_string(schemaParams.schema_id);
-	if(!boost::filesystem::exists(CONFIG_DIR))
+	auto config_dir = boost::filesystem::path(config.SCHEMA_PATH) / to_string(schemaParams.schema_id);
+	if(!boost::filesystem::exists(config_dir))
 	{
 		boost::system::error_code ec;
-		boost::filesystem::create_directories(CONFIG_DIR, ec);
+		boost::filesystem::create_directories(config_dir, ec);
 
 		if (ec)
 			Throw<std::runtime_error>(
-				boost::str(boost::format("Can not create %s") % CONFIG_DIR));
+				boost::str(boost::format("Can not create %s") % config_dir));
 	}
 	 auto fileContents =  config.getConfigFileContents();
 	 if (fileContents.empty()) {
@@ -199,21 +198,23 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 std::string const node_db_type{ get<std::string>(section(ConfigSection::nodeDatabase()), "type") };
 
 	 // ./AB868A6CFEEC779C2FF845C0AF00A642259986AF40C01976A7F842B6918936C7/db/NuDB
-	 std::string node_db_path = (boost::format("./%1%/db/%2%")
-		 % schemaParams.schema_name
-		 % node_db_type).str();
-	 overwrite(ConfigSection::nodeDatabase(), "path", node_db_path);
+	 auto node_db_path = config_dir / node_db_type;
+	 overwrite(ConfigSection::nodeDatabase(), "path", node_db_path.generic_string());
 
-
-	 std::string database_path = (boost::format("./%1%") %schemaParams.schema_name).str();
+	 auto database_path = config_dir / "db";
 	 deprecatedClearSection(std::string("database_path"));
-	 section(std::string("database_path")).append(database_path);
+	 section(std::string("database_path")).append(database_path.generic_string());
+	 if (!database_path.empty())
+	 {
+		 boost::system::error_code ec;
+		 boost::filesystem::create_directories(database_path, ec);
 
+		 if (ec)
+			 Throw<std::runtime_error>(
+				 boost::str(boost::format("Can not create %s") % database_path));
 
-	 std::string debug_logfile = (boost::format("./%1%/debug.log") % schemaParams.schema_name).str();
-	 deprecatedClearSection(std::string("debug_logfile"));
-	 section(std::string("debug_logfile")).append(debug_logfile);
-
+		 legacy("database_path", boost::filesystem::absolute(database_path).string());
+	 }
 
 	 deprecatedClearSection(std::string("ips"));
 	 section(std::string("ips")).append(schemaParams.peer_list);
@@ -230,60 +231,55 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 section(std::string("validators")).append(validatorList);
 
 
-	 CONFIG_FILE = (CONFIG_DIR / "chainsqld.cfg").string();
-
-
-	 if (!exists(CONFIG_DIR.string()))
+	 auto config_file = (config_dir / "chainsqld.cfg").string();
 	 {
-		 boost::filesystem::create_directory(CONFIG_DIR.string());
-	 }
-
-	 {
-		 std::ofstream outfile(CONFIG_FILE.string());
+		 std::ofstream outfile(config_file);
 		 outfile << *this;
 		 outfile.close();
 	 }
 
+	 initSchemaInfo(config_dir,schemaParams);
+}
 
-	 {
-		 // save schema_info
-		 boost::filesystem::path schema_info_file = CONFIG_DIR / "schema_info";
+void Config::initSchemaInfo(boost::filesystem::path config_dir,SchemaParams const& schemaParams)
+{
+	// save schema_info
+	boost::filesystem::path schema_info_file = config_dir / "schema_info";
 
-		 assert(schemaParams.validator_list.size() > 0);
-		 std::string sValidatorInfo;
-		 for (auto i = 0; i < schemaParams.validator_list.size(); i++) {
+	assert(schemaParams.validator_list.size() > 0);
+	std::string sValidatorInfo;
+	for (auto i = 0; i < schemaParams.validator_list.size(); i++) {
 
-			 if (i > 0) {
-				 sValidatorInfo += ";";
-			 }
+		if (i > 0) {
+			sValidatorInfo += ";";
+		}
 
-			 std::string sNodePublic = toBase58(TokenType::NodePublic, schemaParams.validator_list[i].first);
-			 std::string sValidate = schemaParams.validator_list[i].second ? "1" : "0";
+		std::string sNodePublic = toBase58(TokenType::NodePublic, schemaParams.validator_list[i].first);
+		std::string sValidate = schemaParams.validator_list[i].second ? "1" : "0";
 
-			 sValidatorInfo += (boost::format("%s %s") % sNodePublic % sValidate).str();
-		 }
+		sValidatorInfo += (boost::format("%s %s") % sNodePublic % sValidate).str();
+	}
 
-		 assert(schemaParams.peer_list.size() > 0);
-		 std::string sPeerListInfo;
-		 for (auto i = 0; i < schemaParams.peer_list.size(); i++) {
+	assert(schemaParams.peer_list.size() > 0);
+	std::string sPeerListInfo;
+	for (auto i = 0; i < schemaParams.peer_list.size(); i++) {
 
-			 if (i > 0) {
-				 sPeerListInfo += ";";
-			 }
-			 sPeerListInfo += schemaParams.peer_list[i];
-		 }
+		if (i > 0) {
+			sPeerListInfo += ";";
+		}
+		sPeerListInfo += schemaParams.peer_list[i];
+	}
 
-		 std::ofstream infofile(schema_info_file.string());
-		 infofile << schemaParams.schema_name << std::endl;
-		 infofile << to_string(schemaParams.account) << std::endl;
-		 infofile << (int)schemaParams.strategy << std::endl;
-		 infofile << to_string(schemaParams.anchor_ledger_hash) << std::endl;
-		 infofile << sValidatorInfo << std::endl;
-		 infofile << sPeerListInfo;
+	std::ofstream infofile(schema_info_file.string());
+	infofile << to_string(schemaParams.schema_id) << std::endl;
+	infofile << schemaParams.schema_name << std::endl;
+	infofile << to_string(schemaParams.account) << std::endl;
+	infofile << (int)schemaParams.strategy << std::endl;
+	infofile << to_string(schemaParams.anchor_ledger_hash) << std::endl;
+	infofile << sValidatorInfo << std::endl;
+	infofile << sPeerListInfo;
 
-		 infofile.close();
-	 }
-
+	infofile.close();
 }
 
 IniFileSections Config::getConfigFileContents() const

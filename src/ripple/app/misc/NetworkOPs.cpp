@@ -1447,7 +1447,7 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
                     tx.set_status (protocol::tsCURRENT);
                     tx.set_receivetimestamp (app_.timeKeeper().now().time_since_epoch().count());
                     tx.set_deferred(e.result.ter == terQUEUED);
-					tx.set_schemaid(to_string(app_.schemaId()));
+					tx.set_schemaid(app_.schemaId().begin(), uint256::size());
                     // FIXME: This should be when we received it
                     app_.peerManager().foreach (send_if_not (
                         std::make_shared<Message> (tx, protocol::mtTRANSACTION),
@@ -1698,7 +1698,7 @@ void NetworkOPsImp::switchLastClosedLedger (
     s.set_ledgerhash (
         newLCL->info().hash.begin (),
         newLCL->info().hash.size ());
-	s.set_schemaid(to_string(app_.schemaId()));
+	s.set_schemaid(app_.schemaId().begin(), uint256::size());
 
     app_.peerManager().foreach (send_always (
         std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
@@ -1779,7 +1779,7 @@ NetworkOPsImp::mapComplete (
     protocol::TMHaveTransactionSet msg;
     msg.set_hash (map->getHash().as_uint256().begin(), 256 / 8);
     msg.set_status (protocol::tsHAVE);
-	msg.set_schemaid(to_string(app_.schemaId()));
+	msg.set_schemaid(app_.schemaId().begin(), uint256::size());
     app_.peerManager().foreach (send_always (
         std::make_shared<Message> (
             msg, protocol::mtHAVE_SET)));
@@ -2993,7 +2993,7 @@ std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<S
 		auto signedVal = (validator.getFieldU8(sfSigned) == 1);
 		params.validator_list.push_back(std::make_pair(publicKey, signedVal));
 		if (!bShouldCreate &&
-			signedVal &&
+			(signedVal || app_.config().AUTO_ACCEPT_NEW_SCHEMA) &&
 			app_.app().getValidationPublicKey().size() != 0 &&
 			publicKey == app_.app().getValidationPublicKey())
 		{

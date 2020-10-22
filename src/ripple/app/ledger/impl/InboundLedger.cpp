@@ -551,7 +551,7 @@ void InboundLedger::trigger (std::shared_ptr<Peer> const& peer, TriggerReason re
 
     protocol::TMGetLedger tmGL;
     tmGL.set_ledgerhash (mHash.begin (), mHash.size ());
-	tmGL.set_schemaid(to_string(app_.schemaId()));
+	tmGL.set_schemaid(app_.schemaId().begin(), uint256::size());
 
     if (getTimeouts () != 0)
     { // Be more aggressive if we've timed out at least once
@@ -568,7 +568,7 @@ void InboundLedger::trigger (std::shared_ptr<Peer> const& peer, TriggerReason re
                 bool typeSet = false;
                 tmBH.set_query (true);
                 tmBH.set_ledgerhash (mHash.begin (), mHash.size ());
-				tmBH.set_schemaid(to_string(app_.schemaId()));
+				tmBH.set_schemaid(app_.schemaId().begin(), uint256::size());
                 for (auto const& p : need)
                 {
                     JLOG (m_journal.warn()) <<

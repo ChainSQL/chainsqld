@@ -137,7 +137,7 @@ void TransactionAcquire::trigger (std::shared_ptr<Peer> const& peer)
     {
         JLOG (j_.trace()) << "TransactionAcquire::trigger " << (peer ? "havePeer" : "noPeer") << " no root";
         protocol::TMGetLedger tmGL;
-		tmGL.set_schemaid(to_string(app_.schemaId()));
+		tmGL.set_schemaid(app_.schemaId().begin(), uint256::size());
         tmGL.set_ledgerhash (mHash.begin (), mHash.size ());
         tmGL.set_itype (protocol::liTS_CANDIDATE);
         tmGL.set_querydepth (3); // We probably need the whole thing
@@ -170,7 +170,7 @@ void TransactionAcquire::trigger (std::shared_ptr<Peer> const& peer)
         }
 
         protocol::TMGetLedger tmGL;
-		tmGL.set_schemaid(to_string(app_.schemaId()));
+		tmGL.set_schemaid(app_.schemaId().begin(), uint256::size());
         tmGL.set_ledgerhash (mHash.begin (), mHash.size ());
         tmGL.set_itype (protocol::liTS_CANDIDATE);
 

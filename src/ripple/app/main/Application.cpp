@@ -1085,25 +1085,24 @@ void ApplicationImp::loadSubChains()
 			filenames.push_back(str);
 		}
 
-		if (filenames.size() != 6)
+		if (filenames.size() != 7)
 			Throw<std::runtime_error>(
 				"Invalid info in schema_info");
 
-		std::string sSchemaName = filenames[0];
-		std::string sAcountID   = filenames[1];
-		std::string sStragegy   = filenames[2];
+		std::string sSchemaId = filenames[0];
+		std::string sSchemaName = filenames[1];
+		std::string sAcountID   = filenames[2];
+		std::string sStragegy   = filenames[3];
 
-	    std::string sAnchorLedgerHash = filenames[3];
-		std::string sValidatorInfo    = filenames[4];
-		std::string sPeerListInfo     = filenames[5];
-
-
+	    std::string sAnchorLedgerHash = filenames[4];
+		std::string sValidatorInfo    = filenames[5];
+		std::string sPeerListInfo     = filenames[6];
 
 		SchemaParams params{};
 		params.account = *ripple::parseBase58<AccountID>(sAcountID);
 		params.admin = params.account;
-		params.schema_id = ripple::from_hex_text<ripple::uint256>(sSchemaName);
-		params.schema_name = to_string(params.schema_id);
+		params.schema_id = ripple::from_hex_text<ripple::uint256>(sSchemaId);
+		params.schema_name = sSchemaName;
 		params.anchor_ledger_hash = ripple::from_hex_text<ripple::uint256>(sAnchorLedgerHash);
 		params.strategy = boost::iequals(sStragegy, "1")? SchemaStragegy::new_chain : SchemaStragegy::with_state;
 
@@ -1127,21 +1126,16 @@ void ApplicationImp::loadSubChains()
 			std::pair<PublicKey, bool> validator = std::make_pair(*pk, bValid);
 			params.validator_list.push_back(validator);
 		}
-	
-		//auto seed = parseBase58<Seed>("xn2LEqGs7Xpz1DMYqYJjiP5727h8c");
-		//auto const private_key = generateSecretKey(KeyType::secp256k1, *seed);
-		//auto base58NodePublic = derivePublicKey(KeyType::secp256k1, private_key);
-		//std::cout << strHex(base58NodePublic) << std::endl;
-
-		//auto oPublic_key = ripple::getPublicKey("xn2LEqGs7Xpz1DMYqYJjiP5727h8c");
-		//std::cout << strHex(*oPublic_key) << std::endl;
+		auto config = std::make_unique<Config>();
+		std::string config_path = (boost::format("%1%/%2%")
+			% config_->SCHEMA_PATH
+			% sSchemaId).str();
+		config->setup(config_path, config_->quiet(),config_->silent(),config->standalone());
 
 		auto newSchema = getSchemaManager().createSchema(*config_, params,true);
 		newSchema->initBeforeSetup();
 		newSchema->setup();
 	}
-
-
 }
 
 //------------------------------------------------------------------------------
