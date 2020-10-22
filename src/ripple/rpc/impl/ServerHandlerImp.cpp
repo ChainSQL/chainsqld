@@ -569,6 +569,7 @@ make_json_error(Json::Int code, Json::Value&& message)
 Json::Int constexpr method_not_found  = -32601;
 Json::Int constexpr server_overloaded = -32604;
 Json::Int constexpr forbidden         = -32605;
+Json::Int constexpr schema_not_found  = -32606;
 
 void
 ServerHandlerImp::processRequest (Port const& port,
@@ -814,9 +815,13 @@ ServerHandlerImp::processRequest (Port const& port,
 		}
 		if (!app_.hasSchema(schema_id))
 		{
-			Json::Value r = jsonRPC;
-			r[jss::error] = make_json_error(forbidden, "Schema with specified schema_id not found.");
-			reply.append(r);
+			usage.charge(Resource::feeInvalidRPC);
+			Json::Value r(Json::objectValue);
+			r[jss::result] = rpcError(rpcNO_SCHEMA);;
+			if (batch)
+				reply.append(r);
+			else
+				reply = r;
 			continue;
 		}
 

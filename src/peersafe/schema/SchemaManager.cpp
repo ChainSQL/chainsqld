@@ -11,16 +11,19 @@ namespace ripple {
 
 	std::shared_ptr<Schema> SchemaManager::createSchema(Config& config,SchemaParams const& params, bool loadFromFile /*= false*/)
 	{	
-		auto schemaConfig = std::make_unique<Config>();	
-		
-		if(!loadFromFile)
+		Config* pConfig = &config;
+		if (!loadFromFile)
+		{
+			auto schemaConfig = std::make_unique<Config>();
 			schemaConfig->initSchemaConfig(config, params);
-
-		if (loadFromFile) {
-			schemaConfig->START_UP = Config::NEWCHAIN_LOAD;
+			pConfig = &(*schemaConfig);
+		}
+		else
+		{
+			config.START_UP = Config::LOAD;
 		}
 	
-		auto schema = make_Schema(params, *schemaConfig, app_, j_);
+		auto schema = make_Schema(params, *pConfig, app_, j_);
 		schemas_[params.schema_id] = schema;
 
 		return schema;

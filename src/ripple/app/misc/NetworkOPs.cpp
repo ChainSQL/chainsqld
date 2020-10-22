@@ -3028,6 +3028,7 @@ std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<S
 			auto newSchema = app_.app().getSchemaManager().createSchema(app_.app().config(), params);
 			newSchema->initBeforeSetup();
 			newSchema->setup();
+			app_.app().overlay().dispatch(params.schema_id);
 		}
 		catch (std::exception const& e)
 		{
