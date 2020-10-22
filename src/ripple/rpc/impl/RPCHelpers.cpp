@@ -666,7 +666,18 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
 
         if (keyType != KeyType::secp256k1 && keyType != KeyType::ed25519)
             LogicError("keypairForSignature: invalid key type");
-        return generateKeyPair(*keyType, *seed);
+
+		
+		if (params.isMember(jss::for_node) && params[jss::for_node].asBool())
+		{
+			auto const private_key = generateSecretKey(*keyType, *seed);
+			auto const public_key = derivePublicKey(*keyType, private_key);
+			return { public_key , private_key };
+		}
+		else
+		{
+			return generateKeyPair(*keyType, *seed);
+		}
     }
 }
 
