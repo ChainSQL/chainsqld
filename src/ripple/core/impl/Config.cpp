@@ -223,10 +223,8 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 deprecatedClearSection(std::string("validators"));
 	 std::vector<std::string>   validatorList;
 	 for (auto item : schemaParams.validator_list) {
-		 if (item.second) {
-			 std::string sPublicKey = toBase58(TokenType::NodePublic, item.first);
-			 validatorList.push_back(sPublicKey);
-		 }
+		std::string sPublicKey = toBase58(TokenType::NodePublic, item.first);
+		validatorList.push_back(sPublicKey);
 	 }
 	 section(std::string("validators")).append(validatorList);
 

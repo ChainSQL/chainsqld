@@ -1127,12 +1127,13 @@ void ApplicationImp::loadSubChains()
 			params.validator_list.push_back(validator);
 		}
 		auto config = std::make_unique<Config>();
-		std::string config_path = (boost::format("%1%/%2%")
+		std::string config_path = (boost::format("%1%/%2%/%3%")
 			% config_->SCHEMA_PATH
-			% sSchemaId).str();
+			% sSchemaId
+			% "chainsqld.cfg").str();
 		config->setup(config_path, config_->quiet(),config_->silent(),config->standalone());
 
-		auto newSchema = getSchemaManager().createSchema(*config_, params,true);
+		auto newSchema = getSchemaManager().createSchema(*config, params,true);
 		newSchema->initBeforeSetup();
 		newSchema->setup();
 	}

@@ -204,6 +204,8 @@ public:
 	void
 		check() override;
 
+	void dispatch(uint256 const& schemaId) override;
+
  //   void
  //   checkSanity (std::uint32_t) override;
 

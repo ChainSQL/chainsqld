@@ -133,6 +133,8 @@ public:
 	void
 		check() = 0;
 
+	virtual
+		void dispatch(uint256 const& schemaId) = 0;
  //   /** Returns the peer with the matching short id, or null. */
  //   virtual
  //   std::shared_ptr<Peer>

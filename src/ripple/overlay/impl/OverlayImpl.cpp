@@ -35,6 +35,7 @@
 #include <ripple/rpc/json_body.h>
 #include <ripple/rpc/handlers/GetCounts.h>
 #include <ripple/server/SimpleWriter.h>
+#include <peersafe/schema/PeerManager.h>
 
 #include <boost/utility/in_place_factory.hpp>
 
@@ -747,6 +748,24 @@ OverlayImpl::check ()
     {
         sp->check ();
     });
+}
+
+void OverlayImpl::dispatch(uint256 const& schemaId)
+{
+	if (!app_.hasSchema(schemaId))
+		return;
+
+	auto& peerManager = app_.peerManager(schemaId);
+	auto& validators = app_.validators(schemaId).validators();
+	for_each([&](std::shared_ptr<PeerImp>&& sp)
+	{
+		if (sp->publicValidate_ && 
+			std::find(validators.begin(), validators.end(), *sp->publicValidate_) != validators.end())
+		{
+			peerManager.add(sp);
+			sp->schemaInfo_.emplace(schemaId, PeerImp::SchemaInfo());
+		}
+	});
 }
 
 //------------------------------------------------------------------------------
