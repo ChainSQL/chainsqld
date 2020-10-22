@@ -42,6 +42,13 @@ struct Timeout {
 	}
 };
 
+template<class Archive>
+void serialize(Archive& ar, Timeout& timeout, const unsigned int /*version*/) {
+	// note, version is always the latest when saving
+	ar & timeout.epoch;
+	ar & timeout.round;
+}
+
 } // namespace hotstuff
 } // namespace ripple
 

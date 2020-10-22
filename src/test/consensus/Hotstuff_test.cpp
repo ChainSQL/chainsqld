@@ -30,6 +30,7 @@
 #include <BeastConfig.h>
 #include <peersafe/consensus/hotstuff/Hotstuff.h>
 
+#include <ripple/core/Serialization.h>
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/beast/unit_test.h>
@@ -241,9 +242,9 @@ public:
 		const ripple::hotstuff::HashValue& consensus_data_hash,
 		const std::map<ripple::hotstuff::Author, ripple::hotstuff::Signature>& signatures) const {
 
-		ripple::Slice message(consensus_data_hash.data(), consensus_data_hash.size());
+		//ripple::Slice message(consensus_data_hash.data(), consensus_data_hash.size());
 		for (auto it = signatures.begin(); it != signatures.end(); it++) {
-			if (verifySignature(it->first, it->second, message) == false)
+			if (verifySignature(it->first, it->second, consensus_data_hash) == false)
 				return false;
 		}
 		return true;
@@ -610,7 +611,7 @@ public:
 
 		testNormalRound();
 		testTimeoutRound();
-		//testAddReplicas();
+		testAddReplicas();
     }
 
 	Hotstuff_test()

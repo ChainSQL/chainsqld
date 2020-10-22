@@ -22,6 +22,7 @@
 
 #include <peersafe/consensus/hotstuff/impl/BlockInfo.h>
 
+
 namespace ripple {
 namespace hotstuff {
 
@@ -54,6 +55,11 @@ public:
 	const bool Verify() const;
 
 private:
+	friend class ripple::Serialization;
+	VoteData()
+	: proposed_(ZeroHash())
+	, parent_(ZeroHash()) {} // only for constructing in Serilization
+
 	VoteData(
 		const BlockInfo& proposed,
 		const BlockInfo& parent);
@@ -63,6 +69,12 @@ private:
 	/// Contains all the block information for the block the proposal is extending.
 	BlockInfo parent_;
 };
+
+template<class Archive>
+void serialize(Archive& ar, VoteData& vote_data, const unsigned int /*version*/) {
+	ar & vote_data.proposed();
+	ar & vote_data.parent();
+}
 
 } // namespace hotstuff
 } // namespace ripple

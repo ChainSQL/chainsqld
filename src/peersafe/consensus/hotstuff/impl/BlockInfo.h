@@ -27,6 +27,8 @@
 #include <peersafe/consensus/hotstuff/impl/Types.h>
 #include <peersafe/consensus/hotstuff/impl/EpochState.h>
 
+#include <ripple/core/Serialization.h>
+
 namespace ripple {
 namespace hotstuff {
 
@@ -47,28 +49,6 @@ public:
 	int64_t timestamp_usecs;
 	/// An optional field containing the next epoch info
 	boost::optional<EpochState> next_epoch_state;
-
-	//HashValue hash() {
-	//	if (id.isNonZero())
-	//		return id;
-
-	//	using beast::hash_append;
-	//	ripple::sha512_half_hasher h;
-	//	hash_append(h, epoch);
-	//	hash_append(h, round);
-	//	hash_append(h, executed_state_id);
-	//	hash_append(h, ledger_info.seq);
-	//	hash_append(h, ledger_info.hash);
-	//	hash_append(h, ledger_info.txHash);
-	//	hash_append(h, ledger_info.accountHash);
-	//	hash_append(h, ledger_info.parentHash);
-	//	hash_append(h, version);
-	//	hash_append(h, timestamp_usecs);
-
-	//	id = static_cast<typename sha512_half_hasher::result_type>(h);
-
-	//	return id;
-	//}
 
 	BlockInfo(const HashValue& block_hash)
 	: epoch(0)
@@ -95,8 +75,24 @@ public:
 			return true;
 		return false;
 	}
+
+private:
+	friend class ripple::Serialization;
+	BlockInfo() {}
 };
-    
+
+template<class Archive>
+void serialize(Archive& ar, BlockInfo& block_info, const unsigned int /*version*/) {
+	// note, version is always the latest when saving
+	ar & block_info.epoch;
+	ar & block_info.round;
+	ar & block_info.id;
+	ar & block_info.ledger_info;
+	ar & block_info.version;
+	ar & block_info.timestamp_usecs;
+	ar & block_info.next_epoch_state;
+}
+
 } // namespace hotstuff
 } // namespace ripple
 

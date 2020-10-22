@@ -27,6 +27,8 @@
 #include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
 #include <peersafe/consensus/hotstuff/impl/EpochState.h>
 
+#include <ripple/core/Serialization.h>
+
 namespace ripple { namespace hotstuff {
 
 class BlockData {
@@ -126,14 +128,54 @@ public:
 	BlockInfo gen_block_info(
 		const ripple::LedgerInfo& ledger_info,
 		const boost::optional<EpochState>& next_epoch_state);
+
+
+	// only for serialize
+	HashValue& id() {
+		return id_;
+	}
+
+	boost::optional<Signature>& signature() {
+		return signature_;
+	}
+
 private:
-    Block();
+	friend class ripple::Serialization;
+	Block();
 
 private:
 	HashValue id_;
 	BlockData block_data_;
 	boost::optional<Signature> signature_;
 };
+
+///////////////////////////////////////////////////////////////////////////////////
+// serialize & deserialize
+///////////////////////////////////////////////////////////////////////////////////
+template<class Archive>
+void serialize(Archive& ar, BlockData::Payload& payload, const unsigned int /*version*/) {
+	// note, version is always the latest when saving
+	ar & payload.cmd;
+	ar & payload.author;
+}
+
+template<class Archive>
+void serialize(Archive& ar, BlockData& block_data , const unsigned int /*version*/) {
+	// note, version is always the latest when saving
+	ar & block_data.epoch;
+	ar & block_data.round;
+	ar & block_data.timestamp_usecs;
+	ar & block_data.quorum_cert;
+	ar & block_data.block_type;
+	ar & block_data.payload;
+}
+
+template<class Archive>
+void serialize(Archive& ar, Block& block, const unsigned int /*version*/) {
+	ar & block.id();
+	ar & block.block_data();
+	ar & block.signature();
+}
 
 } // namespace hotstuff 
 } // namespace ripple
