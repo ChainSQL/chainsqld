@@ -511,7 +511,7 @@ private:
 
                 jvRequest[jss::account]  = jvParams[0u].asString ();
                 jvRequest[jss::secret]   = jvParams[1u].asString ();
-				jvRequest[jss::for_node] = jvParams[2u].asBool();
+				jvRequest[jss::for_node] = jvParams[3u].asBool();
                 jvRequest[jss::tx_json] = txJSON;
 
                 if (bOffline)
