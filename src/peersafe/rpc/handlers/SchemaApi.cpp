@@ -82,11 +82,25 @@ Json::Value doSchemaList(RPC::Context&  context)
 	Json::Value ret(Json::objectValue);
 	ret[jss::schemas] = Json::Value(Json::arrayValue);
 
+	boost::optional<AccountID> pAccountID = boost::none;
+	if (context.params.isMember(jss::Account))
+	{
+		pAccountID = parseBase58<AccountID>(context.params["Account"].asString());
+		if (pAccountID == boost::none)
+		{
+			return rpcError(rpcINVALID_PARAMS);
+		}
+	}
 	//This is a time-consuming process for a project that has many sles.
 	for (auto sle : ledger->sles)
 	{
 		if (sle->getType() == ltSCHEMA)
 		{
+			if (pAccountID != boost::none && sle->getAccountID(sfAccount) != *pAccountID)
+			{
+				continue;
+			}
+
 			auto &schema = getSchemaFromSle(sle);	
 			ret[jss::schemas].append(schema);
 		}
@@ -96,7 +110,7 @@ Json::Value doSchemaList(RPC::Context&  context)
 
 Json::Value doSchemaInfo(RPC::Context& context)
 {
-	if (!context.params.isMember(jss::schema_id))
+	if (!context.params.isMember(jss::id))
 		return rpcError(rpcINVALID_PARAMS);
 
 	std::shared_ptr<ReadView const> ledger;
@@ -105,7 +119,7 @@ Json::Value doSchemaInfo(RPC::Context& context)
 		return result;
 
 
-	auto const schemaID = context.params[jss::schema_id].asString();
+	auto const schemaID = context.params[jss::id].asString();
 	auto key = Keylet(ltSCHEMA, from_hex_text<uint256>(schemaID));
 	auto sle = ledger->read(key);
 	if (!sle)
