@@ -160,8 +160,7 @@ namespace ripple {
 		if (!isTesSuccess(ret))
 			return ret;
 
-		if (!ctx.tx.isFieldPresent(sfSchemaName) ||
-			!ctx.tx.isFieldPresent(sfOpType)     ||
+		if (!ctx.tx.isFieldPresent(sfOpType)     ||
 			!ctx.tx.isFieldPresent(sfValidators) ||
 			!ctx.tx.isFieldPresent(sfPeerList)   ||
 			!ctx.tx.isFieldPresent(sfSchemaID))
@@ -211,6 +210,13 @@ namespace ripple {
 				return tefBAD_SCHEMAADMIN;
 			}
 		}
+		else
+		{
+			if (sleSchema->getAccountID(sfAccount) != ctx_.tx.getAccountID(sfAccount))
+			{
+				return tefBAD_SCHEMAADMIN;
+			}
+		}
 
 		//for sle
 		auto & peers = sleSchema->peekFieldArray(sfPeerList);
@@ -218,9 +224,9 @@ namespace ripple {
 
 		//for tx
 		STArray const & peersTx = ctx_.tx.getFieldArray(sfPeerList);
-		STArray const & valsTx  = ctx_.tx.getFieldArray(sfValidators);
+		STArray valsTx  = ctx_.tx.getFieldArray(sfValidators);
 
-		for (auto const& valTx : valsTx)
+		for (auto& valTx : valsTx)
 		{
 			auto iter(vals.end());
 			iter = std::find_if(vals.begin(), vals.end(),
@@ -236,6 +242,7 @@ namespace ripple {
 				{
 					return tefSCHEMA_VALIDATOREXIST;
 				}
+				valTx.setFieldU8(sfSigned, (uint8_t)0);
 				vals.push_back(valTx);
 			}
 			else
@@ -260,7 +267,7 @@ namespace ripple {
 			});
 			if (ctx_.tx.getFieldU16(sfOpType) == (UINT16)SchemaModifyOp::add)
 			{
-				if (iter != vals.end())
+				if (iter != peers.end())
 				{
 					return tefSCHEMA_PEEREXIST;
 				}
@@ -268,7 +275,7 @@ namespace ripple {
 			}
 			else
 			{
-				if (iter == vals.end())
+				if (iter == peers.end())
 				{
 					return tefSCHEMA_NOPEER;
 				}
