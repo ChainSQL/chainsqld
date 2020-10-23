@@ -63,9 +63,10 @@ Json::Value doValidationCreate (RPC::Context& context)
 
 	obj[jss::validation_public_key_hex] = strHex(derivePublicKey(KeyType::secp256k1, private_key));
 
+	auto publicKey = derivePublicKey(KeyType::secp256k1, private_key);
     obj[jss::validation_public_key] = toBase58 (
-        TokenType::NodePublic,
-        derivePublicKey (KeyType::secp256k1, private_key));
+        TokenType::NodePublic,publicKey);
+	obj[jss::account_id] = toBase58(calcAccountID(publicKey));
 
     obj[jss::validation_private_key] = toBase58 (
         TokenType::NodePrivate, private_key);
