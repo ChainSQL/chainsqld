@@ -53,28 +53,29 @@ public:
 	boost::optional<TimeoutCertificate>& HTC() {
 		return highest_timeout_cert_;
 	}
-private:
-	friend class ripple::Serialization;
+
+	//friend class ripple::Serialization;
 	// only for ripple::Serialization
 	SyncInfo()
 	: highest_quorum_cert_()
 	, highest_commit_cert_()
 	, highest_timeout_cert_() {}
 
+private:
 	QuorumCertificate highest_quorum_cert_;
 	boost::optional<QuorumCertificate> highest_commit_cert_;
 	boost::optional<TimeoutCertificate> highest_timeout_cert_;
 };
 
-///////////////////////////////////////////////////////////////////////////////////
-// serialize & deserialize
-///////////////////////////////////////////////////////////////////////////////////
-template<class Archive>
-void serialize(Archive& ar, SyncInfo& sync_info, const unsigned int /*version*/) {
-	ar & sync_info.HQC();
-	ar & sync_info.HCC();
-	ar & sync_info.HTC();
-}
+/////////////////////////////////////////////////////////////////////////////////////
+//// serialize & deserialize
+/////////////////////////////////////////////////////////////////////////////////////
+//template<class Archive>
+//void serialize(Archive& ar, SyncInfo& sync_info, const unsigned int /*version*/) {
+//	ar & sync_info.HQC();
+//	ar & sync_info.HCC();
+//	ar & sync_info.HTC();
+//}
 
 } // namespace hotstuff
 } // namespace ripple

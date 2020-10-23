@@ -726,8 +726,8 @@ foreach(curdir
         crypto
         gmencrypt
         protocol
-        rpc
-		consensus)
+        serialization
+        rpc)
     file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp)
     list(APPEND chainsqld_src_nonunity "${cursrcs}")
     list(APPEND non_unity_srcs "${cursrcs}")

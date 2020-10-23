@@ -30,7 +30,13 @@
 #include <BeastConfig.h>
 #include <peersafe/consensus/hotstuff/Hotstuff.h>
 
-#include <ripple/core/Serialization.h>
+// for serialization
+#include <peersafe/serialization/Serialization.h>
+#include <peersafe/serialization/hotstuff/Block.h>
+#include <peersafe/serialization/hotstuff/Vote.h>
+#include <peersafe/serialization/hotstuff/SyncInfo.h>
+
+
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/beast/unit_test.h>
@@ -260,6 +266,12 @@ public:
 	void broadcast(
 		const ripple::hotstuff::Block& proposal, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
+		
+		ripple::Buffer s_proposal = ripple::serialization::serialize(proposal);
+		ripple::hotstuff::Block block = ripple::serialization::deserialize<ripple::hotstuff::Block>(s_proposal);
+
+		ripple::Buffer s_sync_info = ripple::serialization::serialize(sync_info);
+		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
 
 		if (malicious())
 			return;
@@ -268,11 +280,8 @@ public:
 			env_->app().getJobQueue().addJob(
 				jtPROPOSAL_t,
 				"broadcast_proposal",
-				[this, it, proposal, sync_info](Job&) {
-                    if (it->second->hotstuff_->handleProposal(proposal, sync_info) == 0)
-                    {
-                        it->second->hotstuff_->handleProposal(proposal);
-                    }
+				[this, it, block, sync](Job&) {
+					it->second->hotstuff_->handleProposal(block, sync);
 				});
 		}
 	}
@@ -281,6 +290,12 @@ public:
 		const ripple::hotstuff::Vote& vote, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
 
+		ripple::Buffer s_vote = ripple::serialization::serialize(vote);
+		ripple::hotstuff::Vote v = ripple::serialization::deserialize<ripple::hotstuff::Vote>(s_vote);
+
+		ripple::Buffer s_sync_info = ripple::serialization::serialize(sync_info);
+		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
+
 		if (malicious())
 			return;
 
@@ -288,8 +303,8 @@ public:
 			env_->app().getJobQueue().addJob(
 				jtPROPOSAL_t,
 				"broadcast_proposal",
-				[this, it, vote, sync_info](Job&) {
-					it->second->hotstuff_->handleVote(vote, sync_info);
+				[this, it, v, sync](Job&) {
+					it->second->hotstuff_->handleVote(v, sync);
 				});
 		}
 	}
@@ -327,6 +342,12 @@ public:
 		const ripple::hotstuff::Vote& vote, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
 
+		ripple::Buffer s_vote = ripple::serialization::serialize(vote);
+		ripple::hotstuff::Vote v = ripple::serialization::deserialize<ripple::hotstuff::Vote>(s_vote);
+
+		ripple::Buffer s_sync_info = ripple::serialization::serialize(sync_info);
+		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
+
 		if (malicious())
 			return;
 
@@ -335,8 +356,8 @@ public:
 				env_->app().getJobQueue().addJob(
 					jtPROPOSAL_t,
 					"send_vote",
-					[this, it, vote, sync_info](Job&) {
-						it->second->hotstuff_->handleVote(vote, sync_info);
+					[this, it, v, sync](Job&) {
+						it->second->hotstuff_->handleVote(v, sync);
 					});
 			}
 		}
@@ -611,7 +632,7 @@ public:
 
 		testNormalRound();
 		testTimeoutRound();
-		testAddReplicas();
+		//testAddReplicas();
     }
 
 	Hotstuff_test()

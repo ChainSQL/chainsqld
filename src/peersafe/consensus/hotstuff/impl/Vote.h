@@ -103,51 +103,40 @@ private:
 ///////////////////////////////////////////////////////////////////////////////////
 // serialize & deserialize
 ///////////////////////////////////////////////////////////////////////////////////
+
 //template<class Archive>
-//void serialize(Archive& ar, Vote& vote, const unsigned int /*version*/) {
-//	//ar & vote.vote_data();
-//	//ar & vote.author();
-//	//ar & vote.ledger_info();
-//	Signature s = vote.signature();
-//	std::string sss((const char*)s.data(), s.size());
-//	ar & sss;
-//	vote.signature() = Signature(sss.data(), sss.size());
-//	//ar & vote.timeout_signature();
+//void save(Archive & ar, const Vote& vote, unsigned int /*version*/) {
+//	//std::string buf((const char*)buffer.data(), buffer.size());
+//	//ar & buf;
+//
+//	ar & vote.vote_data();
+//	ar & vote.author();
+//	ar & vote.ledger_info();
+//	const Signature& sign = vote.signature();
+//	std::string s((const char*)sign.data(), sign.size());
+//	ar & s;
+//	ar & vote.timeout_signature();
 //}
-
-template<class Archive>
-void save(Archive & ar, const Vote& vote, unsigned int /*version*/) {
-	//std::string buf((const char*)buffer.data(), buffer.size());
-	//ar & buf;
-
-	ar & vote.vote_data();
-	ar & vote.author();
-	ar & vote.ledger_info();
-	const Signature& sign = vote.signature();
-	std::string s((const char*)sign.data(), sign.size());
-	ar & s;
-	ar & vote.timeout_signature();
-}
-
-// deserialize ripple::Buffer
-template<class Archive>
-void load(Archive & ar, Vote& vote , unsigned int /*version*/) {
-	//std::string buf;
-	//ar & buf;
-	//buffer = ripple::Buffer(buf.data(), buf.size());
-
-	ar & vote.vote_data();
-	ar & vote.author();
-	ar & vote.ledger_info();
-
-	std::string s;
-	ar & s;
-	Signature sign(s.data(), s.size());
-	vote.signature() = sign;
-
-	ar & vote.timeout_signature();
-}
-RIPPE_SERIALIZATION_SPLIT_FREE(Vote);
+//
+//// deserialize ripple::Buffer
+//template<class Archive>
+//void load(Archive & ar, Vote& vote , unsigned int /*version*/) {
+//	//std::string buf;
+//	//ar & buf;
+//	//buffer = ripple::Buffer(buf.data(), buf.size());
+//
+//	ar & vote.vote_data();
+//	ar & vote.author();
+//	ar & vote.ledger_info();
+//
+//	std::string s;
+//	ar & s;
+//	Signature sign(s.data(), s.size());
+//	vote.signature() = sign;
+//
+//	ar & vote.timeout_signature();
+//}
+//RIPPE_SERIALIZATION_SPLIT_FREE(Vote);
 
 } // namespace hotstuff
 } // namespace ripple

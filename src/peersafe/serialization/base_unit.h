@@ -17,34 +17,36 @@
  */
  //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
+#ifndef RIPPLE_SERIALIZATION_BASE_UNIT_H
+#define RIPPLE_SERIALIZATION_BASE_UNIT_H
 
-#include <peersafe/consensus/hotstuff/impl/Types.h>
-//#include <ripple/core/Serialization.h>
-//#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
+#include <peersafe/serialization/Serialization.h>
+
+#include <ripple/basics/base_uint.h>
 
 namespace ripple {
-namespace hotstuff {
+// serialize uint256
+template<class Archive>
+void save(
+    Archive & ar, 
+    const ripple::base_uint<256>& h,
+    unsigned int /*version*/) {
+	std::string id((const char*)h.data(), h.size());
+	ar & id;
+}
 
-class ValidatorVerifier;
+// deserialize uint256
+template<class Archive>
+void load(
+    Archive & ar, 
+    ripple::base_uint<256>& h, 
+    unsigned int /*version*/) {
+	std::string id;
+	ar & id;
+	h = ripple::uint256::fromVoid(id.data());
+}
+RIPPE_SERIALIZATION_SPLIT_FREE(ripple::base_uint<256>);
 
-class EpochState {
-public:
-	EpochState();
-	~EpochState();
-
-	Epoch epoch;
-	ValidatorVerifier* verifier;
-};
-
-//template<class Archive>
-//void serialize(Archive& ar, EpochState& epoch_state, const unsigned int /*version*/) {
-//	ar & epoch_state.epoch;
-//	ar & epoch_state.verifier;
-//}
-
-} // namespace hotstuff
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
+#endif // RIPPLE_SERIALIZATION_BASE_UNIT_H

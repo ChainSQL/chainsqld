@@ -17,34 +17,34 @@
  */
  //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
+#ifndef RIPPLE_SERIALIZATION_HOTSTUFF_BLOCKINFO_H
+#define RIPPLE_SERIALIZATION_HOTSTUFF_BLOCKINFO_H
 
-#include <peersafe/consensus/hotstuff/impl/Types.h>
-//#include <ripple/core/Serialization.h>
-//#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
+#include <peersafe/serialization/Serialization.h>
+#include <peersafe/serialization/LedgerInfo.h>
+#include <peersafe/serialization/base_unit.h>
+#include <peersafe/serialization/hotstuff/EpochState.h>
 
-namespace ripple {
-namespace hotstuff {
+#include <peersafe/consensus/hotstuff/impl/BlockInfo.h>
 
-class ValidatorVerifier;
+namespace ripple { namespace hotstuff {
 
-class EpochState {
-public:
-	EpochState();
-	~EpochState();
+template<class Archive>
+void serialize(
+    Archive& ar, 
+    ripple::hotstuff::BlockInfo& block_info, 
+    const unsigned int /*version*/) {
+	// note, version is always the latest when saving
+	ar & block_info.epoch;
+	ar & block_info.round;
+	ar & block_info.id;
+	ar & block_info.ledger_info;
+	ar & block_info.version;
+	ar & block_info.timestamp_usecs;
+	ar & block_info.next_epoch_state;
+}
 
-	Epoch epoch;
-	ValidatorVerifier* verifier;
-};
-
-//template<class Archive>
-//void serialize(Archive& ar, EpochState& epoch_state, const unsigned int /*version*/) {
-//	ar & epoch_state.epoch;
-//	ar & epoch_state.verifier;
-//}
-
-} // namespace hotstuff
+} // namespace serialization
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
+#endif // RIPPLE_SERIALIZATION_HOTSTUFF_BLOCKINFO_H

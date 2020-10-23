@@ -17,34 +17,29 @@
  */
  //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
+#ifndef RIPPLE_SERIALIZATION_LEDGERINFO_H
+#define RIPPLE_SERIALIZATION_LEDGERINFO_H
 
-#include <peersafe/consensus/hotstuff/impl/Types.h>
-//#include <ripple/core/Serialization.h>
-//#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
+#include <peersafe/serialization/Serialization.h>
+#include <peersafe/serialization/base_unit.h>
+
+#include <ripple/ledger/ReadView.h>
 
 namespace ripple {
-namespace hotstuff {
+template<class Archive>
+void serialize(
+    Archive& ar, 
+    ripple::LedgerInfo& ledger_info, 
+    const unsigned int /*version*/) {
+        
+	ar & ledger_info.seq;
+	ar & ledger_info.hash;
+	ar & ledger_info.txHash;
+	ar & ledger_info.accountHash;
+	ar & ledger_info.parentHash;
+    
+}
 
-class ValidatorVerifier;
-
-class EpochState {
-public:
-	EpochState();
-	~EpochState();
-
-	Epoch epoch;
-	ValidatorVerifier* verifier;
-};
-
-//template<class Archive>
-//void serialize(Archive& ar, EpochState& epoch_state, const unsigned int /*version*/) {
-//	ar & epoch_state.epoch;
-//	ar & epoch_state.verifier;
-//}
-
-} // namespace hotstuff
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
+#endif // RIPPLE_SERIALIZATION_LEDGERINFO_H

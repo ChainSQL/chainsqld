@@ -27,7 +27,7 @@
 #include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
 #include <peersafe/consensus/hotstuff/impl/EpochState.h>
 
-#include <ripple/core/Serialization.h>
+//#include <ripple/core/Serialization.h>
 
 namespace ripple { namespace hotstuff {
 
@@ -139,8 +139,8 @@ public:
 		return signature_;
 	}
 
-private:
-	friend class ripple::Serialization;
+	//friend class ripple::Serialization;
+	// only for serialization
 	Block();
 
 private:
@@ -149,33 +149,33 @@ private:
 	boost::optional<Signature> signature_;
 };
 
-///////////////////////////////////////////////////////////////////////////////////
-// serialize & deserialize
-///////////////////////////////////////////////////////////////////////////////////
-template<class Archive>
-void serialize(Archive& ar, BlockData::Payload& payload, const unsigned int /*version*/) {
-	// note, version is always the latest when saving
-	ar & payload.cmd;
-	ar & payload.author;
-}
-
-template<class Archive>
-void serialize(Archive& ar, BlockData& block_data , const unsigned int /*version*/) {
-	// note, version is always the latest when saving
-	ar & block_data.epoch;
-	ar & block_data.round;
-	ar & block_data.timestamp_usecs;
-	ar & block_data.quorum_cert;
-	ar & block_data.block_type;
-	ar & block_data.payload;
-}
-
-template<class Archive>
-void serialize(Archive& ar, Block& block, const unsigned int /*version*/) {
-	ar & block.id();
-	ar & block.block_data();
-	ar & block.signature();
-}
+/////////////////////////////////////////////////////////////////////////////////////
+//// serialize & deserialize
+/////////////////////////////////////////////////////////////////////////////////////
+//template<class Archive>
+//void serialize(Archive& ar, BlockData::Payload& payload, const unsigned int /*version*/) {
+//	// note, version is always the latest when saving
+//	ar & payload.cmd;
+//	ar & payload.author;
+//}
+//
+//template<class Archive>
+//void serialize(Archive& ar, BlockData& block_data , const unsigned int /*version*/) {
+//	// note, version is always the latest when saving
+//	ar & block_data.epoch;
+//	ar & block_data.round;
+//	ar & block_data.timestamp_usecs;
+//	ar & block_data.quorum_cert;
+//	ar & block_data.block_type;
+//	ar & block_data.payload;
+//}
+//
+//template<class Archive>
+//void serialize(Archive& ar, Block& block, const unsigned int /*version*/) {
+//	ar & block.id();
+//	ar & block.block_data();
+//	ar & block.signature();
+//}
 
 } // namespace hotstuff 
 } // namespace ripple

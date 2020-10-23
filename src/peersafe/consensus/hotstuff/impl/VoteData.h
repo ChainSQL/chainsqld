@@ -54,12 +54,13 @@ public:
 
 	const bool Verify() const;
 
-private:
-	friend class ripple::Serialization;
+	//friend class ripple::Serialization;
+	// only for serialization
 	VoteData()
 	: proposed_(ZeroHash())
 	, parent_(ZeroHash()) {} // only for constructing in Serilization
 
+private:
 	VoteData(
 		const BlockInfo& proposed,
 		const BlockInfo& parent);
@@ -70,11 +71,11 @@ private:
 	BlockInfo parent_;
 };
 
-template<class Archive>
-void serialize(Archive& ar, VoteData& vote_data, const unsigned int /*version*/) {
-	ar & vote_data.proposed();
-	ar & vote_data.parent();
-}
+//template<class Archive>
+//void serialize(Archive& ar, VoteData& vote_data, const unsigned int /*version*/) {
+//	ar & vote_data.proposed();
+//	ar & vote_data.parent();
+//}
 
 } // namespace hotstuff
 } // namespace ripple

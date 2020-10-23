@@ -17,34 +17,26 @@
  */
  //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
+#ifndef RIPPLE_SERIALIZATION_HOTSTUFF_SYNCINFO_H
+#define RIPPLE_SERIALIZATION_HOTSTUFF_SYNCINFO_H
 
-#include <peersafe/consensus/hotstuff/impl/Types.h>
-//#include <ripple/core/Serialization.h>
-//#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
+#include <peersafe/serialization/Serialization.h>
+#include <peersafe/serialization/hotstuff/QuorumCert.h>
 
-namespace ripple {
-namespace hotstuff {
+#include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
 
-class ValidatorVerifier;
+namespace ripple { namespace hotstuff {
 
-class EpochState {
-public:
-	EpochState();
-	~EpochState();
-
-	Epoch epoch;
-	ValidatorVerifier* verifier;
-};
-
-//template<class Archive>
-//void serialize(Archive& ar, EpochState& epoch_state, const unsigned int /*version*/) {
-//	ar & epoch_state.epoch;
-//	ar & epoch_state.verifier;
-//}
-
-} // namespace hotstuff
+template<class Archive>
+void serialize(
+    Archive& ar, 
+    ripple::hotstuff::SyncInfo& sync_info, 
+    const unsigned int /*version*/) {
+	ar & sync_info.HQC();
+	ar & sync_info.HCC();
+	ar & sync_info.HTC();
+}
+} // namespace serialization
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_EPOCH_STATE_H
+#endif // RIPPLE_SERIALIZATION_HOTSTUFF_SYNCINFO_H
