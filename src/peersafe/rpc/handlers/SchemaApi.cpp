@@ -91,19 +91,24 @@ Json::Value doSchemaList(RPC::Context&  context)
 			return rpcError(rpcINVALID_PARAMS);
 		}
 	}
+
+	bool bRunning = false;
+	if (context.params.isMember(jss::running) && context.params[jss::running].asBool())
+	{
+		bRunning = true;
+	}
+
 	//This is a time-consuming process for a project that has many sles.
 	for (auto sle : ledger->sles)
 	{
-		if (sle->getType() == ltSCHEMA)
-		{
-			if (pAccountID != boost::none && sle->getAccountID(sfAccount) != *pAccountID)
-			{
-				continue;
-			}
+		if (sle->getType() != ltSCHEMA) continue;
+		if (pAccountID != boost::none && sle->getAccountID(sfAccount) != *pAccountID)continue;
 
-			auto &schema = getSchemaFromSle(sle);	
-			ret[jss::schemas].append(schema);
-		}
+		Json::Value &schema = getSchemaFromSle(sle);
+		if (bRunning && !context.app.app().hasSchema(sle->key())) continue;
+
+		schema[jss::running] = context.app.app().hasSchema(sle->key());
+		ret[jss::schemas].append(schema);
 	}
 	return ret;
 }
