@@ -7,7 +7,7 @@
 
 namespace ripple {
 
-	TER preclaimCommon(PreclaimContext const& ctx)
+	TER preClaimCommon(PreclaimContext const& ctx)
 	{
 		auto const& vals = ctx.tx.getFieldArray(sfValidators);
 		for (auto val : vals)
@@ -30,28 +30,26 @@ namespace ripple {
 			}
 		}
 
-		if (ctx.tx.getSigningPubKey().empty())
+		return tesSUCCESS;
+	}
+
+	TER checkMulsignValid(STArray const & vals, STArray const& txSigners)
+	{
+		for (auto const& txSigner : txSigners)
 		{
-			STArray const & vals = ctx.tx.getFieldArray(sfValidators);
-			STArray const& txSigners(ctx.tx.getFieldArray(sfSigners));
+			auto const &spk = txSigner.getFieldVL(sfSigningPubKey);
 
-			for (auto const& txSigner : txSigners)
+			auto iter(vals.end());
+			iter = std::find_if(vals.begin(), vals.end(),
+				[spk](STObject const &val) {
+				if (val.getFieldVL(sfPublicKey) == spk) return true;
+				return false;
+			});
+			if (iter == vals.end())
 			{
-				auto const &spk = txSigner.getFieldVL(sfSigningPubKey);
-
-				auto iter(vals.end());
-				iter = std::find_if(vals.begin(), vals.end(),
-					[spk](STObject const &val) {
-					if (val.getFieldVL(sfPublicKey) == spk) return true;
-					return false;
-				});
-				if (iter == vals.end())
-				{
-					return temBAD_SIGNERFORVAL;
-				}
+				return temBAD_SIGNERFORVAL;
 			}
 		}
-
 		return tesSUCCESS;
 	}
 
@@ -88,7 +86,11 @@ namespace ripple {
 			return temMALFORMED;
 		}
 
-		return preclaimCommon(ctx);
+		auto const ret = preClaimCommon(ctx);
+		if (!isTesSuccess(ret))
+			return ret;
+
+		return checkMulsignValid(ctx.tx.getFieldArray(sfValidators), ctx.tx.getFieldArray(sfSigners));
 		
 	}
 
@@ -186,7 +188,7 @@ namespace ripple {
 			return temMALFORMED;
 		}
 
-		return preclaimCommon(ctx);
+		return preClaimCommon(ctx);
 	}
 
 	TER SchemaModify::doApply()
@@ -208,7 +210,7 @@ namespace ripple {
 			if (sleSchema->getAccountID(sfSchemaAdmin) != ctx_.tx.getAccountID(sfAccount))
 			{
 				return tefBAD_SCHEMAADMIN;
-			}
+			}			
 		}
 		else
 		{
@@ -216,6 +218,9 @@ namespace ripple {
 			{
 				return tefBAD_SCHEMAADMIN;
 			}
+			auto const ret = checkMulsignValid(sleSchema->getFieldArray(sfValidators), ctx_.tx.getFieldArray(sfSigners));
+			if (!isTesSuccess(ret))
+				return ret;
 		}
 
 		//for sle
