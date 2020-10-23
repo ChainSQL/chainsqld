@@ -175,15 +175,15 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 		START_UP = NEWCHAIN_WITHSTATE;
 	}
 
-	auto config_dir = boost::filesystem::path(config.SCHEMA_PATH) / to_string(schemaParams.schema_id);
-	if(!boost::filesystem::exists(config_dir))
+	CONFIG_DIR = boost::filesystem::path(config.SCHEMA_PATH) / to_string(schemaParams.schema_id);
+	if(!boost::filesystem::exists(CONFIG_DIR))
 	{
 		boost::system::error_code ec;
-		boost::filesystem::create_directories(config_dir, ec);
+		boost::filesystem::create_directories(CONFIG_DIR, ec);
 
 		if (ec)
 			Throw<std::runtime_error>(
-				boost::str(boost::format("Can not create %s") % config_dir));
+				boost::str(boost::format("Can not create %s") % CONFIG_DIR));
 	}
 	 auto fileContents =  config.getConfigFileContents();
 	 if (fileContents.empty()) {
@@ -198,10 +198,10 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 std::string const node_db_type{ get<std::string>(section(ConfigSection::nodeDatabase()), "type") };
 
 	 // ./AB868A6CFEEC779C2FF845C0AF00A642259986AF40C01976A7F842B6918936C7/db/NuDB
-	 auto node_db_path = config_dir / node_db_type;
+	 auto node_db_path = CONFIG_DIR / node_db_type;
 	 overwrite(ConfigSection::nodeDatabase(), "path", node_db_path.generic_string());
 
-	 auto database_path = config_dir / "db";
+	 auto database_path = CONFIG_DIR / "db";
 	 deprecatedClearSection(std::string("database_path"));
 	 section(std::string("database_path")).append(database_path.generic_string());
 	 if (!database_path.empty())
@@ -229,14 +229,14 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 section(std::string("validators")).append(validatorList);
 
 
-	 auto config_file = (config_dir / "chainsqld.cfg").string();
+	 CONFIG_FILE = CONFIG_DIR / "chainsqld.cfg";
 	 {
-		 std::ofstream outfile(config_file);
+		 std::ofstream outfile(CONFIG_FILE.generic_string());
 		 outfile << *this;
 		 outfile.close();
 	 }
 
-	 initSchemaInfo(config_dir,schemaParams);
+	 initSchemaInfo(CONFIG_DIR,schemaParams);
 }
 
 void Config::initSchemaInfo(boost::filesystem::path config_dir,SchemaParams const& schemaParams)

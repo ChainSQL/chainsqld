@@ -478,7 +478,7 @@ int run (int argc, char** argv)
         }
     }
 
-    auto config = std::make_unique<Config>();
+    auto config = std::make_shared<Config>();
 
     auto configFile = vm.count ("conf") ?
             vm["conf"].as<std::string> () : std::string();

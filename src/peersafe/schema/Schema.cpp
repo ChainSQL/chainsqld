@@ -264,7 +264,7 @@ namespace ripple {
 		beast::Journal m_journal;
 		SchemaParams schema_params_;
 
-		Config						config_;
+		std::shared_ptr<Config>		config_;
 		TransactionMaster			m_txMaster;
 
 
@@ -320,7 +320,7 @@ namespace ripple {
 		std::unique_ptr <DatabaseCon> mWalletDB;
 		std::unique_ptr <PeerManager> m_peerManager;
 	public:
-	SchemaImp(SchemaParams const& params, Config& config, Application & app, beast::Journal j) 
+	SchemaImp(SchemaParams const& params, std::shared_ptr<Config> config, Application & app, beast::Journal j)
 		: schema_params_(params)
 		, app_(app)
 		, m_journal(j)
@@ -328,9 +328,9 @@ namespace ripple {
 
 		, m_txMaster(*this)
 
-		, m_shaMapStore(make_SHAMapStore(*this, setup_SHAMapStore(config_),
+		, m_shaMapStore(make_SHAMapStore(*this, setup_SHAMapStore(*config_),
 			dynamic_cast<Stoppable&>(app_), app_.nodeStoreScheduler(), app_.logs().journal("SHAMapStore"),
-			app_.logs().journal("NodeObject"), m_txMaster, config_))
+			app_.logs().journal("NodeObject"), m_txMaster, *config_))
 
 		, accountIDCache_(128000)
 
@@ -383,7 +383,7 @@ namespace ripple {
 		, m_peerManager(make_PeerManager(*this))
 					
 		, m_networkOPs(make_NetworkOPs(*this, stopwatch(),
-			config_.standalone(), config_.NETWORK_QUORUM, config_.START_VALID,
+			config_->standalone(), config_->NETWORK_QUORUM, config_->START_VALID,
 			app_.getJobQueue(), *m_ledgerMaster, app_.getJobQueue(), app_.getValidatorKeys(),
 			dynamic_cast<BasicApp&>(app_).get_io_service(), app_.logs().journal("NetworkOPs")))
 
@@ -398,16 +398,16 @@ namespace ripple {
 
 		, validators_(std::make_unique<ValidatorList>(
 			*validatorManifests_, *publisherManifests_, app_.timeKeeper(),
-			app_.logs().journal("ValidatorList"), config_.VALIDATION_QUORUM))
+			app_.logs().journal("ValidatorList"), config_->VALIDATION_QUORUM))
 
 		, validatorSites_(std::make_unique<ValidatorSite>(
 			*validatorManifests_, dynamic_cast<BasicApp&>(app_).get_io_service(), *validators_, app_.logs().journal("ValidatorSite")))
 
 		, caCertSites_(std::make_unique<CACertSite>(
 			*validatorManifests_, *publisherManifests_, app_.timeKeeper(),
-			dynamic_cast<BasicApp&>(app_).get_io_service(), config_.ROOT_CERTIFICATES, app_.logs().journal("CACertSite")))
+			dynamic_cast<BasicApp&>(app_).get_io_service(), config_->ROOT_CERTIFICATES, app_.logs().journal("CACertSite")))
 
-		, certList_(std::make_unique<CertList>(config_.ROOT_CERTIFICATES, app_.logs().journal("CertList")))
+		, certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES, app_.logs().journal("CertList")))
 
 		, mFeeTrack(std::make_unique<LoadFeeTrack>(app_.logs().journal("LoadManager")))
 
@@ -417,17 +417,17 @@ namespace ripple {
 
 		, mValidations(ValidationParms(), stopwatch(), *this, app_.logs().journal("Validations"))
 
-		, txQ_(make_TxQ(setup_TxQ(config_), app_.logs().journal("TxQ")))
+		, txQ_(make_TxQ(setup_TxQ(*config_), app_.logs().journal("TxQ")))
 
-		, m_pTxStoreDBConn(std::make_unique<TxStoreDBConn>(config_))
+		, m_pTxStoreDBConn(std::make_unique<TxStoreDBConn>(*config_))
 
-		, m_pTxStore(std::make_unique<TxStore>(m_pTxStoreDBConn->GetDBConn(), config_, app_.logs().journal("TxStore")))
+		, m_pTxStore(std::make_unique<TxStore>(m_pTxStoreDBConn->GetDBConn(), *config_, app_.logs().journal("TxStore")))
 
-		, m_pTableSync(std::make_unique<TableSync>(*this, config_, app_.logs().journal("TableSync")))
+		, m_pTableSync(std::make_unique<TableSync>(*this, *config_, app_.logs().journal("TableSync")))
 
-		, m_pTableStorage(std::make_unique<TableStorage>(*this, config_, app_.logs().journal("TableStorage")))
+		, m_pTableStorage(std::make_unique<TableStorage>(*this, *config_, app_.logs().journal("TableStorage")))
 
-		, m_pTableAssistant(std::make_unique<TableAssistant>(*this, config_, app_.logs().journal("TableAssistant")))
+		, m_pTableAssistant(std::make_unique<TableAssistant>(*this, *config_, app_.logs().journal("TableAssistant")))
 
 		, m_pContractHelper(std::make_unique<ContractHelper>(*this))
 
@@ -509,7 +509,7 @@ namespace ripple {
 	Config&
 		config() override
 	{
-		return config_;
+		return *config_;
 	}
 	Family& family() override
 	{
@@ -745,7 +745,7 @@ namespace ripple {
 		assert(mLedgerDB.get() == nullptr);
 		assert(mWalletDB.get() == nullptr);
 
-		DatabaseCon::Setup setup = setup_DatabaseCon(config_);
+		DatabaseCon::Setup setup = setup_DatabaseCon(*config_);
 		mTxnDB = std::make_unique <DatabaseCon>(setup, "transaction.db",
 			TxnDBInit, TxnDBCount);
 		mLedgerDB = std::make_unique <DatabaseCon>(setup, "ledger.db",
@@ -761,10 +761,10 @@ namespace ripple {
 
 	void doSweep() override
 	{
-		if (!config_.standalone())
+		if (!config_->standalone())
 		{
 			boost::filesystem::space_info space =
-				boost::filesystem::space(config_.legacy("database_path"));
+				boost::filesystem::space(config_->legacy("database_path"));
 
 			if (space.available < megabytes(512))
 			{
@@ -773,7 +773,7 @@ namespace ripple {
 				app_.signalStop();
 			}
 
-			DatabaseCon::Setup dbSetup = setup_DatabaseCon(config_);
+			DatabaseCon::Setup dbSetup = setup_DatabaseCon(*config_);
 			boost::filesystem::path dbPath = dbSetup.dataDir / TxnDBName;
 			boost::system::error_code ec;
 			boost::optional<std::uint64_t> dbSize = boost::filesystem::file_size(dbPath, ec);
@@ -913,11 +913,11 @@ private:
 
 		getLedgerDB().getSession()
 			<< boost::str(boost::format("PRAGMA cache_size=-%d;") %
-			(config_.getSize(siLgrDBCache) * kilobytes(1)));
+			(config_->getSize(siLgrDBCache) * kilobytes(1)));
 
 		getTxnDB().getSession()
 			<< boost::str(boost::format("PRAGMA cache_size=-%d;") %
-			(config_.getSize(siTxnDBCache) * kilobytes(1)));
+			(config_->getSize(siTxnDBCache) * kilobytes(1)));
 
 		mTxnDB->setupCheckpointing(&app_.getJobQueue(), app_.logs());
 		mLedgerDB->setupCheckpointing(&app_.getJobQueue(), app_.logs());
@@ -940,20 +940,20 @@ private:
 			Section supportedAmendments("Supported Amendments");
 			supportedAmendments.append(saHashes);
 
-			Section enabledAmendments = config_.section(SECTION_AMENDMENTS);
+			Section enabledAmendments = config_->section(SECTION_AMENDMENTS);
 
 			m_amendmentTable = make_AmendmentTable(
 				weeks{ 2 },//std::chrono::minutes{10},
 				MAJORITY_FRACTION,
 				supportedAmendments,
 				enabledAmendments,
-				config_.section(SECTION_VETO_AMENDMENTS),
+				config_->section(SECTION_VETO_AMENDMENTS),
 				app_.logs().journal("Amendments"));
 		}
 
 		Pathfinder::initPathTable();
 
-		auto const startUp = config_.START_UP;
+		auto const startUp = config_->START_UP;
 		if (startUp == Config::FRESH)
 		{
 			JLOG(m_journal.info()) << "Starting new Ledger";
@@ -967,7 +967,7 @@ private:
 			JLOG(m_journal.info()) <<
 				"Loading specified Ledger";
 
-			if (!loadOldLedger(config_.START_LEDGER,
+			if (!loadOldLedger(config_->START_LEDGER,
 				startUp == Config::REPLAY,
 				startUp == Config::LOAD_FILE))
 			{
@@ -979,7 +979,7 @@ private:
 		else if (startUp == Config::NETWORK)
 		{
 			// This should probably become the default once we have a stable network.
-			if (!config_.standalone())
+			if (!config_->standalone())
 				m_networkOPs->setNeedNetworkLedger();
 
 			startGenesisLedger();
@@ -991,7 +991,7 @@ private:
 			startGenesisLedger(validLedger);
 		}
 		else if (startUp == Config::NEWCHAIN_LOAD) {
-			if (!loadOldLedger(config_.START_LEDGER,
+			if (!loadOldLedger(config_->START_LEDGER,
 				startUp == Config::REPLAY,
 				startUp == Config::LOAD_FILE))
 			{
@@ -1001,7 +1001,7 @@ private:
 		}
 		else
 		{
-			if (!loadOldLedger(config_.START_LEDGER,
+			if (!loadOldLedger(config_->START_LEDGER,
 				startUp == Config::REPLAY,
 				startUp == Config::LOAD_FILE))
 			{
@@ -1065,20 +1065,20 @@ private:
 		}
 
 		using namespace std::chrono;
-		m_nodeStore->tune(config_.getSize(siNodeCacheSize),
-			seconds{ config_.getSize(siNodeCacheAge) });
-		m_ledgerMaster->tune(config_.getSize(siLedgerSize),
-			seconds{ config_.getSize(siLedgerAge) });
-		family().treecache().setTargetSize(config_.getSize(siTreeCacheSize));
+		m_nodeStore->tune(config_->getSize(siNodeCacheSize),
+			seconds{ config_->getSize(siNodeCacheAge) });
+		m_ledgerMaster->tune(config_->getSize(siLedgerSize),
+			seconds{ config_->getSize(siLedgerAge) });
+		family().treecache().setTargetSize(config_->getSize(siTreeCacheSize));
 		family().treecache().setTargetAge(
-			seconds{ config_.getSize(siTreeCacheAge) });
+			seconds{ config_->getSize(siTreeCacheAge) });
 		if (shardStore_)
 		{
-			shardStore_->tune(config_.getSize(siNodeCacheSize),
-				seconds{ config_.getSize(siNodeCacheAge) });
-			sFamily_->treecache().setTargetSize(config_.getSize(siTreeCacheSize));
+			shardStore_->tune(config_->getSize(siNodeCacheSize),
+				seconds{ config_->getSize(siNodeCacheAge) });
+			sFamily_->treecache().setTargetSize(config_->getSize(siTreeCacheSize));
 			sFamily_->treecache().setTargetAge(
-				seconds{ config_.getSize(siTreeCacheAge) });
+				seconds{ config_->getSize(siTreeCacheAge) });
 		}
 
 		//----------------------------------------------------------------------
@@ -1088,13 +1088,13 @@ private:
 		//----------------------------------------------------------------------
 
 
-		if (!config_.standalone())
+		if (!config_->standalone())
 		{
 			// validation and node import require the sqlite db
-			if (config_.nodeToShard && !nodeToShards())
+			if (config_->nodeToShard && !nodeToShards())
 				return false;
 
-			if (config_.validateShards && !validateShards())
+			if (config_->validateShards && !validateShards())
 				return false;
 		}
 
@@ -1114,11 +1114,11 @@ private:
 
 
 		// Begin connecting to network.
-		if (!config_.standalone())
+		if (!config_->standalone())
 		{
 			// Should this message be here, conceptually? In theory this sort
 			// of message, if displayed, should be displayed from PeerFinder.
-			if (config_.PEER_PRIVATE && config_.IPS_FIXED.empty())
+			if (config_->PEER_PRIVATE && config_->IPS_FIXED.empty())
 			{
 				JLOG(m_journal.warn())
 					<< "No outbound peer connections will be made";
@@ -1135,7 +1135,7 @@ private:
 			m_networkOPs->setStandAlone();
 		}
 
-		if (config_.canSign())
+		if (config_->canSign())
 		{
 			JLOG(m_journal.warn()) <<
 				"*** The server is configured to allow the 'sign' and 'sign_for'";
@@ -1158,7 +1158,7 @@ private:
 		//
 		// Execute start up rpc commands.
 		//
-		for (auto cmd : config_.section(SECTION_RPC_STARTUP).lines())
+		for (auto cmd : config_->section(SECTION_RPC_STARTUP).lines())
 		{
 			Json::Reader jrReader;
 			Json::Value jvCommand;
@@ -1170,7 +1170,7 @@ private:
 					"]: '" << cmd;
 			}
 
-			if (!config_.quiet())
+			if (!config_->quiet())
 			{
 				JLOG(m_journal.fatal()) << "Startup RPC: " << jvCommand << std::endl;
 			}
@@ -1183,7 +1183,7 @@ private:
 			Json::Value jvResult;
 			RPC::doCommand(context, jvResult);
 
-			if (!config_.quiet())
+			if (!config_->quiet())
 			{
 				JLOG(m_journal.fatal()) << "Result: " << jvResult << std::endl;
 			}
@@ -1196,19 +1196,19 @@ private:
 		SchemaImp::startGenesisLedger()
 	{
 		std::vector<uint256> initialAmendments =
-			(config_.START_UP == Config::FRESH) ?
+			(config_->START_UP == Config::FRESH) ?
 			m_amendmentTable->getDesired() :
 			std::vector<uint256>{};
 
 		std::shared_ptr<Ledger> const genesis =
 			std::make_shared<Ledger>(
 				create_genesis,
-				config_,
+				*config_,
 				initialAmendments,
 				family());
 		m_ledgerMaster->storeLedger(genesis);
 
-		genesis->setImmutable(config_);
+		genesis->setImmutable(*config_);
 		openLedger_.emplace(genesis, cachedSLEs_,
 			app_.logs().journal("OpenLedger"));
 		m_ledgerMaster->switchLCL(genesis);
@@ -1254,7 +1254,7 @@ private:
 			if (!ledger)
 				return {};
 
-			ledger->setImmutable(config_);
+			ledger->setImmutable(*config_);
 
 			if (getLedgerMaster().haveLedger(seq))
 				ledger->setValidated();
@@ -1368,7 +1368,7 @@ private:
 			}
 
 			auto loadLedger = std::make_shared<Ledger>(
-				seq, closeTime, config_, family());
+				seq, closeTime, *config_, family());
 			loadLedger->setTotalDrops(totalDrops);
 
 			for (Json::UInt index = 0; index < ledger.get().size(); ++index)
@@ -1420,7 +1420,7 @@ private:
 
 			loadLedger->setAccepted(closeTime,
 				closeTimeResolution, !closeTimeEstimated,
-				config_);
+				*config_);
 
 			return loadLedger;
 		}
@@ -1592,7 +1592,7 @@ private:
 	void SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
 	{
 		auto genesis = std::make_shared<Ledger>(*curLedger, family_);
-		genesis->setImmutable(config_);
+		genesis->setImmutable(*config_);
 	
 		openLedger_.emplace(genesis, cachedSLEs_,
 			app_.logs().journal("OpenLedger"));
@@ -1758,7 +1758,7 @@ private:
 
 	bool SchemaImp::updateTables()
 	{
-		if (config_.section(ConfigSection::nodeDatabase()).empty())
+		if (config_->section(ConfigSection::nodeDatabase()).empty())
 		{
 			JLOG(m_journal.fatal()) << "The [node_db] configuration setting has been updated and must be set";
 			return false;
@@ -1777,14 +1777,14 @@ private:
 
 		addValidationSeqFields();
 
-		if (config_.doImport)
+		if (config_->doImport)
 		{
 			auto j = app_.logs().journal("NodeObject");
 			NodeStore::DummyScheduler scheduler;
 			std::unique_ptr <NodeStore::Database> source =
 				NodeStore::Manager::instance().make_Database("NodeStore.import",
 					scheduler, 0, app_.getJobQueue(),
-					config_.section(ConfigSection::importNodeDatabase()), j);
+					config_->section(ConfigSection::importNodeDatabase()), j);
 
 			JLOG(j.warn())
 				<< "Node import from '" << source->getName() << "' to '"
@@ -1798,9 +1798,9 @@ private:
 
 	bool SchemaImp::nodeToShards()
 	{
-		assert(!config_.standalone());
+		assert(!config_->standalone());
 
-		if (config_.section(ConfigSection::shardDatabase()).empty())
+		if (config_->section(ConfigSection::shardDatabase()).empty())
 		{
 			JLOG(m_journal.fatal()) <<
 				"The [shard_db] configuration setting must be set";
@@ -1818,9 +1818,9 @@ private:
 
 	bool SchemaImp::validateShards()
 	{
-		assert(!config_.standalone());
+		assert(!config_->standalone());
 
-		if (config_.section(ConfigSection::shardDatabase()).empty())
+		if (config_->section(ConfigSection::shardDatabase()).empty())
 		{
 			JLOG(m_journal.fatal()) <<
 				"The [shard_db] configuration setting must be set";
@@ -1854,7 +1854,7 @@ private:
 	{
 		auto conn = m_pTxStoreDBConn->GetDBConn();
 
-		DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(config_);
+		DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(*config_);
 		//sync_db not configured
 		if (setup.sync_db.name() == "" && setup.sync_db.lines().size() == 0)
 			return true;
@@ -1910,11 +1910,11 @@ private:
 
 	bool SchemaImp::checkCertificate()
 	{
-		auto const vecCrtPath = config_.section("x509_crt_path").values();
+		auto const vecCrtPath = config_->section("x509_crt_path").values();
 		if (vecCrtPath.empty()) {
 			return true;
 		}
-		else if (!config_.ROOT_CERTIFICATES.empty()) {
+		else if (!config_->ROOT_CERTIFICATES.empty()) {
 
 			OpenSSL_add_all_algorithms();
 			return true;
@@ -1929,7 +1929,7 @@ private:
 	std::shared_ptr <Schema>
 		make_Schema(
 			SchemaParams const& params,
-			Config& config,
+			std::shared_ptr<Config> config,
 			Application& app,
 			beast::Journal j)
 	{

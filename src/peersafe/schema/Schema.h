@@ -149,7 +149,7 @@ public:
 std::shared_ptr <Schema>
 make_Schema(
 	SchemaParams const& params,
-	Config& config,
+	std::shared_ptr<Config> config,
 	Application& app,
 	beast::Journal j);
 }

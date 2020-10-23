@@ -9,34 +9,32 @@ namespace ripple {
 
 	}
 
-	std::shared_ptr<Schema> SchemaManager::createSchema(Config& config,SchemaParams const& params, bool loadFromFile /*= false*/)
+	std::shared_ptr<Schema> SchemaManager::createSchema(Config& config,SchemaParams const& params)
 	{	
-		Config* pConfig = &config;
-		if (!loadFromFile)
-		{
-			auto schemaConfig = std::make_unique<Config>();
-			schemaConfig->initSchemaConfig(config, params);
-			pConfig = &(*schemaConfig);
-		}
-		else
-		{
-			config.START_UP = Config::LOAD;
-		}
-	
-		auto schema = make_Schema(params, *pConfig, app_, j_);
-		schemas_[params.schema_id] = schema;
+		if (config.SCHEMA_PATH.empty())
+			return nullptr;
+
+		auto schemaConfig = std::make_shared<Config>();
+		schemaConfig->initSchemaConfig(config, params);
+
+		return createSchema(schemaConfig,params);
+	}
+
+	std::shared_ptr<Schema> SchemaManager::createSchema(std::shared_ptr<Config> config, SchemaParams const& param)
+	{
+		auto schema = make_Schema(param, config, app_, j_);
+		schemas_[param.schema_id] = schema;
 
 		return schema;
 	}
 
 	std::shared_ptr<Schema> SchemaManager::createSchemaMain(
-		Config& config)
+		std::shared_ptr<Config> config)
 	{
 		assert(schemas_.empty());
 		SchemaParams params{};
-		auto schema = make_Schema(params, config, app_, j_);
-		schemas_[beast::zero] = schema;
-		return schema;
+		params.schema_id = beast::zero;
+		return createSchema(config, params);
 	}
 
 	std::shared_ptr<Schema> SchemaManager::getSchema(uint256 const& schemaId)
