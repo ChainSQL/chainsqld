@@ -48,7 +48,9 @@ public:
 	int start();
 	void stop();
 
-	int ProcessProposal(const Block& proposal, const SyncInfo& sync_info);
+	bool CheckProposal(const Block& proposal, const SyncInfo& sync_info);
+	int ProcessProposal(const Block& proposal);
+
 	int ProcessVote(const Vote& vote, const SyncInfo& sync_info);
     int ProcessProposal(const Block& proposal);
 private:

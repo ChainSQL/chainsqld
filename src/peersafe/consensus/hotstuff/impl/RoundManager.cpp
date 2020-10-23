@@ -147,9 +147,9 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 		std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, round));
 }
 
-int RoundManager::ProcessProposal(const Block& proposal, const SyncInfo& sync_info) {
+bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_info) {
 	if (stop_)
-		return 1;
+		return false;
 
 	if (EnsureRoundAndSyncUp(
 		proposal.block_data().round,
@@ -158,23 +158,10 @@ int RoundManager::ProcessProposal(const Block& proposal, const SyncInfo& sync_in
 		JLOG(journal_.error())
 			<< "Stale proposal, current round " 
 			<< round_state_->current_round();
-		return 1;
+		return false;
 	}
 
-    return 0;
-}
-
-int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
-	if (stop_)
-		return 1;
-
-	if (EnsureRoundAndSyncUp(
-		vote.vote_data().proposed().round,
-		sync_info,
-		vote.author()) == false) {
-		return 1;
-	}
-	return ProcessVote(vote);
+	return true;
 }
 
 int RoundManager::ProcessProposal(const Block& proposal) {
@@ -199,6 +186,19 @@ int RoundManager::ProcessProposal(const Block& proposal) {
 	round_state_->recordVote(vote);
 	network_->sendVote(next_leader, vote, block_store_->sync_info());
 	return 0;
+}
+
+int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
+	if (stop_)
+		return 1;
+
+	if (EnsureRoundAndSyncUp(
+		vote.vote_data().proposed().round,
+		sync_info,
+		vote.author()) == false) {
+		return 1;
+	}
+	return ProcessVote(vote);
 }
 
 int RoundManager::ProcessVote(const Vote& vote) {

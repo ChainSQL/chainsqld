@@ -65,11 +65,10 @@ public:
 	int start(const RecoverData& recover_data);
 	void stop();
 	
-	int handleProposal(
+	bool CheckProposal(
 		const ripple::hotstuff::Block& proposal,
 		const ripple::hotstuff::SyncInfo& sync_info);
-
-    int vote(const ripple::hotstuff::Block& proposal);
+	int handleProposal(const ripple::hotstuff::Block& proposal);
 
 	int handleVote(
 		const ripple::hotstuff::Vote& vote,

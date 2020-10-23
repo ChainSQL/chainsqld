@@ -267,12 +267,6 @@ public:
 		const ripple::hotstuff::Block& proposal, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
 		
-		ripple::Buffer s_proposal = ripple::serialization::serialize(proposal);
-		ripple::hotstuff::Block block = ripple::serialization::deserialize<ripple::hotstuff::Block>(s_proposal);
-
-		ripple::Buffer s_sync_info = ripple::serialization::serialize(sync_info);
-		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
-
 		if (malicious())
 			return;
 		
@@ -280,8 +274,9 @@ public:
 			env_->app().getJobQueue().addJob(
 				jtPROPOSAL_t,
 				"broadcast_proposal",
-				[this, it, block, sync](Job&) {
-					it->second->hotstuff_->handleProposal(block, sync);
+				[this, it, proposal, sync_info](Job&) {
+					if(it->second->hotstuff_->CheckProposal(proposal, sync_info))
+						it->second->hotstuff_->handleProposal(proposal);
 				});
 		}
 	}
@@ -290,12 +285,6 @@ public:
 		const ripple::hotstuff::Vote& vote, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
 
-		ripple::Buffer s_vote = ripple::serialization::serialize(vote);
-		ripple::hotstuff::Vote v = ripple::serialization::deserialize<ripple::hotstuff::Vote>(s_vote);
-
-		ripple::Buffer s_sync_info = ripple::serialization::serialize(sync_info);
-		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
-
 		if (malicious())
 			return;
 
@@ -303,8 +292,8 @@ public:
 			env_->app().getJobQueue().addJob(
 				jtPROPOSAL_t,
 				"broadcast_proposal",
-				[this, it, v, sync](Job&) {
-					it->second->hotstuff_->handleVote(v, sync);
+				[this, it, vote, sync_info](Job&) {
+					it->second->hotstuff_->handleVote(vote, sync_info);
 				});
 		}
 	}
@@ -342,12 +331,6 @@ public:
 		const ripple::hotstuff::Vote& vote, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
 
-		ripple::Buffer s_vote = ripple::serialization::serialize(vote);
-		ripple::hotstuff::Vote v = ripple::serialization::deserialize<ripple::hotstuff::Vote>(s_vote);
-
-		ripple::Buffer s_sync_info = ripple::serialization::serialize(sync_info);
-		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
-
 		if (malicious())
 			return;
 
@@ -356,8 +339,8 @@ public:
 				env_->app().getJobQueue().addJob(
 					jtPROPOSAL_t,
 					"send_vote",
-					[this, it, v, sync](Job&) {
-						it->second->hotstuff_->handleVote(v, sync);
+					[this, it, vote, sync_info](Job&) {
+						it->second->hotstuff_->handleVote(vote, sync_info);
 					});
 			}
 		}
@@ -562,10 +545,6 @@ public:
 				for (auto block_it = committedBlocksContainer.begin(); block_it != committedBlocksContainer.end(); block_it++) {
 					if (i == block_it->second.block_data().round) {
 						hash_append(h, block_it->first);
-
-						//if (i == 0) {
-						//	BEAST_EXPECT(block_it->second.block_data().block_type == ripple::hotstuff::BlockData::Genesis);
-						//}
 					}
 				}
 			}
@@ -615,7 +594,7 @@ public:
 		if(disable_log_)
 			env.app().logs().threshold(beast::severities::kDisabled);
 
-		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_, false_replicas_);
+		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_);
 		BEAST_EXPECT(waitUntilCommittedBlocks(2) == true);
 
 		Replica::replicas[1]->committing_epoch_change(true);

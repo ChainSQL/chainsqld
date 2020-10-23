@@ -115,7 +115,7 @@ void HotstuffConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const&
 
     for (auto it : proposalCache_[id])
     {
-        hotstuff_->vote(it.second->block());
+        hotstuff_->handleProposal(it.second->block());
     }
 }
 
@@ -359,7 +359,7 @@ void HotstuffConsensus::broadcast(const hotstuff::Block& block, const hotstuff::
     
     adaptor_.broadcast(*proposal);
 
-    hotstuff_->vote(block);
+    hotstuff_->handleProposal(block);
 }
 
 void HotstuffConsensus::broadcast(const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo)
@@ -409,7 +409,7 @@ void HotstuffConsensus::peerProposal(
             return;
         }
 
-        if (hotstuff_->handleProposal(proposal->block(), proposal->syncInfo()) == 0)
+        if (hotstuff_->CheckProposal(proposal->block(), proposal->syncInfo()))
         {
             peerProposalInternal(proposal);
         }
@@ -462,7 +462,7 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
         return;
     }
 
-    hotstuff_->vote(proposal->block());
+    hotstuff_->handleProposal(proposal->block());
 }
 
 void HotstuffConsensus::peerVote(

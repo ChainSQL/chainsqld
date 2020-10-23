@@ -153,15 +153,14 @@ void Hotstuff::stop() {
     round_manager_->stop();
 }
 
-int Hotstuff::handleProposal(
-    const ripple::hotstuff::Block& proposal,
-    const ripple::hotstuff::SyncInfo& sync_info) {
-    return round_manager_->ProcessProposal(proposal, sync_info);
+bool Hotstuff::CheckProposal(
+	const ripple::hotstuff::Block& proposal,
+	const ripple::hotstuff::SyncInfo& sync_info) {
+	return round_manager_->CheckProposal(proposal, sync_info);
 }
 
-int Hotstuff::vote(const ripple::hotstuff::Block& proposal)
-{
-    return round_manager_->ProcessProposal(proposal);
+int Hotstuff::handleProposal(const ripple::hotstuff::Block& proposal) {
+	return round_manager_->ProcessProposal(proposal);
 }
 
 int Hotstuff::handleVote(
