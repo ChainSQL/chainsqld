@@ -27,8 +27,6 @@
 #include <peersafe/consensus/hotstuff/impl/Types.h>
 #include <peersafe/consensus/hotstuff/impl/EpochState.h>
 
-//#include <ripple/core/Serialization.h>
-
 namespace ripple {
 namespace hotstuff {
 
@@ -81,18 +79,6 @@ public:
 	// only for serialization
 	BlockInfo() {}
 };
-
-//template<class Archive>
-//void serialize(Archive& ar, BlockInfo& block_info, const unsigned int /*version*/) {
-//	// note, version is always the latest when saving
-//	ar & block_info.epoch;
-//	ar & block_info.round;
-//	ar & block_info.id;
-//	ar & block_info.ledger_info;
-//	ar & block_info.version;
-//	ar & block_info.timestamp_usecs;
-//	ar & block_info.next_epoch_state;
-//}
 
 } // namespace hotstuff
 } // namespace ripple

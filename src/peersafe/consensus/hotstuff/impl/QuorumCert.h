@@ -149,46 +149,6 @@ private:
 	Signatures signatures_;
 };
 
-/////////////////////////////////////////////////////////////////////////////////////
-//// serialize & deserialize
-/////////////////////////////////////////////////////////////////////////////////////
-//
-//template<class Archive>
-//void serialize(
-//	Archive& ar, 
-//	LedgerInfoWithSignatures::LedgerInfo& ledger_info, 
-//	const unsigned int /*version*/) {
-//	ar & ledger_info.commit_info;
-//	ar & ledger_info.consensus_data_hash;
-//}
-//
-//template<class Archive>
-//void serialize(
-//	Archive& ar, 
-//	LedgerInfoWithSignatures& ls, 
-//	const unsigned int /*version*/) {
-//	ar & ls.ledger_info;
-//	ar & ls.signatures;
-//}
-//
-//template<class Archive>
-//void serialize(
-//	Archive& ar,
-//	QuorumCertificate& qc,
-//	const unsigned int /*version*/) {
-//	ar & qc.vote_data();
-//	ar & qc.ledger_info();
-//}
-//
-//template<class Archive>
-//void serialize(
-//	Archive& ar,
-//	TimeoutCertificate& tc,
-//	const unsigned int /*version*/) {
-//	ar & tc.timeout();
-//	ar & tc.signatures();
-//}
-
 } // namespace hotstuff
 } // namespace ripple
 
