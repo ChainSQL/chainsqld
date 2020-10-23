@@ -172,6 +172,10 @@ void printHelp (const po::options_description& desc)
            "     version\n"
            "     wallet_propose [<passphrase>]\n"
 		   "     gen_csr <seed> <x509_subject>\n";
+		   "     schema_list [<account>] [<running>]\n";
+		   "     schema_info <schemaid>\n";
+		   "     schema_accept <schemaid>\n";
+	             
 }
 
 //------------------------------------------------------------------------------

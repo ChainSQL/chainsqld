@@ -1257,6 +1257,62 @@ private:
 		return TransGBKToUTF8(jvParams);
 	}
 
+	Json::Value parseSchemaList(Json::Value const& jvParams)
+	{
+		Json::Value     jvRequest(Json::objectValue);
+
+		if (jvParams.size() > 2)
+		{
+			return rpcError(rpcINVALID_PARAMS);
+		}
+
+		if (jvParams.size() == 2)
+		{
+			auto pAccountID = parseBase58<AccountID>(jvParams[0u].asString());
+			if (pAccountID == boost::none)
+			{
+				return rpcError(rpcINVALID_PARAMS);
+			}
+
+			jvRequest[jss::Account] = jvParams[0u].asString();
+			jvRequest[jss::running] = jvParams[1u].asBool();
+
+
+		}
+		else if (jvParams.size() == 1)
+		{
+			auto pAccountID = parseBase58<AccountID>(jvParams[0u].asString());
+			if (pAccountID == boost::none)
+			{				
+				jvRequest[jss::running] = jvParams[0u].asBool();
+			}
+			else
+			{
+				jvRequest[jss::Account] = jvParams[0u].asString();
+			}
+		}
+		else
+		{
+			return jvRequest;
+		}
+
+
+		return jvRequest;
+	}
+
+	Json::Value parseSchemaID(Json::Value const& jvParams)
+	{
+		Json::Value     jvRequest(Json::objectValue);
+
+		if (jvParams.size() != 1)
+		{
+			return rpcError(rpcINVALID_PARAMS);
+		}
+		
+		jvRequest[jss::id] = jvParams[0u].asString();
+
+		return jvRequest;
+	}
 
 public:
     //--------------------------------------------------------------------------
@@ -1376,10 +1432,13 @@ public:
             {   "g_dbname",            &RPCParser::parseGetDBName,             1,  1 },
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
 			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
-			{   "gen_csr",          &RPCParser::parseGenCsr,                   2,  2 },
+			{   "gen_csr",             &RPCParser::parseGenCsr,                   2,  2 },
 			{	"ledger_objects",	   &RPCParser::parseLedgerId,			   1,  1 },
             {   "node_size",		   &RPCParser::parseNodeSize, 			   0,  1 },
             {   "malloc_trim",		   &RPCParser::parseAsIs, 			       0,  0 },
+			{   "schema_list",		   &RPCParser::parseSchemaList,  	       0,  2 },
+			{   "schema_info",		   &RPCParser::parseSchemaID,    	       1,  1 },
+			{   "schema_accept",	   &RPCParser::parseSchemaID,		       1,  1 },
         };
 
         auto const count = jvParams.size ();

@@ -171,10 +171,4 @@ Json::Value doSchemaAccept(RPC::Context& context)
 	return jvResult;
 }
 
-Json::Value doSignNode(RPC::Context& context)
-{
-	Json::Value ret(Json::objectValue);
-	return ret;
-}
-
 }
