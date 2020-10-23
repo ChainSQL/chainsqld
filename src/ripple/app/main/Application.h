@@ -216,7 +216,7 @@ public:
 
 std::unique_ptr <Application>
 make_Application(
-    std::unique_ptr<Config> config,
+    std::shared_ptr<Config> config,
     std::unique_ptr<Logs> logs,
     std::unique_ptr<TimeKeeper> timeKeeper);
 

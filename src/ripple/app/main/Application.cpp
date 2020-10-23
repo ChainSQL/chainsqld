@@ -164,7 +164,7 @@ private:
     };
 
 public:
-	std::unique_ptr<Config>		config_;
+	std::shared_ptr<Config>		config_;
 	std::unique_ptr<Logs> logs_;
 	beast::Journal m_journal;
 	std::unique_ptr<TimeKeeper> timeKeeper_;
@@ -209,12 +209,12 @@ public:
     //--------------------------------------------------------------------------
 
 	ApplicationImp(
-		std::unique_ptr<Config> config,
+		std::shared_ptr<Config> config,
 		std::unique_ptr<Logs> logs,
 		std::unique_ptr<TimeKeeper> timeKeeper)
 		: RootStoppable("Application")
 		, BasicApp(numberOfThreads(*config))
-		, config_(std::move(config))
+		, config_(config)
 		, logs_(std::move(logs))
 		, m_journal(logs_->journal("Application"))
 
@@ -889,7 +889,7 @@ public:
 //
 bool ApplicationImp::setup()
 {   
-	auto schema_main = m_schemaManager->createSchemaMain(*config_);
+	auto schema_main = m_schemaManager->createSchemaMain(config_);
 
 	if (!schema_main->initBeforeSetup())
 		return false;
@@ -1126,14 +1126,14 @@ void ApplicationImp::loadSubChains()
 			std::pair<PublicKey, bool> validator = std::make_pair(*pk, bValid);
 			params.validator_list.push_back(validator);
 		}
-		auto config = std::make_unique<Config>();
+		auto config = std::make_shared<Config>();
 		std::string config_path = (boost::format("%1%/%2%/%3%")
 			% config_->SCHEMA_PATH
 			% sSchemaId
 			% "chainsqld.cfg").str();
 		config->setup(config_path, config_->quiet(),config_->silent(),config->standalone());
 
-		auto newSchema = getSchemaManager().createSchema(*config, params,true);
+		auto newSchema = getSchemaManager().createSchema(config, params);
 		newSchema->initBeforeSetup();
 		newSchema->setup();
 	}
@@ -1205,7 +1205,7 @@ Application::Application ()
 
 std::unique_ptr<Application>
 make_Application (
-    std::unique_ptr<Config> config,
+    std::shared_ptr<Config> config,
     std::unique_ptr<Logs> logs,
     std::unique_ptr<TimeKeeper> timeKeeper)
 {
