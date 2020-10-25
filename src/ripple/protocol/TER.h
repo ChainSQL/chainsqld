@@ -42,12 +42,12 @@ enum TELcodes : TERUnderlyingType
 {
     // Note: Range is stable.  Exact numbers are unstable.  Use tokens.
 
-    // 300 .. 399: L Local error (transaction fee inadequate, exceeds local limit)
+    // 400 .. 499: L Local error (transaction fee inadequate, exceeds local limit)
     // Only valid during non-consensus processing.
     // Implications:
     // - Not forwarded
     // - No fee check
-    telLOCAL_ERROR  = 300,
+    telLOCAL_ERROR  = 400,
     telBAD_DOMAIN,
     telBAD_PATH_COUNT,
     telBAD_PUBLIC_KEY,
@@ -60,7 +60,7 @@ enum TELcodes : TERUnderlyingType
     telCAN_NOT_QUEUE_BLOCKED,
     telCAN_NOT_QUEUE_FEE,
     telCAN_NOT_QUEUE_FULL,
-    telTX_POOL_FULL = 313,
+    telTX_POOL_FULL,
 
 	terMAX = 65535
 };
@@ -152,38 +152,38 @@ enum TEMcodes : TERUnderlyingType
 
 enum TEFcodes : TERUnderlyingType
 {
-    // Note: Range is stable.  Exact numbers are unstable.  Use tokens.
+	// Note: Range is stable.  Exact numbers are unstable.  Use tokens.
 
-    // 151 .. 199: F
-    //    Failure (sequence number previously used)
-    //
-    // Causes:
-    // - Transaction cannot succeed because of ledger state.
-    // - Unexpected ledger state.
-    // - C++ exception.
-    //
-    // Implications:
-    // - Not applied
-    // - Not forwarded
-    // - Could succeed in an imagined ledger.
-    tefFAILURE      = 151,
-    tefALREADY,
-    tefBAD_ADD_AUTH,
-    tefBAD_AUTH,
-    tefBAD_LEDGER,
-    tefCREATED,
-    tefEXCEPTION,
-    tefINTERNAL,
-    tefNO_AUTH_REQUIRED,    // Can't set auth if auth is not required.
-    tefPAST_SEQ,
-    tefWRONG_PRIOR,
-    tefMASTER_DISABLED,
-    tefMAX_LEDGER,
-    tefBAD_SIGNATURE,
-    tefBAD_QUORUM,
-    tefNOT_MULTI_SIGNING,
-    tefBAD_AUTH_MASTER,
-    tefINVARIANT_FAILED,
+	// 300 .. 399: F
+	//    Failure (sequence number previously used)
+	//
+	// Causes:
+	// - Transaction cannot succeed because of ledger state.
+	// - Unexpected ledger state.
+	// - C++ exception.
+	//
+	// Implications:
+	// - Not applied
+	// - Not forwarded
+	// - Could succeed in an imagined ledger.
+	tefFAILURE = 300,
+	tefALREADY,
+	tefBAD_ADD_AUTH,
+	tefBAD_AUTH,
+	tefBAD_LEDGER,
+	tefCREATED,
+	tefEXCEPTION,
+	tefINTERNAL,
+	tefNO_AUTH_REQUIRED,    // Can't set auth if auth is not required.
+	tefPAST_SEQ,
+	tefWRONG_PRIOR,
+	tefMASTER_DISABLED,
+	tefMAX_LEDGER,
+	tefBAD_SIGNATURE,
+	tefBAD_QUORUM,
+	tefNOT_MULTI_SIGNING,
+	tefBAD_AUTH_MASTER,
+	tefINVARIANT_FAILED,
 	tefBAD_AUTH_EXIST,
 	tefBAD_AUTH_NO,
 	tefTABLE_GRANTFULL,
@@ -192,7 +192,7 @@ enum TEFcodes : TERUnderlyingType
 	tefCONTRACT_EXEC_EXCEPTION,
 	tefCONTRACT_REVERT_INSTRUCTION,
 	tefCONTRACT_CANNOT_BEPAYED,
-	tefCONTRACT_NOT_EXIST, 
+	tefCONTRACT_NOT_EXIST,
 	tefINVALID_CURRENY,
 	tefTABLE_SAMENAME,
 	tefTABLE_NOTEXIST,
@@ -213,7 +213,9 @@ enum TEFcodes : TERUnderlyingType
 	tefSCHEMA_PEEREXIST,
 	tefSCHEMA_NOPEER,
 	tefBAD_SCHEMAID,
-	tefBAD_SCHEMAADMIN
+	tefBAD_SCHEMAADMIN,
+	tefSCHEMA_TX_FORBIDDEN,
+	tefSCEMA_NO_PATH,
 };
 
 //------------------------------------------------------------------------------

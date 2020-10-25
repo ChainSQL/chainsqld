@@ -216,6 +216,9 @@ public:
     void
     deprecatedClearSection (std::string const& section);
 
+	/** Remove a whole section.
+	 */
+	void removeSection(std::string const& section);
     /**
      *  Set a value that is not a key/value pair.
      *

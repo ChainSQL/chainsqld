@@ -137,7 +137,7 @@ public:
         NETWORK,
 		NEWCHAIN,
 		NEWCHAIN_WITHSTATE,
-		NEWCHAIN_LOAD
+		//NEWCHAIN_LOAD
     };
     StartUpType                 START_UP = NORMAL;
 

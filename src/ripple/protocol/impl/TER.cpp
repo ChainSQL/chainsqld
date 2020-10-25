@@ -210,6 +210,8 @@ transResults()
 		{ tefSCHEMA_NOPEER,   	     { "tefSCHEMA_NOPEER",         "There is no corresponding peer" } },
 		{ tefBAD_SCHEMAID,           { "tefBAD_SCHEMAID",          "Schema id may be error, there is no corresponding schema." } },
 		{ tefBAD_SCHEMAADMIN, 	     { "tefBAD_SCHEMAADMIN",       "Incorrect schema admin." } },
+		{ tefSCHEMA_TX_FORBIDDEN,	 { "tefSCHEMA_TX_FORBIDDEN",   "SchemaCreate tx cannot occur in sub-chain."} },
+		{ tefSCEMA_NO_PATH,			 { "tefSCEMA_NO_PATH",		   "No schema_path configured."} },
         { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } }
     };
     return results;

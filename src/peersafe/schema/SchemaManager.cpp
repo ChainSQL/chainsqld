@@ -1,5 +1,5 @@
 #include <peersafe/schema/SchemaManager.h>
-
+#include <boost/format.hpp>
 
 namespace ripple {
 	SchemaManager::SchemaManager(Application & app, beast::Journal j):
@@ -12,11 +12,18 @@ namespace ripple {
 	std::shared_ptr<Schema> SchemaManager::createSchema(Config& config,SchemaParams const& params)
 	{	
 		if (config.SCHEMA_PATH.empty())
+		{
+			JLOG(j_.warn()) << "schema_path not configured.";
 			return nullptr;
+		}			
 
 		auto schemaConfig = std::make_shared<Config>();
 		schemaConfig->initSchemaConfig(config, params);
-
+		std::string config_path = (boost::format("%1%/%2%/%3%")
+			% config.SCHEMA_PATH
+			% params.schema_id
+			% "chainsqld.cfg").str();
+		schemaConfig->setup(config_path, config.quiet(), config.silent(), config.standalone());
 		return createSchema(schemaConfig,params);
 	}
 

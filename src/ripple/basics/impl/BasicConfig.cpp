@@ -135,6 +135,14 @@ BasicConfig::deprecatedClearSection (std::string const& section)
 }
 
 void
+BasicConfig::removeSection(std::string const& section)
+{
+	auto i = map_.find(section);
+	if (i != map_.end())
+		map_.erase(i);
+}
+
+void
 BasicConfig::legacy(std::string const& section, std::string value)
 {
     map_[section].legacy(std::move(value));

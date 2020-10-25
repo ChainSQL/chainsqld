@@ -162,6 +162,7 @@ Json::Value doSchemaAccept(RPC::Context& context)
 	auto ret = context.app.getOPs().createSchema(sleSchema, true);
 	if (!ret.first)
 	{
+		JLOG(context.j.fatal())<< ret.second;
 		jvResult[jss::error] = "internal error";
 		jvResult[jss::error_message] = ret.second;
 	}

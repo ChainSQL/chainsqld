@@ -303,7 +303,7 @@ public:
     int fdlimit () const override;
 
 
-	void loadSubChains();
+	bool loadSubChains();
 
 
 
@@ -962,7 +962,8 @@ bool ApplicationImp::setup()
 	if (!schema_main->setup())
 		return false;
 
-	loadSubChains();
+	if(!loadSubChains())
+		return false;
 
     return true;
 }
@@ -1050,7 +1051,7 @@ int ApplicationImp::fdlimit() const
     return std::max(1024, needed);
 }
 
-void ApplicationImp::loadSubChains()
+bool ApplicationImp::loadSubChains()
 {
 	// return;
 	// 1 parse the schema_info
@@ -1059,7 +1060,7 @@ void ApplicationImp::loadSubChains()
 	boost::filesystem::path schemaPath =  config_->SCHEMA_PATH;
 
 	if (schemaPath.empty() || !boost::filesystem::exists(schemaPath)) {
-		return;
+		return true;
 	}
 
 	std::string schemaInfo("schema_info");
@@ -1134,8 +1135,11 @@ void ApplicationImp::loadSubChains()
 		config->setup(config_path, config_->quiet(),config_->silent(),config->standalone());
 
 		auto newSchema = getSchemaManager().createSchema(config, params);
-		newSchema->initBeforeSetup();
-		newSchema->setup();
+		if(!newSchema->initBeforeSetup())
+			return false;
+		if (!newSchema->setup())
+			return false;
+		return true;
 	}
 }
 

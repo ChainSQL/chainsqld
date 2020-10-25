@@ -202,31 +202,34 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 overwrite(ConfigSection::nodeDatabase(), "path", node_db_path.generic_string());
 
 	 auto database_path = CONFIG_DIR / "db";
-	 deprecatedClearSection(std::string("database_path"));
-	 section(std::string("database_path")).append(database_path.generic_string());
-	 if (!database_path.empty())
+	 deprecatedClearSection("database_path");
+	 legacy("database_path", database_path.generic_string());
+
+	 deprecatedClearSection("ips");
+	 section("ips").append(schemaParams.peer_list);
+
+	 removeSection("sync_db");
+	 removeSection("sync_tables");
+
+	 auto const& names = section("server").values();
+	 for (auto const& name : names)
 	 {
-		 boost::system::error_code ec;
-		 boost::filesystem::create_directories(database_path, ec);
-
-		 if (ec)
-			 Throw<std::runtime_error>(
-				 boost::str(boost::format("Can not create %s") % database_path));
-
-		 legacy("database_path", boost::filesystem::absolute(database_path).string());
+		 if (exists(name))
+			 removeSection(name);
 	 }
+	 removeSection("server");
+	 removeSection("rpc_startup");
+	 removeSection("sntp_servers");
+	 removeSection("validation_seed");
+	 removeSection("debug_logfile");
 
-	 deprecatedClearSection(std::string("ips"));
-	 section(std::string("ips")).append(schemaParams.peer_list);
-
-
-	 deprecatedClearSection(std::string("validators"));
+	 deprecatedClearSection("validators");
 	 std::vector<std::string>   validatorList;
 	 for (auto item : schemaParams.validator_list) {
 		std::string sPublicKey = toBase58(TokenType::NodePublic, item.first);
 		validatorList.push_back(sPublicKey);
 	 }
-	 section(std::string("validators")).append(validatorList);
+	 section("validators").append(validatorList);
 
 
 	 CONFIG_FILE = CONFIG_DIR / "chainsqld.cfg";

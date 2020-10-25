@@ -3029,14 +3029,19 @@ std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<S
 			auto newSchema = app_.app().getSchemaManager().createSchema(app_.app().config(), params);
 			if (newSchema)
 			{
-				newSchema->initBeforeSetup();
-				newSchema->setup();
+				if (!newSchema->initBeforeSetup())
+				{
+					return std::make_pair(false, "Error while initBeforeSetup");
+				}
+				if (!newSchema->setup())
+				{
+					return std::make_pair(false, "Error while setup");
+				}
 				app_.app().overlay().dispatch(params.schema_id);
 			}
 		}
 		catch (std::exception const& e)
 		{
-			JLOG(m_journal.fatal()) << e.what();
 			return std::make_pair(false, e.what());
 		}
 	}
@@ -3058,7 +3063,9 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 			account, (*sle)[sfSequence] - 1, alAccepted->info().parentHash);
 		auto const sleSchema = alAccepted->read(sleKey);
 
-		this->createSchema(sleSchema, false);
+		auto ret = this->createSchema(sleSchema, false);
+		if(!ret.first)
+			JLOG(m_journal.fatal()) << ret.second;
 	}
 	else if (stTxn->getTxnType() == ttSCHEMA_MODIFY)
 	{
