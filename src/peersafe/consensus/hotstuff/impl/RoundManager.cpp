@@ -48,7 +48,8 @@ RoundManager::~RoundManager() {
 }
 
 int RoundManager::start() {
-	assert(stop_ == false);
+	stop_ = false;
+	//assert(stop_ == false);
 	// open a new round
 	boost::optional<NewRoundEvent> new_round_event = round_state_->ProcessCertificates(block_store_->sync_info());
 	if (new_round_event) {

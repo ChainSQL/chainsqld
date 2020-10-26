@@ -31,7 +31,6 @@ Hotstuff::Builder::Builder(
 , command_manager_(nullptr)
 , proposer_election_(nullptr)
 , state_compute_(nullptr)
-//, verifier_(nullptr)
 , network_(nullptr) {
 
 }
@@ -56,11 +55,6 @@ Hotstuff::Builder& Hotstuff::Builder::setStateCompute(StateCompute* state_comput
 	return *this;
 }
 
-//Hotstuff::Builder& Hotstuff::Builder::setValidatorVerifier(ValidatorVerifier* verifier) {
-//	verifier_ = verifier;
-//	return *this;
-//}
-
 Hotstuff::Builder& Hotstuff::Builder::setNetWork(NetWork* network) {
 	network_ = network;
 	return *this;
@@ -74,7 +68,6 @@ Hotstuff::pointer Hotstuff::Builder::build() {
 		|| command_manager_ == nullptr
 		|| proposer_election_ == nullptr
 		|| state_compute_ == nullptr
-		//|| verifier_ == nullptr
 		|| network_ == nullptr)
 		return hotstuff;
 
@@ -98,7 +91,6 @@ Hotstuff::Hotstuff(
 	CommandManager* cm,
 	ProposerElection* proposer_election,
 	StateCompute* state_compute,
-	//ValidatorVerifier* verifier,
 	NetWork* network)
 : journal_(journal)
 , config_(config)
@@ -111,18 +103,6 @@ Hotstuff::Hotstuff(
 , hotstuff_core_(journal, state_compute, &epoch_state_)
 , round_manager_(nullptr) {
 
-	//epoch_state_.epoch = 0;
-	//epoch_state_.verifier = verifier;
-
-	//round_manager_ = new RoundManager(
-	//	journal,
-	//	config,
-	//	&storage_, 
-	//	&round_state_, 
-	//	&hotstuff_core_,
-	//	&proposal_generator_,
-	//	proposer_election,
-	//	network);
 }
 
 Hotstuff::~Hotstuff() {
@@ -130,11 +110,13 @@ Hotstuff::~Hotstuff() {
 }
 
 int Hotstuff::start(const RecoverData& recover_data) {
-	assert(round_manager_ == nullptr);
-
-	storage_.updateCeritificates(Block::new_genesis_block(recover_data.init_ledger_info));
+	storage_.updateCeritificates(Block::new_genesis_block(
+		recover_data.init_ledger_info, recover_data.epoch_state.epoch));
 	epoch_state_ = recover_data.epoch_state;
-	
+	hotstuff_core_.Initialize(recover_data.epoch_state.epoch, 0);
+	round_state_.reset();
+	proposal_generator_.reset();
+
 	if (round_manager_ == nullptr) {
 		round_manager_ = new RoundManager(
 			journal_,

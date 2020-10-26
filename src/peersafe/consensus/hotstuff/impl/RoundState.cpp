@@ -71,5 +71,11 @@ int RoundState::insertVote(
 	return pending_votes_.insertVote(vote, verifer, quorumCert, timeoutCert);
 }
 
+void RoundState::reset() {
+	current_round_ = 0;
+	pending_votes_ = PendingVotes();
+	send_vote_ = boost::optional<Vote>();
+}
+
 } // namespace hotstuff
 } // namespace ripple

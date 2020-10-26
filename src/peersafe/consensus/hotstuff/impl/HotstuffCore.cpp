@@ -37,6 +37,13 @@ HotstuffCore::HotstuffCore(
 HotstuffCore::~HotstuffCore() {
 }
 
+void HotstuffCore::Initialize(Epoch epoch, Round round) {
+	safety_data_.epoch = epoch;
+	safety_data_.last_voted_round = round;
+	safety_data_.preferred_round = round;
+	safety_data_.last_vote = boost::optional<Vote>();
+}
+
 Block HotstuffCore::SignProposal(const BlockData& proposal) {
 	// verify author
 	if (VerifyAuthor(proposal.author()) == false) {

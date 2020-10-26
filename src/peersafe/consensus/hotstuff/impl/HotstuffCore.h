@@ -60,6 +60,8 @@ public:
 		EpochState* epoch_state);
     ~HotstuffCore();
 
+	void Initialize(Epoch epoch, Round round);
+
 	Block SignProposal(const BlockData& proposal);
 	bool ConstructAndSignVote(const ExecutedBlock& executed_block, Vote& vote);
 

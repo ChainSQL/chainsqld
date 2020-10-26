@@ -64,6 +64,7 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 		blockData.quorum_cert = hqc.get();
 		blockData.timestamp_usecs = 0;
 		if (hqc->certified_block().hasReconfiguration()) {
+			payload.cmd = ZeroHash();
 			blockData.timestamp_usecs = hqc->certified_block().timestamp_usecs;
 		}
 		else {
@@ -74,8 +75,8 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
                 return boost::none;
             }
             payload.cmd = cmd.get();
-			blockData.payload = payload;
 		}
+		blockData.payload = payload;
 
 		return boost::optional<BlockData>(blockData);
 	}

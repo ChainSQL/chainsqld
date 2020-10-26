@@ -45,6 +45,10 @@ public:
 		return author_;
 	}
 
+	void reset() {
+		last_round_generated_ = 0;
+	}
+
 private:
 	boost::optional<QuorumCertificate> EnsureHighestQuorumCert(Round round);
 

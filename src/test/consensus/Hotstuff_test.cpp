@@ -24,6 +24,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
+#include <future>
+#include <chrono>
 
 #include <boost/format.hpp>
 
@@ -69,6 +71,7 @@ class Replica
 	, public ripple::hotstuff::StateCompute
 	, public ripple::hotstuff::NetWork {
 public:
+	static ripple::hotstuff::Epoch epoch;
 	static std::map<ripple::hotstuff::Round, Replica*> replicas;
 	static ripple::LedgerInfo genesis_ledger_info;
 	static std::string epoch_change;
@@ -89,7 +92,8 @@ public:
 	, hotstuff_(nullptr)
 	, malicious_(malicious)
 	, epoch_change_hash_()
-	, committing_epoch_change_(false) {
+	, committing_epoch_change_(false)
+	, changed_epoch_successed_() {
 
 		std::string epoch_change = "EPOCHCHANGE";
 		using beast::hash_append;
@@ -135,10 +139,10 @@ public:
 			bool has_reconfig = false;
 			for (std::size_t i = 0; i < cmd.size(); i++) {
 				if (cmd == epoch_change_hash_) {
-					std::cout
-						<< config_.id << ": "
-						<< "change reconfiguration" 
-						<< std::endl;
+					//std::cout
+					//	<< config_.id << ": "
+					//	<< "change reconfiguration" 
+					//	<< std::endl;
 					has_reconfig = true;
 					break;
 				}
@@ -165,15 +169,30 @@ public:
 		if (it == committed_blocks_.end()) {
 			//std::cout
 			//	<< config_.id << ": "
-			//	<< block.block_data().round << "," << block.id()
+			//	<< "epoch " << block.block_data().epoch
+			//	<< ", round " << block.block_data().round 
+			//	<< ", id "<< block.id()
 			//	<< std::endl;
 			committed_blocks_.emplace(std::make_pair(block.id(), block));
 		}
 		return 0;
 	}
 
-	const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& committedBlocks() const {
-		return committed_blocks_;
+	//const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& 
+	//committedBlocks() const {
+	//	return committed_blocks_;
+	//}
+
+	std::size_t committedBlocks(
+		const ripple::hotstuff::Epoch& epoch,
+		std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& committed_blocks) {
+
+		committed_blocks.clear();
+		for (auto it = committed_blocks_.begin(); it != committed_blocks_.end(); it++) {
+			if (it->second.block_data().epoch == epoch)
+				committed_blocks.insert(*it);
+		}
+		return committed_blocks.size();
 	}
 
 	// for CommandManager
@@ -257,7 +276,9 @@ public:
 	}
 
 
-	const bool checkVotingPower(const std::map<ripple::hotstuff::Author, ripple::hotstuff::Signature>& signatures) const {
+	const bool checkVotingPower(
+		const std::map<ripple::hotstuff::Author, 
+		ripple::hotstuff::Signature>& signatures) const {
 		int size = Replica::replicas.size();
 		return signatures.size() >= (size - (size - 1)/3);
 	}
@@ -299,31 +320,22 @@ public:
 	}
 
 	void broadcast(const ripple::hotstuff::EpochChange& epoch_change) {
-
-		ripple::hotstuff::EpochState next_epoch_state;
-		next_epoch_state.epoch = epoch_change.epoch + 1;
-
-		// 模拟新增一个节点
-		Replica* new_replica = new Replica(config_, env_, env_->app().journal("testcase"));
-		ripple::hotstuff::RecoverData recover_data{epoch_change.ledger_info, next_epoch_state};
+		Replica::epoch = Replica::epoch + 1;
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			env_->app().getJobQueue().addJob(
 				jtPROPOSAL_t,
 				"broadcast_proposal",
-				[this, it, recover_data](Job&) {
-					std::cout
-						<< it->second->author() << ": "
-						<< "changing epoch and next epoch is " << recover_data.epoch_state.epoch
-						<< std::endl;
+				[this, it](Job&) {
+					//std::cout
+					//	<< it->second->author() << ": "
+					//	<< "changing epoch and next epoch is " << Replica::epoch
+					//	<< std::endl;
 					
-					ripple::hotstuff::RecoverData rd = recover_data;
 					it->second->stop();
-					it->second->run(rd);
+					it->second->setChangedEpochSuccessed(true);
 				});
 		}
-		
-		new_replica->run(recover_data);
 	}
 
 	void sendVote(
@@ -353,6 +365,7 @@ public:
 			io_service_.run();
 		});
 		
+		recover_data.epoch_state.epoch = Replica::epoch;
 		recover_data.epoch_state.verifier = this;
 		hotstuff_->start(recover_data);
 	}
@@ -385,6 +398,20 @@ public:
 	void committing_epoch_change(bool change) {
 		committing_epoch_change_ = change;
 	}
+	
+	void setChangedEpochSuccessed(bool successed) {
+		changed_epoch_successed_.set_value(successed);
+	}
+
+	int waitChangedEpochSuccessed() {
+		std::future<bool> changed_epoch_future = changed_epoch_successed_.get_future();
+		std::future_status status;
+		do {
+			status = changed_epoch_future.wait_for(std::chrono::seconds(1));
+		} while (status != std::future_status::ready);
+
+		return 0;
+	}
 private:
 	boost::asio::io_service io_service_;
 	std::thread worker_;
@@ -396,9 +423,11 @@ private:
 	bool malicious_;
 	ripple::hotstuff::HashValue epoch_change_hash_;
 	bool committing_epoch_change_;
+	std::promise<bool> changed_epoch_successed_;
 
 	static int index;
 };
+ripple::hotstuff::Epoch Replica::epoch = 0;
 std::map<ripple::hotstuff::Round, Replica*> Replica::replicas;
 ripple::LedgerInfo Replica::genesis_ledger_info;
 int Replica::index = 1;
@@ -441,8 +470,8 @@ public:
 		}
 	}
 
-	void newAndRunReplicas(
-		jtx::Env* env, 
+	void newReplicas(
+		jtx::Env* env,
 		beast::Journal& journal, 
 		int replicas,
 		int malicious = 0) {
@@ -464,7 +493,7 @@ public:
 		}
 
 		ripple::hotstuff::Config config;
-		config.epoch = 0;
+		config.epoch = Replica::epoch;
 		config.timeout = timeout_;
 		for (std::size_t i = base; i < (replicas + base); i++) {
 			std::size_t index = i + 1;
@@ -475,21 +504,20 @@ public:
 				index) != maliciousAuthors.end();
 			new Replica(config, env, journal, fake_malicious_replica);
 		}
+	}
 
+	void runReplicas() {
 		ripple::hotstuff::EpochState init_epoch_state;
-		init_epoch_state.epoch = config.epoch;
+		init_epoch_state.epoch = Replica::epoch;
 		init_epoch_state.verifier = nullptr;
 
-		ripple::hotstuff::RecoverData recover_data = 
+		ripple::hotstuff::RecoverData recover_data =
 			ripple::hotstuff::RecoverData{ Replica::genesis_ledger_info, init_epoch_state };
 
-		// 本地测试第一次启动的时候需要保证非 Leader 节点先 run 起来
-		// 然后 leader 节点再 run，原因是 leader 节点 run 起来后会立刻发起
-		// proposal，而此时非 leader 节点可能会没有 run，从而导致 assert
 		for (auto it = Replica::replicas.begin();
-			it != Replica::replicas.end(); 
+			it != Replica::replicas.end();
 			it++) {
-			if(it->first != 1)
+			if (it->first != 1)
 				it->second->run(recover_data);
 		}
 		Replica::replicas[1]->run(recover_data);
@@ -521,7 +549,8 @@ public:
 		while (true) {
 			bool satisfied = true;
 			for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-				if (it->second->committedBlocks().size() < committedBlocks) {
+				std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committed_blocks;
+				if(it->second->committedBlocks(Replica::epoch, committed_blocks) < committedBlocks) {
 					satisfied = false;
 					continue;
 				}
@@ -536,11 +565,13 @@ public:
 	bool hasConsensusedCommittedBlocks(int committedBlocks) {
 		std::vector<ripple::hotstuff::HashValue> summary_hash;
 
+		committedBlocks += 1;
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& committedBlocksContainer = it->second->committedBlocks();
+			std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committedBlocksContainer;
+			it->second->committedBlocks(Replica::epoch, committedBlocksContainer);
+			//const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& committedBlocksContainer = it->second->committedBlocks();
 			using beast::hash_append;
 			ripple::sha512_half_hasher h;
-			committedBlocks += 1;
 			for (int i = 1; i < committedBlocks; i++) {
 				for (auto block_it = committedBlocksContainer.begin(); block_it != committedBlocksContainer.end(); block_it++) {
 					if (i == block_it->second.block_data().round) {
@@ -563,13 +594,20 @@ public:
 		}
 		return true;
 	}
+
+	void waitAllChangedEpochSuccessed() {
+		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+			it->second->waitChangedEpochSuccessed();
+		}
+	}
 	
 	void testNormalRound() {
 		jtx::Env env{ *this };
 		if(disable_log_)
 			env.app().logs().threshold(beast::severities::kDisabled);
 
-		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_);
+		newReplicas(&env, env.app().journal("testCase"), replicas_);
+		runReplicas();
 		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_) == true);
 		stopReplicas(&env, replicas_);
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
@@ -581,7 +619,8 @@ public:
 		if(disable_log_)
 			env.app().logs().threshold(beast::severities::kDisabled);
 
-		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_, false_replicas_);
+		newReplicas(&env, env.app().journal("testCase"), replicas_, false_replicas_);
+		runReplicas();
 		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_) == true);
 		stopReplicas(&env, replicas_);
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
@@ -589,15 +628,27 @@ public:
 	}
 
 	void testAddReplicas() {
+		// 新增节点的步骤
+		// 1. 新节点以新的 epoch 和配置运行
+		// 2. 久节点收到 epoch change 事件后停止当前的 hotstuff
+		// 3. 久节点重新启动 hotstuff 
 
 		jtx::Env env{ *this };
 		if(disable_log_)
 			env.app().logs().threshold(beast::severities::kDisabled);
 
-		newAndRunReplicas(&env, env.app().journal("testCase"), replicas_);
+		newReplicas(&env, env.app().journal("testCase"), replicas_);
+		runReplicas();
 		BEAST_EXPECT(waitUntilCommittedBlocks(2) == true);
+		BEAST_EXPECT(Replica::epoch == 0);
 
 		Replica::replicas[1]->committing_epoch_change(true);
+		waitAllChangedEpochSuccessed();
+		BEAST_EXPECT(Replica::epoch == 1);
+		// Add a new replica and run it
+		newReplicas(&env, env.app().journal("testCase"), 1);
+		// Re-run replicas
+		runReplicas();
 		waitUntilCommittedBlocks(blocks_);
 
 		stopReplicas(&env, replicas_);
@@ -611,7 +662,7 @@ public:
 
 		testNormalRound();
 		testTimeoutRound();
-		//testAddReplicas();
+		testAddReplicas();
     }
 
 	Hotstuff_test()

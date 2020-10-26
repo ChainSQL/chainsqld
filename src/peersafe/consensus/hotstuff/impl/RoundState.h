@@ -72,6 +72,8 @@ public:
 		ValidatorVerifier* verifer, 
 		QuorumCertificate& quorumCert,
 		boost::optional<TimeoutCertificate>& timeoutCert);
+
+	void reset();
 private:
 	void CancelRoundTimeout();
 	Round current_round_;
