@@ -25,6 +25,7 @@
 
 #include <boost/serialization/split_free.hpp>
 #include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/optional.hpp>
 

@@ -38,7 +38,6 @@
 #include <peersafe/serialization/hotstuff/Vote.h>
 #include <peersafe/serialization/hotstuff/SyncInfo.h>
 
-
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/beast/unit_test.h>
@@ -523,7 +522,7 @@ public:
 		Replica::replicas[1]->run(recover_data);
 	}
 
-	void stopReplicas(jtx::Env* env, int replicas) {
+	void stopReplicas(jtx::Env* env, int /*replicas*/) {
 		for (auto it = Replica::replicas.begin();
 			it != Replica::replicas.end(); 
 			it++) {
@@ -536,13 +535,21 @@ public:
 		}
 	}
 
-	void releaseReplicas(int replicas) {
+	void releaseReplicas(int /*replicas*/) {
 		for (auto it = Replica::replicas.begin();
 			it != Replica::replicas.end(); 
 			it++) {
 			delete it->second;
 		}
 		Replica::replicas.clear();
+	}
+
+	void releaseOneReplica(int index) {
+		if (index <= 0 
+			|| index  > Replica::replicas.size())
+			return;
+
+		Replica::replicas.erase(index);
 	}
 
 	bool waitUntilCommittedBlocks(int committedBlocks) {
@@ -631,20 +638,22 @@ public:
 		// 新增节点的步骤
 		// 1. 新节点以新的 epoch 和配置运行
 		// 2. 久节点收到 epoch change 事件后停止当前的 hotstuff
-		// 3. 久节点重新启动 hotstuff 
+		// 3. 久节点使用新配置重新启动 hotstuff 
 
 		jtx::Env env{ *this };
 		if(disable_log_)
 			env.app().logs().threshold(beast::severities::kDisabled);
 
+		ripple::hotstuff::Epoch current_epoch = Replica::epoch;
+
 		newReplicas(&env, env.app().journal("testCase"), replicas_);
 		runReplicas();
 		BEAST_EXPECT(waitUntilCommittedBlocks(2) == true);
-		BEAST_EXPECT(Replica::epoch == 0);
+		BEAST_EXPECT(Replica::epoch == current_epoch);
 
 		Replica::replicas[1]->committing_epoch_change(true);
 		waitAllChangedEpochSuccessed();
-		BEAST_EXPECT(Replica::epoch == 1);
+		BEAST_EXPECT(Replica::epoch == (current_epoch + 1));
 		// Add a new replica and run it
 		newReplicas(&env, env.app().journal("testCase"), 1);
 		// Re-run replicas
@@ -654,7 +663,38 @@ public:
 		stopReplicas(&env, replicas_);
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
 		releaseReplicas(replicas_);
+	}
 
+	void testRemoveReplicas() {
+		// 移除节点的步骤
+		// 1. 发布 epoch change 事件
+		// 2. 收到 epoch change 事件后停止当前的 hotstuff
+		// 3. 使用新配置重新启动 hotstuff 
+
+		jtx::Env env{ *this };
+		if(disable_log_)
+			env.app().logs().threshold(beast::severities::kDisabled);
+
+		ripple::hotstuff::Epoch current_epoch = Replica::epoch;
+
+		newReplicas(&env, env.app().journal("testCase"), replicas_);
+		runReplicas();
+		BEAST_EXPECT(waitUntilCommittedBlocks(2) == true);
+		BEAST_EXPECT(Replica::epoch == current_epoch );
+
+		Replica::replicas[1]->committing_epoch_change(true);
+		waitAllChangedEpochSuccessed();
+		BEAST_EXPECT(Replica::epoch == (current_epoch + 1));
+		// remove a replica
+		releaseOneReplica(replicas_);
+		BEAST_EXPECT(Replica::replicas.size() == (replicas_ - 1));
+		// Re-run replicas
+		runReplicas();
+		waitUntilCommittedBlocks(blocks_);
+
+		stopReplicas(&env, Replica::replicas.size());
+		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
+		releaseReplicas(Replica::replicas.size());
 	}
 
     void run() override {
@@ -663,6 +703,7 @@ public:
 		testNormalRound();
 		testTimeoutRound();
 		testAddReplicas();
+		testRemoveReplicas();
     }
 
 	Hotstuff_test()

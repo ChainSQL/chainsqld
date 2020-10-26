@@ -23,6 +23,7 @@
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 #include <peersafe/consensus/hotstuff/impl/Vote.h>
 #include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
+#include <peersafe/consensus/hotstuff/impl/EpochChange.h>
 
 namespace ripple {
 namespace hotstuff {

@@ -21,6 +21,7 @@
 
 #include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
 #include <peersafe/consensus/hotstuff/impl/StateCompute.h>
+#include <peersafe/consensus/hotstuff/impl/EpochChange.h>
 #include <peersafe/consensus/hotstuff/impl/NetWork.h>
 
 
