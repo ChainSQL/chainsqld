@@ -76,10 +76,8 @@ Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier*
 	block.block_data_ = block_data;
 
 	Signature signature;
-	if (verifier->signature(block.id_, signature) == false)
-		return Block::empty();
-	block.signature_ = signature;
-
+	if (verifier->signature(block.id_, signature))
+		block.signature_ = signature;
 	return block;
 }
 

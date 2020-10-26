@@ -239,10 +239,19 @@ int RoundManager::ProcessVote(const Vote& vote) {
 /// * first execute the block and add it to the block store
 /// * then verify the voting rules
 bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
+	const boost::optional<Signature>& signature = proposal.signature();
+	if (signature) {
+		if (hotstuff_core_->epochState()->verifier->verifySignature(
+			proposal.block_data().author(), signature.get(), proposal.id()) == false) {
+			JLOG(journal_.error())
+				<< "Execute and vote: using an author" << "'s key for verifing signature failed";
+			return false;
+		}
+	}
+
 	ExecutedBlock executed_block = block_store_->executeAndAddBlock(proposal);
 	if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false)
 		return false;
-	//block_store_->saveVote(vote);
 	return true;
 }
 
