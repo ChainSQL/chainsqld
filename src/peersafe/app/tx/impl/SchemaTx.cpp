@@ -3,6 +3,8 @@
 #include <ripple/protocol/STTx.h>
 #include <ripple/ledger/View.h>
 #include <ripple/protocol/st.h>
+#include <ripple/app/main/Application.h>
+#include <ripple/core/Config.h>
 
 
 namespace ripple {
@@ -65,6 +67,12 @@ namespace ripple {
 			!ctx.tx.isFieldPresent(sfValidators) ||
 			!ctx.tx.isFieldPresent(sfPeerList))
 			return temMALFORMED;
+
+		if (ctx.app.schemaId() != beast::zero)
+			return tefSCHEMA_TX_FORBIDDEN;
+
+		if (ctx.app.app().config().SCHEMA_PATH.empty())
+			return tefSCEMA_NO_PATH;
 
 		return preflight2(ctx);
 	}

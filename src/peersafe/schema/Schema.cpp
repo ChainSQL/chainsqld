@@ -986,27 +986,36 @@ private:
 		}
 		else if (startUp == Config::NEWCHAIN_WITHSTATE) {
 
-			auto validLedger = app_.getLedgerMaster().getValidatedLedger();
-			JLOG(m_journal.info()) << "NEWCHAIN_WITHSTATE from seq=" << validLedger->info().seq;
+			auto validLedger = app_.getLedgerMaster().getLedgerByHash(schema_params_.anchor_ledger_hash);
+			JLOG(m_journal.info()) << "NEWCHAIN_WITHSTATE from ledger=" << to_string(schema_params_.anchor_ledger_hash);
 			startGenesisLedger(validLedger);
 		}
-		else if (startUp == Config::NEWCHAIN_LOAD) {
-			if (!loadOldLedger(config_->START_LEDGER,
-				startUp == Config::REPLAY,
-				startUp == Config::LOAD_FILE))
-			{
-				JLOG(m_journal.fatal()) << "Invalid NEWCHAIN_LOAD.";
-				return false;
-			}
-		}
+		//else if (startUp == Config::NEWCHAIN_LOAD) {
+		//	if (!loadOldLedger(config_->START_LEDGER,
+		//		startUp == Config::REPLAY,
+		//		startUp == Config::LOAD_FILE))
+		//	{
+		//		JLOG(m_journal.fatal()) << "Invalid NEWCHAIN_LOAD.";
+		//		return false;
+		//	}
+		//}
 		else
 		{
-			if (!loadOldLedger(config_->START_LEDGER,
-				startUp == Config::REPLAY,
-				startUp == Config::LOAD_FILE))
+			if (getLastFullLedger() != nullptr)
+			{
+				if (!loadOldLedger(config_->START_LEDGER,
+					startUp == Config::REPLAY,
+					startUp == Config::LOAD_FILE))
+				{
+					JLOG(m_journal.fatal()) << "Load old ledger failed for schema:" << to_string(schemaId());
+					return false;
+				}
+			}
+			else
 			{
 				startGenesisLedger();
 			}
+			
 		}
 
 		m_orderBookDB.setup(getLedgerMaster().getCurrentLedger());
