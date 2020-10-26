@@ -45,8 +45,6 @@ public:
     // for blocks
     //bool addBlock(const Block& block);
 	ExecutedBlock executeAndAddBlock(const Block& block);
-    // 基于区块高度释放不再需要用到的区块
-    //void gcBlocks(const Block& block);
     // 通过 block hash 获取 block，如果本地没有函数返回 false
     bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
     // 通过 block hash 获取 block, 如果本地没有则需要从网络同步
@@ -80,6 +78,7 @@ public:
 	//int saveVote(const Vote& vote);
 private:
 	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);
+	void gcBlocks(Epoch epoch, Round round);
     //void recurseGCBlocks(const Block& block);
 	StateCompute* state_compute_;
 	HashValue genesis_block_id_;

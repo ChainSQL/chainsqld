@@ -244,7 +244,9 @@ bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
 		if (hotstuff_core_->epochState()->verifier->verifySignature(
 			proposal.block_data().author(), signature.get(), proposal.id()) == false) {
 			JLOG(journal_.error())
-				<< "Execute and vote: using an author" << "'s key for verifing signature failed";
+				<< "Execute and vote: using an author"
+				<< proposal.block_data().author()
+				<< "'s key for verifing signature failed";
 			return false;
 		}
 	}

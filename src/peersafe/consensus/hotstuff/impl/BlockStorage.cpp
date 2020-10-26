@@ -17,6 +17,7 @@
  */
 //=============================================================================
 
+#include <algorithm>
 
 #include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
 #include <peersafe/consensus/hotstuff/impl/StateCompute.h>
@@ -122,6 +123,10 @@ int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert, NetWork*
 			epoch_change.epoch = quorumCert.ledger_info().ledger_info.commit_info.next_epoch_state->epoch;
 			network->broadcast(epoch_change);
 		}
+
+		gcBlocks(
+			quorumCert.ledger_info().ledger_info.commit_info.epoch,
+			quorumCert.ledger_info().ledger_info.commit_info.round);
 	}
 	return 0;
 }
@@ -136,28 +141,6 @@ int BlockStorage::insertTimeoutCert(const TimeoutCertificate& timeoutCeret) {
 	}
 	return 0;
 }
-
-//int BlockStorage::saveVote(const Vote& vote) {
-//	Round commtiting_round = vote.ledger_info().commit_info.round;
-//	HashValue block_hash = vote.ledger_info().commit_info.id;
-//
-//	if (block_hash.isZero() 
-//		&& vote.ledger_info().commit_info.empty() == false) {
-//		// handle genesis block info
-//		block_hash = genesis_block_id_;
-//	}
-//
-//	if (block_hash.isZero())
-//		return 1;
-//
-//	ExecutedBlock executed_block;
-//	if (blockOf(block_hash, executed_block)
-//		&& committed_round_ < commtiting_round) {
-//		state_compute_->commit(executed_block.block);
-//		committed_round_ = committed_round_;
-//	}
-//	return 0;
-//}
 
 void BlockStorage::commit(const LedgerInfoWithSignatures& ledger_info_with_sigs) {
 	HashValue block_hash = ledger_info_with_sigs.ledger_info.commit_info.id;
@@ -174,6 +157,39 @@ void BlockStorage::commit(const LedgerInfoWithSignatures& ledger_info_with_sigs)
 	if (blockOf(block_hash, executed_block)) {
 		state_compute_->commit(executed_block.block);
 		committed_round_ = executed_block.block.block_data().round;
+	}
+}
+
+void BlockStorage::gcBlocks(Epoch epoch, Round round) {
+	// remove all blocks which are older epoch than current epoch
+	for (auto it = cache_blocks_.begin(); it != cache_blocks_.end();) {
+		if (it->second.block.block_data().epoch < epoch) {
+			it = cache_blocks_.erase(it);
+		}
+		else {
+			it++;
+		}
+	}
+
+	Round end_round = round - 10;
+	if (end_round <= 0)
+		return;
+
+	Round begin_round = round - 10 - 50;
+	if (begin_round < 0)
+		return;
+
+	for (Round r = begin_round; r != end_round; r++) {
+		for (auto it = cache_blocks_.begin(); it != cache_blocks_.end();) {
+			if (it->second.block.block_data().epoch == epoch
+				&& it->second.block.block_data().round == r) {
+				it = cache_blocks_.erase(it);
+				break;
+			}
+			else {
+				it++;
+			}
+		}
 	}
 }
 
