@@ -68,7 +68,7 @@ const TimeoutCertificate SyncInfo::HighestTimeoutCert() const {
 
 const bool SyncInfo::hasNewerCertificate(const SyncInfo& sync_info) const {
 	if (highest_quorum_cert_.certified_block().round > sync_info.highest_quorum_cert_.certified_block().round
-		|| HighestCommitCert().certified_block().round > sync_info.HighestCommitCert().certified_block().round
+		|| HighestCommitCert().ledger_info().ledger_info.commit_info.round > sync_info.HighestCommitCert().ledger_info().ledger_info.commit_info.round
 		|| HighestTimeoutCert().timeout().round > sync_info.HighestTimeoutCert().timeout().round)
 		return true;
 	return false;
@@ -89,8 +89,8 @@ bool SyncInfo::Verify(ValidatorVerifier* validator) {
 	if (highest_quorum_cert_.Verify(validator) == false)
 		return false;
 
-	if (highest_commit_cert_ && highest_commit_cert_->Verify(validator) == false)
-		return false;
+	//if (highest_commit_cert_ && highest_commit_cert_->Verify(validator) == false)
+	//	return false;
 
 	if (highest_timeout_cert_ && highest_timeout_cert_->Verify(validator) == false)
 		return false;

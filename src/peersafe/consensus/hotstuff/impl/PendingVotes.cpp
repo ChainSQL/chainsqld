@@ -53,6 +53,9 @@ int PendingVotes::insertVote(
 		}
 	}
 
+	if (verifer->verifySignature(vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
+		return VoteReceptionResult::ErrorAddingVote;
+
 	// Store a new vote(or update in case it's a new timeout vote)
 	author_to_vote_.emplace(std::make_pair(vote.author(), vote));
 
