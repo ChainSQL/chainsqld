@@ -42,6 +42,14 @@ operator>>(boost::archive::text_iarchive& is, ripple::PublicKey & pk) {
 	return is;
 }
 
+template<class Archive>
+void serialize(
+    Archive& ar,
+    ripple::PublicKey & pk,
+    const unsigned int /*version*/) {
+    ar & pk;
+}
+
 } // namespace ripple
 
 #endif // RIPPLE_SERIALIZATION_PUBLICKEY_H

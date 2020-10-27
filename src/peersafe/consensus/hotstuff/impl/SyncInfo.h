@@ -30,7 +30,6 @@ namespace hotstuff {
 class SyncInfo 
 {
 public:
-    SyncInfo() {}
 	SyncInfo(
 		const QuorumCertificate& highest_qc_cert,
 		const QuorumCertificate& highest_commit_cert,

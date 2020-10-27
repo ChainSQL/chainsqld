@@ -43,7 +43,8 @@ Adaptor::Adaptor(
     LedgerMaster& ledgerMaster,
     InboundTransactions& inboundTransactions,
     ValidatorKeys const& validatorKeys,
-    beast::Journal journal)
+    beast::Journal journal,
+    LocalTxs& localTxs)
     : app_(app)
     , j_(journal)
     , feeVote_(std::move(feeVote))
@@ -52,6 +53,7 @@ Adaptor::Adaptor(
     , nodeID_{ validatorKeys.nodeID }
     , valPublic_{ validatorKeys.publicKey }
     , valSecret_{ validatorKeys.secretKey }
+    , localTxs_(localTxs)
 {
 }
 

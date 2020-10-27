@@ -55,8 +55,8 @@ RpcaPopAdaptor::RpcaPopAdaptor(
         ledgerMaster,
         inboundTransactions,
         validatorKeys,
-        journal)
-    , localTxs_(localTxs)
+        journal,
+        localTxs)
 {
 }
 

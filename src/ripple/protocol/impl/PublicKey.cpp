@@ -36,6 +36,13 @@ operator<<(std::ostream& os, PublicKey const& pk)
     return os;
 }
 
+std::ostringstream&
+operator<<(std::ostringstream& os, PublicKey const& pk)
+{
+    os << strHex(pk);
+    return os;
+}
+
 bool publicKeyComp(PublicKey const& lhs, PublicKey const& rhs)
 {
     return lhs < rhs;

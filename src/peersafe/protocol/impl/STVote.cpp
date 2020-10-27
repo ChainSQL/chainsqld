@@ -19,6 +19,9 @@
 
 
 #include <peersafe/protocol/STVote.h>
+#include <peersafe/serialization/Serialization.h>
+#include <peersafe/serialization/hotstuff/Vote.h>
+#include <peersafe/serialization/hotstuff/SyncInfo.h>
 
 
 namespace ripple {
@@ -28,9 +31,9 @@ STVote::STVote(SerialIter& sit, PublicKey const& publicKey)
     : STObject(getFormat(), sit, sfVote)
     , nodePublic_(publicKey)
 {
-    // TODO deserialize
-    //vote_ = deserialize(getFieldVL(sfVoteImp));
-    //syncInfo_ = deserialize(getFieldVL(sfSyncInfo));
+    // deserialize
+    vote_ = serialization::deserialize<hotstuff::Vote>(Buffer(makeSlice(getFieldVL(sfVoteImp))));
+    syncInfo_ = serialization::deserialize<hotstuff::SyncInfo>(Buffer(makeSlice(getFieldVL(sfSyncInfo))));
 }
 
 STVote::STVote(hotstuff::Vote const& vote, hotstuff::SyncInfo const& syncInfo, PublicKey const nodePublic)
@@ -39,13 +42,15 @@ STVote::STVote(hotstuff::Vote const& vote, hotstuff::SyncInfo const& syncInfo, P
     , syncInfo_(syncInfo)
     , nodePublic_(nodePublic)
 {
-    Blob v, s;
-    // TODO serialize
-    // v = serialize(vote);
-    // s = serialize(syncInfo);
+    // This is our own public key and it should always be valid.
+    if (!publicKeyType(nodePublic))
+        LogicError("Invalid proposeset public key");
 
-    setFieldVL(sfVoteImp, v);
-    setFieldVL(sfSyncInfo, s);
+    Buffer const& v = serialization::serialize(vote);
+    Buffer const& s = serialization::serialize(syncInfo);
+
+    setFieldVL(sfVoteImp, Slice(v.data(), v.size()));
+    setFieldVL(sfSyncInfo, Slice(s.data(), s.size()));
 }
 
 Blob STVote::getSerialized() const

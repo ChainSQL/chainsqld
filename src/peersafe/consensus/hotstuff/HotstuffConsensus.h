@@ -83,9 +83,10 @@ public:
     boost::optional<hotstuff::Command> extract(hotstuff::BlockData &blockData) override final;
 
     // Overwrite StateCompute interfaces.
-    bool compute(const hotstuff::Block& block, LedgerInfo& result) override final;
-    bool verify(const LedgerInfo& info, const LedgerInfo& prevInfo) override final;
+    bool compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result) override final;
+    bool verify(const hotstuff::StateComputeResult& result) override final;
     int commit(const hotstuff::Block& block) override final;
+    bool onQCAggregated(LedgerInfo const& info) override final;
 
     // Overwrite ValidatorVerifier interfaces.
     const hotstuff::Author& Self() const override final;
@@ -104,6 +105,7 @@ public:
     void broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo) override final;
     void broadcast(const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
     void sendVote(const hotstuff::Author& author, const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
+    void broadcast(const hotstuff::EpochChange& epoch_change) override final;
 
 private:
     void peerProposal(

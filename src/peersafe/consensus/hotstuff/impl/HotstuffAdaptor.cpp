@@ -33,14 +33,16 @@ HotstuffAdaptor::HotstuffAdaptor(
     LedgerMaster& ledgerMaster,
     InboundTransactions& inboundTransactions,
     ValidatorKeys const & validatorKeys,
-    beast::Journal journal)
+    beast::Journal journal,
+    LocalTxs& localTxs)
     : Adaptor(
         app,
         std::move(feeVote),
         ledgerMaster,
         inboundTransactions,
         validatorKeys,
-        journal)
+        journal,
+        localTxs)
 {
     if (app_.config().exists(SECTION_HCONSENSUS))
     {
@@ -114,6 +116,18 @@ void HotstuffAdaptor::broadcast(STProposal const& proposal)
     signAndSendMessage(consensus);
 }
 
+void HotstuffAdaptor::broadcast(STVote const& vote)
+{
+    Blob v = vote.getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&v[0], v.size());
+    consensus.set_msgtype(ConsensusMessageType::mtVOTE);
+
+    signAndSendMessage(consensus);
+}
+
 void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
 {
     Blob v = vote.getSerialized();
@@ -126,5 +140,38 @@ void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     signAndSendMessage(pubKey, consensus);
 }
 
+void HotstuffAdaptor::doAccept(RCLCxLedger const& prevLedger)
+{
+    {
+        // Build new open ledger
+        auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
+        auto sl = make_lock(ledgerMaster_.peekMutex(), std::defer_lock);
+        std::lock(lock, sl);
+
+        auto const lastVal = ledgerMaster_.getValidatedLedger();
+        boost::optional<Rules> rules;
+        if (lastVal)
+            rules.emplace(*lastVal, app_.config().features);
+        else
+            rules.emplace(app_.config().features);
+
+        CanonicalTXSet retriableTxs{ beast::zero };
+        app_.openLedger().accept(
+            app_,
+            *rules,
+            prevLedger.ledger_,
+            localTxs_.getTxSet(),
+            false,
+            retriableTxs,
+            tapNONE,
+            "consensus",
+            [&](OpenView& view, beast::Journal j) {
+            // Stuff the ledger with transactions from the queue.
+            return app_.getTxQ().accept(app_, view);
+        });
+    }
+
+    ledgerMaster_.switchLCL(prevLedger.ledger_);
+}
 
 }

@@ -152,6 +152,18 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 	if (stop_)
 		return false;
 
+    const boost::optional<Signature>& signature = proposal.signature();
+    if (signature) {
+        if (hotstuff_core_->epochState()->verifier->verifySignature(
+            proposal.block_data().author(), signature.get(), proposal.id()) == false) {
+            JLOG(journal_.error())
+                << "CheckProposal: using an author "
+                << proposal.block_data().author()
+                << "'s key for verifing signature failed";
+            return false;
+        }
+    }
+
 	if (EnsureRoundAndSyncUp(
 		proposal.block_data().round,
 		sync_info,
@@ -193,6 +205,16 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 	if (stop_)
 		return 1;
 
+    if (hotstuff_core_->epochState()->verifier->verifySignature(
+        vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
+    {
+        JLOG(journal_.error())
+            << "ProcessVote: using an author "
+            << vote.author()
+            << "'s key for verifing signature failed";
+        return 1;
+    }
+
 	if (EnsureRoundAndSyncUp(
 		vote.vote_data().proposed().round,
 		sync_info,
@@ -223,7 +245,8 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		vote,
 		hotstuff_core_->epochState()->verifier,
 		quorumCert, timeoutCert);
-	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
+	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate &&
+        block_store_->onQCAggregated(quorumCert)) {
 		NewQCAggregated(quorumCert);
 		return 0;
 	}
@@ -239,18 +262,6 @@ int RoundManager::ProcessVote(const Vote& vote) {
 /// * first execute the block and add it to the block store
 /// * then verify the voting rules
 bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
-	const boost::optional<Signature>& signature = proposal.signature();
-	if (signature) {
-		if (hotstuff_core_->epochState()->verifier->verifySignature(
-			proposal.block_data().author(), signature.get(), proposal.id()) == false) {
-			JLOG(journal_.error())
-				<< "Execute and vote: using an author"
-				<< proposal.block_data().author()
-				<< "'s key for verifing signature failed";
-			return false;
-		}
-	}
-
 	ExecutedBlock executed_block = block_store_->executeAndAddBlock(proposal);
 	if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false)
 		return false;

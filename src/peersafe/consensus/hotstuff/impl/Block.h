@@ -92,7 +92,6 @@ public:
 
 class Block {
 public: 
-    Block();
     ~Block();
 
 	static Block empty();

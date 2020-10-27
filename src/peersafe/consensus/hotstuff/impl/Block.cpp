@@ -39,6 +39,8 @@ HashValue BlockData::hash(const BlockData& block_data) {
 		hash_append(h, block_data.payload->cmd);
 	}
 
+    hash_append(h, block_data.getLedgerInfo().hash);
+
 	return static_cast<typename	sha512_half_hasher::result_type>(h);
 }
 

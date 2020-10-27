@@ -19,6 +19,8 @@
 
 
 #include <peersafe/protocol/STProposal.h>
+#include <peersafe/serialization/hotstuff/Block.h>
+#include <peersafe/serialization/hotstuff/SyncInfo.h>
 
 
 namespace ripple {
@@ -28,9 +30,9 @@ STProposal::STProposal(SerialIter& sit, PublicKey const& publicKey)
     : STObject(getFormat(), sit, sfProposal)
     , nodePublic_(publicKey)
 {
-    // TODO deserialize
-    //block_ = deserialize(getFieldVL(sfBlock));
-    //syncInfo_ = deserialize(getFieldVL(sfSyncInfo));
+    // deserialize
+    block_ = serialization::deserialize<hotstuff::Block>(Buffer(makeSlice(getFieldVL(sfBlock))));
+    syncInfo_ = serialization::deserialize<hotstuff::SyncInfo>(Buffer(makeSlice(getFieldVL(sfSyncInfo))));
 }
 
 STProposal::STProposal(hotstuff::Block const& block, hotstuff::SyncInfo const& syncInfo, PublicKey const nodePublic)
@@ -43,13 +45,11 @@ STProposal::STProposal(hotstuff::Block const& block, hotstuff::SyncInfo const& s
     if (!publicKeyType(nodePublic))
         LogicError("Invalid proposeset public key");
 
-    Blob b, s;
-    // TODO serialize
-    // b = serialize(block);
-    // s = serialize(syncInfo);
+    Buffer const& b = serialization::serialize(block);
+    Buffer const& s = serialization::serialize(syncInfo);
 
-    setFieldVL(sfBlock, b);
-    setFieldVL(sfSyncInfo, s);
+    setFieldVL(sfBlock, Slice(b.data(), b.size()));
+    setFieldVL(sfSyncInfo, Slice(s.data(), s.size()));
 }
 
 Blob STProposal::getSerialized() const

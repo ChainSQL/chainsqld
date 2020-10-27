@@ -58,7 +58,8 @@ public:
         LedgerMaster& ledgerMaster,
         InboundTransactions& inboundTransactions,
         ValidatorKeys const & validatorKeys,
-        beast::Journal journal);
+        beast::Journal journal,
+        LocalTxs& localTxs);
 
     inline HotstuffConsensusParms const& parms() const
     {
@@ -77,7 +78,10 @@ public:
     onExtractTransactions(RCLCxLedger const& prevLedger, ConsensusMode mode);
 
     void broadcast(STProposal const& proposal);
+    void broadcast(STVote const& vote);
     void sendVote(PublicKey const& pubKey, STVote const& vote);
+
+    void doAccept(RCLCxLedger const& prevLedger);
 
 private:
 

@@ -179,7 +179,7 @@ void RpcaConsensus::startRound(
     NetClock::time_point const& now,
     typename Ledger_t::ID const& prevLedgerID,
     Ledger_t prevLedger,
-    hash_set<NodeID_t> const& nowUntrusted,
+    hash_set<NodeID> const& nowUntrusted,
     bool proposing)
 {
     if (firstRound_)

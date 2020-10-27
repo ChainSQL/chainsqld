@@ -74,6 +74,11 @@ public:
 	int insertQuorumCert(const QuorumCertificate& quorumCeret, NetWork* network);
 	int insertTimeoutCert(const TimeoutCertificate& timeoutCeret);
 
+    bool onQCAggregated(QuorumCertificate const& quorumCeret) const
+    {
+        return state_compute_->onQCAggregated(quorumCeret.certified_block().ledger_info);
+    }
+
 	// 目前主要功能是 commit 共识过的 block
 	//int saveVote(const Vote& vote);
 private:

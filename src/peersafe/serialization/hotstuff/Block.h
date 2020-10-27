@@ -21,6 +21,7 @@
 #define RIPPLE_SERIALIZATION_HOTSTUFF_BLOCK_H
 
 #include <peersafe/serialization/Serialization.h>
+#include <peersafe/serialization/PublicKey.h>
 #include <peersafe/serialization/Buffer.h>
 #include <peersafe/serialization/hotstuff/QuorumCert.h>
 

@@ -28,14 +28,9 @@
 namespace ripple {
 
 
-class LocalTxs;
-
-
 class RpcaPopAdaptor : public Adaptor
 {
 public:
-    LocalTxs&                   localTxs_;
-
     // The timestamp of the last validation we used
     NetClock::time_point lastValidationTime_;
 

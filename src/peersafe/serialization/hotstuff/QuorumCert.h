@@ -21,6 +21,7 @@
 #define RIPPLE_SERIALIZATION_HOTSTUFF_QUORUMCERT_H
 
 #include <peersafe/serialization/Serialization.h>
+#include <peersafe/serialization/PublicKey.h>
 #include <peersafe/serialization/hotstuff/BlockInfo.h>
 #include <peersafe/serialization/hotstuff/VoteData.h>
 

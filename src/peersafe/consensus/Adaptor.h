@@ -45,6 +45,7 @@ namespace ripple {
 
 
 class ValidatorKeys;
+class LocalTxs;
 
 
 // Implements the Adaptor template interface required by Consensus.
@@ -79,6 +80,8 @@ protected:
     std::atomic<std::chrono::milliseconds>  prevRoundTime_{ std::chrono::milliseconds{0} };
     std::atomic<ConsensusMode>              mode_{ ConsensusMode::observing };
 
+    LocalTxs&                   localTxs_;
+
 public:
     Adaptor(
         Application& app,
@@ -86,7 +89,8 @@ public:
         LedgerMaster& ledgerMaster,
         InboundTransactions& inboundTransactions,
         ValidatorKeys const & validatorKeys,
-        beast::Journal journal);
+        beast::Journal journal,
+        LocalTxs& localTxs);
 
     inline NodeID_t const& nodeID() const { return nodeID_; }
     inline PublicKey const& valPublic() const { return valPublic_; }
@@ -101,6 +105,7 @@ public:
     inline LedgerIndex getValidLedgerIndex() const { return ledgerMaster_.getValidLedgerIndex(); }
     inline std::shared_ptr<Ledger const> getValidatedLedger() const { return ledgerMaster_.getValidatedLedger(); }
     inline std::shared_ptr<Ledger const> getLedgerByHash(uint256 const& hash) const { return ledgerMaster_.getLedgerByHash(hash); }
+    inline std::shared_ptr<ReadView const> getCurrentLedger() { return app_.openLedger().current(); }
 
     inline NetClock::time_point closeTime() const { return app_.timeKeeper().closeTime(); }
 
