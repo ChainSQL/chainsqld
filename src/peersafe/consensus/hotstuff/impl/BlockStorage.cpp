@@ -69,6 +69,7 @@ ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 	}
 
 	if (state_compute_->compute(block, executed_block.state_compute_result)) {
+		executed_block.state_compute_result.parent_ledger_info = executed_block.block.block_data().quorum_cert.certified_block().ledger_info;
 		executed_block.block = block;
 		cache_blocks_.emplace(std::make_pair(block.id(), executed_block));
 	}

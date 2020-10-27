@@ -32,11 +32,14 @@ namespace hotstuff {
 struct StateComputeResult {
 	/// ledgen info on application
 	ripple::LedgerInfo ledger_info;
+	/// parent ledgen info on application
+	ripple::LedgerInfo parent_ledger_info;
 	/// If set, this is the new epoch info that should be changed to if this block is committed
 	boost::optional<EpochState> epoch_state;
 
 	StateComputeResult()
 		: ledger_info()
+		, parent_ledger_info()
 		, epoch_state() {
 
 	}
