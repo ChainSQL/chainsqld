@@ -165,7 +165,7 @@ void RCLConsensus::simulate(
 
 bool RCLConsensus::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
 {
-    return adaptor_->checkLedgerAccept(ledger);
+    return !!adaptor_->checkLedgerAccept(ledger->info());
 }
 
 ConsensusType RCLConsensus::stringToConsensusType(std::string const& s)

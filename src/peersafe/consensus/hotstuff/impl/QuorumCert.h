@@ -41,7 +41,7 @@ struct LedgerInfoWithSignatures {
 	Signatures signatures;
 
 	void addSignature(const Author& author, const Signature& signature);
-	bool Verify(const ValidatorVerifier* validator);
+	bool Verify(ValidatorVerifier* validator);
 
 	LedgerInfoWithSignatures(const LedgerInfo& li)
 	: ledger_info(li)
@@ -95,7 +95,7 @@ public:
 		return signed_ledger_info_;
 	}
 
-	bool Verify(const ValidatorVerifier* validator);
+	bool Verify(ValidatorVerifier* validator);
 
 private:
 	VoteData vote_data_;

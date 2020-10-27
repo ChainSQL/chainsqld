@@ -1091,6 +1091,21 @@ OverlayImpl::findPeerByPublicKey (PublicKey const& pubKey)
     return {};
 }
 
+std::shared_ptr<Peer>
+OverlayImpl::findPeerByValPublicKey(PublicKey const& pubKey)
+{
+    std::lock_guard <decltype(mutex_)> lock(mutex_);
+    for (auto const& e : ids_)
+    {
+        if (auto peer = e.second.lock())
+        {
+            if (peer->getValPublic() && peer->getValPublic().get() == pubKey)
+                return peer;
+        }
+    }
+    return {};
+}
+
 void
 OverlayImpl::send(protocol::TMConsensus& m)
 {
@@ -1100,6 +1115,18 @@ OverlayImpl::send(protocol::TMConsensus& m)
     {
         p->send(sm);
     });
+}
+
+void
+OverlayImpl::send(PublicKey const& pubKey, protocol::TMConsensus& m)
+{
+    auto const sm = std::make_shared<Message>(
+        m, protocol::mtCONSENSUS);
+
+    if (auto peer = findPeerByValPublicKey(pubKey))
+    {
+        peer->send(sm);
+    }
 }
 
 void

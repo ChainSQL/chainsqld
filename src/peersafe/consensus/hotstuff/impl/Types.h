@@ -28,6 +28,8 @@
 #include <ripple/basics/Blob.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/PublicKey.h>
+#include <peersafe/consensus/Adaptor.h>
+
 
 namespace ripple { namespace hotstuff {
 
@@ -38,7 +40,8 @@ inline HashValue ZeroHash() {
 }
 
 //using BlockHash = sha512_half_hasher::result_type; 
-using Command = std::vector<std::string>;
+//using Command = std::vector<std::string>;
+using Command = ripple::Adaptor::TxSet_t::ID;
 
 using Author = ripple::PublicKey;
 using ReplicaID = int;
@@ -50,10 +53,12 @@ using PrivateKey = ripple::SecretKey;
 using Signature = ripple::Buffer;
 
 
+class BlockData;
+
 class CommandManager {
 public:
 	virtual ~CommandManager() {};
-	virtual void extract(Command& cmd) = 0;
+	virtual boost::optional<Command> extract(BlockData &block_data) = 0;
 protected:
 	CommandManager() {};
 };

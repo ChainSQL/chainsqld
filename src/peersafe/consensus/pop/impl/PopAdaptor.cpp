@@ -431,7 +431,7 @@ void PopAdaptor::doAccept(
     {
         ledgerMaster_.switchLCL(built.ledger_);
 
-        if (checkLedgerAccept(built.ledger_))
+        if (checkLedgerAccept(built.ledger_->info()))
         {
             doValidLedger(built.ledger_);
         }

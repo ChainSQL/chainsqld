@@ -69,6 +69,8 @@ public:
 		const ripple::hotstuff::Block& proposal,
 		const ripple::hotstuff::SyncInfo& sync_info);
 
+    int vote(const ripple::hotstuff::Block& proposal);
+
 	int handleVote(
 		const ripple::hotstuff::Vote& vote,
 		const ripple::hotstuff::SyncInfo& sync_info);

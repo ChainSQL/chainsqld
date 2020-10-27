@@ -211,7 +211,10 @@ public:
 				jtPROPOSAL_t,
 				"broadcast_proposal",
 				[this, it, proposal, sync_info](Job&) {
-					it->second->hotstuff_->handleProposal(proposal, sync_info);
+                    if (it->second->hotstuff_->handleProposal(proposal, sync_info) == 0)
+                    {
+                        it->second->hotstuff_->handleProposal(proposal);
+                    }
 				});
 		}
 	}

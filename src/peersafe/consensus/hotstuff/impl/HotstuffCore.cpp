@@ -89,12 +89,11 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 	}
 	
 	HashValue id = proposed_block.id();
-	ripple::Slice message(id.data(), id.size());
 	if (proposed_block.signature()
 		&& epoch_state_->verifier->verifySignature(
 			proposed_block.block_data().author(),
 			proposed_block.signature().get(),
-			message) == false) {
+			id) == false) {
 		JLOG(journal_.error())
 			<< "Construct And Signed vote:"
 			<< "invalid block' signature";
@@ -105,7 +104,7 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 		return false;
 	// if already voted on this round, send back the previous vote.
 	if (safety_data_.last_vote) {
-		if (vote.vote_data().proposed().round == proposed_block.block_data().round) {
+		if (safety_data_.last_vote->vote_data().proposed().round == proposed_block.block_data().round) {
 			safety_data_.last_voted_round = proposed_block.block_data().round;
 			vote = safety_data_.last_vote.get();
 			return true;
@@ -123,7 +122,7 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 
 	Signature signature;
 	HashValue hash = vote_data.hash();
-	if (epoch_state_->verifier->signature(ripple::Slice(hash.data(), hash.size()), signature) == false)
+	if (epoch_state_->verifier->signature(hash, signature) == false)
 		return false;
 
 	ledger_info.consensus_data_hash = hash;
@@ -149,7 +148,7 @@ bool HotstuffCore::VerifyQC(const QuorumCertificate& qc) {
 		if (epoch_state_->verifier->verifySignature(
 			it->first,
 			it->second,
-			ripple::Slice(hash.data(), hash.size())) == false)
+			hash) == false)
 			return false;
 	}
 	return true;

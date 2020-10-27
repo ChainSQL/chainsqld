@@ -37,8 +37,7 @@ struct Timeout {
 		hash_append(h, round);
 
 		HashValue hash = static_cast<typename sha512_half_hasher::result_type>(h);
-		ripple::Slice message(hash.data(), hash.size());
-		return verifier->signature(message, signature);
+		return verifier->signature(hash, signature);
 	}
 };
 

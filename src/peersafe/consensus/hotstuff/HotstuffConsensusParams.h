@@ -13,6 +13,8 @@ namespace ripple {
 struct HotstuffConsensusParms
 {
     explicit HotstuffConsensusParms() = default;
+
+    unsigned maxTXS_IN_LEDGER = 10000;
 };
 
 

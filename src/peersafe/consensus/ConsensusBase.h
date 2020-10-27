@@ -24,7 +24,6 @@
 #include <ripple/basics/chrono.h>
 #include <ripple/json/json_value.h>
 #include <ripple/beast/utility/Journal.h>
-#include <peersafe/protocol/STProposeSet.h>
 #include <peersafe/consensus/Adaptor.h>
 #include <peersafe/consensus/ConsensusTypes.h>
 
@@ -37,6 +36,8 @@ enum ConsensusMessageType
     mtPROPOSESET    = 0,
     mtVALIDATION    = 1,
     mtVIEWCHANGE    = 2,
+    mtPROPOSAL      = 3,
+    mtVOTE          = 4,
 };
 
 

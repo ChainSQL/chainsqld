@@ -135,6 +135,7 @@ private:
     bool detaching_ = false;
     // Node public key of peer.
     PublicKey const publicKey_;
+    boost::optional<PublicKey> publicValidate_;
     std::string name_;
     std::shared_timed_mutex mutable nameMutex_;
 
@@ -314,6 +315,12 @@ public:
     getNodePublic () const override
     {
         return publicKey_;
+    }
+
+    boost::optional<PublicKey> const&
+    getValPublic() const override
+    {
+        return publicValidate_;
     }
 
     /** Return the version of rippled that the peer is running, if reported. */
@@ -562,6 +569,11 @@ PeerImp::PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& s
     , response_(std::move(response))
     , headers_(response_)
 {
+    if (hello_.has_validatepublic())
+    {
+        publicValidate_ = parseBase58<PublicKey>(TokenType::NodePublic, hello_.validatepublic());
+    }
+
     read_buffer_.commit (boost::asio::buffer_copy(read_buffer_.prepare(
         boost::asio::buffer_size(buffers)), buffers));
 }

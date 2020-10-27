@@ -140,6 +140,11 @@ int Hotstuff::handleProposal(
     return round_manager_->ProcessProposal(proposal, sync_info);
 }
 
+int Hotstuff::vote(const ripple::hotstuff::Block& proposal)
+{
+    return round_manager_->ProcessProposal(proposal);
+}
+
 int Hotstuff::handleVote(
     const ripple::hotstuff::Vote& vote,
     const ripple::hotstuff::SyncInfo& sync_info) {

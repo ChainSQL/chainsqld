@@ -62,6 +62,7 @@ class PathRequests;
 class PendingSaves;
 class PublicKey;
 class SecretKey;
+class ValidatorKeys;
 class AccountIDCache;
 class STLedgerEntry;
 class TimeKeeper;
@@ -175,9 +176,8 @@ public:
     std::pair<PublicKey, SecretKey> const&
     nodeIdentity () = 0;
 
-    virtual
-    PublicKey const &
-    getValidationPublicKey() const  = 0;
+    virtual PublicKey const&        getValidationPublicKey() const = 0;
+    virtual ValidatorKeys const&	getValidatorKeys() const = 0;
     virtual Resource::Manager&      getResourceManager () = 0;
     virtual PathRequests&           getPathRequests () = 0;
     virtual SHAMapStore&            getSHAMapStore () = 0;

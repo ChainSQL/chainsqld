@@ -197,8 +197,14 @@ public:
     std::shared_ptr<Peer>
     findPeerByPublicKey (PublicKey const& pubKey) override;
 
+    std::shared_ptr<Peer>
+    findPeerByValPublicKey(PublicKey const& pubKey) override;
+
     void
     send (protocol::TMConsensus& m) override;
+
+    void
+    send(PublicKey const& pubKey, protocol::TMConsensus& m) override;
 
     void
     relay(protocol::TMConsensus& m, uint256 const& uid) override;

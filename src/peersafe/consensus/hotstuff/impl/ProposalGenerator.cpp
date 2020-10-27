@@ -61,7 +61,12 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 	BlockData::Payload payload;
 	payload.author = author_;
 	// extrats txs
-	command_manager_->extract(payload.cmd);
+	auto cmd = command_manager_->extract(blockData);
+    if (!cmd)
+    {
+        return boost::none;
+    }
+    payload.cmd = cmd.get();
 
 	blockData.payload = payload;
 

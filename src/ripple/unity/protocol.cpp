@@ -67,6 +67,8 @@
 #include <peersafe/protocol/impl/Contract.cpp>
 #include <peersafe/protocol/impl/STProposeSet.cpp>
 #include <peersafe/protocol/impl/STViewChange.cpp>
+#include <peersafe/protocol/impl/STProposal.cpp>
+#include <peersafe/protocol/impl/STVote.cpp>
 
 #if DOXYGEN
 #include <ripple/protocol/README.md>

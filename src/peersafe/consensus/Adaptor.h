@@ -28,6 +28,7 @@
 #include <ripple/app/consensus/RCLCxLedger.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <ripple/app/consensus/RCLCxTx.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/ledger/InboundTransactions.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/ledger/LedgerMaster.h>
@@ -89,6 +90,7 @@ public:
 
     inline NodeID_t const& nodeID() const { return nodeID_; }
     inline PublicKey const& valPublic() const { return valPublic_; }
+    inline SecretKey const& valSecret() const { return valSecret_; }
 
     inline bool validating() const { return validating_; }
     inline std::size_t prevProposers() const { return prevProposers_; }
@@ -98,10 +100,15 @@ public:
     inline bool haveValidated() const { return ledgerMaster_.haveValidated(); };
     inline LedgerIndex getValidLedgerIndex() const { return ledgerMaster_.getValidLedgerIndex(); }
     inline std::shared_ptr<Ledger const> getValidatedLedger() const { return ledgerMaster_.getValidatedLedger(); }
+    inline std::shared_ptr<Ledger const> getLedgerByHash(uint256 const& hash) const { return ledgerMaster_.getLedgerByHash(hash); }
 
     inline NetClock::time_point closeTime() const { return app_.timeKeeper().closeTime(); }
 
     inline std::size_t getQuorum() const { return app_.validators().quorum(); }
+
+    inline boost::optional<PublicKey> getTrustedKey(PublicKey const& identity) const {
+        return app_.validators().getTrustedKey(identity);
+    }
 
     inline PublicKey getMasterKey(PublicKey pk) const { return app_.validatorManifests().getMasterKey(pk); }
 
@@ -141,6 +148,16 @@ public:
         inboundTransactions_.giveSet(set.id(), set.map_, false);
     }
 
+    /**
+    * Determines how many validations are needed to fully validate a ledger
+    *
+    * @return Number of validations needed
+    */
+    inline std::size_t getNeededValidations()
+    {
+        return app_.config().standalone() ? 0 : app_.validators().quorum();
+    }
+
     /** Called before kicking off a new consensus round.
 
         @param prevLedger Ledger that will be prior ledger for next round
@@ -160,6 +177,7 @@ public:
         bool haveCorrectLCL);
 
     void signAndSendMessage(protocol::TMConsensus &consensus);
+    void signAndSendMessage(PublicKey const& pubKey, protocol::TMConsensus &consensus);
 
     /** Acquire the transaction set associated with a proposal.
 
@@ -180,27 +198,37 @@ public:
     */
     virtual boost::optional<RCLCxLedger> acquireLedger(LedgerHash const& hash);
 
-    /** Process the accepted ledger.
+    /** Build the new last closed ledger.
 
-        @param result The result of consensus
-        @param prevLedger The closed ledger consensus worked from
-        @param closeResolution The resolution used in agreeing on an
-                                effective closeTime
-        @param rawCloseTimes The unrounded closetimes of ourself and our
-                                peers
-        @param mode Our participating mode at the time consensus was
-                    declared
-        @param consensusJson Json representation of consensus state
+        Accept the given the provided set of consensus transactions and
+        build the last closed ledger. Since consensus just agrees on which
+        transactions to apply, but not whether they make it into the closed
+        ledger, this function also populates retriableTxs with those that
+        can be retried in the next round.
+
+        @param previousLedger Prior ledger building upon
+        @param retriableTxs On entry, the set of transactions to apply to
+                            the ledger; on return, the set of transactions
+                            to retry in the next round.
+        @param closeTime The time the ledger closed
+        @param closeTimeCorrect Whether consensus agreed on close time
+        @param closeResolution Resolution used to determine consensus close
+                                time
+        @param roundTime Duration of this consensus rorund
+        @param failedTxs Populate with transactions that we could not
+                            successfully apply.
+        @return The newly built ledger
     */
-    virtual void onAccept(
-        Result const& result,
-        RCLCxLedger const& prevLedger,
-        NetClock::duration const& closeResolution,
-        ConsensusCloseTimes const& rawCloseTimes,
-        ConsensusMode const& mode,
-        Json::Value&& consensusJson) = 0;
+    RCLCxLedger buildLCL(
+        RCLCxLedger const& previousLedger,
+        CanonicalTXSet& retriableTxs,
+        NetClock::time_point closeTime,
+        bool closeTimeCorrect,
+        NetClock::duration closeResolution,
+        std::chrono::milliseconds roundTime,
+        std::set<TxID>& failedTxs);
 
-    virtual bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) = 0;
+    virtual std::shared_ptr<Ledger const> checkLedgerAccept(LedgerInfo const& info);
 
     inline void doValidLedger(std::shared_ptr<Ledger const> const& ledger)
     {
@@ -213,6 +241,9 @@ public:
         @param after The new consensus mode
     */
     void onModeChange(ConsensusMode before, ConsensusMode after);
+
+private:
+    void signMessage(protocol::TMConsensus &consensus);
 };
 
 

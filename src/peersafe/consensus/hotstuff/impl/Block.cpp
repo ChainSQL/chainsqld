@@ -35,9 +35,7 @@ HashValue BlockData::hash(const BlockData& block_data) {
 	hash_append(h, block_data.block_type);
 
 	if (block_data.block_type == BlockData::Proposal) {
-		for (std::size_t i = 0; i < block_data.payload->cmd.size(); i++) {
-			hash_append(h, block_data.payload->cmd[i]);
-		}
+		hash_append(h, block_data.payload->cmd);
 	}
 
 	return static_cast<typename	sha512_half_hasher::result_type>(h);
@@ -75,9 +73,8 @@ Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier*
 
 	block.id_ = BlockData::hash(block_data);
 	block.block_data_ = block_data;
-	ripple::Slice message = ripple::Slice((const void*)block.id_.data(), block.id_.size());
 	Signature signature;
-	if (verifier->signature(message, signature) == false)
+	if (verifier->signature(block.id_, signature) == false)
 		return Block::empty();
 	block.signature_ = signature;
 

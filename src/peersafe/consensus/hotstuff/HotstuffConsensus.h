@@ -22,6 +22,9 @@
 #define PEERSAFE_HOTSTUFF_CONSENSUS_H_INCLUDED
 
 
+#include <peersafe/protocol/STProposal.h>
+#include <peersafe/protocol/STVote.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
 #include <peersafe/consensus/hotstuff/Hotstuff.h>
@@ -32,9 +35,10 @@ namespace ripple {
 
 class HotstuffConsensus final
     : public ripple::ConsensusBase
-    , public hotstuff::StateCompute
     , public hotstuff::CommandManager
+    , public hotstuff::StateCompute
     , public hotstuff::ValidatorVerifier
+    , public hotstuff::NetWork
 {
 public:
     HotstuffConsensus(ripple::Adaptor& adaptor, clock_type const& clock, beast::Journal j);
@@ -76,38 +80,58 @@ public:
     Json::Value getJson(bool full) const override final;
 
     // Overwrite CommandManager extract interface.
-    void extract(hotstuff::Command& cmd) override final;
+    boost::optional<hotstuff::Command> extract(hotstuff::BlockData &blockData) override final;
 
     // Overwrite StateCompute interfaces.
-    bool compute(const hotstuff::Block& block, LedgerInfo& ledger_info) override final;
-    bool verify(const LedgerInfo& ledger_info, const LedgerInfo& parent_ledger_info) override final;
+    bool compute(const hotstuff::Block& block, LedgerInfo& result) override final;
+    bool verify(const LedgerInfo& info, const LedgerInfo& prevInfo) override final;
     int commit(const hotstuff::Block& block) override final;
 
     // Overwrite ValidatorVerifier interfaces.
     const hotstuff::Author& Self() const override final;
-    bool signature(const Slice& message, hotstuff::Signature& signature) override final;
+    bool signature(const uint256& digest, hotstuff::Signature& signature) override final;
     const bool verifySignature(
         const hotstuff::Author& author,
         const hotstuff::Signature& signature,
-        const Slice& message) const override final;
+        const uint256& digest) const override final;
     const bool verifyLedgerInfo(
         const hotstuff::BlockInfo& commit_info,
         const hotstuff::HashValue& consensus_data_hash,
-        const std::map<hotstuff::Author, hotstuff::Signature>& signatures) const override final;
+        const std::map<hotstuff::Author, hotstuff::Signature>& signatures) override final;
     const bool checkVotingPower(const std::map<hotstuff::Author, hotstuff::Signature>& signatures) const override final;
 
-private:
-    int handleProposal(
-        const ripple::hotstuff::Block& proposal,
-        const ripple::hotstuff::SyncInfo& sync_info);
+    // Overwrite NetWork interfaces.
+    void broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo) override final;
+    void broadcast(const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
+    void sendVote(const hotstuff::Author& author, const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
 
-    int handleVote(
-        const ripple::hotstuff::Vote& vote,
-        const ripple::hotstuff::SyncInfo& sync_info);
+private:
+    void peerProposal(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    void peerProposalInternal(STProposal::ref proposal);
+
+    void peerVote(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    void newRound(
+        RCLCxLedger::ID const& prevLgrId,
+        RCLCxLedger const& prevLgr,
+        ConsensusMode mode);
 
 private:
     HotstuffAdaptor& adaptor_;
     std::shared_ptr<hotstuff::Hotstuff> hotstuff_;
+
+    NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
+
+    std::recursive_mutex lock_;
+    hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
+    std::map<typename TxSet_t::ID, std::map<PublicKey, STProposal::pointer>> proposalCache_;
 };
 
 

@@ -21,7 +21,8 @@
 #define RIPPLE_CONSENSUS_CONSENSUS_TYPES_H_INCLUDED
 
 #include <ripple/basics/chrono.h>
-#include <peersafe/protocol/STProposeSet.h>
+//#include <peersafe/protocol/STProposeSet.h>
+#include <ripple/protocol/STObject.h>
 #include <peersafe/consensus/rpca/DisputedTx.h>
 #include <chrono>
 #include <map>
@@ -212,7 +213,7 @@ struct ConsensusResult
     ConsensusResult(TxSet_t&& s, Proposal_t&& p)
         : txns{std::move(s)}, position{std::move(p)}
     {
-        assert(txns.id() == position.position());
+        //assert(txns.id() == position.position());
     }
 
     //! The set of transactions consensus agrees go in the ledger

@@ -48,6 +48,8 @@ SField const sfValidation   (access, STI_VALIDATION,  257, "Validation");
 SField const sfMetadata     (access, STI_METADATA,    257, "Metadata");
 SField const sfProposeSet   (access, STI_PROPOSESET,  257, "ProposeSet");
 SField const sfViewChange   (access, STI_VIEWCHANGE,  257, "ViewChange");
+SField const sfProposal     (access, STI_PROPOSAL,    257, "Proposal");
+SField const sfVote         (access, STI_VOTE,        257, "Vote");
 SField const sfHash         (access, STI_HASH256,     257, "hash");
 SField const sfIndex        (access, STI_HASH256,     258, "index");
 
@@ -229,6 +231,9 @@ SF_Blob const sfContractCode	(access, STI_VL, 64, "ContractCode");
 SF_Blob const sfContractData	(access, STI_VL, 65, "ContractData");
 SF_Blob const sfContractTxs     (access, STI_VL, 66, "ContractTxs");
 SF_Blob const sfContractLogs    (access, STI_VL, 67, "ContractLogs");
+SF_Blob const sfBlock           (access, STI_VL, 68, "Block");
+SF_Blob const sfVoteImp         (access, STI_VL, 69, "VoteImp");
+SF_Blob const sfSyncInfo        (access, STI_VL, 70, "SyncInfo");
 
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");

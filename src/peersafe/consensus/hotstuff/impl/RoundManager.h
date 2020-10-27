@@ -50,8 +50,8 @@ public:
 
 	int ProcessProposal(const Block& proposal, const SyncInfo& sync_info);
 	int ProcessVote(const Vote& vote, const SyncInfo& sync_info);
+    int ProcessProposal(const Block& proposal);
 private:
-	int ProcessProposal(const Block& proposal);
 	int ProcessVote(const Vote& vote);
 	bool ExecuteAndVote(const Block& proposal, Vote& vote);
 	int ProcessNewRoundEvent(const NewRoundEvent& event);

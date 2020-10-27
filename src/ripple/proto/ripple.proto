@@ -109,6 +109,8 @@ message TMHello
     optional uint32         remote_ip       = 15; // NOT USED -- IP we see connection from
     optional string         local_ip_str    = 16; // our public IP
     optional string         remote_ip_str   = 17; // IP we see connection from
+    optional bytes 			validatePublic  = 18;
+    optional bytes 			validateProof   = 19;
 }
 
 // The status of a node in our cluster

@@ -68,6 +68,16 @@ public:
 		return  BlockData::NONEAUTHOR;
 	}
 
+    ripple::LedgerInfo& getLedgerInfo()
+    {
+        return quorum_cert.ledger_info().ledger_info.commit_info.ledger_info;
+    }
+
+    ripple::LedgerInfo const& getLedgerInfo() const
+    {
+        return quorum_cert.ledger_info().ledger_info.commit_info.ledger_info;
+    }
+
 	static HashValue hash(const BlockData& block_data);
 
 	BlockData()
@@ -82,6 +92,7 @@ public:
 
 class Block {
 public: 
+    Block();
     ~Block();
 
 	static Block empty();
@@ -103,14 +114,18 @@ public:
 		return block_data_;
 	}
 
+    ripple::LedgerInfo const& getLedgerInfo() const
+    {
+        return block_data_.getLedgerInfo();
+    }
+
 	const boost::optional<Signature>& signature() const {
 		return signature_;
 	}
 
 	BlockInfo gen_block_info(const ripple::LedgerInfo& ledger_info);
-private:
-    Block();
 
+private:
 	HashValue id_;
 	BlockData block_data_;
 	boost::optional<Signature> signature_;

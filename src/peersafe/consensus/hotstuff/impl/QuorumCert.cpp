@@ -30,7 +30,7 @@ void LedgerInfoWithSignatures::addSignature(const Author& author, const Signatur
 	signatures[author] = signature;
 }
 
-bool LedgerInfoWithSignatures::Verify(const ValidatorVerifier* validator) {
+bool LedgerInfoWithSignatures::Verify(ValidatorVerifier* validator) {
 	return validator->verifyLedgerInfo(
 		ledger_info.commit_info, 
 		ledger_info.consensus_data_hash, 
@@ -59,7 +59,7 @@ QuorumCertificate::~QuorumCertificate() {
 
 }
 
-bool QuorumCertificate::Verify(const ValidatorVerifier* validator) {
+bool QuorumCertificate::Verify(ValidatorVerifier* validator) {
 	HashValue vote_hash = vote_data_.hash();
 	if (ledger_info().ledger_info.consensus_data_hash != vote_hash)
 		return false;
@@ -131,10 +131,9 @@ bool TimeoutCertificate::Verify(const ValidatorVerifier* validator) {
 	hash_append(h, timeout_.epoch);
 	hash_append(h, timeout_.round);
 	HashValue hash = static_cast<typename sha512_half_hasher::result_type>(h);
-	ripple::Slice message(hash.data(), hash.size());
 
 	for (auto it = signatures_.begin(); it != signatures_.end(); it++) {
-		if (validator->verifySignature(it->first, it->second, message) == false)
+		if (validator->verifySignature(it->first, it->second, hash) == false)
 			return false;
 	}
 	return true;

@@ -87,6 +87,10 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , request_(std::move(request))
     , headers_(request_)
 {
+    if (hello_.has_validatepublic())
+    {
+        publicValidate_ = parseBase58<PublicKey>(TokenType::NodePublic, hello_.validatepublic());
+    }
 }
 
 PeerImp::~PeerImp ()

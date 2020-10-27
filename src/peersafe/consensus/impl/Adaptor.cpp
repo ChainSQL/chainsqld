@@ -23,6 +23,7 @@
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/Transaction.h>
+#include <ripple/app/ledger/BuildLedger.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/overlay/Overlay.h>
 #include <ripple/overlay/predicates.h>
@@ -135,7 +136,7 @@ void Adaptor::notify(
     JLOG(j_.trace()) << "send status change to peer";
 }
 
-void Adaptor::signAndSendMessage(protocol::TMConsensus &consensus)
+void Adaptor::signMessage(protocol::TMConsensus &consensus)
 {
     consensus.set_signerpubkey(valPublic_.data(), valPublic_.size());
 
@@ -143,12 +144,28 @@ void Adaptor::signAndSendMessage(protocol::TMConsensus &consensus)
     auto const& signature = signDigest(valPublic_, valSecret_, signingHash);
 
     consensus.set_signature(signature.data(), signature.size());
+}
+
+void Adaptor::signAndSendMessage(protocol::TMConsensus &consensus)
+{
+    signMessage(consensus);
 
     // suppress it if we receive it
     app_.getHashRouter().addSuppression(consensusMessageUniqueId(consensus));
 
     // Send signed consensus message to all of our directly connected peers
     app_.overlay().send(consensus);
+}
+
+void Adaptor::signAndSendMessage(PublicKey const& pubKey, protocol::TMConsensus &consensus)
+{
+    signMessage(consensus);
+
+    // suppress it if we receive it
+    app_.getHashRouter().addSuppression(consensusMessageUniqueId(consensus));
+
+    // Send signed consensus message to all of our directly connected peers
+    app_.overlay().send(pubKey, consensus);
 }
 
 boost::optional<RCLTxSet> Adaptor::acquireTxSet(RCLTxSet::ID const& setId)
@@ -191,6 +208,72 @@ boost::optional<RCLCxLedger> Adaptor::acquireLedger(LedgerHash const& hash)
     inboundTransactions_.newRound(built->info().seq);
 
     return RCLCxLedger(built);
+}
+
+
+RCLCxLedger Adaptor::buildLCL(
+    RCLCxLedger const& previousLedger,
+    CanonicalTXSet& retriableTxs,
+    NetClock::time_point closeTime,
+    bool closeTimeCorrect,
+    NetClock::duration closeResolution,
+    std::chrono::milliseconds roundTime,
+    std::set<TxID>& failedTxs)
+{
+    std::shared_ptr<Ledger> built = [&]()
+    {
+
+        if (auto const replayData = ledgerMaster_.releaseReplay())
+        {
+            assert(replayData->parent()->info().hash == previousLedger.id());
+            return buildLedger(*replayData, tapNO_CHECK_SIGN | tapForConsensus, app_, j_);
+        }
+        return buildLedger(previousLedger.ledger_, closeTime, closeTimeCorrect,
+            closeResolution, app_, retriableTxs, failedTxs, j_);
+    }();
+
+    auto v2_enabled = built->rules().enabled(featureSHAMapV2);
+    auto disablev2_enabled = built->rules().enabled(featureDisableV2);
+
+    if (disablev2_enabled && built->stateMap().is_v2())
+    {
+        built->make_v1();
+        JLOG(j_.warn()) << "Begin transfer to v1,LedgerSeq = " << built->info().seq;
+    }
+    else if (!disablev2_enabled && v2_enabled && !built->stateMap().is_v2())
+    {
+        built->make_v2();
+        JLOG(j_.warn()) << "Begin transfer to v2,LedgerSeq = " << built->info().seq;
+    }
+
+    // Update fee computations based on accepted txs
+    using namespace std::chrono_literals;
+    app_.getTxQ().processClosedLedger(app_, *built, roundTime > 5s);
+
+    // And stash the ledger in the ledger master
+    if (ledgerMaster_.storeLedger(built))
+        JLOG(j_.debug()) << "Consensus built ledger we already had";
+    else if (app_.getInboundLedgers().find(built->info().hash))
+        JLOG(j_.debug()) << "Consensus built ledger we were acquiring";
+    else
+        JLOG(j_.debug()) << "Consensus built new ledger";
+    return RCLCxLedger{ std::move(built) };
+}
+
+std::shared_ptr<Ledger const> Adaptor::checkLedgerAccept(LedgerInfo const& info)
+{
+    auto ledger = ledgerMaster_.getLedgerByHash(info.hash);
+    if (!ledger || ledger->seq() != info.seq)
+    {
+        return nullptr;
+    }
+
+    LedgerMaster::ScopedLockType ml(ledgerMaster_.peekMutex());
+
+    if (info.seq <= getValidLedgerIndex())
+        return nullptr;
+
+    return ledger;
 }
 
 void Adaptor::onModeChange(ConsensusMode before, ConsensusMode after)

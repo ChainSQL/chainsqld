@@ -25,7 +25,6 @@
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/misc/AmendmentTable.h>
 #include <ripple/app/ledger/LocalTxs.h>
-#include <ripple/app/ledger/BuildLedger.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/overlay/Overlay.h>
 #include <ripple/overlay/predicates.h>
@@ -91,28 +90,31 @@ void RpcaPopAdaptor::onAccept(
     });
 }
 
-bool RpcaPopAdaptor::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
+std::shared_ptr<Ledger const> RpcaPopAdaptor::checkLedgerAccept(LedgerInfo const& info)
 {
+    auto ledger = Adaptor::checkLedgerAccept(info);
+    if (!ledger)
+    {
+        return nullptr;
+    }
+
     LedgerMaster::ScopedLockType ml(ledgerMaster_.peekMutex());
 
-    if (ledger->info().seq <= getValidLedgerIndex())
-        return false;
-
     auto const minVal = getNeededValidations();
-    auto const tvc = app_.getValidations().numTrustedForLedger(ledger->info().hash);
+    auto const tvc = app_.getValidations().numTrustedForLedger(info.hash);
     if (tvc < minVal) // nothing we can do
     {
         JLOG(j_.trace()) <<
             "Only " << tvc <<
-            " validations for " << ledger->info().hash;
-        return false;
+            " validations for " << info.hash;
+        return nullptr;
     }
 
     JLOG(j_.info())
-        << "Advancing accepted ledger to " << ledger->info().seq
+        << "Advancing accepted ledger to " << info.seq
         << " with >= " << minVal << " validations";
 
-    return true;
+    return ledger;
 }
 
 void RpcaPopAdaptor::propose(RCLCxPeerPos::Proposal const& proposal)
@@ -255,55 +257,6 @@ uint256 RpcaPopAdaptor::getPrevLedger(
 // ------------------------------------------------------------------------
 // Protected member functions
 
-RCLCxLedger RpcaPopAdaptor::buildLCL(
-    RCLCxLedger const& previousLedger,
-    CanonicalTXSet& retriableTxs,
-    NetClock::time_point closeTime,
-    bool closeTimeCorrect,
-    NetClock::duration closeResolution,
-    std::chrono::milliseconds roundTime,
-    std::set<TxID>& failedTxs)
-{
-    std::shared_ptr<Ledger> built = [&]()
-    {
-
-        if (auto const replayData = ledgerMaster_.releaseReplay())
-        {
-            assert(replayData->parent()->info().hash == previousLedger.id());
-            return buildLedger(*replayData, tapNO_CHECK_SIGN | tapForConsensus, app_, j_);
-        }
-        return buildLedger(previousLedger.ledger_, closeTime, closeTimeCorrect,
-            closeResolution, app_, retriableTxs, failedTxs, j_);
-    }();
-
-    auto v2_enabled = built->rules().enabled(featureSHAMapV2);
-    auto disablev2_enabled = built->rules().enabled(featureDisableV2);
-
-    if (disablev2_enabled && built->stateMap().is_v2())
-    {
-        built->make_v1();
-        JLOG(j_.warn()) << "Begin transfer to v1,LedgerSeq = " << built->info().seq;
-    }
-    else if (!disablev2_enabled && v2_enabled && !built->stateMap().is_v2())
-    {
-        built->make_v2();
-        JLOG(j_.warn()) << "Begin transfer to v2,LedgerSeq = " << built->info().seq;
-    }
-
-    // Update fee computations based on accepted txs
-    using namespace std::chrono_literals;
-    app_.getTxQ().processClosedLedger(app_, *built, roundTime > 5s);
-
-    // And stash the ledger in the ledger master
-    if (ledgerMaster_.storeLedger(built))
-        JLOG(j_.debug()) << "Consensus built ledger we already had";
-    else if (app_.getInboundLedgers().find(built->info().hash))
-        JLOG(j_.debug()) << "Consensus built ledger we were acquiring";
-    else
-        JLOG(j_.debug()) << "Consensus built new ledger";
-    return RCLCxLedger{ std::move(built) };
-}
-
 void RpcaPopAdaptor::consensusBuilt(
     std::shared_ptr<Ledger const> const& ledger,
     uint256 const& consensusHash,
@@ -329,7 +282,7 @@ void RpcaPopAdaptor::consensusBuilt(
     }
 
     // See if this ledger can be the new fully-validated ledger
-    if (checkLedgerAccept(ledger))
+    if (checkLedgerAccept(ledger->info()))
     {
         doValidLedger(ledger);
     }
@@ -492,7 +445,7 @@ bool RpcaPopAdaptor::handleNewValidation(STValidation::ref val, std::string cons
 }
 
 auto RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
-->std::pair<std::shared_ptr<Ledger const> const, bool>
+    ->std::pair<std::shared_ptr<Ledger const> const, bool>
 {
     std::size_t valCount = 0;
 
@@ -535,7 +488,7 @@ auto RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
     }
 
     if (ledger)
-        return { ledger, checkLedgerAccept(ledger) };
+        return { ledger, !!checkLedgerAccept(ledger->info()) };
 
     return { nullptr, false };
 }

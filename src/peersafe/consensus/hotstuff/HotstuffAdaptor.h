@@ -22,6 +22,8 @@
 #define PEERSAFE_CONSENSUS_HOTSTUFFADAPTOR_H_INCLUDE
 
 
+#include <peersafe/protocol/STProposal.h>
+#include <peersafe/protocol/STVote.h>
 #include <peersafe/consensus/Adaptor.h>
 #include <peersafe/consensus/hotstuff/HotstuffConsensusParams.h>
 #include <peersafe/consensus/hotstuff/impl/Types.h>
@@ -35,7 +37,6 @@ namespace ripple {
 class HotstuffAdaptor final
     : public Adaptor
     , public hotstuff::ProposerElection
-    , public hotstuff::NetWork
 {
 private:
     HotstuffConsensusParms                          parms_;
@@ -69,23 +70,14 @@ public:
         return app_.getIOService();
     }
 
-    void onAccept(
-        Result const& result,
-        RCLCxLedger const& prevLedger,
-        NetClock::duration const& closeResolution,
-        ConsensusCloseTimes const& rawCloseTimes,
-        ConsensusMode const& mode,
-        Json::Value&& consensusJson) override final;
-
-    bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) override final;
-
     // Overwrite ProposerElection interfaces.
     Author GetValidProposer(Round round) const override final;
 
-    // Overwrite NetWork interfaces.
-    void broadcast(const Block& proposal, const SyncInfo& sync_info) override final;
-    void broadcast(const Vote& vote, const SyncInfo& sync_info) override final;
-    void sendVote(const Author& author, const Vote& vote, const SyncInfo& sync_info) override final;
+    std::shared_ptr<SHAMap>
+    onExtractTransactions(RCLCxLedger const& prevLedger, ConsensusMode mode);
+
+    void broadcast(STProposal const& proposal);
+    void sendVote(PublicKey const& pubKey, STVote const& vote);
 
 private:
 

@@ -74,7 +74,7 @@ const bool SyncInfo::hasNewerCertificate(const SyncInfo& sync_info) const {
 	return false;
 }
 
-bool SyncInfo::Verify(const ValidatorVerifier* validator) {
+bool SyncInfo::Verify(ValidatorVerifier* validator) {
 	Epoch epoch = highest_quorum_cert_.certified_block().epoch;
 	if (epoch != HighestCommitCert().certified_block().epoch)
 		return false;

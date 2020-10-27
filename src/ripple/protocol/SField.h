@@ -88,6 +88,8 @@ enum SerializedTypeID
     STI_METADATA    = 10004,
     STI_PROPOSESET  = 10005,
     STI_VIEWCHANGE  = 10006,
+    STI_PROPOSAL    = 10007,
+    STI_VOTE        = 10008
 };
 
 // constexpr
@@ -333,6 +335,8 @@ extern SField const sfValidation;
 extern SField const sfMetadata;
 extern SField const sfProposeSet;
 extern SField const sfViewChange;
+extern SField const sfProposal;
+extern SField const sfVote;
 
 // 8-bit integers
 extern SF_U8 const sfCloseResolution;
@@ -496,6 +500,9 @@ extern SF_Blob const sfTxOperateRule;
 extern SF_Blob const sfInsertCountMap;
 extern SF_Blob const sfContractTxs;
 extern SF_Blob const sfContractLogs;
+extern SF_Blob const sfBlock;
+extern SF_Blob const sfVoteImp;
+extern SF_Blob const sfSyncInfo;
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;

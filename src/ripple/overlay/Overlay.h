@@ -142,10 +142,20 @@ public:
     std::shared_ptr<Peer>
     findPeerByPublicKey (PublicKey const& pubKey) = 0;
 
+    /** Returns the peer with the matching valPublic key, or null. */
+    virtual
+    std::shared_ptr<Peer>
+    findPeerByValPublicKey(PublicKey const& pubKey) = 0;
+
     /** Broadcast a consensus meessage. */
     virtual
     void
     send (protocol::TMConsensus& m) = 0;
+
+    /* Send a consensus message to specified peer */
+    virtual
+    void
+    send(PublicKey const& pubKey, protocol::TMConsensus& m) = 0;
 
     /** Relay a consensus meessage. */
     virtual

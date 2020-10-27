@@ -30,6 +30,7 @@ namespace hotstuff {
 class SyncInfo 
 {
 public:
+    SyncInfo() {}
 	SyncInfo(
 		const QuorumCertificate& highest_qc_cert,
 		const QuorumCertificate& highest_commit_cert,
@@ -40,7 +41,7 @@ public:
 	const QuorumCertificate HighestCommitCert() const;
 	const TimeoutCertificate HighestTimeoutCert() const;
 	const bool hasNewerCertificate(const SyncInfo& sync_info) const;
-	bool Verify(const ValidatorVerifier* validator);
+	bool Verify(ValidatorVerifier* validator);
 
 private:
 	QuorumCertificate highest_quorum_cert_;

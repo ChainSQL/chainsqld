@@ -22,7 +22,6 @@
 #define PEERSAFE_CONSENSUS_RPCAPOPADAPTOR_H_INCLUDE
 
 
-#include <ripple/app/consensus/RCLValidations.h>
 #include <peersafe/consensus/Adaptor.h>
 
 
@@ -68,9 +67,9 @@ public:
         NetClock::duration const& closeResolution,
         ConsensusCloseTimes const& rawCloseTimes,
         ConsensusMode const& mode,
-        Json::Value&& consensusJson) override final;
+        Json::Value&& consensusJson);
 
-    bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) override final;
+    std::shared_ptr<Ledger const> checkLedgerAccept(LedgerInfo const& info) override final;
 
     /** Propose the given position to my peers.
 
@@ -116,36 +115,6 @@ public:
     uint256 getPrevLedger(uint256 ledgerID, RCLCxLedger const& ledger, ConsensusMode mode);
 
 protected:
-    /** Build the new last closed ledger.
-
-        Accept the given the provided set of consensus transactions and
-        build the last closed ledger. Since consensus just agrees on which
-        transactions to apply, but not whether they make it into the closed
-        ledger, this function also populates retriableTxs with those that
-        can be retried in the next round.
-
-        @param previousLedger Prior ledger building upon
-        @param retriableTxs On entry, the set of transactions to apply to
-                            the ledger; on return, the set of transactions
-                            to retry in the next round.
-        @param closeTime The time the ledger closed
-        @param closeTimeCorrect Whether consensus agreed on close time
-        @param closeResolution Resolution used to determine consensus close
-                                time
-        @param roundTime Duration of this consensus rorund
-        @param failedTxs Populate with transactions that we could not
-                            successfully apply.
-        @return The newly built ledger
-    */
-    RCLCxLedger buildLCL(
-        RCLCxLedger const& previousLedger,
-        CanonicalTXSet& retriableTxs,
-        NetClock::time_point closeTime,
-        bool closeTimeCorrect,
-        NetClock::duration closeResolution,
-        std::chrono::milliseconds roundTime,
-        std::set<TxID>& failedTxs);
-
     /** Report that the consensus process built a particular ledger */
     void consensusBuilt(
         std::shared_ptr<Ledger const> const& ledger,
@@ -153,16 +122,6 @@ protected:
         Json::Value consensus);
 
 private:
-    /**
-        * Determines how many validations are needed to fully validate a ledger
-        *
-        * @return Number of validations needed
-        */
-    inline std::size_t getNeededValidations()
-    {
-        return app_.config().standalone() ? 0 : app_.validators().quorum();
-    }
-
     /** Accept a new ledger based on the given transactions.
 
         @ref onAccept

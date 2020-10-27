@@ -726,6 +726,11 @@ public:
         return validatorKeys_.publicKey;
     }
 
+    ValidatorKeys const& getValidatorKeys() const override
+    {
+        return validatorKeys_;
+    }
+
     NetworkOPs& getOPs () override
     {
         return *m_networkOPs;

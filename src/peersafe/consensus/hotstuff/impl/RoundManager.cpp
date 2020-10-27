@@ -151,7 +151,8 @@ int RoundManager::ProcessProposal(const Block& proposal, const SyncInfo& sync_in
 			<< round_state_->current_round();
 		return 1;
 	}
-	return ProcessProposal(proposal);
+
+    return 0;
 }
 
 int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {

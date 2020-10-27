@@ -93,6 +93,10 @@ public:
     getNodePublic() const = 0;
 
     virtual
+    boost::optional<PublicKey> const&
+    getValPublic() const = 0;
+
+    virtual
     Json::Value json() = 0;
 
     //

@@ -20,6 +20,7 @@
 #include <ripple/overlay/impl/TMHello.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/main/Application.h>
+#include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/basics/base64.h>
 #include <ripple/basics/safe_cast.h>
 #include <ripple/beast/rfc2616.h>
@@ -115,6 +116,19 @@ buildHello (
             TokenType::NodePublic,
             app.nodeIdentity().first));
     h.set_nodeproof (sig.data(), sig.size());
+    //set validate-public and proof for validator
+    if (app.getValidationPublicKey().size() != 0)
+    {
+        auto const sig2 = signDigest(
+            app.getValidatorKeys().publicKey,
+            app.getValidatorKeys().secretKey,
+            sharedValue);
+        h.set_validatepublic(
+            toBase58(
+                TokenType::NodePublic,
+                app.getValidationPublicKey()));
+        h.set_validateproof(sig2.data(), sig2.size());
+    }
     h.set_testnet (false);
 
     if (beast::IP::is_public (remote))
@@ -175,6 +189,12 @@ appendHello (boost::beast::http::fields& h,
 
     if (hello.has_remote_ip())
         h.insert ("Remote-IP", hello.remote_ip_str());
+
+    if (hello.has_validatepublic())
+    {
+        h.insert("Validate-PublicKey", hello.validatepublic());
+        h.insert("Validate-Proof", base64_encode(hello.validateproof()));
+    }
 }
 
 std::vector<ProtocolVersion>
@@ -253,6 +273,23 @@ parseHello (bool request, boost::beast::http::fields const& h, beast::Journal jo
             return boost::none;
         // TODO Security Review
         hello.set_nodeproof (base64_decode (iter->value().to_string()));
+    }
+
+    {
+        auto const iter = h.find("Validate-PublicKey");
+        if (iter != h.end())
+        {
+            auto const pk = parseBase58<PublicKey>(
+                TokenType::NodePublic, iter->value().to_string());
+            if (!pk)
+                return boost::none;
+            hello.set_validatepublic(iter->value().to_string());
+
+            auto const iter2 = h.find("Validate-Proof");
+            if (iter2 == h.end())
+                return boost::none;
+            hello.set_validateproof(base64_decode(iter2->value().to_string()));
+        }
     }
 
     {
@@ -408,6 +445,35 @@ verifyHello (protocol::TMHello const& h,
         JLOG(journal.info()) <<
             "Hello: Disconnect: Failed to verify session.";
         return boost::none;
+    }
+
+    if (h.has_validatepublic())
+    {
+        auto const publicValidate = parseBase58<PublicKey>(
+            TokenType::NodePublic, h.validatepublic());
+
+        if (!publicValidate)
+        {
+            JLOG(journal.info()) <<
+                "Hello: Disconnect: Bad node public key.";
+            return boost::none;
+        }
+
+        if (publicKeyType(*publicValidate) != KeyType::secp256k1)
+        {
+            JLOG(journal.info()) <<
+                "Hello: Disconnect: Unsupported public key type.";
+            return boost::none;
+        }
+
+        if (!verifyDigest(*publicValidate, sharedValue,
+            makeSlice(h.validateproof()), false))
+        {
+            // Unable to verify they have private key for claimed public key.
+            JLOG(journal.info()) <<
+                "Hello: Disconnect: Failed to verify session.";
+            return boost::none;
+        }
     }
 
     if (h.has_local_ip_str () &&
