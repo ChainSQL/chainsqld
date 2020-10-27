@@ -69,12 +69,13 @@ Block HotstuffCore::SignProposal(const BlockData& proposal) {
 	}
 
 	// verify qc
-	if (VerifyQC(proposal.quorum_cert) == false) {
-		JLOG(journal_.error())
-			<< "InvalideProposal: "
-			<< "miss match qc";
-		return Block::empty();
-	}
+	// Disable VerifyQC beacause it's verified when leader handled vote msg
+	//if (VerifyQC(proposal.quorum_cert) == false) {
+	//	JLOG(journal_.error())
+	//		<< "InvalideProposal: "
+	//		<< "miss match qc";
+	//	return Block::empty();
+	//}
 	
 	return Block::new_from_block_data(proposal, epoch_state_->verifier);
 }
