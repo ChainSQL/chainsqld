@@ -98,17 +98,6 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 	
 	HashValue id = proposed_block.id();
 
-	//if (proposed_block.signature()
-	//	&& epoch_state_->verifier->verifySignature(
-	//		proposed_block.block_data().author(),
-	//		proposed_block.signature().get(),
-	//		id) == false) {
-	//	JLOG(journal_.error())
-	//		<< "Construct And Signed vote:"
-	//		<< "invalid block' signature";
-	//	return false;
-	//}
-
 	if (VerifyAndUpdatePreferredRound(proposed_block.block_data().quorum_cert) == false)
 		return false;
 	// if already voted on this round, send back the previous vote.
@@ -160,6 +149,12 @@ bool HotstuffCore::VerifyQC(const QuorumCertificate& qc) {
 			hash) == false)
 			return false;
 	}
+
+    if (qc.certified_block().round > 0 &&
+        epoch_state_->verifier->checkVotingPower(signatures) == false)
+    {
+        return false;
+    }
 	return true;
 }
 

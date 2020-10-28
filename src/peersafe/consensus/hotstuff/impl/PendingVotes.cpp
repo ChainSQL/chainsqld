@@ -67,14 +67,14 @@ int PendingVotes::insertVote(
 		}
 	}
 
-	if (verifer->verifySignature(vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false) {
-		JLOG(journal_->error())
-			<< "An anutor " << vote.author()
-			<< " voted a vote mismatch signature."
-			<< "The round for vote is "
-			<< vote.vote_data().proposed().round;
-		return VoteReceptionResult::ErrorAddingVote;
-	}
+	//if (verifer->verifySignature(vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false) {
+	//	JLOG(journal_->error())
+	//		<< "An anutor " << vote.author()
+	//		<< " voted a vote mismatch signature."
+	//		<< "The round for vote is "
+	//		<< vote.vote_data().proposed().round;
+	//	return VoteReceptionResult::ErrorAddingVote;
+	//}
 
 	// Store a new vote(or update in case it's a new timeout vote)
 	author_to_vote_.emplace(std::make_pair(vote.author(), vote));

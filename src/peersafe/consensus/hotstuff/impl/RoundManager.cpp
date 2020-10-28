@@ -171,6 +171,16 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
     JLOG(journal_.info())
         << "Check a proposal: " << proposal.block_data().round;
 
+	if (EnsureRoundAndSyncUp(
+		proposal.block_data().round,
+		sync_info,
+		proposal.block_data().author()) == false) {
+		JLOG(journal_.error())
+			<< "Stale proposal, current round "
+			<< round_state_->current_round();
+		return false;
+	}
+
     const boost::optional<Signature>& signature = proposal.signature();
     if (signature) {
         if (hotstuff_core_->epochState()->verifier->verifySignature(
@@ -182,16 +192,6 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
             return false;
         }
     }
-
-	if (EnsureRoundAndSyncUp(
-		proposal.block_data().round,
-		sync_info,
-		proposal.block_data().author()) == false) {
-		JLOG(journal_.error())
-			<< "Stale proposal, current round " 
-			<< round_state_->current_round();
-		return false;
-	}
 
 	return true;
 }
@@ -230,16 +230,6 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
     JLOG(journal_.info())
         << "Process a vote: " << vote.vote_data().proposed().round;
 
-    if (hotstuff_core_->epochState()->verifier->verifySignature(
-        vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
-    {
-        JLOG(journal_.error())
-            << "ProcessVote: using an author "
-            << vote.author()
-            << "'s key for verifing signature failed";
-        return 1;
-    }
-
 	if (EnsureRoundAndSyncUp(
 		vote.vote_data().proposed().round,
 		sync_info,
@@ -253,6 +243,17 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 }
 
 int RoundManager::ProcessVote(const Vote& vote) {
+    if (hotstuff_core_->epochState()->verifier->verifySignature(
+        vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
+    {
+        JLOG(journal_.error())
+            << "An anutor " << vote.author()
+            << " voted a vote mismatch signature."
+            << "The round for vote is "
+            << vote.vote_data().proposed().round;
+        return 1;
+    }
+
 	if (vote.isTimeout() == false) {
 		Round next_round = vote.vote_data().proposed().round + 1;
 		if (proposer_election_->IsValidProposer(proposal_generator_->author(), next_round) == false) {
