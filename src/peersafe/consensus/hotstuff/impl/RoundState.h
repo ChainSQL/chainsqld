@@ -20,6 +20,7 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_ROUNDSTATE_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_ROUNDSTATE_H
 
+#include <atomic>
 #include <map>
 
 #include <boost/asio.hpp>
@@ -80,9 +81,9 @@ private:
 	void CancelRoundTimeout();
 
 	const beast::Journal* journal_;
-	Round current_round_;
+	std::atomic<Round> current_round_;
 	boost::asio::steady_timer round_timeout_timer_;
-	PendingVotes pending_votes_;
+	PendingVotes::pointer pending_votes_;
 	boost::optional<Vote> send_vote_;
 };
 

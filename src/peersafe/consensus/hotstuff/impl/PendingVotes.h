@@ -21,6 +21,8 @@
 #define RIPPLE_CONSENSUS_HOTSTUFF_PENDINGVOTES_H
 
 #include <map>
+#include <mutex>
+#include <memory>
 
 #include <peersafe/consensus/hotstuff/impl/Vote.h>
 #include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
@@ -33,6 +35,12 @@ class ValidatorVerifier;
 class PendingVotes
 {
 public:
+	using pointer = std::shared_ptr<PendingVotes>;
+
+	static pointer New(const beast::Journal& journal) {
+		return pointer(new PendingVotes(journal));
+	}
+
 	enum VoteReceptionResult {
 		/// The vote has been added but QC has not been formed yet. Return the amount of voting power
 		/// the given (proposal, execution) pair.
@@ -51,7 +59,6 @@ public:
 		UnexpectedRound,
 	};
 
-    PendingVotes(const beast::Journal& journal);
     ~PendingVotes();
 
 	int insertVote(
@@ -61,7 +68,10 @@ public:
 		boost::optional<TimeoutCertificate>& timeoutCert);
 
 private:
+    PendingVotes(const beast::Journal& journal);
+
 	const beast::Journal* journal_;
+	std::mutex mutex_;
 	std::map<Author, Vote> author_to_vote_;
 	std::map<HashValue, LedgerInfoWithSignatures> li_digest_to_votes_;
 	boost::optional<TimeoutCertificate> maybe_partial_timeout_cert_;

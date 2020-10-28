@@ -27,6 +27,7 @@ namespace hotstuff {
     
 PendingVotes::PendingVotes(const beast::Journal& journal)
 : journal_(&journal)
+, mutex_()
 , author_to_vote_()
 , li_digest_to_votes_()
 , maybe_partial_timeout_cert_() {
@@ -40,6 +41,9 @@ int PendingVotes::insertVote(
 	ValidatorVerifier* verifer,
 	QuorumCertificate& quorumCert,
 	boost::optional<TimeoutCertificate>& timeoutCert) {
+
+	std::lock_guard<std::mutex> lock(mutex_);
+
 	HashValue li_digest = const_cast<BlockInfo&>(vote.ledger_info().commit_info).id;
 
 	// Has the author already voted for this round?

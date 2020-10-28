@@ -31,7 +31,7 @@ RoundState::RoundState(
 : journal_(&journal)
 , current_round_(0)
 , round_timeout_timer_(*io_service)
-, pending_votes_(journal)
+, pending_votes_(nullptr)
 , send_vote_() {
 
 }
@@ -51,7 +51,7 @@ boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& s
 		// reset timeout
 		CancelRoundTimeout();
 		current_round_ = new_round;
-		pending_votes_ = PendingVotes(*journal_);
+		pending_votes_ = PendingVotes::New(*journal_);
 		send_vote_ = boost::optional<Vote>();
 
 		NewRoundEvent new_round_event;
@@ -80,19 +80,20 @@ int RoundState::insertVote(
 	ValidatorVerifier* verifer, 
 	QuorumCertificate& quorumCert,
 	boost::optional<TimeoutCertificate>& timeoutCert) {
-	if (vote.vote_data().proposed().round != current_round()) {
+	Round round = current_round();
+	if (vote.vote_data().proposed().round != round) {
 		JLOG(journal_->error())
 			<< "insert vote failed. reason: expecte round is "
 			<< vote.vote_data().proposed().round
-			<< " but current round is " << current_round();
+			<< " but current round is " << round;
 		return 1;
 	}
-	return pending_votes_.insertVote(vote, verifer, quorumCert, timeoutCert);
+	return pending_votes_->insertVote(vote, verifer, quorumCert, timeoutCert);
 }
 
 void RoundState::reset() {
 	current_round_ = 0;
-	pending_votes_ = PendingVotes(*journal_);
+	pending_votes_ = PendingVotes::New(*journal_);
 	send_vote_ = boost::optional<Vote>();
 }
 

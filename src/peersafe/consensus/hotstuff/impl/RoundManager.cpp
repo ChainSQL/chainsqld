@@ -73,6 +73,7 @@ void RoundManager::stop() {
 int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
 	JLOG(journal_.info())
 		<< "Process new round event: " << new_round_event.round;
+
 	// setup round timeout
 	boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
 	roundTimeoutTimer.expires_from_now(std::chrono::seconds(config_.timeout));
@@ -305,22 +306,24 @@ bool RoundManager::EnsureRoundAndSyncUp(
 		Round round,
 		const SyncInfo& sync_info,
 		const Author& author) {
-	if (round < round_state_->current_round()) {
+	Round current_round = round_state_->current_round();
+	if (round < current_round) {
 		JLOG(journal_.error())
 			<< "EnsureRoundAndSyncUp: Invalid round."
 			<< "Round is " << round
-			<< " and local round is " << round_state_->current_round();
+			<< " and local round is " << current_round;
 		return false;
 	}
 
 	if (SyncUp(sync_info, author) != 0)
 		return false;
 
-	if (round != round_state_->current_round()) {
+	current_round = round_state_->current_round();
+	if (round != current_round) {
 		JLOG(journal_.error())
 			<< "After sync, round " << round 
-			<< " dosen't match local round " << round_state_->current_round();
-		assert(round == round_state_->current_round());
+			<< " dosen't match local round " << current_round;
+		assert(round == current_round);
 		return false;
 	}
 	return true;

@@ -34,7 +34,9 @@ BlockStorage::BlockStorage(
 : journal_(&journal)
 , state_compute_(state_compute)
 , genesis_block_id_()
+, cache_blocks_mutex_()
 , cache_blocks_()
+, quorum_cert_mutex_()
 , highest_quorum_cert_()
 , highest_commit_cert_()
 , highest_timeout_cert_()
@@ -49,7 +51,9 @@ BlockStorage::BlockStorage(
 : journal_(&journal)
 , state_compute_(state_compute)
 , genesis_block_id_()
+, cache_blocks_mutex_()
 , cache_blocks_()
+, quorum_cert_mutex_()
 , highest_quorum_cert_()
 , highest_commit_cert_()
 , highest_timeout_cert_() 
@@ -70,13 +74,17 @@ void BlockStorage::updateCeritificates(const Block& block) {
 
 ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 	ExecutedBlock executed_block;
-	if (blockOf(block.id(), executed_block)) {
-		return executed_block;
+	{
+		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+		if (blockOf(block.id(), executed_block)) {
+			return executed_block;
+		}
 	}
 
 	if (state_compute_->compute(block, executed_block.state_compute_result)) {
 		executed_block.state_compute_result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
 		executed_block.block = block;
+		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
 		cache_blocks_.emplace(std::make_pair(block.id(), executed_block));
 	}
 
@@ -94,13 +102,6 @@ bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
     return true;
 }
 
-// 通过 block hash 获取 block, 如果本地没有则需要从网络同步
-bool BlockStorage::expectBlock(const HashValue& hash, ExecutedBlock& block) {
-    if(blockOf(hash, block))
-        return true;
-    return false;
-}
-
 int BlockStorage::addCerts(const SyncInfo& sync_info, NetWork* network) {
 	insertQuorumCert(sync_info.HighestCommitCert(), network);
 	insertQuorumCert(sync_info.HighestQuorumCert(), network);
@@ -110,15 +111,21 @@ int BlockStorage::addCerts(const SyncInfo& sync_info, NetWork* network) {
 int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert, NetWork* network) {
 	ExecutedBlock executed_block;
 	HashValue expected_block_id = const_cast<BlockInfo&>(quorumCert.certified_block()).id;
-	if (blockOf(expected_block_id, executed_block) == false)
-		return 1;
-
-	if (executed_block.block.block_data().round > HighestQuorumCert().certified_block().round) {
-		highest_quorum_cert_ = quorumCert;
+	{
+		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+		if (blockOf(expected_block_id, executed_block) == false)
+			return 1;
 	}
 
-	if (highest_commit_cert_.ledger_info().ledger_info.commit_info.round < quorumCert.ledger_info().ledger_info.commit_info.round) {
-		highest_commit_cert_ = quorumCert;
+	{
+		std::lock_guard<std::mutex> lock(quorum_cert_mutex_);
+		if (executed_block.block.block_data().round > HighestQuorumCert().certified_block().round) {
+			highest_quorum_cert_ = quorumCert;
+		}
+
+		if (highest_commit_cert_.ledger_info().ledger_info.commit_info.round < quorumCert.ledger_info().ledger_info.commit_info.round) {
+			highest_commit_cert_ = quorumCert;
+		}
 	}
 	
 	Round commtiting_round = quorumCert.ledger_info().ledger_info.commit_info.round;
@@ -140,6 +147,7 @@ int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert, NetWork*
 }
 
 int BlockStorage::insertTimeoutCert(const TimeoutCertificate& timeoutCeret) {
+	std::lock_guard<std::mutex> lock(quorum_cert_mutex_);
 	if (highest_timeout_cert_) {
 		if (highest_timeout_cert_->timeout().round < timeoutCeret.timeout().round) {
 			highest_timeout_cert_ = timeoutCeret;
@@ -169,13 +177,16 @@ void BlockStorage::commit(const LedgerInfoWithSignatures& ledger_info_with_sigs)
 }
 
 void BlockStorage::gcBlocks(Epoch epoch, Round round) {
-	// remove all blocks which are older epoch than current epoch
-	for (auto it = cache_blocks_.begin(); it != cache_blocks_.end();) {
-		if (it->second.block.block_data().epoch < epoch) {
-			it = cache_blocks_.erase(it);
-		}
-		else {
-			it++;
+	{
+		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+		// remove all blocks which are older epoch than current epoch
+		for (auto it = cache_blocks_.begin(); it != cache_blocks_.end();) {
+			if (it->second.block.block_data().epoch < epoch) {
+				it = cache_blocks_.erase(it);
+			}
+			else {
+				it++;
+			}
 		}
 	}
 
@@ -187,15 +198,18 @@ void BlockStorage::gcBlocks(Epoch epoch, Round round) {
 	if (begin_round < 0)
 		return;
 
-	for (Round r = begin_round; r != end_round; r++) {
-		for (auto it = cache_blocks_.begin(); it != cache_blocks_.end();) {
-			if (it->second.block.block_data().epoch == epoch
-				&& it->second.block.block_data().round == r) {
-				it = cache_blocks_.erase(it);
-				break;
-			}
-			else {
-				it++;
+	{
+		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+		for (Round r = begin_round; r != end_round; r++) {
+			for (auto it = cache_blocks_.begin(); it != cache_blocks_.end();) {
+				if (it->second.block.block_data().epoch == epoch
+					&& it->second.block.block_data().round == r) {
+					it = cache_blocks_.erase(it);
+					break;
+				}
+				else {
+					it++;
+				}
 			}
 		}
 	}

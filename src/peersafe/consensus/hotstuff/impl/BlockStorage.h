@@ -20,6 +20,8 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_BLOCKSTORAGE_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_BLOCKSTORAGE_H
 
+#include <atomic>
+#include <mutex>
 #include <map>
 
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
@@ -50,8 +52,6 @@ public:
 	ExecutedBlock executeAndAddBlock(const Block& block);
     // 通过 block hash 获取 block，如果本地没有函数返回 false
     bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
-    // 通过 block hash 获取 block, 如果本地没有则需要从网络同步
-    bool expectBlock(const HashValue& hash, ExecutedBlock& block);
 
 	const QuorumCertificate& HighestQuorumCert() const {
 		return highest_quorum_cert_;
@@ -66,6 +66,7 @@ public:
 	}
 
 	SyncInfo sync_info() {
+		std::lock_guard<std::mutex> lock(quorum_cert_mutex_);
 		return SyncInfo(
 			journal_,
 			HighestQuorumCert(), 
@@ -93,12 +94,14 @@ private:
 	const beast::Journal* journal_;
 	StateCompute* state_compute_;
 	HashValue genesis_block_id_;
+	std::mutex cache_blocks_mutex_;
     std::map<HashValue, ExecutedBlock> cache_blocks_;
 
+	std::mutex quorum_cert_mutex_;
 	QuorumCertificate highest_quorum_cert_;
 	QuorumCertificate highest_commit_cert_;
 	boost::optional<TimeoutCertificate> highest_timeout_cert_;
-	Round committed_round_;
+	std::atomic<Round> committed_round_;
 };
 
 } // namespace hotstuff
