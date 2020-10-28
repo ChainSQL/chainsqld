@@ -208,8 +208,8 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 deprecatedClearSection("ips");
 	 section("ips").append(schemaParams.peer_list);
 
-	 removeSection("sync_db");
-	 removeSection("sync_tables");
+	 //removeSection("sync_db");
+	 //removeSection("sync_tables");
 
 	 auto const& names = section("server").values();
 	 for (auto const& name : names)

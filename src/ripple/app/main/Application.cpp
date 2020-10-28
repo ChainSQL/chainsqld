@@ -1139,8 +1139,8 @@ bool ApplicationImp::loadSubChains()
 			return false;
 		if (!newSchema->setup())
 			return false;
-		return true;
 	}
+	return true;
 }
 
 //------------------------------------------------------------------------------
