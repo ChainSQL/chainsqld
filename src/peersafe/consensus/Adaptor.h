@@ -117,6 +117,8 @@ public:
 
     inline PublicKey getMasterKey(PublicKey pk) const { return app_.validatorManifests().getMasterKey(pk); }
 
+    inline JobQueue& getJobQueue() const { return app_.getJobQueue(); }
+
     // Transaction pool interfaces for consensus
     inline bool isPoolAvailable()
     {

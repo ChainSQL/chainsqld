@@ -146,6 +146,7 @@ public:
     void setFullLedger(std::shared_ptr<Ledger const> const& ledger, bool isSynchronous, bool isCurrent);
     void setLedgerRangePresent(std::uint32_t minV, std::uint32_t maxV);
     void onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger);
+    void updateConsensusTime();
 
     std::uint32_t lastCompleteIndex();
     bool haveLedger(std::uint32_t seq);

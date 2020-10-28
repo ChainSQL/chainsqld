@@ -46,6 +46,8 @@ HotstuffAdaptor::HotstuffAdaptor(
 {
     if (app_.config().exists(SECTION_HCONSENSUS))
     {
+        parms_.consensusTIMEOUT = std::chrono::seconds{
+            std::max(3, (int)app.config().loadConfig(SECTION_HCONSENSUS, "time_out", parms_.consensusTIMEOUT.count())) };
     }
 }
 
@@ -142,6 +144,7 @@ void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
 
 void HotstuffAdaptor::doAccept(RCLCxLedger const& prevLedger)
 {
+    if (app_.openLedger().current()->seq() < prevLedger.seq() + 1)
     {
         // Build new open ledger
         auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);

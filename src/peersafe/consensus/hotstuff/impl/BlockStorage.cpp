@@ -69,7 +69,7 @@ ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 	}
 
 	if (state_compute_->compute(block, executed_block.state_compute_result)) {
-		executed_block.state_compute_result.parent_ledger_info = executed_block.block.block_data().quorum_cert.certified_block().ledger_info;
+		executed_block.state_compute_result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
 		executed_block.block = block;
 		cache_blocks_.emplace(std::make_pair(block.id(), executed_block));
 	}
@@ -77,7 +77,7 @@ ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 	return executed_block;
 }
 
-// é€šè¿‡ block hash è·å– blockï¼Œå¦‚æœæœ¬åœ°æ²¡æœ‰å‡½æ•°è¿”å› false
+// Í¨¹ı block hash »ñÈ¡ block£¬Èç¹û±¾µØÃ»ÓĞº¯Êı·µ»Ø false
 bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
     auto it = cache_blocks_.find(hash);
     if(it == cache_blocks_.end()) {
@@ -88,7 +88,7 @@ bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
     return true;
 }
 
-// é€šè¿‡ block hash è·å– block, å¦‚æœæœ¬åœ°æ²¡æœ‰åˆ™éœ€è¦ä»ç½‘ç»œåŒæ­¥
+// Í¨¹ı block hash »ñÈ¡ block, Èç¹û±¾µØÃ»ÓĞÔòĞèÒª´ÓÍøÂçÍ¬²½
 bool BlockStorage::expectBlock(const HashValue& hash, ExecutedBlock& block) {
     if(blockOf(hash, block))
         return true;

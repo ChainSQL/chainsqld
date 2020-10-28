@@ -51,6 +51,8 @@ RCLConsensus::RCLConsensus(
         {
             type_ = stringToConsensusType(result.first);
         }
+
+        JLOG(j_.warn()) << "Consensus engine: " << result.first;
     }
 
     switch (type_)

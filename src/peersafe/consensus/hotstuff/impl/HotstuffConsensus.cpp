@@ -39,6 +39,7 @@ HotstuffConsensus::HotstuffConsensus(
 
     // TODO
     // HotstuffConsensusParms to hotstuff::Config
+    config.timeout = adaptor_.parms().consensusTIMEOUT.count();
 
     hotstuff_ = hotstuff::Hotstuff::Builder(adaptor_.getIOService(), j)
         .setConfig(config)
@@ -144,7 +145,7 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
-    //ret["time_out"] = static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count());
+    ret["time_out"] = static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count() * 1000);
     //ret["initialized"] = !waitingForInit();
 
     if (full)
@@ -218,6 +219,14 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
 {
     if (block.block_data().epoch == 0 && block.block_data().round == 0)
     {
+        return false;
+    }
+
+    LedgerInfo const& info = block.getLedgerInfo();
+
+    if (block.block_data().author() == adaptor_.valPublic())
+    {
+        result.ledger_info = info;
         return true;
     }
 
@@ -255,8 +264,6 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
             JLOG(j_.warn()) << "    Tx: " << item.key() << " throws!";
         }
     }
-
-    LedgerInfo const& info = block.getLedgerInfo();
 
     auto built = adaptor_.buildLCL(
         previousLedger_,
@@ -308,6 +315,7 @@ bool HotstuffConsensus::onQCAggregated(LedgerInfo const& info)
 
     if (auto newLedger = adaptor_.getLedgerByHash(info.hash))
     {
+        adaptor_.updateConsensusTime();
         newRound(info.hash,
             newLedger,
             adaptor_.preStartRound(newLedger) ? ConsensusMode::proposing : ConsensusMode::observing);
@@ -373,6 +381,7 @@ const bool HotstuffConsensus::verifyLedgerInfo(
         auto ledger = adaptor_.getLedgerByHash(commit_info.ledger_info.hash);
         if (ledger)
         {
+            adaptor_.updateConsensusTime();
             newRound(commit_info.ledger_info.hash,
                 ledger,
                 adaptor_.preStartRound(ledger) ? ConsensusMode::proposing : ConsensusMode::observing);
@@ -416,7 +425,12 @@ void HotstuffConsensus::broadcast(const hotstuff::Block& block, const hotstuff::
     
     adaptor_.broadcast(*proposal);
 
-    hotstuff_->handleProposal(block);
+    adaptor_.getJobQueue().addJob(
+        jtCONSENSUS_t,
+        "broadcast_proposal",
+        [this, block](Job&) {
+        this->hotstuff_->handleProposal(block);
+    });
 }
 
 void HotstuffConsensus::broadcast(const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo)
@@ -425,14 +439,24 @@ void HotstuffConsensus::broadcast(const hotstuff::Vote& vote, const hotstuff::Sy
 
     adaptor_.broadcast(*stVote);
 
-    hotstuff_->handleVote(vote, syncInfo);
+    adaptor_.getJobQueue().addJob(
+        jtCONSENSUS_t,
+        "broadcast_vote",
+        [this, vote, syncInfo](Job&) {
+        this->hotstuff_->handleVote(vote, syncInfo);
+    });
 }
 
 void HotstuffConsensus::sendVote(const hotstuff::Author& author, const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo)
 {
     if (author == adaptor_.valPublic())
     {
-        hotstuff_->handleVote(vote, syncInfo);
+        adaptor_.getJobQueue().addJob(
+            jtCONSENSUS_t,
+            "send_vote",
+            [this, vote, syncInfo](Job&) {
+            this->hotstuff_->handleVote(vote, syncInfo);
+        });
     }
     else
     {

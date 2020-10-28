@@ -71,6 +71,11 @@ public:
         return app_.getIOService();
     }
 
+    inline void updateConsensusTime()
+    {
+        return ledgerMaster_.updateConsensusTime();
+    }
+
     // Overwrite ProposerElection interfaces.
     Author GetValidProposer(Round round) const override final;
 

@@ -45,9 +45,9 @@ public:
     // for blocks
     //bool addBlock(const Block& block);
 	ExecutedBlock executeAndAddBlock(const Block& block);
-    // é€šè¿‡ block hash è·å– blockï¼Œå¦‚æœæœ¬åœ°æ²¡æœ‰å‡½æ•°è¿”å› false
+    // Í¨¹ı block hash »ñÈ¡ block£¬Èç¹û±¾µØÃ»ÓĞº¯Êı·µ»Ø false
     bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
-    // é€šè¿‡ block hash è·å– block, å¦‚æœæœ¬åœ°æ²¡æœ‰åˆ™éœ€è¦ä»ç½‘ç»œåŒæ­¥
+    // Í¨¹ı block hash »ñÈ¡ block, Èç¹û±¾µØÃ»ÓĞÔòĞèÒª´ÓÍøÂçÍ¬²½
     bool expectBlock(const HashValue& hash, ExecutedBlock& block);
 
 	const QuorumCertificate& HighestQuorumCert() const {
@@ -79,7 +79,7 @@ public:
         return state_compute_->onQCAggregated(quorumCeret.certified_block().ledger_info);
     }
 
-	// ç›®å‰ä¸»è¦åŠŸèƒ½æ˜¯ commit å…±è¯†è¿‡çš„ block
+	// Ä¿Ç°Ö÷Òª¹¦ÄÜÊÇ commit ¹²Ê¶¹ıµÄ block
 	//int saveVote(const Vote& vote);
 private:
 	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);

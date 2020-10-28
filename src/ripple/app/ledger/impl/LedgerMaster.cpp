@@ -161,6 +161,11 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 	tryAdvance();
 }
 
+void LedgerMaster::updateConsensusTime()
+{
+    mLastConsensusTime = app_.timeKeeper().closeTime().time_since_epoch().count();
+}
+
 std::chrono::seconds
 LedgerMaster::getValidatedLedgerAge()
 {

@@ -7,7 +7,7 @@ namespace ripple {
 /**
  * simple config section e.x.
  * [hconsensus]
- * xxx=xxx
+ * timeout=60
  */
 
 struct HotstuffConsensusParms
@@ -15,6 +15,8 @@ struct HotstuffConsensusParms
     explicit HotstuffConsensusParms() = default;
 
     unsigned maxTXS_IN_LEDGER = 10000;
+
+    std::chrono::seconds consensusTIMEOUT = std::chrono::seconds{ 60 };
 };
 
 
