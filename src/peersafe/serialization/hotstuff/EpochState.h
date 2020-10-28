@@ -32,7 +32,7 @@ void serialize(
     ripple::hotstuff::EpochState& epoch_state, 
     const unsigned int /*version*/) {
 	ar & epoch_state.epoch;
-	ar & epoch_state.verifier;
+	//ar & epoch_state.verifier;
 }
 
 } // namespace serialization
