@@ -92,11 +92,9 @@ Json::Value doSchemaList(RPC::Context&  context)
 		}
 	}
 
-	bool bRunning = false;
-	if (context.params.isMember(jss::running) && context.params[jss::running].asBool())
-	{
-		bRunning = true;
-	}
+	bool bHasRunning=false,bRunning = false;
+	bHasRunning = context.params.isMember(jss::running);
+	bRunning = bHasRunning && context.params[jss::running].asBool();
 
 	//This is a time-consuming process for a project that has many sles.
 	for (auto sle : ledger->sles)
@@ -105,7 +103,7 @@ Json::Value doSchemaList(RPC::Context&  context)
 		if (pAccountID != boost::none && sle->getAccountID(sfAccount) != *pAccountID)continue;
 
 		Json::Value &schema = getSchemaFromSle(sle);
-		if (bRunning && !context.app.app().hasSchema(sle->key())) continue;
+		if (bHasRunning && context.app.app().hasSchema(sle->key()) != bRunning) continue;
 
 		schema[jss::running] = context.app.app().hasSchema(sle->key());
 		ret[jss::schemas].append(schema);
