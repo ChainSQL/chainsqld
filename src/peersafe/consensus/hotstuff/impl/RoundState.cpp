@@ -20,13 +20,18 @@
 #include <peersafe/consensus/hotstuff/impl/RoundState.h>
 #include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
 
+#include <ripple/basics/Log.h>
+
 namespace ripple {
 namespace hotstuff {
 
-RoundState::RoundState(boost::asio::io_service* io_service)
-: current_round_(0)
+RoundState::RoundState(
+	boost::asio::io_service* io_service,
+	const beast::Journal& journal)
+: journal_(&journal)
+, current_round_(0)
 , round_timeout_timer_(*io_service)
-, pending_votes_()
+, pending_votes_(journal)
 , send_vote_() {
 
 }
@@ -37,11 +42,16 @@ RoundState::~RoundState() {
 
 boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& sync_info) {
 	Round new_round = sync_info.HighestRound() + 1;
+
+	JLOG(journal_->info())
+		<< "Openning a new round which is " << new_round
+		<< ", current round is " << current_round_;
+
 	if (new_round > current_round_) {
 		// reset timeout
 		CancelRoundTimeout();
 		current_round_ = new_round;
-		pending_votes_ = PendingVotes();
+		pending_votes_ = PendingVotes(*journal_);
 		send_vote_ = boost::optional<Vote>();
 
 		NewRoundEvent new_round_event;
@@ -51,6 +61,10 @@ boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& s
 		return boost::optional<NewRoundEvent>(new_round_event);
 	}
 
+	JLOG(journal_->error())
+		<< "Opened a new round failed, new round is "
+		<< new_round 
+		<< ", but current round is " << current_round_;
 	return boost::optional<NewRoundEvent>();
 }
 
@@ -66,14 +80,19 @@ int RoundState::insertVote(
 	ValidatorVerifier* verifer, 
 	QuorumCertificate& quorumCert,
 	boost::optional<TimeoutCertificate>& timeoutCert) {
-	if (vote.vote_data().proposed().round != current_round())
+	if (vote.vote_data().proposed().round != current_round()) {
+		JLOG(journal_->error())
+			<< "insert vote failed. reason: expecte round is "
+			<< vote.vote_data().proposed().round
+			<< " but current round is " << current_round();
 		return 1;
+	}
 	return pending_votes_.insertVote(vote, verifer, quorumCert, timeoutCert);
 }
 
 void RoundState::reset() {
 	current_round_ = 0;
-	pending_votes_ = PendingVotes();
+	pending_votes_ = PendingVotes(*journal_);
 	send_vote_ = boost::optional<Vote>();
 }
 

@@ -71,6 +71,8 @@ void RoundManager::stop() {
 }
 
 int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
+	JLOG(journal_.info())
+		<< "Process new round event: " << new_round_event.round;
 	// setup round timeout
 	boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
 	roundTimeoutTimer.expires_from_now(std::chrono::seconds(config_.timeout));
@@ -110,8 +112,17 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 	if (ec)
 		return;
 
-	if (round != round_state_->current_round())
+	JLOG(journal_.info())
+		<< "ProcessLocalTimeout in round " << round;
+
+	if (round != round_state_->current_round()) {
+		JLOG(journal_.error())
+			<< "Invalid round when processing local timeout."
+			<< "Mismatch round: round in local timeout must be equal current round,"
+			<< "but they wasn't. The round in local timeout is " << round
+			<< " and current round is " << round_state_->current_round();
 		return;
+	}
 
 	Vote timeout_vote;
 	if (round_state_->send_vote()) {
@@ -123,10 +134,15 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 		boost::optional<Block> nil_block = proposal_generator_->GenerateNilBlock(round);
 		if (nil_block) {
 			assert(nil_block->block_data().block_type == BlockData::NilBlock);
-			if (ExecuteAndVote(nil_block.get(), timeout_vote) == false)
+			if (ExecuteAndVote(nil_block.get(), timeout_vote) == false) {
+				JLOG(journal_.error())
+					<< "Execute and vote failed for the proposal";
 				return;
+			}
 		}
 		else {
+			JLOG(journal_.error())
+				<< "Generate NilBlock failed when processing localtimeout";
 			return;
 		}
 	}
@@ -151,6 +167,9 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_info) {
 	if (stop_)
 		return false;
+
+    JLOG(journal_.info())
+        << "Check a proposal: " << proposal.block_data().round;
 
     const boost::optional<Signature>& signature = proposal.signature();
     if (signature) {
@@ -178,6 +197,9 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 }
 
 int RoundManager::ProcessProposal(const Block& proposal) {
+	JLOG(journal_.info())
+		<< "Process a proposal: " << proposal.block_data().round;
+
 	if (proposer_election_->IsValidProposal(proposal) == false) {
 		JLOG(journal_.error())
 			<< "Proposer " << "" << proposal.block_data().author()
@@ -205,6 +227,9 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 	if (stop_)
 		return 1;
 
+    JLOG(journal_.info())
+        << "Process a vote: " << vote.vote_data().proposed().round;
+
     if (hotstuff_core_->epochState()->verifier->verifySignature(
         vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
     {
@@ -219,6 +244,9 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 		vote.vote_data().proposed().round,
 		sync_info,
 		vote.author()) == false) {
+		JLOG(journal_.error())
+			<< "Stale vote, current round "
+			<< round_state_->current_round();
 		return 1;
 	}
 	return ProcessVote(vote);
@@ -263,8 +291,12 @@ int RoundManager::ProcessVote(const Vote& vote) {
 /// * then verify the voting rules
 bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
 	ExecutedBlock executed_block = block_store_->executeAndAddBlock(proposal);
-	if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false)
+	if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false) {
+		JLOG(journal_.error())
+			<< "Construct and sign vote failed."
+			<< "The round for vote is " << vote.vote_data().proposed().round;
 		return false;
+	}
 	return true;
 }
 

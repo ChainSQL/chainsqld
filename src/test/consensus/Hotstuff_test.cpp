@@ -284,18 +284,24 @@ public:
 
 	// for Network
 	void broadcast(
-		const ripple::hotstuff::Block& proposal, 
+		const ripple::hotstuff::Block& block, 
 		const ripple::hotstuff::SyncInfo& sync_info) {
 		
 		if (malicious())
 			return;
-		
+
+		ripple::Buffer s_proposal = ripple::serialization::serialize(block);
+		ripple::hotstuff::Block proposal = ripple::serialization::deserialize<ripple::hotstuff::Block>(s_proposal);
+
+		ripple::Buffer s_sync_info = ripple::serialization::serialize(sync_info);
+		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
+
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			env_->app().getJobQueue().addJob(
 				jtPROPOSAL_t,
 				"broadcast_proposal",
-				[this, it, proposal, sync_info](Job&) {
-					if(it->second->hotstuff_->CheckProposal(proposal, sync_info))
+				[this, it, proposal, sync](Job&) {
+					if(it->second->hotstuff_->CheckProposal(proposal, sync))
 						it->second->hotstuff_->handleProposal(proposal);
 				});
 		}
@@ -308,12 +314,18 @@ public:
 		if (malicious())
 			return;
 
+		ripple::Buffer s_vote = ripple::serialization::serialize(vote);
+		ripple::hotstuff::Vote v = ripple::serialization::deserialize<ripple::hotstuff::Vote>(s_vote);
+
+		ripple::Buffer s_sync_info = ripple::serialization::serialize(sync_info);
+		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
+
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			env_->app().getJobQueue().addJob(
 				jtPROPOSAL_t,
 				"broadcast_proposal",
-				[this, it, vote, sync_info](Job&) {
-					it->second->hotstuff_->handleVote(vote, sync_info);
+				[this, it, v, sync](Job&) {
+					it->second->hotstuff_->handleVote(v, sync);
 				});
 		}
 	}
@@ -544,7 +556,7 @@ public:
 		Replica::replicas.clear();
 	}
 
-	void releaseOneReplica(int index) {
+	void removeOneReplica(int index) {
 		if (index <= 0 
 			|| index  > Replica::replicas.size())
 			return;
@@ -686,7 +698,7 @@ public:
 		waitAllChangedEpochSuccessed();
 		BEAST_EXPECT(Replica::epoch == (current_epoch + 1));
 		// remove a replica
-		releaseOneReplica(replicas_);
+		removeOneReplica(replicas_);
 		BEAST_EXPECT(Replica::replicas.size() == (replicas_ - 1));
 		// Re-run replicas
 		runReplicas();

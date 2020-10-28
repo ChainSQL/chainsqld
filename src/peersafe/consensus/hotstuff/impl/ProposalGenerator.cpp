@@ -19,15 +19,18 @@
 
 #include <peersafe/consensus/hotstuff/impl/ProposalGenerator.h>
 
+#include <ripple/basics/Log.h>
 
 namespace ripple {
 namespace hotstuff {
 
 ProposalGenerator::ProposalGenerator(
+	const beast::Journal& journal,
 	CommandManager* cm, 
 	BlockStorage* block_store,
 	const Author& author)
-: command_manager_(cm)
+: journal_(journal)
+, command_manager_(cm)
 , block_store_(block_store)
 , author_(author)
 , last_round_generated_(0) {
@@ -87,10 +90,17 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 
 boost::optional<QuorumCertificate> ProposalGenerator::EnsureHighestQuorumCert(Round round) {
 	QuorumCertificate hqc = block_store_->HighestQuorumCert();
-	if (hqc.certified_block().round >= round)
+	if (hqc.certified_block().round >= round) {
+		JLOG(journal_.error())
+			<< "HQC's round in local is higher than new round.";
 		return boost::optional<QuorumCertificate>();
-	if (hqc.endsEpoch())
+	}
+	if (hqc.endsEpoch()) {
+		JLOG(journal_.warn())
+			<< "HQC is endsepoch. The HQC's round is "
+			<< hqc.certified_block().round;
 		return boost::optional<QuorumCertificate>();
+	}
 	return boost::optional<QuorumCertificate>(hqc);
 }
 

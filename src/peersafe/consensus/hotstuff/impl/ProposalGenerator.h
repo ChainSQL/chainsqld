@@ -33,6 +33,7 @@ namespace ripple { namespace hotstuff {
 class ProposalGenerator {
 public:
     ProposalGenerator(
+		const beast::Journal& journal,
 		CommandManager* cm, 
 		BlockStorage* block_store,
 		const Author& author);
@@ -52,6 +53,7 @@ public:
 private:
 	boost::optional<QuorumCertificate> EnsureHighestQuorumCert(Round round);
 
+	const beast::Journal& journal_;
 	CommandManager* command_manager_;
 	BlockStorage* block_store_;
 	Author author_;

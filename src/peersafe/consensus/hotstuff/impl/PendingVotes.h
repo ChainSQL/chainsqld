@@ -51,7 +51,7 @@ public:
 		UnexpectedRound,
 	};
 
-    PendingVotes();
+    PendingVotes(const beast::Journal& journal);
     ~PendingVotes();
 
 	int insertVote(
@@ -61,6 +61,7 @@ public:
 		boost::optional<TimeoutCertificate>& timeoutCert);
 
 private:
+	const beast::Journal* journal_;
 	std::map<Author, Vote> author_to_vote_;
 	std::map<HashValue, LedgerInfoWithSignatures> li_digest_to_votes_;
 	boost::optional<TimeoutCertificate> maybe_partial_timeout_cert_;

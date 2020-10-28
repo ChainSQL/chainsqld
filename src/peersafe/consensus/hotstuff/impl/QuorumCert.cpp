@@ -17,6 +17,8 @@
  */
 //==============================================================================
 
+#include <ripple/basics/Log.h>
+
 #include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
 
 namespace ripple {
@@ -42,15 +44,18 @@ bool LedgerInfoWithSignatures::Verify(ValidatorVerifier* validator) {
 //////////////////////////////////////////////////////////////////////////////////
 
 QuorumCertificate::QuorumCertificate()
-: vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
+: journal_(nullptr)
+, vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
 , signed_ledger_info_(LedgerInfoWithSignatures::LedgerInfo{BlockInfo(ZeroHash()), ZeroHash()}) {
 
 }
 
 QuorumCertificate::QuorumCertificate(
+	const beast::Journal& journal,
 	const VoteData& vote_data,
 	const LedgerInfoWithSignatures& signed_ledger_info)
-: vote_data_(vote_data)
+: journal_(&journal)
+, vote_data_(vote_data)
 , signed_ledger_info_(signed_ledger_info) {
 
 }
@@ -69,32 +74,44 @@ bool QuorumCertificate::Verify(ValidatorVerifier* validator) {
 	// because of the round constraint.
 	if (certified_block().round == 0) {
 		if (const_cast<BlockInfo&>(parent_block()).id != const_cast<BlockInfo&>(certified_block()).id) {
-			std::cerr
-				<< "Genesis QC has inconsistent parent block with certified block"
-				<< std::endl;
+			if (journal_) {
+				JLOG(journal_->error())
+					<< "Genesis QC has inconsistent parent block with certified block";
+			}
 			return false;
 		}
 
 		if (const_cast<BlockInfo&>(certified_block()).id != ledger_info().ledger_info.commit_info.id) {
-			std::cerr
-				<< "Genesis QC has inconsistent commit block with certified block"
-				<< std::endl;
+			if (journal_) {
+				JLOG(journal_->error())
+					<< "Genesis QC has inconsistent commit block with certified block";
+			}
 			return false;
 		}
 		
 		if (ledger_info().signatures.empty() == false) {
-			std::cerr
-				<< "Genesis QC should not carry signatures"
-				<< std::endl;
+			if (journal_) {
+				JLOG(journal_->error())
+					<< "Genesis QC should not carry signatures";
+			}
 			return false;
 		}
 		return true;
 	}
 
-	if (ledger_info().Verify(validator) == false)
+	if (ledger_info().Verify(validator) == false) {
+		if (journal_) {
+			JLOG(journal_->error())
+				<< "Verify ledger info failed";
+		}
 		return false;
+	}
 
 	if (vote_data_.Verify() == false) {
+		if (journal_) {
+			JLOG(journal_->error())
+				<< "Verify vote data failed";
+		}
 		return false;
 	}
 	return true;

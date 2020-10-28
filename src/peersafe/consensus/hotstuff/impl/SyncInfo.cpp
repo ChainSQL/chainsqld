@@ -19,14 +19,18 @@
 
 #include <peersafe/consensus/hotstuff/impl/SyncInfo.h>
 
+#include <ripple/basics/Log.h>
+
 namespace ripple {
 namespace hotstuff {
 
 SyncInfo::SyncInfo(
+	const beast::Journal* journal,
 	const QuorumCertificate& highest_qc_cert,
 	const QuorumCertificate& highest_commit_cert,
 	const boost::optional<TimeoutCertificate> highest_timeout_cert)
-: highest_quorum_cert_(highest_qc_cert)
+: journal_(journal)
+, highest_quorum_cert_(highest_qc_cert)
 , highest_commit_cert_()
 , highest_timeout_cert_() {
 	if (highest_qc_cert.certified_block().round != highest_commit_cert.certified_block().round) {
@@ -76,24 +80,54 @@ const bool SyncInfo::hasNewerCertificate(const SyncInfo& sync_info) const {
 
 bool SyncInfo::Verify(ValidatorVerifier* validator) {
 	Epoch epoch = highest_quorum_cert_.certified_block().epoch;
-	if (epoch != HighestCommitCert().certified_block().epoch)
+	if (epoch != HighestCommitCert().certified_block().epoch) {
+		JLOG(journal_->error())
+			<< "Verify sync_info failed."
+			<< "Mismatch epoch: Expected epoch is " << epoch
+			<< ", but HQC's epoch in local is " 
+			<< HighestCommitCert().certified_block().epoch;
 		return false;
+	}
 
 	if (highest_timeout_cert_
-		&& epoch != highest_timeout_cert_->timeout().epoch)
+		&& epoch != highest_timeout_cert_->timeout().epoch) { 
+		JLOG(journal_->error())
+			<< "Verify sync_info failed."
+			<< "Mismatch epoch: Expected epoch is " << epoch
+			<< ", but HTC's epoch in local is " 
+			<< highest_timeout_cert_->timeout().epoch;
 		return false;
+	}
 
-	if (highest_quorum_cert_.certified_block().round < HighestCommitCert().certified_block().round)
+	if (highest_quorum_cert_.certified_block().round < HighestCommitCert().certified_block().round) {
+		JLOG(journal_->error())
+			<< "Verify sync_info failed."
+			<< "Mismatch round: Expecte round " 
+			<< highest_quorum_cert_.certified_block().round
+			<< " is lower than HQC's round "
+			<< HighestCommitCert().certified_block().round
+			<< " in local";
 		return false;
+	}
 
-	if (highest_quorum_cert_.Verify(validator) == false)
+	if (highest_quorum_cert_.Verify(validator) == false) {
+		JLOG(journal_->error())
+			<< "Verify HQC failed."
+			<< "HQC's round is " 
+			<< highest_quorum_cert_.certified_block().round;
 		return false;
+	}
 
 	//if (highest_commit_cert_ && highest_commit_cert_->Verify(validator) == false)
 	//	return false;
 
-	if (highest_timeout_cert_ && highest_timeout_cert_->Verify(validator) == false)
+	if (highest_timeout_cert_ && highest_timeout_cert_->Verify(validator) == false) {
+		JLOG(journal_->error())
+			<< "Verify HTC failed"
+			<< "HTC's round is " 
+			<< highest_timeout_cert_->timeout().round;
 		return false;
+	}
 	
 	return true;
 }

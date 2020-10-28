@@ -94,13 +94,13 @@ Hotstuff::Hotstuff(
 	NetWork* network)
 : journal_(journal)
 , config_(config)
-, storage_(state_compute)
+, storage_(journal_, state_compute)
 , epoch_state_()
-, round_state_(&ios)
-, proposal_generator_(cm, &storage_, config.id)
+, round_state_(&ios, journal_)
+, proposal_generator_(journal_, cm, &storage_, config.id)
 , proposer_election_(proposer_election)
 , network_(network)
-, hotstuff_core_(journal, state_compute, &epoch_state_)
+, hotstuff_core_(journal_, state_compute, &epoch_state_)
 , round_manager_(nullptr) {
 
 }
@@ -111,7 +111,7 @@ Hotstuff::~Hotstuff() {
 
 int Hotstuff::start(const RecoverData& recover_data) {
 	storage_.updateCeritificates(Block::new_genesis_block(
-		recover_data.init_ledger_info, recover_data.epoch_state.epoch));
+		journal_, recover_data.init_ledger_info, recover_data.epoch_state.epoch));
 	epoch_state_ = recover_data.epoch_state;
 	hotstuff_core_.Initialize(recover_data.epoch_state.epoch, 0);
 	round_state_.reset();

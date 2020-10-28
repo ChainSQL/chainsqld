@@ -34,8 +34,11 @@ class NetWork;
 class BlockStorage {
 public:
     //BlockStorage();
-	BlockStorage(StateCompute* state_compute);
 	BlockStorage(
+		const beast::Journal& journal,
+		StateCompute* state_compute);
+	BlockStorage(
+		const beast::Journal& journal,
 		StateCompute* state_compute,
 		const Block& genesis_block);
     ~BlockStorage();
@@ -64,6 +67,7 @@ public:
 
 	SyncInfo sync_info() {
 		return SyncInfo(
+			journal_,
 			HighestQuorumCert(), 
 			HighestCommitCert(), 
 			HighestTimeoutCert());
@@ -85,6 +89,8 @@ private:
 	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);
 	void gcBlocks(Epoch epoch, Round round);
     //void recurseGCBlocks(const Block& block);
+
+	const beast::Journal* journal_;
 	StateCompute* state_compute_;
 	HashValue genesis_block_id_;
     std::map<HashValue, ExecutedBlock> cache_blocks_;

@@ -46,7 +46,9 @@ class ValidatorVerifier;
 
 class RoundState {
 public:
-	RoundState(boost::asio::io_service* io_service);
+	RoundState(
+		boost::asio::io_service* io_service,
+		const beast::Journal& journal);
 	~RoundState();
 	
 	boost::optional<NewRoundEvent> ProcessCertificates(const SyncInfo& sync_info);
@@ -76,6 +78,8 @@ public:
 	void reset();
 private:
 	void CancelRoundTimeout();
+
+	const beast::Journal* journal_;
 	Round current_round_;
 	boost::asio::steady_timer round_timeout_timer_;
 	PendingVotes pending_votes_;
