@@ -37,9 +37,12 @@ HashValue BlockData::hash(const BlockData& block_data) {
 	if (block_data.block_type == BlockData::Proposal
 		&& block_data.payload) {
 		hash_append(h, block_data.payload->cmd);
+        hash_append(h, block_data.getLedgerInfo().hash);
 	}
-
-    hash_append(h, block_data.getLedgerInfo().hash);
+    else if (block_data.block_type == BlockData::Genesis)
+    {
+        hash_append(h, block_data.getLedgerInfo().hash);
+    }
 
 	return static_cast<typename	sha512_half_hasher::result_type>(h);
 }

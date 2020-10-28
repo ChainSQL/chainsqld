@@ -217,7 +217,12 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
 
 bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result)
 {
-    if (block.block_data().epoch == 0 && block.block_data().round == 0)
+    if (block.block_data().block_type == hotstuff::BlockData::NilBlock)
+    {
+        return true;
+    }
+
+    if (block.block_data().block_type == hotstuff::BlockData::Genesis)
     {
         return false;
     }
