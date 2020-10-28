@@ -104,8 +104,8 @@ RCLConsensus::Adaptor::Adaptor(
         , inboundTransactions_{inboundTransactions}
         , j_(journal)
         , nodeID_{validatorKeys.nodeID}
-        , valPublic_{validatorKeys.publicKey}
-        , valSecret_{validatorKeys.secretKey}
+        , valPublic_{ app.config().ONLY_VALIDATE_FOR_SCHEMA ? PublicKey():validatorKeys.publicKey}
+        , valSecret_{ app.config().ONLY_VALIDATE_FOR_SCHEMA ? SecretKey():validatorKeys.secretKey}
 {
 }
 

@@ -52,6 +52,13 @@ namespace ripple {
 			return nullptr;
 	}
 
+	void SchemaManager::removeSchema(uint256 const& schemaId)
+	{
+		if (!contains(schemaId))
+			return;
+		schemas_.erase(schemaId);
+	}
+
 	bool SchemaManager::contains(uint256 const& id)
 	{
 		return schemas_.find(id) != schemas_.end();

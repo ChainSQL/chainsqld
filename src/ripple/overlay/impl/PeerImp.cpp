@@ -143,7 +143,6 @@ PeerImp::run()
             // Operations on closedLedgerHash_ and previousLedgerHash_ must be
             // guarded by recentLock_.
             std::lock_guard<std::mutex> sl(recentLock_);
-
             memcpy(schemaInfo_[beast::zero].closedLedgerHash_.begin(),hello_.ledgerclosed().data(),32);
 
             if (hello_.has_ledgerprevious() &&
@@ -179,20 +178,33 @@ PeerImp::dispatch()
 		for (auto item : app_.getSchemaManager())
 		{
 			auto& vecKeys = item.second->validators().validators();
-			if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_) != vecKeys.end())
+			if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_) != vecKeys.end() ||
+				item.first == beast::zero) // add to main chain with no validators check.
 			{
-				schemaInfo_.emplace(item.first, SchemaInfo());
+				{
+					std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+					schemaInfo_.emplace(item.first, SchemaInfo());
+				}
 				item.second->peerManager().add(shared_from_this());
 			}
 		}
 	}
 	else
 	{
-		for (auto id : schemaIds_)
-		{
-			schemaInfo_.emplace(std::make_pair(id, SchemaInfo()));
-			app_.peerManager(id).add(shared_from_this());
-		}
+		//for (auto id : schemaIds_)
+		//{
+		//	{
+		//		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		//		schemaInfo_.emplace(std::make_pair(id, SchemaInfo()));
+		//	}
+		//	app_.peerManager(id).add(shared_from_this());
+		//}
+
+		//add non-validating node to main chain
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		schemaInfo_.emplace(std::make_pair(beast::zero, SchemaInfo()));
+	
+		app_.peerManager(beast::zero).add(shared_from_this());
 	}
 }
 
@@ -306,10 +318,14 @@ Json::Value
 PeerImp::json(uint256 const& schemaId)
 {
     Json::Value ret (Json::objectValue);
+	SchemaInfo* pInfo = nullptr;
+	{
+		std::lock_guard<std::mutex> sl(recentLock_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return ret;
+		pInfo = &schemaInfo_.at(schemaId);
+	}
 
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-		return ret;
-	auto& info = schemaInfo_.at(schemaId);
     ret[jss::public_key]   = toBase58 (
         TokenType::NodePublic, publicKey_);
     ret[jss::address]      = remote_address_.to_string();
@@ -373,9 +389,12 @@ PeerImp::json(uint256 const& schemaId)
     uint256 closedLedgerHash;
     protocol::TMStatusChange last_status;
     {
-        std::lock_guard<std::mutex> sl(recentLock_);
-        closedLedgerHash = info.closedLedgerHash_;
-        last_status = last_status_;
+		std::lock_guard<std::mutex> sl(recentLock_);
+		if (pInfo)
+		{
+			closedLedgerHash = pInfo->closedLedgerHash_;
+			last_status = last_status_;
+		}
     }
 
     if (closedLedgerHash != beast::zero)
@@ -419,10 +438,15 @@ PeerImp::json(uint256 const& schemaId)
 bool
 PeerImp::hasLedger (uint256 const& schemaId, uint256 const& hash, std::uint32_t seq) const
 {
-	if (schemaInfo_.find(schemaId) != schemaInfo_.end())
+	{
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return false;
+	}
+	
     {
+		std::lock_guard<std::mutex> sl(recentLock_);
 		auto& info = schemaInfo_.at(schemaId);
-        std::lock_guard<std::mutex> sl(recentLock_);
         if ((seq != 0) && (seq >= info.minLedger_) && (seq <= info.maxLedger_) &&
                 (sanity_.load() == Sanity::sane))
             return true;
@@ -439,20 +463,27 @@ void
 PeerImp::ledgerRange (uint256 const& schemaId, std::uint32_t& minSeq,
     std::uint32_t& maxSeq) const
 {
-    std::lock_guard<std::mutex> sl(recentLock_);
-	if (schemaInfo_.find(schemaId) != schemaInfo_.end())
 	{
-		auto& info = schemaInfo_.at(schemaId);
-		minSeq = info.minLedger_;
-		maxSeq = info.maxLedger_;
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return;
 	}
+    
+	std::lock_guard<std::mutex> sl(recentLock_);
+	auto& info = schemaInfo_.at(schemaId);
+	minSeq = info.minLedger_;
+	maxSeq = info.maxLedger_;
 }
 
 bool
 PeerImp::hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const
 {
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-		return false;
+	{
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return false;
+	}
+
 	auto& info = schemaInfo_.at(schemaId);
     std::lock_guard<std::mutex> l { info.shardInfoMutex_};
     auto const it { info.shardInfo_.find(publicKey_)};
@@ -464,10 +495,13 @@ PeerImp::hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const
 bool
 PeerImp::hasTxSet (uint256 const& schemaId, uint256 const& hash) const
 {
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-		return false;
+	{
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return false;
+	}
 	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard<std::mutex> sl(recentLock_);
+	std::lock_guard<std::mutex> sl(recentLock_);
     return std::find (info.recentTxSets_.begin(),
 		info.recentTxSets_.end(), hash) != info.recentTxSets_.end();
 }
@@ -477,10 +511,14 @@ PeerImp::cycleStatus (uint256 const& schemaId)
 {
     // Operations on closedLedgerHash_ and previousLedgerHash_ must be
     // guarded by recentLock_.
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-		return;
+	{
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return;
+	}
+
 	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard<std::mutex> sl(recentLock_);
+	std::lock_guard<std::mutex> sl(recentLock_);
 	info.previousLedgerHash_ = info.closedLedgerHash_;
 	info.closedLedgerHash_.zero ();
 }
@@ -494,10 +532,13 @@ PeerImp::supportsVersion (int version)
 bool
 PeerImp::hasRange (uint256 const& schemaId,std::uint32_t uMin, std::uint32_t uMax)
 {
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-		return false;
+	{
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return false;
+	}
+
 	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard<std::mutex> sl(recentLock_);
     return (sanity_ != Sanity::insane) &&
         (uMin >= info.minLedger_) &&
         (uMax <= info.maxLedger_);
@@ -564,8 +605,11 @@ PeerImp::fail(std::string const& name, error_code ec)
 boost::optional<RangeSet<std::uint32_t>>
 PeerImp::getShardIndexes(uint256 const& schemaId) const
 {
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-		return boost::none;
+	{
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return boost::none;
+	}
 	auto& info = schemaInfo_.at(schemaId);
     std::lock_guard<std::mutex> l {info.shardInfoMutex_};
     auto it{ info.shardInfo_.find(publicKey_)};
@@ -577,13 +621,27 @@ PeerImp::getShardIndexes(uint256 const& schemaId) const
 boost::optional<hash_map<PublicKey, PeerImp::ShardInfo>>
 PeerImp::getPeerShardInfo(uint256 const& schemaId) const
 {
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-		return boost::none;
+	{
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+			return boost::none;
+	}
 	auto& info = schemaInfo_.at(schemaId);
     std::lock_guard<std::mutex> l { info.shardInfoMutex_};
     if (!info.shardInfo_.empty())
         return info.shardInfo_;
     return boost::none;
+}
+
+void PeerImp::removeSchemaInfo(uint256 const& schemaId)
+{
+	std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+	if (schemaInfo_.find(schemaId) != schemaInfo_.end())
+	{
+		schemaInfo_.erase(schemaId);
+		if (schemaInfo_.empty())
+			gracefulClose();
+	}
 }
 
 std::tuple<bool, uint256, PeerImp::SchemaInfo*> 
@@ -597,6 +655,7 @@ PeerImp::getSchemaInfo(std::string prefix,std::string const& schemaIdBuffer)
 	}
 	uint256 schemaId;
 	memcpy(schemaId.begin(), schemaIdBuffer.data(), 32);
+	std::lock_guard<std::mutex> sl(schemaInfoMutex_);
 	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 	{
 		JLOG(p_journal_.warn()) << prefix << "Don't have schema in schemaInfo_";
@@ -885,6 +944,7 @@ PeerImp::doProtocolStart()
 {
     onReadMessage(error_code(), 0);
 
+	std::lock_guard<std::mutex> sl(schemaInfoMutex_);
 	for (auto it = schemaInfo_.begin(); it != schemaInfo_.end(); it++)
 	{
 		auto schemaid = it->first;
@@ -2180,17 +2240,21 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
 void
 PeerImp::checkSanity (uint256 const& schemaId,std::uint32_t validationSeq)
 {
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 	{
-		return;
+		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+		{
+			return;
+		}
 	}
+
 	auto& info = schemaInfo_.at(schemaId);
 
     std::uint32_t serverSeq;
     {
         // Extract the seqeuence number of the highest
         // ledger this peer has
-        std::lock_guard<std::mutex> sl (recentLock_);
+		std::lock_guard<std::mutex> sl(recentLock_);
 
         serverSeq = info.maxLedger_;
     }
