@@ -198,7 +198,8 @@ public:
 
 	// schema
 	std::string					 SCHEMA_PATH;
-	bool					     AUTO_ACCEPT_NEW_SCHEMA = true;
+	bool					     AUTO_ACCEPT_NEW_SCHEMA = false;
+	bool						 ONLY_VALIDATE_FOR_SCHEMA = false;
 
 public:
     Config()

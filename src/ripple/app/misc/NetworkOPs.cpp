@@ -2485,7 +2485,7 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin, bool counters)
 
     if (admin)
     {
-        if (!app_.getValidationPublicKey().empty())
+        if (!app_.getValidationPublicKey().empty() && !app_.config().ONLY_VALIDATE_FOR_SCHEMA)
         {
             info[jss::pubkey_validator] = toBase58 (
                 TokenType::NodePublic,
@@ -2986,41 +2986,21 @@ Json::Value NetworkOPsImp::transJson(
 std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<SLE const> &sleSchema, bool bForce)
 {
 	SchemaParams params{};
-	auto validators = sleSchema->getFieldArray(sfValidators);
+	params.readFromSle(sleSchema);
+	
 	bool bShouldCreate = bForce;
-	for (auto& validator : validators)
+	for (auto& validator : params.validator_list)
 	{
-		auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
-		auto signedVal = (validator.getFieldU8(sfSigned) == 1);
-		params.validator_list.push_back(std::make_pair(publicKey, signedVal));
 		if (!bShouldCreate &&
-			(signedVal || app_.config().AUTO_ACCEPT_NEW_SCHEMA) &&
+			(validator.second || app_.config().AUTO_ACCEPT_NEW_SCHEMA) &&
 			app_.app().getValidationPublicKey().size() != 0 &&
-			publicKey == app_.app().getValidationPublicKey())
+			validator.first == app_.app().getValidationPublicKey())
 		{
 			bShouldCreate = true;
 		}
 	}
 	if (!bShouldCreate)
 		return std::make_pair(true, "");
-
-	params.account = sleSchema->getAccountID(sfAccount);
-	params.schema_id = sleSchema->key();
-	params.schema_name = strCopy(sleSchema->getFieldVL(sfSchemaName));
-	params.strategy = sleSchema->getFieldU8(sfSchemaStrategy) == 1 ?
-		SchemaStragegy::new_chain : SchemaStragegy::with_state;
-	if (params.strategy == SchemaStragegy::with_state)
-	{
-		params.anchor_ledger_hash = sleSchema->getFieldH256(sfAnchorLedgerHash);
-	}
-	if (sleSchema->isFieldPresent(sfSchemaAdmin))
-		params.admin = sleSchema->getAccountID(sfSchemaAdmin);
-
-	auto peers = sleSchema->getFieldArray(sfPeerList);
-	for (auto& peer : peers)
-	{
-		params.peer_list.push_back(strCopy(peer.getFieldVL(sfEndpoint)));
-	}
 
 	if (!app_.app().getSchemaManager().contains(params.schema_id))
 	{
@@ -3037,7 +3017,7 @@ std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<S
 				{
 					return std::make_pair(false, "Error while setup");
 				}
-				app_.app().overlay().dispatch(params.schema_id);
+				app_.app().overlay().onSchemaCreated(params.schema_id);
 			}
 		}
 		catch (std::exception const& e)
@@ -3069,7 +3049,56 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 	}
 	else if (stTxn->getTxnType() == ttSCHEMA_MODIFY)
 	{
+		auto schemaID = stTxn->getFieldH256(sfSchemaID);
 
+		auto validators = stTxn->getFieldArray(sfValidators);
+		std::vector<PublicKey> vecValidators;
+		bool bOperatingSelf = false;
+		for (auto& validator : validators)
+		{
+			auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
+			vecValidators.push_back(publicKey);
+			if (app_.app().getValidationPublicKey() == publicKey)
+				bOperatingSelf = true;
+		}
+		std::vector<std::string> vecPeers;
+		auto & peers = stTxn->getFieldArray(sfPeerList);
+		for (auto& peer : peers)
+		{
+			vecPeers.push_back(strCopy(peer.getFieldVL(sfEndpoint)));
+		}
+
+		if (stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::add)
+		{
+			if (bOperatingSelf)
+			{
+				auto sleSchema = alAccepted->read(Keylet(ltSCHEMA, schemaID));
+				auto ret = this->createSchema(sleSchema, false);
+				if (!ret.first)
+					JLOG(m_journal.fatal()) << ret.second;
+			}
+			else
+			{
+				app_.app().getSchema(schemaID).getSchemaParams().modify(SchemaModifyOp::add, vecValidators, vecPeers);
+				auto config_dir = boost::filesystem::path(app_.config().SCHEMA_PATH) / to_string(schemaID);
+				app_.app().config(schemaID).initSchemaInfo(config_dir, 
+					app_.app().getSchema(schemaID).getSchemaParams());
+
+				app_.app().overlay().onSchemaAddPeer(schemaID, vecPeers, vecValidators);
+			}
+		}
+		else if (stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::del)
+		{
+			app_.app().getSchema(schemaID).getSchemaParams().modify(SchemaModifyOp::add, vecValidators, vecPeers);
+			auto config_dir = boost::filesystem::path(app_.config().SCHEMA_PATH) / to_string(schemaID);
+			app_.app().config(schemaID).initSchemaInfo(config_dir,
+				app_.app().getSchema(schemaID).getSchemaParams());
+
+			if (bOperatingSelf)
+				app_.app().getSchemaManager().removeSchema(schemaID);
+			else
+				app_.peerManager().remove(vecValidators);
+		}
 	}
 }
 

@@ -1043,7 +1043,7 @@ private:
 
 			// Setup trusted validators
 			if (!validators_->load(
-				app_.getValidatorKeys().publicKey,
+				config_->ONLY_VALIDATE_FOR_SCHEMA ? PublicKey(): app_.getValidationPublicKey(),
 				config().section(SECTION_VALIDATORS).values(),
 				config().section(SECTION_VALIDATOR_LIST_KEYS).values()))
 			{

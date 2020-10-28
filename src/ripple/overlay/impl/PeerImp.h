@@ -160,12 +160,14 @@ private:
     // Node public key of peer.
     PublicKey const publicKey_;
 	boost::optional<PublicKey> publicValidate_;
+	//for non-validating node
 	std::vector<uint256> schemaIds_;
     std::string name_;
     std::shared_timed_mutex mutable nameMutex_;
 
     // The indices of the smallest and largest ledgers this peer has available
-    //
+	//
+	std::mutex mutable schemaInfoMutex_;
 	hash_map<uint256,SchemaInfo> schemaInfo_;
     //LedgerIndex minLedger_ = 0;
     //LedgerIndex maxLedger_ = 0;
@@ -409,6 +411,8 @@ public:
 
 	std::tuple<bool,uint256, SchemaInfo*> 
 		getSchemaInfo(std::string prefix, std::string const& schemaIdBuffer);
+
+	void removeSchemaInfo(uint256 const& schemaId);
 private:
     void
     close();

@@ -879,6 +879,8 @@ PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 		return;
 	}
 
+	if (!adaptor_.validating())
+		return;
 	//Long time no consensus reach,rollback to initial state.
 	//What if 2 of 4 validate new ledger success, but other 2 of 4 not ,can roll back work,or is there such occasion?
 	if (timeOutCount_ > TimeOutCountRollback)

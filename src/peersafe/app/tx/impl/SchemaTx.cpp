@@ -4,6 +4,7 @@
 #include <ripple/ledger/View.h>
 #include <ripple/protocol/st.h>
 #include <ripple/app/main/Application.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/core/Config.h>
 
 
@@ -100,7 +101,8 @@ namespace ripple {
 		auto j = ctx.app.journal("preclaimSchema");
 
 		if ((uint8_t)SchemaStragegy::with_state == ctx.tx.getFieldU8(sfSchemaStrategy) &&
-			!ctx.tx.isFieldPresent(sfAnchorLedgerHash))
+			(!ctx.tx.isFieldPresent(sfAnchorLedgerHash) || 
+				!ctx.app.getLedgerMaster().getLedgerByHash(ctx.tx.getFieldH256(sfAnchorLedgerHash))))
 		{
 			JLOG(j.trace()) << "anchor ledger is not match the schema strategy.";
 			return temBAD_ANCHORLEDGER;

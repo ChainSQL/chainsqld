@@ -214,7 +214,8 @@ public:
         HandlerType const& handler) override
     {
         assert (m_stop_called == false);
-        assert (m_stopped == true);
+		//by lujinglei: If assert here , resolve can only happen one time.
+        //assert (m_stopped == true);
         assert (!names.empty());
 
         // TODO NIKB use rvalue references to construct and move

@@ -1090,43 +1090,78 @@ bool ApplicationImp::loadSubChains()
 			Throw<std::runtime_error>(
 				"Invalid info in schema_info");
 
+
 		std::string sSchemaId = filenames[0];
-		std::string sSchemaName = filenames[1];
-		std::string sAcountID   = filenames[2];
-		std::string sStragegy   = filenames[3];
-
-	    std::string sAnchorLedgerHash = filenames[4];
-		std::string sValidatorInfo    = filenames[5];
-		std::string sPeerListInfo     = filenames[6];
-
+		auto schemaId = ripple::from_hex_text<ripple::uint256>(sSchemaId);
 		SchemaParams params{};
-		params.account = *ripple::parseBase58<AccountID>(sAcountID);
-		params.admin = params.account;
-		params.schema_id = ripple::from_hex_text<ripple::uint256>(sSchemaId);
-		params.schema_name = sSchemaName;
-		params.anchor_ledger_hash = ripple::from_hex_text<ripple::uint256>(sAnchorLedgerHash);
-		params.strategy = boost::iequals(sStragegy, "1")? SchemaStragegy::new_chain : SchemaStragegy::with_state;
-
-		boost::split(params.peer_list, sPeerListInfo, boost::is_any_of(";"));
-	
-		std::vector<std::string> vValidatorInfo;
-		boost::split(vValidatorInfo, sValidatorInfo, boost::is_any_of(";"));
-
-		for (auto item : vValidatorInfo) {
-
-			std::vector<std::string> vValidator;
-			boost::split(vValidator, item, boost::is_any_of(" "));
-			
-			if (vValidator.size() != 2)
-				Throw<std::runtime_error>(
-					"Invalid validator info in schema_info");
-
-			boost::optional<PublicKey> pk = parseBase58<PublicKey>(TokenType::NodePublic, vValidator[0]);
-			bool bValid = boost::iequals(vValidator[0], "1") ? true : false;
-
-			std::pair<PublicKey, bool> validator = std::make_pair(*pk, bValid);
-			params.validator_list.push_back(validator);
+		bool bShouldCreate = false;
+		//To Modify: use sle to judge if schema should be created.
+		auto ledger = getLedgerMaster(beast::zero).getValidatedLedger();
+		if (ledger->seq() > 1)
+		{
+			auto sle = ledger->read(Keylet(ltSCHEMA, schemaId));
+			if (!sle)
+			{
+				JLOG(m_journal.warn()) << "Read sle for schema:"<<to_string(schemaId)<<" failed";
+				continue;
+			}
+			params.readFromSle(sle);
+			for (auto validator : params.validator_list)
+			{
+				if (validator.first == getValidationPublicKey())
+				{
+					bShouldCreate = true;
+					break;
+				}
+			}
 		}
+		else
+		{
+			std::string sSchemaName = filenames[1];
+			std::string sAcountID = filenames[2];
+			std::string sStragegy = filenames[3];
+
+			std::string sAnchorLedgerHash = filenames[4];
+			std::string sValidatorInfo = filenames[5];
+			std::string sPeerListInfo = filenames[6];
+
+			params.account = *ripple::parseBase58<AccountID>(sAcountID);
+			params.admin = params.account;
+			params.schema_id = schemaId;
+			params.schema_name = sSchemaName;
+			params.anchor_ledger_hash = ripple::from_hex_text<ripple::uint256>(sAnchorLedgerHash);
+			params.strategy = boost::iequals(sStragegy, "1") ? SchemaStragegy::new_chain : SchemaStragegy::with_state;
+
+			boost::split(params.peer_list, sPeerListInfo, boost::is_any_of(";"));
+
+			std::vector<std::string> vValidatorInfo;
+			boost::split(vValidatorInfo, sValidatorInfo, boost::is_any_of(";"));
+
+			for (auto item : vValidatorInfo) {
+
+				std::vector<std::string> vValidator;
+				boost::split(vValidator, item, boost::is_any_of(" "));
+
+				if (vValidator.size() != 2)
+					Throw<std::runtime_error>(
+						"Invalid validator info in schema_info");
+
+				boost::optional<PublicKey> pk = parseBase58<PublicKey>(TokenType::NodePublic, vValidator[0]);
+				bool bValid = boost::iequals(vValidator[0], "1") ? true : false;
+
+				std::pair<PublicKey, bool> validator = std::make_pair(*pk, bValid);
+				params.validator_list.push_back(validator);
+
+				if (*pk == getValidationPublicKey())
+					bShouldCreate = true;
+			}
+		}
+		if (!bShouldCreate)
+		{
+			JLOG(m_journal.warn()) << "Schema:" << to_string(schemaId) << " will not be created.";
+			continue;
+		}
+
 		auto config = std::make_shared<Config>();
 		std::string config_path = (boost::format("%1%/%2%/%3%")
 			% config_->SCHEMA_PATH

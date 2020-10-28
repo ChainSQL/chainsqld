@@ -1442,9 +1442,9 @@ LedgerMaster::advanceThread()
     {
         doAdvance(sl);
     }
-    catch (std::exception const&)
+    catch (std::exception const& e)
     {
-        JLOG (m_journal.fatal()) << "doAdvance throws an exception";
+        JLOG (m_journal.fatal()) << "doAdvance throws an exception:" << e.what();
     }
 
     mAdvanceThread = false;
