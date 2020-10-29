@@ -1162,6 +1162,8 @@ bool ApplicationImp::loadSubChains()
 			continue;
 		}
 
+		JLOG(m_journal.info()) << "Schema:" << to_string(schemaId) << " begin create.";
+
 		auto config = std::make_shared<Config>();
 		std::string config_path = (boost::format("%1%/%2%/%3%")
 			% config_->SCHEMA_PATH
@@ -1174,6 +1176,8 @@ bool ApplicationImp::loadSubChains()
 			return false;
 		if (!newSchema->setup())
 			return false;
+
+		JLOG(m_journal.info()) << "Schema:" << to_string(schemaId) << " created.";
 	}
 	return true;
 }

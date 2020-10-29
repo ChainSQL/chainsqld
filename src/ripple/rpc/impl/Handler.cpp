@@ -145,8 +145,8 @@ Handler const handlerArray[] {
     {   "t_auditstop",			byRef (&doTableAuditStop),     Role::ADMIN,   NO_CONDITION },
     {   "t_auditposition",		byRef (&getAuditCurPos),       Role::ADMIN,   NO_CONDITION },
 	{   "table_auth",			byRef (&doTableAuthority),     Role::USER,   NO_CONDITION },
-	{	"tx_count",				byRef(&doTxCount),            Role::USER,	 NO_CONDITION },
-	{	"tx_crossget",			byRef(&doGetCrossChainTx),	   Role::USER,	NO_CONDITION },
+	{	"tx_count",				byRef (&doTxCount),            Role::USER,	 NO_CONDITION },
+	{	"tx_crossget",			byRef (&doGetCrossChainTx),	   Role::USER,	NO_CONDITION },
 	//Contract methods
 	{	"contract_call",		byRef(&doContractCall),	       Role::USER,	NO_CONDITION  },
     // Evented methods
@@ -157,8 +157,8 @@ Handler const handlerArray[] {
     {   "node_size",            byRef (&doNodeSize),           Role::ADMIN, NO_CONDITION    },
     {   "malloc_trim",          byRef (&doMallocTrim),         Role::ADMIN, NO_CONDITION    },
 	{   "schema_list",          byRef (&doSchemaList),         Role::USER,  NO_CONDITION    },
-	{   "schema_info",          byRef(&doSchemaInfo),          Role::USER,  NO_CONDITION },
-	{   "schema_accept",        byRef(&doSchemaAccept),        Role::ADMIN, NO_CONDITION },
+	{   "schema_info",          byRef (&doSchemaInfo),         Role::USER,  NO_CONDITION },
+	{   "schema_accept",        byRef (&doSchemaAccept),       Role::ADMIN, NO_CONDITION },
 };
 
 class HandlerTable {
