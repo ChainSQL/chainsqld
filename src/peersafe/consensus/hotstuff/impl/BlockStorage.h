@@ -86,6 +86,10 @@ public:
 
 	// 目前主要功能是 commit 共识过的 block
 	//int saveVote(const Vote& vote);
+	StateCompute* state_compute() {
+		return state_compute_;
+	}
+
 private:
 	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);
 	void gcBlocks(Epoch epoch, Round round);

@@ -177,6 +177,10 @@ public:
 		return 0;
 	}
 
+	bool syncState(const ripple::hotstuff::BlockInfo& block_info) {
+		return true;
+	}
+
 	//const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& 
 	//committedBlocks() const {
 	//	return committed_blocks_;

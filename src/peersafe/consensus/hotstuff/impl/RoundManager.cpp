@@ -348,6 +348,12 @@ int RoundManager::SyncUp(
 				<< "Verifing sync_info failed";
 			return 1;
 		}
+		if (block_store_->state_compute()->syncState(
+			sync_info.HighestQuorumCert().certified_block()) == false) {
+			JLOG(journal_.error())
+				<< "Sync compute state failed.";
+			return 1;
+		}
 		block_store_->addCerts(sync_info, network_);
 		// open a new round
 		ProcessCertificates();
