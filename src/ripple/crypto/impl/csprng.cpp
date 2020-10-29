@@ -47,7 +47,7 @@ csprng_engine::csprng_engine ()
 
 csprng_engine::~csprng_engine ()
 {
-    RAND_cleanup ();
+    //RAND_cleanup ();
 }
 
 void

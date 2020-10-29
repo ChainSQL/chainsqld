@@ -914,11 +914,11 @@ macro(link_common_libraries cur_project)
     endif()
   else(NOT MSVC)
     target_link_libraries(${cur_project}
-      $<$<OR:$<CONFIG:Debug>,$<CONFIG:DebugClassic>>:VC/static/ssleay32MTd>
-      $<$<OR:$<CONFIG:Debug>,$<CONFIG:DebugClassic>>:VC/static/libeay32MTd>)
+      $<$<OR:$<CONFIG:Debug>,$<CONFIG:DebugClassic>>:VC/static/libcrypto64MTd>
+      $<$<OR:$<CONFIG:Debug>,$<CONFIG:DebugClassic>>:VC/static/libssl64MTd>)
     target_link_libraries(${cur_project}
-      $<$<OR:$<CONFIG:Release>,$<CONFIG:ReleaseClassic>>:VC/static/ssleay32MT>
-      $<$<OR:$<CONFIG:Release>,$<CONFIG:ReleaseClassic>>:VC/static/libeay32MT>)
+      $<$<OR:$<CONFIG:Release>,$<CONFIG:ReleaseClassic>>:VC/static/libcrypto64MT>
+      $<$<OR:$<CONFIG:Release>,$<CONFIG:ReleaseClassic>>:VC/static/libssl64MT>)
     target_link_libraries(${cur_project}
       legacy_stdio_definitions.lib Shlwapi kernel32 user32 gdi32 winspool comdlg32
       advapi32 shell32 ole32 oleaut32 uuid odbc32 odbccp32 crypt32)
