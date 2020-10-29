@@ -55,7 +55,6 @@ public:
 
 	QuorumCertificate();
 	QuorumCertificate(
-		const beast::Journal& journal,
 		const VoteData& vote_data, 
 		const LedgerInfoWithSignatures& signed_ledger_info);
 	~QuorumCertificate();
@@ -110,7 +109,6 @@ public:
 	bool Verify(ValidatorVerifier* validator);
 
 private:
-	const beast::Journal* journal_;
 	VoteData vote_data_;
 	LedgerInfoWithSignatures signed_ledger_info_;
 };

@@ -28,7 +28,7 @@ namespace hotstuff {
 RoundState::RoundState(
 	boost::asio::io_service* io_service,
 	const beast::Journal& journal)
-: journal_(&journal)
+: journal_(journal)
 , current_round_(0)
 , round_timeout_timer_(*io_service)
 , pending_votes_(nullptr)
@@ -43,7 +43,7 @@ RoundState::~RoundState() {
 boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& sync_info) {
 	Round new_round = sync_info.HighestRound() + 1;
 
-	JLOG(journal_->info())
+	JLOG(journal_.info())
 		<< "Openning a new round which is " << new_round
 		<< ", current round is " << current_round_;
 
@@ -51,7 +51,7 @@ boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& s
 		// reset timeout
 		CancelRoundTimeout();
 		current_round_ = new_round;
-		pending_votes_ = PendingVotes::New(*journal_);
+		pending_votes_ = PendingVotes::New();
 		send_vote_ = boost::optional<Vote>();
 
 		NewRoundEvent new_round_event;
@@ -61,7 +61,7 @@ boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& s
 		return boost::optional<NewRoundEvent>(new_round_event);
 	}
 
-	JLOG(journal_->error())
+	JLOG(journal_.error())
 		<< "Opened a new round failed, new round is "
 		<< new_round 
 		<< ", but current round is " << current_round_;
@@ -82,7 +82,7 @@ int RoundState::insertVote(
 	boost::optional<TimeoutCertificate>& timeoutCert) {
 	Round round = current_round();
 	if (vote.vote_data().proposed().round != round) {
-		JLOG(journal_->error())
+		JLOG(journal_.error())
 			<< "insert vote failed. reason: expecte round is "
 			<< vote.vote_data().proposed().round
 			<< " but current round is " << round;
@@ -93,7 +93,7 @@ int RoundState::insertVote(
 
 void RoundState::reset() {
 	current_round_ = 0;
-	pending_votes_ = PendingVotes::New(*journal_);
+	pending_votes_ = PendingVotes::New();
 	send_vote_ = boost::optional<Vote>();
 }
 

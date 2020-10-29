@@ -100,7 +100,6 @@ public:
 		const BlockData& block_data, 
 		ValidatorVerifier* verifier);
 	static Block new_genesis_block(
-		const beast::Journal& journal,
 		const ripple::LedgerInfo& ledger_info,
 		const Epoch& epoch);
 

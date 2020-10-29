@@ -68,7 +68,6 @@ public:
 	SyncInfo sync_info() {
 		std::lock_guard<std::mutex> lock(quorum_cert_mutex_);
 		return SyncInfo(
-			journal_,
 			HighestQuorumCert(), 
 			HighestCommitCert(), 
 			HighestTimeoutCert());
@@ -90,7 +89,7 @@ private:
 	void gcBlocks(Epoch epoch, Round round);
     //void recurseGCBlocks(const Block& block);
 
-	const beast::Journal* journal_;
+	beast::Journal journal_;
 	StateCompute* state_compute_;
 	HashValue genesis_block_id_;
 	std::mutex cache_blocks_mutex_;

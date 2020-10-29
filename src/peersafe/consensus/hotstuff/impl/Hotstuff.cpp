@@ -111,7 +111,7 @@ Hotstuff::~Hotstuff() {
 
 int Hotstuff::start(const RecoverData& recover_data) {
 	storage_.updateCeritificates(Block::new_genesis_block(
-		journal_, recover_data.init_ledger_info, recover_data.epoch_state.epoch));
+		recover_data.init_ledger_info, recover_data.epoch_state.epoch));
 	epoch_state_ = recover_data.epoch_state;
 	hotstuff_core_.Initialize(recover_data.epoch_state.epoch, 0);
 	round_state_.reset();

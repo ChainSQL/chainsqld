@@ -80,7 +80,7 @@ public:
 private:
 	void CancelRoundTimeout();
 
-	const beast::Journal* journal_;
+	beast::Journal journal_;
 	std::atomic<Round> current_round_;
 	boost::asio::steady_timer round_timeout_timer_;
 	PendingVotes::pointer pending_votes_;

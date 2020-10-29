@@ -53,7 +53,7 @@ public:
 private:
 	boost::optional<QuorumCertificate> EnsureHighestQuorumCert(Round round);
 
-	const beast::Journal& journal_;
+	beast::Journal journal_;
 	CommandManager* command_manager_;
 	BlockStorage* block_store_;
 	Author author_;

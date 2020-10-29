@@ -89,7 +89,6 @@ Block Block::new_from_block_data(const BlockData& block_data, ValidatorVerifier*
 }
 
 Block Block::new_genesis_block(
-	const beast::Journal& journal,
 	const ripple::LedgerInfo& ledger_info,
 	const Epoch& epoch) {
 
@@ -103,7 +102,7 @@ Block Block::new_genesis_block(
 	// genesis LedgerInfo
 	LedgerInfoWithSignatures::LedgerInfo genesis_ledger{genesis_block_info, genesis_vote_data.hash()};
 	// genesis QuorumCertificate
-	QuorumCertificate genesis_qc(journal, genesis_vote_data, genesis_ledger);
+	QuorumCertificate genesis_qc(genesis_vote_data, genesis_ledger);
 
 	// genesis BlockDate
 	BlockData genesis_block_data;

@@ -31,7 +31,7 @@ namespace ripple { namespace hotstuff {
 BlockStorage::BlockStorage(
 	const beast::Journal& journal,
 	StateCompute* state_compute) 
-: journal_(&journal)
+: journal_(journal)
 , state_compute_(state_compute)
 , genesis_block_id_()
 , cache_blocks_mutex_()
@@ -48,7 +48,7 @@ BlockStorage::BlockStorage(
 	const beast::Journal& journal,
 	StateCompute* state_compute,
 	const Block& genesis_block)
-: journal_(&journal)
+: journal_(journal)
 , state_compute_(state_compute)
 , genesis_block_id_()
 , cache_blocks_mutex_()

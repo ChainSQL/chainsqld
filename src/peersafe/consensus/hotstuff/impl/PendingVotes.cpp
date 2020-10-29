@@ -25,9 +25,8 @@
 namespace ripple {
 namespace hotstuff {
     
-PendingVotes::PendingVotes(const beast::Journal& journal)
-: journal_(&journal)
-, mutex_()
+PendingVotes::PendingVotes()
+: mutex_()
 , author_to_vote_()
 , li_digest_to_votes_()
 , maybe_partial_timeout_cert_() {
@@ -50,7 +49,7 @@ int PendingVotes::insertVote(
 	auto previously_seen_vote = author_to_vote_.find(vote.author());
 	if (previously_seen_vote != author_to_vote_.end()) {
 		if (li_digest != const_cast<BlockInfo&>(previously_seen_vote->second.ledger_info().commit_info).id) {
-			JLOG(journal_->warn())
+			JLOG(debugLog().warn())
 				<< "An anutor " << vote.author()
 				<< " voted a vote was Equivocated."
 				<< "The round for vote is " 
@@ -61,7 +60,7 @@ int PendingVotes::insertVote(
 			// we've already seen an equivalent vote before
 			bool new_timeout_vote = vote.isTimeout() && (previously_seen_vote->second.isTimeout() == false);
 			if (new_timeout_vote == false) {
-				JLOG(journal_->warn())
+				JLOG(debugLog().warn())
 					<< "An anutor " << vote.author()
 					<< " voted a vote was duplicated."
 					<< "The round for vote is "
@@ -72,7 +71,7 @@ int PendingVotes::insertVote(
 	}
 
 	//if (verifer->verifySignature(vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false) {
-	//	JLOG(journal_->error())
+	//	JLOG(debugLog().error())
 	//		<< "An anutor " << vote.author()
 	//		<< " voted a vote mismatch signature."
 	//		<< "The round for vote is "
@@ -93,7 +92,7 @@ int PendingVotes::insertVote(
 
 	// check if we have enough signatures to create a QC
 	if (verifer->checkVotingPower(it->second.signatures)) {
-		quorumCert = QuorumCertificate(*journal_, vote.vote_data(), it->second);
+		quorumCert = QuorumCertificate(vote.vote_data(), it->second);
 		return VoteReceptionResult::NewQuorumCertificate;
 	}
 	

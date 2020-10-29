@@ -37,8 +37,8 @@ class PendingVotes
 public:
 	using pointer = std::shared_ptr<PendingVotes>;
 
-	static pointer New(const beast::Journal& journal) {
-		return pointer(new PendingVotes(journal));
+	static pointer New() {
+		return pointer(new PendingVotes());
 	}
 
 	enum VoteReceptionResult {
@@ -68,9 +68,8 @@ public:
 		boost::optional<TimeoutCertificate>& timeoutCert);
 
 private:
-    PendingVotes(const beast::Journal& journal);
+    PendingVotes();
 
-	const beast::Journal* journal_;
 	std::mutex mutex_;
 	std::map<Author, Vote> author_to_vote_;
 	std::map<HashValue, LedgerInfoWithSignatures> li_digest_to_votes_;

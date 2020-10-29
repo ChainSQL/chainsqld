@@ -31,7 +31,6 @@ class SyncInfo
 {
 public:
 	SyncInfo(
-		const beast::Journal* journal,
 		const QuorumCertificate& highest_qc_cert,
 		const QuorumCertificate& highest_commit_cert,
 		const boost::optional<TimeoutCertificate> highest_timeout_cert);
@@ -62,7 +61,6 @@ public:
 	, highest_timeout_cert_() {}
 
 private:
-	const beast::Journal* journal_;
 	QuorumCertificate highest_quorum_cert_;
 	boost::optional<QuorumCertificate> highest_commit_cert_;
 	boost::optional<TimeoutCertificate> highest_timeout_cert_;

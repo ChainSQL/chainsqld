@@ -78,7 +78,7 @@ private:
 	LedgerInfoWithSignatures::LedgerInfo ConstructLedgerInfo(const Block& proposed_block);
 
 	SafetyData safety_data_;
-	const beast::Journal& journal_;
+	beast::Journal journal_;
 	StateCompute* state_compute_;
 	EpochState* epoch_state_;
 
