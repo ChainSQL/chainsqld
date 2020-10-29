@@ -482,15 +482,15 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_NODE_SIZE, strTemp, j_))
     {
-        if (boost::beast::detail::iequals(strTemp, "tiny"))
+        if (boost::beast::iequals(strTemp, "tiny"))
             NODE_SIZE = 0;
-        else if (boost::beast::detail::iequals(strTemp, "small"))
+        else if (boost::beast::iequals(strTemp, "small"))
             NODE_SIZE = 1;
-        else if (boost::beast::detail::iequals(strTemp, "medium"))
+        else if (boost::beast::iequals(strTemp, "medium"))
             NODE_SIZE = 2;
-        else if (boost::beast::detail::iequals(strTemp, "large"))
+        else if (boost::beast::iequals(strTemp, "large"))
             NODE_SIZE = 3;
-        else if (boost::beast::detail::iequals(strTemp, "huge"))
+        else if (boost::beast::iequals(strTemp, "huge"))
             NODE_SIZE = 4;
         else
         {
@@ -540,9 +540,9 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_LEDGER_HISTORY, strTemp, j_))
     {
-        if (boost::beast::detail::iequals(strTemp, "full"))
+        if (boost::beast::iequals(strTemp, "full"))
             LEDGER_HISTORY = 1000000000u;
-        else if (boost::beast::detail::iequals(strTemp, "none"))
+        else if (boost::beast::iequals(strTemp, "none"))
             LEDGER_HISTORY = 0;
         else
             LEDGER_HISTORY = beast::lexicalCastThrow <std::uint32_t> (strTemp);
@@ -550,9 +550,9 @@ void Config::loadFromString (std::string const& fileContents)
 
     if (getSingleSection (secConfig, SECTION_FETCH_DEPTH, strTemp, j_))
     {
-        if (boost::beast::detail::iequals(strTemp, "none"))
+        if (boost::beast::iequals(strTemp, "none"))
             FETCH_DEPTH = 0;
-        else if (boost::beast::detail::iequals(strTemp, "full"))
+        else if (boost::beast::iequals(strTemp, "full"))
             FETCH_DEPTH = 1000000000u;
         else
             FETCH_DEPTH = beast::lexicalCastThrow <std::uint32_t> (strTemp);

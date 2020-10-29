@@ -104,7 +104,7 @@ Json::Value doSchemaList(RPC::Context&  context)
 		if (sle->getType() != ltSCHEMA) continue;
 		if (pAccountID != boost::none && sle->getAccountID(sfAccount) != *pAccountID)continue;
 
-		Json::Value &schema = getSchemaFromSle(sle);
+		Json::Value schema = getSchemaFromSle(sle);
 		if (bRunning && !context.app.app().hasSchema(sle->key())) continue;
 
 		schema[jss::running] = context.app.app().hasSchema(sle->key());

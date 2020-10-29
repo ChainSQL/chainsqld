@@ -290,7 +290,7 @@ PeerImp::crawl() const
     auto const iter = headers_.find("Crawl");
     if (iter == headers_.end())
         return false;
-    return boost::beast::detail::iequals(iter->value(), "public");
+    return boost::beast::iequals(iter->value(), "public");
 }
 
 std::string

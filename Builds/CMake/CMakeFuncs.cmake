@@ -356,9 +356,9 @@ macro(use_boost)
     set(Boost_USE_MULTITHREADED on)
     set(Boost_USE_STATIC_RUNTIME off)
     if(MSVC)
-        find_package(Boost REQUIRED)
+        find_package(Boost 1.70 REQUIRED)
     else()
-        find_package(Boost REQUIRED ${ARGN})
+        find_package(Boost 1.70 REQUIRED ${ARGN})
     endif()
 
     if (Boost_FOUND OR

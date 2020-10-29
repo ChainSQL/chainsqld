@@ -1472,7 +1472,7 @@ private:
 					}
 				}
 			}
-			else if (ledgerID.empty() || boost::beast::detail::iequals(ledgerID, "latest"))
+            else if (ledgerID.empty() || boost::beast::iequals(ledgerID, "latest"))
 			{
 				loadLedger = getLastFullLedger();
 			}

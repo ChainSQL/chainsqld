@@ -249,7 +249,7 @@ namespace ripple {
 
 				return spk == spkTx;
 			});
-			if (ctx_.tx.getFieldU16(sfOpType) == (UINT16)SchemaModifyOp::add)
+			if (ctx_.tx.getFieldU16(sfOpType) == (uint16_t)SchemaModifyOp::add)
 			{
 				if (iter != vals.end())
 				{
@@ -278,7 +278,7 @@ namespace ripple {
 
 				return sEndpoint == sEndpointTx;
 			});
-			if (ctx_.tx.getFieldU16(sfOpType) == (UINT16)SchemaModifyOp::add)
+			if (ctx_.tx.getFieldU16(sfOpType) == (uint16_t)SchemaModifyOp::add)
 			{
 				if (iter != peers.end())
 				{

@@ -164,10 +164,9 @@ private:
         // If odd number of params then 'novalidate' may have been specified
         if (sz & 1)
         {
-            using namespace boost::beast::detail;
-            if (iequals(jvParams[0u].asString(), "novalidate"))
+            if (boost::beast::iequals(jvParams[0u].asString(), "novalidate"))
                 ++i;
-            else if (!iequals(jvParams[--sz].asString(), "novalidate"))
+            else if (!boost::beast::iequals(jvParams[--sz].asString(), "novalidate"))
                 return rpcError(rpcINVALID_PARAMS);
             jvResult[jss::validate] = false;
         }
@@ -472,9 +471,9 @@ private:
             // This may look reversed, but it's intentional: jss::vetoed
             // determines whether an amendment is vetoed - so "reject" means
             // that jss::vetoed is true.
-            if (boost::beast::detail::iequals(action, "reject"))
+            if (boost::beast::iequals(action, "reject"))
                 jvRequest[jss::vetoed] = Json::Value (true);
-            else if (boost::beast::detail::iequals(action, "accept"))
+            else if (boost::beast::iequals(action, "accept"))
                 jvRequest[jss::vetoed] = Json::Value (false);
             else
                 return rpcError (rpcINVALID_PARAMS);
