@@ -204,8 +204,13 @@ public:
 	void
 		check() override;
 
-	void dispatch(uint256 const& schemaId) override;
+	void onSchemaCreated(uint256 const& schemaId) override;
 
+	virtual void onSchemaAddPeer(uint256 const& schemaId,
+		std::vector<std::string> const& bootstraps,
+		std::vector<PublicKey> const& validators) override;
+
+	void add_bootstraps(std::vector<std::string> const& bootstraps);
  //   void
  //   checkSanity (std::uint32_t) override;
 

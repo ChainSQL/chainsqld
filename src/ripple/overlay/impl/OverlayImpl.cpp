@@ -36,6 +36,7 @@
 #include <ripple/rpc/handlers/GetCounts.h>
 #include <ripple/server/SimpleWriter.h>
 #include <peersafe/schema/PeerManager.h>
+#include <peersafe/schema/SchemaParams.h>
 
 #include <boost/utility/in_place_factory.hpp>
 
@@ -411,6 +412,33 @@ OverlayImpl::connect (beast::IP::Endpoint const& remote_endpoint)
 
 //------------------------------------------------------------------------------
 
+void OverlayImpl::add_bootstraps(std::vector<std::string> const& bootstrapIps)
+{
+	if (bootstrapIps.size() > 0)
+	{
+		m_resolver.resolve(bootstrapIps,
+			[this](std::string const& name,
+				std::vector <beast::IP::Endpoint> const& addresses)
+		{
+			std::vector <std::string> ips;
+			ips.reserve(addresses.size());
+			for (auto const& addr : addresses)
+			{
+				if (addr.port() == 0)
+				{
+					Throw<std::runtime_error>("Port not specified for "
+						"address:" + addr.to_string());
+				}
+
+				ips.push_back(to_string(addr));
+			}
+
+			std::string const base("config: ");
+			if (!ips.empty())
+				m_peerFinder->addFallbackStrings(base + name, ips);
+		});
+	}
+}
 // Adds a peer that is already handshaked and active
 void
 OverlayImpl::add_active (std::shared_ptr<PeerImp> const& peer)
@@ -526,30 +554,7 @@ OverlayImpl::onPrepare()
     //    // Pool of servers operated by Alloy Networks - https://www.alloy.ee
     //    bootstrapIps.push_back("zaphod.alloy.ee 51235");
     //}
-	if (bootstrapIps.size() > 0)
-	{
-		m_resolver.resolve(bootstrapIps,
-			[this](std::string const& name,
-				std::vector <beast::IP::Endpoint> const& addresses)
-		{
-			std::vector <std::string> ips;
-			ips.reserve(addresses.size());
-			for (auto const& addr : addresses)
-			{
-				if (addr.port() == 0)
-				{
-					Throw<std::runtime_error>("Port not specified for "
-						"address:" + addr.to_string());
-				}
-
-				ips.push_back(to_string(addr));
-			}
-
-			std::string const base("config: ");
-			if (!ips.empty())
-				m_peerFinder->addFallbackStrings(base + name, ips);
-		});
-	}
+	add_bootstraps(bootstrapIps);
 
     // Add the ips_fixed from the rippled.cfg file
     if (! app_.config().standalone() && !app_.config().IPS_FIXED.empty ())
@@ -750,8 +755,9 @@ OverlayImpl::check ()
     });
 }
 
-void OverlayImpl::dispatch(uint256 const& schemaId)
+void OverlayImpl::onSchemaCreated(uint256 const& schemaId)
 {
+	//dispatch peerImp object to new schema
 	if (!app_.hasSchema(schemaId))
 		return;
 
@@ -766,6 +772,28 @@ void OverlayImpl::dispatch(uint256 const& schemaId)
 			sp->schemaInfo_.emplace(schemaId, PeerImp::SchemaInfo());
 		}
 	});
+
+	add_bootstraps(app_.getSchema(schemaId).getSchemaParams().peer_list);
+}
+
+void OverlayImpl::onSchemaAddPeer(uint256 const& schemaId,
+	std::vector<std::string> const& bootstraps,
+	std::vector<PublicKey> const& validators)
+{
+	if (!app_.hasSchema(schemaId))
+		return;
+	auto& peerManager = app_.peerManager(schemaId);
+	for_each([&](std::shared_ptr<PeerImp>&& sp)
+	{
+		if (sp->publicValidate_ &&
+			std::find(validators.begin(), validators.end(), *sp->publicValidate_) != validators.end())
+		{
+			peerManager.add(sp);
+			sp->schemaInfo_.emplace(schemaId, PeerImp::SchemaInfo());
+		}
+	});
+
+	add_bootstraps(bootstraps);
 }
 
 //------------------------------------------------------------------------------

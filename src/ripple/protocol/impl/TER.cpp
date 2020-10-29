@@ -178,7 +178,7 @@ transResults()
 		{ temBAD_VALIDATOR ,         { "temBAD_VALIDATOR",         "Malformed: No publickey field or publickey is null."                         } },
 		{ temBAD_PEERLIST ,          { "temBAD_PEERLIST",          "Malformed: No peer field or peer is null"                                    } },
 		{ temBAD_SIGNERFORVAL,       { "temBAD_SIGNERFORVAL",      "Malformed: Singer is not in the validator list."                                    } },
-		{ temBAD_ANCHORLEDGER,       { "temBAD_ANCHORLEDGER",      "Malformed: Anchor ledger is null"                                    } },
+		{ temBAD_ANCHORLEDGER,       { "temBAD_ANCHORLEDGER",      "Malformed: Anchor ledger is null or ledger not found."                                    } },
 		{ terRETRY,                  { "terRETRY",                 "Retry transaction."                                                            } },
 		{ terFUNDS_SPENT,            { "terFUNDS_SPENT",           "Can't set password, password set funds already spent."                         } },
 		{ terINSUF_FEE_B,            { "terINSUF_FEE_B",           "Account balance can't pay fee."                                                } },

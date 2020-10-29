@@ -114,7 +114,7 @@ ConnectAttempt::fail (std::string const& name, error_code ec)
     if (stream_.next_layer().is_open())
     {
         JLOG(journal_.info()) <<
-            name << ": value= "<< ec.value()<<",msg=" << ec.message();
+            name << " for remote endpoint:"<<remote_endpoint_<<" value= "<< ec.value()<<",msg=" << ec.message();
     }
     close();
 }

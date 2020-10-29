@@ -168,6 +168,8 @@ public:
 		std::shared_ptr<PeerImp> const& from) = 0;
 
 	virtual void add(std::shared_ptr<PeerImp> const& peer) = 0;
+
+	virtual void remove(std::vector<PublicKey> const& vecPubs) = 0;
 };
 
 std::unique_ptr <PeerManager> make_PeerManager(Schema& schema);

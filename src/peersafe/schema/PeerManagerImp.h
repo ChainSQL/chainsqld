@@ -143,6 +143,8 @@ public:
 
 	void add(std::shared_ptr<PeerImp> const& peer) override;
 
+	void remove(std::vector<PublicKey> const& vecPubs) override;
+
 	Json::Value
 		crawlShards(bool pubKey, std::uint32_t hops) override;
 

@@ -4,6 +4,7 @@
 #include <ripple/ledger/View.h>
 #include <ripple/protocol/st.h>
 #include <ripple/app/main/Application.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/core/Config.h>
 
 
@@ -55,6 +56,24 @@ namespace ripple {
 		return tesSUCCESS;
 	}
 
+	void setVavlidValInfo(STObject &val, const STTx & tx)
+	{
+		val.setFieldU8(sfSigned, (uint8_t)0);
+		// Multi-Sign
+		if (tx.getSigningPubKey().empty())
+		{
+			// Get the array of transaction signers.
+			STArray const& txSigners(tx.getFieldArray(sfSigners));
+			auto const &spk = val.getFieldVL(sfPublicKey);
+			for (auto const& txSigner : txSigners)
+			{
+				if (txSigner.getFieldVL(sfSigningPubKey) == spk)
+				{
+					val.setFieldU8(sfSigned, 1);
+				}
+			}
+		}
+	}	
 
 	NotTEC SchemaCreate::preflight(PreflightContext const& ctx)
 	{
@@ -82,7 +101,8 @@ namespace ripple {
 		auto j = ctx.app.journal("preclaimSchema");
 
 		if ((uint8_t)SchemaStragegy::with_state == ctx.tx.getFieldU8(sfSchemaStrategy) &&
-			!ctx.tx.isFieldPresent(sfAnchorLedgerHash))
+			(!ctx.tx.isFieldPresent(sfAnchorLedgerHash) || 
+				!ctx.app.getLedgerMaster().getLedgerByHash(ctx.tx.getFieldH256(sfAnchorLedgerHash))))
 		{
 			JLOG(j.trace()) << "anchor ledger is not match the schema strategy.";
 			return temBAD_ANCHORLEDGER;
@@ -122,21 +142,7 @@ namespace ripple {
 			STArray vals = ctx_.tx.getFieldArray(sfValidators);
 			for (auto& val : vals)
 			{
-				val.setFieldU8(sfSigned, (uint8_t)0);
-				// Multi-Sign
-				if (ctx_.tx.getSigningPubKey().empty())
-				{
-					// Get the array of transaction signers.
-					STArray const& txSigners(ctx_.tx.getFieldArray(sfSigners));
-					auto const &spk = val.getFieldVL(sfPublicKey);
-					for (auto const& txSigner : txSigners)
-					{
-						if (txSigner.getFieldVL(sfSigningPubKey) == spk)
-						{
-							val.setFieldU8(sfSigned, 1);
-						}
-					}
-				}
+				setVavlidValInfo(val, ctx_.tx);
 			}
 			slep->setFieldArray(sfValidators, vals);
 		}
@@ -255,7 +261,8 @@ namespace ripple {
 				{
 					return tefSCHEMA_VALIDATOREXIST;
 				}
-				valTx.setFieldU8(sfSigned, (uint8_t)0);
+
+				setVavlidValInfo(valTx, ctx_.tx);
 				vals.push_back(valTx);
 			}
 			else

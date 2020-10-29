@@ -208,8 +208,8 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 deprecatedClearSection("ips");
 	 section("ips").append(schemaParams.peer_list);
 
-	 removeSection("sync_db");
-	 removeSection("sync_tables");
+	 //removeSection("sync_db");
+	 //removeSection("sync_tables");
 
 	 auto const& names = section("server").values();
 	 for (auto const& name : names)
@@ -222,6 +222,7 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 removeSection("sntp_servers");
 	 removeSection("validation_seed");
 	 removeSection("debug_logfile");
+	 removeSection("schema");
 
 	 deprecatedClearSection("validators");
 	 std::vector<std::string>   validatorList;
@@ -605,10 +606,28 @@ void Config::loadFromString (std::string const& fileContents)
 		{
 			JLOG(j_.error()) <<
 				"Invalid value '" << resSchema.first << "' for key " <<
-				"'auto_accept_new_schema' in [" << SECTION_PCONSENSUS << "]\n";
+				"'auto_accept_new_schema' in [" << SECTION_SCHEMA << "]\n";
 			Rethrow();
 		}
 	}
+
+	auto const resSchemaValidate = section(SECTION_SCHEMA).find("only_validate_for_schema");
+	if (resSchemaValidate.second)
+	{
+		try
+		{
+			ONLY_VALIDATE_FOR_SCHEMA = (beast::lexicalCastThrow <int>(resSchemaValidate.first) == 1);
+		}
+		catch (std::exception const&)
+		{
+			JLOG(j_.error()) <<
+				"Invalid value '" << resSchemaValidate.first << "' for key " <<
+				"'auto_accept_new_schema' in [" << SECTION_SCHEMA << "]\n";
+			Rethrow();
+		}
+	}
+
+
 
     // Do not load trusted validator configuration for standalone mode
     if (! RUN_STANDALONE)

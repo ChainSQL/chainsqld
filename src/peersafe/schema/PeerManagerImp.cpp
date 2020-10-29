@@ -138,7 +138,26 @@ namespace ripple {
 			std::piecewise_construct,
 			std::make_tuple(peer->id()),
 			std::make_tuple(peer));
-		assert(result.second);
+		//assert(result.second);
+	}
+
+	void PeerManagerImpl::remove(std::vector<PublicKey> const& vecPubs)
+	{
+		auto it = ids_.begin();
+		while( it != ids_.end())
+		{
+			auto sp = it->second.lock();
+			if (sp->publicValidate_ &&
+				std::find(vecPubs.begin(), vecPubs.end(), *sp->publicValidate_) != vecPubs.end())
+			{
+				sp->removeSchemaInfo(app_.schemaId());
+				it = ids_.erase(it);
+			}
+			else
+			{
+				it++;
+			}
+		}
 	}
 
 	Json::Value

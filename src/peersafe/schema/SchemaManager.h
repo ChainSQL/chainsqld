@@ -17,6 +17,7 @@ public:
 	std::shared_ptr<Schema> createSchema(std::shared_ptr<Config> config, SchemaParams const& param);
 	std::shared_ptr<Schema> createSchemaMain(std::shared_ptr<Config> config);
 	std::shared_ptr<Schema> getSchema(uint256 const& schemaId);
+	void removeSchema(uint256 const& schemaId);
 	bool contains(uint256 const& id);
 
 	class schema_iterator {

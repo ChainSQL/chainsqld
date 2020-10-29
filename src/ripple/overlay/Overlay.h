@@ -134,7 +134,11 @@ public:
 		check() = 0;
 
 	virtual
-		void dispatch(uint256 const& schemaId) = 0;
+		void onSchemaCreated(uint256 const& schemaId) = 0;
+
+	virtual void onSchemaAddPeer(uint256 const& schemaId,
+		std::vector<std::string> const& bootstraps,
+		std::vector<PublicKey> const& validators) = 0;
  //   /** Returns the peer with the matching short id, or null. */
  //   virtual
  //   std::shared_ptr<Peer>
