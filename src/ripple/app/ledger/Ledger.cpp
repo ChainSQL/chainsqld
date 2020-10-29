@@ -370,6 +370,7 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	info_.closeTimeResolution = getNextLedgerTimeResolution(
 		ledger.info_.closeTimeResolution,
 		getCloseAgree(ledger.info()), info_.seq);
+	info_.parentHash = ledger.info().hash;
 
 	if (stateMap_->is_v2())
 	{
