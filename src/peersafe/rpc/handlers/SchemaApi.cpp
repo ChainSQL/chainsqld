@@ -83,9 +83,9 @@ Json::Value doSchemaList(RPC::Context&  context)
 	ret[jss::schemas] = Json::Value(Json::arrayValue);
 
 	boost::optional<AccountID> pAccountID = boost::none;
-	if (context.params.isMember(jss::Account))
+	if (context.params.isMember(jss::account))
 	{
-		pAccountID = parseBase58<AccountID>(context.params["Account"].asString());
+		pAccountID = parseBase58<AccountID>(context.params["account"].asString());
 		if (pAccountID == boost::none)
 		{
 			return rpcError(rpcINVALID_PARAMS);
