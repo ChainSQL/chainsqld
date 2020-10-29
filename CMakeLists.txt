@@ -70,9 +70,20 @@
 cmake_minimum_required(VERSION 3.10.0)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Builds/CMake")
 include(CMakeFuncs)
-set(openssl_min 1.0.2)
+include (ProcessorCount)
+set(openssl_min 1.1.0)
 parse_target()
 project(chainsqld)
+
+if (NOT ep_procs)
+  ProcessorCount(ep_procs)
+  if (ep_procs GREATER 1)
+    # never use more than half of cores for EP builds
+    math (EXPR ep_procs "${ep_procs} / 2")
+    message (STATUS "Using ${ep_procs} cores for ExternalProject builds.")
+  endif ()
+endif ()
+
 #########################################################
 
 set(enableTest FALSE CACHE BOOL "Enable Unit Test Module")

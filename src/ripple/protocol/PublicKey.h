@@ -21,11 +21,10 @@
 #define RIPPLE_PROTOCOL_PUBLICKEY_H_INCLUDED
 
 #include <ripple/basics/Slice.h>
-#include <ripple/crypto/KeyType.h> // move to protocol/
+#include <ripple/protocol/KeyType.h> // move to protocol/
 #include <ripple/protocol/STExchange.h>
 #include <ripple/protocol/tokens.h>
 #include <ripple/protocol/UintTypes.h>
-#include <ripple/protocol/RippleAddress.h>
 #include <ripple/protocol/Seed.h>
 //#include <ripple/protocol/SecretKey.h>
 #include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
@@ -274,10 +273,6 @@ verify (PublicKey const& publicKey,
     Slice const& m,
     Slice const& sig,
     bool mustBeFullyCanonical = true);
-
-/** Encrypt a plain text.*/
-Blob 
-encrypt(const Blob& passBlob, PublicKey const& publicKey);
 
 /** Calculate the 160-bit node ID from a node public key. */
 NodeID

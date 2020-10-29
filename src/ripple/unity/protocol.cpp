@@ -62,7 +62,6 @@
 #include <ripple/protocol/impl/STVector256.cpp>
 #include <peersafe/protocol/impl/STMap256.cpp>
 #include <ripple/protocol/impl/IOUAmount.cpp>
-#include <ripple/protocol/impl/RippleAddress.cpp>
 #include <peersafe/protocol/impl/STEntry.cpp>
 #include <peersafe/protocol/impl/Contract.cpp>
 

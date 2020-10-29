@@ -17,7 +17,6 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
-#include <ripple/crypto/Base58Data.h>
 #include <algorithm>
 #include <fstream>
 #include <sstream>   

@@ -41,6 +41,8 @@
 
 #include <ripple/basics/base_uint.h>
 #include <ripple/basics/Blob.h>
+#include <ripple/protocol/PublicKey.h>
+#include <ripple/protocol/SecretKey.h>
 
 namespace ripple {
 
@@ -50,6 +52,9 @@ namespace ripple {
 // Note that the other side must somehow know what keys to use
 Blob encryptECIES (uint256 const& secretKey, Blob const& publicKey, Blob const& plaintext);
 Blob decryptECIES (uint256 const& secretKey, Blob const& publicKey, Blob const& ciphertext);
+
+Blob encrypt(Blob const& passBlob, PublicKey const& publicKey);
+Blob decrypt(Blob const& cipherBlob, SecretKey const& secret_key);
 
 } // ripple
 

@@ -24,13 +24,14 @@
 #include <ripple/overlay/Peer.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/Schema.h>
-#include <ripple/protocol/RippleAddress.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <peersafe/crypto/AES.h>
 #include <peersafe/app/table/TableSyncItem.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/protocol/TableDefines.h>
+#include <peersafe/crypto/ECIES.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
@@ -791,7 +792,6 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 							if (user.isFieldPresent(sfToken))
 							{
 								auto token = user.getFieldVL(sfToken);
-								//passBlob_ = RippleAddress::decryptPassword(token, *user_secret_);
                                 passBlob_ = ripple::decrypt(token, *user_secret_);
 								if(passBlob_.size() > 0)  return std::make_pair(true, "");
 								else
@@ -863,7 +863,7 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
         HardEncrypt* hEObj = HardEncryptObj::getInstance();
         if (nullptr == hEObj)
         {
-            rawDecrypted = RippleAddress::decryptAES(passBlob_, raw);
+            rawDecrypted = ripple::decryptAES(passBlob_, raw);
         }
         else
         {

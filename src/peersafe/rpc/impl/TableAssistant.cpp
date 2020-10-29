@@ -24,7 +24,6 @@
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/digest.h>
-#include <ripple/protocol/RippleAddress.h>
 
 #include <ripple/protocol/STTx.h>
 #include <ripple/core/JobQueue.h>

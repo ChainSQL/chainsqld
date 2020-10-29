@@ -217,34 +217,6 @@ sign (PublicKey const& pk,
     }
 }
 
-Blob
-decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
-{
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    if (nullptr != hEObj) //GM Algorithm
-    {
-        unsigned long rv = 0;
-        unsigned char plain[512] = { 0 };
-        unsigned long plainLen = 512;
-
-        std::pair<unsigned char*, int> pri4Decrypt = std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
-        rv = hEObj->SM2ECCDecrypt(pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), plain, &plainLen);
-        if (rv)
-        {
-            DebugPrint("ECCDecrypt error! rv = 0x%04x", rv);
-            return Blob();
-        }
-        DebugPrint("ECCDecrypt OK!");
-        //Blob    vucPlainText(plain, plain + plainLen);
-        return Blob(plain, plain + plainLen);
-    }
-    else
-    {
-        Blob secretBlob(secret_key.data(), secret_key.data() +secret_key.size());
-        return RippleAddress::decryptPassword(cipherBlob, secretBlob);
-    }
-}
-
 boost::optional<SecretKey> getSecretKey(const std::string& secret)
 {
     //tx_secret is acturally masterseed

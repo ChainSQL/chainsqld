@@ -22,7 +22,6 @@
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/protocol/digest.h>
-#include <ripple/protocol/RippleAddress.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/net/RPCErr.h>
@@ -32,6 +31,8 @@
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/table/TableSync.h>
+#include <peersafe/crypto/AES.h>
+#include <peersafe/crypto/ECIES.h>
 #include <peersafe/schema/Schema.h>
 
 namespace ripple {
@@ -575,7 +576,7 @@ std::pair<Blob, Json::Value> TxPrepareBase::getPassBlobBase(AccountID& ownerId, 
 	{
 		return std::make_pair(passBlob, jvResult);
 	}
-	//passBlob = RippleAddress::decryptPassword(passBlob, *secret_key);
+	
     passBlob = ripple::decrypt(passBlob, *secret_key);
 	if (passBlob.size() == 0)
 	{
@@ -588,8 +589,6 @@ std::pair<Blob, Json::Value> TxPrepareBase::getPassBlobBase(AccountID& ownerId, 
 Json::Value TxPrepareBase::prepareForCreate()
 {
 	Json::Value ret;
-	//get public key
-	//auto oPublic_key = RippleAddress::getPublicKey(secret_);
     
     PublicKey public_key;
     if (!public_.empty())
@@ -622,7 +621,7 @@ Json::Value TxPrepareBase::prepareForCreate()
     HardEncrypt* hEObj = HardEncryptObj::getInstance();
 
     // get random password
-    Blob passBlob = RippleAddress::getRandomPassword();
+    Blob passBlob = ripple::getRandomPassword();
 
     //JLOG(m_journal.error()) << "on prepareForCreate, gen plain password HEX: " << strHex(strCopy(passBlob)) << std::endl;
     //JLOG(m_journal.error()) << "on prepareForCreate, plain raw: " << raw << std::endl;
@@ -649,7 +648,7 @@ Json::Value TxPrepareBase::prepareForCreate()
     }
     else
     {
-        rawCipher = RippleAddress::encryptAES(passBlob, raw_blob);
+        rawCipher = ripple::encryptAES(passBlob, raw_blob);
     }
 
     //JLOG(m_journal.error()) << "on prepareForCreate, encrypted raw HEX: " << strHex(rawCipher);
@@ -694,7 +693,6 @@ Json::Value TxPrepareBase::prepareForAssign()
 
         public_key = *oPublicKey;
 
-        //boost::optional<SecretKey> secret_key = RippleAddress::getSecretKey(secret_);
         boost::optional<SecretKey> oSecret_key = ripple::getSecretKey(secret_);
         if (!oSecret_key)
         {
@@ -737,7 +735,6 @@ Json::Value TxPrepareBase::prepareForAssign()
 	//get password cipher
 	if(result.first.size() > 0)
         tx_json_[jss::Token] = strCopy(ripple::encrypt(result.first, public_key));
-		//tx_json_[jss::Token] = strCopy(RippleAddress::getPasswordCipher(result.first, *oPublicKey));
 
 	return ret;
 }
@@ -749,7 +746,6 @@ Json::Value TxPrepareBase::prepareForOperating()
     SecretKey secret_key;
     if (nullptr == hEObj)
     {
-        //boost::optional<SecretKey> secret_key = RippleAddress::getSecretKey(secret_);
         boost::optional<SecretKey> oSecret_key = ripple::getSecretKey(secret_);
         if (!oSecret_key)
         {
@@ -789,7 +785,7 @@ Json::Value TxPrepareBase::prepareForOperating()
     Blob passBlob = result.first;
     if (nullptr == hEObj)
     {
-        rawCipher = RippleAddress::encryptAES(passBlob, raw_blob);
+        rawCipher = ripple::encryptAES(passBlob, raw_blob);
     }
     else
     {

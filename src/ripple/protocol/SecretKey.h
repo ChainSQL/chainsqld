@@ -22,7 +22,7 @@
 
 #include <ripple/basics/Buffer.h>
 #include <ripple/basics/Slice.h>
-#include <ripple/crypto/KeyType.h> // move to protocol/
+#include <ripple/protocol/KeyType.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/Seed.h>
 #include <ripple/protocol/tokens.h>
@@ -191,11 +191,7 @@ sign (KeyType type, SecretKey const& sk,
 }
 /** @} */
 
-/** Decrypt cipher text.*/
-/** @{ */
-Blob
-decrypt(const Blob& cipherBlob, const SecretKey& secret_key);
-/** @} */
+
 boost::optional<SecretKey> getSecretKey(const std::string& secret);
 boost::optional<PublicKey> getPublicKey(const std::string& secret);
 } // ripple

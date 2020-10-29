@@ -44,11 +44,14 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 namespace ripple {
 
+    Blob getRandomPassword();
+
 	// AES functions. These throw on failure
 
-	// encrypt/decrypt functions with integrity checking.
-	Blob encryptAES(Blob const& key, Blob const& plaintext, int keyByteLen);
-	Blob decryptAES(Blob const& key, Blob const& ciphertext, int keyByteLen);
+    // Encrypt a message.Using AES algorithm.
+    Blob encryptAES(Blob const& key, Blob const& plaintext,int keyLength = 32);
+    // Decrypt a message.Using AES algorithm.
+    Blob decryptAES(Blob const& key, Blob const& ciphertext, int keyLength = 32);
 
 } // ripple
 

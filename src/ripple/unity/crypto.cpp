@@ -26,13 +26,8 @@
 #include <ripple/crypto/impl/openssl.cpp>
 #include <ripple/crypto/impl/csprng.cpp>
 #include <ripple/crypto/impl/RFC1751.cpp>
-#include <ripple/crypto/impl/Base58Data.cpp>
-#include <ripple/crypto/impl/Base58.cpp>
 #include <ripple/crypto/impl/RandomNumbers.cpp>
-#include <peersafe/crypto/impl/CBigNum.cpp>
 #include <peersafe/crypto/impl/AES.cpp>
-#include <peersafe/crypto/impl/ECDSA.cpp>
-#include <peersafe/crypto/impl/ECDSACanonical.cpp>
 #include <peersafe/crypto/impl/ECDSAKey.cpp>
 #include <peersafe/crypto/impl/ECIES.cpp>
 #include <peersafe/crypto/impl/X509.cpp>

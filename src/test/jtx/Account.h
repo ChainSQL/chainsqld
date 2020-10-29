@@ -22,7 +22,7 @@
 
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/UintTypes.h>
-#include <ripple/crypto/KeyType.h>
+#include <ripple/protocol/KeyType.h>
 #include <ripple/beast/hash/uhash.h>
 #include <unordered_map>
 #include <string>

@@ -364,34 +364,6 @@ verify (PublicKey const& publicKey,
 }
 
 
-Blob
-encrypt(const Blob& passBlob,PublicKey const& publicKey)
-{
-    auto const type = publicKeyType(publicKey);
-    unsigned long rv = 0;
-    unsigned char outData[512] = { 0 };
-    unsigned long outDataLen = 512;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    std::pair<unsigned char*, int> pub4Encrypt;
-    switch (*type)
-    {
-    case KeyType::gmalg:
-        pub4Encrypt = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
-        rv = hEObj->SM2ECCEncrypt(pub4Encrypt,(unsigned char*)&passBlob[0], passBlob.size(), outData, &outDataLen);
-        if (rv)
-        {
-            DebugPrint("ECCEncrypt error! rv = 0x%04x", rv);
-            return Blob();
-        }
-        DebugPrint("ECCEncrypt OK!");
-        //Blob vucCipherText(outData, outData + outDataLen);
-        return Blob(outData, outData + outDataLen);//vucCipherText;
-    default:
-        Blob publickBlob(publicKey.data(), publicKey.data()+publicKey.size());
-        return RippleAddress::getPasswordCipher(passBlob, publickBlob);
-    }
-}
-
 NodeID
 calcNodeID (PublicKey const& pk)
 {
