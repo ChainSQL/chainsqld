@@ -50,6 +50,14 @@ HotstuffConsensus::HotstuffConsensus(
         .build();
 }
 
+HotstuffConsensus::~HotstuffConsensus()
+{
+    if (hotstuff_)
+    {
+        hotstuff_->stop();
+    }
+}
+
 void HotstuffConsensus::startRound(
     NetClock::time_point const& now,
     typename Ledger_t::ID const& prevLedgerID,
@@ -60,17 +68,23 @@ void HotstuffConsensus::startRound(
     ConsensusMode startMode = proposing ? ConsensusMode::proposing : ConsensusMode::observing;
 
     newRound(prevLedgerID, prevLedger, startMode);
-
-    hotstuff::EpochState init_epoch_state;
-    init_epoch_state.epoch = 0;
-    init_epoch_state.verifier = this;
-
-    hotstuff_->start(hotstuff::RecoverData{ prevLedger.ledger_->info(), init_epoch_state });
 }
 
 void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
 {
     (void)now;
+
+    if (!startup_)
+    {
+        // Startup
+        startup_ = true;
+
+        hotstuff::EpochState init_epoch_state;
+        init_epoch_state.epoch = 0;
+        init_epoch_state.verifier = this;
+
+        hotstuff_->start(hotstuff::RecoverData{ previousLedger_.ledger_->info(), init_epoch_state });
+    }
 
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
@@ -166,6 +180,35 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
 boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockData &blockData)
 {
+    // 1. Check whether the consensus needs to move to the next round of ledgers
+    LedgerInfo prev = blockData.quorum_cert.certified_block().ledger_info;
+    LedgerInfo prevPrev = blockData.quorum_cert.parent_block().ledger_info;
+
+    if (prev.hash == prevPrev.hash && prev.hash == prevLedgerID_)
+    {
+        if (prev.seq == GENESIS_LEDGER_INDEX)
+        {
+            JLOG(j_.info()) << "before extract: previous ledger is genesis ledger";
+        }
+        else
+        {
+            JLOG(j_.info()) << "before extract: previous ledger " << prev.seq + 1 << " has timeout, it my turn now";
+        }
+    }
+    else if (prev.parentHash == prevPrev.hash && prev.parentHash == prevLedgerID_)
+    {
+        if (!checkLedger(prev))
+        {
+            return boost::none;
+        }
+    }
+    else
+    {
+        JLOG(j_.info()) << "before extract: consensus can't move to next round";
+        return boost::none;
+    }
+
+    // 2. Build new ledger
     if (!adaptor_.isPoolAvailable())
     {
         return boost::none;
@@ -212,25 +255,30 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
 
     blockData.getLedgerInfo() = built.ledger_->info();
 
+    JLOG(j_.info()) << "built ledger: " << blockData.getLedgerInfo().hash;
+
     return cmd;
 }
 
 bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result)
 {
-    if (block.block_data().block_type == hotstuff::BlockData::NilBlock ||
-        block.block_data().block_type == hotstuff::BlockData::Genesis)
+    if (block.block_data().block_type == hotstuff::BlockData::Genesis)
     {
         return true;
     }
 
     LedgerInfo const& info = block.getLedgerInfo();
 
-    if (block.block_data().author() == adaptor_.valPublic())
+    if (block.block_data().block_type == hotstuff::BlockData::NilBlock ||
+        block.block_data().author() == adaptor_.valPublic())
     {
         result.ledger_info = info;
         result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
         return true;
     }
+
+    // --------------------------------------------------------------------------
+    // Proposal block
 
     auto payload = block.block_data().payload;
     if (!payload)
@@ -276,6 +324,8 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         std::chrono::milliseconds{ 0 },
         failed);
 
+    JLOG(j_.info()) << "built ledger: " << built.id() << " and the propose ledger: " << info.hash;
+
     if (info.hash == built.id())
     {
         result.ledger_info = built.ledger_->info();
@@ -297,6 +347,11 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
         return result.ledger_info.seq == result.parent_ledger_info.seq + 1
             && result.ledger_info.parentHash == result.parent_ledger_info.hash;
     }
+    else if (block.block_data().block_type == hotstuff::BlockData::NilBlock)
+    {
+        return result.ledger_info.seq == result.parent_ledger_info.seq
+            && result.ledger_info.hash == result.parent_ledger_info.hash;
+    }
 
     return true;
 }
@@ -313,26 +368,44 @@ int HotstuffConsensus::commit(const hotstuff::Block& block)
     return 0;
 }
 
-bool HotstuffConsensus::onQCAggregated(LedgerInfo const& info)
+bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
 {
-    if (info.parentHash != prevLedgerID_)
+    if (prevInfo.ledger_info.seq > previousLedger_.seq())
     {
-        JLOG(j_.warn()) << "onQCAggregated: old previous ledger hash not match";
-        return false;
+        auto ledger = adaptor_.getLedgerByHash(prevInfo.ledger_info.hash);
+        if (ledger)
+        {
+            adaptor_.updateConsensusTime();
+            newRound(prevInfo.ledger_info.hash,
+                ledger,
+                adaptor_.preStartRound(ledger) ? ConsensusMode::proposing : ConsensusMode::observing);
+        }
+        else
+        {
+            prevLedgerID_ = prevInfo.ledger_info.hash;
+
+            mode_.set(ConsensusMode::observing, adaptor_);
+            JLOG(j_.info()) << "Bowing out of consensus";
+
+            if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
+            {
+                JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
+                adaptor_.removePoolTxs(
+                    newLedger->ledger_->txMap(),
+                    newLedger->ledger_->info().seq,
+                    newLedger->ledger_->info().parentHash);
+
+                newRound(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
+            }
+            else
+            {
+                mode_.set(ConsensusMode::wrongLedger, adaptor_);
+                return false;
+            }
+        }
     }
 
-    if (auto newLedger = adaptor_.getLedgerByHash(info.hash))
-    {
-        adaptor_.updateConsensusTime();
-        newRound(info.hash,
-            newLedger,
-            adaptor_.preStartRound(newLedger) ? ConsensusMode::proposing : ConsensusMode::observing);
-        return true;
-    }
-
-    JLOG(j_.warn()) << "onQCAggregated: new previous ledger not found";
-
-    return false;
+    return true;
 }
 
 const hotstuff::Author& HotstuffConsensus::Self() const
@@ -384,42 +457,8 @@ const bool HotstuffConsensus::verifyLedgerInfo(
     }
 
     // 2. Do something check for previous commit_info
-    if (commit_info.ledger_info.seq > previousLedger_.seq())
-    {
-        auto ledger = adaptor_.getLedgerByHash(commit_info.ledger_info.hash);
-        if (ledger)
-        {
-            adaptor_.updateConsensusTime();
-            newRound(commit_info.ledger_info.hash,
-                ledger,
-                adaptor_.preStartRound(ledger) ? ConsensusMode::proposing : ConsensusMode::observing);
-            return true;
-        }
-        else
-        {
-            prevLedgerID_ = commit_info.ledger_info.hash;
 
-            mode_.set(ConsensusMode::observing, adaptor_);
-            JLOG(j_.info()) << "Bowing out of consensus";
-
-            if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-            {
-                JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
-                adaptor_.removePoolTxs(
-                    newLedger->ledger_->txMap(),
-                    newLedger->ledger_->info().seq,
-                    newLedger->ledger_->info().parentHash);
-
-                newRound(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
-            }
-            else
-            {
-                mode_.set(ConsensusMode::wrongLedger, adaptor_);
-            }
-        }
-    }
-
-    return false;
+    return true;
 }
 
 const bool HotstuffConsensus::checkVotingPower(const std::map<hotstuff::Author, hotstuff::Signature>& signatures) const
@@ -598,6 +637,43 @@ void HotstuffConsensus::peerVote(
         JLOG(j_.warn()) << "Vote: Exception, " << e.what();
         peer->charge(Resource::feeInvalidRequest);
     }
+}
+
+bool HotstuffConsensus::checkLedger(LedgerInfo ledgerInfo)
+{
+    auto ledger = adaptor_.getLedgerByHash(ledgerInfo.hash);
+    if (ledger)
+    {
+        adaptor_.updateConsensusTime();
+        newRound(ledgerInfo.hash,
+            ledger,
+            adaptor_.preStartRound(ledger) ? ConsensusMode::proposing : ConsensusMode::observing);
+    }
+    else
+    {
+        prevLedgerID_ = ledgerInfo.hash;
+
+        mode_.set(ConsensusMode::observing, adaptor_);
+        JLOG(j_.info()) << "Bowing out of consensus";
+
+        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
+        {
+            JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
+            adaptor_.removePoolTxs(
+                newLedger->ledger_->txMap(),
+                newLedger->ledger_->info().seq,
+                newLedger->ledger_->info().parentHash);
+
+            newRound(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
+        }
+        else
+        {
+            mode_.set(ConsensusMode::wrongLedger, adaptor_);
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void HotstuffConsensus::newRound(

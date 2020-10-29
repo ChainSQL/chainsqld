@@ -42,6 +42,7 @@ class HotstuffConsensus final
 {
 public:
     HotstuffConsensus(ripple::Adaptor& adaptor, clock_type const& clock, beast::Journal j);
+    ~HotstuffConsensus();
 
 public:
 
@@ -86,7 +87,7 @@ public:
     bool compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result) override final;
     bool verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result) override final;
     int commit(const hotstuff::Block& block) override final;
-    bool onQCAggregated(LedgerInfo const& info) override final;
+    bool syncState(const hotstuff::BlockInfo& prevInfo) override final;
 
     // Overwrite ValidatorVerifier interfaces.
     const hotstuff::Author& Self() const override final;
@@ -120,6 +121,8 @@ private:
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
 
+    bool checkLedger(LedgerInfo ledgerInfo);
+
     void newRound(
         RCLCxLedger::ID const& prevLgrId,
         RCLCxLedger const& prevLgr,
@@ -130,6 +133,8 @@ private:
     std::shared_ptr<hotstuff::Hotstuff> hotstuff_;
 
     NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
+
+    bool startup_ = false;
 
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;

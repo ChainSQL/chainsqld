@@ -39,7 +39,7 @@ HashValue BlockData::hash(const BlockData& block_data) {
 		hash_append(h, block_data.payload->cmd);
         hash_append(h, block_data.getLedgerInfo().hash);
 	}
-    else if (block_data.block_type == BlockData::Genesis)
+    else // for Genesis or NilBlock
     {
         hash_append(h, block_data.getLedgerInfo().hash);
     }
@@ -67,6 +67,8 @@ Block Block::nil_block(Round round, const QuorumCertificate& hqc) {
 	block_data.round = round;
 	block_data.quorum_cert = hqc;
 	block_data.block_type = BlockData::NilBlock;
+
+    block_data.getLedgerInfo() = hqc.certified_block().ledger_info;
 
 	block.id_ = BlockData::hash(block_data);
 	block.block_data_ = block_data;

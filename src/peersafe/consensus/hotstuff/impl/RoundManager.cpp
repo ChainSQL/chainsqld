@@ -81,12 +81,15 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
 		std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, new_round_event.round));
 
 	if (!proposer_election_->IsValidProposer(proposal_generator_->author(), new_round_event.round)) {
-		JLOG(journal_.error())
+		JLOG(journal_.info())
 			<< "ProcessNewRoundEvent: invalidProposel."
 			<< " New round is " << new_round_event.round
 			<< " and proposal's author is " << proposal_generator_->author();
 		return 1;
 	}
+    JLOG(journal_.info())
+        << "ProcessNewRoundEvent: New round is " << new_round_event.round
+        << " and I am the proposer";
 	boost::optional<Block> proposal = GenerateProposal(new_round_event);
 	if (proposal) {
 		network_->broadcast(proposal.get(), block_store_->sync_info());
@@ -275,8 +278,7 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		vote,
 		hotstuff_core_->epochState()->verifier,
 		quorumCert, timeoutCert);
-	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate &&
-        block_store_->onQCAggregated(quorumCert)) {
+	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
 		NewQCAggregated(quorumCert);
 		return 0;
 	}
@@ -348,14 +350,15 @@ int RoundManager::SyncUp(
 				<< "Verifing sync_info failed";
 			return 1;
 		}
-		if (block_store_->state_compute()->syncState(
-			sync_info.HighestQuorumCert().certified_block()) == false) {
-			JLOG(journal_.error())
-				<< "Sync compute state failed.";
-			return 1;
-		}
 		block_store_->addCerts(sync_info, network_);
+
 		// open a new round
+        if (block_store_->state_compute()->syncState(
+            sync_info.HighestQuorumCert().certified_block()) == false) {
+            JLOG(journal_.error())
+                << "Sync compute state failed.";
+            return 1;
+        }
 		ProcessCertificates();
 	}
 
