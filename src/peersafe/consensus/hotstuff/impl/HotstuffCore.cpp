@@ -206,7 +206,7 @@ bool HotstuffCore::VerifyAndUpdateLastVoteRound(Round round) {
 
 std::tuple<bool, VoteData> HotstuffCore::ExtensionCheck(const ExecutedBlock& executed_block) {
 	Block proposed_block = executed_block.block;
-	if (state_compute_->verify(executed_block.state_compute_result) == false) {
+	if (state_compute_->verify(proposed_block, executed_block.state_compute_result) == false) {
 		JLOG(journal_.error())
 			<< "extension check falled."
 			<< "Round is " << executed_block.block.block_data().round;

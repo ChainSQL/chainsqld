@@ -159,7 +159,7 @@ public:
 		return true;
 	}
 
-	bool verify(const ripple::hotstuff::StateComputeResult& state_compute_result) {
+	bool verify(const ripple::hotstuff::Block& block, const ripple::hotstuff::StateComputeResult& state_compute_result) {
 		return true;
 	}
 

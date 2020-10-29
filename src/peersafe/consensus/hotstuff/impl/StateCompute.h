@@ -50,7 +50,7 @@ public:
 	virtual ~StateCompute() {}
 	
 	virtual bool compute(const Block& block, StateComputeResult& state_compute_result) = 0;
-	virtual bool verify(const StateComputeResult& state_compute_result) = 0;
+	virtual bool verify(const Block& block, const StateComputeResult& state_compute_result) = 0;
 	virtual int commit(const Block& block) = 0;
     virtual bool onQCAggregated(ripple::LedgerInfo const& info) = 0;
 
