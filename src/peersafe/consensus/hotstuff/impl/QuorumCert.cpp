@@ -156,7 +156,7 @@ bool TimeoutCertificate::Verify(const ValidatorVerifier* validator) {
 		if (validator->verifySignature(it->first, it->second, hash) == false)
 			return false;
 	}
-    return validator->checkVotingPower(signatures_);
+    return true;
 }
 
 } // namespace hotstuff

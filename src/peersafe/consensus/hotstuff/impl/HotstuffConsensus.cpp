@@ -217,14 +217,10 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
 
 bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result)
 {
-    if (block.block_data().block_type == hotstuff::BlockData::NilBlock)
+    if (block.block_data().block_type == hotstuff::BlockData::NilBlock ||
+        block.block_data().block_type == hotstuff::BlockData::Genesis)
     {
         return true;
-    }
-
-    if (block.block_data().block_type == hotstuff::BlockData::Genesis)
-    {
-        return false;
     }
 
     LedgerInfo const& info = block.getLedgerInfo();
@@ -232,6 +228,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     if (block.block_data().author() == adaptor_.valPublic())
     {
         result.ledger_info = info;
+        result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
         return true;
     }
 
@@ -282,6 +279,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     if (info.hash == built.id())
     {
         result.ledger_info = built.ledger_->info();
+        result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
         // Tell directly connected peers that we have a new LCL
         adaptor_.notify(protocol::neCLOSING_LEDGER, built, adaptor_.mode() != ConsensusMode::wrongLedger);
         return true;
@@ -292,10 +290,15 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     return false;
 }
 
-bool HotstuffConsensus::verify(const hotstuff::StateComputeResult& result)
+bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result)
 {
-    return result.ledger_info.seq == result.parent_ledger_info.seq + 1
-        && result.ledger_info.parentHash == result.parent_ledger_info.hash;
+    if (block.block_data().block_type == hotstuff::BlockData::Proposal)
+    {
+        return result.ledger_info.seq == result.parent_ledger_info.seq + 1
+            && result.ledger_info.parentHash == result.parent_ledger_info.hash;
+    }
+
+    return true;
 }
 
 int HotstuffConsensus::commit(const hotstuff::Block& block)

@@ -155,10 +155,6 @@ bool HotstuffCore::VerifyQC(const QuorumCertificate& qc) {
 			return false;
 	}
 
-    if (qc.certified_block().epoch > 0 || qc.certified_block().round > 0)
-    {
-        return epoch_state_->verifier->checkVotingPower(signatures);
-    }
 	return true;
 }
 

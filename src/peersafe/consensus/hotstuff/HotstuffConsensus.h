@@ -84,7 +84,7 @@ public:
 
     // Overwrite StateCompute interfaces.
     bool compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result) override final;
-    bool verify(const hotstuff::StateComputeResult& result) override final;
+    bool verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result) override final;
     int commit(const hotstuff::Block& block) override final;
     bool onQCAggregated(LedgerInfo const& info) override final;
 
