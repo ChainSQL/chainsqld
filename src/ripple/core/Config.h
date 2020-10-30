@@ -217,6 +217,8 @@ public:
 
 	void initSchemaConfig(Config& config, SchemaParams const& schemaParams);
 	void initSchemaInfo(boost::filesystem::path config_dir, SchemaParams const& schemaParams);
+	void onSchemaModify(Config& config, std::vector<std::string> validators,
+		std::vector<std::string> peer_list);
 
 	IniFileSections getConfigFileContents() const;
 

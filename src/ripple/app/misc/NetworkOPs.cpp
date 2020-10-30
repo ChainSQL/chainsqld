@@ -628,6 +628,7 @@ private:
 
 	void checkSchemaTx(std::shared_ptr<ReadView const> const& alAccepted,
 		const AcceptedLedgerTx& alTransaction);
+	void resetSchemaCfg(uint256 schemaId,std::shared_ptr<SLE const> sleSchema);
 private:
     using SubMapType = hash_map <std::uint64_t, InfoSub::wptr>;
     using SubInfoMapType = hash_map <AccountID, SubMapType>;
@@ -3029,6 +3030,30 @@ std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<S
 	return std::make_pair(true, "");
 }
 
+void NetworkOPsImp::resetSchemaCfg(uint256 schemaID, std::shared_ptr<SLE const> sleSchema)
+{
+	auto config_dir = boost::filesystem::path(app_.config().SCHEMA_PATH) / to_string(schemaID);
+	app_.app().config(schemaID).initSchemaInfo(config_dir,
+		app_.app().getSchema(schemaID).getSchemaParams());
+
+	std::vector<std::string> validator_list;
+	auto validators = sleSchema->getFieldArray(sfValidators);
+	for (auto& validator : validators)
+	{
+		auto publicKey = PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
+		validator_list.push_back(toBase58(TokenType::NodePublic, publicKey));
+	}
+
+	std::vector<std::string> peer_list;
+	auto peers = sleSchema->getFieldArray(sfPeerList);
+	for (auto& peer : peers)
+	{
+		peer_list.push_back(strCopy(peer.getFieldVL(sfEndpoint)));
+	}
+	Config config;
+	config.onSchemaModify(app_.app().config(schemaID), validator_list, peer_list);
+}
+
 void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccepted,
 	const AcceptedLedgerTx& alTx)
 {
@@ -3068,11 +3093,11 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 			vecPeers.push_back(strCopy(peer.getFieldVL(sfEndpoint)));
 		}
 
+		auto sleSchema = alAccepted->read(Keylet(ltSCHEMA, schemaID));
 		if (stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::add)
 		{
 			if (bOperatingSelf)
 			{
-				auto sleSchema = alAccepted->read(Keylet(ltSCHEMA, schemaID));
 				auto ret = this->createSchema(sleSchema, false);
 				if (!ret.first)
 					JLOG(m_journal.fatal()) << ret.second;
@@ -3080,19 +3105,15 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 			else
 			{
 				app_.app().getSchema(schemaID).getSchemaParams().modify(SchemaModifyOp::add, vecValidators, vecPeers);
-				auto config_dir = boost::filesystem::path(app_.config().SCHEMA_PATH) / to_string(schemaID);
-				app_.app().config(schemaID).initSchemaInfo(config_dir, 
-					app_.app().getSchema(schemaID).getSchemaParams());
+				resetSchemaCfg(schemaID,sleSchema);
 
 				app_.app().overlay().onSchemaAddPeer(schemaID, vecPeers, vecValidators);
 			}
 		}
 		else if (stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::del)
 		{
-			app_.app().getSchema(schemaID).getSchemaParams().modify(SchemaModifyOp::add, vecValidators, vecPeers);
-			auto config_dir = boost::filesystem::path(app_.config().SCHEMA_PATH) / to_string(schemaID);
-			app_.app().config(schemaID).initSchemaInfo(config_dir,
-				app_.app().getSchema(schemaID).getSchemaParams());
+			app_.app().getSchema(schemaID).getSchemaParams().modify(SchemaModifyOp::del, vecValidators, vecPeers);
+			resetSchemaCfg(schemaID, sleSchema);
 
 			if (bOperatingSelf)
 			{
