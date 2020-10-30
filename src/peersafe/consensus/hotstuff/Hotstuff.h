@@ -28,7 +28,14 @@
 #include <ripple/basics/Log.h>
 #include <ripple/core/JobQueue.h>
 
-namespace ripple { namespace hotstuff {
+namespace ripple { 
+
+// only for test case
+namespace test {
+	class Hotstuff_test;
+} // namespace test
+
+namespace hotstuff {
 
 class Hotstuff {
 public:
@@ -81,6 +88,8 @@ private:
 		ProposerElection* proposer_election,
 		StateCompute* state_compute,
 		NetWork* network);
+
+	friend class ripple::test::Hotstuff_test;
 	
 	beast::Journal journal_;
 	Config config_;

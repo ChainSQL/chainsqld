@@ -30,8 +30,13 @@
 #include <peersafe/consensus/hotstuff/impl/NetWork.h>
 
 namespace ripple {
+// only for test case
+namespace test {
+	class Hotstuff_test;
+} // namespace test
 namespace hotstuff {
 
+class Hotstuff;
 class RoundManager {
 public:
 	RoundManager(
@@ -53,6 +58,7 @@ public:
 
 	int ProcessVote(const Vote& vote, const SyncInfo& sync_info);
 private:
+	friend class ripple::test::Hotstuff_test;
 	int ProcessVote(const Vote& vote);
 	bool ExecuteAndVote(const Block& proposal, Vote& vote);
 	int ProcessNewRoundEvent(const NewRoundEvent& event);
@@ -67,10 +73,17 @@ private:
 	int ProcessCertificates();
 	int NewQCAggregated(const QuorumCertificate& quorumCert);
 	int NewTCAggregated(const TimeoutCertificate& timeoutCert);
-
+	
 	void ProcessLocalTimeout(const boost::system::error_code& ec, Round round);
+	void UseNilBlockProcessLocalTimeout(const Round& round);
+	void NotUseNilBlockProcessLocalTimeout(const Round& round);
+	bool IsValidProposer(const Author& author, const Round& round);
+	bool IsValidProposal(const Block& proposal);
+	void ShiftCurrentRoundToNextHeader();
+	bool HasShiftCurrentRoundToNextHeader();
+	void ResetShiftCurrentRoundToCurrentHeader();
 
-	beast::Journal journal_;
+	const beast::Journal& journal_;
 	Config config_;
 	BlockStorage* block_store_;
 	RoundState* round_state_;
@@ -80,6 +93,10 @@ private:
 	NetWork* network_;
 
 	bool stop_;
+	
+	// 加入当前 current_round 的 leader 没有出块或是异常
+	// 下一个 next_round = current_round + 1 的 leader 可以接管此轮次 current_round
+	Round shift_round_to_next_leader_;
 };
 
 } // namespace hotstuff

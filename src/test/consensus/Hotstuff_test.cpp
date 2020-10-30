@@ -113,15 +113,9 @@ public:
 	}
 
 	~Replica() {
-		//io_service_.stop();
-		//while (true) {
-		//	if (io_service_.stopped())
-		//		break;
-		//}
+		delete env_;
+		env_ = nullptr;
 
-		//if (worker_.joinable())
-		//	worker_.join();
-		
 		Replica::index = 1;
 		committed_blocks_.clear();
 	}
@@ -166,12 +160,13 @@ public:
 	int commit(const ripple::hotstuff::Block& block) {
 		auto it = committed_blocks_.find(block.id());
 		if (it == committed_blocks_.end()) {
-			//std::cout
-			//	<< config_.id << ": "
-			//	<< "epoch " << block.block_data().epoch
-			//	<< ", round " << block.block_data().round 
-			//	<< ", id "<< block.id()
-			//	<< std::endl;
+			std::cout
+				<< config_.id << ": "
+				<< "epoch " << block.block_data().epoch
+				<< ", author " << block.block_data().author()
+				<< ", round " << block.block_data().round 
+				<< ", id "<< block.id()
+				<< std::endl;
 			committed_blocks_.emplace(std::make_pair(block.id(), block));
 		}
 		return 0;
@@ -305,6 +300,8 @@ public:
 				jtPROPOSAL_t,
 				"broadcast_proposal",
 				[this, it, proposal, sync](Job&) {
+					if (it->second->malicious())
+						return;
 					if(it->second->hotstuff_->CheckProposal(proposal, sync))
 						it->second->hotstuff_->handleProposal(proposal);
 				});
@@ -329,6 +326,8 @@ public:
 				jtPROPOSAL_t,
 				"broadcast_proposal",
 				[this, it, v, sync](Job&) {
+					if (it->second->malicious())
+						return;
 					it->second->hotstuff_->handleVote(v, sync);
 				});
 		}
@@ -367,10 +366,16 @@ public:
 					jtPROPOSAL_t,
 					"send_vote",
 					[this, it, vote, sync_info](Job&) {
+					if (it->second->malicious())
+						return;
 						it->second->hotstuff_->handleVote(vote, sync_info);
 					});
 			}
 		}
+	}
+
+	std::shared_ptr<ripple::hotstuff::Hotstuff>& hotstuff() {
+		return hotstuff_;
 	}
 
 	void run(ripple::hotstuff::RecoverData& recover_data) {
@@ -394,6 +399,11 @@ public:
 
 		if (worker_.joinable())
 			worker_.join();
+
+		for (;;) {
+			if (env_->app().getJobQueue().getJobCountTotal(jtPROPOSAL_t) == 0)
+				break;
+		}
 
 		hotstuff_->stop();
 	}
@@ -485,9 +495,8 @@ public:
 		}
 	}
 
-	void newReplicas(
-		jtx::Env* env,
-		beast::Journal& journal, 
+	std::set<std::size_t> newReplicas(
+		const std::string& journal_name, 
 		int replicas,
 		int malicious = 0) {
 
@@ -500,7 +509,7 @@ public:
 				// use current time as seed for random generator
 				std::srand(std::time(nullptr));
 				std::size_t id = (std::rand() % replicas) + 1;
-				maliciousAuthors.insert(id);
+				maliciousAuthors.insert(1);
 
 				if (maliciousAuthors.size() == malicious)
 					break;
@@ -510,6 +519,7 @@ public:
 		ripple::hotstuff::Config config;
 		config.epoch = Replica::epoch;
 		config.timeout = timeout_;
+		config.disable_nil_block = disable_nil_block_;
 		for (std::size_t i = base; i < (replicas + base); i++) {
 			std::size_t index = i + 1;
 			config.id = (boost::format("%1%") % index).str();
@@ -517,8 +527,21 @@ public:
 				maliciousAuthors.begin(), 
 				maliciousAuthors.end(), 
 				index) != maliciousAuthors.end();
-			new Replica(config, env, journal, fake_malicious_replica);
+			if (fake_malicious_replica)
+				std::cout << index << " is malicious." << std::endl;
+
+			jtx::Env* env = new jtx::Env(*this) ;
+			if (disable_log_)
+				env->app().logs().threshold(beast::severities::kDisabled);
+			else
+				env->app().logs().threshold(beast::severities::kAll);
+			new Replica(
+				config, 
+				env, 
+				env->app().journal(journal_name), 
+				fake_malicious_replica);
 		}
+		return maliciousAuthors;
 	}
 
 	void runReplicas() {
@@ -538,17 +561,17 @@ public:
 		Replica::replicas[1]->run(recover_data);
 	}
 
-	void stopReplicas(jtx::Env* env, int /*replicas*/) {
+	void stopReplicas(int /*replicas*/) {
 		for (auto it = Replica::replicas.begin();
 			it != Replica::replicas.end(); 
 			it++) {
 			it->second->stop();
 		}
 
-		for (;;) {
-			if (env->app().getJobQueue().getJobCountTotal(jtPROPOSAL_t) == 0)
-				break;
-		}
+		//for (;;) {
+		//	if (env->app().getJobQueue().getJobCountTotal(jtPROPOSAL_t) == 0)
+		//		break;
+		//}
 	}
 
 	void releaseReplicas(int /*replicas*/) {
@@ -568,12 +591,21 @@ public:
 		Replica::replicas.erase(index);
 	}
 
-	bool waitUntilCommittedBlocks(int committedBlocks) {
+	bool waitUntilCommittedBlocks(
+		int committedBlocks, 
+		std::set<std::size_t> malicious_replicas = std::set<std::size_t>()) {
+
 		while (true) {
 			bool satisfied = true;
 			for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+				bool fake_malicious_replica = std::find(
+					malicious_replicas.begin(),
+					malicious_replicas.end(),
+					it->first) != malicious_replicas.end();
+
 				std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committed_blocks;
-				if(it->second->committedBlocks(Replica::epoch, committed_blocks) < committedBlocks) {
+				if(fake_malicious_replica == false
+					&& it->second->committedBlocks(Replica::epoch, committed_blocks) < committedBlocks) {
 					satisfied = false;
 					continue;
 				}
@@ -585,11 +617,23 @@ public:
 		return true;
 	}
 
-	bool hasConsensusedCommittedBlocks(int committedBlocks) {
+	bool hasConsensusedCommittedBlocks(
+		int committedBlocks, 
+		std::set<std::size_t> malicious_replicas = std::set<std::size_t>()) {
+
 		std::vector<ripple::hotstuff::HashValue> summary_hash;
 
 		committedBlocks += 1;
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+
+			bool fake_malicious_replica = std::find(
+				malicious_replicas.begin(),
+				malicious_replicas.end(),
+				it->first) != malicious_replicas.end();
+
+			if (fake_malicious_replica)
+				continue;
+
 			std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committedBlocksContainer;
 			it->second->committedBlocks(Replica::epoch, committedBlocksContainer);
 			//const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& committedBlocksContainer = it->second->committedBlocks();
@@ -608,7 +652,7 @@ public:
 			);
 		}
 
-		if (summary_hash.size() != Replica::replicas.size())
+		if (summary_hash.size() != (Replica::replicas.size() - malicious_replicas.size()))
 			return false;
 		ripple::hotstuff::HashValue hash = summary_hash[0];
 		for (std::size_t i = 1; i < summary_hash.size(); i++) {
@@ -618,35 +662,37 @@ public:
 		return true;
 	}
 
-	void waitAllChangedEpochSuccessed() {
+	void waitAllChangedEpochSuccessed(std::set<std::size_t> malicious_replicas = std::set<std::size_t>()) {
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+
+			bool fake_malicious_replica = std::find(
+				malicious_replicas.begin(),
+				malicious_replicas.end(),
+				it->first) != malicious_replicas.end();
+
+			if (fake_malicious_replica)
+				continue;
+
 			it->second->waitChangedEpochSuccessed();
 		}
 	}
 	
 	void testNormalRound() {
-		jtx::Env env{ *this };
-		if(disable_log_)
-			env.app().logs().threshold(beast::severities::kDisabled);
-
-		newReplicas(&env, env.app().journal("testCase"), replicas_);
+		newReplicas("testNormalRound", replicas_);
 		runReplicas();
 		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_) == true);
-		stopReplicas(&env, replicas_);
+		stopReplicas(replicas_);
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
 		releaseReplicas(replicas_);
 	}
 
 	void testTimeoutRound() {
-		jtx::Env env{ *this };
-		if(disable_log_)
-			env.app().logs().threshold(beast::severities::kDisabled);
-
-		newReplicas(&env, env.app().journal("testCase"), replicas_, false_replicas_);
+		std::set<std::size_t> malicious_replicas;
+		malicious_replicas = newReplicas("testTimeoutRound", replicas_, false_replicas_);
 		runReplicas();
-		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_) == true);
-		stopReplicas(&env, replicas_);
-		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
+		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_, malicious_replicas) == true);
+		stopReplicas(replicas_);
+		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_replicas) == true);
 		releaseReplicas(replicas_);
 	}
 
@@ -655,14 +701,9 @@ public:
 		// 1. 新节点以新的 epoch 和配置运行
 		// 2. 久节点收到 epoch change 事件后停止当前的 hotstuff
 		// 3. 久节点使用新配置重新启动 hotstuff 
-
-		jtx::Env env{ *this };
-		if(disable_log_)
-			env.app().logs().threshold(beast::severities::kDisabled);
-
 		ripple::hotstuff::Epoch current_epoch = Replica::epoch;
 
-		newReplicas(&env, env.app().journal("testCase"), replicas_);
+		newReplicas("testAddReplicas", replicas_);
 		runReplicas();
 		BEAST_EXPECT(waitUntilCommittedBlocks(2) == true);
 		BEAST_EXPECT(Replica::epoch == current_epoch);
@@ -671,12 +712,12 @@ public:
 		waitAllChangedEpochSuccessed();
 		BEAST_EXPECT(Replica::epoch == (current_epoch + 1));
 		// Add a new replica and run it
-		newReplicas(&env, env.app().journal("testCase"), 1);
+		newReplicas("testAddReplicas", 1);
 		// Re-run replicas
 		runReplicas();
 		waitUntilCommittedBlocks(blocks_);
 
-		stopReplicas(&env, replicas_);
+		stopReplicas(replicas_);
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
 		releaseReplicas(replicas_);
 	}
@@ -686,14 +727,9 @@ public:
 		// 1. 发布 epoch change 事件
 		// 2. 收到 epoch change 事件后停止当前的 hotstuff
 		// 3. 使用新配置重新启动 hotstuff 
-
-		jtx::Env env{ *this };
-		if(disable_log_)
-			env.app().logs().threshold(beast::severities::kDisabled);
-
 		ripple::hotstuff::Epoch current_epoch = Replica::epoch;
 
-		newReplicas(&env, env.app().journal("testCase"), replicas_);
+		newReplicas("testRemoveReplicas", replicas_);
 		runReplicas();
 		BEAST_EXPECT(waitUntilCommittedBlocks(2) == true);
 		BEAST_EXPECT(Replica::epoch == current_epoch );
@@ -708,9 +744,25 @@ public:
 		runReplicas();
 		waitUntilCommittedBlocks(blocks_);
 
-		stopReplicas(&env, Replica::replicas.size());
+		stopReplicas(Replica::replicas.size());
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
 		releaseReplicas(Replica::replicas.size());
+	}
+
+	void testDisableNilBlock() {
+		// 禁用空块
+		disable_nil_block_ = true;
+		std::set<std::size_t> malicious_replicas;
+		malicious_replicas = newReplicas("testDisableNilBlock", replicas_, false_replicas_);
+		runReplicas();
+		//BEAST_EXPECT(waitUntilCommittedBlocks(blocks_, malicious_replicas) == true);
+		//stopReplicas(&env, replicas_);
+		//BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_replicas) == true);
+		//releaseReplicas(replicas_);
+
+		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+			it->second->hotstuff()->round_manager_->NotUseNilBlockProcessLocalTimeout(1);
+		}
 	}
 
     void run() override {
@@ -720,6 +772,7 @@ public:
 		testTimeoutRound();
 		testAddReplicas();
 		testRemoveReplicas();
+		//testDisableNilBlock();
     }
 
 	Hotstuff_test()
@@ -727,7 +780,8 @@ public:
 	, replicas_(3* false_replicas_ + 1)
 	, blocks_(4)
 	, timeout_(60)
-	, disable_log_(false) {
+	, disable_log_(false)
+	, disable_nil_block_(false) {
 		std::string genesis_info = "This is a test for hotstuff";
 		using beast::hash_append;
 		ripple::sha512_half_hasher h;
@@ -741,6 +795,7 @@ private:
 	int blocks_;
 	int timeout_;
 	bool disable_log_;
+	bool disable_nil_block_;
 };
 
 BEAST_DEFINE_TESTSUITE(Hotstuff, consensus, ripple);

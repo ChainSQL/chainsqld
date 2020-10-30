@@ -31,11 +31,14 @@ struct Config {
 	Epoch epoch;
 	// generate a dummy block after timeout (seconds)
 	int timeout;
+	// whether we should generate a dummy block or shouldn't
+	bool disable_nil_block;
 
 	Config()
-		: id()
-		, epoch(0)
-		, timeout(60) {
+	: id()
+	, epoch(0)
+	, timeout(60)
+	, disable_nil_block(false) {
 
 	}
 };

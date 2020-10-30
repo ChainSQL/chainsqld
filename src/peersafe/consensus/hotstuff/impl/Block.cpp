@@ -17,9 +17,9 @@
  */
 //==============================================================================
 
-#include <peersafe/consensus/hotstuff/impl/Block.h>
-
 #include <vector>
+
+#include <peersafe/consensus/hotstuff/impl/Block.h>
 
 namespace ripple { namespace hotstuff {
 
@@ -127,6 +127,7 @@ BlockInfo Block::gen_block_info(
 	block_info.epoch = block_data_.epoch;
 	block_info.round = block_data_.round;
 	block_info.ledger_info = ledger_info;
+	block_info.timestamp_usecs = block_data_.timestamp_usecs;
 	block_info.next_epoch_state = next_epoch_state;
 
 	return block_info;
