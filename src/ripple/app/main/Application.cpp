@@ -936,8 +936,14 @@ bool ApplicationImp::setup()
     // Optionally turn off logging to console.
     logs_->silent (config_->silent());
 
-    if (!config_->standalone())
-        timeKeeper_->run(config_->SNTP_SERVERS);
+	if (!schema_main->setup())
+		return false;
+
+	if(!loadSubChains())
+		return false;
+
+	if (!config_->standalone())
+		timeKeeper_->run(config_->SNTP_SERVERS);
 
 	{
 		try
@@ -958,12 +964,6 @@ bool ApplicationImp::setup()
 			return false;
 		}
 	}
-
-	if (!schema_main->setup())
-		return false;
-
-	if(!loadSubChains())
-		return false;
 
     return true;
 }
