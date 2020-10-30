@@ -237,13 +237,13 @@ public:
         , clusterTimer_ (io_svc)
         , mConsensus (app,
             make_FeeVote(setup_FeeVote (app_.config().section ("voting")),
-                                        app_.logs().journal("FeeVote")),
+                                        app_.journal("FeeVote")),
             ledgerMaster,
             *m_localTX,
             app.getInboundTransactions(),
             beast::get_abstract_clock<std::chrono::steady_clock>(),
             validatorKeys,
-            app_.logs().journal("LedgerConsensus"))
+            app_.journal("LedgerConsensus"))
         , m_ledgerMaster (ledgerMaster)
         , m_job_queue (job_queue)
         , m_standalone (standalone)

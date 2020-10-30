@@ -258,7 +258,6 @@ namespace ripple {
 		void
 			startGenesisLedger(
 				std::shared_ptr<Ledger const> curLedger);
-
 	private:
 		Application& app_;
 		beast::Journal m_journal;
@@ -319,6 +318,7 @@ namespace ripple {
 		std::unique_ptr <DatabaseCon> mLedgerDB;
 		std::unique_ptr <DatabaseCon> mWalletDB;
 		std::unique_ptr <PeerManager> m_peerManager;
+
 	public:
 	SchemaImp(SchemaParams const& params, std::shared_ptr<Config> config, Application & app, beast::Journal j)
 		: schema_params_(params)
@@ -329,13 +329,13 @@ namespace ripple {
 		, m_txMaster(*this)
 
 		, m_shaMapStore(make_SHAMapStore(*this, setup_SHAMapStore(*config_),
-			dynamic_cast<Stoppable&>(app_), app_.nodeStoreScheduler(), app_.logs().journal("SHAMapStore"),
-			app_.logs().journal("NodeObject"), m_txMaster, *config_))
+			dynamic_cast<Stoppable&>(app_), app_.nodeStoreScheduler(), SchemaImp::journal("SHAMapStore"),
+			SchemaImp::journal("NodeObject"), m_txMaster, *config_))
 
 		, accountIDCache_(128000)
 
 		, m_tempNodeCache("NodeCache", 16384, std::chrono::seconds{ 90 },
-			stopwatch(), app_.logs().journal("TaggedCache"))
+			stopwatch(), SchemaImp::journal("TaggedCache"))
 
 
 		, cachedSLEs_(std::chrono::minutes(1), stopwatch())
@@ -355,11 +355,11 @@ namespace ripple {
 		, m_orderBookDB(*this, app_.getJobQueue())
 
 		, m_pathRequests(std::make_unique<PathRequests>(
-			*this, app_.logs().journal("PathRequest"), app.getCollectorManager().collector()))
+			*this, SchemaImp::journal("PathRequest"), app.getCollectorManager().collector()))
 
 		, m_ledgerMaster(std::make_unique<LedgerMaster>(*this, stopwatch(),
 			app_.getJobQueue(), app.getCollectorManager().collector(),
-			app_.logs().journal("LedgerMaster")))
+			SchemaImp::journal("LedgerMaster")))
 
 		// VFALCO NOTE must come before NetworkOPs to prevent a crash due
 		//             to dependencies in the destructor.
@@ -378,64 +378,64 @@ namespace ripple {
 				}))
 
 		, m_acceptedLedgerCache("AcceptedLedger", /*4*/16, std::chrono::minutes{ 10 }, stopwatch(),
-			app_.logs().journal("TaggedCache"))
+			SchemaImp::journal("TaggedCache"))
 
 		, m_peerManager(make_PeerManager(*this))
 					
 		, m_networkOPs(make_NetworkOPs(*this, stopwatch(),
 			config_->standalone(), config_->NETWORK_QUORUM, config_->START_VALID,
 			app_.getJobQueue(), *m_ledgerMaster, app_.getJobQueue(), app_.getValidatorKeys(),
-			dynamic_cast<BasicApp&>(app_).get_io_service(), app_.logs().journal("NetworkOPs")))
+			dynamic_cast<BasicApp&>(app_).get_io_service(), SchemaImp::journal("NetworkOPs")))
 
 		, cluster_(std::make_unique<Cluster>(
-			app_.logs().journal("Overlay")))
+			SchemaImp::journal("Overlay")))
 
 		, validatorManifests_(std::make_unique<ManifestCache>(
-			app_.logs().journal("ManifestCache")))
+			SchemaImp::journal("ManifestCache")))
 
 		, publisherManifests_(std::make_unique<ManifestCache>(
-			app_.logs().journal("ManifestCache")))
+			SchemaImp::journal("ManifestCache")))
 
 		, validators_(std::make_unique<ValidatorList>(
 			*validatorManifests_, *publisherManifests_, app_.timeKeeper(),
-			app_.logs().journal("ValidatorList"), config_->VALIDATION_QUORUM))
+			SchemaImp::journal("ValidatorList"), config_->VALIDATION_QUORUM))
 
 		, validatorSites_(std::make_unique<ValidatorSite>(
-			*validatorManifests_, dynamic_cast<BasicApp&>(app_).get_io_service(), *validators_, app_.logs().journal("ValidatorSite")))
+			*validatorManifests_, dynamic_cast<BasicApp&>(app_).get_io_service(), *validators_, SchemaImp::journal("ValidatorSite")))
 
 		, caCertSites_(std::make_unique<CACertSite>(
 			*validatorManifests_, *publisherManifests_, app_.timeKeeper(),
-			dynamic_cast<BasicApp&>(app_).get_io_service(), config_->ROOT_CERTIFICATES, app_.logs().journal("CACertSite")))
+			dynamic_cast<BasicApp&>(app_).get_io_service(), config_->ROOT_CERTIFICATES, SchemaImp::journal("CACertSite")))
 
-		, certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES, app_.logs().journal("CertList")))
+		, certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES, SchemaImp::journal("CertList")))
 
-		, mFeeTrack(std::make_unique<LoadFeeTrack>(app_.logs().journal("LoadManager")))
+		, mFeeTrack(std::make_unique<LoadFeeTrack>(SchemaImp::journal("LoadManager")))
 
 		, mHashRouter(std::make_unique<HashRouter>(
 			stopwatch(), HashRouter::getDefaultHoldTime(),
 			HashRouter::getDefaultRecoverLimit()))
 
-		, mValidations(ValidationParms(), stopwatch(), *this, app_.logs().journal("Validations"))
+		, mValidations(ValidationParms(), stopwatch(), *this, SchemaImp::journal("Validations"))
 
-		, txQ_(make_TxQ(setup_TxQ(*config_), app_.logs().journal("TxQ")))
+		, txQ_(make_TxQ(setup_TxQ(*config_), SchemaImp::journal("TxQ")))
 
 		, m_pTxStoreDBConn(std::make_unique<TxStoreDBConn>(*config_))
 
-		, m_pTxStore(std::make_unique<TxStore>(m_pTxStoreDBConn->GetDBConn(), *config_, app_.logs().journal("TxStore")))
+		, m_pTxStore(std::make_unique<TxStore>(m_pTxStoreDBConn->GetDBConn(), *config_, SchemaImp::journal("TxStore")))
 
-		, m_pTableSync(std::make_unique<TableSync>(*this, *config_, app_.logs().journal("TableSync")))
+		, m_pTableSync(std::make_unique<TableSync>(*this, *config_, SchemaImp::journal("TableSync")))
 
-		, m_pTableStorage(std::make_unique<TableStorage>(*this, *config_, app_.logs().journal("TableStorage")))
+		, m_pTableStorage(std::make_unique<TableStorage>(*this, *config_, SchemaImp::journal("TableStorage")))
 
-		, m_pTableAssistant(std::make_unique<TableAssistant>(*this, *config_, app_.logs().journal("TableAssistant")))
+		, m_pTableAssistant(std::make_unique<TableAssistant>(*this, *config_, SchemaImp::journal("TableAssistant")))
 
 		, m_pContractHelper(std::make_unique<ContractHelper>(*this))
 
 		, m_pTableTxAccumulator(std::make_unique<TableTxAccumulator>(*this))
 
-		, m_pTxPool(std::make_unique<TxPool>(*this, app_.logs().journal("TxPool")))
+		, m_pTxPool(std::make_unique<TxPool>(*this, SchemaImp::journal("TxPool")))
 
-		, m_pStateManager(std::make_unique<StateManager>(*this, app_.logs().journal("StateManager")))
+		, m_pStateManager(std::make_unique<StateManager>(*this, SchemaImp::journal("StateManager")))
 	{
 		if (shardStore_)
 			sFamily_ = std::make_unique<detail::AppFamily>(
@@ -454,7 +454,8 @@ namespace ripple {
 
 	beast::Journal journal(std::string const& name)
 	{
-		return logs().journal(name);
+		std::string prefix = strHex(schema_params_.schema_id.begin(), schema_params_.schema_id.begin()+2);
+		return app_.logs().journal("[" + prefix +"]" + name);
 	}
 
 	CollectorManager& getCollectorManager() override
@@ -948,7 +949,7 @@ private:
 				supportedAmendments,
 				enabledAmendments,
 				config_->section(SECTION_VETO_AMENDMENTS),
-				app_.logs().journal("Amendments"));
+				SchemaImp::journal("Amendments"));
 		}
 
 		Pathfinder::initPathTable();
@@ -1219,7 +1220,7 @@ private:
 
 		genesis->setImmutable(*config_);
 		openLedger_.emplace(genesis, cachedSLEs_,
-			app_.logs().journal("OpenLedger"));
+			SchemaImp::journal("OpenLedger"));
 		m_ledgerMaster->switchLCL(genesis);
 		//set valid ledger
 		m_ledgerMaster->initGenesisLedger(genesis);
@@ -1233,7 +1234,7 @@ private:
 			hotACCOUNT_NODE, next->info().seq);
 		next->setImmutable (config_);
 		openLedger_.emplace(next, cachedSLEs_,
-			app_.logs().journal("OpenLedger"));
+			SchemaImp::journal("OpenLedger"));
 		m_ledgerMaster->storeLedger(next);
 		m_ledgerMaster->switchLCL (next);
 		*/
@@ -1552,7 +1553,7 @@ private:
 			loadLedger->setValidated();
 			m_ledgerMaster->setFullLedger(loadLedger, true, false);
 			openLedger_.emplace(loadLedger, cachedSLEs_,
-				app_.logs().journal("OpenLedger"));
+				SchemaImp::journal("OpenLedger"));
 			if (replay)
 			{
 				// inject transaction(s) from the replayLedger into our open ledger
@@ -1604,7 +1605,7 @@ private:
 		genesis->setImmutable(*config_);
 	
 		openLedger_.emplace(genesis, cachedSLEs_,
-			app_.logs().journal("OpenLedger"));
+			SchemaImp::journal("OpenLedger"));
 		m_ledgerMaster->switchLCL(genesis);
 
 		//set valid ledger
@@ -1788,7 +1789,7 @@ private:
 
 		if (config_->doImport)
 		{
-			auto j = app_.logs().journal("NodeObject");
+			auto j = SchemaImp::journal("NodeObject");
 			NodeStore::DummyScheduler scheduler;
 			std::unique_ptr <NodeStore::Database> source =
 				NodeStore::Manager::instance().make_Database("NodeStore.import",

@@ -35,9 +35,9 @@ TransactionMaster::TransactionMaster (Schema& schema)
 	, mCache("TransactionCache", 65536, std::chrono::seconds{ 1800 }, stopwatch(),
 		mSchema.app().journal("TaggedCache"))
     , m_pClientTxStoreDBConn(std::make_unique<TxStoreDBConn>(mSchema.config()))
-    , m_pClientTxStoreDB(std::make_unique<TxStore>(m_pClientTxStoreDBConn->GetDBConn(), mSchema.config(), mSchema.logs().journal("TxStore")))
+    , m_pClientTxStoreDB(std::make_unique<TxStore>(m_pClientTxStoreDBConn->GetDBConn(), mSchema.config(), mSchema.journal("TxStore")))
     , m_pConsensusTxStoreDBConn(std::make_unique<TxStoreDBConn>(mSchema.config()))
-    , m_pConsensusTxStoreDB(std::make_unique<TxStore>(m_pConsensusTxStoreDBConn->GetDBConn(), mSchema.config(), mSchema.logs().journal("TxStore")))
+    , m_pConsensusTxStoreDB(std::make_unique<TxStore>(m_pConsensusTxStoreDBConn->GetDBConn(), mSchema.config(), mSchema.journal("TxStore")))
 {
 }
 
