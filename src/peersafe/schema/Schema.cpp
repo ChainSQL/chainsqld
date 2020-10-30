@@ -348,10 +348,10 @@ namespace ripple {
 		// Anything which calls addJob must be a descendant of the JobQueue
 		//
 		, m_nodeStore(
-			m_shaMapStore->makeDatabase("NodeStore.main", 4, app_.getJobQueue()))
+			m_shaMapStore->makeDatabase("NodeStore.main", 4, *this))
 
 		, shardStore_(
-			m_shaMapStore->makeDatabaseShard("ShardStore", 4, app_.getJobQueue()))
+			m_shaMapStore->makeDatabaseShard("ShardStore", 4, *this))
 
 		, family_(*this, *m_nodeStore, app.getCollectorManager())
 

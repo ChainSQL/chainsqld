@@ -797,8 +797,8 @@ PConsensus<Adaptor>::gotTxSet(
 			if (!result_)
 			{
 				//update avoid if we got the right tx-set
-                if (adaptor_.validating())
-				    adaptor_.app_.getTxPool().updateAvoid(txSet, previousLedger_.seq());
+                //if (adaptor_.validating())
+				adaptor_.app_.getTxPool().updateAvoid(txSet, previousLedger_.seq());
 
 				auto set = txSet.map_->snapShot(false);
 				//this place has a txSet copy,what's the time it costs?
