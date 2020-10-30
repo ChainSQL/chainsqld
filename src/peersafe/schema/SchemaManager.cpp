@@ -17,8 +17,12 @@ namespace ripple {
 			return nullptr;
 		}			
 
+		//Construct cfg for schema
+		Config cfg;
+		cfg.initSchemaConfig(config, params);
+
+		//Reload cfg for schema
 		auto schemaConfig = std::make_shared<Config>();
-		schemaConfig->initSchemaConfig(config, params);
 		std::string config_path = (boost::format("%1%/%2%/%3%")
 			% config.SCHEMA_PATH
 			% params.schema_id
@@ -30,6 +34,7 @@ namespace ripple {
 	std::shared_ptr<Schema> SchemaManager::createSchema(std::shared_ptr<Config> config, SchemaParams const& param)
 	{
 		auto schema = make_Schema(param, config, app_, j_);
+		schema->doStart();
 		schemas_[param.schema_id] = schema;
 
 		return schema;

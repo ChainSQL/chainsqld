@@ -227,7 +227,9 @@ namespace ripple {
 		};
 
 	} // detail
-	class SchemaImp :public Schema
+	class SchemaImp 
+		:public Schema
+		,public RootStoppable
 	{
 	public:
 
@@ -321,7 +323,8 @@ namespace ripple {
 
 	public:
 	SchemaImp(SchemaParams const& params, std::shared_ptr<Config> config, Application & app, beast::Journal j)
-		: schema_params_(params)
+		: RootStoppable("Schema")
+		, schema_params_(params)
 		, app_(app)
 		, m_journal(j)
 		, config_(config)
@@ -352,7 +355,7 @@ namespace ripple {
 
 		, family_(*this, *m_nodeStore, app.getCollectorManager())
 
-		, m_orderBookDB(*this, app_.getJobQueue())
+		, m_orderBookDB(*this, *this)
 
 		, m_pathRequests(std::make_unique<PathRequests>(
 			*this, SchemaImp::journal("PathRequest"), app.getCollectorManager().collector()))
@@ -361,15 +364,16 @@ namespace ripple {
 			app_.getJobQueue(), app.getCollectorManager().collector(),
 			SchemaImp::journal("LedgerMaster")))
 
+
 		// VFALCO NOTE must come before NetworkOPs to prevent a crash due
 		//             to dependencies in the destructor.
 		//
 		, m_inboundLedgers(make_InboundLedgers(*this, stopwatch(),
-			app_.getJobQueue(), app.getCollectorManager().collector()))
+			*this, app.getCollectorManager().collector()))
 
 		, m_inboundTransactions(make_InboundTransactions
 			(*this, stopwatch()
-				, app_.getJobQueue()
+				, *this
 				, app.getCollectorManager().collector()
 				, [this](std::shared_ptr <SHAMap> const& set,
 					bool fromAcquire)
@@ -845,7 +849,13 @@ namespace ripple {
 		cachedSLEs_.expire();
 	}
 
-	void onStop() override
+	void doStart() override
+	{
+		prepare();
+		start();
+	}
+
+	void doStop() override
 	{
 		JLOG(m_journal.debug()) << "Flushing validations";
 		mValidations.flush();
@@ -868,6 +878,7 @@ namespace ripple {
 			return validators().trustedPublisher(pubKey);
 		});
 
+		stop(m_journal);
 	}
 
 	LedgerIndex getMaxDisallowedLedger() override

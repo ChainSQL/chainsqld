@@ -164,6 +164,34 @@ void Config::setupControl(bool bQuiet,
     RUN_STANDALONE = bStandalone;
 }
 
+void Config::onSchemaModify(Config& config,
+	std::vector<std::string> validators,
+	std::vector<std::string> peer_list)
+{
+	auto fileContents = config.getConfigFileContents();
+	if (fileContents.empty()) {
+
+		// error msg
+		return;
+	}
+
+	// copy fileContents from config
+	build(fileContents);
+
+	deprecatedClearSection("validators");
+	section("validators").append(validators);
+
+	deprecatedClearSection("ips");
+	section("ips").append(peer_list);
+
+	CONFIG_FILE = config.CONFIG_DIR / "chainsqld.cfg";
+	{
+		std::ofstream outfile(CONFIG_FILE.generic_string());
+		outfile << *this;
+		outfile.close();
+	}
+}
+
 void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 {
 	{
@@ -203,13 +231,11 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 
 	 auto database_path = CONFIG_DIR / "db";
 	 deprecatedClearSection("database_path");
-	 legacy("database_path", database_path.generic_string());
+	 section("database_path").append(database_path.generic_string());
+	 //legacy("database_path", database_path.generic_string());
 
 	 deprecatedClearSection("ips");
 	 section("ips").append(schemaParams.peer_list);
-
-	 //removeSection("sync_db");
-	 //removeSection("sync_tables");
 
 	 auto const& names = section("server").values();
 	 for (auto const& name : names)

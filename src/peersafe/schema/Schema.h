@@ -70,7 +70,8 @@ class Schema {
 public:
 	virtual bool setup() = 0;
 	virtual void doSweep() = 0;
-	virtual void onStop() = 0;
+	virtual void doStop() = 0;
+	virtual void doStart() = 0;
 
 
 	virtual beast::Journal journal(std::string const& name) = 0;
