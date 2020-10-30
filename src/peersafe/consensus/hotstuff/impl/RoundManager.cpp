@@ -279,11 +279,13 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		hotstuff_core_->epochState()->verifier,
 		quorumCert, timeoutCert);
 	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
+        JLOG(journal_.info()) << "qc has reached";
 		NewQCAggregated(quorumCert);
 		return 0;
 	}
 	else if (ret == PendingVotes::VoteReceptionResult::NewTimeoutCertificate) {
 		assert(timeoutCert);
+        JLOG(journal_.info()) << "tc has reached";
 		NewTCAggregated(timeoutCert.get());
 		return 0;
 	}

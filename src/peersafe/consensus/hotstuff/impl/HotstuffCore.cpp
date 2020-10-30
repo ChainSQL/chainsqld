@@ -141,9 +141,12 @@ bool HotstuffCore::VerifyEpoch(const Epoch epoch) {
 bool HotstuffCore::VerifyQC(const QuorumCertificate& qc) {
 	const QuorumCertificate::Signatures& signatures = qc.signatures();
 
-	if (qc.certified_block().round > 0
-		&& epoch_state_->verifier->checkVotingPower(signatures) == false)
-		return false;
+    if (qc.certified_block().round > 0
+        && epoch_state_->verifier->checkVotingPower(signatures) == false)
+    {
+        JLOG(journal_.error()) << "VerifyQC checkVotingPower failed, signatures size: "<< signatures.size();
+        return false;
+    }
 		
 	VoteData voteData = qc.vote_data();
 	HashValue hash = voteData.hash();

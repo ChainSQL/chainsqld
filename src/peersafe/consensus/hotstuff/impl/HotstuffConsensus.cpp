@@ -270,6 +270,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
 {
     if (block.block_data().block_type == hotstuff::BlockData::Genesis)
     {
+        JLOG(j_.info()) << "Genesis Proposal";
         return true;
     }
 
@@ -278,6 +279,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     if (block.block_data().block_type == hotstuff::BlockData::NilBlock ||
         block.block_data().author() == adaptor_.valPublic())
     {
+        JLOG(j_.info()) << "Self Proposal";
         result.ledger_info = info;
         result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
         return true;

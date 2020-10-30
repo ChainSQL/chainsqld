@@ -85,6 +85,7 @@ ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 		executed_block.block = block;
 		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
 		cache_blocks_.emplace(std::make_pair(block.id(), executed_block));
+        JLOG(debugLog().info()) << "store block: " << block.id();
 	}
 
 	return executed_block;
@@ -112,8 +113,11 @@ int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert, NetWork*
 	HashValue expected_block_id = const_cast<BlockInfo&>(quorumCert.certified_block()).id;
 	{
 		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
-		if (blockOf(expected_block_id, executed_block) == false)
-			return 1;
+        if (blockOf(expected_block_id, executed_block) == false)
+        {
+            JLOG(debugLog().warn()) << "expected block not found: " << expected_block_id;
+            return 1;
+        }
 	}
 
 	{
