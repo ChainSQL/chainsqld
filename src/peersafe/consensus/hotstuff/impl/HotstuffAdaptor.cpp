@@ -142,9 +142,17 @@ void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     signAndSendMessage(pubKey, consensus);
 }
 
-void HotstuffAdaptor::doAccept(RCLCxLedger const& prevLedger)
+bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
 {
-    if (app_.openLedger().current()->seq() < prevLedger.seq() + 1)
+    auto ledger = ledgerMaster_.getLedgerByHash(lgrId);
+    if (!ledger)
+    {
+        return false;
+    }
+
+    ledgerMaster_.updateConsensusTime();
+
+    if (ledgerMaster_.getCurrentLedger()->seq() < ledger->seq() + 1)
     {
         // Build new open ledger
         auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
@@ -162,7 +170,7 @@ void HotstuffAdaptor::doAccept(RCLCxLedger const& prevLedger)
         app_.openLedger().accept(
             app_,
             *rules,
-            prevLedger.ledger_,
+            ledger,
             localTxs_.getTxSet(),
             false,
             retriableTxs,
@@ -174,7 +182,11 @@ void HotstuffAdaptor::doAccept(RCLCxLedger const& prevLedger)
         });
     }
 
-    ledgerMaster_.switchLCL(prevLedger.ledger_);
+    ledgerMaster_.switchLCL(ledger);
+
+    app_.getOPs().endConsensus();
+
+    return true;
 }
 
 }

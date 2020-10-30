@@ -19,7 +19,6 @@
 
 
 #include <peersafe/protocol/STVote.h>
-#include <peersafe/serialization/Serialization.h>
 #include <peersafe/serialization/hotstuff/Vote.h>
 #include <peersafe/serialization/hotstuff/SyncInfo.h>
 

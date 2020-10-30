@@ -121,12 +121,12 @@ private:
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
 
-    bool checkLedger(LedgerInfo ledgerInfo);
-
-    void newRound(
+    void startRoundInternal(
         RCLCxLedger::ID const& prevLgrId,
         RCLCxLedger const& prevLgr,
         ConsensusMode mode);
+
+    bool handleWrongLedger(typename Ledger_t::ID const& lgrId);
 
 private:
     HotstuffAdaptor& adaptor_;

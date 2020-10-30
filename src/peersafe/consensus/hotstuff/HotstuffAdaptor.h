@@ -86,7 +86,7 @@ public:
     void broadcast(STVote const& vote);
     void sendVote(PublicKey const& pubKey, STVote const& vote);
 
-    void doAccept(RCLCxLedger const& prevLedger);
+    bool doAccept(typename Ledger_t::ID const& lgrId);
 
 private:
 

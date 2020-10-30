@@ -67,7 +67,7 @@ void HotstuffConsensus::startRound(
 {
     ConsensusMode startMode = proposing ? ConsensusMode::proposing : ConsensusMode::observing;
 
-    newRound(prevLedgerID, prevLedger, startMode);
+    startRoundInternal(prevLedgerID, prevLedger, startMode);
 }
 
 void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
@@ -96,7 +96,7 @@ void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
                 newLedger->ledger_->info().seq,
                 newLedger->ledger_->info().parentHash);
 
-            newRound(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
+            startRoundInternal(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
         }
         return;
     }
@@ -111,8 +111,10 @@ bool HotstuffConsensus::peerConsensusMessage(
     {
     case ConsensusMessageType::mtPROPOSAL:
         peerProposal(peer, isTrusted, m);
+        break;
     case ConsensusMessageType::mtVOTE:
         peerVote(peer, isTrusted, m);
+        break;
     default:
         break;
     }
@@ -197,8 +199,9 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
     }
     else if (prev.parentHash == prevPrev.hash && prev.parentHash == prevLedgerID_)
     {
-        if (!checkLedger(prev))
+        if (!adaptor_.doAccept(prev.hash) && !handleWrongLedger(prev.hash))
         {
+            JLOG(j_.info()) << "before extract: doAccept failed";
             return boost::none;
         }
     }
@@ -228,7 +231,7 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
 
     // Put transactions into a deterministic, but unpredictable, order
     CanonicalTXSet retriableTxs{ cmd };
-    JLOG(j_.debug()) << "Building canonical tx set: " << retriableTxs.key();
+    JLOG(j_.info()) << "Building canonical tx set: " << retriableTxs.key();
 
     for (auto const& item : *txSet)
     {
@@ -299,7 +302,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
 
     // Put transactions into a deterministic, but unpredictable, order
     CanonicalTXSet retriableTxs{ payload->cmd };
-    JLOG(j_.debug()) << "Building canonical tx set: " << retriableTxs.key();
+    JLOG(j_.info()) << "Building canonical tx set: " << retriableTxs.key();
 
     for (auto const& item : *ait->second.map_)
     {
@@ -372,36 +375,9 @@ bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
 {
     if (prevInfo.ledger_info.seq > previousLedger_.seq())
     {
-        auto ledger = adaptor_.getLedgerByHash(prevInfo.ledger_info.hash);
-        if (ledger)
+        if (!adaptor_.doAccept(prevInfo.ledger_info.hash))
         {
-            adaptor_.updateConsensusTime();
-            newRound(prevInfo.ledger_info.hash,
-                ledger,
-                adaptor_.preStartRound(ledger) ? ConsensusMode::proposing : ConsensusMode::observing);
-        }
-        else
-        {
-            prevLedgerID_ = prevInfo.ledger_info.hash;
-
-            mode_.set(ConsensusMode::observing, adaptor_);
-            JLOG(j_.info()) << "Bowing out of consensus";
-
-            if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-            {
-                JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
-                adaptor_.removePoolTxs(
-                    newLedger->ledger_->txMap(),
-                    newLedger->ledger_->info().seq,
-                    newLedger->ledger_->info().parentHash);
-
-                newRound(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
-            }
-            else
-            {
-                mode_.set(ConsensusMode::wrongLedger, adaptor_);
-                return false;
-            }
+            return handleWrongLedger(prevInfo.ledger_info.hash);
         }
     }
 
@@ -639,55 +615,11 @@ void HotstuffConsensus::peerVote(
     }
 }
 
-bool HotstuffConsensus::checkLedger(LedgerInfo ledgerInfo)
-{
-    auto ledger = adaptor_.getLedgerByHash(ledgerInfo.hash);
-    if (ledger)
-    {
-        adaptor_.updateConsensusTime();
-        newRound(ledgerInfo.hash,
-            ledger,
-            adaptor_.preStartRound(ledger) ? ConsensusMode::proposing : ConsensusMode::observing);
-    }
-    else
-    {
-        prevLedgerID_ = ledgerInfo.hash;
-
-        mode_.set(ConsensusMode::observing, adaptor_);
-        JLOG(j_.info()) << "Bowing out of consensus";
-
-        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-        {
-            JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
-            adaptor_.removePoolTxs(
-                newLedger->ledger_->txMap(),
-                newLedger->ledger_->info().seq,
-                newLedger->ledger_->info().parentHash);
-
-            newRound(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
-        }
-        else
-        {
-            mode_.set(ConsensusMode::wrongLedger, adaptor_);
-            return false;
-        }
-    }
-
-    return true;
-}
-
-void HotstuffConsensus::newRound(
+void HotstuffConsensus::startRoundInternal(
     RCLCxLedger::ID const& prevLgrId,
     RCLCxLedger const& prevLgr,
     ConsensusMode mode)
 {
-    adaptor_.doAccept(prevLgr);
-
-    auto closingInfo = adaptor_.getCurrentLedger()->info();
-    JLOG(j_.info()) <<
-        "Consensus time for #" << closingInfo.seq <<
-        " with LCL " << closingInfo.parentHash;
-
     mode_.set(mode, adaptor_);
 
     prevLedgerID_ = prevLgrId;
@@ -695,6 +627,45 @@ void HotstuffConsensus::newRound(
 
     acquired_.clear();
     proposalCache_.clear();
+}
+
+bool HotstuffConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
+{
+    assert(lgrId != prevLedgerID_ || previousLedger_.id() != lgrId);
+
+    // Stop proposing because we are out of sync
+    if (mode_.get() == ConsensusMode::proposing)
+    {
+        mode_.set(ConsensusMode::observing, adaptor_);
+        JLOG(j_.warn()) << "Bowing out of consensus";
+    }
+
+    // First time switching to this ledger
+    if (prevLedgerID_ != lgrId)
+    {
+        prevLedgerID_ = lgrId;
+    }
+
+    if (previousLedger_.id() == prevLedgerID_)
+        return true;
+
+    // we need to switch the ledger we're working from
+    if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
+    {
+        JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
+        adaptor_.removePoolTxs(
+            newLedger->ledger_->txMap(),
+            newLedger->ledger_->info().seq,
+            newLedger->ledger_->info().parentHash);
+
+        startRoundInternal(lgrId, *newLedger, ConsensusMode::switchedLedger);
+
+        return true;
+    }
+
+    mode_.set(ConsensusMode::wrongLedger, adaptor_);
+
+    return false;
 }
 
 
