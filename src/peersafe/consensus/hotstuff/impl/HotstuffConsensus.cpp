@@ -76,14 +76,14 @@ void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
 
     if (!startup_)
     {
-        // Startup
-        startup_ = true;
-
         hotstuff::EpochState init_epoch_state;
         init_epoch_state.epoch = 0;
         init_epoch_state.verifier = this;
 
         hotstuff_->start(hotstuff::RecoverData{ previousLedger_.ledger_->info(), init_epoch_state });
+
+        // Startup
+        startup_ = true;
     }
 
     if (mode_.get() == ConsensusMode::wrongLedger)
@@ -107,16 +107,19 @@ bool HotstuffConsensus::peerConsensusMessage(
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    switch (m->msgtype())
+    if (startup_)
     {
-    case ConsensusMessageType::mtPROPOSAL:
-        peerProposal(peer, isTrusted, m);
-        break;
-    case ConsensusMessageType::mtVOTE:
-        peerVote(peer, isTrusted, m);
-        break;
-    default:
-        break;
+        switch (m->msgtype())
+        {
+        case ConsensusMessageType::mtPROPOSAL:
+            peerProposal(peer, isTrusted, m);
+            break;
+        case ConsensusMessageType::mtVOTE:
+            peerVote(peer, isTrusted, m);
+            break;
+        default:
+            break;
+        }
     }
 
     return false;
