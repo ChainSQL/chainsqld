@@ -22,23 +22,50 @@
 
 #include <peersafe/serialization/Serialization.h>
 #include <peersafe/serialization/base_unit.h>
+#include <peersafe/serialization/NetClock.h>
+#include <peersafe/serialization/ZXCAmount.h>
 
 #include <ripple/ledger/ReadView.h>
 
 namespace ripple {
+
 template<class Archive>
-void serialize(
-    Archive& ar, 
-    ripple::LedgerInfo& ledger_info, 
-    const unsigned int /*version*/) {
-        
+void save(
+	Archive& ar,
+	const ripple::LedgerInfo& ledger_info,
+	const unsigned int /*version*/) {
+
 	ar & ledger_info.seq;
+	ar & ledger_info.parentCloseTime;
 	ar & ledger_info.hash;
 	ar & ledger_info.txHash;
 	ar & ledger_info.accountHash;
 	ar & ledger_info.parentHash;
-    
+	ar & ledger_info.drops;
+	uint32_t closeTimeResolution = ledger_info.closeTimeResolution.count();
+	ar & closeTimeResolution;
+	ar & ledger_info.closeTime;
 }
+
+template<class Archive>
+void load(
+	Archive& ar,
+	ripple::LedgerInfo& ledger_info,
+	const unsigned int /*version*/) {
+
+	ar & ledger_info.seq;
+	ar & ledger_info.parentCloseTime;
+	ar & ledger_info.hash;
+	ar & ledger_info.txHash;
+	ar & ledger_info.accountHash;
+	ar & ledger_info.parentHash;
+	ar & ledger_info.drops;
+	uint32_t closeTimeResolution;
+	ar & closeTimeResolution;
+	ledger_info.closeTimeResolution = NetClock::duration{closeTimeResolution};
+	ar & ledger_info.closeTime;
+}
+RIPPE_SERIALIZATION_SPLIT_FREE(ripple::LedgerInfo);
 
 } // namespace ripple
 
