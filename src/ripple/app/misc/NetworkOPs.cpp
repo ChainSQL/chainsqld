@@ -3095,9 +3095,12 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 				app_.app().getSchema(schemaID).getSchemaParams());
 
 			if (bOperatingSelf)
+			{
+				app_.app().getSchema(schemaID).doStop();
 				app_.app().getSchemaManager().removeSchema(schemaID);
+			}
 			else
-				app_.peerManager().remove(vecValidators);
+				app_.app().peerManager(schemaID).remove(vecValidators);
 		}
 	}
 }
