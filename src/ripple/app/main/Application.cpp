@@ -791,7 +791,7 @@ public:
 		for (auto iter = m_schemaManager->begin(); iter != m_schemaManager->end(); iter++)
 		{
 			auto schema = (*iter).second;
-			schema->onStop();
+			schema->doStop();
 		}
         stopped ();
     }

@@ -227,7 +227,9 @@ namespace ripple {
 		};
 
 	} // detail
-	class SchemaImp :public Schema
+	class SchemaImp 
+		:public Schema
+		,public RootStoppable
 	{
 	public:
 
@@ -321,7 +323,8 @@ namespace ripple {
 		std::unique_ptr <PeerManager> m_peerManager;
 	public:
 	SchemaImp(SchemaParams const& params, std::shared_ptr<Config> config, Application & app, beast::Journal j)
-		: schema_params_(params)
+		: RootStoppable("Schema")
+		, schema_params_(params)
 		, app_(app)
 		, m_journal(j)
 		, config_(config)
@@ -329,7 +332,7 @@ namespace ripple {
 		, m_txMaster(*this)
 
 		, m_shaMapStore(make_SHAMapStore(*this, setup_SHAMapStore(*config_),
-			dynamic_cast<Stoppable&>(app_), app_.nodeStoreScheduler(), app_.logs().journal("SHAMapStore"),
+			*this, app_.nodeStoreScheduler(), app_.logs().journal("SHAMapStore"),
 			app_.logs().journal("NodeObject"), m_txMaster, *config_))
 
 		, accountIDCache_(128000)
@@ -352,24 +355,24 @@ namespace ripple {
 
 		, family_(*this, *m_nodeStore, app.getCollectorManager())
 
-		, m_orderBookDB(*this, app_.getJobQueue())
+		, m_orderBookDB(*this, *this)
 
 		, m_pathRequests(std::make_unique<PathRequests>(
 			*this, app_.logs().journal("PathRequest"), app.getCollectorManager().collector()))
 
 		, m_ledgerMaster(std::make_unique<LedgerMaster>(*this, stopwatch(),
-			app_.getJobQueue(), app.getCollectorManager().collector(),
+			*this, app.getCollectorManager().collector(),
 			app_.logs().journal("LedgerMaster")))
 
 		// VFALCO NOTE must come before NetworkOPs to prevent a crash due
 		//             to dependencies in the destructor.
 		//
 		, m_inboundLedgers(make_InboundLedgers(*this, stopwatch(),
-			app_.getJobQueue(), app.getCollectorManager().collector()))
+			*this, app.getCollectorManager().collector()))
 
 		, m_inboundTransactions(make_InboundTransactions
 			(*this, stopwatch()
-				, app_.getJobQueue()
+				, *this
 				, app.getCollectorManager().collector()
 				, [this](std::shared_ptr <SHAMap> const& set,
 					bool fromAcquire)
@@ -384,7 +387,7 @@ namespace ripple {
 					
 		, m_networkOPs(make_NetworkOPs(*this, stopwatch(),
 			config_->standalone(), config_->NETWORK_QUORUM, config_->START_VALID,
-			app_.getJobQueue(), *m_ledgerMaster, app_.getJobQueue(), app_.getValidatorKeys(),
+			app_.getJobQueue(), *m_ledgerMaster, *this, app_.getValidatorKeys(),
 			dynamic_cast<BasicApp&>(app_).get_io_service(), app_.logs().journal("NetworkOPs")))
 
 		, cluster_(std::make_unique<Cluster>(
@@ -844,7 +847,13 @@ namespace ripple {
 		cachedSLEs_.expire();
 	}
 
-	void onStop() override
+	void doStart() override
+	{
+		prepare();
+		start();
+	}
+
+	void doStop() override
 	{
 		JLOG(m_journal.debug()) << "Flushing validations";
 		mValidations.flush();
@@ -867,6 +876,7 @@ namespace ripple {
 			return validators().trustedPublisher(pubKey);
 		});
 
+		stop(m_journal);
 	}
 
 	LedgerIndex getMaxDisallowedLedger() override
