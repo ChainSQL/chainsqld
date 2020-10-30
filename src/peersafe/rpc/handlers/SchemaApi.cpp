@@ -113,7 +113,7 @@ Json::Value doSchemaList(RPC::Context&  context)
 
 Json::Value doSchemaInfo(RPC::Context& context)
 {
-	if (!context.params.isMember(jss::id))
+	if (!context.params.isMember(jss::schema))
 		return rpcError(rpcINVALID_PARAMS);
 
 	std::shared_ptr<ReadView const> ledger;
@@ -122,7 +122,7 @@ Json::Value doSchemaInfo(RPC::Context& context)
 		return result;
 
 
-	auto const schemaID = context.params[jss::id].asString();
+	auto const schemaID = context.params[jss::schema].asString();
 	auto key = Keylet(ltSCHEMA, from_hex_text<uint256>(schemaID));
 	auto sle = ledger->read(key);
 	if (!sle)
@@ -136,7 +136,7 @@ Json::Value doSchemaInfo(RPC::Context& context)
 
 Json::Value doSchemaAccept(RPC::Context& context)
 {
-	if (!context.params.isMember(jss::id))
+	if (!context.params.isMember(jss::schema))
 		return rpcError(rpcINVALID_PARAMS);
 
 	std::shared_ptr<ReadView const> ledger;
@@ -145,7 +145,7 @@ Json::Value doSchemaAccept(RPC::Context& context)
 		return result;
 
 
-	auto const schemaID = from_hex_text<uint256>(context.params[jss::id].asString());
+	auto const schemaID = from_hex_text<uint256>(context.params[jss::schema].asString());
 	auto sleKey = Keylet(ltSCHEMA, schemaID);
 	auto sleSchema = ledger->read(sleKey);
 	if (!sleSchema)
