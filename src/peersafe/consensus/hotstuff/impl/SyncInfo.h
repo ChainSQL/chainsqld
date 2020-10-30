@@ -53,15 +53,10 @@ public:
 		return highest_timeout_cert_;
 	}
 
-	void journal(const beast::Journal& journal) {
-		journal_ = &journal;
-	}
-
 	//friend class ripple::Serialization;
 	// only for ripple::Serialization
 	SyncInfo()
-	: journal_(nullptr)
-	, highest_quorum_cert_()
+	: highest_quorum_cert_()
 	, highest_commit_cert_()
 	, highest_timeout_cert_() {}
 

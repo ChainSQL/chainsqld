@@ -138,21 +138,19 @@ void Hotstuff::stop() {
 bool Hotstuff::CheckProposal(
 	const ripple::hotstuff::Block& proposal,
 	const ripple::hotstuff::SyncInfo& sync_info) {
-	ripple::hotstuff::SyncInfo sync = sync_info;
-	sync.journal(journal_);
-	return round_manager_->CheckProposal(proposal, sync);
+	return round_manager_->CheckProposal(proposal, sync_info);
 }
 
-int Hotstuff::handleProposal(const ripple::hotstuff::Block& proposal) {
-	return round_manager_->ProcessProposal(proposal);
+int Hotstuff::handleProposal(
+	const ripple::hotstuff::Block& proposal, 
+	const Round& shift /*= 0*/) {
+	return round_manager_->ProcessProposal(proposal, shift);
 }
 
 int Hotstuff::handleVote(
 	const ripple::hotstuff::Vote& vote,
 	const ripple::hotstuff::SyncInfo& sync_info) {
-	ripple::hotstuff::SyncInfo sync = sync_info;
-	sync.journal(journal_);
-	return round_manager_->ProcessVote(vote, sync);
+	return round_manager_->ProcessVote(vote, sync_info);
 }
 
 

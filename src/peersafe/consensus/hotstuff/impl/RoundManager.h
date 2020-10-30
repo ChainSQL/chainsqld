@@ -54,7 +54,7 @@ public:
 	void stop();
 
 	bool CheckProposal(const Block& proposal, const SyncInfo& sync_info);
-	int ProcessProposal(const Block& proposal);
+	int ProcessProposal(const Block& proposal, const Round& shift = 0);
 
 	int ProcessVote(const Vote& vote, const SyncInfo& sync_info);
 private:
@@ -78,12 +78,9 @@ private:
 	void UseNilBlockProcessLocalTimeout(const Round& round);
 	void NotUseNilBlockProcessLocalTimeout(const Round& round);
 	bool IsValidProposer(const Author& author, const Round& round);
-	bool IsValidProposal(const Block& proposal);
-	void ShiftCurrentRoundToNextHeader();
-	bool HasShiftCurrentRoundToNextHeader();
-	void ResetShiftCurrentRoundToCurrentHeader();
+	bool IsValidProposal(const Block& proposal, const Round& shift = 0);
 
-	const beast::Journal& journal_;
+	beast::Journal journal_;
 	Config config_;
 	BlockStorage* block_store_;
 	RoundState* round_state_;
@@ -93,10 +90,6 @@ private:
 	NetWork* network_;
 
 	bool stop_;
-	
-	// 加入当前 current_round 的 leader 没有出块或是异常
-	// 下一个 next_round = current_round + 1 的 leader 可以接管此轮次 current_round
-	Round shift_round_to_next_leader_;
 };
 
 } // namespace hotstuff

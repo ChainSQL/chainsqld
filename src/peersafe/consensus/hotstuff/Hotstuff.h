@@ -73,7 +73,10 @@ public:
 	bool CheckProposal(
 		const ripple::hotstuff::Block& proposal,
 		const ripple::hotstuff::SyncInfo& sync_info);
-	int handleProposal(const ripple::hotstuff::Block& proposal);
+
+	int handleProposal(
+		const ripple::hotstuff::Block& proposal,
+		const Round& shift = 0);
 
 	int handleVote(
 		const ripple::hotstuff::Vote& vote,

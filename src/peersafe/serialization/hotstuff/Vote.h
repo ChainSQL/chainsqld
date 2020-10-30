@@ -57,7 +57,6 @@ void load(
 	ar & s;
 	Signature sign(s.data(), s.size());
 	vote.signature() = sign;
-
 	ar & vote.timeout_signature();
 }
 RIPPE_SERIALIZATION_SPLIT_FREE(ripple::hotstuff::Vote);

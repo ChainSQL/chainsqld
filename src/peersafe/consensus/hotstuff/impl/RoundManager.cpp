@@ -39,8 +39,7 @@ RoundManager::RoundManager(
 , proposal_generator_(proposal_generator)
 , proposer_election_(proposer_election)
 , network_(network)
-, stop_(false)
-, shift_round_to_next_leader_(0) {
+, stop_(false) {
 
 }
 
@@ -88,9 +87,6 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
         return 1;
     }
 
-	if (HasShiftCurrentRoundToNextHeader())
-		ResetShiftCurrentRoundToCurrentHeader();
-
 	if (!IsValidProposer(proposal_generator_->author(), new_round_event.round)) {
 		JLOG(journal_.error())
 			<< "ProcessNewRoundEvent: invalidProposel."
@@ -105,7 +101,6 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
 	if (proposal) {
 		network_->broadcast(proposal.get(), block_store_->sync_info());
 	}
-
 
 	return 0;
 }
@@ -129,32 +124,27 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 	if (ec)
 		return;
 
-	//JLOG(journal_.info())
-	std::cout
+	JLOG(journal_.info())
 		<< "An author " << proposal_generator_->author()
 		<< " processes localTimeout in round " << round
-		<< ", shift " << (shift_round_to_next_leader_ + 1)
-		<< std::endl;
+		<< ", shift " << round_state_->getShiftRoundToNextLeader();
 
 	if (round != round_state_->current_round()) {
-		//JLOG(journal_.error())
-		std::cout
+		JLOG(journal_.error())
 			<< "Invalid round when processing local timeout."
 			<< "Mismatch round: round in local timeout must be equal current round,"
 			<< "but they wasn't. The round in local timeout is " << round
 			<< " and current round is " << round_state_->current_round()
-			<< std::endl;
+			<< ". The author is " << proposal_generator_->author();
 		return;
 	}
-
-	if (config_.disable_nil_block)
+	
+	if (config_.disable_nil_block) {
 		NotUseNilBlockProcessLocalTimeout(round);
-	else
+	}
+	else {
 		UseNilBlockProcessLocalTimeout(round);
-
-	// for test
-	//config_.timeout *= 1000;
-	// end test
+	}
 
 	//// setup round timeout
 	boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
@@ -195,11 +185,11 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 	return true;
 }
 
-int RoundManager::ProcessProposal(const Block& proposal) {
+int RoundManager::ProcessProposal(const Block& proposal, const Round& shift /*= 0*/) {
 	JLOG(journal_.info())
 		<< "Process a proposal: " << proposal.block_data().round;
 
-	if (IsValidProposal(proposal) == false) {
+	if (IsValidProposal(proposal, shift) == false) {
 		JLOG(journal_.error())
 			<< "Proposer " << "" << proposal.block_data().author()
 			<< " for the proposal"
@@ -226,11 +216,13 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 	if (stop_)
 		return 1;
 
-    JLOG(journal_.info())
-        << "Process a vote: " << vote.vote_data().proposed().round;
+	Round round = vote.vote_data().proposed().round;
+
+	JLOG(journal_.info())
+		<< "Process a vote: " << round;
 
 	if (EnsureRoundAndSyncUp(
-		vote.vote_data().proposed().round,
+		round,
 		sync_info,
 		vote.author()) == false) {
 		JLOG(journal_.error())
@@ -414,41 +406,51 @@ void RoundManager::UseNilBlockProcessLocalTimeout(const Round& round) {
 }
 
 void RoundManager::NotUseNilBlockProcessLocalTimeout(const Round& round) {
-	ShiftCurrentRoundToNextHeader();
+	round_state_->shiftRoundToNextLeader();
+	Round shift_round = round_state_->getShiftRoundToNextLeader();
 
-	if (IsValidProposer(proposal_generator_->author(), round + shift_round_to_next_leader_) == false) {
-		return;
+	if (round_state_->send_vote()) {
+		Vote timeout_vote = round_state_->send_vote().get();
+		if (timeout_vote.isTimeout() == false) {
+			Timeout timeout = timeout_vote.timeout();
+			Signature signature;
+			if (timeout.sign(hotstuff_core_->epochState()->verifier, signature))
+				timeout_vote.addTimeoutSignature(signature);
+		}
+		round_state_->recordVote(timeout_vote);
+
+		Author next_leader = proposer_election_->GetValidProposer(round + shift_round);
+		round_state_->recordVote(timeout_vote);
+		if (next_leader == proposal_generator_->author()) {
+			ProcessVote(timeout_vote);
+		}
+		else {
+			network_->sendVote(next_leader, timeout_vote, block_store_->sync_info());
+		}
 	}
+	else {
+		Round next_round = round + shift_round;
+		if (!IsValidProposer(proposal_generator_->author(), next_round)) {
+			return;
+		}
 
-	boost::optional<BlockData> proposal = proposal_generator_->Proposal(round);
-	if (!proposal) {
-		return;
+		boost::optional<BlockData> proposal = proposal_generator_->Proposal(round);
+		if (!proposal) {
+			return;
+		}
+		Block block = hotstuff_core_->SignProposal(proposal.get());
+		network_->broadcast(block, block_store_->sync_info(), shift_round);
 	}
-
-	Block block = hotstuff_core_->SignProposal(proposal.get());
-	network_->broadcast(block, block_store_->sync_info());
 }
 
 bool RoundManager::IsValidProposer(const Author& author, const Round& round) {
 	return proposer_election_->IsValidProposer(author, round);
 }
 
-bool RoundManager::IsValidProposal(const Block& proposal) {
-	Block logic_proposal = proposal;
-	logic_proposal.block_data().round = logic_proposal.block_data().round + shift_round_to_next_leader_;
-	return proposer_election_->IsValidProposal(logic_proposal);
-}
-
-void RoundManager::ShiftCurrentRoundToNextHeader() {
-	shift_round_to_next_leader_++;
-}
-
-bool RoundManager::HasShiftCurrentRoundToNextHeader() {
-	return shift_round_to_next_leader_ > 0;
-}
-
-void RoundManager::ResetShiftCurrentRoundToCurrentHeader() {
-	shift_round_to_next_leader_ = 0;
+bool RoundManager::IsValidProposal(const Block& proposal, const Round& shift /*= 0*/) {
+	Block block = proposal;
+	block.block_data().round = block.block_data().round + shift;
+	return proposer_election_->IsValidProposal(block);
 }
 
 } // namespace hotstuff

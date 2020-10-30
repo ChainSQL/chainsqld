@@ -113,6 +113,10 @@ public:
 	}
 
 	~Replica() {
+		for (;;) {
+			if (env_->app().getJobQueue().getJobCountTotal(jtPROPOSAL_t) == 0)
+				break;
+		}
 		delete env_;
 		env_ = nullptr;
 
@@ -160,13 +164,13 @@ public:
 	int commit(const ripple::hotstuff::Block& block) {
 		auto it = committed_blocks_.find(block.id());
 		if (it == committed_blocks_.end()) {
-			std::cout
-				<< config_.id << ": "
-				<< "epoch " << block.block_data().epoch
-				<< ", author " << block.block_data().author()
-				<< ", round " << block.block_data().round 
-				<< ", id "<< block.id()
-				<< std::endl;
+			//std::cout
+			//	<< config_.id << ": "
+			//	<< "epoch " << block.block_data().epoch
+			//	<< ", author " << block.block_data().author()
+			//	<< ", round " << block.block_data().round 
+			//	<< ", id "<< block.id()
+			//	<< std::endl;
 			committed_blocks_.emplace(std::make_pair(block.id(), block));
 		}
 		return 0;
@@ -284,7 +288,8 @@ public:
 	// for Network
 	void broadcast(
 		const ripple::hotstuff::Block& block, 
-		const ripple::hotstuff::SyncInfo& sync_info) {
+		const ripple::hotstuff::SyncInfo& sync_info,
+		const ripple::hotstuff::Round& shift = 0) {
 		
 		if (malicious())
 			return;
@@ -296,16 +301,23 @@ public:
 		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			env_->app().getJobQueue().addJob(
-				jtPROPOSAL_t,
-				"broadcast_proposal",
-				[this, it, proposal, sync](Job&) {
-					if (it->second->malicious())
-						return;
-					if(it->second->hotstuff_->CheckProposal(proposal, sync))
-						it->second->hotstuff_->handleProposal(proposal);
-				});
+			if (it->second->malicious() == false) {
+				it->second->handleProposal(proposal, sync, shift);
+			}
 		}
+	}
+	
+	void handleProposal(
+		const ripple::hotstuff::Block& proposal,
+		const ripple::hotstuff::SyncInfo& sync_info,
+		const ripple::hotstuff::Round& shift = 0) {
+		env_->app().getJobQueue().addJob(
+			jtPROPOSAL_t,
+			"broadcast_proposal",
+			[this, proposal, sync_info, shift](Job&) {
+				if (hotstuff_->CheckProposal(proposal, sync_info))
+					hotstuff_->handleProposal(proposal, shift);
+			});
 	}
 
 	void broadcast(
@@ -322,14 +334,9 @@ public:
 		ripple::hotstuff::SyncInfo sync = ripple::serialization::deserialize<ripple::hotstuff::SyncInfo>(s_sync_info);
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			env_->app().getJobQueue().addJob(
-				jtPROPOSAL_t,
-				"broadcast_proposal",
-				[this, it, v, sync](Job&) {
-					if (it->second->malicious())
-						return;
-					it->second->hotstuff_->handleVote(v, sync);
-				});
+			if (it->second->malicious() == false) {
+				it->second->handleVote(v, sync);
+			}
 		}
 	}
 
@@ -337,19 +344,29 @@ public:
 		Replica::epoch = Replica::epoch + 1;
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			env_->app().getJobQueue().addJob(
-				jtPROPOSAL_t,
-				"broadcast_proposal",
-				[this, it](Job&) {
-					//std::cout
-					//	<< it->second->author() << ": "
-					//	<< "changing epoch and next epoch is " << Replica::epoch
-					//	<< std::endl;
-					
-					it->second->stop();
-					it->second->setChangedEpochSuccessed(true);
-				});
+			it->second->handleEpochChange(epoch_change);
 		}
+	}
+	
+	void handleEpochChange(const ripple::hotstuff::EpochChange& epoch_change) {
+		//env_->app().getJobQueue().addJob(
+		//	jtPROPOSAL_t,
+		//	"broadcast_proposal",
+		//	[this](Job&) {
+		//		//std::cout
+		//		//	<< it->second->author() << ": "
+		//		//	<< "changing epoch and next epoch is " << Replica::epoch
+		//		//	<< std::endl;
+
+		//		stop();
+		//		setChangedEpochSuccessed(true);
+		//	});
+		//std::cout
+		//	<< author() << ": "
+		//	<< "changing epoch and next epoch is " << Replica::epoch
+		//	<< std::endl;
+		stop();
+		setChangedEpochSuccessed(true);
 	}
 
 	void sendVote(
@@ -361,17 +378,22 @@ public:
 			return;
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			if (it->second->author() == author) {
-				env_->app().getJobQueue().addJob(
-					jtPROPOSAL_t,
-					"send_vote",
-					[this, it, vote, sync_info](Job&) {
-					if (it->second->malicious())
-						return;
-						it->second->hotstuff_->handleVote(vote, sync_info);
-					});
+			if (it->second->author() == author 
+				&& it->second->malicious() == false) {
+				it->second->handleVote(vote, sync_info);
 			}
 		}
+	}
+
+	void handleVote(
+		const ripple::hotstuff::Vote& vote,
+		const ripple::hotstuff::SyncInfo& sync_info) {
+		env_->app().getJobQueue().addJob(
+			jtPROPOSAL_t,
+			"send_vote",
+			[this, vote, sync_info](Job&) {
+				hotstuff_->handleVote(vote, sync_info);
+			});
 	}
 
 	std::shared_ptr<ripple::hotstuff::Hotstuff>& hotstuff() {
@@ -399,11 +421,6 @@ public:
 
 		if (worker_.joinable())
 			worker_.join();
-
-		for (;;) {
-			if (env_->app().getJobQueue().getJobCountTotal(jtPROPOSAL_t) == 0)
-				break;
-		}
 
 		hotstuff_->stop();
 	}
@@ -434,7 +451,6 @@ public:
 		do {
 			status = changed_epoch_future.wait_for(std::chrono::seconds(1));
 		} while (status != std::future_status::ready);
-
 		return 0;
 	}
 private:
@@ -509,7 +525,7 @@ public:
 				// use current time as seed for random generator
 				std::srand(std::time(nullptr));
 				std::size_t id = (std::rand() % replicas) + 1;
-				maliciousAuthors.insert(1);
+				maliciousAuthors.insert(id);
 
 				if (maliciousAuthors.size() == malicious)
 					break;
@@ -567,11 +583,6 @@ public:
 			it++) {
 			it->second->stop();
 		}
-
-		//for (;;) {
-		//	if (env->app().getJobQueue().getJobCountTotal(jtPROPOSAL_t) == 0)
-		//		break;
-		//}
 	}
 
 	void releaseReplicas(int /*replicas*/) {
@@ -678,15 +689,18 @@ public:
 	}
 	
 	void testNormalRound() {
+		std::cout << "begin testNormalRound" << std::endl;
 		newReplicas("testNormalRound", replicas_);
 		runReplicas();
 		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_) == true);
 		stopReplicas(replicas_);
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
 		releaseReplicas(replicas_);
+		std::cout << "passed on testNormalRound" << std::endl;
 	}
 
 	void testTimeoutRound() {
+		std::cout << "begin testTimeoutRound" << std::endl;
 		std::set<std::size_t> malicious_replicas;
 		malicious_replicas = newReplicas("testTimeoutRound", replicas_, false_replicas_);
 		runReplicas();
@@ -694,6 +708,7 @@ public:
 		stopReplicas(replicas_);
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_replicas) == true);
 		releaseReplicas(replicas_);
+		std::cout << "passed on testTimeoutRound" << std::endl;
 	}
 
 	void testAddReplicas() {
@@ -701,6 +716,8 @@ public:
 		// 1. 新节点以新的 epoch 和配置运行
 		// 2. 久节点收到 epoch change 事件后停止当前的 hotstuff
 		// 3. 久节点使用新配置重新启动 hotstuff 
+
+		std::cout << "begin testAddReplicas" << std::endl;
 		ripple::hotstuff::Epoch current_epoch = Replica::epoch;
 
 		newReplicas("testAddReplicas", replicas_);
@@ -720,6 +737,7 @@ public:
 		stopReplicas(replicas_);
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
 		releaseReplicas(replicas_);
+		std::cout << "passed on testAddReplicas" << std::endl;
 	}
 
 	void testRemoveReplicas() {
@@ -727,6 +745,7 @@ public:
 		// 1. 发布 epoch change 事件
 		// 2. 收到 epoch change 事件后停止当前的 hotstuff
 		// 3. 使用新配置重新启动 hotstuff 
+		std::cout << "begin testRemoveReplicas" << std::endl;
 		ripple::hotstuff::Epoch current_epoch = Replica::epoch;
 
 		newReplicas("testRemoveReplicas", replicas_);
@@ -747,22 +766,21 @@ public:
 		stopReplicas(Replica::replicas.size());
 		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_) == true);
 		releaseReplicas(Replica::replicas.size());
+		std::cout << "passed on testRemoveReplicas" << std::endl;
 	}
 
 	void testDisableNilBlock() {
+		std::cout << "begin testDisableNilBlock" << std::endl;
 		// 禁用空块
 		disable_nil_block_ = true;
 		std::set<std::size_t> malicious_replicas;
 		malicious_replicas = newReplicas("testDisableNilBlock", replicas_, false_replicas_);
 		runReplicas();
-		//BEAST_EXPECT(waitUntilCommittedBlocks(blocks_, malicious_replicas) == true);
-		//stopReplicas(&env, replicas_);
-		//BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_replicas) == true);
-		//releaseReplicas(replicas_);
-
-		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			it->second->hotstuff()->round_manager_->NotUseNilBlockProcessLocalTimeout(1);
-		}
+		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_, malicious_replicas) == true);
+		stopReplicas(replicas_);
+		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_replicas) == true);
+		releaseReplicas(replicas_);
+		std::cout << "passed on testDisableNilBlock" << std::endl;
 	}
 
     void run() override {
@@ -772,7 +790,7 @@ public:
 		testTimeoutRound();
 		testAddReplicas();
 		testRemoveReplicas();
-		//testDisableNilBlock();
+		testDisableNilBlock();
     }
 
 	Hotstuff_test()
