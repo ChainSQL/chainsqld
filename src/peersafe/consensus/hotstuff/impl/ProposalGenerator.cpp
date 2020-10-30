@@ -51,10 +51,9 @@ boost::optional<Block> ProposalGenerator::GenerateNilBlock(Round round) {
 }
 
 boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
-	if (last_round_generated_.load() >= round) {
+	if (last_round_generated_.exchange(round) >= round) {
 		return boost::optional<BlockData>();
 	}
-	last_round_generated_.store(round);
 
 	boost::optional<QuorumCertificate> hqc = EnsureHighestQuorumCert(round);
 	if (hqc) {

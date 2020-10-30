@@ -363,6 +363,8 @@ int HotstuffConsensus::commit(const hotstuff::Block& block)
 {
     LedgerInfo const& info = block.getLedgerInfo();
 
+    ScopedLockType sl(lock_);
+
     if (auto ledger = adaptor_.checkLedgerAccept(info))
     {
         adaptor_.doValidLedger(ledger);
@@ -373,6 +375,8 @@ int HotstuffConsensus::commit(const hotstuff::Block& block)
 
 bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
 {
+    ScopedLockType sl(lock_);
+
     if (prevInfo.ledger_info.seq > previousLedger_.seq())
     {
         if (!adaptor_.doAccept(prevInfo.ledger_info.hash))

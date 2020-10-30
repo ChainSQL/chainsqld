@@ -115,6 +115,8 @@ void HotstuffAdaptor::broadcast(STProposal const& proposal)
     consensus.set_msg(&p[0], p.size());
     consensus.set_msgtype(ConsensusMessageType::mtPROPOSAL);
 
+    JLOG(j_.info()) << "broadcast PROPOSAL";
+
     signAndSendMessage(consensus);
 }
 
@@ -126,6 +128,8 @@ void HotstuffAdaptor::broadcast(STVote const& vote)
 
     consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVOTE);
+
+    JLOG(j_.info()) << "broadcast VOTE";
 
     signAndSendMessage(consensus);
 }
@@ -139,6 +143,8 @@ void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVOTE);
 
+    JLOG(j_.info()) << "send VOTE to leader " << pubKey;
+
     signAndSendMessage(pubKey, consensus);
 }
 
@@ -149,8 +155,6 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
     {
         return false;
     }
-
-    ledgerMaster_.updateConsensusTime();
 
     if (ledgerMaster_.getCurrentLedger()->seq() < ledger->seq() + 1)
     {
@@ -180,11 +184,16 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
             // Stuff the ledger with transactions from the queue.
             return app_.getTxQ().accept(app_, view);
         });
+
+        ledgerMaster_.updateConsensusTime();
+
+        // Tell directly connected peers that we have a new LCL
+        notify(protocol::neACCEPTED_LEDGER, ledger, mode_ != ConsensusMode::wrongLedger);
+
+        ledgerMaster_.switchLCL(ledger);
+
+        app_.getOPs().endConsensus();
     }
-
-    ledgerMaster_.switchLCL(ledger);
-
-    app_.getOPs().endConsensus();
 
     return true;
 }
