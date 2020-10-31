@@ -101,16 +101,20 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 	if (VerifyAndUpdatePreferredRound(proposed_block.block_data().quorum_cert) == false)
 		return false;
 	// if already voted on this round, send back the previous vote.
-	if (safety_data_.last_vote) {
+	if (safety_data_.last_vote &&
+        safety_data_.last_vote->vote_data().parent().round > 0) {
 		if (safety_data_.last_vote->vote_data().proposed().round == proposed_block.block_data().round) {
 			safety_data_.last_voted_round = proposed_block.block_data().round;
 			vote = safety_data_.last_vote.get();
+            JLOG(journal_.info())
+                << "Construct And Signed vote:"
+                << "use last vote";
 			return true;
 		}
-	}
 
-	if (VerifyAndUpdateLastVoteRound(proposed_block.block_data().round) == false)
-		return false;
+        if (VerifyAndUpdateLastVoteRound(proposed_block.block_data().round) == false)
+            return false;
+	}
 
 	auto ret = ExtensionCheck(executed_block);
 	if (std::get<0>(ret) == false)

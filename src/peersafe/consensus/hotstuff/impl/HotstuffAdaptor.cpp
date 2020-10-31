@@ -70,7 +70,7 @@ std::shared_ptr<SHAMap> HotstuffAdaptor::onExtractTransactions(RCLCxLedger const
     ledgerMaster_.setBuildingLedger(prevLedger.seq() + 1);
 
     H256Set txs;
-    topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs);
+    topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs, false);
 
     auto initialSet = std::make_shared<SHAMap>(
         SHAMapType::TRANSACTION, app_.family(), SHAMap::version{ 1 });
@@ -191,6 +191,8 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
         notify(protocol::neACCEPTED_LEDGER, ledger, mode_ != ConsensusMode::wrongLedger);
 
         ledgerMaster_.switchLCL(ledger);
+
+        updatePoolAvoid(ledger->txMap(), ledger->seq());
 
         app_.getOPs().endConsensus();
     }

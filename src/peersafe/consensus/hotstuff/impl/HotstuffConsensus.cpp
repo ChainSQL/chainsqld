@@ -185,36 +185,7 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
 boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockData &blockData)
 {
-    // 1. Check whether the consensus needs to move to the next round of ledgers
-    LedgerInfo prev = blockData.quorum_cert.certified_block().ledger_info;
-    LedgerInfo prevPrev = blockData.quorum_cert.parent_block().ledger_info;
-
-    if (prev.hash == prevPrev.hash && prev.hash == prevLedgerID_)
-    {
-        if (prev.seq == GENESIS_LEDGER_INDEX)
-        {
-            JLOG(j_.info()) << "before extract: previous ledger is genesis ledger";
-        }
-        else
-        {
-            JLOG(j_.info()) << "before extract: previous ledger " << prev.seq + 1 << " has timeout, it my turn now";
-        }
-    }
-    else if (prev.parentHash == prevPrev.hash && prev.parentHash == prevLedgerID_)
-    {
-        if (!adaptor_.doAccept(prev.hash) && !handleWrongLedger(prev.hash))
-        {
-            JLOG(j_.info()) << "before extract: doAccept failed";
-            return boost::none;
-        }
-    }
-    else
-    {
-        JLOG(j_.info()) << "before extract: consensus can't move to next round";
-        return boost::none;
-    }
-
-    // 2. Build new ledger
+    // Build new ledger
     if (!adaptor_.isPoolAvailable())
     {
         return boost::none;
@@ -268,9 +239,15 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
 
 bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result)
 {
+    if (mode_.get() == ConsensusMode::wrongLedger)
+    {
+        JLOG(j_.warn()) << "compute block: mode wrongLedger";
+        return false;
+    }
+
     if (block.block_data().block_type == hotstuff::BlockData::Genesis)
     {
-        JLOG(j_.info()) << "Genesis Proposal";
+        JLOG(j_.info()) << "compute block: Genesis Proposal";
         return true;
     }
 
@@ -279,7 +256,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     if (block.block_data().block_type == hotstuff::BlockData::NilBlock ||
         block.block_data().author() == adaptor_.valPublic())
     {
-        JLOG(j_.info()) << "Self Proposal";
+        JLOG(j_.info()) << "compute block: Self Proposal";
         result.ledger_info = info;
         result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
         return true;
@@ -343,7 +320,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         return true;
     }
 
-    JLOG(j_.warn()) << "built ledger conflict with proposed ledger" ;
+    JLOG(j_.warn()) << "built ledger conflict with proposed ledger";
 
     return false;
 }
@@ -372,6 +349,7 @@ int HotstuffConsensus::commit(const hotstuff::Block& block)
 
     if (auto ledger = adaptor_.checkLedgerAccept(info))
     {
+        JLOG(j_.info()) << "commit ledger " << ledger->seq();
         adaptor_.doValidLedger(ledger);
     }
 

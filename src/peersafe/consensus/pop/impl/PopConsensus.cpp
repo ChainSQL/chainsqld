@@ -176,7 +176,7 @@ void PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSe
     {
         //update avoid if we got the right tx-set
         if (adaptor_.validating())
-            adaptor_.updatePoolAvoid(txSet, previousLedger_.seq());
+            adaptor_.updatePoolAvoid(*txSet.map_, previousLedger_.seq());
 
         auto set = txSet.map_->snapShot(false);
         //this place has a txSet copy,what's the time it costs?

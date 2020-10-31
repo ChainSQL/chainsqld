@@ -102,7 +102,7 @@ public:
     inline std::size_t getTxCountInPool() const { return mTxsSet.size(); }
 
     // Get at most specified counts of Tx fron TxPool.
-    uint64_t topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set);
+    uint64_t topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set, bool updateAvoid = true);
 
     // Insert a new Tx, return true if success else false.
 	TER insertTx(std::shared_ptr<Transaction> transaction, LedgerIndex ledgerSeq);
@@ -112,7 +112,7 @@ public:
 	void removeTx(uint256 hash);
 
     // Update avoid set when receiving a Tx set from peers.
-    void updateAvoid(RCLTxSet const& cSet, LedgerIndex seq);
+    void updateAvoid(SHAMap const& map, LedgerIndex seq);
 	void clearAvoid(LedgerIndex seq);
 
 	bool isAvailable();

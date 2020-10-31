@@ -25,7 +25,7 @@
 namespace ripple {
 
 
-uint64_t TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set)
+uint64_t TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set, bool updateAvoid)
 {
     uint64_t txCnt = 0;
 
@@ -41,9 +41,12 @@ uint64_t TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set)
             set.insert((*iter)->getID());
             txCnt++;
 
-            // update avoid set
-            mAvoidBySeq[seq].insert((*iter)->getID());
-            mAvoidByHash.emplace((*iter)->getID(), seq);
+            if (updateAvoid)
+            {
+                // update avoid set
+                mAvoidBySeq[seq].insert((*iter)->getID());
+                mAvoidByHash.emplace((*iter)->getID(), seq);
+            }
         }
     }
 
@@ -187,7 +190,7 @@ void TxPool::checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash)
 	}
 }
 
-void TxPool::updateAvoid(RCLTxSet const& cSet, LedgerIndex seq)
+void TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
 {
     // If the Tx set had be added into avoid set recently, don't add it again.
     // TODO
@@ -198,7 +201,7 @@ void TxPool::updateAvoid(RCLTxSet const& cSet, LedgerIndex seq)
 
     std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
-    for (auto const& item : *(cSet.map_))
+    for (auto const& item : map)
     {
         if (txExists(item.key()))
         {

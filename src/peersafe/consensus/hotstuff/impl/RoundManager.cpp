@@ -80,6 +80,13 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
 	roundTimeoutTimer.async_wait(
 		std::bind(&RoundManager::ProcessLocalTimeout, this, std::placeholders::_1, new_round_event.round));
 
+    // open a new ledger round
+    if (!block_store_->state_compute()->syncState(block_store_->sync_info().HighestQuorumCert().certified_block()))
+    {
+        JLOG(journal_.warn()) << "Sync ledger round failed";
+        return 1;
+    }
+
 	if (!proposer_election_->IsValidProposer(proposal_generator_->author(), new_round_event.round)) {
 		JLOG(journal_.info())
 			<< "ProcessNewRoundEvent: invalidProposel."
@@ -129,7 +136,8 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 	}
 
 	Vote timeout_vote;
-	if (round_state_->send_vote()) {
+	if (round_state_->send_vote() &&
+        round_state_->send_vote()->vote_data().parent().round > 0) {
 		timeout_vote = round_state_->send_vote().get();
 	}
 	else {
@@ -354,13 +362,6 @@ int RoundManager::SyncUp(
 		}
 		block_store_->addCerts(sync_info, network_);
 
-		// open a new round
-        if (block_store_->state_compute()->syncState(
-            sync_info.HighestQuorumCert().certified_block()) == false) {
-            JLOG(journal_.error())
-                << "Sync compute state failed.";
-            return 1;
-        }
 		ProcessCertificates();
 	}
 
