@@ -371,6 +371,11 @@ bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
     return true;
 }
 
+bool HotstuffConsensus::syncBlock(const uint256& block_id, hotstuff::ExecutedBlock& executedBlock)
+{
+    return false;
+}
+
 const hotstuff::Author& HotstuffConsensus::Self() const
 {
     return adaptor_.valPublic();
@@ -429,7 +434,7 @@ const bool HotstuffConsensus::checkVotingPower(const std::map<hotstuff::Author, 
     return signatures.size() >= adaptor_.getQuorum();
 }
 
-void HotstuffConsensus::broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo)
+void HotstuffConsensus::broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo, const hotstuff::Round& shift)
 {
     auto proposal = std::make_shared<STProposal>(block, syncInfo, adaptor_.valPublic());
     

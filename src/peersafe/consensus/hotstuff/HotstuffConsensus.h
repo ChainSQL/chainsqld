@@ -88,6 +88,7 @@ public:
     bool verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result) override final;
     int commit(const hotstuff::Block& block) override final;
     bool syncState(const hotstuff::BlockInfo& prevInfo) override final;
+    bool syncBlock(const uint256& block_id, hotstuff::ExecutedBlock& executedBlock) override final;
 
     // Overwrite ValidatorVerifier interfaces.
     const hotstuff::Author& Self() const override final;
@@ -103,7 +104,7 @@ public:
     const bool checkVotingPower(const std::map<hotstuff::Author, hotstuff::Signature>& signatures) const override final;
 
     // Overwrite NetWork interfaces.
-    void broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo) override final;
+    void broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo, const hotstuff::Round& shift = 0) override final;
     void broadcast(const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
     void sendVote(const hotstuff::Author& author, const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
     void broadcast(const hotstuff::EpochChange& epoch_change) override final;
