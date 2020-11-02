@@ -128,9 +128,9 @@ public:
     {
         return app_.getTxPool().getTxCountInPool();
     }
-    inline std::uint64_t topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set, bool updateAvoid = true)
+    inline std::uint64_t topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set)
     {
-        return app_.getTxPool().topTransactions(limit, seq, set, updateAvoid);
+        return app_.getTxPool().topTransactions(limit, seq, set);
     }
     inline void removePoolTxs(SHAMap const& cSet, LedgerIndex ledgerSeq, uint256 const& prevHash)
     {

@@ -175,8 +175,8 @@ void PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSe
     if (!adaptor_.isLeader(previousLedger_.seq() + 1, view_))
     {
         //update avoid if we got the right tx-set
-        if (adaptor_.validating())
-            adaptor_.updatePoolAvoid(*txSet.map_, previousLedger_.seq());
+        //if (adaptor_.validating())
+        //    adaptor_.updatePoolAvoid(*txSet.map_, previousLedger_.seq());
 
         auto set = txSet.map_->snapShot(false);
         //this place has a txSet copy,what's the time it costs?
@@ -1055,7 +1055,7 @@ void PopConsensus::onViewChange(uint64_t toView)
     timeOutCount_ = 0;
 
     //clear avoid
-    adaptor_.clearPoolAvoid(previousLedger_.seq());
+    //adaptor_.clearPoolAvoid(previousLedger_.seq());
 
     viewChangeManager_.onViewChanged(view_);
     if (bWaitingInit_)

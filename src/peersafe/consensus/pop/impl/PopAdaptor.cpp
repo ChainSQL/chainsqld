@@ -350,6 +350,8 @@ void PopAdaptor::doAccept(
     else
         JLOG(j_.info()) << "CNF buildLCL " << newLCLHash;
 
+    updatePoolAvoid(built.ledger_->txMap(), built.seq());
+
     // See if we can accept a ledger as fully-validated
     consensusBuilt(built.ledger_, result.txns.id(), std::move(consensusJson));
 

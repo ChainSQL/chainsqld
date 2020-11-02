@@ -25,7 +25,7 @@
 namespace ripple {
 
 
-uint64_t TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set, bool updateAvoid)
+uint64_t TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set)
 {
     uint64_t txCnt = 0;
 
@@ -41,12 +41,9 @@ uint64_t TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set, 
             set.insert((*iter)->getID());
             txCnt++;
 
-            if (updateAvoid)
-            {
-                // update avoid set
-                mAvoidBySeq[seq].insert((*iter)->getID());
-                mAvoidByHash.emplace((*iter)->getID(), seq);
-            }
+            // update avoid set
+            //mAvoidBySeq[seq].insert((*iter)->getID());
+            //mAvoidByHash.emplace((*iter)->getID(), seq);
         }
     }
 

@@ -70,7 +70,7 @@ std::shared_ptr<SHAMap> HotstuffAdaptor::onExtractTransactions(RCLCxLedger const
     ledgerMaster_.setBuildingLedger(prevLedger.seq() + 1);
 
     H256Set txs;
-    topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs, false);
+    topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs);
 
     auto initialSet = std::make_shared<SHAMap>(
         SHAMapType::TRANSACTION, app_.family(), SHAMap::version{ 1 });
