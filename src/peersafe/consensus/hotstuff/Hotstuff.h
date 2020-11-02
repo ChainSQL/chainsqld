@@ -82,6 +82,11 @@ public:
 		const ripple::hotstuff::Vote& vote,
 		const ripple::hotstuff::SyncInfo& sync_info);
 
+	// for helper
+	BlockStorage* blockStorage() {
+		return &storage_;
+	}
+
 private:
     Hotstuff(
 		boost::asio::io_service& ios,
@@ -105,6 +110,14 @@ private:
 	HotstuffCore hotstuff_core_;
 	RoundManager* round_manager_;
 };
+
+namespace helper {
+// Exepect an executed block by block_id
+bool exepectBlock(
+	Hotstuff* hotstuff,
+	const HashValue& block_id, 
+	ExecutedBlock& executed_block);
+} // namespace helper
 
 } // namespace hotstuff
 } // namespace ripple

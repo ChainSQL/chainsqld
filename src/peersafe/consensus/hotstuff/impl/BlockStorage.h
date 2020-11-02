@@ -52,6 +52,8 @@ public:
 	ExecutedBlock executeAndAddBlock(const Block& block);
     // 通过 block hash 获取 block，如果本地没有函数返回 false
     bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
+    // 閫氳繃 block hash 鑾峰彇 block锛屽鏋滄湰鍦伴渶瑕佷粠缃戠粶鍚屾
+    bool exepectBlock(const HashValue& hash, ExecutedBlock& block) const;
 
 	const QuorumCertificate& HighestQuorumCert() const {
 		return highest_quorum_cert_;

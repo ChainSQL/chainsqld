@@ -102,6 +102,13 @@ bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
     return true;
 }
 
+bool BlockStorage::exepectBlock(const HashValue& hash, ExecutedBlock& block) const {
+	if (blockOf(hash, block))
+		return true;
+
+	return state_compute_->syncBlock(hash, block);
+}
+
 int BlockStorage::addCerts(const SyncInfo& sync_info, NetWork* network) {
 	insertQuorumCert(sync_info.HighestCommitCert(), network);
 	insertQuorumCert(sync_info.HighestQuorumCert(), network);
@@ -113,11 +120,8 @@ int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert, NetWork*
 	HashValue expected_block_id = const_cast<BlockInfo&>(quorumCert.certified_block()).id;
 	{
 		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
-        if (blockOf(expected_block_id, executed_block) == false)
-        {
-            JLOG(debugLog().warn()) << "expected block not found: " << expected_block_id;
-            return 1;
-        }
+		if (exepectBlock(expected_block_id, executed_block) == false)
+			return 1;
 	}
 
 	{
