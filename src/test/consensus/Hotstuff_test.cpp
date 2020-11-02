@@ -177,7 +177,21 @@ public:
 	}
 
 	bool syncState(const ripple::hotstuff::BlockInfo& block_info) {
+		for (auto it = committed_blocks_.begin(); it != committed_blocks_.end(); it++) {
+		}
 		return true;
+	}
+
+	bool syncBlock(
+		const ripple::hotstuff::HashValue& block_id, 
+		ripple::hotstuff::ExecutedBlock& executedBlock) {
+		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
+			if (ripple::hotstuff::helper::exepectBlock(&(*it->second->hotstuff()), block_id, executedBlock))
+				return true;
+			else
+				continue;
+		}
+		return false;
 	}
 
 	//const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& 
