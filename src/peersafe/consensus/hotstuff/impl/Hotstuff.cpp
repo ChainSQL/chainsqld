@@ -153,16 +153,13 @@ int Hotstuff::handleVote(
 	return round_manager_->ProcessVote(vote, sync_info);
 }
 
-namespace helper {
 // Exepect an executed block by block_id
-bool exepectBlock(
-	Hotstuff* hotstuff,
+bool Hotstuff::expectBlock(
 	const HashValue& block_id,
 	ExecutedBlock& executed_block) {
-	return hotstuff->blockStorage()->blockOf(block_id, executed_block);
+	return storage_.safetyBlockOf(block_id, executed_block);
 }
 
-} // namespace helper
 
 } // namespace hotstuff
 } // namespace ripple

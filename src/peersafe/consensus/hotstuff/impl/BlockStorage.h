@@ -50,8 +50,10 @@ public:
     // for blocks
     //bool addBlock(const Block& block);
 	ExecutedBlock executeAndAddBlock(const Block& block);
-    // 通过 block hash 获取 block，如果本地没有函数返回 false
-    bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
+
+	// Get an expected block safely
+	bool safetyBlockOf(const HashValue& hash, ExecutedBlock& block);
+
     // 閫氳繃 block hash 鑾峰彇 block锛屽鏋滄湰鍦伴渶瑕佷粠缃戠粶鍚屾
     bool exepectBlock(const HashValue& hash, ExecutedBlock& block) const;
 
@@ -87,6 +89,8 @@ public:
 	}
 
 private:
+    // 閫氳繃 block hash 鑾峰彇 block锛屽鏋滄湰鍦版病鏈夊嚱鏁拌繑鍥?false
+    bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
 	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);
 	void gcBlocks(Epoch epoch, Round round);
     //void recurseGCBlocks(const Block& block);

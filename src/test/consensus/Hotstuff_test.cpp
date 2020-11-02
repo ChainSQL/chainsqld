@@ -186,7 +186,7 @@ public:
 		const ripple::hotstuff::HashValue& block_id, 
 		ripple::hotstuff::ExecutedBlock& executedBlock) {
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			if (ripple::hotstuff::helper::exepectBlock(&(*it->second->hotstuff()), block_id, executedBlock))
+			if (it->second->hotstuff()->expectBlock(block_id, executedBlock))
 				return true;
 			else
 				continue;

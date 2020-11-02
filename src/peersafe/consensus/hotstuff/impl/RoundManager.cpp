@@ -129,8 +129,7 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 		<< " processes localTimeout in round " << round
 		<< ", shift " << round_state_->getShiftRoundToNextLeader();
 
-	if (round != round_state_->current_round()
-		&& round_state_->send_vote()->vote_data().parent().round > 0) {
+	if (round != round_state_->current_round()) {
 		JLOG(journal_.error())
 			<< "Invalid round when processing local timeout."
 			<< "Mismatch round: round in local timeout must be equal current round,"
@@ -161,6 +160,17 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
     JLOG(journal_.info())
         << "Check a proposal: " << proposal.block_data().round;
 
+	if (EnsureRoundAndSyncUp(
+		proposal.block_data().round,
+		sync_info,
+		proposal.block_data().author()) == false) {
+		JLOG(journal_.error())
+			<< "Stale proposal, current round " 
+			<< round_state_->current_round();
+		return false;
+	}
+
+
 	const boost::optional<Signature>& signature = proposal.signature();
 	if (signature) {
 		if (hotstuff_core_->epochState()->verifier->verifySignature(
@@ -172,28 +182,6 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 			return false;
 		}
 	}
-
-	if (EnsureRoundAndSyncUp(
-		proposal.block_data().round,
-		sync_info,
-		proposal.block_data().author()) == false) {
-		JLOG(journal_.error())
-			<< "Stale proposal, current round "
-			<< round_state_->current_round();
-		return false;
-	}
-
-    const boost::optional<Signature>& signature = proposal.signature();
-    if (signature) {
-        if (hotstuff_core_->epochState()->verifier->verifySignature(
-            proposal.block_data().author(), signature.get(), proposal.id()) == false) {
-            JLOG(journal_.error())
-                << "CheckProposal: using an author "
-                << proposal.block_data().author()
-                << "'s key for verifing signature failed";
-            return false;
-        }
-    }
 
 	return true;
 }
@@ -385,7 +373,8 @@ int RoundManager::NewTCAggregated(const TimeoutCertificate& timeoutCert) {
 
 void RoundManager::UseNilBlockProcessLocalTimeout(const Round& round) {
 	Vote timeout_vote;
-	if (round_state_->send_vote()) {
+	if (round_state_->send_vote()
+		&& round_state_->send_vote()->vote_data().parent().round > 0) {
 		timeout_vote = round_state_->send_vote().get();
 	}
 	else {

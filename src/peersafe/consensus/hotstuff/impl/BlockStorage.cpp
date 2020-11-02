@@ -91,7 +91,12 @@ ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 	return executed_block;
 }
 
-// 通过 block hash 获取 block，如果本地没有函数返回 false
+bool BlockStorage::safetyBlockOf(const HashValue& hash, ExecutedBlock& block) {
+	std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+	return blockOf(hash, block);
+}
+
+// 閫氳繃 block hash 鑾峰彇 block锛屽鏋滄湰鍦版病鏈夊嚱鏁拌繑鍥?false
 bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
     auto it = cache_blocks_.find(hash);
     if(it == cache_blocks_.end()) {
