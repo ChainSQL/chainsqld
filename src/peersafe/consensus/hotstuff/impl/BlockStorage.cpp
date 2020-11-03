@@ -91,7 +91,9 @@ ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 	return executed_block;
 }
 
-bool BlockStorage::safetyBlockOf(const HashValue& hash, ExecutedBlock& block) {
+bool BlockStorage::safetyBlockOf(
+	const HashValue& hash, 
+	ExecutedBlock& block) {
 	std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
 	return blockOf(hash, block);
 }
@@ -107,25 +109,34 @@ bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
     return true;
 }
 
-bool BlockStorage::exepectBlock(const HashValue& hash, ExecutedBlock& block) const {
+bool BlockStorage::exepectBlock(
+	const HashValue& hash, 
+	const Author& author,
+	ExecutedBlock& block) const {
 	if (blockOf(hash, block))
 		return true;
 
-	return state_compute_->syncBlock(hash, block);
+	return state_compute_->syncBlock(hash, author, block);
 }
 
-int BlockStorage::addCerts(const SyncInfo& sync_info, NetWork* network) {
-	insertQuorumCert(sync_info.HighestCommitCert(), network);
-	insertQuorumCert(sync_info.HighestQuorumCert(), network);
+int BlockStorage::addCerts(
+	const SyncInfo& sync_info, 
+	const Author& author,
+	NetWork* network) {
+	insertQuorumCert(sync_info.HighestCommitCert(), author, network);
+	insertQuorumCert(sync_info.HighestQuorumCert(), author, network);
 	return 0;
 }
 
-int BlockStorage::insertQuorumCert(const QuorumCertificate& quorumCert, NetWork* network) {
+int BlockStorage::insertQuorumCert(
+	const QuorumCertificate& quorumCert, 
+	const Author& author,
+	NetWork* network) {
 	ExecutedBlock executed_block;
 	HashValue expected_block_id = const_cast<BlockInfo&>(quorumCert.certified_block()).id;
 	{
 		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
-		if (exepectBlock(expected_block_id, executed_block) == false)
+		if (exepectBlock(expected_block_id, author, executed_block) == false)
 			return 1;
 	}
 

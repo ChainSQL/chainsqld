@@ -268,7 +268,7 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		quorumCert, timeoutCert);
 	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
         JLOG(journal_.info()) << "qc has reached";
-		NewQCAggregated(quorumCert);
+		NewQCAggregated(quorumCert, vote.author());
 		return 0;
 	}
 	else if (ret == PendingVotes::VoteReceptionResult::NewTimeoutCertificate) {
@@ -340,8 +340,10 @@ int RoundManager::SyncUp(
 				<< "Verifing sync_info failed";
 			return 1;
 		}
-		block_store_->addCerts(sync_info, network_);
 
+		block_store_->addCerts(sync_info, author, network_);
+
+		// open a new round
 		ProcessCertificates();
 	}
 
@@ -357,8 +359,8 @@ int RoundManager::ProcessCertificates() {
 	return 0;
 }
 
-int RoundManager::NewQCAggregated(const QuorumCertificate& quorumCert) {
-	if (block_store_->insertQuorumCert(quorumCert, network_) == 0) {
+int RoundManager::NewQCAggregated(const QuorumCertificate& quorumCert, const Author& author) {
+	if (block_store_->insertQuorumCert(quorumCert, author, network_) == 0) {
 		ProcessCertificates();
 	}
 	return 0;

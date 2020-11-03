@@ -85,7 +85,7 @@ public:
 	// Get an expected block
 	bool expectBlock(
 		const HashValue& block_id, 
-	    ExecutedBlock& executed_block);
+		ExecutedBlock& executed_block);
 
 private:
     Hotstuff(

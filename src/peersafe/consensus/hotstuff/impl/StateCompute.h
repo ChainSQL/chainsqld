@@ -56,7 +56,10 @@ public:
 	// sync state
 	virtual bool syncState(const BlockInfo& block_info) = 0;
 	// sync a block
-	virtual bool syncBlock(const HashValue& block_id, ExecutedBlock& executedBlock) = 0;
+	virtual bool syncBlock(
+		const HashValue& block_id, 
+		const Author& author,
+		ExecutedBlock& executedBlock) = 0;
 
 protected:
 	StateCompute() {}

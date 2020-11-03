@@ -71,7 +71,7 @@ private:
 		const SyncInfo& sync_info,
 		const Author& author);
 	int ProcessCertificates();
-	int NewQCAggregated(const QuorumCertificate& quorumCert);
+	int NewQCAggregated(const QuorumCertificate& quorumCert, const Author& author);
 	int NewTCAggregated(const TimeoutCertificate& timeoutCert);
 	
 	void ProcessLocalTimeout(const boost::system::error_code& ec, Round round);

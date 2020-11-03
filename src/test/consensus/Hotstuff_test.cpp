@@ -184,6 +184,7 @@ public:
 
 	bool syncBlock(
 		const ripple::hotstuff::HashValue& block_id, 
+		const ripple::hotstuff::Author& author,
 		ripple::hotstuff::ExecutedBlock& executedBlock) {
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			if (it->second->hotstuff()->expectBlock(block_id, executedBlock))

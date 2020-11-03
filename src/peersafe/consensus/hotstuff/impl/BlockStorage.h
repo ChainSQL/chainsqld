@@ -52,10 +52,14 @@ public:
 	ExecutedBlock executeAndAddBlock(const Block& block);
 
 	// Get an expected block safely
-	bool safetyBlockOf(const HashValue& hash, ExecutedBlock& block);
-
+	bool safetyBlockOf(
+		const HashValue& hash, 
+		ExecutedBlock& block);
     // 閫氳繃 block hash 鑾峰彇 block锛屽鏋滄湰鍦伴渶瑕佷粠缃戠粶鍚屾
-    bool exepectBlock(const HashValue& hash, ExecutedBlock& block) const;
+    bool exepectBlock(
+		const HashValue& hash, 
+		const Author& author,
+		ExecutedBlock& block) const;
 
 	const QuorumCertificate& HighestQuorumCert() const {
 		return highest_quorum_cert_;
@@ -77,9 +81,15 @@ public:
 			HighestTimeoutCert());
 	}
 
-	int addCerts(const SyncInfo& sync_info, NetWork* network);
+	int addCerts(
+		const SyncInfo& sync_info, 
+		const Author& author,
+		NetWork* network);
 
-	int insertQuorumCert(const QuorumCertificate& quorumCeret, NetWork* network);
+	int insertQuorumCert(
+		const QuorumCertificate& quorumCeret, 
+		const Author& author,
+		NetWork* network);
 	int insertTimeoutCert(const TimeoutCertificate& timeoutCeret);
 
 	// 目前主要功能是 commit 共识过的 block
