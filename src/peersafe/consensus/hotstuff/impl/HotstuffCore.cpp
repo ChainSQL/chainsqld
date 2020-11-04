@@ -25,7 +25,7 @@
 namespace ripple { namespace hotstuff {
 
 HotstuffCore::HotstuffCore(
-	const beast::Journal& journal,
+	beast::Journal journal,
 	StateCompute* state_compute,
 	EpochState* epoch_state)
 : safety_data_()

@@ -26,8 +26,8 @@
 namespace ripple {
 namespace hotstuff {
 
-
-struct ExecutedBlock {
+class ExecutedBlock {
+public:
 	Block block;
 	StateComputeResult state_compute_result;
 

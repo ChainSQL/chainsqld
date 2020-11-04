@@ -29,7 +29,7 @@ namespace ripple { namespace hotstuff {
 
 
 BlockStorage::BlockStorage(
-	const beast::Journal& journal,
+	beast::Journal journal,
 	StateCompute* state_compute) 
 : journal_(journal)
 , state_compute_(state_compute)
@@ -40,12 +40,13 @@ BlockStorage::BlockStorage(
 , highest_quorum_cert_()
 , highest_commit_cert_()
 , highest_timeout_cert_()
-, committed_round_(0) {
+, committed_round_(0)
+, sync_executed_block_handler_(nullptr) {
 
 }
 
 BlockStorage::BlockStorage(
-	const beast::Journal& journal,
+	beast::Journal journal,
 	StateCompute* state_compute,
 	const Block& genesis_block)
 : journal_(journal)
@@ -57,7 +58,8 @@ BlockStorage::BlockStorage(
 , highest_quorum_cert_()
 , highest_commit_cert_()
 , highest_timeout_cert_() 
-, committed_round_(0) {
+, committed_round_(0)
+, sync_executed_block_handler_(nullptr) {
 	updateCeritificates(genesis_block);
 }
 
@@ -113,16 +115,19 @@ bool BlockStorage::exepectBlock(
 	const HashValue& hash, 
 	const Author& author,
 	ExecutedBlock& block) {
+
+	std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+
 	if (blockOf(hash, block))
 		return true;
 
-    if (state_compute_->syncBlock(hash, author, block))
-    {
-        cache_blocks_.emplace(std::make_pair(hash, block));
-        JLOG(debugLog().info()) << "store block: " << hash;
-        return true;
-    }
-    return false;
+	if (state_compute_->syncBlock(hash, author, block)) {
+		cache_blocks_.emplace(std::make_pair(block.block.id(), block));
+        JLOG(debugLog().info()) << "Store an executed block after sync: " << hash;
+		handleSyncBlockResult(hash, block);
+		return true;
+	}
+	return false;
 }
 
 int BlockStorage::addCerts(
@@ -140,11 +145,9 @@ int BlockStorage::insertQuorumCert(
 	NetWork* network) {
 	ExecutedBlock executed_block;
 	HashValue expected_block_id = const_cast<BlockInfo&>(quorumCert.certified_block()).id;
-	{
-		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
-		if (exepectBlock(expected_block_id, author, executed_block) == false)
-			return 1;
-	}
+
+	if (exepectBlock(expected_block_id, author, executed_block) == false)
+		return 1;
 
 	{
 		std::lock_guard<std::mutex> lock(quorum_cert_mutex_);
@@ -203,6 +206,13 @@ void BlockStorage::commit(const LedgerInfoWithSignatures& ledger_info_with_sigs)
 		state_compute_->commit(executed_block.block);
 		committed_round_ = executed_block.block.block_data().round;
 	}
+}
+
+void BlockStorage::handleSyncBlockResult(
+	const HashValue& hash, 
+	const ExecutedBlock& block) {
+	if (sync_executed_block_handler_)
+		sync_executed_block_handler_(hash, block);
 }
 
 void BlockStorage::gcBlocks(Epoch epoch, Round round) {

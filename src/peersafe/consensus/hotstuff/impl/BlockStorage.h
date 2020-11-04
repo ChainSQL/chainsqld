@@ -23,6 +23,7 @@
 #include <atomic>
 #include <mutex>
 #include <map>
+#include <functional>
 
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
 #include <peersafe/consensus/hotstuff/impl/ExecuteBlock.h>
@@ -35,12 +36,14 @@ class NetWork;
 
 class BlockStorage {
 public:
+	using SyncBlockHandler = std::function<void(const HashValue& hash, const ExecutedBlock& block)>;
+
     //BlockStorage();
 	BlockStorage(
-		const beast::Journal& journal,
+		beast::Journal journal,
 		StateCompute* state_compute);
 	BlockStorage(
-		const beast::Journal& journal,
+		beast::Journal journal,
 		StateCompute* state_compute,
 		const Block& genesis_block);
     ~BlockStorage();
@@ -51,11 +54,14 @@ public:
     //bool addBlock(const Block& block);
 	ExecutedBlock executeAndAddBlock(const Block& block);
 
-	// Get an expected block safely
-	bool safetyBlockOf(
-		const HashValue& hash, 
-		ExecutedBlock& block);
-    // 通过 block hash 获取 block，如果本地需要从网络同步
+	// Get an expected block safely from local
+	bool safetyBlockOf(const HashValue& hash, ExecutedBlock& block);
+	// Get an executed block by hash, 
+	// if it dosen't exists in local then return directly
+    bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
+	// Get an executed block by hash,if dosen't exists in local 
+	// then getting it from network
+
     bool exepectBlock(
 		const HashValue& hash, 
 		const Author& author,
@@ -98,12 +104,14 @@ public:
 		return state_compute_;
 	}
 
+	void setSyncBlockHandler(SyncBlockHandler handler) {
+		sync_executed_block_handler_ = handler;
+	}
+
 private:
-    // 通过 block hash 获取 block，如果本地没有函数返�?false
-    bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
 	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);
+	void handleSyncBlockResult(const HashValue& hash, const ExecutedBlock& block);
 	void gcBlocks(Epoch epoch, Round round);
-    //void recurseGCBlocks(const Block& block);
 
 	beast::Journal journal_;
 	StateCompute* state_compute_;
@@ -116,6 +124,7 @@ private:
 	QuorumCertificate highest_commit_cert_;
 	boost::optional<TimeoutCertificate> highest_timeout_cert_;
 	std::atomic<Round> committed_round_;
+	SyncBlockHandler sync_executed_block_handler_;
 };
 
 } // namespace hotstuff

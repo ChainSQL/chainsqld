@@ -40,7 +40,7 @@ class Hotstuff;
 class RoundManager {
 public:
 	RoundManager(
-		const beast::Journal& journal,
+		beast::Journal journal,
 		const Config& config,
 		BlockStorage* block_store,
 		RoundState* round_state,
@@ -57,8 +57,15 @@ public:
 	int ProcessProposal(const Block& proposal, const Round& shift = 0);
 
 	int ProcessVote(const Vote& vote, const SyncInfo& sync_info);
+
+	// Get an expected block
+	bool expectBlock(
+		const HashValue& block_id,
+		ExecutedBlock& executed_block);
 private:
 	friend class ripple::test::Hotstuff_test;
+	friend class Hotstuff;
+
 	int ProcessVote(const Vote& vote);
 	bool ExecuteAndVote(const Block& proposal, Vote& vote);
 	int ProcessNewRoundEvent(const NewRoundEvent& event);
@@ -79,6 +86,12 @@ private:
 	void NotUseNilBlockProcessLocalTimeout(const Round& round);
 	bool IsValidProposer(const Author& author, const Round& round);
 	bool IsValidProposal(const Block& proposal, const Round& shift = 0);
+
+	void HandleSyncBlockResult(const HashValue& hash, const ExecutedBlock& block);
+
+	bool unsafetyExpectBlock(
+		const HashValue& block_id,
+		ExecutedBlock& executed_block);
 
 	beast::Journal journal_;
 	Config config_;

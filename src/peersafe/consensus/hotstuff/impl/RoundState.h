@@ -49,7 +49,7 @@ class RoundState {
 public:
 	RoundState(
 		boost::asio::io_service* io_service,
-		const beast::Journal& journal);
+		beast::Journal journal);
 	~RoundState();
 	
 	boost::optional<NewRoundEvent> ProcessCertificates(const SyncInfo& sync_info);

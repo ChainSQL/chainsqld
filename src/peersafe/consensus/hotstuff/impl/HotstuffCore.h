@@ -50,12 +50,12 @@ struct SafetyData {
 	}
 };
 
-struct ExecutedBlock;
+class ExecutedBlock;
 
 class HotstuffCore {
 public: 
 	HotstuffCore(
-		const beast::Journal& journal, 
+		beast::Journal journal, 
 		StateCompute* state_compute,
 		EpochState* epoch_state);
     ~HotstuffCore();

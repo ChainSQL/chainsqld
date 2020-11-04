@@ -23,7 +23,7 @@ namespace ripple {
 namespace hotstuff {
 
 RoundManager::RoundManager(
-	const beast::Journal& journal,
+	beast::Journal journal,
 	const Config& config,
 	BlockStorage* block_store,
 	RoundState* round_state,
@@ -296,7 +296,7 @@ bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
 	if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false) {
 		JLOG(journal_.error())
 			<< "Construct and sign vote failed."
-			<< "The round for vote is " << vote.vote_data().proposed().round;
+			<< "The round for vote is " << proposal.block_data().round;
 		return false;
 	}
 	return true;
@@ -421,7 +421,8 @@ void RoundManager::NotUseNilBlockProcessLocalTimeout(const Round& round) {
 	round_state_->shiftRoundToNextLeader();
 	Round shift_round = round_state_->getShiftRoundToNextLeader();
 
-	if (round_state_->send_vote()) {
+	if (round_state_->send_vote()
+		&& round_state_->send_vote()->vote_data().parent().round > 0) {
 		Vote timeout_vote = round_state_->send_vote().get();
 		if (timeout_vote.isTimeout() == false) {
 			Timeout timeout = timeout_vote.timeout();
@@ -463,6 +464,37 @@ bool RoundManager::IsValidProposal(const Block& proposal, const Round& shift /*=
 	Block block = proposal;
 	block.block_data().round = block.block_data().round + shift;
 	return proposer_election_->IsValidProposal(block);
+}
+
+void RoundManager::HandleSyncBlockResult(
+	const HashValue& hash,
+	const ExecutedBlock& block) {
+
+	Round proposal_round = block.block.block_data().round;
+	Vote vote;
+	if (hotstuff_core_->ConstructAndSignVote(block, vote) == false) {
+		JLOG(journal_.error())
+			<< "Construct and sign vote failed in HandleSyncBlockResult."
+			<< "The round for vote is " << proposal_round;
+		return;
+	}
+	
+	Author next_leader = proposer_election_->GetValidProposer(proposal_round + 1);
+	round_state_->recordVote(vote);
+	network_->sendVote(next_leader, vote, block_store_->sync_info());
+}
+
+// Get an expected block
+bool RoundManager::expectBlock(
+	const HashValue& block_id,
+	ExecutedBlock& executed_block) {
+	return block_store_->safetyBlockOf(block_id, executed_block);
+}
+
+bool RoundManager::unsafetyExpectBlock(
+	const HashValue& block_id,
+	ExecutedBlock& executed_block) {
+	return block_store_->blockOf(block_id, executed_block);
 }
 
 } // namespace hotstuff

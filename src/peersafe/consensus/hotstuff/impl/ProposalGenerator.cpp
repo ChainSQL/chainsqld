@@ -25,7 +25,7 @@ namespace ripple {
 namespace hotstuff {
 
 ProposalGenerator::ProposalGenerator(
-	const beast::Journal& journal,
+	beast::Journal journal,
 	CommandManager* cm, 
 	BlockStorage* block_store,
 	const Author& author)

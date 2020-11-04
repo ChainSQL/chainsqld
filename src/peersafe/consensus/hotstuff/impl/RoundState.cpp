@@ -27,7 +27,7 @@ namespace hotstuff {
 
 RoundState::RoundState(
 	boost::asio::io_service* io_service,
-	const beast::Journal& journal)
+	beast::Journal journal)
 : journal_(journal)
 , current_round_(0)
 , round_timeout_timer_(*io_service)

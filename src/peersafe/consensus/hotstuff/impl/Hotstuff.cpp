@@ -85,9 +85,9 @@ Hotstuff::pointer Hotstuff::Builder::build() {
 }
 
 Hotstuff::Hotstuff(
-    boost::asio::io_service& ios,
-    const beast::Journal& journal,
-	const Config config,
+	boost::asio::io_service& ios,
+    beast::Journal journal,
+	const Config& config,
 	CommandManager* cm,
 	ProposerElection* proposer_election,
 	StateCompute* state_compute,
@@ -138,18 +138,24 @@ void Hotstuff::stop() {
 bool Hotstuff::CheckProposal(
 	const ripple::hotstuff::Block& proposal,
 	const ripple::hotstuff::SyncInfo& sync_info) {
+	if (round_manager_ == nullptr)
+		return false;
 	return round_manager_->CheckProposal(proposal, sync_info);
 }
 
 int Hotstuff::handleProposal(
 	const ripple::hotstuff::Block& proposal, 
 	const Round& shift /*= 0*/) {
+	if (round_manager_ == nullptr)
+		return 1;
 	return round_manager_->ProcessProposal(proposal, shift);
 }
 
 int Hotstuff::handleVote(
 	const ripple::hotstuff::Vote& vote,
 	const ripple::hotstuff::SyncInfo& sync_info) {
+	if (round_manager_ == nullptr)
+		return 1;
 	return round_manager_->ProcessVote(vote, sync_info);
 }
 
@@ -157,9 +163,14 @@ int Hotstuff::handleVote(
 bool Hotstuff::expectBlock(
 	const HashValue& block_id,
 	ExecutedBlock& executed_block) {
-	return storage_.safetyBlockOf(block_id, executed_block);
+	return round_manager_->expectBlock(block_id, executed_block);
 }
 
+bool Hotstuff::unsafetyExpectBlock(
+	const HashValue& block_id,
+	ExecutedBlock& executed_block) {
+	return round_manager_->unsafetyExpectBlock(block_id, executed_block);
+}
 
 } // namespace hotstuff
 } // namespace ripple

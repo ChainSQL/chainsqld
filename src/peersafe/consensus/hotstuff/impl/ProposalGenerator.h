@@ -33,7 +33,7 @@ namespace ripple { namespace hotstuff {
 class ProposalGenerator {
 public:
     ProposalGenerator(
-		const beast::Journal& journal,
+		beast::Journal journal,
 		CommandManager* cm, 
 		BlockStorage* block_store,
 		const Author& author);

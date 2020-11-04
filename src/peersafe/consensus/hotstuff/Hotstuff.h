@@ -33,6 +33,7 @@ namespace ripple {
 // only for test case
 namespace test {
 	class Hotstuff_test;
+	class Replica;
 } // namespace test
 
 namespace hotstuff {
@@ -90,14 +91,19 @@ public:
 private:
     Hotstuff(
 		boost::asio::io_service& ios,
-        const beast::Journal& journal,
-		const Config config,
+        beast::Journal journal,
+		const Config& config,
 		CommandManager* cm,
 		ProposerElection* proposer_election,
 		StateCompute* state_compute,
 		NetWork* network);
 
 	friend class ripple::test::Hotstuff_test;
+	friend class ripple::test::Replica;
+
+	bool unsafetyExpectBlock(
+		const HashValue& block_id,
+		ExecutedBlock& executed_block);
 	
 	beast::Journal journal_;
 	Config config_;
