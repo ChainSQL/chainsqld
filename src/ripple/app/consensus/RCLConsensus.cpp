@@ -128,7 +128,17 @@ bool RCLConsensus::peerConsensusMessage(
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    return consensus_->peerConsensusMessage(peer, isTrusted, m);
+    if (m->msgtype() != ConsensusMessageType::mtBLOCKDATA)
+    {
+        ScopedLockType _{ mutex_ };
+        return consensus_->peerConsensusMessage(peer, isTrusted, m);
+    }
+    else
+    {
+        // Don't take lock when handle mtBLOCKDATA message.
+        // Fix this special handing use async(currenttly used sync) acquire hotstuff block.
+        return consensus_->peerConsensusMessage(peer, isTrusted, m);
+    }
 }
 
 Json::Value RCLConsensus::getJson(bool full) const

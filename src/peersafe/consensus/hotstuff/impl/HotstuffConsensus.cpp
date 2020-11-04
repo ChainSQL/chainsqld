@@ -138,6 +138,8 @@ void HotstuffConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const&
 
     auto id = txSet.id();
 
+    JLOG(j_.info()) << "gotTxSet " << id;
+
     if (acquired_.find(id) == acquired_.end())
     {
         acquired_.emplace(id, txSet);
@@ -602,7 +604,7 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
     auto const ait = acquired_.find(payload->cmd);
     if (ait == acquired_.end())
     {
-        JLOG(j_.debug()) << "Don't have tx set for proposal:" << payload->cmd;
+        JLOG(j_.info()) << "Don't have tx set for proposal:" << payload->cmd;
 
         proposalCache_[payload->cmd][payload->author] = proposal;
 
@@ -711,6 +713,8 @@ void HotstuffConsensus::startRoundInternal(
     RCLCxLedger const& prevLgr,
     ConsensusMode mode)
 {
+    JLOG(j_.info()) << "startRoundInternal";
+
     mode_.set(mode, adaptor_);
 
     prevLedgerID_ = prevLgrId;
