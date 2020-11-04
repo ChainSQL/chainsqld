@@ -188,7 +188,8 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 
 int RoundManager::ProcessProposal(const Block& proposal, const Round& shift /*= 0*/) {
 	JLOG(journal_.info())
-		<< "Process a proposal: " << proposal.block_data().round;
+		<< "Process a proposal: round: " << proposal.block_data().round
+        << ", seq: " << proposal.block_data().getLedgerInfo().seq;
 
 	if (IsValidProposal(proposal, shift) == false) {
 		JLOG(journal_.error())
@@ -220,7 +221,8 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 	Round round = vote.vote_data().proposed().round;
 
 	JLOG(journal_.info())
-		<< "Process a vote: " << round;
+		<< "Process a vote: round: " << round
+        << ", seq: " << vote.vote_data().proposed().ledger_info.seq;
 
 	if (EnsureRoundAndSyncUp(
 		round,
