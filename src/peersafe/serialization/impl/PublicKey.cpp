@@ -17,30 +17,27 @@
  */
  //==============================================================================
 
-#ifndef RIPPLE_SERIALIZATION_PUBLICKEY_H
-#define RIPPLE_SERIALIZATION_PUBLICKEY_H
 
-#include <peersafe/serialization/Serialization.h>
-#include <ripple/protocol/PublicKey.h>
+#include <peersafe/serialization/PublicKey.h>
 
-#include <ripple/basics/Slice.h>
 
 namespace ripple {
 
 boost::archive::text_oarchive&
-operator<<(boost::archive::text_oarchive& os, ripple::PublicKey const& pk);
+operator<<(boost::archive::text_oarchive& os, ripple::PublicKey const& pk) {
+	std::string s((const char*)pk.data(), pk.size());
+	os << s;
+	return os;
+}
 
 boost::archive::text_iarchive&
-operator>>(boost::archive::text_iarchive& is, ripple::PublicKey & pk);
-
-template<class Archive>
-void serialize(
-    Archive& ar,
-    ripple::PublicKey & pk,
-    const unsigned int /*version*/) {
-    ar & pk;
+operator>>(boost::archive::text_iarchive& is, ripple::PublicKey & pk) {
+	std::string s;
+	is >> s;
+	pk = ripple::PublicKey(ripple::Slice(s.data(), s.size()));
+	return is;
 }
+
 
 } // namespace ripple
 
-#endif // RIPPLE_SERIALIZATION_PUBLICKEY_H

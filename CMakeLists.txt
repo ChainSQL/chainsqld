@@ -621,6 +621,7 @@ overlay2.cpp
 peerfinder.cpp
 json.cpp
 protocol.cpp
+serialization.cpp
 rpcx1.cpp
 rpcx2.cpp
 shamap.cpp
