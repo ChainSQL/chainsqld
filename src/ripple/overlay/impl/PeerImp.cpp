@@ -177,7 +177,7 @@ PeerImp::dispatch()
 	{
 		for (auto item : app_.getSchemaManager())
 		{
-			auto& vecKeys = item.second->validators().validators();
+			auto vecKeys = item.second->validators().validators();
 			if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_) != vecKeys.end() ||
 				item.first == beast::zero) // add to main chain with no validators check.
 			{

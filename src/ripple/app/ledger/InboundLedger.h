@@ -24,7 +24,7 @@
 #include <ripple/app/ledger/Ledger.h>
 #include <ripple/overlay/PeerSet.h>
 #include <ripple/basics/CountedObject.h>
-#include <peersafe/Schema/Schema.h>
+#include <peersafe/schema/Schema.h>
 #include <mutex>
 #include <set>
 #include <utility>

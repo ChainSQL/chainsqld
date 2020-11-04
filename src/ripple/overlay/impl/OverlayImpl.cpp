@@ -762,7 +762,7 @@ void OverlayImpl::onSchemaCreated(uint256 const& schemaId)
 		return;
 
 	auto& peerManager = app_.peerManager(schemaId);
-	auto& validators = app_.validators(schemaId).validators();
+	auto validators = app_.validators(schemaId).validators();
 	for_each([&](std::shared_ptr<PeerImp>&& sp)
 	{
 		if (sp->publicValidate_ && 
