@@ -45,8 +45,8 @@ STProposal::STProposal(hotstuff::Block const& block, hotstuff::SyncInfo const& s
     if (!publicKeyType(nodePublic))
         LogicError("Invalid proposeset public key");
 
-    Buffer const& b = serialization::serialize(block);
-    Buffer const& s = serialization::serialize(syncInfo);
+    Buffer b(std::move(serialization::serialize(block)));
+    Buffer s(std::move(serialization::serialize(syncInfo)));
 
     setFieldVL(sfBlock, Slice(b.data(), b.size()));
     setFieldVL(sfSyncInfo, Slice(s.data(), s.size()));

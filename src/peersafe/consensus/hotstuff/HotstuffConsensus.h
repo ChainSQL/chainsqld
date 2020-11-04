@@ -29,19 +29,21 @@
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
 #include <peersafe/consensus/hotstuff/Hotstuff.h>
 
+#include <future>
+
 
 namespace ripple {
 
 
 class HotstuffConsensus final
-    : public ripple::ConsensusBase
+    : public ConsensusBase
     , public hotstuff::CommandManager
     , public hotstuff::StateCompute
     , public hotstuff::ValidatorVerifier
     , public hotstuff::NetWork
 {
 public:
-    HotstuffConsensus(ripple::Adaptor& adaptor, clock_type const& clock, beast::Journal j);
+    HotstuffConsensus(Adaptor& adaptor, clock_type const& clock, beast::Journal j);
     ~HotstuffConsensus();
 
 public:
@@ -88,7 +90,7 @@ public:
     bool verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result) override final;
     int commit(const hotstuff::Block& block) override final;
     bool syncState(const hotstuff::BlockInfo& prevInfo) override final;
-    bool syncBlock(const uint256& block_id, hotstuff::ExecutedBlock& executedBlock) override final;
+    bool syncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::ExecutedBlock& executedBlock) override final;
 
     // Overwrite ValidatorVerifier interfaces.
     const hotstuff::Author& Self() const override final;
@@ -122,6 +124,16 @@ private:
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
 
+    void peerAcquireBlock(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    void peerBlockData(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
     void startRoundInternal(
         RCLCxLedger::ID const& prevLgrId,
         RCLCxLedger const& prevLgr,
@@ -140,8 +152,9 @@ private:
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
     std::map<typename TxSet_t::ID, std::map<PublicKey, STProposal::pointer>> proposalCache_;
-};
 
+    std::weak_ptr<std::promise<hotstuff::ExecutedBlock>> weakBlockPromise_;
+};
 
 }
 

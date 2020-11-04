@@ -21,13 +21,14 @@
 #include <peersafe/consensus/hotstuff/impl/Config.h>
 #include <peersafe/consensus/hotstuff/impl/RecoverData.h>
 #include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
+#include <peersafe/serialization/hotstuff/ExecutedBlock.h>
 
 
 namespace ripple {
 
 
 HotstuffConsensus::HotstuffConsensus(
-    ripple::Adaptor& adaptor,
+    Adaptor& adaptor,
     clock_type const& clock,
     beast::Journal j)
     : ConsensusBase(clock, j)
@@ -116,6 +117,12 @@ bool HotstuffConsensus::peerConsensusMessage(
             break;
         case ConsensusMessageType::mtVOTE:
             peerVote(peer, isTrusted, m);
+            break;
+        case ConsensusMessageType::mtACQUIREBLOCK:
+            peerAcquireBlock(peer, isTrusted, m);
+            break;
+        case ConsensusMessageType::mtBLOCKDATA:
+            peerBlockData(peer, isTrusted, m);
             break;
         default:
             break;
@@ -371,9 +378,48 @@ bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
     return true;
 }
 
-bool HotstuffConsensus::syncBlock(const uint256& block_id, hotstuff::ExecutedBlock& executedBlock)
+bool HotstuffConsensus::syncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::ExecutedBlock& executedBlock)
 {
-    return false;
+    // New promise
+    std::shared_ptr<std::promise<hotstuff::ExecutedBlock>> promise = std::make_shared<std::promise<hotstuff::ExecutedBlock>>();
+
+    weakBlockPromise_ = promise;
+
+    // Send acquire block message
+    adaptor_.acquireBlock(author, blockID);
+
+    std::future<hotstuff::ExecutedBlock> future = promise->get_future();
+
+    if (future.wait_for(std::min(std::chrono::seconds{3}, adaptor_.parms().consensusTIMEOUT / 3)) != std::future_status::ready)
+    {
+        JLOG(j_.warn()) << "acquire block " << blockID << " failed";
+        return false;
+    }
+
+    // Get block and have a check
+    hotstuff::ExecutedBlock const& block = future.get();
+
+    if (block.block.id() != blockID)
+    {
+        JLOG(j_.warn()) << "acquired block " << blockID << " , but got " << block.block.id();
+        return false;
+    }
+
+    if (!verify(block.block, block.state_compute_result))
+    {
+        JLOG(j_.warn()) << "acquired block " << blockID << " , but verify step 1 failed";
+        return false;
+    }
+
+    if (block.state_compute_result.parent_ledger_info.hash != block.block.block_data().quorum_cert.certified_block().ledger_info.hash)
+    {
+        JLOG(j_.warn()) << "acquired block " << blockID << " , but verify step 2 failed";
+        return false;
+    }
+
+    executedBlock = block;
+
+    return true;
 }
 
 const hotstuff::Author& HotstuffConsensus::Self() const
@@ -604,6 +650,57 @@ void HotstuffConsensus::peerVote(
     {
         JLOG(j_.warn()) << "Vote: Exception, " << e.what();
         peer->charge(Resource::feeInvalidRequest);
+    }
+}
+
+void HotstuffConsensus::peerAcquireBlock(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (m->msg().size() != 32)
+    {
+        JLOG(j_.warn()) << "Acquire block: malformed";
+        peer->charge(Resource::feeInvalidSignature);
+        return;
+    }
+
+    uint256 blockID;
+    memcpy(blockID.begin(), m->msg().data(), 32);
+
+    hotstuff::ExecutedBlock block;
+
+    if (!hotstuff_->expectBlock(blockID, block))
+    {
+        JLOG(j_.warn()) << "Acquire block: not found, block hash: " << blockID;
+        return;
+    }
+
+    adaptor_.sendBLock(peer, block);
+}
+
+void HotstuffConsensus::peerBlockData(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.warn()) << "drop UNTRUSTED block data";
+        return;
+    }
+
+    if (auto promise = weakBlockPromise_.lock())
+    {
+        try
+        {
+            promise->set_value(std::move(serialization::deserialize<hotstuff::ExecutedBlock>(Buffer(m->msg().data(), m->msg().size()))));
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(j_.warn()) << "BlockData: Exception, " << e.what();
+            peer->charge(Resource::feeInvalidRequest);
+        }
     }
 }
 

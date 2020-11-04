@@ -45,8 +45,8 @@ STVote::STVote(hotstuff::Vote const& vote, hotstuff::SyncInfo const& syncInfo, P
     if (!publicKeyType(nodePublic))
         LogicError("Invalid proposeset public key");
 
-    Buffer const& v = serialization::serialize(vote);
-    Buffer const& s = serialization::serialize(syncInfo);
+    Buffer v(std::move(serialization::serialize(vote)));
+    Buffer s(std::move(serialization::serialize(syncInfo)));
 
     setFieldVL(sfVoteImp, Slice(v.data(), v.size()));
     setFieldVL(sfSyncInfo, Slice(s.data(), s.size()));

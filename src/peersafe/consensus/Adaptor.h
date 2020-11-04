@@ -183,6 +183,8 @@ public:
         RCLCxLedger const& ledger,
         bool haveCorrectLCL);
 
+    void signMessage(protocol::TMConsensus &consensus);
+
     void signAndSendMessage(protocol::TMConsensus &consensus);
     void signAndSendMessage(PublicKey const& pubKey, protocol::TMConsensus &consensus);
 
@@ -250,7 +252,7 @@ public:
     void onModeChange(ConsensusMode before, ConsensusMode after);
 
 private:
-    void signMessage(protocol::TMConsensus &consensus);
+
 };
 
 

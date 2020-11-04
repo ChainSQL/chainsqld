@@ -29,6 +29,7 @@
 #include <peersafe/consensus/hotstuff/impl/Types.h>
 #include <peersafe/consensus/hotstuff/impl/ProposerElection.h>
 #include <peersafe/consensus/hotstuff/impl/NetWork.h>
+#include <peersafe/consensus/hotstuff/impl/ExecuteBlock.h>
 
 
 namespace ripple {
@@ -85,6 +86,8 @@ public:
     void broadcast(STProposal const& proposal);
     void broadcast(STVote const& vote);
     void sendVote(PublicKey const& pubKey, STVote const& vote);
+    void acquireBlock(PublicKey const& pubKey, uint256 const& hash);
+    void sendBLock(std::shared_ptr<PeerImp> peer, hotstuff::ExecutedBlock const& block);
 
     bool doAccept(typename Ledger_t::ID const& lgrId);
 

@@ -18,10 +18,13 @@
 //==============================================================================
 
 
+#include <ripple/basics/make_lock.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/app/ledger/TransactionMaster.h>
+#include <ripple/app/ledger/LocalTxs.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
+#include <peersafe/serialization/hotstuff/ExecutedBlock.h>
 
 
 namespace ripple {
@@ -47,7 +50,9 @@ HotstuffAdaptor::HotstuffAdaptor(
     if (app_.config().exists(SECTION_HCONSENSUS))
     {
         parms_.consensusTIMEOUT = std::chrono::seconds{
-            std::max(3, (int)app.config().loadConfig(SECTION_HCONSENSUS, "time_out", parms_.consensusTIMEOUT.count())) };
+            std::max(
+                (int)parms_.consensusTIMEOUT.count(),
+                app.config().loadConfig(SECTION_HCONSENSUS, "time_out", 0)) };
     }
 }
 
@@ -146,6 +151,37 @@ void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     JLOG(j_.info()) << "send VOTE to leader " << pubKey;
 
     signAndSendMessage(pubKey, consensus);
+}
+
+void HotstuffAdaptor::acquireBlock(PublicKey const& pubKey, uint256 const& hash)
+{
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(hash.data(), hash.bytes);
+    consensus.set_msgtype(ConsensusMessageType::mtACQUIREBLOCK);
+
+    JLOG(j_.info()) << "acquiring Executedblock " << hash << " from " << pubKey;
+
+    signAndSendMessage(pubKey, consensus);
+}
+
+void HotstuffAdaptor::sendBLock(std::shared_ptr<PeerImp> peer, hotstuff::ExecutedBlock const& block)
+{
+    protocol::TMConsensus consensus;
+
+    Buffer b(std::move(serialization::serialize(block)));
+
+    consensus.set_msg(b.data(), b.size());
+    consensus.set_msgtype(ConsensusMessageType::mtBLOCKDATA);
+
+    JLOG(j_.info()) << "send ExecutedBlock to peer " << peer->getNodePublic();
+
+    signMessage(consensus);
+
+    auto const m = std::make_shared<Message>(
+        consensus, protocol::mtCONSENSUS);
+
+    peer->send(m);
 }
 
 bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
