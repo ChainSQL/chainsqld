@@ -520,7 +520,10 @@ void HotstuffConsensus::sendVote(const hotstuff::Author& author, const hotstuff:
             jtCONSENSUS_t,
             "send_vote",
             [this, vote, syncInfo](Job&) {
-            this->hotstuff_->handleVote(vote, syncInfo);
+                {
+                    ScopedLockType sl(this->lock_);
+                    this->hotstuff_->handleVote(vote, syncInfo);
+                }
         });
     }
     else
@@ -648,7 +651,10 @@ void HotstuffConsensus::peerVote(
             return;
         }
 
-        hotstuff_->handleVote(vote->vote(), vote->syncInfo());
+        {
+            ScopedLockType sl(lock_);
+            hotstuff_->handleVote(vote->vote(), vote->syncInfo());
+        }
     }
     catch (std::exception const& e)
     {
