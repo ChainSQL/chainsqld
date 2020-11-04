@@ -67,13 +67,24 @@
 #
 # Don't put any code above or in this block, unless it
 # has similar constraints.
-cmake_minimum_required(VERSION 3.10.0)
+
+cmake_minimum_required(VERSION 3.12.0)
+
+option (USE_LOW_OPENSSL "Use openssl 1.0.2" OFF)
+
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Builds/CMake")
 include(CMakeFuncs)
 include (ProcessorCount)
-set(openssl_min 1.1.0)
 parse_target()
 project(chainsqld)
+
+if (USE_LOW_OPENSSL)
+  set(openssl_min 1.0.2)
+  add_definitions(-DUSE_LOW_OPENSSL)
+else()
+  set(openssl_min 1.1.0)
+endif()
+
 
 if (NOT ep_procs)
   ProcessorCount(ep_procs)

@@ -48,7 +48,9 @@ namespace ripple {
 #define ECIES_ENC_BLK_SIZE  (128/8)             // Encryption block size
 #define ECIES_ENC_IV_TYPE   uint128             // Type used to hold IV
 
-Blob encryptAES(Blob const& key, Blob const& plaintext, int keyByteLen)
+
+#ifndef USE_LOW_OPENSSL
+Blob encryptAES_SSL110(Blob const& key, Blob const& plaintext, int keyByteLen)
 {
 	if (keyByteLen != ECIES_ENC_KEY_256 && keyByteLen != ECIES_ENC_KEY_128)
 		Throw <std::runtime_error>("not supported");
@@ -94,7 +96,7 @@ Blob encryptAES(Blob const& key, Blob const& plaintext, int keyByteLen)
 	return out;
 }
 
-Blob decryptAES(Blob const& key, Blob const& ciphertext, int keyByteLen)
+Blob decryptAES_SSL110(Blob const& key, Blob const& ciphertext, int keyByteLen)
 {
 	if (keyByteLen != ECIES_ENC_KEY_256 && keyByteLen != ECIES_ENC_KEY_128)
 		Throw <std::runtime_error>("not supported");
@@ -140,6 +142,105 @@ Blob decryptAES(Blob const& key, Blob const& ciphertext, int keyByteLen)
     EVP_CIPHER_CTX_free(ctx);
 	return plaintext;
 }
+#endif
+
+#ifdef USE_LOW_OPENSSL
+Blob encryptAES_SSL102(Blob const& key, Blob const& plaintext, int keyByteLen)
+{
+	if (keyByteLen != ECIES_ENC_KEY_256 && keyByteLen != ECIES_ENC_KEY_128)
+		Throw <std::runtime_error>("not supported");
+	if (plaintext.size() == 0)
+		Throw<std::runtime_error>("plaintext too short");
+	if (key.size() < keyByteLen)
+		Throw<std::runtime_error>("key too short");
+
+	ECIES_ENC_IV_TYPE iv;
+	memcpy(iv.begin(), &(key.front()), ECIES_ENC_BLK_SIZE);
+
+	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX_init(&ctx);
+
+	if (EVP_EncryptInit_ex(&ctx, (keyByteLen == ECIES_ENC_KEY_128) ? EVP_aes_128_cbc() : EVP_aes_256_cbc(),
+		nullptr, &(key.front()), iv.begin()) != 1)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("init cipher ctx");
+	}
+
+	Blob out(plaintext.size() + ECIES_ENC_KEY_SIZE + ECIES_ENC_BLK_SIZE, 0);
+	int len = 0, bytesWritten;
+
+	if (EVP_EncryptUpdate(&ctx, &(out.front()), &bytesWritten, &(plaintext.front()), plaintext.size()) < 0)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("");
+	}
+
+	len = bytesWritten;
+
+
+	if (EVP_EncryptFinal_ex(&ctx, &(out.front()) + len, &bytesWritten) < 0)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("encryption error");
+	}
+
+	len += bytesWritten;
+
+	out.resize(len);
+	EVP_CIPHER_CTX_cleanup(&ctx);
+	return out;
+}
+
+Blob decryptAES_SSL102(Blob const& key, Blob const& ciphertext, int keyByteLen)
+{
+	if (keyByteLen != ECIES_ENC_KEY_256 && keyByteLen != ECIES_ENC_KEY_128)
+		Throw <std::runtime_error>("not supported");
+	if (ciphertext.size() == 0)
+		Throw<std::runtime_error>("ciphertext is empty");
+	if (key.size() < keyByteLen)
+		Throw<std::runtime_error>("key too short");
+	// extract IV
+	ECIES_ENC_IV_TYPE iv;
+	memcpy(iv.begin(), &(key.front()), ECIES_ENC_BLK_SIZE);
+
+	int outlen = 0;
+	// begin decrypting
+	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX_init(&ctx);
+
+	if (EVP_DecryptInit_ex(&ctx, (keyByteLen == ECIES_ENC_KEY_128) ? EVP_aes_128_cbc() : EVP_aes_256_cbc(),
+		nullptr, &(key.front()), iv.begin()) != 1)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("unable to init cipher");
+	}
+
+	Blob plaintext(ciphertext.size());
+
+	if (EVP_DecryptUpdate(&ctx, &(plaintext.front()), &outlen,
+		&(ciphertext.front()), ciphertext.size()) != 1)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("unable to extract plaintext");
+	}
+
+	// decrypt padding
+	int flen = 0;
+
+	if (EVP_DecryptFinal(&ctx, &(plaintext.front()) + outlen, &flen) != 1)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("plaintext had bad padding");
+	}
+
+	plaintext.resize(flen + outlen);
+
+	EVP_CIPHER_CTX_cleanup(&ctx);
+	return plaintext;
+}
+#endif
+
 
 Blob getRandomPassword()
 {
@@ -153,6 +254,25 @@ Blob getRandomPassword()
     memcpy(&(randomBlob.front()), digest.data(), digest.size());
 
     return randomBlob;
+}
+
+
+Blob encryptAES(Blob const& key, Blob const& plaintext, int keyByteLen)
+{
+#ifdef USE_LOW_OPENSSL
+	return encryptAES_SSL102(key, plaintext, keyByteLen);
+#else
+	return encryptAES_SSL110(key, plaintext, keyByteLen);
+#endif
+}
+
+Blob decryptAES(Blob const& key, Blob const& ciphertext, int keyByteLen)
+{
+#ifdef USE_LOW_OPENSSL
+	return decryptAES_SSL102(key, ciphertext, keyByteLen);
+#else
+	return decryptAES_SSL110(key, ciphertext, keyByteLen);
+#endif
 }
 
 } // ripple

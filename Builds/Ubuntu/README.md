@@ -1,14 +1,14 @@
 # Ubuntu 编译
 ## 系统需求
-- 建议 Ubutun 16.04 及以上版本
+- 建议 Ubutun 18.04 及以上版本
 
 ## 需特殊注意的系统依赖项版本
 | Component | Minimum Recommended Version |
 |-----------|-----------------------|
-| gcc | 7.4.0 |
-| cmake | 3.12 |
+| gcc | 7.4.0+ |
+| cmake | 3.12+ |
 | boost | 1.70.0 |
-
+| open_ssl | 1.1.0+ |
 
 
 ## 下载源码
@@ -90,6 +90,11 @@ gcc -v
 - 执行 cmake
 ```bash
 > cmake -DCMAKE_BUILD_TYPE=Release|Debug ..
+```
+
+** 注：** cmake默认支持openssl1.1.0及以上版本，但是为了适配客户的系统版本，也可用1.0.2版本的 openssl编译，需指定编译选项：-DUSE_LOW_OPENSSL=ON 
+```
+cmake -DUSE_LOW_OPENSSL=ON -G"Visual Studio 15 2017 Win64" -Dtarget=msvc.debug.unity ../../
 ```
 
 - 编译
