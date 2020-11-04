@@ -112,11 +112,17 @@ bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
 bool BlockStorage::exepectBlock(
 	const HashValue& hash, 
 	const Author& author,
-	ExecutedBlock& block) const {
+	ExecutedBlock& block) {
 	if (blockOf(hash, block))
 		return true;
 
-	return state_compute_->syncBlock(hash, author, block);
+    if (state_compute_->syncBlock(hash, author, block))
+    {
+        cache_blocks_.emplace(std::make_pair(hash, block));
+        JLOG(debugLog().info()) << "store block: " << hash;
+        return true;
+    }
+    return false;
 }
 
 int BlockStorage::addCerts(

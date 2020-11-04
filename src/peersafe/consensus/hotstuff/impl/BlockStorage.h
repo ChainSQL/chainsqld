@@ -59,7 +59,7 @@ public:
     bool exepectBlock(
 		const HashValue& hash, 
 		const Author& author,
-		ExecutedBlock& block) const;
+		ExecutedBlock& block);
 
 	const QuorumCertificate& HighestQuorumCert() const {
 		return highest_quorum_cert_;
