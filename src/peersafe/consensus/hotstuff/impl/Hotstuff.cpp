@@ -153,10 +153,11 @@ int Hotstuff::handleProposal(
 
 int Hotstuff::handleVote(
 	const ripple::hotstuff::Vote& vote,
-	const ripple::hotstuff::SyncInfo& sync_info) {
+	const ripple::hotstuff::SyncInfo& sync_info,
+	const Round& shift /*= 0*/) {
 	if (round_manager_ == nullptr)
 		return 1;
-	return round_manager_->ProcessVote(vote, sync_info);
+	return round_manager_->ProcessVote(vote, sync_info, shift);
 }
 
 // Exepect an executed block by block_id

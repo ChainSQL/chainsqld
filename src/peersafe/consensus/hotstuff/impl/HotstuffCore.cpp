@@ -81,6 +81,10 @@ Block HotstuffCore::SignProposal(const BlockData& proposal) {
 }
 
 bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vote& vote) {
+	JLOG(journal_.info())
+		<< "begin to construct and sign vote for round "
+		<< executed_block.block.block_data().round;
+
 	const Block& proposed_block = executed_block.block;
 	if (VerifyEpoch(proposed_block.block_data().epoch) == false) {
 		JLOG(journal_.error())

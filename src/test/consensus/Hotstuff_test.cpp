@@ -252,8 +252,8 @@ public:
 		auto it = committed_blocks_.find(block.id());
 		if (it == committed_blocks_.end()) {
 			ripple::hotstuff::Round round = block.block_data().round;
-			//std::cout
-			JLOG(debugLog().info())
+			std::cout
+			//JLOG(debugLog().info())
 				<< config_.config.id << ": "
 				<< "epoch " << block.block_data().epoch
 				<< ", author " << block.block_data().author()
@@ -476,7 +476,7 @@ public:
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			if (it->second->malicious() == false) {
-				it->second->handleVote(v, sync);
+				it->second->handleVote(v, sync, 0);
 			}
 		}
 	}
@@ -513,7 +513,8 @@ public:
 	void sendVote(
 		const ripple::hotstuff::Author& author, 
 		const ripple::hotstuff::Vote& vote, 
-		const ripple::hotstuff::SyncInfo& sync_info) {
+		const ripple::hotstuff::SyncInfo& sync_info,
+		const ripple::hotstuff::Round& shift /*= 0*/) {
 
 		if (malicious())
 			return;
@@ -521,20 +522,21 @@ public:
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			if (it->second->author() == author 
 				&& it->second->malicious() == false) {
-				it->second->handleVote(vote, sync_info);
+				it->second->handleVote(vote, sync_info, shift);
 			}
 		}
 	}
 
 	void handleVote(
 		const ripple::hotstuff::Vote& vote,
-		const ripple::hotstuff::SyncInfo& sync_info) {
+		const ripple::hotstuff::SyncInfo& sync_info,
+		const ripple::hotstuff::Round& shift /*= 0*/) {
 
 		env_->app().getJobQueue().addJob(
 			jtPROPOSAL_t,
 			"send_vote",
-			[this, vote, sync_info](Job&) {
-				hotstuff_->handleVote(vote, sync_info);
+			[this, vote, sync_info, shift](Job&) {
+				hotstuff_->handleVote(vote, sync_info, shift);
 			});
 	}
 
@@ -944,9 +946,9 @@ public:
 	void testRunOtherReplicasAndThenRunFirstReplicaAfterSeconds() {
 		std::cout << "begin testRunOtherReplicasAndThenRunFirstReplicaAfterSeconds" << std::endl;
 		newReplicas("testRunOtherReplicasAndThenRunFirstReplicaAfterSeconds", replicas_);
-		runReplica(2);
-		runReplica(3);
-		runReplica(4);
+		for (int i = 2; i <= replicas_; i++) {
+			runReplica(i);
+		}
 
 		std::thread sleep = std::thread([this]() {
 			std::this_thread::sleep_for(std::chrono::seconds(2*(timeout_  + 5)));
@@ -969,9 +971,9 @@ public:
 
 		std::thread sleep = std::thread([this]() {
 			std::this_thread::sleep_for(std::chrono::seconds(2 * (timeout_ + 5)));
-			runReplica(2);
-			runReplica(3);
-			runReplica(4);
+				for (int i = 2; i <= replicas_; i++) {
+					runReplica(i);
+				}
 			});
 		sleep.join();
 

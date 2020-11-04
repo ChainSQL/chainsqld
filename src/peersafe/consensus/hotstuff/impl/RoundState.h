@@ -72,9 +72,10 @@ public:
 
 	int insertVote(
 		const Vote& vote, 
+		const Round& shift,
 		ValidatorVerifier* verifer, 
-		QuorumCertificate& quorumCert,
-		boost::optional<TimeoutCertificate>& timeoutCert);
+		PendingVotes::QuorumCertificateResult& quorumCertResult,
+		boost::optional<PendingVotes::TimeoutCertificateResult>& timeoutCertResult);
 
 	void reset();
 
@@ -84,6 +85,10 @@ public:
 
 	Round getShiftRoundToNextLeader() {
 		return shift_round_to_next_leader_;
+	}
+
+	void resetShiftRoundToNextLeader() {
+		shift_round_to_next_leader_ = 0;
 	}
 
 private:

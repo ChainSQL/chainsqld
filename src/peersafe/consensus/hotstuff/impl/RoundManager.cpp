@@ -53,7 +53,7 @@ int RoundManager::start() {
 	// open a new round
 	boost::optional<NewRoundEvent> new_round_event = round_state_->ProcessCertificates(block_store_->sync_info());
 	if (new_round_event) {
-		return ProcessNewRoundEvent(new_round_event.get());
+		return ProcessNewRoundEvent(new_round_event.get(), 0);
 	}
 	return 1;
 }
@@ -70,7 +70,7 @@ void RoundManager::stop() {
 	}
 }
 
-int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
+int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event, const Round& shift) {
 	JLOG(journal_.info())
 		<< "Process new round event: " << new_round_event.round;
 
@@ -87,7 +87,7 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
         return 1;
     }
 
-	if (!IsValidProposer(proposal_generator_->author(), new_round_event.round)) {
+	if (!IsValidProposer(proposal_generator_->author(), new_round_event.round + shift)) {
 		JLOG(journal_.error())
 			<< "ProcessNewRoundEvent: invalidProposel."
 			<< " New round is " << new_round_event.round
@@ -210,12 +210,15 @@ int RoundManager::ProcessProposal(const Block& proposal, const Round& shift /*= 
 	}
 
 	Author next_leader = proposer_election_->GetValidProposer(proposal_round + 1);
+	JLOG(journal_.info())
+		<< "Send the vote whose round is " << proposal_round
+		<< " to next leader " << next_leader;
 	round_state_->recordVote(vote);
 	network_->sendVote(next_leader, vote, block_store_->sync_info());
 	return 0;
 }
 
-int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
+int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info, const Round& shift /*= 0*/) {
 	if (stop_)
 		return 1;
 
@@ -234,22 +237,23 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 			<< round_state_->current_round();
 		return 1;
 	}
-	return ProcessVote(vote);
+	return ProcessVote(vote, shift);
 }
 
-int RoundManager::ProcessVote(const Vote& vote) {
-    if (hotstuff_core_->epochState()->verifier->verifySignature(
-        vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
-    {
-        JLOG(journal_.error())
-            << "An anutor " << vote.author()
-            << " voted a vote mismatch signature."
-            << "The round for vote is "
-            << vote.vote_data().proposed().round;
-        return 1;
-    }
+int RoundManager::ProcessVote(const Vote& vote, const Round& shift /*= 0*/) {
+	if (hotstuff_core_->epochState()->verifier->verifySignature(
+		vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
+	{
+		JLOG(journal_.error())
+			<< "An anutor " << vote.author()
+			<< " voted a vote mismatch signature."
+			<< "The round for vote is "
+			<< vote.vote_data().proposed().round;
+		return 1;
+	}
 
 	if (vote.isTimeout() == false) {
+		assert(shift == 0);
 		Round next_round = vote.vote_data().proposed().round + 1;
 		if (IsValidProposer(proposal_generator_->author(), next_round) == false) {
 			JLOG(journal_.warn())
@@ -263,21 +267,29 @@ int RoundManager::ProcessVote(const Vote& vote) {
 	// Get QC from block storage
 
 	// Add the vote and check whether it completes a new QC or a TC
-	QuorumCertificate quorumCert;
-	boost::optional<TimeoutCertificate> timeoutCert;
+	PendingVotes::QuorumCertificateResult quorumCertResult;
+	boost::optional<PendingVotes::TimeoutCertificateResult> timeoutCertResult;
 	int ret = round_state_->insertVote(
 		vote,
+		shift,
 		hotstuff_core_->epochState()->verifier,
-		quorumCert, timeoutCert);
+		quorumCertResult, 
+		timeoutCertResult);
 	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
-        JLOG(journal_.info()) << "qc has reached";
-		NewQCAggregated(quorumCert, vote.author());
+		JLOG(journal_.info())
+			<< "Collected enough votes for the round " << vote.vote_data().proposed().round
+			<< ", shift " << std::get<0>(quorumCertResult)
+			<< ". A new round " << (round_state_->current_round() + 1)
+			<< " will open.";
+		NewQCAggregated(
+			std::get<1>(quorumCertResult),
+			vote.author(),
+			std::get<0>(quorumCertResult));
 		return 0;
 	}
 	else if (ret == PendingVotes::VoteReceptionResult::NewTimeoutCertificate) {
-		assert(timeoutCert);
-        JLOG(journal_.info()) << "tc has reached";
-		NewTCAggregated(timeoutCert.get());
+		assert(timeoutCertResult);
+		NewTCAggregated(std::get<1>(timeoutCertResult.get()));
 		return 0;
 	}
     else if (ret == PendingVotes::VoteReceptionResult::VoteAdded)
@@ -358,18 +370,21 @@ int RoundManager::SyncUp(
 	return 0;
 }
 
-int RoundManager::ProcessCertificates() {
+int RoundManager::ProcessCertificates(const Round& shift /*= 0*/) {
 	SyncInfo sync_info = block_store_->sync_info();
 	boost::optional<NewRoundEvent> new_round_event = round_state_->ProcessCertificates(sync_info);
 	if (new_round_event) {
-		ProcessNewRoundEvent(new_round_event.get());
+		ProcessNewRoundEvent(new_round_event.get(), shift);
 	}
 	return 0;
 }
 
-int RoundManager::NewQCAggregated(const QuorumCertificate& quorumCert, const Author& author) {
+int RoundManager::NewQCAggregated(
+	const QuorumCertificate& quorumCert, 
+	const Author& author, 
+	const Round& shift) {
 	if (block_store_->insertQuorumCert(quorumCert, author, network_) == 0) {
-		ProcessCertificates();
+		ProcessCertificates(shift);
 	}
 	return 0;
 }
@@ -421,8 +436,7 @@ void RoundManager::NotUseNilBlockProcessLocalTimeout(const Round& round) {
 	round_state_->shiftRoundToNextLeader();
 	Round shift_round = round_state_->getShiftRoundToNextLeader();
 
-	if (round_state_->send_vote()
-		&& round_state_->send_vote()->vote_data().parent().round > 0) {
+	if (round_state_->send_vote()) {
 		Vote timeout_vote = round_state_->send_vote().get();
 		if (timeout_vote.isTimeout() == false) {
 			Timeout timeout = timeout_vote.timeout();
@@ -432,13 +446,20 @@ void RoundManager::NotUseNilBlockProcessLocalTimeout(const Round& round) {
 		}
 		round_state_->recordVote(timeout_vote);
 
-		Author next_leader = proposer_election_->GetValidProposer(round + shift_round);
+		Author next_leader = proposer_election_->GetValidProposer(round + 1 + shift_round);
+		JLOG(journal_.info())
+			<< "Switch send current vote whoes round is " << round
+			<< " to next leader " << next_leader;
 		round_state_->recordVote(timeout_vote);
 		if (next_leader == proposal_generator_->author()) {
-			ProcessVote(timeout_vote);
+			ProcessVote(timeout_vote, shift_round);
 		}
 		else {
-			network_->sendVote(next_leader, timeout_vote, block_store_->sync_info());
+			network_->sendVote(
+				next_leader, 
+				timeout_vote, 
+				block_store_->sync_info(),
+				shift_round);
 		}
 	}
 	else {

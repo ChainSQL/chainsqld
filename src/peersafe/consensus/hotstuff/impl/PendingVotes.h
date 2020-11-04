@@ -21,6 +21,8 @@
 #define RIPPLE_CONSENSUS_HOTSTUFF_PENDINGVOTES_H
 
 #include <map>
+#include <set>
+#include <tuple>
 #include <mutex>
 #include <memory>
 
@@ -36,6 +38,9 @@ class PendingVotes
 {
 public:
 	using pointer = std::shared_ptr<PendingVotes>;
+
+	using QuorumCertificateResult = std::tuple<Round /*shift*/, QuorumCertificate>;
+	using TimeoutCertificateResult = std::tuple<Round /*shift*/, TimeoutCertificate>;
 
 	static pointer New() {
 		return pointer(new PendingVotes());
@@ -63,9 +68,10 @@ public:
 
 	int insertVote(
 		const Vote& vote,
+		const Round& shift,
 		ValidatorVerifier* verifer,
-		QuorumCertificate& quorumCert, 
-		boost::optional<TimeoutCertificate>& timeoutCert);
+		QuorumCertificateResult& quorumCertResult,
+		boost::optional<TimeoutCertificateResult>& timeoutCertResult);
 
 private:
     PendingVotes();
@@ -73,6 +79,7 @@ private:
 	std::mutex mutex_;
 	std::map<Author, Vote> author_to_vote_;
 	std::map<HashValue, LedgerInfoWithSignatures> li_digest_to_votes_;
+	std::map<HashValue, std::set<Round>> maybe_shift_rounds_;
 	boost::optional<TimeoutCertificate> maybe_partial_timeout_cert_;
 };
 

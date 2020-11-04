@@ -29,6 +29,7 @@ PendingVotes::PendingVotes()
 : mutex_()
 , author_to_vote_()
 , li_digest_to_votes_()
+, maybe_shift_rounds_()
 , maybe_partial_timeout_cert_() {
 }
 
@@ -37,9 +38,10 @@ PendingVotes::~PendingVotes() {
 
 int PendingVotes::insertVote(
 	const Vote& vote,
+	const Round& shift,
 	ValidatorVerifier* verifer,
-	QuorumCertificate& quorumCert,
-	boost::optional<TimeoutCertificate>& timeoutCert) {
+	PendingVotes::QuorumCertificateResult& quorumCertResult,
+	boost::optional<PendingVotes::TimeoutCertificateResult>& timeoutCertResult) {
 
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -70,15 +72,6 @@ int PendingVotes::insertVote(
 		}
 	}
 
-	//if (verifer->verifySignature(vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false) {
-	//	JLOG(debugLog().error())
-	//		<< "An anutor " << vote.author()
-	//		<< " voted a vote mismatch signature."
-	//		<< "The round for vote is "
-	//		<< vote.vote_data().proposed().round;
-	//	return VoteReceptionResult::ErrorAddingVote;
-	//}
-
 	// Store a new vote(or update in case it's a new timeout vote)
 	author_to_vote_.emplace(std::make_pair(vote.author(), vote));
 
@@ -90,9 +83,18 @@ int PendingVotes::insertVote(
 	}
 	it->second.addSignature(vote.author(), vote.signature());
 
+	auto shift_it = maybe_shift_rounds_.find(li_digest);
+	if (shift_it == maybe_shift_rounds_.end()) {
+		std::set<Round> shift_rounds;
+		shift_it = maybe_shift_rounds_.emplace(std::make_pair(li_digest, shift_rounds)).first;
+	}
+	shift_it->second.insert(shift);
+
 	// check if we have enough signatures to create a QC
 	if (verifer->checkVotingPower(it->second.signatures)) {
-		quorumCert = QuorumCertificate(vote.vote_data(), it->second);
+		Round shift = (shift_it->second.size() == 1) ? *shift_it->second.begin() : 0;
+		//quorumCert = QuorumCertificate(vote.vote_data(), it->second);
+		quorumCertResult = std::make_tuple(shift, QuorumCertificate(vote.vote_data(), it->second));
 		return VoteReceptionResult::NewQuorumCertificate;
 	}
 	
@@ -104,7 +106,10 @@ int PendingVotes::insertVote(
 		TimeoutCertificate partial_tc = maybe_partial_timeout_cert_.get_value_or(TimeoutCertificate(timoeut));
 		partial_tc.addSignature(vote.author(), signature);
 		if (verifer->checkVotingPower(partial_tc.signatures())) {
-			timeoutCert = partial_tc;
+			//timeoutCert = partial_tc;
+
+			Round shift = (shift_it->second.size() == 1) ? *shift_it->second.begin() : 0;
+			timeoutCertResult = std::make_tuple(shift, partial_tc);
 			return VoteReceptionResult::NewTimeoutCertificate;
 		}
 	}

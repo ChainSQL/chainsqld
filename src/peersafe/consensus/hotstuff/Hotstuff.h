@@ -81,7 +81,8 @@ public:
 
 	int handleVote(
 		const ripple::hotstuff::Vote& vote,
-		const ripple::hotstuff::SyncInfo& sync_info);
+		const ripple::hotstuff::SyncInfo& sync_info,
+		const Round& shift = 0);
 
 	// Get an expected block
 	bool expectBlock(

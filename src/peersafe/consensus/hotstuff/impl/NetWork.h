@@ -46,7 +46,8 @@ public:
 	virtual void sendVote(
 		const Author& author, 
 		const Vote& vote, 
-		const SyncInfo& sync_info) = 0;
+		const SyncInfo& sync_info,
+		const Round& shift = 0) = 0;
     
     virtual ~NetWork() {}
 protected:
