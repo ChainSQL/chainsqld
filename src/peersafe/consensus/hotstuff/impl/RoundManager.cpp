@@ -158,7 +158,8 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 		return false;
 
     JLOG(journal_.info())
-        << "Check a proposal: " << proposal.block_data().round;
+        << "Check a proposal: " << proposal.block_data().round
+        << ", seq: " << proposal.block_data().getLedgerInfo().seq;
 
 	if (EnsureRoundAndSyncUp(
 		proposal.block_data().round,

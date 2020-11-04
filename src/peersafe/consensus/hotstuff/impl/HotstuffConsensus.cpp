@@ -417,6 +417,8 @@ bool HotstuffConsensus::syncBlock(const uint256& blockID, const hotstuff::Author
         return false;
     }
 
+    JLOG(j_.info()) << "acquired block " << blockID << " success";
+
     executedBlock = block;
 
     return true;
