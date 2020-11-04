@@ -94,7 +94,7 @@ gcc -v
 
 ** 注：** cmake默认支持openssl1.1.0及以上版本，但是为了适配客户的系统版本，也可用1.0.2版本的 openssl编译，需指定编译选项：-DUSE_LOW_OPENSSL=ON 
 ```
-cmake -DUSE_LOW_OPENSSL=ON -G"Visual Studio 15 2017 Win64" -Dtarget=msvc.debug.unity ../../
+cmake -DUSE_LOW_OPENSSL=ON -DCMAKE_BUILD_TYPE=Release|Debug ..
 ```
 
 - 编译
