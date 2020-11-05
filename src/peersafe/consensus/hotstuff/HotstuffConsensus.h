@@ -139,6 +139,8 @@ private:
         RCLCxLedger const& prevLgr,
         ConsensusMode mode);
 
+    void checkCache();
+
     bool handleWrongLedger(typename Ledger_t::ID const& lgrId);
 
 private:
@@ -151,7 +153,8 @@ private:
 
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
-    std::map<typename TxSet_t::ID, std::map<PublicKey, STProposal::pointer>> proposalCache_;
+    std::map<typename TxSet_t::ID, std::map<PublicKey, STProposal::pointer>> curProposalCache_;
+    std::map<std::uint32_t, std::map<PublicKey, STProposal::pointer>> nextProposalCache_;
 
     std::weak_ptr<std::promise<hotstuff::ExecutedBlock>> weakBlockPromise_;
 };

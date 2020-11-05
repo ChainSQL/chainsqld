@@ -147,7 +147,7 @@ void HotstuffConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const&
         acquired_.emplace(id, txSet);
     }
 
-    for (auto it : proposalCache_[id])
+    for (auto it : curProposalCache_[id])
     {
         hotstuff_->handleProposal(it.second->block());
     }
@@ -589,13 +589,6 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
         return;
     }
 
-    if (info.seq > previousLedger_.seq() + 1)
-    {
-        JLOG(j_.warn()) << "we are fall behind";
-        prevLedgerID_ = info.parentHash;
-        return;
-    }
-
     auto payload = proposal->block().block_data().payload;
     if (!payload)
     {
@@ -603,12 +596,21 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
         return;
     }
 
+    if (info.seq > previousLedger_.seq() + 1)
+    {
+        JLOG(j_.warn()) << "we are fall behind";
+        prevLedgerID_ = info.parentHash;
+        nextProposalCache_[info.seq][payload->author] = proposal;
+        return;
+    }
+
+
     auto const ait = acquired_.find(payload->cmd);
     if (ait == acquired_.end())
     {
         JLOG(j_.info()) << "Don't have tx set for proposal:" << payload->cmd;
 
-        proposalCache_[payload->cmd][payload->author] = proposal;
+        curProposalCache_[payload->cmd][payload->author] = proposal;
 
         // acquireTxSet will return the set if it is available, or
         // spawn a request for it and return none/nullptr.  It will call
@@ -723,7 +725,35 @@ void HotstuffConsensus::startRoundInternal(
     previousLedger_ = prevLgr;
 
     acquired_.clear();
-    proposalCache_.clear();
+    curProposalCache_.clear();
+
+    checkCache();
+}
+
+void HotstuffConsensus::checkCache()
+{
+    std::uint32_t curSeq = previousLedger_.seq() + 1;
+    if (nextProposalCache_.find(curSeq) != nextProposalCache_.end())
+    {
+        JLOG(j_.info()) << "Handle cached proposal";
+        for (auto it = nextProposalCache_[curSeq].begin(); it != nextProposalCache_[curSeq].end(); it++)
+        {
+            peerProposalInternal(it->second);
+        }
+    }
+
+    auto iter = nextProposalCache_.begin();
+    while (iter != nextProposalCache_.end())
+    {
+        if (iter->first < curSeq)
+        {
+            iter = nextProposalCache_.erase(iter);
+        }
+        else
+        {
+            iter++;
+        }
+    }
 }
 
 bool HotstuffConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
