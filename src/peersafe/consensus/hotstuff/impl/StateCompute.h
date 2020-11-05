@@ -45,7 +45,7 @@ struct StateComputeResult {
 	}
 };
 
-struct ExecutedBlock;
+class ExecutedBlock;
 class StateCompute {
 public:
 	virtual ~StateCompute() {}

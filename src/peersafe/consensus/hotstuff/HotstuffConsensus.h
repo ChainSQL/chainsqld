@@ -106,7 +106,7 @@ public:
     const bool checkVotingPower(const std::map<hotstuff::Author, hotstuff::Signature>& signatures) const override final;
 
     // Overwrite NetWork interfaces.
-    void broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo, const hotstuff::Round& shift = 0) override final;
+    void broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo) override final;
     void broadcast(const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
     void sendVote(const hotstuff::Author& author, const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
     void broadcast(const hotstuff::EpochChange& epoch_change) override final;

@@ -486,7 +486,7 @@ const bool HotstuffConsensus::checkVotingPower(const std::map<hotstuff::Author, 
     return signatures.size() >= adaptor_.getQuorum();
 }
 
-void HotstuffConsensus::broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo, const hotstuff::Round& shift)
+void HotstuffConsensus::broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo)
 {
     auto proposal = std::make_shared<STProposal>(block, syncInfo, adaptor_.valPublic());
     
