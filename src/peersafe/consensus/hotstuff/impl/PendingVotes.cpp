@@ -30,7 +30,9 @@ PendingVotes::PendingVotes()
 , author_to_vote_()
 , li_digest_to_votes_()
 , quorum_certificate_record_()
-, maybe_partial_timeout_cert_() {
+, maybe_partial_timeout_cert_()
+, cache_votes_mutex_()
+, cache_votes_() {
 }
 
 PendingVotes::~PendingVotes() {
@@ -113,6 +115,28 @@ int PendingVotes::insertVote(
 	}
 
 	return VoteReceptionResult::VoteAdded;
+}
+
+std::size_t PendingVotes::cacheVote(const Vote& vote) {
+	std::lock_guard<std::mutex> lock(cache_votes_mutex_);
+	HashValue block_id = vote.vote_data().proposed().id;
+	auto it = cache_votes_.find(block_id);
+	if (it == cache_votes_.end()) {
+		it = cache_votes_.emplace(block_id, Votes()).first;
+	}
+
+	it->second.push_back(vote);
+	return it->second.size();
+}
+
+std::size_t PendingVotes::getAndRemoveCachedVotes(const HashValue& id, PendingVotes::Votes& votes) {
+	votes.clear();
+	std::lock_guard<std::mutex> lock(cache_votes_mutex_);
+	auto it = cache_votes_.find(id);
+	if (it != cache_votes_.end()) {
+		votes.swap(it->second);
+	}
+	return votes.size();
 }
 
 } // namespace hotstuff

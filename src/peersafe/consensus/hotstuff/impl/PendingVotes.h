@@ -38,6 +38,7 @@ class PendingVotes
 {
 public:
 	using pointer = std::shared_ptr<PendingVotes>;
+	using Votes = std::vector<Vote>;
 
 	static pointer New() {
 		return pointer(new PendingVotes());
@@ -69,6 +70,9 @@ public:
 		QuorumCertificate& quorumCert,
 		boost::optional<TimeoutCertificate>& timeoutCert);
 
+	std::size_t cacheVote(const Vote& vote);
+	std::size_t getAndRemoveCachedVotes(const HashValue& id, Votes& votes);
+
 private:
     PendingVotes();
 
@@ -77,6 +81,9 @@ private:
 	std::map<HashValue, LedgerInfoWithSignatures> li_digest_to_votes_;
 	std::map<HashValue, QuorumCertificate> quorum_certificate_record_;
 	boost::optional<TimeoutCertificate> maybe_partial_timeout_cert_;
+
+	std::mutex cache_votes_mutex_;
+	std::map<HashValue, Votes> cache_votes_;
 };
 
 } // namespace hotstuff

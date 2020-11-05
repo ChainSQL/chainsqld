@@ -76,6 +76,9 @@ public:
 		QuorumCertificate& quorumCertResult,
 		boost::optional<TimeoutCertificate>& timeoutCertResult);
 
+	std::size_t cacheVote(const Vote& vote);
+	std::size_t getAndRemoveCachedVotes(const HashValue& id, PendingVotes::Votes& votes);
+
 	void reset();
 
 private:

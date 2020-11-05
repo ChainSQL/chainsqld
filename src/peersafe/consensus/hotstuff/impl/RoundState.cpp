@@ -95,6 +95,22 @@ int RoundState::insertVote(
 		timeoutCertResult);
 }
 
+std::size_t RoundState::cacheVote(const Vote& vote) {
+	Round round = current_round();
+	if (vote.vote_data().proposed().round != round) {
+		JLOG(journal_.error())
+			<< "cache a vote failed. reason: expecte round is "
+			<< vote.vote_data().proposed().round
+			<< " but current round is " << round;
+		return 0;
+	}
+	return pending_votes_->cacheVote(vote);
+}
+
+std::size_t RoundState::getAndRemoveCachedVotes(const HashValue& id, PendingVotes::Votes& votes) {
+	return pending_votes_->getAndRemoveCachedVotes(id, votes);
+}
+
 void RoundState::reset() {
 	current_round_ = 0;
 	pending_votes_ = PendingVotes::New();

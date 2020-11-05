@@ -89,6 +89,10 @@ private:
 	bool IsValidProposer(const Author& author, const Round& round);
 	bool IsValidProposal(const Block& proposal);
 
+	bool ReceivedProposedBlock(const HashValue& proposed_id);
+	void AddVoteToCache(const Vote& vote);
+	void HandleCacheVotes(const HashValue& id);
+
 	void HandleSyncBlockResult(const HashValue& hash, const ExecutedBlock& block);
 
 	bool unsafetyExpectBlock(

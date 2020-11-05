@@ -214,6 +214,7 @@ int RoundManager::ProcessProposal(const Block& proposal) {
 		<< " to next leader " << next_leader;
 	round_state_->recordVote(vote);
 	network_->sendVote(next_leader, vote, block_store_->sync_info());
+
 	return 0;
 }
 
@@ -236,10 +237,7 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 			<< round_state_->current_round();
 		return 1;
 	}
-	return ProcessVote(vote);
-}
 
-int RoundManager::ProcessVote(const Vote& vote) {
 	if (hotstuff_core_->epochState()->verifier->verifySignature(
 		vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
 	{
@@ -251,6 +249,19 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		return 1;
 	}
 
+	HashValue proposed_id = vote.vote_data().proposed().id;
+	if (ReceivedProposedBlock(proposed_id) == false) {
+		AddVoteToCache(vote);
+		return 0;
+	}
+	else {
+		HandleCacheVotes(proposed_id);
+	}
+
+	return ProcessVote(vote);
+}
+
+int RoundManager::ProcessVote(const Vote& vote) {
 	if (vote.isTimeout() == false) {
 		Round next_round = vote.vote_data().proposed().round + 1;
 		if (IsValidProposer(proposal_generator_->author(), next_round) == false) {
@@ -430,6 +441,27 @@ bool RoundManager::IsValidProposer(const Author& author, const Round& round) {
 
 bool RoundManager::IsValidProposal(const Block& proposal) {
 	return proposer_election_->IsValidProposal(proposal);
+}
+
+bool RoundManager::ReceivedProposedBlock(const HashValue& proposed_id) {
+	ExecutedBlock block;
+	return block_store_->safetyBlockOf(proposed_id, block);
+}
+
+void RoundManager::AddVoteToCache(const Vote& vote) {
+	JLOG(journal_.warn())
+		<< "Received a vote but it's proposal hasn't been received now, cache it."
+		<< "Vote round is " << vote.vote_data().proposed().round
+		<< " and author is " << vote.author();
+	round_state_->cacheVote(vote);
+}
+
+void RoundManager::HandleCacheVotes(const HashValue& id) {
+	PendingVotes::Votes votes;
+	std::size_t size = round_state_->getAndRemoveCachedVotes(id, votes);
+	for (std::size_t i = 0; i < size; i++) {
+		ProcessVote(votes[i]);
+	}
 }
 
 void RoundManager::HandleSyncBlockResult(
