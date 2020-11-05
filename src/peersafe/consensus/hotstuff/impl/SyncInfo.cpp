@@ -65,7 +65,7 @@ const QuorumCertificate SyncInfo::HighestCommitCert() const {
 }
 
 const TimeoutCertificate SyncInfo::HighestTimeoutCert() const {
-	return highest_timeout_cert_.get_value_or(TimeoutCertificate(Timeout{0, 0}));
+	return highest_timeout_cert_.get_value_or(TimeoutCertificate(Timeout{0, 0, boost::none}));
 }
 
 const bool SyncInfo::hasNewerCertificate(const SyncInfo& sync_info) const {

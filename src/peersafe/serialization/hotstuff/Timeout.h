@@ -17,37 +17,29 @@
  */
  //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H
+#ifndef RIPPLE_SERIALIZATION_HOTSTUFF_TIMEOUT_H
+#define RIPPLE_SERIALIZATION_HOTSTUFF_TIMEOUT_H
 
-#include <peersafe/consensus/hotstuff/impl/Types.h>
-#include <peersafe/consensus/hotstuff/impl/ValidatorVerifier.h>
+#include <peersafe/serialization/Serialization.h>
+#include <peersafe/serialization/hotstuff/BlockInfo.h>
+#include <peersafe/serialization/hotstuff/VoteData.h>
 
-namespace ripple {
-namespace hotstuff {
+#include <peersafe/consensus/hotstuff/impl/timeout.h>
 
-struct Timeout {
-	Epoch epoch;
-	Round round;
-	// next leader may be exception,
-	// so offset specify to next-next leader
-	boost::optional<Round> offset;
+namespace ripple { namespace hotstuff {
 
-	bool sign(ValidatorVerifier* verifier, Signature& signature) {
-		using beast::hash_append;
-		ripple::sha512_half_hasher h;
-		hash_append(h, epoch);
-		hash_append(h, round);
-		if (offset)
-			hash_append(h, offset.get());
+template<class Archive>
+void serialize(
+    Archive& ar, 
+    Timeout& timeout, 
+    const unsigned int /*version*/) {
+	// note, version is always the latest when saving
+	ar & timeout.epoch;
+	ar & timeout.round;
+	ar & timeout.offset;
+}
 
-		HashValue hash = static_cast<typename sha512_half_hasher::result_type>(h);
-
-		return verifier->signature(hash, signature);
-	}
-};
-
-} // namespace hotstuff
+} // namespace serialization
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_TIMEOUT_H
+#endif // RIPPLE_SERIALIZATION_HOTSTUFF_TIMEOUT_H

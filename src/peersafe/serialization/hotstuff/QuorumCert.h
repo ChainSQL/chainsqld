@@ -24,6 +24,7 @@
 #include <peersafe/serialization/PublicKey.h>
 #include <peersafe/serialization/hotstuff/BlockInfo.h>
 #include <peersafe/serialization/hotstuff/VoteData.h>
+#include <peersafe/serialization/hotstuff/Timeout.h>
 
 #include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
 
