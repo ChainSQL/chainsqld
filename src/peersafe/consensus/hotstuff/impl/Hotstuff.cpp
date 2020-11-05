@@ -143,21 +143,18 @@ bool Hotstuff::CheckProposal(
 	return round_manager_->CheckProposal(proposal, sync_info);
 }
 
-int Hotstuff::handleProposal(
-	const ripple::hotstuff::Block& proposal, 
-	const Round& shift /*= 0*/) {
+int Hotstuff::handleProposal(const ripple::hotstuff::Block& proposal) {
 	if (round_manager_ == nullptr)
 		return 1;
-	return round_manager_->ProcessProposal(proposal, shift);
+	return round_manager_->ProcessProposal(proposal);
 }
 
 int Hotstuff::handleVote(
 	const ripple::hotstuff::Vote& vote,
-	const ripple::hotstuff::SyncInfo& sync_info,
-	const Round& shift /*= 0*/) {
+	const ripple::hotstuff::SyncInfo& sync_info) {
 	if (round_manager_ == nullptr)
 		return 1;
-	return round_manager_->ProcessVote(vote, sync_info, shift);
+	return round_manager_->ProcessVote(vote, sync_info);
 }
 
 // Exepect an executed block by block_id

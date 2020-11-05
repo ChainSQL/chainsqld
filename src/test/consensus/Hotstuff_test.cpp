@@ -429,8 +429,7 @@ public:
 	// for Network
 	void broadcast(
 		const ripple::hotstuff::Block& block, 
-		const ripple::hotstuff::SyncInfo& sync_info,
-		const ripple::hotstuff::Round& shift = 0) {
+		const ripple::hotstuff::SyncInfo& sync_info) {
 		
 		if (malicious())
 			return;
@@ -443,22 +442,21 @@ public:
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			if (it->second->malicious() == false) {
-				it->second->handleProposal(proposal, sync, shift);
+				it->second->handleProposal(proposal, sync);
 			}
 		}
 	}
 	
 	void handleProposal(
 		const ripple::hotstuff::Block& proposal,
-		const ripple::hotstuff::SyncInfo& sync_info,
-		const ripple::hotstuff::Round& shift = 0) {
+		const ripple::hotstuff::SyncInfo& sync_info) {
 
 		env_->app().getJobQueue().addJob(
 			jtPROPOSAL_t,
 			"broadcast_proposal",
-			[this, proposal, sync_info, shift](Job&) {
+			[this, proposal, sync_info](Job&) {
 				if (hotstuff_->CheckProposal(proposal, sync_info))
-					hotstuff_->handleProposal(proposal, shift);
+					hotstuff_->handleProposal(proposal);
 			});
 	}
 
@@ -477,7 +475,7 @@ public:
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			if (it->second->malicious() == false) {
-				it->second->handleVote(v, sync, 0);
+				it->second->handleVote(v, sync);
 			}
 		}
 	}
@@ -514,8 +512,7 @@ public:
 	void sendVote(
 		const ripple::hotstuff::Author& author, 
 		const ripple::hotstuff::Vote& vote, 
-		const ripple::hotstuff::SyncInfo& sync_info,
-		const ripple::hotstuff::Round& shift /*= 0*/) {
+		const ripple::hotstuff::SyncInfo& sync_info) {
 
 		if (malicious())
 			return;
@@ -523,21 +520,20 @@ public:
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
 			if (it->second->author() == author 
 				&& it->second->malicious() == false) {
-				it->second->handleVote(vote, sync_info, shift);
+				it->second->handleVote(vote, sync_info);
 			}
 		}
 	}
 
 	void handleVote(
 		const ripple::hotstuff::Vote& vote,
-		const ripple::hotstuff::SyncInfo& sync_info,
-		const ripple::hotstuff::Round& shift /*= 0*/) {
+		const ripple::hotstuff::SyncInfo& sync_info) {
 
 		env_->app().getJobQueue().addJob(
 			jtPROPOSAL_t,
 			"send_vote",
-			[this, vote, sync_info, shift](Job&) {
-				hotstuff_->handleVote(vote, sync_info, shift);
+			[this, vote, sync_info](Job&) {
+				hotstuff_->handleVote(vote, sync_info);
 			});
 	}
 
@@ -1109,7 +1105,7 @@ public:
 		testTimeoutRound();
 		testAddReplicas();
 		testRemoveReplicas();
-		testDisableNilBlock();
+		//testDisableNilBlock();
     }
 
 	Hotstuff_test()

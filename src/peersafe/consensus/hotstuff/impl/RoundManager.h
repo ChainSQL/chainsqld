@@ -54,9 +54,9 @@ public:
 	void stop();
 
 	bool CheckProposal(const Block& proposal, const SyncInfo& sync_info);
-	int ProcessProposal(const Block& proposal, const Round& shift = 0);
+	int ProcessProposal(const Block& proposal);
 
-	int ProcessVote(const Vote& vote, const SyncInfo& sync_info, const Round& shift = 0);
+	int ProcessVote(const Vote& vote, const SyncInfo& sync_info);
 
 	// Get an expected block
 	bool expectBlock(
@@ -66,9 +66,9 @@ private:
 	friend class ripple::test::Hotstuff_test;
 	friend class Hotstuff;
 
-	int ProcessVote(const Vote& vote, const Round& shift = 0);
+	int ProcessVote(const Vote& vote);
 	bool ExecuteAndVote(const Block& proposal, Vote& vote);
-	int ProcessNewRoundEvent(const NewRoundEvent& event, const Round& shift);
+	int ProcessNewRoundEvent(const NewRoundEvent& event);
 	boost::optional<Block> GenerateProposal(const NewRoundEvent& event);
 	bool EnsureRoundAndSyncUp(
 		Round round,
@@ -77,18 +77,17 @@ private:
 	int SyncUp(
 		const SyncInfo& sync_info,
 		const Author& author);
-	int ProcessCertificates(const Round& shift = 0);
+	int ProcessCertificates();
 	int NewQCAggregated(
 		const QuorumCertificate& quorumCert,
-		const Author& author,
-		const Round& shift);
+		const Author& author);
 	int NewTCAggregated(const TimeoutCertificate& timeoutCert);
 	
 	void ProcessLocalTimeout(const boost::system::error_code& ec, Round round);
 	void UseNilBlockProcessLocalTimeout(const Round& round);
 	void NotUseNilBlockProcessLocalTimeout(const Round& round);
 	bool IsValidProposer(const Author& author, const Round& round);
-	bool IsValidProposal(const Block& proposal, const Round& shift = 0);
+	bool IsValidProposal(const Block& proposal);
 
 	void HandleSyncBlockResult(const HashValue& hash, const ExecutedBlock& block);
 

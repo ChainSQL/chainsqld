@@ -72,24 +72,11 @@ public:
 
 	int insertVote(
 		const Vote& vote, 
-		const Round& shift,
 		ValidatorVerifier* verifer, 
-		PendingVotes::QuorumCertificateResult& quorumCertResult,
-		boost::optional<PendingVotes::TimeoutCertificateResult>& timeoutCertResult);
+		QuorumCertificate& quorumCertResult,
+		boost::optional<TimeoutCertificate>& timeoutCertResult);
 
 	void reset();
-
-	void shiftRoundToNextLeader() {
-		shift_round_to_next_leader_++;
-	}
-
-	Round getShiftRoundToNextLeader() {
-		return shift_round_to_next_leader_;
-	}
-
-	void resetShiftRoundToNextLeader() {
-		shift_round_to_next_leader_ = 0;
-	}
 
 private:
 	void CancelRoundTimeout();
@@ -99,9 +86,6 @@ private:
 	boost::asio::steady_timer round_timeout_timer_;
 	PendingVotes::pointer pending_votes_;
 	boost::optional<Vote> send_vote_;
-	// 加入当前 current_round 的 leader 没有出块或是异常
-	// 下一个 next_round = current_round + 1 的 leader 可以接管此轮次 current_round
-	std::atomic<Round> shift_round_to_next_leader_;
 };
 
 } // namespace hotstuff

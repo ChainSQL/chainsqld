@@ -39,9 +39,6 @@ class PendingVotes
 public:
 	using pointer = std::shared_ptr<PendingVotes>;
 
-	using QuorumCertificateResult = std::tuple<Round /*shift*/, QuorumCertificate>;
-	using TimeoutCertificateResult = std::tuple<Round /*shift*/, TimeoutCertificate>;
-
 	static pointer New() {
 		return pointer(new PendingVotes());
 	}
@@ -68,10 +65,9 @@ public:
 
 	int insertVote(
 		const Vote& vote,
-		const Round& shift,
 		ValidatorVerifier* verifer,
-		QuorumCertificateResult& quorumCertResult,
-		boost::optional<TimeoutCertificateResult>& timeoutCertResult);
+		QuorumCertificate& quorumCert,
+		boost::optional<TimeoutCertificate>& timeoutCert);
 
 private:
     PendingVotes();

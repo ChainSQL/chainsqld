@@ -75,14 +75,10 @@ public:
 		const ripple::hotstuff::Block& proposal,
 		const ripple::hotstuff::SyncInfo& sync_info);
 
-	int handleProposal(
-		const ripple::hotstuff::Block& proposal,
-		const Round& shift = 0);
-
+	int handleProposal(const ripple::hotstuff::Block& proposal);
 	int handleVote(
 		const ripple::hotstuff::Vote& vote,
-		const ripple::hotstuff::SyncInfo& sync_info,
-		const Round& shift = 0);
+		const ripple::hotstuff::SyncInfo& sync_info);
 
 	// Get an expected block
 	bool expectBlock(

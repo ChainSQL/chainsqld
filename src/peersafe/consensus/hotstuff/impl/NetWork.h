@@ -34,8 +34,7 @@ public:
 	// π„≤•Ã·∞∏
     virtual void broadcast(
 		const Block& proposal, 
-		const SyncInfo& sync_info, 
-		const Round& shift = 0) = 0;
+		const SyncInfo& sync_info) = 0;
 
     virtual void broadcast(
 		const Vote& vote, 
@@ -46,8 +45,7 @@ public:
 	virtual void sendVote(
 		const Author& author, 
 		const Vote& vote, 
-		const SyncInfo& sync_info,
-		const Round& shift = 0) = 0;
+		const SyncInfo& sync_info) = 0;
     
     virtual ~NetWork() {}
 protected:

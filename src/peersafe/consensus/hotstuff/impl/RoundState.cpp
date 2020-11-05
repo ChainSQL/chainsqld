@@ -32,8 +32,7 @@ RoundState::RoundState(
 , current_round_(0)
 , round_timeout_timer_(*io_service)
 , pending_votes_(nullptr)
-, send_vote_()
-, shift_round_to_next_leader_(0) {
+, send_vote_() {
 
 }
 
@@ -54,7 +53,6 @@ boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& s
 		current_round_ = new_round;
 		pending_votes_ = PendingVotes::New();
 		send_vote_ = boost::optional<Vote>();
-		resetShiftRoundToNextLeader();
 
 		NewRoundEvent new_round_event;
 		new_round_event.reason = NewRoundEvent::QCRead;
@@ -79,10 +77,9 @@ void RoundState::CancelRoundTimeout() {
 
 int RoundState::insertVote(
 	const Vote& vote, 
-	const Round& shift,
 	ValidatorVerifier* verifer, 
-	PendingVotes::QuorumCertificateResult& quorumCertResult,
-	boost::optional<PendingVotes::TimeoutCertificateResult>& timeoutCertResult) {
+	QuorumCertificate& quorumCertResult,
+	boost::optional<TimeoutCertificate>& timeoutCertResult) {
 	Round round = current_round();
 	if (vote.vote_data().proposed().round != round) {
 		JLOG(journal_.error())
@@ -93,7 +90,6 @@ int RoundState::insertVote(
 	}
 	return pending_votes_->insertVote(
 		vote, 
-		shift, 
 		verifer, 
 		quorumCertResult,
 		timeoutCertResult);
@@ -103,7 +99,6 @@ void RoundState::reset() {
 	current_round_ = 0;
 	pending_votes_ = PendingVotes::New();
 	send_vote_ = boost::optional<Vote>();
-	resetShiftRoundToNextLeader();
 }
 
 } // namespace hotstuff
