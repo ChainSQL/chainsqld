@@ -261,9 +261,6 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		}
 	}
 
-	// TODO
-	// Get QC from block storage
-
 	// Add the vote and check whether it completes a new QC or a TC
 	QuorumCertificate quorumCertResult;
 	boost::optional<TimeoutCertificate> timeoutCertResult;

@@ -75,7 +75,7 @@ private:
 	std::mutex mutex_;
 	std::map<Author, Vote> author_to_vote_;
 	std::map<HashValue, LedgerInfoWithSignatures> li_digest_to_votes_;
-	std::map<HashValue, std::set<Round>> maybe_shift_rounds_;
+	std::map<HashValue, QuorumCertificate> quorum_certificate_record_;
 	boost::optional<TimeoutCertificate> maybe_partial_timeout_cert_;
 };
 

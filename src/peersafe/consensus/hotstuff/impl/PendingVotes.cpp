@@ -29,6 +29,7 @@ PendingVotes::PendingVotes()
 : mutex_()
 , author_to_vote_()
 , li_digest_to_votes_()
+, quorum_certificate_record_()
 , maybe_partial_timeout_cert_() {
 }
 
@@ -42,6 +43,8 @@ int PendingVotes::insertVote(
 	boost::optional<TimeoutCertificate>& timeoutCert) {
 
 	std::lock_guard<std::mutex> lock(mutex_);
+	if (quorum_certificate_record_.find(vote.vote_data().proposed().id) != quorum_certificate_record_.end())
+		return VoteReceptionResult::DuplicateVote;
 
 	HashValue li_digest = const_cast<BlockInfo&>(vote.ledger_info().commit_info).id;
 
@@ -85,6 +88,7 @@ int PendingVotes::insertVote(
 	// check if we have enough signatures to create a QC
 	if (verifer->checkVotingPower(it->second.signatures)) {
 		quorumCert = QuorumCertificate(vote.vote_data(), it->second);
+		quorum_certificate_record_.emplace(vote.vote_data().proposed().id, quorumCert);
 		return VoteReceptionResult::NewQuorumCertificate;
 	}
 	
