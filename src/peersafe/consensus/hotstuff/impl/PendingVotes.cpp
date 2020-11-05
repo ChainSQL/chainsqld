@@ -43,10 +43,17 @@ int PendingVotes::insertVote(
 	boost::optional<TimeoutCertificate>& timeoutCert) {
 
 	std::lock_guard<std::mutex> lock(mutex_);
-	if (quorum_certificate_record_.find(vote.vote_data().proposed().id) != quorum_certificate_record_.end())
-		return VoteReceptionResult::DuplicateVote;
 
 	HashValue li_digest = const_cast<BlockInfo&>(vote.ledger_info().commit_info).id;
+
+    if (quorum_certificate_record_.find(li_digest) != quorum_certificate_record_.end())
+    {
+        JLOG(debugLog().info())
+            << "The round for vote is "
+            << vote.vote_data().proposed().round
+            << " QC has already reached";
+        return VoteReceptionResult::DuplicateVote;
+    }
 
 	// Has the author already voted for this round?
 	auto previously_seen_vote = author_to_vote_.find(vote.author());
@@ -88,7 +95,7 @@ int PendingVotes::insertVote(
 	// check if we have enough signatures to create a QC
 	if (verifer->checkVotingPower(it->second.signatures)) {
 		quorumCert = QuorumCertificate(vote.vote_data(), it->second);
-		quorum_certificate_record_.emplace(vote.vote_data().proposed().id, quorumCert);
+		quorum_certificate_record_.emplace(li_digest, quorumCert);
 		return VoteReceptionResult::NewQuorumCertificate;
 	}
 	
