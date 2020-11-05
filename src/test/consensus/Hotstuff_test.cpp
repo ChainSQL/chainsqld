@@ -27,6 +27,7 @@
 #include <future>
 #include <chrono>
 #include <future>
+#include <algorithm>
 
 #include <boost/format.hpp>
 
@@ -252,8 +253,8 @@ public:
 		auto it = committed_blocks_.find(block.id());
 		if (it == committed_blocks_.end()) {
 			ripple::hotstuff::Round round = block.block_data().round;
-			std::cout
-			//JLOG(debugLog().info())
+			//std::cout
+			JLOG(debugLog().info())
 				<< config_.config.id << ": "
 				<< "epoch " << block.block_data().epoch
 				<< ", author " << block.block_data().author()
@@ -655,6 +656,40 @@ public:
 			}
 		}
 	}
+
+	// make a group of malicious strategy
+	// As an example, suppose the set S = { 1, 2, 3, ...., n}
+	// and we pick r= 2 out of it. 
+	std::size_t makeMaliciousStrategy(
+		int malicious,
+		std::vector<std::set<std::size_t>>& strategies) {
+
+		if (malicious <= 0)
+			return strategies.size();
+
+		std::vector<bool> v(replicas_);
+		std::fill(v.end() - malicious, v.end(), true);
+
+		do {
+			std::set<std::size_t> strategy;
+			for (std::size_t i = 0; i < replicas_; ++i) {
+				if (v[i]) {
+					strategy.insert(i + 1);
+				}
+			}
+			strategies.push_back(strategy);
+
+		} while (std::next_permutation(v.begin(), v.end()));
+
+		return strategies.size();
+	}
+
+	void printMaliciousStrategy(const std::set<std::size_t>& strategy) {
+		for (auto it = strategy.begin(); it != strategy.end(); it++) {
+			std::cout << *it << " ";
+		}
+		std::cout << std::endl;
+	}
 	
 	Replica* newReplica(
 		const std::string& journal_name,
@@ -687,26 +722,13 @@ public:
 			malicious);
 	}
 
-	std::set<std::size_t> newReplicas(
+	std::vector<Replica*> newReplicas(
 		const std::string& journal_name, 
 		int replicas,
-		int malicious = 0) {
+		std::set<std::size_t> maliciousAuthors = std::set<std::size_t>()) {
 
+		std::vector<Replica*> replicas_vec;
 		std::size_t base = Replica::replicas.size();
-
-		// 随机设置异常节点
-		std::set<std::size_t> maliciousAuthors;
-		if (malicious > 0) {
-			for (;;) {
-				// use current time as seed for random generator
-				std::srand(std::time(nullptr));
-				std::size_t id = (std::rand() % replicas) + 1;
-				maliciousAuthors.insert(id);
-
-				if (maliciousAuthors.size() == malicious)
-					break;
-			}
-		}
 
 		for (std::size_t i = base; i < (replicas + base); i++) {
 			std::size_t index = i + 1;
@@ -714,12 +736,10 @@ public:
 				maliciousAuthors.begin(),
 				maliciousAuthors.end(),
 				index) != maliciousAuthors.end();
-			if (fake_malicious_replica)
-				std::cout << index << " is malicious." << std::endl;
-			newReplica(journal_name, index, fake_malicious_replica);
+			replicas_vec.push_back(newReplica(journal_name, index, fake_malicious_replica));
 		}
 
-		return maliciousAuthors;
+		return replicas_vec;
 	}
 
 	void runReplica(const ripple::hotstuff::Round& round) {
@@ -986,13 +1006,18 @@ public:
 
 	void testTimeoutRound() {
 		std::cout << "begin testTimeoutRound" << std::endl;
-		std::set<std::size_t> malicious_replicas;
-		malicious_replicas = newReplicas("testTimeoutRound", replicas_, false_replicas_);
-		runReplicas();
-		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_, malicious_replicas) == true);
-		stopReplicas(replicas_);
-		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_replicas) == true);
-		releaseReplicas(replicas_);
+		std::vector<std::set<std::size_t>> malicious_strategies;
+		makeMaliciousStrategy(false_replicas_, malicious_strategies);
+		for (std::size_t i = 0; i < malicious_strategies.size(); i++) {
+			std::cout << "malicious strategy " << i << ": ";
+			printMaliciousStrategy(malicious_strategies[i]);
+			newReplicas("testTimeoutRound", replicas_, malicious_strategies[i]);
+			runReplicas();
+			BEAST_EXPECT(waitUntilCommittedBlocks(blocks_, malicious_strategies[i]) == true);
+			stopReplicas(replicas_);
+			BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_strategies[i]) == true);
+			releaseReplicas(replicas_);
+		}
 		std::cout << "passed on testTimeoutRound" << std::endl;
 	}
 
@@ -1058,13 +1083,19 @@ public:
 		std::cout << "begin testDisableNilBlock" << std::endl;
 		// 禁用空块
 		disable_nil_block_ = true;
-		std::set<std::size_t> malicious_replicas;
-		malicious_replicas = newReplicas("testDisableNilBlock", replicas_, false_replicas_);
-		runReplicas();
-		BEAST_EXPECT(waitUntilCommittedBlocks(blocks_, malicious_replicas) == true);
-		stopReplicas(replicas_);
-		BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_replicas) == true);
-		releaseReplicas(replicas_);
+		std::vector<std::set<std::size_t>> malicious_strategies;
+		makeMaliciousStrategy(false_replicas_, malicious_strategies);
+		for (std::size_t i = 0; i < malicious_strategies.size(); i++) {
+			std::cout << "malicious strategy " << i << ": ";
+			printMaliciousStrategy(malicious_strategies[i]);
+
+			newReplicas("testDisableNilBlock", replicas_, malicious_strategies[i]);
+			runReplicas();
+			BEAST_EXPECT(waitUntilCommittedBlocks(blocks_, malicious_strategies[i]) == true);
+			stopReplicas(replicas_);
+			BEAST_EXPECT(hasConsensusedCommittedBlocks(blocks_, malicious_strategies[i]) == true);
+			releaseReplicas(replicas_);
+		}
 		std::cout << "passed on testDisableNilBlock" << std::endl;
 	}
 
