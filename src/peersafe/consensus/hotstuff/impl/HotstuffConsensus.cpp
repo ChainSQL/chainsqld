@@ -110,6 +110,8 @@ bool HotstuffConsensus::peerConsensusMessage(
 {
     if (startup_)
     {
+        JLOG(j_.info()) << "Processing peerConsensusMessage mt(" << m->msgtype() << ")" ;
+
         switch (m->msgtype())
         {
         case ConsensusMessageType::mtPROPOSAL:
@@ -520,10 +522,7 @@ void HotstuffConsensus::sendVote(const hotstuff::Author& author, const hotstuff:
             jtCONSENSUS_t,
             "send_vote",
             [this, vote, syncInfo](Job&) {
-                {
-                    ScopedLockType sl(this->lock_);
-                    this->hotstuff_->handleVote(vote, syncInfo);
-                }
+            this->hotstuff_->handleVote(vote, syncInfo);
         });
     }
     else
@@ -651,10 +650,7 @@ void HotstuffConsensus::peerVote(
             return;
         }
 
-        {
-            ScopedLockType sl(lock_);
-            hotstuff_->handleVote(vote->vote(), vote->syncInfo());
-        }
+        hotstuff_->handleVote(vote->vote(), vote->syncInfo());
     }
     catch (std::exception const& e)
     {

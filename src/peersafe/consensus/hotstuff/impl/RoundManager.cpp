@@ -280,6 +280,11 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		NewTCAggregated(timeoutCert.get());
 		return 0;
 	}
+    else if (ret == PendingVotes::VoteReceptionResult::VoteAdded)
+    {
+        JLOG(journal_.info()) << "vote added";
+        return 0;
+    }
 	return 1;
 }
 
@@ -335,7 +340,7 @@ int RoundManager::SyncUp(
 
 
 	if (sync_info.hasNewerCertificate(local_sync_info)) {
-		JLOG(journal_.debug())
+		JLOG(journal_.info())
 			<< "local sync info is stale than remote stale";
 
 		if (const_cast<SyncInfo&>(sync_info).Verify(hotstuff_core_->epochState()->verifier) == false) {

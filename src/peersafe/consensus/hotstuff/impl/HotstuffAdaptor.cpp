@@ -194,32 +194,34 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
 
     if (ledgerMaster_.getCurrentLedger()->seq() < ledger->seq() + 1)
     {
-        // Build new open ledger
-        auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
-        auto sl = make_lock(ledgerMaster_.peekMutex(), std::defer_lock);
-        std::lock(lock, sl);
+        {
+            // Build new open ledger
+            auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
+            auto sl = make_lock(ledgerMaster_.peekMutex(), std::defer_lock);
+            std::lock(lock, sl);
 
-        auto const lastVal = ledgerMaster_.getValidatedLedger();
-        boost::optional<Rules> rules;
-        if (lastVal)
-            rules.emplace(*lastVal, app_.config().features);
-        else
-            rules.emplace(app_.config().features);
+            auto const lastVal = ledgerMaster_.getValidatedLedger();
+            boost::optional<Rules> rules;
+            if (lastVal)
+                rules.emplace(*lastVal, app_.config().features);
+            else
+                rules.emplace(app_.config().features);
 
-        CanonicalTXSet retriableTxs{ beast::zero };
-        app_.openLedger().accept(
-            app_,
-            *rules,
-            ledger,
-            localTxs_.getTxSet(),
-            false,
-            retriableTxs,
-            tapNONE,
-            "consensus",
-            [&](OpenView& view, beast::Journal j) {
-            // Stuff the ledger with transactions from the queue.
-            return app_.getTxQ().accept(app_, view);
-        });
+            CanonicalTXSet retriableTxs{ beast::zero };
+            app_.openLedger().accept(
+                app_,
+                *rules,
+                ledger,
+                localTxs_.getTxSet(),
+                false,
+                retriableTxs,
+                tapNONE,
+                "consensus",
+                [&](OpenView& view, beast::Journal j) {
+                // Stuff the ledger with transactions from the queue.
+                return app_.getTxQ().accept(app_, view);
+            });
+        }
 
         ledgerMaster_.updateConsensusTime();
 
