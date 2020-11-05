@@ -212,6 +212,8 @@ transResults()
 		{ tefBAD_SCHEMAADMIN, 	     { "tefBAD_SCHEMAADMIN",       "Incorrect schema admin." } },
 		{ tefSCHEMA_TX_FORBIDDEN,	 { "tefSCHEMA_TX_FORBIDDEN",   "SchemaCreate tx cannot occur in sub-chain."} },
 		{ tefSCEMA_NO_PATH,			 { "tefSCEMA_NO_PATH",		   "No schema_path configured."} },
+		{ tefBAD_DUPLACATE_ITEM,	 { "tefBAD_DUPLACATE_ITEM",	   "Duplicate items in PeerList or Validators."} },
+		{ tefSCHEMA_NODE_COUNT,		 { "tefSCHEMA_NODE_COUNT",	   "Insufficient node count for schema."} },
         { tesSUCCESS,                { "tesSUCCESS",               "The transaction was applied. Only final in a validated ledger."                } }
     };
     return results;

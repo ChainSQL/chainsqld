@@ -249,6 +249,7 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 removeSection("validation_seed");
 	 removeSection("debug_logfile");
 	 removeSection("schema");
+	 removeSection("ips_fixed");
 
 	 deprecatedClearSection("validators");
 	 std::vector<std::string>   validatorList;
