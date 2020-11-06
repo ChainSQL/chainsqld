@@ -46,7 +46,7 @@ int PendingVotes::insertVote(
 
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	HashValue li_digest = const_cast<BlockInfo&>(vote.ledger_info().commit_info).id;
+	HashValue li_digest = vote.ledger_info().consensus_data_hash;
 
     if (quorum_certificate_record_.find(li_digest) != quorum_certificate_record_.end())
     {
@@ -60,7 +60,7 @@ int PendingVotes::insertVote(
 	// Has the author already voted for this round?
 	auto previously_seen_vote = author_to_vote_.find(vote.author());
 	if (previously_seen_vote != author_to_vote_.end()) {
-		if (li_digest != const_cast<BlockInfo&>(previously_seen_vote->second.ledger_info().commit_info).id) {
+		if (li_digest != previously_seen_vote->second.ledger_info().consensus_data_hash) {
 			JLOG(debugLog().warn())
 				<< "An anutor " << vote.author()
 				<< " voted a vote was Equivocated."
