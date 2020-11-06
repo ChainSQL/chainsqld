@@ -69,7 +69,7 @@ Block HotstuffCore::SignProposal(const BlockData& proposal) {
 	}
 
 	// verify qc
-	// Disable VerifyQC beacause it's verified when leader handled vote msg
+	// Disable VerifyQC beacause it's verified when leader handles vote msg
 	//if (VerifyQC(proposal.quorum_cert) == false) {
 	//	JLOG(journal_.error())
 	//		<< "InvalideProposal: "

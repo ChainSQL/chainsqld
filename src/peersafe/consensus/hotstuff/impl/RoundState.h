@@ -81,6 +81,9 @@ public:
 
 	void reset();
 
+	void increaseOffsetRound();
+	Round getOffsetRound();
+	void resetOffsetRound();
 private:
 	void CancelRoundTimeout();
 
@@ -89,6 +92,7 @@ private:
 	boost::asio::steady_timer round_timeout_timer_;
 	PendingVotes::pointer pending_votes_;
 	boost::optional<Vote> send_vote_;
+	std::atomic<Round> offset_round_;
 };
 
 } // namespace hotstuff

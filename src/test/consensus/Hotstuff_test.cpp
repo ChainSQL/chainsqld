@@ -253,17 +253,18 @@ public:
 		auto it = committed_blocks_.find(block.id());
 		if (it == committed_blocks_.end()) {
 			ripple::hotstuff::Round round = block.block_data().round;
-			//std::cout
-			JLOG(debugLog().info())
+			std::cout
+			//JLOG(debugLog().info())
 				<< config_.config.id << ": "
 				<< "epoch " << block.block_data().epoch
 				<< ", author " << block.block_data().author()
 				<< ", round " << round
 				<< ", id " << block.id()
 				<< std::endl;
-			if (round > 15) {
-				ordered_committed_blocks_.reserve(2 * 15);
-				ordered_committed_blocks_.resize(2 * 15);
+			std::size_t capacity = ordered_committed_blocks_.capacity();
+			if (capacity < (round + 5)) {
+				ordered_committed_blocks_.reserve(2 * capacity);
+				ordered_committed_blocks_.resize(2 * capacity);
 			}
 			ordered_committed_blocks_[round] = block;
 			committed_blocks_.emplace(std::make_pair(block.id(), block));
@@ -1004,6 +1005,11 @@ public:
 		std::cout << "begin testTimeoutRound" << std::endl;
 		std::vector<std::set<std::size_t>> malicious_strategies;
 		makeMaliciousStrategy(false_replicas_, malicious_strategies);
+		//std::set<std::size_t> strategy;
+		//strategy.insert(6);
+		//strategy.insert(7);
+		//strategy.insert(10);
+		//malicious_strategies.push_back(strategy);
 		for (std::size_t i = 0; i < malicious_strategies.size(); i++) {
 			std::cout << "malicious strategy " << i << ": ";
 			printMaliciousStrategy(malicious_strategies[i]);
@@ -1079,6 +1085,7 @@ public:
 		std::cout << "begin testDisableNilBlock" << std::endl;
 		// ½ûÓÃ¿Õ¿é
 		disable_nil_block_ = true;
+
 		std::vector<std::set<std::size_t>> malicious_strategies;
 		makeMaliciousStrategy(false_replicas_, malicious_strategies);
 		for (std::size_t i = 0; i < malicious_strategies.size(); i++) {
@@ -1105,7 +1112,7 @@ public:
 		testTimeoutRound();
 		testAddReplicas();
 		testRemoveReplicas();
-		//testDisableNilBlock();
+		testDisableNilBlock();
     }
 
 	Hotstuff_test()

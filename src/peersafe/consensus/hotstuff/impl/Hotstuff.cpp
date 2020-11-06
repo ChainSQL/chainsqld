@@ -161,12 +161,16 @@ int Hotstuff::handleVote(
 bool Hotstuff::expectBlock(
 	const HashValue& block_id,
 	ExecutedBlock& executed_block) {
+	if (round_manager_ == nullptr)
+		return false;
 	return round_manager_->expectBlock(block_id, executed_block);
 }
 
 bool Hotstuff::unsafetyExpectBlock(
 	const HashValue& block_id,
 	ExecutedBlock& executed_block) {
+	if (round_manager_ == nullptr)
+		return false;
 	return round_manager_->unsafetyExpectBlock(block_id, executed_block);
 }
 

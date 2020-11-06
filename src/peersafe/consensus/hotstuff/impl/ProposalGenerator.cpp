@@ -64,7 +64,10 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 		blockData.round = round;
 		blockData.epoch = hqc->certified_block().epoch;
 		blockData.quorum_cert = hqc.get();
-		blockData.timestamp_usecs = 0;
+		auto now = std::chrono::steady_clock::now();
+		auto now_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(now);
+		auto value = now_ns.time_since_epoch();
+		blockData.timestamp_usecs = static_cast<int64_t>(value.count());
 		if (hqc->certified_block().hasReconfiguration()) {
 			payload.cmd = ZeroHash();
 			blockData.timestamp_usecs = hqc->certified_block().timestamp_usecs;
@@ -84,7 +87,6 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 	}
 	
 	return boost::optional<BlockData>();
-
 }
 
 boost::optional<QuorumCertificate> ProposalGenerator::EnsureHighestQuorumCert(Round round) {

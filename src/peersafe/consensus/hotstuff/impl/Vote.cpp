@@ -58,15 +58,6 @@ Timeout Vote::timeout() const {
 	return Timeout {
 		vote_data_.proposed().epoch,
 		vote_data_.proposed().round,
-		boost::none
-	};
-}
-
-Timeout Vote::timeout(const Round& offset) {
-	return Timeout {
-		vote_data_.proposed().epoch,
-		vote_data_.proposed().round,
-		offset
 	};
 }
 

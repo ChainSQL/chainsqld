@@ -86,6 +86,8 @@ private:
 	void ProcessLocalTimeout(const boost::system::error_code& ec, Round round);
 	void UseNilBlockProcessLocalTimeout(const Round& round);
 	void NotUseNilBlockProcessLocalTimeout(const Round& round);
+
+	bool IsValidProposer(const Vote& vote);
 	bool IsValidProposer(const Author& author, const Round& round);
 	bool IsValidProposal(const Block& proposal);
 

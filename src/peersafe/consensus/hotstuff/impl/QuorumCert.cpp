@@ -133,14 +133,8 @@ bool TimeoutCertificate::Verify(const ValidatorVerifier* validator) {
 	if (validator->checkVotingPower(signatures_) == false)
 		return false;
 
-	using beast::hash_append;
-	ripple::sha512_half_hasher h;
-	hash_append(h, timeout_.epoch);
-	hash_append(h, timeout_.round);
-	HashValue hash = static_cast<typename sha512_half_hasher::result_type>(h);
-
 	for (auto it = signatures_.begin(); it != signatures_.end(); it++) {
-		if (validator->verifySignature(it->first, it->second, hash) == false)
+		if (timeout_.verify(validator, it->first, it->second) == false)
 			return false;
 	}
     return true;

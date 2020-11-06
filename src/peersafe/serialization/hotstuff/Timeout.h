@@ -36,7 +36,6 @@ void serialize(
 	// note, version is always the latest when saving
 	ar & timeout.epoch;
 	ar & timeout.round;
-	ar & timeout.offset;
 }
 
 } // namespace serialization

@@ -32,7 +32,8 @@ RoundState::RoundState(
 , current_round_(0)
 , round_timeout_timer_(*io_service)
 , pending_votes_(nullptr)
-, send_vote_() {
+, send_vote_()
+, offset_round_(0) {
 
 }
 
@@ -57,6 +58,8 @@ boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& s
 		NewRoundEvent new_round_event;
 		new_round_event.reason = NewRoundEvent::QCRead;
 		new_round_event.round = current_round_;
+
+		resetOffsetRound();
 
 		return boost::optional<NewRoundEvent>(new_round_event);
 	}
@@ -115,6 +118,19 @@ void RoundState::reset() {
 	current_round_ = 0;
 	pending_votes_ = PendingVotes::New();
 	send_vote_ = boost::optional<Vote>();
+	resetOffsetRound();
+}
+
+void RoundState::increaseOffsetRound() {
+	offset_round_.fetch_add(1);
+}
+
+Round RoundState::getOffsetRound() {
+	return offset_round_;
+}
+
+void RoundState::resetOffsetRound() {
+	offset_round_.exchange(0);
 }
 
 } // namespace hotstuff

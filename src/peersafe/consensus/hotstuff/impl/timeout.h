@@ -29,21 +29,26 @@ namespace hotstuff {
 struct Timeout {
 	Epoch epoch;
 	Round round;
-	// next leader may be exception,
-	// so offset specify to next-next leader
-	boost::optional<Round> offset;
 
 	bool sign(ValidatorVerifier* verifier, Signature& signature) {
+		return verifier->signature(hash(), signature);
+	}
+
+	bool verify(
+		const ValidatorVerifier* verifier, 
+		const Author& author, 
+		const Signature& signature) {
+		return verifier->verifySignature(author, signature, hash());
+	}
+
+private:
+	HashValue hash() {
 		using beast::hash_append;
 		ripple::sha512_half_hasher h;
 		hash_append(h, epoch);
 		hash_append(h, round);
-		if (offset)
-			hash_append(h, offset.get());
 
-		HashValue hash = static_cast<typename sha512_half_hasher::result_type>(h);
-
-		return verifier->signature(hash, signature);
+		return static_cast<typename sha512_half_hasher::result_type>(h);
 	}
 };
 

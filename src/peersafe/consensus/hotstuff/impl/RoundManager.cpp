@@ -263,11 +263,10 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 
 int RoundManager::ProcessVote(const Vote& vote) {
 	if (vote.isTimeout() == false) {
-		Round next_round = vote.vote_data().proposed().round + 1;
-		if (IsValidProposer(proposal_generator_->author(), next_round) == false) {
+		if (IsValidProposer(vote) == false) {
 			JLOG(journal_.warn())
 				<< "Received a vote, but i am not a valid proposer for this round "
-				<< next_round << ", ignore.";
+				<< (vote.vote_data().proposed().round + 1) << ", ignore.";
 			return 1;
 		}
 	}
@@ -433,6 +432,70 @@ void RoundManager::UseNilBlockProcessLocalTimeout(const Round& round) {
 }
 
 void RoundManager::NotUseNilBlockProcessLocalTimeout(const Round& round) {
+	Vote timeout_vote;
+	if (round_state_->send_vote()) {
+		timeout_vote = round_state_->send_vote().get();
+
+		if (timeout_vote.isTimeout() == false) {
+			Timeout timeout = timeout_vote.timeout();
+			Signature signature;
+			if (timeout.sign(hotstuff_core_->epochState()->verifier, signature))
+				timeout_vote.addTimeoutSignature(signature);
+		}
+
+		round_state_->recordVote(timeout_vote);
+		// broadcast vote
+		network_->broadcast(timeout_vote, block_store_->sync_info());
+
+		JLOG(journal_.warn())
+			<< "broadcast timout vote: "
+			<< "epoch is " << timeout_vote.timeout().epoch
+			<< ", round is " << timeout_vote.timeout().round;
+	}
+	else {
+
+		round_state_->increaseOffsetRound();
+
+		Author expect_next_author = proposer_election_->GetValidProposer(round + round_state_->getOffsetRound());
+		JLOG(journal_.warn())
+			<< "The next leader may be exception, "
+			"so we should pick up a next leader for generating a proposal (round "
+			<< round << ").";
+		JLOG(journal_.warn())
+			<< "We pick up a next leader is " << expect_next_author
+			<< ", self is " << proposal_generator_->author();
+
+		if (expect_next_author == proposal_generator_->author()) {
+			NewRoundEvent round_event;
+			round_event.reason = NewRoundEvent::Timeout;
+			round_event.round = round;
+			boost::optional<Block> proposal = GenerateProposal(round_event);
+			if (proposal) {
+				network_->broadcast(proposal.get(), block_store_->sync_info());
+			}
+		}
+	}
+}
+
+bool RoundManager::IsValidProposer(const Vote& vote) {
+	bool isValid = false;
+	Round next_round = vote.vote_data().proposed().round;
+	if (config_.disable_nil_block) {
+		 next_round += round_state_->getOffsetRound();
+	}
+	else {
+		next_round += 1;
+	}
+	isValid = IsValidProposer(proposal_generator_->author(), next_round);
+
+	JLOG(journal_.info())
+		<< "Is valid proposer for the vote? " << isValid
+		<< ". The Author of the vote is " << vote.author()
+		<< ", The round of the vote is " << vote.vote_data().proposed().round
+		<< ". The self is " << proposal_generator_->author()
+		<< " and the next round is " << next_round;
+
+	return isValid;
 }
 
 bool RoundManager::IsValidProposer(const Author& author, const Round& round) {
@@ -440,7 +503,26 @@ bool RoundManager::IsValidProposer(const Author& author, const Round& round) {
 }
 
 bool RoundManager::IsValidProposal(const Block& proposal) {
-	return proposer_election_->IsValidProposal(proposal);
+	bool isValid = false;
+	if (config_.disable_nil_block) {
+		Round offsetRound = round_state_->getOffsetRound();
+		Round propsal_round = proposal.block_data().round;
+		//assert(offsetRound);
+		Author expect_autor = proposer_election_->GetValidProposer(propsal_round + offsetRound);
+		isValid = expect_autor == proposal.block_data().author();
+
+		JLOG(journal_.info())
+			<< "Is valid propsal? " << isValid
+			<< ". The round of the propsal is " << propsal_round
+			<< "and the author of the proposal is " << proposal.block_data().author()
+			<< ". The offset round is " << offsetRound
+			<< ". The expected author is " << expect_autor;
+	}
+	else {
+		isValid = proposer_election_->IsValidProposal(proposal);
+	}
+
+	return isValid;
 }
 
 bool RoundManager::ReceivedProposedBlock(const HashValue& proposed_id) {
