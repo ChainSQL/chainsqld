@@ -185,61 +185,96 @@ unsigned long SoftEncrypt::SM2ECCSign(
     unsigned long ulAlias,
     unsigned long ulKeyUse)
 {
+    int ret = 1;
     if (SeckeyType::gmOutCard != pri4SignInfo.first)
 	{
-        return 1;
+        return ret;
 	}
 
     BIGNUM* bn = BN_bin2bn((const unsigned char *)(pri4Sign.first), (pri4Sign.second), nullptr);
 	if (bn == nullptr) {
 		DebugPrint("SM2ECCSign: BN_bin2bn failed");
-		return 1;
+		return ret;
 	}
 
 	EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_sm2p256v1);
 	const bool ok = EC_KEY_set_private_key(ec_key, bn);
 	BN_clear_free(bn);
-	if (!ok) {
-		DebugPrint("SM2ECCSign: EC_KEY_set_private_key failed");
-		EC_KEY_free(ec_key);
-		return 1;
-	}
-    if(!setPubfromPri(ec_key)) return 1;
-
-    unsigned char pSignedBufTemp[256] = { 0 };
-	unsigned int uiSignedLen = 256;
-
-	/* sign */
-	if (!SM2_sign(NID_undef, pInData, ulInDataLen, pSignedBufTemp, &uiSignedLen, ec_key))
+	if (ok)
     {
-        EC_KEY_free(ec_key);
-		DebugPrint("SM2ECCSign: SM2_sign failed!");
-		return 1;
-	}
+		// if(!setPubfromPri(ec_key)) return 1;
+
+        /* sign */
+        // unsigned char pSignedBufTemp[256] = { 0 };
+        unsigned int uiSignedLen = 0;
+        int signRet = SM2_sign(NID_undef, pInData, ulInDataLen, NULL, &uiSignedLen, ec_key);
+        if (signRet == 1)
+        {
+            unsigned char *pSignedBufTemp = new unsigned char[uiSignedLen];
+            if (!SM2_sign(NID_undef, pInData, ulInDataLen, pSignedBufTemp, &uiSignedLen, ec_key))
+            {
+                delete[] pSignedBufTemp;
+                DebugPrint("SM2ECCSign: SM2_sign failed!");
+            }
+            else
+            {
+                const unsigned char *pSignedBuf = pSignedBufTemp;
+                ECDSA_SIG *sm2sig = d2i_ECDSA_SIG(NULL, &pSignedBuf, uiSignedLen);
+                if (sm2sig)
+                {
+                    char *pSignR = NULL;
+                    char *pSignS = NULL;
+                    if (!(pSignR = BN_bn2hex(sm2sig->r)) || !(pSignS = BN_bn2hex(sm2sig->s)))
+                    {
+                        delete[] pSignedBufTemp;
+                        DebugPrint("SM2ECCSign: SM2_sign failed!");
+                    }
+                    else
+                    {
+						unsigned int rSize = BN_num_bytes(sm2sig->r);
+						unsigned int sSize = BN_num_bytes(sm2sig->s);
+
+						if (rSize > 32 || sSize > 32) {
+							delete[] pSignedBufTemp;
+							ripple::Throw <std::runtime_error>("The length of raw signature is wrong");
+						}
+						
+						// left pad 0x0
+						unsigned char signedTmp[64] = { 0 };
+						unsigned char rTmp[32] = { 0 };
+						unsigned char sTmp[32] = { 0 };
+
+						rSize = BN_bn2bin(sm2sig->r, rTmp);
+						sSize = BN_bn2bin(sm2sig->s, sTmp);
+
+						memcpy(signedTmp + (32 - rSize), rTmp, rSize);
+						memcpy(signedTmp + (64 - sSize), sTmp, sSize);
+						memcpy(pSignValue, signedTmp, 64);
+						*pulSignValueLen = 64;
+
+                        delete[] pSignedBufTemp;
+                        ret = 0;
+                        DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
+                    }
+                }
+                else
+                {
+                    delete[] pSignedBufTemp;
+                    DebugPrint("SM2ECCSign: SM2_sign failed!");
+                }
+            }
+        }
+        else
+        {
+            DebugPrint("SM2ECCSign: SM2_sign failed!");
+        }
+    }
     else
     {
-        const unsigned char *p = pSignedBufTemp;
-        ECDSA_SIG *sm2sig = d2i_ECDSA_SIG(NULL, &p, uiSignedLen);
-        if(sm2sig)
-        {
-            char* pSignR = NULL;
-            char* pSignS = NULL;
-            if(!(pSignR = BN_bn2hex(sm2sig->r)) || !(pSignS = BN_bn2hex(sm2sig->s)))
-            {
-                EC_KEY_free(ec_key);
-		        DebugPrint("SM2ECCSign: SM2_sign failed!");
-		        return 1;
-            }
-            *pulSignValueLen = BN_bn2bin(sm2sig->r, pSignValue);
-            *pulSignValueLen += BN_bn2bin(sm2sig->s, pSignValue + *pulSignValueLen);
-            EC_KEY_free(ec_key);
-            DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
-            return 0;
-        }
-        EC_KEY_free(ec_key);
-		DebugPrint("SM2ECCSign: SM2_sign failed!");
-		return 1;
+        DebugPrint("SM2ECCSign: EC_KEY_set_private_key failed");
     }
+    EC_KEY_free(ec_key);
+	return ret;
 }
 unsigned long SoftEncrypt::SM2ECCVerify(
     std::pair<unsigned char*, int>& pub4Verify,
@@ -250,37 +285,39 @@ unsigned long SoftEncrypt::SM2ECCVerify(
     unsigned long ulAlias,
     unsigned long ulKeyUse)
 {
+    int ret = 1;
 	EC_KEY* pubkey = standPubToSM2Pub(pub4Verify.first, pub4Verify.second);
 	if (pubkey == nullptr)
     {
-        return 1;
+        return ret;
 	}
 
-    if (ulSignValueLen != 64) return 1;
-    ECDSA_SIG *sm2sig = ECDSA_SIG_new();
-    BN_bin2bn(pSignValue, 32, sm2sig->r);
-    BN_bin2bn(pSignValue+32, 32, sm2sig->s);
-
-    int derSigLen = i2d_ECDSA_SIG(sm2sig, NULL);
-    unsigned char* derSigTemp = new unsigned char [derSigLen];
-    unsigned char *derlSig = derSigTemp;
-    derSigLen = i2d_ECDSA_SIG(sm2sig, &derSigTemp);
-
-	/* verify */
-    int verifyRet = SM2_verify(NID_undef, pInData, ulInDataLen, derlSig, derSigLen, pubkey);
-	if (verifyRet != SM2_VERIFY_SUCCESS) {
-		DebugPrint("SM2ECCSign: SM2_verify failed");
-        EC_KEY_free(pubkey);
-        delete [] derlSig;
-		return 1;
-	}
-    else
+    if (ulSignValueLen == 64)
     {
+        ECDSA_SIG *sm2sig = ECDSA_SIG_new();
+        BN_bin2bn(pSignValue, 32, sm2sig->r);
+        BN_bin2bn(pSignValue + 32, 32, sm2sig->s);
+
+        int derSigLen = i2d_ECDSA_SIG(sm2sig, NULL);
+        unsigned char *derSigTemp = new unsigned char[derSigLen];
+        unsigned char *derlSig = derSigTemp;
+        derSigLen = i2d_ECDSA_SIG(sm2sig, &derSigTemp);
+
+        /* verify */
+        int verifyRet = SM2_verify(NID_undef, pInData, ulInDataLen, derlSig, derSigLen, pubkey);
+        if (verifyRet != SM2_VERIFY_SUCCESS)
+        {
+            DebugPrint("SM2ECCSign: SM2_verify failed");
+        }
+        else
+        {
+            ret = 0;
+            DebugPrint("SM2ECCSign: SM2 secret key verify successful!");
+        }
         EC_KEY_free(pubkey);
-        delete [] derlSig;
-        DebugPrint("SM2ECCSign: SM2 secret key verify successful!");
-        return 0;
+        delete[] derlSig;
     }
+    return ret;
 }
 //SM2 Encrypt&Decrypt
 unsigned long SoftEncrypt::SM2ECCEncrypt(

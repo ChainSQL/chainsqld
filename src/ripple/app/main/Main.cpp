@@ -504,6 +504,7 @@ int run (int argc, char** argv)
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))
             return -1;
 
+#ifndef DEBUGMOD
         if (HaveSustain() && !vm.count ("fg") && !config->standalone())
         {
             auto const ret = DoSustain ();
@@ -511,6 +512,7 @@ int run (int argc, char** argv)
             if (!ret.empty ())
                 std::cerr << "Watchdog: " << ret << std::endl;
         }
+#endif
 
         if (vm.count ("debug"))
         {
