@@ -49,10 +49,19 @@ HotstuffAdaptor::HotstuffAdaptor(
 {
     if (app_.config().exists(SECTION_HCONSENSUS))
     {
+        // default: 6s
+        // min: 6s
         parms_.consensusTIMEOUT = std::chrono::seconds{
             std::max(
                 (int)parms_.consensusTIMEOUT.count(),
                 app.config().loadConfig(SECTION_HCONSENSUS, "time_out", 0)) };
+
+        // default: 90s
+        // min : 2 * consensusTIMEOUT
+        parms_.initTIME = std::chrono::seconds{
+            std::max(
+                parms_.consensusTIMEOUT.count() * 2,
+                app.config().loadConfig(SECTION_HCONSENSUS, "init_time", parms_.initTIME.count())) };
     }
 }
 

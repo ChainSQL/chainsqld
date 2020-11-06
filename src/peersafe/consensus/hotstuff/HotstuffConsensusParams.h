@@ -17,6 +17,8 @@ struct HotstuffConsensusParms
     unsigned maxTXS_IN_LEDGER = 10000;
 
     std::chrono::seconds consensusTIMEOUT = std::chrono::seconds{ 6 };
+
+    std::chrono::seconds initTIME = std::chrono::seconds{ 90 };
 };
 
 

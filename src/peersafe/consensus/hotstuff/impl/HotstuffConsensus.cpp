@@ -22,6 +22,7 @@
 #include <peersafe/consensus/hotstuff/impl/RecoverData.h>
 #include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
 #include <peersafe/serialization/hotstuff/ExecutedBlock.h>
+#include <chrono>
 
 
 namespace ripple {
@@ -73,13 +74,15 @@ void HotstuffConsensus::startRound(
 
 void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
 {
-    (void)now;
+    now_ = now;
 
     if (!startup_)
     {
         hotstuff::EpochState init_epoch_state;
         init_epoch_state.epoch = 0;
         init_epoch_state.verifier = this;
+
+        startTime_ = now;
 
         hotstuff_->start(hotstuff::RecoverData{ previousLedger_.ledger_->info(), init_epoch_state });
 
@@ -96,6 +99,11 @@ void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
                 newLedger->ledger_->txMap(),
                 newLedger->ledger_->info().seq,
                 newLedger->ledger_->info().parentHash);
+
+            if (waitingForInit())
+            {
+                recover_ = true;
+            }
 
             startRoundInternal(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
         }
@@ -176,7 +184,7 @@ Json::Value HotstuffConsensus::getJson(bool full) const
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
     ret["time_out"] = static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count() * 1000);
-    //ret["initialized"] = !waitingForInit();
+    ret["initialized"] = !waitingForInit();
 
     if (full)
     {
@@ -262,6 +270,12 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         return true;
     }
 
+    if (waitingForInit())
+    {
+        JLOG(j_.warn()) << "compute block: waiting for init";
+        return false;
+    }
+
     LedgerInfo const& info = block.getLedgerInfo();
 
     if (block.block_data().block_type == hotstuff::BlockData::NilBlock ||
@@ -338,6 +352,12 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
 
 bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result)
 {
+    if (block.id() == zero)
+    {
+        JLOG(j_.warn()) << "verify block: block id is zero";
+        return false;
+    }
+
     if (block.block_data().block_type == hotstuff::BlockData::Proposal)
     {
         return result.ledger_info.seq == result.parent_ledger_info.seq + 1
@@ -369,6 +389,12 @@ int HotstuffConsensus::commit(const hotstuff::Block& block)
 
 bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
 {
+    if (waitingForInit())
+    {
+        JLOG(j_.warn()) << "I'm waiting for initial ledger";
+        return false;
+    }
+
     ScopedLockType sl(lock_);
 
     if (prevInfo.ledger_info.seq > previousLedger_.seq())
@@ -540,6 +566,13 @@ void HotstuffConsensus::broadcast(const hotstuff::EpochChange& epoch_change)
 // -------------------------------------------------------------------
 // Private member functions
 
+bool HotstuffConsensus::waitingForInit() const
+{
+    // This code is for initialization,wait 90 seconds for loading ledger before real start-mode.
+    return (previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&
+        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_).count() < adaptor_.parms().initTIME.count());
+}
+
 void HotstuffConsensus::peerProposal(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
@@ -564,6 +597,16 @@ void HotstuffConsensus::peerProposal(
         if (proposal->nodePublic() != proposal->block().block_data().author())
         {
             JLOG(j_.warn()) << "message public key different with proposal public key, drop proposal";
+            return;
+        }
+
+        if (waitingForInit())
+        {
+            LedgerInfo const& netLoaded = proposal->block().block_data().quorum_cert.certified_block().ledger_info;
+            if (netLoaded.seq > previousLedger_.seq())
+            {
+                handleWrongLedger(netLoaded.hash);
+            }
             return;
         }
 
@@ -652,6 +695,16 @@ void HotstuffConsensus::peerVote(
             return;
         }
 
+        if (waitingForInit())
+        {
+            LedgerInfo const& netLoaded = vote->vote().vote_data().parent().ledger_info;
+            if (netLoaded.seq > previousLedger_.seq())
+            {
+                handleWrongLedger(netLoaded.hash);
+            }
+            return;
+        }
+
         hotstuff_->handleVote(vote->vote(), vote->syncInfo());
     }
     catch (std::exception const& e)
@@ -727,6 +780,16 @@ void HotstuffConsensus::startRoundInternal(
     acquired_.clear();
     curProposalCache_.clear();
 
+    if (recover_)
+    {
+        JLOG(j_.info()) << "recover hotstuff, used ledger " << previousLedger_.seq();
+        hotstuff::EpochState init_epoch_state;
+        init_epoch_state.epoch = 0;
+        init_epoch_state.verifier = this;
+        hotstuff_->start(hotstuff::RecoverData{ previousLedger_.ledger_->info(), init_epoch_state });
+        recover_ = false;
+    }
+
     checkCache();
 }
 
@@ -736,22 +799,21 @@ void HotstuffConsensus::checkCache()
     if (nextProposalCache_.find(curSeq) != nextProposalCache_.end())
     {
         JLOG(j_.info()) << "Handle cached proposal";
-        for (auto it = nextProposalCache_[curSeq].begin(); it != nextProposalCache_[curSeq].end(); it++)
+        for (auto const& it : nextProposalCache_[curSeq])
         {
-            peerProposalInternal(it->second);
+            peerProposalInternal(it.second);
         }
     }
 
-    auto iter = nextProposalCache_.begin();
-    while (iter != nextProposalCache_.end())
+    for (auto it = nextProposalCache_.begin(); it != nextProposalCache_.end(); )
     {
-        if (iter->first < curSeq)
+        if (it->first < curSeq)
         {
-            iter = nextProposalCache_.erase(iter);
+            it = nextProposalCache_.erase(it);
         }
         else
         {
-            iter++;
+            it++;
         }
     }
 }
@@ -784,6 +846,11 @@ bool HotstuffConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
             newLedger->ledger_->txMap(),
             newLedger->ledger_->info().seq,
             newLedger->ledger_->info().parentHash);
+
+        if (waitingForInit())
+        {
+            recover_ = true;
+        }
 
         startRoundInternal(lgrId, *newLedger, ConsensusMode::switchedLedger);
 

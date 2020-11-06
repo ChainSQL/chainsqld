@@ -112,6 +112,8 @@ public:
     void broadcast(const hotstuff::EpochChange& epoch_change) override final;
 
 private:
+    bool waitingForInit() const;
+
     void peerProposal(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
@@ -150,6 +152,9 @@ private:
     NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
 
     bool startup_ = false;
+    bool recover_ = false;  // When initialized, recover hotstuff_
+    NetClock::time_point startTime_;
+    NetClock::time_point now_;
 
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
