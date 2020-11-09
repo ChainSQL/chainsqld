@@ -201,6 +201,8 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
         return false;
     }
 
+    ledgerMaster_.updateConsensusTime();
+
     if (ledgerMaster_.getCurrentLedger()->seq() < ledger->seq() + 1)
     {
         {
@@ -231,8 +233,6 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
                 return app_.getTxQ().accept(app_, view);
             });
         }
-
-        ledgerMaster_.updateConsensusTime();
 
         // Tell directly connected peers that we have a new LCL
         notify(protocol::neACCEPTED_LEDGER, ledger, mode_ != ConsensusMode::wrongLedger);
