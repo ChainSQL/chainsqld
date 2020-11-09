@@ -58,6 +58,10 @@ public:
 		return round_timeout_timer_;
 	}
 
+	boost::asio::steady_timer& GenerateProposalTimeoutTimer() {
+		return generate_proposal_timeout_timer_;
+	}
+
 	const Round current_round() const {
 		return current_round_;
 	}
@@ -86,10 +90,12 @@ public:
 	void resetOffsetRound();
 private:
 	void CancelRoundTimeout();
+	void CancelGenerateProposalimeout();
 
 	beast::Journal journal_;
 	std::atomic<Round> current_round_;
 	boost::asio::steady_timer round_timeout_timer_;
+	boost::asio::steady_timer generate_proposal_timeout_timer_;
 	PendingVotes::pointer pending_votes_;
 	boost::optional<Vote> send_vote_;
 	std::atomic<Round> offset_round_;

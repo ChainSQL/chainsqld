@@ -97,10 +97,8 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
     JLOG(journal_.info())
         << "ProcessNewRoundEvent: New round is " << new_round_event.round
         << " and I am the proposer";
-	boost::optional<Block> proposal = GenerateProposal(new_round_event);
-	if (proposal) {
-		network_->broadcast(proposal.get(), block_store_->sync_info());
-	}
+
+	GenerateThenBroadCastProposalInTimer(new_round_event);
 
 	return 0;
 }
@@ -112,6 +110,32 @@ boost::optional<Block> RoundManager::GenerateProposal(const NewRoundEvent& event
 	}
 
 	return boost::optional<Block>();
+}
+
+void RoundManager::GenerateThenBroadCastProposalInTimer(const NewRoundEvent& event) {
+	if (proposal_generator_->canExtract()) {
+		boost::optional<Block> proposal = GenerateProposal(event);
+		if (proposal) {
+			network_->broadcast(proposal.get(), block_store_->sync_info());
+		}
+	}
+	else {
+		boost::asio::steady_timer& timer = round_state_->GenerateProposalTimeoutTimer();
+		timer.expires_from_now(std::chrono::milliseconds(config_.interval_extract));
+		timer.async_wait(
+			std::bind(&RoundManager::GenerateThenBroadCastProposal, this, std::placeholders::_1, event));
+
+		JLOG(journal_.info())
+			<< "tx-pool may be empty. "
+			<< proposal_generator_->author() << " delay to generate a proposal for round "
+			<< event.round;
+	}
+}
+
+void RoundManager::GenerateThenBroadCastProposal(const boost::system::error_code& ec, NewRoundEvent event) {
+	if (ec)
+		return;
+	GenerateThenBroadCastProposalInTimer(event);
 }
 
 /// The replica broadcasts a "timeout vote message", which includes the round signature, which

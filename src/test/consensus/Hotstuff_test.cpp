@@ -173,6 +173,7 @@ public:
 	, committed_blocks_() 
 	, hotstuff_(nullptr)
 	, malicious_(malicious)
+	, can_extract_(true)
 	, epoch_change_hash_()
 	, committing_epoch_change_(false)
 	, changed_epoch_successed_() {
@@ -337,6 +338,14 @@ public:
 	}
 
 	// for CommandManager
+	void canExtract(bool can) {
+		can_extract_ = can;
+	}
+
+	const bool canExtract() const {
+		return can_extract_;
+	}
+
 	void extract(ripple::hotstuff::Command& cmd) {
 
 		if (committing_epoch_change_) {
@@ -605,6 +614,7 @@ private:
 	std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block> committed_blocks_;
 	ripple::hotstuff::Hotstuff::pointer hotstuff_;
 	bool malicious_;
+	bool can_extract_;
 	ripple::hotstuff::HashValue epoch_change_hash_;
 	bool committing_epoch_change_;
 	std::promise<bool> changed_epoch_successed_;
@@ -1102,10 +1112,31 @@ public:
 		std::cout << "passed on testDisableNilBlock" << std::endl;
 	}
 
+	void testCanExtractTxs() {
+		std::cout << "begin testCanExtractTxs" << std::endl;
+		newReplicas("testCanExtractTxs", replicas_);
+		
+		Replica::replicas[1]->canExtract(false);
+		runReplicas();
+
+		std::thread sleep = std::thread([this]() {
+			std::this_thread::sleep_for(std::chrono::seconds(timeout_ + 1));
+			Replica::replicas[1]->canExtract(true);
+		});
+		sleep.join();
+
+		BEAST_EXPECT(waitUntilCommittedBlocks(2*blocks_) == true);
+		stopReplicas(replicas_);
+		BEAST_EXPECT(hasConsensusedCommittedBlocks(2*blocks_) == true);
+		releaseReplicas(replicas_);
+		std::cout << "passed on testCanExtractTxs" << std::endl;
+	}
+
     void run() override {
 		parse_args();
 
 		testNormalRound();
+		testCanExtractTxs();
 		testRunReplicasExcludeFirstRoundReplica();
 		testRunOtherReplicasAndThenRunFirstReplicaAfterSeconds();
 		testRunFirstReplicasAndThenRunOtherReplicasAfterSecondsOreder();

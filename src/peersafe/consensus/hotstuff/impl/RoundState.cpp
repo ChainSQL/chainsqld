@@ -31,6 +31,7 @@ RoundState::RoundState(
 : journal_(journal)
 , current_round_(0)
 , round_timeout_timer_(*io_service)
+, generate_proposal_timeout_timer_(*io_service)
 , pending_votes_(nullptr)
 , send_vote_()
 , offset_round_(0) {
@@ -51,6 +52,8 @@ boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& s
 	if (new_round > current_round_) {
 		// reset timeout
 		CancelRoundTimeout();
+		CancelGenerateProposalimeout();
+
 		current_round_ = new_round;
 		pending_votes_ = PendingVotes::New();
 		send_vote_ = boost::optional<Vote>();
@@ -74,6 +77,13 @@ boost::optional<NewRoundEvent> RoundState::ProcessCertificates(const SyncInfo& s
 void RoundState::CancelRoundTimeout() {
 	for (;;) {
 		if (round_timeout_timer_.cancel() == 0)
+			break;
+	}
+}
+
+void RoundState::CancelGenerateProposalimeout() {
+	for (;;) {
+		if (generate_proposal_timeout_timer_.cancel() == 0)
 			break;
 	}
 }

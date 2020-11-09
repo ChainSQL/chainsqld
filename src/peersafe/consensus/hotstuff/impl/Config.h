@@ -31,6 +31,8 @@ struct Config {
 	Epoch epoch;
 	// generate a dummy block after timeout (seconds)
 	int timeout;
+	// extract txs from tx-pool in interval (ms)
+	int interval_extract;
 	// whether we should generate a dummy block or shouldn't
 	bool disable_nil_block;
 
@@ -38,6 +40,7 @@ struct Config {
 	: id()
 	, epoch(0)
 	, timeout(60)
+	, interval_extract(200)
 	, disable_nil_block(false) {
 
 	}

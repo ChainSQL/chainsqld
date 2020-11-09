@@ -70,6 +70,8 @@ private:
 	bool ExecuteAndVote(const Block& proposal, Vote& vote);
 	int ProcessNewRoundEvent(const NewRoundEvent& event);
 	boost::optional<Block> GenerateProposal(const NewRoundEvent& event);
+	void GenerateThenBroadCastProposalInTimer(const NewRoundEvent& event);
+	void GenerateThenBroadCastProposal(const boost::system::error_code& ec, NewRoundEvent event);
 	bool EnsureRoundAndSyncUp(
 		Round round,
 		const SyncInfo& sync_info,

@@ -89,6 +89,10 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 	return boost::optional<BlockData>();
 }
 
+const bool ProposalGenerator::canExtract() const {
+	return command_manager_->canExtract();
+}
+
 boost::optional<QuorumCertificate> ProposalGenerator::EnsureHighestQuorumCert(Round round) {
 	QuorumCertificate hqc = block_store_->HighestQuorumCert();
 	if (hqc.certified_block().round >= round) {
