@@ -37,7 +37,8 @@ HotstuffAdaptor::HotstuffAdaptor(
     InboundTransactions& inboundTransactions,
     ValidatorKeys const & validatorKeys,
     beast::Journal journal,
-    LocalTxs& localTxs)
+    LocalTxs& localTxs,
+    ConsensusParms const& consensusParms)
     : Adaptor(
         app,
         std::move(feeVote),
@@ -49,6 +50,14 @@ HotstuffAdaptor::HotstuffAdaptor(
 {
     if (app_.config().exists(SECTION_HCONSENSUS))
     {
+        parms_.minBLOCK_TIME = app.config().loadConfig(SECTION_HCONSENSUS, "min_block_time", parms_.minBLOCK_TIME);
+        parms_.maxBLOCK_TIME = app.config().loadConfig(SECTION_HCONSENSUS, "max_block_time", parms_.maxBLOCK_TIME);
+        parms_.maxBLOCK_TIME = std::max(parms_.minBLOCK_TIME, parms_.maxBLOCK_TIME);
+
+        parms_.maxTXS_IN_LEDGER = std::min(
+            app.config().loadConfig(SECTION_HCONSENSUS, "max_txs_per_ledger", parms_.maxTXS_IN_LEDGER),
+            consensusParms.txPOOL_CAPACITY);
+
         // default: 6s
         // min: 6s
         parms_.consensusTIMEOUT = std::chrono::seconds{
@@ -157,7 +166,7 @@ void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVOTE);
 
-    JLOG(j_.info()) << "send VOTE to leader " << pubKey;
+    JLOG(j_.info()) << "send VOTE to leader, leader index: " << getPubIndex(pubKey);
 
     signAndSendMessage(pubKey, consensus);
 }
@@ -169,7 +178,7 @@ void HotstuffAdaptor::acquireBlock(PublicKey const& pubKey, uint256 const& hash)
     consensus.set_msg(hash.data(), hash.bytes);
     consensus.set_msgtype(ConsensusMessageType::mtACQUIREBLOCK);
 
-    JLOG(j_.info()) << "acquiring Executedblock " << hash << " from " << pubKey;
+    JLOG(j_.info()) << "acquiring Executedblock " << hash << " from peer " << getPubIndex(pubKey);
 
     signAndSendMessage(pubKey, consensus);
 }
@@ -183,7 +192,7 @@ void HotstuffAdaptor::sendBLock(std::shared_ptr<PeerImp> peer, hotstuff::Execute
     consensus.set_msg(b.data(), b.size());
     consensus.set_msgtype(ConsensusMessageType::mtBLOCKDATA);
 
-    JLOG(j_.info()) << "send ExecutedBlock to peer " << peer->getNodePublic();
+    JLOG(j_.info()) << "send ExecutedBlock to peer " << getPubIndex(peer->getNodePublic());
 
     signMessage(consensus);
 

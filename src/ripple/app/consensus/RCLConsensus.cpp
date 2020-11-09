@@ -88,7 +88,8 @@ RCLConsensus::RCLConsensus(
             inboundTransactions,
             validatorKeys,
             journal,
-            localTxs);
+            localTxs,
+            parms_);
         consensus_ = std::make_shared<HotstuffConsensus>(*adaptor_, clock, journal);
         break;
     default:

@@ -92,24 +92,6 @@ inline bool PopAdaptor::isLeader(LedgerIndex curSeq, std::uint64_t view)
     return isLeader(valPublic_, curSeq, view);
 }
 
-int PopAdaptor::getPubIndex(PublicKey const& publicKey)
-{
-    auto const& validators = app_.validators().validators();
-
-    for (int i = 0; i < validators.size(); i++)
-    {
-        if (validators[i] == publicKey)
-            return i + 1;
-    }
-
-    return 0;
-}
-
-inline int PopAdaptor::getPubIndex()
-{
-    return getPubIndex(valPublic_);
-}
-
 auto PopAdaptor::onCollectFinish(
     RCLCxLedger const& ledger,
     std::vector<uint256> const& transactions,

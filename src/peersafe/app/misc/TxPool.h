@@ -100,6 +100,7 @@ public:
     inline std::size_t const& getTxLimitInPool() const { return mMaxTxsInPool; }
     inline bool isEmpty() const { return mTxsSet.size() == 0; }
     inline std::size_t getTxCountInPool() const { return mTxsSet.size(); }
+    inline std::size_t getQueuedTxCountInPool() const { return mTxsSet.size() - mAvoidByHash.size(); }
 
     // Get at most specified counts of Tx fron TxPool.
     uint64_t topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set);

@@ -128,6 +128,10 @@ public:
     {
         return app_.getTxPool().getTxCountInPool();
     }
+    inline std::size_t getPoolQueuedTxCount()
+    {
+        return app_.getTxPool().getQueuedTxCountInPool();
+    }
     inline std::uint64_t topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set)
     {
         return app_.getTxPool().topTransactions(limit, seq, set);
@@ -164,6 +168,9 @@ public:
     {
         return app_.config().standalone() ? 0 : app_.validators().quorum();
     }
+
+    int getPubIndex(PublicKey const& publicKey);
+    int getPubIndex();
 
     /** Called before kicking off a new consensus round.
 

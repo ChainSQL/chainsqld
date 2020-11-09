@@ -57,6 +57,24 @@ Adaptor::Adaptor(
 {
 }
 
+int Adaptor::getPubIndex(PublicKey const& publicKey)
+{
+    auto const& validators = app_.validators().validators();
+
+    for (int i = 0; i < validators.size(); i++)
+    {
+        if (validators[i] == publicKey)
+            return i + 1;
+    }
+
+    return 0;
+}
+
+inline int Adaptor::getPubIndex()
+{
+    return getPubIndex(valPublic_);
+}
+
 bool Adaptor::preStartRound(RCLCxLedger const & prevLgr)
 {
     // We have a key, we do not want out of sync validations after a restart

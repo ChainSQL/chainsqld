@@ -60,7 +60,8 @@ public:
         InboundTransactions& inboundTransactions,
         ValidatorKeys const & validatorKeys,
         beast::Journal journal,
-        LocalTxs& localTxs);
+        LocalTxs& localTxs,
+        ConsensusParms const& consensusParms);
 
     inline HotstuffConsensusParms const& parms() const
     {

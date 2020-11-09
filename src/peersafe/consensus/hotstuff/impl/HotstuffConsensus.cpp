@@ -202,6 +202,31 @@ Json::Value HotstuffConsensus::getJson(bool full) const
     return ret;
 }
 
+const bool HotstuffConsensus::canExtract() const
+{
+    auto sinceClose = timeSinceLastClose().count();
+
+    if (sinceClose <= 0)
+    {
+        sinceClose = (adaptor_.closeTime() - openTime_).count();
+    }
+
+    if (sinceClose >= adaptor_.parms().maxBLOCK_TIME)
+        return true;
+
+    if (adaptor_.parms().maxTXS_IN_LEDGER >= adaptor_.parms().minTXS_IN_LEDGER_ADVANCE &&
+        adaptor_.getPoolQueuedTxCount() >= adaptor_.parms().maxTXS_IN_LEDGER &&
+        sinceClose >= adaptor_.parms().minBLOCK_TIME / 2)
+    {
+        return true;
+    }
+
+    if (adaptor_.getPoolQueuedTxCount() > 0 && sinceClose >= adaptor_.parms().minBLOCK_TIME)
+        return true;
+
+    return false;
+}
+
 boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockData &blockData)
 {
     // Build new ledger
@@ -239,6 +264,11 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
             JLOG(j_.warn()) << "    Tx: " << item.key() << " throws!";
         }
     }
+
+    auto closeTime = adaptor_.closeTime();
+    closeTime = std::max<NetClock::time_point>(
+        closeTime, 
+        previousLedger_.closeTime() + std::chrono::seconds{ adaptor_.parms().minBLOCK_TIME / 1000 });
 
     auto built = adaptor_.buildLCL(
         previousLedger_,
@@ -573,6 +603,29 @@ bool HotstuffConsensus::waitingForInit() const
         (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_).count() < adaptor_.parms().initTIME.count());
 }
 
+std::chrono::milliseconds HotstuffConsensus::timeSinceLastClose() const
+{
+    using namespace std::chrono;
+    // This computes how long since last ledger's close time
+    std::chrono::milliseconds sinceClose;
+    {
+        bool previousCloseCorrect =
+            (mode_.get() != ConsensusMode::wrongLedger) &&
+            previousLedger_.closeAgree() &&
+            (previousLedger_.closeTime().time_since_epoch().count() != 0);
+
+        auto lastCloseTime = previousCloseCorrect
+            ? previousLedger_.closeTime()   // use consensus timing
+            : openTime_;                    // use the time we saw internally
+
+        if (now_ >= lastCloseTime)
+            sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(now_ - lastCloseTime);
+        else
+            sinceClose = -std::chrono::duration_cast<std::chrono::milliseconds>(lastCloseTime - now_);
+    }
+    return sinceClose;
+}
+
 void HotstuffConsensus::peerProposal(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
@@ -607,7 +660,6 @@ void HotstuffConsensus::peerProposal(
             {
                 handleWrongLedger(netLoaded.hash);
             }
-            return;
         }
 
         if (hotstuff_->CheckProposal(proposal->block(), proposal->syncInfo()))
@@ -702,7 +754,6 @@ void HotstuffConsensus::peerVote(
             {
                 handleWrongLedger(netLoaded.hash);
             }
-            return;
         }
 
         hotstuff_->handleVote(vote->vote(), vote->syncInfo());
@@ -771,6 +822,8 @@ void HotstuffConsensus::startRoundInternal(
     ConsensusMode mode)
 {
     JLOG(j_.info()) << "startRoundInternal";
+
+    openTime_ = now_;
 
     mode_.set(mode, adaptor_);
 

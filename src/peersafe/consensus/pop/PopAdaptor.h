@@ -61,9 +61,6 @@ public:
     bool isLeader(PublicKey const& publicKey, LedgerIndex curSeq, std::uint64_t view);
     bool isLeader(LedgerIndex curSeq, std::uint64_t view);
 
-    int getPubIndex(PublicKey const& publicKey);
-    int getPubIndex();
-
     Result onCollectFinish(
         RCLCxLedger const& ledger,
         std::vector<uint256> const& transactions,

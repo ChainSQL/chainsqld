@@ -83,6 +83,7 @@ public:
     Json::Value getJson(bool full) const override final;
 
     // Overwrite CommandManager extract interface.
+    const bool canExtract() const override final;
     boost::optional<hotstuff::Command> extract(hotstuff::BlockData &blockData) override final;
 
     // Overwrite StateCompute interfaces.
@@ -113,6 +114,7 @@ public:
 
 private:
     bool waitingForInit() const;
+    std::chrono::milliseconds timeSinceLastClose() const;
 
     void peerProposal(
         std::shared_ptr<PeerImp>& peer,
@@ -155,6 +157,7 @@ private:
     bool recover_ = false;  // When initialized, recover hotstuff_
     NetClock::time_point startTime_;
     NetClock::time_point now_;
+    NetClock::time_point openTime_;
 
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
