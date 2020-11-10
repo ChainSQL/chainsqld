@@ -58,6 +58,8 @@ HotstuffAdaptor::HotstuffAdaptor(
             app.config().loadConfig(SECTION_HCONSENSUS, "max_txs_per_ledger", parms_.maxTXS_IN_LEDGER),
             consensusParms.txPOOL_CAPACITY);
 
+        parms_.omitEMPTY = app.config().loadConfig(SECTION_HCONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+
         // default: 6s
         // min: 6s
         parms_.consensusTIMEOUT = std::chrono::seconds{

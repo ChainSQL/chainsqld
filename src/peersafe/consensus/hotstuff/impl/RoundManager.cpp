@@ -512,7 +512,7 @@ bool RoundManager::IsValidProposer(const Vote& vote) {
 	}
 	isValid = IsValidProposer(proposal_generator_->author(), next_round);
 
-	JLOG(journal_.info())
+	JLOG(journal_.debug())
 		<< "Is valid proposer for the vote? " << isValid
 		<< ". The Author of the vote is " << vote.author()
 		<< ", The round of the vote is " << vote.vote_data().proposed().round

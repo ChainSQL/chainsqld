@@ -244,6 +244,13 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
         adaptor_.relay(txSet);
     }
 
+    if (cmd == zero && adaptor_.parms().omitEMPTY)
+    {
+        JLOG(j_.info()) << "Empty transaction-set and omit empty ledger";
+        blockData.getLedgerInfo() = previousLedger_.ledger_->info();
+        return cmd;
+    }
+
     //--------------------------------------------------------------------
     std::set<TxID> failed;
 
@@ -318,7 +325,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     }
 
     // --------------------------------------------------------------------------
-    // Proposal block
+    // Compute and check block
 
     auto payload = block.block_data().payload;
     if (!payload)
@@ -332,6 +339,24 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     {
         JLOG(j_.warn()) << "txSet " << payload->cmd << " not acquired";
         return false;
+    }
+
+    // omit empty
+    if (adaptor_.parms().omitEMPTY && payload->cmd == zero)
+    {
+        JLOG(j_.info()) << "Empty transaction-set from leader and omit empty ledger";
+
+        if (info.hash != previousLedger_.id())
+        {
+            JLOG(j_.warn()) << "previous ledger conflict with proposed ledger";
+            return false;
+        }
+
+        result.ledger_info = previousLedger_.ledger_->info();
+        result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
+        // Tell directly connected peers that we have a new LCL
+        adaptor_.notify(protocol::neCLOSING_LEDGER, previousLedger_, adaptor_.mode() != ConsensusMode::wrongLedger);
+        return true;
     }
 
     //--------------------------------------------------------------------
@@ -390,8 +415,23 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
 
     if (block.block_data().block_type == hotstuff::BlockData::Proposal)
     {
-        return result.ledger_info.seq == result.parent_ledger_info.seq + 1
-            && result.ledger_info.parentHash == result.parent_ledger_info.hash;
+        auto payload = block.block_data().payload;
+        if (!payload)
+        {
+            JLOG(j_.warn()) << "verify block: block missing payload";
+            return false;
+        }
+
+        if (adaptor_.parms().omitEMPTY && payload->cmd == zero)
+        {
+            return result.ledger_info.seq == result.parent_ledger_info.seq
+                && result.ledger_info.hash == result.parent_ledger_info.hash;
+        }
+        else
+        {
+            return result.ledger_info.seq == result.parent_ledger_info.seq + 1
+                && result.ledger_info.parentHash == result.parent_ledger_info.hash;
+        }
     }
     else if (block.block_data().block_type == hotstuff::BlockData::NilBlock)
     {
@@ -399,7 +439,7 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
             && result.ledger_info.hash == result.parent_ledger_info.hash;
     }
 
-    return true;
+    return false;
 }
 
 int HotstuffConsensus::commit(const hotstuff::Block& block)
@@ -433,6 +473,11 @@ bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
         {
             return handleWrongLedger(prevInfo.ledger_info.hash);
         }
+    }
+    else if (prevInfo.ledger_info.seq == previousLedger_.seq() &&
+        adaptor_.parms().omitEMPTY)
+    {
+        adaptor_.updateConsensusTime();
     }
 
     return true;
@@ -678,7 +723,10 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
 {
     LedgerInfo const& info = proposal->block().getLedgerInfo();
 
-    if (info.seq < previousLedger_.seq() + 1)
+    JLOG(j_.info()) << "peerProposalInternal proposal seq="
+        << info.seq << ", prev seq=" << previousLedger_.seq();
+
+    if (info.seq < previousLedger_.seq())
     {
         JLOG(j_.warn()) << "proposal is fall behind";
         return;
@@ -689,6 +737,15 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
     {
         JLOG(j_.warn()) << "proposal missing payload";
         return;
+    }
+
+    if (info.seq == previousLedger_.seq())
+    {
+        if (!adaptor_.parms().omitEMPTY || payload->cmd != zero)
+        {
+            JLOG(j_.warn()) << "proposal is fall behind";
+            return;
+        }
     }
 
     if (info.seq > previousLedger_.seq() + 1)
