@@ -65,7 +65,8 @@ public:
     bool exepectBlock(
 		const HashValue& hash, 
 		const Author& author,
-		ExecutedBlock& block);
+		ExecutedBlock& block,
+		SyncBlockHandler handler = nullptr);
 
 	const QuorumCertificate& HighestQuorumCert() const {
 		return highest_quorum_cert_;
@@ -103,14 +104,9 @@ public:
 	StateCompute* state_compute() {
 		return state_compute_;
 	}
-
-	void setSyncBlockHandler(SyncBlockHandler handler) {
-		sync_executed_block_handler_ = handler;
-	}
-
+	
 private:
 	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);
-	void handleSyncBlockResult(const HashValue& hash, const ExecutedBlock& block);
 	void gcBlocks(Epoch epoch, Round round);
 
 	beast::Journal journal_;
@@ -124,7 +120,6 @@ private:
 	QuorumCertificate highest_commit_cert_;
 	boost::optional<TimeoutCertificate> highest_timeout_cert_;
 	std::atomic<Round> committed_round_;
-	SyncBlockHandler sync_executed_block_handler_;
 };
 
 } // namespace hotstuff

@@ -40,8 +40,7 @@ BlockStorage::BlockStorage(
 , highest_quorum_cert_()
 , highest_commit_cert_()
 , highest_timeout_cert_()
-, committed_round_(0)
-, sync_executed_block_handler_(nullptr) {
+, committed_round_(0) {
 
 }
 
@@ -58,8 +57,7 @@ BlockStorage::BlockStorage(
 , highest_quorum_cert_()
 , highest_commit_cert_()
 , highest_timeout_cert_() 
-, committed_round_(0)
-, sync_executed_block_handler_(nullptr) {
+, committed_round_(0) {
 	updateCeritificates(genesis_block);
 }
 
@@ -67,6 +65,7 @@ BlockStorage::~BlockStorage() {
 }
 
 void BlockStorage::updateCeritificates(const Block& block) {
+	cache_blocks_.clear();
 	committed_round_ = block.block_data().round;
 	genesis_block_id_  = block.id();
 	highest_quorum_cert_ = QuorumCertificate(block.block_data().quorum_cert);
@@ -114,19 +113,26 @@ bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
 bool BlockStorage::exepectBlock(
 	const HashValue& hash, 
 	const Author& author,
-	ExecutedBlock& block) {
+	ExecutedBlock& block,
+	SyncBlockHandler handler /*= nullptr*/) {
 
-	std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+	bool exists = false;
+	do {
+		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+		if (blockOf(hash, block)) {
+			return true;
+		}
 
-	if (blockOf(hash, block))
-		return true;
+		if (state_compute_->syncBlock(hash, author, block)) {
+			cache_blocks_.emplace(std::make_pair(block.block.id(), block));
+			JLOG(debugLog().info()) << "Store an executed block after sync: " << hash;
+			exists = true;
+			break;
+		}
+	} while (false);
 
-	if (state_compute_->syncBlock(hash, author, block)) {
-		cache_blocks_.emplace(std::make_pair(block.block.id(), block));
-        JLOG(debugLog().info()) << "Store an executed block after sync: " << hash;
-		handleSyncBlockResult(hash, block);
-		return true;
-	}
+	if (exists && handler)
+		handler(hash, block);
 	return false;
 }
 
@@ -206,13 +212,6 @@ void BlockStorage::commit(const LedgerInfoWithSignatures& ledger_info_with_sigs)
 		state_compute_->commit(executed_block.block);
 		committed_round_ = executed_block.block.block_data().round;
 	}
-}
-
-void BlockStorage::handleSyncBlockResult(
-	const HashValue& hash, 
-	const ExecutedBlock& block) {
-	if (sync_executed_block_handler_)
-		sync_executed_block_handler_(hash, block);
 }
 
 void BlockStorage::gcBlocks(Epoch epoch, Round round) {

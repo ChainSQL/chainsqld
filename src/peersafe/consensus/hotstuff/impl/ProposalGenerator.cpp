@@ -52,6 +52,9 @@ boost::optional<Block> ProposalGenerator::GenerateNilBlock(Round round) {
 
 boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 	if (last_round_generated_.exchange(round) >= round) {
+		JLOG(journal_.error())
+			<< "Generate a proposal whose round is " << round
+			<< " failed.";
 		return boost::optional<BlockData>();
 	}
 

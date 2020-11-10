@@ -60,6 +60,8 @@ public:
 		ErrorAddingVote,
 		/// The vote is not for the current round.
 		UnexpectedRound,
+		/// This QC has already been processed
+		QCHasAlreadyProcessed,
 	};
 
     ~PendingVotes();

@@ -97,8 +97,6 @@ private:
 	void AddVoteToCache(const Vote& vote);
 	void HandleCacheVotes(const HashValue& id);
 
-	void HandleSyncBlockResult(const HashValue& hash, const ExecutedBlock& block);
-
 	bool unsafetyExpectBlock(
 		const HashValue& block_id,
 		ExecutedBlock& executed_block);

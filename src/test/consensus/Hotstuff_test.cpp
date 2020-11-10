@@ -721,6 +721,7 @@ public:
 			env->app().logs().threshold(beast::severities::kDisabled);
 		else
 			env->app().logs().threshold(beast::severities::kInfo);
+		setDebugLogSink(env->app().logs().makeSink(journal_name, beast::severities::kDebug));
 
 		return new Replica(
 			replicaConfig,

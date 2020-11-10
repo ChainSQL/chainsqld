@@ -54,7 +54,7 @@ int PendingVotes::insertVote(
             << "The round for vote is "
             << vote.vote_data().proposed().round
             << " QC has already reached";
-        return VoteReceptionResult::DuplicateVote;
+        return VoteReceptionResult::QCHasAlreadyProcessed;
     }
 
 	// Has the author already voted for this round?
