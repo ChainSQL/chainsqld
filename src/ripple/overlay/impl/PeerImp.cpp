@@ -2098,7 +2098,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMConsensus> const& m)
     if ((boost::algorithm::clamp(sig.size(), 64, 72) != sig.size()) ||
         (publicKeyType(publicKey) != KeyType::secp256k1))
     {
-        JLOG(p_journal_.warn()) << "Consensus message: malformed";
+        JLOG(p_journal_.warn()) << "Consensus message mt(" << m->msgtype() <<"): malformed";
         fee_ = Resource::feeInvalidSignature;
         return;
     }
@@ -2106,14 +2106,14 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMConsensus> const& m)
     if (!app_.getValidationPublicKey().empty() &&
         publicKey == app_.getValidationPublicKey())
     {
-        JLOG(p_journal_.info()) << "Consensus message: self";
+        JLOG(p_journal_.info()) << "Consensus message mt(" << m->msgtype() << "): self";
         return;
     }
 
     if (!app_.getHashRouter().addSuppressionPeer(
         consensusMessageUniqueId(*m), id_))
     {
-        JLOG(p_journal_.info()) << "Consensus message: duplicate";
+        JLOG(p_journal_.info()) << "Consensus message mt(" << m->msgtype() << "): duplicate";
         return;
     }
 
@@ -2123,16 +2123,18 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMConsensus> const& m)
     {
         if (sanity_.load() == Sanity::insane)
         {
-            JLOG(p_journal_.debug()) << "Consensus message: Dropping UNTRUSTED (insane)";
+            JLOG(p_journal_.info()) << "Consensus message mt(" << m->msgtype() << "): Dropping UNTRUSTED (insane)";
             return;
         }
 
         if (!cluster() && app_.getFeeTrack().isLoadedLocal())
         {
-            JLOG(p_journal_.debug()) << "Consensus message: Dropping UNTRUSTED (load)";
+            JLOG(p_journal_.info()) << "Consensus message mt(" << m->msgtype() << "): Dropping UNTRUSTED (load)";
             return;
         }
     }
+
+    JLOG(p_journal_.info()) << "onMessage mt(" << m->msgtype() << "): add to JobQueue";
 
     std::weak_ptr<PeerImp> weak = shared_from_this();
     app_.getJobQueue().addJob(

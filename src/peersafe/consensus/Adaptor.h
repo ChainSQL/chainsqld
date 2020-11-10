@@ -171,6 +171,7 @@ public:
 
     int getPubIndex(PublicKey const& publicKey);
     int getPubIndex();
+    int getPubIndex(boost::optional<PublicKey> const& publicKey);
 
     /** Called before kicking off a new consensus round.
 

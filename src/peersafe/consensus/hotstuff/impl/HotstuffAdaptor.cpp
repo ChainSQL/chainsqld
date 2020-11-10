@@ -192,7 +192,7 @@ void HotstuffAdaptor::sendBLock(std::shared_ptr<PeerImp> peer, hotstuff::Execute
     consensus.set_msg(b.data(), b.size());
     consensus.set_msgtype(ConsensusMessageType::mtBLOCKDATA);
 
-    JLOG(j_.info()) << "send ExecutedBlock to peer " << getPubIndex(peer->getNodePublic());
+    JLOG(j_.info()) << "send ExecutedBlock to peer " << getPubIndex(peer->getValPublic());
 
     signMessage(consensus);
 

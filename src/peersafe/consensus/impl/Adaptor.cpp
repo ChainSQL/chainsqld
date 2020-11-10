@@ -75,6 +75,11 @@ inline int Adaptor::getPubIndex()
     return getPubIndex(valPublic_);
 }
 
+inline int Adaptor::getPubIndex(boost::optional<PublicKey> const& publicKey)
+{
+    return publicKey ? getPubIndex(*publicKey) : 0;
+}
+
 bool Adaptor::preStartRound(RCLCxLedger const & prevLgr)
 {
     // We have a key, we do not want out of sync validations after a restart
