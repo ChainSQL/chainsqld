@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
     This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2012, 2013 Ripple Labs Inc.
+    Copyright (c) 2020 Ripple Labs Inc.
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose  with  or without fee is hereby granted, provided that the above
@@ -17,90 +17,102 @@
 */
 //==============================================================================
 
-#include <ripple/protocol/BuildInfo.h>
-#include <ripple/beast/core/SemanticVersion.h>
 #include <ripple/beast/unit_test.h>
+#include <ripple/protocol/BuildInfo.h>
 
 namespace ripple {
 
 class BuildInfo_test : public beast::unit_test::suite
 {
 public:
-    ProtocolVersion
-    from_version (std::uint16_t major, std::uint16_t minor)
+    void
+    testEncodeSoftwareVersion()
     {
-        return ProtocolVersion (major, minor);
-    }
+        testcase("EncodeSoftwareVersion");
 
-    void testValues ()
-    {
-        testcase ("comparison");
+        auto encodedVersion = BuildInfo::encodeSoftwareVersion("1.2.3-b7");
 
-        BEAST_EXPECT(from_version (1,2) == from_version (1,2));
-        BEAST_EXPECT(from_version (3,4) >= from_version (3,4));
-        BEAST_EXPECT(from_version (5,6) <= from_version (5,6));
-        BEAST_EXPECT(from_version (7,8) >  from_version (6,7));
-        BEAST_EXPECT(from_version (7,8) <  from_version (8,9));
-        BEAST_EXPECT(from_version (65535,0) <  from_version (65535,65535));
-        BEAST_EXPECT(from_version (65535,65535) >= from_version (65535,65535));
-    }
+        // the first two bytes identify the particular implementation, 0x183B
+        BEAST_EXPECT(
+            (encodedVersion & 0xFFFF'0000'0000'0000LLU) ==
+            0x183B'0000'0000'0000LLU);
 
-    void testStringVersion ()
-    {
-        testcase ("string version");
+        // the next three bytes: major version, minor version, patch version,
+        // 0x010203
+        BEAST_EXPECT(
+            (encodedVersion & 0x0000'FFFF'FF00'0000LLU) ==
+            0x0000'0102'0300'0000LLU);
 
-        for (std::uint16_t major = 0; major < 8; major++)
+        // the next two bits:
         {
-            for (std::uint16_t minor = 0; minor < 8; minor++)
-            {
-                BEAST_EXPECT(to_string (from_version (major, minor)) ==
-                    std::to_string (major) + "." + std::to_string (minor));
-            }
+            // 01 if a beta
+            BEAST_EXPECT(
+                (encodedVersion & 0x0000'0000'00C0'0000LLU) >> 22 == 0b01);
+            // 10 if an RC
+            encodedVersion = BuildInfo::encodeSoftwareVersion("1.2.4-rc7");
+            BEAST_EXPECT(
+                (encodedVersion & 0x0000'0000'00C0'0000LLU) >> 22 == 0b10);
+            // 11 if neither an RC nor a beta
+            encodedVersion = BuildInfo::encodeSoftwareVersion("1.2.5");
+            BEAST_EXPECT(
+                (encodedVersion & 0x0000'0000'00C0'0000LLU) >> 22 == 0b11);
         }
+
+        // the next six bits: rc/beta number (1-63)
+        encodedVersion = BuildInfo::encodeSoftwareVersion("1.2.6-b63");
+        BEAST_EXPECT((encodedVersion & 0x0000'0000'003F'0000LLU) >> 16 == 63);
+
+        // the last two bytes are zeros
+        BEAST_EXPECT((encodedVersion & 0x0000'0000'0000'FFFFLLU) == 0);
+
+        // Test some version strings with wrong formats:
+        // no rc/beta number
+        encodedVersion = BuildInfo::encodeSoftwareVersion("1.2.3-b");
+        BEAST_EXPECT((encodedVersion & 0x0000'0000'00FF'0000LLU) == 0);
+        // rc/beta number out of range
+        encodedVersion = BuildInfo::encodeSoftwareVersion("1.2.3-b64");
+        BEAST_EXPECT((encodedVersion & 0x0000'0000'00FF'0000LLU) == 0);
+
+        // Check that the rc/beta number of a release is 0:
+        encodedVersion = BuildInfo::encodeSoftwareVersion("1.2.6");
+        BEAST_EXPECT((encodedVersion & 0x0000'0000'003F'0000LLU) == 0);
     }
 
-    void testVersionPacking ()
+    void
+    testIsRippledVersion()
     {
-        testcase ("version packing");
-
-        BEAST_EXPECT(to_packed (from_version (0, 0)) == 0);
-        BEAST_EXPECT(to_packed (from_version (0, 1)) == 1);
-        BEAST_EXPECT(to_packed (from_version (0, 255)) == 255);
-        BEAST_EXPECT(to_packed (from_version (0, 65535)) == 65535);
-
-        BEAST_EXPECT(to_packed (from_version (1, 0)) == 65536);
-        BEAST_EXPECT(to_packed (from_version (1, 1)) == 65537);
-        BEAST_EXPECT(to_packed (from_version (1, 255)) == 65791);
-        BEAST_EXPECT(to_packed (from_version (1, 65535)) == 131071);
-
-        BEAST_EXPECT(to_packed (from_version (255, 0)) == 16711680);
-        BEAST_EXPECT(to_packed (from_version (255, 1)) == 16711681);
-        BEAST_EXPECT(to_packed (from_version (255, 255)) == 16711935);
-        BEAST_EXPECT(to_packed (from_version (255, 65535)) == 16777215);
-
-        BEAST_EXPECT(to_packed (from_version (65535, 0)) == 4294901760);
-        BEAST_EXPECT(to_packed (from_version (65535, 1)) == 4294901761);
-        BEAST_EXPECT(to_packed (from_version (65535, 255)) == 4294902015);
-        BEAST_EXPECT(to_packed (from_version (65535, 65535)) == 4294967295);
+        testcase("IsRippledVersion");
+        auto vFF = 0xFFFF'FFFF'FFFF'FFFFLLU;
+        BEAST_EXPECT(!BuildInfo::isRippledVersion(vFF));
+        auto vRippled = 0x183B'0000'0000'0000LLU;
+        BEAST_EXPECT(BuildInfo::isRippledVersion(vRippled));
     }
 
-    void run () override
+    void
+    testIsNewerVersion()
     {
-        testValues ();
-        testStringVersion ();
-        testVersionPacking ();
+        testcase("IsNewerVersion");
+        auto vFF = 0xFFFF'FFFF'FFFF'FFFFLLU;
+        BEAST_EXPECT(!BuildInfo::isNewerVersion(vFF));
 
-        auto const current_protocol = BuildInfo::getCurrentProtocol ();
-        auto const minimum_protocol = BuildInfo::getMinimumProtocol ();
+        auto v159 = BuildInfo::encodeSoftwareVersion("1.5.9");
+        BEAST_EXPECT(!BuildInfo::isNewerVersion(v159));
 
-        BEAST_EXPECT(current_protocol >= minimum_protocol);
+        auto vCurrent = BuildInfo::getEncodedVersion();
+        BEAST_EXPECT(!BuildInfo::isNewerVersion(vCurrent));
 
-        log <<
-            "   Ripple Version: " << BuildInfo::getVersionString() << '\n' <<
-            " Protocol Version: " << to_string (current_protocol) << std::endl;
+        auto vMax = BuildInfo::encodeSoftwareVersion("255.255.255");
+        BEAST_EXPECT(BuildInfo::isNewerVersion(vMax));
+    }
+
+    void
+    run() override
+    {
+        testEncodeSoftwareVersion();
+        testIsRippledVersion();
+        testIsNewerVersion();
     }
 };
 
-BEAST_DEFINE_TESTSUITE(BuildInfo,ripple_data,ripple);
-
-} // ripple
+BEAST_DEFINE_TESTSUITE(BuildInfo, protocol, ripple);
+}  // namespace ripple

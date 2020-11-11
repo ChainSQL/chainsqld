@@ -83,7 +83,7 @@ struct ValidationParms
      *  ledgerMAX_CONSENSUS such that validators who are waiting for
      *  laggards are not considered offline.
      */
-    std::chrono::seconds validationFRESHNESS = std::chrono::seconds {20};
+    std::chrono::seconds validationFRESHNESS = std::chrono::seconds{20};
 };
 
 /** Enforce validation increasing sequence requirement.
@@ -167,7 +167,11 @@ enum class ValStatus {
     /// Not current or was older than current from this node
     stale,
     /// A validation violates the increasing seq requirement
-    badSeq
+    badSeq,
+    /// Multiple validations for the same ledger from multiple validators
+    multiple,
+    /// Multiple validations for different ledgers by a single validator
+    conflicting
 };
 
 inline std::string
@@ -181,6 +185,10 @@ to_string(ValStatus m)
             return "stale";
         case ValStatus::badSeq:
             return "badSeq";
+        case ValStatus::multiple:
+            return "multiple";
+        case ValStatus::conflicting:
+            return "conflicting";
         default:
             return "unknown";
     }
@@ -260,14 +268,6 @@ to_string(ValStatus m)
         using Validation = Validation;
         using Ledger = Ledger;
 
-        // Handle a newly stale validation, this should do minimal work since
-        // it is called by Validations while it may be iterating Validations
-        // under lock
-        void onStale(Validation && );
-
-        // Flush the remaining validations (typically done on shutdown)
-        void flush(hash_map<NodeID,Validation> && remaining);
-
         // Return the current network time (used to determine staleness)
         NetClock::time_point now() const;
 
@@ -294,8 +294,6 @@ class Validations
     using WrappedValidationType = std::decay_t<
         std::result_of_t<decltype (&Validation::unwrap)(Validation)>>;
 
-    using ScopedLock = std::lock_guard<Mutex>;
-
     // Manages concurrent access to members
     mutable Mutex mutex_;
 
@@ -315,6 +313,17 @@ class Validations
         std::chrono::steady_clock,
         beast::uhash<>>
         byLedger_;
+
+    // Partial and full validations indexed by sequence
+    beast::aged_unordered_map<
+        Seq,
+        hash_map<NodeID, Validation>,
+        std::chrono::steady_clock,
+        beast::uhash<>>
+        bySequence_;
+
+    // Sequence of the earliest validation to keep from expire
+    boost::optional<Seq> toKeep_;
 
     // Represents the ancestry of validated ledgers
     LedgerTrie<Ledger> trie_;
@@ -336,7 +345,10 @@ class Validations
 private:
     // Remove support of a validated ledger
     void
-    removeTrie(ScopedLock const&, NodeID const& nodeID, Validation const& val)
+    removeTrie(
+        std::lock_guard<Mutex> const&,
+        NodeID const& nodeID,
+        Validation const& val)
     {
         {
             auto it =
@@ -360,7 +372,7 @@ private:
 
     // Check if any pending acquire ledger requests are complete
     void
-    checkAcquired(ScopedLock const& lock)
+    checkAcquired(std::lock_guard<Mutex> const& lock)
     {
         for (auto it = acquiring_.begin(); it != acquiring_.end();)
         {
@@ -379,13 +391,16 @@ private:
 
     // Update the trie to reflect a new validated ledger
     void
-    updateTrie(ScopedLock const&, NodeID const& nodeID, Ledger ledger)
+    updateTrie(
+        std::lock_guard<Mutex> const&,
+        NodeID const& nodeID,
+        Ledger ledger)
     {
-        auto ins = lastLedger_.emplace(nodeID, ledger);
-        if (!ins.second)
+        auto const [it, inserted] = lastLedger_.emplace(nodeID, ledger);
+        if (!inserted)
         {
-            trie_.remove(ins.first->second);
-            ins.first->second = ledger;
+            trie_.remove(it->second);
+            it->second = ledger;
         }
         trie_.insert(ledger);
     }
@@ -405,7 +420,7 @@ private:
     */
     void
     updateTrie(
-        ScopedLock const& lock,
+        std::lock_guard<Mutex> const& lock,
         NodeID const& nodeID,
         Validation const& val,
         boost::optional<std::pair<Seq, ID>> prior)
@@ -456,10 +471,11 @@ private:
     */
     template <class F>
     auto
-    withTrie(ScopedLock const& lock, F&& f)
+    withTrie(std::lock_guard<Mutex> const& lock, F&& f)
     {
         // Call current to flush any stale validations
-        current(lock, [](auto) {}, [](auto, auto) {});
+        current(
+            lock, [](auto) {}, [](auto, auto) {});
         checkAcquired(lock);
         return f(trie_);
     }
@@ -482,7 +498,7 @@ private:
 
     template <class Pre, class F>
     void
-    current(ScopedLock const& lock, Pre&& pre, F&& f)
+    current(std::lock_guard<Mutex> const& lock, Pre&& pre, F&& f)
     {
         NetClock::time_point t = adaptor_.now();
         pre(current_.size());
@@ -494,7 +510,6 @@ private:
                     parms_, t, it->second.signTime(), it->second.seenTime()))
             {
                 removeTrie(lock, it->first, it->second);
-                adaptor_.onStale(std::move(it->second));
                 it = current_.erase(it);
             }
             else
@@ -521,7 +536,11 @@ private:
     */
     template <class Pre, class F>
     void
-    byLedger(ScopedLock const&, ID const& ledgerID, Pre&& pre, F&& f)
+    byLedger(
+        std::lock_guard<Mutex> const&,
+        ID const& ledgerID,
+        Pre&& pre,
+        F&& f)
     {
         auto it = byLedger_.find(ledgerID);
         if (it != byLedger_.end())
@@ -529,8 +548,8 @@ private:
             // Update set time since it is being used
             byLedger_.touch(it);
             pre(it->second.size());
-            for (auto const& keyVal : it->second)
-                f(keyVal.first, keyVal.second);
+            for (auto const& [key, val] : it->second)
+                f(key, val);
         }
     }
 
@@ -546,7 +565,10 @@ public:
         ValidationParms const& p,
         beast::abstract_clock<std::chrono::steady_clock>& c,
         Ts&&... ts)
-        : byLedger_(c), parms_(p), adaptor_(std::forward<Ts>(ts)...)
+        : byLedger_(c)
+        , bySequence_(c)
+        , parms_(p)
+        , adaptor_(std::forward<Ts>(ts)...)
     {
     }
 
@@ -576,7 +598,7 @@ public:
     bool
     canValidateSeq(Seq const s)
     {
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
         return localSeqEnforcer_(byLedger_.clock().now(), s, parms_);
     }
 
@@ -595,30 +617,63 @@ public:
             return ValStatus::stale;
 
         {
-            ScopedLock lock{mutex_};
+            std::lock_guard lock{mutex_};
 
             // Check that validation sequence is greater than any non-expired
-            // validations sequence from that validator
+            // validations sequence from that validator; if it's not, perform
+            // additional work to detect Byzantine validations
             auto const now = byLedger_.clock().now();
-            SeqEnforcer<Seq>& enforcer = seqEnforcers_[nodeID];
-            if (!enforcer(now, val.seq(), parms_))
+
+            auto const [seqit, seqinserted] =
+                bySequence_[val.seq()].emplace(nodeID, val);
+
+            if (!seqinserted)
+            {
+                // Check if the entry we're already tracking was signed
+                // long enough ago that we can disregard it.
+                auto const diff =
+                    std::max(seqit->second.signTime(), val.signTime()) -
+                    std::min(seqit->second.signTime(), val.signTime());
+
+                if (diff > parms_.validationCURRENT_WALL &&
+                    val.signTime() > seqit->second.signTime())
+                    seqit->second = val;
+            }
+
+            // Enforce monotonically increasing sequences for validations
+            // by a given node:
+            if (auto& enf = seqEnforcers_[nodeID]; !enf(now, val.seq(), parms_))
+            {
+                // If the validation is for the same sequence as one we are
+                // tracking, check it closely:
+                if (seqit->second.seq() == val.seq())
+                {
+                    // Two validations for the same sequence but for different
+                    // ledgers. This could be the result of misconfiguration
+                    // but it can also mean a Byzantine validator.
+                    if (seqit->second.ledgerID() != val.ledgerID())
+                        return ValStatus::conflicting;
+
+                    // Two validations for the same sequence but with different
+                    // cookies. This is probably accidental misconfiguration.
+                    if (seqit->second.cookie() != val.cookie())
+                        return ValStatus::multiple;
+                }
+
                 return ValStatus::badSeq;
+            }
 
-            // Use insert_or_assign when C++17 supported
-            auto byLedgerIt = byLedger_[val.ledgerID()].emplace(nodeID, val);
-            if (!byLedgerIt.second)
-                byLedgerIt.first->second = val;
+            byLedger_[val.ledgerID()].insert_or_assign(nodeID, val);
 
-            auto const ins = current_.emplace(nodeID, val);
-            if (!ins.second)
+            auto const [it, inserted] = current_.emplace(nodeID, val);
+            if (!inserted)
             {
                 // Replace existing only if this one is newer
-                Validation& oldVal = ins.first->second;
+                Validation& oldVal = it->second;
                 if (val.signTime() > oldVal.signTime())
                 {
                     std::pair<Seq, ID> old(oldVal.seq(), oldVal.ledgerID());
-                    adaptor_.onStale(std::move(oldVal));
-                    ins.first->second = val;
+                    it->second = val;
                     if (val.trusted())
                         updateTrie(lock, nodeID, val, old);
                 }
@@ -630,19 +685,53 @@ public:
                 updateTrie(lock, nodeID, val, boost::none);
             }
         }
+
         return ValStatus::current;
+    }
+
+    /**
+     * Set the smallest sequence number of validations to keep from expire
+     * @param s the sequence number
+     */
+    void
+    setSeqToKeep(Seq const& s)
+    {
+        std::lock_guard lock{mutex_};
+        toKeep_ = s;
     }
 
     /** Expire old validation sets
 
         Remove validation sets that were accessed more than
-        validationSET_EXPIRES ago.
+        validationSET_EXPIRES ago and were not asked to keep.
     */
     void
     expire()
     {
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
+        if (toKeep_)
+        {
+            for (auto i = byLedger_.begin(); i != byLedger_.end(); ++i)
+            {
+                auto const& validationMap = i->second;
+                if (!validationMap.empty() &&
+                    validationMap.begin()->second.seq() >= toKeep_)
+                {
+                    byLedger_.touch(i);
+                }
+            }
+
+            for (auto i = bySequence_.begin(); i != bySequence_.end(); ++i)
+            {
+                if (i->first >= toKeep_)
+                {
+                    bySequence_.touch(i);
+                }
+            }
+        }
+
         beast::expire(byLedger_, parms_.validationSET_EXPIRES);
+        beast::expire(bySequence_, parms_.validationSET_EXPIRES);
     }
 
     /** Update trust status of validations
@@ -657,33 +746,34 @@ public:
     void
     trustChanged(hash_set<NodeID> const& added, hash_set<NodeID> const& removed)
     {
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
 
-        for (auto& it : current_)
+        for (auto& [nodeId, validation] : current_)
         {
-            if (added.find(it.first) != added.end())
+            if (added.find(nodeId) != added.end())
             {
-                it.second.setTrusted();
-                updateTrie(lock, it.first, it.second, boost::none);
+                validation.setTrusted();
+                updateTrie(lock, nodeId, validation, boost::none);
             }
-            else if (removed.find(it.first) != removed.end())
+            else if (removed.find(nodeId) != removed.end())
             {
-                it.second.setUntrusted();
-                removeTrie(lock, it.first, it.second);
+                validation.setUntrusted();
+                removeTrie(lock, nodeId, validation);
             }
         }
 
-        for (auto& it : byLedger_)
+        for (auto& [_, validationMap] : byLedger_)
         {
-            for (auto& nodeVal : it.second)
+            (void)_;
+            for (auto& [nodeId, validation] : validationMap)
             {
-                if (added.find(nodeVal.first) != added.end())
+                if (added.find(nodeId) != added.end())
                 {
-                    nodeVal.second.setTrusted();
+                    validation.setTrusted();
                 }
-                else if (removed.find(nodeVal.first) != removed.end())
+                else if (removed.find(nodeId) != removed.end())
                 {
-                    nodeVal.second.setUntrusted();
+                    validation.setUntrusted();
                 }
             }
         }
@@ -692,7 +782,7 @@ public:
     Json::Value
     getJsonTrie() const
     {
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
         return trie_.getJson();
     }
 
@@ -711,7 +801,7 @@ public:
     boost::optional<std::pair<Seq, ID>>
     getPreferred(Ledger const& curr)
     {
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
         boost::optional<SpanTip<Ledger>> preferred =
             withTrie(lock, [this](LedgerTrie<Ledger>& trie) {
                 return trie.getPreferred(localSeqEnforcer_.largest());
@@ -835,7 +925,7 @@ public:
     std::size_t
     getNodesAfter(Ledger const& ledger, ID const& ledgerID)
     {
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
 
         // Use trie if ledger is the right one
         if (ledger.id() == ledgerID)
@@ -862,7 +952,7 @@ public:
     currentTrusted()
     {
         std::vector<WrappedValidationType> ret;
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
         current(
             lock,
             [&](std::size_t numValidations) { ret.reserve(numValidations); },
@@ -881,7 +971,7 @@ public:
     getCurrentNodeIDs() -> hash_set<NodeID>
     {
         hash_set<NodeID> ret;
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
         current(
             lock,
             [&](std::size_t numValidations) { ret.reserve(numValidations); },
@@ -899,7 +989,7 @@ public:
     numTrustedForLedger(ID const& ledgerID)
     {
         std::size_t count = 0;
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
         byLedger(
             lock,
             ledgerID,
@@ -920,7 +1010,7 @@ public:
     getTrustedForLedger(ID const& ledgerID)
     {
         std::vector<WrappedValidationType> res;
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
         byLedger(
             lock,
             ledgerID,
@@ -943,7 +1033,7 @@ public:
     fees(ID const& ledgerID, std::uint32_t baseFee)
     {
         std::vector<std::uint32_t> res;
-        ScopedLock lock{mutex_};
+        std::lock_guard lock{mutex_};
         byLedger(
             lock,
             ledgerID,
@@ -966,17 +1056,8 @@ public:
     void
     flush()
     {
-        hash_map<NodeID, Validation> flushed;
-        {
-            ScopedLock lock{mutex_};
-            for (auto it : current_)
-            {
-                flushed.emplace(it.first, std::move(it.second));
-            }
-            current_.clear();
-        }
-
-        adaptor_.flush(std::move(flushed));
+        std::lock_guard lock{mutex_};
+        current_.clear();
     }
 
     /** Return quantity of lagging proposers, and remove online proposers
@@ -999,7 +1080,8 @@ public:
     {
         std::size_t laggards = 0;
 
-        current(ScopedLock{mutex_},
+        current(
+            std::lock_guard{mutex_},
             [](std::size_t) {},
             [&](NodeID const&, Validation const& v) {
                 if (adaptor_.now() <

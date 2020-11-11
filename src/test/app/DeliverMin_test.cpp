@@ -17,9 +17,9 @@
 */
 //==============================================================================
 
-#include <test/jtx.h>
 #include <ripple/beast/unit_test.h>
 #include <ripple/protocol/Feature.h>
+#include <test/jtx.h>
 
 namespace ripple {
 namespace test {
@@ -40,21 +40,33 @@ public:
             Env env(*this, features);
             env.fund(ZXC(10000), "alice", "bob", "carol", gw);
             env.trust(USD(100), "alice", "bob", "carol");
-            env(pay("alice", "bob", USD(10)), delivermin(USD(10)),  ter(temBAD_AMOUNT));
-            env(pay("alice", "bob", USD(10)), delivermin(USD(-5)),
-                txflags(tfPartialPayment),                          ter(temBAD_AMOUNT));
-            env(pay("alice", "bob", USD(10)), delivermin(ZXC(5)),
-                txflags(tfPartialPayment),                          ter(temBAD_AMOUNT));
+            env(pay("alice", "bob", USD(10)),
+                delivermin(USD(10)),
+                ter(temBAD_AMOUNT));
+            env(pay("alice", "bob", USD(10)),
+                delivermin(USD(-5)),
+                txflags(tfPartialPayment),
+                ter(temBAD_AMOUNT));
+            env(pay("alice", "bob", USD(10)),
+                delivermin(ZXC(5)),
+                txflags(tfPartialPayment),
+                ter(temBAD_AMOUNT));
             env(pay("alice", "bob", USD(10)),
                 delivermin(Account("carol")["USD"](5)),
-                txflags(tfPartialPayment),                          ter(temBAD_AMOUNT));
-            env(pay("alice", "bob", USD(10)), delivermin(USD(15)),
-                txflags(tfPartialPayment),                          ter(temBAD_AMOUNT));
+                txflags(tfPartialPayment),
+                ter(temBAD_AMOUNT));
+            env(pay("alice", "bob", USD(10)),
+                delivermin(USD(15)),
+                txflags(tfPartialPayment),
+                ter(temBAD_AMOUNT));
             env(pay(gw, "carol", USD(50)));
             env(offer("carol", ZXC(5), USD(5)));
-            env(pay("alice", "bob", USD(10)), paths(ZXC),
-                delivermin(USD(7)), txflags(tfPartialPayment),
-                sendmax(ZXC(5)),                                   ter(tecPATH_PARTIAL));
+            env(pay("alice", "bob", USD(10)),
+                paths(ZXC),
+                delivermin(USD(7)),
+                txflags(tfPartialPayment),
+                sendmax(ZXC(5)),
+                ter(tecPATH_PARTIAL));
             env.require(balance("alice", ZXC(9999.99999)));
             env.require(balance("bob", ZXC(10000)));
         }
@@ -65,8 +77,10 @@ public:
             env.trust(USD(1000), "alice", "bob");
             env(pay(gw, "bob", USD(100)));
             env(offer("bob", ZXC(100), USD(100)));
-            env(pay("alice", "alice", USD(10000)), paths(ZXC),
-                delivermin(USD(100)), txflags(tfPartialPayment),
+            env(pay("alice", "alice", USD(10000)),
+                paths(ZXC),
+                delivermin(USD(100)),
+                txflags(tfPartialPayment),
                 sendmax(ZXC(100)));
             env.require(balance("alice", USD(100)));
         }
@@ -79,11 +93,16 @@ public:
             env(offer("bob", ZXC(100), USD(100)));
             env(offer("bob", ZXC(1000), USD(100)));
             env(offer("bob", ZXC(10000), USD(100)));
-            env(pay("alice", "carol", USD(10000)), paths(ZXC),
-                delivermin(USD(200)), txflags(tfPartialPayment),
-                sendmax(ZXC(1000)),                                 ter(tecPATH_PARTIAL));
-            env(pay("alice", "carol", USD(10000)), paths(ZXC),
-                delivermin(USD(200)), txflags(tfPartialPayment),
+            env(pay("alice", "carol", USD(10000)),
+                paths(ZXC),
+                delivermin(USD(200)),
+                txflags(tfPartialPayment),
+                sendmax(ZXC(1000)),
+                ter(tecPATH_PARTIAL));
+            env(pay("alice", "carol", USD(10000)),
+                paths(ZXC),
+                delivermin(USD(200)),
+                txflags(tfPartialPayment),
                 sendmax(ZXC(1100)));
             env.require(balance("bob", USD(0)));
             env.require(balance("carol", USD(200)));
@@ -98,8 +117,10 @@ public:
             env(offer("bob", ZXC(100), USD(100)));
             env(offer("bob", ZXC(1000), USD(100)));
             env(offer("dan", ZXC(100), USD(100)));
-            env(pay("alice", "carol", USD(10000)), paths(ZXC),
-                delivermin(USD(200)), txflags(tfPartialPayment),
+            env(pay("alice", "carol", USD(10000)),
+                paths(ZXC),
+                delivermin(USD(200)),
+                txflags(tfPartialPayment),
                 sendmax(ZXC(200)));
             env.require(balance("bob", USD(0)));
             env.require(balance("carol", USD(200)));
@@ -112,14 +133,12 @@ public:
     {
         using namespace jtx;
         auto const sa = supported_amendments();
-        test_convert_all_of_an_asset(sa - featureFlow - fix1373 - featureFlowCross);
-        test_convert_all_of_an_asset(sa - fix1373 - featureFlowCross);
         test_convert_all_of_an_asset(sa - featureFlowCross);
         test_convert_all_of_an_asset(sa);
     }
 };
 
-BEAST_DEFINE_TESTSUITE(DeliverMin,app,ripple);
+BEAST_DEFINE_TESTSUITE(DeliverMin, app, ripple);
 
-} // test
-} // ripple
+}  // namespace test
+}  // namespace ripple

@@ -15,9 +15,9 @@
 */
 //==============================================================================
 
-#include <test/jtx.h>
 #include <ripple/beast/unit_test.h>
 #include <ripple/protocol/Feature.h>
+#include <test/jtx.h>
 
 namespace ripple {
 namespace test {
@@ -26,7 +26,7 @@ class CrossingLimits_test : public beast::unit_test::suite
 {
 private:
     void
-    n_offers (
+    n_offers(
         jtx::Env& env,
         std::size_t n,
         jtx::Account const& account,
@@ -40,22 +40,17 @@ private:
             env(offer(account, in, out));
             env.close();
         }
-        env.require (owners (account, ownerCount + n));
+        env.require(owners(account, ownerCount + n));
     }
 
 public:
-
     void
     testStepLimit(FeatureBitset features)
     {
-        testcase ("Step Limit");
+        testcase("Step Limit");
 
         using namespace jtx;
         Env env(*this, features);
-        auto const closeTime =
-            fix1449Time() +
-                100 * env.closed()->info().closeTimeResolution;
-        env.close (closeTime);
 
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
@@ -65,41 +60,37 @@ public:
         env(pay(gw, "bob", USD(1)));
         env.trust(USD(1), "dan");
         env(pay(gw, "dan", USD(1)));
-        n_offers (env, 2000, "bob", ZXC(1), USD(1));
-        n_offers (env, 1, "dan", ZXC(1), USD(1));
+        n_offers(env, 2000, "bob", ZXC(1), USD(1));
+        n_offers(env, 1, "dan", ZXC(1), USD(1));
 
         // Alice offers to buy 1000 ZXC for 1000 USD. She takes Bob's first
         // offer, removes 999 more as unfunded, then hits the step limit.
         env(offer("alice", USD(1000), ZXC(1000)));
-        env.require (balance("alice", USD(1)));
-        env.require (owners("alice", 2));
-        env.require (balance("bob", USD(0)));
-        env.require (owners("bob", 1001));
-        env.require (balance("dan", USD(1)));
-        env.require (owners("dan", 2));
+        env.require(balance("alice", USD(1)));
+        env.require(owners("alice", 2));
+        env.require(balance("bob", USD(0)));
+        env.require(owners("bob", 1001));
+        env.require(balance("dan", USD(1)));
+        env.require(owners("dan", 2));
 
         // Carol offers to buy 1000 ZXC for 1000 USD. She removes Bob's next
         // 1000 offers as unfunded and hits the step limit.
         env(offer("carol", USD(1000), ZXC(1000)));
-        env.require (balance("carol", USD(none)));
-        env.require (owners("carol", 1));
-        env.require (balance("bob", USD(0)));
-        env.require (owners("bob", 1));
-        env.require (balance("dan", USD(1)));
-        env.require (owners("dan", 2));
+        env.require(balance("carol", USD(none)));
+        env.require(owners("carol", 1));
+        env.require(balance("bob", USD(0)));
+        env.require(owners("bob", 1));
+        env.require(balance("dan", USD(1)));
+        env.require(owners("dan", 2));
     }
 
     void
     testCrossingLimit(FeatureBitset features)
     {
-        testcase ("Crossing Limit");
+        testcase("Crossing Limit");
 
         using namespace jtx;
         Env env(*this, features);
-        auto const closeTime =
-            fix1449Time() +
-                100 * env.closed()->info().closeTimeResolution;
-        env.close (closeTime);
 
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
@@ -114,36 +105,32 @@ public:
         env.trust(USD(bobsOfferCount), "bob");
         env(pay(gw, "bob", USD(bobsOfferCount)));
         env.close();
-        n_offers (env, bobsOfferCount, "bob", ZXC(1), USD(1));
+        n_offers(env, bobsOfferCount, "bob", ZXC(1), USD(1));
 
         // Alice offers to buy Bob's offers. However she hits the offer
         // crossing limit, so she can't buy them all at once.
         env(offer("alice", USD(bobsOfferCount), ZXC(bobsOfferCount)));
         env.close();
-        env.require (balance("alice", USD(maxConsumed)));
-        env.require (balance("bob", USD(150)));
-        env.require (owners ("bob", 150 + 1));
+        env.require(balance("alice", USD(maxConsumed)));
+        env.require(balance("bob", USD(150)));
+        env.require(owners("bob", 150 + 1));
 
         // Carol offers to buy 1000 ZXC for 1000 USD. She takes Bob's
         // remaining 150 offers without hitting a limit.
         env(offer("carol", USD(1000), ZXC(1000)));
         env.close();
-        env.require (balance("carol", USD(150)));
-        env.require (balance("bob", USD(0)));
-        env.require (owners ("bob", 1));
+        env.require(balance("carol", USD(150)));
+        env.require(balance("bob", USD(0)));
+        env.require(owners("bob", 1));
     }
 
     void
     testStepAndCrossingLimit(FeatureBitset features)
     {
-        testcase ("Step And Crossing Limit");
+        testcase("Step And Crossing Limit");
 
         using namespace jtx;
         Env env(*this, features);
-        auto const closeTime =
-            fix1449Time() +
-                100 * env.closed()->info().closeTimeResolution;
-        env.close (closeTime);
 
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
@@ -153,10 +140,10 @@ public:
         // The number of offers allowed to cross is different between
         // Taker and FlowCross.  Taker allows 850 and FlowCross allows 1000.
         // Accommodate that difference in the test.
-        bool const isFlowCross {features[featureFlowCross]};
+        bool const isFlowCross{features[featureFlowCross]};
         int const maxConsumed = isFlowCross ? 1000 : 850;
 
-        int const evitasOfferCount {maxConsumed + 49};
+        int const evitasOfferCount{maxConsumed + 49};
         env.trust(USD(1000), "alice");
         env(pay(gw, "alice", USD(1000)));
         env.trust(USD(1000), "carol");
@@ -171,47 +158,44 @@ public:
         //
         // Give carol an extra 150 (unfunded) offers when we're using Taker
         // to accommodate that difference.
-        int const carolsOfferCount {isFlowCross ? 700 : 850};
-        n_offers (env, 400, "alice", ZXC(1), USD(1));
-        n_offers (env, carolsOfferCount, "carol", ZXC(1), USD(1));
-        n_offers (env, evitasOfferCount, "evita", ZXC(1), USD(1));
+        int const carolsOfferCount{isFlowCross ? 700 : 850};
+        n_offers(env, 400, "alice", ZXC(1), USD(1));
+        n_offers(env, carolsOfferCount, "carol", ZXC(1), USD(1));
+        n_offers(env, evitasOfferCount, "evita", ZXC(1), USD(1));
 
         // Bob offers to buy 1000 ZXC for 1000 USD. He takes all 400 USD from
         // Alice's offers, 1 USD from Carol's and then removes 599 of Carol's
         // offers as unfunded, before hitting the step limit.
         env(offer("bob", USD(1000), ZXC(1000)));
-        env.require (balance("bob", USD(401)));
-        env.require (balance("alice", USD(600)));
-        env.require (owners("alice", 1));
-        env.require (balance("carol", USD(0)));
-        env.require (owners("carol", carolsOfferCount - 599));
-        env.require (balance("evita", USD(evitasOfferCount + 1)));
-        env.require (owners("evita", evitasOfferCount + 1));
+        env.require(balance("bob", USD(401)));
+        env.require(balance("alice", USD(600)));
+        env.require(owners("alice", 1));
+        env.require(balance("carol", USD(0)));
+        env.require(owners("carol", carolsOfferCount - 599));
+        env.require(balance("evita", USD(evitasOfferCount + 1)));
+        env.require(owners("evita", evitasOfferCount + 1));
 
         // Dan offers to buy maxConsumed + 50 ZXC USD. He removes all of
         // Carol's remaining offers as unfunded, then takes
         // (maxConsumed - 100) USD from Evita's, hitting the crossing limit.
         env(offer("dan", USD(maxConsumed + 50), ZXC(maxConsumed + 50)));
-        env.require (balance("dan", USD(maxConsumed - 100)));
-        env.require (owners("dan", 2));
-        env.require (balance("alice", USD(600)));
-        env.require (owners("alice", 1));
-        env.require (balance("carol", USD(0)));
-        env.require (owners("carol", 1));
-        env.require (balance("evita", USD(150)));
-        env.require (owners("evita", 150));
+        env.require(balance("dan", USD(maxConsumed - 100)));
+        env.require(owners("dan", 2));
+        env.require(balance("alice", USD(600)));
+        env.require(owners("alice", 1));
+        env.require(balance("carol", USD(0)));
+        env.require(owners("carol", 1));
+        env.require(balance("evita", USD(150)));
+        env.require(owners("evita", 150));
     }
 
-    void testAutoBridgedLimitsTaker (FeatureBitset features)
+    void
+    testAutoBridgedLimitsTaker(FeatureBitset features)
     {
-        testcase ("Auto Bridged Limits Taker");
+        testcase("Auto Bridged Limits Taker");
 
         using namespace jtx;
         Env env(*this, features);
-        auto const closeTime =
-            fix1449Time() +
-                100 * env.closed()->info().closeTimeResolution;
-        env.close (closeTime);
 
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
@@ -226,10 +210,10 @@ public:
         env.trust(USD(1000), "evita");
         env(pay(gw, "evita", USD(1000)));
 
-        n_offers (env,  302, "alice", EUR(2), ZXC(1));
-        n_offers (env,  300, "alice", ZXC(1), USD(4));
-        n_offers (env,  497, "carol", ZXC(1), USD(3));
-        n_offers (env, 1001, "evita", EUR(1), USD(1));
+        n_offers(env, 302, "alice", EUR(2), ZXC(1));
+        n_offers(env, 300, "alice", ZXC(1), USD(4));
+        n_offers(env, 497, "carol", ZXC(1), USD(3));
+        n_offers(env, 1001, "evita", EUR(1), USD(1));
 
         // Bob offers to buy 2000 USD for 2000 EUR, even though he only has
         // 1000 EUR.
@@ -252,23 +236,23 @@ public:
         env(pay(gw, "bob", EUR(1000)));
         env.close();
         env(offer("bob", USD(2000), EUR(2000)));
-        env.require (balance("bob", USD(1204)));
-        env.require (balance("bob", EUR( 397)));
+        env.require(balance("bob", USD(1204)));
+        env.require(balance("bob", EUR(397)));
 
-        env.require (balance("alice", USD(800)));
-        env.require (balance("alice", EUR(602)));
-        env.require (offers("alice", 1));
-        env.require (owners("alice", 3));
+        env.require(balance("alice", USD(800)));
+        env.require(balance("alice", EUR(602)));
+        env.require(offers("alice", 1));
+        env.require(owners("alice", 3));
 
-        env.require (balance("carol", USD(0)));
-        env.require (balance("carol", EUR(none)));
-        env.require (offers("carol", 100));
-        env.require (owners("carol", 101));
+        env.require(balance("carol", USD(0)));
+        env.require(balance("carol", EUR(none)));
+        env.require(offers("carol", 100));
+        env.require(owners("carol", 101));
 
-        env.require (balance("evita", USD(999)));
-        env.require (balance("evita", EUR(1)));
-        env.require (offers("evita", 1000));
-        env.require (owners("evita", 1002));
+        env.require(balance("evita", USD(999)));
+        env.require(balance("evita", EUR(1)));
+        env.require(offers("evita", 1000));
+        env.require(owners("evita", 1002));
 
         // Dan offers to buy 900 EUR for 900 USD.
         //  1. He removes all 100 of Carol's remaining unfunded offers.
@@ -282,23 +266,23 @@ public:
         env.close();
 
         env(offer("dan", USD(900), EUR(900)));
-        env.require (balance("dan", USD(850)));
-        env.require (balance("dan", EUR(150)));
+        env.require(balance("dan", USD(850)));
+        env.require(balance("dan", EUR(150)));
 
-        env.require (balance("alice", USD(800)));
-        env.require (balance("alice", EUR(602)));
-        env.require (offers("alice", 1));
-        env.require (owners("alice", 3));
+        env.require(balance("alice", USD(800)));
+        env.require(balance("alice", EUR(602)));
+        env.require(offers("alice", 1));
+        env.require(owners("alice", 3));
 
-        env.require (balance("carol", USD(0)));
-        env.require (balance("carol", EUR(none)));
-        env.require (offers("carol", 0));
-        env.require (owners("carol", 1));
+        env.require(balance("carol", USD(0)));
+        env.require(balance("carol", EUR(none)));
+        env.require(offers("carol", 0));
+        env.require(owners("carol", 1));
 
-        env.require (balance("evita", USD(149)));
-        env.require (balance("evita", EUR(851)));
-        env.require (offers("evita", 150));
-        env.require (owners("evita", 152));
+        env.require(balance("evita", USD(149)));
+        env.require(balance("evita", EUR(851)));
+        env.require(offers("evita", 150));
+        env.require(owners("evita", 152));
     }
 
     void
@@ -329,9 +313,6 @@ public:
         // strand dry until the liquidity is actually used)
         {
             Env env(*this, features);
-            auto const closeTime =
-                fix1449Time() + 100 * env.closed()->info().closeTimeResolution;
-            env.close(closeTime);
 
             env.fund(ZXC(100000000), gw, alice, bob, carol);
 
@@ -400,9 +381,6 @@ public:
         }
         {
             Env env(*this, features);
-            auto const closeTime =
-                fix1449Time() + 100 * env.closed()->info().closeTimeResolution;
-            env.close(closeTime);
 
             env.fund(ZXC(100000000), gw, alice, bob, carol);
 
@@ -423,7 +401,8 @@ public:
             n_offers(env, 1, alice, EUR(499), USD(499));
 
             // Bob offers to buy 2000 USD for 2000 EUR; He starts with 2000 EUR
-            //  1. The best quality is the offer that takes 1 EUR and gives 10 USD
+            //  1. The best quality is the offer that takes 1 EUR and gives 10
+            //  USD
             //     Bob spends 1 EUR and receives 10 USD.
             //
             //  2. The best quality is the autobridged offers that takes 2 EUR
@@ -475,7 +454,8 @@ public:
         }
     }
 
-    void testAutoBridgedLimits (FeatureBitset features)
+    void
+    testAutoBridgedLimits(FeatureBitset features)
     {
         // Taker and FlowCross are too different in the way they handle
         // autobridging to make one test suit both approaches.
@@ -489,13 +469,13 @@ public:
         //
         // So the tests for the two forms of autobridging are separate.
         if (features[featureFlowCross])
-            testAutoBridgedLimitsFlowCross (features);
+            testAutoBridgedLimitsFlowCross(features);
         else
-            testAutoBridgedLimitsTaker (features);
+            testAutoBridgedLimitsTaker(features);
     }
 
     void
-    testOfferOverflow (FeatureBitset features)
+    testOfferOverflow(FeatureBitset features)
     {
         testcase("Offer Overflow");
 
@@ -508,9 +488,6 @@ public:
         auto const USD = gw["USD"];
 
         Env env(*this, features);
-        auto const closeTime =
-            fix1449Time() + 100 * env.closed()->info().closeTimeResolution;
-        env.close(closeTime);
 
         env.fund(ZXC(100000000), gw, alice, bob);
 
@@ -521,12 +498,14 @@ public:
         env(pay(gw, alice, USD(8000)));
         env.close();
 
-        // The new flow cross handles consuming excessive offers differently than the old
-        // offer crossing code. In the old code, the total number of consumed offers is tracked, and
-        // the crossings will stop after this limit is hit. In the new code, the number of offers is
-        // tracked per offerbook and per quality. This test shows how they can differ. Set up a book
-        // with many offers. At each quality keep the number of offers below the limit. However, if
-        // all the offers are consumed it would create a tecOVERSIZE error.
+        // The new flow cross handles consuming excessive offers differently
+        // than the old offer crossing code. In the old code, the total number
+        // of consumed offers is tracked, and the crossings will stop after this
+        // limit is hit. In the new code, the number of offers is tracked per
+        // offerbook and per quality. This test shows how they can differ. Set
+        // up a book with many offers. At each quality keep the number of offers
+        // below the limit. However, if all the offers are consumed it would
+        // create a tecOVERSIZE error.
         n_offers(env, 998, alice, ZXC(1.00), USD(1));
         n_offers(env, 998, alice, ZXC(0.99), USD(1));
         n_offers(env, 998, alice, ZXC(0.98), USD(1));
@@ -535,7 +514,8 @@ public:
         n_offers(env, 998, alice, ZXC(0.95), USD(1));
 
         bool const withFlowCross = features[featureFlowCross];
-        env(offer(bob, USD(8000), ZXC(8000)), ter(withFlowCross ? TER{tecOVERSIZE} : tesSUCCESS));
+        env(offer(bob, USD(8000), ZXC(8000)),
+            ter(withFlowCross ? TER{tecOVERSIZE} : tesSUCCESS));
         env.close();
 
         env.require(balance(bob, USD(withFlowCross ? 0 : 850)));
@@ -553,14 +533,12 @@ public:
         };
         using namespace jtx;
         auto const sa = supported_amendments();
-        testAll(sa - featureFlow - fix1373 - featureFlowCross);
-        testAll(sa               - fix1373 - featureFlowCross);
-        testAll(sa                         - featureFlowCross);
-        testAll(sa                                           );
+        testAll(sa - featureFlowCross);
+        testAll(sa);
     }
 };
 
-BEAST_DEFINE_TESTSUITE_MANUAL_PRIO(CrossingLimits,tx,ripple,10);
+BEAST_DEFINE_TESTSUITE_MANUAL_PRIO(CrossingLimits, tx, ripple, 10);
 
-} // test
-} // ripple
+}  // namespace test
+}  // namespace ripple

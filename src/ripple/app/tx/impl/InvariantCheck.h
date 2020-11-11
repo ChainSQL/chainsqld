@@ -21,16 +21,18 @@
 #define RIPPLE_APP_TX_INVARIANTCHECK_H_INCLUDED
 
 #include <ripple/basics/base_uint.h>
+#include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/STLedgerEntry.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/protocol/TER.h>
-#include <ripple/beast/utility/Journal.h>
+#include <cstdint>
 #include <map>
 #include <tuple>
 #include <utility>
-#include <cstdint>
 
 namespace ripple {
+
+class ReadView;
 
 #if GENERATING_DOCS
 /**
@@ -49,14 +51,12 @@ public:
     /**
      * @brief called for each ledger entry in the current transaction.
      *
-     * @param index the key (identifier) for the ledger entry
      * @param isDelete true if the SLE is being deleted
      * @param before ledger entry before modification by the transaction
      * @param after ledger entry after modification by the transaction
      */
     void
     visitEntry(
-        uint256 const& index,
         bool isDelete,
         std::shared_ptr<SLE const> const& before,
         std::shared_ptr<SLE const> const& after);
@@ -68,6 +68,7 @@ public:
      * @param tx the transaction being applied
      * @param tec the current TER result of the transaction
      * @param fee the fee actually charged for this transaction
+     * @param view a ReadView of the ledger being modified
      * @param j journal for logging
      *
      * @return true if check passes, false if it fails
@@ -76,7 +77,8 @@ public:
     finalize(
         STTx const& tx,
         TER const tec,
-        ZXCAmount const fee,
+        XRPAmount const fee,
+        ReadView const& view,
         beast::Journal const& j);
 };
 #endif
@@ -92,21 +94,25 @@ class TransactionFeeCheck
 public:
     void
     visitEntry(
-        uint256 const&,
         bool,
         std::shared_ptr<SLE const> const&,
         std::shared_ptr<SLE const> const&);
 
     bool
-    finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const&);
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
 };
 
 /**
- * @brief Invariant: A transaction must not create ZXC and should only destroy
- * the ZXC fee.
+ * @brief Invariant: A transaction must not create XRP and should only destroy
+ * the XRP fee.
  *
  * We iterate through all account roots, payment channels and escrow entries
- * that were modified and calculate the net change in ZXC caused by the
+ * that were modified and calculate the net change in XRP caused by the
  * transactions.
  */
 class ZXCNotCreated
@@ -116,44 +122,53 @@ class ZXCNotCreated
 public:
     void
     visitEntry(
-        uint256 const&,
         bool,
         std::shared_ptr<SLE const> const&,
         std::shared_ptr<SLE const> const&);
 
     bool
-    finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const&);
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
 };
 
 /**
  * @brief Invariant: we cannot remove an account ledger entry
  *
- * We iterate all accounts roots that were modified, and ensure that any that
+ * We iterate all account roots that were modified, and ensure that any that
  * were present before the transaction was applied continue to be present
- * afterwards.
+ * afterwards unless they were explicitly deleted by a successful
+ * AccountDelete transaction.
  */
 class AccountRootsNotDeleted
 {
-    bool accountDeleted_ = false;
+    std::uint32_t accountsDeleted_ = 0;
 
 public:
     void
     visitEntry(
-        uint256 const&,
         bool,
         std::shared_ptr<SLE const> const&,
         std::shared_ptr<SLE const> const&);
 
     bool
-    finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const&);
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
 };
 
 /**
- * @brief Invariant: An account ZXC balance must be in ZXC and take a value
- *                   between 0 and SYSTEM_CURRENCY_START drops, inclusive.
+ * @brief Invariant: An account XRP balance must be in XRP and take a value
+ *                   between 0 and INITIAL_XRP drops, inclusive.
  *
  * We iterate all account roots modified by the transaction and ensure that
- * their ZXC balances are reasonable.
+ * their XRP balances are reasonable.
  */
 class ZXCBalanceChecks
 {
@@ -162,13 +177,17 @@ class ZXCBalanceChecks
 public:
     void
     visitEntry(
-        uint256 const&,
         bool,
         std::shared_ptr<SLE const> const&,
         std::shared_ptr<SLE const> const&);
 
     bool
-    finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const&);
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
 };
 
 /**
@@ -183,17 +202,21 @@ class LedgerEntryTypesMatch
 public:
     void
     visitEntry(
-        uint256 const&,
         bool,
         std::shared_ptr<SLE const> const&,
         std::shared_ptr<SLE const> const&);
 
     bool
-    finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const&);
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
 };
 
 /**
- * @brief Invariant: Trust lines using ZXC are not allowed.
+ * @brief Invariant: Trust lines using XRP are not allowed.
  *
  * We iterate all the trust lines created by this transaction and ensure
  * that they are against a valid issuer.
@@ -205,21 +228,25 @@ class NoZXCTrustLines
 public:
     void
     visitEntry(
-        uint256 const&,
         bool,
         std::shared_ptr<SLE const> const&,
         std::shared_ptr<SLE const> const&);
 
     bool
-    finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const&);
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
 };
 
 /**
  * @brief Invariant: offers should be for non-negative amounts and must not
- *                   be ZXC to ZXC.
+ *                   be XRP to XRP.
  *
  * Examine all offers modified by the transaction and ensure that there are
- * no offers which contain negative amounts or which exchange ZXC for ZXC.
+ * no offers which contain negative amounts or which exchange XRP for XRP.
  */
 class NoBadOffers
 {
@@ -228,19 +255,22 @@ class NoBadOffers
 public:
     void
     visitEntry(
-        uint256 const&,
         bool,
         std::shared_ptr<SLE const> const&,
         std::shared_ptr<SLE const> const&);
 
     bool
-    finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const&);
-
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
 };
 
 /**
  * @brief Invariant: an escrow entry must take a value between 0 and
- *                   SYSTEM_CURRENCY_START drops exclusive.
+ *                   INITIAL_XRP drops exclusive.
  */
 class NoZeroEscrow
 {
@@ -249,14 +279,43 @@ class NoZeroEscrow
 public:
     void
     visitEntry(
-        uint256 const&,
         bool,
         std::shared_ptr<SLE const> const&,
         std::shared_ptr<SLE const> const&);
 
     bool
-    finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const&);
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
+};
 
+/**
+ * @brief Invariant: a new account root must be the consequence of a payment,
+ *                   must have the right starting sequence, and the payment
+ *                   may not create more than one new account root.
+ */
+class ValidNewAccountRoot
+{
+    std::uint32_t accountsCreated_ = 0;
+    std::uint32_t accountSeq_ = 0;  // Only meaningful if accountsCreated_ > 0
+
+public:
+    void
+    visitEntry(
+        bool,
+        std::shared_ptr<SLE const> const&,
+        std::shared_ptr<SLE const> const&);
+
+    bool
+    finalize(
+        STTx const&,
+        TER const,
+        XRPAmount const,
+        ReadView const&,
+        beast::Journal const&);
 };
 
 // additional invariant checks can be declared above and then added to this
@@ -269,8 +328,8 @@ using InvariantChecks = std::tuple<
     ZXCNotCreated,
     NoZXCTrustLines,
     NoBadOffers,
-    NoZeroEscrow
->;
+    NoZeroEscrow,
+    ValidNewAccountRoot>;
 
 /**
  * @brief get a tuple of all invariant checks
@@ -280,13 +339,12 @@ using InvariantChecks = std::tuple<
  *
  * @see ripple::InvariantChecker_PROTOTYPE
  */
-inline
-InvariantChecks
+inline InvariantChecks
 getInvariantChecks()
 {
     return InvariantChecks{};
 }
 
-} //ripple
+}  // namespace ripple
 
 #endif

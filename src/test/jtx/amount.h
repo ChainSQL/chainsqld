@@ -20,15 +20,16 @@
 #ifndef RIPPLE_TEST_JTX_AMOUNT_H_INCLUDED
 #define RIPPLE_TEST_JTX_AMOUNT_H_INCLUDED
 
-#include <test/jtx/Account.h>
-#include <test/jtx/amount.h>
-#include <test/jtx/tags.h>
+#include <ripple/basics/FeeUnits.h>
+#include <ripple/basics/contract.h>
 #include <ripple/protocol/Issue.h>
 #include <ripple/protocol/STAmount.h>
-#include <ripple/basics/contract.h>
 #include <cstdint>
 #include <ostream>
 #include <string>
+#include <test/jtx/Account.h>
+#include <test/jtx/amount.h>
+#include <test/jtx/tags.h>
 #include <type_traits>
 
 namespace ripple {
@@ -60,11 +61,10 @@ struct None
 
 //------------------------------------------------------------------------------
 
-template <class T>
-struct dropsPerZXC
-{
-    static T const value = 1000000;
-};
+// This value is also defined in SystemParameters.h. It's
+// duplicated here to catch any possible future errors that
+// could change that value (however unlikely).
+constexpr ZXCAmount dropsPerZXC{1'000'000};
 
 /** Represents an ZXC or IOU quantity
     This customizes the string conversion and supports
@@ -79,34 +79,38 @@ private:
 
 public:
     PrettyAmount() = default;
-    PrettyAmount (PrettyAmount const&) = default;
-    PrettyAmount& operator=(PrettyAmount const&) = default;
+    PrettyAmount(PrettyAmount const&) = default;
+    PrettyAmount&
+    operator=(PrettyAmount const&) = default;
 
-    PrettyAmount (STAmount const& amount,
-            std::string const& name)
-        : amount_(amount)
-        , name_(name)
+    PrettyAmount(STAmount const& amount, std::string const& name)
+        : amount_(amount), name_(name)
     {
     }
 
     /** drops */
     template <class T>
-    PrettyAmount (T v, std::enable_if_t<
-        sizeof(T) >= sizeof(int) &&
-            std::is_integral<T>::value &&
-                std::is_signed<T>::value>* = nullptr)
-        : amount_((v > 0) ?
-            v : -v, v < 0)
+    PrettyAmount(
+        T v,
+        std::enable_if_t<
+            sizeof(T) >= sizeof(int) && std::is_integral_v<T> &&
+            std::is_signed_v<T>>* = nullptr)
+        : amount_((v > 0) ? v : -v, v < 0)
     {
     }
 
     /** drops */
     template <class T>
-    PrettyAmount (T v, std::enable_if_t<
-        sizeof(T) >= sizeof(int) &&
-            std::is_integral<T>::value &&
-                std::is_unsigned<T>::value>* = nullptr)
+    PrettyAmount(
+        T v,
+        std::enable_if_t<sizeof(T) >= sizeof(int) && std::is_unsigned_v<T>>* =
+            nullptr)
         : amount_(v)
+    {
+    }
+
+    /** drops */
+    PrettyAmount(ZXCAmount v) : amount_(v)
     {
     }
 
@@ -122,7 +126,7 @@ public:
         return amount_;
     }
 
-    operator STAmount const&() const
+    operator STAmount const &() const
     {
         return amount_;
     }
@@ -130,17 +134,20 @@ public:
     operator AnyAmount() const;
 };
 
-inline
-bool
-operator== (PrettyAmount const& lhs,
-    PrettyAmount const& rhs)
+inline bool
+operator==(PrettyAmount const& lhs, PrettyAmount const& rhs)
 {
     return lhs.value() == rhs.value();
 }
 
+inline bool
+operator!=(PrettyAmount const& lhs, PrettyAmount const& rhs)
+{
+    return !operator==(lhs, rhs);
+}
+
 std::ostream&
-operator<< (std::ostream& os,
-    PrettyAmount const& amount);
+operator<<(std::ostream& os, PrettyAmount const& amount);
 
 //------------------------------------------------------------------------------
 
@@ -150,10 +157,8 @@ struct BookSpec
     AccountID account;
     ripple::Currency currency;
 
-    BookSpec(AccountID const& account_,
-        ripple::Currency const& currency_)
-        : account(account_)
-        , currency(currency_)
+    BookSpec(AccountID const& account_, ripple::Currency const& currency_)
+        : account(account_), currency(currency_)
     {
     }
 };
@@ -172,58 +177,49 @@ struct ZXC_t
         return zxcIssue();
     }
 
-    /** Returns an amount of ZXC as STAmount
+    /** Returns an amount of ZXC as PrettyAmount,
+        which is trivially convertable to STAmount
 
         @param v The number of ZXC (not drops)
     */
     /** @{ */
-    template <class T, class = std::enable_if_t<
-        std::is_integral<T>::value>>
+    template <class T, class = std::enable_if_t<std::is_integral_v<T>>>
     PrettyAmount
     operator()(T v) const
     {
-        return { std::conditional_t<
-            std::is_signed<T>::value,
-                std::int64_t, std::uint64_t>{v} *
-                    dropsPerZXC<T>::value };
+        using TOut = std::
+            conditional_t<std::is_signed_v<T>, std::int64_t, std::uint64_t>;
+        return {TOut{v} * dropsPerZXC};
     }
 
     PrettyAmount
     operator()(double v) const
     {
-        auto const c =
-            dropsPerZXC<int>::value;
+        auto const c = dropsPerZXC.drops();
         if (v >= 0)
         {
-            auto const d = std::uint64_t(
-                std::round(v * c));
+            auto const d = std::uint64_t(std::round(v * c));
             if (double(d) / c != v)
-                Throw<std::domain_error> (
-                    "unrepresentable");
-            return { d };
+                Throw<std::domain_error>("unrepresentable");
+            return {d};
         }
-        auto const d = std::int64_t(
-            std::round(v * c));
+        auto const d = std::int64_t(std::round(v * c));
         if (double(d) / c != v)
-            Throw<std::domain_error> (
-                "unrepresentable");
-        return { d };
+            Throw<std::domain_error>("unrepresentable");
+        return {d};
     }
     /** @} */
 
     /** Returns None-of-ZXC */
-    None
-    operator()(none_t) const
+    None operator()(none_t) const
     {
-        return { zxcIssue() };
+        return {zxcIssue()};
     }
 
-    friend
-    BookSpec
-    operator~ (ZXC_t const&)
-    {        
-        return BookSpec( zxcAccount(),
-            zxcCurrency() );
+    friend BookSpec
+    operator~(ZXC_t const&)
+    {
+        return BookSpec(zxcAccount(), zxcCurrency());
     }
 };
 
@@ -235,18 +231,27 @@ struct ZXC_t
 */
 extern ZXC_t const ZXC;
 
-/** Returns an ZXC STAmount.
+/** Returns an ZXC PrettyAmount, which is trivially convertible to STAmount.
 
     Example:
-        drops(10)   Returns STAmount of 10 drops
+        drops(10)   Returns PrettyAmount of 10 drops
 */
-template <class Integer,
-    class = std::enable_if_t<
-        std::is_integral<Integer>::value>>
+template <class Integer, class = std::enable_if_t<std::is_integral_v<Integer>>>
 PrettyAmount
-drops (Integer i)
+drops(Integer i)
 {
-    return { i };
+    return {i};
+}
+
+/** Returns an ZXC PrettyAmount, which is trivially convertible to STAmount.
+
+Example:
+drops(view->fee().basefee)   Returns PrettyAmount of 10 drops
+*/
+inline PrettyAmount
+drops(ZXCAmount i)
+{
+    return {i};
 }
 
 //------------------------------------------------------------------------------
@@ -258,7 +263,7 @@ struct epsilon_multiple
     std::size_t n;
 };
 
-} // detail
+}  // namespace detail
 
 // The smallest possible IOU STAmount
 struct epsilon_t
@@ -270,7 +275,7 @@ struct epsilon_t
     detail::epsilon_multiple
     operator()(std::size_t n) const
     {
-        return { n };
+        return {n};
     }
 };
 
@@ -289,17 +294,15 @@ public:
     Account account;
     ripple::Currency currency;
 
-    IOU(Account const& account_,
-            ripple::Currency const& currency_)
-        : account(account_)
-        , currency(currency_)
+    IOU(Account const& account_, ripple::Currency const& currency_)
+        : account(account_), currency(currency_)
     {
     }
 
     Issue
     issue() const
     {
-        return { currency, account.id() };
+        return {currency, account.id()};
     }
 
     /** Implicit conversion to Issue.
@@ -312,15 +315,16 @@ public:
         return issue();
     }
 
-    template <class T, class = std::enable_if_t<
-        sizeof(T) >= sizeof(int) &&
-            std::is_arithmetic<T>::value>>
-    PrettyAmount operator()(T v) const
+    template <
+        class T,
+        class = std::enable_if_t<
+            sizeof(T) >= sizeof(int) && std::is_arithmetic<T>::value>>
+    PrettyAmount
+    operator()(T v) const
     {
         // VFALCO NOTE Should throw if the
         //             representation of v is not exact.
-        return { amountFromString(issue(),
-            std::to_string(v)), account.name() };
+        return {amountFromString(issue(), std::to_string(v)), account.name()};
     }
 
     PrettyAmount operator()(epsilon_t) const;
@@ -332,27 +336,24 @@ public:
     /** Returns None-of-Issue */
     None operator()(none_t) const
     {
-        return { issue() };
+        return {issue()};
     }
 
-    friend
-    BookSpec
-    operator~ (IOU const& iou)
+    friend BookSpec
+    operator~(IOU const& iou)
     {
         return BookSpec(iou.account.id(), iou.currency);
     }
 };
 
 std::ostream&
-operator<<(std::ostream& os,
-    IOU const& iou);
+operator<<(std::ostream& os, IOU const& iou);
 
 //------------------------------------------------------------------------------
 
 struct any_t
 {
-    inline
-    AnyAmount
+    inline AnyAmount
     operator()(STAmount const& sta) const;
 };
 
@@ -363,34 +364,30 @@ struct AnyAmount
     STAmount value;
 
     AnyAmount() = delete;
-    AnyAmount (AnyAmount const&) = default;
-    AnyAmount& operator= (AnyAmount const&) = default;
+    AnyAmount(AnyAmount const&) = default;
+    AnyAmount&
+    operator=(AnyAmount const&) = default;
 
-    AnyAmount (STAmount const& amount)
-        : is_any(false)
-        , value(amount)
+    AnyAmount(STAmount const& amount) : is_any(false), value(amount)
     {
     }
 
-    AnyAmount (STAmount const& amount,
-            any_t const*)
-        : is_any(true)
-        , value(amount)
+    AnyAmount(STAmount const& amount, any_t const*)
+        : is_any(true), value(amount)
     {
     }
 
     // Reset the issue to a specific account
     void
-    to (AccountID const& id)
+    to(AccountID const& id)
     {
-        if (! is_any)
+        if (!is_any)
             return;
         value.setIssuer(id);
     }
 };
 
-inline
-AnyAmount
+inline AnyAmount
 any_t::operator()(STAmount const& sta) const
 {
     return AnyAmount(sta, this);
@@ -401,8 +398,8 @@ any_t::operator()(STAmount const& sta) const
 */
 extern any_t const any;
 
-} // jtx
-} // test
-} // ripple
+}  // namespace jtx
+}  // namespace test
+}  // namespace ripple
 
 #endif

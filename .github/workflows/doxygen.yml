@@ -1,0 +1,25 @@
+name: Build and publish Doxygen documentation
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  job:
+    runs-on: ubuntu-18.04
+    container:
+      image: docker://rippleci/rippled-ci-builder:2944b78d22db
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: build
+        run: |
+          mkdir build
+          cd build
+          cmake -DBoost_NO_BOOST_CMAKE=ON ..
+          cmake --build . --target docs --parallel $(nproc)
+      - name: publish
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: build/docs/html

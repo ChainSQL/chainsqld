@@ -1,4 +1,5 @@
-//------------  ------------------------------------------------------------------
+//------------
+//------------------------------------------------------------------
 /*
     This file is part of rippled: https://github.com/ripple/rippled
     Copyright (c) 2012, 2015 Ripple Labs Inc.
@@ -32,8 +33,18 @@ BookDirs::BookDirs(ReadView const& view, Book const& book)
     assert(root_ != beast::zero);
     if (key_ != beast::zero)
     {
+<<<<<<< HEAD
         if (! cdirFirst(*view_, key_, sle_, entry_, index_,
             beast::Journal {beast::Journal::getNullSink()}))
+=======
+        if (!cdirFirst(
+                *view_,
+                key_,
+                sle_,
+                entry_,
+                index_,
+                beast::Journal{beast::Journal::getNullSink()}))
+>>>>>>> release
         {
             assert(false);
         }
@@ -41,8 +52,7 @@ BookDirs::BookDirs(ReadView const& view, Book const& book)
 }
 
 auto
-BookDirs::begin() const ->
-    BookDirs::const_iterator
+BookDirs::begin() const -> BookDirs::const_iterator
 {
     auto it = BookDirs::const_iterator(*view_, root_, key_);
     if (key_ != beast::zero)
@@ -56,34 +66,39 @@ BookDirs::begin() const ->
 }
 
 auto
-BookDirs::end() const  ->
-    BookDirs::const_iterator
+BookDirs::end() const -> BookDirs::const_iterator
 {
     return BookDirs::const_iterator(*view_, root_, key_);
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> release
 beast::Journal BookDirs::const_iterator::j_ =
     beast::Journal{beast::Journal::getNullSink()};
 
 bool
-BookDirs::const_iterator::operator==
-    (BookDirs::const_iterator const& other) const
+BookDirs::const_iterator::operator==(
+    BookDirs::const_iterator const& other) const
 {
     if (view_ == nullptr || other.view_ == nullptr)
         return false;
 
     assert(view_ == other.view_ && root_ == other.root_);
-    return entry_ == other.entry_ &&
-        cur_key_ == other.cur_key_ &&
-            index_ == other.index_;
+    return entry_ == other.entry_ && cur_key_ == other.cur_key_ &&
+        index_ == other.index_;
 }
 
 BookDirs::const_iterator::reference
 BookDirs::const_iterator::operator*() const
 {
     assert(index_ != beast::zero);
+<<<<<<< HEAD
     if (! cache_)
+=======
+    if (!cache_)
+>>>>>>> release
         cache_ = view_->read(keylet::offer(index_));
     return *cache_;
 }
@@ -94,18 +109,17 @@ BookDirs::const_iterator::operator++()
     using beast::zero;
 
     assert(index_ != zero);
-    if (! cdirNext(*view_, cur_key_, sle_, entry_, index_, j_))
+    if (!cdirNext(*view_, cur_key_, sle_, entry_, index_, j_))
     {
         if (index_ != 0 ||
-            (cur_key_ = view_->succ(++cur_key_,
-                next_quality_).value_or(zero)) == zero)
+            (cur_key_ =
+                 view_->succ(++cur_key_, next_quality_).value_or(zero)) == zero)
         {
             cur_key_ = key_;
             entry_ = 0;
             index_ = zero;
         }
-        else if (! cdirFirst(*view_, cur_key_,
-            sle_, entry_, index_, j_))
+        else if (!cdirFirst(*view_, cur_key_, sle_, entry_, index_, j_))
         {
             assert(false);
         }
@@ -124,4 +138,4 @@ BookDirs::const_iterator::operator++(int)
     return tmp;
 }
 
-} // ripple
+}  // namespace ripple

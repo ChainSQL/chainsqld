@@ -20,38 +20,37 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/AmendmentTable.h>
+#include <ripple/beast/core/LexicalCast.h>
+#include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/jss.h>
-#include <ripple/net/RPCErr.h>
 #include <ripple/rpc/Context.h>
-#include <ripple/beast/core/LexicalCast.h>
 
 namespace ripple {
-
 
 // {
 //   feature : <feature>
 //   vetoed : true/false
 // }
-Json::Value doFeature (RPC::Context& context)
+Json::Value
+doFeature(RPC::JsonContext& context)
 {
-
     // Get majority amendment status
     majorityAmendments_t majorities;
 
     if (auto const valLedger = context.ledgerMaster.getValidatedLedger())
-        majorities = getMajorityAmendments (*valLedger);
+        majorities = getMajorityAmendments(*valLedger);
 
-    auto& table = context.app.getAmendmentTable ();
+    auto& table = context.app.getAmendmentTable();
 
-    if (!context.params.isMember (jss::feature))
+    if (!context.params.isMember(jss::feature))
     {
-        auto features = table.getJson(0);
+        auto features = table.getJson();
 
-        for (auto const& m : majorities)
+        for (auto const& [h, t] : majorities)
         {
-            features[to_string(m.first)][jss::majority] =
-                m.second.time_since_epoch().count();
+            features[to_string(h)][jss::majority] =
+                t.time_since_epoch().count();
         }
 
         Json::Value jvReply = Json::objectValue;
@@ -59,30 +58,27 @@ Json::Value doFeature (RPC::Context& context)
         return jvReply;
     }
 
-    auto feature = table.find (
-        context.params[jss::feature].asString());
+    auto feature = table.find(context.params[jss::feature].asString());
 
     if (!feature &&
-        !feature.SetHexExact (context.params[jss::feature].asString ()))
-        return rpcError (rpcBAD_FEATURE);
+        !feature.SetHexExact(context.params[jss::feature].asString()))
+        return rpcError(rpcBAD_FEATURE);
 
-    if (context.params.isMember (jss::vetoed))
+    if (context.params.isMember(jss::vetoed))
     {
-        if (context.params[jss::vetoed].asBool ())
-            context.app.getAmendmentTable().veto (feature);
+        if (context.params[jss::vetoed].asBool())
+            table.veto(feature);
         else
-            context.app.getAmendmentTable().unVeto(feature);
+            table.unVeto(feature);
     }
 
     Json::Value jvReply = table.getJson(feature);
 
-    auto m = majorities.find (feature);
+    auto m = majorities.find(feature);
     if (m != majorities.end())
-        jvReply [jss::majority] =
-            m->second.time_since_epoch().count();
+        jvReply[jss::majority] = m->second.time_since_epoch().count();
 
     return jvReply;
 }
 
-
-} // ripple
+}  // namespace ripple

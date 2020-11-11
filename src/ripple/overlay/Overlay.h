@@ -20,105 +20,106 @@
 #ifndef RIPPLE_OVERLAY_OVERLAY_H_INCLUDED
 #define RIPPLE_OVERLAY_OVERLAY_H_INCLUDED
 
+#include <ripple/beast/utility/PropertyStream.h>
+#include <ripple/core/Stoppable.h>
 #include <ripple/json/json_value.h>
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/PeerSet.h>
 #include <ripple/server/Handoff.h>
-#include <ripple/beast/asio/ssl_bundle.h>
-#include <boost/beast/http/message.hpp>
-#include <ripple/core/Stoppable.h>
-#include <ripple/beast/utility/PropertyStream.h>
-#include <memory>
-#include <type_traits>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/stream.hpp>
+#include <ripple/beast/asio/ssl_bundle.h>
+#include <boost/beast/core/tcp_stream.hpp>
+#include <boost/beast/http/message.hpp>
+#include <boost/beast/ssl/ssl_stream.hpp>
+#include <boost/optional.hpp>
 #include <functional>
+#include <memory>
+#include <type_traits>
 
-namespace boost { namespace asio { namespace ssl { class context; } } }
+namespace boost {
+namespace asio {
+namespace ssl {
+class context;
+}
+}  // namespace asio
+}  // namespace boost
 
 namespace ripple {
 
 /** Manages the set of connected peers. */
-class Overlay
-    : public Stoppable
-    , public beast::PropertyStream::Source
+class Overlay : public Stoppable, public beast::PropertyStream::Source
 {
 protected:
-	using PeerSequence = std::vector <std::shared_ptr<Peer>>;
+    using socket_type = boost::beast::tcp_stream;
+    using stream_type = boost::beast::ssl_stream<socket_type>;
+
     // VFALCO NOTE The requirement of this constructor is an
     //             unfortunate problem with the API for
     //             Stoppable and PropertyStream
     //
-    Overlay (Stoppable& parent)
-        : Stoppable ("Overlay", parent)
-        , beast::PropertyStream::Source ("peers")
+    Overlay(Stoppable& parent)
+        : Stoppable("Overlay", parent), beast::PropertyStream::Source("peers")
     {
     }
 
 public:
-    enum class Promote
-    {
-        automatic,
-        never,
-        always
-    };
+    enum class Promote { automatic, never, always };
 
     struct Setup
     {
         explicit Setup() = default;
 
         std::shared_ptr<boost::asio::ssl::context> context;
-        bool expire = false;
         beast::IP::Address public_ip;
         int ipLimit = 0;
         std::uint32_t crawlOptions = 0;
+        boost::optional<std::uint32_t> networkID;
+        bool vlEnabled = true;
     };
 
-    //using PeerSequence = std::vector <std::shared_ptr<Peer>>;
+    using PeerSequence = std::vector<std::shared_ptr<Peer>>;
 
     virtual ~Overlay() = default;
 
     /** Conditionally accept an incoming HTTP request. */
-    virtual
-    Handoff
-    onHandoff (std::unique_ptr <beast::asio::ssl_bundle>&& bundle,
+    virtual Handoff
+    onHandoff(
+        std::unique_ptr<stream_type>&& bundle,
         http_request_type&& request,
-            boost::asio::ip::tcp::endpoint remote_address) = 0;
+        boost::asio::ip::tcp::endpoint remote_address) = 0;
 
     /** Establish a peer connection to the specified endpoint.
         The call returns immediately, the connection attempt is
         performed asynchronously.
     */
-    virtual
-    void
-    connect (beast::IP::Endpoint const& address) = 0;
+    virtual void
+    connect(beast::IP::Endpoint const& address) = 0;
 
     /** Returns the maximum number of peers we are configured to allow. */
-    virtual
-    int
-    limit () = 0;
+    virtual int
+    limit() = 0;
 
     /** Returns the number of active peers.
         Active peers are only those peers that have completed the
         handshake and are using the peer protocol.
     */
-    virtual
-    std::size_t
-    size () = 0;
+    virtual std::size_t
+    size() const = 0;
 
     /** Return diagnostics on the status of all peers.
         @deprecated This is superceded by PropertyStream
     */
-    virtual
-    Json::Value
-    json () = 0;
+    virtual Json::Value
+    json() = 0;
 
     /** Returns a sequence representing the current list of peers.
         The snapshot is made at the time of the call.
     */
-    virtual
-    PeerSequence
-    getActivePeers () = 0;
+    virtual PeerSequence
+    getActivePeers() const = 0;
 
     ///** Calls the checkSanity function on each peer
     //    @param index the value to pass to the peer's checkSanity function
@@ -268,6 +269,17 @@ public:
     //virtual
     //Json::Value
     //crawlShards(bool pubKey, std::uint32_t hops) = 0;
+
+    /** Returns the ID of the network this server is configured for, if any.
+
+        The ID is just a numerical identifier, with the IDs 0, 1 and 2 used to
+        identify the mainnet, the testnet and the devnet respectively.
+
+        @return The numerical identifier configured by the administrator of the
+                server. An unseated optional, otherwise.
+    */
+    virtual boost::optional<std::uint32_t>
+    networkID() const = 0;
 };
 
 struct ScoreHasLedger

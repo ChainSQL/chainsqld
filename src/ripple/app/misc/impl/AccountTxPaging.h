@@ -20,19 +20,18 @@
 #ifndef RIPPLE_APP_MISC_IMPL_ACCOUNTTXPAGING_H_INCLUDED
 #define RIPPLE_APP_MISC_IMPL_ACCOUNTTXPAGING_H_INCLUDED
 
-#include <ripple/core/DatabaseCon.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/core/DatabaseCon.h>
 #include <cstdint>
 #include <string>
 #include <utility>
-
 
 //------------------------------------------------------------------------------
 
 namespace ripple {
 
 void
-convertBlobsToTxResult (
+convertBlobsToTxResult(
     NetworkOPs::AccountTxs& to,
     std::uint32_t ledger_index,
     std::string const& status,
@@ -44,23 +43,21 @@ void
 saveLedgerAsync (Schema& app, std::uint32_t seq);
 
 void
-accountTxPage (
-    DatabaseCon& database,
+accountTxPage(
+    DatabaseCon& connection,
     AccountIDCache const& idCache,
-    std::function<void (std::uint32_t)> const& onUnsavedLedger,
-    std::function<void (std::uint32_t,
-                        std::string const&,
-                        Blob const&,
-                        Blob const&)> const&,
+    std::function<void(std::uint32_t)> const& onUnsavedLedger,
+    std::function<
+        void(std::uint32_t, std::string const&, Blob&&, Blob&&)> const&
+        onTransaction,
     AccountID const& account,
     std::int32_t minLedger,
     std::int32_t maxLedger,
     bool forward,
-    Json::Value& token,
+    std::optional<NetworkOPs::AccountTxMarker>& marker,
     int limit,
     bool bAdmin,
-    std::uint32_t pageLength);
-
-}
+    std::uint32_t page_length);
+}  // namespace ripple
 
 #endif

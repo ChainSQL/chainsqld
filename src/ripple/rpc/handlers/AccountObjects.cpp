@@ -23,15 +23,15 @@
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/Indexes.h>
-#include <ripple/protocol/jss.h>
 #include <ripple/protocol/LedgerFormats.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/impl/Tuning.h>
 
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace ripple {
 
@@ -46,38 +46,75 @@ namespace ripple {
     }
 */
 
-Json::Value doAccountObjects (RPC::Context& context)
+Json::Value
+doAccountObjects(RPC::JsonContext& context)
 {
     auto const& params = context.params;
-    if (! params.isMember (jss::account))
-        return RPC::missing_field_error (jss::account);
+    if (!params.isMember(jss::account))
+        return RPC::missing_field_error(jss::account);
 
     std::shared_ptr<ReadView const> ledger;
-    auto result = RPC::lookupLedger (ledger, context);
+    auto result = RPC::lookupLedger(ledger, context);
     if (ledger == nullptr)
         return result;
 
     AccountID accountID;
     {
-        auto const strIdent = params[jss::account].asString ();
-        if (auto jv = RPC::accountFromString (accountID, strIdent))
+        auto const strIdent = params[jss::account].asString();
+        if (auto jv = RPC::accountFromString(accountID, strIdent))
         {
-            for (auto it = jv.begin (); it != jv.end (); ++it)
-                result[it.memberName ()] = *it;
+            for (auto it = jv.begin(); it != jv.end(); ++it)
+                result[it.memberName()] = *it;
 
             return result;
         }
     }
 
-    if (! ledger->exists(keylet::account (accountID)))
-        return rpcError (rpcACT_NOT_FOUND);
+    if (!ledger->exists(keylet::account(accountID)))
+        return rpcError(rpcACT_NOT_FOUND);
 
-    auto type = RPC::chooseLedgerEntryType(params);
-    if (type.first)
+    boost::optional<std::vector<LedgerEntryType>> typeFilter;
+
+    if (params.isMember(jss::deletion_blockers_only) &&
+        params[jss::deletion_blockers_only].asBool())
     {
-        result.clear();
-        type.first.inject(result);
-        return result;
+        struct
+        {
+            Json::StaticString name;
+            LedgerEntryType type;
+        } static constexpr deletionBlockers[] = {
+            {jss::check, ltCHECK},
+            {jss::escrow, ltESCROW},
+            {jss::payment_channel, ltPAYCHAN},
+            {jss::state, ltRIPPLE_STATE}};
+
+        typeFilter.emplace();
+        typeFilter->reserve(std::size(deletionBlockers));
+
+        for (auto [name, type] : deletionBlockers)
+        {
+            if (params.isMember(jss::type) && name != params[jss::type])
+            {
+                continue;
+            }
+
+            typeFilter->push_back(type);
+        }
+    }
+    else
+    {
+        auto [rpcStatus, type] = RPC::chooseLedgerEntryType(params);
+
+        if (rpcStatus)
+        {
+            result.clear();
+            rpcStatus.inject(result);
+            return result;
+        }
+        else if (type != ltINVALID)
+        {
+            typeFilter = std::vector<LedgerEntryType>({type});
+        }
     }
 
     unsigned int limit;
@@ -86,36 +123,42 @@ Json::Value doAccountObjects (RPC::Context& context)
 
     uint256 dirIndex;
     uint256 entryIndex;
-    if (params.isMember (jss::marker))
+    if (params.isMember(jss::marker))
     {
         auto const& marker = params[jss::marker];
-        if (! marker.isString ())
-            return RPC::expected_field_error (jss::marker, "string");
+        if (!marker.isString())
+            return RPC::expected_field_error(jss::marker, "string");
 
-        std::stringstream ss (marker.asString ());
+        std::stringstream ss(marker.asString());
         std::string s;
         if (!std::getline(ss, s, ','))
-            return RPC::invalid_field_error (jss::marker);
+            return RPC::invalid_field_error(jss::marker);
 
-        if (! dirIndex.SetHex (s))
-            return RPC::invalid_field_error (jss::marker);
+        if (!dirIndex.SetHex(s))
+            return RPC::invalid_field_error(jss::marker);
 
-        if (! std::getline (ss, s, ','))
-            return RPC::invalid_field_error (jss::marker);
+        if (!std::getline(ss, s, ','))
+            return RPC::invalid_field_error(jss::marker);
 
-        if (! entryIndex.SetHex (s))
-            return RPC::invalid_field_error (jss::marker);
+        if (!entryIndex.SetHex(s))
+            return RPC::invalid_field_error(jss::marker);
     }
 
-    if (! RPC::getAccountObjects (*ledger, accountID, type.second,
-        dirIndex, entryIndex, limit, result))
+    if (!RPC::getAccountObjects(
+            *ledger,
+            accountID,
+            typeFilter,
+            dirIndex,
+            entryIndex,
+            limit,
+            result))
     {
         result[jss::account_objects] = Json::arrayValue;
     }
 
-    result[jss::account] = context.app.accountIDCache().toBase58 (accountID);
+    result[jss::account] = context.app.accountIDCache().toBase58(accountID);
     context.loadType = Resource::feeMediumBurdenRPC;
     return result;
 }
 
-} // ripple
+}  // namespace ripple

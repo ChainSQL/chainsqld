@@ -20,16 +20,14 @@
 #ifndef RIPPLE_OVERLAY_CONNECTATTEMPT_H_INCLUDED
 #define RIPPLE_OVERLAY_CONNECTATTEMPT_H_INCLUDED
 
-#include <ripple/protocol/messages.h>
 #include <ripple/overlay/impl/OverlayImpl.h>
 #include <ripple/overlay/impl/Tuning.h>
 
 namespace ripple {
 
 /** Manages an outbound connection attempt. */
-class ConnectAttempt
-    : public OverlayImpl::Child
-    , public std::enable_shared_from_this<ConnectAttempt>
+class ConnectAttempt : public OverlayImpl::Child,
+                       public std::enable_shared_from_this<ConnectAttempt>
 {
 private:
     using error_code = boost::system::error_code;
@@ -42,28 +40,38 @@ private:
     using response_type =
         boost::beast::http::response<boost::beast::http::dynamic_body>;
 
+    using socket_type = boost::asio::ip::tcp::socket;
+    using middle_type = boost::beast::tcp_stream;
+    using stream_type = boost::beast::ssl_stream<middle_type>;
+    using shared_context = std::shared_ptr<boost::asio::ssl::context>;
+
     Application& app_;
     std::uint32_t const id_;
     beast::WrappedSink sink_;
-    beast::Journal journal_;
+    beast::Journal const journal_;
     endpoint_type remote_endpoint_;
     Resource::Consumer usage_;
     boost::asio::io_service::strand strand_;
     boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer_;
-    std::unique_ptr<beast::asio::ssl_bundle> ssl_bundle_;
-    beast::asio::ssl_bundle::socket_type& socket_;
-    beast::asio::ssl_bundle::stream_type& stream_;
+    std::unique_ptr<stream_type> stream_ptr_;
+    socket_type& socket_;
+    stream_type& stream_;
     boost::beast::multi_buffer read_buf_;
     response_type response_;
-    PeerFinder::Slot::ptr slot_;
+    std::shared_ptr<PeerFinder::Slot> slot_;
     request_type req_;
 
 public:
-    ConnectAttempt (Application& app, boost::asio::io_service& io_service,
-        endpoint_type const& remote_endpoint, Resource::Consumer usage,
-            beast::asio::ssl_bundle::shared_context const& context,
-                std::uint32_t id, PeerFinder::Slot::ptr const& slot,
-                    beast::Journal journal, OverlayImpl& overlay);
+    ConnectAttempt(
+        Application& app,
+        boost::asio::io_service& io_service,
+        endpoint_type const& remote_endpoint,
+        Resource::Consumer usage,
+        shared_context const& context,
+        std::uint32_t id,
+        std::shared_ptr<PeerFinder::Slot> const& slot,
+        beast::Journal journal,
+        OverlayImpl& overlay);
 
     ~ConnectAttempt();
 
@@ -74,30 +82,38 @@ public:
     run();
 
 private:
+    void
+    close();
+    void
+    fail(std::string const& reason);
+    void
+    fail(std::string const& name, error_code ec);
+    void
+    setTimer();
+    void
+    cancelTimer();
+    void
+    onTimer(error_code ec);
+    void
+    onConnect(error_code ec);
+    void
+    onHandshake(error_code ec);
+    void
+    onWrite(error_code ec);
+    void
+    onRead(error_code ec);
+    void
+    onShutdown(error_code ec);
 
-    void close();
-    void fail (std::string const& reason);
-    void fail (std::string const& name, error_code ec);
-    void setTimer();
-    void cancelTimer();
-    void onTimer (error_code ec);
-    void onConnect (error_code ec);
-    void onHandshake (error_code ec);
-    void onWrite (error_code ec);
-    void onRead (error_code ec);
-    void onShutdown (error_code ec);
+    static request_type
+    makeRequest(bool crawl, bool compressionEnabled);
 
-    static
-    request_type
-    makeRequest (bool crawl,
-        boost::asio::ip::address const& remote_address);
-
-    void processResponse();
+    void
+    processResponse();
 
     template <class = void>
-    static
-    boost::asio::ip::tcp::endpoint
-    parse_endpoint (std::string const& s, boost::system::error_code& ec)
+    static boost::asio::ip::tcp::endpoint
+    parse_endpoint(std::string const& s, boost::system::error_code& ec)
     {
         beast::IP::Endpoint bep;
         std::istringstream is(s);
@@ -113,6 +129,6 @@ private:
     }
 };
 
-}
+}  // namespace ripple
 
 #endif

@@ -31,7 +31,8 @@ namespace ripple {
 //   account: <signing account>
 //   secret: <secret of signing account>
 // }
-Json::Value doSignFor (RPC::Context& context)
+Json::Value
+doSignFor(RPC::JsonContext& context)
 {
     if (context.role != Role::ADMIN && !context.app.config().canSign())
     {
@@ -43,21 +44,26 @@ Json::Value doSignFor (RPC::Context& context)
     if (! context.app.getLedgerMaster().getValidatedRules().
         enabled (featureMultiSign))
     {
-        RPC::inject_error (rpcNOT_ENABLED, context.params);
-        return context.params;
+        return RPC::make_error(
+            rpcNOT_SUPPORTED, "Signing is not supported by this server.");
     }
+
     context.loadType = Resource::feeHighBurdenRPC;
     auto const failHard = context.params[jss::fail_hard].asBool();
-    auto const failType = NetworkOPs::doFailHard (failHard);
+    auto const failType = NetworkOPs::doFailHard(failHard);
 
-    auto ret = RPC::transactionSignFor (
-        context.params, failType, context.role,
-        context.ledgerMaster.getValidatedLedgerAge(), context.app);
+    auto ret = RPC::transactionSignFor(
+        context.params,
+        failType,
+        context.role,
+        context.ledgerMaster.getValidatedLedgerAge(),
+        context.app);
 
-    ret[jss::deprecated] = "This command has been deprecated and will be "
-                           "removed in a future version of the server. Please "
-                           "migrate to a standalone signing tool.";
+    ret[jss::deprecated] =
+        "This command has been deprecated and will be "
+        "removed in a future version of the server. Please "
+        "migrate to a standalone signing tool.";
     return ret;
 }
 
-} // ripple
+}  // namespace ripple

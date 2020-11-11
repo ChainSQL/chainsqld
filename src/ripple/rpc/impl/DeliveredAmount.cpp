@@ -39,42 +39,24 @@ namespace RPC {
   would be calculated even when not needed, and in some circumstances they are
   not trivial to compute.
 
-  GetFix1623Enabled is a callable that returns a bool
   GetLedgerIndex is a callable that returns a LedgerIndex
   GetCloseTime is a callable that returns a
                boost::optional<NetClock::time_point>
  */
-template<class GetFix1623Enabled, class GetLedgerIndex, class GetCloseTime>
-void
-insertDeliveredAmount(
-    Json::Value& meta,
-    GetFix1623Enabled const& getFix1623Enabled,
+template <class GetLedgerIndex, class GetCloseTime>
+std::optional<STAmount>
+getDeliveredAmount(
     GetLedgerIndex const& getLedgerIndex,
     GetCloseTime const& getCloseTime,
-    std::shared_ptr<STTx const> serializedTx,
+    std::shared_ptr<STTx const> const& serializedTx,
     TxMeta const& transactionMeta)
 {
-    {
-        TxType const tt{serializedTx->getTxnType()};
-        if (tt != ttPAYMENT &&
-            tt != ttCHECK_CASH)
-            return;
-
-        if (tt == ttCHECK_CASH &&
-            !getFix1623Enabled())
-            return;
-    }
-
-    // if the transaction failed nothing could have been delivered.
-    if (transactionMeta.getResultTER() != tesSUCCESS)
-        return;
+    if (!serializedTx)
+        return {};
 
     if (transactionMeta.hasDeliveredAmount())
     {
-        meta[jss::delivered_amount] =
-            transactionMeta.getDeliveredAmount()
-                .getJson(JsonOptions::include_date);
-        return;
+        return transactionMeta.getDeliveredAmount();
     }
 
     if (serializedTx->isFieldPresent(sfAmount))
@@ -92,62 +74,49 @@ insertDeliveredAmount(
         if (getLedgerIndex() >= 4594095 ||
             getCloseTime() > NetClock::time_point{446000000s})
         {
-            meta[jss::delivered_amount] =
-                serializedTx->getFieldAmount(sfAmount)
-                   .getJson(JsonOptions::include_date);
-            return;
+            return serializedTx->getFieldAmount(sfAmount);
         }
     }
 
-    // report "unavailable" which cannot be parsed into a sensible amount.
-    meta[jss::delivered_amount] = Json::Value("unavailable");
+    return {};
 }
 
-void
-insertDeliveredAmount(
-    Json::Value& meta,
-    ReadView const& ledger,
-    std::shared_ptr<STTx const> serializedTx,
+// Returns true if transaction meta could contain a delivered amount field,
+// based on transaction type, transaction result and whether fix1623 is enabled
+template <class GetFix1623Enabled>
+bool
+canHaveDeliveredAmountHelp(
+    GetFix1623Enabled const& getFix1623Enabled,
+    std::shared_ptr<STTx const> const& serializedTx,
     TxMeta const& transactionMeta)
 {
     if (!serializedTx)
-        return;
+        return false;
 
-    auto const info = ledger.info();
-    auto const getFix1623Enabled = [&ledger] {
-        return ledger.rules().enabled(fix1623);
-    };
-    auto const getLedgerIndex = [&info] {
-        return info.seq;
-    };
-    auto const getCloseTime = [&info] {
-        return info.closeTime;
-    };
+    {
+        TxType const tt{serializedTx->getTxnType()};
+        if (tt != ttPAYMENT && tt != ttCHECK_CASH && tt != ttACCOUNT_DELETE)
+            return false;
 
-    insertDeliveredAmount(
-        meta,
-        getFix1623Enabled,
-        getLedgerIndex,
-        getCloseTime,
-        std::move(serializedTx),
-        transactionMeta);
+        if (tt == ttCHECK_CASH && !getFix1623Enabled())
+            return false;
+    }
+
+    // if the transaction failed nothing could have been delivered.
+    if (transactionMeta.getResultTER() != tesSUCCESS)
+        return false;
+
+    return true;
 }
 
-void
-insertDeliveredAmount(
-    Json::Value& meta,
-    RPC::Context& context,
-    std::shared_ptr<Transaction> transaction,
+// Returns true if transaction meta could contain a delivered amount field,
+// based on transaction type, transaction result and whether fix1623 is enabled
+bool
+canHaveDeliveredAmount(
+    RPC::Context const& context,
+    std::shared_ptr<STTx const> const& serializedTx,
     TxMeta const& transactionMeta)
 {
-    if (!transaction)
-        return;
-
-    auto const serializedTx = transaction->getSTransaction ();
-    if (! serializedTx)
-        return;
-
-
     // These lambdas are used to compute the values lazily
     auto const getFix1623Enabled = [&context]() -> bool {
         auto const view = context.app.openLedger().current();
@@ -155,21 +124,108 @@ insertDeliveredAmount(
             return false;
         return view->rules().enabled(fix1623);
     };
-    auto const getLedgerIndex = [&transaction]() -> LedgerIndex {
-        return transaction->getLedger();
-    };
-    auto const getCloseTime =
-        [&context, &transaction]() -> boost::optional<NetClock::time_point> {
-        return context.ledgerMaster.getCloseTimeBySeq(transaction->getLedger());
+
+    return canHaveDeliveredAmountHelp(
+        getFix1623Enabled, serializedTx, transactionMeta);
+}
+
+void
+insertDeliveredAmount(
+    Json::Value& meta,
+    ReadView const& ledger,
+    std::shared_ptr<STTx const> const& serializedTx,
+    TxMeta const& transactionMeta)
+{
+    auto const info = ledger.info();
+    auto const getFix1623Enabled = [&ledger] {
+        return ledger.rules().enabled(fix1623);
     };
 
-    insertDeliveredAmount(
-        meta,
-        getFix1623Enabled,
-        getLedgerIndex,
-        getCloseTime,
-        std::move(serializedTx),
-        transactionMeta);
+    if (canHaveDeliveredAmountHelp(
+            getFix1623Enabled, serializedTx, transactionMeta))
+    {
+        auto const getLedgerIndex = [&info] { return info.seq; };
+        auto const getCloseTime = [&info] { return info.closeTime; };
+
+        auto amt = getDeliveredAmount(
+            getLedgerIndex, getCloseTime, serializedTx, transactionMeta);
+        if (amt)
+        {
+            meta[jss::delivered_amount] =
+                amt->getJson(JsonOptions::include_date);
+        }
+        else
+        {
+            // report "unavailable" which cannot be parsed into a sensible
+            // amount.
+            meta[jss::delivered_amount] = Json::Value("unavailable");
+        }
+    }
 }
-} // RPC
-} // ripple
+
+template <class GetLedgerIndex>
+std::optional<STAmount>
+getDeliveredAmount(
+    RPC::Context const& context,
+    std::shared_ptr<STTx const> const& serializedTx,
+    TxMeta const& transactionMeta,
+    GetLedgerIndex const& getLedgerIndex)
+{
+    if (canHaveDeliveredAmount(context, serializedTx, transactionMeta))
+    {
+        auto const getCloseTime =
+            [&context,
+             &getLedgerIndex]() -> boost::optional<NetClock::time_point> {
+            return context.ledgerMaster.getCloseTimeBySeq(getLedgerIndex());
+        };
+        return getDeliveredAmount(
+            getLedgerIndex, getCloseTime, serializedTx, transactionMeta);
+    }
+
+    return {};
+}
+
+std::optional<STAmount>
+getDeliveredAmount(
+    RPC::Context const& context,
+    std::shared_ptr<STTx const> const& serializedTx,
+    TxMeta const& transactionMeta,
+    LedgerIndex const& ledgerIndex)
+{
+    return getDeliveredAmount(
+        context, serializedTx, transactionMeta, [&ledgerIndex]() {
+            return ledgerIndex;
+        });
+}
+
+void
+insertDeliveredAmount(
+    Json::Value& meta,
+    RPC::JsonContext const& context,
+    std::shared_ptr<Transaction> const& transaction,
+    TxMeta const& transactionMeta)
+{
+    auto const serializedTx = transaction->getSTransaction();
+    if (canHaveDeliveredAmount(context, serializedTx, transactionMeta))
+    {
+        auto amt = getDeliveredAmount(
+            context, serializedTx, transactionMeta, [&transaction]() {
+                return transaction->getLedger();
+            });
+
+        if (amt)
+        {
+            meta[jss::delivered_amount] =
+                amt->getJson(JsonOptions::include_date);
+        }
+        else
+        {
+            // report "unavailable" which cannot be parsed into a sensible
+            // amount.
+            meta[jss::delivered_amount] = Json::Value("unavailable");
+        }
+    }
+}
+
+}  // namespace RPC
+}  // namespace ripple

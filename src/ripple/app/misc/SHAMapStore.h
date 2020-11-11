@@ -21,9 +21,10 @@
 #define RIPPLE_APP_MISC_SHAMAPSTORE_H_INCLUDED
 
 #include <ripple/app/ledger/Ledger.h>
+#include <ripple/core/Stoppable.h>
 #include <ripple/nodestore/Manager.h>
 #include <ripple/protocol/ErrorCodes.h>
-#include <ripple/core/Stoppable.h>
+#include <boost/optional.hpp>
 
 namespace ripple {
 
@@ -31,76 +32,82 @@ class TransactionMaster;
 
 /**
  * class to create database, launch online delete thread, and
- * related sqlite databse
+ * related SQLite database
  */
-class SHAMapStore
-    : public Stoppable
+class SHAMapStore : public Stoppable
 {
 public:
-    struct Setup
+    SHAMapStore(Stoppable& parent) : Stoppable("SHAMapStore", parent)
     {
-        explicit Setup() = default;
-
-        bool standalone = false;
-        std::uint32_t deleteInterval = 0;
-        bool advisoryDelete = false;
-        std::uint32_t ledgerHistory = 0;
-        Section nodeDatabase;
-        std::string databasePath;
-        std::uint32_t deleteBatch = 100;
-        std::uint32_t backOff = 100;
-        std::int32_t ageThreshold = 60;
-        Section shardDatabase;
-    };
-
-    SHAMapStore (Stoppable& parent) : Stoppable ("SHAMapStore", parent) {}
+    }
 
     /** Called by LedgerMaster every time a ledger validates. */
-    virtual void onLedgerClosed(std::shared_ptr<Ledger const> const& ledger) = 0;
+    virtual void
+    onLedgerClosed(std::shared_ptr<Ledger const> const& ledger) = 0;
 
-    virtual void rendezvous() const = 0;
+    virtual void
+    rendezvous() const = 0;
 
-    virtual std::uint32_t clampFetchDepth (std::uint32_t fetch_depth) const = 0;
+    virtual std::uint32_t
+    clampFetchDepth(std::uint32_t fetch_depth) const = 0;
 
-    virtual std::unique_ptr <NodeStore::Database> makeDatabase (
-            std::string const& name,
-            std::int32_t readThreads, Stoppable& parent) = 0;
+    virtual std::unique_ptr<NodeStore::Database>
+    makeNodeStore(std::string const& name, std::int32_t readThreads) = 0;
 
     virtual std::unique_ptr <NodeStore::DatabaseShard> makeDatabaseShard(
         std::string const& name, std::int32_t readThreads,
             Stoppable& parent) = 0;
 
     /** Highest ledger that may be deleted. */
-    virtual LedgerIndex setCanDelete (LedgerIndex canDelete) = 0;
+    virtual LedgerIndex
+    setCanDelete(LedgerIndex canDelete) = 0;
 
     /** Whether advisory delete is enabled. */
-    virtual bool advisoryDelete() const = 0;
+    virtual bool
+    advisoryDelete() const = 0;
 
-    /** Last ledger which was copied during rotation of backends. */
-    virtual LedgerIndex getLastRotated() = 0;
+    /** Maximum ledger that has been deleted, or will be deleted if
+     *  currently in the act of online deletion.
+     */
+    virtual LedgerIndex
+    getLastRotated() = 0;
 
     /** Highest ledger that may be deleted. */
-    virtual LedgerIndex getCanDelete() = 0;
+    virtual LedgerIndex
+    getCanDelete() = 0;
 
-    /** The number of files that are needed. */
-    virtual int fdlimit() const = 0;
+    /** Returns the number of file descriptors that are needed. */
+    virtual int
+    fdRequired() const = 0;
+
+    /** The minimum ledger to try and maintain in our database.
+
+        This defines the lower bound for attempting to acquire historical
+        ledgers over the peer to peer network.
+
+        If online_delete is enabled, then each time online_delete executes
+        and just prior to clearing SQL databases of historical ledgers,
+        move the value forward to one past the greatest ledger being deleted.
+        This minimizes fetching of ledgers that are in the process of being
+        deleted. Without online_delete or before online_delete is
+        executed, this value is always the minimum value persisted in the
+        ledger database, if any.
+
+        @return The minimum ledger sequence to keep online based on the
+            description above. If not set, then an unseated optional.
+    */
+    virtual boost::optional<LedgerIndex>
+    minimumOnline() const = 0;
 };
 
 //------------------------------------------------------------------------------
 
-SHAMapStore::Setup
-setup_SHAMapStore(Config const& c);
-
 std::unique_ptr<SHAMapStore>
 make_SHAMapStore(
-    Schema& schema,
-    SHAMapStore::Setup const& s,
+    Application& app,
     Stoppable& parent,
     NodeStore::Scheduler& scheduler,
-    beast::Journal journal,
-    beast::Journal nodeStoreJournal,
-    TransactionMaster& transactionMaster,
-    BasicConfig const& conf);
-}
+    beast::Journal journal);
+}  // namespace ripple
 
 #endif

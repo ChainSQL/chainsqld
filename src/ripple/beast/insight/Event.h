@@ -20,10 +20,9 @@
 #ifndef BEAST_INSIGHT_EVENT_H_INCLUDED
 #define BEAST_INSIGHT_EVENT_H_INCLUDED
 
-#include <ripple/beast/insight/Base.h>
 #include <ripple/beast/insight/EventImpl.h>
 
-#include <ripple/basics/date.h>
+#include <date/date.h>
 
 #include <chrono>
 #include <memory>
@@ -40,7 +39,7 @@ namespace insight {
     This is a lightweight reference wrapper which is cheap to copy and assign.
     When the last reference goes away, the metric is no longer collected.
 */
-class Event : public Base
+class Event final
 {
 public:
     using value_type = EventImpl::value_type;
@@ -48,38 +47,40 @@ public:
     /** Create a null metric.
         A null metric reports no information.
     */
-    Event ()
-        { }
+    Event()
+    {
+    }
 
     /** Create the metric reference the specified implementation.
         Normally this won't be called directly. Instead, call the appropriate
         factory function in the Collector interface.
         @see Collector.
     */
-    explicit Event (std::shared_ptr <EventImpl> const& impl)
-        : m_impl (impl)
-        { }
+    explicit Event(std::shared_ptr<EventImpl> const& impl) : m_impl(impl)
+    {
+    }
 
     /** Push an event notification. */
     template <class Rep, class Period>
     void
-    notify (std::chrono::duration <Rep, Period> const& value) const
+    notify(std::chrono::duration<Rep, Period> const& value) const
     {
         using namespace std::chrono;
         if (m_impl)
-            m_impl->notify (date::ceil <value_type> (value));
+            m_impl->notify(date::ceil<value_type>(value));
     }
 
-    std::shared_ptr <EventImpl> const& impl () const
+    std::shared_ptr<EventImpl> const&
+    impl() const
     {
         return m_impl;
     }
 
 private:
-    std::shared_ptr <EventImpl> m_impl;
+    std::shared_ptr<EventImpl> m_impl;
 };
 
-}
-}
+}  // namespace insight
+}  // namespace beast
 
 #endif

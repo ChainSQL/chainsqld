@@ -55,30 +55,36 @@ enum TxType
     ttCHECK_CANCEL       =  18,
     ttDEPOSIT_PREAUTH    =  19,
     ttTRUST_SET         = 20,
-    ttTABLELISTSET      = 21,
-    ttSQLSTATEMENT      = 22,
-    ttSQLTRANSACTION    = 23,
-	ttCONTRACT			= 24,
-	ttSCHEMA_CREATE		= 25,
-	ttSCHEMA_MODIFY		= 26,
+    ttACCOUNT_DELETE    = 21,
+
+
+
+    ttTABLELISTSET      = 22,
+    ttSQLSTATEMENT      = 23,
+    ttSQLTRANSACTION    = 24,
+	ttCONTRACT			= 25,
+	ttSCHEMA_CREATE		= 26,
+	ttSCHEMA_MODIFY		= 27,
     ttAMENDMENT         = 100,
     ttFEE               = 101,
+    ttUNL_MODIFY        = 102,
 };
 
 /** Manages the list of known transaction formats.
-*/
-class TxFormats : public KnownFormats <TxType>
+ */
+class TxFormats : public KnownFormats<TxType>
 {
 private:
     /** Create the object.
         This will load the object with all the known transaction formats.
     */
-    TxFormats ();
+    TxFormats();
 
 public:
-    static TxFormats const& getInstance ();
+    static TxFormats const&
+    getInstance();
 };
 
-} // ripple
+}  // namespace ripple
 
 #endif

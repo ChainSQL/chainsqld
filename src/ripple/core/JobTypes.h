@@ -23,18 +23,16 @@
 #include <ripple/core/Job.h>
 #include <ripple/core/JobTypeInfo.h>
 #include <map>
-#include <thread>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 
-namespace ripple
-{
+namespace ripple {
 
 class JobTypes
 {
 public:
-    using Map = std::map <JobType, JobTypeInfo>;
+    using Map = std::map<JobType, JobTypeInfo>;
     using const_iterator = Map::const_iterator;
 
 private:
@@ -100,10 +98,11 @@ public:
         return types;
     }
 
-    JobTypeInfo const& get (JobType jt) const
+    JobTypeInfo const&
+    get(JobType jt) const
     {
-        Map::const_iterator const iter (m_map.find (jt));
-        assert (iter != m_map.end ());
+        Map::const_iterator const iter(m_map.find(jt));
+        assert(iter != m_map.end());
 
         if (iter != m_map.end())
             return iter->second;
@@ -111,57 +110,68 @@ public:
         return m_unknown;
     }
 
-    JobTypeInfo const& getInvalid () const
+    JobTypeInfo const&
+    getInvalid() const
     {
         return m_unknown;
     }
 
-    Map::size_type size () const
+    Map::size_type
+    size() const
     {
         return m_map.size();
     }
 
-    const_iterator begin () const
+    const_iterator
+    begin() const
     {
-        return m_map.cbegin ();
+        return m_map.cbegin();
     }
 
-    const_iterator cbegin () const
+    const_iterator
+    cbegin() const
     {
-        return m_map.cbegin ();
+        return m_map.cbegin();
     }
 
-    const_iterator end () const
+    const_iterator
+    end() const
     {
-        return m_map.cend ();
+        return m_map.cend();
     }
 
-    const_iterator cend () const
+    const_iterator
+    cend() const
     {
-        return m_map.cend ();
+        return m_map.cend();
     }
 
 private:
-    void add(JobType jt, std::string name, int limit,
-        bool special, std::chrono::milliseconds avgLatency,
+    void
+    add(JobType jt,
+        std::string name,
+        int limit,
+        bool special,
+        std::chrono::milliseconds avgLatency,
         std::chrono::milliseconds peakLatency)
     {
-        assert (m_map.find (jt) == m_map.end ());
+        assert(m_map.find(jt) == m_map.end());
 
-        std::pair<Map::iterator,bool> result (m_map.emplace (
+        auto const [_, inserted] = m_map.emplace(
             std::piecewise_construct,
-            std::forward_as_tuple (jt),
-            std::forward_as_tuple (jt, name, limit, special,
-                avgLatency, peakLatency)));
+            std::forward_as_tuple(jt),
+            std::forward_as_tuple(
+                jt, name, limit, special, avgLatency, peakLatency));
 
-        assert (result.second == true);
-        (void) result.second;
+        assert(inserted == true);
+        (void)_;
+        (void)inserted;
     }
 
     JobTypeInfo m_unknown;
     Map m_map;
 };
 
-}
+}  // namespace ripple
 
 #endif

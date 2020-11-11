@@ -20,12 +20,12 @@
 #ifndef RIPPLE_NET_INFOSUB_H_INCLUDED
 #define RIPPLE_NET_INFOSUB_H_INCLUDED
 
-#include <ripple/basics/CountedObject.h>
-#include <ripple/json/json_value.h>
 #include <ripple/app/misc/Manifest.h>
-#include <ripple/resource/Consumer.h>
-#include <ripple/protocol/Book.h>
+#include <ripple/basics/CountedObject.h>
 #include <ripple/core/Stoppable.h>
+#include <ripple/json/json_value.h>
+#include <ripple/protocol/Book.h>
+#include <ripple/resource/Consumer.h>
 #include <mutex>
 
 namespace ripple {
@@ -36,16 +36,20 @@ namespace ripple {
 class PathRequest;
 
 /** Manages a client's subscription to data feeds.
-*/
-class InfoSub
-    : public CountedObject <InfoSub>
+ */
+class InfoSub : public CountedObject<InfoSub>
 {
 public:
-    static char const* getCountedObjectName () { return "InfoSub"; }
+    static char const*
+    getCountedObjectName()
+    {
+        return "InfoSub";
+    }
 
     using pointer = std::shared_ptr<InfoSub>;
 
-    // VFALCO TODO Standardize on the names of weak / strong pointer type aliases.
+    // VFALCO TODO Standardize on the names of weak / strong pointer type
+    // aliases.
     using wptr = std::weak_ptr<InfoSub>;
 
     using ref = const std::shared_ptr<InfoSub>&;
@@ -56,30 +60,35 @@ public:
 
 public:
     /** Abstracts the source of subscription data.
-    */
+     */
     class Source : public Stoppable
     {
     protected:
-        Source (char const* name, Stoppable& parent);
+        Source(char const* name, Stoppable& parent);
 
     public:
-
         // For some reason, these were originally called "rt"
         // for "real time". They actually refer to whether
         // you get transactions as they occur or once their
         // results are confirmed
-        virtual void subAccount (ref ispListener,
+        virtual void
+        subAccount(
+            ref ispListener,
             hash_set<AccountID> const& vnaAccountIDs,
             ACOUNT_TYPE eType) = 0;
 
         // for normal use, removes from InfoSub and server
-        virtual void unsubAccount (ref isplistener,
+        virtual void
+        unsubAccount(
+            ref isplistener,
             hash_set<AccountID> const& vnaAccountIDs,
             ACOUNT_TYPE eType) = 0;
 
         // for use during InfoSub destruction
         // Removes only from the server
-        virtual void unsubAccountInternal (std::uint64_t uListener,
+        virtual void
+        unsubAccountInternal(
+            std::uint64_t uListener,
             hash_set<AccountID> const& vnaAccountIDs,
             ACOUNT_TYPE eType) = 0;
 
@@ -119,15 +128,23 @@ public:
         virtual bool unsubPeerStatus (std::uint64_t uListener) = 0;
         virtual void pubPeerStatus (std::function<Json::Value(void)> const&) = 0;
 
+        virtual bool
+        subConsensus(ref ispListener) = 0;
+        virtual bool
+        unsubConsensus(std::uint64_t uListener) = 0;
+
 		virtual bool subLogs(ref ispListener) = 0;
 		virtual bool unsubLogs(std::uint64_t uListener) = 0;
         // VFALCO TODO Remove
         //             This was added for one particular partner, it
         //             "pushes" subscription data to a particular URL.
         //
-        virtual pointer findRpcSub (std::string const& strUrl) = 0;
-        virtual pointer addRpcSub (std::string const& strUrl, ref rspEntry) = 0;
-        virtual bool tryRemoveRpcSub (std::string const& strUrl) = 0;
+        virtual pointer
+        findRpcSub(std::string const& strUrl) = 0;
+        virtual pointer
+        addRpcSub(std::string const& strUrl, ref rspEntry) = 0;
+        virtual bool
+        tryRemoveRpcSub(std::string const& strUrl) = 0;
     };
 
 public:
@@ -135,15 +152,19 @@ public:
     InfoSub (Source& source);
     InfoSub (Source& source, Consumer consumer);
 
-    virtual ~InfoSub ();
+    virtual ~InfoSub();
 
-    Consumer& getConsumer();
+    Consumer&
+    getConsumer();
 
-    virtual void send (Json::Value const& jvObj, bool broadcast) = 0;
+    virtual void
+    send(Json::Value const& jvObj, bool broadcast) = 0;
 
-    std::uint64_t getSeq ();
+    std::uint64_t
+    getSeq();
 
-    void onSendEmpty ();
+    void
+    onSendEmpty();
 
     void insertSubAccountInfo (
         AccountID const& account,
@@ -153,18 +174,19 @@ public:
         AccountID const& account,
         ACOUNT_TYPE eType);
 
-    void clearPathRequest ();
+    void
+    clearPathRequest();
 
-    void setPathRequest (const std::shared_ptr<PathRequest>& req);
+    void
+    setPathRequest(const std::shared_ptr<PathRequest>& req);
 
-    std::shared_ptr <PathRequest> const& getPathRequest ();
+    std::shared_ptr<PathRequest> const&
+    getPathRequest();
 
 	void setSource(Source& source);
 	Source* getSource();
 protected:
-    using LockType = std::mutex;
-    using ScopedLockType = std::lock_guard <LockType>;
-    LockType mLock;
+    std::mutex mLock;
 
 
 private:
@@ -187,6 +209,6 @@ private:
     hash_set <AccountID>& getCompatibleAccountSet(ACOUNT_TYPE eType);
 };
 
-} // ripple
+}  // namespace ripple
 
 #endif

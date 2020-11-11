@@ -30,15 +30,25 @@ class DatabaseRotatingImp : public DatabaseRotating
 public:
     DatabaseRotatingImp() = delete;
     DatabaseRotatingImp(DatabaseRotatingImp const&) = delete;
+<<<<<<< HEAD
     DatabaseRotatingImp& operator=(DatabaseRotatingImp const&) = delete;
+=======
+    DatabaseRotatingImp&
+    operator=(DatabaseRotatingImp const&) = delete;
+>>>>>>> release
 
     DatabaseRotatingImp(
         std::string const& name,
         Scheduler& scheduler,
         int readThreads,
         Stoppable& parent,
+<<<<<<< HEAD
         std::unique_ptr<Backend> writableBackend,
         std::unique_ptr<Backend> archiveBackend,
+=======
+        std::shared_ptr<Backend> writableBackend,
+        std::shared_ptr<Backend> archiveBackend,
+>>>>>>> release
         Section const& config,
         beast::Journal j);
 
@@ -48,6 +58,7 @@ public:
         stopThreads();
     }
 
+<<<<<<< HEAD
     std::unique_ptr<Backend> const&
     getWritableBackend() const override
     {
@@ -62,17 +73,30 @@ public:
     {
         return rotateMutex_;
     }
+=======
+    void
+    rotateWithLock(
+        std::function<std::unique_ptr<NodeStore::Backend>(
+            std::string const& writableBackendName)> const& f) override;
 
-    std::string getName() const override
-    {
-        return getWritableBackend()->getName();
-    }
+    std::string
+    getName() const override;
 
-    std::int32_t getWriteLoad() const override
-    {
-        return getWritableBackend()->getWriteLoad();
-    }
+    std::int32_t
+    getWriteLoad() const override;
+>>>>>>> release
 
+    void
+    import(Database& source) override;
+
+    void
+    store(
+        NodeObjectType type,
+        Blob&& data,
+        uint256 const& hash,
+        std::uint32_t seq) override;
+
+<<<<<<< HEAD
     void import (Database& source) override
     {
         importInternal (*getWritableBackend(), source);
@@ -110,6 +134,38 @@ public:
     float
     getCacheHitRate() override {return pCache_->getHitRate();}
 
+=======
+    std::shared_ptr<NodeObject>
+    fetch(uint256 const& hash, std::uint32_t seq) override
+    {
+        return doFetch(hash, seq, *pCache_, *nCache_, false);
+    }
+
+    bool
+    asyncFetch(
+        uint256 const& hash,
+        std::uint32_t seq,
+        std::shared_ptr<NodeObject>& object) override;
+
+    bool
+    storeLedger(std::shared_ptr<Ledger const> const& srcLedger) override;
+
+    int
+    getDesiredAsyncReadCount(std::uint32_t seq) override
+    {
+        // We prefer a client not fill our cache
+        // We don't want to push data out of the cache
+        // before it's retrieved
+        return pCache_->getTargetSize() / asyncDivider;
+    }
+
+    float
+    getCacheHitRate() override
+    {
+        return pCache_->getHitRate();
+    }
+
+>>>>>>> release
     void
     tune(int size, std::chrono::seconds age) override;
 
@@ -117,6 +173,7 @@ public:
     sweep() override;
 
     TaggedCache<uint256, NodeObject> const&
+<<<<<<< HEAD
     getPositiveCache() override {return *pCache_;}
 
 private:
@@ -150,10 +207,32 @@ private:
         Backends b = getBackends();
         b.archiveBackend->for_each(f);
         b.writableBackend->for_each(f);
+=======
+    getPositiveCache() override
+    {
+        return *pCache_;
+>>>>>>> release
     }
+
+private:
+    // Positive cache
+    std::shared_ptr<TaggedCache<uint256, NodeObject>> pCache_;
+
+    // Negative cache
+    std::shared_ptr<KeyCache<uint256>> nCache_;
+
+    std::shared_ptr<Backend> writableBackend_;
+    std::shared_ptr<Backend> archiveBackend_;
+    mutable std::mutex mutex_;
+
+    std::shared_ptr<NodeObject>
+    fetchFrom(uint256 const& hash, std::uint32_t seq) override;
+
+    void
+    for_each(std::function<void(std::shared_ptr<NodeObject>)> f) override;
 };
 
-}
-}
+}  // namespace NodeStore
+}  // namespace ripple
 
 #endif

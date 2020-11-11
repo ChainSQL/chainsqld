@@ -20,6 +20,8 @@
 #ifndef RIPPLE_APP_CONSENSUS_LEDGERS_TRIE_H_INCLUDED
 #define RIPPLE_APP_CONSENSUS_LEDGERS_TRIE_H_INCLUDED
 
+#include <ripple/basics/ToString.h>
+#include <ripple/basics/tagged_integer.h>
 #include <ripple/json/json_value.h>
 #include <boost/optional.hpp>
 #include <algorithm>
@@ -447,9 +449,7 @@ public:
     void
     insert(Ledger const& ledger, std::uint32_t count = 1)
     {
-        Node* loc;
-        Seq diffSeq;
-        std::tie(loc, diffSeq) = find(ledger);
+        auto const [loc, diffSeq] = find(ledger);
 
         // There is always a place to insert
         assert(loc);
@@ -568,8 +568,7 @@ public:
             else if (loc->children.size() == 1)
             {
                 // This node can be combined with its child
-                std::unique_ptr<Node> child =
-                    std::move(loc->children.front());
+                std::unique_ptr<Node> child = std::move(loc->children.front());
                 child->span = merge(loc->span, child->span);
                 child->parent = parent;
                 parent->children.emplace_back(std::move(child));
@@ -610,7 +609,7 @@ public:
             Seq diffSeq;
             std::tie(loc, diffSeq) = find(ledger);
             // Check that ledger is a proper prefix of loc
-            if (! (diffSeq > ledger.seq() && ledger.seq() < loc->span.end()))
+            if (!(diffSeq > ledger.seq() && ledger.seq() < loc->span.end()))
                 loc = nullptr;
         }
         return loc ? loc->branchSupport : 0;
@@ -795,8 +794,8 @@ public:
         Json::Value res;
         res["trie"] = root->getJson();
         res["seq_support"] = Json::objectValue;
-        for (auto const& mit : seqSupport)
-            res["seq_support"][to_string(mit.first)] = mit.second;
+        for (auto const& [seq, sup] : seqSupport)
+            res["seq_support"][to_string(seq)] = sup;
         return res;
     }
 

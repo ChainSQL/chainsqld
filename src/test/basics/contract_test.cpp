@@ -26,23 +26,24 @@ namespace ripple {
 class contract_test : public beast::unit_test::suite
 {
 public:
-    void run () override
+    void
+    run() override
     {
         try
         {
             Throw<std::runtime_error>("Throw test");
         }
-        catch (std::runtime_error const& e)
+        catch (std::runtime_error const& e1)
         {
-            BEAST_EXPECT(std::string(e.what()) == "Throw test");
+            BEAST_EXPECT(std::string(e1.what()) == "Throw test");
 
             try
             {
                 Rethrow();
             }
-            catch (std::runtime_error const& e)
+            catch (std::runtime_error const& e2)
             {
-                BEAST_EXPECT(std::string(e.what()) == "Throw test");
+                BEAST_EXPECT(std::string(e2.what()) == "Throw test");
             }
             catch (...)
             {
@@ -56,6 +57,6 @@ public:
     }
 };
 
-BEAST_DEFINE_TESTSUITE(contract,basics,ripple);
+BEAST_DEFINE_TESTSUITE(contract, basics, ripple);
 
-}
+}  // namespace ripple

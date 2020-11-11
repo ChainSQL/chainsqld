@@ -41,24 +41,22 @@ public:
         Section const& config,
         beast::Journal journal)
         : Database(name, parent, scheduler, readThreads, config, journal)
-    {}
+    {
+    }
 
-    virtual
-    TaggedCache<uint256, NodeObject> const&
+    virtual TaggedCache<uint256, NodeObject> const&
     getPositiveCache() = 0;
 
-    virtual std::mutex& peekMutex() const = 0;
+    /** Rotates the backends.
 
-    virtual
-    std::unique_ptr<Backend> const&
-    getWritableBackend() const = 0;
-
-    virtual
-    std::unique_ptr<Backend>
-    rotateBackends(std::unique_ptr<Backend> newBackend) = 0;
+        @param f A function executed before the rotation and under the same lock
+    */
+    virtual void
+    rotateWithLock(std::function<std::unique_ptr<NodeStore::Backend>(
+                       std::string const& writableBackendName)> const& f) = 0;
 };
 
-}
-}
+}  // namespace NodeStore
+}  // namespace ripple
 
 #endif

@@ -31,7 +31,9 @@ namespace ripple {
 
 namespace detail {
 
-auto DeferredCredits::makeKey (AccountID const& a1,
+auto
+DeferredCredits::makeKey(
+    AccountID const& a1,
     AccountID const& a2,
     Currency const& c) -> Key
 {
@@ -42,29 +44,30 @@ auto DeferredCredits::makeKey (AccountID const& a1,
 }
 
 void
-DeferredCredits::credit (AccountID const& sender,
+DeferredCredits::credit(
+    AccountID const& sender,
     AccountID const& receiver,
     STAmount const& amount,
     STAmount const& preCreditSenderBalance)
 {
-    assert (sender != receiver);
-    assert (!amount.negative());
+    assert(sender != receiver);
+    assert(!amount.negative());
 
-    auto const k = makeKey (sender, receiver, amount.getCurrency ());
-    auto i = credits_.find (k);
-    if (i == credits_.end ())
+    auto const k = makeKey(sender, receiver, amount.getCurrency());
+    auto i = credits_.find(k);
+    if (i == credits_.end())
     {
         Value v;
 
         if (sender < receiver)
         {
             v.highAcctCredits = amount;
-            v.lowAcctCredits = amount.zeroed ();
+            v.lowAcctCredits = amount.zeroed();
             v.lowAcctOrigBalance = preCreditSenderBalance;
         }
         else
         {
-            v.highAcctCredits = amount.zeroed ();
+            v.highAcctCredits = amount.zeroed();
             v.lowAcctCredits = amount;
             v.lowAcctOrigBalance = -preCreditSenderBalance;
         }
@@ -83,61 +86,65 @@ DeferredCredits::credit (AccountID const& sender,
 }
 
 void
-DeferredCredits::ownerCount (AccountID const& id,
+DeferredCredits::ownerCount(
+    AccountID const& id,
     std::uint32_t cur,
     std::uint32_t next)
 {
-    auto const v = std::max (cur, next);
-    auto r = ownerCounts_.emplace (std::make_pair (id, v));
+    auto const v = std::max(cur, next);
+    auto r = ownerCounts_.emplace(std::make_pair(id, v));
     if (!r.second)
     {
         auto& mapVal = r.first->second;
-        mapVal = std::max (v, mapVal);
+        mapVal = std::max(v, mapVal);
     }
 }
 
 boost::optional<std::uint32_t>
-DeferredCredits::ownerCount (AccountID const& id) const
+DeferredCredits::ownerCount(AccountID const& id) const
 {
-    auto i = ownerCounts_.find (id);
-    if (i != ownerCounts_.end ())
+    auto i = ownerCounts_.find(id);
+    if (i != ownerCounts_.end())
         return i->second;
     return boost::none;
 }
 
 // Get the adjustments for the balance between main and other.
 auto
-DeferredCredits::adjustments (AccountID const& main,
+DeferredCredits::adjustments(
+    AccountID const& main,
     AccountID const& other,
     Currency const& currency) const -> boost::optional<Adjustment>
 {
     boost::optional<Adjustment> result;
 
-    Key const k = makeKey (main, other, currency);
-    auto i = credits_.find (k);
-    if (i == credits_.end ())
+    Key const k = makeKey(main, other, currency);
+    auto i = credits_.find(k);
+    if (i == credits_.end())
         return result;
 
     auto const& v = i->second;
 
     if (main < other)
     {
-        result.emplace (v.highAcctCredits, v.lowAcctCredits, v.lowAcctOrigBalance);
+        result.emplace(
+            v.highAcctCredits, v.lowAcctCredits, v.lowAcctOrigBalance);
         return result;
     }
     else
     {
-        result.emplace (v.lowAcctCredits, v.highAcctCredits, -v.lowAcctOrigBalance);
+        result.emplace(
+            v.lowAcctCredits, v.highAcctCredits, -v.lowAcctOrigBalance);
         return result;
     }
 }
 
-void DeferredCredits::apply(
-    DeferredCredits& to)
+void
+DeferredCredits::apply(DeferredCredits& to)
 {
     for (auto const& i : credits_)
     {
-        auto r = to.credits_.emplace (i);
+        auto r = to.credits_.emplace(i);
         if (!r.second)
         {
             auto& toVal = r.first->second;
@@ -150,22 +157,23 @@ void DeferredCredits::apply(
 
     for (auto const& i : ownerCounts_)
     {
-        auto r = to.ownerCounts_.emplace (i);
+        auto r = to.ownerCounts_.emplace(i);
         if (!r.second)
         {
             auto& toVal = r.first->second;
             auto const& fromVal = i.second;
-            toVal = std::max (toVal, fromVal);
+            toVal = std::max(toVal, fromVal);
         }
     }
 }
 
-} // detail
+}  // namespace detail
 
 STAmount
-PaymentSandbox::balanceHook (AccountID const& account,
+PaymentSandbox::balanceHook(
+    AccountID const& account,
     AccountID const& issuer,
-        STAmount const& amount) const
+    STAmount const& amount) const
 {
     /*
     There are two algorithms here. The pre-switchover algorithm takes the
@@ -178,51 +186,38 @@ PaymentSandbox::balanceHook (AccountID const& account,
     magnitudes, (B+C)-C may not equal B.
     */
 
-    auto const currency = amount.getCurrency ();
-    auto const switchover = fix1141 (info ().parentCloseTime);
+    auto const currency = amount.getCurrency();
 
-    auto adjustedAmt = amount;
-    if (switchover)
+    auto delta = amount.zeroed();
+    auto lastBal = amount;
+    auto minBal = amount;
+    for (auto curSB = this; curSB; curSB = curSB->ps_)
     {
-        auto delta = amount.zeroed ();
-        auto lastBal = amount;
-        auto minBal = amount;
-        for (auto curSB = this; curSB; curSB = curSB->ps_)
+        if (auto adj = curSB->tab_.adjustments(account, issuer, currency))
         {
-            if (auto adj = curSB->tab_.adjustments (account, issuer, currency))
-            {
-                delta += adj->debits;
-                lastBal = adj->origBalance;
-                if (lastBal < minBal)
-                    minBal = lastBal;
-            }
-        }
-        adjustedAmt = std::min(amount, lastBal - delta);
-        if (rules().enabled(fix1368))
-        {
-            // The adjusted amount should never be larger than the balance. In
-            // some circumstances, it is possible for the deferred credits table
-            // to compute usable balance just slightly above what the ledger
-            // calculates (but always less than the actual balance).
-            adjustedAmt = std::min(adjustedAmt, minBal);
-        }
-        if (fix1274 (info ().parentCloseTime))
-            adjustedAmt.setIssuer(amount.getIssuer());
-    }
-    else
-    {
-        for (auto curSB = this; curSB; curSB = curSB->ps_)
-        {
-            if (auto adj = curSB->tab_.adjustments (account, issuer, currency))
-            {
-                adjustedAmt -= adj->credits;
-            }
+            delta += adj->debits;
+            lastBal = adj->origBalance;
+            if (lastBal < minBal)
+                minBal = lastBal;
         }
     }
 
+<<<<<<< HEAD
     if (isZXC(issuer) && adjustedAmt < beast::zero)
         // A calculated negative ZXC balance is not an error case. Consider a
         // payment snippet that credits a large ZXC amount and then debits the
+=======
+    // The adjusted amount should never be larger than the balance. In
+    // some circumstances, it is possible for the deferred credits table
+    // to compute usable balance just slightly above what the ledger
+    // calculates (but always less than the actual balance).
+    auto adjustedAmt = std::min({amount, lastBal - delta, minBal});
+    adjustedAmt.setIssuer(amount.getIssuer());
+
+    if (isXRP(issuer) && adjustedAmt < beast::zero)
+        // A calculated negative XRP balance is not an error case. Consider a
+        // payment snippet that credits a large XRP amount and then debits the
+>>>>>>> release
         // same amount. The credit can't be used but we subtract the debit and
         // calculate a negative value. It's not an error case.
         adjustedAmt.clear();
@@ -231,44 +226,46 @@ PaymentSandbox::balanceHook (AccountID const& account,
 }
 
 std::uint32_t
-PaymentSandbox::ownerCountHook (AccountID const& account,
-    std::uint32_t count) const
+PaymentSandbox::ownerCountHook(AccountID const& account, std::uint32_t count)
+    const
 {
     std::uint32_t result = count;
     for (auto curSB = this; curSB; curSB = curSB->ps_)
     {
-        if (auto adj = curSB->tab_.ownerCount (account))
-            result = std::max (result, *adj);
+        if (auto adj = curSB->tab_.ownerCount(account))
+            result = std::max(result, *adj);
     }
     return result;
 }
 
 void
-PaymentSandbox::creditHook (AccountID const& from,
+PaymentSandbox::creditHook(
+    AccountID const& from,
     AccountID const& to,
-        STAmount const& amount,
-            STAmount const& preCreditBalance)
+    STAmount const& amount,
+    STAmount const& preCreditBalance)
 {
-    tab_.credit (from, to, amount, preCreditBalance);
+    tab_.credit(from, to, amount, preCreditBalance);
 }
 
 void
-PaymentSandbox::adjustOwnerCountHook (AccountID const& account,
+PaymentSandbox::adjustOwnerCountHook(
+    AccountID const& account,
     std::uint32_t cur,
-        std::uint32_t next)
+    std::uint32_t next)
 {
-    tab_.ownerCount (account, cur, next);
+    tab_.ownerCount(account, cur, next);
 }
 
 void
-PaymentSandbox::apply (RawView& to)
+PaymentSandbox::apply(RawView& to)
 {
-    assert(! ps_);
+    assert(!ps_);
     items_.apply(to);
 }
 
 void
-PaymentSandbox::apply (PaymentSandbox& to)
+PaymentSandbox::apply(PaymentSandbox& to)
 {
     assert(ps_ == &to);
     items_.apply(to);
@@ -276,20 +273,27 @@ PaymentSandbox::apply (PaymentSandbox& to)
 }
 
 std::map<std::tuple<AccountID, AccountID, Currency>, STAmount>
-PaymentSandbox::balanceChanges (ReadView const& view) const
+PaymentSandbox::balanceChanges(ReadView const& view) const
 {
-    using key = std::tuple<AccountID, AccountID, Currency>;
+    using key_t = std::tuple<AccountID, AccountID, Currency>;
     // Map of delta trust lines. As a special case, when both ends of the trust
     // line are the same currency, then it's delta currency for that issuer. To
+<<<<<<< HEAD
     // get the change in ZXC balance, Account == root, issuer == root, currency == ZXC
     std::map<key, STAmount> result;
+=======
+    // get the change in XRP balance, Account == root, issuer == root, currency
+    // == XRP
+    std::map<key_t, STAmount> result;
+>>>>>>> release
 
     // populate a dictionary with low/high/currency/delta. This can be
     // compared with the other versions payment code.
-    auto each = [&result](uint256 const& key, bool isDelete,
-        std::shared_ptr<SLE const> const& before,
-        std::shared_ptr<SLE const> const& after) {
-
+    auto each = [&result](
+                    uint256 const& key,
+                    bool isDelete,
+                    std::shared_ptr<SLE const> const& before,
+                    std::shared_ptr<SLE const> const& after) {
         STAmount oldBalance;
         STAmount newBalance;
         AccountID lowID;
@@ -301,8 +305,8 @@ PaymentSandbox::balanceChanges (ReadView const& view) const
             if (!before)
                 return;
 
-            auto const bt = before->getType ();
-            switch(bt)
+            auto const bt = before->getType();
+            switch (bt)
             {
                 case ltACCOUNT_ROOT:
                     lowID = zxcAccount();
@@ -326,8 +330,8 @@ PaymentSandbox::balanceChanges (ReadView const& view) const
         else if (!before)
         {
             // insert
-            auto const at = after->getType ();
-            switch(at)
+            auto const at = after->getType();
+            switch (at)
             {
                 case ltACCOUNT_ROOT:
                     lowID = zxcAccount();
@@ -351,9 +355,9 @@ PaymentSandbox::balanceChanges (ReadView const& view) const
         else
         {
             // modify
-            auto const at = after->getType ();
-            assert (at == before->getType ());
-            switch(at)
+            auto const at = after->getType();
+            assert(at == before->getType());
+            switch (at)
             {
                 case ltACCOUNT_ROOT:
                     lowID = zxcAccount();
@@ -391,13 +395,18 @@ PaymentSandbox::balanceChanges (ReadView const& view) const
             r.first->second += delta;
         }
     };
-    items_.visit (view, each);
+    items_.visit(view, each);
     return result;
 }
 
+<<<<<<< HEAD
 ZXCAmount PaymentSandbox::zxcDestroyed () const
+=======
+XRPAmount
+PaymentSandbox::xrpDestroyed() const
+>>>>>>> release
 {
-    return items_.dropsDestroyed ();
+    return items_.dropsDestroyed();
 }
 
-}  // ripple
+}  // namespace ripple

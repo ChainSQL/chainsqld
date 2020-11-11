@@ -21,15 +21,17 @@
 #define RIPPLE_CORE_CONFIG_H_INCLUDED
 
 #include <ripple/basics/BasicConfig.h>
+#include <ripple/basics/FeeUnits.h>
 #include <ripple/basics/base_uint.h>
-#include <ripple/protocol/SystemParameters.h> // VFALCO Breaks levelization
 #include <ripple/beast/net/IPEndpoint.h>
-#include <boost/beast/core/string.hpp>
 #include <ripple/beast/utility/Journal.h>
-#include <peersafe/schema/SchemaParams.h>
-#include <boost/filesystem.hpp> // VFALCO FIX: This include should not be here
+#include <ripple/protocol/SystemParameters.h>  // VFALCO Breaks levelization
+#include <boost/beast/core/string.hpp>
+#include <boost/filesystem.hpp>  // VFALCO FIX: This include should not be here
 #include <boost/lexical_cast.hpp>
 #include <boost/optional.hpp>
+#include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -43,27 +45,18 @@ class Rules;
 
 //------------------------------------------------------------------------------
 
-enum SizedItemName
-{
-    siSweepInterval,
-    siNodeCacheSize,
-    siNodeCacheAge,
-    siTreeCacheSize,
-    siTreeCacheAge,
-    siSLECacheSize,
-    siSLECacheAge,
-    siLedgerSize,
-    siLedgerAge,
-    siLedgerFetch,
-    siHashNodeDBCache,
-    siTxnDBCache,
-    siLgrDBCache,
-};
-
-struct SizedItem
-{
-	SizedItemName   item;
-	int             sizes[5];
+enum class SizedItem : std::size_t {
+    sweepInterval = 0,
+    treeCacheSize,
+    treeCacheAge,
+    ledgerSize,
+    ledgerAge,
+    ledgerFetch,
+    nodeCacheSize,
+    nodeCacheAge,
+    hashNodeDBCache,
+    txnDBCache,
+    lgrDBCache
 };
 
 //  This entire derived class is deprecated.
@@ -80,20 +73,24 @@ public:
     static char const* const validatorsFileName;
 
     /** Returns the full path and filename of the debug log file. */
-    boost::filesystem::path getDebugLogFile () const;
+    boost::filesystem::path
+    getDebugLogFile() const;
 
 private:
     boost::filesystem::path CONFIG_FILE;
+
 public:
     boost::filesystem::path CONFIG_DIR;
+
 private:
     boost::filesystem::path DEBUG_LOGFILE;
 
-    void load ();
-    beast::Journal j_;
+    void
+    load();
+    beast::Journal const j_;
 
-    bool QUIET = false;          // Minimize logging verbosity.
-    bool SILENT = false;         // No output to console after startup.
+    bool QUIET = false;   // Minimize logging verbosity.
+    bool SILENT = false;  // No output to console after startup.
     /** Operate in stand-alone mode.
 
         In stand alone mode:
@@ -103,7 +100,15 @@ private:
         - If no ledger is loaded, the default ledger with the root
           account is created.
     */
-    bool                        RUN_STANDALONE = false;
+    bool RUN_STANDALONE = false;
+
+    /** Determines if the server will sign a tx, given an account's secret seed.
+
+        In the past, this was allowed, but this functionality can have security
+        implications. The new default is to not allow this functionality, but
+        a config option is included to enable this.
+    */
+    bool signingEnabled_ = false;
 
     /** Determines if the server will sign a tx, given an account's secret seed.
 
@@ -119,9 +124,9 @@ public:
     bool validateShards = false;
     bool ELB_SUPPORT = false;
 
-    std::vector<std::string>    IPS;                    // Peer IPs from rippled.cfg.
-    std::vector<std::string>    IPS_FIXED;              // Fixed Peer IPs from rippled.cfg.
-    std::vector<std::string>    SNTP_SERVERS;           // SNTP servers from rippled.cfg.
+    std::vector<std::string> IPS;           // Peer IPs from rippled.cfg.
+    std::vector<std::string> IPS_FIXED;     // Fixed Peer IPs from rippled.cfg.
+    std::vector<std::string> SNTP_SERVERS;  // SNTP servers from rippled.cfg.
 
 
 	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
@@ -141,57 +146,69 @@ public:
     };
     StartUpType                 START_UP = NORMAL;
 
-    bool                        START_VALID = false;
+    bool START_VALID = false;
 
-    std::string                 START_LEDGER;
+    std::string START_LEDGER;
 
     // Network parameters
-    int const                   TRANSACTION_FEE_BASE = 10;   // The number of fee units a reference transaction costs
+
+    // The number of fee units a reference transaction costs
+    static constexpr FeeUnit32 TRANSACTION_FEE_BASE{10};
 
     // Note: The following parameters do not relate to the UNL or trust at all
     // Minimum number of nodes to consider the network present
-    std::size_t                 NETWORK_QUORUM = 1;
+    std::size_t NETWORK_QUORUM = 1;
 
     // Peer networking parameters
-    bool                        PEER_PRIVATE = false;           // True to ask peers not to relay current IP.
-    std::size_t                 PEERS_MAX = 0;
+    bool RELAY_UNTRUSTED_VALIDATIONS = true;
+    bool RELAY_UNTRUSTED_PROPOSALS = false;
 
-    std::chrono::seconds        WEBSOCKET_PING_FREQ = std::chrono::minutes {5};
+    // True to ask peers not to relay current IP.
+    bool PEER_PRIVATE = false;
+    std::size_t PEERS_MAX = 0;
+
+    std::chrono::seconds WEBSOCKET_PING_FREQ = std::chrono::minutes{5};
 
     // Path searching
-    int                         PATH_SEARCH_OLD = 7;
-    int                         PATH_SEARCH = 7;
-    int                         PATH_SEARCH_FAST = 2;
-    int                         PATH_SEARCH_MAX = 10;
+    int PATH_SEARCH_OLD = 7;
+    int PATH_SEARCH = 7;
+    int PATH_SEARCH_FAST = 2;
+    int PATH_SEARCH_MAX = 10;
 
     // Validation
-    boost::optional<std::size_t> VALIDATION_QUORUM;     // validations to consider ledger authoritative
+    boost::optional<std::size_t>
+        VALIDATION_QUORUM;  // validations to consider ledger authoritative
 
-    std::uint64_t                      FEE_DEFAULT = 10;
+    ZXCAmount                      FEE_DEFAULT{10};
 
-    std::uint64_t                      FEE_ACCOUNT_RESERVE = 5*SYSTEM_CURRENCY_PARTS;
-    std::uint64_t                      FEE_OWNER_RESERVE = 1*SYSTEM_CURRENCY_PARTS;
+    ZXCAmount                      FEE_ACCOUNT_RESERVE { 5*DROPS_PER_XRP };
+    ZXCAmount                      FEE_OWNER_RESERVE { 1*DROPS_PER_XRP };
 
 
 	std::uint64_t                     DROPS_PER_BYTE = (1000000 / 1024);
 
-    std::uint64_t                      FEE_OFFER = 10;
 
     // Node storage configuration
-    std::uint32_t                      LEDGER_HISTORY = 256;
-    std::uint32_t                      FETCH_DEPTH = 1000000000;
-    int                         NODE_SIZE = 0;
+    std::uint32_t LEDGER_HISTORY = 256;
+    std::uint32_t FETCH_DEPTH = 1000000000;
 
-    bool                        SSL_VERIFY = true;
-    std::string                 SSL_VERIFY_FILE;
-    std::string                 SSL_VERIFY_DIR;
+    std::size_t NODE_SIZE = 0;
+
+    bool SSL_VERIFY = true;
+    std::string SSL_VERIFY_FILE;
+    std::string SSL_VERIFY_DIR;
+
+    // Compression
+    bool COMPRESSION = false;
+
+    // Amendment majority time
+    std::chrono::seconds AMENDMENT_MAJORITY_TIME = defaultAmendmentMajorityTime;
 
     // Thread pool configuration
-    std::size_t                 WORKERS = 0;
+    std::size_t WORKERS = 0;
 
     // These override the command line client settings
     boost::optional<beast::IP::Endpoint> rpc_ip;
-    boost::optional<std::uint16_t> rpc_port;
 
     std::unordered_set<uint256, beast::uhash<>> features;
 
@@ -202,17 +219,20 @@ public:
 	bool						 ONLY_VALIDATE_FOR_SCHEMA = false;
 
 public:
-    Config()
-    : j_ {beast::Journal::getNullSink()}
-    { }
+    Config() : j_{beast::Journal::getNullSink()}
+    {
+    }
 
-    int getSize (SizedItemName) const;
     /* Be very careful to make sure these bool params
         are in the right order. */
-    void setup (std::string const& strConf, bool bQuiet,
-        bool bSilent, bool bStandalone);
-    void setupControl (bool bQuiet,
-        bool bSilent, bool bStandalone);
+    void
+    setup(
+        std::string const& strConf,
+        bool bQuiet,
+        bool bSilent,
+        bool bStandalone);
+    void
+    setupControl(bool bQuiet, bool bSilent, bool bStandalone);
 
 
 	void initSchemaConfig(Config& config, SchemaParams const& schemaParams);
@@ -227,36 +247,53 @@ public:
      *
      *  @param fileContents String representing the config contents.
      */
-    void loadFromString (std::string const& fileContents);
+    void
+    loadFromString(std::string const& fileContents);
 
-    bool quiet() const { return QUIET; }
-    bool silent() const { return SILENT; }
-    bool standalone() const { return RUN_STANDALONE; }
+    bool
+    quiet() const
+    {
+        return QUIET;
+    }
+    bool
+    silent() const
+    {
+        return SILENT;
+    }
+    bool
+    standalone() const
+    {
+        return RUN_STANDALONE;
+    }
 
-    bool canSign() const { return signingEnabled_; }
+    bool
+    canSign() const
+    {
+        return signingEnabled_;
+    }
 
-	/** Retrieve the default value for the item at the specified node size
+    /** Retrieve the default value for the item at the specified node size
 
-	@param item The item for which the default value is needed
-	@param node Optional value, used to adjust the result to match the
-				size of a node (0: tiny, ..., 4: huge). If unseated,
-				uses the configured size (NODE_SIZE).
+        @param item The item for which the default value is needed
+        @param node Optional value, used to adjust the result to match the
+                    size of a node (0: tiny, ..., 4: huge). If unseated,
+                    uses the configured size (NODE_SIZE).
 
-	@throw This method can throw std::out_of_range if you ask for values
-		   that it does not recognize or request a non-default node-size.
+        @throw This method can throw std::out_of_range if you ask for values
+               that it does not recognize or request a non-default node-size.
 
-	@return The value for the requested item.
+        @return The value for the requested item.
 
-	@note The defaults are selected so as to be reasonable, but the node
-		  size is an imprecise metric that combines multiple aspects of
-		  the underlying system; this means that we can't provide optimal
-		  defaults in the code for every case.
-*/
-	//int
-	//	getValueFor(SizedItem item,
-	//		boost::optional<std::size_t> node = boost::none) const;
+        @note The defaults are selected so as to be reasonable, but the node
+              size is an imprecise metric that combines multiple aspects of
+              the underlying system; this means that we can't provide optimal
+              defaults in the code for every case.
+    */
+    int
+    getValueFor(SizedItem item, boost::optional<std::size_t> node = boost::none)
+        const;
 };
 
-} // ripple
+}  // namespace ripple
 
 #endif

@@ -17,11 +17,10 @@
 */
 //==============================================================================
 
-#include <ripple/app/ledger/Ledger.h>
 #include <ripple/app/ledger/AcceptedLedger.h>
 #include <ripple/app/ledger/InboundLedgers.h>
+#include <ripple/app/ledger/Ledger.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/app/ledger/LedgerToJson.h>
 #include <ripple/app/ledger/OrderBookDB.h>
 #include <ripple/app/ledger/PendingSaves.h>
@@ -30,23 +29,25 @@
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
-#include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
+#include <ripple/basics/contract.h>
+#include <ripple/beast/core/LexicalCast.h>
+#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/SociDB.h>
 #include <ripple/json/to_string.h>
 #include <ripple/nodestore/Database.h>
-#include <ripple/protocol/digest.h>
+#include <ripple/protocol/Feature.h>
+#include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/Indexes.h>
-#include <ripple/protocol/jss.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
-#include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/UintTypes.h>
-#include <ripple/beast/core/LexicalCast.h>
+#include <ripple/protocol/digest.h>
+#include <ripple/protocol/jss.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
 #include <peersafe/schema/Schema.h>
@@ -59,15 +60,14 @@ namespace ripple {
 create_genesis_t const create_genesis {};
 bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Schema& app);
 
-static
-uint256
-calculateLedgerHash (LedgerInfo const& info)
+static uint256
+calculateLedgerHash(LedgerInfo const& info)
 {
     // VFALCO This has to match addRaw in View.h.
     return sha512Half(
         HashPrefix::ledgerMaster,
         std::uint32_t(info.seq),
-        std::uint64_t(info.drops.drops ()),
+        std::uint64_t(info.drops.drops()),
         info.parentHash,
         info.txHash,
         info.accountHash,
@@ -79,35 +79,32 @@ calculateLedgerHash (LedgerInfo const& info)
 
 //------------------------------------------------------------------------------
 
-class Ledger::sles_iter_impl
-    : public sles_type::iter_base
+class Ledger::sles_iter_impl : public sles_type::iter_base
 {
 private:
     SHAMap::const_iterator iter_;
 
 public:
     sles_iter_impl() = delete;
-    sles_iter_impl& operator= (sles_iter_impl const&) = delete;
+    sles_iter_impl&
+    operator=(sles_iter_impl const&) = delete;
 
-    sles_iter_impl (sles_iter_impl const&) = default;
+    sles_iter_impl(sles_iter_impl const&) = default;
 
-    sles_iter_impl (SHAMap::const_iterator iter)
-        : iter_ (iter)
+    sles_iter_impl(SHAMap::const_iterator iter) : iter_(iter)
     {
     }
 
     std::unique_ptr<base_type>
     copy() const override
     {
-        return std::make_unique<
-            sles_iter_impl>(*this);
+        return std::make_unique<sles_iter_impl>(*this);
     }
 
     bool
-    equal (base_type const& impl) const override
+    equal(base_type const& impl) const override
     {
-        auto const& other = dynamic_cast<
-            sles_iter_impl const&>(impl);
+        auto const& other = dynamic_cast<sles_iter_impl const&>(impl);
         return iter_ == other.iter_;
     }
 
@@ -122,15 +119,13 @@ public:
     {
         auto const item = *iter_;
         SerialIter sit(item.slice());
-        return std::make_shared<SLE const>(
-            sit, item.key());
+        return std::make_shared<SLE const>(sit, item.key());
     }
 };
 
 //------------------------------------------------------------------------------
 
-class Ledger::txs_iter_impl
-    : public txs_type::iter_base
+class Ledger::txs_iter_impl : public txs_type::iter_base
 {
 private:
     bool metadata_;
@@ -138,12 +133,12 @@ private:
 
 public:
     txs_iter_impl() = delete;
-    txs_iter_impl& operator= (txs_iter_impl const&) = delete;
+    txs_iter_impl&
+    operator=(txs_iter_impl const&) = delete;
 
-    txs_iter_impl (txs_iter_impl const&) = default;
+    txs_iter_impl(txs_iter_impl const&) = default;
 
-    txs_iter_impl(bool metadata,
-        SHAMap::const_iterator iter)
+    txs_iter_impl(bool metadata, SHAMap::const_iterator iter)
         : metadata_(metadata), iter_(iter)
     {
     }
@@ -151,15 +146,13 @@ public:
     std::unique_ptr<base_type>
     copy() const override
     {
-        return std::make_unique<
-            txs_iter_impl>(*this);
+        return std::make_unique<txs_iter_impl>(*this);
     }
 
     bool
-    equal (base_type const& impl) const override
+    equal(base_type const& impl) const override
     {
-        auto const& other = dynamic_cast<
-            txs_iter_impl const&>(impl);
+        auto const& other = dynamic_cast<txs_iter_impl const&>(impl);
         return iter_ == other.iter_;
     }
 
@@ -173,34 +166,26 @@ public:
     dereference() const override
     {
         auto const item = *iter_;
-		if (metadata_)
-		{
-			std::pair<std::shared_ptr<
-				STTx const>, std::shared_ptr<
-				STObject const>> result;
-			result = deserializeTxPlusMeta(item);
-			return result;
-		}
-        return { deserializeTx(item), nullptr };
+        if (metadata_)
+            return deserializeTxPlusMeta(item);
+        return {deserializeTx(item), nullptr};
     }
 };
 
 //------------------------------------------------------------------------------
 
-Ledger::Ledger (
-        create_genesis_t,
-        Config const& config,
-        std::vector<uint256> const& amendments,
-        Family& family)
-    : mImmutable (false)
-    , txMap_ (std::make_shared <SHAMap> (SHAMapType::TRANSACTION,
-        family, SHAMap::version{1}))
-    , stateMap_ (std::make_shared <SHAMap> (SHAMapType::STATE,
-        family, SHAMap::version{1}))
+Ledger::Ledger(
+    create_genesis_t,
+    Config const& config,
+    std::vector<uint256> const& amendments,
+    Family& family)
+    : mImmutable(false)
+    , txMap_(std::make_shared<SHAMap>(SHAMapType::TRANSACTION, family))
+    , stateMap_(std::make_shared<SHAMap>(SHAMapType::STATE, family))
     , rules_{config.features}
 {
     info_.seq = 1;
-    info_.drops = SYSTEM_CURRENCY_START;
+    info_.drops = INITIAL_XRP;
     info_.closeTimeResolution = ledgerDefaultTimeResolution;
 
     KeyType keyType = KeyType::secp256k1;
@@ -213,99 +198,94 @@ Ledger::Ledger (
         keyType = KeyType::secp256k1;
     }
     static auto const id = calcAccountID(
-        generateKeyPair(keyType,
-            generateSeed("masterpassphrase")).first);
-    auto const sle = std::make_shared<SLE>(keylet::account(id));
-    sle->setFieldU32 (sfSequence, 1);
-    sle->setAccountID (sfAccount, id);
-    sle->setFieldAmount (sfBalance, info_.drops);
-    rawInsert(sle);
-
-    if (! amendments.empty())
+        generateKeyPair(KeyType::secp256k1, generateSeed("masterpassphrase"))
+            .first);
     {
-        auto const sle = std::make_shared<SLE>(keylet::amendments());
-        sle->setFieldV256 (sfAmendments, STVector256{amendments});
+        auto const sle = std::make_shared<SLE>(keylet::account(id));
+        sle->setFieldU32(sfSequence, 1);
+        sle->setAccountID(sfAccount, id);
+        sle->setFieldAmount(sfBalance, info_.drops);
         rawInsert(sle);
     }
 
-    stateMap_->flushDirty (hotACCOUNT_NODE, info_.seq);
+    if (!amendments.empty())
+    {
+        auto const sle = std::make_shared<SLE>(keylet::amendments());
+        sle->setFieldV256(sfAmendments, STVector256{amendments});
+        rawInsert(sle);
+    }
+
+    stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
     setImmutable(config);
 }
 
-Ledger::Ledger (
-        LedgerInfo const& info,
-        bool& loaded,
-        bool acquire,
-        Config const& config,
-        Family& family,
-        beast::Journal j)
-    : mImmutable (true)
-    , txMap_ (std::make_shared <SHAMap> (SHAMapType::TRANSACTION,
-        info.txHash, family,
-        SHAMap::version{getSHAMapV2(info) ? 2 : 1}))
-    , stateMap_ (std::make_shared <SHAMap> (SHAMapType::STATE,
-        info.accountHash, family,
-        SHAMap::version{getSHAMapV2(info) ? 2 : 1}))
-    , rules_ (config.features)
-    , info_ (info)
+Ledger::Ledger(
+    LedgerInfo const& info,
+    bool& loaded,
+    bool acquire,
+    Config const& config,
+    Family& family,
+    beast::Journal j)
+    : mImmutable(true)
+    , txMap_(std::make_shared<SHAMap>(
+          SHAMapType::TRANSACTION,
+          info.txHash,
+          family))
+    , stateMap_(
+          std::make_shared<SHAMap>(SHAMapType::STATE, info.accountHash, family))
+    , rules_(config.features)
+    , info_(info)
 {
     loaded = true;
 
-    if (info_.txHash.isNonZero () &&
-        !txMap_->fetchRoot (SHAMapHash{info_.txHash}, nullptr))
+    if (info_.txHash.isNonZero() &&
+        !txMap_->fetchRoot(SHAMapHash{info_.txHash}, nullptr))
     {
         loaded = false;
-		JLOG(j.warn()) << "Don't have TX root for ledger ";
+        JLOG(j.warn()) << "Don't have transaction root for ledger" << info_.seq;
     }
 
-    if (info_.accountHash.isNonZero () &&
-        !stateMap_->fetchRoot (SHAMapHash{info_.accountHash}, nullptr))
+    if (info_.accountHash.isNonZero() &&
+        !stateMap_->fetchRoot(SHAMapHash{info_.accountHash}, nullptr))
     {
         loaded = false;
-        JLOG (j.warn()) << "Don't have AS root for ledger ";
+        JLOG(j.warn()) << "Don't have state data root for ledger" << info_.seq;
     }
 
-    txMap_->setImmutable ();
-    stateMap_->setImmutable ();
+    txMap_->setImmutable();
+    stateMap_->setImmutable();
 
-    if (! setup(config))
+    if (!setup(config))
         loaded = false;
 
-    if (! loaded)
+    if (!loaded)
     {
         info_.hash = calculateLedgerHash(info_);
         if (acquire)
-            family.missing_node (info_.hash, info_.seq);
+            family.missingNode(info_.hash, info_.seq);
     }
 }
 
 // Create a new ledger that follows this one
-Ledger::Ledger (Ledger const& prevLedger,
-    NetClock::time_point closeTime)
-    : mImmutable (false)
-    , txMap_ (std::make_shared <SHAMap> (
-        SHAMapType::TRANSACTION,
-        prevLedger.stateMap_->family(),
-        prevLedger.stateMap_->get_version()))
-    , stateMap_ (prevLedger.stateMap_->snapShot (true))
+Ledger::Ledger(Ledger const& prevLedger, NetClock::time_point closeTime)
+    : mImmutable(false)
+    , txMap_(std::make_shared<SHAMap>(
+          SHAMapType::TRANSACTION,
+          prevLedger.stateMap_->family()))
+    , stateMap_(prevLedger.stateMap_->snapShot(true))
     , fees_(prevLedger.fees_)
     , rules_(prevLedger.rules_)
 {
     info_.seq = prevLedger.info_.seq + 1;
-	info_.parentCloseTime =
-		prevLedger.info_.closeTime;
-	info_.hash = prevLedger.info().hash + uint256(1);
+    info_.parentCloseTime = prevLedger.info_.closeTime;
+    info_.hash = prevLedger.info().hash + uint256(1);
     info_.drops = prevLedger.info().drops;
     info_.closeTimeResolution = prevLedger.info_.closeTimeResolution;
     info_.parentHash = prevLedger.info().hash;
     info_.closeTimeResolution = getNextLedgerTimeResolution(
         prevLedger.info_.closeTimeResolution,
-        getCloseAgree(prevLedger.info()), info_.seq);
-
-    if (stateMap_->is_v2())
-    {
-        info_.closeFlags |= sLCF_SHAMapV2;
-    }
+        getCloseAgree(prevLedger.info()),
+        info_.seq);
 
     if (prevLedger.info_.closeTime == NetClock::time_point{})
     {
@@ -321,31 +301,28 @@ Ledger::Ledger (Ledger const& prevLedger,
 
 }
 
-Ledger::Ledger (
-        LedgerInfo const& info,
-        Config const& config,
-        Family& family)
-    : mImmutable (true)
-    , txMap_ (std::make_shared <SHAMap> (SHAMapType::TRANSACTION,
-        info.txHash, family,
-        SHAMap::version{getSHAMapV2(info) ? 2 : 1}))
-    , stateMap_ (std::make_shared <SHAMap> (SHAMapType::STATE,
-        info.accountHash, family,
-        SHAMap::version{getSHAMapV2(info) ? 2 : 1}))
+Ledger::Ledger(LedgerInfo const& info, Config const& config, Family& family)
+    : mImmutable(true)
+    , txMap_(std::make_shared<SHAMap>(
+          SHAMapType::TRANSACTION,
+          info.txHash,
+          family))
+    , stateMap_(
+          std::make_shared<SHAMap>(SHAMapType::STATE, info.accountHash, family))
     , rules_{config.features}
-    , info_ (info)
+    , info_(info)
 {
-    info_.hash = calculateLedgerHash (info_);
+    info_.hash = calculateLedgerHash(info_);
 }
 
-Ledger::Ledger (std::uint32_t ledgerSeq,
-        NetClock::time_point closeTime, Config const& config,
-            Family& family)
-    : mImmutable (false)
-    , txMap_ (std::make_shared <SHAMap> (
-          SHAMapType::TRANSACTION, family, SHAMap::version{1}))
-    , stateMap_ (std::make_shared <SHAMap> (
-          SHAMapType::STATE, family, SHAMap::version{1}))
+Ledger::Ledger(
+    std::uint32_t ledgerSeq,
+    NetClock::time_point closeTime,
+    Config const& config,
+    Family& family)
+    : mImmutable(false)
+    , txMap_(std::make_shared<SHAMap>(SHAMapType::TRANSACTION, family))
+    , stateMap_(std::make_shared<SHAMap>(SHAMapType::STATE, family))
     , rules_{config.features}
 {
     info_.seq = ledgerSeq;
@@ -385,69 +362,65 @@ void Ledger::setImmutable (Config const& config)
 {
     // Force update, since this is the only
     // place the hash transitions to valid
-    if (! mImmutable)
+    if (!mImmutable)
     {
-        info_.txHash = txMap_->getHash ().as_uint256();
-        info_.accountHash = stateMap_->getHash ().as_uint256();
+        info_.txHash = txMap_->getHash().as_uint256();
+        info_.accountHash = stateMap_->getHash().as_uint256();
     }
 
-    info_.hash = calculateLedgerHash (info_);
+    info_.hash = calculateLedgerHash(info_);
 
     mImmutable = true;
-    txMap_->setImmutable ();
-    stateMap_->setImmutable ();
+    txMap_->setImmutable();
+    stateMap_->setImmutable();
     setup(config);
 }
 
 void
-Ledger::setAccepted(NetClock::time_point closeTime,
-                    NetClock::duration closeResolution,
-                    bool correctCloseTime, Config const& config)
+Ledger::setAccepted(
+    NetClock::time_point closeTime,
+    NetClock::duration closeResolution,
+    bool correctCloseTime,
+    Config const& config)
 {
     // Used when we witnessed the consensus.
-    assert (!open());
+    assert(!open());
 
     info_.closeTime = closeTime;
     info_.closeTimeResolution = closeResolution;
     info_.closeFlags = correctCloseTime ? 0 : sLCF_NoConsensusTime;
-    setImmutable (config);
+    setImmutable(config);
 }
 
-bool Ledger::addSLE (SLE const& sle)
+bool
+Ledger::addSLE(SLE const& sle)
 {
-    SHAMapItem item (sle.key(), sle.getSerializer());
+    SHAMapItem item(sle.key(), sle.getSerializer());
     return stateMap_->addItem(std::move(item), false, false);
 }
 
 //------------------------------------------------------------------------------
 
 std::shared_ptr<STTx const>
-deserializeTx (SHAMapItem const& item)
+deserializeTx(SHAMapItem const& item)
 {
     SerialIter sit(item.slice());
     return std::make_shared<STTx const>(sit);
 }
 
-std::pair<std::shared_ptr<
-    STTx const>, std::shared_ptr<
-        STObject const>>
-deserializeTxPlusMeta (SHAMapItem const& item)
+std::pair<std::shared_ptr<STTx const>, std::shared_ptr<STObject const>>
+deserializeTxPlusMeta(SHAMapItem const& item)
 {
-    std::pair<std::shared_ptr<
-        STTx const>, std::shared_ptr<
-            STObject const>> result;
+    std::pair<std::shared_ptr<STTx const>, std::shared_ptr<STObject const>>
+        result;
     SerialIter sit(item.slice());
     {
-        SerialIter s(sit.getSlice(
-            sit.getVLDataLength()));
-        result.first = std::make_shared<
-            STTx const>(s);
+        SerialIter s(sit.getSlice(sit.getVLDataLength()));
+        result.first = std::make_shared<STTx const>(s);
     }
     {
-        SerialIter s(sit.getSlice(
-            sit.getVLDataLength()));
-        result.second = std::make_shared<
-            STObject const>(s, sfMetadata);
+        SerialIter s(sit.getSlice(sit.getVLDataLength()));
+        result.second = std::make_shared<STObject const>(s, sfMetadata);
     }
     return result;
 }
@@ -455,15 +428,14 @@ deserializeTxPlusMeta (SHAMapItem const& item)
 //------------------------------------------------------------------------------
 
 bool
-Ledger::exists (Keylet const& k) const
+Ledger::exists(Keylet const& k) const
 {
     // VFALCO NOTE Perhaps check the type for debug builds?
     return stateMap_->hasItem(k.key);
 }
 
 boost::optional<uint256>
-Ledger::succ (uint256 const& key,
-    boost::optional<uint256> const& last) const
+Ledger::succ(uint256 const& key, boost::optional<uint256> const& last) const
 {
     auto item = stateMap_->upper_bound(key);
     if (item == stateMap_->end())
@@ -474,97 +446,83 @@ Ledger::succ (uint256 const& key,
 }
 
 std::shared_ptr<SLE const>
-Ledger::read (Keylet const& k) const
+Ledger::read(Keylet const& k) const
 {
     if (k.key == beast::zero)
     {
         assert(false);
         return nullptr;
     }
-    auto const& item =
-        stateMap_->peekItem(k.key);
-    if (! item)
+    auto const& item = stateMap_->peekItem(k.key);
+    if (!item)
         return nullptr;
     auto sle = std::make_shared<SLE>(
-        SerialIter{item->data(),
-            item->size()}, item->key());
-    if (! k.check(*sle))
+        SerialIter{item->data(), item->size()}, item->key());
+    if (!k.check(*sle))
         return nullptr;
-    // need move otherwise makes a copy
-    // because return type is different
-    return std::move(sle);
+    return sle;
 }
 
 //------------------------------------------------------------------------------
 
 auto
-Ledger::slesBegin() const ->
-    std::unique_ptr<sles_type::iter_base>
+Ledger::slesBegin() const -> std::unique_ptr<sles_type::iter_base>
 {
     return std::make_unique<sles_iter_impl>(stateMap_->begin());
 }
 
 auto
-Ledger::slesEnd() const ->
-    std::unique_ptr<sles_type::iter_base>
+Ledger::slesEnd() const -> std::unique_ptr<sles_type::iter_base>
 {
     return std::make_unique<sles_iter_impl>(stateMap_->end());
 }
 
 auto
-Ledger::slesUpperBound(uint256 const& key) const ->
-    std::unique_ptr<sles_type::iter_base>
+Ledger::slesUpperBound(uint256 const& key) const
+    -> std::unique_ptr<sles_type::iter_base>
 {
     return std::make_unique<sles_iter_impl>(stateMap_->upper_bound(key));
 }
 
 auto
-Ledger::txsBegin() const ->
-    std::unique_ptr<txs_type::iter_base>
+Ledger::txsBegin() const -> std::unique_ptr<txs_type::iter_base>
 {
     return std::make_unique<txs_iter_impl>(!open(), txMap_->begin());
 }
 
 auto
-Ledger::txsEnd() const ->
-    std::unique_ptr<txs_type::iter_base>
+Ledger::txsEnd() const -> std::unique_ptr<txs_type::iter_base>
 {
     return std::make_unique<txs_iter_impl>(!open(), txMap_->end());
 }
 
 bool
-Ledger::txExists (uint256 const& key) const
+Ledger::txExists(uint256 const& key) const
 {
-    return txMap_->hasItem (key);
+    return txMap_->hasItem(key);
 }
 
 auto
-Ledger::txRead(
-    key_type const& key) const ->
-        tx_type
+Ledger::txRead(key_type const& key) const -> tx_type
 {
-    auto const& item =
-        txMap_->peekItem(key);
-    if (! item)
+    auto const& item = txMap_->peekItem(key);
+    if (!item)
         return {};
     if (!open())
     {
-        auto result =
-            deserializeTxPlusMeta(*item);
-        return { std::move(result.first),
-            std::move(result.second) };
+        auto result = deserializeTxPlusMeta(*item);
+        return {std::move(result.first), std::move(result.second)};
     }
-    return { deserializeTx(*item), nullptr };
+    return {deserializeTx(*item), nullptr};
 }
 
 auto
-Ledger::digest (key_type const& key) const ->
-    boost::optional<digest_type>
+Ledger::digest(key_type const& key) const -> boost::optional<digest_type>
 {
     SHAMapHash digest;
     // VFALCO Unfortunately this loads the item
     //        from the NodeStore needlessly.
-    if (! stateMap_->peekItem(key, digest))
+    if (!stateMap_->peekItem(key, digest))
         return boost::none;
     return digest.as_uint256();
 }
@@ -574,7 +532,7 @@ Ledger::digest (key_type const& key) const ->
 void
 Ledger::rawErase(std::shared_ptr<SLE> const& sle)
 {
-    if (! stateMap_->delItem(sle->key()))
+    if (!stateMap_->delItem(sle->key()))
         LogicError("Ledger::rawErase: key not found");
 }
 
@@ -583,12 +541,8 @@ Ledger::rawInsert(std::shared_ptr<SLE> const& sle)
 {
     Serializer ss;
     sle->add(ss);
-    auto item = std::make_shared<
-        SHAMapItem const>(sle->key(),
-            std::move(ss));
-    // VFALCO NOTE addGiveItem should take ownership
-    if (! stateMap_->addGiveItem(
-            std::move(item), false, false))
+    auto item = std::make_shared<SHAMapItem const>(sle->key(), std::move(ss));
+    if (!stateMap_->addGiveItem(std::move(item), false, false))
         LogicError("Ledger::rawInsert: key already exists");
 }
 
@@ -597,37 +551,31 @@ Ledger::rawReplace(std::shared_ptr<SLE> const& sle)
 {
     Serializer ss;
     sle->add(ss);
-    auto item = std::make_shared<
-        SHAMapItem const>(sle->key(),
-            std::move(ss));
-    // VFALCO NOTE updateGiveItem should take ownership
-    if (! stateMap_->updateGiveItem(
-            std::move(item), false, false))
+    auto item = std::make_shared<SHAMapItem const>(sle->key(), std::move(ss));
+
+    if (!stateMap_->updateGiveItem(std::move(item), false, false))
         LogicError("Ledger::rawReplace: key not found");
 }
 
 void
-Ledger::rawTxInsert (uint256 const& key,
-    std::shared_ptr<Serializer const
-        > const& txn, std::shared_ptr<
-            Serializer const> const& metaData)
+Ledger::rawTxInsert(
+    uint256 const& key,
+    std::shared_ptr<Serializer const> const& txn,
+    std::shared_ptr<Serializer const> const& metaData)
 {
-    assert (metaData);
+    assert(metaData);
 
     // low-level - just add to table
-    Serializer s(txn->getDataLength () +
-        metaData->getDataLength () + 16);
-    s.addVL (txn->peekData ());
-    s.addVL (metaData->peekData ());
-    auto item = std::make_shared<
-        SHAMapItem const> (key, std::move(s));
-    if (! txMap().addGiveItem
-            (std::move(item), true, true))
+    Serializer s(txn->getDataLength() + metaData->getDataLength() + 16);
+    s.addVL(txn->peekData());
+    s.addVL(metaData->peekData());
+    auto item = std::make_shared<SHAMapItem const>(key, std::move(s));
+    if (!txMap().addGiveItem(std::move(item), true, true))
         LogicError("duplicate_tx: " + to_string(key));
 }
 
 bool
-Ledger::setup (Config const& config)
+Ledger::setup(Config const& config)
 {
     bool ret = true;
 
@@ -644,14 +592,14 @@ Ledger::setup (Config const& config)
         {
             // VFALCO NOTE Why getFieldIndex and not isFieldPresent?
 
-            if (sle->getFieldIndex (sfBaseFee) != -1)
-                fees_.base = sle->getFieldU64 (sfBaseFee);
+            if (sle->getFieldIndex(sfBaseFee) != -1)
+                fees_.base = sle->getFieldU64(sfBaseFee);
 
-            if (sle->getFieldIndex (sfReferenceFeeUnits) != -1)
-                fees_.units = sle->getFieldU32 (sfReferenceFeeUnits);
+            if (sle->getFieldIndex(sfReferenceFeeUnits) != -1)
+                fees_.units = sle->getFieldU32(sfReferenceFeeUnits);
 
-            if (sle->getFieldIndex (sfReserveBase) != -1)
-                fees_.reserve = sle->getFieldU32 (sfReserveBase);
+            if (sle->getFieldIndex(sfReserveBase) != -1)
+                fees_.reserve = sle->getFieldU32(sfReserveBase);
 
             if (sle->getFieldIndex (sfReserveIncrement) != -1)
                 fees_.increment = sle->getFieldU32 (sfReserveIncrement);
@@ -660,7 +608,7 @@ Ledger::setup (Config const& config)
 				fees_.drops_per_byte = sle->getFieldU64(sfDropsPerByte);
         }
     }
-    catch (SHAMapMissingNode &)
+    catch (SHAMapMissingNode const&)
     {
         ret = false;
     }
@@ -673,7 +621,7 @@ Ledger::setup (Config const& config)
     {
         rules_ = Rules(*this, config.features);
     }
-    catch (SHAMapMissingNode &)
+    catch (SHAMapMissingNode const&)
     {
         ret = false;
     }
@@ -686,96 +634,201 @@ Ledger::setup (Config const& config)
 }
 
 std::shared_ptr<SLE>
-Ledger::peek (Keylet const& k) const
+Ledger::peek(Keylet const& k) const
 {
-    auto const& value =
-        stateMap_->peekItem(k.key);
-    if (! value)
+    auto const& value = stateMap_->peekItem(k.key);
+    if (!value)
         return nullptr;
     auto sle = std::make_shared<SLE>(
         SerialIter{value->data(), value->size()}, value->key());
-    if (! k.check(*sle))
+    if (!k.check(*sle))
         return nullptr;
     return sle;
 }
 
-//------------------------------------------------------------------------------
-bool Ledger::walkLedger (beast::Journal j) const
+hash_set<PublicKey>
+Ledger::negativeUNL() const
 {
-    std::vector <SHAMapMissingNode> missingNodes1;
-    std::vector <SHAMapMissingNode> missingNodes2;
-
-    if (stateMap_->getHash().isZero() &&
-        ! info_.accountHash.isZero() &&
-        ! stateMap_->fetchRoot (SHAMapHash{info_.accountHash}, nullptr))
+    hash_set<PublicKey> negUnl;
+    if (auto sle = read(keylet::negativeUNL());
+        sle && sle->isFieldPresent(sfDisabledValidators))
     {
-        missingNodes1.emplace_back (SHAMapType::STATE, SHAMapHash{info_.accountHash});
-    }
-    else
-    {
-        stateMap_->walkMap (missingNodes1, 32);
-    }
-
-    if (!missingNodes1.empty ())
-    {
-        if (auto stream = j.info())
+        auto const& nUnlData = sle->getFieldArray(sfDisabledValidators);
+        for (auto const& n : nUnlData)
         {
-            stream << missingNodes1.size () << " missing account node(s)";
-            stream << "First: " << missingNodes1[0];
+            if (n.isFieldPresent(sfPublicKey))
+            {
+                auto d = n.getFieldVL(sfPublicKey);
+                auto s = makeSlice(d);
+                if (!publicKeyType(s))
+                {
+                    continue;
+                }
+                negUnl.emplace(s);
+            }
         }
     }
 
-    if (txMap_->getHash().isZero() &&
-        info_.txHash.isNonZero() &&
-        ! txMap_->fetchRoot (SHAMapHash{info_.txHash}, nullptr))
-    {
-        missingNodes2.emplace_back (SHAMapType::TRANSACTION, SHAMapHash{info_.txHash});
-    }
-    else
-    {
-        txMap_->walkMap (missingNodes2, 32);
-    }
-
-    if (!missingNodes2.empty ())
-    {
-        if (auto stream = j.info())
-        {
-            stream << missingNodes2.size () << " missing transaction node(s)";
-            stream << "First: " << missingNodes2[0];
-        }
-    }
-    return missingNodes1.empty () && missingNodes2.empty ();
+    return negUnl;
 }
 
-bool Ledger::assertSane (beast::Journal ledgerJ) const
+boost::optional<PublicKey>
+Ledger::validatorToDisable() const
 {
-    if (info_.hash.isNonZero () &&
-            info_.accountHash.isNonZero () &&
-            stateMap_ &&
-            txMap_ &&
-            (info_.accountHash == stateMap_->getHash ().as_uint256()) &&
-            (info_.txHash == txMap_->getHash ().as_uint256()))
+    if (auto sle = read(keylet::negativeUNL());
+        sle && sle->isFieldPresent(sfValidatorToDisable))
+    {
+        auto d = sle->getFieldVL(sfValidatorToDisable);
+        auto s = makeSlice(d);
+        if (publicKeyType(s))
+            return PublicKey(s);
+    }
+
+    return boost::none;
+}
+
+boost::optional<PublicKey>
+Ledger::validatorToReEnable() const
+{
+    if (auto sle = read(keylet::negativeUNL());
+        sle && sle->isFieldPresent(sfValidatorToReEnable))
+    {
+        auto d = sle->getFieldVL(sfValidatorToReEnable);
+        auto s = makeSlice(d);
+        if (publicKeyType(s))
+            return PublicKey(s);
+    }
+
+    return boost::none;
+}
+
+void
+Ledger::updateNegativeUNL()
+{
+    auto sle = peek(keylet::negativeUNL());
+    if (!sle)
+        return;
+
+    bool const hasToDisable = sle->isFieldPresent(sfValidatorToDisable);
+    bool const hasToReEnable = sle->isFieldPresent(sfValidatorToReEnable);
+
+    if (!hasToDisable && !hasToReEnable)
+        return;
+
+    STArray newNUnl;
+    if (sle->isFieldPresent(sfDisabledValidators))
+    {
+        auto const& oldNUnl = sle->getFieldArray(sfDisabledValidators);
+        for (auto v : oldNUnl)
+        {
+            if (hasToReEnable && v.isFieldPresent(sfPublicKey) &&
+                v.getFieldVL(sfPublicKey) ==
+                    sle->getFieldVL(sfValidatorToReEnable))
+                continue;
+            newNUnl.push_back(v);
+        }
+    }
+
+    if (hasToDisable)
+    {
+        newNUnl.emplace_back(sfDisabledValidator);
+        newNUnl.back().setFieldVL(
+            sfPublicKey, sle->getFieldVL(sfValidatorToDisable));
+        newNUnl.back().setFieldU32(sfFirstLedgerSequence, seq());
+    }
+
+    if (!newNUnl.empty())
+    {
+        sle->setFieldArray(sfDisabledValidators, newNUnl);
+        if (hasToReEnable)
+            sle->makeFieldAbsent(sfValidatorToReEnable);
+        if (hasToDisable)
+            sle->makeFieldAbsent(sfValidatorToDisable);
+        rawReplace(sle);
+    }
+    else
+    {
+        rawErase(sle);
+    }
+}
+
+//------------------------------------------------------------------------------
+bool
+Ledger::walkLedger(beast::Journal j) const
+{
+    std::vector<SHAMapMissingNode> missingNodes1;
+    std::vector<SHAMapMissingNode> missingNodes2;
+
+    if (stateMap_->getHash().isZero() && !info_.accountHash.isZero() &&
+        !stateMap_->fetchRoot(SHAMapHash{info_.accountHash}, nullptr))
+    {
+        missingNodes1.emplace_back(
+            SHAMapType::STATE, SHAMapHash{info_.accountHash});
+    }
+    else
+    {
+        stateMap_->walkMap(missingNodes1, 32);
+    }
+
+    if (!missingNodes1.empty())
+    {
+        if (auto stream = j.info())
+        {
+            stream << missingNodes1.size() << " missing account node(s)";
+            stream << "First: " << missingNodes1[0].what();
+        }
+    }
+
+    if (txMap_->getHash().isZero() && info_.txHash.isNonZero() &&
+        !txMap_->fetchRoot(SHAMapHash{info_.txHash}, nullptr))
+    {
+        missingNodes2.emplace_back(
+            SHAMapType::TRANSACTION, SHAMapHash{info_.txHash});
+    }
+    else
+    {
+        txMap_->walkMap(missingNodes2, 32);
+    }
+
+    if (!missingNodes2.empty())
+    {
+        if (auto stream = j.info())
+        {
+            stream << missingNodes2.size() << " missing transaction node(s)";
+            stream << "First: " << missingNodes2[0].what();
+        }
+    }
+    return missingNodes1.empty() && missingNodes2.empty();
+}
+
+bool
+Ledger::assertSane(beast::Journal ledgerJ) const
+{
+    if (info_.hash.isNonZero() && info_.accountHash.isNonZero() && stateMap_ &&
+        txMap_ && (info_.accountHash == stateMap_->getHash().as_uint256()) &&
+        (info_.txHash == txMap_->getHash().as_uint256()))
     {
         return true;
     }
 
-    Json::Value j = getJson (*this);
+    Json::Value j = getJson(*this);
 
-    j [jss::accountTreeHash] = to_string (info_.accountHash);
-    j [jss::transTreeHash] = to_string (info_.txHash);
+    j[jss::accountTreeHash] = to_string(info_.accountHash);
+    j[jss::transTreeHash] = to_string(info_.txHash);
 
-    JLOG (ledgerJ.fatal()) << "ledger is not sane" << j;
+    JLOG(ledgerJ.fatal()) << "ledger is not sane" << j;
 
-    assert (false);
+    assert(false);
 
     return false;
 }
 
 // update the skip list with the information from our previous ledger
 // VFALCO TODO Document this skip list concept
-void Ledger::updateSkipList ()
+void
+Ledger::updateSkipList()
 {
-    if (info_.seq == 0) // genesis ledger has no previous ledger
+    if (info_.seq == 0)  // genesis ledger has no previous ledger
         return;
 
     std::uint32_t prevIndex = info_.seq - 1;
@@ -788,22 +841,21 @@ void Ledger::updateSkipList ()
         std::vector<uint256> hashes;
 
         bool created;
-        if (! sle)
+        if (!sle)
         {
             sle = std::make_shared<SLE>(k);
             created = true;
         }
         else
         {
-            hashes = static_cast<decltype(hashes)>(
-                sle->getFieldV256(sfHashes));
+            hashes = static_cast<decltype(hashes)>(sle->getFieldV256(sfHashes));
             created = false;
         }
 
-        assert (hashes.size () <= 256);
-        hashes.push_back (info_.parentHash);
-        sle->setFieldV256 (sfHashes, STVector256 (hashes));
-        sle->setFieldU32 (sfLastLedgerSequence, prevIndex);
+        assert(hashes.size() <= 256);
+        hashes.push_back(info_.parentHash);
+        sle->setFieldV256(sfHashes, STVector256(hashes));
+        sle->setFieldU32(sfLastLedgerSequence, prevIndex);
         if (created)
             rawInsert(sle);
         else
@@ -813,100 +865,115 @@ void Ledger::updateSkipList ()
     // update record of past 256 ledger
     auto const k = keylet::skip();
     auto sle = peek(k);
-    std::vector <uint256> hashes;
+    std::vector<uint256> hashes;
     bool created;
-    if (! sle)
+    if (!sle)
     {
         sle = std::make_shared<SLE>(k);
         created = true;
     }
     else
     {
-        hashes = static_cast<decltype(hashes)>(
-            sle->getFieldV256 (sfHashes));
+        hashes = static_cast<decltype(hashes)>(sle->getFieldV256(sfHashes));
         created = false;
     }
-    assert (hashes.size () <= 256);
-    if (hashes.size () == 256)
-        hashes.erase (hashes.begin ());
-    hashes.push_back (info_.parentHash);
-    sle->setFieldV256 (sfHashes, STVector256 (hashes));
-    sle->setFieldU32 (sfLastLedgerSequence, prevIndex);
+    assert(hashes.size() <= 256);
+    if (hashes.size() == 256)
+        hashes.erase(hashes.begin());
+    hashes.push_back(info_.parentHash);
+    sle->setFieldV256(sfHashes, STVector256(hashes));
+    sle->setFieldU32(sfLastLedgerSequence, prevIndex);
     if (created)
         rawInsert(sle);
     else
         rawReplace(sle);
 }
 
-static bool saveValidatedLedger (
-    Schema& app,
+bool
+Ledger::isFlagLedger() const
+{
+    return info_.seq % FLAG_LEDGER_INTERVAL == 0;
+}
+bool
+Ledger::isVotingLedger() const
+{
+    return (info_.seq + 1) % FLAG_LEDGER_INTERVAL == 0;
+}
+
+bool
+isFlagLedger(LedgerIndex seq)
+{
+    return seq % FLAG_LEDGER_INTERVAL == 0;
+}
+
+static bool
+saveValidatedLedger(
+    Application& app,
     std::shared_ptr<Ledger const> const& ledger,
     bool current)
 {
-    auto j = app.journal ("Ledger");
-    LedgerIndex seq = ledger->info().seq;
-    if (! app.pendingSaves().startWork (seq))
+    auto j = app.journal("Ledger");
+    auto seq = ledger->info().seq;
+    if (!app.pendingSaves().startWork(seq))
     {
         // The save was completed synchronously
-        JLOG (j.debug()) << "Save aborted";
+        JLOG(j.debug()) << "Save aborted";
         return true;
     }
 
     // TODO(tom): Fix this hard-coded SQL!
-    JLOG (j.trace())
-        << "saveValidatedLedger "
-        << (current ? "" : "fromAcquire ") << seq;
-    static boost::format deleteLedger (
+    JLOG(j.trace()) << "saveValidatedLedger " << (current ? "" : "fromAcquire ")
+                    << seq;
+    static boost::format deleteLedger(
         "DELETE FROM Ledgers WHERE LedgerSeq = %u;");
-    static boost::format deleteTrans1 (
+    static boost::format deleteTrans1(
         "DELETE FROM Transactions WHERE LedgerSeq = %u;");
-    static boost::format deleteTrans2 (
+    static boost::format deleteTrans2(
         "DELETE FROM AccountTransactions WHERE LedgerSeq = %u;");
-    static boost::format deleteAcctTrans (
+    static boost::format deleteAcctTrans(
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
-    static boost::format deleteTrans3(
-        "DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
 
-    if (! ledger->info().accountHash.isNonZero ())
+    if (!ledger->info().accountHash.isNonZero())
     {
-        JLOG (j.fatal()) << "AH is zero: "
-                                   << getJson (*ledger);
-        assert (false);
+        JLOG(j.fatal()) << "AH is zero: " << getJson(*ledger);
+        assert(false);
     }
 
-    if (ledger->info().accountHash != ledger->stateMap().getHash ().as_uint256())
+    if (ledger->info().accountHash != ledger->stateMap().getHash().as_uint256())
     {
-        JLOG (j.fatal()) << "sAL: " << ledger->info().accountHash
-                                   << " != " << ledger->stateMap().getHash ();
-        JLOG (j.fatal()) << "saveAcceptedLedger: seq="
-                                   << seq << ", current=" << current;
-        assert (false);
+        JLOG(j.fatal()) << "sAL: " << ledger->info().accountHash
+                        << " != " << ledger->stateMap().getHash();
+        JLOG(j.fatal()) << "saveAcceptedLedger: seq=" << seq
+                        << ", current=" << current;
+        assert(false);
     }
 
-    assert (ledger->info().txHash == ledger->txMap().getHash ().as_uint256());
+    assert(ledger->info().txHash == ledger->txMap().getHash().as_uint256());
 
     // Save the ledger header in the hashed object store
     {
-        Serializer s (128);
-        s.add32 (HashPrefix::ledgerMaster);
+        Serializer s(128);
+        s.add32(HashPrefix::ledgerMaster);
         addRaw(ledger->info(), s);
-        app.getNodeStore().store(hotLEDGER,
-            std::move(s.modData()), ledger->info().hash, seq);
+        app.getNodeStore().store(
+            hotLEDGER, std::move(s.modData()), ledger->info().hash, seq);
     }
 
     AcceptedLedger::pointer aLedger;
     try
     {
-        aLedger = app.getAcceptedLedgerCache().fetch (ledger->info().hash);
-        if (! aLedger)
+        aLedger = app.getAcceptedLedgerCache().fetch(ledger->info().hash);
+        if (!aLedger)
         {
-            aLedger = std::make_shared<AcceptedLedger>(ledger, app.accountIDCache(), app.logs());
-            app.getAcceptedLedgerCache().canonicalize(ledger->info().hash, aLedger);
+            aLedger = std::make_shared<AcceptedLedger>(
+                ledger, app.accountIDCache(), app.logs());
+            app.getAcceptedLedgerCache().canonicalize_replace_client(
+                ledger->info().hash, aLedger);
         }
     }
     catch (std::exception const&)
     {
-        JLOG (j.warn()) << "An accepted ledger was missing nodes";
+        JLOG(j.warn()) << "An accepted ledger was missing nodes";
         app.getLedgerMaster().failedSave(seq, ledger->info().hash);
         // Clients can now trust the database for information about this
         // ledger sequence.
@@ -915,46 +982,45 @@ static bool saveValidatedLedger (
     }
 
     {
-        auto db = app.getLedgerDB ().checkoutDb();
-        *db << boost::str (deleteLedger % seq);
+        auto db = app.getLedgerDB().checkoutDb();
+        *db << boost::str(deleteLedger % seq);
     }
 
     {
-        auto db = app.getTxnDB ().checkoutDb ();
+        auto db = app.getTxnDB().checkoutDb();
 
         soci::transaction tr(*db);
 
-        *db << boost::str (deleteTrans1 % seq);
-        *db << boost::str (deleteTrans2 % seq);
-        *db << boost::str (deleteTrans3 % seq);
+        *db << boost::str(deleteTrans1 % seq);
+        *db << boost::str(deleteTrans2 % seq);
 
-        std::string const ledgerSeq (std::to_string (seq));
+        std::string const ledgerSeq(std::to_string(seq));
 
-        std::uint64_t iTxSeq = uint64_t(seq) * 100000;
-        for (auto const& vt : aLedger->getMap ())
+        for (auto const& [_, acceptedLedgerTx] : aLedger->getMap())
         {
-            uint256 transactionID = vt.second->getTransactionID ();
+            (void)_;
+            uint256 transactionID = acceptedLedgerTx->getTransactionID();
 
-            app.getMasterTransaction ().inLedger (
-                transactionID, seq);
+            app.getMasterTransaction().inLedger(transactionID, seq);
 
-            std::string const txnId (to_string (transactionID));
-            std::string const txnSeq (std::to_string (vt.second->getTxnSeq ()));
+            std::string const txnId(to_string(transactionID));
+            std::string const txnSeq(
+                std::to_string(acceptedLedgerTx->getTxnSeq()));
 
-            *db << boost::str (deleteAcctTrans % transactionID);
+            *db << boost::str(deleteAcctTrans % transactionID);
 
-            auto const& accts = vt.second->getAffected ();
+            auto const& accts = acceptedLedgerTx->getAffected();
 
-            if (!accts.empty ())
+            if (!accts.empty())
             {
-                std::string sql (
+                std::string sql(
                     "INSERT INTO AccountTransactions "
                     "(TransID, Account, LedgerSeq, TxnSeq) VALUES ");
 
                 // Try to make an educated guess on how much space we'll need
                 // for our arguments. In argument order we have:
                 // 64 + 34 + 10 + 10 = 118 + 10 extra = 128 bytes
-                sql.reserve (sql.length () + (accts.size () * 128));
+                sql.reserve(sql.length() + (accts.size() * 128));
 
                 bool first = true;
                 for (auto const& account : accts)
@@ -977,29 +1043,25 @@ static bool saveValidatedLedger (
                     sql += ")";
                 }
                 sql += ";";
-                JLOG (j.trace()) << "ActTx: " << sql;
+                JLOG(j.trace()) << "ActTx: " << sql;
                 *db << sql;
             }
             else
             {
-                JLOG (j.warn())
-                    << "Transaction in ledger " << seq
-                    << " affects no accounts";
-                JLOG (j.warn())
-                    << vt.second->getTxn()->getJson(JsonOptions::none);
+                JLOG(j.warn()) << "Transaction in ledger " << seq
+                               << " affects no accounts";
+                JLOG(j.warn())
+                    << acceptedLedgerTx->getTxn()->getJson(JsonOptions::none);
             }
 
-            *db <<
-               (STTx::getMetaSQLInsertReplaceHeader () +
-                vt.second->getTxn ()->getMetaSQL (
-                    seq, vt.second->getEscMeta ()) + ";");
-                        
-            storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq,app);
-
-            iTxSeq++;
+            *db
+                << (STTx::getMetaSQLInsertReplaceHeader() +
+                    acceptedLedgerTx->getTxn()->getMetaSQL(
+                        seq, acceptedLedgerTx->getEscMeta()) +
+                    ";");
         }
 
-        tr.commit ();
+        tr.commit();
     }
 
     {
@@ -1010,17 +1072,14 @@ static bool saveValidatedLedger (
             VALUES
                 (:ledgerHash,:ledgerSeq,:prevHash,:totalCoins,:closingTime,:prevClosingTime,
                 :closeTimeRes,:closeFlags,:accountSetHash,:transSetHash);)sql");
-        static std::string updateVal(
-            R"sql(UPDATE Validations SET LedgerSeq = :ledgerSeq, InitialSeq = :initialSeq
-                WHERE LedgerHash = :ledgerHash;)sql");
 
-        auto db (app.getLedgerDB ().checkoutDb ());
+        auto db(app.getLedgerDB().checkoutDb());
 
         soci::transaction tr(*db);
 
-        auto const hash = to_string (ledger->info().hash);
-        auto const parentHash = to_string (ledger->info().parentHash);
-        auto const drops = to_string (ledger->info().drops);
+        auto const hash = to_string(ledger->info().hash);
+        auto const parentHash = to_string(ledger->info().parentHash);
+        auto const drops = to_string(ledger->info().drops);
         auto const closeTime =
             ledger->info().closeTime.time_since_epoch().count();
         auto const parentCloseTime =
@@ -1028,26 +1087,13 @@ static bool saveValidatedLedger (
         auto const closeTimeResolution =
             ledger->info().closeTimeResolution.count();
         auto const closeFlags = ledger->info().closeFlags;
-        auto const accountHash = to_string (ledger->info().accountHash);
-        auto const txHash = to_string (ledger->info().txHash);
+        auto const accountHash = to_string(ledger->info().accountHash);
+        auto const txHash = to_string(ledger->info().txHash);
 
-        *db << addLedger,
-            soci::use(hash),
-            soci::use(seq),
-            soci::use(parentHash),
-            soci::use(drops),
-            soci::use(closeTime),
-            soci::use(parentCloseTime),
-            soci::use(closeTimeResolution),
-            soci::use(closeFlags),
-            soci::use(accountHash),
-            soci::use(txHash);
-
-
-        *db << updateVal,
-            soci::use(seq),
-            soci::use(seq),
-            soci::use(hash);
+        *db << addLedger, soci::use(hash), soci::use(seq),
+            soci::use(parentHash), soci::use(drops), soci::use(closeTime),
+            soci::use(parentCloseTime), soci::use(closeTimeResolution),
+            soci::use(closeFlags), soci::use(accountHash), soci::use(txHash);
 
         tr.commit();
     }
@@ -1067,15 +1113,13 @@ bool pendSaveValidated (
     bool isSynchronous,
     bool isCurrent)
 {
-    if (! app.getHashRouter ().setFlags (ledger->info().hash, SF_SAVED))
+    if (!app.getHashRouter().setFlags(ledger->info().hash, SF_SAVED))
     {
         // We have tried to save this ledger recently
-        auto stream = app.journal ("Ledger").debug();
-        JLOG (stream) << "Double pend save for "
-            << ledger->info().seq;
+        auto stream = app.journal("Ledger").debug();
+        JLOG(stream) << "Double pend save for " << ledger->info().seq;
 
-        if (! isSynchronous ||
-            ! app.pendingSaves().pending (ledger->info().seq))
+        if (!isSynchronous || !app.pendingSaves().pending(ledger->info().seq))
         {
             // Either we don't need it to be finished
             // or it is finished
@@ -1083,28 +1127,27 @@ bool pendSaveValidated (
         }
     }
 
-    assert (ledger->isImmutable ());
+    assert(ledger->isImmutable());
 
-    if (! app.pendingSaves().shouldWork (ledger->info().seq, isSynchronous))
+    if (!app.pendingSaves().shouldWork(ledger->info().seq, isSynchronous))
     {
-        auto stream = app.journal ("Ledger").debug();
-        JLOG (stream)
-            << "Pend save with seq in pending saves "
-            << ledger->info().seq;
+        auto stream = app.journal("Ledger").debug();
+        JLOG(stream) << "Pend save with seq in pending saves "
+                     << ledger->info().seq;
 
         return true;
     }
 
-    JobType const jobType {isCurrent ? jtPUBLEDGER : jtPUBOLDLEDGER};
-    char const* const jobName {
+    JobType const jobType{isCurrent ? jtPUBLEDGER : jtPUBOLDLEDGER};
+    char const* const jobName{
         isCurrent ? "Ledger::pendSave" : "Ledger::pendOldSave"};
 
     // See if we can use the JobQueue.
     if (!isSynchronous &&
-        app.getJobQueue().addJob (jobType, jobName,
-        [&app, ledger, isCurrent] (Job&) {
-            saveValidatedLedger(app, ledger, isCurrent);
-        }))
+        app.getJobQueue().addJob(
+            jobType, jobName, [&app, ledger, isCurrent](Job&) {
+                saveValidatedLedger(app, ledger, isCurrent);
+            }))
     {
         return true;
     }
@@ -1164,13 +1207,12 @@ Ledger::invariants() const
  * @return The ledger, ledger sequence, and ledger hash.
  */
 std::tuple<std::shared_ptr<Ledger>, std::uint32_t, uint256>
-loadLedgerHelper(std::string const& sqlSuffix,
-    Schema& app, bool acquire)
+loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
 {
     uint256 ledgerHash{};
     std::uint32_t ledgerSeq{0};
 
-    auto db = app.getLedgerDB ().checkoutDb ();
+    auto db = app.getLedgerDB().checkoutDb();
 
     boost::optional<std::string> sLedgerHash, sPrevHash, sAccountHash,
         sTransHash;
@@ -1178,47 +1220,38 @@ loadLedgerHelper(std::string const& sqlSuffix,
         closeResolution, closeFlags, ledgerSeq64;
 
     std::string const sql =
-            "SELECT "
-            "LedgerHash, PrevHash, AccountSetHash, TransSetHash, "
-            "TotalCoins,"
-            "ClosingTime, PrevClosingTime, CloseTimeRes, CloseFlags,"
-            "LedgerSeq from Ledgers " +
-            sqlSuffix + ";";
+        "SELECT "
+        "LedgerHash, PrevHash, AccountSetHash, TransSetHash, "
+        "TotalCoins,"
+        "ClosingTime, PrevClosingTime, CloseTimeRes, CloseFlags,"
+        "LedgerSeq from Ledgers " +
+        sqlSuffix + ";";
 
-    *db << sql,
-            soci::into(sLedgerHash),
-            soci::into(sPrevHash),
-            soci::into(sAccountHash),
-            soci::into(sTransHash),
-            soci::into(totDrops),
-            soci::into(closingTime),
-            soci::into(prevClosingTime),
-            soci::into(closeResolution),
-            soci::into(closeFlags),
-            soci::into(ledgerSeq64);
+    *db << sql, soci::into(sLedgerHash), soci::into(sPrevHash),
+        soci::into(sAccountHash), soci::into(sTransHash), soci::into(totDrops),
+        soci::into(closingTime), soci::into(prevClosingTime),
+        soci::into(closeResolution), soci::into(closeFlags),
+        soci::into(ledgerSeq64);
 
-    if (!db->got_data ())
+    if (!db->got_data())
     {
         auto stream = app.journal("Ledger").debug();
-        JLOG (stream) << "Ledger not found: " << sqlSuffix;
-        return std::make_tuple (
-            std::shared_ptr<Ledger>(),
-            ledgerSeq,
-            ledgerHash);
+        JLOG(stream) << "Ledger not found: " << sqlSuffix;
+        return std::make_tuple(
+            std::shared_ptr<Ledger>(), ledgerSeq, ledgerHash);
     }
 
-    ledgerSeq =
-        rangeCheckedCast<std::uint32_t>(ledgerSeq64.value_or (0));
+    ledgerSeq = rangeCheckedCast<std::uint32_t>(ledgerSeq64.value_or(0));
 
     uint256 prevHash{}, accountHash{}, transHash{};
     if (sLedgerHash)
-        ledgerHash.SetHexExact (*sLedgerHash);
+        ledgerHash.SetHexExact(*sLedgerHash);
     if (sPrevHash)
-        prevHash.SetHexExact (*sPrevHash);
+        prevHash.SetHexExact(*sPrevHash);
     if (sAccountHash)
-        accountHash.SetHexExact (*sAccountHash);
+        accountHash.SetHexExact(*sAccountHash);
     if (sTransHash)
-        transHash.SetHexExact (*sTransHash);
+        transHash.SetHexExact(*sTransHash);
 
     using time_point = NetClock::time_point;
     using duration = NetClock::duration;
@@ -1240,17 +1273,17 @@ loadLedgerHelper(std::string const& sqlSuffix,
         loaded,
         acquire,
         app.config(),
-        app.family(),
+        app.getNodeFamily(),
         app.journal("Ledger"));
 
     if (!loaded)
         ledger.reset();
 
-    return std::make_tuple (ledger, ledgerSeq, ledgerHash);
+    return std::make_tuple(ledger, ledgerSeq, ledgerHash);
 }
 
-static
-void finishLoadByIndexOrHash(
+static void
+finishLoadByIndexOrHash(
     std::shared_ptr<Ledger> const& ledger,
     Config const& config,
     beast::Journal j)
@@ -1258,47 +1291,42 @@ void finishLoadByIndexOrHash(
     if (!ledger)
         return;
 
-    ledger->setImmutable (config);
+    ledger->setImmutable(config);
 
-    JLOG (j.trace())
-        << "Loaded ledger: " << to_string (ledger->info().hash);
+    JLOG(j.trace()) << "Loaded ledger: " << to_string(ledger->info().hash);
 
-    ledger->setFull ();
+    ledger->setFull();
 }
 
 std::shared_ptr<Ledger>
-loadByIndex (std::uint32_t ledgerIndex,
-    Schema& app, bool acquire)
+loadByIndex(std::uint32_t ledgerIndex, Schema& app, bool acquire)
 {
     std::shared_ptr<Ledger> ledger;
     {
         std::ostringstream s;
         s << "WHERE LedgerSeq = " << ledgerIndex;
-        std::tie (ledger, std::ignore, std::ignore) =
-            loadLedgerHelper (s.str (), app, acquire);
+        std::tie(ledger, std::ignore, std::ignore) =
+            loadLedgerHelper(s.str(), app, acquire);
     }
 
-    finishLoadByIndexOrHash (ledger, app.config(),
-        app.journal ("Ledger"));
+    finishLoadByIndexOrHash(ledger, app.config(), app.journal("Ledger"));
     return ledger;
 }
 
 std::shared_ptr<Ledger>
-loadByHash (uint256 const& ledgerHash,
-	Schema& app, bool acquire)
+loadByHash(uint256 const& ledgerHash, Schema& app, bool acquire)
 {
     std::shared_ptr<Ledger> ledger;
     {
         std::ostringstream s;
         s << "WHERE LedgerHash = '" << ledgerHash << "'";
-        std::tie (ledger, std::ignore, std::ignore) =
-            loadLedgerHelper (s.str (), app, acquire);
+        std::tie(ledger, std::ignore, std::ignore) =
+            loadLedgerHelper(s.str(), app, acquire);
     }
 
-    finishLoadByIndexOrHash (ledger, app.config(),
-        app.journal ("Ledger"));
+    finishLoadByIndexOrHash(ledger, app.config(), app.journal("Ledger"));
 
-    assert (!ledger || ledger->info().hash == ledgerHash);
+    assert(!ledger || ledger->info().hash == ledgerHash);
 
     return ledger;
 }
@@ -1310,54 +1338,52 @@ getHashByIndex (std::uint32_t ledgerIndex, Schema& app)
 
     std::string sql =
         "SELECT LedgerHash FROM Ledgers INDEXED BY SeqLedger WHERE LedgerSeq='";
-    sql.append (beast::lexicalCastThrow <std::string> (ledgerIndex));
-    sql.append ("';");
+    sql.append(beast::lexicalCastThrow<std::string>(ledgerIndex));
+    sql.append("';");
 
     std::string hash;
     {
-        auto db = app.getLedgerDB ().checkoutDb ();
+        auto db = app.getLedgerDB().checkoutDb();
 
         boost::optional<std::string> lh;
-        *db << sql,
-                soci::into (lh);
+        *db << sql, soci::into(lh);
 
-        if (!db->got_data () || !lh)
+        if (!db->got_data() || !lh)
             return ret;
 
         hash = *lh;
-        if (hash.empty ())
+        if (hash.empty())
             return ret;
     }
 
-    ret.SetHexExact (hash);
+    ret.SetHexExact(hash);
     return ret;
 }
 
 bool
-getHashesByIndex(std::uint32_t ledgerIndex,
-    uint256& ledgerHash, uint256& parentHash,
-	Schema& app)
+getHashesByIndex(
+    std::uint32_t ledgerIndex,
+    uint256& ledgerHash,
+    uint256& parentHash,
+    Schema& app)
 {
-    auto db = app.getLedgerDB ().checkoutDb ();
+    auto db = app.getLedgerDB().checkoutDb();
 
-    boost::optional <std::string> lhO, phO;
+    boost::optional<std::string> lhO, phO;
 
     *db << "SELECT LedgerHash,PrevHash FROM Ledgers "
-            "INDEXED BY SeqLedger Where LedgerSeq = :ls;",
-            soci::into (lhO),
-            soci::into (phO),
-            soci::use (ledgerIndex);
+           "INDEXED BY SeqLedger Where LedgerSeq = :ls;",
+        soci::into(lhO), soci::into(phO), soci::use(ledgerIndex);
 
     if (!lhO || !phO)
     {
-        auto stream = app.journal ("Ledger").trace();
-        JLOG (stream)
-            << "Don't have ledger " << ledgerIndex;
+        auto stream = app.journal("Ledger").trace();
+        JLOG(stream) << "Don't have ledger " << ledgerIndex;
         return false;
     }
 
-    ledgerHash.SetHexExact (*lhO);
-    parentHash.SetHexExact (*phO);
+    ledgerHash.SetHexExact(*lhO);
+    parentHash.SetHexExact(*phO);
 
     return true;
 }
@@ -1366,141 +1392,41 @@ std::map< std::uint32_t, std::pair<uint256, uint256> >
 getHashesByIndex (std::uint32_t minSeq, std::uint32_t maxSeq,
 	Schema& app)
 {
-    std::map< std::uint32_t, std::pair<uint256, uint256> > ret;
+    std::map<std::uint32_t, std::pair<uint256, uint256>> ret;
 
     std::string sql =
         "SELECT LedgerSeq,LedgerHash,PrevHash FROM Ledgers WHERE LedgerSeq >= ";
-    sql.append (beast::lexicalCastThrow <std::string> (minSeq));
-    sql.append (" AND LedgerSeq <= ");
-    sql.append (beast::lexicalCastThrow <std::string> (maxSeq));
-    sql.append (";");
+    sql.append(beast::lexicalCastThrow<std::string>(minSeq));
+    sql.append(" AND LedgerSeq <= ");
+    sql.append(beast::lexicalCastThrow<std::string>(maxSeq));
+    sql.append(";");
 
-    auto db = app.getLedgerDB ().checkoutDb ();
+    auto db = app.getLedgerDB().checkoutDb();
 
     std::uint64_t ls;
     std::string lh;
     boost::optional<std::string> ph;
     soci::statement st =
-        (db->prepare << sql,
-         soci::into (ls),
-         soci::into (lh),
-         soci::into (ph));
+        (db->prepare << sql, soci::into(ls), soci::into(lh), soci::into(ph));
 
-    st.execute ();
-    while (st.fetch ())
+    st.execute();
+    while (st.fetch())
     {
         std::pair<uint256, uint256>& hashes =
-                ret[rangeCheckedCast<std::uint32_t>(ls)];
-        hashes.first.SetHexExact (lh);
+            ret[rangeCheckedCast<std::uint32_t>(ls)];
+        hashes.first.SetHexExact(lh);
         if (ph)
-            hashes.second.SetHexExact (*ph);
+            hashes.second.SetHexExact(*ph);
         else
-            hashes.second.zero ();
+            hashes.second.zero();
         if (!ph)
         {
-            auto stream = app.journal ("Ledger").warn();
-            JLOG (stream)
-                << "Null prev hash for ledger seq: " << ls;
+            auto stream = app.journal("Ledger").warn();
+            JLOG(stream) << "Null prev hash for ledger seq: " << ls;
         }
     }
 
     return ret;
 }
 
-bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Schema& app)
-{
-    std::string retSql = "";
-    if (pTx == nullptr)  return false;
-    TxType txType = pTx->getTxnType();
-    if (!pTx->isChainSqlTableType() && txType != ttCONTRACT)    return false;
-
-    static std::string const sqlHeader = "INSERT OR REPLACE INTO TraceTransactions "
-        "(TransID, TransType, TxSeq, LedgerSeq, Owner, Name)"
-        " VALUES ";
-
-    static boost::format bfTrans("('%s', '%s', '%lld', '%d', '%s', '%s')");
-
-    auto format = TxFormats::getInstance().findByType(txType);
-    assert(format != nullptr);
-
-	auto txsAll = app.getMasterTransaction().getTxs(*pTx, "", nullptr, inLedger);
-    std::vector<ripple::STTx> txsNoRepeat;
-
-    ripple::uint160 uDBNameN, uDBNameA;
-    for (auto itA = txsAll.begin(); itA != txsAll.end(); itA++)
-    {
-        auto itN = txsNoRepeat.begin();
-        while (itN != txsNoRepeat.end())
-        {
-            auto& tablesN = (*itN).getFieldArray(sfTables);
-            if (tablesN.size() <= 0)  break;
-            auto uDBNameN = tablesN[0].getFieldH160(sfNameInDB);
-
-            auto& tablesA = (*itA).getFieldArray(sfTables);
-            if (tablesA.size() <= 0)  break;
-            auto uDBNameA = tablesA[0].getFieldH160(sfNameInDB);
-
-            if (uDBNameA == uDBNameN)  break;
-            itN++;
-        }
-        if (itN == txsNoRepeat.end())  txsNoRepeat.push_back(std::move(*itA));
-    }
-
-
-    AccountID ownerID;
-    ripple::uint160 uDBName;
-    std::string sqlBody = "", sqlExe = "";
-    for (auto tx : txsNoRepeat)
-    {
-        if (tx.isFieldPresent(sfOwner))
-        {
-            ownerID = tx.getAccountID(sfOwner);
-        }
-        else
-        {
-            ownerID = tx.getAccountID(sfAccount);
-        }
-        auto& tables = tx.getFieldArray(sfTables);
-        if (tables.size() <= 0)  continue;
-        uDBName = tables[0].getFieldH160(sfNameInDB);
-
-		auto format2 = TxFormats::getInstance().findByType(tx.getTxnType());
-		assert(format2 != nullptr);
-
-        sqlBody = boost::str(boost::format(bfTrans)
-            % to_string(pTx->getTransactionID()) % format2->getName()
-            % SeqInLedger % inLedger
-            % toBase58(ownerID)
-            % to_string(uDBName));
-
-        sqlExe = sqlHeader + sqlBody;
-
-        *db << sqlExe;
-    }
-    if (txType == ttCONTRACT)
-    {
-        AccountID addrContract;
-        if (pTx->getFieldU16(sfContractOpType) == ContractCreation)
-        {
-            addrContract = Contract::calcNewAddress(pTx->getAccountID(sfAccount),pTx->getFieldU32(sfSequence));
-        }
-        else
-        {
-            addrContract = pTx->getAccountID(sfContractAddress);
-        }
-
-        sqlBody = boost::str(boost::format(bfTrans)
-            % to_string(pTx->getTransactionID()) % format->getName()
-            % SeqInLedger % inLedger
-            % toBase58(addrContract)
-            % "");
-
-        sqlExe = sqlHeader + sqlBody;
-
-        *db << sqlExe;
-    }
-
-    return true;
-}
-
-} // ripple
+}  // namespace ripple

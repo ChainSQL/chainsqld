@@ -25,115 +25,104 @@
 namespace ripple {
 
 template <class F>
-JobQueue::Coro::
-Coro(Coro_create_t, JobQueue& jq, JobType type,
-    std::string const& name, F&& f)
+JobQueue::Coro::Coro(
+    Coro_create_t,
+    JobQueue& jq,
+    JobType type,
+    std::string const& name,
+    F&& f)
     : jq_(jq)
     , type_(type)
     , name_(name)
     , running_(false)
     , coro_(
-        [this, fn = std::forward<F>(f)]
-        (boost::coroutines::asymmetric_coroutine<void>::push_type& do_yield)
-        {
-            yield_ = &do_yield;
-            yield();
-            fn(shared_from_this());
+          [this, fn = std::forward<F>(f)](
+              boost::coroutines::asymmetric_coroutine<void>::push_type&
+                  do_yield) {
+              yield_ = &do_yield;
+              yield();
+              fn(shared_from_this());
 #ifndef NDEBUG
-            finished_ = true;
+              finished_ = true;
 #endif
-        }, boost::coroutines::attributes (megabytes(1)))
+          },
+          boost::coroutines::attributes(megabytes(1)))
 {
 }
 
-inline
-JobQueue::Coro::
-~Coro()
+inline JobQueue::Coro::~Coro()
 {
 #ifndef NDEBUG
     assert(finished_);
 #endif
 }
 
-inline
-void
-JobQueue::Coro::
-yield() const
+inline void
+JobQueue::Coro::yield() const
 {
     {
-        std::lock_guard<std::mutex> lock(jq_.m_mutex);
+        std::lock_guard lock(jq_.m_mutex);
         ++jq_.nSuspend_;
     }
     (*yield_)();
 }
 
-inline
-bool
-JobQueue::Coro::
-post()
+inline bool
+JobQueue::Coro::post()
 {
     {
-        std::lock_guard<std::mutex> lk(mutex_run_);
+        std::lock_guard lk(mutex_run_);
         running_ = true;
     }
 
     // sp keeps 'this' alive
-    if (jq_.addJob(type_, name_,
-        [this, sp = shared_from_this()](Job&)
-        {
-            resume();
-        }))
+    if (jq_.addJob(
+            type_, name_, [this, sp = shared_from_this()](Job&) { resume(); }))
     {
         return true;
     }
 
     // The coroutine will not run.  Clean up running_.
-    std::lock_guard<std::mutex> lk(mutex_run_);
+    std::lock_guard lk(mutex_run_);
     running_ = false;
     cv_.notify_all();
     return false;
 }
 
-inline
-void
-JobQueue::Coro::
-resume()
+inline void
+JobQueue::Coro::resume()
 {
     {
-        std::lock_guard<std::mutex> lk(mutex_run_);
+        std::lock_guard lk(mutex_run_);
         running_ = true;
     }
     {
-        std::lock_guard<std::mutex> lock(jq_.m_mutex);
+        std::lock_guard lock(jq_.m_mutex);
         --jq_.nSuspend_;
     }
     auto saved = detail::getLocalValues().release();
     detail::getLocalValues().reset(&lvs_);
-    std::lock_guard<std::mutex> lock(mutex_);
-    assert (coro_);
+    std::lock_guard lock(mutex_);
+    assert(coro_);
     coro_();
     detail::getLocalValues().release();
     detail::getLocalValues().reset(saved);
-    std::lock_guard<std::mutex> lk(mutex_run_);
+    std::lock_guard lk(mutex_run_);
     running_ = false;
     cv_.notify_all();
 }
 
-inline
-bool
-JobQueue::Coro::
-runnable() const
+inline bool
+JobQueue::Coro::runnable() const
 {
     return static_cast<bool>(coro_);
 }
 
-inline
-void
-JobQueue::Coro::
-expectEarlyExit()
+inline void
+JobQueue::Coro::expectEarlyExit()
 {
 #ifndef NDEBUG
-    if (! finished_)
+    if (!finished_)
 #endif
     {
         // expectEarlyExit() must only ever be called from outside the
@@ -142,7 +131,7 @@ expectEarlyExit()
         //
         // That said, since we're outside the Coro's stack, we need to
         // decrement the nSuspend that the Coro's call to yield caused.
-        std::lock_guard<std::mutex> lock(jq_.m_mutex);
+        std::lock_guard lock(jq_.m_mutex);
         --jq_.nSuspend_;
 #ifndef NDEBUG
         finished_ = true;
@@ -150,19 +139,13 @@ expectEarlyExit()
     }
 }
 
-inline
-void
-JobQueue::Coro::
-join()
+inline void
+JobQueue::Coro::join()
 {
     std::unique_lock<std::mutex> lk(mutex_run_);
-    cv_.wait(lk,
-        [this]()
-        {
-            return running_ == false;
-        });
+    cv_.wait(lk, [this]() { return running_ == false; });
 }
 
-} // ripple
+}  // namespace ripple
 
 #endif

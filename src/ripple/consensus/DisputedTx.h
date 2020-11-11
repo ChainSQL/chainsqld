@@ -28,11 +28,12 @@
 #include <ripple/json/json_writer.h>
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/UintTypes.h>
+#include <boost/container/flat_map.hpp>
 #include <memory>
 
 namespace ripple {
 
-/** A transaction discovered to be in dispute during conensus.
+/** A transaction discovered to be in dispute during consensus.
 
     During consensus, a @ref DisputedTx is created when a transaction
     is discovered to be disputed. The object persists only as long as
@@ -59,7 +60,11 @@ public:
         @param numPeers Anticipated number of peer votes
         @param j Journal for debugging
     */
-    DisputedTx(Tx_t const& tx, bool ourVote, std::size_t numPeers, beast::Journal j)
+    DisputedTx(
+        Tx_t const& tx,
+        bool ourVote,
+        std::size_t numPeers,
+        beast::Journal j)
         : yays_(0), nays_(0), ourVote_(ourVote), tx_(tx), j_(j)
     {
         votes_.reserve(numPeers);
@@ -132,7 +137,7 @@ private:
     bool ourVote_;  //< Our vote (true is yes)
     Tx_t tx_;       //< Transaction under dispute
     Map_t votes_;   //< Map from NodeID to vote
-    beast::Journal j_;
+    beast::Journal const j_;
 };
 
 // Track a peer's yes/no vote on a particular disputed tx_
@@ -140,10 +145,10 @@ template <class Tx_t, class NodeID_t>
 void
 DisputedTx<Tx_t, NodeID_t>::setVote(NodeID_t const& peer, bool votesYes)
 {
-    auto res = votes_.insert(std::make_pair(peer, votesYes));
+    auto const [it, inserted] = votes_.insert(std::make_pair(peer, votesYes));
 
     // new vote
-    if (res.second)
+    if (inserted)
     {
         if (votesYes)
         {
@@ -157,24 +162,24 @@ DisputedTx<Tx_t, NodeID_t>::setVote(NodeID_t const& peer, bool votesYes)
         }
     }
     // changes vote to yes
-    else if (votesYes && !res.first->second)
+    else if (votesYes && !it->second)
     {
         JLOG(j_.debug()) << "Peer " << peer << " now votes YES on " << tx_.id();
         --nays_;
         ++yays_;
-        res.first->second = true;
+        it->second = true;
     }
     // changes vote to no
-    else if (!votesYes && res.first->second)
+    else if (!votesYes && it->second)
     {
         JLOG(j_.debug()) << "Peer " << peer << " now votes NO on " << tx_.id();
         ++nays_;
         --yays_;
-        res.first->second = false;
+        it->second = false;
     }
 }
 
-// Remove a peer's vote on this disputed transasction
+// Remove a peer's vote on this disputed transaction
 template <class Tx_t, class NodeID_t>
 void
 DisputedTx<Tx_t, NodeID_t>::unVote(NodeID_t const& peer)
@@ -262,14 +267,14 @@ DisputedTx<Tx_t, NodeID_t>::getJson() const
     if (!votes_.empty())
     {
         Json::Value votesj(Json::objectValue);
-        for (auto& vote : votes_)
-            votesj[to_string(vote.first)] = vote.second;
+        for (auto const& [nodeId, vote] : votes_)
+            votesj[to_string(nodeId)] = vote;
         ret["votes"] = std::move(votesj);
     }
 
     return ret;
 }
 
-}  // ripple
+}  // namespace ripple
 
 #endif

@@ -43,37 +43,59 @@ public:
     /** This callback does the actual writing. */
     struct Callback
     {
+<<<<<<< HEAD
         virtual ~Callback () = default;
         Callback() = default;
         Callback(Callback const&) = delete;
         Callback& operator=(Callback const&) = delete;
 
         virtual void writeBatch (Batch const& batch) = 0;
+=======
+        virtual ~Callback() = default;
+        Callback() = default;
+        Callback(Callback const&) = delete;
+        Callback&
+        operator=(Callback const&) = delete;
+
+        virtual void
+        writeBatch(Batch const& batch) = 0;
+>>>>>>> release
     };
 
     /** Create a batch writer. */
-    BatchWriter (Callback& callback, Scheduler& scheduler);
+    BatchWriter(Callback& callback, Scheduler& scheduler);
 
     /** Destroy a batch writer.
 
         Anything pending in the batch is written out before this returns.
     */
-    ~BatchWriter ();
+    ~BatchWriter();
 
     /** Store the object.
 
         This will add to the batch and initiate a scheduled task to
         write the batch out.
     */
-    void store (std::shared_ptr<NodeObject> const& object);
+    void
+    store(std::shared_ptr<NodeObject> const& object);
 
     /** Get an estimate of the amount of writing I/O pending. */
-    int getWriteLoad ();
+    int
+    getWriteLoad();
 
 private:
+<<<<<<< HEAD
     void performScheduledTask () override;
     void writeBatch ();
     void waitForWriting ();
+=======
+    void
+    performScheduledTask() override;
+    void
+    writeBatch();
+    void
+    waitForWriting();
+>>>>>>> release
 
 private:
     using LockType = std::recursive_mutex;
@@ -88,7 +110,7 @@ private:
     Batch mWriteSet;
 };
 
-}
-}
+}  // namespace NodeStore
+}  // namespace ripple
 
 #endif

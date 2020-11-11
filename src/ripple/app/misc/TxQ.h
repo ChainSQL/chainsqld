@@ -21,12 +21,12 @@
 #define RIPPLE_TXQ_H_INCLUDED
 
 #include <ripple/app/tx/applySteps.h>
-#include <ripple/ledger/OpenView.h>
 #include <ripple/ledger/ApplyView.h>
-#include <ripple/protocol/TER.h>
+#include <ripple/ledger/OpenView.h>
 #include <ripple/protocol/STTx.h>
-#include <boost/intrusive/set.hpp>
+#include <ripple/protocol/TER.h>
 #include <boost/circular_buffer.hpp>
+#include <boost/intrusive/set.hpp>
 
 namespace ripple {
 
@@ -55,7 +55,7 @@ class TxQ
 {
 public:
     /// Fee level for single-signed reference transaction.
-    static constexpr std::uint64_t baseLevel = 256;
+    static constexpr FeeLevel64 baseLevel{256};
 
     /**
         Structure used to customize @ref TxQ behavior.
@@ -104,7 +104,7 @@ public:
         std::int32_t multiTxnPercent = -90;
         /// Minimum value of the escalation multiplier, regardless
         /// of the prior ledger's median fee level.
-        std::uint64_t minimumEscalationMultiplier = baseLevel * 500;
+        FeeLevel64 minimumEscalationMultiplier = baseLevel * 500;
         /// Minimum number of transactions to allow into the ledger
         /// before escalation, regardless of the prior ledger's size.
         std::uint32_t minimumTxnInLedger = 5;
@@ -168,7 +168,7 @@ public:
             we can make this more complicated. But avoid
             bikeshedding for now.
         */
-        std::uint64_t zeroBaseFeeTransactionFeeLevel = 256000;
+        FeeLevel64 zeroBaseFeeTransactionFeeLevel{256000};
         /// Use standalone mode behavior.
         bool standAlone = false;
     };
@@ -191,15 +191,15 @@ public:
         /// Number of transactions expected per ledger
         std::size_t txPerLedger;
         /// Reference transaction fee level
-        std::uint64_t referenceFeeLevel;
+        FeeLevel64 referenceFeeLevel;
         /// Minimum fee level for a transaction to be considered for
         /// the open ledger or the queue
-        std::uint64_t minProcessingFeeLevel;
+        FeeLevel64 minProcessingFeeLevel;
         /// Median fee level of the last ledger
-        std::uint64_t medFeeLevel;
+        FeeLevel64 medFeeLevel;
         /// Minimum fee level to get into the current open ledger,
         /// bypassing the queue
-        std::uint64_t openLedgerFeeLevel;
+        FeeLevel64 openLedgerFeeLevel;
     };
 
     /**
@@ -212,7 +212,7 @@ public:
         explicit AccountTxDetails() = default;
 
         /// Fee level of the queued transaction
-        uint64_t feeLevel;
+        FeeLevel64 feeLevel;
         /// LastValidLedger field of the queued transaction, if any
         boost::optional<LedgerIndex const> lastValid;
         /** Potential @ref TxConsequences of applying the queued transaction
@@ -264,8 +264,7 @@ public:
     };
 
     /// Constructor
-    TxQ(Setup const& setup,
-        beast::Journal j);
+    TxQ(Setup const& setup, beast::Journal j);
 
     /// Destructor
     virtual ~TxQ();
@@ -280,9 +279,11 @@ public:
                 will return `{ terQUEUED, false }`.
     */
     std::pair<STer, bool>
-    apply(Schema& app, OpenView& view,
+    apply(Schema& app, 
+        OpenView& view,
         std::shared_ptr<STTx const> const& tx,
-            ApplyFlags flags, beast::Journal j);
+        ApplyFlags flags,
+        beast::Journal j);
 
     /**
         Fill the new open ledger with transactions from the queue.
@@ -311,13 +312,33 @@ public:
         that have no candidates under them are removed.
     */
     void
-    processClosedLedger(Schema& app,
-        ReadView const& view, bool timeLeap);
+    processClosedLedger(Schema& app, ReadView const& view, bool timeLeap);
 
     /** Returns fee metrics in reference fee level units.
-    */
+     */
     Metrics
     getMetrics(OpenView const& view) const;
+
+    struct FeeAndSeq
+    {
+        XRPAmount fee;
+        std::uint32_t accountSeq;
+        std::uint32_t availableSeq;
+    };
+
+    /**
+     * @brief Returns minimum required fee for tx and two sequences:
+     *        first vaild sequence for this account in current ledger
+     *        and first available sequence for transaction
+     * @param view current open ledger
+     * @param tx the transaction
+     * @return minimum required fee, first sequence in the ledger
+     *        and first available sequence
+     */
+    FeeAndSeq
+    getTxRequiredFeeAndSeq(
+        OpenView const& view,
+        std::shared_ptr<STTx const> const& tx) const;
 
     /** Returns information about the transactions currently
         in the queue for the account.
@@ -369,22 +390,26 @@ private:
         boost::circular_buffer<std::size_t> recentTxnCounts_;
         /// Based on the median fee of the LCL. Used
         /// when fee escalation kicks in.
-        std::uint64_t escalationMultiplier_;
+        FeeLevel64 escalationMultiplier_;
         /// Journal
-        beast::Journal j_;
+        beast::Journal const j_;
 
     public:
         /// Constructor
         FeeMetrics(Setup const& setup, beast::Journal j)
-            : minimumTxnCount_(setup.standAlone ?
-                setup.minimumTxnInLedgerSA :
-                setup.minimumTxnInLedger)
-            , targetTxnCount_(setup.targetTxnInLedger < minimumTxnCount_ ?
-                minimumTxnCount_ : setup.targetTxnInLedger)
-            , maximumTxnCount_(setup.maximumTxnInLedger ?
-                *setup.maximumTxnInLedger < targetTxnCount_ ?
-                    targetTxnCount_ : *setup.maximumTxnInLedger :
-                        boost::optional<std::size_t>(boost::none))
+            : minimumTxnCount_(
+                  setup.standAlone ? setup.minimumTxnInLedgerSA
+                                   : setup.minimumTxnInLedger)
+            , targetTxnCount_(
+                  setup.targetTxnInLedger < minimumTxnCount_
+                      ? minimumTxnCount_
+                      : setup.targetTxnInLedger)
+            , maximumTxnCount_(
+                  setup.maximumTxnInLedger
+                      ? *setup.maximumTxnInLedger < targetTxnCount_
+                          ? targetTxnCount_
+                          : *setup.maximumTxnInLedger
+                      : boost::optional<std::size_t>(boost::none))
             , txnsExpected_(minimumTxnCount_)
             , recentTxnCounts_(setup.ledgersInQueue)
             , escalationMultiplier_(setup.minimumEscalationMultiplier)
@@ -403,8 +428,10 @@ private:
             @param setup Customization params.
         */
         std::size_t
-        update(Schema& app,
-            ReadView const& view, bool timeLeap,
+        update(
+            Schema& app,
+            ReadView const& view,
+            bool timeLeap,
             TxQ::Setup const& setup);
 
         /// Snapshot of the externally relevant FeeMetrics
@@ -417,17 +444,14 @@ private:
             std::size_t const txnsExpected;
             // Based on the median fee of the LCL. Used
             // when fee escalation kicks in.
-            std::uint64_t const escalationMultiplier;
+            FeeLevel64 const escalationMultiplier;
         };
 
         /// Get the current @ref Snapshot
         Snapshot
         getSnapshot() const
         {
-            return {
-                txnsExpected_,
-                escalationMultiplier_
-            };
+            return {txnsExpected_, escalationMultiplier_};
         }
 
         /** Use the number of transactions in the current open ledger
@@ -438,8 +462,7 @@ private:
 
             @return A fee level value.
         */
-        static
-        std::uint64_t
+        static FeeLevel64
         scaleFeeLevel(Snapshot const& snapshot, OpenView const& view);
 
         /**
@@ -472,10 +495,12 @@ private:
             @return A `std::pair` as returned from @ref `mulDiv` indicating
                 whether the calculation result overflows.
         */
-        static
-        std::pair<bool, std::uint64_t>
-        escalatedSeriesFeeLevel(Snapshot const& snapshot, OpenView const& view,
-            std::size_t extraCount, std::size_t seriesSize);
+        static std::pair<bool, FeeLevel64>
+        escalatedSeriesFeeLevel(
+            Snapshot const& snapshot,
+            OpenView const& view,
+            std::size_t extraCount,
+            std::size_t seriesSize);
     };
 
     /**
@@ -498,7 +523,7 @@ private:
         boost::optional<TxConsequences const> consequences;
 
         /// Computed fee level that the transaction will pay.
-        uint64_t const feeLevel;
+        FeeLevel64 const feeLevel;
         /// Transaction ID.
         TxID const txID;
         /// Prior transaction ID (`sfAccountTxnID` field).
@@ -558,10 +583,12 @@ private:
 
     public:
         /// Constructor
-        MaybeTx(std::shared_ptr<STTx const> const&,
-            TxID const& txID, std::uint64_t feeLevel,
-                ApplyFlags const flags,
-                    PreflightResult const& pfresult);
+        MaybeTx(
+            std::shared_ptr<STTx const> const&,
+            TxID const& txID,
+            FeeLevel64 feeLevel,
+            ApplyFlags const flags,
+            PreflightResult const& pfresult);
 
         /// Attempt to apply the queued transaction to the open ledger.
         std::pair<TER, bool>
@@ -576,7 +603,8 @@ private:
         explicit GreaterFee() = default;
 
         /// Is the fee level of `lhs` greater than the fee level of `rhs`?
-        bool operator()(const MaybeTx& lhs, const MaybeTx& rhs) const
+        bool
+        operator()(const MaybeTx& lhs, const MaybeTx& rhs) const
         {
             return lhs.feeLevel > rhs.feeLevel;
         }
@@ -588,7 +616,7 @@ private:
     class TxQAccount
     {
     public:
-        using TxMap = std::map <TxSeq, MaybeTx>;
+        using TxMap = std::map<TxSeq, MaybeTx>;
 
         /// The account
         AccountID const account;
@@ -642,20 +670,20 @@ private:
         remove(TxSeq const& sequence);
     };
 
-    using FeeHook = boost::intrusive::member_hook
-        <MaybeTx, boost::intrusive::set_member_hook<>,
+    using FeeHook = boost::intrusive::member_hook<
+        MaybeTx,
+        boost::intrusive::set_member_hook<>,
         &MaybeTx::byFeeListHook>;
 
-    using FeeMultiSet = boost::intrusive::multiset
-        < MaybeTx, FeeHook,
-        boost::intrusive::compare <GreaterFee> >;
+    using FeeMultiSet = boost::intrusive::
+        multiset<MaybeTx, FeeHook, boost::intrusive::compare<GreaterFee>>;
 
-    using AccountMap = std::map <AccountID, TxQAccount>;
+    using AccountMap = std::map<AccountID, TxQAccount>;
 
     /// Setup parameters used to control the behavior of the queue
     Setup const setup_;
     /// Journal
-    beast::Journal j_;
+    beast::Journal const j_;
 
     /** Tracks the current state of the queue.
         @note This member must always and only be accessed under
@@ -690,16 +718,20 @@ private:
 
 private:
     /// Is the queue at least `fillPercentage` full?
-    template<size_t fillPercentage = 100>
+    template <size_t fillPercentage = 100>
     bool
     isFull() const;
 
     /** Checks if the indicated transaction fits the conditions
         for being stored in the queue.
     */
-    bool canBeHeld(STTx const&, OpenView const&,
+    bool
+    canBeHeld(
+        STTx const&,
+        ApplyFlags const,
+        OpenView const&,
         AccountMap::iterator,
-            boost::optional<FeeMultiSet::iterator>);
+        boost::optional<FeeMultiSet::iterator>);
 
     /// Erase and return the next entry in byFee_ (lower fee level)
     FeeMultiSet::iterator_type erase(FeeMultiSet::const_iterator_type);
@@ -707,25 +739,32 @@ private:
         is higher), or next entry in byFee_ (lower fee level).
         Used to get the next "applyable" MaybeTx for accept().
     */
-    FeeMultiSet::iterator_type eraseAndAdvance(FeeMultiSet::const_iterator_type);
+    FeeMultiSet::iterator_type eraseAndAdvance(
+        FeeMultiSet::const_iterator_type);
     /// Erase a range of items, based on TxQAccount::TxMap iterators
     TxQAccount::TxMap::iterator
-    erase(TxQAccount& txQAccount, TxQAccount::TxMap::const_iterator begin,
+    erase(
+        TxQAccount& txQAccount,
+        TxQAccount::TxMap::const_iterator begin,
         TxQAccount::TxMap::const_iterator end);
 
     /**
-        All-or-nothing attempt to try to apply all the queued txs for `accountIter`
-        up to and including `tx`.
+        All-or-nothing attempt to try to apply all the queued txs for
+       `accountIter` up to and including `tx`.
     */
     std::pair<TER, bool>
-    tryClearAccountQueue(Schema& app, OpenView& view,
-        STTx const& tx, AccountMap::iterator const& accountIter,
-            TxQAccount::TxMap::iterator, std::uint64_t feeLevelPaid,
-                PreflightResult const& pfresult,
-                    std::size_t const txExtraCount, ApplyFlags flags,
-                        FeeMetrics::Snapshot const& metricsSnapshot,
-                            beast::Journal j);
-
+    tryClearAccountQueue(
+        Schema& app,
+        OpenView& view,
+        STTx const& tx,
+        AccountMap::iterator const& accountIter,
+        TxQAccount::TxMap::iterator,
+        FeeLevel64 feeLevelPaid,
+        PreflightResult const& pfresult,
+        std::size_t const txExtraCount,
+        ApplyFlags flags,
+        FeeMetrics::Snapshot const& metricsSnapshot,
+        beast::Journal j);
 };
 
 /**
@@ -734,12 +773,19 @@ private:
 TxQ::Setup
 setup_TxQ(Config const&);
 
-/**
-    @ref TxQ object factory.
-*/
-std::unique_ptr<TxQ>
-make_TxQ(TxQ::Setup const&, beast::Journal);
+template <class T>
+std::pair<bool, XRPAmount>
+toDrops(FeeLevel<T> const& level, XRPAmount const& baseFee)
+{
+    return mulDiv(level, baseFee, TxQ::baseLevel);
+}
 
-} // ripple
+inline std::pair<bool, FeeLevel64>
+toFeeLevel(XRPAmount const& drops, XRPAmount const& baseFee)
+{
+    return mulDiv(drops, TxQ::baseLevel, baseFee);
+}
+
+}  // namespace ripple
 
 #endif

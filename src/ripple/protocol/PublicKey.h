@@ -21,13 +21,13 @@
 #define RIPPLE_PROTOCOL_PUBLICKEY_H_INCLUDED
 
 #include <ripple/basics/Slice.h>
-#include <ripple/protocol/KeyType.h> // move to protocol/
+#include <ripple/protocol/KeyType.h>
 #include <ripple/protocol/STExchange.h>
-#include <ripple/protocol/tokens.h>
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/Seed.h>
 //#include <ripple/protocol/SecretKey.h>
 #include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <ripple/protocol/tokens.h>
 #include <boost/optional.hpp>
 #include <algorithm>
 #include <cstdint>
@@ -69,16 +69,16 @@ public:
     using const_iterator = std::uint8_t const*;
 
     PublicKey() = default;
-    PublicKey (PublicKey const& other);
-    PublicKey& operator= (PublicKey const& other);
+    PublicKey(PublicKey const& other);
+    PublicKey&
+    operator=(PublicKey const& other);
 
     /** Create a public key.
 
         Preconditions:
             publicKeyType(slice) != boost::none
     */
-    explicit
-    PublicKey (Slice const& slice);
+    explicit PublicKey(Slice const& slice);
 
     std::uint8_t const*
     data() const noexcept
@@ -125,7 +125,7 @@ public:
     Slice
     slice() const noexcept
     {
-        return { buf_, size_ };
+        return {buf_, size_};
     }
 
     operator Slice() const noexcept
@@ -135,82 +135,69 @@ public:
 };
 
 /** Print the public key to a stream.
-*/
+ */
 std::ostream&
 operator<<(std::ostream& os, PublicKey const& pk);
 
-inline
-bool
-operator== (PublicKey const& lhs,
-    PublicKey const& rhs)
+inline bool
+operator==(PublicKey const& lhs, PublicKey const& rhs)
 {
     return lhs.size() == rhs.size() &&
         std::memcmp(lhs.data(), rhs.data(), rhs.size()) == 0;
 }
 
-inline
-bool
-operator< (PublicKey const& lhs,
-    PublicKey const& rhs)
+inline bool
+operator<(PublicKey const& lhs, PublicKey const& rhs)
 {
     return std::lexicographical_compare(
-        lhs.data(), lhs.data() + lhs.size(),
-        rhs.data(), rhs.data() + rhs.size());
+        lhs.data(),
+        lhs.data() + lhs.size(),
+        rhs.data(),
+        rhs.data() + rhs.size());
 }
 
 bool publicKeyComp(PublicKey const& lhs, PublicKey const& rhs);
 
 template <class Hasher>
 void
-hash_append (Hasher& h,
-    PublicKey const& pk)
+hash_append(Hasher& h, PublicKey const& pk)
 {
     h(pk.data(), pk.size());
 }
 
-template<>
+template <>
 struct STExchange<STBlob, PublicKey>
 {
     explicit STExchange() = default;
 
     using value_type = PublicKey;
 
-    static
-    void
-    get (boost::optional<value_type>& t,
-        STBlob const& u)
+    static void
+    get(boost::optional<value_type>& t, STBlob const& u)
     {
-        t.emplace (Slice(u.data(), u.size()));
+        t.emplace(Slice(u.data(), u.size()));
     }
 
-    static
-    std::unique_ptr<STBlob>
-    set (SField const& f, PublicKey const& t)
+    static std::unique_ptr<STBlob>
+    set(SField const& f, PublicKey const& t)
     {
-        return std::make_unique<STBlob>(
-            f, t.data(), t.size());
+        return std::make_unique<STBlob>(f, t.data(), t.size());
     }
 };
 
 //------------------------------------------------------------------------------
 
-inline
-std::string
-toBase58 (TokenType type, PublicKey const& pk)
+inline std::string
+toBase58(TokenType type, PublicKey const& pk)
 {
-    return base58EncodeToken(
-        type, pk.data(), pk.size());
+    return base58EncodeToken(type, pk.data(), pk.size());
 }
 
-template<>
+template <>
 boost::optional<PublicKey>
-parseBase58 (TokenType type, std::string const& s);
+parseBase58(TokenType type, std::string const& s);
 
-enum class ECDSACanonicality
-{
-    canonical,
-    fullyCanonical
-};
+enum class ECDSACanonicality { canonical, fullyCanonical };
 
 /** Determines the canonicality of a signature.
 
@@ -238,7 +225,7 @@ enum class ECDSACanonicality
           no verification cryptography is performed.
 */
 boost::optional<ECDSACanonicality>
-ecdsaCanonicality (Slice const& sig);
+ecdsaCanonicality(Slice const& sig);
 
 /** Returns the type of public key.
 
@@ -247,19 +234,19 @@ ecdsaCanonicality (Slice const& sig);
 */
 /** @{ */
 boost::optional<KeyType>
-publicKeyType (Slice const& slice);
+publicKeyType(Slice const& slice);
 
-inline
-boost::optional<KeyType>
-publicKeyType (PublicKey const& publicKey)
+inline boost::optional<KeyType>
+publicKeyType(PublicKey const& publicKey)
 {
-    return publicKeyType (publicKey.slice());
+    return publicKeyType(publicKey.slice());
 }
 /** @} */
 
 /** Verify a secp256k1 signature on the digest of a message. */
 bool
-verifyDigest (PublicKey const& publicKey,
+verifyDigest(
+    PublicKey const& publicKey,
     uint256 const& digest,
     Slice const& sig,
     bool mustBeFullyCanonical = true);
@@ -269,20 +256,21 @@ verifyDigest (PublicKey const& publicKey,
     SHA512-Half, and the resulting digest is signed.
 */
 bool
-verify (PublicKey const& publicKey,
+verify(
+    PublicKey const& publicKey,
     Slice const& m,
     Slice const& sig,
     bool mustBeFullyCanonical = true);
 
 /** Calculate the 160-bit node ID from a node public key. */
 NodeID
-calcNodeID (PublicKey const&);
+calcNodeID(PublicKey const&);
 
 // VFALCO This belongs in AccountID.h but
 //        is here because of header issues
 AccountID
-calcAccountID (PublicKey const& pk);
+calcAccountID(PublicKey const& pk);
 
-} // ripple
+}  // namespace ripple
 
 #endif

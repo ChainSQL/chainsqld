@@ -28,57 +28,64 @@ namespace ripple {
 
 // VFALCO TODO rename to PeerTxRequest
 // A transaction set we are trying to acquire
-class TransactionAcquire
-    : public PeerSet
-    , public std::enable_shared_from_this <TransactionAcquire>
-    , public CountedObject <TransactionAcquire>
+class TransactionAcquire final
+    : public PeerSet,
+      public std::enable_shared_from_this<TransactionAcquire>,
+      public CountedObject<TransactionAcquire>
 {
 public:
-    static char const* getCountedObjectName () { return "TransactionAcquire"; }
+    static char const*
+    getCountedObjectName()
+    {
+        return "TransactionAcquire";
+    }
 
     using pointer = std::shared_ptr<TransactionAcquire>;
 
 public:
-    TransactionAcquire (Schema& app, uint256 const& hash, clock_type& clock);
-    ~TransactionAcquire () = default;
+    TransactionAcquire(Schema& app, uint256 const& hash);
+    ~TransactionAcquire() = default;
 
-    std::shared_ptr<SHAMap> const& getMap ()
-    {
-        return mMap;
-    }
+    SHAMapAddNode
+    takeNodes(
+        const std::list<SHAMapNodeID>& IDs,
+        const std::list<Blob>& data,
+        std::shared_ptr<Peer> const&);
 
-    SHAMapAddNode takeNodes (const std::list<SHAMapNodeID>& IDs,
-                             const std::list< Blob >& data, std::shared_ptr<Peer> const&);
+    void
+    init(int startPeers);
 
-    void init (int startPeers);
-
-    void stillNeed ();
+    void
+    stillNeed();
 
 private:
-
     std::shared_ptr<SHAMap> mMap;
-    bool                    mHaveRoot;
-    beast::Journal          j_;
+    bool mHaveRoot;
 
-    void execute () override;
+    void
+    queueJob() override;
 
-    void onTimer (bool progress, ScopedLockType& peerSetLock) override;
+    void
+    onTimer(bool progress, ScopedLockType& peerSetLock) override;
 
-
-    void newPeer (std::shared_ptr<Peer> const& peer) override
+    void
+    onPeerAdded(std::shared_ptr<Peer> const& peer) override
     {
-        trigger (peer);
+        trigger(peer);
     }
 
-    void done ();
+    void
+    done();
 
-    // Tries to add the specified number of peers
-    void addPeers (int num);
+    void
+    addPeers(std::size_t limit);
 
-    void trigger (std::shared_ptr<Peer> const&);
-    std::weak_ptr<PeerSet> pmDowncast () override;
+    void
+    trigger(std::shared_ptr<Peer> const&);
+    std::weak_ptr<PeerSet>
+    pmDowncast() override;
 };
 
-} // ripple
+}  // namespace ripple
 
 #endif

@@ -20,59 +20,63 @@
 #ifndef RIPPLE_APP_DATA_DATABASECON_H_INCLUDED
 #define RIPPLE_APP_DATA_DATABASECON_H_INCLUDED
 
+#include <ripple/app/main/DBInit.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/SociDB.h>
 #include <boost/filesystem/path.hpp>
+#include <boost/optional.hpp>
 #include <mutex>
 #include <string>
 
-
 namespace soci {
-    class session;
+class session;
 }
 
 namespace ripple {
 
-template<class T, class TMutex>
-class LockedPointer
+class LockedSociSession
 {
 public:
-    using mutex = TMutex;
+    using mutex = std::recursive_mutex;
+
 private:
-    T* it_;
+    std::shared_ptr<soci::session> session_;
     std::unique_lock<mutex> lock_;
 
 public:
-    LockedPointer (T* it, mutex& m) : it_ (it), lock_ (m)
+    LockedSociSession(std::shared_ptr<soci::session> it, mutex& m)
+        : session_(std::move(it)), lock_(m)
     {
     }
-    LockedPointer (LockedPointer&& rhs) noexcept
-        : it_ (rhs.it_), lock_ (std::move (rhs.lock_))
+    LockedSociSession(LockedSociSession&& rhs) noexcept
+        : session_(std::move(rhs.session_)), lock_(std::move(rhs.lock_))
     {
     }
-    LockedPointer () = delete;
-    LockedPointer (LockedPointer const& rhs) = delete;
-    LockedPointer& operator=(LockedPointer const& rhs) = delete;
+    LockedSociSession() = delete;
+    LockedSociSession(LockedSociSession const& rhs) = delete;
+    LockedSociSession&
+    operator=(LockedSociSession const& rhs) = delete;
 
-    T* get ()
+    soci::session*
+    get()
     {
-        return it_;
+        return session_.get();
     }
-    T& operator*()
+    soci::session&
+    operator*()
     {
-        return *it_;
+        return *session_;
     }
-    T* operator->()
+    soci::session*
+    operator->()
     {
-        return it_;
+        return session_.get();
     }
     explicit operator bool() const
     {
-        return bool (it_);
+        return bool(session_);
     }
 };
-
-using LockedSociSession = LockedPointer<soci::session, std::recursive_mutex>;
 
 class DatabaseCon
 {
@@ -84,65 +88,157 @@ public:
         Config::StartUpType startUp = Config::NORMAL;
         bool standAlone = false;
         boost::filesystem::path dataDir;
-		ripple::Section sync_db;
+        // Indicates whether or not to return the `globalPragma`
+        // from commonPragma()
+        bool useGlobalPragma = false;
+
+        std::vector<std::string> const*
+        commonPragma() const
+        {
+            assert(!useGlobalPragma || globalPragma);
+            return useGlobalPragma && globalPragma ? globalPragma.get()
+                                                   : nullptr;
+        }
+
+        static std::unique_ptr<std::vector<std::string> const> globalPragma;
+        ripple::Section sync_db;
+    };
+
+    struct CheckpointerSetup
+    {
+        JobQueue* jobQueue;
+        Logs* logs;
     };
 
     DatabaseCon (Setup const& setup,
                  std::string const& name,
                  const char* initString[],
                  int countInit, std::string sDBType = "sqlite");
-
-	template<std::size_t N, std::size_t M>
-	DatabaseCon(
-		Setup const& setup,
-		std::string const& DBName,
-		std::array<char const*, N> const& pragma,
-		std::array<char const*, M> const& initSQL)
-	{
-		// Use temporary files or regular DB files?
-		auto const useTempFiles =
-			setup.standAlone &&
-			setup.startUp != Config::LOAD &&
-			setup.startUp != Config::LOAD_FILE &&
-			setup.startUp != Config::REPLAY;
-		boost::filesystem::path pPath =
-			useTempFiles ? "" : (setup.dataDir / DBName);
-
-		open(session_, "sqlite", pPath.string());
-
-		for (auto const& p : pragma)
-		{
-			soci::statement st = session_.prepare << p;
-			st.execute(true);
-		}
-		for (auto const& sql : initSQL)
-		{
-			soci::statement st = session_.prepare << sql;
-			st.execute(true);
-		}
-	}
-
-    soci::session& getSession()
+                 
+    template <std::size_t N, std::size_t M>
+    DatabaseCon(
+        Setup const& setup,
+        std::string const& dbName,
+        std::array<char const*, N> const& pragma,
+        std::array<char const*, M> const& initSQL)
+        // Use temporary files or regular DB files?
+        : DatabaseCon(
+              setup.standAlone && setup.startUp != Config::LOAD &&
+                      setup.startUp != Config::LOAD_FILE &&
+                      setup.startUp != Config::REPLAY
+                  ? ""
+                  : (setup.dataDir / dbName),
+              setup.commonPragma(),
+              pragma,
+              initSQL)
     {
-        return session_;
     }
 
-    LockedSociSession checkoutDb ()
+    // Use this constructor to setup checkpointing
+    template <std::size_t N, std::size_t M>
+    DatabaseCon(
+        Setup const& setup,
+        std::string const& dbName,
+        std::array<char const*, N> const& pragma,
+        std::array<char const*, M> const& initSQL,
+        CheckpointerSetup const& checkpointerSetup)
+        : DatabaseCon(setup, dbName, pragma, initSQL)
     {
-        return LockedSociSession (&session_, lock_);
+        setupCheckpointing(checkpointerSetup.jobQueue, *checkpointerSetup.logs);
     }
 
-    void setupCheckpointing (JobQueue*, Logs&);
+    template <std::size_t N, std::size_t M>
+    DatabaseCon(
+        boost::filesystem::path const& dataDir,
+        std::string const& dbName,
+        std::array<char const*, N> const& pragma,
+        std::array<char const*, M> const& initSQL)
+        : DatabaseCon(dataDir / dbName, nullptr, pragma, initSQL)
+    {
+    }
+
+    // Use this constructor to setup checkpointing
+    template <std::size_t N, std::size_t M>
+    DatabaseCon(
+        boost::filesystem::path const& dataDir,
+        std::string const& dbName,
+        std::array<char const*, N> const& pragma,
+        std::array<char const*, M> const& initSQL,
+        CheckpointerSetup const& checkpointerSetup)
+        : DatabaseCon(dataDir, dbName, pragma, initSQL)
+    {
+        setupCheckpointing(checkpointerSetup.jobQueue, *checkpointerSetup.logs);
+    }
+
+    ~DatabaseCon();
+
+    soci::session&
+    getSession()
+    {
+        return *session_;
+    }
+
+    LockedSociSession
+    checkoutDb()
+    {
+        return LockedSociSession(session_, lock_);
+    }
 
 private:
+    void
+    setupCheckpointing(JobQueue*, Logs&);
+
+    template <std::size_t N, std::size_t M>
+    DatabaseCon(
+        boost::filesystem::path const& pPath,
+        std::vector<std::string> const* commonPragma,
+        std::array<char const*, N> const& pragma,
+        std::array<char const*, M> const& initSQL)
+        : session_(std::make_shared<soci::session>())
+    {
+        open(*session_, "sqlite", pPath.string());
+
+        if (commonPragma)
+        {
+            for (auto const& p : *commonPragma)
+            {
+                soci::statement st = session_->prepare << p;
+                st.execute(true);
+            }
+        }
+        for (auto const& p : pragma)
+        {
+            soci::statement st = session_->prepare << p;
+            st.execute(true);
+        }
+        for (auto const& sql : initSQL)
+        {
+            soci::statement st = session_->prepare << sql;
+            st.execute(true);
+        }
+    }
+
     LockedSociSession::mutex lock_;
 
-    soci::session session_;
-    std::unique_ptr<Checkpointer> checkpointer_;
+    // checkpointer may outlive the DatabaseCon when the checkpointer jobQueue
+    // callback locks a weak pointer and the DatabaseCon is then destroyed. In
+    // this case, the checkpointer needs to make sure it doesn't use an already
+    // destroyed session. Thus this class keeps a shared_ptr to the session (so
+    // the checkpointer can keep a weak_ptr) and the checkpointer is a
+    // shared_ptr in this class. session_ will never be null.
+    std::shared_ptr<soci::session> const session_;
+    std::shared_ptr<Checkpointer> checkpointer_;
 };
 
+// Return the checkpointer from its id. If the checkpointer no longer exists, an
+// nullptr is returned
+std::shared_ptr<Checkpointer>
+checkpointerFromId(std::uintptr_t id);
+
 DatabaseCon::Setup
-setup_DatabaseCon (Config const& c);
+setup_DatabaseCon(
+    Config const& c,
+    boost::optional<beast::Journal> j = boost::none);
 
 DatabaseCon::Setup
 setup_SyncDatabaseCon (Config const& c);

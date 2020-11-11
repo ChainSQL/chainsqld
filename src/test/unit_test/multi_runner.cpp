@@ -142,8 +142,8 @@ results::print(S& s)
     if (top.size() > 0)
     {
         s << "Longest suite times:\n";
-        for (auto const& i : top)
-            s << std::setw(8) << fmtdur(i.second) << " " << i.first << '\n';
+        for (auto const& [name, dur] : top)
+            s << std::setw(8) << fmtdur(dur) << " " << name << '\n';
     }
 
     auto const elapsed = clock_type::now() - start;
@@ -200,7 +200,7 @@ template <bool IsParent>
 void
 multi_runner_base<IsParent>::inner::add(results const& r)
 {
-    std::lock_guard<boost::interprocess::interprocess_mutex> l{m_};
+    std::lock_guard l{m_};
     results_.merge(r);
 }
 
@@ -209,7 +209,7 @@ template <class S>
 void
 multi_runner_base<IsParent>::inner::print_results(S& s)
 {
-    std::lock_guard<boost::interprocess::interprocess_mutex> l{m_};
+    std::lock_guard l{m_};
     results_.print(s);
 }
 
@@ -338,10 +338,12 @@ multi_runner_base<IsParent>::print_results(S& s)
 
 template <bool IsParent>
 void
-multi_runner_base<IsParent>::message_queue_send(MessageType mt, std::string const& s)
+multi_runner_base<IsParent>::message_queue_send(
+    MessageType mt,
+    std::string const& s)
 {
     // must use a mutex since the two "sends" must happen in order
-    std::lock_guard<boost::interprocess::interprocess_mutex> l{inner_->m_};
+    std::lock_guard l{inner_->m_};
     message_queue_->send(&mt, sizeof(mt), /*priority*/ 0);
     message_queue_->send(s.c_str(), s.size(), /*priority*/ 0);
 }
@@ -351,12 +353,11 @@ constexpr const char* multi_runner_base<IsParent>::shared_mem_name_;
 template <bool IsParent>
 constexpr const char* multi_runner_base<IsParent>::message_queue_name_;
 
-}  // detail
+}  // namespace detail
 
 //------------------------------------------------------------------------------
 
-multi_runner_parent::multi_runner_parent()
-    : os_(std::cout)
+multi_runner_parent::multi_runner_parent() : os_(std::cout)
 {
     message_queue_thread_ = std::thread([this] {
         std::vector<char> buf(1 << 20);
@@ -382,7 +383,7 @@ multi_runner_parent::multi_runner_parent()
                     buf.data(), buf.size(), recvd_size, priority);
                 if (!recvd_size)
                     continue;
-                assert (recvd_size == 1);
+                assert(recvd_size == 1);
                 MessageType mt{*reinterpret_cast<MessageType*>(buf.data())};
 
                 this->message_queue_->receive(
@@ -571,7 +572,7 @@ multi_runner_child::on_log(std::string const& msg)
 namespace detail {
 template class multi_runner_base<true>;
 template class multi_runner_base<false>;
-}
+}  // namespace detail
 
-}  // unit_test
-}  // beast
+}  // namespace test
+}  // namespace ripple

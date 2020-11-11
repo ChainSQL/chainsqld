@@ -23,11 +23,14 @@
 #include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/Transaction.h>
+#include <ripple/basics/ToString.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/DeliveredAmount.h>
+#include <ripple/rpc/GRPCHandlers.h>
+#include <ripple/rpc/impl/GRPCHelpers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <boost/optional/optional_io.hpp>
@@ -42,188 +45,463 @@ namespace ripple {
     std::pair<std::vector<std::shared_ptr<STTx>>, std::string> getLedgerTxs(RPC::Context& context, int ledgerSeq, uint256 startHash = beast::zero, bool include = false);
     void appendTxJson(const std::vector<std::shared_ptr<STTx>>& vecTxs, Json::Value& jvTxns, int ledgerSeq, int limit);
 
-    static
-        bool
-        isHexTxID(std::string const& txid)
-    {
-        if (txid.size() != 64)
-            return false;
+static bool
+isHexTxID(std::string const& txid)
+{
+    if (txid.size() != 64)
+        return false;
 
-        auto const ret = std::find_if(txid.begin(), txid.end(),
-            [](std::string::value_type c)
-        {
-            return !std::isxdigit (static_cast<unsigned char>(c));
+    auto const ret =
+        std::find_if(txid.begin(), txid.end(), [](std::string::value_type c) {
+            return !std::isxdigit(static_cast<unsigned char>(c));
         });
 
-        return (ret == txid.end());
-    }
+    return (ret == txid.end());
+}
 
-    static
-        bool
-        isValidated(RPC::Context& context, std::uint32_t seq, uint256 const& hash)
-    {
-        if (!context.ledgerMaster.haveLedger(seq))
-            return false;
-
-        if (seq > context.ledgerMaster.getValidatedLedger()->info().seq)
-            return false;
-
-        return context.ledgerMaster.getHashBySeq(seq) == hash;
-    }
-
-    bool
-        getMetaHex(Ledger const& ledger,
-            uint256 const& transID, std::string& hex)
-    {
-        SHAMapTreeNode::TNType type;
-        auto const item =
-            ledger.txMap().peekItem(transID, type);
-
-        if (!item)
-            return false;
-
-        if (type != SHAMapTreeNode::tnTRANSACTION_MD)
-            return false;
-
-        SerialIter it(item->slice());
-        it.getVL(); // skip transaction
-        hex = strHex(makeSlice(it.getVL()));
-        return true;
-    }
-
-    bool doTxChain(TxType txType, const RPC::Context& context, Json::Value& retJson)
-    {
-        if (!STTx::checkChainsqlTableType(txType) && !STTx::checkChainsqlContractType(txType))  return false;
-
-        auto const txid = context.params[jss::transaction].asString();
-
-        Json::Value jsonMetaChain,jsonContractChain,jsonTableChain;
-
-
-        std::string sql = "SELECT TxSeq, TransType, Owner, Name FROM TraceTransactions WHERE TransID='";
-        sql.append(txid);    sql.append("';");
-
-        boost::optional<std::uint64_t> txSeq;
-        boost::optional<std::string> previousTxid, nextTxid, ownerRead, nameRead, typeRead;
-        {
-            auto db = context.app.getTxnDB().checkoutDb();
-
-            soci::statement st = (db->prepare << sql,
-                soci::into(txSeq),
-                soci::into(typeRead),
-                soci::into(ownerRead),
-                soci::into(nameRead));
-            st.execute();
-
-            std::string sSqlPrefix = "SELECT TransID FROM TraceTransactions WHERE TxSeq ";            
-
-            while (st.fetch())
-            {
-                std::string sSqlSufix = boost::str(boost::format("'%lld' AND Owner = '%s' AND Name = '%s' order by TxSeq ")   \
-                    % beast::lexicalCastThrow <std::string>(*txSeq)   \
-                    % *ownerRead % *nameRead);
-                std::string sSqlPrevious = sSqlPrefix + "<" + sSqlSufix + "desc limit 1";
-                std::string sSqlNext = sSqlPrefix + ">" + sSqlSufix + "asc limit 1";
-
-                Json::Value jsonTableItem;
-
-                // get previous hash
-                *db << sSqlPrevious, soci::into(previousTxid);
-
-                if (isChainsqlContractType(*typeRead))
-                {
-                    jsonContractChain[jss::PreviousHash] = db->got_data() ? *previousTxid : "";
-                }
-                else
-                {
-                    jsonTableItem[jss::PreviousHash] = db->got_data() ? *previousTxid : "";
-                }
-
-                //get next hash
-                *db << sSqlNext, soci::into(nextTxid);
-                if (isChainsqlContractType(*typeRead))
-                {
-                    jsonContractChain[jss::NextHash] = db->got_data() ? *nextTxid : "";
-                }
-                else
-                {
-                    jsonTableItem[jss::NextHash] = db->got_data() ? *nextTxid : "";
-                }
-
-                if (!isChainsqlContractType(*typeRead))
-                {
-                    jsonTableItem[jss::NameInDB] = *nameRead;
-                    jsonTableChain.append(jsonTableItem);                    
-                }
-            }
-            if(jsonTableChain.size()>0)      jsonMetaChain[jss::TableChain]    = jsonTableChain;
-            if(!jsonContractChain.isNull())  jsonMetaChain[jss::ContractChain] = jsonContractChain;
-
-        }
-        retJson[jss::metaChain] = jsonMetaChain;
-        return true;
-    }
-
-Json::Value doTx (RPC::Context& context)
+static bool
+isValidated(LedgerMaster& ledgerMaster, std::uint32_t seq, uint256 const& hash)
 {
-    if (!context.params.isMember (jss::transaction))
-        return rpcError (rpcINVALID_PARAMS);
+    if (!ledgerMaster.haveLedger(seq))
+        return false;
 
-    bool binary = context.params.isMember (jss::binary)
-            && context.params[jss::binary].asBool ();
+    if (seq > ledgerMaster.getValidatedLedger()->info().seq)
+        return false;
 
-    auto const txid  = context.params[jss::transaction].asString ();
+    return ledgerMaster.getHashBySeq(seq) == hash;
+}
 
-    if (!isHexTxID (txid))
-        return rpcError (rpcNOT_IMPL);
+bool
+getMetaHex(Ledger const& ledger, uint256 const& transID, std::string& hex)
+{
+    SHAMapTreeNode::TNType type;
+    auto const item = ledger.txMap().peekItem(transID, type);
 
-    auto txn = context.app.getMasterTransaction ().fetch (
-        from_hex_text<uint256>(txid), true);
+    if (!item)
+        return false;
 
-    if (!txn)
-        return rpcError (rpcTXN_NOT_FOUND);
+    if (type != SHAMapTreeNode::tnTRANSACTION_MD)
+        return false;
 
-    Json::Value ret = txn->getJson (JsonOptions::include_date, binary);
+    SerialIter it(item->slice());
+    it.getVL(); // skip transaction
+    hex = strHex(makeSlice(it.getVL()));
+    return true;
+}
 
-    if (txn->getLedger () == 0)
-        return ret;
+bool doTxChain(TxType txType, const RPC::Context& context, Json::Value& retJson)
+{
+    if (!STTx::checkChainsqlTableType(txType) && !STTx::checkChainsqlContractType(txType))  return false;
 
-    if (auto lgr = context.ledgerMaster.getLedgerBySeq (txn->getLedger ()))
+    auto const txid = context.params[jss::transaction].asString();
+
+    Json::Value jsonMetaChain,jsonContractChain,jsonTableChain;
+
+
+    std::string sql = "SELECT TxSeq, TransType, Owner, Name FROM TraceTransactions WHERE TransID='";
+    sql.append(txid);    sql.append("';");
+
+    boost::optional<std::uint64_t> txSeq;
+    boost::optional<std::string> previousTxid, nextTxid, ownerRead, nameRead, typeRead;
     {
-        bool okay = false;
+        auto db = context.app.getTxnDB().checkoutDb();
 
-        if (binary)
+        soci::statement st = (db->prepare << sql,
+            soci::into(txSeq),
+            soci::into(typeRead),
+            soci::into(ownerRead),
+            soci::into(nameRead));
+        st.execute();
+
+        std::string sSqlPrefix = "SELECT TransID FROM TraceTransactions WHERE TxSeq ";            
+
+        while (st.fetch())
         {
-            std::string meta;
+            std::string sSqlSufix = boost::str(boost::format("'%lld' AND Owner = '%s' AND Name = '%s' order by TxSeq ")   \
+                % beast::lexicalCastThrow <std::string>(*txSeq)   \
+                % *ownerRead % *nameRead);
+            std::string sSqlPrevious = sSqlPrefix + "<" + sSqlSufix + "desc limit 1";
+            std::string sSqlNext = sSqlPrefix + ">" + sSqlSufix + "asc limit 1";
 
-            if (getMetaHex (*lgr, txn->getID (), meta))
+            Json::Value jsonTableItem;
+
+            // get previous hash
+            *db << sSqlPrevious, soci::into(previousTxid);
+
+            if (isChainsqlContractType(*typeRead))
             {
-                ret[jss::meta] = meta;
-                okay = true;
+                jsonContractChain[jss::PreviousHash] = db->got_data() ? *previousTxid : "";
+            }
+            else
+            {
+                jsonTableItem[jss::PreviousHash] = db->got_data() ? *previousTxid : "";
+            }
+
+            //get next hash
+            *db << sSqlNext, soci::into(nextTxid);
+            if (isChainsqlContractType(*typeRead))
+            {
+                jsonContractChain[jss::NextHash] = db->got_data() ? *nextTxid : "";
+            }
+            else
+            {
+                jsonTableItem[jss::NextHash] = db->got_data() ? *nextTxid : "";
+            }
+
+            if (!isChainsqlContractType(*typeRead))
+            {
+                jsonTableItem[jss::NameInDB] = *nameRead;
+                jsonTableChain.append(jsonTableItem);                    
+            }
+        }
+        if(jsonTableChain.size()>0)      jsonMetaChain[jss::TableChain]    = jsonTableChain;
+        if(!jsonContractChain.isNull())  jsonMetaChain[jss::ContractChain] = jsonContractChain;
+
+    }
+    retJson[jss::metaChain] = jsonMetaChain;
+    return true;
+}
+
+enum class SearchedAll { no, yes, unknown };
+
+struct TxResult
+{
+    Transaction::pointer txn;
+    std::variant<std::shared_ptr<TxMeta>, Blob> meta;
+    bool validated = false;
+    SearchedAll searchedAll;
+};
+
+struct TxArgs
+{
+    uint256 hash;
+    bool binary = false;
+    std::optional<std::pair<uint32_t, uint32_t>> ledgerRange;
+};
+
+std::pair<TxResult, RPC::Status>
+doTxHelp(RPC::Context& context, TxArgs const& args)
+{
+    TxResult result;
+
+    ClosedInterval<uint32_t> range;
+
+    if (args.ledgerRange)
+    {
+        constexpr uint16_t MAX_RANGE = 1000;
+
+        if (args.ledgerRange->second < args.ledgerRange->first)
+            return {result, rpcINVALID_LGR_RANGE};
+
+        if (args.ledgerRange->second - args.ledgerRange->first > MAX_RANGE)
+            return {result, rpcEXCESSIVE_LGR_RANGE};
+
+        range = ClosedInterval<uint32_t>(
+            args.ledgerRange->first, args.ledgerRange->second);
+    }
+
+    std::shared_ptr<Transaction> txn;
+    auto ec{rpcSUCCESS};
+
+    result.searchedAll = SearchedAll::unknown;
+    if (args.ledgerRange)
+    {
+        boost::variant<std::shared_ptr<Transaction>, bool> v =
+            context.app.getMasterTransaction().fetch(args.hash, range, ec);
+
+        if (v.which() == 1)
+        {
+            result.searchedAll =
+                boost::get<bool>(v) ? SearchedAll::yes : SearchedAll::no;
+            return {result, rpcTXN_NOT_FOUND};
+        }
+        else
+        {
+            txn = boost::get<std::shared_ptr<Transaction>>(v);
+        }
+    }
+    else
+    {
+        txn = context.app.getMasterTransaction().fetch(args.hash, ec);
+    }
+
+    if (ec == rpcDB_DESERIALIZATION)
+    {
+        return {result, ec};
+    }
+    if (!txn)
+    {
+        return {result, rpcTXN_NOT_FOUND};
+    }
+
+    // populate transaction data
+    result.txn = txn;
+    if (txn->getLedger() == 0)
+    {
+        return {result, rpcSUCCESS};
+    }
+
+    std::shared_ptr<Ledger const> ledger =
+        context.ledgerMaster.getLedgerBySeq(txn->getLedger());
+    // get meta data
+    if (ledger)
+    {
+        bool ok = false;
+        if (args.binary)
+        {
+            SHAMapTreeNode::TNType type;
+            auto const item = ledger->txMap().peekItem(txn->getID(), type);
+
+            if (item && type == SHAMapTreeNode::tnTRANSACTION_MD)
+            {
+                ok = true;
+                SerialIter it(item->slice());
+                it.skip(it.getVLDataLength());  // skip transaction
+                Blob blob = it.getVL();
+                result.meta = std::move(blob);
             }
         }
         else
         {
-            auto rawMeta = lgr->txRead (txn->getID()).second;
+            auto rawMeta = ledger->txRead(txn->getID()).second;
             if (rawMeta)
             {
-                auto txMeta = std::make_shared<TxMeta>(
-                    txn->getID(), lgr->seq(), *rawMeta, context.app.journal("tx"));
-                okay = true;
-                auto meta = txMeta->getJson (JsonOptions::none);
-                insertDeliveredAmount (meta, context, txn, *txMeta);
-                ret[jss::meta] = std::move(meta);
+                ok = true;
+                result.meta = std::make_shared<TxMeta>(
+                    txn->getID(), ledger->seq(), *rawMeta);
             }
         }
+        if (ok)
+        {
+            result.validated = isValidated(
+                context.ledgerMaster, ledger->info().seq, ledger->info().hash);
+        }
+    }
 
-        if (okay)
-            ret[jss::validated] = isValidated (
-                context, lgr->info().seq, lgr->info().hash);
-    }       
+    return {result, rpcSUCCESS};
+}
+
+std::pair<org::xrpl::rpc::v1::GetTransactionResponse, grpc::Status>
+populateProtoResponse(
+    std::pair<TxResult, RPC::Status> const& res,
+    TxArgs const& args,
+    RPC::GRPCContext<org::xrpl::rpc::v1::GetTransactionRequest> const& context)
+{
+    org::xrpl::rpc::v1::GetTransactionResponse response;
+    grpc::Status status = grpc::Status::OK;
+    RPC::Status const& error = res.second;
+    TxResult const& result = res.first;
+    // handle errors
+    if (error.toErrorCode() != rpcSUCCESS)
+    {
+        if (error.toErrorCode() == rpcTXN_NOT_FOUND &&
+            result.searchedAll != SearchedAll::unknown)
+        {
+            status = {
+                grpc::StatusCode::NOT_FOUND,
+                "txn not found. searched_all = " +
+                    to_string(
+                        (result.searchedAll == SearchedAll::yes ? "true"
+                                                                : "false"))};
+        }
+        else
+        {
+            if (error.toErrorCode() == rpcTXN_NOT_FOUND)
+                status = {grpc::StatusCode::NOT_FOUND, "txn not found"};
+            else
+                status = {grpc::StatusCode::INTERNAL, error.message()};
+        }
+    }
+    // no errors
+    else if (result.txn)
+    {
+        auto& txn = result.txn;
+
+        std::shared_ptr<STTx const> stTxn = txn->getSTransaction();
+        if (args.binary)
+        {
+            Serializer s = stTxn->getSerializer();
+            response.set_transaction_binary(s.data(), s.size());
+        }
+        else
+        {
+            RPC::convert(*response.mutable_transaction(), stTxn);
+        }
+
+        response.set_hash(context.params.hash());
+
+        auto ledgerIndex = txn->getLedger();
+        response.set_ledger_index(ledgerIndex);
+        if (ledgerIndex)
+        {
+            auto ct =
+                context.app.getLedgerMaster().getCloseTimeBySeq(ledgerIndex);
+            if (ct)
+                response.mutable_date()->set_value(
+                    ct->time_since_epoch().count());
+        }
+
+        RPC::convert(
+            *response.mutable_meta()->mutable_transaction_result(),
+            txn->getResult());
+        response.mutable_meta()->mutable_transaction_result()->set_result(
+            transToken(txn->getResult()));
+
+        // populate binary metadata
+        if (auto blob = std::get_if<Blob>(&result.meta))
+        {
+            assert(args.binary);
+            Slice slice = makeSlice(*blob);
+            response.set_meta_binary(slice.data(), slice.size());
+        }
+        // populate meta data
+        else if (auto m = std::get_if<std::shared_ptr<TxMeta>>(&result.meta))
+        {
+            auto& meta = *m;
+            if (meta)
+            {
+                RPC::convert(*response.mutable_meta(), meta);
+                auto amt =
+                    getDeliveredAmount(context, stTxn, *meta, txn->getLedger());
+                if (amt)
+                {
+                    RPC::convert(
+                        *response.mutable_meta()->mutable_delivered_amount(),
+                        *amt);
+                }
+            }
+        }
+        response.set_validated(result.validated);
+    }
+    return {response, status};
+}
+
+Json::Value
+populateJsonResponse(
+    std::pair<TxResult, RPC::Status> const& res,
+    TxArgs const& args,
+    RPC::JsonContext const& context)
+{
+    Json::Value response;
+    RPC::Status const& error = res.second;
+    TxResult const& result = res.first;
+    // handle errors
+    if (error.toErrorCode() != rpcSUCCESS)
+    {
+        if (error.toErrorCode() == rpcTXN_NOT_FOUND &&
+            result.searchedAll != SearchedAll::unknown)
+        {
+            response = Json::Value(Json::objectValue);
+            response[jss::searched_all] =
+                (result.searchedAll == SearchedAll::yes);
+            error.inject(response);
+        }
+        else
+        {
+            error.inject(response);
+        }
+    }
+    // no errors
+    else if (result.txn)
+    {
+        response = result.txn->getJson(JsonOptions::include_date, args.binary);
+
+        // populate binary metadata
+        if (auto blob = std::get_if<Blob>(&result.meta))
+        {
+            assert(args.binary);
+            response[jss::meta] = strHex(makeSlice(*blob));
+        }
+        // populate meta data
+        else if (auto m = std::get_if<std::shared_ptr<TxMeta>>(&result.meta))
+        {
+            auto& meta = *m;
+            if (meta)
+            {
+                response[jss::meta] = meta->getJson(JsonOptions::none);
+                insertDeliveredAmount(
+                    response[jss::meta], context, result.txn, *meta);
+            }
+        }
+        response[jss::validated] = result.validated;
+    }
+
+    doTxChain(txn->getSTransaction()->getTxnType(), context, response);
     
-    doTxChain(txn->getSTransaction()->getTxnType(), context, ret);
+    return response;
+}
 
-    return ret;
+Json::Value
+doTxJson(RPC::JsonContext& context)
+{
+    // Deserialize and validate JSON arguments
+
+    if (!context.params.isMember(jss::transaction))
+        return rpcError(rpcINVALID_PARAMS);
+
+    std::string txHash = context.params[jss::transaction].asString();
+    if (!isHexTxID(txHash))
+        return rpcError(rpcNOT_IMPL);
+
+    TxArgs args;
+    args.hash = from_hex_text<uint256>(txHash);
+
+    args.binary = context.params.isMember(jss::binary) &&
+        context.params[jss::binary].asBool();
+
+    if (context.params.isMember(jss::min_ledger) &&
+        context.params.isMember(jss::max_ledger))
+    {
+        try
+        {
+            args.ledgerRange = std::make_pair(
+                context.params[jss::min_ledger].asUInt(),
+                context.params[jss::max_ledger].asUInt());
+        }
+        catch (...)
+        {
+            // One of the calls to `asUInt ()` failed.
+            return rpcError(rpcINVALID_LGR_RANGE);
+        }
+    }
+
+    std::pair<TxResult, RPC::Status> res = doTxHelp(context, args);
+    return populateJsonResponse(res, args, context);
+}
+
+std::pair<org::xrpl::rpc::v1::GetTransactionResponse, grpc::Status>
+doTxGrpc(RPC::GRPCContext<org::xrpl::rpc::v1::GetTransactionRequest>& context)
+{
+    // return values
+    org::xrpl::rpc::v1::GetTransactionResponse response;
+    grpc::Status status = grpc::Status::OK;
+
+    // input
+    org::xrpl::rpc::v1::GetTransactionRequest& request = context.params;
+
+    TxArgs args;
+
+    std::string const& hashBytes = request.hash();
+    args.hash = uint256::fromVoid(hashBytes.data());
+    if (args.hash.size() != hashBytes.size())
+    {
+        grpc::Status errorStatus{
+            grpc::StatusCode::INVALID_ARGUMENT, "ledger hash malformed"};
+        return {response, errorStatus};
+    }
+
+    args.binary = request.binary();
+
+    if (request.ledger_range().ledger_index_min() != 0 &&
+        request.ledger_range().ledger_index_max() != 0)
+    {
+        args.ledgerRange = std::make_pair(
+            request.ledger_range().ledger_index_min(),
+            request.ledger_range().ledger_index_max());
+    }
+
+    std::pair<TxResult, RPC::Status> res = doTxHelp(context, args);
+    return populateProtoResponse(res, args, context);
 }
 
 Json::Value doTxCount(RPC::Context& context)

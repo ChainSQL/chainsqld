@@ -19,21 +19,22 @@
 
 #include <ripple/app/paths/AccountCurrencies.h>
 #include <ripple/basics/contract.h>
+#include <ripple/beast/unit_test.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/to_string.h>
-#include <ripple/protocol/jss.h>
 #include <ripple/protocol/STParsedJSON.h>
 #include <ripple/protocol/TxFlags.h>
+#include <ripple/protocol/jss.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
-#include <ripple/rpc/impl/Tuning.h>
 #include <ripple/rpc/RPCHandler.h>
-#include <test/jtx.h>
-#include <ripple/beast/unit_test.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/rpc/impl/Tuning.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <test/jtx.h>
 #include <thread>
 
 namespace ripple {
@@ -44,80 +45,59 @@ namespace test {
 namespace detail {
 
 void
-stpath_append_one (STPath& st,
-    jtx::Account const& account)
+stpath_append_one(STPath& st, jtx::Account const& account)
 {
-    st.push_back(STPathElement({
-        account.id(), boost::none, boost::none }));
+    st.push_back(STPathElement({account.id(), boost::none, boost::none}));
 }
 
 template <class T>
-std::enable_if_t<
-    std::is_constructible<jtx::Account, T>::value>
-stpath_append_one (STPath& st,
-    T const& t)
+std::enable_if_t<std::is_constructible<jtx::Account, T>::value>
+stpath_append_one(STPath& st, T const& t)
 {
-    stpath_append_one(st, jtx::Account{ t });
+    stpath_append_one(st, jtx::Account{t});
 }
 
 void
-stpath_append_one (STPath& st,
-    jtx::IOU const& iou)
+stpath_append_one(STPath& st, jtx::IOU const& iou)
 {
-    st.push_back(STPathElement({
-        iou.account.id(), iou.currency, boost::none }));
+    st.push_back(STPathElement({iou.account.id(), iou.currency, boost::none}));
 }
 
 void
-stpath_append_one (STPath& st,
-    STPathElement const& pe)
+stpath_append_one(STPath& st, STPathElement const& pe)
 {
     st.push_back(pe);
 }
 
 void
-stpath_append_one (STPath& st,
-    jtx::BookSpec const& book)
+stpath_append_one(STPath& st, jtx::BookSpec const& book)
 {
-    st.push_back(STPathElement({
-        boost::none, book.currency, book.account }));
-}
-
-inline
-void
-stpath_append (STPath& st)
-{
+    st.push_back(STPathElement({boost::none, book.currency, book.account}));
 }
 
 template <class T, class... Args>
 void
-stpath_append (STPath& st,
-    T const& t, Args const&... args)
+stpath_append(STPath& st, T const& t, Args const&... args)
 {
     stpath_append_one(st, t);
-    stpath_append(st, args...);
-}
-
-inline
-void
-stpathset_append (STPathSet& st)
-{
+    if constexpr (sizeof...(args) > 0)
+        stpath_append(st, args...);
 }
 
 template <class... Args>
 void
-stpathset_append(STPathSet& st,
-    STPath const& p, Args const&... args)
+stpathset_append(STPathSet& st, STPath const& p, Args const&... args)
 {
     st.push_back(p);
-    stpathset_append(st, args...);
+    if constexpr (sizeof...(args) > 0)
+        stpathset_append(st, args...);
 }
 
-} // detail
+}  // namespace detail
 
 template <class... Args>
 STPath
-stpath (Args const&... args)
+stpath(Args const&... args)
 {
     STPath st;
     detail::stpath_append(st, args...);
@@ -126,7 +106,7 @@ stpath (Args const&... args)
 
 template <class... Args>
 bool
-same (STPathSet const& st1, Args const&... args)
+same(STPathSet const& st1, Args const&... args)
 {
     STPathSet st2;
     detail::stpathset_append(st2, args...);
@@ -144,8 +124,7 @@ same (STPathSet const& st1, Args const&... args)
 bool
 equal(STAmount const& sa1, STAmount const& sa2)
 {
-    return sa1 == sa2 &&
-        sa1.issue().account == sa2.issue().account;
+    return sa1 == sa2 && sa1.issue().account == sa2.issue().account;
 }
 
 Json::Value
@@ -178,11 +157,14 @@ rpf(jtx::Account const& src, jtx::Account const& dst, std::uint32_t num_src)
 }
 
 // Issue path element
-auto IPE(Issue const& iss)
+auto
+IPE(Issue const& iss)
 {
-    return STPathElement (
+    return STPathElement(
         STPathElement::typeCurrency | STPathElement::typeIssuer,
-        zxcAccount (), iss.currency, iss.account);
+        zxcAccount(),
+        iss.currency,
+        iss.account);
 };
 
 //------------------------------------------------------------------------------
@@ -205,7 +187,7 @@ public:
         wait_for(std::chrono::duration<Rep, Period> const& rel_time)
         {
             std::unique_lock<std::mutex> lk(mutex_);
-            auto b = cv_.wait_for(lk, rel_time, [=]{ return signaled_; });
+            auto b = cv_.wait_for(lk, rel_time, [=] { return signaled_; });
             signaled_ = false;
             return b;
         }
@@ -213,35 +195,50 @@ public:
         void
         signal()
         {
-            std::lock_guard<std::mutex> lk(mutex_);
+            std::lock_guard lk(mutex_);
             signaled_ = true;
             cv_.notify_all();
         }
     };
 
-    auto find_paths_request(jtx::Env& env,
-        jtx::Account const& src, jtx::Account const& dst,
-            STAmount const& saDstAmount,
-                boost::optional<STAmount> const& saSendMax = boost::none,
-                    boost::optional<Currency> const& saSrcCurrency = boost::none)
+    auto
+    find_paths_request(
+        jtx::Env& env,
+        jtx::Account const& src,
+        jtx::Account const& dst,
+        STAmount const& saDstAmount,
+        boost::optional<STAmount> const& saSendMax = boost::none,
+        boost::optional<Currency> const& saSrcCurrency = boost::none)
     {
         using namespace jtx;
 
         auto& app = env.app();
         Resource::Charge loadType = Resource::feeReferenceRPC;
         Resource::Consumer c;
-        RPC::Context context {env.journal, {}, app, loadType,
-            app.getOPs(), app.getLedgerMaster(), c, Role::USER, {}};
+
+        RPC::JsonContext context{
+            {env.journal,
+             app,
+             loadType,
+             app.getOPs(),
+             app.getLedgerMaster(),
+             c,
+             Role::USER,
+             {},
+             {},
+             RPC::APIVersionIfUnspecified},
+            {},
+            {}};
 
         Json::Value params = Json::objectValue;
         params[jss::command] = "ripple_path_find";
-        params[jss::source_account] = toBase58 (src);
-        params[jss::destination_account] = toBase58 (dst);
+        params[jss::source_account] = toBase58(src);
+        params[jss::destination_account] = toBase58(dst);
         params[jss::destination_amount] =
             saDstAmount.getJson(JsonOptions::none);
-        if(saSendMax)
+        if (saSendMax)
             params[jss::send_max] = saSendMax->getJson(JsonOptions::none);
-        if(saSrcCurrency)
+        if (saSrcCurrency)
         {
             auto& sc = params[jss::source_currencies] = Json::arrayValue;
             Json::Value j = Json::objectValue;
@@ -251,36 +248,36 @@ public:
 
         Json::Value result;
         gate g;
-        app.getJobQueue().postCoro(jtCLIENT, "RPC-Client",
-            [&](auto const& coro)
-            {
-                context.params = std::move (params);
+        app.getJobQueue().postCoro(
+            jtCLIENT, "RPC-Client", [&](auto const& coro) {
+                context.params = std::move(params);
                 context.coro = coro;
-                RPC::doCommand (context, result);
+                RPC::doCommand(context, result);
                 g.signal();
             });
 
         using namespace std::chrono_literals;
         BEAST_EXPECT(g.wait_for(5s));
-        BEAST_EXPECT(! result.isMember(jss::error));
+        BEAST_EXPECT(!result.isMember(jss::error));
         return result;
     }
 
-    std::tuple <STPathSet, STAmount, STAmount>
-    find_paths(jtx::Env& env,
-        jtx::Account const& src, jtx::Account const& dst,
-            STAmount const& saDstAmount,
-                boost::optional<STAmount> const& saSendMax = boost::none,
-                    boost::optional<Currency> const& saSrcCurrency = boost::none)
+    std::tuple<STPathSet, STAmount, STAmount>
+    find_paths(
+        jtx::Env& env,
+        jtx::Account const& src,
+        jtx::Account const& dst,
+        STAmount const& saDstAmount,
+        boost::optional<STAmount> const& saSendMax = boost::none,
+        boost::optional<Currency> const& saSrcCurrency = boost::none)
     {
-        Json::Value result = find_paths_request(env, src, dst, saDstAmount,
-            saSendMax, saSrcCurrency);
-        BEAST_EXPECT(! result.isMember(jss::error));
+        Json::Value result = find_paths_request(
+            env, src, dst, saDstAmount, saSendMax, saSrcCurrency);
+        BEAST_EXPECT(!result.isMember(jss::error));
 
         STAmount da;
         if (result.isMember(jss::destination_amount))
-            da = amountFromJson(sfGeneric,
-                result[jss::destination_amount]);
+            da = amountFromJson(sfGeneric, result[jss::destination_amount]);
 
         STAmount sa;
         STPathSet paths;
@@ -292,26 +289,23 @@ public:
                 auto const& path = alts[0u];
 
                 if (path.isMember(jss::source_amount))
-                    sa = amountFromJson(sfGeneric,
-                        path[jss::source_amount]);
-
+                    sa = amountFromJson(sfGeneric, path[jss::source_amount]);
 
                 if (path.isMember(jss::destination_amount))
-                    da = amountFromJson(sfGeneric,
-                        path[jss::destination_amount]);
+                    da = amountFromJson(
+                        sfGeneric, path[jss::destination_amount]);
 
                 if (path.isMember(jss::paths_computed))
                 {
                     Json::Value p;
                     p["Paths"] = path[jss::paths_computed];
                     STParsedJSONObject po("generic", p);
-                    paths = po.object->getFieldPathSet (sfPaths);
+                    paths = po.object->getFieldPathSet(sfPaths);
                 }
             }
         }
 
-        return std::make_tuple(
-            std::move(paths), std::move(sa), std::move(da));
+        return std::make_tuple(std::move(paths), std::move(sa), std::move(da));
     }
 
     void
@@ -329,29 +323,41 @@ public:
         auto& app = env.app();
         Resource::Charge loadType = Resource::feeReferenceRPC;
         Resource::Consumer c;
-        RPC::Context context {env.journal, {}, app, loadType,
-            app.getOPs(), app.getLedgerMaster(), c, Role::USER, {}};
+
+        RPC::JsonContext context{
+            {env.journal,
+             app,
+             loadType,
+             app.getOPs(),
+             app.getLedgerMaster(),
+             c,
+             Role::USER,
+             {},
+             {},
+             RPC::APIVersionIfUnspecified},
+            {},
+            {}};
         Json::Value result;
         gate g;
         // Test RPC::Tuning::max_src_cur source currencies.
-        app.getJobQueue().postCoro(jtCLIENT, "RPC-Client",
-            [&](auto const& coro)
-            {
-                context.params = rpf(Account("alice"), Account("bob"),
-                    RPC::Tuning::max_src_cur);
+        app.getJobQueue().postCoro(
+            jtCLIENT, "RPC-Client", [&](auto const& coro) {
+                context.params = rpf(
+                    Account("alice"), Account("bob"), RPC::Tuning::max_src_cur);
                 context.coro = coro;
                 RPC::doCommand(context, result);
                 g.signal();
             });
         BEAST_EXPECT(g.wait_for(5s));
-        BEAST_EXPECT(! result.isMember(jss::error));
+        BEAST_EXPECT(!result.isMember(jss::error));
 
         // Test more than RPC::Tuning::max_src_cur source currencies.
-        app.getJobQueue().postCoro(jtCLIENT, "RPC-Client",
-            [&](auto const& coro)
-            {
-                context.params = rpf(Account("alice"), Account("bob"),
-                    RPC::Tuning::max_src_cur + 1);
+        app.getJobQueue().postCoro(
+            jtCLIENT, "RPC-Client", [&](auto const& coro) {
+                context.params =
+                    rpf(Account("alice"),
+                        Account("bob"),
+                        RPC::Tuning::max_src_cur + 1);
                 context.coro = coro;
                 RPC::doCommand(context, result);
                 g.signal();
@@ -362,22 +368,20 @@ public:
         // Test RPC::Tuning::max_auto_src_cur source currencies.
         for (auto i = 0; i < (RPC::Tuning::max_auto_src_cur - 1); ++i)
             env.trust(Account("alice")[std::to_string(i + 100)](100), "bob");
-        app.getJobQueue().postCoro(jtCLIENT, "RPC-Client",
-            [&](auto const& coro)
-            {
+        app.getJobQueue().postCoro(
+            jtCLIENT, "RPC-Client", [&](auto const& coro) {
                 context.params = rpf(Account("alice"), Account("bob"), 0);
                 context.coro = coro;
                 RPC::doCommand(context, result);
                 g.signal();
             });
         BEAST_EXPECT(g.wait_for(5s));
-        BEAST_EXPECT(! result.isMember(jss::error));
+        BEAST_EXPECT(!result.isMember(jss::error));
 
         // Test more than RPC::Tuning::max_auto_src_cur source currencies.
         env.trust(Account("alice")["AUD"](100), "bob");
-        app.getJobQueue().postCoro(jtCLIENT, "RPC-Client",
-            [&](auto const& coro)
-            {
+        app.getJobQueue().postCoro(
+            jtCLIENT, "RPC-Client", [&](auto const& coro) {
                 context.params = rpf(Account("alice"), Account("bob"), 0);
                 context.coro = coro;
                 RPC::doCommand(context, result);
@@ -395,8 +399,8 @@ public:
         Env env(*this);
         env.fund(ZXC(10000), "alice", "bob");
 
-        auto const result = find_paths(env,
-            "alice", "bob", Account("bob")["USD"](5));
+        auto const result =
+            find_paths(env, "alice", "bob", Account("bob")["USD"](5));
         BEAST_EXPECT(std::get<0>(result).empty());
     }
 
@@ -411,8 +415,8 @@ public:
 
         STPathSet st;
         STAmount sa;
-        std::tie(st, sa, std::ignore) = find_paths(env,
-            "alice", "bob", Account("bob")["USD"](5));
+        std::tie(st, sa, std::ignore) =
+            find_paths(env, "alice", "bob", Account("bob")["USD"](5));
         BEAST_EXPECT(st.empty());
         BEAST_EXPECT(equal(sa, Account("alice")["USD"](5)));
     }
@@ -452,8 +456,8 @@ public:
 
         STPathSet st;
         STAmount sa;
-        std::tie(st, sa, std::ignore) = find_paths(env,
-            "alice", "bob", Account("bob")["USD"](5));
+        std::tie(st, sa, std::ignore) =
+            find_paths(env, "alice", "bob", Account("bob")["USD"](5));
         BEAST_EXPECT(same(st, stpath("gateway")));
         BEAST_EXPECT(equal(sa, Account("alice")["USD"](5)));
     }
@@ -466,8 +470,7 @@ public:
         Env env(*this);
         env.fund(ZXC(10000), "alice", "bob");
 
-        auto const result = find_paths(env,
-                                       "alice", "bob", ZXC(5));
+        auto const result = find_paths(env, "alice", "bob", ZXC(5));
         BEAST_EXPECT(std::get<0>(result).empty());
     }
 
@@ -479,8 +482,7 @@ public:
 
         {
             Env env(*this);
-            env.fund(ZXC(10000), "alice", "bob", "carol",
-                "dan", "edward");
+            env.fund(ZXC(10000), "alice", "bob", "carol", "dan", "edward");
             env.trust(Account("alice")["USD"](10), "bob");
             env.trust(Account("bob")["USD"](10), "carol");
             env.trust(Account("carol")["USD"](10), "edward");
@@ -490,8 +492,8 @@ public:
             STPathSet st;
             STAmount sa;
             STAmount da;
-            std::tie(st, sa, da) = find_paths(env,
-                "alice", "edward", Account("edward")["USD"](-1));
+            std::tie(st, sa, da) = find_paths(
+                env, "alice", "edward", Account("edward")["USD"](-1));
             BEAST_EXPECT(same(st, stpath("dan"), stpath("bob", "carol")));
             BEAST_EXPECT(equal(sa, Account("alice")["USD"](110)));
             BEAST_EXPECT(equal(da, Account("edward")["USD"](110)));
@@ -509,13 +511,19 @@ public:
             STPathSet st;
             STAmount sa;
             STAmount da;
-            std::tie(st, sa, da) = find_paths(env,
-                "alice", "bob", Account("bob")["AUD"](-1),
-                    boost::optional<STAmount>(ZXC(100000000)));
+            std::tie(st, sa, da) = find_paths(
+                env,
+                "alice",
+                "bob",
+                Account("bob")["AUD"](-1),
+                boost::optional<STAmount>(ZXC(100000000)));
             BEAST_EXPECT(st.empty());
-            std::tie(st, sa, da) = find_paths(env,
-                "alice", "bob", Account("bob")["USD"](-1),
-                    boost::optional<STAmount>(ZXC(100000000)));
+            std::tie(st, sa, da) = find_paths(
+                env,
+                "alice",
+                "bob",
+                Account("bob")["USD"](-1),
+                boost::optional<STAmount>(ZXC(100000000)));
             BEAST_EXPECT(sa == ZXC(100));
             BEAST_EXPECT(equal(da, Account("bob")["USD"](100)));
         }
@@ -599,7 +607,7 @@ public:
         env(pay(gw2, "alice", gw2_USD(70)));
         env(pay("alice", "bob", Account("bob")["USD"](77)),
             sendmax(Account("alice")["USD"](100)),
-                paths(Account("alice")["USD"]));
+            paths(Account("alice")["USD"]));
         env.require(balance("alice", USD(0)));
         env.require(balance("alice", gw2_USD(62.3)));
         env.require(balance("bob", USD(70)));
@@ -634,10 +642,14 @@ public:
 
         STPathSet st;
         STAmount sa;
-        std::tie(st, sa, std::ignore) = find_paths(env,
-            "alice", "bob", Account("bob")["USD"](5));
-        BEAST_EXPECT(same(st, stpath("gateway"), stpath("gateway2"),
-            stpath("dan"), stpath("carol")));
+        std::tie(st, sa, std::ignore) =
+            find_paths(env, "alice", "bob", Account("bob")["USD"](5));
+        BEAST_EXPECT(same(
+            st,
+            stpath("gateway"),
+            stpath("gateway2"),
+            stpath("dan"),
+            stpath("carol")));
         BEAST_EXPECT(equal(sa, Account("alice")["USD"](5)));
     }
 
@@ -655,15 +667,13 @@ public:
         env.require(balance("bob", Account("carol")["USD"](-75)));
         env.require(balance("carol", Account("bob")["USD"](75)));
 
-        auto result = find_paths(env,
-            "alice", "bob", Account("bob")["USD"](25));
+        auto result =
+            find_paths(env, "alice", "bob", Account("bob")["USD"](25));
         BEAST_EXPECT(std::get<0>(result).empty());
 
-        env(pay("alice", "bob", Account("alice")["USD"](25)),
-            ter(tecPATH_DRY));
+        env(pay("alice", "bob", Account("alice")["USD"](25)), ter(tecPATH_DRY));
 
-        result = find_paths(env,
-            "alice", "bob", Account("alice")["USD"](25));
+        result = find_paths(env, "alice", "bob", Account("alice")["USD"](25));
         BEAST_EXPECT(std::get<0>(result).empty());
 
         env.require(balance("alice", Account("bob")["USD"](0)));
@@ -744,8 +754,8 @@ public:
         env.require(balance("bob", AUD(10)));
         env.require(balance("carol", AUD(39)));
 
-        auto const result = find_paths(env,
-            "alice", "bob", Account("bob")["USD"](25));
+        auto const result =
+            find_paths(env, "alice", "bob", Account("bob")["USD"](25));
         BEAST_EXPECT(std::get<0>(result).empty());
     }
 
@@ -761,8 +771,8 @@ public:
 
         STPathSet st;
         STAmount sa;
-        std::tie(st, sa, std::ignore) = find_paths(env,
-            "alice", "carol", Account("carol")["USD"](5));
+        std::tie(st, sa, std::ignore) =
+            find_paths(env, "alice", "carol", Account("carol")["USD"](5));
         BEAST_EXPECT(same(st, stpath("bob")));
         BEAST_EXPECT(equal(sa, Account("alice")["USD"](5)));
     }
@@ -776,10 +786,11 @@ public:
         env.fund(ZXC(10000), "alice", "bob");
         env(trust("bob", Account("alice")["USD"](1000)),
             json("{\"" + sfQualityIn.fieldName + "\": 2000}"),
-                json("{\"" + sfQualityOut.fieldName + "\": 1400000000}"));
+            json("{\"" + sfQualityOut.fieldName + "\": 1400000000}"));
 
         Json::Value jv;
-        Json::Reader().parse(R"({
+        Json::Reader().parse(
+            R"({
                 "Balance" : {
                     "currency" : "USD",
                     "issuer" : "rrrrrrrrrrrrrrrrrrrrBZbvji",
@@ -801,10 +812,13 @@ public:
                     "value" : "0"
                 },
                 "LowNode" : "0000000000000000"
-            })", jv);
+            })",
+            jv);
 
-        auto const jv_l = env.le(keylet::line(Account("bob").id(),
-            Account("alice")["USD"].issue()))->getJson(JsonOptions::none);
+        auto const jv_l =
+            env.le(keylet::line(
+                       Account("bob").id(), Account("alice")["USD"].issue()))
+                ->getJson(JsonOptions::none);
         for (auto it = jv.begin(); it != jv.end(); ++it)
             BEAST_EXPECT(*it == jv_l[it.memberName()]);
     }
@@ -820,7 +834,8 @@ public:
         env.trust(Account("alice")["USD"](1000), "bob");
 
         Json::Value jv;
-        Json::Reader().parse(R"({
+        Json::Reader().parse(
+            R"({
                 "Balance" : {
                     "currency" : "USD",
                     "issuer" : "rrrrrrrrrrrrrrrrrrrrBZbvji",
@@ -840,17 +855,22 @@ public:
                     "value" : "1000"
                 },
                 "LowNode" : "0000000000000000"
-            })", jv);
+            })",
+            jv);
 
-        auto const jv_l = env.le(keylet::line(Account("bob").id(),
-            Account("alice")["USD"].issue()))->getJson(JsonOptions::none);
+        auto const jv_l =
+            env.le(keylet::line(
+                       Account("bob").id(), Account("alice")["USD"].issue()))
+                ->getJson(JsonOptions::none);
         for (auto it = jv.begin(); it != jv.end(); ++it)
             BEAST_EXPECT(*it == jv_l[it.memberName()]);
 
         env.trust(Account("bob")["USD"](0), "alice");
         env.trust(Account("alice")["USD"](0), "bob");
-        BEAST_EXPECT(env.le(keylet::line(Account("bob").id(),
-            Account("alice")["USD"].issue())) == nullptr);
+        BEAST_EXPECT(
+            env.le(keylet::line(
+                Account("bob").id(), Account("alice")["USD"].issue())) ==
+            nullptr);
     }
 
     void
@@ -865,7 +885,8 @@ public:
         env.trust(Account("bob")["USD"](0), "alice");
 
         Json::Value jv;
-        Json::Reader().parse(R"({
+        Json::Reader().parse(
+            R"({
                 "Balance" :
                 {
                     "currency" : "USD",
@@ -888,30 +909,36 @@ public:
                     "value" : "0"
                 },
                 "LowNode" : "0000000000000000"
-            })", jv);
+            })",
+            jv);
 
-        auto const jv_l = env.le(keylet::line(Account("alice").id(),
-            Account("bob")["USD"].issue()))->getJson(JsonOptions::none);
+        auto const jv_l =
+            env.le(keylet::line(
+                       Account("alice").id(), Account("bob")["USD"].issue()))
+                ->getJson(JsonOptions::none);
         for (auto it = jv.begin(); it != jv.end(); ++it)
             BEAST_EXPECT(*it == jv_l[it.memberName()]);
 
         env(pay("alice", "bob", Account("alice")["USD"](50)));
-        BEAST_EXPECT(env.le(keylet::line(Account("alice").id(),
-            Account("bob")["USD"].issue())) == nullptr);
+        BEAST_EXPECT(
+            env.le(keylet::line(
+                Account("alice").id(), Account("bob")["USD"].issue())) ==
+            nullptr);
     }
 
-    void path_find_01()
+    void
+    path_find_01()
     {
         testcase("Path Find: ZXC -> ZXC and ZXC -> IOU");
         using namespace jtx;
         Env env(*this);
-        Account A1 {"A1"};
-        Account A2 {"A2"};
-        Account A3 {"A3"};
-        Account G1 {"G1"};
-        Account G2 {"G2"};
-        Account G3 {"G3"};
-        Account M1 {"M1"};
+        Account A1{"A1"};
+        Account A2{"A2"};
+        Account A3{"A3"};
+        Account G1{"G1"};
+        Account G2{"G2"};
+        Account G3{"G3"};
+        Account M1{"M1"};
 
         env.fund(ZXC(100000), A1);
         env.fund(ZXC(10000), A2);
@@ -942,8 +969,8 @@ public:
 
         {
             auto const& send_amt = ZXC(10);
-            std::tie(st, sa, da) = find_paths(env, A1, A2, send_amt,
-                boost::none, zxcCurrency());
+            std::tie(st, sa, da) =
+                find_paths(env, A1, A2, send_amt, boost::none, zxcCurrency());
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(st.empty());
         }
@@ -952,16 +979,16 @@ public:
             // no path should exist for this since dest account
             // does not exist.
             auto const& send_amt = ZXC(200);
-            std::tie(st, sa, da) = find_paths(env, A1, Account{"A0"}, send_amt,
-                boost::none, zxcCurrency());
+            std::tie(st, sa, da) = find_paths(
+                env, A1, Account{"A0"}, send_amt, boost::none, zxcCurrency());
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(st.empty());
         }
 
         {
             auto const& send_amt = G3["ABC"](10);
-            std::tie(st, sa, da) = find_paths(env, A2, G3, send_amt,
-                boost::none, zxcCurrency());
+            std::tie(st, sa, da) =
+                find_paths(env, A2, G3, send_amt, boost::none, zxcCurrency());
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, ZXC(100)));
             BEAST_EXPECT(same(st, stpath(IPE(G3["ABC"]))));
@@ -969,8 +996,8 @@ public:
 
         {
             auto const& send_amt = A2["ABC"](1);
-            std::tie(st, sa, da) = find_paths(env, A1, A2, send_amt,
-                boost::none, zxcCurrency());
+            std::tie(st, sa, da) =
+                find_paths(env, A1, A2, send_amt, boost::none, zxcCurrency());
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, ZXC(10)));
             BEAST_EXPECT(same(st, stpath(IPE(G3["ABC"]), G3)));
@@ -978,23 +1005,24 @@ public:
 
         {
             auto const& send_amt = A3["ABC"](1);
-            std::tie(st, sa, da) = find_paths(env, A1, A3, send_amt,
-                boost::none, zxcCurrency());
+            std::tie(st, sa, da) =
+                find_paths(env, A1, A3, send_amt, boost::none, zxcCurrency());
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, ZXC(10)));
             BEAST_EXPECT(same(st, stpath(IPE(G3["ABC"]), G3, A2)));
         }
     }
 
-    void path_find_02()
+    void
+    path_find_02()
     {
         testcase("Path Find: non-ZXC -> ZXC");
         using namespace jtx;
         Env env(*this);
-        Account A1 {"A1"};
-        Account A2 {"A2"};
-        Account G3 {"G3"};
-        Account M1 {"M1"};
+        Account A1{"A1"};
+        Account A2{"A2"};
+        Account G3{"G3"};
+        Account M1{"M1"};
 
         env.fund(ZXC(1000), A1, A2, G3);
         env.fund(ZXC(11000), M1);
@@ -1015,101 +1043,24 @@ public:
         STAmount sa, da;
 
         auto const& send_amt = ZXC(10);
-        std::tie(st, sa, da) = find_paths(env, A1, A2, send_amt,
-            boost::none, A2["ABC"].currency);
+        std::tie(st, sa, da) =
+            find_paths(env, A1, A2, send_amt, boost::none, A2["ABC"].currency);
         BEAST_EXPECT(equal(da, send_amt));
         BEAST_EXPECT(equal(sa, A1["ABC"](1)));
         BEAST_EXPECT(same(st, stpath(G3, IPE(zxcIssue()))));
     }
 
-    void path_find_03()
-    {
-        testcase("Path Find: CNY");
-        using namespace jtx;
-        Env env{*this,
-                supported_amendments().reset(featureFlow)};
-
-        Account A1 {"A1"};
-        Account A2 {"A2"};
-        Account A3 {"A3"};
-        Account SRC {"SRC"};
-        Account GATEWAY_DST {"GATEWAY_DST"};
-        Account MONEY_MAKER_1 {"MONEY_MAKER_1"};
-        Account MONEY_MAKER_2 {"MONEY_MAKER_2"};
-
-        env.fund(ZXC(4999.999898), SRC);
-        env.fund(ZXC(10846.168060), GATEWAY_DST);
-        env.fund(ZXC(4291.430036), MONEY_MAKER_1);
-        env.fund(ZXC(106839.375770), MONEY_MAKER_2);
-        env.fund(ZXC(1240.997150), A1);
-        env.fund(ZXC(14115.046893), A2);
-        env.fund(ZXC(512087.883181), A3);
-        env.close();
-
-        env.trust(MONEY_MAKER_1["CNY"](1001), MONEY_MAKER_2);
-        env.trust(GATEWAY_DST["CNY"](1001), MONEY_MAKER_2);
-        env.trust(MONEY_MAKER_1["CNY"](1000000), A1);
-        env.trust(MONEY_MAKER_1["BTC"](10000), A1);
-        env.trust(GATEWAY_DST["USD"](1000), A1);
-        env.trust(GATEWAY_DST["CNY"](1000), A1);
-        env.trust(MONEY_MAKER_1["CNY"](3000), A2);
-        env.trust(GATEWAY_DST["CNY"](3000), A2);
-        env.trust(MONEY_MAKER_1["CNY"](10000), A3);
-        env.trust(GATEWAY_DST["CNY"](10000), A3);
-        env.close();
-
-        env(pay(MONEY_MAKER_1, MONEY_MAKER_2,
-            STAmount{ MONEY_MAKER_1["CNY"].issue(), UINT64_C(3599), -13}));
-        env(pay(GATEWAY_DST, MONEY_MAKER_2,
-            GATEWAY_DST["CNY"](137.6852546843001)));
-        env(pay(MONEY_MAKER_1, A1,
-            STAmount{ MONEY_MAKER_1["CNY"].issue(), UINT64_C(119761), -13}));
-        env(pay(GATEWAY_DST, A1, GATEWAY_DST["CNY"](33.047994)));
-        env(pay(MONEY_MAKER_1, A2, MONEY_MAKER_1["CNY"](209.3081873019994)));
-        env(pay(GATEWAY_DST, A2, GATEWAY_DST["CNY"](694.6251706504019)));
-        env(pay(MONEY_MAKER_1, A3, MONEY_MAKER_1["CNY"](23.617050013581)));
-        env(pay(GATEWAY_DST, A3, GATEWAY_DST["CNY"](70.999614649799)));
-        env.close();
-
-        env(offer(MONEY_MAKER_2, ZXC(1), GATEWAY_DST["CNY"](1)));
-        env(offer(MONEY_MAKER_2, GATEWAY_DST["CNY"](1), ZXC(1)));
-        env(offer(MONEY_MAKER_2, GATEWAY_DST["CNY"](318000), ZXC(53000)));
-        env(offer(MONEY_MAKER_2, ZXC(209), MONEY_MAKER_2["CNY"](4.18)));
-        env(offer(MONEY_MAKER_2, MONEY_MAKER_1["CNY"](990000), ZXC(10000)));
-        env(offer(MONEY_MAKER_2, MONEY_MAKER_1["CNY"](9990000), ZXC(10000)));
-        env(offer(MONEY_MAKER_2, GATEWAY_DST["CNY"](8870000), ZXC(10000)));
-        env(offer(MONEY_MAKER_2, ZXC(232), MONEY_MAKER_2["CNY"](5.568)));
-        env(offer(A2, ZXC(2000), MONEY_MAKER_1["CNY"](66.8)));
-        env(offer(A2, ZXC(1200), GATEWAY_DST["CNY"](42)));
-        env(offer(A2, MONEY_MAKER_1["CNY"](43.2), ZXC(900)));
-        env(offer(A3, MONEY_MAKER_1["CNY"](2240), ZXC(50000)));
-
-        STPathSet st;
-        STAmount sa, da;
-
-        auto const& send_amt = GATEWAY_DST["CNY"](10.1);
-        std::tie(st, sa, da) = find_paths(env, SRC, GATEWAY_DST, send_amt,
-            boost::none, zxcCurrency());
-        BEAST_EXPECT(equal(da, send_amt));
-        BEAST_EXPECT(equal(sa, ZXC(288.571429)));
-        BEAST_EXPECT(same(st,
-            stpath(IPE(MONEY_MAKER_1["CNY"]), MONEY_MAKER_1, A3),
-            stpath(IPE(MONEY_MAKER_1["CNY"]), MONEY_MAKER_1, MONEY_MAKER_2),
-            stpath(IPE(MONEY_MAKER_1["CNY"]), MONEY_MAKER_1, A2),
-            stpath(IPE(MONEY_MAKER_1["CNY"]), MONEY_MAKER_1, A1)
-        ));
-    }
-
-    void path_find_04()
+    void
+    path_find_04()
     {
         testcase("Path Find: Bitstamp and SnapSwap, liquidity with no offers");
         using namespace jtx;
         Env env(*this);
-        Account A1 {"A1"};
-        Account A2 {"A2"};
-        Account G1BS {"G1BS"};
-        Account G2SW {"G2SW"};
-        Account M1 {"M1"};
+        Account A1{"A1"};
+        Account A2{"A2"};
+        Account G1BS{"G1BS"};
+        Account G2SW{"G2SW"};
+        Account M1{"M1"};
 
         env.fund(ZXC(1000), G1BS, G2SW, A1, A2);
         env.fund(ZXC(11000), M1);
@@ -1135,8 +1086,8 @@ public:
 
         {
             auto const& send_amt = A2["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, A1, A2, send_amt,
-                boost::none, A2["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, A1, A2, send_amt, boost::none, A2["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, A1["HKD"](10)));
             BEAST_EXPECT(same(st, stpath(G1BS, M1, G2SW)));
@@ -1144,8 +1095,8 @@ public:
 
         {
             auto const& send_amt = A1["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, A2, A1, send_amt,
-                boost::none, A1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, A2, A1, send_amt, boost::none, A1["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, A2["HKD"](10)));
             BEAST_EXPECT(same(st, stpath(G2SW, M1, G1BS)));
@@ -1153,8 +1104,8 @@ public:
 
         {
             auto const& send_amt = A2["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, G1BS, A2, send_amt,
-                boost::none, A1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, G1BS, A2, send_amt, boost::none, A1["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, G1BS["HKD"](10)));
             BEAST_EXPECT(same(st, stpath(M1, G2SW)));
@@ -1162,8 +1113,8 @@ public:
 
         {
             auto const& send_amt = M1["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, M1, G1BS, send_amt,
-                boost::none, A1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, M1, G1BS, send_amt, boost::none, A1["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, M1["HKD"](10)));
             BEAST_EXPECT(st.empty());
@@ -1171,30 +1122,30 @@ public:
 
         {
             auto const& send_amt = A1["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, G2SW, A1, send_amt,
-                boost::none, A1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, G2SW, A1, send_amt, boost::none, A1["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, G2SW["HKD"](10)));
             BEAST_EXPECT(same(st, stpath(M1, G1BS)));
         }
-
     }
 
-    void path_find_05()
+    void
+    path_find_05()
     {
         testcase("Path Find: non-ZXC -> non-ZXC, same currency");
         using namespace jtx;
         Env env(*this);
-        Account A1 {"A1"};
-        Account A2 {"A2"};
-        Account A3 {"A3"};
-        Account A4 {"A4"};
-        Account G1 {"G1"};
-        Account G2 {"G2"};
-        Account G3 {"G3"};
-        Account G4 {"G4"};
-        Account M1 {"M1"};
-        Account M2 {"M2"};
+        Account A1{"A1"};
+        Account A2{"A2"};
+        Account A3{"A3"};
+        Account A4{"A4"};
+        Account G1{"G1"};
+        Account G2{"G2"};
+        Account G3{"G3"};
+        Account G4{"G4"};
+        Account M1{"M1"};
+        Account M2{"M2"};
 
         env.fund(ZXC(1000), A1, A2, A3, G1, G2, G3, G4);
         env.fund(ZXC(10000), A4);
@@ -1227,98 +1178,99 @@ public:
         STAmount sa, da;
 
         {
-            //A) Borrow or repay --
+            // A) Borrow or repay --
             //  Source -> Destination (repay source issuer)
             auto const& send_amt = G1["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, A1, G1, send_amt,
-                boost::none, G1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, A1, G1, send_amt, boost::none, G1["HKD"].currency);
             BEAST_EXPECT(st.empty());
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, A1["HKD"](10)));
         }
 
         {
-            //A2) Borrow or repay --
+            // A2) Borrow or repay --
             //  Source -> Destination (repay destination issuer)
             auto const& send_amt = A1["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, A1, G1, send_amt,
-                boost::none, G1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, A1, G1, send_amt, boost::none, G1["HKD"].currency);
             BEAST_EXPECT(st.empty());
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, A1["HKD"](10)));
         }
 
         {
-            //B) Common gateway --
+            // B) Common gateway --
             //  Source -> AC -> Destination
             auto const& send_amt = A3["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, A1, A3, send_amt,
-                boost::none, G1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, A1, A3, send_amt, boost::none, G1["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, A1["HKD"](10)));
             BEAST_EXPECT(same(st, stpath(G1)));
         }
 
         {
-            //C) Gateway to gateway --
+            // C) Gateway to gateway --
             //  Source -> OB -> Destination
             auto const& send_amt = G2["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, G1, G2, send_amt,
-                boost::none, G1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, G1, G2, send_amt, boost::none, G1["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, G1["HKD"](10)));
-            BEAST_EXPECT(same(st,
+            BEAST_EXPECT(same(
+                st,
                 stpath(IPE(G2["HKD"])),
                 stpath(M1),
                 stpath(M2),
-                stpath(IPE(zxcIssue()), IPE(G2["HKD"]))
-            ));
+                stpath(IPE(zxcIssue()), IPE(G2["HKD"]))));
         }
 
         {
-            //D) User to unlinked gateway via order book --
+            // D) User to unlinked gateway via order book --
             //  Source -> AC -> OB -> Destination
             auto const& send_amt = G2["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, A1, G2, send_amt,
-                boost::none, G1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, A1, G2, send_amt, boost::none, G1["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, A1["HKD"](10)));
-            BEAST_EXPECT(same(st,
+            BEAST_EXPECT(same(
+                st,
                 stpath(G1, M1),
                 stpath(G1, M2),
                 stpath(G1, IPE(G2["HKD"])),
-                stpath(G1, IPE(zxcIssue()), IPE(G2["HKD"]))
-            ));
+                stpath(G1, IPE(zxcIssue()), IPE(G2["HKD"]))));
         }
 
         {
-            //I4) ZXC bridge" --
+            // I4) ZXC bridge" --
             //  Source -> AC -> OB to ZXC -> OB from ZXC -> AC -> Destination
             auto const& send_amt = A2["HKD"](10);
-            std::tie(st, sa, da) = find_paths(env, A1, A2, send_amt,
-                boost::none, G1["HKD"].currency);
+            std::tie(st, sa, da) = find_paths(
+                env, A1, A2, send_amt, boost::none, G1["HKD"].currency);
             BEAST_EXPECT(equal(da, send_amt));
             BEAST_EXPECT(equal(sa, A1["HKD"](10)));
-            BEAST_EXPECT(same(st,
+            BEAST_EXPECT(same(
+                st,
                 stpath(G1, M1, G2),
                 stpath(G1, M2, G2),
                 stpath(G1, IPE(G2["HKD"]), G2),
-                stpath(G1, IPE(zxcIssue()), IPE(G2["HKD"]), G2)
-            ));
+                stpath(G1, IPE(zxcIssue()), IPE(G2["HKD"]), G2)));
         }
     }
 
-    void path_find_06()
+    void
+    path_find_06()
     {
         testcase("Path Find: non-ZXC -> non-ZXC, same currency)");
         using namespace jtx;
         Env env(*this);
-        Account A1 {"A1"};
-        Account A2 {"A2"};
-        Account A3 {"A3"};
-        Account G1 {"G1"};
-        Account G2 {"G2"};
-        Account M1 {"M1"};
+        Account A1{"A1"};
+        Account A2{"A2"};
+        Account A3{"A3"};
+        Account G1{"G1"};
+        Account G2{"G2"};
+        Account M1{"M1"};
 
         env.fund(ZXC(11000), M1);
         env.fund(ZXC(1000), A1, A2, A3, G1, G2);
@@ -1339,18 +1291,16 @@ public:
 
         env(offer(M1, G1["HKD"](1000), G2["HKD"](1000)));
 
-        //E) Gateway to user
+        // E) Gateway to user
         //  Source -> OB -> AC -> Destination
         auto const& send_amt = A2["HKD"](10);
         STPathSet st;
         STAmount sa, da;
-        std::tie(st, sa, da) = find_paths(env, G1, A2, send_amt,
-            boost::none, G1["HKD"].currency);
+        std::tie(st, sa, da) =
+            find_paths(env, G1, A2, send_amt, boost::none, G1["HKD"].currency);
         BEAST_EXPECT(equal(da, send_amt));
         BEAST_EXPECT(equal(sa, G1["HKD"](10)));
-        BEAST_EXPECT(same(st,
-            stpath(M1, G2),
-            stpath(IPE(G2["HKD"]), G2)));
+        BEAST_EXPECT(same(st, stpath(M1, G2), stpath(IPE(G2["HKD"]), G2)));
     }
 
     void
@@ -1384,14 +1334,13 @@ public:
 
         path_find_01();
         path_find_02();
-        path_find_03();
         path_find_04();
         path_find_05();
         path_find_06();
     }
 };
 
-BEAST_DEFINE_TESTSUITE(Path,app,ripple);
+BEAST_DEFINE_TESTSUITE(Path, app, ripple);
 
-} // test
-} // ripple
+}  // namespace test
+}  // namespace ripple

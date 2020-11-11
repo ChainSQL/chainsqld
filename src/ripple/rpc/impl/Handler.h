@@ -20,9 +20,12 @@
 #ifndef RIPPLE_RPC_HANDLER_H_INCLUDED
 #define RIPPLE_RPC_HANDLER_H_INCLUDED
 
+#include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/core/Config.h>
 #include <ripple/rpc/RPCHandler.h>
 #include <ripple/rpc/Status.h>
+#include <ripple/rpc/impl/Tuning.h>
 #include <vector>
 
 namespace Json {
@@ -34,16 +37,16 @@ namespace RPC {
 
 // Under what condition can we call this RPC?
 enum Condition {
-    NO_CONDITION     = 0,
-    NEEDS_NETWORK_CONNECTION  = 1,
-    NEEDS_CURRENT_LEDGER  = 2 + NEEDS_NETWORK_CONNECTION,
-    NEEDS_CLOSED_LEDGER   = 4 + NEEDS_NETWORK_CONNECTION,
+    NO_CONDITION = 0,
+    NEEDS_NETWORK_CONNECTION = 1,
+    NEEDS_CURRENT_LEDGER = 2 + NEEDS_NETWORK_CONNECTION,
+    NEEDS_CLOSED_LEDGER = 4 + NEEDS_NETWORK_CONNECTION,
 };
 
 struct Handler
 {
     template <class JsonValue>
-    using Method = std::function <Status (Context&, JsonValue&)>;
+    using Method = std::function<Status(JsonContext&, JsonValue&)>;
 
     const char* name_;
     Method<Json::Value> valueMethod_;
@@ -51,22 +54,84 @@ struct Handler
     RPC::Condition condition_;
 };
 
-Handler const* getHandler (std::string const&);
+Handler const*
+getHandler(unsigned int version, std::string const&);
 
 /** Return a Json::objectValue with a single entry. */
 template <class Value>
-Json::Value makeObjectValue (
-    Value const& value, Json::StaticString const& field = jss::message)
+Json::Value
+makeObjectValue(
+    Value const& value,
+    Json::StaticString const& field = jss::message)
 {
-    Json::Value result (Json::objectValue);
+    Json::Value result(Json::objectValue);
     result[field] = value;
     return result;
 }
 
 /** Return names of all methods. */
-std::vector<char const*> getHandlerNames();
+std::vector<char const*>
+getHandlerNames();
 
-} // RPC
-} // ripple
+template <class T>
+error_code_i
+conditionMet(Condition condition_required, T& context)
+{
+    if ((condition_required & NEEDS_NETWORK_CONNECTION) &&
+        (context.netOps.getOperatingMode() < OperatingMode::SYNCING))
+    {
+        JLOG(context.j.info()) << "Insufficient network mode for RPC: "
+                               << context.netOps.strOperatingMode();
+
+        if (context.apiVersion == 1)
+            return rpcNO_NETWORK;
+        return rpcNOT_SYNCED;
+    }
+
+    if (context.app.getOPs().isAmendmentBlocked() &&
+        (condition_required & NEEDS_CURRENT_LEDGER ||
+         condition_required & NEEDS_CLOSED_LEDGER))
+    {
+        return rpcAMENDMENT_BLOCKED;
+    }
+
+    if (!context.app.config().standalone() &&
+        condition_required & NEEDS_CURRENT_LEDGER)
+    {
+        if (context.ledgerMaster.getValidatedLedgerAge() >
+            Tuning::maxValidatedLedgerAge)
+        {
+            if (context.apiVersion == 1)
+                return rpcNO_CURRENT;
+            return rpcNOT_SYNCED;
+        }
+
+        auto const cID = context.ledgerMaster.getCurrentLedgerIndex();
+        auto const vID = context.ledgerMaster.getValidLedgerIndex();
+
+        if (cID + 10 < vID)
+        {
+            JLOG(context.j.debug())
+                << "Current ledger ID(" << cID
+                << ") is less than validated ledger ID(" << vID << ")";
+            if (context.apiVersion == 1)
+                return rpcNO_CURRENT;
+            return rpcNOT_SYNCED;
+        }
+    }
+
+    if ((condition_required & NEEDS_CLOSED_LEDGER) &&
+        !context.ledgerMaster.getClosedLedger())
+    {
+        if (context.apiVersion == 1)
+            return rpcNO_CLOSED;
+        return rpcNOT_SYNCED;
+    }
+
+    return rpcSUCCESS;
+}
+
+}  // namespace RPC
+}  // namespace ripple
 
 #endif

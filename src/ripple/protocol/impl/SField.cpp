@@ -55,8 +55,9 @@ SF_U8 const sfMethod            (access, STI_UINT8, 2, "Method");
 
 // 8-bit integers (uncommon)
 SF_U8 const sfTickSize          (access, STI_UINT8, 16, "TickSize");
-SF_U8 const sfSchemaStrategy    (access, STI_UINT8, 17, "SchemaStrategy");
-SF_U8 const sfSigned            (access, STI_UINT8, 18, "Signed");
+SF_U8 const sfUNLModifyDisabling(access, STI_UINT8, 17, "UNLModifyDisabling");
+SF_U8 const sfSchemaStrategy    (access, STI_UINT8, 28, "SchemaStrategy");
+SF_U8 const sfSigned            (access, STI_UINT8, 29, "Signed");
 
 // 16-bit integers
 SF_U16 const sfLedgerEntryType (access, STI_UINT16, 1, "LedgerEntryType", SField::sMD_Never);
@@ -125,9 +126,10 @@ SF_U64 const sfLowNode          (access, STI_UINT64, 7, "LowNode");
 SF_U64 const sfHighNode         (access, STI_UINT64, 8, "HighNode");
 SF_U64 const sfDestinationNode  (access, STI_UINT64, 9, "DestinationNode");
 SF_U64 const sfCookie           (access, STI_UINT64, 10,"Cookie");
+SF_U64 const sfServerVersion    (access, STI_UINT64, 11, "ServerVersion");
 
-SF_U64 const sfDropsPerByte(access, STI_UINT64, 11, "DropsPerByte");
-SF_U64 const sfIssuerNode	 (access, STI_UINT64, 21, "IssuerNode");
+SF_U64 const sfDropsPerByte  (access, STI_UINT64, 21, "DropsPerByte");
+SF_U64 const sfIssuerNode	 (access, STI_UINT64, 22, "IssuerNode");
 
 
 
@@ -161,6 +163,7 @@ SF_U256 const sfCurTxHash        (access,  STI_HASH256, 55, "CurTxHash");
 SF_U256 const sfFutureTxHash     (access,  STI_HASH256, 56, "FutureTxHash");
 SF_U256 const sfChainId			 (access,  STI_HASH256, 57, "ChainId");
 SF_U256 const sfAnchorLedgerHash (access,  STI_HASH256, 58, "AnchorLedgerHash");
+SF_U256 const sfSchemaID	     (access, STI_HASH256, 59, "SchemaID");
 
 // 256-bit (uncommon)
 SF_U256 const sfBookDirectory (access, STI_HASH256, 16, "BookDirectory");
@@ -172,7 +175,7 @@ SF_U256 const sfDigest        (access, STI_HASH256, 21, "Digest");
 SF_U256 const sfPayChannel    (access, STI_HASH256, 22, "Channel");
 SF_U256 const sfConsensusHash (access, STI_HASH256, 23, "ConsensusHash");
 SF_U256 const sfCheckID       (access, STI_HASH256, 24, "CheckID");
-SF_U256 const sfSchemaID	  (access, STI_HASH256, 25, "SchemaID");
+SF_U256 const sfValidatedHash (access, STI_HASH256, 25, "ValidatedHash");
 
 
 // currency amount (common)
@@ -191,7 +194,7 @@ SF_Amount const sfDeliverMin  (access, STI_AMOUNT, 10, "DeliverMin");
 SF_Amount const sfMinimumOffer    (access, STI_AMOUNT, 16, "MinimumOffer");
 SF_Amount const sfRippleEscrow    (access, STI_AMOUNT, 17, "RippleEscrow");
 SF_Amount const sfDeliveredAmount (access, STI_AMOUNT, 18, "DeliveredAmount");
-SF_Amount const sfContractValue	  (access, STI_AMOUNT, 19, "ContractValue");
+SF_Amount const sfContractValue	  (access, STI_AMOUNT, 29, "ContractValue");
 
 // variable length (common)
 SF_Blob const sfPublicKey       (access, STI_VL,  1, "PublicKey");
@@ -214,6 +217,10 @@ SF_Blob const sfCertificate		(access, STI_VL, 15, "Certificate");
 SF_Blob const sfFulfillment     (access, STI_VL, 16, "Fulfillment");
 SF_Blob const sfCondition       (access, STI_VL, 17, "Condition");
 SF_Blob const sfMasterSignature (access, STI_VL, 18, "MasterSignature", SField::sMD_Default, SField::notSigning);
+SF_Blob const sfUNLModifyValidator(access, STI_VL, 19, "UNLModifyValidator");
+SF_Blob const sfValidatorToDisable(access, STI_VL, 20, "ValidatorToDisable");
+SF_Blob const sfValidatorToReEnable(access, STI_VL, 21, "ValidatorToReEnable");
+
 SF_Blob const sfToken			(access, STI_VL, 50, "Token");
 SF_Blob const sfTableName		(access, STI_VL, 51, "TableName");
 SF_Blob const sfRaw				(access, STI_VL, 52, "Raw");
@@ -346,18 +353,19 @@ SField::SField(private_access_tag_t, int fc)
 }
 
 SField const&
-SField::getField (int code)
+SField::getField(int code)
 {
-    auto it = knownCodeToField.find (code);
+    auto it = knownCodeToField.find(code);
 
-    if (it != knownCodeToField.end ())
+    if (it != knownCodeToField.end())
     {
-        return * (it->second);
+        return *(it->second);
     }
     return sfInvalid;
 }
 
-int SField::compare (SField const& f1, SField const& f2)
+int
+SField::compare(SField const& f1, SField const& f2)
 {
     // -1 = f1 comes before f2, 0 = illegal combination, 1 = f1 comes after f2
     if ((f1.fieldCode <= 0) || (f2.fieldCode <= 0))
@@ -373,14 +381,15 @@ int SField::compare (SField const& f1, SField const& f2)
 }
 
 SField const&
-SField::getField (std::string const& fieldName)
+SField::getField(std::string const& fieldName)
 {
-    for (auto const & fieldPair : knownCodeToField)
+    for (auto const& [_, f] : knownCodeToField)
     {
-        if (fieldPair.second->fieldName == fieldName)
-            return * (fieldPair.second);
+        (void)_;
+        if (f->fieldName == fieldName)
+            return *f;
     }
     return sfInvalid;
 }
 
-} // ripple
+}  // namespace ripple

@@ -33,14 +33,43 @@
 #include <shared_mutex>
 #include <numeric>
 #include <peersafe/app/misc/ConfigSite.h>
+#include <shared_mutex>
 
 namespace ripple {
+
+// predeclaration
+class Overlay;
+class HashRouter;
+class STValidation;
+
+enum class ListDisposition {
+    /// List is valid
+    accepted = 0,
+
+    /// Same sequence as current list
+    same_sequence,
+
+    /// List version is not supported
+    unsupported_version,
+
+    /// List signed by untrusted publisher key
+    untrusted,
+
+/** Changes in trusted nodes after updating validator list
+*/
+struct TrustChanges
+{
+    explicit TrustChanges() = default;
+
+    hash_set<NodeID> added;
+    hash_set<NodeID> removed;
+};
 
 std::string
 to_string(ListDisposition disposition);
 
 /** Changes in trusted nodes after updating validator list
-*/
+ */
 struct TrustChanges
 {
     explicit TrustChanges() = default;
@@ -103,12 +132,18 @@ class ValidatorList
         std::size_t sequence;
         TimeKeeper::time_point expiration;
         std::string siteUri;
+        std::string rawManifest;
+        std::string rawBlob;
+        std::string rawSignature;
+        std::uint32_t rawVersion;
+        uint256 hash;
     };
 
     ManifestCache& validatorManifests_;
     ManifestCache& publisherManifests_;
     TimeKeeper& timeKeeper_;
-    beast::Journal j_;
+    boost::filesystem::path const dataPath_;
+    beast::Journal const j_;
     std::shared_timed_mutex mutable mutex_;
 
     std::atomic<std::size_t> quorum_;
@@ -121,27 +156,59 @@ class ValidatorList
     hash_map<PublicKey, std::size_t> keyListings_;
 
     // The current list of trusted master keys
-    hash_set<PublicKey> trustedKeys_;
+    hash_set<PublicKey> trustedMasterKeys_;
+
+    // The current list of trusted signing keys. For those validators using
+    // a manifest, the signing key is the ephemeral key. For the ones using
+    // a seed, the signing key is the same as the master key.
+    hash_set<PublicKey> trustedSigningKeys_;
 
 	std::vector<PublicKey> validators_;
 
     PublicKey localPubKey_;
 
+    // The master public keys of the current negative UNL
+    hash_set<PublicKey> negativeUNL_;
+
     // Currently supported version of publisher list format
     static constexpr std::uint32_t requiredListVersion = 1;
-
-	// The maximum size of a trusted set for which greater than Byzantine fault
-	// tolerance isn't needed.
-	std::size_t const BYZANTINE_THRESHOLD{ 10 };
+    static const std::string filePrefix_;
 
 public:
-    ValidatorList (
+    ValidatorList(
         ManifestCache& validatorManifests,
         ManifestCache& publisherManifests,
         TimeKeeper& timeKeeper,
+        std::string const& databasePath,
         beast::Journal j,
         boost::optional<std::size_t> minimumQuorum = boost::none);
-    ~ValidatorList () = default;
+    ~ValidatorList() = default;
+
+    /** Describes the result of processing a Validator List (UNL),
+    including some of the information from the list which can
+    be used by the caller to know which list publisher is
+    involved.
+    */
+    struct PublisherListStats
+    {
+        explicit PublisherListStats(ListDisposition d) : disposition(d)
+        {
+        }
+
+        PublisherListStats(
+            ListDisposition d,
+            PublicKey key,
+            bool avail,
+            std::size_t seq)
+            : disposition(d), publisherKey(key), available(avail), sequence(seq)
+        {
+        }
+
+        ListDisposition disposition;
+        boost::optional<PublicKey> publisherKey;
+        bool available = false;
+        boost::optional<std::size_t> sequence;
+    };
 
     /** Load configured trusted keys.
 
@@ -161,10 +228,48 @@ public:
         @return `false` if an entry is invalid or unparsable
     */
     bool
-    load (
+    load(
         PublicKey const& localSigningKey,
         std::vector<std::string> const& configKeys,
         std::vector<std::string> const& publisherKeys);
+
+    /** Apply published list of public keys, then broadcast it to all
+        peers that have not seen it or sent it.
+
+        @param manifest base64-encoded publisher key manifest
+
+        @param blob base64-encoded json containing published validator list
+
+        @param signature Signature of the decoded blob
+
+        @param version Version of published list format
+
+        @param siteUri Uri of the site from which the list was validated
+
+        @param hash Hash of the data parameters
+
+        @param overlay Overlay object which will handle sending the message
+
+        @param hashRouter HashRouter object which will determine which
+            peers not to send to
+
+        @return `ListDisposition::accepted`, plus some of the publisher
+            information, if list was successfully applied
+
+        @par Thread Safety
+
+        May be called concurrently
+    */
+    PublisherListStats
+    applyListAndBroadcast(
+        std::string const& manifest,
+        std::string const& blob,
+        std::string const& signature,
+        std::uint32_t version,
+        std::string siteUri,
+        uint256 const& hash,
+        Overlay& overlay,
+        HashRouter& hashRouter);
 
     /** Apply published list of public keys
 
@@ -176,19 +281,38 @@ public:
 
         @param version Version of published list format
 
-        @return `ListDisposition::accepted` if list was successfully applied
+        @param siteUri Uri of the site from which the list was validated
+
+        @param hash Optional hash of the data parameters.
+            Defaults to uninitialized
+
+        @return `ListDisposition::accepted`, plus some of the publisher
+            information, if list was successfully applied
 
         @par Thread Safety
 
         May be called concurrently
     */
-    ListDisposition
-    applyList (
+    PublisherListStats
+    applyList(
         std::string const& manifest,
         std::string const& blob,
         std::string const& signature,
         std::uint32_t version,
-		hash_set<PublicKey>* set = nullptr);
+        std::string siteUri,
+        boost::optional<uint256> const& hash = {});
+
+    /* Attempt to read previously stored list files. Expected to only be
+       called when loading from URL fails.
+
+       @return A list of valid file:// URLs, if any.
+
+       @par Thread Safety
+
+       May be called concurrently
+    */
+    std::vector<std::string>
+    loadLists();
 
     /** Update trusted nodes
 
@@ -206,7 +330,7 @@ public:
         May be called concurrently
     */
     TrustChanges
-    updateTrusted (hash_set<NodeID> const& seenValidators);
+    updateTrusted(hash_set<NodeID> const& seenValidators);
 
     /** Get quorum value for current trusted key set
 
@@ -222,7 +346,7 @@ public:
         @return quorum value
     */
     std::size_t
-    quorum () const
+    quorum() const
     {
         return quorum_;
     }
@@ -241,8 +365,7 @@ public:
         May be called concurrently
     */
     bool
-    trusted (
-        PublicKey const& identity) const;
+    trusted(PublicKey const& identity) const;
 
     /** Returns `true` if public key is included on any lists
 
@@ -253,8 +376,7 @@ public:
         May be called concurrently
     */
     bool
-    listed (
-        PublicKey const& identity) const;
+    listed(PublicKey const& identity) const;
 
     /** Returns master public key if public key is trusted
 
@@ -267,8 +389,7 @@ public:
         May be called concurrently
     */
     boost::optional<PublicKey>
-    getTrustedKey (
-        PublicKey const& identity) const;
+    getTrustedKey(PublicKey const& identity) const;
 
     /** Returns listed master public if public key is included on any lists
 
@@ -281,8 +402,7 @@ public:
         May be called concurrently
     */
     boost::optional<PublicKey>
-    getListedKey (
-        PublicKey const& identity) const;
+    getListedKey(PublicKey const& identity) const;
 
     /** Returns `true` if public key is a trusted publisher
 
@@ -293,8 +413,7 @@ public:
         May be called concurrently
     */
     bool
-    trustedPublisher (
-        PublicKey const& identity) const;
+    trustedPublisher(PublicKey const& identity) const;
 
     /** Returns local validator public key
 
@@ -303,7 +422,7 @@ public:
         May be called concurrently
     */
     PublicKey
-    localPublicKey () const;
+    localPublicKey() const;
 
     /** Invokes the callback once for every listed validation public key.
 
@@ -321,8 +440,54 @@ public:
         May be called concurrently
     */
     void
-    for_each_listed (
-        std::function<void(PublicKey const&, bool)> func) const;
+    for_each_listed(std::function<void(PublicKey const&, bool)> func) const;
+
+    /** Invokes the callback once for every available publisher list's raw
+        data members
+
+        @note Undefined behavior results when calling ValidatorList members
+        from within the callback
+
+        The arguments passed into the lambda are:
+
+        @li The raw manifest string
+
+        @li The raw "blob" string containing the values for the validator list
+
+        @li The signature string used to sign the blob
+
+        @li The version number
+
+        @li The `PublicKey` of the blob signer (matches the value from
+            [validator_list_keys])
+
+        @li The sequence number of the "blob"
+
+        @li The precomputed hash of the original / raw elements
+
+        @par Thread Safety
+
+        May be called concurrently
+    */
+    void
+    for_each_available(std::function<void(
+                           std::string const& manifest,
+                           std::string const& blob,
+                           std::string const& signature,
+                           std::uint32_t version,
+                           PublicKey const& pubKey,
+                           std::size_t sequence,
+                           uint256 const& hash)> func) const;
+
+    /** Returns the current valid list for the given publisher key,
+        if available, as a Json object.
+    */
+    boost::optional<Json::Value>
+    getAvailable(boost::beast::string_view const& pubKey);
+
+    /** Return the number of configured validator list sites. */
+    std::size_t
+    count() const;
 
     /** Return the number of configured validator list sites. */
     std::size_t
@@ -357,11 +522,51 @@ public:
     getQuorumKeys() const
     {
         std::shared_lock<std::shared_timed_mutex> read_lock{mutex_};
-        return {quorum_, trustedKeys_};
+        return {quorum_, trustedSigningKeys_};
     }
 
+    /**
+     * get the trusted master public keys
+     * @return the public keys
+     */
+    hash_set<PublicKey>
+    getTrustedMasterKeys() const;
+
+    /**
+     * get the master public keys of Negative UNL validators
+     * @return the master public keys
+     */
+    hash_set<PublicKey>
+    getNegativeUNL() const;
+
+    /**
+     * set the Negative UNL with validators' master public keys
+     * @param negUnl the public keys
+     */
+    void
+    setNegativeUNL(hash_set<PublicKey> const& negUnl);
+
+    /**
+     * Remove validations that are from validators on the negative UNL.
+     *
+     * @param validations  the validations to filter
+     * @return a filtered copy of the validations
+     */
+    std::vector<std::shared_ptr<STValidation>>
+    negativeUNLFilter(
+        std::vector<std::shared_ptr<STValidation>>&& validations) const;
 
 private:
+    /** Get the filename used for caching UNLs
+     */
+    boost::filesystem::path
+    GetCacheFileName(PublicKey const& pubKey);
+
+    /** Write a JSON UNL to a cache file
+     */
+    void
+    CacheValidatorFile(PublicKey const& pubKey, PublisherList const& publisher);
+
     /** Check response for trusted valid published list
 
         @return `ListDisposition::accepted` if list can be applied
@@ -371,7 +576,7 @@ private:
         Calling public member function is expected to lock mutex
     */
     ListDisposition
-    verify (
+    verify(
         Json::Value& list,
         PublicKey& pubKey,
         std::string const& manifest,
@@ -389,176 +594,24 @@ private:
         Calling public member function is expected to lock mutex
     */
     bool
-    removePublisherList (PublicKey const& publisherKey);
+    removePublisherList(PublicKey const& publisherKey);
 
     /** Return quorum for trusted validator set
 
-        @param trusted Number of trusted validator keys
+        @param unlSize Number of trusted validator keys
 
-        @param seen Number of trusted validators that have signed
-        recently received validations */
-    std::size_t
-    calculateQuorum (
-        std::size_t trusted, std::size_t seen);
-		
-    /** Return quorum for trusted validator set
+        @param effectiveUnlSize Number of trusted validator keys that are not in
+        the NegativeUNL
 
-        @param trusted Number of trusted validator keys
-		
-        @param unListedLocal Whether the local node is an unlisted validator
+        @param seenSize Number of trusted validators that have signed
+        recently received validations
     */
-    static std::size_t
-    calculateMinimumQuorum (
-        std::size_t nListedKeys, bool unlistedLocal=false);
-
-	//reset validators for consensus
-	void resetValidators();
-	
-	 ///** Update trusted keys
-
-  //      Reset the trusted keys based on latest manifests, received validations,
-  //      and lists.
-
-  //      @param seenValidators Set of public keys used to sign recently
-  //      received validations
-
-  //      @par Thread Safety
-
-  //      May be called concurrently
-  //  */
-  //  template<class KeySet>
-  //  void
-  //  onConsensusStart (
-  //      KeySet const& seenValidators);
+    std::size_t
+    calculateQuorum(
+        std::size_t unlSize,
+        std::size_t effectiveUnlSize,
+        std::size_t seenSize);
 };
-
-//------------------------------------------------------------------------------
-/*
-template<class KeySet>
-void
-ValidatorList::onConsensusStart (
-    KeySet const& seenValidators)
-{
-    boost::unique_lock<boost::shared_mutex> lock{mutex_};
-
-    // Check that lists from all configured publishers are available
-    bool allListsAvailable = true;
-
-    for (auto const& list : publisherLists_)
-    {
-        // Remove any expired published lists
-        if (TimeKeeper::time_point{} < list.second.expiration &&
-            list.second.expiration <= timeKeeper_.now())
-            removePublisherList(list.first);
-
-        if (! list.second.available)
-            allListsAvailable = false;
-    }
-
-    std::multimap<std::size_t, PublicKey> rankedKeys;
-    bool localKeyListed = false;
-
-    // "Iterate" the listed keys in random order so that the rank of multiple
-    // keys with the same number of listings is not deterministic
-    std::vector<std::size_t> indexes (keyListings_.size());
-    std::iota (indexes.begin(), indexes.end(), 0);
-    std::shuffle (indexes.begin(), indexes.end(), crypto_prng());
-
-    for (auto const& index : indexes)
-    {
-        auto const& val = std::next (keyListings_.begin(), index);
-
-        if (validatorManifests_.revoked (val->first))
-            continue;
-
-        if (val->first == localPubKey_)
-        {
-            localKeyListed = val->second > 1;
-            rankedKeys.insert (
-                std::pair<std::size_t,PublicKey>(
-                    std::numeric_limits<std::size_t>::max(), localPubKey_));
-        }
-        // If the total number of validators is too small, or
-        // no validations are being received, use all validators.
-        // Otherwise, do not use validators whose validations aren't
-        // being received.
-        //else if (keyListings_.size() < MINIMUM_RESIZEABLE_UNL ||
-        //         seenValidators.empty() ||
-        //         seenValidators.find (val->first) != seenValidators.end ())
-        else
-        {
-            rankedKeys.insert (
-                std::pair<std::size_t,PublicKey>(val->second, val->first));
-        }
-    }
-
-    // This minimum quorum guarantees safe overlap with the trusted sets of
-    // other nodes using the same set of published lists.
-    std::size_t quorum = calculateMinimumQuorum (keyListings_.size(),
-        localPubKey_.size() && !localKeyListed);
-
-    JLOG (j_.debug()) <<
-        rankedKeys.size() << "  of " << keyListings_.size() <<
-        " listed validators eligible for inclusion in the trusted set";
-
-    auto size = rankedKeys.size();
-
-    // Require 80% quorum if there are lots of validators.
-    if (rankedKeys.size() > BYZANTINE_THRESHOLD)
-    {
-        // Use all eligible keys if there is only one trusted list
-        if (publisherLists_.size() == 1 ||
-                keyListings_.size() < MINIMUM_RESIZEABLE_UNL)
-        {
-            // Try to raise the quorum to at least 80% of the trusted set
-            quorum = std::max(quorum, size - size / 5);
-        }
-        else
-        {
-            // Reduce the trusted set size so that the quorum represents
-            // at least 80%
-            size = quorum * 1.25;
-        }
-    }
-
-    if (minimumQuorum_ && seenValidators.size() < quorum)
-    {
-        quorum = *minimumQuorum_;
-        JLOG (j_.warn())
-            << "Using unsafe quorum of "
-            << quorum_
-            << " as specified in the command line";
-    }
-
-    // Do not use achievable quorum until lists from all configured
-    // publishers are available
-    else if (! allListsAvailable)
-        quorum = std::numeric_limits<std::size_t>::max();
-
-    trustedKeys_.clear();
-    quorum_ = quorum;
-
-    for (auto const& val : boost::adaptors::reverse (rankedKeys))
-    {
-        if (size <= trustedKeys_.size())
-            break;
-
-        trustedKeys_.insert (val.second);
-    }
-
-    JLOG (j_.debug()) <<
-        "Using quorum of " << quorum_ << " for new set of " <<
-        trustedKeys_.size() << " trusted validators";
-
-    if (trustedKeys_.size() < quorum_)
-    {
-        JLOG (j_.warn()) <<
-            "New quorum of " << quorum_ <<
-            " exceeds the number of trusted validators (" <<
-            trustedKeys_.size() << ")";
-    }
-}
-*/
-} // ripple
+}  // namespace ripple
 
 #endif

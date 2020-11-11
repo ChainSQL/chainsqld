@@ -17,12 +17,12 @@
 */
 //==============================================================================
 
-
 #include <ripple/app/paths/AccountCurrencies.h>
 
 namespace ripple {
 
-hash_set<Currency> accountSourceCurrencies (
+hash_set<Currency>
+accountSourceCurrencies(
     AccountID const& account,
     std::shared_ptr<RippleLineCache> const& lrCache,
     bool includeZXC)
@@ -34,33 +34,34 @@ hash_set<Currency> accountSourceCurrencies (
         currencies.insert (zxcCurrency());
 
     // List of ripple lines.
-    auto& rippleLines = lrCache->getRippleLines (account);
+    auto& rippleLines = lrCache->getRippleLines(account);
 
     for (auto const& item : rippleLines)
     {
-        auto rspEntry = (RippleState*) item.get ();
-        assert (rspEntry);
+        auto rspEntry = (RippleState*)item.get();
+        assert(rspEntry);
         if (!rspEntry)
             continue;
 
-        auto& saBalance = rspEntry->getBalance ();
+        auto& saBalance = rspEntry->getBalance();
 
         // Filter out non
         if (saBalance > beast::zero
             // Have IOUs to send.
-            || (rspEntry->getLimitPeer ()
+            || (rspEntry->getLimitPeer()
                 // Peer extends credit.
-                && ((-saBalance) < rspEntry->getLimitPeer ()))) // Credit left.
+                && ((-saBalance) < rspEntry->getLimitPeer())))  // Credit left.
         {
-            currencies.insert (saBalance.getCurrency ());
+            currencies.insert(saBalance.getCurrency());
         }
     }
 
-    currencies.erase (badCurrency());
+    currencies.erase(badCurrency());
     return currencies;
 }
 
-hash_set<Currency> accountDestCurrencies (
+hash_set<Currency>
+accountDestCurrencies(
     AccountID const& account,
     std::shared_ptr<RippleLineCache> const& lrCache,
     bool includeZXC)
@@ -72,23 +73,23 @@ hash_set<Currency> accountDestCurrencies (
     // Even if account doesn't exist
 
     // List of ripple lines.
-    auto& rippleLines = lrCache->getRippleLines (account);
+    auto& rippleLines = lrCache->getRippleLines(account);
 
     for (auto const& item : rippleLines)
     {
-        auto rspEntry = (RippleState*) item.get ();
-        assert (rspEntry);
+        auto rspEntry = (RippleState*)item.get();
+        assert(rspEntry);
         if (!rspEntry)
             continue;
 
-        auto& saBalance  = rspEntry->getBalance ();
+        auto& saBalance = rspEntry->getBalance();
 
-        if (saBalance < rspEntry->getLimit ())                  // Can take more
-            currencies.insert (saBalance.getCurrency ());
+        if (saBalance < rspEntry->getLimit())  // Can take more
+            currencies.insert(saBalance.getCurrency());
     }
 
-    currencies.erase (badCurrency());
+    currencies.erase(badCurrency());
     return currencies;
 }
 
-} // ripple
+}  // namespace ripple

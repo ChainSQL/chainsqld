@@ -20,9 +20,9 @@
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <ripple/core/Config.h>
 #include <ripple/protocol/HashPrefix.h>
-#include <ripple/protocol/jss.h>
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/digest.h>
+#include <ripple/protocol/jss.h>
 
 namespace ripple {
 
@@ -54,10 +54,8 @@ RCLCxPeerPos::signingHash() const
 bool
 RCLCxPeerPos::checkSign() const
 {
-    return verifyDigest(
-        publicKey(), signingHash(), signature(), false);
+    return verifyDigest(publicKey(), signingHash(), signature(), false);
 }
-
 
 Json::Value
 RCLCxPeerPos::getJson() const
@@ -80,8 +78,8 @@ proposalUniqueId(
     Slice const& signature)
 {
     Serializer s(512);
-    s.add256(proposeHash);
-    s.add256(previousLedger);
+    s.addBitString(proposeHash);
+    s.addBitString(previousLedger);
     s.add32(proposeSeq);
     s.add32(closeTime.time_since_epoch().count());
     s.addVL(publicKey);
@@ -102,4 +100,4 @@ RCLCxPeerPos::Data::Data(
 {
 }
 
-}  // ripple
+}  // namespace ripple

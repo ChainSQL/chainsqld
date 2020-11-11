@@ -22,17 +22,17 @@
 #include <ripple/json/json_value.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
-#include <ripple/basics/make_lock.h>
 
 namespace ripple {
 
-Json::Value doConsensusInfo (RPC::Context& context)
+Json::Value
+doConsensusInfo(RPC::JsonContext& context)
 {
-    Json::Value ret (Json::objectValue);
+    Json::Value ret(Json::objectValue);
 
-    ret[jss::info] = context.netOps.getConsensusInfo ();
+    ret[jss::info] = context.netOps.getConsensusInfo();
 
     return ret;
 }
 
-} // ripple
+}  // namespace ripple

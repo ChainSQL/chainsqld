@@ -21,20 +21,22 @@
 #include <ripple/app/main/Application.h>
 #include <ripple/json/json_value.h>
 #include <ripple/rpc/impl/Handler.h>
-#include <ripple/basics/make_lock.h>
+
+#include <mutex>
 
 namespace ripple {
 
 namespace RPC {
-struct Context;
+struct JsonContext;
 }
 
-Json::Value doStop (RPC::Context& context)
+Json::Value
+doStop(RPC::JsonContext& context)
 {
-    auto lock = make_lock(context.app.app().getMasterMutex());
-    context.app.app().signalStop ();
+    std::unique_lock lock{context.app.getMasterMutex()};
+    context.app.signalStop();
 
-    return RPC::makeObjectValue (systemName () + " server stopping");
+    return RPC::makeObjectValue(systemName() + " server stopping");
 }
 
-} // ripple
+}  // namespace ripple

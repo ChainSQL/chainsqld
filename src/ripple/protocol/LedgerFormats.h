@@ -33,8 +33,7 @@ namespace ripple {
     @ingroup protocol
 */
 // Used as the type of a transaction or the type of a ledger entry.
-enum LedgerEntryType
-{
+enum LedgerEntryType {
     /** Special type, anything
         This is used when the type in the Keylet is unknown,
         such as when building metadata.
@@ -45,13 +44,13 @@ enum LedgerEntryType
         This is used when the type in the Keylet is unknown,
         such as when iterating
     */
-    ltCHILD             = -2,
+    ltCHILD = -2,
 
-    ltINVALID           = -1,
+    ltINVALID = -1,
 
     //---------------------------------------------------------------------------
 
-    ltACCOUNT_ROOT      = 'a',
+    ltACCOUNT_ROOT = 'a',
 
     /** Directory node.
 
@@ -62,26 +61,32 @@ enum LedgerEntryType
 
         (There's a little more information than this, see the template)
     */
-    ltDIR_NODE          = 'd',
+    ltDIR_NODE = 'd',
 
-    ltRIPPLE_STATE      = 'r',
+    ltRIPPLE_STATE = 'r',
 
-    ltTICKET            = 'T',
+    ltTICKET = 'T',
 
-    ltSIGNER_LIST       = 'S',
+    ltSIGNER_LIST = 'S',
 
-    ltOFFER             = 'o',
+    ltOFFER = 'o',
 
-    ltLEDGER_HASHES     = 'h',
+    ltLEDGER_HASHES = 'h',
 
-    ltAMENDMENTS        = 'f',
+    ltAMENDMENTS = 'f',
 
-    ltFEE_SETTINGS      = 's',
+    ltFEE_SETTINGS = 's',
 
-    ltESCROW            = 'u',
+    ltESCROW = 'u',
 
-    // Simple unidirection zxc channel
-    ltPAYCHAN           = 'x',
+    // Simple unidirection xrp channel
+    ltPAYCHAN = 'x',
+
+    ltCHECK = 'C',
+
+    ltDEPOSIT_PREAUTH = 'p',
+
+    ltNEGATIVE_UNL = 'N',
 
     ltCHECK             = 'C',
 
@@ -89,9 +94,7 @@ enum LedgerEntryType
 
     // No longer used or supported. Left here to prevent accidental
     // reassignment of the ledger type.
-    ltNICKNAME          = 'n',
-
-    ltNotUsed01         = 'c',
+    ltNICKNAME [[deprecated]] = 'n',
 
     ltTABLELIST         = 'l',
 
@@ -105,86 +108,56 @@ enum LedgerEntryType
 /**
     @ingroup protocol
 */
-// Used as a prefix for computing ledger indexes (keys).
-enum LedgerNameSpace
-{
-	spaceAccount		= 'a',
-	spaceTableList		= 'l',
-	spaceInsertLimit	= 'i',
-	spaceChainId		= 'b',
-    spaceDirNode        = 'd',
-    spaceGenerator      = 'g',
-    spaceRipple         = 'r',
-    spaceOffer          = 'o',  // Entry for an offer.
-    spaceOwnerDir       = 'O',  // Directory of things owned by an account.
-    spaceBookDir        = 'B',  // Directory of order books.
-    spaceContract       = 'c',
-    spaceSkipList       = 's',
-    spaceEscrow         = 'u',
-    spaceAmendment      = 'f',
-    spaceFee            = 'e',
-    spaceTicket         = 'T',
-    spaceSignerList     = 'S',
-    spaceZXCUChannel    = 'x',
-    spaceCheck          = 'C',
-    spaceDepositPreauth = 'p',
-	spaceSchema         = 'h',
-
-    // No longer used or supported. Left here to reserve the space and
-    // avoid accidental reuse of the space.
-    spaceNickname       = 'n',
-};
-
-/**
-    @ingroup protocol
-*/
-enum LedgerSpecificFlags
-{
+enum LedgerSpecificFlags {
     // ltACCOUNT_ROOT
-    lsfPasswordSpent    = 0x00010000,   // True, if password set fee is spent.
-    lsfRequireDestTag   = 0x00020000,   // True, to require a DestinationTag for payments.
-    lsfRequireAuth      = 0x00040000,   // True, to require a authorization to hold IOUs.
-    lsfDisallowZXC      = 0x00080000,   // True, to disallow sending ZXC.
-    lsfDisableMaster    = 0x00100000,   // True, force regular key
-    lsfNoFreeze         = 0x00200000,   // True, cannot freeze ripple states
-    lsfGlobalFreeze     = 0x00400000,   // True, all assets frozen
-    lsfDefaultRipple    = 0x00800000,   // True, trust lines allow rippling by default
-    lsfDepositAuth      = 0x01000000,   // True, all deposits require authorization
+    lsfPasswordSpent = 0x00010000,  // True, if password set fee is spent.
+    lsfRequireDestTag =
+        0x00020000,  // True, to require a DestinationTag for payments.
+    lsfRequireAuth =
+        0x00040000,  // True, to require a authorization to hold IOUs.
+    lsfDisallowXRP = 0x00080000,    // True, to disallow sending XRP.
+    lsfDisableMaster = 0x00100000,  // True, force regular key
+    lsfNoFreeze = 0x00200000,       // True, cannot freeze ripple states
+    lsfGlobalFreeze = 0x00400000,   // True, all assets frozen
+    lsfDefaultRipple =
+        0x00800000,               // True, trust lines allow rippling by default
+    lsfDepositAuth = 0x01000000,  // True, all deposits require authorization
 
     // ltOFFER
-    lsfPassive          = 0x00010000,
-    lsfSell             = 0x00020000,   // True, offer was placed as a sell.
+    lsfPassive = 0x00010000,
+    lsfSell = 0x00020000,  // True, offer was placed as a sell.
 
     // ltRIPPLE_STATE
-    lsfLowReserve       = 0x00010000,   // True, if entry counts toward reserve.
-    lsfHighReserve      = 0x00020000,
-    lsfLowAuth          = 0x00040000,
-    lsfHighAuth         = 0x00080000,
-    lsfLowNoRipple      = 0x00100000,
-    lsfHighNoRipple     = 0x00200000,
-    lsfLowFreeze        = 0x00400000,   // True, low side has set freeze flag
-    lsfHighFreeze       = 0x00800000,   // True, high side has set freeze flag
+    lsfLowReserve = 0x00010000,  // True, if entry counts toward reserve.
+    lsfHighReserve = 0x00020000,
+    lsfLowAuth = 0x00040000,
+    lsfHighAuth = 0x00080000,
+    lsfLowNoRipple = 0x00100000,
+    lsfHighNoRipple = 0x00200000,
+    lsfLowFreeze = 0x00400000,   // True, low side has set freeze flag
+    lsfHighFreeze = 0x00800000,  // True, high side has set freeze flag
 
     // ltSIGNER_LIST
-    lsfOneOwnerCount    = 0x00010000,   // True, uses only one OwnerCount
+    lsfOneOwnerCount = 0x00010000,  // True, uses only one OwnerCount
 };
 
 //------------------------------------------------------------------------------
 
 /** Holds the list of known ledger entry formats.
-*/
-class LedgerFormats : public KnownFormats <LedgerEntryType>
+ */
+class LedgerFormats : public KnownFormats<LedgerEntryType>
 {
 private:
     /** Create the object.
         This will load the object with all the known ledger formats.
     */
-    LedgerFormats ();
+    LedgerFormats();
 
 public:
-    static LedgerFormats const& getInstance ();
+    static LedgerFormats const&
+    getInstance();
 };
 
-} // ripple
+}  // namespace ripple
 
 #endif

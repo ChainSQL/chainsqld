@@ -35,8 +35,8 @@ namespace ripple {
 
 //------------------------------------------------------------------------------
 
-InfoSub::Source::Source (char const* name, Stoppable& parent)
-    : Stoppable (name, parent)
+InfoSub::Source::Source(char const* name, Stoppable& parent)
+    : Stoppable(name, parent)
 {
 }
 
@@ -53,13 +53,11 @@ InfoSub::InfoSub(Source& source)
 }
 
 InfoSub::InfoSub(Source& source, Consumer consumer)
-    : m_consumer(consumer)
-    , m_source(&source)
-    , mSeq(assign_id())
+    : m_consumer(consumer), m_source(source), mSeq(assign_id())
 {
 }
 
-InfoSub::~InfoSub ()
+InfoSub::~InfoSub()
 {
 	if (m_source != nullptr)
 	{
@@ -70,6 +68,7 @@ InfoSub::~InfoSub ()
 		m_source->unsubServer(mSeq);
 		m_source->unsubValidations(mSeq);
 		m_source->unsubPeerStatus(mSeq);
+        m_source.unsubConsensus(mSeq);
 
 		// Use the internal unsubscribe so that it won't call
 		// back to us and modify its own parameter
@@ -83,23 +82,26 @@ InfoSub::~InfoSub ()
 	}
 }
 
-Resource::Consumer& InfoSub::getConsumer()
+Resource::Consumer&
+InfoSub::getConsumer()
 {
     return m_consumer;
 }
 
-std::uint64_t InfoSub::getSeq ()
+std::uint64_t
+InfoSub::getSeq()
 {
     return mSeq;
 }
 
-void InfoSub::onSendEmpty ()
+void
+InfoSub::onSendEmpty()
 {
 }
 
 void InfoSub::insertSubAccountInfo (AccountID const& account, ACOUNT_TYPE eType)
 {
-    ScopedLockType sl (mLock);
+    std::lock_guard sl(mLock);
 
     hash_set <AccountID> & accountSet = getCompatibleAccountSet(eType);
 
@@ -108,24 +110,27 @@ void InfoSub::insertSubAccountInfo (AccountID const& account, ACOUNT_TYPE eType)
 
 void InfoSub::deleteSubAccountInfo (AccountID const& account, ACOUNT_TYPE eType)
 {
-    ScopedLockType sl (mLock);
+    std::lock_guard sl(mLock);
 
     hash_set <AccountID> & accountSet = getCompatibleAccountSet(eType);
 
     accountSet.erase(account);
 }
 
-void InfoSub::clearPathRequest ()
+void
+InfoSub::clearPathRequest()
 {
-    mPathRequest.reset ();
+    mPathRequest.reset();
 }
 
-void InfoSub::setPathRequest (const std::shared_ptr<PathRequest>& req)
+void
+InfoSub::setPathRequest(const std::shared_ptr<PathRequest>& req)
 {
     mPathRequest = req;
 }
 
-const std::shared_ptr<PathRequest>& InfoSub::getPathRequest ()
+const std::shared_ptr<PathRequest>&
+InfoSub::getPathRequest()
 {
     return mPathRequest;
 }

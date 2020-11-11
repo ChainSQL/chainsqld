@@ -1,0 +1,5 @@
+
+codecov:
+  ci:
+    - !appveyor
+    - travis

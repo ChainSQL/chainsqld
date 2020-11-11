@@ -19,16 +19,17 @@
 
 #include <ripple/json/json_value.h>
 #include <ripple/protocol/jss.h>
-#include <ripple/rpc/Role.h>
 #include <ripple/rpc/Context.h>
+#include <ripple/rpc/Role.h>
 
 namespace ripple {
 
 namespace RPC {
-struct Context;
-} // RPC
+struct JsonContext;
+}  // namespace RPC
 
-Json::Value doPing (RPC::Context& context)
+Json::Value
+doPing(RPC::JsonContext& context)
 {
     Json::Value ret(Json::objectValue);
     switch (context.role)
@@ -45,8 +46,7 @@ Json::Value doPing (RPC::Context& context)
         case Role::PROXY:
             ret[jss::role] = "proxied";
             ret[jss::ip] = context.headers.forwardedFor.to_string();
-        default:
-            ;
+        default:;
     }
 
     // This is only accessible on ws sessions.
@@ -59,4 +59,4 @@ Json::Value doPing (RPC::Context& context)
     return ret;
 }
 
-} // ripple
+}  // namespace ripple

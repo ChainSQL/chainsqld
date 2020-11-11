@@ -155,8 +155,8 @@ public:
 	virtual Schema&					getSchema(SchemaID const& id = beast::zero) = 0;
 	virtual PeerManager&			peerManager(SchemaID const& id = beast::zero) = 0;
     virtual Config&					config(SchemaID const& id = beast::zero) = 0;
-    virtual Family&                 family(SchemaID const& id = beast::zero) = 0;
-	virtual Family*                 shardFamily(SchemaID const& id = beast::zero) = 0;
+    virtual Family&                 getNodeFamily(SchemaID const& id = beast::zero) = 0;
+	virtual Family*                 getShardFamily(SchemaID const& id = beast::zero) = 0;
     virtual NodeCache&              getTempNodeCache (SchemaID const& id = beast::zero) = 0;
     virtual CachedSLEs&             cachedSLEs(SchemaID const& id = beast::zero) = 0;
     virtual AmendmentTable&         getAmendmentTable(SchemaID const& id = beast::zero) = 0;

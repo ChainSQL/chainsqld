@@ -17,30 +17,32 @@
 */
 //==============================================================================
 
-#include <ripple/nodestore/impl/DatabaseNodeImp.h>
 #include <ripple/app/ledger/Ledger.h>
+#include <ripple/nodestore/impl/DatabaseNodeImp.h>
 #include <ripple/protocol/HashPrefix.h>
 
 namespace ripple {
 namespace NodeStore {
 
 void
-DatabaseNodeImp::store(NodeObjectType type, Blob&& data,
-    uint256 const& hash, std::uint32_t seq)
+DatabaseNodeImp::store(
+    NodeObjectType type,
+    Blob&& data,
+    uint256 const& hash,
+    std::uint32_t seq)
 {
-#if RIPPLE_VERIFY_NODEOBJECT_KEYS
-    assert(hash == sha512Hash(makeSlice(data)));
-#endif
     auto nObj = NodeObject::createObject(type, std::move(data), hash);
-    pCache_->canonicalize(hash, nObj, true);
+    pCache_->canonicalize_replace_cache(hash, nObj);
     backend_->store(nObj);
     nCache_->erase(hash);
     storeStats(nObj->getData().size());
 }
 
 bool
-DatabaseNodeImp::asyncFetch(uint256 const& hash,
-    std::uint32_t seq, std::shared_ptr<NodeObject>& object)
+DatabaseNodeImp::asyncFetch(
+    uint256 const& hash,
+    std::uint32_t seq,
+    std::shared_ptr<NodeObject>& object)
 {
     // See if the object is in cache
     object = pCache_->fetch(hash);
@@ -67,5 +69,5 @@ DatabaseNodeImp::sweep()
     nCache_->sweep();
 }
 
-} // NodeStore
-} // ripple
+}  // namespace NodeStore
+}  // namespace ripple

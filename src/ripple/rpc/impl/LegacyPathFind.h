@@ -34,18 +34,19 @@ public:
     LegacyPathFind (bool isAdmin, Schema& app);
     ~LegacyPathFind ();
 
-    bool isOk () const
+    bool
+    isOk() const
     {
         return m_isOk;
     }
 
 private:
-    static std::atomic <int> inProgress;
+    static std::atomic<int> inProgress;
 
     bool m_isOk;
 };
 
-} // RPC
-} // ripple
+}  // namespace RPC
+}  // namespace ripple
 
 #endif

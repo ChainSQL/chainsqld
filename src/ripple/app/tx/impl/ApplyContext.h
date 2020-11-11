@@ -20,33 +20,34 @@
 #ifndef RIPPLE_TX_APPLYCONTEXT_H_INCLUDED
 #define RIPPLE_TX_APPLYCONTEXT_H_INCLUDED
 
-#include <peersafe/schema/Schema.h>
-#include <ripple/ledger/ApplyViewImpl.h>
-#include <ripple/core/Config.h>
-#include <ripple/protocol/STTx.h>
-#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/app/main/Schema.h>
+#include <ripple/basics/XRPAmount.h>
 #include <ripple/beast/utility/Journal.h>
+#include <ripple/core/Config.h>
+#include <ripple/ledger/ApplyViewImpl.h>
+#include <ripple/protocol/STTx.h>
 #include <boost/optional.hpp>
 #include <utility>
 
 namespace ripple {
 
-// tx_enable_test
-
 /** State information when applying a tx. */
 class ApplyContext
 {
 public:
-    explicit
-    ApplyContext (Schema& app, OpenView& base,
-        STTx const& tx, TER preclaimResult,
-            std::uint64_t baseFee, ApplyFlags flags,
-                beast::Journal = beast::Journal{beast::Journal::getNullSink()});
+    explicit ApplyContext(
+        Schema& app,
+        OpenView& base,
+        STTx const& tx,
+        TER preclaimResult,
+        FeeUnit64 baseFee,
+        ApplyFlags flags,
+        beast::Journal = beast::Journal{beast::Journal::getNullSink()});
 
     Schema& app;
     STTx const& tx;
     TER const preclaimResult;
-    std::uint64_t const baseFee;
+    FeeUnit64 const baseFee;
     beast::Journal const journal;
 
     ApplyView&
@@ -70,7 +71,7 @@ public:
 
     /** Sets the DeliveredAmount field in the metadata */
     void
-    deliver (STAmount const& amount)
+    deliver(STAmount const& amount)
     {
         view_->deliver(amount);
     }
@@ -80,23 +81,22 @@ public:
     discard();
 
     /** Apply the transaction result to the base. */
-    void
-    apply (TER);
+    void apply(TER);
 
     /** Get the number of unapplied changes. */
     std::size_t
-    size ();
+    size();
 
     /** Visit unapplied changes. */
     void
-    visit (std::function <void (
-        uint256 const& key,
-        bool isDelete,
-        std::shared_ptr <SLE const> const& before,
-        std::shared_ptr <SLE const> const& after)> const& func);
+    visit(std::function<void(
+              uint256 const& key,
+              bool isDelete,
+              std::shared_ptr<SLE const> const& before,
+              std::shared_ptr<SLE const> const& after)> const& func);
 
     void
-    destroyZXC (ZXCAmount const& fee)
+    destroyXRP(XRPAmount const& fee)
     {
         view_->rawDestroyZXC(fee);
     }
@@ -108,21 +108,24 @@ public:
         @return the result code that should be returned for this transaction.
      */
     TER
-    checkInvariants(TER const result, ZXCAmount const fee);
+    checkInvariants(TER const result, XRPAmount const fee);
 
 private:
     TER
-    failInvariantCheck (TER const result);
+    failInvariantCheck(TER const result);
 
-    template<std::size_t... Is>
+    template <std::size_t... Is>
     TER
-    checkInvariantsHelper(TER const result, ZXCAmount const fee, std::index_sequence<Is...>);
+    checkInvariantsHelper(
+        TER const result,
+        XRPAmount const fee,
+        std::index_sequence<Is...>);
 
     OpenView& base_;
     ApplyFlags flags_;
     boost::optional<ApplyViewImpl> view_;
 };
 
-} // ripple
+}  // namespace ripple
 
 #endif
