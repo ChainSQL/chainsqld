@@ -80,7 +80,10 @@ PopAdaptor::PopAdaptor(
 bool PopAdaptor::isLeader(PublicKey const& publicKey, LedgerIndex curSeq, std::uint64_t view)
 {
     auto const& validators = app_.validators().validators();
-    assert(validators.size() > 0);
+    if (validators.size() <= 0)
+    {
+        return false;
+    }
 
     int leaderIndex = (view + curSeq) % validators.size();
 

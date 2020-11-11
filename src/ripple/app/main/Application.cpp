@@ -527,7 +527,7 @@ public:
             logs_->journal("ValidatorList"), config_->VALIDATION_QUORUM))
 
 		, validatorSites_(std::make_unique<ValidatorSite>(
-			*validatorManifests_, get_io_service(), *validators_, logs_->journal("ValidatorSite")))
+			*this, *validatorManifests_, get_io_service(), *validators_, logs_->journal("ValidatorSite")))
 
         , certList_(std::make_unique<CertList>(config_->ROOT_CERTIFICATES, logs_->journal("CertList")))
 
@@ -1512,14 +1512,14 @@ bool ApplicationImp::setup()
 	caCertSites_->start();
 
     // start first consensus round
-	if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
-	{
+	//if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
+	//{
 		if (!m_networkOPs->beginConsensus(m_ledgerMaster->getClosedLedger()->info().hash))
 		{
 			JLOG(m_journal.fatal()) << "Unable to start consensus";
 			return false;
 		}
-	}
+	//}
 
 
     {

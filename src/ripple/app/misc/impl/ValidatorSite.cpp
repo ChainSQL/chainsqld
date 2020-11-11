@@ -19,6 +19,7 @@
 
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/misc/ValidatorSite.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/basics/base64.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/json/json_reader.h> 
@@ -85,12 +86,14 @@ namespace ripple {
 	////}
 
 	ValidatorSite::ValidatorSite(
+        Application& app,
 		ManifestCache& validatorManifests,
 		boost::asio::io_service& ios,
 		ValidatorList& validators,
 		beast::Journal j,
 		std::chrono::seconds timeout)
 		: ConfigSite(ios, validatorManifests, j, timeout)
+        , app_(app)
 		, validators_(validators)
 	{
 	}
@@ -653,7 +656,18 @@ namespace ripple {
 
 	ripple::ListDisposition ValidatorSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature, std::uint32_t version, std::string siteUri)
 	{
-		return  validators_.applyList(manifest, blob, signature, version, nullptr);
+		auto ret = validators_.applyList(manifest, blob, signature, version, nullptr);
+
+        if (ret == ListDisposition::accepted)
+        {
+            TrustChanges const changes = validators_.updateTrusted(
+                app_.getValidations().getCurrentNodeIDs());
+
+            if (!changes.added.empty() || !changes.removed.empty())
+                app_.getValidations().trustChanged(changes.added, changes.removed);
+        }
+
+        return ret;
 	}
 
 } // ripple

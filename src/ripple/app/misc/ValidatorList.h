@@ -227,6 +227,10 @@ public:
         return quorum_;
     }
 
+    /** @par Non Thread Safety
+
+        May be called concurrently with resetValidators
+    */
 	std::vector<PublicKey> validators()
 	{
 		return validators_;

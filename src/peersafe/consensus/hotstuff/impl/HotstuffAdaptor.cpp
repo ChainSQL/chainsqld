@@ -79,7 +79,10 @@ HotstuffAdaptor::HotstuffAdaptor(
 HotstuffAdaptor::Author HotstuffAdaptor::GetValidProposer(Round round) const
 {
     auto const& validators = app_.validators().validators();
-    assert(validators.size() > 0);
+    if (validators.size() <= 0)
+    {
+        return PublicKey();
+    }
 
     return validators[round % validators.size()];
 }
