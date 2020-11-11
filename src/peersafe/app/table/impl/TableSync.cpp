@@ -1177,10 +1177,10 @@ void TableSync::TryTableSync()
 {
     if (!bInitTableItems_ && bIsHaveSync_)
     {
-		if (app_.getLedgerMaster().getValidatedLedger()!=nullptr)
+		if (app_.getLedgerMaster().getValidatedLedger() !=nullptr && app_.getLedgerMaster().getValidLedgerIndex() > 1)
 		{
-			CreateTableItems();
-			bInitTableItems_ = true;
+            CreateTableItems();
+            bInitTableItems_ = true;
 		}
     }
 
