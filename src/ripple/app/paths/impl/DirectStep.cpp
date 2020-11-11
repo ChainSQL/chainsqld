@@ -442,11 +442,7 @@ DirectIPaymentStep::check(
     }
 
     {
-<<<<<<< HEAD
-        auto const owed = creditBalance (ctx.view, dst_, src_, currency_);
-=======
         auto const owed = creditBalance(ctx.view, dst_, src_, currency_);
->>>>>>> release
         if (owed <= beast::zero)
         {
             auto const limit = creditLimit(ctx.view, dst_, src_, currency_);

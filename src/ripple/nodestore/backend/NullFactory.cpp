@@ -129,25 +129,13 @@ public:
     }
 
     std::string
-<<<<<<< HEAD
-    getName () const override
-=======
     getName() const override
->>>>>>> release
     {
         return "none";
     }
 
-<<<<<<< HEAD
-    std::unique_ptr <Backend>
-    createInstance (
-        size_t,
-        Section const&,
-        Scheduler&, beast::Journal) override
-=======
     std::unique_ptr<Backend>
     createInstance(size_t, Section const&, Scheduler&, beast::Journal) override
->>>>>>> release
     {
         return std::make_unique<NullBackend>();
     }

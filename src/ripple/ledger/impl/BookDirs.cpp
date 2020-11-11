@@ -33,10 +33,6 @@ BookDirs::BookDirs(ReadView const& view, Book const& book)
     assert(root_ != beast::zero);
     if (key_ != beast::zero)
     {
-<<<<<<< HEAD
-        if (! cdirFirst(*view_, key_, sle_, entry_, index_,
-            beast::Journal {beast::Journal::getNullSink()}))
-=======
         if (!cdirFirst(
                 *view_,
                 key_,
@@ -44,7 +40,6 @@ BookDirs::BookDirs(ReadView const& view, Book const& book)
                 entry_,
                 index_,
                 beast::Journal{beast::Journal::getNullSink()}))
->>>>>>> release
         {
             assert(false);
         }
@@ -71,10 +66,6 @@ BookDirs::end() const -> BookDirs::const_iterator
     return BookDirs::const_iterator(*view_, root_, key_);
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> release
 beast::Journal BookDirs::const_iterator::j_ =
     beast::Journal{beast::Journal::getNullSink()};
 
@@ -94,11 +85,7 @@ BookDirs::const_iterator::reference
 BookDirs::const_iterator::operator*() const
 {
     assert(index_ != beast::zero);
-<<<<<<< HEAD
-    if (! cache_)
-=======
     if (!cache_)
->>>>>>> release
         cache_ = view_->read(keylet::offer(index_));
     return *cache_;
 }

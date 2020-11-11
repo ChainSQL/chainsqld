@@ -69,11 +69,7 @@ public:
     read(ReadView const& base, Keylet const& k) const;
 
     void
-<<<<<<< HEAD
-    destroyZXC (ZXCAmount const& fee);
-=======
     destroyZXC(ZXCAmount const& fee);
->>>>>>> release
 
     std::unique_ptr<ReadView::sles_type::iter_base>
     slesBegin(ReadView const& base) const;
@@ -102,11 +98,7 @@ private:
             false>>;
 
     items_t items_;
-<<<<<<< HEAD
-    ZXCAmount dropsDestroyed_ = 0;
-=======
     ZXCAmount dropsDestroyed_{0};
->>>>>>> release
 };
 
 }  // namespace detail

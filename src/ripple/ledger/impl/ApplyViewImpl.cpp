@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/ledger/ApplyViewImpl.h>
-=======
->>>>>>> release
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/ApplyViewImpl.h>
 #include <cassert>

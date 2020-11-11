@@ -33,12 +33,7 @@ struct CashSummary
     explicit CashSummary() = default;
 
     // Sorted vectors.  All of the vectors fill in for std::maps.
-<<<<<<< HEAD
-    std::vector<std::pair<
-        AccountID, ZXCAmount>> zxcChanges;
-=======
     std::vector<std::pair<AccountID, ZXCAmount>> zxcChanges;
->>>>>>> release
 
     std::vector<std::pair<std::tuple<AccountID, AccountID, Currency>, STAmount>>
         trustChanges;
@@ -58,35 +53,19 @@ struct CashSummary
     bool
     hasDiff() const
     {
-<<<<<<< HEAD
-        return !zxcChanges.empty()
-            || !trustChanges.empty()
-            || !trustDeletions.empty()
-            || !offerChanges.empty()
-            || !offerDeletions.empty();
-=======
         return !zxcChanges.empty() || !trustChanges.empty() ||
             !trustDeletions.empty() || !offerChanges.empty() ||
             !offerDeletions.empty();
->>>>>>> release
     }
 
     void
     reserve(size_t newCap)
     {
-<<<<<<< HEAD
-        zxcChanges.reserve (newCap);
-        trustChanges.reserve (newCap);
-        trustDeletions.reserve (newCap);
-        offerChanges.reserve (newCap);
-        offerDeletions.reserve (newCap);
-=======
         zxcChanges.reserve(newCap);
         trustChanges.reserve(newCap);
         trustDeletions.reserve(newCap);
         offerChanges.reserve(newCap);
         offerDeletions.reserve(newCap);
->>>>>>> release
     }
 
     void
@@ -102,19 +81,11 @@ struct CashSummary
     void
     sort()
     {
-<<<<<<< HEAD
-        std::sort (zxcChanges.begin(), zxcChanges.end());
-        std::sort (trustChanges.begin(), trustChanges.end());
-        std::sort (trustDeletions.begin(), trustDeletions.end());
-        std::sort (offerChanges.begin(), offerChanges.end());
-        std::sort (offerDeletions.begin(), offerDeletions.end());
-=======
         std::sort(zxcChanges.begin(), zxcChanges.end());
         std::sort(trustChanges.begin(), trustChanges.end());
         std::sort(trustDeletions.begin(), trustDeletions.end());
         std::sort(offerChanges.begin(), offerChanges.end());
         std::sort(offerDeletions.begin(), offerDeletions.end());
->>>>>>> release
     }
 };
 
@@ -198,17 +169,10 @@ getBasicCashFlow(
         auto const& prev = *before;
         switch (prev.getType())
         {
-<<<<<<< HEAD
-        case ltACCOUNT_ROOT:
-            result.zxcChanges.push_back (
-                std::make_pair (prev[sfAccount], ZXCAmount {0}));
-            return true;
-=======
             case ltACCOUNT_ROOT:
                 result.zxcChanges.push_back(
                     std::make_pair(prev[sfAccount], ZXCAmount{0}));
                 return true;
->>>>>>> release
 
             case ltRIPPLE_STATE:
                 result.trustDeletions.push_back(std::make_pair(
@@ -240,21 +204,7 @@ getBasicCashFlow(
         }
 
         auto const& cur = *after;
-<<<<<<< HEAD
-        switch(cur.getType())
-        {
-        case ltACCOUNT_ROOT:
-        {
-            auto const curZxc = cur[sfBalance].zxc();
-            if (!before || (*before)[sfBalance].zxc() != curZxc)
-                result.zxcChanges.push_back (
-                    std::make_pair (cur[sfAccount], curZxc));
-            return true;
-        }
-        case ltRIPPLE_STATE:
-=======
         switch (cur.getType())
->>>>>>> release
         {
             case ltACCOUNT_ROOT: {
                 auto const curZxc = cur[sfBalance].zxc();
@@ -305,21 +255,6 @@ getCashFlow(ReadView const& view, CashFilter f, ApplyStateTable const& table)
     boost::container::static_vector<FuncType, 2> filters;
 
     if ((f & CashFilter::treatZeroOfferAsDeletion) != CashFilter::none)
-<<<<<<< HEAD
-        filters.push_back (treatZeroOfferAsDeletion);
-
-    filters.push_back (&getBasicCashFlow);
-
-    auto each = [&result, &filters](uint256 const& key, bool isDelete,
-        std::shared_ptr<SLE const> const& before,
-        std::shared_ptr<SLE const> const& after) {
-        auto discarded =
-            std::find_if (filters.begin(), filters.end(),
-                [&result, isDelete, &before, &after] (FuncType func) {
-                    return func (result, isDelete, before, after);
-        });
-        (void) discarded;
-=======
         filters.push_back(treatZeroOfferAsDeletion);
 
     filters.push_back(&getBasicCashFlow);
@@ -336,7 +271,6 @@ getCashFlow(ReadView const& view, CashFilter f, ApplyStateTable const& table)
                 return func(result, isDelete, before, after);
             });
         (void)discarded;
->>>>>>> release
     };
 
     table.visit(view, each);
@@ -407,12 +341,8 @@ public:
             rhsDiffs_.hasDiff();
     }
 
-<<<<<<< HEAD
-    int zxcRoundToZero () const;
-=======
     int
     zxcRoundToZero() const;
->>>>>>> release
 
     // Filter out differences that are small enough to be in the floating
     // point noise.
@@ -510,28 +440,6 @@ countKeys(detail::CashSummary const& lhs, detail::CashSummary const& rhs)
             ret.begin(),
             std::plus<std::size_t>());
     };
-<<<<<<< HEAD
-    addIn (countKeys(lhs.zxcChanges,     rhs.zxcChanges));
-    addIn (countKeys(lhs.trustChanges,   rhs.trustChanges));
-    addIn (countKeys(lhs.trustDeletions, rhs.trustDeletions));
-    addIn (countKeys(lhs.offerChanges,   rhs.offerChanges));
-    addIn (countKeys(lhs.offerDeletions, rhs.offerDeletions));
-    return ret;
-}
-
-int CashDiff::Impl::zxcRoundToZero () const
-{
-    // The case has one OfferChange that is present on both lhs_ and rhs_.
-    // That OfferChange should have ZXC for TakerGets.  There should be a 1
-    // drop difference between the TakerGets of lhsDiffs_ and rhsDiffs_.
-    if (lhsDiffs_.offerChanges.size() != 1 ||
-        rhsDiffs_.offerChanges.size() != 1)
-            return 0;
-
-    if (! lhsDiffs_.offerChanges[0].second.takerGets().native() ||
-        ! rhsDiffs_.offerChanges[0].second.takerGets().native())
-            return 0;
-=======
     addIn(countKeys(lhs.zxcChanges, rhs.zxcChanges));
     addIn(countKeys(lhs.trustChanges, rhs.trustChanges));
     addIn(countKeys(lhs.trustDeletions, rhs.trustDeletions));
@@ -553,7 +461,6 @@ CashDiff::Impl::zxcRoundToZero() const
     if (!lhsDiffs_.offerChanges[0].second.takerGets().native() ||
         !rhsDiffs_.offerChanges[0].second.takerGets().native())
         return 0;
->>>>>>> release
 
     bool const lhsBigger =
         lhsDiffs_.offerChanges[0].second.takerGets().mantissa() >
@@ -562,23 +469,6 @@ CashDiff::Impl::zxcRoundToZero() const
     detail::CashSummary const& bigger = lhsBigger ? lhsDiffs_ : rhsDiffs_;
     detail::CashSummary const& smaller = lhsBigger ? rhsDiffs_ : lhsDiffs_;
     if (bigger.offerChanges[0].second.takerGets().mantissa() -
-<<<<<<< HEAD
-        smaller.offerChanges[0].second.takerGets().mantissa() != 1)
-           return 0;
-
-    // The side with the smaller ZXC balance in the OfferChange should have
-    // two ZXC differences.  The other side should have no ZXC differences.
-    if (smaller.zxcChanges.size() != 2)
-        return 0;
-    if (! bigger.zxcChanges.empty())
-        return 0;
-
-    // There should be no other differences.
-    if (!smaller.trustChanges.empty()   || !bigger.trustChanges.empty()   ||
-        !smaller.trustDeletions.empty() || !bigger.trustDeletions.empty() ||
-        !smaller.offerDeletions.empty() || !bigger.offerDeletions.empty())
-            return 0;
-=======
             smaller.offerChanges[0].second.takerGets().mantissa() !=
         1)
         return 0;
@@ -595,7 +485,6 @@ CashDiff::Impl::zxcRoundToZero() const
         !smaller.trustDeletions.empty() || !bigger.trustDeletions.empty() ||
         !smaller.offerDeletions.empty() || !bigger.offerDeletions.empty())
         return 0;
->>>>>>> release
 
     // Return which side exhibited the problem.
     return lhsBigger ? -1 : 1;
@@ -668,20 +557,12 @@ CashDiff::Impl::rmDust()
     // offerDeletions.  Rifle through those containers and remove any
     // entries that are _almost_ the same between lhs and rhs.
 
-<<<<<<< HEAD
-    // zxcChanges.  We call a difference of 2 drops or less dust.
-    removedDust |= rmVecDust (lhsDiffs_.zxcChanges, rhsDiffs_.zxcChanges,
-        [](ZXCAmount const& lhs, ZXCAmount const& rhs)
-        {
-            return diffIsDust (lhs, rhs);
-=======
     // zxcChanges.  We call a difference of 2 drops or less dust.
     removedDust |= rmVecDust(
         lhsDiffs_.zxcChanges,
         rhsDiffs_.zxcChanges,
         [](ZXCAmount const& lhs, ZXCAmount const& rhs) {
             return diffIsDust(lhs, rhs);
->>>>>>> release
         });
 
     // trustChanges.
@@ -765,15 +646,9 @@ CashDiff::Impl::findDiffs(
     rhsKeys_ = counts[2];
 
     // Save only the differences between the results.
-<<<<<<< HEAD
-    // zxcChanges:
-    setDiff (lhsDiffs.zxcChanges, rhsDiffs.zxcChanges, lhsDiffs_.zxcChanges);
-    setDiff (rhsDiffs.zxcChanges, lhsDiffs.zxcChanges, rhsDiffs_.zxcChanges);
-=======
     // zxcChanges:
     setDiff(lhsDiffs.zxcChanges, rhsDiffs.zxcChanges, lhsDiffs_.zxcChanges);
     setDiff(rhsDiffs.zxcChanges, lhsDiffs.zxcChanges, rhsDiffs_.zxcChanges);
->>>>>>> release
 
     // trustChanges:
     setDiff(
@@ -811,12 +686,7 @@ CashDiff::Impl::findDiffs(
 //------------------------------------------------------------------------------
 
 // Locates differences between two ApplyStateTables.
-<<<<<<< HEAD
-CashDiff::CashDiff (CashDiff&& other) noexcept
-: impl_ (std::move (other.impl_))
-=======
 CashDiff::CashDiff(CashDiff&& other) noexcept : impl_(std::move(other.impl_))
->>>>>>> release
 {
 }
 
@@ -856,14 +726,6 @@ CashDiff::hasDiff() const
     return impl_->hasDiff();
 }
 
-<<<<<<< HEAD
-int CashDiff::zxcRoundToZero() const
-{
-    return impl_->zxcRoundToZero();
-}
-
-bool CashDiff::rmDust()
-=======
 int
 CashDiff::zxcRoundToZero() const
 {
@@ -872,7 +734,6 @@ CashDiff::zxcRoundToZero() const
 
 bool
 CashDiff::rmDust()
->>>>>>> release
 {
     return impl_->rmDust();
 }
@@ -898,12 +759,8 @@ diffIsDust(STAmount const& v1, STAmount const& v2, std::uint8_t e10)
 {
     // If one value is positive and the other negative then there's something
     // odd afoot.
-<<<<<<< HEAD
-    if (v1 != beast::zero && v2 != beast::zero && (v1.negative() != v2.negative()))
-=======
     if (v1 != beast::zero && v2 != beast::zero &&
         (v1.negative() != v2.negative()))
->>>>>>> release
         return false;
 
     // v1 and v2 must be the same Issue for their difference to make sense.
@@ -930,31 +787,6 @@ diffIsDust(STAmount const& v1, STAmount const& v2, std::uint8_t e10)
         if (l - s <= 2)
             return true;
 
-<<<<<<< HEAD
-        static_assert (sizeof (1ULL) == sizeof (std::uint64_t), "");
-        std::uint64_t const ratio = s / (l - s);
-        static constexpr std::uint64_t e10Lookup[]
-        {
-                                     1ULL,
-                                    10ULL,
-                                   100ULL,
-                                 1'000ULL,
-                                10'000ULL,
-                               100'000ULL,
-                             1'000'000ULL,
-                            10'000'000ULL,
-                           100'000'000ULL,
-                         1'000'000'000ULL,
-                        10'000'000'000ULL,
-                       100'000'000'000ULL,
-                     1'000'000'000'000ULL,
-                    10'000'000'000'000ULL,
-                   100'000'000'000'000ULL,
-                 1'000'000'000'000'000ULL,
-                10'000'000'000'000'000ULL,
-               100'000'000'000'000'000ULL,
-             1'000'000'000'000'000'000ULL,
-=======
         static_assert(sizeof(1ULL) == sizeof(std::uint64_t), "");
         std::uint64_t const ratio = s / (l - s);
         static constexpr std::uint64_t e10Lookup[]{
@@ -977,7 +809,6 @@ diffIsDust(STAmount const& v1, STAmount const& v2, std::uint8_t e10)
             10'000'000'000'000'000ULL,
             100'000'000'000'000'000ULL,
             1'000'000'000'000'000'000ULL,
->>>>>>> release
             10'000'000'000'000'000'000ULL,
         };
         static std::size_t constexpr maxIndex =

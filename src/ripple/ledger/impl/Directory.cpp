@@ -69,11 +69,7 @@ const_iterator::reference
 const_iterator::operator*() const
 {
     assert(index_ != beast::zero);
-<<<<<<< HEAD
-    if (! cache_)
-=======
     if (!cache_)
->>>>>>> release
         cache_ = view_->read(keylet::child(index_));
     return *cache_;
 }

@@ -21,30 +21,16 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated"
 #endif
-<<<<<<< HEAD
-
-=======
->>>>>>> release
 
 #include <ripple/basics/ByteUtilities.h>
 #include <ripple/basics/contract.h>
-<<<<<<< HEAD
-#include <ripple/basics/ByteUtilities.h>
-=======
 #include <ripple/core/Config.h>
->>>>>>> release
 #include <ripple/core/ConfigSections.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/SociDB.h>
 #include <boost/filesystem.hpp>
 #include <memory>
 #include <soci/sqlite3/soci-sqlite3.h>
-<<<<<<< HEAD
-#include <soci/mysql/soci-mysql.h>
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string.hpp>
-=======
->>>>>>> release
 
 namespace ripple {
 
@@ -147,16 +133,10 @@ getConnection(soci::session& s)
 size_t
 getKBUsedAll(soci::session& s)
 {
-<<<<<<< HEAD
-    if (! getConnection (s))
-        Throw<std::logic_error> ("No connection found.");
-    return static_cast <size_t> (sqlite_api::sqlite3_memory_used () / kilobytes(1));
-=======
     if (!getConnection(s))
         Throw<std::logic_error>("No connection found.");
     return static_cast<size_t>(
         sqlite_api::sqlite3_memory_used() / kilobytes(1));
->>>>>>> release
 }
 
 size_t
@@ -364,11 +344,7 @@ makeCheckpointer(
         id, std::move(session), queue, logs);
 }
 
-<<<<<<< HEAD
-}
-=======
 }  // namespace ripple
->>>>>>> release
 
 #if defined(__clang__)
 #pragma clang diagnostic pop

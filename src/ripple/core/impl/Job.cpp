@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/core/Job.h>
-=======
->>>>>>> release
 #include <ripple/beast/core/CurrentThreadName.h>
 #include <ripple/core/Job.h>
 #include <cassert>
@@ -82,15 +78,9 @@ Job::shouldCancel() const
 void
 Job::doJob()
 {
-<<<<<<< HEAD
-    beast::setCurrentThreadName ("doJob: " + mName);
-    m_loadEvent->start ();
-    m_loadEvent->setName (mName);
-=======
     beast::setCurrentThreadName("doJob: " + mName);
     m_loadEvent->start();
     m_loadEvent->setName(mName);
->>>>>>> release
 
     mJob(*this);
 

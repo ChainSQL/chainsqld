@@ -43,11 +43,7 @@ public:
     ~ManagerImp() = default;
 
     Factory*
-<<<<<<< HEAD
-    find (std::string const& name) override;
-=======
     find(std::string const& name) override;
->>>>>>> release
 
     void
     insert(Factory& factory) override;

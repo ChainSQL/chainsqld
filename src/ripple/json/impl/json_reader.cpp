@@ -29,14 +29,8 @@ namespace Json {
 
 constexpr unsigned Reader::nest_limit;
 
-<<<<<<< HEAD
-static
-std::string
-codePointToUTF8 (unsigned int cp)
-=======
 static std::string
 codePointToUTF8(unsigned int cp)
->>>>>>> release
 {
     std::string result;
 
@@ -109,23 +103,15 @@ Reader::parse(const char* beginDoc, const char* endDoc, Value& root)
     lastValue_ = 0;
     errors_.clear();
 
-<<<<<<< HEAD
-    nodes_.push ( &root );
-=======
     while (!nodes_.empty())
         nodes_.pop();
 
     nodes_.push(&root);
->>>>>>> release
     bool successful = readValue(0);
     Token token;
     skipCommentTokens(token);
 
-<<<<<<< HEAD
-    if ( !root.isNull() && !root.isArray() && !root.isObject() )
-=======
     if (!root.isNull() && !root.isArray() && !root.isObject())
->>>>>>> release
     {
         // Set error location to start of doc, ideally should be first token
         // found in doc
@@ -145,26 +131,13 @@ bool
 Reader::readValue(unsigned depth)
 {
     Token token;
-<<<<<<< HEAD
-    skipCommentTokens ( token );
-=======
     skipCommentTokens(token);
->>>>>>> release
     if (depth > nest_limit)
         return addError("Syntax error: maximum nesting depth exceeded", token);
     bool successful = true;
 
     switch (token.type_)
     {
-<<<<<<< HEAD
-    case tokenObjectBegin:
-        successful = readObject(token, depth);
-        break;
-
-    case tokenArrayBegin:
-        successful = readArray(token, depth);
-        break;
-=======
         case tokenObjectBegin:
             successful = readObject(token, depth);
             break;
@@ -172,7 +145,6 @@ Reader::readValue(unsigned depth)
         case tokenArrayBegin:
             successful = readArray(token, depth);
             break;
->>>>>>> release
 
         case tokenInteger:
             successful = decodeNumber(token);
@@ -401,11 +373,7 @@ Reader::readNumber()
 
         while (current_ != end_)
         {
-<<<<<<< HEAD
-            if (!std::isdigit (static_cast<unsigned char>(*current_)))
-=======
             if (!std::isdigit(static_cast<unsigned char>(*current_)))
->>>>>>> release
             {
                 auto ret = std::find(
                     std::begin(extended_tokens),
@@ -483,17 +451,10 @@ Reader::readObject(Token& tokenStart, unsigned depth)
         if (currentValue().isMember(name))
             return addError("Key '" + name + "' appears twice.", tokenName);
 
-<<<<<<< HEAD
-        Value& value = currentValue ()[ name ];
-        nodes_.push ( &value );
-        bool ok = readValue(depth+1);
-        nodes_.pop ();
-=======
         Value& value = currentValue()[name];
         nodes_.push(&value);
         bool ok = readValue(depth + 1);
         nodes_.pop();
->>>>>>> release
 
         if (!ok)  // error already set
             return recoverFromError(tokenObjectEnd);
@@ -540,17 +501,10 @@ Reader::readArray(Token& tokenStart, unsigned depth)
 
     while (true)
     {
-<<<<<<< HEAD
-        Value& value = currentValue ()[ index++ ];
-        nodes_.push ( &value );
-        bool ok = readValue(depth+1);
-        nodes_.pop ();
-=======
         Value& value = currentValue()[index++];
         nodes_.push(&value);
         bool ok = readValue(depth + 1);
         nodes_.pop();
->>>>>>> release
 
         if (!ok)  // error already set
             return recoverFromError(tokenArrayEnd);

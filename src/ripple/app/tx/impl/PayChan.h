@@ -31,14 +31,8 @@ public:
     {
     }
 
-<<<<<<< HEAD
-    static
-    NotTEC
-    preflight (PreflightContext const& ctx);
-=======
     static NotTEC
     preflight(PreflightContext const& ctx);
->>>>>>> release
 
     static TER
     preclaim(PreclaimContext const& ctx);
@@ -56,14 +50,8 @@ public:
     {
     }
 
-<<<<<<< HEAD
-    static
-    NotTEC
-    preflight (PreflightContext const& ctx);
-=======
     static NotTEC
     preflight(PreflightContext const& ctx);
->>>>>>> release
 
     TER
     doApply() override;
@@ -78,14 +66,8 @@ public:
     {
     }
 
-<<<<<<< HEAD
-    static
-    NotTEC
-    preflight (PreflightContext const& ctx);
-=======
     static NotTEC
     preflight(PreflightContext const& ctx);
->>>>>>> release
 
     TER
     doApply() override;

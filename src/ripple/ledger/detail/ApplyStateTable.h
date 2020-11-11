@@ -27,11 +27,6 @@
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/TxMeta.h>
 #include <ripple/protocol/TER.h>
-<<<<<<< HEAD
-#include <ripple/protocol/ZXCAmount.h>
-#include <ripple/beast/utility/Journal.h>
-=======
->>>>>>> release
 #include <memory>
 
 namespace ripple {
@@ -54,11 +49,7 @@ private:
     using items_t = std::map<key_type, std::pair<Action, std::shared_ptr<SLE>>>;
 
     items_t items_;
-<<<<<<< HEAD
-    ZXCAmount dropsDestroyed_ = 0;
-=======
     ZXCAmount dropsDestroyed_{0};
->>>>>>> release
 
 public:
     ApplyStateTable() = default;
@@ -124,18 +115,11 @@ public:
     replace(ReadView const& base, std::shared_ptr<SLE> const& sle);
 
     void
-<<<<<<< HEAD
-    destroyZXC (ZXCAmount const& fee);
-
-    // For debugging
-    ZXCAmount const& dropsDestroyed () const
-=======
     destroyZXC(ZXCAmount const& fee);
 
     // For debugging
     ZXCAmount const&
     dropsDestroyed() const
->>>>>>> release
     {
         return dropsDestroyed_;
     }

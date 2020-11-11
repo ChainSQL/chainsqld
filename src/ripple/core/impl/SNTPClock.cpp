@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/core/impl/SNTPClock.h>
-=======
->>>>>>> release
 #include <ripple/basics/Log.h>
 #include <ripple/basics/random.h>
 #include <ripple/beast/core/CurrentThreadName.h>
@@ -36,14 +32,9 @@
 
 namespace ripple {
 
-<<<<<<< HEAD
-static uint8_t SNTPQueryData[48] =
-{ 0x1B, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-=======
 static uint8_t SNTPQueryData[48] = {
     0x1B, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
->>>>>>> release
 
 using namespace std::chrono_literals;
 // NTP query frequency - 4 minutes
@@ -89,14 +80,8 @@ private:
         sys_seconds sent;
         std::uint32_t nonce;
 
-<<<<<<< HEAD
-        explicit Query (sys_seconds j = sys_seconds::max())
-            : replied (false)
-            , sent (j)
-=======
         explicit Query(sys_seconds j = sys_seconds::max())
             : replied(false), sent(j)
->>>>>>> release
         {
         }
     };
@@ -133,11 +118,7 @@ public:
     {
     }
 
-<<<<<<< HEAD
-    ~SNTPClientImp () override
-=======
     ~SNTPClientImp() override
->>>>>>> release
     {
         if (thread_.joinable())
         {
@@ -170,15 +151,6 @@ public:
         queryAll();
 
         using namespace boost::asio;
-<<<<<<< HEAD
-        socket_.open (ip::udp::v4 ());
-        socket_.bind (ep_);
-        socket_.async_receive_from (buffer (buf_, 256),
-            ep_, std::bind(
-                &SNTPClientImp::onRead, this,
-                    std::placeholders::_1,
-                        std::placeholders::_2));
-=======
         socket_.open(ip::udp::v4());
         socket_.bind(ep_);
         socket_.async_receive_from(
@@ -189,7 +161,6 @@ public:
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2));
->>>>>>> release
         timer_.expires_from_now(NTP_QUERY_FREQUENCY);
         timer_.async_wait(
             std::bind(&SNTPClientImp::onTimer, this, std::placeholders::_1));

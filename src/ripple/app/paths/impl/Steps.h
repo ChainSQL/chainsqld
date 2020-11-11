@@ -142,15 +142,9 @@ public:
     }
 
     // for debugging. Return the src and dst accounts for a direct step
-<<<<<<< HEAD
-    // For ZXC endpoints, one of src or dst will be the root account
-    virtual boost::optional<std::pair<AccountID,AccountID>>
-    directStepAccts () const
-=======
     // For ZXC endpoints, one of src or dst will be the root account
     virtual boost::optional<std::pair<AccountID, AccountID>>
     directStepAccts() const
->>>>>>> release
     {
         return boost::none;
     }
@@ -206,28 +200,17 @@ public:
     /**
        Check if amount is zero
     */
-<<<<<<< HEAD
-    virtual
-    bool
-    isZero (EitherAmount const& out) const = 0;
-=======
     virtual bool
     isZero(EitherAmount const& out) const = 0;
->>>>>>> release
 
     /**
        Return true if the step should be considered inactive.
        A strand that has additional liquidity may be marked inactive if a step
        has consumed too many offers.
      */
-<<<<<<< HEAD
-    virtual
-    bool inactive() const{
-=======
     virtual bool
     inactive() const
     {
->>>>>>> release
         return false;
     }
 
@@ -438,11 +421,7 @@ struct StepImp : public Step
     }
 
     bool
-<<<<<<< HEAD
-    isZero (EitherAmount const& out) const override
-=======
     isZero(EitherAmount const& out) const override
->>>>>>> release
     {
         return get<TOut>(out) == beast::zero;
     }
@@ -481,15 +460,10 @@ public:
 
 /// @cond INTERNAL
 // Check equal with tolerance
-<<<<<<< HEAD
-bool checkNear (IOUAmount const& expected, IOUAmount const& actual);
-bool checkNear (ZXCAmount const& expected, ZXCAmount const& actual);
-=======
 bool
 checkNear(IOUAmount const& expected, IOUAmount const& actual);
 bool
 checkNear(ZXCAmount const& expected, ZXCAmount const& actual);
->>>>>>> release
 /// @endcond
 
 /**
@@ -555,12 +529,8 @@ directStepEqual(
     AccountID const& dst,
     Currency const& currency);
 
-<<<<<<< HEAD
-bool zxcEndpointStepEqual (Step const& step, AccountID const& acc);
-=======
 bool
 zxcEndpointStepEqual(Step const& step, AccountID const& acc);
->>>>>>> release
 
 bool
 bookStepEqual(Step const& step, ripple::Book const& book);
@@ -583,13 +553,7 @@ std::pair<TER, std::unique_ptr<Step>>
 make_BookStepXI(StrandContext const& ctx, Issue const& out);
 
 std::pair<TER, std::unique_ptr<Step>>
-<<<<<<< HEAD
-make_ZXCEndpointStep (
-    StrandContext const& ctx,
-    AccountID const& acc);
-=======
 make_ZXCEndpointStep(StrandContext const& ctx, AccountID const& acc);
->>>>>>> release
 
 template <class InAmt, class OutAmt>
 bool

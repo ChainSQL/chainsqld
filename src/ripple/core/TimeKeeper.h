@@ -54,12 +54,7 @@ public:
         Servers compute network time by adjusting a local wall
         clock using SNTP and then adjusting for the epoch.
     */
-<<<<<<< HEAD
-    virtual
-    time_point
-=======
     virtual time_point
->>>>>>> release
     now() const override = 0;
 
     /** Returns the close time, in network time.

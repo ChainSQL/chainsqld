@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/ledger/detail/ApplyViewBase.h>
-=======
->>>>>>> release
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/CashDiff.h>
 #include <ripple/ledger/detail/ApplyViewBase.h>
@@ -179,12 +175,7 @@ ApplyViewBase::rawReplace(std::shared_ptr<SLE> const& sle)
 }
 
 void
-<<<<<<< HEAD
-ApplyViewBase::rawDestroyZXC(
-    ZXCAmount const& fee)
-=======
 ApplyViewBase::rawDestroyZXC(ZXCAmount const& fee)
->>>>>>> release
 {
     items_.destroyZXC(fee);
 }

@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/ledger/detail/ApplyStateTable.h>
-=======
->>>>>>> release
 #include <ripple/basics/Log.h>
 #include <ripple/json/to_string.h>
 #include <ripple/ledger/detail/ApplyStateTable.h>
@@ -262,12 +258,7 @@ ApplyStateTable::apply(
 
 		// VFALCO For diagnostics do we want to show
         //        metadata even when the base view is open?
-<<<<<<< HEAD
-        JLOG(j.trace()) <<
-            "metadata " << meta.getJson (JsonOptions::none);
-=======
         JLOG(j.trace()) << "metadata " << meta.getJson(JsonOptions::none);
->>>>>>> release
     }
     to.rawTxInsert(tx.getTransactionID(), sTx, sMeta);
     apply(to);
@@ -635,7 +626,6 @@ ApplyStateTable::threadOwners(
     LedgerEntryType const ledgerType{sle->getType()};
     switch (ledgerType)
     {
-<<<<<<< HEAD
     case ltACCOUNT_ROOT:
     {
         // Nothing to do
@@ -656,10 +646,6 @@ ApplyStateTable::threadOwners(
         {
             threadTx (base, meta, (*sle)[sfAccount], mods, j);
             threadTx (base, meta, (*sle)[sfDestination], mods, j);
-=======
-        case ltACCOUNT_ROOT: {
-            // Nothing to do
->>>>>>> release
             break;
         }
         case ltRIPPLE_STATE: {
@@ -685,7 +671,6 @@ ApplyStateTable::threadOwners(
     }
 }
 
-<<<<<<< HEAD
 void
 ApplyStateTable::clear()
 {
@@ -694,7 +679,3 @@ ApplyStateTable::clear()
 
 } // detail
 } // ripple
-=======
-}  // namespace detail
-}  // namespace ripple
->>>>>>> release

@@ -48,79 +48,6 @@ public:
     {
         return "STValidation";
     }
-<<<<<<< HEAD
-
-    using pointer = std::shared_ptr<STValidation>;
-    using ref = const std::shared_ptr<STValidation>&;
-
-    enum { kFullFlag = 0x1 };
-
-    /** Construct a STValidation from a peer.
-
-        Construct a STValidation from serialized data previously shared by a
-        peer.
-
-        @param sit Iterator over serialized data
-        @param lookupNodeID Invocable with signature
-                               NodeID(PublicKey const&)
-                            used to find the Node ID based on the public key
-                            that signed the validation. For manifest based
-                            validators, this should be the NodeID of the master
-                            public key.
-        @param checkSignature Whether to verify the data was signed properly
-
-        @note Throws if the object is not valid
-    */
-    template <class LookupNodeID>
-    STValidation(
-        SerialIter& sit,
-        LookupNodeID&& lookupNodeID,
-        bool checkSignature)
-        : STObject(getFormat(), sit, sfValidation)
-    {
-        auto const spk = getFieldVL(sfSigningPubKey);
-
-        if (publicKeyType(makeSlice(spk)) != KeyType::secp256k1)
-        {
-            JLOG (debugLog().error())
-                << "Invalid public key in validation"
-                << getJson (JsonOptions::none);
-            Throw<std::runtime_error> ("Invalid public key in validation");
-        }
-
-        if  (checkSignature && !isValid ())
-        {
-            JLOG (debugLog().error())
-                << "Invalid signature in validation"
-                << getJson (JsonOptions::none);
-            Throw<std::runtime_error> ("Invalid signature in validation");
-        }
-
-        mNodeID = lookupNodeID(PublicKey(makeSlice(spk)));
-        assert(mNodeID.isNonZero());
-    }
-
-    /** Fees to set when issuing a new validation.
-
-        Optional fees to include when issuing a new validation
-    */
-    struct FeeSettings
-    {
-        boost::optional<std::uint32_t> loadFee;
-        boost::optional<std::uint64_t> baseFee;
-        boost::optional<std::uint32_t> reserveBase;
-        boost::optional<std::uint32_t> reserveIncrement;
-		boost::optional<std::uint64_t> dropsPerByte;
-    };
-
-    /** Construct, sign and trust a new STValidation
-
-        Constructs, signs and trusts new STValidation issued by this node.
-
-        @param ledgerHash The hash of the validated ledger
-        @param ledgerSeq The sequence number (index) of the ledger
-        @param consensusHash The hash of the consensus transaction set
-=======
 
     /** Construct a STValidation from a peer.
 
@@ -167,7 +94,6 @@ public:
 
     /** Construct, sign and trust a new STValidation issued by this node.
 
->>>>>>> release
         @param signTime When the validation is signed
         @param publicKey The current signing public key
         @param secretKey The current signing secret key

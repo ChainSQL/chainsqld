@@ -30,25 +30,16 @@ class DatabaseRotatingImp : public DatabaseRotating
 public:
     DatabaseRotatingImp() = delete;
     DatabaseRotatingImp(DatabaseRotatingImp const&) = delete;
-<<<<<<< HEAD
-    DatabaseRotatingImp& operator=(DatabaseRotatingImp const&) = delete;
-=======
     DatabaseRotatingImp&
     operator=(DatabaseRotatingImp const&) = delete;
->>>>>>> release
 
     DatabaseRotatingImp(
         std::string const& name,
         Scheduler& scheduler,
         int readThreads,
         Stoppable& parent,
-<<<<<<< HEAD
-        std::unique_ptr<Backend> writableBackend,
-        std::unique_ptr<Backend> archiveBackend,
-=======
         std::shared_ptr<Backend> writableBackend,
         std::shared_ptr<Backend> archiveBackend,
->>>>>>> release
         Section const& config,
         beast::Journal j);
 
@@ -58,22 +49,6 @@ public:
         stopThreads();
     }
 
-<<<<<<< HEAD
-    std::unique_ptr<Backend> const&
-    getWritableBackend() const override
-    {
-        std::lock_guard <std::mutex> lock (rotateMutex_);
-        return writableBackend_;
-    }
-
-    std::unique_ptr<Backend>
-    rotateBackends(std::unique_ptr<Backend> newBackend) override;
-
-    std::mutex& peekMutex() const override
-    {
-        return rotateMutex_;
-    }
-=======
     void
     rotateWithLock(
         std::function<std::unique_ptr<NodeStore::Backend>(
@@ -84,7 +59,6 @@ public:
 
     std::int32_t
     getWriteLoad() const override;
->>>>>>> release
 
     void
     import(Database& source) override;
@@ -96,45 +70,6 @@ public:
         uint256 const& hash,
         std::uint32_t seq) override;
 
-<<<<<<< HEAD
-    void import (Database& source) override
-    {
-        importInternal (*getWritableBackend(), source);
-    }
-
-    void store(NodeObjectType type, Blob&& data,
-        uint256 const& hash, std::uint32_t seq) override;
-
-    std::shared_ptr<NodeObject>
-    fetch(uint256 const& hash, std::uint32_t seq) override
-    {
-        return doFetch(hash, seq, *pCache_, *nCache_, false);
-    }
-
-    bool
-    asyncFetch(uint256 const& hash, std::uint32_t seq,
-        std::shared_ptr<NodeObject>& object) override;
-
-    bool
-    copyLedger(std::shared_ptr<Ledger const> const& ledger) override
-    {
-        return Database::copyLedger(
-            *getWritableBackend(), *ledger, pCache_, nCache_, nullptr);
-    }
-
-    int
-    getDesiredAsyncReadCount(std::uint32_t seq) override
-    {
-        // We prefer a client not fill our cache
-        // We don't want to push data out of the cache
-        // before it's retrieved
-        return pCache_->getTargetSize() / asyncDivider;
-    }
-
-    float
-    getCacheHitRate() override {return pCache_->getHitRate();}
-
-=======
     std::shared_ptr<NodeObject>
     fetch(uint256 const& hash, std::uint32_t seq) override
     {
@@ -165,7 +100,6 @@ public:
         return pCache_->getHitRate();
     }
 
->>>>>>> release
     void
     tune(int size, std::chrono::seconds age) override;
 
@@ -173,45 +107,9 @@ public:
     sweep() override;
 
     TaggedCache<uint256, NodeObject> const&
-<<<<<<< HEAD
-    getPositiveCache() override {return *pCache_;}
-
-private:
-    // Positive cache
-    std::shared_ptr<TaggedCache<uint256, NodeObject>> pCache_;
-
-    // Negative cache
-    std::shared_ptr<KeyCache<uint256>> nCache_;
-
-    std::unique_ptr<Backend> writableBackend_;
-    std::unique_ptr<Backend> archiveBackend_;
-    mutable std::mutex rotateMutex_;
-
-    struct Backends {
-        std::unique_ptr<Backend> const& writableBackend;
-        std::unique_ptr<Backend> const& archiveBackend;
-    };
-
-    Backends getBackends() const
-    {
-        std::lock_guard<std::mutex> lock (rotateMutex_);
-        return Backends {writableBackend_, archiveBackend_};
-    }
-
-    std::shared_ptr<NodeObject> fetchFrom(
-        uint256 const& hash, std::uint32_t seq) override;
-
-    void
-    for_each(std::function <void(std::shared_ptr<NodeObject>)> f) override
-    {
-        Backends b = getBackends();
-        b.archiveBackend->for_each(f);
-        b.writableBackend->for_each(f);
-=======
     getPositiveCache() override
     {
         return *pCache_;
->>>>>>> release
     }
 
 private:

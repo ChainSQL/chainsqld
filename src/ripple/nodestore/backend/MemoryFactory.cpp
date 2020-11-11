@@ -42,11 +42,7 @@ class MemoryFactory : public Factory
 {
 private:
     std::mutex mutex_;
-<<<<<<< HEAD
-    std::map <std::string, MemoryDB, boost::beast::iless> map_;
-=======
     std::map<std::string, MemoryDB, boost::beast::iless> map_;
->>>>>>> release
 
 public:
     MemoryFactory();
@@ -86,11 +82,7 @@ private:
 
     std::string name_;
     beast::Journal const journal_;
-<<<<<<< HEAD
-    MemoryDB* db_ {nullptr};
-=======
     MemoryDB* db_{nullptr};
->>>>>>> release
 
 public:
     MemoryBackend(
@@ -100,21 +92,12 @@ public:
         beast::Journal journal)
         : name_(get<std::string>(keyValues, "path")), journal_(journal)
     {
-<<<<<<< HEAD
-        boost::ignore_unused (journal_); // Keep unused journal_ just in case.
-        if (name_.empty())
-            Throw<std::runtime_error> ("Missing path in Memory backend");
-    }
-
-    ~MemoryBackend () override
-=======
         boost::ignore_unused(journal_);  // Keep unused journal_ just in case.
         if (name_.empty())
             Throw<std::runtime_error>("Missing path in Memory backend");
     }
 
     ~MemoryBackend() override
->>>>>>> release
     {
         close();
     }
@@ -143,11 +126,7 @@ public:
     fetch(void const* key, std::shared_ptr<NodeObject>* pObject) override
     {
         assert(db_);
-<<<<<<< HEAD
-        uint256 const hash (uint256::fromVoid (key));
-=======
         uint256 const hash(uint256::fromVoid(key));
->>>>>>> release
 
         std::lock_guard _(db_->mutex);
 
@@ -178,13 +157,8 @@ public:
     store(std::shared_ptr<NodeObject> const& object) override
     {
         assert(db_);
-<<<<<<< HEAD
-        std::lock_guard<std::mutex> _(db_->mutex);
-        db_->table.emplace (object->getHash(), object);
-=======
         std::lock_guard _(db_->mutex);
         db_->table.emplace(object->getHash(), object);
->>>>>>> release
     }
 
     void

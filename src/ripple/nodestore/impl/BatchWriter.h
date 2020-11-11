@@ -43,14 +43,6 @@ public:
     /** This callback does the actual writing. */
     struct Callback
     {
-<<<<<<< HEAD
-        virtual ~Callback () = default;
-        Callback() = default;
-        Callback(Callback const&) = delete;
-        Callback& operator=(Callback const&) = delete;
-
-        virtual void writeBatch (Batch const& batch) = 0;
-=======
         virtual ~Callback() = default;
         Callback() = default;
         Callback(Callback const&) = delete;
@@ -59,7 +51,6 @@ public:
 
         virtual void
         writeBatch(Batch const& batch) = 0;
->>>>>>> release
     };
 
     /** Create a batch writer. */
@@ -84,18 +75,12 @@ public:
     getWriteLoad();
 
 private:
-<<<<<<< HEAD
-    void performScheduledTask () override;
-    void writeBatch ();
-    void waitForWriting ();
-=======
     void
     performScheduledTask() override;
     void
     writeBatch();
     void
     waitForWriting();
->>>>>>> release
 
 private:
     using LockType = std::recursive_mutex;

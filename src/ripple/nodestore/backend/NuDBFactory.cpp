@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-
-=======
->>>>>>> release
 #include <ripple/basics/contract.h>
 #include <ripple/nodestore/Factory.h>
 #include <ripple/nodestore/Manager.h>
@@ -51,23 +47,14 @@ public:
     std::atomic<bool> deletePath_;
     Scheduler& scheduler_;
 
-<<<<<<< HEAD
-    NuDBBackend (
-=======
     NuDBBackend(
->>>>>>> release
         size_t keyBytes,
         Section const& keyValues,
         Scheduler& scheduler,
         beast::Journal journal)
         : j_(journal)
-<<<<<<< HEAD
-        , keyBytes_ (keyBytes)
-        , name_ (get<std::string>(keyValues, "path"))
-=======
         , keyBytes_(keyBytes)
         , name_(get<std::string>(keyValues, "path"))
->>>>>>> release
         , deletePath_(false)
         , scheduler_(scheduler)
     {
@@ -76,31 +63,13 @@ public:
                 "nodestore: Missing path in NuDB backend");
     }
 
-<<<<<<< HEAD
-    NuDBBackend (
-=======
     NuDBBackend(
->>>>>>> release
         size_t keyBytes,
         Section const& keyValues,
         Scheduler& scheduler,
         nudb::context& context,
         beast::Journal journal)
         : j_(journal)
-<<<<<<< HEAD
-        , keyBytes_ (keyBytes)
-        , name_ (get<std::string>(keyValues, "path"))
-        , db_ (context)
-        , deletePath_(false)
-        , scheduler_ (scheduler)
-    {
-        if (name_.empty())
-            Throw<std::runtime_error> (
-                "nodestore: Missing path in NuDB backend");
-    }
-
-    ~NuDBBackend () override
-=======
         , keyBytes_(keyBytes)
         , name_(get<std::string>(keyValues, "path"))
         , db_(context)
@@ -113,7 +82,6 @@ public:
     }
 
     ~NuDBBackend() override
->>>>>>> release
     {
         close();
     }
@@ -131,12 +99,7 @@ public:
         if (db_.is_open())
         {
             assert(false);
-<<<<<<< HEAD
-            JLOG(j_.error()) <<
-                "database is already open";
-=======
             JLOG(j_.error()) << "database is already open";
->>>>>>> release
             return;
         }
         auto const folder = path(name_);
@@ -147,22 +110,6 @@ public:
         if (createIfMissing)
         {
             create_directories(folder);
-<<<<<<< HEAD
-            nudb::create<nudb::xxhasher>(dp, kp, lp,
-                currentType, nudb::make_salt(), keyBytes_,
-                    nudb::block_size(kp), 0.50, ec);
-            if(ec == nudb::errc::file_exists)
-                ec = {};
-            if(ec)
-                Throw<nudb::system_error>(ec);
-        }
-        db_.open (dp, kp, lp, ec);
-        if(ec)
-            Throw<nudb::system_error>(ec);
-        if (db_.appnum() != currentType)
-            Throw<std::runtime_error>(
-                "nodestore: unknown appnum");
-=======
             nudb::create<nudb::xxhasher>(
                 dp,
                 kp,
@@ -183,7 +130,6 @@ public:
             Throw<nudb::system_error>(ec);
         if (db_.appnum() != currentType)
             Throw<std::runtime_error>("nodestore: unknown appnum");
->>>>>>> release
     }
 
     void
@@ -388,24 +334,15 @@ public:
             keyBytes, keyValues, scheduler, journal);
     }
 
-<<<<<<< HEAD
-    std::unique_ptr <Backend>
-    createInstance (
-=======
     std::unique_ptr<Backend>
     createInstance(
->>>>>>> release
         size_t keyBytes,
         Section const& keyValues,
         Scheduler& scheduler,
         nudb::context& context,
         beast::Journal journal) override
     {
-<<<<<<< HEAD
-        return std::make_unique <NuDBBackend> (
-=======
         return std::make_unique<NuDBBackend>(
->>>>>>> release
             keyBytes, keyValues, scheduler, context, journal);
     }
 };

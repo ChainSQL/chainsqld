@@ -19,19 +19,9 @@
 
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/misc/ValidatorSite.h>
-<<<<<<< HEAD
 #include <ripple/basics/base64.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/json/json_reader.h> 
-=======
-#include <ripple/app/misc/detail/WorkFile.h>
-#include <ripple/app/misc/detail/WorkPlain.h>
-#include <ripple/app/misc/detail/WorkSSL.h>
-#include <ripple/basics/Slice.h>
-#include <ripple/basics/base64.h>
-#include <ripple/json/json_reader.h>
-#include <ripple/protocol/digest.h>
->>>>>>> release
 #include <ripple/protocol/jss.h>
 #include <boost/algorithm/clamp.hpp>
 #include <boost/regex.hpp>

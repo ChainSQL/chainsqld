@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/ledger/ApplyView.h>
-=======
->>>>>>> release
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/ApplyView.h>
 #include <ripple/protocol/Protocol.h>

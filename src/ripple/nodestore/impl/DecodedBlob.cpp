@@ -47,13 +47,8 @@ DecodedBlob::DecodedBlob(void const* key, void const* value, int valueBytes)
 
     if (valueBytes > 8)
     {
-<<<<<<< HEAD
-        unsigned char const* byte = static_cast <unsigned char const*> (value);
-        m_objectType = safe_cast <NodeObjectType> (byte [8]);
-=======
         unsigned char const* byte = static_cast<unsigned char const*>(value);
         m_objectType = safe_cast<NodeObjectType>(byte[8]);
->>>>>>> release
     }
 
     if (valueBytes > 9)

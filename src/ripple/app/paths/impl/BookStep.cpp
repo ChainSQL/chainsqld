@@ -17,11 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/app/paths/impl/FlatSets.h>
-#include <ripple/app/paths/impl/Steps.h>
-=======
->>>>>>> release
 #include <ripple/app/paths/Credit.h>
 #include <ripple/app/paths/NodeDirectory.h>
 #include <ripple/app/paths/impl/FlatSets.h>
@@ -36,10 +31,6 @@
 #include <ripple/protocol/Book.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/Quality.h>
-<<<<<<< HEAD
-#include <ripple/protocol/ZXCAmount.h>
-=======
->>>>>>> release
 
 #include <boost/container/flat_set.hpp>
 
@@ -61,11 +52,7 @@ protected:
     bool const ownerPaysTransferFee_;
     // Mark as inactive (dry) if too many offers are consumed
     bool inactive_ = false;
-<<<<<<< HEAD
-    beast::Journal j_;
-=======
     beast::Journal const j_;
->>>>>>> release
 
     struct Cache
     {
@@ -79,13 +66,8 @@ protected:
 
     boost::optional<Cache> cache_;
 
-<<<<<<< HEAD
-    static
-    uint32_t getMaxOffersToConsume(StrandContext const& ctx)
-=======
     static uint32_t
     getMaxOffersToConsume(StrandContext const& ctx)
->>>>>>> release
     {
         if (ctx.view.rules().enabled(fix1515))
             return 1000;
@@ -93,18 +75,6 @@ protected:
     }
 
 public:
-<<<<<<< HEAD
-    BookStep (StrandContext const& ctx,
-        Issue const& in,
-        Issue const& out)
-        : maxOffersToConsume_ (getMaxOffersToConsume(ctx))
-        , book_ (in, out)
-        , strandSrc_ (ctx.strandSrc)
-        , strandDst_ (ctx.strandDst)
-        , prevStep_ (ctx.prevStep)
-        , ownerPaysTransferFee_ (ctx.ownerPaysTransferFee)
-        , j_ (ctx.j)
-=======
     BookStep(StrandContext const& ctx, Issue const& in, Issue const& out)
         : maxOffersToConsume_(getMaxOffersToConsume(ctx))
         , book_(in, out)
@@ -113,7 +83,6 @@ public:
         , prevStep_(ctx.prevStep)
         , ownerPaysTransferFee_(ctx.ownerPaysTransferFee)
         , j_(ctx.j)
->>>>>>> release
     {
     }
 
@@ -574,17 +543,10 @@ BookStep<TIn, TOut, TDerived>::forEachOffer(
     // Charge the offer owner, not the sender
     // Charge a fee even if the owner is the same as the issuer
     // (the old code does not charge a fee)
-<<<<<<< HEAD
-    // Calculate amount that goes to the taker and the amount charged the offer owner
-    auto rate = [this, &sb](AccountID const& id)->std::uint32_t
-    {
-        if (isZXC (id) || id == this->strandDst_)
-=======
     // Calculate amount that goes to the taker and the amount charged the offer
     // owner
     auto rate = [this, &sb](AccountID const& id) -> std::uint32_t {
         if (isZXC(id) || id == this->strandDst_)
->>>>>>> release
             return QUALITY_ONE;
         return transferRate(sb, id).value;
     };
@@ -620,14 +582,8 @@ BookStep<TIn, TOut, TDerived>::forEachOffer(
             continue;
 
         // Make sure offer owner has authorization to own IOUs from issuer.
-<<<<<<< HEAD
-        // An account can always own ZXC or their own IOUs.
-        if (flowCross &&
-            (!isZXC (offer.issueIn().currency)) &&
-=======
         // An account can always own ZXC or their own IOUs.
         if (flowCross && (!isZXC(offer.issueIn().currency)) &&
->>>>>>> release
             (offer.owner() != offer.issueIn().account))
         {
             auto const& issuerID = offer.issueIn().account;
@@ -1151,22 +1107,6 @@ equalHelper(Step const& step, ripple::Book const& book)
 bool
 bookStepEqual(Step const& step, ripple::Book const& book)
 {
-<<<<<<< HEAD
-    bool const inZXC = isZXC (book.in.currency);
-    bool const outZXC = isZXC (book.out.currency);
-    if (inZXC && outZXC)
-        return equalHelper<ZXCAmount, ZXCAmount,
-            BookPaymentStep<ZXCAmount, ZXCAmount>> (step, book);
-    if (inZXC && !outZXC)
-        return equalHelper<ZXCAmount, IOUAmount,
-            BookPaymentStep<ZXCAmount, IOUAmount>> (step, book);
-    if (!inZXC && outZXC)
-        return equalHelper<IOUAmount, ZXCAmount,
-            BookPaymentStep<IOUAmount, ZXCAmount>> (step, book);
-    if (!inZXC && !outZXC)
-        return equalHelper<IOUAmount, IOUAmount,
-            BookPaymentStep<IOUAmount, IOUAmount>> (step, book);
-=======
     bool const inZXC = isZXC(book.in.currency);
     bool const outZXC = isZXC(book.out.currency);
     if (inZXC && outZXC)
@@ -1189,7 +1129,6 @@ bookStepEqual(Step const& step, ripple::Book const& book)
             IOUAmount,
             IOUAmount,
             BookPaymentStep<IOUAmount, IOUAmount>>(step, book);
->>>>>>> release
     return false;
 }
 }  // namespace test
@@ -1231,21 +1170,13 @@ make_BookStepII(StrandContext const& ctx, Issue const& in, Issue const& out)
 std::pair<TER, std::unique_ptr<Step>>
 make_BookStepIX(StrandContext const& ctx, Issue const& in)
 {
-<<<<<<< HEAD
-    return make_BookStepHelper<IOUAmount, ZXCAmount> (ctx, in, zxcIssue());
-=======
     return make_BookStepHelper<IOUAmount, ZXCAmount>(ctx, in, zxcIssue());
->>>>>>> release
 }
 
 std::pair<TER, std::unique_ptr<Step>>
 make_BookStepXI(StrandContext const& ctx, Issue const& out)
 {
-<<<<<<< HEAD
-    return make_BookStepHelper<ZXCAmount, IOUAmount> (ctx, zxcIssue(), out);
-=======
     return make_BookStepHelper<ZXCAmount, IOUAmount>(ctx, zxcIssue(), out);
->>>>>>> release
 }
 
 }  // namespace ripple

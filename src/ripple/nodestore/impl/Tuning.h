@@ -25,11 +25,7 @@ namespace NodeStore {
 
 enum {
     // Target cache size of the TaggedCache used to hold nodes
-<<<<<<< HEAD
-    cacheTargetSize     = 16384
-=======
     cacheTargetSize = 16384
->>>>>>> release
 
     // Fraction of the cache one query source can take
     ,
@@ -39,12 +35,7 @@ enum {
 // Expiration time for cached nodes
 std::chrono::seconds constexpr cacheTargetAge = std::chrono::minutes{5};
 
-<<<<<<< HEAD
-}
-}
-=======
 }  // namespace NodeStore
 }  // namespace ripple
->>>>>>> release
 
 #endif

@@ -17,23 +17,14 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-
-=======
->>>>>>> release
 #include <ripple/unity/rocksdb.h>
 
 #if RIPPLE_ROCKSDB_AVAILABLE
 
 #include <ripple/basics/ByteUtilities.h>
 #include <ripple/basics/contract.h>
-<<<<<<< HEAD
-#include <ripple/basics/ByteUtilities.h>
-#include <ripple/core/Config.h> // VFALCO Bad dependency
-=======
 #include <ripple/beast/core/CurrentThreadName.h>
 #include <ripple/core/Config.h>  // VFALCO Bad dependency
->>>>>>> release
 #include <ripple/nodestore/Factory.h>
 #include <ripple/nodestore/Manager.h>
 #include <ripple/nodestore/impl/BatchWriter.h>
@@ -80,11 +71,7 @@ public:
     }
 
     void
-<<<<<<< HEAD
-    StartThread (void (*f)(void*), void* a) override
-=======
     StartThread(void (*f)(void*), void* a) override
->>>>>>> release
     {
         ThreadParams* const p(new ThreadParams(f, a));
         EnvWrapper::StartThread(&RocksDBEnv::thread_entry, p);
@@ -104,19 +91,6 @@ public:
     Scheduler& m_scheduler;
     BatchWriter m_batch;
     std::string m_name;
-<<<<<<< HEAD
-    std::unique_ptr <rocksdb::DB> m_db;
-    int fdRequired_ = 2048;
-    rocksdb::Options m_options;
-
-    RocksDBBackend (int keyBytes, Section const& keyValues,
-        Scheduler& scheduler, beast::Journal journal, RocksDBEnv* env)
-        : m_deletePath (false)
-        , m_journal (journal)
-        , m_keyBytes (keyBytes)
-        , m_scheduler (scheduler)
-        , m_batch (*this, scheduler)
-=======
     std::unique_ptr<rocksdb::DB> m_db;
     int fdRequired_ = 2048;
     rocksdb::Options m_options;
@@ -132,7 +106,6 @@ public:
         , m_keyBytes(keyBytes)
         , m_scheduler(scheduler)
         , m_batch(*this, scheduler)
->>>>>>> release
     {
         if (!get_if_exists(keyValues, "path", m_name))
             Throw<std::runtime_error>("Missing path in RocksDBFactory backend");
@@ -140,25 +113,12 @@ public:
         rocksdb::BlockBasedTableOptions table_options;
         m_options.env = env;
 
-<<<<<<< HEAD
-        if (keyValues.exists ("cache_mb"))
-            table_options.block_cache = rocksdb::NewLRUCache (
-=======
         if (keyValues.exists("cache_mb"))
             table_options.block_cache = rocksdb::NewLRUCache(
->>>>>>> release
                 get<int>(keyValues, "cache_mb") * megabytes(1));
 
         if (auto const v = get<int>(keyValues, "filter_bits"))
         {
-<<<<<<< HEAD
-            bool const filter_blocks = !keyValues.exists ("filter_full") ||
-                (get<int>(keyValues, "filter_full") == 0);
-            table_options.filter_policy.reset (rocksdb::NewBloomFilterPolicy (v, filter_blocks));
-        }
-
-        if (get_if_exists (keyValues, "open_files", m_options.max_open_files))
-=======
             bool const filter_blocks = !keyValues.exists("filter_full") ||
                 (get<int>(keyValues, "filter_full") == 0);
             table_options.filter_policy.reset(
@@ -166,19 +126,10 @@ public:
         }
 
         if (get_if_exists(keyValues, "open_files", m_options.max_open_files))
->>>>>>> release
             fdRequired_ = m_options.max_open_files;
 
         if (keyValues.exists("file_size_mb"))
         {
-<<<<<<< HEAD
-            m_options.target_file_size_base = megabytes(1) * get<int>(keyValues,"file_size_mb");
-            m_options.max_bytes_for_level_base = 5 * m_options.target_file_size_base;
-            m_options.write_buffer_size = 2 * m_options.target_file_size_base;
-        }
-
-        get_if_exists (keyValues, "file_size_mult", m_options.target_file_size_multiplier);
-=======
             m_options.target_file_size_base =
                 megabytes(1) * get<int>(keyValues, "file_size_mb");
             m_options.max_bytes_for_level_base =
@@ -188,28 +139,18 @@ public:
 
         get_if_exists(
             keyValues, "file_size_mult", m_options.target_file_size_multiplier);
->>>>>>> release
 
         if (keyValues.exists("bg_threads"))
         {
-<<<<<<< HEAD
-            m_options.env->SetBackgroundThreads
-                (get<int>(keyValues, "bg_threads"), rocksdb::Env::LOW);
-=======
             m_options.env->SetBackgroundThreads(
                 get<int>(keyValues, "bg_threads"), rocksdb::Env::LOW);
->>>>>>> release
         }
 
         if (keyValues.exists("high_threads"))
         {
             auto const highThreads = get<int>(keyValues, "high_threads");
-<<<<<<< HEAD
-            m_options.env->SetBackgroundThreads (highThreads, rocksdb::Env::HIGH);
-=======
             m_options.env->SetBackgroundThreads(
                 highThreads, rocksdb::Env::HIGH);
->>>>>>> release
 
             // If we have high-priority threads, presumably we want to
             // use them for background flushes
@@ -228,23 +169,6 @@ public:
             m_options.min_write_buffer_number_to_merge = 2;
             m_options.max_write_buffer_number = 6;
             m_options.write_buffer_size = 6 * m_options.target_file_size_base;
-<<<<<<< HEAD
-        }
-
-        if (keyValues.exists("bbt_options"))
-        {
-            auto const s = rocksdb::GetBlockBasedTableOptionsFromString(
-                table_options,
-                get<std::string>(keyValues, "bbt_options"),
-                &table_options);
-            if (! s.ok())
-                Throw<std::runtime_error> (
-                    std::string("Unable to set RocksDB bbt_options: ") + s.ToString());
-        }
-
-        m_options.table_factory.reset(NewBlockBasedTableFactory(table_options));
-
-=======
         }
 
         if (keyValues.exists("bbt_options"))
@@ -261,21 +185,14 @@ public:
 
         m_options.table_factory.reset(NewBlockBasedTableFactory(table_options));
 
->>>>>>> release
         if (keyValues.exists("options"))
         {
             auto const s = rocksdb::GetOptionsFromString(
                 m_options, get<std::string>(keyValues, "options"), &m_options);
-<<<<<<< HEAD
-            if (! s.ok())
-                Throw<std::runtime_error> (
-                    std::string("Unable to set RocksDB options: ") + s.ToString());
-=======
             if (!s.ok())
                 Throw<std::runtime_error>(
                     std::string("Unable to set RocksDB options: ") +
                     s.ToString());
->>>>>>> release
         }
 
         std::string s1, s2;
@@ -285,11 +202,7 @@ public:
         JLOG(m_journal.debug()) << "RocksDB CFOptions: " << s2;
     }
 
-<<<<<<< HEAD
-    ~RocksDBBackend () override
-=======
     ~RocksDBBackend() override
->>>>>>> release
     {
         close();
     }
@@ -300,12 +213,7 @@ public:
         if (m_db)
         {
             assert(false);
-<<<<<<< HEAD
-            JLOG(m_journal.error()) <<
-                "database is already open";
-=======
             JLOG(m_journal.error()) << "database is already open";
->>>>>>> release
             return;
         }
         rocksdb::DB* db = nullptr;
@@ -344,11 +252,7 @@ public:
     fetch(void const* key, std::shared_ptr<NodeObject>* pObject) override
     {
         assert(m_db);
-<<<<<<< HEAD
-        pObject->reset ();
-=======
         pObject->reset();
->>>>>>> release
 
         Status status(ok);
 
@@ -525,21 +429,13 @@ public:
         Manager::instance().insert(*this);
     }
 
-<<<<<<< HEAD
-    ~RocksDBFactory () override
-=======
     ~RocksDBFactory() override
->>>>>>> release
     {
         Manager::instance().erase(*this);
     }
 
     std::string
-<<<<<<< HEAD
-    getName () const override
-=======
     getName() const override
->>>>>>> release
     {
         return "RocksDB";
     }

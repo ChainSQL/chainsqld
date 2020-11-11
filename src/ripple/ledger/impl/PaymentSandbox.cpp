@@ -202,11 +202,6 @@ PaymentSandbox::balanceHook(
         }
     }
 
-<<<<<<< HEAD
-    if (isZXC(issuer) && adjustedAmt < beast::zero)
-        // A calculated negative ZXC balance is not an error case. Consider a
-        // payment snippet that credits a large ZXC amount and then debits the
-=======
     // The adjusted amount should never be larger than the balance. In
     // some circumstances, it is possible for the deferred credits table
     // to compute usable balance just slightly above what the ledger
@@ -217,7 +212,6 @@ PaymentSandbox::balanceHook(
     if (isZXC(issuer) && adjustedAmt < beast::zero)
         // A calculated negative ZXC balance is not an error case. Consider a
         // payment snippet that credits a large ZXC amount and then debits the
->>>>>>> release
         // same amount. The credit can't be used but we subtract the debit and
         // calculate a negative value. It's not an error case.
         adjustedAmt.clear();
@@ -278,14 +272,9 @@ PaymentSandbox::balanceChanges(ReadView const& view) const
     using key_t = std::tuple<AccountID, AccountID, Currency>;
     // Map of delta trust lines. As a special case, when both ends of the trust
     // line are the same currency, then it's delta currency for that issuer. To
-<<<<<<< HEAD
-    // get the change in ZXC balance, Account == root, issuer == root, currency == ZXC
-    std::map<key, STAmount> result;
-=======
     // get the change in ZXC balance, Account == root, issuer == root, currency
     // == ZXC
     std::map<key_t, STAmount> result;
->>>>>>> release
 
     // populate a dictionary with low/high/currency/delta. This can be
     // compared with the other versions payment code.
@@ -399,12 +388,8 @@ PaymentSandbox::balanceChanges(ReadView const& view) const
     return result;
 }
 
-<<<<<<< HEAD
-ZXCAmount PaymentSandbox::zxcDestroyed () const
-=======
 ZXCAmount
 PaymentSandbox::zxcDestroyed() const
->>>>>>> release
 {
     return items_.dropsDestroyed();
 }

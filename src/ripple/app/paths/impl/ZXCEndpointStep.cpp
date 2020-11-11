@@ -17,24 +17,16 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-
-=======
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
 #include <ripple/app/paths/Credit.h>
 #include <ripple/app/paths/impl/AmountSpec.h>
 #include <ripple/app/paths/impl/StepChecks.h>
 #include <ripple/app/paths/impl/Steps.h>
 #include <ripple/basics/IOUAmount.h>
 #include <ripple/basics/Log.h>
-#include <ripple/basics/ZXCAmount.h>
+#include <ripple/basics/XRPAmount.h>
 #include <ripple/ledger/PaymentSandbox.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/Quality.h>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-#include <ripple/protocol/ZXCAmount.h>
-=======
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
 
 #include <boost/container/flat_set.hpp>
 
@@ -44,13 +36,8 @@
 namespace ripple {
 
 template <class TDerived>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-class ZXCEndpointStep : public StepImp<
-    ZXCAmount, ZXCAmount, ZXCEndpointStep<TDerived>>
-=======
-class ZXCEndpointStep
-    : public StepImp<ZXCAmount, ZXCAmount, ZXCEndpointStep<TDerived>>
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+class XRPEndpointStep
+    : public StepImp<XRPAmount, XRPAmount, XRPEndpointStep<TDerived>>
 {
 private:
     AccountID acc_;
@@ -60,7 +47,7 @@ private:
     // Since this step will always be an endpoint in a strand
     // (either the first or last step) the same cache is used
     // for cachedIn and cachedOut and only one will ever be used
-    boost::optional<ZXCAmount> cache_;
+    boost::optional<XRPAmount> cache_;
 
     boost::optional<EitherAmount>
     cached() const
@@ -71,24 +58,13 @@ private:
     }
 
 public:
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    ZXCEndpointStep (
-        StrandContext const& ctx,
-        AccountID const& acc)
-            : acc_(acc)
-            , isLast_(ctx.isLast)
-            , j_ (ctx.j) {}
-
-    AccountID const& acc () const
-=======
-    ZXCEndpointStep(StrandContext const& ctx, AccountID const& acc)
+    XRPEndpointStep(StrandContext const& ctx, AccountID const& acc)
         : acc_(acc), isLast_(ctx.isLast), j_(ctx.j)
     {
     }
 
     AccountID const&
     acc() const
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
     {
         return acc_;
     }
@@ -97,8 +73,8 @@ public:
     directStepAccts() const override
     {
         if (isLast_)
-            return std::make_pair(zxcAccount(), acc_);
-        return std::make_pair(acc_, zxcAccount());
+            return std::make_pair(xrpAccount(), acc_);
+        return std::make_pair(acc_, xrpAccount());
     }
 
     boost::optional<EitherAmount>
@@ -123,29 +99,19 @@ public:
     qualityUpperBound(ReadView const& v, DebtDirection prevStepDir)
         const override;
 
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    std::pair<ZXCAmount, ZXCAmount>
-    revImp (
-=======
-    std::pair<ZXCAmount, ZXCAmount>
+    std::pair<XRPAmount, XRPAmount>
     revImp(
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
         PaymentSandbox& sb,
         ApplyView& afView,
         boost::container::flat_set<uint256>& ofrsToRm,
-        ZXCAmount const& out);
+        XRPAmount const& out);
 
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    std::pair<ZXCAmount, ZXCAmount>
-    fwdImp (
-=======
-    std::pair<ZXCAmount, ZXCAmount>
+    std::pair<XRPAmount, XRPAmount>
     fwdImp(
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
         PaymentSandbox& sb,
         ApplyView& afView,
         boost::container::flat_set<uint256>& ofrsToRm,
-        ZXCAmount const& in);
+        XRPAmount const& in);
 
     std::pair<bool, EitherAmount>
     validFwd(PaymentSandbox& sb, ApplyView& afView, EitherAmount const& in)
@@ -156,17 +122,10 @@ public:
     check(StrandContext const& ctx) const;
 
 protected:
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    ZXCAmount
-    zxcLiquidImpl (ReadView& sb, std::int32_t reserveReduction) const
+    XRPAmount
+    xrpLiquidImpl(ReadView& sb, std::int32_t reserveReduction) const
     {
-        return ripple::zxcLiquid (sb, acc_, reserveReduction, j_);
-=======
-    ZXCAmount
-    zxcLiquidImpl(ReadView& sb, std::int32_t reserveReduction) const
-    {
-        return ripple::zxcLiquid(sb, acc_, reserveReduction, j_);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+        return ripple::xrpLiquid(sb, acc_, reserveReduction, j_);
     }
 
     std::string
@@ -180,21 +139,11 @@ protected:
 
 private:
     template <class P>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    friend bool operator==(
-        ZXCEndpointStep<P> const& lhs,
-        ZXCEndpointStep<P> const& rhs);
-
-    friend bool operator!=(
-        ZXCEndpointStep const& lhs,
-        ZXCEndpointStep const& rhs)
-=======
     friend bool
-    operator==(ZXCEndpointStep<P> const& lhs, ZXCEndpointStep<P> const& rhs);
+    operator==(XRPEndpointStep<P> const& lhs, XRPEndpointStep<P> const& rhs);
 
     friend bool
-    operator!=(ZXCEndpointStep const& lhs, ZXCEndpointStep const& rhs)
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+    operator!=(XRPEndpointStep const& lhs, XRPEndpointStep const& rhs)
     {
         return !(lhs == rhs);
     }
@@ -202,11 +151,7 @@ private:
     bool
     equal(Step const& rhs) const override
     {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-        if (auto ds = dynamic_cast<ZXCEndpointStep const*> (&rhs))
-=======
-        if (auto ds = dynamic_cast<ZXCEndpointStep const*>(&rhs))
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+        if (auto ds = dynamic_cast<XRPEndpointStep const*>(&rhs))
         {
             return *this == *ds;
         }
@@ -222,51 +167,34 @@ private:
 // The rules for handling funds in these two cases are almost, but not
 // quite, the same.
 
-// Payment ZXCEndpointStep class (not offer crossing).
-class ZXCEndpointPaymentStep : public ZXCEndpointStep<ZXCEndpointPaymentStep>
+// Payment XRPEndpointStep class (not offer crossing).
+class XRPEndpointPaymentStep : public XRPEndpointStep<XRPEndpointPaymentStep>
 {
 public:
-    using ZXCEndpointStep<ZXCEndpointPaymentStep>::ZXCEndpointStep;
+    using XRPEndpointStep<XRPEndpointPaymentStep>::XRPEndpointStep;
 
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    ZXCAmount
-    zxcLiquid (ReadView& sb) const
+    XRPAmount
+    xrpLiquid(ReadView& sb) const
     {
-        return zxcLiquidImpl (sb, 0);;
-=======
-    ZXCAmount
-    zxcLiquid(ReadView& sb) const
-    {
-        return zxcLiquidImpl(sb, 0);
+        return xrpLiquidImpl(sb, 0);
         ;
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
     }
 
     std::string
     logString() const override
     {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-        return logStringImpl ("ZXCEndpointPaymentStep");
+        return logStringImpl("XRPEndpointPaymentStep");
     }
 };
 
-// Offer crossing ZXCEndpointStep class (not a payment).
-class ZXCEndpointOfferCrossingStep :
-    public ZXCEndpointStep<ZXCEndpointOfferCrossingStep>
-=======
-        return logStringImpl("ZXCEndpointPaymentStep");
-    }
-};
-
-// Offer crossing ZXCEndpointStep class (not a payment).
-class ZXCEndpointOfferCrossingStep
-    : public ZXCEndpointStep<ZXCEndpointOfferCrossingStep>
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+// Offer crossing XRPEndpointStep class (not a payment).
+class XRPEndpointOfferCrossingStep
+    : public XRPEndpointStep<XRPEndpointOfferCrossingStep>
 {
 private:
     // For historical reasons, offer crossing is allowed to dig further
-    // into the ZXC reserve than an ordinary payment.  (I believe it's
-    // because the trust line was created after the ZXC was removed.)
+    // into the XRP reserve than an ordinary payment.  (I believe it's
+    // because the trust line was created after the XRP was removed.)
     // Return how much the reserve should be reduced.
     //
     // Note that reduced reserve only happens if the trust line does not
@@ -280,40 +208,22 @@ private:
     }
 
 public:
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    ZXCEndpointOfferCrossingStep (
-        StrandContext const& ctx, AccountID const& acc)
-    : ZXCEndpointStep<ZXCEndpointOfferCrossingStep> (ctx, acc)
-    , reserveReduction_ (computeReserveReduction (ctx, acc))
-    {
-    }
-
-    ZXCAmount
-    zxcLiquid (ReadView& sb) const
-    {
-        return zxcLiquidImpl (sb, reserveReduction_);
-=======
-    ZXCEndpointOfferCrossingStep(StrandContext const& ctx, AccountID const& acc)
-        : ZXCEndpointStep<ZXCEndpointOfferCrossingStep>(ctx, acc)
+    XRPEndpointOfferCrossingStep(StrandContext const& ctx, AccountID const& acc)
+        : XRPEndpointStep<XRPEndpointOfferCrossingStep>(ctx, acc)
         , reserveReduction_(computeReserveReduction(ctx, acc))
     {
     }
 
-    ZXCAmount
-    zxcLiquid(ReadView& sb) const
+    XRPAmount
+    xrpLiquid(ReadView& sb) const
     {
-        return zxcLiquidImpl(sb, reserveReduction_);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+        return xrpLiquidImpl(sb, reserveReduction_);
     }
 
     std::string
     logString() const override
     {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-        return logStringImpl ("ZXCEndpointOfferCrossingStep");
-=======
-        return logStringImpl("ZXCEndpointOfferCrossingStep");
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+        return logStringImpl("XRPEndpointOfferCrossingStep");
     }
 
 private:
@@ -323,30 +233,19 @@ private:
 //------------------------------------------------------------------------------
 
 template <class TDerived>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-inline bool operator==(ZXCEndpointStep<TDerived> const& lhs,
-    ZXCEndpointStep<TDerived> const& rhs)
-=======
 inline bool
 operator==(
-    ZXCEndpointStep<TDerived> const& lhs,
-    ZXCEndpointStep<TDerived> const& rhs)
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+    XRPEndpointStep<TDerived> const& lhs,
+    XRPEndpointStep<TDerived> const& rhs)
 {
     return lhs.acc_ == rhs.acc_ && lhs.isLast_ == rhs.isLast_;
 }
 
 template <class TDerived>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-boost::optional<Quality>
-ZXCEndpointStep<TDerived>::qualityUpperBound(
-    ReadView const& v, bool& redeems) const
-=======
 std::pair<boost::optional<Quality>, DebtDirection>
-ZXCEndpointStep<TDerived>::qualityUpperBound(
+XRPEndpointStep<TDerived>::qualityUpperBound(
     ReadView const& v,
     DebtDirection prevStepDir) const
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
 {
     return {
         Quality{STAmount::uRateOne},
@@ -354,76 +253,45 @@ ZXCEndpointStep<TDerived>::qualityUpperBound(
 }
 
 template <class TDerived>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-std::pair<ZXCAmount, ZXCAmount>
-ZXCEndpointStep<TDerived>::revImp (
-=======
-std::pair<ZXCAmount, ZXCAmount>
-ZXCEndpointStep<TDerived>::revImp(
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+std::pair<XRPAmount, XRPAmount>
+XRPEndpointStep<TDerived>::revImp(
     PaymentSandbox& sb,
     ApplyView& afView,
     boost::container::flat_set<uint256>& ofrsToRm,
-    ZXCAmount const& out)
+    XRPAmount const& out)
 {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid (sb);
-=======
-    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid(sb);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+    auto const balance = static_cast<TDerived const*>(this)->xrpLiquid(sb);
 
     auto const result = isLast_ ? out : std::min(balance, out);
 
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    auto& sender = isLast_ ? zxcAccount() : acc_;
-    auto& receiver = isLast_ ? acc_ : zxcAccount();
-    auto ter   = accountSend (sb, sender, receiver, toSTAmount (result), j_);
-=======
-    auto& sender = isLast_ ? zxcAccount() : acc_;
-    auto& receiver = isLast_ ? acc_ : zxcAccount();
+    auto& sender = isLast_ ? xrpAccount() : acc_;
+    auto& receiver = isLast_ ? acc_ : xrpAccount();
     auto ter = accountSend(sb, sender, receiver, toSTAmount(result), j_);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
     if (ter != tesSUCCESS)
-        return {ZXCAmount{beast::zero}, ZXCAmount{beast::zero}};
+        return {XRPAmount{beast::zero}, XRPAmount{beast::zero}};
 
     cache_.emplace(result);
     return {result, result};
 }
 
 template <class TDerived>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-std::pair<ZXCAmount, ZXCAmount>
-ZXCEndpointStep<TDerived>::fwdImp (
-=======
-std::pair<ZXCAmount, ZXCAmount>
-ZXCEndpointStep<TDerived>::fwdImp(
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+std::pair<XRPAmount, XRPAmount>
+XRPEndpointStep<TDerived>::fwdImp(
     PaymentSandbox& sb,
     ApplyView& afView,
     boost::container::flat_set<uint256>& ofrsToRm,
-    ZXCAmount const& in)
+    XRPAmount const& in)
 {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    assert (cache_);
-    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid (sb);
-=======
     assert(cache_);
-    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid(sb);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+    auto const balance = static_cast<TDerived const*>(this)->xrpLiquid(sb);
 
     auto const result = isLast_ ? in : std::min(balance, in);
 
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    auto& sender = isLast_ ? zxcAccount() : acc_;
-    auto& receiver = isLast_ ? acc_ : zxcAccount();
-    auto ter   = accountSend (sb, sender, receiver, toSTAmount (result), j_);
-=======
-    auto& sender = isLast_ ? zxcAccount() : acc_;
-    auto& receiver = isLast_ ? acc_ : zxcAccount();
+    auto& sender = isLast_ ? xrpAccount() : acc_;
+    auto& receiver = isLast_ ? acc_ : xrpAccount();
     auto ter = accountSend(sb, sender, receiver, toSTAmount(result), j_);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
     if (ter != tesSUCCESS)
-        return {ZXCAmount{beast::zero}, ZXCAmount{beast::zero}};
+        return {XRPAmount{beast::zero}, XRPAmount{beast::zero}};
 
     cache_.emplace(result);
     return {result, result};
@@ -431,96 +299,55 @@ ZXCEndpointStep<TDerived>::fwdImp(
 
 template <class TDerived>
 std::pair<bool, EitherAmount>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-ZXCEndpointStep<TDerived>::validFwd (
-=======
-ZXCEndpointStep<TDerived>::validFwd(
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+XRPEndpointStep<TDerived>::validFwd(
     PaymentSandbox& sb,
     ApplyView& afView,
     EitherAmount const& in)
 {
     if (!cache_)
     {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-        JLOG (j_.error()) << "Expected valid cache in validFwd";
-        return {false, EitherAmount (ZXCAmount (beast::zero))};
-=======
         JLOG(j_.error()) << "Expected valid cache in validFwd";
-        return {false, EitherAmount(ZXCAmount(beast::zero))};
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+        return {false, EitherAmount(XRPAmount(beast::zero))};
     }
 
     assert(in.native);
 
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    auto const& zxcIn = in.zxc;
-    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid (sb);
-=======
-    auto const& zxcIn = in.zxc;
-    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid(sb);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+    auto const& xrpIn = in.xrp;
+    auto const balance = static_cast<TDerived const*>(this)->xrpLiquid(sb);
 
-    if (!isLast_ && balance < zxcIn)
+    if (!isLast_ && balance < xrpIn)
     {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-        JLOG (j_.error()) << "ZXCEndpointStep: Strand re-execute check failed."
-            << " Insufficient balance: " << to_string (balance)
-            << " Requested: " << to_string (zxcIn);
-        return {false, EitherAmount (balance)};
-=======
-        JLOG(j_.warn()) << "ZXCEndpointStep: Strand re-execute check failed."
+        JLOG(j_.warn()) << "XRPEndpointStep: Strand re-execute check failed."
                         << " Insufficient balance: " << to_string(balance)
-                        << " Requested: " << to_string(zxcIn);
+                        << " Requested: " << to_string(xrpIn);
         return {false, EitherAmount(balance)};
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
     }
 
-    if (zxcIn != *cache_)
+    if (xrpIn != *cache_)
     {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-        JLOG (j_.error()) << "ZXCEndpointStep: Strand re-execute check failed."
-            << " ExpectedIn: " << to_string (*cache_)
-            << " CachedIn: " << to_string (zxcIn);
-=======
-        JLOG(j_.warn()) << "ZXCEndpointStep: Strand re-execute check failed."
+        JLOG(j_.warn()) << "XRPEndpointStep: Strand re-execute check failed."
                         << " ExpectedIn: " << to_string(*cache_)
-                        << " CachedIn: " << to_string(zxcIn);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+                        << " CachedIn: " << to_string(xrpIn);
     }
     return {true, in};
 }
 
 template <class TDerived>
 TER
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-ZXCEndpointStep<TDerived>::check (StrandContext const& ctx) const
+XRPEndpointStep<TDerived>::check(StrandContext const& ctx) const
 {
     if (!acc_)
     {
-        JLOG (j_.debug()) << "ZXCEndpointStep: specified bad account.";
-=======
-ZXCEndpointStep<TDerived>::check(StrandContext const& ctx) const
-{
-    if (!acc_)
-    {
-        JLOG(j_.debug()) << "ZXCEndpointStep: specified bad account.";
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+        JLOG(j_.debug()) << "XRPEndpointStep: specified bad account.";
         return temBAD_PATH;
     }
 
     auto sleAcc = ctx.view.read(keylet::account(acc_));
     if (!sleAcc)
     {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-        JLOG (j_.warn()) << "ZXCEndpointStep: can't send or receive ZXC from "
-                             "non-existent account: "
-                          << acc_;
-=======
-        JLOG(j_.warn()) << "ZXCEndpointStep: can't send or receive ZXC from "
+        JLOG(j_.warn()) << "XRPEndpointStep: can't send or receive XRP from "
                            "non-existent account: "
                         << acc_;
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
         return terNO_ACCOUNT;
     }
 
@@ -529,25 +356,19 @@ ZXCEndpointStep<TDerived>::check(StrandContext const& ctx) const
         return temBAD_PATH;
     }
 
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-    auto& src = isLast_ ? zxcAccount () : acc_;
-    auto& dst = isLast_ ? acc_ : zxcAccount();
-    auto ter = checkFreeze (ctx.view, src, dst, zxcCurrency ());
-=======
-    auto& src = isLast_ ? zxcAccount() : acc_;
-    auto& dst = isLast_ ? acc_ : zxcAccount();
-    auto ter = checkFreeze(ctx.view, src, dst, zxcCurrency());
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+    auto& src = isLast_ ? xrpAccount() : acc_;
+    auto& dst = isLast_ ? acc_ : xrpAccount();
+    auto ter = checkFreeze(ctx.view, src, dst, xrpCurrency());
     if (ter != tesSUCCESS)
         return ter;
 
     if (ctx.view.rules().enabled(fix1781))
     {
         auto const issuesIndex = isLast_ ? 0 : 1;
-        if (!ctx.seenDirectIssues[issuesIndex].insert(zxcIssue()).second)
+        if (!ctx.seenDirectIssues[issuesIndex].insert(xrpIssue()).second)
         {
             JLOG(j_.debug())
-                << "ZXCEndpointStep: loop detected: Index: " << ctx.strandSize
+                << "XRPEndpointStep: loop detected: Index: " << ctx.strandSize
                 << ' ' << *this;
             return temBAD_PATH_LOOP;
         }
@@ -560,18 +381,11 @@ ZXCEndpointStep<TDerived>::check(StrandContext const& ctx) const
 
 namespace test {
 // Needed for testing
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-bool zxcEndpointStepEqual (Step const& step, AccountID const& acc)
-{
-    if (auto xs =
-        dynamic_cast<ZXCEndpointStep<ZXCEndpointPaymentStep> const*> (&step))
-=======
 bool
-zxcEndpointStepEqual(Step const& step, AccountID const& acc)
+xrpEndpointStepEqual(Step const& step, AccountID const& acc)
 {
     if (auto xs =
-            dynamic_cast<ZXCEndpointStep<ZXCEndpointPaymentStep> const*>(&step))
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+            dynamic_cast<XRPEndpointStep<XRPEndpointPaymentStep> const*>(&step))
     {
         return xs->acc() == acc;
     }
@@ -582,41 +396,22 @@ zxcEndpointStepEqual(Step const& step, AccountID const& acc)
 //------------------------------------------------------------------------------
 
 std::pair<TER, std::unique_ptr<Step>>
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-make_ZXCEndpointStep (
-    StrandContext const& ctx,
-    AccountID const& acc)
-=======
-make_ZXCEndpointStep(StrandContext const& ctx, AccountID const& acc)
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
+make_XRPEndpointStep(StrandContext const& ctx, AccountID const& acc)
 {
     TER ter = tefINTERNAL;
     std::unique_ptr<Step> r;
     if (ctx.offerCrossing)
     {
         auto offerCrossingStep =
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-            std::make_unique<ZXCEndpointOfferCrossingStep> (ctx, acc);
-        ter = offerCrossingStep->check (ctx);
-        r = std::move (offerCrossingStep);
-=======
-            std::make_unique<ZXCEndpointOfferCrossingStep>(ctx, acc);
+            std::make_unique<XRPEndpointOfferCrossingStep>(ctx, acc);
         ter = offerCrossingStep->check(ctx);
         r = std::move(offerCrossingStep);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
     }
     else  // payment
     {
-<<<<<<< HEAD:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
-        auto paymentStep =
-            std::make_unique<ZXCEndpointPaymentStep> (ctx, acc);
-        ter = paymentStep->check (ctx);
-        r = std::move (paymentStep);
-=======
-        auto paymentStep = std::make_unique<ZXCEndpointPaymentStep>(ctx, acc);
+        auto paymentStep = std::make_unique<XRPEndpointPaymentStep>(ctx, acc);
         ter = paymentStep->check(ctx);
         r = std::move(paymentStep);
->>>>>>> release:src/ripple/app/paths/impl/ZXCEndpointStep.cpp
     }
     if (ter != tesSUCCESS)
         return {ter, nullptr};

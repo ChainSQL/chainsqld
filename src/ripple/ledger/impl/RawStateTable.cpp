@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/ledger/detail/RawStateTable.h>
-=======
->>>>>>> release
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/detail/RawStateTable.h>
 

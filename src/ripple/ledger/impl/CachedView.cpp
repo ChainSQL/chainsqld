@@ -17,10 +17,6 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/ledger/CachedView.h>
-=======
->>>>>>> release
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/CachedView.h>
 #include <ripple/protocol/Serializer.h>
@@ -38,11 +34,7 @@ std::shared_ptr<SLE const>
 CachedViewImpl::read(Keylet const& k) const
 {
     {
-<<<<<<< HEAD
-        std::lock_guard<std::mutex> lock(mutex_);
-=======
         std::lock_guard lock(mutex_);
->>>>>>> release
         auto const iter = map_.find(k.key);
         if (iter != map_.end())
         {
@@ -55,11 +47,7 @@ CachedViewImpl::read(Keylet const& k) const
     if (!digest)
         return nullptr;
     auto sle = cache_.fetch(*digest, [&]() { return base_.read(k); });
-<<<<<<< HEAD
-    std::lock_guard<std::mutex> lock(mutex_);
-=======
     std::lock_guard lock(mutex_);
->>>>>>> release
     auto const er = map_.emplace(k.key, sle);
     auto const& iter = er.first;
     bool const inserted = er.second;
@@ -67,15 +55,9 @@ CachedViewImpl::read(Keylet const& k) const
     {
         if (!inserted)
         {
-<<<<<<< HEAD
-            // On entry, this function did not find this key in map_. Now something
-            // (another thread?) has inserted the sle into the map and it has
-            // the wrong type.
-=======
             // On entry, this function did not find this key in map_. Now
             // something (another thread?) has inserted the sle into the map and
             // it has the wrong type.
->>>>>>> release
             LogicError("CachedView::read: wrong type");
         }
         return nullptr;

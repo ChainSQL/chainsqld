@@ -26,10 +26,6 @@
 #include <ripple/ledger/OpenView.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/detail/ApplyStateTable.h>
-<<<<<<< HEAD
-#include <ripple/protocol/ZXCAmount.h>
-=======
->>>>>>> release
 
 namespace ripple {
 namespace detail {
@@ -130,12 +126,7 @@ public:
     rawReplace(std::shared_ptr<SLE> const& sle) override;
 
     void
-<<<<<<< HEAD
-    rawDestroyZXC (
-        ZXCAmount const& feeDrops) override;
-=======
     rawDestroyZXC(ZXCAmount const& feeDrops) override;
->>>>>>> release
 
     friend CashDiff
     cashFlowDiff(

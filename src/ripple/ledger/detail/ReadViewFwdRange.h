@@ -94,13 +94,8 @@ public:
 
         iterator() = default;
 
-<<<<<<< HEAD
-        iterator (iterator const& other);
-        iterator (iterator&& other) noexcept;
-=======
         iterator(iterator const& other);
         iterator(iterator&& other) noexcept;
->>>>>>> release
 
         // Used by the implementation
         explicit iterator(
@@ -111,11 +106,7 @@ public:
         operator=(iterator const& other);
 
         iterator&
-<<<<<<< HEAD
-        operator= (iterator&& other) noexcept;
-=======
         operator=(iterator&& other) noexcept;
->>>>>>> release
 
         bool
         operator==(iterator const& other) const;
@@ -145,11 +136,6 @@ public:
 
     static_assert(std::is_nothrow_move_constructible<iterator>{}, "");
     static_assert(std::is_nothrow_move_assignable<iterator>{}, "");
-<<<<<<< HEAD
- 
-=======
-
->>>>>>> release
     using const_iterator = iterator;
 
     using value_type = ValueType;

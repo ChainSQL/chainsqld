@@ -51,16 +51,9 @@ enum Status {
 };
 
 /** A batch of NodeObjects to write at once. */
-<<<<<<< HEAD
-using Batch = std::vector <std::shared_ptr<NodeObject>>;
-
-}
-}
-=======
 using Batch = std::vector<std::shared_ptr<NodeObject>>;
 
 }  // namespace NodeStore
 }  // namespace ripple
->>>>>>> release
 
 #endif

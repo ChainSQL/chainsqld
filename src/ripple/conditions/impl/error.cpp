@@ -129,16 +129,9 @@ get_cryptoconditions_error_category()
 std::error_code
 make_error_code(error ev)
 {
-<<<<<<< HEAD
-    return std::error_code {
-        safe_cast<std::underlying_type<error>::type>(ev),
-        detail::get_cryptoconditions_error_category()
-    };
-=======
     return std::error_code{
         safe_cast<std::underlying_type<error>::type>(ev),
         detail::get_cryptoconditions_error_category()};
->>>>>>> release
 }
 
 }  // namespace cryptoconditions

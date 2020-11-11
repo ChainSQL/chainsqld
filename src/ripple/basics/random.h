@@ -22,21 +22,13 @@
 
 #include <ripple/beast/cxx17/type_traits.h>  // <type_traits>
 #include <ripple/beast/xor_shift_engine.h>
-<<<<<<< HEAD
-#include <boost/thread/tss.hpp>
-=======
->>>>>>> release
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <limits>
-<<<<<<< HEAD
-#include <ripple/beast/cxx17/type_traits.h> // <type_traits>
-=======
 #include <mutex>
 #include <random>
->>>>>>> release
 
 namespace ripple {
 
@@ -56,14 +48,8 @@ namespace detail {
 
 // Determines if a type can be called like an Engine
 template <class Engine, class Result = typename Engine::result_type>
-<<<<<<< HEAD
-using is_engine =
-    std::is_invocable<Engine, Result()>;
-}
-=======
 using is_engine = std::is_invocable_r<Result, Engine>;
 }  // namespace detail
->>>>>>> release
 
 /** Return the default random engine.
 

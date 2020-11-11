@@ -17,13 +17,8 @@
 */
 //==============================================================================
 
-<<<<<<< HEAD
-#include <ripple/nodestore/impl/ManagerImp.h>
-#include <ripple/nodestore/impl/DatabaseNodeImp.h>
-=======
 #include <ripple/nodestore/impl/DatabaseNodeImp.h>
 #include <ripple/nodestore/impl/ManagerImp.h>
->>>>>>> release
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -40,16 +35,6 @@ ManagerImp::instance()
 void
 ManagerImp::missing_backend()
 {
-<<<<<<< HEAD
-    Throw<std::runtime_error> (
-        "Your chainsqld.cfg is missing a [node_db] entry, "
-        "please see the rippled-example.cfg file!"
-        );
-}
-
-std::unique_ptr <Backend>
-ManagerImp::make_Backend (
-=======
     Throw<std::runtime_error>(
         "Your rippled.cfg is missing a [node_db] entry, "
         "please see the rippled-example.cfg file!");
@@ -57,26 +42,16 @@ ManagerImp::make_Backend (
 
 std::unique_ptr<Backend>
 ManagerImp::make_Backend(
->>>>>>> release
     Section const& parameters,
     Scheduler& scheduler,
     beast::Journal journal)
 {
-<<<<<<< HEAD
-    std::string const type {get<std::string>(parameters, "type")};
-    if (type.empty())
-        missing_backend();
-
-    auto factory {find(type)};
-    if(!factory)
-=======
     std::string const type{get<std::string>(parameters, "type")};
     if (type.empty())
         missing_backend();
 
     auto factory{find(type)};
     if (!factory)
->>>>>>> release
         missing_backend();
 
     return factory->createInstance(
@@ -92,15 +67,9 @@ ManagerImp::make_Database(
     Section const& config,
     beast::Journal journal)
 {
-<<<<<<< HEAD
-    auto backend {make_Backend(config, scheduler, journal)};
-    backend->open();
-    return std::make_unique <DatabaseNodeImp>(
-=======
     auto backend{make_Backend(config, scheduler, journal)};
     backend->open();
     return std::make_unique<DatabaseNodeImp>(
->>>>>>> release
         name,
         scheduler,
         readThreads,
@@ -113,43 +82,23 @@ ManagerImp::make_Database(
 void
 ManagerImp::insert(Factory& factory)
 {
-<<<<<<< HEAD
-	std::lock_guard< std::mutex> _(mutex_);
-=======
     std::lock_guard _(mutex_);
->>>>>>> release
     list_.push_back(&factory);
 }
 
 void
 ManagerImp::erase(Factory& factory)
 {
-<<<<<<< HEAD
-	std::lock_guard< std::mutex> _(mutex_);
-    auto const iter = std::find_if(list_.begin(), list_.end(),
-        [&factory](Factory* other) { return other == &factory; });
-=======
     std::lock_guard _(mutex_);
     auto const iter =
         std::find_if(list_.begin(), list_.end(), [&factory](Factory* other) {
             return other == &factory;
         });
->>>>>>> release
     assert(iter != list_.end());
     list_.erase(iter);
 }
 
 Factory*
-<<<<<<< HEAD
-ManagerImp::find (std::string const& name)
-{
-	std::lock_guard< std::mutex> _(mutex_);
-    auto const iter = std::find_if(list_.begin(), list_.end(),
-        [&name](Factory* other)
-        {
-            return boost::iequals(name, other->getName());
-        } );
-=======
 ManagerImp::find(std::string const& name)
 {
     std::lock_guard _(mutex_);
@@ -157,7 +106,6 @@ ManagerImp::find(std::string const& name)
         std::find_if(list_.begin(), list_.end(), [&name](Factory* other) {
             return boost::iequals(name, other->getName());
         });
->>>>>>> release
     if (iter == list_.end())
         return nullptr;
     return *iter;
