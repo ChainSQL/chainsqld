@@ -414,9 +414,9 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 int conditionTree::format_value(const BindValue& value, std::string& result) const {
 	int ret = 0;
 	if (value.isString() || value.isBlob() || value.isText() || value.isVarchar()) {
-		if(value.asString().find(".") == std::string::npos)
+		if (value.isString() ||  value.asString().find(".") == std::string::npos) {
 			result = (boost::format("'%1%'") % value.asString()).str();
-		else {
+		}else {
 			// especially for one field equal another field
 			const std::string& v = value.asString();
 			if (v[0] == '$' && v[1] == '.') {
