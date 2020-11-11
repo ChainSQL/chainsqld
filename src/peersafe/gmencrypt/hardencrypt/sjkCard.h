@@ -172,7 +172,7 @@ public:
 private:
     void standPubToSM2Pub(unsigned char* standPub, int standPubLen, ECCrefPublicKey&);
     void standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefPrivateKey&);
-    void c1c2c3ToCardCipher(unsigned char* pCardCipher, usigned long cardCipherLen, unsigned char* pCipher, unsigned long cipherLen);
+    void c1c2c3ToCardCipher(unsigned char* pCardCipher, unsigned long cardCipherLen, unsigned char* pCipher, unsigned long cipherLen);
 	unsigned long SM2ECCExternalSign(
 		std::pair<unsigned char*, int>& pri4Sign,
 		unsigned char *pInData,

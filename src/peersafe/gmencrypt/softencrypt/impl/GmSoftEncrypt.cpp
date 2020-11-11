@@ -406,7 +406,6 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 		return 1;
 	}
 
-
 	unsigned char* pCipherDataTemp = new unsigned char[ulCipherDataLen + 1];
 	// cipherReDecode(pCipherData, ulCipherDataLen);
 	pCipherDataTemp[0] = 4;
