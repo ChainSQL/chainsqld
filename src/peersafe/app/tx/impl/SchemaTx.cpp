@@ -1,5 +1,6 @@
 #include <peersafe/app/tx/SchemaTx.h>
 #include <peersafe/schema/SchemaParams.h>
+#include <peersafe/app/tx/impl/Tuning.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/ledger/View.h>
 #include <ripple/protocol/st.h>
@@ -12,6 +13,7 @@ namespace ripple {
 
 	TER preClaimCommon(PreclaimContext const& ctx)
 	{
+		std::vector<Blob> validators;
 		auto const& vals = ctx.tx.getFieldArray(sfValidators);
 		for (auto val : vals)
 		{
@@ -20,8 +22,12 @@ namespace ripple {
 			{
 				return temBAD_VALIDATOR;
 			}
+			if (std::find(validators.begin(), validators.end(), val.getFieldVL(sfPublicKey)) != validators.end())
+				return tefBAD_DUPLACATE_ITEM;
+			validators.push_back(val.getFieldVL(sfPublicKey));
 		}
 
+		std::vector<Blob> peerList;
 		auto const& peers = ctx.tx.getFieldArray(sfPeerList);
 		for (auto peer : peers)
 		{
@@ -31,6 +37,9 @@ namespace ripple {
 			{
 				return temBAD_PEERLIST;
 			}
+			if (std::find(peerList.begin(), peerList.end(), peer.getFieldVL(sfEndpoint)) != peerList.end())
+				return tefBAD_DUPLACATE_ITEM;
+			peerList.push_back(peer.getFieldVL(sfEndpoint));
 		}
 
 		return tesSUCCESS;
@@ -112,6 +121,11 @@ namespace ripple {
 			ctx.tx.getFieldArray(sfPeerList).size() <= 0)
 		{
 			return temMALFORMED;
+		}
+		else if (ctx.tx.getFieldArray(sfValidators).size() < MIN_NODE_COUNT_SCHEMA ||
+			ctx.tx.getFieldArray(sfPeerList).size() < MIN_NODE_COUNT_SCHEMA)
+		{
+			return tefSCHEMA_NODE_COUNT;
 		}
 
 		auto const ret = preClaimCommon(ctx);
@@ -244,6 +258,13 @@ namespace ripple {
 		//for tx
 		STArray const & peersTx = ctx_.tx.getFieldArray(sfPeerList);
 		STArray valsTx  = ctx_.tx.getFieldArray(sfValidators);
+
+		//check for final node count
+		if (ctx_.tx.getFieldU16(sfOpType) == (uint16_t)SchemaModifyOp::del)
+		{
+			if (vals.size() - valsTx.size() < MIN_NODE_COUNT_SCHEMA)
+				return tefSCHEMA_NODE_COUNT;
+		}
 
 		for (auto& valTx : valsTx)
 		{

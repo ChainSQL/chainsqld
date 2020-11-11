@@ -1469,7 +1469,7 @@ private:
 			return rpcError(rpcINVALID_PARAMS);
 		}
 		
-		jvRequest[jss::id] = jvParams[0u].asString();
+		jvRequest[jss::schema] = jvParams[0u].asString();
 
 		return jvRequest;
 	}

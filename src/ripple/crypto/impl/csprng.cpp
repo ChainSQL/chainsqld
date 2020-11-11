@@ -47,7 +47,9 @@ csprng_engine::csprng_engine()
 
 csprng_engine::~csprng_engine()
 {
-    RAND_cleanup();
+#ifdef USE_LOW_OPENSSL
+	RAND_cleanup();
+#endif
 }
 
 void

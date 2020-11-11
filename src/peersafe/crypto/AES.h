@@ -46,7 +46,6 @@ namespace ripple {
 
     Blob getRandomPassword();
 
-	// AES functions. These throw on failure
 
     // Encrypt a message.Using AES algorithm.
     Blob encryptAES(Blob const& key, Blob const& plaintext,int keyLength = 32);

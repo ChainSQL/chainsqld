@@ -218,6 +218,8 @@ enum TEFcodes : TERUnderlyingType
 	tefBAD_SCHEMAADMIN,
 	tefSCHEMA_TX_FORBIDDEN,
 	tefSCEMA_NO_PATH,
+	tefBAD_DUPLACATE_ITEM,
+	tefSCHEMA_NODE_COUNT,
 };
 
 //------------------------------------------------------------------------------
