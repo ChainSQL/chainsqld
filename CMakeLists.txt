@@ -1,10 +1,10 @@
-cmake_minimum_required (VERSION 3.9.0)
+cmake_minimum_required (VERSION 3.10.0)
 
 if (POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif ()
 
-project (rippled)
+project (chainsqld)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake/deps")
@@ -48,6 +48,7 @@ include(deps/Ed25519-donna)
 include(deps/Lz4)
 include(deps/Libarchive)
 include(deps/Sqlite)
+include(deps/Mysql)
 include(deps/Soci)
 include(deps/Snappy)
 include(deps/Rocksdb)
@@ -58,9 +59,12 @@ include(deps/gRPC)
 
 ###
 
-include(RippledCore)
+add_subdirectory(src/eth/evmc)
+add_subdirectory(src/intx)
+
+include(ChainsqldCore)
 include(RippledInstall)
 include(RippledCov)
 include(RippledMultiConfig)
-include(RippledDocs)
-include(RippledValidatorKeys)
+#include(RippledDocs)
+#include(RippledValidatorKeys)

@@ -2,7 +2,7 @@
    NIH dep: soci
 #]===================================================================]
 
-foreach (_comp core empty sqlite3)
+foreach (_comp core empty sqlite3 mysql)
   add_library ("soci_${_comp}" STATIC IMPORTED GLOBAL)
 endforeach ()
 
@@ -11,7 +11,7 @@ if (NOT WIN32)
 endif()
 
 if (soci)
-  foreach (_comp core empty sqlite3)
+  foreach (_comp core empty sqlite3 mysql)
     set_target_properties ("soci_${_comp}" PROPERTIES
       IMPORTED_LOCATION_DEBUG
         ${soci}
@@ -41,8 +41,8 @@ else()
 
   ExternalProject_Add (soci
     PREFIX ${nih_cache_path}
-    GIT_REPOSITORY https://github.com/SOCI/soci.git
-    GIT_TAG 04e1870294918d20761736743bb6136314c42dd5
+    GIT_REPOSITORY https://github.com/ChainSQL/soci.git
+    GIT_TAG chainsql
     # We had an issue with soci integer range checking for boost::optional
     # and needed to remove the exception that SOCI throws in this case.
     # This is *probably* a bug in SOCI, but has never been investigated more
@@ -86,7 +86,7 @@ else()
       -DBoost_DATE_TIME_LIBRARY=${_boost_dt}
       -DSOCI_DB2=OFF
       -DSOCI_FIREBIRD=OFF
-      -DSOCI_MYSQL=OFF
+      -DSOCI_MYSQL=ON
       -DSOCI_ODBC=OFF
       -DSOCI_ORACLE=OFF
       -DSOCI_POSTGRESQL=OFF
@@ -120,6 +120,7 @@ else()
           <BINARY_DIR>/lib/$<CONFIG>/${soci_lib_pre}soci_core${soci_lib_post}$<$<CONFIG:Debug>:_d>${ep_lib_suffix}
           <BINARY_DIR>/lib/$<CONFIG>/${soci_lib_pre}soci_empty${soci_lib_post}$<$<CONFIG:Debug>:_d>${ep_lib_suffix}
           <BINARY_DIR>/lib/$<CONFIG>/${soci_lib_pre}soci_sqlite3${soci_lib_post}$<$<CONFIG:Debug>:_d>${ep_lib_suffix}
+          <BINARY_DIR>/lib/$<CONFIG>/${soci_lib_pre}soci_mysql${soci_lib_post}$<$<CONFIG:Debug>:_d>${ep_lib_suffix}
           <BINARY_DIR>/lib
         >
     TEST_COMMAND ""
@@ -132,6 +133,8 @@ else()
       <BINARY_DIR>/lib/${soci_lib_pre}soci_empty${soci_lib_post}_d${ep_lib_suffix}
       <BINARY_DIR>/lib/${soci_lib_pre}soci_sqlite3${soci_lib_post}${ep_lib_suffix}
       <BINARY_DIR>/lib/${soci_lib_pre}soci_sqlite3${soci_lib_post}_d${ep_lib_suffix}
+      <BINARY_DIR>/lib/${soci_lib_pre}soci_mysql${soci_lib_post}${ep_lib_suffix}
+      <BINARY_DIR>/lib/${soci_lib_pre}soci_mysql${soci_lib_post}_d${ep_lib_suffix}
   )
   ExternalProject_Get_Property (soci BINARY_DIR)
   ExternalProject_Get_Property (soci SOURCE_DIR)
@@ -140,7 +143,7 @@ else()
   endif ()
   file (MAKE_DIRECTORY ${SOURCE_DIR}/include)
   file (MAKE_DIRECTORY ${BINARY_DIR}/include)
-  foreach (_comp core empty sqlite3)
+  foreach (_comp core empty sqlite3 mysql)
     set_target_properties ("soci_${_comp}" PROPERTIES
       IMPORTED_LOCATION_DEBUG
         ${BINARY_DIR}/lib/${soci_lib_pre}soci_${_comp}${soci_lib_post}_d${ep_lib_suffix}
@@ -156,7 +159,7 @@ else()
   endforeach ()
 endif()
 
-foreach (_comp core empty sqlite3)
+foreach (_comp core empty sqlite3 mysql)
   exclude_if_included ("soci_${_comp}")
 endforeach ()
 

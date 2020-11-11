@@ -100,7 +100,6 @@ chainsqld-build.log
 
 # ignore
 third_party/
-deps*/
 
 # MSVC
 *.pdb
