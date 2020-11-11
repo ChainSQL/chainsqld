@@ -92,6 +92,10 @@ public:
 		return vote_data_.parent();
 	}
 
+	const BlockInfo& commit_info() const {
+		return ledger_info().ledger_info.commit_info;
+	}
+
 	const LedgerInfoWithSignatures& ledger_info() const {
 		return signed_ledger_info_;
 	};
@@ -101,7 +105,7 @@ public:
 	}
 
 	const bool endsEpoch() const {
-		if (signed_ledger_info_.ledger_info.commit_info.next_epoch_state)
+		if (commit_info().next_epoch_state)
 			return true;
 		return false;
 	}

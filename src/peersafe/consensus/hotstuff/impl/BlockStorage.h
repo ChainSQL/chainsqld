@@ -23,7 +23,6 @@
 #include <atomic>
 #include <mutex>
 #include <map>
-#include <functional>
 
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.h>
 #include <peersafe/consensus/hotstuff/impl/ExecuteBlock.h>
@@ -36,7 +35,7 @@ class NetWork;
 
 class BlockStorage {
 public:
-	using SyncBlockHandler = std::function<void(const HashValue& hash, const ExecutedBlock& block)>;
+	using AsyncBlockHandler = StateCompute::AsyncCompletedHander;
 
     //BlockStorage();
 	BlockStorage(
@@ -53,7 +52,11 @@ public:
     // for blocks
     //bool addBlock(const Block& block);
 	ExecutedBlock executeAndAddBlock(const Block& block);
+	
+	// add an executed block
+	void addExecutedBlock(const ExecutedBlock& executed_block);
 
+	bool existsBlock(const HashValue& hash);
 	// Get an expected block safely from local
 	bool safetyBlockOf(const HashValue& hash, ExecutedBlock& block);
 	// Get an executed block by hash, 
@@ -61,12 +64,17 @@ public:
     bool blockOf(const HashValue& hash, ExecutedBlock& block) const;
 	// Get an executed block by hash,if dosen't exists in local 
 	// then getting it from network
-
-    bool exepectBlock(
+    bool expectBlock(
 		const HashValue& hash, 
 		const Author& author,
-		ExecutedBlock& block,
-		SyncBlockHandler handler = nullptr);
+		ExecutedBlock& block);
+
+	// Get an executed block by hash from network 
+	// and then process the block in `handler`
+	void asyncExpectBlock(
+		const HashValue& hash,
+		const Author& author,
+		AsyncBlockHandler handler);
 
 	const QuorumCertificate& HighestQuorumCert() const {
 		return highest_quorum_cert_;
@@ -106,6 +114,8 @@ public:
 	}
 	
 private:
+	void updateQuorumCert(const Round round, const QuorumCertificate& quorumCert);
+	void preCommit(const QuorumCertificate& quorumCert, NetWork* network);
 	void commit(const LedgerInfoWithSignatures& ledger_info_with_sigs);
 	void gcBlocks(Epoch epoch, Round round);
 

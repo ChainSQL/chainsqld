@@ -66,6 +66,8 @@ private:
 	friend class ripple::test::Hotstuff_test;
 	friend class Hotstuff;
 
+	int preProcessProposal(const Block& proposal, const SyncInfo& sync_info);
+	int preProcessVote(const Vote& vote, const SyncInfo& sync_info);
 	int ProcessVote(const Vote& vote);
 	bool ExecuteAndVote(const Block& proposal, Vote& vote);
 	int ProcessNewRoundEvent(const NewRoundEvent& event);

@@ -20,6 +20,8 @@
 #ifndef RIPPLE_CONSENSUS_HOTSTUFF_STATECOMPUTE_H
 #define RIPPLE_CONSENSUS_HOTSTUFF_STATECOMPUTE_H
 
+#include <functional>
+
 #include <boost/optional.hpp>
 
 #include <ripple/ledger/ReadView.h>
@@ -61,6 +63,26 @@ public:
 		const Author& author,
 		ExecutedBlock& executedBlock) = 0;
 
+	enum AsyncBlockResult {
+		PROPOSAL_SUCCESS,
+		PROPOSAL_FAILURE,
+		VOTE_SUCCESS,
+		VOTE_FAILURE,
+		UNKOWN_ERROR,
+	};
+	enum AsyncBlockErrorCode {
+		ASYNC_SUCCESS,	// async sucessfully from network
+		ASYNC_FAILURE,	// async failure from network
+		ASYNC_TIMEOUT,	// async timeout from network 
+	};
+	using AsyncCompletedHander = std::function<AsyncBlockResult(
+		const AsyncBlockErrorCode error_code,
+		const ExecutedBlock& executedBlock,
+		boost::optional<Block>& proposal)>;
+	virtual void asyncBlock(
+		const HashValue& block_id,
+		const Author& author,
+		AsyncCompletedHander asyncCompletedHandler) = 0;
 protected:
 	StateCompute() {}
 };

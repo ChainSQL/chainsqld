@@ -196,16 +196,49 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
         << "Check a proposal: " << proposal.block_data().round
         << ", seq: " << proposal.block_data().getLedgerInfo().seq;
 
+	HashValue hqc = sync_info.HighestQuorumCert().certified_block().id;
+
+	if (hqc.isNonZero() && block_store_->existsBlock(hqc) == false) {
+		block_store_->asyncExpectBlock(
+			hqc, 
+			proposal.block_data().author(),
+			[this, hqc, proposal, sync_info](const StateCompute::AsyncBlockErrorCode ec, 
+				const ExecutedBlock& executed_block, 
+				boost::optional<Block>& checked_proposal) {
+
+				if (ec != StateCompute::AsyncBlockErrorCode::ASYNC_SUCCESS) {
+					JLOG(journal_.error())
+						<< "Async block whose id is " << hqc << " was failure. ErrorCode is " << ec;
+					return  StateCompute::AsyncBlockResult::UNKOWN_ERROR;
+				}
+
+				block_store_->addExecutedBlock(executed_block);
+				checked_proposal = boost::none;
+				if (preProcessProposal(proposal, sync_info) == 0) {
+					checked_proposal = proposal;
+					return StateCompute::AsyncBlockResult::PROPOSAL_SUCCESS;
+				}
+				return StateCompute::AsyncBlockResult::PROPOSAL_FAILURE;
+			});
+		return false;
+	}
+
+	return preProcessProposal(proposal, sync_info) == 0 ? true : false;
+}
+
+int RoundManager::preProcessProposal(
+	const Block& proposal, 
+	const SyncInfo& sync_info) {
+
 	if (EnsureRoundAndSyncUp(
 		proposal.block_data().round,
 		sync_info,
 		proposal.block_data().author()) == false) {
 		JLOG(journal_.error())
-			<< "Stale proposal, current round " 
+			<< "Stale proposal, current round "
 			<< round_state_->current_round();
-		return false;
+		return 1;
 	}
-
 
 	const boost::optional<Signature>& signature = proposal.signature();
 	if (signature) {
@@ -215,11 +248,11 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 				<< "CheckProposal: using an author "
 				<< proposal.block_data().author()
 				<< "'s key for verifing signature failed";
-			return false;
+			return 1;
 		}
 	}
 
-	return true;
+	return 0;
 }
 
 int RoundManager::ProcessProposal(const Block& proposal) {
@@ -265,8 +298,37 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 		<< "Process a vote: round: " << round
         << ", seq: " << vote.vote_data().proposed().ledger_info.seq;
 
+	HashValue hqc = sync_info.HighestQuorumCert().certified_block().id;
+
+	if (hqc.isNonZero() && block_store_->existsBlock(hqc) == false) {
+		block_store_->asyncExpectBlock(hqc, vote.author(),
+			[this, hqc, vote, sync_info](const StateCompute::AsyncBlockErrorCode ec,
+				const ExecutedBlock& executed_block, boost::optional<Block>& proposal) {
+
+					if (ec != StateCompute::AsyncBlockErrorCode::ASYNC_SUCCESS) {
+						JLOG(journal_.error())
+							<< "Async block whose id is " << hqc << " was failure. ErrorCode is " << ec;
+						return  StateCompute::AsyncBlockResult::UNKOWN_ERROR;
+					}
+
+					block_store_->addExecutedBlock(executed_block);
+					proposal = boost::none;
+					if (preProcessVote(vote, sync_info) == 0)
+						return StateCompute::AsyncBlockResult::VOTE_SUCCESS;
+
+					return StateCompute::AsyncBlockResult::VOTE_FAILURE;
+			});
+		// asynchronously process
+		return -1;
+	}
+
+	return preProcessVote(vote, sync_info);
+}
+
+int RoundManager::preProcessVote(const Vote& vote, const SyncInfo& sync_info) {
+
 	if (EnsureRoundAndSyncUp(
-		round,
+		vote.vote_data().proposed().round,
 		sync_info,
 		vote.author()) == false) {
 		JLOG(journal_.error())

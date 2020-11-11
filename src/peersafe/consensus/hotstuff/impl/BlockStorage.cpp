@@ -84,12 +84,21 @@ ExecutedBlock BlockStorage::executeAndAddBlock(const Block& block) {
 
 	if (state_compute_->compute(block, executed_block.state_compute_result)) {
 		executed_block.block = block;
-		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
-		cache_blocks_.emplace(std::make_pair(block.id(), executed_block));
-        JLOG(debugLog().info()) << "store block: " << block.id();
+		addExecutedBlock(executed_block);
 	}
 
 	return executed_block;
+}
+
+void BlockStorage::addExecutedBlock(const ExecutedBlock& executed_block) {
+    JLOG(debugLog().info()) << "store block: " << executed_block.block.id();
+	std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+	cache_blocks_.emplace(std::make_pair(executed_block.block.id(), executed_block));
+}
+
+bool BlockStorage::existsBlock(const HashValue& hash) {
+	std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
+	return cache_blocks_.find(hash) != cache_blocks_.end();
 }
 
 bool BlockStorage::safetyBlockOf(
@@ -110,17 +119,17 @@ bool BlockStorage::blockOf(const HashValue& hash, ExecutedBlock& block) const {
     return true;
 }
 
-bool BlockStorage::exepectBlock(
+bool BlockStorage::expectBlock(
 	const HashValue& hash, 
 	const Author& author,
-	ExecutedBlock& block,
-	SyncBlockHandler handler /*= nullptr*/) {
+	ExecutedBlock& block) {
 
 	bool exists = false;
 	do {
 		std::lock_guard<std::mutex> lock(cache_blocks_mutex_);
 		if (blockOf(hash, block)) {
-			return true;
+			exists = true;
+			break;
 		}
 
 		if (state_compute_->syncBlock(hash, author, block)) {
@@ -131,9 +140,14 @@ bool BlockStorage::exepectBlock(
 		}
 	} while (false);
 
-	if (exists && handler)
-		handler(hash, block);
-	return false;
+	return exists;
+}
+
+void BlockStorage::asyncExpectBlock(
+	const HashValue& hash,
+	const Author& author,
+	AsyncBlockHandler handler) {
+	state_compute_->asyncBlock(hash, author, handler);
 }
 
 int BlockStorage::addCerts(
@@ -147,41 +161,50 @@ int BlockStorage::addCerts(
 
 int BlockStorage::insertQuorumCert(
 	const QuorumCertificate& quorumCert, 
-	const Author& author,
+	const Author& /*author*/,
 	NetWork* network) {
+
 	ExecutedBlock executed_block;
 	HashValue expected_block_id = const_cast<BlockInfo&>(quorumCert.certified_block()).id;
 
-	if (exepectBlock(expected_block_id, author, executed_block) == false)
-		return 1;
-
-	{
-		std::lock_guard<std::mutex> lock(quorum_cert_mutex_);
-		if (executed_block.block.block_data().round > HighestQuorumCert().certified_block().round) {
-			highest_quorum_cert_ = quorumCert;
-		}
-
-		if (highest_commit_cert_.ledger_info().ledger_info.commit_info.round < quorumCert.ledger_info().ledger_info.commit_info.round) {
-			highest_commit_cert_ = quorumCert;
-		}
+	if (safetyBlockOf(expected_block_id, executed_block)) {
+		updateQuorumCert(executed_block.block.block_data().round, quorumCert);
+		preCommit(quorumCert, network);
 	}
-	
-	Round commtiting_round = quorumCert.ledger_info().ledger_info.commit_info.round;
+	else {
+		assert(false);
+		return 1;
+	}
+	return 0;
+}
+
+void BlockStorage::updateQuorumCert(const Round round, const QuorumCertificate& quorumCert) {
+	std::lock_guard<std::mutex> lock(quorum_cert_mutex_);
+	if (round > HighestQuorumCert().certified_block().round) {
+		highest_quorum_cert_ = quorumCert;
+	}
+
+	if (highest_commit_cert_.commit_info().round < quorumCert.commit_info().round) {
+		highest_commit_cert_ = quorumCert;
+	}
+}
+
+void BlockStorage::preCommit(const QuorumCertificate& quorumCert, NetWork* network) {
+	Round commtiting_round = quorumCert.commit_info().round;
 	if (committed_round_ < commtiting_round) {
 		commit(quorumCert.ledger_info());
 
 		if (quorumCert.endsEpoch()) {
 			EpochChange epoch_change;
-			epoch_change.ledger_info = quorumCert.ledger_info().ledger_info.commit_info.ledger_info;
-			epoch_change.epoch = quorumCert.ledger_info().ledger_info.commit_info.next_epoch_state->epoch;
+			epoch_change.ledger_info = quorumCert.commit_info().ledger_info;
+			epoch_change.epoch = quorumCert.commit_info().next_epoch_state->epoch;
 			network->broadcast(epoch_change);
 		}
 
 		gcBlocks(
-			quorumCert.ledger_info().ledger_info.commit_info.epoch,
-			quorumCert.ledger_info().ledger_info.commit_info.round);
+			quorumCert.commit_info().epoch,
+			quorumCert.commit_info().round);
 	}
-	return 0;
 }
 
 int BlockStorage::insertTimeoutCert(const TimeoutCertificate& timeoutCeret) {
@@ -208,7 +231,7 @@ void BlockStorage::commit(const LedgerInfoWithSignatures& ledger_info_with_sigs)
 		return;
 
 	ExecutedBlock executed_block;
-	if (blockOf(block_hash, executed_block)) {
+	if (safetyBlockOf(block_hash, executed_block)) {
 		state_compute_->commit(executed_block.block);
 		committed_round_ = executed_block.block.block_data().round;
 	}

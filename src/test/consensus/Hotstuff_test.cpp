@@ -307,6 +307,24 @@ public:
 		return false;
 	}
 
+	void asyncBlock(
+		const ripple::hotstuff::HashValue& block_id,
+		const ripple::hotstuff::Author& author,
+		ripple::hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler) {
+
+		assert(asyncCompletedHandler);
+		ripple::hotstuff::ExecutedBlock executed_block;
+		boost::optional<ripple::hotstuff::Block> checked_proposal = boost::none;
+		if (syncBlock(block_id, author, executed_block)) {
+			if (asyncCompletedHandler(
+				ripple::hotstuff::StateCompute::AsyncBlockErrorCode::ASYNC_SUCCESS,
+				executed_block,
+				checked_proposal) == ripple::hotstuff::StateCompute::AsyncBlockResult::PROPOSAL_SUCCESS) {
+				hotstuff_->handleProposal(checked_proposal.get());
+			}
+		}
+	}
+
 	//const std::map<ripple::hotstuff::HashValue, ripple::hotstuff::Block>& 
 	//committedBlocks() const {
 	//	return committed_blocks_;
