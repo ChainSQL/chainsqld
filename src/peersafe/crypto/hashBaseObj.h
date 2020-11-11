@@ -16,7 +16,7 @@ namespace ripple {
             {
             case CommonKey::sm3:
             {
-                GmEncrypt *hEObj = GmEncryptObj::getInstance();
+                GmEncrypt *hEObj = GmEncryptObj::getInstance(GmEncryptObj::soft);
                 // GmEncrypt::SM3Hash objSM3(hEObj);
                 GmEncrypt::SM3Hash* pObjSM3 = new GmEncrypt::SM3Hash(hEObj);
                 return pObjSM3;

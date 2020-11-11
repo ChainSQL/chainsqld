@@ -445,7 +445,7 @@ unsigned long SJKCard::SM2ECCExternalDecrypt(
 	standPriToSM2Pri(pri4Decrypt.first, pri4Decrypt.second, pri4DecryptTemp);
     if(pCipherData[1] != 0 || pCipherData[2] != 0 || pCipherData[3] != 0)
     {
-        unsigned char* pCardCipher = new unsigned char[CARD_CIPHER_LEN]
+        unsigned char* pCardCipher = new unsigned char[CARD_CIPHER_LEN];
         c1c2c3ToCardCipher(pCardCipher, CARD_CIPHER_LEN, pCipherData, ulCipherDataLen);
         rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCardCipher, pPlainData, (SGD_UINT32*)pulPlainDataLen);
     }
@@ -952,7 +952,7 @@ void SJKCard::standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefP
     }
 }
 
-void SJKCard::c1c2c3ToCardCipher(unsigned char* pCardCipher, usigned long cardCipherLen, unsigned char* pCipher, unsigned long cipherLen)
+void SJKCard::c1c2c3ToCardCipher(unsigned char* pCardCipher, unsigned long cardCipherLen, unsigned char* pCipher, unsigned long cipherLen)
 {
     unsigned long realCipherLen = cipherLen - 96;
 
