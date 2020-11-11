@@ -221,7 +221,7 @@ checkPayment(
 
         if (sendMax.native() && amount.native())
             return RPC::make_error(
-                rpcINVALID_PARAMS, "Cannot build XRP to XRP paths.");
+                rpcINVALID_PARAMS, "Cannot build ZXC to ZXC paths.");
 
         {
             LegacyPathFind lpf(isUnlimited(role), app);
@@ -752,9 +752,9 @@ checkFee(
     FeeUnit32 const feeDefault = config.TRANSACTION_FEE_BASE;
 
     // Administrative and identified endpoints are exempt from local fees.
-    XRPAmount const loadFee =
+    ZXCAmount const loadFee =
         scaleFeeLoad(feeDefault, feeTrack, ledger->fees(), isUnlimited(role));
-    XRPAmount fee = loadFee;
+    ZXCAmount fee = loadFee;
     {
         auto const metrics = txQ.getMetrics(*ledger);
         auto const baseFee = ledger->fees().base;
@@ -803,7 +803,7 @@ checkFee(
 			extraAmount += statements.size() * dropsPerByte;
 		}
 
-		fee += XRPAmount{extraAmount};
+		fee += ZXCAmount{extraAmount};
 
 	}
     tx [jss::Fee] = fee.jsonClipped();
@@ -1206,14 +1206,14 @@ transactionSubmitMultiSigned(
         if (stpTrans->isFieldPresent(sfTxnSignature))
             return rpcError(rpcSIGNING_MALFORMED);
 
-        // The Fee field must be in XRP and greater than zero.
+        // The Fee field must be in ZXC and greater than zero.
         auto const fee = stpTrans->getFieldAmount(sfFee);
 
         if (!isLegalNet(fee))
         {
             std::ostringstream err;
             err << "Invalid " << sfFee.fieldName
-                << " field.  Fees must be specified in XRP.";
+                << " field.  Fees must be specified in ZXC.";
             return RPC::make_error(rpcINVALID_PARAMS, err.str());
         }
         if (fee <= STAmount{0})

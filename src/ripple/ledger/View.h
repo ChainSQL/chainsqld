@@ -92,8 +92,8 @@ accountFunds(
 // necessary.
 //
 // @param ownerCountAdj positive to add to count, negative to reduce count.
-[[nodiscard]] XRPAmount
-xrpLiquid(
+[[nodiscard]] ZXCAmount
+zxcLiquid(
     ReadView const& view,
     AccountID const& id,
     std::int32_t ownerCountAdj,
@@ -361,7 +361,7 @@ redeemIOU(
     beast::Journal j);
 
 [[nodiscard]] TER
-transferXRP(
+transferZXC(
     ApplyView& view,
     AccountID const& from,
     AccountID const& to,

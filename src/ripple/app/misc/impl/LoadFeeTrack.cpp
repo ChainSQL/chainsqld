@@ -84,7 +84,7 @@ LoadFeeTrack::lowerLocalFee()
 //------------------------------------------------------------------------------
 
 // Scale using load as well as base rate
-XRPAmount
+ZXCAmount
 scaleFeeLoad(
     FeeUnit64 fee,
     LoadFeeTrack const& feeTrack,
@@ -92,7 +92,7 @@ scaleFeeLoad(
     bool bUnlimited)
 {
     if (fee == 0)
-        return XRPAmount{0};
+        return ZXCAmount{0};
 
     // Normally, types with different units wouldn't be mathematically
     // compatible. This function is an exception.
@@ -119,7 +119,7 @@ scaleFeeLoad(
     if (bUnlimited && (feeFactor > uRemFee) && (feeFactor < (4 * uRemFee)))
         feeFactor = uRemFee;
 
-    XRPAmount baseFee{fees.base};
+    ZXCAmount baseFee{fees.base};
     // Compute:
     // fee = fee * baseFee * feeFactor / (fees.units * lftNormalFee);
     // without overflow, and as accurately as possible
@@ -149,8 +149,8 @@ scaleFeeLoad(
     assert(fee.value() >= baseFee.value());
 
     // If baseFee * feeFactor overflows, the final result will overflow
-    XRPAmount const baseFeeOverflow{
-        std::numeric_limits<XRPAmount::value_type>::max() / feeFactor};
+    ZXCAmount const baseFeeOverflow{
+        std::numeric_limits<ZXCAmount::value_type>::max() / feeFactor};
     if (baseFee > baseFeeOverflow)
     {
         Throw<std::overflow_error>("scaleFeeLoad");

@@ -146,8 +146,8 @@ struct TxConsequences
     /// Constructor
     TxConsequences(
         ConsequenceCategory const category_,
-        XRPAmount const fee_,
-        XRPAmount const spend_)
+        ZXCAmount const fee_,
+        ZXCAmount const spend_)
         : category(category_), fee(fee_), potentialSpend(spend_)
     {
     }

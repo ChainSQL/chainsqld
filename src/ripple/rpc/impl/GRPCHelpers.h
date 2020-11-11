@@ -20,10 +20,10 @@
 #ifndef RIPPLE_RPC_GRPCHELPERS_H_INCLUDED
 #define RIPPLE_RPC_GRPCHELPERS_H_INCLUDED
 
-#include "org/xrpl/rpc/v1/get_account_info.pb.h"
-#include "org/xrpl/rpc/v1/ledger_objects.pb.h"
-#include "org/xrpl/rpc/v1/meta.pb.h"
-#include "org/xrpl/rpc/v1/transaction.pb.h"
+#include "org/zxcl/rpc/v1/get_account_info.pb.h"
+#include "org/zxcl/rpc/v1/ledger_objects.pb.h"
+#include "org/zxcl/rpc/v1/meta.pb.h"
+#include "org/zxcl/rpc/v1/transaction.pb.h"
 
 #include <ripple/app/misc/TxQ.h>
 #include <ripple/ledger/TxMeta.h>
@@ -37,29 +37,29 @@ namespace ripple {
 namespace RPC {
 
 void
-convert(org::xrpl::rpc::v1::Meta& to, std::shared_ptr<TxMeta> const& from);
+convert(org::zxcl::rpc::v1::Meta& to, std::shared_ptr<TxMeta> const& from);
 
 void
 convert(
-    org::xrpl::rpc::v1::QueueData& to,
+    org::zxcl::rpc::v1::QueueData& to,
     std::map<TxSeq, TxQ::AccountTxDetails const> const& from);
 
 void
 convert(
-    org::xrpl::rpc::v1::Transaction& to,
+    org::zxcl::rpc::v1::Transaction& to,
     std::shared_ptr<STTx const> const& from);
 
 void
-convert(org::xrpl::rpc::v1::TransactionResult& to, TER from);
+convert(org::zxcl::rpc::v1::TransactionResult& to, TER from);
 
 void
-convert(org::xrpl::rpc::v1::AccountRoot& to, STObject const& from);
+convert(org::zxcl::rpc::v1::AccountRoot& to, STObject const& from);
 
 void
-convert(org::xrpl::rpc::v1::SignerList& to, STObject const& from);
+convert(org::zxcl::rpc::v1::SignerList& to, STObject const& from);
 
 void
-convert(org::xrpl::rpc::v1::NegativeUNL& to, STObject const& from);
+convert(org::zxcl::rpc::v1::NegativeUNL& to, STObject const& from);
 
 template <class T>
 void
@@ -67,13 +67,13 @@ convert(T& to, STAmount const& from)
 {
     if (from.native())
     {
-        to.mutable_value()->mutable_xrp_amount()->set_drops(from.xrp().drops());
+        to.mutable_value()->mutable_zxc_amount()->set_drops(from.zxc().drops());
     }
     else
     {
         Issue const& issue = from.issue();
 
-        org::xrpl::rpc::v1::IssuedCurrencyAmount* issued =
+        org::zxcl::rpc::v1::IssuedCurrencyAmount* issued =
             to.mutable_value()->mutable_issued_currency_amount();
 
         issued->mutable_currency()->set_name(to_string(issue.currency));

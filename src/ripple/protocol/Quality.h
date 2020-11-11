@@ -21,7 +21,7 @@
 #define RIPPLE_PROTOCOL_QUALITY_H_INCLUDED
 
 #include <ripple/basics/IOUAmount.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/protocol/AmountConversions.h>
 #include <ripple/protocol/STAmount.h>
 
@@ -185,7 +185,7 @@ public:
             return amount;
 
         // Use the existing STAmount implementation for now, but consider
-        // replacing with code specific to IOUAMount and XRPAmount
+        // replacing with code specific to IOUAMount and ZXCAmount
         Amounts stAmt(toSTAmount(amount.in), toSTAmount(amount.out));
         STAmount stLim(toSTAmount(limit));
         auto const stRes = ceil_in(stAmt, stLim);
@@ -208,7 +208,7 @@ public:
             return amount;
 
         // Use the existing STAmount implementation for now, but consider
-        // replacing with code specific to IOUAMount and XRPAmount
+        // replacing with code specific to IOUAMount and ZXCAmount
         Amounts stAmt(toSTAmount(amount.in), toSTAmount(amount.out));
         STAmount stLim(toSTAmount(limit));
         auto const stRes = ceil_out(stAmt, stLim);

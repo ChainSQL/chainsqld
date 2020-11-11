@@ -40,7 +40,7 @@ static FeeLevel64
 getFeeLevelPaid(
     STTx const& tx,
     FeeLevel64 baseRefLevel,
-    XRPAmount refTxnCostDrops,
+    ZXCAmount refTxnCostDrops,
     TxQ::Setup const& setup)
 {
     if (refTxnCostDrops == 0)
@@ -901,7 +901,7 @@ TxQ::apply(Schema& app, OpenView& view,
                 auto const reserve = view.fees().accountReserve(0);
                 auto totalFee = multiTxn->fee;
                 if (multiTxn->includeCurrentFee)
-                    totalFee += (*tx)[sfFee].xrp();
+                    totalFee += (*tx)[sfFee].zxc();
                 if (totalFee >= balance || totalFee >= reserve)
                 {
                     // Drop the current transaction
@@ -922,7 +922,7 @@ TxQ::apply(Schema& app, OpenView& view,
                 auto const potentialTotalSpend = multiTxn->fee +
                     std::min(balance - std::min(balance, reserve),
                              multiTxn->potentialSpend);
-                assert(potentialTotalSpend > XRPAmount{0});
+                assert(potentialTotalSpend > ZXCAmount{0});
                 sleBump->setFieldAmount(
                     sfBalance, balance - potentialTotalSpend);
                 sleBump->setFieldU32(sfSequence, tSeq);

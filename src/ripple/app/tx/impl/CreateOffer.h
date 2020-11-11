@@ -41,7 +41,7 @@ public:
     }
 
     /** Override default behavior provided by Transactor base class. */
-    static XRPAmount
+    static ZXCAmount
     calculateMaxSpend(STTx const& tx);
 
     /** Enforce constraints beyond those of the Transactor base class. */

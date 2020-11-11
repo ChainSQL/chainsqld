@@ -30,7 +30,7 @@
 #include <ripple/rpc/Status.h>
 #include <ripple/rpc/impl/Tuning.h>
 #include <boost/optional.hpp>
-#include <org/xrpl/rpc/v1/xrp_ledger.pb.h>
+#include <org/zxcl/rpc/v1/zxc_ledger.pb.h>
 
 namespace Json {
 class Value;
@@ -141,7 +141,7 @@ template <class T>
 Status
 ledgerFromRequest(
     T& ledger,
-    GRPCContext<org::xrpl::rpc::v1::GetAccountInfoRequest>& context);
+    GRPCContext<org::zxcl::rpc::v1::GetAccountInfoRequest>& context);
 
 bool
 isValidated(

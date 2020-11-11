@@ -21,7 +21,7 @@
 #define RIPPLE_PATH_IMPL_AMOUNTSPEC_H_INCLUDED
 
 #include <ripple/basics/IOUAmount.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/protocol/STAmount.h>
 
 namespace ripple {
@@ -33,7 +33,7 @@ struct AmountSpec
     bool native;
     union
     {
-        XRPAmount xrp;
+        ZXCAmount zxc;
         IOUAmount iou;
     };
     boost::optional<AccountID> issuer;
@@ -43,7 +43,7 @@ struct AmountSpec
     operator<<(std::ostream& stream, AmountSpec const& amt)
     {
         if (amt.native)
-            stream << to_string(amt.xrp);
+            stream << to_string(amt.zxc);
         else
             stream << to_string(amt.iou);
         if (amt.currency)
@@ -63,7 +63,7 @@ struct EitherAmount
     union
     {
         IOUAmount iou;
-        XRPAmount xrp;
+        ZXCAmount zxc;
     };
 
     EitherAmount() = default;
@@ -77,7 +77,7 @@ struct EitherAmount
     // ignore warning about half of iou amount being uninitialized
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-    explicit EitherAmount(XRPAmount const& a) : xrp(a)
+    explicit EitherAmount(ZXCAmount const& a) : zxc(a)
     {
 #ifndef NDEBUG
         native = true;
@@ -93,7 +93,7 @@ struct EitherAmount
         native = a.native;
 #endif
         if (a.native)
-            xrp = a.xrp;
+            zxc = a.zxc;
         else
             iou = a.iou;
     }
@@ -103,7 +103,7 @@ struct EitherAmount
     operator<<(std::ostream& stream, EitherAmount const& amt)
     {
         if (amt.native)
-            stream << to_string(amt.xrp);
+            stream << to_string(amt.zxc);
         else
             stream << to_string(amt.iou);
         return stream;
@@ -128,11 +128,11 @@ get<IOUAmount>(EitherAmount& amt)
 }
 
 template <>
-inline XRPAmount&
-get<XRPAmount>(EitherAmount& amt)
+inline ZXCAmount&
+get<ZXCAmount>(EitherAmount& amt)
 {
     assert(amt.native);
-    return amt.xrp;
+    return amt.zxc;
 }
 
 template <class T>
@@ -152,11 +152,11 @@ get<IOUAmount>(EitherAmount const& amt)
 }
 
 template <>
-inline XRPAmount const&
-get<XRPAmount>(EitherAmount const& amt)
+inline ZXCAmount const&
+get<ZXCAmount>(EitherAmount const& amt)
 {
     assert(amt.native);
-    return amt.xrp;
+    return amt.zxc;
 }
 
 inline AmountSpec
@@ -168,10 +168,10 @@ toAmountSpec(STAmount const& amt)
         isNeg ? -std::int64_t(amt.mantissa()) : amt.mantissa();
     AmountSpec result;
 
-    result.native = isXRP(amt);
+    result.native = isZXC(amt);
     if (result.native)
     {
-        result.xrp = XRPAmount(sMant);
+        result.zxc = ZXCAmount(sMant);
     }
     else
     {
@@ -186,8 +186,8 @@ toAmountSpec(STAmount const& amt)
 inline EitherAmount
 toEitherAmount(STAmount const& amt)
 {
-    if (isXRP(amt))
-        return EitherAmount{amt.xrp()};
+    if (isZXC(amt))
+        return EitherAmount{amt.zxc()};
     return EitherAmount{amt.iou()};
 }
 
@@ -195,12 +195,12 @@ inline AmountSpec
 toAmountSpec(EitherAmount const& ea, boost::optional<Currency> const& c)
 {
     AmountSpec r;
-    r.native = (!c || isXRP(*c));
+    r.native = (!c || isZXC(*c));
     r.currency = c;
     assert(ea.native == r.native);
     if (r.native)
     {
-        r.xrp = ea.xrp;
+        r.zxc = ea.zxc;
     }
     else
     {

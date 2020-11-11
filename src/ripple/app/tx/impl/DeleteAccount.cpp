@@ -46,7 +46,7 @@ DeleteAccount::preflight(PreflightContext const& ctx)
         return ret;
 
     if (ctx.tx[sfAccount] == ctx.tx[sfDestination])
-        // An account cannot be deleted and give itself the resulting XRP.
+        // An account cannot be deleted and give itself the resulting ZXC.
         return temDST_IS_SRC;
 
     return preflight2(ctx);
@@ -313,12 +313,12 @@ DeleteAccount::doApply()
             view(), ownerDirKeylet.key, sleDirNode, uDirEntry, dirEntry, j_));
     }
 
-    // Transfer any XRP remaining after the fee is paid to the destination:
+    // Transfer any ZXC remaining after the fee is paid to the destination:
     (*dst)[sfBalance] = (*dst)[sfBalance] + mSourceBalance;
     (*src)[sfBalance] = (*src)[sfBalance] - mSourceBalance;
     ctx_.deliver(mSourceBalance);
 
-    assert((*src)[sfBalance] == XRPAmount(0));
+    assert((*src)[sfBalance] == ZXCAmount(0));
 
     // If there's still an owner directory associated with the source account
     // delete it.
@@ -330,7 +330,7 @@ DeleteAccount::doApply()
     }
 
     // Re-arm the password change fee if we can and need to.
-    if (mSourceBalance > XRPAmount(0) && dst->isFlag(lsfPasswordSpent))
+    if (mSourceBalance > ZXCAmount(0) && dst->isFlag(lsfPasswordSpent))
         dst->clearFlag(lsfPasswordSpent);
 
     view().update(dst);

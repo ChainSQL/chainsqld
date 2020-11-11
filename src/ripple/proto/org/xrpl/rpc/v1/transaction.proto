@@ -14,7 +14,7 @@ message Transaction
 {
     Account account = 1;
 
-    XRPDropsAmount fee = 2;
+    ZXCDropsAmount fee = 2;
 
     Sequence sequence = 3;
 

@@ -199,8 +199,8 @@ public:
     std::map<std::tuple<AccountID, AccountID, Currency>, STAmount>
     balanceChanges(ReadView const& view) const;
 
-    XRPAmount
-    xrpDestroyed() const;
+    ZXCAmount
+    zxcDestroyed() const;
 
 private:
     detail::DeferredCredits tab_;

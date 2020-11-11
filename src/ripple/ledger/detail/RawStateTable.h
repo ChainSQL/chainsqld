@@ -72,7 +72,7 @@ public:
 <<<<<<< HEAD
     destroyZXC (ZXCAmount const& fee);
 =======
-    destroyXRP(XRPAmount const& fee);
+    destroyZXC(ZXCAmount const& fee);
 >>>>>>> release
 
     std::unique_ptr<ReadView::sles_type::iter_base>
@@ -105,7 +105,7 @@ private:
 <<<<<<< HEAD
     ZXCAmount dropsDestroyed_ = 0;
 =======
-    XRPAmount dropsDestroyed_{0};
+    ZXCAmount dropsDestroyed_{0};
 >>>>>>> release
 };
 

@@ -92,11 +92,11 @@ operator<=(Issue const& lhs, Issue const& rhs);
 
 //------------------------------------------------------------------------------
 
-/** Returns an asset specifier that represents XRP. */
+/** Returns an asset specifier that represents ZXC. */
 inline Issue const&
-xrpIssue()
+zxcIssue()
 {
-    static Issue issue{xrpCurrency(), xrpAccount()};
+    static Issue issue{zxcCurrency(), zxcAccount()};
     return issue;
 }
 

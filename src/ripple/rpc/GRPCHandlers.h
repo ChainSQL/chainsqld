@@ -22,7 +22,7 @@
 
 #include <ripple/rpc/Context.h>
 #include <grpcpp/grpcpp.h>
-#include <org/xrpl/rpc/v1/xrp_ledger.pb.h>
+#include <org/zxcl/rpc/v1/zxc_ledger.pb.h>
 
 namespace ripple {
 
@@ -34,26 +34,26 @@ namespace ripple {
  * the status will be sent to the client, and the response will be ommitted
  */
 
-std::pair<org::xrpl::rpc::v1::GetAccountInfoResponse, grpc::Status>
+std::pair<org::zxcl::rpc::v1::GetAccountInfoResponse, grpc::Status>
 doAccountInfoGrpc(
-    RPC::GRPCContext<org::xrpl::rpc::v1::GetAccountInfoRequest>& context);
+    RPC::GRPCContext<org::zxcl::rpc::v1::GetAccountInfoRequest>& context);
 
-std::pair<org::xrpl::rpc::v1::GetFeeResponse, grpc::Status>
-doFeeGrpc(RPC::GRPCContext<org::xrpl::rpc::v1::GetFeeRequest>& context);
+std::pair<org::zxcl::rpc::v1::GetFeeResponse, grpc::Status>
+doFeeGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetFeeRequest>& context);
 
-std::pair<org::xrpl::rpc::v1::SubmitTransactionResponse, grpc::Status>
+std::pair<org::zxcl::rpc::v1::SubmitTransactionResponse, grpc::Status>
 doSubmitGrpc(
-    RPC::GRPCContext<org::xrpl::rpc::v1::SubmitTransactionRequest>& context);
+    RPC::GRPCContext<org::zxcl::rpc::v1::SubmitTransactionRequest>& context);
 
 // NOTE, this only supports Payment transactions at this time
-std::pair<org::xrpl::rpc::v1::GetTransactionResponse, grpc::Status>
-doTxGrpc(RPC::GRPCContext<org::xrpl::rpc::v1::GetTransactionRequest>& context);
+std::pair<org::zxcl::rpc::v1::GetTransactionResponse, grpc::Status>
+doTxGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetTransactionRequest>& context);
 
 std::pair<
-    org::xrpl::rpc::v1::GetAccountTransactionHistoryResponse,
+    org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse,
     grpc::Status>
 doAccountTxGrpc(
-    RPC::GRPCContext<org::xrpl::rpc::v1::GetAccountTransactionHistoryRequest>&
+    RPC::GRPCContext<org::zxcl::rpc::v1::GetAccountTransactionHistoryRequest>&
         context);
 
 }  // namespace ripple

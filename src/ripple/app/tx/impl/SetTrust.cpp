@@ -59,7 +59,7 @@ SetTrust::preflight(PreflightContext const& ctx)
 
     if (badCurrency() == saLimitAmount.getCurrency())
     {
-        JLOG(j.trace()) << "Malformed transaction: specifies XRP as IOU";
+        JLOG(j.trace()) << "Malformed transaction: specifies ZXC as IOU";
         return temBAD_CURRENCY;
     }
 
@@ -163,8 +163,8 @@ SetTrust::doApply()
     // well. A person with no intention of using the gateway
     // could use the extra ZXC for their own purposes.
 
-    XRPAmount const reserveCreate(
-        (uOwnerCount < 2) ? XRPAmount(beast::zero)
+    ZXCAmount const reserveCreate(
+        (uOwnerCount < 2) ? ZXCAmount(beast::zero)
                           : view().fees().accountReserve(uOwnerCount + 1));
 
     std::uint32_t uQualityIn(bQualityIn ? ctx_.tx.getFieldU32(sfQualityIn) : 0);

@@ -270,13 +270,13 @@ template <class T>
 Status
 ledgerFromRequest(
     T& ledger,
-    GRPCContext<org::xrpl::rpc::v1::GetAccountInfoRequest>& context)
+    GRPCContext<org::zxcl::rpc::v1::GetAccountInfoRequest>& context)
 {
     ledger.reset();
 
-    org::xrpl::rpc::v1::GetAccountInfoRequest& request = context.params;
+    org::zxcl::rpc::v1::GetAccountInfoRequest& request = context.params;
 
-    using LedgerCase = org::xrpl::rpc::v1::LedgerSpecifier::LedgerCase;
+    using LedgerCase = org::zxcl::rpc::v1::LedgerSpecifier::LedgerCase;
     LedgerCase ledgerCase = request.ledger().ledger_case();
     switch (ledgerCase)
     {
@@ -292,22 +292,22 @@ ledgerFromRequest(
         case LedgerCase::LEDGER_NOT_SET: {
             auto const shortcut = request.ledger().shortcut();
             if (shortcut ==
-                org::xrpl::rpc::v1::LedgerSpecifier::SHORTCUT_VALIDATED)
+                org::zxcl::rpc::v1::LedgerSpecifier::SHORTCUT_VALIDATED)
                 return getLedger(ledger, LedgerShortcut::VALIDATED, context);
             else
             {
                 // note, if unspecified, defaults to current ledger
                 if (shortcut ==
-                        org::xrpl::rpc::v1::LedgerSpecifier::
+                        org::zxcl::rpc::v1::LedgerSpecifier::
                             SHORTCUT_UNSPECIFIED ||
                     shortcut ==
-                        org::xrpl::rpc::v1::LedgerSpecifier::SHORTCUT_CURRENT)
+                        org::zxcl::rpc::v1::LedgerSpecifier::SHORTCUT_CURRENT)
                 {
                     return getLedger(ledger, LedgerShortcut::CURRENT, context);
                 }
                 else if (
                     shortcut ==
-                    org::xrpl::rpc::v1::LedgerSpecifier::SHORTCUT_CLOSED)
+                    org::zxcl::rpc::v1::LedgerSpecifier::SHORTCUT_CLOSED)
                 {
                     return getLedger(ledger, LedgerShortcut::CLOSED, context);
                 }
@@ -322,7 +322,7 @@ ledgerFromRequest(
 template Status
 ledgerFromRequest<>(
     std::shared_ptr<ReadView const>&,
-    GRPCContext<org::xrpl::rpc::v1::GetAccountInfoRequest>&);
+    GRPCContext<org::zxcl::rpc::v1::GetAccountInfoRequest>&);
 
 Status
 getLedger(

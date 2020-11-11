@@ -26,7 +26,7 @@
 namespace ripple {
 
 // For details on the protocol-level serialization please visit
-// https://xrpl.org/serialization.html#currency-codes
+// https://zxcl.org/serialization.html#currency-codes
 
 namespace detail {
 
@@ -118,7 +118,7 @@ to_currency(std::string const& code)
 }
 
 Currency const&
-xrpCurrency()
+zxcCurrency()
 {
     static Currency const currency(beast::zero);
     return currency;

@@ -78,7 +78,7 @@ protected:
         {
             using beast::zero;
 
-            if (isXRP(order.in) && isXRP(order.out))
+            if (isZXC(order.in) && isZXC(order.out))
                 return false;
 
             return order.in >= zero && order.out >= zero &&
@@ -91,7 +91,7 @@ private:
     log_flow(char const* description, Flow const& flow);
 
     Flow
-    flow_xrp_to_iou(
+    flow_zxc_to_iou(
         Amounts const& offer,
         Quality quality,
         STAmount const& owner_funds,
@@ -99,7 +99,7 @@ private:
         Rate const& rate_out);
 
     Flow
-    flow_iou_to_xrp(
+    flow_iou_to_zxc(
         Amounts const& offer,
         Quality quality,
         STAmount const& owner_funds,
@@ -259,7 +259,7 @@ public:
     get_funds(AccountID const& account, STAmount const& funds) const override;
 
     STAmount const&
-    get_xrp_flow() const
+    get_zxc_flow() const
     {
         return zxc_flow_;
     }
@@ -306,7 +306,7 @@ private:
         Offer& leg2);
 
     TER
-    transferXRP(
+    transferZXC(
         AccountID const& from,
         AccountID const& to,
         STAmount const& amount);

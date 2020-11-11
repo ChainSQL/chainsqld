@@ -383,12 +383,12 @@ message TakerPaysCurrency
 
 message Amount
 {
-    // Note, CurrencyAmount is a oneof, that can represent an XRP drops amount
+    // Note, CurrencyAmount is a oneof, that can represent an ZXC drops amount
     // or an Issued Currency amount. However, in some transaction types/ledger
     // objects, this value can only be in drops. For instance, the Amount field
-    // of a Payment transaction can be specified in XRP drops or an Issued
+    // of a Payment transaction can be specified in ZXC drops or an Issued
     // Currency amount, but the Amount field of a PaymentChannelClaim
-    // transaction can only be an XRP drops amount.
+    // transaction can only be an ZXC drops amount.
     CurrencyAmount value = 1;
 }
 

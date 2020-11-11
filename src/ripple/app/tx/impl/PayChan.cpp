@@ -19,7 +19,7 @@
 
 #include <ripple/app/tx/impl/PayChan.h>
 #include <ripple/basics/Log.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/ledger/ApplyView.h>
 #include <ripple/ledger/View.h>
@@ -98,8 +98,8 @@ namespace ripple {
         Channel
             The 256-bit ID of the channel.
         Balance (optional)
-            The total amount of XRP delivered after this claim is processed
-   (optional, not needed if just closing). Amount (optional) The amount of XRP
+            The total amount of ZXC delivered after this claim is processed
+   (optional, not needed if just closing). Amount (optional) The amount of ZXC
    the signature is for (not needed if equal to Balance or just closing the
    line). Signature (optional) Authorization for the balance above, signed by
    the owner (optional, not needed if closing or owner is performing the
@@ -173,7 +173,7 @@ PayChanCreate::preflight(PreflightContext const& ctx)
     if (!isTesSuccess(ret))
         return ret;
 
-    if (!isXRP(ctx.tx[sfAmount]) || (ctx.tx[sfAmount] <= beast::zero))
+    if (!isZXC(ctx.tx[sfAmount]) || (ctx.tx[sfAmount] <= beast::zero))
         return temBAD_AMOUNT;
 
     if (ctx.tx[sfAccount] == ctx.tx[sfDestination])
@@ -217,10 +217,10 @@ PayChanCreate::preclaim(PreclaimContext const& ctx)
             !ctx.tx[~sfDestinationTag])
             return tecDST_TAG_NEEDED;
 
-        // Obeying the lsfDisallowXRP flag was a bug.  Piggyback on
+        // Obeying the lsfDisallowZXC flag was a bug.  Piggyback on
         // featureDepositAuth to remove the bug.
         if (!ctx.view.rules().enabled(featureDepositAuth) &&
-            ((*sled)[sfFlags] & lsfDisallowXRP))
+            ((*sled)[sfFlags] & lsfDisallowZXC))
             return tecNO_TARGET;
     }
 
@@ -303,7 +303,7 @@ PayChanFund::preflight(PreflightContext const& ctx)
     if (!isTesSuccess(ret))
         return ret;
 
-    if (!isXRP(ctx.tx[sfAmount]) || (ctx.tx[sfAmount] <= beast::zero))
+    if (!isZXC(ctx.tx[sfAmount]) || (ctx.tx[sfAmount] <= beast::zero))
         return temBAD_AMOUNT;
 
     return preflight2(ctx);
@@ -392,11 +392,11 @@ PayChanClaim::preflight(PreflightContext const& ctx)
         return ret;
 
     auto const bal = ctx.tx[~sfBalance];
-    if (bal && (!isXRP(*bal) || *bal <= beast::zero))
+    if (bal && (!isZXC(*bal) || *bal <= beast::zero))
         return temBAD_AMOUNT;
 
     auto const amt = ctx.tx[~sfAmount];
-    if (amt && (!isXRP(*amt) || *amt <= beast::zero))
+    if (amt && (!isZXC(*amt) || *amt <= beast::zero))
         return temBAD_AMOUNT;
 
     if (bal && amt && *bal > *amt)
@@ -421,8 +421,8 @@ PayChanClaim::preflight(PreflightContext const& ctx)
         // The signature isn't needed if txAccount == src, but if it's
         // present, check it
 
-        auto const reqBalance = bal->xrp();
-        auto const authAmt = amt ? amt->xrp() : reqBalance;
+        auto const reqBalance = bal->zxc();
+        auto const authAmt = amt ? amt->zxc() : reqBalance;
 
         if (reqBalance > authAmt)
             return temBAD_AMOUNT;
@@ -468,9 +468,9 @@ PayChanClaim::doApply()
 
     if (ctx_.tx[~sfBalance])
     {
-        auto const chanBalance = slep->getFieldAmount(sfBalance).xrp();
-        auto const chanFunds = slep->getFieldAmount(sfAmount).xrp();
-        auto const reqBalance = ctx_.tx[sfBalance].xrp();
+        auto const chanBalance = slep->getFieldAmount(sfBalance).zxc();
+        auto const chanFunds = slep->getFieldAmount(sfAmount).zxc();
+        auto const reqBalance = ctx_.tx[sfBalance].zxc();
 
         if (txAccount == dst && !ctx_.tx[~sfSignature])
             return temBAD_SIGNATURE;
@@ -493,11 +493,11 @@ PayChanClaim::doApply()
         if (!sled)
             return tecNO_DST;
 
-        // Obeying the lsfDisallowXRP flag was a bug.  Piggyback on
+        // Obeying the lsfDisallowZXC flag was a bug.  Piggyback on
         // featureDepositAuth to remove the bug.
         bool const depositAuth{ctx_.view().rules().enabled(featureDepositAuth)};
         if (!depositAuth &&
-            (txAccount == src && (sled->getFlags() & lsfDisallowXRP)))
+            (txAccount == src && (sled->getFlags() & lsfDisallowZXC)))
             return tecNO_TARGET;
 
         // Check whether the destination account requires deposit authorization.
@@ -515,7 +515,7 @@ PayChanClaim::doApply()
         }
 
         (*slep)[sfBalance] = ctx_.tx[sfBalance];
-        XRPAmount const reqDelta = reqBalance - chanBalance;
+        ZXCAmount const reqDelta = reqBalance - chanBalance;
         assert(reqDelta >= beast::zero);
         (*sled)[sfBalance] = (*sled)[sfBalance] + reqDelta;
         ctx_.view().update(sled);

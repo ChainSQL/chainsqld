@@ -24,7 +24,7 @@
 #include <ripple/app/paths/impl/StrandFlow.h>
 #include <ripple/basics/IOUAmount.h>
 #include <ripple/basics/Log.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 
 #include <boost/container/flat_set.hpp>
 
@@ -73,9 +73,9 @@ flow(
     Issue const srcIssue = [&] {
         if (sendMax)
             return sendMax->issue();
-        if (!isXRP(deliver.issue().currency))
+        if (!isZXC(deliver.issue().currency))
             return Issue(deliver.issue().currency, src);
-        return xrpIssue();
+        return zxcIssue();
     }();
 
     Issue const dstIssue = deliver.issue();
@@ -122,24 +122,24 @@ flow(
         }
     }
 
-    const bool srcIsXRP = isXRP(srcIssue.currency);
-    const bool dstIsXRP = isXRP(dstIssue.currency);
+    const bool srcIsZXC = isZXC(srcIssue.currency);
+    const bool dstIsZXC = isZXC(dstIssue.currency);
 
     auto const asDeliver = toAmountSpec(deliver);
 
-    // The src account may send either xrp or iou. The dst account may receive
-    // either xrp or iou. Since XRP and IOU amounts are represented by different
+    // The src account may send either zxc or iou. The dst account may receive
+    // either zxc or iou. Since ZXC and IOU amounts are represented by different
     // types, use templates to tell `flow` about the amount types.
-    if (srcIsXRP && dstIsXRP)
+    if (srcIsZXC && dstIsZXC)
     {
         return finishFlow(
             sb,
             srcIssue,
             dstIssue,
-            flow<XRPAmount, XRPAmount>(
+            flow<ZXCAmount, ZXCAmount>(
                 sb,
                 strands,
-                asDeliver.xrp,
+                asDeliver.zxc,
                 partialPayment,
                 offerCrossing,
                 limitQuality,
@@ -148,13 +148,13 @@ flow(
                 flowDebugInfo));
     }
 
-    if (srcIsXRP && !dstIsXRP)
+    if (srcIsZXC && !dstIsZXC)
     {
         return finishFlow(
             sb,
             srcIssue,
             dstIssue,
-            flow<XRPAmount, IOUAmount>(
+            flow<ZXCAmount, IOUAmount>(
                 sb,
                 strands,
                 asDeliver.iou,
@@ -166,16 +166,16 @@ flow(
                 flowDebugInfo));
     }
 
-    if (!srcIsXRP && dstIsXRP)
+    if (!srcIsZXC && dstIsZXC)
     {
         return finishFlow(
             sb,
             srcIssue,
             dstIssue,
-            flow<IOUAmount, XRPAmount>(
+            flow<IOUAmount, ZXCAmount>(
                 sb,
                 strands,
-                asDeliver.xrp,
+                asDeliver.zxc,
                 partialPayment,
                 offerCrossing,
                 limitQuality,
@@ -184,7 +184,7 @@ flow(
                 flowDebugInfo));
     }
 
-    assert(!srcIsXRP && !dstIsXRP);
+    assert(!srcIsZXC && !dstIsZXC);
     return finishFlow(
         sb,
         srcIssue,

@@ -20,7 +20,7 @@
 #ifndef RIPPLE_LEDGER_APPLYSTATETABLE_H_INCLUDED
 #define RIPPLE_LEDGER_APPLYSTATETABLE_H_INCLUDED
 
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/ledger/OpenView.h>
 #include <ripple/ledger/RawView.h>
@@ -57,7 +57,7 @@ private:
 <<<<<<< HEAD
     ZXCAmount dropsDestroyed_ = 0;
 =======
-    XRPAmount dropsDestroyed_{0};
+    ZXCAmount dropsDestroyed_{0};
 >>>>>>> release
 
 public:
@@ -130,10 +130,10 @@ public:
     // For debugging
     ZXCAmount const& dropsDestroyed () const
 =======
-    destroyXRP(XRPAmount const& fee);
+    destroyZXC(ZXCAmount const& fee);
 
     // For debugging
-    XRPAmount const&
+    ZXCAmount const&
     dropsDestroyed() const
 >>>>>>> release
     {

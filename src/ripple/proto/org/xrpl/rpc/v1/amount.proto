@@ -11,14 +11,14 @@ message CurrencyAmount
 {
     oneof amount
     {
-        XRPDropsAmount xrp_amount = 1;
+        ZXCDropsAmount xrp_amount = 1;
         IssuedCurrencyAmount issued_currency_amount = 2;
     }
 }
 
-// A representation of an amount of XRP.
+// A representation of an amount of ZXC.
 // Next field: 2
-message XRPDropsAmount
+message ZXCDropsAmount
 {
     uint64 drops = 1 [jstype=JS_STRING];
 }

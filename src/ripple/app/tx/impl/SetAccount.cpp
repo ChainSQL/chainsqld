@@ -106,10 +106,10 @@ SetAccount::preflight(PreflightContext const& ctx)
     //
     // DisallowZXC
     //
-    bool bSetDisallowXRP =
-        (uTxFlags & tfDisallowXRP) || (uSetFlag == asfDisallowXRP);
-    bool bClearDisallowXRP =
-        (uTxFlags & tfAllowXRP) || (uClearFlag == asfDisallowXRP);
+    bool bSetDisallowZXC =
+        (uTxFlags & tfDisallowZXC) || (uSetFlag == asfDisallowZXC);
+    bool bClearDisallowZXC =
+        (uTxFlags & tfAllowZXC) || (uClearFlag == asfDisallowZXC);
 
     if (bSetDisallowZXC && bClearDisallowZXC)
     {
@@ -327,10 +327,10 @@ SetAccount::doApply()
         (uTxFlags & tfRequireAuth) || (uSetFlag == asfRequireAuth)};
     bool const bClearRequireAuth{
         (uTxFlags & tfOptionalAuth) || (uClearFlag == asfRequireAuth)};
-    bool const bSetDisallowXRP{
-        (uTxFlags & tfDisallowXRP) || (uSetFlag == asfDisallowXRP)};
-    bool const bClearDisallowXRP{
-        (uTxFlags & tfAllowXRP) || (uClearFlag == asfDisallowXRP)};
+    bool const bSetDisallowZXC{
+        (uTxFlags & tfDisallowZXC) || (uSetFlag == asfDisallowZXC)};
+    bool const bClearDisallowZXC{
+        (uTxFlags & tfAllowZXC) || (uClearFlag == asfDisallowZXC)};
 
     bool const sigWithMaster{[&tx, &acct = account_]() {
         auto const spk = tx.getSigningPubKey();

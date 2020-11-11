@@ -22,7 +22,7 @@
 
 #include <ripple/basics/FeeUnits.h>
 #include <ripple/basics/IOUAmount.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/beast/hash/uhash.h>
 #include <ripple/beast/utility/Journal.h>
@@ -46,10 +46,10 @@ namespace ripple {
 */
 struct Fees
 {
-    XRPAmount base{0};       // Reference tx cost (drops)
+    ZXCAmount base{0};       // Reference tx cost (drops)
     FeeUnit32 units{0};      // Reference fee units
-    XRPAmount reserve{0};    // Reserve base (drops)
-    XRPAmount increment{0};  // Reserve increment (drops)
+    ZXCAmount reserve{0};    // Reserve base (drops)
+    ZXCAmount increment{0};  // Reserve increment (drops)
 
 	std::uint64_t drops_per_byte = (1000000 / 1024); // the cost of  a byte in drops
 
@@ -63,13 +63,13 @@ struct Fees
         The reserve is calculated as the reserve base plus
         the reserve increment times the number of increments.
     */
-    XRPAmount
+    ZXCAmount
     accountReserve(std::size_t ownerCount) const
     {
         return reserve + ownerCount * increment;
     }
 
-    std::pair<bool, XRPAmount>
+    std::pair<bool, ZXCAmount>
     toDrops(FeeUnit64 const& fee) const
     {
         return mulDiv(base, fee, units);
@@ -100,7 +100,7 @@ struct LedgerInfo
     uint256 accountHash = beast::zero;
     uint256 parentHash = beast::zero;
 
-    XRPAmount drops = beast::zero;
+    ZXCAmount drops = beast::zero;
 
     // If validated is false, it means "not yet validated."
     // Once validated is true, it will never be set false at a later time.

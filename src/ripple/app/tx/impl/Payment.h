@@ -42,7 +42,7 @@ public:
     {
     }
 
-    static XRPAmount
+    static ZXCAmount
     calculateMaxSpend(STTx const& tx);
 
     static NotTEC

@@ -147,7 +147,7 @@ public:
     virtual boost::optional<std::pair<AccountID,AccountID>>
     directStepAccts () const
 =======
-    // For XRP endpoints, one of src or dst will be the root account
+    // For ZXC endpoints, one of src or dst will be the root account
     virtual boost::optional<std::pair<AccountID, AccountID>>
     directStepAccts() const
 >>>>>>> release
@@ -488,7 +488,7 @@ bool checkNear (ZXCAmount const& expected, ZXCAmount const& actual);
 bool
 checkNear(IOUAmount const& expected, IOUAmount const& actual);
 bool
-checkNear(XRPAmount const& expected, XRPAmount const& actual);
+checkNear(ZXCAmount const& expected, ZXCAmount const& actual);
 >>>>>>> release
 /// @endcond
 
@@ -559,7 +559,7 @@ directStepEqual(
 bool zxcEndpointStepEqual (Step const& step, AccountID const& acc);
 =======
 bool
-xrpEndpointStepEqual(Step const& step, AccountID const& acc);
+zxcEndpointStepEqual(Step const& step, AccountID const& acc);
 >>>>>>> release
 
 bool
@@ -588,7 +588,7 @@ make_ZXCEndpointStep (
     StrandContext const& ctx,
     AccountID const& acc);
 =======
-make_XRPEndpointStep(StrandContext const& ctx, AccountID const& acc);
+make_ZXCEndpointStep(StrandContext const& ctx, AccountID const& acc);
 >>>>>>> release
 
 template <class InAmt, class OutAmt>

@@ -56,7 +56,7 @@ addRaw(LedgerInfo const& info, Serializer& s)
 bool
 isGlobalFrozen(ReadView const& view, AccountID const& issuer)
 {
-    if (isXRP(issuer))
+    if (isZXC(issuer))
         return false;
     if (auto const sle = view.read(keylet::account(issuer)))
         return sle->isFlag(lsfGlobalFreeze);
@@ -72,7 +72,7 @@ isFrozen(
     Currency const& currency,
     AccountID const& issuer)
 {
-    if (isXRP(currency))
+    if (isZXC(currency))
         return false;
     auto sle = view.read(keylet::account(issuer));
     if (sle && sle->isFlag(lsfGlobalFreeze))
@@ -100,7 +100,7 @@ accountHolds(
     STAmount amount;
     if (isZXC(currency))
     {
-        return {xrpLiquid(view, account, 0, j)};
+        return {zxcLiquid(view, account, 0, j)};
     }
 
     // IOU: Return balance on trust line modulo freeze
@@ -211,8 +211,8 @@ confineOwnerCount(
     return adjusted;
 }
 
-XRPAmount
-xrpLiquid(
+ZXCAmount
+zxcLiquid(
     ReadView const& view,
     AccountID const& id,
     std::int32_t ownerCountAdj,
@@ -230,7 +230,7 @@ xrpLiquid(
 
     auto const fullBalance = sle->getFieldAmount(sfBalance);
 
-    auto const balance = view.balanceHook(id, xrpAccount(), fullBalance);
+    auto const balance = view.balanceHook(id, zxcAccount(), fullBalance);
 
     STAmount amount = balance - reserve;
     if (balance < reserve)
@@ -244,7 +244,7 @@ xrpLiquid(
                     << " reserve=" << reserve << " ownerCount=" << ownerCount
                     << " ownerCountAdj=" << ownerCountAdj;
 
-    return amount.xrp();
+    return amount.zxc();
 }
 
 void
@@ -978,8 +978,8 @@ rippleCredit(
     bool const bSenderHigh = uSenderID > uReceiverID;
     auto const index = keylet::line(uSenderID, uReceiverID, currency);
 
-    assert(!isXRP(uSenderID) && uSenderID != noAccount());
-    assert(!isXRP(uReceiverID) && uReceiverID != noAccount());
+    assert(!isZXC(uSenderID) && uSenderID != noAccount());
+    assert(!isZXC(uReceiverID) && uReceiverID != noAccount());
 
     // If the line exists, modify it accordingly.
     if (auto const sleRippleState = view.peek(index))
@@ -1112,7 +1112,7 @@ rippleSend(
 {
     auto const issuer = saAmount.getIssuer();
 
-    assert(!isXRP(uSenderID) && !isXRP(uReceiverID));
+    assert(!isZXC(uSenderID) && !isZXC(uReceiverID));
     assert(uSenderID != uReceiverID);
 
     if (uSenderID == issuer || uReceiverID == issuer || issuer == noAccount())
@@ -1214,9 +1214,9 @@ accountSend(
         else
         {
             auto const sndBal = sender->getFieldAmount(sfBalance);
-            view.creditHook(uSenderID, xrpAccount(), saAmount, sndBal);
+            view.creditHook(uSenderID, zxcAccount(), saAmount, sndBal);
 
-            // Decrement XRP balance.
+            // Decrement ZXC balance.
             sender->setFieldAmount(sfBalance, sndBal - saAmount);
             view.update(sender);
         }
@@ -1224,10 +1224,10 @@ accountSend(
 
     if (tesSUCCESS == terResult && receiver)
     {
-        // Increment XRP balance.
+        // Increment ZXC balance.
         auto const rcvBal = receiver->getFieldAmount(sfBalance);
         receiver->setFieldAmount(sfBalance, rcvBal + saAmount);
-        view.creditHook(xrpAccount(), uReceiverID, saAmount, -rcvBal);
+        view.creditHook(zxcAccount(), uReceiverID, saAmount, -rcvBal);
 
         view.update(receiver);
     }
@@ -1312,7 +1312,7 @@ issueIOU(
     Issue const& issue,
     beast::Journal j)
 {
-    assert(!isXRP(account) && !isXRP(issue.account));
+    assert(!isZXC(account) && !isZXC(issue.account));
 
     // Consistency check
     assert(issue == amount.issue());
@@ -1408,7 +1408,7 @@ redeemIOU(
     Issue const& issue,
     beast::Journal j)
 {
-    assert(!isXRP(account) && !isXRP(issue.account));
+    assert(!isZXC(account) && !isZXC(issue.account));
 
     // Consistency check
     assert(issue == amount.issue());
@@ -1471,7 +1471,7 @@ redeemIOU(
 }
 
 TER
-transferXRP(
+transferZXC(
     ApplyView& view,
     AccountID const& from,
     AccountID const& to,
@@ -1488,7 +1488,7 @@ transferXRP(
     if (!sender || !receiver)
         return tefINTERNAL;
 
-    JLOG(j.trace()) << "transferXRP: " << to_string(from) << " -> "
+    JLOG(j.trace()) << "transferZXC: " << to_string(from) << " -> "
                     << to_string(to) << ") : " << amount.getFullText();
 
     if (sender->getFieldAmount(sfBalance) < amount)
@@ -1500,7 +1500,7 @@ transferXRP(
                            : TER{tecFAILED_PROCESSING};
     }
 
-    // Decrement XRP balance.
+    // Decrement ZXC balance.
     sender->setFieldAmount(
         sfBalance, sender->getFieldAmount(sfBalance) - amount);
     view.update(sender);

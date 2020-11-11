@@ -20,7 +20,7 @@
 #ifndef RIPPLE_LEDGER_APPLYVIEWBASE_H_INCLUDED
 #define RIPPLE_LEDGER_APPLYVIEWBASE_H_INCLUDED
 
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/ledger/ApplyView.h>
 #include <ripple/ledger/CashDiff.h>
 #include <ripple/ledger/OpenView.h>
@@ -134,7 +134,7 @@ public:
     rawDestroyZXC (
         ZXCAmount const& feeDrops) override;
 =======
-    rawDestroyXRP(XRPAmount const& feeDrops) override;
+    rawDestroyZXC(ZXCAmount const& feeDrops) override;
 >>>>>>> release
 
     friend CashDiff

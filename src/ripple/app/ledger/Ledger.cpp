@@ -185,7 +185,7 @@ Ledger::Ledger(
     , rules_{config.features}
 {
     info_.seq = 1;
-    info_.drops = INITIAL_XRP;
+    info_.drops = INITIAL_ZXC;
     info_.closeTimeResolution = ledgerDefaultTimeResolution;
 
     KeyType keyType = KeyType::secp256k1;

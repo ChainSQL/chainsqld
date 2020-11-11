@@ -181,8 +181,8 @@ public:
 
     ZXCAmount                      FEE_DEFAULT{10};
 
-    ZXCAmount                      FEE_ACCOUNT_RESERVE { 5*DROPS_PER_XRP };
-    ZXCAmount                      FEE_OWNER_RESERVE { 1*DROPS_PER_XRP };
+    ZXCAmount                      FEE_ACCOUNT_RESERVE { 5*DROPS_PER_ZXC };
+    ZXCAmount                      FEE_OWNER_RESERVE { 1*DROPS_PER_ZXC };
 
 
 	std::uint64_t                     DROPS_PER_BYTE = (1000000 / 1024);

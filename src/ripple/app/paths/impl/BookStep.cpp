@@ -29,7 +29,7 @@
 #include <ripple/app/tx/impl/OfferStream.h>
 #include <ripple/basics/IOUAmount.h>
 #include <ripple/basics/Log.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/Directory.h>
 #include <ripple/ledger/PaymentSandbox.h>
@@ -583,7 +583,7 @@ BookStep<TIn, TOut, TDerived>::forEachOffer(
     // Calculate amount that goes to the taker and the amount charged the offer
     // owner
     auto rate = [this, &sb](AccountID const& id) -> std::uint32_t {
-        if (isXRP(id) || id == this->strandDst_)
+        if (isZXC(id) || id == this->strandDst_)
 >>>>>>> release
             return QUALITY_ONE;
         return transferRate(sb, id).value;
@@ -625,8 +625,8 @@ BookStep<TIn, TOut, TDerived>::forEachOffer(
         if (flowCross &&
             (!isZXC (offer.issueIn().currency)) &&
 =======
-        // An account can always own XRP or their own IOUs.
-        if (flowCross && (!isXRP(offer.issueIn().currency)) &&
+        // An account can always own ZXC or their own IOUs.
+        if (flowCross && (!isZXC(offer.issueIn().currency)) &&
 >>>>>>> release
             (offer.owner() != offer.issueIn().account))
         {
@@ -1106,7 +1106,7 @@ BookStep<TIn, TOut, TDerived>::check(StrandContext const& ctx) const
     }
 
     auto issuerExists = [](ReadView const& view, Issue const& iss) -> bool {
-        return isXRP(iss.account) || view.read(keylet::account(iss.account));
+        return isZXC(iss.account) || view.read(keylet::account(iss.account));
     };
 
     if (!issuerExists(ctx.view, book_.in) || !issuerExists(ctx.view, book_.out))
@@ -1167,24 +1167,24 @@ bookStepEqual(Step const& step, ripple::Book const& book)
         return equalHelper<IOUAmount, IOUAmount,
             BookPaymentStep<IOUAmount, IOUAmount>> (step, book);
 =======
-    bool const inXRP = isXRP(book.in.currency);
-    bool const outXRP = isXRP(book.out.currency);
-    if (inXRP && outXRP)
+    bool const inZXC = isZXC(book.in.currency);
+    bool const outZXC = isZXC(book.out.currency);
+    if (inZXC && outZXC)
         return equalHelper<
-            XRPAmount,
-            XRPAmount,
-            BookPaymentStep<XRPAmount, XRPAmount>>(step, book);
-    if (inXRP && !outXRP)
+            ZXCAmount,
+            ZXCAmount,
+            BookPaymentStep<ZXCAmount, ZXCAmount>>(step, book);
+    if (inZXC && !outZXC)
         return equalHelper<
-            XRPAmount,
+            ZXCAmount,
             IOUAmount,
-            BookPaymentStep<XRPAmount, IOUAmount>>(step, book);
-    if (!inXRP && outXRP)
+            BookPaymentStep<ZXCAmount, IOUAmount>>(step, book);
+    if (!inZXC && outZXC)
         return equalHelper<
             IOUAmount,
-            XRPAmount,
-            BookPaymentStep<IOUAmount, XRPAmount>>(step, book);
-    if (!inXRP && !outXRP)
+            ZXCAmount,
+            BookPaymentStep<IOUAmount, ZXCAmount>>(step, book);
+    if (!inZXC && !outZXC)
         return equalHelper<
             IOUAmount,
             IOUAmount,
@@ -1234,7 +1234,7 @@ make_BookStepIX(StrandContext const& ctx, Issue const& in)
 <<<<<<< HEAD
     return make_BookStepHelper<IOUAmount, ZXCAmount> (ctx, in, zxcIssue());
 =======
-    return make_BookStepHelper<IOUAmount, XRPAmount>(ctx, in, xrpIssue());
+    return make_BookStepHelper<IOUAmount, ZXCAmount>(ctx, in, zxcIssue());
 >>>>>>> release
 }
 
@@ -1244,7 +1244,7 @@ make_BookStepXI(StrandContext const& ctx, Issue const& out)
 <<<<<<< HEAD
     return make_BookStepHelper<ZXCAmount, IOUAmount> (ctx, zxcIssue(), out);
 =======
-    return make_BookStepHelper<XRPAmount, IOUAmount>(ctx, xrpIssue(), out);
+    return make_BookStepHelper<ZXCAmount, IOUAmount>(ctx, zxcIssue(), out);
 >>>>>>> release
 }
 

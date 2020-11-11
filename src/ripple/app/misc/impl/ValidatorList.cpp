@@ -845,9 +845,9 @@ ValidatorList::calculateQuorum(
     // Use an 80% quorum to balance fork safety, liveness, and required UNL
     // overlap.
     //
-    // Theorem 8 of the Analysis of the XRP Ledger Consensus Protocol
+    // Theorem 8 of the Analysis of the ZXC Ledger Consensus Protocol
     // (https://arxiv.org/abs/1802.07242) says:
-    //     XRP LCP guarantees fork safety if Oi,j > nj/2 + ni − qi + ti,j for
+    //     ZXC LCP guarantees fork safety if Oi,j > nj/2 + ni − qi + ti,j for
     //     every pair of nodes Pi, Pj.
     //
     // ni: size of Pi's UNL

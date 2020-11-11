@@ -47,18 +47,18 @@ toSTAmount(IOUAmount const& iou)
 }
 
 inline STAmount
-toSTAmount(XRPAmount const& xrp)
+toSTAmount(ZXCAmount const& zxc)
 {
-    bool const isNeg = xrp.signum() < 0;
-    std::uint64_t const umant = isNeg ? -xrp.drops() : xrp.drops();
+    bool const isNeg = zxc.signum() < 0;
+    std::uint64_t const umant = isNeg ? -zxc.drops() : zxc.drops();
     return STAmount(umant, isNeg);
 }
 
 inline STAmount
-toSTAmount(XRPAmount const& xrp, Issue const& iss)
+toSTAmount(ZXCAmount const& zxc, Issue const& iss)
 {
-    assert(isXRP(iss.account) && isXRP(iss.currency));
-    return toSTAmount(xrp);
+    assert(isZXC(iss.account) && isZXC(iss.currency));
+    return toSTAmount(zxc);
 }
 
 template <class T>
@@ -85,21 +85,21 @@ toAmount<IOUAmount>(STAmount const& amt)
     std::int64_t const sMant =
         isNeg ? -std::int64_t(amt.mantissa()) : amt.mantissa();
 
-    assert(!isXRP(amt));
+    assert(!isZXC(amt));
     return IOUAmount(sMant, amt.exponent());
 }
 
 template <>
-inline XRPAmount
-toAmount<XRPAmount>(STAmount const& amt)
+inline ZXCAmount
+toAmount<ZXCAmount>(STAmount const& amt)
 {
     assert(amt.mantissa() < std::numeric_limits<std::int64_t>::max());
     bool const isNeg = amt.negative();
     std::int64_t const sMant =
         isNeg ? -std::int64_t(amt.mantissa()) : amt.mantissa();
 
-    assert(isXRP(amt));
-    return XRPAmount(sMant);
+    assert(isZXC(amt));
+    return ZXCAmount(sMant);
 }
 
 }  // namespace ripple

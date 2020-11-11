@@ -11,17 +11,17 @@ import "org/xrpl/rpc/v1/get_transaction.proto";
 import "org/xrpl/rpc/v1/get_account_transaction_history.proto";
 
 
-// RPCs available to interact with the XRP Ledger.
+// RPCs available to interact with the ZXC Ledger.
 // The gRPC API mimics the JSON API. Refer to xrpl.org for documentation
-service XRPLedgerAPIService {
+service ZXCLedgerAPIService {
 
-  // Get account info for an account on the XRP Ledger.
+  // Get account info for an account on the ZXC Ledger.
   rpc GetAccountInfo (GetAccountInfoRequest) returns (GetAccountInfoResponse);
 
-  // Get the fee for a transaction on the XRP Ledger.
+  // Get the fee for a transaction on the ZXC Ledger.
   rpc GetFee (GetFeeRequest) returns (GetFeeResponse);
 
-  // Submit a signed transaction to the XRP Ledger.
+  // Submit a signed transaction to the ZXC Ledger.
   rpc SubmitTransaction (SubmitTransactionRequest) returns (SubmitTransactionResponse);
 
   // Get the status of a transaction

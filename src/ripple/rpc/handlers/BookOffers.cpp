@@ -112,19 +112,19 @@ doBookOffers(RPC::JsonContext& context)
     }
     else
     {
-        pay_issuer = xrpAccount();
+        pay_issuer = zxcAccount();
     }
 
-    if (isXRP(pay_currency) && !isXRP(pay_issuer))
+    if (isZXC(pay_currency) && !isZXC(pay_issuer))
         return RPC::make_error(
             rpcSRC_ISR_MALFORMED,
             "Unneeded field 'taker_pays.issuer' for "
-            "XRP currency specification.");
+            "ZXC currency specification.");
 
-    if (!isXRP(pay_currency) && isXRP(pay_issuer))
+    if (!isZXC(pay_currency) && isZXC(pay_issuer))
         return RPC::make_error(
             rpcSRC_ISR_MALFORMED,
-            "Invalid field 'taker_pays.issuer', expected non-XRP issuer.");
+            "Invalid field 'taker_pays.issuer', expected non-ZXC issuer.");
 
     AccountID get_issuer;
 
@@ -145,19 +145,19 @@ doBookOffers(RPC::JsonContext& context)
     }
     else
     {
-        get_issuer = xrpAccount();
+        get_issuer = zxcAccount();
     }
 
-    if (isXRP(get_currency) && !isXRP(get_issuer))
+    if (isZXC(get_currency) && !isZXC(get_issuer))
         return RPC::make_error(
             rpcDST_ISR_MALFORMED,
             "Unneeded field 'taker_gets.issuer' for "
-            "XRP currency specification.");
+            "ZXC currency specification.");
 
-    if (!isXRP(get_currency) && isXRP(get_issuer))
+    if (!isZXC(get_currency) && isZXC(get_issuer))
         return RPC::make_error(
             rpcDST_ISR_MALFORMED,
-            "Invalid field 'taker_gets.issuer', expected non-XRP issuer.");
+            "Invalid field 'taker_gets.issuer', expected non-ZXC issuer.");
 
     boost::optional<AccountID> takerID;
     if (context.params.isMember(jss::taker))

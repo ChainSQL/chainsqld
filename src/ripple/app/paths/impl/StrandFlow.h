@@ -28,12 +28,7 @@
 #include <ripple/app/paths/impl/Steps.h>
 #include <ripple/basics/IOUAmount.h>
 #include <ripple/basics/Log.h>
-<<<<<<< HEAD
-#include <ripple/protocol/IOUAmount.h>
-#include <ripple/protocol/ZXCAmount.h>
-=======
-#include <ripple/basics/XRPAmount.h>
->>>>>>> release
+#include <ripple/basics/ZXCAmount.h>
 
 #include <boost/container/flat_set.hpp>
 
@@ -48,15 +43,6 @@ namespace ripple {
 template <class TInAmt, class TOutAmt>
 struct StrandResult
 {
-<<<<<<< HEAD
-    TER ter = temUNKNOWN;                         ///< Result code
-    TInAmt in = beast::zero;                      ///< Currency amount in
-    TOutAmt out = beast::zero;                    ///< Currency amount out
-    boost::optional<PaymentSandbox> sandbox;      ///< Resulting Sandbox state
-    boost::container::flat_set<uint256> ofrsToRm; ///< Offers to remove
-    // strand can be inactive if there is no more liquidity or too many offers have been consumed
-    bool inactive = false; ///< Strand should not considered as a further source of liquidity (dry)
-=======
     bool success;                                  ///< Strand succeeded
     TInAmt in = beast::zero;                       ///< Currency amount in
     TOutAmt out = beast::zero;                     ///< Currency amount out
@@ -66,7 +52,6 @@ struct StrandResult
     // have been consumed
     bool inactive = false;  ///< Strand should not considered as a further
                             ///< source of liquidity (dry)
->>>>>>> release
 
     /** Strand result constructor */
     StrandResult() = default;
@@ -77,19 +62,11 @@ struct StrandResult
         PaymentSandbox&& sandbox_,
         boost::container::flat_set<uint256> ofrsToRm_,
         bool inactive_)
-<<<<<<< HEAD
-        : ter (tesSUCCESS)
-        , in (in_)
-        , out (out_)
-        , sandbox (std::move (sandbox_))
-        , ofrsToRm (std::move (ofrsToRm_))
-=======
         : success(true)
         , in(in_)
         , out(out_)
         , sandbox(std::move(sandbox_))
         , ofrsToRm(std::move(ofrsToRm_))
->>>>>>> release
         , inactive(inactive_)
     {
     }
@@ -129,17 +106,9 @@ flow(
 
     boost::container::flat_set<uint256> ofrsToRm;
 
-<<<<<<< HEAD
-    if (isDirectZxcToZxc<TInAmt, TOutAmt> (strand))
-    {
-        // The current implementation returns NO_LINE for ZXC->ZXC transfers.
-        // Keep this behavior
-        return {tecNO_LINE, std::move (ofrsToRm)};
-=======
     if (isDirectXrpToXrp<TInAmt, TOutAmt>(strand))
     {
         return Result{std::move(ofrsToRm)};
->>>>>>> release
     }
 
     try
@@ -157,13 +126,8 @@ flow(
             EitherAmount stepOut(out);
             for (auto i = s; i--;)
             {
-<<<<<<< HEAD
-                auto r = strand[i]->rev (*sb, *afView, ofrsToRm, stepOut);
-                if (strand[i]->isZero (r.second))
-=======
                 auto r = strand[i]->rev(*sb, *afView, ofrsToRm, stepOut);
                 if (strand[i]->isZero(r.second))
->>>>>>> release
                 {
                     JLOG(j.trace()) << "Strand found dry in rev";
                     return Result{std::move(ofrsToRm)};
@@ -184,15 +148,9 @@ flow(
                     if (strand[i]->isZero(r.second))
                     {
                         JLOG(j.trace()) << "First step found dry";
-<<<<<<< HEAD
-                        return {tecPATH_DRY, std::move(ofrsToRm)};
-                    }
-                    if (get<TInAmt> (r.first) != *maxIn)
-=======
                         return Result{std::move(ofrsToRm)};
                     }
                     if (get<TInAmt>(r.first) != *maxIn)
->>>>>>> release
                     {
                         // Something is very wrong
                         // throwing out the sandbox can only increase liquidity
@@ -202,11 +160,7 @@ flow(
                             << to_string(get<TInAmt>(r.first))
                             << " maxIn: " << to_string(*maxIn);
                         assert(0);
-<<<<<<< HEAD
-                        return {telFAILED_PROCESSING, std::move (ofrsToRm)};
-=======
                         return Result{std::move(ofrsToRm)};
->>>>>>> release
                     }
                 }
                 else if (!strand[i]->equalOut(r.second, stepOut))
@@ -224,21 +178,12 @@ flow(
 
                     if (strand[i]->isZero(r.second))
                     {
-<<<<<<< HEAD
-                        // A tiny input amount can cause this step to output zero.
-                        // I.e. 10^-80 IOU into an IOU -> ZXC offer.
-                        JLOG(j.trace()) << "Limiting step found dry";
-                        return {tecPATH_DRY, std::move(ofrsToRm)};
-                    }
-                    if (!strand[i]->equalOut (r.second, stepOut))
-=======
                         // A tiny input amount can cause this step to output
-                        // zero. I.e. 10^-80 IOU into an IOU -> XRP offer.
+                        // zero. I.e. 10^-80 IOU into an IOU -> ZXC offer.
                         JLOG(j.trace()) << "Limiting step found dry";
                         return Result{std::move(ofrsToRm)};
                     }
                     if (!strand[i]->equalOut(r.second, stepOut))
->>>>>>> release
                     {
                         // Something is very wrong
                         // throwing out the sandbox can only increase liquidity
@@ -248,17 +193,10 @@ flow(
                             << "Re-executed limiting step failed. r.second: "
                             << r.second << " stepOut: " << stepOut;
 #else
-<<<<<<< HEAD
-                        JLOG (j.fatal()) << "Re-executed limiting step failed";
-#endif
-                        assert (0);
-                        return {telFAILED_PROCESSING, std::move (ofrsToRm)};
-=======
                         JLOG(j.fatal()) << "Re-executed limiting step failed";
 #endif
                         assert(0);
                         return Result{std::move(ofrsToRm)};
->>>>>>> release
                     }
                 }
 
@@ -273,21 +211,9 @@ flow(
             {
                 auto const r = strand[i]->fwd(*sb, *afView, ofrsToRm, stepIn);
                 if (strand[i]->isZero(r.second))
-<<<<<<< HEAD
                 {
                     // A tiny input amount can cause this step to output zero.
                     // I.e. 10^-80 IOU into an IOU -> ZXC offer.
-                    JLOG(j.trace()) << "Non-limiting step found dry";
-                    return {tecPATH_DRY, std::move(ofrsToRm)};
-                }
-                if (!strand[i]->equalIn (r.first, stepIn))
-                {
-                    // The limits should already have been found, so executing a strand forward
-                    // from the limiting step should not find a new limit
-=======
-                {
-                    // A tiny input amount can cause this step to output zero.
-                    // I.e. 10^-80 IOU into an IOU -> XRP offer.
                     JLOG(j.trace()) << "Non-limiting step found dry";
                     return Result{std::move(ofrsToRm)};
                 }
@@ -296,23 +222,15 @@ flow(
                     // The limits should already have been found, so executing a
                     // strand forward from the limiting step should not find a
                     // new limit
->>>>>>> release
 #ifndef NDEBUG
                     JLOG(j.fatal())
                         << "Re-executed forward pass failed. r.first: "
                         << r.first << " stepIn: " << stepIn;
 #else
-<<<<<<< HEAD
-                    JLOG (j.fatal()) << "Re-executed forward pass failed";
-#endif
-                    assert (0);
-                    return {telFAILED_PROCESSING, std::move (ofrsToRm)};
-=======
                     JLOG(j.fatal()) << "Re-executed forward pass failed";
 #endif
                     assert(0);
                     return Result{std::move(ofrsToRm)};
->>>>>>> release
                 }
                 stepIn = r.second;
             }
@@ -490,19 +408,6 @@ public:
     {
         return cur_.size();
     }
-<<<<<<< HEAD
-
-    void
-    removeIndex(std::size_t i)
-    {
-        if (i >= next_.size())
-            return;
-        next_.erase(next_.begin() + i);
-    }
-};
-/// @endcond
-=======
->>>>>>> release
 
     void
     removeIndex(std::size_t i)
@@ -625,19 +530,12 @@ flow(
 
         boost::container::flat_set<uint256> ofrsToRm;
         boost::optional<BestStrand> best;
-<<<<<<< HEAD
-        if (flowDebugInfo) flowDebugInfo->newLiquidityPass();
-        // Index of strand to mark as inactive (remove from the active list) if the
-        // liquidity is used. This is used for strands that consume too many offers
-        // Constructed as `false,0` to workaround a gcc warning about uninitialized variables
-=======
         if (flowDebugInfo)
             flowDebugInfo->newLiquidityPass();
         // Index of strand to mark as inactive (remove from the active list) if
         // the liquidity is used. This is used for strands that consume too many
         // offers Constructed as `false,0` to workaround a gcc warning about
         // uninitialized variables
->>>>>>> release
         boost::optional<std::size_t> markInactiveOnUse{false, 0};
         for (auto strand : activeStrands)
         {
@@ -706,15 +604,9 @@ flow(
                 activeStrands.removeIndex(*markInactiveOnUse);
                 markInactiveOnUse.reset();
             }
-<<<<<<< HEAD
-            savedIns.insert (best->in);
-            savedOuts.insert (best->out);
-            remainingOut = outReq - sum (savedOuts);
-=======
             savedIns.insert(best->in);
             savedOuts.insert(best->out);
             remainingOut = outReq - sum(savedOuts);
->>>>>>> release
             if (sendMax)
                 remainingIn = *sendMax - sum(savedIns);
 
@@ -785,12 +677,6 @@ flow(
         // If we're offer crossing and partialPayment is *not* true, then
         // we're handling a FillOrKill offer.  In this case remainingIn must
         // be zero (all funds must be consumed) or else we kill the offer.
-<<<<<<< HEAD
-        assert (remainingIn);
-        if (remainingIn && *remainingIn != beast::zero)
-            return {tecPATH_PARTIAL,
-                actualIn, actualOut, std::move(ofrsToRmOnFail)};
-=======
         assert(remainingIn);
         if (remainingIn && *remainingIn != beast::zero)
             return {
@@ -798,7 +684,6 @@ flow(
                 actualIn,
                 actualOut,
                 std::move(ofrsToRmOnFail)};
->>>>>>> release
     }
 
     return {actualIn, actualOut, std::move(sb), std::move(ofrsToRmOnFail)};

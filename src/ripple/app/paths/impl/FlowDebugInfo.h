@@ -22,13 +22,8 @@
 
 #include <ripple/app/paths/impl/AmountSpec.h>
 #include <ripple/basics/IOUAmount.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/ledger/PaymentSandbox.h>
-<<<<<<< HEAD
-#include <ripple/protocol/IOUAmount.h>
-#include <ripple/protocol/ZXCAmount.h>
-=======
->>>>>>> release
 
 #include <boost/container/flat_map.hpp>
 #include <boost/optional.hpp>
@@ -223,22 +218,6 @@ struct FlowDebugInfo
 
         if (writePassInfo)
         {
-<<<<<<< HEAD
-            auto write_list = [&ostr](auto const& vals, auto&& fun, char delim=';') {
-                ostr << '[';
-                if (!vals.empty ())
-                {
-                    ostr << fun (vals[0]);
-                    for (size_t i = 1, e = vals.size (); i < e; ++i)
-                        ostr << delim << fun (vals[i]);
-                }
-                ostr << ']';
-            };
-            auto writeZxcAmtList = [&write_list](
-                std::vector<EitherAmount> const& amts, char delim=';') {
-                auto get_val = [](EitherAmount const& a) -> std::string {
-                    return ripple::to_string (a.zxc);
-=======
             auto write_list =
                 [&ostr](auto const& vals, auto&& fun, char delim = ';') {
                     ostr << '[';
@@ -255,7 +234,6 @@ struct FlowDebugInfo
                                        char delim = ';') {
                 auto get_val = [](EitherAmount const& a) -> std::string {
                     return ripple::to_string(a.xrp);
->>>>>>> release
                 };
                 write_list(amts, get_val, delim);
             };
@@ -288,21 +266,6 @@ struct FlowDebugInfo
                             writeIouAmtList(amts[i], '|');
                         }
                     }
-<<<<<<< HEAD
-                }
-                ostr << ']';
-            };
-            auto writeNestedZxcAmtList = [&ostr, &writeZxcAmtList](
-                std::vector<std::vector<EitherAmount>> const& amts) {
-                ostr << '[';
-                if (!amts.empty ())
-                {
-                    writeZxcAmtList(amts[0], '|');
-                    for (size_t i = 1, e = amts.size (); i < e; ++i)
-                    {
-                        ostr << ';';
-                        writeZxcAmtList(amts[i], '|');
-=======
                     ostr << ']';
                 };
             auto writeNestedXrpAmtList =
@@ -317,27 +280,18 @@ struct FlowDebugInfo
                             ostr << ';';
                             writeXrpAmtList(amts[i], '|');
                         }
->>>>>>> release
                     }
                     ostr << ']';
                 };
 
             ostr << ", in_pass: ";
             if (passInfo.nativeIn)
-<<<<<<< HEAD
-                writeZxcAmtList (passInfo.in);
-=======
-                writeXrpAmtList(passInfo.in);
->>>>>>> release
+                writeZxcAmtList(passInfo.in);
             else
                 writeIouAmtList(passInfo.in);
             ostr << ", out_pass: ";
             if (passInfo.nativeOut)
-<<<<<<< HEAD
-                writeZxcAmtList (passInfo.out);
-=======
-                writeXrpAmtList(passInfo.out);
->>>>>>> release
+                writeZxcAmtList(passInfo.out);
             else
                 writeIouAmtList(passInfo.out);
             ostr << ", num_active: ";
@@ -347,20 +301,12 @@ struct FlowDebugInfo
             {
                 ostr << ", l_src_in: ";
                 if (passInfo.nativeIn)
-<<<<<<< HEAD
-                    writeNestedZxcAmtList (passInfo.liquiditySrcIn);
-=======
-                    writeNestedXrpAmtList(passInfo.liquiditySrcIn);
->>>>>>> release
+                    writeNestedZxcAmtList(passInfo.liquiditySrcIn);
                 else
                     writeNestedIouAmtList(passInfo.liquiditySrcIn);
                 ostr << ", l_src_out: ";
                 if (passInfo.nativeOut)
-<<<<<<< HEAD
-                    writeNestedZxcAmtList (passInfo.liquiditySrcOut);
-=======
-                    writeNestedXrpAmtList(passInfo.liquiditySrcOut);
->>>>>>> release
+                    writeNestedZxcAmtList(passInfo.liquiditySrcOut);
                 else
                     writeNestedIouAmtList(passInfo.liquiditySrcOut);
             }
@@ -407,11 +353,7 @@ using BalanceDiffs = std::pair<
 inline BalanceDiffs
 balanceDiffs(PaymentSandbox const& sb, ReadView const& rv)
 {
-<<<<<<< HEAD
-    return {sb.balanceChanges (rv), sb.zxcDestroyed ()};
-=======
-    return {sb.balanceChanges(rv), sb.xrpDestroyed()};
->>>>>>> release
+    return {sb.balanceChanges(rv), sb.zxcDestroyed()};
 }
 
 inline std::string
@@ -422,11 +364,7 @@ balanceDiffsToString(boost::optional<BalanceDiffs> const& bd)
     auto const& diffs = bd->first;
     auto const& zxcDestroyed = bd->second;
     std::ostringstream ostr;
-<<<<<<< HEAD
-    ostr << ", zxcDestroyed: " << to_string (zxcDestroyed);
-=======
-    ostr << ", xrpDestroyed: " << to_string(xrpDestroyed);
->>>>>>> release
+    ostr << ", zxcDestroyed: " << to_string(zxcDestroyed);
     ostr << ", balanceDiffs: ";
     writeDiffs(ostr, diffs.begin(), diffs.end());
     return ostr.str();

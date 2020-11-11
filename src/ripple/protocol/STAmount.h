@@ -21,7 +21,7 @@
 #define RIPPLE_PROTOCOL_STAMOUNT_H_INCLUDED
 
 #include <ripple/basics/IOUAmount.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/protocol/Issue.h>
 #include <ripple/protocol/SField.h>
 #include <ripple/protocol/STBase.h>
@@ -50,7 +50,7 @@ private:
     Issue mIssue;
     mantissa_type mValue;
     exponent_type mOffset;
-    bool mIsNative;  // A shorthand for isXRP(mIssue).
+    bool mIsNative;  // A shorthand for isZXC(mIssue).
     bool mIsNegative;
 
 public:
@@ -141,7 +141,7 @@ public:
 
     // Legacy support for new-style amounts
     STAmount(IOUAmount const& amount, Issue const& issue);
-    STAmount(XRPAmount const& amount);
+    STAmount(ZXCAmount const& amount);
 
     STBase*
     copy(std::size_t n, void* buf) const override
@@ -256,7 +256,7 @@ public:
     }
 
     STAmount&
-    operator=(XRPAmount const& amount)
+    operator=(ZXCAmount const& amount)
     {
         *this = STAmount(amount);
         return *this;
@@ -342,8 +342,8 @@ public:
         return (mValue == 0) && mIsNative;
     }
 
-    XRPAmount
-    xrp() const;
+    ZXCAmount
+    zxc() const;
     IOUAmount
     iou() const;
 };
@@ -466,9 +466,9 @@ getRate(STAmount const& offerOut, STAmount const& offerIn);
 //------------------------------------------------------------------------------
 
 inline bool
-isXRP(STAmount const& amount)
+isZXC(STAmount const& amount)
 {
-    return isXRP(amount.issue().currency);
+    return isZXC(amount.issue().currency);
 }
 
 }  // namespace ripple

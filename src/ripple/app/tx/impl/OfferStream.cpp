@@ -27,7 +27,7 @@ bool
 checkIssuers(ReadView const& view, Book const& book)
 {
     auto issuerExists = [](ReadView const& view, Issue const& iss) -> bool {
-        return isXRP(iss.account) || view.read(keylet::account(iss.account));
+        return isZXC(iss.account) || view.read(keylet::account(iss.account));
     };
     return issuerExists(view, book.in) && issuerExists(view, book.out);
 }
@@ -119,7 +119,7 @@ accountFundsHelper(
         view, id, issue.currency, issue.account, freezeHandling, j));
 }
 
-static XRPAmount
+static ZXCAmount
 accountFundsHelper(
     ReadView const& view,
     AccountID const& id,
@@ -128,7 +128,7 @@ accountFundsHelper(
     FreezeHandling freezeHandling,
     beast::Journal j)
 {
-    return toAmount<XRPAmount>(accountHolds(
+    return toAmount<ZXCAmount>(accountHolds(
         view, id, issue.currency, issue.account, freezeHandling, j));
 }
 
@@ -251,6 +251,6 @@ template class FlowOfferStream<IOUAmount, ZXCAmount>;
 
 template class TOfferStreamBase<STAmount, STAmount>;
 template class TOfferStreamBase<IOUAmount, IOUAmount>;
-template class TOfferStreamBase<XRPAmount, IOUAmount>;
-template class TOfferStreamBase<IOUAmount, XRPAmount>;
+template class TOfferStreamBase<ZXCAmount, IOUAmount>;
+template class TOfferStreamBase<IOUAmount, ZXCAmount>;
 }  // namespace ripple

@@ -77,7 +77,7 @@ public:
     finalize(
         STTx const& tx,
         TER const tec,
-        XRPAmount const fee,
+        ZXCAmount const fee,
         ReadView const& view,
         beast::Journal const& j);
 };
@@ -102,17 +102,17 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };
 
 /**
- * @brief Invariant: A transaction must not create XRP and should only destroy
- * the XRP fee.
+ * @brief Invariant: A transaction must not create ZXC and should only destroy
+ * the ZXC fee.
  *
  * We iterate through all account roots, payment channels and escrow entries
- * that were modified and calculate the net change in XRP caused by the
+ * that were modified and calculate the net change in ZXC caused by the
  * transactions.
  */
 class ZXCNotCreated
@@ -130,7 +130,7 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };
@@ -158,17 +158,17 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };
 
 /**
- * @brief Invariant: An account XRP balance must be in XRP and take a value
- *                   between 0 and INITIAL_XRP drops, inclusive.
+ * @brief Invariant: An account ZXC balance must be in ZXC and take a value
+ *                   between 0 and INITIAL_ZXC drops, inclusive.
  *
  * We iterate all account roots modified by the transaction and ensure that
- * their XRP balances are reasonable.
+ * their ZXC balances are reasonable.
  */
 class ZXCBalanceChecks
 {
@@ -185,7 +185,7 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };
@@ -210,13 +210,13 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };
 
 /**
- * @brief Invariant: Trust lines using XRP are not allowed.
+ * @brief Invariant: Trust lines using ZXC are not allowed.
  *
  * We iterate all the trust lines created by this transaction and ensure
  * that they are against a valid issuer.
@@ -236,17 +236,17 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };
 
 /**
  * @brief Invariant: offers should be for non-negative amounts and must not
- *                   be XRP to XRP.
+ *                   be ZXC to ZXC.
  *
  * Examine all offers modified by the transaction and ensure that there are
- * no offers which contain negative amounts or which exchange XRP for XRP.
+ * no offers which contain negative amounts or which exchange ZXC for ZXC.
  */
 class NoBadOffers
 {
@@ -263,14 +263,14 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };
 
 /**
  * @brief Invariant: an escrow entry must take a value between 0 and
- *                   INITIAL_XRP drops exclusive.
+ *                   INITIAL_ZXC drops exclusive.
  */
 class NoZeroEscrow
 {
@@ -287,7 +287,7 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };
@@ -313,7 +313,7 @@ public:
     finalize(
         STTx const&,
         TER const,
-        XRPAmount const,
+        ZXCAmount const,
         ReadView const&,
         beast::Journal const&);
 };

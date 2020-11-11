@@ -61,7 +61,7 @@ LedgerHandler::check()
 
     options_ = (full ? LedgerFill::full : 0) |
         (expand ? LedgerFill::expand : 0) |
-        (transactions ? LedgerFill::dumpTxrp : 0) |
+        (transactions ? LedgerFill::dumpTzxc : 0) |
         (accounts ? LedgerFill::dumpState : 0) |
         (binary ? LedgerFill::binary : 0) |
         (owner_funds ? LedgerFill::ownerFunds : 0) |

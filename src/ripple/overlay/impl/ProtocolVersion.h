@@ -49,7 +49,7 @@ to_string(ProtocolVersion const& p);
 /** Parse a set of protocol versions.
 
     Given a comma-separated string, extract and return all those that look
-    like valid protocol versions (i.e. RTXP/1.2 and XRPL/2.0 and later). Any
+    like valid protocol versions (i.e. RTXP/1.2 and ZXCL/2.0 and later). Any
     strings that are not parseable as valid protocol strings are excluded
     from the result set.
 

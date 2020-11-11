@@ -22,7 +22,7 @@
 
 #include <ripple/app/tx/applySteps.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/beast/utility/Journal.h>
 #include <boost/optional.hpp>
 
@@ -90,8 +90,8 @@ protected:
     beast::Journal const j_;
 
     AccountID account_;
-    XRPAmount mPriorBalance;   // Balance before fees.
-    XRPAmount mSourceBalance;  // Balance after fees.
+    ZXCAmount mPriorBalance;   // Balance before fees.
+    ZXCAmount mSourceBalance;  // Balance after fees.
 
     std::string	  mDetailMsg;
     virtual ~Transactor() = default;
@@ -149,10 +149,10 @@ public:
         return false;
     }
 
-    static XRPAmount
+    static ZXCAmount
     calculateFeePaid(STTx const& tx);
 
-    static XRPAmount
+    static ZXCAmount
     calculateMaxSpend(STTx const& tx);
 
     static TER
@@ -192,7 +192,7 @@ protected:
         @param fees Fee settings from the current ledger
         @param flags Transaction processing fees
      */
-    static XRPAmount
+    static ZXCAmount
     minimumFee(
         Application& app,
         FeeUnit64 baseFee,
@@ -214,8 +214,8 @@ protected:
         Fees const& fees, ApplyFlags flags);
 
 private:
-    XRPAmount
-    reset(XRPAmount fee);
+    ZXCAmount
+    reset(ZXCAmount fee);
 
     void
     setSeq();

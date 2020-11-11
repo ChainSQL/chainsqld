@@ -37,7 +37,7 @@ struct CashSummary
     std::vector<std::pair<
         AccountID, ZXCAmount>> zxcChanges;
 =======
-    std::vector<std::pair<AccountID, XRPAmount>> xrpChanges;
+    std::vector<std::pair<AccountID, ZXCAmount>> zxcChanges;
 >>>>>>> release
 
     std::vector<std::pair<std::tuple<AccountID, AccountID, Currency>, STAmount>>
@@ -65,7 +65,7 @@ struct CashSummary
             || !offerChanges.empty()
             || !offerDeletions.empty();
 =======
-        return !xrpChanges.empty() || !trustChanges.empty() ||
+        return !zxcChanges.empty() || !trustChanges.empty() ||
             !trustDeletions.empty() || !offerChanges.empty() ||
             !offerDeletions.empty();
 >>>>>>> release
@@ -81,7 +81,7 @@ struct CashSummary
         offerChanges.reserve (newCap);
         offerDeletions.reserve (newCap);
 =======
-        xrpChanges.reserve(newCap);
+        zxcChanges.reserve(newCap);
         trustChanges.reserve(newCap);
         trustDeletions.reserve(newCap);
         offerChanges.reserve(newCap);
@@ -109,7 +109,7 @@ struct CashSummary
         std::sort (offerChanges.begin(), offerChanges.end());
         std::sort (offerDeletions.begin(), offerDeletions.end());
 =======
-        std::sort(xrpChanges.begin(), xrpChanges.end());
+        std::sort(zxcChanges.begin(), zxcChanges.end());
         std::sort(trustChanges.begin(), trustChanges.end());
         std::sort(trustDeletions.begin(), trustDeletions.end());
         std::sort(offerChanges.begin(), offerChanges.end());
@@ -205,8 +205,8 @@ getBasicCashFlow(
             return true;
 =======
             case ltACCOUNT_ROOT:
-                result.xrpChanges.push_back(
-                    std::make_pair(prev[sfAccount], XRPAmount{0}));
+                result.zxcChanges.push_back(
+                    std::make_pair(prev[sfAccount], ZXCAmount{0}));
                 return true;
 >>>>>>> release
 
@@ -257,9 +257,9 @@ getBasicCashFlow(
 >>>>>>> release
         {
             case ltACCOUNT_ROOT: {
-                auto const curXrp = cur[sfBalance].xrp();
-                if (!before || (*before)[sfBalance].xrp() != curXrp)
-                    result.xrpChanges.push_back(
+                auto const curXrp = cur[sfBalance].zxc();
+                if (!before || (*before)[sfBalance].zxc() != curXrp)
+                    result.zxcChanges.push_back(
                         std::make_pair(cur[sfAccount], curXrp));
                 return true;
             }
@@ -411,7 +411,7 @@ public:
     int zxcRoundToZero () const;
 =======
     int
-    xrpRoundToZero() const;
+    zxcRoundToZero() const;
 >>>>>>> release
 
     // Filter out differences that are small enough to be in the floating
@@ -532,7 +532,7 @@ int CashDiff::Impl::zxcRoundToZero () const
         ! rhsDiffs_.offerChanges[0].second.takerGets().native())
             return 0;
 =======
-    addIn(countKeys(lhs.xrpChanges, rhs.xrpChanges));
+    addIn(countKeys(lhs.zxcChanges, rhs.zxcChanges));
     addIn(countKeys(lhs.trustChanges, rhs.trustChanges));
     addIn(countKeys(lhs.trustDeletions, rhs.trustDeletions));
     addIn(countKeys(lhs.offerChanges, rhs.offerChanges));
@@ -541,10 +541,10 @@ int CashDiff::Impl::zxcRoundToZero () const
 }
 
 int
-CashDiff::Impl::xrpRoundToZero() const
+CashDiff::Impl::zxcRoundToZero() const
 {
     // The case has one OfferChange that is present on both lhs_ and rhs_.
-    // That OfferChange should have XRP for TakerGets.  There should be a 1
+    // That OfferChange should have ZXC for TakerGets.  There should be a 1
     // drop difference between the TakerGets of lhsDiffs_ and rhsDiffs_.
     if (lhsDiffs_.offerChanges.size() != 1 ||
         rhsDiffs_.offerChanges.size() != 1)
@@ -583,11 +583,11 @@ CashDiff::Impl::xrpRoundToZero() const
         1)
         return 0;
 
-    // The side with the smaller XRP balance in the OfferChange should have
-    // two XRP differences.  The other side should have no XRP differences.
-    if (smaller.xrpChanges.size() != 2)
+    // The side with the smaller ZXC balance in the OfferChange should have
+    // two ZXC differences.  The other side should have no ZXC differences.
+    if (smaller.zxcChanges.size() != 2)
         return 0;
-    if (!bigger.xrpChanges.empty())
+    if (!bigger.zxcChanges.empty())
         return 0;
 
     // There should be no other differences.
@@ -675,11 +675,11 @@ CashDiff::Impl::rmDust()
         {
             return diffIsDust (lhs, rhs);
 =======
-    // xrpChanges.  We call a difference of 2 drops or less dust.
+    // zxcChanges.  We call a difference of 2 drops or less dust.
     removedDust |= rmVecDust(
-        lhsDiffs_.xrpChanges,
-        rhsDiffs_.xrpChanges,
-        [](XRPAmount const& lhs, XRPAmount const& rhs) {
+        lhsDiffs_.zxcChanges,
+        rhsDiffs_.zxcChanges,
+        [](ZXCAmount const& lhs, ZXCAmount const& rhs) {
             return diffIsDust(lhs, rhs);
 >>>>>>> release
         });
@@ -770,9 +770,9 @@ CashDiff::Impl::findDiffs(
     setDiff (lhsDiffs.zxcChanges, rhsDiffs.zxcChanges, lhsDiffs_.zxcChanges);
     setDiff (rhsDiffs.zxcChanges, lhsDiffs.zxcChanges, rhsDiffs_.zxcChanges);
 =======
-    // xrpChanges:
-    setDiff(lhsDiffs.xrpChanges, rhsDiffs.xrpChanges, lhsDiffs_.xrpChanges);
-    setDiff(rhsDiffs.xrpChanges, lhsDiffs.xrpChanges, rhsDiffs_.xrpChanges);
+    // zxcChanges:
+    setDiff(lhsDiffs.zxcChanges, rhsDiffs.zxcChanges, lhsDiffs_.zxcChanges);
+    setDiff(rhsDiffs.zxcChanges, lhsDiffs.zxcChanges, rhsDiffs_.zxcChanges);
 >>>>>>> release
 
     // trustChanges:
@@ -865,9 +865,9 @@ int CashDiff::zxcRoundToZero() const
 bool CashDiff::rmDust()
 =======
 int
-CashDiff::xrpRoundToZero() const
+CashDiff::zxcRoundToZero() const
 {
-    return impl_->xrpRoundToZero();
+    return impl_->zxcRoundToZero();
 }
 
 bool

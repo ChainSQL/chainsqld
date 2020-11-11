@@ -39,7 +39,7 @@ bool
 TransactionFeeCheck::finalize(
     STTx const& tx,
     TER const,
-    XRPAmount const fee,
+    ZXCAmount const fee,
     ReadView const&,
     beast::Journal const& j)
 {
@@ -52,8 +52,8 @@ TransactionFeeCheck::finalize(
     }
 
     // We should never charge a fee that's greater than or equal to the
-    // entire XRP supply.
-    if (fee >= INITIAL_XRP)
+    // entire ZXC supply.
+    if (fee >= INITIAL_ZXC)
     {
         JLOG(j.fatal()) << "Invariant failed: fee paid exceeds system limit: "
                         << fee.drops();
@@ -62,7 +62,7 @@ TransactionFeeCheck::finalize(
 
     // We should never charge more for a transaction than the transaction
     // authorizes. It's possible to charge less in some circumstances.
-    if (fee > tx.getFieldAmount(sfFee).xrp())
+    if (fee > tx.getFieldAmount(sfFee).zxc())
     {
         JLOG(j.fatal()) << "Invariant failed: fee paid is " << fee.drops()
                         << " exceeds fee specified in transaction.";
@@ -75,14 +75,14 @@ TransactionFeeCheck::finalize(
 //------------------------------------------------------------------------------
 
 void
-XRPNotCreated::visitEntry(
+ZXCNotCreated::visitEntry(
     bool isDelete,
     std::shared_ptr<SLE const> const& before,
     std::shared_ptr<SLE const> const& after)
 {
     /* We go through all modified ledger entries, looking only at account roots,
      * escrow payments, and payment channels. We remove from the total any
-     * previous XRP values and add to the total any new XRP values. The net
+     * previous ZXC values and add to the total any new ZXC values. The net
      * balance of a payment channel is computed from two fields (amount and
      * balance) and deletions are ignored for paychan and escrow because the
      * amount fields have not been adjusted for those in the case of deletion.
@@ -92,14 +92,14 @@ XRPNotCreated::visitEntry(
         switch (before->getType())
         {
             case ltACCOUNT_ROOT:
-                drops_ -= (*before)[sfBalance].xrp().drops();
+                drops_ -= (*before)[sfBalance].zxc().drops();
                 break;
             case ltPAYCHAN:
                 drops_ -=
-                    ((*before)[sfAmount] - (*before)[sfBalance]).xrp().drops();
+                    ((*before)[sfAmount] - (*before)[sfBalance]).zxc().drops();
                 break;
             case ltESCROW:
-                drops_ -= (*before)[sfAmount].xrp().drops();
+                drops_ -= (*before)[sfAmount].zxc().drops();
                 break;
             default:
                 break;
@@ -111,17 +111,17 @@ XRPNotCreated::visitEntry(
         switch (after->getType())
         {
             case ltACCOUNT_ROOT:
-                drops_ += (*after)[sfBalance].xrp().drops();
+                drops_ += (*after)[sfBalance].zxc().drops();
                 break;
             case ltPAYCHAN:
                 if (!isDelete)
                     drops_ += ((*after)[sfAmount] - (*after)[sfBalance])
-                                  .xrp()
+                                  .zxc()
                                   .drops();
                 break;
             case ltESCROW:
                 if (!isDelete)
-                    drops_ += (*after)[sfAmount].xrp().drops();
+                    drops_ += (*after)[sfAmount].zxc().drops();
                 break;
             default:
                 break;
@@ -130,10 +130,10 @@ XRPNotCreated::visitEntry(
 }
 
 bool
-XRPNotCreated::finalize(
+ZXCNotCreated::finalize(
     STTx const&,
     TER const,
-    XRPAmount const fee,
+    ZXCAmount const fee,
     ReadView const&,
     beast::Journal const& j)
 {
@@ -147,10 +147,10 @@ XRPNotCreated::finalize(
 	}
 
     // The net change should never be positive, as this would mean that the
-    // transaction created XRP out of thin air. That's not possible.
+    // transaction created ZXC out of thin air. That's not possible.
     if (drops_ > 0)
     {
-        JLOG(j.fatal()) << "Invariant failed: XRP net change was positive: "
+        JLOG(j.fatal()) << "Invariant failed: ZXC net change was positive: "
                         << drops_;
         return false;
     }
@@ -158,7 +158,7 @@ XRPNotCreated::finalize(
     // The negative of the net change should be equal to actual fee charged.
     if (-drops_ != fee.drops())
     {
-        JLOG(j.fatal()) << "Invariant failed: XRP net change of " << drops_
+        JLOG(j.fatal()) << "Invariant failed: ZXC net change of " << drops_
                         << " doesn't match fee " << fee.drops();
         return false;
     }
@@ -169,7 +169,7 @@ XRPNotCreated::finalize(
 //------------------------------------------------------------------------------
 
 void
-XRPBalanceChecks::visitEntry(
+ZXCBalanceChecks::visitEntry(
     bool,
     std::shared_ptr<SLE const> const& before,
     std::shared_ptr<SLE const> const& after)
@@ -178,15 +178,15 @@ XRPBalanceChecks::visitEntry(
         if (!balance.native())
             return true;
 
-        auto const drops = balance.xrp();
+        auto const drops = balance.zxc();
 
         // Can't have more than the number of drops instantiated
         // in the genesis ledger.
-        if (drops > INITIAL_XRP)
+        if (drops > INITIAL_ZXC)
             return true;
 
         // Can't have a negative balance (0 is OK)
-        if (drops < XRPAmount{0})
+        if (drops < ZXCAmount{0})
             return true;
 
         return false;
@@ -200,10 +200,10 @@ XRPBalanceChecks::visitEntry(
 }
 
 bool
-XRPBalanceChecks::finalize(
+ZXCBalanceChecks::finalize(
     STTx const&,
     TER const,
-    XRPAmount const,
+    ZXCAmount const,
     ReadView const&,
     beast::Journal const& j)
 {
@@ -247,7 +247,7 @@ bool
 NoBadOffers::finalize(
     STTx const&,
     TER const,
-    XRPAmount const,
+    ZXCAmount const,
     ReadView const&,
     beast::Journal const& j)
 {
@@ -272,10 +272,10 @@ NoZeroEscrow::visitEntry(
         if (!amount.native())
             return true;
 
-        if (amount.xrp() <= XRPAmount{0})
+        if (amount.zxc() <= ZXCAmount{0})
             return true;
 
-        if (amount.xrp() >= INITIAL_XRP)
+        if (amount.zxc() >= INITIAL_ZXC)
             return true;
 
         return false;
@@ -292,7 +292,7 @@ bool
 NoZeroEscrow::finalize(
     STTx const&,
     TER const,
-    XRPAmount const,
+    ZXCAmount const,
     ReadView const&,
     beast::Journal const& j)
 {
@@ -321,7 +321,7 @@ bool
 AccountRootsNotDeleted::finalize(
     STTx const& tx,
     TER const result,
-    XRPAmount const,
+    ZXCAmount const,
     ReadView const&,
     beast::Journal const& j)
 {
@@ -402,7 +402,7 @@ bool
 LedgerEntryTypesMatch::finalize(
     STTx const&,
     TER const,
-    XRPAmount const,
+    ZXCAmount const,
     ReadView const&,
     beast::Journal const& j)
 {
@@ -425,7 +425,7 @@ LedgerEntryTypesMatch::finalize(
 //------------------------------------------------------------------------------
 
 void
-NoXRPTrustLines::visitEntry(
+NoZXCTrustLines::visitEntry(
     bool,
     std::shared_ptr<SLE const> const&,
     std::shared_ptr<SLE const> const& after)
@@ -435,21 +435,21 @@ NoXRPTrustLines::visitEntry(
         // checking the issue directly here instead of
         // relying on .native() just in case native somehow
         // were systematically incorrect
-        xrpTrustLine_ =
-            after->getFieldAmount(sfLowLimit).issue() == xrpIssue() ||
-            after->getFieldAmount(sfHighLimit).issue() == xrpIssue();
+        zxcTrustLine_ =
+            after->getFieldAmount(sfLowLimit).issue() == zxcIssue() ||
+            after->getFieldAmount(sfHighLimit).issue() == zxcIssue();
     }
 }
 
 bool
-NoXRPTrustLines::finalize(
+NoZXCTrustLines::finalize(
     STTx const&,
     TER const,
-    XRPAmount const,
+    ZXCAmount const,
     ReadView const&,
     beast::Journal const& j)
 {
-    if (!xrpTrustLine_)
+    if (!zxcTrustLine_)
         return true;
 
     JLOG(j.fatal()) << "Invariant failed: an ZXC trust line was created";
@@ -475,7 +475,7 @@ bool
 ValidNewAccountRoot::finalize(
     STTx const& tx,
     TER const result,
-    XRPAmount const,
+    ZXCAmount const,
     ReadView const& view,
     beast::Journal const& j)
 {

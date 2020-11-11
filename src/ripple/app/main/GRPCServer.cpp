@@ -41,7 +41,7 @@ getEndpoint(std::string const& peer)
 
 template <class Request, class Response>
 GRPCServerImpl::CallData<Request, Response>::CallData(
-    org::xrpl::rpc::v1::XRPLedgerAPIService::AsyncService& service,
+    org::zxcl::rpc::v1::ZXCLedgerAPIService::AsyncService& service,
     grpc::ServerCompletionQueue& cq,
     Application& app,
     BindListener<Request, Response> bindListener,
@@ -336,14 +336,14 @@ GRPCServerImpl::setupListeners()
 
     {
         using cd = CallData<
-            org::xrpl::rpc::v1::GetFeeRequest,
-            org::xrpl::rpc::v1::GetFeeResponse>;
+            org::zxcl::rpc::v1::GetFeeRequest,
+            org::zxcl::rpc::v1::GetFeeResponse>;
 
         addToRequests(std::make_shared<cd>(
             service_,
             *cq_,
             app_,
-            &org::xrpl::rpc::v1::XRPLedgerAPIService::AsyncService::
+            &org::zxcl::rpc::v1::ZXCLedgerAPIService::AsyncService::
                 RequestGetFee,
             doFeeGrpc,
             RPC::NEEDS_CURRENT_LEDGER,
@@ -351,14 +351,14 @@ GRPCServerImpl::setupListeners()
     }
     {
         using cd = CallData<
-            org::xrpl::rpc::v1::GetAccountInfoRequest,
-            org::xrpl::rpc::v1::GetAccountInfoResponse>;
+            org::zxcl::rpc::v1::GetAccountInfoRequest,
+            org::zxcl::rpc::v1::GetAccountInfoResponse>;
 
         addToRequests(std::make_shared<cd>(
             service_,
             *cq_,
             app_,
-            &org::xrpl::rpc::v1::XRPLedgerAPIService::AsyncService::
+            &org::zxcl::rpc::v1::ZXCLedgerAPIService::AsyncService::
                 RequestGetAccountInfo,
             doAccountInfoGrpc,
             RPC::NO_CONDITION,
@@ -366,14 +366,14 @@ GRPCServerImpl::setupListeners()
     }
     {
         using cd = CallData<
-            org::xrpl::rpc::v1::GetTransactionRequest,
-            org::xrpl::rpc::v1::GetTransactionResponse>;
+            org::zxcl::rpc::v1::GetTransactionRequest,
+            org::zxcl::rpc::v1::GetTransactionResponse>;
 
         addToRequests(std::make_shared<cd>(
             service_,
             *cq_,
             app_,
-            &org::xrpl::rpc::v1::XRPLedgerAPIService::AsyncService::
+            &org::zxcl::rpc::v1::ZXCLedgerAPIService::AsyncService::
                 RequestGetTransaction,
             doTxGrpc,
             RPC::NEEDS_CURRENT_LEDGER,
@@ -381,14 +381,14 @@ GRPCServerImpl::setupListeners()
     }
     {
         using cd = CallData<
-            org::xrpl::rpc::v1::SubmitTransactionRequest,
-            org::xrpl::rpc::v1::SubmitTransactionResponse>;
+            org::zxcl::rpc::v1::SubmitTransactionRequest,
+            org::zxcl::rpc::v1::SubmitTransactionResponse>;
 
         addToRequests(std::make_shared<cd>(
             service_,
             *cq_,
             app_,
-            &org::xrpl::rpc::v1::XRPLedgerAPIService::AsyncService::
+            &org::zxcl::rpc::v1::ZXCLedgerAPIService::AsyncService::
                 RequestSubmitTransaction,
             doSubmitGrpc,
             RPC::NEEDS_CURRENT_LEDGER,
@@ -397,14 +397,14 @@ GRPCServerImpl::setupListeners()
 
     {
         using cd = CallData<
-            org::xrpl::rpc::v1::GetAccountTransactionHistoryRequest,
-            org::xrpl::rpc::v1::GetAccountTransactionHistoryResponse>;
+            org::zxcl::rpc::v1::GetAccountTransactionHistoryRequest,
+            org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse>;
 
         addToRequests(std::make_shared<cd>(
             service_,
             *cq_,
             app_,
-            &org::xrpl::rpc::v1::XRPLedgerAPIService::AsyncService::
+            &org::zxcl::rpc::v1::ZXCLedgerAPIService::AsyncService::
                 RequestGetAccountTransactionHistory,
             doAccountTxGrpc,
             RPC::NO_CONDITION,

@@ -77,7 +77,7 @@ preflight1(PreflightContext const& ctx)
 
     // No point in going any further if the transaction fee is malformed.
     auto const fee = ctx.tx.getFieldAmount(sfFee);
-    if (!fee.native() || fee.negative() || !isLegalAmount(fee.xrp()))
+    if (!fee.native() || fee.negative() || !isLegalAmount(fee.zxc()))
     {
         JLOG(ctx.j.debug()) << "preflight1: invalid fee";
         return temBAD_FEE;
@@ -148,7 +148,7 @@ Transactor::calculateFeePaid(STTx const& tx)
     return tx[sfFee].zxc();
 }
 
-XRPAmount
+ZXCAmount
 Transactor::minimumFee(
     Application& app,
     FeeUnit64 baseFee,
@@ -158,7 +158,7 @@ Transactor::minimumFee(
     return scaleFeeLoad(baseFee, app.getFeeTrack(), fees, flags & tapUNLIMITED);
 }
 
-XRPAmount
+ZXCAmount
 Transactor::calculateMaxSpend(STTx const& tx)
 {
     return beast::zero;
@@ -209,7 +209,7 @@ Transactor::checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee)
     if (!sle)
         return terNO_ACCOUNT;
 
-    auto const balance = (*sle)[sfBalance].xrp();
+    auto const balance = (*sle)[sfBalance].zxc();
 
     if (balance < feePaid)
     {
@@ -760,7 +760,7 @@ Transactor::reset(ZXCAmount fee)
         // is missing then we can't very well charge it a fee, can we?
         return beast::zero;
 
-    auto const balance = txnAcct->getFieldAmount(sfBalance).xrp();
+    auto const balance = txnAcct->getFieldAmount(sfBalance).zxc();
 
     // balance should have already been checked in checkFee / preFlight.
     assert(balance != beast::zero && (!view().open() || balance >= fee));

@@ -91,13 +91,13 @@ public:
     bool
     hasDiff() const;
 
-    // Checks for the XRP round-to-zero case.  Returns zero if not detected.
+    // Checks for the ZXC round-to-zero case.  Returns zero if not detected.
     // Otherwise returns -1 if seen on lhs, +1 if seen on rhs.
     //
-    // For tiny offers of TakerPays IOU and TakerGets XRP, cases have been
-    // observed where XRP rounding allows a tiny amount of IOU to be
-    // removed from an Offer while returning no XRP to the offer owner.
-    // That's because the XRP amount was rounded down to zero drops.
+    // For tiny offers of TakerPays IOU and TakerGets ZXC, cases have been
+    // observed where ZXC rounding allows a tiny amount of IOU to be
+    // removed from an Offer while returning no ZXC to the offer owner.
+    // That's because the ZXC amount was rounded down to zero drops.
     //
     // The person submitting the tiny offer does not, however, get something
     // for nothing.  The transaction's fee is significantly larger than the
@@ -105,7 +105,7 @@ public:
     //
     // This check should be made before calling rmDust().
     int
-    xrpRoundToZero() const;
+    zxcRoundToZero() const;
 
     // Checks for the ZXC round-to-zero case.  Returns zero if not detected.
     // Otherwise returns -1 if seen on lhs, +1 if seen on rhs.
@@ -178,7 +178,7 @@ private:
 // If v1 and v2 have different issues, then their difference is never dust.
 // If v1 < v2, smallness is computed as v1 / (v2 - v1).
 // The e10 argument says at least how big that ratio must be.  Default is 10^6.
-// If both v1 and v2 are XRP, consider any diff of 2 drops or less to be dust.
+// If both v1 and v2 are ZXC, consider any diff of 2 drops or less to be dust.
 bool
 diffIsDust(STAmount const& v1, STAmount const& v2, std::uint8_t e10 = 6);
 

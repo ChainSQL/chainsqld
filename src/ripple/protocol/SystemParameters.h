@@ -20,7 +20,7 @@
 #ifndef RIPPLE_PROTOCOL_SYSTEMPARAMETERS_H_INCLUDED
 #define RIPPLE_PROTOCOL_SYSTEMPARAMETERS_H_INCLUDED
 
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/basics/chrono.h>
 #include <cstdint>
 #include <string>
@@ -40,13 +40,13 @@ systemName()
 /** Configure the native currency. */
 
 /** Number of drops in the genesis account. */
-constexpr XRPAmount INITIAL_XRP{100'000'000'000 * DROPS_PER_XRP};
+constexpr ZXCAmount INITIAL_ZXC{100'000'000'000 * DROPS_PER_ZXC};
 
-/** Returns true if the amount does not exceed the initial XRP in existence. */
+/** Returns true if the amount does not exceed the initial ZXC in existence. */
 inline bool
-isLegalAmount(XRPAmount const& amount)
+isLegalAmount(ZXCAmount const& amount)
 {
-    return amount <= INITIAL_XRP;
+    return amount <= INITIAL_ZXC;
 }
 
 /* The currency code for the native currency. */
@@ -57,8 +57,8 @@ systemCurrencyCode()
     return code;
 }
 
-/** The XRP ledger network's earliest allowed sequence */
-static std::uint32_t constexpr XRP_LEDGER_EARLIEST_SEQ{32570};
+/** The ZXC ledger network's earliest allowed sequence */
+static std::uint32_t constexpr ZXC_LEDGER_EARLIEST_SEQ{32570};
 
 /** The minimum amount of support an amendment should have.
 

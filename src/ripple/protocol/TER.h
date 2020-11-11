@@ -29,7 +29,7 @@
 
 namespace ripple {
 
-// See https://xrpl.org/transaction-results.html
+// See https://zxcl.org/transaction-results.html
 //
 // "Transaction Engine Result"
 // or Transaction ERror.
@@ -308,7 +308,7 @@ enum TECcodes : TERUnderlyingType {
     tecINSUF_RESERVE_LINE = 122,
     tecINSUF_RESERVE_OFFER = 123,
     tecNO_DST = 124,
-    tecNO_DST_INSUF_XRP = 125,
+    tecNO_DST_INSUF_ZXC = 125,
     tecNO_LINE_INSUF_RESERVE = 126,
     tecNO_LINE_REDUNDANT = 127,
     tecPATH_DRY = 128,

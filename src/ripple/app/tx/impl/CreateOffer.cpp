@@ -29,12 +29,12 @@
 
 namespace ripple {
 
-XRPAmount
+ZXCAmount
 CreateOffer::calculateMaxSpend(STTx const& tx)
 {
     auto const& saTakerGets = tx[sfTakerGets];
 
-    return saTakerGets.native() ? saTakerGets.xrp() : beast::zero;
+    return saTakerGets.native() ? saTakerGets.zxc() : beast::zero;
 }
 
 NotTEC
@@ -88,7 +88,7 @@ CreateOffer::preflight(PreflightContext const& ctx)
 
     if (saTakerPays.native() && saTakerGets.native())
     {
-        JLOG(j.debug()) << "Malformed offer: redundant (XRP for XRP)";
+        JLOG(j.debug()) << "Malformed offer: redundant (ZXC for ZXC)";
         return temBAD_OFFER;
     }
     if (saTakerPays <= beast::zero || saTakerGets <= beast::zero)
@@ -108,7 +108,7 @@ CreateOffer::preflight(PreflightContext const& ctx)
         JLOG(j.debug()) << "Malformed offer: redundant (IOU for IOU)";
         return temREDUNDANT;
     }
-    // We don't allow a non-native currency to use the currency code XRP.
+    // We don't allow a non-native currency to use the currency code ZXC.
     if (badCurrency() == uPaysCurrency || badCurrency() == uGetsCurrency)
     {
         JLOG(j.debug()) << "Malformed offer: bad currency";
@@ -218,7 +218,7 @@ CreateOffer::checkAcceptAsset(
     Issue const& issue)
 {
     // Only valid for custom currencies
-    assert(!isXRP(issue.currency));
+    assert(!isZXC(issue.currency));
 
     auto const issuerAccount = view.read(keylet::account(issue.account));
 
@@ -334,10 +334,10 @@ CreateOffer::bridged_cross(
 {
     auto const& takerAmount = taker.original_offer();
 
-    assert(!isXRP(takerAmount.in) && !isXRP(takerAmount.out));
+    assert(!isZXC(takerAmount.in) && !isZXC(takerAmount.out));
 
-    if (isXRP(takerAmount.in) || isXRP(takerAmount.out))
-        Throw<std::logic_error>("Bridging with XRP and an endpoint.");
+    if (isZXC(takerAmount.in) || isZXC(takerAmount.out))
+        Throw<std::logic_error>("Bridging with ZXC and an endpoint.");
 
     OfferStream offers_direct(
         view,
@@ -350,7 +350,7 @@ CreateOffer::bridged_cross(
     OfferStream offers_leg1(
         view,
         view_cancel,
-        Book(taker.issue_in(), xrpIssue()),
+        Book(taker.issue_in(), zxcIssue()),
         when,
         stepCounter_,
         j_);
@@ -358,7 +358,7 @@ CreateOffer::bridged_cross(
     OfferStream offers_leg2(
         view,
         view_cancel,
-        Book(xrpIssue(), taker.issue_out()),
+        Book(zxcIssue(), taker.issue_out()),
         when,
         stepCounter_,
         j_);
@@ -651,7 +651,7 @@ CreateOffer::takerCross(
     // If the taker is unfunded before we begin crossing
     // there's nothing to do - just return an error.
     //
-    // We check this in preclaim, but when selling XRP
+    // We check this in preclaim, but when selling ZXC
     // charged fees can cause a user's available balance
     // to go to 0 (by causing it to dip below the reserve)
     // so we check this case again.
@@ -686,7 +686,7 @@ CreateOffer::flowCross(
         // If the taker is unfunded before we begin crossing there's nothing
         // to do - just return an error.
         //
-        // We check this in preclaim, but when selling XRP charged fees can
+        // We check this in preclaim, but when selling ZXC charged fees can
         // cause a user's available balance to go to 0 (by causing it to dip
         // below the reserve) so we check this case again.
         STAmount const inStartBalance =
@@ -731,14 +731,14 @@ CreateOffer::flowCross(
             sendMax = inStartBalance;
 
         // Always invoke flow() with the default path.  However if neither
-        // of the takerAmount currencies are XRP then we cross through an
-        // additional path with XRP as the intermediate between two books.
+        // of the takerAmount currencies are ZXC then we cross through an
+        // additional path with ZXC as the intermediate between two books.
         // This second path we have to build ourselves.
         STPathSet paths;
         if (!takerAmount.in.native() & !takerAmount.out.native())
         {
             STPath path;
-            path.emplace_back(boost::none, xrpCurrency(), boost::none);
+            path.emplace_back(boost::none, zxcCurrency(), boost::none);
             paths.emplace_back(std::move(path));
         }
         // Special handling for the tfSell flag.
@@ -859,7 +859,7 @@ CreateOffer::flowCross(
     return {tecINTERNAL, takerAmount};
 }
 
-enum class SBoxCmp { same, dustDiff, offerDelDiff, xrpRound, diff };
+enum class SBoxCmp { same, dustDiff, offerDelDiff, zxcRound, diff };
 
 static std::string
 to_string(SBoxCmp c)
@@ -872,8 +872,8 @@ to_string(SBoxCmp c)
             return "dust diffs";
         case SBoxCmp::offerDelDiff:
             return "offer del diffs";
-        case SBoxCmp::xrpRound:
-            return "XRP round to zero";
+        case SBoxCmp::zxcRound:
+            return "ZXC round to zero";
         case SBoxCmp::diff:
             return "different";
     }
@@ -898,17 +898,17 @@ compareSandboxes(
     if (diff.hasDiff())
     {
         using namespace beast::severities;
-        // There is a special case of an offer with XRP on one side where
-        // the XRP gets rounded to zero.  It mostly looks like dust-level
+        // There is a special case of an offer with ZXC on one side where
+        // the ZXC gets rounded to zero.  It mostly looks like dust-level
         // differences.  It is easier to detect if we look for it before
         // removing the dust differences.
-        if (int const side = diff.xrpRoundToZero())
+        if (int const side = diff.zxcRoundToZero())
         {
             char const* const whichSide = side > 0 ? "; Flow" : "; Taker";
             j.stream(kWarning)
                 << "FlowCross: " << name << " different" << whichSide
-                << " XRP rounded to zero.  tx: " << ctx.tx.getTransactionID();
-            return SBoxCmp::xrpRound;
+                << " ZXC rounded to zero.  tx: " << ctx.tx.getTransactionID();
+            return SBoxCmp::zxcRound;
         }
 
         c = SBoxCmp::dustDiff;
@@ -1116,11 +1116,11 @@ void
 CreateOffer::preCompute()
 {
     cross_type_ = CrossType::IouToIou;
-    bool const pays_xrp = ctx_.tx.getFieldAmount(sfTakerPays).native();
-    bool const gets_xrp = ctx_.tx.getFieldAmount(sfTakerGets).native();
-    if (pays_xrp && !gets_xrp)
+    bool const pays_zxc = ctx_.tx.getFieldAmount(sfTakerPays).native();
+    bool const gets_zxc = ctx_.tx.getFieldAmount(sfTakerGets).native();
+    if (pays_zxc && !gets_zxc)
         cross_type_ = CrossType::IouToXrp;
-    else if (gets_xrp && !pays_xrp)
+    else if (gets_zxc && !pays_zxc)
         cross_type_ = CrossType::XrpToIou;
 
     return Transactor::preCompute();
@@ -1204,13 +1204,13 @@ CreateOffer::applyGuts(Sandbox& sb, Sandbox& sbCancel)
         auto const& uGetsIssuerID = saTakerGets.getIssuer();
 
         std::uint8_t uTickSize = Quality::maxTickSize;
-        if (!isXRP(uPaysIssuerID))
+        if (!isZXC(uPaysIssuerID))
         {
             auto const sle = sb.read(keylet::account(uPaysIssuerID));
             if (sle && sle->isFieldPresent(sfTickSize))
                 uTickSize = std::min(uTickSize, (*sle)[sfTickSize]);
         }
-        if (!isXRP(uGetsIssuerID))
+        if (!isZXC(uGetsIssuerID))
         {
             auto const sle = sb.read(keylet::account(uGetsIssuerID));
             if (sle && sle->isFieldPresent(sfTickSize))
@@ -1352,7 +1352,7 @@ CreateOffer::applyGuts(Sandbox& sb, Sandbox& sbCancel)
         return {tefINTERNAL, false};
 
     {
-        XRPAmount reserve = ctx_.view().fees().accountReserve(
+        ZXCAmount reserve = ctx_.view().fees().accountReserve(
             sleCreator->getFieldU32(sfOwnerCount) + 1);
 
         if (mPriorBalance < reserve)

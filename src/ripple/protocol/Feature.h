@@ -112,7 +112,7 @@ class FeatureCollections
         // fixQualityUpperBound should be activated before FlowCross
         "fixQualityUpperBound",
         "RequireFullyCanonicalSig",
-        "fix1781",  // XRPEndpointSteps should be included in the circular
+        "fix1781",  // ZXCEndpointSteps should be included in the circular
                     // payment check
         "HardenedValidations",
         "fixAmendmentMajorityCalc",  // Fix Amendment majority calculation

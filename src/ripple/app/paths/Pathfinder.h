@@ -89,11 +89,11 @@ public:
     // PaymentType represents the types of the source and destination currencies
     // in a path request.
     enum PaymentType {
-        pt_XRP_to_XRP,
-        pt_XRP_to_nonXRP,
-        pt_nonXRP_to_XRP,
-        pt_nonXRP_to_same,   // Destination currency is the same as source.
-        pt_nonXRP_to_nonXRP  // Destination currency is NOT the same as source.
+        pt_ZXC_to_ZXC,
+        pt_ZXC_to_nonZXC,
+        pt_nonZXC_to_ZXC,
+        pt_nonZXC_to_same,   // Destination currency is the same as source.
+        pt_nonZXC_to_nonZXC  // Destination currency is NOT the same as source.
     };
 
     struct PathRank

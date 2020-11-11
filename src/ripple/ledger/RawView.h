@@ -85,7 +85,7 @@ public:
         This is used to pay for transaction fees.
     */
     virtual void
-    rawDestroyXRP(XRPAmount const& fee) = 0;
+    rawDestroyZXC(ZXCAmount const& fee) = 0;
 };
 
 //------------------------------------------------------------------------------

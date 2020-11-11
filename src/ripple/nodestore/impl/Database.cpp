@@ -37,7 +37,7 @@ Database::Database(
     , j_(journal)
     , scheduler_(scheduler)
     , earliestLedgerSeq_(
-          get<std::uint32_t>(config, "earliest_seq", XRP_LEDGER_EARLIEST_SEQ))
+          get<std::uint32_t>(config, "earliest_seq", ZXC_LEDGER_EARLIEST_SEQ))
 {
     if (earliestLedgerSeq_ < 1)
         Throw<std::runtime_error>("Invalid earliest_seq");

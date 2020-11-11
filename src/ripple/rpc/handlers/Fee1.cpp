@@ -38,10 +38,10 @@ doFee(RPC::JsonContext& context)
     return context.params;
 }
 
-std::pair<org::xrpl::rpc::v1::GetFeeResponse, grpc::Status>
-doFeeGrpc(RPC::GRPCContext<org::xrpl::rpc::v1::GetFeeRequest>& context)
+std::pair<org::zxcl::rpc::v1::GetFeeResponse, grpc::Status>
+doFeeGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetFeeRequest>& context)
 {
-    org::xrpl::rpc::v1::GetFeeResponse reply;
+    org::zxcl::rpc::v1::GetFeeResponse reply;
     grpc::Status status = grpc::Status::OK;
 
     Application& app = context.app;
@@ -62,14 +62,14 @@ doFeeGrpc(RPC::GRPCContext<org::xrpl::rpc::v1::GetFeeRequest>& context)
     reply.set_max_queue_size(*metrics.txQMaxSize);
 
     // fee levels data
-    org::xrpl::rpc::v1::FeeLevels& levels = *reply.mutable_levels();
+    org::zxcl::rpc::v1::FeeLevels& levels = *reply.mutable_levels();
     levels.set_median_level(metrics.medFeeLevel.fee());
     levels.set_minimum_level(metrics.minProcessingFeeLevel.fee());
     levels.set_open_ledger_level(metrics.openLedgerFeeLevel.fee());
     levels.set_reference_level(metrics.referenceFeeLevel.fee());
 
     // fee data
-    org::xrpl::rpc::v1::Fee& fee = *reply.mutable_fee();
+    org::zxcl::rpc::v1::Fee& fee = *reply.mutable_fee();
     auto const baseFee = view->fees().base;
     fee.mutable_base_fee()->set_drops(
         toDrops(metrics.referenceFeeLevel, baseFee).second.drops());

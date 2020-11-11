@@ -226,7 +226,7 @@ class NetworkOPsImp final
         ServerFeeSummary() = default;
 
         ServerFeeSummary(
-            XRPAmount fee,
+            ZXCAmount fee,
             TxQ::Metrics&& escalationMetrics,
             LoadFeeTrack const& loadFeeTrack);
         bool
@@ -240,7 +240,7 @@ class NetworkOPsImp final
 
         std::uint32_t loadFactorServer = 256;
         std::uint32_t loadBaseServer = 256;
-        XRPAmount baseFee{10};
+        ZXCAmount baseFee{10};
         boost::optional<TxQ::Metrics> em = boost::none;
     };
 
@@ -2184,7 +2184,7 @@ NetworkOPsImp::pubManifest(Manifest const& mo)
 }
 
 NetworkOPsImp::ServerFeeSummary::ServerFeeSummary(
-    XRPAmount fee,
+    ZXCAmount fee,
     TxQ::Metrics&& escalationMetrics,
     LoadFeeTrack const& loadFeeTrack)
     : loadFactorServer{loadFeeTrack.getLoadFactor()}
@@ -2990,7 +2990,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
 
         /* Json::Value doesn't support uint64, so clamp to max
             uint32 value. This is mostly theoretical, since there
-            probably isn't enough extant XRP to drive the factor
+            probably isn't enough extant ZXC to drive the factor
             that high.
         */
         info[jss::load_factor_fee_escalation] =
@@ -3047,7 +3047,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
 
     if (lpClosed)
     {
-        XRPAmount const baseFee = lpClosed->fees().base;
+        ZXCAmount const baseFee = lpClosed->fees().base;
         Json::Value l(Json::objectValue);
         l[jss::seq] = Json::UInt(lpClosed->info().seq);
         l[jss::hash] = to_string(lpClosed->info().hash);
@@ -3066,10 +3066,10 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
         else
         {
             l[jss::drops_per_byte] = Json::Value::UInt(drops_per_byte);
-            l[jss::base_fee_xrp] = baseFee.decimalXRP();
-            l[jss::reserve_base_xrp] =
-                lpClosed->fees().accountReserve(0).decimalXRP();
-            l[jss::reserve_inc_xrp] = lpClosed->fees().increment.decimalXRP();
+            l[jss::base_fee_zxc] = baseFee.decimalZXC();
+            l[jss::reserve_base_zxc] =
+                lpClosed->fees().accountReserve(0).decimalZXC();
+            l[jss::reserve_inc_zxc] = lpClosed->fees().increment.decimalZXC();
 
             auto const nowOffset = app_.timeKeeper().nowOffset();
             if (std::abs(nowOffset.count()) >= 60)

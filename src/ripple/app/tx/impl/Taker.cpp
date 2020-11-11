@@ -64,14 +64,14 @@ BasicTaker::BasicTaker(
     // flavor we expect:
     assert(
         cross_type != CrossType::XrpToIou ||
-        (isXRP(issue_in()) && !isXRP(issue_out())));
+        (isZXC(issue_in()) && !isZXC(issue_out())));
 
     assert(
         cross_type != CrossType::IouToXrp ||
-        (!isXRP(issue_in()) && isXRP(issue_out())));
+        (!isZXC(issue_in()) && isZXC(issue_out())));
 
-    // And make sure we're not crossing XRP for XRP
-    assert(!isXRP(issue_in()) || !isXRP(issue_out()));
+    // And make sure we're not crossing ZXC for ZXC
+    assert(!isZXC(issue_in()) || !isZXC(issue_out()));
 
     // If this is a passive order, we adjust the quality so as to prevent offers
     // at the same quality level from being consumed.
@@ -197,13 +197,13 @@ BasicTaker::log_flow(char const* description, Flow const& flow)
 
     stream << description;
 
-    if (isXRP(issue_in()))
+    if (isZXC(issue_in()))
         stream << "   order in: " << format_amount(flow.order.in);
     else
         stream << "   order in: " << format_amount(flow.order.in)
                << " (issuer: " << format_amount(flow.issuers.in) << ")";
 
-    if (isXRP(issue_out()))
+    if (isZXC(issue_out()))
         stream << "  order out: " << format_amount(flow.order.out);
     else
         stream << "  order out: " << format_amount(flow.order.out)
@@ -211,7 +211,7 @@ BasicTaker::log_flow(char const* description, Flow const& flow)
 }
 
 BasicTaker::Flow
-BasicTaker::flow_xrp_to_iou(
+BasicTaker::flow_zxc_to_iou(
     Amounts const& order,
     Quality quality,
     STAmount const& owner_funds,
@@ -222,7 +222,7 @@ BasicTaker::flow_xrp_to_iou(
     f.order = order;
     f.issuers.out = multiply(f.order.out, rate_out);
 
-    log_flow("flow_xrp_to_iou", f);
+    log_flow("flow_zxc_to_iou", f);
 
     // Clamp on owner balance
     if (owner_funds < f.issuers.out)
@@ -265,7 +265,7 @@ BasicTaker::flow_xrp_to_iou(
 }
 
 BasicTaker::Flow
-BasicTaker::flow_iou_to_xrp(
+BasicTaker::flow_iou_to_zxc(
     Amounts const& order,
     Quality quality,
     STAmount const& owner_funds,
@@ -276,7 +276,7 @@ BasicTaker::flow_iou_to_xrp(
     f.order = order;
     f.issuers.in = multiply(f.order.in, rate_in);
 
-    log_flow("flow_iou_to_xrp", f);
+    log_flow("flow_iou_to_zxc", f);
 
     // Clamp on owner's funds
     if (owner_funds < f.order.out)
@@ -391,7 +391,7 @@ BasicTaker::do_cross(Amounts offer, Quality quality, AccountID const& owner)
 
     if (cross_type_ == CrossType::XrpToIou)
     {
-        result = flow_xrp_to_iou(
+        result = flow_zxc_to_iou(
             offer,
             quality,
             owner_funds,
@@ -400,7 +400,7 @@ BasicTaker::do_cross(Amounts offer, Quality quality, AccountID const& owner)
     }
     else if (cross_type_ == CrossType::IouToXrp)
     {
-        result = flow_iou_to_xrp(
+        result = flow_iou_to_zxc(
             offer,
             quality,
             owner_funds,
@@ -464,21 +464,21 @@ BasicTaker::do_cross(
         leg2_out_funds = std::max(leg2_out_funds, offer2.out);
     }
 
-    // The amount available to flow via XRP is the amount that the owner of the
+    // The amount available to flow via ZXC is the amount that the owner of the
     // first leg of the bridge has, up to the first leg's output.
     //
     // But, when both legs of a bridge are owned by the same person, the amount
-    // of XRP that can flow between the two legs is, essentially, infinite
-    // since all the owner is doing is taking out XRP of his left pocket
+    // of ZXC that can flow between the two legs is, essentially, infinite
+    // since all the owner is doing is taking out ZXC of his left pocket
     // and putting it in his right pocket. In that case, we set the available
-    // XRP to the largest of the two offers.
-    auto xrp_funds = get_funds(owner1, offer1.out);
+    // ZXC to the largest of the two offers.
+    auto zxc_funds = get_funds(owner1, offer1.out);
 
     if (owner1 == owner2)
     {
         JLOG(journal_.trace())
             << "The bridge endpoints are owned by the same account.";
-        xrp_funds = std::max(offer1.out, offer2.in);
+        zxc_funds = std::max(offer1.out, offer2.in);
     }
 
     if (auto stream = journal_.debug())
@@ -486,7 +486,7 @@ BasicTaker::do_cross(
         stream << "Available bridge funds:";
         stream << "  leg1 in: " << format_amount(leg1_in_funds);
         stream << " leg2 out: " << format_amount(leg2_out_funds);
-        stream << "      xrp: " << format_amount(xrp_funds);
+        stream << "      zxc: " << format_amount(zxc_funds);
     }
 
     auto const leg1_rate = in_rate(owner1, account());
@@ -495,20 +495,20 @@ BasicTaker::do_cross(
     // Attempt to determine the maximal flow that can be achieved across each
     // leg independent of the other.
     auto flow1 =
-        flow_iou_to_xrp(offer1, quality1, xrp_funds, leg1_in_funds, leg1_rate);
+        flow_iou_to_zxc(offer1, quality1, zxc_funds, leg1_in_funds, leg1_rate);
 
     if (!flow1.sanity_check())
         Throw<std::logic_error>("Computed flow1 fails sanity check.");
 
     auto flow2 =
-        flow_xrp_to_iou(offer2, quality2, leg2_out_funds, xrp_funds, leg2_rate);
+        flow_zxc_to_iou(offer2, quality2, leg2_out_funds, zxc_funds, leg2_rate);
 
     if (!flow2.sanity_check())
         Throw<std::logic_error>("Computed flow2 fails sanity check.");
 
     // We now have the maximal flows across each leg individually. We need to
-    // equalize them, so that the amount of XRP that flows out of the first leg
-    // is the same as the amount of XRP that flows into the second leg. We take
+    // equalize them, so that the amount of ZXC that flows out of the first leg
+    // is the same as the amount of ZXC that flows into the second leg. We take
     // the side which is the limiting factor (if any) and adjust the other.
     if (flow1.order.out < flow2.order.in)
     {
@@ -555,7 +555,7 @@ Taker::Taker(
           calculateRate(view, offer.out.getIssuer(), account),
           journal)
     , view_(view)
-    , xrp_flow_(0)
+    , zxc_flow_(0)
     , direct_crossings_(0)
     , bridge_crossings_(0)
 {
@@ -566,13 +566,13 @@ Taker::Taker(
     {
         stream << "Crossing as: " << to_string(account);
 
-        if (isXRP(issue_in()))
+        if (isZXC(issue_in()))
             stream << "   Offer in: " << format_amount(offer.in);
         else
             stream << "   Offer in: " << format_amount(offer.in)
                    << " (issuer: " << issue_in().account << ")";
 
-        if (isXRP(issue_out()))
+        if (isZXC(issue_out()))
             stream << "  Offer out: " << format_amount(offer.out);
         else
             stream << "  Offer out: " << format_amount(offer.out)
@@ -612,13 +612,13 @@ Taker::get_funds(AccountID const& account, STAmount const& amount) const
 }
 
 TER
-Taker::transferXRP(
+Taker::transferZXC(
     AccountID const& from,
     AccountID const& to,
     STAmount const& amount)
 {
-    if (!isXRP(amount))
-        Throw<std::logic_error>("Using transferXRP with IOU");
+    if (!isZXC(amount))
+        Throw<std::logic_error>("Using transferZXC with IOU");
 
     if (from == to)
         return tesSUCCESS;
@@ -627,7 +627,7 @@ Taker::transferXRP(
     if (amount == beast::zero)
         return tesSUCCESS;
 
-    return ripple::transferXRP(view_, from, to, amount, journal_);
+    return ripple::transferZXC(view_, from, to, amount, journal_);
 }
 
 TER
@@ -636,8 +636,8 @@ Taker::redeemIOU(
     STAmount const& amount,
     Issue const& issue)
 {
-    if (isXRP(amount))
-        Throw<std::logic_error>("Using redeemIOU with XRP");
+    if (isZXC(amount))
+        Throw<std::logic_error>("Using redeemIOU with ZXC");
 
     if (account == issue.account)
         return tesSUCCESS;
@@ -665,8 +665,8 @@ Taker::issueIOU(
     STAmount const& amount,
     Issue const& issue)
 {
-    if (isXRP(amount))
-        Throw<std::logic_error>("Using issueIOU with XRP");
+    if (isZXC(amount))
+        Throw<std::logic_error>("Using issueIOU with ZXC");
 
     if (account == issue.account)
         return tesSUCCESS;
@@ -689,7 +689,7 @@ Taker::fill(BasicTaker::Flow const& flow, Offer& offer)
 
     if (cross_type() != CrossType::XrpToIou)
     {
-        assert(!isXRP(flow.order.in));
+        assert(!isZXC(flow.order.in));
 
         if (result == tesSUCCESS)
             result =
@@ -701,16 +701,16 @@ Taker::fill(BasicTaker::Flow const& flow, Offer& offer)
     }
     else
     {
-        assert(isXRP(flow.order.in));
+        assert(isZXC(flow.order.in));
 
         if (result == tesSUCCESS)
-            result = transferXRP(account(), offer.owner(), flow.order.in);
+            result = transferZXC(account(), offer.owner(), flow.order.in);
     }
 
     // Now send funds from the account whose offer we're taking
     if (cross_type() != CrossType::IouToXrp)
     {
-        assert(!isXRP(flow.order.out));
+        assert(!isZXC(flow.order.out));
 
         if (result == tesSUCCESS)
             result = redeemIOU(
@@ -722,10 +722,10 @@ Taker::fill(BasicTaker::Flow const& flow, Offer& offer)
     }
     else
     {
-        assert(isXRP(flow.order.out));
+        assert(isZXC(flow.order.out));
 
         if (result == tesSUCCESS)
-            result = transferXRP(offer.owner(), account(), flow.order.out);
+            result = transferZXC(offer.owner(), account(), flow.order.out);
     }
 
     if (result == tesSUCCESS)
@@ -760,9 +760,9 @@ Taker::fill(
                 issueIOU(leg1.owner(), flow1.order.in, flow1.order.in.issue());
     }
 
-    // leg1 to leg2: bridging over XRP
+    // leg1 to leg2: bridging over ZXC
     if (result == tesSUCCESS)
-        result = transferXRP(leg1.owner(), leg2.owner(), flow1.order.out);
+        result = transferZXC(leg1.owner(), leg2.owner(), flow1.order.out);
 
     // leg2 to Taker: IOU
     if (leg2.owner() != account())
@@ -779,7 +779,7 @@ Taker::fill(
     if (result == tesSUCCESS)
     {
         bridge_crossings_++;
-        xrp_flow_ += flow1.order.out;
+        zxc_flow_ += flow1.order.out;
     }
 
     return result;
@@ -788,8 +788,8 @@ Taker::fill(
 TER
 Taker::cross(Offer& offer)
 {
-    // In direct crossings, at least one leg must not be XRP.
-    if (isXRP(offer.amount().in) && isXRP(offer.amount().out))
+    // In direct crossings, at least one leg must not be ZXC.
+    if (isZXC(offer.amount().in) && isZXC(offer.amount().out))
         return tefINTERNAL;
 
     auto const amount =
@@ -801,9 +801,9 @@ Taker::cross(Offer& offer)
 TER
 Taker::cross(Offer& leg1, Offer& leg2)
 {
-    // In bridged crossings, XRP must can't be the input to the first leg
+    // In bridged crossings, ZXC must can't be the input to the first leg
     // or the output of the second leg.
-    if (isXRP(leg1.amount().in) || isXRP(leg2.amount().out))
+    if (isZXC(leg1.amount().in) || isZXC(leg2.amount().out))
         return tefINTERNAL;
 
     auto ret = do_cross(
@@ -823,7 +823,7 @@ Taker::calculateRate(
     AccountID const& issuer,
     AccountID const& account)
 {
-    return isXRP(issuer) || (account == issuer) ? parityRate
+    return isZXC(issuer) || (account == issuer) ? parityRate
                                                 : transferRate(view, issuer);
 }
 

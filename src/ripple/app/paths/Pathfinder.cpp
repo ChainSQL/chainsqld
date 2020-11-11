@@ -34,9 +34,9 @@
 
 Core Pathfinding Engine
 
-The pathfinding request is identified by category, XRP to XRP, XRP to
-non-XRP, non-XRP to XRP, same currency non-XRP to non-XRP, cross-currency
-non-XRP to non-XRP.  For each category, there is a table of paths that the
+The pathfinding request is identified by category, ZXC to ZXC, ZXC to
+non-ZXC, non-ZXC to ZXC, same currency non-ZXC to non-ZXC, cross-currency
+non-ZXC to non-ZXC.  For each category, there is a table of paths that the
 pathfinder searches for.  Complete paths are collected.
 
 Each complete path is then rated and sorted. Paths with no or trivial
@@ -128,7 +128,7 @@ pathTypeToString(Pathfinder::PathType const& type)
             case Pathfinder::nt_BOOKS:
                 ret.append("b");
                 break;
-            case Pathfinder::nt_XRP_BOOK:
+            case Pathfinder::nt_ZXC_BOOK:
                 ret.append("x");
                 break;
             case Pathfinder::nt_DEST_BOOK:
@@ -157,7 +157,7 @@ Pathfinder::Pathfinder(
     : mSrcAccount(uSrcAccount)
     , mDstAccount(uDstAccount)
     , mEffectiveDst(
-          isXRP(saDstAmount.getIssuer()) ? uDstAccount
+          isZXC(saDstAmount.getIssuer()) ? uDstAccount
                                          : saDstAmount.getIssuer())
     , mDstAmount(saDstAmount)
     , mSrcCurrency(uSrcCurrency)
@@ -165,7 +165,7 @@ Pathfinder::Pathfinder(
     , mSrcAmount(srcAmount.value_or(STAmount(
           {uSrcCurrency,
            uSrcIssuer.value_or(
-               isXRP(uSrcCurrency) ? xrpAccount() : uSrcAccount)},
+               isZXC(uSrcCurrency) ? zxcAccount() : uSrcAccount)},
           1u,
           0,
           true)))
@@ -180,7 +180,7 @@ Pathfinder::Pathfinder(
     , app_(app)
     , j_(app.journal("Pathfinder"))
 {
-    assert(!uSrcIssuer || isXRP(uSrcCurrency) == isXRP(uSrcIssuer.get()));
+    assert(!uSrcIssuer || isZXC(uSrcCurrency) == isZXC(uSrcIssuer.get()));
 }
 
 bool
@@ -214,11 +214,11 @@ Pathfinder::findPaths(int searchLevel)
     }
 
     m_loadEvent = app_.getJobQueue().makeLoadEvent(jtPATH_FIND, "FindPath");
-    auto currencyIsXRP = isXRP(mSrcCurrency);
+    auto currencyIsZXC = isZXC(mSrcCurrency);
 
-    bool useIssuerAccount = mSrcIssuer && !currencyIsXRP && !isXRP(*mSrcIssuer);
+    bool useIssuerAccount = mSrcIssuer && !currencyIsZXC && !isZXC(*mSrcIssuer);
     auto& account = useIssuerAccount ? *mSrcIssuer : mSrcAccount;
-    auto issuer = currencyIsXRP ? AccountID() : account;
+    auto issuer = currencyIsZXC ? AccountID() : account;
     mSource = STPathElement(account, mSrcCurrency, issuer);
     auto issuerString =
         mSrcIssuer ? to_string(*mSrcIssuer) : std::string("none");
@@ -235,8 +235,8 @@ Pathfinder::findPaths(int searchLevel)
         return false;
     }
 
-    bool bSrcXrp = isXRP(mSrcCurrency);
-    bool bDstXrp = isXRP(mDstAmount.getCurrency());
+    bool bSrcXrp = isZXC(mSrcCurrency);
+    bool bDstXrp = isZXC(mDstAmount.getCurrency());
 
     if (!mLedger->exists(keylet::account(mSrcAccount)))
     {
@@ -258,7 +258,7 @@ Pathfinder::findPaths(int searchLevel)
         // account.
         if (!bDstXrp)
         {
-            JLOG(j_.debug()) << "New account not being funded in XRP ";
+            JLOG(j_.debug()) << "New account not being funded in ZXC ";
             return false;
         }
 
@@ -277,33 +277,33 @@ Pathfinder::findPaths(int searchLevel)
     PaymentType paymentType;
     if (bSrcXrp && bDstXrp)
     {
-        // XRP -> XRP
-        JLOG(j_.debug()) << "XRP to XRP payment";
-        paymentType = pt_XRP_to_XRP;
+        // ZXC -> ZXC
+        JLOG(j_.debug()) << "ZXC to ZXC payment";
+        paymentType = pt_ZXC_to_ZXC;
     }
     else if (bSrcXrp)
     {
-        // XRP -> non-XRP
-        JLOG(j_.debug()) << "XRP to non-XRP payment";
-        paymentType = pt_XRP_to_nonXRP;
+        // ZXC -> non-ZXC
+        JLOG(j_.debug()) << "ZXC to non-ZXC payment";
+        paymentType = pt_ZXC_to_nonZXC;
     }
     else if (bDstXrp)
     {
-        // non-XRP -> XRP
-        JLOG(j_.debug()) << "non-XRP to XRP payment";
-        paymentType = pt_nonXRP_to_XRP;
+        // non-ZXC -> ZXC
+        JLOG(j_.debug()) << "non-ZXC to ZXC payment";
+        paymentType = pt_nonZXC_to_ZXC;
     }
     else if (mSrcCurrency == mDstAmount.getCurrency())
     {
-        // non-XRP -> non-XRP - Same currency
-        JLOG(j_.debug()) << "non-XRP to non-XRP - same currency";
-        paymentType = pt_nonXRP_to_same;
+        // non-ZXC -> non-ZXC - Same currency
+        JLOG(j_.debug()) << "non-ZXC to non-ZXC - same currency";
+        paymentType = pt_nonZXC_to_same;
     }
     else
     {
-        // non-XRP to non-XRP - Different currency
-        JLOG(j_.debug()) << "non-XRP to non-XRP - cross currency";
-        paymentType = pt_nonXRP_to_nonXRP;
+        // non-ZXC to non-ZXC - Different currency
+        JLOG(j_.debug()) << "non-ZXC to non-ZXC - cross currency";
+        paymentType = pt_nonZXC_to_nonZXC;
     }
 
     // Now iterate over all paths for that paymentType.
@@ -577,7 +577,7 @@ Pathfinder::getBestPaths(
 
     assert(fullLiquidityPath.empty());
     const bool issuerIsSender =
-        isXRP(mSrcCurrency) || (srcIssuer == mSrcAccount);
+        isZXC(mSrcCurrency) || (srcIssuer == mSrcAccount);
 
     std::vector<PathRank> extraPathRanks;
     rankPaths(maxPaths, extraPaths, extraPathRanks);
@@ -693,7 +693,7 @@ bool
 Pathfinder::issueMatchesOrigin(Issue const& issue)
 {
     bool matchingCurrency = (issue.currency == mSrcCurrency);
-    bool matchingAccount = isXRP(issue.currency) ||
+    bool matchingAccount = isZXC(issue.currency) ||
         (mSrcIssuer && issue.account == mSrcIssuer) ||
         issue.account == mSrcAccount;
 
@@ -823,8 +823,8 @@ Pathfinder::addPathsForType(PathType const& pathType)
             addLinks(parentPaths, pathsOut, afADD_BOOKS);
             break;
 
-        case nt_XRP_BOOK:
-            addLinks(parentPaths, pathsOut, afADD_BOOKS | afOB_XRP);
+        case nt_ZXC_BOOK:
+            addLinks(parentPaths, pathsOut, afADD_BOOKS | afOB_ZXC);
             break;
 
         case nt_DEST_BOOK:
@@ -912,23 +912,23 @@ Pathfinder::addLink(
     auto const& uEndCurrency = pathEnd.getCurrency();
     auto const& uEndIssuer = pathEnd.getIssuerID();
     auto const& uEndAccount = pathEnd.getAccountID();
-    bool const bOnXRP = uEndCurrency.isZero();
+    bool const bOnZXC = uEndCurrency.isZero();
 
     // Does pathfinding really need to get this to
     // a gateway (the issuer of the destination amount)
     // rather than the ultimate destination?
     bool const hasEffectiveDestination = mEffectiveDst != mDstAccount;
 
-    JLOG(j_.trace()) << "addLink< flags=" << addFlags << " onXRP=" << bOnXRP;
+    JLOG(j_.trace()) << "addLink< flags=" << addFlags << " onZXC=" << bOnZXC;
     JLOG(j_.trace()) << currentPath.getJson(JsonOptions::none);
 
     if (addFlags & afADD_ACCOUNTS)
     {
         // add accounts
-        if (bOnXRP)
+        if (bOnZXC)
         {
             if (mDstAmount.native() && !currentPath.empty())
-            {  // non-default path to XRP destination
+            {  // non-default path to ZXC destination
                 JLOG(j_.trace()) << "complete path found ax: "
                                  << currentPath.getJson(JsonOptions::none);
                 addUniquePath(mCompletePaths, currentPath);
@@ -1072,17 +1072,17 @@ Pathfinder::addLink(
     if (addFlags & afADD_BOOKS)
     {
         // add order books
-        if (addFlags & afOB_XRP)
+        if (addFlags & afOB_ZXC)
         {
-            // to XRP only
-            if (!bOnXRP &&
-                app_.getOrderBookDB().isBookToXRP({uEndCurrency, uEndIssuer}))
+            // to ZXC only
+            if (!bOnZXC &&
+                app_.getOrderBookDB().isBookToZXC({uEndCurrency, uEndIssuer}))
             {
                 STPathElement pathElement(
                     STPathElement::typeCurrency,
-                    xrpAccount(),
-                    xrpCurrency(),
-                    xrpAccount());
+                    zxcAccount(),
+                    zxcCurrency(),
+                    zxcAccount());
                 incompletePaths.assembleAdd(currentPath, pathElement);
             }
         }
@@ -1097,7 +1097,7 @@ Pathfinder::addLink(
             for (auto const& book : books)
             {
                 if (!currentPath.hasSeen(
-                        xrpAccount(),
+                        zxcAccount(),
                         book->getCurrencyOut(),
                         book->getIssuerOut()) &&
                     !issueMatchesOrigin(book->book().out) &&
@@ -1107,18 +1107,18 @@ Pathfinder::addLink(
                     STPath newPath(currentPath);
 
                     if (book->getCurrencyOut().isZero())
-                    {  // to XRP
+                    {  // to ZXC
 
                         // add the order book itself
                         newPath.emplace_back(
                             STPathElement::typeCurrency,
-                            xrpAccount(),
-                            xrpCurrency(),
-                            xrpAccount());
+                            zxcAccount(),
+                            zxcCurrency(),
+                            zxcAccount());
 
                         if (mDstAmount.getCurrency().isZero())
                         {
-                            // destination is XRP, add account and path is
+                            // destination is ZXC, add account and path is
                             // complete
                             JLOG(j_.trace())
                                 << "complete path found bx: "
@@ -1143,7 +1143,7 @@ Pathfinder::addLink(
                             newPath[newPath.size() - 1] = STPathElement(
                                 STPathElement::typeCurrency |
                                     STPathElement::typeIssuer,
-                                xrpAccount(),
+                                zxcAccount(),
                                 book->getCurrencyOut(),
                                 book->getIssuerOut());
                         }
@@ -1153,7 +1153,7 @@ Pathfinder::addLink(
                             newPath.emplace_back(
                                 STPathElement::typeCurrency |
                                     STPathElement::typeIssuer,
-                                xrpAccount(),
+                                zxcAccount(),
                                 book->getCurrencyOut(),
                                 book->getIssuerOut());
                         }
@@ -1215,8 +1215,8 @@ makePath(char const* string)
                 ret.push_back(Pathfinder::nt_BOOKS);
                 break;
 
-            case 'x':  // xrp book
-                ret.push_back(Pathfinder::nt_XRP_BOOK);
+            case 'x':  // zxc book
+                ret.push_back(Pathfinder::nt_ZXC_BOOK);
                 break;
 
             case 'f':  // book to final currency
@@ -1259,10 +1259,10 @@ Pathfinder::initPathTable()
     // CAUTION: Do not include rules that build default paths
 
     mPathTable.clear();
-    fillPaths(pt_XRP_to_XRP, {});
+    fillPaths(pt_ZXC_to_ZXC, {});
 
     fillPaths(
-        pt_XRP_to_nonXRP,
+        pt_ZXC_to_nonZXC,
         {{1, "sfd"},    // source -> book -> gateway
          {3, "sfad"},   // source -> book -> account -> destination
          {5, "sfaad"},  // source -> book -> account -> account -> destination
@@ -1272,17 +1272,17 @@ Pathfinder::initPathTable()
          {10, "sbafad"}});
 
     fillPaths(
-        pt_nonXRP_to_XRP,
-        {{1, "sxd"},   // gateway buys XRP
-         {2, "saxd"},  // source -> gateway -> book(XRP) -> dest
+        pt_nonZXC_to_ZXC,
+        {{1, "sxd"},   // gateway buys ZXC
+         {2, "saxd"},  // source -> gateway -> book(ZXC) -> dest
          {6, "saaxd"},
          {7, "sbxd"},
          {8, "sabxd"},
          {9, "sabaxd"}});
 
-    // non-XRP to non-XRP (same currency)
+    // non-ZXC to non-ZXC (same currency)
     fillPaths(
-        pt_nonXRP_to_same,
+        pt_nonZXC_to_same,
         {
             {1, "sad"},   // source -> gateway -> destination
             {1, "sfd"},   // source -> book -> destination
@@ -1292,16 +1292,16 @@ Pathfinder::initPathTable()
             {5, "sbfd"},
             {6, "sxfad"},
             {6, "safad"},
-            {6, "saxfd"},  // source -> gateway -> book to XRP -> book ->
+            {6, "saxfd"},  // source -> gateway -> book to ZXC -> book ->
                            // destination
             {6, "saxfad"},
             {6, "sabfd"},  // source -> gateway -> book -> book -> destination
             {7, "saaad"},
         });
 
-    // non-XRP to non-XRP (different currency)
+    // non-ZXC to non-ZXC (different currency)
     fillPaths(
-        pt_nonXRP_to_nonXRP,
+        pt_nonZXC_to_nonZXC,
         {
             {1, "sfad"},
             {1, "safd"},

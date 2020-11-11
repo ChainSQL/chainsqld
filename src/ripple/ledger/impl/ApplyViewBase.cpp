@@ -183,7 +183,7 @@ void
 ApplyViewBase::rawDestroyZXC(
     ZXCAmount const& fee)
 =======
-ApplyViewBase::rawDestroyXRP(XRPAmount const& fee)
+ApplyViewBase::rawDestroyZXC(ZXCAmount const& fee)
 >>>>>>> release
 {
     items_.destroyZXC(fee);

@@ -20,7 +20,7 @@
 #ifndef RIPPLE_PROTOCOL_PAYCHAN_H_INCLUDED
 #define RIPPLE_PROTOCOL_PAYCHAN_H_INCLUDED
 
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/basics/base_uint.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/Serializer.h>

@@ -21,7 +21,7 @@
 
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/basics/Log.h>
-#include <ripple/basics/XRPAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/basics/safe_cast.h>
 #include <ripple/conditions/Condition.h>
@@ -48,16 +48,16 @@ namespace ripple {
     Escrow
     ======
 
-    Escrow is a feature of the XRP Ledger that allows you to send conditional
-    XRP payments. These conditional payments, called escrows, set aside XRP and
+    Escrow is a feature of the ZXC Ledger that allows you to send conditional
+    ZXC payments. These conditional payments, called escrows, set aside ZXC and
     deliver it later when certain conditions are met. Conditions to successfully
     finish an escrow include time-based unlocks and crypto-conditions. Escrows
     can also be set to expire if not finished in time.
 
-    The XRP set aside in an escrow is locked up. No one can use or destroy the
-    XRP until the escrow has been successfully finished or canceled. Before the
-    expiration time, only the intended receiver can get the XRP. After the
-    expiration time, the XRP can only be returned to the sender.
+    The ZXC set aside in an escrow is locked up. No one can use or destroy the
+    ZXC until the escrow has been successfully finished or canceled. Before the
+    expiration time, only the intended receiver can get the ZXC. After the
+    expiration time, the ZXC can only be returned to the sender.
 
     For more details on escrow, including examples, diagrams and more please
     visit https://ripple.com/build/escrow/#escrow
@@ -108,7 +108,7 @@ EscrowCreate::preflight(PreflightContext const& ctx)
     if (!isTesSuccess(ret))
         return ret;
 
-    if (!isXRP(ctx.tx[sfAmount]))
+    if (!isZXC(ctx.tx[sfAmount]))
         return temBAD_AMOUNT;
 
     if (ctx.tx[sfAmount] <= beast::zero)

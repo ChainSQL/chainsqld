@@ -198,7 +198,7 @@ PathRequest::isValid(std::shared_ptr<RippleLineCache> const& crCache)
         jvDestCur.append(Json::Value(systemCurrencyCode()));
         if (!saDstAmount.native())
         {
-            // Only XRP can be send to a non-existent account.
+            // Only ZXC can be send to a non-existent account.
             jvStatus = rpcError(rpcACT_NOT_FOUND);
             return false;
         }
@@ -213,10 +213,10 @@ PathRequest::isValid(std::shared_ptr<RippleLineCache> const& crCache)
     }
     else
     {
-        bool const disallowXRP(sleDest->getFlags() & lsfDisallowXRP);
+        bool const disallowZXC(sleDest->getFlags() & lsfDisallowZXC);
 
         auto usDestCurrID =
-            accountDestCurrencies(*raDstAccount, crCache, !disallowXRP);
+            accountDestCurrencies(*raDstAccount, crCache, !disallowZXC);
 
         for (auto const& currency : usDestCurrID)
             jvDestCur.append(to_string(currency));
@@ -500,7 +500,7 @@ PathRequest::findPaths(
                 if (sourceCurrencies.size() >= RPC::Tuning::max_auto_src_cur)
                     return false;
                 sourceCurrencies.insert(
-                    {c, c.isZero() ? xrpAccount() : *raSrcAccount});
+                    {c, c.isZero() ? zxcAccount() : *raSrcAccount});
             }
         }
     }
@@ -530,9 +530,9 @@ PathRequest::findPaths(
             max_paths_, fullLiquidityPath, mContext[issue], issue.account);
         mContext[issue] = ps;
 
-        auto& sourceAccount = !isXRP(issue.account)
+        auto& sourceAccount = !isZXC(issue.account)
             ? issue.account
-            : isXRP(issue.currency) ? xrpAccount() : *raSrcAccount;
+            : isZXC(issue.currency) ? zxcAccount() : *raSrcAccount;
         STAmount saMaxAmount = saSendMax.value_or(
             STAmount({issue.currency, sourceAccount}, 1u, 0, true));
 

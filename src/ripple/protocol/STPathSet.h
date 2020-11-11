@@ -92,7 +92,7 @@ public:
         , mAccountID(account)
         , mCurrencyID(currency)
         , mIssuerID(issuer)
-        , is_offer_(isXRP(mAccountID))
+        , is_offer_(isZXC(mAccountID))
     {
         if (!is_offer_)
             mType |= typeAccount;
@@ -115,7 +115,7 @@ public:
         , mAccountID(account)
         , mCurrencyID(currency)
         , mIssuerID(issuer)
-        , is_offer_(isXRP(mAccountID))
+        , is_offer_(isZXC(mAccountID))
     {
         hash_value_ = get_hash(*this);
     }

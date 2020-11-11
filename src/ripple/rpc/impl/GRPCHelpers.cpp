@@ -453,7 +453,7 @@ populateFee(T& to, STObject const& from)
 {
     if (from.isFieldPresent(sfFee))
     {
-        to.mutable_fee()->set_drops(from.getFieldAmount(sfFee).xrp().drops());
+        to.mutable_fee()->set_drops(from.getFieldAmount(sfFee).zxc().drops());
     }
 }
 
@@ -939,42 +939,42 @@ populateMajorities(T& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::TransactionResult& to, TER from)
+convert(org::zxcl::rpc::v1::TransactionResult& to, TER from)
 {
     if (isTecClaim(from))
     {
         to.set_result_type(
-            org::xrpl::rpc::v1::TransactionResult::RESULT_TYPE_TEC);
+            org::zxcl::rpc::v1::TransactionResult::RESULT_TYPE_TEC);
     }
     if (isTefFailure(from))
     {
         to.set_result_type(
-            org::xrpl::rpc::v1::TransactionResult::RESULT_TYPE_TEF);
+            org::zxcl::rpc::v1::TransactionResult::RESULT_TYPE_TEF);
     }
     if (isTelLocal(from))
     {
         to.set_result_type(
-            org::xrpl::rpc::v1::TransactionResult::RESULT_TYPE_TEL);
+            org::zxcl::rpc::v1::TransactionResult::RESULT_TYPE_TEL);
     }
     if (isTemMalformed(from))
     {
         to.set_result_type(
-            org::xrpl::rpc::v1::TransactionResult::RESULT_TYPE_TEM);
+            org::zxcl::rpc::v1::TransactionResult::RESULT_TYPE_TEM);
     }
     if (isTerRetry(from))
     {
         to.set_result_type(
-            org::xrpl::rpc::v1::TransactionResult::RESULT_TYPE_TER);
+            org::zxcl::rpc::v1::TransactionResult::RESULT_TYPE_TER);
     }
     if (isTesSuccess(from))
     {
         to.set_result_type(
-            org::xrpl::rpc::v1::TransactionResult::RESULT_TYPE_TES);
+            org::zxcl::rpc::v1::TransactionResult::RESULT_TYPE_TES);
     }
 }
 
 void
-convert(org::xrpl::rpc::v1::AccountSet& to, STObject const& from)
+convert(org::zxcl::rpc::v1::AccountSet& to, STObject const& from)
 {
     populateClearFlag(to, from);
 
@@ -992,7 +992,7 @@ convert(org::xrpl::rpc::v1::AccountSet& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::OfferCreate& to, STObject const& from)
+convert(org::zxcl::rpc::v1::OfferCreate& to, STObject const& from)
 {
     populateExpiration(to, from);
 
@@ -1004,25 +1004,25 @@ convert(org::xrpl::rpc::v1::OfferCreate& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::OfferCancel& to, STObject const& from)
+convert(org::zxcl::rpc::v1::OfferCancel& to, STObject const& from)
 {
     populateOfferSequence(to, from);
 }
 
 void
-convert(org::xrpl::rpc::v1::AccountDelete& to, STObject const& from)
+convert(org::zxcl::rpc::v1::AccountDelete& to, STObject const& from)
 {
     populateDestination(to, from);
 }
 
 void
-convert(org::xrpl::rpc::v1::CheckCancel& to, STObject const& from)
+convert(org::zxcl::rpc::v1::CheckCancel& to, STObject const& from)
 {
     populateCheckID(to, from);
 }
 
 void
-convert(org::xrpl::rpc::v1::CheckCash& to, STObject const& from)
+convert(org::zxcl::rpc::v1::CheckCash& to, STObject const& from)
 {
     populateCheckID(to, from);
 
@@ -1032,7 +1032,7 @@ convert(org::xrpl::rpc::v1::CheckCash& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::CheckCreate& to, STObject const& from)
+convert(org::zxcl::rpc::v1::CheckCreate& to, STObject const& from)
 {
     populateDestination(to, from);
 
@@ -1046,7 +1046,7 @@ convert(org::xrpl::rpc::v1::CheckCreate& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::DepositPreauth& to, STObject const& from)
+convert(org::zxcl::rpc::v1::DepositPreauth& to, STObject const& from)
 {
     populateAuthorize(to, from);
 
@@ -1054,7 +1054,7 @@ convert(org::xrpl::rpc::v1::DepositPreauth& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::EscrowCancel& to, STObject const& from)
+convert(org::zxcl::rpc::v1::EscrowCancel& to, STObject const& from)
 {
     populateOwner(to, from);
 
@@ -1062,7 +1062,7 @@ convert(org::xrpl::rpc::v1::EscrowCancel& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::EscrowCreate& to, STObject const& from)
+convert(org::zxcl::rpc::v1::EscrowCreate& to, STObject const& from)
 {
     populateAmount(to, from);
 
@@ -1078,7 +1078,7 @@ convert(org::xrpl::rpc::v1::EscrowCreate& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::EscrowFinish& to, STObject const& from)
+convert(org::zxcl::rpc::v1::EscrowFinish& to, STObject const& from)
 {
     populateOwner(to, from);
 
@@ -1090,7 +1090,7 @@ convert(org::xrpl::rpc::v1::EscrowFinish& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::PaymentChannelClaim& to, STObject const& from)
+convert(org::zxcl::rpc::v1::PaymentChannelClaim& to, STObject const& from)
 {
     populateChannel(to, from);
 
@@ -1104,7 +1104,7 @@ convert(org::xrpl::rpc::v1::PaymentChannelClaim& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::PaymentChannelCreate& to, STObject const& from)
+convert(org::zxcl::rpc::v1::PaymentChannelCreate& to, STObject const& from)
 {
     populateAmount(to, from);
 
@@ -1120,7 +1120,7 @@ convert(org::xrpl::rpc::v1::PaymentChannelCreate& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::PaymentChannelFund& to, STObject const& from)
+convert(org::zxcl::rpc::v1::PaymentChannelFund& to, STObject const& from)
 {
     populateChannel(to, from);
 
@@ -1130,13 +1130,13 @@ convert(org::xrpl::rpc::v1::PaymentChannelFund& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::SetRegularKey& to, STObject const& from)
+convert(org::zxcl::rpc::v1::SetRegularKey& to, STObject const& from)
 {
     populateRegularKey(to, from);
 }
 
 void
-convert(org::xrpl::rpc::v1::SignerListSet& to, STObject const& from)
+convert(org::zxcl::rpc::v1::SignerListSet& to, STObject const& from)
 {
     populateSignerQuorum(to, from);
 
@@ -1144,7 +1144,7 @@ convert(org::xrpl::rpc::v1::SignerListSet& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::TrustSet& to, STObject const& from)
+convert(org::zxcl::rpc::v1::TrustSet& to, STObject const& from)
 {
     populateLimitAmount(to, from);
 
@@ -1154,7 +1154,7 @@ convert(org::xrpl::rpc::v1::TrustSet& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::Payment& to, STObject const& from)
+convert(org::zxcl::rpc::v1::Payment& to, STObject const& from)
 {
     populateAmount(to, from);
 
@@ -1176,11 +1176,11 @@ convert(org::xrpl::rpc::v1::Payment& to, STObject const& from)
         {
             STPath const& path = *it;
 
-            org::xrpl::rpc::v1::Payment_Path* protoPath = to.add_paths();
+            org::zxcl::rpc::v1::Payment_Path* protoPath = to.add_paths();
 
             for (auto it2 = path.begin(); it2 != path.end(); ++it2)
             {
-                org::xrpl::rpc::v1::Payment_PathElement* protoElement =
+                org::zxcl::rpc::v1::Payment_PathElement* protoElement =
                     protoPath->add_elements();
                 STPathElement const& elt = *it2;
 
@@ -1211,7 +1211,7 @@ convert(org::xrpl::rpc::v1::Payment& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::AccountRoot& to, STObject const& from)
+convert(org::zxcl::rpc::v1::AccountRoot& to, STObject const& from)
 {
     populateAccount(to, from);
 
@@ -1243,7 +1243,7 @@ convert(org::xrpl::rpc::v1::AccountRoot& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::Amendments& to, STObject const& from)
+convert(org::zxcl::rpc::v1::Amendments& to, STObject const& from)
 {
     populateAmendments(to, from);
 
@@ -1251,7 +1251,7 @@ convert(org::xrpl::rpc::v1::Amendments& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::Check& to, STObject const& from)
+convert(org::zxcl::rpc::v1::Check& to, STObject const& from)
 {
     populateAccount(to, from);
 
@@ -1281,7 +1281,7 @@ convert(org::xrpl::rpc::v1::Check& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::DepositPreauthObject& to, STObject const& from)
+convert(org::zxcl::rpc::v1::DepositPreauthObject& to, STObject const& from)
 {
     populateAccount(to, from);
 
@@ -1297,7 +1297,7 @@ convert(org::xrpl::rpc::v1::DepositPreauthObject& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::FeeSettings& to, STObject const& from)
+convert(org::zxcl::rpc::v1::FeeSettings& to, STObject const& from)
 {
     populateBaseFee(to, from);
 
@@ -1311,7 +1311,7 @@ convert(org::xrpl::rpc::v1::FeeSettings& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::Escrow& to, STObject const& from)
+convert(org::zxcl::rpc::v1::Escrow& to, STObject const& from)
 {
     populateAccount(to, from);
 
@@ -1341,7 +1341,7 @@ convert(org::xrpl::rpc::v1::Escrow& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::LedgerHashes& to, STObject const& from)
+convert(org::zxcl::rpc::v1::LedgerHashes& to, STObject const& from)
 {
     populateLastLedgerSequence(to, from);
 
@@ -1351,7 +1351,7 @@ convert(org::xrpl::rpc::v1::LedgerHashes& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::PayChannel& to, STObject const& from)
+convert(org::zxcl::rpc::v1::PayChannel& to, STObject const& from)
 {
     populateAccount(to, from);
 
@@ -1381,7 +1381,7 @@ convert(org::xrpl::rpc::v1::PayChannel& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::DirectoryNode& to, STObject const& from)
+convert(org::zxcl::rpc::v1::DirectoryNode& to, STObject const& from)
 {
     populateFlags(to, from);
 
@@ -1403,7 +1403,7 @@ convert(org::xrpl::rpc::v1::DirectoryNode& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::Offer& to, STObject const& from)
+convert(org::zxcl::rpc::v1::Offer& to, STObject const& from)
 {
     populateAccount(to, from);
 
@@ -1421,7 +1421,7 @@ convert(org::xrpl::rpc::v1::Offer& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::RippleState& to, STObject const& from)
+convert(org::zxcl::rpc::v1::RippleState& to, STObject const& from)
 {
     populateBalance(to, from);
 
@@ -1445,7 +1445,7 @@ convert(org::xrpl::rpc::v1::RippleState& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::SignerList& to, STObject const& from)
+convert(org::zxcl::rpc::v1::SignerList& to, STObject const& from)
 {
     populateFlags(to, from);
 
@@ -1463,7 +1463,7 @@ convert(org::xrpl::rpc::v1::SignerList& to, STObject const& from)
 }
 
 void
-convert(org::xrpl::rpc::v1::NegativeUNL& to, STObject const& from)
+convert(org::zxcl::rpc::v1::NegativeUNL& to, STObject const& from)
 {
     populateDisabledValidators(to, from);
 
@@ -1476,62 +1476,62 @@ convert(org::xrpl::rpc::v1::NegativeUNL& to, STObject const& from)
 
 void
 setLedgerEntryType(
-    org::xrpl::rpc::v1::AffectedNode& proto,
+    org::zxcl::rpc::v1::AffectedNode& proto,
     std::uint16_t lgrType)
 {
     switch (lgrType)
     {
         case ltACCOUNT_ROOT:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_ACCOUNT_ROOT);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_ACCOUNT_ROOT);
             break;
         case ltDIR_NODE:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_DIRECTORY_NODE);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_DIRECTORY_NODE);
             break;
         case ltRIPPLE_STATE:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_RIPPLE_STATE);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_RIPPLE_STATE);
             break;
         case ltSIGNER_LIST:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_SIGNER_LIST);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_SIGNER_LIST);
             break;
         case ltOFFER:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_OFFER);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_OFFER);
             break;
         case ltLEDGER_HASHES:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_LEDGER_HASHES);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_LEDGER_HASHES);
             break;
         case ltAMENDMENTS:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_AMENDMENTS);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_AMENDMENTS);
             break;
         case ltFEE_SETTINGS:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_FEE_SETTINGS);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_FEE_SETTINGS);
             break;
         case ltESCROW:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_ESCROW);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_ESCROW);
             break;
         case ltPAYCHAN:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_PAY_CHANNEL);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_PAY_CHANNEL);
             break;
         case ltCHECK:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_CHECK);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_CHECK);
             break;
         case ltDEPOSIT_PREAUTH:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_DEPOSIT_PREAUTH);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_DEPOSIT_PREAUTH);
             break;
         case ltNEGATIVE_UNL:
             proto.set_ledger_entry_type(
-                org::xrpl::rpc::v1::LEDGER_ENTRY_TYPE_NEGATIVE_UNL);
+                org::zxcl::rpc::v1::LEDGER_ENTRY_TYPE_NEGATIVE_UNL);
             break;
     }
 }
@@ -1623,7 +1623,7 @@ populateNewFields(T const& getProto, STObject& obj, uint16_t lgrType)
 }
 
 void
-convert(org::xrpl::rpc::v1::Meta& to, std::shared_ptr<TxMeta> const& from)
+convert(org::zxcl::rpc::v1::Meta& to, std::shared_ptr<TxMeta> const& from)
 {
     to.set_transaction_index(from->getIndex());
 
@@ -1638,7 +1638,7 @@ convert(org::xrpl::rpc::v1::Meta& to, std::shared_ptr<TxMeta> const& from)
     for (auto it = nodes.begin(); it != nodes.end(); ++it)
     {
         STObject& obj = *it;
-        org::xrpl::rpc::v1::AffectedNode* node = to.add_affected_nodes();
+        org::zxcl::rpc::v1::AffectedNode* node = to.add_affected_nodes();
 
         // ledger index
         uint256 ledgerIndex = obj.getFieldH256(sfLedgerIndex);
@@ -1697,7 +1697,7 @@ convert(org::xrpl::rpc::v1::Meta& to, std::shared_ptr<TxMeta> const& from)
 
 void
 convert(
-    org::xrpl::rpc::v1::QueueData& to,
+    org::zxcl::rpc::v1::QueueData& to,
     std::map<TxSeq, TxQ::AccountTxDetails const> const& from)
 {
     if (!from.empty())
@@ -1707,11 +1707,11 @@ convert(
         to.set_highest_sequence(from.rbegin()->first);
 
         boost::optional<bool> anyAuthChanged(false);
-        boost::optional<XRPAmount> totalSpend(0);
+        boost::optional<ZXCAmount> totalSpend(0);
 
         for (auto const& [txSeq, txDetails] : from)
         {
-            org::xrpl::rpc::v1::QueuedTransaction& qt = *to.add_transactions();
+            org::zxcl::rpc::v1::QueuedTransaction& qt = *to.add_transactions();
 
             qt.mutable_sequence()->set_value(txSeq);
             qt.set_fee_level(txDetails.feeLevel.fee());
@@ -1752,7 +1752,7 @@ convert(
 
 void
 convert(
-    org::xrpl::rpc::v1::Transaction& to,
+    org::zxcl::rpc::v1::Transaction& to,
     std::shared_ptr<STTx const> const& from)
 {
     STObject const& fromObj = *from;

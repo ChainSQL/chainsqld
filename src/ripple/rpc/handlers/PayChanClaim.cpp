@@ -75,7 +75,7 @@ doChannelAuthorize(RPC::JsonContext& context)
     std::uint64_t const drops = *optDrops;
 
     Serializer msg;
-    serializePayChanAuthorization(msg, channelId, XRPAmount(drops));
+    serializePayChanAuthorization(msg, channelId, ZXCAmount(drops));
 
     try
     {
@@ -141,7 +141,7 @@ doChannelVerify(RPC::JsonContext& context)
         return rpcError(rpcINVALID_PARAMS);
 
     Serializer msg;
-    serializePayChanAuthorization(msg, channelId, XRPAmount(drops));
+    serializePayChanAuthorization(msg, channelId, ZXCAmount(drops));
 
     Json::Value result;
     result[jss::signature_verified] =

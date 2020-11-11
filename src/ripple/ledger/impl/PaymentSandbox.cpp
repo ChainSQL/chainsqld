@@ -214,9 +214,9 @@ PaymentSandbox::balanceHook(
     auto adjustedAmt = std::min({amount, lastBal - delta, minBal});
     adjustedAmt.setIssuer(amount.getIssuer());
 
-    if (isXRP(issuer) && adjustedAmt < beast::zero)
-        // A calculated negative XRP balance is not an error case. Consider a
-        // payment snippet that credits a large XRP amount and then debits the
+    if (isZXC(issuer) && adjustedAmt < beast::zero)
+        // A calculated negative ZXC balance is not an error case. Consider a
+        // payment snippet that credits a large ZXC amount and then debits the
 >>>>>>> release
         // same amount. The credit can't be used but we subtract the debit and
         // calculate a negative value. It's not an error case.
@@ -282,8 +282,8 @@ PaymentSandbox::balanceChanges(ReadView const& view) const
     // get the change in ZXC balance, Account == root, issuer == root, currency == ZXC
     std::map<key, STAmount> result;
 =======
-    // get the change in XRP balance, Account == root, issuer == root, currency
-    // == XRP
+    // get the change in ZXC balance, Account == root, issuer == root, currency
+    // == ZXC
     std::map<key_t, STAmount> result;
 >>>>>>> release
 
@@ -402,8 +402,8 @@ PaymentSandbox::balanceChanges(ReadView const& view) const
 <<<<<<< HEAD
 ZXCAmount PaymentSandbox::zxcDestroyed () const
 =======
-XRPAmount
-PaymentSandbox::xrpDestroyed() const
+ZXCAmount
+PaymentSandbox::zxcDestroyed() const
 >>>>>>> release
 {
     return items_.dropsDestroyed();

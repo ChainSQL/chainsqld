@@ -281,13 +281,13 @@ doTxHelp(RPC::Context& context, TxArgs const& args)
     return {result, rpcSUCCESS};
 }
 
-std::pair<org::xrpl::rpc::v1::GetTransactionResponse, grpc::Status>
+std::pair<org::zxcl::rpc::v1::GetTransactionResponse, grpc::Status>
 populateProtoResponse(
     std::pair<TxResult, RPC::Status> const& res,
     TxArgs const& args,
-    RPC::GRPCContext<org::xrpl::rpc::v1::GetTransactionRequest> const& context)
+    RPC::GRPCContext<org::zxcl::rpc::v1::GetTransactionRequest> const& context)
 {
-    org::xrpl::rpc::v1::GetTransactionResponse response;
+    org::zxcl::rpc::v1::GetTransactionResponse response;
     grpc::Status status = grpc::Status::OK;
     RPC::Status const& error = res.second;
     TxResult const& result = res.first;
@@ -469,15 +469,15 @@ doTxJson(RPC::JsonContext& context)
     return populateJsonResponse(res, args, context);
 }
 
-std::pair<org::xrpl::rpc::v1::GetTransactionResponse, grpc::Status>
-doTxGrpc(RPC::GRPCContext<org::xrpl::rpc::v1::GetTransactionRequest>& context)
+std::pair<org::zxcl::rpc::v1::GetTransactionResponse, grpc::Status>
+doTxGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetTransactionRequest>& context)
 {
     // return values
-    org::xrpl::rpc::v1::GetTransactionResponse response;
+    org::zxcl::rpc::v1::GetTransactionResponse response;
     grpc::Status status = grpc::Status::OK;
 
     // input
-    org::xrpl::rpc::v1::GetTransactionRequest& request = context.params;
+    org::zxcl::rpc::v1::GetTransactionRequest& request = context.params;
 
     TxArgs args;
 

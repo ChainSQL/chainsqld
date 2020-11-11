@@ -1046,7 +1046,7 @@ DatabaseShardImp::initConfig(std::lock_guard<std::mutex>&)
     Section const& section{config.section(ConfigSection::shardDatabase())};
 
     {
-        // The earliest ledger sequence defaults to XRP_LEDGER_EARLIEST_SEQ.
+        // The earliest ledger sequence defaults to ZXC_LEDGER_EARLIEST_SEQ.
         // A custom earliest ledger sequence can be set through the
         // configuration file using the 'earliest_seq' field under the
         // 'node_db' and 'shard_db' stanzas. If specified, this field must

@@ -369,7 +369,7 @@ Payment::doApply()
 
     bool const bRipple = paths || sendMax || !saDstAmount.native();
 
-    // If the destination has lsfDepositAuth set, then only direct XRP
+    // If the destination has lsfDepositAuth set, then only direct ZXC
     // payments (no intermediate steps) are allowed to the destination.
     if (!depositPreauth && bRipple && reqDepositAuth)
         return tecNO_PERMISSION;
@@ -445,7 +445,7 @@ Payment::doApply()
 
     assert(saDstAmount.native());
 
-    // Direct XRP payment.
+    // Direct ZXC payment.
 
     auto const sleSrc = view().peek(keylet::account(account_));
     if (!sleSrc)
@@ -461,7 +461,7 @@ Payment::doApply()
     // mPriorBalance is the balance on the sending account BEFORE the
     // fees were charged. We want to make sure we have enough reserve
     // to send. Allow final spend to use reserve for fee.
-    auto const mmm = std::max(reserve, ctx_.tx.getFieldAmount(sfFee).xrp());
+    auto const mmm = std::max(reserve, ctx_.tx.getFieldAmount(sfFee).zxc());
     
 	//is src account a contract?
 	bool isContractSrc = view().read(
@@ -473,7 +473,7 @@ Payment::doApply()
         // a different order.
         JLOG(j_.trace()) << "Delay transaction: Insufficient funds: "
                          << " " << to_string(mPriorBalance) << " / "
-                         << to_string(saDstAmount.xrp() + mmm) << " ("
+                         << to_string(saDstAmount.zxc() + mmm) << " ("
                          << to_string(reserve) << ")";
 
         return tecUNFUNDED_PAYMENT;
@@ -484,19 +484,19 @@ Payment::doApply()
     if (reqDepositAuth)
     {
         // If depositPreauth is enabled, then an account that requires
-        // authorization has three ways to get an XRP Payment in:
+        // authorization has three ways to get an ZXC Payment in:
         //  1. If Account == Destination, or
         //  2. If Account is deposit preauthorized by destination, or
-        //  3. If the destination's XRP balance is
+        //  3. If the destination's ZXC balance is
         //    a. less than or equal to the base reserve and
         //    b. the deposit amount is less than or equal to the base reserve,
         // then we allow the deposit.
         //
         // Rule 3 is designed to keep an account from getting wedged
         // in an unusable state if it sets the lsfDepositAuth flag and
-        // then consumes all of its XRP.  Without the rule if an
-        // account with lsfDepositAuth set spent all of its XRP, it
-        // would be unable to acquire more XRP required to pay fees.
+        // then consumes all of its ZXC.  Without the rule if an
+        // account with lsfDepositAuth set spent all of its ZXC, it
+        // would be unable to acquire more ZXC required to pay fees.
         //
         // We choose the base reserve as our bound because it is
         // a small number that seldom changes but is always sufficient
@@ -506,7 +506,7 @@ Payment::doApply()
             if (!view().exists(keylet::depositPreauth(uDstAccountID, account_)))
             {
                 // Get the base reserve.
-                XRPAmount const dstReserve{view().fees().accountReserve(0)};
+                ZXCAmount const dstReserve{view().fees().accountReserve(0)};
 
                 if (saDstAmount > dstReserve ||
                     sleDst->getFieldAmount(sfBalance) > dstReserve)

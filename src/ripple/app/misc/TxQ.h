@@ -321,7 +321,7 @@ public:
 
     struct FeeAndSeq
     {
-        XRPAmount fee;
+        ZXCAmount fee;
         std::uint32_t accountSeq;
         std::uint32_t availableSeq;
     };
@@ -774,14 +774,14 @@ TxQ::Setup
 setup_TxQ(Config const&);
 
 template <class T>
-std::pair<bool, XRPAmount>
-toDrops(FeeLevel<T> const& level, XRPAmount const& baseFee)
+std::pair<bool, ZXCAmount>
+toDrops(FeeLevel<T> const& level, ZXCAmount const& baseFee)
 {
     return mulDiv(level, baseFee, TxQ::baseLevel);
 }
 
 inline std::pair<bool, FeeLevel64>
-toFeeLevel(XRPAmount const& drops, XRPAmount const& baseFee)
+toFeeLevel(ZXCAmount const& drops, ZXCAmount const& baseFee)
 {
     return mulDiv(drops, TxQ::baseLevel, baseFee);
 }
