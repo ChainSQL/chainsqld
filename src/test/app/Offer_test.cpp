@@ -2042,20 +2042,20 @@ public:
         struct TestData
         {
             std::string account;      // Account operated on
-            STAmount fundXrp;         // Account funded with
+            STAmount fundZxc;         // Account funded with
             int bookAmount;           // USD -> ZXC offer on the books
             preTrustType preTrust;    // If true, pre-establish trust line
             int offerAmount;          // Account offers this much ZXC -> USD
             TER tec;                  // Returned tec code
-            STAmount spentXrp;        // Amount removed from fundXrp
+            STAmount spentZxc;        // Amount removed from fundZxc
             PrettyAmount balanceUsd;  // Balance on account end
             int offers;               // Offers on account
             int owners;               // Owners on account
         };
 
         TestData const tests[]{
-            // acct                             fundXrp  bookAmt      preTrust
-            // offerAmt                     tec       spentXrp    balanceUSD
+            // acct                             fundZxc  bookAmt      preTrust
+            // offerAmt                     tec       spentZxc    balanceUSD
             // offers  owners
             {"ann",
              reserve(env, 0) + 0 * f,
@@ -2440,7 +2440,7 @@ public:
         for (auto const& t : tests)
         {
             auto const acct = Account(t.account);
-            env.fund(t.fundXrp, acct);
+            env.fund(t.fundZxc, acct);
             env.close();
 
             // Make sure gateway has no current offers.
@@ -2475,7 +2475,7 @@ public:
 
             BEAST_EXPECT(env.balance(acct, USD.issue()) == t.balanceUsd);
             BEAST_EXPECT(
-                env.balance(acct, zxcIssue()) == t.fundXrp - t.spentXrp);
+                env.balance(acct, zxcIssue()) == t.fundZxc - t.spentZxc);
             env.require(offers(acct, t.offers));
             env.require(owners(acct, t.owners));
 
@@ -2746,7 +2746,7 @@ public:
         // before bob's or alice's, then autobridging will not occur.
         env(offer(alice, ZXC(1000), usdOffer));
         env(offer(bob, eurOffer, ZXC(1000)));
-        auto const bobXrpBalance = env.balance(bob);
+        auto const bobZxcBalance = env.balance(bob);
         env.close();
 
         // carol makes an offer that partially consumes alice and bob's offers.
@@ -2757,7 +2757,7 @@ public:
             balance(alice, USD(600)),
             balance(bob, EUR(400)),
             balance(carol, USD(400)),
-            balance(bob, bobXrpBalance - ZXC(400)),
+            balance(bob, bobZxcBalance - ZXC(400)),
             offers(carol, 0));
         verifyDefaultTrustline(env, bob, EUR(400));
         verifyDefaultTrustline(env, carol, USD(400));
@@ -2788,7 +2788,7 @@ public:
             balance(alice, USD(0)),
             balance(bob, eurOffer),
             balance(carol, usdOffer),
-            balance(bob, bobXrpBalance - ZXC(1000)),
+            balance(bob, bobZxcBalance - ZXC(1000)),
             offers(bob, 0),
             offers(carol, 0));
         verifyDefaultTrustline(env, bob, EUR(1000));
@@ -2832,14 +2832,14 @@ public:
         struct TestData
         {
             std::string account;  // Account operated on
-            STAmount fundXrp;     // ZXC acct funded with
+            STAmount fundZxc;     // ZXC acct funded with
             STAmount fundUSD;     // USD acct funded with
             STAmount gwGets;      // gw's offer
             STAmount gwPays;      //
             STAmount acctGets;    // acct's offer
             STAmount acctPays;    //
             TER tec;              // Returned tec code
-            STAmount spentXrp;    // Amount removed from fundXrp
+            STAmount spentZxc;    // Amount removed from fundZxc
             STAmount finalUsd;    // Final USD balance on acct
             int offers;           // Offers on acct
             int owners;           // Owners on acct
@@ -2849,28 +2849,28 @@ public:
             // Constructor with takerGets/takerPays
             TestData(
                 std::string&& account_,      // Account operated on
-                STAmount const& fundXrp_,    // ZXC acct funded with
+                STAmount const& fundZxc_,    // ZXC acct funded with
                 STAmount const& fundUSD_,    // USD acct funded with
                 STAmount const& gwGets_,     // gw's offer
                 STAmount const& gwPays_,     //
                 STAmount const& acctGets_,   // acct's offer
                 STAmount const& acctPays_,   //
                 TER tec_,                    // Returned tec code
-                STAmount const& spentXrp_,   // Amount removed from fundXrp
+                STAmount const& spentZxc_,   // Amount removed from fundZxc
                 STAmount const& finalUsd_,   // Final USD balance on acct
                 int offers_,                 // Offers on acct
                 int owners_,                 // Owners on acct
                 STAmount const& takerGets_,  // Remainder of acct's offer
                 STAmount const& takerPays_)  //
                 : account(std::move(account_))
-                , fundXrp(fundXrp_)
+                , fundZxc(fundZxc_)
                 , fundUSD(fundUSD_)
                 , gwGets(gwGets_)
                 , gwPays(gwPays_)
                 , acctGets(acctGets_)
                 , acctPays(acctPays_)
                 , tec(tec_)
-                , spentXrp(spentXrp_)
+                , spentZxc(spentZxc_)
                 , finalUsd(finalUsd_)
                 , offers(offers_)
                 , owners(owners_)
@@ -2882,27 +2882,27 @@ public:
             // Constructor without takerGets/takerPays
             TestData(
                 std::string&& account_,     // Account operated on
-                STAmount const& fundXrp_,   // ZXC acct funded with
+                STAmount const& fundZxc_,   // ZXC acct funded with
                 STAmount const& fundUSD_,   // USD acct funded with
                 STAmount const& gwGets_,    // gw's offer
                 STAmount const& gwPays_,    //
                 STAmount const& acctGets_,  // acct's offer
                 STAmount const& acctPays_,  //
                 TER tec_,                   // Returned tec code
-                STAmount const& spentXrp_,  // Amount removed from fundXrp
+                STAmount const& spentZxc_,  // Amount removed from fundZxc
                 STAmount const& finalUsd_,  // Final USD balance on acct
                 int offers_,                // Offers on acct
                 int owners_)                // Owners on acct
                 : TestData(
                       std::move(account_),
-                      fundXrp_,
+                      fundZxc_,
                       fundUSD_,
                       gwGets_,
                       gwPays_,
                       acctGets_,
                       acctPays_,
                       tec_,
-                      spentXrp_,
+                      spentZxc_,
                       finalUsd_,
                       offers_,
                       owners_,
@@ -2914,8 +2914,8 @@ public:
 
         TestData const tests[]{
             // acct pays ZXC
-            // acct                           fundXrp  fundUSD   gwGets   gwPays
-            // acctGets  acctPays                      tec         spentXrp
+            // acct                           fundZxc  fundUSD   gwGets   gwPays
+            // acctGets  acctPays                      tec         spentZxc
             // finalUSD  offers  owners  takerGets  takerPays
             {"ann",
              ZXC(10) + reserve(env, 0) + 1 * f,
@@ -3117,7 +3117,7 @@ public:
 
             auto const acct = Account(t.account);
 
-            env.fund(t.fundXrp, acct);
+            env.fund(t.fundZxc, acct);
             env.close();
 
             // Optionally give acct some USD.  This is not part of the test,
@@ -3143,7 +3143,7 @@ public:
             // Check results
             BEAST_EXPECT(env.balance(acct, USD.issue()) == t.finalUsd);
             BEAST_EXPECT(
-                env.balance(acct, zxcIssue()) == t.fundXrp - t.spentXrp);
+                env.balance(acct, zxcIssue()) == t.fundZxc - t.spentZxc);
             env.require(offers(acct, t.offers));
             env.require(owners(acct, t.owners));
 
@@ -4168,9 +4168,9 @@ public:
         auto const bob = Account("bob");
         auto const CNY = gw["CNY"];
         auto const fee = env.current()->fees().base;
-        auto const startXrpBalance = drops(400000000000) + (fee * 2);
+        auto const startZxcBalance = drops(400000000000) + (fee * 2);
 
-        env.fund(startXrpBalance, gw, alice, bob);
+        env.fund(startZxcBalance, gw, alice, bob);
         env.close();
 
         env(trust(bob, CNY(100000)));
@@ -4197,9 +4197,9 @@ public:
         env.close();
 
         env.require(balance(alice, alicesCnyOffer));
-        env.require(balance(alice, startXrpBalance - fee - drops(1)));
+        env.require(balance(alice, startZxcBalance - fee - drops(1)));
         env.require(balance(bob, bobsCnyStartBalance - alicesCnyOffer));
-        env.require(balance(bob, startXrpBalance - (fee * 2) + drops(1)));
+        env.require(balance(bob, startZxcBalance - (fee * 2) + drops(1)));
     }
 
     void
@@ -4248,9 +4248,9 @@ public:
         auto const gw = Account("gw");
         auto const BTC = gw["BTC"];
         auto const USD = gw["USD"];
-        auto const startXrpBalance = ZXC(4000000);
+        auto const startZxcBalance = ZXC(4000000);
 
-        env.fund(startXrpBalance, gw);
+        env.fund(startZxcBalance, gw);
         env.close();
 
         env(rate(gw, 1.25));
@@ -4430,9 +4430,9 @@ public:
         auto const gw = Account("gw");
         auto const BTC = gw["BTC"];
         auto const USD = gw["USD"];
-        auto const startXrpBalance = ZXC(4000000);
+        auto const startZxcBalance = ZXC(4000000);
 
-        env.fund(startXrpBalance, gw);
+        env.fund(startZxcBalance, gw);
         env.close();
 
         env(rate(gw, 1.25));

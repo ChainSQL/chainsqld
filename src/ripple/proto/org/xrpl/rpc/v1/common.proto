@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package org.xrpl.rpc.v1;
-option java_package = "org.xrpl.rpc.v1";
+package org.zxcl.rpc.v1;
+option java_package = "org.zxcl.rpc.v1";
 option java_multiple_files = true;
 
-import "org/xrpl/rpc/v1/amount.proto";
-import "org/xrpl/rpc/v1/account.proto";
+import "org/zxcl/rpc/v1/amount.proto";
+import "org/zxcl/rpc/v1/account.proto";
 
 // These fields are used in many different message types. They can be present
 // in one or more transactions, as well as metadata of one or more transactions.

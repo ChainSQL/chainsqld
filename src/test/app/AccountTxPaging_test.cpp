@@ -266,8 +266,8 @@ class AccountTxPaging_test : public beast::unit_test::suite
     class GrpcAccountTxClient : public test::GRPCTestClientBase
     {
     public:
-        org::xrpl::rpc::v1::GetAccountTransactionHistoryRequest request;
-        org::xrpl::rpc::v1::GetAccountTransactionHistoryResponse reply;
+        org::zxcl::rpc::v1::GetAccountTransactionHistoryRequest request;
+        org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse reply;
 
         explicit GrpcAccountTxClient(std::string const& port)
             : GRPCTestClientBase(port)
@@ -284,7 +284,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
 
     bool
     checkTransaction(
-        org::xrpl::rpc::v1::GetTransactionResponse const& tx,
+        org::zxcl::rpc::v1::GetTransactionResponse const& tx,
         int sequence,
         int ledger)
     {
@@ -294,7 +294,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
     }
 
     std::pair<
-        org::xrpl::rpc::v1::GetAccountTransactionHistoryResponse,
+        org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse,
         grpc::Status>
     nextBinary(
         std::string grpcPort,
@@ -304,7 +304,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
         int ledger_max = -1,
         int limit = -1,
         bool forward = false,
-        org::xrpl::rpc::v1::Marker* marker = nullptr)
+        org::zxcl::rpc::v1::Marker* marker = nullptr)
     {
         GrpcAccountTxClient client{grpcPort};
         auto& request = client.request;
@@ -328,7 +328,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
     }
 
     std::pair<
-        org::xrpl::rpc::v1::GetAccountTransactionHistoryResponse,
+        org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse,
         grpc::Status>
     next(
         std::string grpcPort,
@@ -338,7 +338,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
         int ledger_max = -1,
         int limit = -1,
         bool forward = false,
-        org::xrpl::rpc::v1::Marker* marker = nullptr)
+        org::zxcl::rpc::v1::Marker* marker = nullptr)
     {
         GrpcAccountTxClient client{grpcPort};
         auto& request = client.request;
@@ -361,7 +361,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
     }
 
     std::pair<
-        org::xrpl::rpc::v1::GetAccountTransactionHistoryResponse,
+        org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse,
         grpc::Status>
     nextWithSeq(
         std::string grpcPort,
@@ -370,7 +370,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
         int ledger_seq = -1,
         int limit = -1,
         bool forward = false,
-        org::xrpl::rpc::v1::Marker* marker = nullptr)
+        org::zxcl::rpc::v1::Marker* marker = nullptr)
     {
         GrpcAccountTxClient client{grpcPort};
         auto& request = client.request;
@@ -391,7 +391,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
     }
 
     std::pair<
-        org::xrpl::rpc::v1::GetAccountTransactionHistoryResponse,
+        org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse,
         grpc::Status>
     nextWithHash(
         std::string grpcPort,
@@ -400,7 +400,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
         uint256 const& hash = beast::zero,
         int limit = -1,
         bool forward = false,
-        org::xrpl::rpc::v1::Marker* marker = nullptr)
+        org::zxcl::rpc::v1::Marker* marker = nullptr)
     {
         GrpcAccountTxClient client{grpcPort};
         auto& request = client.request;
@@ -533,7 +533,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
         uint32_t sequence;
         uint32_t ledgerIndex;
         std::string hash;
-        std::function<bool(org::xrpl::rpc::v1::Transaction const& res)>
+        std::function<bool(org::zxcl::rpc::v1::Transaction const& res)>
             checkTxn;
     };
 
@@ -1267,7 +1267,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
              }}};
 
         using MetaCheck =
-            std::function<bool(org::xrpl::rpc::v1::Meta const& res)>;
+            std::function<bool(org::zxcl::rpc::v1::Meta const& res)>;
         static const MetaCheck txMetaCheck[]{
             {[this](auto meta) {
                 return BEAST_EXPECT(meta.transaction_index() == 0) &&
@@ -1276,10 +1276,10 @@ class AccountTxPaging_test : public beast::unit_test::suite
                            std::count_if(
                                meta.affected_nodes().begin(),
                                meta.affected_nodes().end(),
-                               [](org::xrpl::rpc::v1::AffectedNode const&
+                               [](org::zxcl::rpc::v1::AffectedNode const&
                                       entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1);
             }},
@@ -1292,7 +1292,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DEPOSIT_PREAUTH;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1302,7 +1302,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1311,7 +1311,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 1);
             }},
@@ -1324,7 +1324,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_CHECK;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1333,7 +1333,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1342,7 +1342,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2);
             }},
@@ -1355,7 +1355,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_CHECK;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1364,7 +1364,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1373,7 +1373,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2);
             }},
@@ -1386,7 +1386,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_CHECK;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1395,7 +1395,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1404,7 +1404,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2);
             }},
@@ -1417,7 +1417,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_CHECK;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1426,7 +1426,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1435,7 +1435,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2);
             }},
@@ -1448,7 +1448,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_PAY_CHANNEL;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1457,7 +1457,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1466,7 +1466,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2);
             }},
@@ -1480,7 +1480,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_PAY_CHANNEL;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1489,7 +1489,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1);
             }},
@@ -1503,7 +1503,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_PAY_CHANNEL;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1512,7 +1512,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1521,7 +1521,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2);
             }},
@@ -1534,7 +1534,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ESCROW;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1543,7 +1543,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1552,7 +1552,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 1);
             }},
@@ -1565,7 +1565,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ESCROW;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1574,7 +1574,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1583,7 +1583,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 1);
             }},
@@ -1597,7 +1597,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ESCROW;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1606,7 +1606,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1615,7 +1615,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 1);
             }},
@@ -1629,7 +1629,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ESCROW;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1638,7 +1638,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1647,7 +1647,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 1);
             }},
@@ -1660,7 +1660,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_SIGNER_LIST;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1669,7 +1669,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1678,7 +1678,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 1);
             }},
@@ -1691,7 +1691,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1700,7 +1700,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1709,7 +1709,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_OFFER;
                                }) == 1);
             }},
@@ -1723,7 +1723,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1732,7 +1732,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1) &&
                     BEAST_EXPECT(
@@ -1741,7 +1741,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_OFFER;
                                }) == 1);
             }},
@@ -1754,7 +1754,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_DIRECTORY_NODE;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1763,7 +1763,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2) &&
                     BEAST_EXPECT(
@@ -1772,7 +1772,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_RIPPLE_STATE;
                                }) == 1);
             }},
@@ -1785,7 +1785,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1);
             }},
@@ -1798,7 +1798,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2);
             }},
@@ -1811,7 +1811,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1);
             }},
@@ -1824,7 +1824,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 1);
             }},
@@ -1837,7 +1837,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                                meta.affected_nodes().end(),
                                [](auto entry) {
                                    return entry.ledger_entry_type() ==
-                                       org::xrpl::rpc::v1::LedgerEntryType::
+                                       org::zxcl::rpc::v1::LedgerEntryType::
                                            LEDGER_ENTRY_TYPE_ACCOUNT_ROOT;
                                }) == 2);
             }}};
@@ -1858,7 +1858,7 @@ class AccountTxPaging_test : public beast::unit_test::suite
                 BEAST_EXPECT(txn.meta().has_transaction_result()) &&
                 BEAST_EXPECT(
                        txn.meta().transaction_result().result_type() ==
-                       org::xrpl::rpc::v1::TransactionResult::
+                       org::zxcl::rpc::v1::TransactionResult::
                            RESULT_TYPE_TES) &&
                 BEAST_EXPECT(
                        txn.meta().transaction_result().result() ==

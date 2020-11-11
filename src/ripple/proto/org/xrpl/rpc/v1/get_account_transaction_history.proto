@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-import "org/xrpl/rpc/v1/get_transaction.proto";
-import "org/xrpl/rpc/v1/account.proto";
-import "org/xrpl/rpc/v1/ledger.proto";
+import "org/zxcl/rpc/v1/get_transaction.proto";
+import "org/zxcl/rpc/v1/account.proto";
+import "org/zxcl/rpc/v1/ledger.proto";
 
-package org.xrpl.rpc.v1;
-option java_package = "org.xrpl.rpc.v1";
+package org.zxcl.rpc.v1;
+option java_package = "org.zxcl.rpc.v1";
 option java_multiple_files = true;
 
 // Next field: 8

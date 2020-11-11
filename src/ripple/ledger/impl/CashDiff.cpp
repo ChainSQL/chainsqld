@@ -257,10 +257,10 @@ getBasicCashFlow(
 >>>>>>> release
         {
             case ltACCOUNT_ROOT: {
-                auto const curXrp = cur[sfBalance].zxc();
-                if (!before || (*before)[sfBalance].zxc() != curXrp)
+                auto const curZxc = cur[sfBalance].zxc();
+                if (!before || (*before)[sfBalance].zxc() != curZxc)
                     result.zxcChanges.push_back(
-                        std::make_pair(cur[sfAccount], curXrp));
+                        std::make_pair(cur[sfAccount], curZxc));
                 return true;
             }
             case ltRIPPLE_STATE: {

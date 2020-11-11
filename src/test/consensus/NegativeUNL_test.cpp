@@ -1909,7 +1909,7 @@ class NegativeUNLgRPC_test : public beast::unit_test::suite
             if (!negUnlObject)
                 return false;
 
-            org::xrpl::rpc::v1::NegativeUNL to;
+            org::zxcl::rpc::v1::NegativeUNL to;
             ripple::RPC::convert(to, *negUnlObject);
             if (!to.has_flags() ||
                 to.flags().value() != negUnlObject->getFlags())

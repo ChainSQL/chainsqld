@@ -229,7 +229,7 @@ struct FlowDebugInfo
                     }
                     ostr << ']';
                 };
-            auto writeXrpAmtList = [&write_list](
+            auto writeZxcAmtList = [&write_list](
                                        std::vector<EitherAmount> const& amts,
                                        char delim = ';') {
                 auto get_val = [](EitherAmount const& a) -> std::string {
@@ -268,17 +268,17 @@ struct FlowDebugInfo
                     }
                     ostr << ']';
                 };
-            auto writeNestedXrpAmtList =
-                [&ostr, &writeXrpAmtList](
+            auto writeNestedZxcAmtList =
+                [&ostr, &writeZxcAmtList](
                     std::vector<std::vector<EitherAmount>> const& amts) {
                     ostr << '[';
                     if (!amts.empty())
                     {
-                        writeXrpAmtList(amts[0], '|');
+                        writeZxcAmtList(amts[0], '|');
                         for (size_t i = 1, e = amts.size(); i < e; ++i)
                         {
                             ostr << ';';
-                            writeXrpAmtList(amts[i], '|');
+                            writeZxcAmtList(amts[i], '|');
                         }
                     }
                     ostr << ']';

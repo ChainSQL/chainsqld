@@ -50,7 +50,7 @@ class Tx_test : public beast::unit_test::suite
 
     void
     cmpAmount(
-        const org::xrpl::rpc::v1::CurrencyAmount& proto_amount,
+        const org::zxcl::rpc::v1::CurrencyAmount& proto_amount,
         STAmount amount)
     {
         if (amount.native())
@@ -65,7 +65,7 @@ class Tx_test : public beast::unit_test::suite
             if (!BEAST_EXPECT(proto_amount.has_issued_currency_amount()))
                 return;
 
-            org::xrpl::rpc::v1::IssuedCurrencyAmount issuedCurrency =
+            org::zxcl::rpc::v1::IssuedCurrencyAmount issuedCurrency =
                 proto_amount.issued_currency_amount();
             Issue const& issue = amount.issue();
             Currency currency = issue.currency;
@@ -81,7 +81,7 @@ class Tx_test : public beast::unit_test::suite
 
     void
     cmpPaymentTx(
-        const org::xrpl::rpc::v1::Transaction& proto,
+        const org::zxcl::rpc::v1::Transaction& proto,
         std::shared_ptr<STTx const> txnSt)
     {
         if (!BEAST_EXPECT(proto.has_payment()))
@@ -248,7 +248,7 @@ class Tx_test : public beast::unit_test::suite
         {
             STPath const& path = *it;
 
-            const org::xrpl::rpc::v1::Payment_Path& protoPath =
+            const org::zxcl::rpc::v1::Payment_Path& protoPath =
                 proto.payment().paths(ind++);
             if (!BEAST_EXPECT(protoPath.elements_size() == path.size()))
                 continue;
@@ -256,7 +256,7 @@ class Tx_test : public beast::unit_test::suite
             int ind2 = 0;
             for (auto it2 = path.begin(); it2 != path.end(); ++it2)
             {
-                const org::xrpl::rpc::v1::Payment_PathElement& protoElement =
+                const org::zxcl::rpc::v1::Payment_PathElement& protoElement =
                     protoPath.elements(ind2++);
                 STPathElement const& elt = *it2;
 
@@ -436,7 +436,7 @@ class Tx_test : public beast::unit_test::suite
 
     void
     cmpMeta(
-        const org::xrpl::rpc::v1::Meta& proto,
+        const org::zxcl::rpc::v1::Meta& proto,
         std::shared_ptr<TxMeta> txMeta)
     {
         BEAST_EXPECT(proto.transaction_index() == txMeta->getIndex());
@@ -444,7 +444,7 @@ class Tx_test : public beast::unit_test::suite
             proto.transaction_result().result() ==
             transToken(txMeta->getResultTER()));
 
-        org::xrpl::rpc::v1::TransactionResult r;
+        org::zxcl::rpc::v1::TransactionResult r;
 
         RPC::convert(r, txMeta->getResultTER());
 
@@ -454,8 +454,8 @@ class Tx_test : public beast::unit_test::suite
 
     void
     cmpDeliveredAmount(
-        const org::xrpl::rpc::v1::Meta& meta,
-        const org::xrpl::rpc::v1::Transaction& txn,
+        const org::zxcl::rpc::v1::Meta& meta,
+        const org::zxcl::rpc::v1::Transaction& txn,
         const std::shared_ptr<TxMeta> expMeta,
         const std::shared_ptr<STTx const> expTxn,
         bool checkAmount = true)
@@ -490,8 +490,8 @@ class Tx_test : public beast::unit_test::suite
     class GrpcTxClient : public GRPCTestClientBase
     {
     public:
-        org::xrpl::rpc::v1::GetTransactionRequest request;
-        org::xrpl::rpc::v1::GetTransactionResponse reply;
+        org::zxcl::rpc::v1::GetTransactionRequest request;
+        org::zxcl::rpc::v1::GetTransactionResponse reply;
 
         explicit GrpcTxClient(std::string const& port)
             : GRPCTestClientBase(port)
@@ -508,8 +508,8 @@ class Tx_test : public beast::unit_test::suite
     class GrpcAccountTxClient : public GRPCTestClientBase
     {
     public:
-        org::xrpl::rpc::v1::GetAccountTransactionHistoryRequest request;
-        org::xrpl::rpc::v1::GetAccountTransactionHistoryResponse reply;
+        org::zxcl::rpc::v1::GetAccountTransactionHistoryRequest request;
+        org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse reply;
 
         explicit GrpcAccountTxClient(std::string const& port)
             : GRPCTestClientBase(port)
@@ -543,7 +543,7 @@ class Tx_test : public beast::unit_test::suite
             client.request.set_hash(&hash, sizeof(hash));
             client.request.set_binary(binary);
             client.Tx();
-            return std::pair<bool, org::xrpl::rpc::v1::GetTransactionResponse>(
+            return std::pair<bool, org::zxcl::rpc::v1::GetTransactionResponse>(
                 client.status.ok(), client.reply);
         };
 
@@ -715,13 +715,13 @@ class Tx_test : public beast::unit_test::suite
                                          bool binary,
                                          AccountID const& account)
                     -> std::
-                        pair<bool, org::xrpl::rpc::v1::GetTransactionResponse> {
+                        pair<bool, org::zxcl::rpc::v1::GetTransactionResponse> {
                             GrpcAccountTxClient client(grpcPort);
                             client.request.set_binary(binary);
                             client.request.mutable_account()->set_address(
                                 toBase58(account));
                             client.AccountTx();
-                            org::xrpl::rpc::v1::GetTransactionResponse res;
+                            org::zxcl::rpc::v1::GetTransactionResponse res;
 
                             for (auto const& tx : client.reply.transactions())
                             {
@@ -795,7 +795,7 @@ class Tx_test : public beast::unit_test::suite
             res.second.meta().transaction_result().result() == "tesSUCCESS");
         BEAST_EXPECT(
             res.second.meta().transaction_result().result_type() ==
-            org::xrpl::rpc::v1::TransactionResult::RESULT_TYPE_TES);
+            org::zxcl::rpc::v1::TransactionResult::RESULT_TYPE_TES);
         BEAST_EXPECT(!res.second.validated());
         BEAST_EXPECT(!res.second.meta().has_delivered_amount());
         env.close();
@@ -812,7 +812,7 @@ class Tx_test : public beast::unit_test::suite
             res.second.meta().transaction_result().result() == "tesSUCCESS");
         BEAST_EXPECT(
             res.second.meta().transaction_result().result_type() ==
-            org::xrpl::rpc::v1::TransactionResult::RESULT_TYPE_TES);
+            org::zxcl::rpc::v1::TransactionResult::RESULT_TYPE_TES);
         BEAST_EXPECT(res.second.validated());
         BEAST_EXPECT(res.second.meta().has_delivered_amount());
     }

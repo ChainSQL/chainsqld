@@ -36,8 +36,8 @@ public:
     class SubmitClient : public GRPCTestClientBase
     {
     public:
-        org::xrpl::rpc::v1::SubmitTransactionRequest request;
-        org::xrpl::rpc::v1::SubmitTransactionResponse reply;
+        org::zxcl::rpc::v1::SubmitTransactionRequest request;
+        org::zxcl::rpc::v1::SubmitTransactionResponse reply;
 
         explicit SubmitClient(std::string const& port)
             : GRPCTestClientBase(port)
@@ -90,11 +90,11 @@ public:
         // use a websocket client to fill transaction blobs
         auto wsc = makeWSClient(env.app().config());
         {
-            Json::Value jrequestXrp;
-            jrequestXrp[jss::secret] = toBase58(generateSeed("alice"));
-            jrequestXrp[jss::tx_json] =
+            Json::Value jrequestZxc;
+            jrequestZxc[jss::secret] = toBase58(generateSeed("alice"));
+            jrequestZxc[jss::tx_json] =
                 pay("alice", "bob", ZXC(TestData::fund / 2));
-            Json::Value jreply_zxc = wsc->invoke("sign", jrequestXrp);
+            Json::Value jreply_zxc = wsc->invoke("sign", jrequestZxc);
 
             if (!BEAST_EXPECT(jreply_zxc.isMember(jss::result)))
                 return;

@@ -211,9 +211,9 @@ private:
         CrossType cross_type;
 
         if (isZXC(issue_out))
-            cross_type = CrossType::IouToXrp;
+            cross_type = CrossType::IouToZxc;
         else if (isZXC(issue_in))
-            cross_type = CrossType::XrpToIou;
+            cross_type = CrossType::ZxcToIou;
         else
             cross_type = CrossType::IouToIou;
 

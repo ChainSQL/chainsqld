@@ -1,17 +1,17 @@
 syntax = "proto3";
 
-package org.xrpl.rpc.v1;
-option java_package = "org.xrpl.rpc.v1";
+package org.zxcl.rpc.v1;
+option java_package = "org.zxcl.rpc.v1";
 option java_multiple_files = true;
 
-import "org/xrpl/rpc/v1/account.proto";
+import "org/zxcl/rpc/v1/account.proto";
 
 // Next field: 3
 message CurrencyAmount
 {
     oneof amount
     {
-        ZXCDropsAmount xrp_amount = 1;
+        ZXCDropsAmount zxc_amount = 1;
         IssuedCurrencyAmount issued_currency_amount = 2;
     }
 }

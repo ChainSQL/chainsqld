@@ -1119,9 +1119,9 @@ CreateOffer::preCompute()
     bool const pays_zxc = ctx_.tx.getFieldAmount(sfTakerPays).native();
     bool const gets_zxc = ctx_.tx.getFieldAmount(sfTakerGets).native();
     if (pays_zxc && !gets_zxc)
-        cross_type_ = CrossType::IouToXrp;
+        cross_type_ = CrossType::IouToZxc;
     else if (gets_zxc && !pays_zxc)
-        cross_type_ = CrossType::XrpToIou;
+        cross_type_ = CrossType::ZxcToIou;
 
     return Transactor::preCompute();
 }

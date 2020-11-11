@@ -608,23 +608,23 @@ StrandContext::StrandContext(
 
 template <class InAmt, class OutAmt>
 bool
-isDirectXrpToXrp(Strand const& strand)
+isDirectZxcToZxc(Strand const& strand)
 {
     return false;
 }
 
 template <>
 bool
-isDirectXrpToXrp<ZXCAmount, ZXCAmount>(Strand const& strand)
+isDirectZxcToZxc<ZXCAmount, ZXCAmount>(Strand const& strand)
 {
     return (strand.size() == 2);
 }
 
 template bool
-isDirectXrpToXrp<ZXCAmount, IOUAmount>(Strand const& strand);
+isDirectZxcToZxc<ZXCAmount, IOUAmount>(Strand const& strand);
 template bool
-isDirectXrpToXrp<IOUAmount, ZXCAmount>(Strand const& strand);
+isDirectZxcToZxc<IOUAmount, ZXCAmount>(Strand const& strand);
 template bool
-isDirectXrpToXrp<IOUAmount, IOUAmount>(Strand const& strand);
+isDirectZxcToZxc<IOUAmount, IOUAmount>(Strand const& strand);
 
 }  // namespace ripple

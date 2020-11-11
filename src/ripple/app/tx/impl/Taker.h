@@ -33,7 +33,7 @@
 namespace ripple {
 
 /** The flavor of an offer crossing */
-enum class CrossType { XrpToIou, IouToXrp, IouToIou };
+enum class CrossType { ZxcToIou, IouToZxc, IouToIou };
 
 /** State for the active party during order book or payment operations. */
 class BasicTaker

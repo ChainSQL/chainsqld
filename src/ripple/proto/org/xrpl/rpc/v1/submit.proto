@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package org.xrpl.rpc.v1;
-option java_package = "org.xrpl.rpc.v1";
+package org.zxcl.rpc.v1;
+option java_package = "org.zxcl.rpc.v1";
 option java_multiple_files = true;
 
-import "org/xrpl/rpc/v1/meta.proto";
+import "org/zxcl/rpc/v1/meta.proto";
 
 // A request to submit the signed transaction to the ledger.
 // Next field: 3

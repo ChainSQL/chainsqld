@@ -106,7 +106,7 @@ flow(
 
     boost::container::flat_set<uint256> ofrsToRm;
 
-    if (isDirectXrpToXrp<TInAmt, TOutAmt>(strand))
+    if (isDirectZxcToZxc<TInAmt, TOutAmt>(strand))
     {
         return Result{std::move(ofrsToRm)};
     }

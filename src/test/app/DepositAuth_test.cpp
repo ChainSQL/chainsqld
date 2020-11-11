@@ -114,7 +114,7 @@ struct DepositAuth_test : public beast::unit_test::suite
             env.require(flags(bob, asfDepositAuth));
 
             // Capture bob's balances before hand to confirm they don't change.
-            PrettyAmount const bobXrpBalance{env.balance(bob, ZXC)};
+            PrettyAmount const bobZxcBalance{env.balance(bob, ZXC)};
             PrettyAmount const bobUsdBalance{env.balance(bob, USD)};
 
             env(pay(alice, bob, USD(50)), ter(tecNO_PERMISSION));
@@ -127,7 +127,7 @@ struct DepositAuth_test : public beast::unit_test::suite
                 ter(tecNO_PERMISSION));
             env.close();
 
-            BEAST_EXPECT(bobXrpBalance == env.balance(bob, ZXC));
+            BEAST_EXPECT(bobZxcBalance == env.balance(bob, ZXC));
             BEAST_EXPECT(bobUsdBalance == env.balance(bob, USD));
         };
 

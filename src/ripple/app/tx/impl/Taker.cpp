@@ -63,11 +63,11 @@ BasicTaker::BasicTaker(
     // If we are dealing with a particular flavor, make sure that it's the
     // flavor we expect:
     assert(
-        cross_type != CrossType::XrpToIou ||
+        cross_type != CrossType::ZxcToIou ||
         (isZXC(issue_in()) && !isZXC(issue_out())));
 
     assert(
-        cross_type != CrossType::IouToXrp ||
+        cross_type != CrossType::IouToZxc ||
         (!isZXC(issue_in()) && isZXC(issue_out())));
 
     // And make sure we're not crossing ZXC for ZXC
@@ -253,7 +253,7 @@ BasicTaker::flow_zxc_to_iou(
 
     // Clamp on remaining offer if we are not handling the second leg
     // of an autobridge.
-    if (cross_type_ == CrossType::XrpToIou && (remaining_.in < f.order.in))
+    if (cross_type_ == CrossType::ZxcToIou && (remaining_.in < f.order.in))
     {
         f.order.in = remaining_.in;
         f.order.out = qual_div(f.order.in, quality, f.order.out);
@@ -289,7 +289,7 @@ BasicTaker::flow_iou_to_zxc(
 
     // Clamp if taker wants to limit the output and we are not the
     // first leg of an autobridge.
-    if (!sell_ && cross_type_ == CrossType::IouToXrp)
+    if (!sell_ && cross_type_ == CrossType::IouToZxc)
     {
         if (remaining_.out < f.order.out)
         {
@@ -389,7 +389,7 @@ BasicTaker::do_cross(Amounts offer, Quality quality, AccountID const& owner)
 
     Flow result;
 
-    if (cross_type_ == CrossType::XrpToIou)
+    if (cross_type_ == CrossType::ZxcToIou)
     {
         result = flow_zxc_to_iou(
             offer,
@@ -398,7 +398,7 @@ BasicTaker::do_cross(Amounts offer, Quality quality, AccountID const& owner)
             taker_funds,
             out_rate(owner, account()));
     }
-    else if (cross_type_ == CrossType::IouToXrp)
+    else if (cross_type_ == CrossType::IouToZxc)
     {
         result = flow_iou_to_zxc(
             offer,
@@ -687,7 +687,7 @@ Taker::fill(BasicTaker::Flow const& flow, Offer& offer)
 
     TER result = tesSUCCESS;
 
-    if (cross_type() != CrossType::XrpToIou)
+    if (cross_type() != CrossType::ZxcToIou)
     {
         assert(!isZXC(flow.order.in));
 
@@ -708,7 +708,7 @@ Taker::fill(BasicTaker::Flow const& flow, Offer& offer)
     }
 
     // Now send funds from the account whose offer we're taking
-    if (cross_type() != CrossType::IouToXrp)
+    if (cross_type() != CrossType::IouToZxc)
     {
         assert(!isZXC(flow.order.out));
 

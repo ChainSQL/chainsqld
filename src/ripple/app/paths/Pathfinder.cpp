@@ -235,8 +235,8 @@ Pathfinder::findPaths(int searchLevel)
         return false;
     }
 
-    bool bSrcXrp = isZXC(mSrcCurrency);
-    bool bDstXrp = isZXC(mDstAmount.getCurrency());
+    bool bSrcZxc = isZXC(mSrcCurrency);
+    bool bDstZxc = isZXC(mDstAmount.getCurrency());
 
     if (!mLedger->exists(keylet::account(mSrcAccount)))
     {
@@ -256,7 +256,7 @@ Pathfinder::findPaths(int searchLevel)
     {
         // Can't find the destination account - we must be funding a new
         // account.
-        if (!bDstXrp)
+        if (!bDstZxc)
         {
             JLOG(j_.debug()) << "New account not being funded in ZXC ";
             return false;
@@ -275,19 +275,19 @@ Pathfinder::findPaths(int searchLevel)
     // Now compute the payment type from the types of the source and destination
     // currencies.
     PaymentType paymentType;
-    if (bSrcXrp && bDstXrp)
+    if (bSrcZxc && bDstZxc)
     {
         // ZXC -> ZXC
         JLOG(j_.debug()) << "ZXC to ZXC payment";
         paymentType = pt_ZXC_to_ZXC;
     }
-    else if (bSrcXrp)
+    else if (bSrcZxc)
     {
         // ZXC -> non-ZXC
         JLOG(j_.debug()) << "ZXC to non-ZXC payment";
         paymentType = pt_ZXC_to_nonZXC;
     }
-    else if (bDstXrp)
+    else if (bDstZxc)
     {
         // non-ZXC -> ZXC
         JLOG(j_.debug()) << "non-ZXC to ZXC payment";

@@ -1,14 +1,14 @@
 syntax = "proto3";
 
-package org.xrpl.rpc.v1;
-option java_package = "org.xrpl.rpc.v1";
+package org.zxcl.rpc.v1;
+option java_package = "org.zxcl.rpc.v1";
 option java_multiple_files = true;
 
-import "org/xrpl/rpc/v1/ledger_objects.proto";
-import "org/xrpl/rpc/v1/amount.proto";
-import "org/xrpl/rpc/v1/account.proto";
-import "org/xrpl/rpc/v1/ledger.proto";
-import "org/xrpl/rpc/v1/common.proto";
+import "org/zxcl/rpc/v1/ledger_objects.proto";
+import "org/zxcl/rpc/v1/amount.proto";
+import "org/zxcl/rpc/v1/account.proto";
+import "org/zxcl/rpc/v1/ledger.proto";
+import "org/zxcl/rpc/v1/common.proto";
 
 // A request to get info about an account.
 // Next field: 6
