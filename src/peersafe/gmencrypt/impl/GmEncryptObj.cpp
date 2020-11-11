@@ -48,10 +48,10 @@ void GmEncryptObj::setGmAlgType(gmAlgType gmAlgType)
 }
 
 //GmEncrypt* GmEncryptObj::getInstance(gmAlgType hEType)
-GmEncrypt* GmEncryptObj::getInstance()
+GmEncrypt* GmEncryptObj::getInstance(gmAlgType gmAlgType)
 {
 #ifdef GM_ALG_PROCESS
-    switch (hEType_)
+    switch (gmAlgType)
     {
 #ifdef BEGIN_SDKEY
     case gmAlgType::sdkeyType:

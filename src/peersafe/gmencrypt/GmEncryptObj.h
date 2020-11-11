@@ -34,7 +34,7 @@ public:
 
 public:
     static void setGmAlgType(gmAlgType gmAlgType);
-    static GmEncrypt* getInstance();
+    static GmEncrypt* getInstance(gmAlgType gmAlgType = hEType_);
     static gmAlgType fromString(std::string gmAlgTypeStr);
 };
 

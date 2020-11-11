@@ -125,6 +125,10 @@ public:
 		value_ = value;
 	}
 
+	void SetFieldValue(const InnerNull& value) {
+		value_ = value;
+	}
+
 	void setCompareOperator(const std::string& op) {
 		std::string trim_op = op;
 		boost::algorithm::trim(trim_op);
@@ -337,6 +341,10 @@ public:
 		return value_.isDate();
 	}
 
+	bool isNull() {
+		return value_.isNull();
+	}
+
 	void SetPrimaryKey() {
 		flag_ |= PK;
 	}
@@ -407,8 +415,13 @@ private:
 };
 
 std::pair<int, std::string> parseField(const Json::Value& json, BuildField& field) {
+	//check blank space
+	if (field.Name().find(' ') != std::string::npos) {
+		return { -1, (boost::format("Field [%s] contains blank space.")
+				 % field.Name()).str() };
+	}
 	Json::Value val;
-	if (json.isObject()) {
+	if (json.type() == Json::ValueType::objectValue) {
 		val = json["value"];
 		Json::Value op = json["op"];
 		if (op.isString() == false)
@@ -427,7 +440,10 @@ std::pair<int, std::string> parseField(const Json::Value& json, BuildField& fiel
 		field.SetFieldValue(val.asUInt());
 	else if (val.isDouble())
 		field.SetFieldValue(val.asDouble());
-	else {
+	else if (val.isNull()){
+		InnerNull value;
+		field.SetFieldValue(value);
+	}else {
 		std::string error = (boost::format("Unkown type when parsing fields.[%s]") 
 			%Json::jsonAsString(val)).str();
 		return{ -1, error };
@@ -549,7 +565,8 @@ public:
 	, db_conn_(dbconn)
 	, condition_(Json::ValueType::nullValue)
 	, join_on_condition_(Json::ValueType::nullValue)
-	, last_error_() {
+	, last_error_()
+	, indi_null(soci::i_null){
 
 	}
 
@@ -874,6 +891,7 @@ protected:
 	Json::Value limit_;
 	Json::Value group_;
 	Json::Value having_;
+	soci::indicator indi_null;
 
 	int execute_droptable_sql() {
 		if (tables_.size() == 0)
@@ -949,7 +967,7 @@ private:
 		for (size_t idx = 0; idx < fields_.size(); idx++) {
 			BuildField& field = fields_[idx];
 			fields_str += field.Name();
-			if(field.isString() || field.isVarchar() 
+			if (field.isString() || field.isVarchar()
 				|| field.isBlob() || field.isText())
 				values_str += (boost::format("\"%1%\"") % field.asString()).str();
 			else if (field.isInt())
@@ -958,8 +976,10 @@ private:
 				values_str += (boost::format("%f") % field.asFloat()).str();
 			else if (field.isDouble() || field.isDecimal())
 				values_str += (boost::format("%f") % field.asDouble()).str();
-			else if(field.isInt64() || field.isDateTime())
+			else if (field.isInt64() || field.isDateTime())
 				values_str += (boost::format("%1%") % field.asInt64()).str();
+			else if (field.isNull())
+				values_str += "NULL";
 
 			if (idx != fields_.size() - 1) {
 				fields_str += ",";
@@ -1055,6 +1075,11 @@ private:
 				update_fields += (boost::format("%1%=%2%")
 					%field.Name()
 					%field.asInt64()).str();
+			}
+			else if (field.isNull()) {
+				update_fields += (boost::format("%1%=%2%")
+					% field.Name()
+					% "NULL").str();
 			}
 
 			if (idx != fields_.size() - 1)
@@ -1637,6 +1662,8 @@ private:
 				t = t, soci::use(field.asDouble());
 			else if (field.isInt64() || field.isDateTime())
 				t = t, soci::use(field.asInt64());
+			else if (field.isNull())
+				t = t, soci::use(0, indi_null);
 		}
 	}
 
@@ -1764,12 +1791,10 @@ protected:
 					str = (boost::format("DEFAULT %d") % field.asInt()).str();
 				}
 				else if (field.isString()) {
-					std::string default_value = field.asString();
-					if (boost::iequals(default_value, "null")
-						|| boost::iequals(default_value, "nil"))
-						str = "DEFAULT NULL";
-					else
-						str = (boost::format("DEFAULT '%1%'") % default_value).str();
+					str = (boost::format("DEFAULT '%1%'") % field.asString()).str();
+				}
+				else if (field.isNull()) {
+					str = "DEFAULT NULL";
 				}
 				fields.push_back(str);
 			}
@@ -2328,8 +2353,8 @@ private:
 
 namespace helper {
 
-	std::pair<int, std::string> ParseTxJson(const Json::Value& tx_json, BuildSQL &buildsql) {
-		std::string error = "Unkown Error when parse json";
+	std::pair<int, std::string> ParseQueryJson(const Json::Value& tx_json, BuildSQL &buildsql) {
+		std::string error = "Unknown Error when parse json";
 		int code = 0;
 		do {
 			Json::Value obj_tables = tx_json["Tables"];
@@ -2426,7 +2451,15 @@ namespace helper {
 							code = -3;
 							break;
 						}
-						BuildField field(fieldname.asString());
+						////check blank space
+						//auto field_name_str = fieldname.asString();
+						//if (field_name_str.find(' ') != std::string::npos){
+						//	error = (boost::format("Field [%s] contains blank space.")
+						//		% field_name_str).str();
+						//	break;
+						//}
+						auto field_name_str = fieldname.asString();
+						BuildField field(field_name_str);
 						buildsql.AddField(field);
 					}
 				}
@@ -2498,36 +2531,30 @@ namespace helper {
 			for (size_t i = 0; i < r->size(); i++) {
 				Json::Value e;
 				std::string key = r->get_properties(i).get_name();
+				if (r->get_indicator(i) == soci::i_null || r->get_indicator(i) == soci::i_truncated)
+				{
+					e[r->get_properties(i).get_name()] = Json::Value::null;
+				}
 				if (r->get_properties(i).get_data_type() == soci::dt_string
 					|| r->get_properties(i).get_data_type() == soci::dt_blob) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = r->get<std::string>(i);
-					else
-						e[key] = "null";
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = r->get<int>(i);
-					else
-						e[key] = 0;
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_double) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = r->get<double>(i);
-					else
-						e[key] = 0.0;
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = static_cast<int>(r->get<long long>(i));
-					else
-						e[key] = 0;
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
 					if (r->get_indicator(i) == soci::i_ok)
 						e[key] = static_cast<int>(r->get<unsigned long long>(i));
-					else
-						e[key] = 0;
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_date) {
 					std::tm tm = { 0 };
@@ -2556,36 +2583,31 @@ namespace helper {
 			for (; r != records.end(); r++) {
 				Json::Value e;
 				for (size_t i = 0; i < r->size(); i++) {
+					if (r->get_indicator(i) == soci::i_null || r->get_indicator(i) == soci::i_truncated)
+					{
+						e[r->get_properties(i).get_name()] = Json::Value::null;
+					}
+
 					if (r->get_properties(i).get_data_type() == soci::dt_string
 						|| r->get_properties(i).get_data_type() == soci::dt_blob) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<std::string>(i);
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_integer) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<int>(i);
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_double) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = r->get<double>(i);
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_long_long) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<long long>(i));
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_unsigned_long_long) {
 						if (r->get_indicator(i) == soci::i_ok)
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<unsigned long long>(i));
-						else
-							e[r->get_properties(i).get_name()] = "null";
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
 						std::tm tm = { 0 };
@@ -2696,7 +2718,7 @@ namespace helper {
 
 	Json::Value query_directly(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql, int selectLimit) {
 		Json::Value obj;
-		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
+		std::pair<int, std::string> result = ParseQueryJson(tx_json, *buildsql);
 		if (result.first != 0) {
 			return RPC::make_error(rpcJSON_PARSED_ERR, result.second);
 		}
@@ -2721,7 +2743,7 @@ namespace helper {
 	}
 	std::pair<std::vector<std::vector<Json::Value>>, std::string> query_directly2d(const Json::Value& tx_json, DatabaseCon* conn, BuildSQL* buildsql, int selectLimit) {
 		std::vector<std::vector<Json::Value>> obj;
-		std::pair<int, std::string> result = ParseTxJson(tx_json, *buildsql);
+		std::pair<int, std::string> result = ParseQueryJson(tx_json, *buildsql);
 		if (result.first != 0) {
 			return std::make_pair(obj,result.second);
 		}
@@ -2924,20 +2946,20 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
 	return ret;
 }
 
-int STTx2SQL::GenerateInsertSql(const Json::Value& raw, BuildSQL *buildsql) {
+std::pair<int, std::string> STTx2SQL::GenerateInsertSql(const Json::Value& raw, BuildSQL *buildsql) {
 	std::vector<std::string> members = raw.getMemberNames();
 	// retrieve members in object
 	for (size_t i = 0; i < members.size(); i++) {
 		std::string field_name = members[i];
-
+		
 		BuildField insert_field(field_name);
 		std::pair<int, std::string> result = parseField(raw[field_name], insert_field);
 		if (result.first != 0) {
-			return result.first;
+			return result;
 		}
 		buildsql->AddField(insert_field);
 	}
-	return 0;
+	return std::make_pair(0,"");
 
 }
 
@@ -2981,7 +3003,7 @@ int STTx2SQL::GenerateDeleteSql(const Json::Value& raw, BuildSQL *buildsql) {
 	return 0;
 }
 
-int STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
+std::pair<int, std::string> STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
 	//BuildSQL::AndCondtionsType and_conditions;
 	Json::Value conditions;
 	// parse record
@@ -2991,13 +3013,18 @@ int STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
 			if (v.isArray()) {
 				for (Json::UInt i = 0; i < v.size(); i++) {
 					std::string field_name = v[i].asString();
+					//check blank space
+					if (field_name.find(' ') != std::string::npos) {
+						return { -1, (boost::format("Field [%s] contains blank space.")
+								 % field_name).str() };
+					}
 					BuildField field(field_name);
 					buildsql->AddField(field);
 				}
 			}
 		} else {
 			if (v.isObject() == false)
-				return -1;
+				return { -1,"Condition field is not a json-object." };
 
 			int code = -1;
 			std::string error;
@@ -3042,7 +3069,7 @@ int STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
 	}
 	if (conditions.isArray() && conditions.size() > 0)
 		buildsql->AddCondition(conditions);
-	return 0;
+	return { 0,"" };
 }
 
 std::pair<bool, std::string> STTx2SQL::handle_assert_statement(const Json::Value& raw, BuildSQL *buildsql) {
@@ -3074,8 +3101,9 @@ std::pair<bool, std::string> STTx2SQL::handle_assert_statement(const Json::Value
 				ajuested_raw.append(raw[assert_index]);
 			}
 			BuildSQL::BUILDTYPE old = buildsql->build_type(BuildSQL::BUILD_SELECT_SQL);
-			if (GenerateSelectSql(ajuested_raw, buildsql) != 0) {
-				result = { false, "Generate a SQL unsuccessfully." };
+			auto ret = GenerateSelectSql(ajuested_raw, buildsql);
+			if (ret.first != 0) {
+				result = { false, ret.second};
 				break;
 			}
 			query_sql = buildsql->asString();
@@ -3420,9 +3448,9 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 				return ret;
 			}
 
-			if(GenerateInsertSql(v, buildsql.get()) != 0) {
-				ret = { -1, "Insert-sql was generated unssuccessfully,transaction may be malformal." };
-				return ret;
+			auto retPair = GenerateInsertSql(v, buildsql.get());
+			if(retPair.first != 0) {
+				return retPair;
 			}
             if (bHasAutoField)
             {
@@ -3487,6 +3515,13 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 
 				for (size_t i = 0; i < members.size(); i++) {
 					std::string field_name = members[i];
+
+					//check blank space
+					if (field_name.find(' ') != std::string::npos) {
+						return { -1, (boost::format("Field [%s] contains blank space.")
+								 % field_name).str() };
+					}
+
 					BuildField field(field_name);
 					std::pair<int, std::string> ret = parseField(v[field_name], field);
 					if (ret.first != 0) {

@@ -76,16 +76,14 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
         auto publicKeysVec = config.section(SECTION_VALIDATION_PUBLIC_KEY).lines();
         std::string publicKeyStr = "";
         if ( publicKeysVec.size() > 0 ) publicKeyStr = publicKeysVec.front();
-        if (seedStr.empty() || publicKeyStr.empty())
+        if (seedStr.empty())
         {
             configInvalid_ = true;
-            JLOG(j.fatal()) << 
-            "Invalid seed specified in [" SECTION_VALIDATION_SEED "] or [" SECTION_VALIDATION_PUBLIC_KEY "]";
+            JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "]";
         }
         else
         {
             if ('x' == seedStr[0])
-            // if (nullptr == hEObj)
             {
                 if (CommonKey::algTypeGlobal == KeyType::gmalg)
                 {
@@ -95,25 +93,16 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                 else
                 {
                     auto const seed = parseBase58<Seed>(seedStr);
-                    auto const publicKeyDe58 = parseBase58<PublicKey>(TOKEN_NODE_PUBLIC, publicKeyStr);
-                    if (!seed || !publicKeyDe58)
+                    if (!seed)
                     {
                         configInvalid_ = true;
                         JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "] or publickey in [" SECTION_VALIDATION_PUBLIC_KEY "]";
                     }
                     else
                     {
-                        auto const type = publicKeyType(*publicKeyDe58);
-                        if (!type)
-                        {
-                            configInvalid_ = true;
-                            JLOG(j.fatal()) << "Invalid publick type in [" SECTION_VALIDATION_PUBLIC_KEY "]";
-                        }
-
                         // CommonKey::setAlgType(*type);
-                        secretKey = generateSecretKey(*type, *seed);
-                        publicKey = *publicKeyDe58;
-                        // publicKey = derivePublicKey(*type, secretKey);
+                        secretKey = generateSecretKey(CommonKey::algTypeGlobal, *seed);
+                        publicKey = derivePublicKey(CommonKey::algTypeGlobal, secretKey);;
                     }
                 }
             }
@@ -138,12 +127,12 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                     secretKey = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
                     secretKey.keyTypeInt_ = hEObj->gmOutCard;
                     publicKey = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
-                    auto const type = publicKeyType(publicKey.slice());
-                    if (!type)
-                    {
-                        configInvalid_ = true;
-                        JLOG(j.fatal()) << "Invalid publick type in [" SECTION_VALIDATION_PUBLIC_KEY "]";
-                    }
+                    // auto const type = publicKeyType(publicKey.slice());
+                    // if (!type)
+                    // {
+                    //     configInvalid_ = true;
+                    //     JLOG(j.fatal()) << "Invalid publick type in [" SECTION_VALIDATION_PUBLIC_KEY "]";
+                    // }
                 }
                 // CommonKey::setAlgType(*type);
             }
