@@ -219,6 +219,8 @@ transResults()
 		MAKE_ERROR(tefBAD_SCHEMAADMIN, 	       "Incorrect schema admin." ),
 		MAKE_ERROR(tefSCHEMA_TX_FORBIDDEN,	   "SchemaCreate tx cannot occur in sub-chain."),
 		MAKE_ERROR(tefSCEMA_NO_PATH,		   "No schema_path configured."),
+		MAKE_ERROR(tefBAD_DUPLACATE_ITEM,	   "Duplicate items in PeerList or Validators."),
+		MAKE_ERROR(tefSCHEMA_NODE_COUNT,	   "Insufficient node count for schema."),
         MAKE_ERROR(tesSUCCESS,                 "The transaction was applied. Only final in a validated ledger."                )
     };
     // clang-format on

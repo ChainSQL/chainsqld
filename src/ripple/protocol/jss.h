@@ -579,6 +579,100 @@ JSS(warnings);                // out: server_info, server_state
 JSS(workers);
 JSS(write_load);   // out: GetCounts
 JSS(NegativeUNL);  // out: ValidatorList; ledger type
+
+//------------------------------------------------------------------------------------------
+//ChainSQL added
+
+JSS ( SchemaCreate );
+JSS ( SchemaModify );
+
+JSS ( Contract );					// transaction type.
+JSS ( TableListSet );				// transaction type.
+JSS ( SQLStatement );				// transaction type.
+JSS ( SQLTransaction );				// transaction type.
+JSS ( TableList );					// ledger type.
+JSS ( InsertLimt );					// ledger type.
+JSS ( ChainId );					// ledger type.
+JSS ( Schema );
+
+JSS (TransferFeeMin);
+JSS (TransferFeeMax);
+
+JSS ( Confidential );				// in: Confidential
+JSS ( Raw );						// in: Raw
+JSS ( RawOriginal );                // in: RawOriginal
+JSS ( Owner );						// in: Owner
+JSS ( User );						// in: User
+JSS ( Tables );						// in: Tables
+JSS	( Table );						// in: Table
+JSS	( TableName );					// in: TableName
+JSS ( StrictMode );					// in: StrictMode
+JSS ( TxCheckHash );				// in: TxCheckHash
+JSS ( Token );						// in: Token
+JSS ( OriginalAddress);    	        // in: address in original chain
+JSS ( TxnLgrSeq );			        // in: seq where the tx locates
+JSS ( CurTxHash );				    // in: tx hash in the original chain
+JSS ( FutureTxHash );				// in: next tx hash in the original chain or ledger seq
+JSS ( Statements );					// in: Statement
+JSS ( NeedVerify );					// in: NeedVerify
+JSS ( AutoFillField );
+JSS ( NameInDB );					//
+JSS ( Insert );
+JSS ( Update );
+JSS ( Delete );
+JSS ( Get );
+JSS ( OperationRule );
+JSS ( Condition );
+JSS ( Count );
+JSS ( AccountField );
+JSS ( ContractEventTopics );
+JSS ( ContractEventInfo);
+JSS ( CountLimit );
+JSS ( Fields );
+
+JSS ( ContractAddress );            // in: Contract
+JSS ( ContractData );               // in: Contract
+JSS ( contract_address );           // in: Contract Local Call
+JSS ( contract_data );              // in: Contract Local Call
+JSS ( contract_call_result );       // out: Contract Local Call
+JSS ( contract_topics);             // in: Contract Local Call
+
+JSS ( table );
+JSS ( schema );
+JSS	( tablename );					// in tablename
+JSS ( nameInDB );
+JSS	(confidential);
+JSS ( raw );
+JSS ( inclusive );
+JSS(txn_success);                   // out: NetworkOPs
+JSS(txn_failure);                   // out: NetworkOPs
+JSS(transaction_result);			// out: doLedgerTxs
+JSS(include_success);			    // out: doLedgerTxs
+JSS(include_failure);			    // out: doLedgerTxs
+JSS(txn_success_detail);			// out: doLedgerTxs
+JSS(txn_failure_detail);			// out: doLedgerTxs
+
+JSS (memos);                        // out: memos
+JSS ( lastLedgerSequence );			//
+JSS ( metaChain );			        // out: table tx chain and contract
+JSS ( TableChain );                  // out: 
+JSS ( ContractChain );               // out: 
+JSS ( PreviousHash );               // out: 
+JSS ( NextHash );                   // out: 
+JSS ( log );
+
+JSS (schema_id);
+JSS (schemas);
+JSS (schema_name);
+JSS (schema_strategy);
+JSS (schema_admin);
+JSS (anchor_ledge_hash);
+JSS (peer_list);
+JSS (val_signed);
+JSS (for_node);
+JSS (running);
+
+JSS(drops_per_byte);                       // out: LogLevel
 #undef JSS
 
 }  // namespace jss
