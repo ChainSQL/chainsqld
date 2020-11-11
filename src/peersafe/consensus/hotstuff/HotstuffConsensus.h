@@ -158,6 +158,7 @@ private:
     NetClock::time_point startTime_;
     NetClock::time_point now_;
     NetClock::time_point openTime_;
+    NetClock::time_point consensusTime_;
 
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;

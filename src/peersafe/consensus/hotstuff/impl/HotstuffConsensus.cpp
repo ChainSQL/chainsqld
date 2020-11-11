@@ -83,6 +83,7 @@ void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
         init_epoch_state.verifier = this;
 
         startTime_ = now;
+        consensusTime_ = now;
 
         hotstuff_->start(hotstuff::RecoverData{ previousLedger_.ledger_->info(), init_epoch_state });
 
@@ -108,6 +109,13 @@ void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
             startRoundInternal(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
         }
         return;
+    }
+
+    if ((now_ - consensusTime_) > (adaptor_.parms().consensusTIMEOUT * adaptor_.parms().timeoutCOUNT_ROLLBACK + adaptor_.parms().initTIME))
+    {
+        JLOG(j_.error()) << "Consensus network partitioned, do recover";
+        recover_ = true;
+        startRoundInternal(prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger);
     }
 }
 
@@ -204,11 +212,20 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
 const bool HotstuffConsensus::canExtract() const
 {
-    auto sinceClose = timeSinceLastClose().count();
+    long long sinceClose;
 
-    if (sinceClose <= 0)
+    if (openTime_ < consensusTime_)
     {
-        sinceClose = (adaptor_.closeTime() - openTime_).count();
+        sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(now_ - consensusTime_).count();
+    }
+    else
+    {
+        sinceClose = timeSinceLastClose().count();
+
+        if (sinceClose <= 0)
+        {
+            sinceClose = (adaptor_.closeTime() - consensusTime_).count();
+        }
     }
 
     if (sinceClose >= adaptor_.parms().maxBLOCK_TIME)
@@ -465,6 +482,8 @@ bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
         return false;
     }
 
+    consensusTime_ = now_;
+
     ScopedLockType sl(lock_);
 
     if (prevInfo.ledger_info.seq > previousLedger_.seq())
@@ -661,7 +680,7 @@ std::chrono::milliseconds HotstuffConsensus::timeSinceLastClose() const
 
         auto lastCloseTime = previousCloseCorrect
             ? previousLedger_.closeTime()   // use consensus timing
-            : openTime_;                    // use the time we saw internally
+            : consensusTime_;                    // use the time we saw internally
 
         if (now_ >= lastCloseTime)
             sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(now_ - lastCloseTime);
@@ -893,6 +912,11 @@ void HotstuffConsensus::startRoundInternal(
     if (recover_)
     {
         JLOG(j_.info()) << "recover hotstuff, used ledger " << previousLedger_.seq();
+        if (startup_)
+        {
+            hotstuff_->stop();
+        }
+
         hotstuff::EpochState init_epoch_state;
         init_epoch_state.epoch = 0;
         init_epoch_state.verifier = this;

@@ -26,6 +26,8 @@ struct HotstuffConsensusParms
     std::chrono::seconds initTIME = std::chrono::seconds{ 90 };
 
     unsigned minTXS_IN_LEDGER_ADVANCE = 5000;
+
+    const unsigned timeoutCOUNT_ROLLBACK = 5;
 };
 
 
