@@ -34,8 +34,8 @@ class FeeVote_test : public beast::unit_test::suite
             Section config;
             auto setup = setup_FeeVote(config);
             BEAST_EXPECT(setup.reference_fee == 10);
-            BEAST_EXPECT(setup.account_reserve == 20 * DROPS_PER_XRP);
-            BEAST_EXPECT(setup.owner_reserve == 5 * DROPS_PER_XRP);
+            BEAST_EXPECT(setup.account_reserve == 20 * DROPS_PER_ZXC);
+            BEAST_EXPECT(setup.owner_reserve == 5 * DROPS_PER_ZXC);
         }
         {
             Section config;
@@ -57,8 +57,8 @@ class FeeVote_test : public beast::unit_test::suite
             // Illegal values are ignored, and the defaults left unchanged
             auto setup = setup_FeeVote(config);
             BEAST_EXPECT(setup.reference_fee == 10);
-            BEAST_EXPECT(setup.account_reserve == 20 * DROPS_PER_XRP);
-            BEAST_EXPECT(setup.owner_reserve == 5 * DROPS_PER_XRP);
+            BEAST_EXPECT(setup.account_reserve == 20 * DROPS_PER_ZXC);
+            BEAST_EXPECT(setup.owner_reserve == 5 * DROPS_PER_ZXC);
         }
         {
             Section config;
@@ -77,7 +77,7 @@ class FeeVote_test : public beast::unit_test::suite
         {
             const auto big64 = std::to_string(
                 static_cast<std::uint64_t>(
-                    std::numeric_limits<XRPAmount::value_type>::max()) +
+                    std::numeric_limits<ZXCAmount::value_type>::max()) +
                 1);
             Section config;
             config.append(
@@ -87,8 +87,8 @@ class FeeVote_test : public beast::unit_test::suite
             // Illegal values are ignored, and the defaults left unchanged
             auto setup = setup_FeeVote(config);
             BEAST_EXPECT(setup.reference_fee == 10);
-            BEAST_EXPECT(setup.account_reserve == 20 * DROPS_PER_XRP);
-            BEAST_EXPECT(setup.owner_reserve == 5 * DROPS_PER_XRP);
+            BEAST_EXPECT(setup.account_reserve == 20 * DROPS_PER_ZXC);
+            BEAST_EXPECT(setup.owner_reserve == 5 * DROPS_PER_ZXC);
         }
     }
 

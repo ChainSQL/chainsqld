@@ -73,8 +73,8 @@ class Fee_test : public beast::unit_test::suite
         Env env(*this, std::move(config));
         Account A1{"A1"};
         Account A2{"A2"};
-        env.fund(XRP(10000), A1);
-        env.fund(XRP(10000), A2);
+        env.fund(ZXC(10000), A1);
+        env.fund(ZXC(10000), A2);
         env.close();
         env.trust(A2["USD"](1000), A1);
         env.close();

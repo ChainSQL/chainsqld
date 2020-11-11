@@ -481,7 +481,7 @@ struct DepositPreauth_test : public beast::unit_test::suite
         {
             // Alice authorizes a zero account.
             Json::Value tx{deposit::auth(alice, becky)};
-            tx[sfAuthorize.jsonName] = to_string(xrpAccount());
+            tx[sfAuthorize.jsonName] = to_string(zxcAccount());
             env(tx, ter(temINVALID_ACCOUNT_ID));
             env.close();
         }

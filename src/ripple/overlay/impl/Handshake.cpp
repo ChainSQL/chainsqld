@@ -146,9 +146,35 @@ buildHandshake(
             base64_encode(
                 cl->info().parentHash.begin(), cl->info().parentHash.size()));
     }
+
+    //set validate-public and proof for validator
+	if (app.getValidationPublicKey().size() != 0)
+	{
+		auto const sig2 = signDigest(
+			app.getValidatorKeys().publicKey,
+			app.getValidatorKeys().secretKey,
+			sharedValue);
+        h.insert("Validate-PublicKey",toBase58(
+				TokenType::NodePublic,
+				app.getValidationPublicKey()));
+		h.insert("Validate-Proof",base64_encode(sig2.data(), sig2.size()));
+	}
+	else
+	{
+		std::string schemaIds; 
+		for (int i = 0; i < app.config().SCHEMA_IDS.size(); i++)
+		{
+			schemaIds += app.config().SCHEMA_IDS[i];
+			if (i != app.config().SCHEMA_IDS.size() - 1)
+			{
+				schemaIds += ",";
+			}
+		}
+        h.insert("SchemaIDs",schemaIds);
+	}
 }
 
-PublicKey
+std::pair<boost::optional<PublicKey>, boost::optional<PublicKey>>
 verifyHandshake(
     boost::beast::http::fields const& headers,
     ripple::uint256 const& sharedValue,
@@ -282,7 +308,36 @@ verifyHandshake(
         }
     }
 
-    return publicKey;
+    PublicKey const publicValidate = [&headers] {
+        if (auto const iter = headers.find("Validate-PublicKey"); iter != headers.end())
+        {
+            auto pk = parseBase58<PublicKey>(
+                TokenType::NodePublic, iter->value().to_string());
+
+            if (pk)
+            {
+                if (publicKeyType(*pk) != KeyType::secp256k1)
+                    throw std::runtime_error("Unsupported public key type");
+
+                return *pk;
+            }
+        }
+
+        throw std::runtime_error("Bad node public key");
+    }();
+    {
+        auto const iter = headers.find("Validate-Proof");
+
+        if (iter == headers.end())
+            throw std::runtime_error("No session Validate-Proof specified");
+
+        auto sig = base64_decode(iter->value().to_string());
+
+        if (!verifyDigest(publicValidate, sharedValue, makeSlice(sig), false))
+            throw std::runtime_error("Failed to verify session");
+    }
+
+    return std::make_pair(publicKey,;
 }
 
 }  // namespace ripple

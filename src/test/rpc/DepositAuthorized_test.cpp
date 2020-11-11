@@ -61,7 +61,7 @@ public:
         Account const carol{"carol"};
 
         Env env(*this);
-        env.fund(XRP(1000), alice, becky, carol);
+        env.fund(ZXC(1000), alice, becky, carol);
         env.close();
 
         // becky is authorized to deposit to herself.
@@ -248,7 +248,7 @@ public:
                 env.rpc("json", "deposit_authorized", args.toStyledString())};
             verifyErr(result, "srcActNotFound", "Source account not found.");
         }
-        env.fund(XRP(1000), alice);
+        env.fund(ZXC(1000), alice);
         env.close();
         {
             // becky is not yet funded.
@@ -258,7 +258,7 @@ public:
             verifyErr(
                 result, "dstActNotFound", "Destination account not found.");
         }
-        env.fund(XRP(1000), becky);
+        env.fund(ZXC(1000), becky);
         env.close();
         {
             // Once becky is funded try it again and see it succeed.

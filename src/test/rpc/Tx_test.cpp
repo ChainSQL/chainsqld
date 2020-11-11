@@ -55,10 +55,10 @@ class Tx_test : public beast::unit_test::suite
     {
         if (amount.native())
         {
-            if (!BEAST_EXPECT(proto_amount.has_xrp_amount()))
+            if (!BEAST_EXPECT(proto_amount.has_zxc_amount()))
                 return;
             BEAST_EXPECT(
-                proto_amount.xrp_amount().drops() == amount.xrp().drops());
+                proto_amount.zxc_amount().drops() == amount.zxc().drops());
         }
         else
         {
@@ -113,7 +113,7 @@ class Tx_test : public beast::unit_test::suite
         STAmount fee = txnSt->getFieldAmount(sfFee);
         if (!BEAST_EXPECT(proto.has_fee()))
             return;
-        BEAST_EXPECT(proto.fee().drops() == fee.xrp().drops());
+        BEAST_EXPECT(proto.fee().drops() == fee.zxc().drops());
 
         if (!BEAST_EXPECT(proto.has_sequence()))
             return;
@@ -550,8 +550,8 @@ class Tx_test : public beast::unit_test::suite
         Account A1{"A1"};
         Account A2{"A2"};
         Account A3{"A3"};
-        env.fund(XRP(10000), A1);
-        env.fund(XRP(10000), A2);
+        env.fund(ZXC(10000), A1);
+        env.fund(ZXC(10000), A2);
         env.close();
         env.trust(A2["USD"](1000), A1);
         env.close();
@@ -619,7 +619,7 @@ class Tx_test : public beast::unit_test::suite
             {
                 if (i & 2)
                 {
-                    env(pay(A2, A1, A2["XRP"](200)),
+                    env(pay(A2, A1, A2["ZXC"](200)),
                         txfee,
                         srctag,
                         dsttag,
@@ -632,7 +632,7 @@ class Tx_test : public beast::unit_test::suite
                 }
                 else
                 {
-                    env(pay(A2, A1, A2["XRP"](200)),
+                    env(pay(A2, A1, A2["ZXC"](200)),
                         txfee,
                         srctag,
                         dsttag,
@@ -652,7 +652,7 @@ class Tx_test : public beast::unit_test::suite
         // Payment with Paths
         auto const gw = Account("gateway");
         auto const USD = gw["USD"];
-        env.fund(XRP(10000), "alice", "bob", gw);
+        env.fund(ZXC(10000), "alice", "bob", gw);
         env.trust(USD(600), "alice");
         env.trust(USD(700), "bob");
         env(pay(gw, "alice", USD(70)));
@@ -782,7 +782,7 @@ class Tx_test : public beast::unit_test::suite
         }
 
         // non final transaction
-        env(pay(A2, A1, A2["XRP"](200)));
+        env(pay(A2, A1, A2["ZXC"](200)));
         auto res = grpcTx(env.tx()->getTransactionID(), false);
         BEAST_EXPECT(res.first);
         BEAST_EXPECT(res.second.has_transaction());

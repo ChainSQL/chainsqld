@@ -45,7 +45,7 @@ class Transaction_test : public beast::unit_test::suite
 
         Env env(*this);
         auto const alice = Account("alice");
-        env.fund(XRP(1000), alice);
+        env.fund(ZXC(1000), alice);
         env.close();
 
         std::vector<std::shared_ptr<STTx const>> txns;

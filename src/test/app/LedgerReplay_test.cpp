@@ -39,7 +39,7 @@ struct LedgerReplay_test : public beast::unit_test::suite
         auto const bob = Account("bob");
 
         Env env(*this);
-        env.fund(XRP(100000), alice, bob);
+        env.fund(ZXC(100000), alice, bob);
         env.close();
 
         LedgerMaster& ledgerMaster = env.app().getLedgerMaster();

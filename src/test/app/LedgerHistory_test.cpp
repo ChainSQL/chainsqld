@@ -168,7 +168,7 @@ public:
 
             Account alice{"A1"};
             Account bob{"A2"};
-            env.fund(XRP(1000), alice, bob);
+            env.fund(ZXC(1000), alice, bob);
             env.close();
 
             auto const ledgerBase =

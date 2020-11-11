@@ -78,11 +78,11 @@ struct RippleCalcTestParams
                         auto const currency =
                             to_currency(pe[jss::currency].asString());
                         boost::optional<AccountID> issuer;
-                        if (!isXRP(currency))
+                        if (!isZXC(currency))
                             issuer = *parseBase58<AccountID>(
                                 pe[jss::issuer].asString());
                         else
-                            assert(isXRP(*parseBase58<AccountID>(
+                            assert(isZXC(*parseBase58<AccountID>(
                                 pe[jss::issuer].asString())));
                         p.emplace_back(boost::none, currency, issuer);
                     }
@@ -370,7 +370,7 @@ public:
             static_assert(
                 numAccounts == 4, "Path is only correct for four accounts");
             path const accountsPath(accounts[1], accounts[2]);
-            env.fund(XRP(10000), alice, bob, carol, dan);
+            env.fund(ZXC(10000), alice, bob, carol, dan);
             env.close();
 
             // iterate through all pairs of accounts, randomly set the transfer
@@ -451,7 +451,7 @@ public:
             // alice -> bob -> (USD/bob)|(EUR/carol) -> carol -> dan
             path const bookPath(~EURC);
 
-            env.fund(XRP(10000), alice, bob, carol, dan, oscar);
+            env.fund(ZXC(10000), alice, bob, carol, dan, oscar);
             env.close();
 
             for (auto const& acc : accounts)

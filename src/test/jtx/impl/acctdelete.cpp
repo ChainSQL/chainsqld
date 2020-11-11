@@ -24,7 +24,7 @@ namespace ripple {
 namespace test {
 namespace jtx {
 
-// Delete account.  If successful transfer remaining XRP to dest.
+// Delete account.  If successful transfer remaining ZXC to dest.
 Json::Value
 acctdelete(jtx::Account const& account, jtx::Account const& dest)
 {

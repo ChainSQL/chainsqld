@@ -31,7 +31,7 @@ private:
     testTypes()
     {
         {
-            XRPAmount x{100};
+            ZXCAmount x{100};
             BEAST_EXPECT(x.drops() == 100);
             BEAST_EXPECT(
                 (std::is_same_v<decltype(x)::unit_type, feeunit::dropTag>));
@@ -53,10 +53,10 @@ private:
             BEAST_EXPECT(drops.value() == 1000);
             BEAST_EXPECT(
                 (std::is_same_v<decltype(drops)::unit_type, feeunit::dropTag>));
-            BEAST_EXPECT((std::is_same_v<decltype(drops), XRPAmount>));
+            BEAST_EXPECT((std::is_same_v<decltype(drops), ZXCAmount>));
         }
         {
-            XRPAmount x{100};
+            ZXCAmount x{100};
             BEAST_EXPECT(x.value() == 100);
             BEAST_EXPECT(
                 (std::is_same_v<decltype(x)::unit_type, feeunit::dropTag>));
@@ -73,7 +73,7 @@ private:
             BEAST_EXPECT(drops.value() == 1000);
             BEAST_EXPECT(
                 (std::is_same_v<decltype(drops)::unit_type, feeunit::dropTag>));
-            BEAST_EXPECT((std::is_same_v<decltype(drops), XRPAmount>));
+            BEAST_EXPECT((std::is_same_v<decltype(drops), ZXCAmount>));
         }
         {
             FeeLevel64 x{1024};
@@ -86,7 +86,7 @@ private:
             BEAST_EXPECT(
                 (std::is_same_v<decltype(y)::unit_type, feeunit::feelevelTag>));
 
-            XRPAmount basefee{10};
+            ZXCAmount basefee{10};
             FeeLevel64 referencefee{256};
 
             auto drops = mulDiv(x, basefee, referencefee).second;
@@ -94,7 +94,7 @@ private:
             BEAST_EXPECT(drops.value() == 40);
             BEAST_EXPECT(
                 (std::is_same_v<decltype(drops)::unit_type, feeunit::dropTag>));
-            BEAST_EXPECT((std::is_same_v<decltype(drops), XRPAmount>));
+            BEAST_EXPECT((std::is_same_v<decltype(drops), ZXCAmount>));
         }
     }
 
@@ -146,7 +146,7 @@ private:
         }
 
         {
-            XRPAmount x{std::numeric_limits<std::int64_t>::max()};
+            ZXCAmount x{std::numeric_limits<std::int64_t>::max()};
             auto y = x.jsonClipped();
             BEAST_EXPECT(y.type() == Json::intValue);
             BEAST_EXPECT(
@@ -154,7 +154,7 @@ private:
         }
 
         {
-            XRPAmount x{std::numeric_limits<std::int64_t>::min()};
+            ZXCAmount x{std::numeric_limits<std::int64_t>::min()};
             auto y = x.jsonClipped();
             BEAST_EXPECT(y.type() == Json::intValue);
             BEAST_EXPECT(
@@ -344,8 +344,8 @@ public:
     void
     run() override
     {
-        BEAST_EXPECT(INITIAL_XRP.drops() == 100'000'000'000'000'000);
-        BEAST_EXPECT(INITIAL_XRP == XRPAmount{100'000'000'000'000'000});
+        BEAST_EXPECT(INITIAL_ZXC.drops() == 100'000'000'000'000'000);
+        BEAST_EXPECT(INITIAL_ZXC == ZXCAmount{100'000'000'000'000'000});
 
         testTypes();
         testJson();
