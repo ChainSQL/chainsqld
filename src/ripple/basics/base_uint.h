@@ -1,19 +1,19 @@
 //------------------------------------------------------------------------------
 /*
-	This file is part of rippled: https://github.com/ripple/rippled
-	Copyright (c) 2012, 2013 Ripple Labs Inc.
+    This file is part of rippled: https://github.com/ripple/rippled
+    Copyright (c) 2012, 2013 Ripple Labs Inc.
 
-	Permission to use, copy, modify, and/or distribute this software for any
-	purpose  with  or without fee is hereby granted, provided that the above
-	copyright notice and this permission notice appear in all copies.
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose  with  or without fee is hereby granted, provided that the above
+    copyright notice and this permission notice appear in all copies.
 
-	THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-	WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
-	MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-	ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-	WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
-	ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-	OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+    THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+    WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
+    MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+    ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
+    ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
@@ -35,7 +35,6 @@
 #include <cstring>
 #include <functional>
 #include <type_traits>
-#include <boost/functional/hash.hpp>
 
 namespace ripple {
 
@@ -496,13 +495,6 @@ public:
         *this = beast::zero;
     }
 };
-/// Fast std::hash compatible hash function object for h256.
-template <>
-inline size_t base_uint<256>::hash::operator()(base_uint<256> const& value) const
-{
-	uint64_t const* data = reinterpret_cast<uint64_t const*>(value.data());
-	return boost::hash_range(data, data + 4);
-}
 
 using uint128 = base_uint<128>;
 using uint160 = base_uint<160>;
@@ -661,19 +653,12 @@ static_assert(sizeof(uint256) == 256 / 8, "There should be no padding bytes");
 
 namespace beast {
 
-<<<<<<< HEAD
-	template <std::size_t Bits, class Tag>
-	struct is_uniquely_represented<ripple::base_uint<Bits, Tag>>
-		: public std::true_type
-	{};
-=======
 template <std::size_t Bits, class Tag>
 struct is_uniquely_represented<ripple::base_uint<Bits, Tag>>
     : public std::true_type
 {
     explicit is_uniquely_represented() = default;
 };
->>>>>>> release
 
 }  // namespace beast
 
