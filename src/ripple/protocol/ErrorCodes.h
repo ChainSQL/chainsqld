@@ -41,9 +41,9 @@ enum error_code_i {
     // -1 represents codes not listed in this enumeration
     rpcUNKNOWN = -1,
 
-    rpcSUCCESS               = 0,
+    rpcSUCCESS = 0,
 
-    rpcBAD_SYNTAX       = 1,
+    rpcBAD_SYNTAX = 1,
     rpcJSON_RPC = 2,
     rpcFORBIDDEN = 3,
 
@@ -166,10 +166,9 @@ enum error_code_i {
 
 	rpcNO_SCHEMA			 = 124,
 	rpcSCHEMA_CREATED		 = 125,
-	rpcNOT_SUPPORTED		 = 126,
 
     rpcLAST =
-        rpcINVALID_LGR_RANGE  // rpcLAST should always equal the last code.=
+        rpcSCHEMA_CREATED  // rpcLAST should always equal the last code.=
 };
 
 /** Codes returned in the `warnings` array of certain RPC commands.

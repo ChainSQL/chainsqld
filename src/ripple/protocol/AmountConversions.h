@@ -20,8 +20,8 @@
 #ifndef RIPPLE_PROTOCOL_AMOUNTCONVERSION_H_INCLUDED
 #define RIPPLE_PROTOCOL_AMOUNTCONVERSION_H_INCLUDED
 
-#include <ripple/protocol/IOUAmount.h>
-#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/basics/IOUAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/protocol/STAmount.h>
 
 namespace ripple {

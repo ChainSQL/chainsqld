@@ -22,7 +22,6 @@
 
 #include <ripple/basics/Blob.h>
 #include <ripple/basics/Buffer.h>
-#include <ripple/basics/safe_cast.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/base_uint.h>
 #include <ripple/basics/contract.h>
@@ -325,14 +324,6 @@ public:
     explicit SerialIter(std::uint8_t const (&data)[N]) : SerialIter(&data[0], N)
     {
         static_assert(N > 0, "");
-    }
-
-    // Infer the size of the data based on the size of the passed array.
-    template<int N>
-    explicit SerialIter (std::uint8_t const (&data)[N])
-        : SerialIter(&data[0], N)
-    {
-        static_assert (N > 0, "");
     }
 
     std::size_t

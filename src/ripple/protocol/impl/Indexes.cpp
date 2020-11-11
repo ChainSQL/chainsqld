@@ -278,20 +278,6 @@ depositPreauth(AccountID const& owner, AccountID const& preauthorized) noexcept
         indexHash(LedgerNameSpace::DEPOSIT_PREAUTH, owner, preauthorized)};
 }
 
-Keylet check_t::operator()(AccountID const& id,
-    std::uint32_t seq) const
-{
-    return { ltCHECK,
-        getCheckIndex(id, seq) };
-}
-
-Keylet depositPreauth_t::operator()(AccountID const& owner,
-    AccountID const& preauthorized) const
-{
-    return { ltDEPOSIT_PREAUTH,
-        getDepositPreauthIndex(owner, preauthorized) };
-}
-
 //------------------------------------------------------------------------------
 
 Keylet
