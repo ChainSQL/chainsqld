@@ -22,7 +22,7 @@
       )
       get_filename_component(MYSQL_NAME ${MYSQL_LIBRARY} NAME)
       FIND_PATH(MYSQL_LIBRARY_DIR ${MYSQL_NAME}
-        /usr/lib /usr/local/lib /usr/local/mysql/lib
+        /usr/lib /usr/local/lib /usr/local/mysql/lib ${MYSQL_ROOT}/lib
       )
     endif()
   endif()

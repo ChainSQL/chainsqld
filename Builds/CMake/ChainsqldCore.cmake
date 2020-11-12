@@ -8,143 +8,6 @@ file (GLOB_RECURSE rb_headers
   src/ripple/beast/*.h
   src/ripple/beast/*.hpp)
 
-add_library (xrpl_core
-  ${rb_headers}) ## headers added here for benefit of IDEs
-if (unity)
-  set_target_properties(xrpl_core PROPERTIES UNITY_BUILD ON)
-endif ()
-
-#[===============================[
-    beast/legacy FILES:
-    TODO: review these sources for removal or replacement
-#]===============================]
-target_sources (xrpl_core PRIVATE
-  src/ripple/beast/core/CurrentThreadName.cpp
-  src/ripple/beast/core/SemanticVersion.cpp
-  src/ripple/beast/hash/impl/xxhash.cpp
-  src/ripple/beast/insight/impl/Collector.cpp
-  src/ripple/beast/insight/impl/Groups.cpp
-  src/ripple/beast/insight/impl/Hook.cpp
-  src/ripple/beast/insight/impl/Metric.cpp
-  src/ripple/beast/insight/impl/NullCollector.cpp
-  src/ripple/beast/insight/impl/StatsDCollector.cpp
-  src/ripple/beast/net/impl/IPAddressConversion.cpp
-  src/ripple/beast/net/impl/IPAddressV4.cpp
-  src/ripple/beast/net/impl/IPAddressV6.cpp
-  src/ripple/beast/net/impl/IPEndpoint.cpp
-  src/ripple/beast/utility/src/beast_Journal.cpp
-  src/ripple/beast/utility/src/beast_PropertyStream.cpp)
-
-#[===============================[
-    core sources
-#]===============================]
-target_sources (xrpl_core PRIVATE
-  #[===============================[
-    main sources:
-      subdir: basics (partial)
-  #]===============================]
-  src/ripple/basics/impl/base64.cpp
-  src/ripple/basics/impl/contract.cpp
-  src/ripple/basics/impl/CountedObject.cpp
-  src/ripple/basics/impl/FileUtilities.cpp
-  src/ripple/basics/impl/IOUAmount.cpp
-  src/ripple/basics/impl/Log.cpp
-  src/ripple/basics/impl/strHex.cpp
-  src/ripple/basics/impl/StringUtilities.cpp
-  #[===============================[
-    main sources:
-      subdir: json
-  #]===============================]
-  src/ripple/json/impl/JsonPropertyStream.cpp
-  src/ripple/json/impl/Object.cpp
-  src/ripple/json/impl/Output.cpp
-  src/ripple/json/impl/Writer.cpp
-  src/ripple/json/impl/json_reader.cpp
-  src/ripple/json/impl/json_value.cpp
-  src/ripple/json/impl/json_valueiterator.cpp
-  src/ripple/json/impl/json_writer.cpp
-  src/ripple/json/impl/to_string.cpp
-  #[===============================[
-    main sources:
-      subdir: protocol
-  #]===============================]
-  src/ripple/protocol/impl/AccountID.cpp
-  src/ripple/protocol/impl/Book.cpp
-  src/ripple/protocol/impl/BuildInfo.cpp
-  src/ripple/protocol/impl/ErrorCodes.cpp
-  src/ripple/protocol/impl/Feature.cpp
-  src/ripple/protocol/impl/Indexes.cpp
-  src/ripple/protocol/impl/InnerObjectFormats.cpp
-  src/ripple/protocol/impl/Issue.cpp
-  src/ripple/protocol/impl/Keylet.cpp
-  src/ripple/protocol/impl/LedgerFormats.cpp
-  src/ripple/protocol/impl/PublicKey.cpp
-  src/ripple/protocol/impl/Quality.cpp
-  src/ripple/protocol/impl/Rate2.cpp
-  src/ripple/protocol/impl/SField.cpp
-  src/ripple/protocol/impl/SOTemplate.cpp
-  src/ripple/protocol/impl/STAccount.cpp
-  src/ripple/protocol/impl/STAmount.cpp
-  src/ripple/protocol/impl/STArray.cpp
-  src/ripple/protocol/impl/STBase.cpp
-  src/ripple/protocol/impl/STBlob.cpp
-  src/ripple/protocol/impl/STInteger.cpp
-  src/ripple/protocol/impl/STLedgerEntry.cpp
-  src/ripple/protocol/impl/STObject.cpp
-  src/ripple/protocol/impl/STParsedJSON.cpp
-  src/ripple/protocol/impl/STPathSet.cpp
-  src/ripple/protocol/impl/STTx.cpp
-  src/ripple/protocol/impl/STValidation.cpp
-  src/ripple/protocol/impl/STVar.cpp
-  src/ripple/protocol/impl/STVector256.cpp
-  src/ripple/protocol/impl/SecretKey.cpp
-  src/ripple/protocol/impl/Seed.cpp
-  src/ripple/protocol/impl/Serializer.cpp
-  src/ripple/protocol/impl/Sign.cpp
-  src/ripple/protocol/impl/TER.cpp
-  src/ripple/protocol/impl/TxFormats.cpp
-  src/ripple/protocol/impl/UintTypes.cpp
-  src/ripple/protocol/impl/digest.cpp
-  src/ripple/protocol/impl/tokens.cpp
-  #[===============================[
-    main sources:
-      subdir: crypto
-  #]===============================]
-  src/ripple/crypto/impl/GenerateDeterministicKey.cpp
-  src/ripple/crypto/impl/RFC1751.cpp
-  src/ripple/crypto/impl/csprng.cpp
-  src/ripple/crypto/impl/ec_key.cpp
-  src/ripple/crypto/impl/openssl.cpp
-  src/ripple/crypto/impl/secure_erase.cpp)
-
-add_library (Ripple::xrpl_core ALIAS xrpl_core)
-target_include_directories (xrpl_core
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/ripple>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/eth/evmc/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/intx/include>
-    # this one is for beast/legacy files:
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/beast/extras>
-    $<INSTALL_INTERFACE:include>)
-
-target_compile_definitions(xrpl_core
-  PUBLIC
-    BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
-    HAS_UNCAUGHT_EXCEPTIONS=1)
-target_compile_options (xrpl_core
-  PUBLIC
-    $<$<BOOL:${is_gcc}>:-Wno-maybe-uninitialized>)
-target_link_libraries (xrpl_core
-  PUBLIC
-    OpenSSL::Crypto
-    Ripple::boost
-    Ripple::syslibs
-    NIH::secp256k1
-    NIH::ed25519-donna
-    date::date
-    Ripple::opts)
 #[=================================[
    main/core headers installation
 #]=================================]
@@ -342,11 +205,103 @@ install (
    versions of cmake happy. cmake 3.10+ allows
    add_executable with no sources
 #]=========================================================]
-add_executable (chainsqld src/ripple/app/main/Application.h)
+add_executable (chainsqld src/ripple/app/main/Application.h ${rb_headers})
 if (unity)
   set_target_properties(chainsqld PROPERTIES UNITY_BUILD ON)
 endif ()
 target_sources (chainsqld PRIVATE
+  src/ripple/beast/core/CurrentThreadName.cpp
+  src/ripple/beast/core/SemanticVersion.cpp
+  src/ripple/beast/hash/impl/xxhash.cpp
+  src/ripple/beast/insight/impl/Collector.cpp
+  src/ripple/beast/insight/impl/Groups.cpp
+  src/ripple/beast/insight/impl/Hook.cpp
+  src/ripple/beast/insight/impl/Metric.cpp
+  src/ripple/beast/insight/impl/NullCollector.cpp
+  src/ripple/beast/insight/impl/StatsDCollector.cpp
+  src/ripple/beast/net/impl/IPAddressConversion.cpp
+  src/ripple/beast/net/impl/IPAddressV4.cpp
+  src/ripple/beast/net/impl/IPAddressV6.cpp
+  src/ripple/beast/net/impl/IPEndpoint.cpp
+  src/ripple/beast/utility/src/beast_Journal.cpp
+  src/ripple/beast/utility/src/beast_PropertyStream.cpp
+  #[===============================[
+    main sources:
+      subdir: basics (partial)
+  #]===============================]
+  src/ripple/basics/impl/base64.cpp
+  src/ripple/basics/impl/contract.cpp
+  src/ripple/basics/impl/CountedObject.cpp
+  src/ripple/basics/impl/FileUtilities.cpp
+  src/ripple/basics/impl/IOUAmount.cpp
+  src/ripple/basics/impl/Log.cpp
+  src/ripple/basics/impl/strHex.cpp
+  src/ripple/basics/impl/StringUtilities.cpp
+  #[===============================[
+    main sources:
+      subdir: json
+  #]===============================]
+  src/ripple/json/impl/JsonPropertyStream.cpp
+  src/ripple/json/impl/Object.cpp
+  src/ripple/json/impl/Output.cpp
+  src/ripple/json/impl/Writer.cpp
+  src/ripple/json/impl/json_reader.cpp
+  src/ripple/json/impl/json_value.cpp
+  src/ripple/json/impl/json_valueiterator.cpp
+  src/ripple/json/impl/json_writer.cpp
+  src/ripple/json/impl/to_string.cpp
+  #[===============================[
+    main sources:
+      subdir: protocol
+  #]===============================]
+  src/ripple/protocol/impl/AccountID.cpp
+  src/ripple/protocol/impl/Book.cpp
+  src/ripple/protocol/impl/BuildInfo.cpp
+  src/ripple/protocol/impl/ErrorCodes.cpp
+  src/ripple/protocol/impl/Feature.cpp
+  src/ripple/protocol/impl/Indexes.cpp
+  src/ripple/protocol/impl/InnerObjectFormats.cpp
+  src/ripple/protocol/impl/Issue.cpp
+  src/ripple/protocol/impl/Keylet.cpp
+  src/ripple/protocol/impl/LedgerFormats.cpp
+  src/ripple/protocol/impl/PublicKey.cpp
+  src/ripple/protocol/impl/Quality.cpp
+  src/ripple/protocol/impl/Rate2.cpp
+  src/ripple/protocol/impl/SField.cpp
+  src/ripple/protocol/impl/SOTemplate.cpp
+  src/ripple/protocol/impl/STAccount.cpp
+  src/ripple/protocol/impl/STAmount.cpp
+  src/ripple/protocol/impl/STArray.cpp
+  src/ripple/protocol/impl/STBase.cpp
+  src/ripple/protocol/impl/STBlob.cpp
+  src/ripple/protocol/impl/STInteger.cpp
+  src/ripple/protocol/impl/STLedgerEntry.cpp
+  src/ripple/protocol/impl/STObject.cpp
+  src/ripple/protocol/impl/STParsedJSON.cpp
+  src/ripple/protocol/impl/STPathSet.cpp
+  src/ripple/protocol/impl/STTx.cpp
+  src/ripple/protocol/impl/STValidation.cpp
+  src/ripple/protocol/impl/STVar.cpp
+  src/ripple/protocol/impl/STVector256.cpp
+  src/ripple/protocol/impl/SecretKey.cpp
+  src/ripple/protocol/impl/Seed.cpp
+  src/ripple/protocol/impl/Serializer.cpp
+  src/ripple/protocol/impl/Sign.cpp
+  src/ripple/protocol/impl/TER.cpp
+  src/ripple/protocol/impl/TxFormats.cpp
+  src/ripple/protocol/impl/UintTypes.cpp
+  src/ripple/protocol/impl/digest.cpp
+  src/ripple/protocol/impl/tokens.cpp
+  #[===============================[
+    main sources:
+      subdir: crypto
+  #]===============================]
+  src/ripple/crypto/impl/GenerateDeterministicKey.cpp
+  src/ripple/crypto/impl/RFC1751.cpp
+  src/ripple/crypto/impl/csprng.cpp
+  src/ripple/crypto/impl/ec_key.cpp
+  src/ripple/crypto/impl/openssl.cpp
+  src/ripple/crypto/impl/secure_erase.cpp
   #[===============================[
      main sources:
        subdir: app
@@ -1044,14 +999,37 @@ target_sources (chainsqld PRIVATE
        subdir: unit_test
   #]===============================]
   src/test/unit_test/multi_runner.cpp)
+
+target_include_directories (chainsqld
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/ripple>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/eth/evmc/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/intx/include>
+    # this one is for beast/legacy files:
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/beast/extras>
+    $<INSTALL_INTERFACE:include>)
+
+target_compile_definitions(chainsqld
+  PUBLIC
+    BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
+    HAS_UNCAUGHT_EXCEPTIONS=1)
+target_compile_options (chainsqld
+  PUBLIC
+    $<$<BOOL:${is_gcc}>:-Wno-maybe-uninitialized>)
+    
 target_link_libraries (chainsqld
+  OpenSSL::Crypto
+  Ripple::syslibs
+  NIH::secp256k1
+  NIH::ed25519-donna
+  date::date
   Ripple::boost
   Ripple::opts
   Ripple::libs
-  Ripple::xrpl_core
   intx
   instructions
-  ${MYSQL_LIBRARIES}
   )
 exclude_if_included (chainsqld)
 # define a macro for tests that might need to
