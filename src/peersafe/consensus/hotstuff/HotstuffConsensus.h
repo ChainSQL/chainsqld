@@ -92,6 +92,7 @@ public:
     int commit(const hotstuff::Block& block) override final;
     bool syncState(const hotstuff::BlockInfo& prevInfo) override final;
     bool syncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::ExecutedBlock& executedBlock) override final;
+    void asyncBlock(const uint256& block_id, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler) override final;
 
     // Overwrite ValidatorVerifier interfaces.
     const hotstuff::Author& Self() const override final;

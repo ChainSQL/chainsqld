@@ -430,6 +430,12 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
         return false;
     }
 
+    if (result.parent_ledger_info.hash != block.block_data().quorum_cert.certified_block().ledger_info.hash)
+    {
+        JLOG(j_.warn()) << "verify block: block and result mismatch";
+        return false;
+    }
+
     if (block.block_data().block_type == hotstuff::BlockData::Proposal)
     {
         auto payload = block.block_data().payload;
@@ -531,13 +537,7 @@ bool HotstuffConsensus::syncBlock(const uint256& blockID, const hotstuff::Author
 
     if (!verify(block.block, block.state_compute_result))
     {
-        JLOG(j_.warn()) << "acquired block " << blockID << " , but verify step 1 failed";
-        return false;
-    }
-
-    if (block.state_compute_result.parent_ledger_info.hash != block.block.block_data().quorum_cert.certified_block().ledger_info.hash)
-    {
-        JLOG(j_.warn()) << "acquired block " << blockID << " , but verify step 2 failed";
+        JLOG(j_.warn()) << "acquired block " << blockID << " , but verify failed";
         return false;
     }
 
@@ -546,6 +546,11 @@ bool HotstuffConsensus::syncBlock(const uint256& blockID, const hotstuff::Author
     executedBlock = block;
 
     return true;
+}
+
+void HotstuffConsensus::asyncBlock(const uint256& block_id, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler)
+{
+
 }
 
 const hotstuff::Author& HotstuffConsensus::Self() const
