@@ -199,6 +199,10 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 	HashValue hqc = sync_info.HighestQuorumCert().certified_block().id;
 
 	if (hqc.isNonZero() && block_store_->existsBlock(hqc) == false) {
+
+		if (preCheck(proposal.block_data().round, sync_info) == false)
+			return false;
+
 		block_store_->asyncExpectBlock(
 			hqc, 
 			proposal.block_data().author(),
@@ -224,6 +228,31 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 	}
 
 	return preProcessProposal(proposal, sync_info) == 0 ? true : false;
+}
+
+bool RoundManager::preCheck(const Round round, const SyncInfo& sync_info) {
+	Round current_round = round_state_->current_round();
+	if (round < current_round) {
+		JLOG(journal_.error())
+			<< "preCheck: Invalid round."
+			<< "Round is " << round
+			<< " and local round is " << current_round
+			<< ". Self is " << proposal_generator_->author();
+		return false;
+	}
+
+	SyncInfo local_sync_info = block_store_->sync_info();
+	if (sync_info.hasNewerCertificate(local_sync_info)) {
+		JLOG(journal_.debug())
+			<< "preCheck: local sync info is stale than remote stale";
+
+		if (const_cast<SyncInfo&>(sync_info).Verify(hotstuff_core_->epochState()->verifier) == false) {
+			JLOG(journal_.error())
+				<< "preCheck: Verifing sync_info failed";
+			return false;
+		}
+	}
+	return true;
 }
 
 int RoundManager::preProcessProposal(
@@ -301,6 +330,10 @@ int RoundManager::ProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 	HashValue hqc = sync_info.HighestQuorumCert().certified_block().id;
 
 	if (hqc.isNonZero() && block_store_->existsBlock(hqc) == false) {
+
+		if (preCheck(vote.vote_data().proposed().round, sync_info) == false)
+			return false;
+
 		block_store_->asyncExpectBlock(hqc, vote.author(),
 			[this, hqc, vote, sync_info](const StateCompute::AsyncBlockErrorCode ec,
 				const ExecutedBlock& executed_block, boost::optional<Block>& proposal) {
