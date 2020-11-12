@@ -76,7 +76,7 @@ public:
 public:
     friend class SM3Hash;
     HardEncrypt();
-    ~HardEncrypt();    
+    virtual ~HardEncrypt();
     enum KeyType { userKey, rootKey };
 
 public:
