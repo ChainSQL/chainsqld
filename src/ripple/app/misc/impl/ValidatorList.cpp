@@ -411,6 +411,31 @@ ValidatorList::listed (
     return keyListings_.find (pubKey) != keyListings_.end ();
 }
 
+int
+ValidatorList::getPubIndex(PublicKey const& publicKey)
+{
+    std::shared_lock<std::shared_timed_mutex> read_lock{ mutex_ };
+    for (int i = 0; i < validators_.size(); i++)
+    {
+        if (validators_[i] == publicKey)
+            return i + 1;
+    }
+
+    return 0;
+}
+
+PublicKey
+ValidatorList::getLeaderPubKey(LedgerIndex seq)
+{
+    std::shared_lock<std::shared_timed_mutex> read_lock{ mutex_ };
+    if (validators_.size() > 0)
+    {
+        return validators_[seq % validators_.size()];
+    }
+
+    return PublicKey();
+}
+
 bool
 ValidatorList::trusted (PublicKey const& identity) const
 {

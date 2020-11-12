@@ -76,15 +76,9 @@ HotstuffAdaptor::HotstuffAdaptor(
     }
 }
 
-HotstuffAdaptor::Author HotstuffAdaptor::GetValidProposer(Round round) const
+inline HotstuffAdaptor::Author HotstuffAdaptor::GetValidProposer(Round round) const
 {
-    auto const& validators = app_.validators().validators();
-    if (validators.size() <= 0)
-    {
-        return PublicKey();
-    }
-
-    return validators[round % validators.size()];
+    return app_.validators().getLeaderPubKey(round);
 }
 
 std::shared_ptr<SHAMap> HotstuffAdaptor::onExtractTransactions(RCLCxLedger const& prevLedger, ConsensusMode mode)

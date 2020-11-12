@@ -57,17 +57,9 @@ Adaptor::Adaptor(
 {
 }
 
-int Adaptor::getPubIndex(PublicKey const& publicKey)
+inline int Adaptor::getPubIndex(PublicKey const& publicKey)
 {
-    auto const& validators = app_.validators().validators();
-
-    for (int i = 0; i < validators.size(); i++)
-    {
-        if (validators[i] == publicKey)
-            return i + 1;
-    }
-
-    return 0;
+    return app_.validators().getPubIndex(publicKey);
 }
 
 inline int Adaptor::getPubIndex()

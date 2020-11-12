@@ -77,17 +77,9 @@ PopAdaptor::PopAdaptor(
     }
 }
 
-bool PopAdaptor::isLeader(PublicKey const& publicKey, LedgerIndex curSeq, std::uint64_t view)
+inline bool PopAdaptor::isLeader(PublicKey const& publicKey, LedgerIndex curSeq, std::uint64_t view)
 {
-    auto const& validators = app_.validators().validators();
-    if (validators.size() <= 0)
-    {
-        return false;
-    }
-
-    int leaderIndex = (view + curSeq) % validators.size();
-
-    return publicKey == validators[leaderIndex];
+    return publicKey == app_.validators().getLeaderPubKey(curSeq + view);
 }
 
 inline bool PopAdaptor::isLeader(LedgerIndex curSeq, std::uint64_t view)
