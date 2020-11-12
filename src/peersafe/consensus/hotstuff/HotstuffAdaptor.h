@@ -68,6 +68,11 @@ public:
         return parms_;
     }
 
+    inline std::recursive_mutex& peekConsensusMutex()
+    {
+        return app_.getOPs().peekConsensusMutex();
+    }
+
     inline boost::asio::io_service& getIOService() const
     {
         return app_.getIOService();

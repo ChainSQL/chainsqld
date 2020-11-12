@@ -170,7 +170,7 @@ private:
     std::weak_ptr<std::promise<hotstuff::ExecutedBlock>> weakBlockPromise_;
 
     // For acquire hotstuff block asynchronize
-    std::map<uint256, std::vector<hotstuff::StateCompute::AsyncCompletedHander>> blockAcquiring;
+    TaggedCache<uint256, std::vector<hotstuff::StateCompute::AsyncCompletedHander>> blockAcquiring_;
 };
 
 }

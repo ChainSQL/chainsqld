@@ -84,6 +84,8 @@ public:
 
     inline ConsensusParms const& parms() const { return parms_; }
 
+    inline std::recursive_mutex& peekMutex() { return mutex_; }
+
     //! @see Consensus::startRound
     void startRound(
         NetClock::time_point const& now,

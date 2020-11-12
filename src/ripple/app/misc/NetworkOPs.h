@@ -175,6 +175,7 @@ namespace ripple {
         virtual void setAmendmentBlocked () = 0;
         virtual void consensusViewChange () = 0;
 
+        virtual std::recursive_mutex& peekConsensusMutex() = 0;
         virtual ConsensusParms const& getConsensusParms() = 0;
         virtual Json::Value getConsensusInfo(bool full = true) = 0;
         virtual Json::Value getServerInfo (bool human, bool admin, bool counters) = 0;

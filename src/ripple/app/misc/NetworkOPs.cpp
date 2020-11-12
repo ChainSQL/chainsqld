@@ -399,6 +399,7 @@ public:
     void consensusViewChange () override;
 
     ConsensusParms const& getConsensusParms() override;
+    std::recursive_mutex& peekConsensusMutex() override;
     Json::Value getConsensusInfo(bool full = true) override;
     Json::Value getServerInfo (bool human, bool admin, bool counters) override;
     std::string getServerStatus();
@@ -2368,6 +2369,11 @@ NetworkOPsImp::getTxsAccountB (
                 maxLedger, forward, token, limit, bUnlimited,
                     page_length);
     return ret;
+}
+
+inline std::recursive_mutex& NetworkOPsImp::peekConsensusMutex()
+{
+    return mConsensus.peekMutex();
 }
 
 inline ConsensusParms const& NetworkOPsImp::getConsensusParms()

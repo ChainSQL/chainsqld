@@ -86,7 +86,7 @@ std::shared_ptr<SHAMap> HotstuffAdaptor::onExtractTransactions(RCLCxLedger const
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
+    //notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
 
     // Tell the ledger master not to acquire the ledger we're probably building
     ledgerMaster_.setBuildingLedger(prevLedger.seq() + 1);

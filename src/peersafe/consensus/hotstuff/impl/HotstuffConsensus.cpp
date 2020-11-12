@@ -34,6 +34,7 @@ HotstuffConsensus::HotstuffConsensus(
     beast::Journal j)
     : ConsensusBase(clock, j)
     , adaptor_(*(HotstuffAdaptor*)(&adaptor))
+    , blockAcquiring_("blockAcquiring", 256, adaptor_.parms().consensusTIMEOUT, const_cast<clock_type &>(clock), j)
 {
     hotstuff::Config config;
 
@@ -372,7 +373,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         result.ledger_info = previousLedger_.ledger_->info();
         result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
         // Tell directly connected peers that we have a new LCL
-        adaptor_.notify(protocol::neCLOSING_LEDGER, previousLedger_, adaptor_.mode() != ConsensusMode::wrongLedger);
+        //adaptor_.notify(protocol::neCLOSING_LEDGER, previousLedger_, adaptor_.mode() != ConsensusMode::wrongLedger);
         return true;
     }
 
@@ -413,7 +414,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         result.ledger_info = built.ledger_->info();
         result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
         // Tell directly connected peers that we have a new LCL
-        adaptor_.notify(protocol::neCLOSING_LEDGER, built, adaptor_.mode() != ConsensusMode::wrongLedger);
+        //adaptor_.notify(protocol::neCLOSING_LEDGER, built, adaptor_.mode() != ConsensusMode::wrongLedger);
         return true;
     }
 
@@ -461,8 +462,11 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
         return result.ledger_info.seq == result.parent_ledger_info.seq
             && result.ledger_info.hash == result.parent_ledger_info.hash;
     }
-
-    return false;
+    else
+    {
+        JLOG(j_.warn()) << "verify block: block type error";
+        return false;
+    }
 }
 
 int HotstuffConsensus::commit(const hotstuff::Block& block)
@@ -554,7 +558,14 @@ void HotstuffConsensus::asyncBlock(const uint256& blockID, const hotstuff::Autho
     // Send acquire block message
     adaptor_.acquireBlock(author, blockID);
 
-    blockAcquiring[blockID].push_back(asyncCompletedHandler);
+    if (auto cbs = blockAcquiring_.fetch(blockID))
+    {
+        cbs->push_back(asyncCompletedHandler);
+    }
+    else
+    {
+        blockAcquiring_.insert(blockID, std::vector<hotstuff::StateCompute::AsyncCompletedHander>{asyncCompletedHandler});
+    }
 }
 
 const hotstuff::Author& HotstuffConsensus::Self() const
@@ -625,6 +636,7 @@ void HotstuffConsensus::broadcast(const hotstuff::Block& block, const hotstuff::
         jtCONSENSUS_t,
         "broadcast_proposal",
         [this, block](Job&) {
+        ScopedLockType _(this->adaptor_.peekConsensusMutex());
         this->hotstuff_->handleProposal(block);
     });
 }
@@ -639,6 +651,7 @@ void HotstuffConsensus::broadcast(const hotstuff::Vote& vote, const hotstuff::Sy
         jtCONSENSUS_t,
         "broadcast_vote",
         [this, vote, syncInfo](Job&) {
+        ScopedLockType _(this->adaptor_.peekConsensusMutex());
         this->hotstuff_->handleVote(vote, syncInfo);
     });
 }
@@ -651,6 +664,7 @@ void HotstuffConsensus::sendVote(const hotstuff::Author& author, const hotstuff:
             jtCONSENSUS_t,
             "send_vote",
             [this, vote, syncInfo](Job&) {
+            ScopedLockType _(this->adaptor_.peekConsensusMutex());
             this->hotstuff_->handleVote(vote, syncInfo);
         });
     }
@@ -741,15 +755,14 @@ void HotstuffConsensus::peerProposal(
         }
         else // Maybe acquiring previous hotstuff block
         {
-            if (blockAcquiring.end() !=
-                blockAcquiring.find(proposal->syncInfo().HighestQuorumCert().certified_block().id))
+            if (blockAcquiring_.fetch(proposal->syncInfo().HighestQuorumCert().certified_block().id))
             {
                 auto payload = proposal->block().block_data().payload;
                 if (!payload)
                 {
                     Throw<std::runtime_error>("proposal missing payload");
                 }
-                curProposalCache_[payload->cmd][payload->author] = proposal;
+                nextProposalCache_[proposal->block().getLedgerInfo().seq][payload->author] = proposal;
             }
         }
     }
@@ -913,20 +926,26 @@ void HotstuffConsensus::peerBlockData(
 
         JLOG(j_.info()) << "acquired block " << executedBlock.block.id() << " success";
 
-        for (auto const& cb : blockAcquiring[executedBlock.block.id()])
+        auto hanlders = blockAcquiring_.fetch(executedBlock.block.id());
+        if (hanlders)
         {
-            boost::optional<hotstuff::Block> block = executedBlock.block;
-            if (hotstuff::StateCompute::AsyncBlockResult::PROPOSAL_SUCCESS ==
-                cb(hotstuff::StateCompute::AsyncBlockErrorCode::ASYNC_SUCCESS, executedBlock, block))
+            for (auto const& cb : *hanlders)
             {
-                assert(block && block->block_data().payload);
-                auto payload = block->block_data().payload;
-                auto& proposal = curProposalCache_[payload->cmd][payload->author];
-                if (proposal->block().id() == block->id())
+                boost::optional<hotstuff::Block> block = executedBlock.block;
+                if (hotstuff::StateCompute::AsyncBlockResult::PROPOSAL_SUCCESS ==
+                    cb(hotstuff::StateCompute::AsyncBlockErrorCode::ASYNC_SUCCESS, executedBlock, block))
                 {
-                    peerProposalInternal(proposal);
+                    assert(block && block->block_data().payload);
+                    auto payload = block->block_data().payload;
+                    auto proposal = nextProposalCache_[block->getLedgerInfo().seq][payload->author];
+                    if (proposal && proposal->block().id() == block->id())
+                    {
+                        peerProposalInternal(proposal);
+                    }
                 }
             }
+
+            blockAcquiring_.del(executedBlock.block.id(), false);
         }
     }
     catch (std::exception const& e)
@@ -952,7 +971,6 @@ void HotstuffConsensus::startRoundInternal(
 
     acquired_.clear();
     curProposalCache_.clear();
-    blockAcquiring.clear();
 
     if (recover_)
     {
@@ -980,7 +998,10 @@ void HotstuffConsensus::checkCache()
         JLOG(j_.info()) << "Handle cached proposal";
         for (auto const& it : nextProposalCache_[curSeq])
         {
-            peerProposalInternal(it.second);
+            if (!blockAcquiring_.fetch(it.second->syncInfo().HighestQuorumCert().certified_block().id))
+            {
+                peerProposalInternal(it.second);
+            }
         }
     }
 
