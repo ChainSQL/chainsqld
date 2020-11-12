@@ -508,6 +508,7 @@ bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
     return true;
 }
 
+/* deprecated */
 bool HotstuffConsensus::syncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::ExecutedBlock& executedBlock)
 {
     // New promise
@@ -548,9 +549,12 @@ bool HotstuffConsensus::syncBlock(const uint256& blockID, const hotstuff::Author
     return true;
 }
 
-void HotstuffConsensus::asyncBlock(const uint256& block_id, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler)
+void HotstuffConsensus::asyncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler)
 {
+    // Send acquire block message
+    adaptor_.acquireBlock(author, blockID);
 
+    blockAcquiring[blockID].push_back(asyncCompletedHandler);
 }
 
 const hotstuff::Author& HotstuffConsensus::Self() const
@@ -735,6 +739,19 @@ void HotstuffConsensus::peerProposal(
         {
             peerProposalInternal(proposal);
         }
+        else // Maybe acquiring previous hotstuff block
+        {
+            if (blockAcquiring.end() !=
+                blockAcquiring.find(proposal->syncInfo().HighestQuorumCert().certified_block().id))
+            {
+                auto payload = proposal->block().block_data().payload;
+                if (!payload)
+                {
+                    Throw<std::runtime_error>("proposal missing payload");
+                }
+                curProposalCache_[payload->cmd][payload->author] = proposal;
+            }
+        }
     }
     catch (std::exception const& e)
     {
@@ -883,17 +900,39 @@ void HotstuffConsensus::peerBlockData(
         return;
     }
 
-    if (auto promise = weakBlockPromise_.lock())
+    try
     {
-        try
+        hotstuff::ExecutedBlock executedBlock = serialization::deserialize<hotstuff::ExecutedBlock>(
+            Buffer(m->msg().data(), m->msg().size()));
+
+        if (!verify(executedBlock.block, executedBlock.state_compute_result))
         {
-            promise->set_value(std::move(serialization::deserialize<hotstuff::ExecutedBlock>(Buffer(m->msg().data(), m->msg().size()))));
+            JLOG(j_.warn()) << "acquired block " << executedBlock.block.id() << " , but verify failed";
+            return;
         }
-        catch (std::exception const& e)
+
+        JLOG(j_.info()) << "acquired block " << executedBlock.block.id() << " success";
+
+        for (auto const& cb : blockAcquiring[executedBlock.block.id()])
         {
-            JLOG(j_.warn()) << "BlockData: Exception, " << e.what();
-            peer->charge(Resource::feeInvalidRequest);
+            boost::optional<hotstuff::Block> block = executedBlock.block;
+            if (hotstuff::StateCompute::AsyncBlockResult::PROPOSAL_SUCCESS ==
+                cb(hotstuff::StateCompute::AsyncBlockErrorCode::ASYNC_SUCCESS, executedBlock, block))
+            {
+                assert(block && block->block_data().payload);
+                auto payload = block->block_data().payload;
+                auto& proposal = curProposalCache_[payload->cmd][payload->author];
+                if (proposal->block().id() == block->id())
+                {
+                    peerProposalInternal(proposal);
+                }
+            }
         }
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "BlockData: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
     }
 }
 
@@ -913,6 +952,7 @@ void HotstuffConsensus::startRoundInternal(
 
     acquired_.clear();
     curProposalCache_.clear();
+    blockAcquiring.clear();
 
     if (recover_)
     {

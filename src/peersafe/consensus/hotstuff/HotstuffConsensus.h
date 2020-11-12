@@ -92,7 +92,7 @@ public:
     int commit(const hotstuff::Block& block) override final;
     bool syncState(const hotstuff::BlockInfo& prevInfo) override final;
     bool syncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::ExecutedBlock& executedBlock) override final;
-    void asyncBlock(const uint256& block_id, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler) override final;
+    void asyncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler) override final;
 
     // Overwrite ValidatorVerifier interfaces.
     const hotstuff::Author& Self() const override final;
@@ -166,7 +166,11 @@ private:
     std::map<typename TxSet_t::ID, std::map<PublicKey, STProposal::pointer>> curProposalCache_;
     std::map<std::uint32_t, std::map<PublicKey, STProposal::pointer>> nextProposalCache_;
 
+    // For acquire hotstuff block synchronize. it's deprecated!
     std::weak_ptr<std::promise<hotstuff::ExecutedBlock>> weakBlockPromise_;
+
+    // For acquire hotstuff block asynchronize
+    std::map<uint256, std::vector<hotstuff::StateCompute::AsyncCompletedHander>> blockAcquiring;
 };
 
 }
