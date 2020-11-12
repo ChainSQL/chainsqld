@@ -873,19 +873,19 @@ RCLConsensus::Adaptor::buildLCL(
             j_);
     }();
 
-    auto v2_enabled = built->rules().enabled(featureSHAMapV2);
-	auto disablev2_enabled = built->rules().enabled(featureDisableV2);
+ //   auto v2_enabled = built->rules().enabled(featureSHAMapV2);
+	//auto disablev2_enabled = built->rules().enabled(featureDisableV2);
 
-	if (disablev2_enabled && built->stateMap().is_v2())
-	{
-		built->make_v1();
-		JLOG(j_.warn()) << "Begin transfer to v1,LedgerSeq = " << built->info().seq;
-	}
-	else if (!disablev2_enabled && v2_enabled && !built->stateMap().is_v2())
-	{
-		built->make_v2();
-		JLOG(j_.warn()) << "Begin transfer to v2,LedgerSeq = " << built->info().seq;
-	}
+	//if (disablev2_enabled && built->stateMap().is_v2())
+	//{
+	//	built->make_v1();
+	//	JLOG(j_.warn()) << "Begin transfer to v1,LedgerSeq = " << built->info().seq;
+	//}
+	//else if (!disablev2_enabled && v2_enabled && !built->stateMap().is_v2())
+	//{
+	//	built->make_v2();
+	//	JLOG(j_.warn()) << "Begin transfer to v2,LedgerSeq = " << built->info().seq;
+	//}
 
     // Update fee computations based on accepted txs
     using namespace std::chrono_literals;

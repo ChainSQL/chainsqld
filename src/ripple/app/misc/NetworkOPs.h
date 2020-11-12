@@ -43,7 +43,7 @@ class Peer;
 class LedgerMaster;
 class Transaction;
 class ValidatorKeys;
-
+class ViewChange;
 // This is the primary interface into the "client" portion of the program.
 // Code that wants to do normal operations on the network such as
 // creating and monitoring accounts, creating transactions, and so on
@@ -243,31 +243,6 @@ public:
 		// client information retrieval functions
 		using AccountTx = std::pair<std::shared_ptr<Transaction>, TxMeta::pointer>;
 		using AccountTxs = std::vector<AccountTx>;
-
-		virtual AccountTxs getAccountTxs(
-			AccountID const& account,
-			std::int32_t minLedger, std::int32_t maxLedger, bool descending,
-			std::uint32_t offset, int limit, bool bUnlimited) = 0;
-
-        This API is only used via RPC with the server in STANDALONE mode and
-        performs a virtual consensus round, with all the transactions we are
-        proposing being accepted.
-    */
-    virtual std::uint32_t
-    acceptLedger(
-        boost::optional<std::chrono::milliseconds> consensusDelay =
-            boost::none) = 0;
-
-    virtual uint256
-    getConsensusLCL() = 0;
-
-    virtual void
-    reportFeeChange() = 0;
-
-    virtual void
-    updateLocalTx(ReadView const& newValidLedger) = 0;
-    virtual std::size_t
-    getLocalTxCount() = 0;
 
     struct AccountTxMarker
     {

@@ -298,24 +298,24 @@ payChan(AccountID const& src, AccountID const& dst, std::uint32_t seq) noexcept
 }
 
 Keylet
-schema(AccountID const& account, std::uint32_t seq, uint256 const& prevLedgerHash)
+schema(AccountID const& account, std::uint32_t seq, uint256 const& prevLedgerHash)noexcept
 {
 	return { ltSCHEMA, indexHash(LedgerNameSpace::SCHEMA, account, seq, prevLedgerHash) };
 }
 
-Keylet chainId()
+Keylet chainId()noexcept
 {
     return{ ltCHAINID,
 		sha512Half(std::uint16_t(LedgerNameSpace::CHAIN_ID)) };
 }
 
-Keylet table(AccountID const& id)
+Keylet table(AccountID const& id)noexcept
 {
     return{ ltTABLELIST,
         indexHash(LedgerNameSpace::TABLE_LIST,id) };
 }
 
-Keylet insertlimit(AccountID const& id)
+Keylet insertlimit(AccountID const& id)noexcept
 {
     return{ ltINSERTMAP,
             indexHash(LedgerNameSpace::INSERT_LIMIT,id)  };

@@ -189,7 +189,7 @@ log_metadata_difference(
         auto meta = ledger.txRead(txID).second;
         if (!meta)
             return {};
-        return std::make_shared<TxMeta> (txID, ledger.seq(), *meta,j);
+        return std::make_shared<TxMeta> (txID, ledger.seq(), *meta);
     };
 
     auto validMetaData = getMeta(validLedger, tx);

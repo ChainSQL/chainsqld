@@ -131,7 +131,7 @@ ZXCNotCreated::visitEntry(
 
 bool
 ZXCNotCreated::finalize(
-    STTx const&,
+    STTx const& tx,
     TER const,
     ZXCAmount const fee,
     ReadView const&,
@@ -324,13 +324,7 @@ AccountRootsNotDeleted::finalize(
     ZXCAmount const,
     ReadView const&,
     beast::Journal const& j)
-{
-    if (!accountDeleted_) 
-	{
-		return true;
-	}
-        
-
+{   
 	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT) 
 	{
 		return true;

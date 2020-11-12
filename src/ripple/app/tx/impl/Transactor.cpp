@@ -39,7 +39,6 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
-#include <peersafe/schema/Schema.h>
 
 
 namespace ripple {
@@ -98,14 +97,14 @@ preflight1(PreflightContext const& ctx)
 NotTEC
 preflight2(PreflightContext const& ctx)
 {
-    auto const sigValid = checkValidity(
-        ctx.app.getHashRouter(), ctx.tx, ctx.rules, ctx.app.config());
-    if (sigValid.first == Validity::SigBad)
-    {
-        JLOG(ctx.j.debug()) << "preflight2: bad signature. " << sigValid.second;
-        return temINVALID;
-    }
-
+	auto const sigValid = checkValidity(
+		ctx.app.getHashRouter(), ctx.tx, ctx.rules, ctx.app.config());
+	if (sigValid.first == Validity::SigBad)
+	{
+		JLOG(ctx.j.debug()) << "preflight2: bad signature. " << sigValid.second;
+		return temINVALID;
+	}
+}
 //------------------------------------------------------------------------------
 
 PreflightContext::PreflightContext(

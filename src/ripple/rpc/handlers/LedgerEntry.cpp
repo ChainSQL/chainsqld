@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Schema.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/strHex.h>
 #include <ripple/ledger/ReadView.h>

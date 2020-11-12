@@ -107,21 +107,6 @@ public:
     int
     zxcRoundToZero() const;
 
-    // Checks for the ZXC round-to-zero case.  Returns zero if not detected.
-    // Otherwise returns -1 if seen on lhs, +1 if seen on rhs.
-    //
-    // For tiny offers of TakerPays IOU and TakerGets ZXC, cases have been
-    // observed where ZXC rounding allows a tiny amount of IOU to be
-    // removed from an Offer while returning no ZXC to the offer owner.
-    // That's because the ZXC amount was rounded down to zero drops.
-    //
-    // The person submitting the tiny offer does not, however, get something
-    // for nothing.  The transaction's fee is significantly larger than the
-    // value of the received IOU.
-    //
-    // This check should be made before calling rmDust().
-    int zxcRoundToZero() const;
-
     // Remove dust-sized differences.  Returns true is dust was removed.
     bool
     rmDust();
@@ -130,8 +115,9 @@ public:
     // if any deleted offers were removed from the differences.
     bool
     rmLhsDeletedOffers();
-    bool
-    rmRhsDeletedOffers();
+
+	bool
+	rmRhsDeletedOffers();
 
     struct OfferAmounts
     {

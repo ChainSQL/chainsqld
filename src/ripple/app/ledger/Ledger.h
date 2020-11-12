@@ -374,8 +374,8 @@ public:
     bool
     isVotingLedger() const;
 
-    void make_v2();
-	void make_v1();
+ //   void make_v2();
+	//void make_v1();
 private:
     class sles_iter_impl;
     class txs_iter_impl;

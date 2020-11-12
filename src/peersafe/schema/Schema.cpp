@@ -267,6 +267,7 @@ namespace ripple {
 		beast::Journal m_journal;
 		SchemaParams schema_params_;
 
+		Application::MutexType m_masterMutex;
 		std::shared_ptr<Config>		config_;
 		TransactionMaster			m_txMaster;
 
@@ -502,6 +503,12 @@ namespace ripple {
 		JobQueue& getJobQueue() override
 		{
 			return app_.getJobQueue();
+		}
+
+		Application::MutexType&
+			getMasterMutex() override
+		{
+			return m_masterMutex;
 		}
 
 		LoadManager& getLoadManager() override
@@ -1863,7 +1870,7 @@ namespace ripple {
 			}
 			else
 			{
-				TxMeta _(transID, 0, txnMeta, app_.journal("TxMeta"));
+				TxMeta _(transID, 0, txnMeta);
 				txIDs.push_back(std::make_pair(transID, _.getIndex()));
 			}
 

@@ -94,7 +94,7 @@ class Roles_test : public beast::unit_test::suite
             BEAST_EXPECT(
                 !wsRes.isMember("unlimited") || !wsRes["unlimited"].asBool());
 
-            std::string const name = "xrposhi";
+            std::string const name = "zxcoshi";
             headers["X-User"] = name;
             rpcRes = env.rpc(headers, "ping")["result"];
             BEAST_EXPECT(rpcRes["role"] == "identified");

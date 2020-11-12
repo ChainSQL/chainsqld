@@ -132,7 +132,7 @@ private:
     beast::insight::Collector::ptr collector_;
     beast::insight::Counter mismatch_counter_;
 
-    using LedgersByHash = TaggedCache<LedgerHash, Ledger const>;
+    using LedgersByHash = TaggedCacheExt<LedgerHash, Ledger const>;
 
     LedgersByHash m_ledgers_by_hash;
 

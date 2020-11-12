@@ -102,72 +102,72 @@ std::shared_ptr<SHAMap>
 
 	return ret;
 }
-
-std::shared_ptr<SHAMap>
-SHAMap::make_v2() const
-{
-    assert(!is_v2());
-    auto ret = std::make_shared<SHAMap>(type_, f_, version{2});
-    ret->seq_ = seq_ + 1;
-    SharedPtrNodeStack stack;
-    for (auto leaf = peekFirstItem(stack); leaf != nullptr;
-         leaf = peekNextItem(leaf->peekItem()->key(), stack))
-    {
-        auto node_type = leaf->getType();
-        ret->addGiveItem(leaf->peekItem(),
-                         node_type != SHAMapTreeNode::tnACCOUNT_STATE,
-                         node_type == SHAMapTreeNode::tnTRANSACTION_MD);
-    }
-    NodeObjectType t;
-    switch (type_)
-    {
-    case SHAMapType::TRANSACTION:
-        t = hotTRANSACTION_NODE;
-        break;
-    case SHAMapType::STATE:
-        t = hotACCOUNT_NODE;
-        break;
-    default:
-        t = hotUNKNOWN;
-        break;
-    }
-    ret->flushDirty(t, ret->seq_);
-    ret->unshare();
-    return ret;
-}
-
-std::shared_ptr<SHAMap>
-SHAMap::make_v1() const
-{
-    assert(is_v2());
-    auto ret = std::make_shared<SHAMap>(type_, f_, version{1});
-    ret->seq_ = seq_ + 1;
-    SharedPtrNodeStack stack;
-    for (auto leaf = peekFirstItem(stack); leaf != nullptr;
-         leaf = peekNextItem(leaf->peekItem()->key(), stack))
-    {
-        auto node_type = leaf->getType();
-        ret->addGiveItem(leaf->peekItem(),
-                         node_type != SHAMapTreeNode::tnACCOUNT_STATE,
-                         node_type == SHAMapTreeNode::tnTRANSACTION_MD);
-    }
-    NodeObjectType t;
-    switch (type_)
-    {
-    case SHAMapType::TRANSACTION:
-        t = hotTRANSACTION_NODE;
-        break;
-    case SHAMapType::STATE:
-        t = hotACCOUNT_NODE;
-        break;
-    default:
-        t = hotUNKNOWN;
-        break;
-    }
-    ret->flushDirty(t, ret->seq_);
-    ret->unshare();
-    return ret;
-}
+//
+//std::shared_ptr<SHAMap>
+//SHAMap::make_v2() const
+//{
+//    assert(!is_v2());
+//    auto ret = std::make_shared<SHAMap>(type_, f_, version{2});
+//    ret->seq_ = seq_ + 1;
+//    SharedPtrNodeStack stack;
+//    for (auto leaf = peekFirstItem(stack); leaf != nullptr;
+//         leaf = peekNextItem(leaf->peekItem()->key(), stack))
+//    {
+//        auto node_type = leaf->getType();
+//        ret->addGiveItem(leaf->peekItem(),
+//                         node_type != SHAMapTreeNode::tnACCOUNT_STATE,
+//                         node_type == SHAMapTreeNode::tnTRANSACTION_MD);
+//    }
+//    NodeObjectType t;
+//    switch (type_)
+//    {
+//    case SHAMapType::TRANSACTION:
+//        t = hotTRANSACTION_NODE;
+//        break;
+//    case SHAMapType::STATE:
+//        t = hotACCOUNT_NODE;
+//        break;
+//    default:
+//        t = hotUNKNOWN;
+//        break;
+//    }
+//    ret->flushDirty(t, ret->seq_);
+//    ret->unshare();
+//    return ret;
+//}
+//
+//std::shared_ptr<SHAMap>
+//SHAMap::make_v1() const
+//{
+//    assert(is_v2());
+//    auto ret = std::make_shared<SHAMap>(type_, f_, version{1});
+//    ret->seq_ = seq_ + 1;
+//    SharedPtrNodeStack stack;
+//    for (auto leaf = peekFirstItem(stack); leaf != nullptr;
+//         leaf = peekNextItem(leaf->peekItem()->key(), stack))
+//    {
+//        auto node_type = leaf->getType();
+//        ret->addGiveItem(leaf->peekItem(),
+//                         node_type != SHAMapTreeNode::tnACCOUNT_STATE,
+//                         node_type == SHAMapTreeNode::tnTRANSACTION_MD);
+//    }
+//    NodeObjectType t;
+//    switch (type_)
+//    {
+//    case SHAMapType::TRANSACTION:
+//        t = hotTRANSACTION_NODE;
+//        break;
+//    case SHAMapType::STATE:
+//        t = hotACCOUNT_NODE;
+//        break;
+//    default:
+//        t = hotUNKNOWN;
+//        break;
+//    }
+//    ret->flushDirty(t, ret->seq_);
+//    ret->unshare();
+//    return ret;
+//}
 
 void
 SHAMap::dirtyUp(

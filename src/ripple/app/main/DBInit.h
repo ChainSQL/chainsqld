@@ -220,7 +220,7 @@ static constexpr std::array<char const*, 4> SyncTableStateDBInit{
     "CREATE INDEX IF NOT EXISTS SyncSeqLedger ON SyncTableState(LedgerSeq);",
 
     "END TRANSACTION;"}
-}
+};
 
 }  // namespace ripple
 

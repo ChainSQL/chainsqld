@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/basics/base64.h>
 #include <ripple/json/json_value.h>
@@ -30,12 +31,12 @@ Json::Value
 doValidatorInfo(RPC::JsonContext& context)
 {
     // return error if not configured as validator
-    if (context.app.getValidationPublicKey().empty())
+    if (context.app.app().getValidationPublicKey().empty())
         return RPC::not_validator_error();
 
     Json::Value ret;
 
-    auto const pk = context.app.getValidationPublicKey();
+    auto const pk = context.app.app().getValidationPublicKey();
 
     // assume pk is ephemeral key, get master key
     auto const mk = context.app.validatorManifests().getMasterKey(pk);

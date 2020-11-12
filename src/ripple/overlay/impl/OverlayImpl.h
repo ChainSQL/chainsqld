@@ -411,42 +411,6 @@ public:
     void
     lastLink(std::uint32_t id);
 
-    void
-    incJqTransOverflow() override
-    {
-        ++jqTransOverflow_;
-    }
-
-    std::uint64_t
-    getJqTransOverflow() const override
-    {
-        return jqTransOverflow_;
-    }
-
-    void
-    incPeerDisconnect() override
-    {
-        ++peerDisconnects_;
-    }
-
-    std::uint64_t
-    getPeerDisconnect() const override
-    {
-        return peerDisconnects_;
-    }
-
-    void
-    incPeerDisconnectCharges() override
-    {
-        ++peerDisconnectsCharges_;
-    }
-
-    std::uint64_t
-    getPeerDisconnectCharges() const override
-    {
-        return peerDisconnectsCharges_;
-    }
-
     //Json::Value
     //crawlShards(bool pubKey, std::uint32_t hops) override;
 

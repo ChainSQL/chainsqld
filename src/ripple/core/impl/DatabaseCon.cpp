@@ -33,25 +33,26 @@
 
 namespace ripple {
 
-DatabaseCon::DatabaseCon (
-    Setup const& setup,
-    std::string const& strName,
-    const char* initStrings[],
-    int initCount, std::string sDBType)
-{	
+DatabaseCon::DatabaseCon(
+	Setup const& setup,
+	std::string const& strName,
+	const char* initStrings[],
+	int initCount, std::string sDBType)
+{
 	if (sDBType.compare("sqlite") == 0) {
-        auto const useTempFiles  // Use temporary files or regular DB files?
-            = setup.standAlone &&
-            setup.startUp != Config::LOAD &&
-            setup.startUp != Config::LOAD_FILE &&
-            setup.startUp != Config::REPLAY;
-        boost::filesystem::path pPath = useTempFiles
-            ? "" : (setup.dataDir / strName);
+		auto const useTempFiles  // Use temporary files or regular DB files?
+			= setup.standAlone &&
+			setup.startUp != Config::LOAD &&
+			setup.startUp != Config::LOAD_FILE &&
+			setup.startUp != Config::REPLAY;
+		boost::filesystem::path pPath = useTempFiles
+			? "" : (setup.dataDir / strName);
 
-        open(session_, "sqlite", pPath.string());
-	} else {  
-        //connect to mycat server 
-        std::pair<std::string, bool> type = setup.sync_db.find("type");
+		open(*session_, "sqlite", pPath.string());
+	}
+	else {
+		//connect to mycat server 
+		std::pair<std::string, bool> type = setup.sync_db.find("type");
 		std::string back_end;
 		if (type.second) {
 			back_end = type.first;
@@ -61,57 +62,56 @@ DatabaseCon::DatabaseCon (
 			return;
 		}
 
-        std::pair<std::string, bool> host = setup.sync_db.find("host");
-        std::pair<std::string, bool> port = setup.sync_db.find("port");
-        std::pair<std::string, bool> user = setup.sync_db.find("user");
-        std::pair<std::string, bool> pwd = setup.sync_db.find("pass");
-        std::pair<std::string, bool> db = setup.sync_db.find("db");
-        std::pair<std::string, bool> unix_socket = setup.sync_db.find("unix_socket");
-        std::pair<std::string, bool> ssl_ca = setup.sync_db.find("ssl_ca");
-        std::pair<std::string, bool> ssl_cert = setup.sync_db.find("ssl_cert");
-        std::pair<std::string, bool> ssl_key = setup.sync_db.find("ssl_key");
-        std::pair<std::string, bool> local_infile = setup.sync_db.find("local_infile");
-        std::pair<std::string, bool> charset = setup.sync_db.find("charset");
+		std::pair<std::string, bool> host = setup.sync_db.find("host");
+		std::pair<std::string, bool> port = setup.sync_db.find("port");
+		std::pair<std::string, bool> user = setup.sync_db.find("user");
+		std::pair<std::string, bool> pwd = setup.sync_db.find("pass");
+		std::pair<std::string, bool> db = setup.sync_db.find("db");
+		std::pair<std::string, bool> unix_socket = setup.sync_db.find("unix_socket");
+		std::pair<std::string, bool> ssl_ca = setup.sync_db.find("ssl_ca");
+		std::pair<std::string, bool> ssl_cert = setup.sync_db.find("ssl_cert");
+		std::pair<std::string, bool> ssl_key = setup.sync_db.find("ssl_key");
+		std::pair<std::string, bool> local_infile = setup.sync_db.find("local_infile");
+		std::pair<std::string, bool> charset = setup.sync_db.find("charset");
 
-        std::string connectionstring;
+		std::string connectionstring;
 
-        if (host.second)
-            connectionstring += " host = " + host.first;
-        if (port.second)
-            connectionstring += " port = " + port.first;
-        if (user.second)
-            connectionstring += " user = " + user.first;
-        if (pwd.second)
-            connectionstring += " pass = " + pwd.first;
-        if (db.second)
-            connectionstring += " db = " + db.first;
-        if (unix_socket.second)
-            connectionstring += " unix_socket = " + unix_socket.first;
-        if (ssl_ca.second)
-            connectionstring += " sslca = " + ssl_ca.first;
-        if (ssl_cert.second)
-            connectionstring += " sslcert = " + ssl_cert.first;
-        if (ssl_key.second)
-            connectionstring += " sslkey = " + ssl_key.first;
-        if (local_infile.second)
-            connectionstring += " local_infile = " + local_infile.first;
-        if (charset.second)
-            connectionstring += " charset = " + charset.first;
-		
+		if (host.second)
+			connectionstring += " host = " + host.first;
+		if (port.second)
+			connectionstring += " port = " + port.first;
+		if (user.second)
+			connectionstring += " user = " + user.first;
+		if (pwd.second)
+			connectionstring += " pass = " + pwd.first;
+		if (db.second)
+			connectionstring += " db = " + db.first;
+		if (unix_socket.second)
+			connectionstring += " unix_socket = " + unix_socket.first;
+		if (ssl_ca.second)
+			connectionstring += " sslca = " + ssl_ca.first;
+		if (ssl_cert.second)
+			connectionstring += " sslcert = " + ssl_cert.first;
+		if (ssl_key.second)
+			connectionstring += " sslkey = " + ssl_key.first;
+		if (local_infile.second)
+			connectionstring += " local_infile = " + local_infile.first;
+		if (charset.second)
+			connectionstring += " charset = " + charset.first;
+
 		if (connectionstring.empty()) {
 			Throw<std::runtime_error>("configuration error: connection string is empty.");
 			return;
 		}
-
-        open(session_, back_end, connectionstring);
+		open(*session_, back_end, connectionstring);
 		if (boost::iequals(back_end, "mycat")) {
 			session_.autocommit_after_transaction(true);
 		}
-        if (strName.empty() == false) {
-            std::string use_database = "use " + strName;
-            soci::statement st = session_.prepare << use_database;
-            st.execute(true);
-        }
+		if (strName.empty() == false) {
+			std::string use_database = "use " + strName;
+			soci::statement st = session_.prepare << use_database;
+			st.execute(true);
+		}
 	}
 	for (int i = 0; i < initCount; ++i)
 	{
@@ -126,6 +126,7 @@ DatabaseCon::DatabaseCon (
 			// ignore errors
 		}
 	}
+}
 class CheckpointersCollection
 {
     std::uintptr_t nextId_{0};

@@ -89,6 +89,16 @@ fees() noexcept;
 Keylet const&
 negativeUNL() noexcept;
 
+/** The beginning of an order book */
+struct book_t
+{
+    explicit book_t() = default;
+
+    Keylet
+    operator()(Book const& b) const;
+};
+static book_t const book{};
+
 /** The index of a trust line for a given currency
 
     Note that a trustline is *shared* between two accounts (commonly referred
@@ -125,6 +135,32 @@ offer(uint256 const& key) noexcept
 /** The initial directory page for a specific quality */
 Keylet
 quality(Keylet const& k, std::uint64_t q) noexcept;
+
+/** The directory for the next lower quality */
+struct next_t
+{
+    explicit next_t() = default;
+
+    Keylet
+    operator()(Keylet const& k) const;
+};
+static next_t const next{};
+
+/** A ticket belonging to an account */
+struct ticket_t
+{
+    explicit ticket_t() = default;
+
+    Keylet
+    operator()(AccountID const& id, std::uint32_t seq) const;
+
+    Keylet
+    operator()(uint256 const& key) const
+    {
+        return {ltTICKET, key};
+    }
+};
+static ticket_t const ticket{};
 
 /** A SignerList */
 Keylet
@@ -184,6 +220,20 @@ escrow(AccountID const& src, std::uint32_t seq) noexcept;
 Keylet
 payChan(AccountID const& src, AccountID const& dst, std::uint32_t seq) noexcept;
 
+Keylet
+chainId() noexcept;
+
+Keylet
+table(AccountID const& id) noexcept;
+
+Keylet
+insertlimit(AccountID const& id) noexcept;
+/** An Schema entry */
+Keylet
+schema(
+    AccountID const& source,
+    std::uint32_t seq,
+    uint256 const& prevLedgerHash) noexcept;
 }  // namespace keylet
 
 // Everything below is deprecated and should be removed in favor of keylets:
@@ -201,14 +251,6 @@ getQuality(uint256 const& uBase);
 uint256
 getTicketIndex(AccountID const& account, std::uint32_t uSequence);
 
-Keylet chainId();
-
-Keylet table(AccountID const& id);
-
-Keylet insertlimit(AccountID const& id);
-/** An Schema entry */
-Keylet
-schema(AccountID const& source, std::uint32_t seq, uint256 const& prevLedgerHash);
 
 }  // namespace ripple
 
