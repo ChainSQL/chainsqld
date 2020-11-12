@@ -200,79 +200,71 @@ unsigned long SoftEncrypt::SM2ECCSign(
 	EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_sm2p256v1);
 	const bool ok = EC_KEY_set_private_key(ec_key, bn);
 	BN_clear_free(bn);
-	if (ok)
-    {
-		// if(!setPubfromPri(ec_key)) return 1;
 
-        /* sign */
-        // unsigned char pSignedBufTemp[256] = { 0 };
-        unsigned int uiSignedLen = 0;
-        int signRet = SM2_sign(NID_undef, pInData, ulInDataLen, NULL, &uiSignedLen, ec_key);
-        if (signRet == 1)
-        {
-            unsigned char *pSignedBufTemp = new unsigned char[uiSignedLen];
-            if (!SM2_sign(NID_undef, pInData, ulInDataLen, pSignedBufTemp, &uiSignedLen, ec_key))
-            {
-                delete[] pSignedBufTemp;
-                DebugPrint("SM2ECCSign: SM2_sign failed!");
-            }
-            else
-            {
-                const unsigned char *pSignedBuf = pSignedBufTemp;
-                ECDSA_SIG *sm2sig = d2i_ECDSA_SIG(NULL, &pSignedBuf, uiSignedLen);
-                if (sm2sig)
-                {
-                    char *pSignR = NULL;
-                    char *pSignS = NULL;
-                    if (!(pSignR = BN_bn2hex(sm2sig->r)) || !(pSignS = BN_bn2hex(sm2sig->s)))
-                    {
-                        delete[] pSignedBufTemp;
-                        DebugPrint("SM2ECCSign: SM2_sign failed!");
-                    }
-                    else
-                    {
-						unsigned int rSize = BN_num_bytes(sm2sig->r);
-						unsigned int sSize = BN_num_bytes(sm2sig->s);
+	if (!ok) 
+	{
+		DebugPrint("SM2ECCSign: EC_KEY_set_private_key failed");
+		EC_KEY_free(ec_key);
+		return ret;
+	}
 
-						if (rSize > 32 || sSize > 32) {
-							delete[] pSignedBufTemp;
-							ripple::Throw <std::runtime_error>("The length of raw signature is wrong");
-						}
+	// if(!setPubfromPri(ec_key)) return 1;
+
+    /* sign */
+    unsigned int uiSignedLen = 0;
+	if (!SM2_sign(NID_undef, pInData, ulInDataLen, pSignValue, &uiSignedLen, ec_key))
+	{
+		DebugPrint("SM2ECCSign: SM2_sign failed!");
+		EC_KEY_free(ec_key);
+		return ret;
+	}
+
+	const unsigned char *pSignedBuf = pSignValue;
+	ECDSA_SIG *sm2sig = d2i_ECDSA_SIG(NULL, &pSignedBuf, uiSignedLen);
+
+	if (sm2sig == NULL) 
+	{
+		DebugPrint("SM2ECCSign: SM2_sign failed!");
+		EC_KEY_free(ec_key);
+		return ret;
+	}
+
+    char *pSignR = NULL;
+    char *pSignS = NULL;
+	if (!(pSignR = BN_bn2hex(sm2sig->r)) || !(pSignS = BN_bn2hex(sm2sig->s)))
+	{
+		DebugPrint("SM2ECCSign: BN_bn2hex failed!");
+		ECDSA_SIG_free(sm2sig);
+		EC_KEY_free(ec_key);
+		return ret;
+	}
+
+	unsigned int rSize = BN_num_bytes(sm2sig->r);
+	unsigned int sSize = BN_num_bytes(sm2sig->s);
+
+	if (rSize > 32 || sSize > 32) {	
+		ECDSA_SIG_free(sm2sig);
+		EC_KEY_free(ec_key);
+		ripple::Throw <std::runtime_error>("The length of raw signature is wrong");
+	}
 						
-						// left pad 0x0
-						unsigned char signedTmp[64] = { 0 };
-						unsigned char rTmp[32] = { 0 };
-						unsigned char sTmp[32] = { 0 };
+	// left pad 0x0
+	unsigned char signedTmp[64] = { 0 };
+	unsigned char rTmp[32] = { 0 };
+	unsigned char sTmp[32] = { 0 };
 
-						rSize = BN_bn2bin(sm2sig->r, rTmp);
-						sSize = BN_bn2bin(sm2sig->s, sTmp);
+	rSize = BN_bn2bin(sm2sig->r, rTmp);
+	sSize = BN_bn2bin(sm2sig->s, sTmp);
 
-						memcpy(signedTmp + (32 - rSize), rTmp, rSize);
-						memcpy(signedTmp + (64 - sSize), sTmp, sSize);
-						memcpy(pSignValue, signedTmp, 64);
-						*pulSignValueLen = 64;
+	memcpy(signedTmp + (32 - rSize), rTmp, rSize);
+	memcpy(signedTmp + (64 - sSize), sTmp, sSize);
+	memcpy(pSignValue, signedTmp, 64);
+	*pulSignValueLen = 64;
 
-                        delete[] pSignedBufTemp;
-                        ret = 0;
-                        DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
-                    }
-                }
-                else
-                {
-                    delete[] pSignedBufTemp;
-                    DebugPrint("SM2ECCSign: SM2_sign failed!");
-                }
-            }
-        }
-        else
-        {
-            DebugPrint("SM2ECCSign: SM2_sign failed!");
-        }
-    }
-    else
-    {
-        DebugPrint("SM2ECCSign: EC_KEY_set_private_key failed");
-    }
+    ret = 0;
+    DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
+    
+	ECDSA_SIG_free(sm2sig);    
     EC_KEY_free(ec_key);
 	return ret;
 }
