@@ -97,26 +97,31 @@ public:
 Buffer
 signDigest(PublicKey const& pk, SecretKey const& sk, uint256 const& digest)
 {
-    if (publicKeyType(pk.slice()) != KeyType::secp256k1)
-        LogicError("sign: secp256k1 required for digest signing");
+    unsigned char sig[72];
+    size_t len = sizeof(sig);
+    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    if (nullptr == hEObj)
+    {
+        if (publicKeyType(pk.slice()) != KeyType::secp256k1)
+            LogicError("sign: secp256k1 required for digest signing");
 
-    BOOST_ASSERT(sk.size() == 32);
-    secp256k1_ecdsa_signature sig_imp;
-    if (secp256k1_ecdsa_sign(
-            secp256k1Context(),
-            &sig_imp,
-            reinterpret_cast<unsigned char const*>(digest.data()),
-            reinterpret_cast<unsigned char const*>(sk.data()),
-            secp256k1_nonce_function_rfc6979,
-            nullptr) != 1)
-        LogicError("sign: secp256k1_ecdsa_sign failed");
+        BOOST_ASSERT(sk.size() == 32);
+        secp256k1_ecdsa_signature sig_imp;
+        if (secp256k1_ecdsa_sign(
+                secp256k1Context(),
+                &sig_imp,
+                reinterpret_cast<unsigned char const*>(digest.data()),
+                reinterpret_cast<unsigned char const*>(sk.data()),
+                secp256k1_nonce_function_rfc6979,
+                nullptr) != 1)
+            LogicError("sign: secp256k1_ecdsa_sign failed");
 
-		if (secp256k1_ecdsa_signature_serialize_der(
-			secp256k1Context(),
-			sig,
-			&len,
-			&sig_imp) != 1)
-			LogicError("sign: secp256k1_ecdsa_signature_serialize_der failed");
+            if (secp256k1_ecdsa_signature_serialize_der(
+                secp256k1Context(),
+                sig,
+                &len,
+                &sig_imp) != 1)
+                LogicError("sign: secp256k1_ecdsa_signature_serialize_der failed");
 	}
 	else
 	{
@@ -144,58 +149,58 @@ sign(PublicKey const& pk, SecretKey const& sk, Slice const& m)
         LogicError("sign: invalid type");
     switch (*type)
     {
-    case KeyType::ed25519: {
-        Buffer b(64);
-        ed25519_sign(
-            m.data(), m.size(), sk.data(), pk.data() + 1, b.data());
-        return b;
-    }
-    case KeyType::secp256k1: {
-        sha512_half_hasher h;
-        h(m.data(), m.size());
-        auto const digest = sha512_half_hasher::result_type(h);
-
-        secp256k1_ecdsa_signature sig_imp;
-        if (secp256k1_ecdsa_sign(
-                secp256k1Context(),
-                &sig_imp,
-                reinterpret_cast<unsigned char const*>(digest.data()),
-                reinterpret_cast<unsigned char const*>(sk.data()),
-                secp256k1_nonce_function_rfc6979,
-                nullptr) != 1)
-            LogicError("sign: secp256k1_ecdsa_sign failed");
-
-        unsigned char sig[72];
-        size_t len = sizeof(sig);
-        if (secp256k1_ecdsa_signature_serialize_der(
-                secp256k1Context(), sig, &len, &sig_imp) != 1)
-            LogicError(
-                "sign: secp256k1_ecdsa_signature_serialize_der failed");
-
-        return Buffer{sig, len};
-    }
-    case KeyType::gmalg:
-    {
-        unsigned long rv = 0;
-        unsigned char outData[256] = { 0 };
-        unsigned long outDataLen = 256;
-        unsigned char hashData[32] = { 0 };
-        unsigned long hashDataLen = 32;
-
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
-        std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
-        hEObj->SM3HashTotal((unsigned char*)m.data(), m.size(), hashData, &hashDataLen);
-
-        rv = hEObj->SM2ECCSign(pri4Sign, hashData, hashDataLen, outData, &outDataLen);
-        if (rv)
-        {
-            DebugPrint("SM2ECCSign error! rv = 0x%04x", rv);
-            LogicError("sign: SM2ECCSign failed");
+        case KeyType::ed25519: {
+            Buffer b(64);
+            ed25519_sign(
+                m.data(), m.size(), sk.data(), pk.data() + 1, b.data());
+            return b;
         }
-        return Buffer{ outData,outDataLen };
-    }
-    default:
-        LogicError("sign: invalid type");
+        case KeyType::secp256k1: {
+            sha512_half_hasher h;
+            h(m.data(), m.size());
+            auto const digest = sha512_half_hasher::result_type(h);
+
+            secp256k1_ecdsa_signature sig_imp;
+            if (secp256k1_ecdsa_sign(
+                    secp256k1Context(),
+                    &sig_imp,
+                    reinterpret_cast<unsigned char const*>(digest.data()),
+                    reinterpret_cast<unsigned char const*>(sk.data()),
+                    secp256k1_nonce_function_rfc6979,
+                    nullptr) != 1)
+                LogicError("sign: secp256k1_ecdsa_sign failed");
+
+            unsigned char sig[72];
+            size_t len = sizeof(sig);
+            if (secp256k1_ecdsa_signature_serialize_der(
+                    secp256k1Context(), sig, &len, &sig_imp) != 1)
+                LogicError(
+                    "sign: secp256k1_ecdsa_signature_serialize_der failed");
+
+            return Buffer{sig, len};
+        }
+        case KeyType::gmalg:
+        {
+            unsigned long rv = 0;
+            unsigned char outData[256] = { 0 };
+            unsigned long outDataLen = 256;
+            unsigned char hashData[32] = { 0 };
+            unsigned long hashDataLen = 32;
+
+            HardEncrypt* hEObj = HardEncryptObj::getInstance();
+            std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
+            hEObj->SM3HashTotal((unsigned char*)m.data(), m.size(), hashData, &hashDataLen);
+
+            rv = hEObj->SM2ECCSign(pri4Sign, hashData, hashDataLen, outData, &outDataLen);
+            if (rv)
+            {
+                DebugPrint("SM2ECCSign error! rv = 0x%04x", rv);
+                LogicError("sign: SM2ECCSign failed");
+            }
+            return Buffer{ outData,outDataLen };
+        }
+        default:
+            LogicError("sign: invalid type");
     }
 }
 
