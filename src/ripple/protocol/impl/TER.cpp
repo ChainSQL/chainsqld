@@ -166,7 +166,7 @@ transResults()
 		MAKE_ERROR(temBAD_TABLEFLAGS,          "Malformed: Bad table authority."                                               ),
 		MAKE_ERROR(temBAD_RAW,                 "Malformed: Bad raw sql."                                                       ),
 		MAKE_ERROR(temBAD_OPTYPE,              "Malformed: Bad operator type." ),
-		MAKE_ERROR(temBAD_OPTYPE_IN_TRANSACTION ,"Malformed:create,drop,rename is not allowd in SqlTransaction."}},
+		MAKE_ERROR(temBAD_OPTYPE_IN_TRANSACTION ,"Malformed:create,drop,rename is not allowd in SqlTransaction."),
 		MAKE_ERROR(temBAD_BASETX,              "Malformed: Bad base tx check hash." ),
 		MAKE_ERROR(temBAD_PUT,				   "Malformed: Bad base tx format or check hash error" ),
 		MAKE_ERROR(temBAD_DBTX,                "Malformed: Bad DBTx support."                                                  ),
