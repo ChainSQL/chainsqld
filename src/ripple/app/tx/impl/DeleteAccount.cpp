@@ -71,7 +71,7 @@ DeleteAccount::calculateBaseFee(ReadView const& view, STTx const& tx)
 namespace {
 // Define a function pointer type that can be used to delete ledger node types.
 using DeleterFuncPtr = TER (*)(
-    Application& app,
+	Schema& app,
     ApplyView& view,
     AccountID const& account,
     uint256 const& delIndex,
@@ -81,7 +81,7 @@ using DeleterFuncPtr = TER (*)(
 // Local function definitions that provides signature compatibility.
 TER
 offerDelete(
-    Application& app,
+	Schema& app,
     ApplyView& view,
     AccountID const& account,
     uint256 const& delIndex,
@@ -93,7 +93,7 @@ offerDelete(
 
 TER
 removeSignersFromLedger(
-    Application& app,
+    Schema& app,
     ApplyView& view,
     AccountID const& account,
     uint256 const& delIndex,
@@ -105,7 +105,7 @@ removeSignersFromLedger(
 
 TER
 removeDepositPreauthFromLedger(
-    Application& app,
+	Schema& app,
     ApplyView& view,
     AccountID const& account,
     uint256 const& delIndex,

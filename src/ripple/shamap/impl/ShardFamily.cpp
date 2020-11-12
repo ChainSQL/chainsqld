@@ -18,7 +18,7 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/main/Tuning.h>
 #include <ripple/nodestore/DatabaseShard.h>
 #include <ripple/shamap/ShardFamily.h>
@@ -26,14 +26,14 @@
 namespace ripple {
 
 static NodeStore::Database&
-getShardStore(Application& app)
+getShardStore(Schema& app)
 {
     auto const dbPtr = app.getShardStore();
     assert(dbPtr);
     return *dbPtr;
 }
 
-ShardFamily::ShardFamily(Application& app, CollectorManager& cm)
+ShardFamily::ShardFamily(Schema& app, CollectorManager& cm)
     : app_(app)
     , db_(getShardStore(app))
     , cm_(cm)

@@ -89,8 +89,6 @@ public:
 
     static constexpr unsigned nest_limit{25};
 
-    static constexpr unsigned nest_limit {25};
-
 private:
     enum TokenType {
         tokenEndOfStream = 0,

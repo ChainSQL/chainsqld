@@ -148,6 +148,7 @@ operator&=(ApplyFlags& lhs, ApplyFlags const& rhs)
     The invariant is that insert, update, and erase may not
     be called with any SLE which belongs to different view.
 */
+class OpenView;
 class ApplyView : public ReadView
 {
 private:

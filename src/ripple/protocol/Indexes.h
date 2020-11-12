@@ -89,16 +89,6 @@ fees() noexcept;
 Keylet const&
 negativeUNL() noexcept;
 
-/** The beginning of an order book */
-struct book_t
-{
-    explicit book_t() = default;
-
-    Keylet
-    operator()(Book const& b) const;
-};
-static book_t const book{};
-
 /** The index of a trust line for a given currency
 
     Note that a trustline is *shared* between two accounts (commonly referred
@@ -136,32 +126,6 @@ offer(uint256 const& key) noexcept
 Keylet
 quality(Keylet const& k, std::uint64_t q) noexcept;
 
-/** The directory for the next lower quality */
-struct next_t
-{
-    explicit next_t() = default;
-
-    Keylet
-    operator()(Keylet const& k) const;
-};
-static next_t const next{};
-
-/** A ticket belonging to an account */
-struct ticket_t
-{
-    explicit ticket_t() = default;
-
-    Keylet
-    operator()(AccountID const& id, std::uint32_t seq) const;
-
-    Keylet
-    operator()(uint256 const& key) const
-    {
-        return {ltTICKET, key};
-    }
-};
-static ticket_t const ticket{};
-
 /** A SignerList */
 Keylet
 signers(AccountID const& account) noexcept;
@@ -188,37 +152,6 @@ depositPreauth(uint256 const& key) noexcept
 {
     return {ltDEPOSIT_PREAUTH, key};
 }
-/** @} */
-
-/** A Check */
-struct check_t
-{
-    explicit check_t() = default;
-
-    Keylet operator()(AccountID const& id,
-        std::uint32_t seq) const;
-
-    Keylet operator()(uint256 const& key) const
-    {
-        return { ltCHECK, key };
-    }
-};
-static check_t const check {};
-
-/** A DepositPreauth */
-struct depositPreauth_t
-{
-    explicit depositPreauth_t() = default;
-
-    Keylet operator()(AccountID const& owner,
-        AccountID const& preauthorized) const;
-
-    Keylet operator()(uint256 const& key) const
-    {
-        return { ltDEPOSIT_PREAUTH, key };
-    }
-};
-static depositPreauth_t const depositPreauth {};
 
 //------------------------------------------------------------------------------
 

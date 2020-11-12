@@ -173,7 +173,7 @@ signerCountBasedOwnerCountDelta(std::size_t entryCount)
 
 static TER
 removeSignersFromLedger(
-    Application& app,
+	Schema& app,
     ApplyView& view,
     Keylet const& accountKeylet,
     Keylet const& ownerDirKeylet,
@@ -219,7 +219,7 @@ removeSignersFromLedger(
 
 TER
 SetSignerList::removeFromLedger(
-    Application& app,
+    Schema& app,
     ApplyView& view,
     AccountID const& account)
 {

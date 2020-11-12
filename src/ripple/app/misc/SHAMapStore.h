@@ -104,7 +104,7 @@ public:
 
 std::unique_ptr<SHAMapStore>
 make_SHAMapStore(
-    Application& app,
+    Schema& app,
     Stoppable& parent,
     NodeStore::Scheduler& scheduler,
     beast::Journal journal);

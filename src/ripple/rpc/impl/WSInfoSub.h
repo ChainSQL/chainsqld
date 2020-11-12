@@ -46,6 +46,12 @@ public:
     WSInfoSub(Source& source, std::shared_ptr<WSSession> const& ws)
         : InfoSub(source), ws_(ws)
     {
+		init(ws);
+    }
+
+	void
+    init(std::shared_ptr<WSSession> const& ws)
+    {
         auto const& h = ws->request();
         if (ipAllowed(
                 beast::IPAddressConversion::from_asio(ws->remote_endpoint())

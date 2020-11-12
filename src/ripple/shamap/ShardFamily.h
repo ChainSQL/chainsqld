@@ -25,7 +25,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 
 class ShardFamily : public Family
 {
@@ -40,7 +40,7 @@ public:
     ShardFamily&
     operator=(ShardFamily&&) = delete;
 
-    ShardFamily(Application& app, CollectorManager& cm);
+    ShardFamily(Schema& app, CollectorManager& cm);
 
     NodeStore::Database&
     db() override
@@ -98,7 +98,7 @@ public:
     }
 
 private:
-    Application& app_;
+    Schema& app_;
     NodeStore::Database& db_;
     CollectorManager& cm_;
     beast::Journal const j_;

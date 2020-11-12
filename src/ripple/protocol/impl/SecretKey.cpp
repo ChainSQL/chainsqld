@@ -97,26 +97,28 @@ public:
 Buffer
 signDigest(PublicKey const& pk, SecretKey const& sk, uint256 const& digest)
 {
-    if (publicKeyType(pk.slice()) != KeyType::secp256k1)
-        LogicError("sign: secp256k1 required for digest signing");
+    unsigned char sig[72];
+    size_t len = sizeof(sig);
+    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    if (nullptr == hEObj)
+    {
+        if (publicKeyType(pk.slice()) != KeyType::secp256k1)
+            LogicError("sign: secp256k1 required for digest signing");
 
-    BOOST_ASSERT(sk.size() == 32);
-    secp256k1_ecdsa_signature sig_imp;
-    if (secp256k1_ecdsa_sign(
-            secp256k1Context(),
-            &sig_imp,
-            reinterpret_cast<unsigned char const*>(digest.data()),
-            reinterpret_cast<unsigned char const*>(sk.data()),
-            secp256k1_nonce_function_rfc6979,
-            nullptr) != 1)
-        LogicError("sign: secp256k1_ecdsa_sign failed");
+        BOOST_ASSERT(sk.size() == 32);
+        secp256k1_ecdsa_signature sig_imp;
+        if (secp256k1_ecdsa_sign(
+                secp256k1Context(),
+                &sig_imp,
+                reinterpret_cast<unsigned char const*>(digest.data()),
+                reinterpret_cast<unsigned char const*>(sk.data()),
+                secp256k1_nonce_function_rfc6979,
+                nullptr) != 1)
+            LogicError("sign: secp256k1_ecdsa_sign failed");
 
-		if (secp256k1_ecdsa_signature_serialize_der(
-			secp256k1Context(),
-			sig,
-			&len,
-			&sig_imp) != 1)
-			LogicError("sign: secp256k1_ecdsa_signature_serialize_der failed");
+        if (secp256k1_ecdsa_signature_serialize_der(
+                secp256k1Context(), sig, &len, &sig_imp) != 1)
+            LogicError("sign: secp256k1_ecdsa_signature_serialize_der failed");
 	}
 	else
 	{

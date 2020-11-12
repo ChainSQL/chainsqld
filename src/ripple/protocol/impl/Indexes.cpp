@@ -177,12 +177,6 @@ negativeUNL() noexcept
 }
 
 Keylet
-book_t::operator()(Book const& b) const
-{
-    return {ltDIR_NODE, getBookBase(b)};
-}
-
-Keylet
 line(
     AccountID const& id0,
     AccountID const& id1,
@@ -235,18 +229,6 @@ quality(Keylet const& k, std::uint64_t q) noexcept
     return {ltDIR_NODE, x};
 }
 
-Keylet
-next_t::operator()(Keylet const& k) const
-{
-    assert(k.type == ltDIR_NODE);
-    return {ltDIR_NODE, getQualityNext(k.key)};
-}
-
-Keylet
-ticket_t::operator()(AccountID const& id, std::uint32_t seq) const
-{
-    return {ltTICKET, getTicketIndex(id, seq)};
-}
 
 // This function is presently static, since it's never accessed from anywhere
 // else. If we ever support multiple pages of signer lists, this would be the

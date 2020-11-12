@@ -22,7 +22,6 @@
 
 #include <ripple/basics/Blob.h>
 #include <ripple/basics/strHex.h>
-
 #include <boost/format.hpp>
 #include <boost/optional.hpp>
 #include <boost/utility/string_view.hpp>
@@ -63,17 +62,6 @@ inline bool IsNumerialStr_Decimal(std::string str)
 		//	return false;
 	});
 	return (findIter == str.cend());
-}
-
-// NIKB TODO Remove the need for all these overloads. Move them out of here.
-inline const std::string strHex (std::string const& strSrc)
-{
-    return strHex (strSrc.begin (), strSrc.size ());
-}
-
-inline std::string strHex (Blob const& vucData)
-{
-    return strHex (vucData.begin (), vucData.size ());
 }
 
 inline static std::string sqlEscape (std::string const& strSrc)

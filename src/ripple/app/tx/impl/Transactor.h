@@ -194,7 +194,7 @@ protected:
      */
     static ZXCAmount
     minimumFee(
-        Application& app,
+		Schema& app,
         FeeUnit64 baseFee,
         Fees const& fees,
         ApplyFlags flags);

@@ -35,7 +35,7 @@ ShardVerificationScheduler::ShardVerificationScheduler(
 
 bool
 ShardVerificationScheduler::retry(
-    Application& app,
+	Schema& app,
     bool shouldHaveHash,
     retryFunction f)
 {

@@ -304,6 +304,7 @@ enum TECcodes : TERUnderlyingType {
     tecUNFUNDED_OFFER = 103,
     tecUNFUNDED_PAYMENT = 104,
     tecFAILED_PROCESSING = 105,
+    tecUNFUNDED_ESCROW = 106,
     tecDIR_FULL = 121,
     tecINSUF_RESERVE_LINE = 122,
     tecINSUF_RESERVE_OFFER = 123,

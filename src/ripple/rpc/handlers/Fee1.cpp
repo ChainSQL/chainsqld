@@ -44,7 +44,7 @@ doFeeGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetFeeRequest>& context)
     org::zxcl::rpc::v1::GetFeeResponse reply;
     grpc::Status status = grpc::Status::OK;
 
-    Application& app = context.app;
+    Schema& app = context.app;
     auto const view = app.openLedger().current();
     if (!view)
     {

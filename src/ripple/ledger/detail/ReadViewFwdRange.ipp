@@ -31,20 +31,13 @@ ReadViewFwdRange<ValueType>::iterator::iterator(iterator const& other)
 {
 }
 
-<<<<<<< HEAD
 template<class ValueType>
 ReadViewFwdRange<ValueType>::iterator::iterator(
         iterator&& other) noexcept
     : view_ (other.view_)
     , impl_ (std::move(other.impl_))
     , cache_ (std::move(other.cache_))
-=======
-template <class ValueType>
-ReadViewFwdRange<ValueType>::iterator::iterator(iterator&& other) noexcept
-    : view_(other.view_)
-    , impl_(std::move(other.impl_))
-    , cache_(std::move(other.cache_))
->>>>>>> release
+
 {
 }
 
@@ -71,14 +64,9 @@ ReadViewFwdRange<ValueType>::iterator::operator=(iterator const& other)
 
 template <class ValueType>
 auto
-<<<<<<< HEAD
 ReadViewFwdRange<ValueType>::iterator::operator=(
     iterator&& other) noexcept ->
         iterator&
-=======
-ReadViewFwdRange<ValueType>::iterator::operator=(iterator&& other) noexcept
-    -> iterator&
->>>>>>> release
 {
     view_ = other.view_;
     impl_ = std::move(other.impl_);

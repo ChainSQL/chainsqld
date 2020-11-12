@@ -47,7 +47,6 @@ public:
         , mResult (terMAX)
         , j_ (j)
     {
-        explicit CtorHelper() = default;
     };
     template <class T>
     TxMeta(

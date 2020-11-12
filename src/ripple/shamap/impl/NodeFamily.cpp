@@ -18,13 +18,13 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/main/Tuning.h>
 #include <ripple/shamap/NodeFamily.h>
 
 namespace ripple {
 
-NodeFamily::NodeFamily(Application& app, CollectorManager& cm)
+NodeFamily::NodeFamily(Schema& app, CollectorManager& cm)
     : app_(app)
     , db_(app.getNodeStore())
     , j_(app.journal("NodeFamily"))

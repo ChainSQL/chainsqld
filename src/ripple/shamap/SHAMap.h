@@ -113,12 +113,6 @@ public:
         return f_;
     }
 
-    Family const&
-    family() const
-    {
-        return f_;
-    }
-
     Family&
     family()
     {

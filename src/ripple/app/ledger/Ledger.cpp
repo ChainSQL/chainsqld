@@ -908,7 +908,7 @@ isFlagLedger(LedgerIndex seq)
 
 static bool
 saveValidatedLedger(
-    Application& app,
+    Schema& app,
     std::shared_ptr<Ledger const> const& ledger,
     bool current)
 {

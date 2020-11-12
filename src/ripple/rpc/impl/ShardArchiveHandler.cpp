@@ -46,14 +46,14 @@ ShardArchiveHandler::getDownloadDirectory(Config const& config)
 
 std::unique_ptr<ShardArchiveHandler>
 ShardArchiveHandler::makeShardArchiveHandler(
-    Application& app,
+    Schema& app,
     Stoppable& parent)
 {
     return std::make_unique<ShardArchiveHandler>(app, parent);
 }
 
 std::unique_ptr<ShardArchiveHandler>
-ShardArchiveHandler::tryMakeRecoveryHandler(Application& app, Stoppable& parent)
+ShardArchiveHandler::tryMakeRecoveryHandler(Schema& app, Stoppable& parent)
 {
     auto const downloadDir(getDownloadDirectory(app.config()));
 
@@ -68,7 +68,7 @@ ShardArchiveHandler::tryMakeRecoveryHandler(Application& app, Stoppable& parent)
     return nullptr;
 }
 
-ShardArchiveHandler::ShardArchiveHandler(Application& app, Stoppable& parent)
+ShardArchiveHandler::ShardArchiveHandler(Schema& app, Stoppable& parent)
     : Stoppable("ShardArchiveHandler", parent)
     , process_(false)
     , app_(app)
@@ -593,7 +593,7 @@ ShardArchiveHandler::removeAndProceed(std::lock_guard<std::mutex> const& lock)
     return next(lock);
 }
 
-RecoveryHandler::RecoveryHandler(Application& app, Stoppable& parent)
+RecoveryHandler::RecoveryHandler(Schema& app, Stoppable& parent)
     : ShardArchiveHandler(app, parent)
 {
 }

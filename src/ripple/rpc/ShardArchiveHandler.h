@@ -20,7 +20,7 @@
 #ifndef RIPPLE_RPC_SHARDARCHIVEHANDLER_H_INCLUDED
 #define RIPPLE_RPC_SHARDARCHIVEHANDLER_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/basics/BasicConfig.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/net/DatabaseDownloader.h>
@@ -47,15 +47,15 @@ public:
     getDownloadDirectory(Config const& config);
 
     static std::unique_ptr<ShardArchiveHandler>
-    makeShardArchiveHandler(Application& app, Stoppable& parent);
+    makeShardArchiveHandler(Schema& app, Stoppable& parent);
 
     // Create a ShardArchiveHandler only if
     // the state database is present, indicating
     // that recovery is needed.
     static std::unique_ptr<ShardArchiveHandler>
-    tryMakeRecoveryHandler(Application& app, Stoppable& parent);
+    tryMakeRecoveryHandler(Schema& app, Stoppable& parent);
 
-    ShardArchiveHandler(Application& app, Stoppable& parent);
+    ShardArchiveHandler(Schema& app, Stoppable& parent);
 
     virtual ~ShardArchiveHandler() = default;
 
@@ -136,7 +136,7 @@ private:
     std::unique_ptr<DatabaseCon> sqliteDB_;
     /////////////////////////////////////////////////
 
-    Application& app_;
+    Schema& app_;
     beast::Journal const j_;
     boost::filesystem::path const downloadDir_;
     boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer_;
@@ -161,7 +161,7 @@ private:
 class RecoveryHandler : public ShardArchiveHandler
 {
 public:
-    RecoveryHandler(Application& app, Stoppable& parent);
+    RecoveryHandler(Schema& app, Stoppable& parent);
 };
 
 }  // namespace RPC

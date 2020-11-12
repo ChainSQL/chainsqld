@@ -20,7 +20,7 @@
 #ifndef RIPPLE_RPC_SHARDVERIFICATIONSCHEDULER_H_INCLUDED
 #define RIPPLE_RPC_SHARDVERIFICATIONSCHEDULER_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <functional>
 
 namespace ripple {
@@ -46,7 +46,7 @@ public:
         std::uint32_t maxAttempts);
 
     bool
-    retry(Application& app, bool shouldHaveHash, retryFunction f);
+    retry(Schema& app, bool shouldHaveHash, retryFunction f);
 
     void
     reset();

@@ -72,11 +72,6 @@ STValidation::getConsensusHash() const
     return getFieldH256(sfConsensusHash);
 }
 
-uint256 STValidation::getConsensusHash () const
-{
-    return getFieldH256 (sfConsensusHash);
-}
-
 NetClock::time_point
 STValidation::getSignTime() const
 {

@@ -109,7 +109,7 @@ preflight2(PreflightContext const& ctx)
 //------------------------------------------------------------------------------
 
 PreflightContext::PreflightContext(
-    Application& app_,
+	Schema& app_,
     STTx const& tx_,
     Rules const& rules_,
     ApplyFlags flags_,
@@ -150,7 +150,7 @@ Transactor::calculateFeePaid(STTx const& tx)
 
 ZXCAmount
 Transactor::minimumFee(
-    Application& app,
+	Schema& app,
     FeeUnit64 baseFee,
     Fees const& fees,
     ApplyFlags flags)

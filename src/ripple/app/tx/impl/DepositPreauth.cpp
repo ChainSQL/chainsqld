@@ -165,7 +165,7 @@ DepositPreauth::doApply()
 
 TER
 DepositPreauth::removeFromLedger(
-    Application& app,
+	Schema& app,
     ApplyView& view,
     uint256 const& preauthIndex,
     beast::Journal j)

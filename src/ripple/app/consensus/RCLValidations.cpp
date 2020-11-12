@@ -132,7 +132,7 @@ RCLValidationsAdaptor::acquire(LedgerHash const& hash)
         JLOG(j_.debug())
             << "Need validated ledger for preferred ledger analysis " << hash;
 
-        Application* pApp = &app_;
+		Schema* pApp = &app_;
 
         app_.getJobQueue().addJob(
             jtADVANCE, "getConsensusLedger", [pApp, hash](Job&) {

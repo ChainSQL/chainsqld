@@ -224,16 +224,6 @@ public:
     void
     setParent(Stoppable& parent);
 
-	RootStoppable& getRoot() { return m_root; }
-
-	/** Set the parent of this Stoppable.
-
-		@note The Stoppable must not already have a parent.
-		The parent to be set cannot not be stopping.
-		Both roots must match.
-	*/
-	void setParent(Stoppable& parent);
-
     /** Returns `true` if the stoppable should stop. */
     bool
     isStopping() const;

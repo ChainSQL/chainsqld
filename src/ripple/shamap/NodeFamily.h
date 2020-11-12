@@ -25,7 +25,7 @@
 
 namespace ripple {
 
-class Application;
+class Schema;
 
 class NodeFamily : public Family
 {
@@ -92,7 +92,7 @@ public:
     }
 
 private:
-    Application& app_;
+    Schema& app_;
     NodeStore::Database& db_;
     beast::Journal const j_;
 

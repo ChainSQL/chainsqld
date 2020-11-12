@@ -105,7 +105,7 @@ transResults()
 		MAKE_ERROR(tefTABLE_GRANTFULL,		  "A table can only grant 500 uses."												),
 		MAKE_ERROR(tefTABLE_COUNTFULL,		  "One account can own at most 100 tables,now you are creating the 101 one."		),
 		MAKE_ERROR(tefGAS_INSUFFICIENT,		  "Gas insufficient." ),
-		MAKE_ERROR(tefCONTRACT_EXEC_EXCEPTION "Exception occurred while executing contract ." ),
+		MAKE_ERROR(tefCONTRACT_EXEC_EXCEPTION, "Exception occurred while executing contract ." ),
 		MAKE_ERROR(tefCONTRACT_REVERT_INSTRUCTION,"Contract reverted,maybe 'require' condition not satisfied." ),
 		MAKE_ERROR(tefCONTRACT_CANNOT_BEPAYED,"Contract address cannot be 'Destination' for 'Payment'." ),
 		MAKE_ERROR(tefCONTRACT_NOT_EXIST ,	  	"Contract does not exist,maybe destructed."				),

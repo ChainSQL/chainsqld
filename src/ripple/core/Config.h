@@ -26,6 +26,7 @@
 #include <ripple/beast/net/IPEndpoint.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/SystemParameters.h>  // VFALCO Breaks levelization
+#include <peersafe/schema/SchemaParams.h>
 #include <boost/beast/core/string.hpp>
 #include <boost/filesystem.hpp>  // VFALCO FIX: This include should not be here
 #include <boost/lexical_cast.hpp>
@@ -101,14 +102,6 @@ private:
           account is created.
     */
     bool RUN_STANDALONE = false;
-
-    /** Determines if the server will sign a tx, given an account's secret seed.
-
-        In the past, this was allowed, but this functionality can have security
-        implications. The new default is to not allow this functionality, but
-        a config option is included to enable this.
-    */
-    bool signingEnabled_ = false;
 
     /** Determines if the server will sign a tx, given an account's secret seed.
 
