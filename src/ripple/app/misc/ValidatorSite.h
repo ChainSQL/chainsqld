@@ -461,6 +461,6 @@ namespace ripple {
 //     missingSite();
 // };
 
-}  // namespace ripple
+//}  // namespace ripple
 
 #endif

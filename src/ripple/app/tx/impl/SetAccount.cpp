@@ -172,9 +172,6 @@ SetAccount::preflight(PreflightContext const& ctx)
 	// TickSize
 	if (tx.isFieldPresent(sfTickSize))
 	{
-		if (!ctx.rules.enabled(featureTickSize))
-			return temDISABLED;
-
 		auto uTickSize = tx[sfTickSize];
 		if (uTickSize &&
 			((uTickSize < Quality::minTickSize) ||

@@ -20,7 +20,7 @@
 #ifndef RIPPLE_TX_APPLYCONTEXT_H_INCLUDED
 #define RIPPLE_TX_APPLYCONTEXT_H_INCLUDED
 
-#include <ripple/app/main/Schema.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/basics/ZXCAmount.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/core/Config.h>

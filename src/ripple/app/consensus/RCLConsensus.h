@@ -177,26 +177,6 @@ class RCLConsensus
         void
         updateOperatingMode(std::size_t const positions) const;
 
-        bool
-        haveValidated() const;
-
-        LedgerIndex
-        getValidLedgerIndex() const;
-
-        std::pair<std::size_t, hash_set<NodeKey_t>>
-        getQuorumKeys() const;
-
-        std::size_t
-        laggards(Ledger_t::Seq const seq,
-            hash_set<NodeKey_t >& trustedKeys) const;
-
-        /** Whether I am a validator.
-         *
-         * @return whether I am a validator.
-         */
-        bool
-        validator() const;
-
         /** Consensus simulation parameters
          */
         ConsensusParms const&

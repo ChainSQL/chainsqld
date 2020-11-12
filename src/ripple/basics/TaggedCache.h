@@ -606,6 +606,13 @@ protected:
         }
     };
 
+protected:
+    virtual bool
+    needContinue(clock_type::time_point const now, Entry& entry)
+    {
+        return false;
+    }
+
     using cache_type = hardened_hash_map<key_type, Entry, Hash, KeyEqual>;
 
     beast::Journal m_journal;

@@ -1542,7 +1542,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
     batchLock.unlock();
 
     {
-        auto masterLock = make_lock(app_.app().getMasterMutex(), std::defer_lock);
+        auto masterLock = make_lock(app_.getMasterMutex(), std::defer_lock);
         bool changed = false;
         {
             //std::lock_guard <std::recursive_mutex> lock (
@@ -2630,7 +2630,7 @@ NetworkOPsImp::getAccountTxs(
                 ret.emplace_back(
                     txn,
                     std::make_shared<TxMeta>(
-                        txn->getID(), txn->getLedger(), txnMeta, m_journal));
+                        txn->getID(), txn->getLedger(), txnMeta));
         }
     }
 

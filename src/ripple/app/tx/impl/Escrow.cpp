@@ -245,8 +245,9 @@ EscrowCreate::doApply()
 
     // Check destination account
     {
+        auto const& dest = ctx_.tx[sfDestination];
         auto const sled =
-            ctx_.view().read(keylet::account(ctx_.tx[sfDestination]));
+            ctx_.view().read(keylet::account(dest));
         if (!sled)
             return tecNO_DST;
         if (((*sled)[sfFlags] & lsfRequireDestTag) &&

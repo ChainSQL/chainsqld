@@ -29,6 +29,7 @@
 #include <ripple/protocol/PublicKey.h>
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/range/adaptors.hpp>
+#include <peersafe/app/misc/ConfigSite.h>
 #include <mutex>
 #include <shared_mutex>
 #include <numeric>
@@ -42,19 +43,6 @@ class Overlay;
 class HashRouter;
 class STValidation;
 
-enum class ListDisposition {
-    /// List is valid
-    accepted = 0,
-
-    /// Same sequence as current list
-    same_sequence,
-
-    /// List version is not supported
-    unsupported_version,
-
-    /// List signed by untrusted publisher key
-    untrusted,
-
 /** Changes in trusted nodes after updating validator list
 */
 struct TrustChanges
@@ -67,16 +55,6 @@ struct TrustChanges
 
 std::string
 to_string(ListDisposition disposition);
-
-/** Changes in trusted nodes after updating validator list
- */
-struct TrustChanges
-{
-    explicit TrustChanges() = default;
-
-    hash_set<NodeID> added;
-    hash_set<NodeID> removed;
-};
 
 /**
     Trusted Validators List
@@ -484,10 +462,6 @@ public:
     */
     boost::optional<Json::Value>
     getAvailable(boost::beast::string_view const& pubKey);
-
-    /** Return the number of configured validator list sites. */
-    std::size_t
-    count() const;
 
     /** Return the number of configured validator list sites. */
     std::size_t

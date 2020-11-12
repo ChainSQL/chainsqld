@@ -24,6 +24,7 @@
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/basics/ZXCAmount.h>
 #include <ripple/beast/utility/Journal.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/optional.hpp>
 
 namespace ripple {
@@ -128,6 +129,9 @@ public:
 
     static NotTEC
     checkSeq(PreclaimContext const& ctx);
+
+	static NotTEC
+	checkSeq2(PreclaimContext const& ctx);
 
     static TER
     checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee);

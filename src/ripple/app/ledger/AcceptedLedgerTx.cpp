@@ -36,7 +36,7 @@ AcceptedLedgerTx::AcceptedLedgerTx(
     : mLedger (ledger)
     , mTxn (txn)
     , mMeta (std::make_shared<TxMeta> (
-        txn->getTransactionID(), ledger->seq(), *met, logs.journal("AcceptedLedgerTx")))
+        txn->getTransactionID(), ledger->seq(), *met))
     , mAffected (mMeta->getAffectedAccounts (logs.journal("AcceptedLedgerTx")))
     , accountCache_ (accountCache)
     , logs_ (logs)

@@ -90,6 +90,7 @@ class ResolverAsio;
 class ValidatorKeys;
 class SchemaManager;
 class PeerManager;
+class ShardArchiveHandler;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
@@ -172,6 +173,8 @@ public:
     virtual RCLValidations&         getValidations (SchemaID const& id = beast::zero) = 0;
     virtual NodeStore::Database&    getNodeStore (SchemaID const& id = beast::zero) = 0;
 	virtual NodeStore::DatabaseShard*   getShardStore(SchemaID const& id = beast::zero) = 0;
+	virtual ShardArchiveHandler* getShardArchiveHandler(SchemaID const& id = beast::zero,
+		bool tryRecovery = false) = 0;
     virtual InboundLedgers&         getInboundLedgers (SchemaID const& id = beast::zero) = 0;
     virtual InboundTransactions&    getInboundTransactions (SchemaID const& id = beast::zero) = 0;
     virtual TaggedCache <uint256, AcceptedLedger>&

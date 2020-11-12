@@ -60,6 +60,7 @@ namespace ripple {
 	class PeerReservationTable;
 	class DatabaseCon;
 	class SHAMapStore;
+	class MutexType;
 
 	using NodeCache = TaggedCache <SHAMapHash, Blob>;
 
@@ -79,7 +80,8 @@ namespace ripple {
 		virtual void doStop() = 0;
 		virtual void doStart() = 0;
 
-
+        virtual MutexType&
+                getMasterMutex() = 0;
 		virtual beast::Journal journal(std::string const& name) = 0;
 
 		//Share the same one from Application
@@ -98,7 +100,7 @@ namespace ripple {
 
 		// Different shema by schema
 		virtual Config&					config() = 0;
-		virtual Family&                 family() = 0;
+		virtual Family&                 getNodeFamily() = 0;
 		virtual Family*                 getShardFamily() = 0;
 		virtual AmendmentTable&         getAmendmentTable() = 0;
 		virtual HashRouter&             getHashRouter() = 0;

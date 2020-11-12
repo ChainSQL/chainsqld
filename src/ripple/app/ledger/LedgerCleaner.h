@@ -20,7 +20,7 @@
 #ifndef RIPPLE_APP_LEDGER_LEDGERCLEANER_H_INCLUDED
 #define RIPPLE_APP_LEDGER_LEDGERCLEANER_H_INCLUDED
 
-#include <ripple/app/main/Schema.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/beast/utility/PropertyStream.h>
 #include <ripple/core/Stoppable.h>

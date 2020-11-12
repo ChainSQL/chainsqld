@@ -32,22 +32,22 @@ namespace ripple {
 
 class TxMeta
 {
+public:
+    using pointer = std::shared_ptr<TxMeta>;
+    using ref = const pointer&;
+
 private:
     struct CtorHelper
     {
         explicit CtorHelper() = default;
     };
     template<class T>
-	TxMeta(uint256 const& txID, std::uint32_t ledger, T const& data, beast::Journal j,
+	TxMeta(
+		uint256 const& txID, 
+		std::uint32_t ledger, 
+		T const& data,
 		CtorHelper);
 public:
-    TxMeta (beast::Journal j)
-        : mLedger (0)
-        , mIndex (static_cast<std::uint32_t> (-1))
-        , mResult (terMAX)
-        , j_ (j)
-    {
-    };
     template <class T>
     TxMeta(
         uint256 const& txID,
@@ -55,18 +55,17 @@ public:
         T const& data,
         CtorHelper);
 
-    TxMeta (uint256 const& txID, std::uint32_t ledger, std::uint32_t index,beast::Journal j)
+    TxMeta (uint256 const& txID, std::uint32_t ledger, std::uint32_t index)
         : mTransactionID (txID)
         , mLedger (ledger)
         , mIndex (static_cast<std::uint32_t> (-1))
         , mResult (terMAX)
-        , j_(j)
     {
     }
-
-	TxMeta(uint256 const& txID, std::uint32_t ledger, Blob const&, beast::Journal j);
-	TxMeta(uint256 const& txID, std::uint32_t ledger, std::string const&, beast::Journal j);
-	TxMeta(uint256 const& txID, std::uint32_t ledger, STObject const&, beast::Journal j);
+	TxMeta(uint256 const& transactionID, std::uint32_t ledger);
+	TxMeta(uint256 const& txID, std::uint32_t ledger, Blob const&);
+	TxMeta(uint256 const& txID, std::uint32_t ledger, std::string const&);
+	TxMeta(uint256 const& txID, std::uint32_t ledger, STObject const&);
 
     void init (uint256 const& transactionID, std::uint32_t ledger);
     void clear ()

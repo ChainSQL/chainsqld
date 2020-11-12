@@ -49,7 +49,7 @@ to serialize/deserialize the new field or message type.
 
 #### To add a new gRPC method
 
-To add a new gRPC method, add the gRPC method in xrp_ledger.proto. The method name
+To add a new gRPC method, add the gRPC method in zxc_ledger.proto. The method name
 should begin with a verb. Define the request and response types in their own
 file. The name of the request type should be the method name suffixed with `Request`, and
 the response type name should be the method name suffixed with `Response`. For

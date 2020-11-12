@@ -33,7 +33,6 @@
 #include <ripple/protocol/STValidation.h>
 #include <ripple/beast/core/ByteOrder.h>
 #include <ripple/beast/net/IPAddressConversion.h>
-#include <ripple/beast/asio/ssl_bundle.h>
 #include <beast/http/message.hpp>
 #include <ripple/beast/utility/WrappedSink.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>

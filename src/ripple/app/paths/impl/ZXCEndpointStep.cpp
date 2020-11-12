@@ -73,8 +73,8 @@ public:
     directStepAccts() const override
     {
         if (isLast_)
-            return std::make_pair(xrpAccount(), acc_);
-        return std::make_pair(acc_, xrpAccount());
+            return std::make_pair(zxcAccount(), acc_);
+        return std::make_pair(acc_, zxcAccount());
     }
 
     boost::optional<EitherAmount>
@@ -123,9 +123,9 @@ public:
 
 protected:
     XRPAmount
-    xrpLiquidImpl(ReadView& sb, std::int32_t reserveReduction) const
+    zxcLiquidImpl(ReadView& sb, std::int32_t reserveReduction) const
     {
-        return ripple::xrpLiquid(sb, acc_, reserveReduction, j_);
+        return ripple::zxcLiquid(sb, acc_, reserveReduction, j_);
     }
 
     std::string
@@ -174,9 +174,9 @@ public:
     using XRPEndpointStep<XRPEndpointPaymentStep>::XRPEndpointStep;
 
     XRPAmount
-    xrpLiquid(ReadView& sb) const
+    zxcLiquid(ReadView& sb) const
     {
-        return xrpLiquidImpl(sb, 0);
+        return zxcLiquidImpl(sb, 0);
         ;
     }
 
@@ -215,9 +215,9 @@ public:
     }
 
     XRPAmount
-    xrpLiquid(ReadView& sb) const
+    zxcLiquid(ReadView& sb) const
     {
-        return xrpLiquidImpl(sb, reserveReduction_);
+        return zxcLiquidImpl(sb, reserveReduction_);
     }
 
     std::string
@@ -260,12 +260,12 @@ XRPEndpointStep<TDerived>::revImp(
     boost::container::flat_set<uint256>& ofrsToRm,
     XRPAmount const& out)
 {
-    auto const balance = static_cast<TDerived const*>(this)->xrpLiquid(sb);
+    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid(sb);
 
     auto const result = isLast_ ? out : std::min(balance, out);
 
-    auto& sender = isLast_ ? xrpAccount() : acc_;
-    auto& receiver = isLast_ ? acc_ : xrpAccount();
+    auto& sender = isLast_ ? zxcAccount() : acc_;
+    auto& receiver = isLast_ ? acc_ : zxcAccount();
     auto ter = accountSend(sb, sender, receiver, toSTAmount(result), j_);
     if (ter != tesSUCCESS)
         return {XRPAmount{beast::zero}, XRPAmount{beast::zero}};
@@ -283,12 +283,12 @@ XRPEndpointStep<TDerived>::fwdImp(
     XRPAmount const& in)
 {
     assert(cache_);
-    auto const balance = static_cast<TDerived const*>(this)->xrpLiquid(sb);
+    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid(sb);
 
     auto const result = isLast_ ? in : std::min(balance, in);
 
-    auto& sender = isLast_ ? xrpAccount() : acc_;
-    auto& receiver = isLast_ ? acc_ : xrpAccount();
+    auto& sender = isLast_ ? zxcAccount() : acc_;
+    auto& receiver = isLast_ ? acc_ : zxcAccount();
     auto ter = accountSend(sb, sender, receiver, toSTAmount(result), j_);
     if (ter != tesSUCCESS)
         return {XRPAmount{beast::zero}, XRPAmount{beast::zero}};
@@ -312,22 +312,22 @@ XRPEndpointStep<TDerived>::validFwd(
 
     assert(in.native);
 
-    auto const& xrpIn = in.xrp;
-    auto const balance = static_cast<TDerived const*>(this)->xrpLiquid(sb);
+    auto const& zxcIn = in.zxc;
+    auto const balance = static_cast<TDerived const*>(this)->zxcLiquid(sb);
 
-    if (!isLast_ && balance < xrpIn)
+    if (!isLast_ && balance < zxcIn)
     {
         JLOG(j_.warn()) << "XRPEndpointStep: Strand re-execute check failed."
                         << " Insufficient balance: " << to_string(balance)
-                        << " Requested: " << to_string(xrpIn);
+                        << " Requested: " << to_string(zxcIn);
         return {false, EitherAmount(balance)};
     }
 
-    if (xrpIn != *cache_)
+    if (zxcIn != *cache_)
     {
         JLOG(j_.warn()) << "XRPEndpointStep: Strand re-execute check failed."
                         << " ExpectedIn: " << to_string(*cache_)
-                        << " CachedIn: " << to_string(xrpIn);
+                        << " CachedIn: " << to_string(zxcIn);
     }
     return {true, in};
 }
@@ -356,16 +356,16 @@ XRPEndpointStep<TDerived>::check(StrandContext const& ctx) const
         return temBAD_PATH;
     }
 
-    auto& src = isLast_ ? xrpAccount() : acc_;
-    auto& dst = isLast_ ? acc_ : xrpAccount();
-    auto ter = checkFreeze(ctx.view, src, dst, xrpCurrency());
+    auto& src = isLast_ ? zxcAccount() : acc_;
+    auto& dst = isLast_ ? acc_ : zxcAccount();
+    auto ter = checkFreeze(ctx.view, src, dst, zxcCurrency());
     if (ter != tesSUCCESS)
         return ter;
 
     if (ctx.view.rules().enabled(fix1781))
     {
         auto const issuesIndex = isLast_ ? 0 : 1;
-        if (!ctx.seenDirectIssues[issuesIndex].insert(xrpIssue()).second)
+        if (!ctx.seenDirectIssues[issuesIndex].insert(zxcIssue()).second)
         {
             JLOG(j_.debug())
                 << "XRPEndpointStep: loop detected: Index: " << ctx.strandSize
@@ -382,7 +382,7 @@ XRPEndpointStep<TDerived>::check(StrandContext const& ctx) const
 namespace test {
 // Needed for testing
 bool
-xrpEndpointStepEqual(Step const& step, AccountID const& acc)
+zxcEndpointStepEqual(Step const& step, AccountID const& acc)
 {
     if (auto xs =
             dynamic_cast<XRPEndpointStep<XRPEndpointPaymentStep> const*>(&step))

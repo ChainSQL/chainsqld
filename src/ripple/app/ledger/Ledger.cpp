@@ -335,8 +335,7 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(
 		SHAMapType::TRANSACTION,
-		ledger.stateMap_->family(),
-		ledger.stateMap_->get_version()))
+		ledger.stateMap_->family()))
 	, stateMap_(ledger.stateMap_->genesisSnapShot(f))
 	, fees_(ledger.fees_)
 	, rules_(ledger.rules_)
@@ -349,10 +348,10 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 		getCloseAgree(ledger.info()), info_.seq);
 	info_.parentHash = ledger.info().hash;
 
-	if (stateMap_->is_v2())
-	{
-		info_.closeFlags |= sLCF_SHAMapV2;
-	}
+	//if (stateMap_->is_v2())
+	//{
+	//	info_.closeFlags |= sLCF_SHAMapV2;
+	//}
 
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
 	stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
@@ -1156,31 +1155,31 @@ bool pendSaveValidated (
     return saveValidatedLedger(app, ledger, isCurrent);
 }
 
-void
-Ledger::make_v2()
-{
-    assert (! mImmutable);
-    stateMap_ = stateMap_->make_v2();
-    txMap_ = txMap_->make_v2();
-    info_.validated = false;
-    info_.accountHash = stateMap_->getHash ().as_uint256();
-    info_.txHash = txMap_->getHash ().as_uint256();
-    info_.hash = calculateLedgerHash (info_);
-    info_.closeFlags |= sLCF_SHAMapV2;
-}
-
-void
-Ledger::make_v1()
-{
-	assert(!mImmutable);
-	stateMap_ = stateMap_->make_v1();
-	txMap_ = txMap_->make_v1();
-	info_.validated = false;
-	info_.accountHash = stateMap_->getHash().as_uint256();
-	info_.txHash = txMap_->getHash().as_uint256();
-	info_.hash = calculateLedgerHash(info_);
-	info_.closeFlags ^= sLCF_SHAMapV2;
-}
+//void
+//Ledger::make_v2()
+//{
+//    assert (! mImmutable);
+//    stateMap_ = stateMap_->make_v2();
+//    txMap_ = txMap_->make_v2();
+//    info_.validated = false;
+//    info_.accountHash = stateMap_->getHash ().as_uint256();
+//    info_.txHash = txMap_->getHash ().as_uint256();
+//    info_.hash = calculateLedgerHash (info_);
+//    info_.closeFlags |= sLCF_SHAMapV2;
+//}
+//
+//void
+//Ledger::make_v1()
+//{
+//	assert(!mImmutable);
+//	stateMap_ = stateMap_->make_v1();
+//	txMap_ = txMap_->make_v1();
+//	info_.validated = false;
+//	info_.accountHash = stateMap_->getHash().as_uint256();
+//	info_.txHash = txMap_->getHash().as_uint256();
+//	info_.hash = calculateLedgerHash(info_);
+//	info_.closeFlags ^= sLCF_SHAMapV2;
+//}
 
 void
 Ledger::unshare() const

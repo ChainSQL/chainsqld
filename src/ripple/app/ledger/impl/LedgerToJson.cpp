@@ -135,7 +135,7 @@ fillJsonTx(
             {
                 // Insert delivered amount
                 auto txMeta = std::make_shared<TxMeta>(
-                    txn->getTransactionID(), fill.ledger.seq(), *stMeta, beast::Journal{ beast::Journal::getNullSink() });
+                    txn->getTransactionID(), fill.ledger.seq(), *stMeta);
                 RPC::insertDeliveredAmount(
                     txJson[jss::metaData], fill.ledger, txn, *txMeta);
             }
