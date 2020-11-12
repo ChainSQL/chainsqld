@@ -30,6 +30,13 @@ target_link_libraries (ripple_libs
 # disable SSLv2...this can also be done when building/configuring OpenSSL
 set_target_properties(OpenSSL::SSL PROPERTIES
     INTERFACE_COMPILE_DEFINITIONS OPENSSL_NO_SSL2)
+
+message(STATUS "OPENSSL_VERSION: ${OPENSSL_VERSION}")
+if (${OPENSSL_VERSION} VERSION_LESS "1.1.0")
+  set_target_properties(OpenSSL::SSL PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS USE_LOW_OPENSSL)
+endif ()
+
 #[=========================================================[
    https://gitlab.kitware.com/cmake/cmake/issues/16885
    depending on how openssl is built, it might depend
