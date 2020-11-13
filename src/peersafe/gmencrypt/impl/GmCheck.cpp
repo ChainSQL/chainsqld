@@ -24,7 +24,6 @@ void Sleep(int n)
 	sleep(n/1000);
 }
 #endif
-
 #ifdef GM_ALG_PROCESS
 
 const int preDataSetCnt = 3;
@@ -242,18 +241,16 @@ bool GMCheck::sm2EncryptAndDecryptCheck(unsigned long plainDataLen)
 		auto tempCipher = ripple::strUnHex(g_CipherED[i]).first;
 		gmStand2Cipher(tempCipher);
 		auto tempPlain = ripple::strUnHex(g_PlainED[i]).first;
-		unsigned char deResult[1024];
-		unsigned long deResultLen = 1024;
-		memset(deResult, 0, strlen((char*)deResult));
+        std::vector<unsigned char> resultVec;
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(hEObj->gmOutCard, 0);
 		std::pair<unsigned char*, int> pri4Decrypt = std::make_pair(tempPri.data(), tempPri.size());
-		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, tempCipher.data(), tempCipher.size(), deResult, &deResultLen);
+		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, tempCipher.data(), tempCipher.size(), resultVec);
 		if (rv)
 		{
 			result = false;
 			return result;
 		}
-		if (memcmp(deResult, tempPlain.data(), tempPlain.size()))
+		if (memcmp(resultVec.data(), tempPlain.data(), tempPlain.size()))
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2 decrypt result comparision failed";
 			result = false;
@@ -265,25 +262,22 @@ bool GMCheck::sm2EncryptAndDecryptCheck(unsigned long plainDataLen)
 			result = true;
 		}
 
-		unsigned char pCipherBuf[1024] = {0};
-		unsigned long cipherLen = 1024;
-		memset(deResult, 0, strlen((char*)deResult));
+        std::vector<unsigned char> cipherBufV;
+        resultVec.clear();
 		std::pair<unsigned char*, int> pub4Encrypt = std::make_pair((unsigned char*)&tempPub[0], tempPub.size());
-		rv = hEObj->SM2ECCEncrypt(pub4Encrypt, (unsigned char*)&tempPlain[0], tempPlain.size(), pCipherBuf, &cipherLen);
+		rv = hEObj->SM2ECCEncrypt(pub4Encrypt, (unsigned char*)&tempPlain[0], tempPlain.size(), cipherBufV);
 		if (rv)
 		{
 			result = false;
 			return result;
 		}
-		memset(deResult, 0, strlen((char*)deResult));
-		// rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, pCipherBuf, strlen((char*)pCipherBuf), deResult, &deResultLen);
-		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, pCipherBuf, cipherLen, deResult, &deResultLen);
+		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, cipherBufV.data(), cipherBufV.size(), resultVec);
 		if (rv)
 		{
 			result = false;
 			return result;
 		}
-		if (memcmp(deResult, tempPlain.data(), tempPlain.size()))
+		if (memcmp(resultVec.data(), tempPlain.data(), tempPlain.size()))
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2 encrypt&decrypt check failed in " << i+1 << " times";
 			result = false;
@@ -1048,6 +1042,8 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 	int rv = 0;
 	int i = 0;
 	unsigned char pInData[10240], pTmpData[10240], pCipherData[236], pOutData[10240];
+    std::vector<unsigned char> cipherDataV;
+    std::vector<unsigned char> outDataV;
 	//unsigned char pGMStdCipher[MAX_LEN_4_GMSTD];
 	unsigned int cipherLen = 236, nTmpDataLen, nOutDataLen;
 	// unsigned int gmStdCipherLen = 96 + plainLen;
@@ -1114,7 +1110,7 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 		sprintf((char*)pTmpData, "%08x", plainLenTemp);
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
-		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLenTemp, pCipherData,(unsigned long*)&cipherLen);
+		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLenTemp, cipherDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2加密错误，错误码[" <<
@@ -1124,7 +1120,7 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 			//return rv;
 		}
 		//cipherLen = strlen((char*)pCipherData);
-		cipher2GMStand(pCipherData, pGMStdCipher, plainLenTemp);
+		cipher2GMStand(cipherDataV.data(), pGMStdCipher, plainLenTemp);
 		//gmStdCipherLen = strlen((char*)pGMStdCipher);
 		PrintData("SM2->加密结果", pGMStdCipher, gmStdCipherLen, 16);
 		//密文
@@ -1135,7 +1131,7 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", newline, 2);
 
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(hEObj->gmOutCard, 0);
-		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, tempPrivatekey, pCipherData, cipherLen, pOutData, (unsigned long*)&nOutDataLen);
+		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, tempPrivatekey, cipherDataV.data(), cipherDataV.size(), outDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2解密错误，错误码[" <<
@@ -1144,8 +1140,8 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		PrintData("SM2->解密结果", pOutData, nOutDataLen, 16);
-		if (memcmp(pOutData, pInData, nOutDataLen))
+		PrintData("SM2->解密结果", outDataV.data(), outDataV.size(), 16);
+		if (memcmp(outDataV.data(), pInData, outDataV.size()))
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2加密解密结果比较失败。";
 		}
@@ -1170,7 +1166,9 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 {
 	int rv = 0;
 	int i = 0;
-	unsigned char pInData[10240], pTmpData[10240], pCipherData[236], pOutData[10240];
+	unsigned char pInData[10240], pTmpData[10240];
+    std::vector<unsigned char> cipherDataV;
+    std::vector<unsigned char> outDataV;
 	//unsigned char pGMStdCipher[MAX_LEN_4_GMSTD];
 	unsigned int cipherLen = 236, nTmpDataLen, nOutDataLen;
 	// unsigned int gmStdCipherLen = 96 + plainLen;
@@ -1237,7 +1235,7 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
 
-		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLenTemp, pCipherData, (unsigned long*)&cipherLen);
+		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLenTemp, cipherDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2加密错误，错误码[" <<
@@ -1246,7 +1244,7 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		cipher2GMStand(pCipherData, pGMStdCipher, plainLenTemp);
+		cipher2GMStand(cipherDataV.data(), pGMStdCipher, plainLenTemp);
 		//gmStdCipherLen = strlen((char*)pGMStdCipher);
 		PrintData("SM2->加密结果", pGMStdCipher, gmStdCipherLen, 16);
 		//密文
@@ -1257,7 +1255,7 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", newline, 2);
 
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(hEObj->gmOutCard, 0);
-		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, tempPrivatekey, pCipherData, cipherLen, pOutData, (unsigned long*)&nOutDataLen);
+		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, tempPrivatekey, cipherDataV.data(), cipherDataV.size(), outDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2解密错误，错误码[" <<
@@ -1266,8 +1264,8 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		PrintData("SM2->解密结果", pOutData, nOutDataLen, 16);
-		if (memcmp(pOutData, pInData, nOutDataLen))
+		PrintData("SM2->解密结果", outDataV.data(), outDataV.size(), 16);
+		if (memcmp(outDataV.data(), pInData, outDataV.size()))
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2加密解密结果比较失败。";
 		}

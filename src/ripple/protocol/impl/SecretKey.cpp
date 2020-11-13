@@ -253,13 +253,10 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
     {
         unsigned long rv = 0;
 
-		unsigned long recommendedPlainLen = std::max(std::size_t(512), cipherBlob.size()*10);
-		unsigned char *plain = new unsigned char[recommendedPlainLen];
-		memset(plain, 0, recommendedPlainLen);
-
+        Blob    resPlainText;
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(secret_key.keyTypeInt_, secret_key.encrytCardIndex_);
         std::pair<unsigned char*, int> pri4Decrypt = std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
-        rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), plain, &recommendedPlainLen);
+        rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), resPlainText);
 		
         if (rv)
         {
@@ -267,9 +264,6 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
             return Blob();
         }
         DebugPrint("ECCDecrypt OK!");
-
-		Blob    resPlainText(plain, plain + recommendedPlainLen);
-		delete[] plain;
         return resPlainText;
     }
 }

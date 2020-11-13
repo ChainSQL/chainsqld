@@ -156,20 +156,15 @@ public:
         std::pair<unsigned char*, int>& pub4Encrypt,
         unsigned char * pPlainData,
         unsigned long ulPlainDataLen,
-        unsigned char * pCipherData,
-        unsigned long * pulCipherDataLen,
-        unsigned long ulAlias = SD_KEY_ALIAS,
-        unsigned long ulKeyUse = SD_KEY_USE) = 0;
+        std::vector<unsigned char>& cipherDataV) = 0;
     virtual unsigned long SM2ECCDecrypt(
 		std::pair<int, int> pri4DecryptInfo,
         std::pair<unsigned char*, int>& pri4Decrypt,
         unsigned char *pCipherData,
         unsigned long ulCipherDataLen,
-        unsigned char *pPlainData,
-        unsigned long *pulPlainDataLen,
+        std::vector<unsigned char>& plainDataV,
 		bool isSymmertryKey = false,
-        unsigned long ulAlias = SD_KEY_ALIAS,
-        unsigned long ulKeyUse = SD_KEY_USE) = 0;
+        void* sm4Handle = nullptr) = 0;
     //SM3 interface
     virtual unsigned long SM3HashTotal(
         unsigned char *pInData,

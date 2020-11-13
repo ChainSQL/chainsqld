@@ -375,21 +375,21 @@ unsigned long SJKCard::SM2ECCEncrypt(
     std::pair<unsigned char*, int>& pub4Encrypt,
     unsigned char * pPlainData,
     unsigned long ulPlainDataLen,
-    unsigned char * pCipherData,
-    unsigned long * pulCipherDataLen,
-    unsigned long ulAlias,
-    unsigned long ulKeyUse)
+    std::vector<unsigned char>& cipherDataV)
 {
     int rv;
     ECCrefPublicKey pub4EncryptTemp;
     standPubToSM2Pub(pub4Encrypt.first, pub4Encrypt.second, pub4EncryptTemp);
-    rv = SDF_ExternalEncrypt_ECC(hSessionHandle_, SGD_SM2_3, &pub4EncryptTemp, pPlainData, ulPlainDataLen, (ECCCipher *)pCipherData);
+    ECCCipher pEccCipher;
+    rv = SDF_ExternalEncrypt_ECC(hSessionHandle_, SGD_SM2_3, &pub4EncryptTemp, pPlainData, ulPlainDataLen, &pEccCipher);
     if (rv != SDR_OK)
     {
         DebugPrint("SM2 public key encrypt failed, failed number:[0x%08x]", rv);
     }
     else
     {
+        std::vector<unsigned char> cipherDataVTemp((unsigned char*)&pEccCipher, (unsigned char*)&pEccCipher + CARD_CIPHER_LEN);
+        cipherDataV.assign(cipherDataVTemp.begin(), cipherDataVTemp.end());
         DebugPrint("SM2 public key encrypt successful!");
     }
 	return rv;
@@ -399,27 +399,25 @@ unsigned long SJKCard::SM2ECCDecrypt(
     std::pair<unsigned char*, int>& pri4Decrypt,
     unsigned char *pCipherData,
     unsigned long ulCipherDataLen,
-    unsigned char *pPlainData,
-    unsigned long *pulPlainDataLen,
+    std::vector<unsigned char>& plainDataV,
 	bool isSymmertryKey,
-    unsigned long ulAlias,
-    unsigned long ulKeyUse)
+    void* sm4Handle)
 {
     int rv;
 	if (SeckeyType::gmInCard == pri4DecryptInfo.first)
 	{
 		if (isSymmertryKey)
 		{
-			rv = SM2ECCInterDecryptSyncKey(pri4DecryptInfo.second, pCipherData, ulCipherDataLen, pPlainData);
+			rv = SM2ECCInterDecryptSyncKey(pri4DecryptInfo.second, pCipherData, ulCipherDataLen, sm4Handle);
 		}
 		else
 		{
-			rv = SM2ECCInternalDecrypt(pri4DecryptInfo.second, pCipherData, ulCipherDataLen, pPlainData, pulPlainDataLen);
+			rv = SM2ECCInternalDecrypt(pri4DecryptInfo.second, pCipherData, ulCipherDataLen, plainDataV);
 		}
 	}
 	else if (SeckeyType::gmOutCard == pri4DecryptInfo.first)
 	{
-		rv = SM2ECCExternalDecrypt(pri4Decrypt, pCipherData, ulCipherDataLen, pPlainData, pulPlainDataLen);
+		rv = SM2ECCExternalDecrypt(pri4Decrypt, pCipherData, ulCipherDataLen, plainDataV);
 	}
 	else return 1;
     if (rv != SDR_OK)
@@ -437,49 +435,71 @@ unsigned long SJKCard::SM2ECCExternalDecrypt(
 	std::pair<unsigned char*, int>& pri4Decrypt,
 	unsigned char *pCipherData,
 	unsigned long ulCipherDataLen,
-	unsigned char *pPlainData,
-	unsigned long *pulPlainDataLen)
+    std::vector<unsigned char>& plainDataV)
 {
 	int rv;
 	ECCrefPrivateKey pri4DecryptTemp;
+    unsigned char* pCardCipher;
 	standPriToSM2Pri(pri4Decrypt.first, pri4Decrypt.second, pri4DecryptTemp);
-    if(pCipherData[1] != 0 || pCipherData[2] != 0 || pCipherData[3] != 0)
+    if(pCipherData[1] != 0 || pCipherData[2] != 0 || pCipherData[3] != 0) //there is no mark for soft encrypt,so use this judge way
     {
-        unsigned char* pCardCipher = new unsigned char[CARD_CIPHER_LEN];
+        pCardCipher = new unsigned char[CARD_CIPHER_LEN];
         c1c2c3ToCardCipher(pCardCipher, CARD_CIPHER_LEN, pCipherData, ulCipherDataLen);
-        rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCardCipher, pPlainData, (SGD_UINT32*)pulPlainDataLen);
+        // rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCardCipher, pPlainData, (SGD_UINT32*)pulPlainDataLen);
     }
     else
     {
-        rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCipherData, pPlainData, (SGD_UINT32*)pulPlainDataLen);
+        pCardCipher = pCipherData;
     }
-	
-	if (rv != SDR_OK)
-	{
-		DebugPrint("SM2 External secret key decrypt failed, failed number:[0x%08x]", rv);
-	}
-	else
-	{
-		DebugPrint("SM2 External secret key decrypt successful!");
-	}
+
+    SGD_UINT32 plainDataLen;
+    rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCardCipher, nullptr, &plainDataLen);
+    if (rv != SDR_OK)
+    {
+        DebugPrint("SM2 External secret key decrypt failed, failed number:[0x%08x]", rv);
+    }
+    else
+    {
+        SGD_UCHAR *pPlainData = new SGD_UCHAR[plainDataLen];
+        rv = SDF_ExternalDecrypt_ECC(hSessionHandle_, SGD_SM2_3, &pri4DecryptTemp, (ECCCipher *)pCardCipher, pPlainData, &plainDataLen);
+        if (!rv)
+        {
+            std::vector<unsigned char> plainDataVTemp(pPlainData, pPlainData + plainDataLen);
+            plainDataV.assign(plainDataVTemp.begin(), plainDataVTemp.end());
+            DebugPrint("SM2 External secret key decrypt successful!");
+        }
+        else
+            DebugPrint("SM2 External secret key decrypt failed, failed number:[0x%08x]", rv);
+        delete[] pPlainData;
+    }
+
 	return rv;
 }
 unsigned long SJKCard::SM2ECCInternalDecrypt(
 	int pri4DecryptIndex,
 	unsigned char *pCipherData,
 	unsigned long ulCipherDataLen,
-	unsigned char *pPlainData,
-	unsigned long *pulPlainDataLen)
+	std::vector<unsigned char>& plainDataV)
 {
 	int rv;
-	rv = SDF_InternalDecrypt_ECC(hSessionHandle_, pri4DecryptIndex, SGD_SM2_3,  (ECCCipher *)pCipherData, pPlainData, (SGD_UINT32*)pulPlainDataLen);
+    SGD_UINT32 plainDataLen;
+	rv = SDF_InternalDecrypt_ECC(hSessionHandle_, pri4DecryptIndex, SGD_SM2_3,  (ECCCipher *)pCipherData, nullptr, &plainDataLen);
 	if (rv != SDR_OK)
 	{
 		DebugPrint("SM2 Internal secret key decrypt failed, failed number:[0x%08x]", rv);
 	}
 	else
 	{
-		DebugPrint("SM2 Internal secret key decrypt successful!");
+        SGD_UCHAR* pPlainData = new SGD_UCHAR[plainDataLen];
+    	rv = SDF_InternalDecrypt_ECC(hSessionHandle_, pri4DecryptIndex, SGD_SM2_3,  (ECCCipher *)pCipherData, pPlainData, &plainDataLen);
+        if(!rv)
+        {
+            std::vector<unsigned char> plainDataVTemp(pPlainData, pPlainData + plainDataLen);
+            plainDataV.assign(plainDataVTemp.begin(), plainDataVTemp.end());
+            DebugPrint("SM2 Internal secret key decrypt successful!");
+        }
+		else DebugPrint("SM2 Internal secret key decrypt failed, failed number:[0x%08x]", rv);
+        delete [] pPlainData;
 	}
 	return rv;
 }

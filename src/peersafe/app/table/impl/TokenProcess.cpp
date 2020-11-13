@@ -47,9 +47,8 @@ namespace ripple {
 				secretkeyType = hEObj->gmInCard;
 				std::pair<int, int> pri4DecryptInfo = std::make_pair(secret_key.keyTypeInt_, secret_key.encrytCardIndex_);
 				std::pair<unsigned char*, int> pri4Decrypt = std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
-				unsigned long lHandle = 0; 
-				int rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), (unsigned char*)(&lHandle) , nullptr, true);
-				sm4Handle = (void *)lHandle;
+                Blob tempBlob;
+				int rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), tempBlob, true, sm4Handle);
 				if (rv)
 				{
 					DebugPrint("ECCDecrypt error! rv = 0x%04x", rv);

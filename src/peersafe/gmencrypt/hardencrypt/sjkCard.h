@@ -109,20 +109,15 @@ public:
         std::pair<unsigned char*, int>& pub4Encrypt,
         unsigned char * pPlainData,
         unsigned long ulPlainDataLen,
-        unsigned char * pCipherData,
-        unsigned long * pulCipherDataLen,
-        unsigned long ulAlias,
-        unsigned long ulKeyUse);
+        std::vector<unsigned char>& cipherDataV);
     unsigned long SM2ECCDecrypt(
 		std::pair<int, int> pri4DecryptInfo,
         std::pair<unsigned char*, int>& pri4Decrypt,
         unsigned char *pCipherData,
         unsigned long ulCipherDataLen,
-        unsigned char *pPlainData,
-        unsigned long *pulPlainDataLen,
+        std::vector<unsigned char>& plainDataV,
 		bool isSymmertryKey,
-        unsigned long ulAlias,
-        unsigned long ulKeyUse);
+        void* sm4Handle);
 	unsigned long SM2ECCInterDecryptSyncKey(
 		int pri4DecryptIndex,
 		unsigned char *pCipherData,
@@ -189,14 +184,12 @@ private:
 		std::pair<unsigned char*, int>& pri4Decrypt,
 		unsigned char *pCipherData,
 		unsigned long ulCipherDataLen,
-		unsigned char *pPlainData,
-		unsigned long *pulPlainDataLen);
+		std::vector<unsigned char>& plainDataV);
 	unsigned long SM2ECCInternalDecrypt(
 		int pri4DecryptIndex,
 		unsigned char *pCipherData,
 		unsigned long ulCipherDataLen,
-		unsigned char *pPlainData,
-		unsigned long *pulPlainDataLen);
+		std::vector<unsigned char>& plainDataV);
 	
 	unsigned long generateIV(unsigned int uiAlgMode, unsigned char* pIV);
 	unsigned long SM4ExternalSymEncrypt(

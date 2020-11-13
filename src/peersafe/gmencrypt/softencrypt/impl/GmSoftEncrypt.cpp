@@ -316,10 +316,7 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
     std::pair<unsigned char*, int>& pub4Encrypt,
     unsigned char * pPlainData,
     unsigned long ulPlainDataLen,
-    unsigned char * pCipherData,
-    unsigned long * pulCipherDataLen,
-    unsigned long ulAlias,
-    unsigned long ulKeyUse)
+    std::vector<unsigned char>& cipherDataV)
 {
     EC_KEY* pubkey = standPubToSM2Pub(pub4Encrypt.first, pub4Encrypt.second);
 	if (pubkey == nullptr)
@@ -346,8 +343,10 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
 	}
     else
     {
-        *pulCipherDataLen = cipherDataTempLen - 1;
-        memcpy(pCipherData, pCipherDataTemp + 1, *pulCipherDataLen);
+        // *pulCipherDataLen = cipherDataTempLen - 1;
+        // memcpy(pCipherData, pCipherDataTemp + 1, *pulCipherDataLen);
+        std::vector<unsigned char> cipherDataVTemp(pCipherDataTemp + 1, (pCipherDataTemp + 1 + cipherDataTempLen - 1));
+        cipherDataV.assign(cipherDataVTemp.begin(), cipherDataVTemp.end());
         // cipherReEncode(pCipherData, *pulCipherDataLen);
         delete [] pCipherDataTemp;
         DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended successfully");
@@ -369,14 +368,10 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
     std::pair<unsigned char*, int>& pri4Decrypt,
     unsigned char *pCipherData,
     unsigned long ulCipherDataLen,
-    unsigned char *pPlainData,
-    unsigned long *pulPlainDataLen,
+    std::vector<unsigned char>& plainDataV,
     bool isSymmertryKey,
-    unsigned long ulAlias,
-    unsigned long ulKeyUse)
+    void* sm4Handle)
 {
-	unsigned long tmpPlainDataLen = *pulPlainDataLen;
-
     if (SeckeyType::gmOutCard != pri4DecryptInfo.first)
     {
         return 1;
@@ -413,34 +408,30 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 		return 1;
 	}
 
-	if (msglen > tmpPlainDataLen) {
-		DebugPrint("msglen > tmpPlainDataLen");
-		EC_KEY_free(ec_key);
-		delete[] pCipherDataTemp;
-		return 1;
-	}
+	// if (msglen > tmpPlainDataLen) {
+	// 	DebugPrint("msglen > tmpPlainDataLen");
+	// 	EC_KEY_free(ec_key);
+	// 	delete[] pCipherDataTemp;
+	// 	return 1;
+	// }
 
-
+    unsigned char* pPlainData = new unsigned char[msglen];
 	if (!SM2_decrypt_with_recommended(pPlainData, &msglen, pCipherDataTemp, ulCipherDataLen + 1, ec_key))
 	{
 		DebugPrint("SM2ECCDecrypt2: SM2_decrypt_with_recommended failed");
 		EC_KEY_free(ec_key);
 		delete[] pCipherDataTemp;
+        delete[] pPlainData;
 		return 1;
 	}
 	else
 	{
-		if (msglen != tmpPlainDataLen) {
-
-			std::cout << "msglen != *pulPlainDataLen " << msglen << tmpPlainDataLen<< std::endl;
-			//DebugPrint("SM2ECCDecrypt2: SM2_decrypt_with_recommended failed");
-		}
-		*pulPlainDataLen = msglen;
-
+        std::vector<unsigned char> plainDataVTemp(pPlainData, pPlainData + msglen);
+        plainDataV.assign(plainDataVTemp.begin(), plainDataVTemp.end());
 		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended successfully");
-		//delete[] pCipherDataTemp;
 		EC_KEY_free(ec_key);
 		delete[] pCipherDataTemp;
+        delete[] pPlainData;
 		return 0;
 	}
 
