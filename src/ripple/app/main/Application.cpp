@@ -260,10 +260,9 @@ public:
 
         , serverHandler_(make_ServerHandler(
               *this,
-              *m_networkOPs,
+			  *this,
               get_io_service(),
               *m_jobQueue,
-              *m_networkOPs,
               *m_resourceManager,
               *m_collectorManager))
 
@@ -1122,38 +1121,6 @@ ApplicationImp::setup()
                 if (std::strlen(e.what()) > 0)
                     stream << ": " << e.what();
             }
-            return false;
-        }
-    }
-
-    if (shardStore_)
-    {
-        try
-        {
-            // Create a ShardArchiveHandler if recovery
-            // is needed (there's a state database left
-            // over from a previous run).
-            auto handler = getShardArchiveHandler(true);
-
-            // Recovery is needed.
-            if (handler)
-            {
-                if (!handler->start())
-                {
-                    JLOG(m_journal.fatal())
-                        << "Failed to start ShardArchiveHandler.";
-
-                    return false;
-                }
-            }
-        }
-        catch (std::exception const& e)
-        {
-            JLOG(m_journal.fatal())
-                << "Exception when starting ShardArchiveHandler from "
-                   "state database: "
-                << e.what();
-
             return false;
         }
     }

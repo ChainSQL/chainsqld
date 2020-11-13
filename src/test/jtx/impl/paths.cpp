@@ -19,6 +19,7 @@
 
 #include <ripple/app/paths/Pathfinder.h>
 #include <ripple/protocol/jss.h>
+#include <peersafe/schema/Schema.h>
 #include <test/jtx/paths.h>
 
 namespace ripple {
@@ -40,7 +41,7 @@ paths::operator()(Env& env, JTx& jt) const
         in_.account,
         amount,
         boost::none,
-        env.app());
+        env.schema());
     if (!pf.findPaths(depth_))
         return;
 

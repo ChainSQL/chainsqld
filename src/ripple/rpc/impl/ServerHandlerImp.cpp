@@ -108,14 +108,12 @@ ServerHandlerImp::ServerHandlerImp(
     Stoppable& parent,
     boost::asio::io_service& io_service,
     JobQueue& jobQueue,
-    NetworkOPs& networkOPs,
     Resource::Manager& resourceManager,
     CollectorManager& cm)
     : Stoppable("ServerHandler", parent)
     , app_(app)
     , m_resourceManager(resourceManager)
     , m_journal(app_.journal("Server"))
-    , m_networkOPs(networkOPs)
     , m_server(make_Server(*this, io_service, app_.journal("Server")))
     , m_jobQueue(jobQueue)
 {
@@ -197,7 +195,7 @@ ServerHandlerImp::onHandoff(
                 request, http::status::internal_server_error);
         }
 
-        auto is{std::make_shared<WSInfoSub>(m_networkOPs, ws)};
+        auto is{std::make_shared<WSInfoSub>(ws)};
         auto const beast_remote_address =
             beast::IPAddressConversion::from_asio(remote_address);
         is->getConsumer() = requestInboundEndpoint(
@@ -1248,12 +1246,11 @@ make_ServerHandler(
     Stoppable& parent,
     boost::asio::io_service& io_service,
     JobQueue& jobQueue,
-    NetworkOPs& networkOPs,
     Resource::Manager& resourceManager,
     CollectorManager& cm)
 {
     return std::make_unique<ServerHandlerImp>(
-        app, parent, io_service, jobQueue, networkOPs, resourceManager, cm);
+        app, parent, io_service, jobQueue, resourceManager, cm);
 }
 
 }  // namespace ripple

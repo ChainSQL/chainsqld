@@ -48,13 +48,6 @@ private:
 		T const& data,
 		CtorHelper);
 public:
-    template <class T>
-    TxMeta(
-        uint256 const& txID,
-        std::uint32_t ledger,
-        T const& data,
-        CtorHelper);
-
     TxMeta (uint256 const& txID, std::uint32_t ledger, std::uint32_t index)
         : mTransactionID (txID)
         , mLedger (ledger)
@@ -159,8 +152,6 @@ private:
     STArray mNodes;
 	ripple::Blob      contractTxsData;
     ripple::Blob      contractLogData;
-
-	beast::Journal	j_;
 };
 
 }  // namespace ripple

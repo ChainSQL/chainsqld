@@ -22,6 +22,7 @@
 #include <ripple/app/tx/impl/Transactor.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/STLedgerEntry.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <test/jtx.h>
 #include <test/jtx/Env.h>
@@ -60,7 +61,7 @@ class Invariants_test : public beast::unit_test::suite
         test::StreamSink sink{beast::severities::kWarning};
         beast::Journal jlog{sink};
         ApplyContext ac{
-            env.app(),
+            env.schema(),
             ov,
             tx,
             tesSUCCESS,

@@ -123,6 +123,8 @@ private:
     struct AppBundle
     {
         Application* app = nullptr;
+		std::shared_ptr<Schema> schema = nullptr;
+		std::unique_ptr<SchemaManager> schemaManager;
         std::unique_ptr<Application> owned;
         ManualTimeKeeper* timeKeeper = nullptr;
         std::thread thread;
@@ -242,6 +244,11 @@ public:
         return *bundle_.app;
     }
 
+	Schema&
+		schema()
+	{
+		return *bundle_.schema;
+	}
     Application const&
     app() const
     {

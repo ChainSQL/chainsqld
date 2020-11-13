@@ -106,7 +106,6 @@ public:
         Stoppable& parent,
         boost::asio::io_service& io_service,
         JobQueue& jobQueue,
-        NetworkOPs& networkOPs,
         Resource::Manager& resourceManager,
         CollectorManager& cm);
 

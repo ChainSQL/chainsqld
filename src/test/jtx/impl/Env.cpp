@@ -37,6 +37,8 @@
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/jss.h>
+#include <peersafe/schema/Schema.h>
+#include <peersafe/schema/SchemaManager.h>
 #include <memory>
 #include <test/jtx/Env.h>
 #include <test/jtx/JSONRPCClient.h>
@@ -88,6 +90,11 @@ Env::AppBundle::AppBundle(
     timeKeeper->set(app->getLedgerMaster().getClosedLedger()->info().closeTime);
     app->doStart(false /*don't start timers*/);
     thread = std::thread([&]() { app->run(); });
+
+	schemaManager = std::make_unique<SchemaManager>(
+		*this,
+		logs->journal("SchemaManager"));
+	schema = schemaManager->createSchemaMain(*config);
 
     client = makeJSONRPCClient(app->config());
 }

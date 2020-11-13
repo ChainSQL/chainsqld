@@ -90,7 +90,6 @@ class ResolverAsio;
 class ValidatorKeys;
 class SchemaManager;
 class PeerManager;
-class ShardArchiveHandler;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
@@ -99,6 +98,9 @@ class Validations;
 class RCLValidationsAdaptor;
 using RCLValidations = Validations<RCLValidationsAdaptor>;
 
+namespace RPC {
+	class ShardArchiveHandler;
+}
 
 class Application : public beast::PropertyStream::Source
 {
@@ -173,7 +175,7 @@ public:
     virtual RCLValidations&         getValidations (SchemaID const& id = beast::zero) = 0;
     virtual NodeStore::Database&    getNodeStore (SchemaID const& id = beast::zero) = 0;
 	virtual NodeStore::DatabaseShard*   getShardStore(SchemaID const& id = beast::zero) = 0;
-	virtual ShardArchiveHandler* getShardArchiveHandler(SchemaID const& id = beast::zero,
+	virtual RPC::ShardArchiveHandler* getShardArchiveHandler(SchemaID const& id = beast::zero,
 		bool tryRecovery = false) = 0;
     virtual InboundLedgers&         getInboundLedgers (SchemaID const& id = beast::zero) = 0;
     virtual InboundTransactions&    getInboundTransactions (SchemaID const& id = beast::zero) = 0;
@@ -215,6 +217,8 @@ public:
 
     /* Returns the number of file descriptors the application wants */
     virtual int fdlimit () const = 0;
+
+	virtual int	fdRequired() const = 0;
 };
 
 std::unique_ptr <Application>
