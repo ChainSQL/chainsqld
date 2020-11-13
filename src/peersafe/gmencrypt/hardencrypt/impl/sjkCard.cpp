@@ -275,20 +275,17 @@ unsigned long SJKCard::SM2ECCSign(
     std::pair<unsigned char*, int>& pri4Sign,
     unsigned char *pInData,
     unsigned long ulInDataLen,
-    unsigned char *pSignValue,
-    unsigned long *pulSignValueLen,
-    unsigned long ulAlias,
-    unsigned long ulKeyUse)
+    std::vector<unsigned char>& signedDataV)
 {
 	//according key type to determine is inner key or external key to call interface
 	int rv;
 	if (SeckeyType::gmInCard == pri4SignInfo.first)
 	{
-		rv = SM2ECCInternalSign(pri4SignInfo.second, pInData, ulInDataLen, pSignValue, pulSignValueLen);
+		rv = SM2ECCInternalSign(pri4SignInfo.second, pInData, ulInDataLen, signedDataV);
 	}
 	else if (SeckeyType::gmOutCard == pri4SignInfo.first)
 	{
-		rv = SM2ECCExternalSign(pri4Sign, pInData, ulInDataLen, pSignValue, pulSignValueLen);
+		rv = SM2ECCExternalSign(pri4Sign, pInData, ulInDataLen, signedDataV);
 	}
 	else return 1;
     if (rv != SDR_OK)
@@ -306,19 +303,21 @@ unsigned long SJKCard::SM2ECCExternalSign(
 	std::pair<unsigned char*, int>& pri4Sign,
 	unsigned char *pInData,
 	unsigned long ulInDataLen,
-	unsigned char *pSignValue,
-	unsigned long *pulSignValueLen)
+	std::vector<unsigned char>& signedDataV)
 {
 	int rv;
 	ECCrefPrivateKey pri4SignTemp;
+    ECCSignature signedDataTemp;
 	standPriToSM2Pri(pri4Sign.first, pri4Sign.second, pri4SignTemp);
-	rv = SDF_ExternalSign_ECC(hSessionHandle_, SGD_SM2_1, &pri4SignTemp, pInData, pri4SignTemp.bits / 8, (ECCSignature *)pSignValue);
+	rv = SDF_ExternalSign_ECC(hSessionHandle_, SGD_SM2_1, &pri4SignTemp, pInData, pri4SignTemp.bits / 8, &signedDataTemp);
 	if (rv != SDR_OK)
 	{
 		DebugPrint("SM2 external secret key sign failed, failed number:[0x%08x]", rv);
 	}
 	else
 	{
+        std::vector<unsigned char> signedDataTempV((unsigned char*)&signedDataTemp, (unsigned char*)&signedDataTemp + 64);
+        signedDataV.assign(signedDataTempV.begin(), signedDataTempV.end());
 		DebugPrint("SM2 external secret key sign successful!");
 	}
 	return rv;
@@ -328,17 +327,19 @@ unsigned long SJKCard::SM2ECCInternalSign(
 	int pri4SignIndex,
 	unsigned char *pInData,
 	unsigned long ulInDataLen,
-	unsigned char *pSignValue,
-	unsigned long *pulSignValueLen)
+	std::vector<unsigned char>& signedDataV)
 {
 	int rv;
-	rv = SDF_InternalSign_ECC(hSessionHandle_, pri4SignIndex, pInData, ulInDataLen, (ECCSignature *)pSignValue);
+    ECCSignature signedDataTemp;
+	rv = SDF_InternalSign_ECC(hSessionHandle_, pri4SignIndex, pInData, ulInDataLen, &signedDataTemp);
 	if (rv != SDR_OK)
 	{
 		DebugPrint("SM2 internal secret key sign failed, failed number:[0x%08x]", rv);
 	}
 	else
 	{
+        std::vector<unsigned char> signedDataTempV((unsigned char*)&signedDataTemp, (unsigned char*)&signedDataTemp + 64);
+        signedDataV.assign(signedDataTempV.begin(), signedDataTempV.end());
 		DebugPrint("SM2 internal secret key sign successful!");
 	}
 	return rv;
@@ -349,9 +350,7 @@ unsigned long SJKCard::SM2ECCVerify(
     unsigned char *pInData,
     unsigned long ulInDataLen,
     unsigned char *pSignValue,
-    unsigned long ulSignValueLen,
-    unsigned long ulAlias,
-    unsigned long ulKeyUse)
+    unsigned long ulSignValueLen)
 {
     int rv;
     ECCrefPublicKey pub4VerifyTemp;

@@ -180,10 +180,7 @@ unsigned long SoftEncrypt::SM2ECCSign(
     std::pair<unsigned char*, int>& pri4Sign,
     unsigned char *pInData,
     unsigned long ulInDataLen,
-    unsigned char *pSignValue,
-    unsigned long *pulSignValueLen,
-    unsigned long ulAlias,
-    unsigned long ulKeyUse)
+    std::vector<unsigned char>& signedDataV)
 {
     int ret = 1;
     if (SeckeyType::gmOutCard != pri4SignInfo.first)
@@ -211,6 +208,7 @@ unsigned long SoftEncrypt::SM2ECCSign(
 	// if(!setPubfromPri(ec_key)) return 1;
 
     /* sign */
+    unsigned char pSignValue[512] = { 0 };
     unsigned int uiSignedLen = 0;
 	if (!SM2_sign(NID_undef, pInData, ulInDataLen, pSignValue, &uiSignedLen, ec_key))
 	{
@@ -229,19 +227,8 @@ unsigned long SoftEncrypt::SM2ECCSign(
 		return ret;
 	}
 
-    char *pSignR = NULL;
-    char *pSignS = NULL;
-	if (!(pSignR = BN_bn2hex(sm2sig->r)) || !(pSignS = BN_bn2hex(sm2sig->s)))
-	{
-		DebugPrint("SM2ECCSign: BN_bn2hex failed!");
-		ECDSA_SIG_free(sm2sig);
-		EC_KEY_free(ec_key);
-		return ret;
-	}
-
 	unsigned int rSize = BN_num_bytes(sm2sig->r);
 	unsigned int sSize = BN_num_bytes(sm2sig->s);
-
 	if (rSize > 32 || sSize > 32) {	
 		ECDSA_SIG_free(sm2sig);
 		EC_KEY_free(ec_key);
@@ -258,9 +245,10 @@ unsigned long SoftEncrypt::SM2ECCSign(
 
 	memcpy(signedTmp + (32 - rSize), rTmp, rSize);
 	memcpy(signedTmp + (64 - sSize), sTmp, sSize);
-	memcpy(pSignValue, signedTmp, 64);
-	*pulSignValueLen = 64;
-
+	// memcpy(pSignValue, signedTmp, 64);
+    std::vector<unsigned char> signedVecTemp(signedTmp, signedTmp + 64);
+    signedDataV.assign(signedVecTemp.begin(), signedVecTemp.end());
+	
     ret = 0;
     DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
     
@@ -273,9 +261,7 @@ unsigned long SoftEncrypt::SM2ECCVerify(
     unsigned char *pInData,
     unsigned long ulInDataLen,
     unsigned char *pSignValue,
-    unsigned long ulSignValueLen,
-    unsigned long ulAlias,
-    unsigned long ulKeyUse)
+    unsigned long ulSignValueLen)
 {
     int ret = 1;
 	EC_KEY* pubkey = standPubToSM2Pub(pub4Verify.first, pub4Verify.second);

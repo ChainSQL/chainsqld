@@ -315,18 +315,17 @@ bool GMCheck::sm2SignedAndVerifyCheck()
 		}
 		JLOG(gmCheckJournal_.info()) << "SM2 verify successful in " << i+1 << " times";
 
-		unsigned char pSignedBuf[256] = { 0 };
-		unsigned long signedLen = 256;
+        std::vector<unsigned char> signedBufV;
 		std::pair<int, int> pri4SignInfo = std::make_pair(hEObj->gmOutCard, 0);
 		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)&tempPri[0], tempPri.size());
-		rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, tempPlain.data(), tempPlain.size(), pSignedBuf, &signedLen);
+		rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, tempPlain.data(), tempPlain.size(), signedBufV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2 sign&verify check failed in " << i+1 << " times";
 			result = false;
 			return result;
 		}
-		rv = hEObj->SM2ECCVerify(pub4Verify, tempPlain.data(), tempPlain.size(), pSignedBuf, signedLen);
+		rv = hEObj->SM2ECCVerify(pub4Verify, tempPlain.data(), tempPlain.size(), signedBufV.data(), signedBufV.size());
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2 sign&verify check failed in " << i+1 << " times";
@@ -1291,8 +1290,7 @@ int GMCheck::getDataSM2Sign(int dataSetCnt, unsigned int plainLen)
 	int rv = 0;
 	int i = 0;
 	unsigned char pInData[10240], pTmpData[10240]/*, pucID[256], pHashData[32]*/;
-	unsigned long signedLen = 64;
-	unsigned char* pSignedBuf = new unsigned char[signedLen];
+    std::vector<unsigned char> signedDataV;
 	unsigned int nTmpDataLen/*, nHashDateLen=32*/;
 	char pFileName[128] = { 0x00 };
 	unsigned char newline[] = { 0x0D,0x0A }, equal[] = { 0x3D,0x20 };
@@ -1375,9 +1373,9 @@ int GMCheck::getDataSM2Sign(int dataSetCnt, unsigned int plainLen)
 		Data_Bin2Txt(hashData, hashDataLen, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
-		memset(pSignedBuf, 0, signedLen);
+		// memset(pSignedBuf, 0, signedLen);
 		std::pair<int, int> pri4SignInfo = std::make_pair(hEObj->gmOutCard, 0);
-		rv = hEObj->SM2ECCSign(pri4SignInfo, tempPrivatekey, hashData, hashDataLen, pSignedBuf,&signedLen);
+		rv = hEObj->SM2ECCSign(pri4SignInfo, tempPrivatekey, hashData, hashDataLen, signedDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2签名错误，错误码[" <<
@@ -1389,13 +1387,13 @@ int GMCheck::getDataSM2Sign(int dataSetCnt, unsigned int plainLen)
 		//签名结果
 		FileWrite(pFileName, "ab", (unsigned char *)"签名结果", 8);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(pSignedBuf, signedLen, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(signedDataV.data(), signedDataV.size(), (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		FileWrite(pFileName, "ab", newline, 2);
-		PrintData("SM2->签名值", pSignedBuf, signedLen, 16);
+		PrintData("SM2->签名值", signedDataV.data(), signedDataV.size(), 16);
 
-		rv = hEObj->SM2ECCVerify(tempPublickey, hashData, hashDataLen, pSignedBuf, signedLen);
+		rv = hEObj->SM2ECCVerify(tempPublickey, hashData, hashDataLen, signedDataV.data(), signedDataV.size());
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2验证签名错误，错误码[" <<
@@ -1409,7 +1407,7 @@ int GMCheck::getDataSM2Sign(int dataSetCnt, unsigned int plainLen)
 			JLOG(gmCheckJournal_.info()) << "SM2验证签名正确。";
 		}
 	}
-	delete[] pSignedBuf;
+
 	JLOG(gmCheckJournal_.info()) << "采集SM2签名验签数据完成。";
 	return rv;
 }
@@ -1419,8 +1417,9 @@ int GMCheck::getDataSM2Verify(int dataSetCnt, unsigned int plainLen)
 	int rv = 0;
 	int i = 0;
 	unsigned char pInData[10240], pTmpData[10240]/*, pucID[256]*/;
-	unsigned long signedLen = 64;
-	unsigned char* pSignedBuf = new unsigned char[signedLen];
+	// unsigned long signedLen = 64;
+	// unsigned char* pSignedBuf = new unsigned char[signedLen];
+    std::vector<unsigned char> signedBufV;
 	unsigned int nTmpDataLen;
 	char pFileName[128] = { 0x00 };
 	unsigned char newline[] = { 0x0D,0x0A }, equal[] = { 0x3D,0x20 };
@@ -1515,9 +1514,9 @@ int GMCheck::getDataSM2Verify(int dataSetCnt, unsigned int plainLen)
 		Data_Bin2Txt(hashData, hashDataLen, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
-		memset(pSignedBuf, 0, signedLen);
+		// memset(pSignedBuf, 0, signedLen);
 		std::pair<int, int> pri4SignInfo = std::make_pair(hEObj->gmOutCard, 0);
-		rv = hEObj->SM2ECCSign(pri4SignInfo, tempPrivatekey, hashData, hashDataLen, pSignedBuf, &signedLen);
+		rv = hEObj->SM2ECCSign(pri4SignInfo, tempPrivatekey, hashData, hashDataLen, signedBufV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2签名错误，错误码[" <<
@@ -1529,13 +1528,13 @@ int GMCheck::getDataSM2Verify(int dataSetCnt, unsigned int plainLen)
 		//签名结果
 		FileWrite(pFileName, "ab", (unsigned char *)"签名结果", 8);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(pSignedBuf, signedLen, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(signedBufV.data(), signedBufV.size(), (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		FileWrite(pFileName, "ab", newline, 2);
-		PrintData("SM2->签名值", pSignedBuf, signedLen, 16);
+		PrintData("SM2->签名值", signedBufV.data(), signedBufV.size(), 16);
 
-		rv = hEObj->SM2ECCVerify(tempPublickey, hashData, hashDataLen, pSignedBuf, signedLen);
+		rv = hEObj->SM2ECCVerify(tempPublickey, hashData, hashDataLen, signedBufV.data(), signedBufV.size());
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2验证签名错误，错误码[" <<
@@ -1549,7 +1548,7 @@ int GMCheck::getDataSM2Verify(int dataSetCnt, unsigned int plainLen)
 			JLOG(gmCheckJournal_.info()) << "SM2验证签名正确。";
 		}
 	}
-	delete[] pSignedBuf;
+    
 	JLOG(gmCheckJournal_.info()) << "采集SM2签名验签数据完成。";
 	return rv;
 }

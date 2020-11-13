@@ -146,7 +146,10 @@ signDigest (PublicKey const& pk, SecretKey const& sk,
 		BOOST_ASSERT(sk.size() == 32);
 		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt_, sk.encrytCardIndex_);
 		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
-		unsigned long rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, (unsigned char*)digest.data(), digest.bytes, sig, (unsigned long*)&len);
+        std::vector<unsigned char> signedDataV;
+		unsigned long rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, (unsigned char*)digest.data(), digest.bytes, signedDataV);
+        memcpy(sig, signedDataV.data(), signedDataV.size());
+        len = signedDataV.size();
 		if (rv)
 		{
 			DebugPrint("ECCSign error! rv = 0x%04x", rv);
@@ -217,6 +220,7 @@ sign (PublicKey const& pk,
         unsigned long rv = 0;
         unsigned char outData[256] = { 0 };
         unsigned long outDataLen = 256;
+        Blob signedDataV;
         unsigned char hashData[32] = { 0 };
         unsigned long hashDataLen = 32;
 
@@ -226,13 +230,13 @@ sign (PublicKey const& pk,
 		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt_, sk.encrytCardIndex_);
 		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
 
-        rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, hashData, hashDataLen, outData, &outDataLen);
+        rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, hashData, hashDataLen, signedDataV);
         if (rv)
         {
             DebugPrint("SM2ECCSign error! rv = 0x%04x", rv);
             LogicError("sign: SM2ECCSign failed");
         }
-        return Buffer{ outData,outDataLen };
+        return Buffer{ signedDataV.data(), signedDataV.size() };
     }
     default:
         LogicError("sign: invalid type");

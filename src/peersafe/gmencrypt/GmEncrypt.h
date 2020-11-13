@@ -125,10 +125,7 @@ public:
 		std::pair<unsigned char*, int>& pri4Sign,
 		unsigned char *pInData,
 		unsigned long ulInDataLen,
-		unsigned char *pSignValue,
-		unsigned long *pulSignValueLen,
-		unsigned long ulAlias = SD_KEY_ALIAS,
-		unsigned long ulKeyUse = SD_KEY_USE) = 0;
+		std::vector<unsigned char>& signedDataV) = 0;
     /*virtual unsigned long SM2ECCExternalSign(
         std::pair<unsigned char*, int>& pri4Sign,
         unsigned char *pInData,
@@ -148,9 +145,7 @@ public:
         unsigned char *pInData,
         unsigned long ulInDataLen,
         unsigned char *pSignValue,
-        unsigned long ulSignValueLen,
-        unsigned long ulAlias = SD_KEY_ALIAS,
-        unsigned long ulKeyUse = SD_KEY_USE) = 0;
+        unsigned long ulSignValueLen) = 0;
     //SM2 Encrypt&Decrypt
     virtual unsigned long SM2ECCEncrypt(
         std::pair<unsigned char*, int>& pub4Encrypt,

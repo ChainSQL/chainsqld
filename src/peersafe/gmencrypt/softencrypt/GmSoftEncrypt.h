@@ -87,18 +87,13 @@ public:
         std::pair<unsigned char*, int>& pri4Sign,
         unsigned char *pInData,
         unsigned long ulInDataLen,
-        unsigned char *pSignValue,
-        unsigned long *pulSignValueLen,
-        unsigned long ulAlias,
-        unsigned long ulKeyUse);
+        std::vector<unsigned char>& signedDataV);
     unsigned long SM2ECCVerify(
         std::pair<unsigned char*, int>& pub4Verify,
         unsigned char *pInData,
         unsigned long ulInDataLen,
         unsigned char *pSignValue,
-        unsigned long ulSignValueLen,
-        unsigned long ulAlias,
-        unsigned long ulKeyUse);
+        unsigned long ulSignValueLen);
     //SM2 Encrypt&Decrypt
     unsigned long SM2ECCEncrypt(
         std::pair<unsigned char*, int>& pub4Encrypt,
