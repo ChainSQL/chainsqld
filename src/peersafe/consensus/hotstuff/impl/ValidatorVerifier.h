@@ -28,9 +28,13 @@
 
 #include <peersafe/consensus/hotstuff/impl/Types.h>
 #include <peersafe/consensus/hotstuff/impl/BlockInfo.h>
+//#include <peersafe/consensus/hotstuff/impl/Vote.h>
 
 namespace ripple {
 namespace hotstuff {
+
+class Block;
+class Vote;
 
 class ValidatorVerifier {
 public:
@@ -40,10 +44,18 @@ public:
 	virtual const Author& Self() const = 0;
 
 	virtual bool signature(const HashValue& message, Signature& signature) = 0;
+    virtual const bool verifySignature(
+        const Author& author,
+        const Signature& signature,
+        const HashValue& message) const = 0;
 	virtual const bool verifySignature(
 		const Author& author, 
 		const Signature& signature, 
-		const HashValue& message) const = 0;
+		const Block& message) const = 0;
+    virtual const bool verifySignature(
+        const Author& author,
+        const Signature& signature,
+        const Vote& message) const = 0;
 	virtual const bool verifyLedgerInfo(
 		const BlockInfo& commit_info,
 		const HashValue& consensus_data_hash,

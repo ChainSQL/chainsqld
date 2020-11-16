@@ -100,7 +100,15 @@ public:
     const bool verifySignature(
         const hotstuff::Author& author,
         const hotstuff::Signature& signature,
-        const uint256& digest) const override final;
+        const hotstuff::HashValue& digest) const override final;
+    const bool verifySignature(
+        const hotstuff::Author& author,
+        const hotstuff::Signature& signature,
+        const hotstuff::Block& block) const override final;
+    const bool verifySignature(
+        const hotstuff::Author& author,
+        const hotstuff::Signature& signature,
+        const hotstuff::Vote& vote) const override final;
     const bool verifyLedgerInfo(
         const hotstuff::BlockInfo& commit_info,
         const hotstuff::HashValue& consensus_data_hash,

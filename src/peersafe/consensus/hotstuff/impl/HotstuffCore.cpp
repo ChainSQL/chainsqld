@@ -159,9 +159,14 @@ bool HotstuffCore::VerifyQC(const QuorumCertificate& qc) {
         JLOG(journal_.error()) << "VerifyQC checkVotingPower failed, signatures size: "<< signatures.size();
         return false;
     }
-		
-	VoteData voteData = qc.vote_data();
-	HashValue hash = voteData.hash();
+
+	HashValue hash = qc.vote_data().hash();
+    if (qc.ledger_info().ledger_info.consensus_data_hash != hash)
+    {
+        JLOG(journal_.error()) << "VerifyQC hash missmatch";
+        return false;
+    }
+
 	for (auto it = signatures.begin(); it != signatures.end(); it++) {
 		if (epoch_state_->verifier->verifySignature(
 			it->first,

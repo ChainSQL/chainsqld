@@ -49,7 +49,7 @@ public:
 		return parent_;
 	}
 
-	HashValue hash();
+	HashValue hash() const;
 
 	const bool Verify() const;
 

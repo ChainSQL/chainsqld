@@ -58,7 +58,6 @@ namespace ripple {
 create_genesis_t const create_genesis {};
 bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Application& app);
 
-static
 uint256
 calculateLedgerHash (LedgerInfo const& info)
 {

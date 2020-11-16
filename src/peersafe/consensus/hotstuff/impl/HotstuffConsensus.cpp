@@ -28,6 +28,9 @@
 namespace ripple {
 
 
+extern uint256 calculateLedgerHash(LedgerInfo const& info);
+
+
 HotstuffConsensus::HotstuffConsensus(
     Adaptor& adaptor,
     clock_type const& clock,
@@ -586,9 +589,43 @@ bool HotstuffConsensus::signature(const uint256& digest, hotstuff::Signature& si
 const bool HotstuffConsensus::verifySignature(
     const hotstuff::Author& author,
     const hotstuff::Signature& signature,
-    const uint256& digest) const
+    const hotstuff::HashValue& digest) const
 {
     return verifyDigest(author, digest, Slice(signature.data(), signature.size()), false);
+}
+
+const bool HotstuffConsensus::verifySignature(
+    const hotstuff::Author& author,
+    const hotstuff::Signature& signature,
+    const hotstuff::Block& block) const
+{
+    if (calculateLedgerHash(block.block_data().getLedgerInfo()) != block.block_data().getLedgerInfo().hash)
+    {
+        JLOG(j_.warn()) << "verify block signature: LedgerInfo hash missmatch";
+        return false;
+    }
+
+    if (hotstuff::BlockData::hash(block.block_data()) != block.id())
+    {
+        JLOG(j_.warn()) << "verify block signature: Block id missmatch";
+        return false;
+    }
+
+    return verifyDigest(author, block.id(), Slice(signature.data(), signature.size()), false);
+}
+
+const bool HotstuffConsensus::verifySignature(
+    const hotstuff::Author& author,
+    const hotstuff::Signature& signature,
+    const hotstuff::Vote& vote) const
+{
+    if (vote.vote_data().hash() != vote.ledger_info().consensus_data_hash)
+    {
+        JLOG(j_.warn()) << "verify vote signature: vote hash missmatch";
+        return false;
+    }
+
+    return verifyDigest(author, vote.ledger_info().consensus_data_hash, Slice(signature.data(), signature.size()), false);
 }
 
 const bool HotstuffConsensus::verifyLedgerInfo(

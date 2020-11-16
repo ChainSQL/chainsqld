@@ -272,7 +272,7 @@ int RoundManager::preProcessProposal(
 	const boost::optional<Signature>& signature = proposal.signature();
 	if (signature) {
 		if (hotstuff_core_->epochState()->verifier->verifySignature(
-			proposal.block_data().author(), signature.get(), proposal.id()) == false) {
+			proposal.block_data().author(), signature.get(), proposal) == false) {
 			JLOG(journal_.error())
 				<< "CheckProposal: using an author "
 				<< proposal.block_data().author()
@@ -371,7 +371,7 @@ int RoundManager::preProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 	}
 
 	if (hotstuff_core_->epochState()->verifier->verifySignature(
-		vote.author(), vote.signature(), vote.ledger_info().consensus_data_hash) == false)
+		vote.author(), vote.signature(), vote) == false)
 	{
 		JLOG(journal_.error())
 			<< "An anutor " << vote.author()

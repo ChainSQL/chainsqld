@@ -42,11 +42,13 @@ VoteData VoteData::New(
 	return vote_data;
 }
 
-HashValue VoteData::hash() {
+HashValue VoteData::hash() const {
 	using beast::hash_append;
 	ripple::sha512_half_hasher h;
-	hash_append(h, proposed().id);
-	hash_append(h, parent().id);
+	hash_append(h, proposed_.id);
+	hash_append(h, parent_.id);
+    hash_append(h, proposed_.ledger_info.hash);
+    hash_append(h, parent_.ledger_info.hash);
 
 	return static_cast<typename	sha512_half_hasher::result_type>(h);
 }
