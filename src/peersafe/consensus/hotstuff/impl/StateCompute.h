@@ -54,7 +54,7 @@ public:
 	
 	virtual bool compute(const Block& block, StateComputeResult& state_compute_result) = 0;
 	virtual bool verify(const Block& block, const StateComputeResult& state_compute_result) = 0;
-	virtual int commit(const Block& block) = 0;
+	virtual int commit(const ExecutedBlock& executedBlock) = 0;
 	// sync state
 	virtual bool syncState(const BlockInfo& block_info) = 0;
 	// sync a block

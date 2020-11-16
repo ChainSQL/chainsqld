@@ -232,7 +232,7 @@ void BlockStorage::commit(const LedgerInfoWithSignatures& ledger_info_with_sigs)
 
 	ExecutedBlock executed_block;
 	if (safetyBlockOf(block_hash, executed_block)) {
-		state_compute_->commit(executed_block.block);
+		state_compute_->commit(executed_block);
 		committed_round_ = executed_block.block.block_data().round;
 	}
 }

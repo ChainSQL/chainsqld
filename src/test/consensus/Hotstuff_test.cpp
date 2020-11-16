@@ -250,7 +250,8 @@ public:
 		return true;
 	}
 
-	int commit(const ripple::hotstuff::Block& block) {
+	int commit(const ripple::hotstuff::ExecutedBlock& executedBlock) {
+        auto block = executedBlock.block;
 		auto it = committed_blocks_.find(block.id());
 		if (it == committed_blocks_.end()) {
 			ripple::hotstuff::Round round = block.block_data().round;
