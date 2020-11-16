@@ -89,7 +89,7 @@ public:
     // Overwrite StateCompute interfaces.
     bool compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result) override final;
     bool verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result) override final;
-    int commit(const hotstuff::Block& block) override final;
+    int commit(const hotstuff::ExecutedBlock& block) override final;
     bool syncState(const hotstuff::BlockInfo& prevInfo) override final;
     bool syncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::ExecutedBlock& executedBlock) override final;
     void asyncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler) override final;

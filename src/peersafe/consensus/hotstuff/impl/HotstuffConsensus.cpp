@@ -476,9 +476,9 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
     }
 }
 
-int HotstuffConsensus::commit(const hotstuff::Block& block)
+int HotstuffConsensus::commit(const hotstuff::ExecutedBlock& executedBlock)
 {
-    LedgerInfo const& info = block.getLedgerInfo();
+    LedgerInfo const& info = executedBlock.state_compute_result.ledger_info;
 
     ScopedLockType sl(lock_);
 
