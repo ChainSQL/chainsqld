@@ -31,6 +31,8 @@
 #include <ripple/overlay/impl/ConnectAttempt.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/overlay/predicates.h>
+#include <ripple/overlay/impl/OverlayImpl.h>
+#include <ripple/overlay/PeerReservationTable.h>
 #include <ripple/peerfinder/make_Manager.h>
 #include <ripple/rpc/handlers/GetCounts.h>
 #include <ripple/rpc/json_body.h>
@@ -271,11 +273,8 @@ OverlayImpl::onHandoff(
             setup_.public_ip,
             remote_endpoint.address(),
             app_);
-        auto publicKey = get<0>(tupRet);
-        auto publicValidate = get<1>(tupRet);
-        auto vecIds = get<2>(tupRet);
 
-        if(!publicKey || !publicValidate)
+        if(!retPair.first || !retPair.second)
         {
             m_peerFinder->on_closed(slot);
             handoff.moved = false;
@@ -287,6 +286,9 @@ OverlayImpl::onHandoff(
             handoff.keep_alive = false;
             return handoff;
         }
+
+        auto publicKey = *retPair.first;
+        auto publicValidate = retPair.second;
         {
             // The node gets a reserved slot if it is in our cluster
             // or if it has a reservation.
@@ -707,175 +709,12 @@ OverlayImpl::onPeerDeactivate(Peer::id_t id)
 }
 
 void
-OverlayImpl::onManifests(
-    std::shared_ptr<protocol::TMManifests> const& m,
-    std::shared_ptr<PeerImp> const& from)
-{
-    auto& hashRouter = app_.getHashRouter();
-    auto const n = m->list_size();
-    auto const& journal = from->pjournal();
-
-    JLOG(journal.debug()) << "TMManifest, " << n
-                          << (n == 1 ? " item" : " items");
-
-    for (std::size_t i = 0; i < n; ++i)
-    {
-        auto& s = m->list().Get(i).stobject();
-
-        if (auto mo = deserializeManifest(s))
-        {
-            uint256 const hash = mo->hash();
-            if (!hashRouter.addSuppressionPeer(hash, from->id()))
-            {
-                JLOG(journal.info()) << "Duplicate manifest #" << i + 1;
-                continue;
-            }
-
-            if (!app_.validators().listed(mo->masterKey))
-            {
-                JLOG(journal.info()) << "Untrusted manifest #" << i + 1;
-                app_.getOPs().pubManifest(*mo);
-                continue;
-            }
-
-            auto const serialized = mo->serialized;
-
-            auto const result =
-                app_.validatorManifests().applyManifest(std::move(*mo));
-
-            if (result == ManifestDisposition::accepted)
-            {
-                app_.getOPs().pubManifest(*deserializeManifest(serialized));
-            }
-
-            if (result == ManifestDisposition::accepted)
-            {
-                auto db = app_.getWalletDB().checkoutDb();
-
-                soci::transaction tr(*db);
-                static const char* const sql =
-                    "INSERT INTO ValidatorManifests (RawData) VALUES "
-                    "(:rawData);";
-                soci::blob rawData(*db);
-                convert(serialized, rawData);
-                *db << sql, soci::use(rawData);
-                tr.commit();
-
-                protocol::TMManifests o;
-                o.add_list()->set_stobject(s);
-
-                auto const toSkip = hashRouter.shouldRelay(hash);
-                if (toSkip)
-                    foreach(send_if_not(
-                        std::make_shared<Message>(o, protocol::mtMANIFESTS),
-                        peer_in_set(*toSkip)));
-            }
-            else
-            {
-                JLOG(journal.info())
-                    << "Bad manifest #" << i + 1 << ": " << to_string(result);
-            }
-        }
-        else
-        {
-            JLOG(journal.warn()) << "Malformed manifest #" << i + 1;
-            continue;
-        }
-    }
-}
-
-void
 OverlayImpl::reportTraffic(
     TrafficCount::category cat,
     bool isInbound,
     int number)
 {
     m_traffic.addCount(cat, isInbound, number);
-}
-
-Json::Value
-OverlayImpl::crawlShards(bool pubKey, std::uint32_t hops)
-{
-    using namespace std::chrono;
-    using namespace std::chrono_literals;
-
-    Json::Value jv(Json::objectValue);
-    auto const numPeers{size()};
-    if (numPeers == 0)
-        return jv;
-
-    // If greater than a hop away, we may need to gather or freshen data
-    if (hops > 0)
-    {
-        // Prevent crawl spamming
-        clock_type::time_point const last(csLast_.load());
-        if ((clock_type::now() - last) > 60s)
-        {
-            auto const timeout(seconds((hops * hops) * 10));
-            std::unique_lock<std::mutex> l{csMutex_};
-
-            // Check if already requested
-            if (csIDs_.empty())
-            {
-                {
-                    std::lock_guard lock{mutex_};
-                    for (auto& id : ids_)
-                        csIDs_.emplace(id.first);
-                }
-
-                // Relay request to active peers
-                protocol::TMGetPeerShardInfo tmGPS;
-                tmGPS.set_hops(hops);
-                foreach(send_always(std::make_shared<Message>(
-                    tmGPS, protocol::mtGET_PEER_SHARD_INFO)));
-
-                if (csCV_.wait_for(l, timeout) == std::cv_status::timeout)
-                {
-                    csIDs_.clear();
-                    csCV_.notify_all();
-                }
-                csLast_ = duration_cast<seconds>(
-                    clock_type::now().time_since_epoch());
-            }
-            else
-                csCV_.wait_for(l, timeout);
-        }
-    }
-
-    // Combine the shard info from peers and their sub peers
-    hash_map<PublicKey, PeerImp::ShardInfo> peerShardInfo;
-    for_each([&](std::shared_ptr<PeerImp> const& peer) {
-        if (auto psi = peer->getPeerShardInfo())
-        {
-            // e is non-const so it may be moved from
-            for (auto& e : *psi)
-            {
-                auto it{peerShardInfo.find(e.first)};
-                if (it != peerShardInfo.end())
-                    // The key exists so join the shard indexes.
-                    it->second.shardIndexes += e.second.shardIndexes;
-                else
-                    peerShardInfo.emplace(std::move(e));
-            }
-        }
-    });
-
-    // Prepare json reply
-    auto& av = jv[jss::peers] = Json::Value(Json::arrayValue);
-    for (auto const& e : peerShardInfo)
-    {
-        auto& pv{av.append(Json::Value(Json::objectValue))};
-        if (pubKey)
-            pv[jss::public_key] = toBase58(TokenType::NodePublic, e.first);
-
-        auto const& address{e.second.endpoint.address()};
-        if (!address.is_unspecified())
-            pv[jss::ip] = address.to_string();
-
-        pv[jss::complete_shards] = to_string(e.second.shardIndexes);
-    }
-
-    return jv;
 }
 
 void
@@ -904,116 +743,6 @@ int
 OverlayImpl::limit()
 {
     return m_peerFinder->config().maxPeers;
-}
-
-Json::Value
-OverlayImpl::getOverlayInfo()
-{
-    using namespace std::chrono;
-    Json::Value jv;
-    auto& av = jv["active"] = Json::Value(Json::arrayValue);
-
-    for_each([&](std::shared_ptr<PeerImp>&& sp) {
-        auto& pv = av.append(Json::Value(Json::objectValue));
-        pv[jss::public_key] = base64_encode(
-            sp->getNodePublic().data(), sp->getNodePublic().size());
-        pv[jss::type] = sp->slot()->inbound() ? "in" : "out";
-        pv[jss::uptime] = static_cast<std::uint32_t>(
-            duration_cast<seconds>(sp->uptime()).count());
-        if (sp->crawl())
-        {
-            pv[jss::ip] = sp->getRemoteAddress().address().to_string();
-            if (sp->slot()->inbound())
-            {
-                if (auto port = sp->slot()->listening_port())
-                    pv[jss::port] = *port;
-            }
-            else
-            {
-                pv[jss::port] = std::to_string(sp->getRemoteAddress().port());
-            }
-        }
-
-        {
-            auto version{sp->getVersion()};
-            if (!version.empty())
-                // Could move here if Json::value supported moving from strings
-                pv[jss::version] = version;
-        }
-
-        std::uint32_t minSeq, maxSeq;
-        sp->ledgerRange(minSeq, maxSeq);
-        if (minSeq != 0 || maxSeq != 0)
-            pv[jss::complete_ledgers] =
-                std::to_string(minSeq) + "-" + std::to_string(maxSeq);
-
-        if (auto shardIndexes = sp->getShardIndexes())
-            pv[jss::complete_shards] = to_string(*shardIndexes);
-    });
-
-
-Json::Value
-OverlayImpl::getServerInfo()
-{
-    bool const humanReadable = false;
-    bool const admin = false;
-    bool const counters = false;
-
-    Json::Value server_info =
-        app_.getOPs().getServerInfo(humanReadable, admin, counters);
-
-    // Filter out some information
-    server_info.removeMember(jss::hostid);
-    server_info.removeMember(jss::load_factor_fee_escalation);
-    server_info.removeMember(jss::load_factor_fee_queue);
-    server_info.removeMember(jss::validation_quorum);
-
-    if (server_info.isMember(jss::validated_ledger))
-    {
-        Json::Value& validated_ledger = server_info[jss::validated_ledger];
-
-        validated_ledger.removeMember(jss::base_fee);
-        validated_ledger.removeMember(jss::reserve_base_zxc);
-        validated_ledger.removeMember(jss::reserve_inc_zxc);
-    }
-
-    return server_info;
-}
-
-Json::Value
-OverlayImpl::getServerCounts()
-{
-    return getCountsJson(app_, 10);
-}
-
-Json::Value
-OverlayImpl::getUnlInfo()
-{
-    Json::Value validators = app_.validators().getJson();
-
-    if (validators.isMember(jss::publisher_lists))
-    {
-        Json::Value& publisher_lists = validators[jss::publisher_lists];
-
-        for (auto& publisher : publisher_lists)
-        {
-            publisher.removeMember(jss::list);
-        }
-    }
-
-    validators.removeMember(jss::signing_keys);
-    validators.removeMember(jss::trusted_validator_keys);
-    validators.removeMember(jss::validation_quorum);
-
-    Json::Value validatorSites = app_.validatorSites().getJson();
-
-    if (validatorSites.isMember(jss::validator_sites))
-    {
-        validators[jss::validator_sites] =
-            std::move(validatorSites[jss::validator_sites]);
-    }
-
-    return validators;
 }
 
 // Returns information on verified peers.

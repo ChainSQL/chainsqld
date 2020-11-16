@@ -31,34 +31,7 @@
 
 namespace ripple {
 
-uint64_t
-uintFromHex(std::string const& strSrc)
-{
-    uint64_t uValue(0);
-
-        out.push_back(c);
-        ++iter;
-    }
-
-    while (iter != strSrc.cend ())
-    {
-        int cHigh = charUnHex (*iter);
-        ++iter;
-
-        if (cHigh < 0)
-            return std::make_pair (Blob (), false);
-
-        int cLow = charUnHex (*iter);
-        ++iter;
-
-        if (cLow < 0)
-            return std::make_pair (Blob (), false);
-
-        out.push_back (static_cast<unsigned char>((cHigh << 4) | cLow));
-    }
-
-    return std::make_pair(std::move(out), true);
-}
+//
 //
 // Misc string
 //

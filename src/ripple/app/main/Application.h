@@ -183,6 +183,7 @@ public:
                                     getAcceptedLedgerCache (SchemaID const& id = beast::zero) = 0;
     virtual LedgerMaster&           getLedgerMaster (SchemaID const& id = beast::zero) = 0;
     virtual NetworkOPs&             getOPs (SchemaID const& id = beast::zero) = 0;
+	virtual PeerReservationTable&   peerReservations(SchemaID const& id = beast::zero) = 0;
     virtual OrderBookDB&            getOrderBookDB (SchemaID const& id = beast::zero) = 0;
     virtual TransactionMaster&      getMasterTransaction (SchemaID const& id = beast::zero) = 0;
 	

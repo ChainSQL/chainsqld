@@ -2878,6 +2878,7 @@ PeerImp::checkPropose (uint256 schemaId, Job& job,
 
 void
 PeerImp::checkValidation(
+	uint256 schemaId,
     std::shared_ptr<STValidation> const& val,
     std::shared_ptr<protocol::TMValidation> const& packet)
 {

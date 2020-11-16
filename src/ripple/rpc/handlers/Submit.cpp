@@ -106,6 +106,7 @@ doSubmit(RPC::JsonContext& context)
                 stpTrans->getTransactionID(),
                 Validity::SigGoodOnly);
         auto [validity, reason] = checkValidity(
+			context.app,
             context.app.getHashRouter(),
             *stpTrans,
             context.ledgerMaster.getCurrentLedger()->rules(),
@@ -238,6 +239,7 @@ doSubmitGrpc(
                 stpTrans->getTransactionID(),
                 Validity::SigGoodOnly);
         auto [validity, reason] = checkValidity(
+			context.app,
             context.app.getHashRouter(),
             *stpTrans,
             context.ledgerMaster.getCurrentLedger()->rules(),

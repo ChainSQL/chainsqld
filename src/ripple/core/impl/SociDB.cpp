@@ -29,6 +29,7 @@
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/SociDB.h>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <memory>
 #include <soci/sqlite3/soci-sqlite3.h>
 

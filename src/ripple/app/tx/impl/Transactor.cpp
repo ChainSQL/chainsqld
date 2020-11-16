@@ -98,7 +98,7 @@ NotTEC
 preflight2(PreflightContext const& ctx)
 {
 	auto const sigValid = checkValidity(
-		ctx.app.getHashRouter(), ctx.tx, ctx.rules, ctx.app.config());
+		ctx.app,ctx.app.getHashRouter(), ctx.tx, ctx.rules, ctx.app.config());
 	if (sigValid.first == Validity::SigBad)
 	{
 		JLOG(ctx.j.debug()) << "preflight2: bad signature. " << sigValid.second;
@@ -829,7 +829,7 @@ Transactor::operator()()
         std::string strHuman;
 
     if (auto stream = j_.trace())
-        stream << "preclaim result: " << transToken(result);
+        stream << "preclaim result: " << transToken(terResult.ter);
 
         stream <<
             "applyTransaction: terResult=" << strToken <<
@@ -852,7 +852,7 @@ Transactor::operator()()
 			"Reprocessing tx " << ctx_.tx.getTransactionID() << " to only claim fee";
 
 		std::vector<uint256> removedOffers;
-		if (terResult.ter == tecOVERSIZE)·
+		if (terResult.ter == tecOVERSIZE)
 		{
 			ctx_.visit(
 				[&removedOffers](

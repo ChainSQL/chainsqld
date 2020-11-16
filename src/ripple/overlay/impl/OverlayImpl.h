@@ -212,7 +212,7 @@ public:
     json() override;
 
 	PeerSequence
-		getActivePeers() override;
+		getActivePeers() const override;
 
 	void
 		check() override;
@@ -401,18 +401,12 @@ public:
         return networkID_;
     }
 
-    Json::Value
-    crawlShards(bool pubKey, std::uint32_t hops) override;
-
     /** Called when the last link from a peer chain is received.
 
         @param id peer id that received the shard info.
     */
     void
     lastLink(std::uint32_t id);
-
-    //Json::Value
-    //crawlShards(bool pubKey, std::uint32_t hops) override;
 
 
 private:

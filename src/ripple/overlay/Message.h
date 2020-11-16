@@ -52,6 +52,7 @@ class Message : public std::enable_shared_from_this<Message>
     using Algorithm = compression::Algorithm;
 
 public:
+	using pointer = std::shared_ptr<Message>;
     /** Constructor
      * @param message Protocol message to serialize
      * @param type Protocol message type

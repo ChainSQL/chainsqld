@@ -17,7 +17,7 @@ namespace ripple {
 			std::vector<STTx> vecTxs;
 			vecTxs.push_back(tx);
 			auto p = std::make_shared<std::vector<STTx>>(vecTxs);
-			mTxCache.canonicalize(txHash, p);
+			mTxCache.canonicalize_replace_client(txHash, p);
 		}
 		else
 		{
@@ -43,7 +43,7 @@ namespace ripple {
 	void ContractHelper::addRecord(uint256 const& handle, std::vector<std::vector<Json::Value>> const& result)
 	{
 		auto p = std::make_shared<std::vector<std::vector<Json::Value>>>(result);
-		mRecordCache.canonicalize(handle, p);
+		mRecordCache.canonicalize_replace_client(handle, p);
 	}
 
 	std::vector<std::vector<Json::Value>>const& ContractHelper::getRecord(uint256 const& handle)

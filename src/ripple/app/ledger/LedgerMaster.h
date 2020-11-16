@@ -223,6 +223,8 @@ public:
 
     bool
     haveLedger(std::uint32_t seq);
+    bool
+    haveLedger(std::uint32_t seqMin, std::uint32_t seqMax);
     void
     clearLedger(std::uint32_t seq);
     bool

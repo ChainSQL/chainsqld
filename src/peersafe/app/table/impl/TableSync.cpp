@@ -162,7 +162,7 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
         {
             alpAccepted = std::make_shared<AcceptedLedger>(
                 ledger, app_.accountIDCache(), app_.logs());
-            app_.getAcceptedLedgerCache().canonicalize(
+            app_.getAcceptedLedgerCache().canonicalize_replace_client(
                 ledger->info().hash, alpAccepted);
         }
 
@@ -395,7 +395,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
 						tablesle = ledger->read(key);
 						auto pMapSle = std::make_shared<std::map<AccountID, std::shared_ptr<const ripple::SLE>>>();
 						pMapSle->emplace(std::make_pair(stItemInfo.accountID,tablesle));
-						cache.canonicalize(uStopIndex, pMapSle);
+						cache.canonicalize_replace_client(uStopIndex, pMapSle);
 					}
 					else
 					{
@@ -1657,7 +1657,7 @@ bool TableSync::GotLedger(std::shared_ptr <protocol::TMLedgerData> const& m)
     
     std::lock_guard<std::mutex> lock(mutexSkipNode_);
     auto p = std::make_shared<ripple::Blob>(blob);
-    checkSkipNode_.canonicalize(m->ledgerseq(), p);
+    checkSkipNode_.canonicalize_replace_cache(m->ledgerseq(), p);
 
     return true;
 }
@@ -1689,7 +1689,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
     {
         alpAccepted = std::make_shared<AcceptedLedger>(
             ledger, app_.accountIDCache(), app_.logs());
-        app_.getAcceptedLedgerCache().canonicalize(
+        app_.getAcceptedLedgerCache().canonicalize_replace_client(
             ledger->info().hash, alpAccepted);
     }
 

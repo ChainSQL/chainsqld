@@ -537,6 +537,12 @@ public:
         return m_schemaManager->getSchema(id)->getOPs();
     }
 
+	PeerReservationTable&   peerReservations(SchemaID const& id) override
+	{
+        assert(m_schemaManager->contains(id));
+		return m_schemaManager->getSchema(id)->peerReservations();
+	}
+
     boost::asio::io_service&
     getIOService() override
     {

@@ -22,6 +22,7 @@
 #include <ripple/app/tx/applySteps.h>
 #include <ripple/basics/Log.h>
 #include <ripple/protocol/Feature.h>
+#include <ripple/app/misc/HashRouter.h>
 #include <peersafe/crypto/X509.h>
 #include <peersafe/app/misc/CertList.h>
 #include <peersafe/schema/Schema.h>
@@ -38,6 +39,7 @@ namespace ripple {
 
 std::pair<Validity, std::string>
 checkValidity(
+	Schema& schema,
     HashRouter& router,
     STTx const& tx,
     Rules const& rules,

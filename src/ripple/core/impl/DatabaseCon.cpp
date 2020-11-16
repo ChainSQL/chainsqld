@@ -105,11 +105,11 @@ DatabaseCon::DatabaseCon(
 		}
 		open(*session_, back_end, connectionstring);
 		if (boost::iequals(back_end, "mycat")) {
-			session_.autocommit_after_transaction(true);
+			session_->autocommit_after_transaction(true);
 		}
 		if (strName.empty() == false) {
 			std::string use_database = "use " + strName;
-			soci::statement st = session_.prepare << use_database;
+			soci::statement st = session_->prepare << use_database;
 			st.execute(true);
 		}
 	}
@@ -117,7 +117,7 @@ DatabaseCon::DatabaseCon(
 	{
 		try
 		{
-			soci::statement st = session_.prepare <<
+			soci::statement st = session_->prepare <<
 				initStrings[i];
 			st.execute(true);
 		}
@@ -224,7 +224,7 @@ setup_SyncDatabaseCon(Config const& c)
 
     if (!setup.globalPragma)
     {
-        setup.globalPragma = [&c, &j]() {
+        setup.globalPragma = [&c]() {
             auto const& sqlite = c.section("sqlite");
             auto result = std::make_unique<std::vector<std::string>>();
             result->reserve(3);

@@ -1259,7 +1259,7 @@ DatabaseShardImp::finalizeShard(
             PublicKey const& publicKey{app_.nodeIdentity().first};
             message.set_nodepubkey(publicKey.data(), publicKey.size());
             message.set_shardindexes(std::to_string(shardIndex));
-            app_.overlay().foreach(send_always(std::make_shared<Message>(
+            app_.peerManager().foreach(send_always(std::make_shared<Message>(
                 message, protocol::mtPEER_SHARD_INFO)));
         }
     });

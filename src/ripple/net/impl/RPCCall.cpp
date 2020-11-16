@@ -1835,7 +1835,8 @@ cmdLineToJSONRPC(std::vector<std::string> const& args, beast::Journal j)
 std::pair<int, Json::Value>
 rpcClient(
     std::vector<std::string> const& args,
-    Config const& config,
+    Config const& config, 
+	std::string schema_id,
     Logs& logs,
     std::unordered_map<std::string, std::string> const& headers)
 {

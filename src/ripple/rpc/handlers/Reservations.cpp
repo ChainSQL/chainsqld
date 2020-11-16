@@ -24,6 +24,7 @@
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/handlers/Handlers.h>
+#include <ripple/overlay/PeerReservationTable.h>
 
 #include <boost/optional.hpp>
 

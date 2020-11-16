@@ -1230,7 +1230,7 @@ void TableSyncItem::OperateSQLThread()
         {
             bOperateSQL_ = true;
 
-            operateSqlEvent.reset();
+			readDataEvent.reset();
             app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread();
             });
         }

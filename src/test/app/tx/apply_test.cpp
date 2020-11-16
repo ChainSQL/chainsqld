@@ -57,6 +57,7 @@ public:
                     featureRequireFullyCanonicalSig);
 
             Validity valid = checkValidity(
+								 no_fully_canonical.app(),
                                  no_fully_canonical.app().getHashRouter(),
                                  tx,
                                  no_fully_canonical.current()->rules(),
@@ -72,6 +73,7 @@ public:
                 *this, test::jtx::supported_amendments());
 
             Validity valid = checkValidity(
+								 fully_canonical.app(),
                                  fully_canonical.app().getHashRouter(),
                                  tx,
                                  fully_canonical.current()->rules(),

@@ -61,6 +61,7 @@ enum class Validity {
 */
 std::pair<Validity, std::string>
 checkValidity(
+	Schema& schema,
     HashRouter& router,
     STTx const& tx,
     Rules const& rules,
@@ -156,6 +157,9 @@ applyTransaction(
     ApplyFlags flags,
     beast::Journal journal);
 
+	// ca verify
+	bool
+	verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException);
 }  // namespace ripple
 
 #endif

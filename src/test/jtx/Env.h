@@ -38,6 +38,7 @@
 #include <ripple/protocol/STAmount.h>
 #include <ripple/protocol/STObject.h>
 #include <ripple/protocol/STTx.h>
+#include <peersafe/schema/Schema.h>
 #include <functional>
 #include <string>
 #include <test/jtx/AbstractClient.h>
@@ -238,10 +239,10 @@ public:
 
     virtual ~Env() = default;
 
-    Application&
+	Schema&
     app()
     {
-        return *bundle_.app;
+        return *bundle_.schema;
     }
 
 	Schema&
@@ -249,10 +250,10 @@ public:
 	{
 		return *bundle_.schema;
 	}
-    Application const&
+    Schema const&
     app() const
     {
-        return *bundle_.app;
+        return *bundle_.schema;
     }
 
     ManualTimeKeeper&

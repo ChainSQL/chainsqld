@@ -17,12 +17,12 @@
 */
 //==============================================================================
 
+#include <ripple/json/json_reader.h>
+#include <ripple/overlay/Cluster.h>
 #include <ripple/overlay/impl/ConnectAttempt.h>
 #include <ripple/overlay/impl/PeerImp.h>
-#include <ripple/overlay/Cluster.h>
-#include <ripple/json/json_reader.h>
-#include <peersafe/schema/Schema.h>
 #include <ripple/overlay/impl/ProtocolVersion.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
@@ -104,24 +104,16 @@ ConnectAttempt::close()
 void
 ConnectAttempt::fail(std::string const& reason)
 {
-    assert(strand_.running_in_this_thread());
-    if (stream_.next_layer().is_open())
-    {
-        JLOG(journal_.info()) <<
-            reason;
-    }
+    JLOG(journal_.debug()) << reason;
     close();
 }
 
 void
 ConnectAttempt::fail(std::string const& name, error_code ec)
 {
-    assert(strand_.running_in_this_thread());
-    if (stream_.next_layer().is_open())
-    {
-        JLOG(journal_.info()) <<
-            name << " for remote endpoint:"<<remote_endpoint_<<" value= "<< ec.value()<<",msg=" << ec.message();
-    }
+    JLOG(journal_.info()) << name << " for remote endpoint:" << remote_endpoint_
+                          << " value= " << ec.value()
+                          << ",msg=" << ec.message();
     close();
 }
 
@@ -350,8 +342,9 @@ ConnectAttempt::processResponse()
 
     if (!OverlayImpl::isPeerUpgrade(response_))
     {
-        //JLOG(journal_.info()) <<
-        //    "HTTP Response: " << response_.result() << " " << response_.reason();
+        // JLOG(journal_.info()) <<
+        //    "HTTP Response: " << response_.result() << " " <<
+        //    response_.reason();
         return close();
     }
 
@@ -384,18 +377,18 @@ ConnectAttempt::processResponse()
             remote_endpoint_.address(),
             app_);
 
-        auto publicKey = retPair.first;
-        auto publicValidate = retPair.second;
-        if(! publicKey || !publicValidate)
-            return close(); // verifyHello logs
+        if (!retPair.first || !retPair.second)
+            return close();  // verifyHello logs
 
+        auto publicKey = *retPair.first;
+        auto publicValidate = retPair.second;
         JLOG(journal_.info())
             << "Public Key: " << toBase58(TokenType::NodePublic, publicKey);
         if (publicValidate)
         {
-            JLOG(journal_.info()) << "PublicKey Validate:"<<toBase58(
-                TokenType::NodePublic,
-                *publicValidate);
+            JLOG(journal_.info())
+                << "PublicKey Validate:"
+                << toBase58(TokenType::NodePublic, *publicValidate);
         }
 
         JLOG(journal_.debug())

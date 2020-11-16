@@ -73,7 +73,7 @@ buildHandshake(
     @return The public key of the remote peer.
     @throw A class derived from std::exception.
 */
-PublicKey
+std::pair<boost::optional<PublicKey>, boost::optional<PublicKey>>
 verifyHandshake(
     boost::beast::http::fields const& headers,
     uint256 const& sharedValue,

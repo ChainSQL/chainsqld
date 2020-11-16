@@ -616,6 +616,7 @@ transactionConstructImpl (std::shared_ptr<STTx const> const& stpTrans,
                     sttxNew->getTransactionID(),
                     Validity::SigGoodOnly);
             if (checkValidity(
+					app,
                     app.getHashRouter(), *sttxNew, rules, app.config())
                     .first != Validity::Valid)
             {

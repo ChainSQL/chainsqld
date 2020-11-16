@@ -31,9 +31,7 @@
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/protocol/STValidation.h>
-#include <ripple/beast/core/ByteOrder.h>
 #include <ripple/beast/net/IPAddressConversion.h>
-#include <beast/http/message.hpp>
 #include <ripple/beast/utility/WrappedSink.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <peersafe/app/consensus/ViewChange.h>
@@ -523,10 +521,6 @@ private:
     std::string
     getName() const;
 
-    // A thread-safe way of getting the name.
-    std::string
-    getName() const;
-
     //
     // protocol message loop
     //
@@ -641,7 +635,7 @@ private:
 			std::shared_ptr<protocol::TMViewChange> const& packet);
 
     void
-    checkValidation (uint256 schemaId, STValidation::pointer val,
+    checkValidation (uint256 schemaId, std::shared_ptr<STValidation> val,
         std::shared_ptr<protocol::TMValidation> const& packet);
 
     void

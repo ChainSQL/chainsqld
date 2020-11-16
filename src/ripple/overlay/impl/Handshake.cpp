@@ -19,6 +19,7 @@
 
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/main/Application.h>
+#include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/basics/base64.h>
 #include <ripple/basics/safe_cast.h>
 #include <ripple/beast/core/LexicalCast.h>
