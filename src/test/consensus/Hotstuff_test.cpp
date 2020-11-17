@@ -509,31 +509,21 @@ public:
 		}
 	}
 
-	void broadcast(const ripple::hotstuff::EpochChange& epoch_change) {
+	void broadcast(
+		const ripple::hotstuff::EpochChange& epoch_change,
+		const ripple::hotstuff::SyncInfo& sync_info) {
 		Replica::epoch = Replica::epoch + 1;
 
 		for (auto it = Replica::replicas.begin(); it != Replica::replicas.end(); it++) {
-			it->second->handleEpochChange(epoch_change);
+			it->second->handleEpochChange(epoch_change, sync_info);
 		}
 	}
 	
-	void handleEpochChange(const ripple::hotstuff::EpochChange& epoch_change) {
-		//env_->app().getJobQueue().addJob(
-		//	jtPROPOSAL_t,
-		//	"broadcast_proposal",
-		//	[this](Job&) {
-		//		//std::cout
-		//		//	<< it->second->author() << ": "
-		//		//	<< "changing epoch and next epoch is " << Replica::epoch
-		//		//	<< std::endl;
-
-		//		stop();
-		//		setChangedEpochSuccessed(true);
-		//	});
-		//std::cout
-		//	<< author() << ": "
-		//	<< "changing epoch and next epoch is " << Replica::epoch
-		//	<< std::endl;
+	void handleEpochChange(
+		const ripple::hotstuff::EpochChange& epoch_change,
+		const ripple::hotstuff::SyncInfo& sync_info) {
+		if (hotstuff_->checkEpochChange(epoch_change, sync_info) == false)
+			return;
 		stop();
 		setChangedEpochSuccessed(true);
 	}

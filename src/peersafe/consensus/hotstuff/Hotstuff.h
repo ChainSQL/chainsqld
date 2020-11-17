@@ -80,6 +80,10 @@ public:
 		const ripple::hotstuff::Vote& vote,
 		const ripple::hotstuff::SyncInfo& sync_info);
 
+	bool checkEpochChange(
+		const ripple::hotstuff::EpochChange& epoch_change,
+		const ripple::hotstuff::SyncInfo& sync_info);
+
 	// Get an expected block
 	bool expectBlock(
 		const HashValue& block_id, 

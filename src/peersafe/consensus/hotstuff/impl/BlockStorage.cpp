@@ -22,8 +22,8 @@
 #include <peersafe/consensus/hotstuff/impl/BlockStorage.h>
 #include <peersafe/consensus/hotstuff/impl/StateCompute.h>
 #include <peersafe/consensus/hotstuff/impl/EpochChange.h>
+#include <peersafe/consensus/hotstuff/impl/ProposerElection.h>
 #include <peersafe/consensus/hotstuff/impl/NetWork.h>
-
 
 namespace ripple { namespace hotstuff {
 
@@ -33,6 +33,8 @@ BlockStorage::BlockStorage(
 	StateCompute* state_compute) 
 : journal_(journal)
 , state_compute_(state_compute)
+, verifier_(nullptr)
+, proposer_election_(nullptr)
 , genesis_block_id_()
 , cache_blocks_mutex_()
 , cache_blocks_()
@@ -50,6 +52,8 @@ BlockStorage::BlockStorage(
 	const Block& genesis_block)
 : journal_(journal)
 , state_compute_(state_compute)
+, verifier_(nullptr)
+, proposer_election_(nullptr)
 , genesis_block_id_()
 , cache_blocks_mutex_()
 , cache_blocks_()
@@ -193,12 +197,26 @@ void BlockStorage::preCommit(const QuorumCertificate& quorumCert, NetWork* netwo
 	Round commtiting_round = quorumCert.commit_info().round;
 	if (committed_round_ < commtiting_round) {
 		commit(quorumCert.ledger_info());
+		
+		const Author& self = verifier_->Self();
+		if (quorumCert.endsEpoch() 
+			&& proposer_election_->IsValidProposer(
+				self, 
+				quorumCert.certified_block().round + 1)) {
 
-		if (quorumCert.endsEpoch()) {
 			EpochChange epoch_change;
-			epoch_change.ledger_info = quorumCert.commit_info().ledger_info;
+			epoch_change.ledger_info = quorumCert.ledger_info();
+			epoch_change.author = self;
 			epoch_change.epoch = quorumCert.commit_info().next_epoch_state->epoch;
-			network->broadcast(epoch_change);
+			epoch_change.round = quorumCert.certified_block().round;
+			if (verifier_->signature(EpochChange::hash(epoch_change), epoch_change.signature) == false) {
+				assert(false);
+				JLOG(debugLog().error())
+					<< "signature epoch change failed.";
+				return;
+			}
+
+			network->broadcast(epoch_change, sync_info());
 		}
 
 		gcBlocks(

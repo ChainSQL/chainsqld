@@ -112,6 +112,8 @@ Hotstuff::~Hotstuff() {
 int Hotstuff::start(const RecoverData& recover_data) {
 	storage_.updateCeritificates(Block::new_genesis_block(
 		recover_data.init_ledger_info, recover_data.epoch_state.epoch));
+	storage_.verifier(recover_data.epoch_state.verifier);
+	storage_.proposerElection(proposer_election_);
 	epoch_state_ = recover_data.epoch_state;
 	hotstuff_core_.Initialize(recover_data.epoch_state.epoch, 0);
 	round_state_.reset();
@@ -172,6 +174,14 @@ bool Hotstuff::unsafetyExpectBlock(
 	if (round_manager_ == nullptr)
 		return false;
 	return round_manager_->unsafetyExpectBlock(block_id, executed_block);
+}
+
+bool Hotstuff::checkEpochChange(
+	const ripple::hotstuff::EpochChange& epoch_change,
+	const ripple::hotstuff::SyncInfo& sync_info) {
+	if (round_manager_ == nullptr)
+		return false;
+	return round_manager_->CheckEpochChange(epoch_change, sync_info);
 }
 
 } // namespace hotstuff

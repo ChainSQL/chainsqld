@@ -445,6 +445,57 @@ int RoundManager::ProcessVote(const Vote& vote) {
 	return 1;
 }
 
+bool RoundManager::CheckEpochChange(
+	const ripple::hotstuff::EpochChange& epoch_change,
+	const ripple::hotstuff::SyncInfo& sync_info) {
+
+	if (epoch_change.author == proposal_generator_->author())
+		return true;
+
+	if (epoch_change.epoch != hotstuff_core_->epochState()->epoch) {
+		JLOG(journal_.error())
+			<< "Mismatch epoch in epoch_change in checkEpochChange.";
+		assert(false);
+		return false;
+	}
+
+	if (epoch_change.verify(hotstuff_core_->epochState()->verifier) == false) {
+		JLOG(journal_.error())
+			<< "verify epoch change failed in checkEpochChange.";
+		assert(false);
+		return false;
+	}
+
+	HashValue consensus_data_hash = epoch_change.ledger_info.ledger_info.consensus_data_hash;
+	if (consensus_data_hash != sync_info.HighestCommitCert().ledger_info().ledger_info.consensus_data_hash
+		&& consensus_data_hash != sync_info.HighestQuorumCert().ledger_info().ledger_info.consensus_data_hash) {
+		JLOG(journal_.error())
+			<< "Mismatch consensus hash in betwwen HQC and HCC in checkEpochChange.";
+		assert(false);
+		return false;
+	}
+
+	if (hotstuff_core_->epochState()->verifier->checkVotingPower(epoch_change.ledger_info.signatures) == false) {
+		JLOG(journal_.error())
+			<< "check vote power failed in checkEpochChange.";
+		assert(false);
+		return false;
+	}
+
+	if (EnsureRoundAndSyncUp(
+		epoch_change.round + 1, 
+		sync_info, 
+		epoch_change.author) == false) {
+		JLOG(journal_.error())
+			<< "Stale epoch change, current round "
+			<< round_state_->current_round()
+			<< " in checkEpochChange";
+		return false;
+	}
+
+	return true;
+}
+
 /// The function generates a VoteMsg for a given proposed_block:
 /// * first execute the block and add it to the block store
 /// * then verify the voting rules

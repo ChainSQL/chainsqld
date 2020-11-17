@@ -24,6 +24,13 @@
 
 namespace ripple { 
 // serialize ripple::Buffer
+
+boost::archive::text_oarchive&
+operator<<(boost::archive::text_oarchive& os, ripple::Buffer const& buffer);
+
+boost::archive::text_iarchive&
+operator>>(boost::archive::text_iarchive& is, ripple::Buffer& buffer);
+
 template<class Archive>
 void save(Archive & ar, const ripple::Buffer& buffer, unsigned int /*version*/) {
 	std::string buf((const char*)buffer.data(), buffer.size());

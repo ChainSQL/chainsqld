@@ -2,12 +2,12 @@
 /*
  This file is part of chainsqld: https://github.com/chainsql/chainsqld
  Copyright (c) 2016-2018 Peersafe Technology Co., Ltd.
- 
+
 	chainsqld is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
 	the Free Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
- 
+
 	chainsqld is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -15,41 +15,28 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-//==============================================================================
+ //==============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_EPOCHCHANGE_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_EPOCHCHANGE_H
 
-#include <vector>
+#include <peersafe/serialization/Buffer.h>
 
-#include <peersafe/consensus/hotstuff/impl/Types.h>
-#include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
+namespace ripple {
 
-namespace ripple { namespace hotstuff {
+boost::archive::text_oarchive&
+operator<<(boost::archive::text_oarchive& os, ripple::Buffer const& buffer) {
+	std::string s((const char*)buffer.data(), buffer.size());
+	os << s;
+	return os;
+}
 
-class ValidatorVerifier;
+boost::archive::text_iarchive&
+operator>>(boost::archive::text_iarchive& is, ripple::Buffer& buffer) {
+	std::string s;
+	is >> s;
+	buffer = ripple::Buffer(s.data(), s.size());
+	return is;
+}
 
-struct EpochChange {
-	LedgerInfoWithSignatures ledger_info;
-	Author author;
-	Epoch epoch;
-	Round round;
-	Signature signature;
 
-	EpochChange()
-	: ledger_info()
-	, author()
-	, epoch(0)
-	, round(0)
-	, signature() {
-
-	}
-	
-	static HashValue hash(const EpochChange& epoch_change);
-	const bool verify(ValidatorVerifier* verifier) const;
-};
-
-} // namespace hotstuff
 } // namespace ripple
 
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_CONFIG_H

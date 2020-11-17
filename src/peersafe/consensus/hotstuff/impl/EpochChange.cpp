@@ -15,41 +15,30 @@
 	You should have received a copy of the GNU General Public License
 	along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
  */
-//==============================================================================
+//=============================================================================
 
-#ifndef RIPPLE_CONSENSUS_HOTSTUFF_EPOCHCHANGE_H
-#define RIPPLE_CONSENSUS_HOTSTUFF_EPOCHCHANGE_H
-
-#include <vector>
-
-#include <peersafe/consensus/hotstuff/impl/Types.h>
-#include <peersafe/consensus/hotstuff/impl/QuorumCert.h>
+#include <peersafe/serialization/hotstuff/EpochChange.h>
 
 namespace ripple { namespace hotstuff {
 
-class ValidatorVerifier;
+HashValue EpochChange::hash(const EpochChange& epoch_change) {
+	assert(epoch_change.signature.size() == 0);
+	using beast::hash_append;
+	ripple::sha512_half_hasher h;
+	ripple::Buffer s = ripple::serialization::serialize(epoch_change);
+	hash_append(h, s);
+	return static_cast<typename	sha512_half_hasher::result_type>(h);
+}
 
-struct EpochChange {
-	LedgerInfoWithSignatures ledger_info;
-	Author author;
-	Epoch epoch;
-	Round round;
-	Signature signature;
+const bool EpochChange::verify(ValidatorVerifier* verifier) const {
+	EpochChange epoch_change;
+	epoch_change.ledger_info = ledger_info;
+	epoch_change.author = author;
+	epoch_change.epoch = epoch;
+	epoch_change.round = round;
 
-	EpochChange()
-	: ledger_info()
-	, author()
-	, epoch(0)
-	, round(0)
-	, signature() {
+	return verifier->verifySignature(author, signature, EpochChange::hash(epoch_change));
+}
 
-	}
-	
-	static HashValue hash(const EpochChange& epoch_change);
-	const bool verify(ValidatorVerifier* verifier) const;
-};
-
-} // namespace hotstuff
-} // namespace ripple
-
-#endif // RIPPLE_CONSENSUS_HOTSTUFF_CONFIG_H
+} // hotstuff
+} // ripple

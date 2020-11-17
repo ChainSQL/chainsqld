@@ -62,6 +62,10 @@ public:
 	bool expectBlock(
 		const HashValue& block_id,
 		ExecutedBlock& executed_block);
+
+	bool CheckEpochChange(
+		const ripple::hotstuff::EpochChange& epoch_change,
+		const ripple::hotstuff::SyncInfo& sync_info);
 private:
 	friend class ripple::test::Hotstuff_test;
 	friend class Hotstuff;

@@ -40,7 +40,9 @@ public:
 		const Vote& vote, 
 		const SyncInfo& sync_info) = 0;
 
-	virtual void broadcast(const EpochChange& epoch_change) = 0;
+	virtual void broadcast(
+		const EpochChange& epoch_change,
+		const SyncInfo& sync_info) = 0;
 
 	virtual void sendVote(
 		const Author& author, 

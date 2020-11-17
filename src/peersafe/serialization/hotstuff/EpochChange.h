@@ -21,7 +21,8 @@
 #define RIPPLE_SERIALIZATION_HOTSTUFF_EPOCHCHANGE_H
 
 #include <peersafe/serialization/Serialization.h>
-#include <peersafe/serialization/LedgerInfo.h>
+#include <peersafe/serialization/Buffer.h>
+#include <peersafe/serialization/hotstuff/QuorumCert.h>
 
 #include <peersafe/consensus/hotstuff/impl/EpochChange.h>
 
@@ -34,9 +35,10 @@ void serialize(
     const unsigned int /*version*/) {
 	// note, version is always the latest when saving
 	ar & epoch_change.ledger_info;
+	ar & epoch_change.author;
 	ar & epoch_change.epoch;
-	ar & epoch_change.change;
-	ar & epoch_change.auhtors;
+	ar & epoch_change.round;
+	ar & epoch_change.signature;
 }
 
 } // namespace serialization

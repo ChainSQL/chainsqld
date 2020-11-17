@@ -47,6 +47,12 @@ struct LedgerInfoWithSignatures {
 	: ledger_info(li)
 	, signatures() {
 	}
+
+	LedgerInfoWithSignatures()
+	: ledger_info()
+	, signatures() {
+
+	}
 };
 
 class QuorumCertificate {

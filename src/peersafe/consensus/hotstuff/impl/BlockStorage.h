@@ -30,6 +30,8 @@
 
 namespace ripple { namespace hotstuff {
 
+class ValidatorVerifier;
+class ProposerElection;
 class StateCompute;
 class NetWork;
 
@@ -112,6 +114,14 @@ public:
 	StateCompute* state_compute() {
 		return state_compute_;
 	}
+
+	void verifier(ValidatorVerifier* verifier) {
+		verifier_ = verifier;
+	}
+
+	void proposerElection(ProposerElection* proposer_election) {
+		proposer_election_ = proposer_election;
+	}
 	
 private:
 	void updateQuorumCert(const Round round, const QuorumCertificate& quorumCert);
@@ -121,6 +131,8 @@ private:
 
 	beast::Journal journal_;
 	StateCompute* state_compute_;
+	ValidatorVerifier* verifier_;
+	ProposerElection* proposer_election_;
 	HashValue genesis_block_id_;
 	std::mutex cache_blocks_mutex_;
     std::map<HashValue, ExecutedBlock> cache_blocks_;
