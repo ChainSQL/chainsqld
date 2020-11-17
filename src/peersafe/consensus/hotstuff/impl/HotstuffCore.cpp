@@ -151,20 +151,22 @@ bool HotstuffCore::VerifyEpoch(const Epoch epoch) {
 }
 
 bool HotstuffCore::VerifyQC(const QuorumCertificate& qc) {
+    HashValue hash = qc.vote_data().hash();
 	const QuorumCertificate::Signatures& signatures = qc.signatures();
 
-    if (qc.certified_block().round > 0
-        && epoch_state_->verifier->checkVotingPower(signatures) == false)
+    if (qc.certified_block().round > 0)
     {
-        JLOG(journal_.error()) << "VerifyQC checkVotingPower failed, signatures size: "<< signatures.size();
-        return false;
-    }
+        if (epoch_state_->verifier->checkVotingPower(signatures) == false)
+        {
+            JLOG(journal_.error()) << "VerifyQC checkVotingPower failed, signatures size: " << signatures.size();
+            return false;
+        }
 
-	HashValue hash = qc.vote_data().hash();
-    if (qc.ledger_info().ledger_info.consensus_data_hash != hash)
-    {
-        JLOG(journal_.error()) << "VerifyQC hash missmatch";
-        return false;
+        if (qc.ledger_info().ledger_info.consensus_data_hash != hash)
+        {
+            JLOG(journal_.error()) << "VerifyQC hash missmatch";
+            return false;
+        }
     }
 
 	for (auto it = signatures.begin(); it != signatures.end(); it++) {

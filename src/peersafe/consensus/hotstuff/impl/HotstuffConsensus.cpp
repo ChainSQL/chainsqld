@@ -273,47 +273,16 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
     }
 
     //--------------------------------------------------------------------
-    //std::set<TxID> failed;
-
-    //// Put transactions into a deterministic, but unpredictable, order
-    //CanonicalTXSet retriableTxs{ cmd };
-    //JLOG(j_.info()) << "Building canonical tx set: " << retriableTxs.key();
-
-    //for (auto const& item : *txSet)
-    //{
-    //    try
-    //    {
-    //        retriableTxs.insert(std::make_shared<STTx const>(SerialIter{ item.slice() }));
-    //        JLOG(j_.debug()) << "    Tx: " << item.key();
-    //    }
-    //    catch (std::exception const&)
-    //    {
-    //        failed.insert(item.key());
-    //        JLOG(j_.warn()) << "    Tx: " << item.key() << " throws!";
-    //    }
-    //}
-
     auto closeTime = adaptor_.closeTime();
     closeTime = std::max<NetClock::time_point>(
-        closeTime, 
+        closeTime,
         previousLedger_.closeTime() + std::chrono::seconds{ adaptor_.parms().minBLOCK_TIME / 1000 });
 
     auto built = std::make_shared<Ledger>(*previousLedger_.ledger_, closeTime);
 
     built->setAccepted(closeTime, closeResolution_, true, adaptor_.getAppConfig());
 
-    //auto built = adaptor_.buildLCL(
-    //    previousLedger_,
-    //    retriableTxs,
-    //    closeTime,
-    //    true,
-    //    closeResolution_,
-    //    std::chrono::milliseconds{ 0 },
-    //    failed);
-
     blockData.getLedgerInfo() = built->info();
-
-    //JLOG(j_.info()) << "built ledger: " << blockData.getLedgerInfo().hash;
 
     return cmd;
 }
@@ -340,8 +309,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
 
     LedgerInfo const& info = block.getLedgerInfo();
 
-    if (block.block_data().block_type == hotstuff::BlockData::NilBlock/* ||
-        block.block_data().author() == adaptor_.valPublic()*/)
+    if (block.block_data().block_type == hotstuff::BlockData::NilBlock)
     {
         JLOG(j_.info()) << "compute block: NilBlock Proposal";
         result.ledger_info = info;
@@ -379,8 +347,6 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
 
         result.ledger_info = previousLedger_.ledger_->info();
         result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
-        // Tell directly connected peers that we have a new LCL
-        //adaptor_.notify(protocol::neCLOSING_LEDGER, previousLedger_, adaptor_.mode() != ConsensusMode::wrongLedger);
         return true;
     }
 
@@ -414,20 +380,11 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         std::chrono::milliseconds{ 0 },
         failed);
 
-    JLOG(j_.info()) << "built ledger: " << built.id()/* << " and the propose ledger: " << info.hash*/;
+    JLOG(j_.info()) << "built ledger: " << built.id();
 
-    //if (info.hash == built.id())
-    //{
-        result.ledger_info = built.ledger_->info();
-        result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
-        // Tell directly connected peers that we have a new LCL
-        //adaptor_.notify(protocol::neCLOSING_LEDGER, built, adaptor_.mode() != ConsensusMode::wrongLedger);
-        return true;
-    //}
-
-    //JLOG(j_.warn()) << "built ledger conflict with proposed ledger";
-
-    //return false;
+    result.ledger_info = built.ledger_->info();
+    result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
+    return true;
 }
 
 bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result)
@@ -591,7 +548,12 @@ const bool HotstuffConsensus::verifySignature(
     const hotstuff::Signature& signature,
     const hotstuff::HashValue& digest) const
 {
-    return verifyDigest(author, digest, Slice(signature.data(), signature.size()), false);
+    if (adaptor_.trusted(author))
+    {
+        return verifyDigest(author, digest, Slice(signature.data(), signature.size()), false);
+    }
+
+    return false;
 }
 
 const bool HotstuffConsensus::verifySignature(

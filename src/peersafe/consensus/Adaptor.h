@@ -111,11 +111,9 @@ public:
 
     inline std::size_t getQuorum() const { return app_.validators().quorum(); }
 
-    inline boost::optional<PublicKey> getTrustedKey(PublicKey const& identity) const {
-        return app_.validators().getTrustedKey(identity);
-    }
-
     inline PublicKey getMasterKey(PublicKey pk) const { return app_.validatorManifests().getMasterKey(pk); }
+    inline boost::optional<PublicKey> getTrustedKey(PublicKey const& identity) const { return app_.validators().getTrustedKey(identity); }
+    inline bool trusted(PublicKey const& identity) const { return app_.validators().trusted(identity); }
 
     inline Config& getAppConfig() { return app_.config(); }
 
