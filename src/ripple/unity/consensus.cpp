@@ -32,6 +32,7 @@
 
 #include <peersafe/consensus/hotstuff/impl/Block.cpp>
 #include <peersafe/consensus/hotstuff/impl/BlockStorage.cpp>
+#include <peersafe/consensus/hotstuff/impl/EpochChange.cpp>
 #include <peersafe/consensus/hotstuff/impl/EpochState.cpp>
 #include <peersafe/consensus/hotstuff/impl/HotstuffCore.cpp>
 #include <peersafe/consensus/hotstuff/impl/PendingVotes.cpp>

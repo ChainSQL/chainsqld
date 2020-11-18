@@ -19,4 +19,5 @@
 
 
 
+#include <peersafe/serialization/impl/Buffer.cpp>
 #include <peersafe/serialization/impl/PublicKey.cpp>
