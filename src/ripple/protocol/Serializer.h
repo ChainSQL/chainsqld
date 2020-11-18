@@ -88,6 +88,8 @@ public:
     add32(HashPrefix p);
     int
     add64(std::uint64_t i);  // native currency amounts
+    int
+    add256(uint256 const&);  // transaction and ledger hashes
 
     template <typename Integer>
     int addInteger(Integer);

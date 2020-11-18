@@ -42,6 +42,7 @@ namespace ripple {
 class Overlay;
 class HashRouter;
 class STValidation;
+class PeerManager;
 
 /** Changes in trusted nodes after updating validator list
 */
@@ -246,7 +247,7 @@ public:
         std::uint32_t version,
         std::string siteUri,
         uint256 const& hash,
-        Overlay& overlay,
+        PeerManager& overlay,
         HashRouter& hashRouter);
 
     /** Apply published list of public keys

@@ -383,15 +383,15 @@ invokeProtocolMessage(Buffers const& buffers, Handler& handler)
             break;
 	    case protocol::mtVIEW_CHANGE:   
             success = detail::invoke<protocol::TMViewChange>(
-                type, buffers, handler); 
+				*header, buffers, handler);
             break;
         case protocol::mtGET_TABLE:     
             success = detail::invoke<protocol::TMGetTable> (
-                type, buffers, handler); 
+				*header, buffers, handler);
             break;
         case protocol::mtTABLE_DATA:    
             success = detail::invoke<protocol::TMTableData>(
-                type, buffers, handler); 
+				*header, buffers, handler);
             break;
         default:
             handler.onMessageUnknown(header->message_type);

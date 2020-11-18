@@ -71,6 +71,14 @@ Serializer::add64(std::uint64_t i)
     return ret;
 }
 
+int
+Serializer::add256(uint256 const& i)
+{
+    int ret = mData.size();
+    mData.insert(mData.end(), i.begin(), i.end());
+    return ret;
+}
+
 template <>
 int
 Serializer::addInteger(unsigned char i)

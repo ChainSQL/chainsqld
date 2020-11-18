@@ -22,7 +22,7 @@
 
 #include <ripple/beast/core/SemanticVersion.h>
 #include <ripple/ledger/TxMeta.h>
-
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/TxQ.h>
 #include <ripple/protocol/SecretKey.h>
@@ -147,7 +147,7 @@ bool
 isValidated(
     LedgerMaster& ledgerMaster,
     ReadView const& ledger,
-    Application& app);
+    Schema& app);
 
 hash_set<AccountID>
 parseAccountIds(Json::Value const& jvArray);

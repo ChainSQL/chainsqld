@@ -205,10 +205,10 @@ bool TableDumpItem::UnHexTableName(Json::Value &jsonTx)
 	for (auto &jsonTable : jsonTables)
 	{
 		std::string sTableName = jsonTable[jss::Table][jss::TableName].asString();
-		auto retPair = strUnHex(sTableName);
-		if (retPair.second)
+		auto tablename = strUnHex(sTableName);
+		if (tablename)
 		{
-			sTableName = strCopy(retPair.first);
+			sTableName = strCopy(*tablename);
 			jsonTable[jss::Table][jss::TableName] = sTableName;
 		}		
 	}
@@ -250,7 +250,7 @@ std::string TableDumpItem::ConstructTxStr(std::vector<STTx> &vecTxs, const STTx 
 
 bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData)
 {
-    std::lock_guard<std::mutex> lock(mutexFileOperate_);
+    std::lock_guard lock(mutexFileOperate_);
 
     FILE *fp;
     fp = fopen(sDumpPath_.c_str(), "r+");
@@ -424,7 +424,7 @@ void TableDumpItem::SetErroeInfo2FileEnd(FILE *fileTarget)
 
 std::pair<bool, std::string> TableDumpItem::StopTask()
 {
-    std::lock_guard<std::mutex> lock(mutexFileOperate_);
+    std::lock_guard lock(mutexFileOperate_);
     if (GetSyncState() == SYNC_STOP)
     {
         return std::make_pair(false, "the task has been stopped.");

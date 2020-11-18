@@ -136,7 +136,7 @@ SSLHTTPDownloader::do_session(
     // this method notifies a 'Stoppable'
     // object that the session has ended.
     auto exit = [this]() {
-        std::lock_guard<std::mutex> lock(m_);
+        std::lock_guard lock(m_);
         sessionActive_ = false;
         c_.notify_one();
     };

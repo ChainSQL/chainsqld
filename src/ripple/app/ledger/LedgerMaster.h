@@ -31,17 +31,17 @@
 #include <ripple/basics/RangeSet.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/chrono.h>
-#include <ripple/protocol/ErrorCodes.h>
 #include <ripple/beast/insight/Collector.h>
 #include <ripple/beast/utility/PropertyStream.h>
 #include <ripple/core/Stoppable.h>
+#include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/RippleLedgerHash.h>
 #include <ripple/protocol/STValidation.h>
 #include <ripple/protocol/messages.h>
+#include <boost/optional.hpp>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/schema/Schema.h>
-#include <boost/optional.hpp>
 
 #include <mutex>
 
@@ -84,27 +84,39 @@ public:
     std::shared_ptr<ReadView const>
     getCurrentLedger();
 
-   ripple::uint160
+    ripple::uint160
     getNameInDB(LedgerIndex index, AccountID accountID, std::string sTableName);
 
     table_BaseInfo
-    getTableBaseInfo(LedgerIndex index, AccountID accountID, std::string sTableName);
+    getTableBaseInfo(
+        LedgerIndex index,
+        AccountID accountID,
+        std::string sTableName);
 
-	std::pair<ripple::uint256, error_code_i>
-	getLatestTxCheckHash(AccountID accountID, std::string sTableName);
+    std::pair<ripple::uint256, error_code_i>
+    getLatestTxCheckHash(AccountID accountID, std::string sTableName);
 
     std::pair<bool, error_code_i>
-        isAuthorityValid(AccountID accountID, AccountID ownerID, std::list<std::string>aTableName, TableRoleFlags roles);
+    isAuthorityValid(
+        AccountID accountID,
+        AccountID ownerID,
+        std::list<std::string> aTableName,
+        TableRoleFlags roles);
 
-	std::tuple<bool, ripple::Blob, error_code_i>
-		getUserToken(AccountID accountID, AccountID ownerID, std::string sTableName);
-	
+    std::tuple<bool, ripple::Blob, error_code_i>
+    getUserToken(
+        AccountID accountID,
+        AccountID ownerID,
+        std::string sTableName);
+
     std::tuple<bool, ripple::uint256, error_code_i>
-        getUserFutureHash(AccountID accountID);
-    
-	bool isConfidential(const STTx& tx);
+    getUserFutureHash(AccountID accountID);
 
-	void processFullLedgerTask(std::shared_ptr<Ledger const> const& l);
+    bool
+    isConfidential(const STTx& tx);
+
+    void
+    processFullLedgerTask(std::shared_ptr<Ledger const> const& l);
 
     // The finalized ledger is the last closed/accepted ledger
     std::shared_ptr<Ledger const>
@@ -129,10 +141,16 @@ public:
     std::shared_ptr<ReadView const>
     getPublishedLedger();
 
-    std::chrono::seconds getPublishedLedgerAge ();
-    std::chrono::seconds getValidatedLedgerAge ();
-    bool isCaughtUp(std::string& reason);
-	void onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger);
+    std::chrono::seconds
+    getPublishedLedgerAge();
+    std::chrono::seconds
+    getValidatedLedgerAge();
+    bool
+    isCaughtUp(std::string& reason);
+    void
+    onViewChanged(
+        bool bWaitingInit,
+        std::shared_ptr<Ledger const> previousLedger);
 
     std::uint32_t
     getEarliestFetch();
@@ -180,9 +198,11 @@ public:
     pruneHeldTransactions(AccountID const& account, std::uint32_t const seq);
 
     /** Get a ledger's hash by sequence number using the cache
-    */
-    uint256 getHashBySeq (std::uint32_t index);
-    uint256 getHashBySeqEx(std::uint32_t index);
+     */
+    uint256
+    getHashBySeq(std::uint32_t index);
+    uint256
+    getHashBySeqEx(std::uint32_t index);
 
     /** Walk to a ledger's hash using the skip list */
     boost::optional<LedgerHash>
@@ -303,7 +323,8 @@ public:
     std::size_t
     getFetchPackCacheSize() const;
 
-    void initGenesisLedger(std::shared_ptr<Ledger> const genesis);
+    void
+    initGenesisLedger(std::shared_ptr<Ledger> const genesis);
     //! Whether we have ever fully validated a ledger.
     bool
     haveValidated()
@@ -315,6 +336,8 @@ public:
     boost::optional<LedgerIndex>
     minSqlSeq();
 
+	std::uint32_t
+		lastCompleteIndex();
 private:
     void
     setValidLedger(std::shared_ptr<Ledger const> const& l);
@@ -356,7 +379,8 @@ private:
     bool
     newPFWork(const char* name, std::unique_lock<std::recursive_mutex>&);
 
-	bool isConfidentialUnit(const STTx& tx);
+    bool
+    isConfidentialUnit(const STTx& tx);
 
 private:
     Schema& app_;
@@ -393,7 +417,7 @@ private:
     std::unique_ptr<LedgerReplay> replayData;
 
     std::recursive_mutex mCompleteLock;
-	RangeSet<std::uint32_t> mCompleteLedgers;
+    RangeSet<std::uint32_t> mCompleteLedgers;
 
     std::unique_ptr<detail::LedgerCleaner> mLedgerCleaner;
 
@@ -407,14 +431,15 @@ private:
     int mPathFindThread{0};  // Pathfinder jobs dispatched
     bool mPathFindNewRequest{false};
 
-    std::atomic_flag mGotFetchPackThread = ATOMIC_FLAG_INIT; // GotFetchPack jobs dispatched
+    std::atomic_flag mGotFetchPackThread =
+        ATOMIC_FLAG_INIT;  // GotFetchPack jobs dispatched
 
-    std::atomic <std::uint32_t> mPubLedgerClose {0};
-    std::atomic <LedgerIndex> mPubLedgerSeq {0};
-    std::atomic <std::uint32_t> mValidLedgerSign {0};
-	std::atomic <std::uint32_t> mLastConsensusTime{ 0 };
-    std::atomic <LedgerIndex> mValidLedgerSeq {0};
-    std::atomic <LedgerIndex> mBuildingLedgerSeq {0};
+    std::atomic<std::uint32_t> mPubLedgerClose{0};
+    std::atomic<LedgerIndex> mPubLedgerSeq{0};
+    std::atomic<std::uint32_t> mValidLedgerSign{0};
+    std::atomic<std::uint32_t> mLastConsensusTime{0};
+    std::atomic<LedgerIndex> mValidLedgerSeq{0};
+    std::atomic<LedgerIndex> mBuildingLedgerSeq{0};
 
     // The server is in standalone mode
     bool const standalone_;

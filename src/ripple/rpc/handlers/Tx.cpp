@@ -42,7 +42,7 @@ namespace ripple {
     // {
     //   transaction: <hex>
     // }
-    std::pair<std::vector<std::shared_ptr<STTx>>, std::string> getLedgerTxs(RPC::Context& context, int ledgerSeq, uint256 startHash = beast::zero, bool include = false);
+    std::pair<std::vector<std::shared_ptr<STTx>>, std::string> getLedgerTxs(RPC::JsonContext& context, int ledgerSeq, uint256 startHash = beast::zero, bool include = false);
     void appendTxJson(const std::vector<std::shared_ptr<STTx>>& vecTxs, Json::Value& jvTxns, int ledgerSeq, int limit);
 
 static bool
@@ -89,7 +89,7 @@ getMetaHex(Ledger const& ledger, uint256 const& transID, std::string& hex)
     return true;
 }
 
-bool doTxChain(TxType txType, const RPC::Context& context, Json::Value& retJson)
+bool doTxChain(TxType txType, const RPC::JsonContext& context, Json::Value& retJson)
 {
     if (!STTx::checkChainsqlTableType(txType) && !STTx::checkChainsqlContractType(txType))  return false;
 
@@ -426,7 +426,7 @@ populateJsonResponse(
         response[jss::validated] = result.validated;
     }
 
-    doTxChain(txn->getSTransaction()->getTxnType(), context, response);
+    doTxChain(result.txn->getSTransaction()->getTxnType(), context, response);
     
     return response;
 }
@@ -504,7 +504,7 @@ doTxGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetTransactionRequest>& context)
     return populateProtoResponse(res, args, context);
 }
 
-Json::Value doTxCount(RPC::Context& context)
+Json::Value doTxCount(RPC::JsonContext& context)
 {
 	Json::Value ret(Json::objectValue);
 	ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true);
@@ -513,7 +513,7 @@ Json::Value doTxCount(RPC::Context& context)
 	return ret;
 }
 
-Json::Value doGetCrossChainTx(RPC::Context& context) 
+Json::Value doGetCrossChainTx(RPC::JsonContext& context)
 {
 	if (!context.params.isMember(jss::transaction_hash))
 		return rpcError(rpcINVALID_PARAMS);
@@ -561,7 +561,8 @@ Json::Value doGetCrossChainTx(RPC::Context& context)
 
 		if (txHash != beast::zero)
 		{
-			auto txn = context.app.getMasterTransaction().fetch(txHash, true);
+			auto ec{ rpcSUCCESS };
+			auto txn = context.app.getMasterTransaction().fetch(txHash, ec);
 			if (!txn)
 				return rpcError(rpcTXN_NOT_FOUND);
 
@@ -627,7 +628,7 @@ void appendTxJson(const std::vector<std::shared_ptr<STTx>>& vecTxs, Json::Value&
 }
 
 //get txs from a ledger
-std::pair<std::vector<std::shared_ptr<STTx>>,std::string> getLedgerTxs(RPC::Context& context,int ledgerSeq,uint256 startHash,bool include)
+std::pair<std::vector<std::shared_ptr<STTx>>,std::string> getLedgerTxs(RPC::JsonContext& context,int ledgerSeq,uint256 startHash,bool include)
 {
 	std::vector<std::shared_ptr<STTx>> vecTxs;
 	auto ledger = context.ledgerMaster.getLedgerBySeq(ledgerSeq);

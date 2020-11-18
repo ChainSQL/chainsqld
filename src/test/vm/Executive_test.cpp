@@ -117,7 +117,7 @@ namespace ripple {
 				std::string callSetA = "ee919d50000000000000000000000000000000000000000000000000000000000000007b";
 				std::string callGetA = "d46300fd";
 				auto blobDeployed = strUnHex(codeDeployed);
-				auto res = executeCreate(alice, blobDeployed.first);
+				auto res = executeCreate(alice, *blobDeployed);
 				if (!res.second)
 				{
 					return;
@@ -127,7 +127,7 @@ namespace ripple {
 				std::string addressHex = strHex(addressStr, false);
 				codeExisting += addressHex;
 				auto blobExisting = strUnHex(codeDeployed);
-				res = executeCreate(alice, blobExisting.first);
+				res = executeCreate(alice, *blobExisting);
 				if (!res.second)
 				{
 					return;

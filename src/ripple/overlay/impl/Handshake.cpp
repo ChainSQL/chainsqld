@@ -338,7 +338,7 @@ verifyHandshake(
             throw std::runtime_error("Failed to verify session");
     }
 
-    return std::make_pair(publicKey,;
+    return std::make_pair(publicKey, publicValidate);
 }
 
 }  // namespace ripple

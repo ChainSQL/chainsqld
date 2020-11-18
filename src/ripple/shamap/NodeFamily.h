@@ -40,7 +40,7 @@ public:
     NodeFamily&
     operator=(NodeFamily&&) = delete;
 
-    NodeFamily(Application& app, CollectorManager& cm);
+    NodeFamily(Schema& app, CollectorManager& cm);
 
     NodeStore::Database&
     db() override

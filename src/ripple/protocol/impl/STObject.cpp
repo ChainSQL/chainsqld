@@ -23,6 +23,7 @@
 #include <ripple/protocol/STArray.h>
 #include <ripple/protocol/STBlob.h>
 #include <ripple/protocol/STObject.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
@@ -593,11 +594,37 @@ STObject::getFieldV256(SField const& field) const
     return getFieldByConstRef<STVector256>(field, empty);
 }
 
+STVector256&
+STObject::peekFieldV256(SField const& field)
+{
+    return peekField<STVector256>(field);
+}
+
 const STArray&
 STObject::getFieldArray(SField const& field) const
 {
     static STArray const empty{};
     return getFieldByConstRef<STArray>(field, empty);
+}
+
+const STObject&
+STObject::getFieldObject(SField const& field) const
+{
+    static STObject empty{};
+    return getFieldByConstRef<STObject>(field, empty);
+}
+
+const STMap256&
+STObject::getFieldM256(SField const& field) const
+{
+    static STMap256 const empty{};
+    return getFieldByConstRef<STMap256>(field, empty);
+}
+
+STMap256&
+STObject::peekFieldM256(SField const& field)
+{
+    return peekField<STMap256>(field);
 }
 
 void

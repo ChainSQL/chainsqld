@@ -93,11 +93,6 @@ public:
         return !isMultiSigning();
     }
 
-    bool isSingleSigning () const
-    {
-        return !isMultiSigning();
-    }
-
     // When multi-signing we should not edit the tx_json fields.
     bool
     editFields() const
@@ -544,10 +539,6 @@ transactionPreProcessImpl(
     {
         return RPC::make_error(rpcINVALID_PARAMS, err.what());
     }
-    catch (STObject::FieldErr& err)
-    {
-        return RPC::make_error (rpcINVALID_PARAMS, err.what());
-    }
     catch (std::exception&)
     {
         return RPC::make_error(
@@ -610,7 +601,7 @@ transactionConstructImpl (std::shared_ptr<STTx const> const& stpTrans,
 
             // Check the signature if that's called for.
             auto sttxNew = std::make_shared<STTx const>(sit);
-            if (!app.checkSigs())
+            if (!app.app().checkSigs())
                 forceValidity(
                     app.getHashRouter(),
                     sttxNew->getTransactionID(),
@@ -1172,10 +1163,6 @@ transactionSubmitMultiSigned(
         catch (STObject::FieldErr& err)
         {
             return RPC::make_error(rpcINVALID_PARAMS, err.what());
-        }
-        catch (STObject::FieldErr& err)
-        {
-            return RPC::make_error (rpcINVALID_PARAMS, err.what());
         }
         catch (std::exception& ex)
         {

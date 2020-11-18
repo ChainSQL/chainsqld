@@ -79,7 +79,7 @@ namespace ripple {
 
     std::shared_ptr<TableStorageItem> TableStorage::GetItem(uint160 nameInDB)
     {
-        std::lock_guard<std::mutex> lock(mutexMap_);
+        std::lock_guard lock(mutexMap_);
         auto it = m_map.find(nameInDB);
   
         if(it != m_map.end())
@@ -94,7 +94,7 @@ namespace ripple {
 
     TxStore& TableStorage::GetTxStore(uint160 nameInDB)
     {
-        std::lock_guard<std::mutex> lock(mutexMap_);
+        std::lock_guard lock(mutexMap_);
         auto it = m_map.find(nameInDB);
         if (it == m_map.end())  return app_.getTxStore();
         else                    return it->second->getTxStore();
@@ -161,7 +161,7 @@ namespace ripple {
 
 	TER TableStorage::TableStorageHandlePut(ChainSqlTx& transactor,uint160 uTxDBName, AccountID accountID,std::string sTableName, uint32_t lastLedgerSequence,uint256 txhash, STTx const & tx)
     {
-        std::lock_guard<std::mutex> lock(mutexMap_);
+        std::lock_guard lock(mutexMap_);
 
         auto it = m_map.find(uTxDBName);
         if (it == m_map.end())
@@ -268,7 +268,7 @@ namespace ripple {
         {
             uint160 uTxDBName; //how to get value ?
             {
-                std::lock_guard<std::mutex> lock(mutexMap_);
+                std::lock_guard lock(mutexMap_);
                 bool bRet = item.second->doJob(validIndex);
                 if (bRet)
                 {

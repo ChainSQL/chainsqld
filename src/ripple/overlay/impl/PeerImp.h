@@ -153,7 +153,6 @@ private:
     PublicKey const publicKey_;
 	boost::optional<PublicKey> publicValidate_;
 	//for non-validating node
-	std::vector<uint256> schemaIds_;
     std::string name_;
     std::shared_timed_mutex mutable nameMutex_;
 
@@ -402,7 +401,7 @@ public:
     boost::optional<std::size_t>
     publisherListSequence(PublicKey const& pubKey) const override
     {
-        std::lock_guard<std::mutex> sl(recentLock_);
+        std::lock_guard sl(recentLock_);
 
         auto iter = publisherListSequences_.find(pubKey);
         if (iter != publisherListSequences_.end())
@@ -414,7 +413,7 @@ public:
     setPublisherListSequence(PublicKey const& pubKey, std::size_t const seq)
         override
     {
-        std::lock_guard<std::mutex> sl(recentLock_);
+        std::lock_guard sl(recentLock_);
 
         publisherListSequences_[pubKey] = seq;
     }
@@ -635,17 +634,11 @@ private:
 			std::shared_ptr<protocol::TMViewChange> const& packet);
 
     void
-    checkValidation (uint256 schemaId, std::shared_ptr<STValidation> val,
+    checkValidation (uint256 schemaId, std::shared_ptr<STValidation> const&val,
         std::shared_ptr<protocol::TMValidation> const& packet);
 
     void
     getLedger(std::shared_ptr<protocol::TMGetLedger> const& packet);
-
-    // Called when we receive tx set data.
-    void
-    peerTXData (uint256 const& schemaId, uint256 const& hash,
-        std::shared_ptr <protocol::TMLedgerData> const& pPacket,
-            beast::Journal journal);
 };
 
 
@@ -698,8 +691,6 @@ PeerImp::PeerImp(
 {
     read_buffer_.commit (boost::asio::buffer_copy(read_buffer_.prepare(
         boost::asio::buffer_size(buffers)), buffers));
-	for (auto id : vecIds)
-		schemaIds_.push_back(from_hex_text<uint256>(id));
 }
 
 template <class FwdIt, class>

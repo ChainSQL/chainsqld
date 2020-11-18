@@ -153,7 +153,7 @@ Pathfinder::Pathfinder(
     boost::optional<AccountID> const& uSrcIssuer,
     STAmount const& saDstAmount,
     boost::optional<STAmount> const& srcAmount,
-    Application& app)
+	Schema& app)
     : mSrcAccount(uSrcAccount)
     , mDstAccount(uDstAccount)
     , mEffectiveDst(

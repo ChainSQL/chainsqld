@@ -72,11 +72,10 @@
 #include <ripple/rpc/DeliveredAmount.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/steady_timer.hpp>
-#include <ripple/basics/make_lock.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/misc/TxPool.h>
-#include <beast/core/detail/base64.hpp>
+#include <ripple/basics/base64.h>
 #include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/consensus/ViewChange.h>
@@ -263,7 +262,7 @@ public:
         , m_clock(clock)
         , m_journal(journal)
         , m_localTX(make_LocalTxs())
-        , mMode(omFULL)
+        , mMode(OperatingMode::FULL)
         // , mMode(start_valid ? OperatingMode::FULL : OperatingMode::DISCONNECTED)
         , heartbeatTimer_(io_svc)
         , clusterTimer_(io_svc)
@@ -413,13 +412,8 @@ public:
         std::shared_ptr<STValidation> const& val,
         std::string const& source) override;
 
-    std::shared_ptr<SHAMap>
-    getTXMap(uint256 const& hash);
     bool
-    hasTXSet(
-        const std::shared_ptr<Peer>& peer,
-        uint256 const& set,
-        protocol::TxSetStatus status);
+    recvViewChange(ViewChange const& change) override;
 
     void
     mapComplete(std::shared_ptr<SHAMap> const& map, bool fromAcquire) override;
@@ -757,10 +751,13 @@ private:
 	void processSubTxTimer();
 
 	using time_point = std::chrono::system_clock::time_point;
-	using SubTxMapType = hash_map<uint256, std::pair<InfoSub::wptr, time_point>>;
-	void processSubTx(SubTxMapType& subTx, const std::string& status);
+    using SubTxMapType = hash_map<uint256, std::pair<InfoSub::wptr, time_point>>;
+    using SubMapType = hash_map<std::uint64_t, InfoSub::wptr>;
+    using SubInfoMapType = hash_map<AccountID, SubMapType>;
+    using subRpcMapType = hash_map<std::string, InfoSub::pointer>;
+    using SubTableMapType = hash_map<AccountID, hash_map<std::string, SubMapType>>;
 
-    void setMode (OperatingMode);
+	void processSubTx(SubTxMapType& subTx, const std::string& status);
 
     Json::Value transJson (
         const STTx& stTxn, TER terResult, bool bValidated,
@@ -790,12 +787,13 @@ private:
 
 	void checkSchemaTx(std::shared_ptr<ReadView const> const& alAccepted,
 		const AcceptedLedgerTx& alTransaction);
-	void resetSchemaCfg(uint256 schemaId,std::shared_ptr<SLE const> sleSchema);
+    void
+    resetSchemaCfg(uint256 schemaId, std::shared_ptr<SLE const> sleSchema);
+
+    SubInfoMapType&
+    getCompatibleSubInfoMap(InfoSub::ACOUNT_TYPE eType);
+
 private:
-    using SubMapType = hash_map<std::uint64_t, InfoSub::wptr>;
-    using SubInfoMapType = hash_map<AccountID, SubMapType>;
-    using subRpcMapType = hash_map<std::string, InfoSub::pointer>;
-	using SubTableMapType = hash_map<AccountID,hash_map<std::string, SubMapType >> ;
 
     Schema& app_;
     clock_type& m_clock;
@@ -1157,7 +1155,7 @@ void NetworkOPsImp::tryCheckSubTx()
 
 void NetworkOPsImp::processSubTxTimer()
 {
-	ScopedLockType sl(mSubLock);
+	std::lock_guard sl(mSubLock);
 
 	processSubTx(mSubTx,"validate_timeout");
 	processSubTx(mValidatedSubTx, "db_timeout");
@@ -1400,7 +1398,7 @@ NetworkOPsImp::doTransactionCheck(std::shared_ptr<Transaction> transaction,
 
 TER NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 {
-    auto ter = preflight1(pfctx);
+	TER ter = preflight1(pfctx);
     if (ter != tesSUCCESS)
     {
         return ter;
@@ -1544,7 +1542,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
     batchLock.unlock();
 
     {
-        auto masterLock = make_lock(app_.getMasterMutex(), std::defer_lock);
+		std::unique_lock masterLock{ app_.getMasterMutex(), std::defer_lock };
         bool changed = false;
         {
             //std::lock_guard <std::recursive_mutex> lock (
@@ -1555,7 +1553,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             //{
                 for (TransactionStatus& e : transactions)
                 {
-                    // we check before addingto the batch
+                    // we check before adding to the batch
                     ApplyFlags flags = tapNO_CHECK_SIGN;
                     if (e.local)
                         flags = flags | tapFromClient;
@@ -1702,7 +1700,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             if ((e.applied ||
                  ((mMode != OperatingMode::FULL) &&
                   (e.failType != FailHard::yes) && e.local) ||
-                 (e.result == terQUEUED)) &&
+                 (e.result.ter == terQUEUED)) &&
                 !enforceFailHard)
             {
                 auto const toSkip =
@@ -2422,7 +2420,7 @@ NetworkOPsImp::pubPeerStatus(std::function<Json::Value(void)> const& func)
 
 void NetworkOPsImp::pubLogs(std::string const& log)
 {
-	ScopedLockType sl(mSubLock);
+	std::lock_guard sl(mSubLock);
 
 	if (!mStreamMaps[sLogs].empty())
 	{
@@ -2845,7 +2843,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
     if (human)
         info[jss::hostid] = getHostId(admin);
 
-    if (auto const netid = app_.overlay().networkID())
+    if (auto const netid = app_.app().overlay().networkID())
         info[jss::network_id] = static_cast<Json::UInt>(*netid);
 
     info[jss::build_version] = BuildInfo::getVersionString();
@@ -2906,7 +2904,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
         }
     }
     info[jss::io_latency_ms] =
-        static_cast<Json::UInt>(app_.getIOLatency().count());
+        static_cast<Json::UInt>(app_.app().getIOLatency().count());
 
     if (admin)
     {
@@ -3738,7 +3736,7 @@ void NetworkOPsImp::PubContractEvents(const AccountID& contractID,uint256 const 
         Json::Value jvObj;
 		jvObj[jss::type] = "contract_event";
 		jvObj[jss::ContractAddress] = to_string(contractID);
-        jvObj[jss::ContractEventTopics].resize(iTopicNum);
+        jvObj[jss::ContractEventTopics] = Json::arrayValue;
         for (int i = 0; i < iTopicNum; i++)
         {
             jvObj[jss::ContractEventTopics][i] = to_string(aTopic[i]);
@@ -3859,7 +3857,7 @@ void NetworkOPsImp::pubTableTxs(const AccountID& owner, const std::string& sTabl
 void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 	const std::tuple<std::string, std::string, std::string>& disposRes,bool bValidated, bool bForTableTx)
 {
-	ScopedLockType sl(mSubLock);
+	std::lock_guard sl(mSubLock);
 	auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
 	if (!subTx.empty())
 	{
@@ -3896,7 +3894,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				//{
 				//	std::thread([this, txId, jvToPub]() {
 				//		std::this_thread::sleep_for(std::chrono::milliseconds(50));
-				//		ScopedLockType sl(mSubLock);
+				//		std::lock_guard sl(mSubLock);
 				//		auto simiIt = mSubTx.find(txId);
 				//		if (simiIt != mSubTx.end())
 				//		{
@@ -3917,7 +3915,7 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 void NetworkOPsImp::pubChainSqlTableTxs(const AccountID& ownerId, const std::string& sTableName, 
 	const STTx& stTxn,const std::tuple<std::string, std::string, std::string>& disposRes)
 {
-	ScopedLockType sl(mSubLock);
+	std::lock_guard sl(mSubLock);
 	if (mSubTable.find(ownerId) != mSubTable.end() &&
 		mSubTable[ownerId].find(sTableName) != mSubTable[ownerId].end())
 	{
@@ -4046,7 +4044,6 @@ NetworkOPsImp::unsubAccountInternal(
 
 NetworkOPsImp::SubInfoMapType& NetworkOPsImp::getCompatibleSubInfoMap(InfoSub::ACOUNT_TYPE eType)
 {
-
     switch (eType)
     {
     case ripple::InfoSub::ACCOUNT_NORMANT:
@@ -4353,14 +4350,14 @@ NetworkOPsImp::unsubConsensus(std::uint64_t uSeq)
 
 bool NetworkOPsImp::subLogs(InfoSub::ref isrListener)
 {
-	ScopedLockType sl(mSubLock);
+	std::lock_guard sl(mSubLock);
 	return mStreamMaps[sLogs].emplace(
 		isrListener->getSeq(), isrListener).second;
 }
 
 bool NetworkOPsImp::unsubLogs(std::uint64_t uSeq)
 {
-	ScopedLockType sl(mSubLock);
+	std::lock_guard sl(mSubLock);
 	return mStreamMaps[sLogs].erase(uSeq);
 }
 

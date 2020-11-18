@@ -24,9 +24,8 @@
 #ifndef BEAST_THREADS_WAITABLEEVENT_H_INCLUDED
 #define BEAST_THREADS_WAITABLEEVENT_H_INCLUDED
 
-#include <ripple/beast/core/Config.h>
 
-#if ! BEAST_WINDOWS
+#ifndef WIN32
 #include <pthread.h>
 #endif
 
@@ -109,7 +108,7 @@ public:
     void reset() const;
 
 private:
-#if BEAST_WINDOWS
+#ifdef WIN32
     void* handle;
 #else
     mutable pthread_cond_t condition;

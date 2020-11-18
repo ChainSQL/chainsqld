@@ -69,7 +69,12 @@ private:
 
         Env env(*this);
         auto trustedSites =
-            std::make_unique<ValidatorSite>(env.app(), env.journal);
+            std::make_unique<ValidatorSite>(
+				env.app(),
+				env.app().validatorManifests(),
+				env.app().getIOService(),
+				env.app().validators(),
+				env.journal);
 
         // load should accept empty sites list
         std::vector<std::string> emptyCfgSites;
@@ -205,7 +210,13 @@ private:
         // Normally, tests will only need a fraction of this time,
         // but sometimes DNS resolution takes an inordinate amount
         // of time, so the test will just wait.
-        auto sites = std::make_unique<ValidatorSite>(env.app(), journal, 12s);
+        auto sites = std::make_unique<ValidatorSite>(
+			env.app(),
+            env.app().validatorManifests(),
+            env.app().getIOService(),
+            env.app().validators(),
+			journal,
+			12s);
 
         std::vector<std::string> uris;
         for (auto const& u : servers)
@@ -301,7 +312,12 @@ private:
             item.uri = uri.str();
         }
 
-        auto sites = std::make_unique<ValidatorSite>(env.app(), journal);
+        auto sites = std::make_unique<ValidatorSite>(
+			env.app(),
+            env.app().validatorManifests(),
+            env.app().getIOService(),
+            env.app().validators(),
+			journal);
 
         std::vector<std::string> uris;
         for (auto const& u : servers)

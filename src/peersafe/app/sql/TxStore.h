@@ -80,10 +80,10 @@ public:
 	std::pair<bool,std::string> Dispose(const STTx& tx,const std::string& operationRule = "", bool verifyAffectedRows = false);
 	std::pair<bool, std::string> DropTable(const std::string& tablename);
 
-	Json::Value txHistory(RPC::Context& context);
+	Json::Value txHistory(RPC::JsonContext& context);
     Json::Value txHistory(Json::Value& tx_json);
     Json::Value txHistory(std::string sql);
-	std::pair<std::vector<std::vector<Json::Value>>, std::string> txHistory2d(RPC::Context& context);
+	std::pair<std::vector<std::vector<Json::Value>>, std::string> txHistory2d(RPC::JsonContext& context);
 	std::pair<std::vector<std::vector<Json::Value>>, std::string> txHistory2d(Json::Value& tx_json);
 
 	DatabaseCon* getDatabaseCon();

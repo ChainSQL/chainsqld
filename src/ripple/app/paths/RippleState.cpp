@@ -50,6 +50,7 @@ RippleState::RippleState(
     , highQualityIn_(sle_->getFieldU32(sfHighQualityIn))
     , highQualityOut_(sle_->getFieldU32(sfHighQualityOut))
     , mBalance(sle_->getFieldAmount(sfBalance))
+    , mMemos(sle_->getFieldArray(sfMemos))
 {
     mViewLowest = (mLowID == viewAccount);
 

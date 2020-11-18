@@ -5,6 +5,7 @@
 #include <ripple/core/Config.h>
 #include <peersafe/schema/SchemaParams.h>
 #include <ripple/protocol/Protocol.h>
+#include <boost/asio.hpp>
 
 namespace ripple {
 	namespace perf { class PerfLog; }
@@ -60,7 +61,6 @@ namespace ripple {
 	class PeerReservationTable;
 	class DatabaseCon;
 	class SHAMapStore;
-	class MutexType;
 
 	using NodeCache = TaggedCache <SHAMapHash, Blob>;
 
@@ -79,8 +79,10 @@ namespace ripple {
 		virtual void doSweep() = 0;
 		virtual void doStop() = 0;
 		virtual void doStart() = 0;
+		virtual bool checkSigs() const = 0;
+		virtual void checkSigs(bool) = 0;
 
-        virtual MutexType&
+        virtual std::recursive_mutex&
                 getMasterMutex() = 0;
 		virtual beast::Journal journal(std::string const& name) = 0;
 
@@ -89,6 +91,7 @@ namespace ripple {
 		virtual Logs&					logs() = 0;
 		virtual CollectorManager&       getCollectorManager() = 0;
 		virtual TimeKeeper&             timeKeeper() = 0;
+		virtual boost::asio::io_service& getIOService() = 0;
 		virtual JobQueue&               getJobQueue() = 0;
 		virtual LoadManager&            getLoadManager() = 0;
 		virtual perf::PerfLog&          getPerfLog() = 0;

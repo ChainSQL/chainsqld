@@ -135,7 +135,7 @@ GRPCServerImpl::CallData<Request, Response>::process(
 
             RPC::GRPCContext<Request> context{
                 {app_.journal("gRPCServer"),
-                 app_,
+                 app_.getSchema(),
                  loadType,
                  app_.getOPs(),
                  app_.getLedgerMaster(),

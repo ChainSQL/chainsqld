@@ -28,7 +28,7 @@
 
 namespace ripple {
 
-TransactionMaster::TransactionMaster(Application& app)
+TransactionMaster::TransactionMaster(Schema& app)
     : mApp(app)
     , mCache(
           "TransactionCache",
@@ -36,10 +36,10 @@ TransactionMaster::TransactionMaster(Application& app)
           std::chrono::minutes{30},
           stopwatch(),
           mApp.journal("TaggedCache"))
-    , m_pClientTxStoreDBConn(std::make_unique<TxStoreDBConn>(mSchema.config()))
-    , m_pClientTxStoreDB(std::make_unique<TxStore>(m_pClientTxStoreDBConn->GetDBConn(), mSchema.config(), mSchema.journal("TxStore")))
-    , m_pConsensusTxStoreDBConn(std::make_unique<TxStoreDBConn>(mSchema.config()))
-    , m_pConsensusTxStoreDB(std::make_unique<TxStore>(m_pConsensusTxStoreDBConn->GetDBConn(), mSchema.config(), mSchema.journal("TxStore")))
+    , m_pClientTxStoreDBConn(std::make_unique<TxStoreDBConn>(mApp.config()))
+    , m_pClientTxStoreDB(std::make_unique<TxStore>(m_pClientTxStoreDBConn->GetDBConn(), mApp.config(), mApp.journal("TxStore")))
+    , m_pConsensusTxStoreDBConn(std::make_unique<TxStoreDBConn>(mApp.config()))
+    , m_pConsensusTxStoreDB(std::make_unique<TxStore>(m_pConsensusTxStoreDBConn->GetDBConn(), mApp.config(), mApp.journal("TxStore")))
 {
 }
 
@@ -66,7 +66,7 @@ int TransactionMaster::getTxCount(bool chainsql)
 
 	boost::optional<int> txCount;
 	{
-		auto db = mSchema.getTxnDB().checkoutDb();
+		auto db = mApp.getTxnDB().checkoutDb();
 		*db << sql,
 			soci::into(txCount);
 
@@ -87,13 +87,14 @@ std::vector<STTx> TransactionMaster::getTxs(STTx const& stTx, std::string sTable
 		{
 			if (ledgerSeq == 0)
 			{
-				auto txn = fetch(stTx.getTransactionID(), true);
+				error_code_i errr{rpcSUCCESS};
+				auto txn = fetch(stTx.getTransactionID(), errr);
 				if (txn)
 					ledgerSeq = txn->getLedger();
 			}
 			if(ledgerSeq != 0)
 			{
-				ledger = mSchema.getLedgerMaster().getLedgerBySeq(ledgerSeq);
+				ledger = mApp.getLedgerMaster().getLedgerBySeq(ledgerSeq);
 			}
 		}
 		if (ledger != nullptr)

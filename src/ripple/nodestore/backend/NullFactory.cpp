@@ -44,11 +44,6 @@ public:
     }
 
     void
-    open(bool createIfMissing) override
-    {
-    }
-
-    void
     close() override
     {
     }

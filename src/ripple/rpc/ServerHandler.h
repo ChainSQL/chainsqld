@@ -46,7 +46,6 @@ make_ServerHandler(
     Stoppable& parent,
     boost::asio::io_service&,
     JobQueue&,
-    NetworkOPs&,
     Resource::Manager&,
     CollectorManager& cm);
 

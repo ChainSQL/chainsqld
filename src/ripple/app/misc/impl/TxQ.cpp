@@ -51,7 +51,7 @@ getFeeLevelPaid(
     // If the math overflows, return the clipped
     // result blindly. This is very unlikely to ever
     // happen.
-    return mulDiv(tx[sfFee].zxc().drops(),
+    return mulDiv(tx[sfFee].zxc(),
         baseRefLevel,
             refTxnCostDrops).second;
 }
@@ -267,9 +267,6 @@ TxQ::MaybeTx::MaybeTx(
 std::pair<TER, bool>
 TxQ::MaybeTx::apply(Schema& app, OpenView& view, beast::Journal j)
 {
-    boost::optional<STAmountSO> saved;
-    if (view.rules().enabled(fix1513))
-        saved.emplace(view.info().parentCloseTime);
     // If the rules or flags change, preflight again
     assert(pfresult);
     if (pfresult->rules != view.rules() || pfresult->flags != flags)
@@ -608,10 +605,6 @@ TxQ::apply(Schema& app, OpenView& view,
     auto const account = (*tx)[sfAccount];
     auto const transactionID = tx->getTransactionID();
     auto const tSeq = tx->getSequence();
-
-    boost::optional<STAmountSO> saved;
-    if (view.rules().enabled(fix1513))
-        saved.emplace(view.info().parentCloseTime);
 
     // See if the transaction is valid, properly formed,
     // etc. before doing potentially expensive queue
@@ -1002,9 +995,6 @@ TxQ::apply(Schema& app, OpenView& view,
         JLOG(j_.trace()) << "Applying transaction " <<
             transactionID <<
             " to open ledger.";
-        ripple::STer txnResult;
-        bool didApply;
-
         auto const [txnResult, didApply] = doApply(pcresult, app, view);
 
         JLOG(j_.trace()) << "New transaction " << transactionID
@@ -1495,7 +1485,7 @@ TxQ::doRPC(Schema& app) const
 	auto gasPrice = scaleGasLoad(GAS_PRICE, app.getFeeTrack(),
 		view->fees());
 
-	drops[jss::gas_price] = to_string(gasPrice);
+	drops[jss::gas_price] = std::to_string(gasPrice);
 
     return ret;
 }

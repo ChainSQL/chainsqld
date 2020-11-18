@@ -393,7 +393,7 @@ public:
     void
     disable_sigs()
     {
-        app().checkSigs(false);
+        app().app().checkSigs(false);
     }
 
     /** Associate AccountID with account. */

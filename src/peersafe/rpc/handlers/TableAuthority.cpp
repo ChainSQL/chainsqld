@@ -34,7 +34,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-	Json::Value doTableAuthority(RPC::Context& context)
+	Json::Value doTableAuthority(RPC::JsonContext& context)
 	{
 		Json::Value params(context.params);
 		Json::Value ret(Json::objectValue);

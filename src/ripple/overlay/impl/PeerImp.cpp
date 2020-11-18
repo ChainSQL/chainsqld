@@ -35,6 +35,8 @@
 #include <ripple/beast/core/SemanticVersion.h>
 #include <ripple/nodestore/DatabaseShard.h>
 #include <ripple/overlay/Cluster.h>
+#include <ripple/overlay/impl/PeerImp.h>
+#include <ripple/overlay/impl/Tuning.h>
 #include <ripple/overlay/predicates.h>
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/table/TableSync.h>
@@ -97,8 +99,6 @@ PeerImp::PeerImp(
           headers_["X-Offer-Compression"] == "lz4" ? Compressed::On
                                                    : Compressed::Off)
 {
-	for (auto id : vecIds)
-		schemaIds_.push_back(from_hex_text<uint256>(id));
 }
 
 PeerImp::~PeerImp()
@@ -170,7 +170,7 @@ PeerImp::run()
         fail("Malformed handshake data (3)");
 
     {
-        std::lock_guard<std::mutex> sl(recentLock_);
+        std::lock_guard sl(recentLock_);
         if (closed)
             schemaInfo_[beast::zero].closedLedgerHash_ = *closed;
         if (previous)
@@ -210,7 +210,7 @@ PeerImp::dispatch()
 				item.first == beast::zero) // add to main chain with no validators check.
 			{
 				{
-					std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+					std::lock_guard sl(schemaInfoMutex_);
 					schemaInfo_.emplace(item.first, SchemaInfo());
 				}
 				item.second->peerManager().add(shared_from_this());
@@ -222,14 +222,14 @@ PeerImp::dispatch()
 		//for (auto id : schemaIds_)
 		//{
 		//	{
-		//		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		//		std::lock_guard sl(schemaInfoMutex_);
 		//		schemaInfo_.emplace(std::make_pair(id, SchemaInfo()));
 		//	}
 		//	app_.peerManager(id).add(shared_from_this());
 		//}
 
 		//add non-validating node to main chain
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		schemaInfo_.emplace(std::make_pair(beast::zero, SchemaInfo()));
 	
 		app_.peerManager(beast::zero).add(shared_from_this());
@@ -357,7 +357,7 @@ PeerImp::json(uint256 const& schemaId)
     Json::Value ret (Json::objectValue);
 	SchemaInfo* pInfo = nullptr;
 	{
-		std::lock_guard<std::mutex> sl(recentLock_);
+		std::lock_guard sl(recentLock_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return ret;
 		pInfo = &schemaInfo_.at(schemaId);
@@ -495,13 +495,13 @@ bool
 PeerImp::hasLedger (uint256 const& schemaId, uint256 const& hash, std::uint32_t seq) const
 {
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return false;
 	}
 	
     {
-		std::lock_guard<std::mutex> sl(recentLock_);
+		std::lock_guard sl(recentLock_);
 		auto& info = schemaInfo_.at(schemaId);
         if ((seq != 0) && (seq >= info.minLedger_) && (seq <= info.maxLedger_) &&
                 (sanity_.load() == Sanity::sane))
@@ -511,7 +511,7 @@ PeerImp::hasLedger (uint256 const& schemaId, uint256 const& hash, std::uint32_t 
             return true;
     }
 
-    return seq >= app_.getNodeStore(schemaId).earliestSeq() &&
+    return seq >= app_.getNodeStore(schemaId).earliestLedgerSeq() &&
         hasShard(schemaId,NodeStore::seqToShardIndex(seq));
 }
 
@@ -520,12 +520,12 @@ PeerImp::ledgerRange (uint256 const& schemaId, std::uint32_t& minSeq,
     std::uint32_t& maxSeq) const
 {
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return;
 	}
     
-	std::lock_guard<std::mutex> sl(recentLock_);
+	std::lock_guard sl(recentLock_);
 	auto& info = schemaInfo_.at(schemaId);
 	minSeq = info.minLedger_;
 	maxSeq = info.maxLedger_;
@@ -535,13 +535,13 @@ bool
 PeerImp::hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const
 {
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return false;
 	}
 
 	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard<std::mutex> l { info.shardInfoMutex_};
+    std::lock_guard l { info.shardInfoMutex_};
     auto const it { info.shardInfo_.find(publicKey_)};
     if (it != info.shardInfo_.end())
         return boost::icl::contains(it->second.shardIndexes, shardIndex);
@@ -552,48 +552,38 @@ bool
 PeerImp::hasTxSet (uint256 const& schemaId, uint256 const& hash) const
 {
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return false;
 	}
 	auto& info = schemaInfo_.at(schemaId);
-	std::lock_guard<std::mutex> sl(recentLock_);
+	std::lock_guard sl(recentLock_);
     return std::find (info.recentTxSets_.begin(),
 		info.recentTxSets_.end(), hash) != info.recentTxSets_.end();
 }
 
 void
-PeerImp::cycleStatus (uint256 const& schemaId)
+PeerImp::cycleStatus(uint256 const& schemaId)
 {
-    // Operations on closedLedgerHash_ and previousLedgerHash_ must be
-    // guarded by recentLock_.
+	// Operations on closedLedgerHash_ and previousLedgerHash_ must be
+	// guarded by recentLock_.
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return;
 	}
 
 	auto& info = schemaInfo_.at(schemaId);
-	std::lock_guard<std::mutex> sl(recentLock_);
+	std::lock_guard sl(recentLock_);
 	info.previousLedgerHash_ = info.closedLedgerHash_;
-	info.closedLedgerHash_.zero ();
-}
-
-void
-PeerImp::cycleStatus()
-{
-    // Operations on closedLedgerHash_ and previousLedgerHash_ must be
-    // guarded by recentLock_.
-    std::lock_guard sl(recentLock_);
-    previousLedgerHash_ = closedLedgerHash_;
-    closedLedgerHash_.zero();
+	info.closedLedgerHash_.zero();
 }
 
 bool
 PeerImp::hasRange (uint256 const& schemaId,std::uint32_t uMin, std::uint32_t uMax)
 {
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return false;
 	}
@@ -666,12 +656,12 @@ boost::optional<RangeSet<std::uint32_t>>
 PeerImp::getShardIndexes(uint256 const& schemaId) const
 {
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return boost::none;
 	}
 	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard<std::mutex> l {info.shardInfoMutex_};
+    std::lock_guard l {info.shardInfoMutex_};
     auto it{ info.shardInfo_.find(publicKey_)};
     if (it != info.shardInfo_.end())
         return it->second.shardIndexes;
@@ -682,12 +672,12 @@ boost::optional<hash_map<PublicKey, PeerImp::ShardInfo>>
 PeerImp::getPeerShardInfo(uint256 const& schemaId) const
 {
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 			return boost::none;
 	}
 	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard<std::mutex> l { info.shardInfoMutex_};
+    std::lock_guard l { info.shardInfoMutex_};
     if (!info.shardInfo_.empty())
         return info.shardInfo_;
     return boost::none;
@@ -695,7 +685,7 @@ PeerImp::getPeerShardInfo(uint256 const& schemaId) const
 
 void PeerImp::removeSchemaInfo(uint256 const& schemaId)
 {
-	std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+	std::lock_guard sl(schemaInfoMutex_);
 	if (schemaInfo_.find(schemaId) != schemaInfo_.end())
 	{
 		schemaInfo_.erase(schemaId);
@@ -715,7 +705,7 @@ PeerImp::getSchemaInfo(std::string prefix,std::string const& schemaIdBuffer)
 	}
 	uint256 schemaId;
 	memcpy(schemaId.begin(), schemaIdBuffer.data(), 32);
-	std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+	std::lock_guard sl(schemaInfoMutex_);
 	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 	{
 		JLOG(p_journal_.warn()) << prefix << "Don't have schemaInfo for "<< to_string(schemaId)<<" in schemaInfo_";
@@ -996,7 +986,7 @@ PeerImp::doProtocolStart()
 {
     onReadMessage(error_code(), 0);
 
-	std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+	std::lock_guard sl(schemaInfoMutex_);
 	for (auto it = schemaInfo_.begin(); it != schemaInfo_.end(); it++)
 	{
         auto schemaid = it->first;
@@ -1521,33 +1511,26 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMPeerShardInfo> const& m)
     else
         publicKey = publicKey_;
 
-    {
-        std::lock_guard l{shardInfoMutex_};
-        auto it{shardInfo_.find(publicKey)};
-        if (it != shardInfo_.end())
-        {
-            // Update the IP address for the node
-            it->second.endpoint = std::move(endpoint);
+	{
+		std::lock_guard l{ info.shardInfoMutex_ };
+		auto it{ info.shardInfo_.find(publicKey) };
+		if (it != info.shardInfo_.end())
+		{
+			// Update the IP address for the node
+			it->second.endpoint = std::move(endpoint);
 
-            // Join the shard index range set
-            it->second.shardIndexes += shardIndexes;
-        }
-    }
-    else
-    {
-        // this branch can be removed once the entire network is operating with
-        // endpoint_v2() items (strings)
-        endpoints.reserve (m->endpoints().size());
-        for (int i = 0; i < m->endpoints ().size (); ++i)
-        {
-            // Add a new node
-            ShardInfo shardInfo;
-            shardInfo.endpoint = std::move(endpoint);
-            shardInfo.shardIndexes = std::move(shardIndexes);
-            shardInfo_.emplace(publicKey, std::move(shardInfo));
-        }
-    }
-
+			// Join the shard index range set
+			it->second.shardIndexes += shardIndexes;
+		}
+		else
+		{
+			// Add a new node
+			ShardInfo shardInfo;
+			shardInfo.endpoint = std::move(endpoint);
+			shardInfo.shardIndexes = std::move(shardIndexes);
+			info.shardInfo_.emplace(publicKey, std::move(shardInfo));
+		}
+	}
     JLOG(p_journal_.trace())
         << "Consumed TMPeerShardInfo originating from public key "
         << toBase58(TokenType::NodePublic, publicKey) << " shard indexes "
@@ -2091,7 +2074,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
         {
             // Operations on closedLedgerHash_ and previousLedgerHash_ must be
             // guarded by recentLock_.
-            std::lock_guard<std::mutex> sl(recentLock_);
+            std::lock_guard sl(recentLock_);
             if (!info.closedLedgerHash_.isZero ())
             {
                 outOfSync = true;
@@ -2114,7 +2097,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
         {
             // Operations on closedLedgerHash_ and previousLedgerHash_ must be
             // guarded by recentLock_.
-            std::lock_guard<std::mutex> sl(recentLock_);
+            std::lock_guard sl(recentLock_);
             if (peerChangedLedgers)
             {
 				memcpy(info.closedLedgerHash_.begin(),
@@ -2150,7 +2133,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
 
     if (m->has_firstseq() && m->has_lastseq())
     {
-        std::lock_guard<std::mutex> sl (recentLock_);
+        std::lock_guard sl (recentLock_);
 
 		info.minLedger_ = m->firstseq ();
 		info.maxLedger_ = m->lastseq ();
@@ -2244,7 +2227,7 @@ void
 PeerImp::checkSanity (uint256 const& schemaId,std::uint32_t validationSeq)
 {
 	{
-		std::lock_guard<std::mutex> sl(schemaInfoMutex_);
+		std::lock_guard sl(schemaInfoMutex_);
 		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
 		{
 			return;
@@ -2338,19 +2321,23 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMHaveTransactionSet> const& m)
     }
 
     uint256 const hash{m->hash()};
+    auto tup = getSchemaInfo("TMHaveTransactionSet:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    auto& info = *get<2>(tup);
 
     if (m->status() == protocol::tsHAVE)
     {
         std::lock_guard sl(recentLock_);
 
-        if (std::find(recentTxSets_.begin(), recentTxSets_.end(), hash) !=
-            recentTxSets_.end())
+        if (std::find(info.recentTxSets_.begin(), info.recentTxSets_.end(), hash) !=
+			info.recentTxSets_.end())
         {
             fee_ = Resource::feeUnwantedData;
             return;
         }
 
-        recentTxSets_.push_back(hash);
+		info.recentTxSets_.push_back(hash);
     }
 }
 
@@ -2401,7 +2388,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
             version,
             remote_address_.to_string(),
             hash,
-            app_.overlay(schemaId),
+            app_.peerManager(schemaId),
             app_.getHashRouter(schemaId));
         auto const disp = applyResult.disposition;
 
@@ -2419,7 +2406,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
                     << "Applied new validator list from peer "
                     << remote_address_;
                 {
-                    std::lock_guard<std::mutex> sl(recentLock_);
+                    std::lock_guard sl(recentLock_);
 
                     assert(applyResult.sequence && applyResult.publisherKey);
                     auto const& pubKey = *applyResult.publisherKey;
@@ -2443,7 +2430,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
                 fee_ = Resource::feeUnwantedData;
 #ifndef NDEBUG
                 {
-                    std::lock_guard<std::mutex> sl(recentLock_);
+                    std::lock_guard sl(recentLock_);
                     assert(applyResult.sequence && applyResult.publisherKey);
                     assert(
                         publisherListSequences_[*applyResult.publisherKey] ==
@@ -2733,7 +2720,7 @@ PeerImp::addLedger (SchemaInfo& info,uint256 const& hash,
     (void)lockedRecentLock;
 
     if (std::find(info.recentLedgers_.begin(), info.recentLedgers_.end(), hash) !=
-        recentLedgers_.end())
+        info.recentLedgers_.end())
         return;
 
     info.recentLedgers_.push_back(hash);
@@ -2795,10 +2782,10 @@ PeerImp::checkTransaction (uint256 schemaId, int flags,
         if (checkSignature)
         {
             // Check the signature before handing off to the job queue.
-            auto valid = checkValidity(app_.getSchema(schemaId),app_.getHashRouter(schemaId), *stx,
+			if (auto[valid, validReason] = checkValidity(app_.getSchema(schemaId),app_.getHashRouter(schemaId), *stx,
                 app_.getLedgerMaster(schemaId).getValidatedRules(),
-                    app_.config(schemaId));
-            if (valid.first != Validity::Valid)
+                    app_.config(schemaId)); 
+				valid != Validity::Valid)
             {
                 if (!validReason.empty())
                 {

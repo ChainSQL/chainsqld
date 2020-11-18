@@ -35,7 +35,7 @@ namespace ripple {
 	//		ledger_index : <ledger_index>
 	//   Outputs:
 
-	Json::Value doLedgerObjects(RPC::Context& context)
+	Json::Value doLedgerObjects(RPC::JsonContext& context)
 	{
 		std::shared_ptr<ReadView const> lpLedger;
 

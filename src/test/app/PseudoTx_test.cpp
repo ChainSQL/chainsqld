@@ -81,7 +81,7 @@ struct PseudoTx_test : public beast::unit_test::suite
                 [&](OpenView& view, beast::Journal j) {
                     auto const result =
                         ripple::apply(env.app(), view, stx, tapNONE, j);
-                    BEAST_EXPECT(!result.second && result.first.ter == temINVALID);
+                    BEAST_EXPECT(!result.second && result.first == temINVALID);
                     return result.second;
                 });
         }

@@ -28,7 +28,6 @@
 #include <ripple/basics/ByteUtilities.h>
 #include <ripple/basics/ResolverAsio.h>
 #include <ripple/basics/safe_cast.h>
-#include <ripple/basics/Sustain.h>
 #include <ripple/basics/PerfLog.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/nodestore/DummyScheduler.h>
@@ -39,10 +38,13 @@
 #include <ripple/protocol/STParsedJSON.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/resource/Fees.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/rpc/ShardArchiveHandler.h>
 #include <ripple/beast/asio/io_latency_probe.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/shamap/NodeFamily.h>
 #include <ripple/shamap/ShardFamily.h>
+#include <ripple/overlay/PeerReservationTable.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
@@ -68,167 +70,7 @@
 #include <sstream>
 
 namespace ripple {
-	// 204/256 about 80%
-	static int const MAJORITY_FRACTION(204);
 
-	namespace detail {
-
-		class AppFamily : public Family
-		{
-		private:
-			Schema& app_;
-			TreeNodeCache treecache_;
-			FullBelowCache fullbelow_;
-			NodeStore::Database& db_;
-			bool const shardBacked_;
-			beast::Journal j_;
-
-			// missing node handler
-			LedgerIndex maxSeq = 0;
-			std::mutex maxSeqLock;
-
-			void acquire(
-				uint256 const& hash,
-				std::uint32_t seq)
-			{
-				if (hash.isNonZero())
-				{
-					auto j = app_.journal("Ledger");
-
-					JLOG(j.error()) <<
-						"Missing node in " << to_string(hash);
-
-					app_.getInboundLedgers().acquire(
-						hash, seq, shardBacked_ ?
-						InboundLedger::Reason::SHARD :
-						InboundLedger::Reason::GENERIC);
-				}
-			}
-
-		public:
-			AppFamily(AppFamily const&) = delete;
-			AppFamily& operator= (AppFamily const&) = delete;
-
-			AppFamily(Schema& app, NodeStore::Database& db,
-				CollectorManager& collectorManager)
-				: app_(app)
-				, treecache_("TreeNodeCache", 65536, std::chrono::minutes{ 1 },
-					stopwatch(), app.journal("TaggedCache"))
-				, fullbelow_("full_below", stopwatch(),
-					collectorManager.collector(),
-					fullBelowTargetSize, fullBelowExpiration)
-				, db_(db)
-				, shardBacked_(
-					dynamic_cast<NodeStore::DatabaseShard*>(&db) != nullptr)
-				, j_(app.journal("SHAMap"))
-			{
-			}
-
-			beast::Journal const&
-				journal() override
-			{
-				return j_;
-			}
-
-			FullBelowCache&
-				fullbelow() override
-			{
-				return fullbelow_;
-			}
-
-			FullBelowCache const&
-				fullbelow() const override
-			{
-				return fullbelow_;
-			}
-
-			TreeNodeCache&
-				treecache() override
-			{
-				return treecache_;
-			}
-
-			TreeNodeCache const&
-				treecache() const override
-			{
-				return treecache_;
-			}
-
-			NodeStore::Database&
-				db() override
-			{
-				return db_;
-			}
-
-			NodeStore::Database const&
-				db() const override
-			{
-				return db_;
-			}
-
-			bool
-				isShardBacked() const override
-			{
-				return shardBacked_;
-			}
-
-			void
-				missing_node(std::uint32_t seq) override
-			{
-				auto j = app_.journal("Ledger");
-
-				JLOG(j.error()) <<
-					"Missing node in " << seq;
-
-				// prevent recursive invocation
-				std::unique_lock <std::mutex> lock(maxSeqLock);
-
-				if (maxSeq == 0)
-				{
-					maxSeq = seq;
-
-					do
-					{
-						// Try to acquire the most recent missing ledger
-						seq = maxSeq;
-
-						lock.unlock();
-
-						// This can invoke the missing node handler
-						acquire(
-							app_.getLedgerMaster().getHashBySeq(seq),
-							seq);
-
-						lock.lock();
-					} while (maxSeq != seq);
-				}
-				else if (maxSeq < seq)
-				{
-					// We found a more recent ledger with a
-					// missing node
-					maxSeq = seq;
-				}
-			}
-
-			void
-				missing_node(uint256 const& hash, std::uint32_t seq) override
-			{
-				acquire(hash, seq);
-			}
-
-			void
-				reset() override
-			{
-				{
-					std::lock_guard<std::mutex> lock(maxSeqLock);
-					maxSeq = 0;
-				}
-				fullbelow_.reset();
-				treecache_.reset();
-			}
-		};
-
-	} // detail
 	class SchemaImp
 		:public Schema
 		, public RootStoppable
@@ -336,9 +178,7 @@ namespace ripple {
 
 			, m_txMaster(*this)
 
-			, m_shaMapStore(make_SHAMapStore(*this, setup_SHAMapStore(*config_),
-				dynamic_cast<Stoppable&>(app_), app_.nodeStoreScheduler(), SchemaImp::journal("SHAMapStore"),
-				SchemaImp::journal("NodeObject"), m_txMaster, *config_))
+			, m_shaMapStore(make_SHAMapStore(*this, *this, app_.nodeStoreScheduler(), SchemaImp::journal("SHAMapStore")))
 
 			, accountIDCache_(128000)
 
@@ -353,15 +193,15 @@ namespace ripple {
 			// Anything which calls addJob must be a descendant of the JobQueue
 			//
 			, m_nodeStore(
-				m_shaMapStore->makeDatabase("NodeStore.main", 4, *this))
+				m_shaMapStore->makeNodeStore("NodeStore.main", 4))
 
 			// , shardStore_(
 			// 	m_shaMapStore->makeDatabaseShard("ShardStore", 4, *this))
 
 			, shardStore_(make_ShardStore(
 				*this,
-				*m_jobQueue,
-				m_nodeStoreScheduler,
+				*this,
+				app_.nodeStoreScheduler(),
 				4,
 				SchemaImp::journal("ShardStore")))
 
@@ -433,10 +273,10 @@ namespace ripple {
 				SchemaImp::journal("ValidatorList"),
 				config_->VALIDATION_QUORUM))
 
-			, validatorSites_(std::make_unique<ValidatorSite>(
+			, validatorSites_(std::make_unique<ValidatorSite>(*this,
 				*validatorManifests_, dynamic_cast<BasicApp&>(app_).get_io_service(), *validators_, SchemaImp::journal("ValidatorSite")))
 
-			, caCertSites_(std::make_unique<CACertSite>(
+			, caCertSites_(std::make_unique<CACertSite>(*this,
 				*validatorManifests_, *publisherManifests_, app_.timeKeeper(),
 				dynamic_cast<BasicApp&>(app_).get_io_service(), config_->ROOT_CERTIFICATES, SchemaImp::journal("CACertSite")))
 
@@ -450,7 +290,7 @@ namespace ripple {
 
 			, mValidations(ValidationParms(), stopwatch(), *this, SchemaImp::journal("Validations"))
 
-			, txQ_(make_TxQ(setup_TxQ(*config_), SchemaImp::journal("TxQ")))
+			, txQ_(std::make_unique<TxQ>(setup_TxQ(*config_), SchemaImp::journal("TxQ")))
 
 			, m_pTxStoreDBConn(std::make_unique<TxStoreDBConn>(*config_))
 
@@ -500,12 +340,18 @@ namespace ripple {
 			return app_.timeKeeper();
 		}
 
+		boost::asio::io_service&
+			getIOService() override
+		{
+			return app_.getIOService();
+		}
+
 		JobQueue& getJobQueue() override
 		{
 			return app_.getJobQueue();
 		}
 
-		Application::MutexType&
+		std::recursive_mutex&
 			getMasterMutex() override
 		{
 			return m_masterMutex;
@@ -696,7 +542,7 @@ namespace ripple {
 				}
 
 				auto handler = RPC::ShardArchiveHandler::tryMakeRecoveryHandler(
-					*this, *m_jobQueue);
+					*this, *this);
 
 				if (!initAndSet(std::move(handler)))
 					return nullptr;
@@ -706,7 +552,7 @@ namespace ripple {
 			if (shardArchiveHandler_ == nullptr)
 			{
 				auto handler = RPC::ShardArchiveHandler::makeShardArchiveHandler(
-					*this, *m_jobQueue);
+					*this, *this);
 
 				if (!initAndSet(std::move(handler)))
 					return nullptr;
@@ -857,7 +703,7 @@ namespace ripple {
 					TxDBName,
 					TxDBPragma,
 					TxDBInit,
-					DatabaseCon::CheckpointerSetup{ m_jobQueue.get(), &logs() });
+					DatabaseCon::CheckpointerSetup{ &app_.getJobQueue(), &logs() });
 				mTxnDB->getSession() << boost::str(
 					boost::format("PRAGMA cache_size=-%d;") %
 					kilobytes(config_->getValueFor(SizedItem::txnDBCache)));
@@ -899,7 +745,7 @@ namespace ripple {
 					LgrDBName,
 					LgrDBPragma,
 					LgrDBInit,
-					DatabaseCon::CheckpointerSetup{ m_jobQueue.get(), &logs() });
+					DatabaseCon::CheckpointerSetup{ &app_.getJobQueue(), &logs() });
 				mLedgerDB->getSession() << boost::str(
 					boost::format("PRAGMA cache_size=-%d;") %
 					kilobytes(config_->getValueFor(SizedItem::lgrDBCache)));
@@ -921,7 +767,52 @@ namespace ripple {
 
 			return true;
 		}
+        bool
+        initNodeStore()
+        {
+            if (config_->doImport)
+            {
+                auto j = SchemaImp::journal("NodeObject");
+                NodeStore::DummyScheduler dummyScheduler;
+                RootStoppable dummyRoot{"DummyRoot"};
+                std::unique_ptr<NodeStore::Database> source =
+                    NodeStore::Manager::instance().make_Database(
+                        "NodeStore.import",
+                        dummyScheduler,
+                        0,
+                        dummyRoot,
+                        config_->section(
+                            ConfigSection::importNodeDatabase()),
+                        j);
 
+                JLOG(j.warn()) << "Starting node import from '"
+                                << source->getName() << "' to '"
+                                << m_nodeStore->getName() << "'.";
+
+                using namespace std::chrono;
+                auto const start = steady_clock::now();
+
+                m_nodeStore->import(*source);
+
+                auto const elapsed =
+                    duration_cast<seconds>(steady_clock::now() - start);
+                JLOG(j.warn())
+                    << "Node import from '" << source->getName()
+                    << "' took " << elapsed.count() << " seconds.";
+            }
+
+            // tune caches
+            using namespace std::chrono;
+            m_nodeStore->tune(
+                config_->getValueFor(SizedItem::nodeCacheSize),
+                seconds{config_->getValueFor(SizedItem::nodeCacheAge)});
+
+            m_ledgerMaster->tune(
+                config_->getValueFor(SizedItem::ledgerSize),
+                seconds{config_->getValueFor(SizedItem::ledgerAge)});
+
+            return true;
+        }
 		void doSweep() override
 		{
 			if (!config_->standalone())
@@ -933,7 +824,7 @@ namespace ripple {
 				{
 					JLOG(m_journal.fatal())
 						<< "Remaining free disk space is less than 512MB";
-					signalStop();
+					app_.signalStop();
 				}
 
 				DatabaseCon::Setup dbSetup = setup_DatabaseCon(*config_);
@@ -982,7 +873,7 @@ namespace ripple {
 						"\"--vacuum\" parameter before restarting. "
 						"Note that this activity can take multiple days, "
 						"depending on database size.";
-					signalStop();
+					app_.signalStop();
 				}
 			}
 
@@ -1011,6 +902,16 @@ namespace ripple {
 		{
 			prepare();
 			start();
+		}
+
+		bool SchemaImp::checkSigs() const
+		{
+			return app_.checkSigs();
+		}
+
+		void SchemaImp::checkSigs(bool check)
+		{
+			app_.checkSigs(check);
 		}
 
 		void doStop() override
@@ -1121,7 +1022,7 @@ namespace ripple {
 				supportedAmendments,
 				enabledAmendments,
 				config_->section(SECTION_VETO_AMENDMENTS),
-				logs_->journal("Amendments"));
+				Schema::logs().journal("Amendments"));
 		}
 
 		Pathfinder::initPathTable();
@@ -1245,24 +1146,6 @@ namespace ripple {
 				"Invalid entry in [" << SECTION_CACERTS_LIST_SITES << "]";
 			return false;
 		}
-
-		using namespace std::chrono;
-		m_nodeStore->tune(config_->getSize(siNodeCacheSize),
-			seconds{ config_->getSize(siNodeCacheAge) });
-		m_ledgerMaster->tune(config_->getSize(siLedgerSize),
-			seconds{ config_->getSize(siLedgerAge) });
-		family().treecache().setTargetSize(config_->getSize(siTreeCacheSize));
-		family().treecache().setTargetAge(
-			seconds{ config_->getSize(siTreeCacheAge) });
-		if (shardStore_)
-		{
-			shardStore_->tune(config_->getSize(siNodeCacheSize),
-				seconds{ config_->getSize(siNodeCacheAge) });
-			sFamily_->treecache().setTargetSize(config_->getSize(siTreeCacheSize));
-			sFamily_->treecache().setTargetAge(
-				seconds{ config_->getSize(siTreeCacheAge) });
-		}
-
 		//----------------------------------------------------------------------
 		//
 		// Server
@@ -1359,8 +1242,18 @@ namespace ripple {
 
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ app_.journal("RPCHandler"), jvCommand, *this,
-				loadType, getOPs(), getLedgerMaster(), c, Role::ADMIN };
+            RPC::JsonContext context{
+                {journal("RPCHandler"),
+                    *this,
+                    loadType,
+                    getOPs(),
+                    getLedgerMaster(),
+                    c,
+                    Role::ADMIN,
+                    {},
+                    {},
+                    RPC::ApiMaximumSupportedVersion},
+					jvCommand};
 
 			Json::Value jvResult;
 			RPC::doCommand(context, jvResult);
@@ -1387,7 +1280,7 @@ namespace ripple {
 				create_genesis,
 				*config_,
 				initialAmendments,
-				family());
+				nodeFamily_);
 		m_ledgerMaster->storeLedger(genesis);
 
 		genesis->setImmutable(*config_);
@@ -1446,13 +1339,11 @@ namespace ripple {
 				addJson(p, { *ledger, LedgerFill::full });
 				stream << p;
 			}
-
-			return {};
 		}
-		catch (SHAMapMissingNode& sn)
+		catch (SHAMapMissingNode& mn)
 		{
 			JLOG(j.warn()) <<
-				"Ledger with missing nodes in database: " << sn;
+				"Ledger with missing nodes in database: " << mn.what();
 			//continue;
 		}
 		//}
@@ -1776,7 +1667,7 @@ namespace ripple {
 
 	void SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
 	{
-		auto genesis = std::make_shared<Ledger>(*curLedger, family_);
+		auto genesis = std::make_shared<Ledger>(*curLedger, nodeFamily_);
 		genesis->setImmutable(*config_);
 
 		openLedger_.emplace(genesis, cachedSLEs_,

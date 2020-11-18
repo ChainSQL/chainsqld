@@ -10,7 +10,7 @@ namespace ripple {
         h256Set ret;
         int txCnt = 0;
 
-        std::lock_guard<std::mutex> lock(mutexTxPoll_);
+        std::lock_guard lock(mutexTxPoll_);
 
         JLOG(j_.info()) << "Currently mTxsSet size: " << mTxsSet.size()
             << ", mAvoid size: " << mAvoidByHash.size();
@@ -33,7 +33,7 @@ namespace ripple {
 
     TER TxPool::insertTx(std::shared_ptr<Transaction> transaction,int ledgerSeq)
     {
-        std::lock_guard<std::mutex> lock(mutexTxPoll_);
+        std::lock_guard lock(mutexTxPoll_);
 
         if (mTxsSet.size() >= mMaxTxsInPool)
         {
@@ -75,7 +75,7 @@ namespace ripple {
 
     void TxPool::removeTxs(SHAMap const& cSet, int const ledgerSeq, uint256 const& prevHash)
     {
-        std::lock_guard<std::mutex> lock(mutexTxPoll_);
+        std::lock_guard lock(mutexTxPoll_);
 
 		int count = 0;
 		TransactionSet::iterator iterSet;
@@ -177,7 +177,7 @@ namespace ripple {
             return;
         }
 
-        std::lock_guard<std::mutex> lock(mutexTxPoll_);
+        std::lock_guard lock(mutexTxPoll_);
 
         for (auto const& item : *(cSet.map_))
         {
@@ -191,7 +191,7 @@ namespace ripple {
 
 	void TxPool::clearAvoid(LedgerIndex seq)
 	{
-        std::lock_guard<std::mutex> lock(mutexTxPoll_);
+        std::lock_guard lock(mutexTxPoll_);
 
         for (auto const& hash : mAvoidBySeq[seq])
         {
@@ -221,7 +221,7 @@ namespace ripple {
 
 	void TxPool::removeTx(uint256 hash)
 	{
-		std::lock_guard<std::mutex> lock(mutexTxPoll_);
+		std::lock_guard lock(mutexTxPoll_);
 		if(mTxsHash.find(hash) != mTxsHash.end())
 		{
 			// remove from Tx pool.

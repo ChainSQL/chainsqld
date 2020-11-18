@@ -31,7 +31,7 @@
 namespace ripple {
 
 
-	Json::Value doLedgerTxs(RPC::Context& context)
+	Json::Value doLedgerTxs(RPC::JsonContext& context)
 	{
 
 		Json::Value jvResult;

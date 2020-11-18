@@ -160,6 +160,12 @@ public:
 		return prevLedgerID_;
 	}
 
+	ConsensusPhase
+        phase() const
+        {
+            return phase_;
+        }
+
 	/** Get the Json state of the consensus process.
 
 		Called by the consensus_info RPC.
@@ -169,6 +175,10 @@ public:
 	*/
 	Json::Value
 		getJson(bool full) const;
+
+	bool waitingForInit();
+
+	std::chrono::milliseconds getConsensusTimeout();
 private:
 	void
 		startRoundInternal(
@@ -238,9 +248,6 @@ private:
 	*/
 	bool shouldPack();
 
-    bool waitingForInit();
-
-    std::chrono::milliseconds getConsensusTimeout();
 
 	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
 

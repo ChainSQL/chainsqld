@@ -14,6 +14,7 @@
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 #include <eth/vm/VMFace.h>
 
 namespace ripple {
@@ -208,7 +209,7 @@ namespace ripple {
 			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
 			int64_t finalBanance = balance - amount;
 			//no reserve demand for contract
-			if (finalBanance >= reserve || (pSle->isFieldPresent(sfContractCode) && finalBanance >= 0))
+			if (finalBanance >= reserve.drops() || (pSle->isFieldPresent(sfContractCode) && finalBanance >= 0))
 			{
 				pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
 				ctx_.view().update(pSle);
@@ -521,8 +522,18 @@ namespace ripple {
 		//
 		Resource::Charge loadType = -1;
 		Resource::Consumer c;
-		RPC::Context context{ ctx_.app.journal("RPCHandler"), jvCommand, ctx_.app,
-			loadType,ctx_.app.getOPs(), ctx_.app.getLedgerMaster(), c, Role::ADMIN };
+		RPC::JsonContext context{ 
+			ctx_.app.journal("RPCHandler"), 
+			ctx_.app,loadType,
+			ctx_.app.getOPs(), 
+			ctx_.app.getLedgerMaster(),
+			c, 
+			Role::ADMIN,
+			{},
+			{},
+			RPC::APINumberVersionSupported,
+			jvCommand
+		};
 
 		auto result = ripple::doGetRecord2D(context);
 		if (!result.second.empty())
@@ -756,14 +767,17 @@ namespace ripple {
 		Resource::Charge loadType = -1;
 		Resource::Consumer c;
 
-		RPC::Context context{
+		RPC::JsonContext context{
 			ctx_.app.journal("RPCHandler"),
-			jvCommand,
 			ctx_.app,
 			loadType,
 			ctx_.app.getOPs(),
 			ctx_.app.getLedgerMaster(),
-			c,Role::ADMIN };
+			c,
+			Role::ADMIN ,
+			{},{},
+			RPC::APINumberVersionSupported,
+			jvCommand,};
 
 		auto result = ripple::doAccountLines(context);
 

@@ -30,6 +30,7 @@
 #include <ripple/rpc/GRPCHandlers.h>
 #include <ripple/rpc/impl/GRPCHelpers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <peersafe/app/misc/StateManager.h>
 #include <grpc/status.h>
 
 namespace ripple {
@@ -95,9 +96,9 @@ doAccountInfo(RPC::JsonContext& context)
 
         RPC::injectSLE(jvAccepted, *sleAccepted);
 		if (jvAccepted.isMember(jss::TransferFeeMin))
-			jvAccepted[jss::TransferFeeMin] = strCopy(strUnHex(jvAccepted[jss::TransferFeeMin].asString()).first);
+			jvAccepted[jss::TransferFeeMin] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMin].asString()));
 		if (jvAccepted.isMember(jss::TransferFeeMax))
-			jvAccepted[jss::TransferFeeMax] = strCopy(strUnHex(jvAccepted[jss::TransferFeeMax].asString()).first);
+			jvAccepted[jss::TransferFeeMax] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMax].asString()));
 		if (jvAccepted.isMember(jss::Sequence) && jvAccepted[jss::Sequence].asUInt() 
 			!= context.app.getStateManager().getAccountSeq(accountID))
 		{

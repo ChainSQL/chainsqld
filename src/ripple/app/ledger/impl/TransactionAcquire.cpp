@@ -25,7 +25,6 @@
 #include <peersafe/schema/PeerManager.h>
 #include <ripple/overlay/Overlay.h>
 #include <ripple/app/misc/NetworkOPs.h>
-#include <ripple/basics/make_lock.h>
 #include <memory>
 
 namespace ripple {
@@ -249,7 +248,7 @@ void
 TransactionAcquire::addPeers(std::size_t limit)
 {
     PeerSet::addPeers(
-        limit, [this](auto peer) { return peer->hasTxSet(mHash); });
+        limit, [this](auto peer) { return peer->hasTxSet(app_.schemaId(),mHash); });
 }
 
 void

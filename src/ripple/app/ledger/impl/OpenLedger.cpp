@@ -195,7 +195,7 @@ OpenLedger::apply_one(
         // directly into the open ledger, else drop it.
         if (queueResult.first.ter == telCAN_NOT_QUEUE && shouldRecover)
             return ripple::apply(app, view, *tx, flags, j);
-        return queueResult;
+        return std::make_pair(queueResult.first.ter,queueResult.second);
     }();
     if (result.second || result.first == terQUEUED)
         return Result::success;

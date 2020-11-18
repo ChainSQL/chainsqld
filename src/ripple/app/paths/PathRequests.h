@@ -20,7 +20,7 @@
 #ifndef RIPPLE_APP_PATHS_PATHREQUESTS_H_INCLUDED
 #define RIPPLE_APP_PATHS_PATHREQUESTS_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/paths/PathRequest.h>
 #include <ripple/app/paths/RippleLineCache.h>
 #include <ripple/core/Job.h>
@@ -35,7 +35,7 @@ class PathRequests
 public:
     /** A collection of all PathRequest instances. */
     PathRequests(
-        Application& app,
+        Schema& app,
         beast::Journal journal,
         beast::insight::Collector::ptr const& collector)
         : app_(app), mJournal(journal), mLastIdentifier(0)
@@ -102,7 +102,7 @@ private:
     void
     insertPathRequest(PathRequest::pointer const&);
 
-    Application& app_;
+	Schema& app_;
     beast::Journal mJournal;
 
     beast::insight::Event mFast;

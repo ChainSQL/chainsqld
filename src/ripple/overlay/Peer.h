@@ -110,7 +110,6 @@ public:
     virtual bool hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const = 0;
     virtual bool hasTxSet (uint256 const& schemaId, uint256 const& hash) const = 0;
     virtual void cycleStatus (uint256 const& schemaId) = 0;
-    virtual bool supportsVersion (int version) = 0;
     virtual bool hasRange (uint256 const& schemaId, std::uint32_t uMin, std::uint32_t uMax) = 0;
     
     virtual bool compressionEnabled() const = 0;

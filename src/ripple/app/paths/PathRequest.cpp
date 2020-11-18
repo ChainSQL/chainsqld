@@ -17,7 +17,7 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/paths/AccountCurrencies.h>
@@ -38,7 +38,7 @@
 namespace ripple {
 
 PathRequest::PathRequest(
-    Application& app,
+    Schema& app,
     const std::shared_ptr<InfoSub>& subscriber,
     int id,
     PathRequests& owner,
@@ -60,7 +60,7 @@ PathRequest::PathRequest(
 }
 
 PathRequest::PathRequest(
-    Application& app,
+	Schema& app,
     std::function<void(void)> const& completion,
     Resource::Consumer& consumer,
     int id,

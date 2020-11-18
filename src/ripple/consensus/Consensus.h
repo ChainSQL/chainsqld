@@ -281,7 +281,7 @@ checkConsensus(
                   Consensus to the larger application.
 */
 template <class Adaptor>
-class Consensus : public ConsensusBase<Adaptor>
+class Consensus
 {
     using Ledger_t = typename Adaptor::Ledger_t;
     using TxSet_t = typename Adaptor::TxSet_t;

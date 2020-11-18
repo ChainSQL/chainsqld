@@ -163,6 +163,7 @@ bitsetIndexToFeature(size_t i)
 // clang-format off
 
 uint256 const
+	featureMultiSign				= *getRegisteredFeature("MultiSign"),
     featureTickets                  = *getRegisteredFeature("Tickets"),
     featureOwnerPaysFee             = *getRegisteredFeature("OwnerPaysFee"),
     featureFlow                     = *getRegisteredFeature("Flow"),

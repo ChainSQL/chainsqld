@@ -150,10 +150,6 @@ public:
     std::unique_ptr<NodeStore::Database>
     makeNodeStore(std::string const& name, std::int32_t readThreads) override;
 
-    std::unique_ptr <NodeStore::DatabaseShard>
-    makeDatabaseShard(std::string const& name,
-        std::int32_t readThreads, Stoppable& parent) override;
-
     LedgerIndex
     setCanDelete(LedgerIndex seq) override
     {

@@ -223,6 +223,7 @@ JSS(error_code);            // out: error
 JSS(error_exception);       // out: Submit
 JSS(error_message);         // out: error
 JSS(escrow);                // in: LedgerEntry
+JSS(escrows);
 JSS(expand);                // in: handler/Ledger
 JSS(expected_date);         // out: any (warnings)
 JSS(expected_date_UTC);     // out: any (warnings)
@@ -583,7 +584,15 @@ JSS(NegativeUNL);  // out: ValidatorList; ledger type
 
 //------------------------------------------------------------------------------------------
 //ChainSQL added
-
+JSS ( sql );
+JSS ( diff );
+JSS ( node_size );
+JSS ( accounts_contract );
+JSS ( engine_result_message_detail );  // out: NetworkOPs, Submit
+JSS ( field );
+JSS ( gas_price );  // out: TxQ
+JSS ( OpType );     // out: Tx OpType
+ 
 JSS ( SchemaCreate );
 JSS ( SchemaModify );
 

@@ -51,7 +51,7 @@ namespace ripple {
         return isValid;
     }
 
-	Json::Value doTableDump(RPC::Context& context)
+	Json::Value doTableDump(RPC::JsonContext& context)
 	{
 		Json::Value ret(context.params);
        
@@ -93,7 +93,7 @@ namespace ripple {
 		return ret;
 	}
 
-    Json::Value parseParam(RPC::Context& context, AccountID & ownerID, std::string &tableName)
+    Json::Value parseParam(RPC::JsonContext& context, AccountID & ownerID, std::string &tableName)
     {
         Json::Value ret(context.params);
 
@@ -122,7 +122,7 @@ namespace ripple {
         return ret;
     }
 
-	Json::Value doTableDumpStop(RPC::Context& context)
+	Json::Value doTableDumpStop(RPC::JsonContext& context)
 	{
 		AccountID ownerID;
 		std::string tableName;
@@ -155,7 +155,7 @@ namespace ripple {
 		return ret;
 	}
 
-    Json::Value getDumpCurPos(RPC::Context& context)
+    Json::Value getDumpCurPos(RPC::JsonContext& context)
     {
         AccountID ownerID;
         std::string tableName;

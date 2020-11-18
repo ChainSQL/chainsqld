@@ -23,7 +23,7 @@
 
 #include <ripple/beast/core/WaitableEvent.h>
 
-#if BEAST_WINDOWS
+#ifdef WIN32
 
 #include <Windows.h>
 #undef check

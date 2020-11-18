@@ -157,41 +157,41 @@ doValidatorListSites(RPC::JsonContext&);
 Json::Value
 doValidatorInfo(RPC::JsonContext&);
 
-Json::Value doLedgerTxs             (RPC::Context&);
-Json::Value doGetCrossChainTx       (RPC::Context&);
-Json::Value doTxCount				(RPC::Context&);
-Json::Value doLedgerObjects			(RPC::Context&);
-Json::Value doNodeSize              (RPC::Context&);
-Json::Value doMallocTrim            (RPC::Context&);
-Json::Value doSchemaList			(RPC::Context&);
-Json::Value doSchemaInfo            (RPC::Context&);
-Json::Value doSchemaAccept          (RPC::Context&);
+Json::Value doLedgerTxs             (RPC::JsonContext&);
+Json::Value doGetCrossChainTx       (RPC::JsonContext&);
+Json::Value doTxCount				(RPC::JsonContext&);
+Json::Value doLedgerObjects			(RPC::JsonContext&);
+Json::Value doNodeSize              (RPC::JsonContext&);
+Json::Value doMallocTrim            (RPC::JsonContext&);
+Json::Value doSchemaList			(RPC::JsonContext&);
+Json::Value doSchemaInfo            (RPC::JsonContext&);
+Json::Value doSchemaAccept          (RPC::JsonContext&);
 //for sql operation
-Json::Value doTableDump(RPC::Context&);
-Json::Value doTableDumpStop(RPC::Context&);
-Json::Value getDumpCurPos(RPC::Context& context);
-Json::Value doTableAudit(RPC::Context&);
-Json::Value doTableAuditStop(RPC::Context&);
-Json::Value getAuditCurPos(RPC::Context& context);
-Json::Value doTableAuthority(RPC::Context&);
-Json::Value doRpcSubmit(RPC::Context&);
-Json::Value doCreateFromRaw(RPC::Context&);
-Json::Value doGetRecord(RPC::Context&);
-Json::Value doGetRecordBySql(RPC::Context&);
-Json::Value doGetRecordBySqlUser(RPC::Context&);
-std::pair<std::vector<std::vector<Json::Value>>, std::string> doGetRecord2D(RPC::Context&  context);
-Json::Value doGetDBName(RPC::Context&);
-Json::Value doGetAccountTables(RPC::Context&);
-Json::Value doPrepare(RPC::Context&);
-Json::Value doGetUserToken(RPC::Context&);
-Json::Value doGetCheckHash(RPC::Context&);
-Json::Value doValidators            (RPC::Context&);
-Json::Value doValidatorListSites    (RPC::Context&);
+Json::Value doTableDump(RPC::JsonContext&);
+Json::Value doTableDumpStop(RPC::JsonContext&);
+Json::Value getDumpCurPos(RPC::JsonContext& context);
+Json::Value doTableAudit(RPC::JsonContext&);
+Json::Value doTableAuditStop(RPC::JsonContext&);
+Json::Value getAuditCurPos(RPC::JsonContext& context);
+Json::Value doTableAuthority(RPC::JsonContext&);
+Json::Value doRpcSubmit(RPC::JsonContext&);
+Json::Value doCreateFromRaw(RPC::JsonContext&);
+Json::Value doGetRecord(RPC::JsonContext&);
+Json::Value doGetRecordBySql(RPC::JsonContext&);
+Json::Value doGetRecordBySqlUser(RPC::JsonContext&);
+std::pair<std::vector<std::vector<Json::Value>>, std::string> doGetRecord2D(RPC::JsonContext&  context);
+Json::Value doGetDBName(RPC::JsonContext&);
+Json::Value doGetAccountTables(RPC::JsonContext&);
+Json::Value doPrepare(RPC::JsonContext&);
+Json::Value doGetUserToken(RPC::JsonContext&);
+Json::Value doGetCheckHash(RPC::JsonContext&);
+Json::Value doValidators            (RPC::JsonContext&);
+Json::Value doValidatorListSites    (RPC::JsonContext&);
 
 //for contract
-Json::Value doContractCall(RPC::Context&);
+Json::Value doContractCall(RPC::JsonContext&);
 
-Json::Value doGenCsr(RPC::Context&); // for humans
+Json::Value doGenCsr(RPC::JsonContext&); // for humans
 }  // namespace ripple
 
 #endif

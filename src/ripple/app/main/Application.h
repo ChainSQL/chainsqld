@@ -90,6 +90,7 @@ class ResolverAsio;
 class ValidatorKeys;
 class SchemaManager;
 class PeerManager;
+class PeerReservationTable;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
@@ -215,9 +216,6 @@ public:
     virtual bool serverOkay (std::string& reason) = 0;
 
     virtual beast::Journal journal (std::string const& name) = 0;
-
-    /* Returns the number of file descriptors the application wants */
-    virtual int fdlimit () const = 0;
 
 	virtual int	fdRequired() const = 0;
 };

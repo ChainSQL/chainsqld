@@ -289,7 +289,8 @@ SField const sfPeer                (access, STI_OBJECT, 53, "Peer");
 // inner object (uncommon)
 SField const sfSigner              (access, STI_OBJECT, 16, "Signer");
 //                                                                                 17 has not been used yet...
-SField const sfMajority            (access, STI_OBJECT, 18, "Majority");
+SField const sfMajority(access, STI_OBJECT, 18, "Majority");
+SField const sfDisabledValidator(access, STI_OBJECT, 19, "DisabledValidator");
 
 // array of objects
 // ARRAY/1 is reserved for end of array

@@ -284,7 +284,7 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
         setFullLedger(previousLedger, false, true);
 		setPubLedger(previousLedger);
 		{
-			ScopedLockType ml(mCompleteLock);
+			std::lock_guard ml(mCompleteLock);
 			mCompleteLedgers.insert(previousLedger->info().seq);
 		}
 	}
@@ -502,72 +502,6 @@ LedgerMaster::canBeCurrent(std::shared_ptr<Ledger const> const& ledger)
     return true;
 }
 
-// Validate a ledger's close time and sequence number if we're considering
-// jumping to that ledger. This helps defend against some rare hostile or
-// insane majority scenarios.
-bool
-LedgerMaster::canBeCurrent (std::shared_ptr<Ledger const> const& ledger)
-{
-    assert (ledger);
-
-    // Never jump to a candidate ledger that precedes our
-    // last validated ledger
-
-    auto validLedger = getValidatedLedger();
-    if (validLedger &&
-        (ledger->info().seq < validLedger->info().seq))
-    {
-        JLOG (m_journal.trace()) << "Candidate for current ledger has low seq "
-            << ledger->info().seq << " < " << validLedger->info().seq;
-        return false;
-    }
-
-    // Ensure this ledger's parent close time is within five minutes of
-    // our current time. If we already have a known fully-valid ledger
-    // we perform this check. Otherwise, we only do it if we've built a
-    // few ledgers as our clock can be off when we first start up
-
-    auto closeTime = app_.timeKeeper().closeTime();
-    auto ledgerClose = ledger->info().parentCloseTime;
-
-    if ((validLedger || (ledger->info().seq > 10)) &&
-        ((std::max (closeTime, ledgerClose) - std::min (closeTime, ledgerClose))
-            > 5min))
-    {
-        JLOG (m_journal.warn()) << "Candidate for current ledger has close time "
-            << to_string(ledgerClose) << " at network time "
-            << to_string(closeTime) << " seq " << ledger->info().seq;
-        return false;
-    }
-
-    if (validLedger)
-    {
-        // Sequence number must not be too high. We allow ten ledgers
-        // for time inaccuracies plus a maximum run rate of one ledger
-        // every two seconds. The goal is to prevent a malicious ledger
-        // from increasing our sequence unreasonably high
-
-        LedgerIndex maxSeq = validLedger->info().seq + 10;
-
-        if (closeTime > validLedger->info().parentCloseTime)
-            maxSeq += std::chrono::duration_cast<std::chrono::seconds>(
-                closeTime - validLedger->info().parentCloseTime).count() / 2;
-
-        if (ledger->info().seq > maxSeq)
-        {
-            JLOG (m_journal.warn()) << "Candidate for current ledger has high seq "
-                << ledger->info().seq << " > " << maxSeq;
-            return false;
-        }
-
-        JLOG (m_journal.trace()) << "Acceptable seq range: " <<
-            validLedger->info().seq << " <= " <<
-            ledger->info().seq << " <= " << maxSeq;
-    }
-
-    return true;
-}
-
 void
 LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
 {
@@ -672,7 +606,7 @@ LedgerMaster::haveLedger(std::uint32_t seq)
 bool
 LedgerMaster::haveLedger(std::uint32_t seqMin, std::uint32_t seqMax)
 {
-	ScopedLockType sl(mCompleteLock);
+	std::lock_guard sl(mCompleteLock);
 	for (RangeSet<std::uint32_t>::iterator it = mCompleteLedgers.begin(); it != mCompleteLedgers.end(); it++) 
 	{
 		if (it->lower() <= seqMin && it->upper() >= seqMax)
@@ -684,7 +618,7 @@ LedgerMaster::haveLedger(std::uint32_t seqMin, std::uint32_t seqMax)
 std::uint32_t
 LedgerMaster::lastCompleteIndex()
 {
-	ScopedLockType sl(mCompleteLock);
+	std::lock_guard sl(mCompleteLock);
 	return boost::icl::last(mCompleteLedgers);
 }
 
@@ -1444,41 +1378,6 @@ void LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
 }
 
 void
-LedgerMaster::storeLedgerTx(
-	std::shared_ptr<Ledger const> const& ledger)
-{
-	CanonicalTXSet retriableTxs(ledger->txMap().getHash().as_uint256());
-	for (auto const& item : ledger->txMap())
-	{
-		try
-		{
-			auto blob = SerialIter{ item.data(), item.size() }.getVL();
-			std::shared_ptr<STTx> pSTTX = std::make_shared<STTx>(SerialIter{ blob.data(), blob.size() });
-
-            if (pSTTX->getTxnType() == ttTABLELISTSET || pSTTX->getTxnType() == ttSQLSTATEMENT)
-            {
-                retriableTxs.insert(pSTTX);
-            }
-		}
-		catch (std::exception const&)
-		{
-			JLOG(m_journal.warn()) << "Txn " << item.key() << " throws";
-		}
-	}
-
-	for (auto it = retriableTxs.begin(); it != retriableTxs.end(); it++)
-	{
-		STTx const& tx = *it->second;
-		auto ret = app_.getTxStore().Dispose(tx);
-		if (ret.first == false)
-		{
-			JLOG(m_journal.error()) << "txStore: " << tx.getTxnType()
-				<< " rise " << ret.second;
-		}
-	}
-}
-
-void
 LedgerMaster::checkAccept(std::shared_ptr<Ledger const> const& ledger)
 {
     // Can we accept this ledger as our new last fully-validated ledger
@@ -2098,7 +1997,7 @@ LedgerMaster::getHashBySeqEx(std::uint32_t index)
     boost::optional<LedgerHash> ledgerHash;
 
     if (auto referenceLedger = mValidLedger.get())
-        ledgerHash = walkHashBySeq(index, referenceLedger);
+        ledgerHash = walkHashBySeq(index, referenceLedger,InboundLedger::Reason::GENERIC);
 
     if (ledgerHash == boost::none)  return beast::zero;
     return ledgerHash.value();
@@ -2398,126 +2297,6 @@ LedgerMaster::fetchForHistory(
             << "Ledgers: " << app_.getLedgerMaster().getCompleteLedgers();
         JLOG(m_journal.fatal())
             << "Acquire reason: "
-            << (reason == InboundLedger::Reason::HISTORY ? "HISTORY" : "SHARD");
-        clearLedger(missing + 1);
-        progress = true;
-    }
-}
-
-void
-LedgerMaster::fetchForHistory(
-    std::uint32_t missing,
-    bool& progress,
-    InboundLedger::Reason reason)
-{
-    ScopedUnlockType sl(m_mutex);
-    if (auto hash = getLedgerHashForHistory(missing, reason))
-    {
-        assert(hash->isNonZero());
-        auto ledger = getLedgerByHash(*hash);
-        if (! ledger)
-        {
-            if (!app_.getInboundLedgers().isFailure(*hash))
-            {
-                ledger = app_.getInboundLedgers().acquire(
-                    *hash, missing, reason);
-                if (!ledger &&
-                    missing != fetch_seq_ &&
-                    missing > app_.getNodeStore().earliestSeq())
-                {
-                    JLOG(m_journal.trace())
-                        << "fetchForHistory want fetch pack " << missing;
-                    fetch_seq_ = missing;
-                    getFetchPack(missing, reason);
-                }
-                else
-                    JLOG(m_journal.trace())
-                        << "fetchForHistory no fetch pack for " << missing;
-            }
-            else
-                JLOG(m_journal.debug())
-                    << "fetchForHistory found failed acquire";
-        }
-        if (ledger)
-        {
-            auto seq = ledger->info().seq;
-            assert(seq == missing);
-            JLOG(m_journal.trace()) <<
-                "fetchForHistory acquired " << seq;
-            if (reason == InboundLedger::Reason::SHARD)
-            {
-                ledger->setFull();
-                {
-                    ScopedLockType lock(m_mutex);
-                    mShardLedger = ledger;
-                }
-                if (!ledger->stateMap().family().isShardBacked())
-                    app_.getShardStore()->copyLedger(ledger);
-            }
-            else
-            {
-                setFullLedger(ledger, false, false);
-                int fillInProgress;
-                {
-                    ScopedLockType lock(m_mutex);
-                    mHistLedger = ledger;
-                    fillInProgress = mFillInProgress;
-                }
-                if (fillInProgress == 0 &&
-                    getHashByIndex(seq - 1, app_) == ledger->info().parentHash)
-                {
-                    {
-                        // Previous ledger is in DB
-                        ScopedLockType lock(m_mutex);
-                        mFillInProgress = seq;
-                    }
-                    app_.getJobQueue().addJob(jtADVANCE, "tryFill",
-                        [this, ledger](Job& j) { tryFill(j, ledger); });
-                }
-            }
-            progress = true;
-        }
-        else
-        {
-            std::uint32_t fetchSz;
-            if (reason == InboundLedger::Reason::SHARD)
-                // Do not fetch ledger sequences lower
-                // than the shard's first ledger sequence
-                fetchSz = app_.getShardStore()->firstLedgerSeq(
-                    app_.getShardStore()->seqToShardIndex(missing));
-            else
-                // Do not fetch ledger sequences lower
-                // than the earliest ledger sequence
-                fetchSz = app_.getNodeStore().earliestSeq();
-            fetchSz = missing >= fetchSz ?
-                std::min(ledger_fetch_size_, (missing - fetchSz) + 1) : 0;
-            try
-            {
-                for (std::uint32_t i = 0; i < fetchSz; ++i)
-                {
-                    std::uint32_t seq = missing - i;
-                    if (auto h = getLedgerHashForHistory(seq, reason))
-                    {
-                        assert(h->isNonZero());
-                        app_.getInboundLedgers().acquire(*h, seq, reason);
-                    }
-                }
-            }
-            catch (std::exception const&)
-            {
-                JLOG(m_journal.warn()) << "Threw while prefetching";
-            }
-        }
-    }
-    else
-    {
-        JLOG(m_journal.fatal()) << "Can't find ledger following prevMissing "
-                                << missing;
-        JLOG(m_journal.fatal()) << "Pub:" << mPubLedgerSeq
-                                << " Val:" << mValidLedgerSeq;
-        JLOG(m_journal.fatal()) << "Ledgers: "
-                                << app_.getLedgerMaster().getCompleteLedgers();
-        JLOG(m_journal.fatal()) << "Acquire reason: "
             << (reason == InboundLedger::Reason::HISTORY ? "HISTORY" : "SHARD");
         clearLedger(missing + 1);
         progress = true;

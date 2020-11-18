@@ -167,9 +167,9 @@ std::uint64_t scaleGasLoad(std::uint64_t gasPrice, LoadFeeTrack const& feeTrack,
 	Fees const& fees)
 {
 	//calc gas_price
-	auto fee = scaleFeeLoad(fees.base, feeTrack,
+	auto fee = scaleFeeLoad(FeeUnit64{ (std::uint64_t)fees.base.drops() }, feeTrack,
 		fees, false);
-	auto gasPriceRet = (uint32_t)fee / fees.base *(float)gasPrice;
+	auto gasPriceRet = (uint64_t)fee.drops() / fees.base.drops() *(float)gasPrice;
 	if (gasPriceRet > gasPrice)
 		gasPriceRet -= (uint64_t)(gasPriceRet - gasPrice) * 0.99;
 	gasPriceRet = std::min((uint64_t)gasPriceRet, 2 * gasPrice);

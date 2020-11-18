@@ -326,6 +326,7 @@ private:
     TransStatus mStatus = INVALID;
     STer mResult = temUNCERTAIN;
     bool mApplying = false;
+    uint64_t mTimeCreate;
 
     /** different ways for transaction to be accepted */
     SubmitResult submitResult_;

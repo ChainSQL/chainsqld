@@ -32,7 +32,7 @@
 
 namespace ripple {
 
-    Json::Value doTableAudit(RPC::Context& context)
+    Json::Value doTableAudit(RPC::JsonContext& context)
     {
         Json::Value ret(context.params);
 
@@ -78,7 +78,7 @@ namespace ripple {
         return ret;
     }
 
-    Json::Value doTableAuditStop(RPC::Context& context)
+    Json::Value doTableAuditStop(RPC::JsonContext& context)
     {
         Json::Value ret(context.params);
 
@@ -117,7 +117,7 @@ namespace ripple {
         return ret;
     }	
 
-    Json::Value  getAuditCurPos(RPC::Context& context)
+    Json::Value  getAuditCurPos(RPC::JsonContext& context)
     {
         Json::Value ret(context.params);
 

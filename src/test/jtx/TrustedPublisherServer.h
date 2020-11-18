@@ -468,149 +468,149 @@ private:
     void
     do_peer(int id, socket_type&& s, bool ssl)
     {
-        using namespace boost::beast;
-        using namespace boost::asio;
-        socket_type sock(std::move(s));
-        flat_buffer sb;
-        error_code ec;
-        boost::optional<ssl_stream<ip::tcp::socket&>> ssl_stream;
+        //using namespace boost::beast;
+        //using namespace boost::asio;
+        //socket_type sock(std::move(s));
+        //flat_buffer sb;
+        //error_code ec;
+        //boost::optional<ssl_stream<ip::tcp::socket&>> ssl_stream;
 
-        if (ssl)
-        {
-            // Construct the stream around the socket
-            ssl_stream.emplace(sock, sslCtx_);
-            // Perform the SSL handshake
-            ssl_stream->handshake(ssl::stream_base::server, ec);
-            if (ec)
-                return;
-        }
+        //if (ssl)
+        //{
+        //    // Construct the stream around the socket
+        //    ssl_stream.emplace(sock, sslCtx_);
+        //    // Perform the SSL handshake
+        //    ssl_stream->handshake(ssl::stream_base::server, ec);
+        //    if (ec)
+        //        return;
+        //}
 
-        for (;;)
-        {
-            resp_type res;
-            req_type req;
-            try
-            {
-                if (ssl)
-                    http::read(*ssl_stream, sb, req, ec);
-                else
-                    http::read(sock, sb, req, ec);
+        //for (;;)
+        //{
+        //    resp_type res;
+        //    req_type req;
+        //    try
+        //    {
+        //        if (ssl)
+        //            http::read(*ssl_stream, sb, req, ec);
+        //        else
+        //            http::read(sock, sb, req, ec);
 
-                if (ec)
-                    break;
+        //        if (ec)
+        //            break;
 
-                auto path = req.target().to_string();
-                res.insert("Server", "TrustedPublisherServer");
-                res.version(req.version());
-                res.keep_alive(req.keep_alive());
-                bool prepare = true;
+        //        auto path = req.target().to_string();
+        //        res.insert("Server", "TrustedPublisherServer");
+        //        res.version(req.version());
+        //        res.keep_alive(req.keep_alive());
+        //        bool prepare = true;
 
-                if (boost::starts_with(path, "/validators"))
-                {
-                    res.result(http::status::ok);
-                    res.insert("Content-Type", "application/json");
-                    if (path == "/validators/bad")
-                        res.body() = "{ 'bad': \"1']";
-                    else if (path == "/validators/missing")
-                        res.body() = "{\"version\": 1}";
-                    else
-                    {
-                        int refresh = 5;
-                        if (boost::starts_with(path, "/validators/refresh"))
-                            refresh = boost::lexical_cast<unsigned int>(
-                                path.substr(20));
-                        res.body() = getList_(refresh);
-                    }
-                }
-                else if (boost::starts_with(path, "/textfile"))
-                {
-                    prepare = false;
-                    res.result(http::status::ok);
-                    res.insert("Content-Type", "text/example");
-                    // if huge was requested, lie about content length
-                    std::uint64_t cl =
-                        boost::starts_with(path, "/textfile/huge")
-                        ? std::numeric_limits<uint64_t>::max()
-                        : 1024;
-                    res.content_length(cl);
-                    if (req.method() == http::verb::get)
-                    {
-                        std::stringstream body;
-                        for (auto i = 0; i < 1024; ++i)
-                            body << static_cast<char>(rand_int<short>(32, 126)),
-                                res.body() = body.str();
-                    }
-                }
-                else if (boost::starts_with(path, "/sleep/"))
-                {
-                    auto const sleep_sec =
-                        boost::lexical_cast<unsigned int>(path.substr(7));
-                    std::this_thread::sleep_for(
-                        std::chrono::seconds{sleep_sec});
-                }
-                else if (boost::starts_with(path, "/redirect"))
-                {
-                    if (boost::ends_with(path, "/301"))
-                        res.result(http::status::moved_permanently);
-                    else if (boost::ends_with(path, "/302"))
-                        res.result(http::status::found);
-                    else if (boost::ends_with(path, "/307"))
-                        res.result(http::status::temporary_redirect);
-                    else if (boost::ends_with(path, "/308"))
-                        res.result(http::status::permanent_redirect);
+        //        if (boost::starts_with(path, "/validators"))
+        //        {
+        //            res.result(http::status::ok);
+        //            res.insert("Content-Type", "application/json");
+        //            if (path == "/validators/bad")
+        //                res.body() = "{ 'bad': \"1']";
+        //            else if (path == "/validators/missing")
+        //                res.body() = "{\"version\": 1}";
+        //            else
+        //            {
+        //                int refresh = 5;
+        //                if (boost::starts_with(path, "/validators/refresh"))
+        //                    refresh = boost::lexical_cast<unsigned int>(
+        //                        path.substr(20));
+        //                res.body() = getList_(refresh);
+        //            }
+        //        }
+        //        else if (boost::starts_with(path, "/textfile"))
+        //        {
+        //            prepare = false;
+        //            res.result(http::status::ok);
+        //            res.insert("Content-Type", "text/example");
+        //            // if huge was requested, lie about content length
+        //            std::uint64_t cl =
+        //                boost::starts_with(path, "/textfile/huge")
+        //                ? std::numeric_limits<uint64_t>::max()
+        //                : 1024;
+        //            res.content_length(cl);
+        //            if (req.method() == http::verb::get)
+        //            {
+        //                std::stringstream body;
+        //                for (auto i = 0; i < 1024; ++i)
+        //                    body << static_cast<char>(rand_int<short>(32, 126)),
+        //                        res.body() = body.str();
+        //            }
+        //        }
+        //        else if (boost::starts_with(path, "/sleep/"))
+        //        {
+        //            auto const sleep_sec =
+        //                boost::lexical_cast<unsigned int>(path.substr(7));
+        //            std::this_thread::sleep_for(
+        //                std::chrono::seconds{sleep_sec});
+        //        }
+        //        else if (boost::starts_with(path, "/redirect"))
+        //        {
+        //            if (boost::ends_with(path, "/301"))
+        //                res.result(http::status::moved_permanently);
+        //            else if (boost::ends_with(path, "/302"))
+        //                res.result(http::status::found);
+        //            else if (boost::ends_with(path, "/307"))
+        //                res.result(http::status::temporary_redirect);
+        //            else if (boost::ends_with(path, "/308"))
+        //                res.result(http::status::permanent_redirect);
 
-                    std::stringstream location;
-                    if (boost::starts_with(path, "/redirect_to/"))
-                    {
-                        location << path.substr(13);
-                    }
-                    else if (!boost::starts_with(path, "/redirect_nolo"))
-                    {
-                        location
-                            << (ssl ? "https://" : "http://")
-                            << local_endpoint()
-                            << (boost::starts_with(path, "/redirect_forever/")
-                                    ? path
-                                    : "/validators");
-                    }
-                    if (!location.str().empty())
-                        res.insert("Location", location.str());
-                }
-                else
-                {
-                    // unknown request
-                    res.result(boost::beast::http::status::not_found);
-                    res.insert("Content-Type", "text/html");
-                    res.body() = "The file '" + path + "' was not found";
-                }
+        //            std::stringstream location;
+        //            if (boost::starts_with(path, "/redirect_to/"))
+        //            {
+        //                location << path.substr(13);
+        //            }
+        //            else if (!boost::starts_with(path, "/redirect_nolo"))
+        //            {
+        //                location
+        //                    << (ssl ? "https://" : "http://")
+        //                    << local_endpoint()
+        //                    << (boost::starts_with(path, "/redirect_forever/")
+        //                            ? path
+        //                            : "/validators");
+        //            }
+        //            if (!location.str().empty())
+        //                res.insert("Location", location.str());
+        //        }
+        //        else
+        //        {
+        //            // unknown request
+        //            res.result(boost::beast::http::status::not_found);
+        //            res.insert("Content-Type", "text/html");
+        //            res.body() = "The file '" + path + "' was not found";
+        //        }
 
-                if (prepare)
-                    res.prepare_payload();
-            }
-            catch (std::exception const& e)
-            {
-                res = {};
-                res.result(boost::beast::http::status::internal_server_error);
-                res.version(req.version());
-                res.insert("Server", "TrustedPublisherServer");
-                res.insert("Content-Type", "text/html");
-                res.body() =
-                    std::string{"An internal error occurred"} + e.what();
-                res.prepare_payload();
-            }
+        //        if (prepare)
+        //            res.prepare_payload();
+        //    }
+        //    catch (std::exception const& e)
+        //    {
+        //        res = {};
+        //        res.result(boost::beast::http::status::internal_server_error);
+        //        res.version(req.version());
+        //        res.insert("Server", "TrustedPublisherServer");
+        //        res.insert("Content-Type", "text/html");
+        //        res.body() =
+        //            std::string{"An internal error occurred"} + e.what();
+        //        res.prepare_payload();
+        //    }
 
-            if (ssl)
-                write(*ssl_stream, res, ec);
-            else
-                write(sock, res, ec);
+        //    if (ssl)
+        //        write(*ssl_stream, res, ec);
+        //    else
+        //        write(sock, res, ec);
 
-            if (ec || req.need_eof())
-                break;
-        }
+        //    if (ec || req.need_eof())
+        //        break;
+        //}
 
-        // Perform the SSL shutdown
-        if (ssl)
-            ssl_stream->shutdown(ec);
+        //// Perform the SSL shutdown
+        //if (ssl)
+        //    ssl_stream->shutdown(ec);
     }
 };
 

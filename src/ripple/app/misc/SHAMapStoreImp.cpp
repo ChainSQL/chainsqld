@@ -223,52 +223,6 @@ SHAMapStoreImp::SHAMapStoreImp(
         state_db_.init(config, dbName_);
         dbPaths();
     }
-    if (! setup_.shardDatabase.empty())
-    {
-        // The node and shard stores must use
-        // the same earliest ledger sequence
-        std::array<std::uint32_t, 2> seq;
-        if (get_if_exists<std::uint32_t>(
-            setup_.nodeDatabase, "earliest_seq", seq[0]))
-        {
-            if (get_if_exists<std::uint32_t>(
-                setup_.shardDatabase, "earliest_seq", seq[1]) &&
-                seq[0] != seq[1])
-            {
-                Throw<std::runtime_error>("earliest_seq set more than once");
-            }
-        }
-
-        boost::filesystem::path dbPath =
-            get<std::string>(setup_.shardDatabase, "path");
-        if (dbPath.empty())
-            Throw<std::runtime_error>("shard path missing");
-        if (boost::filesystem::exists(dbPath))
-        {
-            if (! boost::filesystem::is_directory(dbPath))
-                Throw<std::runtime_error>("shard db path must be a directory.");
-        }
-        else
-            boost::filesystem::create_directories(dbPath);
-
-        auto const maxDiskSpace = get<std::uint64_t>(
-            setup_.shardDatabase, "max_size_gb", 0);
-        // Must be large enough for one shard
-        if (maxDiskSpace < 3)
-            Throw<std::runtime_error>("max_size_gb too small");
-        if ((maxDiskSpace << 30) < maxDiskSpace)
-            Throw<std::runtime_error>("overflow max_size_gb");
-
-        std::uint32_t lps;
-        if (get_if_exists<std::uint32_t>(
-                setup_.shardDatabase, "ledgers_per_shard", lps))
-        {
-            // ledgers_per_shard to be set only in standalone for testing
-            if (! setup_.standalone)
-                Throw<std::runtime_error>(
-                    "ledgers_per_shard only honored in stand alone");
-        }
-    }
 }
 
 std::unique_ptr<NodeStore::Database>

@@ -92,9 +92,11 @@ Env::AppBundle::AppBundle(
     thread = std::thread([&]() { app->run(); });
 
 	schemaManager = std::make_unique<SchemaManager>(
-		*this,
+		*app,
 		logs->journal("SchemaManager"));
-	schema = schemaManager->createSchemaMain(*config);
+	std::shared_ptr<Config> pConfig;
+	pConfig.reset(&(app->config()));
+	schema = schemaManager->createSchemaMain(pConfig);
 
     client = makeJSONRPCClient(app->config());
 }
@@ -388,7 +390,7 @@ Env::autofill_sig(JTx& jt)
     if (!jt.fill_sig)
         return;
     auto const account = lookup(jv[jss::Account].asString());
-    if (!app().checkSigs())
+    if (!app().app().checkSigs())
     {
         jv[jss::SigningPubKey] = strHex(account.pk().slice());
         // dummy sig otherwise STTx is invalid
@@ -453,7 +455,7 @@ Env::do_rpc(
     std::vector<std::string> const& args,
     std::unordered_map<std::string, std::string> const& headers)
 {
-    return rpcClient(args, app().config(), app().logs(), headers).second;
+    return rpcClient(args, app().config(), "",app().logs(), headers).second;
 }
 
 void

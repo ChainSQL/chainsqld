@@ -58,7 +58,7 @@ namespace ripple {
 			info.setTables.emplace(std::make_pair(owner,tableName));
 			info.startLedgerSeq = app_.getLedgerMaster().getValidLedgerIndex();
 
-			std::lock_guard<std::mutex> lock(mutexTxCache_);
+			std::lock_guard lock(mutexTxCache_);
 			mapTxAccumulator_[tx.getTransactionID()] = info;
 		}
 		else
@@ -98,7 +98,7 @@ namespace ripple {
 
 	void TableTxAccumulator::sweepCache()
 	{
-		std::lock_guard<std::mutex> lock(mutexTxCache_);
+		std::lock_guard lock(mutexTxCache_);
 		auto iter = mapTxAccumulator_.begin(); 
 		while (iter != mapTxAccumulator_.end())
 		{
@@ -131,7 +131,7 @@ namespace ripple {
 
 	void TableTxAccumulator::clearCache(uint256 txId)
 	{
-		std::lock_guard<std::mutex> lock(mutexTxCache_);
+		std::lock_guard lock(mutexTxCache_);
 		mapTxAccumulator_.erase(txId);
 	}
 }

@@ -577,12 +577,12 @@ public:
 
     bool waitingForInit()
     {
-        return consensus_->waitingForInit();
+        return consensus_.waitingForInit();
     }
 
     std::chrono::milliseconds getConsensusTimeout()
     {
-        return consensus_->getConsensusTimeout();
+        return consensus_.getConsensusTimeout();
     }
 private:
     // Since Consensus does not provide intrinsic thread-safety, this mutex
@@ -591,9 +591,9 @@ private:
     mutable std::recursive_mutex mutex_;
 
     Adaptor adaptor_;
-    std::shared_ptr<Consensus<Adaptor>> consensus_ripple_;
-	std::shared_ptr<PConsensus<Adaptor>> consensus_peersafe_;
-	std::shared_ptr<ConsensusBase<Adaptor>> consensus_;
+ //   std::shared_ptr<Consensus<Adaptor>> consensus_ripple_;
+	//std::shared_ptr<PConsensus<Adaptor>> consensus_peersafe_;
+	PConsensus<Adaptor> consensus_;
 	
     beast::Journal j_;
 };

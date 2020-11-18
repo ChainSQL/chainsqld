@@ -396,7 +396,7 @@ public:
     getNodeFamily(SchemaID const& id) override
     {
         assert(m_schemaManager->contains(id));
-        return m_schemaManager->getSchema(id)->family();
+        return m_schemaManager->getSchema(id)->getNodeFamily();
     }
 
     Family*
@@ -803,49 +803,6 @@ public:
 
     //--------------------------------------------------------------------------
 
-    bool
-    initNodeStore()
-    {
-        if (config_->doImport)
-        {
-            auto j = logs_->journal("NodeObject");
-            NodeStore::DummyScheduler dummyScheduler;
-            RootStoppable dummyRoot{"DummyRoot"};
-            std::unique_ptr<NodeStore::Database> source =
-                NodeStore::Manager::instance().make_Database(
-                    "NodeStore.import",
-                    dummyScheduler,
-                    0,
-                    dummyRoot,
-                    config_->section(ConfigSection::importNodeDatabase()),
-                    j);
-
-            JLOG(j.warn()) << "Starting node import from '" << source->getName()
-                           << "' to '" << m_nodeStore->getName() << "'.";
-
-            using namespace std::chrono;
-            auto const start = steady_clock::now();
-
-            m_nodeStore->import(*source);
-
-            auto const elapsed =
-                duration_cast<seconds>(steady_clock::now() - start);
-            JLOG(j.warn()) << "Node import from '" << source->getName()
-                           << "' took " << elapsed.count() << " seconds.";
-        }
-
-        // tune caches
-        using namespace std::chrono;
-        m_nodeStore->tune(
-            config_->getValueFor(SizedItem::nodeCacheSize),
-            seconds{config_->getValueFor(SizedItem::nodeCacheAge)});
-
-        m_ledgerMaster->tune(
-            config_->getValueFor(SizedItem::ledgerSize),
-            seconds{config_->getValueFor(SizedItem::ledgerAge)});
-
-        return true;
-    }
 
     //--------------------------------------------------------------------------
     //
@@ -1047,7 +1004,8 @@ ApplicationImp::setup()
         *m_resourceManager,
         *m_resolver,
         getIOService(),
-        *config_);
+        *config_,
+		m_collectorManager->collector());
     add(*m_overlay);  // add to PropertyStream
 
     nodeIdentity_ = loadNodeIdentity(*this);
@@ -1206,17 +1164,15 @@ ApplicationImp::fdRequired() const
     int needed = 128;
 
     // 2x the configured peer limit for peer connections:
-    needed += 2 * overlay_->limit();
+    needed += 2 * m_overlay->limit();
 
     for (auto item : *m_schemaManager)
     {
         auto schema = item.second;
         // the number of fds needed by the backend (internally
-        // doubled if online delete is enabled).
-        needed += std::max(5, schema->getSHAMapStore().fdlimit());
-
-        if (schema->getShardStore())
-            needed += schema->getShardStore()->fdRequired();
+        // doubled if online_delete is enabled).
+		if (schema->getShardStore())
+			needed += std::max(5, schema->getSHAMapStore().fdRequired());
     }
 
     // One fd per incoming connection a port can accept, or
@@ -1439,7 +1395,7 @@ Application::Application() : beast::PropertyStream::Source("app")
 
 std::unique_ptr<Application>
 make_Application(
-    std::unique_ptr<Config> config,
+    std::shared_ptr<Config> config,
     std::unique_ptr<Logs> logs,
     std::unique_ptr<TimeKeeper> timeKeeper)
 {

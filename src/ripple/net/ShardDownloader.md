@@ -77,7 +77,7 @@ A graceful shutdown begins when the `onStop()` method of the `ShardArchiveHandle
 void
 ShardArchiveHandler::onStop()
 {
-    std::lock_guard<std::mutex> lock(m_);
+    std::lock_guard lock(m_);
 
     if (downloader_)
     {

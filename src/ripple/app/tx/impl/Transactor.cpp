@@ -104,6 +104,8 @@ preflight2(PreflightContext const& ctx)
 		JLOG(ctx.j.debug()) << "preflight2: bad signature. " << sigValid.second;
 		return temINVALID;
 	}
+
+	return tesSUCCESS;
 }
 //------------------------------------------------------------------------------
 

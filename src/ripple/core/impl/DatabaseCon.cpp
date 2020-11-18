@@ -189,42 +189,19 @@ DatabaseCon::~DatabaseCon()
 DatabaseCon::Setup
 setup_DatabaseCon(Config const& c, boost::optional<beast::Journal> j)
 {
-	DatabaseCon::Setup setup;
-
-	setup.startUp = c.START_UP;
-	setup.standAlone = c.standalone();
-	setup.dataDir = c.legacy("database_path");
-	if (!setup.standAlone && setup.dataDir.empty())
-	{
-		Throw<std::runtime_error>(
-			"database_path must be set.");
-	}
-
-	return setup;
-}
-
-DatabaseCon::Setup
-setup_SyncDatabaseCon(Config const& c) 
-{
     DatabaseCon::Setup setup;
-	setup.startUp = c.START_UP;
+
+    setup.startUp = c.START_UP;
     setup.standAlone = c.standalone();
     setup.dataDir = c.legacy("database_path");
-	setup.sync_db = c["sync_db"];
-	std::pair<std::string, bool> result = setup.sync_db.find("type");
-	if (result.second == false
-		|| result.first.empty() || result.first.compare("sqlite") == 0) {
-		setup.dataDir = c.legacy("database_path");
-		if (!setup.standAlone && setup.dataDir.empty())
-		{
-			Throw<std::runtime_error>(
-				"database_path must be set.");
-		}
-	}
+    if (!setup.standAlone && setup.dataDir.empty())
+    {
+        Throw<std::runtime_error>("database_path must be set.");
+    }
 
     if (!setup.globalPragma)
     {
-        setup.globalPragma = [&c]() {
+        setup.globalPragma = [&c, &j]() {
             auto const& sqlite = c.section("sqlite");
             auto result = std::make_unique<std::vector<std::string>>();
             result->reserve(3);
@@ -343,6 +320,27 @@ setup_SyncDatabaseCon(Config const& c)
         }();
     }
     setup.useGlobalPragma = true;
+
+    return setup;
+}
+
+DatabaseCon::Setup
+setup_SyncDatabaseCon(Config const& c) 
+{
+    DatabaseCon::Setup setup;
+    setup.startUp = c.START_UP;
+    setup.standAlone = c.standalone();
+    setup.sync_db = c["sync_db"];
+    std::pair<std::string, bool> result = setup.sync_db.find("type");
+    if (result.second == false || result.first.empty() ||
+        result.first.compare("sqlite") == 0)
+    {
+        setup.dataDir = c.legacy("database_path");
+        if (!setup.standAlone && setup.dataDir.empty())
+        {
+            Throw<std::runtime_error>("database_path must be set.");
+        }
+    }
 
     return setup;
 }

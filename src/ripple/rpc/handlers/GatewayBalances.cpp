@@ -151,7 +151,7 @@ doGatewayBalances(RPC::JsonContext& context)
 					{						
 						// normal negative balance, obligation to customer
 						auto& bal = sums[amount.getCurrency()];
-						if (bal == zero)
+						if (bal == beast::zero)
 						{
 							// This is needed to set the currency code correctly
 							bal = amount;
@@ -249,7 +249,7 @@ doGatewayBalances(RPC::JsonContext& context)
     populateResult(hotBalances, jss::balances);
     populateResult(frozenBalances, jss::frozen_balances);
     populateResult(assets, jss::assets);
-	populate (escrows, result, jss::escrows);
+	populateResult(escrows, jss::escrows);
 
     return result;
 }

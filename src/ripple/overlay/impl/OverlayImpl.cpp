@@ -752,7 +752,7 @@ OverlayImpl::json()
     Json::Value json;
     for (auto const& peer : getActivePeers())
     {
-        json.append(peer->json());
+        json.append(peer->json(beast::zero));
     }
     return json;
 }
@@ -772,22 +772,22 @@ OverlayImpl::processCrawl(http_request_type const& req, Handoff& handoff)
     msg.insert("Connection", "close");
     msg.body()["version"] = Json::Value(2u);
 
-    if (setup_.crawlOptions & CrawlOptions::Overlay)
-    {
-        msg.body()["overlay"] = getOverlayInfo();
-    }
-    if (setup_.crawlOptions & CrawlOptions::ServerInfo)
-    {
-        msg.body()["server"] = getServerInfo();
-    }
-    if (setup_.crawlOptions & CrawlOptions::ServerCounts)
-    {
-        msg.body()["counts"] = getServerCounts();
-    }
-    if (setup_.crawlOptions & CrawlOptions::Unl)
-    {
-        msg.body()["unl"] = getUnlInfo();
-    }
+    //if (setup_.crawlOptions & CrawlOptions::Overlay)
+    //{
+    //    msg.body()["overlay"] = getOverlayInfo();
+    //}
+    //if (setup_.crawlOptions & CrawlOptions::ServerInfo)
+    //{
+    //    msg.body()["server"] = getServerInfo();
+    //}
+    //if (setup_.crawlOptions & CrawlOptions::ServerCounts)
+    //{
+    //    msg.body()["counts"] = getServerCounts();
+    //}
+    //if (setup_.crawlOptions & CrawlOptions::Unl)
+    //{
+    //    msg.body()["unl"] = getUnlInfo();
+    //}
 
     msg.prepare_payload();
     handoff.response = std::make_shared<SimpleWriter>(msg);
@@ -851,7 +851,7 @@ OverlayImpl::processHealth(http_request_type const& req, Handoff& handoff)
     msg.insert("Content-Type", "application/json");
     msg.insert("Connection", "close");
 
-    auto info = getServerInfo();
+    auto info = app_.getOPs().getServerInfo(false,false,false);
 
     int last_validated_ledger_age = -1;
     if (info.isMember("validated_ledger"))
@@ -955,13 +955,6 @@ OverlayImpl::getActivePeers() const
     });
 
     return ret;
-}
-
-void
-OverlayImpl::checkSanity(std::uint32_t index)
-{
-    for_each(
-        [index](std::shared_ptr<PeerImp>&& sp) { sp->checkSanity(index); });
 }
 
 void

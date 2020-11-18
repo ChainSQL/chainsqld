@@ -32,6 +32,7 @@
 #include <boost/algorithm/string.hpp>
 #include <memory>
 #include <soci/sqlite3/soci-sqlite3.h>
+#include <soci/mysql/soci-mysql.h>
 
 namespace ripple {
 

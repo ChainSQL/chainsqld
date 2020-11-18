@@ -43,7 +43,19 @@ namespace ripple {
 	Json::Value
 		PeerManagerImpl::json()
 	{
-		return foreach(get_peer_json(app_.schemaId()));
+        Json::Value json;
+        for (auto const& peer : getActivePeers())
+        {
+            json.append(peer->json(app_.schemaId()));
+        }
+        return json;
+	}
+
+	std::size_t
+		PeerManagerImpl::size() const
+	{
+		std::lock_guard lock{ mutex_ };
+		return ids_.size();
 	}
 
 	void
@@ -52,7 +64,7 @@ namespace ripple {
 		// Notify threads when every peer has received a last link.
 		// This doesn't account for every node that might reply but
 		// it is adequate.
-		std::lock_guard<std::mutex> l{ csMutex_ };
+		std::lock_guard l{ csMutex_ };
 		if (csIDs_.erase(id) && csIDs_.empty())
 			csCV_.notify_all();
 	}
@@ -134,6 +146,7 @@ namespace ripple {
 
 	void PeerManagerImpl::add(std::shared_ptr<PeerImp> const& peer)
 	{
+		std::lock_guard lock{ mutex_ };
 		auto const result = ids_.emplace(
 			std::piecewise_construct,
 			std::make_tuple(peer->id()),
@@ -143,6 +156,7 @@ namespace ripple {
 
 	void PeerManagerImpl::remove(std::vector<PublicKey> const& vecPubs)
 	{
+		std::lock_guard lock{ mutex_ };
 		auto it = ids_.begin();
 		while( it != ids_.end())
 		{
@@ -244,48 +258,6 @@ namespace ripple {
 		}
 
 		return jv;
-	}
-
-
-	std::size_t
-	PeerManagerImpl::selectPeers(PeerSet& set, std::size_t limit,
-			std::function<bool(std::shared_ptr<Peer> const&)> score)
-	{
-		using item = std::pair<int, std::shared_ptr<PeerImp>>;
-
-		std::vector<item> v;
-		v.reserve(size());
-
-		for_each([&](std::shared_ptr<PeerImp>&& e)
-		{
-			auto const s = e->getScore(score(e));
-			v.emplace_back(s, std::move(e));
-		});
-
-		std::sort(v.begin(), v.end(),
-			[](item const& lhs, item const&rhs)
-		{
-			return lhs.first > rhs.first;
-		});
-
-		std::size_t accepted = 0;
-		for (auto const& e : v)
-		{
-			if (set.insert(e.second) && ++accepted >= limit)
-				break;
-		}
-		return accepted;
-	}
-
-	/** The number of active peers on the network
-		Active peers are only those peers that have completed the handshake
-		and are running the Ripple protocol.
-	*/
-	std::size_t
-		PeerManagerImpl::size()
-	{
-		std::lock_guard <decltype(mutex_)> lock(mutex_);
-		return ids_.size();
 	}
 
 	Json::Value
@@ -405,7 +377,7 @@ namespace ripple {
 
 
 	PeerManager::PeerSequence
-		PeerManagerImpl::getActivePeers()
+		PeerManagerImpl::getActivePeers()const
 	{
 		PeerManager::PeerSequence ret;
 		ret.reserve(size());

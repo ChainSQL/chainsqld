@@ -69,7 +69,7 @@ insertDeliveredAmount(
 
 std::optional<STAmount>
 getDeliveredAmount(
-    RPC::Context const& context,
+	RPC::Context const& contex,
     std::shared_ptr<STTx const> const& serializedTx,
     TxMeta const& transactionMeta,
     LedgerIndex const& ledgerIndex);

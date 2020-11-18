@@ -30,10 +30,11 @@ namespace ripple {
 
 namespace detail {
 
+template <typename value_type>
 class VotableValue
 {
 private:
-    using value_type = ZXCAmount;
+    //using value_type = ZXCAmount;
     value_type const mCurrent;  // The current setting
     value_type const mTarget;   // The setting we want
     std::map<value_type, int> mVoteMap;
@@ -62,8 +63,9 @@ public:
     getVotes() const;
 };
 
+template <typename value_type>
 auto
-VotableValue::getVotes() const -> value_type
+VotableValue<value_type>::getVotes() const -> value_type
 {
     value_type ourVote = mCurrent;
     int weight = 0;
@@ -145,11 +147,11 @@ FeeVoteImpl::doValidation(Fees const& lastFees, STValidation& v)
     }
 
 
-	if (lastClosedLedger->fees().drops_per_byte != target_.drops_per_byte)
+	if (lastFees.drops_per_byte != target_.drops_per_byte)
 	{
 		JLOG(journal_.info()) <<
 			"Voting for per zxc size " << target_.drops_per_byte;
-		fees.dropsPerByte = target_.drops_per_byte;
+		v.setFieldU32(sfDropsPerByte,target_.drops_per_byte);
 	}
 }
 
@@ -172,7 +174,7 @@ FeeVoteImpl::doVoting(
         lastClosedLedger->fees().increment, target_.owner_reserve);
 
 
-	detail::VotableInteger<std::uint64_t> dropsPerByteVote(
+	detail::VotableValue<std::uint64_t> dropsPerByteVote(
 		lastClosedLedger->fees().drops_per_byte, target_.drops_per_byte);
 
     for (auto const& val : set)
@@ -241,8 +243,7 @@ FeeVoteImpl::doVoting(
     auto const incReserve = incReserveVote.getVotes().dropsAs<std::uint32_t>(
         lastClosedLedger->fees().increment);
     constexpr FeeUnit32 feeUnits = Setup::reference_fee_units;
-	std::uint64_t const dropsPerByte = dropsPerByteVote.getVotes().dropsAs<std::uint32_t>(
-        lastClosedLedger->fees().dropsPerByte);;
+	std::uint64_t const dropsPerByte = dropsPerByteVote.getVotes();
     auto const seq = lastClosedLedger->info().seq + 1;
 
     // add transactions to our position

@@ -177,6 +177,25 @@ negativeUNL() noexcept
 }
 
 Keylet
+book_t::operator()(Book const& b) const
+{
+    return {ltDIR_NODE, getBookBase(b)};
+}
+
+Keylet
+next_t::operator()(Keylet const& k) const
+{
+    assert(k.type == ltDIR_NODE);
+    return {ltDIR_NODE, getQualityNext(k.key)};
+}
+
+Keylet
+ticket_t::operator()(AccountID const& id, std::uint32_t seq) const
+{
+    return {ltTICKET, getTicketIndex(id, seq)};
+}
+
+Keylet
 line(
     AccountID const& id0,
     AccountID const& id1,

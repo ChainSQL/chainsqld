@@ -39,7 +39,7 @@
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/ServerHandler.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
-
+#include <peersafe/basics/characterUtilities.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/beast/core/string.hpp>
@@ -506,19 +506,6 @@ private:
 
         if (jvParams.size() == 3)
             jvParseLedger(jvRequest, jvParams[2u].asString());
-
-        return jvRequest;
-    }
-
-    // deposit_authorized <source_account> <destination_account> [<ledger>]
-    Json::Value parseDepositAuthorized (Json::Value const& jvParams)
-    {
-        Json::Value jvRequest (Json::objectValue);
-        jvRequest[jss::source_account] = jvParams[0u].asString ();
-        jvRequest[jss::destination_account] = jvParams[1u].asString ();
-
-        if (jvParams.size () == 3)
-            jvParseLedger (jvRequest, jvParams[2u].asString ());
 
         return jvRequest;
     }
@@ -1995,12 +1982,6 @@ rpcClient(
         jvOutput = rpcError(rpcINVALID_PARAMS);
         jvOutput["error_what"] = e.what();
         nRet = rpcINVALID_PARAMS;
-    }
-    catch (RequestNotParseable& e)
-    {
-        jvOutput                = rpcError(rpcINVALID_PARAMS);
-        jvOutput["error_what"]  = e.what();
-        nRet                    = rpcINVALID_PARAMS;
     }
     catch (std::exception& e)
     {

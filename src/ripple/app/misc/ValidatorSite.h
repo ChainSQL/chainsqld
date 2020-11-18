@@ -138,6 +138,7 @@ namespace ripple {
 		
 	public:
 		ValidatorSite(
+			Schema& app,
 			ManifestCache& validatorManifests,
 			boost::asio::io_service& ios,
 			ValidatorList& validators,

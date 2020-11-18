@@ -153,10 +153,6 @@ public:
         return inactive_;
     }
 
-    bool inactive() const override {
-        return inactive_;
-    }
-
 protected:
     std::string
     logStringImpl(char const* name) const

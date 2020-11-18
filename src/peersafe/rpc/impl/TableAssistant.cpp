@@ -53,7 +53,7 @@ TableAssistant::TableAssistant(Schema& app, Config& cfg, beast::Journal journal)
 
 uint256 TableAssistant::getCheckHash(uint160 nameInDB)
 {	
-	std::lock_guard<std::mutex> lock(mutexMap_);
+	std::lock_guard lock(mutexMap_);
 	auto it = m_map.find(nameInDB);
 	if (it != m_map.end())
 		return it->second->uTxCheckHash;
@@ -164,7 +164,7 @@ bool TableAssistant::PutOne(STTx const& tx, const uint256 &uHash)
 
 	pTx->bStrictMode = tx.isFieldPresent(sfTxCheckHash);
 
-	std::lock_guard<std::mutex> lock(mutexMap_);
+	std::lock_guard lock(mutexMap_);
 
 	uint256 hashNew;
     if (tx.isFieldPresent(sfTables))
@@ -231,7 +231,7 @@ void TableAssistant::TryTableCheckHash()
 
 void TableAssistant::TableCheckHashThread()
 {
-	std::lock_guard<std::mutex> lock(mutexMap_);
+	std::lock_guard lock(mutexMap_);
 	auto ledger = app_.getLedgerMaster().getValidatedLedger();
 	auto iter = m_map.begin();
 	while (iter != m_map.end())

@@ -77,7 +77,7 @@ public:
         handler->add(1, {url, rawUrl});
 
         {
-            std::lock_guard<std::mutex> lock(handler->m_);
+            std::lock_guard lock(handler->m_);
 
             auto& session{handler->sqliteDB_->getSession()};
 
@@ -132,7 +132,7 @@ public:
         }
 
         {
-            std::lock_guard<std::mutex> lock(handler->m_);
+            std::lock_guard lock(handler->m_);
 
             auto& session{handler->sqliteDB_->getSession()};
             soci::rowset<soci::row> rs =

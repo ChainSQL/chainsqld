@@ -122,7 +122,7 @@ forceValidity(HashRouter& router, uint256 const& txid, Validity validity);
 */
 std::pair<TER, bool>
 apply(
-    Application& app,
+    Schema& app,
     OpenView& view,
     STTx const& tx,
     ApplyFlags flags,

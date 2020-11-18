@@ -62,7 +62,7 @@ doCrawlShards(RPC::JsonContext& context)
         context.params[jss::public_key].asBool()};
 
     // Collect shard info from peers connected to this server
-    Json::Value jvResult{context.app.overlay().crawlShards(pubKey, hops)};
+    Json::Value jvResult{context.app.peerManager().crawlShards(pubKey, hops)};
 
     // Collect shard info from this server
     if (auto shardStore = context.app.getShardStore())

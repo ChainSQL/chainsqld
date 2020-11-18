@@ -37,7 +37,6 @@ class SSLHTTPPeer : public BaseHTTPPeer<Handler, SSLHTTPPeer<Handler>>,
 {
 private:
     friend class BaseHTTPPeer<Handler, SSLHTTPPeer>;
-    using waitable_timer = typename BaseHTTPPeer<Handler, SSLHTTPPeer>::waitable_timer;
     using socket_type = boost::asio::ip::tcp::socket;
     using middle_type = boost::beast::tcp_stream;
     using stream_type = boost::beast::ssl_stream<middle_type>;

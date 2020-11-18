@@ -166,7 +166,7 @@ insertDeliveredAmount(
 template <class GetLedgerIndex>
 std::optional<STAmount>
 getDeliveredAmount(
-    RPC::Context const& context,
+	RPC::Context const& context,
     std::shared_ptr<STTx const> const& serializedTx,
     TxMeta const& transactionMeta,
     GetLedgerIndex const& getLedgerIndex)
@@ -187,7 +187,7 @@ getDeliveredAmount(
 
 std::optional<STAmount>
 getDeliveredAmount(
-    RPC::Context const& context,
+	RPC::Context const& context, 
     std::shared_ptr<STTx const> const& serializedTx,
     TxMeta const& transactionMeta,
     LedgerIndex const& ledgerIndex)

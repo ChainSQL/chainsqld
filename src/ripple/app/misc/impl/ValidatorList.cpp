@@ -24,7 +24,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/base64.h>
 #include <ripple/json/json_reader.h>
-#include <ripple/overlay/Overlay.h>
+#include <peersafe/schema/PeerManager.h>
 #include <ripple/protocol/STValidation.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/protocol/messages.h>
@@ -237,7 +237,7 @@ ValidatorList::applyListAndBroadcast(
     std::uint32_t version,
     std::string siteUri,
     uint256 const& hash,
-    Overlay& overlay,
+    PeerManager& overlay,
     HashRouter& hashRouter)
 {
     auto const result =

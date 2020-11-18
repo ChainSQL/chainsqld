@@ -42,7 +42,7 @@ private:
 	using clock_type = std::chrono::steady_clock;
 
 	Schema& app_;
-	std::recursive_mutex mutex_;
+	mutable std::recursive_mutex mutex_;
 	beast::Journal journal_;
 	hash_map<Peer::id_t, std::weak_ptr<PeerImp>> ids_;
 
@@ -60,18 +60,19 @@ public:
 
 	PeerManagerImpl(PeerManagerImpl const&) = delete;
 	PeerManagerImpl& operator= (PeerManagerImpl const&) = delete;
+    
+	std::size_t
+		size() const override;
 
 	Json::Value
 		json() override;
 
 	PeerSequence
-		getActivePeers() override;
+		getActivePeers()const override;
 
 	void
 		lastLink(std::uint32_t id) override;
 
-	std::size_t
-		size() override;
 	void
 		checkSanity(std::uint32_t) override;
 
@@ -110,11 +111,11 @@ public:
 	//
 	template <class UnaryFunc>
 	void
-		for_each(UnaryFunc&& f)
+		for_each(UnaryFunc&& f) const
 	{
 		std::vector<std::weak_ptr<PeerImp>> wp;
 		{
-			std::lock_guard<decltype(mutex_)> lock(mutex_);
+			std::lock_guard lock{ mutex_ };
 
 			// Iterate over a copy of the peer list because peer
 			// destruction can invalidate iterators.
@@ -130,10 +131,6 @@ public:
 				f(std::move(p));
 		}
 	}
-
-	std::size_t
-		selectPeers(PeerSet& set, std::size_t limit, std::function<
-			bool(std::shared_ptr<Peer> const&)> score) override;
 
 	// Called when TMManifests is received from a peer
 	void

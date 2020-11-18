@@ -53,7 +53,7 @@ PeerSet::addPeers(
 {
     using ScoredPeer = std::pair<int, std::shared_ptr<Peer>>;
 
-    auto const& overlay = app_.peerManager();
+    auto& overlay = app_.peerManager();
 
     std::vector<ScoredPeer> pairs;
     pairs.reserve(overlay.size());
@@ -140,7 +140,7 @@ PeerSet::sendRequest(
 
     for (auto id : mPeers)
     {
-        if (app_.peerManager().findPeerByShortID (id))
+        if (auto p = app_.peerManager().findPeerByShortID (id))
             p->send(packet);
     }
 }

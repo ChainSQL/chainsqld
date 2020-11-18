@@ -32,7 +32,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-    Json::Value doNodeSize(RPC::Context& context)
+    Json::Value doNodeSize(RPC::JsonContext& context)
     {
         if (!context.params.isMember(jss::node_size))
         {

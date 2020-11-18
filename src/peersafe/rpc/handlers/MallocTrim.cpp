@@ -32,7 +32,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-    Json::Value doMallocTrim(RPC::Context& context)
+    Json::Value doMallocTrim(RPC::JsonContext& context)
     {
         Json::Value ret(Json::objectValue);
 

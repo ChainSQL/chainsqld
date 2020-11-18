@@ -72,7 +72,7 @@ Json::Value getSchemaFromSle(std::shared_ptr<SLE const> & sle)
 	return schema;
 }
 
-Json::Value doSchemaList(RPC::Context&  context)
+Json::Value doSchemaList(RPC::JsonContext&  context)
 {
 	std::shared_ptr<ReadView const> ledger;
 	auto result = RPC::lookupLedger(ledger, context);
@@ -111,7 +111,7 @@ Json::Value doSchemaList(RPC::Context&  context)
 	return ret;
 }
 
-Json::Value doSchemaInfo(RPC::Context& context)
+Json::Value doSchemaInfo(RPC::JsonContext& context)
 {
 	if (!context.params.isMember(jss::schema))
 		return rpcError(rpcINVALID_PARAMS);
@@ -134,7 +134,7 @@ Json::Value doSchemaInfo(RPC::Context& context)
 
 }
 
-Json::Value doSchemaAccept(RPC::Context& context)
+Json::Value doSchemaAccept(RPC::JsonContext& context)
 {
 	if (!context.params.isMember(jss::schema))
 		return rpcError(rpcINVALID_PARAMS);

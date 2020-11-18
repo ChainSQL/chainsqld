@@ -74,7 +74,7 @@ SHAMap::snapShot(bool isMutable) const
 std::shared_ptr<SHAMap>
  SHAMap::genesisSnapShot(Family& f) const
 {
-	auto ret = std::make_shared<SHAMap>(type_, f, version{ 1 });
+	auto ret = std::make_shared<SHAMap>(type_, f);
 	SHAMap& newMap = *ret;
 
 	newMap.seq_ =  1;

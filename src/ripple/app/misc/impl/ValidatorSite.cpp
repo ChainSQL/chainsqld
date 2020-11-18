@@ -85,12 +85,13 @@ namespace ripple {
 	////}
 
 	ValidatorSite::ValidatorSite(
+		Schema& app,
 		ManifestCache& validatorManifests,
 		boost::asio::io_service& ios,
 		ValidatorList& validators,
 		beast::Journal j,
 		std::chrono::seconds timeout)
-		: ConfigSite(ios, validatorManifests, j, timeout)
+		: ConfigSite(app,ios, validatorManifests, j, timeout)
 		, validators_(validators)
 	{
 	}
@@ -303,7 +304,7 @@ namespace ripple {
 	//            " took too long";
 	//    }
 	//
-	//    std::lock_guard<std::mutex> lock_state{state_mutex_};
+	//    std::lock_guard lock_state{state_mutex_};
 	//    if(auto sp = work_.lock())
 	//        sp->cancel();
 	//}
@@ -619,7 +620,7 @@ namespace ripple {
 		Json::Value jrr(Json::objectValue);
 		Json::Value& jSites = (jrr[jss::validator_sites] = Json::arrayValue);
 		{
-			std::lock_guard<std::mutex> lock{ sites_mutex_ };
+			std::lock_guard lock{ sites_mutex_ };
 			for (Site const& site : sites_)
 			{
 				Json::Value& v = jSites.append(Json::objectValue);
@@ -653,7 +654,8 @@ namespace ripple {
 
 	ripple::ListDisposition ValidatorSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature, std::uint32_t version, std::string siteUri)
 	{
-		return  validators_.applyList(manifest, blob, signature, version, nullptr);
+		//return  validators_.applyList(manifest, blob, signature, version, nullptr);
+		return  validators_.applyList(manifest, blob, signature, version, nullptr).disposition;
 	}
 
 } // ripple

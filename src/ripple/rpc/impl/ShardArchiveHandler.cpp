@@ -193,7 +193,7 @@ void
 ShardArchiveHandler::onStop()
 {
     {
-        std::lock_guard<std::mutex> lock(m_);
+        std::lock_guard lock(m_);
 
         if (downloader_)
         {
@@ -218,7 +218,7 @@ ShardArchiveHandler::add(
     std::uint32_t shardIndex,
     std::pair<parsedURL, std::string>&& url)
 {
-    std::lock_guard<std::mutex> lock(m_);
+    std::lock_guard lock(m_);
 
     if (!add(shardIndex, std::forward<parsedURL>(url.first), lock))
         return false;
@@ -300,7 +300,7 @@ ShardArchiveHandler::start()
 void
 ShardArchiveHandler::release()
 {
-    std::lock_guard<std::mutex> lock(m_);
+    std::lock_guard lock(m_);
     doRelease(lock);
 }
 
@@ -383,7 +383,7 @@ ShardArchiveHandler::next(std::lock_guard<std::mutex> const& l)
                 dstDir / "archive.tar.lz4",
                 [this](path dstPath) { complete(dstPath); }))
         {
-            std::lock_guard<std::mutex> l(m_);
+            std::lock_guard l(m_);
             removeAndProceed(l);
         }
     });

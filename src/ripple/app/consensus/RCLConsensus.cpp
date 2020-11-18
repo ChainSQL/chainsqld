@@ -24,6 +24,7 @@
 #include <ripple/app/ledger/InboundTransactions.h>
 #include <ripple/app/ledger/Ledger.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/LocalTxs.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/misc/AmendmentTable.h>
@@ -84,8 +85,6 @@ RCLConsensus::RCLConsensus(
     , j_(journal)
 
 {
-	//consensus_ = consensus_ripple_;
-	//consensus_ = consensus_peersafe_;
 }
 
 RCLConsensus::Adaptor::Adaptor(
@@ -487,6 +486,129 @@ RCLConsensus::Adaptor::onClose(
             closeTime,
             app_.timeKeeper().closeTime(),
             nodeID_}};
+}
+
+void
+RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
+{
+    app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
+    // Try to clear state cache.
+    if (app_.getLedgerMaster().getPublishedLedgerAge() >
+            3 * app_.getOPs().getConsensusTimeout() &&
+        app_.getTxPool().isEmpty())
+    {
+        app_.getStateManager().clear();
+    }
+
+    if (bWaitingInit)
+    {
+        notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
+    }
+    if (app_.openLedger().current()->info().seq != previousLedger.seq() + 1)
+    {
+        // Generate new openLedger
+        CanonicalTXSet retriableTxs{beast::zero};
+        auto const lastVal = ledgerMaster_.getValidatedLedger();
+        boost::optional<Rules> rules;
+        if (lastVal)
+            rules.emplace(*lastVal, app_.config().features);
+        else
+            rules.emplace(app_.config().features);
+        app_.openLedger().accept(
+            app_,
+            *rules,
+            previousLedger.ledger_,
+            localTxs_.getTxSet(),
+            false,
+            retriableTxs,
+            tapNONE,
+            "consensus",
+            [&](OpenView& view, beast::Journal j) {
+                // Stuff the ledger with transactions from the queue.
+                return app_.getTxQ().accept(app_, view);
+            });
+    }
+
+    if (!validating())
+    {
+        notify(
+            protocol::neCLOSING_LEDGER,
+            previousLedger,
+            mode() != ConsensusMode::wrongLedger);
+    }
+}
+
+auto
+RCLConsensus::Adaptor::onCollectFinish(
+    RCLCxLedger const& ledger,
+    std::vector<uint256> const& transactions,
+    NetClock::time_point const& closeTime,
+    std::uint64_t const& view,
+    ConsensusMode mode) -> Result
+{
+    const bool wrongLCL = mode == ConsensusMode::wrongLedger;
+    const bool proposing = mode == ConsensusMode::proposing;
+
+    notify(protocol::neCLOSING_LEDGER, ledger, !wrongLCL);
+
+    auto const& prevLedger = ledger.ledger_;
+
+    // ledgerMaster_.applyHeldTransactions();
+    // Tell the ledger master not to acquire the ledger we're probably building
+    ledgerMaster_.setBuildingLedger(prevLedger->info().seq + 1);
+    // auto initialLedger = app_.openLedger().current();
+
+    auto initialSet = std::make_shared<SHAMap>(
+        SHAMapType::TRANSACTION, app_.getNodeFamily());
+    initialSet->setUnbacked();
+
+    // Build SHAMap containing all transactions in our open ledger
+    for (auto const& txID : transactions)
+    {
+		auto ec{ rpcSUCCESS };
+        auto tx = app_.getMasterTransaction().fetch(txID, ec);
+        if (!tx)
+        {
+            JLOG(j_.error())
+                << "fetch transaction " + to_string(txID) + "failed";
+            continue;
+        }
+
+        JLOG(j_.trace()) << "Adding open ledger TX " << txID;
+        Serializer s(2048);
+        tx->getSTransaction()->add(s);
+        initialSet->addItem(SHAMapItem(tx->getID(), std::move(s)), true, false);
+    }
+
+    // Add pseudo-transactions to the set
+    if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
+        ((prevLedger->info().seq % 256) == 0))
+    {
+        // previous ledger was flag ledger, add pseudo-transactions
+        auto const validations = app_.getValidations().getTrustedForLedger(
+            prevLedger->info().parentHash);
+
+        if (validations.size() >= app_.validators().quorum())
+        {
+            feeVote_->doVoting(prevLedger, validations, initialSet);
+            app_.getAmendmentTable().doVoting(
+                prevLedger, validations, initialSet);
+        }
+    }
+
+    // Now we need an immutable snapshot
+    initialSet = initialSet->snapShot(false);
+    auto setHash = initialSet->getHash().as_uint256();
+
+    return Result{std::move(initialSet),
+                  RCLCxPeerPos::Proposal{prevLedger->info().hash,
+                                         prevLedger->info().seq + 1,
+                                         view,
+                                         RCLCxPeerPos::Proposal::seqJoin,
+                                         setHash,
+                                         closeTime,
+                                         app_.timeKeeper().closeTime(),
+                                         nodeID_}};
 }
 
 void
@@ -1074,7 +1196,7 @@ RCLConsensus::peerViewChange(
 	ViewChange const& change)
 {
 	std::lock_guard _{mutex_};
-	return consensus_->peerViewChange(change);
+	return consensus_.peerViewChange(change);
 }
 
 bool

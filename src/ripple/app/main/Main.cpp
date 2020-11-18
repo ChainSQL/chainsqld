@@ -439,12 +439,6 @@ run(int argc, char** argv)
     po::options_description desc;
     desc.add(gen).add(rpc).add(data).add(test);
 
-    po::options_description all;
-    all.add(gen).add(rpc).add(data).add(test).add(hidden);
-
-    po::options_description desc;
-    desc.add(gen).add(rpc).add(data).add(test);
-
     // Parse options, if no error.
     try
     {

@@ -30,7 +30,7 @@
 #include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
-Json::Value doGetAccountTables(RPC::Context&  context)
+Json::Value doGetAccountTables(RPC::JsonContext&  context)
 {
 	Json::Value ret(Json::objectValue);
 	auto& params = context.params;
@@ -87,7 +87,8 @@ Json::Value doGetAccountTables(RPC::Context&  context)
                 tmp[jss::tx_hash] = to_string(txHash);
                 if (bGetDetailInfo)
                 {
-                    auto  tx = context.app.getMasterTransaction().fetch(txHash, true);
+					auto ec{ rpcSUCCESS };
+                    auto  tx = context.app.getMasterTransaction().fetch(txHash, ec);
 					if (tx)
 					{
 						auto  pTx = tx->getSTransaction();

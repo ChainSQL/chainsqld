@@ -235,12 +235,12 @@ Value::Value(std::string const& value) : type_(stringValue), allocated_(true)
 {
     value_.string_ = valueAllocator()->duplicateStringValue(
         value.c_str(), (unsigned int)value.length());
+	length_ = value.length();
 }
 
 Value::Value(const StaticString& value) : type_(stringValue), allocated_(false)
 {
     value_.string_ = const_cast<char*>(value.c_str());
-    length_ = value.length();
 }
 
 Value::Value(bool value) : type_(booleanValue)

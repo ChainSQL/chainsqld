@@ -19,6 +19,7 @@
 
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/schema/Schema.h>
+#include <ripple/app/main/Application.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/Log.h>
 #include <ripple/ledger/ReadView.h>

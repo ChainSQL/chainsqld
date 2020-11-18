@@ -508,6 +508,12 @@ STTx::checkSign(RequireFullyCanonicalSig requireCanonicalSig) const
     return ret;
 }
 
+Json::Value
+STTx::getJson() const
+{
+    return getJson(JsonOptions::none);
+}
+
 Json::Value STTx::getJson(JsonOptions) const
 {
     Json::Value ret = STObject::getJson(JsonOptions::none);

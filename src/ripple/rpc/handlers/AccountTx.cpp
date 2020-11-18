@@ -300,8 +300,7 @@ doAccountTxHelp(RPC::Context& context, AccountTxArgs const& args)
             args.limit,
             isUnlimited(context.role));
     }
-    else if(params.isMember (jss::ledger_hash) ||
-            params.isMember (jss::ledger_index))
+    else
     {
         result.transactions = context.netOps.getTxsAccount(
             args.account,

@@ -34,7 +34,7 @@ namespace ripple {
 		auto const d = static_cast<
 			ripesha_hasher::result_type>(rsh);
 		std::string str;
-		str = strHex(d.data(), d.size());
+		str = strHex(d);
 		return str;
 	}
 

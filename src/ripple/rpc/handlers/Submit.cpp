@@ -160,7 +160,7 @@ doSubmit(RPC::JsonContext& context)
             transResultInfo(tpTrans->getResult(), sToken, sHuman);
 
             jvResult[jss::engine_result] = sToken;
-            jvResult[jss::engine_result_code] = tpTrans->getResult();
+            jvResult[jss::engine_result_code] = result.ter;
             jvResult[jss::engine_result_message] = sHuman;
 			if (!result.msg.empty())
 				jvResult[jss::engine_result_message_detail] = result.msg;

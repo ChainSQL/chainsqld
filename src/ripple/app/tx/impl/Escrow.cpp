@@ -587,10 +587,10 @@ EscrowFinish::doApply()
 	}
 
 	// Remove escrow from recipient's owner directory, if present.
-	if (ctx_.view().rules().enabled(fix1523) && (*slep)[~sfDestinationNode])
+	if (auto const optPage = (*slep)[~sfDestinationNode])
 	{
-		auto const page = (*slep)[sfDestinationNode];
-		if (!ctx_.view().dirRemove(keylet::ownerDir(destID), page, k.key, true))
+		if (!ctx_.view().dirRemove(
+			keylet::ownerDir(destID), *optPage, k.key, true))
 		{
 			return tefBAD_LEDGER;
 		}

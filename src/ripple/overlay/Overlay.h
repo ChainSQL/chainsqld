@@ -206,48 +206,6 @@ public:
 		return f();
 	}
 
- //   /** Visit every active peer
- //       The visitor functor must:
- //        - Be callable as:
- //           void operator()(std::shared_ptr<Peer> const& peer);
- //        - Must have the following type alias:
- //           using return_type = void;
-
- //       @param f the functor to call with every peer
- //   */
- //   template <class Function>
- //   std::enable_if_t <
- //       std::is_void <typename Function::return_type>::value,
- //       typename Function::return_type
- //   >
- //   foreach(Function f)
- //   {
- //       for (auto const& p : getActivePeers())
- //           f (p);
- //   }
-
- //   /** Select from active peers
-
- //       Scores all active peers.
- //       Tries to accept the highest scoring peers, up to the requested count,
- //       Returns the number of selected peers accepted.
-
- //       The score function must:
- //       - Be callable as:
- //          bool (PeerImp::ptr)
- //       - Return a true if the peer is prefered
-
- //       The accept function must:
- //       - Be callable as:
- //          bool (PeerImp::ptr)
- //       - Return a true if the peer is accepted
-
- //   */
- //   virtual
- //   std::size_t
- //   selectPeers (PeerSet& set, std::size_t limit, std::function<
- //       bool(std::shared_ptr<Peer> const&)> score) = 0;
-
     /** Increment and retrieve counter for transaction job queue overflows. */
     virtual void incJqTransOverflow() = 0;
     virtual std::uint64_t getJqTransOverflow() const = 0;

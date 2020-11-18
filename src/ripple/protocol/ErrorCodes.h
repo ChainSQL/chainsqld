@@ -90,7 +90,7 @@ enum error_code_i {
     rpcACT_MALFORMED = 35,
     rpcALREADY_MULTISIG = 36,
     rpcALREADY_SINGLE_SIG = 37,
-    // unused                  38,
+    rpcACT_NOT_MATCH_PUBKEY = 38,
     // unused                  39,
     rpcBAD_FEATURE = 40,
     rpcBAD_ISSUER = 41,
