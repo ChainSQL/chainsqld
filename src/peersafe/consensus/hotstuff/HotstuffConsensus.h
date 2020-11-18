@@ -148,9 +148,11 @@ private:
         std::shared_ptr<protocol::TMConsensus> const& m);
 
     void startRoundInternal(
+        NetClock::time_point const& now,
         RCLCxLedger::ID const& prevLgrId,
         RCLCxLedger const& prevLgr,
-        ConsensusMode mode);
+        ConsensusMode mode,
+        bool recover);
 
     void checkCache();
 
@@ -163,10 +165,8 @@ private:
     NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
 
     bool startup_ = false;
-    bool recover_ = false;  // When initialized, recover hotstuff_
     NetClock::time_point startTime_;
     NetClock::time_point now_;
-    NetClock::time_point openTime_;
     NetClock::time_point consensusTime_;
 
     hotstuff::Epoch epoch_ = 0;

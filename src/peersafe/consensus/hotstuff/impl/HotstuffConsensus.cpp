@@ -73,36 +73,12 @@ void HotstuffConsensus::startRound(
 {
     ConsensusMode startMode = proposing ? ConsensusMode::proposing : ConsensusMode::observing;
 
-    startRoundInternal(prevLedgerID, prevLedger, startMode);
+    startRoundInternal(now, prevLedgerID, prevLedger, startMode, !startup_);
 }
 
 void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
 {
     now_ = now;
-
-    if (prevLedgerID_ == zero)
-    {
-        JLOG(j_.warn()) << "timerEntry: Consensus has not begin";
-        return;
-    }
-
-    // Start hotstuff once
-    if (!startup_)
-    {
-        configChanged_ = false;
-
-        hotstuff::EpochState init_epoch_state;
-        init_epoch_state.epoch = epoch_;
-        init_epoch_state.verifier = this;
-
-        startTime_ = now;
-        consensusTime_ = now;
-
-        hotstuff_->start(hotstuff::RecoverData{ previousLedger_.ledger_->info(), init_epoch_state });
-
-        // Startup
-        startup_ = true;
-    }
 
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
@@ -114,12 +90,7 @@ void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
                 newLedger->ledger_->info().seq,
                 newLedger->ledger_->info().parentHash);
 
-            if (waitingForInit())
-            {
-                recover_ = true;
-            }
-
-            startRoundInternal(prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
+            startRoundInternal(now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger, waitingForInit());
         }
         return;
     }
@@ -127,8 +98,7 @@ void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
     if ((now_ - consensusTime_) > (adaptor_.parms().consensusTIMEOUT * adaptor_.parms().timeoutCOUNT_ROLLBACK + adaptor_.parms().initTIME))
     {
         JLOG(j_.error()) << "Consensus network partitioned, do recover";
-        recover_ = true;
-        startRoundInternal(prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger);
+        startRoundInternal(now_, prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger, true);
     }
 }
 
@@ -225,20 +195,11 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
 const bool HotstuffConsensus::canExtract() const
 {
-    long long sinceClose;
+    auto sinceClose = timeSinceLastClose().count();
 
-    if (openTime_ < consensusTime_)
+    if (sinceClose <= 0)
     {
-        sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(now_ - consensusTime_).count();
-    }
-    else
-    {
-        sinceClose = timeSinceLastClose().count();
-
-        if (sinceClose <= 0)
-        {
-            sinceClose = (adaptor_.closeTime() - consensusTime_).count();
-        }
+        sinceClose = (adaptor_.closeTime() - consensusTime_).count();
     }
 
     if (sinceClose >= adaptor_.parms().maxBLOCK_TIME)
@@ -940,13 +901,15 @@ void HotstuffConsensus::peerBlockData(
 }
 
 void HotstuffConsensus::startRoundInternal(
+    NetClock::time_point const& now,
     RCLCxLedger::ID const& prevLgrId,
     RCLCxLedger const& prevLgr,
-    ConsensusMode mode)
+    ConsensusMode mode,
+    bool recover)
 {
     JLOG(j_.info()) << "startRoundInternal";
 
-    openTime_ = now_;
+    now_ = now;
 
     mode_.set(mode, adaptor_);
 
@@ -956,19 +919,26 @@ void HotstuffConsensus::startRoundInternal(
     acquired_.clear();
     curProposalCache_.clear();
 
-    if (recover_)
+    if (recover)
     {
-        JLOG(j_.info()) << "recover hotstuff, used ledger " << previousLedger_.seq();
         if (startup_)
         {
+            JLOG(j_.info()) << "recover hotstuff, used ledger " << previousLedger_.seq();
             hotstuff_->stop();
+        }
+        else
+        {
+            JLOG(j_.info()) << "startup once hotstuff";
+            startup_ = true;
+            startTime_ = now;
+            consensusTime_ = now;
         }
 
         hotstuff::EpochState init_epoch_state;
-        init_epoch_state.epoch = 0;
+        init_epoch_state.epoch = epoch_;
         init_epoch_state.verifier = this;
+
         hotstuff_->start(hotstuff::RecoverData{ previousLedger_.ledger_->info(), init_epoch_state });
-        recover_ = false;
     }
 
     checkCache();
@@ -1031,12 +1001,7 @@ bool HotstuffConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
             newLedger->ledger_->info().seq,
             newLedger->ledger_->info().parentHash);
 
-        if (waitingForInit())
-        {
-            recover_ = true;
-        }
-
-        startRoundInternal(lgrId, *newLedger, ConsensusMode::switchedLedger);
+        startRoundInternal(now_, lgrId, *newLedger, ConsensusMode::switchedLedger, waitingForInit());
 
         return true;
     }
