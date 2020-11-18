@@ -50,6 +50,7 @@ SField const sfProposeSet   (access, STI_PROPOSESET,  257, "ProposeSet");
 SField const sfViewChange   (access, STI_VIEWCHANGE,  257, "ViewChange");
 SField const sfProposal     (access, STI_PROPOSAL,    257, "Proposal");
 SField const sfVote         (access, STI_VOTE,        257, "Vote");
+SField const sfEpochChange  (access, STI_EPOCHCHANGE, 257, "EpochChange");
 SField const sfHash         (access, STI_HASH256,     257, "hash");
 SField const sfIndex        (access, STI_HASH256,     258, "index");
 
@@ -233,7 +234,8 @@ SF_Blob const sfContractTxs     (access, STI_VL, 66, "ContractTxs");
 SF_Blob const sfContractLogs    (access, STI_VL, 67, "ContractLogs");
 SF_Blob const sfBlock           (access, STI_VL, 68, "Block");
 SF_Blob const sfVoteImp         (access, STI_VL, 69, "VoteImp");
-SF_Blob const sfSyncInfo        (access, STI_VL, 70, "SyncInfo");
+SF_Blob const sfEpochChangeImp  (access, STI_VL, 70, "EpochChangeImp");
+SF_Blob const sfSyncInfo        (access, STI_VL, 71, "SyncInfo");
 
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");

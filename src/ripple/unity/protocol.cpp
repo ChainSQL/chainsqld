@@ -69,6 +69,7 @@
 #include <peersafe/protocol/impl/STViewChange.cpp>
 #include <peersafe/protocol/impl/STProposal.cpp>
 #include <peersafe/protocol/impl/STVote.cpp>
+#include <peersafe/protocol/impl/STEpochChange.cpp>
 
 #if DOXYGEN
 #include <ripple/protocol/README.md>

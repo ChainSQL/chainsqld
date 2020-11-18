@@ -54,6 +54,11 @@ HotstuffConsensus::HotstuffConsensus(
         .setNetWork(this)
         .setProposerElection(&adaptor_)
         .build();
+
+    using beast::hash_append;
+    ripple::sha512_half_hasher h;
+    hash_append(h, std::string("EPOCHCHANGE"));
+    epochChangeHash_ = static_cast<typename sha512_half_hasher::result_type>(h);
 }
 
 HotstuffConsensus::~HotstuffConsensus()
@@ -118,6 +123,9 @@ bool HotstuffConsensus::peerConsensusMessage(
             break;
         case ConsensusMessageType::mtVOTE:
             peerVote(peer, isTrusted, m);
+            break;
+        case ConsensusMessageType::mtEPOCHCHANGE:
+            peerEpochChange(peer, isTrusted, m);
             break;
         case ConsensusMessageType::mtACQUIREBLOCK:
             peerAcquireBlock(peer, isTrusted, m);
@@ -230,7 +238,7 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
     {
         JLOG(j_.info()) << "Config changed, temporarily unable to proposal new ledger";
         blockData.getLedgerInfo() = previousLedger_.ledger_->info();
-        return zero;
+        return epochChangeHash_;
     }
 
     auto txSet = adaptor_.onExtractTransactions(previousLedger_, mode_.get());
@@ -302,6 +310,27 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     {
         JLOG(j_.warn()) << "Proposal missing payload";
         return false;
+    }
+
+    // config change
+    if (payload->cmd == epochChangeHash_)
+    {
+        JLOG(j_.warn()) << "leader proposed a config change";
+
+        if (info.hash != previousLedger_.id())
+        {
+            JLOG(j_.warn()) << "previous ledger conflict with proposed ledger";
+            return false;
+        }
+
+        hotstuff::EpochState epoch_state;
+        epoch_state.epoch = block.block_data().epoch;
+        epoch_state.verifier = this;
+
+        result.ledger_info = previousLedger_.ledger_->info();
+        result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
+        result.epoch_state = epoch_state;
+        return true;
     }
 
     // omit empty
@@ -387,7 +416,8 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
             return false;
         }
 
-        if (adaptor_.parms().omitEMPTY && payload->cmd == zero)
+        if ((adaptor_.parms().omitEMPTY && payload->cmd == zero) ||
+            payload->cmd == epochChangeHash_)
         {
             return result.ledger_info.seq == result.parent_ledger_info.seq
                 && result.ledger_info.hash == result.parent_ledger_info.hash;
@@ -620,9 +650,24 @@ void HotstuffConsensus::sendVote(const hotstuff::Author& author, const hotstuff:
     }
 }
 
-void HotstuffConsensus::broadcast(const hotstuff::EpochChange& epoch_change)
+void HotstuffConsensus::broadcast(const hotstuff::EpochChange& epochChange, const hotstuff::SyncInfo& syncInfo)
 {
+    auto stEpochChange = std::make_shared<STEpochChange>(epochChange, syncInfo, adaptor_.valPublic());
 
+    adaptor_.broadcast(*stEpochChange);
+
+    adaptor_.getJobQueue().addJob(
+        jtCONSENSUS_t,
+        "broadcast_epochChange",
+        [this, epochChange, syncInfo](Job&) {
+        ScopedLockType _(this->adaptor_.peekConsensusMutex());
+        if (hotstuff_->checkEpochChange(epochChange, syncInfo))
+        {
+            configChanged_ = false;
+            //epoch_++;
+            startRoundInternal(now_, prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger, true);
+        }
+    });
 }
 
 // -------------------------------------------------------------------
@@ -813,6 +858,47 @@ void HotstuffConsensus::peerVote(
         }
 
         hotstuff_->handleVote(vote->vote(), vote->syncInfo());
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "Vote: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+}
+
+void HotstuffConsensus::peerEpochChange(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.warn()) << "drop UNTRUSTED vote";
+        return;
+    }
+
+    try
+    {
+        STEpochChange::pointer epochChange;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+
+        epochChange = std::make_shared<STEpochChange>(sit, publicKey);
+
+        // Check message public key same with vote public key.
+        if (epochChange->nodePublic() != epochChange->epochChange().author)
+        {
+            JLOG(j_.warn()) << "message public key different with epochChange public key, drop epochChange";
+            return;
+        }
+
+        if (hotstuff_->checkEpochChange(epochChange->epochChange(), epochChange->syncInfo()))
+        {
+            configChanged_ = false;
+            //epoch_++;
+            startRoundInternal(now_, prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger, true);
+        }
     }
     catch (std::exception const& e)
     {

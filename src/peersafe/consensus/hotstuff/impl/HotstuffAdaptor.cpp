@@ -170,6 +170,20 @@ void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     signAndSendMessage(pubKey, consensus);
 }
 
+void HotstuffAdaptor::broadcast(STEpochChange const& epochChange)
+{
+    Blob e = epochChange.getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&e[0], e.size());
+    consensus.set_msgtype(ConsensusMessageType::mtEPOCHCHANGE);
+
+    JLOG(j_.info()) << "broadcast EpochChange";
+
+    signAndSendMessage(consensus);
+}
+
 void HotstuffAdaptor::acquireBlock(PublicKey const& pubKey, uint256 const& hash)
 {
     protocol::TMConsensus consensus;

@@ -49,6 +49,14 @@ HashValue VoteData::hash() const {
 	hash_append(h, parent_.id);
     hash_append(h, proposed_.ledger_info.hash);
     hash_append(h, parent_.ledger_info.hash);
+    if (proposed_.next_epoch_state)
+    {
+        hash_append(h, proposed_.next_epoch_state->epoch);
+    }
+    if (parent_.next_epoch_state)
+    {
+        hash_append(h, parent_.next_epoch_state->epoch);
+    }
 
 	return static_cast<typename	sha512_half_hasher::result_type>(h);
 }

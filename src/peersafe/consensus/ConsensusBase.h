@@ -38,8 +38,9 @@ enum ConsensusMessageType
     mtVIEWCHANGE    = 2,
     mtPROPOSAL      = 3,
     mtVOTE          = 4,
-    mtACQUIREBLOCK  = 5,    // acquire hotstuff block
-    mtBLOCKDATA     = 6     // provide hotstuff block
+    mtEPOCHCHANGE   = 5,
+    mtACQUIREBLOCK  = 6,    // acquire hotstuff block
+    mtBLOCKDATA     = 7     // provide hotstuff block
 };
 
 

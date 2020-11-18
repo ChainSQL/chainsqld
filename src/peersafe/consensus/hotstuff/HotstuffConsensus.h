@@ -24,6 +24,7 @@
 
 #include <peersafe/protocol/STProposal.h>
 #include <peersafe/protocol/STVote.h>
+#include <peersafe/protocol/STEpochChange.h>
 #include <peersafe/consensus/LedgerTiming.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
@@ -119,7 +120,7 @@ public:
     void broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo) override final;
     void broadcast(const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
     void sendVote(const hotstuff::Author& author, const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo) override final;
-    void broadcast(const hotstuff::EpochChange& epoch_change) override final;
+    void broadcast(const hotstuff::EpochChange& epochChange, const hotstuff::SyncInfo& syncInfo) override final;
 
 private:
     bool waitingForInit() const;
@@ -133,6 +134,11 @@ private:
     void peerProposalInternal(STProposal::ref proposal);
 
     void peerVote(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    void peerEpochChange(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
@@ -171,6 +177,7 @@ private:
 
     hotstuff::Epoch epoch_ = 0;
     bool configChanged_ = false;
+    TxSet_t::ID epochChangeHash_;
 
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;

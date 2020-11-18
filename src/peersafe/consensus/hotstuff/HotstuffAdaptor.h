@@ -24,6 +24,7 @@
 
 #include <peersafe/protocol/STProposal.h>
 #include <peersafe/protocol/STVote.h>
+#include <peersafe/protocol/STEpochChange.h>
 #include <peersafe/consensus/Adaptor.h>
 #include <peersafe/consensus/hotstuff/HotstuffConsensusParams.h>
 #include <peersafe/consensus/hotstuff/impl/Types.h>
@@ -92,6 +93,7 @@ public:
     void broadcast(STProposal const& proposal);
     void broadcast(STVote const& vote);
     void sendVote(PublicKey const& pubKey, STVote const& vote);
+    void broadcast(STEpochChange const& epochChange);
     void acquireBlock(PublicKey const& pubKey, uint256 const& hash);
     void sendBLock(std::shared_ptr<PeerImp> peer, hotstuff::ExecutedBlock const& block);
 
