@@ -190,13 +190,6 @@ class NetworkOPsImp final
         using StateCountersJson = std::pair<Json::Value, std::string>;
 
         /**
-         * Json-formatted state accounting data.
-         * 1st member: state accounting object.
-         * 2nd member: duration in current state.
-         */
-        using StateCountersJson = std::pair <Json::Value, std::string>;
-
-        /**
          * Output state counters in JSON format.
          *
          * @return JSON object.

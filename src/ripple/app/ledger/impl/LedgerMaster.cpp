@@ -295,6 +295,7 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 std::chrono::seconds
 LedgerMaster::getValidatedLedgerAge()
 {
+    using namespace std::chrono_literals;
     std::chrono::seconds valClose = std::chrono::seconds(std::max(mValidLedgerSign.load(), mLastConsensusTime.load()));
     if (valClose == 0s)
     {

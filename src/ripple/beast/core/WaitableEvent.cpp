@@ -22,6 +22,7 @@
 //==============================================================================
 
 #include <ripple/beast/core/WaitableEvent.h>
+#include "sys/time.h"
 
 #ifdef WIN32
 

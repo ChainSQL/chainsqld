@@ -326,7 +326,7 @@ namespace ripple {
 			std::string sql = boost::str(boost::format(
 				(R"(UPDATE SyncTableState SET AutoSync = '%s'
                 WHERE Owner = '%s' AND TableName = '%s';)"))
-				% to_string(isAutoSync)
+				% std::to_string(isAutoSync)
 				% owner
 				% tablename);
 

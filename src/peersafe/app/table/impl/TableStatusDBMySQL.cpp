@@ -156,13 +156,13 @@ namespace ripple {
             sql += "','";
             sql += TableNameInDB;
             sql += "','";
-            sql += to_string(LedgerSeq);
+            sql += std::to_string(LedgerSeq);
             sql += "','";
             sql += to_string(LedgerHash);
             sql += "','";
-            sql += to_string(0);
+            sql += std::to_string(0);
             sql += "','";
-            sql += to_string(IsAutoSync? 1 : 0);
+            sql += std::to_string(IsAutoSync? 1 : 0);
             sql += "','";
             sql += TxnLedgerTime;
 			sql += "','";
@@ -532,7 +532,7 @@ namespace ripple {
             std::string sql = boost::str(boost::format(
                 (R"(UPDATE SyncTableState SET deleted = '%s'
                 WHERE Owner = '%s' AND TableNameInDB = '%s';)"))
-                % to_string(bDel ? 1:0)
+                % std::to_string(bDel ? 1:0)
                 % Owner
                 % TableNameInDB);
 
@@ -611,7 +611,7 @@ namespace ripple {
             std::string sql = boost::str(boost::format(
                 (R"(UPDATE SyncTableState SET AutoSync = '%s'
                 WHERE Owner = '%s' AND TableName = '%s';)"))
-                % to_string(isAutoSync ? 1 : 0)
+                % std::to_string(isAutoSync ? 1 : 0)
                 % owner
                 % tablename);
 

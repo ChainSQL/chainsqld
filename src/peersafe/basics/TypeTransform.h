@@ -38,7 +38,12 @@ namespace ripple {
     inline std::uint64_t
     be64toh(uint64_t value)
     {
-        return (_byteswap_uint64(value));
+        
+        #ifdef _MSC_VER
+        return _byteswap_uint64(value);
+        #else
+        return __builtin_bswap64(value);
+        #endif
     }
 
 	inline int64_t fromUint256(uint256 _n)

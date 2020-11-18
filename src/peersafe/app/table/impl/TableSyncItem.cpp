@@ -1035,13 +1035,13 @@ void TableSyncItem::InsertPressData(const STTx& tx, uint32_t ledger_seq, uint32_
 		{
 			LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
 			std::string sql = "INSERT INTO " + pressRealName + " (ledger_seq, submit_time, ledger_time,db_time) VALUES('";
-			sql += to_string(ledger_seq);
+			sql += std::to_string(ledger_seq);
 			sql += "','";
-			sql += to_string(submit_time);
+			sql += std::to_string(submit_time);
 			sql += "','";
-			sql += to_string(ledger_time);
+			sql += std::to_string(ledger_time);
 			sql += "','";
-			sql += to_string(db_time);
+			sql += std::to_string(db_time);
 			sql += "');";
 
 			soci::statement st = (sql_session->prepare << sql);
@@ -1062,7 +1062,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
     {
         std::string LedgerHash = iter->ledgerhash();
         std::string LedgerCheckHash = iter->ledgercheckhash();
-        std::string LedgerSeq = to_string(iter->ledgerseq());
+        std::string LedgerSeq = std::to_string(iter->ledgerseq());
         std::string PreviousCommit;
 
         //check for jump one seq, check for deadline time and deadline seq
@@ -1187,7 +1187,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 		auto ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_,
             LedgerCheckHash, LedgerSeq,
             LedgerHash, LedgerSeq,
-            to_string(uTxDBUpdateHash_), to_string(iter->closetime()), PreviousCommit);
+            to_string(uTxDBUpdateHash_), std::to_string(iter->closetime()), PreviousCommit);
 		if (ret == soci_exception) {
 			SetSyncState(SYNC_STOP);
 		}

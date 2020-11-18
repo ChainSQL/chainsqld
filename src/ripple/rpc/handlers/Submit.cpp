@@ -280,7 +280,7 @@ doSubmitGrpc(
     }
 
     // return preliminary result
-    if (temUNCERTAIN != tpTrans->getResult())
+    if (temUNCERTAIN != tpTrans->getResult().ter)
     {
         RPC::convert(*result.mutable_engine_result(), tpTrans->getResult());
 
@@ -290,7 +290,7 @@ doSubmitGrpc(
         transResultInfo(tpTrans->getResult(), sToken, sHuman);
 
         result.mutable_engine_result()->set_result(sToken);
-        result.set_engine_result_code(TERtoInt(tpTrans->getResult()));
+        result.set_engine_result_code(TERtoInt(tpTrans->getResult().ter));
         result.set_engine_result_message(sHuman);
 
         uint256 hash = tpTrans->getID();

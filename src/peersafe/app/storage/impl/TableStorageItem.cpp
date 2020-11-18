@@ -315,7 +315,7 @@ namespace ripple {
             LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
             TxStoreTransaction &stTran = getTxStoreTrans();
 			if(!bDropped_)
-				getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(txnHash_), to_string(txnLedgerSeq_), to_string(ledgerHash_), to_string(LedgerSeq_), txUpdateHash_.isNonZero()?to_string(txUpdateHash_) : "", to_string(lastTxTm_),"");
+				getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, to_string(txnHash_), std::to_string(txnLedgerSeq_), to_string(ledgerHash_), std::to_string(LedgerSeq_), txUpdateHash_.isNonZero()?to_string(txUpdateHash_) : "", std::to_string(lastTxTm_),"");
             stTran.commit();
         }
 

@@ -1281,7 +1281,7 @@ void TableSync::TableSyncThread()
 							TxnLedgerSeq = 0;
 							TxnLedgerHash = uint256();
 							TxnUpdateHash = uint256();														
-							pItem->DoUpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), to_string(TxnLedgerSeq), to_string(LedgerHash), to_string(LedgerSeq), to_string(TxnUpdateHash),cond, PreviousCommit);
+							pItem->DoUpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), std::to_string(TxnLedgerSeq), to_string(LedgerHash), std::to_string(LedgerSeq), to_string(TxnUpdateHash),cond, PreviousCommit);
 						}
 					}
 					else
@@ -1307,7 +1307,7 @@ void TableSync::TableSyncThread()
 						pItem->SetDeleted(false);
 						auto chainId = TableSyncUtil::GetChainId(app_.getLedgerMaster().getValidatedLedger().get());
                         InsertSnycDB(stItem.sTableName, nameInDB, to_string(stItem.accountID), LedgerSeq, LedgerHash, bAutoSync, "",chainId);
-						app_.getTableStatusDB().UpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), to_string(TxnLedgerSeq), to_string(LedgerHash), to_string(LedgerSeq), "", "", "");
+						app_.getTableStatusDB().UpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), std::to_string(TxnLedgerSeq), to_string(LedgerHash), std::to_string(LedgerSeq), "", "", "");
                     }
 					pItem->SetPara(nameInDB, LedgerSeq, LedgerHash, TxnLedgerSeq, TxnLedgerHash, TxnUpdateHash);
 

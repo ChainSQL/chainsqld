@@ -1035,6 +1035,7 @@ target_link_libraries (chainsqld
   Ripple::libs
   intx
   instructions
+  ${MYSQL_LIBRARIES}
   )
 exclude_if_included (chainsqld)
 # define a macro for tests that might need to

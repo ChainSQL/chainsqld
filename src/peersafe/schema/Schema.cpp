@@ -904,12 +904,12 @@ namespace ripple {
 			start();
 		}
 
-		bool SchemaImp::checkSigs() const
+		bool checkSigs() const
 		{
 			return app_.checkSigs();
 		}
 
-		void SchemaImp::checkSigs(bool check)
+		void checkSigs(bool check)
 		{
 			app_.checkSigs(check);
 		}
