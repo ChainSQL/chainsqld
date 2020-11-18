@@ -303,6 +303,7 @@ target_sources (chainsqld PRIVATE
   src/ripple/crypto/impl/ec_key.cpp
   src/ripple/crypto/impl/openssl.cpp
   src/ripple/crypto/impl/secure_erase.cpp
+  src/ripple/crypto/impl/RandomNumbers.cpp
   #[===============================[
      main sources:
        subdir: app
@@ -674,6 +675,9 @@ target_sources (chainsqld PRIVATE
   src/peersafe/rpc/handlers/TableDump.cpp
   src/peersafe/rpc/handlers/TableHandler.cpp
   src/peersafe/rpc/handlers/TableName.cpp
+  src/peersafe/rpc/handlers/LedgerObjects.cpp
+  src/peersafe/rpc/handlers/MallocTrim.cpp
+  src/peersafe/rpc/handlers/NodeSize.cpp
   src/peersafe/rpc/impl/TableAssistant.cpp
   src/peersafe/rpc/impl/TableUtils.cpp
   src/peersafe/rpc/impl/TxCommonPrepare.cpp
