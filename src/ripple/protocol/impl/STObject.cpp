@@ -27,6 +27,10 @@
 
 namespace ripple {
 
+STObject::STObject()
+{
+}
+
 STObject::STObject(STObject&& other)
     : STBase(other.getFName()), v_(std::move(other.v_)), mType(other.mType)
 {
@@ -719,6 +723,11 @@ void
 STObject::setFieldArray(SField const& field, STArray const& v)
 {
     setFieldUsingAssignment(field, v);
+}
+
+void STObject::setFieldObject(SField const& field, STObject const& v)
+{
+	setFieldUsingAssignment(field, v);
 }
 
 Json::Value

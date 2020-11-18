@@ -28,7 +28,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/nodestore/Database.h>
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <beast/include/beast/core/string.hpp>
 
 namespace ripple {
 
@@ -38,7 +37,7 @@ namespace ripple {
         {
             Json::Value ret(Json::objectValue);
 
-            ret[jss::node_size] = context.app.config().NODE_SIZE;
+            ret[jss::node_size] = (unsigned int)context.app.config().NODE_SIZE;
 
             switch (context.app.config().NODE_SIZE)
             {
@@ -61,15 +60,15 @@ namespace ripple {
 
         auto node_size = context.params[jss::node_size].asString();
 
-        if (beast::detail::iequals(node_size, "tiny"))
+        if (boost::iequals(node_size, "tiny"))
             context.app.config().NODE_SIZE = 0;
-        else if (beast::detail::iequals(node_size, "small"))
+        else if (boost::iequals(node_size, "small"))
             context.app.config().NODE_SIZE = 1;
-        else if (beast::detail::iequals(node_size, "medium"))
+        else if (boost::iequals(node_size, "medium"))
             context.app.config().NODE_SIZE = 2;
-        else if (beast::detail::iequals(node_size, "large"))
+        else if (boost::iequals(node_size, "large"))
             context.app.config().NODE_SIZE = 3;
-        else if (beast::detail::iequals(node_size, "huge"))
+        else if (boost::iequals(node_size, "huge"))
             context.app.config().NODE_SIZE = 4;
         else
         {
@@ -81,10 +80,10 @@ namespace ripple {
                 context.app.config().NODE_SIZE = 4;
         }
 
-        context.app.getNodeStore().tune(context.app.config().getSize(siNodeCacheSize), std::chrono::seconds(context.app.config().getSize(siNodeCacheAge)));
-        context.app.getLedgerMaster().tune(context.app.config().getSize(siLedgerSize), std::chrono::seconds(context.app.config().getSize(siLedgerAge)));
-        context.app.family().treecache().setTargetSize(context.app.config().getSize(siTreeCacheSize));
-        context.app.family().treecache().setTargetAge(std::chrono::seconds(context.app.config().getSize(siTreeCacheAge)));
+        //context.app.getNodeStore().tune(context.app.config().getSize(SizedItem::nodeCacheSize), std::chrono::seconds(context.app.config().getSize(SizedItem::nodeCacheAge)));
+        //context.app.getLedgerMaster().tune(context.app.config().getSize(SizedItem::ledgerSize), std::chrono::seconds(context.app.config().getSize(SizedItem::ledgerAge)));
+        //context.app.getNodeFamily().treecache().setTargetSize(context.app.config().getSize(SizedItem::treeCacheSize));
+        //context.app.getNodeFamily().treecache().setTargetAge(std::chrono::seconds(context.app.config().getSize(SizedItem::treeCacheAge)));
         
         return Json::objectValue;
     }

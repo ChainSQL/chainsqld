@@ -19,6 +19,7 @@
 
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/jss.h>
+#include <ripple/beast/unit_test.h>
 #include <test/jtx.h>
 
 namespace ripple {

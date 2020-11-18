@@ -132,7 +132,7 @@ namespace ripple {
 
 	uint160 generateNameInDB(uint32_t ledgerSeq, AccountID account, std::string sTableName)
 	{
-		std::string tmp = to_string(ledgerSeq) + to_string(account) + sTableName;
+		std::string tmp = std::to_string(ledgerSeq) + to_string(account) + sTableName;
 		std::string str = hash(tmp);
 		return from_hex_text<uint160>(str);
 	}

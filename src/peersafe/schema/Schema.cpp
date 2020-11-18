@@ -1022,7 +1022,7 @@ namespace ripple {
 				supportedAmendments,
 				enabledAmendments,
 				config_->section(SECTION_VETO_AMENDMENTS),
-				Schema::logs().journal("Amendments"));
+				SchemaImp::journal("Amendments"));
 		}
 
 		Pathfinder::initPathTable();

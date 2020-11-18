@@ -309,7 +309,8 @@ SField const sfValidators      (access, STI_ARRAY, 53, "Validators");
 SField const sfPeerList        (access, STI_ARRAY, 54, "PeerList");
 
 // array of objects (uncommon)
-SField const sfMajorities      (access, STI_ARRAY, 16, "Majorities");
+SField const sfMajorities(access, STI_ARRAY, 16, "Majorities");
+SField const sfDisabledValidators(access, STI_ARRAY, 17, "DisabledValidators");
 
 SField::SField(private_access_tag_t,
     SerializedTypeID tid, int fv, const char* fn, int meta,
