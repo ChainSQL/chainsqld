@@ -41,7 +41,7 @@ else()
 
   ExternalProject_Add (soci
     PREFIX ${nih_cache_path}
-    GIT_REPOSITORY https://github.com/ChainSQL/soci.git
+    GIT_REPOSITORY git@github.com:ChainSQL/soci.git
     GIT_TAG chainsql
     # We had an issue with soci integer range checking for boost::optional
     # and needed to remove the exception that SOCI throws in this case.
@@ -91,6 +91,7 @@ else()
       -DSOCI_ORACLE=OFF
       -DSOCI_POSTGRESQL=OFF
       -DSOCI_SQLITE3=ON
+      -DMYSQL_DIR=$ENV{MYSQL_DIR}
       -DSQLITE3_INCLUDE_DIR=$<JOIN:$<TARGET_PROPERTY:sqlite,INTERFACE_INCLUDE_DIRECTORIES>,::>
       -DSQLITE3_LIBRARY=$<IF:$<CONFIG:Debug>,$<TARGET_PROPERTY:sqlite,IMPORTED_LOCATION_DEBUG>,$<TARGET_PROPERTY:sqlite,IMPORTED_LOCATION_RELEASE>>
       $<$<BOOL:${APPLE}>:-DCMAKE_FIND_FRAMEWORK=LAST>
