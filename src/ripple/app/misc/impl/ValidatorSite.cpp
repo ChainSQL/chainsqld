@@ -660,11 +660,12 @@ namespace ripple {
 
         if (ret == ListDisposition::accepted)
         {
-            TrustChanges const changes = validators_.updateTrusted(
-                app_.getValidations().getCurrentNodeIDs());
-
-            if (!changes.added.empty() || !changes.removed.empty())
-                app_.getValidations().trustChanged(changes.added, changes.removed);
+            //begin consensus after apply success
+            if (waitingBeginConsensus_)
+            {
+                app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+                waitingBeginConsensus_ = false;
+            }
         }
 
         return ret;

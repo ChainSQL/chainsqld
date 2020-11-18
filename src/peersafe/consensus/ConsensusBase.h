@@ -85,7 +85,7 @@ public:
 	virtual void startRound(
 		NetClock::time_point const& now,
 		typename Ledger_t::ID const& prevLedgerID,
-		Ledger_t prevLedger, 
+		Ledger_t prevLedger,
 		hash_set<NodeID> const& nowUntrusted,
 		bool proposing) = 0;
 

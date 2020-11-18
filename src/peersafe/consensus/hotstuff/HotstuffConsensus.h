@@ -169,13 +169,13 @@ private:
     NetClock::time_point openTime_;
     NetClock::time_point consensusTime_;
 
+    hotstuff::Epoch epoch_ = 0;
+    bool configChanged_ = false;
+
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
     std::map<typename TxSet_t::ID, std::map<PublicKey, STProposal::pointer>> curProposalCache_;
     std::map<std::uint32_t, std::map<PublicKey, STProposal::pointer>> nextProposalCache_;
-
-    // For acquire hotstuff block synchronize. it's deprecated!
-    std::weak_ptr<std::promise<hotstuff::ExecutedBlock>> weakBlockPromise_;
 
     // For acquire hotstuff block asynchronize
     TaggedCache<uint256, std::vector<hotstuff::StateCompute::AsyncCompletedHander>> blockAcquiring_;

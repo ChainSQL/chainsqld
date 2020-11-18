@@ -334,7 +334,7 @@ ValidatorList::applyList (
 		}
 	}
 
-	resetValidators();
+	//resetValidators();
 
     return ListDisposition::accepted;
 }
@@ -771,6 +771,11 @@ ValidatorList::updateTrusted(hash_set<NodeID> const& seenValidators)
             "New quorum of " << quorum_ <<
             " exceeds the number of trusted validators (" <<
             trustedKeys_.size() << ")";
+    }
+
+    if (trustChanges.added.size() || trustChanges.removed.size())
+    {
+        resetValidators();
     }
 
     return trustChanges;

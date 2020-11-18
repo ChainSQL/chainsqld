@@ -80,10 +80,19 @@ void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
 {
     now_ = now;
 
+    if (prevLedgerID_ == zero)
+    {
+        JLOG(j_.warn()) << "timerEntry: Consensus has not begin";
+        return;
+    }
+
+    // Start hotstuff once
     if (!startup_)
     {
+        configChanged_ = false;
+
         hotstuff::EpochState init_epoch_state;
-        init_epoch_state.epoch = 0;
+        init_epoch_state.epoch = epoch_;
         init_epoch_state.verifier = this;
 
         startTime_ = now;
@@ -256,6 +265,13 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
         return boost::none;
     }
 
+    if (configChanged_)
+    {
+        JLOG(j_.info()) << "Config changed, temporarily unable to proposal new ledger";
+        blockData.getLedgerInfo() = previousLedger_.ledger_->info();
+        return zero;
+    }
+
     auto txSet = adaptor_.onExtractTransactions(previousLedger_, mode_.get());
 
     uint256 cmd = txSet->getHash().as_uint256();
@@ -327,13 +343,6 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         return false;
     }
 
-    auto const ait = acquired_.find(payload->cmd);
-    if (ait == acquired_.end())
-    {
-        JLOG(j_.warn()) << "txSet " << payload->cmd << " not acquired";
-        return false;
-    }
-
     // omit empty
     if (adaptor_.parms().omitEMPTY && payload->cmd == zero)
     {
@@ -351,6 +360,13 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     }
 
     //--------------------------------------------------------------------
+    auto const ait = acquired_.find(payload->cmd);
+    if (ait == acquired_.end())
+    {
+        JLOG(j_.warn()) << "txSet " << payload->cmd << " not acquired";
+        return false;
+    }
+
     std::set<TxID> failed;
 
     // Put transactions into a deterministic, but unpredictable, order
@@ -479,42 +495,7 @@ bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
 /* deprecated */
 bool HotstuffConsensus::syncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::ExecutedBlock& executedBlock)
 {
-    // New promise
-    std::shared_ptr<std::promise<hotstuff::ExecutedBlock>> promise = std::make_shared<std::promise<hotstuff::ExecutedBlock>>();
-
-    weakBlockPromise_ = promise;
-
-    // Send acquire block message
-    adaptor_.acquireBlock(author, blockID);
-
-    std::future<hotstuff::ExecutedBlock> future = promise->get_future();
-
-    if (future.wait_for(std::min(std::chrono::seconds{3}, adaptor_.parms().consensusTIMEOUT / 3)) != std::future_status::ready)
-    {
-        JLOG(j_.warn()) << "acquire block " << blockID << " failed";
-        return false;
-    }
-
-    // Get block and have a check
-    hotstuff::ExecutedBlock const& block = future.get();
-
-    if (block.block.id() != blockID)
-    {
-        JLOG(j_.warn()) << "acquired block " << blockID << " , but got " << block.block.id();
-        return false;
-    }
-
-    if (!verify(block.block, block.state_compute_result))
-    {
-        JLOG(j_.warn()) << "acquired block " << blockID << " , but verify failed";
-        return false;
-    }
-
-    JLOG(j_.info()) << "acquired block " << blockID << " success";
-
-    executedBlock = block;
-
-    return true;
+    return false;
 }
 
 void HotstuffConsensus::asyncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler)

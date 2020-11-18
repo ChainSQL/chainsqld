@@ -114,6 +114,9 @@ public:
     inline PublicKey getMasterKey(PublicKey pk) const { return app_.validatorManifests().getMasterKey(pk); }
     inline boost::optional<PublicKey> getTrustedKey(PublicKey const& identity) const { return app_.validators().getTrustedKey(identity); }
     inline bool trusted(PublicKey const& identity) const { return app_.validators().trusted(identity); }
+    inline int getPubIndex(PublicKey const& publicKey) { return app_.validators().getPubIndex(publicKey); }
+    inline int getPubIndex() { return getPubIndex(valPublic_); }
+    inline int getPubIndex(boost::optional<PublicKey> const& publicKey) { return publicKey ? getPubIndex(*publicKey) : 0; }
 
     inline Config& getAppConfig() { return app_.config(); }
 
@@ -168,10 +171,6 @@ public:
     {
         return app_.config().standalone() ? 0 : app_.validators().quorum();
     }
-
-    int getPubIndex(PublicKey const& publicKey);
-    int getPubIndex();
-    int getPubIndex(boost::optional<PublicKey> const& publicKey);
 
     /** Called before kicking off a new consensus round.
 
