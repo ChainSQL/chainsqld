@@ -58,8 +58,8 @@ TableSyncItem::TableSyncItem(Schema& app, beast::Journal journal, Config& cfg, S
     ,journal_(journal)
     ,cfg_(cfg)
 	,eSyncTargetType_(eTargetType)
-    ,operateSqlEvent(true,true)
-    ,readDataEvent(true, true)
+    //,operateSqlEvent(true,true)
+    //,readDataEvent(true, true)
 {   
     eState_               = SYNC_INIT;
     bOperateSQL_          = false;
@@ -675,7 +675,7 @@ void TableSyncItem::TryOperateSQL()
 
     bOperateSQL_ = true;
 
-    operateSqlEvent.reset();
+    //operateSqlEvent.reset();
     app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread(); });
 }
 
@@ -1223,7 +1223,7 @@ void TableSyncItem::OperateSQLThread()
 	DealWithEveryLedgerData(vec_tmdata);
 
     bOperateSQL_ = false;
-    operateSqlEvent.signal();
+    //operateSqlEvent.signal();
 
     {
         std::lock_guard lock(mutexWholeData_);
@@ -1231,7 +1231,7 @@ void TableSyncItem::OperateSQLThread()
         {
             bOperateSQL_ = true;
 
-			readDataEvent.reset();
+			//readDataEvent.reset();
             app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread();
             });
         }
@@ -1343,11 +1343,11 @@ void TableSyncItem::SetPeer(std::shared_ptr<Peer> peer)
 
 void TableSyncItem::StartLocalLedgerRead()
 {
-    readDataEvent.reset();
+    //readDataEvent.reset();
 }
 void TableSyncItem::StopLocalLedgerRead()
 {
-    readDataEvent.signal();
+    //readDataEvent.signal();
 }
 
 bool TableSyncItem::StopSync()
@@ -1355,14 +1355,14 @@ bool TableSyncItem::StopSync()
     SetSyncState(SYNC_STOP);
 
     bool bRet = false;
-    bRet = readDataEvent.wait(1000);
+    //bRet = readDataEvent.wait(1000);
     if (!bRet)
     {
         SetSyncState(SYNC_BLOCK_STOP);
         return false;        
     }
 
-    bRet = operateSqlEvent.wait(2000);
+    //bRet = operateSqlEvent.wait(2000);
     if (!bRet)
     {
         SetSyncState(SYNC_BLOCK_STOP);
@@ -1377,7 +1377,7 @@ bool TableSyncItem::StopSync()
     if (iSize > 0)
     {
         TryOperateSQL();
-        bRet = operateSqlEvent.wait(2000);
+        //bRet = operateSqlEvent.wait(2000);
         if (!bRet)
         {
             SetSyncState(SYNC_BLOCK_STOP);

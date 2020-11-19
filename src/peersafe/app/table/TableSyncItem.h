@@ -23,7 +23,6 @@
 #include <ripple/beast/utility/PropertyStream.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/beast/clock/abstract_clock.h>
-#include <ripple/beast/core/WaitableEvent.h>
 #include <ripple/protocol/AccountID.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/overlay/Peer.h>
@@ -343,8 +342,8 @@ private:
 
 	SyncTargetType                                               eSyncTargetType_;
     
-    beast::WaitableEvent                                         operateSqlEvent;
-    beast::WaitableEvent                                         readDataEvent;
+    //beast::WaitableEvent                                         operateSqlEvent;
+    //beast::WaitableEvent                                         readDataEvent;
 };
 
 }

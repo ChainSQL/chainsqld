@@ -376,8 +376,13 @@ public:
     Config&
     config(SchemaID const& id) override
     {
-        assert(m_schemaManager->contains(id));
-        return m_schemaManager->getSchema(id)->config();
+		if (id == beast::zero)
+			return *config_;
+		else
+		{
+            assert(m_schemaManager->contains(id));
+            return m_schemaManager->getSchema(id)->config();
+		}
     }
 
     CollectorManager&
