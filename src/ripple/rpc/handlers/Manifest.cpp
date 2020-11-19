@@ -23,6 +23,8 @@
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
+#include <peersafe/schema/Schema.h>
+#include <ripple/app/misc/Manifest.h>
 
 namespace ripple {
 Json::Value

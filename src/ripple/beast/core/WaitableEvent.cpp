@@ -22,7 +22,6 @@
 //==============================================================================
 
 #include <ripple/beast/core/WaitableEvent.h>
-#include "sys/time.h"
 
 #ifdef WIN32
 
@@ -71,7 +70,7 @@ bool WaitableEvent::wait (const int timeOutMs) const
 }
 
 #else
-
+#include "sys/time.h"
 namespace beast {
 
 WaitableEvent::WaitableEvent (const bool useManualReset, bool initiallySignaled)

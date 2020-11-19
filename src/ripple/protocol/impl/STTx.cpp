@@ -33,6 +33,7 @@
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/jss.h>
+#include <ripple/protocol/STParsedJSON.h>
 #include <boost/format.hpp>
 #include <array>
 #include <memory>

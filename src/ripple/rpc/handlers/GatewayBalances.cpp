@@ -24,6 +24,7 @@
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/resource/Fees.h>
 
 namespace ripple {
 
