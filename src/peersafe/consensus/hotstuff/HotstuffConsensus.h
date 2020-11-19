@@ -178,6 +178,7 @@ private:
     bool startup_ = false;
     NetClock::time_point startTime_;
     NetClock::time_point now_;
+    NetClock::time_point openTime_;
     NetClock::time_point consensusTime_;
 
     hotstuff::Epoch epoch_ = 0;

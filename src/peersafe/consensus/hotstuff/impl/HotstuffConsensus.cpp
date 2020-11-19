@@ -206,11 +206,21 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
 const bool HotstuffConsensus::canExtract() const
 {
-    auto sinceClose = timeSinceLastClose().count();
+    long long sinceClose;
 
-    if (sinceClose <= 0)
+    if (openTime_ < consensusTime_)
     {
-        sinceClose = (adaptor_.closeTime() - consensusTime_).count();
+        // Case omit empty block, last close time maybe very big
+        sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(now_ - consensusTime_).count();
+    }
+    else
+    {
+        sinceClose = timeSinceLastClose().count();
+
+        if (sinceClose <= 0)
+        {
+            sinceClose = (adaptor_.closeTime() - consensusTime_).count();
+        }
     }
 
     if (sinceClose >= adaptor_.parms().maxBLOCK_TIME)
@@ -1052,6 +1062,7 @@ void HotstuffConsensus::startRoundInternal(
     JLOG(j_.info()) << "startRoundInternal";
 
     now_ = now;
+    openTime_ = now;
 
     mode_.set(mode, adaptor_);
 
