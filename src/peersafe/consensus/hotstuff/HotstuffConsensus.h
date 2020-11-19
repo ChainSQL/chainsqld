@@ -138,17 +138,22 @@ private:
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
 
-    void peerEpochChange(
-        std::shared_ptr<PeerImp>& peer,
-        bool isTrusted,
-        std::shared_ptr<protocol::TMConsensus> const& m);
-
     void peerAcquireBlock(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
 
     void peerBlockData(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    void peerEpochChange(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    void peerValidation(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);

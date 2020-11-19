@@ -82,6 +82,9 @@ protected:
 
     LocalTxs&                   localTxs_;
 
+    // The timestamp of the last validation we used
+    NetClock::time_point lastValidationTime_;
+
 public:
     Adaptor(
         Application& app,

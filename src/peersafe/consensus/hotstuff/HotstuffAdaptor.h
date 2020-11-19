@@ -99,8 +99,12 @@ public:
 
     bool doAccept(typename Ledger_t::ID const& lgrId);
 
-private:
+    void peerValidation(std::shared_ptr<PeerImp>& peer, STValidation::ref val);
 
+private:
+    void validate(std::shared_ptr<Ledger const> ledger);
+
+    void handleNewValidation(STValidation::ref val, std::string const& source);
 };
 
 

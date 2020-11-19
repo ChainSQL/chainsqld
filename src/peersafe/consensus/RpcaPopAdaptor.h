@@ -31,10 +31,6 @@ namespace ripple {
 class RpcaPopAdaptor : public Adaptor
 {
 public:
-    // The timestamp of the last validation we used
-    NetClock::time_point lastValidationTime_;
-
-public:
     RpcaPopAdaptor(
         Application& app,
         std::unique_ptr<FeeVote>&& feeVote,

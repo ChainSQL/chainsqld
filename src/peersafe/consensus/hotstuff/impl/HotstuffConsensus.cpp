@@ -124,14 +124,17 @@ bool HotstuffConsensus::peerConsensusMessage(
         case ConsensusMessageType::mtVOTE:
             peerVote(peer, isTrusted, m);
             break;
-        case ConsensusMessageType::mtEPOCHCHANGE:
-            peerEpochChange(peer, isTrusted, m);
-            break;
         case ConsensusMessageType::mtACQUIREBLOCK:
             peerAcquireBlock(peer, isTrusted, m);
             break;
         case ConsensusMessageType::mtBLOCKDATA:
             peerBlockData(peer, isTrusted, m);
+            break;
+        case ConsensusMessageType::mtEPOCHCHANGE:
+            peerEpochChange(peer, isTrusted, m);
+            break;
+        case ConsensusMessageType::mtVALIDATION:
+            peerValidation(peer, isTrusted, m);
             break;
         default:
             break;
@@ -866,47 +869,6 @@ void HotstuffConsensus::peerVote(
     }
 }
 
-void HotstuffConsensus::peerEpochChange(
-    std::shared_ptr<PeerImp>& peer,
-    bool isTrusted,
-    std::shared_ptr<protocol::TMConsensus> const& m)
-{
-    if (!isTrusted)
-    {
-        JLOG(j_.warn()) << "drop UNTRUSTED vote";
-        return;
-    }
-
-    try
-    {
-        STEpochChange::pointer epochChange;
-
-        SerialIter sit(makeSlice(m->msg()));
-        PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
-
-        epochChange = std::make_shared<STEpochChange>(sit, publicKey);
-
-        // Check message public key same with vote public key.
-        if (epochChange->nodePublic() != epochChange->epochChange().author)
-        {
-            JLOG(j_.warn()) << "message public key different with epochChange public key, drop epochChange";
-            return;
-        }
-
-        if (hotstuff_->checkEpochChange(epochChange->epochChange(), epochChange->syncInfo()))
-        {
-            configChanged_ = false;
-            //epoch_++;
-            startRoundInternal(now_, prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger, true);
-        }
-    }
-    catch (std::exception const& e)
-    {
-        JLOG(j_.warn()) << "Vote: Exception, " << e.what();
-        peer->charge(Resource::feeInvalidRequest);
-    }
-}
-
 void HotstuffConsensus::peerAcquireBlock(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
@@ -984,6 +946,100 @@ void HotstuffConsensus::peerBlockData(
         JLOG(j_.warn()) << "BlockData: Exception, " << e.what();
         peer->charge(Resource::feeInvalidRequest);
     }
+}
+
+void HotstuffConsensus::peerEpochChange(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.warn()) << "drop UNTRUSTED vote";
+        return;
+    }
+
+    try
+    {
+        STEpochChange::pointer epochChange;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+
+        epochChange = std::make_shared<STEpochChange>(sit, publicKey);
+
+        // Check message public key same with vote public key.
+        if (epochChange->nodePublic() != epochChange->epochChange().author)
+        {
+            JLOG(j_.warn()) << "message public key different with epochChange public key, drop epochChange";
+            return;
+        }
+
+        if (hotstuff_->checkEpochChange(epochChange->epochChange(), epochChange->syncInfo()))
+        {
+            configChanged_ = false;
+            //epoch_++;
+            startRoundInternal(now_, prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger, true);
+        }
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "Vote: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+}
+
+void HotstuffConsensus::peerValidation(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.warn()) << "drop UNTRUSTED validattion";
+        return;
+    }
+
+    if (m->msg().size() < 50)
+    {
+        JLOG(j_.warn()) << "Validation: Too small";
+        peer->charge(Resource::feeInvalidRequest);
+        return;
+    }
+
+    try
+    {
+        STValidation::pointer val;
+        {
+            SerialIter sit(makeSlice(m->msg()));
+            PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+            val = std::make_shared<STValidation>(
+                std::ref(sit),
+                publicKey,
+                [&](PublicKey const& pk) {
+                return calcNodeID(adaptor_.getMasterKey(pk));
+            });
+
+            if (((val->getFieldU32(sfLedgerSequence) + 1) % 256) != 0)
+            {
+                JLOG(j_.warn()) << "Validation: Not a flag ledger";
+                peer->charge(Resource::feeInvalidRequest);
+                return;
+            }
+
+            val->setSeen(adaptor_.closeTime());
+            val->setTrusted();
+        }
+
+        adaptor_.peerValidation(peer, val);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "Validation: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return;
 }
 
 void HotstuffConsensus::startRoundInternal(
