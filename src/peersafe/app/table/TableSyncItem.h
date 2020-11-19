@@ -282,6 +282,7 @@ private:
 
 	void InsertPressData(const STTx& tx, uint32_t ledgerSeq,uint32_t ledgerTime);
 	virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);
+    bool WaitChildThread(std::condition_variable &cv, bool &bCheck, bool bForce);
 public:
     LedgerIndex                                                  u32SeqLedger_;  //seq of ledger, last syned ledger seq 
     LedgerIndex                                                  uTxSeq_;

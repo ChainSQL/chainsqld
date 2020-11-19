@@ -46,8 +46,9 @@
 #include <peersafe/schema/PeerManagerImp.h>
 #include <peersafe/schema/SchemaManager.h>
 #include <boost/algorithm/clamp.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/beast/core/ostream.hpp>
 #include <algorithm>
 #include <memory>
 #include <numeric>

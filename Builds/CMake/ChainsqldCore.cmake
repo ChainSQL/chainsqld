@@ -1036,6 +1036,11 @@ target_link_libraries (chainsqld
   instructions
   ${MYSQL_LIBRARIES}
   )
+  
+if (APPLE)
+  target_link_libraries(chainsqld iconv)
+endif ()
+
 exclude_if_included (chainsqld)
 # define a macro for tests that might need to
 # be exluded or run differently in CI environment
