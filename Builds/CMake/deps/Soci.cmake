@@ -43,6 +43,7 @@ else()
     PREFIX ${nih_cache_path}
     GIT_REPOSITORY git@github.com:ChainSQL/soci.git
     GIT_TAG chainsql
+    GIT_SHALLOW ON
     # We had an issue with soci integer range checking for boost::optional
     # and needed to remove the exception that SOCI throws in this case.
     # This is *probably* a bug in SOCI, but has never been investigated more
@@ -52,6 +53,8 @@ else()
     # whenever we update the GIT_TAG above.
     PATCH_COMMAND
       ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake/soci_patch.cmake
+    UPDATE_COMMAND
+      ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake/soci_update.cmake
     CMAKE_ARGS
       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
