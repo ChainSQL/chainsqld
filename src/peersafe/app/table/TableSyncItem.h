@@ -175,9 +175,7 @@ public:
     void UpdateLedgerTm();
     void UpdateDataTm();
 
-    void StartLocalLedgerRead();
-    void StopLocalLedgerRead();
-    bool StopSync();
+    bool StopSync(bool bForce=false);
 
     AccountID                GetAccount();
     std::string              GetTableName();    
@@ -273,6 +271,7 @@ private:
     void PushDataByOrder(std::list <sqldata_type> &aData, sqldata_type &sqlData);
 
     void ReSetContex();
+    int GetWholeDataSize();
     
     TableStatusDB& getTableStatusDB();
 
@@ -341,9 +340,10 @@ private:
     cond                                                         sCond_;    
 
 	SyncTargetType                                               eSyncTargetType_;
-    
-    //beast::WaitableEvent                                         operateSqlEvent;
-    //beast::WaitableEvent                                         readDataEvent;
+
+    std::mutex                                                   mutexWaitStop_;
+    std::condition_variable                                      cvReadData_;
+    std::condition_variable                                      cvOperateSql_;
 };
 
 }

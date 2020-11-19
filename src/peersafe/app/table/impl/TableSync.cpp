@@ -1497,9 +1497,7 @@ void TableSync::LocalSyncThread()
         if (stItem.eState == TableSyncItem::SYNC_WAIT_LOCAL_ACQUIRE)
         {           
             pItem->SetSyncState(TableSyncItem::SYNC_LOCAL_ACQUIRING);
-            pItem->StartLocalLedgerRead();
             SeekTableTxLedger(stItem,cache);
-            pItem->StopLocalLedgerRead();
         }
     }  
 	bLocalSyncThread_ = false;
