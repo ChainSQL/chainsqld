@@ -235,6 +235,7 @@ namespace ripple {
 			std::shared_ptr<ReadView const> const& lpCurrent,
 			std::shared_ptr<STTx const> const& stTxn, TER terResult) = 0;
 		virtual void pubValidation(STValidation::ref val) = 0;
+		virtual void pubViewChange(uint32_t ledgerSeq,uint64_t view) = 0;
 
 		//publish results for chain-sql txs
 		virtual void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,

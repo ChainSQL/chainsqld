@@ -131,6 +131,10 @@ Json::Value doSubscribe (RPC::Context& context)
             {
                 context.netOps.subLedger (ispSub, jvResult);
             }
+			else if (streamName == "view_change")
+			{
+				context.netOps.subViewChange(ispSub);
+			}
             else if (streamName == "manifests")
             {
                 context.netOps.subManifests (ispSub);

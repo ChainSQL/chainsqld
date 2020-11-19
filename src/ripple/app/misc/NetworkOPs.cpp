@@ -452,6 +452,7 @@ public:
         std::shared_ptr<STTx const> const& stTxn, TER terResult) override;
     void pubValidation (
         STValidation::ref val) override;
+	void pubViewChange(uint32_t ledgerSeq, uint64_t view);
 
 	std::string getServerStatus();
 
@@ -491,6 +492,9 @@ public:
 
     bool subLedger (InfoSub::ref ispListener, Json::Value& jvResult) override;
     bool unsubLedger (std::uint64_t uListener) override;
+
+	virtual bool subViewChange(InfoSub::ref ispListener) override;
+	virtual bool unsubViewChange(std::uint64_t uListener) override;
 
 	//for all txs which changes the table
 	virtual void subTable(InfoSub::ref ispListener, AccountID const& accountID, std::string const& sTableName) override;
@@ -663,8 +667,9 @@ private:
 		 sValidations,               // Received validations.
 		 sPeerStatus,                // Peer status changes.
 		 sLogs,
+		 sViewChange,				 // ViewChange
 
-		 sLastEntry = sLogs			// as this name implies, any new entry must
+		 sLastEntry = sViewChange			// as this name implies, any new entry must
                                     // be ADDED ABOVE this one
     };
     std::array<SubMapType, SubTypes::sLastEntry+1> mStreamMaps;
@@ -2055,6 +2060,34 @@ void NetworkOPsImp::pubValidation (STValidation::ref val)
             }
         }
     }
+}
+
+void NetworkOPsImp::pubViewChange(uint32_t ledgerSeq, uint64_t view)
+{
+	ScopedLockType sl(mSubLock);
+
+	if (!mStreamMaps[sViewChange].empty())
+	{
+		Json::Value jvObj(Json::objectValue);
+
+		jvObj[jss::type] = "viewChange";
+		jvObj[jss::ledger_index] = ledgerSeq;
+		jvObj[jss::view] = (uint32_t)view;
+
+		for (auto i = mStreamMaps[sViewChange].begin();
+			i != mStreamMaps[sViewChange].end(); )
+		{
+			if (auto p = i->second.lock())
+			{
+				p->send(jvObj, true);
+				++i;
+			}
+			else
+			{
+				i = mStreamMaps[sViewChange].erase(i);
+			}
+		}
+	}
 }
 
 void NetworkOPsImp::pubPeerStatus (
@@ -3448,6 +3481,20 @@ bool NetworkOPsImp::unsubLedger (std::uint64_t uSeq)
 {
 	ScopedLockType sl(mSubLock);
 	return mStreamMaps[sLedger].erase(uSeq);
+}
+
+
+bool NetworkOPsImp::subViewChange(InfoSub::ref ispListener)
+{
+	ScopedLockType sl(mSubLock);
+	return mStreamMaps[sViewChange].emplace(
+		ispListener->getSeq(), ispListener).second;
+}
+
+bool NetworkOPsImp::unsubViewChange(std::uint64_t uSeq)
+{
+	ScopedLockType sl(mSubLock);
+	return mStreamMaps[sViewChange].erase(uSeq);
 }
 
 //for all txs which changes the table

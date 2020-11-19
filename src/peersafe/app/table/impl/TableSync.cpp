@@ -1377,7 +1377,8 @@ void TableSync::TableSyncThread()
 					break;
 				}
 			}            
-        }        
+			break;
+		}        
         case TableSyncItem::SYNC_BLOCK_STOP:
             if (app_.getLedgerMaster().haveLedger(stItem.u32SeqLedger+1) || app_.getLedgerMaster().lastCompleteIndex() <= stItem.u32SeqLedger + 1)
             {

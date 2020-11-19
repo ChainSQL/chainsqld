@@ -338,7 +338,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 	std::vector<STTx> vec;
 	if (tx.getTxnType() == ttSQLTRANSACTION)
 	{
-	        Blob publicKey = tx.getFieldVL(sfSigningPubKey);	
+		Blob publicKey = tx.getFieldVL(sfSigningPubKey);
 		Blob txs_blob = tx.getFieldVL(sfStatements);
 		std::string txs_str;
 
