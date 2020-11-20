@@ -1346,7 +1346,7 @@ bool TableSyncItem::WaitChildThread(std::condition_variable &cv, bool &bCheck, b
     std::unique_lock<std::mutex> lock(mutexWaitStop_);
     if (bForce)
     {
-        bRet = cv.wait_for(lock, 2000ms, [bCheck](){return !bCheck; });
+        bRet = cv.wait_for(lock, 2000ms, [&bCheck](){return !bCheck; });
     }
     else
     {
