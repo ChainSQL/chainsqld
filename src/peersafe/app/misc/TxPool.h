@@ -114,6 +114,7 @@ public:
     // Update avoid set when receiving a Tx set from peers.
     void updateAvoid(RCLTxSet const& cSet, LedgerIndex seq);
 	void clearAvoid(LedgerIndex seq);
+	void removeAvoid(uint256 hash,LedgerIndex seq);
 
     inline bool txExists(uint256 hash) { return mTxsHash.count(hash); }
 

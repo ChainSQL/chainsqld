@@ -277,8 +277,8 @@ Transactor::checkSeq (PreclaimContext const& ctx)
     {
         if (a_seq < t_seq)
         {
-            JLOG(ctx.j.trace()) <<
-                "applyTransaction: has future sequence number " <<
+            JLOG(ctx.j.warn()) <<
+                "applyTransaction: Account:"<<toBase58(ctx.tx.getAccountID(sfAccount)) <<" has future sequence number " <<
                 "a_seq=" << a_seq << " t_seq=" << t_seq;
             return terPRE_SEQ;
         }
@@ -330,7 +330,7 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
 			//ctx.app.getStateManager().resetAccountSeq(id);
 
 			JLOG(ctx.j.info()) <<
-				"applyTransaction: has future sequence number, Account: " << 
+				"checkSeq2 has future sequence number, Account: " << 
                 toBase58(ctx.tx.getAccountID(sfAccount)) << 
 				" a_seq=" << a_seq << " t_seq=" << t_seq;
 			return terPRE_SEQ;
@@ -791,6 +791,7 @@ Transactor::operator()()
     auto terResult = STer(ctx_.preclaimResult);
 	if (terResult == terPRE_SEQ)
 	{
+        ctx_.app.getTxPool().removeAvoid(ctx_.tx.getTransactionID(),ctx_.view().seq());
 		return { terResult, false };
 	}
 	else if (terResult == tefPAST_SEQ)
