@@ -33,7 +33,7 @@ void SHAMapStoreImp::SavedStateDB::init (BasicConfig const& config,
 
     open(session_, config, dbName);
 
-    session_ << "PRAGMA synchronous=FULL;";
+    session_ << "PRAGMA synchronous=OFF;";
 
     session_ <<
         "CREATE TABLE IF NOT EXISTS DbState ("
