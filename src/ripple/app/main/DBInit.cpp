@@ -26,7 +26,7 @@ namespace ripple {
 // Transaction database holds transactions and public keys
 const char* TxnDBInit[] =
 {
-    "PRAGMA synchronous=NORMAL;",
+    "PRAGMA synchronous=OFF;",
     "PRAGMA journal_mode=WAL;",
     "PRAGMA journal_size_limit=1582080;",
     "PRAGMA max_page_count=2147483646;",
@@ -80,7 +80,7 @@ int TxnDBCount = std::extent<decltype(TxnDBInit)>::value;
 // Ledger database holds ledgers and ledger confirmations
 const char* LedgerDBInit[] =
 {
-    "PRAGMA synchronous=NORMAL;",
+    "PRAGMA synchronous=OFF;",
     "PRAGMA journal_mode=WAL;",
     "PRAGMA journal_size_limit=1582080;",
 
@@ -127,7 +127,7 @@ int LedgerDBCount = std::extent<decltype(LedgerDBInit)>::value;
 // SyncTableState database holds ledgers and ledger confirmations
 const char* SyncTableStateDBInit[] =
 {
-    "PRAGMA synchronous=NORMAL;",
+    "PRAGMA synchronous=OFF;",
     "PRAGMA journal_mode=WAL;",
     "PRAGMA journal_size_limit=1582080;",
 
