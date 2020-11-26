@@ -188,6 +188,12 @@ TransactionMaster::canonicalize(std::shared_ptr<Transaction>* pTransaction)
     }
 }
 
+void TransactionMaster::tune(int size, int age)
+{
+    mCache.setTargetSize(size);
+    mCache.setTargetAge(age);
+}
+
 void TransactionMaster::sweep (void)
 {
     mCache.sweep ();

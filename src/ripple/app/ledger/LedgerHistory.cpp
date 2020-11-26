@@ -53,7 +53,7 @@ LedgerHistory::LedgerHistory (
 				return ledger->info().validated;
 			}
 		,app.journal("TaggedCache"))
-    , m_consensus_validated ("ConsensusValidated", 64, 300,
+    , m_consensus_validated ("ConsensusValidated", 64, /*300*/60,
         stopwatch(), app_.journal("TaggedCache"))
     , j_ (app.journal ("LedgerHistory"))
 {
