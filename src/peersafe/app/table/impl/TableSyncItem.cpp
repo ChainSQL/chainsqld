@@ -51,6 +51,7 @@ namespace ripple {
 
 TableSyncItem::~TableSyncItem()
 {
+    StopSync(true);
 }
 
 TableSyncItem::TableSyncItem(Schema& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
@@ -58,8 +59,6 @@ TableSyncItem::TableSyncItem(Schema& app, beast::Journal journal, Config& cfg, S
     ,journal_(journal)
     ,cfg_(cfg)
 	,eSyncTargetType_(eTargetType)
-    ,operateSqlEvent(true,true)
-    ,readDataEvent(true, true)
 {   
     eState_               = SYNC_INIT;
     bOperateSQL_          = false;
@@ -251,6 +250,10 @@ void TableSyncItem::ReSetContexAfterDrop()
 void TableSyncItem::SetIsDataFromLocal(bool bLocal)
 {
     bGetLocalData_ = bLocal;
+    if(!bLocal)
+    {
+        cvReadData_.notify_all();
+    }
 }
 void TableSyncItem::PushDataByOrder(std::list <sqldata_type> &aData, sqldata_type &sqlData)
 {
@@ -675,7 +678,6 @@ void TableSyncItem::TryOperateSQL()
 
     bOperateSQL_ = true;
 
-    operateSqlEvent.reset();
     app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread(); });
 }
 
@@ -1198,6 +1200,13 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
 	return true;
 }
+
+int TableSyncItem::GetWholeDataSize()
+{
+    std::lock_guard lock(mutexWholeData_);
+    return aWholeData_.size();
+}
+
 void TableSyncItem::OperateSQLThread()
 {
     //check the connection is ok
@@ -1211,31 +1220,21 @@ void TableSyncItem::OperateSQLThread()
 
     std::vector<protocol::TMTableData> vec_tmdata;
     std::list <sqldata_type> list_tmdata;
+    while(GetWholeDataSize() >0 && GetSyncState() != SYNC_STOP)
     {
-        std::lock_guard lock(mutexWholeData_);
-        for (std::list<sqldata_type>::iterator iter = aWholeData_.begin(); iter != aWholeData_.end(); ++iter)
         {
-            vec_tmdata.push_back((*iter).second);
+            std::lock_guard lock(mutexWholeData_);
+            for (std::list<sqldata_type>::iterator iter = aWholeData_.begin(); iter != aWholeData_.end(); ++iter)
+            {
+                vec_tmdata.push_back((*iter).second);
+            }
+            aWholeData_.clear();
         }
-        aWholeData_.clear();
+        DealWithEveryLedgerData(vec_tmdata);
     }
-
-	DealWithEveryLedgerData(vec_tmdata);
 
     bOperateSQL_ = false;
-    operateSqlEvent.signal();
-
-    {
-        std::lock_guard lock(mutexWholeData_);
-        if (aWholeData_.size() > 0)
-        {
-            bOperateSQL_ = true;
-
-			readDataEvent.reset();
-            app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread();
-            });
-        }
-    }
+    cvOperateSql_.notify_all();
 }
 bool TableSyncItem::isJumpThisTx(uint256 txid)
 {
@@ -1341,48 +1340,33 @@ void TableSyncItem::SetPeer(std::shared_ptr<Peer> peer)
     uPeerAddr_ = peer->getRemoteAddress();
 }
 
-void TableSyncItem::StartLocalLedgerRead()
+bool TableSyncItem::WaitChildThread(std::condition_variable &cv, bool &bCheck, bool bForce)
 {
-    readDataEvent.reset();
-}
-void TableSyncItem::StopLocalLedgerRead()
-{
-    readDataEvent.signal();
+    bool bRet = false;
+    std::unique_lock<std::mutex> lock(mutexWaitStop_);
+    if (bForce)
+    {
+        bRet = cv.wait_for(lock, 2000ms, [&bCheck](){return !bCheck; });
+    }
+    else
+    {
+        cv.wait(lock, [bCheck](){return !bCheck; });
+    }
+    return true;
 }
 
-bool TableSyncItem::StopSync()
+bool TableSyncItem::StopSync(bool bForce)
 {
     SetSyncState(SYNC_STOP);
 
-    bool bRet = false;
-    bRet = readDataEvent.wait(1000);
-    if (!bRet)
+    if(WaitChildThread(cvReadData_, bGetLocalData_, bForce) && WaitChildThread(cvOperateSql_, bOperateSQL_, bForce)) 
     {
-        SetSyncState(SYNC_BLOCK_STOP);
-        return false;        
+        return true;
     }
-
-    bRet = operateSqlEvent.wait(2000);
-    if (!bRet)
+    else
     {
         SetSyncState(SYNC_BLOCK_STOP);
         return false;
-    }
-
-    int iSize = 0;
-    {
-        std::lock_guard lock(mutexWholeData_);
-		iSize = aWholeData_.size();
-    }
-    if (iSize > 0)
-    {
-        TryOperateSQL();
-        bRet = operateSqlEvent.wait(2000);
-        if (!bRet)
-        {
-            SetSyncState(SYNC_BLOCK_STOP);
-            return false;
-        }
     }
 
     return true;

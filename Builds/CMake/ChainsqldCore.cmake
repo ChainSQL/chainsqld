@@ -212,7 +212,6 @@ endif ()
 target_sources (chainsqld PRIVATE
   src/ripple/beast/core/CurrentThreadName.cpp
   src/ripple/beast/core/SemanticVersion.cpp
-  src/ripple/beast/core/WaitableEvent.cpp
   src/ripple/beast/hash/impl/xxhash.cpp
   src/ripple/beast/insight/impl/Collector.cpp
   src/ripple/beast/insight/impl/Groups.cpp
@@ -1037,6 +1036,11 @@ target_link_libraries (chainsqld
   instructions
   ${MYSQL_LIBRARIES}
   )
+  
+if (APPLE)
+  target_link_libraries(chainsqld iconv)
+endif ()
+
 exclude_if_included (chainsqld)
 # define a macro for tests that might need to
 # be exluded or run differently in CI environment

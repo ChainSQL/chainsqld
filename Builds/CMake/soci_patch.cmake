@@ -8,7 +8,7 @@ foreach (line_ ${sourcecode})
   endif ()
   file (APPEND include/soci/unsigned-types.h.patched "${line_}\n")
 endforeach ()
-file (RENAME include/soci/unsigned-types.h include/soci/unsigned-types.h.orig)
+#file (RENAME include/soci/unsigned-types.h include/soci/unsigned-types.h.orig)
 file (RENAME include/soci/unsigned-types.h.patched include/soci/unsigned-types.h)
 # also fix Boost.cmake so that it just returns when we override the Boost_FOUND var
 file (APPEND cmake/dependencies/Boost.cmake.patched "if (Boost_FOUND)\n")

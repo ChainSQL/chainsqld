@@ -194,9 +194,6 @@ Handler const handlerArray[]{
 	{	"tx_crossget",			byRef (&doGetCrossChainTx),	   Role::USER,	NO_CONDITION },
 	//Contract methods
 	{	"contract_call",		byRef(&doContractCall),	       Role::USER,	NO_CONDITION  },
-    // Evented methods
-    {   "subscribe",            byRef (&doSubscribe),          Role::USER,  NO_CONDITION     },
-    {   "unsubscribe",          byRef (&doUnsubscribe),        Role::USER,  NO_CONDITION     },
 	{    "gen_csr",             byRef(&doGenCsr),              Role::ADMIN, NO_CONDITION },
 	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::USER,  NO_CONDITION     },
     {   "node_size",            byRef (&doNodeSize),           Role::ADMIN, NO_CONDITION    },
