@@ -138,6 +138,7 @@ JSS ( both );                       // in: Subscribe, Unsubscribe
 JSS ( both_sides );                 // in: Subscribe, Unsubscribe
 JSS ( build_path );                 // in: TransactionSign
 JSS ( build_version );              // out: NetworkOPs
+JSS ( cachedSLE_size );
 JSS ( cancel_after );               // out: AccountChannels
 JSS ( can_delete );                 // out: CanDelete
 JSS ( channel_id );                 // out: AccountChannels

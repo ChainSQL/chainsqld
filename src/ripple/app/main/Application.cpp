@@ -426,7 +426,8 @@ public:
 
         , m_collectorManager (CollectorManager::New (
             config_->section (SECTION_INSIGHT), logs_->journal("Collector")))
-        , cachedSLEs_ (std::chrono::minutes(1), stopwatch())
+        //, cachedSLEs_ (std::chrono::minutes(1), stopwatch())
+        , cachedSLEs_(std::chrono::seconds(config_->getSize(siSLECacheAge)), stopwatch())
         , validatorKeys_(*config_, m_journal)
 
         , m_resourceManager (Resource::make_Manager (
@@ -472,7 +473,7 @@ public:
                 gotTXSet (set, fromAcquire);
             }))
 
-        , m_acceptedLedgerCache("AcceptedLedger", /*4*/16, /*60*/600, stopwatch(),
+        , m_acceptedLedgerCache("AcceptedLedger", 4, 60, stopwatch(),
             logs_->journal("TaggedCache"))
 
         , m_networkOPs (make_NetworkOPs (*this, stopwatch(),
@@ -1367,6 +1368,7 @@ bool ApplicationImp::setup()
 
     m_nodeStore->tune (config_->getSize (siNodeCacheSize), config_->getSize (siNodeCacheAge));
     m_ledgerMaster->tune (config_->getSize (siLedgerSize), config_->getSize (siLedgerAge));
+    m_txMaster.tune (config_->getSize(siTransactionSize), config_->getSize(siTransactionAge));
     family().treecache().setTargetSize (config_->getSize (siTreeCacheSize));
     family().treecache().setTargetAge (config_->getSize (siTreeCacheAge));
 

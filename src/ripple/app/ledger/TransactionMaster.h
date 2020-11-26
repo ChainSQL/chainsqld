@@ -59,6 +59,8 @@ public:
 
     void canonicalize (std::shared_ptr<Transaction>* pTransaction);
 
+    void tune(int size, int age);
+
     void sweep (void);
 
     TaggedCache <uint256, Transaction>&
