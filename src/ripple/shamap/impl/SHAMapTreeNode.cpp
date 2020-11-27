@@ -117,12 +117,19 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
         if (type == 0)
         {
             // transaction
-            // auto item = std::make_shared<SHAMapItem const>(
-            //     sha512Half(HashPrefix::transactionID,
-            //         Slice(s.data(), s.size())),
-            //             s.peekData());
-            auto item = std::make_shared<SHAMapItem const>(
-                hash.as_uint256(), s.peekData());
+            int txType = -1;
+            if (len >= 2)
+                txType = rawNode[2];
+
+            uint256 nh;
+            if ( txType == 100 || txType == 101)
+            {
+                nh =  sha512Half(HashPrefix::transactionID, 
+                                Slice(s.data(), s.size()));
+            }
+            else nh = hash.as_uint256();
+
+            auto item = std::make_shared<SHAMapItem const>(nh, s.peekData());
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq, hash);
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq);

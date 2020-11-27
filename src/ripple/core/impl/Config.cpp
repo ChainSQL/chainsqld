@@ -340,11 +340,6 @@ void Config::loadFromString (std::string const& fileContents)
                 Throw<std::runtime_error> ("node_alg_type is invalid");
             }
         }
-        else
-        {
-            std::string defaultNodeAlgType("secp256k1");
-            CommonKey::setAlgType(defaultNodeAlgType);
-        }
 
         if(cryptoAlgSection.exists("hash_type"))
         {
@@ -355,7 +350,6 @@ void Config::loadFromString (std::string const& fileContents)
             }
             // GmEncryptObj::setGmAlgType(GmEncryptObj::fromString(*gmType));
         }
-        else CommonKey::hashTypeGlobal = CommonKey::sha;
 
         if(cryptoAlgSection.exists("gm_self_check"))
         {
@@ -363,9 +357,6 @@ void Config::loadFromString (std::string const& fileContents)
             GM_SELF_CHECK = *gmSelfCheck;
         }
     }
-
-    // if (getSingleSection(secConfig, SECTION_GM_SELF_CHECK, strTemp, j_))
-	// 	GM_SELF_CHECK = beast::lexicalCastThrow <bool>(strTemp);
 
     {
         std::string dbPath;

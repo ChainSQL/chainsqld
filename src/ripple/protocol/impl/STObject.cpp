@@ -301,9 +301,15 @@ uint256 STObject::getHash (std::uint32_t prefix) const
     Serializer s;
     s.add32 (prefix);
     add (s, true);
-    auto const pk = getFieldVL (sfSigningPubKey);
-    auto const keyType = publicKeyType(makeSlice(pk));
-    CommonKey::HashType hashType = keyType == KeyType::gmalg ? CommonKey::sm3 : CommonKey::sha;
+    std::uint16_t txType = getFieldU16(sfTransactionType);
+    CommonKey::HashType hashType = CommonKey::hashTypeGlobal;
+    if (txType != ttAMENDMENT && txType != ttFEE)
+    {
+        auto const pk = getFieldVL (sfSigningPubKey);
+        auto const keyType = publicKeyType(makeSlice(pk));
+        hashType = keyType == KeyType::gmalg ? CommonKey::sm3 : CommonKey::sha;
+    }
+    
     return s.getSHA512Half (hashType);
 }
 

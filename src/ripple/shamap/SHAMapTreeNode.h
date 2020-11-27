@@ -236,7 +236,7 @@ public:
 
     SHAMapTreeNode (std::shared_ptr<SHAMapItem const> const& item,
                     TNType type, std::uint32_t seq);
-    SHAMapTreeNode(std::shared_ptr<SHAMapItem const> const& item, TNType type,
+    SHAMapTreeNode (std::shared_ptr<SHAMapItem const> const& item, TNType type,
                    std::uint32_t seq, SHAMapHash const& hash);
     std::shared_ptr<SHAMapAbstractNode> clone(std::uint32_t seq) const override;
 
