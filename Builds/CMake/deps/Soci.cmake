@@ -41,7 +41,7 @@ else()
 
   ExternalProject_Add (soci
     PREFIX ${nih_cache_path}
-    GIT_REPOSITORY git@github.com:ChainSQL/soci.git
+    GIT_REPOSITORY https://github.com/ChainSQL/soci.git
     GIT_TAG chainsql
     GIT_SHALLOW ON
     # We had an issue with soci integer range checking for boost::optional
