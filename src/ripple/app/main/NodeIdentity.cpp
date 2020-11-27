@@ -97,6 +97,7 @@ loadNodeIdentity(Application& app)
         // one:
         if (!publicKey || !secretKey)
         {
+            std::tie(publicKey, secretKey) = randomKeyPair(KeyType::secp256k1);
             *db << str(
                 boost::format(
                     "INSERT INTO NodeIdentity (PublicKey,PrivateKey) "

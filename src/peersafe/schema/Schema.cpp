@@ -79,9 +79,6 @@ namespace ripple {
 
 		bool setup() override;
 		bool initBeforeSetup() override;
-		void addTxnSeqField();
-		void addValidationSeqFields();
-		bool updateTables();
 		bool nodeToShards();
 		bool validateShards();
 		void startGenesisLedger();
@@ -982,9 +979,6 @@ namespace ripple {
 
 		setMaxDisallowedLedger();
 
-		if (!updateTables())
-			return false;
-
 		if (shardStore_)
 		{
 			shardFamily_ =
@@ -1716,161 +1710,6 @@ namespace ripple {
 		return schema[line].find(content) != std::string::npos;
 	}
 
-	void SchemaImp::addTxnSeqField()
-	{
-		if (schemaHas(getTxnDB(), "AccountTransactions", 0, "TxnSeq", m_journal))
-			return;
-
-		JLOG(m_journal.warn()) << "Transaction sequence field is missing";
-
-		auto& session = getTxnDB().getSession();
-
-		std::vector< std::pair<uint256, int> > txIDs;
-		txIDs.reserve(300000);
-
-		JLOG(m_journal.info()) << "Parsing transactions";
-		int i = 0;
-		uint256 transID;
-
-		boost::optional<std::string> strTransId;
-		soci::blob sociTxnMetaBlob(session);
-		soci::indicator tmi;
-		Blob txnMeta;
-
-		soci::statement st =
-			(session.prepare <<
-				"SELECT TransID, TxnMeta FROM Transactions;",
-				soci::into(strTransId),
-				soci::into(sociTxnMetaBlob, tmi));
-
-		st.execute();
-		while (st.fetch())
-		{
-			if (soci::i_ok == tmi)
-				convert(sociTxnMetaBlob, txnMeta);
-			else
-				txnMeta.clear();
-
-			std::string tid = strTransId.value_or("");
-			transID.SetHex(tid, true);
-
-			if (txnMeta.size() == 0)
-			{
-				txIDs.push_back(std::make_pair(transID, -1));
-				JLOG(m_journal.info()) << "No metadata for " << transID;
-			}
-			else
-			{
-				TxMeta _(transID, 0, txnMeta);
-				txIDs.push_back(std::make_pair(transID, _.getIndex()));
-			}
-
-			if ((++i % 1000) == 0)
-			{
-				JLOG(m_journal.info()) << i << " transactions read";
-			}
-		}
-
-		JLOG(m_journal.info()) << "All " << i << " transactions read";
-
-		soci::transaction tr(session);
-
-		JLOG(m_journal.info()) << "Dropping old index";
-		session << "DROP INDEX AcctTxIndex;";
-
-		JLOG(m_journal.info()) << "Altering table";
-		session << "ALTER TABLE AccountTransactions ADD COLUMN TxnSeq INTEGER;";
-
-		boost::format fmt("UPDATE AccountTransactions SET TxnSeq = %d WHERE TransID = '%s';");
-		i = 0;
-		for (auto& t : txIDs)
-		{
-			session << boost::str(fmt % t.second % to_string(t.first));
-
-			if ((++i % 1000) == 0)
-			{
-				JLOG(m_journal.info()) << i << " transactions updated";
-			}
-		}
-
-		JLOG(m_journal.info()) << "Building new index";
-		session << "CREATE INDEX AcctTxIndex ON AccountTransactions(Account, LedgerSeq, TxnSeq, TransID);";
-
-		tr.commit();
-	}
-
-	void SchemaImp::addValidationSeqFields()
-	{
-		if (schemaHas(getLedgerDB(), "Validations", 0, "LedgerSeq", m_journal))
-		{
-			assert(schemaHas(getLedgerDB(), "Validations", 0, "InitialSeq", m_journal));
-			return;
-		}
-
-		JLOG(m_journal.warn()) << "Validation sequence fields are missing";
-		assert(!schemaHas(getLedgerDB(), "Validations", 0, "InitialSeq", m_journal));
-
-		auto& session = getLedgerDB().getSession();
-
-		soci::transaction tr(session);
-
-		JLOG(m_journal.info()) << "Altering table";
-		session << "ALTER TABLE Validations "
-			"ADD COLUMN LedgerSeq       BIGINT UNSIGNED;";
-		session << "ALTER TABLE Validations "
-			"ADD COLUMN InitialSeq      BIGINT UNSIGNED;";
-
-		// Create the indexes, too, so we don't have to
-		// wait for the next startup, which may be a while.
-		// These should be identical to those in LedgerDBInit
-		JLOG(m_journal.info()) << "Building new indexes";
-		session << "CREATE INDEX IF NOT EXISTS "
-			"ValidationsBySeq ON Validations(LedgerSeq);";
-		session << "CREATE INDEX IF NOT EXISTS ValidationsByInitialSeq "
-			"ON Validations(InitialSeq, LedgerSeq);";
-
-		tr.commit();
-	}
-
-	bool SchemaImp::updateTables()
-	{
-		if (config_->section(ConfigSection::nodeDatabase()).empty())
-		{
-			JLOG(m_journal.fatal()) << "The [node_db] configuration setting has been updated and must be set";
-			return false;
-		}
-
-		// perform any needed table updates
-		assert(schemaHas(getTxnDB(), "AccountTransactions", 0, "TransID", m_journal));
-		assert(!schemaHas(getTxnDB(), "AccountTransactions", 0, "foobar", m_journal));
-		addTxnSeqField();
-
-		if (schemaHas(getTxnDB(), "AccountTransactions", 0, "PRIMARY", m_journal))
-		{
-			JLOG(m_journal.fatal()) << "AccountTransactions database should not have a primary key";
-			return false;
-		}
-
-		addValidationSeqFields();
-
-		if (config_->doImport)
-		{
-			auto j = SchemaImp::journal("NodeObject");
-			NodeStore::DummyScheduler scheduler;
-			std::unique_ptr <NodeStore::Database> source =
-				NodeStore::Manager::instance().make_Database("NodeStore.import",
-					scheduler, 0, app_.getJobQueue(),
-					config_->section(ConfigSection::importNodeDatabase()), j);
-
-			JLOG(j.warn())
-				<< "Node import from '" << source->getName() << "' to '"
-				<< getNodeStore().getName() << "'.";
-
-			getNodeStore().import(*source);
-		}
-
-		return true;
-	}
 
 	bool SchemaImp::nodeToShards()
 	{

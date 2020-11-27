@@ -111,9 +111,9 @@ RCLConsensus::Adaptor::Adaptor(
 {
     assert(valCookie_ != 0);
 
-    JLOG(j_.info()) << "Consensus engine started"
-                    << " (Node: " << to_string(nodeID_)
-                    << ", Cookie: " << valCookie_ << ")";
+    //JLOG(j_.info()) << "Consensus engine started"
+    //                << " (Node: " << to_string(nodeID_)
+    //                << ", Cookie: " << valCookie_ << ")";
 }
 
 void RCLConsensus::Adaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
