@@ -1,3 +1,23 @@
+//------------------------------------------------------------------------------
+/*
+This file is part of chainsqld: https://github.com/chainsql/chainsqld
+Copyright (c) 2016-2018 Peersafe Technology Co., Ltd.
+
+chainsqld is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+chainsqld is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
+*/
+//==============================================================================
+
+
 #ifndef CHAINSQL_APP_MISC_TXPOOL_H_INCLUDED
 #define CHAINSQL_APP_MISC_TXPOOL_H_INCLUDED
 
@@ -68,40 +88,20 @@ struct sync_status
 class TxPool
 {
 public:
-    TxPool(Application& app, beast::Journal j)
-        : app_(app)
-        , j_(j)
-    {
-        mMaxTxsInPool = TxPoolCapacity;
-
-        if (app.config().exists(SECTION_PCONSENSUS))
-        {
-            auto const result = app.config().section(SECTION_PCONSENSUS).find("max_txs_in_pool");
-            if (result.second)
-            {
-                try
-                {
-                    mMaxTxsInPool = beast::lexicalCastThrow<std::uint32_t>(result.first);
-
-                    if (mMaxTxsInPool == 0)
-                        Throw<std::exception>();
-                }
-                catch (std::exception const&)
-                {
-                    JLOG(j_.error()) <<
-                        "Invalid value '" << result.first << "' for key " <<
-                        "'max_tx_in_pool' in [" << SECTION_PCONSENSUS << "]\n";
-                    Rethrow();
-                }
-            }
-        }
-    }
-
+    TxPool(Application& app, beast::Journal j);
 	virtual ~TxPool() {}
+
+    inline bool txExists(uint256 hash) { return mTxsHash.count(hash); }
+    inline bool isEmpty() { return mTxsSet.size() == 0; }
+    inline std::size_t getTxCountInPool() { return mTxsSet.size(); }
+
+    // Set/Get pool limit.
+    inline void setTxLimitInPool(std::size_t const& maxTxs) { mMaxTxsInPool = maxTxs; }
+    inline std::size_t const& getTxLimitInPool() { return mMaxTxsInPool; }
+
 
     // Get at most specified counts of Tx from TxPool.
 	h256Vector topTransactions(uint64_t const& limit);
-
 
     // Insert a new Tx, return true if success else false.
 	TER insertTx(std::shared_ptr<Transaction> transaction,int ledgerSeq);
@@ -115,26 +115,11 @@ public:
     void updateAvoid(RCLTxSet const& cSet);
 	void clearAvoid();
 
-    inline bool txExists(uint256 hash) { return mTxsHash.count(hash); }
-
-	// Set pool limit.
-    inline void setTxLimitInPool(std::size_t const& maxTxs) { mMaxTxsInPool = maxTxs; }
-
-    // Get pool limit.
-    inline std::size_t const& getTxLimitInPool() { return mMaxTxsInPool; }
-
-	inline bool isEmpty() { return mTxsSet.size() == 0; }
-
-    inline std::size_t getTxCountInPool() { return mTxsSet.size(); }
-
 	bool isAvailable();
 
 	void timerEntry();
 
 	void checkSyncStatus(int const ledgerSeq, uint256 const& prevHash);
-
-	// get txs from pool
-	void getTransactions(h256Vector const& hVector, std::vector< std::shared_ptr<Transaction> >& txs);
 
 private:
 	Application& app_;

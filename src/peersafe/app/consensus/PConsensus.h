@@ -481,10 +481,6 @@ PConsensus<Adaptor>::startRoundInternal(
 	view_ = 0;
 	toView_ = 0;
 
-    //clear avoid
-    adaptor_.app_.getTxPool().clearAvoid();
-    adaptor_.app_.getPreTxPool().clearAvoid();
-
     adaptor_.app_.getShardManager().nodeBase().onConsensusStart(
         previousLedger_.seq() + 1, 
         view_, 
@@ -614,10 +610,6 @@ PConsensus<Adaptor>::onViewChange()
 	leaderFailed_ = false;
 	extraTimeOut_ = false;
 	timeOutCount_ = 0;
-
-	//clear avoid
-	adaptor_.app_.getTxPool().clearAvoid();
-    adaptor_.app_.getPreTxPool().clearAvoid();
 
     if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
     {

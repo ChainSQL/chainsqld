@@ -487,10 +487,14 @@ RCLConsensus::Adaptor::onCollectFinish(
         // All microLedger is empty, pre-execute transactions
         if (position2.second)
         {
-            std::vector< std::shared_ptr<Transaction> > txs;
-            app_.getPreTxPool().getTransactions(transactions, txs);
-            for (auto& tx : txs)
+            for (auto const& txID : transactions)
             {
+                auto tx = app_.getMasterTransaction().fetch(txID, false);
+                if (!tx)
+                {
+                    JLOG(j_.error()) << "fetch transaction " + to_string(txID) + "failed";
+                    continue;
+                }
                 app_.getOPs().doTransactionAsync(tx, false, NetworkOPs::FailHard::no);
             }
             app_.getOPs().waitBatchComplete();

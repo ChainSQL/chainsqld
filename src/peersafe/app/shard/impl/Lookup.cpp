@@ -25,6 +25,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/table/TableSync.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/NetworkOPs.h>
@@ -628,16 +629,20 @@ void Lookup::relayTxs()
 
     auto timeStart = utcTime();
 
-    std::vector< std::shared_ptr<Transaction> > txs;
-
     auto const& hTxVector = app_.getTxPool().topTransactions(MinTxsInLedgerAdvance);
-    app_.getTxPool().getTransactions(hTxVector, txs);
-
-    std::map <std::uint32_t, std::vector<std::shared_ptr<Transaction>> > mapShardIndexTxs;
 
     // tx shard
-    for (auto& tx : txs)
+    std::map <std::uint32_t, std::vector<std::shared_ptr<Transaction>> > mapShardIndexTxs;
+
+    for (auto const& txID : hTxVector)
     {
+        auto tx = app_.getMasterTransaction().fetch(txID, false);
+        if (!tx)
+        {
+            JLOG(journal_.error()) << "fetch transaction " + to_string(txID) + "failed";
+            continue;
+        }
+
         mapShardIndexTxs[tx->getShardIndex()].push_back(tx);
     }
 
