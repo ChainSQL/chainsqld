@@ -1034,7 +1034,6 @@ target_link_libraries (chainsqld
   Ripple::libs
   intx
   instructions
-  ${MYSQL_LIBRARIES}
   )
   
 if (APPLE)

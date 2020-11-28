@@ -57,7 +57,7 @@
           )
 
       get_filename_component(MYSQL_NAME ${MYSQL_LIBRARY} NAME)
-      message("MYSQL_NAME: ${MYSQL_NAME}")
+      #message("MYSQL_NAME: ${MYSQL_NAME}")
       FIND_PATH(MYSQL_LIBRARY_DIR ${MYSQL_NAME}
           ${SEARCH_PATHS} 
           )
@@ -81,4 +81,6 @@
   MESSAGE(STATUS "Found MySQL library: ${MYSQL_LIBRARY}")
   
   include_directories(${MYSQL_INCLUDE_DIR})
-  link_directories(${MYSQL_LIBRARY_DIR})  
+  #link_directories(${MYSQL_LIBRARY_DIR})  
+  target_link_libraries (ripple_libs INTERFACE ${MYSQL_LIBRARY})
+
