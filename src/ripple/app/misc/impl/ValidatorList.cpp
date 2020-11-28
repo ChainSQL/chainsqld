@@ -191,6 +191,8 @@ ValidatorList::load(
 
     JLOG(j_.debug()) << "Loaded " << count << " entries";
 
+	resetValidators();
+
     return true;
 }
 
@@ -627,6 +629,8 @@ ValidatorList::removePublisherList(PublicKey const& publisherKey)
     iList->second.list.clear();
     iList->second.available = false;
 
+	resetValidators();
+
     return true;
 }
 
@@ -1032,4 +1036,25 @@ ValidatorList::negativeUNLFilter(
     return ret;
 }
 
+void
+ValidatorList::resetValidators()
+{
+    // reset validators_
+    validators_.clear();
+    for (auto iter = keyListings_.begin(); iter != keyListings_.end(); iter++)
+    {
+        validators_.push_back(iter->first);
+    }
+	std::sort(validators_.begin(), validators_.end(),
+		[](PublicKey const& a, PublicKey const& b) {
+			return a < b;
+		}
+	);
+
+    JLOG(j_.info()) << "validators_: ";
+    for (auto iter = validators_.begin(); iter != validators_.end(); ++iter)
+    {
+        JLOG(j_.info()) << toBase58(TokenType::NodePublic, *iter);
+    }
+}
 }  // namespace ripple

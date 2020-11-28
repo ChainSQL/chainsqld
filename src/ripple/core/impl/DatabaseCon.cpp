@@ -37,7 +37,8 @@ DatabaseCon::DatabaseCon(
 	Setup const& setup,
 	std::string const& strName,
 	const char* initStrings[],
-	int initCount, std::string sDBType)
+	int initCount, std::string sDBType):
+	session_(std::make_shared<soci::session>())
 {
 	if (sDBType.compare("sqlite") == 0) {
 		auto const useTempFiles  // Use temporary files or regular DB files?

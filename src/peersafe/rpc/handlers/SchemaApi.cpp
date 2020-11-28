@@ -105,7 +105,7 @@ Json::Value doSchemaList(RPC::JsonContext&  context)
 		Json::Value schema = getSchemaFromSle(sle);
         if (bHasRunning && context.app.app().hasSchema(sle->key()) != bRunning) continue;
 
-		schema[jss::running] = context.app.app().hasSchema(sle->key());
+		//schema[jss::running] = context.app.app().hasSchema(sle->key());
 		ret[jss::schemas].append(schema);
 	}
 	return ret;

@@ -586,6 +586,10 @@ private:
         std::size_t unlSize,
         std::size_t effectiveUnlSize,
         std::size_t seenSize);
+
+	// reset validators for consensus
+    void
+    resetValidators();
 };
 }  // namespace ripple
 

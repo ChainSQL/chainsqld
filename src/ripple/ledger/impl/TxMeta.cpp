@@ -227,7 +227,7 @@ TxMeta::getAsObject() const
 {
     STObject metaData(sfTransactionMetaData);
     assert(mResult != 255);
-    metaData.setFieldU8(sfTransactionResult, mResult);
+    metaData.setFieldU16(sfTransactionResult, mResult);
     metaData.setFieldU32(sfTransactionIndex, mIndex);
     metaData.emplace_back(mNodes);
     if (hasDeliveredAmount())
