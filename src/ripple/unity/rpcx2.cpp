@@ -80,3 +80,5 @@
 #include <peersafe/rpc/handlers/SmartContractHandler.cpp>
 #include <peersafe/rpc/handlers/LedgerTxsHandler.cpp>
 #include <peersafe/rpc/handlers/GenCsr.cpp>
+#include <peersafe/rpc/handlers/CryptCheck.cpp>
+

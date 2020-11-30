@@ -28,7 +28,7 @@
 #include <ripple/protocol/RippleAddress.h>
 #include <ripple/protocol/Seed.h>
 //#include <ripple/protocol/SecretKey.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <boost/optional.hpp>
 #include <algorithm>
 #include <cstdint>
@@ -251,6 +251,10 @@ verify (PublicKey const& publicKey,
 /** Encrypt a plain text.*/
 Blob 
 encrypt(const Blob& passBlob, PublicKey const& publicKey);
+
+/** Genrate a add and publickey file.*/
+bool 
+generateAddrAndPubFile(int pubType, int index, std::string filePath = "");
 
 /** Calculate the 160-bit node ID from a node public key. */
 NodeID

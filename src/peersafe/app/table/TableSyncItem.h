@@ -29,6 +29,7 @@
 #include <ripple/overlay/Peer.h>
 #include <ripple/protocol/STLedgerEntry.h>
 #include <ripple/protocol/SecretKey.h>
+#include <peersafe/app/table/TokenProcess.h>
 
 namespace ripple {
 
@@ -300,7 +301,8 @@ protected:
 private:
 	boost::optional<AccountID>									 user_accountID_;	//user accountId
 	boost::optional<SecretKey>									 user_secret_;		//user secret
-	Blob														 passBlob_;			//decrypted passphrase
+	TokenProcess                                                 tokenProcObj_;
+	//Blob														 passBlob_;			//decrypted passphrase
 	bool														 confidential_;
 	bool														 deleted_;
 

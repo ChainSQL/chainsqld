@@ -341,7 +341,6 @@ public:
 		return value_.isDate();
 	}
 
-
 	bool isNull() {
 		return value_.isNull();
 	}
@@ -1090,6 +1089,11 @@ private:
 					% field.Name()
 					% "NULL").str();
 			}
+			else if (field.isNull()) {
+				update_fields += (boost::format("%1%=%2%")
+					% field.Name()
+					% "NULL").str();
+			}
 
 			if (idx != fields_.size() - 1)
 				update_fields += ",";
@@ -1149,7 +1153,7 @@ private:
 		if (std::get<0>(conditions) == 0) {
 			const std::string& c = std::get<1>(conditions);
 
-			// similar to this sql statement £º update table_01 set age=1,name=concat("a_",name);
+			// similar to this sql statement ï¿½ï¿½ update table_01 set age=1,name=concat("a_",name);
 			if (!update_command_fields.empty()) {
 				std::string extraComma = (update_fields.back() == ',' ? std::string("") : std::string(","));
 				update_fields += extraComma + update_command_fields;

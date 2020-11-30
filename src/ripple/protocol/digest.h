@@ -24,7 +24,9 @@
 #include <ripple/beast/crypto/ripemd.h>
 #include <ripple/beast/crypto/sha2.h>
 #include <ripple/beast/hash/endian.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <ripple/protocol/CommonKey.h>
+#include <peersafe/crypto/hashBase.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <algorithm>
 #include <array>
 
@@ -190,14 +192,14 @@ namespace detail {
     SHA-512 digest of the message.
 */
 template <bool Secure>
-struct basic_sha512_half_hasher
+struct basic_sha512_half_hasher : public hashBase
 {
 private:
     sha512_hasher h_;
 
 public:
-    static beast::endian const endian =
-        beast::endian::big;
+    // static beast::endian const endian =
+    //     beast::endian::big;
 
     using result_type = uint256;
 
@@ -263,28 +265,36 @@ sha512_deprecatedMSVCWorkaround()
 }
 #endif
 
+// sha512Half can use different hasher like sm3/sha
+// the function name is old, but don't want to change.
 /** Returns the SHA512-Half of a series of objects. */
-template <class... Args>
+// sha512Half (Args const&... args)
+template <CommonKey::HashType hashType = CommonKey::unknown, class... Args>
 sha512_half_hasher::result_type
 sha512Half (Args const&... args)
 {
     using beast::hash_append;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    HardEncrypt::SM3Hash objSM3(hEObj);//refObjSM3 = hEObj->getSM3Obj();
-
-    if (nullptr != hEObj)
+    // if (nullptr != hEObj)
+    CommonKey::HashType hashTypeTemp = hashType == CommonKey::unknown? CommonKey::hashTypeGlobal : hashType;
+    // hashBase* phasher = hashBaseObj::getHasher(hashTypeTemp);
+    // hash_append(*phasher, args...);
+    // return static_cast<typename sha512_half_hasher::result_type>(*phasher);
+    if ( hashTypeTemp == CommonKey::sm3 )
     {
-        unsigned char hashData[128] = {0};
-        int HashDataLen = 0;
-        objSM3.SM3HashInitFun();
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+        GmEncrypt::SM3Hash objSM3(hEObj);//refObjSM3 = hEObj->getSM3Obj();
+        // unsigned char hashData[128] = {0};
+        // int HashDataLen = 0;
+        // objSM3.SM3HashInitFun();
         hash_append(objSM3, args...);
-        objSM3.SM3HashFinalFun(hashData, (unsigned long*)&HashDataLen);
+        return static_cast<typename sha512_half_hasher::result_type>(objSM3);
+        // objSM3.SM3HashFinalFun(hashData, (unsigned long*)&HashDataLen);
 
-        sha512_half_hasher::result_type result;
-        std::copy(hashData, hashData + 32, result.begin());
-        return result;
+        // sha512_half_hasher::result_type result;
+        // std::copy(hashData, hashData + 32, result.begin());
+        // return result;
     }
-    else
+    else if (hashTypeTemp == CommonKey::sha)
     {
         sha512_half_hasher h;
         hash_append(h, args...);

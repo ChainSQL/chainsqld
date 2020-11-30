@@ -38,15 +38,21 @@ export BOOST_ROOT=/home/dbliu/work/chainSQL/Builds/Ubuntu/boost_1_63_0
 ```bash
 > mkdir build && cd build
 ```
+
 - 执行 cmake
 ```bash
 > cmake -Dtarget=gcc.debug.nounity|gcc.debug.unity|gcc.release.nounity|gcc.release.unity ..
+> #或者使用以下命令编译国密版本：
+> #enableSFGm控制开启软国密，enableHDGm控制同时开启硬国密和软国密
+> cmake -Dtarget=gcc.debug.nounity|gcc.debug.unity|gcc.release.nounity|gcc.release.unity -DenableSFGm=TRUE ..
 ```
 
 > 或
 
 ```bash
 > cmake -DCMAKE_BUILD_TYPE=Release|Debug ..
+> #或者使用以下命令编译国密版本：
+> cmake -DCMAKE_BUILD_TYPE=Release|Debug -DenableSFGm=TRUE ..
 ```
 
 - 编译

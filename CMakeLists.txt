@@ -75,6 +75,9 @@ parse_target()
 project(chainsqld)
 #########################################################
 
+#set(enableSFGm FALSE CACHE BOOL "Enable soft GM algorithm")
+set(enableHDGm FALSE CACHE BOOL "Enable hard GM algorithm")
+
 set(enableTest FALSE CACHE BOOL "Enable Unit Test Module")
 #########################################################
 
@@ -132,7 +135,10 @@ check_gcc4_abi()
 
 ############################################################
 
+set(CMAKE_INCLUDE_DIRECTORIES_BEFORE "ON")
 include_directories(
+    BEFORE
+    SYSTEM
   src
   src/beast
   src/beast/include
@@ -140,8 +146,11 @@ include_directories(
   src/nudb/include
   src/soci/src
   src/soci/include
+  src/peersafe/gmencrypt/softencrypt/GmSSL/include/
   src/eth/evmc/include
   src/intx/include)
+#   src/peersafe/gmencrypt/softencrypt/GmSSL/include/openssl
+#   src/peersafe/gmencrypt/softencrypt/GmSSL
 
 special_build_flags()
 
@@ -183,6 +192,8 @@ use_protobuf()
 use_mysql()
 
 setup_build_boilerplate()
+
+use_gmalg(${enableHDGm})
 
 ############################################################
 
@@ -341,7 +352,7 @@ foreach(curdir
         gmencrypt
         protocol
         rpc)
-    file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp)
+    file(GLOB_RECURSE cursrcs src/peersafe/${curdir}/*.cpp src/peersafe/${curdir}/*.c)
     list(APPEND chainsqld_src_nonunity "${cursrcs}")
     list(APPEND non_unity_srcs "${cursrcs}")
 endforeach()
@@ -531,11 +542,11 @@ endif()
 if(unity)
     add_executable(chainsqld ${chainsqld_src_unity} ${PROTO_HDRS})
     add_executable(chainsqld_classic EXCLUDE_FROM_ALL ${chainsqld_src_nonunity} ${PROTO_HDRS})
-    set(other_target chainsqld_classic)
+	set(other_target chainsqld_classic)
 else()
     add_executable(chainsqld ${chainsqld_src_nonunity} ${PROTO_HDRS})
     add_executable(chainsqld_unity EXCLUDE_FROM_ALL ${chainsqld_src_unity} ${PROTO_HDRS})
-    set(other_target chainsqld_unity)
+	set(other_target chainsqld_unity)
 endif()
 list(APPEND targets "chainsqld")
 list(APPEND targets ${other_target})
@@ -593,7 +604,7 @@ set_startup_project(chainsqld)
 
 foreach(target IN LISTS targets)
     target_link_libraries(${target}
-      ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} intx instructions)
+      ${GMSSL_LIBRARIES} ${OPENSSL_LIBRARIES} ${PROTOBUF_LIBRARIES} ${SANITIZER_LIBRARIES} ${MYSQL_LIBRARIES} ${GMALG_LIBRARIES} intx instructions)
 
     link_common_libraries(${target})
 endforeach()

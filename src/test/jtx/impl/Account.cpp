@@ -21,6 +21,7 @@
 #include <test/jtx/Account.h>
 #include <test/jtx/amount.h>
 #include <ripple/protocol/types.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 
 namespace ripple {
 namespace test {
@@ -30,6 +31,7 @@ std::unordered_map<
     std::pair<std::string, KeyType>,
         Account, beast::uhash<>> Account::cache_;
 
+//according your test to choose gmalg or secp256k1
 Account const Account::master("master",
     generateKeyPair(KeyType::secp256k1,
         generateSeed("masterpassphrase")), Account::privateCtorTag{});

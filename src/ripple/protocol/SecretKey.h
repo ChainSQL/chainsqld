@@ -20,6 +20,7 @@
 #ifndef RIPPLE_PROTOCOL_SECRETKEY_H_INCLUDED
 #define RIPPLE_PROTOCOL_SECRETKEY_H_INCLUDED
 
+#include <ripple/protocol/CommonKey.h>
 #include <ripple/basics/Buffer.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/crypto/KeyType.h> // move to protocol/
@@ -32,7 +33,7 @@
 namespace ripple {
 
 /** A secret key. */
-class SecretKey
+class SecretKey : public CommonKey
 {
 private:
     std::uint8_t buf_[32];

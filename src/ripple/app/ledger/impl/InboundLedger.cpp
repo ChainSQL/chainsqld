@@ -431,6 +431,8 @@ void InboundLedger::done ()
 
     if (isComplete () && !isFailed () && mLedger)
     {
+		JLOG(m_journal.info()) <<
+			"Acquire ledger " << mLedger->info().seq << "success!";
         mLedger->setImmutable (app_.config());
         if (mReason != fcHISTORY)
             app_.getLedgerMaster ().storeLedger (mLedger);

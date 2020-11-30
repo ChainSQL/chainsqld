@@ -189,6 +189,22 @@ namespace ripple {
         }
     }
 
+    void TxPool::removeAvoid(uint256 hash,LedgerIndex seq)
+    {
+        std::lock_guard<std::mutex> lock(mutexTxPoll_);
+        if(txExists(hash))
+        {
+            if(mAvoidByHash.find(hash) != mAvoidByHash.end())
+            {
+                mAvoidByHash.erase(hash);
+                mAvoidBySeq[seq].erase(hash);
+                if(mAvoidBySeq[seq].size() == 0)
+                    mAvoidBySeq.erase(seq);
+            }
+            
+        }
+    }
+
 	void TxPool::clearAvoid(LedgerIndex seq)
 	{
         std::lock_guard<std::mutex> lock(mutexTxPoll_);

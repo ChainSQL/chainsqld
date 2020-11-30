@@ -561,8 +561,6 @@ Json::Value TxPrepareBase::prepareForCreate()
 {
 	Json::Value ret;
 	//get public key
-	//auto oPublic_key = RippleAddress::getPublicKey(secret_);
-    
     PublicKey public_key;
     if (!public_.empty())
     {
@@ -591,33 +589,29 @@ Json::Value TxPrepareBase::prepareForCreate()
     std::string raw = tx_json_[jss::Raw].toStyledString();
     Blob raw_blob = strCopy(raw);
     Blob rawCipher;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    Blob plainBlob;
     // get random password
     Blob passBlob = RippleAddress::getRandomPassword();
-    if (nullptr != hEObj)
+    
+    auto const type = publicKeyType(public_key);
+    switch(*type)
     {
-        //unsigned char sessionKey[512] = { 0 };
-        //unsigned long sessionKeyLen = 512;
-        const int plainPaddingMaxLen = 16;
-        unsigned char* pCipherData = new unsigned char[raw_blob.size()+ plainPaddingMaxLen];
-        unsigned long cipherDataLen = raw_blob.size()+ plainPaddingMaxLen;
-        //hEObj->SM4GenerateSessionKey(sessionKey, &sessionKeyLen);
-        //hEObj->SM4SymEncrypt(sessionKey, sessionKeyLen, raw_blob.data(), raw_blob.size(), cipherData, &cipherDataLen);
-        hEObj->SM4SymEncrypt(passBlob.data(), passBlob.size(), raw_blob.data(), raw_blob.size(), pCipherData, &cipherDataLen);
-        //passBlob = Blob(sessionKey, sessionKey + sessionKeyLen);
-        rawCipher = Blob(pCipherData, pCipherData + cipherDataLen);
-        delete [] pCipherData;
-        /*hEObj->SM4SymDecrypt(sessionKey, sessionKeyLen, cipherData, cipherDataLen, decipherData, &decipherDataLen);
-        plainBlob = Blob(decipherData, decipherData + decipherDataLen);
-        if (raw_blob == plainBlob)
-            DebugPrint("good");
-        else DebugPrint("wrong");*/
-    }
-    else
+    case KeyType::ed25519:
+    case KeyType::secp256k1:
     {
         //get password cipher
         rawCipher = RippleAddress::encryptAES(passBlob, raw_blob);
+        break;
+    }
+    case KeyType::gmalg:
+    {
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+        const int plainPaddingMaxLen = 16;
+        unsigned char* pCipherData = new unsigned char[raw_blob.size()+ plainPaddingMaxLen];
+        unsigned long cipherDataLen = raw_blob.size()+ plainPaddingMaxLen;
+        hEObj->SM4SymEncrypt(hEObj->ECB, passBlob.data(), passBlob.size(), raw_blob.data(), raw_blob.size(), pCipherData, &cipherDataLen);
+        rawCipher = Blob(pCipherData, pCipherData + cipherDataLen);
+        delete [] pCipherData;
+    }
     }
     tx_json_[jss::Token] = strCopy(ripple::encrypt(passBlob, public_key));
 	if (rawCipher.size() > 0)
@@ -641,7 +635,8 @@ Json::Value TxPrepareBase::prepareForAssign()
     PublicKey public_key;
     SecretKey secret_key;
 	std::string sPublic_key = tx_json_["PublicKey"].asString();
-    if (nullptr == HardEncryptObj::getInstance())
+	
+    if ('x' == secret_[0])
     {
         auto oPublicKey = parseBase58<PublicKey>(TOKEN_ACCOUNT_PUBLIC, sPublic_key);
         if (!oPublicKey)
@@ -655,7 +650,6 @@ Json::Value TxPrepareBase::prepareForAssign()
 
         public_key = *oPublicKey;
 
-        //boost::optional<SecretKey> secret_key = RippleAddress::getSecretKey(secret_);
         boost::optional<SecretKey> oSecret_key = ripple::getSecretKey(secret_);
         if (!oSecret_key)
         {
@@ -666,8 +660,9 @@ Json::Value TxPrepareBase::prepareForAssign()
             secret_key = *oSecret_key;
         }
     }
-    else
+    else if ('p' == secret_[0])
     {
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::string publicKeyDe58 = decodeBase58Token(sPublic_key, TOKEN_ACCOUNT_PUBLIC);
         if (publicKeyDe58.empty())
         {
@@ -686,7 +681,8 @@ Json::Value TxPrepareBase::prepareForAssign()
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
-        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
+        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+		tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
         secret_key = tempSecKey;
     }
 	std::pair<Blob, Json::Value> result = getPassBlob(ownerID_, ownerID_, secret_key);
@@ -706,11 +702,11 @@ Json::Value TxPrepareBase::prepareForAssign()
 Json::Value TxPrepareBase::prepareForOperating()
 {
 	Json::Value ret;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
+    GmEncrypt* hEObj = GmEncryptObj::getInstance();
     SecretKey secret_key;
-    if (nullptr == hEObj)
+    // if (nullptr == hEObj)
+    if ('x' == secret_[0])
     {
-        //boost::optional<SecretKey> secret_key = RippleAddress::getSecretKey(secret_);
         boost::optional<SecretKey> oSecret_key = ripple::getSecretKey(secret_);
         if (!oSecret_key)
         {
@@ -718,14 +714,15 @@ Json::Value TxPrepareBase::prepareForOperating()
         }
         secret_key = *oSecret_key;
     }
-    else
+    else if ('p' == secret_[0])
     {
         std::string privateKeyStrDe58 = decodeBase58Token(secret_, TOKEN_ACCOUNT_SECRET);
         if (privateKeyStrDe58.empty() || privateKeyStrDe58.size() != 32)
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
-        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
+        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+		tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
         secret_key = tempSecKey;
     }
 
@@ -748,16 +745,16 @@ Json::Value TxPrepareBase::prepareForOperating()
     Blob rawCipher;
     
     Blob passBlob = result.first;
-    if (nullptr == hEObj)
+    if ('x' == secret_[0])
     {
         rawCipher = RippleAddress::encryptAES(passBlob, raw_blob);
     }
-    else
+    else if ('p' == secret_[0])
     {
         const int plainPaddingMaxLen = 16;
         unsigned char* pCipherData = new unsigned char[raw_blob.size()+ plainPaddingMaxLen];
         unsigned long cipherDataLen = raw_blob.size()+ plainPaddingMaxLen;
-        hEObj->SM4SymEncrypt(passBlob.data(), passBlob.size(), raw_blob.data(), raw_blob.size(), pCipherData, &cipherDataLen);
+        hEObj->SM4SymEncrypt(hEObj->ECB, passBlob.data(), passBlob.size(), raw_blob.data(), raw_blob.size(), pCipherData, &cipherDataLen);
         rawCipher = Blob(pCipherData, pCipherData + cipherDataLen);
         delete [] pCipherData;
     }

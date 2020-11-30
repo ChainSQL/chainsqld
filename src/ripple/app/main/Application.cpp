@@ -1167,6 +1167,8 @@ bool ApplicationImp::setup()
     if (!setSynTable())  return false;
 
 	if (!checkCertificate())  return false;
+
+    if(validatorKeys_.configInvalid()) return false;
     
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount (config_->WORKERS, config_->standalone());
@@ -1254,17 +1256,17 @@ bool ApplicationImp::setup()
     /*if (config().exists(SECTION_ENCRYPT_CARD_TYPE))
     {
         auto encryptCardType = config().section(SECTION_ENCRYPT_CARD_TYPE).lines().front();
-        if (encryptCardType == std::string("sjk1238"))
+        if (encryptCardType == std::string("sjkCard"))
         {
-            HardEncryptObj::hEType_ = HardEncryptObj::sjk1238Type;
+            GmEncryptObj::hEType_ = GmEncryptObj::sjkCardType;
         }
         else if (encryptCardType == std::string("sdkey"))
         {
-            HardEncryptObj::hEType_ = HardEncryptObj::sdkeyType;
+            GmEncryptObj::hEType_ = GmEncryptObj::sdkeyType;
         }
         else
         {
-            HardEncryptObj::hEType_ = HardEncryptObj::unknown;
+            GmEncryptObj::hEType_ = GmEncryptObj::unknown;
         }
     }*/
 	// VFALCO NOTE Unfortunately, in stand-alone mode some code still
@@ -1320,8 +1322,8 @@ bool ApplicationImp::setup()
     }
 
     {
-        if(validatorKeys_.configInvalid())
-            return false;
+        // if(validatorKeys_.configInvalid())
+        //     return false;
 
         if (!validatorManifests_->load (
             getWalletDB (), "ValidatorManifests", validatorKeys_.manifest,

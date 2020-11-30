@@ -116,10 +116,10 @@ Json::Value doValidatorListSites    (RPC::Context&);
 
 //for contract
 Json::Value doContractCall(RPC::Context&);
-
-
-
 Json::Value doGenCsr(RPC::Context&); // for humans
+//for gm algorithm data generation
+Json::Value doCreateRandom(RPC::Context&);
+Json::Value doCryptData(RPC::Context&);
 
 } // ripple
 

@@ -759,21 +759,42 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
         return std::make_pair(pItem, sLastErr_);
     }
     else accountID = *oAccountID;
-
-    if (HardEncryptObj::getInstance() != NULL)
+	
+    // if (hEObj != NULL)
+    if (!secret.empty() && ('p' == secret[0] || secret.size() <= 3))
     {
         try
-        {
-            
-            if(!user.empty() && !secret.empty())
+        { 
+            if(!user.empty())
             {
 				auto pUser = ripple::parseBase58<AccountID>(user);
 				if (boost::none == pUser)
 					return std::make_pair(pItem, tablename + ":user invalid!");
 				userAccountId = *pUser;
-                std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
-                SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), strlen(privateKeyStrDe58.c_str())));
-                secret_key = tempSecKey;
+                
+                GmEncrypt* hEObj = GmEncryptObj::getInstance();
+				if (secret.size() <= 3)
+				{
+					//add a try catch to judge whether the index is a number.
+					secret = secret.substr(1);
+					int index = atoi(secret.c_str());
+					//SecretKey tempSecKey(Slice(nullptr, 0));
+					char* temp4Secret = new char[32];
+					memset(temp4Secret, index, 32);
+					SecretKey tempSecKey(Slice(temp4Secret, 32));
+					tempSecKey.encrytCardIndex_ = index;
+					tempSecKey.keyTypeInt_ = hEObj->gmInCard;
+					hEObj->getPrivateKeyRight(index);
+					secret_key = tempSecKey;
+					delete[] temp4Secret;
+				}
+				else
+				{
+					std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
+					SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+					tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
+					secret_key = tempSecKey;
+				}
             }
         }
         catch (std::exception const& e)
@@ -784,22 +805,19 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
             return std::make_pair(pItem, sLastErr_);
         }
     }
-    else
+    else if (!secret.empty() && 'x' == secret[0])
     {
         try
-        {   
-            if (secret.size() > 0)
+        {
+            //create secret key from given secret
+            auto seed = parseBase58<Seed>(secret);
+            if (seed)
             {
-                //create secret key from given secret
-                auto seed = parseBase58<Seed>(secret);
-                if (seed)
-                {
-                    KeyType keyType = KeyType::secp256k1;
-                    std::pair<PublicKey, SecretKey> key_pair = generateKeyPair(keyType, *seed);
-                    public_key = key_pair.first;
-                    secret_key = key_pair.second;
-                    userAccountId = calcAccountID(public_key);
-                }
+                KeyType keyType = KeyType::secp256k1;
+                std::pair<PublicKey, SecretKey> key_pair = generateKeyPair(keyType, *seed);
+                public_key = key_pair.first;
+                secret_key = key_pair.second;
+                userAccountId = calcAccountID(public_key);
             }
         }
         catch (std::exception const& e)
@@ -1176,10 +1194,10 @@ void TableSync::TryTableSync()
 {
     if (!bInitTableItems_ && bIsHaveSync_)
     {
-		if (app_.getLedgerMaster().getValidLedgerIndex() > 1)
+		if (app_.getLedgerMaster().getValidatedLedger() !=nullptr && app_.getLedgerMaster().getValidLedgerIndex() > 1)
 		{
-			CreateTableItems();
-			bInitTableItems_ = true;
+            CreateTableItems();
+            bInitTableItems_ = true;
 		}
     }
 
@@ -1314,7 +1332,9 @@ void TableSync::TableSyncThread()
 					}
 					else
 					{
+						JLOG(journal_.error()) << pItem->InitPassphrase().second;
 						pItem->SetSyncState(TableSyncItem::SYNC_STOP);
+                        break;
 					}
 				}
 				else if(!stItem.isDeleted)
@@ -1523,8 +1543,19 @@ std::pair<bool, std::string>
     {
         //check formal tables
         if (isExist(listTableInfo_, accountID, sTableName, TableSyncItem::SyncTarget_db))
-            return std::make_pair(false,"Table exist in listTableInfo");
-        //check temp tables
+        {
+          std::string temKey = to_string(accountID) + sTableName;
+          if (setTableInCfg.end() == std::find(setTableInCfg.begin(), setTableInCfg.end(), temKey))
+          {
+            return std::make_pair(false, "Table exist in listTableInfo");
+          }
+          else
+          {
+            return std::make_pair(true, err);
+          }
+        }
+	
+	//check temp tables
         auto it = std::find_if(listTempTable_.begin(), listTempTable_.end(),
             [sNameInDB](std::string sName) {
             return sName == sNameInDB;

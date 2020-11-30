@@ -26,6 +26,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <peersafe/crypto/hashBaseObj.h>
 #include <mutex>
 
 #include <openssl/sha.h>
@@ -116,10 +117,19 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
         if (type == 0)
         {
             // transaction
-            auto item = std::make_shared<SHAMapItem const>(
-                sha512Half(HashPrefix::transactionID,
-                    Slice(s.data(), s.size())),
-                        s.peekData());
+            int txType = -1;
+            if (len >= 2)
+                txType = rawNode[2];
+
+            uint256 nh;
+            if ( txType == 100 || txType == 101)
+            {
+                nh =  sha512Half(HashPrefix::transactionID, 
+                                Slice(s.data(), s.size()));
+            }
+            else nh = hash.as_uint256();
+
+            auto item = std::make_shared<SHAMapItem const>(nh, s.peekData());
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq, hash);
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq);
@@ -264,9 +274,11 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
 
         if (prefix == HashPrefix::transactionID)
         {
+            // auto item = std::make_shared<SHAMapItem const>(
+            //     sha512Half(rawNode),
+            //         s.peekData ());
             auto item = std::make_shared<SHAMapItem const>(
-                sha512Half(rawNode),
-                    s.peekData ());
+                hash.as_uint256(), s.peekData ());
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq, hash);
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq);
@@ -365,13 +377,21 @@ SHAMapInnerNode::updateHash()
     uint256 nh;
     if (mIsBranch != 0)
     {
-        sha512_half_hasher h;
+        // sha512_half_hasher h;
+        // using beast::hash_append;
+        // hash_append(h, HashPrefix::innerNode);
+        // for(auto const& hh : mHashes)
+        //     hash_append(h, hh);
+        // nh = static_cast<typename
+        //     sha512_half_hasher::result_type>(h);
+
+        hashBase* phasher = hashBaseObj::getHasher();
         using beast::hash_append;
-        hash_append(h, HashPrefix::innerNode);
+        hash_append(*phasher, HashPrefix::innerNode);
         for(auto const& hh : mHashes)
-            hash_append(h, hh);
-        nh = static_cast<typename
-            sha512_half_hasher::result_type>(h);
+            hash_append(*phasher, hh);
+        nh = static_cast<typename sha512_half_hasher::result_type>(*phasher);
+        hashBaseObj::releaseHasher(phasher);
     }
     if (nh == mHash.as_uint256())
         return false;
@@ -396,8 +416,9 @@ SHAMapTreeNode::updateHash()
     uint256 nh;
     if (mType == tnTRANSACTION_NM)
     {
-        nh = sha512Half(HashPrefix::transactionID,
-            makeSlice(mItem->peekData()));
+        // nh = sha512Half(HashPrefix::transactionID,
+        //     makeSlice(mItem->peekData()));
+        nh = mItem->key();
     }
     else if (mType == tnACCOUNT_STATE)
     {

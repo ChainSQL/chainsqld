@@ -546,9 +546,10 @@ void TableSyncItem::SetSyncState(TableSyncState eState)
 			eState_ = eState;
 		}
 	}
-	else if (eState_ != SYNC_STOP || eState_ != SYNC_REMOVE) {
-		eState_ = eState;
-	}
+    else if (!(eState_ == SYNC_STOP || eState_ == SYNC_REMOVE))
+    {
+        eState_ = eState;
+    }
 }
 
 void TableSyncItem::SetDeleted(bool deleted)
@@ -791,11 +792,12 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 							if (user.isFieldPresent(sfToken))
 							{
 								auto token = user.getFieldVL(sfToken);
-								//passBlob_ = RippleAddress::decryptPassword(token, *user_secret_);
-                                passBlob_ = ripple::decrypt(token, *user_secret_);
-								if(passBlob_.size() > 0)  return std::make_pair(true, "");
+								bool result = tokenProcObj_.setSymmertryKey(token, *user_secret_);
+                                //passBlob_ = ripple::decrypt(token, *user_secret_);
+								//if(passBlob_.size() > 0)  return std::make_pair(true, "");
+								if (result)  return std::make_pair(true, "");
 								else
-								{
+                                {
 									app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
 									return std::make_pair(false, "cann't get password for this table.");
 								}
@@ -835,7 +837,10 @@ void TableSyncItem::TryDecryptRaw(std::vector<STTx>& vecTxs)
 
 void TableSyncItem::TryDecryptRaw(STTx& tx)
 {
-	if (!user_accountID_ || passBlob_.size() == 0)
+	if (!user_accountID_ || !tokenProcObj_.isValidate)
+		return;
+
+	if (T_GRANT == tx.getFieldU16(sfOpType))
 		return;
 
 	Blob raw;
@@ -854,26 +859,17 @@ void TableSyncItem::TryDecryptRaw(STTx& tx)
 	
 	if (user_accountID_ && user_secret_)
 	{
-		//decrypt passphrase
-        Blob rawDecrypted;
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
-        if (nullptr == hEObj)
+        if (tx.isFieldPresent(sfSigningPubKey))
         {
-            rawDecrypted = RippleAddress::decryptAES(passBlob_, raw);
+            auto const pk = tx.getFieldVL (sfSigningPubKey);
+            PublicKey publicKey(makeSlice(pk));
+		    //decrypt passphrase
+            Blob rawDecrypted = tokenProcObj_.symmertryDecrypt(raw, publicKey);
+            if (rawDecrypted.size() > 0)
+		    {
+			    tx.setFieldVL(sfRaw, rawDecrypted);
+		    }
         }
-        else
-        {
-            unsigned char* pPlainData = new unsigned char[raw.size()];
-            unsigned long plainDataLen = raw.size();
-            hEObj->SM4SymDecrypt(passBlob_.data(),passBlob_.size(),raw.data(),raw.size(),pPlainData,&plainDataLen);
-            rawDecrypted = Blob(pPlainData, pPlainData + plainDataLen);
-            delete[] pPlainData;
-        }
-
-		if (rawDecrypted.size() > 0)
-		{
-			tx.setFieldVL(sfRaw, rawDecrypted);
-		}
 	}
 }
 
@@ -977,19 +973,19 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 			}
 		}
 	}
-	//else
-	//{
-	//	if ((TableOpType)op_type == T_CREATE)
-	//	{
-	//		auto tables = tx.getFieldArray(sfTables);
-	//		if (tables.size() > 0)
-	//		{
-	//			JLOG(journal_.warn()) << "Deleting item where tableName = " << sTableName_  <<" because of creating real table failure." ;
-	//			getTableStatusDB().DeleteRecord(accountID_, sTableName_);
-	//			this->ReSetContexAfterDrop();
-	//		}
-	//	}
-	//}
+	else
+	{
+		if ((TableOpType)op_type == T_CREATE)
+		{
+			auto tables = tx.getFieldArray(sfTables);
+			if (tables.size() > 0)
+			{
+				JLOG(journal_.warn()) << "Deleting item where tableName = " << sTableName_ << " because of creating real table failure.";
+				getTableStatusDB().DeleteRecord(accountID_, sTableName_);
+				this->ReSetContexAfterDrop();
+			}
+		}
+	}
 
 	return ret;
 }

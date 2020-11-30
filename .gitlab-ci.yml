@@ -17,4 +17,9 @@ deployToGithub:
     url: https://github.com/ChainSQL/chainsqld
   tags:
     - chainsqld
+  only:
+    refs:
+      - master
+      - develop
+      - feature/newConsensus
 

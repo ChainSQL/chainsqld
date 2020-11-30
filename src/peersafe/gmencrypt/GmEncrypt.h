@@ -18,8 +18,8 @@
 //==============================================================================
 
 #pragma once
-#ifndef HARDENCRYPT_HARDENCRYPT_H_INCLUDE
-#define HARDENCRYPT_HARDENCRYPT_H_INCLUDE
+#ifndef GMENCRYPT_GMENCRYPT_H_INCLUDE
+#define GMENCRYPT_GMENCRYPT_H_INCLUDE
 
 //#define GM_ALG_PROCESS
 
@@ -30,16 +30,15 @@
 #endif
 #endif
 
-#define DEBUG_PRINTF
+//#define DEBUG_PRINTF
 #ifdef DEBUG_PRINTF
 #define DebugPrint(fmt,...) printf(fmt"\n",##__VA_ARGS__)
 #else
 #define DebugPrint(fmt,...)
 #endif // DEBUGLC_PRINTF
 
-//#include <hardencrypt/skj1238_26/swsds.h>
-//#include <hardencrypt/sdkey/swsdkey.h>
-#include <ripple/beast/hash/endian.h>
+// #include <ripple/beast/hash/endian.h>
+#include <peersafe/crypto/hashBase.h>
 #include <utility>
 #include <mutex>
 
@@ -51,33 +50,39 @@ typedef void* HANDLE;
 #define PUBLIC_KEY_BIT_LEN  256
 #define PRIVATE_KEY_EXT_LEN 32
 #define PUBLIC_KEY_EXT_LEN  65
+#define SYNC_TABLE_KEY_INDEX 1
+#define NODE_VERIFY_KEY_INDEX 2
 
-class HardEncrypt
+class GmEncrypt
 {
 public:
-    class SM3Hash
+    class SM3Hash : public ripple::hashBase
     {
     public:
-        SM3Hash(HardEncrypt *pEncrypt);
+        SM3Hash(GmEncrypt *pEncrypt);
         ~SM3Hash();
         
         void SM3HashInitFun();
         void SM3HashFinalFun(unsigned char *pHashData, unsigned long *pulHashDataLen);
         void operator()(void const* data, std::size_t size) noexcept;
+        explicit operator result_type() noexcept;
     private:
-        HardEncrypt *pHardEncrypt_;
+        GmEncrypt *pGmEncrypt_;
         static std::mutex mutexSM3_;
     protected:
         HANDLE hSM3Handle_;
-    public:
-        static beast::endian const endian = beast::endian::big;
+    // public:
+    //     static beast::endian const endian = beast::endian::big;
     };
 
 public:
     friend class SM3Hash;
-    HardEncrypt();
-    ~HardEncrypt();    
+    GmEncrypt();
+    ~GmEncrypt();    
     enum KeyType { userKey, rootKey };
+	enum SeckeyType { gmInCard, gmOutCard, comKey };
+	enum PubKeyType { syncTableKey, nodeVerifyKey };
+	enum SM4AlgType { ECB, CBC};
 
 public:
     //SM3Hash &getSM3Obj();
@@ -86,15 +91,42 @@ public:
     virtual std::pair<unsigned char*, int> getPublicKey() = 0;
     virtual std::pair<unsigned char*, int> getPrivateKey() = 0;
     bool isHardEncryptExist();
+	std::string GetHomePath();
+	int FileWrite(const char *filename, char *mode, unsigned char *buffer, size_t size);
 
+	//Generate random
+	virtual unsigned long GenerateRandom(
+		unsigned int uiLength,
+		unsigned char * pucRandomBuf ) = 0;
+	virtual unsigned long GenerateRandom2File(
+		unsigned int uiLength,
+		unsigned char * pucRandomBuf,
+		int times) = 0;
+    virtual bool randomSingleCheck(unsigned long randomCheckLen) = 0;
     //SM2 interface
+	//Get Private key access right
+	virtual unsigned long getPrivateKeyRight(
+		unsigned int uiKeyIndex,
+		unsigned char *pucPassword = nullptr,
+		unsigned int uiPwdLength = 0) = 0;
+	//Release Private key access right
+	virtual unsigned long releasePrivateKeyRight(
+		unsigned int uiKeyIndex) = 0;
+	virtual std::pair<unsigned char*, int> getECCSyncTablePubKey(unsigned char* publicKeyTemp) = 0;
+	virtual std::pair<unsigned char*, int> getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex) = 0;
     //Generate Publick&Secret Key
     virtual unsigned long SM2GenECCKeyPair(
         unsigned long ulAlias = SD_KEY_ALIAS,
         unsigned long ulKeyUse = SD_KEY_USE,
         unsigned long ulModulusLen = PRIVATE_KEY_BIT_LEN) = 0;
     //SM2 Sign&Verify
-    virtual unsigned long SM2ECCSign(
+	virtual unsigned long SM2ECCSign(
+		std::pair<int, int> pri4SignInfo,
+		std::pair<unsigned char*, int>& pri4Sign,
+		unsigned char *pInData,
+		unsigned long ulInDataLen,
+		std::vector<unsigned char>& signedDataV) = 0;
+    /*virtual unsigned long SM2ECCExternalSign(
         std::pair<unsigned char*, int>& pri4Sign,
         unsigned char *pInData,
         unsigned long ulInDataLen,
@@ -102,31 +134,32 @@ public:
         unsigned long *pulSignValueLen,
         unsigned long ulAlias = SD_KEY_ALIAS,
         unsigned long ulKeyUse = SD_KEY_USE) = 0;
+	virtual unsigned long SM2ECCInternalSign(
+		int pri4SignIndex,
+		unsigned char *pInData,
+		unsigned long ulInDataLen,
+		unsigned char *pSignValue,
+		unsigned long *pulSignValueLen) = 0;*/
     virtual unsigned long SM2ECCVerify(
         std::pair<unsigned char*, int>& pub4Verify,
         unsigned char *pInData,
         unsigned long ulInDataLen,
         unsigned char *pSignValue,
-        unsigned long ulSignValueLen,
-        unsigned long ulAlias = SD_KEY_ALIAS,
-        unsigned long ulKeyUse = SD_KEY_USE) = 0;
+        unsigned long ulSignValueLen) = 0;
     //SM2 Encrypt&Decrypt
     virtual unsigned long SM2ECCEncrypt(
         std::pair<unsigned char*, int>& pub4Encrypt,
         unsigned char * pPlainData,
         unsigned long ulPlainDataLen,
-        unsigned char * pCipherData,
-        unsigned long * pulCipherDataLen,
-        unsigned long ulAlias = SD_KEY_ALIAS,
-        unsigned long ulKeyUse = SD_KEY_USE) = 0;
+        std::vector<unsigned char>& cipherDataV) = 0;
     virtual unsigned long SM2ECCDecrypt(
+		std::pair<int, int> pri4DecryptInfo,
         std::pair<unsigned char*, int>& pri4Decrypt,
         unsigned char *pCipherData,
         unsigned long ulCipherDataLen,
-        unsigned char *pPlainData,
-        unsigned long *pulPlainDataLen,
-        unsigned long ulAlias = SD_KEY_ALIAS,
-        unsigned long ulKeyUse = SD_KEY_USE) = 0;
+        std::vector<unsigned char>& plainDataV,
+		bool isSymmertryKey = false,
+        void* sm4Handle = nullptr) = 0;
     //SM3 interface
     virtual unsigned long SM3HashTotal(
         unsigned char *pInData,
@@ -135,20 +168,24 @@ public:
         unsigned long *pulHashDataLen) = 0;   
     //SM4 interface
     //SM4 Symetry Encrypt&Decrypt
-    virtual unsigned long SM4SymEncrypt(
-        unsigned char *pSessionKey,
-        unsigned long pSessionKeyLen,
-        unsigned char *pPlainData,
-        unsigned long ulPlainDataLen,
-        unsigned char *pCipherData,
-        unsigned long *pulCipherDataLen) = 0;
-    virtual unsigned long SM4SymDecrypt(
-        unsigned char *pSessionKey,
-        unsigned long pSessionKeyLen,
-        unsigned char *pCipherData,
-        unsigned long ulCipherDataDataLen,
-        unsigned char *pPlainData,
-        unsigned long *pulPlainDataLen) = 0;
+	virtual unsigned long SM4SymEncrypt(
+		unsigned int uiAlgMode,
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pPlainData,
+		unsigned long ulPlainDataLen,
+		unsigned char *pCipherData,
+		unsigned long *pulCipherDataLen,
+		int secKeyType = SeckeyType::gmOutCard) = 0;
+	virtual unsigned long SM4SymDecrypt(
+		unsigned int uiAlgMode,
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pCipherData,
+		unsigned long ulCipherDataDataLen,
+		unsigned char *pPlainData,
+		unsigned long *pulPlainDataLen,
+		int secKeyType = SeckeyType::gmOutCard) = 0;
     virtual unsigned long SM4GenerateSessionKey(
         unsigned char *pSessionKey,
         unsigned long *pSessionKeyLen) = 0;

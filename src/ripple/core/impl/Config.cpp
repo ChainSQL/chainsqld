@@ -27,6 +27,8 @@
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/beast/core/LexicalCast.h>
+#include <ripple/protocol/CommonKey.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <beast/core/string.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
@@ -326,7 +328,35 @@ void Config::loadFromString (std::string const& fileContents)
 		}
 
 	}
-		
+
+    auto cryptoAlgSection = section( ConfigSection::cryptoAlg() );
+    if (!cryptoAlgSection.empty ())
+    {
+        if(cryptoAlgSection.exists("node_alg_type"))
+        {
+            auto nodeAlgType = cryptoAlgSection.get<std::string>("node_alg_type");
+            if (!CommonKey::setAlgType(*nodeAlgType))
+            {
+                Throw<std::runtime_error> ("node_alg_type is invalid");
+            }
+        }
+
+        if(cryptoAlgSection.exists("hash_type"))
+        {
+            auto hashType = cryptoAlgSection.get<std::string>("hash_type");
+            if (!CommonKey::setHashType(*hashType))
+            {
+                Throw<std::runtime_error> ("hash_type is invalid");
+            }
+            // GmEncryptObj::setGmAlgType(GmEncryptObj::fromString(*gmType));
+        }
+
+        if(cryptoAlgSection.exists("gm_self_check"))
+        {
+            auto gmSelfCheck = cryptoAlgSection.get<bool>("gm_self_check");
+            GM_SELF_CHECK = *gmSelfCheck;
+        }
+    }
 
     {
         std::string dbPath;

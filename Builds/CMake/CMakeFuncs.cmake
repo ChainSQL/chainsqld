@@ -138,6 +138,7 @@ macro(parse_target)
   else()
     set(CMAKE_BUILD_TYPE Debug)
     set(LLVM_BUILD_TYPE Debug)
+    add_definitions(-DDEBUGMOD)
   endif()
 
   # ensure that the unity flags are set and exclusive
@@ -389,31 +390,43 @@ macro(use_openssl openssl_min)
       link_directories($ENV{OPENSSL_ROOT}/lib)
     endif()
   else()
-    if (static)
-      set(tmp CMAKE_FIND_LIBRARY_SUFFIXES)
-      set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-    endif()
-
-    find_package(OpenSSL)
-    # depending on how openssl is built, it might depend
-    # on zlib. In fact, the openssl find package should
-    # figure this out for us, but it does not currently...
-    # so let's add zlib ourselves to the lib list
-    find_package(ZLIB)
-
-    if (static)
-      set(CMAKE_FIND_LIBRARY_SUFFIXES tmp)
-    endif()
-
-    if (OPENSSL_FOUND)
-      include_directories(${OPENSSL_INCLUDE_DIR})
-      list(APPEND OPENSSL_LIBRARIES ${ZLIB_LIBRARIES})
+    #if (enableGmalg)
+    if (FALSE)
+        set(GMSSL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/gmAlgLib")
+        message(STATUS "GMSSL_LIBRARY_DIR: ${GMSSL_LIBRARY_DIR}")
+        #link_directories(${GMALG_LIBRARY_DIR})
+        set(OPENSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libssl.a" "${GMSSL_LIBRARY_DIR}/libcrypto.a" "-pthread" "dl")
+        # set(OPENSSL_VERSION "1.0.2d")
+        set(OPENSSL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/src/peersafe/gmencrypt/softencrypt/GmSSL/include")
+        include_directories(${OPENSSL_INCLUDE_DIR})
+        message( STATUS "OPENSSL_LIBRARIES: ${OPENSSL_LIBRARIES}" )
     else()
-      message(FATAL_ERROR "OpenSSL not found")
-    endif()
-    if (UNIX AND NOT APPLE AND ${OPENSSL_VERSION} VERSION_LESS ${openssl_min})
-      message(FATAL_ERROR
-        "Your openssl is Version: ${OPENSSL_VERSION}, ${openssl_min} or better is required.")
+        if (static)
+            set(tmp CMAKE_FIND_LIBRARY_SUFFIXES)
+            set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+        endif()
+
+        find_package(OpenSSL)
+        # depending on how openssl is built, it might depend
+        # on zlib. In fact, the openssl find package should
+        # figure this out for us, but it does not currently...
+        # so let's add zlib ourselves to the lib list
+        find_package(ZLIB)
+
+        if (static)
+            set(CMAKE_FIND_LIBRARY_SUFFIXES tmp)
+        endif()
+
+        if (OPENSSL_FOUND)
+            include_directories(${OPENSSL_INCLUDE_DIR})
+            list(APPEND OPENSSL_LIBRARIES ${ZLIB_LIBRARIES})
+        else()
+            message(FATAL_ERROR "OpenSSL not found")
+        endif()
+        if (UNIX AND NOT APPLE AND ${OPENSSL_VERSION} VERSION_LESS ${openssl_min})
+            message(FATAL_ERROR
+                "Your openssl is Version: ${OPENSSL_VERSION}, ${openssl_min} or better is required.")
+        endif()
     endif()
   endif()
 endmacro()
@@ -504,6 +517,35 @@ macro(use_mysql)
   include_directories(${MYSQL_INCLUDE_DIR})
   link_directories(${MYSQL_LIBRARY_DIR})  
 
+endmacro()
+
+macro(use_gmalg enableHDGm)
+    add_definitions(-DGM_ALG_PROCESS)
+
+    set(GMSSL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/gmAlgLib")
+    message(STATUS "GMSSL_LIBRARY_DIR: ${GMSSL_LIBRARY_DIR}")
+    #link_directories(${GMALG_LIBRARY_DIR})
+    # set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a" "-pthread" "dl")
+    set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a")
+    # set(OPENSSL_VERSION "1.0.2d")
+    set(GMSSL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/src/peersafe/gmencrypt/softencrypt/GmSSL/include")
+    include_directories(${GMSSL_INCLUDE_DIR})
+    message( STATUS "GMSSL_LIBRARIES: ${GMSSL_LIBRARIES}" )
+
+    if (enableHDGm)
+        set(CMAKE_SKIP_BUILD_RPATH  TRUE)
+        set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+        set(CMAKE_INSTALL_RPATH "./gmAlgLib")
+        set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    
+        add_definitions(-DHARD_GM)
+        set(GMALG_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/gmAlgLib")
+        message(STATUS "GMALG_LIBRARY_DIR: ${GMALG_LIBRARY_DIR}")
+        set(GMALG_LIBRARIES "${GMALG_LIBRARY_DIR}/libswsds.so" "${GMALG_LIBRARY_DIR}/libswsd.so")
+    else()
+        set(GMALG_LIBRARIES)
+        #set(GMSSL_LIBRARIES)
+    endif()
 endmacro()
 
 macro(use_protobuf)

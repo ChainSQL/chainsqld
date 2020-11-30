@@ -46,6 +46,9 @@
 #include <test/quiet_reporter.h>
 #include <google/protobuf/stubs/common.h>
 #include <boost/program_options.hpp>
+#include <ripple/protocol/CommonKey.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
+#include <peersafe/gmencrypt/GmCheck.h>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
@@ -174,6 +177,8 @@ void printHelp (const po::options_description& desc)
 		   "     gen_csr <seed> <x509_subject>\n";
 }
 
+KeyType CommonKey::algTypeGlobal = KeyType::secp256k1;
+CommonKey::HashType CommonKey::hashTypeGlobal = CommonKey::HashType::sha;
 //------------------------------------------------------------------------------
 
 static int runUnitTests(
@@ -197,6 +202,29 @@ static int runUnitTests(
     if(anyFailed)
         return EXIT_FAILURE;
     return EXIT_SUCCESS;
+}
+
+std::string GetExecuteName()
+{
+     std::string _exeName = "/proc/self/exe";
+#ifdef _WIN64
+     std::string str = _pgmptr;
+     int pos_s = str.rfind('\\');
+     std::string str_s = str.substr(pos_s + 1, str.length() - pos_s - 1);
+     int pos_t = str_s.rfind('.');
+     _exeName = str_s.substr(0, pos_t);
+#else
+     size_t linksize = 256;
+     char exeName[256] = { 0 };
+     if (readlink(_exeName.c_str(), exeName, linksize) != -1)
+     {
+         _exeName = exeName;
+     }
+     int pos = _exeName.rfind('/');
+     _exeName = _exeName.substr(pos + 1,_exeName.length() - pos);
+     std::cerr << "exename:" <<_exeName<< std::endl;
+#endif
+     return _exeName;
 }
 
 //------------------------------------------------------------------------------
@@ -425,24 +453,58 @@ int run (int argc, char** argv)
         thresh = kTrace;
 
     auto logs = std::make_unique<Logs>(thresh);
-#ifdef GM_ALG_PROCESS
-    if (nullptr == HardEncryptObj::getInstance())
-    {
-        setDebugLogSink(logs->makeSink(
-            "Debug", beast::severities::kTrace));
-        auto hardEncryptJournal = logs->journal("HardEncrypt");
-        JLOG(hardEncryptJournal.info()) << "No EncryptCard! Please Check!";
-        return -1;
-    }
+#ifdef HARD_GM
+	setDebugLogSink(logs->makeSink(
+		"Debug", beast::severities::kTrace));
+	auto GmCheckJournal = logs->journal("GmCheck");
+	GmEncrypt* hEObj = GmEncryptObj::getInstance();
+    // need judge the chainsqld.cfg validation_seed whether is a number,if number and must have card
+	if (nullptr == hEObj)
+	{
+		JLOG(GmCheckJournal.info()) << "No EncryptCard! Please Check!";
+		return -1;
+	}
 #endif
     // No arguments. Run server.
     if (!vm.count ("parameters"))
     {
+		if (config->GM_SELF_CHECK)
+		{
+			bool checkResult = false;
+			GMCheck *gmCheckObj = GMCheck::getInstance();
+			if (gmCheckObj != nullptr)
+			{
+				checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
+				if (checkResult)
+				{
+					// JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check successful!";
+                    std::cout << "SM2/SM3/SM4 and random check successful!" << std::endl;
+				}
+				else
+				{
+					// JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check failed!";
+                    std::cerr << "SM2/SM3/SM4 and random check failed!" << std::endl;
+					return -1;
+				}
+			}
+			else
+			{
+				// JLOG(GmCheckJournal.info()) << "Get check obj failed! Please Check!";
+                std::cerr << "Get check obj failed! Please Check!" << std::endl;
+				return -1;
+			}
+		}
+#ifdef HARD_GM
+		//std::string filePath = GetHomePath();
+		generateAddrAndPubFile(hEObj->syncTableKey, SYNC_TABLE_KEY_INDEX);
+		//generateAddrAndPubFile(filePath, hEObj->nodeVerifyKey);
+#endif
         // We want at least 1024 file descriptors. We'll
         // tweak this further.
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))
             return -1;
 
+#ifndef DEBUGMOD
         if (HaveSustain() && !vm.count ("fg") && !config->standalone())
         {
             auto const ret = DoSustain ();
@@ -450,6 +512,7 @@ int run (int argc, char** argv)
             if (!ret.empty ())
                 std::cerr << "Watchdog: " << ret << std::endl;
         }
+#endif
 
         if (vm.count ("debug"))
         {

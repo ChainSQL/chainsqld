@@ -562,7 +562,6 @@ public:
 		return value_type_ == DATE;
 	}
 
-
 	bool isNull() {
 		return value_type_ == NULLTYPE;
 	}

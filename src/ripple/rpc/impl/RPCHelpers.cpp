@@ -71,7 +71,8 @@ accountFromString(
         return rpcError (rpcBAD_SEED);
 
     std::pair<PublicKey, SecretKey> keypair;
-    if (nullptr == HardEncryptObj::getInstance())
+    // if (nullptr == GmEncryptObj::getInstance())
+    if(true)//can not judge the crypto alg from account, so default use secp256k1
     {
         keypair = generateKeyPair(
             KeyType::secp256k1,
@@ -655,9 +656,14 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             params[jss::secret].asString ());
     }
 
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    if (nullptr != hEObj)
+    std::string privateKeyStr;
+    bool isExitSecret = params.isMember(jss::secret);
+    if(isExitSecret)
+        privateKeyStr = params[jss::secret].asString();
+    
+    if ((isExitSecret && !privateKeyStr.empty() && ('p' == privateKeyStr[0])))
     {
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::string privateKeyStr = params[jss::secret].asString();
         std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, TOKEN_ACCOUNT_SECRET);
         std::string publicKeyStr = params[jss::public_key].asString();
@@ -667,8 +673,10 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             error = RPC::missing_field_error(": 'public_key' field");
             return{};
         }
+		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
         return std::make_pair(PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size())),
-            SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size())));
+			secretkeyTemp);
     }
     else
     {
