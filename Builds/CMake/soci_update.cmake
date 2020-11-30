@@ -1,5 +1,5 @@
 execute_process(
-  COMMAND git restore *
+  COMMAND git checkout -- *
   )
 
 execute_process(
