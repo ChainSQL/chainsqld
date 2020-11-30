@@ -1,7 +1,7 @@
 #include <peersafe/app/misc/ExtVM.h>
 #include <peersafe/app/misc/Executive.h>
 #include <peersafe/protocol/STMap256.h>
-#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/protocol/TableDefines.h>
 

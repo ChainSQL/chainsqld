@@ -20,11 +20,11 @@
 #ifndef RIPPLE_OVERLAY_PEER_H_INCLUDED
 #define RIPPLE_OVERLAY_PEER_H_INCLUDED
 
-#include <ripple/overlay/Message.h>
 #include <ripple/basics/base_uint.h>
-#include <ripple/json/json_value.h>
-#include <ripple/protocol/PublicKey.h>
 #include <ripple/beast/net/IPEndpoint.h>
+#include <ripple/json/json_value.h>
+#include <ripple/overlay/Message.h>
+#include <ripple/protocol/PublicKey.h>
 
 namespace ripple {
 
@@ -34,6 +34,10 @@ class Charge;
 
 // Maximum hops to attempt when crawling shards. cs = crawl shards
 static constexpr std::uint32_t csHopLimit = 3;
+
+enum class ProtocolFeature {
+    ValidatorListPropagation,
+};
 
 /** Represents a peer connection in the overlay. */
 class Peer
@@ -54,46 +58,47 @@ public:
     // Network
     //
 
-    virtual
-    void
-    send (Message::pointer const& m) = 0;
+    virtual void
+    send(std::shared_ptr<Message> const& m) = 0;
 
-    virtual
-    beast::IP::Endpoint
+    virtual beast::IP::Endpoint
     getRemoteAddress() const = 0;
 
     /** Adjust this peer's load balance based on the type of load imposed. */
-    virtual
-    void
-    charge (Resource::Charge const& fee) = 0;
+    virtual void
+    charge(Resource::Charge const& fee) = 0;
 
     //
     // Identity
     //
 
-    virtual
-    id_t
+    virtual id_t
     id() const = 0;
 
     /** Returns `true` if this connection is a member of the cluster. */
-    virtual
-    bool
+    virtual bool
     cluster() const = 0;
 
-    virtual
-    bool
+    virtual bool
     isHighLatency() const = 0;
 
-    virtual
-    int
-    getScore (bool) const = 0;
+    virtual int
+    getScore(bool) const = 0;
 
-    virtual
-    PublicKey const&
+    virtual PublicKey const&
     getNodePublic() const = 0;
 
-    virtual
-    Json::Value json(uint256 const& schemaId) = 0;
+    virtual Json::Value
+    json(uint256 const& schemaId) = 0;
+
+    virtual bool
+    supportsFeature(ProtocolFeature f) const = 0;
+
+    virtual boost::optional<std::size_t>
+    publisherListSequence(PublicKey const&) const = 0;
+
+    virtual void
+    setPublisherListSequence(PublicKey const&, std::size_t const) = 0;
 
     //
     // Ledger
@@ -105,10 +110,11 @@ public:
     virtual bool hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const = 0;
     virtual bool hasTxSet (uint256 const& schemaId, uint256 const& hash) const = 0;
     virtual void cycleStatus (uint256 const& schemaId) = 0;
-    virtual bool supportsVersion (int version) = 0;
     virtual bool hasRange (uint256 const& schemaId, std::uint32_t uMin, std::uint32_t uMax) = 0;
+    
+    virtual bool compressionEnabled() const = 0;
 };
 
-}
+}  // namespace ripple
 
 #endif

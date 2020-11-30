@@ -22,28 +22,31 @@
 
 #include <ripple/server/impl/BaseHTTPPeer.h>
 #include <ripple/server/impl/SSLWSPeer.h>
-#include <ripple/beast/asio/ssl_bundle.h>
-#include <ripple/beast/asio/waitable_timer.h>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/stream.hpp>
+#include <boost/beast/core/tcp_stream.hpp>
+#include <boost/beast/ssl/ssl_stream.hpp>
 #include <memory>
 
 namespace ripple {
 
-template<class Handler>
-class SSLHTTPPeer
-    : public BaseHTTPPeer<Handler, SSLHTTPPeer<Handler>>
-    , public std::enable_shared_from_this<SSLHTTPPeer<Handler>>
+template <class Handler>
+class SSLHTTPPeer : public BaseHTTPPeer<Handler, SSLHTTPPeer<Handler>>,
+                    public std::enable_shared_from_this<SSLHTTPPeer<Handler>>
 {
 private:
     friend class BaseHTTPPeer<Handler, SSLHTTPPeer>;
-    using waitable_timer = typename BaseHTTPPeer<Handler, SSLHTTPPeer>::waitable_timer;
     using socket_type = boost::asio::ip::tcp::socket;
-    using stream_type = boost::asio::ssl::stream <socket_type&>;
+    using middle_type = boost::beast::tcp_stream;
+    using stream_type = boost::beast::ssl_stream<middle_type>;
     using endpoint_type = boost::asio::ip::tcp::endpoint;
     using yield_context = boost::asio::yield_context;
     using error_code = boost::system::error_code;
 
-    std::unique_ptr<beast::asio::ssl_bundle> ssl_bundle_;
+    std::unique_ptr<stream_type> stream_ptr_;
     stream_type& stream_;
+    socket_type& socket_;
 
 public:
     template <class ConstBufferSequence>
@@ -54,7 +57,7 @@ public:
         beast::Journal journal,
         endpoint_type remote_address,
         ConstBufferSequence const& buffers,
-        socket_type&& socket);
+        middle_type&& stream);
 
     void
     run();
@@ -87,57 +90,61 @@ SSLHTTPPeer<Handler>::SSLHTTPPeer(
     beast::Journal journal,
     endpoint_type remote_address,
     ConstBufferSequence const& buffers,
-    socket_type&& socket)
+    middle_type&& stream)
     : BaseHTTPPeer<Handler, SSLHTTPPeer>(
           port,
           handler,
           ioc.get_executor(),
-          waitable_timer{ioc},
           journal,
           remote_address,
           buffers)
-    , ssl_bundle_(std::make_unique<beast::asio::ssl_bundle>(
-        port.context, std::move(socket)))
-    , stream_(ssl_bundle_->stream)
+    , stream_ptr_(std::make_unique<stream_type>(
+          middle_type(std::move(stream)),
+          *port.context))
+    , stream_(*stream_ptr_)
+    , socket_(stream_.next_layer().socket())
 {
 }
 
 // Called when the acceptor accepts our socket.
-template<class Handler>
+template <class Handler>
 void
-SSLHTTPPeer<Handler>::
-run()
+SSLHTTPPeer<Handler>::run()
 {
-    if(! this->handler_.onAccept(this->session(), this->remote_address_))
+    if (!this->handler_.onAccept(this->session(), this->remote_address_))
     {
-        boost::asio::spawn(this->strand_,
-            std::bind(&SSLHTTPPeer::do_close,
-                this->shared_from_this()));
+        boost::asio::spawn(
+            this->strand_,
+            std::bind(&SSLHTTPPeer::do_close, this->shared_from_this()));
         return;
     }
-    if (! stream_.lowest_layer().is_open())
+    if (!socket_.is_open())
         return;
-    boost::asio::spawn(this->strand_, std::bind(
-        &SSLHTTPPeer::do_handshake, this->shared_from_this(),
+    boost::asio::spawn(
+        this->strand_,
+        std::bind(
+            &SSLHTTPPeer::do_handshake,
+            this->shared_from_this(),
             std::placeholders::_1));
 }
 
-template<class Handler>
+template <class Handler>
 std::shared_ptr<WSSession>
-SSLHTTPPeer<Handler>::
-websocketUpgrade()
+SSLHTTPPeer<Handler>::websocketUpgrade()
 {
     auto ws = this->ios().template emplace<SSLWSPeer<Handler>>(
-        this->port_, this->handler_, this->remote_address_,
-            std::move(this->message_), std::move(this->ssl_bundle_),
-                this->journal_);
+        this->port_,
+        this->handler_,
+        this->remote_address_,
+        std::move(this->message_),
+        std::move(this->stream_ptr_),
+        this->journal_);
     return ws;
 }
 
-template<class Handler>
+template <class Handler>
 void
-SSLHTTPPeer<Handler>::
-do_handshake(yield_context do_yield)
+SSLHTTPPeer<Handler>::do_handshake(yield_context do_yield)
 {
     boost::system::error_code ec;
     stream_.set_verify_mode(boost::asio::ssl::verify_none);
@@ -145,44 +152,48 @@ do_handshake(yield_context do_yield)
     this->read_buf_.consume(stream_.async_handshake(
         stream_type::server, this->read_buf_.data(), do_yield[ec]));
     this->cancel_timer();
+    if (ec == boost::beast::error::timeout)
+        return this->on_timer();
     if (ec)
         return this->fail(ec, "handshake");
-    bool const http =
-        this->port().protocol.count("peer") > 0 ||
+    bool const http = this->port().protocol.count("peer") > 0 ||
         this->port().protocol.count("wss") > 0 ||
         this->port().protocol.count("wss2") > 0 ||
         this->port().protocol.count("https") > 0;
-    if(http)
+    if (http)
     {
-        boost::asio::spawn(this->strand_,
-            std::bind(&SSLHTTPPeer::do_read,
-                this->shared_from_this(), std::placeholders::_1));
+        boost::asio::spawn(
+            this->strand_,
+            std::bind(
+                &SSLHTTPPeer::do_read,
+                this->shared_from_this(),
+                std::placeholders::_1));
         return;
     }
     // `this` will be destroyed
 }
 
-template<class Handler>
+template <class Handler>
 void
-SSLHTTPPeer<Handler>::
-do_request()
+SSLHTTPPeer<Handler>::do_request()
 {
     ++this->request_count_;
-    auto const what = this->handler_.onHandoff(this->session(),
-        std::move(ssl_bundle_), std::move(this->message_),
-            this->remote_address_);
-    if(what.moved)
+    auto const what = this->handler_.onHandoff(
+        this->session(),
+        std::move(stream_ptr_),
+        std::move(this->message_),
+        this->remote_address_);
+    if (what.moved)
         return;
-    if(what.response)
+    if (what.response)
         return this->write(what.response, what.keep_alive);
     // legacy
     this->handler_.onRequest(this->session());
 }
 
-template<class Handler>
+template <class Handler>
 void
-SSLHTTPPeer<Handler>::
-do_close()
+SSLHTTPPeer<Handler>::do_close()
 {
     this->start_timer();
     stream_.async_shutdown(bind_executor(
@@ -193,10 +204,9 @@ do_close()
             std::placeholders::_1)));
 }
 
-template<class Handler>
+template <class Handler>
 void
-SSLHTTPPeer<Handler>::
-on_shutdown(error_code ec)
+SSLHTTPPeer<Handler>::on_shutdown(error_code ec)
 {
     this->cancel_timer();
 
@@ -204,14 +214,13 @@ on_shutdown(error_code ec)
         return;
     if (ec)
     {
-        JLOG(this->journal_.debug()) <<
-            "on_shutdown: " << ec.message();
+        JLOG(this->journal_.debug()) << "on_shutdown: " << ec.message();
     }
 
     // Close socket now in case this->destructor is delayed
-    stream_.lowest_layer().close(ec);
+    stream_.next_layer().close();
 }
 
-} // ripple
+}  // namespace ripple
 
 #endif

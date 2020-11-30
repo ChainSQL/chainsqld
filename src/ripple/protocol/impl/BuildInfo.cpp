@@ -17,11 +17,12 @@
 */
 //==============================================================================
 
-
 #include <ripple/basics/contract.h>
-#include <ripple/beast/core/PlatformConfig.h>
+#include <ripple/beast/core/LexicalCast.h>
 #include <ripple/beast/core/SemanticVersion.h>
 #include <ripple/protocol/BuildInfo.h>
+#include <boost/preprocessor/stringize.hpp>
+#include <algorithm>
 
 namespace ripple {
 
@@ -31,112 +32,144 @@ namespace BuildInfo {
 //  The build version number. You must edit this for each release
 //  and follow the format described at http://semver.org/
 //------------------------------------------------------------------------------
-char const* const versionString =
-
-    //--------------------------------------------------------------------------
-    //  The build version number. You must edit this for each release
-    //  and follow the format described at http://semver.org/
-    //
-        "1.0.1-pop"
+// clang-format off
+char const* const versionString = "1.0.1-pop"
+// clang-format on
 
 #if defined(DEBUG) || defined(SANITIZER)
-       "+"
+    "+"
 #ifdef DEBUG
-        "DEBUG"
+    "DEBUG"
 #ifdef SANITIZER
-        "."
+    "."
 #endif
 #endif
 
 #ifdef SANITIZER
-        BEAST_PP_STR1_(SANITIZER)
+    BOOST_PP_STRINGIZE(SANITIZER)
 #endif
 #endif
 
     //--------------------------------------------------------------------------
     ;
 
-ProtocolVersion const&
-getCurrentProtocol ()
-{
-    static ProtocolVersion currentProtocol (
-    //--------------------------------------------------------------------------
-    //
-    // The protocol version we speak and prefer (edit this if necessary)
-    //
-        1,  // major
-        2   // minor
-    //
-    //--------------------------------------------------------------------------
-    );
-
-    return currentProtocol;
-}
-
-ProtocolVersion const&
-getMinimumProtocol ()
-{
-    static ProtocolVersion minimumProtocol (
-
-    //--------------------------------------------------------------------------
-    //
-    // The oldest protocol version we will accept. (edit this if necessary)
-    //
-        1,  // major
-        2   // minor
-    //
-    //--------------------------------------------------------------------------
-    );
-
-    return minimumProtocol;
-}
-
-//
 //
 // Don't touch anything below this line
 //
-//------------------------------------------------------------------------------
 
 std::string const&
-getVersionString ()
+getVersionString()
 {
     static std::string const value = [] {
         std::string const s = versionString;
         beast::SemanticVersion v;
-        if (!v.parse (s) || v.print () != s)
-            LogicError (s + ": Bad server version string");
+        if (!v.parse(s) || v.print() != s)
+            LogicError(s + ": Bad server version string");
         return s;
     }();
     return value;
 }
 
-std::string const& getFullVersionString ()
+std::string const&
+getFullVersionString()
 {
     static std::string const value =
         "chainsqld-" + getVersionString();
     return value;
 }
 
-ProtocolVersion
-make_protocol (std::uint32_t version)
+static constexpr std::uint64_t implementationVersionIdentifier =
+    0x183B'0000'0000'0000LLU;
+static constexpr std::uint64_t implementationVersionIdentifierMask =
+    0xFFFF'0000'0000'0000LLU;
+
+std::uint64_t
+encodeSoftwareVersion(char const* const versionStr)
 {
-    return ProtocolVersion(
-        static_cast<std::uint16_t> ((version >> 16) & 0xffff),
-        static_cast<std::uint16_t> (version & 0xffff));
+    std::uint64_t c = implementationVersionIdentifier;
+
+    beast::SemanticVersion v;
+
+    if (v.parse(std::string(versionStr)))
+    {
+        if (v.majorVersion >= 0 && v.majorVersion <= 255)
+            c |= static_cast<std::uint64_t>(v.majorVersion) << 40;
+
+        if (v.minorVersion >= 0 && v.minorVersion <= 255)
+            c |= static_cast<std::uint64_t>(v.minorVersion) << 32;
+
+        if (v.patchVersion >= 0 && v.patchVersion <= 255)
+            c |= static_cast<std::uint64_t>(v.patchVersion) << 24;
+
+        if (!v.isPreRelease())
+            c |= static_cast<std::uint64_t>(0xC00000);
+
+        if (v.isPreRelease())
+        {
+            std::uint8_t x = 0;
+
+            for (auto id : v.preReleaseIdentifiers)
+            {
+                auto parsePreRelease = [](std::string_view identifier,
+                                          std::string_view prefix,
+                                          std::uint8_t key,
+                                          std::uint8_t lok,
+                                          std::uint8_t hik) -> std::uint8_t {
+                    std::uint8_t ret = 0;
+
+                    if (prefix != identifier.substr(0, prefix.length()))
+                        return 0;
+
+                    if (!beast::lexicalCastChecked(
+                            ret,
+                            std::string(identifier.substr(prefix.length()))))
+                        return 0;
+
+                    if (std::clamp(ret, lok, hik) != ret)
+                        return 0;
+
+                    return ret + key;
+                };
+
+                x = parsePreRelease(id, "rc", 0x80, 0, 63);
+
+                if (x == 0)
+                    x = parsePreRelease(id, "b", 0x40, 0, 63);
+
+                if (x & 0xC0)
+                {
+                    c |= static_cast<std::uint64_t>(x) << 16;
+                    break;
+                }
+            }
+        }
+    }
+
+    return c;
 }
 
-}
-
-std::string
-to_string (ProtocolVersion const& p)
+std::uint64_t
+getEncodedVersion()
 {
-    return std::to_string (p.first) + "." + std::to_string (p.second);
+    static std::uint64_t const cookie = {encodeSoftwareVersion(versionString)};
+    return cookie;
 }
 
-std::uint32_t
-to_packed (ProtocolVersion const& p)
+bool
+isRippledVersion(std::uint64_t version)
 {
-    return (static_cast<std::uint32_t> (p.first) << 16) + p.second;
+    return (version & implementationVersionIdentifierMask) ==
+        implementationVersionIdentifier;
 }
 
-} // ripple
+bool
+isNewerVersion(std::uint64_t version)
+{
+    if (isRippledVersion(version))
+        return version > getEncodedVersion();
+    return false;
+}
+
+}  // namespace BuildInfo
+
+}  // namespace ripple

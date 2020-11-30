@@ -48,10 +48,10 @@ namespace ripple {
 #define MAX_DIFF_TOLERANCE 3
 
 void buildRaw(Json::Value& condition, std::string& rule);
-int getDiff(RPC::Context& context, const std::vector<ripple::uint160>& vec);
+int getDiff(RPC::JsonContext& context, const std::vector<ripple::uint160>& vec);
 
 //from rpc or http
-Json::Value doRpcSubmit(RPC::Context& context)
+Json::Value doRpcSubmit(RPC::JsonContext& context)
 {
 	Json::Value& tx_json(context.params["tx_json"]);
 	auto ret = context.app.getTableAssistant().prepare(context.params["secret"].asString(),context.params["public_key"].asString(), tx_json);
@@ -62,7 +62,7 @@ Json::Value doRpcSubmit(RPC::Context& context)
     return ret;
 }
 
-Json::Value doCreateFromRaw(RPC::Context& context)
+Json::Value doCreateFromRaw(RPC::JsonContext& context)
 { 
     using namespace std;
     Json::Value& tx_json(context.params);
@@ -133,7 +133,7 @@ Json::Value doCreateFromRaw(RPC::Context& context)
     return doRpcSubmit(context);
 }
 
-Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector<ripple::uint160> vecNameInDB)
+Json::Value checkForSelect(RPC::JsonContext&  context, uint160 nameInDB, std::vector<ripple::uint160> vecNameInDB)
 {
 	Json::Value ret(Json::objectValue);
 	if (!context.params.isMember(jss::tx_json))
@@ -321,7 +321,7 @@ Json::Value checkForSelect(RPC::Context&  context, uint160 nameInDB, std::vector
 	}
 	return ret;
 }
-Json::Value checkSig(RPC::Context&  context)
+Json::Value checkSig(RPC::JsonContext&  context)
 {
 	Json::Value ret(Json::objectValue);
 	if (!context.params.isMember("publicKey"))
@@ -371,12 +371,12 @@ Json::Value checkSig(RPC::Context&  context)
 		return RPC::invalid_field_error("signature");
 	}
 	Blob spk;
-	auto retPair = strUnHex(publicKey);
-	if (!retPair.second)
+	auto pub = strUnHex(publicKey);
+	if (!pub)
 	{
 		return RPC::make_error(rpcINVALID_PARAMS, "Field publicKey should be hex string!");
 	}
-	spk = retPair.first;
+	spk = *pub;
 
 	//check Account and publicKey
 	AccountID const signingAcctIDFromPubKey =
@@ -386,13 +386,13 @@ Json::Value checkSig(RPC::Context&  context)
 		return rpcError(rpcACT_NOT_MATCH_PUBKEY);
 	}
 
-	retPair = strUnHex(signatureHex);
-	if (!retPair.second)
+	auto signature2 = strUnHex(signatureHex);
+	if (!signature2)
 	{
 		return RPC::make_error(rpcINVALID_PARAMS, "Field signature should be hex string!");
 	}
 
-	auto signature = retPair.first;
+	auto signature = *signature2;
 	if (publicKeyType(makeSlice(spk)))
 	{
 		bool success = verify(
@@ -444,7 +444,7 @@ void getNameInDBSetInSql(std::string sql,std::set <std::string>& setTableNames)
 
 
 
-Json::Value getInfoByRPContext(RPC::Context& context, std::string&sSql, AccountID& accountID)
+Json::Value getInfoByRPContext(RPC::JsonContext& context, std::string&sSql, AccountID& accountID)
 {
 	Json::Value& tx_json(context.params["tx_json"]);
 	Json::Value ret;
@@ -482,7 +482,7 @@ Json::Value getInfoByRPContext(RPC::Context& context, std::string&sSql, AccountI
 }
 
 
-Json::Value getLedgerTableInfo(RPC::Context& context, const std::string& sql, std::set <std::string>& setDBTableNames,
+Json::Value getLedgerTableInfo(RPC::JsonContext& context, const std::string& sql, std::set <std::string>& setDBTableNames,
 							   std::set < std::pair<AccountID, std::string>  >& setOwnerID2TableName)
 {
 
@@ -515,7 +515,7 @@ Json::Value getLedgerTableInfo(RPC::Context& context, const std::string& sql, st
 }
 
 
-Json::Value getLedgerTableInfo(RPC::Context& context,AccountID& accountID, std::set <std::string>& setDBTableNames,	
+Json::Value getLedgerTableInfo(RPC::JsonContext& context,AccountID& accountID, std::set <std::string>& setDBTableNames,
 							   std::set < std::pair<AccountID,std::string>  >& setOwnerID2TableName)
 {
 	std::string sSql;
@@ -612,7 +612,7 @@ Json::Value catenateSqlAndOperateRule(const std::string& rule, const std::string
 	return Json::Value();	
 }
 
-Json::Value checkAuthForSql(RPC::Context& context, AccountID& accountID, std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName)
+Json::Value checkAuthForSql(RPC::JsonContext& context, AccountID& accountID, std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName)
 {
 	for (auto ownerID2TableName : setOwnerID2TableName)
 	{
@@ -631,7 +631,7 @@ Json::Value checkAuthForSql(RPC::Context& context, AccountID& accountID, std::se
 
 // Reference to return 
 Json::Value 
-checkOperationRuleForSql(RPC::Context& context, const std::string& sql,const std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName,std::string& catenatedSql)
+checkOperationRuleForSql(RPC::JsonContext& context, const std::string& sql,const std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName,std::string& catenatedSql)
 {
 	std::string rule;
 	catenatedSql = sql;
@@ -675,7 +675,7 @@ checkOperationRuleForSql(RPC::Context& context, const std::string& sql,const std
 
 
 Json::Value 
-checkOperationRuleForSqlUser(RPC::Context& context,const AccountID& accountID, const std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName, std::string& catenatedSql)
+checkOperationRuleForSqlUser(RPC::JsonContext& context,const AccountID& accountID, const std::set< std::pair<AccountID, std::string>  >& setOwnerID2TableName, std::string& catenatedSql)
 {
 	Json::Value retJson;
 
@@ -727,7 +727,7 @@ checkOperationRuleForSqlUser(RPC::Context& context,const AccountID& accountID, c
 }
 
 
-Json::Value doGetRecord(RPC::Context&  context)
+Json::Value doGetRecord(RPC::JsonContext&  context)
 {
 	Json::Value ret = checkSig(context); 
 	if (ret.isMember(jss::error))
@@ -780,7 +780,7 @@ Json::Value queryBySql(TxStore& txStore,std::string& sql)
 	return ret;
 }
 
-Json::Value checkTableExistOnChain(RPC::Context&  context, std::set < std::pair<AccountID, std::string>  >& setOwnerID2TableName)
+Json::Value checkTableExistOnChain(RPC::JsonContext&  context, std::set < std::pair<AccountID, std::string>  >& setOwnerID2TableName)
 {
 	Json::Value ret(Json::objectValue);
 
@@ -815,7 +815,7 @@ Json::Value checkTableExistOnChain(RPC::Context&  context, std::set < std::pair<
 	return ret;
 }
 
-Json::Value doGetRecordBySql(RPC::Context&  context)
+Json::Value doGetRecordBySql(RPC::JsonContext&  context)
 {
 	Json::Value ret(Json::objectValue);
 	//db connection is null
@@ -867,7 +867,7 @@ Json::Value doGetRecordBySql(RPC::Context&  context)
 	return ret;
 }
 
-Json::Value doGetRecordBySqlUser(RPC::Context& context)
+Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
 {
 	//check signature
 	Json::Value ret = checkSig(context);
@@ -921,7 +921,7 @@ Json::Value doGetRecordBySqlUser(RPC::Context& context)
 }
 
 //Get record,will keep column order consistent with the order the table created.
-std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::Context&  context)
+std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::JsonContext&  context)
 {
 	std::vector<std::vector<Json::Value>> result;
 	uint160 nameInDB = beast::zero;
@@ -1017,7 +1017,7 @@ void buildRaw(Json::Value& condition, std::string& rule)
 //t_create:generate token & crypt raw
 //t_assign:generate token
 //r_insert&r_delete&r_update:crypt raw
-Json::Value doPrepare(RPC::Context& context)
+Json::Value doPrepare(RPC::JsonContext& context)
 {
 	auto& tx_json = context.params["tx_json"];
 	auto ret = context.app.getTableAssistant().prepare(context.params["secret"].asString(), context.params["public_key"].asString(), tx_json,true);
@@ -1029,7 +1029,7 @@ Json::Value doPrepare(RPC::Context& context)
 	return ret;
 }
 
-Json::Value doGetUserToken(RPC::Context& context)
+Json::Value doGetUserToken(RPC::JsonContext& context)
 {
 	Json::Value ret(Json::objectValue);
 	auto& tx_json = context.params["tx_json"];
@@ -1099,7 +1099,7 @@ Json::Value doGetUserToken(RPC::Context& context)
 	return ret;
 }
 //////////////////////////////////////////////////////////////////////////
-int getDiff(RPC::Context& context, const std::vector<ripple::uint160>& vec)
+int getDiff(RPC::JsonContext& context, const std::vector<ripple::uint160>& vec)
 {
 	int diff = 0;
 	LedgerIndex txnseq, seq;

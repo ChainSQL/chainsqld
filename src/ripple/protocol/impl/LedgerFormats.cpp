@@ -17,9 +17,8 @@
 */
 //==============================================================================
 
-
-#include <ripple/protocol/LedgerFormats.h>
 #include <ripple/protocol/ErrorCodes.h>
+#include <ripple/protocol/LedgerFormats.h>
 #include <ripple/protocol/jss.h>
 #include <algorithm>
 #include <array>
@@ -27,7 +26,7 @@
 
 namespace ripple {
 
-LedgerFormats::LedgerFormats ()
+LedgerFormats::LedgerFormats()
 {
     // Fields shared by all ledger formats:
     static const std::initializer_list<SOElement> commonFields
@@ -164,63 +163,76 @@ LedgerFormats::LedgerFormats ()
 
     // All fields are soeREQUIRED because there is always a
     // SignerEntries.  If there are no SignerEntries the node is deleted.
-    add (jss::SignerList, ltSIGNER_LIST,
+    add(jss::SignerList,
+        ltSIGNER_LIST,
         {
-            { sfOwnerNode,           soeREQUIRED },
-            { sfSignerQuorum,        soeREQUIRED },
-            { sfSignerEntries,       soeREQUIRED },
-            { sfSignerListID,        soeREQUIRED },
-            { sfPreviousTxnID,       soeREQUIRED },
-            { sfPreviousTxnLgrSeq,   soeREQUIRED },
+            {sfOwnerNode, soeREQUIRED},
+            {sfSignerQuorum, soeREQUIRED},
+            {sfSignerEntries, soeREQUIRED},
+            {sfSignerListID, soeREQUIRED},
+            {sfPreviousTxnID, soeREQUIRED},
+            {sfPreviousTxnLgrSeq, soeREQUIRED},
         },
         commonFields);
 
-    add (jss::PayChannel, ltPAYCHAN,
+    add(jss::PayChannel,
+        ltPAYCHAN,
         {
-            { sfAccount,             soeREQUIRED },
-            { sfDestination,         soeREQUIRED },
-            { sfAmount,              soeREQUIRED },
-            { sfBalance,             soeREQUIRED },
-            { sfPublicKey,           soeREQUIRED },
-            { sfSettleDelay,         soeREQUIRED },
-            { sfExpiration,          soeOPTIONAL },
-            { sfCancelAfter,         soeOPTIONAL },
-            { sfSourceTag,           soeOPTIONAL },
-            { sfDestinationTag,      soeOPTIONAL },
-            { sfOwnerNode,           soeREQUIRED },
-            { sfPreviousTxnID,       soeREQUIRED },
-            { sfPreviousTxnLgrSeq,   soeREQUIRED },
+            {sfAccount, soeREQUIRED},
+            {sfDestination, soeREQUIRED},
+            {sfAmount, soeREQUIRED},
+            {sfBalance, soeREQUIRED},
+            {sfPublicKey, soeREQUIRED},
+            {sfSettleDelay, soeREQUIRED},
+            {sfExpiration, soeOPTIONAL},
+            {sfCancelAfter, soeOPTIONAL},
+            {sfSourceTag, soeOPTIONAL},
+            {sfDestinationTag, soeOPTIONAL},
+            {sfOwnerNode, soeREQUIRED},
+            {sfPreviousTxnID, soeREQUIRED},
+            {sfPreviousTxnLgrSeq, soeREQUIRED},
+            {sfDestinationNode, soeOPTIONAL},
         },
         commonFields);
 
-    add (jss::Check, ltCHECK,
+    add(jss::Check,
+        ltCHECK,
         {
-            { sfAccount,             soeREQUIRED },
-            { sfDestination,         soeREQUIRED },
-            { sfSendMax,             soeREQUIRED },
-            { sfSequence,            soeREQUIRED },
-            { sfOwnerNode,           soeREQUIRED },
-            { sfDestinationNode,     soeREQUIRED },
-            { sfExpiration,          soeOPTIONAL },
-            { sfInvoiceID,           soeOPTIONAL },
-            { sfSourceTag,           soeOPTIONAL },
-            { sfDestinationTag,      soeOPTIONAL },
-            { sfPreviousTxnID,       soeREQUIRED },
-            { sfPreviousTxnLgrSeq,   soeREQUIRED },
+            {sfAccount, soeREQUIRED},
+            {sfDestination, soeREQUIRED},
+            {sfSendMax, soeREQUIRED},
+            {sfSequence, soeREQUIRED},
+            {sfOwnerNode, soeREQUIRED},
+            {sfDestinationNode, soeREQUIRED},
+            {sfExpiration, soeOPTIONAL},
+            {sfInvoiceID, soeOPTIONAL},
+            {sfSourceTag, soeOPTIONAL},
+            {sfDestinationTag, soeOPTIONAL},
+            {sfPreviousTxnID, soeREQUIRED},
+            {sfPreviousTxnLgrSeq, soeREQUIRED},
         },
         commonFields);
 
-    add (jss::DepositPreauth, ltDEPOSIT_PREAUTH,
+    add(jss::DepositPreauth,
+        ltDEPOSIT_PREAUTH,
         {
-            { sfAccount,             soeREQUIRED },
-            { sfAuthorize,           soeREQUIRED },
-            { sfOwnerNode,           soeREQUIRED },
-            { sfPreviousTxnID,       soeREQUIRED },
-            { sfPreviousTxnLgrSeq,   soeREQUIRED },
+            {sfAccount, soeREQUIRED},
+            {sfAuthorize, soeREQUIRED},
+            {sfOwnerNode, soeREQUIRED},
+            {sfPreviousTxnID, soeREQUIRED},
+            {sfPreviousTxnLgrSeq, soeREQUIRED},
         },
         commonFields);
 
-
+    add(jss::NegativeUNL,
+        ltNEGATIVE_UNL,
+        {
+            {sfDisabledValidators, soeOPTIONAL},
+            {sfValidatorToDisable, soeOPTIONAL},
+            {sfValidatorToReEnable, soeOPTIONAL},
+        },
+        commonFields);
+        
     add(jss::TableList, ltTABLELIST,
 		{
 			{ sfOwnerNode,          soeREQUIRED },
@@ -257,10 +269,10 @@ LedgerFormats::LedgerFormats ()
 }
 
 LedgerFormats const&
-LedgerFormats::getInstance ()
+LedgerFormats::getInstance()
 {
     static LedgerFormats instance;
     return instance;
 }
 
-} // ripple
+}  // namespace ripple

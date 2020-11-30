@@ -20,10 +20,10 @@
 #ifndef RIPPLE_APP_LEDGER_INBOUNDTRANSACTIONS_H_INCLUDED
 #define RIPPLE_APP_LEDGER_INBOUNDTRANSACTIONS_H_INCLUDED
 
-#include <ripple/overlay/Peer.h>
-#include <ripple/shamap/SHAMap.h>
 #include <ripple/beast/clock/abstract_clock.h>
 #include <ripple/core/Stoppable.h>
+#include <ripple/overlay/Peer.h>
+#include <ripple/shamap/SHAMap.h>
 #include <memory>
 
 namespace ripple {
@@ -31,57 +31,69 @@ namespace ripple {
 class Schema;
 
 /** Manages the acquisition and lifetime of transaction sets.
-*/
+ */
 
 class InboundTransactions
 {
 public:
-    using clock_type = beast::abstract_clock <std::chrono::steady_clock>;
+    using clock_type = beast::abstract_clock<std::chrono::steady_clock>;
 
     InboundTransactions() = default;
     InboundTransactions(InboundTransactions const&) = delete;
-    InboundTransactions& operator=(InboundTransactions const&) = delete;
+    InboundTransactions&
+    operator=(InboundTransactions const&) = delete;
 
     virtual ~InboundTransactions() = 0;
 
-    /** Retrieves a transaction set by hash
-    */
-    virtual std::shared_ptr <SHAMap> getSet (
+    /** Find and return a transaction set, or nullptr if it is missing.
+     *
+     * @param setHash The transaction set ID (digest of the SHAMap root node).
+     * @param acquire Whether to fetch the transaction set from the network if
+     * it is missing.
+     * @return The transaction set with ID setHash, or nullptr if it is
+     * missing.
+     */
+    virtual std::shared_ptr<SHAMap>
+    getSet(uint256 const& setHash, bool acquire) = 0;
+
+    /** Add a transaction set from a LedgerData message.
+     *
+     * @param setHash The transaction set ID (digest of the SHAMap root node).
+     * @param peer The peer that sent the message.
+     * @param message The LedgerData message.
+     */
+    virtual void
+    gotData(
         uint256 const& setHash,
-        bool acquire) = 0;
+        std::shared_ptr<Peer> peer,
+        std::shared_ptr<protocol::TMLedgerData> message) = 0;
 
-    /** Gives data to an inbound transaction set
-    */
-    virtual void gotData (uint256 const& setHash,
-        std::shared_ptr <Peer>,
-        std::shared_ptr <protocol::TMLedgerData>) = 0;
-
-    /** Gives set to the container
-    */
-    virtual void giveSet (uint256 const& setHash,
-        std::shared_ptr <SHAMap> const& set,
+    /** Add a transaction set.
+     *
+     * @param setHash The transaction set ID (should match set.getHash()).
+     * @param set The transaction set.
+     * @param acquired Whether this transaction set was acquired from a peer,
+     * or constructed by ourself during consensus.
+     */
+    virtual void
+    giveSet(
+        uint256 const& setHash,
+        std::shared_ptr<SHAMap> const& set,
         bool acquired) = 0;
 
     /** Informs the container if a new consensus round
-    */
-    virtual void newRound (std::uint32_t seq) = 0;
-
-    virtual Json::Value getInfo() = 0;
-
-    virtual void onStop() = 0;
+     */
+    virtual void
+    newRound(std::uint32_t seq) = 0;
 };
 
-std::unique_ptr <InboundTransactions>
-make_InboundTransactions (
+std::unique_ptr<InboundTransactions>
+make_InboundTransactions(
     Schema& app,
-    InboundTransactions::clock_type& clock,
     Stoppable& parent,
     beast::insight::Collector::ptr const& collector,
-    std::function
-        <void (std::shared_ptr <SHAMap> const&,
-            bool)> gotSet);
+    std::function<void(std::shared_ptr<SHAMap> const&, bool)> gotSet);
 
-
-} // ripple
+}  // namespace ripple
 
 #endif

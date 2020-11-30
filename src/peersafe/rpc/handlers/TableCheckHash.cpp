@@ -33,7 +33,7 @@
 #include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
-Json::Value doGetCheckHash(RPC::Context&  context)
+Json::Value doGetCheckHash(RPC::JsonContext&  context)
 {
 	Json::Value ret(Json::objectValue);
 	Json::Value& tx_json(context.params["tx_json"]);

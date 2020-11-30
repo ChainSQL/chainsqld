@@ -46,8 +46,8 @@ size_t fromHex(const std::string& hex, std::string& binary)
 	else {
 		pure_hex = hex;
 	}
-	std::pair<Blob, bool> ret = strUnHex(pure_hex);
-	if (ret.second == false)
+	auto ret = strUnHex(pure_hex);
+	if (!ret)
 		return 0;
 	binary.assign(ret.first.begin(), ret.first.end());
 	return binary.size();

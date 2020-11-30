@@ -29,9 +29,7 @@
 namespace ripple {
 
 /** The types of node objects. */
-enum NodeObjectType
-    : std::uint32_t
-{
+enum NodeObjectType : std::uint32_t {
     hotUNKNOWN = 0,
     hotLEDGER = 1,
     hotACCOUNT_NODE = 3,
@@ -47,10 +45,14 @@ enum NodeObjectType
     @note No checking is performed to make sure the hash matches the data.
     @see SHAMap
 */
-class NodeObject : public CountedObject <NodeObject>
+class NodeObject : public CountedObject<NodeObject>
 {
 public:
-    static char const* getCountedObjectName () { return "NodeObject"; }
+    static char const*
+    getCountedObjectName()
+    {
+        return "NodeObject";
+    }
 
     static constexpr std::size_t keyBytes = 32;
 
@@ -64,10 +66,11 @@ private:
     };
 public:
     // This constructor is private, use createObject instead.
-    NodeObject (NodeObjectType type,
-                Blob&& data,
-                uint256 const& hash,
-                PrivateAccess);
+    NodeObject(
+        NodeObjectType type,
+        Blob&& data,
+        uint256 const& hash,
+        PrivateAccess);
 
     /** Create an object from fields.
 
@@ -80,26 +83,27 @@ public:
                     is overwritten.
         @param hash The 256-bit hash of the payload data.
     */
-    static
-    std::shared_ptr<NodeObject>
-    createObject (NodeObjectType type,
-        Blob&& data, uint256 const& hash);
+    static std::shared_ptr<NodeObject>
+    createObject(NodeObjectType type, Blob&& data, uint256 const& hash);
 
     /** Returns the type of this object. */
-    NodeObjectType getType () const;
+    NodeObjectType
+    getType() const;
 
     /** Returns the hash of the data. */
-    uint256 const& getHash () const;
+    uint256 const&
+    getHash() const;
 
     /** Returns the underlying data. */
-    Blob const& getData () const;
+    Blob const&
+    getData() const;
 
 private:
-    NodeObjectType mType;
-    uint256 mHash;
-    Blob mData;
+    NodeObjectType const mType;
+    uint256 const mHash;
+    Blob const mData;
 };
 
-}
+}  // namespace ripple
 
 #endif

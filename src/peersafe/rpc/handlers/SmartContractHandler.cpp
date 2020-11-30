@@ -118,7 +118,7 @@ Json::Value checkJsonFields(Json::Value originJson)
 	return ret;
 }
 
-Json::Value doContractCall(RPC::Context& context)
+Json::Value doContractCall(RPC::JsonContext& context)
 {
 	Schema& appTemp = context.app;
 	std::string errMsgStr("");
@@ -155,12 +155,12 @@ Json::Value doContractCall(RPC::Context& context)
 		return rpcError(rpcACT_NOT_FOUND);
 	
 	auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
-	if (!strUnHexRes.second)
+	if (!strUnHexRes)
 	{
 		errMsgStr = "contract_data is not in hex";
 		return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
 	}
-	Blob contractDataBlob = strUnHexRes.first;
+	Blob contractDataBlob = *strUnHexRes;
 	if (contractDataBlob.size() == 0)
 	{
 		return RPC::invalid_field_error(jss::contract_data);
@@ -177,7 +177,7 @@ Json::Value doContractCall(RPC::Context& context)
 	OpenLedger& openLedgerTemp = appTemp.openLedger();
 	//OpenView& openViewTemp = const_cast<OpenView&>(*openLedgerTemp.current());
 	std::shared_ptr<OpenView> openViewTemp = std::make_shared<OpenView>(*openLedgerTemp.current());
-	ApplyContext applyContext(appTemp, *openViewTemp, contractTx, tesSUCCESS, openViewTemp->fees().base,
+	ApplyContext applyContext(appTemp, *openViewTemp, contractTx, tesSUCCESS, FeeUnit64{ (std::uint64_t)openViewTemp->fees().base.drops() },
 		tapNO_CHECK_SIGN, appTemp.journal("ContractLocalCall"));
 
 	auto localCallRet = doEVMCall(applyContext);

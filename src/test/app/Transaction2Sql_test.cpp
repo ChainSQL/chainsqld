@@ -761,7 +761,7 @@ public:
 		auto& app = env.app();
 		Resource::Charge loadType = Resource::feeReferenceRPC;
 		Resource::Consumer c;
-		RPC::Context context{ getJournal(),{}, app, loadType,
+		RPC::JsonContext context{ getJournal(),{}, app, loadType,
 			app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 		Json::Value obj;
@@ -813,7 +813,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ getJournal(),{}, app, loadType,
+			RPC::JsonContext context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -864,7 +864,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ getJournal(),{}, app, loadType,
+			RPC::JsonContext context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -915,7 +915,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ getJournal(),{}, app, loadType,
+			RPC::JsonContext context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -966,7 +966,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ getJournal(),{}, app, loadType,
+			RPC::JsonContext context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -1004,7 +1004,7 @@ public:
 			auto& app = env.app();
 			Resource::Charge loadType = Resource::feeReferenceRPC;
 			Resource::Consumer c;
-			RPC::Context context{ getJournal(),{}, app, loadType,
+			RPC::JsonContext context{ getJournal(),{}, app, loadType,
 				app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 			Json::Value obj;
@@ -2728,7 +2728,7 @@ private:
 		auto& app = env.app();
 		Resource::Charge loadType = Resource::feeReferenceRPC;
 		Resource::Consumer c;
-		RPC::Context context{ getJournal(),{}, app, loadType,
+		RPC::JsonContext context{ getJournal(),{}, app, loadType,
 			app.getOPs(), app.getLedgerMaster(), c, Role::USER,{} };
 
 		Json::Value obj;

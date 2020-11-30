@@ -37,6 +37,6 @@ accountSourceCurrencies(
         std::shared_ptr<RippleLineCache> const& lrLedger,
              bool includeZXC);
 
-} // ripple
+}  // namespace ripple
 
 #endif

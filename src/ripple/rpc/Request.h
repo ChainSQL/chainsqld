@@ -20,9 +20,9 @@
 #ifndef RIPPLE_RPC_REQUEST_H_INCLUDED
 #define RIPPLE_RPC_REQUEST_H_INCLUDED
 
+#include <ripple/json/json_value.h>
 #include <ripple/resource/Charge.h>
 #include <ripple/resource/Fees.h>
-#include <ripple/json/json_value.h>
 #include <beast/utility/Journal.h>
 
 namespace ripple {
@@ -33,21 +33,21 @@ namespace RPC {
 
 struct Request
 {
-    explicit Request (
+    explicit Request(
         beast::Journal journal_,
         std::string const& method_,
         Json::Value& params_,
         Application& app_)
-        : journal (journal_)
-        , method (method_)
-        , params (params_)
-        , fee (Resource::feeReferenceRPC)
-        , app (app_)
+        : journal(journal_)
+        , method(method_)
+        , params(params_)
+        , fee(Resource::feeReferenceRPC)
+        , app(app_)
     {
     }
 
     // [in] The Journal for logging
-    beast::Journal journal;
+    beast::Journal const journal;
 
     // [in] The JSON-RPC method
     std::string method;
@@ -65,10 +65,11 @@ struct Request
     Schema& app;
 
 private:
-    Request& operator= (Request const&);
+    Request&
+    operator=(Request const&);
 };
 
-}
-}
+}  // namespace RPC
+}  // namespace ripple
 
 #endif

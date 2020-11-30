@@ -90,6 +90,7 @@ class ResolverAsio;
 class ValidatorKeys;
 class SchemaManager;
 class PeerManager;
+class PeerReservationTable;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
@@ -98,6 +99,9 @@ class Validations;
 class RCLValidationsAdaptor;
 using RCLValidations = Validations<RCLValidationsAdaptor>;
 
+namespace RPC {
+	class ShardArchiveHandler;
+}
 
 class Application : public beast::PropertyStream::Source
 {
@@ -155,8 +159,8 @@ public:
 	virtual Schema&					getSchema(SchemaID const& id = beast::zero) = 0;
 	virtual PeerManager&			peerManager(SchemaID const& id = beast::zero) = 0;
     virtual Config&					config(SchemaID const& id = beast::zero) = 0;
-    virtual Family&                 family(SchemaID const& id = beast::zero) = 0;
-	virtual Family*                 shardFamily(SchemaID const& id = beast::zero) = 0;
+    virtual Family&                 getNodeFamily(SchemaID const& id = beast::zero) = 0;
+	virtual Family*                 getShardFamily(SchemaID const& id = beast::zero) = 0;
     virtual NodeCache&              getTempNodeCache (SchemaID const& id = beast::zero) = 0;
     virtual CachedSLEs&             cachedSLEs(SchemaID const& id = beast::zero) = 0;
     virtual AmendmentTable&         getAmendmentTable(SchemaID const& id = beast::zero) = 0;
@@ -172,12 +176,15 @@ public:
     virtual RCLValidations&         getValidations (SchemaID const& id = beast::zero) = 0;
     virtual NodeStore::Database&    getNodeStore (SchemaID const& id = beast::zero) = 0;
 	virtual NodeStore::DatabaseShard*   getShardStore(SchemaID const& id = beast::zero) = 0;
+	virtual RPC::ShardArchiveHandler* getShardArchiveHandler(SchemaID const& id = beast::zero,
+		bool tryRecovery = false) = 0;
     virtual InboundLedgers&         getInboundLedgers (SchemaID const& id = beast::zero) = 0;
     virtual InboundTransactions&    getInboundTransactions (SchemaID const& id = beast::zero) = 0;
     virtual TaggedCache <uint256, AcceptedLedger>&
                                     getAcceptedLedgerCache (SchemaID const& id = beast::zero) = 0;
     virtual LedgerMaster&           getLedgerMaster (SchemaID const& id = beast::zero) = 0;
     virtual NetworkOPs&             getOPs (SchemaID const& id = beast::zero) = 0;
+	virtual PeerReservationTable&   peerReservations(SchemaID const& id = beast::zero) = 0;
     virtual OrderBookDB&            getOrderBookDB (SchemaID const& id = beast::zero) = 0;
     virtual TransactionMaster&      getMasterTransaction (SchemaID const& id = beast::zero) = 0;
 	
@@ -210,8 +217,7 @@ public:
 
     virtual beast::Journal journal (std::string const& name) = 0;
 
-    /* Returns the number of file descriptors the application wants */
-    virtual int fdlimit () const = 0;
+	virtual int	fdRequired() const = 0;
 };
 
 std::unique_ptr <Application>

@@ -20,91 +20,88 @@
 #ifndef RIPPLE_PROTOCOL_AMOUNTCONVERSION_H_INCLUDED
 #define RIPPLE_PROTOCOL_AMOUNTCONVERSION_H_INCLUDED
 
-#include <ripple/protocol/IOUAmount.h>
-#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/basics/IOUAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/protocol/STAmount.h>
 
 namespace ripple {
 
-inline
-STAmount
-toSTAmount (IOUAmount const& iou, Issue const& iss)
+inline STAmount
+toSTAmount(IOUAmount const& iou, Issue const& iss)
 {
     bool const isNeg = iou.signum() < 0;
-    std::uint64_t const umant = isNeg ? - iou.mantissa () : iou.mantissa ();
-    return STAmount (iss, umant, iou.exponent (), /*native*/ false, isNeg,
-                     STAmount::unchecked ());
+    std::uint64_t const umant = isNeg ? -iou.mantissa() : iou.mantissa();
+    return STAmount(
+        iss,
+        umant,
+        iou.exponent(),
+        /*native*/ false,
+        isNeg,
+        STAmount::unchecked());
 }
 
-inline
-STAmount
-toSTAmount (IOUAmount const& iou)
+inline STAmount
+toSTAmount(IOUAmount const& iou)
 {
-    return toSTAmount (iou, noIssue ());
+    return toSTAmount(iou, noIssue());
 }
 
-inline
-STAmount
-toSTAmount (ZXCAmount const& zxc)
+inline STAmount
+toSTAmount(ZXCAmount const& zxc)
 {
     bool const isNeg = zxc.signum() < 0;
-    std::uint64_t const umant = isNeg ? - zxc.drops () : zxc.drops ();
-    return STAmount (umant, isNeg);
+    std::uint64_t const umant = isNeg ? -zxc.drops() : zxc.drops();
+    return STAmount(umant, isNeg);
 }
 
-inline
-STAmount
-toSTAmount (ZXCAmount const& zxc, Issue const& iss)
+inline STAmount
+toSTAmount(ZXCAmount const& zxc, Issue const& iss)
 {
-    assert (isZXC(iss.account) && isZXC(iss.currency));
-    return toSTAmount (zxc);
+    assert(isZXC(iss.account) && isZXC(iss.currency));
+    return toSTAmount(zxc);
 }
 
 template <class T>
 T
-toAmount (STAmount const& amt)
+toAmount(STAmount const& amt)
 {
     static_assert(sizeof(T) == -1, "Must use specialized function");
     return T(0);
 }
 
 template <>
-inline
-STAmount
-toAmount<STAmount> (STAmount const& amt)
+inline STAmount
+toAmount<STAmount>(STAmount const& amt)
 {
     return amt;
 }
 
 template <>
-inline
-IOUAmount
-toAmount<IOUAmount> (STAmount const& amt)
+inline IOUAmount
+toAmount<IOUAmount>(STAmount const& amt)
 {
-    assert (amt.mantissa () < std::numeric_limits<std::int64_t>::max ());
-    bool const isNeg = amt.negative ();
+    assert(amt.mantissa() < std::numeric_limits<std::int64_t>::max());
+    bool const isNeg = amt.negative();
     std::int64_t const sMant =
-            isNeg ? - std::int64_t (amt.mantissa ()) : amt.mantissa ();
+        isNeg ? -std::int64_t(amt.mantissa()) : amt.mantissa();
 
-    assert (! isZXC (amt));
-    return IOUAmount (sMant, amt.exponent ());
+    assert(!isZXC(amt));
+    return IOUAmount(sMant, amt.exponent());
 }
 
 template <>
-inline
-ZXCAmount
-toAmount<ZXCAmount> (STAmount const& amt)
+inline ZXCAmount
+toAmount<ZXCAmount>(STAmount const& amt)
 {
-    assert (amt.mantissa () < std::numeric_limits<std::int64_t>::max ());
-    bool const isNeg = amt.negative ();
+    assert(amt.mantissa() < std::numeric_limits<std::int64_t>::max());
+    bool const isNeg = amt.negative();
     std::int64_t const sMant =
-            isNeg ? - std::int64_t (amt.mantissa ()) : amt.mantissa ();
+        isNeg ? -std::int64_t(amt.mantissa()) : amt.mantissa();
 
-    assert (isZXC (amt));
-    return ZXCAmount (sMant);
+    assert(isZXC(amt));
+    return ZXCAmount(sMant);
 }
 
-
-}
+}  // namespace ripple
 
 #endif

@@ -160,6 +160,12 @@ public:
 		return prevLedgerID_;
 	}
 
+	ConsensusPhase
+        phase() const
+        {
+            return phase_;
+        }
+
 	/** Get the Json state of the consensus process.
 
 		Called by the consensus_info RPC.
@@ -169,6 +175,10 @@ public:
 	*/
 	Json::Value
 		getJson(bool full) const;
+
+	bool waitingForInit();
+
+	std::chrono::milliseconds getConsensusTimeout();
 private:
 	void
 		startRoundInternal(
@@ -238,9 +248,6 @@ private:
 	*/
 	bool shouldPack();
 
-    bool waitingForInit();
-
-    std::chrono::milliseconds getConsensusTimeout();
 
 	bool isLeader(PublicKey const& pub,bool bNextLeader = false);
 
@@ -583,7 +590,7 @@ PConsensus<Adaptor>::onViewChange()
 	timeOutCount_ = 0;
 
 	//clear avoid
-	adaptor_.app_.getTxPool().clearAvoid(previousLedger_.seq());
+	adaptor_.app_.getTxPool().clearAvoid(previousLedger_.seq() + 1);
 
 	viewChangeManager_.onViewChanged(view_);
 	if (bWaitingInit_)
@@ -798,7 +805,7 @@ PConsensus<Adaptor>::gotTxSet(
 			{
 				//update avoid if we got the right tx-set
                 //if (adaptor_.validating())
-				adaptor_.app_.getTxPool().updateAvoid(txSet, previousLedger_.seq());
+				adaptor_.app_.getTxPool().updateAvoid(txSet, previousLedger_.seq()+1);
 
 				auto set = txSet.map_->snapShot(false);
 				//this place has a txSet copy,what's the time it costs?

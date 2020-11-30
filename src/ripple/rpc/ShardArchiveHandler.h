@@ -20,31 +20,71 @@
 #ifndef RIPPLE_RPC_SHARDARCHIVEHANDLER_H_INCLUDED
 #define RIPPLE_RPC_SHARDARCHIVEHANDLER_H_INCLUDED
 
-#include <ripple/app/main/Application.h>
+#include <peersafe/schema/Schema.h>
 #include <ripple/basics/BasicConfig.h>
 #include <ripple/basics/StringUtilities.h>
-#include <ripple/net/SSLHTTPDownloader.h>
+#include <ripple/net/DatabaseDownloader.h>
+#include <ripple/rpc/ShardVerificationScheduler.h>
 
 #include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/filesystem.hpp>
 
 namespace ripple {
+namespace test {
+class ShardArchiveHandler_test;
+}
 namespace RPC {
 
-/** Handles the download and import one or more shard archives. */
-class ShardArchiveHandler
-    : public std::enable_shared_from_this <ShardArchiveHandler>
+/** Handles the download and import of one or more shard archives. */
+class ShardArchiveHandler : public Stoppable
 {
 public:
+    using TimerOpCounter =
+        ClosureCounter<void, boost::system::error_code const&>;
+    friend class test::ShardArchiveHandler_test;
+
+    static boost::filesystem::path
+    getDownloadDirectory(Config const& config);
+
+    static std::unique_ptr<ShardArchiveHandler>
+    makeShardArchiveHandler(Schema& app, Stoppable& parent);
+
+    // Create a ShardArchiveHandler only if
+    // the state database is present, indicating
+    // that recovery is needed.
+    static std::unique_ptr<ShardArchiveHandler>
+    tryMakeRecoveryHandler(Schema& app, Stoppable& parent);
+
+    ShardArchiveHandler(Schema& app, Stoppable& parent);
+
+    virtual ~ShardArchiveHandler() = default;
+
+    [[nodiscard]] bool
+    init();
+
+    bool
+    add(std::uint32_t shardIndex, std::pair<parsedURL, std::string>&& url);
+
+    /** Starts downloading and importing archives. */
+    bool
+    start();
+
+    void
+    release();
+
+private:
     ShardArchiveHandler() = delete;
     ShardArchiveHandler(ShardArchiveHandler const&) = delete;
-    ShardArchiveHandler& operator= (ShardArchiveHandler&&) = delete;
-    ShardArchiveHandler& operator= (ShardArchiveHandler const&) = delete;
+    ShardArchiveHandler&
+    operator=(ShardArchiveHandler&&) = delete;
+    ShardArchiveHandler&
+    operator=(ShardArchiveHandler const&) = delete;
 
-    /** @param validate if shard data should be verified with network. */
-    ShardArchiveHandler(Schema& app, bool validate);
+    [[nodiscard]] bool
+    initFromDB(std::lock_guard<std::mutex> const&);
 
-    ~ShardArchiveHandler();
+    void
+    onStop() override;
 
     /** Add an archive to be downloaded and imported.
         @param shardIndex the index of the shard to be imported.
@@ -53,16 +93,13 @@ public:
         @note Returns false if called while downloading.
     */
     bool
-    add(std::uint32_t shardIndex, parsedURL&& url);
+    add(std::uint32_t shardIndex,
+        parsedURL&& url,
+        std::lock_guard<std::mutex> const&);
 
-    /** Starts downloading and importing archives. */
-    bool
-    start();
-
-private:
     // Begins the download and import of the next archive.
     bool
-    next(std::lock_guard<std::mutex>& l);
+    next(std::lock_guard<std::mutex> const& l);
 
     // Callback used by the downloader to notify completion of a download.
     void
@@ -74,20 +111,60 @@ private:
 
     // Remove the archive being processed.
     void
-    remove(std::lock_guard<std::mutex>&);
+    remove(std::lock_guard<std::mutex> const&);
 
+    void
+    doRelease(std::lock_guard<std::mutex> const&);
+
+    bool
+    onClosureFailed(
+        std::string const& errorMsg,
+        std::lock_guard<std::mutex> const& lock);
+
+    bool
+    removeAndProceed(std::lock_guard<std::mutex> const& lock);
+
+    /////////////////////////////////////////////////
+    // m_ is used to protect access to downloader_,
+    // archives_, process_ and to protect setting and
+    // destroying sqliteDB_.
+    /////////////////////////////////////////////////
     std::mutex mutable m_;
-    Schema& app_;
-    std::shared_ptr<SSLHTTPDownloader> downloader_;
-    boost::filesystem::path const downloadDir_;
-    bool const validate_;
-    boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer_;
-    bool process_;
+    std::unique_ptr<DatabaseDownloader> downloader_;
     std::map<std::uint32_t, parsedURL> archives_;
-    beast::Journal j_;
+    bool process_;
+    std::unique_ptr<DatabaseCon> sqliteDB_;
+    /////////////////////////////////////////////////
+
+    Schema& app_;
+    beast::Journal const j_;
+    boost::filesystem::path const downloadDir_;
+    boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer_;
+    JobCounter jobCounter_;
+    TimerOpCounter timerCounter_;
+    ShardVerificationScheduler verificationScheduler_;
 };
 
-} // RPC
-} // ripple
+////////////////////////////////////////////////////////////////////
+// The RecoveryHandler is an empty class that is constructed by
+// the application when the ShardArchiveHandler's state database
+// is present at application start, indicating that the handler
+// needs to perform recovery. However, if recovery isn't needed
+// at application start, and the user subsequently submits a request
+// to download shards, we construct a ShardArchiveHandler rather
+// than a RecoveryHandler to process the request. With this approach,
+// type verification can be employed to determine whether the
+// ShardArchiveHandler was constructed in recovery mode by the
+// application, or as a response to a user submitting a request to
+// download shards.
+////////////////////////////////////////////////////////////////////
+class RecoveryHandler : public ShardArchiveHandler
+{
+public:
+    RecoveryHandler(Schema& app, Stoppable& parent);
+};
+
+}  // namespace RPC
+}  // namespace ripple
 
 #endif

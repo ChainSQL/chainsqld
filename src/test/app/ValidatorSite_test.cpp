@@ -18,28 +18,29 @@
 //==============================================================================
 
 #include <ripple/app/misc/ValidatorSite.h>
-#include <ripple/basics/base64.h>
 #include <ripple/basics/Slice.h>
+#include <ripple/basics/base64.h>
 #include <ripple/basics/strHex.h>
-#include <ripple/protocol/digest.h>
 #include <ripple/protocol/HashPrefix.h>
-#include <ripple/protocol/jss.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/Sign.h>
-#include <test/jtx.h>
-#include <test/jtx/TrustedPublisherServer.h>
-#include <test/unit_test/FileDirGuard.h>
+#include <ripple/protocol/digest.h>
+#include <ripple/protocol/jss.h>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <chrono>
+#include <test/jtx.h>
+#include <test/jtx/TrustedPublisherServer.h>
+#include <test/unit_test/FileDirGuard.h>
 
 namespace ripple {
 namespace test {
 namespace detail {
-constexpr const char* realValidatorContents()
+constexpr const char*
+realValidatorContents()
 {
     return R"vl({
         "public_key": "ED2677ABFFD1B33AC6FBC3062B71F1E8397C1505E1C42C64D11AD1B28FF73F4734",
@@ -52,146 +53,89 @@ constexpr const char* realValidatorContents()
 }
 
 auto constexpr default_expires = std::chrono::seconds{3600};
-}
+}  // namespace detail
 
 class ValidatorSite_test : public beast::unit_test::suite
 {
 private:
-
     using Validator = TrustedPublisherServer::Validator;
 
-    static
-    PublicKey
-    randomNode ()
-    {
-        return derivePublicKey (KeyType::secp256k1, randomSecretKey());
-    }
-
-    static
-    std::string
-    makeManifestString (
-        PublicKey const& pk,
-        SecretKey const& sk,
-        PublicKey const& spk,
-        SecretKey const& ssk,
-        int seq)
-    {
-        STObject st(sfGeneric);
-        st[sfSequence] = seq;
-        st[sfPublicKey] = pk;
-        st[sfSigningPubKey] = spk;
-
-        sign(st, HashPrefix::manifest, *publicKeyType(spk), ssk);
-        sign(st, HashPrefix::manifest, *publicKeyType(pk), sk,
-            sfMasterSignature);
-
-        Serializer s;
-        st.add(s);
-
-        return base64_encode (std::string(
-            static_cast<char const*> (s.data()), s.size()));
-    }
-
-    static
-    Validator
-    randomValidator ()
-    {
-        auto const secret = randomSecretKey();
-        auto const masterPublic =
-            derivePublicKey(KeyType::ed25519, secret);
-        auto const signingKeys = randomKeyPair(KeyType::secp256k1);
-        return { masterPublic, signingKeys.first, makeManifestString (
-            masterPublic, secret, signingKeys.first, signingKeys.second, 1) };
-    }
-
     void
-    testConfigLoad ()
+    testConfigLoad()
     {
-        testcase ("Config Load");
+        testcase("Config Load");
 
         using namespace jtx;
-        Env env (*this);
-        auto trustedSites = std::make_unique<ValidatorSite> (env.app(),env.app().validatorManifests(),
-            env.app().getIOService(), env.app().validators(), beast::Journal());
+
+        Env env(*this);
+        auto trustedSites =
+            std::make_unique<ValidatorSite>(
+				env.app(),
+				env.app().validatorManifests(),
+				env.app().getIOService(),
+				env.app().validators(),
+				env.journal);
 
         // load should accept empty sites list
         std::vector<std::string> emptyCfgSites;
-        BEAST_EXPECT(trustedSites->load (emptyCfgSites));
+        BEAST_EXPECT(trustedSites->load(emptyCfgSites));
 
         // load should accept valid validator site uris
         std::vector<std::string> cfgSites({
-            "http://ripple.com/",
-            "http://ripple.com/validators",
-            "http://ripple.com:8080/validators",
-            "http://207.261.33.37/validators",
-            "http://207.261.33.37:8080/validators",
-            "https://ripple.com/validators",
-            "https://ripple.com:443/validators",
-            "file:///etc/opt/ripple/validators.txt",
-            "file:///C:/Lib/validators.txt"
+            "http://ripple.com/", "http://ripple.com/validators",
+                "http://ripple.com:8080/validators",
+                "http://207.261.33.37/validators",
+                "http://207.261.33.37:8080/validators",
+                "https://ripple.com/validators",
+                "https://ripple.com:443/validators",
+                "file:///etc/opt/ripple/validators.txt",
+                "file:///C:/Lib/validators.txt"
 #if !_MSC_VER
-            , "file:///"
+                ,
+                "file:///"
 #endif
-            });
-        BEAST_EXPECT(trustedSites->load (cfgSites));
+        });
+        BEAST_EXPECT(trustedSites->load(cfgSites));
 
         // load should reject validator site uris with invalid schemes
-        std::vector<std::string> badSites(
-            {"ftp://ripple.com/validators"});
-        BEAST_EXPECT(!trustedSites->load (badSites));
+        std::vector<std::string> badSites({"ftp://ripple.com/validators"});
+        BEAST_EXPECT(!trustedSites->load(badSites));
 
         badSites[0] = "wss://ripple.com/validators";
-        BEAST_EXPECT(!trustedSites->load (badSites));
+        BEAST_EXPECT(!trustedSites->load(badSites));
 
         badSites[0] = "ripple.com/validators";
-        BEAST_EXPECT(!trustedSites->load (badSites));
+        BEAST_EXPECT(!trustedSites->load(badSites));
 
         // Host names are not supported for file URLs
         badSites[0] = "file://ripple.com/vl.txt";
-        BEAST_EXPECT(!trustedSites->load (badSites));
+        BEAST_EXPECT(!trustedSites->load(badSites));
 
         // Even local host names are not supported for file URLs
         badSites[0] = "file://localhost/home/user/vl.txt";
-        BEAST_EXPECT(!trustedSites->load (badSites));
+        BEAST_EXPECT(!trustedSites->load(badSites));
 
         // Nor IP addresses
         badSites[0] = "file://127.0.0.1/home/user/vl.txt";
-        BEAST_EXPECT(!trustedSites->load (badSites));
+        BEAST_EXPECT(!trustedSites->load(badSites));
 
         // File URL path can not be empty
         badSites[0] = "file://";
-        BEAST_EXPECT(!trustedSites->load (badSites));
+        BEAST_EXPECT(!trustedSites->load(badSites));
 
-#if _MSC_VER    // Windows paths strip off the leading /, leaving the path empty
+#if _MSC_VER  // Windows paths strip off the leading /, leaving the path empty
         // File URL path can not be a directory
         // (/ is the only path we can reasonably assume is a directory)
         badSites[0] = "file:///";
-        BEAST_EXPECT(!trustedSites->load (badSites));
+        BEAST_EXPECT(!trustedSites->load(badSites));
 #endif
     }
-
-    class TestSink : public beast::Journal::Sink
-    {
-    public:
-        std::stringstream strm_;
-
-        TestSink () : Sink (beast::severities::kDebug, false) {  }
-
-        void
-        write (beast::severities::Severity level,
-            std::string const& text) override
-        {
-            if (level < threshold())
-                return;
-
-            strm_ << text << std::endl;
-        }
-    };
 
     struct FetchListConfig
     {
         std::string path;
         std::string msg;
+        bool ssl;
         bool failFetch = false;
         bool failApply = false;
         int serverVersion = 1;
@@ -199,27 +143,33 @@ private:
         int expectedRefreshMin = 0;
     };
     void
-    testFetchList (std::vector<FetchListConfig> const& paths)
+    testFetchList(std::vector<FetchListConfig> const& paths)
     {
-        testcase << "Fetch list - " <<
-            boost::algorithm::join (paths |
-                boost::adaptors::transformed(
-                    [](FetchListConfig const& cfg){ return cfg.path; }),
-                ", ");
+        testcase << "Fetch list - "
+                 << boost::algorithm::join(
+                        paths |
+                            boost::adaptors::transformed(
+                                [](FetchListConfig const& cfg) {
+                                    return cfg.path +
+                                        (cfg.ssl ? " [https]" : " [http]");
+                                }),
+                        ", ");
         using namespace jtx;
 
-        Env env (*this);
-        auto& trustedKeys = env.app ().validators ();
+        Env env(*this);
+        auto& trustedKeys = env.app().validators();
 
-        TestSink sink;
+        test::StreamSink sink;
         beast::Journal journal{sink};
 
         PublicKey emptyLocalKey;
         std::vector<std::string> emptyCfgKeys;
         struct publisher
         {
-            publisher(FetchListConfig const& c) : cfg{c} {}
-            std::unique_ptr<TrustedPublisherServer> server;
+            publisher(FetchListConfig const& c) : cfg{c}
+            {
+            }
+            std::shared_ptr<TrustedPublisherServer> server;
             std::vector<Validator> list;
             std::string uri;
             FetchListConfig const& cfg;
@@ -227,57 +177,51 @@ private:
         };
         std::vector<publisher> servers;
 
-        auto const sequence = 1;
         auto constexpr listSize = 20;
         std::vector<std::string> cfgPublishers;
 
         for (auto const& cfg : paths)
         {
-            auto const publisherSecret = randomSecretKey();
-            auto const publisherPublic =
-                derivePublicKey(KeyType::ed25519, publisherSecret);
-            auto const pubSigningKeys = randomKeyPair(KeyType::secp256k1);
-            cfgPublishers.push_back(strHex(publisherPublic));
-
-            auto const manifest = makeManifestString (
-                publisherPublic, publisherSecret,
-                pubSigningKeys.first, pubSigningKeys.second, 1);
-
             servers.push_back(cfg);
             auto& item = servers.back();
             item.isRetry = cfg.path == "/bad-resource";
-            item.list.reserve (listSize);
-            while (item.list.size () < listSize)
-                item.list.push_back (randomValidator());
+            item.list.reserve(listSize);
+            while (item.list.size() < listSize)
+                item.list.push_back(TrustedPublisherServer::randomValidator());
 
-            item.server = std::make_unique<TrustedPublisherServer> (
+            item.server = make_TrustedPublisherServer(
                 env.app().getIOService(),
-                pubSigningKeys,
-                manifest,
-                sequence,
+                item.list,
                 env.timeKeeper().now() + cfg.expiresFromNow,
-                cfg.serverVersion,
-                item.list);
+                cfg.ssl,
+                cfg.serverVersion);
+            cfgPublishers.push_back(strHex(item.server->publisherPublic()));
 
             std::stringstream uri;
-            uri << "http://" << item.server->local_endpoint() << cfg.path;
+            uri << (cfg.ssl ? "https://" : "http://")
+                << item.server->local_endpoint() << cfg.path;
             item.uri = uri.str();
         }
 
-        BEAST_EXPECT(trustedKeys.load (
-            emptyLocalKey, emptyCfgKeys, cfgPublishers));
+        BEAST_EXPECT(
+            trustedKeys.load(emptyLocalKey, emptyCfgKeys, cfgPublishers));
 
         using namespace std::chrono_literals;
-        auto sites = std::make_unique<ValidatorSite> (env.app().validatorManifests(),
+        // Normally, tests will only need a fraction of this time,
+        // but sometimes DNS resolution takes an inordinate amount
+        // of time, so the test will just wait.
+        auto sites = std::make_unique<ValidatorSite>(
+			env.app(),
+            env.app().validatorManifests(),
             env.app().getIOService(),
             env.app().validators(),
-            journal,
-            2s);
+			journal,
+			12s);
 
         std::vector<std::string> uris;
         for (auto const& u : servers)
             uris.push_back(u.uri);
-        sites->load (uris);
+        sites->load(uris);
         sites->start();
         sites->join();
 
@@ -287,9 +231,9 @@ private:
             for (auto const& val : u.list)
             {
                 BEAST_EXPECT(
-                    trustedKeys.listed (val.masterPublic) != u.cfg.failApply);
+                    trustedKeys.listed(val.masterPublic) != u.cfg.failApply);
                 BEAST_EXPECT(
-                    trustedKeys.listed (val.signingPublic) != u.cfg.failApply);
+                    trustedKeys.listed(val.signingPublic) != u.cfg.failApply);
             }
 
             Json::Value myStatus;
@@ -297,35 +241,35 @@ private:
                 if (vs[jss::uri].asString().find(u.uri) != std::string::npos)
                     myStatus = vs;
             BEAST_EXPECTS(
-                myStatus[jss::last_refresh_message].asString().empty()
-                    != u.cfg.failFetch,
-                to_string(myStatus) + "\n" + sink.strm_.str());
+                myStatus[jss::last_refresh_message].asString().empty() !=
+                    u.cfg.failFetch,
+                to_string(myStatus) + "\n" + sink.messages().str());
 
-            if (! u.cfg.msg.empty())
+            if (!u.cfg.msg.empty())
             {
                 BEAST_EXPECTS(
-                    sink.strm_.str().find(u.cfg.msg) != std::string::npos,
-                    sink.strm_.str());
+                    sink.messages().str().find(u.cfg.msg) != std::string::npos,
+                    sink.messages().str());
             }
-
 
             if (u.cfg.expectedRefreshMin)
             {
                 BEAST_EXPECTS(
-                    myStatus[jss::refresh_interval_min].asInt()
-                        == u.cfg.expectedRefreshMin,
+                    myStatus[jss::refresh_interval_min].asInt() ==
+                        u.cfg.expectedRefreshMin,
                     to_string(myStatus));
             }
 
             if (u.cfg.failFetch)
             {
                 using namespace std::chrono;
-                log << " -- Msg: " <<
-                    myStatus[jss::last_refresh_message].asString() << std::endl;
-                std::stringstream nextRefreshStr
-                    {myStatus[jss::next_refresh_time].asString()};
+                log << " -- Msg: "
+                    << myStatus[jss::last_refresh_message].asString()
+                    << std::endl;
+                std::stringstream nextRefreshStr{
+                    myStatus[jss::next_refresh_time].asString()};
                 system_clock::time_point nextRefresh;
-                date::from_stream (nextRefreshStr, "%Y-%b-%d %T", nextRefresh);
+                date::from_stream(nextRefreshStr, "%Y-%b-%d %T", nextRefresh);
                 BEAST_EXPECT(!nextRefreshStr.fail());
                 auto now = system_clock::now();
                 BEAST_EXPECTS(
@@ -336,17 +280,16 @@ private:
     }
 
     void
-    testFileList (
-        std::vector<std::pair<std::string, std::string>> const& paths)
+    testFileList(std::vector<std::pair<std::string, std::string>> const& paths)
     {
-        testcase << "File list - " << paths[0].first <<
-            (paths.size() > 1 ? ", " + paths[1].first : "");
+        testcase << "File list - " << paths[0].first
+                 << (paths.size() > 1 ? ", " + paths[1].first : "");
 
         using namespace jtx;
 
-        Env env (*this);
+        Env env(*this);
 
-        TestSink sink;
+        test::StreamSink sink;
         beast::Journal journal{sink};
 
         struct publisher
@@ -361,7 +304,7 @@ private:
         {
             servers.push_back({});
             auto& item = servers.back();
-            item.shouldFail = ! cfg.second.empty();
+            item.shouldFail = !cfg.second.empty();
             item.expectMsg = cfg.second;
 
             std::stringstream uri;
@@ -369,13 +312,17 @@ private:
             item.uri = uri.str();
         }
 
-        auto sites = std::make_unique<ValidatorSite> (env.app().validatorManifests(),
-            env.app().getIOService(), env.app().validators(), journal);
+        auto sites = std::make_unique<ValidatorSite>(
+			env.app(),
+            env.app().validatorManifests(),
+            env.app().getIOService(),
+            env.app().validators(),
+			journal);
 
         std::vector<std::string> uris;
         for (auto const& u : servers)
             uris.push_back(u.uri);
-        sites->load (uris);
+        sites->load(uris);
         sites->start();
         sites->join();
 
@@ -387,23 +334,26 @@ private:
                 if (vs[jss::uri].asString().find(u.uri) != std::string::npos)
                     myStatus = vs;
             BEAST_EXPECTS(
-                myStatus[jss::last_refresh_message].asString().empty()
-                    != u.shouldFail, to_string(myStatus));
+                myStatus[jss::last_refresh_message].asString().empty() !=
+                    u.shouldFail,
+                to_string(myStatus));
             if (u.shouldFail)
             {
                 BEAST_EXPECTS(
-                    sink.strm_.str().find(u.expectMsg) != std::string::npos,
-                    sink.strm_.str());
-                log << " -- Msg: " <<
-                    myStatus[jss::last_refresh_message].asString() << std::endl;
+                    sink.messages().str().find(u.expectMsg) !=
+                        std::string::npos,
+                    sink.messages().str());
+                log << " -- Msg: "
+                    << myStatus[jss::last_refresh_message].asString()
+                    << std::endl;
             }
         }
     }
 
-    void testFileURLs()
+    void
+    testFileURLs()
     {
-        auto fullPath = [](detail::FileDirGuard const& guard)
-        {
+        auto fullPath = [](detail::FileDirGuard const& guard) {
             auto absPath = absolute(guard.file()).string();
             if (absPath.front() != '/')
                 absPath.insert(absPath.begin(), '/');
@@ -411,24 +361,29 @@ private:
         };
         {
             // Create a file with a real validator list
-            detail::FileDirGuard good(*this, "test_val", "vl.txt",
-                detail::realValidatorContents());
+            detail::FileDirGuard good(
+                *this, "test_val", "vl.txt", detail::realValidatorContents());
             // Create a file with arbitrary content
-            detail::FileDirGuard hello(*this, "test_val", "helloworld.txt",
-                "Hello, world!");
+            detail::FileDirGuard hello(
+                *this, "test_val", "helloworld.txt", "Hello, world!");
             // Create a file with malformed Json
-            detail::FileDirGuard json(*this, "test_val", "json.txt",
+            detail::FileDirGuard json(
+                *this,
+                "test_val",
+                "json.txt",
                 R"json({ "version": 2, "extra" : "value" })json");
             auto const goodPath = fullPath(good);
             auto const helloPath = fullPath(hello);
             auto const jsonPath = fullPath(json);
             auto const missingPath = jsonPath + ".bad";
             testFileList({
-                {goodPath, "" },
-                {helloPath, "Unable to parse JSON response from  file://" + helloPath},
-                {jsonPath, "Missing fields in JSON response from  file://" + jsonPath},
-                {missingPath, "Problem retrieving from file://" + missingPath },
-                });
+                {goodPath, ""},
+                {helloPath,
+                 "Unable to parse JSON response from  file://" + helloPath},
+                {jsonPath,
+                 "Missing fields in JSON response from  file://" + jsonPath},
+                {missingPath, "Problem retrieving from file://" + missingPath},
+            });
         }
     }
 
@@ -436,107 +391,144 @@ public:
     void
     run() override
     {
-        testConfigLoad ();
+        testConfigLoad();
 
-        // fetch single site
-        testFetchList ({{"/validators", ""}});
-        // fetch multiple sites
-        testFetchList ({{"/validators", ""}, {"/validators", ""}});
-        // fetch single site with single redirects
-        testFetchList ({{"/redirect_once/301", ""}});
-        testFetchList ({{"/redirect_once/302", ""}});
-        testFetchList ({{"/redirect_once/307", ""}});
-        testFetchList ({{"/redirect_once/308", ""}});
-        // one redirect, one not
-        testFetchList ({{"/validators", ""}, {"/redirect_once/302", ""}});
-        // fetch single site with undending redirect (fails to load)
-        testFetchList ({
-            {"/redirect_forever/301", "Exceeded max redirects", true, true}});
-        // two that redirect forever
-        testFetchList ({
-            {"/redirect_forever/307", "Exceeded max redirects", true, true},
-            {"/redirect_forever/308", "Exceeded max redirects", true, true}});
-        // one undending redirect, one not
-        testFetchList (
-            {{"/validators", ""},
-            {"/redirect_forever/302", "Exceeded max redirects", true, true}});
-        // invalid redir Location
-        testFetchList ({
-            {"/redirect_to/ftp://invalid-url/302",
-             "Invalid redirect location",
-             true,
-             true}});
-        testFetchList ({
-            {"/redirect_to/file://invalid-url/302",
-             "Invalid redirect location",
-             true,
-             true}});
-        // invalid json
-        testFetchList ({
-            {"/validators/bad", "Unable to parse JSON response", true, true}});
-        // error status returned
-        testFetchList ({
-            {"/bad-resource", "returned bad status", true, true}});
-        // location field missing
-        testFetchList ({
-            {"/redirect_nolo/308",
-            "returned a redirect with no Location",
-            true,
-            true}});
-        // json fields missing
-        testFetchList ({
-            {"/validators/missing",
-            "Missing fields in JSON response",
-            true,
-            true}});
-        // timeout
-        testFetchList ({
-            {"/sleep/3", "took too long", true, true}});
-        // bad manifest version
-        testFetchList ({
-            {"/validators", "Unsupported version", false, true, 4}});
-        using namespace std::chrono_literals;
-        // get old validator list
-        testFetchList ({
-            {"/validators", "Stale validator list", false, true, 1, 0s}});
-        // force an out-of-range expiration value
-        testFetchList ({
-            {"/validators",
-            "Invalid validator list",
-            false,
-            true,
-            1,
-            std::chrono::seconds{Json::Value::maxInt + 1}}});
-        // verify refresh intervals are properly clamped
-        testFetchList ({
-            {"/validators/refresh/0",
-            "",
-            false,
-            false,
-            1,
-            detail::default_expires,
-            1}}); // minimum of 1 minute
-        testFetchList ({
-            {"/validators/refresh/10",
-            "",
-            false,
-            false,
-            1,
-            detail::default_expires,
-            10}}); // 10 minutes is fine
-        testFetchList ({
-            {"/validators/refresh/2000",
-            "",
-            false,
-            false,
-            1,
-            detail::default_expires,
-            60*24}}); // max of 24 hours
+        for (auto ssl : {true, false})
+        {
+            // fetch single site
+            testFetchList({{"/validators", "", ssl}});
+            // fetch multiple sites
+            testFetchList({{"/validators", "", ssl}, {"/validators", "", ssl}});
+            // fetch single site with single redirects
+            testFetchList({{"/redirect_once/301", "", ssl}});
+            testFetchList({{"/redirect_once/302", "", ssl}});
+            testFetchList({{"/redirect_once/307", "", ssl}});
+            testFetchList({{"/redirect_once/308", "", ssl}});
+            // one redirect, one not
+            testFetchList(
+                {{"/validators", "", ssl}, {"/redirect_once/302", "", ssl}});
+            // fetch single site with undending redirect (fails to load)
+            testFetchList(
+                {{"/redirect_forever/301",
+                  "Exceeded max redirects",
+                  ssl,
+                  true,
+                  true}});
+            // two that redirect forever
+            testFetchList(
+                {{"/redirect_forever/307",
+                  "Exceeded max redirects",
+                  ssl,
+                  true,
+                  true},
+                 {"/redirect_forever/308",
+                  "Exceeded max redirects",
+                  ssl,
+                  true,
+                  true}});
+            // one undending redirect, one not
+            testFetchList(
+                {{"/validators", "", ssl},
+                 {"/redirect_forever/302",
+                  "Exceeded max redirects",
+                  ssl,
+                  true,
+                  true}});
+            // invalid redir Location
+            testFetchList(
+                {{"/redirect_to/ftp://invalid-url/302",
+                  "Invalid redirect location",
+                  ssl,
+                  true,
+                  true}});
+            testFetchList(
+                {{"/redirect_to/file://invalid-url/302",
+                  "Invalid redirect location",
+                  ssl,
+                  true,
+                  true}});
+            // invalid json
+            testFetchList(
+                {{"/validators/bad",
+                  "Unable to parse JSON response",
+                  ssl,
+                  true,
+                  true}});
+            // error status returned
+            testFetchList(
+                {{"/bad-resource", "returned bad status", ssl, true, true}});
+            // location field missing
+            testFetchList(
+                {{"/redirect_nolo/308",
+                  "returned a redirect with no Location",
+                  ssl,
+                  true,
+                  true}});
+            // json fields missing
+            testFetchList(
+                {{"/validators/missing",
+                  "Missing fields in JSON response",
+                  ssl,
+                  true,
+                  true}});
+            // timeout
+            testFetchList({{"/sleep/13", "took too long", ssl, true, true}});
+            // bad manifest version
+            testFetchList(
+                {{"/validators", "Unsupported version", ssl, false, true, 4}});
+            using namespace std::chrono_literals;
+            // get old validator list
+            testFetchList(
+                {{"/validators",
+                  "Stale validator list",
+                  ssl,
+                  false,
+                  true,
+                  1,
+                  0s}});
+            // force an out-of-range expiration value
+            testFetchList(
+                {{"/validators",
+                  "Invalid validator list",
+                  ssl,
+                  false,
+                  true,
+                  1,
+                  std::chrono::seconds{Json::Value::maxInt + 1}}});
+            // verify refresh intervals are properly clamped
+            testFetchList(
+                {{"/validators/refresh/0",
+                  "",
+                  ssl,
+                  false,
+                  false,
+                  1,
+                  detail::default_expires,
+                  1}});  // minimum of 1 minute
+            testFetchList(
+                {{"/validators/refresh/10",
+                  "",
+                  ssl,
+                  false,
+                  false,
+                  1,
+                  detail::default_expires,
+                  10}});  // 10 minutes is fine
+            testFetchList(
+                {{"/validators/refresh/2000",
+                  "",
+                  ssl,
+                  false,
+                  false,
+                  1,
+                  detail::default_expires,
+                  60 * 24}});  // max of 24 hours
+        }
         testFileURLs();
     }
 };
 
 BEAST_DEFINE_TESTSUITE(ValidatorSite, app, ripple);
 
-} // test
-} // ripple
+}  // namespace test
+}  // namespace ripple

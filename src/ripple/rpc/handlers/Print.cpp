@@ -26,21 +26,21 @@
 
 namespace ripple {
 
-Json::Value doPrint (RPC::Context& context)
+Json::Value
+doPrint(RPC::JsonContext& context)
 {
     JsonPropertyStream stream;
-    if (context.params.isObject()
-        && context.params[jss::params].isArray()
-        && context.params[jss::params][0u].isString ())
+    if (context.params.isObject() && context.params[jss::params].isArray() &&
+        context.params[jss::params][0u].isString())
     {
-        context.app.app().write (stream, context.params[jss::params][0u].asString());
+        context.app.app().write(stream, context.params[jss::params][0u].asString());
     }
     else
     {
-        context.app.app().write (stream);
+        context.app.app().write(stream);
     }
 
     return stream.top();
 }
 
-} // ripple
+}  // namespace ripple

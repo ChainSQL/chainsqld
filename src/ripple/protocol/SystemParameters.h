@@ -20,6 +20,8 @@
 #ifndef RIPPLE_PROTOCOL_SYSTEMPARAMETERS_H_INCLUDED
 #define RIPPLE_PROTOCOL_SYSTEMPARAMETERS_H_INCLUDED
 
+#include <ripple/basics/ZXCAmount.h>
+#include <ripple/basics/chrono.h>
 #include <cstdint>
 #include <string>
 
@@ -28,48 +30,51 @@ namespace ripple {
 // Various protocol and system specific constant globals.
 
 /* The name of the system. */
-static inline
-std::string const&
-systemName ()
+static inline std::string const&
+systemName()
 {
     static std::string const name = "chainsql";
     return name;
 }
 
 /** Configure the native currency. */
-static
-std::uint64_t const
-SYSTEM_CURRENCY_GIFT = 1000;
-
-static
-std::uint64_t const
-SYSTEM_CURRENCY_USERS = 100000000;
-
-/** Number of drops per 1 ZXC */
-static
-std::uint64_t const
-SYSTEM_CURRENCY_PARTS = 1000000;
 
 /** Number of drops in the genesis account. */
-static
-std::uint64_t const
-SYSTEM_CURRENCY_START = SYSTEM_CURRENCY_GIFT * SYSTEM_CURRENCY_USERS * SYSTEM_CURRENCY_PARTS;
+constexpr ZXCAmount INITIAL_ZXC{100'000'000'000 * DROPS_PER_ZXC};
+
+/** Returns true if the amount does not exceed the initial ZXC in existence. */
+inline bool
+isLegalAmount(ZXCAmount const& amount)
+{
+    return amount <= INITIAL_ZXC;
+}
 
 /* The currency code for the native currency. */
-static inline
-std::string const&
-systemCurrencyCode ()
+static inline std::string const&
+systemCurrencyCode()
 {
     static std::string const code = "ZXC";
     return code;
 }
 
 /** The ZXC ledger network's earliest allowed sequence */
-static
-std::uint32_t constexpr
-//ZXC_LEDGER_EARLIEST_SEQ {32570};
-ZXC_LEDGER_EARLIEST_SEQ{ 1 };
+static std::uint32_t constexpr ZXC_LEDGER_EARLIEST_SEQ{32570};
 
-} // ripple
+/** The minimum amount of support an amendment should have.
+
+    @note This value is used by legacy code and will become obsolete
+          once the fixAmendmentMajorityCalc amendment activates.
+*/
+constexpr std::ratio<204, 256> preFixAmendmentMajorityCalcThreshold;
+
+constexpr std::ratio<80, 100> postFixAmendmentMajorityCalcThreshold;
+
+/** The minimum amount of time an amendment must hold a majority */
+constexpr std::chrono::seconds const defaultAmendmentMajorityTime = weeks{2};
+
+}  // namespace ripple
+
+/** Default peer port (IANA registered) */
+inline std::uint16_t constexpr DEFAULT_PEER_PORT{2459};
 
 #endif

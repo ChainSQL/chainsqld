@@ -17,15 +17,14 @@
 */
 //==============================================================================
 
-
 #include <ripple/app/paths/Credit.h>
 #include <ripple/app/paths/Flow.h>
 #include <ripple/app/paths/impl/AmountSpec.h>
-#include <ripple/app/paths/impl/StrandFlow.h>
 #include <ripple/app/paths/impl/Steps.h>
+#include <ripple/app/paths/impl/StrandFlow.h>
+#include <ripple/basics/IOUAmount.h>
 #include <ripple/basics/Log.h>
-#include <ripple/protocol/IOUAmount.h>
-#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 
 #include <boost/container/flat_set.hpp>
 
@@ -34,27 +33,29 @@
 
 namespace ripple {
 
-template<class FlowResult>
-static
-auto finishFlow (PaymentSandbox& sb,
-    Issue const& srcIssue, Issue const& dstIssue,
+template <class FlowResult>
+static auto
+finishFlow(
+    PaymentSandbox& sb,
+    Issue const& srcIssue,
+    Issue const& dstIssue,
     FlowResult&& f)
 {
     path::RippleCalc::Output result;
     if (f.ter == tesSUCCESS)
-        f.sandbox->apply (sb);
+        f.sandbox->apply(sb);
     else
-        result.removableOffers = std::move (f.removableOffers);
+        result.removableOffers = std::move(f.removableOffers);
 
-    result.setResult (f.ter);
-    result.actualAmountIn = toSTAmount (f.in, srcIssue);
-    result.actualAmountOut = toSTAmount (f.out, dstIssue);
+    result.setResult(f.ter);
+    result.actualAmountIn = toSTAmount(f.in, srcIssue);
+    result.actualAmountOut = toSTAmount(f.out, dstIssue);
 
     return result;
 };
 
 path::RippleCalc::Output
-flow (
+flow(
     PaymentSandbox& sb,
     STAmount const& deliver,
     AccountID const& src,
@@ -71,40 +72,49 @@ flow (
 {
     Issue const srcIssue = [&] {
         if (sendMax)
-            return sendMax->issue ();
-        if (!isZXC (deliver.issue ().currency))
-            return Issue (deliver.issue ().currency, src);
-        return zxcIssue ();
+            return sendMax->issue();
+        if (!isZXC(deliver.issue().currency))
+            return Issue(deliver.issue().currency, src);
+        return zxcIssue();
     }();
 
-    Issue const dstIssue = deliver.issue ();
+    Issue const dstIssue = deliver.issue();
 
     boost::optional<Issue> sendMaxIssue;
     if (sendMax)
-        sendMaxIssue = sendMax->issue ();
+        sendMaxIssue = sendMax->issue();
 
-    // convert the paths to a collection of strands. Each strand is the collection
-    // of account->account steps and book steps that may be used in this payment.
-    auto sr = toStrands (sb, src, dst, dstIssue, limitQuality, sendMaxIssue,
-        paths, defaultPaths, ownerPaysTransferFee, offerCrossing, j);
+    // convert the paths to a collection of strands. Each strand is the
+    // collection of account->account steps and book steps that may be used in
+    // this payment.
+    auto [toStrandsTer, strands] = toStrands(
+        sb,
+        src,
+        dst,
+        dstIssue,
+        limitQuality,
+        sendMaxIssue,
+        paths,
+        defaultPaths,
+        ownerPaysTransferFee,
+        offerCrossing,
+        j);
 
-    if (sr.first != tesSUCCESS)
+    if (toStrandsTer != tesSUCCESS)
     {
         path::RippleCalc::Output result;
-        result.setResult (sr.first);
+        result.setResult(toStrandsTer);
         return result;
     }
-
-    auto& strands = sr.second;
 
     if (j.trace())
     {
         j.trace() << "\nsrc: " << src << "\ndst: " << dst
-            << "\nsrcIssue: " << srcIssue << "\ndstIssue: " << dstIssue;
-        j.trace() << "\nNumStrands: " << strands.size ();
+                  << "\nsrcIssue: " << srcIssue << "\ndstIssue: " << dstIssue;
+        j.trace() << "\nNumStrands: " << strands.size();
         for (auto const& curStrand : strands)
         {
-            j.trace() << "NumSteps: " << curStrand.size ();
+            j.trace() << "NumSteps: " << curStrand.size();
             for (auto const& step : curStrand)
             {
                 j.trace() << '\n' << *step << '\n';
@@ -112,44 +122,83 @@ flow (
         }
     }
 
-    const bool srcIsZXC = isZXC (srcIssue.currency);
-    const bool dstIsZXC = isZXC (dstIssue.currency);
+    const bool srcIsZXC = isZXC(srcIssue.currency);
+    const bool dstIsZXC = isZXC(dstIssue.currency);
 
-    auto const asDeliver = toAmountSpec (deliver);
+    auto const asDeliver = toAmountSpec(deliver);
 
     // The src account may send either zxc or iou. The dst account may receive
     // either zxc or iou. Since ZXC and IOU amounts are represented by different
     // types, use templates to tell `flow` about the amount types.
     if (srcIsZXC && dstIsZXC)
     {
-        return finishFlow (sb, srcIssue, dstIssue,
-            flow<ZXCAmount, ZXCAmount> (
-                sb, strands, asDeliver.zxc, partialPayment, offerCrossing,
-                limitQuality, sendMax, j, flowDebugInfo));
+        return finishFlow(
+            sb,
+            srcIssue,
+            dstIssue,
+            flow<ZXCAmount, ZXCAmount>(
+                sb,
+                strands,
+                asDeliver.zxc,
+                partialPayment,
+                offerCrossing,
+                limitQuality,
+                sendMax,
+                j,
+                flowDebugInfo));
     }
 
     if (srcIsZXC && !dstIsZXC)
     {
-        return finishFlow (sb, srcIssue, dstIssue,
-            flow<ZXCAmount, IOUAmount> (
-                sb, strands, asDeliver.iou, partialPayment, offerCrossing,
-                limitQuality, sendMax, j, flowDebugInfo));
+        return finishFlow(
+            sb,
+            srcIssue,
+            dstIssue,
+            flow<ZXCAmount, IOUAmount>(
+                sb,
+                strands,
+                asDeliver.iou,
+                partialPayment,
+                offerCrossing,
+                limitQuality,
+                sendMax,
+                j,
+                flowDebugInfo));
     }
 
     if (!srcIsZXC && dstIsZXC)
     {
-        return finishFlow (sb, srcIssue, dstIssue,
-            flow<IOUAmount, ZXCAmount> (
-                sb, strands, asDeliver.zxc, partialPayment, offerCrossing,
-                limitQuality, sendMax, j, flowDebugInfo));
+        return finishFlow(
+            sb,
+            srcIssue,
+            dstIssue,
+            flow<IOUAmount, ZXCAmount>(
+                sb,
+                strands,
+                asDeliver.zxc,
+                partialPayment,
+                offerCrossing,
+                limitQuality,
+                sendMax,
+                j,
+                flowDebugInfo));
     }
 
-    assert (!srcIsZXC && !dstIsZXC);
-    return finishFlow (sb, srcIssue, dstIssue,
-        flow<IOUAmount, IOUAmount> (
-            sb, strands, asDeliver.iou, partialPayment, offerCrossing,
-            limitQuality, sendMax, j, flowDebugInfo));
-
+    assert(!srcIsZXC && !dstIsZXC);
+    return finishFlow(
+        sb,
+        srcIssue,
+        dstIssue,
+        flow<IOUAmount, IOUAmount>(
+            sb,
+            strands,
+            asDeliver.iou,
+            partialPayment,
+            offerCrossing,
+            limitQuality,
+            sendMax,
+            j,
+            flowDebugInfo));
 }
 
-} // ripple
+}  // namespace ripple

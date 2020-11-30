@@ -30,8 +30,7 @@ namespace ripple {
 // Note that this queue should only be used for CPU-bound jobs
 // It is primarily intended for signature checking
 
-enum JobType
-{
+enum JobType {
     // Special type indicating an invalid job - will go away soon.
     jtINVALID = -1,
 
@@ -85,19 +84,19 @@ enum JobType
 
 
     // Special job types which are not dispatched by the job pool
-    jtPEER          ,
-    jtDISK          ,
-    jtTXN_PROC      ,
-    jtOB_SETUP      ,
-    jtPATH_FIND     ,
-    jtHO_READ       ,
-    jtHO_WRITE      ,
-    jtGENERIC       ,   // Used just to measure time
+    jtPEER,
+    jtDISK,
+    jtTXN_PROC,
+    jtOB_SETUP,
+    jtPATH_FIND,
+    jtHO_READ,
+    jtHO_WRITE,
+    jtGENERIC,  // Used just to measure time
 
     // Node store monitoring
-    jtNS_SYNC_READ  ,
-    jtNS_ASYNC_READ ,
-    jtNS_WRITE      ,
+    jtNS_SYNC_READ,
+    jtNS_ASYNC_READ,
+    jtNS_WRITE,
 };
 
 class Job
@@ -116,56 +115,66 @@ public:
     //             function? Having the invariant "all Job objects refer to
     //             a job" would reduce the number of states.
     //
-    Job ();
+    Job();
 
-    //Job (Job const& other);
+    // Job (Job const& other);
 
-    Job (JobType type, std::uint64_t index);
+    Job(JobType type, std::uint64_t index);
 
     /** A callback used to check for canceling a job. */
-    using CancelCallback = std::function <bool(void)>;
+    using CancelCallback = std::function<bool(void)>;
 
     // VFALCO TODO try to remove the dependency on LoadMonitor.
-    Job (JobType type,
-         std::string const& name,
-         std::uint64_t index,
-         LoadMonitor& lm,
-         std::function <void (Job&)> const& job,
-         CancelCallback cancelCallback);
+    Job(JobType type,
+        std::string const& name,
+        std::uint64_t index,
+        LoadMonitor& lm,
+        std::function<void(Job&)> const& job,
+        CancelCallback cancelCallback);
 
-    //Job& operator= (Job const& other);
+    // Job& operator= (Job const& other);
 
-    JobType getType () const;
+    JobType
+    getType() const;
 
-    CancelCallback getCancelCallback () const;
+    CancelCallback
+    getCancelCallback() const;
 
     /** Returns the time when the job was queued. */
-    clock_type::time_point const& queue_time () const;
+    clock_type::time_point const&
+    queue_time() const;
 
     /** Returns `true` if the running job should make a best-effort cancel. */
-    bool shouldCancel () const;
+    bool
+    shouldCancel() const;
 
-    void doJob ();
+    void
+    doJob();
 
-    void rename (std::string const& n);
+    void
+    rename(std::string const& n);
 
     // These comparison operators make the jobs sort in priority order
     // in the job set
-    bool operator< (const Job& j) const;
-    bool operator> (const Job& j) const;
-    bool operator<= (const Job& j) const;
-    bool operator>= (const Job& j) const;
+    bool
+    operator<(const Job& j) const;
+    bool
+    operator>(const Job& j) const;
+    bool
+    operator<=(const Job& j) const;
+    bool
+    operator>=(const Job& j) const;
 
 private:
     CancelCallback m_cancelCallback;
-    JobType                     mType;
-    std::uint64_t               mJobIndex;
-    std::function <void (Job&)> mJob;
-    std::shared_ptr<LoadEvent>  m_loadEvent;
-    std::string                 mName;
+    JobType mType;
+    std::uint64_t mJobIndex;
+    std::function<void(Job&)> mJob;
+    std::shared_ptr<LoadEvent> m_loadEvent;
+    std::string mName;
     clock_type::time_point m_queue_time;
 };
 
-}
+}  // namespace ripple
 
 #endif

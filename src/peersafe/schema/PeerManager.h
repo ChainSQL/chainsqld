@@ -17,6 +17,10 @@ public:
 	virtual
 		Json::Value
 		json() = 0;
+
+	virtual std::size_t
+		size() const = 0;
+
 	/** Returns the peer with the matching short id, or null. */
 	virtual
 		std::shared_ptr<Peer>
@@ -32,7 +36,7 @@ public:
 	*/
 	virtual
 		PeerSequence
-		getActivePeers() = 0; 
+		getActivePeers()const = 0;
 
 	virtual void
 		lastLink(std::uint32_t id) = 0;
@@ -49,10 +53,6 @@ public:
 	//virtual
 	//	void
 	//	check() = 0;
-
-	virtual
-		std::size_t
-		size() = 0;
 
 	/** Broadcast a proposal. */
 	virtual
@@ -86,73 +86,64 @@ public:
 		void
 		relay(protocol::TMViewChange& m,
 			uint256 const& uid) = 0;
-	/** Visit every active peer and return a value
-		The functor must:
-		- Be callable as:
-			void operator()(std::shared_ptr<Peer> const& peer);
-		 - Must have the following type alias:
-			using return_type = void;
-		 - Be callable as:
-			Function::return_type operator()() const;
+	///** Visit every active peer and return a value
+	//	The functor must:
+	//	- Be callable as:
+	//		void operator()(std::shared_ptr<Peer> const& peer);
+	//	 - Must have the following type alias:
+	//		using return_type = void;
+	//	 - Be callable as:
+	//		Function::return_type operator()() const;
 
-		@param f the functor to call with every peer
-		@returns `f()`
+	//	@param f the functor to call with every peer
+	//	@returns `f()`
 
-		@note The functor is passed by value!
-	*/
-	template <typename UnaryFunc>
-	std::enable_if_t<!std::is_void<
-		typename UnaryFunc::return_type>::value,
-		typename UnaryFunc::return_type>
-		foreach(UnaryFunc f)
-	{
-		for (auto const& p : getActivePeers())
-			f(p);
-		return f();
-	}
+	//	@note The functor is passed by value!
+	//*/
+	//template <typename UnaryFunc>
+	//std::enable_if_t<!std::is_void<
+	//	typename UnaryFunc::return_type>::value,
+	//	typename UnaryFunc::return_type>
+	//	foreach(UnaryFunc f)
+	//{
+	//	for (auto const& p : getActivePeers())
+	//		f(p);
+	//	return f();
+	//}
 
-	/** Visit every active peer
-		The visitor functor must:
-		 - Be callable as:
-			void operator()(std::shared_ptr<Peer> const& peer);
-		 - Must have the following type alias:
-			using return_type = void;
+	///** Visit every active peer
+	//	The visitor functor must:
+	//	 - Be callable as:
+	//		void operator()(std::shared_ptr<Peer> const& peer);
+	//	 - Must have the following type alias:
+	//		using return_type = void;
 
-		@param f the functor to call with every peer
-	*/
+	//	@param f the functor to call with every peer
+	//*/
+	//template <class Function>
+	//std::enable_if_t <
+	//	std::is_void <typename Function::return_type>::value,
+	//	typename Function::return_type
+	//>
+	//	foreach(Function f)
+	//{
+	//	for (auto const& p : getActivePeers())
+	//		f(p);
+	//}
+	/** Visit every active peer.
+	 *
+	 * The visitor must be invocable as:
+	 *     Function(std::shared_ptr<Peer> const& peer);
+	 *
+	 * @param f the invocable to call with every peer
+	 */
 	template <class Function>
-	std::enable_if_t <
-		std::is_void <typename Function::return_type>::value,
-		typename Function::return_type
-	>
-		foreach(Function f)
+	void
+		foreach(Function f) const
 	{
 		for (auto const& p : getActivePeers())
 			f(p);
 	}
-
-	/** Select from active peers
-
-		Scores all active peers.
-		Tries to accept the highest scoring peers, up to the requested count,
-		Returns the number of selected peers accepted.
-
-		The score function must:
-		- Be callable as:
-		   bool (PeerImp::ptr)
-		- Return a true if the peer is prefered
-
-		The accept function must:
-		- Be callable as:
-		   bool (PeerImp::ptr)
-		- Return a true if the peer is accepted
-
-	*/
-	virtual
-		std::size_t
-		selectPeers(PeerSet& set, std::size_t limit, std::function<
-			bool(std::shared_ptr<Peer> const&)> score) = 0;
-
 	/** Returns information reported to the crawl shard RPC command.
 
 		@param hops the maximum jumps the crawler will attempt.

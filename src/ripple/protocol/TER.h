@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
     This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2012 - 2018 Ripple Labs Inc.
+    Copyright (c) 2012 - 2019 Ripple Labs Inc.
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose  with  or without fee is hereby granted, provided that the above
@@ -29,7 +29,7 @@
 
 namespace ripple {
 
-// See https://ripple.com/wiki/Transaction_errors
+// See https://zxcl.org/transaction-results.html
 //
 // "Transaction Engine Result"
 // or Transaction ERror.
@@ -184,6 +184,8 @@ enum TEFcodes : TERUnderlyingType
 	tefNOT_MULTI_SIGNING,
 	tefBAD_AUTH_MASTER,
 	tefINVARIANT_FAILED,
+    tefTOO_BIG,
+    
 	tefBAD_AUTH_EXIST,
 	tefBAD_AUTH_NO,
 	tefTABLE_GRANTFULL,
@@ -216,13 +218,17 @@ enum TEFcodes : TERUnderlyingType
 	tefBAD_SCHEMAADMIN,
 	tefSCHEMA_TX_FORBIDDEN,
 	tefSCEMA_NO_PATH,
+	tefBAD_DUPLACATE_ITEM,
+	tefSCHEMA_NODE_COUNT,
 };
 
 //------------------------------------------------------------------------------
 
-enum TERcodes : TERUnderlyingType
-{
-    // Note: Range is stable.  Exact numbers are unstable.  Use tokens.
+enum TERcodes : TERUnderlyingType {
+    // Note: Range is stable.
+    // Exact numbers are used in ripple-binary-codec:
+    //     https://github.com/ripple/ripple-binary-codec/blob/master/src/enums/definitions.json
+    // Use tokens.
 
     // -99 .. -1: R Retry
     //   sequence too high, no funds for txn fee, originating -account
@@ -256,8 +262,7 @@ enum TERcodes : TERUnderlyingType
 
 //------------------------------------------------------------------------------
 
-enum TEScodes : TERUnderlyingType
-{
+enum TEScodes : TERUnderlyingType {
     // Note: Exact number must stay stable.  This code is stored by value
     // in metadata for historic transactions.
 
@@ -267,13 +272,12 @@ enum TEScodes : TERUnderlyingType
     // Implications:
     // - Applied
     // - Forwarded
-    tesSUCCESS      = 0
+    tesSUCCESS = 0
 };
 
 //------------------------------------------------------------------------------
 
-enum TECcodes : TERUnderlyingType
-{
+enum TECcodes : TERUnderlyingType {
     // Note: Exact numbers must stay stable.  These codes are stored by
     // value in metadata for historic transactions.
 
@@ -290,108 +294,136 @@ enum TECcodes : TERUnderlyingType
     // - Applied
     // - Forwarded
     //
-    // Only allowed as a return code of appliedTransaction when !tapRetry.
+    // Only allowed as a return code of appliedTransaction when !tapRETRY.
     // Otherwise, treated as terRETRY.
     //
     // DO NOT CHANGE THESE NUMBERS: They appear in ledger meta data.
-    tecCLAIM                    = 100,
-    tecPATH_PARTIAL             = 101,
-    tecUNFUNDED_ADD             = 102,
-    tecUNFUNDED_OFFER           = 103,
-    tecUNFUNDED_PAYMENT         = 104,
-    tecFAILED_PROCESSING        = 105,
-	tecUNFUNDED_ESCROW			= 106,
-
-    tecDIR_FULL                 = 121,
-    tecINSUF_RESERVE_LINE       = 122,
-    tecINSUF_RESERVE_OFFER      = 123,
-    tecNO_DST                   = 124,
-    tecNO_DST_INSUF_ZXC         = 125,
-    tecNO_LINE_INSUF_RESERVE    = 126,
-    tecNO_LINE_REDUNDANT        = 127,
-    tecPATH_DRY                 = 128,
-    tecUNFUNDED                 = 129,  // Deprecated, old ambiguous unfunded.
-    tecNO_ALTERNATIVE_KEY       = 130,
-    tecNO_REGULAR_KEY           = 131,
-    tecOWNERS                   = 132,
-    tecNO_ISSUER                = 133,
-    tecNO_AUTH                  = 134,
-    tecNO_LINE                  = 135,
-    tecINSUFF_FEE               = 136,
-    tecFROZEN                   = 137,
-    tecNO_TARGET                = 138,
-    tecNO_PERMISSION            = 139,
-    tecNO_ENTRY                 = 140,
-    tecINSUFFICIENT_RESERVE     = 141,
-    tecNEED_MASTER_KEY          = 142,
-    tecDST_TAG_NEEDED           = 143,
-    tecINTERNAL                 = 144,
-    tecOVERSIZE                 = 145,
-    tecCRYPTOCONDITION_ERROR    = 146,
-    tecINVARIANT_FAILED         = 147,
-    tecEXPIRED                  = 148,
-    tecDUPLICATE                = 149,
-    tecKILLED                   = 150,
+    tecCLAIM = 100,
+    tecPATH_PARTIAL = 101,
+    tecUNFUNDED_ADD = 102,  // Unused legacy code
+    tecUNFUNDED_OFFER = 103,
+    tecUNFUNDED_PAYMENT = 104,
+    tecFAILED_PROCESSING = 105,
+    tecUNFUNDED_ESCROW = 106,
+    tecDIR_FULL = 121,
+    tecINSUF_RESERVE_LINE = 122,
+    tecINSUF_RESERVE_OFFER = 123,
+    tecNO_DST = 124,
+    tecNO_DST_INSUF_ZXC = 125,
+    tecNO_LINE_INSUF_RESERVE = 126,
+    tecNO_LINE_REDUNDANT = 127,
+    tecPATH_DRY = 128,
+    tecUNFUNDED = 129,
+    tecNO_ALTERNATIVE_KEY = 130,
+    tecNO_REGULAR_KEY = 131,
+    tecOWNERS = 132,
+    tecNO_ISSUER = 133,
+    tecNO_AUTH = 134,
+    tecNO_LINE = 135,
+    tecINSUFF_FEE = 136,
+    tecFROZEN = 137,
+    tecNO_TARGET = 138,
+    tecNO_PERMISSION = 139,
+    tecNO_ENTRY = 140,
+    tecINSUFFICIENT_RESERVE = 141,
+    tecNEED_MASTER_KEY = 142,
+    tecDST_TAG_NEEDED = 143,
+    tecINTERNAL = 144,
+    tecOVERSIZE = 145,
+    tecCRYPTOCONDITION_ERROR = 146,
+    tecINVARIANT_FAILED = 147,
+    tecEXPIRED = 148,
+    tecDUPLICATE = 149,
+    tecKILLED = 150,
+    tecHAS_OBLIGATIONS = 151,
+    tecTOO_SOON = 152,
 };
 
 //------------------------------------------------------------------------------
 
 // For generic purposes, a free function that returns the value of a TE*codes.
-constexpr TERUnderlyingType TERtoInt (TELcodes v)
-{ return safe_cast<TERUnderlyingType>(v); }
+constexpr TERUnderlyingType
+TERtoInt(TELcodes v)
+{
+    return safe_cast<TERUnderlyingType>(v);
+}
 
-constexpr TERUnderlyingType TERtoInt (TEMcodes v)
-{ return safe_cast<TERUnderlyingType>(v); }
+constexpr TERUnderlyingType
+TERtoInt(TEMcodes v)
+{
+    return safe_cast<TERUnderlyingType>(v);
+}
 
-constexpr TERUnderlyingType TERtoInt (TEFcodes v)
-{ return safe_cast<TERUnderlyingType>(v); }
+constexpr TERUnderlyingType
+TERtoInt(TEFcodes v)
+{
+    return safe_cast<TERUnderlyingType>(v);
+}
 
-constexpr TERUnderlyingType TERtoInt (TERcodes v)
-{ return safe_cast<TERUnderlyingType>(v); }
+constexpr TERUnderlyingType
+TERtoInt(TERcodes v)
+{
+    return safe_cast<TERUnderlyingType>(v);
+}
 
-constexpr TERUnderlyingType TERtoInt (TEScodes v)
-{ return safe_cast<TERUnderlyingType>(v); }
+constexpr TERUnderlyingType
+TERtoInt(TEScodes v)
+{
+    return safe_cast<TERUnderlyingType>(v);
+}
 
-constexpr TERUnderlyingType TERtoInt (TECcodes v)
-{ return safe_cast<TERUnderlyingType>(v); }
+constexpr TERUnderlyingType
+TERtoInt(TECcodes v)
+{
+    return safe_cast<TERUnderlyingType>(v);
+}
 
 //------------------------------------------------------------------------------
 // Template class that is specific to selected ranges of error codes.  The
 // Trait tells std::enable_if which ranges are allowed.
-template <template<typename> class Trait>
+template <template <typename> class Trait>
 class TERSubset
 {
     TERUnderlyingType code_;
 
 public:
     // Constructors
-    constexpr TERSubset() : code_ (tesSUCCESS) { }
-    constexpr TERSubset (TERSubset const& rhs) = default;
-    constexpr TERSubset (TERSubset&& rhs) = default;
-private:
-    constexpr explicit TERSubset (int rhs) : code_ (rhs) { }
-public:
-    static constexpr TERSubset fromInt (int from)
+    constexpr TERSubset() : code_(tesSUCCESS)
     {
-        return TERSubset (from);
+    }
+    constexpr TERSubset(TERSubset const& rhs) = default;
+    constexpr TERSubset(TERSubset&& rhs) = default;
+
+private:
+    constexpr explicit TERSubset(int rhs) : code_(rhs)
+    {
+    }
+
+public:
+    static constexpr TERSubset
+    fromInt(int from)
+    {
+        return TERSubset(from);
     }
 
     // Trait tells enable_if which types are allowed for construction.
     template <typename T, typename = std::enable_if_t<Trait<T>::value>>
-    constexpr TERSubset (T rhs)
-    : code_ (TERtoInt (rhs))
-    { }
+    constexpr TERSubset(T rhs) : code_(TERtoInt(rhs))
+    {
+    }
 
     // Assignment
-    constexpr TERSubset& operator=(TERSubset const& rhs) = default;
-    constexpr TERSubset& operator=(TERSubset&& rhs) = default;
+    constexpr TERSubset&
+    operator=(TERSubset const& rhs) = default;
+    constexpr TERSubset&
+    operator=(TERSubset&& rhs) = default;
 
     // Trait tells enable_if which types are allowed for assignment.
     template <typename T>
     constexpr auto
-    operator= (T rhs) -> std::enable_if_t<Trait<T>::value, TERSubset&>
+    operator=(T rhs) -> std::enable_if_t<Trait<T>::value, TERSubset&>
     {
-        code_ = TERtoInt (rhs);
+        code_ = TERtoInt(rhs);
         return *this;
     }
 
@@ -405,11 +437,12 @@ public:
     // without casting.
     operator Json::Value() const
     {
-        return Json::Value {code_};
+        return Json::Value{code_};
     }
 
     // Streaming operator.
-    friend std::ostream& operator<< (std::ostream& os, TERSubset const& rhs)
+    friend std::ostream&
+    operator<<(std::ostream& os, TERSubset const& rhs)
     {
         return os << rhs.code_;
     }
@@ -430,7 +463,8 @@ public:
     // This code compiles with no errors or warnings if TER has an explicit
     // (unnamed) conversion to int.  To avoid silent conversions like these
     // we provide (only) a named conversion.
-    friend constexpr TERUnderlyingType TERtoInt (TERSubset v)
+    friend constexpr TERUnderlyingType
+    TERtoInt(TERSubset v)
     {
         return v.code_;
     }
@@ -440,54 +474,60 @@ public:
 // Only enabled if both arguments return int if TERtiInt is called with them.
 template <typename L, typename R>
 constexpr auto
-operator== (L const& lhs, R const& rhs) -> std::enable_if_t<
-    std::is_same<decltype (TERtoInt(lhs)), int>::value &&
-    std::is_same<decltype (TERtoInt(rhs)), int>::value, bool>
+operator==(L const& lhs, R const& rhs) -> std::enable_if_t<
+    std::is_same<decltype(TERtoInt(lhs)), int>::value &&
+        std::is_same<decltype(TERtoInt(rhs)), int>::value,
+    bool>
 {
     return TERtoInt(lhs) == TERtoInt(rhs);
 }
 
 template <typename L, typename R>
 constexpr auto
-operator!= (L const& lhs, R const& rhs) -> std::enable_if_t<
-    std::is_same<decltype (TERtoInt(lhs)), int>::value &&
-    std::is_same<decltype (TERtoInt(rhs)), int>::value, bool>
+operator!=(L const& lhs, R const& rhs) -> std::enable_if_t<
+    std::is_same<decltype(TERtoInt(lhs)), int>::value &&
+        std::is_same<decltype(TERtoInt(rhs)), int>::value,
+    bool>
 {
     return TERtoInt(lhs) != TERtoInt(rhs);
 }
 
 template <typename L, typename R>
 constexpr auto
-operator< (L const& lhs, R const& rhs) -> std::enable_if_t<
-    std::is_same<decltype (TERtoInt(lhs)), int>::value &&
-    std::is_same<decltype (TERtoInt(rhs)), int>::value, bool>
+operator<(L const& lhs, R const& rhs) -> std::enable_if_t<
+    std::is_same<decltype(TERtoInt(lhs)), int>::value &&
+        std::is_same<decltype(TERtoInt(rhs)), int>::value,
+    bool>
 {
     return TERtoInt(lhs) < TERtoInt(rhs);
 }
 
 template <typename L, typename R>
 constexpr auto
-operator<= (L const& lhs, R const& rhs) -> std::enable_if_t<
-    std::is_same<decltype (TERtoInt(lhs)), int>::value &&
-    std::is_same<decltype (TERtoInt(rhs)), int>::value, bool>
+operator<=(L const& lhs, R const& rhs) -> std::enable_if_t<
+    std::is_same<decltype(TERtoInt(lhs)), int>::value &&
+        std::is_same<decltype(TERtoInt(rhs)), int>::value,
+    bool>
 {
     return TERtoInt(lhs) <= TERtoInt(rhs);
 }
 
 template <typename L, typename R>
 constexpr auto
-operator> (L const& lhs, R const& rhs) -> std::enable_if_t<
-    std::is_same<decltype (TERtoInt(lhs)), int>::value &&
-    std::is_same<decltype (TERtoInt(rhs)), int>::value, bool>
+operator>(L const& lhs, R const& rhs) -> std::enable_if_t<
+    std::is_same<decltype(TERtoInt(lhs)), int>::value &&
+        std::is_same<decltype(TERtoInt(rhs)), int>::value,
+    bool>
 {
     return TERtoInt(lhs) > TERtoInt(rhs);
 }
 
 template <typename L, typename R>
 constexpr auto
-operator>= (L const& lhs, R const& rhs) -> std::enable_if_t<
-    std::is_same<decltype (TERtoInt(lhs)), int>::value &&
-    std::is_same<decltype (TERtoInt(rhs)), int>::value, bool>
+operator>=(L const& lhs, R const& rhs) -> std::enable_if_t<
+    std::is_same<decltype(TERtoInt(lhs)), int>::value &&
+        std::is_same<decltype(TERtoInt(rhs)), int>::value,
+    bool>
 {
     return TERtoInt(lhs) >= TERtoInt(rhs);
 }
@@ -502,13 +542,30 @@ operator>= (L const& lhs, R const& rhs) -> std::enable_if_t<
 // a tec code, then a malicious user could submit a transaction with a very
 // large fee and have that fee charged against an account without using that
 // account's valid signature.
-template <typename FROM> class CanCvtToNotTEC           : public std::false_type {};
-template <>              class CanCvtToNotTEC<TELcodes> : public std::true_type {};
-template <>              class CanCvtToNotTEC<TEMcodes> : public std::true_type {};
-template <>              class CanCvtToNotTEC<TEFcodes> : public std::true_type {};
-template <>              class CanCvtToNotTEC<TERcodes> : public std::true_type {};
-template <>              class CanCvtToNotTEC<TEScodes> : public std::true_type {};
-template <>              class CanCvtToNotTEC<TECcodes> : public std::true_type {};
+template <typename FROM>
+class CanCvtToNotTEC : public std::false_type
+{
+};
+template <>
+class CanCvtToNotTEC<TELcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToNotTEC<TEMcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToNotTEC<TEFcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToNotTEC<TERcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToNotTEC<TEScodes> : public std::true_type
+{
+};
 
 using NotTEC = TERSubset<CanCvtToNotTEC>;
 
@@ -516,58 +573,88 @@ using NotTEC = TERSubset<CanCvtToNotTEC>;
 
 // Use traits to build a TERSubset that can convert from any of the TE*codes
 // enums as well as from NotTEC.
-template <typename FROM> class CanCvtToTER           : public std::false_type {};
-template <>              class CanCvtToTER<TELcodes> : public std::true_type {};
-template <>              class CanCvtToTER<TEMcodes> : public std::true_type {};
-template <>              class CanCvtToTER<TEFcodes> : public std::true_type {};
-template <>              class CanCvtToTER<TERcodes> : public std::true_type {};
-template <>              class CanCvtToTER<TEScodes> : public std::true_type {};
-template <>              class CanCvtToTER<TECcodes> : public std::true_type {};
-template <>              class CanCvtToTER<NotTEC>   : public std::true_type {};
+template <typename FROM>
+class CanCvtToTER : public std::false_type
+{
+};
+template <>
+class CanCvtToTER<TELcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToTER<TEMcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToTER<TEFcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToTER<TERcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToTER<TEScodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToTER<TECcodes> : public std::true_type
+{
+};
+template <>
+class CanCvtToTER<NotTEC> : public std::true_type
+{
+};
 
 // TER allows all of the subsets.
 using TER = TERSubset<CanCvtToTER>;
 
 //------------------------------------------------------------------------------
 
-inline bool isTelLocal(TER x)
+inline bool
+isTelLocal(TER x)
 {
     return ((x) >= telLOCAL_ERROR && (x) < terMAX);
 }
 
-inline bool isTemMalformed(TER x)
+inline bool
+isTemMalformed(TER x)
 {
     return ((x) >= temMALFORMED && (x) < telLOCAL_ERROR);
 }
 
-inline bool isTefFailure(TER x)
+inline bool
+isTefFailure(TER x)
 {
     return ((x) >= tefFAILURE && (x) < temMALFORMED);
 }
 
-inline bool isTerRetry(TER x)
+inline bool
+isTerRetry(TER x)
 {
     return ((x) > tesSUCCESS && (x) <= terQUEUED);
 }
 
-inline bool isTesSuccess(TER x)
+inline bool
+isTesSuccess(TER x)
 {
     return ((x) == tesSUCCESS);
 }
 
-inline bool isTecClaim(TER x)
+inline bool
+isTecClaim(TER x)
 {
     return ((x) >= tecCLAIM && (x) < tefFAILURE);
 }
 
 bool
-transResultInfo (TER code, std::string& token, std::string& text);
+transResultInfo(TER code, std::string& token, std::string& text);
 
 std::string
-transToken (TER code);
+transToken(TER code);
 
 std::string
-transHuman (TER code);
+transHuman(TER code);
 
 boost::optional<TER>
 transCode(std::string const& token);

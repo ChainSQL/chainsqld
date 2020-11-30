@@ -28,6 +28,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_value.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/asio.hpp>
 #include <mutex>
 
@@ -174,6 +175,8 @@ namespace ripple {
 		// time to allow for requests to complete
 		//const std::chrono::seconds requestTimeout_;
 
+        Schema& app_;
+
 		beast::Journal j_;
 		// Published lists stored by publisher master public key
 		hash_map<PublicKey, PublisherLst> publisherLists_;
@@ -181,6 +184,7 @@ namespace ripple {
 
 	public:
 		ConfigSite(
+			Schema& app,
 			boost::asio::io_service& ios,
 			ManifestCache& validatorManifests,
 			beast::Journal j,

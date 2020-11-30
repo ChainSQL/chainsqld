@@ -70,6 +70,7 @@ namespace ripple {
 
 	public:
 		CACertSite(
+			Schema& app,
 			ManifestCache& validatorManifests,
 			ManifestCache& publisherManifests,
 			TimeKeeper& timeKeeper,

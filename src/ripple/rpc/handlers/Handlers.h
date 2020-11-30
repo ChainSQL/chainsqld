@@ -24,103 +24,174 @@
 
 namespace ripple {
 
-Json::Value doAccountCurrencies     (RPC::Context&);
-Json::Value doAccountInfo           (RPC::Context&);
-Json::Value doAccountLines          (RPC::Context&);
-Json::Value doAccountChannels       (RPC::Context&);
-Json::Value doAccountObjects        (RPC::Context&);
-Json::Value doAccountOffers         (RPC::Context&);
-Json::Value doAccountTx             (RPC::Context&);
-Json::Value doAccountTxSwitch       (RPC::Context&);
-Json::Value doAccountTxOld          (RPC::Context&);
-Json::Value doBookOffers            (RPC::Context&);
-Json::Value doBlackList             (RPC::Context&);
-Json::Value doCanDelete             (RPC::Context&);
-Json::Value doChannelAuthorize      (RPC::Context&);
-Json::Value doChannelVerify         (RPC::Context&);
-Json::Value doConnect               (RPC::Context&);
-Json::Value doConsensusInfo         (RPC::Context&);
-Json::Value doDepositAuthorized     (RPC::Context&);
-Json::Value doDownloadShard         (RPC::Context&);
-Json::Value doFeature               (RPC::Context&);
-Json::Value doFee                   (RPC::Context&);
-Json::Value doFetchInfo             (RPC::Context&);
-Json::Value doGatewayBalances       (RPC::Context&);
-Json::Value doGetCounts             (RPC::Context&);
-Json::Value doLedgerAccept          (RPC::Context&);
-Json::Value doLedgerCleaner         (RPC::Context&);
-Json::Value doLedgerClosed          (RPC::Context&);
-Json::Value doLedgerCurrent         (RPC::Context&);
-Json::Value doLedgerData            (RPC::Context&);
-Json::Value doLedgerEntry           (RPC::Context&);
-Json::Value doLedgerHeader          (RPC::Context&);
-Json::Value doLedgerRequest         (RPC::Context&);
-Json::Value doLedgerTxs             (RPC::Context&);
-Json::Value doLogLevel              (RPC::Context&);
-Json::Value doLogRotate             (RPC::Context&);
-Json::Value doNoRippleCheck         (RPC::Context&);
-Json::Value doOwnerInfo             (RPC::Context&);
-Json::Value doPathFind              (RPC::Context&);
-Json::Value doPeers                 (RPC::Context&);
-Json::Value doPing                  (RPC::Context&);
-Json::Value doPrint                 (RPC::Context&);
-Json::Value doRandom                (RPC::Context&);
-Json::Value doRipplePathFind        (RPC::Context&);
-Json::Value doServerInfo            (RPC::Context&); // for humans
-Json::Value doServerState           (RPC::Context&); // for machines
-Json::Value doSign                  (RPC::Context&);
-Json::Value doSignFor               (RPC::Context&);
-Json::Value doCrawlShards           (RPC::Context&);
-Json::Value doStop                  (RPC::Context&);
-Json::Value doSubmit                (RPC::Context&);
-Json::Value doSubmitMultiSigned     (RPC::Context&);
-Json::Value doSubscribe             (RPC::Context&);
-Json::Value doTransactionEntry      (RPC::Context&);
-Json::Value doGetCrossChainTx		(RPC::Context&);
-Json::Value doTx                    (RPC::Context&);
-Json::Value doTxHistory				(RPC::Context&);
-Json::Value doTxCount				(RPC::Context&);
-Json::Value doUnlList               (RPC::Context&);
-Json::Value doUnsubscribe           (RPC::Context&);
-Json::Value doValidationCreate      (RPC::Context&);
-Json::Value doWalletPropose         (RPC::Context&);
-Json::Value doLedgerObjects			(RPC::Context&);
-Json::Value doNodeSize              (RPC::Context&);
-Json::Value doMallocTrim            (RPC::Context&);
-Json::Value doSchemaList			(RPC::Context&);
-Json::Value doSchemaInfo            (RPC::Context&);
-Json::Value doSchemaAccept          (RPC::Context&);
-Json::Value doSignNode              (RPC::Context&);
+Json::Value
+doAccountCurrencies(RPC::JsonContext&);
+Json::Value
+doAccountInfo(RPC::JsonContext&);
+Json::Value
+doAccountLines(RPC::JsonContext&);
+Json::Value
+doAccountChannels(RPC::JsonContext&);
+Json::Value
+doAccountObjects(RPC::JsonContext&);
+Json::Value
+doAccountOffers(RPC::JsonContext&);
+Json::Value
+doAccountTxSwitch(RPC::JsonContext&);
+Json::Value
+doAccountTxOld(RPC::JsonContext&);
+Json::Value
+doAccountTxJson(RPC::JsonContext&);
+Json::Value
+doBookOffers(RPC::JsonContext&);
+Json::Value
+doBlackList(RPC::JsonContext&);
+Json::Value
+doCanDelete(RPC::JsonContext&);
+Json::Value
+doChannelAuthorize(RPC::JsonContext&);
+Json::Value
+doChannelVerify(RPC::JsonContext&);
+Json::Value
+doConnect(RPC::JsonContext&);
+Json::Value
+doConsensusInfo(RPC::JsonContext&);
+Json::Value
+doDepositAuthorized(RPC::JsonContext&);
+Json::Value
+doDownloadShard(RPC::JsonContext&);
+Json::Value
+doFeature(RPC::JsonContext&);
+Json::Value
+doFee(RPC::JsonContext&);
+Json::Value
+doFetchInfo(RPC::JsonContext&);
+Json::Value
+doGatewayBalances(RPC::JsonContext&);
+Json::Value
+doGetCounts(RPC::JsonContext&);
+Json::Value
+doLedgerAccept(RPC::JsonContext&);
+Json::Value
+doLedgerCleaner(RPC::JsonContext&);
+Json::Value
+doLedgerClosed(RPC::JsonContext&);
+Json::Value
+doLedgerCurrent(RPC::JsonContext&);
+Json::Value
+doLedgerData(RPC::JsonContext&);
+Json::Value
+doLedgerEntry(RPC::JsonContext&);
+Json::Value
+doLedgerHeader(RPC::JsonContext&);
+Json::Value
+doLedgerRequest(RPC::JsonContext&);
+Json::Value
+doLogLevel(RPC::JsonContext&);
+Json::Value
+doLogRotate(RPC::JsonContext&);
+Json::Value
+doManifest(RPC::JsonContext&);
+Json::Value
+doNoRippleCheck(RPC::JsonContext&);
+Json::Value
+doOwnerInfo(RPC::JsonContext&);
+Json::Value
+doPathFind(RPC::JsonContext&);
+Json::Value
+doPause(RPC::JsonContext&);
+Json::Value
+doPeers(RPC::JsonContext&);
+Json::Value
+doPing(RPC::JsonContext&);
+Json::Value
+doPrint(RPC::JsonContext&);
+Json::Value
+doRandom(RPC::JsonContext&);
+Json::Value
+doResume(RPC::JsonContext&);
+Json::Value
+doPeerReservationsAdd(RPC::JsonContext&);
+Json::Value
+doPeerReservationsDel(RPC::JsonContext&);
+Json::Value
+doPeerReservationsList(RPC::JsonContext&);
+Json::Value
+doRipplePathFind(RPC::JsonContext&);
+Json::Value
+doServerInfo(RPC::JsonContext&);  // for humans
+Json::Value
+doServerState(RPC::JsonContext&);  // for machines
+Json::Value
+doSign(RPC::JsonContext&);
+Json::Value
+doSignFor(RPC::JsonContext&);
+Json::Value
+doCrawlShards(RPC::JsonContext&);
+Json::Value
+doStop(RPC::JsonContext&);
+Json::Value
+doSubmit(RPC::JsonContext&);
+Json::Value
+doSubmitMultiSigned(RPC::JsonContext&);
+Json::Value
+doSubscribe(RPC::JsonContext&);
+Json::Value
+doTransactionEntry(RPC::JsonContext&);
+Json::Value
+doTxJson(RPC::JsonContext&);
+Json::Value
+doTxHistory(RPC::JsonContext&);
+Json::Value
+doUnlList(RPC::JsonContext&);
+Json::Value
+doUnsubscribe(RPC::JsonContext&);
+Json::Value
+doValidationCreate(RPC::JsonContext&);
+Json::Value
+doWalletPropose(RPC::JsonContext&);
+Json::Value
+doValidators(RPC::JsonContext&);
+Json::Value
+doValidatorListSites(RPC::JsonContext&);
+Json::Value
+doValidatorInfo(RPC::JsonContext&);
 
+Json::Value doLedgerTxs             (RPC::JsonContext&);
+Json::Value doGetCrossChainTx       (RPC::JsonContext&);
+Json::Value doTxCount				(RPC::JsonContext&);
+Json::Value doLedgerObjects			(RPC::JsonContext&);
+Json::Value doNodeSize              (RPC::JsonContext&);
+Json::Value doMallocTrim            (RPC::JsonContext&);
+Json::Value doSchemaList			(RPC::JsonContext&);
+Json::Value doSchemaInfo            (RPC::JsonContext&);
+Json::Value doSchemaAccept          (RPC::JsonContext&);
 //for sql operation
-Json::Value doTableDump(RPC::Context&);
-Json::Value doTableDumpStop(RPC::Context&);
-Json::Value getDumpCurPos(RPC::Context& context);
-Json::Value doTableAudit(RPC::Context&);
-Json::Value doTableAuditStop(RPC::Context&);
-Json::Value getAuditCurPos(RPC::Context& context);
-Json::Value doTableAuthority(RPC::Context&);
-Json::Value doRpcSubmit(RPC::Context&);
-Json::Value doCreateFromRaw(RPC::Context&);
-Json::Value doGetRecord(RPC::Context&);
-Json::Value doGetRecordBySql(RPC::Context&);
-Json::Value doGetRecordBySqlUser(RPC::Context&);
-std::pair<std::vector<std::vector<Json::Value>>, std::string> doGetRecord2D(RPC::Context&  context);
-Json::Value doGetDBName(RPC::Context&);
-Json::Value doGetAccountTables(RPC::Context&);
-Json::Value doPrepare(RPC::Context&);
-Json::Value doGetUserToken(RPC::Context&);
-Json::Value doGetCheckHash(RPC::Context&);
-Json::Value doValidators            (RPC::Context&);
-Json::Value doValidatorListSites    (RPC::Context&);
+Json::Value doTableDump(RPC::JsonContext&);
+Json::Value doTableDumpStop(RPC::JsonContext&);
+Json::Value getDumpCurPos(RPC::JsonContext& context);
+Json::Value doTableAudit(RPC::JsonContext&);
+Json::Value doTableAuditStop(RPC::JsonContext&);
+Json::Value getAuditCurPos(RPC::JsonContext& context);
+Json::Value doTableAuthority(RPC::JsonContext&);
+Json::Value doRpcSubmit(RPC::JsonContext&);
+Json::Value doCreateFromRaw(RPC::JsonContext&);
+Json::Value doGetRecord(RPC::JsonContext&);
+Json::Value doGetRecordBySql(RPC::JsonContext&);
+Json::Value doGetRecordBySqlUser(RPC::JsonContext&);
+std::pair<std::vector<std::vector<Json::Value>>, std::string> doGetRecord2D(RPC::JsonContext&  context);
+Json::Value doGetDBName(RPC::JsonContext&);
+Json::Value doGetAccountTables(RPC::JsonContext&);
+Json::Value doPrepare(RPC::JsonContext&);
+Json::Value doGetUserToken(RPC::JsonContext&);
+Json::Value doGetCheckHash(RPC::JsonContext&);
+Json::Value doValidators            (RPC::JsonContext&);
+Json::Value doValidatorListSites    (RPC::JsonContext&);
 
 //for contract
-Json::Value doContractCall(RPC::Context&);
+Json::Value doContractCall(RPC::JsonContext&);
 
-
-
-Json::Value doGenCsr(RPC::Context&); // for humans
-
-} // ripple
+Json::Value doGenCsr(RPC::JsonContext&); // for humans
+}  // namespace ripple
 
 #endif

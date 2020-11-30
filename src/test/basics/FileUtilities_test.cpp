@@ -27,7 +27,8 @@ namespace ripple {
 class FileUtilities_test : public beast::unit_test::suite
 {
 public:
-    void testGetFileContents()
+    void
+    testGetFileContents()
     {
         using namespace ripple::test::detail;
         using namespace boost::system;
@@ -35,11 +36,17 @@ public:
         constexpr const char* expectedContents =
             "This file is very short. That's all we need.";
 
-        FileDirGuard file(*this, "test_file", "test.txt",
-            expectedContents);
+        FileDirGuard file(
+            *this,
+            "test_file",
+            "test.txt",
+            "This is temporary text that should get overwritten");
 
         error_code ec;
         auto const path = file.file();
+
+        writeFileContents(ec, path, expectedContents);
+        BEAST_EXPECT(!ec);
 
         {
             // Test with no max
@@ -58,14 +65,14 @@ public:
         {
             // Test with small max
             auto const bad = getFileContents(ec, path, 16);
-            BEAST_EXPECT(ec && ec.value() ==
-                boost::system::errc::file_too_large);
+            BEAST_EXPECT(
+                ec && ec.value() == boost::system::errc::file_too_large);
             BEAST_EXPECT(bad.empty());
         }
-
     }
 
-    void run () override
+    void
+    run() override
     {
         testGetFileContents();
     }
@@ -73,4 +80,4 @@ public:
 
 BEAST_DEFINE_TESTSUITE(FileUtilities, ripple_basics, ripple);
 
-} // ripple
+}  // namespace ripple

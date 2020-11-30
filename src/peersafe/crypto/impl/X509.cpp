@@ -67,7 +67,7 @@ namespace ripple {
 	{
 		//  OpenSSL_add_all_algorithms is not thread safe
 		//static std::mutex m;
-		//std::lock_guard<std::mutex> lock{ m };
+		//std::lock_guard lock{ m };
 
 		//OpenSSL_add_all_algorithms();
 
@@ -217,7 +217,7 @@ namespace ripple {
 		//  OpenSSL_add_all_algorithms is not thread safe
 
 		//static std::mutex m;
-		//std::lock_guard<std::mutex> lock{ m };
+		//std::lock_guard lock{ m };
 
 		///* ---------------------------------------------------------- *
 		//* These function calls initialize openssl for correct work.  *

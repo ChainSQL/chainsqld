@@ -20,8 +20,8 @@
 #ifndef RIPPLE_NODESTORE_DATABASENODEIMP_H_INCLUDED
 #define RIPPLE_NODESTORE_DATABASENODEIMP_H_INCLUDED
 
-#include <ripple/nodestore/Database.h>
 #include <ripple/basics/chrono.h>
+#include <ripple/nodestore/Database.h>
 
 namespace ripple {
 namespace NodeStore {
@@ -31,25 +31,33 @@ class DatabaseNodeImp : public Database
 public:
     DatabaseNodeImp() = delete;
     DatabaseNodeImp(DatabaseNodeImp const&) = delete;
-    DatabaseNodeImp& operator=(DatabaseNodeImp const&) = delete;
+    DatabaseNodeImp&
+    operator=(DatabaseNodeImp const&) = delete;
 
     DatabaseNodeImp(
         std::string const& name,
         Scheduler& scheduler,
         int readThreads,
         Stoppable& parent,
-        std::unique_ptr<Backend> backend,
+        std::shared_ptr<Backend> backend,
         Section const& config,
         beast::Journal j)
         : Database(name, parent, scheduler, readThreads, config, j)
         , pCache_(std::make_shared<TaggedCache<uint256, NodeObject>>(
-            name, cacheTargetSize, cacheTargetAge, stopwatch(), j))
+              name,
+              cacheTargetSize,
+              cacheTargetAge,
+              stopwatch(),
+              j))
         , nCache_(std::make_shared<KeyCache<uint256>>(
-            name, stopwatch(), cacheTargetSize, cacheTargetAge))
+              name,
+              stopwatch(),
+              cacheTargetSize,
+              cacheTargetAge))
         , backend_(std::move(backend))
     {
         assert(backend_);
-      //  setParent(parent);
+        setParent(parent);
     }
 
     ~DatabaseNodeImp() override
@@ -77,8 +85,11 @@ public:
     }
 
     void
-    store(NodeObjectType type, Blob&& data,
-        uint256 const& hash, std::uint32_t seq) override;
+    store(
+        NodeObjectType type,
+        Blob&& data,
+        uint256 const& hash,
+        std::uint32_t seq) override;
 
     std::shared_ptr<NodeObject>
     fetch(uint256 const& hash, std::uint32_t seq) override
@@ -87,14 +98,16 @@ public:
     }
 
     bool
-    asyncFetch(uint256 const& hash, std::uint32_t seq,
+    asyncFetch(
+        uint256 const& hash,
+        std::uint32_t seq,
         std::shared_ptr<NodeObject>& object) override;
 
     bool
-    copyLedger(std::shared_ptr<Ledger const> const& ledger) override
+    storeLedger(std::shared_ptr<Ledger const> const& srcLedger) override
     {
-        return Database::copyLedger(
-            *backend_, *ledger, pCache_, nCache_, nullptr);
+        return Database::storeLedger(
+            *srcLedger, backend_, pCache_, nCache_, nullptr);
     }
 
     int
@@ -107,7 +120,10 @@ public:
     }
 
     float
-    getCacheHitRate() override {return pCache_->getHitRate();}
+    getCacheHitRate() override
+    {
+        return pCache_->getHitRate();
+    }
 
     void
     tune(int size, std::chrono::seconds age) override;
@@ -123,12 +139,12 @@ private:
     std::shared_ptr<KeyCache<uint256>> nCache_;
 
     // Persistent key/value storage
-    std::unique_ptr<Backend> backend_;
+    std::shared_ptr<Backend> backend_;
 
     std::shared_ptr<NodeObject>
     fetchFrom(uint256 const& hash, std::uint32_t seq) override
     {
-        return fetchInternal(hash, *backend_);
+        return fetchInternal(hash, backend_);
     }
 
     void
@@ -138,7 +154,7 @@ private:
     }
 };
 
-}
-}
+}  // namespace NodeStore
+}  // namespace ripple
 
 #endif

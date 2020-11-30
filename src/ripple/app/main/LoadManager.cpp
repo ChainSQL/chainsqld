@@ -17,8 +17,8 @@
 */
 //==============================================================================
 
-#include <ripple/app/main/LoadManager.h>
 #include <ripple/app/main/Application.h>
+#include <ripple/app/main/LoadManager.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/UptimeClock.h>
@@ -31,79 +31,88 @@
 
 namespace ripple {
 
-LoadManager::LoadManager (
-    Application& app, Stoppable& parent, beast::Journal journal)
-    : Stoppable ("LoadManager", parent)
-    , app_ (app)
-    , journal_ (journal)
-    , deadLock_ ()
-    , armed_ (false)
-    , stop_ (false)
+LoadManager::LoadManager(
+    Application& app,
+    Stoppable& parent,
+    beast::Journal journal)
+    : Stoppable("LoadManager", parent)
+    , app_(app)
+    , journal_(journal)
+    , deadLock_()
+    , armed_(false)
+    , stop_(false)
 {
 }
 
-LoadManager::~LoadManager ()
+LoadManager::~LoadManager()
 {
     try
     {
-        onStop ();
+        onStop();
     }
     catch (std::exception const& ex)
     {
         // Swallow the exception in a destructor.
-        JLOG(journal_.warn()) << "std::exception in ~LoadManager.  "
-            << ex.what();
+        JLOG(journal_.warn())
+            << "std::exception in ~LoadManager.  " << ex.what();
     }
 }
 
 //------------------------------------------------------------------------------
 
-void LoadManager::activateDeadlockDetector ()
+void
+LoadManager::activateDeadlockDetector()
 {
-    std::lock_guard<std::mutex> sl (mutex_);
+    std::lock_guard sl(mutex_);
     armed_ = true;
+    deadLock_ = std::chrono::steady_clock::now();
 }
 
-void LoadManager::resetDeadlockDetector ()
+void
+LoadManager::resetDeadlockDetector()
 {
-    auto const elapsedSeconds = UptimeClock::now();
-    std::lock_guard<std::mutex> sl (mutex_);
-    deadLock_ = elapsedSeconds;
+    auto const detector_start = std::chrono::steady_clock::now();
+    std::lock_guard sl(mutex_);
+    deadLock_ = detector_start;
 }
 
 //------------------------------------------------------------------------------
 
-void LoadManager::onPrepare ()
+void
+LoadManager::onPrepare()
 {
 }
 
-void LoadManager::onStart ()
+void
+LoadManager::onStart()
 {
     JLOG(journal_.debug()) << "Starting";
-    assert (! thread_.joinable());
+    assert(!thread_.joinable());
 
-    thread_ = std::thread {&LoadManager::run, this};
+    thread_ = std::thread{&LoadManager::run, this};
 }
 
-void LoadManager::onStop ()
+void
+LoadManager::onStop()
 {
     if (thread_.joinable())
     {
         JLOG(journal_.debug()) << "Stopping";
         {
-            std::lock_guard<std::mutex> sl (mutex_);
+            std::lock_guard sl(mutex_);
             stop_ = true;
         }
         thread_.join();
     }
-    stopped ();
+    stopped();
 }
 
 //------------------------------------------------------------------------------
 
-void LoadManager::run ()
+void
+LoadManager::run()
 {
-    beast::setCurrentThreadName ("LoadManager");
+    beast::setCurrentThreadName("LoadManager");
 
     using namespace std::chrono_literals;
     using clock_type = std::chrono::system_clock;
@@ -111,39 +120,64 @@ void LoadManager::run ()
     auto t = clock_type::now();
     bool stop = false;
 
-    while (! (stop || isStopping ()))
+    while (!(stop || isStopping()))
     {
         {
             // Copy out shared data under a lock.  Use copies outside lock.
-            std::unique_lock<std::mutex> sl (mutex_);
+            std::unique_lock<std::mutex> sl(mutex_);
             auto const deadLock = deadLock_;
             auto const armed = armed_;
             stop = stop_;
             sl.unlock();
 
             // Measure the amount of time we have been deadlocked, in seconds.
-            auto const timeSpentDeadlocked = UptimeClock::now() - deadLock;
+            using namespace std::chrono;
+            auto const timeSpentDeadlocked =
+                duration_cast<seconds>(steady_clock::now() - deadLock);
 
-            auto const reportingIntervalSeconds = 10s;
+            constexpr auto reportingIntervalSeconds = 10s;
+            constexpr auto deadlockFatalLogMessageTimeLimit = 90s;
+            constexpr auto deadlockLogicErrorTimeLimit = 600s;
             if (armed && (timeSpentDeadlocked >= reportingIntervalSeconds))
             {
-                // Report the deadlocked condition every 10 seconds
+                // Report the deadlocked condition every
+                // reportingIntervalSeconds
                 if ((timeSpentDeadlocked % reportingIntervalSeconds) == 0s)
                 {
-                    JLOG(journal_.warn())
-                        << "Server stalled for "
-                        << timeSpentDeadlocked.count() << " seconds.";
+                    if (timeSpentDeadlocked < deadlockFatalLogMessageTimeLimit)
+                    {
+                        JLOG(journal_.warn())
+                            << "Server stalled for "
+                            << timeSpentDeadlocked.count() << " seconds.";
+                    }
+                    else
+                    {
+                        JLOG(journal_.fatal())
+                            << "Deadlock detected. Deadlocked time: "
+                            << timeSpentDeadlocked.count() << "s";
+                        if (app_.getJobQueue().isOverloaded())
+                        {
+                            JLOG(journal_.fatal())
+                                << app_.getJobQueue().getJson(0);
+                        }
+                    }
                 }
 
-                // If we go over 90 seconds spent deadlocked, it means that
-                // the deadlock resolution code has failed, which qualifies
-                // as undefined behavior.
+                // If we go over the deadlockTimeLimit spent deadlocked, it
+                // means that the deadlock resolution code has failed, which
+                // qualifies as undefined behavior.
                 //
-                constexpr auto deadlockTimeLimit = 90s;
-                assert (timeSpentDeadlocked < deadlockTimeLimit);
-
-                if (timeSpentDeadlocked >= deadlockTimeLimit)
+                if (timeSpentDeadlocked >= deadlockLogicErrorTimeLimit)
+                {
+                    JLOG(journal_.fatal())
+                        << "LogicError: Deadlock detected. Deadlocked time: "
+                        << timeSpentDeadlocked.count() << "s";
+                    if (app_.getJobQueue().isOverloaded())
+                    {
+                        JLOG(journal_.fatal()) << app_.getJobQueue().getJson(0);
+                    }
                     LogicError("Deadlock detected");
+                }
             }
         }
 
@@ -187,16 +221,15 @@ void LoadManager::run ()
         }
     }
 
-    stopped ();
+    stopped();
 }
 
 //------------------------------------------------------------------------------
 
 std::unique_ptr<LoadManager>
-make_LoadManager (Application& app,
-    Stoppable& parent, beast::Journal journal)
+make_LoadManager(Application& app, Stoppable& parent, beast::Journal journal)
 {
     return std::unique_ptr<LoadManager>{new LoadManager{app, parent, journal}};
 }
 
-} // ripple
+}  // namespace ripple

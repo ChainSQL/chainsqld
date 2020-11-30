@@ -17,14 +17,13 @@
 */
 //==============================================================================
 
-#include <ripple/basics/mulDiv.h>
 #include <ripple/basics/contract.h>
+#include <ripple/basics/mulDiv.h>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <limits>
 #include <utility>
 
-namespace ripple
-{
+namespace ripple {
 
 std::pair<bool, std::uint64_t>
 mulDiv(std::uint64_t value, std::uint64_t mul, std::uint64_t div)
@@ -36,12 +35,12 @@ mulDiv(std::uint64_t value, std::uint64_t mul, std::uint64_t div)
 
     result /= div;
 
-    auto const limit = std::numeric_limits<std::uint64_t>::max();
+    auto constexpr limit = std::numeric_limits<std::uint64_t>::max();
 
     if (result > limit)
-        return { false, limit };
+        return {false, limit};
 
-    return { true, static_cast<std::uint64_t>(result) };
+    return {true, static_cast<std::uint64_t>(result)};
 }
 
-} // ripple
+}  // namespace ripple

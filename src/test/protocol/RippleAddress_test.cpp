@@ -101,7 +101,7 @@ public:
         auto cipher = strUnHex(std::string("04000000C9E4BB38847C760D13C54EBC7A10EAB3206CF13278AB9134ABD85DFF8A2C90F289A60DDF074DAF310EF0ADB1DD284FE155311B48C7D33F696DFC6F02683976A1C697030900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000061ED16716F8E91CE795ACCE7BA4F74DB3A5A7D0D34C49FF330C08DA30FE7FCBE"));
         //hEObj->SM4SymEncrypt(sessionKey,16,temp,4,result1,&resultLen);
         //hEObj->SM4SymDecrypt(sessionKey, 16, result1, resultLen, resultPlain, &resultPlainLen);
-        std::string decryptRev = strHex(ripple::decrypt(cipher.first, rootSec));
+        std::string decryptRev = strHex(ripple::decrypt(*cipher, rootSec));
         std::string result = strHex(ripple::encrypt(passBlob, rootPub));
         // Construct a seed.
         RippleAddress naSeed;
@@ -205,7 +205,7 @@ public:
 
 			std::string cipher = "03ee9773d57dec03c92af9b8cf5e1a5c04abb19323e32bc98ff3b459283db899a00b0fe703e5fda785cdf0222b2babd947daef41677d7a339731a0111ed92270ff3a6e2ec2d27f94d2f3e04bb3a0af27ae4e640850cc6b42686e9df2d5ec7ebadd";
 			//auto plainText2 = RippleAddress::decryptPassword(strUnHex(cipher).first, *secretKey);
-            auto plainText2 = ripple::decrypt(strUnHex(cipher).first, *secretKey);
+            auto plainText2 = ripple::decrypt(*strUnHex(cipher), *secretKey);
 		}
 
 		//using a fake secret to decrypt

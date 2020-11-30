@@ -13,7 +13,7 @@
 
 namespace ripple {
 
-Json::Value doGenCsr(RPC::Context& context)
+Json::Value doGenCsr(RPC::JsonContext& context)
 {
 
 	Json::Value ret(context.params);

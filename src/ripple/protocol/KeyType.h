@@ -17,16 +17,15 @@
 */
 //==============================================================================
 
-#ifndef RIPPLE_CRYPTO_KEYTYPE_H_INCLUDED
-#define RIPPLE_CRYPTO_KEYTYPE_H_INCLUDED
+#ifndef RIPPLE_PROTOCOL_KEYTYPE_H_INCLUDED
+#define RIPPLE_PROTOCOL_KEYTYPE_H_INCLUDED
 
-#include <string>
 #include <boost/optional.hpp>
+#include <string>
 
 namespace ripple {
 
-enum class KeyType
-{
+enum class KeyType {
     invalid = -1,
     unknown = invalid,
 
@@ -35,9 +34,8 @@ enum class KeyType
     gmalg     = 2,
 };
 
-inline
-boost::optional<KeyType>
-keyTypeFromString (std::string const& s)
+inline boost::optional<KeyType>
+keyTypeFromString(std::string const& s)
 {
 	if (s == "secp256k1")  return KeyType::secp256k1;
 	if (s == "ed25519")  return KeyType::ed25519;
@@ -46,23 +44,28 @@ keyTypeFromString (std::string const& s)
 	return KeyType::invalid;
 }
 
-inline
-char const*
-to_string (KeyType type)
+inline char const*
+to_string(KeyType type)
 {
-	return   type == KeyType::secp256k1 ? "secp256k1"
-		: type == KeyType::ed25519 ? "ed25519"
-		: type == KeyType::gmalg ? "gmalg"
-		: "INVALID";
+    if (type == KeyType::secp256k1)
+        return "secp256k1";
+
+    if (type == KeyType::ed25519)
+        return "ed25519";
+
+    if (type == KeyType::gmalg)
+        return "gmalg";
+    
+    return "INVALID";
 }
 
 template <class Stream>
-inline
-Stream& operator<<(Stream& s, KeyType type)
+inline Stream&
+operator<<(Stream& s, KeyType type)
 {
     return s << to_string(type);
 }
 
-}
+}  // namespace ripple
 
 #endif

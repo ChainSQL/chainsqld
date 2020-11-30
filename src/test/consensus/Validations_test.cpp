@@ -54,7 +54,7 @@ class Validations_test : public beast::unit_test::suite
         clock_type const& c_;
         PeerID nodeID_;
         bool trusted_ = true;
-        std::size_t signIdx_ = 1;
+        std::size_t signIdx_{1};
         boost::optional<std::uint32_t> loadFee_;
 
     public:
@@ -119,14 +119,15 @@ class Validations_test : public beast::unit_test::suite
             NetClock::duration seenOffset,
             bool full) const
         {
-            Validation v{id,
-                         seq,
-                         now() + signOffset,
-                         now() + seenOffset,
-                         currKey(),
-                         nodeID_,
-                         full,
-                         loadFee_};
+            Validation v{
+                id,
+                seq,
+                now() + signOffset,
+                now() + seenOffset,
+                currKey(),
+                nodeID_,
+                full,
+                loadFee_};
             if (trusted_)
                 v.setTrusted();
             return v;
@@ -165,18 +166,9 @@ class Validations_test : public beast::unit_test::suite
         }
     };
 
-    // Saved StaleData for inspection in test
-    struct StaleData
-    {
-        std::vector<Validation> stale;
-        hash_map<PeerID, Validation> flushed;
-    };
-
-    // Generic Validations adaptor that saves stale/flushed data into
-    // a StaleData instance.
+    // Generic Validations adaptor
     class Adaptor
     {
-        StaleData& staleData_;
         clock_type& c_;
         LedgerOracle& oracle_;
 
@@ -198,8 +190,7 @@ class Validations_test : public beast::unit_test::suite
         using Validation = csf::Validation;
         using Ledger = csf::Ledger;
 
-        Adaptor(StaleData& sd, clock_type& c, LedgerOracle& o)
-            : staleData_{sd}, c_{c}, oracle_{o}
+        Adaptor(clock_type& c, LedgerOracle& o) : c_{c}, oracle_{o}
         {
         }
 
@@ -207,18 +198,6 @@ class Validations_test : public beast::unit_test::suite
         now() const
         {
             return toNetClock(c_);
-        }
-
-        void
-        onStale(Validation&& v)
-        {
-            staleData_.stale.emplace_back(std::move(v));
-        }
-
-        void
-        flush(hash_map<PeerID, Validation>&& remaining)
-        {
-            staleData_.flushed = std::move(remaining);
         }
 
         boost::optional<Ledger>
@@ -235,15 +214,13 @@ class Validations_test : public beast::unit_test::suite
     // accessors for simplifying test logic
     class TestHarness
     {
-        StaleData staleData_;
         ValidationParms p_;
         beast::manual_clock<std::chrono::steady_clock> clock_;
         TestValidations tv_;
         PeerID nextNodeId_{0};
 
     public:
-        explicit TestHarness(LedgerOracle& o)
-            : tv_(p_, clock_, staleData_, clock_, o)
+        explicit TestHarness(LedgerOracle& o) : tv_(p_, clock_, clock_, o)
         {
         }
 
@@ -275,18 +252,6 @@ class Validations_test : public beast::unit_test::suite
         clock()
         {
             return clock_;
-        }
-
-        std::vector<Validation> const&
-        stale() const
-        {
-            return staleData_.stale;
-        }
-
-        hash_map<PeerID, Validation> const&
-        flushed() const
-        {
-            return staleData_.flushed;
         }
     };
 
@@ -320,15 +285,9 @@ class Validations_test : public beast::unit_test::suite
             BEAST_EXPECT(ValStatus::badSeq == harness.add(v));
 
             harness.clock().advance(1s);
-            // Replace with a new validation and ensure the old one is stale
-            BEAST_EXPECT(harness.stale().empty());
 
             BEAST_EXPECT(
                 ValStatus::current == harness.add(n.validate(ledgerAB)));
-
-            BEAST_EXPECT(harness.stale().size() == 1);
-
-            BEAST_EXPECT(harness.stale()[0].ledgerID() == ledgerA.id());
 
             // Test the node changing signing key
 
@@ -435,7 +394,7 @@ class Validations_test : public beast::unit_test::suite
 
                 // If we advance far enough for AB to expire, we can fully
                 // validate or partially validate that sequence number again
-                BEAST_EXPECT(ValStatus::badSeq == process(ledgerAZ));
+                BEAST_EXPECT(ValStatus::conflicting == process(ledgerAZ));
                 harness.clock().advance(
                     harness.parms().validationSET_EXPIRES + 1ms);
                 BEAST_EXPECT(ValStatus::current == process(ledgerAZ));
@@ -476,14 +435,11 @@ class Validations_test : public beast::unit_test::suite
             BEAST_EXPECT(
                 harness.vals().getPreferred(genesisLedger) ==
                 std::make_pair(ledgerAB.seq(), ledgerAB.id()));
-            BEAST_EXPECT(harness.stale().empty());
             harness.clock().advance(harness.parms().validationCURRENT_LOCAL);
 
             // trigger check for stale
             trigger(harness.vals());
 
-            BEAST_EXPECT(harness.stale().size() == 1);
-            BEAST_EXPECT(harness.stale()[0].ledgerID() == ledgerAB.id());
             BEAST_EXPECT(
                 harness.vals().getNodesAfter(ledgerA, ledgerA.id()) == 0);
             BEAST_EXPECT(
@@ -727,8 +683,10 @@ class Validations_test : public beast::unit_test::suite
                 trustedValidations[val.ledgerID()].emplace_back(val);
         }
         // d now thinks ledger 1, but cannot re-issue a previously used seq
+        // and attempting it should generate a conflict.
         {
-            BEAST_EXPECT(ValStatus::badSeq == harness.add(d.partial(ledgerA)));
+            BEAST_EXPECT(
+                ValStatus::conflicting == harness.add(d.partial(ledgerA)));
         }
         // e only issues partials
         {
@@ -749,10 +707,18 @@ class Validations_test : public beast::unit_test::suite
         Node a = harness.makeNode();
 
         Ledger ledgerA = h["a"];
-
         BEAST_EXPECT(ValStatus::current == harness.add(a.validate(ledgerA)));
         BEAST_EXPECT(harness.vals().numTrustedForLedger(ledgerA.id()));
+
+        // Keep the validation from expire
         harness.clock().advance(harness.parms().validationSET_EXPIRES);
+        harness.vals().setSeqToKeep(ledgerA.seq());
+        harness.vals().expire();
+        BEAST_EXPECT(harness.vals().numTrustedForLedger(ledgerA.id()));
+
+        // Allow the validation to expire
+        harness.clock().advance(harness.parms().validationSET_EXPIRES);
+        harness.vals().setSeqToKeep(++ledgerA.seq());
         harness.vals().expire();
         BEAST_EXPECT(!harness.vals().numTrustedForLedger(ledgerA.id()));
     }
@@ -780,7 +746,6 @@ class Validations_test : public beast::unit_test::suite
             BEAST_EXPECT(ValStatus::current == harness.add(val));
             expected.emplace(node.nodeID(), val);
         }
-        Validation staleA = expected.find(a.nodeID())->second;
 
         // Send in a new validation for a, saving the new one into the expected
         // map after setting the proper prior ledger ID it replaced
@@ -788,18 +753,6 @@ class Validations_test : public beast::unit_test::suite
         auto newVal = a.validate(ledgerAB);
         BEAST_EXPECT(ValStatus::current == harness.add(newVal));
         expected.find(a.nodeID())->second = newVal;
-
-        // Now flush
-        harness.vals().flush();
-
-        // Original a validation was stale
-        BEAST_EXPECT(harness.stale().size() == 1);
-        BEAST_EXPECT(harness.stale()[0] == staleA);
-        BEAST_EXPECT(harness.stale()[0].nodeID() == a.nodeID());
-
-        auto const& flushed = harness.flushed();
-
-        BEAST_EXPECT(flushed == expected);
     }
 
     void

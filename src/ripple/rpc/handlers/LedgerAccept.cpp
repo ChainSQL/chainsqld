@@ -18,22 +18,24 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/main/Application.h>
 #include <peersafe/schema/Schema.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/core/Config.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/Indexes.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
-#include <ripple/basics/make_lock.h>
+
+#include <mutex>
 
 namespace ripple {
 
-Json::Value doLedgerAccept (RPC::Context& context)
+Json::Value
+doLedgerAccept(RPC::JsonContext& context)
 {
-    auto lock = make_lock(context.app.app().getMasterMutex());
+    std::unique_lock lock{context.app.getMasterMutex()};
     Json::Value jvResult;
 
     if (!context.app.config().standalone())
@@ -42,13 +44,13 @@ Json::Value doLedgerAccept (RPC::Context& context)
     }
     else
     {
-        context.netOps.acceptLedger ();
+        context.netOps.acceptLedger();
 
         jvResult[jss::ledger_current_index] =
-            context.ledgerMaster.getCurrentLedgerIndex ();
+            context.ledgerMaster.getCurrentLedgerIndex();
     }
 
     return jvResult;
 }
 
-} // ripple
+}  // namespace ripple

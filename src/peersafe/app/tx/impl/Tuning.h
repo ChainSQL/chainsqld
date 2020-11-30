@@ -27,6 +27,8 @@ namespace ripple {
 	//a table owner can grant at most 256 users
 	int const TABLE_GRANT_COUNT = 256;
 
+	int const MIN_NODE_COUNT_SCHEMA = 3;
+
 } // ripple
 
 #endif

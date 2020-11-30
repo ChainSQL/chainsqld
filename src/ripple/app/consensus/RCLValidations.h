@@ -21,7 +21,6 @@
 #define RIPPLE_APP_CONSENSUSS_VALIDATIONS_H_INCLUDED
 
 #include <ripple/app/ledger/Ledger.h>
-#include <ripple/basics/ScopedLock.h>
 #include <ripple/consensus/Validations.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/RippleLedgerHash.h>
@@ -34,12 +33,12 @@ class Schema;
 
 /** Wrapper over STValidation for generic Validation code
 
-    Wraps an STValidation::pointer for compatibility with the generic validation
-    code.
+    Wraps an STValidation for compatibility with the generic validation code.
 */
 class RCLValidation
 {
-    STValidation::pointer val_;
+    std::shared_ptr<STValidation> val_;
+
 public:
     using NodeKey = ripple::PublicKey;
     using NodeID = ripple::NodeID;
@@ -48,7 +47,7 @@ public:
 
         @param v The validation to wrap.
     */
-    RCLValidation(STValidation::pointer const& v) : val_{v}
+    RCLValidation(std::shared_ptr<STValidation> const& v) : val_{v}
     {
     }
 
@@ -127,13 +126,19 @@ public:
         return ~(*val_)[~sfLoadFee];
     }
 
+    /// Get the cookie specified in the validation (0 if not set)
+    std::uint64_t
+    cookie() const
+    {
+        return (*val_)[sfCookie];
+    }
+
     /// Extract the underlying STValidation being wrapped
-    STValidation::pointer
+    std::shared_ptr<STValidation>
     unwrap() const
     {
         return val_;
     }
-
 };
 
 /** Wraps a ledger instance for use in generic Validations LedgerTrie.
@@ -175,7 +180,8 @@ public:
         @return The ID of this ledger's ancestor with that sequence number or
                 ID{0} if one was not determined
     */
-    ID operator[](Seq const& s) const;
+    ID
+    operator[](Seq const& s) const;
 
     /// Find the sequence number of the earliest mismatching ancestor
     friend Seq
@@ -211,27 +217,9 @@ public:
     NetClock::time_point
     now() const;
 
-    /** Handle a newly stale validation.
-
-        @param v The newly stale validation
-
-        @warning This should do minimal work, as it is expected to be called
-                 by the generic Validations code while it may be holding an
-                 internal lock
-    */
-    void
-    onStale(RCLValidation&& v);
-
-    /** Flush current validations to disk before shutdown.
-
-        @param remaining The remaining validations to flush
-    */
-    void
-    flush(hash_map<NodeID, RCLValidation>&& remaining);
-
     /** Attempt to acquire the ledger with given id from the network */
     boost::optional<RCLValidatedLedger>
-    acquire(LedgerHash const & id);
+    acquire(LedgerHash const& id);
 
     beast::Journal
     journal() const
@@ -240,43 +228,26 @@ public:
     }
 
 private:
-    using ScopedLockType = std::lock_guard<Mutex>;
-    using ScopedUnlockType = GenericScopedUnlock<Mutex>;
-
     Schema& app_;
     beast::Journal j_;
-
-    // Lock for managing staleValidations_ and writing_
-    std::mutex staleLock_;
-    std::vector<RCLValidation> staleValidations_;
-    bool staleWriting_ = false;
-
-    // Write the stale validations to sqlite DB, the scoped lock argument
-    // is used to remind callers that the staleLock_ must be *locked* prior
-    // to making the call
-    void
-    doStaleWrite(ScopedLockType&);
 };
 
 /// Alias for RCL-specific instantiation of generic Validations
 using RCLValidations = Validations<RCLValidationsAdaptor>;
-
 
 /** Handle a new validation
 
     Also sets the trust status of a validation based on the validating node's
     public key and this node's current UNL.
 
-    @param app Application object containing validations and ledgerMaster
+    @param app Schema object containing validations and ledgerMaster
     @param val The validation to add
     @param source Name associated with validation used in logging
-
-    @return Whether the validation should be relayed
 */
-bool
+void
 handleNewValidation(
     Schema& app,
-    STValidation::ref val,
+    std::shared_ptr<STValidation> const& val,
     std::string const& source);
 
 }  // namespace ripple

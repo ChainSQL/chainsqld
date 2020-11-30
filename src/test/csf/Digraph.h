@@ -25,8 +25,8 @@
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <fstream>
-#include <unordered_map>
 #include <type_traits>
+#include <unordered_map>
 
 namespace ripple {
 namespace test {
@@ -141,8 +141,8 @@ public:
 
     /** Range over vertices in the graph
 
-        @return A boost transformed range over the vertices with out edges in the
-                graph
+        @return A boost transformed range over the vertices with out edges in
+       the graph
     */
     auto
     outVertices() const
@@ -171,7 +171,7 @@ public:
     }
 
     /** Vertices and data associated with an Edge
-    */
+     */
     struct Edge
     {
         Vertex source;
@@ -223,13 +223,13 @@ public:
     */
     template <class VertexName>
     void
-    saveDot(std::ostream & out, VertexName&& vertexName) const
+    saveDot(std::ostream& out, VertexName&& vertexName) const
     {
         out << "digraph {\n";
-        for (auto const& vData : graph_)
+        for (auto const& [vertex, links] : graph_)
         {
-            auto const fromName = vertexName(vData.first);
-            for (auto const& eData : vData.second)
+            auto const fromName = vertexName(vertex);
+            for (auto const& eData : links)
             {
                 auto const toName = vertexName(eData.first);
                 out << fromName << " -> " << toName << ";\n";

@@ -31,7 +31,7 @@
 namespace ripple {
 
 
-	Json::Value doLedgerTxs(RPC::Context& context)
+	Json::Value doLedgerTxs(RPC::JsonContext& context)
 	{
 
 		Json::Value jvResult;
@@ -63,7 +63,7 @@ namespace ripple {
 		for (auto& item : ledger->txs){
 		
 			std::shared_ptr<TxMeta> meta = std::make_shared<TxMeta>(
-				item.first->getTransactionID(), ledger->seq(), *(item.second), j_);
+				item.first->getTransactionID(), ledger->seq(), *(item.second));
 
 			TER result = meta->getResultTER();
 

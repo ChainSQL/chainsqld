@@ -27,25 +27,26 @@
 
 namespace ripple {
 
-enum ApplyFlags
-    : std::uint32_t
-{
-    tapNONE             = 0x00,
+enum ApplyFlags : std::uint32_t {
+    tapNONE = 0x00,
 
 	// Signature already checked
 	tapNO_CHECK_SIGN = 0x01,
+    // This is a local transaction with the
+    // fail_hard flag set.
+    tapFAIL_HARD = 0x10,
 
     // This is not the transaction's last pass
     // Transaction can be retried, soft failures allowed
-    tapRETRY            = 0x20,
+    tapRETRY = 0x20,
 
     // Transaction must pay more than both the open ledger
     // fee and all transactions in the queue to get into the
     // open ledger
-    tapPREFER_QUEUE     = 0x40,
+    tapPREFER_QUEUE = 0x40,
 
     // Transaction came from a privileged source
-	tapUNLIMITED = 0x400,    
+    tapUNLIMITED = 0x400,
 	
 	// get tx from client
 	tapFromClient = 0x8000,
@@ -57,60 +58,52 @@ enum ApplyFlags
     tapByRelay = 0x4000,
 };
 
-constexpr
-ApplyFlags
-operator|(ApplyFlags const& lhs,
-    ApplyFlags const& rhs)
+constexpr ApplyFlags
+operator|(ApplyFlags const& lhs, ApplyFlags const& rhs)
 {
     return safe_cast<ApplyFlags>(
         safe_cast<std::underlying_type_t<ApplyFlags>>(lhs) |
-            safe_cast<std::underlying_type_t<ApplyFlags>>(rhs));
+        safe_cast<std::underlying_type_t<ApplyFlags>>(rhs));
 }
 
-static_assert((tapPREFER_QUEUE | tapRETRY) == safe_cast<ApplyFlags>(0x60u),
+static_assert(
+    (tapPREFER_QUEUE | tapRETRY) == safe_cast<ApplyFlags>(0x60u),
     "ApplyFlags operator |");
-static_assert((tapRETRY | tapPREFER_QUEUE) == safe_cast<ApplyFlags>(0x60u),
+static_assert(
+    (tapRETRY | tapPREFER_QUEUE) == safe_cast<ApplyFlags>(0x60u),
     "ApplyFlags operator |");
 
-constexpr
-ApplyFlags
-operator&(ApplyFlags const& lhs,
-    ApplyFlags const& rhs)
+constexpr ApplyFlags
+operator&(ApplyFlags const& lhs, ApplyFlags const& rhs)
 {
     return safe_cast<ApplyFlags>(
         safe_cast<std::underlying_type_t<ApplyFlags>>(lhs) &
-            safe_cast<std::underlying_type_t<ApplyFlags>>(rhs));
+        safe_cast<std::underlying_type_t<ApplyFlags>>(rhs));
 }
 
-static_assert((tapPREFER_QUEUE & tapRETRY) == tapNONE,
-    "ApplyFlags operator &");
-static_assert((tapRETRY & tapPREFER_QUEUE) == tapNONE,
-    "ApplyFlags operator &");
+static_assert((tapPREFER_QUEUE & tapRETRY) == tapNONE, "ApplyFlags operator &");
+static_assert((tapRETRY & tapPREFER_QUEUE) == tapNONE, "ApplyFlags operator &");
 
-constexpr
-ApplyFlags
+constexpr ApplyFlags
 operator~(ApplyFlags const& flags)
 {
     return safe_cast<ApplyFlags>(
         ~safe_cast<std::underlying_type_t<ApplyFlags>>(flags));
 }
 
-static_assert(~tapRETRY == safe_cast<ApplyFlags>(0xFFFFFFDFu),
+static_assert(
+    ~tapRETRY == safe_cast<ApplyFlags>(0xFFFFFFDFu),
     "ApplyFlags operator ~");
 
-inline
-ApplyFlags
-operator|=(ApplyFlags & lhs,
-    ApplyFlags const& rhs)
+inline ApplyFlags
+operator|=(ApplyFlags& lhs, ApplyFlags const& rhs)
 {
     lhs = lhs | rhs;
     return lhs;
 }
 
-inline
-ApplyFlags
-operator&=(ApplyFlags& lhs,
-    ApplyFlags const& rhs)
+inline ApplyFlags
+operator&=(ApplyFlags& lhs, ApplyFlags const& rhs)
 {
     lhs = lhs & rhs;
     return lhs;
@@ -156,20 +149,19 @@ operator&=(ApplyFlags& lhs,
     be called with any SLE which belongs to different view.
 */
 class OpenView;
-class ApplyView
-    : public ReadView
+class ApplyView : public ReadView
 {
 private:
     /** Add an entry to a directory using the specified insert strategy */
     boost::optional<std::uint64_t>
-    dirAdd (
+    dirAdd(
         bool preserveOrder,
         Keylet const& directory,
         uint256 const& key,
         std::function<void(std::shared_ptr<SLE> const&)> const& describe);
 
 public:
-    ApplyView () = default;
+    ApplyView() = default;
 
     /** Returns the tx apply flags.
 
@@ -179,8 +171,7 @@ public:
         while transactions applied to the consensus
         ledger produce hard failures (and claim a fee).
     */
-    virtual
-    ApplyFlags
+    virtual ApplyFlags
     flags() const = 0;
 
 	virtual OpenView& openView() const = 0;
@@ -198,9 +189,8 @@ public:
 
         @return `nullptr` if the key is not present
     */
-    virtual
-    std::shared_ptr<SLE>
-    peek (Keylet const& k) = 0;
+    virtual std::shared_ptr<SLE>
+    peek(Keylet const& k) = 0;
 
     /** Remove a peeked SLE.
 
@@ -213,9 +203,8 @@ public:
 
             The key is no longer associated with the SLE.
     */
-    virtual
-    void
-    erase (std::shared_ptr<SLE> const& sle) = 0;
+    virtual void
+    erase(std::shared_ptr<SLE> const& sle) = 0;
 
     /** Insert a new state SLE
 
@@ -235,9 +224,8 @@ public:
 
         @note The key is taken from the SLE
     */
-    virtual
-    void
-    insert (std::shared_ptr<SLE> const& sle) = 0;
+    virtual void
+    insert(std::shared_ptr<SLE> const& sle) = 0;
 
     /** Indicate changes to a peeked SLE
 
@@ -255,16 +243,16 @@ public:
         @note The key is taken from the SLE
     */
     /** @{ */
-    virtual
-    void
-    update (std::shared_ptr<SLE> const& sle) = 0;
+    virtual void
+    update(std::shared_ptr<SLE> const& sle) = 0;
 
     //--------------------------------------------------------------------------
 
     // Called when a credit is made to an account
     // This is required to support PaymentSandbox
     virtual void
-    creditHook (AccountID const& from,
+    creditHook(
+        AccountID const& from,
         AccountID const& to,
         STAmount const& amount,
         STAmount const& preCreditBalance)
@@ -273,10 +261,13 @@ public:
 
     // Called when the owner count changes
     // This is required to support PaymentSandbox
-    virtual
-    void adjustOwnerCountHook (AccountID const& account,
-        std::uint32_t cur, std::uint32_t next)
-    {}
+    virtual void
+    adjustOwnerCountHook(
+        AccountID const& account,
+        std::uint32_t cur,
+        std::uint32_t next)
+    {
+    }
 
     /** Append an entry to a directory
 
@@ -297,21 +288,21 @@ public:
     */
     /** @{ */
     boost::optional<std::uint64_t>
-    dirAppend (
+    dirAppend(
         Keylet const& directory,
         uint256 const& key,
         std::function<void(std::shared_ptr<SLE> const&)> const& describe)
     {
-        return dirAdd (true, directory, key, describe);
+        return dirAdd(true, directory, key, describe);
     }
 
     boost::optional<std::uint64_t>
-    dirAppend (
+    dirAppend(
         Keylet const& directory,
         Keylet const& key,
         std::function<void(std::shared_ptr<SLE> const&)> const& describe)
     {
-        return dirAppend (directory, key.key, describe);
+        return dirAppend(directory, key.key, describe);
     }
     /** @} */
 
@@ -334,21 +325,21 @@ public:
     */
     /** @{ */
     boost::optional<std::uint64_t>
-    dirInsert (
+    dirInsert(
         Keylet const& directory,
         uint256 const& key,
         std::function<void(std::shared_ptr<SLE> const&)> const& describe)
     {
-        return dirAdd (false, directory, key, describe);
+        return dirAdd(false, directory, key, describe);
     }
 
     boost::optional<std::uint64_t>
-    dirInsert (
+    dirInsert(
         Keylet const& directory,
         Keylet const& key,
         std::function<void(std::shared_ptr<SLE> const&)> const& describe)
     {
-        return dirInsert (directory, key.key, describe);
+        return dirInsert(directory, key.key, describe);
     }
     /** @} */
 
@@ -369,24 +360,36 @@ public:
     */
     /** @{ */
     bool
-    dirRemove (
+    dirRemove(
         Keylet const& directory,
         std::uint64_t page,
         uint256 const& key,
         bool keepRoot);
 
     bool
-    dirRemove (
+    dirRemove(
         Keylet const& directory,
         std::uint64_t page,
         Keylet const& key,
         bool keepRoot)
     {
-        return dirRemove (directory, page, key.key, keepRoot);
+        return dirRemove(directory, page, key.key, keepRoot);
     }
     /** @} */
+
+    /** Remove the specified directory, if it is empty.
+
+        @param directory the identifier of the directory node to be deleted
+        @return \c true if the directory was found and was successfully deleted
+                \c false otherwise.
+
+        @note The function should only be called with the root entry (i.e. with
+              the first page) of a directory.
+    */
+    bool
+    emptyDirDelete(Keylet const& directory);
 };
 
-} // ripple
+}  // namespace ripple
 
 #endif

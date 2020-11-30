@@ -22,9 +22,13 @@ bin/project-cache.jam
 # Ignore object files.
 *.o
 build
-!src/tbb-2019_U8/build
+.nih_c
 tags
 TAGS
+GTAGS
+GRTAGS
+GPATH
+bin/rippled
 bin/chainsqld
 Debug/*.*
 Release/*.*
@@ -54,6 +58,7 @@ validators.txt
 
 # Doxygen generated documentation output
 HtmlDocumentation
+docs/html_doc
 
 # Xcode user-specific project settings
 # Xcode
@@ -95,7 +100,6 @@ chainsqld-build.log
 
 # ignore
 third_party/
-deps*/
 
 # MSVC
 *.pdb
@@ -136,3 +140,8 @@ deps*/
 *.exe
 *.out
 *.app
+
+CMakeSettings.json
+compile_commands.json
+.clangd
+

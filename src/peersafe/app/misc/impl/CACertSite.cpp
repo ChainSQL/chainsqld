@@ -22,20 +22,20 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/jss.h>
-#include <beast/core/detail/base64.hpp>
-
+#include <ripple/basics/base64.h>
 
 
 namespace ripple {
 
 	CACertSite::CACertSite(
+		Schema& app,
 		ManifestCache& validatorManifests,
 		ManifestCache& publisherManifests,
 		TimeKeeper& timeKeeper,
 		boost::asio::io_service& ios,
 		std::vector<std::string>& rootCerts,
 		beast::Journal j)
-		: ConfigSite(ios, validatorManifests, j)
+		: ConfigSite(app,ios, validatorManifests, j)
 		, publisherManifests_(publisherManifests)
 		, timeKeeper_(timeKeeper)
 		, rootCerts_(rootCerts)
@@ -120,7 +120,7 @@ namespace ripple {
 
 	ripple::ListDisposition CACertSite::verify(Json::Value& list, PublicKey& pubKey, std::string const& manifest, std::string const& blob, std::string const& signature)
 	{
-		auto m = deserializeManifest(beast::detail::base64_decode(manifest));
+		auto m = deserializeManifest(base64_decode(manifest));
 
 		if (!m || !publisherLists_.count(m->masterKey))
 			return ListDisposition::untrusted;
@@ -141,12 +141,12 @@ namespace ripple {
 			return ListDisposition::untrusted;
 
 		auto const sig = strUnHex(signature);
-		auto const data = beast::detail::base64_decode(blob);
-		if (!sig.second ||
+		auto const data = base64_decode(blob);
+		if (!sig ||
 			!ripple::verify(
 				publisherManifests_.getSigningKey(pubKey),
 				makeSlice(data),
-				makeSlice(sig.first)))
+				makeSlice(*sig)))
 			return ListDisposition::invalid;
 
 		Json::Reader r;

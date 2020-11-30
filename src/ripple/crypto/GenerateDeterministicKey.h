@@ -25,37 +25,30 @@
 #ifndef RIPPLE_CRYPTO_GENERATEDETERMINISTICKEY_H_INCLUDED
 #define RIPPLE_CRYPTO_GENERATEDETERMINISTICKEY_H_INCLUDED
 
+#include <ripple/basics/Blob.h>
 #include <ripple/basics/base_uint.h>
 #include <ripple/basics/Blob.h>
 #include <ripple/crypto/impl/openssl.h>
 
 namespace ripple {
 
-	Blob
-		generateRootDeterministicPublicKey(
-			uint128 const& seed);
+Blob
+generateRootDeterministicPublicKey(uint128 const& seed);
 
-	uint256
-		generateRootDeterministicPrivateKey(
-			uint128 const& seed);
+uint256
+generateRootDeterministicPrivateKey(uint128 const& seed);
 
-	Blob
-		generatePublicDeterministicKey(
-			Blob const& generator,
-			int n);
+Blob
+generatePublicDeterministicKey(Blob const& generator, int n);
 
-	uint256
-		generatePrivateDeterministicKey(
-			Blob const& family,
-			uint128 const& seed,
-			int n);
+uint256
+generatePrivateDeterministicKey(Blob const& family, uint128 const& seed, int n);
 
-	openssl::bignum generateECPrivateKey(uint128 const& seed);
-	openssl::ec_point generateECPublicKey(uint128 const& seed);
+openssl::bignum generateECPrivateKey(uint128 const& seed);
+openssl::ec_point generateECPublicKey(uint128 const& seed);
 
-	Blob  generateRipplePublicKey(openssl::ec_point const& ecPoint);
+Blob  generateRipplePublicKey(openssl::ec_point const& ecPoint);
 
-
-} // ripple
+}  // namespace ripple
 
 #endif

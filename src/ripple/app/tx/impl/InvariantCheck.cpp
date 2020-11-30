@@ -18,13 +18,16 @@
 //==============================================================================
 
 #include <ripple/app/tx/impl/InvariantCheck.h>
+#include <ripple/basics/FeeUnits.h>
 #include <ripple/basics/Log.h>
+#include <ripple/ledger/ReadView.h>
+#include <ripple/protocol/Feature.h>
+#include <ripple/protocol/SystemParameters.h>
 
 namespace ripple {
 
 void
 TransactionFeeCheck::visitEntry(
-    uint256 const&,
     bool,
     std::shared_ptr<SLE const> const&,
     std::shared_ptr<SLE const> const&)
@@ -35,22 +38,25 @@ TransactionFeeCheck::visitEntry(
 bool
 TransactionFeeCheck::finalize(
     STTx const& tx,
-    TER const result,
+    TER const,
     ZXCAmount const fee,
+    ReadView const&,
     beast::Journal const& j)
 {
     // We should never charge a negative fee
     if (fee.drops() < 0)
     {
-        JLOG(j.fatal()) << "Invariant failed: fee paid was negative: " << fee.drops();
+        JLOG(j.fatal()) << "Invariant failed: fee paid was negative: "
+                        << fee.drops();
         return false;
     }
 
     // We should never charge a fee that's greater than or equal to the
     // entire ZXC supply.
-    if (fee.drops() >= SYSTEM_CURRENCY_START)
+    if (fee >= INITIAL_ZXC)
     {
-        JLOG(j.fatal()) << "Invariant failed: fee paid exceeds system limit: " << fee.drops();
+        JLOG(j.fatal()) << "Invariant failed: fee paid exceeds system limit: "
+                        << fee.drops();
         return false;
     }
 
@@ -58,8 +64,8 @@ TransactionFeeCheck::finalize(
     // authorizes. It's possible to charge less in some circumstances.
     if (fee > tx.getFieldAmount(sfFee).zxc())
     {
-        JLOG(j.fatal()) << "Invariant failed: fee paid is " << fee.drops() <<
-            " exceeds fee specified in transaction.";
+        JLOG(j.fatal()) << "Invariant failed: fee paid is " << fee.drops()
+                        << " exceeds fee specified in transaction.";
         return false;
     }
 
@@ -70,10 +76,9 @@ TransactionFeeCheck::finalize(
 
 void
 ZXCNotCreated::visitEntry(
-    uint256 const&,
     bool isDelete,
-    std::shared_ptr <SLE const> const& before,
-    std::shared_ptr <SLE const> const& after)
+    std::shared_ptr<SLE const> const& before,
+    std::shared_ptr<SLE const> const& after)
 {
     /* We go through all modified ledger entries, looking only at account roots,
      * escrow payments, and payment channels. We remove from the total any
@@ -82,43 +87,44 @@ ZXCNotCreated::visitEntry(
      * balance) and deletions are ignored for paychan and escrow because the
      * amount fields have not been adjusted for those in the case of deletion.
      */
-    if(before)
+    if (before)
     {
         switch (before->getType())
         {
-        case ltACCOUNT_ROOT:
-            drops_ -= (*before)[sfBalance].zxc().drops();
-            break;
-        case ltPAYCHAN:
-            drops_ -= ((*before)[sfAmount] - (*before)[sfBalance]).zxc().drops();
-            break;
-        case ltESCROW:
-			if (isZXC((*before)[sfAmount]))
-				drops_ -= (*before)[sfAmount].zxc().drops();
-            break;
-        default:
-            break;
+            case ltACCOUNT_ROOT:
+                drops_ -= (*before)[sfBalance].zxc().drops();
+                break;
+            case ltPAYCHAN:
+                drops_ -=
+                    ((*before)[sfAmount] - (*before)[sfBalance]).zxc().drops();
+                break;
+            case ltESCROW:
+                drops_ -= (*before)[sfAmount].zxc().drops();
+                break;
+            default:
+                break;
         }
     }
 
-    if(after)
+    if (after)
     {
         switch (after->getType())
         {
-        case ltACCOUNT_ROOT:
-            drops_ += (*after)[sfBalance].zxc().drops();
-            break;
-        case ltPAYCHAN:
-            if (! isDelete)
-                drops_ += ((*after)[sfAmount] - (*after)[sfBalance]).zxc().drops();
-            break;
-        case ltESCROW:
-			if (!isDelete)
-				if(isZXC((*after)[sfAmount]))
-					drops_ += (*after)[sfAmount].zxc().drops();             
-            break;
-        default:
-            break;
+            case ltACCOUNT_ROOT:
+                drops_ += (*after)[sfBalance].zxc().drops();
+                break;
+            case ltPAYCHAN:
+                if (!isDelete)
+                    drops_ += ((*after)[sfAmount] - (*after)[sfBalance])
+                                  .zxc()
+                                  .drops();
+                break;
+            case ltESCROW:
+                if (!isDelete)
+                    drops_ += (*after)[sfAmount].zxc().drops();
+                break;
+            default:
+                break;
         }
     }
 }
@@ -128,10 +134,10 @@ ZXCNotCreated::finalize(
     STTx const& tx,
     TER const,
     ZXCAmount const fee,
+    ReadView const&,
     beast::Journal const& j)
 {
-
-	// contract have extra fee
+    // contract have extra fee
 	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT)
 	{
 		return true;
@@ -144,17 +150,16 @@ ZXCNotCreated::finalize(
     // transaction created ZXC out of thin air. That's not possible.
     if (drops_ > 0)
     {
-        JLOG(j.fatal()) <<
-            "Invariant failed: ZXC net change was positive: " << drops_;
+        JLOG(j.fatal()) << "Invariant failed: ZXC net change was positive: "
+                        << drops_;
         return false;
     }
-	
+
     // The negative of the net change should be equal to actual fee charged.
     if (-drops_ != fee.drops())
     {
-        JLOG(j.fatal()) <<
-            "Invariant failed: ZXC net change of " << drops_ <<
-            " doesn't match fee " << fee.drops();
+        JLOG(j.fatal()) << "Invariant failed: ZXC net change of " << drops_
+                        << " doesn't match fee " << fee.drops();
         return false;
     }
 
@@ -165,39 +170,42 @@ ZXCNotCreated::finalize(
 
 void
 ZXCBalanceChecks::visitEntry(
-    uint256 const&,
     bool,
-    std::shared_ptr <SLE const> const& before,
-    std::shared_ptr <SLE const> const& after)
+    std::shared_ptr<SLE const> const& before,
+    std::shared_ptr<SLE const> const& after)
 {
-    auto isBad = [](STAmount const& balance)
-    {
+    auto isBad = [](STAmount const& balance) {
         if (!balance.native())
             return true;
 
-        auto const drops = balance.zxc().drops();
+        auto const drops = balance.zxc();
 
         // Can't have more than the number of drops instantiated
         // in the genesis ledger.
-        if (drops > SYSTEM_CURRENCY_START)
+        if (drops > INITIAL_ZXC)
             return true;
 
         // Can't have a negative balance (0 is OK)
-        if (drops < 0)
+        if (drops < ZXCAmount{0})
             return true;
 
         return false;
     };
 
-    if(before && before->getType() == ltACCOUNT_ROOT)
-        bad_ |= isBad ((*before)[sfBalance]);
+    if (before && before->getType() == ltACCOUNT_ROOT)
+        bad_ |= isBad((*before)[sfBalance]);
 
-    if(after && after->getType() == ltACCOUNT_ROOT)
-        bad_ |= isBad ((*after)[sfBalance]);
+    if (after && after->getType() == ltACCOUNT_ROOT)
+        bad_ |= isBad((*after)[sfBalance]);
 }
 
 bool
-ZXCBalanceChecks::finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const& j)
+ZXCBalanceChecks::finalize(
+    STTx const&,
+    TER const,
+    ZXCAmount const,
+    ReadView const&,
+    beast::Journal const& j)
 {
     if (bad_)
     {
@@ -212,13 +220,11 @@ ZXCBalanceChecks::finalize(STTx const&, TER const, ZXCAmount const, beast::Journ
 
 void
 NoBadOffers::visitEntry(
-    uint256 const&,
     bool isDelete,
-    std::shared_ptr <SLE const> const& before,
-    std::shared_ptr <SLE const> const& after)
+    std::shared_ptr<SLE const> const& before,
+    std::shared_ptr<SLE const> const& after)
 {
-    auto isBad = [](STAmount const& pays, STAmount const& gets)
-    {
+    auto isBad = [](STAmount const& pays, STAmount const& gets) {
         // An offer should never be negative
         if (pays < beast::zero)
             return true;
@@ -230,15 +236,20 @@ NoBadOffers::visitEntry(
         return pays.native() && gets.native();
     };
 
-    if(before && before->getType() == ltOFFER)
-        bad_ |= isBad ((*before)[sfTakerPays], (*before)[sfTakerGets]);
+    if (before && before->getType() == ltOFFER)
+        bad_ |= isBad((*before)[sfTakerPays], (*before)[sfTakerGets]);
 
-    if(after && after->getType() == ltOFFER)
+    if (after && after->getType() == ltOFFER)
         bad_ |= isBad((*after)[sfTakerPays], (*after)[sfTakerGets]);
 }
 
 bool
-NoBadOffers::finalize(STTx const& tx, TER const, ZXCAmount const, beast::Journal const& j)
+NoBadOffers::finalize(
+    STTx const&,
+    TER const,
+    ZXCAmount const,
+    ReadView const&,
+    beast::Journal const& j)
 {
     if (bad_)
     {
@@ -253,37 +264,37 @@ NoBadOffers::finalize(STTx const& tx, TER const, ZXCAmount const, beast::Journal
 
 void
 NoZeroEscrow::visitEntry(
-    uint256 const&,
     bool isDelete,
-    std::shared_ptr <SLE const> const& before,
-    std::shared_ptr <SLE const> const& after)
+    std::shared_ptr<SLE const> const& before,
+    std::shared_ptr<SLE const> const& after)
 {
-    auto isBad = [](STAmount const& amount)
-    {
-		if (isZXC(amount))
-		{
-			if (!amount.native())
-				return true;
+    auto isBad = [](STAmount const& amount) {
+        if (!amount.native())
+            return true;
 
-			if (amount.zxc().drops() <= 0)
-				return true;
+        if (amount.zxc() <= ZXCAmount{0})
+            return true;
 
-			if (amount.zxc().drops() >= SYSTEM_CURRENCY_START)
-				return true;
-		}
+        if (amount.zxc() >= INITIAL_ZXC)
+            return true;
 
         return false;
     };
 
-    if(before && before->getType() == ltESCROW)
+    if (before && before->getType() == ltESCROW)
         bad_ |= isBad((*before)[sfAmount]);
 
-    if(after && after->getType() == ltESCROW)
+    if (after && after->getType() == ltESCROW)
         bad_ |= isBad((*after)[sfAmount]);
 }
 
 bool
-NoZeroEscrow::finalize(STTx const& tx, TER const, ZXCAmount const, beast::Journal const& j)
+NoZeroEscrow::finalize(
+    STTx const&,
+    TER const,
+    ZXCAmount const,
+    ReadView const&,
+    beast::Journal const& j)
 {
     if (bad_)
     {
@@ -298,29 +309,43 @@ NoZeroEscrow::finalize(STTx const& tx, TER const, ZXCAmount const, beast::Journa
 
 void
 AccountRootsNotDeleted::visitEntry(
-    uint256 const&,
     bool isDelete,
-    std::shared_ptr <SLE const> const& before,
-    std::shared_ptr <SLE const> const&)
+    std::shared_ptr<SLE const> const& before,
+    std::shared_ptr<SLE const> const&)
 {
     if (isDelete && before && before->getType() == ltACCOUNT_ROOT)
-        accountDeleted_ = true;
+        accountsDeleted_++;
 }
 
 bool
-AccountRootsNotDeleted::finalize(STTx const& tx, TER const, ZXCAmount const, beast::Journal const& j)
-{
-	if (!accountDeleted_) 
-	{
-		return true;
-	}
-        
-
+AccountRootsNotDeleted::finalize(
+    STTx const& tx,
+    TER const result,
+    ZXCAmount const,
+    ReadView const&,
+    beast::Journal const& j)
+{   
 	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT) 
 	{
 		return true;
 	}
-		
+
+    if (tx.getTxnType() == ttACCOUNT_DELETE && result == tesSUCCESS)
+    {
+        if (accountsDeleted_ == 1)
+            return true;
+
+        if (accountsDeleted_ == 0)
+            JLOG(j.fatal()) << "Invariant failed: account deletion "
+                               "succeeded without deleting an account";
+        else
+            JLOG(j.fatal()) << "Invariant failed: account deletion "
+                               "succeeded but deleted multiple accounts!";
+        return false;
+    }
+
+    if (accountsDeleted_ == 0)
+        return true;
 
     JLOG(j.fatal()) << "Invariant failed: an account root was deleted";
     return false;
@@ -330,10 +355,9 @@ AccountRootsNotDeleted::finalize(STTx const& tx, TER const, ZXCAmount const, bea
 
 void
 LedgerEntryTypesMatch::visitEntry(
-    uint256 const&,
     bool,
-    std::shared_ptr <SLE const> const& before,
-    std::shared_ptr <SLE const> const& after)
+    std::shared_ptr<SLE const> const& before,
+    std::shared_ptr<SLE const> const& after)
 {
     if (before && after && before->getType() != after->getType())
         typeMismatch_ = true;
@@ -355,6 +379,7 @@ LedgerEntryTypesMatch::visitEntry(
         case ltPAYCHAN:
 		case ltCHECK:
         case ltDEPOSIT_PREAUTH:
+        case ltNEGATIVE_UNL:
 		case ltTABLELIST:
 		case ltINSERTMAP:
 		case ltCHAINID:
@@ -368,9 +393,14 @@ LedgerEntryTypesMatch::visitEntry(
 }
 
 bool
-LedgerEntryTypesMatch::finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const& j)
+LedgerEntryTypesMatch::finalize(
+    STTx const&,
+    TER const,
+    ZXCAmount const,
+    ReadView const&,
+    beast::Journal const& j)
 {
-    if ((! typeMismatch_) && (! invalidTypeAdded_))
+    if ((!typeMismatch_) && (!invalidTypeAdded_))
         return true;
 
     if (typeMismatch_)
@@ -390,10 +420,9 @@ LedgerEntryTypesMatch::finalize(STTx const&, TER const, ZXCAmount const, beast::
 
 void
 NoZXCTrustLines::visitEntry(
-    uint256 const&,
     bool,
-    std::shared_ptr <SLE const> const&,
-    std::shared_ptr <SLE const> const& after)
+    std::shared_ptr<SLE const> const&,
+    std::shared_ptr<SLE const> const& after)
 {
     if (after && after->getType() == ltRIPPLE_STATE)
     {
@@ -401,20 +430,77 @@ NoZXCTrustLines::visitEntry(
         // relying on .native() just in case native somehow
         // were systematically incorrect
         zxcTrustLine_ =
-            after->getFieldAmount (sfLowLimit).issue() == zxcIssue() ||
-            after->getFieldAmount (sfHighLimit).issue() == zxcIssue();
+            after->getFieldAmount(sfLowLimit).issue() == zxcIssue() ||
+            after->getFieldAmount(sfHighLimit).issue() == zxcIssue();
     }
 }
 
 bool
-NoZXCTrustLines::finalize(STTx const&, TER const, ZXCAmount const, beast::Journal const& j)
+NoZXCTrustLines::finalize(
+    STTx const&,
+    TER const,
+    ZXCAmount const,
+    ReadView const&,
+    beast::Journal const& j)
 {
-    if (! zxcTrustLine_)
+    if (!zxcTrustLine_)
         return true;
 
     JLOG(j.fatal()) << "Invariant failed: an ZXC trust line was created";
     return false;
 }
 
-}  // ripple
+//------------------------------------------------------------------------------
 
+void
+ValidNewAccountRoot::visitEntry(
+    bool,
+    std::shared_ptr<SLE const> const& before,
+    std::shared_ptr<SLE const> const& after)
+{
+    if (!before && after->getType() == ltACCOUNT_ROOT)
+    {
+        accountsCreated_++;
+        accountSeq_ = (*after)[sfSequence];
+    }
+}
+
+bool
+ValidNewAccountRoot::finalize(
+    STTx const& tx,
+    TER const result,
+    ZXCAmount const,
+    ReadView const& view,
+    beast::Journal const& j)
+{
+    if (accountsCreated_ == 0)
+        return true;
+
+    if (accountsCreated_ > 1)
+    {
+        JLOG(j.fatal()) << "Invariant failed: multiple accounts "
+                           "created in a single transaction";
+        return false;
+    }
+
+    // From this point on we know exactly one account was created.
+    if (tx.getTxnType() == ttPAYMENT && result == tesSUCCESS)
+    {
+        std::uint32_t const startingSeq{
+            view.rules().enabled(featureDeletableAccounts) ? view.seq() : 1};
+
+        if (accountSeq_ != startingSeq)
+        {
+            JLOG(j.fatal()) << "Invariant failed: account created with "
+                               "wrong starting sequence number";
+            return false;
+        }
+        return true;
+    }
+
+    JLOG(j.fatal()) << "Invariant failed: account root created "
+                       "by a non-Payment or by an unsuccessful transaction";
+    return false;
+}
+
+}  // namespace ripple

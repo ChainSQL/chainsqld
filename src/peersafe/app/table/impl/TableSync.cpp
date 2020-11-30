@@ -162,7 +162,7 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
         {
             alpAccepted = std::make_shared<AcceptedLedger>(
                 ledger, app_.accountIDCache(), app_.logs());
-            app_.getAcceptedLedgerCache().canonicalize(
+            app_.getAcceptedLedgerCache().canonicalize_replace_client(
                 ledger->info().hash, alpAccepted);
         }
 
@@ -395,7 +395,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
 						tablesle = ledger->read(key);
 						auto pMapSle = std::make_shared<std::map<AccountID, std::shared_ptr<const ripple::SLE>>>();
 						pMapSle->emplace(std::make_pair(stItemInfo.accountID,tablesle));
-						cache.canonicalize(uStopIndex, pMapSle);
+						cache.canonicalize_replace_client(uStopIndex, pMapSle);
 					}
 					else
 					{
@@ -872,7 +872,7 @@ bool TableSync::CreateTableItems()
 			auto ret = CreateOneItem(TableSyncItem::SyncTarget_db, line);			
             if (ret.first != NULL)
             {
-                std::lock_guard<std::mutex> lock(mutexlistTable_);
+                std::lock_guard lock(mutexlistTable_);
                 listTableInfo_.push_back(ret.first);
 				//this set can only be modified here
 				setTableInCfg.emplace(to_string(ret.first->GetAccount()) + ret.first->GetTableName());
@@ -945,7 +945,7 @@ bool TableSync::CreateTableItems()
 
 bool TableSync::isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType)
 {
-    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    std::lock_guard lock(mutexlistTable_);
     std::list<std::shared_ptr <TableSyncItem>>::iterator iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
         [accountID, sTableName, eTargeType](std::shared_ptr <TableSyncItem> pItem) {
 
@@ -1021,7 +1021,7 @@ bool TableSync::GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, s
     
     if (pItem == NULL)   return false;
      
-    std::lock_guard<std::mutex> lock(pItem->WriteDataMutex());
+    std::lock_guard lock(pItem->WriteDataMutex());
 
     LedgerIndex iCurSeq;
     uint256 iCurHash, uLocalHash;
@@ -1103,12 +1103,12 @@ bool TableSync::ReStartOneTable(AccountID accountID, std::string sNameInDB,std::
             pItem->Init(accountID, sTableName, true);
             pItem->SetTableNameInDB(sNameInDB);
             {
-                std::lock_guard<std::mutex> lock(mutexlistTable_);
+                std::lock_guard lock(mutexlistTable_);
                 listTableInfo_.push_back(pItem);
             }
         }
 
-        std::lock_guard<std::mutex> lock(mutexTempTable_);
+        std::lock_guard lock(mutexTempTable_);
         listTempTable_.remove(sNameInDB);
         return true;
     }
@@ -1122,7 +1122,7 @@ bool TableSync::StopOneTable(AccountID accountID, std::string sNameInDB, bool bN
     {
         if (bNewTable)
         {
-            std::lock_guard<std::mutex> lock(mutexTempTable_);
+            std::lock_guard lock(mutexTempTable_);
             listTempTable_.push_back(sNameInDB);
             return true;
         }
@@ -1158,7 +1158,7 @@ bool TableSync::IsNeedSyn(std::shared_ptr <TableSyncItem> pItem)
 }
 bool TableSync::ClearNotSyncItem()
 {
-	std::lock_guard<std::mutex> lock(mutexlistTable_);	
+	std::lock_guard lock(mutexlistTable_);	
 
 	listTableInfo_.remove_if([this](std::shared_ptr <TableSyncItem> pItem) {
 		return pItem->GetSyncState() == TableSyncItem::SYNC_REMOVE || 
@@ -1168,7 +1168,7 @@ bool TableSync::ClearNotSyncItem()
 }
 bool TableSync::IsNeedSyn()
 {
-    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    std::lock_guard lock(mutexlistTable_);
     std::list<std::shared_ptr <TableSyncItem>>::iterator it = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
         [this](std::shared_ptr <TableSyncItem> pItem) {
         return this->IsNeedSyn(pItem);
@@ -1205,7 +1205,7 @@ void TableSync::TableSyncThread()
     std::string PreviousCommit;
     std::list<std::shared_ptr <TableSyncItem>> tmList;
     {
-        std::lock_guard<std::mutex> lock(mutexlistTable_);
+        std::lock_guard lock(mutexlistTable_);
         for (std::list<std::shared_ptr <TableSyncItem>>::iterator iter = listTableInfo_.begin(); iter != listTableInfo_.end(); ++iter)
         {
             tmList.push_back(*iter);
@@ -1281,7 +1281,7 @@ void TableSync::TableSyncThread()
 							TxnLedgerSeq = 0;
 							TxnLedgerHash = uint256();
 							TxnUpdateHash = uint256();														
-							pItem->DoUpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), to_string(TxnLedgerSeq), to_string(LedgerHash), to_string(LedgerSeq), to_string(TxnUpdateHash),cond, PreviousCommit);
+							pItem->DoUpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), std::to_string(TxnLedgerSeq), to_string(LedgerHash), std::to_string(LedgerSeq), to_string(TxnUpdateHash),cond, PreviousCommit);
 						}
 					}
 					else
@@ -1307,7 +1307,7 @@ void TableSync::TableSyncThread()
 						pItem->SetDeleted(false);
 						auto chainId = TableSyncUtil::GetChainId(app_.getLedgerMaster().getValidatedLedger().get());
                         InsertSnycDB(stItem.sTableName, nameInDB, to_string(stItem.accountID), LedgerSeq, LedgerHash, bAutoSync, "",chainId);
-						app_.getTableStatusDB().UpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), to_string(TxnLedgerSeq), to_string(LedgerHash), to_string(LedgerSeq), "", "", "");
+						app_.getTableStatusDB().UpdateSyncDB(to_string(stItem.accountID), nameInDB, to_string(TxnLedgerHash), std::to_string(TxnLedgerSeq), to_string(LedgerHash), std::to_string(LedgerSeq), "", "", "");
                     }
 					pItem->SetPara(nameInDB, LedgerSeq, LedgerHash, TxnLedgerSeq, TxnLedgerHash, TxnUpdateHash);
 
@@ -1484,7 +1484,7 @@ void TableSync::LocalSyncThread()
     TableSyncItem::BaseInfo stItem;
     std::list<std::shared_ptr <TableSyncItem>> tmList;
     {
-        std::lock_guard<std::mutex> lock(mutexlistTable_);
+        std::lock_guard lock(mutexlistTable_);
         for (std::list<std::shared_ptr <TableSyncItem>>::iterator iter = listTableInfo_.begin(); iter != listTableInfo_.end(); ++iter)
         {
             tmList.push_back(*iter);
@@ -1497,9 +1497,7 @@ void TableSync::LocalSyncThread()
         if (stItem.eState == TableSyncItem::SYNC_WAIT_LOCAL_ACQUIRE)
         {           
             pItem->SetSyncState(TableSyncItem::SYNC_LOCAL_ACQUIRING);
-            pItem->StartLocalLedgerRead();
             SeekTableTxLedger(stItem,cache);
-            pItem->StopLocalLedgerRead();
         }
     }  
 	bLocalSyncThread_ = false;
@@ -1522,7 +1520,7 @@ std::pair<bool, std::string>
 {
     if (!bIsHaveSync_)                return std::make_pair(false,"Table is not configured to sync.");
 
-    std::lock_guard<std::mutex> lock(mutexCreateTable_);
+    std::lock_guard lock(mutexCreateTable_);
     
     bool ret = false;
 	std::string err = "";
@@ -1546,7 +1544,7 @@ std::pair<bool, std::string>
 		if(ret)
 		{
 			ret = true;
-            std::lock_guard<std::mutex> lock(mutexlistTable_);
+            std::lock_guard lock(mutexlistTable_);
             listTableInfo_.push_back(pItem);   
 			JLOG(journal_.info()) <<
 				"InsertListDynamically listTableInfo_ add item,tableName=" << sTableName <<",owner="<< to_string(accountID);
@@ -1568,7 +1566,7 @@ uint256 TableSync::GetLocalHash(LedgerIndex ledgerSeq)
     hash = app_.getLedgerMaster().getHashBySeqEx(ledgerSeq);
     if (hash.isNonZero())   return hash;
 
-    std::lock_guard<std::mutex> lock(mutexSkipNode_);
+    std::lock_guard lock(mutexSkipNode_);
     LedgerIndex i256thSeq = getCandidateLedger(ledgerSeq);
     auto BlobData = checkSkipNode_.fetch(i256thSeq);
     if (BlobData)
@@ -1595,7 +1593,7 @@ bool TableSync::CheckSyncDataBy256thLedger(std::shared_ptr <TableSyncItem> pItem
 
    if (hash.isZero())
    {
-        std::lock_guard<std::mutex> lock(mutexSkipNode_);
+        std::lock_guard lock(mutexSkipNode_);
         LedgerIndex i256thSeq =  getCandidateLedger(ledgerSeq);
         auto BlobData = checkSkipNode_.fetch(i256thSeq);//1.query from local cache
         if (BlobData)
@@ -1655,16 +1653,16 @@ bool TableSync::GotLedger(std::shared_ptr <protocol::TMLedgerData> const& m)
     auto sleNew = std::make_shared<SLE>(
         SerialIter{ node.nodedata().data(), node.nodedata().size() }, keylet::skip().key);
     
-    std::lock_guard<std::mutex> lock(mutexSkipNode_);
+    std::lock_guard lock(mutexSkipNode_);
     auto p = std::make_shared<ripple::Blob>(blob);
-    checkSkipNode_.canonicalize(m->ledgerseq(), p);
+    checkSkipNode_.canonicalize_replace_cache(m->ledgerseq(), p);
 
     return true;
 }
 
 std::shared_ptr <TableSyncItem> TableSync::GetRightItem(AccountID accountID, std::string sTableName, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, bool bByNameInDB/* = true*/)
 {
-    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    std::lock_guard lock(mutexlistTable_);
     auto iter(listTableInfo_.end());
     iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
         [accountID, sTableName, sNickName, eTargeType, bByNameInDB](std::shared_ptr <TableSyncItem>  pItem) {
@@ -1689,7 +1687,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
     {
         alpAccepted = std::make_shared<AcceptedLedger>(
             ledger, app_.accountIDCache(), app_.logs());
-        app_.getAcceptedLedgerCache().canonicalize(
+        app_.getAcceptedLedgerCache().canonicalize_replace_client(
             ledger->info().hash, alpAccepted);
     }
 
@@ -1864,7 +1862,7 @@ std::pair<bool, std::string> TableSync::StartDumpTable(std::string sPara, std::s
             return std::make_pair(false, retPair.second);
         else
         {
-            std::lock_guard<std::mutex> lock(mutexlistTable_);
+            std::lock_guard lock(mutexlistTable_);
             listTableInfo_.push_back(ret.first);
 
             return std::make_pair(true, ret.second);
@@ -1875,7 +1873,7 @@ std::pair<bool, std::string> TableSync::StartDumpTable(std::string sPara, std::s
 }
 std::pair<bool, std::string> TableSync::StopDumpTable(AccountID accountID, std::string sTableName)
 {
-	std::lock_guard<std::mutex> lock(mutexlistTable_);
+	std::lock_guard lock(mutexlistTable_);
 	auto iter(listTableInfo_.end());
 	iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
 		[accountID, sTableName](std::shared_ptr <TableSyncItem>  pItem) {
@@ -1901,7 +1899,7 @@ std::pair<bool, std::string> TableSync::StopDumpTable(AccountID accountID, std::
 
 bool TableSync::GetCurrentDumpPos(AccountID accountID, std::string sTableName, TableSyncItem::taskInfo &info)
 {
-    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    std::lock_guard lock(mutexlistTable_);
     auto iter(listTableInfo_.end());
     iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
         [accountID, sTableName](std::shared_ptr <TableSyncItem>  pItem) {
@@ -1924,7 +1922,7 @@ std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::
     }
 
     {
-        std::lock_guard<std::mutex> lock(mutexlistTable_);
+        std::lock_guard lock(mutexlistTable_);
         auto iter(listTableInfo_.end());
         iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
             [sPath](std::shared_ptr <TableSyncItem>  pItem) {
@@ -1955,7 +1953,7 @@ std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::
             return std::make_pair(false, retPair.second);
         else
         {
-            std::lock_guard<std::mutex> lock(mutexlistTable_);
+            std::lock_guard lock(mutexlistTable_);
             listTableInfo_.push_back(ret.first);
 
             return std::make_pair(true, retPair.second);
@@ -1966,7 +1964,7 @@ std::pair<bool, std::string> TableSync::StartAuditTable(std::string sPara, std::
 }
 std::pair<bool, std::string> TableSync::StopAuditTable(std::string sNickName)
 {
-    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    std::lock_guard lock(mutexlistTable_);
     auto iter(listTableInfo_.end());
     iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
         [sNickName](std::shared_ptr <TableSyncItem>  pItem) {
@@ -1990,7 +1988,7 @@ std::pair<bool, std::string> TableSync::StopAuditTable(std::string sNickName)
 
 bool TableSync::GetCurrentAuditPos(std::string sNickName, TableSyncItem::taskInfo &info)
 {
-    std::lock_guard<std::mutex> lock(mutexlistTable_);
+    std::lock_guard lock(mutexlistTable_);
     auto iter(listTableInfo_.end());
     iter = std::find_if(listTableInfo_.begin(), listTableInfo_.end(),
         [sNickName](std::shared_ptr <TableSyncItem>  pItem) {

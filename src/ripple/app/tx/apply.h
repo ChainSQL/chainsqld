@@ -20,11 +20,11 @@
 #ifndef RIPPLE_TX_APPLY_H_INCLUDED
 #define RIPPLE_TX_APPLY_H_INCLUDED
 
+#include <ripple/beast/utility/Journal.h>
 #include <ripple/core/Config.h>
 #include <ripple/ledger/View.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/protocol/TER.h>
-#include <ripple/beast/utility/Journal.h>
 #include <memory>
 #include <utility>
 
@@ -37,8 +37,7 @@ class HashRouter;
 
     @see checkValidity, forceValidity
 */
-enum class Validity
-{
+enum class Validity {
     /// Signature is bad. Didn't do local checks.
     SigBad,
     /// Signature is good, but local checks fail.
@@ -61,10 +60,12 @@ enum class Validity
     @see Validity
 */
 std::pair<Validity, std::string>
-checkValidity(Schema& schema, HashRouter& router,
-    STTx const& tx, Rules const& rules,
-        Config const& config);
-
+checkValidity(
+	Schema& schema,
+    HashRouter& router,
+    STTx const& tx,
+    Rules const& rules,
+    Config const& config);
 
 /** Sets the validity of a given transaction in the cache.
 
@@ -76,8 +77,7 @@ checkValidity(Schema& schema, HashRouter& router,
     @see checkValidity, Validity
 */
 void
-forceValidity(HashRouter& router, uint256 const& txid,
-    Validity validity);
+forceValidity(HashRouter& router, uint256 const& txid, Validity validity);
 
 /** Apply a transaction to an `OpenView`.
 
@@ -120,18 +120,19 @@ forceValidity(HashRouter& router, uint256 const& txid,
     @return A pair with the `TER` and a `bool` indicating
             whether or not the transaction was applied.
 */
-std::pair<STer, bool>
-apply (Schema& app, OpenView& view,
-    STTx const& tx, ApplyFlags flags,
-        beast::Journal journal);
-
+std::pair<TER, bool>
+apply(
+    Schema& app,
+    OpenView& view,
+    STTx const& tx,
+    ApplyFlags flags,
+    beast::Journal journal);
 
 /** Enum class for return value from `applyTransaction`
 
     @see applyTransaction
 */
-enum class ApplyResult
-{
+enum class ApplyResult {
     /// Applied to this ledger
     Success,
     /// Should not be retried in this ledger
@@ -148,14 +149,17 @@ enum class ApplyResult
     @see ApplyResult
 */
 ApplyResult
-applyTransaction(Schema& app, OpenView& view,
-    STTx const& tx, bool retryAssured, ApplyFlags flags,
+applyTransaction(
+    Schema& app,
+    OpenView& view,
+    STTx const& tx,
+    bool retryAssured,
+    ApplyFlags flags,
     beast::Journal journal);
 
-// ca verify
-bool 
-verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException);
-
-} // ripple
+	// ca verify
+	bool
+	verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException);
+}  // namespace ripple
 
 #endif

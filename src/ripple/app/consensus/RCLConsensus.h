@@ -20,11 +20,13 @@
 #ifndef RIPPLE_APP_CONSENSUS_RCLCONSENSUS_H_INCLUDED
 #define RIPPLE_APP_CONSENSUS_RCLCONSENSUS_H_INCLUDED
 
+#include <ripple/app/consensus/RCLCensorshipDetector.h>
 #include <ripple/app/consensus/RCLCxLedger.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <ripple/app/consensus/RCLCxTx.h>
 #include <ripple/app/consensus/RCLCensorshipDetector.h>
 #include <ripple/app/misc/FeeVote.h>
+#include <ripple/app/misc/NegativeUNLVote.h>
 #include <ripple/basics/CountedObject.h>
 #include <ripple/basics/Log.h>
 #include <ripple/beast/utility/Journal.h>
@@ -47,10 +49,11 @@ class LedgerMaster;
 class ValidatorKeys;
 
 /** Manages the generic consensus algorithm for use by the RCL.
-*/
+ */
 class RCLConsensus
 {
-    /** Warn for transactions that haven't been included every so many ledgers. */
+    /** Warn for transactions that haven't been included every so many ledgers.
+     */
     constexpr static unsigned int censorshipWarnInternal = 15;
 
     // Implements the Adaptor template interface required by Consensus.
@@ -61,11 +64,14 @@ class RCLConsensus
         LedgerMaster& ledgerMaster_;
         LocalTxs& localTxs_;
         InboundTransactions& inboundTransactions_;
-        beast::Journal j_;
+        beast::Journal const j_;
 
         NodeID const nodeID_;
         PublicKey const valPublic_;
         SecretKey const valSecret_;
+
+        // A randomly selected non-zero value used to tag our validations
+        std::uint64_t const valCookie_;
 
         // Ledger we most recently needed to acquire
         LedgerHash acquiringLedger_;
@@ -86,6 +92,7 @@ class RCLConsensus
         std::atomic<ConsensusMode> mode_{ConsensusMode::observing};
 
         RCLCensorshipDetector<TxID, LedgerIndex> censorshipDetector_;
+        NegativeUNLVote nUnlVote_;
 
     public:
         using Ledger_t = RCLCxLedger;
@@ -102,7 +109,7 @@ class RCLConsensus
             LedgerMaster& ledgerMaster,
             LocalTxs& localTxs,
             InboundTransactions& inboundTransactions,
-            ValidatorKeys const & validatorKeys,
+            ValidatorKeys const& validatorKeys,
             beast::Journal journal);
 
         bool
@@ -132,10 +139,13 @@ class RCLConsensus
         /** Called before kicking off a new consensus round.
 
             @param prevLedger Ledger that will be prior ledger for next round
+            @param nowTrusted the new validators
             @return Whether we enter the round proposing
         */
         bool
-        preStartRound(RCLCxLedger const & prevLedger);
+        preStartRound(
+            RCLCxLedger const& prevLedger,
+            hash_set<NodeID> const& nowTrusted);
 
         bool
         haveValidated() const;
@@ -147,8 +157,8 @@ class RCLConsensus
         getQuorumKeys() const;
 
         std::size_t
-        laggards(Ledger_t::Seq const seq,
-            hash_set<NodeKey_t >& trustedKeys) const;
+        laggards(Ledger_t::Seq const seq, hash_set<NodeKey_t>& trustedKeys)
+            const;
 
         /** Whether I am a validator.
          *
@@ -156,6 +166,16 @@ class RCLConsensus
          */
         bool
         validator() const;
+
+        /** Update operating mode based on current peer positions.
+         *
+         * If our current ledger has no agreement from the network,
+         * then we cannot be in the omFULL mode.
+         *
+         * @param positions Number of current peer positions.
+         */
+        void
+        updateOperatingMode(std::size_t const positions) const;
 
         /** Consensus simulation parameters
          */
@@ -175,9 +195,9 @@ class RCLConsensus
         //---------------------------------------------------------------------
         // The following members implement the generic Consensus requirements
         // and are marked private to indicate ONLY Consensus<Adaptor> will call
-        // them (via friendship). Since they are called only from Consenus<Adaptor>
-        // methods and since RCLConsensus::consensus_ should only be accessed
-        // under lock, these will only be called under lock.
+        // them (via friendship). Since they are called only from
+        // Consensus<Adaptor> methods and since RCLConsensus::consensus_ should
+        // only be accessed under lock, these will only be called under lock.
         //
         // In general, the idea is that there is only ONE thread that is running
         // consensus code at anytime. The only special case is the dispatched
@@ -252,7 +272,7 @@ class RCLConsensus
         bool
         hasOpenTransactions() const;
 
-        /** Number of proposers that have vallidated the given ledger
+        /** Number of proposers that have validated the given ledger
 
             @param h The hash of the ledger of interest
             @return the number of proposers that validated a ledger
@@ -269,7 +289,7 @@ class RCLConsensus
                     descended from the preferred working ledger.
         */
         std::size_t
-        proposersFinished(RCLCxLedger const & ledger, LedgerHash const& h) const;
+        proposersFinished(RCLCxLedger const& ledger, LedgerHash const& h) const;
 
         /** Propose the given position to my peers.
 
@@ -307,9 +327,7 @@ class RCLConsensus
             @param after The new consensus mode
         */
         void
-        onModeChange(
-            ConsensusMode before,
-            ConsensusMode after);
+        onModeChange(ConsensusMode before, ConsensusMode after);
 
         /** Close the open ledger and return initial consensus position.
 
@@ -372,7 +390,7 @@ class RCLConsensus
 
             @param ne Event type for notification
             @param ledger The ledger at the time of the state change
-            @param haveCorrectLCL Whether we believ we have the correct LCL.
+            @param haveCorrectLCL Whether we believe we have the correct LCL.
         */
         void
         notify(
@@ -409,35 +427,38 @@ class RCLConsensus
             @param closeTimeCorrect Whether consensus agreed on close time
             @param closeResolution Resolution used to determine consensus close
                                    time
-            @param roundTime Duration of this consensus rorund
+            @param roundTime Duration of this consensus round
             @param failedTxs Populate with transactions that we could not
                              successfully apply.
             @return The newly built ledger
       */
         RCLCxLedger
-			buildLCL(
-				RCLCxLedger const& previousLedger,
-				CanonicalTXSet& retriableTxs,
-				NetClock::time_point closeTime,
-				bool closeTimeCorrect,
-				NetClock::duration closeResolution,
-				std::chrono::milliseconds roundTime,
-				std::set<TxID>& failedTxs);
+        buildLCL(
+            RCLCxLedger const& previousLedger,
+            CanonicalTXSet& retriableTxs,
+            NetClock::time_point closeTime,
+            bool closeTimeCorrect,
+            NetClock::duration closeResolution,
+            std::chrono::milliseconds roundTime,
+            std::set<TxID>& failedTxs);
 
-		/** Validate the given ledger and share with peers as necessary
+        /** Validate the given ledger and share with peers as necessary
 
-			@param ledger The ledger to validate
-			@param txns The consensus transaction set
-			@param proposing Whether we were proposing transactions while
-							 generating this ledger.  If we are not proposing,
-							 a validation can still be sent to inform peers that
-							 we know we aren't fully participating in consensus
-							 but are still around and trying to catch up.
-		*/
-		void
-			validate(RCLCxLedger const& ledger, RCLTxSet const& txns, bool proposing);
+            @param ledger The ledger to validate
+            @param txns The consensus transaction set
+            @param proposing Whether we were proposing transactions while
+                             generating this ledger.  If we are not proposing,
+                             a validation can still be sent to inform peers that
+                             we know we aren't fully participating in consensus
+                             but are still around and trying to catch up.
+        */
+        void
+        validate(
+            RCLCxLedger const& ledger,
+            RCLTxSet const& txns,
+            bool proposing);
 
-		/** Send view change message.
+        /** Send view change message.
 		*/
 		void
 			sendViewChange(ViewChange const& proposal);
@@ -454,7 +475,7 @@ public:
         LocalTxs& localTxs,
         InboundTransactions& inboundTransactions,
         Consensus<Adaptor>::clock_type const& clock,
-        ValidatorKeys const & validatorKeys,
+        ValidatorKeys const& validatorKeys,
         beast::Journal journal);
 
     RCLConsensus(RCLConsensus const&) = delete;
@@ -497,17 +518,26 @@ public:
         return adaptor_.mode();
     }
 
+    ConsensusPhase
+    phase() const
+    {
+        return consensus_.phase();
+    }
+
     //! @see Consensus::getJson
     Json::Value
     getJson(bool full) const;
 
-    //! @see Consensus::startRound
+    /** Adjust the set of trusted validators and kick-off the next round of
+       consensus. For more details, @see Consensus::startRound
+     */
     void
     startRound(
         NetClock::time_point const& now,
         RCLCxLedger::ID const& prevLgrId,
         RCLCxLedger const& prevLgr,
-        hash_set<NodeID> const& nowUntrusted);
+        hash_set<NodeID> const& nowUntrusted,
+        hash_set<NodeID> const& nowTrusted);
 
     //! @see Consensus::timerEntry
     void
@@ -521,8 +551,8 @@ public:
     RCLCxLedger::ID
     prevLedgerID() const
     {
-        ScopedLockType _{mutex_};
-        return consensus_->prevLedgerID();
+        std::lock_guard _{mutex_};
+        return consensus_.prevLedgerID();
     }
 
     //! @see Consensus::simulate
@@ -547,27 +577,26 @@ public:
 
     bool waitingForInit()
     {
-        return consensus_->waitingForInit();
+        return consensus_.waitingForInit();
     }
 
     std::chrono::milliseconds getConsensusTimeout()
     {
-        return consensus_->getConsensusTimeout();
+        return consensus_.getConsensusTimeout();
     }
 private:
     // Since Consensus does not provide intrinsic thread-safety, this mutex
     // guards all calls to consensus_. adaptor_ uses atomics internally
     // to allow concurrent access of its data members that have getters.
     mutable std::recursive_mutex mutex_;
-    using ScopedLockType = std::lock_guard <std::recursive_mutex>;
 
     Adaptor adaptor_;
-    std::shared_ptr<Consensus<Adaptor>> consensus_ripple_;
-	std::shared_ptr<PConsensus<Adaptor>> consensus_peersafe_;
-	std::shared_ptr<ConsensusBase<Adaptor>> consensus_;
+ //   std::shared_ptr<Consensus<Adaptor>> consensus_ripple_;
+	//std::shared_ptr<PConsensus<Adaptor>> consensus_peersafe_;
+	PConsensus<Adaptor> consensus_;
 	
     beast::Journal j_;
 };
-}
+}  // namespace ripple
 
 #endif

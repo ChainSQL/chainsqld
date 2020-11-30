@@ -111,7 +111,7 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 				{
 					std::string errMsg = "key : " + fieldName + ", value type is not array.";
 					jsonRet = RPC::make_error(rpcINVALID_PARAMS, errMsg);
-					std::move(jsonRet);
+					return std::move(jsonRet);
 				}
 
 				for (auto &valueItem : value)
@@ -119,14 +119,15 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 					if (!valueItem.isObject())  continue;
 
 					jsonRet = prepareVL(valueItem);
-					if (jsonRet.isMember(jss::error)) std::move(jsonRet);
+					if (jsonRet.isMember(jss::error)) 
+						return std::move(jsonRet);
 				}
 				
 			}
 			catch (std::exception const& e) 
 			{
 				jsonRet = RPC::make_error(rpcGENERAL, e.what());
-				std::move(jsonRet);
+				return std::move(jsonRet);
 			}
 			break;
 		case STI_OBJECT:
@@ -139,7 +140,7 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 			catch (std::exception const& e)
 			{
 				jsonRet = RPC::make_error(rpcGENERAL, e.what());
-				std::move(jsonRet);
+				return std::move(jsonRet);
 			}
 			break;
 		case STI_VL:
@@ -155,7 +156,7 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 			catch (std::exception const& e)
 			{
 				jsonRet = RPC::make_error(rpcGENERAL, e.what());
-				std::move(jsonRet);
+				return std::move(jsonRet);
 			}
 			break;
 		default:
@@ -174,7 +175,9 @@ Json::Value TxPrepareBase::prepareGetRaw()
 	if (tx_json["OpType"] != T_RECREATE)   return ret;
 
 	table_BaseInfo baseinfo = app_.getLedgerMaster().getTableBaseInfo(app_.getLedgerMaster().getValidLedgerIndex(), ownerID_, sTableName_);
-	auto txn = app_.getMasterTransaction().fetch(baseinfo.createdTxnHash, true);
+
+	auto ec{ rpcSUCCESS };
+	auto txn = app_.getMasterTransaction().fetch(baseinfo.createdTxnHash, ec);
 	if (!txn)
 	{
 		std::string errMsg = "can not find create tx in local disk,please change node or try later";
@@ -301,12 +304,12 @@ Json::Value TxPrepareBase::prepareStrictMode()
 		sRaw = tx_json[jss::Raw].asString();
 	if (ws_)
 	{
-		auto rawPair = strUnHex(sRaw);
-		if (!rawPair.second)
+		auto raw = strUnHex(sRaw);
+		if (!raw)
 		{
 			return RPC::make_error(rpcRAW_INVALID, "Raw should be hexed");
 		}
-		sRaw = strCopy(rawPair.first);
+		sRaw = strCopy(*raw);
 	}
 
 	uint256 checkHashNew;
@@ -386,9 +389,9 @@ Json::Value TxPrepareBase::prepareDBName()
 		{			
             if (ws_)
             {
-                auto tablePair = strUnHex(sTableName);
-                if (tablePair.second)
-                    sTableName = strCopy(tablePair.first);
+                auto table = strUnHex(sTableName);
+                if (table)
+                    sTableName = strCopy(*table);
             }
 
 			// get nameInDB from validated ledger

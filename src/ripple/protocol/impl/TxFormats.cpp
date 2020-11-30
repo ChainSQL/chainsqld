@@ -22,7 +22,7 @@
 
 namespace ripple {
 
-TxFormats::TxFormats ()
+TxFormats::TxFormats()
 {
     // Fields shared by all txFormats:
     static const std::initializer_list<SOElement> commonFields
@@ -146,6 +146,15 @@ TxFormats::TxFormats ()
         },
         commonFields);
 
+    add(jss::UNLModify,
+        ttUNL_MODIFY,
+        {
+            {sfUNLModifyDisabling, soeREQUIRED},
+            {sfLedgerSequence, soeREQUIRED},
+            {sfUNLModifyValidator, soeREQUIRED},
+        },
+        commonFields);
+
     add (jss::TicketCreate, ttTICKET_CREATE,
         {
             { sfTarget,              soeOPTIONAL },
@@ -221,6 +230,15 @@ TxFormats::TxFormats ()
         },
         commonFields);
 
+
+    add(jss::AccountDelete,
+        ttACCOUNT_DELETE,
+        {
+            {sfDestination, soeREQUIRED},
+            {sfDestinationTag, soeOPTIONAL},
+        },
+        commonFields);
+        
     add (jss::DepositPreauth, ttDEPOSIT_PREAUTH,
         {
             { sfAuthorize,           soeOPTIONAL },
@@ -302,10 +320,10 @@ TxFormats::TxFormats ()
 }
 
 TxFormats const&
-TxFormats::getInstance ()
+TxFormats::getInstance()
 {
     static TxFormats const instance;
     return instance;
 }
 
-} // ripple
+}  // namespace ripple

@@ -20,14 +20,16 @@
 #ifndef RIPPLE_PATH_IMPL_AMOUNTSPEC_H_INCLUDED
 #define RIPPLE_PATH_IMPL_AMOUNTSPEC_H_INCLUDED
 
-#include <ripple/protocol/IOUAmount.h>
-#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/basics/IOUAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/protocol/STAmount.h>
 
 namespace ripple {
 
 struct AmountSpec
 {
+    explicit AmountSpec() = default;
+
     bool native;
     union
     {
@@ -37,16 +39,13 @@ struct AmountSpec
     boost::optional<AccountID> issuer;
     boost::optional<Currency> currency;
 
-    friend
-    std::ostream&
-    operator << (
-        std::ostream& stream,
-        AmountSpec const& amt)
+    friend std::ostream&
+    operator<<(std::ostream& stream, AmountSpec const& amt)
     {
         if (amt.native)
-            stream << to_string (amt.zxc);
+            stream << to_string(amt.zxc);
         else
-            stream << to_string (amt.iou);
+            stream << to_string(amt.iou);
         if (amt.currency)
             stream << "/(" << *amt.currency << ")";
         if (amt.issuer)
@@ -67,11 +66,9 @@ struct EitherAmount
         ZXCAmount zxc;
     };
 
-    EitherAmount () = default;
+    EitherAmount() = default;
 
-    explicit
-    EitherAmount (IOUAmount const& a)
-            :iou(a)
+    explicit EitherAmount(IOUAmount const& a) : iou(a)
     {
     }
 
@@ -80,9 +77,7 @@ struct EitherAmount
     // ignore warning about half of iou amount being uninitialized
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-    explicit
-    EitherAmount (ZXCAmount const& a)
-            :zxc(a)
+    explicit EitherAmount(ZXCAmount const& a) : zxc(a)
     {
 #ifndef NDEBUG
         native = true;
@@ -92,8 +87,7 @@ struct EitherAmount
 #pragma GCC diagnostic pop
 #endif
 
-    explicit
-    EitherAmount (AmountSpec const& a)
+    explicit EitherAmount(AmountSpec const& a)
     {
 #ifndef NDEBUG
         native = a.native;
@@ -119,74 +113,69 @@ struct EitherAmount
 
 template <class T>
 T&
-get (EitherAmount& amt)
+get(EitherAmount& amt)
 {
     static_assert(sizeof(T) == -1, "Must used specialized function");
     return T(0);
 }
 
 template <>
-inline
-IOUAmount&
-get<IOUAmount> (EitherAmount& amt)
+inline IOUAmount&
+get<IOUAmount>(EitherAmount& amt)
 {
-    assert (!amt.native);
+    assert(!amt.native);
     return amt.iou;
 }
 
 template <>
-inline
-ZXCAmount&
-get<ZXCAmount> (EitherAmount& amt)
+inline ZXCAmount&
+get<ZXCAmount>(EitherAmount& amt)
 {
-    assert (amt.native);
+    assert(amt.native);
     return amt.zxc;
 }
 
 template <class T>
 T const&
-get (EitherAmount const& amt)
+get(EitherAmount const& amt)
 {
     static_assert(sizeof(T) == -1, "Must used specialized function");
     return T(0);
 }
 
 template <>
-inline
-IOUAmount const&
-get<IOUAmount> (EitherAmount const& amt)
+inline IOUAmount const&
+get<IOUAmount>(EitherAmount const& amt)
 {
-    assert (!amt.native);
+    assert(!amt.native);
     return amt.iou;
 }
 
 template <>
-inline
-ZXCAmount const&
-get<ZXCAmount> (EitherAmount const& amt)
+inline ZXCAmount const&
+get<ZXCAmount>(EitherAmount const& amt)
 {
-    assert (amt.native);
+    assert(amt.native);
     return amt.zxc;
 }
 
-inline
-AmountSpec
-toAmountSpec (STAmount const& amt)
+inline AmountSpec
+toAmountSpec(STAmount const& amt)
 {
-    assert (amt.mantissa () < std::numeric_limits<std::int64_t>::max ());
-    bool const isNeg = amt.negative ();
+    assert(amt.mantissa() < std::numeric_limits<std::int64_t>::max());
+    bool const isNeg = amt.negative();
     std::int64_t const sMant =
-        isNeg ? - std::int64_t (amt.mantissa ()) : amt.mantissa ();
+        isNeg ? -std::int64_t(amt.mantissa()) : amt.mantissa();
     AmountSpec result;
 
-    result.native = isZXC (amt);
+    result.native = isZXC(amt);
     if (result.native)
     {
-        result.zxc = ZXCAmount (sMant);
+        result.zxc = ZXCAmount(sMant);
     }
     else
     {
-        result.iou = IOUAmount (sMant, amt.exponent ());
+        result.iou = IOUAmount(sMant, amt.exponent());
         result.issuer = amt.issue().account;
         result.currency = amt.issue().currency;
     }
@@ -194,25 +183,21 @@ toAmountSpec (STAmount const& amt)
     return result;
 }
 
-inline
-EitherAmount
-toEitherAmount (STAmount const& amt)
+inline EitherAmount
+toEitherAmount(STAmount const& amt)
 {
-    if (isZXC (amt))
+    if (isZXC(amt))
         return EitherAmount{amt.zxc()};
     return EitherAmount{amt.iou()};
 }
 
-inline
-AmountSpec
-toAmountSpec (
-    EitherAmount const& ea,
-    boost::optional<Currency> const& c)
+inline AmountSpec
+toAmountSpec(EitherAmount const& ea, boost::optional<Currency> const& c)
 {
     AmountSpec r;
-    r.native = (!c || isZXC (*c));
+    r.native = (!c || isZXC(*c));
     r.currency = c;
-    assert (ea.native == r.native);
+    assert(ea.native == r.native);
     if (r.native)
     {
         r.zxc = ea.zxc;
@@ -224,6 +209,6 @@ toAmountSpec (
     return r;
 }
 
-}
+}  // namespace ripple
 
 #endif

@@ -28,7 +28,7 @@
 #include <ripple/protocol/ErrorCodes.h>
 
 namespace ripple {
-Json::Value doGetDBName(RPC::Context&  context)
+Json::Value doGetDBName(RPC::JsonContext&  context)
 {
 	Json::Value ret(Json::objectValue);
 	Json::Value& tx_json(context.params);

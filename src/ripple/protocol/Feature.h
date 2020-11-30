@@ -46,20 +46,41 @@ namespace ripple {
 
 namespace detail {
 
+// *NOTE*
+//
+// Features, or Amendments as they are called elsewhere, are enabled on the
+// network at some specific time based on Validator voting.  Features are
+// enabled using run-time conditionals based on the state of the amendment.
+// There is value in retaining that conditional code for some time after
+// the amendment is enabled to make it simple to replay old transactions.
+// However, once an Amendment has been enabled for, say, more than two years
+// then retaining that conditional code has less value since it is
+// uncommon to replay such old transactions.
+//
+// Starting in January of 2020 Amendment conditionals from before January
+// 2018 are being removed.  So replaying any ledger from before January
+// 2018 needs to happen on an older version of the server code.  There's
+// a log message in Application.cpp that warns about replaying old ledgers.
+//
+// At some point in the future someone may wish to remove Amendment
+// conditional code for Amendments that were enabled after January 2018.
+// When that happens then the log message in Application.cpp should be
+// updated.
+
 class FeatureCollections
 {
-    static constexpr char const* const featureNames[] =
-    {
-        "MultiSign",
+    static constexpr char const* const featureNames[] = {
+        "MultiSign",  // Unconditionally supported.
         "Tickets",
-        "TrustSetAuth",
-        "FeeEscalation",
+        "TrustSetAuth",   // Unconditionally supported.
+        "FeeEscalation",  // Unconditionally supported.
         "OwnerPaysFee",
         "CompareFlowV1V2",
         "SHAMapV2",
 		"DisableV2",
+		"DecreaseStorage",
         "PayChan",
-        "Flow",
+        "Flow",  // Unconditionally supported.
         "CompareTakerFlowCross",
         "FlowCross",
         "CryptoConditions",
@@ -85,9 +106,18 @@ class FeatureCollections
         "fix1578",
         "MultiSignReserve",
         "fixTakerDryOfferRemoval",
-        "fixMasterKeyAsRegularKey"
-    };
-
+        "fixMasterKeyAsRegularKey",
+        "fixCheckThreading",
+        "fixPayChanRecipientOwnerDir",
+        "DeletableAccounts",
+        // fixQualityUpperBound should be activated before FlowCross
+        "fixQualityUpperBound",
+        "RequireFullyCanonicalSig",
+        "fix1781",  // ZXCEndpointSteps should be included in the circular
+                    // payment check
+        "HardenedValidations",
+        "fixAmendmentMajorityCalc",  // Fix Amendment majority calculation
+        "NegativeUNL"};
     std::vector<uint256> features;
     boost::container::flat_map<uint256, std::size_t> featureToIndex;
     boost::container::flat_map<std::string, uint256> nameToFeature;
@@ -95,9 +125,10 @@ class FeatureCollections
 public:
     FeatureCollections();
 
-    static constexpr std::size_t numFeatures()
+    static constexpr std::size_t
+    numFeatures()
     {
-        return sizeof (featureNames) / sizeof (featureNames[0]);
+        return sizeof(featureNames) / sizeof(featureNames[0]);
     }
 
     boost::optional<uint256>
@@ -112,12 +143,12 @@ public:
 
 /** Amendments that this server supports, but doesn't enable by default */
 std::vector<std::string> const&
-supportedAmendments ();
+supportedAmendments();
 
-} // detail
+}  // namespace detail
 
 boost::optional<uint256>
-getRegisteredFeature (std::string const& name);
+getRegisteredFeature(std::string const& name);
 
 size_t
 featureToBitsetIndex(uint256 const& f);
@@ -130,15 +161,13 @@ class FeatureBitset
 {
     using base = std::bitset<detail::FeatureCollections::numFeatures()>;
 
-    void initFromFeatures()
-    {
-    }
-
-    template<class... Fs>
-    void initFromFeatures(uint256 const& f, Fs&&... fs)
+    template <class... Fs>
+    void
+    initFromFeatures(uint256 const& f, Fs&&... fs)
     {
         set(f);
-        initFromFeatures(std::forward<Fs>(fs)...);
+        if constexpr (sizeof...(fs) > 0)
+            initFromFeatures(std::forward<Fs>(fs)...);
     }
 
 public:
@@ -146,49 +175,47 @@ public:
     using base::operator==;
     using base::operator!=;
 
-    using base::test;
     using base::all;
     using base::any;
-    using base::none;
     using base::count;
-    using base::size;
-    using base::set;
-    using base::reset;
     using base::flip;
+    using base::none;
+    using base::reset;
+    using base::set;
+    using base::size;
+    using base::test;
     using base::operator[];
     using base::to_string;
-    using base::to_ulong;
     using base::to_ullong;
+    using base::to_ulong;
 
     FeatureBitset() = default;
 
-    explicit
-    FeatureBitset(base const& b)
-        : base(b)
+    explicit FeatureBitset(base const& b) : base(b)
     {
     }
 
-    template<class... Fs>
-    explicit
-    FeatureBitset(uint256 const& f, Fs&&... fs)
+    template <class... Fs>
+    explicit FeatureBitset(uint256 const& f, Fs&&... fs)
     {
         initFromFeatures(f, std::forward<Fs>(fs)...);
     }
 
     template <class Col>
-    explicit
-    FeatureBitset(Col const& fs)
+    explicit FeatureBitset(Col const& fs)
     {
         for (auto const& f : fs)
             set(featureToBitsetIndex(f));
     }
 
-    auto operator[](uint256 const& f)
+    auto
+    operator[](uint256 const& f)
     {
         return base::operator[](featureToBitsetIndex(f));
     }
 
-    auto operator[](uint256 const& f) const
+    auto
+    operator[](uint256 const& f) const
     {
         return base::operator[](featureToBitsetIndex(f));
     }
@@ -214,119 +241,98 @@ public:
         return *this;
     }
 
-    FeatureBitset& operator&=(FeatureBitset const& rhs)
+    FeatureBitset&
+    operator&=(FeatureBitset const& rhs)
     {
         base::operator&=(rhs);
         return *this;
     }
 
-    FeatureBitset& operator|=(FeatureBitset const& rhs)
+    FeatureBitset&
+    operator|=(FeatureBitset const& rhs)
     {
         base::operator|=(rhs);
         return *this;
     }
 
-    FeatureBitset operator~() const
+    FeatureBitset
+    operator~() const
     {
         return FeatureBitset{base::operator~()};
     }
 
-    friend
-    FeatureBitset operator&(
-        FeatureBitset const& lhs,
-        FeatureBitset const& rhs)
+    friend FeatureBitset
+    operator&(FeatureBitset const& lhs, FeatureBitset const& rhs)
     {
-        return FeatureBitset{static_cast<base const&>(lhs) &
-                             static_cast<base const&>(rhs)};
+        return FeatureBitset{
+            static_cast<base const&>(lhs) & static_cast<base const&>(rhs)};
     }
 
-    friend
-    FeatureBitset operator&(
-        FeatureBitset const& lhs,
-        uint256 const& rhs)
+    friend FeatureBitset
+    operator&(FeatureBitset const& lhs, uint256 const& rhs)
     {
         return lhs & FeatureBitset{rhs};
     }
 
-    friend
-    FeatureBitset operator&(
-        uint256 const& lhs,
-        FeatureBitset const& rhs)
+    friend FeatureBitset
+    operator&(uint256 const& lhs, FeatureBitset const& rhs)
     {
         return FeatureBitset{lhs} & rhs;
     }
 
-    friend
-    FeatureBitset operator|(
-        FeatureBitset const& lhs,
-        FeatureBitset const& rhs)
+    friend FeatureBitset
+    operator|(FeatureBitset const& lhs, FeatureBitset const& rhs)
     {
-        return FeatureBitset{static_cast<base const&>(lhs) |
-                             static_cast<base const&>(rhs)};
+        return FeatureBitset{
+            static_cast<base const&>(lhs) | static_cast<base const&>(rhs)};
     }
 
-    friend
-    FeatureBitset operator|(
-        FeatureBitset const& lhs,
-        uint256 const& rhs)
+    friend FeatureBitset
+    operator|(FeatureBitset const& lhs, uint256 const& rhs)
     {
         return lhs | FeatureBitset{rhs};
     }
 
-    friend
-    FeatureBitset operator|(
-        uint256 const& lhs,
-        FeatureBitset const& rhs)
+    friend FeatureBitset
+    operator|(uint256 const& lhs, FeatureBitset const& rhs)
     {
         return FeatureBitset{lhs} | rhs;
     }
 
-    friend
-    FeatureBitset operator^(
-        FeatureBitset const& lhs,
-        FeatureBitset const& rhs)
+    friend FeatureBitset
+    operator^(FeatureBitset const& lhs, FeatureBitset const& rhs)
     {
-        return FeatureBitset{static_cast<base const&>(lhs) ^
-                             static_cast<base const&>(rhs)};
+        return FeatureBitset{
+            static_cast<base const&>(lhs) ^ static_cast<base const&>(rhs)};
     }
 
-    friend
-    FeatureBitset operator^(
-        FeatureBitset const& lhs,
-        uint256 const& rhs)
+    friend FeatureBitset
+    operator^(FeatureBitset const& lhs, uint256 const& rhs)
     {
-        return lhs ^ FeatureBitset{rhs};
+        return lhs ^ FeatureBitset { rhs };
     }
 
-    friend
-    FeatureBitset operator^(
-        uint256 const& lhs,
-        FeatureBitset const& rhs)
+    friend FeatureBitset
+    operator^(uint256 const& lhs, FeatureBitset const& rhs)
     {
         return FeatureBitset{lhs} ^ rhs;
     }
 
     // set difference
-    friend
-    FeatureBitset operator-(
-        FeatureBitset const& lhs,
-        FeatureBitset const& rhs)
+    friend FeatureBitset
+    operator-(FeatureBitset const& lhs, FeatureBitset const& rhs)
     {
         return lhs & ~rhs;
     }
 
-    friend
-    FeatureBitset operator-(
-        FeatureBitset const& lhs,
-        uint256 const& rhs)
+    friend FeatureBitset
+    operator-(FeatureBitset const& lhs, uint256 const& rhs)
     {
         return lhs - FeatureBitset{rhs};
     }
 
-    friend
-    FeatureBitset operator-(
-        uint256 const& lhs,
-        FeatureBitset const& rhs)
+    friend FeatureBitset
+    operator-(uint256 const& lhs, FeatureBitset const& rhs)
     {
         return FeatureBitset{lhs} - rhs;
     }
@@ -343,20 +349,15 @@ foreachFeature(FeatureBitset bs, F&& f)
 
 extern uint256 const featureMultiSign;
 extern uint256 const featureTickets;
-extern uint256 const featureTrustSetAuth;
-extern uint256 const featureFeeEscalation;
 extern uint256 const featureOwnerPaysFee;
 extern uint256 const featureCompareFlowV1V2;
 extern uint256 const featureSHAMapV2;
 extern uint256 const featureDisableV2;
+extern uint256 const featureDecreaseStorage;
 extern uint256 const featurePayChan;
 extern uint256 const featureFlow;
 extern uint256 const featureCompareTakerFlowCross;
 extern uint256 const featureFlowCross;
-extern uint256 const featureCryptoConditions;
-extern uint256 const featureTickSize;
-extern uint256 const fix1368;
-extern uint256 const featureEscrow;
 extern uint256 const featureCryptoConditionsSuite;
 extern uint256 const fix1373;
 extern uint256 const featureEnforceInvariants;
@@ -377,7 +378,16 @@ extern uint256 const fix1578;
 extern uint256 const featureMultiSignReserve;
 extern uint256 const fixTakerDryOfferRemoval;
 extern uint256 const fixMasterKeyAsRegularKey;
+extern uint256 const fixCheckThreading;
+extern uint256 const fixPayChanRecipientOwnerDir;
+extern uint256 const featureDeletableAccounts;
+extern uint256 const fixQualityUpperBound;
+extern uint256 const featureRequireFullyCanonicalSig;
+extern uint256 const fix1781;
+extern uint256 const featureHardenedValidations;
+extern uint256 const fixAmendmentMajorityCalc;
+extern uint256 const featureNegativeUNL;
 
-} // ripple
+}  // namespace ripple
 
 #endif

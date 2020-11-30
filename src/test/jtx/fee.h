@@ -20,11 +20,11 @@
 #ifndef RIPPLE_TEST_JTX_FEE_H_INCLUDED
 #define RIPPLE_TEST_JTX_FEE_H_INCLUDED
 
+#include <ripple/basics/contract.h>
+#include <ripple/protocol/STAmount.h>
+#include <boost/optional.hpp>
 #include <test/jtx/Env.h>
 #include <test/jtx/tags.h>
-#include <ripple/protocol/STAmount.h>
-#include <ripple/basics/contract.h>
-#include <boost/optional.hpp>
 
 namespace ripple {
 namespace test {
@@ -38,32 +38,30 @@ private:
     boost::optional<STAmount> amount_;
 
 public:
-    explicit
-    fee (autofill_t)
-        : manual_(false)
+    explicit fee(autofill_t) : manual_(false)
     {
     }
 
-    explicit
-    fee (none_t)
+    explicit fee(none_t)
     {
     }
 
-    explicit
-    fee (STAmount const& amount)
-        : amount_(amount)
+    explicit fee(STAmount const& amount) : amount_(amount)
     {
-        if (! isZXC(*amount_))
-            Throw<std::runtime_error> (
-                "fee: not ZXC");
+        if (!isZXC(*amount_))
+            Throw<std::runtime_error>("fee: not ZXC");
+    }
+
+    explicit fee(std::uint64_t amount) : fee{STAmount{amount}}
+    {
     }
 
     void
     operator()(Env&, JTx& jt) const;
 };
 
-} // jtx
-} // test
-} // ripple
+}  // namespace jtx
+}  // namespace test
+}  // namespace ripple
 
 #endif

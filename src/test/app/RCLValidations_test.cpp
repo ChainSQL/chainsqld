@@ -20,8 +20,10 @@
 #include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/ledger/Ledger.h>
 #include <ripple/basics/Log.h>
-#include <ripple/ledger/View.h>
+#include <ripple/basics/StringUtilities.h>
+#include <ripple/basics/base_uint.h>
 #include <ripple/beast/unit_test.h>
+#include <ripple/ledger/View.h>
 #include <test/jtx.h>
 
 namespace ripple {
@@ -29,23 +31,17 @@ namespace test {
 
 class RCLValidations_test : public beast::unit_test::suite
 {
-
     void
     testChangeTrusted()
     {
         testcase("Change validation trusted status");
         auto keys = randomKeyPair(KeyType::secp256k1);
         auto v = std::make_shared<STValidation>(
-            uint256(),
-            1,
-            uint256(),
-            NetClock::time_point(),
+            ripple::NetClock::time_point{},
             keys.first,
             keys.second,
             calcNodeID(keys.first),
-            true,
-            STValidation::FeeSettings{},
-            std::vector<uint256>{});
+            [&](STValidation& v) { v.setFieldU32(sfLedgerSequence, 123456); });
 
         BEAST_EXPECT(v->isTrusted());
         v->setUntrusted();
@@ -67,7 +63,6 @@ class RCLValidations_test : public beast::unit_test::suite
         using Seq = RCLValidatedLedger::Seq;
         using ID = RCLValidatedLedger::ID;
 
-
         // This tests RCLValidatedLedger properly implements the type
         // requirements of a LedgerTrie ledger, with its added behavior that
         // only the 256 prior ledger hashes are available to determine ancestry.
@@ -82,21 +77,22 @@ class RCLValidations_test : public beast::unit_test::suite
         jtx::Env env(*this);
         Config config;
         auto prev = std::make_shared<Ledger const>(
-            create_genesis, config,
-            std::vector<uint256>{}, env.app().family());
+            create_genesis,
+            config,
+            std::vector<uint256>{},
+            env.app().getNodeFamily());
         history.push_back(prev);
-        for (auto i = 0; i < (2*maxAncestors + 1); ++i)
+        for (auto i = 0; i < (2 * maxAncestors + 1); ++i)
         {
             auto next = std::make_shared<Ledger>(
-                *prev,
-                env.app().timeKeeper().closeTime());
+                *prev, env.app().timeKeeper().closeTime());
             next->updateSkipList();
             history.push_back(next);
             prev = next;
         }
 
         // altHistory agrees with first half of regular history
-        Seq const diverge = history.size()/2;
+        Seq const diverge = history.size() / 2;
         std::vector<std::shared_ptr<Ledger const>> altHistory(
             history.begin(), history.begin() + diverge);
         // advance clock to get new ledgers
@@ -104,14 +100,13 @@ class RCLValidations_test : public beast::unit_test::suite
         env.timeKeeper().set(env.timeKeeper().now() + 1200s);
         prev = altHistory.back();
         bool forceHash = true;
-        while(altHistory.size() < history.size())
+        while (altHistory.size() < history.size())
         {
             auto next = std::make_shared<Ledger>(
-                *prev,
-                env.app().timeKeeper().closeTime());
+                *prev, env.app().timeKeeper().closeTime());
             // Force a different hash on the first iteration
             next->updateSkipList();
-            if(forceHash)
+            if (forceHash)
             {
                 next->setImmutable(config);
                 forceHash = false;
@@ -122,7 +117,6 @@ class RCLValidations_test : public beast::unit_test::suite
         }
 
         //----------------------------------------------------------------------
-
 
         // Empty ledger
         {
@@ -137,13 +131,12 @@ class RCLValidations_test : public beast::unit_test::suite
             std::shared_ptr<Ledger const> ledger = history.back();
             RCLValidatedLedger a{ledger, env.journal};
             BEAST_EXPECT(a.seq() == ledger->info().seq);
-            BEAST_EXPECT(
-                a.minSeq() == a.seq() - maxAncestors);
+            BEAST_EXPECT(a.minSeq() == a.seq() - maxAncestors);
             // Ensure the ancestral 256 ledgers have proper ID
-            for(Seq s = a.seq(); s > 0; s--)
+            for (Seq s = a.seq(); s > 0; s--)
             {
-                if(s >= a.minSeq())
-                    BEAST_EXPECT(a[s] == history[s-1]->info().hash);
+                if (s >= a.minSeq())
+                    BEAST_EXPECT(a[s] == history[s - 1]->info().hash);
                 else
                     BEAST_EXPECT(a[s] == ID{0});
             }
@@ -155,8 +148,7 @@ class RCLValidations_test : public beast::unit_test::suite
         {
             RCLValidatedLedger a{RCLValidatedLedger::MakeGenesis{}};
 
-            for (auto ledger : {history.back(),
-                                history[maxAncestors - 1]})
+            for (auto ledger : {history.back(), history[maxAncestors - 1]})
             {
                 RCLValidatedLedger b{ledger, env.journal};
                 BEAST_EXPECT(mismatch(a, b) == 1);
@@ -166,10 +158,10 @@ class RCLValidations_test : public beast::unit_test::suite
         // Same chains, different seqs
         {
             RCLValidatedLedger a{history.back(), env.journal};
-            for(Seq s = a.seq(); s > 0; s--)
+            for (Seq s = a.seq(); s > 0; s--)
             {
-                RCLValidatedLedger b{history[s-1], env.journal};
-                if(s >= a.minSeq())
+                RCLValidatedLedger b{history[s - 1], env.journal};
+                if (s >= a.minSeq())
                 {
                     BEAST_EXPECT(mismatch(a, b) == b.seq() + 1);
                     BEAST_EXPECT(mismatch(b, a) == b.seq() + 1);
@@ -180,28 +172,27 @@ class RCLValidations_test : public beast::unit_test::suite
                     BEAST_EXPECT(mismatch(b, a) == Seq{1});
                 }
             }
-
         }
         // Different chains, same seqs
         {
             // Alt history diverged at history.size()/2
-            for(Seq s = 1; s < history.size(); ++s)
+            for (Seq s = 1; s < history.size(); ++s)
             {
-                RCLValidatedLedger a{history[s-1], env.journal};
-                RCLValidatedLedger b{altHistory[s-1], env.journal};
+                RCLValidatedLedger a{history[s - 1], env.journal};
+                RCLValidatedLedger b{altHistory[s - 1], env.journal};
 
                 BEAST_EXPECT(a.seq() == b.seq());
-                if(s <= diverge)
+                if (s <= diverge)
                 {
                     BEAST_EXPECT(a[a.seq()] == b[b.seq()]);
-                    BEAST_EXPECT(mismatch(a,b) == a.seq() + 1);
-                    BEAST_EXPECT(mismatch(b,a) == a.seq() + 1);
+                    BEAST_EXPECT(mismatch(a, b) == a.seq() + 1);
+                    BEAST_EXPECT(mismatch(b, a) == a.seq() + 1);
                 }
                 else
                 {
                     BEAST_EXPECT(a[a.seq()] != b[b.seq()]);
-                    BEAST_EXPECT(mismatch(a,b) == diverge + 1);
-                    BEAST_EXPECT(mismatch(b,a) == diverge + 1);
+                    BEAST_EXPECT(mismatch(a, b) == diverge + 1);
+                    BEAST_EXPECT(mismatch(b, a) == diverge + 1);
                 }
             }
         }
@@ -209,16 +200,16 @@ class RCLValidations_test : public beast::unit_test::suite
         {
             // Compare around the divergence point
             RCLValidatedLedger a{history[diverge], env.journal};
-            for(Seq offset = diverge/2; offset < 3*diverge/2; ++offset)
+            for (Seq offset = diverge / 2; offset < 3 * diverge / 2; ++offset)
             {
-                RCLValidatedLedger b{altHistory[offset-1], env.journal};
-                if(offset <= diverge)
+                RCLValidatedLedger b{altHistory[offset - 1], env.journal};
+                if (offset <= diverge)
                 {
-                    BEAST_EXPECT(mismatch(a,b) == b.seq() + 1);
+                    BEAST_EXPECT(mismatch(a, b) == b.seq() + 1);
                 }
                 else
                 {
-                    BEAST_EXPECT(mismatch(a,b) == diverge + 1);
+                    BEAST_EXPECT(mismatch(a, b) == diverge + 1);
                 }
             }
         }
@@ -249,7 +240,10 @@ class RCLValidations_test : public beast::unit_test::suite
         auto& j = env.journal;
         Config config;
         auto prev = std::make_shared<Ledger const>(
-            create_genesis, config, std::vector<uint256>{}, env.app().family());
+            create_genesis,
+            config,
+            std::vector<uint256>{},
+            env.app().getNodeFamily());
         history.push_back(prev);
         for (auto i = 0; i < (maxAncestors + 10); ++i)
         {
@@ -281,8 +275,7 @@ class RCLValidations_test : public beast::unit_test::suite
 
         // Move three of the s258 ledgers to s259, which splits the trie
         // due to the 256 ancestory limit
-        BEAST_EXPECT(
-            trie.remove(ledg_258, 3));
+        BEAST_EXPECT(trie.remove(ledg_258, 3));
         trie.insert(ledg_259, 3);
         trie.getPreferred(1);
         // trie.dump(std::cout);

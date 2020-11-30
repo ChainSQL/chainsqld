@@ -23,8 +23,8 @@
 #include <ripple/protocol/tokens.h>
 // VFALCO Uncomment when the header issues are resolved
 //#include <ripple/protocol/PublicKey.h>
-#include <ripple/basics/base_uint.h>
 #include <ripple/basics/UnorderedContainers.h>
+#include <ripple/basics/base_uint.h>
 #include <ripple/json/json_value.h>
 #include <boost/optional.hpp>
 #include <cstddef>
@@ -41,32 +41,31 @@ public:
     explicit AccountIDTag() = default;
 };
 
-} // detail
+}  // namespace detail
 
 /** A 160-bit unsigned that uniquely identifies an account. */
 using AccountID = base_uint<160, detail::AccountIDTag>;
 
 /** Convert AccountID to base58 checked string */
 std::string
-toBase58 (AccountID const& v);
+toBase58(AccountID const& v);
 
 /** Parse AccountID from checked, base58 string.
     @return boost::none if a parse error occurs
 */
-template<>
+template <>
 boost::optional<AccountID>
-parseBase58 (std::string const& s);
+parseBase58(std::string const& s);
 
 // Parses AccountID using Bitcoin's alphabet
 // This is to catch user error. Likely not needed
 // DEPRECATED
 boost::optional<AccountID>
-deprecatedParseBitcoinAccountID (std::string const& s);
+deprecatedParseBitcoinAccountID(std::string const& s);
 
 // Compatibility with legacy code
 bool
-deprecatedParseBase58 (AccountID& account,
-    Json::Value const& jv);
+deprecatedParseBase58(AccountID& account, Json::Value const& jv);
 
 /** Parse AccountID from hexadecimal string
 
@@ -75,17 +74,17 @@ deprecatedParseBase58 (AccountID& account,
 
     @return boost::none if a parse error occurs
 */
-template<>
+template <>
 boost::optional<AccountID>
-parseHex (std::string const& s);
+parseHex(std::string const& s);
 
 /** Parse AccountID from hex or checked base58 string.
 
     @return boost::none if a parse error occurs
 */
-template<>
+template <>
 boost::optional<AccountID>
-parseHexOrBase58 (std::string const& s);
+parseHexOrBase58(std::string const& s);
 
 /** Compute AccountID from public key.
 
@@ -95,8 +94,8 @@ parseHexOrBase58 (std::string const& s);
 
 */
 // VFALCO In PublicKey.h for now
-//AccountID
-//calcAccountID (PublicKey const& pk);
+// AccountID
+// calcAccountID (PublicKey const& pk);
 
 /** A special account that's used as the "issuer" for ZXC. */
 AccountID const&
@@ -112,7 +111,7 @@ noAccount();
 */
 // DEPRECATED
 bool
-to_issuer (AccountID&, std::string const&);
+to_issuer(AccountID&, std::string const&);
 
 // DEPRECATED Should be checking the currency or native flag
 inline
@@ -123,17 +122,17 @@ isZXC(AccountID const& c)
 }
 
 // DEPRECATED
-inline
-std::string
-to_string (AccountID const& account)
+inline std::string
+to_string(AccountID const& account)
 {
     return toBase58(account);
 }
 
 // DEPRECATED
-inline std::ostream& operator<< (std::ostream& os, AccountID const& x)
+inline std::ostream&
+operator<<(std::ostream& os, AccountID const& x)
 {
-    os << to_string (x);
+    os << to_string(x);
     return os;
 }
 
@@ -151,17 +150,15 @@ class AccountIDCache
 private:
     std::mutex mutable mutex_;
     std::size_t capacity_;
-    hash_map<AccountID,
-        std::string> mutable m0_;
-    hash_map<AccountID,
-        std::string> mutable m1_;
+    hash_map<AccountID, std::string> mutable m0_;
+    hash_map<AccountID, std::string> mutable m1_;
 
 public:
     AccountIDCache(AccountIDCache const&) = delete;
-    AccountIDCache& operator= (AccountIDCache const&) = delete;
+    AccountIDCache&
+    operator=(AccountIDCache const&) = delete;
 
-    explicit
-    AccountIDCache (std::size_t capacity);
+    explicit AccountIDCache(std::size_t capacity);
 
     /** Return ripple::toBase58 for the AccountID
 
@@ -172,10 +169,10 @@ public:
               copy for correctness.
     */
     std::string
-    toBase58 (AccountID const&) const;
+    toBase58(AccountID const&) const;
 };
 
-} // ripple
+}  // namespace ripple
 
 //------------------------------------------------------------------------------
 
@@ -184,11 +181,11 @@ namespace std {
 // DEPRECATED
 // VFALCO Use beast::uhash or a hardened container
 template <>
-struct hash <ripple::AccountID> : ripple::AccountID::hasher
+struct hash<ripple::AccountID> : ripple::AccountID::hasher
 {
     explicit hash() = default;
 };
 
-} // std
+}  // namespace std
 
 #endif

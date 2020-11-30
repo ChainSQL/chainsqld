@@ -21,6 +21,7 @@
 #include <peersafe/schema/PeerManager.h>
 #include <ripple/net/RPCErr.h>
 #include <ripple/nodestore/DatabaseShard.h>
+#include <ripple/overlay/Overlay.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/resource/Fees.h>
@@ -32,7 +33,7 @@ namespace ripple {
     {
         // Determines if the result includes node public key.
         // optional, default is false
-        pubkey: <bool>
+        public_key: <bool>
 
         // The maximum number of peer hops to attempt.
         // optional, default is zero, maximum is 3
@@ -40,28 +41,28 @@ namespace ripple {
     }
 */
 Json::Value
-doCrawlShards(RPC::Context& context)
+doCrawlShards(RPC::JsonContext& context)
 {
     if (context.role != Role::ADMIN)
         return rpcError(rpcNO_PERMISSION);
 
-    std::uint32_t hops {0};
+    std::uint32_t hops{0};
     if (auto const& jv = context.params[jss::limit])
     {
         if (!(jv.isUInt() || (jv.isInt() && jv.asInt() >= 0)))
         {
-            return RPC::expected_field_error(
-                jss::limit, "unsigned integer");
+            return RPC::expected_field_error(jss::limit, "unsigned integer");
         }
 
         hops = std::min(jv.asUInt(), csHopLimit);
     }
 
-    bool const pubKey {context.params.isMember(jss::public_key) &&
+    bool const pubKey{
+        context.params.isMember(jss::public_key) &&
         context.params[jss::public_key].asBool()};
 
     // Collect shard info from peers connected to this server
-    Json::Value jvResult {context.app.peerManager().crawlShards(pubKey, hops)};
+    Json::Value jvResult{context.app.peerManager().crawlShards(pubKey, hops)};
 
     // Collect shard info from this server
     if (auto shardStore = context.app.getShardStore())
@@ -80,4 +81,4 @@ doCrawlShards(RPC::Context& context)
     return jvResult;
 }
 
-} // ripple
+}  // namespace ripple

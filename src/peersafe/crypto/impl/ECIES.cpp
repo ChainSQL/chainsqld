@@ -125,6 +125,7 @@ static void getECIESSecret (uint256 const& secretKey,
     getECIESSecret (ECDSAPrivateKey (secretKey), ECDSAPublicKey (publicKey), enc_key, hmac_key);
 }
 
+#ifndef USE_LOW_OPENSSL
 static ECIES_HMAC_TYPE makeHMAC (const ECIES_HMAC_KEY_TYPE& secret, Blob const& data)
 {
     HMAC_CTX *ctx = HMAC_CTX_new();
@@ -156,161 +157,353 @@ static ECIES_HMAC_TYPE makeHMAC (const ECIES_HMAC_KEY_TYPE& secret, Blob const& 
     return ret;
 }
 
-Blob encryptECIES (uint256 const& secretKey, Blob const& publicKey, Blob const& plaintext)
+Blob encryptECIES(uint256 const& secretKey, Blob const& publicKey, Blob const& plaintext)
 {
-	if(plaintext.size() == 0)
+	if (plaintext.size() == 0)
 		Throw<std::runtime_error>("plaintext is empty");
-    ECIES_ENC_IV_TYPE iv;
-    random_fill (iv.begin (), ECIES_ENC_BLK_SIZE);
+	ECIES_ENC_IV_TYPE iv;
+	random_fill(iv.begin(), ECIES_ENC_BLK_SIZE);
 
-    ECIES_ENC_KEY_TYPE secret;
-    ECIES_HMAC_KEY_TYPE hmacKey;
+	ECIES_ENC_KEY_TYPE secret;
+	ECIES_HMAC_KEY_TYPE hmacKey;
 
-    getECIESSecret (secretKey, publicKey, secret, hmacKey);
-    ECIES_HMAC_TYPE hmac = makeHMAC (hmacKey, plaintext);
-    hmacKey.zero ();
+	getECIESSecret(secretKey, publicKey, secret, hmacKey);
+	ECIES_HMAC_TYPE hmac = makeHMAC(hmacKey, plaintext);
+	hmacKey.zero();
 
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 
-    if (EVP_EncryptInit_ex (ctx, ECIES_ENC_ALGO, nullptr, secret.begin (), iv.begin ()) != 1)
-    {
-        EVP_CIPHER_CTX_free (ctx);
-        secret.zero ();
-        Throw<std::runtime_error> ("init cipher ctx");
-    }
+	if (EVP_EncryptInit_ex(ctx, ECIES_ENC_ALGO, nullptr, secret.begin(), iv.begin()) != 1)
+	{
+		EVP_CIPHER_CTX_free(ctx);
+		secret.zero();
+		Throw<std::runtime_error>("init cipher ctx");
+	}
 
-    secret.zero ();
+	secret.zero();
 
-    Blob out (plaintext.size () + ECIES_HMAC_SIZE + ECIES_ENC_KEY_SIZE + ECIES_ENC_BLK_SIZE, 0);
-    int len = 0, bytesWritten;
+	Blob out(plaintext.size() + ECIES_HMAC_SIZE + ECIES_ENC_KEY_SIZE + ECIES_ENC_BLK_SIZE, 0);
+	int len = 0, bytesWritten;
 
-    // output IV
-    memcpy (& (out.front ()), iv.begin (), ECIES_ENC_BLK_SIZE);
-    len = ECIES_ENC_BLK_SIZE;
+	// output IV
+	memcpy(&(out.front()), iv.begin(), ECIES_ENC_BLK_SIZE);
+	len = ECIES_ENC_BLK_SIZE;
 
-    // Encrypt/output HMAC
-    bytesWritten = out.capacity () - len;
-    assert (bytesWritten > 0);
+	// Encrypt/output HMAC
+	bytesWritten = out.capacity() - len;
+	assert(bytesWritten > 0);
 
-    if (EVP_EncryptUpdate (ctx, & (out.front ()) + len, &bytesWritten, hmac.begin (), ECIES_HMAC_SIZE) < 0)
-    {
-        EVP_CIPHER_CTX_free (ctx);
-        Throw<std::runtime_error> ("");
-    }
+	if (EVP_EncryptUpdate(ctx, &(out.front()) + len, &bytesWritten, hmac.begin(), ECIES_HMAC_SIZE) < 0)
+	{
+		EVP_CIPHER_CTX_free(ctx);
+		Throw<std::runtime_error>("");
+	}
 
-    len += bytesWritten;
+	len += bytesWritten;
 
-    // encrypt/output plaintext
-    bytesWritten = out.capacity () - len;
-    assert (bytesWritten > 0);
+	// encrypt/output plaintext
+	bytesWritten = out.capacity() - len;
+	assert(bytesWritten > 0);
 
-    if (EVP_EncryptUpdate (ctx, & (out.front ()) + len, &bytesWritten, & (plaintext.front ()), plaintext.size ()) < 0)
-    {
-        EVP_CIPHER_CTX_free (ctx);
-        Throw<std::runtime_error> ("");
-    }
+	if (EVP_EncryptUpdate(ctx, &(out.front()) + len, &bytesWritten, &(plaintext.front()), plaintext.size()) < 0)
+	{
+		EVP_CIPHER_CTX_free(ctx);
+		Throw<std::runtime_error>("");
+	}
 
-    len += bytesWritten;
+	len += bytesWritten;
 
-    // finalize
-    bytesWritten = out.capacity () - len;
+	// finalize
+	bytesWritten = out.capacity() - len;
 
-    if (EVP_EncryptFinal_ex (ctx, & (out.front ()) + len, &bytesWritten) < 0)
-    {
-        EVP_CIPHER_CTX_free (ctx);
-        Throw<std::runtime_error> ("encryption error");
-    }
+	if (EVP_EncryptFinal_ex(ctx, &(out.front()) + len, &bytesWritten) < 0)
+	{
+		EVP_CIPHER_CTX_free(ctx);
+		Throw<std::runtime_error>("encryption error");
+	}
 
-    len += bytesWritten;
+	len += bytesWritten;
 
-    // Output contains: IV, encrypted HMAC, encrypted data, encrypted padding
-    assert (len <= (plaintext.size () + ECIES_HMAC_SIZE + (2 * ECIES_ENC_BLK_SIZE)));
-    assert (len >= (plaintext.size () + ECIES_HMAC_SIZE + ECIES_ENC_BLK_SIZE)); // IV, HMAC, data
-    out.resize (len);
-    EVP_CIPHER_CTX_free (ctx);
-    return out;
+	// Output contains: IV, encrypted HMAC, encrypted data, encrypted padding
+	assert(len <= (plaintext.size() + ECIES_HMAC_SIZE + (2 * ECIES_ENC_BLK_SIZE)));
+	assert(len >= (plaintext.size() + ECIES_HMAC_SIZE + ECIES_ENC_BLK_SIZE)); // IV, HMAC, data
+	out.resize(len);
+	EVP_CIPHER_CTX_free(ctx);
+	return out;
 }
 
-Blob decryptECIES (uint256 const& secretKey, Blob const& publicKey, Blob const& ciphertext)
+Blob decryptECIES(uint256 const& secretKey, Blob const& publicKey, Blob const& ciphertext)
 {
-    // minimum ciphertext = IV + HMAC + 1 block
-    if (ciphertext.size () < ((2 * ECIES_ENC_BLK_SIZE) + ECIES_HMAC_SIZE) )
-        Throw<std::runtime_error> ("ciphertext too short");
+	// minimum ciphertext = IV + HMAC + 1 block
+	if (ciphertext.size() < ((2 * ECIES_ENC_BLK_SIZE) + ECIES_HMAC_SIZE))
+		Throw<std::runtime_error>("ciphertext too short");
 
-    // extract IV
-    ECIES_ENC_IV_TYPE iv;
-    memcpy (iv.begin (), & (ciphertext.front ()), ECIES_ENC_BLK_SIZE);
+	// extract IV
+	ECIES_ENC_IV_TYPE iv;
+	memcpy(iv.begin(), &(ciphertext.front()), ECIES_ENC_BLK_SIZE);
 
-    // begin decrypting
-    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+	// begin decrypting
+	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 
-    ECIES_ENC_KEY_TYPE secret;
-    ECIES_HMAC_KEY_TYPE hmacKey;
-    getECIESSecret (secretKey, publicKey, secret, hmacKey);
+	ECIES_ENC_KEY_TYPE secret;
+	ECIES_HMAC_KEY_TYPE hmacKey;
+	getECIESSecret(secretKey, publicKey, secret, hmacKey);
 
-    if (EVP_DecryptInit_ex (ctx, ECIES_ENC_ALGO, nullptr, secret.begin (), iv.begin ()) != 1)
-    {
-        secret.zero ();
-        hmacKey.zero ();
-        EVP_CIPHER_CTX_free (ctx);
-        Throw<std::runtime_error> ("unable to init cipher");
-    }
+	if (EVP_DecryptInit_ex(ctx, ECIES_ENC_ALGO, nullptr, secret.begin(), iv.begin()) != 1)
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_free(ctx);
+		Throw<std::runtime_error>("unable to init cipher");
+	}
 
-    // decrypt mac
-    ECIES_HMAC_TYPE hmac;
-    int outlen = ECIES_HMAC_SIZE;
+	// decrypt mac
+	ECIES_HMAC_TYPE hmac;
+	int outlen = ECIES_HMAC_SIZE;
 
-    if ( (EVP_DecryptUpdate (ctx, hmac.begin (), &outlen,
-                             & (ciphertext.front ()) + ECIES_ENC_BLK_SIZE, ECIES_HMAC_SIZE + 1) != 1) || (outlen != ECIES_HMAC_SIZE) )
-    {
-        secret.zero ();
-        hmacKey.zero ();
-        EVP_CIPHER_CTX_free (ctx);
-        Throw<std::runtime_error> ("unable to extract hmac");
-    }
+	if ((EVP_DecryptUpdate(ctx, hmac.begin(), &outlen,
+		&(ciphertext.front()) + ECIES_ENC_BLK_SIZE, ECIES_HMAC_SIZE + 1) != 1) || (outlen != ECIES_HMAC_SIZE))
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_free(ctx);
+		Throw<std::runtime_error>("unable to extract hmac");
+	}
 
-    // decrypt plaintext (after IV and encrypted mac)
-    Blob plaintext (ciphertext.size () - ECIES_HMAC_SIZE - ECIES_ENC_BLK_SIZE);
-    outlen = plaintext.size ();
+	// decrypt plaintext (after IV and encrypted mac)
+	Blob plaintext(ciphertext.size() - ECIES_HMAC_SIZE - ECIES_ENC_BLK_SIZE);
+	outlen = plaintext.size();
 
-    if (EVP_DecryptUpdate (ctx, & (plaintext.front ()), &outlen,
-                           & (ciphertext.front ()) + ECIES_ENC_BLK_SIZE + ECIES_HMAC_SIZE + 1,
-                           ciphertext.size () - ECIES_ENC_BLK_SIZE - ECIES_HMAC_SIZE - 1) != 1)
-    {
-        secret.zero ();
-        hmacKey.zero ();
-        EVP_CIPHER_CTX_free (ctx);
-        Throw<std::runtime_error> ("unable to extract plaintext");
-    }
+	if (EVP_DecryptUpdate(ctx, &(plaintext.front()), &outlen,
+		&(ciphertext.front()) + ECIES_ENC_BLK_SIZE + ECIES_HMAC_SIZE + 1,
+		ciphertext.size() - ECIES_ENC_BLK_SIZE - ECIES_HMAC_SIZE - 1) != 1)
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_free(ctx);
+		Throw<std::runtime_error>("unable to extract plaintext");
+	}
 
-    // decrypt padding
-    int flen = 0;
+	// decrypt padding
+	int flen = 0;
 
-    if (EVP_DecryptFinal (ctx, & (plaintext.front ()) + outlen, &flen) != 1)
-    {
-        secret.zero ();
-        hmacKey.zero ();
-        EVP_CIPHER_CTX_free (ctx);
-        Throw<std::runtime_error> ("plaintext had bad padding");
-    }
+	if (EVP_DecryptFinal(ctx, &(plaintext.front()) + outlen, &flen) != 1)
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_free(ctx);
+		Throw<std::runtime_error>("plaintext had bad padding");
+	}
 
-    plaintext.resize (flen + outlen);
+	plaintext.resize(flen + outlen);
 
-    // verify integrity
-    if (hmac != makeHMAC (hmacKey, plaintext))
-    {
-        secret.zero ();
-        hmacKey.zero ();
-        EVP_CIPHER_CTX_free (ctx);
-        Throw<std::runtime_error> ("plaintext had bad hmac");
-    }
+	// verify integrity
+	if (hmac != makeHMAC(hmacKey, plaintext))
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_free(ctx);
+		Throw<std::runtime_error>("plaintext had bad hmac");
+	}
 
-    secret.zero ();
-    hmacKey.zero ();
+	secret.zero();
+	hmacKey.zero();
 
-    EVP_CIPHER_CTX_free (ctx);
-    return plaintext;
+	EVP_CIPHER_CTX_free(ctx);
+	return plaintext;
 }
+#endif
+
+#ifdef USE_LOW_OPENSSL
+static ECIES_HMAC_TYPE makeHMAC_SSL102(const ECIES_HMAC_KEY_TYPE& secret, Blob const& data)
+{
+	HMAC_CTX ctx;
+	HMAC_CTX_init(&ctx);
+
+	if (HMAC_Init_ex(&ctx, secret.begin(), ECIES_HMAC_KEY_SIZE, ECIES_HMAC_ALGO, nullptr) != 1)
+	{
+		HMAC_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("init hmac");
+	}
+
+	if (HMAC_Update(&ctx, &(data.front()), data.size()) != 1)
+	{
+		HMAC_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("update hmac");
+	}
+
+	ECIES_HMAC_TYPE ret;
+	unsigned int ml = ECIES_HMAC_SIZE;
+
+	if (HMAC_Final(&ctx, ret.begin(), &ml) != 1)
+	{
+		HMAC_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("finalize hmac");
+	}
+
+	assert(ml == ECIES_HMAC_SIZE);
+	HMAC_CTX_cleanup(&ctx);
+
+	return ret;
+}
+Blob encryptECIES_SSL102(uint256 const& secretKey, Blob const& publicKey, Blob const& plaintext)
+{
+	if (plaintext.size() == 0)
+		Throw<std::runtime_error>("plaintext is empty");
+	ECIES_ENC_IV_TYPE iv;
+	random_fill(iv.begin(), ECIES_ENC_BLK_SIZE);
+
+	ECIES_ENC_KEY_TYPE secret;
+	ECIES_HMAC_KEY_TYPE hmacKey;
+
+	getECIESSecret(secretKey, publicKey, secret, hmacKey);
+	ECIES_HMAC_TYPE hmac = makeHMAC_SSL102(hmacKey, plaintext);
+	hmacKey.zero();
+
+	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX_init(&ctx);
+
+	if (EVP_EncryptInit_ex(&ctx, ECIES_ENC_ALGO, nullptr, secret.begin(), iv.begin()) != 1)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		secret.zero();
+		Throw<std::runtime_error>("init cipher ctx");
+	}
+
+	secret.zero();
+
+	Blob out(plaintext.size() + ECIES_HMAC_SIZE + ECIES_ENC_KEY_SIZE + ECIES_ENC_BLK_SIZE, 0);
+	int len = 0, bytesWritten;
+
+	// output IV
+	memcpy(&(out.front()), iv.begin(), ECIES_ENC_BLK_SIZE);
+	len = ECIES_ENC_BLK_SIZE;
+
+	// Encrypt/output HMAC
+	bytesWritten = out.capacity() - len;
+	assert(bytesWritten > 0);
+
+	if (EVP_EncryptUpdate(&ctx, &(out.front()) + len, &bytesWritten, hmac.begin(), ECIES_HMAC_SIZE) < 0)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("");
+	}
+
+	len += bytesWritten;
+
+	// encrypt/output plaintext
+	bytesWritten = out.capacity() - len;
+	assert(bytesWritten > 0);
+
+	if (EVP_EncryptUpdate(&ctx, &(out.front()) + len, &bytesWritten, &(plaintext.front()), plaintext.size()) < 0)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("");
+	}
+
+	len += bytesWritten;
+
+	// finalize
+	bytesWritten = out.capacity() - len;
+
+	if (EVP_EncryptFinal_ex(&ctx, &(out.front()) + len, &bytesWritten) < 0)
+	{
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("encryption error");
+	}
+
+	len += bytesWritten;
+
+	// Output contains: IV, encrypted HMAC, encrypted data, encrypted padding
+	assert(len <= (plaintext.size() + ECIES_HMAC_SIZE + (2 * ECIES_ENC_BLK_SIZE)));
+	assert(len >= (plaintext.size() + ECIES_HMAC_SIZE + ECIES_ENC_BLK_SIZE)); // IV, HMAC, data
+	out.resize(len);
+	EVP_CIPHER_CTX_cleanup(&ctx);
+	return out;
+}
+
+Blob decryptECIES_SSL102(uint256 const& secretKey, Blob const& publicKey, Blob const& ciphertext)
+{
+	// minimum ciphertext = IV + HMAC + 1 block
+	if (ciphertext.size() < ((2 * ECIES_ENC_BLK_SIZE) + ECIES_HMAC_SIZE))
+		Throw<std::runtime_error>("ciphertext too short");
+
+	// extract IV
+	ECIES_ENC_IV_TYPE iv;
+	memcpy(iv.begin(), &(ciphertext.front()), ECIES_ENC_BLK_SIZE);
+
+	// begin decrypting
+	EVP_CIPHER_CTX ctx;
+	EVP_CIPHER_CTX_init(&ctx);
+
+	ECIES_ENC_KEY_TYPE secret;
+	ECIES_HMAC_KEY_TYPE hmacKey;
+	getECIESSecret(secretKey, publicKey, secret, hmacKey);
+
+	if (EVP_DecryptInit_ex(&ctx, ECIES_ENC_ALGO, nullptr, secret.begin(), iv.begin()) != 1)
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("unable to init cipher");
+	}
+
+	// decrypt mac
+	ECIES_HMAC_TYPE hmac;
+	int outlen = ECIES_HMAC_SIZE;
+
+	if ((EVP_DecryptUpdate(&ctx, hmac.begin(), &outlen,
+		&(ciphertext.front()) + ECIES_ENC_BLK_SIZE, ECIES_HMAC_SIZE + 1) != 1) || (outlen != ECIES_HMAC_SIZE))
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("unable to extract hmac");
+	}
+
+	// decrypt plaintext (after IV and encrypted mac)
+	Blob plaintext(ciphertext.size() - ECIES_HMAC_SIZE - ECIES_ENC_BLK_SIZE);
+	outlen = plaintext.size();
+
+	if (EVP_DecryptUpdate(&ctx, &(plaintext.front()), &outlen,
+		&(ciphertext.front()) + ECIES_ENC_BLK_SIZE + ECIES_HMAC_SIZE + 1,
+		ciphertext.size() - ECIES_ENC_BLK_SIZE - ECIES_HMAC_SIZE - 1) != 1)
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("unable to extract plaintext");
+	}
+
+	// decrypt padding
+	int flen = 0;
+
+	if (EVP_DecryptFinal(&ctx, &(plaintext.front()) + outlen, &flen) != 1)
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("plaintext had bad padding");
+	}
+
+	plaintext.resize(flen + outlen);
+
+	// verify integrity
+	if (hmac != makeHMAC_SSL102(hmacKey, plaintext))
+	{
+		secret.zero();
+		hmacKey.zero();
+		EVP_CIPHER_CTX_cleanup(&ctx);
+		Throw<std::runtime_error>("plaintext had bad hmac");
+	}
+
+	secret.zero();
+	hmacKey.zero();
+
+	EVP_CIPHER_CTX_cleanup(&ctx);
+	return plaintext;
+}
+#endif
 
 Blob encrypt(Blob const& passBlob, PublicKey const& publicKey)
 {
@@ -355,7 +548,11 @@ Blob encrypt(Blob const& passBlob, PublicKey const& publicKey)
 
         try
         {
-            vucCipherText = encryptECIES (secretKey, publickBlob, passBlob);
+#ifdef USE_LOW_OPENSSL
+			vucCipherText = encryptECIES_SSL102(secretKey, publickBlob, passBlob);
+#else
+			vucCipherText = encryptECIES(secretKey, publickBlob, passBlob);
+#endif
         }
         catch (std::exception const&)
         {
@@ -414,8 +611,12 @@ Blob decrypt(Blob const& cipherBlob, SecretKey const& secret_key)
         Blob vucPlainText;
         {
             try
-            {
-                vucPlainText = decryptECIES(secretKey, publickBlob, realCipher);
+			{
+#ifdef USE_LOW_OPENSSL
+				vucPlainText = decryptECIES_SSL102(secretKey, publickBlob, realCipher);
+#else
+				vucPlainText = decryptECIES(secretKey, publickBlob, realCipher);
+#endif
             }
             catch (std::exception const&)
             {

@@ -20,9 +20,9 @@
 #ifndef RIPPLE_APP_PATHS_CREDIT_H_INCLUDED
 #define RIPPLE_APP_PATHS_CREDIT_H_INCLUDED
 
+#include <ripple/basics/IOUAmount.h>
 #include <ripple/ledger/View.h>
 #include <ripple/protocol/STAmount.h>
-#include <ripple/protocol/IOUAmount.h>
 
 namespace ripple {
 
@@ -34,14 +34,15 @@ namespace ripple {
     @return The maximum amount that can be held.
 */
 /** @{ */
-STAmount creditLimit (
+STAmount
+creditLimit(
     ReadView const& view,
     AccountID const& account,
     AccountID const& issuer,
     Currency const& currency);
 
 IOUAmount
-creditLimit2 (
+creditLimit2(
     ReadView const& v,
     AccountID const& acc,
     AccountID const& iss,
@@ -55,13 +56,14 @@ creditLimit2 (
     @param currency the IOU to check.
 */
 /** @{ */
-STAmount creditBalance (
+STAmount
+creditBalance(
     ReadView const& view,
     AccountID const& account,
     AccountID const& issuer,
     Currency const& currency);
 /** @} */
 
-} // ripple
+}  // namespace ripple
 
 #endif

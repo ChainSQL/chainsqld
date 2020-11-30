@@ -3596,11 +3596,11 @@ DatabaseCon* TxStore::getDatabaseCon() {
 	return databasecon_;
 }
 
-Json::Value TxStore::txHistory(RPC::Context& context) {
+Json::Value TxStore::txHistory(RPC::JsonContext& context) {
     return txHistory(context.params[jss::tx_json]);
 }
 
-std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory2d(RPC::Context& context)
+std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory2d(RPC::JsonContext& context)
 {
 	return txHistory2d(context.params[jss::tx_json]);
 }

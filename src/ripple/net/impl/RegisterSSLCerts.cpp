@@ -18,6 +18,7 @@
 //==============================================================================
 #include <ripple/net/RegisterSSLCerts.h>
 #include <boost/predef.h>
+
 #if BOOST_OS_WINDOWS
 #include <boost/asio/ssl/error.hpp>
 #include <boost/system/error_code.hpp>
@@ -100,9 +101,21 @@ registerSSLCerts(
     SSL_CTX_set_cert_store(ctx.native_handle(), store.release());
 
 #else
-
     ctx.set_default_verify_paths(ec);
 #endif
 }
 
 }  // namespace ripple
+
+// There is a very unpleasant interaction between <wincrypt> and
+// openssl x509 types (namely the former has macros that stomp
+// on the latter), these undefs allow this TU to be safely used in
+// unity builds without messing up subsequent TUs.
+#if BOOST_OS_WINDOWS
+#undef X509_NAME
+#undef X509_EXTENSIONS
+#undef X509_CERT_PAIR
+#undef PKCS7_ISSUER_AND_SERIAL
+#undef OCSP_REQUEST
+#undef OCSP_RESPONSE
+#endif

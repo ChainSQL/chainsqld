@@ -29,8 +29,6 @@ template <class Mutex, class CondVar>
 class basic_semaphore
 {
 private:
-    using scoped_lock = std::unique_lock <Mutex>;
-
     Mutex m_mutex;
     CondVar m_cond;
     std::size_t m_count;
@@ -41,34 +39,36 @@ public:
     /** Create the semaphore, with an optional initial count.
         If unspecified, the initial count is zero.
     */
-    explicit basic_semaphore (size_type count = 0)
-        : m_count (count)
+    explicit basic_semaphore(size_type count = 0) : m_count(count)
     {
     }
 
     /** Increment the count and unblock one waiting thread. */
-    void notify ()
+    void
+    notify()
     {
-        scoped_lock lock (m_mutex);
+        std::lock_guard lock{m_mutex};
         ++m_count;
-        m_cond.notify_one ();
+        m_cond.notify_one();
     }
 
     /** Block until notify is called. */
-    void wait ()
+    void
+    wait()
     {
-        scoped_lock lock (m_mutex);
+        std::unique_lock lock{m_mutex};
         while (m_count == 0)
-            m_cond.wait (lock);
+            m_cond.wait(lock);
         --m_count;
     }
 
     /** Perform a non-blocking wait.
         @return `true` If the wait would be satisfied.
     */
-    bool try_wait ()
+    bool
+    try_wait()
     {
-        scoped_lock lock (m_mutex);
+        std::lock_guard lock{m_mutex};
         if (m_count == 0)
             return false;
         --m_count;
@@ -76,9 +76,8 @@ public:
     }
 };
 
-using semaphore = basic_semaphore <std::mutex, std::condition_variable>;
+using semaphore = basic_semaphore<std::mutex, std::condition_variable>;
 
-} // ripple
+}  // namespace ripple
 
 #endif
-

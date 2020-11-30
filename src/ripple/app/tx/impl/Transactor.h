@@ -22,8 +22,9 @@
 
 #include <ripple/app/tx/applySteps.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
-#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 #include <ripple/beast/utility/Journal.h>
+#include <peersafe/schema/Schema.h>
 #include <boost/optional.hpp>
 
 namespace ripple {
@@ -36,13 +37,17 @@ public:
     STTx const& tx;
     Rules const rules;
     ApplyFlags flags;
-    beast::Journal j;
+    beast::Journal const j;
 
-    PreflightContext(Schema& app_, STTx const& tx_,
-        Rules const& rules_, ApplyFlags flags_,
-            beast::Journal j_);
+    PreflightContext(
+        Schema& app_,
+        STTx const& tx_,
+        Rules const& rules_,
+        ApplyFlags flags_,
+        beast::Journal j_);
 
-    PreflightContext& operator=(PreflightContext const&) = delete;
+    PreflightContext&
+    operator=(PreflightContext const&) = delete;
 };
 
 /** State information when determining if a tx is likely to claim a fee. */
@@ -54,12 +59,15 @@ public:
     TER preflightResult;
     STTx const& tx;
     ApplyFlags flags;
-    beast::Journal j;
+    beast::Journal const j;
 
-    PreclaimContext(Schema& app_, ReadView const& view_,
-        TER preflightResult_, STTx const& tx_,
-            ApplyFlags flags_,
-            beast::Journal j_ = beast::Journal{beast::Journal::getNullSink()})
+    PreclaimContext(
+        Schema& app_,
+        ReadView const& view_,
+        TER preflightResult_,
+        STTx const& tx_,
+        ApplyFlags flags_,
+        beast::Journal j_ = beast::Journal{beast::Journal::getNullSink()})
         : app(app_)
         , view(view_)
         , preflightResult(preflightResult_)
@@ -69,7 +77,8 @@ public:
     {
     }
 
-    PreclaimContext& operator=(PreclaimContext const&) = delete;
+    PreclaimContext&
+    operator=(PreclaimContext const&) = delete;
 };
 
 struct TxConsequences;
@@ -79,16 +88,17 @@ class Transactor
 {
 protected:
     ApplyContext& ctx_;
-    beast::Journal j_;
+    beast::Journal const j_;
 
-    AccountID     account_;
-    ZXCAmount     mPriorBalance;  // Balance before fees.
-    ZXCAmount     mSourceBalance; // Balance after fees.
+    AccountID account_;
+    ZXCAmount mPriorBalance;   // Balance before fees.
+    ZXCAmount mSourceBalance;  // Balance after fees.
 
-	std::string	  mDetailMsg;
+    std::string	  mDetailMsg;
     virtual ~Transactor() = default;
-    Transactor (Transactor const&) = delete;
-    Transactor& operator= (Transactor const&) = delete;
+    Transactor(Transactor const&) = delete;
+    Transactor&
+    operator=(Transactor const&) = delete;
 
 public:
     /** Process the transaction. */
@@ -117,51 +127,40 @@ public:
     comes with it.
     */
 
-    static
-    NotTEC
-    checkSeq (PreclaimContext const& ctx);
+    static NotTEC
+    checkSeq(PreclaimContext const& ctx);
 
-	static
-	NotTEC
+	static NotTEC
 	checkSeq2(PreclaimContext const& ctx);
 
-    static
-	NotTEC
-    checkFee (PreclaimContext const& ctx, std::uint64_t baseFee);
+    static TER
+    checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee);
 
-    static
-    NotTEC
-    checkSign (PreclaimContext const& ctx);
+    static NotTEC
+    checkSign(PreclaimContext const& ctx);
 
     static 
     void
     setSeq(OpenView &view, ApplyFlags &flags, STTx const& tx);
 
     // Returns the fee in fee units, not scaled for load.
-    static
-    std::uint64_t
-    calculateBaseFee (
-        ReadView const& view,
-        STTx const& tx);
+    static FeeUnit64
+    calculateBaseFee(ReadView const& view, STTx const& tx);
 
-    static
-    bool
+    static bool
     affectsSubsequentTransactionAuth(STTx const& tx)
     {
         return false;
     }
 
-    static
-    ZXCAmount
+    static ZXCAmount
     calculateFeePaid(STTx const& tx);
 
-    static
-    ZXCAmount
+    static ZXCAmount
     calculateMaxSpend(STTx const& tx);
 
-    static
-    TER
-    preclaim(PreclaimContext const &ctx)
+    static TER
+    preclaim(PreclaimContext const& ctx)
     {
         // Most transactors do nothing
         // after checkSeq/Fee/Sign.
@@ -180,12 +179,29 @@ protected:
 	//pre-apply for chainsql
 	TER preChainsql();
 
-    explicit
-    Transactor (ApplyContext& ctx);
+    explicit Transactor(ApplyContext& ctx);
 
-	virtual void preCompute();
+    virtual void
+    preCompute();
 
-    virtual TER doApply () = 0;
+    virtual TER
+    doApply() = 0;
+
+    /** Compute the minimum fee required to process a transaction
+        with a given baseFee based on the current server load.
+
+        @param app The application hosting the server
+        @param baseFee The base fee of a candidate transaction
+            @see ripple::calculateBaseFee
+        @param fees Fee settings from the current ledger
+        @param flags Transaction processing fees
+     */
+    static ZXCAmount
+    minimumFee(
+		Schema& app,
+        FeeUnit64 baseFee,
+        Fees const& fees,
+        ApplyFlags flags);
 
     /** Compute the minimum fee required to process a transaction
         with a given baseFee based on the current server load.
@@ -202,13 +218,19 @@ protected:
         Fees const& fees, ApplyFlags flags);
 
 private:
-    ZXCAmount reset(ZXCAmount fee);
+    ZXCAmount
+    reset(ZXCAmount fee);
 
-    void setSeq ();
-    TER payFee ();
-    static NotTEC checkSingleSign (PreclaimContext const& ctx);
-    static NotTEC checkMultiSign (PreclaimContext const& ctx);
-	void checkAddChainIDSle();
+    void
+    setSeq();
+    TER
+    payFee();
+    static NotTEC
+    checkSingleSign(PreclaimContext const& ctx);
+    static NotTEC
+    checkMultiSign(PreclaimContext const& ctx);
+
+    void checkAddChainIDSle();
 };
 
 /** Performs early sanity checks on the txid */
@@ -217,12 +239,12 @@ preflight0(PreflightContext const& ctx);
 
 /** Performs early sanity checks on the account and fee fields */
 NotTEC
-preflight1 (PreflightContext const& ctx);
+preflight1(PreflightContext const& ctx);
 
 /** Checks whether the signature appears valid */
 NotTEC
-preflight2 (PreflightContext const& ctx);
+preflight2(PreflightContext const& ctx);
 
-}
+}  // namespace ripple
 
 #endif

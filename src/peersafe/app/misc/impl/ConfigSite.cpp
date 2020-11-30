@@ -24,7 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/basics/Slice.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/jss.h>
-#include <beast/core/detail/base64.hpp>
+#include <ripple/basics/base64.h>
 #include <boost/algorithm/clamp.hpp>
 #include <boost/regex.hpp>
 #include <algorithm>
@@ -89,11 +89,13 @@ namespace ripple {
 
 
 	ConfigSite::ConfigSite(
+		Schema& app,
 		boost::asio::io_service& ios,
 		ManifestCache& validatorManifests,
 		beast::Journal j,
 		std::chrono::seconds timeout)
-		: ios_(ios)
+		: app_(app)
+		, ios_(ios)
 		, timer_(ios_)
 		, fetching_(false)
 		, pending_(false)
@@ -142,14 +144,14 @@ namespace ripple {
 
 			auto const ret = strUnHex(key);
 
-			if (!ret.second || !ret.first.size())
+			if (!ret || !ret->size())
 			{
 				JLOG(j_.error()) <<
 					"Invalid validator list publisher key: " << key;
 				return false;
 			}
 
-			auto id = PublicKey(Slice{ ret.first.data(), ret.first.size() });
+			auto id = PublicKey(Slice{ ret->data(),ret->size() });
 
 			if (validatorManifests_.revoked(id))
 			{
@@ -280,7 +282,7 @@ namespace ripple {
 				" took too long";
 		}
 
-		std::lock_guard<std::mutex> lock_state{ state_mutex_ };
+		std::lock_guard lock_state{ state_mutex_ };
 		if (auto sp = work_.lock())
 			sp->cancel();
 	}
@@ -605,6 +607,7 @@ namespace ripple {
 				std::to_string(*resource->pUrl.port),
 				ios_,
 				j_,
+				app_.config(),
 				onFetch);
 		}
 		else if (resource->pUrl.scheme == "http")
@@ -688,7 +691,7 @@ namespace ripple {
 		Json::Value jrr(Json::objectValue);
 		Json::Value& jSites = (jrr[jss::validator_sites] = Json::arrayValue);
 		{
-			std::lock_guard<std::mutex> lock{ sites_mutex_ };
+			std::lock_guard lock{ sites_mutex_ };
 			for (Site const& site : sites_)
 			{
 				Json::Value& v = jSites.append(Json::objectValue);
@@ -844,7 +847,7 @@ namespace ripple {
 	//	Json::Value jrr(Json::objectValue);
 	//	Json::Value& jSites = (jrr[jss::validator_sites] = Json::arrayValue);
 	//	{
-	//		std::lock_guard<std::mutex> lock{ sites_mutex_ };
+	//		std::lock_guard lock{ sites_mutex_ };
 	//		for (Site const& site : sites_)
 	//		{
 	//			Json::Value& v = jSites.append(Json::objectValue);

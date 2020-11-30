@@ -39,18 +39,14 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 namespace ripple {
 	template<class T>
 	static
-		std::pair<TER, std::uint64_t>
+		TER
 		invoke_preclaim_direct(PreclaimContext const& ctx)
 	{
-		// If the transactor requires a valid account and the transaction doesn't
-		// list one, preflight will have already a flagged a failure.
-		auto const baseFee = T::calculateBaseFee(ctx.view, ctx.tx);
-
-		return{ T::preclaim(ctx), baseFee };
+		return T::preclaim(ctx);
 	}
 
 	static
-		std::pair<TER, std::uint64_t>
+		TER
 		invoke_preclaim_direct(PreclaimContext const& ctx)
 	{
 		switch (ctx.tx.getTxnType())
@@ -63,7 +59,7 @@ namespace ripple {
 		case ttTRUST_SET:		return invoke_preclaim_direct<SetTrust>(ctx);
 		default:
 			assert(false);
-			return{ temUNKNOWN, 0 };
+			return temUNKNOWN;
 		}
 	}
 	PreclaimResult
@@ -89,7 +85,7 @@ namespace ripple {
 		{
 			if (ctx->preflightResult != tesSUCCESS)
 				return { *ctx, ctx->preflightResult };
-			return { *ctx, invoke_preclaim_direct(*ctx).first };
+			return { *ctx, invoke_preclaim_direct(*ctx) };
 		}
 		catch (std::exception const& e)
 		{

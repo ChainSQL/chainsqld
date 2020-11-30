@@ -51,6 +51,7 @@ namespace ripple {
 
 TableSyncItem::~TableSyncItem()
 {
+    StopSync(true);
 }
 
 TableSyncItem::TableSyncItem(Schema& app, beast::Journal journal, Config& cfg, SyncTargetType eTargetType)
@@ -58,8 +59,6 @@ TableSyncItem::TableSyncItem(Schema& app, beast::Journal journal, Config& cfg, S
     ,journal_(journal)
     ,cfg_(cfg)
 	,eSyncTargetType_(eTargetType)
-    ,operateSqlEvent(true,true)
-    ,readDataEvent(true, true)
 {   
     eState_               = SYNC_INIT;
     bOperateSQL_          = false;
@@ -153,7 +152,7 @@ void TableSyncItem::ReInit()
 {    
     ReSetContex();
     {
-        std::lock_guard<std::mutex> lock(mutexInfo_);
+        std::lock_guard lock(mutexInfo_);
         eState_ = SYNC_REINIT;
     }
 }
@@ -216,7 +215,7 @@ bool TableSyncItem::getAutoSync()
 void TableSyncItem::ReSetContex()
 {
     {
-        std::lock_guard<std::mutex> lock(mutexInfo_);
+        std::lock_guard lock(mutexInfo_);
         u32SeqLedger_ = uTxSeq_ = 0;
         uHash_.zero();
         uTxHash_.zero();
@@ -224,15 +223,15 @@ void TableSyncItem::ReSetContex()
     }
 
     {
-        std::lock_guard<std::mutex> lock(mutexBlockData_);
+        std::lock_guard lock(mutexBlockData_);
         aBlockData_.clear();
     }
     {
-        std::lock_guard<std::mutex> lock(mutexWholeData_);
+        std::lock_guard lock(mutexWholeData_);
         aWholeData_.clear();
     }
     {
-        std::lock_guard<std::mutex> lock(mutexWaitCheckQueue_);
+        std::lock_guard lock(mutexWaitCheckQueue_);
         aWaitCheckData_.clear();
     }
 }
@@ -240,7 +239,7 @@ void TableSyncItem::ReSetContex()
 void TableSyncItem::ReSetContexAfterDrop()
 {
 	{
-		std::lock_guard<std::mutex> lock(mutexInfo_);
+		std::lock_guard lock(mutexInfo_);
 		sTableNameInDB_.clear();
 		eState_ = SYNC_DELETING;
 	}
@@ -251,6 +250,10 @@ void TableSyncItem::ReSetContexAfterDrop()
 void TableSyncItem::SetIsDataFromLocal(bool bLocal)
 {
     bGetLocalData_ = bLocal;
+    if(!bLocal)
+    {
+        cvReadData_.notify_all();
+    }
 }
 void TableSyncItem::PushDataByOrder(std::list <sqldata_type> &aData, sqldata_type &sqlData)
 {
@@ -288,7 +291,7 @@ void TableSyncItem::PushDataByOrder(std::list <sqldata_type> &aData, sqldata_typ
 
 void TableSyncItem::DealWithWaitCheckQueue(std::function<bool (sqldata_type const&)> f)
 {
-    std::lock_guard<std::mutex> lock(mutexWaitCheckQueue_);
+    std::lock_guard lock(mutexWaitCheckQueue_);
     for (auto it = aWaitCheckData_.begin(); it != aWaitCheckData_.end(); it++)
     {
         f(*it);
@@ -298,19 +301,19 @@ void TableSyncItem::DealWithWaitCheckQueue(std::function<bool (sqldata_type cons
 
 void TableSyncItem::PushDataToWaitCheckQueue(sqldata_type &sqlData)
 {
-    std::lock_guard<std::mutex> lock(mutexWaitCheckQueue_);
+    std::lock_guard lock(mutexWaitCheckQueue_);
     PushDataByOrder(aWaitCheckData_, sqlData);
 }
 void TableSyncItem::PushDataToBlockDataQueue(sqldata_type &sqlData)
 {
-    std::lock_guard<std::mutex> lock(mutexBlockData_);
+    std::lock_guard lock(mutexBlockData_);
     
     PushDataByOrder(aBlockData_, sqlData);
 }
 
 bool TableSyncItem::GetRightRequestRange(TableSyncItem::BaseInfo &stRange)
 {
-    std::lock_guard<std::mutex> lock(mutexBlockData_);
+    std::lock_guard lock(mutexBlockData_);
 
     if (aBlockData_.size() > 0)
     {
@@ -380,8 +383,8 @@ bool TableSyncItem::GetRightRequestRange(TableSyncItem::BaseInfo &stRange)
 
 bool TableSyncItem::TransBlock2Whole(LedgerIndex iSeq, uint256)
 {
-    std::lock_guard<std::mutex> lock1(mutexBlockData_);
-    std::lock_guard<std::mutex> lock2(mutexWholeData_);
+    std::lock_guard lock1(mutexBlockData_);
+    std::lock_guard lock2(mutexWholeData_);
     auto iBegin = iSeq;    
 
     bool bHasStop = false;
@@ -485,27 +488,27 @@ std::mutex &TableSyncItem::WriteDataMutex()
 
 void TableSyncItem::GetSyncLedger(LedgerIndex &iSeq, uint256 &uHash)
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     iSeq = u32SeqLedger_;
     uHash = uHash_;
 }
 
 void TableSyncItem::GetSyncTxLedger(LedgerIndex &iSeq, uint256 &uHash)
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     iSeq = uTxSeq_;
     uHash = uTxHash_;
 }
 
 TableSyncItem::TableSyncState TableSyncItem::GetSyncState()
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     return eState_;
 }
 
 void TableSyncItem::GetBaseInfo(BaseInfo &stInfo)
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     stInfo.accountID                = accountID_;
 
     stInfo.sTableNameInDB           = sTableNameInDB_;
@@ -526,14 +529,14 @@ void TableSyncItem::GetBaseInfo(BaseInfo &stInfo)
 
 void TableSyncItem::SetSyncLedger(LedgerIndex iSeq, uint256 uHash)
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     u32SeqLedger_ = iSeq;
     uHash_ = uHash;
 }
 
 void TableSyncItem::SetSyncTxLedger(LedgerIndex iSeq, uint256 uHash)
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
       
     uTxSeq_ = iSeq;
     uTxHash_ = uHash;
@@ -541,7 +544,7 @@ void TableSyncItem::SetSyncTxLedger(LedgerIndex iSeq, uint256 uHash)
 
 void TableSyncItem::SetSyncState(TableSyncState eState)
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
 	if (eState_ == SYNC_DELETING) {
 		if ((eState == SYNC_INIT || eState == SYNC_REMOVE)) {
 			eState_ = eState;
@@ -554,13 +557,13 @@ void TableSyncItem::SetSyncState(TableSyncState eState)
 
 void TableSyncItem::SetDeleted(bool deleted)
 {
-	std::lock_guard<std::mutex> lock(mutexInfo_);
+	std::lock_guard lock(mutexInfo_);
 	deleted_ = deleted;
 }
 
 void TableSyncItem::SetLedgerState(LedgerSyncState lState)
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     lState_ = lState;
 }
 
@@ -641,12 +644,12 @@ void TableSyncItem::SendTableMessage(Message::pointer const& m)
 
 TableSyncItem::LedgerSyncState TableSyncItem::GetCheckLedgerState()
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     return lState_;
 }
 void TableSyncItem::SetTableName(std::string sName)
 {
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     sTableName_ = sName;
 }
 std::string TableSyncItem::TableNameInDB()
@@ -675,7 +678,6 @@ void TableSyncItem::TryOperateSQL()
 
     bOperateSQL_ = true;
 
-    operateSqlEvent.reset();
     app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread(); });
 }
 
@@ -764,8 +766,9 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 			if (bConfidential)
 			{
 				confidential_ = true;
+				auto ec{ rpcSUCCESS };
 				std::shared_ptr<STTx const> pTx = nullptr;
-				auto pTransaction = app_.getMasterTransaction().fetch(table.getFieldH256(sfCreatedTxnHash),true);
+				auto pTransaction = app_.getMasterTransaction().fetch(table.getFieldH256(sfCreatedTxnHash),ec);
 				if (pTransaction)
 				{
 					pTx = pTransaction->getSTransaction();
@@ -1034,13 +1037,13 @@ void TableSyncItem::InsertPressData(const STTx& tx, uint32_t ledger_seq, uint32_
 		{
 			LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
 			std::string sql = "INSERT INTO " + pressRealName + " (ledger_seq, submit_time, ledger_time,db_time) VALUES('";
-			sql += to_string(ledger_seq);
+			sql += std::to_string(ledger_seq);
 			sql += "','";
-			sql += to_string(submit_time);
+			sql += std::to_string(submit_time);
 			sql += "','";
-			sql += to_string(ledger_time);
+			sql += std::to_string(ledger_time);
 			sql += "','";
-			sql += to_string(db_time);
+			sql += std::to_string(db_time);
 			sql += "');";
 
 			soci::statement st = (sql_session->prepare << sql);
@@ -1061,7 +1064,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
     {
         std::string LedgerHash = iter->ledgerhash();
         std::string LedgerCheckHash = iter->ledgercheckhash();
-        std::string LedgerSeq = to_string(iter->ledgerseq());
+        std::string LedgerSeq = std::to_string(iter->ledgerseq());
         std::string PreviousCommit;
 
         //check for jump one seq, check for deadline time and deadline seq
@@ -1186,7 +1189,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 		auto ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_,
             LedgerCheckHash, LedgerSeq,
             LedgerHash, LedgerSeq,
-            to_string(uTxDBUpdateHash_), to_string(iter->closetime()), PreviousCommit);
+            to_string(uTxDBUpdateHash_), std::to_string(iter->closetime()), PreviousCommit);
 		if (ret == soci_exception) {
 			SetSyncState(SYNC_STOP);
 		}
@@ -1197,6 +1200,13 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
 	return true;
 }
+
+int TableSyncItem::GetWholeDataSize()
+{
+    std::lock_guard lock(mutexWholeData_);
+    return aWholeData_.size();
+}
+
 void TableSyncItem::OperateSQLThread()
 {
     //check the connection is ok
@@ -1210,31 +1220,21 @@ void TableSyncItem::OperateSQLThread()
 
     std::vector<protocol::TMTableData> vec_tmdata;
     std::list <sqldata_type> list_tmdata;
+    while(GetWholeDataSize() >0 && GetSyncState() != SYNC_STOP)
     {
-        std::lock_guard<std::mutex> lock(mutexWholeData_);
-        for (std::list<sqldata_type>::iterator iter = aWholeData_.begin(); iter != aWholeData_.end(); ++iter)
         {
-            vec_tmdata.push_back((*iter).second);
+            std::lock_guard lock(mutexWholeData_);
+            for (std::list<sqldata_type>::iterator iter = aWholeData_.begin(); iter != aWholeData_.end(); ++iter)
+            {
+                vec_tmdata.push_back((*iter).second);
+            }
+            aWholeData_.clear();
         }
-        aWholeData_.clear();
+        DealWithEveryLedgerData(vec_tmdata);
     }
-
-	DealWithEveryLedgerData(vec_tmdata);
 
     bOperateSQL_ = false;
-    operateSqlEvent.signal();
-
-    {
-        std::lock_guard<std::mutex> lock(mutexWholeData_);
-        if (aWholeData_.size() > 0)
-        {
-            bOperateSQL_ = true;
-
-            operateSqlEvent.reset();
-            app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread();
-            });
-        }
-    }
+    cvOperateSql_.notify_all();
 }
 bool TableSyncItem::isJumpThisTx(uint256 txid)
 {
@@ -1291,7 +1291,7 @@ TableSyncItem::CheckConditionState TableSyncItem::CondFilter(uint32_t time, uint
 
 void TableSyncItem::PushDataToWholeDataQueue(sqldata_type &sqlData)
 {
-    std::lock_guard<std::mutex> lock(mutexWholeData_);
+    std::lock_guard lock(mutexWholeData_);
     aWholeData_.push_back(sqlData);        
     
     if (sqlData.second.txnodes().size() > 0)
@@ -1318,7 +1318,7 @@ bool TableSyncItem::GetIsChange()
 void TableSyncItem::PushDataToWholeDataQueue(std::list <sqldata_type>  &aSqlData)
 {
     if (aSqlData.size() <= 0)  return;
-    std::lock_guard<std::mutex> lock(mutexWholeData_);
+    std::lock_guard lock(mutexWholeData_);
     for (std::list<sqldata_type>::iterator it = aSqlData.begin(); it != aSqlData.end(); it++)
     {
         aWholeData_.push_back(*it);
@@ -1335,54 +1335,38 @@ void TableSyncItem::PushDataToWholeDataQueue(std::list <sqldata_type>  &aSqlData
 
 void TableSyncItem::SetPeer(std::shared_ptr<Peer> peer)
 { 
-    std::lock_guard<std::mutex> lock(mutexInfo_);
+    std::lock_guard lock(mutexInfo_);
     bIsChange_ = false;
     uPeerAddr_ = peer->getRemoteAddress();
 }
 
-void TableSyncItem::StartLocalLedgerRead()
+bool TableSyncItem::WaitChildThread(std::condition_variable &cv, bool &bCheck, bool bForce)
 {
-    readDataEvent.reset();
-}
-void TableSyncItem::StopLocalLedgerRead()
-{
-    readDataEvent.signal();
+    bool bRet = false;
+    std::unique_lock<std::mutex> lock(mutexWaitStop_);
+    if (bForce)
+    {
+        bRet = cv.wait_for(lock, 2000ms, [&bCheck](){return !bCheck; });
+    }
+    else
+    {
+        cv.wait(lock, [bCheck](){return !bCheck; });
+    }
+    return true;
 }
 
-bool TableSyncItem::StopSync()
+bool TableSyncItem::StopSync(bool bForce)
 {
     SetSyncState(SYNC_STOP);
 
-    bool bRet = false;
-    bRet = readDataEvent.wait(1000);
-    if (!bRet)
+    if(WaitChildThread(cvReadData_, bGetLocalData_, bForce) && WaitChildThread(cvOperateSql_, bOperateSQL_, bForce)) 
     {
-        SetSyncState(SYNC_BLOCK_STOP);
-        return false;        
+        return true;
     }
-
-    bRet = operateSqlEvent.wait(2000);
-    if (!bRet)
+    else
     {
         SetSyncState(SYNC_BLOCK_STOP);
         return false;
-    }
-
-    int iSize = 0;
-    {
-        std::lock_guard<std::mutex> lock(mutexWholeData_);
-        aWholeData_.size();
-    }
-    iSize = aWholeData_.size();
-    if (iSize > 0)
-    {
-        TryOperateSQL();
-        bRet = operateSqlEvent.wait(2000);
-        if (!bRet)
-        {
-            SetSyncState(SYNC_BLOCK_STOP);
-            return false;
-        }
     }
 
     return true;
