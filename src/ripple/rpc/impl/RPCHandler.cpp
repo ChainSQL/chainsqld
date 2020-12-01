@@ -181,6 +181,11 @@ error_code_i fillHandler (Context& context,
             return rpcNO_CURRENT;
         }
 
+        if (context.app.getOPs().getServerStatus() != "normal")
+        {
+            return rpcNO_CURRENT;
+        }
+
         auto const cID = context.ledgerMaster.getCurrentLedgerIndex ();
         auto const vID = context.ledgerMaster.getValidLedgerIndex ();
 

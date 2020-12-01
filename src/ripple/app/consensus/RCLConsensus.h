@@ -307,7 +307,7 @@ class RCLConsensus
 			std::uint64_t const& view,
 			ConsensusMode mode);
 
-		void onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView);
+		void onViewChanged(bool bWaitingInit, Ledger_t previousLedger);
         /** Process the accepted ledger.
 
             @param result The result of consensus

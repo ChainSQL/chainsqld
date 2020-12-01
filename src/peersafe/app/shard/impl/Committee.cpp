@@ -114,6 +114,7 @@ std::int32_t Committee::getPubkeyIndex(PublicKey const& pubkey)
 
 void Committee::onViewChange(
     ViewChangeManager& vcManager,
+    ViewChange::GenReason reason,
     uint64 view,
     LedgerIndex preSeq,
     LedgerHash preHash)
@@ -121,7 +122,7 @@ void Committee::onViewChange(
     mCachedMLs.clear();
 
     std::shared_ptr<protocol::TMCommitteeViewChange> const& sm =
-        vcManager.makeCommitteeViewChange(view, preSeq, preHash);
+        vcManager.makeCommitteeViewChange(reason, view, preSeq, preHash);
 
     auto const m = std::make_shared<Message>(
         *sm, protocol::mtCOMMITTEEVIEWCHANGE);
@@ -385,8 +386,10 @@ bool Committee::checkAccept()
             << "Advancing accepted ledger to " << mFinalLedger->seq()
             << " with >= " << mValidators->quorum() << " validations";
 
-        if (submitFinalLedger() &&
-            app_.getLedgerMaster().getClosedLedger()->seq() == mFinalLedger->seq())
+        submitFinalLedger();
+
+        if (app_.getLedgerMaster().getClosedLedger()->seq() == mFinalLedger->seq()
+            && mSubmitCompleted)
         {
             app_.getTxPool().removeTxs(mMicroLedger->txHashes(), mFinalLedger->seq(), mFinalLedger->parentHash());
             app_.getPreTxPool().removeTxs(mMicroLedger->txHashes(), mFinalLedger->seq(), mFinalLedger->parentHash());
@@ -402,12 +405,12 @@ bool Committee::checkAccept()
     return false;
 }
 
-bool Committee::submitFinalLedger()
+void Committee::submitFinalLedger()
 {
     if (!app_.getHashRouter().shouldRelay(mFinalLedger->ledgerHash()))
     {
         JLOG(journal_.info()) << "Repeat submit finalledger, suppressed";
-        return false;
+        return;
     }
 
     auto const& vals = app_.getValidations().getTrustedForLedger2(mFinalLedger->hash());
@@ -440,7 +443,9 @@ bool Committee::submitFinalLedger()
         mShardManager.lookup().distributeMessage(m);
     }
 
-    return true;
+    mSubmitCompleted = true;
+
+    return;
 }
 
 Overlay::PeerSequence Committee::getActivePeers(uint32 /* unused */)
@@ -813,6 +818,31 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerInfos> const& m
     {
         trigger(setID);
     });
+}
+
+bool Committee::checkNetQuorum()
+{
+    int numPeers = 0;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+        for (auto w : mPeers)
+        {
+            if (auto p = w.lock())
+            {
+                numPeers++;
+            }
+        }
+    }
+
+    if (numPeers + 1 < quorum())
+    {
+        JLOG(journal_.warn())
+            << "Committee node count (" << numPeers + 1 << ") "
+            << "has fallen below quorum (" << quorum() << ").";
+        return false;
+    }
+
+    return true;
 }
 
 }

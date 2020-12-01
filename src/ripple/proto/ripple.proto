@@ -401,11 +401,16 @@ message TMPing
 
 message TMViewChange
 {
-	required uint32 	previousLedgerSeq	= 1; 	// Current ledger sequence
-	required bytes 		previousLedgerHash  = 2;    // the hash of the ledger we are proposing
-    required bytes 		nodePubKey          = 3;
-    required bytes 		signature           = 4;
-	required uint64 	toView				= 5;
+    enum genReason {
+        grTIMEOUT       = 1;
+        grEMPTYBLOCK    = 2;
+    }
+    required genReason  reason              = 1;     
+	required uint32 	previousLedgerSeq	= 2; 	// Current ledger sequence
+	required bytes 		previousLedgerHash  = 3;    // the hash of the ledger we are proposing
+    required bytes 		nodePubKey          = 4;
+    required bytes 		signature           = 5;
+	required uint64 	toView				= 6;
 }
 
 //---------------------------------------------------------------------------------
@@ -501,9 +506,14 @@ message TMTransactions
 
 message TMCommitteeViewChange
 {
-    required uint32     previousLedgerSeq   = 1;
-    required bytes      previousLedgerHash  = 2;
-    required uint64     toView              = 3;
+    enum genReason {
+        grTIMEOUT       = 1;
+        grEMPTYBLOCK    = 2;
+    }
+    required genReason  reason              = 1;
+    required uint32     previousLedgerSeq   = 2;
+    required bytes      previousLedgerHash  = 3;
+    required uint64     toView              = 4;
 
-    repeated Signature  signatures          = 4;
+    repeated Signature  signatures          = 5;
 }

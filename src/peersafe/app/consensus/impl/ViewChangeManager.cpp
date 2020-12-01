@@ -46,7 +46,12 @@ bool ViewChangeManager::recvViewChange(ViewChange const& change)
 	}
 }
 
-bool ViewChangeManager::checkChange(VIEWTYPE const& toView, VIEWTYPE const& curView, RCLCxLedger::ID const& curPrevHash, std::size_t quorum)
+bool ViewChangeManager::checkChange(
+    ViewChange::GenReason reason,
+    VIEWTYPE const& toView,
+    VIEWTYPE const& curView,
+    RCLCxLedger::ID const& curPrevHash,
+    std::size_t quorum)
 {
 	if (viewChangeReq_.find(toView) == viewChangeReq_.end())
 		return false;
@@ -56,7 +61,8 @@ bool ViewChangeManager::checkChange(VIEWTYPE const& toView, VIEWTYPE const& curV
 		int count = 0; 
 		for (auto item : viewChangeReq_[toView])
 		{
-			if (item.second.prevHash() == curPrevHash)
+			if (item.second.prevHash() == curPrevHash &&
+                item.second.genReason() == reason)
 			{
 				count++;
 			}
@@ -69,42 +75,34 @@ bool ViewChangeManager::checkChange(VIEWTYPE const& toView, VIEWTYPE const& curV
 	return false;
 }
 
-std::tuple<bool, uint32_t, uint256>
-ViewChangeManager::shouldTriggerViewChange(VIEWTYPE const& toView, RCLCxLedger const& prevLedger, std::size_t quorum)
+std::tuple<bool, uint32_t, uint256, ViewChange::GenReason>
+ViewChangeManager::shouldTriggerViewChange(VIEWTYPE const& toView, std::size_t quorum)
 {
 	if (viewChangeReq_[toView].size() >= quorum)
 	{
-		auto& mapChange = viewChangeReq_[toView];
-		std::map<int, int> mapSeqCount;
-		uint32_t prevSeq = 0;
-		uint256 prevHash = beast::zero;
+		auto const& mapChange = viewChangeReq_[toView];
+		std::map<uint256, int> counts;
 		//Check if the prevSeq is consistent between view_change messages.
 		for (auto iter = mapChange.begin(); iter != mapChange.end(); iter++)
 		{
-			int prevSeqTmp = iter->second.prevSeq();
-			if (mapSeqCount.find(prevSeqTmp) != mapSeqCount.end())
+			uint256 viewHash = iter->second.signingHash();
+			if (counts.find(viewHash) != counts.end())
 			{
-				mapSeqCount[prevSeqTmp]++;
+                counts[viewHash]++;
 			}
 			else
 			{
-				mapSeqCount[prevSeqTmp] = 1;
+                counts[viewHash] = 1;
 			}
 
-			if (mapSeqCount[prevSeqTmp] >= quorum)
+			if (counts[viewHash] >= quorum)
 			{
-				prevSeq = prevSeqTmp;
-				prevHash = iter->second.prevHash();
-				break;
+                return std::make_tuple(true, iter->second.prevSeq(), iter->second.prevHash(), iter->second.genReason());
 			}
-		}
-
-		if (prevSeq > 0)
-		{
-			return std::make_tuple(true, prevSeq, prevHash);
 		}
 	}
-	return std::make_tuple(false, 0, beast::zero);
+
+	return std::make_tuple(false, 0, beast::zero, ViewChange::GenReason::TIMEOUT);
 }
 
 void ViewChangeManager::onViewChanged(VIEWTYPE const& newView)
@@ -147,17 +145,24 @@ void ViewChangeManager::onNewRound(RCLCxLedger const& prevLedger)
 }
 
 std::shared_ptr<protocol::TMCommitteeViewChange>
-ViewChangeManager::makeCommitteeViewChange(uint64 view, LedgerIndex preSeq, RCLCxLedger::ID const& preHash)
+ViewChangeManager::makeCommitteeViewChange(
+    ViewChange::GenReason reason,
+    uint64 view,
+    LedgerIndex preSeq,
+    RCLCxLedger::ID const& preHash)
 {
     auto m = std::make_shared<protocol::TMCommitteeViewChange>();
 
+    m->set_reason((protocol::TMCommitteeViewChange_genReason)reason);
     m->set_toview(view);
     m->set_previousledgerseq(preSeq);
     m->set_previousledgerhash(preHash.data(), preHash.size());
 
     for (auto it : viewChangeReq_[view])
     {
-        if (it.second.prevSeq() == preSeq && it.second.prevHash() == preHash)
+        if (it.second.genReason() == reason &&
+            it.second.prevSeq() == preSeq &&
+            it.second.prevHash() == preHash)
         {
             protocol::Signature& s = *m->add_signatures();
             s.set_publickey(it.second.nodePublic().data(), it.second.nodePublic().size());

@@ -668,5 +668,42 @@ void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
     return;
 }
 
+bool Node::checkNetQuorum(bool checkAllShard)
+{
+    for (int i = 1; i <= mShardManager.shardCount(); i++)
+    {
+        if (!checkAllShard && i != mShardID)
+        {
+            continue;
+        }
+
+        int numPeers = 0;
+        {
+            std::lock_guard<std::recursive_mutex> _(mPeersMutex);
+
+            if (mMapOfShardPeers.find(i) != mMapOfShardPeers.end())
+            {
+                for (auto w : mMapOfShardPeers[i])
+                {
+                    if (auto p = w.lock())
+                    {
+                        numPeers++;
+                    }
+                }
+            }
+        }
+
+        if (mMapOfShardValidators.find(i) == mMapOfShardValidators.end() ||
+            numPeers + 1 < mMapOfShardValidators[i]->quorum())
+        {
+            JLOG(journal_.warn())
+                << "Shard(" << i << ") node count (" << numPeers + 1 << ") "
+                << "has fallen below quorum (" << mMapOfShardValidators[i]->quorum() << ").";
+            return false;
+        }
+    }
+
+    return true;
+}
 
 }

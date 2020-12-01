@@ -146,9 +146,12 @@ LedgerMaster::getPublishedLedgerAge()
     return ret;
 }
 
-void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger)
+void LedgerMaster::onViewChanged(bool updateConsensusTime, bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger)
 {
-	mLastConsensusTime = app_.timeKeeper().closeTime().time_since_epoch().count();
+    if (updateConsensusTime)
+    {
+        mLastConsensusTime = app_.timeKeeper().closeTime().time_since_epoch().count();
+    }
 
 	if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
 	{
@@ -169,7 +172,9 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 std::chrono::seconds
 LedgerMaster::getValidatedLedgerAge()
 {
-    std::chrono::seconds valClose = std::chrono::seconds(std::max(mValidLedgerSign.load(), mLastConsensusTime.load()));
+    std::chrono::seconds valClose = std::chrono::seconds(
+        std::max(mValidLedgerSeq > 1 ? mValidLedgerSign.load() : 0,
+            mLastConsensusTime.load()));
     if (valClose == 0s)
     {
         JLOG (m_journal.debug()) << "No validated ledger";

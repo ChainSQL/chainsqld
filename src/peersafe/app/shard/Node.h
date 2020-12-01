@@ -125,6 +125,8 @@ public:
     void onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m);
 
+    bool checkNetQuorum(bool checkAllShard);
+
     template <class UnaryFunc>
     void
     for_each(UnaryFunc&& f)

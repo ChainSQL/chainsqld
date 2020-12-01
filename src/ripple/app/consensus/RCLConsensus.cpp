@@ -251,6 +251,7 @@ RCLConsensus::Adaptor::sendViewChange(ViewChange& change)
 	auto sig = signDigest(valPublic_, valSecret_, signingHash);
     change.setSignatrue(sig);
 
+    msg.set_reason((protocol::TMViewChange_genReason)change.genReason());
 	msg.set_previousledgerseq(change.prevSeq());
 	msg.set_previousledgerhash(change.prevHash().begin(), change.prevHash().size());
 	msg.set_nodepubkey(valPublic_.data(),valPublic_.size());
@@ -418,9 +419,9 @@ RCLConsensus::Adaptor::onClose(
 }
 
 void 
-RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView)
+RCLConsensus::Adaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
 {
-	app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
+	app_.getLedgerMaster().onViewChanged(true, bWaitingInit, previousLedger.ledger_);
 
 	if (bWaitingInit)
 	{

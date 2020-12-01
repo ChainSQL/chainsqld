@@ -14,39 +14,56 @@
 #include <ripple/protocol/RippleLedgerHash.h>
 
 namespace ripple {
+
+
+//----------------------------------------------------------------------------------------
+
 class ViewChange {
+
 public:
-	ViewChange(
+    enum GenReason {
+        TIMEOUT     = 1,
+        EMPTYBLOCK  = 2,
+    };
+
+    ViewChange(
+        GenReason reason,
 		std::uint32_t const prevSeq,
 		uint256 const& prevHash,
 		PublicKey const nodePublic,
-		std::uint64_t const& toView
-	):
-		prevSeq_(prevSeq),
-		prevHash_(prevHash),
-		nodePublic_(nodePublic),
-		toView_(toView)
-	{
-
-	}
+		std::uint64_t const& toView)
+        : reason_(reason)
+        , prevSeq_(prevSeq)
+		, prevHash_(prevHash)
+		, nodePublic_(nodePublic)
+		, toView_(toView)
+    {
+        signingHash_ = sha512Half(reason_, prevSeq_, prevHash_, toView_);
+    }
 
 	ViewChange(
+        GenReason reason,
 		std::uint32_t const prevSeq,
 		uint256 const& prevHash,
 		PublicKey const nodePublic,
 		std::uint64_t const& toView,
-		Slice signature
-	) :
-		prevSeq_(prevSeq),
-		prevHash_(prevHash),
-		nodePublic_(nodePublic),
-		toView_(toView),
-		signature_(signature)
+		Slice signature)
+        : reason_(reason)
+        , prevSeq_(prevSeq)
+		, prevHash_(prevHash)
+		, nodePublic_(nodePublic)
+		, toView_(toView)
+		, signature_(signature)
 	{
+        signingHash_ = sha512Half(reason_, prevSeq_, prevHash_, toView_);
+    }
 
-	}
+    GenReason const& genReason() const
+    {
+        return reason_;
+    }
 
-	std::uint32_t const& prevSeq()const
+	std::uint32_t const& prevSeq() const
 	{
 		return prevSeq_;
 	}
@@ -71,44 +88,47 @@ public:
 		return toView_;
 	}
 
+	uint256 signingHash() const
+	{
+        return signingHash_;
+	}
+
     void setSignatrue(const Buffer& sign)
     {
         signature_ = sign;
     }
 
-	uint256 signingHash() const
+	bool checkSign() const
 	{
-		return sha512Half(
-			prevSeq_,
-			prevHash_,
-			//nodePublic_,
-			toView_
-		);
+		return verifyDigest(nodePublic(), signingHash_, signature_, false);
 	}
-	bool checkSign()const
-	{
-		return verifyDigest(
-			nodePublic(), signingHash(), signature_, false);
-	}
+
 private:
-	std::uint32_t  prevSeq_;
-	uint256 prevHash_;
-	PublicKey  nodePublic_;
-	std::uint64_t toView_;
-	Buffer signature_;
+    GenReason       reason_;
+	std::uint32_t   prevSeq_;
+	uint256         prevHash_;
+	PublicKey       nodePublic_;
+	std::uint64_t   toView_;
+
+    uint256         signingHash_;
+	Buffer          signature_;
 };
 
-uint256
-viewChangeUniqueId(
+//----------------------------------------------------------------------------------------
+
+uint256 viewChangeUniqueId(
+    ViewChange::GenReason reason,
 	std::uint32_t const prevSeq,
 	uint256 const& prevHash,
 	PublicKey const nodePublic,
-	std::uint64_t const& toView
-);
+	std::uint64_t const& toView);
+
+//----------------------------------------------------------------------------------------
 
 class CommitteeViewChange
 {
 private:
+    ViewChange::GenReason               mReason;
     uint64                              mView;
     LedgerIndex                         mPreSeq;
     LedgerHash                          mPreHash;
@@ -117,24 +137,30 @@ private:
 public:
     CommitteeViewChange(protocol::TMCommitteeViewChange const& m);
 
-    inline uint64 view()
+    inline ViewChange::GenReason genReason() const
+    {
+        return mReason;
+    }
+
+    inline uint64 view() const
     {
         return mView;
     }
 
-    inline LedgerIndex preSeq()
+    inline LedgerIndex preSeq() const
     {
         return mPreSeq;
     }
 
-    inline LedgerHash preHash()
+    inline LedgerHash const& preHash() const
     {
         return mPreHash;
     }
 
-    inline uint256 suppressionID()
+    inline uint256 suppressionID() const
     {
         return sha512Half(
+            mReason,
             mView,
             mPreSeq,
             mPreHash);

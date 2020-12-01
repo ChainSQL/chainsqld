@@ -1414,6 +1414,7 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 		return;
 	}
 
+    ViewChange::GenReason reason = (ViewChange::GenReason)change.reason();
 	uint32_t prevSeq = change.previousledgerseq();
 	uint64_t toView = change.toview();
 	PublicKey const publicKey(makeSlice(change.nodepubkey()));
@@ -1423,7 +1424,11 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 	memcpy(prevLedgerHash.begin(), change.previousledgerhash().data(), 32);
 
 	uint256 suppression = viewChangeUniqueId(
-		change.previousledgerseq(),prevLedgerHash, publicKey, toView);
+        reason,
+        prevSeq,
+        prevLedgerHash,
+        publicKey,
+        toView);
 
 	if (!app_.getHashRouter().addSuppressionPeer(suppression, id_))
 	{
@@ -1467,12 +1472,12 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
 	}
 
 	ViewChange view_change(
+        reason,
 		prevSeq,
 		prevLedgerHash,
 		publicKey,
 		toView,
-		signature
-		);
+		signature);
 	if (isTrusted || !app_.getFeeTrack().isLoadedLocal())
 	{
 		std::weak_ptr<PeerImp> weak = shared_from_this();

@@ -144,7 +144,7 @@ public:
     std::chrono::seconds getPublishedLedgerAge ();
     std::chrono::seconds getValidatedLedgerAge ();
     bool isCaughtUp(std::string& reason);
-	void onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger);
+	void onViewChanged(bool updateConsensusTime, bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger);
 
     std::uint32_t getEarliestFetch ();
 

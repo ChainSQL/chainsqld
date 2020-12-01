@@ -473,7 +473,8 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m
     }
     else if (committeeVC->preSeq() == app_.getLedgerMaster().getValidLedgerIndex())
     {
-        app_.getLedgerMaster().onViewChanged(false, app_.getLedgerMaster().getValidatedLedger());
+        bool updateConsensusTime = (committeeVC->genReason() == ViewChange::GenReason::EMPTYBLOCK ? true : false);
+        app_.getLedgerMaster().onViewChanged(updateConsensusTime, false, app_.getLedgerMaster().getValidatedLedger());
 
         app_.getOPs().getConsensus().adaptor_.notify(
             protocol::neACCEPTED_LEDGER,

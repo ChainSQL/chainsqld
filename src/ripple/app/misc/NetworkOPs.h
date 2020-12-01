@@ -189,6 +189,7 @@ namespace ripple {
 
 		virtual Json::Value getConsensusInfo() = 0;
 		virtual Json::Value getServerInfo(bool human, bool admin) = 0;
+        virtual std::string getServerStatus() = 0;
 		virtual void clearLedgerFetch() = 0;
 		virtual Json::Value getLedgerFetchInfo() = 0;
 

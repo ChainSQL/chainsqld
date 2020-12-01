@@ -398,6 +398,7 @@ public:
 
     Json::Value getConsensusInfo () override;
     Json::Value getServerInfo (bool human, bool admin) override;
+    std::string getServerStatus() override;
     void clearLedgerFetch () override;
     Json::Value getLedgerFetchInfo () override;
     std::uint32_t acceptLedger (
@@ -459,8 +460,6 @@ public:
     void pubValidation (
         STValidation::ref val) override;
 	void pubViewChange(uint32_t ledgerSeq, uint64_t view);
-
-	std::string getServerStatus();
 
     bool waitingForInit();
 
@@ -833,17 +832,18 @@ void NetworkOPsImp::processHeartbeatTimer ()
         LoadManager& mgr (app_.getLoadManager ());
         mgr.resetDeadlockDetector ();
 
-        std::size_t const numPeers = app_.overlay ().size ();
+        //std::size_t const numPeers = app_.overlay ().size ();
 
         // do we have sufficient peers? If not, we are disconnected.
-        if (numPeers < m_network_quorum)
+        //if (numPeers < m_network_quorum)
+        if (!app_.getShardManager().checkNetQuorum())
         {
             if (mMode != omDISCONNECTED)
             {
                 setMode (omDISCONNECTED);
-                JLOG(m_journal.warn())
-                    << "Node count (" << numPeers << ") "
-                    << "has fallen below quorum (" << m_network_quorum << ").";
+                //JLOG(m_journal.warn())
+                //    << "Node count (" << numPeers << ") "
+                //    << "has fallen below quorum (" << m_network_quorum << ").";
             }
             // We do not call mConsensus.timerEntry until there
             // are enough peers providing meaningful inputs to consensus
@@ -856,7 +856,7 @@ void NetworkOPsImp::processHeartbeatTimer ()
         {
             setMode (omCONNECTED);
             JLOG(m_journal.info())
-                << "Node count (" << numPeers << ") is sufficient.";
+                << "Node count is sufficient.";
         }
 
         // Check if the last validated ledger forces a change between these

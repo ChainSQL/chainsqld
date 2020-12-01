@@ -119,6 +119,7 @@ public:
 
     void applyList(Json::Value const& list, PublicKey const& pubKey);
     void checkValidatorLists();
+    bool checkNetQuorum();
 };
 
 }

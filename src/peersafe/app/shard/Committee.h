@@ -135,7 +135,12 @@ public:
 
     std::pair<uint256, bool> microLedgerSetHash();
 
-    void onViewChange(ViewChangeManager& vcManager, uint64 view, LedgerIndex preSeq, LedgerHash preHash);
+    void onViewChange(
+        ViewChangeManager& vcManager,
+        ViewChange::GenReason reason,
+        uint64 view,
+        LedgerIndex preSeq,
+        LedgerHash preHash);
 
     void onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey);
 
@@ -157,7 +162,7 @@ public:
 
     bool checkAccept();
 
-    bool submitFinalLedger();
+    void submitFinalLedger();
 
     Overlay::PeerSequence getActivePeers(uint32);
 
@@ -170,6 +175,8 @@ public:
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& m);
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const& m, std::weak_ptr<PeerImp> weak);
     void onMessage(std::shared_ptr<protocol::TMMicroLedgerInfos> const& m);
+
+    bool checkNetQuorum();
 
     template <class UnaryFunc>
     void

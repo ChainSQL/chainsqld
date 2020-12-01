@@ -224,5 +224,20 @@ void ShardManager::checkValidatorLists()
     }
 }
 
+bool ShardManager::checkNetQuorum()
+{
+    switch ((int)mShardRole)
+    {
+    case LOOKUP:
+    case LOOKUP | SYNC:
+        return mNode->checkNetQuorum(true) && mCommittee->checkNetQuorum();
+    case SHARD:
+        return mNode->checkNetQuorum(false);
+    case COMMITTEE:
+        return mCommittee->checkNetQuorum();
+    default:
+        return true;
+    }
+}
 
 }

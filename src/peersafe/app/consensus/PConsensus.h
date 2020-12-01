@@ -210,7 +210,7 @@ private:
 		checkCache();
 
 	bool 
-		checkChangeView(uint64_t toView);
+		checkChangeView(ViewChange const& viewChange);
 
 	void onViewChange();
 
@@ -348,6 +348,7 @@ private:
 
 	uint64 view_ = 0;
 	uint64 toView_ = 0;
+    ViewChange::GenReason reason_ = ViewChange::GenReason::TIMEOUT;
 
 	// Journal for debugging
 	beast::Journal j_;
@@ -493,6 +494,7 @@ PConsensus<Adaptor>::startRoundInternal(
 	//reset view to 0 after a new close ledger.
 	view_ = 0;
 	toView_ = 0;
+    reason_ = ViewChange::GenReason::TIMEOUT;
 
     adaptor_.app_.getShardManager().nodeBase().onConsensusStart(
         previousLedger_.seq() + 1, 
@@ -552,21 +554,24 @@ PConsensus<Adaptor>::checkCache()
 
 template<class Adaptor>
 bool
-PConsensus<Adaptor>::checkChangeView(uint64_t toView)
+PConsensus<Adaptor>::checkChangeView(ViewChange const& viewChange)
 {
-	if (phase_ == ConsensusPhase::accepted)
+	if (phase_ == ConsensusPhase::accepted ||
+        phase_ == ConsensusPhase::waitingFinalLedger)
 	{
 		return false;
 	}
-	if (toView_ == toView)
+	if (toView_ == viewChange.toView())
 	{
-		if (viewChangeManager_.checkChange(
-            toView,
+        if (viewChangeManager_.checkChange(
+            viewChange.genReason(),
+            toView_,
             view_,
             prevLedgerID_,
             adaptor_.app_.getShardManager().nodeBase().quorum()))
 		{
-			view_ = toView;
+            reason_ = viewChange.genReason();
+			view_ = toView_;
 			onViewChange();
 			JLOG(j_.info()) << "View changed to " << view_;
 			return true;
@@ -579,19 +584,19 @@ PConsensus<Adaptor>::checkChangeView(uint64_t toView)
 		2. if previousLedgerSeq == ViewChange.previousLedgerSeq��change our view_ to new view.
 		*/
 		auto ret = viewChangeManager_.shouldTriggerViewChange(
-            toView,
-            previousLedger_,
+            viewChange.toView(),
             adaptor_.app_.getShardManager().nodeBase().quorum());
 		if (std::get<0>(ret))
 		{
 			if (previousLedger_.seq() < std::get<1>(ret))
 			{
 				handleWrongLedger(std::get<2>(ret));
-				JLOG(j_.info()) << "View changed fulfilled in other nodes: " << toView <<",and we need ledger:"<< std::get<1>(ret);
+				JLOG(j_.info()) << "View changed fulfilled in other nodes: " << viewChange.toView() <<",and we need ledger:"<< std::get<1>(ret);
 			}
-			else if(previousLedger_.seq() == std::get<1>(ret))
+			else if (previousLedger_.seq() == std::get<1>(ret))
 			{
-				view_ = toView;
+                reason_ = std::get<3>(ret);
+				view_ = viewChange.toView();
 				onViewChange();
 				JLOG(j_.info()) << "We have the newest ledger,change view to " << view_;
 				return true;
@@ -628,10 +633,14 @@ PConsensus<Adaptor>::onViewChange()
     {
         adaptor_.app_.getShardManager().committee().onViewChange(
             viewChangeManager_,
+            reason_,
             view_,
             previousLedger_.seq(),
             prevLedgerID_);
     }
+
+    // reset view change reason.
+    reason_ = ViewChange::GenReason::TIMEOUT;
 
     adaptor_.app_.getShardManager().nodeBase().onConsensusStart(
         previousLedger_.seq() + 1,
@@ -643,13 +652,13 @@ PConsensus<Adaptor>::onViewChange()
 	{
 		if (mode_.get() != ConsensusMode::wrongLedger)
 		{
-			adaptor_.onViewChanged(bWaitingInit_, previousLedger_,view_);
+			adaptor_.onViewChanged(bWaitingInit_, previousLedger_);
 			bWaitingInit_ = false;
 		}		
 	}
 	else
 	{
-		adaptor_.onViewChanged(bWaitingInit_, previousLedger_,view_);
+		adaptor_.onViewChanged(bWaitingInit_, previousLedger_);
 	}
 
     if (mode_.get() == ConsensusMode::proposing)
@@ -676,7 +685,7 @@ PConsensus<Adaptor>::peerViewChange(ViewChange const& change)
 	{
 		JLOG(j_.info()) << "peerViewChange viewChangeReq saved,toView=" <<
 			change.toView() << ",nodeid=" << getPubIndex(change.nodePublic());
-		checkChangeView(change.toView());
+		checkChangeView(change);
 		if (waitingForInit() && change.prevSeq() > GENESIS_LEDGER_INDEX)
 		{
 			prevLedgerID_ = change.prevHash();
@@ -764,7 +773,7 @@ PConsensus<Adaptor>::peerProposalInternal(
 				{
 					consensusTime_ = 0;
 					leaderFailed_ = true;
-
+                    reason_ = ViewChange::GenReason::EMPTYBLOCK;
 					JLOG(j_.info()) << "Empty proposal from leader,will trigger view_change.";
 					return true;
 				}
@@ -843,8 +852,7 @@ PConsensus<Adaptor>::gotTxSet(
 	TxSet_t const& txSet)
 {
 	// Nothing to do if we've finished work on a ledger
-	if (phase_ == ConsensusPhase::accepted ||
-        phase_ == ConsensusPhase::waitingFinalLedger)
+	if (phase_ >= ConsensusPhase::accepted)
 		return;
 
 	now_ = now;
@@ -895,7 +903,7 @@ PConsensus<Adaptor>::gotMicroLedgerSet(
     uint256 const& microLedgerSet)
 {
     // Nothing to do if we've finished work on a ledger
-    if (phase_ == ConsensusPhase::accepted)
+    if (phase_ >= ConsensusPhase::accepted)
         return;
 
     now_ = now;
@@ -1186,6 +1194,7 @@ PConsensus<Adaptor>::phaseCollecting()
 				//set zero,trigger time-out
 				consensusTime_ = 0;
 				leaderFailed_ = true;
+                reason_ = ViewChange::GenReason::EMPTYBLOCK;
 				JLOG(j_.info()) << "Empty transaction-set and microledger-set from self,will trigger view_change.";
 				return;
 			}
@@ -1679,7 +1688,7 @@ PConsensus<Adaptor>::launchViewChange()
 	toView_ = view_ + 1;
 	consensusTime_ = utcTime();
 
-	ViewChange change(previousLedger_.seq(), prevLedgerID_, adaptor_.valPublic_, toView_);
+	ViewChange change(reason_, previousLedger_.seq(), prevLedgerID_, adaptor_.valPublic_, toView_);
 	adaptor_.sendViewChange(change);
 
 	JLOG(j_.info()) << "checkTimeout sendViewChange,toView=" << toView_ << ",nodeId=" << getPubIndex(adaptor_.valPublic_)
