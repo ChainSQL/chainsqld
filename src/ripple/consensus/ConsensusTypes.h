@@ -112,6 +112,8 @@ enum class ConsensusPhase {
     //! to consensus phase occur while in this phase.
     accepted,
 
+    validating,
+
     waitingFinalLedger,
 };
 
@@ -126,6 +128,8 @@ to_string(ConsensusPhase p)
             return "establish";
         case ConsensusPhase::accepted:
             return "accepted";
+        case ConsensusPhase::validating:
+            return "validating";
         case ConsensusPhase::waitingFinalLedger:
             return "waitingFinalLedger";
         default:

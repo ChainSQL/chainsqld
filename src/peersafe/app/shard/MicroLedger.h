@@ -173,7 +173,7 @@ public:
 
     void addStateDelta(ReadView const& base, uint256 key, Action action, std::shared_ptr<SLE> sle);
 
-    void compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta);
+    void compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta) const;
 
 	bool checkValidity(std::unique_ptr <ValidatorList> const& list, bool withTxMeta);
 
@@ -226,6 +226,71 @@ public:
     void apply(Ledger& to) const;
 };
 
+
+class CachedMLs
+{
+public:
+    using digest_type = uint256;
+
+    using value_type = std::shared_ptr<MicroLedger>;
+
+    CachedMLs(CachedMLs const&) = delete;
+    CachedMLs& operator= (CachedMLs const&) = delete;
+
+    template <class Rep, class Period>
+    CachedMLs(std::chrono::duration<
+        Rep, Period> const& timeToLive,
+        Stopwatch& clock)
+        : timeToLive_(timeToLive)
+        , map_(clock)
+    {
+    }
+
+    /** Discard expired entries.
+
+        Needs to be called periodically.
+    */
+    void expire();
+
+    /** Fetch an item from the cache.
+
+        If the digest was not found, Handler
+        will be called with this signature:
+
+            std::shared_ptr<MicroLedger const>(void)
+    */
+    value_type fetch(digest_type const& digest);
+
+    value_type emplace(digest_type const& digest, value_type const& value);
+
+    std::size_t size() const
+    {
+        return map_.size();
+    }
+
+    void clear()
+    {
+        return map_.clear();
+    }
+
+    template<class fn>
+    void for_each(fn&& f)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        for (auto& it : map_)
+        {
+            f(it.second);
+        }
+    }
+
+private:
+    std::mutex mutable mutex_;
+    Stopwatch::duration timeToLive_;
+    beast::aged_unordered_map <digest_type,
+        value_type, Stopwatch::clock_type,
+        hardened_hash<strong_hash>> map_;
+};
 
 }
 

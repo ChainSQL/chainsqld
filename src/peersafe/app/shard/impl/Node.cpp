@@ -41,6 +41,7 @@ namespace ripple {
 
 Node::Node(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
     : NodeBase(m, app, cfg, journal)
+    , mCachedMLs(std::chrono::seconds(60), stopwatch())
 {
     mShardID = cfg_.SHARD_INDEX;
 
@@ -178,23 +179,7 @@ void Node::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey
 
     if (view == 0)
     {
-        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
-        mMicroLedgers.clear();
-    }
-
-    {
-        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        for (auto iter = mSignatureBuffer.begin(); iter != mSignatureBuffer.end();)
-        {
-            if (iter->first < seq)
-            {
-                iter = mSignatureBuffer.erase(iter);
-            }
-            else
-            {
-                iter++;
-            }
-        }
+        mCachedMLs.clear();
     }
 }
 
@@ -205,8 +190,7 @@ void Node::doAccept(
 {
     closeTime = std::max<NetClock::time_point>(closeTime, previousLedger.closeTime() + 1s);
 
-    auto buildLCL =
-        std::make_shared<Ledger>(*previousLedger.ledger_, closeTime);
+    auto buildLCL = std::make_shared<Ledger>(*previousLedger.ledger_, closeTime);
 
     OpenView accum(&*buildLCL);
     assert(!accum.open());
@@ -223,40 +207,22 @@ void Node::doAccept(
         mShardManager.shardCount(),
         accum.info().seq,
         accum);
-
-    // After view change, If generate a same microledger with previous view.
-    // Use previous signatures, is this Ok?
-    {
-        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
-        if (mMicroLedgers.emplace(microLedger->ledgerHash(), microLedger).second)
-        {
-            commitSignatureBuffer(microLedger);
-        }
-    }
+    app_.getOPs().getConsensus().setPhase(ConsensusPhase::validating);
 
     JLOG(journal_.info()) << "MicroLedger: " << microLedger->ledgerHash();
+
+    microLedger = mCachedMLs.emplace(microLedger->ledgerHash(), microLedger);
+
+    if (!microLedger)
+    {
+        JLOG(journal_.warn()) << "Cache(emplace) MicroLedger failed";
+        return;
+    }
 
     validate(*microLedger);
 
     // See if we can submit this micro ledger.
     checkAccept(microLedger->ledgerHash());
-}
-
-void Node::commitSignatureBuffer(std::shared_ptr<MicroLedger> &microLedger)
-{
-    std::lock_guard<std::recursive_mutex> lock_(mSignsMutex);
-
-    auto iter = mSignatureBuffer.find(microLedger->seq());
-    if (iter != mSignatureBuffer.end())
-    {
-        for (auto it = iter->second.begin(); it != iter->second.end(); ++it)
-        {
-            if (std::get<0>(*it) == microLedger->ledgerHash())
-            {
-                microLedger->addSignature(std::get<1>(*it), std::get<2>(*it));
-            }
-        }
-    }
 }
 
 void Node::validate(MicroLedger const& microLedger)
@@ -309,78 +275,19 @@ void Node::validate(MicroLedger const& microLedger)
     sendMessage(m);
 }
 
-void Node::recvValidation(PublicKey& pubKey, STValidation& val)
-{
-    LedgerIndex seq = val.getFieldU32(sfLedgerSequence);
-    uint256 microLedgerHash = val.getFieldH256(sfLedgerHash);
-
-    if (seq <= mPreSeq)
-    {
-        JLOG(journal_.warn()) << "Validation for ledger seq(" << seq << ") from "
-            << toBase58(TokenType::TOKEN_NODE_PUBLIC, pubKey) << " is stale";
-        return;
-    }
-
-    std::shared_ptr<MicroLedger> microLedger = nullptr;
-
-    {
-        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
-        if (mMicroLedgers.find(microLedgerHash) != mMicroLedgers.end())
-        {
-            microLedger = mMicroLedgers[microLedgerHash];
-        }
-    }
-
-    if (microLedger)
-    {
-        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-
-        microLedger->addSignature(pubKey, val.getFieldVL(sfMicroLedgerSign));
-        return;
-    }
-
-    // Buffer it
-    {
-        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-
-        if (mSignatureBuffer.find(seq) != mSignatureBuffer.end())
-        {
-            mSignatureBuffer[seq].push_back(std::make_tuple(microLedgerHash, pubKey, val.getFieldVL(sfMicroLedgerSign)));
-        }
-        else
-        {
-            std::vector<std::tuple<uint256, PublicKey, Blob>> v;
-            v.push_back(std::make_tuple(microLedgerHash, pubKey, val.getFieldVL(sfMicroLedgerSign)));
-            mSignatureBuffer.emplace(seq, std::move(v));
-        }
-    }
-}
-
 void Node::checkAccept(LedgerHash microLedgerHash)
 {
     assert(mMapOfShardValidators.find(mShardID) != mMapOfShardValidators.end());
 
-    std::shared_ptr<MicroLedger> microLedger = nullptr;
-
+    auto microLedger = mCachedMLs.fetch(microLedgerHash);
+    if (!microLedger)
     {
-        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
-        if (mMicroLedgers.find(microLedgerHash) != mMicroLedgers.end())
-        {
-            microLedger = mMicroLedgers[microLedgerHash];
-        }
-        else
-        {
-            return;
-        }
+        JLOG(journal_.info()) << "microledger " << microLedgerHash << " hasn't built yet";
+        return;
     }
 
-    size_t signCount = 0;
     size_t minVal = mMapOfShardValidators[mShardID]->quorum();
-
-    {
-        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        signCount = microLedger->signatures().size();
-    }
+    size_t signCount = app_.getValidations().numTrustedForLedger(microLedgerHash);
 
     JLOG(journal_.info()) << "MicroLedger sign count: " << signCount << " quorum: " << minVal;
 
@@ -394,19 +301,15 @@ void Node::checkAccept(LedgerHash microLedgerHash)
     }
 }
 
-std::shared_ptr<MicroLedger> Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
+std::shared_ptr<MicroLedger const> Node::submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta)
 {
+    auto microLedger = mCachedMLs.fetch(microLedgerHash);
+    if (!microLedger)
     {
-        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
-        if (mMicroLedgers.find(microLedgerHash) == mMicroLedgers.end())
-        {
-            JLOG(journal_.info()) << "Can't Submit microledger " << microLedgerHash
-                << ", because I didn't built it";
-            return nullptr;
-        }
+        JLOG(journal_.info()) << "Can't Submit microledger " << microLedgerHash
+            << ", because I didn't built it";
+        return nullptr;
     }
-
-    auto microLedger = mMicroLedgers[microLedgerHash];
 
     auto suppressionKey = sha512Half(
         microLedger->ledgerHash(),
@@ -420,6 +323,15 @@ std::shared_ptr<MicroLedger> Node::submitMicroLedger(LedgerHash microLedgerHash,
 
     JLOG(journal_.info()) << "Submit microledger(seq:" << microLedger->seq() << ") to "
         << (withTxMeta ? "lookup" : "committee");
+
+    if (microLedger->signatures().size() == 0)
+    {
+        auto const& vals = app_.getValidations().getTrustedForLedger2(microLedgerHash);
+        for (auto const& it : vals)
+        {
+            microLedger->addSignature(it.first, it.second->getFieldVL(sfMicroLedgerSign));
+        }
+    }
 
     protocol::TMMicroLedgerSubmit ms;
 
@@ -733,11 +645,6 @@ void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
         return;
     }
 
-    {
-        std::lock_guard<std::recursive_mutex> lock_(mledgerMutex);
-        mMicroLedgers.clear();
-    }
-
     if (committeeVC->preSeq() > mPreSeq)
     {
         JLOG(journal_.warn()) << "Got CommitteeViewChange, I'm on " << mPreSeq
@@ -747,6 +654,8 @@ void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
     }
     else if (committeeVC->preSeq() == mPreSeq)
     {
+        mCachedMLs.clear();
+
         app_.getOPs().getConsensus().onCommitteeViewChange();
     }
     else
@@ -758,5 +667,6 @@ void Node::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)
 
     return;
 }
+
 
 }

@@ -252,8 +252,14 @@ handleNewValidation(Application& app,
             : validations.add(*pubKey, val, false);
 
         // This is a duplicate validation
-        //if (res == AddOutcome::repeat)
-        //    return false;
+        if (res == AddOutcome::repeat)
+        {
+            JLOG(j.warn()) << "Trusted node "
+                << toBase58(TokenType::TOKEN_NODE_PUBLIC, *pubKey)
+                << " repeat published validations for ledger "
+                << hash;
+            return false;
+        }
 
         // This validation replaced a prior one with the same sequence number
         if (res == AddOutcome::sameSeq)
@@ -275,18 +281,14 @@ handleNewValidation(Application& app,
         // Trusted validations with sameSeq replaced an older validation
         // with that sequence number, so should still be checked and relayed.
         if (val->isTrusted() &&
-            (res == AddOutcome::current || res == AddOutcome::sameSeq || res == AddOutcome::repeat))
+            (res == AddOutcome::current || res == AddOutcome::sameSeq))
         {
             if (shardMgr.myShardRole() == ShardManager::SHARD)
             {
-                shardMgr.node().recvValidation(*pubKey, *val);
-
                 shardMgr.node().checkAccept(hash);
             }
             else
             {
-                shardMgr.committee().recvValidation(*pubKey, *val);
-
                 app.getLedgerMaster().checkAccept(
                     hash, val->getFieldU32(sfLedgerSequence));
             }

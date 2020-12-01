@@ -132,7 +132,7 @@ uint256 MicroLedger::computeTxWithMetaHash()
     return static_cast<typename sha512_half_hasher::result_type>(txWMRootHash);
 }
 
-void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta)
+void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta) const
 {
     protocol::MicroLedger& m = *(ms.mutable_microledger());
 
@@ -1103,5 +1103,55 @@ bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, boo
     return LedgerBase::checkValidity(list);
 }
 
+
+// ------------------------------------------------------------------------------
+// CachedMLs
+
+void CachedMLs::expire()
+{
+    std::vector<value_type> trash;
+    {
+        auto const expireTime = map_.clock().now() - timeToLive_;
+
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (auto iter = map_.chronological.begin();
+            iter != map_.chronological.end(); ++iter)
+        {
+            if (iter.when() > expireTime)
+                break;
+            if (iter->second.unique())
+            {
+                trash.emplace_back(std::move(iter->second));
+                iter = map_.erase(iter);
+            }
+        }
+    }
+}
+
+CachedMLs::value_type CachedMLs::fetch(digest_type const& digest)
+{
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto iter = map_.find(digest);
+        if (iter != map_.end())
+        {
+            map_.touch(iter);
+            return iter->second;
+        }
+    }
+
+    return nullptr;
+}
+
+CachedMLs::value_type CachedMLs::emplace(digest_type const& digest, value_type const& value)
+{
+    expire();
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto const result = map_.emplace(digest, std::move(value));
+    //if (!result.second)
+    //    map_.touch(result.first);
+    return result.first->second;
+}
 
 }

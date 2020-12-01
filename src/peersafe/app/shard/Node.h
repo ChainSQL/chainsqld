@@ -48,9 +48,8 @@ private:
     // a micro ledger. The final ledger of this round only contains 
     // one of the micro ledger, and not sure it will contains which one.
     // So buffer all, and clear on next round.
-    std::unordered_map<LedgerHash,
-        std::shared_ptr<MicroLedger>>                       mMicroLedgers;
-    std::recursive_mutex                                    mledgerMutex;
+    CachedMLs                                               mCachedMLs;
+
     std::map<LedgerIndex,
         std::vector<std::tuple<uint256, PublicKey, Blob>>>  mSignatureBuffer;
     std::recursive_mutex                                    mSignsMutex;
@@ -104,13 +103,9 @@ public:
 
     void validate(MicroLedger const& microLedger);
 
-    void commitSignatureBuffer(std::shared_ptr<MicroLedger> &microLedger);
-
-    void recvValidation(PublicKey& pubKey, STValidation& val);
-
     void checkAccept(LedgerHash microLedgerHash);
 
-    std::shared_ptr<MicroLedger> submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta);
+    std::shared_ptr<MicroLedger const> submitMicroLedger(LedgerHash microLedgerHash, bool withTxMeta);
 
     Overlay::PeerSequence getActivePeers(uint32 shardID);
 

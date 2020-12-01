@@ -46,10 +46,7 @@ private:
     LedgerIndex                                             mPreSeq;
     std::map<uint32,
         std::shared_ptr<MicroLedger>>                       mValidMicroLedgers;     // This round. mapping shardID --> MicroLedger
-    std::unordered_map<
-        LedgerIndex,
-        std::unordered_map<uint256,
-        std::shared_ptr<MicroLedger>>>                      mMicroLedgerBuffer;     // seq --> (hash, MicroLedger)
+    CachedMLs                                               mCachedMLs;
     boost::optional<uint256>                                mAcquiring;
     std::map<uint32, uint256>                               mAcquireMap;
     std::recursive_mutex                                    mMLBMutex;              // Micro ledger buffer mutex
@@ -61,9 +58,6 @@ private:
 
     bool                                                    mSubmitCompleted;
     boost::optional<FinalLedger>                            mFinalLedger;
-    std::map<LedgerIndex,
-        std::vector<std::tuple<uint256, PublicKey, Blob>>>  mSignatureBuffer;
-    std::recursive_mutex                                    mSignsMutex;
 
     // Hold all committee peers
 	std::vector<std::weak_ptr <PeerImp>>				mPeers;
@@ -161,13 +155,9 @@ public:
 
     void buildFinalLedger(OpenView const& view, std::shared_ptr<Ledger const> ledger);
 
-    void commitSignatureBuffer();
-
-    void recvValidation(PublicKey& pubKey, STValidation& val);
-
     bool checkAccept();
 
-    void submitFinalLedger();
+    bool submitFinalLedger();
 
     Overlay::PeerSequence getActivePeers(uint32);
 

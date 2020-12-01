@@ -370,13 +370,17 @@ PConsensus<Adaptor>::PConsensus(
     minBlockTime_   = MinBlockTime;
     maxBlockTime_   = MaxBlockTime;
     maxTxsInLedger_ = MaxTxsInLedger;
-	timeOut_ = CONSENSUS_TIMEOUT.count();
-	initTime_ = INIT_TIME.count();
-    omitEmpty_ = true;
+    initTime_ = INIT_TIME.count();
 
     if (adaptor.app_.config().getShardRole() == ShardManager::SHARD)
     {
         omitEmpty_ = false;
+        timeOut_ = CONSENSUS_TIMEOUT_SHARD.count();
+    }
+    else
+    {
+        omitEmpty_ = true;
+        timeOut_ = CONSENSUS_TIMEOUT_COMMITTEE.count();
     }
 
     if (adaptor.app_.config().exists(SECTION_PCONSENSUS))
@@ -391,7 +395,7 @@ PConsensus<Adaptor>::PConsensus(
             maxTxsInLedger_ = TxPoolCapacity;
         }
 
-		timeOut_ = std::max((unsigned)CONSENSUS_TIMEOUT.count(), loadConfig("time_out"));
+		timeOut_ = std::max(timeOut_, loadConfig("time_out"));
 
         if (timeOut_ <= maxBlockTime_)
         {
@@ -677,14 +681,7 @@ PConsensus<Adaptor>::peerViewChange(ViewChange const& change)
 		{
 			prevLedgerID_ = change.prevHash();
 			view_ = change.toView() - 1;
-            // Vaidatoion key in shard peers are microLedger hash.
-            // checkLedger don't work correctly, and it's not necessary,
-            // because shard peers checked ledger on committee view change
-            // and finalLedger.
-            if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
-            {
-                checkLedger();
-            }
+            checkLedger();
 		}
 	}
 	else if (previousLedger_.seq() == GENESIS_LEDGER_INDEX && change.prevSeq() > GENESIS_LEDGER_INDEX)
@@ -986,18 +983,18 @@ void
 PConsensus<Adaptor>::timerEntry(NetClock::time_point const& now)
 {
     JLOG(j_.debug()) << "timerEntry phase:" << to_string(phase_);
-	// Nothing to do if we are currently working on a ledger
-	if (phase_ == ConsensusPhase::accepted)
-		return;
 
-	// Check we are on the proper ledger (this may change phase_)
-    // TODO for shard peers
-    // Vaidatoion key in shard peers are microLedger hash.
-    // checkLedger don't work correctly, and it's not necessary,
-    // because shard peers checked ledger on committee view change
-    // and finalLedger.
-    if (adaptor_.app_.getShardManager().myShardRole() == ShardManager::COMMITTEE)
-	    checkLedger();
+	// Nothing to do if we are currently working on a ledger
+    if (phase_ == ConsensusPhase::accepted ||
+        phase_ == ConsensusPhase::waitingFinalLedger)
+    {
+        return;
+    }
+
+    if (phase_ < ConsensusPhase::accepted)
+    {
+        checkLedger();
+    }
 
     if (waitingForInit())
     {
@@ -1329,7 +1326,13 @@ void PConsensus<Adaptor>::setPhase(ConsensusPhase phase)
 {
     JLOG(j_.info()) << "Set phase " << to_string(phase_) << " -> " << to_string(phase);
     if (phase == (ConsensusPhase)((uint32)phase_ + 1))
+    {
         phase_ = phase;
+        if (phase_ == ConsensusPhase::validating)
+        {
+            consensusTime_ = utcTime();
+        }
+    }
 }
 
 template<class Adaptor>
@@ -1339,6 +1342,7 @@ void PConsensus<Adaptor>::onCommitteeViewChange()
     {
         // trigger our view change
         consensusTime_ = 0;
+        phase_ = ConsensusPhase::open;
     }
 }
 
@@ -1622,8 +1626,16 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::checkLedger()
 {
-	auto netLgr =
-		adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
+    // Vaidatoion key in shard peers are microLedger hash.
+    // checkLedger don't work correctly, and it's not necessary,
+    // because shard peers checked ledger on committee view change
+    // and finalLedger.
+    if (adaptor_.app_.getShardManager().myShardRole() != ShardManager::COMMITTEE)
+    {
+        return;
+    }
+
+	auto netLgr = adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
 
 	if (netLgr != prevLedgerID_)
 	{
@@ -1644,8 +1656,11 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::checkTimeout()
 {
-	if (phase_ == ConsensusPhase::accepted)
-		return;
+    if (phase_ == ConsensusPhase::accepted ||
+        phase_ == ConsensusPhase::waitingFinalLedger)
+    {
+        return;
+    }
 
 	auto timeOut = extraTimeOut_ ? timeOut_ * 1.5 : timeOut_;
 	if (timeSinceConsensus() < timeOut)

@@ -40,6 +40,7 @@ auto constexpr ML_ACQUIRE_TIMEOUT = 250ms;
 
 Committee::Committee(ShardManager& m, Application& app, Config& cfg, beast::Journal journal)
     : NodeBase(m, app, cfg, journal)
+    , mCachedMLs(std::chrono::seconds(60), stopwatch())
     , mTimer(app_.getIOService())
 {
 	mValidators = std::make_unique<ValidatorList>(
@@ -117,10 +118,7 @@ void Committee::onViewChange(
     LedgerIndex preSeq,
     LedgerHash preHash)
 {
-    {
-        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
-        mMicroLedgerBuffer.clear();
-    }
+    mCachedMLs.clear();
 
     std::shared_ptr<protocol::TMCommitteeViewChange> const& sm =
         vcManager.makeCommitteeViewChange(view, preSeq, preHash);
@@ -136,6 +134,11 @@ void Committee::onViewChange(
 
 void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const pubkey)
 {
+    {
+        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
+        mValidMicroLedgers.clear();
+    }
+
     mIsLeader = isLeader(pubkey, seq, view);
     mPreSeq = seq - 1;
 
@@ -147,21 +150,6 @@ void Committee::onConsensusStart(LedgerIndex seq, uint64 view, PublicKey const p
     mAcquiring.reset();
     mAcquireMap.clear();
 
-    {
-        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        for (auto iter = mSignatureBuffer.begin(); iter != mSignatureBuffer.end(); )
-        {
-            if (iter->first < seq)
-            {
-                iter = mSignatureBuffer.erase(iter);
-            }
-            else
-            {
-                iter++;
-            }
-        }
-    }
-
     commitMicroLedgerBuffer(seq);
 }
 
@@ -169,25 +157,13 @@ void Committee::commitMicroLedgerBuffer(LedgerIndex seq)
 {
     std::lock_guard<std::recursive_mutex> _(mMLBMutex);
 
-    mValidMicroLedgers.clear();
-
-    for (auto iter = mMicroLedgerBuffer.begin(); iter != mMicroLedgerBuffer.end();)
-    {
-        if (iter->first < seq)
-        {
-            iter = mMicroLedgerBuffer.erase(iter);
-        }
-        else
-        {
-            iter++;
-        }
-    }
-
-    auto& microLedgersAtSeq = mMicroLedgerBuffer[seq];
-    for (auto const& it : microLedgersAtSeq)
-    {
-        mValidMicroLedgers.emplace(it.second->shardID(), it.second);
-    }
+    mCachedMLs.for_each(
+        [this, seq](std::shared_ptr<MicroLedger> &microLedger) {
+            if (microLedger->seq() == seq)
+            {
+                this->mValidMicroLedgers.emplace(microLedger->shardID(), microLedger);
+            }
+        });
 }
 
 std::pair<uint256, bool> Committee::microLedgerSetHash()
@@ -385,93 +361,23 @@ Committee::buildMicroLedger(OpenView const& view, std::shared_ptr<CanonicalTXSet
 void Committee::buildFinalLedger(OpenView const& view, std::shared_ptr<Ledger const> ledger)
 {
     mFinalLedger.emplace(view, ledger, canonicalMicroLedgers());
-
-    commitSignatureBuffer();
-}
-
-void Committee::commitSignatureBuffer()
-{
-    assert(mFinalLedger);
-
-    std::lock_guard<std::recursive_mutex> lock_(mSignsMutex);
-
-    auto iter = mSignatureBuffer.find(mFinalLedger->seq());
-    if (iter != mSignatureBuffer.end())
-    {
-        for (auto const& it : iter->second)
-        {
-            if (std::get<0>(it) == mFinalLedger->ledgerHash())
-            {
-                mFinalLedger->addSignature(std::get<1>(it), std::get<2>(it));
-            }
-            if (std::get<0>(it) == mMicroLedger->ledgerHash())
-            {
-                mMicroLedger->addSignature(std::get<1>(it), std::get<2>(it));
-            }
-        }
-    }
-}
-
-void Committee::recvValidation(PublicKey& pubKey, STValidation& val)
-{
-    LedgerIndex seq = val.getFieldU32(sfLedgerSequence);
-    uint256 finalLedgerHash = val.getFieldH256(sfFinalLedgerHash);
-    uint256 microLedgerHash = val.getFieldH256(sfMicroLedgerHash);
-
-    if (seq <= mPreSeq)
-    {
-        JLOG(journal_.warn()) << "Validation for ledger seq(" << seq << ") from "
-            << toBase58(TokenType::TOKEN_NODE_PUBLIC, pubKey) << " is stale";
-        return;
-    }
-
-    if (mFinalLedger && mMicroLedger)
-    {
-        if (mFinalLedger->seq() == seq &&
-            mFinalLedger->ledgerHash() == finalLedgerHash &&
-            mMicroLedger->ledgerHash() == microLedgerHash)
-        {
-            std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-
-            mFinalLedger->addSignature(pubKey, val.getFieldVL(sfFinalLedgerSign));
-            mMicroLedger->addSignature(pubKey, val.getFieldVL(sfMicroLedgerSign));
-            return;
-        }
-    }
-
-    // Buffer it
-    {
-        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-
-        if (mSignatureBuffer.find(seq) != mSignatureBuffer.end())
-        {
-            mSignatureBuffer[seq].push_back(std::make_tuple(finalLedgerHash, pubKey, val.getFieldVL(sfFinalLedgerSign)));
-            mSignatureBuffer[seq].push_back(std::make_tuple(microLedgerHash, pubKey, val.getFieldVL(sfMicroLedgerSign)));
-        }
-        else
-        {
-            std::vector<std::tuple<uint256, PublicKey, Blob>> v;
-            v.push_back(std::make_tuple(finalLedgerHash, pubKey, val.getFieldVL(sfFinalLedgerSign)));
-            v.push_back(std::make_tuple(microLedgerHash, pubKey, val.getFieldVL(sfMicroLedgerSign)));
-            mSignatureBuffer.emplace(seq, std::move(v));
-        }
-    }
 }
 
 bool Committee::checkAccept()
 {
-    size_t signCount = 0;
-
-    if (mFinalLedger)
+    if (!mFinalLedger)
     {
-        if (mFinalLedger->seq() == app_.getLedgerMaster().getBuildingLedger())
-        {
-            return false;
-        }
-
-        std::lock_guard<std::recursive_mutex> lock(mSignsMutex);
-        signCount = mFinalLedger->signatures().size();
+        JLOG(journal_.info()) << "checkAccept: finalledger hasn't built yet";
+        return false;
     }
+
+    if (mFinalLedger->seq() == app_.getLedgerMaster().getBuildingLedger())
+    {
+        JLOG(journal_.info()) << "checkAccept: finalledger " << mFinalLedger->hash() << " building";
+        return false;
+    }
+
+    size_t signCount = app_.getValidations().numTrustedForLedger(mFinalLedger->hash());
 
     if (signCount >= mValidators->quorum())
     {
@@ -479,10 +385,8 @@ bool Committee::checkAccept()
             << "Advancing accepted ledger to " << mFinalLedger->seq()
             << " with >= " << mValidators->quorum() << " validations";
 
-        submitFinalLedger();
-
-        if (app_.getLedgerMaster().getClosedLedger()->seq() == mFinalLedger->seq() &&
-            mSubmitCompleted)
+        if (submitFinalLedger() &&
+            app_.getLedgerMaster().getClosedLedger()->seq() == mFinalLedger->seq())
         {
             app_.getTxPool().removeTxs(mMicroLedger->txHashes(), mFinalLedger->seq(), mFinalLedger->parentHash());
             app_.getPreTxPool().removeTxs(mMicroLedger->txHashes(), mFinalLedger->seq(), mFinalLedger->parentHash());
@@ -498,12 +402,19 @@ bool Committee::checkAccept()
     return false;
 }
 
-void Committee::submitFinalLedger()
+bool Committee::submitFinalLedger()
 {
     if (!app_.getHashRouter().shouldRelay(mFinalLedger->ledgerHash()))
     {
         JLOG(journal_.info()) << "Repeat submit finalledger, suppressed";
-        return;
+        return false;
+    }
+
+    auto const& vals = app_.getValidations().getTrustedForLedger2(mFinalLedger->hash());
+    for (auto const& it : vals)
+    {
+        mFinalLedger->addSignature(it.first, it.second->getFieldVL(sfFinalLedgerSign));
+        mMicroLedger->addSignature(it.first, it.second->getFieldVL(sfMicroLedgerSign));
     }
 
     {
@@ -529,7 +440,7 @@ void Committee::submitFinalLedger()
         mShardManager.lookup().distributeMessage(m);
     }
 
-    mSubmitCompleted = true;
+    return true;
 }
 
 Overlay::PeerSequence Committee::getActivePeers(uint32 /* unused */)
@@ -740,23 +651,7 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerSubmit> const& 
     }
 
     // seq big than curSeq or duplicate microledger, buffer it.
-    {
-        std::lock_guard<std::recursive_mutex> _(mMLBMutex);
-
-        // ledgerHash used to unique
-        uint256 ledgerHash = microLedger->ledgerHash();
-
-        if (mMicroLedgerBuffer.find(seq) != mMicroLedgerBuffer.end())
-        {
-            mMicroLedgerBuffer[seq].emplace(ledgerHash, microLedger);
-        }
-        else
-        {
-            std::unordered_map<uint256, std::shared_ptr<MicroLedger>> map;
-            map.emplace(ledgerHash, microLedger);
-            mMicroLedgerBuffer.emplace(seq, std::move(map));
-        }
-    }
+    mCachedMLs.emplace(microLedger->ledgerHash(), microLedger);
 }
 
 void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerAcquire> const& m, std::weak_ptr<PeerImp> weak)
@@ -903,12 +798,10 @@ void Committee::onMessage(std::shared_ptr<protocol::TMMicroLedgerInfos> const& m
             }
             if (mValidMicroLedgers.find(it.first) == mValidMicroLedgers.end())
             {
-                for (auto const& buffed : mMicroLedgerBuffer[mPreSeq + 1])
+                auto microLedger = mCachedMLs.fetch(it.second);
+                if (microLedger && microLedger->shardID() == it.first)
                 {
-                    if (it.first == buffed.second->shardID() && it.second == buffed.first)
-                    {
-                        mValidMicroLedgers.emplace(it.first, buffed.second);
-                    }
+                    mValidMicroLedgers.emplace(it.first, microLedger);
                 }
             }
         }

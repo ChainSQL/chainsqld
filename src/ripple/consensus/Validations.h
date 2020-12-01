@@ -409,11 +409,6 @@ public:
         {
             ScopedLock lock{mutex_};
 
-            if (addByLedgerSeq)
-            {
-                byLedgerSeq_[seq].emplace(key, val);
-            }
-
             auto const ret = byLedger_[id].emplace(key, val);
 
             // This validation is a repeat if we already have
@@ -493,6 +488,16 @@ public:
                 {
                     // We already have a newer validation from this source
                     result = AddOutcome::stale;
+                }
+            }
+
+            if (addByLedgerSeq)
+            {
+                // Added for shard node get admendment and feeSetting vote
+                auto ret = byLedgerSeq_[seq].emplace(key, val);
+                if (!ret.second && result != AddOutcome::stale)
+                {
+                    ret.first->second = val;
                 }
             }
         }
@@ -684,6 +689,21 @@ public:
                 if (v.trusted())
                     res.emplace_back(v.unwrap());
             });
+
+        return res;
+    }
+
+    hash_map<NodeKey, WrappedValidationType>
+    getTrustedForLedger2(LedgerID const& ledgerID)
+    {
+        hash_map<NodeKey, WrappedValidationType> res;
+        byLedger(
+            ledgerID,
+            [&](std::size_t numValidations) { res.reserve(numValidations); },
+            [&](NodeKey const& k, Validation const& v) {
+            if (v.trusted())
+                res.emplace(k, v.unwrap());
+        });
 
         return res;
     }

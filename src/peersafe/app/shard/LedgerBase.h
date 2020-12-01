@@ -54,7 +54,7 @@ public:
         mLedgerHash = ledgerHash;
     }
 
-    inline const std::map<PublicKey, Blob> & signatures()
+    inline const std::map<PublicKey, Blob> & signatures() const
     {
         return mSignatures;
     }

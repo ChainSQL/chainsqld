@@ -677,7 +677,6 @@ RCLConsensus::Adaptor::doAccept(
     CanonicalTXSet retriableTxs{result.set.id()};
 	
 	auto timeStart = utcTime();
-
     auto sharedLCL = buildLCL(
         prevLedger,
         result.set,
@@ -687,8 +686,10 @@ RCLConsensus::Adaptor::doAccept(
         result.roundTime.read(),
         retriableTxs);
 	JLOG(j_.info()) << "buildLCL time used:" << utcTime() - timeStart << "ms";
-	timeStart = utcTime();
 
+    app_.getOPs().getConsensus().setPhase(ConsensusPhase::validating);
+
+	timeStart = utcTime();
     auto const newLCLHash = sharedLCL.id();
     JLOG(j_.debug()) << "Report: NewL  = " << newLCLHash << ":"
                      << sharedLCL.seq();
