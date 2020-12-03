@@ -1736,7 +1736,7 @@ std::pair<bool, std::string> GMCheck::getAlgTypeData(int algType, int dataSetCnt
 		getDataSMALL(dataSetCnt, plainDataLen);
 		break;
 	default:
-		errMsg = "alg_type invalid";
+		errMsg = "gm_alg_type invalid";
 		return std::make_pair(false, errMsg);
 	}
 	return std::make_pair(true, "");

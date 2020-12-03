@@ -378,7 +378,6 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
     auto const type = publicKeyType(publicKey);
     unsigned long rv = 0;
 
-
     std::pair<unsigned char*, int> pub4Encrypt;
     switch (*type)
     {

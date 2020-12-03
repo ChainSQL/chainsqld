@@ -52,16 +52,15 @@ Json::Value doCryptData(RPC::Context& context)
 	int gmAlgType, dataSetCount, plainDataLen;
 
 	Json::Value jsonParams = context.params;
-	//jsonParams[jss::alg_type] =
-	if (!jsonParams.isMember(jss::alg_type))
+	if (!jsonParams.isMember(jss::gm_alg_type))
 	{
-		errMsgStr = "field alg_type";
+		errMsgStr = "field gm_alg_type";
 		jvResult = RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
 		return jvResult;
 	}
 	else
 	{
-		gmAlgType = jsonParams[jss::alg_type].asInt();
+		gmAlgType = jsonParams[jss::gm_alg_type].asInt();
 	}
 
 	if (!jsonParams.isMember(jss::data_set_count))

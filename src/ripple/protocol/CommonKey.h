@@ -40,6 +40,20 @@ namespace ripple {
             }
             else return false;
         }
+        static std::string getAlgTypeStr()
+        {
+            switch(algTypeGlobal)
+            {
+                case KeyType::ed25519:
+                    return "ed25519";
+                case KeyType::secp256k1:
+                    return "secp256k1";
+                case KeyType::gmalg:
+                    return "gmalg";
+                default:
+                    return "invalid";
+            }
+        }
         static bool setHashType(std::string& hashTypeStr)
         {
             if (hashTypeStr == "sha")
@@ -53,6 +67,18 @@ namespace ripple {
                 return true;
             }
             else return false;
+        }
+        static std::string getHashTypeStr()
+        {
+            switch(hashTypeGlobal)
+            {
+                case HashType::sha:
+                    return "sha";
+                case HashType::sm3:
+                    return "sm3";
+                default:
+                    return "invalid";
+            }
         }
 	};
 }
