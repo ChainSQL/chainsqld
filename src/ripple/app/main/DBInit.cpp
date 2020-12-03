@@ -58,6 +58,10 @@ const char* TxnDBInit[] =
         Owner       CHARACTER(64),              \
         Name        CHARACTER(64)              \
     );",
+    "CREATE INDEX IF NOT EXISTS TraceTxIndex ON                 \
+	            TraceTransactions(TransID);",
+    "CREATE INDEX IF NOT EXISTS TraceTxLgrIndex ON              \
+		    TraceTransactions(LedgerSeq);",
 
     "CREATE TABLE IF NOT EXISTS AccountTransactions (         \
         TransID     CHARACTER(64),              \
