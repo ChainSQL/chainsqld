@@ -696,5 +696,24 @@ void Lookup::relayTxs()
         << " txs, time used: " << utcTime() - timeStart << "ms";
 }
 
+Overlay::PeerSequence Lookup::getActivePeers()
+{
+    Overlay::PeerSequence ret;
+
+    std::lock_guard<std::recursive_mutex> lock(mPeersMutex);
+
+    ret.reserve(mPeers.size());
+
+    for (auto w : mPeers)
+    {
+        if (auto p = w.lock())
+        {
+            ret.emplace_back(std::move(p));
+        }
+    }
+
+    return ret;
+}
+
 
 }

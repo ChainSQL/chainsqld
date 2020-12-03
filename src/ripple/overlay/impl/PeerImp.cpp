@@ -1235,6 +1235,13 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMGetTable> const& m)
     fee_ = Resource::feeMediumBurdenPeer;
     std::weak_ptr<PeerImp> weak = shared_from_this();
     auto const pap = &app_; 
+
+    if (!(app_.getShardManager().myShardRole() & (ShardManager::LOOKUP | ShardManager::SYNC)))
+    {
+        JLOG(p_journal_.warn()) << "Got high burden request";
+        fee_ = Resource::feeHighBurdenPeer;
+        return;
+    }
     
     app_.getJobQueue().addJob(
         jtTABLE_REQ, "tableRequest",

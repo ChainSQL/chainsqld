@@ -39,6 +39,7 @@
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableTxAccumulator.h>
 #include <ripple/app/misc/Transaction.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 using namespace std::chrono;
 auto constexpr TABLE_DATA_OVERTM = 30s;
@@ -580,7 +581,7 @@ bool TableSyncItem::IsInFailList(beast::IP::Endpoint& peerAddr)
 
 std::shared_ptr<Peer> TableSyncItem::GetRightPeerTarget(LedgerIndex iSeq)
 {  
-    auto peerList = app_.overlay().getActivePeers();
+    auto peerList = app_.getShardManager().lookup().getActivePeers();
 
     bool isChange = GetIsChange();
     if (!isChange)

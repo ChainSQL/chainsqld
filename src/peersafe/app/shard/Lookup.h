@@ -151,6 +151,8 @@ public:
     std::uint32_t getShardIndex(AccountID const& fromAddr) const;
     void relayTxs();
 
+    Overlay::PeerSequence getActivePeers();
+
     template <class UnaryFunc>
     void
     for_each(UnaryFunc&& f)
