@@ -117,19 +117,11 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
         if (type == 0)
         {
             // transaction
-            int txType = -1;
-            if (len >= 2)
-                txType = rawNode[2];
+            auto item = std::make_shared<SHAMapItem const>(
+                sha512Half(HashPrefix::transactionID,
+                    Slice(s.data(), s.size())),
+                        s.peekData());
 
-            uint256 nh;
-            if ( txType == 100 || txType == 101)
-            {
-                nh =  sha512Half(HashPrefix::transactionID, 
-                                Slice(s.data(), s.size()));
-            }
-            else nh = hash.as_uint256();
-
-            auto item = std::make_shared<SHAMapItem const>(nh, s.peekData());
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq, hash);
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq);
@@ -274,11 +266,10 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
 
         if (prefix == HashPrefix::transactionID)
         {
-            // auto item = std::make_shared<SHAMapItem const>(
-            //     sha512Half(rawNode),
-            //         s.peekData ());
             auto item = std::make_shared<SHAMapItem const>(
-                hash.as_uint256(), s.peekData ());
+                sha512Half(rawNode),
+                    s.peekData ());
+
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq, hash);
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_NM, seq);
@@ -416,9 +407,9 @@ SHAMapTreeNode::updateHash()
     uint256 nh;
     if (mType == tnTRANSACTION_NM)
     {
-        // nh = sha512Half(HashPrefix::transactionID,
-        //     makeSlice(mItem->peekData()));
-        nh = mItem->key();
+        nh = sha512Half(HashPrefix::transactionID,
+            makeSlice(mItem->peekData()));
+        // nh = mItem->key();
     }
     else if (mType == tnACCOUNT_STATE)
     {
