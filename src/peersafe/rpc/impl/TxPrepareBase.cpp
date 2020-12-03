@@ -199,6 +199,11 @@ Json::Value TxPrepareBase::prepareBase()
 	if (ret.isMember(jss::error))
 		return ret;
 
+    if (tx_json_.isMember(jss::OperationRule))
+    {
+        return RPC::make_error(rpcNOT_SUPPORTED, "OperationRule is not supported");
+    }
+
     //check the future hash
     ret = prepareFutureHash(tx_json_, app_, ws_);
     if (ret.isMember(jss::error))
