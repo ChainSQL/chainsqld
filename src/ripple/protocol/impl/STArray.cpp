@@ -77,11 +77,11 @@ STArray::STArray(SerialIter& sit, SField const& f, int depth) : STBase(f)
             Throw<std::runtime_error>("Unknown field");
         }
 
-        if (fn.fieldType != STI_OBJECT)
-        {
-            JLOG(debugLog().error()) << "Array contains non-object";
-            Throw<std::runtime_error>("Non-object in array");
-        }
+        //if (fn.fieldType != STI_OBJECT)
+        //{
+        //    JLOG(debugLog().error()) << "Array contains non-object";
+        //    Throw<std::runtime_error>("Non-object in array");
+        //}
 
         v_.emplace_back(sit, fn, depth + 1);
 
