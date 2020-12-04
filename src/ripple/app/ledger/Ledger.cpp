@@ -931,6 +931,8 @@ saveValidatedLedger(
         "DELETE FROM AccountTransactions WHERE LedgerSeq = %u;");
     static boost::format deleteAcctTrans(
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
+	static boost::format deleteTrans3(
+		"DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
 
     if (!ledger->info().accountHash.isNonZero())
     {
@@ -995,6 +997,7 @@ saveValidatedLedger(
 
         std::string const ledgerSeq(std::to_string(seq));
 
+		std::uint64_t iTxSeq = uint64_t(seq) * 100000;
         for (auto const& [_, acceptedLedgerTx] : aLedger->getMap())
         {
             (void)_;
@@ -1058,6 +1061,9 @@ saveValidatedLedger(
                     acceptedLedgerTx->getTxn()->getMetaSQL(
                         seq, acceptedLedgerTx->getEscMeta()) +
                     ";");
+
+            storePeersafeSql(db, acceptedLedgerTx->getTxn(), iTxSeq, seq, app);
+			iTxSeq++;
         }
 
         tr.commit();
@@ -1426,6 +1432,116 @@ getHashesByIndex (std::uint32_t minSeq, std::uint32_t maxSeq,
     }
 
     return ret;
+}
+
+
+bool
+storePeersafeSql(
+    LockedSociSession& db,
+    std::shared_ptr<const ripple::STTx> pTx,
+    std::uint64_t SeqInLedger,
+    std::uint32_t inLedger,
+    Schema& app)
+{
+    std::string retSql = "";
+    if (pTx == nullptr)
+        return false;
+    TxType txType = pTx->getTxnType();
+    if (!pTx->isChainSqlTableType() && txType != ttCONTRACT)
+        return false;
+
+    static std::string const sqlHeader =
+        "INSERT OR REPLACE INTO TraceTransactions "
+        "(TransID, TransType, TxSeq, LedgerSeq, Owner, Name)"
+        " VALUES ";
+
+    static boost::format bfTrans("('%s', '%s', '%lld', '%d', '%s', '%s')");
+
+    auto format = TxFormats::getInstance().findByType(txType);
+    assert(format != nullptr);
+
+    auto txsAll =
+        app.getMasterTransaction().getTxs(*pTx, "", nullptr, inLedger);
+    std::vector<ripple::STTx> txsNoRepeat;
+
+    ripple::uint160 uDBNameN, uDBNameA;
+    for (auto itA = txsAll.begin(); itA != txsAll.end(); itA++)
+    {
+        auto itN = txsNoRepeat.begin();
+        while (itN != txsNoRepeat.end())
+        {
+            auto& tablesN = (*itN).getFieldArray(sfTables);
+            if (tablesN.size() <= 0)
+                break;
+            auto uDBNameN = tablesN[0].getFieldH160(sfNameInDB);
+
+            auto& tablesA = (*itA).getFieldArray(sfTables);
+            if (tablesA.size() <= 0)
+                break;
+            auto uDBNameA = tablesA[0].getFieldH160(sfNameInDB);
+
+            if (uDBNameA == uDBNameN)
+                break;
+            itN++;
+        }
+        if (itN == txsNoRepeat.end())
+            txsNoRepeat.push_back(std::move(*itA));
+    }
+
+    AccountID ownerID;
+    ripple::uint160 uDBName;
+    std::string sqlBody = "", sqlExe = "";
+    for (auto tx : txsNoRepeat)
+    {
+        if (tx.isFieldPresent(sfOwner))
+        {
+            ownerID = tx.getAccountID(sfOwner);
+        }
+        else
+        {
+            ownerID = tx.getAccountID(sfAccount);
+        }
+        auto& tables = tx.getFieldArray(sfTables);
+        if (tables.size() <= 0)
+            continue;
+        uDBName = tables[0].getFieldH160(sfNameInDB);
+
+        auto format2 = TxFormats::getInstance().findByType(tx.getTxnType());
+        assert(format2 != nullptr);
+
+        sqlBody = boost::str(
+            boost::format(bfTrans) % to_string(pTx->getTransactionID()) %
+            format2->getName() % SeqInLedger % inLedger % toBase58(ownerID) %
+            to_string(uDBName));
+
+        sqlExe = sqlHeader + sqlBody;
+
+        *db << sqlExe;
+    }
+    if (txType == ttCONTRACT)
+    {
+        AccountID addrContract;
+        if (pTx->getFieldU16(sfContractOpType) == ContractCreation)
+        {
+            addrContract = Contract::calcNewAddress(
+                pTx->getAccountID(sfAccount), pTx->getFieldU32(sfSequence));
+        }
+        else
+        {
+            addrContract = pTx->getAccountID(sfContractAddress);
+        }
+
+        sqlBody = boost::str(
+            boost::format(bfTrans) % to_string(pTx->getTransactionID()) %
+            format->getName() % SeqInLedger % inLedger %
+            toBase58(addrContract) % "");
+
+        sqlExe = sqlHeader + sqlBody;
+
+        *db << sqlExe;
+    }
+
+    return true;
 }
 
 }  // namespace ripple

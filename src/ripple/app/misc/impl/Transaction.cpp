@@ -110,7 +110,10 @@ Transaction::transactionFromSQL(
 Transaction::pointer
 Transaction::load(uint256 const& id, Schema& app, error_code_i& ec)
 {
-    return boost::get<pointer>(load(id, app, boost::none, ec));
+	auto v = load(id, app, boost::none, ec);
+	if (v.which() == 0)
+		return boost::get<Transaction::pointer>(v);
+    return nullptr;
 }
 
 boost::variant<Transaction::pointer, bool>

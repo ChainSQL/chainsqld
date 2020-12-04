@@ -426,7 +426,8 @@ populateJsonResponse(
         response[jss::validated] = result.validated;
     }
 
-    doTxChain(result.txn->getSTransaction()->getTxnType(), context, response);
+	if(result.txn)
+		doTxChain(result.txn->getSTransaction()->getTxnType(), context, response);
     
     return response;
 }
