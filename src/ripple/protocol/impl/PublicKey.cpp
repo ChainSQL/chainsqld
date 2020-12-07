@@ -244,17 +244,13 @@ verifyDigest (PublicKey const& publicKey,
     bool mustBeFullyCanonical)
 {
     
-    auto const type =
-        publicKeyType(publicKey.slice());
+    auto const type = publicKeyType(publicKey.slice());
     if (! type)
         LogicError("verifyDigest: invalid type");
     switch(*type)
     {
     case KeyType::secp256k1:
-	// if (nullptr == hEObj)
 	{
-		// if (publicKeyType(publicKey) != KeyType::secp256k1)
-		// 	LogicError("sign: secp256k1 required for digest signing");
 		auto const canonicality = ecdsaCanonicality(sig);
 		if (!canonicality)
 			return false;
@@ -304,8 +300,6 @@ verifyDigest (PublicKey const& publicKey,
 	case KeyType::gmalg:
 	{
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
-		// if (publicKeyType(publicKey.slice()) != KeyType::gmalg)
-		// 	LogicError("sign: GM algorithm required for digest signing");
 		unsigned long rv = 0;
 
 		std::pair<unsigned char*, int> pub4Verify = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());

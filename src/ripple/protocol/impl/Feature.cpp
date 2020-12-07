@@ -41,14 +41,10 @@ detail::FeatureCollections::FeatureCollections()
     for (std::size_t i = 0; i < numFeatures(); ++i)
     {
         auto const name = featureNames[i];
-        // sha512_half_hasher h;
-        // h (name, std::strlen (name));
-        // auto const f = static_cast<uint256>(h);
 
-        hashBase* phasher = hashBaseObj::getHasher();
-        (*phasher)(name, std::strlen (name));
-        auto const f = static_cast<uint256>(*phasher);
-        hashBaseObj::releaseHasher(phasher);
+        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+        (*hasher)(name, std::strlen (name));
+        auto const f = static_cast<uint256>(*hasher);
 
         features.push_back(f);
         featureToIndex[f] = i;

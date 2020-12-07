@@ -76,7 +76,6 @@ Json::Value walletPropose (Json::Value const& params)
 #ifdef HARD_GM
     KeyType keyType = KeyType::gmalg;
 #else
-    // KeyType keyType = KeyType::secp256k1;
     KeyType keyType = CommonKey::algTypeGlobal;
 #endif
 

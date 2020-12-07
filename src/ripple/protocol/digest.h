@@ -274,7 +274,6 @@ sha512_half_hasher::result_type
 sha512Half (Args const&... args)
 {
     using beast::hash_append;
-    // if (nullptr != hEObj)
     CommonKey::HashType hashTypeTemp = hashType == CommonKey::unknown? CommonKey::hashTypeGlobal : hashType;
     // hashBase* phasher = hashBaseObj::getHasher(hashTypeTemp);
     // hash_append(*phasher, args...);
@@ -283,16 +282,8 @@ sha512Half (Args const&... args)
     {
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
         GmEncrypt::SM3Hash objSM3(hEObj);//refObjSM3 = hEObj->getSM3Obj();
-        // unsigned char hashData[128] = {0};
-        // int HashDataLen = 0;
-        // objSM3.SM3HashInitFun();
         hash_append(objSM3, args...);
         return static_cast<typename sha512_half_hasher::result_type>(objSM3);
-        // objSM3.SM3HashFinalFun(hashData, (unsigned long*)&HashDataLen);
-
-        // sha512_half_hasher::result_type result;
-        // std::copy(hashData, hashData + 32, result.begin());
-        // return result;
     }
     else if (hashTypeTemp == CommonKey::sha)
     {
