@@ -28,7 +28,6 @@ TAGS
 bin/chainsqld
 Debug/*.*
 Release/*.*
-gmAlgLib/
 
 # Ignore coverage files.
 *.gcno
