@@ -2480,6 +2480,9 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
 
     info [jss::server_state] = strOperatingMode ();
 
+    info [jss::node_alg_type] = CommonKey::getAlgTypeStr();
+    info [jss::hash_type]     = CommonKey::getHashTypeStr();
+
     if (needNetworkLedger_)
         info[jss::network_ledger] = "waiting";
 

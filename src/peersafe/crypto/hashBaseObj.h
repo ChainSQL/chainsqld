@@ -10,30 +10,26 @@ namespace ripple {
     class hashBaseObj
     {
     public:
-        static hashBase* getHasher(CommonKey::HashType hashType = CommonKey::hashTypeGlobal)
+        static std::unique_ptr<hashBase> getHasher(CommonKey::HashType hashType = CommonKey::hashTypeGlobal)
         {
             switch (hashType)
             {
             case CommonKey::sm3:
             {
                 GmEncrypt *hEObj = GmEncryptObj::getInstance(GmEncryptObj::soft);
-                // GmEncrypt::SM3Hash objSM3(hEObj);
-                GmEncrypt::SM3Hash* pObjSM3 = new GmEncrypt::SM3Hash(hEObj);
-                return pObjSM3;
+                // GmEncrypt::SM3Hash* pObjSM3 = new GmEncrypt::SM3Hash(hEObj);
+                // return pObjSM3;
+                return std::make_unique<GmEncrypt::SM3Hash>(hEObj);
             }
             case CommonKey::sha:
             default:
             {
-                sha512_half_hasher* ph = new sha512_half_hasher();
-                return ph;
+                // sha512_half_hasher* ph = new sha512_half_hasher();
+                // return ph;
+                return std::make_unique<sha512_half_hasher>();
             }
             }
         };
-
-        static void releaseHasher(hashBase* phasher)
-        {
-            delete phasher;
-        }
     };
 }
 

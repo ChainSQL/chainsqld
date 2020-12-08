@@ -46,17 +46,11 @@ getLedgerHashIndex (std::uint32_t desiredLedgerIndex)
 uint256
 getInsertIndex(AccountID const& account)
 {
-	// sha512_half_hasher h;
-    hashBase* phasher = hashBaseObj::getHasher();
-	using beast::hash_append;
-    hash_append(*phasher, spaceInsertLimit);
-    hash_append(*phasher, account);
-    uint256 hashRet = static_cast<uint256>(*phasher);
-    hashBaseObj::releaseHasher(phasher);
-    return hashRet;
-	// hash_append(h, spaceInsertLimit);
-	// hash_append(h, account);
-	// return static_cast<uint256>(h);
+    std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+    using beast::hash_append;
+    hash_append(*hasher, spaceInsertLimit);
+    hash_append(*hasher, account);
+    return static_cast<uint256>(*hasher);
 }
 // get the index of the node that holds the enabled amendments
 uint256
@@ -89,20 +83,11 @@ getAccountRootIndex (AccountID const& account)
 uint256
 getTableIndex(AccountID const& account)
 {
-    // sha512_half_hasher h;
-    // using beast::hash_append;
-    // hash_append(h, spaceTableList);
-    // hash_append(h, account);
-    // return static_cast<uint256>(h);
-
-    hashBase* phasher = hashBaseObj::getHasher();
-	using beast::hash_append;
-    hash_append(*phasher, spaceTableList);
-    hash_append(*phasher, account);
-    // return static_cast<uint256>(*phasher);
-    uint256 hashRet = static_cast<uint256>(*phasher);
-    hashBaseObj::releaseHasher(phasher);
-    return hashRet;
+    std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+    using beast::hash_append;
+    hash_append(*hasher, spaceTableList);
+    hash_append(*hasher, account);
+    return static_cast<uint256>(*hasher);
 }
 
 uint256
@@ -375,43 +360,24 @@ Keylet page(Keylet const& root,
 Keylet
 escrow (AccountID const& source, std::uint32_t seq)
 {
-    // sha512_half_hasher h;
-    // using beast::hash_append;
-    // hash_append(h, std::uint16_t(spaceEscrow));
-    // hash_append(h, source);
-    // hash_append(h, seq);
-    // return { ltESCROW, static_cast<uint256>(h) };
-
-    hashBase* phasher = hashBaseObj::getHasher();
-	using beast::hash_append;
-    hash_append(*phasher, std::uint16_t(spaceEscrow));
-    hash_append(*phasher, source);
-    hash_append(*phasher, seq);
-    uint256 hashRet = static_cast<uint256>(*phasher);
-    hashBaseObj::releaseHasher(phasher);
-    return { ltESCROW, hashRet };
+    std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+    using beast::hash_append;
+    hash_append(*hasher, std::uint16_t(spaceEscrow));
+    hash_append(*hasher, source);
+    hash_append(*hasher, seq);
+    return { ltESCROW, static_cast<uint256>(*hasher) };
 }
 
 Keylet
 payChan (AccountID const& source, AccountID const& dst, std::uint32_t seq)
 {
-    // sha512_half_hasher h;
-    // using beast::hash_append;
-    // hash_append(h, std::uint16_t(spaceZXCUChannel));
-    // hash_append(h, source);
-    // hash_append(h, dst);
-    // hash_append(h, seq);
-    // return { ltPAYCHAN, static_cast<uint256>(h) };
-
-    hashBase* phasher = hashBaseObj::getHasher();
-	using beast::hash_append;
-    hash_append(*phasher, std::uint16_t(spaceZXCUChannel));
-    hash_append(*phasher, source);
-    hash_append(*phasher, dst);
-    hash_append(*phasher, seq);
-    uint256 hashRet = static_cast<uint256>(*phasher);
-    hashBaseObj::releaseHasher(phasher);
-    return { ltPAYCHAN, hashRet };
+    std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+    using beast::hash_append;
+    hash_append(*hasher, std::uint16_t(spaceZXCUChannel));
+    hash_append(*hasher, source);
+    hash_append(*hasher, dst);
+    hash_append(*hasher, seq);
+    return { ltPAYCHAN, static_cast<uint256>(*hasher) };
 }
 
 } // keylet

@@ -74,10 +74,10 @@ randomSeed()
 Seed
 generateSeed (std::string const& passPhrase)
 {
-    sha512_half_hasher_s h;
-    h(passPhrase.data(), passPhrase.size());
+    std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+    (*hasher)(passPhrase.data(), passPhrase.size());
     auto const digest =
-        sha512_half_hasher::result_type(h);
+        sha512_half_hasher::result_type(*hasher);
     return Seed({ digest.data(), 16 });
 }
 

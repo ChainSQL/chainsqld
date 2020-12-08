@@ -92,7 +92,7 @@ ConsensusTransSetSF::getNode (SHAMapHash const& nodeHash) const
         Serializer s;
         s.add32 (HashPrefix::transactionID);
         txn->getSTransaction ()->add (s);
-        // assert(sha512Half(s.slice()) == nodeHash.as_uint256());
+        assert(sha512Half(s.slice()) == nodeHash.as_uint256());
         nodeData = s.peekData ();
         return nodeData;
     }

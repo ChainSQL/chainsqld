@@ -115,8 +115,6 @@ signDigest (PublicKey const& pk, SecretKey const& sk,
     {
     case KeyType::secp256k1:
     {
-        // if (publicKeyType(pk.slice()) != KeyType::secp256k1)
-        //     LogicError("sign: secp256k1 required for digest signing");
         BOOST_ASSERT(sk.size() == 32);
         secp256k1_ecdsa_signature sig_imp;
         if (secp256k1_ecdsa_sign(
@@ -141,8 +139,6 @@ signDigest (PublicKey const& pk, SecretKey const& sk,
 	case KeyType::gmalg:
 	{
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
-		// if (publicKeyType(pk.slice()) != KeyType::gmalg)
-		// 	LogicError("sign: GM algorithm required for digest signing");
 		BOOST_ASSERT(sk.size() == 32);
 		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt_, sk.encrytCardIndex_);
 		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
@@ -183,14 +179,9 @@ sign (PublicKey const& pk,
     }
     case KeyType::secp256k1:
     {
-        // sha512_half_hasher h;
-        // h(m.data(), m.size());
-        // auto const digest =
-        //     sha512_half_hasher::result_type(h);
-        hashBase* phasher = hashBaseObj::getHasher(CommonKey::sha);
-        (*phasher)(m.data(), m.size());
-        auto const digest = sha512_half_hasher::result_type(*phasher);
-        hashBaseObj::releaseHasher(phasher);
+        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher(CommonKey::sha);
+        (*hasher)(m.data(), m.size());
+        auto const digest = sha512_half_hasher::result_type(*hasher);
 
         secp256k1_ecdsa_signature sig_imp;
         if(secp256k1_ecdsa_sign(

@@ -237,6 +237,7 @@ JSS ( good );                       // out: RPCVersion
 JSS ( hash );                       // out: NetworkOPs, InboundLedger,
                                     //      LedgerToJson, STTx; field
 JSS ( hashes );                     // in: AccountObjects
+JSS ( hash_type );                  // out: ServerInfo
 JSS ( have_header );                // out: InboundLedger
 JSS ( have_state );                 // out: InboundLedger
 JSS ( have_transactions );          // out: InboundLedger
@@ -339,6 +340,7 @@ JSS ( network_ledger );             // out: NetworkOPs
 JSS ( no_ripple );                  // out: AccountLines
 JSS ( no_ripple_peer );             // out: AccountLines
 JSS ( node );                       // out: LedgerEntry
+JSS ( node_alg_type );              // out: ServerInfo
 JSS ( node_binary );                // out: LedgerEntry
 JSS ( node_hit_rate );              // out: GetCounts
 JSS ( node_read_bytes );            // out: GetCounts
@@ -542,7 +544,7 @@ JSS ( write_load );                 // out: GetCounts
 JSS (memos);                        // out: memos
 JSS ( lastLedgerSequence );			//
 
-JSS ( alg_type );                   // in: gm algorithm type
+JSS ( gm_alg_type );                // in: gm algorithm type
 JSS ( data_set_count );             // in: make data set count
 JSS ( plain_data_len );             // in: make plain data len
 

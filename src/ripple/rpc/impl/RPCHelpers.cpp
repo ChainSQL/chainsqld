@@ -72,7 +72,7 @@ accountFromString(
 
     std::pair<PublicKey, SecretKey> keypair;
     // if (nullptr == GmEncryptObj::getInstance())
-    if(true)//can not judge the crypto alg from account, so default use secp256k1
+    if(true)//can not judge the crypto alg from seed, so default use secp256k1
     {
         keypair = generateKeyPair(
             KeyType::secp256k1,
