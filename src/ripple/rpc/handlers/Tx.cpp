@@ -31,7 +31,6 @@
 #include <ripple/beast/core/LexicalCast.h>
 #include <boost/optional/optional_io.hpp>
 #include <peersafe/rpc/TableUtils.h>
-#include <peersafe/app/shard/ShardManager.h>
 #include <chrono>
 
 namespace ripple {
@@ -204,11 +203,6 @@ namespace ripple {
 
 Json::Value doTx (RPC::Context& context)
 {
-    if (!(context.app.getShardManager().myShardRole() & ShardManager::LOOKUP))
-    {
-        return rpcError(rpcNOT_SUPPORTED);
-    }
-
     if (!context.params.isMember (jss::transaction))
         return rpcError (rpcINVALID_PARAMS);
 
