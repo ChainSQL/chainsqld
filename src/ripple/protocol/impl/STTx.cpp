@@ -560,7 +560,7 @@ std::string STTx::getMetaSQL (std::uint32_t inLedger,
                                                std::string const& escapedMetaData) const
 {
     Serializer s;
-    add (s);
+    //add (s);
     return getMetaSQL (s, inLedger, TXN_SQL_VALIDATED, escapedMetaData);
 }
 
@@ -569,8 +569,8 @@ std::string
 STTx::getMetaSQL (Serializer rawTxn,
     std::uint32_t inLedger, char status, std::string const& escapedMetaData) const
 {
-    static boost::format bfTrans ("('%s', '%s', '%s', '%d', '%d', '%c', %s, %s)");
-    std::string rTxn = sqlEscape (rawTxn.peekData ());
+    static boost::format bfTrans ("('%s', '%s', '%s', '%d', '%d', '%c', '%s', '%s')");
+    //std::string rTxn = sqlEscape (rawTxn.peekData ());
 
     auto format = TxFormats::getInstance().findByType (tx_type_);
     assert (format != nullptr);
@@ -578,7 +578,7 @@ STTx::getMetaSQL (Serializer rawTxn,
     return str (boost::format (bfTrans)
                 % to_string (getTransactionID ()) % format->getName ()
                 % toBase58(getAccountID(sfAccount))
-                % getSequence () % inLedger % status % rTxn % escapedMetaData);
+                % getSequence () % inLedger % status % "" % "");
 }
 
 std::pair<bool, std::string> STTx::checkSingleSign () const
