@@ -317,6 +317,8 @@ private:
 
 	unsigned initTime_;
 
+	unsigned lastTxSetSize_;
+
 	bool omitEmpty_ = true;
 
 	bool bWaitingInit_ = true;
@@ -457,6 +459,7 @@ PConsensus<Adaptor>::startRoundInternal(
 	txSetCached_.clear();
 	txSetVoted_.clear();
     transactions_.clear();
+	lastTxSetSize_ = 0;
     setID_.reset();
 	leaderFailed_ = false;
 	extraTimeOut_ = false;
@@ -575,6 +578,7 @@ PConsensus<Adaptor>::onViewChange()
 	txSetCached_.clear();
 	txSetVoted_.clear();
 	transactions_.clear();
+	lastTxSetSize_ = 0;
 	setID_.reset();
 	leaderFailed_ = false;
 	extraTimeOut_ = false;
@@ -1203,8 +1207,12 @@ bool PConsensus<Adaptor>::finalCondReached(int64_t sinceOpen, int64_t sinceLastC
 		return true;
 	}
 		
-	if (transactions_.size() > 0 && sinceLastClose >= minBlockTime_)
+	if (transactions_.size() > 0 &&  
+	    (lastTxSetSize_ > 0 && transactions_.size() == lastTxSetSize_) && 
+		sinceLastClose >= minBlockTime_)
 		return true;
+
+	lastTxSetSize_ = transactions_.size();
 
 	return false;
 }
