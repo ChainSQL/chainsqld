@@ -275,9 +275,11 @@ sha512Half (Args const&... args)
 {
     using beast::hash_append;
     CommonKey::HashType hashTypeTemp = hashType == CommonKey::unknown? CommonKey::hashTypeGlobal : hashType;
-    // hashBase* phasher = hashBaseObj::getHasher(hashTypeTemp);
-    // hash_append(*phasher, args...);
-    // return static_cast<typename sha512_half_hasher::result_type>(*phasher);
+
+    // std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher(hashTypeTemp);
+    // hash_append(*hasher, args...);
+    // return static_cast<typename sha512_half_hasher::result_type>(*hasher);
+
     if ( hashTypeTemp == CommonKey::sm3 )
     {
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
