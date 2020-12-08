@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/gmencrypt/softencrypt/GmSoftEncrypt.h>
+#include <ripple/basics/contract.h>
 #include <iostream>
 
 #ifdef GM_ALG_PROCESS

@@ -265,14 +265,14 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
 
 boost::optional<SecretKey> getSecretKey(const std::string& secret)
 {
-    //tx_secret is acturally masterseed
+    //tx_secret is actually master seed
     // if (GmEncryptObj::getInstance())
     if ('p' == secret[0])
     {
         std::string privateKeyStrDe58 = decodeBase58Token(secret, TOKEN_ACCOUNT_SECRET);
         return SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
     }
-    else if ('x' == secret[0])
+    else if('x' == secret[0])
     {
         boost::optional<SecretKey> oSecret_key;
         if (secret.size() > 0)
@@ -282,7 +282,12 @@ boost::optional<SecretKey> getSecretKey(const std::string& secret)
             oSecret_key = generateKeyPair(keyType, *seed).second;
         }
         return oSecret_key;
-    }
+	}
+	else {
+		assert(0);
+		boost::optional<SecretKey> ret;
+		return ret;
+	}
 }
 
 boost::optional<PublicKey> getPublicKey(const std::string& secret)

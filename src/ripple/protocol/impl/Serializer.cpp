@@ -193,8 +193,13 @@ uint256 Serializer::getSHA512Half (CommonKey::HashType hashType) const
 {
     if (hashType == CommonKey::sha || hashType == CommonKey::unknown)
         return sha512Half<CommonKey::sha>(makeSlice(mData));
-    else if (hashType == CommonKey::sm3)
+    else if(hashType == CommonKey::sm3)
         return sha512Half<CommonKey::sm3>(makeSlice(mData));
+	else {
+		assert(0);
+		uint256 ret;
+		return ret;
+	}
 }
 
 int Serializer::addVL (Blob const& vector)

@@ -108,5 +108,10 @@ namespace ripple {
             }
 			return rawDecrypted;
 		}
+		else {
+			assert(0);
+			Blob rawDecrypted;
+			return rawDecrypted;
+		}
 	}
 }

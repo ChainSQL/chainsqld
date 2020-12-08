@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #ifndef RAND_CHECK_H_INCLUDE
 #define RAND_CHECK_H_INCLUDE

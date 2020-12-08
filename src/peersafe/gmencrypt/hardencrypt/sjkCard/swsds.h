@@ -1,4 +1,4 @@
-//------------------------------------------------------------------------------
+﻿//------------------------------------------------------------------------------
 /*
  This file is part of chainsqld: https://github.com/chainsql/chainsqld
  Copyright (c) 2016-2018 Peersafe Technology Co., Ltd.

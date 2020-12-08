@@ -1,4 +1,4 @@
-/*
+﻿/*
 * File: log.c
 * Desc: 
 * Copyright (c) SWXA 2009

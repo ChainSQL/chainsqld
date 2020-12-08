@@ -1040,11 +1040,13 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 {
 	int rv = 0;
 	int i = 0;
-	unsigned char pInData[10240], pTmpData[10240], pCipherData[236], pOutData[10240];
-    std::vector<unsigned char> cipherDataV;
+	unsigned char pInData[10240], pTmpData[10240];
+	//unsigned char pCipherData[236],pOutData[10240;
+	std::vector<unsigned char> cipherDataV;
     std::vector<unsigned char> outDataV;
 	//unsigned char pGMStdCipher[MAX_LEN_4_GMSTD];
-	unsigned int cipherLen = 236, nTmpDataLen, nOutDataLen;
+	unsigned int cipherLen = 236, nTmpDataLen;
+	//unsigned int nOutDataLen;
 	// unsigned int gmStdCipherLen = 96 + plainLen;
 	// unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
 	char pFileName[128] = { 0x00 };
@@ -1169,7 +1171,8 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
     std::vector<unsigned char> cipherDataV;
     std::vector<unsigned char> outDataV;
 	//unsigned char pGMStdCipher[MAX_LEN_4_GMSTD];
-	unsigned int cipherLen = 236, nTmpDataLen, nOutDataLen;
+	unsigned int cipherLen = 236, nTmpDataLen;
+	// unsigned int nOutDataLen;
 	// unsigned int gmStdCipherLen = 96 + plainLen;
 	// unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
 	char pFileName[128] = { 0x00 };

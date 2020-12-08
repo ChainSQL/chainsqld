@@ -29,6 +29,7 @@
 #include <ripple/crypto/csprng.h>
 #include <ripple/beast/crypto/secure_erase.h>
 #include <ripple/beast/utility/rngfill.h>
+#include <peersafe/crypto/hashBaseObj.h>
 #include <algorithm>
 #include <cstring>
 #include <iterator>

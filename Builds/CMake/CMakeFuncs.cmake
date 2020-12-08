@@ -526,7 +526,14 @@ macro(use_gmalg enableHDGm)
     message(STATUS "GMSSL_LIBRARY_DIR: ${GMSSL_LIBRARY_DIR}")
     #link_directories(${GMALG_LIBRARY_DIR})
     # set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a" "-pthread" "dl")
-    set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a")
+
+    if(MSVC)
+        set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libeay32.lib" "${GMSSL_LIBRARY_DIR}/ssleay32.lib")
+    else()
+        set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a")
+    endif()
+
+   
     # set(OPENSSL_VERSION "1.0.2d")
     set(GMSSL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/src/peersafe/gmencrypt/softencrypt/GmSSL/include")
     include_directories(${GMSSL_INCLUDE_DIR})

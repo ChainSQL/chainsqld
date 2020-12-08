@@ -291,7 +291,12 @@ sha512Half (Args const&... args)
         hash_append(h, args...);
         return static_cast<typename
             sha512_half_hasher::result_type>(h);
-    }
+	}
+	else {
+		assert(0);
+		uint256 ret;
+		return ret;
+	}
 }
 
 /** Returns the SHA512-Half of a series of objects.

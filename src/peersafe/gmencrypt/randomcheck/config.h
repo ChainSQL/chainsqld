@@ -111,9 +111,13 @@ typedef unsigned long	ULONG;
 typedef USHORT		DIGIT;	/* 16-bit word */
 typedef ULONG		DBLWORD;  /* 32-bit word */
 typedef char		*CSTR;
-typedef unsigned char	*BSTR;
 typedef unsigned short int	UINT16;
+
+#ifndef WIN32
+typedef unsigned char	   *BSTR;
 typedef unsigned long int	UINT32;
+#endif // !WIN32
+
 
 #define NULLPTR ((void *) 0)
 
