@@ -253,7 +253,7 @@ unsigned long SoftEncrypt::SM2ECCSign(
     ret = 0;
     DebugPrint("SM2ECCSign: SM2 secret key sign successful!");
     
-	ECDSA_SIG_free(sm2sig);    
+	ECDSA_SIG_free(sm2sig);
     EC_KEY_free(ec_key);
 	return ret;
 }
@@ -293,9 +293,11 @@ unsigned long SoftEncrypt::SM2ECCVerify(
             ret = 0;
             DebugPrint("SM2ECCSign: SM2 secret key verify successful!");
         }
-        EC_KEY_free(pubkey);
+        
+        ECDSA_SIG_free(sm2sig);
         delete[] derlSig;
     }
+    EC_KEY_free(pubkey);
     return ret;
 }
 //SM2 Encrypt&Decrypt
