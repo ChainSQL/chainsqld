@@ -452,11 +452,11 @@ randomKeyPair (KeyType type)
     if (KeyType::gmalg == type)
     {
 		const int randomCheckLen = 32; //256bit = 32 byte
-		if (!GMCheck::getInstance()->randomSingleCheck(randomCheckLen))
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+        if (!hEObj->randomSingleCheck(randomCheckLen))
 		{
 			LogicError("randomSingleCheck failed!");
 		}
-        GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::pair<unsigned char*, int> tempPublickey;
         std::pair<unsigned char*, int> tempPrivatekey;
         hEObj->SM2GenECCKeyPair();

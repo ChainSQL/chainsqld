@@ -541,7 +541,8 @@ bool GMCheck::randomSingleCheck(unsigned long dataLen)
 		JLOG(gmCheckJournal_.info()) << "RandomnessSingleCheck successful";
 	}
 	else JLOG(gmCheckJournal_.error()) << "RandomnessSingleCheck failed";
-
+    
+    delete [] pRandomBuf;
 	return randomCheckRet;
 }
 
