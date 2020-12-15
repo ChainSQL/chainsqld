@@ -91,8 +91,8 @@ ConnectAttempt::close()
         error_code ec;
         timer_.cancel(ec);
         socket_.close(ec);
-        JLOG(journal_.debug()) <<
-            "Closed";
+        JLOG(journal_.debug()) <<remote_endpoint_<<
+            " Closed";
     }
 }
 
@@ -340,8 +340,8 @@ ConnectAttempt::processResponse()
 
     if (! OverlayImpl::isPeerUpgrade(response_))
     {
-        //JLOG(journal_.info()) <<
-        //    "HTTP Response: " << response_.result() << " " << response_.reason();
+        JLOG(journal_.debug()) <<
+            "HTTP Response: " << response_.result() << " " << response_.reason();
         return close();
     }
 
