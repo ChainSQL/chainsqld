@@ -85,11 +85,7 @@ public:
 	enum SM4AlgType { ECB, CBC};
 
 public:
-    //SM3Hash &getSM3Obj();
-    std::pair<unsigned char*, int> getRootPublicKey();
-    std::pair<unsigned char*, int> getRootPrivateKey();
-    virtual std::pair<unsigned char*, int> getPublicKey() = 0;
-    virtual std::pair<unsigned char*, int> getPrivateKey() = 0;
+    //SM3Hash &getSM3Obj(); 
     bool isHardEncryptExist();
 	std::string GetHomePath();
 	int FileWrite(const char *filename, char *mode, unsigned char *buffer, size_t size);
@@ -116,6 +112,9 @@ public:
 	virtual std::pair<unsigned char*, int> getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex) = 0;
     //Generate Publick&Secret Key
     virtual unsigned long SM2GenECCKeyPair(
+        std::vector<unsigned char>& publicKey,
+        std::vector<unsigned char>& privateKey,
+        bool isRoot = false,
         unsigned long ulAlias = SD_KEY_ALIAS,
         unsigned long ulKeyUse = SD_KEY_USE,
         unsigned long ulModulusLen = PRIVATE_KEY_BIT_LEN) = 0;
@@ -204,6 +203,8 @@ protected:
 private:
     virtual unsigned long  OpenDevice() = 0;
     virtual unsigned long  CloseDevice() = 0;
+    // virtual std::pair<unsigned char*, int> getPublicKey() = 0;
+    // virtual std::pair<unsigned char*, int> getPrivateKey() = 0;
     //SM3 interface
     virtual void operator()(HANDLE phSM3Handle, void const* data, std::size_t size) noexcept = 0;
     virtual unsigned long SM3HashInit(HANDLE* phSM3Handle) = 0;
@@ -217,6 +218,9 @@ protected:
     unsigned long symAlgFlag_;   //6 means SM4 algorithm
     unsigned long symAlgMode_;   //2 means CBC algo_mode
     unsigned char pubKeyRoot_[65];
+protected:
+    void getRootPublicKey(std::vector<unsigned char>& pubKey);
+    void getRootPrivateKey(std::vector<unsigned char>& priKey);
 /*private:
     SM3Hash objSM3_;*/
 };

@@ -1075,7 +1075,9 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		rv = hEObj->SM2GenECCKeyPair();
+        std::vector<unsigned char> tempPublickey;
+        std::vector<unsigned char> tempPrivatekey;
+		rv = hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "生成随机SM2密钥对错误，错误码[" <<
@@ -1085,26 +1087,27 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 			//return rv;
 		}
 
-		std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
-		std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
+		// std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
+		// std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
 		//公钥
 		FileWrite(pFileName, "ab", (unsigned char *)"公钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
 		//将公钥头部的类型47去掉然后输出
-		Data_Bin2Txt(tempPublickey.first + 1, tempPublickey.second - 1, (char*)pTmpData, (int*)&nTmpDataLen);
+		// Data_Bin2Txt(tempPublickey.first + 1, tempPublickey.second - 1, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPublickey.data() + 1, tempPublickey.size() - 1, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		//私钥
 		FileWrite(pFileName, "ab", (unsigned char *)"私钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPrivatekey.first, tempPrivatekey.second, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPrivatekey.data(), tempPrivatekey.size(), (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 
 		JLOG(gmCheckJournal_.info()) << "\n";
 		JLOG(gmCheckJournal_.info()) << "\n";
-		PrintData("SM2加密解密公钥", tempPublickey.first + 1, tempPublickey.second - 1, 16);
-		PrintData("SM2加密解密私钥", tempPrivatekey.first, tempPrivatekey.second, 16);
+		PrintData("SM2加密解密公钥", tempPublickey.data() + 1, tempPublickey.size() - 1, 16);
+		PrintData("SM2加密解密私钥", tempPrivatekey.data(), tempPrivatekey.size(), 16);
 		PrintData("SM2加密解密明文", pInData, plainLenTemp, 16);
 		//明文长度
 		FileWrite(pFileName, "ab", (unsigned char *)"明文长度", 8);
@@ -1112,7 +1115,8 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 		sprintf((char*)pTmpData, "%08x", plainLenTemp);
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
-		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLenTemp, cipherDataV);
+        std::pair<unsigned char*, int> pubKey4Enc = std::make_pair(tempPublickey.data(), tempPublickey.size());
+		rv = hEObj->SM2ECCEncrypt(pubKey4Enc, pInData, plainLenTemp, cipherDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2加密错误，错误码[" <<
@@ -1132,8 +1136,9 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 
+		std::pair<unsigned char*, int> priKey4Dec = std::make_pair(tempPrivatekey.data(), tempPrivatekey.size());
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(hEObj->gmOutCard, 0);
-		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, tempPrivatekey, cipherDataV.data(), cipherDataV.size(), outDataV);
+		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, priKey4Dec, cipherDataV.data(), cipherDataV.size(), outDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2解密错误，错误码[" <<
@@ -1201,7 +1206,9 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		rv = hEObj->SM2GenECCKeyPair();
+        std::vector<unsigned char> tempPublickey;
+        std::vector<unsigned char> tempPrivatekey;
+		rv = hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "生成随机SM2密钥对错误，错误码[" <<
@@ -1210,26 +1217,30 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
-		std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
+		// std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
+		// std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
 		//公钥
 		FileWrite(pFileName, "ab", (unsigned char *)"公钥=", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPublickey.first + 1, tempPublickey.second - 1, (char*)pTmpData, (int*)&nTmpDataLen);
+		// Data_Bin2Txt(tempPublickey.first + 1, tempPublickey.second - 1, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPublickey.data() + 1, tempPublickey.size() - 1, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 
 		//私钥
 		FileWrite(pFileName, "ab", (unsigned char *)"私钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPrivatekey.first, tempPrivatekey.second, (char*)pTmpData, (int*)&nTmpDataLen);
+		// Data_Bin2Txt(tempPrivatekey.first, tempPrivatekey.second, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPrivatekey.data(), tempPrivatekey.size(), (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 
 		JLOG(gmCheckJournal_.info()) << "\n";
 		JLOG(gmCheckJournal_.info()) << "\n";
-		PrintData("SM2加密解密公钥", tempPublickey.first + 1, tempPublickey.second - 1, 16);
-		PrintData("SM2加密解密私钥", tempPrivatekey.first, tempPrivatekey.second, 16);
+		// PrintData("SM2加密解密公钥", tempPublickey.first + 1, tempPublickey.second - 1, 16);
+		// PrintData("SM2加密解密私钥", tempPrivatekey.first, tempPrivatekey.second, 16);
+        PrintData("SM2加密解密公钥", tempPublickey.data() + 1, tempPublickey.size() - 1, 16);
+		PrintData("SM2加密解密私钥", tempPrivatekey.data(), tempPrivatekey.size(), 16);
 		PrintData("SM2加密解密明文", pInData, plainLenTemp, 16);
 		//明文长度
 		FileWrite(pFileName, "ab", (unsigned char *)"明文长度", 8);
@@ -1238,7 +1249,8 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", pTmpData, 8);
 		FileWrite(pFileName, "ab", newline, 2);
 
-		rv = hEObj->SM2ECCEncrypt(tempPublickey, pInData, plainLenTemp, cipherDataV);
+        std::pair<unsigned char*, int> pubKey4Enc = std::make_pair(tempPublickey.data(), tempPublickey.size());
+		rv = hEObj->SM2ECCEncrypt(pubKey4Enc, pInData, plainLenTemp, cipherDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2加密错误，错误码[" <<
@@ -1258,7 +1270,8 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", newline, 2);
 
 		std::pair<int, int> pri4DecryptInfo = std::make_pair(hEObj->gmOutCard, 0);
-		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, tempPrivatekey, cipherDataV.data(), cipherDataV.size(), outDataV);
+        std::pair<unsigned char*, int> priKey4Dec = std::make_pair(tempPrivatekey.data(), tempPrivatekey.size());
+		rv = hEObj->SM2ECCDecrypt(pri4DecryptInfo, priKey4Dec, cipherDataV.data(), cipherDataV.size(), outDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2解密错误，错误码[" <<
@@ -1319,7 +1332,9 @@ int GMCheck::getDataSM2Sign(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		rv = hEObj->SM2GenECCKeyPair();
+		std::vector<unsigned char> tempPublickey;
+        std::vector<unsigned char> tempPrivatekey;
+		rv = hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "生成随机SM2密钥对错误，错误码[" <<
@@ -1328,24 +1343,24 @@ int GMCheck::getDataSM2Sign(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
-		std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
+		// std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
+		// std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
 		//公钥
 		FileWrite(pFileName, "ab", (unsigned char *)"公钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPublickey.first + 1, tempPublickey.second - 1, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPublickey.data() + 1, tempPublickey.size() - 1, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		//私钥
 		FileWrite(pFileName, "ab", (unsigned char *)"私钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPrivatekey.first, tempPrivatekey.second, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPrivatekey.data(), tempPrivatekey.size(), (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		JLOG(gmCheckJournal_.info()) << "\n";
 		JLOG(gmCheckJournal_.info()) << "\n";
-		PrintData("SM2签名验签公钥", tempPublickey.first + 1, tempPublickey.second - 1, 16);
-		PrintData("SM2签名验签私钥", tempPrivatekey.first, tempPrivatekey.second, 16);
+		PrintData("SM2签名验签公钥", tempPublickey.data() + 1, tempPublickey.size() - 1, 16);
+		PrintData("SM2签名验签私钥", tempPrivatekey.data(), tempPrivatekey.size(), 16);
 		PrintData("SM2签名验签明文", pInData, plainLen, 16);
 
 		////签名数据长度
@@ -1379,7 +1394,8 @@ int GMCheck::getDataSM2Sign(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", newline, 2);
 		// memset(pSignedBuf, 0, signedLen);
 		std::pair<int, int> pri4SignInfo = std::make_pair(hEObj->gmOutCard, 0);
-		rv = hEObj->SM2ECCSign(pri4SignInfo, tempPrivatekey, hashData, hashDataLen, signedDataV);
+        std::pair<unsigned char*, int> priKey4Sign = std::make_pair(tempPrivatekey.data(), tempPrivatekey.size());
+		rv = hEObj->SM2ECCSign(pri4SignInfo, priKey4Sign, hashData, hashDataLen, signedDataV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2签名错误，错误码[" <<
@@ -1397,7 +1413,8 @@ int GMCheck::getDataSM2Sign(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", newline, 2);
 		PrintData("SM2->签名值", signedDataV.data(), signedDataV.size(), 16);
 
-		rv = hEObj->SM2ECCVerify(tempPublickey, hashData, hashDataLen, signedDataV.data(), signedDataV.size());
+        std::pair<unsigned char*, int> pubKey4Verify = std::make_pair(tempPublickey.data(), tempPublickey.size());
+		rv = hEObj->SM2ECCVerify(pubKey4Verify, hashData, hashDataLen, signedDataV.data(), signedDataV.size());
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2验证签名错误，错误码[" <<
@@ -1447,7 +1464,9 @@ int GMCheck::getDataSM2Verify(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		rv = hEObj->SM2GenECCKeyPair();
+		std::vector<unsigned char> tempPublickey;
+        std::vector<unsigned char> tempPrivatekey;
+		rv = hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "生成随机SM2密钥对错误，错误码[" <<
@@ -1456,24 +1475,24 @@ int GMCheck::getDataSM2Verify(int dataSetCnt, unsigned int plainLen)
 			break;
 			//return rv;
 		}
-		std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
-		std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
+		// std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
+		// std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
 		//公钥
 		FileWrite(pFileName, "ab", (unsigned char *)"公钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPublickey.first + 1, tempPublickey.second - 1, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPublickey.data() + 1, tempPublickey.size() - 1, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		//私钥
 		FileWrite(pFileName, "ab", (unsigned char *)"私钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPrivatekey.first, tempPrivatekey.second, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPrivatekey.data(), tempPrivatekey.size(), (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		JLOG(gmCheckJournal_.info()) << "\n";
 		JLOG(gmCheckJournal_.info()) << "\n";
-		PrintData("SM2签名验签公钥", tempPublickey.first + 1, tempPublickey.second - 1, 16);
-		PrintData("SM2签名验签私钥", tempPrivatekey.first, tempPrivatekey.second, 16);
+		PrintData("SM2签名验签公钥", tempPublickey.data() + 1, tempPublickey.size() - 1, 16);
+		PrintData("SM2签名验签私钥", tempPrivatekey.data(), tempPrivatekey.size(), 16);
 		PrintData("SM2签名验签明文", pInData, plainLen, 16);
 
 		//rv = hEObj->GenerateRandom(plainLen, pucID);
@@ -1520,7 +1539,8 @@ int GMCheck::getDataSM2Verify(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", newline, 2);
 		// memset(pSignedBuf, 0, signedLen);
 		std::pair<int, int> pri4SignInfo = std::make_pair(hEObj->gmOutCard, 0);
-		rv = hEObj->SM2ECCSign(pri4SignInfo, tempPrivatekey, hashData, hashDataLen, signedBufV);
+        std::pair<unsigned char*, int> priKey4Sign = std::make_pair(tempPrivatekey.data(), tempPrivatekey.size());
+		rv = hEObj->SM2ECCSign(pri4SignInfo, priKey4Sign, hashData, hashDataLen, signedBufV);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2签名错误，错误码[" <<
@@ -1538,7 +1558,8 @@ int GMCheck::getDataSM2Verify(int dataSetCnt, unsigned int plainLen)
 		FileWrite(pFileName, "ab", newline, 2);
 		PrintData("SM2->签名值", signedBufV.data(), signedBufV.size(), 16);
 
-		rv = hEObj->SM2ECCVerify(tempPublickey, hashData, hashDataLen, signedBufV.data(), signedBufV.size());
+        std::pair<unsigned char*, int> pubKey4Verify = std::make_pair(tempPublickey.data(), tempPublickey.size());
+		rv = hEObj->SM2ECCVerify(pubKey4Verify, hashData, hashDataLen, signedBufV.data(), signedBufV.size());
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "SM2验证签名错误，错误码[" <<
@@ -1575,7 +1596,9 @@ int GMCheck::getDataSM2KeyPair(int dataSetCnt)
 		JLOG(gmCheckJournal_.info()) << "\n";
 		JLOG(gmCheckJournal_.info()) << "\n";
 		JLOG(gmCheckJournal_.info()) << "++++++++++产生SM2密钥对，第 " << i + 1 << " 组++++++++++";
-		rv = hEObj->SM2GenECCKeyPair();
+		std::vector<unsigned char> tempPublickey;
+        std::vector<unsigned char> tempPrivatekey;
+		rv = hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
 		if (rv)
 		{
 			JLOG(gmCheckJournal_.error()) << "生成随机SM2密钥对错误，错误码[" <<
@@ -1583,25 +1606,25 @@ int GMCheck::getDataSM2KeyPair(int dataSetCnt)
              std::setw(8) << std::setfill('0') << rv << "]";
 			return rv;
 		}
-		std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
-		std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
+		// std::pair<unsigned char*, int> tempPublickey = hEObj->getPublicKey();
+		// std::pair<unsigned char*, int> tempPrivatekey = hEObj->getPrivateKey();
 		//公钥
 		FileWrite(pFileName, "ab", (unsigned char *)"公钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPublickey.first + 1, tempPublickey.second - 1, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPublickey.data() + 1, tempPublickey.size() - 1, (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		//私钥
 		FileWrite(pFileName, "ab", (unsigned char *)"私钥", 4);
 		FileWrite(pFileName, "ab", equal, 2);
-		Data_Bin2Txt(tempPrivatekey.first, tempPrivatekey.second, (char*)pTmpData, (int*)&nTmpDataLen);
+		Data_Bin2Txt(tempPrivatekey.data(), tempPrivatekey.size(), (char*)pTmpData, (int*)&nTmpDataLen);
 		FileWrite(pFileName, "ab", pTmpData, nTmpDataLen);
 		FileWrite(pFileName, "ab", newline, 2);
 		FileWrite(pFileName, "ab", newline, 2);
 		JLOG(gmCheckJournal_.info()) << "\n";
 		JLOG(gmCheckJournal_.info()) << "\n";
-		PrintData("SM2签名验签公钥", tempPublickey.first + 1, tempPublickey.second - 1, 16);
-		PrintData("SM2签名验签私钥", tempPrivatekey.first, tempPrivatekey.second, 16);
+		PrintData("SM2签名验签公钥", tempPublickey.data() + 1, tempPublickey.size() - 1, 16);
+		PrintData("SM2签名验签私钥", tempPrivatekey.data(), tempPrivatekey.size(), 16);
 	}
     JLOG(gmCheckJournal_.info()) << "SM2密钥对数据采集完成。";
 	return 0;

@@ -58,8 +58,7 @@ public:
     unsigned long  CloseDevice();
     unsigned long  OpenSession(HANDLE hKey, SGD_HANDLE *phSessionHandle);
     unsigned long  CloseSession(HANDLE hSession);
-    std::pair<unsigned char*, int> getPublicKey();
-    std::pair<unsigned char*, int> getPrivateKey();
+    
     void mergePublicXYkey(unsigned char* publickey33, ECCrefPublicKey& originalPublicKey);
 	//Generate random
 	unsigned long GenerateRandom(
@@ -83,6 +82,9 @@ public:
 	std::pair<unsigned char*, int> getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex);
     //Generate Publick&Secret Key
     unsigned long SM2GenECCKeyPair(
+        std::vector<unsigned char>& publicKey,
+        std::vector<unsigned char>& privateKey,
+        bool isRoot,
         unsigned long ulAlias,
         unsigned long ulKeyUse,
         unsigned long ulModulusLen);
@@ -162,6 +164,8 @@ public:
 private:
     void standPubToSM2Pub(unsigned char* standPub, int standPubLen, ECCrefPublicKey&);
     void standPriToSM2Pri(unsigned char* standPri, int standPriLen, ECCrefPrivateKey&);
+    bool getPublicKey(ECCrefPublicKey&, std::vector<unsigned char> pubKeyV);
+    bool getPrivateKey(ECCrefPrivateKey&, std::vector<unsigned char> priKeyV);
     void c1c2c3ToCardCipher(unsigned char* pCardCipher, unsigned long cardCipherLen, unsigned char* pCipher, unsigned long cipherLen);
 	unsigned long SM2ECCExternalSign(
 		std::pair<unsigned char*, int>& pri4Sign,
@@ -218,10 +222,10 @@ private:
 		unsigned long *pulPlainDataLen);
 
 private:
-    ECCrefPublicKey pubKeyUserExt_;
-    ECCrefPrivateKey priKeyUserExt_;
+    // ECCrefPublicKey pubKeyUserExt_;
+    // ECCrefPrivateKey priKeyUserExt_;
     SGD_HANDLE      hSessionKeyHandle_;
-    unsigned char pubKeyUser_[PUBLIC_KEY_EXT_LEN];
+    // unsigned char pubKeyUser_[PUBLIC_KEY_EXT_LEN];
 };
 #endif
 #endif

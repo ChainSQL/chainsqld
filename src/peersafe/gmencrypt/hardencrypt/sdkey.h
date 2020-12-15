@@ -43,8 +43,7 @@ public:
     }
     unsigned long  OpenDevice();
     unsigned long  CloseDevice();
-    std::pair<unsigned char*, int> getPublicKey();
-    std::pair<unsigned char*, int> getPrivateKey();
+    
 	//Generate random
 	unsigned long GenerateRandom(
 		unsigned int uiLength,
@@ -53,6 +52,9 @@ public:
     //SM2 interface
     //Generate Publick&Secret Key
     unsigned long SM2GenECCKeyPair(
+        std::vector<unsigned char>& publicKey,
+        std::vector<unsigned char>& privateKey,
+        bool isRoot = false,
         unsigned long ulAlias,
         unsigned long ulKeyUse,
         unsigned long ulModulusLen);
@@ -145,6 +147,8 @@ public:
     unsigned char priKey_[PRIVATE_KEY_EXT_LEN];
     unsigned long priKeyLen_;
 private:
+    bool getPublicKey();
+    bool getPrivateKey();
 	unsigned long generateIV(unsigned int uiAlgMode, unsigned char* pIV);
 	unsigned long SM4SymEncrypt(
 		unsigned int uiAlgMode,

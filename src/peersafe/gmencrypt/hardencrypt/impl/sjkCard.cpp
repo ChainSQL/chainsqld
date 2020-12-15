@@ -86,14 +86,18 @@ unsigned long  SJKCard::CloseSession(HANDLE hSession)
     }
 }
 
-std::pair<unsigned char*, int> SJKCard::getPublicKey()
+bool SJKCard::getPublicKey(ECCrefPublicKey& pubKeyUserExt, std::vector<unsigned char> pubKeyV)
 {
-    mergePublicXYkey(pubKeyUser_, pubKeyUserExt_);
-    return std::make_pair(pubKeyUser_,sizeof(pubKeyUser_));
+    pubKeyV.push_back(GM_ALG_MARK);
+    pubKeyV.insert(pubKeyV.end(), sizeof(originalPublicKey.x), originalPublicKey.x);
+    pubKeyV.insert(pubKeyV.end(), sizeof(originalPublicKey.y), originalPublicKey.y);
+    return true;
 }
-std::pair<unsigned char*, int> SJKCard::getPrivateKey()
+bool SJKCard::getPrivateKey(ECCrefPrivateKey& priKeyUserExt, std::vector<unsigned char> priKeyV)
 {
-    return std::make_pair(priKeyUserExt_.D,sizeof(priKeyUserExt_.D));
+    priKeyV.insert(priKey.begin(), priKeyUserExt.bits/8, priKeyUserExt.D);
+    return true;
+    // return std::make_pair(priKeyUserExt_.D,sizeof(priKeyUserExt_.D));
 }
 void SJKCard::mergePublicXYkey(unsigned char* publickey, ECCrefPublicKey& originalPublicKey)
 {
@@ -250,24 +254,40 @@ std::pair<unsigned char*, int> SJKCard::getECCNodeVerifyPubKey(unsigned char* pu
 //SM2 interface
 //Generate Publick&Secret Key
 unsigned long SJKCard::SM2GenECCKeyPair(
+    std::vector<unsigned char>& publicKey,
+    std::vector<unsigned char>& privateKey,
+    bool isRoot = false,
     unsigned long ulAlias,
     unsigned long ulKeyUse,
     unsigned long ulModulusLen)
 {
-    int rv;
-    memset(pubKeyUser_, 0, sizeof(pubKeyUser_));
-    rv = SDF_GenerateKeyPair_ECC(hSessionHandle_, SGD_SM2_3, ulModulusLen, &pubKeyUserExt_, &priKeyUserExt_);
-    
-    if (rv != SDR_OK)
+    int ret = 0;
+    if(isRoot)
     {
-        DebugPrint("Generate ECC key pair failed, failed number:[0x%08x]", rv);
-        return rv;
+        getRootPublicKey(publicKey);
+        getRootPrivateKey(privateKey);
     }
     else
     {
-        DebugPrint("Generate ECC key pair successful!");
-        return 0;
+        ECCrefPublicKey pubKeyUserExt;
+        ECCrefPrivateKey priKeyUserExt;
+        ret = SDF_GenerateKeyPair_ECC(hSessionHandle_, SGD_SM2_3, ulModulusLen, &pubKeyUserExt, &priKeyUserExt);
+
+        if (ret != SDR_OK)
+        {
+            DebugPrint("Generate ECC key pair failed, failed number:[0x%08x]", rv);
+        }
+        else
+        {
+            if (!getPublicKey(&pubKeyUserExt, publicKey) || !getPrivateKey(&priKeyUserExt, privateKey))
+                ret = -1;
+            else
+            {
+                DebugPrint("Generate ECC key pair successful!");
+            }
+        }
     }
+    return ret;
 }
 //SM2 Sign&Verify
 unsigned long SJKCard::SM2ECCSign(

@@ -56,7 +56,7 @@ unsigned long  SDkey::CloseDevice()
     return -1;
 }
 
-std::pair<unsigned char*, int> SDkey::getPublicKey()
+bool SDkey::getPublicKey()
 {
     DebugPrint("pubKeyLen_:%u,%s", pubKeyLen_,pubKey_);
     if (pubKeyLen_ > PUBLIC_KEY_EXT_LEN - 1)
@@ -70,7 +70,7 @@ std::pair<unsigned char*, int> SDkey::getPublicKey()
         return std::make_pair(nullptr, 0);
     }
 }
-std::pair<unsigned char*, int> SDkey::getPrivateKey()
+bool SDkey::getPrivateKey()
 {
     DebugPrint("priKeyLen_:%u,%s", priKeyLen_, priKey_);
     return std::make_pair(priKey_, priKeyLen_);
@@ -96,6 +96,9 @@ unsigned long SDkey::GenerateRandom(unsigned int uiLength, unsigned char * pucRa
 //SM2 interface
 //Generate Publick&Secret Key
 unsigned long SDkey::SM2GenECCKeyPair(
+    std::vector<unsigned char>& publicKey,
+    std::vector<unsigned char>& privateKey,
+    bool isRoot = false,
     unsigned long ulAlias,
     unsigned long ulKeyUse,
     unsigned long ulModulusLen)
