@@ -198,8 +198,9 @@ Transactor::checkFee (PreclaimContext const& ctx, std::uint64_t baseFee)
 			auto statements = ctx.tx.getFieldVL(sfStatements);
 			zxcDrops += statements.size() * dropsPerByte;
 		}
-		auto extraAmount = new ZXCAmount(zxcDrops);
-		feeDue += *extraAmount;
+		// auto extraAmount = new ZXCAmount(zxcDrops);
+		// feeDue += *extraAmount;
+		feeDue += ZXCAmount(zxcDrops);
 	}
 
     // Only check fee is sufficient when the ledger is open.

@@ -422,25 +422,17 @@ generateKeyPair (KeyType type, Seed const& seed)
 			LogicError("randomSingleCheck failed!");
 		}
         
-        std::pair<unsigned char*, int> tempPublickey;
-        std::pair<unsigned char*, int> tempPrivatekey;
+        std::vector<unsigned char> tempPublickey;
+        std::vector<unsigned char> tempPrivatekey;
         Seed rootSeed = generateSeed("masterpassphrase");
         std::string strRootSeed((char*)rootSeed.data(), rootSeed.size());
         std::string strSeed((char*)seed.data(), seed.size());
-        if (strRootSeed != strSeed)
-        {
-            hEObj->SM2GenECCKeyPair();
-            tempPublickey = hEObj->getPublicKey();
-            tempPrivatekey = hEObj->getPrivateKey();
-        }
-        else
-        {
-            tempPublickey = hEObj->getRootPublicKey();
-            tempPrivatekey = hEObj->getRootPrivateKey();
-        }
-		SecretKey secretkeyTemp(Slice(tempPrivatekey.first, tempPrivatekey.second));
+        bool isRoot = strRootSeed != strSeed ? false : true;
+        hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey, isRoot);
+
+		SecretKey secretkeyTemp(Slice(tempPrivatekey.data(), tempPrivatekey.size()));
 		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
-        return std::make_pair(PublicKey(Slice(tempPublickey.first, tempPublickey.second)),
+        return std::make_pair(PublicKey(Slice(tempPublickey.data(), tempPublickey.size())),
 			secretkeyTemp);
     }
     }
@@ -457,14 +449,14 @@ randomKeyPair (KeyType type)
 		{
 			LogicError("randomSingleCheck failed!");
 		}
-        std::pair<unsigned char*, int> tempPublickey;
-        std::pair<unsigned char*, int> tempPrivatekey;
-        hEObj->SM2GenECCKeyPair();
-        tempPublickey = hEObj->getPublicKey();
-        tempPrivatekey = hEObj->getPrivateKey();
-		SecretKey secretkeyTemp(Slice(tempPrivatekey.first, tempPrivatekey.second));
+
+        std::vector<unsigned char> tempPublickey;
+        std::vector<unsigned char> tempPrivatekey;
+        hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
+
+		SecretKey secretkeyTemp(Slice(tempPrivatekey.data(), tempPrivatekey.size()));
 		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
-        return std::make_pair(PublicKey(Slice(tempPublickey.first, tempPublickey.second)),
+        return std::make_pair(PublicKey(Slice(tempPublickey.data(), tempPublickey.size())),
 			secretkeyTemp);
     }
     else

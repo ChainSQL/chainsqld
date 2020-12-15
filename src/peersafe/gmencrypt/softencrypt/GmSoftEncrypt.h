@@ -44,7 +44,6 @@ class SoftEncrypt : public GmEncrypt
 public:
     SoftEncrypt()
     {
-        sm2Keypair_ = NULL;
         DebugPrint("SoftEncrypt ENGINE_init successfully!");
     }
     ~SoftEncrypt()
@@ -54,8 +53,7 @@ public:
 public:
     unsigned long  OpenDevice();
     unsigned long  CloseDevice();
-    std::pair<unsigned char*, int> getPublicKey();
-    std::pair<unsigned char*, int> getPrivateKey();
+    
     EC_KEY* standPubToSM2Pub(unsigned char* standPub, int standPubLen);
     //Generate random
 	unsigned long GenerateRandom(
@@ -78,6 +76,9 @@ public:
 	std::pair<unsigned char*, int> getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex);
     //Generate Publick&Secret Key
     unsigned long SM2GenECCKeyPair(
+        std::vector<unsigned char>& publicKey,
+        std::vector<unsigned char>& privateKey,
+        bool isRoot,
         unsigned long ulAlias,
         unsigned long ulKeyUse,
         unsigned long ulModulusLen);
@@ -151,12 +152,11 @@ public:
 private:
     ENGINE *sm_engine_;
     const EVP_MD *md_;
-    EC_KEY *sm2Keypair_;
     sm3_ctx_t sm3_ctx_;
-    unsigned char pubKeyUser_[PUBLIC_KEY_EXT_LEN];
-    unsigned char priKeyUser_[PRIVATE_KEY_EXT_LEN];
 
 private:
+    bool getPublicKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& pubKey);
+    bool getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& priKey);
     bool setPubfromPri(EC_KEY* pEcKey);
     size_t EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf);
     EC_KEY* CreateEC(unsigned char *key, int is_public);

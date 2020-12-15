@@ -35,22 +35,19 @@ unsigned long  SoftEncrypt::CloseDevice()
     return -1;
 }
 
-std::pair<unsigned char*, int> SoftEncrypt::getPublicKey()
+bool SoftEncrypt::getPublicKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& pubKey)
 {
-    size_t pubLen = i2o_ECPublicKey(sm2Keypair_, NULL);
+    size_t pubLen = i2o_ECPublicKey(sm2Keypair, NULL);
     if(pubLen != 0)
     {
-        unsigned char *pubKeyUserTemp = new unsigned char[pubLen];
-        unsigned char *pubKeyUser = pubKeyUserTemp;
-        pubLen = i2o_ECPublicKey(sm2Keypair_, &pubKeyUserTemp);
-        // pubKeyUser = pubKeyUserTemp;
+        pubKey.resize(pubLen);
+        unsigned char * pubKeyUserTemp = pubKey.data();
+        pubLen = i2o_ECPublicKey(sm2Keypair, &pubKeyUserTemp);
         DebugPrint("pubLen: %d", pubLen);
-        pubKeyUser_[0] = GM_ALG_MARK;
-        memcpy(pubKeyUser_+1, pubKeyUser+1, pubLen-1);
-        delete [] pubKeyUser; //cause addr of pubKeyUserTemp has been changed
-        return std::make_pair(pubKeyUser_, pubLen);
+        pubKey[0] = GM_ALG_MARK;
+        return true;
     }
-    else return std::make_pair(nullptr, 0);
+    else return false;
 }
 size_t SoftEncrypt::EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf)
 {
@@ -75,25 +72,20 @@ size_t SoftEncrypt::EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf)
     return 0;
 }
 
-std::pair<unsigned char*, int> SoftEncrypt::getPrivateKey()
+// std::pair<unsigned char*, int> SoftEncrypt::getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& priKey)
+bool SoftEncrypt::getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& priKey)
 {
-    int priLen = BN_num_bytes(EC_KEY_get0_private_key(sm2Keypair_));
+    int priLen = BN_num_bytes(EC_KEY_get0_private_key(sm2Keypair));
     // int priLen = i2d_ECPrivateKey(sm2Keypair_, NULL);
 
-    if(0 == priLen)
-    {
-        return std::make_pair(nullptr, 0);
-    }
-    else
+    if(priLen != 0)
     {
         DebugPrint("private key Len: %d", priLen);
-        unsigned char* priKeyUserTemp = new unsigned char[priLen];
-        // unsigned char* priKeyUser = priKeyUserTemp;
-        int priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair_), priKeyUserTemp);
-        memcpy(priKeyUser_, priKeyUserTemp, priLen);
-        delete [] priKeyUserTemp;
-        return std::make_pair(priKeyUser_, priLen);
+        priKey.resize(priLen);
+        int priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair), priKey.data());
+        return true;
     }
+    else return false;
 }
 
 unsigned long SoftEncrypt::GenerateRandom(unsigned int uiLength, unsigned char * pucRandomBuf)
@@ -132,23 +124,43 @@ std::pair<unsigned char*, int> SoftEncrypt::getECCNodeVerifyPubKey(unsigned char
 //SM2 interface
 //Generate Publick&Secret Key
 unsigned long SoftEncrypt::SM2GenECCKeyPair(
+    std::vector<unsigned char>& publicKey,
+    std::vector<unsigned char>& privateKey,
+    bool isRoot,
     unsigned long ulAlias,
     unsigned long ulKeyUse,
     unsigned long ulModulusLen)
 {
-    int ok = 0;
-    sm2Keypair_ = EC_KEY_new_by_curve_name(NID_sm2p256v1);
-    if (NULL == sm2Keypair_)
+    int ret = 0;
+    if(isRoot)
     {
-        DebugPrint("SM2GenECCKeyPair-EC_KEY_new_by_curve_name() failed!");
+        getRootPublicKey(publicKey);
+        getRootPrivateKey(privateKey);
+    }
+    else
+    {
+        EC_KEY *sm2Keypair = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+        if (NULL == sm2Keypair)
+        {
+            DebugPrint("SM2GenECCKeyPair-EC_KEY_new_by_curve_name() failed!");
+            return -1;
+        }
+
+        int genRet = EC_KEY_generate_key(sm2Keypair);
+        if (0 == genRet)
+        {
+            DebugPrint("SM2GenECCKeyPair-EC_KEY_generate_key() failed!");
+            ret = -1;
+        }
+        else
+        {
+            if (!getPublicKey(sm2Keypair, publicKey) || !getPrivateKey(sm2Keypair, privateKey))
+                ret = -1;
+        }
+        EC_KEY_free(sm2Keypair);
     }
 
-    int genRet = EC_KEY_generate_key(sm2Keypair_);
-    if (0 == genRet) {
-        DebugPrint("SM2GenECCKeyPair-EC_KEY_generate_key() failed!");
-        return -1;
-    }
-    else return ok;
+    return ret;
 }
 
 bool SoftEncrypt::setPubfromPri(EC_KEY* pEcKey)
