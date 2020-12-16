@@ -541,16 +541,16 @@ JSS ( vetoed );                     // out: AmendmentTableImpl
 JSS ( vote );                       // in: Feature
 JSS ( warning );                    // rpc:
 JSS ( write_load );                 // out: GetCounts
-JSS (memos);                        // out: memos
+JSS ( memos );                      // out: memos
 JSS ( lastLedgerSequence );			//
 
 JSS ( gm_alg_type );                // in: gm algorithm type
 JSS ( data_set_count );             // in: make data set count
 JSS ( plain_data_len );             // in: make plain data len
 
-JSS ( metaChain );			        // out: table tx chain and contract
-JSS ( TableChain );                  // out: 
-JSS ( ContractChain );               // out: 
+JSS ( meta_chain );			        // out: table tx chain and contract
+JSS ( TableChain );                 // out: 
+JSS ( ContractChain );              // out: 
 JSS ( PreviousHash );               // out: 
 JSS ( NextHash );                   // out: 
 JSS ( log );
