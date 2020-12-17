@@ -263,6 +263,13 @@ checkTxJsonFields (
         return ret;
     }
 
+	int sSize = tx_json.toStyledString().size();
+	if ( sSize > RPC::Tuning::max_txn_size)
+	{
+		ret.first = RPC::make_error(rpcTXN_BIGGER_THAN_MAXSIZE);
+		return ret;
+	}
+
     if (! tx_json.isMember (jss::TransactionType))
     {
         ret.first = RPC::missing_field_error ("tx_json.TransactionType");
@@ -875,7 +882,7 @@ Json::Value transactionSubmit (
     // Finally, submit the transaction.
     try
     {
-        // FIXME: For performance, should use asynch interface
+        // FIXME: For performance, should use asynchronous interface
         processTransaction (
             txn.second, isUnlimited (role), true, failType);
     }

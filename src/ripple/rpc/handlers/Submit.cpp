@@ -27,6 +27,7 @@
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/impl/TransactionSign.h>
+#include <ripple/rpc/impl/Tuning.h>
 
 namespace ripple {
 
@@ -61,6 +62,11 @@ Json::Value doSubmit (RPC::Context& context)
     Json::Value jvResult;
 
     std::pair<Blob, bool> ret(strUnHex (context.params[jss::tx_blob].asString ()));
+
+	// 500KB
+	if (ret.first.size() > RPC::Tuning::max_txn_size) {
+		return rpcError(rpcTXN_BIGGER_THAN_MAXSIZE);
+	}
 
     if (!ret.second || !ret.first.size ())
         return rpcError (rpcINVALID_PARAMS);
