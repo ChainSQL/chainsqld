@@ -48,12 +48,19 @@ private:
 };
 
 // TODO: unregister on unload with a static object.
-#define ETH_REGISTER_PRECOMPILED(Name) static std::pair<bool, eth::bytes> __eth_registerPrecompiledFunction ## Name(eth::bytesConstRef _in); static PrecompiledExecutor __eth_registerPrecompiledFactory ## Name = PrecompiledRegistrar::registerExecutor(#Name, &__eth_registerPrecompiledFunction ## Name); static std::pair<bool, eth::bytes> __eth_registerPrecompiledFunction ## Name
-#define ETH_REGISTER_PRECOMPILED_PRICER(Name)                                       \
-    static int64_t __eth_registerPricerFunction##Name(                          \
-        eth::bytesConstRef _in, int64_t const& _blockNumber);                       \
-    static PrecompiledPricer __eth_registerPricerFactory##Name =                    \
-        PrecompiledRegistrar::registerPricer(                                       \
-            #Name, &__eth_registerPricerFunction##Name);                            \
+#define ETH_REGISTER_PRECOMPILED(Name)                                             \
+    static std::pair<bool, eth::bytes>                                             \
+        __eth_registerPrecompiledFunction ## Name(eth::bytesConstRef _in);         \ 
+    static PrecompiledExecutor __eth_registerPrecompiledFactory ## Name =          \
+        PrecompiledRegistrar::registerExecutor(                                    \
+            #Name, &__eth_registerPrecompiledFunction ## Name);                    \
+    static std::pair<bool, eth::bytes> __eth_registerPrecompiledFunction ## Name
+
+#define ETH_REGISTER_PRECOMPILED_PRICER(Name)                                      \
+    static int64_t __eth_registerPricerFunction##Name(                             \
+        eth::bytesConstRef _in, int64_t const& _blockNumber);                      \
+    static PrecompiledPricer __eth_registerPricerFactory##Name =                   \
+        PrecompiledRegistrar::registerPricer(                                      \
+            #Name, &__eth_registerPricerFunction##Name);                           \
     static int64_t __eth_registerPricerFunction##Name
 }
