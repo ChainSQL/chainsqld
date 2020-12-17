@@ -1,16 +1,4 @@
-// Aleth: Ethereum C++ client, tools and libraries.
-// Copyright 2014-2019 Aleth Authors.
-// Licensed under the GNU General Public License, Version 3.
-
-// #include "ChainOperationParams.h"
-// #include <libdevcore/Log.h>
-// #include <libdevcrypto/Blake2.h>
-// #include <libdevcrypto/Common.h>
-// #include <libdevcrypto/Hash.h>
-// #include <libdevcrypto/LibSnark.h>
-// #include <libethcore/Common.h>
 #include <peersafe/app/misc/PreContractRegister.h>
-// #include <ripple/protocol/digest.h>
 using namespace std;
 
 namespace ripple {
@@ -120,7 +108,6 @@ ETH_REGISTER_PRECOMPILED_PRICER(sha256)
 
 ETH_REGISTER_PRECOMPILED(sha256)(eth::bytesConstRef _in)
 {
-    // return {true, dev::sha256(_in).asBytes()};
     auto hashRet = sha512Half<CommonKey::sha>(Slice(_in.data(), _in.size()));
     return {true, Blob(hashRet.begin(), hashRet.end())};
 }
@@ -133,7 +120,6 @@ ETH_REGISTER_PRECOMPILED_PRICER(sm3)
 
 ETH_REGISTER_PRECOMPILED(sm3)(eth::bytesConstRef _in)
 {
-    // return {true, dev::sha256(_in).asBytes()};
     auto hashRet = sha512Half<CommonKey::sm3>(Slice(_in.data(), _in.size()));
     return {true, Blob(hashRet.begin(), hashRet.end())};
 }

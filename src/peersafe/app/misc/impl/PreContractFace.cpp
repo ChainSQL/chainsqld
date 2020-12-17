@@ -15,9 +15,9 @@ namespace ripple {
         //     genesisState[AccountID(i)] = Account(0, 1);
         // Setup default precompiled contracts as equal to genesis of Frontier.
         // precompiled.insert(make_pair(Address(21), PrecompiledContract("ecrecover")));
-        precompiled.insert(make_pair(AccountID(22), PrecompiledContract("sha256")));
-        precompiled.insert(make_pair(AccountID(23), PrecompiledContract("ripemd160")));
-        precompiled.insert(make_pair(AccountID(24), PrecompiledContract("identity")));
+        precompiled.insert(make_pair(AccountID(2), PrecompiledContract("sha256")));
+        precompiled.insert(make_pair(AccountID(3), PrecompiledContract("ripemd160")));
+        precompiled.insert(make_pair(AccountID(4), PrecompiledContract("identity")));
 
         // precompiled.insert({AccountID(25), PrecompiledContract("modexp")});
         // precompiled.insert({AccountID(26), PrecompiledContract("alt_bn128_G1_add")});
@@ -26,6 +26,5 @@ namespace ripple {
         // precompiled.insert({AccountID(29), PrecompiledContract("blake2_compression")});
 
         precompiled.insert(make_pair(AccountID(41), PrecompiledContract("sm3")));
-
     }
 }

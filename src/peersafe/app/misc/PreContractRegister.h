@@ -1,12 +1,7 @@
-// Aleth: Ethereum C++ client, tools and libraries.
-// Copyright 2015-2019 Aleth Authors.
-// Licensed under the GNU General Public License, Version 3.
 #pragma once
 
 #include <unordered_map>
 #include <functional>
-// #include <libdevcore/CommonData.h>
-// #include <eth/vm/VMFace.h>
 #include <eth/vm/Common.h>
 
 #define DEV_SIMPLE_EXCEPTION(X)  \
