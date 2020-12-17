@@ -206,26 +206,31 @@ Json::Value doTx (RPC::Context& context)
     if (!context.params.isMember (jss::transaction))
         return rpcError (rpcINVALID_PARAMS);
 
+	auto const txid = context.params[jss::transaction].asString();
+
+	if (!isHexTxID(txid))
+		return rpcError(rpcNOT_IMPL);
+
+	auto txn = context.app.getMasterTransaction().fetch(
+		from_hex_text<uint256>(txid), true);
+
+	if (!txn)
+		return rpcError(rpcTXN_NOT_FOUND);
+
     bool binary = context.params.isMember (jss::binary)
             && context.params[jss::binary].asBool ();
 
-	bool metaChain = context.params.isMember(jss::meta_chain) 
-		    && context.params[jss::meta_chain].asBool();
-
-    auto const txid  = context.params[jss::transaction].asString ();
-
-    if (!isHexTxID (txid))
-        return rpcError (rpcNOT_IMPL);
-
-	bool metaData = ( !(    context.params.isMember(jss::meta) 
-		                && !context.params[jss::meta].asBool() )
-		            );
+	bool metaChain,metaData;
+	metaChain = metaData = true;
 	
-    auto txn = context.app.getMasterTransaction ().fetch (
-        from_hex_text<uint256>(txid), true);
+	if (context.params.isMember(jss::meta) && !context.params[jss::meta].asBool()) {
+		metaData  = false;
+	}
 
-    if (!txn)
-        return rpcError (rpcTXN_NOT_FOUND);
+	if (context.params.isMember(jss::meta_chain) && !context.params[jss::meta_chain].asBool()) {
+		metaChain = false;
+	}
+
 
     Json::Value ret = txn->getJson (1, binary);
 
@@ -261,14 +266,11 @@ Json::Value doTx (RPC::Context& context)
 	if (binary) {
 
 		std::string meta;
-		if (getMetaHex(*lgr, txn->getID(), meta))
-		{
+		if (getMetaHex(*lgr, txn->getID(), meta)){
 			ret[jss::meta] = meta;
 		}
-
 		return ret;
 	}
-
 
 	auto meta = txMeta->getJson(0);
 	addPaymentDeliveredAmount(meta, context, txn, txMeta);
