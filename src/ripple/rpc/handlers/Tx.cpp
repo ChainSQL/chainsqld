@@ -197,7 +197,7 @@ namespace ripple {
             if(!jsonContractChain.isNull())  jsonMetaChain[jss::ContractChain] = jsonContractChain;
 
         }
-        retJson[jss::metaChain] = jsonMetaChain;
+        retJson[jss::meta_chain] = jsonMetaChain;
         return true;
     }
 
@@ -209,11 +209,18 @@ Json::Value doTx (RPC::Context& context)
     bool binary = context.params.isMember (jss::binary)
             && context.params[jss::binary].asBool ();
 
+	bool metaChain = context.params.isMember(jss::meta_chain) 
+		    && context.params[jss::meta_chain].asBool();
+
     auto const txid  = context.params[jss::transaction].asString ();
 
     if (!isHexTxID (txid))
         return rpcError (rpcNOT_IMPL);
 
+	bool metaData = ( !(    context.params.isMember(jss::meta) 
+		                && !context.params[jss::meta].asBool() )
+		            );
+	
     auto txn = context.app.getMasterTransaction ().fetch (
         from_hex_text<uint256>(txid), true);
 
@@ -225,41 +232,48 @@ Json::Value doTx (RPC::Context& context)
     if (txn->getLedger () == 0)
         return ret;
 
-    if (auto lgr = context.ledgerMaster.getLedgerBySeq (txn->getLedger ()))
-    {
-        bool okay = false;
+	auto lgr = context.ledgerMaster.getLedgerBySeq(txn->getLedger());
+	if (!lgr) {
+		return ret;
+	}
 
-        if (binary)
-        {
-            std::string meta;
+	ret[jss::validated] = isValidated(
+		context, lgr->info().seq, lgr->info().hash);
 
-            if (getMetaHex (*lgr, txn->getID (), meta))
-            {
-                ret[jss::meta] = meta;
-                okay = true;
-            }
-        }
-        else
-        {
-            auto rawMeta = lgr->txRead (txn->getID()).second;
-            if (rawMeta)
-            {
-                auto txMeta = std::make_shared<TxMeta> (txn->getID (),
-                    lgr->seq (), *rawMeta, context.app.journal ("TxMeta"));
-                okay = true;
-                auto meta = txMeta->getJson (0);
-                addPaymentDeliveredAmount (meta, context, txn, txMeta);
-                ret[jss::meta] = meta;
-            }
-        }
+	if (metaChain) {
+		doTxChain(txn->getSTransaction()->getTxnType(), context, ret);
+	}
 
-        if (okay)
-            ret[jss::validated] = isValidated (
-                context, lgr->info().seq, lgr->info().hash);
-    }       
-    
-    doTxChain(txn->getSTransaction()->getTxnType(), context, ret);
+	auto rawMeta = lgr->txRead(txn->getID()).second;
+	if (!rawMeta) {
+		return ret;
+	}
 
+	auto txMeta = std::make_shared<TxMeta>(txn->getID(),
+		lgr->seq(), *rawMeta, context.app.journal("TxMeta"));
+
+	ret[jss::transaction_result] = transToken(txMeta->getResultTER());
+
+	if (!metaData) {
+		return ret;
+	}
+
+	if (binary) {
+
+		std::string meta;
+		if (getMetaHex(*lgr, txn->getID(), meta))
+		{
+			ret[jss::meta] = meta;
+		}
+
+		return ret;
+	}
+
+
+	auto meta = txMeta->getJson(0);
+	addPaymentDeliveredAmount(meta, context, txn, txMeta);
+	ret[jss::meta] = meta;
+        
     return ret;
 }
 

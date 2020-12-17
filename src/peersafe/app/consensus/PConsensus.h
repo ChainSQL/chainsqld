@@ -1046,7 +1046,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			//result_->roundTime.reset(clock_.now());
 			//rawCloseTimes_.self = now_;
 			//phase_ = ConsensusPhase::establish;
-			JLOG(j_.warn()) << "Other nodes have enter establish phase for previous ledger "<<previousLedger_.seq();
+			JLOG(j_.info()) << "Other nodes have enter establish phase for previous ledger "<<previousLedger_.seq();
 		}
 	}
 }
