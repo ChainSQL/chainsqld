@@ -349,6 +349,10 @@ public:
 		return value_.isCommand();
 	}
 
+	bool isLongText() {
+		return value_.isLongText();
+	}
+
 	void SetPrimaryKey() {
 		flag_ |= PK;
 	}
@@ -972,7 +976,8 @@ private:
 			BuildField& field = fields_[idx];
 			fields_str += field.Name();
 			if (field.isString() || field.isVarchar()
-				|| field.isBlob() || field.isText())
+				|| field.isBlob() || field.isText()
+				|| field.isLongText())
 				values_str += (boost::format("\"%1%\"") % field.asString()).str();
 			else if (field.isInt())
 				values_str += (boost::format("%d") % field.asInt()).str();
@@ -1059,7 +1064,7 @@ private:
 		for (size_t idx = 0; idx < fields_.size(); idx++) {
 			BuildField& field = fields_[idx];
 			if(field.isString() || field.isVarchar()
-				|| field.isBlob() || field.isText()) {
+				|| field.isBlob() || field.isText() || field.isLongText() ) {
 				update_fields += (boost::format("%1%=\"%2%\"")
 					%field.Name()
 					%field.asString()).str();
@@ -1083,11 +1088,6 @@ private:
 				update_fields += (boost::format("%1%=%2%")
 					% field.Name()
 					% field.asString()).str();
-			}
-			else if (field.isNull()) {
-				update_fields += (boost::format("%1%=%2%")
-					% field.Name()
-					% "NULL").str();
 			}
 			else if (field.isNull()) {
 				update_fields += (boost::format("%1%=%2%")
@@ -1678,7 +1678,8 @@ private:
 		for (size_t idx = 0; idx < fields_.size(); idx++) {
 			BuildField& field = fields_[idx];
 			if (field.isString() || field.isVarchar()
-				|| field.isBlob() || field.isText()) {
+				|| field.isBlob() || field.isText()
+				|| field.isLongText()) {
 				t = t, soci::use(field.asString());
 			}
 			else if (field.isInt())
@@ -1787,9 +1788,15 @@ protected:
 				fields.push_back(str);
 			} else if (field.isDateTime()) {
 				fields.push_back(std::string("datetime"));
-			}
-			else if (field.isDate()) {
+			} else if (field.isDate()) {
 				fields.push_back(std::string("date"));
+			} else if (field.isLongText()) {
+				std::string str;
+				if (length > 0)
+					str = (boost::format("LONGTEXT(%d)") % length).str();
+				else
+					str = "LONGTEXT";
+				fields.push_back(str);
 			}
 
 			if (field.isPrimaryKey()) {
@@ -1981,6 +1988,9 @@ protected:
 				fields.push_back(str);
 			} else if (field.isDateTime()) {
 				std::string str = "NUMERIC";
+				fields.push_back(str);
+			} else if (field.isLongText()) {
+				std::string str = "LONGTEXT";
 				fields.push_back(str);
 			}
 
@@ -2862,7 +2872,7 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
 			Json::Value v = Raw[index];
 
 
-            // both field and type are requirment 
+            // both field and type are requirement 
             if (v.isMember("field") == false && v.isMember("type") == false)
                 return ret;
             //field and type
@@ -2890,6 +2900,8 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
                 buildfield.SetFieldValue(InnerDate());
             else if (boost::iequals(type, "decimal"))
                 buildfield.SetFieldValue(InnerDecimal(32, 0));
+			else if (boost::iequals(type, "longtext"))
+				buildfield.SetFieldValue("", FieldValue::fLONGTEXT);
             else
             {                
                 buildsql->set_last_error( std::make_pair<int, std::string>(-1, (boost::format("type : %s is not support") % type).str()));
@@ -3591,7 +3603,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		if (bHasTxsHashField) {
 			BuildField update_field(sTxsHashFillField);
 			std::string updateStr = (boost::format("concat(%1%,\",%2%\")") % sTxsHashFillField % to_string(tx.getTransactionID())).str();
-			update_field.SetFieldValue(updateStr, FieldValue::fCommand);
+			update_field.SetFieldValue(updateStr, FieldValue::fCOMMAND);
 			buildsql->AddField(update_field);
 		}
 

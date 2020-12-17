@@ -105,7 +105,7 @@ public:
 		}
 	}
 
-	enum { fVARCHAR, fCHAR, fTEXT, fBLOB,fCommand };
+	enum { fVARCHAR, fCHAR, fTEXT, fBLOB, fCOMMAND, fLONGTEXT };
 	explicit FieldValue(const std::string& value, int flag)
 		: value_type_(STRING) {
 
@@ -117,8 +117,10 @@ public:
 			value_type_ = TEXT;
 		else if (flag == fBLOB)
 			value_type_ = BLOB;
-		else if (flag == fCommand)
+		else if (flag == fCOMMAND)
 			value_type_ = COMMAND;
+		else if (flag == fLONGTEXT)
+			value_type_ = LONGTEXT;
 
 		value_.str = new std::string;
 		if (value_.str) {
@@ -191,7 +193,8 @@ public:
 		}
 		else if (value_type_ == STRING || value_type_ == VARCHAR
 			|| value_type_ == TEXT || value_type_ == BLOB
-			|| value_type_ == CHAR || value_type_ == COMMAND) {
+			|| value_type_ == CHAR || value_type_ == COMMAND
+			|| value_type_ == LONGTEXT) {
 
 			value_.str = new std::string;
 			if (value_.str) {
@@ -568,7 +571,10 @@ public:
 
 	bool isCommand() const {
 		return value_type_ == COMMAND;
+	}
 
+	bool isLongText() const {
+		return value_type_ == LONGTEXT;
 	}
 
 	const int& asInt() {
@@ -651,7 +657,8 @@ private:
 		BLOB,
 		STRING,
 		NULLTYPE,
-		COMMAND
+		COMMAND,
+		LONGTEXT
 	};
 
 	int value_type_;
