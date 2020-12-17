@@ -67,6 +67,7 @@
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/misc/PreContractFace.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
@@ -347,6 +348,7 @@ public:
 	std::unique_ptr <CACertSite>    caCertSites_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
+    std::unique_ptr <PreContractFace> m_preContractFace;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
     std::unique_ptr <HashRouter> mHashRouter;
 	RCLValidations mValidations;
@@ -630,6 +632,10 @@ public:
         return nodeIdentity_;
     }
 
+    PreContractFace& getPreContractFace() override
+	{
+		return *m_preContractFace;
+	}
 	TxStoreDBConn& getTxStoreDBConn() override
 	{
 		return *m_pTxStoreDBConn;
@@ -1269,6 +1275,9 @@ bool ApplicationImp::setup()
             GmEncryptObj::hEType_ = GmEncryptObj::unknown;
         }
     }*/
+    {
+        m_preContractFace = std::make_unique<PreContractFace>();
+    }
 	// VFALCO NOTE Unfortunately, in stand-alone mode some code still
 	//             foolishly calls overlay(). When this is fixed we can
 	//             move the instantiation inside a conditional:
