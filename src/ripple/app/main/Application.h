@@ -70,6 +70,7 @@ class ValidatorList;
 class ValidatorSite;
 class CertList;
 class Cluster;
+class PreContractFace;
 class TxStoreDBConn;
 class TxStore;
 class TableStatusDB;
@@ -158,6 +159,7 @@ public:
     virtual NetworkOPs&             getOPs () = 0;
     virtual OrderBookDB&            getOrderBookDB () = 0;
     virtual TransactionMaster&      getMasterTransaction () = 0;
+    virtual PreContractFace&		getPreContractFace() = 0;
 	virtual TxStoreDBConn&			getTxStoreDBConn() = 0;
 	virtual TxStore&                getTxStore() = 0;
     virtual TableStatusDB&          getTableStatusDB() = 0;
