@@ -3527,9 +3527,18 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 			sql += buildsql->asString();
 			if (buildsql->execSQL() != 0) {
 				//ret = { -1, std::string("Executing SQL was failure.") + sql };
-				ret = { -1, (boost::format("Executing `%1%` was failure. %2%")
-					% sql
-					%buildsql->last_error().second).str() };
+				if(sql.size() < 1024)
+				{
+					ret = { -1, (boost::format("Executing `%1%` was failure. %2%")
+						% sql
+						%buildsql->last_error().second).str() };
+				}
+				else
+				{
+					ret = { -1, (boost::format("Executing was failure. %1%")
+						%buildsql->last_error().second).str() };
+				}
+
 				return ret;
 			}
 			affected_rows += db_conn_->getSession().get_affected_row_count();
