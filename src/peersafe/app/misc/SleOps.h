@@ -52,6 +52,11 @@ public:
 	/// Clear the storage root hash of an account to the hash of the empty trie.
 	void clearStorage(AccountID const& _contract);
 
+    void unrevertableTouch(AccountID const& _address)
+    {
+        unrevertablyTouched_.insert(_address);
+    }
+
 	/// Add some amount to balance.
 	/// Will initialise the address if it has never been used.
 	void addBalance(AccountID const& _id, int64_t const& _amount);
@@ -96,7 +101,7 @@ public:
 
     int64_t trustSet(AccountID const&  _account, std::string const& _value, std::string const&  _sCurrency, AccountID const& _issuer);
 
-	// search gateway trust lines   -1 no trust£»  >=0 trust limit
+	// search gateway trust lines   -1 no trustï¿½ï¿½  >=0 trust limit
     int64_t trustLimit(AccountID const&  _account, AccountID const& _issuer, std::string const&  _sCurrency,uint64_t _power);
 	bool getAccountLines(AccountID const&  _account, Json::Value& _lines );
 
@@ -122,6 +127,8 @@ private:
 	std::vector<STTx>						  sqlTxsStatements_;
 	std::vector<uint256>					  handleList_;
 	std::map<std::string, uint160>			  sqlTxsNameInDB_;
+
+    std::unordered_set<AccountID>             unrevertablyTouched_;
 };
 
 }

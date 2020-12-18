@@ -259,8 +259,7 @@ unsigned long SoftEncrypt::SM2ECCSign(
 	memcpy(signedTmp + (32 - rSize), rTmp, rSize);
 	memcpy(signedTmp + (64 - sSize), sTmp, sSize);
 	// memcpy(pSignValue, signedTmp, 64);
-    std::vector<unsigned char> signedVecTemp(signedTmp, signedTmp + 64);
-    signedDataV.assign(signedVecTemp.begin(), signedVecTemp.end());
+    signedDataV.insert(signedDataV.end(), signedTmp, signedTmp+64);
 	
     ret = 0;
     DebugPrint("SM2ECCSign: SM2 secret key sign successful!");

@@ -107,6 +107,7 @@ private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										
 	eth::EnvInfo const& m_envInfo;					///< Information on the runtime environment.
+    PreContractFace const& m_PreContractFace;
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
 	eth::owning_bytes_ref m_output;			///< Execution output.
 	eth::bytes m_input;						///< Execution input.
