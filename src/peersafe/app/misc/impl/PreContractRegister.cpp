@@ -1,4 +1,7 @@
 #include <peersafe/app/misc/PreContractRegister.h>
+#include <ripple/protocol/digest.h>
+#include <ripple/protocol/CommonKey.h>
+#include <ripple/basics/Slice.h>
 using namespace std;
 
 namespace ripple {
@@ -152,7 +155,7 @@ ETH_REGISTER_PRECOMPILED(identity)(eth::bytesConstRef _in)
 
 // Parse _count bytes of _in starting with _begin offset as big endian int.
 // If there's not enough bytes in _in, consider it infinitely right-padded with zeroes.
-int64_t parseBigEndianRightPadded(eth::bytesConstRef _in, int64_t const& _begin, int64_t const& _count)
+int64_t parseBigEndianRightPadded(eth::bytesConstRef _in, eth::bigint const& _begin, eth::bigint const& _count)
 {
     if (_begin > _in.count())
         return 0;

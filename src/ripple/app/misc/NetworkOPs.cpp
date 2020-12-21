@@ -1258,6 +1258,11 @@ void NetworkOPsImp::apply (std::unique_lock<std::mutex>& batchLock)
 {
     std::vector<TransactionStatus> submit_held;
     std::vector<TransactionStatus> transactions;
+    if(mTransactions.size() > 10000)
+    {
+        JLOG(m_journal.error()) << "mTransactions.size(): " << mTransactions.size();
+    }
+    
     mTransactions.swap (transactions);
     assert (! transactions.empty());
 

@@ -2,6 +2,7 @@
 #define __PRE_CONTRACT_FACE__
 
 #include <peersafe/app/misc/PreContractRegister.h>
+#include <ripple/protocol/AccountID.h>
 
 namespace ripple {
 
