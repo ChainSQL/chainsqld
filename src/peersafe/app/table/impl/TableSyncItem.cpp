@@ -1154,7 +1154,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 				}
 				catch (std::exception const& e)
 				{
-					JLOG(journal_.info()) << "Dispose exception: " << e.what();
+					JLOG(journal_.error()) << "Dispose exception: " << e.what();
 
 					std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", e.what());
 					app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
