@@ -1926,6 +1926,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
         suppression,
         RCLCxPeerPos::Proposal{
             prevLedger,
+			set.curledgerseq(),set.view(),
             set.proposeseq(),
             proposeHash,
             closeTime,
