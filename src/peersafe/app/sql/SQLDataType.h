@@ -563,7 +563,7 @@ public:
 	}
 
 
-	bool isNull() {
+	bool isNull() const {
 		return value_type_ == NULLTYPE;
 	}
 
