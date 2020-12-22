@@ -361,6 +361,14 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 				}
 				placeHoder += ")";
 			}
+            else if (boost::iequals(op, "is") || boost::iequals(op, "is not"))
+            {
+                const BindValue& v = value[0];
+                std::string fv;
+                if (format_value(v, fv) != 0)
+                    return false;
+                placeHoder += "NULL";
+            }
 			else {
 				if (bind_values_index_ != -1) {
 					placeHoder = (boost::format(":%1%") %(++bind_values_index_)).str();
@@ -436,6 +444,10 @@ int conditionTree::format_value(const BindValue& value, std::string& result) con
 	else if (value.isDouble() || value.isNumeric()) {
 		result = (boost::format("%1%") % value.asDouble()).str();
 	}
+    else if (value.isNull())
+    {
+        result = "NULL";
+    }
 	else {
 		ret = -1;
 		result = "Not support value type";

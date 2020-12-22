@@ -565,7 +565,7 @@ public:
 		return value_type_ == DATE;
 	}
 
-	bool isNull() {
+	bool isNull() const {
 		return value_type_ == NULLTYPE;
 	}
 
