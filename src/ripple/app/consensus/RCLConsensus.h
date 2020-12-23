@@ -217,22 +217,6 @@ class RCLConsensus
         */
         boost::optional<RCLCxLedger>
         acquireLedger(LedgerHash const& hash);
-
-		/** Relay the given proposal to all peers
-
-			@param peerPos The peer position to relay.
-		 */
-		void
-			relay(RCLCxPeerPos const& peerPos);
-
-		/** Relay disputed transacction to peers.
-
-			Only relay if the provided transaction hasn't been shared recently.
-
-			@param tx The disputed transaction to relay.
-		*/
-		void
-			relay(RCLCxTx const& tx);
         /** Share the given proposal with all peers
 
             @param peerPos The peer position to share.
@@ -297,12 +281,6 @@ class RCLConsensus
         */
         void
         propose(RCLCxPeerPos::Proposal const& proposal);
-		/** Relay the given tx set to peers.
-
-			@param set The TxSet to share.
-		*/
-		void
-			relay(RCLTxSet const& set);
 
         /** Get the ID of the previous ledger/last closed ledger(LCL) on the
            network
