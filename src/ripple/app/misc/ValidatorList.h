@@ -114,7 +114,7 @@ class ValidatorList
         std::string rawManifest;
         std::string rawBlob;
         std::string rawSignature;
-        std::uint32_t rawVersion;
+        std::uint32_t rawVersion = requiredListVersion;
         uint256 hash;
     };
 
