@@ -23,6 +23,7 @@
 #include <ripple/protocol/JsonFields.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/basics/make_lock.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 
@@ -31,19 +32,66 @@ Json::Value doUnlList (RPC::Context& context)
     auto lock = make_lock(context.app.getMasterMutex());
     Json::Value obj (Json::objectValue);
 
-    context.app.validators().for_each_listed (
-        [&unl = obj[jss::unl]](
-            PublicKey const& publicKey,
-            bool trusted)
+    Json::Value lookups(Json::arrayValue);
+    Json::Value committees(Json::arrayValue);
+
+    std::map<std::uint32_t, Json::Value> mapIndex2Shard;
+
+    context.app.getShardManager().lookup().validators().for_each_listed(
+        [&](PublicKey const& publicKey, bool trusted)
         {
-            Json::Value node (Json::objectValue);
+            Json::Value node(Json::objectValue);
 
             node[jss::pubkey_validator] = toBase58(
                 TokenType::TOKEN_NODE_PUBLIC, publicKey);
             node[jss::trusted] = trusted;
 
-            unl.append (node);
+            lookups.append(node);
         });
+
+    context.app.getShardManager().committee().validators().for_each_listed(
+        [&](PublicKey const& publicKey, bool trusted)
+        {
+            Json::Value node(Json::objectValue);
+
+            node[jss::pubkey_validator] = toBase58(
+                TokenType::TOKEN_NODE_PUBLIC, publicKey);
+            node[jss::trusted] = trusted;
+
+            committees.append(node);
+        });
+
+    for (auto const& it : context.app.getShardManager().node().shardValidators())
+    {
+        if (context.app.getShardManager().myShardRole() != ShardManager::SHARD ||
+            it.first == context.app.getShardManager().node().shardID())
+        {
+            Json::Value shard(Json::arrayValue);
+
+            it.second->for_each_listed(
+                [&](PublicKey const& publicKey, bool trusted)
+                {
+                    Json::Value node(Json::objectValue);
+
+                    node[jss::pubkey_validator] = toBase58(
+                        TokenType::TOKEN_NODE_PUBLIC, publicKey);
+                    node[jss::trusted] = trusted;
+
+                    shard.append(node);
+                });
+
+            mapIndex2Shard[it.first] = shard;
+        }
+    }
+
+    obj["lookups"] = lookups;
+    obj["committees"] = committees;
+
+    for (auto item : mapIndex2Shard) {
+
+        std::string shardName = (boost::format("shard%1%") % item.first).str();
+        obj[shardName] = item.second;
+    }
 
     return obj;
 }
