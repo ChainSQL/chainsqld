@@ -24,6 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/overlay/Peer.h>
 #include <ripple/overlay/impl/PeerImp.h>
 #include <ripple/app/misc/Transaction.h>
+#include <ripple/app/misc/ValidatorSite.h>
 #include <ripple/app/consensus/RCLValidations.h>
 #include <boost/algorithm/string.hpp>
 #include <memory>
@@ -182,7 +183,10 @@ void ShardManager::checkValidatorLists()
         JLOG(j_.info()) << "Setup lookup validators trustKey and quorum";
         mLookup->validators().resetValidators();
         mLookup->validators().onConsensusStart();
-        mLookup->validators().clearShouldUpdate();
+        if (app_.config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
+        {
+            mLookup->validators().clearShouldUpdate();
+        }
     }
 
     bool checkShardCount = false;
@@ -196,7 +200,10 @@ void ShardManager::checkValidatorLists()
                 JLOG(j_.info()) << "Setup shard " << validators.first << " validators trustKey and quorum";
                 validators.second->onConsensusStart();
             }
-            validators.second->clearShouldUpdate();
+            if (app_.config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
+            {
+                validators.second->clearShouldUpdate();
+            }
             checkShardCount = true;
         }
     }
@@ -220,7 +227,10 @@ void ShardManager::checkValidatorLists()
         JLOG(j_.info()) << "Setup committee validators trustKey and quorum";
         mCommittee->validators().resetValidators();
         mCommittee->validators().onConsensusStart();
-        mCommittee->validators().clearShouldUpdate();
+        if (app_.config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
+        {
+            mCommittee->validators().clearShouldUpdate();
+        }
     }
 }
 

@@ -691,13 +691,20 @@ bool Node::checkNetQuorum(bool checkAllShard)
                     }
                 }
             }
+
+            if (mShardManager.myShardRole() == ShardManager::SHARD &&
+                mShardID == i)
+            {
+                // add self
+                numPeers++;
+            }
         }
 
         if (mMapOfShardValidators.find(i) == mMapOfShardValidators.end() ||
-            numPeers + 1 < mMapOfShardValidators[i]->quorum())
+            numPeers < mMapOfShardValidators[i]->quorum())
         {
             JLOG(journal_.warn())
-                << "Shard(" << i << ") node count (" << numPeers + 1 << ") "
+                << "Shard(" << i << ") node count (" << numPeers << ") "
                 << "has fallen below quorum (" << mMapOfShardValidators[i]->quorum() << ").";
             return false;
         }

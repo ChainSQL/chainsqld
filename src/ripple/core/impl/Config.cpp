@@ -584,7 +584,7 @@ void Config::loadFromString (std::string const& fileContents)
         Throw<std::runtime_error>("shard_validators and committee_validators must be configured!");
     }
 
-    if (isShardOrCommittee() && !LOOKUP_PUBLIC_KEYS.size())
+    if (strongCheck && isShardOrCommittee() && !LOOKUP_PUBLIC_KEYS.size())
     {
         Throw<std::runtime_error>("lookup_public_keys must be configured!");
     }

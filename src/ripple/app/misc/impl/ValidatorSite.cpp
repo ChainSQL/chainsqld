@@ -101,7 +101,10 @@ void ValidatorSite::onAccepted()
 	//begin consensus after apply success
 	if (waitingBeginConsensus_)
 	{
-		//app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+        if (app_.config().isShardOrCommittee())
+        {
+            app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+        }
         app_.getShardManager().checkValidatorLists();
 		waitingBeginConsensus_ = false;
 	}

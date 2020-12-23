@@ -832,12 +832,18 @@ bool Committee::checkNetQuorum()
                 numPeers++;
             }
         }
+
+        if (mShardManager.myShardRole() == ShardManager::COMMITTEE)
+        {
+            // add self
+            numPeers++;
+        }
     }
 
-    if (numPeers + 1 < quorum())
+    if (numPeers < quorum())
     {
         JLOG(journal_.warn())
-            << "Committee node count (" << numPeers + 1 << ") "
+            << "Committee node count (" << numPeers << ") "
             << "has fallen below quorum (" << quorum() << ").";
         return false;
     }
