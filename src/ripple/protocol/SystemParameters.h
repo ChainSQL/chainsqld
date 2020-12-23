@@ -58,7 +58,9 @@ systemCurrencyCode()
 }
 
 /** The ZXC ledger network's earliest allowed sequence */
-static std::uint32_t constexpr ZXC_LEDGER_EARLIEST_SEQ{32570};
+static std::uint32_t constexpr 
+//ZXC_LEDGER_EARLIEST_SEQ {32570};
+ZXC_LEDGER_EARLIEST_SEQ{ 1 };
 
 /** The minimum amount of support an amendment should have.
 
