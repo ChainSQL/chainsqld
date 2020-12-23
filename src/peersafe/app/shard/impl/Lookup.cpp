@@ -141,6 +141,8 @@ void Lookup::checkSaveLedger(LedgerIndex netLedger)
                 [this](Job&) { saveLedgerThread(); });
         }
     }
+
+    mShardManager.checkValidatorLists();
 }
 
 void Lookup::saveLedgerThread()
@@ -432,8 +434,6 @@ void Lookup::onMessage(std::shared_ptr<protocol::TMFinalLedgerSubmit> const& m)
 
     saveFinalLedger(finalLedger);
 	checkSaveLedger(finalLedger->seq());
-
-    mShardManager.checkValidatorLists();
 }
 
 void Lookup::onMessage(std::shared_ptr<protocol::TMCommitteeViewChange> const& m)

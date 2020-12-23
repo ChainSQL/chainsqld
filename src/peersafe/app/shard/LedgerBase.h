@@ -78,20 +78,22 @@ public:
 
 	inline virtual bool checkValidity(std::unique_ptr <ValidatorList> const& list)
 	{
+        std::size_t trustCount = 0;
 		//check signature
 		for (auto iter = mSignatures.begin(); iter != mSignatures.end(); iter++)
 		{
 			boost::optional<PublicKey> pubKey = list->getTrustedKey(iter->first);
-			if (!pubKey)
-				return false;
+            if (!pubKey)
+                continue;
 			bool validSig = verifyDigest(
 				iter->first,
 				mLedgerHash,
 				makeSlice(iter->second));
 			if (!validSig)
 				return false;
+            trustCount++;
 		}
-		if (mSignatures.size() < list->quorum())
+		if (trustCount < list->quorum())
 			return false;
 
 		return true;
