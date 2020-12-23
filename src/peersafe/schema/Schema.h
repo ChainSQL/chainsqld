@@ -60,7 +60,8 @@ namespace ripple {
 	class ShardFamily;
 	class PeerReservationTable;
 	class DatabaseCon;
-	class SHAMapStore;
+    class SHAMapStore;
+    class SchemaManager;
 
 	using NodeCache = TaggedCache <SHAMapHash, Blob>;
 
@@ -159,6 +160,7 @@ namespace ripple {
 		virtual SchemaParams			getSchemaParams() = 0;
 		virtual bool					initBeforeSetup() = 0;
 		virtual SchemaID				schemaId() = 0;
+		virtual SchemaManager&			getSchemaManager() = 0;
 	};
 
 	std::shared_ptr <Schema>

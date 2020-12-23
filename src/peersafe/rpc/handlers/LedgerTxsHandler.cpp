@@ -58,7 +58,7 @@ namespace ripple {
 		Json::Value arrFailureDetail(Json::arrayValue);
 		Json::Value arrSuccessDetail(Json::arrayValue);
 
-		beast::Journal  j_ = context.app.logs().journal("LedgerTxHandler");
+		beast::Journal  j_ = context.app.journal("LedgerTxHandler");
 
 		for (auto& item : ledger->txs){
 		

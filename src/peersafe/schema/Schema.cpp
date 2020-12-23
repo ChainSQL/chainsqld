@@ -59,6 +59,7 @@
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
+#include <peersafe/schema/SchemaManager.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/system/error_code.hpp>
@@ -211,7 +212,7 @@ namespace ripple {
 				*this, SchemaImp::journal("PathRequest"), app.getCollectorManager().collector()))
 
 			, m_ledgerMaster(std::make_unique<LedgerMaster>(*this, stopwatch(),
-				app_.getJobQueue(), app.getCollectorManager().collector(),
+				*this, app.getCollectorManager().collector(),
 				SchemaImp::journal("LedgerMaster")))
 
 
@@ -244,7 +245,7 @@ namespace ripple {
 				config_->START_VALID,
 				app_.getJobQueue(),
 				*m_ledgerMaster,
-				app_.getJobQueue(),
+				*this,
 				app_.getValidatorKeys(),
 				dynamic_cast<BasicApp&>(app_).get_io_service(),
 				SchemaImp::journal("NetworkOPs"),
@@ -853,14 +854,14 @@ namespace ripple {
 				std::uint32_t freePages = maxPages - pageCount;
 				std::uint64_t freeSpace =
 					safe_cast<std::uint64_t>(freePages) * pageSize;
-				JLOG(m_journal.info())
-					<< "Transaction DB pathname: " << dbPath.string()
-					<< "; file size: " << dbSize.value_or(-1) << " bytes"
-					<< "; SQLite page size: " << pageSize << " bytes"
-					<< "; Free pages: " << freePages
-					<< "; Free space: " << freeSpace << " bytes; "
-					<< "Note that this does not take into account available disk "
-					"space.";
+				//JLOG(m_journal.info())
+				//	<< "Transaction DB pathname: " << dbPath.string()
+				//	<< "; file size: " << dbSize.value_or(-1) << " bytes"
+				//	<< "; SQLite page size: " << pageSize << " bytes"
+				//	<< "; Free pages: " << freePages
+				//	<< "; Free space: " << freeSpace << " bytes; "
+				//	<< "Note that this does not take into account available disk "
+				//	"space.";
 
 				if (freeSpace < megabytes(512))
 				{
@@ -947,9 +948,14 @@ namespace ripple {
 			return schema_params_;
 		}
 
-		SchemaID schemaId()
+		SchemaID schemaId() override
 		{
 			return schema_params_.schemaId();
+		}
+
+		SchemaManager& getSchemaManager() override
+		{
+			return app_.getSchemaManager();
 		}
 	private:
 		// For a newly-started validator, this is the greatest persisted ledger
@@ -1565,23 +1571,23 @@ namespace ripple {
 					}
 				}
 			}
-			using namespace std::chrono_literals;
-			using namespace date;
-			static constexpr NetClock::time_point ledgerWarnTimePoint{
-				sys_days{January / 1 / 2018} -sys_days{January / 1 / 2000} };
-			if (loadLedger->info().closeTime < ledgerWarnTimePoint)
-			{
-				JLOG(m_journal.fatal())
-					<< "\n\n***  WARNING   ***\n"
-					"You are replaying a ledger from before "
-					<< to_string(ledgerWarnTimePoint)
-					<< " UTC.\n"
-					"This replay will not handle your ledger as it was "
-					"originally "
-					"handled.\nConsider running an earlier version of rippled "
-					"to "
-					"get the older rules.\n*** CONTINUING ***\n";
-			}
+			//using namespace std::chrono_literals;
+			//using namespace date;
+			//static constexpr NetClock::time_point ledgerWarnTimePoint{
+			//	sys_days{January / 1 / 2018} -sys_days{January / 1 / 2000} };
+			//if (loadLedger->info().closeTime < ledgerWarnTimePoint)
+			//{
+			//	JLOG(m_journal.fatal())
+			//		<< "\n\n***  WARNING   ***\n"
+			//		"You are replaying a ledger from before "
+			//		<< to_string(ledgerWarnTimePoint)
+			//		<< " UTC.\n"
+			//		"This replay will not handle your ledger as it was "
+			//		"originally "
+			//		"handled.\nConsider running an earlier version of rippled "
+			//		"to "
+			//		"get the older rules.\n*** CONTINUING ***\n";
+			//}
 
 			JLOG(m_journal.info()) << "Loading ledger " << loadLedger->info().hash
 				<< " seq:" << loadLedger->info().seq;
