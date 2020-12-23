@@ -353,7 +353,8 @@ run(int argc, char** argv)
         "Override the minimum validation quorum.")(
         "silent", "No output to the console after startup.")(
         "standalone,a", "Run with no peers.")("verbose,v", "Verbose logging.")(
-        "version", "Display the build version.");
+        "version", "Display the build version.")(
+		"schemaid", po::value<std::string>(), "Specify the schemaid.");
 
     po::options_description data("Ledger/Data Options");
     data.add_options()("import", importText.c_str())(

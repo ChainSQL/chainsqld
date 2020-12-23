@@ -272,61 +272,6 @@ RCLConsensus::Adaptor::sendViewChange(ViewChange const& change)
 }
 
 void
-RCLConsensus::Adaptor::relay(RCLTxSet const& set)
-{
-    inboundTransactions_.giveSet(set.id(), set.map_, false);
-}
-
-void
-RCLConsensus::Adaptor::relay(RCLCxPeerPos const& peerPos)
-{
-    protocol::TMProposeSet prop;
-
-    auto const& proposal = peerPos.proposal();
-
-    prop.set_proposeseq(proposal.proposeSeq());
-    prop.set_closetime(proposal.closeTime().time_since_epoch().count());
-
-    prop.set_currenttxhash(
-        proposal.position().begin(), proposal.position().size());
-    prop.set_previousledger(
-        proposal.prevLedger().begin(), proposal.position().size());
-
-    auto const pk = peerPos.publicKey().slice();
-    prop.set_nodepubkey(pk.data(), pk.size());
-
-    auto const sig = peerPos.signature();
-    prop.set_signature(sig.data(), sig.size());
-
-    prop.set_schemaid(app_.schemaId().begin(), uint256::size());
-
-    app_.peerManager().relay(prop, peerPos.suppressionID());
-}
-
-void
-RCLConsensus::Adaptor::relay(RCLCxTx const& tx)
-{
-    // If we didn't relay this transaction recently, relay it to all peers
-    if (app_.getHashRouter().shouldRelay(tx.id()))
-    {
-        JLOG(j_.debug()) << "Relaying disputed tx " << tx.id();
-        auto const slice = tx.tx_.slice();
-        protocol::TMTransaction msg;
-        msg.set_rawtransaction(slice.data(), slice.size());
-        msg.set_status(protocol::tsNEW);
-        msg.set_receivetimestamp(
-            app_.timeKeeper().now().time_since_epoch().count());
-        msg.set_schemaid(app_.schemaId().begin(), uint256::size());
-        app_.peerManager().foreach(send_always(
-            std::make_shared<Message>(msg, protocol::mtTRANSACTION)));
-    }
-    else
-    {
-        JLOG(j_.debug()) << "Not relaying disputed tx " << tx.id();
-    }
-}
-
-void
 RCLConsensus::Adaptor::share(RCLTxSet const& txns)
 {
     inboundTransactions_.giveSet(txns.id(), txns.map_, false);

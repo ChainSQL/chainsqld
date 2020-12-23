@@ -382,6 +382,9 @@ private:
     bool
     isConfidentialUnit(const STTx& tx);
 
+	void
+	checkSubChains();
+
 private:
     Schema& app_;
     beast::Journal m_journal;
@@ -463,6 +466,7 @@ private:
     // Time that the previous upgrade warning was issued.
     TimeKeeper::time_point upgradeWarningPrevTime_{};
 
+	bool subChainInited_{ false };
 private:
     struct Stats
     {

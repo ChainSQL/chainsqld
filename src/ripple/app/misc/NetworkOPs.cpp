@@ -263,13 +263,13 @@ public:
               app,
               make_FeeVote(
                   setup_FeeVote(app_.config().section("voting")),
-                  app_.logs().journal("FeeVote")),
+                  app_.journal("FeeVote")),
               ledgerMaster,
               *m_localTX,
               app.getInboundTransactions(),
               beast::get_abstract_clock<std::chrono::steady_clock>(),
               validatorKeys,
-              app_.logs().journal("LedgerConsensus"))
+              app_.journal("LedgerConsensus"))
         , m_ledgerMaster(ledgerMaster)
         , m_job_queue(job_queue)
         , m_standalone(standalone)
@@ -1092,9 +1092,9 @@ NetworkOPsImp::processHeartbeatTimer()
             if (mMode != OperatingMode::DISCONNECTED)
             {
                 setMode(OperatingMode::DISCONNECTED);
-                JLOG(m_journal.warn())
-                    << "Node count (" << numPeers << ") has fallen "
-                    << "below required minimum (" << minPeerCount_ << ").";
+                //JLOG(m_journal.warn())
+                //    << "Node count (" << numPeers << ") has fallen "
+                //    << "below required minimum (" << minPeerCount_ << ").";
             }
 
             // MasterMutex lock need not be held to call setHeartbeatTimer()
@@ -3438,11 +3438,11 @@ std::pair<bool, std::string> NetworkOPsImp::createSchema(const std::shared_ptr<S
 	if (!bShouldCreate)
 		return std::make_pair(true, "");
 
-	if (!app_.app().getSchemaManager().contains(params.schema_id))
+	if (!app_.getSchemaManager().contains(params.schema_id))
 	{
 		try
 		{
-			auto newSchema = app_.app().getSchemaManager().createSchema(app_.app().config(), params);
+			auto newSchema = app_.getSchemaManager().createSchema(app_.app().config(), params);
 			if (newSchema)
 			{
 				if (!newSchema->initBeforeSetup())
@@ -3553,7 +3553,7 @@ void NetworkOPsImp::checkSchemaTx(std::shared_ptr<ReadView const> const& alAccep
 			if (bOperatingSelf)
 			{
 				app_.app().getSchema(schemaID).doStop();
-				app_.app().getSchemaManager().removeSchema(schemaID);
+				app_.getSchemaManager().removeSchema(schemaID);
 			}
 			else
 				app_.app().peerManager(schemaID).remove(vecValidators);

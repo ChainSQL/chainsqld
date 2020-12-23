@@ -1019,7 +1019,7 @@ PConsensus<Adaptor>::phaseCollecting()
 			// Share the newly created transaction set if we haven't already
 			// received it from a peer
 			if (acquired_.emplace(*setID_, result_->txns).second)
-				adaptor_.relay(result_->txns);
+				adaptor_.share(result_->txns);
 
 			adaptor_.propose(result_->position);
 
@@ -1425,9 +1425,6 @@ template <class Adaptor>
 void
 PConsensus<Adaptor>::checkLedger()
 {
-	if (previousLedger_.seq() == GENESIS_LEDGER_INDEX)
-		return;
-
 	auto netLgr =
 		adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
 

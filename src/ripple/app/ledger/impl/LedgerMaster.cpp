@@ -60,6 +60,7 @@
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
+#include <peersafe/schema/SchemaManager.h>
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -288,6 +289,7 @@ void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const
 			mCompleteLedgers.insert(previousLedger->info().seq);
 		}
 	}
+	checkSubChains();
 	app_.getTableSync().TryTableSync();
 	tryAdvance();
 }
@@ -1365,6 +1367,53 @@ bool LedgerMaster::isConfidentialUnit(const STTx& tx)
 	return false;
 }
 
+void LedgerMaster::checkSubChains()
+{
+	if (subChainInited_)
+		return;
+
+	if (app_.schemaId() != beast::zero)
+		return;
+
+	auto ledger = getValidatedLedger();
+	for (auto sle : ledger->sles)
+	{
+		if (sle->getType() != ltSCHEMA)
+			continue;
+		uint256 schemaId = sle->key();
+		SchemaParams params{};
+        params.readFromSle(sle);
+		bool bShouldCreate = false;
+        for (auto validator : params.validator_list)
+        {
+            if (validator.first == app_.getValidationPublicKey())
+            {
+				bShouldCreate = true;
+                break;
+            }
+        }
+		if (bShouldCreate)
+		{
+			if (!app_.getSchemaManager().contains(schemaId))
+			{
+				JLOG(m_journal.info()) << "Creating schema when checkSubChains:" << schemaId;
+				app_.getOPs().createSchema(sle, true);
+			}
+		}
+		else
+		{
+			if (app_.getSchemaManager().contains(schemaId))
+			{
+				JLOG(m_journal.info()) << "Removing schema when checkSubChains:" << schemaId;
+				app_.app().getSchema(schemaId).doStop();
+				app_.getSchemaManager().removeSchema(schemaId);
+			}
+		}
+	}
+
+	subChainInited_ = true;
+}
+
 void LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
 {
 	genesis->setValidated();
@@ -1414,6 +1463,7 @@ LedgerMaster::checkAccept(std::shared_ptr<Ledger const> const& ledger)
     ledger->setFull();
     setValidLedger(ledger);
 
+	checkSubChains();
     app_.getTxPool().removeTxs(ledger->txMap(),ledger->info().seq,ledger->info().parentHash);
 
     if (!mPubLedger)
