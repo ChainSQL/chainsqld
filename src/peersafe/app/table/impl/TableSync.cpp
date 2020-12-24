@@ -363,8 +363,9 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
     LedgerIndex curLedgerIndex = 0;
     uint256 curLedgerHash;
     uint32 time = 0;
+	auto pubLedgerSeq = app_.getLedgerMaster().getPublishedLedger()->info().seq;
 
-    for (int i = stItemInfo.u32SeqLedger + 1; i <= app_.getLedgerMaster().getPublishedLedger()->info().seq; i++)
+    for (int i = stItemInfo.u32SeqLedger + 1; i <= pubLedgerSeq; i++)
     {
         if (!app_.getLedgerMaster().haveLedger(i))   
         {
@@ -377,7 +378,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
         //check the 256th first , if no ,continue
         if (i > blockCheckIndex)
         {
-            LedgerIndex uStopIndex = std::min(getCandidateLedger(i), app_.getLedgerMaster().getPublishedLedger()->info().seq);
+            LedgerIndex uStopIndex = std::min(getCandidateLedger(i), pubLedgerSeq);
             if (app_.getLedgerMaster().haveLedger(i, uStopIndex))
             {
                 auto ledger = app_.getLedgerMaster().getLedgerBySeq(uStopIndex);

@@ -257,6 +257,14 @@ TER Transactor::payFee ()
 TER
 Transactor::checkSeq (PreclaimContext const& ctx)
 {
+	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
+		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
+	{
+		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
+			"view.seq=" << ctx.view.seq();
+		return tefMAX_LEDGER;
+	}
+
     auto const id = ctx.tx.getAccountID(sfAccount);
 
     auto const sle = ctx.view.read(
@@ -293,16 +301,7 @@ Transactor::checkSeq (PreclaimContext const& ctx)
 
     if (ctx.tx.isFieldPresent (sfAccountTxnID) &&
             (sle->getFieldH256 (sfAccountTxnID) != ctx.tx.getFieldH256 (sfAccountTxnID)))
-        return tefWRONG_PRIOR;
-
-	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
-		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
-	{
-		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
-			"view.seq=" << ctx.view.seq();
-		return tefMAX_LEDGER;
-	}
-        
+        return tefWRONG_PRIOR;        
 
     return tesSUCCESS;
 }
