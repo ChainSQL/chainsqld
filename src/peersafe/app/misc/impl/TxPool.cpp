@@ -79,12 +79,12 @@ namespace ripple {
 
 		int count = 0;
 		TransactionSet::iterator iterSet;
-        for (auto const& item : cSet)
+        try
         {
-            try
+            for (auto const& item : cSet)
             {
-				if (!txExists(item.key()))
-					continue;
+                if (!txExists(item.key()))
+                    continue;
 
                 // If not exist, throw std::out_of_range exception.
                 iterSet = mTxsHash.at(item.key());
@@ -93,27 +93,20 @@ namespace ripple {
                 mTxsHash.erase(item.key());
                 mTxsSet.erase(iterSet);
 
-                // remove from avoid set.
-                if (mAvoidByHash.find(item.key()) != mAvoidByHash.end())
-                {
-                    LedgerIndex seq = mAvoidByHash[item.key()];
-                    mAvoidBySeq[seq].erase(item.key());
-                    if (!mAvoidBySeq[seq].size())
-                    {
-                        mAvoidBySeq.erase(seq);
-                    }
-                    mAvoidByHash.erase(item.key());
-                }
-                else
-                {
-                    JLOG(j_.warn()) << "TxPool::TX:" << item.key() << " not in mAvoid set";
-                }
-				count++;
+                count++;
             }
-            catch (std::exception const& e)
+
+            // remove avoid set.
+            for (auto const& it : mAvoidBySeq[ledgerSeq])
             {
-                JLOG(j_.warn()) << "TxPool::removeTxs exception:" << e.what();
+                mAvoidByHash.erase(it);
             }
+
+            mAvoidBySeq.erase(ledgerSeq);
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(j_.warn()) << "TxPool::removeTxs exception:" << e.what();
         }
 
 		JLOG(j_.info()) << "Remove " << count << " txs for ledger " << ledgerSeq;
