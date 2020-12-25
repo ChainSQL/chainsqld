@@ -47,7 +47,7 @@ bool CommitteeViewChange::checkValidity(std::unique_ptr<ValidatorList> const& va
     {
         if (!validators->trusted(it.first))
         {
-            return false;
+            continue;
         }
         ViewChange viewChange{ mReason, mPreSeq, mPreHash, it.first, mView, makeSlice(it.second) };
         if (!viewChange.checkSign())
