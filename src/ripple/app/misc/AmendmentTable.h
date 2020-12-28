@@ -24,6 +24,7 @@
 #include <ripple/protocol/STValidation.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/protocol/Protocol.h>
+#include <ripple/protocol/TxFlags.h>
 
 namespace ripple {
 
@@ -134,12 +135,40 @@ public:
             getMajorityAmendments(*lastClosedLedger),
             parentValidations);
 
+        auto const shardID = parentValidations[0]->getFieldU32(sfShardID);
+
+        if (actions.size() == 0)
+        {
+            STTx amendTx(ttAMENDMENT,
+                [shardID, seq = lastClosedLedger->seq() + 1](auto& obj)
+            {
+                obj.setFieldU32(sfShardID, shardID);
+                obj.setAccountID(sfAccount, AccountID());
+                obj.setFieldH256(sfAmendment, uint256());
+                obj.setFieldU32(sfLedgerSequence, seq);
+
+                obj.setFieldU32(sfFlags, tfNoChange);
+            });
+
+            Serializer s;
+            amendTx.add(s);
+
+            initialPosition->addGiveItem(
+                std::make_shared <SHAMapItem>(
+                    amendTx.getTransactionID(),
+                    s.peekData()),
+                true,
+                false);
+            return;
+        }
+
         // Inject appropriate pseudo-transactions
         for (auto const& it : actions)
         {
             STTx amendTx (ttAMENDMENT,
-                [&it, seq = lastClosedLedger->seq() + 1](auto& obj)
+                [&it, shardID, seq = lastClosedLedger->seq() + 1](auto& obj)
                 {
+                    obj.setFieldU32 (sfShardID, shardID);
                     obj.setAccountID (sfAccount, AccountID());
                     obj.setFieldH256 (sfAmendment, it.first);
                     obj.setFieldU32 (sfLedgerSequence, seq);

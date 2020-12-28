@@ -88,11 +88,13 @@ TxFormats::TxFormats ()
         SOElement (sfOfferSequence,       SOE_REQUIRED);
 
     add ("EnableAmendment", ttAMENDMENT)
+        << SOElement (sfShardID,             SOE_OPTIONAL)
         << SOElement (sfLedgerSequence,      SOE_REQUIRED)
         << SOElement (sfAmendment,           SOE_REQUIRED)
         ;
 
     add ("SetFee", ttFEE)
+        << SOElement (sfShardID,             SOE_OPTIONAL)
         << SOElement (sfLedgerSequence,      SOE_OPTIONAL)
         << SOElement (sfBaseFee,             SOE_REQUIRED)
         << SOElement (sfReferenceFeeUnits,   SOE_REQUIRED)

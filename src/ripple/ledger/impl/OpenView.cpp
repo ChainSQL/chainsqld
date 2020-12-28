@@ -375,7 +375,7 @@ void OpenView::finalVote(MicroLedger const& microLedger0, Application& app)
         microLedger0.applyAmendments(*this, amendmentObject, j);
     }
 
-    amendmentSet_->mTrustedValidations = app.getShardManager().shardCount();
+    amendmentSet_->mTrustedValidations = app.getShardManager().shardCount() + 1;
     amendmentSet_->mThreshold = std::max(1,
         (amendmentSet_->mTrustedValidations * app.getAmendmentTable().majorityFraction()) / 256);
 
@@ -406,7 +406,14 @@ void OpenView::finalVote(MicroLedger const& microLedger0, Application& app)
         }
     }
 
+    // sort
+    std::map<uint256, int> votes;
     for (auto const& entry : amendmentSet_->votes())
+    {
+        votes[entry.first] = entry.second;
+    }
+
+    for (auto const& entry : votes)
     {
         NetClock::time_point majorityTime = {};
 
@@ -484,14 +491,7 @@ void OpenView::finalVote(MicroLedger const& microLedger0, Application& app)
         sle->setFieldArray(sfMajorities, newMajorities);
     }
 
-    if (base().exists(k2))
-    {
-        rawReplace(sle);
-    }
-    else
-    {
-        rawInsert(sle);
-    }
+    rawReplace(sle);
 }
 
 } // ripple

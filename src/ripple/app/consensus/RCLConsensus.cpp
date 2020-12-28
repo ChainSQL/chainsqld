@@ -1114,6 +1114,15 @@ void preExecTransactions(Application& app, OpenView const& view, RCLTxSet& cSet,
         {
             if (std::find(hTxVector.begin(), hTxVector.end(), item.key()) == hTxVector.end())
             {
+                if (((view.info().seq - 1) % 256) == 0)
+                {
+                    auto tx = std::make_shared<STTx const>(SerialIter{ item.slice() });
+                    if (tx->getTxnType() == ttFEE || tx->getTxnType() == ttAMENDMENT)
+                    {
+                        continue;
+                    }
+                }
+
                 failedTxs.push_back(item.key());
             }
         }
@@ -1199,7 +1208,7 @@ RCLConsensus::Adaptor::buildLCL(
                 app_, set, accum, [&buildLCL](uint256 const& txID) {
                     return !buildLCL->txExists(txID);
                 });
-            JLOG(j_.info()) << "applyTransactions time used:" << utcTime() - timeStart << "ms";
+            JLOG(j_.info()) << "applyTransactions " << canonicalTXSet->size() << "txs, time used:" << utcTime() - timeStart << "ms";
 
             auto const& microLedger0 = app_.getShardManager().committee().buildMicroLedger(accum, canonicalTXSet);
 
@@ -1209,7 +1218,7 @@ RCLConsensus::Adaptor::buildLCL(
             }
         }
         // Update fee computations.
-        app_.getTxQ().processClosedLedger(app_, accum, roundTime > 5s);
+        //app_.getTxQ().processClosedLedger(app_, accum, roundTime > 5s);
 
         timeStart = utcTime();
         accum.apply(*buildLCL);
@@ -1240,6 +1249,8 @@ RCLConsensus::Adaptor::buildLCL(
     // Accept ledger
     buildLCL->setAccepted(
         closeTime, closeResolution, closeTimeCorrect, app_.config());
+
+    JLOG(j_.info()) << "buildLCL: " << buildLCL->info().hash;
 
     // Genarate final ledger
     app_.getShardManager().committee().buildFinalLedger(accum, buildLCL);

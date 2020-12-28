@@ -131,6 +131,13 @@ Change::applyAmendment()
 
     const bool gotMajority = (flags & tfGotMajority) != 0;
     const bool lostMajority = (flags & tfLostMajority) != 0;
+    const bool noChange = (flags & tfNoChange) != 0;
+
+    if (noChange)
+    {
+        view().update(amendmentObject);
+        return tesSUCCESS;
+    }
 
     if (gotMajority && lostMajority)
         return temINVALID_FLAG;

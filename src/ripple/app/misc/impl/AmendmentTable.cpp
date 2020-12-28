@@ -24,7 +24,6 @@
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/protocol/JsonFields.h>
-#include <ripple/protocol/TxFlags.h>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 #include <algorithm>

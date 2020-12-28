@@ -175,9 +175,12 @@ FeeVoteImpl::doVoting(
         "/" << incReserve    <<
 		"/" << dropsPerByte;
 
+    auto const shardID = set[0]->getFieldU32(sfShardID);
+
     STTx feeTx (ttFEE,
-        [seq,baseFee,baseReserve,incReserve,feeUnits, dropsPerByte](auto& obj)
+        [shardID,seq,baseFee,baseReserve,incReserve,feeUnits, dropsPerByte](auto& obj)
         {
+            obj[sfShardID] = shardID;
             obj[sfAccount] = AccountID();
             obj[sfLedgerSequence] = seq;
             obj[sfBaseFee] = baseFee;

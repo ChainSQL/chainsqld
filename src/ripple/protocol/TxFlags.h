@@ -94,6 +94,7 @@ const std::uint32_t tfTrustSetMask         = ~ (tfUniversal | tfSetfAuth | tfSet
 // EnableAmendment flags:
 const std::uint32_t tfGotMajority          = 0x00010000;
 const std::uint32_t tfLostMajority         = 0x00020000;
+const std::uint32_t tfNoChange             = 0x00040000;
 
 // PaymentChannel flags:
 const std::uint32_t tfRenew                = 0x00010000;
