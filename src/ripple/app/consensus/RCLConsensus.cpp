@@ -625,7 +625,11 @@ RCLConsensus::Adaptor::onAccept(
                     rawCloseTimes,
                     mode,
                     std::move(cj));
-                app_.getShardManager().committee().checkAccept();
+                {
+                    std::lock_guard <std::recursive_mutex> lock(
+                        app_.getLedgerMaster().peekMutex());
+                    app_.getShardManager().committee().checkAccept();
+                }
             }
 			JLOG(j_.info()) << "doAccept time used:" << utcTime() - timeStart << "ms";
         });

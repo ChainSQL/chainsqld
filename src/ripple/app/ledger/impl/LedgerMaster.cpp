@@ -282,6 +282,8 @@ LedgerMaster::addHeldTransaction (
 void
 LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
 {
+    JLOG(m_journal.debug()) << "switchLCL begin";
+
     assert (lastClosed);
     if(! lastClosed->isImmutable())
         LogicError("mutable ledger in switchLCL");
@@ -306,6 +308,8 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
     }
     else
     {
+        JLOG(m_journal.debug()) << "switchLCL checkAccept";
+
         checkAccept (lastClosed);
         //app_.getTableStorage().TryTableStorage();
         //app_.getTableAssistant().TryTableCheckHash();
@@ -1250,10 +1254,14 @@ LedgerMaster::checkAccept (
     std::shared_ptr<Ledger const> const& ledger)
 {
     if (ledger->info().seq <= mValidLedgerSeq)
+    {
+        JLOG(m_journal.debug()) << "checkAccept: ledger too old";
         return;
+    }
 
     if (app_.getShardManager().myShardRole() != ShardManager::COMMITTEE)
     {
+        JLOG(m_journal.debug()) << "checkAccept: not committee node";
         return;
     }
 
@@ -1262,14 +1270,20 @@ LedgerMaster::checkAccept (
     ScopedLockType ml (m_mutex);
 
     if (ledger->info().seq <= mValidLedgerSeq)
+    {
+        JLOG(m_journal.debug()) << "checkAccept: ledger too old";
         return;
+    }
 
     //auto const minVal = getNeededValidations();
     //auto const tvc = app_.getValidations().numTrustedForLedger(ledger->info().hash);
     if (!app_.getShardManager().committee().checkAccept()) // nothing we can do
     {
+        JLOG(m_journal.debug()) << "checkAccept: committee checkAccept reted false";
         return;
     }
+
+    JLOG(m_journal.debug()) << "checkAccept: accept ledger now";
 
 	accept(ledger);
 }
@@ -1319,6 +1333,7 @@ void
 LedgerMaster::consensusBuilt(
     std::shared_ptr<Ledger const> const& ledger, Json::Value consensus)
 {
+    JLOG(m_journal.debug()) << "consensusBuilt begin";
 
     // Because we just built a ledger, we are no longer building one
     setBuildingLedger (0);
@@ -1337,6 +1352,8 @@ LedgerMaster::consensusBuilt(
             << ledger->info().seq << " <= " << mValidLedgerSeq;
         return;
     }
+
+    JLOG(m_journal.debug()) << "consensusBuilt checkAccept";
 
     // See if this ledger can be the new fully-validated ledger
     checkAccept (ledger);

@@ -23,7 +23,8 @@ bool ViewChangeManager::recvViewChange(ViewChange const& change)
             JLOG(j_.info()) << "peerViewChange toView=" << toView
                 << ", pubKey=" << toBase58(TOKEN_NODE_PUBLIC, change.nodePublic()) << " exist, prevSeq=" << oldViewChange.prevSeq()
                 << ", and this viewChange preSeq=" << change.prevSeq();
-            if (oldViewChange.prevSeq() < change.prevSeq())
+            if (oldViewChange.prevSeq() < change.prevSeq() ||
+                (oldViewChange.prevSeq() == change.prevSeq() && oldViewChange.genReason() != change.genReason()))
             {
                 viewChangeReq_[toView].erase(change.nodePublic());
             }
