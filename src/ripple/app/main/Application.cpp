@@ -1017,7 +1017,7 @@ ApplicationImp::setup()
 
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount(config_->WORKERS, config_->standalone());
-
+	grpcServer_->run();
     // We want to intercept CTRL-C and the standard termination signal SIGTERM
     // and terminate the process. This handler will NEVER be invoked twice.
     //
