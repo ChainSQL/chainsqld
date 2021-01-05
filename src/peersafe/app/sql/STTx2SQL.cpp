@@ -3297,7 +3297,7 @@ std::pair<bool, std::string> STTx2SQL::check_optionalRule(const std::string& opt
 	Json::Value rule;
 	if (Json::Reader().parse(optionalRule, rule) == false) {
 		return { false, 
-			std::string("parase optionalRule unsuccessfully.") + optionalRule};
+			std::string("parse optionalRule unsuccessfully.") + optionalRule};
 	}
 
 	const std::vector<std::string>& keys = rule.getMemberNames();

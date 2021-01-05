@@ -387,16 +387,22 @@ ServerHandlerImp::processSession(
 	
 	// take out schema_id
 	uint256 schema_id = beast::zero;
-	if (jv.isMember(jss::params) && jv[jss::params].isMember(jss::schema_id))
+	if (jv.isMember(jss::schema_id))
 	{
 		try {
-			schema_id = from_hex_text<uint256>(jv[jss::params][jss::schema_id].asString());
+			schema_id = from_hex_text<uint256>(jv[jss::schema_id].asString());
 		}
 		catch (std::exception) {
 			schema_id = beast::zero;
 			JLOG(m_journal.error()) << "Exception when parse schema_id in processSession,set beast::zero";
 		}
 	}
+
+	if ( !schema_id.isZero() && !app_.hasSchema(schema_id))
+	{
+		return rpcError(rpcNO_SCHEMA);
+	}
+
 	// move NetworkOps setting from onHandOff to here.
 	if (is->getSource() == nullptr)
 	{
