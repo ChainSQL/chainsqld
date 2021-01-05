@@ -159,6 +159,7 @@ namespace ripple {
 		virtual LedgerIndex				getMaxDisallowedLedger() = 0;
 		virtual SchemaParams			getSchemaParams() = 0;
 		virtual bool					initBeforeSetup() = 0;
+		virtual bool					available() = 0;
 		virtual SchemaID				schemaId() = 0;
 		virtual SchemaManager&			getSchemaManager() = 0;
 	};

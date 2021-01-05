@@ -80,6 +80,7 @@ namespace ripple {
 
 		bool setup() override;
 		bool initBeforeSetup() override;
+		bool available() override;
 		bool nodeToShards();
 		bool validateShards();
 		void startGenesisLedger();
@@ -120,6 +121,7 @@ namespace ripple {
 		// These are not Stoppable-derived
 		NodeCache m_tempNodeCache;
 		CachedSLEs cachedSLEs_;
+		bool	  m_schemaAvailable;
 
 
 		// These are Stoppable-related		
@@ -307,8 +309,10 @@ namespace ripple {
 			, m_pTxPool(std::make_unique<TxPool>(*this, SchemaImp::journal("TxPool")))
 
 			, m_pStateManager(std::make_unique<StateManager>(*this, SchemaImp::journal("StateManager")))
-		{
 
+			, m_schemaAvailable(schema_params_.schemaId() == beast::zero ? true : false)
+		{
+			
 		}
 
 		Application& app() override
@@ -977,6 +981,11 @@ namespace ripple {
 		return true;
 	}
 
+	bool SchemaImp::available() 
+	{
+		return m_schemaAvailable;
+	}
+
 	bool SchemaImp::setup()
 	{
 		if (!setSynTable())  return false;
@@ -1263,6 +1272,8 @@ namespace ripple {
 				JLOG(m_journal.fatal()) << "Result: " << jvResult << std::endl;
 			}
 		}
+
+		m_schemaAvailable = true;
 
 		return true;
 	}

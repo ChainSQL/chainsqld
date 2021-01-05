@@ -717,6 +717,10 @@ PeerImp::getSchemaInfo(std::string prefix,std::string const& schemaIdBuffer)
 		JLOG(p_journal_.warn()) << prefix << "Don't have schema "<<to_string(schemaId)<<" in schema manager";
 		return std::make_tuple(false, schemaId, nullptr);
 	}
+	if (!app_.getSchema(schemaId).available())
+	{
+		return std::make_tuple(false, schemaId, nullptr);
+	}
 
 	SchemaInfo& info = schemaInfo_.at(schemaId);
 	return std::make_tuple(true, schemaId, &info);
