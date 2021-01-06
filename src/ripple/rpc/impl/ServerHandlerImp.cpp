@@ -42,6 +42,7 @@
 #include <ripple/server/SimpleWriter.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/basics/characterUtilities.h>
+#include <peersafe/app/tx/impl/Tuning.h>
 #include <beast/core/detail/base64.hpp>
 #include <beast/http/fields.hpp>
 #include <beast/http/string_body.hpp>
@@ -493,6 +494,25 @@ ServerHandlerImp::processSession(
             jv[jss::command].asString() == "ping")
                 jr[jss::unlimited] = true;
     }
+	//if table operation,remove tx_blob & tx_json field
+	if (jr[jss::result].isMember(jss::tx_json) && jr[jss::result][jss::tx_json].isMember(jss::hash)
+		&& !jr[jss::result][jss::tx_json].isMember("Signers"))
+	{
+		std::string txType = jr[jss::result][jss::tx_json][jss::TransactionType].asString();
+		if (isChainSqlTableType(txType))
+		{
+			if (jr[jss::result][jss::tx_json].isMember(jss::Raw) &&
+				jr[jss::result][jss::tx_json][jss::Raw].asString().size() > RAW_SHOW_SIZE)
+			{
+				jr[jss::result][jss::tx_json].removeMember(jss::Raw);
+			}
+
+			if (jr[jss::result].isMember(jss::tx_blob))
+			{
+				jr[jss::result].removeMember(jss::tx_blob);
+			}
+		}
+	}
 
     if (jv.isMember(jss::id))
         jr[jss::id] = jv[jss::id];
@@ -697,7 +717,7 @@ ServerHandlerImp::processRequest (Port const& port,
     if (usage.warn())
         result[jss::warning] = jss::load;
 
-	//if trasaction operation,
+	//if table operation,
 	//remove tx_blob & tx_json field,and make tx_id parallel with result
 	Json::Value tx_id(Json::nullValue);
 	if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash) 

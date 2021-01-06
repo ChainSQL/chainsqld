@@ -74,10 +74,9 @@
 #include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/consensus/ViewChange.h>
+#include <peersafe/app/tx/impl/Tuning.h>
 
 namespace ripple {
-
-#define EXPIRE_TIME 20
 
 bool getRawMetaHex(Ledger const& ledger,
     uint256 const& transID, std::string& rawHex, std::string& metaHex);
@@ -900,7 +899,7 @@ void NetworkOPsImp::processSubTx(SubTxMapType&subTx, const std::string& status)
 		auto now = std::chrono::system_clock::now();
 		using duration_type = std::chrono::duration<double>;
 		duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
-		if (time_span.count() >= EXPIRE_TIME)
+		if (time_span.count() >= TX_TIMEOUT)
 		//if(app_.getLedgerMaster().getValidLedgerIndex() > iter->second.second)
 		{
 			//notify time out
@@ -3251,6 +3250,11 @@ void NetworkOPsImp::pubTxResult(const STTx& stTxn,
 				Json::Value jvObj(Json::objectValue);
 				jvObj[jss::type] = "singleTransaction";
 				jvObj[jss::transaction] = stTxn.getJson(0);
+				if (jvObj[jss::transaction].isMember(jss::Raw) &&
+					jvObj[jss::transaction][jss::Raw].asString().size() > RAW_SHOW_SIZE)
+				{
+					jvObj[jss::transaction].removeMember(jss::Raw);
+				}
                 jvObj[jss::status] = std::get<0>(disposRes);
                 if (std::get<1>(disposRes).size() != 0)
                 {
