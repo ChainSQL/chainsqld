@@ -46,6 +46,11 @@ SField const sfLedgerEntry  (access, STI_LEDGERENTRY, 257, "LedgerEntry");
 SField const sfTransaction  (access, STI_TRANSACTION, 257, "Transaction");
 SField const sfValidation   (access, STI_VALIDATION,  257, "Validation");
 SField const sfMetadata     (access, STI_METADATA,    257, "Metadata");
+SField const sfProposeSet   (access, STI_PROPOSESET,  257, "ProposeSet");
+SField const sfViewChange   (access, STI_VIEWCHANGE,  257, "ViewChange");
+SField const sfProposal     (access, STI_PROPOSAL,    257, "Proposal");
+SField const sfVote         (access, STI_VOTE,        257, "Vote");
+SField const sfEpochChange  (access, STI_EPOCHCHANGE, 257, "EpochChange");
 SField const sfHash         (access, STI_HASH256,     257, "hash");
 SField const sfIndex        (access, STI_HASH256,     258, "index");
 
@@ -128,8 +133,10 @@ SF_U64 const sfDestinationNode  (access, STI_UINT64, 9, "DestinationNode");
 SF_U64 const sfCookie           (access, STI_UINT64, 10,"Cookie");
 SF_U64 const sfServerVersion    (access, STI_UINT64, 11, "ServerVersion");
 
-SF_U64 const sfDropsPerByte  (access, STI_UINT64, 21, "DropsPerByte");
-SF_U64 const sfIssuerNode	 (access, STI_UINT64, 22, "IssuerNode");
+SF_U64 const sfDropsPerByte     (access, STI_UINT64, 21, "DropsPerByte");
+SF_U64 const sfIssuerNode	    (access, STI_UINT64, 22, "IssuerNode");
+
+SF_U64 const sfView             (access, STI_UINT64, 23, "View");
 
 
 
@@ -241,6 +248,10 @@ SF_Blob const sfContractTxs     (access, STI_VL, 66, "ContractTxs");
 SF_Blob const sfContractLogs    (access, STI_VL, 67, "ContractLogs");
 SF_Blob const sfSchemaName      (access, STI_VL, 68, "SchemaName");
 SF_Blob const sfEndpoint		(access, STI_VL, 69, "Endpoint");
+SF_Blob const sfBlock           (access, STI_VL, 70, "Block");
+SF_Blob const sfVoteImp         (access, STI_VL, 71, "VoteImp");
+SF_Blob const sfEpochChangeImp  (access, STI_VL, 72, "EpochChangeImp");
+SF_Blob const sfSyncInfo        (access, STI_VL, 73, "SyncInfo");
 
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");

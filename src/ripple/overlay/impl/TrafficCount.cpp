@@ -48,19 +48,15 @@ TrafficCount::categorize(
     if (type == protocol::mtTRANSACTION)
         return TrafficCount::category::transaction;
 
+    if (type == protocol::mtCONSENSUS)
+        return TrafficCount::category::consensus;
+
     if (type == protocol::mtVALIDATORLIST)
         return TrafficCount::category::validatorlist;
 
-    if (type == protocol::mtVALIDATION)
-        return TrafficCount::category::validation;
-        
-	if (type == protocol::mtVIEW_CHANGE)
-		return TrafficCount::category::view_change;
 
     if(type == protocol::mtGET_TABLE)
         return TrafficCount::category::get_table;
-    if (type == protocol::mtPROPOSE_LEDGER)
-        return TrafficCount::category::proposal;
 
     if (type == protocol::mtHAVE_SET)
         return inbound ? TrafficCount::category::get_set

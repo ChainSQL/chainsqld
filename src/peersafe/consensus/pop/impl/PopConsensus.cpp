@@ -30,19 +30,22 @@
 
 namespace ripple {
 
-
 // -------------------------------------------------------------------
 // Public member functions
 
-PopConsensus::PopConsensus(Adaptor& adaptor, clock_type const& clock, beast::Journal journal)
-    : ConsensusBase(clock_, journal)
+PopConsensus::PopConsensus(
+    Adaptor& adaptor,
+    clock_type const& clock,
+    beast::Journal journal)
+    : ConsensusBase(clock, journal)
     , adaptor_(*(PopAdaptor*)(&adaptor))
-    , viewChangeManager_{ journal }
+    , viewChangeManager_{journal}
 {
     JLOG(j_.info()) << "Creating POP consensus object";
 }
 
-void PopConsensus::startRound(
+void
+PopConsensus::startRound(
     NetClock::time_point const& now,
     typename Ledger_t::ID const& prevLedgerID,
     Ledger_t prevLedger,
@@ -72,7 +75,8 @@ void PopConsensus::startRound(
     startRoundInternal(now, prevLedgerID, prevLedger, startMode);
 }
 
-void PopConsensus::timerEntry(NetClock::time_point const& now)
+void
+PopConsensus::timerEntry(NetClock::time_point const& now)
 {
     // Nothing to do if we are currently working on a ledger
     if (phase_ == ConsensusPhase::accepted)
@@ -92,11 +96,14 @@ void PopConsensus::timerEntry(NetClock::time_point const& now)
     {
         if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
         {
-            JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
-            adaptor_.app_.getTxPool().removeTxs(
+            JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()
+                            << ":" << prevLedgerID_;
+
+            adaptor_.removePoolTxs(
                 newLedger->ledger_->txMap(),
                 newLedger->ledger_->info().seq,
                 newLedger->ledger_->info().parentHash);
+
             startRoundInternal(
                 now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
         }
@@ -106,23 +113,32 @@ void PopConsensus::timerEntry(NetClock::time_point const& now)
     if (!adaptor_.validating())
         return;
 
-    //Long time no consensus reach,rollback to initial state.
-    //What if 2 of 4 validate new ledger success, but other 2 of 4 not ,can roll back work,or is there such occasion?
+    // Long time no consensus reach,rollback to initial state.
+    // What if 2 of 4 validate new ledger success, but other 2 of 4 not ,can
+    // roll back work,or is there such occasion?
     if (timeOutCount_ > adaptor_.parms().timeoutCOUNT_ROLLBACK)
     {
-        auto valLedger = adaptor_.ledgerMaster_.getValidLedgerIndex();
+        auto valLedger = adaptor_.getValidLedgerIndex();
         if (view_ > 0 || previousLedger_.seq() > valLedger)
         {
-            JLOG(j_.warn()) << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
-                << " times of timeout, will rollback to validated ledger " << valLedger;
-            if (auto oldLedger = adaptor_.ledgerMaster_.getValidatedLedger())
+            JLOG(j_.warn())
+                << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
+                << " times of timeout, will rollback to validated ledger "
+                << valLedger;
+
+            if (auto oldLedger = adaptor_.getValidatedLedger())
             {
                 startRoundInternal(
-                    now_, oldLedger->info().hash, oldLedger, ConsensusMode::switchedLedger);
-                //Clear view-change cache after initial state.
+                    now_,
+                    oldLedger->info().hash,
+                    oldLedger,
+                    ConsensusMode::switchedLedger);
+                // Clear view-change cache after initial state.
                 viewChangeManager_.clearCache();
-                //Clear validation cache,in case "checkLedger move back to advanced ledger".
-                adaptor_.app_.getValidations().flush();
+                // Clear validation cache,in case "checkLedger move back to
+                // advanced ledger".
+
+                adaptor_.flushValidations();
             }
         }
     }
@@ -135,14 +151,29 @@ void PopConsensus::timerEntry(NetClock::time_point const& now)
     checkTimeout();
 }
 
-bool PopConsensus::peerProposal(
-    NetClock::time_point const& now,
-    PeerPosition_t const& newPeerPos)
+bool
+PopConsensus::peerConsensusMessage(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    return peerProposalInternal(now, newPeerPos);
+    switch (m->msgtype())
+    {
+        case ConsensusMessageType::mtPROPOSESET:
+            return peerProposal(peer, isTrusted, m);
+        case ConsensusMessageType::mtVIEWCHANGE:
+            return peerViewChange(peer, isTrusted, m);
+        case ConsensusMessageType::mtVALIDATION:
+            return peerValidation(peer, isTrusted, m);
+        default:
+            break;
+    }
+
+    return false;
 }
 
-void PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
+void
+PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
 {
     // Nothing to do if we've finished work on a ledger
     if (phase_ == ConsensusPhase::accepted)
@@ -162,57 +193,59 @@ void PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSe
         return;
     }
 
-    //check to see if final condition reached.
+    if (!adaptor_.isLeader(previousLedger_.seq() + 1, view_))
+    {
+        auto set = txSet.map_->snapShot(false);
+        // this place has a txSet copy,what's the time it costs?
+        result_.emplace(Result(
+            std::move(set),
+            RCLCxPeerPos::Proposal(
+                RCLCxPeerPos::Proposal::seqJoin,
+                id,
+                prevLedgerID_,
+                closeTime_,
+                now,
+                adaptor_.nodeID(),
+                adaptor_.valPublic(),
+                previousLedger_.seq() + 1,
+                view_)));
+
+        if (phase_ == ConsensusPhase::open)
+            phase_ = ConsensusPhase::establish;
+
+        JLOG(j_.info())
+            << "gotTxSet time elapsed since receive set_id from leader:"
+            << (now - rawCloseTimes_.self).count();
+
+        if (adaptor_.validating())
+        {
+            JLOG(j_.info())
+                << "We are not leader gotTxSet, and proposing position: " << id;
+            txSetVoted_[*setID_].insert(adaptor_.valPublic());
+            adaptor_.propose(result_->position);
+        }
+
+        result_->roundTime.reset(proposalTime_);
+
+        JLOG(j_.info()) << "List current votes for set(" << *setID_
+                        << "), total count: " << txSetVoted_[*setID_].size();
+        for (auto publicKey : txSetVoted_[*setID_])
+        {
+            JLOG(j_.info())
+                << "PublicKey index: " << adaptor_.getPubIndex(publicKey);
+        }
+    }
+
+    // check to see if final condition reached.
     if (result_)
     {
         checkVoting();
         return;
     }
-
-    if (!isLeader(adaptor_.valPublic_))
-    {
-        //update avoid if we got the right tx-set
-        if (adaptor_.validating())
-            adaptor_.app_.getTxPool().updateAvoid(txSet, previousLedger_.seq());
-
-        auto set = txSet.map_->snapShot(false);
-        //this place has a txSet copy,what's the time it costs?
-        result_.emplace(Result(
-            std::move(set),
-            RCLCxPeerPos::Proposal(
-                prevLedgerID_,
-                previousLedger_.seq() + 1,
-                view_,
-                RCLCxPeerPos::Proposal::seqJoin,
-                id,
-                closeTime_,
-                now,
-                adaptor_.nodeID())));
-
-        if (phase_ == ConsensusPhase::open)
-            phase_ = ConsensusPhase::establish;
-
-        JLOG(j_.info()) << "gotTxSet time elapsed since receive set_id from leader:" << (now - rawCloseTimes_.self).count();
-
-        if (adaptor_.validating())
-        {
-            txSetVoted_[*setID_].insert(adaptor_.valPublic_);
-            adaptor_.propose(result_->position);
-
-            JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
-        }
-
-        result_->roundTime.reset(proposalTime_);
-
-        for (auto pub : txSetVoted_[*setID_])
-        {
-            JLOG(j_.info()) << "voting node for set:" << getPubIndex(pub);
-        }
-        JLOG(j_.info()) << "We are not leader gotTxSet,and proposing position:" << id;
-    }
 }
 
-Json::Value PopConsensus::getJson(bool full) const
+Json::Value
+PopConsensus::getJson(bool full) const
 {
     using std::to_string;
     using Int = Json::Value::Int;
@@ -220,7 +253,7 @@ Json::Value PopConsensus::getJson(bool full) const
     Json::Value ret(Json::objectValue);
 
     ret["proposing"] = (mode_.get() == ConsensusMode::proposing);
-    ret["proposers"] = static_cast<int>(txSetVoted_.size());
+    ret["proposers"] = static_cast<Int>(txSetVoted_.size());
 
     if (mode_.get() != ConsensusMode::wrongLedger)
     {
@@ -237,18 +270,22 @@ Json::Value PopConsensus::getJson(bool full) const
     ret["phase"] = to_string(phase_);
     if (phase_ == ConsensusPhase::open)
     {
-        ret["transaction_count"] = static_cast<int>(transactions_.size());
+        ret["transaction_count"] = static_cast<Int>(transactions_.size());
     }
 
-    ret["tx_count_in_pool"] = static_cast<int>(adaptor_.app_.getTxPool().getTxCountInPool());
+    ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
+
+    ret["time_out"] =
+        static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count());
+    ret["initialized"] = !waitingForInit();
 
     if (full)
     {
         if (result_)
             ret["current_ms"] =
-            static_cast<Int>(result_->roundTime.read().count());
+                static_cast<Int>(result_->roundTime.read().count());
         ret["close_resolution"] = static_cast<Int>(closeResolution_.count());
-        //ret["have_time_consensus"] = haveCloseTimeConsensus_;
+        // ret["have_time_consensus"] = haveCloseTimeConsensus_;
 
         if (!acquired_.empty())
         {
@@ -275,33 +312,38 @@ Json::Value PopConsensus::getJson(bool full) const
     return ret;
 }
 
-bool PopConsensus::peerViewChange(ViewChange const& change)
-{
-    bool ret = viewChangeManager_.recvViewChange(change);
-    if (ret)
-    {
-        JLOG(j_.info()) << "peerViewChange viewChangeReq saved,toView=" <<
-            change.toView() << ",nodeid=" << getPubIndex(change.nodePublic());
-        checkChangeView(change.toView());
-        if (waitingForInit() && change.prevSeq() > GENESIS_LEDGER_INDEX)
-        {
-            prevLedgerID_ = change.prevHash();
-            view_ = change.toView() - 1;
-            checkLedger();
-        }
-    }
-    else if (previousLedger_.seq() == GENESIS_LEDGER_INDEX && change.prevSeq() > GENESIS_LEDGER_INDEX)
-    {
-        JLOG(j_.warn()) << "touch inboundLedger for " << change.prevHash();
-        adaptor_.touchAcquringLedger(change.prevHash());
-    }
+// -------------------------------------------------------------------
+// Private member functions
 
-    return true;
+std::chrono::milliseconds
+PopConsensus::timeSinceLastClose()
+{
+    using namespace std::chrono;
+    // This computes how long since last ledger's close time
+    milliseconds sinceClose;
+    {
+        bool previousCloseCorrect =
+            (mode_.get() != ConsensusMode::wrongLedger) &&
+            previousLedger_.closeAgree() &&
+            (previousLedger_.closeTime().time_since_epoch().count() != 0);
+
+        auto lastCloseTime = previousCloseCorrect
+            ? previousLedger_.closeTime()  // use consensus timing
+            : openTime_;                   // use the time we saw internally
+
+        if (now_ >= lastCloseTime)
+            sinceClose = duration_cast<milliseconds>(now_ - lastCloseTime);
+        else
+            sinceClose = -duration_cast<milliseconds>(lastCloseTime - now_);
+    }
+    return sinceClose;
 }
 
-bool PopConsensus::waitingForInit()
+bool
+PopConsensus::waitingForInit() const
 {
-    // This code is for initialization,wait 60 seconds for loading ledger before real start-mode.
+    // This code is for initialization,wait 60 seconds for loading ledger before
+    // real start-mode.
     if (previousLedger_.seq() == GENESIS_LEDGER_INDEX &&
         timeSinceOpen() / 1000 < adaptor_.parms().initTIME.count())
     {
@@ -310,10 +352,8 @@ bool PopConsensus::waitingForInit()
     return false;
 }
 
-// -------------------------------------------------------------------
-// Private member functions
-
-void PopConsensus::startRoundInternal(
+void
+PopConsensus::startRoundInternal(
     NetClock::time_point const& now,
     typename Ledger_t::ID const& prevLedgerID,
     Ledger_t const& prevLedger,
@@ -339,7 +379,7 @@ void PopConsensus::startRoundInternal(
     leaderFailed_ = false;
     extraTimeOut_ = false;
     timeOutCount_ = 0;
-    //reset view to 0 after a new close ledger.
+    // reset view to 0 after a new close ledger.
     view_ = 0;
     toView_ = 0;
 
@@ -359,7 +399,8 @@ void PopConsensus::startRoundInternal(
     }
 }
 
-void PopConsensus::checkLedger()
+void
+PopConsensus::checkLedger()
 {
     if (previousLedger_.seq() == GENESIS_LEDGER_INDEX)
         return;
@@ -370,9 +411,9 @@ void PopConsensus::checkLedger()
     if (netLgr != prevLedgerID_)
     {
         JLOG(j_.warn()) << "View of consensus changed during "
-            << to_string(phase_) << " status=" << to_string(phase_)
-            << ", "
-            << " mode=" << to_string(mode_.get());
+                        << to_string(phase_) << " status=" << to_string(phase_)
+                        << ", "
+                        << " mode=" << to_string(mode_.get());
         JLOG(j_.warn()) << prevLedgerID_ << " to " << netLgr;
         JLOG(j_.warn()) << previousLedger_.getJson();
         JLOG(j_.debug()) << "State on consensus change " << getJson(true);
@@ -383,7 +424,8 @@ void PopConsensus::checkLedger()
 }
 
 // Handle a change in the prior ledger during a consensus round
-void PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
+void
+PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 {
     assert(lgrId != prevLedgerID_ || previousLedger_.id() != lgrId);
 
@@ -404,11 +446,14 @@ void PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     // we need to switch the ledger we're working from
     if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
     {
-        JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
-        adaptor_.app_.getTxPool().removeTxs(
+        JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()
+                        << ":" << prevLedgerID_;
+
+        adaptor_.removePoolTxs(
             newLedger->ledger_->txMap(),
             newLedger->ledger_->info().seq,
             newLedger->ledger_->info().parentHash);
+
         startRoundInternal(
             now_, lgrId, *newLedger, ConsensusMode::switchedLedger);
     }
@@ -418,21 +463,28 @@ void PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     }
 }
 
-void PopConsensus::checkCache()
+void
+PopConsensus::checkCache()
 {
     std::uint32_t curSeq = previousLedger_.seq() + 1;
-    if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
+
+    if (proposalCache_.find(curSeq) != proposalCache_.end())
     {
-        JLOG(j_.info()) << "Check peerProposalInternal after startRoundInternal";
-        for (auto it = adaptor_.proposalCache_[curSeq].begin(); it != adaptor_.proposalCache_[curSeq].end(); it++)
+        JLOG(j_.info())
+            << "Check peerProposalInternal after startRoundInternal";
+        for (auto it = proposalCache_[curSeq].begin();
+             it != proposalCache_[curSeq].end();
+             it++)
         {
             if (peerProposalInternal(now_, it->second))
             {
-                JLOG(j_.info()) << "Position " << it->second.proposal().position() << " from " << getPubIndex(it->first) << " success";
+                JLOG(j_.info())
+                    << "Position " << it->second.proposal().position()
+                    << " from (PublicKey index)"
+                    << adaptor_.getPubIndex(it->first) << " success";
             }
         }
-        auto iter = adaptor_.proposalCache_.begin();
-        while (iter != adaptor_.proposalCache_.end())
+        for (auto iter = proposalCache_.begin(); iter != proposalCache_.end();)
         {
             /**
              * Maybe prosoal seq meet curSeq, but view is feture,
@@ -440,7 +492,7 @@ void PopConsensus::checkCache()
              */
             if (iter->first < curSeq)
             {
-                iter = adaptor_.proposalCache_.erase(iter);
+                iter = proposalCache_.erase(iter);
             }
             else
             {
@@ -450,7 +502,309 @@ void PopConsensus::checkCache()
     }
 }
 
-bool PopConsensus::peerProposalInternal(
+void
+PopConsensus::phaseCollecting()
+{
+    if (leaderFailed_)
+        return;
+
+    auto sinceClose = timeSinceLastClose().count();
+    auto sinceOpen = timeSinceOpen();
+    auto sinceConsensus = timeSinceConsensus();
+    // view change have taken effect
+    if (sinceOpen != sinceConsensus)
+    {
+        sinceOpen = sinceConsensus;
+        sinceClose = sinceConsensus;
+    }
+
+    JLOG(j_.debug()) << "phaseCollecting time sinceOpen:" << sinceOpen << "ms";
+
+    // Decide if we should propose a tx-set
+    if (adaptor_.isLeader(previousLedger_.seq() + 1, view_) && !result_)
+    {
+        if (!adaptor_.isPoolAvailable())
+        {
+            return;
+        }
+
+        int tx_count = transactions_.size();
+
+        // if time for this block's tx-set reached
+        bool bTimeReached = sinceOpen >= adaptor_.parms().maxBLOCK_TIME;
+        if (tx_count < adaptor_.parms().maxTXS_IN_LEDGER && !bTimeReached)
+        {
+            H256Set txs;
+
+            adaptor_.topTransactions(
+                adaptor_.parms().maxTXS_IN_LEDGER - tx_count,
+                previousLedger_.seq() + 1,
+                txs);
+
+            for (auto const& tx : txs)
+            {
+                transactions_.push_back(tx);
+            }
+        }
+
+        if (finalCondReached(sinceOpen, sinceClose))
+        {
+            /**
+            1. construct result_
+            2. propose position
+            3. add position to self
+            */
+
+            rawCloseTimes_.self = now_;
+
+            result_.emplace(adaptor_.onCollectFinish(
+                previousLedger_, transactions_, now_, view_, mode_.get()));
+            result_->roundTime.reset(clock_.now());
+            setID_ = result_->txns.id();
+            extraTimeOut_ = true;
+
+            // Share the newly created transaction set if we haven't already
+            // received it from a peer
+            if (acquired_.emplace(*setID_, result_->txns).second)
+                adaptor_.share(result_->txns);
+
+            adaptor_.propose(result_->position);
+
+            // Omit empty block ,launch view-change
+            if (adaptor_.parms().omitEMPTY && *setID_ == beast::zero)
+            {
+                // set zero,trigger time-out
+                consensusTime_ = 0;
+                leaderFailed_ = true;
+                JLOG(j_.info()) << "Empty transaction-set from self,will "
+                                   "trigger view_change.";
+                return;
+            }
+
+            txSetVoted_[*setID_] = std::set<PublicKey>{adaptor_.valPublic()};
+
+            phase_ = ConsensusPhase::establish;
+            JLOG(j_.info()) << "We are leader,proposing position:" << *setID_;
+
+            checkVoting();
+        }
+    }
+    else
+    {
+        // in case we are not leader,the proposal leader should propose not
+        // received,
+        // but other nodes have accepted the ledger of this sequence
+        if (adaptor_.proposersFinished(previousLedger_, prevLedgerID_) >=
+            adaptor_.getQuorum())
+        {
+            // result_.emplace(adaptor_.onCollectFinish(previousLedger_,
+            // transactions_, now_,view_, mode_.get()));
+            // result_->roundTime.reset(clock_.now());
+            // rawCloseTimes_.self = now_;
+            // phase_ = ConsensusPhase::establish;
+            JLOG(j_.warn())
+                << "Other nodes have enter establish phase for previous ledger "
+                << previousLedger_.seq();
+        }
+    }
+}
+
+bool
+PopConsensus::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
+{
+    if (sinceLastClose < 0)
+    {
+        sinceLastClose = sinceOpen;
+    }
+
+    if (sinceLastClose >= adaptor_.parms().maxBLOCK_TIME)
+        return true;
+
+    if (adaptor_.parms().maxTXS_IN_LEDGER >=
+            adaptor_.parms().minTXS_IN_LEDGER_ADVANCE &&
+        transactions_.size() >= adaptor_.parms().maxTXS_IN_LEDGER &&
+        sinceLastClose >= adaptor_.parms().minBLOCK_TIME / 2)
+    {
+        return true;
+    }
+
+    if (transactions_.size() > 0 &&
+        sinceLastClose >= adaptor_.parms().minBLOCK_TIME)
+        return true;
+
+    return false;
+}
+
+void
+PopConsensus::checkVoting()
+{
+    ScopedLockType sl(lock_);
+
+    // can only establish consensus if we already took a stance
+    assert(result_);
+
+    using namespace std::chrono;
+    {
+        result_->roundTime.tick(clock_.now());
+        // result_->proposers = currPeerPositions_.size();
+
+        JLOG(j_.info()) << "checkVoting roundTime:"
+                        << result_->roundTime.read().count();
+    }
+
+    // Nothing to do if we don't have consensus.
+    if (!haveConsensus())
+    {
+        return;
+    }
+
+    phase_ = ConsensusPhase::accepted;
+    adaptor_.onAccept(
+        *result_,
+        previousLedger_,
+        closeResolution_,
+        rawCloseTimes_,
+        mode_.get(),
+        getJson(true));
+}
+
+bool
+PopConsensus::haveConsensus()
+{
+    // Must have a stance if we are checking for consensus
+    if (!result_)
+        return false;
+
+    int agreed = txSetVoted_[*setID_].size();
+    int minVal = adaptor_.getQuorum();
+    auto currentFinished = previousLedger_.seq() == GENESIS_LEDGER_INDEX
+        ? 0
+        : adaptor_.proposersFinished(previousLedger_, prevLedgerID_);
+
+    JLOG(j_.debug()) << "Checking for TX consensus: agree=" << agreed;
+    JLOG(j_.debug()) << "Checking for TX consensus: currentFinished="
+                     << currentFinished;
+
+    // Determine if we actually have consensus or not
+    if (agreed >= minVal)
+    {
+        JLOG(j_.info()) << "Consensus for tx-set reached with agreed = "
+                        << agreed;
+        result_->state = ConsensusState::Yes;
+        return true;
+    }
+    else if (currentFinished >= minVal)
+    {
+        result_->state = ConsensusState::MovedOn;
+        JLOG(j_.error()) << "Unable to reach consensus";
+        JLOG(j_.error()) << getJson(true);
+        return true;
+    }
+    else
+    {
+        result_->state = ConsensusState::No;
+        return false;
+    }
+}
+
+void
+PopConsensus::checkTimeout()
+{
+    if (phase_ == ConsensusPhase::accepted)
+        return;
+
+    auto timeOut = extraTimeOut_
+        ? adaptor_.parms().consensusTIMEOUT.count() * 1.5
+        : adaptor_.parms().consensusTIMEOUT.count();
+
+    if (timeSinceConsensus() < timeOut)
+        return;
+
+    if (adaptor_.validating())
+        launchViewChange();
+
+    timeOutCount_++;
+}
+
+void
+PopConsensus::launchViewChange()
+{
+    toView_ = view_ + 1;
+    consensusTime_ = utcTime();
+
+    JLOG(j_.info()) << "Check timeout prevLedgerSeq=" << previousLedger_.seq()
+                    << " PublicKey index=" << adaptor_.getPubIndex()
+                    << ", sending ViewChange toView=" << toView_;
+
+    auto viewChange = std::make_shared<STViewChange>(
+        previousLedger_.seq(),
+        prevLedgerID_,
+        toView_,
+        adaptor_.valPublic(),
+        adaptor_.closeTime());
+
+    adaptor_.launchViewChange(*viewChange);
+
+    peerViewChangeInternal(viewChange);
+}
+
+void
+PopConsensus::leaveConsensus()
+{
+    if (mode_.get() == ConsensusMode::proposing)
+    {
+        if (result_ && !result_->position.isBowOut())
+        {
+            result_->position.bowOut(now_);
+            adaptor_.propose(result_->position);
+        }
+
+        mode_.set(ConsensusMode::observing, adaptor_);
+        JLOG(j_.info()) << "Bowing out of consensus";
+    }
+}
+
+bool
+PopConsensus::peerProposal(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.warn()) << "drop UNTRUSTED proposal";
+        return false;
+    }
+
+    try
+    {
+        STProposeSet::pointer propose;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
+
+        propose = std::make_shared<STProposeSet>(
+            sit, adaptor_.closeTime(), calcNodeID(publicKey), publicKey);
+
+        auto newPeerPos = RCLCxPeerPos(
+            publicKey,
+            makeSlice(m->signature()),
+            consensusMessageUniqueId(*m),
+            std::move(*propose));
+
+        return peerProposalInternal(adaptor_.closeTime(), newPeerPos);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "ProposeSet: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return false;
+}
+
+bool
+PopConsensus::peerProposalInternal(
     NetClock::time_point const& now,
     PeerPosition_t const& newPeerPos)
 {
@@ -471,7 +825,8 @@ bool PopConsensus::peerProposalInternal(
     if (newPeerProp.curLedgerSeq() > previousLedger_.seq() + 1)
     {
         checkSaveNextProposal(newPeerPos);
-        // in case the we are fall behind and get proposal from a non-leader node ,but we think it's our leader
+        // in case the we are fall behind and get proposal from a non-leader
+        // node ,but we think it's our leader
         return false;
     }
 
@@ -479,48 +834,57 @@ bool PopConsensus::peerProposalInternal(
     {
         checkSaveNextProposal(newPeerPos);
         JLOG(j_.info()) << "Got proposal for " << newPeerProp.prevLedger()
-            << " from node " << getPubIndex(newPeerPos.publicKey()) << " but we are on " << prevLedgerID_;
+                        << " from (PublicKey index)"
+                        << adaptor_.getPubIndex(newPeerPos.publicKey())
+                        << ", but we are on " << prevLedgerID_;
         return false;
     }
 
     if (newPeerProp.view() != view_)
     {
         checkSaveNextProposal(newPeerPos);
-        JLOG(j_.info()) << "Got proposal for " << newPeerProp.prevLedger() << " view=" << newPeerProp.view()
-            << " from node " << getPubIndex(newPeerPos.publicKey()) << " but we are on view_ " << view_;
+        JLOG(j_.info()) << "Got proposal for " << newPeerProp.prevLedger()
+                        << " view(" << newPeerProp.view()
+                        << ") from (PublicKey index)"
+                        << adaptor_.getPubIndex(newPeerPos.publicKey())
+                        << " but we are on view(" << view_ << ")";
         return false;
     }
 
     now_ = now;
 
     JLOG(j_.info()) << "Processing peer proposal " << newPeerProp.proposeSeq()
-        << "/" << newPeerProp.position();
+                    << "/" << newPeerProp.position();
 
     {
-        PublicKey pub = newPeerPos.publicKey();
+        PublicKey publicKey = newPeerPos.publicKey();
         auto newSetID = newPeerProp.position();
         auto iter = txSetVoted_.find(newSetID);
         if (iter != txSetVoted_.end())
         {
-            JLOG(j_.info()) << "Got proposal for set from public :" << getPubIndex(pub);
-            iter->second.insert(pub);
+            JLOG(j_.info()) << "Got proposal for set from (PublicKey index)"
+                            << adaptor_.getPubIndex(publicKey);
+            iter->second.insert(publicKey);
         }
         else
         {
-            if (isLeader(pub))
+            if (adaptor_.isLeader(publicKey, previousLedger_.seq() + 1, view_))
             {
-                JLOG(j_.info()) << "Got proposal from leader,time since consensus:" << timeSinceConsensus() << "ms.";
+                JLOG(j_.info())
+                    << "Got proposal from leader,time since consensus:"
+                    << timeSinceConsensus() << "ms.";
 
                 if (adaptor_.parms().omitEMPTY && newSetID == beast::zero)
                 {
                     consensusTime_ = 0;
                     leaderFailed_ = true;
 
-                    JLOG(j_.info()) << "Empty proposal from leader,will trigger view_change.";
+                    JLOG(j_.info()) << "Empty proposal from leader,will "
+                                       "trigger view_change.";
                     return true;
                 }
 
-                txSetVoted_[newSetID] = std::set<PublicKey>{ pub };
+                txSetVoted_[newSetID] = std::set<PublicKey>{publicKey};
                 setID_ = newSetID;
                 rawCloseTimes_.self = now_;
                 closeTime_ = newPeerProp.closeTime();
@@ -528,31 +892,34 @@ bool PopConsensus::peerProposalInternal(
 
                 if (txSetCached_.find(*setID_) != txSetCached_.end())
                 {
-                    for (auto pub : txSetCached_[*setID_])
-                        txSetVoted_[newSetID].insert(pub);
+                    for (auto publicKey : txSetCached_[*setID_])
+                        txSetVoted_[newSetID].insert(publicKey);
                     txSetCached_.erase(*setID_);
                 }
 
-                JLOG(j_.info()) << "voting for set:" << *setID_ << " " << txSetVoted_[*setID_].size();
-                for (auto pub : txSetVoted_[*setID_])
+                JLOG(j_.info())
+                    << "List current votes for set(" << *setID_
+                    << "), total count: " << txSetVoted_[*setID_].size();
+                for (auto publicKey : txSetVoted_[*setID_])
                 {
-                    JLOG(j_.info()) << "voting public for set:" << getPubIndex(pub);
+                    JLOG(j_.info()) << "PublicKey index: "
+                                    << adaptor_.getPubIndex(publicKey);
                 }
 
                 extraTimeOut_ = true;
-                //if (phase_ == ConsensusPhase::open)
-                //    phase_ = ConsensusPhase::establish;
             }
             else
             {
-                JLOG(j_.info()) << "Got proposal for set from public " << getPubIndex(pub) << " and added to cache";
+                JLOG(j_.info())
+                    << "Got proposal for set from public "
+                    << adaptor_.getPubIndex(publicKey) << " and added to cache";
                 if (txSetCached_.find(newSetID) != txSetCached_.end())
                 {
-                    txSetCached_[newSetID].insert(pub);
+                    txSetCached_[newSetID].insert(publicKey);
                 }
                 else
                 {
-                    txSetCached_[newSetID] = std::set<PublicKey>{ pub };
+                    txSetCached_[newSetID] = std::set<PublicKey>{publicKey};
                 }
             }
         }
@@ -563,12 +930,12 @@ bool PopConsensus::peerProposalInternal(
         ++rawCloseTimes_.peers[newPeerProp.closeTime()];
     }
 
-
     {
         auto const ait = acquired_.find(newPeerProp.position());
         if (ait == acquired_.end())
         {
-            JLOG(j_.debug()) << "Don't have tx set for peer_position:" << newPeerProp.position();
+            JLOG(j_.debug()) << "Don't have tx set for peer_position:"
+                             << newPeerProp.position();
         }
         // acquireTxSet will return the set if it is available, or
         // spawn a request for it and return none/nullptr.  It will call
@@ -580,147 +947,193 @@ bool PopConsensus::peerProposalInternal(
     return true;
 }
 
-void PopConsensus::phaseCollecting()
+void
+PopConsensus::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
 {
-    if (leaderFailed_)
-        return;
-
-    auto sinceClose = timeSinceLastClose().count();
-    auto sinceOpen = timeSinceOpen();
-    auto sinceConsensus = timeSinceConsensus();
-    //view change have taken effect
-    if (sinceOpen != sinceConsensus)
+    Proposal_t const& newPeerProp = newPeerPos.proposal();
+    JLOG(j_.info()) << "checkSaveNextProposal, newPeerPos.curSeq="
+                    << newPeerProp.curLedgerSeq()
+                    << " newPeerPos.view=" << newPeerProp.view()
+                    << ", and we are on seq " << previousLedger_.seq() + 1
+                    << " view " << view_;
+    if ((newPeerProp.curLedgerSeq() > previousLedger_.seq() + 1) ||
+        (newPeerProp.curLedgerSeq() == previousLedger_.seq() + 1 &&
+         newPeerProp.view() > view_))
     {
-        sinceOpen = sinceConsensus;
-        sinceClose = sinceConsensus;
-    }
-
-    JLOG(j_.debug()) << "phaseCollecting time sinceOpen:" << sinceOpen << "ms";
-
-    // Decide if we should propose a tx-set
-    if (shouldPack() && !result_)
-    {
-        if (!adaptor_.app_.getTxPool().isAvailable())
-        {
-            return;
-        }
-
-        int tx_count = transactions_.size();
-
-        //if time for this block's tx-set reached
-        bool bTimeReached = sinceOpen >= adaptor_.parms().maxBLOCK_TIME;
-        if (tx_count < adaptor_.parms().maxTXS_IN_LEDGER && !bTimeReached)
-        {
-            appendTransactions(
-                adaptor_.app_.getTxPool().topTransactions(
-                    adaptor_.parms().maxTXS_IN_LEDGER - tx_count,
-                    previousLedger_.seq() + 1));
-        }
-
-        if (finalCondReached(sinceOpen, sinceClose))
+        auto curSeq = newPeerProp.curLedgerSeq();
+        if (proposalCache_.find(curSeq) != proposalCache_.end())
         {
             /**
-            1. construct result_
-            2. propose position
-            3. add position to self
-            */
-
-            rawCloseTimes_.self = now_;
-
-            result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_, view_, mode_.get()));
-            result_->roundTime.reset(clock_.now());
-            setID_ = result_->txns.id();
-            extraTimeOut_ = true;
-
-            // Share the newly created transaction set if we haven't already
-            // received it from a peer
-            if (acquired_.emplace(*setID_, result_->txns).second)
-                adaptor_.share(result_->txns);
-
-            adaptor_.propose(result_->position);
-
-            //Omit empty block ,launch view-change
-            if (adaptor_.parms().omitEMPTY && *setID_ == beast::zero)
+             * Only the first time for the same key will succeed,
+             * Or Save the newest proposal from same key, which proposal's view
+             * great than the old one, that's a question
+             */
+            if (proposalCache_[curSeq].find(newPeerPos.publicKey()) !=
+                proposalCache_[curSeq].end())
             {
-                //set zero,trigger time-out
-                consensusTime_ = 0;
-                leaderFailed_ = true;
-                JLOG(j_.info()) << "Empty transaction-set from self,will trigger view_change.";
-                return;
+                auto oldPeerProp = proposalCache_[curSeq]
+                                       .find(newPeerPos.publicKey())
+                                       ->second.proposal();
+                JLOG(j_.info())
+                    << "peerProposal curSeq=" << curSeq
+                    << ", pubKey=" << newPeerPos.publicKey()
+                    << " exist, oldView=" << oldPeerProp.view()
+                    << ", and this Proposal view=" << newPeerProp.view();
+                if (oldPeerProp.view() < newPeerProp.view())
+                {
+                    proposalCache_[curSeq].erase(newPeerPos.publicKey());
+                }
             }
+            proposalCache_[curSeq].emplace(newPeerPos.publicKey(), newPeerPos);
 
-            txSetVoted_[*setID_] = std::set<PublicKey>{ adaptor_.valPublic_ };
-
-            phase_ = ConsensusPhase::establish;
-            JLOG(j_.info()) << "We are leader,proposing position:" << *setID_;
-
-            checkVoting();
+            // If other nodes have reached a consensus for a newest ledger,we
+            // should acquire that ledger.
+            int count = 0;
+            for (auto iter : proposalCache_[curSeq])
+            {
+                if (iter.second.proposal().view() == view_)
+                {
+                    count++;
+                }
+            }
+            if (count >= adaptor_.getQuorum())
+            {
+                adaptor_.acquireLedger(newPeerProp.prevLedger());
+            }
         }
-    }
-    else
-    {
-        //in case we are not leader,the proposal leader should propose not received,
-        // but other nodes have accepted the ledger of this sequence
-        int minVal = adaptor_.app_.validators().quorum();
-        auto currentFinished = adaptor_.proposersFinished(previousLedger_, prevLedgerID_);
-        if (currentFinished >= minVal)
+        else
         {
-            //result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
-            //result_->roundTime.reset(clock_.now());
-            //rawCloseTimes_.self = now_;
-            //phase_ = ConsensusPhase::establish;
-            JLOG(j_.warn()) << "Other nodes have enter establish phase for previous ledger " << previousLedger_.seq();
+            std::map<PublicKey, RCLCxPeerPos> mapPos;
+            mapPos.emplace(newPeerPos.publicKey(), newPeerPos);
+            proposalCache_[curSeq] = mapPos;
         }
+
+        JLOG(j_.info()) << "Position " << newPeerProp.position()
+                        << " of ledger " << newPeerProp.curLedgerSeq()
+                        << " from (PublicKey index)"
+                        << adaptor_.getPubIndex(newPeerPos.publicKey())
+                        << " added to cache.";
     }
 }
 
-bool PopConsensus::checkChangeView(uint64_t toView)
+bool
+PopConsensus::peerViewChange(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    if (phase_ == ConsensusPhase::accepted)
+    if (!isTrusted)
     {
+        JLOG(j_.warn()) << "drop UNTRUSTED ViewChange";
         return false;
     }
-    if (toView_ == toView)
+
+    try
     {
-        if (viewChangeManager_.checkChange(toView, view_, prevLedgerID_, adaptor_.app_.validators().quorum()))
-        {
-            view_ = toView;
-            onViewChange();
-            JLOG(j_.info()) << "View changed to " << view_;
-            return true;
-        }
+        STViewChange::pointer viewChange;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
+
+        viewChange = std::make_shared<STViewChange>(sit, publicKey);
+
+        return peerViewChangeInternal(viewChange);
     }
-    else
+    catch (std::exception const& e)
     {
-        /* If number of toView can met ,we need to check:
-        1. if previousLedgerSeq < ViewChange.previousLedgerSeq ?handleWrong ledger
-        2. if previousLedgerSeq == ViewChange.previousLedgerSeq ?change our view_ to new view.
-        */
-        auto ret = viewChangeManager_.shouldTriggerViewChange(toView, previousLedger_, adaptor_.app_.validators().quorum());
-        if (std::get<0>(ret))
-        {
-            if (previousLedger_.seq() < std::get<1>(ret))
-            {
-                handleWrongLedger(std::get<2>(ret));
-                JLOG(j_.info()) << "View changed fulfilled in other nodes: " << toView << ",and we need ledger:" << std::get<1>(ret);
-            }
-            else if (previousLedger_.seq() == std::get<1>(ret))
-            {
-                view_ = toView;
-                onViewChange();
-                JLOG(j_.info()) << "We have the newest ledger,change view to " << view_;
-                return true;
-            }
-        }
+        JLOG(j_.warn()) << "ViewChange: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
     }
 
     return false;
 }
 
-void PopConsensus::onViewChange()
+bool
+PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
+{
+    JLOG(j_.info()) << "Processing peer ViewChange toView="
+                    << viewChange->toView() << ", PublicKey index="
+                    << adaptor_.getPubIndex(viewChange->nodePublic());
+
+    bool saved = viewChangeManager_.recvViewChange(viewChange);
+    if (saved)
+    {
+        JLOG(j_.info()) << "ViewChange saved, current count of this view is "
+                        << viewChangeManager_.viewCount(viewChange->toView());
+
+        checkChangeView(viewChange->toView());
+
+        if (waitingForInit() && viewChange->prevSeq() > GENESIS_LEDGER_INDEX)
+        {
+            prevLedgerID_ = viewChange->prevHash();
+            view_ = viewChange->toView() - 1;
+            checkLedger();
+        }
+    }
+    else if (
+        previousLedger_.seq() == GENESIS_LEDGER_INDEX &&
+        viewChange->prevSeq() > GENESIS_LEDGER_INDEX)
+    {
+        JLOG(j_.warn()) << "touch inboundLedger for " << viewChange->prevHash();
+        adaptor_.touchAcquringLedger(viewChange->prevHash());
+    }
+
+    return true;
+}
+
+void
+PopConsensus::checkChangeView(uint64_t toView)
+{
+    if (phase_ == ConsensusPhase::accepted)
+    {
+        return;
+    }
+
+    if (toView_ == toView)
+    {
+        if (viewChangeManager_.haveConsensus(
+                toView, view_, prevLedgerID_, adaptor_.getQuorum()))
+        {
+            onViewChange(toView);
+        }
+    }
+    else
+    {
+        /* If number of toView can met ,we need to check:
+           1. if previousLedgerSeq < ViewChange.previousLedgerSeq ?handleWrong
+           ledger
+           2. if previousLedgerSeq == ViewChange.previousLedgerSeq ?change our
+           view_ to new view.
+        */
+        auto ret = viewChangeManager_.shouldTriggerViewChange(
+            toView, previousLedger_, adaptor_.getQuorum());
+        if (std::get<0>(ret))
+        {
+            if (previousLedger_.seq() < std::get<1>(ret))
+            {
+                JLOG(j_.info())
+                    << "View changed fulfilled in other nodes: " << toView
+                    << ", and we need ledger:" << std::get<1>(ret);
+                handleWrongLedger(std::get<2>(ret));
+            }
+            else if (previousLedger_.seq() == std::get<1>(ret))
+            {
+                JLOG(j_.info())
+                    << "We have the newest ledger, change view to " << view_;
+                onViewChange(toView);
+            }
+        }
+    }
+}
+
+void
+PopConsensus::onViewChange(uint64_t toView)
 {
     ScopedLockType sl(lock_);
 
+    JLOG(j_.info()) << "View change to " << toView;
+
+    view_ = toView;
     consensusTime_ = utcTime();
     phase_ = ConsensusPhase::open;
     result_.reset();
@@ -735,8 +1148,8 @@ void PopConsensus::onViewChange()
     extraTimeOut_ = false;
     timeOutCount_ = 0;
 
-    //clear avoid
-    adaptor_.app_.getTxPool().clearAvoid(previousLedger_.seq());
+    // clear avoid
+    // adaptor_.clearPoolAvoid(previousLedger_.seq());
 
     viewChangeManager_.onViewChanged(view_);
     if (bWaitingInit_)
@@ -758,275 +1171,45 @@ void PopConsensus::onViewChange()
     }
 }
 
-void PopConsensus::checkVoting()
+bool
+PopConsensus::peerValidation(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    ScopedLockType sl(lock_);
-
-    // can only establish consensus if we already took a stance
-    assert(result_);
-
-    using namespace std::chrono;
+    if (m->msg().size() < 50)
     {
-        result_->roundTime.tick(clock_.now());
-        //result_->proposers = currPeerPositions_.size();
-
-        JLOG(j_.info()) << "checkVoting roundTime:" << result_->roundTime.read().count();
-    }
-
-    // Nothing to do if we don't have consensus.
-    if (!haveConsensus())
-    {
-        return;
-    }
-
-    phase_ = ConsensusPhase::accepted;
-    adaptor_.onAccept(
-        *result_,
-        previousLedger_,
-        closeResolution_,
-        rawCloseTimes_,
-        mode_.get(),
-        getJson(true));
-}
-
-void PopConsensus::launchViewChange()
-{
-    toView_ = view_ + 1;
-    consensusTime_ = utcTime();
-
-    ViewChange change(previousLedger_.seq(), prevLedgerID_, adaptor_.valPublic_, toView_);
-    adaptor_.sendViewChange(change);
-
-    JLOG(j_.info()) << "checkTimeout sendViewChange,toView=" << toView_ << ",nodeId=" << getPubIndex(adaptor_.valPublic_)
-        << ",prevLedgerSeq=" << previousLedger_.seq();
-
-    peerViewChange(change);
-}
-
-void PopConsensus::checkTimeout()
-{
-    if (phase_ == ConsensusPhase::accepted)
-        return;
-
-    auto timeOut = extraTimeOut_
-        ? adaptor_.parms().consensusTIMEOUT.count() * 1.5
-        : adaptor_.parms().consensusTIMEOUT.count();
-
-    if (timeSinceConsensus() < timeOut)
-        return;
-
-    if (adaptor_.validating())
-        launchViewChange();
-
-    timeOutCount_++;
-}
-
-bool PopConsensus::haveConsensus()
-{
-    // Must have a stance if we are checking for consensus
-    if (!result_)
-        return false;
-
-    int agreed = txSetVoted_[*setID_].size();
-    int minVal = adaptor_.app_.validators().quorum();
-    auto currentFinished = previousLedger_.seq() == GENESIS_LEDGER_INDEX ? 0 :
-        adaptor_.proposersFinished(previousLedger_, prevLedgerID_);
-
-    JLOG(j_.debug()) << "Checking for TX consensus: agree=" << agreed;
-    JLOG(j_.debug()) << "Checking for TX consensus: currentFinished=" << currentFinished;
-
-    // Determine if we actually have consensus or not
-    if (agreed >= minVal)
-    {
-        JLOG(j_.info()) << "Consensus for tx-set reached with agreed = " << agreed;
-        result_->state = ConsensusState::Yes;
-        return true;
-    }
-    else if (currentFinished >= minVal)
-    {
-        result_->state = ConsensusState::MovedOn;
-        JLOG(j_.error()) << "Unable to reach consensus";
-        JLOG(j_.error()) << getJson(true);
-        return true;
-    }
-    else
-    {
-        result_->state = ConsensusState::No;
+        JLOG(j_.warn()) << "Validation: Too small";
+        peer->charge(Resource::feeInvalidRequest);
         return false;
     }
 
-    //if (result_->state == ConsensusState::No)
-    //	return false;
-
-    //// There is consensus, but we need to track if the network moved on
-    //// without us.
-    //if (result_->state == ConsensusState::MovedOn)
-    //{
-    //	JLOG(j_.error()) << "Unable to reach consensus";
-    //	JLOG(j_.error()) << getJson(true);
-    //}
-
-    //return true;
-}
-
-bool PopConsensus::shouldPack()
-{
-    return isLeader(adaptor_.valPublic_);
-}
-
-bool PopConsensus::isLeader(PublicKey const& pub, bool bNextLeader /* = false */)
-{
-    auto const& validators = adaptor_.app_.validators().validators();
-    LedgerIndex currentLedgerIndex = previousLedger_.seq() + 1;
-    if (bNextLeader)
+    try
     {
-        currentLedgerIndex++;
-    }
-    assert(validators.size() > 0);
-    int leader_idx = (view_ + currentLedgerIndex) % validators.size();
-    return pub == validators[leader_idx];
-}
+        STValidation::pointer val;
+        {
+            SerialIter sit(makeSlice(m->msg()));
+            PublicKey const publicKey{makeSlice(m->signerpubkey())};
+            val = std::make_shared<STValidation>(
+                std::ref(sit), publicKey, [&](PublicKey const& pk) {
+                    return calcNodeID(adaptor_.getMasterKey(pk));
+                });
+            val->setSeen(adaptor_.closeTime());
+            if (isTrusted)
+            {
+                val->setTrusted();
+            }
+        }
 
-int PopConsensus::getPubIndex(PublicKey const& pub)
-{
-    auto const& validators = adaptor_.app_.validators().validators();
-    for (int i = 0; i < validators.size(); i++)
+        return adaptor_.peerValidation(peer, val);
+    }
+    catch (std::exception const& e)
     {
-        if (validators[i] == pub)
-            return i + 1;
+        JLOG(j_.warn()) << "Validation: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
     }
-    return 0;
-}
-
-/** Is final condition reached for proposing.
-    We should check:
-    1. Is maxBlockTime reached.
-    2. Is tx-count reached max and max >=5000 and minBlockTime/2 reached.(There will be
-       a time to reach tx-set consensus)
-    3. If there are txs but not reach max-count,is the minBlockTime reached.
-*/
-bool PopConsensus::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
-{
-    if (sinceLastClose < 0)
-    {
-        sinceLastClose = sinceOpen;
-    }
-
-    if (sinceLastClose >= adaptor_.parms().maxBLOCK_TIME)
-        return true;
-
-    if (adaptor_.parms().maxTXS_IN_LEDGER >= adaptor_.parms().minTXS_IN_LEDGER_ADVANCE &&
-        transactions_.size() >= adaptor_.parms().maxTXS_IN_LEDGER &&
-        sinceLastClose >= adaptor_.parms().minBLOCK_TIME / 2)
-    {
-        return true;
-    }
-
-    if (transactions_.size() > 0 && sinceLastClose >= adaptor_.parms().minBLOCK_TIME)
-        return true;
 
     return false;
 }
 
-void PopConsensus::appendTransactions(h256Set const& txSet)
-{
-    for (auto const& trans : txSet)
-        transactions_.push_back(trans);
-}
-
-std::chrono::milliseconds PopConsensus::timeSinceLastClose()
-{
-    using namespace std::chrono;
-    // This computes how long since last ledger's close time
-    milliseconds sinceClose;
-    {
-        bool previousCloseCorrect =
-            (mode_.get() != ConsensusMode::wrongLedger) &&
-            previousLedger_.closeAgree() &&
-            (previousLedger_.closeTime().time_since_epoch().count() != 0);
-
-        auto lastCloseTime = previousCloseCorrect
-            ? previousLedger_.closeTime()  // use consensus timing
-            : openTime_;              // use the time we saw internally
-
-        if (now_ >= lastCloseTime)
-            sinceClose = duration_cast<milliseconds>(now_ - lastCloseTime);
-        else
-            sinceClose = -duration_cast<milliseconds>(lastCloseTime - now_);
-    }
-    return sinceClose;
-}
-
-void PopConsensus::leaveConsensus()
-{
-    if (mode_.get() == ConsensusMode::proposing)
-    {
-        if (result_ && !result_->position.isBowOut())
-        {
-            result_->position.bowOut(now_);
-            adaptor_.propose(result_->position);
-        }
-
-        mode_.set(ConsensusMode::observing, adaptor_);
-        JLOG(j_.info()) << "Bowing out of consensus";
-    }
-}
-
-void PopConsensus::checkSaveNextProposal(PeerPosition_t const& newPeerPos)
-{
-    Proposal_t const& newPeerProp = newPeerPos.proposal();
-    JLOG(j_.info()) << "checkSaveNextProposal, newPeerPos.curSeq=" << newPeerProp.curLedgerSeq() << " newPeerPos.view=" << newPeerProp.view()
-        << ", and we are on seq " << previousLedger_.seq() + 1 << " view " << view_;
-    if ((newPeerProp.curLedgerSeq() > previousLedger_.seq() + 1) ||
-        (newPeerProp.curLedgerSeq() == previousLedger_.seq() + 1 && newPeerProp.view() > view_))
-    {
-        auto curSeq = newPeerProp.curLedgerSeq();
-        if (adaptor_.proposalCache_.find(curSeq) != adaptor_.proposalCache_.end())
-        {
-            /**
-             * Only the first time for the same key will succeed,
-             * Or Save the newest proposal from same key, which proposal's view great than the old one,
-             * that's a question
-             */
-#if 1
-            if (adaptor_.proposalCache_[curSeq].find(newPeerPos.publicKey()) != adaptor_.proposalCache_[curSeq].end())
-            {
-                auto oldPeerProp = adaptor_.proposalCache_[curSeq].find(newPeerPos.publicKey())->second.proposal();
-                JLOG(j_.info()) << "peerProposal curSeq=" << curSeq
-                    << ", pubKey=" << newPeerPos.publicKey() << " exist, oldView=" << oldPeerProp.view()
-                    << ", and this Proposal view=" << newPeerProp.view();
-                if (oldPeerProp.view() < newPeerProp.view())
-                {
-                    adaptor_.proposalCache_[curSeq].erase(newPeerPos.publicKey());
-                }
-            }
-#endif
-            adaptor_.proposalCache_[curSeq].emplace(newPeerPos.publicKey(), newPeerPos);
-
-            //If other nodes have reached a consensus for a newest ledger,we should acquire that ledger.
-            int count = 0;
-            for (auto iter : adaptor_.proposalCache_[curSeq])
-            {
-                if (iter.second.proposal().view() == view_)
-                {
-                    count++;
-                }
-            }
-            if (count >= adaptor_.app_.validators().quorum())
-            {
-                adaptor_.acquireLedger(newPeerProp.prevLedger());
-            }
-        }
-        else
-        {
-            std::map<PublicKey, RCLCxPeerPos> mapPos;
-            mapPos.emplace(newPeerPos.publicKey(), newPeerPos);
-            adaptor_.proposalCache_[curSeq] = mapPos;
-        }
-
-        JLOG(j_.info()) << "Position " << newPeerProp.position() << " of ledger " << newPeerProp.curLedgerSeq() << " from " << getPubIndex(newPeerPos.publicKey()) << " added to cache.";
-    }
-}
-
-
-}
+}  // namespace ripple

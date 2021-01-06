@@ -18,12 +18,30 @@
 //==============================================================================
 
 
-#include <peersafe/consensus/impl/ViewChange.cpp>
-#include <peersafe/consensus/impl/ViewChangeManager.cpp>
-
 #include <peersafe/consensus/impl/Adaptor.cpp>
+#include <peersafe/consensus/impl/RpcaPopAdaptor.cpp>
 
 #include <peersafe/consensus/rpca/impl/RpcaAdaptor.cpp>
 #include <peersafe/consensus/rpca/impl/RpcaConsensus.cpp>
+
+#include <peersafe/consensus/pop/impl/ViewChangeManager.cpp>
 #include <peersafe/consensus/pop/impl/PopAdaptor.cpp>
 #include <peersafe/consensus/pop/impl/PopConsensus.cpp>
+
+#include <peersafe/consensus/hotstuff/impl/Block.cpp>
+#include <peersafe/consensus/hotstuff/impl/BlockStorage.cpp>
+#include <peersafe/consensus/hotstuff/impl/EpochChange.cpp>
+#include <peersafe/consensus/hotstuff/impl/EpochState.cpp>
+#include <peersafe/consensus/hotstuff/impl/HotstuffCore.cpp>
+#include <peersafe/consensus/hotstuff/impl/PendingVotes.cpp>
+#include <peersafe/consensus/hotstuff/impl/ProposalGenerator.cpp>
+#include <peersafe/consensus/hotstuff/impl/QuorumCert.cpp>
+#include <peersafe/consensus/hotstuff/impl/RoundManager.cpp>
+#include <peersafe/consensus/hotstuff/impl/RoundState.cpp>
+#include <peersafe/consensus/hotstuff/impl/SyncInfo.cpp>
+#include <peersafe/consensus/hotstuff/impl/Vote.cpp>
+#include <peersafe/consensus/hotstuff/impl/VoteData.cpp>
+#include <peersafe/consensus/hotstuff/impl/HotstuffAdaptor.cpp>
+#include <peersafe/consensus/hotstuff/impl/Hotstuff.cpp>
+#include <peersafe/consensus/hotstuff/impl/HotstuffConsensus.cpp>
+

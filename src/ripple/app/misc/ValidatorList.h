@@ -27,6 +27,7 @@
 #include <ripple/crypto/csprng.h>
 #include <ripple/json/json_value.h>
 #include <ripple/protocol/PublicKey.h>
+#include <ripple/protocol/Protocol.h>
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/range/adaptors.hpp>
 #include <peersafe/app/misc/ConfigSite.h>
@@ -330,10 +331,18 @@ public:
         return quorum_;
     }
 
-	std::vector<PublicKey> validators()
+    /** @par Non Thread Safety
+
+        May be called concurrently with resetValidators
+    */
+	inline std::vector<PublicKey> validators()
 	{
 		return validators_;
 	}
+
+    int getPubIndex(PublicKey const& publicKey);
+
+    PublicKey getLeaderPubKey(LedgerIndex seq);
 
     /** Returns `true` if public key is trusted
 

@@ -287,18 +287,20 @@ Transactor::checkSeq(PreclaimContext const& ctx)
     }
 
     if (ctx.tx.isFieldPresent(sfAccountTxnID) &&
-        (sle->getFieldH256(sfAccountTxnID) !=
-         ctx.tx.getFieldH256(sfAccountTxnID)))
+        sle->getFieldH256(sfAccountTxnID) !=
+            ctx.tx.getFieldH256(sfAccountTxnID))
+    {
         return tefWRONG_PRIOR;
+    }
 
-	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
-		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
-	{
-		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
-			"view.seq=" << ctx.view.seq();
-		return tefMAX_LEDGER;
-	}
-        
+    if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
+        (ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
+    {
+        JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence "
+                           << ctx.tx.getFieldU32(sfLastLedgerSequence)
+                           << "view.seq=" << ctx.view.seq();
+        return tefMAX_LEDGER;
+    }
 
     return tesSUCCESS;
 }
@@ -306,48 +308,49 @@ Transactor::checkSeq(PreclaimContext const& ctx)
 NotTEC
 Transactor::checkSeq2(PreclaimContext const& ctx)
 {
-	auto const id = ctx.tx.getAccountID(sfAccount);
+    auto const id = ctx.tx.getAccountID(sfAccount);
 
-	std::uint32_t const t_seq = ctx.tx.getSequence();
-	std::uint32_t const a_seq = ctx.app.getStateManager().getAccountSeq(id);
-	if(a_seq == 0)
-	{
-		JLOG(ctx.j.info()) <<
-			"applyTransaction: delay: source account does not exist " <<
-			toBase58(ctx.tx.getAccountID(sfAccount));
-		return terNO_ACCOUNT;
-	}
+    std::uint32_t const t_seq = ctx.tx.getSequence();
+    std::uint32_t const a_seq = ctx.app.getStateManager().getAccountSeq(id);
+    if (a_seq == 0)
+    {
+        JLOG(ctx.j.info())
+            << "applyTransaction: delay: source account does not exist "
+            << toBase58(ctx.tx.getAccountID(sfAccount));
+        return terNO_ACCOUNT;
+    }
 
-	if (t_seq != a_seq)
-	{
-		if (a_seq < t_seq)
-		{
-			//if pre-seq,just reset ,to re-fetch next time.
-			//ctx.app.getStateManager().resetAccountSeq(id);
+    if (t_seq != a_seq)
+    {
+        if (a_seq < t_seq)
+        {
+            // if pre-seq,just reset ,to re-fetch next time.
+            // ctx.app.getStateManager().resetAccountSeq(id);
 
-			JLOG(ctx.j.info()) <<
-				"applyTransaction: has future sequence number, Account: " << 
-                toBase58(ctx.tx.getAccountID(sfAccount)) << 
-				" a_seq=" << a_seq << " t_seq=" << t_seq;
-			return terPRE_SEQ;
-		}
+            JLOG(ctx.j.info())
+                << "applyTransaction: has future sequence number, Account: "
+                << toBase58(ctx.tx.getAccountID(sfAccount))
+                << " a_seq=" << a_seq << " t_seq=" << t_seq;
+            return terPRE_SEQ;
+        }
 
-		JLOG(ctx.j.info()) << "applyTransaction: has past sequence number, Account: " <<
-            toBase58(ctx.tx.getAccountID(sfAccount)) <<
-			" a_seq=" << a_seq << " t_seq=" << t_seq;
-		return tefPAST_SEQ;
-	}
+        JLOG(ctx.j.info())
+            << "applyTransaction: has past sequence number, Account: "
+            << toBase58(ctx.tx.getAccountID(sfAccount)) << " a_seq=" << a_seq
+            << " t_seq=" << t_seq;
+        return tefPAST_SEQ;
+    }
 
-	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
-		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
-	{
-		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
-			"view.seq=" << ctx.view.seq();
-		return tefMAX_LEDGER;
-	}
+    if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
+        (ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
+    {
+        JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence "
+                           << ctx.tx.getFieldU32(sfLastLedgerSequence)
+                           << "view.seq=" << ctx.view.seq();
+        return tefMAX_LEDGER;
+    }
 
-
-	return tesSUCCESS;
+    return tesSUCCESS;
 }
 
 void Transactor::setExtraMsg(std::string msg)
@@ -843,7 +846,9 @@ Transactor::operator()()
     auto fee = ctx_.tx.getFieldAmount(sfFee).zxc ();
 
     if (ctx_.size() > oversizeMetaDataCap)
+    {
         terResult.ter = tecOVERSIZE;
+    }
 
 	//if ((terResult == tecOVERSIZE) ||
 	//    (!isTecClaim (terResult) && !(view().flags() & tapRETRY)))

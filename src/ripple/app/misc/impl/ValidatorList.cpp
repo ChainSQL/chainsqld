@@ -430,8 +430,10 @@ ValidatorList::applyList(
         }
     }
 
+
     // Cache the validator list in a file
     CacheValidatorFile(pubKey, publisher);
+	//resetValidators();
 
     return applyResult;
 }
@@ -557,6 +559,31 @@ ValidatorList::listed(PublicKey const& identity) const
 
     auto const pubKey = validatorManifests_.getMasterKey(identity);
     return keyListings_.find(pubKey) != keyListings_.end();
+}
+
+int
+ValidatorList::getPubIndex(PublicKey const& publicKey)
+{
+    std::shared_lock<std::shared_timed_mutex> read_lock{ mutex_ };
+    for (int i = 0; i < validators_.size(); i++)
+    {
+        if (validators_[i] == publicKey)
+            return i + 1;
+    }
+
+    return 0;
+}
+
+PublicKey
+ValidatorList::getLeaderPubKey(LedgerIndex seq)
+{
+    std::shared_lock<std::shared_timed_mutex> read_lock{ mutex_ };
+    if (validators_.size() > 0)
+    {
+        return validators_[seq % validators_.size()];
+    }
+
+    return PublicKey();
 }
 
 bool
@@ -978,6 +1005,11 @@ ValidatorList::updateTrusted(hash_set<NodeID> const& seenValidators)
         JLOG(j_.warn()) << "New quorum of " << quorum_
                         << " exceeds the number of trusted validators ("
                         << trustedMasterKeys_.size() << ")";
+    }
+
+    if (trustChanges.added.size() || trustChanges.removed.size())
+    {
+        resetValidators();
     }
 
     return trustChanges;

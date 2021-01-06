@@ -139,6 +139,9 @@ public:
 std::ostream&
 operator<<(std::ostream& os, PublicKey const& pk);
 
+std::ostringstream&
+operator<<(std::ostringstream& os, PublicKey const& pk);
+
 inline bool
 operator==(PublicKey const& lhs, PublicKey const& rhs)
 {

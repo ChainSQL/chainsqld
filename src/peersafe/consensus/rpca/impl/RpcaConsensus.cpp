@@ -29,8 +29,8 @@
 
 namespace ripple {
 
-
-bool shouldCloseLedger(
+bool
+shouldCloseLedger(
     bool anyTransactions,
     std::size_t prevProposers,
     std::size_t proposersClosed,
@@ -89,7 +89,8 @@ bool shouldCloseLedger(
     return true;
 }
 
-bool checkConsensusReached(
+bool
+checkConsensusReached(
     std::size_t agreeing,
     std::size_t total,
     bool count_self,
@@ -110,7 +111,8 @@ bool checkConsensusReached(
     return currentPercentage >= minConsensusPct;
 }
 
-ConsensusState checkConsensus(
+ConsensusState
+checkConsensus(
     std::size_t prevProposers,
     std::size_t currentProposers,
     std::size_t currentAgree,
@@ -167,18 +169,21 @@ ConsensusState checkConsensus(
 // -------------------------------------------------------------------
 // Public member functions
 
-RpcaConsensus::RpcaConsensus(Adaptor& adaptor, clock_type const& clock, beast::Journal journal)
-    : ConsensusBase(clock_, journal)
-    , adaptor_(*(RpcaAdaptor*)(&adaptor))
+RpcaConsensus::RpcaConsensus(
+    Adaptor& adaptor,
+    clock_type const& clock,
+    beast::Journal journal)
+    : ConsensusBase(clock, journal), adaptor_(*(RpcaAdaptor*)(&adaptor))
 {
     JLOG(j_.info()) << "Creating RPCA consensus object";
 }
 
-void RpcaConsensus::startRound(
+void
+RpcaConsensus::startRound(
     NetClock::time_point const& now,
     typename Ledger_t::ID const& prevLedgerID,
     Ledger_t prevLedger,
-    hash_set<NodeID_t> const& nowUntrusted,
+    hash_set<NodeID> const& nowUntrusted,
     bool proposing)
 {
     if (firstRound_)
@@ -219,7 +224,8 @@ void RpcaConsensus::startRound(
     startRoundInternal(now, prevLedgerID, prevLedger, startMode);
 }
 
-void RpcaConsensus::timerEntry(NetClock::time_point const& now)
+void
+RpcaConsensus::timerEntry(NetClock::time_point const& now)
 {
     // Nothing to do if we are currently working on a ledger
     if (phase_ == ConsensusPhase::accepted)
@@ -240,23 +246,27 @@ void RpcaConsensus::timerEntry(NetClock::time_point const& now)
     }
 }
 
-bool RpcaConsensus::peerProposal(NetClock::time_point const& now, PeerPosition_t const& newPeerPos)
+bool
+RpcaConsensus::peerConsensusMessage(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    NodeID_t const& peerID = newPeerPos.proposal().nodeID();
-
-    // Always need to store recent positions
+    switch (m->msgtype())
     {
-        auto& props = recentPeerPositions_[peerID];
-
-        if (props.size() >= 10)
-            props.pop_front();
-
-        props.push_back(newPeerPos);
+        case ConsensusMessageType::mtPROPOSESET:
+            return peerProposal(peer, isTrusted, m);
+        case ConsensusMessageType::mtVALIDATION:
+            return peerValidation(peer, isTrusted, m);
+        default:
+            break;
     }
-    return peerProposalInternal(now, newPeerPos);
+
+    return false;
 }
 
-void RpcaConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
+void
+RpcaConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
 {
     // Nothing to do if we've finished work on a ledger
     if (phase_ == ConsensusPhase::accepted)
@@ -298,7 +308,8 @@ void RpcaConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txS
     }
 }
 
-Json::Value RpcaConsensus::getJson(bool full) const
+Json::Value
+RpcaConsensus::getJson(bool full) const
 {
     using std::to_string;
     using Int = Json::Value::Int;
@@ -311,7 +322,8 @@ Json::Value RpcaConsensus::getJson(bool full) const
     if (mode_.get() != ConsensusMode::wrongLedger)
     {
         ret["synched"] = true;
-        ret["ledger_seq"] = static_cast<std::uint32_t>(previousLedger_.seq()) + 1;
+        ret["ledger_seq"] =
+            static_cast<std::uint32_t>(previousLedger_.seq()) + 1;
         ret["close_granularity"] = static_cast<Int>(closeResolution_.count());
     }
     else
@@ -329,7 +341,7 @@ Json::Value RpcaConsensus::getJson(bool full) const
     {
         if (result_)
             ret["current_ms"] =
-            static_cast<Int>(result_->roundTime.read().count());
+                static_cast<Int>(result_->roundTime.read().count());
         ret["converge_percent"] = convergePercent_;
         ret["close_resolution"] = static_cast<Int>(closeResolution_.count());
         ret["have_time_consensus"] = haveCloseTimeConsensus_;
@@ -392,7 +404,8 @@ Json::Value RpcaConsensus::getJson(bool full) const
     return ret;
 }
 
-void RpcaConsensus::simulate(
+void
+RpcaConsensus::simulate(
     NetClock::time_point const& now,
     boost::optional<std::chrono::milliseconds> consensusDelay)
 {
@@ -417,7 +430,8 @@ void RpcaConsensus::simulate(
 // -------------------------------------------------------------------
 // Private member functions
 
-void RpcaConsensus::startRoundInternal(
+void
+RpcaConsensus::startRoundInternal(
     NetClock::time_point const& now,
     typename Ledger_t::ID const& prevLedgerID,
     Ledger_t const& prevLedger,
@@ -441,7 +455,7 @@ void RpcaConsensus::startRoundInternal(
     closeResolution_ = getNextLedgerTimeResolution(
         previousLedger_.closeTimeResolution(),
         previousLedger_.closeAgree(),
-        previousLedger_.seq() + typename Ledger_t::Seq{ 1 });
+        previousLedger_.seq() + typename Ledger_t::Seq{1});
 
     playbackProposals();
     if (currPeerPositions_.size() > (prevProposers_ / 2))
@@ -452,7 +466,8 @@ void RpcaConsensus::startRoundInternal(
     }
 }
 
-void RpcaConsensus::playbackProposals()
+void
+RpcaConsensus::playbackProposals()
 {
     for (auto const& it : recentPeerPositions_)
     {
@@ -467,7 +482,8 @@ void RpcaConsensus::playbackProposals()
     }
 }
 
-void RpcaConsensus::checkLedger()
+void
+RpcaConsensus::checkLedger()
 {
     auto netLgr =
         adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
@@ -475,13 +491,13 @@ void RpcaConsensus::checkLedger()
     if (netLgr != prevLedgerID_)
     {
         JLOG(j_.warn()) << "View of consensus changed during "
-            << to_string(phase_) << " status=" << to_string(phase_)
-            << ", "
-            << " mode=" << to_string(mode_.get());
+                        << to_string(phase_) << " status=" << to_string(phase_)
+                        << ", "
+                        << " mode=" << to_string(mode_.get());
         JLOG(j_.warn()) << prevLedgerID_ << " to " << netLgr;
-        JLOG(j_.warn()) << Json::Compact{ previousLedger_.getJson() };
+        JLOG(j_.warn()) << Json::Compact{previousLedger_.getJson()};
         JLOG(j_.debug()) << "State on consensus change "
-            << Json::Compact{ getJson(true) };
+                         << Json::Compact{getJson(true)};
         handleWrongLedger(netLgr);
     }
     else if (previousLedger_.id() != prevLedgerID_)
@@ -489,7 +505,8 @@ void RpcaConsensus::checkLedger()
 }
 
 // Handle a change in the prior ledger during a consensus round
-void RpcaConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
+void
+RpcaConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 {
     assert(lgrId != prevLedgerID_ || previousLedger_.id() != lgrId);
 
@@ -532,7 +549,8 @@ void RpcaConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     }
 }
 
-void RpcaConsensus::leaveConsensus()
+void
+RpcaConsensus::leaveConsensus()
 {
     if (mode_.get() == ConsensusMode::proposing)
     {
@@ -547,7 +565,8 @@ void RpcaConsensus::leaveConsensus()
     }
 }
 
-void RpcaConsensus::phaseOpen()
+void
+RpcaConsensus::phaseOpen()
 {
     using namespace std::chrono;
 
@@ -565,7 +584,7 @@ void RpcaConsensus::phaseOpen()
             (mode_.get() != ConsensusMode::wrongLedger) &&
             previousLedger_.closeAgree() &&
             (previousLedger_.closeTime() !=
-            (previousLedger_.parentCloseTime() + 1s));
+             (previousLedger_.parentCloseTime() + 1s));
 
         auto lastCloseTime = previousCloseCorrect
             ? previousLedger_.closeTime()  // use consensus timing
@@ -583,22 +602,23 @@ void RpcaConsensus::phaseOpen()
 
     // Decide if we should close the ledger
     if (shouldCloseLedger(
-        anyTransactions,
-        prevProposers_,
-        proposersClosed,
-        proposersValidated,
-        prevRoundTime_,
-        sinceClose,
-        openTime_.read(),
-        idleInterval,
-        adaptor_.parms(),
-        j_))
+            anyTransactions,
+            prevProposers_,
+            proposersClosed,
+            proposersValidated,
+            prevRoundTime_,
+            sinceClose,
+            openTime_.read(),
+            idleInterval,
+            adaptor_.parms(),
+            j_))
     {
         closeLedger();
     }
 }
 
-void RpcaConsensus::closeLedger()
+void
+RpcaConsensus::closeLedger()
 {
     // We should not be closing if we already have a position
     assert(!result_);
@@ -611,7 +631,7 @@ void RpcaConsensus::closeLedger()
     // Share the newly created transaction set if we haven't already
     // received it from a peer
     if (acquired_.emplace(result_->txns.id(), result_->txns).second)
-        adaptor_.relay(result_->txns);
+        adaptor_.RpcaPopAdaptor::Adaptor::relay(result_->txns);
 
     if (mode_.get() == ConsensusMode::proposing)
         adaptor_.propose(result_->position);
@@ -628,7 +648,8 @@ void RpcaConsensus::closeLedger()
     }
 }
 
-void RpcaConsensus::createDisputes(TxSet_t const& o)
+void
+RpcaConsensus::createDisputes(TxSet_t const& o)
 {
     // Cannot create disputes without our stance
     assert(result_);
@@ -642,7 +663,7 @@ void RpcaConsensus::createDisputes(TxSet_t const& o)
         return;
 
     JLOG(j_.debug()) << "createDisputes " << result_->txns.id() << " to "
-        << o.id();
+                     << o.id();
 
     auto differences = result_->txns.compare(o);
 
@@ -664,8 +685,11 @@ void RpcaConsensus::createDisputes(TxSet_t const& o)
 
         JLOG(j_.debug()) << "Transaction " << txID << " is disputed";
 
-        typename Result::Dispute_t dtx{ tx, result_->txns.exists(txID),
-         std::max(prevProposers_, currPeerPositions_.size()), j_ };
+        typename Result::Dispute_t dtx{
+            tx,
+            result_->txns.exists(txID),
+            std::max(prevProposers_, currPeerPositions_.size()),
+            j_};
 
         // Update all of the available peer's votes on the disputed transaction
         for (auto const& pit : currPeerPositions_)
@@ -682,13 +706,14 @@ void RpcaConsensus::createDisputes(TxSet_t const& o)
     JLOG(j_.debug()) << dc << " differences found";
 }
 
-void RpcaConsensus::phaseEstablish()
+void
+RpcaConsensus::phaseEstablish()
 {
     // can only establish consensus if we already took a stance
     assert(result_);
 
     using namespace std::chrono;
-    RpcaConsensusParms const & parms = adaptor_.parms();
+    RpcaConsensusParms const& parms = adaptor_.parms();
 
     result_->roundTime.tick(clock_.now());
     result_->proposers = currPeerPositions_.size();
@@ -727,12 +752,13 @@ void RpcaConsensus::phaseEstablish()
         getJson(true));
 }
 
-void RpcaConsensus::updateOurPositions()
+void
+RpcaConsensus::updateOurPositions()
 {
     // We must have a position if we are updating it
     assert(result_);
 
-    RpcaConsensusParms const & parms = adaptor_.parms();
+    RpcaConsensusParms const& parms = adaptor_.parms();
 
     // Compute a cutoff time
     auto const peerCutoff = now_ - parms.proposeFRESHNESS;
@@ -835,8 +861,8 @@ void RpcaConsensus::updateOurPositions()
             participantsNeeded(participants, parms.avCT_CONSENSUS_PCT);
 
         JLOG(j_.info()) << "Proposers:" << currPeerPositions_.size()
-            << " nw:" << neededWeight << " thrV:" << threshVote
-            << " thrC:" << threshConsensus;
+                        << " nw:" << neededWeight << " thrV:" << threshVote
+                        << " thrC:" << threshConsensus;
 
         for (auto const& [t, v] : closeTimeVotes)
         {
@@ -870,7 +896,7 @@ void RpcaConsensus::updateOurPositions()
 
     if (!ourNewSet &&
         ((consensusCloseTime != asCloseTime(result_->position.closeTime())) ||
-            result_->position.isStale(ourCutoff)))
+         result_->position.isStale(ourCutoff)))
     {
         // close time changed or our position is stale
         ourNewSet.emplace(result_->txns);
@@ -883,8 +909,8 @@ void RpcaConsensus::updateOurPositions()
         result_->txns = std::move(*ourNewSet);
 
         JLOG(j_.info()) << "Position change: CTime "
-            << consensusCloseTime.time_since_epoch().count()
-            << ", tx " << newID;
+                        << consensusCloseTime.time_since_epoch().count()
+                        << ", tx " << newID;
 
         result_->position.changePosition(newID, consensusCloseTime, now_);
 
@@ -893,7 +919,7 @@ void RpcaConsensus::updateOurPositions()
         if (acquired_.emplace(newID, result_->txns).second)
         {
             if (!result_->position.isBowOut())
-                adaptor_.relay(result_->txns);
+                adaptor_.RpcaPopAdaptor::Adaptor::relay(result_->txns);
 
             for (auto const& [nodeId, peerPos] : currPeerPositions_)
             {
@@ -910,35 +936,34 @@ void RpcaConsensus::updateOurPositions()
     }
 }
 
-bool RpcaConsensus::shouldPause() const
+bool
+RpcaConsensus::shouldPause() const
 {
     auto const& parms = adaptor_.parms();
-    std::uint32_t const ahead(previousLedger_.seq() -
+    std::uint32_t const ahead(
+        previousLedger_.seq() -
         std::min(adaptor_.getValidLedgerIndex(), previousLedger_.seq()));
     auto quorumKeys = adaptor_.getQuorumKeys();
     auto const& quorum = quorumKeys.first;
     auto& trustedKeys = quorumKeys.second;
     std::size_t const totalValidators = trustedKeys.size();
-    std::size_t laggards = adaptor_.laggards(previousLedger_.seq(),
-        trustedKeys);
+    std::size_t laggards =
+        adaptor_.laggards(previousLedger_.seq(), trustedKeys);
     std::size_t const offline = trustedKeys.size();
 
     std::stringstream vars;
     vars << " (working seq: " << previousLedger_.seq() << ", "
-        << "validated seq: " << adaptor_.getValidLedgerIndex() << ", "
-        << "am validator: " << adaptor_.validator() << ", "
-        << "have validated: " << adaptor_.haveValidated() << ", "
-        << "roundTime: " << result_->roundTime.read().count() << ", "
-        << "max consensus time: " << parms.ledgerMAX_CONSENSUS.count() << ", "
-        << "validators: " << totalValidators << ", "
-        << "laggards: " << laggards << ", "
-        << "offline: " << offline << ", "
-        << "quorum: " << quorum << ")";
+         << "validated seq: " << adaptor_.getValidLedgerIndex() << ", "
+         << "am validator: " << adaptor_.validator() << ", "
+         << "have validated: " << adaptor_.haveValidated() << ", "
+         << "roundTime: " << result_->roundTime.read().count() << ", "
+         << "max consensus time: " << parms.ledgerMAX_CONSENSUS.count() << ", "
+         << "validators: " << totalValidators << ", "
+         << "laggards: " << laggards << ", "
+         << "offline: " << offline << ", "
+         << "quorum: " << quorum << ")";
 
-    if (!ahead ||
-        !laggards ||
-        !totalValidators ||
-        !adaptor_.validator() ||
+    if (!ahead || !laggards || !totalValidators || !adaptor_.validator() ||
         !adaptor_.haveValidated() ||
         result_->roundTime.read() > parms.ledgerMAX_CONSENSUS)
     {
@@ -989,34 +1014,34 @@ bool RpcaConsensus::shouldPause() const
     // evaluating whether the threshold for non-laggards has been reached.
     switch (phase)
     {
-    case 0:
-        // Laggards and offline shouldn't preclude consensus.
-        if (laggards + offline > totalValidators - quorum)
+        case 0:
+            // Laggards and offline shouldn't preclude consensus.
+            if (laggards + offline > totalValidators - quorum)
+                willPause = true;
+            break;
+        case maxPausePhase:
+            // No tolerance.
             willPause = true;
-        break;
-    case maxPausePhase:
-        // No tolerance.
-        willPause = true;
-        break;
-    default:
-        // Ensure that sufficient validators are known to be not lagging.
-        // Their sufficiently most recent validation sequence was equal to
-        // or greater than our own.
-        //
-        // The threshold is the amount required for quorum plus
-        // the proportion of the remainder based on number of intermediate
-        // phases between 0 and max.
-        float const nonLaggards = totalValidators - (laggards + offline);
-        float const quorumRatio =
-            static_cast<float>(quorum) / totalValidators;
-        float const allowedDissent = 1.0f - quorumRatio;
-        float const phaseFactor = static_cast<float>(phase) / maxPausePhase;
+            break;
+        default:
+            // Ensure that sufficient validators are known to be not lagging.
+            // Their sufficiently most recent validation sequence was equal to
+            // or greater than our own.
+            //
+            // The threshold is the amount required for quorum plus
+            // the proportion of the remainder based on number of intermediate
+            // phases between 0 and max.
+            float const nonLaggards = totalValidators - (laggards + offline);
+            float const quorumRatio =
+                static_cast<float>(quorum) / totalValidators;
+            float const allowedDissent = 1.0f - quorumRatio;
+            float const phaseFactor = static_cast<float>(phase) / maxPausePhase;
 
-        if (nonLaggards / totalValidators <
-            quorumRatio + (allowedDissent * phaseFactor))
-        {
-            willPause = true;
-        }
+            if (nonLaggards / totalValidators <
+                quorumRatio + (allowedDissent * phaseFactor))
+            {
+                willPause = true;
+            }
     }
 
     if (willPause)
@@ -1026,7 +1051,8 @@ bool RpcaConsensus::shouldPause() const
     return willPause;
 }
 
-bool RpcaConsensus::haveConsensus()
+bool
+RpcaConsensus::haveConsensus()
 {
     // Must have a stance if we are checking for consensus
     assert(result_);
@@ -1057,7 +1083,7 @@ bool RpcaConsensus::haveConsensus()
         adaptor_.proposersFinished(previousLedger_, prevLedgerID_);
 
     JLOG(j_.debug()) << "Checking for TX consensus: agree=" << agree
-        << ", disagree=" << disagree;
+                     << ", disagree=" << disagree;
 
     // Determine if we actually have consensus or not
     result_->state = checkConsensus(
@@ -1079,13 +1105,14 @@ bool RpcaConsensus::haveConsensus()
     if (result_->state == ConsensusState::MovedOn)
     {
         JLOG(j_.error()) << "Unable to reach consensus";
-        JLOG(j_.error()) << Json::Compact{ getJson(true) };
+        JLOG(j_.error()) << Json::Compact{getJson(true)};
     }
 
     return true;
 }
 
-NetClock::time_point RpcaConsensus::asCloseTime(NetClock::time_point raw) const
+NetClock::time_point
+RpcaConsensus::asCloseTime(NetClock::time_point raw) const
 {
     if (adaptor_.parms().useRoundedCloseTime)
         return roundCloseTime(raw, closeResolution_);
@@ -1093,7 +1120,88 @@ NetClock::time_point RpcaConsensus::asCloseTime(NetClock::time_point raw) const
         return effCloseTime(raw, closeResolution_, previousLedger_.closeTime());
 }
 
-bool RpcaConsensus::peerProposalInternal(
+void
+RpcaConsensus::updateDisputes(NodeID_t const& node, TxSet_t const& other)
+{
+    // Cannot updateDisputes without our stance
+    assert(result_);
+
+    // Ensure we have created disputes against this set if we haven't seen
+    // it before
+    if (result_->compares.find(other.id()) == result_->compares.end())
+        createDisputes(other);
+
+    for (auto& it : result_->disputes)
+    {
+        auto& d = it.second;
+        d.setVote(node, other.exists(d.tx().id()));
+    }
+}
+
+bool
+RpcaConsensus::peerProposal(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    try
+    {
+        STProposeSet::pointer propose;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
+
+        propose = std::make_shared<STProposeSet>(
+            sit, adaptor_.closeTime(), calcNodeID(publicKey), publicKey);
+
+        auto newPeerPos = RCLCxPeerPos(
+            publicKey,
+            makeSlice(m->signature()),
+            consensusMessageUniqueId(*m),
+            std::move(*propose));
+
+        if (isTrusted)
+        {
+            NodeID_t const& peerID = newPeerPos.proposal().nodeID();
+
+            // Always need to store recent positions
+            {
+                auto& props = recentPeerPositions_[peerID];
+
+                if (props.size() >= 10)
+                    props.pop_front();
+
+                props.push_back(newPeerPos);
+            }
+
+            return peerProposalInternal(adaptor_.closeTime(), newPeerPos);
+        }
+        else
+        {
+            if (peer->cluster() ||
+                prevLedgerID_ == newPeerPos.proposal().prevLedger())
+            {
+                // relay untrusted proposal
+                JLOG(j_.trace()) << "relaying UNTRUSTED proposal";
+                return true;
+            }
+            else
+            {
+                JLOG(j_.debug()) << "Not relaying UNTRUSTED proposal";
+            }
+        }
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "ProposeSet: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return false;
+}
+
+bool
+RpcaConsensus::peerProposalInternal(
     NetClock::time_point const& now,
     PeerPosition_t const& newPeerPos)
 {
@@ -1110,7 +1218,7 @@ bool RpcaConsensus::peerProposalInternal(
     if (newPeerProp.prevLedger() != prevLedgerID_)
     {
         JLOG(j_.debug()) << "Got proposal for " << newPeerProp.prevLedger()
-            << " but we are on " << prevLedgerID_;
+                         << " but we are on " << prevLedgerID_;
         return false;
     }
 
@@ -1156,17 +1264,16 @@ bool RpcaConsensus::peerProposalInternal(
         else
             currPeerPositions_.emplace(peerID, newPeerPos);
     }
-
     if (newPeerProp.isInitial())
     {
         // Record the close time estimate
         JLOG(j_.trace()) << "Peer reports close time as "
-            << newPeerProp.closeTime().time_since_epoch().count();
+                         << newPeerProp.closeTime().time_since_epoch().count();
         ++rawCloseTimes_.peers[newPeerProp.closeTime()];
     }
 
     JLOG(j_.trace()) << "Processing peer proposal " << newPeerProp.proposeSeq()
-        << "/" << newPeerProp.position();
+                     << "/" << newPeerProp.position();
 
     {
         auto const ait = acquired_.find(newPeerProp.position());
@@ -1189,22 +1296,45 @@ bool RpcaConsensus::peerProposalInternal(
     return true;
 }
 
-void RpcaConsensus::updateDisputes(NodeID_t const& node, TxSet_t const& other)
+bool
+RpcaConsensus::peerValidation(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    // Cannot updateDisputes without our stance
-    assert(result_);
-
-    // Ensure we have created disputes against this set if we haven't seen
-    // it before
-    if (result_->compares.find(other.id()) == result_->compares.end())
-        createDisputes(other);
-
-    for (auto& it : result_->disputes)
+    if (m->msg().size() < 50)
     {
-        auto& d = it.second;
-        d.setVote(node, other.exists(d.tx().id()));
+        JLOG(j_.warn()) << "Validation: Too small";
+        peer->charge(Resource::feeInvalidRequest);
+        return false;
     }
-}
 
+    try
+    {
+        STValidation::pointer val;
+        {
+            SerialIter sit(makeSlice(m->msg()));
+            PublicKey const publicKey{makeSlice(m->signerpubkey())};
+            val = std::make_shared<STValidation>(
+                std::ref(sit), publicKey, [&](PublicKey const& pk) {
+                    return calcNodeID(adaptor_.getMasterKey(pk));
+                });
+            val->setSeen(adaptor_.closeTime());
+            if (isTrusted)
+            {
+                val->setTrusted();
+            }
+        }
+
+        return adaptor_.peerValidation(peer, val);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "Validation: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return false;
+}
 
 }  // namespace ripple

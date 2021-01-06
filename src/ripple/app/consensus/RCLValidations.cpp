@@ -78,8 +78,7 @@ RCLValidatedLedger::id() const -> ID
     return ledgerID_;
 }
 
-auto
-RCLValidatedLedger::operator[](Seq const& s) const -> ID
+auto RCLValidatedLedger::operator[](Seq const& s) const -> ID
 {
     if (s >= minSeq() && s <= seq())
     {
@@ -135,7 +134,7 @@ RCLValidationsAdaptor::acquire(LedgerHash const& hash)
         JLOG(j_.debug())
             << "Need validated ledger for preferred ledger analysis " << hash;
 
-		Schema* pApp = &app_;
+        Schema* pApp = &app_;
 
         app_.getJobQueue().addJob(
             jtADVANCE, "getConsensusLedger", [pApp, hash](Job&) {
@@ -238,7 +237,7 @@ RCLValidationsAdaptor::doStaleWrite(ScopedLockType&)
                 for (RCLValidation const& wValidation : currentStale)
                 {
                     // Only save full validations until we update the schema
-                    if(!wValidation.full())
+                    if (!wValidation.full())
                         continue;
                     s.erase();
                     STValidation::pointer const& val = wValidation.unwrap();
@@ -252,8 +251,8 @@ RCLValidationsAdaptor::doStaleWrite(ScopedLockType&)
 
                     auto const initialSeq = ledgerSeq.value_or(
                         app_.getLedgerMaster().getCurrentLedgerIndex());
-                    auto const nodePubKey = toBase58(
-                        TokenType::NodePublic, val->getSignerPublic());
+                    auto const nodePubKey =
+                        toBase58(TokenType::NodePublic, val->getSignerPublic());
                     auto const signTime =
                         val->getSignTime().time_since_epoch().count();
 
@@ -275,6 +274,5 @@ RCLValidationsAdaptor::doStaleWrite(ScopedLockType&)
 
     staleWriting_ = false;
 }
-
 
 }  // namespace ripple

@@ -22,9 +22,8 @@
 
 #include <ripple/basics/FeeUnits.h>
 #include <ripple/basics/Log.h>
-#include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/STObject.h>
-#include <ripple/protocol/SecretKey.h>
+#include <ripple/protocol/PublicKey.h>
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -68,28 +67,12 @@ public:
     template <class LookupNodeID>
     STValidation(
         SerialIter& sit,
-        LookupNodeID&& lookupNodeID,
-        bool checkSignature)
-        : STObject(validationFormat(), sit, sfValidation)
+        PublicKey const& publicKey,
+        LookupNodeID&& lookupNodeID)
+        : STObject(getFormat(), sit, sfValidation), mSignerPublic(publicKey)
     {
-        auto const spk = getFieldVL(sfSigningPubKey);
-
-        if (publicKeyType(makeSlice(spk)) != KeyType::secp256k1)
-        {
-            JLOG(debugLog().error()) << "Invalid public key in validation: "
-                                     << getJson(JsonOptions::none);
-            Throw<std::runtime_error>("Invalid public key in validation");
-        }
-
-        if (checkSignature && !isValid())
-        {
-            JLOG(debugLog().error()) << "Invalid signature in validation: "
-                                     << getJson(JsonOptions::none);
-            Throw<std::runtime_error>("Invalid signature in validation");
-        }
-
-        nodeID_ = lookupNodeID(PublicKey(makeSlice(spk)));
-        assert(nodeID_.isNonZero());
+        mNodeID = lookupNodeID(publicKey);
+        assert(mNodeID.isNonZero());
     }
 
     /** Construct, sign and trust a new STValidation issued by this node.
@@ -102,9 +85,11 @@ public:
     */
     template <typename F>
     STValidation(
+        uint256 const& ledgerHash,
+        std::uint32_t ledgerSeq,
+        uint256 const& consensusHash,
+        PublicKey const& publickey,
         NetClock::time_point signTime,
-        PublicKey const& pk,
-        SecretKey const& sk,
         NodeID const& nodeID,
         F&& f)
         : STObject(validationFormat(), sfValidation)
@@ -160,32 +145,32 @@ public:
     NetClock::time_point
     getSignTime() const;
 
-    NetClock::time_point
-    getSeenTime() const;
+    bool
+    isFull() const;
 
-    PublicKey
-    getSignerPublic() const;
+    NetClock::time_point
+    getSeenTime() const
+    {
+        return mSeen;
+    }
+
+    PublicKey const&
+    getSignerPublic() const
+    {
+        return mSignerPublic;
+    };
 
     NodeID
     getNodeID() const
     {
-        return nodeID_;
+        return mNodeID;
     }
-
-    bool
-    isValid() const;
-
-    bool
-    isFull() const;
 
     bool
     isTrusted() const
     {
         return mTrusted;
     }
-
-    uint256
-    getSigningHash() const;
 
     void
     setTrusted()
@@ -202,14 +187,11 @@ public:
     void
     setSeen(NetClock::time_point s)
     {
-        seenTime_ = s;
+        mSeen = s;
     }
 
     Blob
     getSerialized() const;
-
-    Blob
-    getSignature() const;
 
 private:
     static SOTemplate const&
@@ -217,7 +199,8 @@ private:
 
     NodeID nodeID_;
     bool mTrusted = false;
-    NetClock::time_point seenTime_ = {};
+    NetClock::time_point mSeen = {};
+    PublicKey mSignerPublic;
 };
 
 }  // namespace ripple

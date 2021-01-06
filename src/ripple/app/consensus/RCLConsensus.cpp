@@ -24,6 +24,8 @@
 #include <peersafe/consensus/rpca/RpcaConsensus.h>
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/consensus/pop/PopConsensus.h>
+#include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
+#include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/Schema.h>
 #include <algorithm>
@@ -42,11 +44,11 @@
 #include <tbb/concurrent_vector.h>
 #endif
 
+
 namespace ripple {
 
-
 RCLConsensus::RCLConsensus(
-    Schema & app,
+    Schema& app,
     std::unique_ptr<FeeVote>&& feeVote,
     LedgerMaster& ledgerMaster,
     LocalTxs& localTxs,
@@ -58,67 +60,120 @@ RCLConsensus::RCLConsensus(
 {
     if (app.config().exists(SECTION_CONSENSUS))
     {
-        parms_.txPOOL_CAPACITY = app.config().loadConfig(SECTION_CONSENSUS, "max_txs_in_pool", parms_.txPOOL_CAPACITY);
+        parms_.txPOOL_CAPACITY = app.config().loadConfig(
+            SECTION_CONSENSUS, "max_txs_in_pool", parms_.txPOOL_CAPACITY);
 
         auto result = app.config().section(SECTION_CONSENSUS).find("type");
         if (result.second)
         {
             type_ = stringToConsensusType(result.first);
         }
+
+        JLOG(j_.warn()) << "Consensus engine: " << result.first;
     }
 
     switch (type_)
     {
-    case ConsensusType::RPCA:
-        break;
-    case ConsensusType::POP:
-        adaptor_ = std::make_shared<PopAdaptor>(
-            app,
-            std::move(feeVote),
-            ledgerMaster,
-            localTxs,
-            inboundTransactions,
-            validatorKeys,
-            journal);
-        consensus_ = std::make_shared<PopConsensus>(*adaptor_, clock, journal);
-        break;
-    default:
-        break;
+        case ConsensusType::RPCA:
+            adaptor_ = std::make_shared<RpcaAdaptor>(
+                app,
+                std::move(feeVote),
+                ledgerMaster,
+                inboundTransactions,
+                validatorKeys,
+                journal,
+                localTxs);
+            consensus_ =
+                std::make_shared<RpcaConsensus>(*adaptor_, clock, journal);
+            break;
+        case ConsensusType::POP:
+            adaptor_ = std::make_shared<PopAdaptor>(
+                app,
+                std::move(feeVote),
+                ledgerMaster,
+                inboundTransactions,
+                validatorKeys,
+                journal,
+                localTxs,
+                parms_);
+            consensus_ =
+                std::make_shared<PopConsensus>(*adaptor_, clock, journal);
+            break;
+        case ConsensusType::HOTSTUFF:
+            adaptor_ = std::make_shared<HotstuffAdaptor>(
+                app,
+                std::move(feeVote),
+                ledgerMaster,
+                inboundTransactions,
+                validatorKeys,
+                journal,
+                localTxs,
+                parms_);
+            consensus_ =
+                std::make_shared<HotstuffConsensus>(*adaptor_, clock, journal);
+            break;
+        default:
+            Throw<std::runtime_error>("bad consensus type");
+            break;
     }
 }
 
-void RCLConsensus::startRound(
+void
+RCLConsensus::startRound(
     NetClock::time_point const& now,
     RCLCxLedger::ID const& prevLgrId,
     RCLCxLedger const& prevLgr,
-    hash_set<NodeID> const& nowUntrusted,
-    hash_set<NodeID> const& nowTrusted)
+    hash_set<NodeID> const& nowUntrusted)
 {
-    ScopedLockType _{ mutex_ };
+    ScopedLockType _{mutex_};
     consensus_->startRound(
         now,
         prevLgrId,
         prevLgr,
         nowUntrusted,
-        adaptor_->preStartRound(prevLgr, nowTrusted));
+        adaptor_->preStartRound(prevLgr));
 }
 
-void RCLConsensus::timerEntry(NetClock::time_point const& now)
+void
+RCLConsensus::timerEntry(NetClock::time_point const& now)
 {
     try
     {
-        std::lock_guard _{mutex_};
-        consensus_.timerEntry(now);
+        ScopedLockType _{mutex_};
+        consensus_->timerEntry(now);
     }
     catch (SHAMapMissingNode const& mn)
     {
         // This should never happen
-        JLOG(j_.error()) << "During consensus timerEntry: " << mn.what();
+        JLOG(j_.error()) << "Missing node during consensus process " << mn;
         Rethrow();
     }
 }
 
-void RCLConsensus::gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet)
+bool
+RCLConsensus::peerConsensusMessage(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    ScopedLockType _{mutex_};
+    return consensus_->peerConsensusMessage(peer, isTrusted, m);
+}
+
+Json::Value
+RCLConsensus::getJson(bool full) const
+{
+    Json::Value ret;
+    {
+        ScopedLockType _{mutex_};
+        ret = consensus_->getJson(full);
+    }
+    ret["validating"] = adaptor_->validating();
+    return ret;
+}
+
+void
+RCLConsensus::gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet)
 {
     try
     {
@@ -134,7 +189,8 @@ void RCLConsensus::gotTxSet(NetClock::time_point const& now, RCLTxSet const& txS
 }
 
 //! @see Consensus::simulate
-void RCLConsensus::simulate(
+void
+RCLConsensus::simulate(
     NetClock::time_point const& now,
     boost::optional<std::chrono::milliseconds> consensusDelay)
 {
@@ -142,47 +198,23 @@ void RCLConsensus::simulate(
     consensus_.simulate(now, consensusDelay);
 }
 
-bool RCLConsensus::peerProposal(NetClock::time_point const& now, RCLCxPeerPos const& newProposal)
+bool
+RCLConsensus::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
 {
-    std::lock_guard _{mutex_};
-    return consensus_.peerProposal(now, newProposal);
+    return !!adaptor_->checkLedgerAccept(ledger->info());
 }
 
-bool RCLConsensus::peerValidation(STValidation::ref val, std::string const& source)
+ConsensusType
+RCLConsensus::stringToConsensusType(std::string const& s)
 {
-    return adaptor_->handleNewValidation(val, source);
-}
-
-bool RCLConsensus::peerViewChange(ViewChange const& change)
-{
-	ScopedLockType _{ mutex_ };
-	return consensus_->peerViewChange(change);
-}
-
-bool RCLConsensus::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
-{
-    return adaptor_->checkLedgerAccept(ledger);
-}
-
-
-Json::Value RCLConsensus::getJson(bool full) const
-{
-    Json::Value ret;
-    {
-        ScopedLockType _{ mutex_ };
-        ret = consensus_->getJson(full);
-    }
-    ret["validating"] = adaptor_->validating();
-    return ret;
-}
-
-ConsensusType RCLConsensus::stringToConsensusType(std::string const& s)
-{
-    if (s == "RPCA")    return ConsensusType::RPCA;
-    if (s == "POP")     return ConsensusType::POP;
+    if (s == "RPCA")
+        return ConsensusType::RPCA;
+    if (s == "POP")
+        return ConsensusType::POP;
+    if (s == "HOTSTUFF")
+        return ConsensusType::HOTSTUFF;
 
     return ConsensusType::UNKNOWN;
 }
-
 
 }  // namespace ripple

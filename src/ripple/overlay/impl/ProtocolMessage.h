@@ -65,24 +65,20 @@ protocolMessageName(int type)
             return "get_ledger";
         case protocol::mtLEDGER_DATA:
             return "ledger_data";
-        case protocol::mtPROPOSE_LEDGER:
-            return "propose";
         case protocol::mtSTATUS_CHANGE:
             return "status";
         case protocol::mtHAVE_SET:
             return "have_set";
         case protocol::mtVALIDATORLIST:
             return "validator_list";
-        case protocol::mtVALIDATION:
-            return "validation";
         case protocol::mtGET_OBJECTS:
             return "get_objects";
-        case protocol::mtGET_TABLE:         
+        case protocol::mtGET_TABLE:
             return "get_table";
-        case protocol::mtTABLE_DATA:        
+        case protocol::mtTABLE_DATA:
             return "table_data";
-        case protocol::mtVIEW_CHANGE:       
-            return "view_change";
+        case protocol::mtCONSENSUS:
+            return "consensus"
         default:
             break;
     }
@@ -357,20 +353,12 @@ invokeProtocolMessage(Buffers const& buffers, Handler& handler)
             success = detail::invoke<protocol::TMLedgerData>(
                 *header, buffers, handler);
             break;
-        case protocol::mtPROPOSE_LEDGER:
-            success = detail::invoke<protocol::TMProposeSet>(
-                *header, buffers, handler);
-            break;
         case protocol::mtSTATUS_CHANGE:
             success = detail::invoke<protocol::TMStatusChange>(
                 *header, buffers, handler);
             break;
         case protocol::mtHAVE_SET:
             success = detail::invoke<protocol::TMHaveTransactionSet>(
-                *header, buffers, handler);
-            break;
-        case protocol::mtVALIDATION:
-            success = detail::invoke<protocol::TMValidation>(
                 *header, buffers, handler);
             break;
         case protocol::mtVALIDATORLIST:
@@ -381,17 +369,16 @@ invokeProtocolMessage(Buffers const& buffers, Handler& handler)
             success = detail::invoke<protocol::TMGetObjectByHash>(
                 *header, buffers, handler);
             break;
-	    case protocol::mtVIEW_CHANGE:   
-            success = detail::invoke<protocol::TMViewChange>(
-				*header, buffers, handler);
+        case protocol::mtGET_TABLE:
+            success =
+                detail::invoke<protocol::TMGetTable>(*header, buffers, handler);
             break;
-        case protocol::mtGET_TABLE:     
-            success = detail::invoke<protocol::TMGetTable> (
-				*header, buffers, handler);
-            break;
-        case protocol::mtTABLE_DATA:    
+        case protocol::mtTABLE_DATA:
             success = detail::invoke<protocol::TMTableData>(
-				*header, buffers, handler);
+                *header, buffers, handler);
+            break;
+        case protocol::mtCONSENSUS:
+            ec = detail::invoke<protocol::TMConsensus>(type, buffers, handler);
             break;
         default:
             handler.onMessageUnknown(header->message_type);

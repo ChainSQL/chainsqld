@@ -71,13 +71,11 @@ public:
         overlay,    // overlay management
         manifests,  // manifest management
         transaction,
-        proposal,
-        validation,
         validatorlist,
+        consensus,
         shards,  // shard-related traffic
         
         get_table,
-        view_change,
 
         // TMHaveSet message:
         get_set,    // transaction sets we try to get

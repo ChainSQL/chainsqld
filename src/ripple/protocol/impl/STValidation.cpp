@@ -17,47 +17,57 @@
 */
 //==============================================================================
 
-#include <ripple/basics/Log.h>
-#include <ripple/basics/contract.h>
-#include <ripple/json/to_string.h>
-#include <ripple/protocol/HashPrefix.h>
+
 #include <ripple/protocol/STValidation.h>
 
 namespace ripple {
 
-SOTemplate const&
-STValidation::validationFormat()
+STValidation::STValidation(
+    uint256 const& ledgerHash,
+    std::uint32_t ledgerSeq,
+    uint256 const& consensusHash,
+    PublicKey const& publickey,
+    NetClock::time_point signTime,
+    NodeID const& nodeID,
+    bool isFull,
+    FeeSettings const& fees,
+    std::vector<uint256> const& amendments)
+    : STObject(getFormat(), sfValidation)
+    , mNodeID(nodeID)
+    , mSeen(signTime)
+    , mSignerPublic(publickey)
 {
-    // We can't have this be a magic static at namespace scope because
-    // it relies on the SField's below being initialized, and we can't
-    // guarantee the initialization order.
-    static SOTemplate const format{
-        {sfFlags, soeREQUIRED},
-        {sfLedgerHash, soeREQUIRED},
-        {sfLedgerSequence, soeREQUIRED},
-        {sfCloseTime, soeOPTIONAL},
-        {sfLoadFee, soeOPTIONAL},
-        {sfAmendments, soeOPTIONAL},
-        {sfBaseFee, soeOPTIONAL},
-        {sfReserveBase, soeOPTIONAL},
-        {sfReserveIncrement, soeOPTIONAL},
-        {sfSigningTime, soeREQUIRED},
-        {sfSigningPubKey, soeREQUIRED},
-        {sfSignature, soeREQUIRED},
-        {sfConsensusHash, soeOPTIONAL},
-        {sfCookie, soeDEFAULT},
-        {sfValidatedHash, soeOPTIONAL},
-        {sfServerVersion, soeOPTIONAL},
-        {sfDropsPerByte, soeOPTIONAL }
-    };
+    assert(mNodeID.isNonZero());
+    setFieldH256(sfLedgerHash, ledgerHash);
+    setFieldH256(sfConsensusHash, consensusHash);
+    setFieldU32(sfSigningTime, signTime.time_since_epoch().count());
 
-    return format;
-};
+    if (isFull)
+        setFlag(kFullFlag);
 
-uint256
-STValidation::getSigningHash() const
-{
-    return STObject::getSigningHash(HashPrefix::validation);
+    setFieldU32(sfLedgerSequence, ledgerSeq);
+
+    if (fees.loadFee)
+        setFieldU32(sfLoadFee, *fees.loadFee);
+
+    if (fees.baseFee)
+        setFieldU64(sfBaseFee, *fees.baseFee);
+
+    if (fees.reserveBase)
+        setFieldU32(sfReserveBase, *fees.reserveBase);
+
+    if (fees.reserveIncrement)
+        setFieldU32(sfReserveIncrement, *fees.reserveIncrement);
+
+    if (fees.dropsPerByte)
+        setFieldU64(sfDropsPerByte, *fees.dropsPerByte);
+
+    if (!amendments.empty())
+        setFieldV256(sfAmendments, STVector256(sfAmendments, amendments));
+
+    setFlag(vfFullyCanonicalSig);
+
+    setTrusted();
 }
 
 uint256
@@ -78,49 +88,10 @@ STValidation::getSignTime() const
     return NetClock::time_point{NetClock::duration{getFieldU32(sfSigningTime)}};
 }
 
-NetClock::time_point
-STValidation::getSeenTime() const
-{
-    return seenTime_;
-}
-
-bool
-STValidation::isValid() const
-{
-    try
-    {
-        if (publicKeyType(getSignerPublic()) != KeyType::secp256k1)
-            return false;
-
-        return verifyDigest(
-            getSignerPublic(),
-            getSigningHash(),
-            makeSlice(getFieldVL(sfSignature)),
-            getFlags() & vfFullyCanonicalSig);
-    }
-    catch (std::exception const&)
-    {
-        JLOG(debugLog().error()) << "Exception validating validation";
-        return false;
-    }
-}
-
-PublicKey
-STValidation::getSignerPublic() const
-{
-    return PublicKey(makeSlice(getFieldVL(sfSigningPubKey)));
-}
-
 bool
 STValidation::isFull() const
 {
     return (getFlags() & vfFullValidation) != 0;
-}
-
-Blob
-STValidation::getSignature() const
-{
-    return getFieldVL(sfSignature);
 }
 
 Blob
@@ -129,6 +100,35 @@ STValidation::getSerialized() const
     Serializer s;
     add(s);
     return s.peekData();
+}
+
+SOTemplate const&
+STValidation::getFormat()
+{
+    struct FormatHolder
+    {
+        SOTemplate format{
+            {sfFlags, soeREQUIRED},
+            {sfLedgerHash, soeREQUIRED},
+            {sfLedgerSequence, soeOPTIONAL},
+            {sfCloseTime, soeOPTIONAL},
+            {sfLoadFee, soeOPTIONAL},
+            {sfAmendments, soeOPTIONAL},
+            {sfBaseFee, soeOPTIONAL},
+            {sfReserveBase, soeOPTIONAL},
+            {sfReserveIncrement, soeOPTIONAL},
+            {sfSigningTime, soeREQUIRED},
+            {sfConsensusHash, soeOPTIONAL},
+            {sfCookie, soeOPTIONAL},
+            {sfDropsPerByte, soeOPTIONAL},
+            {sfValidatedHash, soeOPTIONAL},
+            {sfServerVersion, soeOPTIONAL},
+        };
+    };
+
+    static const FormatHolder holder;
+
+    return holder.format;
 }
 
 }  // namespace ripple

@@ -32,12 +32,12 @@
 
 namespace ripple {
 
+enum ConsensusType {
+    RPCA = 0,
+    POP = 1,
+    HOTSTUFF = 2,
 
-enum ConsensusType
-{
-    RPCA        = 0,
-    POP         = 1,
-    UNKNOWN     = 2,
+    UNKNOWN,
 };
 
 class InboundTransactions;
@@ -54,7 +54,7 @@ private:
     // guards all calls to consensus_. adaptor_ uses atomics internally
     // to allow concurrent access of its data members that have getters.
     mutable std::recursive_mutex mutex_;
-    using ScopedLockType = std::lock_guard <std::recursive_mutex>;
+    using ScopedLockType = std::lock_guard<std::recursive_mutex>;
 
     ConsensusType type_ = ConsensusType::UNKNOWN;
     std::shared_ptr<Adaptor> adaptor_;
@@ -78,22 +78,61 @@ public:
 
     RCLConsensus(RCLConsensus const&) = delete;
 
-    RCLConsensus& operator=(RCLConsensus const&) = delete;
+    RCLConsensus&
+    operator=(RCLConsensus const&) = delete;
 
-    inline ConsensusParms const& parms() const
+    inline ConsensusParms const&
+    parms() const
     {
         return parms_;
     }
 
+    inline std::recursive_mutex&
+    peekMutex()
+    {
+        return mutex_;
+    }
+
+    //! @see Consensus::startRound
+    void
+    startRound(
+        NetClock::time_point const& now,
+        RCLCxLedger::ID const& prevLgrId,
+        RCLCxLedger const& prevLgr,
+        hash_set<NodeID> const& nowUntrusted);
+
+    //! @see Consensus::timerEntry
+    void
+    timerEntry(NetClock::time_point const& now);
+
+    bool
+    peerConsensusMessage(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    //! @see Consensus::gotTxSet
+    void
+    gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet);
+
+    //! @see Consensus::getJson
+    Json::Value
+    getJson(bool full) const;
+
+    // ----------------------------------------------------------------------
+    // RPC server_status interfaces
+
     //! Whether we are validating consensus ledgers.
-    inline bool validating() const
+    inline bool
+    validating() const
     {
         return adaptor_->validating();
     }
 
     //! Get the number of proposing peers that participated in the previous
     //! round.
-    inline std::size_t prevProposers() const
+    inline std::size_t
+    prevProposers() const
     {
         return adaptor_->prevProposers();
     }
@@ -105,71 +144,32 @@ public:
 
         @return Last round duration in milliseconds
     */
-    inline std::chrono::milliseconds prevRoundTime() const
+    inline std::chrono::milliseconds
+    prevRoundTime() const
     {
         return adaptor_->prevRoundTime();
     }
 
-    //! @see Consensus::mode
-    inline ConsensusMode mode() const
+    inline ConsensusMode
+    mode() const
     {
         return adaptor_->mode();
     }
 
-    inline bool waitingForInit()
-    {
-        return consensus_->waitingForInit();
-    }
-
-    inline std::chrono::milliseconds getConsensusTimeout()
-    {
-        return consensus_->getConsensusTimeout();
-    }
-
-    // @see Consensus::prevLedgerID
-    RCLCxLedger::ID prevLedgerID() const
-    {
-        ScopedLockType _{ mutex_ };
-        return consensus_->prevLedgerID();
-    }
-
-    //! @see Consensus::startRound
-    void startRound(
-        NetClock::time_point const& now,
-        RCLCxLedger::ID const& prevLgrId,
-        RCLCxLedger const& prevLgr,
-        hash_set<NodeID> const& nowUntrusted,
-        hash_set<NodeID> const& nowTrusted);
-
-    //! @see Consensus::timerEntry
-    void timerEntry(NetClock::time_point const& now);
-
-    //! @see Consensus::gotTxSet
-    void gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet);
-
-    //! @see Consensus::simulate
-    void simulate(
+    // ----------------------------------------------------------------------
+    // RPC ledger_accept interfaces
+    void
+    simulate(
         NetClock::time_point const& now,
         boost::optional<std::chrono::milliseconds> consensusDelay);
 
-    //! @see Consensus::proposal
-    bool peerProposal(
-        NetClock::time_point const& now,
-        RCLCxPeerPos const& newProposal);
+    bool
+    checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger);
 
-    bool peerValidation(STValidation::ref val, std::string const& source);
-
-	bool peerViewChange(ViewChange const& change);
-
-    bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger);
-
-    //! @see Consensus::getJson
-    Json::Value getJson(bool full) const;
-
-    static ConsensusType stringToConsensusType(std::string const& s);
+    static ConsensusType
+    stringToConsensusType(std::string const& s);
 };
 
-
-}
+}  // namespace ripple
 
 #endif

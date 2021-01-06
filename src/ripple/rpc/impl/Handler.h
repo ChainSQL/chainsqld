@@ -95,28 +95,39 @@ conditionMet(Condition condition_required, T& context)
         return rpcAMENDMENT_BLOCKED;
     }
 
-    if (!context.app.config().standalone() &&
-        condition_required & NEEDS_CURRENT_LEDGER)
+    if (handler->condition_ & NEEDS_CURRENT_LEDGER)
     {
-        if (context.ledgerMaster.getValidatedLedgerAge() >
-            Tuning::maxValidatedLedgerAge)
+        auto const& consensusInfo = context.netOps.getConsensusInfo(false);
+        bool initialized = consensusInfo.get("initialized", true).asBool();
+        if (!initialized)
         {
-            if (context.apiVersion == 1)
-                return rpcNO_CURRENT;
-            return rpcNOT_SYNCED;
+            JLOG(context.j.info()) << "Waitint for init";
+            return rpcNO_CURRENT;
         }
 
-        auto const cID = context.ledgerMaster.getCurrentLedgerIndex();
-        auto const vID = context.ledgerMaster.getValidLedgerIndex();
-
-        if (cID + 10 < vID)
+        if (!context.app.config().standalone() &&
+            condition_required & NEEDS_CURRENT_LEDGER)
         {
-            JLOG(context.j.debug())
-                << "Current ledger ID(" << cID
-                << ") is less than validated ledger ID(" << vID << ")";
-            if (context.apiVersion == 1)
-                return rpcNO_CURRENT;
-            return rpcNOT_SYNCED;
+            if (context.ledgerMaster.getValidatedLedgerAge() >
+                Tuning::maxValidatedLedgerAge)
+            {
+                if (context.apiVersion == 1)
+                    return rpcNO_CURRENT;
+                return rpcNOT_SYNCED;
+            }
+
+            auto const cID = context.ledgerMaster.getCurrentLedgerIndex();
+            auto const vID = context.ledgerMaster.getValidLedgerIndex();
+
+            if (cID + 10 < vID)
+            {
+                JLOG(context.j.debug())
+                    << "Current ledger ID(" << cID
+                    << ") is less than validated ledger ID(" << vID << ")";
+                if (context.apiVersion == 1)
+                    return rpcNO_CURRENT;
+                return rpcNOT_SYNCED;
+            }
         }
     }
 

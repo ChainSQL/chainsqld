@@ -93,10 +93,6 @@
 
 namespace ripple {
 
-//------------------------------------------------------------------------------
-
-//------------------------------------------------------------------------------
-
 // VFALCO TODO Move the function definitions into the class declaration
 class ApplicationImp : public Application, public RootStoppable, public BasicApp
 {
@@ -260,7 +256,7 @@ public:
 
         , serverHandler_(make_ServerHandler(
               *this,
-			  *this,
+              *this,
               get_io_service(),
               *m_jobQueue,
               *m_resourceManager,
@@ -376,13 +372,13 @@ public:
     Config&
     config(SchemaID const& id) override
     {
-		if (id == beast::zero)
-			return *config_;
-		else
-		{
+        if (id == beast::zero)
+            return *config_;
+        else
+        {
             assert(m_schemaManager->contains(id));
             return m_schemaManager->getSchema(id)->config();
-		}
+        }
     }
 
     CollectorManager&
@@ -542,11 +538,12 @@ public:
         return m_schemaManager->getSchema(id)->getOPs();
     }
 
-	PeerReservationTable&   peerReservations(SchemaID const& id) override
-	{
+    PeerReservationTable&
+    peerReservations(SchemaID const& id) override
+    {
         assert(m_schemaManager->contains(id));
-		return m_schemaManager->getSchema(id)->peerReservations();
-	}
+        return m_schemaManager->getSchema(id)->peerReservations();
+    }
 
     boost::asio::io_service&
     getIOService() override
@@ -625,8 +622,9 @@ public:
     RPC::ShardArchiveHandler*
     getShardArchiveHandler(SchemaID const& id, bool tryRecovery) override
     {
-		assert(m_schemaManager->contains(id));
-		return m_schemaManager->getSchema(id)->getShardArchiveHandler(tryRecovery);
+        assert(m_schemaManager->contains(id));
+        return m_schemaManager->getSchema(id)->getShardArchiveHandler(
+            tryRecovery);
     }
 
     Application::MutexType&
@@ -807,7 +805,6 @@ public:
     journal(std::string const& name) override;
 
     //--------------------------------------------------------------------------
-
 
     //--------------------------------------------------------------------------
     //
@@ -1010,7 +1007,7 @@ ApplicationImp::setup()
         *m_resolver,
         getIOService(),
         *config_,
-		m_collectorManager->collector());
+        m_collectorManager->collector());
     add(*m_overlay);  // add to PropertyStream
 
     nodeIdentity_ = loadNodeIdentity(*this);
@@ -1176,8 +1173,8 @@ ApplicationImp::fdRequired() const
         auto schema = item.second;
         // the number of fds needed by the backend (internally
         // doubled if online_delete is enabled).
-		if (schema->getShardStore())
-			needed += std::max(5, schema->getSHAMapStore().fdRequired());
+        if (schema->getShardStore())
+            needed += std::max(5, schema->getSHAMapStore().fdRequired());
     }
 
     // One fd per incoming connection a port can accept, or

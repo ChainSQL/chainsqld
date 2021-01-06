@@ -22,38 +22,74 @@
 #define PEERSAFE_CONSENSUS_POPADAPTOR_H_INCLUDE
 
 
-#include <peersafe/consensus/Adaptor.h>
+#include <peersafe/protocol/STViewChange.h>
+#include <peersafe/consensus/RpcaPopAdaptor.h>
+#include <peersafe/consensus/ConsensusParams.h>
 #include <peersafe/consensus/pop/PopConsensusParams.h>
 
 
 namespace ripple {
 
 
-class PopAdaptor : public Adaptor
+class PopAdaptor final : public RpcaPopAdaptor
 {
 private:
-    RopConsensusParms                          parms_;
+    PopConsensusParms parms_;
 
 public:
     PopAdaptor(PopAdaptor&) = default;
-    PopAdaptor& operator=(PopAdaptor&) = default;
+    PopAdaptor&
+    operator=(PopAdaptor&) = default;
 
     PopAdaptor(
-        Application& app,
+        Schema& app,
         std::unique_ptr<FeeVote>&& feeVote,
         LedgerMaster& ledgerMaster,
-        LocalTxs& localTxs,
         InboundTransactions& inboundTransactions,
-        ValidatorKeys const & validatorKeys,
-        beast::Journal journal);
+        ValidatorKeys const& validatorKeys,
+        beast::Journal journal,
+        LocalTxs& localTxs,
+        ConsensusParms const& consensusParms);
 
-    inline RopConsensusParms const& parms() const
+    inline PopConsensusParms const&
+    parms() const
     {
         return parms_;
     }
 
+    inline void
+    flushValidations() const
+    {
+        app_.getValidations().flush();
+    }
+
+    bool
+    isLeader(
+        PublicKey const& publicKey,
+        LedgerIndex curSeq,
+        std::uint64_t view);
+    bool
+    isLeader(LedgerIndex curSeq, std::uint64_t view);
+
+    Result
+    onCollectFinish(
+        RCLCxLedger const& ledger,
+        std::vector<uint256> const& transactions,
+        NetClock::time_point const& closeTime,
+        std::uint64_t const& view,
+        ConsensusMode mode);
+
+    void
+    launchViewChange(STViewChange const& viewChange);
+    void
+    onViewChanged(bool bWaitingInit, Ledger_t previousLedger);
+
+    void
+    touchAcquringLedger(LedgerHash const& prevLedgerHash);
+
 private:
-    void doAccept(
+    void
+    doAccept(
         Result const& result,
         RCLCxLedger const& prevLedger,
         NetClock::duration closeResolution,

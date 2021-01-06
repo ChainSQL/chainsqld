@@ -24,13 +24,14 @@
 #include <ripple/basics/BasicConfig.h>
 #include <ripple/basics/FeeUnits.h>
 #include <ripple/basics/base_uint.h>
+#include <ripple/basics/Log.h>
+#include <ripple/protocol/SystemParameters.h> // VFALCO Breaks levelization
 #include <ripple/beast/net/IPEndpoint.h>
+#include <ripple/beast/core/LexicalCast.h>
 #include <ripple/beast/utility/Journal.h>
-#include <ripple/protocol/SystemParameters.h>  // VFALCO Breaks levelization
 #include <peersafe/schema/SchemaParams.h>
 #include <boost/beast/core/string.hpp>
-#include <boost/filesystem.hpp>  // VFALCO FIX: This include should not be here
-#include <boost/lexical_cast.hpp>
+#include <boost/filesystem.hpp> // VFALCO FIX: This include should not be here
 #include <boost/optional.hpp>
 #include <algorithm>
 #include <chrono>
@@ -264,6 +265,28 @@ public:
     canSign() const
     {
         return signingEnabled_;
+    }
+
+    template<typename T>
+    T loadConfig(std::string sectionName, std::string configName, T deflt)
+    {
+        auto const result = section(sectionName).find(configName);
+        if (result.second)
+        {
+            try
+            {
+                T value = beast::lexicalCastThrow<T>(result.first);
+                return value;
+            }
+            catch (std::exception const&)
+            {
+                JLOG(j_.error()) <<
+                    "Invalid value '" << result.first << "' for key " <<
+                    "'" << configName << "' in [" << sectionName << "]\n";
+            }
+        }
+
+        return deflt;
     }
 
     template<typename T>

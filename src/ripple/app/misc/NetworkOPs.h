@@ -28,6 +28,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/net/InfoSub.h>
 #include <ripple/protocol/STValidation.h>
 #include <ripple/protocol/messages.h>
+#include <ripple/overlay/impl/PeerImp.h>
 #include <peersafe/consensus/ConsensusParams.h>
 #include <boost/asio.hpp>
 #include <deque>
@@ -36,7 +37,6 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 namespace ripple {
-
 
 // Operations that clients may wish to perform against the network
 // Master operational handler, server sequencer, network tracker
@@ -170,17 +170,6 @@ public:
 
     //--------------------------------------------------------------------------
 
-    // ledger proposal/close functions
-    virtual bool
-    processTrustedProposal(RCLCxPeerPos peerPos) = 0;
-
-    virtual bool
-    recvValidation(
-        std::shared_ptr<STValidation> const& val,
-        std::string const& source) = 0;
-    
-    virtual bool recvViewChange(ViewChange const& change) =  0;
-    
     virtual void
     mapComplete(std::shared_ptr<SHAMap> const& map, bool fromAcquire) = 0;
 
@@ -189,6 +178,11 @@ public:
     beginConsensus(uint256 const& netLCL) = 0;
     virtual void
     endConsensus() = 0;
+    virtual void
+    peerConsensusMessage(
+        std::shared_ptr<PeerImp> peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m) = 0;
     virtual void
     setStandAlone() = 0;
     virtual void
@@ -217,10 +211,12 @@ public:
     virtual void
     consensusViewChange() = 0;
 
+    virtual std::recursive_mutex&
+    peekConsensusMutex() = 0;
     virtual ConsensusParms const&
     getConsensusParms() = 0;
     virtual Json::Value
-    getConsensusInfo() = 0;
+    getConsensusInfo(bool full = true) = 0;
     virtual Json::Value
     getServerInfo(bool human, bool admin, bool counters) = 0;
     virtual void
@@ -230,19 +226,16 @@ public:
     virtual bool
     checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger) = 0;
 
-	/** Accepts the current transaction tree, return the new ledger's sequence
+    /** Accepts the current transaction tree, return the new ledger's sequence
 
-        This API is only used via RPC with the server in STANDALONE mode and
-        performs a virtual consensus round, with all the transactions we are
-        proposing being accepted.
-    */	
+    This API is only used via RPC with the server in STANDALONE mode and
+    performs a virtual consensus round, with all the transactions we are
+    proposing being accepted.
+*/
     virtual std::uint32_t
     acceptLedger(
         boost::optional<std::chrono::milliseconds> consensusDelay =
             boost::none) = 0;
-
-    virtual uint256
-    getConsensusLCL() = 0;
 
     virtual void
     reportFeeChange() = 0;
@@ -320,21 +313,31 @@ public:
     virtual void
     pubValidation(std::shared_ptr<STValidation> const& val) = 0;
 
-    //publish results for chain-sql txs
-    virtual void pubTableTxs(const AccountID& ownerId, const std::string& sTableName,
-        const STTx& stTxn, const std::tuple<std::string, std::string, std::string>& disposRes, bool bValidated) = 0;
+    // publish results for chain-sql txs
+    virtual void
+    pubTableTxs(
+        const AccountID& ownerId,
+        const std::string& sTableName,
+        const STTx& stTxn,
+        const std::tuple<std::string, std::string, std::string>& disposRes,
+        bool bValidated) = 0;
 
-    virtual void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue) = 0;
-    virtual void pubLogs(std::string const& log) = 0;
-    virtual void tryCheckSubTx() = 0;
+    virtual void
+    PubContractEvents(
+        const AccountID& contractID,
+        uint256 const* aTopic,
+        int iTopicNum,
+        const Blob& byValue) = 0;
+    virtual void
+    pubLogs(std::string const& log) = 0;
+    virtual void
+    tryCheckSubTx() = 0;
 
-    virtual bool hasChainSQLTxListener() = 0;
+    virtual bool
+    hasChainSQLTxListener() = 0;
 
-    virtual bool waitingForInit() = 0;
-
-    virtual std::chrono::milliseconds getConsensusTimeout() = 0;
-
-    virtual std::pair<bool, std::string> createSchema(const std::shared_ptr<SLE const> &schema, bool bForce) = 0;
+    virtual std::pair<bool, std::string>
+    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce) = 0;
 };
 
 //------------------------------------------------------------------------------

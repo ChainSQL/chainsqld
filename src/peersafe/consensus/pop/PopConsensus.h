@@ -24,8 +24,7 @@
 #include <peersafe/app/util/Common.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/pop/PopAdaptor.h>
-#include <peersafe/consensus/ViewChange.h>
-#include <peersafe/consensus/ViewChangeManager.h>
+#include <peersafe/consensus/pop/ViewChangeManager.h>
 #include <boost/logic/tribool.hpp>
 #include <sstream>
 
@@ -62,9 +61,12 @@ private:
     hash_map<typename TxSet_t::ID, std::set<PublicKey>> txSetVoted_;
     hash_map<typename TxSet_t::ID, std::set<PublicKey>> txSetCached_;
 
+    // save next proposal
+    std::map<std::uint32_t, std::map<PublicKey, RCLCxPeerPos>> proposalCache_;
+
     boost::optional<Result> result_;
 
-    //current setID proposed by leader.
+    // current setID proposed by leader.
     boost::optional<typename TxSet_t::ID> setID_;
 
     ConsensusCloseTimes rawCloseTimes_;
@@ -75,9 +77,9 @@ private:
     bool bWaitingInit_ = true;
     bool extraTimeOut_ = false;
 
-    //Count for timeout that didn't reach consensus
+    // Count for timeout that didn't reach consensus
     unsigned timeOutCount_;
-    std::atomic_bool leaderFailed_ = { false };
+    std::atomic_bool leaderFailed_ = {false};
 
     uint64_t view_ = 0;
     uint64_t toView_ = 0;
@@ -86,55 +88,56 @@ private:
     std::recursive_mutex lock_;
 
 public:
-	/** Constructor.
+    /** Constructor.
 
-		@param clock The clock used to internally sample consensus progress
-		@param adaptor The instance of the adaptor class
-		@param j The journal to log debug output
-	*/
+        @param clock The clock used to internally sample consensus progress
+        @param adaptor The instance of the adaptor class
+        @param j The journal to log debug output
+    */
     PopConsensus(Adaptor& adaptor, clock_type const& clock, beast::Journal j);
 
-	/** Kick-off the next round of consensus.
+    /** Kick-off the next round of consensus.
 
-		Called by the client code to start each round of consensus.
+        Called by the client code to start each round of consensus.
 
-		@param now The network adjusted time
-		@param prevLedgerID the ID of the last ledger
-		@param prevLedger The last ledger
-		@param proposing Whether we want to send proposals to peers this round.
+        @param now The network adjusted time
+        @param prevLedgerID the ID of the last ledger
+        @param prevLedger The last ledger
+        @param proposing Whether we want to send proposals to peers this round.
 
-		@note @b prevLedgerID is not required to the ID of @b prevLedger since
-		the ID may be known locally before the contents of the ledger arrive
-	*/
-	void startRound(
-		NetClock::time_point const& now,
-		typename Ledger_t::ID const& prevLedgerID,
-		Ledger_t prevLedger,
-		hash_set<NodeID> const& nowUntrusted,
-		bool proposing) override final;
+        @note @b prevLedgerID is not required to the ID of @b prevLedger
+        since the ID may be known locally before the contents of the ledger
+        arrive
+    */
+    void
+    startRound(
+        NetClock::time_point const& now,
+        typename Ledger_t::ID const& prevLedgerID,
+        Ledger_t prevLedger,
+        hash_set<NodeID_t> const& nowUntrusted,
+        bool proposing) override final;
 
     /** Call periodically to drive consensus forward.
 
         @param now The network adjusted time
     */
-    void timerEntry(NetClock::time_point const& now) override final;
+    void
+    timerEntry(NetClock::time_point const& now) override final;
 
-    /** A peer has proposed a new position, adjust our tracking.
+    bool
+    peerConsensusMessage(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m) override final;
 
-         @param now The network adjusted time
-         @param newProposal The new proposal from a peer
-         @return Whether we should do delayed relay of this proposal.
-     */
-    bool peerProposal(
-        NetClock::time_point const& now,
-        PeerPosition_t const& newProposal) override final;
+    /** Process a transaction set acquired from the network
 
-	/** Process a transaction set acquired from the network
-
-		@param now The network adjusted time
-		@param txSet the transaction set
-	*/
-	void gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet) override final;
+        @param now The network adjusted time
+        @param txSet the transaction set
+    */
+    void
+    gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
+        override final;
 
     /** Get the Json state of the consensus process.
 
@@ -143,48 +146,53 @@ public:
         @param full True if verbose response desired.
         @return     The Json state.
     */
-    Json::Value getJson(bool full) const override final;
-
-    inline std::chrono::milliseconds getConsensusTimeout() override final
-    {
-        return adaptor_.parms().consensusTIMEOUT;
-    }
-
-	bool peerViewChange(ViewChange const& change) override final;
-
-    bool waitingForInit() override final;
+    Json::Value
+    getJson(bool full) const override final;
 
 private:
-    inline uint64_t timeSinceOpen() { return utcTime() - openTimeMilli_; }
-    inline uint64_t timeSinceConsensus() { return utcTime() - consensusTime_; }
+    inline uint64_t
+    timeSinceOpen() const
+    {
+        return utcTime() - openTimeMilli_;
+    }
+    inline uint64_t
+    timeSinceConsensus() const
+    {
+        return utcTime() - consensusTime_;
+    }
 
-	void startRoundInternal(
-		NetClock::time_point const& now,
-		typename Ledger_t::ID const& prevLedgerID,
-		Ledger_t const& prevLedger,
-		ConsensusMode mode);
+    std::chrono::milliseconds
+    timeSinceLastClose();
 
-	// Change our view of the previous ledger
-	void handleWrongLedger(typename Ledger_t::ID const& lgrId);
+    bool
+    waitingForInit() const;
 
-	/** Check if our previous ledger matches the network's.
-
-		If the previous ledger differs, we are no longer in sync with
-		the network and need to bow out/switch modes.
-	*/
-	void checkLedger();
-
-	/** Check if we have proposal cached for current ledger when consensus started.
-
-		If we have the cache,just need to fetch the corresponding tx-set.
-	*/
-	void checkCache();
-
-    /** Handle a replayed or a new peer proposal.
-    */
-    bool peerProposalInternal(
+    void
+    startRoundInternal(
         NetClock::time_point const& now,
-        PeerPosition_t const& newProposal);
+        typename Ledger_t::ID const& prevLedgerID,
+        Ledger_t const& prevLedger,
+        ConsensusMode mode);
+
+    // Change our view of the previous ledger
+    void
+    handleWrongLedger(typename Ledger_t::ID const& lgrId);
+
+    /** Check if our previous ledger matches the network's.
+
+        If the previous ledger differs, we are no longer in sync with
+        the network and need to bow out/switch modes.
+    */
+    void
+    checkLedger();
+
+    /** Check if we have proposal cached for current ledger when consensus
+        started.
+
+        If we have the cache,just need to fetch the corresponding tx-set.
+    */
+    void
+    checkCache();
 
     /** Handle tx-collecting phase.
 
@@ -192,46 +200,80 @@ private:
         transactions.  After enough time has elapsed, we will close the ledger,
         switch to the establish phase and start the consensus process.
     */
-    void phaseCollecting();
+    void
+    phaseCollecting();
 
-	bool checkChangeView(uint64_t toView);
+    /** Is final condition reached for proposing.
+        We should check:
+        1. Is maxBlockTime reached.
+        2. Is tx-count reached max and max >=5000 and minBlockTime/2
+           reached.(There will be a time to reach tx-set consensus)
+        3. If there are txs but not reach max-count,is the minBlockTime reached.
+    */
+    bool
+    finalCondReached(int64_t sinceOpen, int64_t sinceLastClose);
 
-	void onViewChange();
+    /** Handle voting phase.
 
-	/** Handle voting phase.
+        In the voting phase, the ledger has closed and we work with peers
+        to reach consensus. Update our position only on the timer, and in this
+        phase.
 
-		In the voting phase, the ledger has closed and we work with peers
-		to reach consensus. Update our position only on the timer, and in this
-		phase.
+        If we have consensus, move to the accepted phase.
+    */
+    void
+    checkVoting();
 
-		If we have consensus, move to the accepted phase.
-	*/
-	void checkVoting();
+    bool
+    haveConsensus();
 
-    void launchViewChange();
+    void
+    checkTimeout();
 
-	void checkTimeout();
+    void
+    launchViewChange();
 
-	bool haveConsensus();
+    void
+    leaveConsensus();
 
-	/** If we should package a block
-		The leader for this block or next block notified return true.
-	*/
-	inline bool shouldPack();
+    /** A peer has proposed a new position, adjust our tracking.
 
-    bool isLeader(PublicKey const& pub, bool bNextLeader = false);
+         @param now The network adjusted time
+         @param newProposal The new proposal from a peer
+         @return Whether we should do delayed relay of this proposal.
+     */
+    bool
+    peerProposal(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
 
-    int getPubIndex(PublicKey const& pub);
+    /** Handle a replayed or a new peer proposal. */
+    bool
+    peerProposalInternal(
+        NetClock::time_point const& now,
+        PeerPosition_t const& newProposal);
 
-	bool finalCondReached(int64_t sinceOpen, int64_t sinceLastClose);
+    void
+    checkSaveNextProposal(PeerPosition_t const& newPeerPos);
 
-	void appendTransactions(h256Set const& txSet);
+    bool
+    peerViewChange(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+    bool
+    peerViewChangeInternal(STViewChange::ref viewChange);
+    void
+    checkChangeView(uint64_t toView);
+    void
+    onViewChange(uint64_t toView);
 
-	std::chrono::milliseconds timeSinceLastClose();
-
-    void leaveConsensus();
-
-    void checkSaveNextProposal(PeerPosition_t const& newPeerPos);
+    bool
+    peerValidation(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
 };
 
 

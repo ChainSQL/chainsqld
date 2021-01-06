@@ -23,18 +23,22 @@
 
 
 #include "ripple.pb.h"
-#include <ripple/app/consensus/RCLValidations.h>
+#include <ripple/core/TimeKeeper.h>
+#include <ripple/protocol/digest.h>
 #include <ripple/app/consensus/RCLCxLedger.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <ripple/app/consensus/RCLCxTx.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/ledger/InboundTransactions.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/misc/FeeVote.h>
 #include <ripple/app/misc/NegativeUNLVote.h>
+#include <peersafe/consensus/ViewChange.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <peersafe/consensus/ConsensusTypes.h>
-#include <peersafe/consensus/ViewChange.h>
+#include <peersafe/app/util/Common.h>
+#include <peersafe/app/misc/TxPool.h>
 #include <boost/optional.hpp>
 #include <memory>
 
@@ -50,22 +54,22 @@ class LocalTxs;
 class Adaptor
 {
 public:
-    using Ledger_t          = RCLCxLedger;
-    using NodeID_t          = NodeID;
-    using NodeKey_t         = PublicKey;
-    using TxSet_t           = RCLTxSet;
-    using PeerPosition_t    = RCLCxPeerPos;
-    using Result            = ConsensusResult<Adaptor>;
+    using Ledger_t = RCLCxLedger;
+    using NodeID_t = NodeID;
+    using NodeKey_t = PublicKey;
+    using TxSet_t = RCLTxSet;
+    using PeerPosition_t = RCLCxPeerPos;
+    using Result = ConsensusResult<Adaptor>;
 
 public:
-    Schema&                     app_;
-    beast::Journal              j_;
-    std::unique_ptr<FeeVote>    feeVote_;
-    LedgerMaster&               ledgerMaster_;
-    LocalTxs&                   localTxs_;
-    InboundTransactions&        inboundTransactions_;
+    Schema& app_;
+    beast::Journal j_;
+    std::unique_ptr<FeeVote> feeVote_;
+    LedgerMaster& ledgerMaster_;
+    LocalTxs& localTxs_;
+    InboundTransactions& inboundTransactions_;
 
-    NodeID const    nodeID_;
+    NodeID const nodeID_;
     PublicKey const valPublic_;
     SecretKey const valSecret_;
 
@@ -73,20 +77,20 @@ public:
     std::uint64_t const valCookie_;
 
     // Ledger we most recently needed to acquire
-    LedgerHash      acquiringLedger_;
-
-    // The timestamp of the last validation we used
-    NetClock::time_point lastValidationTime_;
-
-    // save next proposal
-    std::map<std::uint32_t, std::map<PublicKey, RCLCxPeerPos>> proposalCache_;
+    LedgerHash acquiringLedger_;
 
     // These members are queried via public accesors and are atomic for
     // thread safety.
-    std::atomic<bool>                       validating_{ false };
-    std::atomic<std::size_t>                prevProposers_{ 0 };
-    std::atomic<std::chrono::milliseconds>  prevRoundTime_{ std::chrono::milliseconds{0} };
-    std::atomic<ConsensusMode>              mode_{ ConsensusMode::observing };
+    std::atomic<bool> validating_{false};
+    std::atomic<std::size_t> prevProposers_{0};
+    std::atomic<std::chrono::milliseconds> prevRoundTime_{
+        std::chrono::milliseconds{0}};
+    std::atomic<ConsensusMode> mode_{ConsensusMode::observing};
+
+    LocalTxs& localTxs_;
+
+    // The timestamp of the last validation we used
+    NetClock::time_point lastValidationTime_;
 
     NegativeUNLVote nUnlVote_;
 
@@ -97,47 +101,200 @@ public:
         LedgerMaster& ledgerMaster,
         LocalTxs& localTxs,
         InboundTransactions& inboundTransactions,
-        ValidatorKeys const & validatorKeys,
+        ValidatorKeys const& validatorKeys,
         beast::Journal journal);
 
-    virtual inline bool validating() const { return validating_; }
-    virtual inline std::size_t prevProposers() const { return prevProposers_; }
-    virtual inline std::chrono::milliseconds prevRoundTime() const { return prevRoundTime_; }
-    virtual inline ConsensusMode mode() const { return mode_; }
-    virtual inline NodeID_t const& nodeID() const { return nodeID_; }
-
-    virtual inline bool haveValidated() const { return ledgerMaster_.haveValidated(); };
-    virtual inline LedgerIndex getValidLedgerIndex() const { return ledgerMaster_.getValidLedgerIndex(); }
-
-    virtual inline std::pair<std::size_t, hash_set<NodeKey_t>> getQuorumKeys() const
+    inline NodeID_t const&
+    nodeID() const
     {
-        return app_.validators().getQuorumKeys();
+        return nodeID_;
     }
 
-    virtual inline std::size_t laggards(Ledger_t::Seq const seq, hash_set<NodeKey_t >& trustedKeys) const
+    inline PublicKey const&
+    valPublic() const
     {
-        return app_.getValidations().laggards(seq, trustedKeys);
+        return valPublic_;
     }
 
-    /** Number of proposers that have vallidated the given ledger
+    inline SecretKey const&
+    valSecret() const
+    {
+        return valSecret_;
+    }
 
-        @param h The hash of the ledger of interest
-        @return the number of proposers that validated a ledger
+    inline bool
+    validating() const
+    {
+        return validating_;
+    }
+
+    inline std::size_t
+    prevProposers() const
+    {
+        return prevProposers_;
+    }
+
+    inline std::chrono::milliseconds
+    prevRoundTime() const
+    {
+        return prevRoundTime_;
+    }
+
+    inline ConsensusMode
+    mode() const
+    {
+        return mode_;
+    }
+
+    inline bool
+    haveValidated() const
+    {
+        return ledgerMaster_.haveValidated();
+    };
+
+    inline LedgerIndex
+    getValidLedgerIndex() const
+    {
+        return ledgerMaster_.getValidLedgerIndex();
+    }
+
+    inline std::shared_ptr<Ledger const>
+    getValidatedLedger() const
+    {
+        return ledgerMaster_.getValidatedLedger();
+    }
+
+    inline std::shared_ptr<Ledger const>
+    getLedgerByHash(uint256 const& hash) const
+    {
+        return ledgerMaster_.getLedgerByHash(hash);
+    }
+
+    inline std::shared_ptr<ReadView const>
+    getCurrentLedger()
+    {
+        return app_.openLedger().current();
+    }
+
+    inline NetClock::time_point
+    closeTime() const
+    {
+        return app_.timeKeeper().closeTime();
+    }
+
+    inline std::size_t
+    getQuorum() const
+    {
+        return app_.validators().quorum();
+    }
+
+    inline PublicKey
+    getMasterKey(PublicKey pk) const
+    {
+        return app_.validatorManifests().getMasterKey(pk);
+    }
+
+    inline boost::optional<PublicKey>
+    getTrustedKey(PublicKey const& identity) const
+    {
+        return app_.validators().getTrustedKey(identity);
+    }
+
+    inline bool
+    trusted(PublicKey const& identity) const
+    {
+        return app_.validators().trusted(identity);
+    }
+
+    inline int
+    getPubIndex(PublicKey const& publicKey)
+    {
+        return app_.validators().getPubIndex(publicKey);
+    }
+
+    inline int
+    getPubIndex()
+    {
+        return getPubIndex(valPublic_);
+    }
+
+    inline int
+    getPubIndex(boost::optional<PublicKey> const& publicKey)
+    {
+        return publicKey ? getPubIndex(*publicKey) : 0;
+    }
+
+    inline Config&
+    getAppConfig()
+    {
+        return app_.config();
+    }
+
+    inline JobQueue&
+    getJobQueue() const
+    {
+        return app_.getJobQueue();
+    }
+
+    // Transaction pool interfaces for consensus
+    inline bool
+    isPoolAvailable()
+    {
+        return app_.getTxPool().isAvailable();
+    }
+    inline std::size_t
+    getPoolTxCount()
+    {
+        return app_.getTxPool().getTxCountInPool();
+    }
+    inline std::size_t
+    getPoolQueuedTxCount()
+    {
+        return app_.getTxPool().getQueuedTxCountInPool();
+    }
+    inline std::uint64_t
+    topTransactions(uint64_t limit, LedgerIndex seq, H256Set& set)
+    {
+        return app_.getTxPool().topTransactions(limit, seq, set);
+    }
+    inline void
+    removePoolTxs(
+        SHAMap const& cSet,
+        LedgerIndex ledgerSeq,
+        uint256 const& prevHash)
+    {
+        app_.getTxPool().removeTxs(cSet, ledgerSeq, prevHash);
+    }
+    inline void
+    updatePoolAvoid(SHAMap const& map, LedgerIndex seq)
+    {
+        app_.getTxPool().updateAvoid(map, seq);
+    }
+    inline void
+    clearPoolAvoid(LedgerIndex seq)
+    {
+        app_.getTxPool().clearAvoid(seq);
+    }
+
+    /** Share the given tx set to peers.
+
+        @param set The TxSet to share.
     */
-    virtual inline std::size_t proposersValidated(LedgerHash const& h) const
+    inline void
+    share(RCLTxSet const& set)
     {
-        return app_.getValidations().numTrustedForLedger(h);
+        inboundTransactions_.giveSet(set.id(), set.map_, false);
     }
 
-    virtual inline bool validator() const
+    /**
+     * Determines how many validations are needed to fully validate a ledger
+     *
+     * @return Number of validations needed
+     */
+    inline std::size_t
+    getNeededValidations()
     {
-        return !valPublic_.empty();
-    }
-
-    /** Whether the open ledger has any transactions */
-    virtual inline bool hasOpenTransactions() const
-    {
-        return !app_.openLedger().empty();
+        return app_.config().standalone() ? 0 : app_.validators().quorum();
     }
 
     /** Called before kicking off a new consensus round.
@@ -145,7 +302,8 @@ public:
         @param prevLedger Ledger that will be prior ledger for next round
         @return Whether we enter the round proposing
     */
-    virtual bool preStartRound(
+    virtual bool
+    preStartRound(
         RCLCxLedger const& prevLedger,
         hash_set<NodeID> const& nowTrusted);
 
@@ -155,39 +313,21 @@ public:
         @param ledger The ledger at the time of the state change
         @param haveCorrectLCL Whether we believ we have the correct LCL.
     */
-    virtual void notify(
+    virtual void
+    notify(
         protocol::NodeEvent ne,
         RCLCxLedger const& ledger,
         bool haveCorrectLCL);
 
-    /** Attempt to acquire a specific ledger.
+    void
+    signMessage(protocol::TMConsensus& consensus);
 
-        If not available, asynchronously acquires from the network.
-
-        @param hash The ID/hash of the ledger acquire
-        @return Optional ledger, will be seated if we locally had the ledger
-    */
-    virtual boost::optional<RCLCxLedger> acquireLedger(LedgerHash const& hash);
-
-    /** Share the given proposal with all peers
-
-            @param peerPos The peer position to share.
-         */
-    virtual void share(RCLCxPeerPos const& peerPos);
-
-    /** Share disputed transaction to peers.
-
-        Only share if the provided transaction hasn't been shared recently.
-
-        @param tx The disputed transaction to share.
-    */
-    virtual void share(RCLCxTx const& tx);
-
-    /** Share the given tx set to peers.
-
-            @param txns The TxSet to share.
-    */
-    virtual void share(RCLTxSet const& txns);
+    void
+    signAndSendMessage(protocol::TMConsensus& consensus);
+    void
+    signAndSendMessage(
+        PublicKey const& pubKey,
+        protocol::TMConsensus& consensus);
 
     /** Acquire the transaction set associated with a proposal.
 
@@ -197,135 +337,19 @@ public:
         @param setId The transaction set ID associated with the proposal
         @return Optional set of transactions, seated if available.
     */
-    virtual boost::optional<RCLTxSet> acquireTxSet(RCLTxSet::ID const& setId);
+    boost::optional<RCLTxSet>
+    acquireTxSet(RCLTxSet::ID const& setId);
 
-    /** Number of proposers that have validated a ledger descended from
-        requested ledger.
+    /** Attempt to acquire a specific ledger.
 
-        @param ledger The current working ledger
-        @param h The hash of the preferred working ledger
-        @return The number of validating peers that have validated a ledger
-                descended from the preferred working ledger.
+        If not available, asynchronously acquires from the network.
+
+        @param hash The ID/hash of the ledger acquire
+        @return Optional ledger, will be seated if we locally had the ledger
     */
-    virtual std::size_t proposersFinished(RCLCxLedger const & ledger, LedgerHash const& h) const;
+    virtual boost::optional<RCLCxLedger>
+    acquireLedger(LedgerHash const& hash);
 
-    /** Propose the given position to my peers.
-
-        @param proposal Our proposed position
-    */
-    virtual void propose(RCLCxPeerPos::Proposal const& proposal);
-
-    /** Get the ID of the previous ledger/last closed ledger(LCL) on the
-        network
-
-        @param ledgerID ID of previous ledger used by consensus
-        @param ledger Previous ledger consensus has available
-        @param mode Current consensus mode
-        @return The id of the last closed network
-
-        @note ledgerID may not match ledger.id() if we haven't acquired
-                the ledger matching ledgerID from the network
-        */
-    virtual uint256 getPrevLedger(
-        uint256 ledgerID,
-        RCLCxLedger const& ledger,
-        ConsensusMode mode);
-
-    /** Notified of change in consensus mode
-
-        @param before The prior consensus mode
-        @param after The new consensus mode
-    */
-    virtual void onModeChange(ConsensusMode before, ConsensusMode after);
-
-    /** Update operating mode based on current peer positions.
-     *
-     * If our current ledger has no agreement from the network,
-     * then we cannot be in the omFULL mode.
-     *
-     * @param positions Number of current peer positions.
-     */
-    virtual void updateOperatingMode(std::size_t const positions) const;
-
-    virtual Result onCollectFinish(
-        RCLCxLedger const& ledger,
-        std::vector<uint256> const& transactions,
-        NetClock::time_point const& closeTime,
-        std::uint64_t const& view,
-        ConsensusMode mode);
-
-    virtual void onViewChanged(bool bWaitingInit, Ledger_t previousLedger);
-
-    /** Process the accepted ledger.
-
-        @param result The result of consensus
-        @param prevLedger The closed ledger consensus worked from
-        @param closeResolution The resolution used in agreeing on an
-                                effective closeTime
-        @param rawCloseTimes The unrounded closetimes of ourself and our
-                                peers
-        @param mode Our participating mode at the time consensus was
-                    declared
-        @param consensusJson Json representation of consensus state
-    */
-    virtual void onAccept(
-        Result const& result,
-        RCLCxLedger const& prevLedger,
-        NetClock::duration const& closeResolution,
-        ConsensusCloseTimes const& rawCloseTimes,
-        ConsensusMode const& mode,
-        Json::Value&& consensusJson);
-
-    /** Process the accepted ledger that was a result of simulation/force
-        accept.
-
-        @ref onAccept
-    */
-    virtual void onForceAccept(
-        Result const& result,
-        RCLCxLedger const& prevLedger,
-        NetClock::duration const& closeResolution,
-        ConsensusCloseTimes const& rawCloseTimes,
-        ConsensusMode const& mode,
-        Json::Value&& consensusJson);
-
-    virtual auto checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
-        -> std::pair<std::shared_ptr<Ledger const> const, bool>;
-    virtual bool checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger);
-
-    /** Send view change message. */
-    virtual void sendViewChange(ViewChange const& proposal);
-
-    virtual void touchAcquringLedger(LedgerHash const& prevLedgerHash);
-
-    /** Handle a new validation
-
-        Also sets the trust status of a validation based on the validating node's
-        public key and this node's current UNL.
-
-        @param app Application object containing validations and ledgerMaster
-        @param val The validation to add
-        @param source Name associated with validation used in logging
-
-        @return Whether the validation should be relayed
-    */
-    virtual bool handleNewValidation(STValidation::ref val, std::string const& source);
-
-private:
-    /** Accept a new ledger based on the given transactions.
-
-        @ref onAccept
-    */
-    virtual void doAccept(
-        Result const& result,
-        RCLCxLedger const& prevLedger,
-        NetClock::duration closeResolution,
-        ConsensusCloseTimes const& rawCloseTimes,
-        ConsensusMode const& mode,
-        Json::Value&& consensusJson)
-    {}
-
-protected:
     /** Build the new last closed ledger.
 
         Accept the given the provided set of consensus transactions and
@@ -347,7 +371,8 @@ protected:
                             successfully apply.
         @return The newly built ledger
     */
-    virtual RCLCxLedger buildLCL(
+    virtual RCLCxLedger
+    buildLCL(
         RCLCxLedger const& previousLedger,
         CanonicalTXSet& retriableTxs,
         NetClock::time_point closeTime,
@@ -356,30 +381,24 @@ protected:
         std::chrono::milliseconds roundTime,
         std::set<TxID>& failedTxs);
 
-    /** Report that the consensus process built a particular ledger */
-    virtual void consensusBuilt(
-        std::shared_ptr<Ledger const> const& ledger,
-        uint256 const& consensusHash,
-        Json::Value consensus);
+    virtual std::shared_ptr<Ledger const>
+    checkLedgerAccept(LedgerInfo const& info);
 
-    /**
-     * Determines how many validations are needed to fully validate a ledger
-     *
-     * @return Number of validations needed
-     */
-    virtual inline std::size_t getNeededValidations();
+    inline void
+    doValidLedger(std::shared_ptr<Ledger const> const& ledger)
+    {
+        ledgerMaster_.doValid(ledger);
+    }
 
-    /** Validate the given ledger and share with peers as necessary
+    /** Notified of change in consensus mode
 
-        @param ledger The ledger to validate
-        @param txns The consensus transaction set
-        @param proposing Whether we were proposing transactions while
-                         generating this ledger.  If we are not proposing,
-                         a validation can still be sent to inform peers that
-                         we know we aren't fully participating in consensus
-                         but are still around and trying to catch up.
+        @param before The prior consensus mode
+        @param after The new consensus mode
     */
-    virtual void validate(RCLCxLedger const& ledger, RCLTxSet const& txns, bool proposing);
+    void
+    onModeChange(ConsensusMode before, ConsensusMode after);
+
+private:
 };
 
 
@@ -390,21 +409,31 @@ class MonitoredMode
     ConsensusMode mode_;
 
 public:
-    MonitoredMode(ConsensusMode m) : mode_{ m }
+    MonitoredMode(ConsensusMode m) : mode_{m}
     {
     }
 
-    ConsensusMode get() const
+    ConsensusMode
+    get() const
     {
         return mode_;
     }
 
-    void set(ConsensusMode mode, Adaptor& a)
+    void
+    set(ConsensusMode mode, Adaptor& a)
     {
         a.onModeChange(mode_, mode);
         mode_ = mode;
     }
 };
+
+
+inline uint256
+consensusMessageUniqueId(protocol::TMConsensus const& m)
+{
+    return sha512Half(
+        makeSlice(m.msg()), PublicKey{makeSlice(m.signerpubkey())});
+}
 
 }
 

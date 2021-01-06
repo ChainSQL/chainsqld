@@ -35,7 +35,6 @@
 #include <ripple/beast/utility/WrappedSink.h>
 #include <ripple/app/consensus/RCLCxPeerPos.h>
 #include <ripple/resource/Fees.h>
-#include <peersafe/consensus/ViewChange.h>
 
 #include <boost/circular_buffer.hpp>
 #include <boost/endian/conversion.hpp>
@@ -151,8 +150,8 @@ private:
     bool detaching_ = false;
     // Node public key of peer.
     PublicKey const publicKey_;
-	boost::optional<PublicKey> publicValidate_;
-	//for non-validating node
+    boost::optional<PublicKey> publicValidate_;
+
     std::string name_;
     std::shared_timed_mutex mutable nameMutex_;
 
@@ -381,6 +380,12 @@ public:
         return publicKey_;
     }
 
+    boost::optional<PublicKey> const&
+    getValPublic() const override
+    {
+        return publicValidate_;
+    }
+
     /** Return the version of rippled that the peer is running, if reported. */
     std::string
     getVersion() const;
@@ -466,8 +471,8 @@ public:
     boost::optional<hash_map<PublicKey, ShardInfo>>
     getPeerShardInfo(uint256 const& schemaId) const;
 
-	std::tuple<bool,uint256, SchemaInfo*> 
-		getSchemaInfo(std::string prefix, std::string const& schemaIdBuffer);
+    std::tuple<bool, uint256, SchemaInfo*>
+    getSchemaInfo(std::string prefix, std::string const& schemaIdBuffer);
 
 	void removeSchemaInfo(uint256 const& schemaId);
     
@@ -580,21 +585,19 @@ public:
     void
     onMessage(std::shared_ptr<protocol::TMLedgerData> const& m);
     void
-    onMessage(std::shared_ptr<protocol::TMProposeSet> const& m);
-    void
     onMessage(std::shared_ptr<protocol::TMStatusChange> const& m);
     void
     onMessage(std::shared_ptr<protocol::TMHaveTransactionSet> const& m);
     void
     onMessage(std::shared_ptr<protocol::TMValidatorList> const& m);
     void
-    onMessage(std::shared_ptr<protocol::TMValidation> const& m);
-    void
     onMessage(std::shared_ptr<protocol::TMGetObjectByHash> const& m);
-    
-    void onMessage (std::shared_ptr <protocol::TMGetTable> const& m);
-    void onMessage (std::shared_ptr <protocol::TMTableData> const& m);
-	void onMessage (std::shared_ptr <protocol::TMViewChange> const& m);
+    void
+    onMessage(std::shared_ptr<protocol::TMGetTable> const& m);
+    void
+    onMessage(std::shared_ptr<protocol::TMTableData> const& m);
+    void
+    onMessage(std::shared_ptr<protocol::TMConsensus> const& m);
 
 private:
     State
@@ -614,28 +617,26 @@ private:
     // lockedRecentLock is passed as a reminder to callers that recentLock_
     // must be locked.
     void
-    addLedger (SchemaInfo& info, uint256 const& hash,
+    addLedger(
+        SchemaInfo& info,
+        uint256 const& hash,
         std::lock_guard<std::mutex> const& lockedRecentLock);
 
     void
     doFetchPack(const std::shared_ptr<protocol::TMGetObjectByHash>& packet);
 
     void
-    checkTransaction (uint256 schemaId,int flags, bool checkSignature,
+    checkTransaction(
+        uint256 schemaId,
+        int flags,
+        bool checkSignature,
         std::shared_ptr<STTx const> const& stx);
 
     void
-    checkPropose (uint256 schemaId, Job& job,
-        std::shared_ptr<protocol::TMProposeSet> const& packet,
-            RCLCxPeerPos const& peerPos);
-
-	void
-		checkViewChange(uint256 schemaId, bool isTrusted,ViewChange const& change, uint256 suppression,
-			std::shared_ptr<protocol::TMViewChange> const& packet);
-
-    void
-    checkValidation (uint256 schemaId, std::shared_ptr<STValidation> const&val,
-        std::shared_ptr<protocol::TMValidation> const& packet);
+    checkConsensus(
+        uint256 schemaId,
+        Job& job,
+        std::shared_ptr<protocol::TMConsensus> const& packet);
 
     void
     getLedger(std::shared_ptr<protocol::TMGetLedger> const& packet);
@@ -689,6 +690,11 @@ PeerImp::PeerImp(
               ? Compressed::On
               : Compressed::Off)
 {
+    if (hello_.has_validatepublic())
+    {
+        publicValidate_ = parseBase58<PublicKey>(TokenType::NodePublic, hello_.validatepublic());
+    }
+
     read_buffer_.commit (boost::asio::buffer_copy(read_buffer_.prepare(
         boost::asio::buffer_size(buffers)), buffers));
 }

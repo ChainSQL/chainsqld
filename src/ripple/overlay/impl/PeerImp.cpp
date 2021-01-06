@@ -45,7 +45,7 @@
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/PeerManagerImp.h>
 #include <peersafe/schema/SchemaManager.h>
-#include <peersafe/consensus/ViewChange.h>
+#include <peersafe/consensus/Adaptor.h>
 #include <boost/algorithm/clamp.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -101,6 +101,10 @@ PeerImp::PeerImp(
           headers_["X-Offer-Compression"] == "lz4" ? Compressed::On
                                                    : Compressed::Off)
 {
+    if (hello_.has_validatepublic())
+    {
+        publicValidate_ = parseBase58<PublicKey>(TokenType::NodePublic, hello_.validatepublic());
+    }
 }
 
 PeerImp::~PeerImp()
@@ -191,6 +195,7 @@ PeerImp::run()
         // type.)
         doProtocolStart();
     }
+
     //Comment by ljl:this msg may interrupt the async_write_some  call in onWriteResponse.
     // // Request shard info from peer
     // protocol::TMGetPeerShardInfo tmGPS;
@@ -551,17 +556,18 @@ PeerImp::hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const
 }
 
 bool
-PeerImp::hasTxSet (uint256 const& schemaId, uint256 const& hash) const
+PeerImp::hasTxSet(uint256 const& schemaId, uint256 const& hash) const
 {
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return false;
-	}
-	auto& info = schemaInfo_.at(schemaId);
-	std::lock_guard sl(recentLock_);
-    return std::find (info.recentTxSets_.begin(),
-		info.recentTxSets_.end(), hash) != info.recentTxSets_.end();
+    {
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return false;
+    }
+    auto& info = schemaInfo_.at(schemaId);
+    std::lock_guard sl(recentLock_);
+    return std::find(
+               info.recentTxSets_.begin(), info.recentTxSets_.end(), hash) !=
+        info.recentTxSets_.end();
 }
 
 void
@@ -696,33 +702,34 @@ void PeerImp::removeSchemaInfo(uint256 const& schemaId)
 	}
 }
 
-std::tuple<bool, uint256, PeerImp::SchemaInfo*> 
-PeerImp::getSchemaInfo(std::string prefix,std::string const& schemaIdBuffer)
+std::tuple<bool, uint256, PeerImp::SchemaInfo*>
+PeerImp::getSchemaInfo(std::string prefix, std::string const& schemaIdBuffer)
 {
-	if (!stringIsUint256Sized(schemaIdBuffer))
-	{
-		charge(Resource::feeInvalidRequest);
-		JLOG(p_journal_.warn()) << prefix<< "SchemaId invalid";
-		return std::make_tuple(false, beast::zero,nullptr);
-	}
-	uint256 schemaId;
-	memcpy(schemaId.begin(), schemaIdBuffer.data(), 32);
-	std::lock_guard sl(schemaInfoMutex_);
-	if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-	{
-		JLOG(p_journal_.warn()) << prefix << "Don't have schemaInfo for "<< to_string(schemaId)<<" in schemaInfo_";
-		return std::make_tuple(false, schemaId, nullptr);
-	}
-	if (!app_.hasSchema(schemaId))
-	{
-		JLOG(p_journal_.warn()) << prefix << "Don't have schema "<<to_string(schemaId)<<" in schema manager";
-		return std::make_tuple(false, schemaId, nullptr);
-	}
+    if (!stringIsUint256Sized(schemaIdBuffer))
+    {
+        charge(Resource::feeInvalidRequest);
+        JLOG(p_journal_.warn()) << prefix << "SchemaId invalid";
+        return std::make_tuple(false, beast::zero, nullptr);
+    }
+    uint256 schemaId;
+    memcpy(schemaId.begin(), schemaIdBuffer.data(), 32);
+    std::lock_guard sl(schemaInfoMutex_);
+    if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+    {
+        JLOG(p_journal_.warn()) << prefix << "Don't have schemaInfo for "
+                                << to_string(schemaId) << " in schemaInfo_";
+        return std::make_tuple(false, schemaId, nullptr);
+    }
+    if (!app_.hasSchema(schemaId))
+    {
+        JLOG(p_journal_.warn()) << prefix << "Don't have schema "
+                                << to_string(schemaId) << " in schema manager";
+        return std::make_tuple(false, schemaId, nullptr);
+    }
 
-	SchemaInfo& info = schemaInfo_.at(schemaId);
-	return std::make_tuple(true, schemaId, &info);
+    SchemaInfo& info = schemaInfo_.at(schemaId);
+    return std::make_tuple(true, schemaId, &info);
 }
-
 
 void
 PeerImp::gracefulClose()
@@ -1184,17 +1191,15 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMManifests> const& m)
 {
     // VFALCO What's the right job type?
     auto that = shared_from_this();
-    app_.getJobQueue().addJob (
-        jtVALIDATION_ut, "receiveManifests",
-        [this, that, m] (Job&) 
-	{ 
-		auto tup = getSchemaInfo("TMManifests:", m->schemaid());
-		if (!get<0>(tup))
-			return;
-		uint256 schemaId = get<1>(tup);
+    app_.getJobQueue().addJob(
+        jtVALIDATION_ut, "receiveManifests", [this, that, m](Job&) {
+            auto tup = getSchemaInfo("TMManifests:", m->schemaid());
+            if (!get<0>(tup))
+                return;
+            uint256 schemaId = get<1>(tup);
 
-		app_.peerManager(schemaId).onManifests(m, that);
-	});
+            app_.peerManager(schemaId).onManifests(m, that);
+        });
 }
 
 void
@@ -1843,207 +1848,6 @@ PeerImp::onMessage(std::shared_ptr <protocol::TMTableData> const& m)
     });
 }
 
-
-void
-PeerImp::onMessage (std::shared_ptr <protocol::TMProposeSet> const& m)
-{
-    protocol::TMProposeSet& set = *m;
-
-    auto const sig = makeSlice(set.signature());
-
-    // Preliminary check for the validity of the signature: A DER encoded
-    // signature can't be longer than 72 bytes.
-    if ((boost::algorithm::clamp(sig.size(), 64, 72) != sig.size()) ||
-        (publicKeyType(makeSlice(set.nodepubkey())) != KeyType::secp256k1))
-    {
-        JLOG(p_journal_.warn()) << "Proposal: malformed";
-        fee_ = Resource::feeInvalidSignature;
-        return;
-    }
-
-    if (!stringIsUint256Sized(set.currenttxhash()) ||
-        !stringIsUint256Sized(set.previousledger()))
-    {
-        JLOG(p_journal_.warn()) << "Proposal: malformed";
-        fee_ = Resource::feeInvalidRequest;
-        return;
-    }
-	auto tup = getSchemaInfo("TMProposeSet:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
-
-	uint256 proposeHash, prevLedger;
-	memcpy(proposeHash.begin(), set.currenttxhash().data(), 32);
-	memcpy(prevLedger.begin(), set.previousledger().data(), 32);
-
-    PublicKey const publicKey {makeSlice(set.nodepubkey())};
-    NetClock::time_point const closeTime { NetClock::duration{set.closetime()} };
-	Slice signature(set.signature().data(), set.signature().size());
-
-    uint256 const suppression = proposalUniqueId (
-        proposeHash, prevLedger, set.proposeseq(),
-        closeTime, publicKey.slice(), sig);
-
-    if (! app_.getHashRouter (schemaId).addSuppressionPeer (suppression, id_))
-    {
-        JLOG(p_journal_.trace()) << "Proposal: duplicate";
-        return;
-    }
-
-    if (!app_.getValidationPublicKey().empty() &&
-        publicKey == app_.getValidationPublicKey())
-    {
-        JLOG(p_journal_.trace()) << "Proposal: self";
-        return;
-    }
-
-	JLOG(p_journal_.info()) << "PeerImpl recv peer proposal:" << proposeHash << " from public " << toBase58(TokenType::NodePublic, publicKey)
-		<< ",prevHash=" << to_string(prevLedger) << ",curSeq=" << set.curledgerseq();
-
-    auto const isTrusted = app_.validators(schemaId).trusted (publicKey);
-
-    if (!isTrusted)
-    {
-        if (sanity_.load() == Sanity::insane)
-        {
-            JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (insane)";
-            return;
-        }
-
-        if (! cluster() && app_.getFeeTrack (schemaId).isLoadedLocal())
-        {
-            JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (load)";
-            return;
-        }
-    }
-
-    JLOG(p_journal_.trace())
-        << "Proposal: " << (isTrusted ? "trusted" : "UNTRUSTED");
-
-    auto proposal = RCLCxPeerPos(
-        publicKey,
-        sig,
-        suppression,
-        RCLCxPeerPos::Proposal{
-            prevLedger,
-			set.curledgerseq(),set.view(),
-            set.proposeseq(),
-            proposeHash,
-            closeTime,
-            app_.timeKeeper().closeTime(),
-            calcNodeID(app_.validatorManifests().getMasterKey(publicKey))});
-
-    std::weak_ptr<PeerImp> weak = shared_from_this();
-    app_.getJobQueue().addJob(
-        isTrusted ? jtPROPOSAL_t : jtPROPOSAL_ut,
-        "recvPropose->checkPropose",
-        [weak, m, proposal,schemaId](Job& job) {
-            if (auto peer = weak.lock())
-                peer->checkPropose(schemaId,job, m, proposal);
-        });
-}
-
-void
-PeerImp::onMessage(std::shared_ptr <protocol::TMViewChange> const& m)
-{
-	protocol::TMViewChange change = *m;
-	auto const type = publicKeyType(
-		makeSlice(change.nodepubkey()));
-
-	// VFALCO Magic numbers are bad
-	// Roll this into a validation function
-	if ((!type) ||
-		(change.previousledgerhash().size() != 32) ||
-		(change.signature().size() < 56) ||
-		(change.signature().size() > 128)
-		)
-	{
-		JLOG(p_journal_.warn()) << "Proposal: malformed";
-		fee_ = Resource::feeInvalidSignature;
-		return;
-	}
-
-	auto tup = getSchemaInfo("TMViewChange:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
-
-	uint32_t prevSeq = change.previousledgerseq();
-	uint64_t toView = change.toview();
-	PublicKey const publicKey(makeSlice(change.nodepubkey()));
-	Slice signature(change.signature().data(), change.signature().size());
-
-	uint256 prevLedgerHash;
-	memcpy(prevLedgerHash.begin(), change.previousledgerhash().data(), 32);
-
-	uint256 suppression = ViewChange::viewChangeUniqueId(
-		change.previousledgerseq(),prevLedgerHash, publicKey, toView);
-
-	if (!app_.getHashRouter(schemaId).addSuppressionPeer(suppression, id_))
-	{
-		JLOG(p_journal_.trace()) << "View change: duplicate";
-		//return;
-	}
-
-	if (!app_.getValidationPublicKey().empty() &&
-		publicKey == app_.getValidationPublicKey())
-	{
-		JLOG(p_journal_.trace()) << "Proposal: self";
-		return;
-	}
-
-	JLOG(p_journal_.info()) << "PeerImpl recv view change from public " << toBase58(TokenType::NodePublic, publicKey)
-		<< ",prevHash=" << to_string(prevLedgerHash) << ",prevSeq=" << change.previousledgerseq() << ",toView = " << change.toview();
-
-	auto const isTrusted = app_.validators(schemaId).trusted(publicKey);
-
-	if (!isTrusted)
-	{
-		if (sanity_.load() == Sanity::insane)
-		{
-			JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (insane)";
-			return;
-		}
-
-		if (app_.getFeeTrack(schemaId).isLoadedLocal())
-		{
-			JLOG(p_journal_.debug()) << "Proposal: Dropping UNTRUSTED (load)";
-			return;
-		}
-	}
-
-	ViewChange view_change(
-		prevSeq,
-		prevLedgerHash,
-		publicKey,
-		toView,
-		signature
-		);
-	if (isTrusted || !app_.getFeeTrack(schemaId).isLoadedLocal())
-	{
-		std::weak_ptr<PeerImp> weak = shared_from_this();
-		app_.getJobQueue().addJob(
-			jtVIEW_CHANGE,
-			"recvViewChange->checkViewChange",
-			[weak, view_change, isTrusted, m,suppression, schemaId](Job&)
-		{
-			if (auto peer = weak.lock())
-				peer->checkViewChange(
-					schemaId,
-					isTrusted,
-					view_change,
-					suppression,
-					m);
-		});
-	}
-	else
-	{
-		JLOG(p_journal_.debug()) <<
-			"Validation: Dropping UNTRUSTED (load)";
-	}
-
-}
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
 {
@@ -2484,91 +2288,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
 }
 
 void
-PeerImp::onMessage(std::shared_ptr<protocol::TMValidation> const& m)
-{
-    auto const closeTime = app_.timeKeeper().closeTime();
-
-    if (m->validation().size() < 50)
-    {
-        JLOG(p_journal_.warn()) << "Validation: Too small";
-        fee_ = Resource::feeInvalidRequest;
-        return;
-    }
-
-	auto tup = getSchemaInfo("TMValidation:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
-
-    try
-    {
-        std::shared_ptr<STValidation> val;
-        {
-            SerialIter sit(makeSlice(m->validation()));
-            val = std::make_shared<STValidation>(
-                std::ref(sit),
-                [this, schemaId](PublicKey const& pk) {
-                    return calcNodeID(
-                        app_.validatorManifests(schemaId).getMasterKey(pk));
-                },
-                false);
-            val->setSeen(closeTime);
-        }
-
-        if (!isCurrent(
-                app_.getValidations(schemaId).parms(),
-                app_.timeKeeper().closeTime(),
-                val->getSignTime(),
-                val->getSeenTime()))
-        {
-            JLOG(p_journal_.trace()) << "Validation: Not current";
-            fee_ = Resource::feeUnwantedData;
-            return;
-        }
-
-        if (! app_.getHashRouter (schemaId).addSuppressionPeer(
-            sha512Half(makeSlice(m->validation())), id_))
-        {
-            JLOG(p_journal_.trace()) << "Validation: duplicate";
-            return;
-        }
-
-        auto const isTrusted =
-            app_.validators(schemaId).trusted(val->getSignerPublic ());
-
-        if (!isTrusted && (sanity_.load() == Sanity::insane))
-        {
-            JLOG(p_journal_.debug())
-                << "Validation: dropping untrusted from insane peer";
-        }
-        if (isTrusted || cluster() ||
-            ! app_.getFeeTrack (schemaId).isLoadedLocal ())
-        {
-            std::weak_ptr<PeerImp> weak = shared_from_this();
-            app_.getJobQueue().addJob(
-                isTrusted ? jtVALIDATION_t : jtVALIDATION_ut,
-                "recvValidation->checkValidation",
-                [weak, val, m, schemaId] (Job&)
-                {
-                    if (auto peer = weak.lock())
-                        peer->checkValidation(schemaId,val, m);
-                });
-        }
-        else
-        {
-            JLOG(p_journal_.debug()) << "Validation: Dropping UNTRUSTED (load)";
-        }
-    }
-    catch (std::exception const& e)
-    {
-        JLOG(p_journal_.warn())
-            << "Exception processing validation: " << e.what();
-        fee_ = Resource::feeInvalidRequest;
-    }
-}
-
-void
-PeerImp::onMessage(std::shared_ptr<protocol::TMGetObjectByHash> const& m)
+PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 {
     protocol::TMGetObjectByHash& packet = *m;
 
@@ -2712,6 +2432,80 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMGetObjectByHash> const& m)
     }
 }
 
+void
+PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (m->has_hops() && !slot_->cluster())
+        m->set_hops(m->hops() + 1);
+
+    PublicKey const publicKey{makeSlice(m->signerpubkey())};
+    auto const sig = makeSlice(m->signature());
+
+    // Preliminary check for the validity of the signature: A DER encoded
+    // signature can't be longer than 72 bytes.
+    if ((boost::algorithm::clamp(sig.size(), 64, 72) != sig.size()) ||
+        (publicKeyType(publicKey) != KeyType::secp256k1))
+    {
+        JLOG(p_journal_.warn())
+            << "Consensus message mt(" << m->msgtype() << "): malformed";
+        fee_ = Resource::feeInvalidSignature;
+        return;
+    }
+
+    if (!app_.getValidationPublicKey().empty() &&
+        publicKey == app_.getValidationPublicKey())
+    {
+        JLOG(p_journal_.info())
+            << "Consensus message mt(" << m->msgtype() << "): self";
+        return;
+    }
+
+    auto tup = getSchemaInfo("TMConsensus:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
+
+    if (!app_.getHashRouter(schemaId).addSuppressionPeer(
+            consensusMessageUniqueId(*m), id_))
+    {
+        JLOG(p_journal_.info())
+            << "Consensus message mt(" << m->msgtype() << "): duplicate";
+        return;
+    }
+
+    auto const isTrusted = app_.validators(schemaId).trusted(publicKey);
+
+    if (!isTrusted)
+    {
+        if (sanity_.load() == Sanity::insane)
+        {
+            JLOG(p_journal_.info()) << "Consensus message mt(" << m->msgtype()
+                                    << "): Dropping UNTRUSTED (insane)";
+            return;
+        }
+
+        if (!cluster() && app_.getFeeTrack(schemaId).isLoadedLocal())
+        {
+            JLOG(p_journal_.info()) << "Consensus message mt(" << m->msgtype()
+                                    << "): Dropping UNTRUSTED (load)";
+            return;
+        }
+    }
+
+    JLOG(p_journal_.info())
+        << "onMessage mt(" << m->msgtype() << "): add to JobQueue";
+
+    std::weak_ptr<PeerImp> weak = shared_from_this();
+    app_.getJobQueue().addJob(
+        isTrusted ? jtCONSENSUS_t : jtCONSENSUS_ut,
+        "recvConsensus->checkConsensus",
+        [weak, schemaId, m](Job& job) {
+            if (auto peer = weak.lock())
+                peer->checkConsensus(schemaId, job, m);
+        });
+}
+
+
 //--------------------------------------------------------------------------
 
 void
@@ -2766,29 +2560,36 @@ PeerImp::doFetchPack(const std::shared_ptr<protocol::TMGetObjectByHash>& packet)
 }
 
 void
-PeerImp::checkTransaction (uint256 schemaId, int flags,
-    bool checkSignature, std::shared_ptr<STTx const> const& stx)
+PeerImp::checkTransaction(
+    uint256 schemaId,
+    int flags,
+    bool checkSignature,
+    std::shared_ptr<STTx const> const& stx)
 {
     // VFALCO TODO Rewrite to not use exceptions
     try
     {
         // Expired?
         if (stx->isFieldPresent(sfLastLedgerSequence) &&
-            (stx->getFieldU32 (sfLastLedgerSequence) <
-            app_.getLedgerMaster(schemaId).getValidLedgerIndex()))
+            (stx->getFieldU32(sfLastLedgerSequence) <
+             app_.getLedgerMaster(schemaId).getValidLedgerIndex()))
         {
-            app_.getHashRouter(schemaId).setFlags(stx->getTransactionID(), SF_BAD);
-            charge (Resource::feeUnwantedData);
+            app_.getHashRouter(schemaId).setFlags(
+                stx->getTransactionID(), SF_BAD);
+            charge(Resource::feeUnwantedData);
             return;
         }
 
         if (checkSignature)
         {
             // Check the signature before handing off to the job queue.
-			if (auto[valid, validReason] = checkValidity(app_.getSchema(schemaId),app_.getHashRouter(schemaId), *stx,
-                app_.getLedgerMaster(schemaId).getValidatedRules(),
-                    app_.config(schemaId)); 
-				valid != Validity::Valid)
+            if (auto [valid, validReason] = checkValidity(
+                    app_.getSchema(schemaId),
+                    app_.getHashRouter(schemaId),
+                    *stx,
+                    app_.getLedgerMaster(schemaId).getValidatedRules(),
+                    app_.config(schemaId));
+                valid != Validity::Valid)
             {
                 if (!validReason.empty())
                 {
@@ -2797,19 +2598,22 @@ PeerImp::checkTransaction (uint256 schemaId, int flags,
                 }
 
                 // Probably not necessary to set SF_BAD, but doesn't hurt.
-                app_.getHashRouter(schemaId).setFlags(stx->getTransactionID(), SF_BAD);
+                app_.getHashRouter(schemaId).setFlags(
+                    stx->getTransactionID(), SF_BAD);
                 charge(Resource::feeInvalidSignature);
                 return;
             }
         }
         else
         {
-            forceValidity(app_.getHashRouter(schemaId),
-                stx->getTransactionID(), Validity::Valid);
+            forceValidity(
+                app_.getHashRouter(schemaId),
+                stx->getTransactionID(),
+                Validity::Valid);
         }
 
         std::string reason;
-        auto tx = std::make_shared<Transaction> (
+        auto tx = std::make_shared<Transaction>(
             stx, reason, app_.getSchema(schemaId));
 
         if (tx->getStatus() == INVALID)
@@ -2819,108 +2623,52 @@ PeerImp::checkTransaction (uint256 schemaId, int flags,
                 JLOG(p_journal_.trace())
                     << "Exception checking transaction: " << reason;
             }
-            app_.getHashRouter (schemaId).setFlags (stx->getTransactionID (), SF_BAD);
-            charge (Resource::feeInvalidSignature);
+            app_.getHashRouter(schemaId).setFlags(
+                stx->getTransactionID(), SF_BAD);
+            charge(Resource::feeInvalidSignature);
             return;
         }
 
-        bool const trusted (flags & SF_TRUSTED);
-        app_.getOPs (schemaId).processTransaction (
+        bool const trusted(flags & SF_TRUSTED);
+        app_.getOPs(schemaId).processTransaction(
             tx, trusted, false, NetworkOPs::FailHard::no);
     }
     catch (std::exception const&)
     {
-        app_.getHashRouter (schemaId).setFlags (stx->getTransactionID (), SF_BAD);
-        charge (Resource::feeBadData);
+        app_.getHashRouter(schemaId).setFlags(stx->getTransactionID(), SF_BAD);
+        charge(Resource::feeBadData);
     }
 }
 
-// Called from our JobQueue
 void
-PeerImp::checkPropose (uint256 schemaId, Job& job,
-    std::shared_ptr <protocol::TMProposeSet> const& packet,
-        RCLCxPeerPos const& peerPos)
+PeerImp::checkConsensus(
+    uint256 schemaId,
+    Job& job,
+    std::shared_ptr<protocol::TMConsensus> const& packet)
 {
-    bool isTrusted = (job.getType() == jtPROPOSAL_t);
+    bool isTrusted = (job.getType() == jtCONSENSUS_t);
 
-    JLOG(p_journal_.trace())
-        << "Checking " << (isTrusted ? "trusted" : "UNTRUSTED") << " proposal";
+    JLOG(p_journal_.info()) << "Checking " << (isTrusted ? "trusted" : "UNTRUSTED")
+        << " consensus message mt(" <<  packet->msgtype() << ")";
 
-    assert(packet);
+    PublicKey const publicKey{ makeSlice(packet->signerpubkey()) };
+    auto const sig = makeSlice(packet->signature());
 
-    if (!cluster() && !peerPos.checkSign())
+    bool sigValid = verify(
+        publicKey,
+        makeSlice(packet->msg()),
+        sig,
+        packet->signflags() & vfFullyCanonicalSig);
+
+    if (!cluster() && !sigValid)
     {
-        JLOG(p_journal_.warn()) << "Proposal fails sig check";
-        charge(Resource::feeInvalidSignature);
+        JLOG(p_journal_.warn()) << "Consensus message : signature invalid";
+        charge(Resource::feeInvalidRequest);
         return;
     }
 
-    bool relay;
-
-    if (isTrusted)
-        relay = app_.getOPs(schemaId).processTrustedProposal(peerPos);
-    else
-        relay = app_.config(schemaId).RELAY_UNTRUSTED_PROPOSALS || cluster();
-
-    if (relay)
-        app_.peerManager(schemaId).relay(*packet, peerPos.suppressionID());
-}
-
-void
-PeerImp::checkValidation(
-	uint256 schemaId,
-    std::shared_ptr<STValidation> const& val,
-    std::shared_ptr<protocol::TMValidation> const& packet)
-{
-    try
-    {
-        // VFALCO Which functions throw?
-        if (!cluster() && !val->isValid())
-        {
-            JLOG(p_journal_.warn()) << "Validation is invalid";
-            charge(Resource::feeInvalidRequest);
-            return;
-        }
-
-        if (app_.getOPs (schemaId).recvValidation(val, std::to_string(id())) ||
-            cluster())
-        {
-            auto const suppression = sha512Half(
-                makeSlice(val->getSerialized()));
-            app_.peerManager(schemaId).relay(*packet, suppression);
-        }
-    }
-    catch (std::exception const&)
-    {
-        JLOG(p_journal_.trace()) << "Exception processing validation";
-        charge(Resource::feeInvalidRequest);
-    }
-}
-
-void
-PeerImp::checkViewChange(uint256 schemaId, bool isTrusted, ViewChange const& change, uint256 suppression,
-	std::shared_ptr<protocol::TMViewChange> const& packet)
-{
-	try
-	{
-		// VFALCO Which functions throw?
-		if (!cluster() && !change.checkSign())
-		{
-			JLOG(p_journal_.warn()) <<
-				"Validation is invalid";
-			charge(Resource::feeInvalidRequest);
-			return;
-		}
-
-		if (app_.getOPs(schemaId).recvViewChange(change))
-			app_.peerManager(schemaId).relay(*packet, suppression);
-	}
-	catch (std::exception const&)
-	{
-		JLOG(p_journal_.trace()) <<
-			"Exception processing validation";
-		charge(Resource::feeInvalidRequest);
-	}
+    app_.getOPs(schemaId).peerConsensusMessage(
+        shared_from_this(), isTrusted, packet);
 }
 
 // Returns the set of peers that can help us get

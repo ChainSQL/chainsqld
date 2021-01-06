@@ -31,20 +31,20 @@
 
 namespace ripple {
 
-
 /** How many of the participants must agree to reach a given threshold?
 
-Note that the number may not precisely yield the requested percentage.
-For example, with with size = 5 and percent = 70, we return 3, but
-3 out of 5 works out to 60%. There are no security implications to
-this.
+    Note that the number may not precisely yield the requested percentage.
+    For example, with with size = 5 and percent = 70, we return 3, but
+    3 out of 5 works out to 60%. There are no security implications to
+    this.
 
-@param participants The number of participants (i.e. validators)
-@param percent The percent that we want to reach
+    @param participants The number of participants (i.e. validators)
+    @param percent The percent that we want to reach
 
-@return the number of participants which must agree
+    @return the number of participants which must agree
 */
-inline int participantsNeeded(int participants, int percent)
+inline int
+participantsNeeded(int participants, int percent)
 {
     int result = ((participants * percent) + (percent / 2)) / 100;
 
@@ -62,14 +62,15 @@ inline int participantsNeeded(int participants, int percent)
     @param proposersValidated proposers who have validated the last closed
                               ledger
     @param prevRoundTime time for the previous ledger to reach consensus
-    @param timeSincePrevClose  time since the previous ledger's (possibly rounded)
-                        close time
+    @param timeSincePrevClose  time since the previous ledger's (possibly
+   rounded) close time
     @param openTime     duration this ledger has been open
     @param idleInterval the network's desired idle interval
     @param parms        Consensus constant parameters
     @param j            journal for logging
 */
-bool shouldCloseLedger(
+bool
+shouldCloseLedger(
     bool anyTransactions,
     std::size_t prevProposers,
     std::size_t proposersClosed,
@@ -78,7 +79,7 @@ bool shouldCloseLedger(
     std::chrono::milliseconds timeSincePrevClose,
     std::chrono::milliseconds openTime,
     std::chrono::milliseconds idleInterval,
-    RpcaConsensusParms const & parms,
+    RpcaConsensusParms const& parms,
     beast::Journal j);
 
 /** Determine whether the network reached consensus and whether we joined.
@@ -95,14 +96,15 @@ bool shouldCloseLedger(
     @param proposing        whether we should count ourselves
     @param j                journal for logging
 */
-ConsensusState checkConsensus(
+ConsensusState
+checkConsensus(
     std::size_t prevProposers,
     std::size_t currentProposers,
     std::size_t currentAgree,
     std::size_t currentFinished,
     std::chrono::milliseconds previousAgreeTime,
     std::chrono::milliseconds currentAgreeTime,
-    RpcaConsensusParms const & parms,
+    RpcaConsensusParms const& parms,
     bool proposing,
     beast::Journal j);
 
@@ -163,7 +165,7 @@ private:
 
     // How long the consensus convergence has taken, expressed as
     // a percentage of the time that we expected it to take.
-    int convergePercent_{ 0 };
+    int convergePercent_{0};
 
     // How long has this round been open
     ConsensusTimer openTime_;
@@ -219,35 +221,35 @@ public:
         @note @b prevLedgerID is not required to the ID of @b prevLedger since
         the ID may be known locally before the contents of the ledger arrive
     */
-    void startRound(
+    void
+    startRound(
         NetClock::time_point const& now,
         typename Ledger_t::ID const& prevLedgerID,
         Ledger_t prevLedger,
-        hash_set<NodeID_t> const & nowUntrusted,
+        hash_set<NodeID_t> const& nowUntrusted,
         bool proposing) override final;
 
     /** Call periodically to drive consensus forward.
 
         @param now The network adjusted time
     */
-    void timerEntry(NetClock::time_point const& now) override final;
+    void
+    timerEntry(NetClock::time_point const& now) override final;
 
-    /** A peer has proposed a new position, adjust our tracking.
-
-        @param now The network adjusted time
-        @param newProposal The new proposal from a peer
-        @return Whether we should do delayed relay of this proposal.
-    */
-    bool peerProposal(
-        NetClock::time_point const& now,
-        PeerPosition_t const& newProposal) override final;
+    bool
+    peerConsensusMessage(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m) override final;
 
     /** Process a transaction set acquired from the network
 
         @param now The network adjusted time
         @param txSet the transaction set
     */
-    void gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet) override final;
+    void
+    gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
+        override final;
 
     /** Simulate the consensus process without any network traffic.
 
@@ -265,9 +267,11 @@ public:
        @param consensusDelay Duration to delay between closing and accepting the
                              ledger. Uses 100ms if unspecified.
     */
-    void simulate(
+    void
+    simulate(
         NetClock::time_point const& now,
-        boost::optional<std::chrono::milliseconds> consensusDelay) override final;
+        boost::optional<std::chrono::milliseconds> consensusDelay)
+        override final;
 
     /** Get the Json state of the consensus process.
 
@@ -276,10 +280,12 @@ public:
         @param full True if verbose response desired.
         @return     The Json state.
     */
-    Json::Value getJson(bool full) const override final;
+    Json::Value
+    getJson(bool full) const override final;
 
 private:
-    void startRoundInternal(
+    void
+    startRoundInternal(
         NetClock::time_point const& now,
         typename Ledger_t::ID const& prevLedgerID,
         Ledger_t const& prevLedger,
@@ -288,21 +294,25 @@ private:
     /** If we radically changed our consensus context for some reason,
         we need to replay recent proposals so that they're not lost.
     */
-    void playbackProposals();
+    void
+    playbackProposals();
 
     /** Check if our previous ledger matches the network's.
 
         If the previous ledger differs, we are no longer in sync with
         the network and need to bow out/switch modes.
     */
-    void checkLedger();
+    void
+    checkLedger();
 
     // Change our view of the previous ledger
-    void handleWrongLedger(typename Ledger_t::ID const& lgrId);
+    void
+    handleWrongLedger(typename Ledger_t::ID const& lgrId);
 
     // Revoke our outstanding proposal, if any, and cease proposing
     // until this round ends.
-    void leaveConsensus();
+    void
+    leaveConsensus();
 
     /** Handle pre-close phase.
 
@@ -310,13 +320,16 @@ private:
         transactions.  After enough time has elapsed, we will close the ledger,
         switch to the establish phase and start the consensus process.
     */
-    void phaseOpen();
+    void
+    phaseOpen();
 
     // Close the open ledger and establish initial position.
-    void closeLedger();
+    void
+    closeLedger();
 
     // Create disputes between our position and the provided one.
-    void createDisputes(TxSet_t const& o);
+    void
+    createDisputes(TxSet_t const& o);
 
     /** Handle establish phase.
 
@@ -326,13 +339,16 @@ private:
 
         If we have consensus, move to the accepted phase.
     */
-    void phaseEstablish();
+    void
+    phaseEstablish();
 
     // Adjust our positions to try to agree with other validators.
-    void updateOurPositions();
+    void
+    updateOurPositions();
 
     // The rounded or effective close time estimate from a proposer
-    NetClock::time_point asCloseTime(NetClock::time_point raw) const;
+    NetClock::time_point
+    asCloseTime(NetClock::time_point raw) const;
 
     /** Evaluate whether pausing increases likelihood of validation.
      *
@@ -356,21 +372,41 @@ private:
      *
      * @return Whether to pause to wait for lagging proposers.
      */
-    bool shouldPause() const;
+    bool
+    shouldPause() const;
 
-    bool haveConsensus();
-
-    /** Handle a replayed or a new peer proposal.
-    */
-    bool peerProposalInternal(
-        NetClock::time_point const& now,
-        PeerPosition_t const& newProposal);
+    bool
+    haveConsensus();
 
     // Update our disputes given that this node has adopted a new position.
     // Will call createDisputes as needed.
-    void updateDisputes(NodeID_t const& node, TxSet_t const& other);
-};
+    void
+    updateDisputes(NodeID_t const& node, TxSet_t const& other);
 
+    /** A peer has proposed a new position, adjust our tracking.
+
+        @param now The network adjusted time
+        @param newProposal The new proposal from a peer
+        @return Whether we should do delayed relay of this proposal.
+    */
+    bool
+    peerProposal(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    /** Handle a replayed or a new peer proposal. */
+    bool
+    peerProposalInternal(
+        NetClock::time_point const& now,
+        PeerPosition_t const& newProposal);
+
+    bool
+    peerValidation(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+};
 
 }  // namespace ripple
 
