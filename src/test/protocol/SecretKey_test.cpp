@@ -448,6 +448,7 @@ public:
 
     void run() override
     {
+	    std::cout << "begin secret test" << std::endl;
         testBase58();
         testDigestSigning();
         testMiscOperations();
@@ -458,6 +459,9 @@ public:
 
         testcase ("ed25519");
         testSigning(KeyType::ed25519);
+
+        testcase ("gmalg");
+        testSigning(KeyType::gmalg);
     }
 };
 
