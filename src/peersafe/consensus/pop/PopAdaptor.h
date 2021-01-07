@@ -63,13 +63,17 @@ public:
         app_.getValidations().flush();
     }
 
-    bool
-    isLeader(
-        PublicKey const& publicKey,
-        LedgerIndex curSeq,
-        std::uint64_t view);
-    bool
-    isLeader(LedgerIndex curSeq, std::uint64_t view);
+    inline bool
+    isLeader(PublicKey const& publicKey, LedgerIndex curSeq, std::uint64_t view)
+    {
+        return publicKey == app_.validators().getLeaderPubKey(curSeq + view);
+    }
+
+    inline bool
+    isLeader(LedgerIndex curSeq, std::uint64_t view)
+    {
+        return isLeader(valPublic_, curSeq, view);
+    }
 
     Result
     onCollectFinish(

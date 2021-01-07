@@ -18,7 +18,6 @@
 //==============================================================================
 
 
-#include <ripple/basics/make_lock.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/app/misc/NetworkOPs.h>
@@ -88,21 +87,6 @@ PopAdaptor::PopAdaptor(
     }
 }
 
-inline bool
-PopAdaptor::isLeader(
-    PublicKey const& publicKey,
-    LedgerIndex curSeq,
-    std::uint64_t view)
-{
-    return publicKey == app_.validators().getLeaderPubKey(curSeq + view);
-}
-
-inline bool
-PopAdaptor::isLeader(LedgerIndex curSeq, std::uint64_t view)
-{
-    return isLeader(valPublic_, curSeq, view);
-}
-
 auto
 PopAdaptor::onCollectFinish(
     RCLCxLedger const& ledger,
@@ -124,13 +108,14 @@ PopAdaptor::onCollectFinish(
     // auto initialLedger = app_.openLedger().current();
 
     auto initialSet = std::make_shared<SHAMap>(
-        SHAMapType::TRANSACTION, app_.family(), SHAMap::version{1});
+        SHAMapType::TRANSACTION, app_.getNodeFamily());
     initialSet->setUnbacked();
 
     // Build SHAMap containing all transactions in our open ledger
     for (auto const& txID : transactions)
     {
-        auto tx = app_.getMasterTransaction().fetch(txID, false);
+        auto ec{rpcSUCCESS};
+        auto tx = app_.getMasterTransaction().fetch(txID, ec);
         if (!tx)
         {
             JLOG(j_.error())
@@ -185,6 +170,7 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 
     consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVIEWCHANGE);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
     signAndSendMessage(consensus);
 }
@@ -361,52 +347,9 @@ PopAdaptor::doAccept(
 
     //-------------------------------------------------------------------------
     {
-        // Apply disputed transactions that didn't get in
-        //
-        // The first crack of transactions to get into the new
-        // open ledger goes to transactions proposed by a validator
-        // we trust but not included in the consensus set.
-        //
-        // These are done first because they are the most likely
-        // to receive agreement during consensus. They are also
-        // ordered logically "sooner" than transactions not mentioned
-        // in the previous consensus round.
-        //
-        bool anyDisputes = false;
-        for (auto& it : result.disputes)
-        {
-            if (!it.second.getOurVote())
-            {
-                // we voted NO
-                try
-                {
-                    JLOG(j_.debug())
-                        << "Test applying disputed transaction that did"
-                        << " not get in " << it.second.tx().id();
-
-                    SerialIter sit(it.second.tx().tx_.slice());
-                    auto txn = std::make_shared<STTx const>(sit);
-
-                    // Disputed pseudo-transactions that were not accepted
-                    // can't be succesfully applied in the next ledger
-                    if (isPseudoTx(*txn))
-                        continue;
-
-                    retriableTxs.insert(txn);
-
-                    anyDisputes = true;
-                }
-                catch (std::exception const&)
-                {
-                    JLOG(j_.debug())
-                        << "Failed to apply transaction we voted NO on";
-                }
-            }
-        }
-
         // Build new open ledger
-        auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
-        auto sl = make_lock(ledgerMaster_.peekMutex(), std::defer_lock);
+        std::unique_lock lock {app_.getMasterMutex(), std::defer_lock};
+        std::unique_lock sl {ledgerMaster_.peekMutex(), std::defer_lock};
         std::lock(lock, sl);
 
         auto const lastVal = ledgerMaster_.getValidatedLedger();
@@ -420,7 +363,7 @@ PopAdaptor::doAccept(
             *rules,
             built.ledger_,
             localTxs_.getTxSet(),
-            anyDisputes,
+            false,
             retriableTxs,
             tapNONE,
             "consensus",

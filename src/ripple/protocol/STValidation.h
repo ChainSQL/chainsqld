@@ -48,6 +48,9 @@ public:
         return "STValidation";
     }
 
+    using pointer = std::shared_ptr<STValidation>;
+    using ref = const std::shared_ptr<STValidation>&;
+
     /** Construct a STValidation from a peer.
 
         Construct a STValidation from serialized data previously shared by a
@@ -69,7 +72,8 @@ public:
         SerialIter& sit,
         PublicKey const& publicKey,
         LookupNodeID&& lookupNodeID)
-        : STObject(getFormat(), sit, sfValidation), mSignerPublic(publicKey)
+        : STObject(validationFormat(), sit, sfValidation)
+        , mSignerPublic(publicKey)
     {
         mNodeID = lookupNodeID(publicKey);
         assert(mNodeID.isNonZero());
@@ -85,23 +89,15 @@ public:
     */
     template <typename F>
     STValidation(
-        uint256 const& ledgerHash,
-        std::uint32_t ledgerSeq,
-        uint256 const& consensusHash,
-        PublicKey const& publickey,
         NetClock::time_point signTime,
+        PublicKey const& publickey,
         NodeID const& nodeID,
         F&& f)
         : STObject(validationFormat(), sfValidation)
-        , nodeID_(nodeID)
-        , seenTime_(signTime)
+        , mNodeID(nodeID)
+        , mSeen(signTime)
+        , mSignerPublic(publickey)
     {
-        // First, set our own public key:
-        if (publicKeyType(pk) != KeyType::secp256k1)
-            LogicError(
-                "We can only use secp256k1 keys for signing validations");
-
-        setFieldVL(sfSigningPubKey, pk.slice());
         setFieldU32(sfSigningTime, signTime.time_since_epoch().count());
 
         // Perform additional initialization
@@ -109,7 +105,6 @@ public:
 
         // Finally, sign the validation and mark it as trusted:
         setFlag(vfFullyCanonicalSig);
-        setFieldVL(sfSignature, signDigest(pk, sk, getSigningHash()));
         setTrusted();
 
         // Check to ensure that all required fields are present.
@@ -197,7 +192,7 @@ private:
     static SOTemplate const&
     validationFormat();
 
-    NodeID nodeID_;
+    NodeID mNodeID;
     bool mTrusted = false;
     NetClock::time_point mSeen = {};
     PublicKey mSignerPublic;

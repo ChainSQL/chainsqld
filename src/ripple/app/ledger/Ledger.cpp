@@ -33,7 +33,6 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/contract.h>
 #include <ripple/beast/core/LexicalCast.h>
-#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>

@@ -22,53 +22,6 @@
 
 namespace ripple {
 
-STValidation::STValidation(
-    uint256 const& ledgerHash,
-    std::uint32_t ledgerSeq,
-    uint256 const& consensusHash,
-    PublicKey const& publickey,
-    NetClock::time_point signTime,
-    NodeID const& nodeID,
-    bool isFull,
-    FeeSettings const& fees,
-    std::vector<uint256> const& amendments)
-    : STObject(getFormat(), sfValidation)
-    , mNodeID(nodeID)
-    , mSeen(signTime)
-    , mSignerPublic(publickey)
-{
-    assert(mNodeID.isNonZero());
-    setFieldH256(sfLedgerHash, ledgerHash);
-    setFieldH256(sfConsensusHash, consensusHash);
-    setFieldU32(sfSigningTime, signTime.time_since_epoch().count());
-
-    if (isFull)
-        setFlag(kFullFlag);
-
-    setFieldU32(sfLedgerSequence, ledgerSeq);
-
-    if (fees.loadFee)
-        setFieldU32(sfLoadFee, *fees.loadFee);
-
-    if (fees.baseFee)
-        setFieldU64(sfBaseFee, *fees.baseFee);
-
-    if (fees.reserveBase)
-        setFieldU32(sfReserveBase, *fees.reserveBase);
-
-    if (fees.reserveIncrement)
-        setFieldU32(sfReserveIncrement, *fees.reserveIncrement);
-
-    if (fees.dropsPerByte)
-        setFieldU64(sfDropsPerByte, *fees.dropsPerByte);
-
-    if (!amendments.empty())
-        setFieldV256(sfAmendments, STVector256(sfAmendments, amendments));
-
-    setFlag(vfFullyCanonicalSig);
-
-    setTrusted();
-}
 
 uint256
 STValidation::getLedgerHash() const
@@ -103,32 +56,27 @@ STValidation::getSerialized() const
 }
 
 SOTemplate const&
-STValidation::getFormat()
+STValidation::validationFormat()
 {
-    struct FormatHolder
-    {
-        SOTemplate format{
-            {sfFlags, soeREQUIRED},
-            {sfLedgerHash, soeREQUIRED},
-            {sfLedgerSequence, soeOPTIONAL},
-            {sfCloseTime, soeOPTIONAL},
-            {sfLoadFee, soeOPTIONAL},
-            {sfAmendments, soeOPTIONAL},
-            {sfBaseFee, soeOPTIONAL},
-            {sfReserveBase, soeOPTIONAL},
-            {sfReserveIncrement, soeOPTIONAL},
-            {sfSigningTime, soeREQUIRED},
-            {sfConsensusHash, soeOPTIONAL},
-            {sfCookie, soeOPTIONAL},
-            {sfDropsPerByte, soeOPTIONAL},
-            {sfValidatedHash, soeOPTIONAL},
-            {sfServerVersion, soeOPTIONAL},
-        };
+    static SOTemplate const format{
+        { sfFlags,              soeREQUIRED},
+        { sfLedgerHash,         soeREQUIRED},
+        { sfLedgerSequence,     soeOPTIONAL},
+        { sfCloseTime,          soeOPTIONAL},
+        { sfLoadFee,            soeOPTIONAL},
+        { sfAmendments,         soeOPTIONAL},
+        { sfBaseFee,            soeOPTIONAL},
+        { sfReserveBase,        soeOPTIONAL},
+        { sfReserveIncrement,   soeOPTIONAL},
+        { sfSigningTime,        soeREQUIRED},
+        { sfConsensusHash,      soeOPTIONAL},
+        { sfCookie,             soeOPTIONAL},
+        { sfValidatedHash,      soeOPTIONAL},
+        { sfServerVersion,      soeOPTIONAL},
+        { sfDropsPerByte,       soeOPTIONAL},
     };
 
-    static const FormatHolder holder;
-
-    return holder.format;
+    return format;
 }
 
 }  // namespace ripple

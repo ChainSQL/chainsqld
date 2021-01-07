@@ -17,26 +17,23 @@
 */
 //==============================================================================
 
-
-#include <ripple/app/misc/ValidatorKeys.h>
-#include <ripple/app/misc/NetworkOPs.h>
-#include <ripple/app/misc/HashRouter.h>
-#include <ripple/app/misc/LoadFeeTrack.h>
-#include <ripple/app/misc/Transaction.h>
-#include <ripple/app/misc/AmendmentTable.h>
 #include <ripple/app/ledger/LocalTxs.h>
 #include <ripple/app/ledger/TransactionMaster.h>
+#include <ripple/app/misc/AmendmentTable.h>
+#include <ripple/app/misc/HashRouter.h>
+#include <ripple/app/misc/LoadFeeTrack.h>
+#include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/misc/Transaction.h>
+#include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
-#include <ripple/basics/make_lock.h>
-#include <peersafe/consensus/ConsensusBase.h>
-#include <peersafe/consensus/RpcaPopAdaptor.h>
+#include <peersafe/schema/PeerManager.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/util/Common.h>
-
+#include <peersafe/consensus/ConsensusBase.h>
+#include <peersafe/consensus/RpcaPopAdaptor.h>
 
 namespace ripple {
-
 
 RpcaPopAdaptor::RpcaPopAdaptor(
     Schema& app,
@@ -47,47 +44,50 @@ RpcaPopAdaptor::RpcaPopAdaptor(
     beast::Journal journal,
     LocalTxs& localTxs)
     : Adaptor(
-        app,
-        std::move(feeVote),
-        ledgerMaster,
-        inboundTransactions,
-        validatorKeys,
-        journal,
-        localTxs)
+          app,
+          std::move(feeVote),
+          ledgerMaster,
+          inboundTransactions,
+          validatorKeys,
+          journal,
+          localTxs)
 {
 }
 
-void RpcaPopAdaptor::onAccept(
+void
+RpcaPopAdaptor::onAccept(
     Result const& result,
     RCLCxLedger const& prevLedger,
     NetClock::duration const& closeResolution,
     ConsensusCloseTimes const& rawCloseTimes,
     ConsensusMode const& mode,
-    Json::Value && consensusJson)
+    Json::Value&& consensusJson)
 {
     app_.getJobQueue().addJob(
         jtACCEPT,
         "acceptLedger",
         [=, cj = std::move(consensusJson)](auto&) mutable {
-        // Note that no lock is held or acquired during this job.
-        // This is because generic Consensus guarantees that once a ledger
-        // is accepted, the consensus results and capture by reference state
-        // will not change until startRound is called (which happens via
-        // endConsensus).
-        auto timeStart = utcTime();
-        this->doAccept(
-            result,
-            prevLedger,
-            closeResolution,
-            rawCloseTimes,
-            mode,
-            std::move(cj));
-        JLOG(j_.info()) << "doAccept time used:" << utcTime() - timeStart << "ms";
-        this->app_.getOPs().endConsensus();
-    });
+            // Note that no lock is held or acquired during this job.
+            // This is because generic Consensus guarantees that once a ledger
+            // is accepted, the consensus results and capture by reference state
+            // will not change until startRound is called (which happens via
+            // endConsensus).
+            auto timeStart = utcTime();
+            this->doAccept(
+                result,
+                prevLedger,
+                closeResolution,
+                rawCloseTimes,
+                mode,
+                std::move(cj));
+            JLOG(j_.info())
+                << "doAccept time used:" << utcTime() - timeStart << "ms";
+            this->app_.getOPs().endConsensus();
+        });
 }
 
-std::shared_ptr<Ledger const> RpcaPopAdaptor::checkLedgerAccept(LedgerInfo const& info)
+std::shared_ptr<Ledger const>
+RpcaPopAdaptor::checkLedgerAccept(LedgerInfo const& info)
 {
     auto ledger = Adaptor::checkLedgerAccept(info);
     if (!ledger)
@@ -95,33 +95,31 @@ std::shared_ptr<Ledger const> RpcaPopAdaptor::checkLedgerAccept(LedgerInfo const
         return nullptr;
     }
 
-    LedgerMaster::ScopedLockType ml(ledgerMaster_.peekMutex());
+    std::lock_guard ml(ledgerMaster_.peekMutex());
 
     auto const minVal = getNeededValidations();
     auto validations = app_.validators().negativeUNLFilter(
         app_.getValidations().getTrustedForLedger(ledger->info().hash));
     auto const tvc = validations.size();
-    if (tvc < minVal) // nothing we can do
+    if (tvc < minVal)  // nothing we can do
     {
-        JLOG(j_.trace()) <<
-            "Only " << tvc <<
-            " validations for " << info.hash;
+        JLOG(j_.trace()) << "Only " << tvc << " validations for " << info.hash;
         return nullptr;
     }
 
-    JLOG(j_.info())
-        << "Advancing accepted ledger to " << info.seq
-        << " with >= " << minVal << " validations";
+    JLOG(j_.info()) << "Advancing accepted ledger to " << info.seq
+                    << " with >= " << minVal << " validations";
 
     return ledger;
 }
 
-void RpcaPopAdaptor::propose(RCLCxPeerPos::Proposal const& proposal)
+void
+RpcaPopAdaptor::propose(RCLCxPeerPos::Proposal const& proposal)
 {
     JLOG(j_.trace()) << "We propose: "
-        << (proposal.isBowOut()
-            ? std::string("bowOut")
-            : ripple::to_string(proposal.position()));
+                     << (proposal.isBowOut()
+                             ? std::string("bowOut")
+                             : ripple::to_string(proposal.position()));
 
     Blob p = proposal.getSerialized();
 
@@ -133,7 +131,11 @@ void RpcaPopAdaptor::propose(RCLCxPeerPos::Proposal const& proposal)
     signAndSendMessage(consensus);
 }
 
-void RpcaPopAdaptor::validate(RCLCxLedger const& ledger, RCLTxSet const& txns, bool proposing)
+void
+RpcaPopAdaptor::validate(
+    RCLCxLedger const& ledger,
+    RCLTxSet const& txns,
+    bool proposing)
 {
     using namespace std::chrono_literals;
     auto validationTime = app_.timeKeeper().closeTime();
@@ -141,28 +143,9 @@ void RpcaPopAdaptor::validate(RCLCxLedger const& ledger, RCLTxSet const& txns, b
         validationTime = lastValidationTime_ + 1s;
     lastValidationTime_ = validationTime;
 
-    STValidation::FeeSettings fees;
-    std::vector<uint256> amendments;
-
-    auto const& feeTrack = app_.getFeeTrack();
-    std::uint32_t fee =
-        std::max(feeTrack.getLocalFee(), feeTrack.getClusterFee());
-
-    if (fee > feeTrack.getLoadBase())
-        fees.loadFee = fee;
-
-    // next ledger is flag ledger
-    if (((ledger.seq() + 1) % 256) == 0)
-    {
-        // Suggest fee changes and new features
-        feeVote_->doValidation(ledger.ledger_, fees);
-        amendments = app_.getAmendmentTable().doValidation(getEnabledAmendments(*ledger.ledger_));
-    }
-
-        auto v = std::make_shared<STValidation>(
+    auto v = std::make_shared<STValidation>(
         lastValidationTime_,
         valPublic_,
-        valSecret_,
         nodeID_,
         [&](STValidation& v) {
             v.setFieldH256(sfLedgerHash, ledger.id());
@@ -232,22 +215,26 @@ void RpcaPopAdaptor::validate(RCLCxLedger const& ledger, RCLTxSet const& txns, b
     app_.getOPs().pubValidation(v);
 }
 
-bool RpcaPopAdaptor::peerValidation(std::shared_ptr<PeerImp>& peer, STValidation::ref val)
+bool
+RpcaPopAdaptor::peerValidation(
+    std::shared_ptr<PeerImp>& peer,
+    STValidation::ref val)
 {
     try
     {
-        if (!isCurrent(app_.getValidations().parms(),
-            app_.timeKeeper().closeTime(),
-            val->getSignTime(),
-            val->getSeenTime()))
+        if (!isCurrent(
+                app_.getValidations().parms(),
+                app_.timeKeeper().closeTime(),
+                val->getSignTime(),
+                val->getSeenTime()))
         {
             JLOG(j_.info()) << "Validation: Not current";
             peer->charge(Resource::feeUnwantedData);
             return false;
         }
 
-        JLOG(j_.info()) << "recvValidation " << val->getLedgerHash()
-            << " from " << peer->id();
+        JLOG(j_.info()) << "recvValidation " << val->getLedgerHash() << " from "
+                        << peer->id();
 
         app_.getOPs().pubValidation(val);
 
@@ -266,7 +253,8 @@ bool RpcaPopAdaptor::peerValidation(std::shared_ptr<PeerImp>& peer, STValidation
     return false;
 }
 
-std::size_t RpcaPopAdaptor::proposersFinished(
+std::size_t
+RpcaPopAdaptor::proposersFinished(
     RCLCxLedger const& ledger,
     LedgerHash const& h) const
 {
@@ -275,7 +263,8 @@ std::size_t RpcaPopAdaptor::proposersFinished(
         RCLValidatedLedger(ledger.ledger_, vals.adaptor().journal()), h);
 }
 
-uint256 RpcaPopAdaptor::getPrevLedger(
+uint256
+RpcaPopAdaptor::getPrevLedger(
     uint256 ledgerID,
     RCLCxLedger const& ledger,
     ConsensusMode mode)
@@ -286,7 +275,7 @@ uint256 RpcaPopAdaptor::getPrevLedger(
     {
         RCLValidations& vals = app_.getValidations();
         netLgr = vals.getPreferred(
-            RCLValidatedLedger{ ledger.ledger_, vals.adaptor().journal() },
+            RCLValidatedLedger{ledger.ledger_, vals.adaptor().journal()},
             getValidLedgerIndex());
     }
 
@@ -304,12 +293,12 @@ uint256 RpcaPopAdaptor::getPrevLedger(
 // ------------------------------------------------------------------------
 // Protected member functions
 
-void RpcaPopAdaptor::consensusBuilt(
+void
+RpcaPopAdaptor::consensusBuilt(
     std::shared_ptr<Ledger const> const& ledger,
     uint256 const& consensusHash,
     Json::Value consensus)
 {
-
     // Because we just built a ledger, we are no longer building one
     ledgerMaster_.setBuildingLedger(0);
 
@@ -317,14 +306,14 @@ void RpcaPopAdaptor::consensusBuilt(
     if (app_.config().standalone())
         return;
 
-    ledgerMaster_.getLedgerHistory().builtLedger(ledger, consensusHash, std::move(consensus));
+    ledgerMaster_.getLedgerHistory().builtLedger(
+        ledger, consensusHash, std::move(consensus));
 
     if (ledger->info().seq <= getValidLedgerIndex())
     {
         auto stream = app_.journal("LedgerConsensus").info();
-        JLOG(stream)
-            << "Consensus built old ledger: "
-            << ledger->info().seq << " <= " << getValidLedgerIndex();
+        JLOG(stream) << "Consensus built old ledger: " << ledger->info().seq
+                     << " <= " << getValidLedgerIndex();
         return;
     }
 
@@ -351,10 +340,13 @@ void RpcaPopAdaptor::consensusBuilt(
     class valSeq
     {
     public:
+        valSeq() : valCount_(0), ledgerSeq_(0)
+        {
+            ;
+        }
 
-        valSeq() : valCount_(0), ledgerSeq_(0) { ; }
-
-        void mergeValidation(LedgerIndex seq)
+        void
+        mergeValidation(LedgerIndex seq)
         {
             valCount_++;
 
@@ -368,8 +360,8 @@ void RpcaPopAdaptor::consensusBuilt(
     };
 
     // Count the number of current, trusted validations
-    hash_map <uint256, valSeq> count;
-    for (auto const& v : val)
+    hash_map<uint256, valSeq> count;
+    for (auto const& v : validations)
     {
         valSeq& vs = count[v->getLedgerHash()];
         vs.mergeValidation(v->getFieldU32(sfLedgerSequence));
@@ -413,7 +405,10 @@ void RpcaPopAdaptor::consensusBuilt(
 // ------------------------------------------------------------------------
 // Private member functions
 
-bool RpcaPopAdaptor::handleNewValidation(STValidation::ref val, std::string const& source)
+bool
+RpcaPopAdaptor::handleNewValidation(
+    STValidation::ref val,
+    std::string const& source)
 {
     PublicKey const& signingKey = val->getSignerPublic();
     uint256 const& hash = val->getLedgerHash();
@@ -455,6 +450,8 @@ bool RpcaPopAdaptor::handleNewValidation(STValidation::ref val, std::string cons
     if (masterKey)
     {
         ValStatus const outcome = validations.add(calcNodeID(*masterKey), val);
+        auto const seq = val->getFieldU32(sfLedgerSequence);
+
         if (j.debug())
             dmp(j.debug(), to_string(outcome));
 
@@ -497,8 +494,8 @@ bool RpcaPopAdaptor::handleNewValidation(STValidation::ref val, std::string cons
     else
     {
         JLOG(j.debug()) << "Val for " << hash << " from "
-            << toBase58(TokenType::NodePublic, signingKey)
-            << " not added UNlisted";
+                        << toBase58(TokenType::NodePublic, signingKey)
+                        << " not added UNlisted";
     }
 
     // This currently never forwards untrusted validations, though we may
@@ -512,8 +509,9 @@ bool RpcaPopAdaptor::handleNewValidation(STValidation::ref val, std::string cons
     return shouldRelay;
 }
 
-auto RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
-    ->std::pair<std::shared_ptr<Ledger const> const, bool>
+auto
+RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
+    -> std::pair<std::shared_ptr<Ledger const> const, bool>
 {
     std::size_t valCount = 0;
 
@@ -521,7 +519,7 @@ auto RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
     {
         // Ledger is too old
         if (seq < getValidLedgerIndex())
-            return { nullptr, false };
+            return {nullptr, false};
 
         auto validations = app_.validators().negativeUNLFilter(
             app_.getValidations().getTrustedForLedger(hash));
@@ -532,11 +530,11 @@ auto RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
         }
 
         if (seq == getValidLedgerIndex())
-            return { nullptr, false };
+            return {nullptr, false};
 
         // Ledger could match the ledger we're already building
         if (seq == ledgerMaster_.getBuildingLedger())
-            return { nullptr, false };
+            return {nullptr, false};
     }
 
     auto ledger = ledgerMaster_.getLedgerHistory().getLedgerByHash(hash);
@@ -557,10 +555,9 @@ auto RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
     }
 
     if (ledger)
-        return { ledger, !!checkLedgerAccept(ledger->info()) };
+        return {ledger, !!checkLedgerAccept(ledger->info())};
 
-    return { nullptr, false };
+    return {nullptr, false};
 }
 
-
-}
+}  // namespace ripple

@@ -289,28 +289,6 @@ public:
         return deflt;
     }
 
-    template<typename T>
-    T loadConfig(std::string sectionName, std::string configName, T deflt)
-    {
-        auto const result = section(sectionName).find(configName);
-        if (result.second)
-        {
-            try
-            {
-                T value = beast::lexicalCastThrow<T>(result.first);
-                return value;
-            }
-            catch (std::exception const&)
-            {
-                JLOG(j_.error()) <<
-                    "Invalid value '" << result.first << "' for key " <<
-                    "'" << configName << "' in [" << sectionName << "]\n";
-            }
-        }
-
-        return deflt;
-    }
-
 	/** Retrieve the default value for the item at the specified node size
 
         @param item The item for which the default value is needed

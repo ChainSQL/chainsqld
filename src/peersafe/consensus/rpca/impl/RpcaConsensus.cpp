@@ -476,7 +476,7 @@ RpcaConsensus::playbackProposals()
             if (pos.proposal().prevLedger() == prevLedgerID_)
             {
                 if (peerProposalInternal(now_, pos))
-                    adaptor_.relay(pos);
+                    adaptor_.share(pos);
             }
         }
     }
@@ -631,7 +631,7 @@ RpcaConsensus::closeLedger()
     // Share the newly created transaction set if we haven't already
     // received it from a peer
     if (acquired_.emplace(result_->txns.id(), result_->txns).second)
-        adaptor_.RpcaPopAdaptor::Adaptor::relay(result_->txns);
+        adaptor_.RpcaPopAdaptor::Adaptor::share(result_->txns);
 
     if (mode_.get() == ConsensusMode::proposing)
         adaptor_.propose(result_->position);
@@ -699,7 +699,7 @@ RpcaConsensus::createDisputes(TxSet_t const& o)
             if (cit != acquired_.end())
                 dtx.setVote(pit.first, cit->second.exists(txID));
         }
-        adaptor_.relay(dtx.tx());
+        adaptor_.share(dtx.tx());
 
         result_->disputes.emplace(txID, std::move(dtx));
     }
@@ -919,7 +919,7 @@ RpcaConsensus::updateOurPositions()
         if (acquired_.emplace(newID, result_->txns).second)
         {
             if (!result_->position.isBowOut())
-                adaptor_.RpcaPopAdaptor::Adaptor::relay(result_->txns);
+                adaptor_.RpcaPopAdaptor::Adaptor::share(result_->txns);
 
             for (auto const& [nodeId, peerPos] : currPeerPositions_)
             {
@@ -1114,10 +1114,7 @@ RpcaConsensus::haveConsensus()
 NetClock::time_point
 RpcaConsensus::asCloseTime(NetClock::time_point raw) const
 {
-    if (adaptor_.parms().useRoundedCloseTime)
-        return roundCloseTime(raw, closeResolution_);
-    else
-        return effCloseTime(raw, closeResolution_, previousLedger_.closeTime());
+    return roundCloseTime(raw, closeResolution_);
 }
 
 void

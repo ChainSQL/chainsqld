@@ -20,12 +20,14 @@
 #define RIPPLE_TEST_CSF_PEER_H_INCLUDED
 
 #include <ripple/beast/utility/WrappedSink.h>
-#include <ripple/consensus/Consensus.h>
-#include <ripple/consensus/Validations.h>
 #include <ripple/protocol/PublicKey.h>
 #include <boost/container/flat_map.hpp>
 #include <boost/container/flat_set.hpp>
 #include <algorithm>
+#include <peersafe/consensus/ConsensusParams.h>
+#include <peersafe/consensus/ConsensusTypes.h>
+#include <peersafe/consensus/Validations.h>
+#include <peersafe/consensus/rpca/RpcaConsensus.h>
 #include <test/csf/CollectorRef.h>
 #include <test/csf/Scheduler.h>
 #include <test/csf/TrustGraph.h>
@@ -167,7 +169,8 @@ struct Peer
     beast::Journal j;
 
     //! Generic consensus
-    Consensus<Peer> consensus;
+    // Consensus<Peer> consensus;
+    RpcaConsensus consensus;
 
     //! Our unique ID
     PeerID id;
@@ -572,14 +575,13 @@ struct Peer
             {
                 bool isFull = proposing;
 
-                Validation v{
-                    newLedger.id(),
-                    newLedger.seq(),
-                    now(),
-                    now(),
-                    key,
-                    id,
-                    isFull};
+                Validation v{newLedger.id(),
+                             newLedger.seq(),
+                             now(),
+                             now(),
+                             key,
+                             id,
+                             isFull};
                 // share the new validation; it is trusted by the receiver
                 share(v);
                 // we trust ourselves

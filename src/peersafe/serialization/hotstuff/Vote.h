@@ -23,6 +23,7 @@
 #include <peersafe/serialization/Serialization.h>
 #include <peersafe/serialization/PublicKey.h>
 #include <peersafe/serialization/hotstuff/VoteData.h>
+#include <peersafe/serialization/Buffer.h>
 
 #include <peersafe/consensus/hotstuff/impl/Vote.h>
 

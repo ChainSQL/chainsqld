@@ -95,7 +95,7 @@ conditionMet(Condition condition_required, T& context)
         return rpcAMENDMENT_BLOCKED;
     }
 
-    if (handler->condition_ & NEEDS_CURRENT_LEDGER)
+    if (condition_required & NEEDS_CURRENT_LEDGER)
     {
         auto const& consensusInfo = context.netOps.getConsensusInfo(false);
         bool initialized = consensusInfo.get("initialized", true).asBool();

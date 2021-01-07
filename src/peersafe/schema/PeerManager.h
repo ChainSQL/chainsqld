@@ -22,6 +22,18 @@ public:
     virtual std::size_t
     size() const = 0;
 
+	/** Returns the peer with the matching short id, or null. */
+    virtual std::shared_ptr<Peer>
+    findPeerByShortID(Peer::id_t const& id) = 0;
+
+    /** Returns the peer with the matching public key, or null. */
+    virtual std::shared_ptr<Peer>
+    findPeerByPublicKey(PublicKey const& pubKey) = 0;
+
+    /** Returns the peer with the matching validate public key, or null. */
+    virtual std::shared_ptr<Peer>
+    findPeerByValPublicKey(PublicKey const& pubKey) = 0;
+
     /** Returns a sequence representing the current list of peers.
             The snapshot is made at the time of the call.
     */

@@ -34,7 +34,6 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/misc/FeeVote.h>
 #include <ripple/app/misc/NegativeUNLVote.h>
-#include <peersafe/consensus/ViewChange.h>
 #include <ripple/app/misc/ValidatorList.h>
 #include <peersafe/consensus/ConsensusTypes.h>
 #include <peersafe/app/util/Common.h>
@@ -66,7 +65,6 @@ public:
     beast::Journal j_;
     std::unique_ptr<FeeVote> feeVote_;
     LedgerMaster& ledgerMaster_;
-    LocalTxs& localTxs_;
     InboundTransactions& inboundTransactions_;
 
     NodeID const nodeID_;
@@ -87,22 +85,22 @@ public:
         std::chrono::milliseconds{0}};
     std::atomic<ConsensusMode> mode_{ConsensusMode::observing};
 
-    LocalTxs& localTxs_;
+    NegativeUNLVote nUnlVote_;
 
     // The timestamp of the last validation we used
     NetClock::time_point lastValidationTime_;
 
-    NegativeUNLVote nUnlVote_;
+    LocalTxs& localTxs_;
 
 public:
     Adaptor(
         Schema& app,
         std::unique_ptr<FeeVote>&& feeVote,
         LedgerMaster& ledgerMaster,
-        LocalTxs& localTxs,
         InboundTransactions& inboundTransactions,
         ValidatorKeys const& validatorKeys,
-        beast::Journal journal);
+        beast::Journal journal,
+        LocalTxs& localTxs);
 
     inline NodeID_t const&
     nodeID() const

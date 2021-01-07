@@ -74,7 +74,7 @@ public:
         validatorlist,
         consensus,
         shards,  // shard-related traffic
-        
+
         get_table,
 
         // TMHaveSet message:
@@ -189,14 +189,12 @@ protected:
         {"overhead_overlay"},   // category::overlay
         {"overhead_manifest"},  // category::manifests
         {"transactions"},       // category::transaction
-        {"proposals"},          // category::proposal
-        {"validations"},        // category::validation
         {"validator_lists"},    // category::validatorlist
-        {"shards"},             // category::shards
-		{ "get table data" },
-		{ "view change" },
-        {"set_get"},            // category::get_set
-        {"set_share"},          // category::share_set
+        {"consensus"},          // category::consensus
+        {"shards"},          // category::shards
+        {"get table data"},
+        {"set_get"},                                    // category::get_set
+        {"set_share"},                                  // category::share_set
         {"ledger_data_Transaction_Set_candidate_get"},  // category::ld_tsc_get
         {"ledger_data_Transaction_Set_candidate_share"},  // category::ld_tsc_share
         {"ledger_data_Transaction_Node_get"},        // category::ld_txn_get

@@ -36,75 +36,91 @@
 namespace ripple {
 
 
-class HotstuffAdaptor final
-    : public Adaptor
-    , public hotstuff::ProposerElection
+class HotstuffAdaptor final : public Adaptor, public hotstuff::ProposerElection
 {
 private:
-    HotstuffConsensusParms                          parms_;
+    HotstuffConsensusParms parms_;
 
 public:
-    using Author    = hotstuff::Author;
-    using Round     = hotstuff::Round;
-    using Block     = hotstuff::Block;
-    using SyncInfo  = hotstuff::SyncInfo;
-    using Vote      = hotstuff::Vote;
+    using Author = hotstuff::Author;
+    using Round = hotstuff::Round;
+    using Block = hotstuff::Block;
+    using SyncInfo = hotstuff::SyncInfo;
+    using Vote = hotstuff::Vote;
 
 public:
     HotstuffAdaptor(HotstuffAdaptor&) = default;
-    HotstuffAdaptor& operator=(HotstuffAdaptor&) = default;
+    HotstuffAdaptor&
+    operator=(HotstuffAdaptor&) = default;
 
     HotstuffAdaptor(
-        Application& app,
+        Schema& app,
         std::unique_ptr<FeeVote>&& feeVote,
         LedgerMaster& ledgerMaster,
         InboundTransactions& inboundTransactions,
-        ValidatorKeys const & validatorKeys,
+        ValidatorKeys const& validatorKeys,
         beast::Journal journal,
         LocalTxs& localTxs,
         ConsensusParms const& consensusParms);
 
-    inline HotstuffConsensusParms const& parms() const
+    inline HotstuffConsensusParms const&
+    parms() const
     {
         return parms_;
     }
 
-    inline std::recursive_mutex& peekConsensusMutex()
+    inline std::recursive_mutex&
+    peekConsensusMutex()
     {
         return app_.getOPs().peekConsensusMutex();
     }
 
-    inline boost::asio::io_service& getIOService() const
+    inline boost::asio::io_service&
+    getIOService() const
     {
         return app_.getIOService();
     }
 
-    inline void updateConsensusTime()
+    inline void
+    updateConsensusTime()
     {
         return ledgerMaster_.updateConsensusTime();
     }
 
     // Overwrite ProposerElection interfaces.
-    Author GetValidProposer(Round round) const override final;
+    Author
+    GetValidProposer(Round round) const override final;
 
     std::shared_ptr<SHAMap>
     onExtractTransactions(RCLCxLedger const& prevLedger, ConsensusMode mode);
 
-    void broadcast(STProposal const& proposal);
-    void broadcast(STVote const& vote);
-    void sendVote(PublicKey const& pubKey, STVote const& vote);
-    void broadcast(STEpochChange const& epochChange);
-    void acquireBlock(PublicKey const& pubKey, uint256 const& hash);
-    void sendBLock(std::shared_ptr<PeerImp> peer, hotstuff::ExecutedBlock const& block);
+    void
+    broadcast(STProposal const& proposal);
+    void
+    broadcast(STVote const& vote);
+    void
+    sendVote(PublicKey const& pubKey, STVote const& vote);
+    void
+    broadcast(STEpochChange const& epochChange);
+    void
+    acquireBlock(PublicKey const& pubKey, uint256 const& hash);
+    void
+    sendBLock(
+        std::shared_ptr<PeerImp> peer,
+        hotstuff::ExecutedBlock const& block);
 
-    bool doAccept(typename Ledger_t::ID const& lgrId);
+    bool
+    doAccept(typename Ledger_t::ID const& lgrId);
 
-    void peerValidation(std::shared_ptr<PeerImp>& peer, STValidation::ref val);
+    void
+    peerValidation(std::shared_ptr<PeerImp>& peer, STValidation::ref val);
 
 private:
-    void validate(std::shared_ptr<Ledger const> ledger);
+    void
+    validate(std::shared_ptr<Ledger const> ledger);
 
-    void handleNewValidation(STValidation::ref val, std::string const& source);
+    void
+    handleNewValidation(STValidation::ref val, std::string const& source);
 };
 
 

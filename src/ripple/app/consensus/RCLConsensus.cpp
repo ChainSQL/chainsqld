@@ -17,19 +17,18 @@
 */
 //==============================================================================
 
-
-#include <ripple/core/ConfigSections.h>
 #include <ripple/app/consensus/RCLConsensus.h>
-#include <peersafe/consensus/rpca/RpcaAdaptor.h>
-#include <peersafe/consensus/rpca/RpcaConsensus.h>
-#include <peersafe/consensus/pop/PopAdaptor.h>
-#include <peersafe/consensus/pop/PopConsensus.h>
-#include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
-#include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
-#include <peersafe/schema/PeerManager.h>
-#include <peersafe/schema/Schema.h>
+#include <ripple/core/ConfigSections.h>
 #include <algorithm>
 #include <mutex>
+#include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
+#include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
+#include <peersafe/consensus/pop/PopAdaptor.h>
+#include <peersafe/consensus/pop/PopConsensus.h>
+#include <peersafe/consensus/rpca/RpcaAdaptor.h>
+#include <peersafe/consensus/rpca/RpcaConsensus.h>
+#include <peersafe/schema/PeerManager.h>
+#include <peersafe/schema/Schema.h>
 #if USE_TBB
 #ifdef _CRTDBG_MAP_ALLOC
 #pragma push_macro("free")
@@ -43,7 +42,6 @@
 #include <tbb/blocked_range.h>
 #include <tbb/concurrent_vector.h>
 #endif
-
 
 namespace ripple {
 
@@ -123,7 +121,8 @@ RCLConsensus::startRound(
     NetClock::time_point const& now,
     RCLCxLedger::ID const& prevLgrId,
     RCLCxLedger const& prevLgr,
-    hash_set<NodeID> const& nowUntrusted)
+    hash_set<NodeID> const& nowUntrusted,
+    hash_set<NodeID> const& nowTrusted)
 {
     ScopedLockType _{mutex_};
     consensus_->startRound(
@@ -131,7 +130,7 @@ RCLConsensus::startRound(
         prevLgrId,
         prevLgr,
         nowUntrusted,
-        adaptor_->preStartRound(prevLgr));
+        adaptor_->preStartRound(prevLgr, nowTrusted));
 }
 
 void
@@ -145,7 +144,8 @@ RCLConsensus::timerEntry(NetClock::time_point const& now)
     catch (SHAMapMissingNode const& mn)
     {
         // This should never happen
-        JLOG(j_.error()) << "Missing node during consensus process " << mn;
+        JLOG(j_.error()) << "Missing node during consensus process "
+                         << mn.what();
         Rethrow();
     }
 }
@@ -178,7 +178,7 @@ RCLConsensus::gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet)
     try
     {
         std::lock_guard _{mutex_};
-        consensus_.gotTxSet(now, txSet);
+        consensus_->gotTxSet(now, txSet);
     }
     catch (SHAMapMissingNode const& mn)
     {
@@ -195,7 +195,7 @@ RCLConsensus::simulate(
     boost::optional<std::chrono::milliseconds> consensusDelay)
 {
     std::lock_guard _{mutex_};
-    consensus_.simulate(now, consensusDelay);
+    consensus_->simulate(now, consensusDelay);
 }
 
 bool
@@ -215,6 +215,34 @@ RCLConsensus::stringToConsensusType(std::string const& s)
         return ConsensusType::HOTSTUFF;
 
     return ConsensusType::UNKNOWN;
+}
+
+std::string
+RCLConsensus::conMsgTypeToStr(ConsensusMessageType t)
+{
+    switch (t)
+    {
+        case mtPROPOSESET:
+            return "PROPOSESET";
+        case mtVALIDATION:
+            return "VALIDATION";
+        case mtVIEWCHANGE:
+            return "VIEWCHANGE";
+        case mtPROPOSAL:
+            return "PROPOSAL";
+        case mtVOTE:
+            return "VOTE";
+        case mtACQUIREBLOCK:
+            return "ACQUIREBLOCK";
+        case mtBLOCKDATA:
+            return "BLOCKDATA";
+        case mtEPOCHCHANGE:
+            return "EPOCHCHANGE";
+        default:
+            break;
+    }
+
+    return "UNKNOWN";
 }
 
 }  // namespace ripple

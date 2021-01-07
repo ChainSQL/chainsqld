@@ -19,6 +19,12 @@
 
 
 #include <ripple/app/ledger/LocalTxs.h>
+#include <ripple/app/misc/AmendmentTable.h>
+#include <ripple/app/misc/HashRouter.h>
+#include <ripple/overlay/predicates.h>
+#include <ripple/protocol/Feature.h>
+#include <peersafe/schema/PeerManager.h>
+#include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/rpca/RpcaAdaptor.h>
 
 
@@ -41,29 +47,6 @@ RpcaAdaptor::RpcaAdaptor(
           journal,
           localTxs)
 {
-}
-
-bool
-RpcaAdaptor::preStartRound(RCLCxLedger const& prevLgr)
-{
-    // Use parent ledger's rules to determine whether to use rounded close time
-    parms_.useRoundedCloseTime = prevLgr.ledger_->rules().enabled(fix1528);
-
-    return Adaptor::preStartRound(prevLgr);
-}
-
-boost::optional<RCLCxLedger>
-RpcaAdaptor::acquireLedger(LedgerHash const& hash)
-{
-    auto built = Adaptor::acquireLedger(hash);
-
-    if (built)
-    {
-        // Use the ledger timing rules of the acquired ledger
-        parms_.useRoundedCloseTime = built->ledger_->rules().enabled(fix1528);
-    }
-
-    return built;
 }
 
 void
@@ -145,7 +128,7 @@ RpcaAdaptor::onClose(
     auto initialLedger = app_.openLedger().current();
 
     auto initialSet = std::make_shared<SHAMap>(
-        SHAMapType::TRANSACTION, app_.family(), SHAMap::version{1});
+        SHAMapType::TRANSACTION, app_.getNodeFamily());
     initialSet->setUnbacked();
 
     // Build SHAMap containing all transactions in our open ledger
@@ -213,12 +196,13 @@ RpcaAdaptor::onClose(
     auto const setHash = initialSet->getHash().as_uint256();
 
     return Result{std::move(initialSet),
-                  RCLCxPeerPos::Proposal{initialLedger->info().parentHash,
-                                         RCLCxPeerPos::Proposal::seqJoin,
+                  RCLCxPeerPos::Proposal{RCLCxPeerPos::Proposal::seqJoin,
                                          setHash,
+                                         initialLedger->info().parentHash,
                                          closeTime,
                                          app_.timeKeeper().closeTime(),
-                                         nodeID_}};
+                                         nodeID_,
+                                         valPublic_}};
 }
 
 // ----------------------------------------------------------------------------
@@ -415,8 +399,8 @@ RpcaAdaptor::doAccept(
         }
 
         // Build new open ledger
-        auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
-        auto sl = make_lock(ledgerMaster_.peekMutex(), std::defer_lock);
+        std::unique_lock lock{app_.getMasterMutex(), std::defer_lock};
+        std::unique_lock sl{ledgerMaster_.peekMutex(), std::defer_lock};
         std::lock(lock, sl);
 
         auto const lastVal = ledgerMaster_.getValidatedLedger();
@@ -500,6 +484,13 @@ RpcaAdaptor::doAccept(
 
         app_.timeKeeper().adjustCloseTime(offset);
     }
+}
+
+void
+RpcaAdaptor::updateOperatingMode(std::size_t const positions) const
+{
+    if (!positions && app_.getOPs().isFull())
+        app_.getOPs().setMode(OperatingMode::CONNECTED);
 }
 
 

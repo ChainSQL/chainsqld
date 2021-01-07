@@ -54,8 +54,6 @@
 #include <ripple/beast/core/LexicalCast.h>
 #include <ripple/beast/rfc2616.h>
 #include <ripple/beast/utility/rngfill.h>
-#include <ripple/consensus/Consensus.h>
-#include <ripple/consensus/ConsensusParms.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/crypto/RFC1751.h>
 #include <ripple/crypto/csprng.h>
@@ -2180,6 +2178,7 @@ NetworkOPsImp::mapComplete(std::shared_ptr<SHAMap> const& map, bool fromAcquire)
     protocol::TMHaveTransactionSet msg;
     msg.set_hash(map->getHash().as_uint256().begin(), 256 / 8);
     msg.set_status(protocol::tsHAVE);
+    msg.set_schemaid(app_.schemaId().begin(), uint256::size());
     app_.peerManager().foreach(
         send_always(std::make_shared<Message>(msg, protocol::mtHAVE_SET)));
 
@@ -2384,7 +2383,7 @@ NetworkOPsImp::pubValidation(std::shared_ptr<STValidation> const& val)
         jvObj[jss::validation_public_key] =
             toBase58(TokenType::NodePublic, signerPublic);
         jvObj[jss::ledger_hash] = to_string(val->getLedgerHash());
-        jvObj[jss::signature] = strHex(val->getSignature());
+        //jvObj[jss::signature] = strHex(val->getSignature());
         jvObj[jss::full] = val->isFull();
         jvObj[jss::flags] = val->getFlags();
         jvObj[jss::signing_time] = *(*val)[~sfSigningTime];

@@ -260,10 +260,10 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
 
     if (acquired_.emplace(cmd, txSet).second)
     {
-        adaptor_.relay(txSet);
+        adaptor_.share(txSet);
     }
 
-    if (cmd == zero && adaptor_.parms().omitEMPTY)
+    if (cmd == beast::zero && adaptor_.parms().omitEMPTY)
     {
         JLOG(j_.info()) << "Empty transaction-set and omit empty ledger";
         blockData.getLedgerInfo() = previousLedger_.ledger_->info();
@@ -347,7 +347,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     }
 
     // omit empty
-    if (adaptor_.parms().omitEMPTY && payload->cmd == zero)
+    if (adaptor_.parms().omitEMPTY && payload->cmd == beast::zero)
     {
         JLOG(j_.info()) << "Empty transaction-set from leader and omit empty ledger";
 
@@ -408,7 +408,7 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
 
 bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result)
 {
-    if (block.id() == zero)
+    if (block.id() == beast::zero)
     {
         JLOG(j_.warn()) << "verify block: block id is zero";
         return false;
@@ -429,7 +429,7 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
             return false;
         }
 
-        if ((adaptor_.parms().omitEMPTY && payload->cmd == zero) ||
+        if ((adaptor_.parms().omitEMPTY && payload->cmd == beast::zero) ||
             payload->cmd == epochChangeHash_)
         {
             return result.ledger_info.seq == result.parent_ledger_info.seq
@@ -798,7 +798,7 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
 
     if (info.seq == previousLedger_.seq())
     {
-        if (!adaptor_.parms().omitEMPTY || payload->cmd != zero)
+        if (!adaptor_.parms().omitEMPTY || payload->cmd != beast::zero)
         {
             JLOG(j_.warn()) << "proposal is fall behind";
             return;

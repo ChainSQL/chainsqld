@@ -81,6 +81,12 @@ public:
     RCLConsensus&
     operator=(RCLConsensus const&) = delete;
 
+    inline ConsensusPhase
+    phase()
+    {
+        return consensus_->phase_;
+    }
+
     inline ConsensusParms const&
     parms() const
     {
@@ -99,7 +105,8 @@ public:
         NetClock::time_point const& now,
         RCLCxLedger::ID const& prevLgrId,
         RCLCxLedger const& prevLgr,
-        hash_set<NodeID> const& nowUntrusted);
+        hash_set<NodeID> const& nowUntrusted,
+        hash_set<NodeID> const& nowTrusted);
 
     //! @see Consensus::timerEntry
     void
@@ -168,6 +175,9 @@ public:
 
     static ConsensusType
     stringToConsensusType(std::string const& s);
+
+    static std::string
+    conMsgTypeToStr(ConsensusMessageType t);
 };
 
 }  // namespace ripple

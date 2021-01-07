@@ -811,13 +811,13 @@ target_sources (chainsqld PRIVATE
      test sources:
        subdir: consensus
   #]===============================]
-  src/test/consensus/ByzantineFailureSim_test.cpp
-  src/test/consensus/Consensus_test.cpp
-  src/test/consensus/DistributedValidatorsSim_test.cpp
+  #src/test/consensus/ByzantineFailureSim_test.cpp
+  #src/test/consensus/Consensus_test.cpp
+  #src/test/consensus/DistributedValidatorsSim_test.cpp
   src/test/consensus/LedgerTiming_test.cpp
   src/test/consensus/LedgerTrie_test.cpp
   src/test/consensus/NegativeUNL_test.cpp
-  src/test/consensus/ScaleFreeSim_test.cpp
+  #src/test/consensus/ScaleFreeSim_test.cpp
   src/test/consensus/Validations_test.cpp
   #[===============================[
      test sources:
@@ -844,7 +844,7 @@ target_sources (chainsqld PRIVATE
   src/test/csf/Digraph_test.cpp
   src/test/csf/Histogram_test.cpp
   src/test/csf/Scheduler_test.cpp
-  src/test/csf/impl/Sim.cpp
+  #src/test/csf/impl/Sim.cpp
   src/test/csf/impl/ledgers.cpp
   #[===============================[
      test sources:

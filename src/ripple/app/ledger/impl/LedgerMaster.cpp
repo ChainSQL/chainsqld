@@ -217,7 +217,7 @@ LedgerMaster::LedgerMaster(
 void
 LedgerMaster::setLastValidLedger(uint256 const& hash, std::uint32_t seq)
 {
-    ScopedLockType ml(m_mutex);
+    std::lock_guard ml(m_mutex);
     if (seq > mLastValidLedger.second)
         mLastValidLedger = std::make_pair(hash, seq);
 }
@@ -1721,7 +1721,7 @@ LedgerMaster::getCloseTimeBySeq(LedgerIndex ledgerIndex)
 boost::optional<NetClock::time_point>
 LedgerMaster::getCloseTimeByHash(
     LedgerHash const& ledgerHash,
-    std::uint32_t index)
+    LedgerIndex index)
 {
     auto node = app_.getNodeStore().fetch(ledgerHash, index);
     if (node && (node->getData().size() >= 120))

@@ -29,7 +29,6 @@ namespace ripple {
  * min_block_time=500
  * max_block_time=1000
  * max_txs_per_ledger=10000
- * txpool_cap=100000
  * empty_block=0
  * init_time=90
  */

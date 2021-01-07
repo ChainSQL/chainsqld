@@ -18,7 +18,6 @@
 //==============================================================================
 
 
-#include <ripple/basics/make_lock.h>
 #include <ripple/core/ConfigSections.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/LocalTxs.h>
@@ -31,64 +30,73 @@
 
 namespace ripple {
 
-
 HotstuffAdaptor::HotstuffAdaptor(
-    Application& app,
+    Schema& app,
     std::unique_ptr<FeeVote>&& feeVote,
     LedgerMaster& ledgerMaster,
     InboundTransactions& inboundTransactions,
-    ValidatorKeys const & validatorKeys,
+    ValidatorKeys const& validatorKeys,
     beast::Journal journal,
     LocalTxs& localTxs,
     ConsensusParms const& consensusParms)
     : Adaptor(
-        app,
-        std::move(feeVote),
-        ledgerMaster,
-        inboundTransactions,
-        validatorKeys,
-        journal,
-        localTxs)
+          app,
+          std::move(feeVote),
+          ledgerMaster,
+          inboundTransactions,
+          validatorKeys,
+          journal,
+          localTxs)
 {
     if (app_.config().exists(SECTION_HCONSENSUS))
     {
-        parms_.minBLOCK_TIME = app.config().loadConfig(SECTION_HCONSENSUS, "min_block_time", parms_.minBLOCK_TIME);
-        parms_.maxBLOCK_TIME = app.config().loadConfig(SECTION_HCONSENSUS, "max_block_time", parms_.maxBLOCK_TIME);
-        parms_.maxBLOCK_TIME = std::max(parms_.minBLOCK_TIME, parms_.maxBLOCK_TIME);
+        parms_.minBLOCK_TIME = app.config().loadConfig(
+            SECTION_HCONSENSUS, "min_block_time", parms_.minBLOCK_TIME);
+        parms_.maxBLOCK_TIME = app.config().loadConfig(
+            SECTION_HCONSENSUS, "max_block_time", parms_.maxBLOCK_TIME);
+        parms_.maxBLOCK_TIME =
+            std::max(parms_.minBLOCK_TIME, parms_.maxBLOCK_TIME);
 
         parms_.maxTXS_IN_LEDGER = std::min(
-            app.config().loadConfig(SECTION_HCONSENSUS, "max_txs_per_ledger", parms_.maxTXS_IN_LEDGER),
+            app.config().loadConfig(
+                SECTION_HCONSENSUS,
+                "max_txs_per_ledger",
+                parms_.maxTXS_IN_LEDGER),
             consensusParms.txPOOL_CAPACITY);
 
-        parms_.omitEMPTY = app.config().loadConfig(SECTION_HCONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+        parms_.omitEMPTY = app.config().loadConfig(
+            SECTION_HCONSENSUS, "omit_empty_block", parms_.omitEMPTY);
 
         // default: 6s
         // min: 6s
-        parms_.consensusTIMEOUT = std::chrono::seconds{
-            std::max(
-                (int)parms_.consensusTIMEOUT.count(),
-                app.config().loadConfig(SECTION_HCONSENSUS, "time_out", 0)) };
+        parms_.consensusTIMEOUT = std::chrono::seconds{std::max(
+            (int)parms_.consensusTIMEOUT.count(),
+            app.config().loadConfig(SECTION_HCONSENSUS, "time_out", 0))};
 
         // default: 90s
         // min : 2 * consensusTIMEOUT
-        parms_.initTIME = std::chrono::seconds{
-            std::max(
-                parms_.consensusTIMEOUT.count() * 2,
-                app.config().loadConfig(SECTION_HCONSENSUS, "init_time", parms_.initTIME.count())) };
+        parms_.initTIME = std::chrono::seconds{std::max(
+            parms_.consensusTIMEOUT.count() * 2,
+            app.config().loadConfig(
+                SECTION_HCONSENSUS, "init_time", parms_.initTIME.count()))};
     }
 }
 
-inline HotstuffAdaptor::Author HotstuffAdaptor::GetValidProposer(Round round) const
+inline HotstuffAdaptor::Author
+HotstuffAdaptor::GetValidProposer(Round round) const
 {
     return app_.validators().getLeaderPubKey(round);
 }
 
-std::shared_ptr<SHAMap> HotstuffAdaptor::onExtractTransactions(RCLCxLedger const& prevLedger, ConsensusMode mode)
+std::shared_ptr<SHAMap>
+HotstuffAdaptor::onExtractTransactions(
+    RCLCxLedger const& prevLedger,
+    ConsensusMode mode)
 {
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    //notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
+    // notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
 
     // Tell the ledger master not to acquire the ledger we're probably building
     ledgerMaster_.setBuildingLedger(prevLedger.seq() + 1);
@@ -97,26 +105,25 @@ std::shared_ptr<SHAMap> HotstuffAdaptor::onExtractTransactions(RCLCxLedger const
     topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs);
 
     auto initialSet = std::make_shared<SHAMap>(
-        SHAMapType::TRANSACTION, app_.family(), SHAMap::version{ 1 });
+        SHAMapType::TRANSACTION, app_.getNodeFamily());
     initialSet->setUnbacked();
 
     // Build SHAMap containing all transactions in our open ledger
     for (auto const& txID : txs)
     {
-        auto tx = app_.getMasterTransaction().fetch(txID, false);
+        auto ec{rpcSUCCESS};
+        auto tx = app_.getMasterTransaction().fetch(txID, ec);
         if (!tx)
         {
-            JLOG(j_.error()) << "fetch transaction " + to_string(txID) + "failed";
+            JLOG(j_.error())
+                << "fetch transaction " + to_string(txID) + "failed";
             continue;
         }
 
         JLOG(j_.trace()) << "Adding open ledger TX " << txID;
         Serializer s(2048);
         tx->getSTransaction()->add(s);
-        initialSet->addItem(
-            SHAMapItem(tx->getID(), std::move(s)),
-            true,
-            false);
+        initialSet->addItem(SHAMapItem(tx->getID(), std::move(s)), true, false);
     }
 
     // Add pseudo-transactions to the set
@@ -125,8 +132,7 @@ std::shared_ptr<SHAMap> HotstuffAdaptor::onExtractTransactions(RCLCxLedger const
     {
         // previous ledger was flag ledger, add pseudo-transactions
         auto const validations =
-            app_.getValidations().getTrustedForLedger(
-                prevLedger.parentID());
+            app_.getValidations().getTrustedForLedger(prevLedger.parentID());
 
         if (validations.size() >= app_.validators().quorum())
         {
@@ -140,7 +146,8 @@ std::shared_ptr<SHAMap> HotstuffAdaptor::onExtractTransactions(RCLCxLedger const
     return std::move(initialSet->snapShot(false));
 }
 
-void HotstuffAdaptor::broadcast(STProposal const& proposal)
+void
+HotstuffAdaptor::broadcast(STProposal const& proposal)
 {
     Blob p = proposal.getSerialized();
 
@@ -148,13 +155,15 @@ void HotstuffAdaptor::broadcast(STProposal const& proposal)
 
     consensus.set_msg(&p[0], p.size());
     consensus.set_msgtype(ConsensusMessageType::mtPROPOSAL);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
     JLOG(j_.info()) << "broadcast PROPOSAL";
 
     signAndSendMessage(consensus);
 }
 
-void HotstuffAdaptor::broadcast(STVote const& vote)
+void
+HotstuffAdaptor::broadcast(STVote const& vote)
 {
     Blob v = vote.getSerialized();
 
@@ -162,13 +171,15 @@ void HotstuffAdaptor::broadcast(STVote const& vote)
 
     consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVOTE);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
     JLOG(j_.info()) << "broadcast VOTE";
 
     signAndSendMessage(consensus);
 }
 
-void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
+void
+HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
 {
     Blob v = vote.getSerialized();
 
@@ -176,13 +187,16 @@ void HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
 
     consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVOTE);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    JLOG(j_.info()) << "send VOTE to leader, leader index: " << getPubIndex(pubKey);
+    JLOG(j_.info()) << "send VOTE to leader, leader index: "
+                    << getPubIndex(pubKey);
 
     signAndSendMessage(pubKey, consensus);
 }
 
-void HotstuffAdaptor::broadcast(STEpochChange const& epochChange)
+void
+HotstuffAdaptor::broadcast(STEpochChange const& epochChange)
 {
     Blob e = epochChange.getSerialized();
 
@@ -190,25 +204,32 @@ void HotstuffAdaptor::broadcast(STEpochChange const& epochChange)
 
     consensus.set_msg(&e[0], e.size());
     consensus.set_msgtype(ConsensusMessageType::mtEPOCHCHANGE);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
     JLOG(j_.info()) << "broadcast EpochChange";
 
     signAndSendMessage(consensus);
 }
 
-void HotstuffAdaptor::acquireBlock(PublicKey const& pubKey, uint256 const& hash)
+void
+HotstuffAdaptor::acquireBlock(PublicKey const& pubKey, uint256 const& hash)
 {
     protocol::TMConsensus consensus;
 
     consensus.set_msg(hash.data(), hash.bytes);
     consensus.set_msgtype(ConsensusMessageType::mtACQUIREBLOCK);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    JLOG(j_.info()) << "acquiring Executedblock " << hash << " from peer " << getPubIndex(pubKey);
+    JLOG(j_.info()) << "acquiring Executedblock " << hash << " from peer "
+                    << getPubIndex(pubKey);
 
     signAndSendMessage(pubKey, consensus);
 }
 
-void HotstuffAdaptor::sendBLock(std::shared_ptr<PeerImp> peer, hotstuff::ExecutedBlock const& block)
+void
+HotstuffAdaptor::sendBLock(
+    std::shared_ptr<PeerImp> peer,
+    hotstuff::ExecutedBlock const& block)
 {
     protocol::TMConsensus consensus;
 
@@ -216,18 +237,20 @@ void HotstuffAdaptor::sendBLock(std::shared_ptr<PeerImp> peer, hotstuff::Execute
 
     consensus.set_msg(b.data(), b.size());
     consensus.set_msgtype(ConsensusMessageType::mtBLOCKDATA);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    JLOG(j_.info()) << "send ExecutedBlock to peer " << getPubIndex(peer->getValPublic());
+    JLOG(j_.info()) << "send ExecutedBlock to peer "
+                    << getPubIndex(peer->getValPublic());
 
     signMessage(consensus);
 
-    auto const m = std::make_shared<Message>(
-        consensus, protocol::mtCONSENSUS);
+    auto const m = std::make_shared<Message>(consensus, protocol::mtCONSENSUS);
 
     peer->send(m);
 }
 
-bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
+bool
+HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
 {
     auto ledger = ledgerMaster_.getLedgerByHash(lgrId);
     if (!ledger)
@@ -238,7 +261,7 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
     ledgerMaster_.updateConsensusTime();
 
     // next ledger is flag ledger
-    if (((ledger->seq() + 1) % 256) == 0)
+    if (ledger->isVotingLedger())
     {
         validate(ledger);
     }
@@ -247,8 +270,8 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
     {
         {
             // Build new open ledger
-            auto lock = make_lock(app_.getMasterMutex(), std::defer_lock);
-            auto sl = make_lock(ledgerMaster_.peekMutex(), std::defer_lock);
+            std::unique_lock lock{app_.getMasterMutex(), std::defer_lock};
+            std::unique_lock sl{ledgerMaster_.peekMutex(), std::defer_lock};
             std::lock(lock, sl);
 
             auto const lastVal = ledgerMaster_.getValidatedLedger();
@@ -258,7 +281,7 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
             else
                 rules.emplace(app_.config().features);
 
-            CanonicalTXSet retriableTxs{ beast::zero };
+            CanonicalTXSet retriableTxs{beast::zero};
             app_.openLedger().accept(
                 app_,
                 *rules,
@@ -269,13 +292,16 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
                 tapNONE,
                 "consensus",
                 [&](OpenView& view, beast::Journal j) {
-                // Stuff the ledger with transactions from the queue.
-                return app_.getTxQ().accept(app_, view);
-            });
+                    // Stuff the ledger with transactions from the queue.
+                    return app_.getTxQ().accept(app_, view);
+                });
         }
 
         // Tell directly connected peers that we have a new LCL
-        notify(protocol::neACCEPTED_LEDGER, ledger, mode_ != ConsensusMode::wrongLedger);
+        notify(
+            protocol::neACCEPTED_LEDGER,
+            ledger,
+            mode_ != ConsensusMode::wrongLedger);
 
         ledgerMaster_.switchLCL(ledger);
 
@@ -287,22 +313,26 @@ bool HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
     return true;
 }
 
-void HotstuffAdaptor::peerValidation(std::shared_ptr<PeerImp>& peer, STValidation::ref val)
+void
+HotstuffAdaptor::peerValidation(
+    std::shared_ptr<PeerImp>& peer,
+    STValidation::ref val)
 {
     try
     {
-        if (!isCurrent(app_.getValidations().parms(),
-            app_.timeKeeper().closeTime(),
-            val->getSignTime(),
-            val->getSeenTime()))
+        if (!isCurrent(
+                app_.getValidations().parms(),
+                app_.timeKeeper().closeTime(),
+                val->getSignTime(),
+                val->getSeenTime()))
         {
             JLOG(j_.info()) << "Validation: Not current";
             peer->charge(Resource::feeUnwantedData);
             return;
         }
 
-        JLOG(j_.info()) << "recvValidation " << val->getLedgerHash()
-            << " from " << peer->id();
+        JLOG(j_.info()) << "recvValidation " << val->getLedgerHash() << " from "
+                        << peer->id();
 
         app_.getOPs().pubValidation(val);
 
@@ -320,7 +350,8 @@ void HotstuffAdaptor::peerValidation(std::shared_ptr<PeerImp>& peer, STValidatio
 // -------------------------------------------------------------------
 // Private member functions
 
-void HotstuffAdaptor::validate(std::shared_ptr<Ledger const> ledger)
+void
+HotstuffAdaptor::validate(std::shared_ptr<Ledger const> ledger)
 {
     using namespace std::chrono_literals;
     auto validationTime = app_.timeKeeper().closeTime();
@@ -328,30 +359,43 @@ void HotstuffAdaptor::validate(std::shared_ptr<Ledger const> ledger)
         validationTime = lastValidationTime_ + 1s;
     lastValidationTime_ = validationTime;
 
-    STValidation::FeeSettings fees;
-    std::vector<uint256> amendments;
-
-    auto const& feeTrack = app_.getFeeTrack();
-    std::uint32_t fee =
-        std::max(feeTrack.getLocalFee(), feeTrack.getClusterFee());
-
-    if (fee > feeTrack.getLoadBase())
-        fees.loadFee = fee;
-
-    // Suggest fee changes and new features
-    feeVote_->doValidation(ledger, fees);
-    amendments = app_.getAmendmentTable().doValidation(getEnabledAmendments(*ledger));
-
     auto v = std::make_shared<STValidation>(
-        ledger->info().hash,
-        ledger->seq(),
-        ledger->info().txHash,
+        lastValidationTime_,
         valPublic_,
-        validationTime,
         nodeID_,
-        mode_ == ConsensusMode::proposing || mode_ == ConsensusMode::switchedLedger, /* full if proposed */
-        fees,
-        amendments);
+        [&](STValidation& v) {
+            v.setFieldH256(sfLedgerHash, ledger->info().hash);
+            v.setFieldH256(sfConsensusHash, ledger->info().txHash);
+
+            v.setFieldU32(sfLedgerSequence, ledger->seq());
+
+            if (mode_ == ConsensusMode::proposing ||
+                mode_ == ConsensusMode::switchedLedger)
+                v.setFlag(vfFullValidation);
+
+            // Report our load
+            {
+                auto const& ft = app_.getFeeTrack();
+                auto const fee = std::max(ft.getLocalFee(), ft.getClusterFee());
+                if (fee > ft.getLoadBase())
+                    v.setFieldU32(sfLoadFee, fee);
+            }
+
+            // If the next ledger is a flag ledger, suggest fee changes and
+            // new features:
+            // Fees:
+            feeVote_->doValidation(ledger->fees(), v);
+
+            // Amendments
+            // FIXME: pass `v` and have the function insert the array
+            // directly?
+            auto const amendments = app_.getAmendmentTable().doValidation(
+                getEnabledAmendments(*ledger));
+
+            if (!amendments.empty())
+                v.setFieldV256(
+                    sfAmendments, STVector256(sfAmendments, amendments));
+        });
 
     handleNewValidation(v, "local");
 
@@ -361,6 +405,7 @@ void HotstuffAdaptor::validate(std::shared_ptr<Ledger const> ledger)
 
     consensus.set_msg(&validation[0], validation.size());
     consensus.set_msgtype(ConsensusMessageType::mtVALIDATION);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
     consensus.set_signflags(vfFullyCanonicalSig);
 
     signAndSendMessage(consensus);
@@ -368,7 +413,10 @@ void HotstuffAdaptor::validate(std::shared_ptr<Ledger const> ledger)
     app_.getOPs().pubValidation(v);
 }
 
-void HotstuffAdaptor::handleNewValidation(STValidation::ref val, std::string const& source)
+void
+HotstuffAdaptor::handleNewValidation(
+    STValidation::ref val,
+    std::string const& source)
 {
     PublicKey const& signingKey = val->getSignerPublic();
     uint256 const& hash = val->getLedgerHash();
@@ -387,14 +435,15 @@ void HotstuffAdaptor::handleNewValidation(STValidation::ref val, std::string con
     beast::Journal j = validations.adaptor().journal();
 
     auto dmp = [&](beast::Journal::Stream s, std::string const& msg) {
-        s << "Val for " << hash
-            << (val->isTrusted() ? " trusted/" : " UNtrusted/")
-            << (val->isFull() ? "full" : "partial") << " from "
-            << (masterKey ? toBase58(TokenType::NodePublic, *masterKey)
-                : "unknown")
-            << " signing key "
-            << toBase58(TokenType::NodePublic, signingKey) << " " << msg
-            << " src=" << source;
+        std::string id = toBase58(TokenType::NodePublic, signingKey);
+
+        if (masterKey)
+            id += ":" + toBase58(TokenType::NodePublic, *masterKey);
+
+        s << (val->isTrusted() ? "trusted" : "untrusted") << " "
+          << (val->isFull() ? "full" : "partial") << " validation: " << hash
+          << " from " << id << " via " << source << ": " << msg << "\n"
+          << " [" << val->getSerializer().slice() << "]";
     };
 
     if (!val->isFieldPresent(sfLedgerSequence))
@@ -408,8 +457,28 @@ void HotstuffAdaptor::handleNewValidation(STValidation::ref val, std::string con
     if (masterKey)
     {
         ValStatus const outcome = validations.add(calcNodeID(*masterKey), val);
+        auto const seq = val->getFieldU32(sfLedgerSequence);
+
         if (j.debug())
             dmp(j.debug(), to_string(outcome));
+
+        // One might think that we would not wish to relay validations that
+        // fail these checks. Somewhat counterintuitively, we actually want
+        // to do it for validations that we receive but deem suspicious, so
+        // that our peers will also observe them and realize they're bad.
+        if (outcome == ValStatus::conflicting && j.warn())
+        {
+            dmp(j.warn(),
+                "conflicting validations issued for " + to_string(seq) +
+                    " (likely from a Byzantine validator)");
+        }
+
+        if (outcome == ValStatus::multiple && j.warn())
+        {
+            dmp(j.warn(),
+                "multiple validations issued for " + to_string(seq) +
+                    " (multiple validators operating with the same key?)");
+        }
 
         if (outcome == ValStatus::badSeq && j.warn())
         {
@@ -421,10 +490,9 @@ void HotstuffAdaptor::handleNewValidation(STValidation::ref val, std::string con
     else
     {
         JLOG(j.debug()) << "Val for " << hash << " from "
-            << toBase58(TokenType::NodePublic, signingKey)
-            << " not added UNlisted";
+                        << toBase58(TokenType::NodePublic, signingKey)
+                        << " not added UNlisted";
     }
 }
 
-
-}
+}  // namespace ripple

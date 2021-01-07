@@ -21,7 +21,7 @@
 #define RIPPLE_SERIALIZATION_ZXCAMOUNT_H
 
 #include <peersafe/serialization/Serialization.h>
-#include <ripple/protocol/ZXCAmount.h>
+#include <ripple/basics/ZXCAmount.h>
 
 namespace ripple {
 

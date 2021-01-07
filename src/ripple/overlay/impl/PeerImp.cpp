@@ -17,6 +17,7 @@
 */
 //==============================================================================
 
+#include <ripple/app/consensus/RCLConsensus.h>
 #include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/InboundTransactions.h>
@@ -39,13 +40,6 @@
 #include <ripple/overlay/impl/Tuning.h>
 #include <ripple/overlay/predicates.h>
 #include <ripple/protocol/digest.h>
-#include <peersafe/app/table/TableSync.h>
-#include <peersafe/app/misc/TxPool.h>
-#include <peersafe/schema/Schema.h>
-#include <peersafe/schema/PeerManager.h>
-#include <peersafe/schema/PeerManagerImp.h>
-#include <peersafe/schema/SchemaManager.h>
-#include <peersafe/consensus/Adaptor.h>
 #include <boost/algorithm/clamp.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -53,6 +47,13 @@
 #include <algorithm>
 #include <memory>
 #include <numeric>
+#include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/table/TableSync.h>
+#include <peersafe/consensus/Adaptor.h>
+#include <peersafe/schema/PeerManager.h>
+#include <peersafe/schema/PeerManagerImp.h>
+#include <peersafe/schema/Schema.h>
+#include <peersafe/schema/SchemaManager.h>
 #include <sstream>
 
 using namespace std::chrono_literals;
@@ -90,7 +91,7 @@ PeerImp::PeerImp(
     , sanity_(Sanity::unknown)
     , insaneTime_(clock_type::now())
     , publicKey_(publicKey)
-	, publicValidate_(publicValidate)
+    , publicValidate_(publicValidate)
     , creationTime_(clock_type::now())
     , usage_(consumer)
     , fee_(Resource::feeLightPeer)
@@ -101,10 +102,6 @@ PeerImp::PeerImp(
           headers_["X-Offer-Compression"] == "lz4" ? Compressed::On
                                                    : Compressed::Off)
 {
-    if (hello_.has_validatepublic())
-    {
-        publicValidate_ = parseBase58<PublicKey>(TokenType::NodePublic, hello_.validatepublic());
-    }
 }
 
 PeerImp::~PeerImp()
@@ -135,9 +132,9 @@ PeerImp::run()
     if (!strand_.running_in_this_thread())
         return post(strand_, std::bind(&PeerImp::run, shared_from_this()));
 
-	//Dispatch to schema
-	dispatch();
-    
+    // Dispatch to schema
+    dispatch();
+
     // We need to decipher
     auto parseLedgerHash =
         [](std::string const& value) -> boost::optional<uint256> {
@@ -196,7 +193,8 @@ PeerImp::run()
         doProtocolStart();
     }
 
-    //Comment by ljl:this msg may interrupt the async_write_some  call in onWriteResponse.
+    // Comment by ljl:this msg may interrupt the async_write_some  call in
+    // onWriteResponse.
     // // Request shard info from peer
     // protocol::TMGetPeerShardInfo tmGPS;
     // tmGPS.set_hops(0);
@@ -205,42 +203,44 @@ PeerImp::run()
     setTimer();
 }
 
-void 
+void
 PeerImp::dispatch()
 {
-	if (publicValidate_)
-	{
-		for (auto item : app_.getSchemaManager())
-		{
-			auto vecKeys = item.second->validators().validators();
-			if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_) != vecKeys.end() ||
-				item.first == beast::zero) // add to main chain with no validators check.
-			{
-				{
-					std::lock_guard sl(schemaInfoMutex_);
-					schemaInfo_.emplace(item.first, SchemaInfo());
-				}
-				item.second->peerManager().add(shared_from_this());
-			}
-		}
-	}
-	else
-	{
-		//for (auto id : schemaIds_)
-		//{
-		//	{
-		//		std::lock_guard sl(schemaInfoMutex_);
-		//		schemaInfo_.emplace(std::make_pair(id, SchemaInfo()));
-		//	}
-		//	app_.peerManager(id).add(shared_from_this());
-		//}
+    if (publicValidate_)
+    {
+        for (auto item : app_.getSchemaManager())
+        {
+            auto vecKeys = item.second->validators().validators();
+            if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_) !=
+                    vecKeys.end() ||
+                item.first ==
+                    beast::zero)  // add to main chain with no validators check.
+            {
+                {
+                    std::lock_guard sl(schemaInfoMutex_);
+                    schemaInfo_.emplace(item.first, SchemaInfo());
+                }
+                item.second->peerManager().add(shared_from_this());
+            }
+        }
+    }
+    else
+    {
+        // for (auto id : schemaIds_)
+        //{
+        //	{
+        //		std::lock_guard sl(schemaInfoMutex_);
+        //		schemaInfo_.emplace(std::make_pair(id, SchemaInfo()));
+        //	}
+        //	app_.peerManager(id).add(shared_from_this());
+        //}
 
-		//add non-validating node to main chain
-		std::lock_guard sl(schemaInfoMutex_);
-		schemaInfo_.emplace(std::make_pair(beast::zero, SchemaInfo()));
-	
-		app_.peerManager(beast::zero).add(shared_from_this());
-	}
+        // add non-validating node to main chain
+        std::lock_guard sl(schemaInfoMutex_);
+        schemaInfo_.emplace(std::make_pair(beast::zero, SchemaInfo()));
+
+        app_.peerManager(beast::zero).add(shared_from_this());
+    }
 }
 
 void
@@ -361,18 +361,17 @@ PeerImp::getVersion() const
 Json::Value
 PeerImp::json(uint256 const& schemaId)
 {
-    Json::Value ret (Json::objectValue);
-	SchemaInfo* pInfo = nullptr;
-	{
-		std::lock_guard sl(recentLock_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return ret;
-		pInfo = &schemaInfo_.at(schemaId);
-	}
+    Json::Value ret(Json::objectValue);
+    SchemaInfo* pInfo = nullptr;
+    {
+        std::lock_guard sl(recentLock_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return ret;
+        pInfo = &schemaInfo_.at(schemaId);
+    }
 
-    ret[jss::public_key]   = toBase58 (
-        TokenType::NodePublic, publicKey_);
-    ret[jss::address]      = remote_address_.to_string();
+    ret[jss::public_key] = toBase58(TokenType::NodePublic, publicKey_);
+    ret[jss::address] = remote_address_.to_string();
 
     if (m_inbound)
         ret[jss::inbound] = true;
@@ -407,7 +406,7 @@ PeerImp::json(uint256 const& schemaId)
         std::chrono::duration_cast<std::chrono::seconds>(uptime()).count());
 
     std::uint32_t minSeq, maxSeq;
-    ledgerRange(schemaId,minSeq, maxSeq);
+    ledgerRange(schemaId, minSeq, maxSeq);
 
     if ((minSeq != 0) || (maxSeq != 0))
         ret[jss::complete_ledgers] =
@@ -432,11 +431,11 @@ PeerImp::json(uint256 const& schemaId)
     protocol::TMStatusChange last_status;
     {
         std::lock_guard sl(recentLock_);
-		if (pInfo)
-		{
-			closedLedgerHash = pInfo->closedLedgerHash_;
-			last_status = last_status_;
-		}
+        if (pInfo)
+        {
+            closedLedgerHash = pInfo->closedLedgerHash_;
+            last_status = last_status_;
+        }
     }
 
     if (closedLedgerHash != beast::zero)
@@ -499,57 +498,63 @@ PeerImp::supportsFeature(ProtocolFeature f) const
 //------------------------------------------------------------------------------
 
 bool
-PeerImp::hasLedger (uint256 const& schemaId, uint256 const& hash, std::uint32_t seq) const
+PeerImp::hasLedger(
+    uint256 const& schemaId,
+    uint256 const& hash,
+    std::uint32_t seq) const
 {
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return false;
-	}
-	
     {
-		std::lock_guard sl(recentLock_);
-		auto& info = schemaInfo_.at(schemaId);
-        if ((seq != 0) && (seq >= info.minLedger_) && (seq <= info.maxLedger_) &&
-                (sanity_.load() == Sanity::sane))
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return false;
+    }
+
+    {
+        std::lock_guard sl(recentLock_);
+        auto& info = schemaInfo_.at(schemaId);
+        if ((seq != 0) && (seq >= info.minLedger_) &&
+            (seq <= info.maxLedger_) && (sanity_.load() == Sanity::sane))
             return true;
-        if (std::find(info.recentLedgers_.begin(),
-			info.recentLedgers_.end(), hash) != info.recentLedgers_.end())
+        if (std::find(
+                info.recentLedgers_.begin(), info.recentLedgers_.end(), hash) !=
+            info.recentLedgers_.end())
             return true;
     }
 
     return seq >= app_.getNodeStore(schemaId).earliestLedgerSeq() &&
-        hasShard(schemaId,NodeStore::seqToShardIndex(seq));
+        hasShard(schemaId, NodeStore::seqToShardIndex(seq));
 }
 
 void
-PeerImp::ledgerRange (uint256 const& schemaId, std::uint32_t& minSeq,
+PeerImp::ledgerRange(
+    uint256 const& schemaId,
+    std::uint32_t& minSeq,
     std::uint32_t& maxSeq) const
 {
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return;
-	}
-    
-	std::lock_guard sl(recentLock_);
-	auto& info = schemaInfo_.at(schemaId);
-	minSeq = info.minLedger_;
-	maxSeq = info.maxLedger_;
+    {
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return;
+    }
+
+    std::lock_guard sl(recentLock_);
+    auto& info = schemaInfo_.at(schemaId);
+    minSeq = info.minLedger_;
+    maxSeq = info.maxLedger_;
 }
 
 bool
-PeerImp::hasShard (uint256 const& schemaId, std::uint32_t shardIndex) const
+PeerImp::hasShard(uint256 const& schemaId, std::uint32_t shardIndex) const
 {
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return false;
-	}
+    {
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return false;
+    }
 
-	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard l { info.shardInfoMutex_};
-    auto const it { info.shardInfo_.find(publicKey_)};
+    auto& info = schemaInfo_.at(schemaId);
+    std::lock_guard l{info.shardInfoMutex_};
+    auto const it{info.shardInfo_.find(publicKey_)};
     if (it != info.shardInfo_.end())
         return boost::icl::contains(it->second.shardIndexes, shardIndex);
     return false;
@@ -573,32 +578,34 @@ PeerImp::hasTxSet(uint256 const& schemaId, uint256 const& hash) const
 void
 PeerImp::cycleStatus(uint256 const& schemaId)
 {
-	// Operations on closedLedgerHash_ and previousLedgerHash_ must be
-	// guarded by recentLock_.
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return;
-	}
+    // Operations on closedLedgerHash_ and previousLedgerHash_ must be
+    // guarded by recentLock_.
+    {
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return;
+    }
 
-	auto& info = schemaInfo_.at(schemaId);
-	std::lock_guard sl(recentLock_);
-	info.previousLedgerHash_ = info.closedLedgerHash_;
-	info.closedLedgerHash_.zero();
+    auto& info = schemaInfo_.at(schemaId);
+    std::lock_guard sl(recentLock_);
+    info.previousLedgerHash_ = info.closedLedgerHash_;
+    info.closedLedgerHash_.zero();
 }
 
 bool
-PeerImp::hasRange (uint256 const& schemaId,std::uint32_t uMin, std::uint32_t uMax)
+PeerImp::hasRange(
+    uint256 const& schemaId,
+    std::uint32_t uMin,
+    std::uint32_t uMax)
 {
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return false;
-	}
+    {
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return false;
+    }
 
-	auto& info = schemaInfo_.at(schemaId);
-    return (sanity_ != Sanity::insane) &&
-        (uMin >= info.minLedger_) &&
+    auto& info = schemaInfo_.at(schemaId);
+    return (sanity_ != Sanity::insane) && (uMin >= info.minLedger_) &&
         (uMax <= info.maxLedger_);
 }
 
@@ -652,10 +659,10 @@ PeerImp::fail(std::string const& name, error_code ec)
     assert(strand_.running_in_this_thread());
     if (socket_.is_open())
     {
-        JLOG(journal_.warn()) << name << " from " <<
-            toBase58(TokenType::NodePublic, publicKey_) <<
-            " at " << remote_address_.to_string() <<
-            ":value = " << ec.value() << ", msg = " << ec.message();
+        JLOG(journal_.warn())
+            << name << " from " << toBase58(TokenType::NodePublic, publicKey_)
+            << " at " << remote_address_.to_string()
+            << ":value = " << ec.value() << ", msg = " << ec.message();
     }
     close();
 }
@@ -663,14 +670,14 @@ PeerImp::fail(std::string const& name, error_code ec)
 boost::optional<RangeSet<std::uint32_t>>
 PeerImp::getShardIndexes(uint256 const& schemaId) const
 {
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return boost::none;
-	}
-	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard l {info.shardInfoMutex_};
-    auto it{ info.shardInfo_.find(publicKey_)};
+    {
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return boost::none;
+    }
+    auto& info = schemaInfo_.at(schemaId);
+    std::lock_guard l{info.shardInfoMutex_};
+    auto it{info.shardInfo_.find(publicKey_)};
     if (it != info.shardInfo_.end())
         return it->second.shardIndexes;
     return boost::none;
@@ -679,27 +686,28 @@ PeerImp::getShardIndexes(uint256 const& schemaId) const
 boost::optional<hash_map<PublicKey, PeerImp::ShardInfo>>
 PeerImp::getPeerShardInfo(uint256 const& schemaId) const
 {
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-			return boost::none;
-	}
-	auto& info = schemaInfo_.at(schemaId);
-    std::lock_guard l { info.shardInfoMutex_};
+    {
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+            return boost::none;
+    }
+    auto& info = schemaInfo_.at(schemaId);
+    std::lock_guard l{info.shardInfoMutex_};
     if (!info.shardInfo_.empty())
         return info.shardInfo_;
     return boost::none;
 }
 
-void PeerImp::removeSchemaInfo(uint256 const& schemaId)
+void
+PeerImp::removeSchemaInfo(uint256 const& schemaId)
 {
-	std::lock_guard sl(schemaInfoMutex_);
-	if (schemaInfo_.find(schemaId) != schemaInfo_.end())
-	{
-		schemaInfo_.erase(schemaId);
-		if (schemaInfo_.empty())
-			gracefulClose();
-	}
+    std::lock_guard sl(schemaInfoMutex_);
+    if (schemaInfo_.find(schemaId) != schemaInfo_.end())
+    {
+        schemaInfo_.erase(schemaId);
+        if (schemaInfo_.empty())
+            gracefulClose();
+    }
 }
 
 std::tuple<bool, uint256, PeerImp::SchemaInfo*>
@@ -995,50 +1003,53 @@ PeerImp::doProtocolStart()
 {
     onReadMessage(error_code(), 0);
 
-	std::lock_guard sl(schemaInfoMutex_);
-	for (auto it = schemaInfo_.begin(); it != schemaInfo_.end(); it++)
-	{
+    std::lock_guard sl(schemaInfoMutex_);
+    for (auto it = schemaInfo_.begin(); it != schemaInfo_.end(); it++)
+    {
         auto schemaid = it->first;
         auto& app = app_.getSchema(schemaid);
         // Send all the validator lists that have been loaded
         if (supportsFeature(ProtocolFeature::ValidatorListPropagation))
         {
-            app_.validators().for_each_available([&](std::string const& manifest,
-                                                    std::string const& blob,
-                                                    std::string const& signature,
-                                                    std::uint32_t version,
-                                                    PublicKey const& pubKey,
-                                                    std::size_t sequence,
-                                                    uint256 const& hash) {
-                protocol::TMValidatorList vl;
+            app_.validators().for_each_available(
+                [&](std::string const& manifest,
+                    std::string const& blob,
+                    std::string const& signature,
+                    std::uint32_t version,
+                    PublicKey const& pubKey,
+                    std::size_t sequence,
+                    uint256 const& hash) {
+                    protocol::TMValidatorList vl;
 
-                vl.set_manifest(manifest);
-                vl.set_blob(blob);
-                vl.set_signature(signature);
-                vl.set_version(version);
-                vl.set_schemaid(schemaid.begin(),schemaid.size());
+                    vl.set_manifest(manifest);
+                    vl.set_blob(blob);
+                    vl.set_signature(signature);
+                    vl.set_version(version);
+                    vl.set_schemaid(schemaid.begin(), schemaid.size());
 
-                JLOG(p_journal_.debug())
-                    << "Sending validator list for " << strHex(pubKey)
-                    << " with sequence " << sequence << " to "
-                    << remote_address_.to_string() << " (" << id_ << ")";
-                auto m = std::make_shared<Message>(vl, protocol::mtVALIDATORLIST);
-                send(m);
-                // Don't send it next time.
-                app_.getHashRouter().addSuppressionPeer(hash, id_);
-                setPublisherListSequence(pubKey, sequence);
-            });
+                    JLOG(p_journal_.debug())
+                        << "Sending validator list for " << strHex(pubKey)
+                        << " with sequence " << sequence << " to "
+                        << remote_address_.to_string() << " (" << id_ << ")";
+                    auto m = std::make_shared<Message>(
+                        vl, protocol::mtVALIDATORLIST);
+                    send(m);
+                    // Don't send it next time.
+                    app_.getHashRouter().addSuppressionPeer(hash, id_);
+                    setPublisherListSequence(pubKey, sequence);
+                });
         }
 
         protocol::TMManifests tm;
 
         app_.validatorManifests().for_each_manifest(
             [&tm](std::size_t s) { tm.mutable_list()->Reserve(s); },
-            [&schemaid,&tm, &hr = app_.getHashRouter()](Manifest const& manifest) {
+            [&schemaid, &tm, &hr = app_.getHashRouter()](
+                Manifest const& manifest) {
                 auto const& s = manifest.serialized;
                 auto& tm_e = *tm.add_list();
                 tm_e.set_stobject(s.data(), s.size());
-                tm.set_schemaid(schemaid.begin(),schemaid.size());
+                tm.set_schemaid(schemaid.begin(), schemaid.size());
                 hr.addSuppression(manifest.hash());
             });
 
@@ -1192,7 +1203,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMManifests> const& m)
     // VFALCO What's the right job type?
     auto that = shared_from_this();
     app_.getJobQueue().addJob(
-        jtVALIDATION_ut, "receiveManifests", [this, that, m](Job&) {
+        jtCONSENSUS_ut, "receiveManifests", [this, that, m](Job&) {
             auto tup = getSchemaInfo("TMManifests:", m->schemaid());
             if (!get<0>(tup))
                 return;
@@ -1342,11 +1353,11 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMGetPeerShardInfo> const& m)
     if (m->peerchain_size() > csHopLimit)
         return badData("Invalid peer chain");
 
-	auto tup = getSchemaInfo("TMPeerShardInfo:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
-	m->set_schemaid(schemaId.begin(), uint256::size());
+    auto tup = getSchemaInfo("TMPeerShardInfo:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
+    m->set_schemaid(schemaId.begin(), uint256::size());
 
     // Reply with shard info we may have
     if (auto shardStore = app_.getShardStore(schemaId))
@@ -1413,10 +1424,10 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMPeerShardInfo> const& m)
         return badData("Invalid public key");
 
     auto tup = getSchemaInfo("TMPeerShardInfo:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
-	auto& info = *get<2>(tup);
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
+    auto& info = *get<2>(tup);
 
     // Check if the message should be forwarded to another peer
     if (m->peerchain_size() > 0)
@@ -1428,7 +1439,8 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMPeerShardInfo> const& m)
             return badData("Invalid pubKey");
         PublicKey peerPubKey(s);
 
-        if (auto peer = app_.peerManager(schemaId).findPeerByPublicKey(peerPubKey))
+        if (auto peer =
+                app_.peerManager(schemaId).findPeerByPublicKey(peerPubKey))
         {
             if (!m->has_nodepubkey())
                 m->set_nodepubkey(publicKey_.data(), publicKey_.size());
@@ -1518,26 +1530,26 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMPeerShardInfo> const& m)
     else
         publicKey = publicKey_;
 
-	{
-		std::lock_guard l{ info.shardInfoMutex_ };
-		auto it{ info.shardInfo_.find(publicKey) };
-		if (it != info.shardInfo_.end())
-		{
-			// Update the IP address for the node
-			it->second.endpoint = std::move(endpoint);
+    {
+        std::lock_guard l{info.shardInfoMutex_};
+        auto it{info.shardInfo_.find(publicKey)};
+        if (it != info.shardInfo_.end())
+        {
+            // Update the IP address for the node
+            it->second.endpoint = std::move(endpoint);
 
-			// Join the shard index range set
-			it->second.shardIndexes += shardIndexes;
-		}
-		else
-		{
-			// Add a new node
-			ShardInfo shardInfo;
-			shardInfo.endpoint = std::move(endpoint);
-			shardInfo.shardIndexes = std::move(shardIndexes);
-			info.shardInfo_.emplace(publicKey, std::move(shardInfo));
-		}
-	}
+            // Join the shard index range set
+            it->second.shardIndexes += shardIndexes;
+        }
+        else
+        {
+            // Add a new node
+            ShardInfo shardInfo;
+            shardInfo.endpoint = std::move(endpoint);
+            shardInfo.shardIndexes = std::move(shardIndexes);
+            info.shardInfo_.emplace(publicKey, std::move(shardInfo));
+        }
+    }
     JLOG(p_journal_.trace())
         << "Consumed TMPeerShardInfo originating from public key "
         << toBase58(TokenType::NodePublic, publicKey) << " shard indexes "
@@ -1640,12 +1652,12 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
     if (sanity_.load() == Sanity::insane)
         return;
 
-	auto tup = getSchemaInfo("TMTransaction:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
+    auto tup = getSchemaInfo("TMTransaction:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
 
-    if (app_.getOPs(schemaId).isNeedNetworkLedger ())
+    if (app_.getOPs(schemaId).isNeedNetworkLedger())
     {
         // If we've never been in sync, there's nothing we can do
         // with a transaction
@@ -1659,16 +1671,16 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
     try
     {
         auto stx = std::make_shared<STTx const>(sit);
-        uint256 txID = stx->getTransactionID ();
-	if (app_.getTxPool(schemaId).txExists(txID))
-	{
-	    return;
-	}
+        uint256 txID = stx->getTransactionID();
+        if (app_.getTxPool(schemaId).txExists(txID))
+        {
+            return;
+        }
         int flags;
         constexpr std::chrono::seconds tx_interval = 10s;
 
-        if (! app_.getHashRouter (schemaId).shouldProcess (txID, id_, flags,
-            tx_interval))
+        if (!app_.getHashRouter(schemaId).shouldProcess(
+                txID, id_, flags, tx_interval))
         {
             // we have seen this transaction recently
             if (flags & SF_BAD)
@@ -1718,10 +1730,13 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
                 jtTRANSACTION,
                 "recvTransaction->checkTransaction",
                 [weak = std::weak_ptr<PeerImp>(shared_from_this()),
-                flags, checkSignature, stx,schemaId] (Job&) {
+                 flags,
+                 checkSignature,
+                 stx,
+                 schemaId](Job&) {
                     if (auto peer = weak.lock())
-                        peer->checkTransaction(schemaId,flags,
-                            checkSignature, stx);
+                        peer->checkTransaction(
+                            schemaId, flags, checkSignature, stx);
                 });
         }
     }
@@ -1754,18 +1769,19 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMLedgerData> const& m)
         return;
     }
 
-	if (packet.schemaid().length() != uint256::size())
-	{
-		JLOG(p_journal_.warn()) << "Invalid schemaId";
-		return;
-	}
+    if (packet.schemaid().length() != uint256::size())
+    {
+        JLOG(p_journal_.warn()) << "Invalid schemaId";
+        return;
+    }
 
-	uint256 schemaId;
-	memcpy(schemaId.begin(), m->schemaid().data(), 32);
+    uint256 schemaId;
+    memcpy(schemaId.begin(), m->schemaid().data(), 32);
 
     if (m->has_requestcookie())
     {
-        std::shared_ptr<Peer> target = app_.peerManager(schemaId).findPeerByShortID (m->requestcookie ());
+        std::shared_ptr<Peer> target =
+            app_.peerManager(schemaId).findPeerByShortID(m->requestcookie());
         if (target)
         {
             m->clear_requestcookie();
@@ -1794,14 +1810,16 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMLedgerData> const& m)
         // got data for a candidate transaction set
         std::weak_ptr<PeerImp> weak = shared_from_this();
         app_.getJobQueue().addJob(
-            jtTXN_DATA, "recvPeerData", [weak, hash, m,schemaId](Job&) {
+            jtTXN_DATA, "recvPeerData", [weak, hash, m, schemaId](Job&) {
                 if (auto peer = weak.lock())
-                    peer->app_.getInboundTransactions(schemaId).gotData(hash, peer, m);
+                    peer->app_.getInboundTransactions(schemaId).gotData(
+                        hash, peer, m);
             });
         return;
     }
 
-    if (!app_.getInboundLedgers(schemaId).gotLedgerData(hash, shared_from_this(), m))
+    if (!app_.getInboundLedgers(schemaId).gotLedgerData(
+            hash, shared_from_this(), m))
     {
         JLOG(p_journal_.trace()) << "Got data for unwanted ledger";
         fee_ = Resource::feeUnwantedData;
@@ -1809,47 +1827,44 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMLedgerData> const& m)
 }
 
 void
-PeerImp::onMessage(std::shared_ptr <protocol::TMGetTable> const& m)
+PeerImp::onMessage(std::shared_ptr<protocol::TMGetTable> const& m)
 {
     fee_ = Resource::feeMediumBurdenPeer;
     std::weak_ptr<PeerImp> weak = shared_from_this();
 
-	auto tup = getSchemaInfo("TMGetTable:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
-
-    auto const pap = &app_.getSchema(schemaId); 
-    
-    app_.getJobQueue().addJob(
-        jtTABLE_REQ, "tableRequest",
-        [pap, weak, m](Job&) {
-        pap->getTableSync().SeekTableTxLedger(m, weak);
-    });
-}
-
-void
-PeerImp::onMessage(std::shared_ptr <protocol::TMTableData> const& m)
-{
-    fee_ = Resource::feeMediumBurdenPeer;   
-    std::weak_ptr<PeerImp> weak = shared_from_this();
-
-	auto tup = getSchemaInfo("TMTableData:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
+    auto tup = getSchemaInfo("TMGetTable:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
 
     auto const pap = &app_.getSchema(schemaId);
 
     app_.getJobQueue().addJob(
-        jtTABLE_REQ, "tableData",
-        [pap, weak,m](Job&) {
+        jtTABLE_REQ, "tableRequest", [pap, weak, m](Job&) {
+            pap->getTableSync().SeekTableTxLedger(m, weak);
+        });
+}
+
+void
+PeerImp::onMessage(std::shared_ptr<protocol::TMTableData> const& m)
+{
+    fee_ = Resource::feeMediumBurdenPeer;
+    std::weak_ptr<PeerImp> weak = shared_from_this();
+
+    auto tup = getSchemaInfo("TMTableData:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
+
+    auto const pap = &app_.getSchema(schemaId);
+
+    app_.getJobQueue().addJob(jtTABLE_REQ, "tableData", [pap, weak, m](Job&) {
         pap->getTableSync().GotSyncReply(m, weak);
     });
 }
 
 void
-PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
+PeerImp::onMessage(std::shared_ptr<protocol::TMStatusChange> const& m)
 {
     JLOG(p_journal_.trace()) << "Status: Change";
 
@@ -1863,31 +1878,31 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
         else
         {
             // preserve old status
-            protocol::NodeStatus status = last_status_.newstatus ();
+            protocol::NodeStatus status = last_status_.newstatus();
             last_status_ = *m;
-            m->set_newstatus (status);
+            m->set_newstatus(status);
         }
     }
 
-	auto tup = getSchemaInfo("TMStatusChange:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
-	auto& info = *get<2>(tup);
+    auto tup = getSchemaInfo("TMStatusChange:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
+    auto& info = *get<2>(tup);
 
-    if (m->newevent () == protocol::neLOST_SYNC)
+    if (m->newevent() == protocol::neLOST_SYNC)
     {
-        bool outOfSync {false};
+        bool outOfSync{false};
         {
             // Operations on closedLedgerHash_ and previousLedgerHash_ must be
             // guarded by recentLock_.
             std::lock_guard sl(recentLock_);
-            if (!info.closedLedgerHash_.isZero ())
+            if (!info.closedLedgerHash_.isZero())
             {
                 outOfSync = true;
-				info.closedLedgerHash_.zero ();
+                info.closedLedgerHash_.zero();
             }
-			info.previousLedgerHash_.zero ();
+            info.previousLedgerHash_.zero();
         }
         if (outOfSync)
         {
@@ -1898,8 +1913,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
 
     {
         uint256 closedLedgerHash{};
-        bool const peerChangedLedgers{
-            m->has_ledgerhash() && stringIsUint256Sized(m->ledgerhash())};
+        bool const peerChangedLedgers{m->has_ledgerhash() &&
+                                      stringIsUint256Sized(m->ledgerhash())};
 
         {
             // Operations on closedLedgerHash_ and previousLedgerHash_ must be
@@ -1907,25 +1922,29 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
             std::lock_guard sl(recentLock_);
             if (peerChangedLedgers)
             {
-				memcpy(info.closedLedgerHash_.begin(),
-					m->ledgerhash().data(), 256 / 8);
-                addLedger (info,info.closedLedgerHash_, sl);
+                memcpy(
+                    info.closedLedgerHash_.begin(),
+                    m->ledgerhash().data(),
+                    256 / 8);
+                addLedger(info, info.closedLedgerHash_, sl);
             }
             else
             {
-				info.closedLedgerHash_.zero();
+                info.closedLedgerHash_.zero();
             }
 
             if (m->has_ledgerhashprevious() &&
-                stringIsUint256Sized (m->ledgerhashprevious()))
+                stringIsUint256Sized(m->ledgerhashprevious()))
             {
-				memcpy(info.previousLedgerHash_.begin(),
-					m->ledgerhashprevious().data(), 256 / 8);
-                addLedger (info,info.previousLedgerHash_, sl);
+                memcpy(
+                    info.previousLedgerHash_.begin(),
+                    m->ledgerhashprevious().data(),
+                    256 / 8);
+                addLedger(info, info.previousLedgerHash_, sl);
             }
             else
             {
-				info.previousLedgerHash_.zero ();
+                info.previousLedgerHash_.zero();
             }
         }
         if (peerChangedLedgers)
@@ -1940,13 +1959,14 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
 
     if (m->has_firstseq() && m->has_lastseq())
     {
-        std::lock_guard sl (recentLock_);
+        std::lock_guard sl(recentLock_);
 
-		info.minLedger_ = m->firstseq ();
-		info.maxLedger_ = m->lastseq ();
+        info.minLedger_ = m->firstseq();
+        info.maxLedger_ = m->lastseq();
 
-        if ((info.maxLedger_ < info.minLedger_) || (info.minLedger_ == 0) || (info.maxLedger_ == 0))
-			info.minLedger_ = info.maxLedger_ = 0;
+        if ((info.maxLedger_ < info.minLedger_) || (info.minLedger_ == 0) ||
+            (info.maxLedger_ == 0))
+            info.minLedger_ = info.maxLedger_ = 0;
     }
 
     if (m->has_ledgerseq() &&
@@ -2031,17 +2051,17 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
 }
 
 void
-PeerImp::checkSanity (uint256 const& schemaId,std::uint32_t validationSeq)
+PeerImp::checkSanity(uint256 const& schemaId, std::uint32_t validationSeq)
 {
-	{
-		std::lock_guard sl(schemaInfoMutex_);
-		if (schemaInfo_.find(schemaId) == schemaInfo_.end())
-		{
-			return;
-		}
-	}
+    {
+        std::lock_guard sl(schemaInfoMutex_);
+        if (schemaInfo_.find(schemaId) == schemaInfo_.end())
+        {
+            return;
+        }
+    }
 
-	auto& info = schemaInfo_.at(schemaId);
+    auto& info = schemaInfo_.at(schemaId);
 
     std::uint32_t serverSeq;
     {
@@ -2137,14 +2157,15 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMHaveTransactionSet> const& m)
     {
         std::lock_guard sl(recentLock_);
 
-        if (std::find(info.recentTxSets_.begin(), info.recentTxSets_.end(), hash) !=
-			info.recentTxSets_.end())
+        if (std::find(
+                info.recentTxSets_.begin(), info.recentTxSets_.end(), hash) !=
+            info.recentTxSets_.end())
         {
             fee_ = Resource::feeUnwantedData;
             return;
         }
 
-		info.recentTxSets_.push_back(hash);
+        info.recentTxSets_.push_back(hash);
     }
 }
 
@@ -2188,15 +2209,16 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
             return;
         uint256 schemaId = get<1>(tup);
 
-        auto const applyResult = app_.validators(schemaId).applyListAndBroadcast(
-            manifest,
-            blob,
-            signature,
-            version,
-            remote_address_.to_string(),
-            hash,
-            app_.peerManager(schemaId),
-            app_.getHashRouter(schemaId));
+        auto const applyResult =
+            app_.validators(schemaId).applyListAndBroadcast(
+                manifest,
+                blob,
+                signature,
+                version,
+                remote_address_.to_string(),
+                hash,
+                app_.peerManager(schemaId),
+                app_.getHashRouter(schemaId));
         auto const disp = applyResult.disposition;
 
         JLOG(p_journal_.debug())
@@ -2288,16 +2310,16 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
 }
 
 void
-PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
+PeerImp::onMessage(std::shared_ptr<protocol::TMGetObjectByHash> const& m)
 {
     protocol::TMGetObjectByHash& packet = *m;
 
-	auto tup = getSchemaInfo("TMValidation:", m->schemaid());
-	if (!get<0>(tup))
-		return;
-	uint256 schemaId = get<1>(tup);
+    auto tup = getSchemaInfo("TMValidation:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
 
-    if (packet.query ())
+    if (packet.query())
     {
         // this is a query
         if (send_queue_.size() >= Tuning::dropSendQueue)
@@ -2316,8 +2338,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 
         protocol::TMGetObjectByHash reply;
 
-        reply.set_query (false);
-		reply.set_schemaid(schemaId.begin(), uint256::size());
+        reply.set_query(false);
+        reply.set_schemaid(schemaId.begin(), uint256::size());
 
         if (packet.has_seq())
             reply.set_seq(packet.seq());
@@ -2398,7 +2420,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
                                 << "GetObj: Full fetch pack for " << pLSeq;
                         }
                         pLSeq = obj.ledgerseq();
-                        pLDo = !app_.getLedgerMaster(schemaId).haveLedger (pLSeq);
+                        pLDo =
+                            !app_.getLedgerMaster(schemaId).haveLedger(pLSeq);
 
                         if (!pLDo)
                         {
@@ -2435,7 +2458,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
 {
-    if (m->has_hops() && !slot_->cluster())
+    if (m->has_hops())
         m->set_hops(m->hops() + 1);
 
     PublicKey const publicKey{makeSlice(m->signerpubkey())};
@@ -2447,7 +2470,9 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
         (publicKeyType(publicKey) != KeyType::secp256k1))
     {
         JLOG(p_journal_.warn())
-            << "Consensus message mt(" << m->msgtype() << "): malformed";
+            << "Consensus message mt(" << m->msgtype() << ")"
+            << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
+            << ": malformed";
         fee_ = Resource::feeInvalidSignature;
         return;
     }
@@ -2456,7 +2481,9 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
         publicKey == app_.getValidationPublicKey())
     {
         JLOG(p_journal_.info())
-            << "Consensus message mt(" << m->msgtype() << "): self";
+            << "Consensus message mt(" << m->msgtype() << ")"
+            << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
+            << ": self";
         return;
     }
 
@@ -2469,7 +2496,9 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
             consensusMessageUniqueId(*m), id_))
     {
         JLOG(p_journal_.info())
-            << "Consensus message mt(" << m->msgtype() << "): duplicate";
+            << "Consensus message mt(" << m->msgtype() << ")"
+            << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
+            << ": duplicate";
         return;
     }
 
@@ -2479,21 +2508,29 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
     {
         if (sanity_.load() == Sanity::insane)
         {
-            JLOG(p_journal_.info()) << "Consensus message mt(" << m->msgtype()
-                                    << "): Dropping UNTRUSTED (insane)";
+            JLOG(p_journal_.info())
+                << "Consensus message mt(" << m->msgtype() << ")"
+                << RCLConsensus::conMsgTypeToStr(
+                       (ConsensusMessageType)m->msgtype())
+                << ": Dropping UNTRUSTED (insane)";
             return;
         }
 
         if (!cluster() && app_.getFeeTrack(schemaId).isLoadedLocal())
         {
-            JLOG(p_journal_.info()) << "Consensus message mt(" << m->msgtype()
-                                    << "): Dropping UNTRUSTED (load)";
+            JLOG(p_journal_.info())
+                << "Consensus message mt(" << m->msgtype() << ")"
+                << RCLConsensus::conMsgTypeToStr(
+                       (ConsensusMessageType)m->msgtype())
+                << ": Dropping UNTRUSTED (load)";
             return;
         }
     }
 
     JLOG(p_journal_.info())
-        << "onMessage mt(" << m->msgtype() << "): add to JobQueue";
+        << "onMessage mt(" << m->msgtype() << ")"
+        << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
+        << ": add to JobQueue";
 
     std::weak_ptr<PeerImp> weak = shared_from_this();
     app_.getJobQueue().addJob(
@@ -2505,18 +2542,20 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
         });
 }
 
-
 //--------------------------------------------------------------------------
 
 void
-PeerImp::addLedger (SchemaInfo& info,uint256 const& hash,
+PeerImp::addLedger(
+    SchemaInfo& info,
+    uint256 const& hash,
     std::lock_guard<std::mutex> const& lockedRecentLock)
 {
     // lockedRecentLock is passed as a reminder that recentLock_ must be
     // locked by the caller.
     (void)lockedRecentLock;
 
-    if (std::find(info.recentLedgers_.begin(), info.recentLedgers_.end(), hash) !=
+    if (std::find(
+            info.recentLedgers_.begin(), info.recentLedgers_.end(), hash) !=
         info.recentLedgers_.end())
         return;
 
@@ -2526,12 +2565,12 @@ PeerImp::addLedger (SchemaInfo& info,uint256 const& hash,
 void
 PeerImp::doFetchPack(const std::shared_ptr<protocol::TMGetObjectByHash>& packet)
 {
-	uint256 schemaId;
-	memcpy(schemaId.begin(), packet->schemaid().data(), 32);
-    // VFALCO TODO Invert this dependency using an observer and shared state object.
-    // Don't queue fetch pack jobs if we're under load or we already have
-    // some queued.
-    if (app_.getFeeTrack (schemaId).isLoadedLocal () ||
+    uint256 schemaId;
+    memcpy(schemaId.begin(), packet->schemaid().data(), 32);
+    // VFALCO TODO Invert this dependency using an observer and shared state
+    // object. Don't queue fetch pack jobs if we're under load or we already
+    // have some queued.
+    if (app_.getFeeTrack(schemaId).isLoadedLocal() ||
         (app_.getLedgerMaster(schemaId).getValidatedLedgerAge() > 40s) ||
         (app_.getJobQueue().getJobCount(jtPACK) > 10))
     {
@@ -2648,10 +2687,13 @@ PeerImp::checkConsensus(
 {
     bool isTrusted = (job.getType() == jtCONSENSUS_t);
 
-    JLOG(p_journal_.info()) << "Checking " << (isTrusted ? "trusted" : "UNTRUSTED")
-        << " consensus message mt(" <<  packet->msgtype() << ")";
+    JLOG(p_journal_.info())
+        << "Checking " << (isTrusted ? "trusted" : "UNTRUSTED")
+        << " consensus message mt(" << packet->msgtype() << ")"
+        << RCLConsensus::conMsgTypeToStr(
+               (ConsensusMessageType)packet->msgtype());
 
-    PublicKey const publicKey{ makeSlice(packet->signerpubkey()) };
+    PublicKey const publicKey{makeSlice(packet->signerpubkey())};
     auto const sig = makeSlice(packet->signature());
 
     bool sigValid = verify(
@@ -2674,17 +2716,18 @@ PeerImp::checkConsensus(
 // Returns the set of peers that can help us get
 // the TX tree with the specified root hash.
 //
-static
-std::shared_ptr<PeerImp>
-getPeerWithTree (PeerManager& pm, uint256 schemaId,
-    uint256 const& rootHash, PeerImp const* skip)
+static std::shared_ptr<PeerImp>
+getPeerWithTree(
+    PeerManager& pm,
+    uint256 schemaId,
+    uint256 const& rootHash,
+    PeerImp const* skip)
 {
     std::shared_ptr<PeerImp> ret;
     int retScore = 0;
 
-	PeerManagerImpl& peerManagerImp = dynamic_cast<PeerManagerImpl&>(pm);
-	peerManagerImp.for_each([&](std::shared_ptr<PeerImp>&& p)
-    {
+    PeerManagerImpl& peerManagerImp = dynamic_cast<PeerManagerImpl&>(pm);
+    peerManagerImp.for_each([&](std::shared_ptr<PeerImp>&& p) {
         if (p->hasTxSet(schemaId, rootHash) && p.get() != skip)
         {
             auto score = p->getScore(true);
@@ -2702,20 +2745,20 @@ getPeerWithTree (PeerManager& pm, uint256 schemaId,
 // Returns a random peer weighted by how likely to
 // have the ledger and how responsive it is.
 //
-static
-std::shared_ptr<PeerImp>
-getPeerWithLedger (PeerManager& pm, uint256 schemaId,
-    uint256 const& ledgerHash, LedgerIndex ledger,
-        PeerImp const* skip)
+static std::shared_ptr<PeerImp>
+getPeerWithLedger(
+    PeerManager& pm,
+    uint256 schemaId,
+    uint256 const& ledgerHash,
+    LedgerIndex ledger,
+    PeerImp const* skip)
 {
     std::shared_ptr<PeerImp> ret;
     int retScore = 0;
 
-	PeerManagerImpl& peerManagerImp = dynamic_cast<PeerManagerImpl&>(pm);
-	peerManagerImp.for_each([&](std::shared_ptr<PeerImp>&& p)
-    {
-        if (p->hasLedger(schemaId,ledgerHash, ledger) &&
-                p.get() != skip)
+    PeerManagerImpl& peerManagerImp = dynamic_cast<PeerManagerImpl&>(pm);
+    peerManagerImp.for_each([&](std::shared_ptr<PeerImp>&& p) {
+        if (p->hasLedger(schemaId, ledgerHash, ledger) && p.get() != skip)
         {
             auto score = p->getScore(true);
             if (!ret || (score > retScore))
@@ -2744,15 +2787,15 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         reply.set_requestcookie(packet.requestcookie());
 
     std::string logMe;
-	if (!stringIsUint256Sized(packet.schemaid()))
-	{
-		charge(Resource::feeInvalidRequest);
-		JLOG(p_journal_.warn()) << "GetLedger: SchemaId invalid";
-		return;
-	}
-	uint256 schemaId;
-	memcpy(schemaId.begin(), packet.schemaid().data(), 32);
-	reply.set_schemaid(schemaId.begin(), uint256::size());
+    if (!stringIsUint256Sized(packet.schemaid()))
+    {
+        charge(Resource::feeInvalidRequest);
+        JLOG(p_journal_.warn()) << "GetLedger: SchemaId invalid";
+        return;
+    }
+    uint256 schemaId;
+    memcpy(schemaId.begin(), packet.schemaid().data(), 32);
+    reply.set_schemaid(schemaId.begin(), uint256::size());
 
     if (packet.itype() == protocol::liTS_CANDIDATE)
     {
@@ -2779,8 +2822,8 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
                 JLOG(p_journal_.debug()) << "GetLedger: Routing Tx set request";
 
                 auto const v = getPeerWithTree(
-                    app_.peerManager(schemaId), schemaId,txHash, this);
-                if (! v)
+                    app_.peerManager(schemaId), schemaId, txHash, this);
+                if (!v)
                 {
                     packet.set_requestcookie(id());
                     v->send(std::make_shared<Message>(
@@ -2802,42 +2845,44 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         reply.set_type(protocol::liTS_CANDIDATE);
         fatLeaves = false;  // We'll already have most transactions
     }
-	else if (packet.itype() == protocol::liSKIP_NODE)
-	{
-		//peer recv skip Request and will do later
-		JLOG(p_journal_.trace()) << "GetSkipNode";
+    else if (packet.itype() == protocol::liSKIP_NODE)
+    {
+        // peer recv skip Request and will do later
+        JLOG(p_journal_.trace()) << "GetSkipNode";
 
-		if (!packet.has_ledgerhash())
-		{
-			charge(Resource::feeInvalidRequest);
-			JLOG(p_journal_.warn()) << "GetLedger: Tx candidate set invalid";
-			return;
-		}
-		auto ledger = app_.getLedgerMaster(schemaId).getLedgerBySeq(packet.ledgerseq());
+        if (!packet.has_ledgerhash())
+        {
+            charge(Resource::feeInvalidRequest);
+            JLOG(p_journal_.warn()) << "GetLedger: Tx candidate set invalid";
+            return;
+        }
+        auto ledger =
+            app_.getLedgerMaster(schemaId).getLedgerBySeq(packet.ledgerseq());
 
-		if (ledger)
-		{
-			auto const hashIndex = ledger->read(keylet::skip());
+        if (ledger)
+        {
+            auto const hashIndex = ledger->read(keylet::skip());
 
-			if (hashIndex)
-			{
-				reply.set_type(packet.itype());
-				reply.set_ledgerseq(packet.ledgerseq());
-				reply.set_ledgerhash(packet.ledgerhash());
+            if (hashIndex)
+            {
+                reply.set_type(packet.itype());
+                reply.set_ledgerseq(packet.ledgerseq());
+                reply.set_ledgerhash(packet.ledgerhash());
 
-				auto sleSkip = ledger->read(keylet::skip());
-				auto blobSkip = sleSkip->getSerializer().peekData();
+                auto sleSkip = ledger->read(keylet::skip());
+                auto blobSkip = sleSkip->getSerializer().peekData();
 
-				reply.add_nodes()->set_nodedata(blobSkip.data(), blobSkip.size());
+                reply.add_nodes()->set_nodedata(
+                    blobSkip.data(), blobSkip.size());
 
-				Message::pointer oPacket = std::make_shared<Message>(
-					reply, protocol::mtLEDGER_DATA);
-				send(oPacket);
-			}
-		}
-		return;
-	}
-	else
+                Message::pointer oPacket =
+                    std::make_shared<Message>(reply, protocol::mtLEDGER_DATA);
+                send(oPacket);
+            }
+        }
+        return;
+    }
+    else
     {
         if (send_queue_.size() >= Tuning::dropSendQueue)
         {
@@ -2845,7 +2890,7 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
             return;
         }
 
-        if (app_.getFeeTrack(schemaId).isLoadedLocal() && ! cluster())
+        if (app_.getFeeTrack(schemaId).isLoadedLocal() && !cluster())
         {
             JLOG(p_journal_.debug()) << "GetLedger: Too busy";
             return;
@@ -2890,7 +2935,8 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
                 // We don't have the requested ledger
                 // Search for a peer who might
                 auto const v = getPeerWithLedger(
-                    app_.peerManager(schemaId),schemaId,
+                    app_.peerManager(schemaId),
+                    schemaId,
                     ledgerhash,
                     packet.has_ledgerseq() ? packet.ledgerseq() : 0,
                     this);
@@ -2910,14 +2956,14 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         else if (packet.has_ledgerseq())
         {
             if (packet.ledgerseq() <
-                    app_.getLedgerMaster(schemaId).getEarliestFetch())
+                app_.getLedgerMaster(schemaId).getEarliestFetch())
             {
                 JLOG(p_journal_.debug()) << "GetLedger: Early ledger request";
                 return;
             }
-            ledger = app_.getLedgerMaster (schemaId).getLedgerBySeq (
-                packet.ledgerseq ());
-            if (! ledger)
+            ledger = app_.getLedgerMaster(schemaId).getLedgerBySeq(
+                packet.ledgerseq());
+            if (!ledger)
             {
                 JLOG(p_journal_.debug())
                     << "GetLedger: Don't have " << packet.ledgerseq();
@@ -2925,8 +2971,8 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         }
         else if (packet.has_ltype() && (packet.ltype() == protocol::ltCLOSED))
         {
-            ledger = app_.getLedgerMaster (schemaId).getClosedLedger ();
-            assert(! ledger->open());
+            ledger = app_.getLedgerMaster(schemaId).getClosedLedger();
+            assert(!ledger->open());
             // VFALCO ledger should never be null!
             // VFALCO How can the closed ledger be open?
 #if 0
@@ -2955,8 +3001,9 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
             return;
         }
 
-        if (!packet.has_ledgerseq() && (ledger->info().seq <
-            app_.getLedgerMaster(schemaId).getEarliestFetch()))
+        if (!packet.has_ledgerseq() &&
+            (ledger->info().seq <
+             app_.getLedgerMaster(schemaId).getEarliestFetch()))
         {
             JLOG(p_journal_.debug()) << "GetLedger: Early ledger request";
             return;

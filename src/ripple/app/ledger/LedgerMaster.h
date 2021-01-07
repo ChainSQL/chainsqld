@@ -57,9 +57,6 @@ class Transaction;
 class LedgerMaster : public Stoppable, public AbstractFetchPackContainer
 {
 public:
-    using ScopedLockType = std::lock_guard<std::recursive_mutex>;
-    using ScopedUnlockType = GenericScopedUnlock<std::recursive_mutex>;
-
     // Age for last validated ledger if the process has yet to validate.
     static constexpr std::chrono::seconds NO_VALIDATED_LEDGER_AGE =
         std::chrono::hours{24 * 14};
@@ -215,6 +212,10 @@ public:
     void
     updateConsensusTime();
 
+    // Returns the minimum ledger sequence in SQL database, if any.
+    boost::optional<LedgerIndex>
+    minSqlSeq();
+
     std::uint32_t
     lastCompleteIndex();
     bool
@@ -306,7 +307,7 @@ public:
     void
     gotFetchPack(bool progress, std::uint32_t seq);
     void
-    addFetchPack(uint256 const& hash, std::shared_ptr<Blob>& data);
+    addFetchPack(uint256 const& hash, std::shared_ptr<Blob> data);
     boost::optional<Blob>
     getFetchPack(uint256 const& hash) override;
     std::size_t
@@ -366,7 +367,8 @@ private:
     fetchForHistory(
         std::uint32_t missing,
         bool& progress,
-        InboundLedger::Reason reason);
+        InboundLedger::Reason reason,
+        std::unique_lock<std::recursive_mutex>&);
 
     // Try to publish ledgers, acquire missing ledgers.  Always called with
     // m_mutex locked.  The passed lock is a reminder to callers.
@@ -374,7 +376,7 @@ private:
     doAdvance(std::unique_lock<std::recursive_mutex>&);
 
     std::vector<std::shared_ptr<Ledger const>>
-    findNewLedgersToPublish();
+    findNewLedgersToPublish(std::unique_lock<std::recursive_mutex>& sl);
 
     void
     updatePaths(Job& job);

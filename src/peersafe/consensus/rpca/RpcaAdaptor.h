@@ -53,12 +53,6 @@ public:
         beast::Journal journal,
         LocalTxs& localTxs);
 
-    bool
-    preStartRound(RCLCxLedger const& prevLgr) override final;
-
-    boost::optional<RCLCxLedger>
-    acquireLedger(LedgerHash const& hash) override final;
-
     /** Consensus simulation parameters */
     inline RpcaConsensusParms const&
     parms() const
@@ -107,7 +101,7 @@ public:
         @param peerPos The peer position to relay.
     */
     void
-    relay(RCLCxPeerPos const& peerPos);
+    share(RCLCxPeerPos const& peerPos);
 
     /** Relay disputed transacction to peers.
 
@@ -116,7 +110,7 @@ public:
         @param tx The disputed transaction to relay.
     */
     void
-    relay(RCLCxTx const& tx);
+    share(RCLCxTx const& tx);
 
     /** Process the accepted ledger that was a result of simulation/force
         accept.
@@ -144,6 +138,9 @@ public:
         RCLCxLedger const& ledger,
         NetClock::time_point const& closeTime,
         ConsensusMode mode);
+
+    void
+    updateOperatingMode(std::size_t const positions) const;
 
 private:
     void

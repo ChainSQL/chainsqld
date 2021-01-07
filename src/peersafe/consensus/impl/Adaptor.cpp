@@ -27,7 +27,9 @@
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
-#include <ripple/basics/make_lock.h>
+#include <ripple/basics/random.h>
+#include <ripple/overlay/predicates.h>
+#include <peersafe/schema/PeerManager.h>
 #include <peersafe/consensus/Adaptor.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/util/Common.h>
@@ -51,11 +53,11 @@ Adaptor::Adaptor(
     , nodeID_{validatorKeys.nodeID}
     , valPublic_{validatorKeys.publicKey}
     , valSecret_{validatorKeys.secretKey}
-    , localTxs_(localTxs)
     , valCookie_{rand_int<std::uint64_t>(
           1,
           std::numeric_limits<std::uint64_t>::max())}
     , nUnlVote_(nodeID_, j_)
+    , localTxs_(localTxs)
 {
     assert(valCookie_ != 0);
 }
@@ -85,7 +87,7 @@ Adaptor::preStartRound(
         }
     }
 
-    const bool synced = app_.getOPs().getOperatingMode() == NetworkOPs::omFULL;
+    const bool synced = app_.getOPs().getOperatingMode() == OperatingMode::FULL;
 
     if (validating_)
     {
@@ -264,22 +266,6 @@ Adaptor::buildLCL(
             j_);
     }();
 
-    auto v2_enabled = built->rules().enabled(featureSHAMapV2);
-    auto disablev2_enabled = built->rules().enabled(featureDisableV2);
-
-    if (disablev2_enabled && built->stateMap().is_v2())
-    {
-        built->make_v1();
-        JLOG(j_.warn()) << "Begin transfer to v1,LedgerSeq = "
-                        << built->info().seq;
-    }
-    else if (!disablev2_enabled && v2_enabled && !built->stateMap().is_v2())
-    {
-        built->make_v2();
-        JLOG(j_.warn()) << "Begin transfer to v2,LedgerSeq = "
-                        << built->info().seq;
-    }
-
     // Update fee computations based on accepted txs
     using namespace std::chrono_literals;
     app_.getTxQ().processClosedLedger(app_, *built, roundTime > 5s);
@@ -303,7 +289,7 @@ Adaptor::checkLedgerAccept(LedgerInfo const& info)
         return nullptr;
     }
 
-    LedgerMaster::ScopedLockType ml(ledgerMaster_.peekMutex());
+    std::lock_guard ml(ledgerMaster_.peekMutex());
 
     if (info.seq <= getValidLedgerIndex())
         return nullptr;
@@ -320,13 +306,6 @@ Adaptor::onModeChange(ConsensusMode before, ConsensusMode after)
                         << ", after=" << to_string(after);
         mode_ = after;
     }
-}
-
-void
-Adaptor::updateOperatingMode(std::size_t const positions) const
-{
-    if (!positions && app_.getOPs().isFull())
-        app_.getOPs().setMode(OperatingMode::CONNECTED);
 }
 
 }  // namespace ripple

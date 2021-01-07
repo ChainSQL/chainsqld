@@ -22,7 +22,7 @@
 #include <ripple/app/misc/TxQ.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/contract.h>
-#include <ripple/consensus/LedgerTiming.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <ripple/json/to_string.h>
 #include <ripple/net/HTTPClient.h>
 #include <ripple/net/RPCCall.h>

@@ -19,10 +19,12 @@
 
 #include <ripple/app/misc/ValidatorList.h>
 #include <ripple/app/misc/ValidatorSite.h>
+#include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/basics/base64.h>
 #include <ripple/basics/Slice.h>
-#include <ripple/json/json_reader.h> 
+#include <ripple/json/json_reader.h>
 #include <ripple/protocol/jss.h>
 #include <boost/algorithm/clamp.hpp>
 #include <boost/regex.hpp>
@@ -99,7 +101,7 @@ ValidatorSite::applyList(
     auto ret =
         validators_.applyList(manifest, blob, signature, version, nullptr);
 
-    if (ret == ListDisposition::accepted)
+    if (ret.disposition == ListDisposition::accepted)
     {
         // begin consensus after apply success
         if (waitingBeginConsensus_)
@@ -110,7 +112,7 @@ ValidatorSite::applyList(
         }
     }
 
-    return ret;
+    return ret.disposition;
 }
 
 }  // namespace ripple

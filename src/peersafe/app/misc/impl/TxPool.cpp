@@ -95,7 +95,6 @@ TER TxPool::insertTx(std::shared_ptr<Transaction> transaction, LedgerIndex ledge
 void TxPool::removeTxs(SHAMap const& cSet, LedgerIndex ledgerSeq, uint256 const& prevHash)
 {
     std::lock_guard<std::mutex> lock(mutexTxPoll_);
->>>>>>> feature/consensusPluggable
 
 	int count = 0;
 	TransactionSet::iterator iterSet;

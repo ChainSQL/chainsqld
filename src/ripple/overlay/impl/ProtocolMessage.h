@@ -78,7 +78,7 @@ protocolMessageName(int type)
         case protocol::mtTABLE_DATA:
             return "table_data";
         case protocol::mtCONSENSUS:
-            return "consensus"
+            return "consensus";
         default:
             break;
     }
@@ -378,7 +378,8 @@ invokeProtocolMessage(Buffers const& buffers, Handler& handler)
                 *header, buffers, handler);
             break;
         case protocol::mtCONSENSUS:
-            ec = detail::invoke<protocol::TMConsensus>(type, buffers, handler);
+            success = detail::invoke<protocol::TMConsensus>(
+                *header, buffers, handler);
             break;
         default:
             handler.onMessageUnknown(header->message_type);

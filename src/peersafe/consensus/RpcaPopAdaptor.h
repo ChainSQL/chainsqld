@@ -27,7 +27,6 @@
 
 namespace ripple {
 
-
 class RpcaPopAdaptor : public Adaptor
 {
 public:
@@ -36,7 +35,7 @@ public:
         std::unique_ptr<FeeVote>&& feeVote,
         LedgerMaster& ledgerMaster,
         InboundTransactions& inboundTransactions,
-        ValidatorKeys const & validatorKeys,
+        ValidatorKeys const& validatorKeys,
         beast::Journal journal,
         LocalTxs& localTxs);
 
@@ -52,7 +51,8 @@ public:
                     declared
         @param consensusJson Json representation of consensus state
     */
-    void onAccept(
+    void
+    onAccept(
         Result const& result,
         RCLCxLedger const& prevLedger,
         NetClock::duration const& closeResolution,
@@ -60,13 +60,15 @@ public:
         ConsensusMode const& mode,
         Json::Value&& consensusJson);
 
-    std::shared_ptr<Ledger const> checkLedgerAccept(LedgerInfo const& info) override final;
+    std::shared_ptr<Ledger const>
+    checkLedgerAccept(LedgerInfo const& info) override final;
 
     /** Propose the given position to my peers.
 
         @param proposal Our proposed position
     */
-    void propose(RCLCxPeerPos::Proposal const& proposal);
+    void
+    propose(RCLCxPeerPos::Proposal const& proposal);
 
     /** Validate the given ledger and share with peers as necessary
 
@@ -78,9 +80,11 @@ public:
                             we know we aren't fully participating in consensus
                             but are still around and trying to catch up.
     */
-    void validate(RCLCxLedger const& ledger, RCLTxSet const& txns, bool proposing);
+    void
+    validate(RCLCxLedger const& ledger, RCLTxSet const& txns, bool proposing);
 
-    bool peerValidation(std::shared_ptr<PeerImp>& peer, STValidation::ref val);
+    bool
+    peerValidation(std::shared_ptr<PeerImp>& peer, STValidation::ref val);
 
     /** Number of proposers that have validated a ledger descended from
         requested ledger.
@@ -90,7 +94,8 @@ public:
         @return The number of validating peers that have validated a ledger
                 descended from the preferred working ledger.
     */
-    std::size_t proposersFinished(RCLCxLedger const & ledger, LedgerHash const& h) const;
+    std::size_t
+    proposersFinished(RCLCxLedger const& ledger, LedgerHash const& h) const;
 
     /** Get the ID of the previous ledger/last closed ledger(LCL) on the
         network
@@ -103,11 +108,16 @@ public:
         @note ledgerID may not match ledger.id() if we haven't acquired
                 the ledger matching ledgerID from the network
         */
-    uint256 getPrevLedger(uint256 ledgerID, RCLCxLedger const& ledger, ConsensusMode mode);
+    uint256
+    getPrevLedger(
+        uint256 ledgerID,
+        RCLCxLedger const& ledger,
+        ConsensusMode mode);
 
 protected:
     /** Report that the consensus process built a particular ledger */
-    void consensusBuilt(
+    void
+    consensusBuilt(
         std::shared_ptr<Ledger const> const& ledger,
         uint256 const& consensusHash,
         Json::Value consensus);
@@ -117,7 +127,8 @@ private:
 
         @ref onAccept
     */
-    virtual void doAccept(
+    virtual void
+    doAccept(
         Result const& result,
         RCLCxLedger const& prevLedger,
         NetClock::duration closeResolution,
@@ -127,8 +138,8 @@ private:
 
     /** Handle a new validation
 
-        Also sets the trust status of a validation based on the validating node's
-        public key and this node's current UNL.
+        Also sets the trust status of a validation based on the validating
+       node's public key and this node's current UNL.
 
         @param app Application object containing validations and ledgerMaster
         @param val The validation to add
@@ -136,13 +147,14 @@ private:
 
         @return Whether the validation should be relayed
     */
-    bool handleNewValidation(STValidation::ref val, std::string const& source);
+    bool
+    handleNewValidation(STValidation::ref val, std::string const& source);
 
-    auto checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
-        ->std::pair<std::shared_ptr<Ledger const> const, bool>;
+    auto
+    checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
+        -> std::pair<std::shared_ptr<Ledger const> const, bool>;
 };
 
-
-}
+}  // namespace ripple
 
 #endif
