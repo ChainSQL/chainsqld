@@ -190,9 +190,9 @@ Logs::write(
 		std::cerr << s << '\n';
 	}
 
-	if (app_ != NULL) {
-		app_->getOPs().pubLogs(s);
-	}
+	//if (app_ != NULL) {
+	//	app_->getOPs().pubLogs(s);
+	//}
 		
     // VFALCO TODO Fix console output
     // if (console)
