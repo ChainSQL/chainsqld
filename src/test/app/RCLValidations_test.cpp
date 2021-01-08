@@ -39,7 +39,6 @@ class RCLValidations_test : public beast::unit_test::suite
         auto v = std::make_shared<STValidation>(
             ripple::NetClock::time_point{},
             keys.first,
-            keys.second,
             calcNodeID(keys.first),
             [&](STValidation& v) { v.setFieldU32(sfLedgerSequence, 123456); });
 

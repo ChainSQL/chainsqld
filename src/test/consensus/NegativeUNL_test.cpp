@@ -677,7 +677,6 @@ struct NetworkHistory
         return std::make_shared<STValidation>(
             env.app().timeKeeper().now(),
             keyPair.first,
-            keyPair.second,
             v,
             [&](STValidation& v) {
                 v.setFieldH256(sfLedgerHash, ledger->info().hash);
@@ -1827,7 +1826,6 @@ class NegativeUNLVoteFilterValidations_test : public beast::unit_test::suite
             return std::make_shared<STValidation>(
                 env.app().timeKeeper().now(),
                 keys.first,
-                keys.second,
                 calcNodeID(keys.first),
                 [&](STValidation& v) {
                     v.setFieldH256(sfLedgerHash, l->info().hash);

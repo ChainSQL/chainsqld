@@ -17,7 +17,7 @@
 */
 //==============================================================================
 #include <ripple/beast/unit_test.h>
-#include <ripple/consensus/LedgerTiming.h>
+#include <peersafe/consensus/LedgerTiming.h>
 
 namespace ripple {
 namespace test {

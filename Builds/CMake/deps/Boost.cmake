@@ -54,7 +54,8 @@ find_package (Boost 1.70 REQUIRED
     program_options
     regex
     system
-    thread)
+    thread
+	serialization)
 
 add_library (ripple_boost INTERFACE)
 add_library (Ripple::boost ALIAS ripple_boost)
@@ -75,7 +76,8 @@ target_link_libraries (ripple_boost
     Boost::program_options
     Boost::regex
     Boost::system
-    Boost::thread)
+    Boost::thread
+	Boost::serialization)
 if (Boost_COMPILER)
   target_link_libraries (ripple_boost INTERFACE Boost::disable_autolinking)
 endif ()

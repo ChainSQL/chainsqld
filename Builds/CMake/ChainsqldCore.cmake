@@ -428,11 +428,6 @@ target_sources (chainsqld PRIVATE
   src/ripple/core/impl/Workers.cpp
   #[===============================[
      main sources:
-       subdir: consensus
-  #]===============================]
-  src/ripple/consensus/Consensus.cpp
-  #[===============================[
-     main sources:
        subdir: ledger
   #]===============================]
   src/ripple/ledger/impl/ApplyStateTable.cpp
@@ -615,8 +610,6 @@ target_sources (chainsqld PRIVATE
      main sources:
        subdir: peersafe
   #]===============================]
-  src/peersafe/app/consensus/impl/ViewChange.cpp
-  src/peersafe/app/consensus/impl/ViewChangeManager.cpp
   src/peersafe/app/misc/impl/CACertSite.cpp
   src/peersafe/app/misc/impl/CertList.cpp
   src/peersafe/app/misc/impl/ConfigSite.cpp
@@ -663,6 +656,36 @@ target_sources (chainsqld PRIVATE
   src/peersafe/protocol/impl/Contract.cpp
   src/peersafe/protocol/impl/STEntry.cpp
   src/peersafe/protocol/impl/STMap256.cpp
+  src/peersafe/protocol/impl/STEpochChange.cpp
+  src/peersafe/protocol/impl/STProposal.cpp
+  src/peersafe/protocol/impl/STProposeSet.cpp
+  src/peersafe/protocol/impl/STViewChange.cpp
+  src/peersafe/protocol/impl/STVote.cpp
+  src/peersafe/serialization/impl/Buffer.cpp
+  src/peersafe/serialization/impl/PublicKey.cpp
+  src/peersafe/consensus/impl/Adaptor.cpp
+  src/peersafe/consensus/impl/RpcaPopAdaptor.cpp
+  src/peersafe/consensus/rpca/impl/RpcaAdaptor.cpp
+  src/peersafe/consensus/rpca/impl/RpcaConsensus.cpp
+  src/peersafe/consensus/pop/impl/ViewChangeManager.cpp
+  src/peersafe/consensus/pop/impl/PopAdaptor.cpp
+  src/peersafe/consensus/pop/impl/PopConsensus.cpp
+  src/peersafe/consensus/hotstuff/impl/Block.cpp
+  src/peersafe/consensus/hotstuff/impl/BlockStorage.cpp
+  src/peersafe/consensus/hotstuff/impl/EpochChange.cpp
+  src/peersafe/consensus/hotstuff/impl/EpochState.cpp
+  src/peersafe/consensus/hotstuff/impl/Hotstuff.cpp
+  src/peersafe/consensus/hotstuff/impl/HotstuffAdaptor.cpp
+  src/peersafe/consensus/hotstuff/impl/HotstuffConsensus.cpp
+  src/peersafe/consensus/hotstuff/impl/HotstuffCore.cpp
+  src/peersafe/consensus/hotstuff/impl/PendingVotes.cpp
+  src/peersafe/consensus/hotstuff/impl/ProposalGenerator.cpp
+  src/peersafe/consensus/hotstuff/impl/QuorumCert.cpp
+  src/peersafe/consensus/hotstuff/impl/RoundManager.cpp
+  src/peersafe/consensus/hotstuff/impl/RoundState.cpp
+  src/peersafe/consensus/hotstuff/impl/SyncInfo.cpp
+  src/peersafe/consensus/hotstuff/impl/Vote.cpp
+  src/peersafe/consensus/hotstuff/impl/VoteData.cpp
   src/peersafe/rpc/handlers/AccountTables.cpp
   src/peersafe/rpc/handlers/GenCsr.cpp
   src/peersafe/rpc/handlers/LedgerTxsHandler.cpp
@@ -788,13 +811,13 @@ target_sources (chainsqld PRIVATE
      test sources:
        subdir: consensus
   #]===============================]
-  src/test/consensus/ByzantineFailureSim_test.cpp
-  src/test/consensus/Consensus_test.cpp
-  src/test/consensus/DistributedValidatorsSim_test.cpp
+  #src/test/consensus/ByzantineFailureSim_test.cpp
+  #src/test/consensus/Consensus_test.cpp
+  #src/test/consensus/DistributedValidatorsSim_test.cpp
   src/test/consensus/LedgerTiming_test.cpp
   src/test/consensus/LedgerTrie_test.cpp
   src/test/consensus/NegativeUNL_test.cpp
-  src/test/consensus/ScaleFreeSim_test.cpp
+  #src/test/consensus/ScaleFreeSim_test.cpp
   src/test/consensus/Validations_test.cpp
   #[===============================[
      test sources:
@@ -821,7 +844,7 @@ target_sources (chainsqld PRIVATE
   src/test/csf/Digraph_test.cpp
   src/test/csf/Histogram_test.cpp
   src/test/csf/Scheduler_test.cpp
-  src/test/csf/impl/Sim.cpp
+  #src/test/csf/impl/Sim.cpp
   src/test/csf/impl/ledgers.cpp
   #[===============================[
      test sources:

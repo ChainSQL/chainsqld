@@ -20,16 +20,18 @@
 #ifndef RIPPLE_CORE_CONFIG_H_INCLUDED
 #define RIPPLE_CORE_CONFIG_H_INCLUDED
 
+
 #include <ripple/basics/BasicConfig.h>
 #include <ripple/basics/FeeUnits.h>
 #include <ripple/basics/base_uint.h>
+#include <ripple/basics/Log.h>
+#include <ripple/protocol/SystemParameters.h> // VFALCO Breaks levelization
 #include <ripple/beast/net/IPEndpoint.h>
+#include <ripple/beast/core/LexicalCast.h>
 #include <ripple/beast/utility/Journal.h>
-#include <ripple/protocol/SystemParameters.h>  // VFALCO Breaks levelization
 #include <peersafe/schema/SchemaParams.h>
 #include <boost/beast/core/string.hpp>
-#include <boost/filesystem.hpp>  // VFALCO FIX: This include should not be here
-#include <boost/lexical_cast.hpp>
+#include <boost/filesystem.hpp> // VFALCO FIX: This include should not be here
 #include <boost/optional.hpp>
 #include <algorithm>
 #include <chrono>
@@ -265,7 +267,29 @@ public:
         return signingEnabled_;
     }
 
-    /** Retrieve the default value for the item at the specified node size
+    template<typename T>
+    T loadConfig(std::string sectionName, std::string configName, T deflt)
+    {
+        auto const result = section(sectionName).find(configName);
+        if (result.second)
+        {
+            try
+            {
+                T value = beast::lexicalCastThrow<T>(result.first);
+                return value;
+            }
+            catch (std::exception const&)
+            {
+                JLOG(j_.error()) <<
+                    "Invalid value '" << result.first << "' for key " <<
+                    "'" << configName << "' in [" << sectionName << "]\n";
+            }
+        }
+
+        return deflt;
+    }
+
+	/** Retrieve the default value for the item at the specified node size
 
         @param item The item for which the default value is needed
         @param node Optional value, used to adjust the result to match the

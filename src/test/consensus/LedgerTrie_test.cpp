@@ -17,7 +17,7 @@
 */
 //==============================================================================
 #include <ripple/beast/unit_test.h>
-#include <ripple/consensus/LedgerTrie.h>
+#include <peersafe/consensus/LedgerTrie.h>
 #include <random>
 #include <test/csf/ledgers.h>
 #include <unordered_map>

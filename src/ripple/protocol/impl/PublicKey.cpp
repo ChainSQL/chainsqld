@@ -36,7 +36,24 @@ operator<<(std::ostream& os, PublicKey const& pk)
     return os;
 }
 
-template <>
+std::ostringstream&
+operator<<(std::ostringstream& os, PublicKey const& pk)
+{
+    os << strHex(pk);
+    return os;
+}
+
+bool publicKeyComp(PublicKey const& lhs, PublicKey const& rhs)
+{
+    return lhs < rhs;
+}
+
+using uint264 = boost::multiprecision::number<
+    boost::multiprecision::cpp_int_backend<
+        264, 264, boost::multiprecision::signed_magnitude,
+            boost::multiprecision::unchecked, void>>;
+
+template<>
 boost::optional<PublicKey>
 parseBase58(TokenType type, std::string const& s)
 {

@@ -17,48 +17,11 @@
 */
 //==============================================================================
 
-#include <ripple/basics/Log.h>
-#include <ripple/basics/contract.h>
-#include <ripple/json/to_string.h>
-#include <ripple/protocol/HashPrefix.h>
+
 #include <ripple/protocol/STValidation.h>
 
 namespace ripple {
 
-SOTemplate const&
-STValidation::validationFormat()
-{
-    // We can't have this be a magic static at namespace scope because
-    // it relies on the SField's below being initialized, and we can't
-    // guarantee the initialization order.
-    static SOTemplate const format{
-        {sfFlags, soeREQUIRED},
-        {sfLedgerHash, soeREQUIRED},
-        {sfLedgerSequence, soeREQUIRED},
-        {sfCloseTime, soeOPTIONAL},
-        {sfLoadFee, soeOPTIONAL},
-        {sfAmendments, soeOPTIONAL},
-        {sfBaseFee, soeOPTIONAL},
-        {sfReserveBase, soeOPTIONAL},
-        {sfReserveIncrement, soeOPTIONAL},
-        {sfSigningTime, soeREQUIRED},
-        {sfSigningPubKey, soeREQUIRED},
-        {sfSignature, soeREQUIRED},
-        {sfConsensusHash, soeOPTIONAL},
-        {sfCookie, soeDEFAULT},
-        {sfValidatedHash, soeOPTIONAL},
-        {sfServerVersion, soeOPTIONAL},
-        {sfDropsPerByte, soeOPTIONAL }
-    };
-
-    return format;
-};
-
-uint256
-STValidation::getSigningHash() const
-{
-    return STObject::getSigningHash(HashPrefix::validation);
-}
 
 uint256
 STValidation::getLedgerHash() const
@@ -78,49 +41,10 @@ STValidation::getSignTime() const
     return NetClock::time_point{NetClock::duration{getFieldU32(sfSigningTime)}};
 }
 
-NetClock::time_point
-STValidation::getSeenTime() const
-{
-    return seenTime_;
-}
-
-bool
-STValidation::isValid() const
-{
-    try
-    {
-        if (publicKeyType(getSignerPublic()) != KeyType::secp256k1)
-            return false;
-
-        return verifyDigest(
-            getSignerPublic(),
-            getSigningHash(),
-            makeSlice(getFieldVL(sfSignature)),
-            getFlags() & vfFullyCanonicalSig);
-    }
-    catch (std::exception const&)
-    {
-        JLOG(debugLog().error()) << "Exception validating validation";
-        return false;
-    }
-}
-
-PublicKey
-STValidation::getSignerPublic() const
-{
-    return PublicKey(makeSlice(getFieldVL(sfSigningPubKey)));
-}
-
 bool
 STValidation::isFull() const
 {
     return (getFlags() & vfFullValidation) != 0;
-}
-
-Blob
-STValidation::getSignature() const
-{
-    return getFieldVL(sfSignature);
 }
 
 Blob
@@ -129,6 +53,30 @@ STValidation::getSerialized() const
     Serializer s;
     add(s);
     return s.peekData();
+}
+
+SOTemplate const&
+STValidation::validationFormat()
+{
+    static SOTemplate const format{
+        { sfFlags,              soeREQUIRED},
+        { sfLedgerHash,         soeREQUIRED},
+        { sfLedgerSequence,     soeOPTIONAL},
+        { sfCloseTime,          soeOPTIONAL},
+        { sfLoadFee,            soeOPTIONAL},
+        { sfAmendments,         soeOPTIONAL},
+        { sfBaseFee,            soeOPTIONAL},
+        { sfReserveBase,        soeOPTIONAL},
+        { sfReserveIncrement,   soeOPTIONAL},
+        { sfSigningTime,        soeREQUIRED},
+        { sfConsensusHash,      soeOPTIONAL},
+        { sfCookie,             soeOPTIONAL},
+        { sfValidatedHash,      soeOPTIONAL},
+        { sfServerVersion,      soeOPTIONAL},
+        { sfDropsPerByte,       soeOPTIONAL},
+    };
+
+    return format;
 }
 
 }  // namespace ripple

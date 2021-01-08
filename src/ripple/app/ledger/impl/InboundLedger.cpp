@@ -157,7 +157,12 @@ InboundLedger::init(ScopedLockType& collectionLock)
 
     // Check if this could be a newer fully-validated ledger
     if (mReason == Reason::CONSENSUS)
-        app_.getLedgerMaster().checkAccept(mLedger);
+    {
+        if (app_.getOPs().checkLedgerAccept(mLedger))
+        {
+            app_.getLedgerMaster().doValid(mLedger);
+        }
+    }
 }
 
 std::size_t
@@ -526,8 +531,11 @@ InboundLedger::done()
         jtLEDGER_DATA, "AcquisitionDone", [self = shared_from_this()](Job&) {
             if (self->mComplete && !self->mFailed)
             {
-                self->app_.getLedgerMaster().checkAccept(self->getLedger());
-                self->app_.getLedgerMaster().tryAdvance();
+                if (self->app().getOPs().checkLedgerAccept(self->getLedger()))
+                {
+                    self->app().getLedgerMaster().doValid(self->getLedger());
+                }
+                self->app().getLedgerMaster().tryAdvance();
             }
             else
                 self->app_.getInboundLedgers().logFailure(

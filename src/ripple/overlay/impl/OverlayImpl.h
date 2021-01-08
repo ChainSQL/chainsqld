@@ -224,36 +224,6 @@ public:
 		std::vector<PublicKey> const& validators) override;
 
 	void add_bootstraps(std::vector<std::string> const& bootstraps);
- //   void
- //   checkSanity (std::uint32_t) override;
-
- //   std::shared_ptr<Peer>
- //   findPeerByShortID (Peer::id_t const& id) override;
-
- //   std::shared_ptr<Peer>
- //   findPeerByPublicKey (PublicKey const& pubKey) override;
-
- //   void
- //   send (protocol::TMProposeSet& m) override;
-
- //   void
- //   send (protocol::TMValidation& m) override;
-
-	//void
-	//send(protocol::TMViewChange& m) override;
-
- //   void
- //   relay (protocol::TMProposeSet& m,
- //       uint256 const& uid) override;
-
- //   void
- //   relay (protocol::TMValidation& m,
- //       uint256 const& uid) override;
-
-
-	//void
-	//	relay(protocol::TMViewChange& m,
-	//		uint256 const& uid) override;
 
     //--------------------------------------------------------------------------
     //

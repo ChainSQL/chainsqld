@@ -26,11 +26,11 @@
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/chrono.h>
-#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/TimeKeeper.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -78,8 +78,7 @@ RCLValidatedLedger::id() const -> ID
     return ledgerID_;
 }
 
-auto
-RCLValidatedLedger::operator[](Seq const& s) const -> ID
+auto RCLValidatedLedger::operator[](Seq const& s) const -> ID
 {
     if (s >= minSeq() && s <= seq())
     {
@@ -135,7 +134,7 @@ RCLValidationsAdaptor::acquire(LedgerHash const& hash)
         JLOG(j_.debug())
             << "Need validated ledger for preferred ledger analysis " << hash;
 
-		Schema* pApp = &app_;
+        Schema* pApp = &app_;
 
         app_.getJobQueue().addJob(
             jtADVANCE, "getConsensusLedger", [pApp, hash](Job&) {
@@ -151,75 +150,5 @@ RCLValidationsAdaptor::acquire(LedgerHash const& hash)
     return RCLValidatedLedger(std::move(ledger), j_);
 }
 
-void
-handleNewValidation(
-    Schema& app,
-    std::shared_ptr<STValidation> const& val,
-    std::string const& source)
-{
-    PublicKey const& signingKey = val->getSignerPublic();
-    uint256 const& hash = val->getLedgerHash();
-
-    // Ensure validation is marked as trusted if signer currently trusted
-    auto masterKey = app.validators().getTrustedKey(signingKey);
-    if (!val->isTrusted() && masterKey)
-        val->setTrusted();
-
-    // If not currently trusted, see if signer is currently listed
-    if (!masterKey)
-        masterKey = app.validators().getListedKey(signingKey);
-
-    RCLValidations& validations = app.getValidations();
-    beast::Journal const j = validations.adaptor().journal();
-
-    auto dmp = [&](beast::Journal::Stream s, std::string const& msg) {
-        std::string id = toBase58(TokenType::NodePublic, signingKey);
-
-        if (masterKey)
-            id += ":" + toBase58(TokenType::NodePublic, *masterKey);
-
-        s << (val->isTrusted() ? "trusted" : "untrusted") << " "
-          << (val->isFull() ? "full" : "partial") << " validation: " << hash
-          << " from " << id << " via " << source << ": " << msg << "\n"
-          << " [" << val->getSerializer().slice() << "]";
-    };
-
-    // masterKey is seated only if validator is trusted or listed
-    if (masterKey)
-    {
-        ValStatus const outcome = validations.add(calcNodeID(*masterKey), val);
-        auto const seq = val->getFieldU32(sfLedgerSequence);
-
-        if (j.debug())
-            dmp(j.debug(), to_string(outcome));
-
-        // One might think that we would not wish to relay validations that
-        // fail these checks. Somewhat counterintuitively, we actually want
-        // to do it for validations that we receive but deem suspicious, so
-        // that our peers will also observe them and realize they're bad.
-        if (outcome == ValStatus::conflicting && j.warn())
-        {
-            dmp(j.warn(),
-                "conflicting validations issued for " + to_string(seq) +
-                    " (likely from a Byzantine validator)");
-        }
-
-        if (outcome == ValStatus::multiple && j.warn())
-        {
-            dmp(j.warn(),
-                "multiple validations issued for " + to_string(seq) +
-                    " (multiple validators operating with the same key?)");
-        }
-
-        if (val->isTrusted() && outcome == ValStatus::current)
-            app.getLedgerMaster().checkAccept(hash, seq);
-    }
-    else
-    {
-        JLOG(j.debug()) << "Val for " << hash << " from "
-                        << toBase58(TokenType::NodePublic, signingKey)
-                        << " not added UNlisted";
-    }
-}
 
 }  // namespace ripple

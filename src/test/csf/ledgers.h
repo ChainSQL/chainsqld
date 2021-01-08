@@ -22,7 +22,7 @@
 #include <ripple/basics/UnorderedContainers.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/basics/tagged_integer.h>
-#include <ripple/consensus/LedgerTiming.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <ripple/json/json_value.h>
 #include <boost/bimap/bimap.hpp>
 #include <boost/optional.hpp>

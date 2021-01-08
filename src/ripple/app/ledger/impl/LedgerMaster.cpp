@@ -214,16 +214,12 @@ LedgerMaster::LedgerMaster(
 {
 }
 
-LedgerIndex
-LedgerMaster::getCurrentLedgerIndex()
+void
+LedgerMaster::setLastValidLedger(uint256 const& hash, std::uint32_t seq)
 {
-    return app_.openLedger().current()->info().seq;
-}
-
-LedgerIndex
-LedgerMaster::getValidLedgerIndex()
-{
-    return mValidLedgerSeq;
+    std::lock_guard ml(m_mutex);
+    if (seq > mLastValidLedger.second)
+        mLastValidLedger = std::make_pair(hash, seq);
 }
 
 bool
@@ -276,29 +272,41 @@ LedgerMaster::getPublishedLedgerAge()
     return ret;
 }
 
-void LedgerMaster::onViewChanged(bool bWaitingInit, std::shared_ptr<Ledger const> previousLedger)
+void
+LedgerMaster::onViewChanged(
+    bool bWaitingInit,
+    std::shared_ptr<Ledger const> previousLedger)
 {
-	mLastConsensusTime = app_.timeKeeper().closeTime().time_since_epoch().count();
+    mLastConsensusTime =
+        app_.timeKeeper().closeTime().time_since_epoch().count();
 
-	if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
-	{
+    if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
+    {
         setFullLedger(previousLedger, false, true);
-		setPubLedger(previousLedger);
-		{
-			std::lock_guard ml(mCompleteLock);
-			mCompleteLedgers.insert(previousLedger->info().seq);
-		}
-	}
-	checkSubChains();
-	app_.getTableSync().TryTableSync();
-	tryAdvance();
+        setPubLedger(previousLedger);
+        {
+            std::lock_guard ml(mCompleteLock);
+            mCompleteLedgers.insert(previousLedger->info().seq);
+        }
+    }
+    checkSubChains();
+    app_.getTableSync().TryTableSync();
+    tryAdvance();
+}
+
+void
+LedgerMaster::updateConsensusTime()
+{
+    mLastConsensusTime =
+        app_.timeKeeper().closeTime().time_since_epoch().count();
 }
 
 std::chrono::seconds
 LedgerMaster::getValidatedLedgerAge()
 {
     using namespace std::chrono_literals;
-    std::chrono::seconds valClose = std::chrono::seconds(std::max(mValidLedgerSign.load(), mLastConsensusTime.load()));
+    std::chrono::seconds valClose = std::chrono::seconds(
+        std::max(mValidLedgerSign.load(), mLastConsensusTime.load()));
     if (valClose == 0s)
     {
         JLOG(m_journal.debug()) << "No validated ledger";
@@ -367,8 +375,9 @@ LedgerMaster::setValidLedger(std::shared_ptr<Ledger const> const& l)
     }
     else
     {
-        signTime = l->info().closeTime.time_since_epoch().count() == 0 ? 
-			app_.timeKeeper().closeTime():l->info().closeTime;
+        signTime = l->info().closeTime.time_since_epoch().count() == 0
+            ? app_.timeKeeper().closeTime()
+            : l->info().closeTime;
     }
 
     mValidLedger.set(l);
@@ -525,11 +534,7 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
         setFullLedger(lastClosed, true, false);
         tryAdvance();
         app_.getTableSync().TryTableSync();
-		app_.getTableStorage().TryTableStorage();
-    }
-    else
-    {
-        checkAccept(lastClosed);
+        app_.getTableStorage().TryTableStorage();
     }
 }
 
@@ -586,19 +591,6 @@ LedgerMaster::pruneHeldTransactions(
     return mHeldTransactions.prune(account, seq);
 }
 
-LedgerIndex
-LedgerMaster::getBuildingLedger()
-{
-    // The ledger we are currently building, 0 of none
-    return mBuildingLedgerSeq.load();
-}
-
-void
-LedgerMaster::setBuildingLedger(LedgerIndex i)
-{
-    mBuildingLedgerSeq.store(i);
-}
-
 bool
 LedgerMaster::haveLedger(std::uint32_t seq)
 {
@@ -609,22 +601,23 @@ LedgerMaster::haveLedger(std::uint32_t seq)
 bool
 LedgerMaster::haveLedger(std::uint32_t seqMin, std::uint32_t seqMax)
 {
-	std::lock_guard sl(mCompleteLock);
-	for (RangeSet<std::uint32_t>::iterator it = mCompleteLedgers.begin(); it != mCompleteLedgers.end(); it++) 
-	{
-		if (it->lower() <= seqMin && it->upper() >= seqMax)
-			return true;
-	}
-	return false;
+    std::lock_guard sl(mCompleteLock);
+    for (RangeSet<std::uint32_t>::iterator it = mCompleteLedgers.begin();
+         it != mCompleteLedgers.end();
+         it++)
+    {
+        if (it->lower() <= seqMin && it->upper() >= seqMax)
+            return true;
+    }
+    return false;
 }
 
 std::uint32_t
 LedgerMaster::lastCompleteIndex()
 {
-	std::lock_guard sl(mCompleteLock);
-	return boost::icl::last(mCompleteLedgers);
+    std::lock_guard sl(mCompleteLock);
+    return boost::icl::last(mCompleteLedgers);
 }
-
 
 void
 LedgerMaster::clearLedger(std::uint32_t seq)
@@ -743,7 +736,7 @@ LedgerMaster::tryFill(Job& job, std::shared_ptr<Ledger const> ledger)
 
         if (it == ledgerHashes.end())
         {
-            if (app_.app().isShutdown ())
+            if (app_.app().isShutdown())
                 return;
 
             {
@@ -834,7 +827,7 @@ LedgerMaster::getFetchPack(LedgerIndex missing, InboundLedger::Reason reason)
         auto peerList = app_.peerManager().getActivePeers();
         for (auto const& peer : peerList)
         {
-            if (peer->hasRange (app_.schemaId(),missing, missing + 1))
+            if (peer->hasRange(app_.schemaId(), missing, missing + 1))
             {
                 int score = peer->getScore(true);
                 if (!target || (score > maxScore))
@@ -849,14 +842,13 @@ LedgerMaster::getFetchPack(LedgerIndex missing, InboundLedger::Reason reason)
     if (target)
     {
         protocol::TMGetObjectByHash tmBH;
-        tmBH.set_query (true);
-        tmBH.set_type (protocol::TMGetObjectByHash::otFETCH_PACK);
-        tmBH.set_ledgerhash (haveHash->begin(), 32);
-		tmBH.set_schemaid(app_.schemaId().begin(), uint256::size());
-        auto packet = std::make_shared<Message> (
-            tmBH, protocol::mtGET_OBJECTS);
+        tmBH.set_query(true);
+        tmBH.set_type(protocol::TMGetObjectByHash::otFETCH_PACK);
+        tmBH.set_ledgerhash(haveHash->begin(), 32);
+        tmBH.set_schemaid(app_.schemaId().begin(), uint256::size());
+        auto packet = std::make_shared<Message>(tmBH, protocol::mtGET_OBJECTS);
 
-        target->send (packet);
+        target->send(packet);
         JLOG(m_journal.trace()) << "Requested fetch pack for " << missing;
     }
     else
@@ -984,71 +976,11 @@ LedgerMaster::failedSave(std::uint32_t seq, uint256 const& hash)
     app_.getInboundLedgers().acquire(hash, seq, InboundLedger::Reason::GENERIC);
 }
 
-// Check if the specified ledger can become the new last fully-validated
-// ledger.
-void
-LedgerMaster::checkAccept(uint256 const& hash, std::uint32_t seq)
-{
-    std::size_t valCount = 0;
-
-    if (seq != 0)
-    {
-        // Ledger is too old
-        if (seq < mValidLedgerSeq)
-            return;
-
-        auto validations = app_.validators().negativeUNLFilter(
-            app_.getValidations().getTrustedForLedger(hash));
-        valCount = validations.size();
-        if (valCount >= app_.validators().quorum())
-        {
-            std::lock_guard ml(m_mutex);
-            if (seq > mLastValidLedger.second)
-                mLastValidLedger = std::make_pair(hash, seq);
-        }
-
-        if (seq == mValidLedgerSeq)
-            return;
-
-        // Ledger could match the ledger we're already building
-        if (seq == mBuildingLedgerSeq)
-            return;
-    }
-
-    auto ledger = mLedgerHistory.getLedgerByHash(hash);
-
-    if (!ledger)
-    {
-        if ((seq != 0) && (getValidLedgerIndex() == 0))
-        {
-            // Set peers sane early if we can
-            if (valCount >= app_.validators ().quorum ())
-                app_.peerManager().checkSanity (seq);
-        }
-
-        // FIXME: We may not want to fetch a ledger with just one
-        // trusted validation
-        ledger = app_.getInboundLedgers().acquire(
-            hash, seq, InboundLedger::Reason::GENERIC);
-    }
-
-    if (ledger)
-        checkAccept(ledger);
-}
-
-/**
- * Determines how many validations are needed to fully validate a ledger
- *
- * @return Number of validations needed
- */
-std::size_t
-LedgerMaster::getNeededValidations()
-{
-    return standalone_ ? 0 : app_.validators().quorum();
-}
-
-ripple::uint160 LedgerMaster::getNameInDB(
-    LedgerIndex index, AccountID accountID,std::string sTableName)
+ripple::uint160
+LedgerMaster::getNameInDB(
+    LedgerIndex index,
+    AccountID accountID,
+    std::string sTableName)
 {
     ripple::uint160 name;
     assert(accountID.isZero() == false);
@@ -1057,27 +989,30 @@ ripple::uint160 LedgerMaster::getNameInDB(
     {
         auto id = keylet::table(accountID);
         auto const tablesle = ledger->read(id);
-       
+
         if (tablesle)
         {
             auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 
-            for (auto const &table : aTableEntries)
+            for (auto const& table : aTableEntries)
             {
                 ripple::Blob blob = table.getFieldVL(sfTableName);
                 std::string tableName = std::string(blob.begin(), blob.end());
-				if (sTableName.compare(tableName) == 0)
-				{
-					name = table.getFieldH160(sfNameInDB);
-				}
+                if (sTableName.compare(tableName) == 0)
+                {
+                    name = table.getFieldH160(sfNameInDB);
+                }
             }
         }
     }
-	return name;
+    return name;
 }
 
 table_BaseInfo
-LedgerMaster::getTableBaseInfo(LedgerIndex index, AccountID accountID, std::string sTableName)
+LedgerMaster::getTableBaseInfo(
+    LedgerIndex index,
+    AccountID accountID,
+    std::string sTableName)
 {
     table_BaseInfo ret_baseInfo;
     assert(accountID.isZero() == false);
@@ -1091,24 +1026,29 @@ LedgerMaster::getTableBaseInfo(LedgerIndex index, AccountID accountID, std::stri
         {
             auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 
-            for (auto const &table : aTableEntries)
+            for (auto const& table : aTableEntries)
             {
                 ripple::Blob blob = table.getFieldVL(sfTableName);
                 std::string tableName = std::string(blob.begin(), blob.end());
                 if (sTableName.compare(tableName) == 0)
                 {
                     if (table.isFieldPresent(sfNameInDB))
-						ret_baseInfo.nameInDB = table.getFieldH160(sfNameInDB);
+                        ret_baseInfo.nameInDB = table.getFieldH160(sfNameInDB);
                     if (table.isFieldPresent(sfCreateLgrSeq))
-						ret_baseInfo.createLgrSeq = table.getFieldU32(sfCreateLgrSeq);
+                        ret_baseInfo.createLgrSeq =
+                            table.getFieldU32(sfCreateLgrSeq);
                     if (table.isFieldPresent(sfCreatedLedgerHash))
-						ret_baseInfo.createdLedgerHash = table.getFieldH256(sfCreatedLedgerHash);
+                        ret_baseInfo.createdLedgerHash =
+                            table.getFieldH256(sfCreatedLedgerHash);
                     if (table.isFieldPresent(sfCreatedTxnHash))
-                        ret_baseInfo.createdTxnHash = table.getFieldH256(sfCreatedTxnHash);
+                        ret_baseInfo.createdTxnHash =
+                            table.getFieldH256(sfCreatedTxnHash);
                     if (table.isFieldPresent(sfPreviousTxnLgrSeq))
-                        ret_baseInfo.previousTxnLgrSeq = table.getFieldU32(sfPreviousTxnLgrSeq);
+                        ret_baseInfo.previousTxnLgrSeq =
+                            table.getFieldU32(sfPreviousTxnLgrSeq);
                     if (table.isFieldPresent(sfPrevTxnLedgerHash))
-                        ret_baseInfo.prevTxnLedgerHash = table.getFieldH256(sfPrevTxnLedgerHash);
+                        ret_baseInfo.prevTxnLedgerHash =
+                            table.getFieldH256(sfPrevTxnLedgerHash);
                 }
             }
         }
@@ -1116,54 +1056,59 @@ LedgerMaster::getTableBaseInfo(LedgerIndex index, AccountID accountID, std::stri
     return ret_baseInfo;
 }
 
-std::pair<ripple::uint256, error_code_i> LedgerMaster::getLatestTxCheckHash(AccountID accountID, std::string sTableName)
-{		
-	ripple::uint256 uTxCheckHash;
-	error_code_i errCode=rpcUNKNOWN;
-	//assert(accountID);
-	auto ledger = getValidatedLedger();
-	if (ledger)
-	{
-		auto id = keylet::table(accountID);
-		auto const tablesle = ledger->read(id);
+std::pair<ripple::uint256, error_code_i>
+LedgerMaster::getLatestTxCheckHash(AccountID accountID, std::string sTableName)
+{
+    ripple::uint256 uTxCheckHash;
+    error_code_i errCode = rpcUNKNOWN;
+    // assert(accountID);
+    auto ledger = getValidatedLedger();
+    if (ledger)
+    {
+        auto id = keylet::table(accountID);
+        auto const tablesle = ledger->read(id);
 
-		if (tablesle)
-		{
-			auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+        if (tablesle)
+        {
+            auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 
-			for (auto const &table : aTableEntries)
-			{
-				ripple::Blob blob = table.getFieldVL(sfTableName);
-				std::string tableName = std::string(blob.begin(), blob.end());
-				if (sTableName.compare(tableName) == 0)
-				{
-					uTxCheckHash = table.getFieldH256(sfTxCheckHash);
-				}
-			}
-		}
-		if (uTxCheckHash.isZero())
-		{
-			errCode = rpcTAB_NOT_EXIST; //Can't find the table in the chain.
-		}
-	}
-	else
-	{
-		uTxCheckHash = beast::zero;
-		errCode = rpcGET_LGR_FAILED;
-	}
-	
-	return std::make_pair(uTxCheckHash, errCode);
+            for (auto const& table : aTableEntries)
+            {
+                ripple::Blob blob = table.getFieldVL(sfTableName);
+                std::string tableName = std::string(blob.begin(), blob.end());
+                if (sTableName.compare(tableName) == 0)
+                {
+                    uTxCheckHash = table.getFieldH256(sfTxCheckHash);
+                }
+            }
+        }
+        if (uTxCheckHash.isZero())
+        {
+            errCode = rpcTAB_NOT_EXIST;  // Can't find the table in the chain.
+        }
+    }
+    else
+    {
+        uTxCheckHash = beast::zero;
+        errCode = rpcGET_LGR_FAILED;
+    }
+
+    return std::make_pair(uTxCheckHash, errCode);
 }
 
 std::pair<bool, error_code_i>
-LedgerMaster::isAuthorityValid(AccountID accountID, AccountID ownerID, std::list<std::string>aTableName, TableRoleFlags roles)
+LedgerMaster::isAuthorityValid(
+    AccountID accountID,
+    AccountID ownerID,
+    std::list<std::string> aTableName,
+    TableRoleFlags roles)
 {
     if (accountID.isZero() || ownerID.isZero() || aTableName.size() <= 0)
     {
-		return std::make_pair(false, rpcINVALID_PARAMS);
+        return std::make_pair(false, rpcINVALID_PARAMS);
     }
 
-    //std::string errMsg = " does not have the right authority.";
+    // std::string errMsg = " does not have the right authority.";
     auto ledger = getValidatedLedger();
     if (ledger)
     {
@@ -1173,32 +1118,34 @@ LedgerMaster::isAuthorityValid(AccountID accountID, AccountID ownerID, std::list
         if (tablesle)
         {
             auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-            for (auto const &sCheckName : aTableName)
+            for (auto const& sCheckName : aTableName)
             {
                 bool bValid = false;
-				bool bTableFound = false;
-                for (auto const &table : aTableEntries)
+                bool bTableFound = false;
+                for (auto const& table : aTableEntries)
                 {
                     ripple::Blob blob = table.getFieldVL(sfTableName);
-                    std::string sTableName = std::string(blob.begin(), blob.end());
+                    std::string sTableName =
+                        std::string(blob.begin(), blob.end());
                     if (sCheckName.compare(sTableName) == 0)
                     {
-						bTableFound = true;
-						STEntry* pTableEntry = (STEntry*)(&table);
-						if (pTableEntry->hasAuthority(accountID, roles))
-						{
-							bValid = true;
-						}
+                        bTableFound = true;
+                        STEntry* pTableEntry = (STEntry*)(&table);
+                        if (pTableEntry->hasAuthority(accountID, roles))
+                        {
+                            bValid = true;
+                        }
                         break;
                     }
                 }
                 if (!bValid)
                 {
-					if(!bTableFound)
-						return std::make_pair(false, rpcTAB_NOT_EXIST);
-						//return std::make_pair(false, sCheckName + " does not exist");
-					else
-						return std::make_pair(false, rpcTAB_UNAUTHORIZED);
+                    if (!bTableFound)
+                        return std::make_pair(false, rpcTAB_NOT_EXIST);
+                    // return std::make_pair(false, sCheckName + " does not
+                    // exist");
+                    else
+                        return std::make_pair(false, rpcTAB_UNAUTHORIZED);
                 }
                 return std::make_pair(true, rpcSUCCESS);
             }
@@ -1207,73 +1154,82 @@ LedgerMaster::isAuthorityValid(AccountID accountID, AccountID ownerID, std::list
     return std::make_pair(true, rpcSUCCESS);
 }
 std::tuple<bool, ripple::Blob, error_code_i>
-LedgerMaster::getUserToken(AccountID accountID, AccountID ownerID, std::string sTableName)
+LedgerMaster::getUserToken(
+    AccountID accountID,
+    AccountID ownerID,
+    std::string sTableName)
 {
-	std::string sToken, errMsg;
-	
-	assert(accountID.isZero() == false);
-	auto ledger = getValidatedLedger();
-	if (ledger)
-	{
-		auto id = keylet::table(ownerID);
-		auto const tablesle = ledger->read(id);
-		bool tableFound = false;
+    std::string sToken, errMsg;
 
-		if (tablesle)
-		{
-			auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-			for (auto const &table : aTableEntries)
-			{
-				ripple::Blob blob = table.getFieldVL(sfTableName);
-				std::string tableName = std::string(blob.begin(), blob.end());
-				if (sTableName.compare(tableName) == 0)
-				{
-					tableFound = true;
-					assert(table.isFieldPresent(sfUsers));
-					auto& users = table.getFieldArray(sfUsers);
-					assert(users.size() > 0);
-					bool bNeedToken = users[0].isFieldPresent(sfToken);
-					if (!bNeedToken)
-					{
-						return std::make_tuple(true, Blob(), rpcSUCCESS);
-					}
-					else
-					{
-						for (auto & user : users)  //check if there same user
-						{
-							if (user.getAccountID(sfUser) == accountID)
-							{
-								if (user.isFieldPresent(sfToken))
-								{
-									ripple::Blob passBlob = user.getFieldVL(sfToken);
-									//std::string sPass = std::string(passBlob.begin(), passBlob.end());
-									return std::make_tuple(true, passBlob, rpcSUCCESS);
-								}
-								else
-								{
-									return std::make_tuple(false, Blob(), rpcSLE_TOKEN_MISSING);
-								}
-							}
-						}
-						return std::make_tuple(false, Blob(), rpcTAB_UNAUTHORIZED);
-					}
-					break;
-				}
-			}
-		}
-		if(!tableFound)
-			return std::make_tuple(false, Blob(), rpcTAB_NOT_EXIST);
-	}
-	else
-	{
-		return std::make_tuple(false, Blob(), rpcGET_LGR_FAILED);
-	}
+    assert(accountID.isZero() == false);
+    auto ledger = getValidatedLedger();
+    if (ledger)
+    {
+        auto id = keylet::table(ownerID);
+        auto const tablesle = ledger->read(id);
+        bool tableFound = false;
 
-	return std::make_tuple(false, Blob(), rpcUNKNOWN);
+        if (tablesle)
+        {
+            auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+            for (auto const& table : aTableEntries)
+            {
+                ripple::Blob blob = table.getFieldVL(sfTableName);
+                std::string tableName = std::string(blob.begin(), blob.end());
+                if (sTableName.compare(tableName) == 0)
+                {
+                    tableFound = true;
+                    assert(table.isFieldPresent(sfUsers));
+                    auto& users = table.getFieldArray(sfUsers);
+                    assert(users.size() > 0);
+                    bool bNeedToken = users[0].isFieldPresent(sfToken);
+                    if (!bNeedToken)
+                    {
+                        return std::make_tuple(true, Blob(), rpcSUCCESS);
+                    }
+                    else
+                    {
+                        for (auto& user : users)  // check if there same user
+                        {
+                            if (user.getAccountID(sfUser) == accountID)
+                            {
+                                if (user.isFieldPresent(sfToken))
+                                {
+                                    ripple::Blob passBlob =
+                                        user.getFieldVL(sfToken);
+                                    // std::string sPass =
+                                    // std::string(passBlob.begin(),
+                                    // passBlob.end());
+                                    return std::make_tuple(
+                                        true, passBlob, rpcSUCCESS);
+                                }
+                                else
+                                {
+                                    return std::make_tuple(
+                                        false, Blob(), rpcSLE_TOKEN_MISSING);
+                                }
+                            }
+                        }
+                        return std::make_tuple(
+                            false, Blob(), rpcTAB_UNAUTHORIZED);
+                    }
+                    break;
+                }
+            }
+        }
+        if (!tableFound)
+            return std::make_tuple(false, Blob(), rpcTAB_NOT_EXIST);
+    }
+    else
+    {
+        return std::make_tuple(false, Blob(), rpcGET_LGR_FAILED);
+    }
 
+    return std::make_tuple(false, Blob(), rpcUNKNOWN);
 }
 
-std::tuple<bool, ripple::uint256, error_code_i> LedgerMaster::getUserFutureHash(AccountID accountID)
+std::tuple<bool, ripple::uint256, error_code_i>
+LedgerMaster::getUserFutureHash(AccountID accountID)
 {
     auto ledger = getValidatedLedger();
     if (ledger)
@@ -1293,382 +1249,147 @@ std::tuple<bool, ripple::uint256, error_code_i> LedgerMaster::getUserFutureHash(
     return std::make_tuple(false, uint256(), rpcUNKNOWN);
 }
 
-bool LedgerMaster::isConfidential(const STTx& tx)
+bool
+LedgerMaster::isConfidential(const STTx& tx)
 {
-	if (tx.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
-	{
-		auto vecTxs = app_.getMasterTransaction().getTxs(tx);
-		for (auto& tx : vecTxs)
-		{
-			if (isConfidentialUnit(tx))
-				return true;
-		}
-		return false;
-	}
-	else
-	{
-		return isConfidentialUnit(tx);
-	}
+    if (tx.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
+    {
+        auto vecTxs = app_.getMasterTransaction().getTxs(tx);
+        for (auto& tx : vecTxs)
+        {
+            if (isConfidentialUnit(tx))
+                return true;
+        }
+        return false;
+    }
+    else
+    {
+        return isConfidentialUnit(tx);
+    }
 }
 
-void LedgerMaster::processFullLedgerTask(std::shared_ptr<Ledger const> const& ledger)
+void
+LedgerMaster::processFullLedgerTask(std::shared_ptr<Ledger const> const& ledger)
 {
-	app_.getTableSync().CheckSyncTableTxs(ledger);
-	app_.getTableStorage().TryTableStorage();
-	app_.getTableAssistant().TryTableCheckHash();
-	//app_.getOPs().TryCheckSubTx();
-	app_.getTableTxAccumulator().trySweepCache();
+    app_.getTableSync().CheckSyncTableTxs(ledger);
+    app_.getTableStorage().TryTableStorage();
+    app_.getTableAssistant().TryTableCheckHash();
+    // app_.getOPs().TryCheckSubTx();
+    app_.getTableTxAccumulator().trySweepCache();
 }
 
-
-bool LedgerMaster::isConfidentialUnit(const STTx& tx)
+bool
+LedgerMaster::isConfidentialUnit(const STTx& tx)
 {
-	int opType = tx.getFieldU16(sfOpType);
-	if (opType == T_CREATE)
-	{
-		if (tx.isFieldPresent(sfToken))
-			return true;
-		else
-			return false;
-	}
-	else
-	{
-		AccountID  owner = beast::zero;
-		if (isSqlStatementOpType((TableOpType)opType))
-		{
-			owner = tx.getAccountID(sfOwner);
-		}
-		else
-		{
-			owner = tx.getAccountID(sfAccount);
-		}
+    int opType = tx.getFieldU16(sfOpType);
+    if (opType == T_CREATE)
+    {
+        if (tx.isFieldPresent(sfToken))
+            return true;
+        else
+            return false;
+    }
+    else
+    {
+        AccountID owner = beast::zero;
+        if (isSqlStatementOpType((TableOpType)opType))
+        {
+            owner = tx.getAccountID(sfOwner);
+        }
+        else
+        {
+            owner = tx.getAccountID(sfAccount);
+        }
 
-		auto const & sTxTables = tx.getFieldArray(sfTables);
-		std::string sTxTableName = strCopy(sTxTables[0].getFieldVL(sfTableName));
+        auto const& sTxTables = tx.getFieldArray(sfTables);
+        std::string sTxTableName =
+            strCopy(sTxTables[0].getFieldVL(sfTableName));
 
-		auto ledger = getValidatedLedger();
-		if (ledger == NULL)  return false;
+        auto ledger = getValidatedLedger();
+        if (ledger == NULL)
+            return false;
 
-		auto id = keylet::table(owner);
-		auto const tablesle = ledger->read(id);
-		if (tablesle == nullptr)
-			return false;
-		auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+        auto id = keylet::table(owner);
+        auto const tablesle = ledger->read(id);
+        if (tablesle == nullptr)
+            return false;
+        auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
 
-		for (auto & table : aTableEntries)
-		{
-			if (strCopy(table.getFieldVL(sfTableName)) == sTxTableName) {
-				STEntry* pEntry = (STEntry*)&table;
-				return pEntry->isConfidential();
-			}
-		}
-	}
+        for (auto& table : aTableEntries)
+        {
+            if (strCopy(table.getFieldVL(sfTableName)) == sTxTableName)
+            {
+                STEntry* pEntry = (STEntry*)&table;
+                return pEntry->isConfidential();
+            }
+        }
+    }
 
-	return false;
+    return false;
 }
 
-void LedgerMaster::checkSubChains()
+void
+LedgerMaster::checkSubChains()
 {
-	if (subChainInited_)
-		return;
+    if (subChainInited_)
+        return;
 
-	if (app_.schemaId() != beast::zero)
-		return;
+    if (app_.schemaId() != beast::zero)
+        return;
 
-	auto ledger = getValidatedLedger();
-	for (auto sle : ledger->sles)
-	{
-		if (sle->getType() != ltSCHEMA)
-			continue;
-		uint256 schemaId = sle->key();
-		SchemaParams params{};
+    auto ledger = getValidatedLedger();
+    for (auto sle : ledger->sles)
+    {
+        if (sle->getType() != ltSCHEMA)
+            continue;
+        uint256 schemaId = sle->key();
+        SchemaParams params{};
         params.readFromSle(sle);
-		bool bShouldCreate = false;
+        bool bShouldCreate = false;
         for (auto validator : params.validator_list)
         {
             if (validator.first == app_.getValidationPublicKey())
             {
-				bShouldCreate = true;
+                bShouldCreate = true;
                 break;
             }
         }
-		if (bShouldCreate)
-		{
-			if (!app_.getSchemaManager().contains(schemaId))
-			{
-				JLOG(m_journal.info()) << "Creating schema when checkSubChains:" << schemaId;
-				app_.getOPs().createSchema(sle, true);
-			}
-		}
-		else
-		{
-			if (app_.getSchemaManager().contains(schemaId))
-			{
-				JLOG(m_journal.info()) << "Removing schema when checkSubChains:" << schemaId;
-				app_.app().getSchema(schemaId).doStop();
-				app_.getSchemaManager().removeSchema(schemaId);
-			}
-		}
-	}
+        if (bShouldCreate)
+        {
+            if (!app_.getSchemaManager().contains(schemaId))
+            {
+                JLOG(m_journal.info())
+                    << "Creating schema when checkSubChains:" << schemaId;
+                app_.getOPs().createSchema(sle, true);
+            }
+        }
+        else
+        {
+            if (app_.getSchemaManager().contains(schemaId))
+            {
+                JLOG(m_journal.info())
+                    << "Removing schema when checkSubChains:" << schemaId;
+                app_.app().getSchema(schemaId).doStop();
+                app_.getSchemaManager().removeSchema(schemaId);
+            }
+        }
+    }
 
-	subChainInited_ = true;
-}
-
-void LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
-{
-	genesis->setValidated();
-	setValidLedger(genesis);
-	//setLedgerRangePresent(
-	//	genesis->info().seq,
-	//	genesis->info().seq);
-	pendSaveValidated(app_, genesis, true, true);
-	//setPubLedger(genesis);
-
-	tryAdvance();
+    subChainInited_ = true;
 }
 
 void
-LedgerMaster::checkAccept(std::shared_ptr<Ledger const> const& ledger)
+LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
 {
-    // Can we accept this ledger as our new last fully-validated ledger
-
-	// Comment by ljl: this judgment is for RPCA or other consensus algorithm
-	// that can validate empty ledgers.
-    //if (! canBeCurrent (ledger))
-    //    return;
-
-    // Can we advance the last fully-validated ledger? If so, can we
-    // publish?
-    std::lock_guard ml(m_mutex);
-
-    if (ledger->info().seq <= mValidLedgerSeq)
-        return;
-
-    auto const minVal = getNeededValidations();
-    auto validations = app_.validators().negativeUNLFilter(
-        app_.getValidations().getTrustedForLedger(ledger->info().hash));
-    auto const tvc = validations.size();
-    if (tvc < minVal)  // nothing we can do
-    {
-        JLOG(m_journal.trace())
-            << "Only " << tvc << " validations for " << ledger->info().hash;
-        return;
-    }
-
-    JLOG(m_journal.info()) << "Advancing accepted ledger to "
-                           << ledger->info().seq << " with >= " << minVal
-                           << " validations";
-
-    ledger->setValidated();
-    ledger->setFull();
-    setValidLedger(ledger);
-
-	checkSubChains();
-    app_.getTxPool().removeTxs(ledger->txMap(),ledger->info().seq,ledger->info().parentHash);
-
-    if (!mPubLedger)
-    {
-        pendSaveValidated(app_, ledger, true, true);
-        setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
-    }
-
-    std::uint32_t const base = app_.getFeeTrack().getLoadBase();
-    auto fees = app_.getValidations().fees(ledger->info().hash, base);
-    {
-        auto fees2 =
-            app_.getValidations().fees(ledger->info().parentHash, base);
-        fees.reserve(fees.size() + fees2.size());
-        std::copy(fees2.begin(), fees2.end(), std::back_inserter(fees));
-    }
-    std::uint32_t fee;
-    if (!fees.empty())
-    {
-        std::sort(fees.begin(), fees.end());
-        fee = fees[fees.size() / 2];  // median
-    }
-    else
-    {
-        fee = base;
-    }
-
-    app_.getFeeTrack().setRemoteFee(fee);
+    genesis->setValidated();
+    setValidLedger(genesis);
+    // setLedgerRangePresent(
+    //	genesis->info().seq,
+    //	genesis->info().seq);
+    pendSaveValidated(app_, genesis, true, true);
+    // setPubLedger(genesis);
 
     tryAdvance();
-
-    if (ledger->seq() % 256 == 0)
-    {
-        // Check if the majority of validators run a higher version rippled
-        // software. If so print a warning.
-        //
-        // Once the HardenedValidations amendment is enabled, validators include
-        // their rippled software version in the validation messages of every
-        // (flag - 1) ledger. We wait for one ledger time before checking the
-        // version information to accumulate more validation messages.
-
-        auto currentTime = app_.timeKeeper().now();
-        bool needPrint = false;
-
-        // The variable upgradeWarningPrevTime_ will be set when and only when
-        // the warning is printed.
-        if (upgradeWarningPrevTime_ == TimeKeeper::time_point())
-        {
-            // Have not printed the warning before, check if need to print.
-            auto const vals = app_.getValidations().getTrustedForLedger(
-                ledger->info().parentHash);
-            std::size_t higherVersionCount = 0;
-            std::size_t rippledCount = 0;
-            for (auto const& v : vals)
-            {
-                if (v->isFieldPresent(sfServerVersion))
-                {
-                    auto version = v->getFieldU64(sfServerVersion);
-                    higherVersionCount +=
-                        BuildInfo::isNewerVersion(version) ? 1 : 0;
-                    rippledCount +=
-                        BuildInfo::isRippledVersion(version) ? 1 : 0;
-                }
-            }
-            // We report only if (1) we have accumulated validation messages
-            // from 90% validators from the UNL, (2) 60% of validators
-            // running the rippled implementation have higher version numbers,
-            // and (3) the calculation won't cause divide-by-zero.
-            if (higherVersionCount > 0 && rippledCount > 0)
-            {
-                constexpr std::size_t reportingPercent = 90;
-                constexpr std::size_t cutoffPercent = 60;
-                auto const unlSize{
-                    app_.validators().getQuorumKeys().second.size()};
-                needPrint = unlSize > 0 &&
-                    calculatePercent(vals.size(), unlSize) >=
-                        reportingPercent &&
-                    calculatePercent(higherVersionCount, rippledCount) >=
-                        cutoffPercent;
-            }
-        }
-        // To throttle the warning messages, instead of printing a warning
-        // every flag ledger, we print every week.
-        else if (currentTime - upgradeWarningPrevTime_ >= weeks{1})
-        {
-            // Printed the warning before, and assuming most validators
-            // do not downgrade, we keep printing the warning
-            // until the local server is restarted.
-            needPrint = true;
-        }
-
-        if (needPrint)
-        {
-            upgradeWarningPrevTime_ = currentTime;
-            auto const upgradeMsg =
-                "Check for upgrade: "
-                "A majority of trusted validators are "
-                "running a newer version.";
-            std::cerr << upgradeMsg << std::endl;
-            JLOG(m_journal.error()) << upgradeMsg;
-        }
-    }
-}
-
-/** Report that the consensus process built a particular ledger */
-void
-LedgerMaster::consensusBuilt(
-    std::shared_ptr<Ledger const> const& ledger,
-    uint256 const& consensusHash,
-    Json::Value consensus)
-{
-    // Because we just built a ledger, we are no longer building one
-    setBuildingLedger(0);
-
-    // No need to process validations in standalone mode
-    if (standalone_)
-        return;
-
-    mLedgerHistory.builtLedger(ledger, consensusHash, std::move(consensus));
-
-    if (ledger->info().seq <= mValidLedgerSeq)
-    {
-        auto stream = app_.journal("LedgerConsensus").info();
-        JLOG(stream) << "Consensus built old ledger: " << ledger->info().seq
-                     << " <= " << mValidLedgerSeq;
-        return;
-    }
-
-    // See if this ledger can be the new fully-validated ledger
-    checkAccept(ledger);
-
-    if (ledger->info().seq <= mValidLedgerSeq)
-    {
-        auto stream = app_.journal("LedgerConsensus").debug();
-        JLOG(stream) << "Consensus ledger fully validated";
-        return;
-    }
-
-    // This ledger cannot be the new fully-validated ledger, but
-    // maybe we saved up validations for some other ledger that can be
-
-    auto validations = app_.validators().negativeUNLFilter(
-        app_.getValidations().currentTrusted());
-
-    // Track validation counts with sequence numbers
-    class valSeq
-    {
-    public:
-        valSeq() : valCount_(0), ledgerSeq_(0)
-        {
-            ;
-        }
-
-        void
-        mergeValidation(LedgerIndex seq)
-        {
-            valCount_++;
-
-            // If we didn't already know the sequence, now we do
-            if (ledgerSeq_ == 0)
-                ledgerSeq_ = seq;
-        }
-
-        std::size_t valCount_;
-        LedgerIndex ledgerSeq_;
-    };
-
-    // Count the number of current, trusted validations
-    hash_map<uint256, valSeq> count;
-    for (auto const& v : validations)
-    {
-        valSeq& vs = count[v->getLedgerHash()];
-        vs.mergeValidation(v->getFieldU32(sfLedgerSequence));
-    }
-
-    auto const neededValidations = getNeededValidations();
-    auto maxSeq = mValidLedgerSeq.load();
-    auto maxLedger = ledger->info().hash;
-
-    // Of the ledgers with sufficient validations,
-    // find the one with the highest sequence
-    for (auto& v : count)
-        if (v.second.valCount_ > neededValidations)
-        {
-            // If we still don't know the sequence, get it
-            if (v.second.ledgerSeq_ == 0)
-            {
-                if (auto l = getLedgerByHash(v.first))
-                    v.second.ledgerSeq_ = l->info().seq;
-            }
-
-            if (v.second.ledgerSeq_ > maxSeq)
-            {
-                maxSeq = v.second.ledgerSeq_;
-                maxLedger = v.first;
-            }
-        }
-
-    if (maxSeq > mValidLedgerSeq)
-    {
-        auto stream = app_.journal("LedgerConsensus").debug();
-        JLOG(stream) << "Consensus triggered check of ledger";
-        checkAccept(maxLedger, maxSeq);
-    }
 }
 
 void
@@ -1685,7 +1406,7 @@ LedgerMaster::advanceThread()
     }
     catch (std::exception const& e)
     {
-        JLOG (m_journal.fatal()) << "doAdvance throws an exception:" << e.what();
+        JLOG(m_journal.fatal()) << "doAdvance throws an exception:" << e.what();
     }
 
     mAdvanceThread = false;
@@ -1699,8 +1420,8 @@ LedgerMaster::getLedgerHashForHistory(
 {
     // Try to get the hash of a ledger we need to fetch for history
     boost::optional<LedgerHash> ret;
-    auto const& l{
-        reason == InboundLedger::Reason::SHARD ? mShardLedger : mHistLedger};
+    auto const& l{reason == InboundLedger::Reason::SHARD ? mShardLedger
+                                                         : mHistLedger};
 
     if (l && l->info().seq >= index)
     {
@@ -1960,19 +1681,6 @@ LedgerMaster::newPFWork(
     return mPathFindThread > 0 && !isStopping();
 }
 
-std::recursive_mutex&
-LedgerMaster::peekMutex()
-{
-    return m_mutex;
-}
-
-// The current ledger is the ledger we believe new transactions should go in
-std::shared_ptr<ReadView const>
-LedgerMaster::getCurrentLedger()
-{
-    return app_.openLedger().current();
-}
-
 Rules
 LedgerMaster::getValidatedRules()
 {
@@ -2013,7 +1721,7 @@ LedgerMaster::getCloseTimeBySeq(LedgerIndex ledgerIndex)
 boost::optional<NetClock::time_point>
 LedgerMaster::getCloseTimeByHash(
     LedgerHash const& ledgerHash,
-    std::uint32_t index)
+    LedgerIndex index)
 {
     auto node = app_.getNodeStore().fetch(ledgerHash, index);
     if (node && (node->getData().size() >= 120))
@@ -2048,9 +1756,11 @@ LedgerMaster::getHashBySeqEx(std::uint32_t index)
     boost::optional<LedgerHash> ledgerHash;
 
     if (auto referenceLedger = mValidLedger.get())
-        ledgerHash = walkHashBySeq(index, referenceLedger,InboundLedger::Reason::GENERIC);
+        ledgerHash = walkHashBySeq(
+            index, referenceLedger, InboundLedger::Reason::GENERIC);
 
-    if (ledgerHash == boost::none)  return beast::zero;
+    if (ledgerHash == boost::none)
+        return beast::zero;
     return ledgerHash.value();
 }
 
@@ -2354,6 +2064,121 @@ LedgerMaster::fetchForHistory(
     }
 }
 
+void
+LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
+{
+    ledger->setValidated();
+    ledger->setFull();
+    setValidLedger(ledger);
+
+    checkSubChains();
+
+    app_.getTxPool().removeTxs(
+        ledger->txMap(), ledger->info().seq, ledger->info().parentHash);
+
+    if (!mPubLedger)
+    {
+        pendSaveValidated(app_, ledger, true, true);
+        setPubLedger(ledger);
+        app_.getOrderBookDB().setup(ledger);
+    }
+
+    std::uint32_t const base = app_.getFeeTrack().getLoadBase();
+    auto fees = app_.getValidations().fees(ledger->info().hash, base);
+    {
+        auto fees2 =
+            app_.getValidations().fees(ledger->info().parentHash, base);
+        fees.reserve(fees.size() + fees2.size());
+        std::copy(fees2.begin(), fees2.end(), std::back_inserter(fees));
+    }
+    std::uint32_t fee;
+    if (!fees.empty())
+    {
+        std::sort(fees.begin(), fees.end());
+        fee = fees[fees.size() / 2];  // median
+    }
+    else
+    {
+        fee = base;
+    }
+
+    app_.getFeeTrack().setRemoteFee(fee);
+
+    tryAdvance();
+
+    if (ledger->seq() % 256 == 0)
+    {
+        // Check if the majority of validators run a higher version rippled
+        // software. If so print a warning.
+        //
+        // Once the HardenedValidations amendment is enabled, validators include
+        // their rippled software version in the validation messages of every
+        // (flag - 1) ledger. We wait for one ledger time before checking the
+        // version information to accumulate more validation messages.
+
+        auto currentTime = app_.timeKeeper().now();
+        bool needPrint = false;
+
+        // The variable upgradeWarningPrevTime_ will be set when and only when
+        // the warning is printed.
+        if (upgradeWarningPrevTime_ == TimeKeeper::time_point())
+        {
+            // Have not printed the warning before, check if need to print.
+            auto const vals = app_.getValidations().getTrustedForLedger(
+                ledger->info().parentHash);
+            std::size_t higherVersionCount = 0;
+            std::size_t rippledCount = 0;
+            for (auto const& v : vals)
+            {
+                if (v->isFieldPresent(sfServerVersion))
+                {
+                    auto version = v->getFieldU64(sfServerVersion);
+                    higherVersionCount +=
+                        BuildInfo::isNewerVersion(version) ? 1 : 0;
+                    rippledCount +=
+                        BuildInfo::isRippledVersion(version) ? 1 : 0;
+                }
+            }
+            // We report only if (1) we have accumulated validation messages
+            // from 90% validators from the UNL, (2) 60% of validators
+            // running the rippled implementation have higher version numbers,
+            // and (3) the calculation won't cause divide-by-zero.
+            if (higherVersionCount > 0 && rippledCount > 0)
+            {
+                constexpr std::size_t reportingPercent = 90;
+                constexpr std::size_t cutoffPercent = 60;
+                auto const unlSize{
+                    app_.validators().getQuorumKeys().second.size()};
+                needPrint = unlSize > 0 &&
+                    calculatePercent(vals.size(), unlSize) >=
+                        reportingPercent &&
+                    calculatePercent(higherVersionCount, rippledCount) >=
+                        cutoffPercent;
+            }
+        }
+        // To throttle the warning messages, instead of printing a warning
+        // every flag ledger, we print every week.
+        else if (currentTime - upgradeWarningPrevTime_ >= weeks{1})
+        {
+            // Printed the warning before, and assuming most validators
+            // do not downgrade, we keep printing the warning
+            // until the local server is restarted.
+            needPrint = true;
+        }
+
+        if (needPrint)
+        {
+            upgradeWarningPrevTime_ = currentTime;
+            auto const upgradeMsg =
+                "Check for upgrade: "
+                "A majority of trusted validators are "
+                "running a newer version.";
+            std::cerr << upgradeMsg << std::endl;
+            JLOG(m_journal.error()) << upgradeMsg;
+        }
+    }
+}
+
 // Try to publish ledgers, acquire missing ledgers
 void
 LedgerMaster::doAdvance(std::unique_lock<std::recursive_mutex>& sl)
@@ -2446,11 +2271,11 @@ LedgerMaster::doAdvance(std::unique_lock<std::recursive_mutex>& sl)
                     ScopedUnlock sul{sl};
                     app_.getOPs().pubLedger(ledger);
                 }
-                
-				processFullLedgerTask(ledger);
+
+                processFullLedgerTask(ledger);
             }
-			//move table_sync here,cause it used pub_ledger
-			app_.getTableSync().TryTableSync();
+            // move table_sync here,cause it used pub_ledger
+            app_.getTableSync().TryTableSync();
 
             app_.getOPs().clearNeedNetworkLedger();
             progress = newPFWork("pf:newLedger", sl);
@@ -2566,10 +2391,10 @@ LedgerMaster::makeFetchPack(
     try
     {
         protocol::TMGetObjectByHash reply;
-        reply.set_query (false);
-		reply.set_schemaid(app_.schemaId().begin(), uint256::size());
-        if (request->has_seq ())
-            reply.set_seq (request->seq ());
+        reply.set_query(false);
+        reply.set_schemaid(app_.schemaId().begin(), uint256::size());
+        if (request->has_seq())
+            reply.set_seq(request->seq());
 
         reply.set_ledgerhash(request->ledgerhash());
         reply.set_type(protocol::TMGetObjectByHash::otFETCH_PACK);
@@ -2626,9 +2451,11 @@ LedgerMaster::makeFetchPack(
             wantLedger = getLedgerByHash(haveLedger->info().parentHash);
 
             if (!wantLedger)
-			{
-				JLOG(m_journal.warn()) << "Cannot read ledger when building fetch patch, LedgerSeq=" << haveLedger->info().seq - 1;
-			}
+            {
+                JLOG(m_journal.warn()) << "Cannot read ledger when building "
+                                          "fetch patch, LedgerSeq="
+                                       << haveLedger->info().seq - 1;
+            }
 
         } while (wantLedger && UptimeClock::now() <= uptime + 1s);
 
@@ -2639,7 +2466,8 @@ LedgerMaster::makeFetchPack(
     }
     catch (std::exception const& e)
     {
-        JLOG(m_journal.warn()) << "Exception building fetch patch :"<<e.what();
+        JLOG(m_journal.warn())
+            << "Exception building fetch patch :" << e.what();
     }
 }
 

@@ -18,8 +18,8 @@
 //==============================================================================
 #include <ripple/beast/clock/manual_clock.h>
 #include <ripple/beast/unit_test.h>
-#include <ripple/consensus/Consensus.h>
-#include <ripple/consensus/ConsensusProposal.h>
+#include <peersafe/consensus/rpca/RpcaConsensus.h>
+#include <peersafe/protocol/STProposeSet.h>
 #include <test/csf.h>
 #include <test/unit_test/SuiteJournal.h>
 #include <utility>

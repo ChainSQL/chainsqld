@@ -23,11 +23,11 @@
 #include <ripple/basics/CountedObject.h>
 #include <ripple/basics/base_uint.h>
 #include <ripple/beast/hash/hash_append.h>
-#include <ripple/consensus/ConsensusProposal.h>
 #include <ripple/json/json_value.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/SecretKey.h>
+#include <peersafe/protocol/STProposeSet.h>
 #include <chrono>
 #include <cstdint>
 #include <string>
@@ -43,7 +43,8 @@ class RCLCxPeerPos
 {
 public:
     //< The type of the proposed position
-    using Proposal = ConsensusProposal<NodeID, uint256, uint256>;
+    // using Proposal = ConsensusProposal<NodeID, uint256, uint256>;
+    using Proposal = STProposeSet;
 
     /** Constructor
 
@@ -60,14 +61,6 @@ public:
         Slice const& signature,
         uint256 const& suppress,
         Proposal&& proposal);
-
-    //! Create the signing hash for the proposal
-    uint256
-    signingHash() const;
-
-    //! Verify the signing hash of the proposal
-    bool
-    checkSign() const;
 
     //! Signature of the proposal (not necessarily verified)
     Slice
@@ -128,38 +121,9 @@ private:
     hash_append(Hasher& h) const
     {
         using beast::hash_append;
-        hash_append(h, HashPrefix::proposal);
-        hash_append(h, std::uint32_t(proposal().proposeSeq()));
-        hash_append(h, proposal().closeTime());
-        hash_append(h, proposal().prevLedger());
-        hash_append(h, proposal().position());
+        hash_append(h, proposal().getSerialized());
     }
 };
-
-/** Calculate a unique identifier for a signed proposal.
-
-    The identifier is based on all the fields that contribute to the signature,
-    as well as the signature itself. The "last closed ledger" field may be
-    omitted, but the signer will compute the signature as if this field was
-    present. Recipients of the proposal will inject the last closed ledger in
-    order to validate the signature. If the last closed ledger is left out, then
-    it is considered as all zeroes for the purposes of signing.
-
-    @param proposeHash The hash of the proposed position
-    @param previousLedger The hash of the ledger the proposal is based upon
-    @param proposeSeq Sequence number of the proposal
-    @param closeTime Close time of the proposal
-    @param publicKey Signer's public key
-    @param signature Proposal signature
-*/
-uint256
-proposalUniqueId(
-    uint256 const& proposeHash,
-    uint256 const& previousLedger,
-    std::uint32_t proposeSeq,
-    NetClock::time_point closeTime,
-    Slice const& publicKey,
-    Slice const& signature);
 
 }  // namespace ripple
 

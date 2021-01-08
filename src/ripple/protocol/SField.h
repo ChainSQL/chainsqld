@@ -83,8 +83,14 @@ enum SerializedTypeID {
     // cannot be serialized inside other types
     STI_TRANSACTION = 10001,
     STI_LEDGERENTRY = 10002,
-    STI_VALIDATION = 10003,
-    STI_METADATA = 10004,
+    STI_VALIDATION  = 10003,
+    STI_METADATA    = 10004,
+
+    STI_PROPOSESET  = 10005,
+    STI_VIEWCHANGE  = 10006,
+    STI_PROPOSAL    = 10007,
+    STI_VOTE        = 10008,
+    STI_EPOCHCHANGE = 10009
 };
 
 // constexpr
@@ -344,6 +350,11 @@ extern SField const sfLedgerEntry;
 extern SField const sfTransaction;
 extern SField const sfValidation;
 extern SField const sfMetadata;
+extern SField const sfProposeSet;
+extern SField const sfViewChange;
+extern SField const sfProposal;
+extern SField const sfVote;
+extern SField const sfEpochChange;
 
 // 8-bit integers
 extern SF_U8 const sfCloseResolution;
@@ -425,6 +436,7 @@ extern SF_U64 const sfDestinationNode;
 extern SF_U64 const sfCookie;
 extern SF_U64 const sfDropsPerByte;
 extern SF_U64 const sfServerVersion;
+extern SF_U64 const sfView;
 
 // 128-bit
 extern SF_U128 const sfEmailHash;
@@ -517,6 +529,10 @@ extern SF_Blob const sfTxOperateRule;
 extern SF_Blob const sfInsertCountMap;
 extern SF_Blob const sfContractTxs;
 extern SF_Blob const sfContractLogs;
+extern SF_Blob const sfBlock;
+extern SF_Blob const sfVoteImp;
+extern SF_Blob const sfEpochChangeImp;
+extern SF_Blob const sfSyncInfo;
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;

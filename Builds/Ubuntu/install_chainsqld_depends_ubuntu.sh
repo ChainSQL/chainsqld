@@ -26,7 +26,7 @@ if [ ${ubuntu_release} == "14.04" ] || [ ${ubuntu_release} == "15.04" ]; then
     add-apt-repository ppa:ubuntu-toolchain-r/test
     apt-get update
     apt-get -y upgrade
-    apt-get -y install curl git scons ctags pkg-config protobuf-compiler libprotobuf-dev libssl-dev python-software-properties boost-all-dev nodejs g++-5 g++-4.9 libmysqlclient-dev 
+    apt-get -y install curl git scons ctags pkg-config protobuf-compiler libprotobuf-dev libssl-dev python-software-properties boost-all-dev nodejs g++-5 g++-4.9 libmysqlclient-dev
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 99 --slave /usr/bin/g++ g++ /usr/bin/g++-5
     update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 99 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
     exit 0
@@ -39,7 +39,8 @@ function version_check() { test "$(printf '%s\n' "$@" | sort -V | tail -n 1)" ==
 if version_check ${ubuntu_release} 15.10; then
     apt-get update
     apt-get -y upgrade
-    apt-get -y install python-software-properties curl git scons ctags pkg-config protobuf-compiler libprotobuf-dev libssl-dev python-software-properties libboost-all-dev nodejs libmysqlclient-dev
+    # https://askubuntu.com/questions/422975/e-package-python-software-properties-has-no-installation-candidate
+    apt-get -y install software-properties-common curl git scons ctags pkg-config protobuf-compiler libprotobuf-dev libssl-dev libboost-all-dev nodejs libmysqlclient-dev
     exit 0
 fi
 

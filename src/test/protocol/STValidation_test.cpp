@@ -187,10 +187,13 @@ public:
 
         try
         {
+            auto keyPair = randomKeyPair(KeyType::secp256k1);
             SerialIter sit{payload8};
 
             auto val = std::make_shared<STValidation>(
-                sit, [](PublicKey const& pk) { return calcNodeID(pk); }, true);
+                sit,
+                keyPair.first,
+                [](PublicKey const& pk) { return calcNodeID(pk); });
 
             BEAST_EXPECT(val);
             BEAST_EXPECT(val->isFieldPresent(sfLedgerSequence));
@@ -209,9 +212,12 @@ public:
 
         try
         {
+            auto keyPair = randomKeyPair(KeyType::secp256k1);
             SerialIter sit{payload1};
             auto val = std::make_shared<ripple::STValidation>(
-                sit, [](PublicKey const& pk) { return calcNodeID(pk); }, false);
+                sit,
+                keyPair.first,
+                [](PublicKey const& pk) { return calcNodeID(pk); });
             fail("An exception should have been thrown");
         }
         catch (std::exception const& ex)
@@ -224,9 +230,12 @@ public:
 
         try
         {
+            auto keyPair = randomKeyPair(KeyType::secp256k1);
             SerialIter sit{payload2};
             auto val = std::make_shared<ripple::STValidation>(
-                sit, [](PublicKey const& pk) { return calcNodeID(pk); }, false);
+                sit,
+                keyPair.first,
+                [](PublicKey const& pk) { return calcNodeID(pk); });
             fail("An exception should have been thrown");
         }
         catch (std::exception const& ex)
@@ -237,9 +246,12 @@ public:
 
         try
         {
+            auto keyPair = randomKeyPair(KeyType::secp256k1);
             SerialIter sit{payload3};
             auto val = std::make_shared<ripple::STValidation>(
-                sit, [](PublicKey const& pk) { return calcNodeID(pk); }, false);
+                sit,
+                keyPair.first,
+                [](PublicKey const& pk) { return calcNodeID(pk); });
             fail("An exception should have been thrown");
         }
         catch (std::exception const& ex)
@@ -250,9 +262,12 @@ public:
 
         try
         {
+            auto keyPair = randomKeyPair(KeyType::secp256k1);
             SerialIter sit{payload4};
             auto val = std::make_shared<ripple::STValidation>(
-                sit, [](PublicKey const& pk) { return calcNodeID(pk); }, false);
+                sit,
+                keyPair.first,
+                [](PublicKey const& pk) { return calcNodeID(pk); });
             fail("An exception should have been thrown");
         }
         catch (std::exception const& ex)
@@ -265,9 +280,12 @@ public:
 
         try
         {
+            auto keyPair = randomKeyPair(KeyType::secp256k1);
             SerialIter sit{payload5};
             auto val = std::make_shared<STValidation>(
-                sit, [](PublicKey const& pk) { return calcNodeID(pk); }, false);
+                sit,
+                keyPair.first,
+                [](PublicKey const& pk) { return calcNodeID(pk); });
             fail("Expected exception not thrown from validation");
         }
         catch (std::exception const& ex)
@@ -280,9 +298,12 @@ public:
 
         try
         {
+            auto keyPair = randomKeyPair(KeyType::secp256k1);
             SerialIter sit{payload6};
             auto val = std::make_shared<STValidation>(
-                sit, [](PublicKey const& pk) { return calcNodeID(pk); }, false);
+                sit,
+                keyPair.first,
+                [](PublicKey const& pk) { return calcNodeID(pk); });
             fail("Expected exception not thrown from validation");
         }
         catch (std::exception const& ex)
@@ -295,10 +316,13 @@ public:
 
         try
         {
+            auto keyPair = randomKeyPair(KeyType::secp256k1);
             SerialIter sit{payload7};
 
             auto val = std::make_shared<STValidation>(
-                sit, [](PublicKey const& pk) { return calcNodeID(pk); }, false);
+                sit,
+                keyPair.first,
+                [](PublicKey const& pk) { return calcNodeID(pk); });
 
             fail("Expected exception not thrown from validation");
         }
@@ -328,12 +352,13 @@ public:
 
             try
             {
+                auto keyPair = randomKeyPair(KeyType::secp256k1);
                 SerialIter sit{makeSlice(v2)};
 
                 auto val = std::make_shared<STValidation>(
                     sit,
-                    [](PublicKey const& pk) { return calcNodeID(pk); },
-                    true);
+                    keyPair.first,
+                    [](PublicKey const& pk) { return calcNodeID(pk); });
 
                 fail(
                     "Mutated validation signature checked out: offset=" +

@@ -46,6 +46,7 @@ class context;
 }  // namespace asio
 }  // namespace boost
 
+
 namespace ripple {
 
 /** Manages the set of connected peers. */
@@ -123,100 +124,52 @@ public:
     ///** Calls the checkSanity function on each peer
     //    @param index the value to pass to the peer's checkSanity function
     //*/
-    //virtual
-    //void
-    //checkSanity (std::uint32_t index) = 0;
+    // virtual
+    // void
+    // checkSanity (std::uint32_t index) = 0;
 
     ///** Calls the check function on each peer
     //*/
-	virtual
-	void
-		check() = 0;
+    virtual void
+    check() = 0;
 
-	virtual
-		void onSchemaCreated(uint256 const& schemaId) = 0;
+    virtual void
+    onSchemaCreated(uint256 const& schemaId) = 0;
 
-	virtual void onSchemaAddPeer(uint256 const& schemaId,
-		std::vector<std::string> const& bootstraps,
-		std::vector<PublicKey> const& validators) = 0;
- //   /** Returns the peer with the matching short id, or null. */
- //   virtual
- //   std::shared_ptr<Peer>
- //   findPeerByShortID (Peer::id_t const& id) = 0;
+    virtual void
+    onSchemaAddPeer(
+        uint256 const& schemaId,
+        std::vector<std::string> const& bootstraps,
+        std::vector<PublicKey> const& validators) = 0;
 
- //   /** Returns the peer with the matching public key, or null. */
- //   virtual
- //   std::shared_ptr<Peer>
- //   findPeerByPublicKey (PublicKey const& pubKey) = 0;
-
- //   /** Broadcast a proposal. */
- //   virtual
- //   void
- //   send (protocol::TMProposeSet& m) = 0;
-
- //   /** Broadcast a validation. */
- //   virtual
- //   void
- //   send (protocol::TMValidation& m) = 0;
-
-	///* Broadcast a view change*/
-	//virtual
-	//void
-	//send(protocol::TMViewChange& m) = 0;
-
- //   /** Relay a proposal. */
- //   virtual
- //   void
- //   relay (protocol::TMProposeSet& m,
- //       uint256 const& uid) = 0;
-
- //   /** Relay a validation. */
- //   virtual
- //   void
- //   relay (protocol::TMValidation& m,
- //       uint256 const& uid) = 0;
-
-	///** Relay a view change. */
-	//virtual
-	//	void
-	//	relay(protocol::TMViewChange& m,
-	//		uint256 const& uid) = 0;
- //   /** Visit every active peer and return a value
- //       The functor must:
- //       - Be callable as:
- //           void operator()(std::shared_ptr<Peer> const& peer);
- //        - Must have the following type alias:
- //           using return_type = void;
- //        - Be callable as:
- //           Function::return_type operator()() const;
-
- //       @param f the functor to call with every peer
- //       @returns `f()`
-
- //       @note The functor is passed by value!
- //   */
-	template <typename UnaryFunc>
-	std::enable_if_t<!std::is_void<
-		typename UnaryFunc::return_type>::value,
-		typename UnaryFunc::return_type>
-		foreach(UnaryFunc f)
-	{
-		for (auto const& p : getActivePeers())
-			f(p);
-		return f();
-	}
+    template <typename UnaryFunc>
+    std::enable_if_t<
+        !std::is_void<typename UnaryFunc::return_type>::value,
+        typename UnaryFunc::return_type>
+    foreach(UnaryFunc f)
+    {
+        for (auto const& p : getActivePeers())
+            f(p);
+        return f();
+    }
 
     /** Increment and retrieve counter for transaction job queue overflows. */
-    virtual void incJqTransOverflow() = 0;
-    virtual std::uint64_t getJqTransOverflow() const = 0;
+    virtual void
+    incJqTransOverflow() = 0;
+    virtual std::uint64_t
+    getJqTransOverflow() const = 0;
 
     /** Increment and retrieve counters for total peer disconnects, and
      * disconnects we initiate for excessive resource consumption.
-    */
-    virtual void incPeerDisconnect() = 0;
-    virtual std::uint64_t getPeerDisconnect() const = 0;
-    virtual void incPeerDisconnectCharges() = 0;
-    virtual std::uint64_t getPeerDisconnectCharges() const = 0;
+     */
+    virtual void
+    incPeerDisconnect() = 0;
+    virtual std::uint64_t
+    getPeerDisconnect() const = 0;
+    virtual void
+    incPeerDisconnectCharges() = 0;
+    virtual std::uint64_t
+    getPeerDisconnectCharges() const = 0;
 
     /** Returns the ID of the network this server is configured for, if any.
 
@@ -232,26 +185,34 @@ public:
 
 struct ScoreHasLedger
 {
-	uint256 const& schemaId_;
+    uint256 const& schemaId_;
     uint256 const& hash_;
     std::uint32_t seq_;
-    bool operator()(std::shared_ptr<Peer> const&) const;
+    bool
+    operator()(std::shared_ptr<Peer> const&) const;
 
-    ScoreHasLedger (uint256 const& schemaId, uint256 const& hash, std::uint32_t seq)
-        : schemaId_(schemaId), hash_ (hash), seq_ (seq)
-    {}
+    ScoreHasLedger(
+        uint256 const& schemaId,
+        uint256 const& hash,
+        std::uint32_t seq)
+        : schemaId_(schemaId), hash_(hash), seq_(seq)
+    {
+    }
 };
 
 struct ScoreHasTxSet
 {
-	SchemaID const& schemaId_;
+    SchemaID const& schemaId_;
     uint256 const& hash_;
-    bool operator()(std::shared_ptr<Peer> const&) const;
+    bool
+    operator()(std::shared_ptr<Peer> const&) const;
 
-    ScoreHasTxSet (uint256 const& schemaId, uint256 const& hash) : schemaId_(schemaId), hash_ (hash)
-    {}
+    ScoreHasTxSet(uint256 const& schemaId, uint256 const& hash)
+        : schemaId_(schemaId), hash_(hash)
+    {
+    }
 };
 
-}
+}  // namespace ripple
 
 #endif

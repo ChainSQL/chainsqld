@@ -67,14 +67,13 @@ Message::compress()
                 return true;
             case protocol::mtPING:
             case protocol::mtCLUSTER:
-            case protocol::mtPROPOSE_LEDGER:
             case protocol::mtSTATUS_CHANGE:
             case protocol::mtHAVE_SET:
-            case protocol::mtVALIDATION:
             case protocol::mtGET_SHARD_INFO:
             case protocol::mtSHARD_INFO:
             case protocol::mtGET_PEER_SHARD_INFO:
             case protocol::mtPEER_SHARD_INFO:
+            case protocol::mtCONSENSUS:
                 break;
         }
         return false;

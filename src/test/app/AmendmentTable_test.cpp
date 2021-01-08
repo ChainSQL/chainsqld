@@ -409,7 +409,6 @@ public:
             auto v = std::make_shared<STValidation>(
                 ripple::NetClock::time_point{},
                 pub,
-                sec,
                 calcNodeID(pub),
                 [&field](STValidation& v) {
                     if (!field.empty())

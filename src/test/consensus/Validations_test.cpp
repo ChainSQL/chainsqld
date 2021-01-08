@@ -20,7 +20,7 @@
 #include <ripple/basics/tagged_integer.h>
 #include <ripple/beast/clock/manual_clock.h>
 #include <ripple/beast/unit_test.h>
-#include <ripple/consensus/Validations.h>
+#include <peersafe/consensus/Validations.h>
 #include <test/csf/Validation.h>
 
 #include <memory>

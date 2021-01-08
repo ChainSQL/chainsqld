@@ -33,7 +33,6 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/contract.h>
 #include <ripple/beast/core/LexicalCast.h>
-#include <ripple/consensus/LedgerTiming.h>
 #include <ripple/core/Config.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
@@ -48,6 +47,8 @@
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/jss.h>
+#include <ripple/beast/core/LexicalCast.h>
+#include <peersafe/consensus/LedgerTiming.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
 #include <peersafe/schema/Schema.h>
@@ -58,9 +59,16 @@
 namespace ripple {
 
 create_genesis_t const create_genesis {};
-bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx> pTx, std::uint64_t SeqInLedger, std::uint32_t inLedger,Schema& app);
 
-static uint256
+bool
+storePeersafeSql(
+    LockedSociSession& db,
+    std::shared_ptr<const ripple::STTx> pTx,
+    std::uint64_t SeqInLedger,
+    std::uint32_t inLedger,
+    Schema& app);
+
+uint256
 calculateLedgerHash(LedgerInfo const& info)
 {
     // VFALCO This has to match addRaw in View.h.

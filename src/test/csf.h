@@ -20,11 +20,11 @@
 #include <test/csf/BasicNetwork.h>
 #include <test/csf/Digraph.h>
 #include <test/csf/Histogram.h>
-#include <test/csf/Peer.h>
+//#include <test/csf/Peer.h>
 #include <test/csf/PeerGroup.h>
 #include <test/csf/Proposal.h>
 #include <test/csf/Scheduler.h>
-#include <test/csf/Sim.h>
+//#include <test/csf/Sim.h>
 #include <test/csf/SimTime.h>
 #include <test/csf/TrustGraph.h>
 #include <test/csf/Tx.h>

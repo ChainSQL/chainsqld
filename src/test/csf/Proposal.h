@@ -19,7 +19,7 @@
 #ifndef RIPPLE_TEST_CSF_PROPOSAL_H_INCLUDED
 #define RIPPLE_TEST_CSF_PROPOSAL_H_INCLUDED
 
-#include <ripple/consensus/ConsensusProposal.h>
+#include <peersafe/protocol/STProposeSet.h>
 #include <test/csf/Tx.h>
 #include <test/csf/Validation.h>
 #include <test/csf/ledgers.h>
@@ -30,7 +30,7 @@ namespace csf {
 /** Proposal is a position taken in the consensus process and is represented
     directly from the generic types.
 */
-using Proposal = ConsensusProposal<PeerID, Ledger::ID, TxSet::ID>;
+using Proposal = STProposeSet;
 
 }  // namespace csf
 }  // namespace test

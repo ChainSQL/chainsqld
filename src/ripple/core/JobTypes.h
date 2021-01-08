@@ -45,10 +45,9 @@ private:
 
 add(    jtPACK,          "makeFetchPack",           1,        false, 0ms,     0ms);
 add(    jtPUBOLDLEDGER,  "publishAcqLedger",        2,        false, 10000ms, 15000ms);
-add(    jtVALIDATION_ut, "untrustedValidation",     maxLimit, false, 2000ms,  5000ms);
+add(    jtCONSENSUS_ut,  "untrustedConsensus",      maxLimit, false, 2000ms,  5000ms);
 add(    jtTRANSACTION_l, "localTransaction",        maxLimit, false, 100ms,   500ms);
 add(    jtLEDGER_REQ,    "ledgerRequest",           2,        false, 0ms,     0ms);
-add(    jtPROPOSAL_ut,   "untrustedProposal",       maxLimit, false, 500ms,   1250ms);
 add(    jtLEDGER_DATA,   "ledgerData",              2,        false, 0ms,     0ms);
 add(    jtCLIENT,        "clientCommand",           maxLimit, false, 2000ms,  5000ms);
 add(    jtRPC,           "RPC",                     maxLimit, false, 0ms,     0ms);
@@ -60,10 +59,9 @@ add(    jtPUBLEDGER,     "publishNewLedger",        maxLimit, false, 3000ms,  45
 add(	jtVIEW_CHANGE,	 "viewchange",				maxLimit, false, 500ms,   1500ms);
 add(    jtTXN_DATA,      "fetchTxnData",            1,        false, 0ms,     0ms);
 add(    jtWAL,           "writeAhead",              maxLimit, false, 1000ms,  2500ms);
-add(    jtVALIDATION_t,  "trustedValidation",       maxLimit, false, 500ms,  1500ms);
+add(    jtCONSENSUS_t,   "trustedConsensus",        maxLimit, false, 500ms,  1500ms);
 add(    jtWRITE,         "writeObjects",            maxLimit, false, 1750ms,  2500ms);
 add(    jtACCEPT,        "acceptLedger",            maxLimit, false, 0ms,     0ms);
-add(    jtPROPOSAL_t,    "trustedProposal",         maxLimit, false, 100ms,   500ms);
 add(    jtSWEEP,         "sweep",                   maxLimit, false, 0ms,     0ms);
 add(    jtNETOP_CLUSTER, "clusterReport",           1,        false, 9999ms,  9999ms);
 add(    jtNETOP_TIMER,   "heartbeat",               1,        false, 999ms,   999ms);
