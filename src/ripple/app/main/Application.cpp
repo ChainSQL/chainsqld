@@ -312,8 +312,6 @@ public:
         m_nodeStoreScheduler->setJobQueue(*m_jobQueue);
 
         // add (m_ledgerMaster->getPropertySource ());
-
-        logs_->setApplication(this);
     }
 
     //--------------------------------------------------------------------------
@@ -532,7 +530,7 @@ public:
     }
 
     NetworkOPs&
-    getOPs(SchemaID const& id) override
+    getOPs(SchemaID const& id = beast::zero) override
     {
         assert(m_schemaManager->contains(id));
         return m_schemaManager->getSchema(id)->getOPs();
@@ -989,6 +987,9 @@ bool
 ApplicationImp::setup()
 {
     auto schema_main = m_schemaManager->createSchemaMain(config_);
+
+    logs_->setCallBack(
+        [this](std::string const& s) -> void { this->getOPs().pubLogs(s); });
 
     if (!schema_main->initBeforeSetup())
         return false;

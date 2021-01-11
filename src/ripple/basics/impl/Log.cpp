@@ -17,6 +17,8 @@
 */
 //==============================================================================
 
+#include <ripple/app/main/Application.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/basics/contract.h>
@@ -27,8 +29,6 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <ripple/app/main/Application.h>
-#include <ripple/app/misc/NetworkOPs.h>
 
 namespace ripple {
 
@@ -118,8 +118,7 @@ Logs::File::writeln(char const* text)
 //------------------------------------------------------------------------------
 
 Logs::Logs(beast::severities::Severity thresh)
-    : thresh_ (thresh), // default severity
-	app_(NULL)
+    : thresh_(thresh)  // default severity
 {
 }
 
@@ -137,8 +136,7 @@ Logs::get(std::string const& name)
     return *result.first->second;
 }
 
-beast::Journal::Sink&
-Logs::operator[](std::string const& name)
+beast::Journal::Sink& Logs::operator[](std::string const& name)
 {
     return get(name);
 }
@@ -183,20 +181,25 @@ Logs::write(
     bool console)
 {
     std::string s;
-    format (s, text, level, partition);
+    format(s, text, level, partition);
     {
-        std::lock_guard <std::mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
         file_.writeln(s);
         if (!silent_)
+        {
             std::cerr << s << '\n';
+        }
     }
-	//if (app_ != NULL)
-	//	app_->getOPs().pubLogs(s);
+
+    if (f_)
+    {
+        (*f_)(s);
+    }
 
     // VFALCO TODO Fix console output
     // if (console)
     //    out_.write_console(s);
-}
+}  // namespace ripple
 
 std::string
 Logs::rotate()
@@ -208,10 +211,10 @@ Logs::rotate()
     return "The log file could not be closed and reopened.";
 }
 
-
-void Logs::setApplication(Application* app)
+void
+Logs::setCallBack(std::function<void(std::string const& s)> f)
 {
-	app_ = app;
+    f_ = f;
 }
 
 std::unique_ptr<beast::Journal::Sink>

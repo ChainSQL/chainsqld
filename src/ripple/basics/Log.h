@@ -24,6 +24,7 @@
 #include <ripple/beast/utility/Journal.h>
 #include <boost/beast/core/string.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/optional.hpp>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -161,7 +162,10 @@ private:
     beast::severities::Severity thresh_;
     File file_;
     bool silent_ = false;
-	Application* app_;
+
+    // call when writed log, used for publish log now
+    boost::optional<std::function<void (std::string const& s)>> f_;
+
 public:
     Logs(beast::severities::Severity level);
 
@@ -202,7 +206,8 @@ public:
     std::string
     rotate();
 
-	void setApplication(Application* app);
+	void
+    setCallBack(std::function<void(std::string const& s)> f);
 
     /**
      * Set flag to write logs to stderr (false) or not (true).

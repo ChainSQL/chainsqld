@@ -1133,9 +1133,9 @@ NetworkOPsImp::processHeartbeatTimer()
             if (mMode != OperatingMode::DISCONNECTED)
             {
                 setMode(OperatingMode::DISCONNECTED);
-                // JLOG(m_journal.warn())
-                //    << "Node count (" << numPeers << ") has fallen "
-                //    << "below required minimum (" << minPeerCount_ << ").";
+                JLOG(m_journal.warn())
+                    << "Node count (" << numPeers << ") has fallen "
+                    << "below required minimum (" << minPeerCount_ << ").";
             }
 
             // MasterMutex lock need not be held to call setHeartbeatTimer()
