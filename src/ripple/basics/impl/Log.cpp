@@ -183,10 +183,12 @@ Logs::write (beast::severities::Severity level, std::string const& partition,
 {
     std::string s;
     format (s, text, level, partition);
-    std::lock_guard <std::mutex> lock (mutex_);
-    file_.writeln (s);
-    if (! silent_)
-        std::cerr << s << '\n';
+    {
+        std::lock_guard <std::mutex> lock(mutex_);
+        file_.writeln(s);
+        if (!silent_)
+            std::cerr << s << '\n';
+    }
 	if (app_ != NULL)
 		app_->getOPs().pubLogs(s);
     // VFALCO TODO Fix console output
