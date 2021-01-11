@@ -56,7 +56,7 @@ private:
     mutable std::recursive_mutex mutex_;
     using ScopedLockType = std::lock_guard<std::recursive_mutex>;
 
-    ConsensusType type_ = ConsensusType::UNKNOWN;
+    ConsensusType type_ = ConsensusType::POP;
     std::shared_ptr<Adaptor> adaptor_;
     std::shared_ptr<ConsensusBase> consensus_;
 

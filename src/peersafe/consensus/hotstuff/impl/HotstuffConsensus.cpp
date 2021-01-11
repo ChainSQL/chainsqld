@@ -39,6 +39,8 @@ HotstuffConsensus::HotstuffConsensus(
     , adaptor_(*(HotstuffAdaptor*)(&adaptor))
     , blockAcquiring_("blockAcquiring", 256, adaptor_.parms().consensusTIMEOUT, const_cast<clock_type &>(clock), j)
 {
+    JLOG(j_.info()) << "Creating HOTSTUFF consensus object";
+
     hotstuff::Config config;
 
     config.id = adaptor_.valPublic();
