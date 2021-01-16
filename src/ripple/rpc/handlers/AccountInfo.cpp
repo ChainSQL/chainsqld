@@ -31,6 +31,7 @@
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/app/shard/ShardManager.h>
 
 namespace ripple {
 
@@ -103,6 +104,8 @@ Json::Value doAccountInfo (RPC::Context& context)
 		}
 
         result[jss::account_data] = jvAccepted;
+
+        result[jss::shard_index] = context.app.getShardManager().lookup().getShardIndex(accountID);
 
         // Return SignerList(s) if that is requested.
         if (params.isMember (jss::signer_lists) &&
