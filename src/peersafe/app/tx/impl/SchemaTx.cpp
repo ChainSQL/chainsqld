@@ -42,6 +42,9 @@ namespace ripple {
 			peerList.push_back(peer.getFieldVL(sfEndpoint));
 		}
 
+		if (validators.size() != peerList.size())
+			return temMALFORMED;
+
 		return tesSUCCESS;
 	}
 
