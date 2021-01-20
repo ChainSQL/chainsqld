@@ -2295,6 +2295,7 @@ NetworkOPsImp::pubServer()
         jvObj[jss::load_base] = f.loadBaseServer;
         jvObj[jss::load_factor_server] = f.loadFactorServer;
         jvObj[jss::base_fee] = f.baseFee.jsonClipped();
+		jvObj[jss::schema_id] = to_string(app_.schemaId());
 
         if (f.em)
         {
@@ -3288,6 +3289,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                 lpAccepted->fees().increment.jsonClipped();
 
             jvObj[jss::txn_count] = Json::UInt(alpAccepted->getTxnCount());
+			jvObj[jss::schema_id] = to_string(app_.schemaId());
 
             int iSuccess = 0;
             int iFailure = 0;
@@ -4202,6 +4204,7 @@ NetworkOPsImp::subLedger(InfoSub::ref isrListener, Json::Value& jvResult)
 {
     if (auto lpClosed = m_ledgerMaster.getValidatedLedger())
     {
+		jvResult[jss::type] = "ledgerClosed";
         jvResult[jss::ledger_index] = lpClosed->info().seq;
         jvResult[jss::ledger_hash] = to_string(lpClosed->info().hash);
         jvResult[jss::ledger_time] = Json::Value::UInt(
@@ -4213,6 +4216,7 @@ NetworkOPsImp::subLedger(InfoSub::ref isrListener, Json::Value& jvResult)
         jvResult[jss::reserve_base] =
             lpClosed->fees().accountReserve(0).jsonClipped();
         jvResult[jss::reserve_inc] = lpClosed->fees().increment.jsonClipped();
+		jvResult[jss::schema_id] = to_string(app_.schemaId());
     }
 
     if ((mMode >= OperatingMode::SYNCING) && !isNeedNetworkLedger())
@@ -4347,13 +4351,16 @@ NetworkOPsImp::subServer(
     beast::rngfill(uRandom.begin(), uRandom.size(), crypto_prng());
 
     auto const& feeTrack = app_.getFeeTrack();
+	jvResult[jss::type] = "serverStatus";
     jvResult[jss::random] = to_string(uRandom);
     jvResult[jss::server_status] = strOperatingMode(admin);
     jvResult[jss::load_base] = feeTrack.getLoadBase();
     jvResult[jss::load_factor] = feeTrack.getLoadFactor();
+
     jvResult[jss::hostid] = getHostId(admin);
     jvResult[jss::pubkey_node] =
         toBase58(TokenType::NodePublic, app_.nodeIdentity().first);
+	jvResult[jss::schema_id] = to_string(app_.schemaId());
 
     std::lock_guard sl(mSubLock);
     return mStreamMaps[sServer]
