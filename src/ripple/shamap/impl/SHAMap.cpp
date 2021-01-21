@@ -72,39 +72,41 @@ SHAMap::snapShot(bool isMutable) const
 }
 
 std::shared_ptr<SHAMap>
- SHAMap::genesisSnapShot(Family& f) const
+SHAMap::genesisSnapShot(Family& f) const
 {
-	auto ret = std::make_shared<SHAMap>(type_, f);
-	SHAMap& newMap = *ret;
+    auto ret = std::make_shared<SHAMap>(type_, f);
+    SHAMap& newMap = *ret;
 
-	newMap.seq_ =  1;
-	newMap.ledgerSeq_ =  0 ;
-	newMap.root_ = root_;
-	newMap.backed_ = backed_;
+    newMap.seq_ = 1;
+    newMap.ledgerSeq_ = 0;
+    newMap.root_ = root_;
+    newMap.backed_ = backed_;
 
+    newMap.root_->setSeq(1);
+    auto node = std::static_pointer_cast<SHAMapInnerNode>(newMap.root_);
+    int pos = 0;
+    while (pos < 16)
+    {
+        if (node->isEmptyBranch(pos))
+        {
+            ++pos;
+        }
+        else
+        {
+            int branch = pos;
+            auto child = node->getChild(pos++);
+            if (child)
+            {
+                child->setSeq(1);
+            }       
+        }
+    }
 
-	newMap.root_->setSeq(1);
-	auto node = std::static_pointer_cast<SHAMapInnerNode>(newMap.root_);
-	int pos = 0;
-	while (pos < 16)
-	{
-		if (node->isEmptyBranch(pos))
-		{
-			++pos;
-		}
-		else
-		{
-			int branch = pos;
-			auto child = node->getChild(pos++);
-			child->setSeq(1);
-		}
-	}
-
-	return ret;
+    return ret;
 }
 //
-//std::shared_ptr<SHAMap>
-//SHAMap::make_v2() const
+// std::shared_ptr<SHAMap>
+// SHAMap::make_v2() const
 //{
 //    assert(!is_v2());
 //    auto ret = std::make_shared<SHAMap>(type_, f_, version{2});
@@ -136,8 +138,8 @@ std::shared_ptr<SHAMap>
 //    return ret;
 //}
 //
-//std::shared_ptr<SHAMap>
-//SHAMap::make_v1() const
+// std::shared_ptr<SHAMap>
+// SHAMap::make_v1() const
 //{
 //    assert(is_v2());
 //    auto ret = std::make_shared<SHAMap>(type_, f_, version{1});
