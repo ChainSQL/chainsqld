@@ -102,9 +102,6 @@ namespace ripple {
 		if (ctx.app.schemaId() != beast::zero)
 			return tefSCHEMA_TX_FORBIDDEN;
 
-		if (ctx.app.app().config().SCHEMA_PATH.empty())
-			return tefSCEMA_NO_PATH;
-
 		return preflight2(ctx);
 	}
 
@@ -130,6 +127,19 @@ namespace ripple {
 		{
 			return tefSCHEMA_NODE_COUNT;
 		}
+
+        if(  ctx.tx.isFieldPresent(sfSchemaAdmin) )
+        {
+            AccountID const uSchemaAccountID(ctx.tx[sfSchemaAdmin]);
+            auto const k = keylet::account(uSchemaAccountID);
+            auto const sleSchemaAdmin = ctx.view.read(k);
+
+            if (!sleSchemaAdmin)
+            {
+                // Schema Admin account does not exist.
+                return temBAD_SCHEMAADMIN;
+            }
+        }
 
 		auto const ret = preClaimCommon(ctx);
 		if (!isTesSuccess(ret))
