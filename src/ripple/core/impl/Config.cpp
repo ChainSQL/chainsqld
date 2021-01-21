@@ -203,6 +203,12 @@ Config::setupControl(bool bQuiet, bool bSilent, bool bStandalone)
     RUN_STANDALONE = bStandalone;
 }
 
+void
+Config::setupStartUpType(Config::StartUpType type)
+{
+    START_UP = type;
+}
+
 void Config::onSchemaModify(Config& config,
 	std::vector<std::string> validators,
 	std::vector<std::string> peer_list)

@@ -142,6 +142,7 @@ enum TEMcodes : TERUnderlyingType
 		temBAD_PEERLIST,
 		temBAD_ANCHORLEDGER,
 		temBAD_SIGNERFORVAL,
+        temBAD_SCHEMAADMIN,
 		
 		// An intermediate result used internally, should never be returned.
 		temUNCERTAIN,
