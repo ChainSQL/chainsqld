@@ -2952,7 +2952,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
     if (admin)
     {
         if (!app_.getValidationPublicKey().empty() &&
-            !app_.config().ONLY_VALIDATE_FOR_SCHEMA)
+           (app_.schemaId() != beast::zero || !app_.config().ONLY_VALIDATE_FOR_SCHEMA))
         {
             info[jss::pubkey_validator] = toBase58(
                 TokenType::NodePublic, app_.validators().localPublicKey());
