@@ -69,9 +69,13 @@ Adaptor::preStartRound(
 {
     // We have a key, we do not want out of sync validations after a restart
     // and are not amendment blocked.
-    validating_ = valPublic_.size() != 0 &&
-        // prevLgr.seq() >= app_.getMaxDisallowedLedger() &&
-        !app_.getOPs().isAmendmentBlocked();
+	validating_ = valPublic_.size() != 0 &&
+		// prevLgr.seq() >= app_.getMaxDisallowedLedger() &&
+		!app_.getOPs().isAmendmentBlocked();
+
+	if (app_.schemaId() == beast::zero && app_.config().ONLY_VALIDATE_FOR_SCHEMA)
+		validating_ = false;
+		
 
     // If we are not running in standalone mode and there's a configured UNL,
     // check to make sure that it's not expired.

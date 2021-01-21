@@ -390,9 +390,6 @@ PopConsensus::startRoundInternal(
 
     if (mode == ConsensusMode::proposing)
     {
-        if (bWaitingInit_ && previousLedger_.seq() != GENESIS_LEDGER_INDEX)
-            bWaitingInit_ = false;
-
         viewChangeManager_.onNewRound(previousLedger_);
 
         checkCache();

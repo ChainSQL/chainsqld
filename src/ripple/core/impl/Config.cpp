@@ -295,6 +295,9 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 removeSection("debug_logfile");
 	 removeSection("schema");
 	 removeSection("ips_fixed");
+	 removeSection("sync_db");
+	 removeSection("auto_sync");
+	 removeSection("sync_tables");
 
 	 deprecatedClearSection("validators");
 	 std::vector<std::string>   validatorList;
