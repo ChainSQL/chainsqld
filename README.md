@@ -4,7 +4,7 @@ English / [中文](doc/README_CN.md)
 
 ## Overview
 
-Basing on the ripple's source code, we added chainsql's own database related modules. The DB operating log will be stored in the chainsql chain, then you can acquire the visual data in traditional DB.
+ChainSQL is a blockchain supporting database operations. The DB operating log will be stored in the chainsql chain, then you can acquire the visual data in traditional DB.
 
 ## Details of ChainSQL
 Detailed online-document can be found [here](http://docs.chainsql.net).
