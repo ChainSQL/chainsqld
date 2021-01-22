@@ -3,7 +3,7 @@
 ![Chainsql](../images/logo.png)
 
 ## 概述
-ChainSQL是全球首个基于区块链的数据库应用平台，基于开源项目Ripple，我们实现了数据库功能，集成并扩展了以太坊智能合约。你可以像使用传统数据库一样使用ChainSQL。
+ChainSQL是全球首个基于区块链的数据库应用平台，我们实现了数据库功能，集成并扩展了以太坊智能合约。你可以像使用传统数据库一样使用ChainSQL。
 
 ## 快速开始
 阅读[ChainsQL开发文档](http://docs.chainsql.net/)，帮助您快速体验ChainSQL强大功能。。
