@@ -1194,19 +1194,17 @@ SchemaImp::setup()
     {
         auto validLedger = app_.getLedgerMaster().getLedgerByHash(
             schema_params_.anchor_ledger_hash);
+
+        if (validLedger == nullptr)
+        {
+            JLOG(m_journal.warn()) << "start up new chain with state error: ledger "
+                                   << to_string(schema_params_.anchor_ledger_hash) << " not found! ";
+            return false;  
+        }
         JLOG(m_journal.info()) << "NEWCHAIN_WITHSTATE from ledger="
                                << to_string(schema_params_.anchor_ledger_hash);
         startGenesisLedger(validLedger);
     }
-    // else if (startUp == Config::NEWCHAIN_LOAD) {
-    //	if (!loadOldLedger(config_->START_LEDGER,
-    //		startUp == Config::REPLAY,
-    //		startUp == Config::LOAD_FILE))
-    //	{
-    //		JLOG(m_journal.fatal()) << "Invalid NEWCHAIN_LOAD.";
-    //		return false;
-    //	}
-    //}
     else
     {
         if (getLastFullLedger() != nullptr)
@@ -1801,6 +1799,7 @@ SchemaImp::loadOldLedger(
 void
 SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
 {
+    assert(curLedger);
     auto genesis = std::make_shared<Ledger>(*curLedger, nodeFamily_);
     genesis->setImmutable(*config_);
 
