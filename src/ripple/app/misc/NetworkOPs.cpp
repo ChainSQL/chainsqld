@@ -3598,6 +3598,12 @@ NetworkOPsImp::checkSchemaTx(
             if (app_.app().getValidationPublicKey() == publicKey)
                 bOperatingSelf = true;
         }
+
+        if (!bOperatingSelf && !app_.app().hasSchema(schemaID))
+        {
+            return;
+        }
+
         std::vector<std::string> vecPeers;
         auto& peers = stTxn->getFieldArray(sfPeerList);
         for (auto& peer : peers)
