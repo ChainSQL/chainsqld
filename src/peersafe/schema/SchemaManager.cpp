@@ -29,6 +29,8 @@ SchemaManager::createSchema(Config& config, SchemaParams const& params)
             .str();
     schemaConfig->setup(
         config_path, config.quiet(), config.silent(), config.standalone());
+    schemaConfig->setupStartUpType(cfg.START_UP);
+
     return createSchema(schemaConfig, params);
 }
 

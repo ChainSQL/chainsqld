@@ -229,7 +229,7 @@ public:
     void
     setupControl(bool bQuiet, bool bSilent, bool bStandalone);
 
-
+    void setupStartUpType(Config::StartUpType type);
 	void initSchemaConfig(Config& config, SchemaParams const& schemaParams);
 	void initSchemaInfo(boost::filesystem::path config_dir, SchemaParams const& schemaParams);
 	void onSchemaModify(Config& config, std::vector<std::string> validators,

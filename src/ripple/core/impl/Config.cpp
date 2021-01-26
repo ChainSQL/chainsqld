@@ -203,6 +203,12 @@ Config::setupControl(bool bQuiet, bool bSilent, bool bStandalone)
     RUN_STANDALONE = bStandalone;
 }
 
+void
+Config::setupStartUpType(Config::StartUpType type)
+{
+    START_UP = type;
+}
+
 void Config::onSchemaModify(Config& config,
 	std::vector<std::string> validators,
 	std::vector<std::string> peer_list)
@@ -289,6 +295,9 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 removeSection("debug_logfile");
 	 removeSection("schema");
 	 removeSection("ips_fixed");
+	 removeSection("sync_db");
+	 removeSection("auto_sync");
+	 removeSection("sync_tables");
 
 	 deprecatedClearSection("validators");
 	 std::vector<std::string>   validatorList;
