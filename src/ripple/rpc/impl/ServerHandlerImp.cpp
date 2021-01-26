@@ -721,7 +721,7 @@ ServerHandlerImp::processRequest (Port const& port,
 	//remove tx_blob & tx_json field,and make tx_id parallel with result
 	Json::Value tx_id(Json::nullValue);
 	if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash) 
-		&& !result[jss::tx_json].isMember("Signers"))
+		&& !result[jss::tx_json].isMember("Signers") && strMethod != "sign")
 	{
 		std::string txType = result[jss::tx_json][jss::TransactionType].asString();
 		if (isChainSqlTableType(txType))
