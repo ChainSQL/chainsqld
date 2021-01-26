@@ -1045,7 +1045,9 @@ target_compile_definitions(chainsqld
 target_compile_options (chainsqld
   PUBLIC
     $<$<BOOL:${is_gcc}>:-Wno-maybe-uninitialized>)
-    
+
+set_target_properties(chainsqld PROPERTIES LINK_FLAGS_RELEASE -s)
+
 target_link_libraries (chainsqld
   OpenSSL::Crypto
   Ripple::syslibs
