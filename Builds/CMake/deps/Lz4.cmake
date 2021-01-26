@@ -20,7 +20,7 @@ if(lz4)
 else()
   ExternalProject_Add (lz4
     PREFIX ${nih_cache_path}
-    GIT_REPOSITORY https://github.com/lz4/lz4.git
+    GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/lz4.git
     GIT_TAG v1.9.2
     SOURCE_SUBDIR contrib/cmake_unofficial
     CMAKE_ARGS
