@@ -25,7 +25,7 @@ if (local_protobuf OR NOT Protobuf_FOUND)
   # install them.
   ExternalProject_Add (protobuf_src
     PREFIX ${nih_cache_path}
-    GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
+    GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/protobuf_src.git
     GIT_TAG v3.8.0
     SOURCE_SUBDIR cmake
     CMAKE_ARGS
