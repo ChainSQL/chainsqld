@@ -27,7 +27,7 @@ if (target)
 endif ()
 
 include(RippledSanity)
-include(RippledVersion)
+include(ChainsqldVersion)
 include(RippledSettings)
 include(RippledNIH)
 include(RippledRelease)

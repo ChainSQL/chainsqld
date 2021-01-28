@@ -3,11 +3,8 @@
    core functionality, useable by some client software perhaps
 #]===================================================================]
 
-# add_definitions(-DGM_ALG_PROCESS)
-
 set(GMSSL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/gmAlgLib")
 message(STATUS "GMSSL_LIBRARY_DIR: ${GMSSL_LIBRARY_DIR}")
-#link_directories(${GMALG_LIBRARY_DIR})
 # set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a" "-pthread" "dl")
 
 if(MSVC)
@@ -31,9 +28,7 @@ if (enableHDGm)
     message(STATUS "GMALG_LIBRARY_DIR: ${GMALG_LIBRARY_DIR}")
     set(GMALG_LIBRARIES "${GMALG_LIBRARY_DIR}/libswsds.so" "${GMALG_LIBRARY_DIR}/libswsd.so")
 else()
-    message(STATUS "No enableHDGm set")
     set(GMALG_LIBRARIES)
-    #set(GMSSL_LIBRARIES)
 endif()
 
 file (GLOB_RECURSE rb_headers
@@ -1130,7 +1125,6 @@ set_target_properties(chainsqld PROPERTIES LINK_FLAGS_RELEASE -s)
 
 target_link_libraries (chainsqld
   ${GMSSL_LIBRARIES}
-  #/home/lc/gitrepository/chainsqlMergeSchema/gmAlgLib/libgmcrypto.a
   OpenSSL::Crypto
   Ripple::syslibs
   NIH::secp256k1
