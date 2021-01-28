@@ -1590,7 +1590,7 @@ public:
             {"tx_account", &RPCParser::parseTxAccount, 1, 7},
             {"tx_history", &RPCParser::parseTxHistory, 1, 1},
             {"unl_list", &RPCParser::parseAsIs, 0, 0},
-            {"validation_create", &RPCParser::parseValidationCreate, 0, 1},
+            {"validation_create", &RPCParser::parseValidationCreate, 0, 2},
             // {   "validation_seed",      &RPCParser::parseValidationSeed,        0,  1   },
             {"validator_info", &RPCParser::parseAsIs, 0, 0},
             {"version", &RPCParser::parseAsIs, 0, 0},
