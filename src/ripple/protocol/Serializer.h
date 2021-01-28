@@ -28,6 +28,7 @@
 #include <ripple/basics/safe_cast.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/SField.h>
+#include <ripple/protocol/CommonKey.h>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -160,8 +161,7 @@ public:
     }
 
     // DEPRECATED
-    uint256
-    getSHA512Half() const;
+    uint256 getSHA512Half(CommonKey::HashType hashType = CommonKey::hashTypeGlobal) const;
 
     // totality functions
     Blob const&

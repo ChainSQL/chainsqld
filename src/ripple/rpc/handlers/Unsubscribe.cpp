@@ -79,6 +79,10 @@ Json::Value doUnsubscribe (RPC::JsonContext& context)
             {
                 context.netOps.unsubLedger(ispSub->getSeq());
             }
+			else if (streamName == "view_change")
+			{
+				context.netOps.unsubViewChange(ispSub->getSeq());
+			}
             else if (streamName == "manifests")
             {
                 context.netOps.unsubManifests(ispSub->getSeq());

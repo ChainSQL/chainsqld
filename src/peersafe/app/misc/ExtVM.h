@@ -4,6 +4,7 @@
 #include <peersafe/app/misc/SleOps.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <eth/vm/ExtVMFace.h>
+#include <peersafe/app/misc/PreContractFace.h>
 #include <peersafe/basics/TypeTransform.h>
 
 #include <functional>
@@ -15,7 +16,9 @@ namespace ripple
 class EnvInfoImpl : public eth::EnvInfo
 {
 public:
-    EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit, uint64_t iDropsPerByte) : EnvInfo()
+    EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit, uint64_t iDropsPerByte, const PreContractFace& pPreContractFaceIn)
+        : EnvInfo(),
+        pPreContractFace(pPreContractFaceIn)
     {
 		iBlockNum_     = iBlockNum;
 		iGasLimit_     = iGasLimit;
@@ -30,7 +33,6 @@ public:
         return iBlockNum_;
     }
 
-
 	int64_t const block_timestamp() const override {
 		return std::chrono::seconds(std::time(NULL)).count();
 	}
@@ -38,12 +40,16 @@ public:
 	uint64_t const dropsPerByte() const override {
 		return iDropsPerByte_;
 	}
+
+    const PreContractFace& preContractFace() const override {
+        return pPreContractFace;
+    }
     
 private:
 	int64_t                   iBlockNum_;
     int64_t                   iGasLimit_;
-
 	uint64_t                  iDropsPerByte_;
+    const PreContractFace&    pPreContractFace;
 };
 
 struct CallParametersR

@@ -24,8 +24,8 @@
 #include <ripple/protocol/impl/secp256k1.h>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <ed25519-donna/ed25519.h>
+#include <peersafe/crypto/ECIES.h>
 #include <type_traits>
-//#include <gmencrypt/hardencrypt/HardEncryptObj.h>
 
 namespace ripple {
 
@@ -61,16 +61,18 @@ parseBase58(TokenType type, std::string const& s)
     auto const pks = makeSlice(result);
     if (!publicKeyType(pks))
         return boost::none;
-    if (nullptr == HardEncryptObj::getInstance())
-    {
-        if (result.size() != 33)
-            return boost::none;
-    }
-    else
-    {
-        if (result.size() != 65)
-            return boost::none;
-    }    
+    if (result.size() != 33 && result.size() != 65)
+        return boost::none;
+    // if (nullptr == GmEncryptObj::getInstance())
+    // {
+    //     if (result.size() != 33)
+    //         return boost::none;
+    // }
+    // else
+    // {
+    //     if (result.size() != 65)
+    //         return boost::none;
+    // }    
     
     return PublicKey(pks);
 }
@@ -251,11 +253,14 @@ verifyDigest(
     Slice const& sig,
     bool mustBeFullyCanonical)
 {
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-	if (nullptr == hEObj)
+    auto const type = publicKeyType(publicKey.slice());
+    if (! type)
+        LogicError("verifyDigest: invalid type");
+
+    switch(*type)
+    {
+    case KeyType::secp256k1:
 	{
-        if (publicKeyType(publicKey) != KeyType::secp256k1)
-            LogicError("sign: secp256k1 required for digest signing");
         auto const canonicality = ecdsaCanonicality(sig);
         if (!canonicality)
             return false;
@@ -296,10 +301,9 @@ verifyDigest(
                 reinterpret_cast<unsigned char const*>(digest.data()),
                 &pubkey_imp) == 1;
 	}
-	else
+	case KeyType::gmalg:
 	{
-		if (publicKeyType(publicKey.slice()) != KeyType::gmalg)
-			LogicError("sign: GM algorithm required for digest signing");
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
 		unsigned long rv = 0;
 
 		std::pair<unsigned char*, int> pub4Verify = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
@@ -312,6 +316,9 @@ verifyDigest(
 		DebugPrint("ECCVerify Digest OK!");
 		return true;
 	}
+    default:
+        LogicError("verifyDigest: invalid type");
+    }
 }
 
 bool
@@ -347,7 +354,7 @@ verify(
             unsigned char hashData[32] = { 0 };
             unsigned long hashDataLen = 32;
 
-            HardEncrypt* hEObj = HardEncryptObj::getInstance();
+            GmEncrypt* hEObj = GmEncryptObj::getInstance();
             std::pair<unsigned char*, int> pub4Verify = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
             hEObj->SM3HashTotal((unsigned char*)m.data(), m.size(), hashData, &hashDataLen);
             rv = hEObj->SM2ECCVerify(pub4Verify, hashData, hashDataLen, (unsigned char*)sig.data(), sig.size());
@@ -363,6 +370,70 @@ verify(
     return false;
 }
 
+Blob
+encrypt(const Blob& passBlob,PublicKey const& publicKey)
+{
+    auto const type = publicKeyType(publicKey);
+
+    switch (*type)
+    {
+    case KeyType::gmalg:
+    {
+        Blob vucCipherText;
+
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+        std::pair<unsigned char*, int> pub4Encrypt = 
+                        std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
+        unsigned long rv = hEObj->SM2ECCEncrypt(pub4Encrypt,
+                        (unsigned char*)&passBlob[0], passBlob.size(), vucCipherText);
+        return vucCipherText;
+    }
+    default:
+        // Blob publickBlob(publicKey.data(), publicKey.data()+publicKey.size());
+        return ripple::asymEncrypt(passBlob, publicKey);
+    }
+}
+
+bool generateAddrAndPubFile(int pubType, int index, std::string filePath)
+{
+    if(GmEncryptObj::hEType_ == GmEncryptObj::gmAlgType::soft)
+        return true;
+        
+	GmEncrypt* hEObj = GmEncryptObj::getInstance();
+	std::string fileName = "";
+	unsigned char publicKeyTemp[PUBLIC_KEY_EXT_LEN] = { 0 };
+	if (hEObj != NULL)
+	{
+		std::pair<unsigned char*, int> tempPublickey;
+		std::string pubKeyStr = "";
+		PublicKey* newPubKey = nullptr;
+		if (hEObj->syncTableKey == pubType)
+		{
+			tempPublickey = hEObj->getECCSyncTablePubKey(publicKeyTemp);
+			fileName = "/synctablePub.txt";
+			newPubKey = new PublicKey(Slice(tempPublickey.first, tempPublickey.second));
+			pubKeyStr = toBase58(TokenType::AccountPublic, *newPubKey);
+		}
+		else if (hEObj->nodeVerifyKey == pubType)
+		{
+			tempPublickey = hEObj->getECCNodeVerifyPubKey(publicKeyTemp,index);
+			fileName = "/nodeverifyPub.txt";
+			newPubKey = new PublicKey(Slice(tempPublickey.first, tempPublickey.second));
+			pubKeyStr = toBase58(TokenType::NodePublic, *newPubKey);
+		}
+
+		std::string addrStr = toBase58(calcAccountID(*newPubKey));
+		std::string fileBuffer = pubKeyStr + "\r\n" + addrStr + "\r\n";
+		if (filePath.empty())
+		{
+			filePath = hEObj->GetHomePath();
+			filePath += fileName;
+		}
+		hEObj->FileWrite(filePath.c_str(), "wb+", (unsigned char*)fileBuffer.c_str(), fileBuffer.size());
+		return true;
+	}
+	return false;
+}
 
 NodeID
 calcNodeID(PublicKey const& pk)

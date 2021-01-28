@@ -192,6 +192,10 @@ Json::Value doValidatorListSites    (RPC::JsonContext&);
 Json::Value doContractCall(RPC::JsonContext&);
 
 Json::Value doGenCsr(RPC::JsonContext&); // for humans
+
+//for gm algorithm data generation
+Json::Value doCreateRandom(RPC::JsonContext&);
+Json::Value doCryptData(RPC::JsonContext&);
 }  // namespace ripple
 
 #endif

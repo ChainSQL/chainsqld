@@ -89,6 +89,8 @@
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/app/misc/PreContractFace.h>
+#include <boost/optional.hpp>
 #include <sstream>
 
 namespace ripple {
@@ -192,6 +194,7 @@ public:
     std::pair<PublicKey, SecretKey> nodeIdentity_;
     ValidatorKeys const validatorKeys_;
     std::unique_ptr<GRPCServer> grpcServer_;
+    std::unique_ptr <PreContractFace> m_preContractFace;
     //--------------------------------------------------------------------------
 
     static std::size_t
@@ -435,6 +438,11 @@ public:
         assert(m_schemaManager->contains(id));
         return m_schemaManager->getSchema(id)->getTxStoreDBConn();
     }
+
+    PreContractFace& getPreContractFace() override
+	{
+		return *m_preContractFace;
+	}
 
     TxStore&
     getTxStore(SchemaID const& id) override
@@ -1052,6 +1060,27 @@ ApplicationImp::setup()
         if (logs_->threshold() > kDebug)
             logs_->threshold(kDebug);
     }
+
+    /*if (config().exists(SECTION_ENCRYPT_CARD_TYPE))
+    {
+        auto encryptCardType = config().section(SECTION_ENCRYPT_CARD_TYPE).lines().front();
+        if (encryptCardType == std::string("sjkCard"))
+        {
+            GmEncryptObj::hEType_ = GmEncryptObj::sjkCardType;
+        }
+        else if (encryptCardType == std::string("sdkey"))
+        {
+            GmEncryptObj::hEType_ = GmEncryptObj::sdkeyType;
+        }
+        else
+        {
+            GmEncryptObj::hEType_ = GmEncryptObj::unknown;
+        }
+    }*/
+    {
+        m_preContractFace = std::make_unique<PreContractFace>();
+    }
+
     JLOG(m_journal.info()) << "process starting: "
                            << BuildInfo::getFullVersionString();
 

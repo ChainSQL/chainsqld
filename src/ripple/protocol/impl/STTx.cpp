@@ -333,6 +333,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 	std::vector<STTx> vec;
 	if (tx.getTxnType() == ttSQLTRANSACTION)
 	{
+		Blob publicKey = tx.getFieldVL(sfSigningPubKey);
 		Blob txs_blob = tx.getFieldVL(sfStatements);
 		std::string txs_str;
 
@@ -352,6 +353,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 			if (tx_pair.first)
 			{
 				auto tx = *tx_pair.first;
+				tx.setFieldVL(sfSigningPubKey, publicKey);
 				getOneTx(vec, tx, sTableNameInDB);
 			}
 		}
@@ -370,6 +372,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 		if (!contractRawMetadata->isFieldPresent(sfContractTxs))
 			return vec;
 		Blob txs_blob = contractRawMetadata->getFieldVL(sfContractTxs);
+		Blob publicKey = tx.getFieldVL(sfSigningPubKey);
 		std::string txs_str;
 		txs_str.assign(txs_blob.begin(), txs_blob.end());
 		Json::Value objs;
@@ -384,6 +387,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 			if (!tx_pair.first)
 				continue;
 			auto tx_ = *tx_pair.first;
+			tx_.setFieldVL(sfSigningPubKey, publicKey);
 			auto vecTxs = getTxs(tx_, sTableNameInDB);
 			for (auto subTx : vecTxs)
 			{
@@ -553,8 +557,8 @@ STTx::getMetaSQL(std::uint32_t inLedger, std::string const& escapedMetaData)
     const
 {
     Serializer s;
-    add(s);
-    return getMetaSQL(s, inLedger, txnSqlValidated, escapedMetaData);
+    //add (s);
+    return getMetaSQL (s, inLedger, txnSqlValidated, escapedMetaData);
 }
 
 // VFALCO This could be a free function elsewhere
@@ -565,17 +569,16 @@ STTx::getMetaSQL(
     char status,
     std::string const& escapedMetaData) const
 {
-    static boost::format bfTrans(
-        "('%s', '%s', '%s', '%d', '%d', '%c', %s, %s)");
-    std::string rTxn = sqlEscape(rawTxn.peekData());
+    static boost::format bfTrans ("('%s', '%s', '%s', '%d', '%d', '%c', '%s', '%s')");
+    //std::string rTxn = sqlEscape (rawTxn.peekData ());
 
     auto format = TxFormats::getInstance().findByType(tx_type_);
     assert(format != nullptr);
 
-    return str(
-        boost::format(bfTrans) % to_string(getTransactionID()) %
-        format->getName() % toBase58(getAccountID(sfAccount)) % getSequence() %
-        inLedger % status % rTxn % escapedMetaData);
+    return str (boost::format (bfTrans)
+                % to_string (getTransactionID ()) % format->getName ()
+                % toBase58(getAccountID(sfAccount))
+                % getSequence () % inLedger % status % "" % "");
 }
 
 std::pair<bool, std::string>

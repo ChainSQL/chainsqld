@@ -60,6 +60,11 @@ struct ConfigSection
     {
         return "press_switch";
     }
+    static std::string
+    cryptoAlg()
+    {
+        return "crypto_alg";
+    }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.
@@ -99,6 +104,11 @@ struct ConfigSection
 #define SECTION_VALIDATION_PUBLIC_KEY "validation_public_key"
 #define SECTION_WEBSOCKET_PING_FREQ "websocket_ping_frequency"
 #define SECTION_VALIDATOR_KEYS "validator_keys"
+#define SECTION_GM_SELF_CHECK           "gm_self_check"
+#define SECTION_HASH_ALG                "hash_alg"
+
+//#define SECTION_FEE_OFFER               "fee_offer"
+
 #define SECTION_VALIDATOR_KEY_REVOCATION "validator_key_revocation"
 #define SECTION_VALIDATOR_LIST_KEYS "validator_list_keys"
 #define SECTION_VALIDATOR_LIST_SITES "validator_list_sites"

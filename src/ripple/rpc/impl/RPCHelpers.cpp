@@ -76,7 +76,8 @@ accountFromStringWithCode(
         return rpcBAD_SEED;
 
     std::pair<PublicKey, SecretKey> keypair;
-    if (nullptr == HardEncryptObj::getInstance())
+    // if (nullptr == GmEncryptObj::getInstance())
+    if(true)//can not judge the crypto alg from seed, so default use secp256k1
     {
         keypair = generateKeyPair(
             KeyType::secp256k1,
@@ -729,7 +730,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             return {};
         }
 
-        keyType = keyTypeFromString(params[jss::key_type].asString());
+        keyType = *(keyTypeFromString(params[jss::key_type].asString()));
 
         if (!keyType)
         {
@@ -767,16 +768,17 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
 	        keyType = KeyType::ed25519;
 	    }
 	}
-	if (!keyType)
-		keyType = KeyType::secp256k1;
+	// if (!keyType)
+	// 	keyType = KeyType::secp256k1;
 
-	
-	if (keyType != KeyType::secp256k1 && keyType != KeyType::ed25519 && keyType != KeyType::gmalg)
-		LogicError("keypairForSignature: invalid key type");
+    std::string privateKeyStr;
+    bool isExitSecret = params.isMember(jss::secret);
+    if(isExitSecret)
+        privateKeyStr = params[jss::secret].asString();
     
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    if (nullptr != hEObj && keyType != KeyType::gmalg)
+    if ((isExitSecret && !privateKeyStr.empty() && ('p' == privateKeyStr[0])))
     {
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::string privateKeyStr = params[jss::secret].asString();
         std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, TokenType::AccountSecret);
         std::string publicKeyStr = params[jss::public_key].asString();
@@ -786,8 +788,10 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             error = RPC::missing_field_error(": 'public_key' field");
             return{};
         }
+		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
         return std::make_pair(PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size())),
-            SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size())));
+			secretkeyTemp);
     }
     else
     {
@@ -816,6 +820,8 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
             }
             return{};
         }
+        if (keyType != KeyType::secp256k1 && keyType != KeyType::ed25519)
+            LogicError("keypairForSignature: invalid key type");
 
 		if (params.isMember(jss::for_node) && params[jss::for_node].asBool())
 		{

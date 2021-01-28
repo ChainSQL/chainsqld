@@ -285,7 +285,14 @@ checkTxJsonFields(
         return ret;
     }
 
-    if (!tx_json.isMember(jss::TransactionType))
+	int sSize = tx_json.toStyledString().size();
+	if ( sSize > RPC::Tuning::max_txn_size)
+	{
+		ret.first = RPC::make_error(rpcTXN_BIGGER_THAN_MAXSIZE);
+		return ret;
+	}
+
+    if (! tx_json.isMember (jss::TransactionType))
     {
         ret.first = RPC::missing_field_error("tx_json.TransactionType");
         return ret;

@@ -283,6 +283,12 @@ public:
     Json::Value
     getJson(bool full) const override final;
 
+    bool
+    waitingForInit() const
+    {
+        return true;
+    }
+
 private:
     void
     startRoundInternal(

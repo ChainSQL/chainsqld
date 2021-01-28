@@ -28,6 +28,7 @@
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/Seed.h>
 #include <ripple/protocol/digest.h>
+#include <peersafe/crypto/hashBaseObj.h>
 #include <algorithm>
 #include <cstring>
 #include <iterator>

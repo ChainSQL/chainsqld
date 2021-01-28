@@ -7,6 +7,8 @@
 
 #include <vector>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/exception/diagnostic_information.hpp>
+#include <boost/exception/exception.hpp>
 #include "vector_ref.h"
 
 namespace eth {
@@ -18,7 +20,12 @@ namespace eth {
 
 	using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
 	//using u256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
-	/// Virtual machine bytecode instruction.
+
+    struct Exception : virtual std::exception, virtual boost::exception
+    {
+        const char *what() const noexcept override { return boost::diagnostic_information_what(*this); }
+    };
+    /// Virtual machine bytecode instruction.
 	enum class Instruction : uint8_t
 	{
 		STOP = 0x00,        ///< halts execution

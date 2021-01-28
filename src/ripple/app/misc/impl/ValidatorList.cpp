@@ -159,19 +159,37 @@ ValidatorList::load(
             return false;
         }
 
-        auto const id = parseBase58<PublicKey>(TokenType::NodePublic, match[1]);
-
-        if (!id)
+        PublicKey id;
+        // if (nullptr == GmEncryptObj::getInstance())
+        std::string publicKeyStr = match[1];
+        if ('n' == publicKeyStr[0])
         {
-            JLOG(j_.error()) << "Invalid node identity: " << match[1];
-            return false;
+            auto const oId = parseBase58<PublicKey>(
+                TokenType::NodePublic, publicKeyStr);
+            if (!oId)
+            {
+                JLOG(j_.error()) << "Invalid node identity: " << match[1];
+                return false;
+            }
+            id = *oId;
+        }
+        else if('p' == publicKeyStr[0])
+        {
+            // std::string publicKeyStr = match[1];
+            std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::NodePublic);
+            if (publicKeyDe58.empty() || publicKeyDe58.size() != 65)
+            {
+                JLOG(j_.error()) << "Invalid node identity: " << match[1];
+                return false;
+            }
+            id = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
         }
 
         // Skip local key which was already added
-        if (*id == localPubKey_ || *id == localSigningKey)
+        if (id == localPubKey_ || id == localSigningKey)
             continue;
 
-        auto ret = keyListings_.insert({*id, 1});
+        auto ret = keyListings_.insert({id, 1});
         if (!ret.second)
         {
             JLOG(j_.warn()) << "Duplicate node identity: " << match[1];
@@ -184,7 +202,8 @@ ValidatorList::load(
         // Config listed keys never expire
         if (it.second)
             it.first->second.expiration = TimeKeeper::time_point::max();
-        it.first->second.list.emplace_back(*id);
+        // it.first->second.list.emplace_back(*id);
+        it.first->second.list.emplace_back(id);
         it.first->second.available = true;
         ++count;
     }

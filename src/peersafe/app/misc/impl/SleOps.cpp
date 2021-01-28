@@ -131,10 +131,8 @@ namespace ripple {
 	// gateWay  currency transfer
 	ripple::TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, std::string const& _value, std::string const& _sendMax, std::string const& _sCurrency, AccountID const& _issuer)
 	{
-
 		try
 		{
-
 			STTx paymentTx(ttPAYMENT,
 				[&_from, &_to, &_value, &_sendMax, &_sCurrency, &_issuer](auto& obj)
 			{
@@ -154,9 +152,6 @@ namespace ripple {
 			JLOG(j.fatal()) << e.what();
 			return tefEXCEPTION;
 		}
-
-
-
 	}
 
 	TER SleOps::createContractAccount(AccountID const& _from, AccountID const& _to, uint256 const& _value)

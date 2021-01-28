@@ -53,8 +53,8 @@ namespace ripple {
 Blob encryptECIES (uint256 const& secretKey, Blob const& publicKey, Blob const& plaintext);
 Blob decryptECIES (uint256 const& secretKey, Blob const& publicKey, Blob const& ciphertext);
 
-Blob encrypt(Blob const& passBlob, PublicKey const& publicKey);
-Blob decrypt(Blob const& cipherBlob, SecretKey const& secret_key);
+Blob asymEncrypt(Blob const& passBlob, PublicKey const& publicKey);
+Blob asymDecrypt(Blob const& cipherBlob, SecretKey const& secret_key);
 
 } // ripple
 

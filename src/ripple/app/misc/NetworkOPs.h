@@ -276,7 +276,8 @@ public:
         int limit,
         bool bUnlimited) = 0;
 
-    using txnMetaLedgerType = std::tuple<Blob, Blob, std::uint32_t>;
+    // using txnMetaLedgerType = std::tuple<Blob, Blob, std::uint32_t>;
+    using txnMetaLedgerType = std::tuple<std::string, std::string, std::uint32_t>;
     using MetaTxsList = std::vector<txnMetaLedgerType>;
 
     virtual MetaTxsList
@@ -328,6 +329,9 @@ public:
         uint256 const* aTopic,
         int iTopicNum,
         const Blob& byValue) = 0;
+
+	virtual void 
+    pubViewChange(uint32_t ledgerSeq,uint64_t view) = 0;
     virtual void
     pubLogs(std::string const& log) = 0;
     virtual void
@@ -335,6 +339,8 @@ public:
 
     virtual bool
     hasChainSQLTxListener() = 0;
+
+    virtual bool waitingForInit() = 0;
 
     virtual std::pair<bool, std::string>
     createSchema(const std::shared_ptr<SLE const>& schema, bool bForce) = 0;

@@ -31,7 +31,6 @@
 
 #include <boost/format.hpp>
 
-#include <BeastConfig.h>
 #include <peersafe/consensus/hotstuff/Hotstuff.h>
 
 // for serialization
@@ -1044,10 +1043,10 @@ public:
 	}
 
 	void testAddReplicas() {
-		// ĞÂÔö½ÚµãµÄ²½Öè
-		// 1. ĞÂ½ÚµãÒÔĞÂµÄ epoch ºÍÅäÖÃÔËĞĞ
-		// 2. ¾Ã½ÚµãÊÕµ½ epoch change ÊÂ¼şºóÍ£Ö¹µ±Ç°µÄ hotstuff
-		// 3. ¾Ã½ÚµãÊ¹ÓÃĞÂÅäÖÃÖØĞÂÆô¶¯ hotstuff 
+		// ï¿½ï¿½ï¿½ï¿½ï¿½Úµï¿½Ä²ï¿½ï¿½ï¿½
+		// 1. ï¿½Â½Úµï¿½ï¿½ï¿½ï¿½Âµï¿½ epoch ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+		// 2. ï¿½Ã½Úµï¿½ï¿½Õµï¿½ epoch change ï¿½Â¼ï¿½ï¿½ï¿½Í£Ö¹ï¿½ï¿½Ç°ï¿½ï¿½ hotstuff
+		// 3. ï¿½Ã½Úµï¿½Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ hotstuff 
 
 		std::cout << "begin testAddReplicas" << std::endl;
 		ripple::hotstuff::Epoch current_epoch = Replica::epoch;
@@ -1073,10 +1072,10 @@ public:
 	}
 
 	void testRemoveReplicas() {
-		// ÒÆ³ı½ÚµãµÄ²½Öè
-		// 1. ·¢²¼ epoch change ÊÂ¼ş
-		// 2. ÊÕµ½ epoch change ÊÂ¼şºóÍ£Ö¹µ±Ç°µÄ hotstuff
-		// 3. Ê¹ÓÃĞÂÅäÖÃÖØĞÂÆô¶¯ hotstuff 
+		// ï¿½Æ³ï¿½ï¿½Úµï¿½Ä²ï¿½ï¿½ï¿½
+		// 1. ï¿½ï¿½ï¿½ï¿½ epoch change ï¿½Â¼ï¿½
+		// 2. ï¿½Õµï¿½ epoch change ï¿½Â¼ï¿½ï¿½ï¿½Í£Ö¹ï¿½ï¿½Ç°ï¿½ï¿½ hotstuff
+		// 3. Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ hotstuff 
 		std::cout << "begin testRemoveReplicas" << std::endl;
 		ripple::hotstuff::Epoch current_epoch = Replica::epoch;
 
@@ -1103,7 +1102,7 @@ public:
 
 	void testDisableNilBlock() {
 		std::cout << "begin testDisableNilBlock" << std::endl;
-		// ½ûÓÃ¿Õ¿é
+		// ï¿½ï¿½ï¿½Ã¿Õ¿ï¿½
 		disable_nil_block_ = true;
 
 		std::vector<std::set<std::size_t>> malicious_strategies;

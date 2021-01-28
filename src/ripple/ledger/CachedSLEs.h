@@ -91,6 +91,11 @@ public:
     double
     rate() const;
 
+    std::size_t size() const
+    {
+        return map_.size();
+    }
+
 private:
     std::size_t hit_ = 0;
     std::size_t miss_ = 0;

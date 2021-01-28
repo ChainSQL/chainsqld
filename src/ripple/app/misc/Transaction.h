@@ -79,7 +79,32 @@ public:
         Blob const& rawTxn,
         Schema& schema);
 
-    static TransStatus
+    static
+    Transaction::pointer
+    transactionFromSQLValidated (
+        boost::optional<std::uint64_t> const& ledgerSeq,
+        boost::optional<std::string> const& status,
+        Blob const& rawTxn,
+        Schema& app);
+
+    static
+    Transaction::pointer
+    transactionFromSHAMap(
+        boost::optional<std::uint64_t> const& ledgerSeq,
+        boost::optional<std::string> const& status,
+        uint256 const& transID,
+        Schema& app);
+
+    static
+    Transaction::pointer
+    transactionFromSHAMapValidated(
+        boost::optional<std::uint64_t> const& ledgerSeq,
+        boost::optional<std::string> const& status,
+        uint256 const& transID,
+        Schema& app);
+
+    static
+    TransStatus
     sqlTransactionStatus(boost::optional<std::string> const& status);
 
     std::shared_ptr<STTx const> const&

@@ -107,6 +107,77 @@ Transaction::transactionFromSQL(
     return tr;
 }
 
+Transaction::pointer Transaction::transactionFromSQLValidated(
+    boost::optional<std::uint64_t> const& ledgerSeq,
+    boost::optional<std::string> const& status,
+    Blob const& rawTxn,
+    Schema& app)
+{
+    auto ret = transactionFromSQL(ledgerSeq, status, rawTxn, app);
+
+	auto retPair = checkValidity(app, app.getHashRouter(),
+		*ret->getSTransaction(), app.
+		getLedgerMaster().getValidatedRules(),
+		app.config());
+	if (retPair.first != Validity::Valid)
+	{
+		JLOG(app.journal("Transaction").error()) << "checkValidity for tx " 
+			<< to_string(ret->getID()) << " failed,reason:" << retPair.second;
+		return {};
+	}
+
+    return ret;
+}
+
+Transaction::pointer Transaction::transactionFromSHAMap(
+    boost::optional<std::uint64_t> const& ledgerSeq,
+    boost::optional<std::string> const& status,
+    uint256 const& transID,
+    Schema& app)
+{
+    std::uint32_t const inLedger =
+        rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
+
+    if (auto lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+    {
+        auto txn = lgr->txRead(transID).first;
+        std::string reason;
+        auto tr = std::make_shared<Transaction>(
+            txn, reason, app);
+
+        tr->setStatus(sqlTransactionStatus(status));
+        tr->setLedger(inLedger);
+        return tr;
+    }
+
+    return {};
+}
+
+Transaction::pointer Transaction::transactionFromSHAMapValidated(
+    boost::optional<std::uint64_t> const& ledgerSeq,
+    boost::optional<std::string> const& status,
+    uint256 const& transID,
+    Schema& app)
+{
+    if (auto ret = transactionFromSHAMap(ledgerSeq, status, transID, app))
+    {
+        if (checkValidity(app, app.getHashRouter(),
+            *ret->getSTransaction(), app.
+            getLedgerMaster().getValidatedRules(),
+            app.config()).first !=
+            Validity::Valid)
+        {
+            return{};
+        }
+        else
+        {
+            return ret;
+        }
+    }
+
+    return {};
+}
+
 Transaction::pointer
 Transaction::load(uint256 const& id, Schema& app, error_code_i& ec)
 {
@@ -136,7 +207,7 @@ Transaction::load(
     error_code_i& ec)
 {
     std::string sql =
-        "SELECT LedgerSeq,Status,RawTxn "
+        "SELECT LedgerSeq,Status "
         "FROM Transactions WHERE TransID='";
 
     sql.append(to_string(id));
@@ -144,52 +215,16 @@ Transaction::load(
 
     boost::optional<std::uint64_t> ledgerSeq;
     boost::optional<std::string> status;
-    Blob rawTxn;
     {
-        auto db = app.getTxnDB().checkoutDb();
-        soci::blob sociRawTxnBlob(*db);
-        soci::indicator rti;
+        auto db = app.getTxnDB ().checkoutDb ();
 
-        *db << sql, soci::into(ledgerSeq), soci::into(status),
-            soci::into(sociRawTxnBlob, rti);
-
-        auto const got_data = db->got_data();
-
-        if ((!got_data || rti != soci::i_ok) && !range)
-            return nullptr;
-
-        if (!got_data)
-        {
-            uint64_t count = 0;
-
-            *db << "SELECT COUNT(DISTINCT LedgerSeq) FROM Transactions WHERE "
-                   "LedgerSeq BETWEEN "
-                << range->first() << " AND " << range->last() << ";",
-                soci::into(count, rti);
-
-            if (!db->got_data() || rti != soci::i_ok)
-                return false;
-
-            return count == (range->last() - range->first() + 1);
-        }
-
-        convert(sociRawTxnBlob, rawTxn);
+        *db << sql, soci::into (ledgerSeq), soci::into (status);
+        if (!db->got_data ())
+            return {};
     }
 
-    try
-    {
-        return Transaction::transactionFromSQL(ledgerSeq, status, rawTxn, app);
-    }
-    catch (std::exception& e)
-    {
-        JLOG(app.journal("Ledger").warn())
-            << "Unable to deserialize transaction from raw SQL value. Error: "
-            << e.what();
-
-        ec = rpcDB_DESERIALIZATION;
-    }
-
-    return nullptr;
+    return Transaction::transactionFromSHAMapValidated(
+        ledgerSeq, status, id, app);
 }
 
 // options 1 to include the date of the transaction

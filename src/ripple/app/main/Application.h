@@ -27,7 +27,7 @@
 #include <ripple/core/Config.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/beast/utility/PropertyStream.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <peersafe/schema/SchemaParams.h>
 #include <ripple/protocol/Protocol.h>
 #include <boost/asio.hpp>
@@ -86,6 +86,7 @@ class ValidatorList;
 class ValidatorSite;
 class CertList;
 class Cluster;
+class PreContractFace;
 class TxStoreDBConn;
 class TxStore;
 class TableStatusDB;
@@ -254,6 +255,8 @@ public:
     virtual TransactionMaster&
     getMasterTransaction(SchemaID const& id = beast::zero) = 0;
 
+    virtual PreContractFace&		
+    getPreContractFace() = 0;
     virtual TxStoreDBConn&
     getTxStoreDBConn(SchemaID const& id = beast::zero) = 0;
     virtual TxStore&

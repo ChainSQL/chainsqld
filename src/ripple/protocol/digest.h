@@ -24,7 +24,9 @@
 #include <ripple/beast/crypto/ripemd.h>
 #include <ripple/beast/crypto/sha2.h>
 #include <ripple/beast/hash/endian.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
+#include <ripple/protocol/CommonKey.h>
+#include <peersafe/crypto/hashBase.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <algorithm>
 #include <array>
 
@@ -173,13 +175,13 @@ namespace detail {
     SHA-512 digest of the message.
 */
 template <bool Secure>
-struct basic_sha512_half_hasher
+struct basic_sha512_half_hasher : public hashBase
 {
 private:
     sha512_hasher h_;
 
 public:
-    static beast::endian const endian = beast::endian::big;
+    // static beast::endian const endian = beast::endian::big;
 
     using result_type = uint256;
 
@@ -189,12 +191,12 @@ public:
     }
 
     void
-    operator()(void const* data, std::size_t size) noexcept
+    operator()(void const* data, std::size_t size) noexcept override
     {
         h_(data, size);
     }
 
-    explicit operator result_type() noexcept
+    explicit operator result_type() noexcept override
     {
         auto const digest = sha512_hasher::result_type(h_);
         result_type result;
@@ -222,34 +224,39 @@ using sha512_half_hasher_s = detail::basic_sha512_half_hasher<true>;
 
 //------------------------------------------------------------------------------
 
+// sha512Half can use different hasher like sm3/sha
+// the function name is old, but don't want to change.
 /** Returns the SHA512-Half of a series of objects. */
-template <class... Args>
+// sha512Half (Args const&... args)
+template <CommonKey::HashType hashType = CommonKey::unknown, class... Args>
 sha512_half_hasher::result_type
 sha512Half(Args const&... args)
 {
     using beast::hash_append;
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    HardEncrypt::SM3Hash objSM3(hEObj);//refObjSM3 = hEObj->getSM3Obj();
+    CommonKey::HashType hashTypeTemp = hashType == CommonKey::unknown? CommonKey::hashTypeGlobal : hashType;
 
-    if (nullptr != hEObj)
+    // std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher(hashTypeTemp);
+    // hash_append(*hasher, args...);
+
+    if ( hashTypeTemp == CommonKey::sm3 )
     {
-        unsigned char hashData[128] = {0};
-        int HashDataLen = 0;
-        objSM3.SM3HashInitFun();
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+        GmEncrypt::SM3Hash objSM3(hEObj);//refObjSM3 = hEObj->getSM3Obj();
         hash_append(objSM3, args...);
-        objSM3.SM3HashFinalFun(hashData, (unsigned long*)&HashDataLen);
-
-        sha512_half_hasher::result_type result;
-        std::copy(hashData, hashData + 32, result.begin());
-        return result;
+        return static_cast<typename sha512_half_hasher::result_type>(objSM3);
     }
-    else
+    else if (hashTypeTemp == CommonKey::sha)
     {
         sha512_half_hasher h;
         hash_append(h, args...);
         return static_cast<typename
             sha512_half_hasher::result_type>(h);
-    }
+	}
+	else {
+		assert(0);
+		uint256 ret;
+		return ret;
+	}
 }
 
 /** Returns the SHA512-Half of a series of objects.

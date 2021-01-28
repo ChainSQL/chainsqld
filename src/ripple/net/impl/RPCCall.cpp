@@ -39,6 +39,7 @@
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/ServerHandler.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/rpc/handlers/ValidationCreate.h>
 #include <peersafe/basics/characterUtilities.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/streambuf.hpp>
@@ -1079,6 +1080,21 @@ private:
 
             return jvRequest;
         }
+        else if ((3 == jvParams.size() || bOffline)
+			&& reader.parse(jvParams[2u].asString(), txJSON))
+		{
+			// Signing or submitting tx_json.
+			Json::Value jvRequest;
+
+			jvRequest[jss::secret] = jvParams[0u].asString();
+			jvRequest[jss::public_key] = jvParams[1u].asString();
+			jvRequest[jss::tx_json] = txJSON;
+
+			if (bOffline)
+				jvRequest[jss::offline] = true;
+
+			return jvRequest;
+		}
 
         return rpcError(rpcINVALID_PARAMS);
     }
@@ -1323,8 +1339,15 @@ private:
     {
         Json::Value jvRequest{Json::objectValue};
 
-        if (jvParams.size())
-            jvRequest[jss::secret] = jvParams[0u].asString();
+        if (1 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+        }
+        else if (2 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+            jvRequest[jss::secret]     = jvParams[1u].asString ();
+        }
 
         return jvRequest;
     }
@@ -1336,9 +1359,16 @@ private:
     parseWalletPropose(Json::Value const& jvParams)
     {
         Json::Value jvRequest{Json::objectValue};
-
-        if (jvParams.size())
-            jvRequest[jss::passphrase] = jvParams[0u].asString();
+        
+        if (1 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+        }
+        else if (2 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+            jvRequest[jss::passphrase]     = jvParams[1u].asString ();
+        }
 
         return jvRequest;
     }
@@ -1524,10 +1554,10 @@ public:
             {"ledger_accept", &RPCParser::parseAsIs, 0, 0},
             {"ledger_closed", &RPCParser::parseAsIs, 0, 0},
             {"ledger_current", &RPCParser::parseAsIs, 0, 0},
-            //      {   "ledger_entry",         &RPCParser::parseLedgerEntry,
-            //      -1, -1   },
+            // {   "ledger_entry",         &RPCParser::parseLedgerEntry, -1, -1   },
             {"ledger_header", &RPCParser::parseLedgerId, 1, 1},
             {"ledger_request", &RPCParser::parseLedgerId, 1, 1},
+            // {   "ledger_txs",           &RPCParser::parseLedgerTxs,  1,  3   },
             {"log_level", &RPCParser::parseLogLevel, 0, 2},
             {"logrotate", &RPCParser::parseAsIs, 0, 0},
             {"manifest", &RPCParser::parseManifest, 1, 1},
@@ -1535,8 +1565,7 @@ public:
             {"peers", &RPCParser::parseAsIs, 0, 0},
             {"ping", &RPCParser::parseAsIs, 0, 0},
             {"print", &RPCParser::parseAsIs, 0, 1},
-            //      {   "profile",              &RPCParser::parseProfile, 1,  9
-            //      },
+            // {   "profile",              &RPCParser::parseProfile, 1,  9},
             {"random", &RPCParser::parseAsIs, 0, 0},
             {"peer_reservations_add",
              &RPCParser::parsePeerReservationsAdd,
@@ -1562,9 +1591,11 @@ public:
             {"tx_history", &RPCParser::parseTxHistory, 1, 1},
             {"unl_list", &RPCParser::parseAsIs, 0, 0},
             {"validation_create", &RPCParser::parseValidationCreate, 0, 1},
+            // {   "validation_seed",      &RPCParser::parseValidationSeed,        0,  1   },
             {"validator_info", &RPCParser::parseAsIs, 0, 0},
             {"version", &RPCParser::parseAsIs, 0, 0},
-            {"wallet_propose", &RPCParser::parseWalletPropose, 0, 1},
+            {"wallet_propose", &RPCParser::parseWalletPropose, 0, 2},
+            // {   "wallet_seed",          &RPCParser::parseWalletSeed,            0,  1   },
             {"internal", &RPCParser::parseInternal, 1, -1},
 
             // Evented methods
@@ -1888,26 +1919,20 @@ rpcClient(
                     jvParams.append(jvRequest[i]);
             }
 
-			if (args.size() == 1 && args[0] == "validation_create")
+			if (args[0] == "validation_create")
 			{
-				Json::Value     obj(Json::objectValue);
-				auto seed = randomSeed();
-
-				auto const private_key = generateSecretKey(KeyType::secp256k1, seed);
-
-				obj[jss::validation_public_key] = toBase58(
-					TokenType::NodePublic,
-					derivePublicKey(KeyType::secp256k1, private_key));
-
-				obj[jss::validation_public_key_hex] = strHex(derivePublicKey(KeyType::secp256k1, private_key));
-
-				obj[jss::validation_private_key] = toBase58(
-					TokenType::NodePrivate, private_key);
-
-				obj[jss::validation_seed] = toBase58(seed);
-				obj[jss::validation_key] = seedAs1751(seed);
-
-				jvOutput["result"] = obj;
+                std::string seedStr;
+                KeyType keyType = KeyType::secp256k1;
+                if (args.size() == 2)
+                {
+                    keyType = *(keyTypeFromString(args[1]));
+                }
+                if (args.size() == 3)
+                {
+                    keyType = *(keyTypeFromString(args[1]));
+                    seedStr = args[2];
+                }
+                jvOutput["result"] = doFillValidationJson(keyType, seedStr);
 			}
 			else
             {

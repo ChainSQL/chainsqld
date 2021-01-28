@@ -112,6 +112,11 @@ public:
     void
     timerEntry(NetClock::time_point const& now);
 
+    bool waitingForInit()
+    {
+        return consensus_->waitingForInit();
+    }
+
     bool
     peerConsensusMessage(
         std::shared_ptr<PeerImp>& peer,

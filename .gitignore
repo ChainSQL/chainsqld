@@ -23,6 +23,8 @@ bin/project-cache.jam
 *.o
 build
 .nih_c
+build*
+!src/tbb-2019_U8/build
 tags
 TAGS
 GTAGS
@@ -134,7 +136,7 @@ third_party/
 # Compiled Static libraries
 *.lai
 *.la
-*.a
+#*.a
 *.lib
 
 # Executables
@@ -146,3 +148,5 @@ CMakeSettings.json
 compile_commands.json
 .clangd
 
+# VScode config files
+.vscode/

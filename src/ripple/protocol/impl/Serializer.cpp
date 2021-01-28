@@ -190,10 +190,17 @@ Serializer::chop(int bytes)
     return true;
 }
 
-uint256
-Serializer::getSHA512Half() const
+uint256 Serializer::getSHA512Half (CommonKey::HashType hashType) const
 {
-    return sha512Half(makeSlice(mData));
+    if (hashType == CommonKey::sha || hashType == CommonKey::unknown)
+        return sha512Half<CommonKey::sha>(makeSlice(mData));
+    else if(hashType == CommonKey::sm3)
+        return sha512Half<CommonKey::sm3>(makeSlice(mData));
+	else {
+		assert(0);
+		uint256 ret;
+		return ret;
+	}
 }
 
 int

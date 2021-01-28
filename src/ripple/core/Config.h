@@ -59,7 +59,12 @@ enum class SizedItem : std::size_t {
     nodeCacheAge,
     hashNodeDBCache,
     txnDBCache,
-    lgrDBCache
+    lgrDBCache,
+    transactionSize,
+    transactionAge
+    //is need still?
+    //siSLECacheSize,
+    //siSLECacheAge,
 };
 
 //  This entire derived class is deprecated.
@@ -119,10 +124,11 @@ public:
     bool validateShards = false;
     bool ELB_SUPPORT = false;
 
+    bool GM_SELF_CHECK = false;
+
     std::vector<std::string> IPS;           // Peer IPs from rippled.cfg.
     std::vector<std::string> IPS_FIXED;     // Fixed Peer IPs from rippled.cfg.
     std::vector<std::string> SNTP_SERVERS;  // SNTP servers from rippled.cfg.
-
 
 	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
 	std::vector <std::string>	SCHEMA_IDS;

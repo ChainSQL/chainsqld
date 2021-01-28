@@ -361,6 +361,14 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 				}
 				placeHoder += ")";
 			}
+            else if (boost::iequals(op, "is") || boost::iequals(op, "is not"))
+            {
+                const BindValue& v = value[0];
+                std::string fv;
+                if (format_value(v, fv) != 0)
+                    return false;
+                placeHoder += "NULL";
+            }
 			else {
 				if (bind_values_index_ != -1) {
 					placeHoder = (boost::format(":%1%") %(++bind_values_index_)).str();
@@ -414,9 +422,9 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 int conditionTree::format_value(const BindValue& value, std::string& result) const {
 	int ret = 0;
 	if (value.isString() || value.isBlob() || value.isText() || value.isVarchar()) {
-		if(value.asString().find(".") == std::string::npos)
+		if (value.isString() ||  value.asString().find(".") == std::string::npos) {
 			result = (boost::format("'%1%'") % value.asString()).str();
-		else {
+		}else {
 			// especially for one field equal another field
 			const std::string& v = value.asString();
 			if (v[0] == '$' && v[1] == '.') {
@@ -436,6 +444,10 @@ int conditionTree::format_value(const BindValue& value, std::string& result) con
 	else if (value.isDouble() || value.isNumeric()) {
 		result = (boost::format("%1%") % value.asDouble()).str();
 	}
+    else if (value.isNull())
+    {
+        result = "NULL";
+    }
 	else {
 		ret = -1;
 		result = "Not support value type";
@@ -494,7 +506,7 @@ conditionTree::expression_result conditionTree::parse_expression(const Json::Val
 		if (v.isObject()) {
 			const std::vector<std::string>& ops = v.getMemberNames();
 			op = ops[0];
-			if (v[op].isArray()) {
+			if (v[op].type() == Json::ValueType::arrayValue) {
 				if (parse_array(v[op], value) != 0)
 					break;
 			}else {

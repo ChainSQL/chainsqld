@@ -108,6 +108,7 @@ JSS(accountTreeHash);        // out: ledger/Ledger.cpp
 JSS(account_data);           // out: AccountInfo
 JSS(account_hash);           // out: LedgerToJson
 JSS(account_id);             // out: WalletPropose
+JSS(account_id_hex);         // out: WalletPropose
 JSS(account_objects);        // out: AccountObjects
 JSS(account_root);           // in: LedgerEntry
 JSS(account_sequence_next);  // out: SubmitTransaction
@@ -257,6 +258,7 @@ JSS(good);                  // out: RPCVersion
 JSS(hash);                  // out: NetworkOPs, InboundLedger,
                             //      LedgerToJson, STTx; field
 JSS(hashes);                // in: AccountObjects
+JSS(hash_type);             // out: ServerInfo
 JSS(have_header);           // out: InboundLedger
 JSS(have_state);            // out: InboundLedger
 JSS(have_transactions);     // out: InboundLedger
@@ -378,6 +380,7 @@ JSS(no_ripple);                  // out: AccountLines
 JSS(no_ripple_peer);             // out: AccountLines
 JSS(node);                       // out: LedgerEntry
 JSS(node_binary);                // out: LedgerEntry
+JSS(node_alg_type);              // out: ServerInfo
 JSS(node_hit_rate);              // out: GetCounts
 JSS(node_read_bytes);            // out: GetCounts
 JSS(node_reads_hit);             // out: GetCounts
@@ -662,6 +665,10 @@ JSS(include_failure);			    // out: doLedgerTxs
 JSS(txn_success_detail);			// out: doLedgerTxs
 JSS(txn_failure_detail);			// out: doLedgerTxs
 
+JSS ( gm_alg_type );                // in: gm algorithm type
+JSS ( data_set_count );             // in: make data set count
+JSS ( plain_data_len );             // in: make plain data len
+
 JSS (memos);                        // out: memos
 JSS ( lastLedgerSequence );			//
 JSS ( metaChain );			        // out: table tx chain and contract
@@ -683,6 +690,7 @@ JSS (for_node);
 JSS (running);
 
 JSS(drops_per_byte);                       // out: LogLevel
+JSS(view);
 #undef JSS
 
 }  // namespace jss

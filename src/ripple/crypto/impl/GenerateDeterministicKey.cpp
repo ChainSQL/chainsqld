@@ -99,7 +99,7 @@ generateRootDeterministicKey(uint128 const& seed)
         std::array<std::uint8_t, 20> buf;
         std::copy(seed.begin(), seed.end(), buf.begin());
         copy_uint32(buf.begin() + 16, seq++);
-        auto root = sha512Half(buf);
+        auto root = sha512Half<CommonKey::sha>(buf);
         secure_erase(buf.data(), buf.size());
         privKey.assign(root.data(), root.size());
         secure_erase(root.data(), root.size());

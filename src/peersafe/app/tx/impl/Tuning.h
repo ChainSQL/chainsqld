@@ -29,6 +29,9 @@ namespace ripple {
 
 	int const MIN_NODE_COUNT_SCHEMA = 3;
 
+	int const TX_TIMEOUT = 30;
+
+	int const RAW_SHOW_SIZE = 2048;
 } // ripple
 
 #endif

@@ -20,6 +20,7 @@
 #ifndef RIPPLE_PROTOCOL_SECRETKEY_H_INCLUDED
 #define RIPPLE_PROTOCOL_SECRETKEY_H_INCLUDED
 
+#include <ripple/protocol/CommonKey.h>
 #include <ripple/basics/Buffer.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/protocol/KeyType.h>
@@ -33,7 +34,7 @@
 namespace ripple {
 
 /** A secret key. */
-class SecretKey
+class SecretKey : public CommonKey
 {
 private:
     std::uint8_t buf_[32];
@@ -180,6 +181,8 @@ sign(KeyType type, SecretKey const& sk, Slice const& message)
 }
 /** @} */
 
+Blob
+decrypt(const Blob& cipherBlob, const SecretKey& secret_key);
 
 boost::optional<SecretKey> getSecretKey(const std::string& secret);
 boost::optional<PublicKey> getPublicKey(const std::string& secret);
