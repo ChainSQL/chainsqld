@@ -213,8 +213,8 @@ decodeBase58(std::string const& s, InverseArray const& inv)
         --remain;
     }
 
-    if (remain > 64)
-        return {};
+    //if (remain > 64)
+    //    return {};
 
     // Allocate enough space in big-endian base256 representation.
     // log(58) / log(256), rounded up.

@@ -782,7 +782,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
         std::string privateKeyStr = params[jss::secret].asString();
         std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, TokenType::AccountSecret);
         std::string publicKeyStr = params[jss::public_key].asString();
-        std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::NodePublic);
+        std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::AccountPublic);
         if (privateKeyStrDe58.empty() || publicKeyDe58.empty() || publicKeyDe58.size() != 65)
         {
             error = RPC::missing_field_error(": 'public_key' field");
