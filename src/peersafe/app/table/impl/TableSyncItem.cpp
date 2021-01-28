@@ -960,27 +960,25 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
         else
         {
             JLOG(journal_.trace()) << "Dispose error";
-        }			
+        }
 	}
    
-	if (T_DROP == op_type)
+	if (ret.first)
 	{
-		this->ReSetContexAfterDrop();
-	}
-
-	if (ret.first && T_RENAME == op_type)
-	{
+		if (T_DROP == op_type)
+		{
+			this->ReSetContexAfterDrop();
+		}
+		else if (T_RENAME == op_type)
+		{
 			auto tables = tx.getFieldArray(sfTables);
 			if (tables.size() > 0)
 			{
 				auto newTableName = strCopy(tables[0].getFieldVL(sfTableNewName));
 				sTableName_ = newTableName;
-				bool bRenameOk = getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
-				if (!bRenameOk) {
-					ret.first      = false;			
-					ret.second = (boost::format("account %1% renames table %2%  to %3% exception") % to_string(accountID_) % sTableNameInDB_ %newTableName).str();
-				}
-			}	
+				getTableStatusDB().RenameRecord(accountID_, sTableNameInDB_, newTableName);
+			}
+		}
 	}
 	else
 	{
