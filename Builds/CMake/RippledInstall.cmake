@@ -33,7 +33,7 @@ install (EXPORT RippleExports
 include (CMakePackageConfigHelpers)
 write_basic_package_version_file (
   RippleConfigVersion.cmake
-  VERSION ${rippled_version}
+  VERSION ${chainsqld_version}
   COMPATIBILITY SameMajorVersion)
 
 if (is_root_project)
