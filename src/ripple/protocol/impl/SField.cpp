@@ -248,11 +248,11 @@ SF_Blob const sfContractTxs      (access, STI_VL, 66, "ContractTxs");
 SF_Blob const sfContractLogs     (access, STI_VL, 67, "ContractLogs");
 SF_Blob const sfSchemaName       (access, STI_VL, 68, "SchemaName");
 SF_Blob const sfEndpoint		 (access, STI_VL, 69, "Endpoint");
-SF_Blob const sfBlock            (access, STI_VL, 70, "Block");
-SF_Blob const sfVoteImp          (access, STI_VL, 71, "VoteImp");
-SF_Blob const sfEpochChangeImp   (access, STI_VL, 72, "EpochChangeImp");
-SF_Blob const sfSyncInfo         (access, STI_VL, 73, "SyncInfo");
-SF_Blob const sfTxsHashFillField (access, STI_VL, 68, "TxsHashFillField");
+SF_Blob const sfTxsHashFillField (access, STI_VL, 70, "TxsHashFillField");
+SF_Blob const sfBlock            (access, STI_VL, 71, "Block");
+SF_Blob const sfVoteImp          (access, STI_VL, 72, "VoteImp");
+SF_Blob const sfEpochChangeImp   (access, STI_VL, 73, "EpochChangeImp");
+SF_Blob const sfSyncInfo         (access, STI_VL, 74, "SyncInfo");
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner       (access, STI_ACCOUNT, 2, "Owner");
