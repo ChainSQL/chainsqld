@@ -158,13 +158,10 @@ Handler const handlerArray[]{
 
     // Evented methods
     {"subscribe", byRef(&doSubscribe), Role::USER, NO_CONDITION},
-    {"unsubscribe", byRef(&doUnsubscribe), Role::USER, NO_CONDITION},
-    
-  //  {   "ledger_txs",           byRef (&doLedgerTxs),          Role::USER,  NO_CONDITION  },   
+    {"unsubscribe", byRef(&doUnsubscribe), Role::USER, NO_CONDITION},  
     // {   "validation_seed",      byRef (&doValidationSeed),     Role::ADMIN, NO_CONDITION  },
     // {   "wallet_seed",          byRef (&doWalletSeed),         Role::ADMIN, NO_CONDITION  },
 
-    
 	{	"t_prepare",			byRef (&doPrepare),            Role::USER,   NO_CONDITION },
     {   "t_create",             byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION     },
 
