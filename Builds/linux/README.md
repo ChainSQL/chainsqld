@@ -1,238 +1,110 @@
-# Linux Build Instructions
+# Linux 编译
+## 系统需求
+本文档是基于 Ubutun 16.04 及以上版本对chainsql进行编译，如果是Redhat,CentOS等系统，需要基于对应内核的操作系统版本及对应的工具去安装依赖。
 
-This document focuses on building rippled for development purposes under recent
-Ubuntu linux distributions. To build rippled for Redhat, Fedora or Centos
-builds, including docker based builds for those distributions, please consult
-the [rippled-package-builder](https://github.com/ripple/rippled-package-builder)
-repository. 
+## 需特殊注意的系统依赖项版本
+| Component | Minimum Recommended Version |
+|-----------|-----------------------|
+| gcc | 7.4.0+ |
+| cmake | 3.12+ |
+| boost | 1.70.0+ |
 
-Note: Ubuntu 16.04 users may need to update their compiler (see the dependencies
-section). For non Ubuntu distributions, the steps below should work be
-installing the appropriate dependencies using that distribution's package
-management tools.
 
-## Dependencies
-
-gcc-7 or later is required.
-
-Use `apt-get` to install the dependencies provided by the distribution
-
+## 安装开发环境依赖
+### gcc版本升级
+1. 添加源
 ```
-$ apt-get update
-$ apt-get install -y gcc g++ wget git cmake protobuf-compiler libprotobuf-dev libssl-dev pkg-config libgrpc-dev libmysqlclient-dev
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt-get update
 ```
-
-Advanced users can choose to install newer versions of gcc, or the clang compiler.
-At this time, rippled only supports protobuf version 2. Using version 3 of 
-protobuf will give errors.
-
-### Build Boost
-
-Boost 1.70 or later is required. We recommend downloading and compiling boost
-with the following process: After changing to the directory where
-you wish to download and compile boost, run
-
-``` 
-$ wget https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.gz
-$ tar -xzf boost_1_70_0.tar.gz
-$ cd boost_1_70_0
-$ ./bootstrap.sh
-$ ./b2 headers
-$ ./b2 -j<Num Parallel>
+2. 安装新版gcc/g++
 ```
-
-### (Optional) Dependencies for Building Source Documentation
-
-Source code documentation is not required for running/debugging rippled. That
-said, the documentation contains some helpful information about specific
-components of the application. For more information on how to install and run
-the necessary components, see [this document](../../docs/README.md)
-
-## Build
-
-### Clone the rippled repository
-
-From a shell:
-
+sudo apt-get install gcc-7 g++-7
 ```
-git clone git@github.com:ripple/rippled.git
-cd rippled
+3. 切换gcc/g++版本
+```
+cd /usr/bin
+sudo rm gcc
+sudo ln -s gcc-7 gcc
+sudo rm g++
+sudo ln -s g++-7 g++
+```
+4. 确认版本
+```
+gcc -v
+```
+### 依赖库安装 
+```
+apt-get update
+apt-get install -y gcc g++ wget git cmake pkg-config protobuf-compiler libprotobuf-dev libssl-dev libmysqlclient-dev
+```
+### Boost安装
+- 进入编译目录
+```bash
+wget https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.gz
+tar -xzf boost_1_70_0.tar.gz
+cd boost_1_70_0
+./bootstrap.sh
+./b2 headers
+./b2 -j<Num Parallel>
 ```
 
-For a stable release, choose the `master` branch or one of the tagged releases
-listed on [GitHub](https://github.com/ripple/rippled/releases). 
+- 在 ~/.bashrc 文件中保存 BOOST_ROOT 环境变量
 
+```bash
+export BOOST_ROOT=/home/dbliu/work/chainSQL/Builds/Ubuntu/boost_1_70_0
 ```
-git checkout master
-```
-
-or to test the latest release candidate, choose the `release` branch.
-
-```
-git checkout release
+- 让 BOOST_ROOT 环境变量生效
+```bash
+source ~/.bashrc
 ```
 
-If you are doing development work and want the latest set of untested
-features, you can consider using the `develop` branch instead.
-
+### cmake版本升级
+- 检查cmake版本，如果版本号在3.12以下，则需要升级
+1. 卸载已经安装的旧版的CMake（非必需）
 ```
-git checkout develop
+sudo apt-get autoremove cmake
 ```
-
-### Configure Library Paths
-
-If you didn't persistently set the `BOOST_ROOT` environment variable to the
-directory in which you compiled boost, then you should set it temporarily.
-
-For example, you built Boost in your home directory `~/boost_1_70_0`, you
-would do for any shell in which you want to build:
-
+2. 文件下载解压：
 ```
-export BOOST_ROOT=~/boost_1_70_0
+wget https://cmake.org/files/v3.12/cmake-3.12.2-Linux-x86_64.tar.gz
+tar zxvf cmake-3.12.2-Linux-x86_64.tar.gz
 ```
-
-Alternatively, you can add `DBOOST_ROOT=~/boost_1_70_0` to the command line when
-invoking `cmake`.
-
-### Generate Configuration
-
-All builds should be done in a separate directory from the source tree root 
-(a subdirectory is fine). For example, from the root of the ripple source tree:
-
+3. 创建软链接
 ```
-mkdir my_build
-cd my_build
+mv cmake-3.12.2-Linux-x86_64 /opt/cmake-3.12.2
+ln -sf /opt/cmake-3.12.2/bin/*  /usr/bin/
+```
+4. 确认版本
+```
+cmake --version
 ```
 
-followed by:
 
+## 编译 chainsqld
+下载源码
+- git clone git@github.com:ChainSQL/chainsqld.git chainsqld
+
+进入源码根目录
+```bash
+> cd chainsqld
 ```
-cmake -DCMAKE_BUILD_TYPE=Debug ..
+- 创建并进入编译目录 build
+```bash
+> mkdir build && cd build
 ```
-
-If your operating system does not provide static libraries (Arch Linux, and 
-Manjaro Linux, for example), you must configure a non-static build by adding
-`-Dstatic=OFF` to the above cmake line.
-
-`CMAKE_BUILD_TYPE` can be changed as desired for `Debug` vs.
-`Release` builds (all four standard cmake build types are supported).
-
-To select a different compiler (most likely gcc will be found by default), pass 
-`-DCMAKE_C_COMPILER=<path/to/c-compiler>` and
-`-DCMAKE_CXX_COMPILER=</path/to/cxx-compiler>` when configuring. If you prefer, 
-you can instead set `CC` and `CXX` environment variables which cmake will honor.
-
-#### Options During Configuration:
-
-The CMake file defines a number of configure-time options which can be
-examined by running `cmake-gui` or `ccmake` to generated the build. In
-particular, the `unity` option allows you to select between the unity and
-non-unity builds. `unity` builds are faster to compile since they combine
-multiple sources into a single compiliation unit - this is the default if you
-don't specify. `nounity` builds can be helpful for detecting include omissions
-or for finding other build-related issues, but aren't generally needed for
-testing and running.
-
-* `-Dunity=ON` to enable/disable unity builds (defaults to ON)  
-* `-Dassert=ON` to enable asserts
-* `-Djemalloc=ON` to enable jemalloc support for heap checking
-* `-Dsan=thread` to enable the thread sanitizer with clang
-* `-Dsan=address` to enable the address sanitizer with clang
-* `-Dstatic=ON` to enable static linking library dependencies
-
-Several other infrequently used options are available - run `ccmake` or
-`cmake-gui` for a list of all options.
-
-### Build
-
-Once you have generated the build system, you can run the build via cmake:
-
-```
-cmake --build . -- -j <parallel jobs>
+- 执行 cmake
+```bash
+> cmake -DCMAKE_BUILD_TYPE=Release|Debug ..
 ```
 
-the `-j` parameter in this example tells the build tool to compile several
-files in parallel. This value should be chosen roughly based on the number of
-cores you have available and/or want to use for building.
+- 编译
 
-When the build completes succesfully, you will have a `rippled` executable in
-the current directory, which can be used to connect to the network (when
-properly configured) or to run unit tests.
-
-
-#### Optional Installation
-
-The rippled cmake build supports an installation target that will install
-rippled as well as a support library that can be used to sign transactions. In
-order to build and install the files, specify the `install` target when
-building, e.g.:
-
+```base
+> make -j<Num Parallel>
 ```
-cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/opt/local ..
-cmake --build . --target install -- -j <parallel jobs>
-```
+注意上面的Num Parallel需要指定一个并行编译数量，如：2
 
-We recommend specifying `CMAKE_INSTALL_PREFIX` when configuring in order to
-explicitly control the install location for your files. Without this setting,
-cmake will typically install in `/usr/local`. It is also possible to "rehome"
-the installation by specifying the `DESTDIR` env variable during the install phase,
-e.g.:
+- 编译时需翻墙
 
-```
-DESTDIR=~/mylibs cmake --build . --target install -- -j <parallel jobs>
-```
-
-in which case, the files would be installed in the `CMAKE_INSTALL_PREFIX` within
-the specified `DESTDIR` path.
-
-#### Signing Library
-
-If you want to use the signing support library to create an application, there
-are two simple mechanisms with cmake + git that facilitate this.
-
-With either option below, you will have access to a library from the
-rippled project that you can link to in your own project's CMakeLists.txt, e.g.:
-
-```
-target_link_libraries (my-signing-app Ripple::xrpl_core)
-```
-
-##### Option 1: git submodules + add_subdirectory
-
-First, add the rippled repo as a submodule to your project repo:
-
-```
-git submodule add -b master https://github.com/ripple/rippled.git vendor/rippled
-```
-
-change the `vendor/rippled` path as desired for your repo layout. Furthermore,
-change the branch name if you want to track a different rippled branch, such
-as `develop`.
-   
-Second, to bring this submodule into your project, just add the rippled subdirectory:
-
-```
-add_subdirectory (vendor/rippled)
-```
-    
-##### Option 2: installed rippled + find_package
-
-First, follow the "Optional Installation" instructions above to
-build and install the desired version of rippled.
-
-To make use of the installed files, add the following to your CMakeLists.txt file:
-
-```
-set (CMAKE_MODULE_PATH /opt/local/lib/cmake/ripple ${CMAKE_MODULE_PATH})
-find_package(Ripple REQUIRED)
-```
-
-change the `/opt/local` module path above to match your chosen installation prefix.
-
-## Unit Tests (Recommended)
-
-`rippled` builds a set of unit tests into the server executable. To run these unit
-tests after building, pass the `--unittest` option to the compiled `rippled`
-executable. The executable will exit with summary info after running the unit tests.
-
-
+需要注意的是chainsql3.0版本中，引用了一些第三方模块，在编译过程中需要**翻墙下载**，比如google-grpc 
