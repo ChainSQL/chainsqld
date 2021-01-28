@@ -18,12 +18,14 @@
 //==============================================================================
 
 #include <ripple/basics/Log.h>
+#include <ripple/protocol/TxFormats.h>
 #include <ripple/protocol/InnerObjectFormats.h>
 #include <ripple/protocol/STAccount.h>
 #include <ripple/protocol/STArray.h>
 #include <ripple/protocol/STBlob.h>
 #include <ripple/protocol/STObject.h>
 #include <peersafe/protocol/STMap256.h>
+#include <ripple/protocol/PublicKey.h>
 
 namespace ripple {
 

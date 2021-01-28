@@ -222,8 +222,13 @@ TransactionMaster::canonicalize(std::shared_ptr<Transaction>* pTransaction)
     }
 }
 
-void
-TransactionMaster::sweep(void)
+void TransactionMaster::tune(int size, int age)
+{
+    mCache.setTargetSize(size);
+    mCache.setTargetAge(std::chrono::seconds(age));
+}
+
+void TransactionMaster::sweep (void)
 {
     mCache.sweep();
 }

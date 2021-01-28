@@ -159,6 +159,10 @@ Handler const handlerArray[]{
     // Evented methods
     {"subscribe", byRef(&doSubscribe), Role::USER, NO_CONDITION},
     {"unsubscribe", byRef(&doUnsubscribe), Role::USER, NO_CONDITION},
+    
+    {   "ledger_txs",           byRef (&doLedgerTxs),          Role::USER,  NO_CONDITION  },   
+    // {   "validation_seed",      byRef (&doValidationSeed),     Role::ADMIN, NO_CONDITION  },
+    // {   "wallet_seed",          byRef (&doWalletSeed),         Role::ADMIN, NO_CONDITION  },
 
     
 	{	"t_prepare",			byRef (&doPrepare),            Role::USER,   NO_CONDITION },
@@ -195,6 +199,10 @@ Handler const handlerArray[]{
 	//Contract methods
 	{	"contract_call",		byRef(&doContractCall),	       Role::USER,	NO_CONDITION  },
 	{    "gen_csr",             byRef(&doGenCsr),              Role::ADMIN, NO_CONDITION },
+
+	{   "g_createrandom",       byRef (&doCreateRandom),       Role::USER,   NO_CONDITION },
+    {   "g_cryptdata",          byRef (&doCryptData),          Role::USER,   NO_CONDITION },
+
 	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::USER,  NO_CONDITION     },
     {   "node_size",            byRef (&doNodeSize),           Role::ADMIN, NO_CONDITION    },
     {   "malloc_trim",          byRef (&doMallocTrim),         Role::ADMIN, NO_CONDITION    },

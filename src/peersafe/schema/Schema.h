@@ -56,6 +56,7 @@ class CertList;
 class Cluster;
 class NodeStoreScheduler;
 class TxStoreDBConn;
+class PreContractFace;
 class TxStore;
 class TableStatusDB;
 class TableSync;
@@ -187,6 +188,8 @@ public:
     getMasterTransaction() = 0;
     virtual TxStoreDBConn&
     getTxStoreDBConn() = 0;
+    virtual PreContractFace&		
+    getPreContractFace() = 0;
     virtual TxStore&
     getTxStore() = 0;
     virtual TableStatusDB&

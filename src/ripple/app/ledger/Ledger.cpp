@@ -196,17 +196,15 @@ Ledger::Ledger(
     info_.drops = INITIAL_ZXC;
     info_.closeTimeResolution = ledgerDefaultTimeResolution;
 
-    KeyType keyType = KeyType::secp256k1;
-    if (nullptr != HardEncryptObj::getInstance())
-    {
-        keyType = KeyType::gmalg;
-    }
-    else
-    {
-        keyType = KeyType::secp256k1;
-    }
+    // KeyType keyType = KeyType::secp256k1;
+
+    // if (nullptr != GmEncryptObj::getInstance())
+    // {
+    //     keyType = KeyType::gmalg;
+    // }
+
     static auto const id = calcAccountID(
-        generateKeyPair(KeyType::secp256k1, generateSeed("masterpassphrase"))
+        generateKeyPair(CommonKey::algTypeGlobal, generateSeed("masterpassphrase"))
             .first);
     {
         auto const sle = std::make_shared<SLE>(keylet::account(id));
@@ -1113,6 +1111,8 @@ saveValidatedLedger(
 
     // Clients can now trust the database for
     // information about this ledger sequence.
+	JLOG(j.info())
+		<< "saveValidatedLedger finishWork: " << seq;
     app.pendingSaves().finishWork(seq);
     return true;
 }
@@ -1248,7 +1248,7 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
 
     if (!db->got_data())
     {
-        auto stream = app.journal("Ledger").debug();
+        auto stream = app.journal("Ledger").info();
         JLOG(stream) << "Ledger not found: " << sqlSuffix;
         return std::make_tuple(
             std::shared_ptr<Ledger>(), ledgerSeq, ledgerHash);

@@ -26,7 +26,6 @@
 #include <cstdlib>
 #include <ctime>
 
-#include <BeastConfig.h>
 #include <peersafe/consensus/hotstuff/impl/Types.h>
 #include <peersafe/consensus/hotstuff/impl/Block.h>
 

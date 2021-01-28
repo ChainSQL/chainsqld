@@ -27,6 +27,8 @@
 #include <ripple/net/HTTPClient.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/SystemParameters.h>
+#include <ripple/protocol/CommonKey.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/beast/core/string.hpp>
 #include <boost/format.hpp>
@@ -39,7 +41,7 @@
 
 namespace ripple {
 
-inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 11>
+inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 13>
     sizedItems{{
         // FIXME: We should document each of these items, explaining exactly
         // what
@@ -56,6 +58,8 @@ inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 11>
         {SizedItem::hashNodeDBCache, {{4, 12, 24, 64, 128}}},
         {SizedItem::txnDBCache, {{4, 12, 24, 64, 128}}},
         {SizedItem::lgrDBCache, {{4, 8, 16, 32, 128}}},
+        {SizedItem::transactionSize,    {{65536,  131072, 196608, 262144,     327680  }} },
+        {SizedItem::transactionAge,     {{60,     90,     120,    900,        1800    }} }
     }};
 
 // Ensure that the order of entries in the table corresponds to the
@@ -520,6 +524,7 @@ Config::loadFromString(std::string const& fileContents)
     if (auto s = getIniFileSection(secConfig, SECTION_PATH_X509)) {
 
 		auto const vecCrtPath = *s;
+		std::set<std::string> setRootCert;
 		for (auto path : vecCrtPath) {
 
 			std::string rootCert;
@@ -528,9 +533,10 @@ Config::loadFromString(std::string const& fileContents)
 				std::istreambuf_iterator<char>(ifsPath),
 				std::istreambuf_iterator<char>());
 
-			if (rootCert.empty())
+			if (rootCert.empty() || setRootCert.count(rootCert) !=0 )
 				continue;
 
+			setRootCert.insert(rootCert);
 			ROOT_CERTIFICATES.push_back(rootCert);
 		}
 
@@ -539,6 +545,34 @@ Config::loadFromString(std::string const& fileContents)
 	if (auto s = getIniFileSection(secConfig, SECTION_SCHEMAS)) 
 		SCHEMA_IDS = *s;
 		
+    auto cryptoAlgSection = section( ConfigSection::cryptoAlg() );
+    if (!cryptoAlgSection.empty ())
+    {
+        if(cryptoAlgSection.exists("node_alg_type"))
+        {
+            auto nodeAlgType = cryptoAlgSection.get<std::string>("node_alg_type");
+            if (!CommonKey::setAlgType(*nodeAlgType))
+            {
+                Throw<std::runtime_error> ("node_alg_type is invalid");
+            }
+        }
+
+        if(cryptoAlgSection.exists("hash_type"))
+        {
+            auto hashType = cryptoAlgSection.get<std::string>("hash_type");
+            if (!CommonKey::setHashType(*hashType))
+            {
+                Throw<std::runtime_error> ("hash_type is invalid");
+            }
+            // GmEncryptObj::setGmAlgType(GmEncryptObj::fromString(*gmType));
+        }
+
+        if(cryptoAlgSection.exists("gm_self_check"))
+        {
+            auto gmSelfCheck = cryptoAlgSection.get<bool>("gm_self_check");
+            GM_SELF_CHECK = *gmSelfCheck;
+        }
+    }
 
     {
         std::string dbPath;

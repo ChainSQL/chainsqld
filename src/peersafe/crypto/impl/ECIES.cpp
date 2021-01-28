@@ -505,62 +505,31 @@ Blob decryptECIES_SSL102(uint256 const& secretKey, Blob const& publicKey, Blob c
 }
 #endif
 
-Blob encrypt(Blob const& passBlob, PublicKey const& publicKey)
+Blob asymEncrypt(Blob const& passBlob, PublicKey const& publicKey)
 {
     auto const type = publicKeyType(publicKey);
     auto const ephKeyPair = randomKeyPair(*type);
     PublicKey ephPublKey = ephKeyPair.first;
     Blob vucCipherText;
-    
-    switch (*type)
-    {
-    case KeyType::gmalg:
-        {
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
-        if (nullptr == hEObj) //GM Algorithm
-        {
-            vucCipherText = Blob();
-            break;
-        }
-        unsigned long rv = 0;
-        unsigned char outData[512] = { 0 };
-        unsigned long outDataLen = 512;
-        
-        std::pair<unsigned char*, int> pub4Encrypt = std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
-        rv = hEObj->SM2ECCEncrypt(pub4Encrypt,(unsigned char*)&passBlob[0], passBlob.size(), outData, &outDataLen);
-        if (rv)
-        {
-            DebugPrint("ECCEncrypt error! rv = 0x%04x", rv);
-            vucCipherText = Blob();
-            break;
-        }
-        DebugPrint("ECCEncrypt OK!");
-        vucCipherText = Blob(outData, outData + outDataLen);
-        }
-    default:
-        {
-        Blob publickBlob(publicKey.data(), publicKey.data() + publicKey.size());
-        
-        SecretKey ephPrivKey = ephKeyPair.second;
-        Blob privateBlob(ephPrivKey.data(), ephPrivKey.data() + ephPrivKey.size());
-        uint256 secretKey = uint256::fromVoid (privateBlob.data() + (privateBlob.size() - 32));
-        //uint256 secretKey = uint256::fromVoid (ephPrivKey.data() + (ephPrivKey.size() - 32));
 
-        try
-        {
+    Blob publickBlob(publicKey.data(), publicKey.data() + publicKey.size());
+
+    SecretKey ephPrivKey = ephKeyPair.second;
+    Blob privateBlob(ephPrivKey.data(), ephPrivKey.data() + ephPrivKey.size());
+    uint256 secretKey = uint256::fromVoid(privateBlob.data() + (privateBlob.size() - 32));
+
+    try
+    {
 #ifdef USE_LOW_OPENSSL
-			vucCipherText = encryptECIES_SSL102(secretKey, publickBlob, passBlob);
+        vucCipherText = encryptECIES_SSL102(secretKey, publickBlob, passBlob);
 #else
-			vucCipherText = encryptECIES(secretKey, publickBlob, passBlob);
+        vucCipherText = encryptECIES(secretKey, publickBlob, passBlob);
 #endif
-        }
-        catch (std::exception const&)
-        {
-            //int i;
-            //TODO: log this or explain why this is unimportant!
-        }
-    
-        }
+    }
+    catch (std::exception const&)
+    {
+        // int i;
+        // TODO: log this or explain why this is unimportant!
     }
     //combine with random publickey ahead
     Blob finalCipher;
@@ -570,7 +539,7 @@ Blob encrypt(Blob const& passBlob, PublicKey const& publicKey)
     return finalCipher;
 }
 
-Blob decrypt(Blob const& cipherBlob, SecretKey const& secret_key)
+Blob asymDecrypt(Blob const& cipherBlob, SecretKey const& secret_key)
 {
     Blob publickBlob(cipherBlob.begin(), cipherBlob.begin() + 33);
     //truncate real cipher
@@ -578,54 +547,27 @@ Blob decrypt(Blob const& cipherBlob, SecretKey const& secret_key)
     
     PublicKey ephPublKey(Slice{ publickBlob.data(), publickBlob.size() });
     auto const type = publicKeyType(ephPublKey);
-    
-    switch (*type)
+
+    Blob privateBlob(secret_key.data(), secret_key.data() + secret_key.size());
+    uint256 secretKey = uint256::fromVoid(privateBlob.data() + (privateBlob.size() - 32));
+
+    Blob vucPlainText;
     {
-    case KeyType::gmalg:
+        try
         {
-        HardEncrypt* hEObj = HardEncryptObj::getInstance();
-        if (nullptr == hEObj) //GM Algorithm
-        {
-            return Blob();
-        }
-        unsigned long rv = 0;
-        unsigned char plain[512] = { 0 };
-        unsigned long plainLen = 512;
-
-        std::pair<unsigned char*, int> pri4Decrypt = std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
-        rv = hEObj->SM2ECCDecrypt(pri4Decrypt, (unsigned char*)&realCipher[0], realCipher.size(), plain, &plainLen);
-        if (rv)
-        {
-            DebugPrint("ECCDecrypt error! rv = 0x%04x", rv);
-            return Blob();
-        }
-        DebugPrint("ECCDecrypt OK!");
-        return Blob(plain, plain + plainLen);
-        }
-    
-    default:
-        {
-        Blob privateBlob(secret_key.data(), secret_key.data() + secret_key.size());
-        uint256 secretKey = uint256::fromVoid(privateBlob.data() + (privateBlob.size() - 32));
-
-        Blob vucPlainText;
-        {
-            try
-			{
 #ifdef USE_LOW_OPENSSL
-				vucPlainText = decryptECIES_SSL102(secretKey, publickBlob, realCipher);
+            vucPlainText =
+                decryptECIES_SSL102(secretKey, publickBlob, realCipher);
 #else
-				vucPlainText = decryptECIES(secretKey, publickBlob, realCipher);
+            vucPlainText = decryptECIES(secretKey, publickBlob, realCipher);
 #endif
-            }
-            catch (std::exception const&)
-            {
-                // TODO: log this or explain why this is unimportant!
-            }
         }
-        return vucPlainText;
+        catch (std::exception const&)
+        {
+            // TODO: log this or explain why this is unimportant!
         }
     }
+    return vucPlainText;
 }
 
 } // ripple

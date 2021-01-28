@@ -72,37 +72,111 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
     }
     else if (config.exists(SECTION_VALIDATION_SEED))
     {
-		if (nullptr == HardEncryptObj::getInstance())
-		{
-			auto const seed = parseBase58<Seed>(
-				config.section(SECTION_VALIDATION_SEED).lines().front());
-			if (!seed)
-			{
-				configInvalid_ = true;
-				JLOG(j.fatal()) <<
-					"Invalid seed specified in [" SECTION_VALIDATION_SEED "]";
-			}
-			else
-			{
-				secretKey = generateSecretKey(KeyType::secp256k1, *seed);
-				publicKey = derivePublicKey(KeyType::secp256k1, secretKey);
-				nodeID = calcNodeID(publicKey);
-			}
-		}
-		else
-		{
-			std::string privateKeyStr = config.section(SECTION_VALIDATION_SEED).lines().front();
-			std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, TokenType::NodePrivate);
-			std::string publicKeyStr = config.section(SECTION_VALIDATION_PUBLIC_KEY).lines().front();
-			std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::NodePublic);
-			if (privateKeyStrDe58.empty() || publicKeyDe58.empty() || publicKeyDe58.size() != 65)
-			{
-				Throw<std::runtime_error>(
-					"Invalid seed specified in [" SECTION_VALIDATION_SEED "] and [" SECTION_VALIDATION_PUBLIC_KEY "]");
-			}
-			secretKey = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-			publicKey = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
-		}
+        auto seedsVec = config.section(SECTION_VALIDATION_SEED).lines();
+        std::string seedStr = "";
+        if( seedsVec.size() > 0 ) seedStr = seedsVec.front() ;
+        auto publicKeysVec = config.section(SECTION_VALIDATION_PUBLIC_KEY).lines();
+        std::string publicKeyStr = "";
+        if ( publicKeysVec.size() > 0 ) publicKeyStr = publicKeysVec.front();
+        if (seedStr.empty())
+        {
+            configInvalid_ = true;
+            JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "]";
+        }
+        else
+        {
+            if ('x' == seedStr[0])
+            {
+                if (CommonKey::algTypeGlobal == KeyType::gmalg)
+                {
+                    configInvalid_ = true;
+                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
+                }
+                else
+                {
+                    auto const seed = parseBase58<Seed>(seedStr);
+                    if (!seed)
+                    {
+                        configInvalid_ = true;
+                        JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "] or publickey in [" SECTION_VALIDATION_PUBLIC_KEY "]";
+                    }
+                    else
+                    {
+                        // CommonKey::setAlgType(*type);
+                        secretKey = generateSecretKey(CommonKey::algTypeGlobal, *seed);
+                        publicKey = derivePublicKey(CommonKey::algTypeGlobal, secretKey);;
+                    }
+                }
+            }
+            else if ('p' == seedStr[0])
+            {
+                if (CommonKey::algTypeGlobal != KeyType::gmalg)
+                {
+                    configInvalid_ = true;
+                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
+                }
+                else
+                {
+                    GmEncrypt *hEObj = GmEncryptObj::getInstance();
+                    std::string privateKeyStrDe58 = decodeBase58Token(seedStr, TokenType::NodePrivate);
+                    // std::string publicKeyStr = config.section(SECTION_VALIDATION_PUBLIC_KEY).lines().front();
+                    std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::NodePublic);
+                    if (privateKeyStrDe58.empty() || publicKeyDe58.empty() || publicKeyDe58.size() != 65)
+                    {
+                        configInvalid_ = true;
+                        JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "] and [" SECTION_VALIDATION_PUBLIC_KEY "]";
+                    }
+                    secretKey = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+                    secretKey.keyTypeInt_ = hEObj->gmOutCard;
+                    publicKey = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
+                    // auto const type = publicKeyType(publicKey.slice());
+                    // if (!type)
+                    // {
+                    //     configInvalid_ = true;
+                    //     JLOG(j.fatal()) << "Invalid publick type in [" SECTION_VALIDATION_PUBLIC_KEY "]";
+                    // }
+                }
+                // CommonKey::setAlgType(*type);
+            }
+            else if (seedStr.size() <= 2)
+            {
+                if (CommonKey::algTypeGlobal != KeyType::gmalg)
+                {
+                    configInvalid_ = true;
+                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
+                }
+                else
+                {
+                    try
+                    {
+                        GmEncrypt *hEObj = GmEncryptObj::getInstance();
+                        int index = atoi(seedStr.c_str());
+                        //valSecret.encrytCardIndex_ = index;
+                        char *temp4Secret = new char[32];
+                        memset(temp4Secret, index, 32);
+                        SecretKey tempSecKey(Slice(temp4Secret, 32));
+                        tempSecKey.encrytCardIndex_ = index;
+                        tempSecKey.keyTypeInt_ = hEObj->gmInCard;
+                        hEObj->getPrivateKeyRight(index);
+                        secretKey = tempSecKey;
+                        delete[] temp4Secret;
+
+                        generateAddrAndPubFile(hEObj->nodeVerifyKey, index);
+                        unsigned char publicKeyTemp[PUBLIC_KEY_EXT_LEN] = {0};
+                        std::pair<unsigned char *, int> tempPublickey;
+                        tempPublickey = hEObj->getECCNodeVerifyPubKey(publicKeyTemp, index);
+                        publicKey = PublicKey(Slice(tempPublickey.first, tempPublickey.second));
+                        // CommonKey::setAlgType(*(publicKeyType(publicKey)));
+                    }
+                    catch (const std::exception &e)
+                    {
+                        configInvalid_ = true;
+                        JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "]\n"
+                                        << e.what();
+                    }
+                }
+            }
+        }
     }
 }
 }  // namespace ripple

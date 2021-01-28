@@ -61,6 +61,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/gmencrypt/GmCheck.h>
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -531,10 +532,21 @@ LedgerMaster::switchLCL(std::shared_ptr<Ledger const> const& lastClosed)
 
     if (standalone_)
     {
-        setFullLedger(lastClosed, true, false);
-        tryAdvance();
-        app_.getTableSync().TryTableSync();
-        app_.getTableStorage().TryTableStorage();
+        setFullLedger (lastClosed, true, false);
+		tryAdvance();
+		app_.getTableSync().TryTableSync();
+		app_.getTableStorage().TryTableStorage();
+    }
+    else
+    {
+#ifdef HARD_GM
+		LedgerInfo ledgerInfo = lastClosed->info();
+		if (nullptr != GmEncryptObj::getInstance() && GmEncryptObj::hEType_ == GmEncryptObj::gmAlgType::sjkCardType)
+		{
+			GMCheck* gmCheckObj = GMCheck::getInstance();
+			gmCheckObj->tryRandomCycleCheck(ledgerInfo.seq);
+		}
+#endif
     }
 }
 
@@ -712,6 +724,7 @@ LedgerMaster::getEarliestFetch()
 void
 LedgerMaster::tryFill(Job& job, std::shared_ptr<Ledger const> ledger)
 {
+	JLOG(m_journal.info()) << "tryFill:" << ledger->info().seq;
     std::uint32_t seq = ledger->info().seq;
     uint256 prevHash = ledger->info().parentHash;
 

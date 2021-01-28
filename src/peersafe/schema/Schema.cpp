@@ -56,6 +56,7 @@
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/misc/PreContractFace.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
@@ -149,6 +150,7 @@ private:
     std::unique_ptr<CertList> certList_;
     std::unique_ptr<CACertSite> caCertSites_;
     std::unique_ptr<AmendmentTable> m_amendmentTable;
+    // std::unique_ptr <PreContractFace> m_preContractFace;
     std::unique_ptr<LoadFeeTrack> mFeeTrack;
     std::unique_ptr<HashRouter> mHashRouter;
     RCLValidations mValidations;
@@ -251,8 +253,8 @@ public:
 
         , m_acceptedLedgerCache(
               "AcceptedLedger",
-              /*4*/ 16,
-              std::chrono::minutes{10},
+              4,
+              std::chrono::minutes{1},
               stopwatch(),
               SchemaImp::journal("TaggedCache"))
 
@@ -670,6 +672,13 @@ public:
         return *m_amendmentTable;
     }
 
+    PreContractFace& 
+    getPreContractFace() override
+	{
+		// return *m_preContractFace;
+        return app_.getPreContractFace();
+	}
+
     LoadFeeTrack&
     getFeeTrack() override
     {
@@ -917,6 +926,9 @@ public:
             config_->getValueFor(SizedItem::ledgerSize),
             seconds{config_->getValueFor(SizedItem::ledgerAge)});
 
+        m_txMaster.tune (
+            config_->getValueFor(SizedItem::transactionSize), 
+            config_->getValueFor(SizedItem::transactionAge));
         return true;
     }
 

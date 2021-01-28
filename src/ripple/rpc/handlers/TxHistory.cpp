@@ -19,6 +19,7 @@
 
 #include <peersafe/schema/Schema.h>
 #include <ripple/app/misc/Transaction.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/SociDB.h>
 #include <ripple/net/RPCErr.h>
@@ -52,38 +53,31 @@ doTxHistory(RPC::JsonContext& context)
 
     obj[jss::index] = startIndex;
 
-    std::string sql = boost::str(
-        boost::format(
-            "SELECT LedgerSeq, Status, RawTxn "
-            "FROM Transactions ORDER BY LedgerSeq desc LIMIT %u,20;") %
-        startIndex);
+    std::string sql =
+        boost::str (boost::format (
+            "SELECT TransID "
+            "FROM Transactions ORDER BY LedgerSeq desc LIMIT %u,20;")
+                    % startIndex);
 
     {
-        auto db = context.app.getTxnDB().checkoutDb();
+        auto db = context.app.getTxnDB ().checkoutDb ();
 
-        boost::optional<std::uint64_t> ledgerSeq;
-        boost::optional<std::string> status;
-        soci::blob sociRawTxnBlob(*db);
-        soci::indicator rti;
-        Blob rawTxn;
+        boost::optional<std::string> stxnHash;
+        soci::statement st = (db->prepare << sql,
+                              soci::into (stxnHash));
+        st.execute ();
 
-        soci::statement st =
-            (db->prepare << sql,
-             soci::into(ledgerSeq),
-             soci::into(status),
-             soci::into(sociRawTxnBlob, rti));
-
-        st.execute();
-        while (st.fetch())
+        while (st.fetch ())
         {
-            if (soci::i_ok == rti)
-                convert(sociRawTxnBlob, rawTxn);
-            else
-                rawTxn.clear();
 
-            if (auto trans = Transaction::transactionFromSQL(
-                    ledgerSeq, status, rawTxn, context.app))
-                txs.append(trans->getJson(JsonOptions::none));
+			uint256 txID = from_hex_text<uint256>(stxnHash.value());
+            auto ec{ rpcSUCCESS };
+			auto txn = context.app.getMasterTransaction().fetch(txID, ec);
+			if (!txn) {
+				continue;
+			}
+
+			txs.append(txn->getJson(JsonOptions::none));
         }
     }
 

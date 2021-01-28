@@ -10,14 +10,16 @@
 
 namespace ripple {
 
+AccountID const c_RipemdPrecompiledAddress(23);
+
 Executive::Executive(SleOps & _s, eth::EnvInfo const& _envInfo, unsigned int _level)
-	:m_s(_s),m_envInfo(_envInfo),m_depth(_level)
+	:m_s(_s),m_envInfo(_envInfo),m_depth(_level),
+    m_PreContractFace(m_envInfo.preContractFace())
 {
 }
 
 void Executive::initGasPrice()
 {
-
 	m_gasPrice = scaleGasLoad(GAS_PRICE, m_s.ctx().app.getFeeTrack(),
 		m_s.ctx().view().fees());
 }
@@ -128,33 +130,64 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 
 	//m_savepoint = m_s.savepoint();
 
-	m_gas = _p.gas;
-	if (m_s.addressHasCode(_p.codeAddress))
-	{
-		eth::bytes const& c = m_s.code(_p.codeAddress);
-		if (c.size() == 0)
-		{
-			m_excepted = tefCONTRACT_NOT_EXIST;
-			return true;
-		}
-			
-		uint256 codeHash = m_s.codeHash(_p.codeAddress);
-		m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
-			_p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
-			m_depth, false, _p.staticCall);
-	}
-	else if(m_depth == 1) //if not first call,codeAddress not need to be a contract address
-	{
-		// contract may be killed
-		auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));
-		m_output = eth::owning_bytes_ref(std::move(blob), 0, blob.size());
-		m_excepted = tefCONTRACT_NOT_EXIST;
-		return true;
-	}
+    if (m_PreContractFace.isPrecompiled(_p.codeAddress, m_envInfo.block_number()))
+    {
+        if (_p.receiveAddress == c_RipemdPrecompiledAddress)
+            m_s.unrevertableTouch(_p.codeAddress);
+
+        int64_t g = m_PreContractFace.costOfPrecompiled(_p.codeAddress, _p.data, m_envInfo.block_number());
+        if (_p.gas < g)
+        {
+            m_excepted = tefGAS_INSUFFICIENT;
+            // Bail from exception.
+            return true;	// true actually means "all finished - nothing more to be done regarding go().
+        }
+        else
+        {
+            m_gas = (_p.gas - g);
+            eth::bytes output;
+            bool success;
+            tie(success, output) = m_PreContractFace.executePrecompiled(_p.codeAddress, _p.data, m_envInfo.block_number());
+            size_t outputSize = output.size();
+            m_output = eth::owning_bytes_ref{std::move(output), 0, outputSize};
+            if (!success)
+            {
+                m_gas = 0;
+                m_excepted = tefGAS_INSUFFICIENT;
+                return true;	// true means no need to run go().
+            }
+        }
+    }
+    else
+    {
+        m_gas = _p.gas;
+        if (m_s.addressHasCode(_p.codeAddress))
+        {
+            eth::bytes const &c = m_s.code(_p.codeAddress);
+            if (c.size() == 0)
+            {
+                m_excepted = tefCONTRACT_NOT_EXIST;
+                return true;
+            }
+
+            uint256 codeHash = m_s.codeHash(_p.codeAddress);
+            m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
+                                            _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
+                                            m_depth, false, _p.staticCall);
+        }
+        else if (m_depth == 1) //if not first call,codeAddress not need to be a contract address
+        {
+            // contract may be killed
+            auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));
+            m_output = eth::owning_bytes_ref(std::move(blob), 0, blob.size());
+            m_excepted = tefCONTRACT_NOT_EXIST;
+            return true;
+        }
+    }
 
 	// Transfer zxc.
 	TER ret = tesSUCCESS;
-	if (m_s.getSle(_p.receiveAddress) == nullptr)
+	if (m_s.getSle(_p.receiveAddress) == nullptr && !m_PreContractFace.isPrecompiled(_p.receiveAddress, m_envInfo.block_number()))
 	{
 		//account not exist,activate it
 		ret = m_s.doPayment(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);

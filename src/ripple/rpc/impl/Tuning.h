@@ -77,7 +77,11 @@ static int constexpr max_src_cur = 18;
 /** Maximum number of auto source currencies in a path find request. */
 static int constexpr max_auto_src_cur = 88;
 
-}  // namespace Tuning
+
+/** Maximum size of a transaction. */
+static int const max_txn_size = 1024 * 500;
+
+} // Tuning
 /** @} */
 
 }  // namespace RPC

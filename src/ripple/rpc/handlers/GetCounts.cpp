@@ -109,6 +109,7 @@ getCountsJson(Schema& app, int minObjectCount)
         app.getNodeFamily().getTreeNodeCache(0)->getCacheSize();
     ret[jss::treenode_track_size] =
         app.getNodeFamily().getTreeNodeCache(0)->getTrackSize();
+    // ret[jss::cachedSLE_size] = static_cast<unsigned int>(app.cachedSLEs().size());
 
     std::string uptime;
     auto s = UptimeClock::now();

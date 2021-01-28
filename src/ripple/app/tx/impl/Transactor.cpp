@@ -190,8 +190,8 @@ Transactor::checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee)
 			auto statements = ctx.tx.getFieldVL(sfStatements);
 			zxcDrops += statements.size() * dropsPerByte;
 		}
-		auto extraAmount = new ZXCAmount(zxcDrops);
-		feeDue += *extraAmount;
+
+		feeDue += ZXCAmount(zxcDrops);
 	}
 
     // Only check fee is sufficient when the ledger is open.
@@ -253,6 +253,14 @@ Transactor::payFee()
 NotTEC
 Transactor::checkSeq(PreclaimContext const& ctx)
 {
+	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
+		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
+	{
+		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
+			"view.seq=" << ctx.view.seq();
+		return tefMAX_LEDGER;
+	}
+
     auto const id = ctx.tx.getAccountID(sfAccount);
 
     auto const sle = ctx.view.read(keylet::account(id));
@@ -272,9 +280,9 @@ Transactor::checkSeq(PreclaimContext const& ctx)
     {
         if (a_seq < t_seq)
         {
-            JLOG(ctx.j.trace())
-                << "applyTransaction: has future sequence number "
-                << "a_seq=" << a_seq << " t_seq=" << t_seq;
+            JLOG(ctx.j.warn()) <<
+                "applyTransaction: Account:"<<toBase58(ctx.tx.getAccountID(sfAccount)) <<" has future sequence number " <<
+                "a_seq=" << a_seq << " t_seq=" << t_seq;
             return terPRE_SEQ;
         }
 
@@ -286,21 +294,9 @@ Transactor::checkSeq(PreclaimContext const& ctx)
         return tefPAST_SEQ;
     }
 
-    if (ctx.tx.isFieldPresent(sfAccountTxnID) &&
-        sle->getFieldH256(sfAccountTxnID) !=
-            ctx.tx.getFieldH256(sfAccountTxnID))
-    {
-        return tefWRONG_PRIOR;
-    }
-
-    if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
-        (ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
-    {
-        JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence "
-                           << ctx.tx.getFieldU32(sfLastLedgerSequence)
-                           << "view.seq=" << ctx.view.seq();
-        return tefMAX_LEDGER;
-    }
+    if (ctx.tx.isFieldPresent (sfAccountTxnID) &&
+            (sle->getFieldH256 (sfAccountTxnID) != ctx.tx.getFieldH256 (sfAccountTxnID)))
+        return tefWRONG_PRIOR;        
 
     return tesSUCCESS;
 }
@@ -810,6 +806,7 @@ Transactor::operator()()
     auto terResult = STer(ctx_.preclaimResult);
 	if (terResult.ter == terPRE_SEQ)
 	{
+        // ctx_.app.getTxPool().removeAvoid(ctx_.tx.getTransactionID(),ctx_.view().seq());
 		return { terResult, false };
 	}
 	else if (terResult.ter == tefPAST_SEQ)

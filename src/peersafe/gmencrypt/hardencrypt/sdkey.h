@@ -24,11 +24,11 @@
 
 #ifdef BEGIN_SDKEY
 
-#include <peersafe/gmencrypt/hardencrypt/HardEncrypt.h>
+#include <peersafe/gmencrypt/GmEncrypt.h>
 #include <peersafe/gmencrypt/hardencrypt/sdkey/swsdkey.h>
 #include <cstring>
 
-class SDkey : public HardEncrypt
+class SDkey : public GmEncrypt
 {
 public:
     SDkey() :pubKeyLen_(512),priKeyLen_(512)
@@ -43,12 +43,18 @@ public:
     }
     unsigned long  OpenDevice();
     unsigned long  CloseDevice();
-    std::pair<unsigned char*, int> getPublicKey();
-    std::pair<unsigned char*, int> getPrivateKey();
+    
+	//Generate random
+	unsigned long GenerateRandom(
+		unsigned int uiLength,
+		unsigned char * pucRandomBuf);
 
     //SM2 interface
     //Generate Publick&Secret Key
     unsigned long SM2GenECCKeyPair(
+        std::vector<unsigned char>& publicKey,
+        std::vector<unsigned char>& privateKey,
+        bool isRoot = false,
         unsigned long ulAlias,
         unsigned long ulKeyUse,
         unsigned long ulModulusLen);
@@ -96,20 +102,34 @@ public:
     unsigned long SM3HashFinal(HANDLE phSM3Handle, unsigned char *pHashData, unsigned long *pulHashDataLen);
     void operator()(HANDLE phSM3Handle, void const* data, std::size_t size) noexcept;
     //SM4 Symetry Encrypt&Decrypt
-    unsigned long SM4SymEncrypt(
-        unsigned char *pSessionKey,
-        unsigned long pSessionKeyLen,
-        unsigned char *pPlainData,
-        unsigned long ulPlainDataLen,
-        unsigned char *pCipherData,
-        unsigned long *pulCipherDataLen);
-    unsigned long SM4SymDecrypt(
-        unsigned char *pSessionKey,
-        unsigned long pSessionKeyLen,
-        unsigned char *pCipherData,
-        unsigned long ulCipherDataLen,
-        unsigned char *pPlainData,
-        unsigned long *pulPlainDataLen);
+	unsigned long SM4SymEncryptECB(
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pPlainData,
+		unsigned long ulPlainDataLen,
+		unsigned char *pCipherData,
+		unsigned long *pulCipherDataLen);
+	unsigned long SM4SymDecryptECB(
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pPlainData,
+		unsigned long ulPlainDataLen,
+		unsigned char *pCipherData,
+		unsigned long *pulCipherDataLen);
+	unsigned long SM4SymEncryptCBC(
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pPlainData,
+		unsigned long ulPlainDataLen,
+		unsigned char *pCipherData,
+		unsigned long *pulCipherDataLen);
+	unsigned long SM4SymDecryptCBC(
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pPlainData,
+		unsigned long ulPlainDataLen,
+		unsigned char *pCipherData,
+		unsigned long *pulCipherDataLen);
     unsigned long SM4GenerateSessionKey(
         unsigned char *pSessionKey,
         unsigned long *pSessionKeyLen);
@@ -126,6 +146,26 @@ public:
     unsigned long pubKeyLen_;
     unsigned char priKey_[PRIVATE_KEY_EXT_LEN];
     unsigned long priKeyLen_;
+private:
+    bool getPublicKey();
+    bool getPrivateKey();
+	unsigned long generateIV(unsigned int uiAlgMode, unsigned char* pIV);
+	unsigned long SM4SymEncrypt(
+		unsigned int uiAlgMode,
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pPlainData,
+		unsigned long ulPlainDataLen,
+		unsigned char *pCipherData,
+		unsigned long *pulCipherDataLen);
+	unsigned long SM4SymDecrypt(
+		unsigned int uiAlgMode,
+		unsigned char *pSessionKey,
+		unsigned long pSessionKeyLen,
+		unsigned char *pCipherData,
+		unsigned long ulCipherDataLen,
+		unsigned char *pPlainData,
+		unsigned long *pulPlainDataLen);
 };
 
 #endif

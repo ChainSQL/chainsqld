@@ -88,6 +88,45 @@ getMetaHex(Ledger const& ledger, uint256 const& transID, std::string& hex)
     hex = strHex(makeSlice(it.getVL()));
     return true;
 }
+bool
+getRawMetaHex(
+    Ledger const& ledger,
+    uint256 const& transID,
+    std::string& rawHex,
+    std::string& metaHex)
+{
+    SHAMapTreeNode::TNType type;
+    auto const item = ledger.txMap().peekItem(transID, type);
+
+    if (!item)
+        return false;
+
+    if (type != SHAMapTreeNode::tnTRANSACTION_MD)
+        return false;
+
+    SerialIter it(item->slice());
+    rawHex = strHex(makeSlice(it.getVL()));
+    metaHex = strHex(makeSlice(it.getVL()));
+    return true;
+}
+
+bool
+getRawMeta(Ledger const& ledger, uint256 const& transID, Blob& raw, Blob& meta)
+{
+    SHAMapTreeNode::TNType type;
+    auto const item = ledger.txMap().peekItem(transID, type);
+
+    if (!item)
+        return false;
+
+    if (type != SHAMapTreeNode::tnTRANSACTION_MD)
+        return false;
+
+    SerialIter it(item->slice());
+    raw = it.getVL();
+    meta = it.getVL();
+    return true;
+}
 
 bool doTxChain(TxType txType, const RPC::JsonContext& context, Json::Value& retJson)
 {
@@ -227,7 +266,6 @@ doTxHelp(RPC::Context& context, TxArgs const& args)
 
     if (ec == rpcDB_DESERIALIZATION)
     {
-        return {result, ec};
     }
     if (!txn)
     {
@@ -513,7 +551,6 @@ Json::Value doTxCount(RPC::JsonContext& context)
 
 	return ret;
 }
-
 Json::Value doGetCrossChainTx(RPC::JsonContext& context)
 {
 	if (!context.params.isMember(jss::transaction_hash))

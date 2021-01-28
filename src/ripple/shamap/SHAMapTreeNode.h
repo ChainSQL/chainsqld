@@ -293,7 +293,7 @@ public:
     clone(std::uint32_t seq) const override;
 
     void
-    addRaw(Serializer&, SHANodeFormat format) const override;
+    addRaw (Serializer&, SHANodeFormat format) const override;
     uint256 const&
     key() const override;
     void

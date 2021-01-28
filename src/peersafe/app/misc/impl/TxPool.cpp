@@ -230,7 +230,7 @@ void TxPool::timerEntry()
 	{
 		// we need to switch the ledger we're working from
 		auto prevLedger = app_.getLedgerMaster().getLedgerByHash(mSyncStatus.prevHash);
-		if (prevLedger)
+        if (prevLedger)
 		{
 			JLOG(j_.info()) << "TxPool found ledger " << prevLedger->info().seq;
 			removeTxs(prevLedger->txMap(), prevLedger->info().seq, prevLedger->info().parentHash);
@@ -259,11 +259,6 @@ void TxPool::removeTx(uint256 hash)
             }
             mAvoidByHash.erase(hash);
         }
-
-		if (mTxsSet.size() == 0)
-		{
-			mSyncStatus.init();
-		}
 	}
 }
 

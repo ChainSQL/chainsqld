@@ -43,6 +43,12 @@ public:
 
 }  // namespace detail
 
+/** AccountID description */
+/** 0,1 special AccountID */
+/** 2-20 reserver for other special AccountID */
+/** 21-40 for eth preCompiled Contract Address */
+/** 41-100 for peersafe preCompiled Contract Address */
+
 /** A 160-bit unsigned that uniquely identifies an account. */
 using AccountID = base_uint<160, detail::AccountIDTag>;
 

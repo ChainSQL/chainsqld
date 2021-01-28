@@ -44,6 +44,7 @@ saveLedgerAsync (Schema& app, std::uint32_t seq);
 
 void
 accountTxPage(
+    Schema& app,
     DatabaseCon& connection,
     AccountIDCache const& idCache,
     std::function<void(std::uint32_t)> const& onUnsavedLedger,

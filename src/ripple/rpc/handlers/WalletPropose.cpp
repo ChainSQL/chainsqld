@@ -73,21 +73,28 @@ doWalletPropose(RPC::JsonContext& context)
 Json::Value
 walletPropose(Json::Value const& params)
 {
-    boost::optional<KeyType> keyType;
+    // boost::optional<KeyType> keyType;
     boost::optional<Seed> seed;
     bool rippleLibSeed = false;
 
-    if (params.isMember(jss::key_type))
+#ifdef HARD_GM
+    KeyType keyType = KeyType::gmalg;
+#else
+    KeyType keyType = CommonKey::algTypeGlobal;
+#endif
+
+    if (params.isMember (jss::key_type))
     {
         if (!params[jss::key_type].isString())
         {
             return RPC::expected_field_error(jss::key_type, "string");
         }
 
-        keyType = keyTypeFromString(params[jss::key_type].asString());
+        auto oKeyType = keyTypeFromString(params[jss::key_type].asString());
 
-        if (!keyType)
+        if (!oKeyType)
             return rpcError(rpcINVALID_PARAMS);
+        keyType = *(oKeyType);
     }
 
     // ripple-lib encodes seed used to generate an Ed25519 wallet in a
@@ -105,7 +112,8 @@ walletPropose(Json::Value const& params)
 
             // If the user *explicitly* requests a key type other than
             // Ed25519 we return an error.
-            if (keyType.value_or(KeyType::ed25519) != KeyType::ed25519)
+            auto oKeyType = boost::make_optional(keyType);
+            if (oKeyType.value_or(KeyType::ed25519) != KeyType::ed25519)
                 return rpcError(rpcBAD_SEED);
 
             keyType = KeyType::ed25519;
@@ -130,10 +138,11 @@ walletPropose(Json::Value const& params)
         }
     }
 
-    if (!keyType)
-        keyType = KeyType::secp256k1;
+    // if (!keyType)
+    //     keyType = KeyType::secp256k1;
 
-    auto const publicKey = generateKeyPair(*keyType, *seed).first;
+    // auto const publicKey = generateKeyPair(*keyType, *seed).first;
+    auto const pubPriPair = generateKeyPair(keyType, *seed);
 
     Json::Value obj(Json::objectValue);
 
@@ -141,13 +150,23 @@ walletPropose(Json::Value const& params)
     auto const seedHex = strHex(*seed);
     auto const seedBase58 = toBase58(*seed);
 
-    obj[jss::master_seed] = seedBase58;
-    obj[jss::master_seed_hex] = seedHex;
-    obj[jss::master_key] = seed1751;
-    obj[jss::account_id] = toBase58(calcAccountID(publicKey));
-    obj[jss::public_key] = toBase58(TokenType::AccountPublic, publicKey);
-    obj[jss::key_type] = to_string(*keyType);
-    obj[jss::public_key_hex] = strHex(publicKey);
+    if (keyType == KeyType::gmalg)
+    {
+        obj[jss::master_seed] = toBase58(TokenType::AccountSecret, pubPriPair.second);
+    }
+    else
+    {
+        obj[jss::master_seed] = seedBase58;
+        obj[jss::master_seed_hex] = seedHex;
+        obj[jss::master_key] = seed1751;
+    }
+    
+    AccountID account = calcAccountID(pubPriPair.first);
+    obj[jss::account_id] = toBase58(account);
+    obj[jss::account_id_hex] = strHex(account.data(), account.data() + account.size());
+    obj[jss::public_key] = toBase58(TokenType::AccountPublic, pubPriPair.first);
+    obj[jss::key_type] = to_string(keyType);
+    obj[jss::public_key_hex] = strHex(pubPriPair.first.begin(), pubPriPair.first.end());
 
     // If a passphrase was specified, and it was hashed and used as a seed
     // run a quick entropy check and add an appropriate warning, because

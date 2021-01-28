@@ -26,8 +26,7 @@
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/Seed.h>
 //#include <ripple/protocol/SecretKey.h>
-#include <peersafe/gmencrypt/hardencrypt/HardEncryptObj.h>
-#include <ripple/protocol/tokens.h>
+#include <peersafe/gmencrypt/GmEncryptObj.h>
 #include <boost/optional.hpp>
 #include <algorithm>
 #include <cstdint>
@@ -264,6 +263,14 @@ verify(
     Slice const& m,
     Slice const& sig,
     bool mustBeFullyCanonical = true);
+
+/** Encrypt a plain text.*/
+Blob 
+encrypt(const Blob& passBlob, PublicKey const& publicKey);
+
+/** Genrate a add and publickey file.*/
+bool 
+generateAddrAndPubFile(int pubType, int index, std::string filePath = "");
 
 /** Calculate the 160-bit node ID from a node public key. */
 NodeID

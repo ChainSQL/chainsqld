@@ -410,11 +410,11 @@ populateProtoResponse(
                  std::get<TxnsDataBinary>(result.transactions))
             {
                 auto txnProto = response.add_transactions();
-                Blob const& txnBlob = std::get<0>(binaryData);
+                Blob const& txnBlob = *(strUnHex(std::get<0>(binaryData)));
                 txnProto->set_transaction_binary(
                     txnBlob.data(), txnBlob.size());
 
-                Blob const& metaBlob = std::get<1>(binaryData);
+                Blob const& metaBlob = *(strUnHex(std::get<1>(binaryData)));
                 txnProto->set_meta_binary(metaBlob.data(), metaBlob.size());
 
                 txnProto->set_ledger_index(std::get<2>(binaryData));

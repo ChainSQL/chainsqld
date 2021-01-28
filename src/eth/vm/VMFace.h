@@ -5,7 +5,7 @@
 #include <boost/exception/errinfo_api_function.hpp>
 #include <boost/exception/errinfo_nested_exception.hpp>
 #include <boost/exception/diagnostic_information.hpp>
-#include <boost/exception/exception.hpp>
+// #include <boost/exception/exception.hpp>
 #include <boost/tuple/tuple.hpp>
 
 #include "Common.h"
@@ -14,10 +14,6 @@
 namespace eth {
 
 /// Base class for all exceptions.
-struct Exception : virtual std::exception, virtual boost::exception
-{
-	const char* what() const noexcept override { return boost::diagnostic_information_what(*this); }
-};
 
 struct VMException : Exception {};
 #define ETH_SIMPLE_EXCEPTION_VM(X) struct X: VMException { const char* what() const noexcept override { return #X; } }

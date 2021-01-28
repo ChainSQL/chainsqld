@@ -126,6 +126,17 @@ enum error_code_i {
     rpcSTREAM_MALFORMED = 71,
     rpcATX_DEPRECATED = 72,
 
+    // rpcQUALITY_MALFORMED,
+    // rpcBAD_BLOB,
+    // rpcGETS_ACT_MALFORMED,
+    // rpcGETS_AMT_MALFORMED,
+    // rpcHOST_IP_MALFORMED,
+    // rpcPAYS_ACT_MALFORMED,
+    // rpcPAYS_AMT_MALFORMED,
+    // rpcPORT_MALFORMED,
+    // rpcSIGN_FOR_MALFORMED,
+    // rpcSRC_AMT_MALFORMED,
+
     // Internal error (should never happen)
     rpcINTERNAL = 73,  // Generic internal error.
     rpcNOT_IMPL = 74,
@@ -167,8 +178,10 @@ enum error_code_i {
 	rpcNO_SCHEMA			 = 124,
 	rpcSCHEMA_CREATED		 = 125,
 
+    rpcTXN_BIGGER_THAN_MAXSIZE = 126,
+
     rpcLAST =
-        rpcSCHEMA_CREATED  // rpcLAST should always equal the last code.=
+        rpcTXN_BIGGER_THAN_MAXSIZE  // rpcLAST should always equal the last code.=
 };
 
 /** Codes returned in the `warnings` array of certain RPC commands.

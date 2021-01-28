@@ -66,7 +66,8 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 {
 	SleOps ops(context);
-	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS, context.view().fees().drops_per_byte);
+	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS, 
+                    context.view().fees().drops_per_byte, context.app.getPreContractFace());
 	Executive e(ops, *pInfo, INITIAL_DEPTH);
 	e.initialize();
 	auto tx = context.tx;
@@ -82,7 +83,7 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 	}
 
 	TER terResult = e.getException();
-	eth::owning_bytes_ref localCallRet = e.takeOutput();;
+	eth::owning_bytes_ref localCallRet = e.takeOutput();
 	std::string localCallRetStr = "";
 	if (terResult == tesSUCCESS)
 		localCallRetStr = "0x" + strHex(localCallRet.takeBytes());

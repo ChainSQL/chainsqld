@@ -31,6 +31,7 @@
 #include <ripple/rpc/impl/TransactionSign.h>
 #include <ripple/app/main/Application.h>
 #include <peersafe/schema/Schema.h>
+#include <ripple/rpc/impl/Tuning.h>
 
 namespace ripple {
 
@@ -80,8 +81,13 @@ doSubmit(RPC::JsonContext& context)
 
     auto ret = strUnHex(context.params[jss::tx_blob].asString());
 
-    if (!ret || !ret->size())
-        return rpcError(rpcINVALID_PARAMS);
+	// 500KB
+	if (ret->size() > RPC::Tuning::max_txn_size) {
+		return rpcError(rpcTXN_BIGGER_THAN_MAXSIZE);
+	}
+
+    if (!ret || !ret->size ())
+        return rpcError (rpcINVALID_PARAMS);
 
     SerialIter sitTrans(makeSlice(*ret));
 
@@ -118,6 +124,7 @@ doSubmit(RPC::JsonContext& context)
 
             return jvResult;
         }
+		// JLOG(context.j.custom()) << "Signature and Acount check successfully!";
     }
 
     std::string reason;

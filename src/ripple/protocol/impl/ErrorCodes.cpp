@@ -77,6 +77,7 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
      "Destination issuer is malformed."},
     {rpcEXCESSIVE_LGR_RANGE, "excessiveLgrRange", "Ledger range exceeds 1000."},
     {rpcFORBIDDEN, "forbidden", "Bad credentials."},
+    {rpcGENERAL,   "general",   "Generic error reason."},
     {rpcHIGH_FEE, "highFee", "Current transaction fee exceeds your limit."},
     {rpcINTERNAL, "internal", "Internal error."},
     {rpcINVALID_LGR_RANGE, "invalidLgrRange", "Ledger range is invalid."},
@@ -137,10 +138,33 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
 	{ rpcFIELD_CONTENT_EMPTY,   "fieldContentEmpty",	   "Field content is empty." },
 	{ rpcCTR_EVMEXE_EXCEPTION,  "contractEVMexeError",  "Contract execution exception." },
 	{ rpcCTR_EVMCALL_EXCEPTION, "contractEVMcallError", "Contract execution exception." },
+    { rpcTXN_BIGGER_THAN_MAXSIZE, "txnBiggerThanMaxsize","txn size is bigger than maxsize >500kb."},
 	{ rpcSQL_MULQUERY_NOT_SUPPORT, "mulQueryNotSupport", "OperationRule Table not support multi_table sql_query." },
 	{ rpcNO_SCHEMA,			    "schemaNotExist",		"No schema with the specified shema_id exist." },
 	{ rpcSCHEMA_CREATED,	    "schemaCreated",		"Schema have already been created,will not create again." },
-    {rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured." }
+    { rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured." }
+
+    // add (rpcACT_EXISTS,            "actExists",         "Account already exists.");
+    // add (rpcBAD_BLOB,              "badBlob",           "Blob must be a non-empty hex string.");
+    
+    // add (rpcGETS_ACT_MALFORMED,    "getsActMalformed",  "Gets account malformed.");
+    // add (rpcGETS_AMT_MALFORMED,    "getsAmtMalformed",  "Gets amount malformed.");
+    // add (rpcHOST_IP_MALFORMED,     "hostIpMalformed",   "Host IP is malformed.");
+    // add (rpcINSUF_FUNDS,           "insufFunds",        "Insufficient funds.");
+    // add (rpcLOAD_FAILED,           "loadFailed",        "Load failed");
+    // add (rpcNOT_STANDALONE,        "notStandAlone",     "Operation valid in debug mode only.");
+    // add (rpcNO_ACCOUNT,            "noAccount",         "No such account.");
+    // add (rpcNO_PATH,               "noPath",            "Unable to find a ripple path.");
+    // add (rpcPASSWD_CHANGED,        "passwdChanged",     "Wrong key, password changed.");
+    // add (rpcPAYS_ACT_MALFORMED,    "paysActMalformed",  "Pays account malformed.");
+    // add (rpcPAYS_AMT_MALFORMED,    "paysAmtMalformed",  "Pays amount malformed.");
+    // add (rpcPORT_MALFORMED,        "portMalformed",     "Port is malformed.");
+    // add (rpcQUALITY_MALFORMED,     "qualityMalformed",  "Quality malformed.");
+    // add (rpcSIGN_FOR_MALFORMED,    "signForMalformed",  "Signing for account is malformed.");
+    // add (rpcSRC_AMT_MALFORMED,     "srcAmtMalformed",   "Source amount/currency/issuer is malformed.");
+    // add (rpcSRC_MISSING,           "srcMissing",        "Source is missing.");
+    // add (rpcSRC_UNCLAIMED,         "srcUnclaimed",      "Source account is not claimed.");
+    // add (rpcWRONG_SEED,            "wrongSeed",         "The regular key does not point as the master key.");
 };
 
 // C++ does not allow you to return an array from a function.  You must

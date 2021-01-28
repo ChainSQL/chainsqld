@@ -19,7 +19,8 @@
 
 #include <ripple/basics/contract.h>
 #include <ripple/protocol/Feature.h>
-#include <ripple/protocol/digest.h>
+// #include <ripple/protocol/digest.h>
+#include <peersafe/crypto/hashBaseObj.h>
 
 #include <cstring>
 
@@ -38,9 +39,10 @@ detail::FeatureCollections::FeatureCollections()
     for (std::size_t i = 0; i < numFeatures(); ++i)
     {
         auto const name = featureNames[i];
-        sha512_half_hasher h;
-        h(name, std::strlen(name));
-        auto const f = static_cast<uint256>(h);
+
+        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+        (*hasher)(name, std::strlen (name));
+        auto const f = static_cast<uint256>(*hasher);
 
         features.push_back(f);
         featureToIndex[f] = i;
@@ -193,6 +195,11 @@ fixAmendmentMajorityCalc = *getRegisteredFeature("fixAmendmentMajorityCalc"),
 featureNegativeUNL = *getRegisteredFeature("NegativeUNL"),
 featureDisableV2 = *getRegisteredFeature("DisableV2"),
 featureDecreaseStorage = *getRegisteredFeature("DecreaseStorage");
+
+// uint256 const featureTrustSetAuth = *getRegisteredFeature("TrustSetAuth");
+// uint256 const featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
+// uint256 const featureCompareFlowV1V2 = *getRegisteredFeature("CompareFlowV1V2");
+// uint256 const featureSHAMapV2 = *getRegisteredFeature("SHAMapV2");
     
 // The following amendments have been active for at least two years. Their
 // pre-amendment code has been removed and the identifiers are deprecated.

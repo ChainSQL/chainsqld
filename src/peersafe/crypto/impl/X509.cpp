@@ -21,6 +21,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <fstream>
 #include <sstream>   
 
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
@@ -109,7 +110,11 @@ namespace ripple {
 			ret = X509_STORE_add_cert(certChain, certChainStr);
 			if (1 != ret) {
 
-				exception = "X509_STORE_add_cert fail, ret = " + ret;
+				auto errID = ::ERR_get_error();
+				char buf[256];
+				::ERR_error_string_n(errID, buf, sizeof(buf));
+				::ERR_clear_error();
+				exception = (boost::format("X509_STORE_add_cert err_msg: %s , err_code:  %ld") % buf % errID).str();
 				goto EXIT;
 			}
 		}

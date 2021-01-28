@@ -44,6 +44,8 @@
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/basics/characterUtilities.h>
 #include <ripple/server/impl/JSONRPCUtil.h>
+#include <peersafe/app/tx/impl/Tuning.h>
+// #include <beast/core/detail/base64.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/beast/http/fields.hpp>
 #include <boost/beast/http/string_body.hpp>
@@ -522,6 +524,25 @@ ServerHandlerImp::processSession(
     {
         jr[jss::status] = jss::success;
     }
+	//if table operation,remove tx_blob & tx_json field
+	if (jr[jss::result].isMember(jss::tx_json) && jr[jss::result][jss::tx_json].isMember(jss::hash)
+		&& !jr[jss::result][jss::tx_json].isMember("Signers"))
+	{
+		std::string txType = jr[jss::result][jss::tx_json][jss::TransactionType].asString();
+		if (isChainSqlTableType(txType))
+		{
+			if (jr[jss::result][jss::tx_json].isMember(jss::Raw) &&
+				jr[jss::result][jss::tx_json][jss::Raw].asString().size() > RAW_SHOW_SIZE)
+			{
+				jr[jss::result][jss::tx_json].removeMember(jss::Raw);
+			}
+
+			if (jr[jss::result].isMember(jss::tx_blob))
+			{
+				jr[jss::result].removeMember(jss::tx_blob);
+			}
+		}
+	}
 
     if (jv.isMember(jss::id))
         jr[jss::id] = jv[jss::id];

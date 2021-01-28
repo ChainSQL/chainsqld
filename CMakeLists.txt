@@ -6,6 +6,9 @@ endif ()
 
 project (chainsqld)
 
+set(enableHDGm FALSE CACHE BOOL "Enable hard GM algorithm")
+set(enableTest FALSE CACHE BOOL "Enable Unit Test Module")
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake/deps")
 
@@ -69,3 +72,4 @@ include(RippledCov)
 include(RippledMultiConfig)
 #include(RippledDocs)
 #include(RippledValidatorKeys)
+

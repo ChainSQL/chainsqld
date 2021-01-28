@@ -33,18 +33,20 @@ namespace ripple {
 std::pair<PublicKey, SecretKey>
 loadNodeIdentity(Application& app)
 {
-    HardEncrypt* hEObj = HardEncryptObj::getInstance();
-    if (nullptr != hEObj)
+    // GmEncrypt* hEObj = GmEncryptObj::getInstance();
+    // if (nullptr != hEObj)
+    // {
+    //     return randomKeyPair(KeyType::gmalg);
+    // }
+    // else
+    // {
+        // If a seed is specified in the configuration file use that directly.
+    if (app.config().exists(SECTION_NODE_SEED))
     {
-        return randomKeyPair(KeyType::gmalg);
-    }
-	else
-	{
-		// If a seed is specified in the configuration file use that directly.
-		if (app.config().exists(SECTION_NODE_SEED))
-		{
-			auto const seed = parseBase58<Seed>(
-				app.config().section(SECTION_NODE_SEED).lines().front());
+        std::string seedStr = app.config().section(SECTION_NODE_SEED).lines().front();
+        if ('x' == seedStr[0])
+        {
+            auto const seed = parseBase58<Seed>(seedStr);
 
 			if (!seed)
 				Throw<std::runtime_error>(
@@ -53,61 +55,54 @@ loadNodeIdentity(Application& app)
 			auto secretKey = generateSecretKey(KeyType::secp256k1, *seed);
 			auto publicKey = derivePublicKey(KeyType::secp256k1, secretKey);
 
-			return { publicKey, secretKey };
-		}
-
-		// Try to load a node identity from the database:
-		boost::optional<PublicKey> publicKey;
-		boost::optional<SecretKey> secretKey;
-
-		auto db = app.getWalletDB().checkoutDb();
-
-		{
-			boost::optional<std::string> pubKO, priKO;
-			soci::statement st =
-				(db->prepare << "SELECT PublicKey, PrivateKey FROM NodeIdentity;",
-					soci::into(pubKO),
-					soci::into(priKO));
-			st.execute();
-			while (st.fetch())
-			{
-				auto const sk = parseBase58<SecretKey>(
-					TokenType::NodePrivate, priKO.value_or(""));
-				auto const pk = parseBase58<PublicKey>(
-					TokenType::NodePublic, pubKO.value_or(""));
-
-				// Only use if the public and secret keys are a pair
-				if (sk && pk && (*pk == derivePublicKey(KeyType::secp256k1, *sk)))
-				{
-					auto const sk = parseBase58<SecretKey>(
-						TokenType::NodePrivate, priKO.value_or(""));
-					auto const pk = parseBase58<PublicKey>(
-						TokenType::NodePublic, pubKO.value_or(""));
-
-					// Only use if the public and secret keys are a pair
-					if (sk && pk && (*pk == derivePublicKey(KeyType::secp256k1, *sk)))
-					{
-						secretKey = sk;
-						publicKey = pk;
-					}
-				}
-			}
-		}
-        // If a valid identity wasn't found, we randomly generate a new
-        // one:
-        if (!publicKey || !secretKey)
-        {
-            std::tie(publicKey, secretKey) = randomKeyPair(KeyType::secp256k1);
-            *db << str(
-                boost::format(
-                    "INSERT INTO NodeIdentity (PublicKey,PrivateKey) "
-                    "VALUES ('%s','%s');") %
-                toBase58(TokenType::NodePublic, *publicKey) %
-                toBase58(TokenType::NodePrivate, *secretKey));
+            return {publicKey, secretKey};
         }
+        else if ('p' == seedStr[0])
+        {
+            return randomKeyPair(KeyType::gmalg);
+        }
+    }
 
-        return {*publicKey, *secretKey};
-	}
+    // Try to load a node identity from the database:
+    boost::optional<PublicKey> publicKey;
+    boost::optional<SecretKey> secretKey;
+
+    auto db = app.getWalletDB().checkoutDb();
+
+    {
+        boost::optional<std::string> pubKO, priKO;
+        soci::statement st = (db->prepare << "SELECT PublicKey, PrivateKey FROM NodeIdentity;",
+                              soci::into(pubKO),
+                              soci::into(priKO));
+        st.execute();
+        while (st.fetch())
+        {
+            auto const sk = parseBase58<SecretKey>(
+                TokenType::NodePrivate, priKO.value_or(""));
+            auto const pk = parseBase58<PublicKey>(
+                TokenType::NodePublic, pubKO.value_or(""));
+
+            // Only use if the public and secret keys are a pair
+            if (sk && pk && (*pk == derivePublicKey(KeyType::secp256k1, *sk)))
+            {
+                secretKey = sk;
+                publicKey = pk;
+            }
+        }
+    }
+
+    // If a valid identity wasn't found, we randomly generate a new one:
+    if (!publicKey || !secretKey)
+    {
+
+        // std::tie(publicKey, secretKey) = randomKeyPair(KeyType::secp256k1);
+        std::tie(publicKey, secretKey) = randomKeyPair(CommonKey::algTypeGlobal);
+        *db << str(boost::format(
+                       "INSERT INTO NodeIdentity (PublicKey,PrivateKey) VALUES ('%s','%s');") %
+                   toBase58(TokenType::NodePublic, *publicKey) % toBase58(TokenType::NodePrivate, *secretKey));
+    }
+    return {*publicKey, *secretKey};
+    // }
 }
 
 }  // namespace ripple

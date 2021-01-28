@@ -101,6 +101,9 @@ public:
     virtual Json::Value
     getJson(bool full) const = 0;
 
+    virtual bool
+    waitingForInit() const = 0;
+
     // -----------------------------------------------------------------------
 
     // Rpca specific
