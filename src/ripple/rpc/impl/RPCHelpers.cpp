@@ -719,7 +719,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
         return {};
     }
 
-    boost::optional<KeyType> keyType;
+    boost::optional<KeyType> keyType = KeyType::secp256k1;
     boost::optional<Seed> seed;
 
     if (has_key_type)
