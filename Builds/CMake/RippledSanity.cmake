@@ -72,10 +72,12 @@ if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
     "directory from ${CMAKE_CURRENT_SOURCE_DIR} and try building in a separate directory.")
 endif ()
 
-if ("${CMAKE_GENERATOR}" MATCHES "Visual Studio" AND
-    NOT ("${CMAKE_GENERATOR}" MATCHES .*Win64.*))
+if ("${CMAKE_GENERATOR}" MATCHES "Visual Studio")
+  if(NOT "${CMAKE_GENERATOR}" MATCHES "2019" AND
+		NOT ("${CMAKE_GENERATOR}" MATCHES .*Win64.*))
   message (FATAL_ERROR
     "Visual Studio 32-bit build is not supported. Use -G\"${CMAKE_GENERATOR} Win64\"")
+  endif()
 endif ()
 
 if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
