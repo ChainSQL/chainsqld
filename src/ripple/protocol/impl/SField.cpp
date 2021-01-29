@@ -130,15 +130,12 @@ SF_U64 const sfExchangeRate     (access, STI_UINT64, 6, "ExchangeRate");
 SF_U64 const sfLowNode          (access, STI_UINT64, 7, "LowNode");
 SF_U64 const sfHighNode         (access, STI_UINT64, 8, "HighNode");
 SF_U64 const sfDestinationNode  (access, STI_UINT64, 9, "DestinationNode");
-SF_U64 const sfCookie           (access, STI_UINT64, 10,"Cookie");
+SF_U64 const sfCookie           (access, STI_UINT64, 12,"Cookie");
 SF_U64 const sfServerVersion    (access, STI_UINT64, 11, "ServerVersion");
 
-SF_U64 const sfDropsPerByte     (access, STI_UINT64, 21, "DropsPerByte");
-SF_U64 const sfIssuerNode	    (access, STI_UINT64, 22, "IssuerNode");
-
+SF_U64 const sfDropsPerByte     (access, STI_UINT64, 10, "DropsPerByte");
+SF_U64 const sfIssuerNode	    (access, STI_UINT64, 21, "IssuerNode");
 SF_U64 const sfView             (access, STI_UINT64, 23, "View");
-
-
 
 
 // 128-bit
@@ -201,7 +198,7 @@ SF_Amount const sfDeliverMin  (access, STI_AMOUNT, 10, "DeliverMin");
 SF_Amount const sfMinimumOffer    (access, STI_AMOUNT, 16, "MinimumOffer");
 SF_Amount const sfRippleEscrow    (access, STI_AMOUNT, 17, "RippleEscrow");
 SF_Amount const sfDeliveredAmount (access, STI_AMOUNT, 18, "DeliveredAmount");
-SF_Amount const sfContractValue	  (access, STI_AMOUNT, 29, "ContractValue");
+SF_Amount const sfContractValue	  (access, STI_AMOUNT, 19, "ContractValue");
 
 // variable length (common)
 SF_Blob const sfPublicKey       (access, STI_VL,  1, "PublicKey");
