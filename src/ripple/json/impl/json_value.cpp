@@ -263,8 +263,9 @@ Value::Value(const Value& other) : type_(other.type_)
         case stringValue:
             if (other.value_.string_)
             {
+                length_ = other.length_;
                 value_.string_ = valueAllocator()->duplicateStringValue(
-                    other.value_.string_);
+                    other.value_.string_, other.length_);
                 allocated_ = true;
             }
             else
@@ -319,10 +320,12 @@ Value::operator=(Value const& other)
 }
 
 Value::Value(Value&& other) noexcept
-    : value_(other.value_), type_(other.type_), allocated_(other.allocated_)
+    : value_(other.value_), type_(other.type_),
+    allocated_(other.allocated_), length_(other.length_)
 {
     other.type_ = nullValue;
     other.allocated_ = 0;
+    other.length_ = 0;
 }
 
 Value&
