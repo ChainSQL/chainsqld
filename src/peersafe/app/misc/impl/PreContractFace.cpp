@@ -19,6 +19,11 @@ namespace ripple {
         precompiled.insert(std::make_pair(AccountID(3), PrecompiledContract("ripemd160")));
         precompiled.insert(std::make_pair(AccountID(4), PrecompiledContract("identity")));
 
+        precompiled.insert({AccountID(5), PrecompiledContract("modexp")});
+        precompiled.insert({AccountID(6), PrecompiledContract("alt_bn128_G1_add")});
+        precompiled.insert({AccountID(7), PrecompiledContract("alt_bn128_G1_mul")});
+        precompiled.insert({AccountID(8), PrecompiledContract("alt_bn128_pairing_product")});
+
         // precompiled.insert({AccountID(25), PrecompiledContract("modexp")});
         // precompiled.insert({AccountID(26), PrecompiledContract("alt_bn128_G1_add")});
         // precompiled.insert({AccountID(27), PrecompiledContract("alt_bn128_G1_mul")});

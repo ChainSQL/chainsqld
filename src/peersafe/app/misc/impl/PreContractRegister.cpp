@@ -1,4 +1,7 @@
+#include <boost/multiprecision/cpp_int.hpp>
+#include <peersafe/crypto/LibSnark.h>
 #include <peersafe/app/misc/PreContractRegister.h>
+#include <peersafe/basics/TypeTransform.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/CommonKey.h>
 #include <ripple/basics/Blob.h>
@@ -26,35 +29,35 @@ PrecompiledPricer const& PrecompiledRegistrar::pricer(std::string const& _name)
 namespace
 {
 
-// Big-endian to/from host endian conversion functions.
+// // Big-endian to/from host endian conversion functions.
 
-/// Converts a templated integer value to the big-endian byte-stream represented on a templated collection.
-/// The size of the collection object will be unchanged. If it is too small, it will not represent the
-/// value properly, if too big then the additional elements will be zeroed out.
-/// @a Out will typically be either std::string or bytes.
-/// @a T will typically by unsigned, u160, u256 or bigint.
-template <class T, class Out>
-inline void toBigEndian(T _val, Out& o_out)
-{
-	static_assert(std::is_same<eth::bigint, T>::value || !std::numeric_limits<T>::is_signed, "only unsigned types or bigint supported"); //bigint does not carry sign bit on shift
-	for (auto i = o_out.size(); i != 0; _val >>= 8, i--)
-	{
-		T v = _val & (T)0xff;
-		o_out[i - 1] = (typename Out::value_type)(uint8_t)v;
-	}
-}
+// /// Converts a templated integer value to the big-endian byte-stream represented on a templated collection.
+// /// The size of the collection object will be unchanged. If it is too small, it will not represent the
+// /// value properly, if too big then the additional elements will be zeroed out.
+// /// @a Out will typically be either std::string or bytes.
+// /// @a T will typically by unsigned, u160, u256 or bigint.
+// template <class T, class Out>
+// inline void toBigEndian(T _val, Out& o_out)
+// {
+// 	static_assert(std::is_same<eth::bigint, T>::value || !std::numeric_limits<T>::is_signed, "only unsigned types or bigint supported"); //bigint does not carry sign bit on shift
+// 	for (auto i = o_out.size(); i != 0; _val >>= 8, i--)
+// 	{
+// 		T v = _val & (T)0xff;
+// 		o_out[i - 1] = (typename Out::value_type)(uint8_t)v;
+// 	}
+// }
 
-/// Converts a big-endian byte-stream represented on a templated collection to a templated integer value.
-/// @a _In will typically be either std::string or bytes.
-/// @a T will typically by unsigned, u160, u256 or bigint.
-template <class T, class _In>
-inline T fromBigEndian(_In const& _bytes)
-{
-	T ret = (T)0;
-	for (auto i: _bytes)
-		ret = (T)((ret << 8) | (eth::byte)(typename std::make_unsigned<decltype(i)>::type)i);
-	return ret;
-}
+// /// Converts a big-endian byte-stream represented on a templated collection to a templated integer value.
+// /// @a _In will typically be either std::string or bytes.
+// /// @a T will typically by unsigned, u160, u256 or bigint.
+// template <class T, class _In>
+// inline T fromBigEndian(_In const& _bytes)
+// {
+// 	T ret = (T)0;
+// 	for (auto i: _bytes)
+// 		ret = (T)((ret << 8) | (eth::byte)(typename std::make_unsigned<decltype(i)>::type)i);
+// 	return ret;
+// }
 
 int64_t linearPricer(unsigned _base, unsigned _word, eth::bytesConstRef _in)
 {
@@ -156,7 +159,7 @@ ETH_REGISTER_PRECOMPILED(identity)(eth::bytesConstRef _in)
 
 // Parse _count bytes of _in starting with _begin offset as big endian int.
 // If there's not enough bytes in _in, consider it infinitely right-padded with zeroes.
-int64_t parseBigEndianRightPadded(eth::bytesConstRef _in, eth::bigint const& _begin, eth::bigint const& _count)
+eth::bigint parseBigEndianRightPadded(eth::bytesConstRef _in, eth::bigint const& _begin, eth::bigint const& _count)
 {
     if (_begin > _in.count())
         return 0;
@@ -168,7 +171,7 @@ int64_t parseBigEndianRightPadded(eth::bytesConstRef _in, eth::bigint const& _be
     // crop _in, not going beyond its size
     eth::bytesConstRef cropped = _in.cropped(begin, min(count, _in.count() - begin));
 
-    int64_t ret = fromBigEndian<int64_t>(cropped);
+    eth::bigint ret = ripple::fromBigEndian<eth::bigint>(cropped);
     // shift as if we had right-padding zeroes
     assert(count - cropped.count() <= numeric_limits<size_t>::max() / 8);
     ret <<= 8 * (count - cropped.count());
@@ -176,106 +179,106 @@ int64_t parseBigEndianRightPadded(eth::bytesConstRef _in, eth::bigint const& _be
     return ret;
 }
 
-// ETH_REGISTER_PRECOMPILED(modexp)(eth::bytesConstRef _in)
-// {
-//     int64_t const baseLength(parseBigEndianRightPadded(_in, 0, 32));
-//     int64_t const expLength(parseBigEndianRightPadded(_in, 32, 32));
-//     int64_t const modLength(parseBigEndianRightPadded(_in, 64, 32));
-//     assert(modLength <= numeric_limits<size_t>::max() / 8); // Otherwise gas should be too expensive.
-//     assert(baseLength <= numeric_limits<size_t>::max() / 8); // Otherwise, gas should be too expensive.
-//     if (modLength == 0 && baseLength == 0)
-//         return {true, eth::bytes{}}; // This is a special case where expLength can be very big.
-//     assert(expLength <= numeric_limits<size_t>::max() / 8);
+ ETH_REGISTER_PRECOMPILED(modexp)(eth::bytesConstRef _in)
+ {
+     eth::bigint const baseLength(parseBigEndianRightPadded(_in, 0, 32));
+     eth::bigint const expLength(parseBigEndianRightPadded(_in, 32, 32));
+     eth::bigint const modLength(parseBigEndianRightPadded(_in, 64, 32));
+     assert(modLength <= numeric_limits<size_t>::max() / 8); // Otherwise gas should be too expensive.
+     assert(baseLength <= numeric_limits<size_t>::max() / 8); // Otherwise, gas should be too expensive.
+     if (modLength == 0 && baseLength == 0)
+         return {true, eth::bytes{}}; // This is a special case where expLength can be very big.
+     assert(expLength <= numeric_limits<size_t>::max() / 8);
 
-//     int64_t const base(parseBigEndianRightPadded(_in, 96, baseLength));
-//     int64_t const exp(parseBigEndianRightPadded(_in, 96 + baseLength, expLength));
-//     int64_t const mod(parseBigEndianRightPadded(_in, 96 + baseLength + expLength, modLength));
+     eth::bigint const base(parseBigEndianRightPadded(_in, 96, baseLength));
+     eth::bigint const exp(parseBigEndianRightPadded(_in, 96 + baseLength, expLength));
+     eth::bigint const mod(parseBigEndianRightPadded(_in, 96 + baseLength + expLength, modLength));
 
-//     int64_t const result = mod != 0 ? boost::multiprecision::powm(base, exp, mod) : int64_t{0};
+     eth::bigint const result = mod != 0 ? boost::multiprecision::powm(base, exp, mod) : eth::bigint{0};
 
-//     size_t const retLength(modLength);
-//     eth::bytes ret(retLength);
-//     toBigEndian(result, ret);
+     size_t const retLength(modLength);
+     eth::bytes ret(retLength);
+     ripple::toBigEndian(result, ret);
 
-//     return {true, ret};
-// }
+     return {true, ret};
+ }
 
-// namespace
-// {
-//     int64_t expLengthAdjust(int64_t const& _expOffset, int64_t const& _expLength, eth::bytesConstRef _in)
-//     {
-//         if (_expLength <= 32)
-//         {
-//             int64_t const exp(parseBigEndianRightPadded(_in, _expOffset, _expLength));
-//             return exp ? msb(exp) : 0;
-//         }
-//         else
-//         {
-//             int64_t const expFirstWord(parseBigEndianRightPadded(_in, _expOffset, 32));
-//             size_t const highestBit(expFirstWord ? msb(expFirstWord) : 0);
-//             return 8 * (_expLength - 32) + highestBit;
-//         }
-//     }
+ namespace
+ {
+     int64_t expLengthAdjust(int64_t const& _expOffset, int64_t const& _expLength, eth::bytesConstRef _in)
+     {
+         if (_expLength <= 32)
+         {
+             eth::bigint const exp(parseBigEndianRightPadded(_in, _expOffset, _expLength));
+             return exp ? boost::multiprecision::msb(exp) : 0;
+         }
+         else
+         {
+             eth::bigint const expFirstWord(parseBigEndianRightPadded(_in, _expOffset, 32));
+             size_t const highestBit(expFirstWord ? boost::multiprecision::msb(expFirstWord) : 0);
+             return 8 * (_expLength - 32) + highestBit;
+         }
+     }
 
-//     int64_t multComplexity(int64_t const& _x)
-//     {
-//         if (_x <= 64)
-//             return _x * _x;
-//         if (_x <= 1024)
-//             return (_x * _x) / 4 + 96 * _x - 3072;
-//         else
-//             return (_x * _x) / 16 + 480 * _x - 199680;
-//     }
-// }
+     int64_t multComplexity(int64_t const& _x)
+     {
+         if (_x <= 64)
+             return _x * _x;
+         if (_x <= 1024)
+             return (_x * _x) / 4 + 96 * _x - 3072;
+         else
+             return (_x * _x) / 16 + 480 * _x - 199680;
+     }
+ }
 
-// ETH_REGISTER_PRECOMPILED_PRICER(modexp)(eth::bytesConstRef _in, int64_t const&)
-// {
-//     int64_t const baseLength(parseBigEndianRightPadded(_in, 0, 32));
-//     int64_t const expLength(parseBigEndianRightPadded(_in, 32, 32));
-//     int64_t const modLength(parseBigEndianRightPadded(_in, 64, 32));
+ ETH_REGISTER_PRECOMPILED_PRICER(modexp)(eth::bytesConstRef _in, int64_t const&)
+ {
+     int64_t const baseLength(parseBigEndianRightPadded(_in, 0, 32));
+     int64_t const expLength(parseBigEndianRightPadded(_in, 32, 32));
+     int64_t const modLength(parseBigEndianRightPadded(_in, 64, 32));
 
-//     int64_t const maxLength(max(modLength, baseLength));
-//     int64_t const adjustedExpLength(expLengthAdjust(baseLength + 96, expLength, _in));
+     int64_t const maxLength(max(modLength, baseLength));
+     int64_t const adjustedExpLength(expLengthAdjust(baseLength + 96, expLength, _in));
 
-//     return multComplexity(maxLength) * max<int64_t>(adjustedExpLength, 1) / 20;
-// }
+     return multComplexity(maxLength) * max<int64_t>(adjustedExpLength, 1) / 20;
+ }
 
-// ETH_REGISTER_PRECOMPILED(alt_bn128_G1_add)(eth::bytesConstRef _in)
-// {
-//     return dev::crypto::alt_bn128_G1_add(_in);
-// }
+ ETH_REGISTER_PRECOMPILED(alt_bn128_G1_add)(eth::bytesConstRef _in)
+ {
+     return peersafe::alt_bn128_G1_add(_in);
+ }
 
-// ETH_REGISTER_PRECOMPILED_PRICER(alt_bn128_G1_add)
-// (eth::bytesConstRef /*_in*/, int64_t const& _blockNumber)
-// {
-//     return 150;
-//     // return _blockNumber < _chainParams.istanbulForkBlock ? 500 : 150;
-// }
+ ETH_REGISTER_PRECOMPILED_PRICER(alt_bn128_G1_add)
+ (eth::bytesConstRef /*_in*/, int64_t const& _blockNumber)
+ {
+     return 150;
+     // return _blockNumber < _chainParams.istanbulForkBlock ? 500 : 150;
+ }
 
-// ETH_REGISTER_PRECOMPILED(alt_bn128_G1_mul)(eth::bytesConstRef _in)
-// {
-//     return dev::crypto::alt_bn128_G1_mul(_in);
-// }
+ ETH_REGISTER_PRECOMPILED(alt_bn128_G1_mul)(eth::bytesConstRef _in)
+ {
+     return  peersafe::alt_bn128_G1_mul(_in);
+ }
 
-// ETH_REGISTER_PRECOMPILED_PRICER(alt_bn128_G1_mul)
-// (eth::bytesConstRef /*_in*/, int64_t const& _blockNumber)
-// {
-//     return 6000;
-//     // return _blockNumber < _chainParams.istanbulForkBlock ? 40000 : 6000;
-// }
+ ETH_REGISTER_PRECOMPILED_PRICER(alt_bn128_G1_mul)
+ (eth::bytesConstRef /*_in*/, int64_t const& _blockNumber)
+ {
+     return 6000;
+     // return _blockNumber < _chainParams.istanbulForkBlock ? 40000 : 6000;
+ }
 
-// ETH_REGISTER_PRECOMPILED(alt_bn128_pairing_product)(eth::bytesConstRef _in)
-// {
-//     return dev::crypto::alt_bn128_pairing_product(_in);
-// }
+ ETH_REGISTER_PRECOMPILED(alt_bn128_pairing_product)(eth::bytesConstRef _in)
+ {
+     return  peersafe::alt_bn128_pairing_product(_in);
+ }
 
-// ETH_REGISTER_PRECOMPILED_PRICER(alt_bn128_pairing_product)
-// (eth::bytesConstRef _in, int64_t const& _blockNumber)
-// {
-//     auto const k = _in.size() / 192;
-//     return 45000 + k * 34000;
-//     // return _blockNumber < _chainParams.istanbulForkBlock ? 100000 + k * 80000 : 45000 + k * 34000;
-// }
+ ETH_REGISTER_PRECOMPILED_PRICER(alt_bn128_pairing_product)
+ (eth::bytesConstRef _in, int64_t const& _blockNumber)
+ {
+     auto const k = _in.size() / 192;
+     return 45000 + k * 34000;
+     // return _blockNumber < _chainParams.istanbulForkBlock ? 100000 + k * 80000 : 45000 + k * 34000;
+ }
 
 // ETH_REGISTER_PRECOMPILED(blake2_compression)(eth::bytesConstRef _in)
 // {
