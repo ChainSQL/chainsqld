@@ -6,7 +6,7 @@ include(MPIR)
 #set(prefix "${CMAKE_BINARY_DIR}/deps")
 set(libff_library "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ff${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(libff_inlcude_dir "${nih_cache_path}/include/libff")
-
+message(status "config: $<CONFIG>")
 ExternalProject_Add(libff
     PREFIX ${nih_cache_path}
     DOWNLOAD_NAME libff-03b719a7.tar.gz
@@ -14,7 +14,7 @@ ExternalProject_Add(libff
     URL https://gitlab.peersafe.cn/chainsql_dependencies/libff/-/archive/03b719a7c81757071f99fc60be1f7f7694e51390.tar.gz
     URL_HASH SHA256=81b476089af43025c8f253cb1a9b5038a1c375baccffea402fa82042e608ab02
     CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=Release
+        $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}>
         -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
         -DGMP_INCLUDE_DIR=${MPIR_INCLUDE_DIR}
         -DGMP_LIBRARY=${MPIR_LIBRARY}
@@ -22,10 +22,15 @@ ExternalProject_Add(libff
         -DUSE_PT_COMPRESSION=Off
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
-    BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config Release
+        $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}>
+        $<$<BOOL:${MSVC}>:
+            "-DCMAKE_CXX_FLAGS=-GR -Gd -fp:precise -FS -EHa -MP"
+            "-DCMAKE_CXX_FLAGS_DEBUG=-MTd"
+            "-DCMAKE_CXX_FLAGS_RELEASE=-MT"
+        >
+    BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIG>
     LOG_BUILD 1
-    INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config Release --target install
+    INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIG> --target install
     BUILD_BYPRODUCTS "${libff_library}"
 )
 add_dependencies(libff mpir)
