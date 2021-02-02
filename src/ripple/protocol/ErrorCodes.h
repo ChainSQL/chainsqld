@@ -178,8 +178,8 @@ enum error_code_i {
 	rpcNO_SCHEMA			 = 124,
 	rpcSCHEMA_CREATED		 = 125,
 
-    rpcTXN_BIGGER_THAN_MAXSIZE = 126,
-
+    rpcTXN_BIGGER_THAN_MAXSIZE  = 126,
+    rpcINVALID_TRANSACTION      = 127,
     rpcLAST =
         rpcTXN_BIGGER_THAN_MAXSIZE  // rpcLAST should always equal the last code.=
 };

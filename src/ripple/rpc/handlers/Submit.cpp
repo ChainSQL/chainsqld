@@ -98,10 +98,11 @@ doSubmit(RPC::JsonContext& context)
         stpTrans = std::make_shared<STTx const>(std::ref(sitTrans));
     }
     catch (std::exception& e)
-    {
-        jvResult[jss::error] = "invalidTransaction";
-        jvResult[jss::error_exception] = e.what();
-
+    {    
+        jvResult[jss::error]         = "invalidTransaction";
+        jvResult[jss::error_code]    = rpcINVALID_TRANSACTION;  
+        jvResult[jss::error_message] = e.what();
+        jvResult[jss::request]       = context.params[jss::tx_blob];
         return jvResult;
     }
 
@@ -131,9 +132,10 @@ doSubmit(RPC::JsonContext& context)
     auto tpTrans = std::make_shared<Transaction>(stpTrans, reason, context.app);
     if (tpTrans->getStatus() != NEW)
     {
-        jvResult[jss::error] = "invalidTransaction";
-        jvResult[jss::error_exception] = "fails local checks: " + reason;
-
+        jvResult[jss::error]         = "invalidTransaction";
+        jvResult[jss::error_code]    = rpcINVALID_TRANSACTION;
+        jvResult[jss::error_message] = "Fails local checks: " + reason;
+        jvResult[jss::request]       = stpTrans->getFullText();
         return jvResult;
     }
 
@@ -146,9 +148,9 @@ doSubmit(RPC::JsonContext& context)
     }
     catch (std::exception& e)
     {
-        jvResult[jss::error] = "internalSubmit";
-        jvResult[jss::error_exception] = e.what();
-
+        jvResult[jss::error]         = "internalSubmit";
+        jvResult[jss::error_code]    = rpcINTERNAL;
+        jvResult[jss::error_message] = e.what();
         return jvResult;
     }
 
@@ -201,8 +203,8 @@ doSubmit(RPC::JsonContext& context)
     catch (std::exception& e)
     {
         jvResult[jss::error] = "internalJson";
-        jvResult[jss::error_exception] = e.what();
-
+        jvResult[jss::error_code] = rpcINTERNAL;
+        jvResult[jss::error_message] = e.what();
         return jvResult;
     }
 }
