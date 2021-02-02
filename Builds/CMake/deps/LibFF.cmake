@@ -6,7 +6,7 @@ include(MPIR)
 #set(prefix "${CMAKE_BINARY_DIR}/deps")
 set(libff_library "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ff${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(libff_inlcude_dir "${nih_cache_path}/include/libff")
-message(status "config: $<CONFIG>")
+message(STATUS "config: $<CONFIG>")
 ExternalProject_Add(libff
     PREFIX ${nih_cache_path}
     DOWNLOAD_NAME libff-03b719a7.tar.gz

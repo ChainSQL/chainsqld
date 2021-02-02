@@ -64,7 +64,7 @@ if(enableTest)
 else()
   set(test_srcs "src/test/jtx/impl/envconfig.cpp")
 endif()
-message(STATUS "test_srcs: ${test_srcs}")
+#message(STATUS "test_srcs: ${test_srcs}")
 #[=================================[
    main/core headers installation
 #]=================================]
