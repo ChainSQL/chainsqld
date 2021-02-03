@@ -6,7 +6,7 @@ include(MPIR)
 #set(prefix "${CMAKE_BINARY_DIR}/deps")
 set(libff_library "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ff${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(libff_inlcude_dir "${nih_cache_path}/include/libff")
-message(STATUS "config: $<CONFIG>")
+
 ExternalProject_Add(libff
     PREFIX ${nih_cache_path}
     DOWNLOAD_NAME libff-03b719a7.tar.gz
@@ -23,11 +23,9 @@ ExternalProject_Add(libff
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}>
-        $<$<BOOL:${MSVC}>:
-            "-DCMAKE_CXX_FLAGS=-GR -Gd -fp:precise -FS -EHa -MP"
-            "-DCMAKE_CXX_FLAGS_DEBUG=-MTd"
-            "-DCMAKE_CXX_FLAGS_RELEASE=-MT"
-        >
+        $<$<BOOL:${MSVC}>:"-DCMAKE_CXX_FLAGS=-GR -Gd -fp:precise -FS -EHa -MP">
+        $<$<BOOL:${MSVC}>:-DCMAKE_CXX_FLAGS_DEBUG=-MTd>
+        $<$<BOOL:${MSVC}>:-DCMAKE_CXX_FLAGS_RELEASE=-MT>
     BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIG>
     LOG_BUILD 1
     INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIG> --target install

@@ -15,11 +15,9 @@ ExternalProject_Add(mpir
         -DCMAKE_INSTALL_LIBDIR=lib
         $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}>
         -DMPIR_GMP=On
-        $<$<BOOL:${MSVC}>:
-            "-DCMAKE_CXX_FLAGS=-GR -Gd -fp:precise -FS -EHa -MP"
-            "-DCMAKE_CXX_FLAGS_DEBUG=-MTd"
-            "-DCMAKE_CXX_FLAGS_RELEASE=-MT"
-        >
+        $<$<BOOL:${MSVC}>:"-DCMAKE_CXX_FLAGS=-GR -Gd -fp:precise -FS -EHa -MP">
+        $<$<BOOL:${MSVC}>:-DCMAKE_CXX_FLAGS_DEBUG=-MTd>
+        $<$<BOOL:${MSVC}>:-DCMAKE_CXX_FLAGS_RELEASE=-MT>
     BUILD_BYPRODUCTS "${MPIR_LIBRARY}"
 )
 
