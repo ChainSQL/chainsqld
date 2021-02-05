@@ -241,6 +241,7 @@ Value::Value(std::string const& value) : type_(stringValue), allocated_(true)
 Value::Value(const StaticString& value) : type_(stringValue), allocated_(false)
 {
     value_.string_ = const_cast<char*>(value.c_str());
+	length_ = strlen(value.c_str());
 }
 
 Value::Value(bool value) : type_(booleanValue)
