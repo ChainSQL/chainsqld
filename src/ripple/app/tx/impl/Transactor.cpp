@@ -211,6 +211,10 @@ Transactor::checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee)
         return terNO_ACCOUNT;
 
     auto const balance = (*sle)[sfBalance].zxc();
+    auto const reserve = ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
+
+    if (balance < reserve)
+        return tecINSUFFICIENT_RESERVE;
 
     if (balance < feePaid)
     {
