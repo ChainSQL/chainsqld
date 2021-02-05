@@ -128,7 +128,7 @@ applyTransactions(
                 }
 
                 switch (applyTransaction(
-                    app, view, *it->second, certainRetry, tapNONE, j))
+                    app, view, *it->second, certainRetry, tapForConsensus, j))
                 {
                     case ApplyResult::Success:
                         it = txns.erase(it);
