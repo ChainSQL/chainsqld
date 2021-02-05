@@ -64,7 +64,7 @@ if(enableTest)
 else()
   set(test_srcs "src/test/jtx/impl/envconfig.cpp")
 endif()
-message(STATUS "test_srcs: ${test_srcs}")
+#message(STATUS "test_srcs: ${test_srcs}")
 #[=================================[
    main/core headers installation
 #]=================================]
@@ -708,6 +708,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/crypto/impl/ECDSAKey.cpp
   src/peersafe/crypto/impl/ECIES.cpp
   src/peersafe/crypto/impl/X509.cpp
+  src/peersafe/crypto/impl/LibSnark.cpp
   src/peersafe/gmencrypt/impl/GmEncrypt.cpp
   src/peersafe/gmencrypt/impl/GmEncryptObj.cpp
   src/peersafe/gmencrypt/impl/GmCheck.cpp
@@ -1135,6 +1136,7 @@ target_link_libraries (chainsqld
   Ripple::boost
   Ripple::opts
   Ripple::libs
+  libff::ff
   intx
   instructions
   )

@@ -25,6 +25,11 @@ namespace eth {
     {
         const char *what() const noexcept override { return boost::diagnostic_information_what(*this); }
     };
+
+	#define DEV_SIMPLE_EXCEPTION(X)  \
+		struct X : virtual eth::Exception \
+		{                            \
+		}
     /// Virtual machine bytecode instruction.
 	enum class Instruction : uint8_t
 	{
