@@ -543,6 +543,21 @@ DirectStepI<TDerived>::revImp(
     {
         IOUAmount const in =
             mulRatio(srcToDst, srcQOut, QUALITY_ONE, /*roundUp*/ true);
+		IOUAmount realIn = in;
+		if (in > srcToDst)
+		{
+			boost::optional<IOUAmount> feeMin, feeMax;
+			auto fee = in - srcToDst;
+			auto saFeeMin = transferFeeMin(sb, srcToDstIss.account);
+			auto saFeeMax = transferFeeMax(sb, srcToDstIss.account);
+            STAmount minAmount = amountFromString(srcToDstIss, saFeeMin);
+            STAmount maxAmount = amountFromString(srcToDstIss, saFeeMax);
+            feeMin = toAmountSpec(minAmount).iou;
+            feeMax = toAmountSpec(maxAmount).iou;
+			auto feeAct = std::min(*feeMax, std::max(fee, *feeMin));
+			if (fee != feeAct)
+				realIn = srcToDst + feeAct;
+		}
         cache_.emplace(in, srcToDst, out, srcDebtDir);
         rippleCredit(
             sb,
@@ -553,10 +568,10 @@ DirectStepI<TDerived>::revImp(
             j_);
         JLOG(j_.trace()) << "DirectStepI::rev: Non-limiting"
                          << " srcRedeems: " << redeems(srcDebtDir)
-                         << " in: " << to_string(in)
+                         << " in: " << to_string(realIn)
                          << " srcToDst: " << to_string(srcToDst)
                          << " out: " << to_string(out);
-        return {in, out};
+        return { realIn, out};
     }
 
     // limiting node
