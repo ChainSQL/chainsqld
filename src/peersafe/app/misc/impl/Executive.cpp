@@ -187,15 +187,26 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 
 	// Transfer zxc.
 	TER ret = tesSUCCESS;
-	if (m_s.getSle(_p.receiveAddress) == nullptr && !m_PreContractFace.isPrecompiled(_p.receiveAddress, m_envInfo.block_number()))
-	{
-		//account not exist,activate it
-		ret = m_s.doPayment(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-	}
-	else
-	{
-		ret = m_s.transferBalance(_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-	}
+    if (!_p.staticCall && m_s.getSle(_p.receiveAddress) == nullptr &&
+        !m_PreContractFace.isPrecompiled(
+            _p.receiveAddress, m_envInfo.block_number()))
+    {
+        // account not exist,activate it
+        ret = m_s.doPayment(
+            _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+    }
+    else
+    {
+        ret = m_s.transferBalance(
+            _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+    }
+
+    auto j = getJ();
+    JLOG(j.info()) << "Contract invoke , address : "
+                   << to_string(_p.codeAddress)
+                   << ", sender :" << to_string(_p.senderAddress) 
+                   << ", receive :" << to_string(_p.receiveAddress)
+                   << ", amount :" << to_string(_p.valueTransfer);
 
 	if (ret != tesSUCCESS)
 	{
@@ -224,6 +235,9 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 		m_excepted = ret;
 		return true;
 	}
+
+    JLOG(j.info()) << "Contract create , address : "
+                   << to_string(m_newAddress) << ", from sender :" << to_string(_sender);
 
 	// Schedule _init execution if not empty.
 	Blob data;

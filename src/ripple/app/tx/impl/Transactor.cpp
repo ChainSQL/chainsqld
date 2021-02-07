@@ -97,14 +97,21 @@ preflight1(PreflightContext const& ctx)
 NotTEC
 preflight2(PreflightContext const& ctx)
 {
-	auto const sigValid = checkValidity(
-		ctx.app,ctx.app.getHashRouter(), ctx.tx, ctx.rules, ctx.app.config());
-	if (sigValid.first == Validity::SigBad)
-	{
-		JLOG(ctx.j.debug()) << "preflight2: bad signature. " << sigValid.second;
-		return temINVALID;
-	}
-
+    if (!(ctx.flags & tapNO_CHECK_SIGN))
+    {
+        auto const sigValid = checkValidity(
+            ctx.app,
+            ctx.app.getHashRouter(),
+            ctx.tx,
+            ctx.rules,
+            ctx.app.config());
+        if (sigValid.first == Validity::SigBad)
+        {
+            JLOG(ctx.j.debug())
+                << "preflight2: bad signature. " << sigValid.second;
+            return temINVALID;
+        }
+    }
 	return tesSUCCESS;
 }
 //------------------------------------------------------------------------------
