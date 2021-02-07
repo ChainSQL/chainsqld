@@ -164,9 +164,11 @@ public:
 		return 0;
 	}
 
-    virtual const ripple::PreContractFace& preContractFace() const {
+    virtual const ripple::PreContractFace&
+        preContractFace() const = 0;
+	/*{
         return ripple::PreContractFace();
-    }
+    }*/
 };
 
 //class ExtVMFace : public evmc_context {

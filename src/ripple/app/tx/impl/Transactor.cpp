@@ -97,14 +97,21 @@ preflight1(PreflightContext const& ctx)
 NotTEC
 preflight2(PreflightContext const& ctx)
 {
-	auto const sigValid = checkValidity(
-		ctx.app,ctx.app.getHashRouter(), ctx.tx, ctx.rules, ctx.app.config());
-	if (sigValid.first == Validity::SigBad)
-	{
-		JLOG(ctx.j.debug()) << "preflight2: bad signature. " << sigValid.second;
-		return temINVALID;
-	}
-
+    if (!(ctx.flags & tapNO_CHECK_SIGN))
+    {
+        auto const sigValid = checkValidity(
+            ctx.app,
+            ctx.app.getHashRouter(),
+            ctx.tx,
+            ctx.rules,
+            ctx.app.config());
+        if (sigValid.first == Validity::SigBad)
+        {
+            JLOG(ctx.j.debug())
+                << "preflight2: bad signature. " << sigValid.second;
+            return temINVALID;
+        }
+    }
 	return tesSUCCESS;
 }
 //------------------------------------------------------------------------------
@@ -211,6 +218,10 @@ Transactor::checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee)
         return terNO_ACCOUNT;
 
     auto const balance = (*sle)[sfBalance].zxc();
+    auto const reserve = ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
+
+    if (balance < reserve)
+        return tecINSUFFICIENT_RESERVE;
 
     if (balance < feePaid)
     {

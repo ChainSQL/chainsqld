@@ -62,14 +62,15 @@ struct CallParametersR
 		uint256	  _valueTransfer,
 		uint256   _apparentValue,
 		int64_t _gas,
-		eth::bytesConstRef _data
+		eth::bytesConstRef _data,
+		bool _staticCall = false
 	) : senderAddress(_senderAddress), codeAddress(_codeAddress), receiveAddress(_receiveAddress),
-		valueTransfer(_valueTransfer), apparentValue(_apparentValue), gas(_gas), data(_data) {}
+		valueTransfer(_valueTransfer), apparentValue(_apparentValue), gas(_gas), data(_data), staticCall(_staticCall) {}
 
 	CallParametersR(eth::CallParameters const& p) :senderAddress(fromEvmC(p.senderAddress)),
 		codeAddress(fromEvmC(p.codeAddress)),receiveAddress(fromEvmC(p.receiveAddress)),
 		valueTransfer(fromEvmC(p.valueTransfer)), apparentValue(fromEvmC(p.apparentValue)),
-		gas(p.gas),data(p.data)
+		gas(p.gas),data(p.data),staticCall(p.staticCall)
 	{
 	}
 

@@ -92,7 +92,7 @@ walletPropose(Json::Value const& params)
 
         auto oKeyType = keyTypeFromString(params[jss::key_type].asString());
 
-        if (!oKeyType)
+        if (!oKeyType || *(oKeyType) == KeyType::invalid)
             return rpcError(rpcINVALID_PARAMS);
         keyType = *(oKeyType);
     }
