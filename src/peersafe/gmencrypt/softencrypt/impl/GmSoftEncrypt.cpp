@@ -69,7 +69,6 @@ size_t SoftEncrypt::EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf)
     }
     *pbuf = buf;
     return len;
-    return 0;
 }
 
 // std::pair<unsigned char*, int> SoftEncrypt::getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& priKey)
