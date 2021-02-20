@@ -14,6 +14,7 @@
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/json/json_writer.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <eth/vm/VMFace.h>
 
@@ -246,6 +247,10 @@ namespace ripple {
         std::string strData(byValue.begin(), byValue.end());
         jsonLog[jss::contract_data] = strHex(strData);
         getTx().addLog(jsonLog);
+
+        jsonLog[jss::account] = to_string(contractID);
+        auto j = ctx_.app.journal("Executive");        
+        JLOG(j.info()) << "Contract log or event: " << jsonLog;
 
         //getTx().
         ctx_.app.getOPs().PubContractEvents(contractID, aTopic, iTopicNum, byValue);
