@@ -476,7 +476,7 @@ ValidNewAccountRoot::finalize(
     if (accountsCreated_ == 0)
         return true;
 
-    if (accountsCreated_ > 1)
+    if ((tx.getTxnType() != ttCONTRACT) && accountsCreated_ > 1)
     {
         JLOG(j.fatal()) << "Invariant failed: multiple accounts "
                            "created in a single transaction";
