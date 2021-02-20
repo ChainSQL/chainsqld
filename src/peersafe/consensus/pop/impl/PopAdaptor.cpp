@@ -50,29 +50,32 @@ PopAdaptor::PopAdaptor(
           journal,
           localTxs)
 {
-    if (app_.config().exists(SECTION_PCONSENSUS))
+    if (app_.config().exists(SECTION_CONSENSUS))
     {
         parms_.minBLOCK_TIME = std::max(
             parms_.minBLOCK_TIME,
             app.config().loadConfig(
-                SECTION_PCONSENSUS, "min_block_time", (unsigned)0));
+                SECTION_CONSENSUS, "min_block_time", parms_.minBLOCK_TIME));
         parms_.maxBLOCK_TIME = std::max(
             parms_.maxBLOCK_TIME,
             app.config().loadConfig(
-                SECTION_PCONSENSUS, "max_block_time", (unsigned)0));
+                SECTION_CONSENSUS, "max_block_time", parms_.maxBLOCK_TIME));
         parms_.maxBLOCK_TIME =
             std::max(parms_.minBLOCK_TIME, parms_.maxBLOCK_TIME);
 
         parms_.maxTXS_IN_LEDGER = std::min(
             app.config().loadConfig(
-                SECTION_PCONSENSUS,
+                SECTION_CONSENSUS,
                 "max_txs_per_ledger",
                 parms_.maxTXS_IN_LEDGER),
             consensusParms.txPOOL_CAPACITY);
 
         parms_.consensusTIMEOUT = std::chrono::milliseconds{std::max(
-            (int)parms_.consensusTIMEOUT.count(),
-            app.config().loadConfig(SECTION_PCONSENSUS, "time_out", 0))};
+            parms_.consensusTIMEOUT.count(),
+            app.config().loadConfig(
+                SECTION_CONSENSUS,
+                "time_out",
+                parms_.consensusTIMEOUT.count()))};
         if (parms_.consensusTIMEOUT.count() <= parms_.maxBLOCK_TIME)
         {
             parms_.consensusTIMEOUT =
@@ -80,10 +83,10 @@ PopAdaptor::PopAdaptor(
         }
 
         parms_.initTIME = std::chrono::seconds{app.config().loadConfig(
-            SECTION_PCONSENSUS, "init_time", parms_.initTIME.count())};
+            SECTION_CONSENSUS, "init_time", parms_.initTIME.count())};
 
         parms_.omitEMPTY = app.config().loadConfig(
-            SECTION_PCONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+            SECTION_CONSENSUS, "omit_empty_block", parms_.omitEMPTY);
     }
 }
 

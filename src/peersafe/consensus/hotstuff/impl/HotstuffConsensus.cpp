@@ -47,7 +47,7 @@ HotstuffConsensus::HotstuffConsensus(
 
     // TODO
     // HotstuffConsensusParms to hotstuff::Config
-    config.timeout = adaptor_.parms().consensusTIMEOUT.count();
+    config.timeout = std::ceil(adaptor_.parms().consensusTIMEOUT.count() / 1000.0);
 
     hotstuff_ = hotstuff::Hotstuff::Builder(adaptor_.getIOService(), j)
         .setConfig(config)
@@ -57,6 +57,7 @@ HotstuffConsensus::HotstuffConsensus(
         .setProposerElection(&adaptor_)
         .build();
 
+    // Unused now
     using beast::hash_append;
     ripple::sha512_half_hasher h;
     hash_append(h, std::string("EPOCHCHANGE"));
@@ -172,6 +173,8 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
     Json::Value ret(Json::objectValue);
 
+    ret["type"] = "hotstuff";
+
     ret["proposing"] = (mode_.get() == ConsensusMode::proposing);
 
     if (mode_.get() != ConsensusMode::wrongLedger)
@@ -187,8 +190,9 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
-    ret["time_out"] = static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count() * 1000);
     ret["initialized"] = !waitingForInit();
+
+    ret["parms"] = adaptor_.parms().getJson();
 
     if (full)
     {

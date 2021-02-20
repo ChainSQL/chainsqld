@@ -252,6 +252,8 @@ PopConsensus::getJson(bool full) const
 
     Json::Value ret(Json::objectValue);
 
+    ret["type"] = "pop";
+
     ret["proposing"] = (mode_.get() == ConsensusMode::proposing);
     ret["proposers"] = static_cast<Int>(txSetVoted_.size());
 
@@ -275,9 +277,9 @@ PopConsensus::getJson(bool full) const
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
-    ret["time_out"] =
-        static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count());
     ret["initialized"] = !waitingForInit();
+
+    ret["parms"] = adaptor_.parms().getJson();
 
     if (full)
     {

@@ -169,6 +169,7 @@ RCLConsensus::getJson(bool full) const
         ret = consensus_->getJson(full);
     }
     ret["validating"] = adaptor_->validating();
+    ret["tx_pool_capacity"] = parms_.txPOOL_CAPACITY;
     return ret;
 }
 
@@ -207,11 +208,11 @@ RCLConsensus::checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger)
 ConsensusType
 RCLConsensus::stringToConsensusType(std::string const& s)
 {
-    if (s == "RPCA")
+    if (s == "RPCA" || s == "rpca")
         return ConsensusType::RPCA;
-    if (s == "POP")
+    if (s == "POP" || s == "pop")
         return ConsensusType::POP;
-    if (s == "HOTSTUFF")
+    if (s == "HOTSTUFF" || s == "hotstuff")
         return ConsensusType::HOTSTUFF;
 
     return ConsensusType::UNKNOWN;
