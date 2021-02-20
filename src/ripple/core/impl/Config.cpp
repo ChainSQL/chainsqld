@@ -752,7 +752,7 @@ Config::loadFromString(std::string const& fileContents)
 		{
 			JLOG(j_.error()) <<
 				"Invalid value '" << result.first << "' for key " <<
-				"'schema_path' in [" << SECTION_PCONSENSUS << "]\n";
+				"'schema_path' in [" << SECTION_SCHEMA << "]\n";
 			Rethrow();
 		}
 	}
