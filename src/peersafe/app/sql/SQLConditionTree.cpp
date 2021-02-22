@@ -31,7 +31,8 @@ conditionTree::conditionTree(NodeType type)
 , bind_values_index_(-1)
 , expression_()
 , children_()
-, bind_values_() {
+, bind_values_()
+, indi_null_(soci::i_null){
 
 }
 
@@ -40,7 +41,8 @@ conditionTree::conditionTree(const conditionTree& t)
 , bind_values_index_(t.bind_values_index_)
 , expression_(t.expression_)
 , children_(t.children_)
-, bind_values_(t.bind_values_) {
+, bind_values_(t.bind_values_)
+, indi_null_(soci::i_null) {
 
 }
 
@@ -166,6 +168,9 @@ int conditionTree::bind_value(const BindValue& value, soci::details::once_temp_t
 	}
 	else if (value.isDouble() || value.isNumeric()) {
 		t = t, soci::use(value.asDouble());
+	}
+	else if (value.isNull()) {
+		t = t, soci::use(0, indi_null_);
 	}
 	else {
 		result = -1;
