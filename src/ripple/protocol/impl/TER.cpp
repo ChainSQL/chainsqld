@@ -182,7 +182,7 @@ transResults()
 		MAKE_ERROR(temBAD_RULEANDTOKEN,		   "Malformed: OperationRule and Confidential are not supported in the mean time."),
 		MAKE_ERROR(temBAD_TICK_SIZE,		   "Malformed: Tick size out of range."                                            ),
 		MAKE_ERROR(temBAD_NEEDVERIFY_OPERRULE, "Malformed: NeedVerify must be 1 if there is table has OperatinRule."           ),
-		MAKE_ERROR(temBAD_VALIDATOR ,          "Malformed: No publickey field or publickey is null."                           ),
+		MAKE_ERROR(temBAD_VALIDATOR ,          "Malformed: No publickey field or publickey is not valid."                           ),
 		MAKE_ERROR(temBAD_PEERLIST ,           "Malformed: No peer field or peer is null"                                      ),
 		MAKE_ERROR(temBAD_SIGNERFORVAL,        "Malformed: Singer is not in the validator list."                               ),
 		MAKE_ERROR(temBAD_ANCHORLEDGER,        "Malformed: Anchor ledger is null or ledger not found."                         ),
