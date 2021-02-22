@@ -729,7 +729,7 @@ void HotstuffConsensus::peerProposal(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED proposal";
+        JLOG(j_.info()) << "drop UNTRUSTED proposal";
         return;
     }
 
@@ -847,7 +847,7 @@ void HotstuffConsensus::peerVote(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED vote";
+        JLOG(j_.info()) << "drop UNTRUSTED vote";
         return;
     }
 
@@ -918,7 +918,7 @@ void HotstuffConsensus::peerBlockData(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED block data";
+        JLOG(j_.info()) << "drop UNTRUSTED block data";
         return;
     }
 
@@ -971,7 +971,7 @@ void HotstuffConsensus::peerEpochChange(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED vote";
+        JLOG(j_.info()) << "drop UNTRUSTED vote";
         return;
     }
 
@@ -1012,7 +1012,7 @@ void HotstuffConsensus::peerValidation(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED validattion";
+        JLOG(j_.info()) << "drop UNTRUSTED validattion";
         return;
     }
 
