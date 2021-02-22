@@ -771,7 +771,7 @@ PopConsensus::peerProposal(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED proposal";
+        JLOG(j_.info()) << "drop UNTRUSTED proposal";
         return false;
     }
 
@@ -1023,7 +1023,7 @@ PopConsensus::peerViewChange(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED ViewChange";
+        JLOG(j_.info()) << "drop UNTRUSTED ViewChange";
         return false;
     }
 
