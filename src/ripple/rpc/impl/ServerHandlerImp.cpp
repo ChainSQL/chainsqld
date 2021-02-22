@@ -525,7 +525,7 @@ ServerHandlerImp::processSession(
         jr[jss::status] = jss::success;
     }
 	//if table operation,remove tx_blob & tx_json field
-	if (jr.isMember[jss::result] && jr[jss::result].isMember(jss::tx_json) 
+	if (jr.isMember(jss::result) && jr[jss::result].isMember(jss::tx_json) 
 		&& jr[jss::result][jss::tx_json].isMember(jss::hash)
 		&& !jr[jss::result][jss::tx_json].isMember("Signers"))
 	{
