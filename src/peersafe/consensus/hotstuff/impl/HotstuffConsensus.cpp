@@ -692,11 +692,14 @@ void HotstuffConsensus::broadcast(const hotstuff::EpochChange& epochChange, cons
 // -------------------------------------------------------------------
 // Private member functions
 
-bool HotstuffConsensus::waitingForInit() const
+bool
+HotstuffConsensus::waitingForInit() const
 {
-    // This code is for initialization,wait 90 seconds for loading ledger before real start-mode.
-    return (previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&
-        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_).count() < adaptor_.parms().initTIME.count());
+    // This code is for initialization,wait 90 seconds for loading ledger before
+    // real start-mode.
+    return /*(previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&*/
+        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_)
+             .count() < adaptor_.parms().initTIME.count());
 }
 
 std::chrono::milliseconds HotstuffConsensus::timeSinceLastClose() const
