@@ -17,20 +17,23 @@
 */
 //==============================================================================
 
-
 #ifndef PEERSAFE_CONSENSUS_POP_PARAMS_H_INCLUDE
 #define PEERSAFE_CONSENSUS_POP_PARAMS_H_INCLUDE
+
 
 namespace ripple {
 
 /**
  * simple config section e.x.
- * [pconsensus]
- * min_block_time=500
- * max_block_time=1000
- * max_txs_per_ledger=10000
- * empty_block=0
- * init_time=90
+ * [consensus]
+ * type = pop/POP
+ * max_txs_in_pool = 100000
+ * min_block_time = 1000
+ * max_block_time = 1000
+ * max_txs_per_ledger = 10000
+ * time_out = 3000
+ * omit_empty_block = false
+ * init_time = 90
  */
 
 struct PopConsensusParms
@@ -46,18 +49,34 @@ struct PopConsensusParms
     std::chrono::milliseconds consensusTIMEOUT =
         std::chrono::milliseconds{3000};
 
-    bool omitEMPTY = true;
-
     std::chrono::seconds initTIME = std::chrono::seconds{90};
+
+    bool omitEMPTY = true;
 
     // The minimum tx limit for leader to propose a tx-set after
     // half-MinBlockTime
     const unsigned minTXS_IN_LEDGER_ADVANCE = 5000;
 
     const unsigned timeoutCOUNT_ROLLBACK = 5;
+
+    inline Json::Value
+    getJson() const
+    {
+        using Int = Json::Value::Int;
+
+        Json::Value ret(Json::objectValue);
+
+        ret["min_block_time"] = minBLOCK_TIME;
+        ret["max_block_time"] = maxBLOCK_TIME;
+        ret["max_txs_per_ledger"] = maxTXS_IN_LEDGER;
+        ret["time_out"] = static_cast<Int>(consensusTIMEOUT.count());
+        ret["omit_empty_block"] = omitEMPTY;
+        ret["init_time"] = static_cast<Int>(initTIME.count());
+
+        return ret;
+    }
 };
 
-}
+}  // namespace ripple
 
-
-#endif // PEERSAFE_CONSENSUS_POP_PARAMS_H_INCLUDE
+#endif  // PEERSAFE_CONSENSUS_POP_PARAMS_H_INCLUDE

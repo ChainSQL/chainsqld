@@ -59,6 +59,9 @@ doValidationCreate(RPC::JsonContext& context)
 
 Json::Value doFillValidationJson(KeyType keyType, std::string const &str)
 {
+    if (keyType == KeyType::invalid)
+        return rpcError(rpcINVALID_PARAMS);
+
     Json::Value     obj(Json::objectValue);
     
     auto seed = validationSeed(str);

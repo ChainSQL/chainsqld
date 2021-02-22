@@ -1919,10 +1919,10 @@ rpcClient(
                     jvParams.append(jvRequest[i]);
             }
 
-			if (args[0] == "validation_create")
-			{
+            if (args[0] == "validation_create")
+            {
                 std::string seedStr;
-                KeyType keyType = KeyType::secp256k1;
+                KeyType keyType = CommonKey::algTypeGlobal;
                 if (args.size() == 2)
                 {
                     keyType = *(keyTypeFromString(args[1]));
@@ -1933,7 +1933,7 @@ rpcClient(
                     seedStr = args[2];
                 }
                 jvOutput["result"] = doFillValidationJson(keyType, seedStr);
-			}
+            }
 			else
             {
                 boost::asio::io_service isService;

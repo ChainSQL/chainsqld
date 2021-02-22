@@ -286,9 +286,10 @@ public:
             }
             catch (std::exception const&)
             {
-                JLOG(j_.error()) <<
-                    "Invalid value '" << result.first << "' for key " <<
-                    "'" << configName << "' in [" << sectionName << "]\n";
+                Throw<std::runtime_error>(
+                    "Invalid value '" + result.first + "' for key "
+                                      + "'" + configName + "' in ["
+                                      + sectionName + "]");
             }
         }
 
