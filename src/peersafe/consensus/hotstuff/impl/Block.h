@@ -51,7 +51,7 @@ public:
 	/// The round of a block is an internal monotonically increasing counter used by Consensus
 	/// protocol.
 	Round round;
-	int64_t timestamp_usecs;
+	int64_t timestamp_msecs;
 	/// Contains the quorum certified ancestor and whether the quorum certified ancestor was
 	/// voted on successfully
 	QuorumCertificate quorum_cert;
@@ -83,7 +83,7 @@ public:
 	BlockData()
 	: epoch(0)
 	, round(0)
-	, timestamp_usecs(0)
+	, timestamp_msecs(0)
 	, quorum_cert()
 	, block_type(NilBlock)
 	, payload() {
