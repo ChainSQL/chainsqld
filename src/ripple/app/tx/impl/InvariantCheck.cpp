@@ -99,7 +99,8 @@ ZXCNotCreated::visitEntry(
                     ((*before)[sfAmount] - (*before)[sfBalance]).zxc().drops();
                 break;
             case ltESCROW:
-                drops_ -= (*before)[sfAmount].zxc().drops();
+				if (isZXC((*before)[sfAmount]))
+					drops_ -= (*before)[sfAmount].zxc().drops();
                 break;
             default:
                 break;
@@ -121,7 +122,8 @@ ZXCNotCreated::visitEntry(
                 break;
             case ltESCROW:
                 if (!isDelete)
-                    drops_ += (*after)[sfAmount].zxc().drops();
+					if (isZXC((*after)[sfAmount]))
+						drops_ += (*after)[sfAmount].zxc().drops();
                 break;
             default:
                 break;
@@ -269,16 +271,19 @@ NoZeroEscrow::visitEntry(
     std::shared_ptr<SLE const> const& after)
 {
     auto isBad = [](STAmount const& amount) {
-        if (!amount.native())
-            return true;
+		if (isZXC(amount))
+		{
+			if (!amount.native())
+				return true;
 
-        if (amount.zxc() <= ZXCAmount{0})
-            return true;
+			if (amount.zxc() <= ZXCAmount{ 0 })
+				return true;
 
-        if (amount.zxc() >= INITIAL_ZXC)
-            return true;
+			if (amount.zxc() >= INITIAL_ZXC)
+				return true;
 
-        return false;
+			return false;
+		}
     };
 
     if (before && before->getType() == ltESCROW)
