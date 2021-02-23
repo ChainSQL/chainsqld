@@ -994,6 +994,9 @@ public:
 bool
 ApplicationImp::setup()
 {
+    if (!config_->standalone())
+        timeKeeper_->run(config_->SNTP_SERVERS);
+
     auto schema_main = m_schemaManager->createSchemaMain(config_);
 
     logs_->setCallBack(
@@ -1097,9 +1100,6 @@ ApplicationImp::setup()
 
     if (!loadSubChains())
         return false;
-
-    if (!config_->standalone())
-        timeKeeper_->run(config_->SNTP_SERVERS);
 
     {
         try
