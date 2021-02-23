@@ -79,8 +79,8 @@ void RoundManager::stop() {
 
 int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
 	JLOG(journal_.info())
-		<< "The author " << proposal_generator_->author()
-		<< " will process new round event: " << new_round_event.round;
+		//<< "The author " << proposal_generator_->author()
+		<< "Process new round event: " << new_round_event.round;
 
 	// setup round timeout
 	boost::asio::steady_timer& roundTimeoutTimer = round_state_->RoundTimeoutTimer();
@@ -97,9 +97,8 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
 
 	if (!IsValidProposer(proposal_generator_->author(), new_round_event.round)) {
 		JLOG(journal_.error())
-			<< "ProcessNewRoundEvent: invalid Proposel."
-			<< " New round is " << new_round_event.round
-			<< " and self is " << proposal_generator_->author();
+			<< "ProcessNewRoundEvent: New round is " << new_round_event.round
+			<< " and I am a voter";
 		return 1;
 	}
     JLOG(journal_.info())
@@ -125,8 +124,8 @@ void RoundManager::GenerateThenBroadCastProposalInTimer(const NewRoundEvent& eve
 		boost::optional<Block> proposal = GenerateProposal(event);
 		if (proposal) {
 			JLOG(journal_.info())
-				<< "The author " << proposal_generator_->author()
-				<< " broadcast a proposal whose round is " << proposal.get().block_data().round;
+				//<< "The author " << proposal_generator_->author()
+				<< "Broadcast a proposal whose round is " << proposal.get().block_data().round;
 
 			network_->broadcast(proposal.get(), block_store_->sync_info());
 		}
@@ -138,8 +137,7 @@ void RoundManager::GenerateThenBroadCastProposalInTimer(const NewRoundEvent& eve
 			std::bind(&RoundManager::GenerateThenBroadCastProposal, this, std::placeholders::_1, event));
 
 		JLOG(journal_.info())
-			<< "tx-pool may be empty. "
-			<< proposal_generator_->author() << " delay to generate a proposal for round "
+			<< "tx-pool may be empty. delay to generate a proposal for round "
 			<< event.round;
 	}
 }
@@ -161,16 +159,16 @@ void RoundManager::ProcessLocalTimeout(const boost::system::error_code& ec, Roun
 		return;
 
 	JLOG(journal_.info())
-		<< "An author " << proposal_generator_->author()
-		<< " processes localTimeout in round " << round;
+		//<< "An author " << proposal_generator_->author()
+		<< "Processes localTimeout in round " << round;
 
 	if (round != round_state_->current_round()) {
 		JLOG(journal_.error())
 			<< "Invalid round when processing local timeout."
 			<< "Mismatch round: round in local timeout must be equal current round,"
 			<< "but they wasn't. The round in local timeout is " << round
-			<< " and current round is " << round_state_->current_round()
-			<< ". The author is " << proposal_generator_->author();
+			<< " and current round is " << round_state_->current_round();
+			//<< ". The author is " << proposal_generator_->author();
 		return;
 	}
 	
@@ -193,7 +191,7 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 		return false;
 
     JLOG(journal_.info())
-        << "Check a proposal: " << proposal.block_data().round
+        << "Check a proposal: round: " << proposal.block_data().round
         << ", seq: " << proposal.block_data().getLedgerInfo().seq;
 
 	HashValue hqc = sync_info.HighestQuorumCert().certified_block().id;
@@ -308,9 +306,9 @@ int RoundManager::ProcessProposal(const Block& proposal) {
 
 	Author next_leader = proposer_election_->GetValidProposer(proposal_round + 1);
 	JLOG(journal_.info())
-		<< "The author " << proposal_generator_->author()
-		<< " send the vote whose round is " << proposal_round
-		<< " and author is " << proposal.block_data().author()
+		//<< "The author " << proposal_generator_->author()
+		<< "Send the vote whose round is " << proposal_round
+		//<< " and author is " << proposal.block_data().author()
 		<< " to next leader " << next_leader;
 	round_state_->recordVote(vote);
 	network_->sendVote(next_leader, vote, block_store_->sync_info());
@@ -398,8 +396,8 @@ int RoundManager::ProcessVote(const Vote& vote) {
 	if (vote.isTimeout() == false) {
 		if (IsValidProposer(vote) == false) {
 			JLOG(journal_.warn())
-				<< "The author " << proposal_generator_->author()
-				<< " received a vote, but i am not a valid proposer for this round "
+				//<< "The author " << proposal_generator_->author()
+				<< "Received a vote, but i am not a valid proposer for this round "
 				<< (round + 1) << ", ignore.";
 			return 1;
 		}
@@ -415,8 +413,8 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		timeoutCertResult);
 	if (ret == PendingVotes::VoteReceptionResult::NewQuorumCertificate) {
 		JLOG(journal_.info())
-			<< "The author " << proposal_generator_->author()
-			<< " collected enough votes for the round " << vote.vote_data().proposed().round
+			//<< "The author " << proposal_generator_->author()
+			<< "Collected enough votes for the round " << vote.vote_data().proposed().round
 			<< ". A new round " << (round_state_->current_round() + 1)
 			<< " will open.";
 		NewQCAggregated(quorumCertResult, vote.author());
@@ -434,8 +432,8 @@ int RoundManager::ProcessVote(const Vote& vote) {
     }
 	else {
 		JLOG(journal_.warn())
-			<< "The author " << proposal_generator_->author()
-			<< " inserted a vote failed, the round is " << round
+			//<< "The author " << proposal_generator_->author()
+			<< "Inserted a vote failed, the round is " << round
 			<< ", the author of vote is " << vote.author()
 			<< ", Is timeout vote ? " << vote.isTimeout()
 			<< ". Hash of ledger_info " << vote.ledger_info().consensus_data_hash
@@ -613,14 +611,14 @@ void RoundManager::UseNilBlockProcessLocalTimeout(const Round& round) {
 				return;
 			}
 			JLOG(journal_.info())
-				<< "The author " << proposal_generator_->author()
-				<< " generates a nil block whose round is " 
+				//<< "The author " << proposal_generator_->author()
+				<< "Generates a nil block whose round is "
 				<< nil_block.get().block_data().round
 				<< " in local timeout.";
 		}
 		else {
 			JLOG(journal_.error())
-				<< "Generate NilBlock whose round is " 
+				<< "Generate NilBlock whose round is "
 				<< nil_block.get().block_data().round 
 				<< " failed when processing localtimeout";
 			return;
@@ -635,8 +633,8 @@ void RoundManager::UseNilBlockProcessLocalTimeout(const Round& round) {
 	}
 
 	JLOG(journal_.info())
-		<< "The author " << proposal_generator_->author()
-		<< " broadcasted a timeout vote whose round is " 
+		//<< "The author " << proposal_generator_->author()
+		<< "Broadcasted a timeout vote whose round is "
 		<< timeout_vote.vote_data().proposed().round;
 	round_state_->recordVote(timeout_vote);
 	// broadcast vote
@@ -674,8 +672,8 @@ void RoundManager::NotUseNilBlockProcessLocalTimeout(const Round& round) {
 			"so we should pick up a next leader for generating a proposal (round "
 			<< round << ").";
 		JLOG(journal_.warn())
-			<< "We pick up a next leader is " << expect_next_author
-			<< ", self is " << proposal_generator_->author();
+			<< "We pick up a next leader is " << expect_next_author;
+			//<< ", self is " << proposal_generator_->author();
 
 		if (expect_next_author == proposal_generator_->author()) {
 			NewRoundEvent round_event;
@@ -704,7 +702,7 @@ bool RoundManager::IsValidProposer(const Vote& vote) {
 		<< "Is valid proposer for the vote? " << isValid
 		<< ". The Author of the vote is " << vote.author()
 		<< ", The round of the vote is " << vote.vote_data().proposed().round
-		<< ". The self is " << proposal_generator_->author()
+		//<< ". The self is " << proposal_generator_->author()
 		<< " and the next round is " << next_round;
 
 	return isValid;

@@ -346,12 +346,8 @@ PopConsensus::waitingForInit() const
 {
     // This code is for initialization,wait 60 seconds for loading ledger before
     // real start-mode.
-    if (previousLedger_.seq() == GENESIS_LEDGER_INDEX &&
-        timeSinceOpen() / 1000 < adaptor_.parms().initTIME.count())
-    {
-        return true;
-    }
-    return false;
+    return /*previousLedger_.seq() == GENESIS_LEDGER_INDEX &&*/
+        (timeSinceOpen() / 1000 < adaptor_.parms().initTIME.count());
 }
 
 void

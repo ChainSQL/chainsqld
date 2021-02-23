@@ -66,7 +66,7 @@ const bool VoteData::Verify() const {
 		return false;
 	if (parent().round >= proposed().round)
 		return false;
-	if (parent().timestamp_usecs > proposed().timestamp_usecs)
+	if (parent().timestamp_msecs > proposed().timestamp_msecs)
 		return false;
 	if (parent().version > proposed().version)
 		return false;
