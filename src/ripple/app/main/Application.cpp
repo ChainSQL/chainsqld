@@ -886,6 +886,8 @@ public:
         using namespace std::chrono_literals;
         waitHandlerCounter_.join("Application", 1s, m_journal);
 
+        logs_->resetCallBack();
+
         // foreach schema
         for (auto iter = m_schemaManager->begin();
              iter != m_schemaManager->end();
