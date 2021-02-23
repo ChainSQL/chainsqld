@@ -1158,7 +1158,7 @@ private:
 		if (std::get<0>(conditions) == 0) {
 			const std::string& c = std::get<1>(conditions);
 
-			// similar to this sql statement �� update table_01 set age=1,name=concat("a_",name);
+			// similar to this sql statement : update table_01 set age=1,name=concat("a_",name);
 			if (!update_command_fields.empty()) {
 				std::string extraComma = (update_fields.back() == ',' ? std::string("") : std::string(","));
 				update_fields += extraComma + update_command_fields;
@@ -1263,7 +1263,7 @@ private:
 					}
 			}
 			// fix an issue that we can't catch an exception on top-level,
-			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
+			// because destructor of one-temp-type driver to execute actual SQL-engine API.
 			// however destructor can catch an exception but can't throw an exception that was catched by destructor.
 			//if (db_conn_->getSession().last_error().first != 0) {
 			//	last_error(db_conn_->getSession().last_error());
@@ -3384,7 +3384,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 	//ripple::uint160 hex_tablename = tx.getFieldH160(sfNameInDB);
 	std::string tn = ripple::to_string(hex_tablename);
 	if (tn.empty()) {
-		ret = { -1, "Tablename is empty." };
+		ret = { -1, "Table name is empty." };
 		return ret;
 	}
 
