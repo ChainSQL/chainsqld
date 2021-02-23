@@ -346,6 +346,8 @@ public:
     void
     processFullLedgerTask(std::shared_ptr<Ledger const> const& l);
 
+    std::uint32_t
+    getLastConsensusTime();
 private:
     void
     setValidLedger(std::shared_ptr<Ledger const> const& l);

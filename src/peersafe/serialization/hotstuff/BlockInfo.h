@@ -40,7 +40,7 @@ void serialize(
 	ar & block_info.id;
 	ar & block_info.ledger_info;
 	ar & block_info.version;
-	ar & block_info.timestamp_usecs;
+	ar & block_info.timestamp_msecs;
 	ar & block_info.next_epoch_state;
 }
 

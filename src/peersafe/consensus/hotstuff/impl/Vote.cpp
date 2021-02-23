@@ -23,29 +23,38 @@ namespace ripple {
 namespace hotstuff {
 
 Vote::Vote()
-: vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
-, author_()
-, ledger_info_(LedgerInfoWithSignatures::LedgerInfo{BlockInfo(ZeroHash()), ZeroHash()})
-, signature_()
-, timeout_signature_() {
-
+    : vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
+    , author_()
+    , ledger_info_(LedgerInfoWithSignatures::LedgerInfo{BlockInfo(ZeroHash()),
+                                                        ZeroHash()})
+    , signature_()
+    , timestamp_msecs_(0)
+    , timeout_signature_()
+{
 }
 
-Vote::~Vote() {
-
+Vote::~Vote()
+{
 }
 
-Vote Vote::New(
-	const Author author,
-	const VoteData& vote_data,
-	const LedgerInfoWithSignatures::LedgerInfo& ledger_info,
-	const Signature& signature) {
-	Vote vote;
-	vote.vote_data_ = vote_data;
-	vote.author_ = author;
-	vote.ledger_info_ = ledger_info;
-	vote.signature_ = signature;
-	return vote;
+Vote
+Vote::New(
+    const Author author,
+    const VoteData& vote_data,
+    const LedgerInfoWithSignatures::LedgerInfo& ledger_info,
+    const Signature& signature)
+{
+    Vote vote;
+    vote.vote_data_ = vote_data;
+    vote.author_ = author;
+    vote.ledger_info_ = ledger_info;
+    vote.timestamp_msecs_ = static_cast<int64_t>(
+        std::chrono::time_point_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now())
+            .time_since_epoch()
+            .count());
+    vote.signature_ = signature;
+    return vote;
 }
 
 const bool Vote::isTimeout() const {

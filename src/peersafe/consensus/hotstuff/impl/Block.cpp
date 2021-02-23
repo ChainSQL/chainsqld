@@ -31,7 +31,7 @@ HashValue BlockData::hash(const BlockData& block_data) {
 	ripple::sha512_half_hasher h;
 	hash_append(h, block_data.epoch);
 	hash_append(h, block_data.round);
-	hash_append(h, block_data.timestamp_usecs);
+	hash_append(h, block_data.timestamp_msecs);
 	hash_append(h, block_data.block_type);
 
 	if (block_data.block_type == BlockData::Proposal
@@ -108,7 +108,7 @@ Block Block::new_genesis_block(
 	BlockData genesis_block_data;
 	genesis_block_data.epoch = genesis_block_info.epoch;
 	genesis_block_data.round = genesis_block_info.round;
-	genesis_block_data.timestamp_usecs = genesis_block_info.timestamp_usecs;
+	genesis_block_data.timestamp_msecs = genesis_block_info.timestamp_msecs;
 	genesis_block_data.quorum_cert = genesis_qc;
 	genesis_block_data.block_type = BlockData::Genesis;
 
@@ -127,7 +127,7 @@ BlockInfo Block::gen_block_info(
 	block_info.epoch = block_data_.epoch;
 	block_info.round = block_data_.round;
 	block_info.ledger_info = ledger_info;
-	block_info.timestamp_usecs = block_data_.timestamp_usecs;
+	block_info.timestamp_msecs = block_data_.timestamp_msecs;
 	block_info.next_epoch_state = next_epoch_state;
 
 	return block_info;

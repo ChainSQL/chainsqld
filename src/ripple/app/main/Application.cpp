@@ -886,6 +886,8 @@ public:
         using namespace std::chrono_literals;
         waitHandlerCounter_.join("Application", 1s, m_journal);
 
+        logs_->resetCallBack();
+
         // foreach schema
         for (auto iter = m_schemaManager->begin();
              iter != m_schemaManager->end();
@@ -994,6 +996,9 @@ public:
 bool
 ApplicationImp::setup()
 {
+    if (!config_->standalone())
+        timeKeeper_->run(config_->SNTP_SERVERS);
+
     auto schema_main = m_schemaManager->createSchemaMain(config_);
 
     logs_->setCallBack(
@@ -1097,9 +1102,6 @@ ApplicationImp::setup()
 
     if (!loadSubChains())
         return false;
-
-    if (!config_->standalone())
-        timeKeeper_->run(config_->SNTP_SERVERS);
 
     {
         try
