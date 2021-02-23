@@ -260,7 +260,7 @@ namespace ripple {
 		{
 			if (sleSchema->getAccountID(sfAccount) != ctx_.tx.getAccountID(sfAccount))
 			{
-				return tefBAD_SCHEMAADMIN;
+				return tefBAD_SCHEMAACCOUNT;
 			}
 			auto const ret = checkMulsignValid(sleSchema->getFieldArray(sfValidators), ctx_.tx.getFieldArray(sfSigners));
 			if (!isTesSuccess(ret))

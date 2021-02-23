@@ -218,6 +218,7 @@ transResults()
 		MAKE_ERROR(tefSCHEMA_NOPEER,   	       "There is no corresponding peer" ),
 		MAKE_ERROR(tefBAD_SCHEMAID,            "Schema id may be error, there is no corresponding schema." ),
 		MAKE_ERROR(tefBAD_SCHEMAADMIN, 	       "Incorrect schema admin." ),
+		MAKE_ERROR(tefBAD_SCHEMAACCOUNT,	   "Incorrect schema creater."),
 		MAKE_ERROR(tefSCHEMA_TX_FORBIDDEN,	   "SchemaCreate tx cannot occur in sub-chain."),
 		MAKE_ERROR(tefSCEMA_NO_PATH,		   "No schema_path configured."),
 		MAKE_ERROR(tefBAD_DUPLACATE_ITEM,	   "Duplicate items in PeerList or Validators."),
