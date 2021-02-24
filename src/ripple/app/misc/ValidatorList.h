@@ -30,11 +30,10 @@
 #include <ripple/protocol/Protocol.h>
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/range/adaptors.hpp>
-#include <peersafe/app/misc/ConfigSite.h>
+
 #include <mutex>
 #include <shared_mutex>
 #include <numeric>
-#include <peersafe/app/misc/ConfigSite.h>
 #include <shared_mutex>
 
 namespace ripple {
@@ -54,6 +53,27 @@ struct TrustChanges
     hash_set<NodeID> added;
     hash_set<NodeID> removed;
 };
+
+enum class ListDisposition {
+    /// List is valid
+    accepted = 0,
+
+    /// Same sequence as current list
+    same_sequence,
+
+    /// List version is not supported
+    unsupported_version,
+
+    /// List signed by untrusted publisher key
+    untrusted,
+
+    /// Trusted publisher key, but seq is too old
+    stale,
+
+    /// Invalid format or signature
+    invalid
+};
+
 
 std::string
 to_string(ListDisposition disposition);

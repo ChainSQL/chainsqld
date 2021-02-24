@@ -275,11 +275,14 @@ ValidatorList::applyListAndBroadcast(
 
         if (toSkip)
         {
+            uint256 schemaid = beast::zero;
+
             protocol::TMValidatorList msg;
             msg.set_manifest(manifest);
             msg.set_blob(blob);
             msg.set_signature(signature);
             msg.set_version(version);
+            msg.set_schemaid(schemaid.begin(),schemaid.size());
 
             auto const& publisherKey = *result.publisherKey;
             auto const sequence = *result.sequence;

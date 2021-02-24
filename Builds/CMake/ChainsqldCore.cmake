@@ -669,7 +669,6 @@ target_sources (chainsqld PRIVATE
   #]===============================]
   src/peersafe/app/misc/impl/CACertSite.cpp
   src/peersafe/app/misc/impl/CertList.cpp
-  src/peersafe/app/misc/impl/ConfigSite.cpp
   src/peersafe/app/misc/impl/ContractHelper.cpp
   src/peersafe/app/misc/impl/Executive.cpp
   src/peersafe/app/misc/impl/ExtVM.cpp

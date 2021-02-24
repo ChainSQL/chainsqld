@@ -292,23 +292,8 @@ public:
               config_->legacy("database_path"),
               SchemaImp::journal("ValidatorList"),
               config_->VALIDATION_QUORUM))
-
-        , validatorSites_(std::make_unique<ValidatorSite>(
-              *this,
-              *validatorManifests_,
-              dynamic_cast<BasicApp&>(app_).get_io_service(),
-              *validators_,
-              SchemaImp::journal("ValidatorSite")))
-
-        , caCertSites_(std::make_unique<CACertSite>(
-              *this,
-              *validatorManifests_,
-              *publisherManifests_,
-              app_.timeKeeper(),
-              dynamic_cast<BasicApp&>(app_).get_io_service(),
-              config_->ROOT_CERTIFICATES,
-              SchemaImp::journal("CACertSite")))
-
+        , validatorSites_(std::make_unique<ValidatorSite>(*this))
+        , caCertSites_(std::make_unique<CACertSite>(*this))
         , certList_(std::make_unique<CertList>(
               config_->ROOT_CERTIFICATES,
               SchemaImp::journal("CertList")))
@@ -1287,7 +1272,7 @@ SchemaImp::setup()
         validatorSites_->setWaitinBeginConsensus();
     }
 
-    if (!caCertSites_->load(
+     if (!caCertSites_->load(
             config().section(SECTION_CACERTS_LIST_KEYS).values(),
             config().section(SECTION_CACERTS_LIST_SITES).values()))
     {
