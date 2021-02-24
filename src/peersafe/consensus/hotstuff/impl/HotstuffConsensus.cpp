@@ -47,7 +47,7 @@ HotstuffConsensus::HotstuffConsensus(
 
     // TODO
     // HotstuffConsensusParms to hotstuff::Config
-    config.timeout = adaptor_.parms().consensusTIMEOUT.count();
+    config.timeout = std::ceil(adaptor_.parms().consensusTIMEOUT.count() / 1000.0);
 
     hotstuff_ = hotstuff::Hotstuff::Builder(adaptor_.getIOService(), j)
         .setConfig(config)
@@ -57,6 +57,7 @@ HotstuffConsensus::HotstuffConsensus(
         .setProposerElection(&adaptor_)
         .build();
 
+    // Unused now
     using beast::hash_append;
     ripple::sha512_half_hasher h;
     hash_append(h, std::string("EPOCHCHANGE"));
@@ -172,6 +173,8 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
     Json::Value ret(Json::objectValue);
 
+    ret["type"] = "hotstuff";
+
     ret["proposing"] = (mode_.get() == ConsensusMode::proposing);
 
     if (mode_.get() != ConsensusMode::wrongLedger)
@@ -187,8 +190,9 @@ Json::Value HotstuffConsensus::getJson(bool full) const
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
-    ret["time_out"] = static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count() * 1000);
     ret["initialized"] = !waitingForInit();
+
+    ret["parms"] = adaptor_.parms().getJson();
 
     if (full)
     {
@@ -688,11 +692,14 @@ void HotstuffConsensus::broadcast(const hotstuff::EpochChange& epochChange, cons
 // -------------------------------------------------------------------
 // Private member functions
 
-bool HotstuffConsensus::waitingForInit() const
+bool
+HotstuffConsensus::waitingForInit() const
 {
-    // This code is for initialization,wait 90 seconds for loading ledger before real start-mode.
-    return (previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&
-        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_).count() < adaptor_.parms().initTIME.count());
+    // This code is for initialization,wait 90 seconds for loading ledger before
+    // real start-mode.
+    return /*(previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&*/
+        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_)
+             .count() < adaptor_.parms().initTIME.count());
 }
 
 std::chrono::milliseconds HotstuffConsensus::timeSinceLastClose() const
@@ -725,7 +732,7 @@ void HotstuffConsensus::peerProposal(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED proposal";
+        JLOG(j_.info()) << "drop UNTRUSTED proposal";
         return;
     }
 
@@ -843,7 +850,7 @@ void HotstuffConsensus::peerVote(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED vote";
+        JLOG(j_.info()) << "drop UNTRUSTED vote";
         return;
     }
 
@@ -914,7 +921,7 @@ void HotstuffConsensus::peerBlockData(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED block data";
+        JLOG(j_.info()) << "drop UNTRUSTED block data";
         return;
     }
 
@@ -967,7 +974,7 @@ void HotstuffConsensus::peerEpochChange(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED vote";
+        JLOG(j_.info()) << "drop UNTRUSTED vote";
         return;
     }
 
@@ -1008,7 +1015,7 @@ void HotstuffConsensus::peerValidation(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED validattion";
+        JLOG(j_.info()) << "drop UNTRUSTED validattion";
         return;
     }
 

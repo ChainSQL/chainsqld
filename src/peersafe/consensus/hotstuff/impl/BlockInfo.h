@@ -44,7 +44,7 @@ public:
 	/// The version of the latest transaction after executing this block.
 	Version version;
 	/// The timestamp this block was proposed by a proposer.
-	int64_t timestamp_usecs;
+	int64_t timestamp_msecs;
 	/// An optional field containing the next epoch info
 	boost::optional<EpochState> next_epoch_state;
 
@@ -54,7 +54,7 @@ public:
 	, id(block_hash)
 	, ledger_info()
 	, version(0)
-	, timestamp_usecs(0)
+	, timestamp_msecs(0)
 	, next_epoch_state() {
 
 	}

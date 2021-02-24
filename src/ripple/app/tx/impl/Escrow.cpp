@@ -32,6 +32,7 @@
 #include <ripple/protocol/Indexes.h>
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/app/paths/RippleState.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/protocol/Quality.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/st.h>
@@ -108,8 +109,8 @@ EscrowCreate::preflight(PreflightContext const& ctx)
     if (!isTesSuccess(ret))
         return ret;
 
-    if (!isZXC(ctx.tx[sfAmount]))
-        return temBAD_AMOUNT;
+    //if (!isZXC(ctx.tx[sfAmount]))
+    //    return temBAD_AMOUNT;
 
     if (ctx.tx[sfAmount] <= beast::zero)
         return temBAD_AMOUNT;
@@ -162,28 +163,28 @@ EscrowCreate::preflight(PreflightContext const& ctx)
 TER
 EscrowCreate::doApply()
 {
-    auto const closeTime = ctx_.view().info().parentCloseTime;
+    //auto const closeTime = ctx_.view().info().parentCloseTime;
 
     // Prior to fix1571, the cancel and finish times could be greater
     // than or equal to the parent ledgers' close time.
     //
     // With fix1571, we require that they both be strictly greater
     // than the parent ledgers' close time.
-    if (ctx_.view().rules().enabled(fix1571))
-    {
-        if (ctx_.tx[~sfCancelAfter] && after(closeTime, ctx_.tx[sfCancelAfter]))
-            return tecNO_PERMISSION;
+    //if (ctx_.view().rules().enabled(fix1571))
+    //{
+    //    if (ctx_.tx[~sfCancelAfter] && after(closeTime, ctx_.tx[sfCancelAfter]))
+    //        return tecNO_PERMISSION;
 
-        if (ctx_.tx[~sfFinishAfter] && after(closeTime, ctx_.tx[sfFinishAfter]))
-            return tecNO_PERMISSION;
-    }
-    else
-    {
+    //    if (ctx_.tx[~sfFinishAfter] && after(closeTime, ctx_.tx[sfFinishAfter]))
+    //        return tecNO_PERMISSION;
+    //}
+    //else
+    //{
         if (ctx_.tx[~sfCancelAfter])
         {
             auto const cancelAfter = ctx_.tx[sfCancelAfter];
 
-            if (closeTime.time_since_epoch().count() >= cancelAfter)
+            if (ctx_.app.getLedgerMaster().getLastConsensusTime() >= cancelAfter)
                 return tecNO_PERMISSION;
         }
 
@@ -191,10 +192,10 @@ EscrowCreate::doApply()
         {
             auto const finishAfter = ctx_.tx[sfFinishAfter];
 
-            if (closeTime.time_since_epoch().count() >= finishAfter)
+            if (ctx_.app.getLedgerMaster().getLastConsensusTime() >= finishAfter)
                 return tecNO_PERMISSION;
         }
-    }
+    //}
 
     auto const account = ctx_.tx[sfAccount];
     auto const sle = ctx_.view().peek(keylet::account(account));
@@ -476,35 +477,36 @@ EscrowFinish::doApply()
 
 	bool isZxc = isZXC(amount);
 
-    // If a cancel time is present, a finish operation should only succeed prior
-    // to that time. fix1571 corrects a logic error in the check that would make
-    // a finish only succeed strictly after the cancel time.
-    if (ctx_.view ().rules().enabled(fix1571))
-    {
-        auto const now = ctx_.view().info().parentCloseTime;
+    //// If a cancel time is present, a finish operation should only succeed prior
+    //// to that time. fix1571 corrects a logic error in the check that would make
+    //// a finish only succeed strictly after the cancel time.
+    //if (ctx_.view ().rules().enabled(fix1571))
+    //{
+    //    auto const now = ctx_.view().info().parentCloseTime;
 
-        // Too soon: can't execute before the finish time
-        if ((*slep)[~sfFinishAfter] && ! after(now, (*slep)[sfFinishAfter]))
-            return tecNO_PERMISSION;
+    //    // Too soon: can't execute before the finish time
+    //    if ((*slep)[~sfFinishAfter] && ! after(now, (*slep)[sfFinishAfter]))
+    //        return tecNO_PERMISSION;
 
-        // Too late: can't execute after the cancel time
-        if ((*slep)[~sfCancelAfter] && after(now, (*slep)[sfCancelAfter]))
-            return tecNO_PERMISSION;
-    }
-    else
-    {
+    //    // Too late: can't execute after the cancel time
+    //    if ((*slep)[~sfCancelAfter] && after(now, (*slep)[sfCancelAfter]))
+    //        return tecNO_PERMISSION;
+    //}
+    //else
+    //{
+		uint32_t lastConsensusTime = ctx_.app.getLedgerMaster().getLastConsensusTime();
         // Too soon?
         if ((*slep)[~sfFinishAfter] &&
-            ctx_.view().info().parentCloseTime.time_since_epoch().count() <=
+			lastConsensusTime <=
             (*slep)[sfFinishAfter])
             return tecNO_PERMISSION;
 
         // Too late?
         if ((*slep)[~sfCancelAfter] &&
             (*slep)[sfCancelAfter] <=
-            ctx_.view().info().parentCloseTime.time_since_epoch().count())
+			lastConsensusTime)
             return tecNO_PERMISSION;
-    }
+    //}
 
     // Check cryptocondition fulfillment
     {
@@ -707,26 +709,26 @@ EscrowCancel::doApply()
     if (!slep)
         return tecNO_TARGET;
 
-    if (ctx_.view().rules().enabled(fix1571))
-    {
-        auto const now = ctx_.view().info().parentCloseTime;
+    //if (ctx_.view().rules().enabled(fix1571))
+    //{
+    //    auto const now = ctx_.view().info().parentCloseTime;
 
-        // No cancel time specified: can't execute at all.
-        if (!(*slep)[~sfCancelAfter])
-            return tecNO_PERMISSION;
+    //    // No cancel time specified: can't execute at all.
+    //    if (!(*slep)[~sfCancelAfter])
+    //        return tecNO_PERMISSION;
 
-        // Too soon: can't execute before the cancel time.
-        if (!after(now, (*slep)[sfCancelAfter]))
-            return tecNO_PERMISSION;
-    }
-    else
-    {
+    //    // Too soon: can't execute before the cancel time.
+    //    if (!after(now, (*slep)[sfCancelAfter]))
+    //        return tecNO_PERMISSION;
+    //}
+    //else
+    //{
         // Too soon?
         if (!(*slep)[~sfCancelAfter] ||
-            ctx_.view().info().parentCloseTime.time_since_epoch().count() <=
+			ctx_.app.getLedgerMaster().getLastConsensusTime() <=
                 (*slep)[sfCancelAfter])
             return tecNO_PERMISSION;
-    }
+    //}
 
     AccountID const account = (*slep)[sfAccount];
 	STAmount const& amount = (*slep)[sfAmount]; 

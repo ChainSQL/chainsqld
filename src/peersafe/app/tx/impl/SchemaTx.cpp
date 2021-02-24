@@ -18,7 +18,10 @@ namespace ripple {
 		for (auto val : vals)
 		{
 			// check the construct of the validators object
-			if (val.getCount() != 1 || !val.isFieldPresent(sfPublicKey) || val.getFieldVL(sfPublicKey).size() == 0)
+			if (val.getCount() != 1 || 
+				!val.isFieldPresent(sfPublicKey) || 
+				val.getFieldVL(sfPublicKey).size() == 0 ||
+				!publicKeyType(makeSlice(val.getFieldVL(sfPublicKey))))
 			{
 				return temBAD_VALIDATOR;
 			}
@@ -257,7 +260,7 @@ namespace ripple {
 		{
 			if (sleSchema->getAccountID(sfAccount) != ctx_.tx.getAccountID(sfAccount))
 			{
-				return tefBAD_SCHEMAADMIN;
+				return tefBAD_SCHEMAACCOUNT;
 			}
 			auto const ret = checkMulsignValid(sleSchema->getFieldArray(sfValidators), ctx_.tx.getFieldArray(sfSigners));
 			if (!isTesSuccess(ret))

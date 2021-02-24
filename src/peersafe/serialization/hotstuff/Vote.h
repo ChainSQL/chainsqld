@@ -41,6 +41,7 @@ void save(
 	const Signature& sign = vote.signature();
 	std::string s((const char*)sign.data(), sign.size());
 	ar & s;
+    ar & vote.timestamp_msecs();
 	ar & vote.timeout_signature();
 }
 
@@ -58,6 +59,7 @@ void load(
 	ar & s;
 	Signature sign(s.data(), s.size());
 	vote.signature() = sign;
+    ar & vote.timestamp_msecs();
 	ar & vote.timeout_signature();
 }
 RIPPE_SERIALIZATION_SPLIT_FREE(ripple::hotstuff::Vote);

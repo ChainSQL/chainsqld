@@ -724,7 +724,7 @@ PeerImp::getSchemaInfo(std::string prefix, std::string const& schemaIdBuffer)
     std::lock_guard sl(schemaInfoMutex_);
     if (schemaInfo_.find(schemaId) == schemaInfo_.end())
     {
-        JLOG(p_journal_.warn()) << prefix << "Don't have schemaInfo for "
+        JLOG(p_journal_.info()) << prefix << "Don't have schemaInfo for "
                                 << to_string(schemaId) << " in schemaInfo_";
         return std::make_tuple(false, schemaId, nullptr);
     }

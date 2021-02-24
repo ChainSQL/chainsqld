@@ -1281,6 +1281,12 @@ LedgerMaster::isConfidential(const STTx& tx)
     }
 }
 
+std::uint32_t
+LedgerMaster::getLastConsensusTime()
+{
+	return mLastConsensusTime.load();
+}
+
 void
 LedgerMaster::processFullLedgerTask(std::shared_ptr<Ledger const> const& ledger)
 {

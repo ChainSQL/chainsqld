@@ -48,37 +48,49 @@ HotstuffAdaptor::HotstuffAdaptor(
           journal,
           localTxs)
 {
-    if (app_.config().exists(SECTION_HCONSENSUS))
+    if (app_.config().exists(SECTION_CONSENSUS))
     {
-        parms_.minBLOCK_TIME = app.config().loadConfig(
-            SECTION_HCONSENSUS, "min_block_time", parms_.minBLOCK_TIME);
-        parms_.maxBLOCK_TIME = app.config().loadConfig(
-            SECTION_HCONSENSUS, "max_block_time", parms_.maxBLOCK_TIME);
+        parms_.minBLOCK_TIME = std::max(
+            parms_.minBLOCK_TIME,
+            app.config().loadConfig(
+                SECTION_CONSENSUS, "min_block_time", parms_.minBLOCK_TIME));
+        parms_.maxBLOCK_TIME = std::max(
+            parms_.maxBLOCK_TIME,
+            app.config().loadConfig(
+                SECTION_CONSENSUS, "max_block_time", parms_.maxBLOCK_TIME));
         parms_.maxBLOCK_TIME =
             std::max(parms_.minBLOCK_TIME, parms_.maxBLOCK_TIME);
 
         parms_.maxTXS_IN_LEDGER = std::min(
             app.config().loadConfig(
-                SECTION_HCONSENSUS,
+                SECTION_CONSENSUS,
                 "max_txs_per_ledger",
                 parms_.maxTXS_IN_LEDGER),
             consensusParms.txPOOL_CAPACITY);
 
-        parms_.omitEMPTY = app.config().loadConfig(
-            SECTION_HCONSENSUS, "omit_empty_block", parms_.omitEMPTY);
-
-        // default: 6s
-        // min: 6s
-        parms_.consensusTIMEOUT = std::chrono::seconds{std::max(
-            (int)parms_.consensusTIMEOUT.count(),
-            app.config().loadConfig(SECTION_HCONSENSUS, "time_out", 0))};
+        // default: 5000ms
+        // min: 2 * maxBLOCK_TIME + 3000
+        parms_.consensusTIMEOUT = std::chrono::milliseconds{std::max(
+            parms_.consensusTIMEOUT.count(),
+            app.config().loadConfig(
+                SECTION_CONSENSUS,
+                "time_out",
+                parms_.consensusTIMEOUT.count()))};
+        if (parms_.consensusTIMEOUT.count() < 2 * parms_.maxBLOCK_TIME + 3000)
+        {
+            parms_.consensusTIMEOUT =
+                std::chrono::milliseconds{2 * parms_.maxBLOCK_TIME + 3000};
+        }
 
         // default: 90s
         // min : 2 * consensusTIMEOUT
         parms_.initTIME = std::chrono::seconds{std::max(
-            parms_.consensusTIMEOUT.count() * 2,
+            std::chrono::duration_cast<std::chrono::seconds>(parms_.consensusTIMEOUT).count() * 2,
             app.config().loadConfig(
-                SECTION_HCONSENSUS, "init_time", parms_.initTIME.count()))};
+                SECTION_CONSENSUS, "init_time", parms_.initTIME.count()))};
+
+        parms_.omitEMPTY = app.config().loadConfig(
+            SECTION_CONSENSUS, "omit_empty_block", parms_.omitEMPTY);
     }
 }
 
@@ -96,7 +108,7 @@ HotstuffAdaptor::onExtractTransactions(
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    // notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
+    notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
 
     // Tell the ledger master not to acquire the ledger we're probably building
     ledgerMaster_.setBuildingLedger(prevLedger.seq() + 1);

@@ -68,12 +68,12 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 		blockData.epoch = hqc->certified_block().epoch;
 		blockData.quorum_cert = hqc.get();
 		auto now = std::chrono::steady_clock::now();
-		auto now_ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(now);
-		auto value = now_ns.time_since_epoch();
-		blockData.timestamp_usecs = static_cast<int64_t>(value.count());
+		auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
+		auto value = now_ms.time_since_epoch();
+		blockData.timestamp_msecs = static_cast<int64_t>(value.count());
 		if (hqc->certified_block().hasReconfiguration()) {
 			payload.cmd = ZeroHash();
-			blockData.timestamp_usecs = hqc->certified_block().timestamp_usecs;
+			blockData.timestamp_msecs = hqc->certified_block().timestamp_msecs;
 		}
 		else {
 			// extrats txs

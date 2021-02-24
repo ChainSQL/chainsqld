@@ -609,8 +609,10 @@ Ledger::setup(Config const& config)
             if (sle->getFieldIndex (sfReserveIncrement) != -1)
                 fees_.increment = sle->getFieldU32 (sfReserveIncrement);
 
-			if (sle->getFieldIndex(sfDropsPerByte) != -1)
-				fees_.drops_per_byte = sle->getFieldU64(sfDropsPerByte);
+            if (sle->isFieldPresent(sfDropsPerByte))
+            {
+                fees_.drops_per_byte = sle->getFieldU64(sfDropsPerByte);
+            }
         }
     }
     catch (SHAMapMissingNode const&)

@@ -48,6 +48,7 @@ private:
     NetClock::time_point now_;
     NetClock::time_point closeTime_;
     NetClock::time_point openTime_;
+	boost::optional< NetClock::time_point> startTime_;
     std::chrono::steady_clock::time_point proposalTime_;
     uint64_t openTimeMilli_;
     uint64_t consensusTime_;

@@ -84,13 +84,13 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
     // Check we are on the proper ledger (this may change phase_)
     checkLedger();
 
+    now_ = now;
+
     if (waitingForInit())
     {
         consensusTime_ = utcTime();
         return;
     }
-
-    now_ = now;
 
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
@@ -252,6 +252,8 @@ PopConsensus::getJson(bool full) const
 
     Json::Value ret(Json::objectValue);
 
+    ret["type"] = "pop";
+
     ret["proposing"] = (mode_.get() == ConsensusMode::proposing);
     ret["proposers"] = static_cast<Int>(txSetVoted_.size());
 
@@ -275,9 +277,9 @@ PopConsensus::getJson(bool full) const
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
-    ret["time_out"] =
-        static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count());
     ret["initialized"] = !waitingForInit();
+
+    ret["parms"] = adaptor_.parms().getJson();
 
     if (full)
     {
@@ -344,12 +346,14 @@ PopConsensus::waitingForInit() const
 {
     // This code is for initialization,wait 60 seconds for loading ledger before
     // real start-mode.
-    if (previousLedger_.seq() == GENESIS_LEDGER_INDEX &&
-        timeSinceOpen() / 1000 < adaptor_.parms().initTIME.count())
+    if (!startTime_)
     {
         return true;
     }
-    return false;
+
+    return /*previousLedger_.seq() == GENESIS_LEDGER_INDEX &&*/
+        (std::chrono::duration_cast<std::chrono::seconds>(now_ - *startTime_)
+             .count() < adaptor_.parms().initTIME.count());
 }
 
 void
@@ -382,6 +386,8 @@ PopConsensus::startRoundInternal(
     // reset view to 0 after a new close ledger.
     view_ = 0;
     toView_ = 0;
+	if (!startTime_)
+		startTime_ = now;
 
     closeResolution_ = getNextLedgerTimeResolution(
         previousLedger_.closeTimeResolution(),
@@ -769,7 +775,7 @@ PopConsensus::peerProposal(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED proposal";
+        JLOG(j_.info()) << "drop UNTRUSTED proposal";
         return false;
     }
 
@@ -1021,7 +1027,7 @@ PopConsensus::peerViewChange(
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED ViewChange";
+        JLOG(j_.info()) << "drop UNTRUSTED ViewChange";
         return false;
     }
 

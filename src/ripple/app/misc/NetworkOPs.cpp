@@ -3234,12 +3234,16 @@ NetworkOPsImp::getServerStatus()
     auto const& consensusInfo = getConsensusInfo(false);
 
     // Time out in milliseconds
-    auto const& timeOut = consensusInfo.get(
-        "time_out", std::numeric_limits<Json::Value::Int>::max());
+    auto timeout = std::chrono::milliseconds(std::numeric_limits<
+                  Json::Value::Int>::max());
+    if (consensusInfo.isMember("parms") &&
+        consensusInfo["parms"].isMember("time_out"))
+    {
+        timeout = std::chrono::milliseconds(
+            consensusInfo["parms"]["time_out"].asInt());
+    }
 
-    bool consensusValid =
-        m_ledgerMaster.getValidatedLedgerAge().count() * 1000 <
-        2 * timeOut.asInt();
+    bool consensusValid = m_ledgerMaster.getValidatedLedgerAge() < timeout;
     auto mode = mConsensus.mode();
 
     if (consensusValid &&

@@ -316,6 +316,8 @@ RpcaConsensus::getJson(bool full) const
 
     Json::Value ret(Json::objectValue);
 
+    ret["type"] = "rpca";
+
     ret["proposing"] = (mode_.get() == ConsensusMode::proposing);
     ret["proposers"] = static_cast<int>(currPeerPositions_.size());
 

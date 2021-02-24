@@ -50,7 +50,7 @@ void serialize(
 	// note, version is always the latest when saving
 	ar & block_data.epoch;
 	ar & block_data.round;
-	ar & block_data.timestamp_usecs;
+	ar & block_data.timestamp_msecs;
 	ar & block_data.quorum_cert;
 	ar & block_data.block_type;
 	ar & block_data.payload;

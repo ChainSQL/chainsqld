@@ -151,7 +151,7 @@ FeeVoteImpl::doValidation(Fees const& lastFees, STValidation& v)
 	{
 		JLOG(journal_.info()) <<
 			"Voting for per zxc size " << target_.drops_per_byte;
-		v.setFieldU32(sfDropsPerByte,target_.drops_per_byte);
+		v.setFieldU64(sfDropsPerByte, target_.drops_per_byte);
 	}
 }
 

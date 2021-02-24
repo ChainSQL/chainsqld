@@ -64,6 +64,18 @@ public:
 		return signature_;
 	}
 
+    int64_t&
+    timestamp_msecs()
+    {
+        return timestamp_msecs_;
+    }
+
+    const int64_t&
+    timestamp_msecs() const
+    {
+        return timestamp_msecs_;
+    }
+
 	void addTimeoutSignature(const Signature& signature) {
 		timeout_signature_ = boost::optional<Signature>(signature);
 	}
@@ -86,7 +98,7 @@ public:
 
 	const bool isTimeout() const;
 	Timeout timeout() const;
-	Timeout timeout(const Round& offset);
+	//Timeout timeout(const Round& offset);
 private:
 	/// The data of the vote
 	VoteData vote_data_;
@@ -96,6 +108,8 @@ private:
 	LedgerInfoWithSignatures::LedgerInfo ledger_info_;
 	/// Signature of the LedgerInfo
 	Signature signature_;
+    /// The timestamp this vote was created. For compute unique ID
+    int64_t timestamp_msecs_;
 	/// The round signatures can be aggregated into a timeout certificate if present.
 	boost::optional<Signature> timeout_signature_;
 };

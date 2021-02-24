@@ -132,7 +132,8 @@ private:
 	mutable int	bind_values_index_; // binding same fields may be failure in sqlite
 	Json::Value expression_;
 	std::vector<conditionTree> children_;
-	mutable std::vector<std::vector<BindValue>> bind_values_;
+    mutable std::vector<std::vector<BindValue>> bind_values_;
+    soci::indicator indi_null_;
 };
 
 namespace conditionParse {
