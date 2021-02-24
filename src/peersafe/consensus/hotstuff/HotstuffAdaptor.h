@@ -81,11 +81,8 @@ public:
         return app_.getIOService();
     }
 
-    inline void
-    updateConsensusTime()
-    {
-        return ledgerMaster_.updateConsensusTime();
-    }
+    void
+    onConsensusReached(bool bWaitingInit, Ledger_t previousLedger) override final;
 
     // Overwrite ProposerElection interfaces.
     Author

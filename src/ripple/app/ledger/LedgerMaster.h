@@ -205,7 +205,7 @@ public:
     void
     setLedgerRangePresent(std::uint32_t minV, std::uint32_t maxV);
     void
-    onViewChanged(
+    onConsensusReached(
         bool bWaitingInit,
         std::shared_ptr<Ledger const> previousLedger);
 
