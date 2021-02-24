@@ -87,21 +87,25 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 		//<< ". self is " << epoch_state_->verifier->Self();
 
 	const Block& proposed_block = executed_block.block;
-	if (VerifyEpoch(proposed_block.block_data().epoch) == false) {
-		JLOG(journal_.error())
-			<< "Construct And Signed vote:"
-			<< "miss epoch. "
-			<< "Self is " << epoch_state_->verifier->Self();
-		return false;
-	}
+    if (VerifyEpoch(proposed_block.block_data().epoch) == false)
+    {
+        JLOG(journal_.error())
+            << "Construct And Signed vote:"
+            << "miss epoch. "
+            << "Self is "
+            << toBase58(TokenType::NodePublic, epoch_state_->verifier->Self());
+        return false;
+    }
 
-	if (VerifyQC(proposed_block.block_data().quorum_cert) == false) {
-		JLOG(journal_.error())
-			<< "Construct And Signed vote:"
-			<< "invalid quorum certificate. "
-			<< "Self is " << epoch_state_->verifier->Self();
-		return false;
-	}
+    if (VerifyQC(proposed_block.block_data().quorum_cert) == false)
+    {
+        JLOG(journal_.error())
+            << "Construct And Signed vote:"
+            << "invalid quorum certificate. "
+            << "Self is "
+            << toBase58(TokenType::NodePublic, epoch_state_->verifier->Self());
+        return false;
+    }
 
 	if (VerifyAndUpdatePreferredRound(proposed_block.block_data().quorum_cert) == false)
 		return false;
