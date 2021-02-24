@@ -405,9 +405,6 @@ PopConsensus::startRoundInternal(
 void
 PopConsensus::checkLedger()
 {
-    if (previousLedger_.seq() == GENESIS_LEDGER_INDEX)
-        return;
-
     auto netLgr =
         adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
 
