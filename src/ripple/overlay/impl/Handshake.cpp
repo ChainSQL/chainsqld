@@ -242,7 +242,8 @@ verifyHandshake(
 
             if (pk)
             {
-                if (publicKeyType(*pk) != KeyType::secp256k1)
+                // if (publicKeyType(*pk) != KeyType::secp256k1)
+                if (publicKeyType(*pk) != CommonKey::algTypeGlobal)
                     throw std::runtime_error("Unsupported public key type");
 
                 return *pk;
@@ -317,7 +318,7 @@ verifyHandshake(
 
             if (pk)
             {
-                if (publicKeyType(*pk) != KeyType::secp256k1)
+                if (publicKeyType(*pk) != CommonKey::algTypeGlobal)
                     throw std::runtime_error("Unsupported public key type");
 
                 return *pk;
