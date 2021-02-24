@@ -1211,13 +1211,14 @@ void TableSyncItem::OperateSQLThread()
         return;
     }
 
-    std::vector<protocol::TMTableData> vec_tmdata;
-    std::list <sqldata_type> list_tmdata;
-    while(GetWholeDataSize() >0 && GetSyncState() != SYNC_STOP)
+    while (GetWholeDataSize() > 0 && GetSyncState() != SYNC_STOP)
     {
+        std::vector<protocol::TMTableData> vec_tmdata;
         {
             std::lock_guard lock(mutexWholeData_);
-            for (std::list<sqldata_type>::iterator iter = aWholeData_.begin(); iter != aWholeData_.end(); ++iter)
+            for (std::list<sqldata_type>::iterator iter = aWholeData_.begin();
+                 iter != aWholeData_.end();
+                 ++iter)
             {
                 vec_tmdata.push_back((*iter).second);
             }
