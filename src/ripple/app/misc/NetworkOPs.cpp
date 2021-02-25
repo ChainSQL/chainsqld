@@ -3664,9 +3664,14 @@ NetworkOPsImp::checkSchemaTx(
                 bOperatingSelf = true;
         }
 
-        if (!bOperatingSelf && !app_.app().hasSchema(schemaID))
+        if (!app_.app().hasSchema(schemaID))
         {
-            return;
+            if (stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::del ||
+                (stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::add &&
+                 !bOperatingSelf))
+            {
+                return;
+            }
         }
 
         std::vector<std::string> vecPeers;
