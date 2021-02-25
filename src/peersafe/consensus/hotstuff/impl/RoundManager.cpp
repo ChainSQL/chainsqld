@@ -48,8 +48,10 @@ RoundManager::~RoundManager() {
 }
 
 int RoundManager::start() {
-	JLOG(journal_.info())
-		<< "start/restared. Self is " << proposal_generator_->author();
+    JLOG(journal_.info()) << "start/restared. Self is "
+                          << toBase58(
+                                 TokenType::NodePublic,
+                                 proposal_generator_->author());
 
 	stop_ = false;
 	//assert(stop_ == false);
@@ -74,7 +76,8 @@ void RoundManager::stop() {
 	}
 
 	JLOG(journal_.info())
-		<< "stopped. Self is " << proposal_generator_->author();
+            << "stopped. Self is "
+            << toBase58(TokenType::NodePublic, proposal_generator_->author());
 }
 
 int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
@@ -230,14 +233,15 @@ bool RoundManager::CheckProposal(const Block& proposal, const SyncInfo& sync_inf
 
 bool RoundManager::preCheck(const Round round, const SyncInfo& sync_info) {
 	Round current_round = round_state_->current_round();
-	if (round < current_round) {
-		JLOG(journal_.error())
-			<< "preCheck: Invalid round."
-			<< "Round is " << round
-			<< " and local round is " << current_round
-			<< ". Self is " << proposal_generator_->author();
-		return false;
-	}
+    if (round < current_round)
+    {
+        JLOG(journal_.error())
+            << "preCheck: Invalid round."
+            << "Round is " << round << " and local round is " << current_round
+            << ". Self is "
+            << toBase58(TokenType::NodePublic, proposal_generator_->author());
+        return false;
+    }
 
 	SyncInfo local_sync_info = block_store_->sync_info();
 	if (sync_info.hasNewerCertificate(local_sync_info)) {
@@ -309,7 +313,7 @@ int RoundManager::ProcessProposal(const Block& proposal) {
 		//<< "The author " << proposal_generator_->author()
 		<< "Send the vote whose round is " << proposal_round
 		//<< " and author is " << proposal.block_data().author()
-		<< " to next leader " << next_leader;
+		<< " to next leader " << toBase58(TokenType::NodePublic, next_leader);
 	round_state_->recordVote(vote);
 	network_->sendVote(next_leader, vote, block_store_->sync_info());
 
@@ -434,7 +438,8 @@ int RoundManager::ProcessVote(const Vote& vote) {
 		JLOG(journal_.warn())
 			//<< "The author " << proposal_generator_->author()
 			<< "Inserted a vote failed, the round is " << round
-			<< ", the author of vote is " << vote.author()
+			<< ", the author of vote is "
+            << toBase58(TokenType::NodePublic, vote.author())
 			<< ", Is timeout vote ? " << vote.isTimeout()
 			<< ". Hash of ledger_info " << vote.ledger_info().consensus_data_hash
 			<< ". Insert result is " << ret;
@@ -499,13 +504,15 @@ bool RoundManager::CheckEpochChange(
 /// * then verify the voting rules
 bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
 	ExecutedBlock executed_block = block_store_->executeAndAddBlock(proposal);
-	if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false) {
-		JLOG(journal_.error())
-			<< "Construct and sign vote failed."
-			<< "The round for vote is " << proposal.block_data().round
-			<< ". Self is " << proposal_generator_->author();
-		return false;
-	}
+    if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false)
+    {
+        JLOG(journal_.error())
+            << "Construct and sign vote failed."
+            << "The round for vote is " << proposal.block_data().round
+            << ". Self is "
+            << toBase58(TokenType::NodePublic, proposal_generator_->author());
+        return false;
+    }
 	return true;
 }
 
@@ -514,14 +521,15 @@ bool RoundManager::EnsureRoundAndSyncUp(
 		const SyncInfo& sync_info,
 		const Author& author) {
 	Round current_round = round_state_->current_round();
-	if (round < current_round) {
-		JLOG(journal_.error())
-			<< "EnsureRoundAndSyncUp: Invalid round."
-			<< "Round is " << round
-			<< " and local round is " << current_round
-			<< ". Self is " << proposal_generator_->author();
-		return false;
-	}
+    if (round < current_round)
+    {
+        JLOG(journal_.error())
+            << "EnsureRoundAndSyncUp: Invalid round."
+            << "Round is " << round << " and local round is " << current_round
+            << ". Self is "
+            << toBase58(TokenType::NodePublic, proposal_generator_->author());
+        return false;
+    }
 
 	if (SyncUp(sync_info, author) != 0)
 		return false;
@@ -744,7 +752,7 @@ void RoundManager::AddVoteToCache(const Vote& vote) {
 	JLOG(journal_.warn())
 		<< "Received a vote but it's proposal hasn't been received now, cache it."
 		<< "Vote round is " << vote.vote_data().proposed().round
-		<< " and author is " << vote.author();
+		<< " and author is " << toBase58(TokenType::NodePublic, vote.author());
 	round_state_->cacheVote(vote);
 }
 

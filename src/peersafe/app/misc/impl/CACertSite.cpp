@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
 This file is part of chainsqld: https://github.com/chainsql/chainsqld
-Copyright (c) 2016-2019 Peersafe Technology Co., Ltd.
+Copyright (c) 2016-2021 Peersafe Technology Co., Ltd.
 
 chainsqld is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,27 +18,24 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
 #include <peersafe/app/misc/CACertSite.h>
+#include <peersafe/app/misc/CertList.h>
+#include <ripple/app/misc/ValidatorList.h>
 #include <ripple/basics/Slice.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/basics/base64.h>
-
+#include <boost/algorithm/clamp.hpp>
 
 namespace ripple {
 
 	CACertSite::CACertSite(
-		Schema& app,
-		ManifestCache& validatorManifests,
-		ManifestCache& publisherManifests,
-		TimeKeeper& timeKeeper,
-		boost::asio::io_service& ios,
-		std::vector<std::string>& rootCerts,
-		beast::Journal j)
-		: ConfigSite(app,ios, validatorManifests, j)
-		, publisherManifests_(publisherManifests)
-		, timeKeeper_(timeKeeper)
-		, rootCerts_(rootCerts)
+		Schema& app)
+        : ValidatorSite(app)
+        , timeKeeper_(app.timeKeeper())
+        , publisherManifests_(app.publisherManifests())
+        , certList_(app.certList())
+
 	{
 	}
 
@@ -49,46 +46,142 @@ namespace ripple {
 	}
 
 
-	Json::Value CACertSite::getJson() const
-	{
-		Json::Value jrr(Json::objectValue);
+    void CACertSite::parseJsonResponse(std::string const& res,std::size_t siteIdx,std::lock_guard<std::mutex>& lock)
+    {
 
-		return jrr;
-	}
+        Json::Reader r;
+        Json::Value body;
+        if (!r.parse(res.data(), body))
+        {
+            JLOG(j_.warn()) << "Unable to parse JSON response from  "
+                            << sites_[siteIdx].activeResource->uri;
+            throw std::runtime_error{"bad json"};
+        }
 
-	ripple::ListDisposition CACertSite::applyList(std::string const& manifest, std::string const& blob, std::string const& signature,
-		std::uint32_t version, std::string siteUri)
-	{
-		if (version != requiredListVersion)
-			return ListDisposition::unsupported_version;
+        if (!body.isObject() || !body.isMember("blob") ||
+            !body["blob"].isString() || !body.isMember("manifest") ||
+            !body["manifest"].isString() || !body.isMember("signature") ||
+            !body["signature"].isString() || !body.isMember("version") ||
+            !body["version"].isInt())
+        {
+            JLOG(j_.warn()) << "Missing fields in JSON response from  "
+                            << sites_[siteIdx].activeResource->uri;
+            throw std::runtime_error{"missing fields"};
+        }
 
-		boost::unique_lock<boost::shared_mutex> lock{ mutex_ };
+        auto const manifest = body["manifest"].asString();
+        auto const blob = body["blob"].asString();
+        auto const signature = body["signature"].asString();
+        auto const version = body["version"].asUInt();
+        auto const& uri = sites_[siteIdx].activeResource->uri;
 
-		Json::Value list;
-		PublicKey pubKey;
-		auto const result = verify(list, pubKey, manifest, blob, signature);
-		if (result != ListDisposition::accepted)
-			return result;
+        Json::Value list;
+        PublicKey pubKey;
+        auto const disp = verify(list, pubKey, manifest, blob, signature);
 
-		// update CA root certs
-		Json::Value const& newList = list["certs"];
+        sites_[siteIdx].lastRefreshStatus.emplace(
+            Site::Status{clock_type::now(), disp, ""});
 
-		rootCerts_.clear();
+        switch (disp)
+        {
+            case ListDisposition::accepted:
+            {
+                JLOG(j_.debug()) << "Applied new cert list from " << uri;
+                // update CA root certs
+                Json::Value const& newList = list["certs"];
 
-		for (auto const& val : newList)
-		{
-			if (val.isObject() &&
-				val.isMember("cert") &&
-				val["cert"].isString())
-			{
-				rootCerts_.push_back(val["cert"].asString());
-			}
-		}
+                std::vector<std::string>    root_cert_list; // root cert list
+                for (auto const& val : newList)
+                {
+                    if (val.isObject() && val.isMember("cert") &&
+                        val["cert"].isString())
+                    {
+                        root_cert_list.push_back(val["cert"].asString());
+                    }
+                }
 
-		return ListDisposition::accepted;
+                certList_.setCertList(root_cert_list);
+            }
+            break;
+            case ListDisposition::same_sequence:
+                JLOG(j_.debug())
+                    << "Validator list with current sequence from " << uri;
+                break;
+            case ListDisposition::stale:
+                JLOG(j_.warn()) << "Stale validator list from " << uri;
+                break;
+            case ListDisposition::untrusted:
+                JLOG(j_.warn()) << "Untrusted validator list from " << uri;
+                break;
+            case ListDisposition::invalid:
+                JLOG(j_.warn()) << "Invalid validator list from " << uri;
+                break;
+            case ListDisposition::unsupported_version:
+                JLOG(j_.warn())
+                    << "Unsupported version validator list from " << uri;
+                break;
+            default:
+                BOOST_ASSERT(false);
+        }
 
-	}
+        if (body.isMember("refresh_interval") &&
+            body["refresh_interval"].isNumeric())
+        {
+            using namespace std::chrono_literals;
+            std::chrono::minutes const refresh = boost::algorithm::clamp(
+                std::chrono::minutes{body["refresh_interval"].asUInt()},
+                1min,
+                24h);
+            sites_[siteIdx].refreshInterval = refresh;
+            sites_[siteIdx].nextRefresh =
+                clock_type::now() + sites_[siteIdx].refreshInterval;
+        }
 
+    }
+
+bool
+    CACertSite::load(
+        std::vector<std::string> const& publisherKeys,
+        std::vector<std::string> const& siteURIs)
+    {
+
+   // JLOG(j_.debug()) << "Loading configured validator list sites";
+
+        std::lock_guard<std::mutex> lock{publisher_mutex_};
+
+        JLOG(j_.debug())
+            << "Loading configured trusted validator list publisher keys";
+
+        std::size_t count = 0;
+        for (auto key : publisherKeys)
+        {
+            JLOG(j_.trace()) << "Processing '" << key << "'";
+
+            auto const ret = strUnHex(key);
+
+            if (!ret || !ret->size())
+            {
+                JLOG(j_.error())
+                    << "Invalid validator list publisher key: " << key;
+                return false;
+            }
+
+            auto id = PublicKey(Slice{ret->data(), ret->size()});
+            if (publisherLists_.count(id))
+            {
+                JLOG(j_.warn())
+                    << "Duplicate validator list publisher key: " << key;
+                continue;
+            }
+
+            publisherLists_[id].available = false;
+            ++count;
+        }
+
+        JLOG(j_.debug()) << "Loaded " << count << " keys";
+
+        return ValidatorSite::load(siteURIs);
+    }
 
 	bool CACertSite::removePublisherList(PublicKey const& publisherKey)
 	{
@@ -100,25 +193,13 @@ namespace ripple {
 			"Removing validator list for revoked publisher " <<
 			toBase58(TokenType::NodePublic, publisherKey);
 
-		//for (auto const& val : iList->second.list)
-		//{
-		//	auto const& iVal = keyListings_.find(val);
-		//	if (iVal == keyListings_.end())
-		//		continue;
-
-		//	if (iVal->second <= 1)
-		//		keyListings_.erase(iVal);
-		//	else
-		//		--iVal->second;
-		//}
-
 		//iList->second.list.clear();
 		iList->second.available = false;
 
 		return true;
 	}
 
-	ripple::ListDisposition CACertSite::verify(Json::Value& list, PublicKey& pubKey, std::string const& manifest, std::string const& blob, std::string const& signature)
+    ripple::ListDisposition CACertSite::verify(Json::Value& list, PublicKey& pubKey, std::string const& manifest, std::string const& blob, std::string const& signature)
 	{
 		auto m = deserializeManifest(base64_decode(manifest));
 

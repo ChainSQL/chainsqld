@@ -235,6 +235,11 @@ Change::applyFee()
     feeObject->setFieldU32(sfReserveBase, ctx_.tx.getFieldU32(sfReserveBase));
     feeObject->setFieldU32(
         sfReserveIncrement, ctx_.tx.getFieldU32(sfReserveIncrement));
+    if (ctx_.tx.isFieldPresent(sfDropsPerByte))
+    {
+        feeObject->setFieldU64(
+            sfDropsPerByte, ctx_.tx.getFieldU64(sfDropsPerByte));
+    }
 
     view().update(feeObject);
 

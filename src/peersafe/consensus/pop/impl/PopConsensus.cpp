@@ -346,6 +346,11 @@ PopConsensus::waitingForInit() const
 {
     // This code is for initialization,wait 60 seconds for loading ledger before
     // real start-mode.
+    if (!startTime_)
+    {
+        return true;
+    }
+
     return /*previousLedger_.seq() == GENESIS_LEDGER_INDEX &&*/
         (std::chrono::duration_cast<std::chrono::seconds>(now_ - *startTime_)
              .count() < adaptor_.parms().initTIME.count());
@@ -400,9 +405,6 @@ PopConsensus::startRoundInternal(
 void
 PopConsensus::checkLedger()
 {
-    if (previousLedger_.seq() == GENESIS_LEDGER_INDEX)
-        return;
-
     auto netLgr =
         adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
 

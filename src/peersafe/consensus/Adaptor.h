@@ -396,6 +396,9 @@ public:
     void
     onModeChange(ConsensusMode before, ConsensusMode after);
 
+    virtual void
+    onConsensusReached(bool bWaitingInit, Ledger_t previousLedger);
+
 private:
 };
 

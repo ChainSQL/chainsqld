@@ -17,21 +17,18 @@
 */
 //==============================================================================
 
-
 #ifndef PEERSAFE_HOTSTUFF_CONSENSUS_H_INCLUDED
 #define PEERSAFE_HOTSTUFF_CONSENSUS_H_INCLUDED
 
-
+#include <peersafe/consensus/ConsensusBase.h>
+#include <peersafe/consensus/LedgerTiming.h>
+#include <peersafe/consensus/hotstuff/Hotstuff.h>
+#include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
+#include <peersafe/protocol/STEpochChange.h>
 #include <peersafe/protocol/STProposal.h>
 #include <peersafe/protocol/STVote.h>
-#include <peersafe/protocol/STEpochChange.h>
-#include <peersafe/consensus/LedgerTiming.h>
-#include <peersafe/consensus/ConsensusBase.h>
-#include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
-#include <peersafe/consensus/hotstuff/Hotstuff.h>
 
 #include <future>
-
 
 namespace ripple {
 
@@ -242,6 +239,8 @@ private:
     bool configChanged_ = false;
     TxSet_t::ID epochChangeHash_;
 
+    bool bWaitingInit_ = true;
+
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
     std::map<typename TxSet_t::ID, std::map<PublicKey, STProposal::pointer>>
@@ -258,4 +257,4 @@ private:
 
 }  // namespace ripple
 
-#endif 
+#endif

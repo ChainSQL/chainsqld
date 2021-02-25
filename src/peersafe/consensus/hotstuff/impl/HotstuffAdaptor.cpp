@@ -17,16 +17,15 @@
 */
 //==============================================================================
 
-
-#include <ripple/core/ConfigSections.h>
-#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/LocalTxs.h>
-#include <ripple/app/misc/LoadFeeTrack.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/misc/AmendmentTable.h>
+#include <ripple/app/misc/LoadFeeTrack.h>
+#include <ripple/core/ConfigSections.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
 #include <peersafe/serialization/hotstuff/ExecutedBlock.h>
-
+#include <peersafe/app/misc/StateManager.h>
 
 namespace ripple {
 
@@ -85,12 +84,29 @@ HotstuffAdaptor::HotstuffAdaptor(
         // default: 90s
         // min : 2 * consensusTIMEOUT
         parms_.initTIME = std::chrono::seconds{std::max(
-            std::chrono::duration_cast<std::chrono::seconds>(parms_.consensusTIMEOUT).count() * 2,
+            std::chrono::duration_cast<std::chrono::seconds>(
+                parms_.consensusTIMEOUT)
+                    .count() *
+                2,
             app.config().loadConfig(
                 SECTION_CONSENSUS, "init_time", parms_.initTIME.count()))};
 
         parms_.omitEMPTY = app.config().loadConfig(
             SECTION_CONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+    }
+}
+
+void
+HotstuffAdaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger)
+{
+    Adaptor::onConsensusReached(bWaitingInit, previousLedger);
+
+    // Try to clear state cache.
+    if (app_.getLedgerMaster().getPublishedLedgerAge() >
+            3 * parms_.consensusTIMEOUT &&
+        app_.getTxPool().isEmpty())
+    {
+        app_.getStateManager().clear();
     }
 }
 
@@ -116,8 +132,8 @@ HotstuffAdaptor::onExtractTransactions(
     H256Set txs;
     topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs);
 
-    auto initialSet = std::make_shared<SHAMap>(
-        SHAMapType::TRANSACTION, app_.getNodeFamily());
+    auto initialSet =
+        std::make_shared<SHAMap>(SHAMapType::TRANSACTION, app_.getNodeFamily());
     initialSet->setUnbacked();
 
     // Build SHAMap containing all transactions in our open ledger
@@ -372,10 +388,7 @@ HotstuffAdaptor::validate(std::shared_ptr<Ledger const> ledger)
     lastValidationTime_ = validationTime;
 
     auto v = std::make_shared<STValidation>(
-        lastValidationTime_,
-        valPublic_,
-        nodeID_,
-        [&](STValidation& v) {
+        lastValidationTime_, valPublic_, nodeID_, [&](STValidation& v) {
             v.setFieldH256(sfLedgerHash, ledger->info().hash);
             v.setFieldH256(sfConsensusHash, ledger->info().txHash);
 

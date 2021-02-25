@@ -274,7 +274,7 @@ LedgerMaster::getPublishedLedgerAge()
 }
 
 void
-LedgerMaster::onViewChanged(
+LedgerMaster::onConsensusReached(
     bool bWaitingInit,
     std::shared_ptr<Ledger const> previousLedger)
 {
