@@ -284,6 +284,7 @@ NoZeroEscrow::visitEntry(
 
 			return false;
 		}
+        return false;
     };
 
     if (before && before->getType() == ltESCROW)

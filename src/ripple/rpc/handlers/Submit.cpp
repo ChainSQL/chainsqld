@@ -120,8 +120,9 @@ doSubmit(RPC::JsonContext& context)
             context.app.config());
         if (validity != Validity::Valid)
         {
-            jvResult[jss::error] = "invalidTransaction";
-            jvResult[jss::error_exception] = "fails local checks: " + reason;
+            jvResult[jss::error]         = "invalidTransaction";
+            jvResult[jss::error_code]    = rpcINVALID_TRANSACTION;
+            jvResult[jss::error_message] = "The validity verification of the transaction failed: " + reason;
 
             return jvResult;
         }
@@ -134,7 +135,7 @@ doSubmit(RPC::JsonContext& context)
     {
         jvResult[jss::error]         = "invalidTransaction";
         jvResult[jss::error_code]    = rpcINVALID_TRANSACTION;
-        jvResult[jss::error_message] = "Fails local checks: " + reason;
+        jvResult[jss::error_message] = "Construction transaction failed: " + reason;
         jvResult[jss::request]       = stpTrans->getFullText();
         return jvResult;
     }
