@@ -544,8 +544,9 @@ DirectStepI<TDerived>::revImp(
         IOUAmount const in =
             mulRatio(srcToDst, srcQOut, QUALITY_ONE, /*roundUp*/ true);
 		IOUAmount realIn = in;
-		if (in > srcToDst)
-		{
+		
+		if (in >= srcToDst)
+        {
 			boost::optional<IOUAmount> feeMin, feeMax;
 			auto fee = in - srcToDst;
 			auto saFeeMin = transferFeeMin(sb, srcToDstIss.account);
