@@ -269,7 +269,7 @@ public:
         , m_ledgerMaster(ledgerMaster)
         , m_job_queue(job_queue)
         , m_standalone(standalone)
-        , minPeerCount_(start_valid ? 0 : minPeerCount)
+        , minPeerCount_(0/*start_valid ? 0 : minPeerCount*/)
         , m_stats(std::bind(&NetworkOPsImp::collect_metrics, this), collector)
     {
         auto& cfg = app_.config();
