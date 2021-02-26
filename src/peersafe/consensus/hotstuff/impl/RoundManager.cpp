@@ -47,13 +47,17 @@ RoundManager::~RoundManager() {
 	assert(stop_ == true);
 }
 
-int RoundManager::start() {
-    JLOG(journal_.info()) << "start/restared. Self is "
+int
+RoundManager::start(bool validating)
+{
+    JLOG(journal_.info()) << "start/restared. validating: " << validating
+                          << " Self is "
                           << toBase58(
                                  TokenType::NodePublic,
                                  proposal_generator_->author());
 
 	stop_ = false;
+    validating_ = validating;
 	//assert(stop_ == false);
 	// open a new round
 	boost::optional<NewRoundEvent> new_round_event = round_state_->ProcessCertificates(block_store_->sync_info());
@@ -504,6 +508,13 @@ bool RoundManager::CheckEpochChange(
 /// * then verify the voting rules
 bool RoundManager::ExecuteAndVote(const Block& proposal, Vote& vote) {
 	ExecutedBlock executed_block = block_store_->executeAndAddBlock(proposal);
+    if (!validating_)
+    {
+        JLOG(journal_.info())
+            << "Don't vote for proposal, I'm not validating, round: "
+            << proposal.block_data().round;
+        return false;
+    }
     if (hotstuff_core_->ConstructAndSignVote(executed_block, vote) == false)
     {
         JLOG(journal_.error())

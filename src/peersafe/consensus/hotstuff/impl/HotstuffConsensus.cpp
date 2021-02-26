@@ -238,6 +238,11 @@ HotstuffConsensus::getJson(bool full) const
 const bool
 HotstuffConsensus::canExtract() const
 {
+    if (!adaptor_.validating())
+    {
+        return false;
+    }
+
     long long sinceClose;
 
     if (openTime_ < consensusTime_)
@@ -1235,7 +1240,8 @@ HotstuffConsensus::startRoundInternal(
         init_epoch_state.verifier = this;
 
         hotstuff_->start(hotstuff::RecoverData{previousLedger_.ledger_->info(),
-                                               init_epoch_state});
+                                               init_epoch_state,
+                                               adaptor_.validating()});
     }
 
     checkCache();

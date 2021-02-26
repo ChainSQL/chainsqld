@@ -50,7 +50,7 @@ public:
 		NetWork* network);
 	~RoundManager();
 	
-	int start();
+	int start(bool validating);
 	void stop();
 
 	bool CheckProposal(const Block& proposal, const SyncInfo& sync_info);
@@ -118,6 +118,7 @@ private:
 	NetWork* network_;
 
 	bool stop_;
+    bool validating_;
 };
 
 } // namespace hotstuff
