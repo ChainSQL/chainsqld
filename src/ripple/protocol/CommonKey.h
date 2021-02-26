@@ -26,11 +26,34 @@ namespace ripple {
             algTypeGlobal = *(keyTypeFromString(nodeAlgTypeStr));
             
             if(algTypeGlobal == KeyType::invalid) return false;
-            else return true;
+            else
+            {
+                return setHashTypeByAlgType(algTypeGlobal);
+            }
         }
         static std::string getAlgTypeStr()
         {
             return to_string(algTypeGlobal);
+        }
+
+        static bool setHashTypeByAlgType(KeyType algType)
+        {
+            switch(algType)
+            {
+                case KeyType::secp256k1:
+                case KeyType::ed25519:
+                {
+                    hashTypeGlobal = HashType::sha;
+                    return true;
+                }
+                case KeyType::gmalg:
+                {
+                    hashTypeGlobal = HashType::sm3;
+                    return true;
+                }
+                default:
+                    return false;
+            }
         }
         
         static bool setHashType(std::string& hashTypeStr)

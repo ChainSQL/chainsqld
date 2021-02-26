@@ -1923,14 +1923,13 @@ rpcClient(
             {
                 std::string seedStr;
                 KeyType keyType = CommonKey::algTypeGlobal;
-                if (args.size() == 2)
+                if (args.size() >= 2)
                 {
                     keyType = *(keyTypeFromString(args[1]));
-                }
-                if (args.size() == 3)
-                {
-                    keyType = *(keyTypeFromString(args[1]));
-                    seedStr = args[2];
+                    if (args.size() == 3)
+                    {
+                        seedStr = args[2];
+                    }
                 }
                 jvOutput["result"] = doFillValidationJson(keyType, seedStr);
             }

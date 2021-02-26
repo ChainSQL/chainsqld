@@ -557,15 +557,14 @@ Config::loadFromString(std::string const& fileContents)
             }
         }
 
-        if(cryptoAlgSection.exists("hash_type"))
-        {
-            auto hashType = cryptoAlgSection.get<std::string>("hash_type");
-            if (!CommonKey::setHashType(*hashType))
-            {
-                Throw<std::runtime_error> ("hash_type is invalid");
-            }
-            // GmEncryptObj::setGmAlgType(GmEncryptObj::fromString(*gmType));
-        }
+        // if(cryptoAlgSection.exists("hash_type"))
+        // {
+        //     auto hashType = cryptoAlgSection.get<std::string>("hash_type");
+        //     if (!CommonKey::setHashType(*hashType))
+        //     {
+        //         Throw<std::runtime_error> ("hash_type is invalid");
+        //     }
+        // }
 
         if(cryptoAlgSection.exists("gm_self_check"))
         {
