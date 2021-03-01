@@ -61,7 +61,7 @@ HashValue VoteData::hash() const {
 	return static_cast<typename	sha512_half_hasher::result_type>(h);
 }
 
-const bool VoteData::Verify() const {
+bool VoteData::Verify() const {
 	if (parent().epoch != proposed().epoch)
 		return false;
 	if (parent().round >= proposed().round)

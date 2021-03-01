@@ -67,7 +67,7 @@ public:
 	*/
 	static std::pair<int, conditionTree> createRoot(const Json::Value& conditions);
 
-	const NodeType node_type() const {
+	NodeType node_type() const {
 		return type_;
 	}
 

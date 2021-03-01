@@ -841,8 +841,10 @@ Transactor::operator()()
         std::string strToken;
         std::string strHuman;
 
-    if (auto stream = j_.trace())
-        stream << "preclaim result: " << transToken(terResult.ter);
+        if (auto stream = j_.trace())
+        {
+            stream << "preclaim result: " << transToken(terResult.ter);
+        }
 
         stream <<
             "applyTransaction: terResult=" << strToken <<

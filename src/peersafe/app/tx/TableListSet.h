@@ -63,7 +63,7 @@ public:
     static
     void UpdateTableSle(STEntry *pEntry, LedgerIndex createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash,LedgerIndex previousTxnLgrSeq = 0,uint256 previousTxnLgrHash = uint256());
 
-	std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx);
+	std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx) override;
 };
 
 } // ripple

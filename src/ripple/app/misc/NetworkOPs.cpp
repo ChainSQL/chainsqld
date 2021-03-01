@@ -617,11 +617,11 @@ public:
         const AccountID& contractID,
         uint256 const* aTopic,
         int iTopicNum,
-        const Blob& byValue);
+        const Blob& byValue) override;
 
-	void pubViewChange(uint32_t ledgerSeq, uint64_t view);
+	void pubViewChange(uint32_t ledgerSeq, uint64_t view) override;
 
-    bool waitingForInit();
+    bool waitingForInit() override;
 
     //--------------------------------------------------------------------------
     //
@@ -716,7 +716,7 @@ public:
     bool
     unsubLogs(std::uint64_t uListener) override;
     void
-    pubLogs(std::string const& log);
+    pubLogs(std::string const& log) override;
 
     bool
     subConsensus(InfoSub::ref ispListener) override;
@@ -731,13 +731,16 @@ public:
     tryRemoveRpcSub(std::string const& strUrl) override;
 
     bool
-    hasChainSQLTxListener()
+    hasChainSQLTxListener() override
     {
         return !mSubTable.empty() || !mSubTx.empty() ||
             !mValidatedSubTx.empty();
     }
+
     std::pair<bool, std::string>
-    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce);
+    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce)
+        override;
+
     //--------------------------------------------------------------------------
     //
     // Stoppable.
@@ -3081,9 +3084,6 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
 
     if (!human)
     {
-        constexpr std::uint64_t max32 =
-            std::numeric_limits<std::uint32_t>::max();
-
         info[jss::load_base] = loadBaseServer;
         info[jss::load_factor] = trunc32(loadFactor);
         info[jss::load_factor_server] = loadFactorServer;
@@ -3401,6 +3401,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
         // Don't lock since pubAcceptedTransaction is locking.
         for (auto const& [_, accTx] : alpAccepted->getMap())
         {
+            boost::ignore_unused(_);
             JLOG(m_journal.trace()) << "pubAccepted: " << accTx->getJson();
             pubValidatedTransaction(lpAccepted, *accTx);
         }
@@ -3646,7 +3647,9 @@ NetworkOPsImp::checkSchemaTx(
 
         auto ret = this->createSchema(sleSchema, false);
         if (!ret.first)
+        {
             JLOG(m_journal.fatal()) << ret.second;
+        }
     }
     else if (stTxn->getTxnType() == ttSCHEMA_MODIFY)
     {
@@ -3688,7 +3691,9 @@ NetworkOPsImp::checkSchemaTx(
             {
                 auto ret = this->createSchema(sleSchema, false);
                 if (!ret.first)
+                {
                     JLOG(m_journal.fatal()) << ret.second;
+                }
             }
             else
             {

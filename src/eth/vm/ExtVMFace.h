@@ -148,19 +148,19 @@ public:
 		return evmc_address();
 	}
 
-	virtual int64_t const gasLimit() const {
+	virtual int64_t gasLimit() const {
 		return 0;
 	}
 
-	virtual int64_t const block_number() const {
+	virtual int64_t block_number() const {
 		return 0;
 	}
 
-	virtual int64_t const block_timestamp() const {
+	virtual int64_t block_timestamp() const {
 		return 0;
 	}
 
-	virtual uint64_t const dropsPerByte() const{
+	virtual uint64_t dropsPerByte() const{
 		return 0;
 	}
 
@@ -352,33 +352,33 @@ public:
 		uint8_t const* _name,
 		size_t _nameSize,
 		uint8_t const* _raw,
-		size_t _rawSize);
+		size_t _rawSize) override;
 
 	int64_t table_rename(
 		const struct evmc_address* address,
 		uint8_t const* _name,
 		size_t _nameSize,
 		uint8_t const* _raw,
-		size_t _rawSize);
+		size_t _rawSize) override;
 	
 	int64_t table_insert(
 		const struct evmc_address* address,
 		uint8_t const* _name,
 		size_t _nameSize,
 		uint8_t const* _raw,
-		size_t _rawSize);
+		size_t _rawSize) override;
 
 	int64_t table_delete(
 		const struct evmc_address* address,
 		uint8_t const* _name,
 		size_t _nameSize,
 		uint8_t const* _raw,
-		size_t _rawSize);
+		size_t _rawSize) override;
 
 	int64_t table_drop(
 		const struct evmc_address* address,
 		uint8_t const* _name,
-		size_t _nameSize);
+		size_t _nameSize) override;
 
 	int64_t table_update(
 		const struct evmc_address* address,
@@ -387,7 +387,7 @@ public:
 		uint8_t const* _raw1,
 		size_t _rawSize1,
 		uint8_t const* _raw2,
-		size_t _rawSize2);
+		size_t _rawSize2) override;
 
 	int64_t table_grant(
 		const struct evmc_address* address1,
@@ -395,20 +395,20 @@ public:
 		uint8_t const* _name,
 		size_t _nameSize,
 		uint8_t const* _row,
-		size_t _rowSize);
+		size_t _rowSize) override;
 
 	evmc_uint256be table_get_handle(
 		const struct evmc_address* address,
 		uint8_t const* _name,
 		size_t _nameSize,
 		uint8_t const* _raw,
-		size_t _rawSize);
+		size_t _rawSize) override;
 
 	evmc_uint256be table_get_lines(
-		const struct evmc_uint256be* handle);
+		const struct evmc_uint256be* handle) override;
 
 	evmc_uint256be table_get_columns(
-		const struct evmc_uint256be* handle);
+		const struct evmc_uint256be* handle) override;
 
 	size_t get_column_by_name(
 		const evmc_uint256be* _handle,
@@ -416,51 +416,51 @@ public:
 		uint8_t const* _column,
 		size_t _columnSize,
 		uint8_t* _outBuf,
-		size_t _outSize);
+		size_t _outSize) override;
 
 	size_t get_column_by_index(
 		const evmc_uint256be *_handle,
 		size_t _row,
 		size_t _column,
 		uint8_t *_outBuf,
-		size_t _outSize);
+		size_t _outSize) override;
 
-	void db_trans_begin();
+	void db_trans_begin() override;
 
-	int64_t db_trans_submit();
+	int64_t db_trans_submit() override;
 
-	void release_resource();
+	void release_resource() override;
 
 	evmc_uint256be get_column_len_by_name(
 		const evmc_uint256be *_handle,
 		size_t _row,
 		const uint8_t *_column,
-		size_t _size);
+		size_t _size) override;
 
 	evmc_uint256be get_column_len_by_index(
 		const evmc_uint256be *_handle,
 		size_t _row,
-		size_t _column);
+		size_t _column) override;
 
 	int64_t account_set(
 		const struct evmc_address *_address,
 		uint32_t _uFlag,
 		bool _bSet
-	) noexcept;
+	) noexcept override;
 
 	int64_t transfer_fee_set(
 		const struct evmc_address *address,
 		uint8_t const *_pRate, size_t _rateLen,
 		uint8_t const *_pMin, size_t _minLen,
 		uint8_t const *_pMax, size_t _maxLen
-	) noexcept;
+	) noexcept override;
 
 	int64_t trust_set(
 		const struct evmc_address *address,
 		uint8_t const *_pValue, size_t _valueLen,
 		uint8_t const *_pCurrency, size_t _currencyLen,
 		const struct evmc_address *gateWay
-	) noexcept;
+	) noexcept override;
 
 	int64_t trust_limit(
 		/* evmc_uint256be* o_result, */
@@ -468,7 +468,7 @@ public:
 		uint8_t const *_pCurrency, size_t _currencyLen,
 		uint64_t _power,
 		const struct evmc_address *gateWay
-	) noexcept;
+	) noexcept override;
 
 	int64_t gateway_balance(
 		/* evmc_uint256be* o_result, */
@@ -476,7 +476,7 @@ public:
 		uint8_t const *_pCurrency, size_t _currencyLen,
 		uint64_t _power,
 		const struct evmc_address *gateWay
-	) noexcept;
+	) noexcept override;
 
 	int64_t pay(
 		const struct evmc_address *address,
@@ -485,7 +485,7 @@ public:
 		uint8_t const *_pSendMax, size_t _sendMaxLen,
 		uint8_t const *_pCurrency, size_t _currencyLen,
 		const struct evmc_address *gateWay
-	) noexcept;
+	) noexcept override;
 
 private:
 	evmc::result create(evmc_message const& _msg) noexcept;

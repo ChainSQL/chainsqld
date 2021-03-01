@@ -567,15 +567,14 @@ public:
 	, limit_()
 	, group_()
 	, having_()
+    , indi_null(soci::i_null)
 	, build_type_(type)
 	, index_(0)	
 	, conditions_()
 	, db_conn_(dbconn)
 	, condition_(Json::ValueType::nullValue)
 	, join_on_condition_(Json::ValueType::nullValue)
-	, last_error_()
-	, indi_null(soci::i_null){
-
+	, last_error_() {
 	}
 
 	virtual ~DisposeSQL() {
@@ -2601,7 +2600,7 @@ namespace helper {
 						e[key] = static_cast<int>(r->get<unsigned long long>(i));
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_date) {
-					std::tm tm = { 0 };
+					std::tm tm = { };
 					std::string datetime = "NULL";
 					if (r->get_indicator(i) == soci::i_ok) {
 						tm = r->get<std::tm>(i);
@@ -2654,7 +2653,7 @@ namespace helper {
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<unsigned long long>(i));
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
-						std::tm tm = { 0 };
+						std::tm tm = { };
 						std::string datetime = "NULL";
 						if (r->get_indicator(i) == soci::i_ok) {
 							tm = r->get<std::tm>(i);

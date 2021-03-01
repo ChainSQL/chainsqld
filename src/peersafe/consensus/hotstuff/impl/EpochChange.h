@@ -46,7 +46,7 @@ struct EpochChange {
 	}
 	
 	static HashValue hash(const EpochChange& epoch_change);
-	const bool verify(ValidatorVerifier* verifier) const;
+	bool verify(ValidatorVerifier* verifier) const;
 };
 
 } // namespace hotstuff

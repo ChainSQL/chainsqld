@@ -769,20 +769,34 @@ private:
 
         switch (jvParams.size())
         {
-        case 3:
-            if (jvParams[2u].asString() == jss::include_success || jvParams[2u].asString() == jss::include_failure)
+            case 3:
             {
-                jvRequest[jvParams[2u].asString()] = true;
+                if (jvParams[2u].asString() == jss::include_success ||
+                    jvParams[2u].asString() == jss::include_failure)
+                {
+                    jvRequest[jvParams[2u].asString()] = true;
+                }
+                // don't break;
+
+                // add case 2 logic and break just for fix compile warning
+                if (jvParams[1u].asString() == jss::include_success ||
+                    jvParams[1u].asString() == jss::include_failure)
+                {
+                    jvRequest[jvParams[1u].asString()] = true;
+                }
+                break;
             }
-            // don't break;
-        case 2:
-            if (jvParams[1u].asString() == jss::include_success || jvParams[1u].asString() == jss::include_failure)
+            case 2:
             {
-                jvRequest[jvParams[1u].asString()] = true;
+                if (jvParams[1u].asString() == jss::include_success ||
+                    jvParams[1u].asString() == jss::include_failure)
+                {
+                    jvRequest[jvParams[1u].asString()] = true;
+                }
+                break;
             }
-            break;
-        default:
-            break;
+            default:
+                break;
         }
 
 		return jvRequest;

@@ -39,6 +39,8 @@ public:
         beast::Journal journal,
         LocalTxs& localTxs);
 
+    virtual ~RpcaPopAdaptor() = default;
+
     /** Process the accepted ledger.
 
         @param result The result of consensus

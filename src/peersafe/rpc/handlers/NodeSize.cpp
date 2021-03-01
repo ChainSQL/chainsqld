@@ -72,11 +72,17 @@ namespace ripple {
             context.app.config().NODE_SIZE = 4;
         else
         {
-            context.app.config().NODE_SIZE = beast::lexicalCastThrow <int>(node_size);
-
-            if (context.app.config().NODE_SIZE < 0)
+            try
+            {
+                context.app.config().NODE_SIZE =
+                    beast::lexicalCastThrow<unsigned int>(node_size);
+            }
+            catch (std::exception const&)
+            {
                 context.app.config().NODE_SIZE = 0;
-            else if (context.app.config().NODE_SIZE > 4)
+            }
+
+            if (context.app.config().NODE_SIZE > 4)
                 context.app.config().NODE_SIZE = 4;
         }
 

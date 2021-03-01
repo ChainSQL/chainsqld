@@ -96,7 +96,7 @@ public:
 		return ledger_info_;
 	}
 
-	const bool isTimeout() const;
+	bool isTimeout() const;
 	Timeout timeout() const;
 	//Timeout timeout(const Round& offset);
 private:

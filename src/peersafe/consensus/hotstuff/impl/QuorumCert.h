@@ -110,7 +110,7 @@ public:
 		return signed_ledger_info_;
 	}
 
-	const bool endsEpoch() const {
+    bool endsEpoch() const {
 		if (commit_info().next_epoch_state)
 			return true;
 		return false;

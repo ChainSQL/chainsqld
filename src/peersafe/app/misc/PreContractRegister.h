@@ -4,10 +4,12 @@
 #include <functional>
 #include <eth/vm/Common.h>
 
-//#define DEV_SIMPLE_EXCEPTION(X)  \
-//    struct X : virtual eth::Exception \
-//    {                            \
-//    }
+/*
+#define DEV_SIMPLE_EXCEPTION(X)       \
+    struct X : virtual eth::Exception \
+    {                                 \
+    }
+*/
 
 namespace ripple
 {

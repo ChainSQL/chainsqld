@@ -111,9 +111,11 @@ private:
     Application& app_;
     beast::Journal m_journal;
     SchemaParams schema_params_;
+    std::shared_ptr<Config> config_;
+
+    bool m_schemaAvailable;
 
     Application::MutexType m_masterMutex;
-    std::shared_ptr<Config> config_;
     TransactionMaster m_txMaster;
 
     std::unique_ptr<SHAMapStore> m_shaMapStore;
@@ -124,8 +126,6 @@ private:
     // These are not Stoppable-derived
     NodeCache m_tempNodeCache;
     CachedSLEs cachedSLEs_;
-
-    bool m_schemaAvailable;
 
     // These are Stoppable-related
     std::unique_ptr<NodeStore::Database> m_nodeStore;
@@ -179,10 +179,12 @@ public:
         Application& app,
         beast::Journal j)
         : RootStoppable("Schema")
-        , schema_params_(params)
         , app_(app)
         , m_journal(j)
+        , schema_params_(params)
         , config_(config)
+        , m_schemaAvailable(
+              schema_params_.schemaId() == beast::zero ? true : false)
 
         , m_txMaster(*this)
 
@@ -258,8 +260,6 @@ public:
               stopwatch(),
               SchemaImp::journal("TaggedCache"))
 
-        , m_peerManager(make_PeerManager(*this))
-
         , m_networkOPs(make_NetworkOPs(
               *this,
               stopwatch(),
@@ -293,10 +293,11 @@ public:
               SchemaImp::journal("ValidatorList"),
               config_->VALIDATION_QUORUM))
         , validatorSites_(std::make_unique<ValidatorSite>(*this))
-        , caCertSites_(std::make_unique<CACertSite>(*this))
+
         , certList_(std::make_unique<CertList>(
               config_->ROOT_CERTIFICATES,
               SchemaImp::journal("CertList")))
+        , caCertSites_(std::make_unique<CACertSite>(*this))
 
         , mFeeTrack(
               std::make_unique<LoadFeeTrack>(SchemaImp::journal("LoadManager")))
@@ -348,8 +349,9 @@ public:
         , m_pStateManager(std::make_unique<StateManager>(
               *this,
               SchemaImp::journal("StateManager")))
-        , m_schemaAvailable(
-              schema_params_.schemaId() == beast::zero ? true : false)
+
+        , m_peerManager(make_PeerManager(*this))
+
     {
     }
 
@@ -366,7 +368,7 @@ public:
     }
 
     beast::Journal
-    journal(std::string const& name)
+    journal(std::string const& name) override
     {
         std::string prefix = strHex(
             schema_params_.schema_id.begin(),
@@ -1011,13 +1013,13 @@ public:
     }
 
     bool
-    checkSigs() const
+    checkSigs() const override
     {
         return app_.checkSigs();
     }
 
     void
-    checkSigs(bool check)
+    checkSigs(bool check) override
     {
         app_.checkSigs(check);
     }
@@ -1807,45 +1809,45 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
     m_ledgerMaster->initGenesisLedger(genesis);
 }
 
-static std::vector<std::string>
-getSchema(DatabaseCon& dbc, std::string const& dbName)
-{
-    std::vector<std::string> schema;
-    schema.reserve(32);
+//static std::vector<std::string>
+//getSchema(DatabaseCon& dbc, std::string const& dbName)
+//{
+//    std::vector<std::string> schema;
+//    schema.reserve(32);
+//
+//    std::string sql = "SELECT sql FROM sqlite_master WHERE tbl_name='";
+//    sql += dbName;
+//    sql += "';";
+//
+//    std::string r;
+//    soci::statement st = (dbc.getSession().prepare << sql, soci::into(r));
+//    st.execute();
+//    while (st.fetch())
+//    {
+//        schema.emplace_back(r);
+//    }
+//
+//    return schema;
+//}
 
-    std::string sql = "SELECT sql FROM sqlite_master WHERE tbl_name='";
-    sql += dbName;
-    sql += "';";
-
-    std::string r;
-    soci::statement st = (dbc.getSession().prepare << sql, soci::into(r));
-    st.execute();
-    while (st.fetch())
-    {
-        schema.emplace_back(r);
-    }
-
-    return schema;
-}
-
-static bool
-schemaHas(
-    DatabaseCon& dbc,
-    std::string const& dbName,
-    int line,
-    std::string const& content,
-    beast::Journal j)
-{
-    std::vector<std::string> schema = getSchema(dbc, dbName);
-
-    if (static_cast<int>(schema.size()) <= line)
-    {
-        JLOG(j.fatal()) << "Schema for " << dbName << " has too few lines";
-        Throw<std::runtime_error>("bad schema");
-    }
-
-    return schema[line].find(content) != std::string::npos;
-}
+//static bool
+//schemaHas(
+//    DatabaseCon& dbc,
+//    std::string const& dbName,
+//    int line,
+//    std::string const& content,
+//    beast::Journal j)
+//{
+//    std::vector<std::string> schema = getSchema(dbc, dbName);
+//
+//    if (static_cast<int>(schema.size()) <= line)
+//    {
+//        JLOG(j.fatal()) << "Schema for " << dbName << " has too few lines";
+//        Throw<std::runtime_error>("bad schema");
+//    }
+//
+//    return schema[line].find(content) != std::string::npos;
+//}
 
 bool
 SchemaImp::nodeToShards()

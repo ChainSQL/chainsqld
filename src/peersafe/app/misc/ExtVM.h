@@ -25,19 +25,19 @@ public:
 		iDropsPerByte_ = iDropsPerByte;
     }
        
-	int64_t const gasLimit() const override {
+	int64_t gasLimit() const override {
         return iGasLimit_;
     }
     
-	int64_t const block_number() const override{
+	int64_t block_number() const override{
         return iBlockNum_;
     }
 
-	int64_t const block_timestamp() const override {
+	int64_t block_timestamp() const override {
 		return std::chrono::seconds(std::time(NULL)).count();
 	}
 
-	uint64_t const dropsPerByte() const override {
+	uint64_t dropsPerByte() const override {
 		return iDropsPerByte_;
 	}
 

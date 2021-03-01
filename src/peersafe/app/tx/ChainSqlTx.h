@@ -24,21 +24,31 @@
 
 namespace ripple {
 
-    class ChainSqlTx : public Transactor
-    {   
-    protected:        
-        explicit ChainSqlTx(ApplyContext& ctx);
+class ChainSqlTx : public Transactor
+{
+protected:
+    explicit ChainSqlTx(ApplyContext& ctx);
 
-        static NotTEC preflight(PreflightContext const& ctx);
-        static TER preclaim(PreclaimContext const& ctx);
-		TER doApply();	
+    static NotTEC
+    preflight(PreflightContext const& ctx);
 
-		static bool canDispose(ApplyContext& ctx);
+    static TER
+    preclaim(PreclaimContext const& ctx);
 
-		static std::pair<TxStoreDBConn*, TxStore*> getTransactionDBEnv(ApplyContext& ctx);
-	public:
-		virtual std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx);
-    };
+    static bool
+    canDispose(ApplyContext& ctx);
+
+    static std::pair<TxStoreDBConn*, TxStore*>
+    getTransactionDBEnv(ApplyContext& ctx);
+
+    TER
+    doApply() override;
+
+public:
+    virtual std::pair<TER, std::string>
+    dispose(TxStore& txStore, const STTx& tx);
+};
+
 }
 
 #endif

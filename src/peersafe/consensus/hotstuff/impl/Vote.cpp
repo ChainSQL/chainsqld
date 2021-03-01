@@ -57,7 +57,7 @@ Vote::New(
     return vote;
 }
 
-const bool Vote::isTimeout() const {
+bool Vote::isTimeout() const {
 	if (timeout_signature_)
 		return true;
 	return false;

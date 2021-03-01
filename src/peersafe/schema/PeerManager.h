@@ -13,6 +13,16 @@ class PeerManager
 public:
     using PeerSequence = std::vector<std::shared_ptr<Peer>>;
 
+public:
+    PeerManager()
+    {
+    }
+
+    virtual ~PeerManager()
+    {
+    }
+
+public:
     /** Return diagnostics on the status of all peers.
             @deprecated This is superceded by PropertyStream
     */
@@ -22,7 +32,7 @@ public:
     virtual std::size_t
     size() const = 0;
 
-	/** Returns the peer with the matching short id, or null. */
+    /** Returns the peer with the matching short id, or null. */
     virtual std::shared_ptr<Peer>
     findPeerByShortID(Peer::id_t const& id) = 0;
 
@@ -55,7 +65,7 @@ public:
     //	void
     //	check() = 0;
 
-     /** Broadcast a consensus meessage. */
+    /** Broadcast a consensus meessage. */
     virtual void
     send(protocol::TMConsensus& m) = 0;
 
@@ -145,9 +155,7 @@ public:
     remove(std::vector<PublicKey> const& vecPubs) = 0;
 };
 
-
 std::unique_ptr<PeerManager>
 make_PeerManager(Schema& schema);
-
 
 }  // namespace ripple

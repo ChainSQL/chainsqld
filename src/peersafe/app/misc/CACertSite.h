@@ -41,91 +41,90 @@ class CertList;
 
 
 class CACertSite : public ValidatorSite
-	{
-
+{
+private:
     struct PublisherLst
-            {
-                bool available;
-                //	std::vector<PublicKey> list;
-                std::size_t sequence;
-                TimeKeeper::time_point expiration;
-            };
+    {
+        bool available;
+        //	std::vector<PublicKey> list;
+        std::size_t sequence;
+        TimeKeeper::time_point expiration;
+    };
 
     enum class CAListDisposition {
-                /// List is valid
-                accepted = 0,
+        /// List is valid
+        accepted = 0,
 
-                /// Same sequence as current list
-                same_sequence,
+        /// Same sequence as current list
+        same_sequence,
 
-                /// List version is not supported
-                unsupported_version,
+        /// List version is not supported
+        unsupported_version,
 
-                /// List signed by untrusted publisher key
-                untrusted,
+        /// List signed by untrusted publisher key
+        untrusted,
 
-                /// Trusted publisher key, but seq is too old
-                stale,
+        /// Trusted publisher key, but seq is too old
+        stale,
 
-                /// Invalid format or signature
-                invalid
-            };
+        /// Invalid format or signature
+        invalid
+    };
 
     using error_code = boost::system::error_code;
     using clock_type = std::chrono::system_clock;
 
-	public:
-		CACertSite(
-			Schema& app);
-		~CACertSite();
+public:
+    CACertSite(Schema& app);
+    ~CACertSite();
 
-        /// Parse json response from validator list site.
-            /// lock over sites_mutex_ required
-         virtual void
-            parseJsonResponse(
-                std::string const& res,
-                std::size_t siteIdx,
-                std::lock_guard<std::mutex>& lock);
+    /// Parse json response from validator list site.
+    /// lock over sites_mutex_ required
+    void
+    parseJsonResponse(
+        std::string const& res,
+        std::size_t siteIdx,
+        std::lock_guard<std::mutex>& lock) override;
 
-         bool
-             load(
-                 std::vector<std::string> const& publisherKeys,
-                 std::vector<std::string> const& siteURIs);
+    bool
+    load(
+        std::vector<std::string> const& publisherKeys,
+        std::vector<std::string> const& siteURIs);
 
-         bool
-         removePublisherList(PublicKey const& publisherKey);
+    bool
+    removePublisherList(PublicKey const& publisherKey);
 
-	private:
-		/** Check response for trusted valid published list
+private:
+    /** Check response for trusted valid published list
 
-		@return `ListDisposition::accepted` if list can be applied
+    @return `ListDisposition::accepted` if list can be applied
 
-		@par Thread Safety
+    @par Thread Safety
 
-		Calling public member function is expected to lock mutex
-		*/
-        ListDisposition
-            verify(
-                Json::Value& list,
-                PublicKey& pubKey,
-                std::string const& manifest,
-                std::string const& blob,
-                std::string const& signature);
+    Calling public member function is expected to lock mutex
+    */
+    ListDisposition
+    verify(
+        Json::Value& list,
+        PublicKey& pubKey,
+        std::string const& manifest,
+        std::string const& blob,
+        std::string const& signature);
 
-		ManifestCache& publisherManifests_;
-		TimeKeeper& timeKeeper_;
-        CertList&   certList_;
+    TimeKeeper& timeKeeper_;
+    ManifestCache& publisherManifests_;
+    CertList& certList_;
 
-		// Currently supported version of publisher list format
-		static constexpr std::uint32_t requiredListVersion = 1;
+    // Currently supported version of publisher list format
+    static constexpr std::uint32_t requiredListVersion = 1;
 
-        std::mutex mutable publisher_mutex_;
+    std::mutex mutable publisher_mutex_;
 
-        std::mutex mutable sites_mutex_;
+    std::mutex mutable sites_mutex_;
 
-        // Published lists stored by publisher master public key
-        hash_map<PublicKey, PublisherLst> publisherLists_;
-	};
+    // Published lists stored by publisher master public key
+    hash_map<PublicKey, PublisherLst> publisherLists_;
+};
 
 } // ripple
 #endif

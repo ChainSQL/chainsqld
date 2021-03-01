@@ -72,7 +72,7 @@ namespace ripple {
         auto const manifest = body["manifest"].asString();
         auto const blob = body["blob"].asString();
         auto const signature = body["signature"].asString();
-        auto const version = body["version"].asUInt();
+        //auto const version = body["version"].asUInt();
         auto const& uri = sites_[siteIdx].activeResource->uri;
 
         Json::Value list;

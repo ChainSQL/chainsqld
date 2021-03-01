@@ -93,7 +93,7 @@ SHAMap::genesisSnapShot(Family& f) const
         }
         else
         {
-            int branch = pos;
+            //int branch = pos;
             auto child = node->getChild(pos++);
             if (child)
             {

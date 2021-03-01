@@ -284,7 +284,7 @@ public:
     getJson(bool full) const override final;
 
     bool
-    waitingForInit() const
+    waitingForInit() const override final
     {
         return true;
     }

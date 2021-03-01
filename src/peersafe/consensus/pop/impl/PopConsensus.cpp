@@ -314,6 +314,21 @@ PopConsensus::getJson(bool full) const
     return ret;
 }
 
+bool
+PopConsensus::waitingForInit() const
+{
+    // This code is for initialization,wait 60 seconds for loading ledger before
+    // real start-mode.
+    if (!startTime_)
+    {
+        return true;
+    }
+
+    return /*previousLedger_.seq() == GENESIS_LEDGER_INDEX &&*/
+        (std::chrono::duration_cast<std::chrono::seconds>(now_ - *startTime_)
+             .count() < adaptor_.parms().initTIME.count());
+}
+
 // -------------------------------------------------------------------
 // Private member functions
 
@@ -339,21 +354,6 @@ PopConsensus::timeSinceLastClose()
             sinceClose = -duration_cast<milliseconds>(lastCloseTime - now_);
     }
     return sinceClose;
-}
-
-bool
-PopConsensus::waitingForInit() const
-{
-    // This code is for initialization,wait 60 seconds for loading ledger before
-    // real start-mode.
-    if (!startTime_)
-    {
-        return true;
-    }
-
-    return /*previousLedger_.seq() == GENESIS_LEDGER_INDEX &&*/
-        (std::chrono::duration_cast<std::chrono::seconds>(now_ - *startTime_)
-             .count() < adaptor_.parms().initTIME.count());
 }
 
 void

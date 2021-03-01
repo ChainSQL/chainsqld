@@ -45,7 +45,7 @@ SyncInfo::SyncInfo(
 	}
 }
 
-const Round SyncInfo::HighestRound() const {
+Round SyncInfo::HighestRound() const {
 	if (highest_timeout_cert_) {
 		return std::max(
 			highest_quorum_cert_.certified_block().round,
@@ -68,7 +68,7 @@ const TimeoutCertificate SyncInfo::HighestTimeoutCert() const {
 	return highest_timeout_cert_.get_value_or(TimeoutCertificate(Timeout{0, 0}));
 }
 
-const bool SyncInfo::hasNewerCertificate(const SyncInfo& sync_info) const {
+bool SyncInfo::hasNewerCertificate(const SyncInfo& sync_info) const {
 	if (highest_quorum_cert_.certified_block().round > sync_info.highest_quorum_cert_.certified_block().round
 		|| HighestCommitCert().ledger_info().ledger_info.commit_info.round > sync_info.HighestCommitCert().ledger_info().ledger_info.commit_info.round
 		|| HighestTimeoutCert().timeout().round > sync_info.HighestTimeoutCert().timeout().round)

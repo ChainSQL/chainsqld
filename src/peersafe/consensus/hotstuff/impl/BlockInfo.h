@@ -59,7 +59,7 @@ public:
 
 	}
 
-	const bool empty() const {
+	bool empty() const {
 		return id.isZero()
 			&& ledger_info.txHash.isZero()
 			&& ledger_info.hash.isZero()
@@ -68,7 +68,7 @@ public:
 			&& ledger_info.seq == 0;
 	}
 
-	const bool hasReconfiguration() const {
+	bool hasReconfiguration() const {
 		if (next_epoch_state)
 			return true;
 		return false;

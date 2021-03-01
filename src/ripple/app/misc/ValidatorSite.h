@@ -148,7 +148,7 @@ public:
         Schema& app,
         boost::optional<beast::Journal> j = boost::none,
         std::chrono::seconds timeout = std::chrono::seconds{20});
-    ~ValidatorSite();
+    virtual ~ValidatorSite();
 
     /** Load configured site URIs.
 
