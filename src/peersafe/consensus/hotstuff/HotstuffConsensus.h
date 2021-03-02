@@ -91,7 +91,7 @@ public:
 
     // Overwrite CommandManager extract interface.
     bool
-    canExtract() const override final;
+    canExtract() override final;
     boost::optional<hotstuff::Command>
     extract(hotstuff::BlockData& blockData) override final;
 
@@ -235,6 +235,8 @@ private:
     NetClock::time_point now_;
     NetClock::time_point openTime_;
     NetClock::time_point consensusTime_;
+
+    uint64_t lastTxSetSize_;
 
     hotstuff::Epoch epoch_ = 0;
     bool configChanged_ = false;

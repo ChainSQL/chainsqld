@@ -380,6 +380,7 @@ PopConsensus::startRoundInternal(
     txSetVoted_.clear();
     transactions_.clear();
     setID_.reset();
+    lastTxSetSize_ = 0;
     leaderFailed_ = false;
     extraTimeOut_ = false;
     timeOutCount_ = 0;
@@ -629,8 +630,11 @@ PopConsensus::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
     }
 
     if (transactions_.size() > 0 &&
+        lastTxSetSize_ > 0 && transactions_.size() == lastTxSetSize_ &&
         sinceLastClose >= adaptor_.parms().minBLOCK_TIME)
         return true;
+
+    lastTxSetSize_ = transactions_.size();
 
     return false;
 }
@@ -1144,6 +1148,7 @@ PopConsensus::onViewChange(uint64_t toView)
     txSetVoted_.clear();
     transactions_.clear();
     setID_.reset();
+    lastTxSetSize_ = 0;
     leaderFailed_ = false;
     extraTimeOut_ = false;
     timeOutCount_ = 0;

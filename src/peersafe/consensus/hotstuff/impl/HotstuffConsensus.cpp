@@ -51,6 +51,7 @@ HotstuffConsensus::HotstuffConsensus(
     // HotstuffConsensusParms to hotstuff::Config
     config.timeout =
         std::ceil(adaptor_.parms().consensusTIMEOUT.count() / 1000.0);
+    config.interval_extract = adaptor_.parms().extractINTERVAL.count();
 
     hotstuff_ = hotstuff::Hotstuff::Builder(adaptor_.getIOService(), j)
                     .setConfig(config)
@@ -246,7 +247,7 @@ HotstuffConsensus::waitingForInit() const
 }
 
 bool
-HotstuffConsensus::canExtract() const
+HotstuffConsensus::canExtract()
 {
     if (!adaptor_.validating())
     {
@@ -283,9 +284,12 @@ HotstuffConsensus::canExtract() const
         return true;
     }
 
-    if (adaptor_.getPoolQueuedTxCount() > 0 &&
+    if (lastTxSetSize_ > 0 &&
+        adaptor_.getPoolQueuedTxCount() == lastTxSetSize_ &&
         sinceClose >= adaptor_.parms().minBLOCK_TIME)
         return true;
+
+    lastTxSetSize_ = adaptor_.getPoolQueuedTxCount();
 
     return false;
 }
@@ -1218,6 +1222,8 @@ HotstuffConsensus::startRoundInternal(
 
     acquired_.clear();
     curProposalCache_.clear();
+
+    lastTxSetSize_ = 0;
 
     if (recover)
     {

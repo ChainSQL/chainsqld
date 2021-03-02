@@ -62,7 +62,7 @@ class BlockData;
 class CommandManager {
 public:
 	virtual ~CommandManager() {};
-	virtual bool canExtract() const = 0;
+	virtual bool canExtract() = 0;
     virtual boost::optional<Command> extract(BlockData &block_data) = 0;
 protected:
 	CommandManager() {};

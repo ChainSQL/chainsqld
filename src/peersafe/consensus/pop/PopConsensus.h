@@ -53,6 +53,8 @@ private:
     uint64_t openTimeMilli_;
     uint64_t consensusTime_;
 
+    uint64_t lastTxSetSize_;
+
     NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
 
     // Transaction Sets, indexed by hash of transaction tree
