@@ -92,7 +92,7 @@ boost::optional<BlockData> ProposalGenerator::Proposal(Round round) {
 	return boost::optional<BlockData>();
 }
 
-const bool ProposalGenerator::canExtract() const {
+bool ProposalGenerator::canExtract() const {
 	return command_manager_->canExtract();
 }
 

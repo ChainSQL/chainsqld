@@ -150,6 +150,9 @@ public:
     Json::Value
     getJson(bool full) const override final;
 
+    bool
+    waitingForInit() const override final;
+
 private:
     inline uint64_t
     timeSinceOpen() const
@@ -164,9 +167,6 @@ private:
 
     std::chrono::milliseconds
     timeSinceLastClose();
-
-    bool
-    waitingForInit() const;
 
     void
     startRoundInternal(

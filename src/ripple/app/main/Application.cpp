@@ -168,15 +168,16 @@ public:
     std::unique_ptr<Logs> logs_;
     beast::Journal m_journal;
     std::unique_ptr<TimeKeeper> timeKeeper_;
-    std::unique_ptr<CollectorManager> m_collectorManager;
-    std::unique_ptr<Resource::Manager> m_resourceManager;
-    std::unique_ptr<SchemaManager> m_schemaManager;
-    std::unique_ptr<NodeStoreScheduler> m_nodeStoreScheduler;
     std::unique_ptr<perf::PerfLog> perfLog_;
+    std::unique_ptr<CollectorManager> m_collectorManager;
+    std::pair<PublicKey, SecretKey> nodeIdentity_;
+    ValidatorKeys const validatorKeys_;
+    std::unique_ptr<Resource::Manager> m_resourceManager;
+    std::unique_ptr<NodeStoreScheduler> m_nodeStoreScheduler;
     std::unique_ptr<JobQueue> m_jobQueue;
-    std::unique_ptr<LoadManager> m_loadManager;
     std::unique_ptr<ServerHandler> serverHandler_;
-    std::unique_ptr<ResolverAsio> m_resolver;
+    std::unique_ptr<LoadManager> m_loadManager;
+    std::unique_ptr<SchemaManager> m_schemaManager;
     std::unique_ptr<Overlay> m_overlay;
 
     Application::MutexType m_masterMutex;
@@ -190,9 +191,8 @@ public:
     std::mutex mut_;
     bool isTimeToStop = false;
     std::atomic<bool> checkSigs_;
+    std::unique_ptr<ResolverAsio> m_resolver;
     io_latency_sampler m_io_latency_sampler;
-    std::pair<PublicKey, SecretKey> nodeIdentity_;
-    ValidatorKeys const validatorKeys_;
     std::unique_ptr<GRPCServer> grpcServer_;
     std::unique_ptr <PreContractFace> m_preContractFace;
     //--------------------------------------------------------------------------
@@ -223,6 +223,7 @@ public:
         std::unique_ptr<TimeKeeper> timeKeeper)
         : RootStoppable("Application")
         , BasicApp(numberOfThreads(*config))
+
         , config_(config)
         , logs_(std::move(logs))
         , m_journal(logs_->journal("Application"))
@@ -240,6 +241,8 @@ public:
         , m_collectorManager(CollectorManager::New(
               config_->section(SECTION_INSIGHT),
               logs_->journal("Collector")))
+
+        , validatorKeys_(*config_, m_journal)
 
         , m_resourceManager(Resource::make_Manager(
               m_collectorManager->collector(),
@@ -281,8 +284,6 @@ public:
         , m_signals(get_io_service())
 
         , checkSigs_(true)
-
-        , validatorKeys_(*config_, m_journal)
 
         , m_resolver(
               ResolverAsio::New(get_io_service(), logs_->journal("Resolver")))

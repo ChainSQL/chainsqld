@@ -576,34 +576,34 @@ public:
       : host{&interface}, context{ctx}
     {}
 
-    bool account_exists(const address& address) const noexcept final
+    bool account_exists(const address& address) const noexcept override final
     {
         return host->account_exists(context, &address);
     }
 
-    bytes32 get_storage(const address& address, const bytes32& key) const noexcept final
+    bytes32 get_storage(const address& address, const bytes32& key) const noexcept override final
     {
         return host->get_storage(context, &address, &key);
     }
 
     evmc_storage_status set_storage(const address& address,
                                     const bytes32& key,
-                                    const bytes32& value) noexcept final
+                                    const bytes32& value) noexcept override final
     {
         return host->set_storage(context, &address, &key, &value);
     }
 
-    uint256be get_balance(const address& address) const noexcept final
+    uint256be get_balance(const address& address) const noexcept override final
     {
         return host->get_balance(context, &address);
     }
 
-    size_t get_code_size(const address& address) const noexcept final
+    size_t get_code_size(const address& address) const noexcept override final
     {
         return host->get_code_size(context, &address);
     }
 
-    bytes32 get_code_hash(const address& address) const noexcept final
+    bytes32 get_code_hash(const address& address) const noexcept override final
     {
         return host->get_code_hash(context, &address);
     }
@@ -611,17 +611,17 @@ public:
     size_t copy_code(const address& address,
                      size_t code_offset,
                      uint8_t* buffer_data,
-                     size_t buffer_size) const noexcept final
+                     size_t buffer_size) const noexcept override final
     {
         return host->copy_code(context, &address, code_offset, buffer_data, buffer_size);
     }
 
-    void selfdestruct(const address& addr, const address& beneficiary) noexcept final
+    void selfdestruct(const address& addr, const address& beneficiary) noexcept override final
     {
         host->selfdestruct(context, &addr, &beneficiary);
     }
 
-    result call(const evmc_message& message) noexcept final
+    result call(const evmc_message& message) noexcept override final
     {
         return result{host->call(context, &message)};
     }
@@ -632,14 +632,14 @@ public:
     /// by assuming that the block timestamp should never be zero.
     ///
     /// @return The cached transaction context.
-    evmc_tx_context get_tx_context() const noexcept final
+    evmc_tx_context get_tx_context() const noexcept override final
     {
         if (tx_context.block_timestamp == 0)
             tx_context = host->get_tx_context(context);
         return tx_context;
     }
 
-    bytes32 get_block_hash(int64_t number) const noexcept final
+    bytes32 get_block_hash(int64_t number) const noexcept override final
     {
         return host->get_block_hash(context, number);
     }
@@ -648,7 +648,7 @@ public:
                   const uint8_t* data,
                   size_t data_size,
                   const bytes32 topics[],
-                  size_t topics_count) noexcept final
+                  size_t topics_count) noexcept override final
     {
         host->emit_log(context, &addr, data, data_size, topics, topics_count);
     }

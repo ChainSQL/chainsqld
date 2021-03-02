@@ -102,6 +102,8 @@ public:
         beast::Journal journal,
         LocalTxs& localTxs);
 
+    virtual ~Adaptor() = default;
+
     inline NodeID_t const&
     nodeID() const
     {

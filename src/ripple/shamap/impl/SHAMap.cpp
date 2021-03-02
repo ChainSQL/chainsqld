@@ -94,6 +94,7 @@ SHAMap::genesisSnapShot(Family& f) const
 
         while (pos < 16)
         {
+
             if (node->isEmptyBranch(pos))
             {
                 ++pos;

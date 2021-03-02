@@ -51,7 +51,7 @@ public:
 
 	HashValue hash() const;
 
-	const bool Verify() const;
+	bool Verify() const;
 
 	//friend class ripple::Serialization;
 	// only for serialization

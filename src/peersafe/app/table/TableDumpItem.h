@@ -46,7 +46,7 @@ protected:
     std::pair<int, int> GetRightTxEndPos(FILE * fp, bool &bEmptyTx);
     void SetStopInfo(FILE *fileTarget, std::string sMsg);
     void SetErroeInfo2FileEnd(FILE *fileTarget);
-    virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);
+    bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData) override;
 
 private:		
     static Json::Value TransRaw2Json(const STTx & tx);

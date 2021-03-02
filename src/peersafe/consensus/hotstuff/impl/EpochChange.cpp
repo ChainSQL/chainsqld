@@ -30,7 +30,7 @@ HashValue EpochChange::hash(const EpochChange& epoch_change) {
 	return static_cast<typename	sha512_half_hasher::result_type>(h);
 }
 
-const bool EpochChange::verify(ValidatorVerifier* verifier) const {
+bool EpochChange::verify(ValidatorVerifier* verifier) const {
 	EpochChange epoch_change;
 	epoch_change.ledger_info = ledger_info;
 	epoch_change.author = author;

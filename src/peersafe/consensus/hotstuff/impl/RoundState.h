@@ -62,7 +62,7 @@ public:
 		return generate_proposal_timeout_timer_;
 	}
 
-	const Round current_round() const {
+	Round current_round() const {
 		return current_round_;
 	}
 

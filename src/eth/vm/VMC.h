@@ -93,7 +93,7 @@ class VMC : public evmc::VM, public VMFace {
 public:
 	explicit VMC(struct evmc_vm* instance) :VM(instance) {};
 	
-	owning_bytes_ref exec(int64_t& gas, ExtVMFace& ext) final;
+	owning_bytes_ref exec(int64_t& gas, ExtVMFace& ext) override final;
 };
 
 }

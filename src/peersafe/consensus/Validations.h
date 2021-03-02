@@ -1057,6 +1057,12 @@ public:
     flush()
     {
         std::lock_guard lock{mutex_};
+
+        for (auto& [nodeId, validation] : current_)
+        {
+            removeTrie(lock, nodeId, validation);
+        }
+
         current_.clear();
     }
 

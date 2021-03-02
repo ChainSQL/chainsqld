@@ -41,7 +41,7 @@ public:
 
 	boost::optional<Block> GenerateNilBlock(Round round);
 	boost::optional<BlockData> Proposal(Round round);
-	const bool canExtract() const;
+	bool canExtract() const;
 
 	const Author& author() const {
 		return author_;

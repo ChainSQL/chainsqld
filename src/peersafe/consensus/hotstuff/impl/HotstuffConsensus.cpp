@@ -235,9 +235,24 @@ HotstuffConsensus::getJson(bool full) const
     return ret;
 }
 
-const bool
+bool
+HotstuffConsensus::waitingForInit() const
+{
+    // This code is for initialization,wait 90 seconds for loading ledger before
+    // real start-mode.
+    return /*(previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&*/
+        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_)
+             .count() < adaptor_.parms().initTIME.count());
+}
+
+bool
 HotstuffConsensus::canExtract() const
 {
+    if (!adaptor_.validating())
+    {
+        return false;
+    }
+
     long long sinceClose;
 
     if (openTime_ < consensusTime_)
@@ -604,7 +619,7 @@ HotstuffConsensus::signature(
     return true;
 }
 
-const bool
+bool
 HotstuffConsensus::verifySignature(
     const hotstuff::Author& author,
     const hotstuff::Signature& signature,
@@ -619,7 +634,7 @@ HotstuffConsensus::verifySignature(
     return false;
 }
 
-const bool
+bool
 HotstuffConsensus::verifySignature(
     const hotstuff::Author& author,
     const hotstuff::Signature& signature,
@@ -642,7 +657,7 @@ HotstuffConsensus::verifySignature(
         author, block.id(), Slice(signature.data(), signature.size()), false);
 }
 
-const bool
+bool
 HotstuffConsensus::verifySignature(
     const hotstuff::Author& author,
     const hotstuff::Signature& signature,
@@ -661,7 +676,7 @@ HotstuffConsensus::verifySignature(
         false);
 }
 
-const bool
+bool
 HotstuffConsensus::verifyLedgerInfo(
     const hotstuff::BlockInfo& commit_info,
     const hotstuff::HashValue& consensus_data_hash,
@@ -696,7 +711,7 @@ HotstuffConsensus::verifyLedgerInfo(
     return true;
 }
 
-const bool
+bool
 HotstuffConsensus::checkVotingPower(
     const std::map<hotstuff::Author, hotstuff::Signature>& signatures) const
 {
@@ -790,16 +805,6 @@ HotstuffConsensus::broadcast(
 
 // -------------------------------------------------------------------
 // Private member functions
-
-bool
-HotstuffConsensus::waitingForInit() const
-{
-    // This code is for initialization,wait 90 seconds for loading ledger before
-    // real start-mode.
-    return /*(previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&*/
-        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_)
-             .count() < adaptor_.parms().initTIME.count());
-}
 
 std::chrono::milliseconds
 HotstuffConsensus::timeSinceLastClose() const
@@ -1235,7 +1240,8 @@ HotstuffConsensus::startRoundInternal(
         init_epoch_state.verifier = this;
 
         hotstuff_->start(hotstuff::RecoverData{previousLedger_.ledger_->info(),
-                                               init_epoch_state});
+                                               init_epoch_state,
+                                               adaptor_.validating()});
     }
 
     checkCache();

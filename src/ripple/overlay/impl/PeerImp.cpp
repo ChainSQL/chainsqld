@@ -1011,7 +1011,6 @@ PeerImp::doProtocolStart()
     for (auto it = schemaInfo_.begin(); it != schemaInfo_.end(); it++)
     {
         auto schemaid = it->first;
-        auto& app = app_.getSchema(schemaid);
         // Send all the validator lists that have been loaded
         if (supportsFeature(ProtocolFeature::ValidatorListPropagation))
         {

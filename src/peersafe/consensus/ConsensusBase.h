@@ -78,6 +78,8 @@ public:
     {
     }
 
+    virtual ~ConsensusBase() = default;
+
     virtual void
     startRound(
         NetClock::time_point const& now,

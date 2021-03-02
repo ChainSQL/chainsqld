@@ -81,6 +81,10 @@ public:
     {
     }
 
+    virtual ~TaggedCache()
+    {
+    }
+
 public:
     /** Return the clock associated with the cache. */
     clock_type&

@@ -86,8 +86,11 @@ public:
     Json::Value
     getJson(bool full) const override final;
 
+    bool
+    waitingForInit() const override final;
+
     // Overwrite CommandManager extract interface.
-    const bool
+    bool
     canExtract() const override final;
     boost::optional<hotstuff::Command>
     extract(hotstuff::BlockData& blockData) override final;
@@ -122,28 +125,28 @@ public:
     bool
     signature(const uint256& digest, hotstuff::Signature& signature)
         override final;
-    const bool
+    bool
     verifySignature(
         const hotstuff::Author& author,
         const hotstuff::Signature& signature,
         const hotstuff::HashValue& digest) const override final;
-    const bool
+    bool
     verifySignature(
         const hotstuff::Author& author,
         const hotstuff::Signature& signature,
         const hotstuff::Block& block) const override final;
-    const bool
+    bool
     verifySignature(
         const hotstuff::Author& author,
         const hotstuff::Signature& signature,
         const hotstuff::Vote& vote) const override final;
-    const bool
+    bool
     verifyLedgerInfo(
         const hotstuff::BlockInfo& commit_info,
         const hotstuff::HashValue& consensus_data_hash,
         const std::map<hotstuff::Author, hotstuff::Signature>& signatures)
         override final;
-    const bool
+    bool
     checkVotingPower(const std::map<hotstuff::Author, hotstuff::Signature>&
                          signatures) const override final;
 
@@ -165,8 +168,6 @@ public:
         const hotstuff::SyncInfo& syncInfo) override final;
 
 private:
-    bool
-    waitingForInit() const;
     std::chrono::milliseconds
     timeSinceLastClose() const;
 

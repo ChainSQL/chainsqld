@@ -35,11 +35,11 @@ public:
 		const QuorumCertificate& highest_commit_cert,
 		const boost::optional<TimeoutCertificate> highest_timeout_cert);
 
-	const Round HighestRound() const;
+    Round HighestRound() const;
 	const QuorumCertificate& HighestQuorumCert() const;
 	const QuorumCertificate HighestCommitCert() const;
 	const TimeoutCertificate HighestTimeoutCert() const;
-	const bool hasNewerCertificate(const SyncInfo& sync_info) const;
+	bool hasNewerCertificate(const SyncInfo& sync_info) const;
 	bool Verify(ValidatorVerifier* validator);
 
 	// only for serializing and deserializing

@@ -360,7 +360,7 @@ public:
 		can_extract_ = can;
 	}
 
-	const bool canExtract() const {
+    bool canExtract() const {
 		return can_extract_;
 	}
 

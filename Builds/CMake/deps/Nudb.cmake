@@ -11,8 +11,8 @@ if (is_root_project) # NuDB not needed in the case of xrpl_core inclusion build
   if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.11)
     FetchContent_Declare(
       nudb_src
-      GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/nudb.git
-      GIT_TAG        2.0.3
+      #GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/nudb.git
+      #GIT_TAG        2.0.3
     )
     FetchContent_GetProperties(nudb_src)
     if(NOT nudb_src_POPULATED)
@@ -22,8 +22,8 @@ if (is_root_project) # NuDB not needed in the case of xrpl_core inclusion build
   else ()
     ExternalProject_Add (nudb_src
       PREFIX ${nih_cache_path}
-      GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/nudb.git
-      GIT_TAG 2.0.3
+      #GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/nudb.git
+      #GIT_TAG 2.0.3
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""
       TEST_COMMAND ""

@@ -60,7 +60,7 @@ public:
 
 	TER preApplyForOperationRule(const STTx & tx);
 
-	std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx);
+	std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx) override;
 };
 
 } // ripple

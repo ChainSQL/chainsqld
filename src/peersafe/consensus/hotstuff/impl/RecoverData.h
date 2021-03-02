@@ -29,6 +29,7 @@ namespace ripple { namespace hotstuff {
 struct RecoverData {
 	ripple::LedgerInfo init_ledger_info;
 	EpochState epoch_state;
+    bool validating;
 }; 
  
 } // namespace hotstuff
