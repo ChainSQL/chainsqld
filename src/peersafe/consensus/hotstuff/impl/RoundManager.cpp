@@ -103,7 +103,7 @@ int RoundManager::ProcessNewRoundEvent(const NewRoundEvent& new_round_event) {
     }
 
 	if (!IsValidProposer(proposal_generator_->author(), new_round_event.round)) {
-		JLOG(journal_.error())
+		JLOG(journal_.info())
 			<< "ProcessNewRoundEvent: New round is " << new_round_event.round
 			<< " and I am a voter";
 		return 1;
@@ -306,11 +306,14 @@ int RoundManager::ProcessProposal(const Block& proposal) {
 
 	Round proposal_round = proposal.block_data().round;
 	Vote vote;
-	if (ExecuteAndVote(proposal, vote) == false) {
-		JLOG(journal_.error())
-			<< "Execute and vote failed for the proposal";
-		return 1;
-	}
+    if (ExecuteAndVote(proposal, vote) == false) {
+        if (validating_)
+        {
+            JLOG(journal_.error())
+                << "Execute and vote failed for the proposal";
+        }
+        return 1;
+    }
 
 	Author next_leader = proposer_election_->GetValidProposer(proposal_round + 1);
 	JLOG(journal_.info())
