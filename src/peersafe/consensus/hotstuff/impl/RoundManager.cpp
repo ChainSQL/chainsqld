@@ -250,7 +250,7 @@ bool RoundManager::preCheck(const Round round, const SyncInfo& sync_info) {
 	SyncInfo local_sync_info = block_store_->sync_info();
 	if (sync_info.hasNewerCertificate(local_sync_info)) {
 		JLOG(journal_.debug())
-			<< "preCheck: local sync info is stale than remote stale";
+			<< "preCheck: local sync info is stale than remote";
 
 		if (const_cast<SyncInfo&>(sync_info).Verify(hotstuff_core_->epochState()->verifier) == false) {
 			JLOG(journal_.error())
@@ -269,7 +269,7 @@ int RoundManager::preProcessProposal(
 		proposal.block_data().round,
 		sync_info,
 		proposal.block_data().author()) == false) {
-		JLOG(journal_.error())
+		JLOG(journal_.warn())
 			<< "Stale proposal, current round "
 			<< round_state_->current_round();
 		return 1;
@@ -375,7 +375,7 @@ int RoundManager::preProcessVote(const Vote& vote, const SyncInfo& sync_info) {
 		vote.vote_data().proposed().round,
 		sync_info,
 		vote.author()) == false) {
-		JLOG(journal_.error())
+		JLOG(journal_.info())
 			<< "Stale vote, current round "
 			<< round_state_->current_round();
 		return 1;
@@ -539,11 +539,9 @@ bool RoundManager::EnsureRoundAndSyncUp(
 	Round current_round = round_state_->current_round();
     if (round < current_round)
     {
-        JLOG(journal_.error())
+        JLOG(journal_.info())
             << "EnsureRoundAndSyncUp: Invalid round."
-            << "Round is " << round << " and local round is " << current_round
-            << ". Self is "
-            << toBase58(TokenType::NodePublic, proposal_generator_->author());
+            << "Round is " << round << " and local round is " << current_round;
         return false;
     }
 
@@ -573,7 +571,7 @@ int RoundManager::SyncUp(
 
 	if (sync_info.hasNewerCertificate(local_sync_info)) {
 		JLOG(journal_.info())
-			<< "local sync info is stale than remote stale";
+			<< "local sync info is stale than remote";
 
 		if (const_cast<SyncInfo&>(sync_info).Verify(hotstuff_core_->epochState()->verifier) == false) {
 			JLOG(journal_.error())

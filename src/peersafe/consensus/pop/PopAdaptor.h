@@ -88,9 +88,6 @@ public:
     void
     onViewChanged(bool bWaitingInit, Ledger_t previousLedger);
 
-    void
-    touchAcquringLedger(LedgerHash const& prevLedgerHash);
-
 private:
     void
     doAccept(

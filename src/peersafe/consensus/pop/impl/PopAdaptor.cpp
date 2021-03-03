@@ -192,17 +192,6 @@ PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
     }
 }
 
-void
-PopAdaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
-{
-    auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
-    if (inboundLedger)
-    {
-        JLOG(j_.warn()) << "touch inboundLedger for " << prevLedgerHash;
-        inboundLedger->touch();
-    }
-}
-
 // ----------------------------------------------------------------------------
 // Private member functions.
 

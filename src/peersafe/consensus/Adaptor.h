@@ -354,6 +354,9 @@ public:
     virtual boost::optional<RCLCxLedger>
     acquireLedger(LedgerHash const& hash);
 
+    virtual void
+    touchAcquringLedger(LedgerHash const& prevLedgerHash);
+
     /** Build the new last closed ledger.
 
         Accept the given the provided set of consensus transactions and

@@ -116,9 +116,20 @@ HotstuffConsensus::timerEntry(NetClock::time_point const& now)
         return;
     }
 
+    if (waitingForInit())
+    {
+        consensusTime_ = now_;
+
+        if (adaptor_.validating() && mode_.get() != ConsensusMode::wrongLedger)
+        {
+            initAnnounce();
+        }
+
+        return;
+    }
+
     if ((now_ - consensusTime_) > (adaptor_.parms().consensusTIMEOUT *
-                                       adaptor_.parms().timeoutCOUNT_ROLLBACK +
-                                   adaptor_.parms().initTIME))
+                                   adaptor_.parms().timeoutCOUNT_ROLLBACK))
     {
         JLOG(j_.error()) << "Consensus network partitioned, do recover";
         startRoundInternal(
@@ -157,6 +168,9 @@ HotstuffConsensus::peerConsensusMessage(
                 break;
             case ConsensusMessageType::mtEPOCHCHANGE:
                 peerEpochChange(peer, isTrusted, m);
+                break;
+            case ConsensusMessageType::mtINITANNOUNCE:
+                peerInitAnnounce(peer, isTrusted, m);
                 break;
             case ConsensusMessageType::mtVALIDATION:
                 peerValidation(peer, isTrusted, m);
@@ -837,6 +851,26 @@ HotstuffConsensus::timeSinceLastClose() const
 }
 
 void
+HotstuffConsensus::initAnnounce()
+{
+    if (now_ - initAnnounceTime_ < adaptor_.parms().initANNOUNCE_INTERVAL)
+        return;
+
+    initAnnounceTime_ = now_;
+
+    JLOG(j_.info()) << "Init announce to other peers prevSeq="
+                    << previousLedger_.seq() << ", prevHash=" << prevLedgerID_;
+
+    auto initAnnounce = std::make_shared<STInitAnnounce>(
+        previousLedger_.seq(),
+        prevLedgerID_,
+        adaptor_.valPublic(),
+        adaptor_.closeTime());
+
+    adaptor_.InitAnnounce(*initAnnounce);
+}
+
+void
 HotstuffConsensus::peerProposal(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
@@ -873,6 +907,8 @@ HotstuffConsensus::peerProposal(
                                               .ledger_info;
             if (netLoaded.seq > previousLedger_.seq())
             {
+                JLOG(j_.warn()) << "Init time switch to netLedger "
+                                << netLoaded.seq << ":" << netLoaded.hash;
                 handleWrongLedger(netLoaded.hash);
             }
         }
@@ -998,6 +1034,8 @@ HotstuffConsensus::peerVote(
                 vote->vote().vote_data().parent().ledger_info;
             if (netLoaded.seq > previousLedger_.seq())
             {
+                JLOG(j_.warn()) << "Init time switch to netLedger "
+                                << netLoaded.seq << ":" << netLoaded.hash;
                 handleWrongLedger(netLoaded.hash);
             }
         }
@@ -1148,6 +1186,72 @@ HotstuffConsensus::peerEpochChange(
         JLOG(j_.warn()) << "Vote: Exception, " << e.what();
         peer->charge(Resource::feeInvalidRequest);
     }
+}
+
+void
+HotstuffConsensus::peerInitAnnounce(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.info()) << "drop UNTRUSTED InitAnnounce";
+        return;
+    }
+
+    try
+    {
+        STInitAnnounce::pointer initAnnounce;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
+
+        initAnnounce = std::make_shared<STInitAnnounce>(sit, publicKey);
+
+        peerInitAnnounceInternal(initAnnounce);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "InitAnnounce: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return;
+}
+
+void
+HotstuffConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
+{
+    if (!waitingForInit())
+    {
+        JLOG(j_.info()) << "Ignored InitAnnounce, I'm initialized";
+        return;
+    }
+
+    JLOG(j_.info()) << "Processing peer InitAnnounce prevSeq="
+                    << initAnnounce->prevSeq()
+                    << ", prevHash=" << initAnnounce->prevHash();
+
+    if (initAnnounce->prevSeq() > previousLedger_.seq())
+    {
+        // if mode_.get() == ConsensusMode::wrongLedger
+        // acquiring a netLedger now, so don't checkLedger.
+        if (mode_.get() != ConsensusMode::wrongLedger)
+        {
+            JLOG(j_.warn())
+                << "Init time switch to netLedger " << initAnnounce->prevSeq()
+                << ":" << initAnnounce->prevHash();
+            handleWrongLedger(initAnnounce->prevHash());
+        }
+        else if (initAnnounce->prevHash() == prevLedgerID_)
+        {
+            // acquiring netLedger is prevLedgerID_, touch it.
+            adaptor_.touchAcquringLedger(prevLedgerID_);
+        }
+    }
+
+    return;
 }
 
 void

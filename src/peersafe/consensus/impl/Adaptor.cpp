@@ -257,6 +257,17 @@ Adaptor::acquireLedger(LedgerHash const& hash)
     return RCLCxLedger(built);
 }
 
+void
+Adaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
+{
+    auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
+    if (inboundLedger)
+    {
+        JLOG(j_.warn()) << "touch inboundLedger for " << prevLedgerHash;
+        inboundLedger->touch();
+    }
+}
+
 RCLCxLedger
 Adaptor::buildLCL(
     RCLCxLedger const& previousLedger,
