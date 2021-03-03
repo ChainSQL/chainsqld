@@ -239,8 +239,10 @@ unsigned long SoftEncrypt::SM2ECCSign(
 		return ret;
 	}
 
-	unsigned int rSize = BN_num_bytes(sm2sig->r);
-	unsigned int sSize = BN_num_bytes(sm2sig->s);
+    const BIGNUM *sig_r, *sig_s;
+    ECDSA_SIG_get0(sm2sig, &sig_r, &sig_s);
+	unsigned int rSize = BN_num_bytes(sig_r);
+	unsigned int sSize = BN_num_bytes(sig_s);
 	if (rSize > 32 || sSize > 32) {	
 		ECDSA_SIG_free(sm2sig);
 		EC_KEY_free(ec_key);
@@ -252,8 +254,8 @@ unsigned long SoftEncrypt::SM2ECCSign(
 	unsigned char rTmp[32] = { 0 };
 	unsigned char sTmp[32] = { 0 };
 
-	rSize = BN_bn2bin(sm2sig->r, rTmp);
-	sSize = BN_bn2bin(sm2sig->s, sTmp);
+	rSize = BN_bn2bin(sig_r, rTmp);
+	sSize = BN_bn2bin(sig_s, sTmp);
 
 	memcpy(signedTmp + (32 - rSize), rTmp, rSize);
 	memcpy(signedTmp + (64 - sSize), sTmp, sSize);
@@ -284,8 +286,11 @@ unsigned long SoftEncrypt::SM2ECCVerify(
     if (ulSignValueLen == 64)
     {
         ECDSA_SIG *sm2sig = ECDSA_SIG_new();
-        BN_bin2bn(pSignValue, 32, sm2sig->r);
-        BN_bin2bn(pSignValue + 32, 32, sm2sig->s);
+        BIGNUM *sig_r = BN_new();
+        BIGNUM *sig_s = BN_new();
+        BN_bin2bn(pSignValue, 32, sig_r);
+        BN_bin2bn(pSignValue + 32, 32, sig_s);
+        ECDSA_SIG_set0(sm2sig, sig_r, sig_s);
 
         int derSigLen = i2d_ECDSA_SIG(sm2sig, NULL);
         unsigned char *derSigTemp = new unsigned char[derSigLen];
@@ -324,16 +329,16 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
 	}
 
     size_t cipherDataTempLen;
-    if (!SM2_encrypt_with_recommended(NULL, &cipherDataTempLen,
-		(const unsigned char *)pPlainData, ulPlainDataLen, pubkey)) 
+    if (!SM2_encrypt_with_recommended((const unsigned char *)pPlainData, ulPlainDataLen,
+                NULL, &cipherDataTempLen, pubkey)) 
     {
 		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
         EC_KEY_free(pubkey);
 		return 1;
 	}
     unsigned char* pCipherDataTemp = new unsigned char[cipherDataTempLen];
-	if (!SM2_encrypt_with_recommended(pCipherDataTemp, &cipherDataTempLen,
-		(const unsigned char *)pPlainData, ulPlainDataLen, pubkey))
+	if (!SM2_encrypt_with_recommended((const unsigned char *)pPlainData, ulPlainDataLen,
+        pCipherDataTemp, &cipherDataTempLen, pubkey))
     {
 		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
         delete [] pCipherDataTemp;
@@ -397,9 +402,8 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 	pCipherDataTemp[0] = 4;
 	memcpy(pCipherDataTemp + 1, pCipherData, ulCipherDataLen);
 
-
 	size_t msglen;
-	if (!SM2_decrypt_with_recommended(NULL, &msglen, pCipherDataTemp, ulCipherDataLen+1, ec_key)) {
+	if (!SM2_decrypt_with_recommended(pCipherDataTemp, ulCipherDataLen+1, NULL, &msglen, ec_key)) {
 		
 		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended failed");
 		EC_KEY_free(ec_key);
@@ -415,7 +419,7 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 	// }
 
     unsigned char* pPlainData = new unsigned char[msglen];
-	if (!SM2_decrypt_with_recommended(pPlainData, &msglen, pCipherDataTemp, ulCipherDataLen + 1, ec_key))
+	if (!SM2_decrypt_with_recommended(pCipherDataTemp, ulCipherDataLen + 1, pPlainData, &msglen, ec_key))
 	{
 		DebugPrint("SM2ECCDecrypt2: SM2_decrypt_with_recommended failed");
 		EC_KEY_free(ec_key);
@@ -760,14 +764,14 @@ EC_KEY* SoftEncrypt::CreateEC(unsigned char *key, int is_public) {
 int SoftEncrypt::computeDigestWithSm2(EC_KEY* ec_key, unsigned char* pInData, unsigned long ulInDataLen,
                                         unsigned char* dgst, unsigned int*dgstLen)
 {
-    const EVP_MD *id_md = EVP_sm3();
-    const EVP_MD *msg_md = EVP_sm3();
-    if (!SM2_compute_id_digest(id_md, dgst, dgstLen, ec_key)) {
-		return 1;
-	}
-    if (!SM2_compute_message_digest(id_md, msg_md, pInData, ulInDataLen, dgst, dgstLen, ec_key)) {
-		return 1;
-	}
+    // const EVP_MD *id_md = EVP_sm3();
+    // const EVP_MD *msg_md = EVP_sm3();
+    // if (!SM2_compute_id_digest(id_md, dgst, dgstLen, ec_key)) {
+	// 	return 1;
+	// }
+    // if (!SM2_compute_message_digest(id_md, msg_md, pInData, ulInDataLen, dgst, dgstLen, ec_key)) {
+	// 	return 1;
+	// }
     return 0;
 }
 

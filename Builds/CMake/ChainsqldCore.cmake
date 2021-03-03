@@ -3,19 +3,16 @@
    core functionality, useable by some client software perhaps
 #]===================================================================]
 
-set(GMSSL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/gmAlgLib")
-message(STATUS "GMSSL_LIBRARY_DIR: ${GMSSL_LIBRARY_DIR}")
-# set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a" "-pthread" "dl")
+# set(GMSSL_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/gmAlgLib")
+# message(STATUS "GMSSL_LIBRARY_DIR: ${GMSSL_LIBRARY_DIR}")
 
-if(MSVC)
-    set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libeay32.lib" "${GMSSL_LIBRARY_DIR}/ssleay32.lib")
-else()
-    set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a")
-endif()
+# if(MSVC)
+#     set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libeay32.lib" "${GMSSL_LIBRARY_DIR}/ssleay32.lib")
+# else()
+#     set(GMSSL_LIBRARIES "${GMSSL_LIBRARY_DIR}/libgmcrypto.a")
+# endif()
 
-# set(GMSSL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/src/peersafe/gmencrypt/softencrypt/GmSSL/include")
-# include_directories(${GMSSL_INCLUDE_DIR})
-message( STATUS "GMSSL_LIBRARIES: ${GMSSL_LIBRARIES}" )
+# message( STATUS "GMSSL_LIBRARIES: ${GMSSL_LIBRARIES}" )
 
 if (enableHDGm)
     set(CMAKE_SKIP_BUILD_RPATH  TRUE)
@@ -1106,7 +1103,7 @@ target_include_directories (chainsqld
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/ripple>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe/gmencrypt/softencrypt/GmSSL/include>
+    # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe/gmencrypt/softencrypt/GmSSL/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/eth/evmc/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/intx/include>
     # this one is for beast/legacy files:
@@ -1126,15 +1123,12 @@ set_target_properties(chainsqld PROPERTIES LINK_FLAGS_RELEASE -s)
 add_definitions(-DOPENSSL_NO_SSL2)
 
 target_link_libraries (chainsqld
-  ${GMSSL_LIBRARIES}
-  OpenSSL::Crypto
-  Ripple::syslibs
-  NIH::secp256k1
-  NIH::ed25519-donna
   date::date
   Ripple::boost
   Ripple::opts
   Ripple::libs
+  OpenSSL::SSL
+  OpenSSL::Crypto
   libff::ff
   intx
   instructions

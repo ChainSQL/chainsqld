@@ -8,6 +8,8 @@ project (chainsqld)
 
 set(enableHDGm FALSE CACHE BOOL "Enable hard GM algorithm")
 set(enableTest FALSE CACHE BOOL "Enable Unit Test Module")
+# if don't use -Dopenssl=TRUE, default use both china gm and international crypto alg
+set(openssl FALSE CACHE BOOL "use openssl, only support international crypto alg")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake/deps")
@@ -30,7 +32,7 @@ include(RippledSanity)
 include(ChainsqldVersion)
 include(RippledSettings)
 include(RippledNIH)
-include(RippledRelease)
+#include(RippledRelease)
 # this check has to remain in the top-level cmake
 # because of the early return statement
 if (packages_only)
@@ -45,8 +47,15 @@ include(RippledInterface)
 
 ###
 
+if(openssl)
+    message(STATUS "Use OpenSSL")
+    include(deps/OpenSSL)
+else()
+    message(STATUS "Use GmSSL")
+    include(deps/LibGMSSL)
+endif()
+# include(deps/LibGMSSL)
 include(deps/Boost)
-include(deps/OpenSSL)
 include(deps/Secp256k1)
 include(deps/Ed25519-donna)
 include(deps/Lz4)
