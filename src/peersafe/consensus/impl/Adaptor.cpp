@@ -32,6 +32,7 @@
 #include <ripple/overlay/predicates.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/consensus/Adaptor.h>
+#include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/util/Common.h>
 
@@ -158,6 +159,20 @@ Adaptor::notify(
     app_.peerManager().foreach(
         send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
     JLOG(j_.trace()) << "send status change to peer";
+}
+
+void
+Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce)
+{
+    Blob v = initAnnounce.getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&v[0], v.size());
+    consensus.set_msgtype(ConsensusMessageType::mtINITANNOUNCE);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
+
+    signAndSendMessage(consensus);
 }
 
 void

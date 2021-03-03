@@ -296,11 +296,13 @@ int RoundManager::ProcessProposal(const Block& proposal) {
         << ", seq: " << proposal.block_data().getLedgerInfo().seq;
 
 	if (IsValidProposal(proposal) == false) {
-		JLOG(journal_.error())
-			<< "Proposer " << "" << proposal.block_data().author()
-			<< " for the proposal"
-			<< " is not a valid proposer for this round "
-			<< proposal.block_data().round;
+            JLOG(journal_.error())
+                << "Proposer "
+                << toBase58(
+                       TokenType::NodePublic, proposal.block_data().author())
+                << " for the proposal"
+                << " is a invalid proposer for this round "
+                << proposal.block_data().round;
 		return 1;
 	}
 

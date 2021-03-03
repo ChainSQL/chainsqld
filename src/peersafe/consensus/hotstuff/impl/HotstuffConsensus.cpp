@@ -1248,6 +1248,8 @@ HotstuffConsensus::startRoundInternal(
         hotstuff_->start(hotstuff::RecoverData{previousLedger_.ledger_->info(),
                                                init_epoch_state,
                                                adaptor_.validating()});
+
+        nextProposalCache_.clear();
     }
 
     checkCache();

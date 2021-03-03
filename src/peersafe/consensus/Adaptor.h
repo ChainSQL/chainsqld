@@ -38,6 +38,7 @@
 #include <peersafe/consensus/ConsensusTypes.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/protocol/STInitAnnounce.h>
 #include <boost/optional.hpp>
 #include <memory>
 
@@ -318,6 +319,9 @@ public:
         protocol::NodeEvent ne,
         RCLCxLedger const& ledger,
         bool haveCorrectLCL);
+
+    virtual void
+    InitAnnounce(STInitAnnounce const& initAnnounce);
 
     void
     signMessage(protocol::TMConsensus& consensus);

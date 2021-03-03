@@ -1271,6 +1271,8 @@ SchemaImp::setup()
     }
     else
     {
+        m_networkOPs->setGenesisLedgerIndex(
+            m_ledgerMaster->getClosedLedger()->info().seq);
         validatorSites_->setWaitinBeginConsensus();
     }
 
@@ -1305,6 +1307,8 @@ SchemaImp::setup()
     // start first consensus round
     if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
     {
+        m_networkOPs->setGenesisLedgerIndex(
+            m_ledgerMaster->getClosedLedger()->info().seq);
         if (!m_networkOPs->beginConsensus(
                 m_ledgerMaster->getClosedLedger()->info().hash))
         {

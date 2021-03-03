@@ -198,6 +198,7 @@ PopAdaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
     auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
     if (inboundLedger)
     {
+        JLOG(j_.warn()) << "touch inboundLedger for " << prevLedgerHash;
         inboundLedger->touch();
     }
 }

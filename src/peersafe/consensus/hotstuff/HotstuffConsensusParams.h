@@ -37,11 +37,13 @@ struct HotstuffConsensusParms
     std::chrono::milliseconds extractINTERVAL =
         std::chrono::milliseconds{200};
 
-        // The minimum tx limit for leader to propose a tx-set after
+    // The minimum tx limit for leader to propose a tx-set after
     // half-MinBlockTime
     const unsigned minTXS_IN_LEDGER_ADVANCE = 5000;
 
     const unsigned timeoutCOUNT_ROLLBACK = 5;
+
+    const std::chrono::seconds initANNOUNCE_INTERVAL = std::chrono::seconds{1};
 
     inline Json::Value
     getJson() const

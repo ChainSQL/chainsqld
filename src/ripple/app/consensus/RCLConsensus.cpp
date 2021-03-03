@@ -237,6 +237,8 @@ RCLConsensus::conMsgTypeToStr(ConsensusMessageType t)
             return "ACQUIREBLOCK";
         case mtBLOCKDATA:
             return "BLOCKDATA";
+        case mtINITANNOUNCE:
+            return "INITANNOUNCE";
         case mtEPOCHCHANGE:
             return "EPOCHCHANGE";
         default:

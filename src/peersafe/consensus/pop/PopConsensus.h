@@ -48,12 +48,14 @@ private:
     NetClock::time_point now_;
     NetClock::time_point closeTime_;
     NetClock::time_point openTime_;
-	boost::optional< NetClock::time_point> startTime_;
     std::chrono::steady_clock::time_point proposalTime_;
     uint64_t openTimeMilli_;
     uint64_t consensusTime_;
 
     uint64_t lastTxSetSize_;
+
+    boost::optional<NetClock::time_point> startTime_;
+    NetClock::time_point initAnnounceTime_;
 
     NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
 
@@ -171,6 +173,9 @@ private:
     timeSinceLastClose();
 
     void
+    initAnnounce();
+
+    void
     startRoundInternal(
         NetClock::time_point const& now,
         typename Ledger_t::ID const& prevLedgerID,
@@ -277,6 +282,14 @@ private:
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
+
+    bool
+    peerInitAnnounce(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+    bool
+    peerInitAnnounceInternal(STInitAnnounce::ref viewChange);
 };
 
 
