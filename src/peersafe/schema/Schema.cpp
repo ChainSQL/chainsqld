@@ -96,13 +96,13 @@ public:
     checkCertificate();
 
     std::shared_ptr<Ledger>
-    getLastFullLedger();
+    getLastFullLedger(unsigned offset);
 
     std::shared_ptr<Ledger>
     loadLedgerFromFile(std::string const& ledgerID);
 
     bool
-    loadOldLedger(std::string const& ledgerID, bool replay, bool isFilename);
+    loadOldLedger(std::string const& ledgerID, bool replay, bool isFilename, unsigned offset=0);
 
     void
     startGenesisLedger(std::shared_ptr<Ledger const> curLedger);
@@ -1206,19 +1206,38 @@ SchemaImp::setup()
     }
     else
     {
-        if (getLastFullLedger() != nullptr)
+        static const unsigned TRY_ANCESTOR = 3;
+
+        unsigned offset = 0;
+        for (offset = 0; offset < TRY_ANCESTOR; ++offset)
         {
-            if (!loadOldLedger(
-                    config_->START_LEDGER,
-                    startUp == Config::REPLAY,
-                    startUp == Config::LOAD_FILE))
+            if (getLastFullLedger(offset) != nullptr)
             {
-                JLOG(m_journal.fatal()) << "Load old ledger failed for schema:"
+                if (loadOldLedger(
+                        config_->START_LEDGER,
+                        startUp == Config::REPLAY,
+                        startUp == Config::LOAD_FILE,
+                        offset))
+                {
+                    break;
+                }
+
+                JLOG(m_journal.error()) << "Load old ledger failed for schema: "
                                         << to_string(schemaId());
-                return false;
+
+                if (config_->START_LEDGER.empty() ||
+                    boost::iequals(config_->START_LEDGER, "latest"))
+                {
+                    JLOG(m_journal.warn()) << "Try ancestor " << offset + 1;
+                }
+                else
+                {
+                    return false;
+                }
             }
         }
-        else
+
+        if (offset >= TRY_ANCESTOR)
         {
             startGenesisLedger();
         }
@@ -1439,17 +1458,16 @@ SchemaImp::startGenesisLedger()
 }
 
 std::shared_ptr<Ledger>
-SchemaImp::getLastFullLedger()
+SchemaImp::getLastFullLedger(unsigned offset)
 {
     auto j = app_.journal("Ledger");
 
-    // int count = 0;
-    // while (count < 3)
-    //{
     try
     {
-        auto const [ledger, seq, hash] =
-            loadLedgerHelper("order by LedgerSeq desc limit 1", *this);
+        auto const [ledger, seq, hash] = loadLedgerHelper(
+            (boost::format("order by LedgerSeq desc limit %1%,1") % offset)
+                .str(),
+            *this);
 
         if (!ledger)
             return {};
@@ -1477,9 +1495,7 @@ SchemaImp::getLastFullLedger()
     {
         JLOG(j.warn()) << "Ledger with missing nodes in database: "
                        << mn.what();
-        // continue;
     }
-    //}
     return {};
 }
 
@@ -1623,7 +1639,8 @@ bool
 SchemaImp::loadOldLedger(
     std::string const& ledgerID,
     bool replay,
-    bool isFileName)
+    bool isFileName,
+    unsigned offset)
 {
     try
     {
@@ -1658,7 +1675,7 @@ SchemaImp::loadOldLedger(
         }
         else if (ledgerID.empty() || boost::iequals(ledgerID, "latest"))
         {
-            loadLedger = getLastFullLedger();
+            loadLedger = getLastFullLedger(offset);
         }
         else
         {
