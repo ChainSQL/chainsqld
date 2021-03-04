@@ -1,26 +1,30 @@
 set(libcrypto "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}crypto${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(libssl "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ssl${CMAKE_STATIC_LIBRARY_SUFFIX}")
+set(libgmssl_include_dir "${nih_cache_path}/include/openssl")
+
+if(UNIX)
+    set(GMSSL_CFG_CMD ./config -fPIC no-shared --prefix=${nih_cache_path} --openssldir=${nih_cache_path}/lib/ssl)
+    set(GMSSL_INSTALL_CMD make install_sw)
+elseif(WIN32)
+    set(libcrypto "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}libcrypto${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(libssl "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}libssl${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    set(GMSSL_CFG_CMD perl Configure VC-WIN64A no-shared no-asm --prefix=${nih_cache_path} --openssldir=${nih_cache_path}/lib/ssl)
+    set(GMSSL_BUILD_CMD nmake)
+    set(GMSSL_INSTALL_CMD nmake install_sw)
+elseif(APPLE)
+    set(GMSSL_CFG_CMD)
+    set(GMSSL_INSTALL_CMD)
+endif()
 
 ExternalProject_Add(libgmssl
     PREFIX ${nih_cache_path}
     URL https://gitlab.peersafe.cn/chainsql_dependencies/gmssl/-/archive/feature/updateMerge4master/gmssl-feature-updateMerge4master.tar.gz
-    URL_HASH SHA256=dbee50df5c407609ad7c62be6d30a5c6dee147cd4e95bded2d47bd62899d34ee
-    CONFIGURE_COMMAND ./config -fPIC no-shared --prefix=${nih_cache_path} --openssldir=${nih_cache_path}/lib/ssl
-    # CMAKE_ARGS
-    #     $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}>
-    #     -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-    #     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-    #     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-    #     $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}>
-    #     $<$<BOOL:${MSVC}>:"-DCMAKE_CXX_FLAGS=-GR -Gd -fp:precise -FS -EHa -MP">
-    #     $<$<BOOL:${MSVC}>:-DCMAKE_CXX_FLAGS_DEBUG=-MTd>
-    #     $<$<BOOL:${MSVC}>:-DCMAKE_CXX_FLAGS_RELEASE=-MT>
-    # BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIG>
-    # LOG_BUILD 1
-    # INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --config $<CONFIG> --target install
-    INSTALL_COMMAND make install_sw
+    URL_HASH SHA256=90b78724419b7fb1c5d3fee9f29a17f4c5d555a4fc25b26e287558bd99b36e13
+    CONFIGURE_COMMAND ${GMSSL_CFG_CMD}
+    BUILD_COMMAND ${GMSSL_BUILD_CMD}
+    INSTALL_COMMAND ${GMSSL_INSTALL_CMD}
     BUILD_IN_SOURCE 1
-    # BUILD_BYPRODUCTS "${libgmssl_library}"
+    # BUILD_BYPRODUCTS "${libcrypto}"
 )
 
 set(OPENSSL_INCLUDE_DIRECTORIES ${nih_cache_path}/include/openssl)
@@ -31,6 +35,7 @@ else()
     set(OPENSSL_ROOT_DIR ${nih_cache_path})
 endif()
 
+file(MAKE_DIRECTORY ${libgmssl_include_dir})
 # Create imported library
 add_library(OpenSSL::SSL STATIC IMPORTED)
 set_property(TARGET OpenSSL::SSL PROPERTY IMPORTED_CONFIGURATIONS Release)
@@ -39,8 +44,8 @@ set_target_properties(OpenSSL::SSL PROPERTIES INTERFACE_COMPILE_DEFINITIONS OPEN
 add_library(OpenSSL::Crypto STATIC IMPORTED)
 set_property(TARGET OpenSSL::Crypto PROPERTY IMPORTED_CONFIGURATIONS Release)
 set_property(TARGET OpenSSL::Crypto PROPERTY IMPORTED_LOCATION_RELEASE ${libcrypto})
-set_property(TARGET OpenSSL::SSL PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${nih_cache_path}/include/openssl)
-set_property(TARGET OpenSSL::Crypto PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${nih_cache_path}/include/openssl)
+set_property(TARGET OpenSSL::SSL PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${libgmssl_include_dir})
+set_property(TARGET OpenSSL::Crypto PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${libgmssl_include_dir})
 add_dependencies(OpenSSL::SSL ${libcrypto})
 add_dependencies(OpenSSL::Crypto libgmssl)
 
