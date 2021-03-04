@@ -179,26 +179,16 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 }
 
 void
-PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
+PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView)
 {
     onConsensusReached(bWaitingInit, previousLedger);
-
+	app_.getOPs().pubViewChange(previousLedger.seq(), newView);
     // Try to clear state cache.
     if (app_.getLedgerMaster().getPublishedLedgerAge() >
             3 * parms_.consensusTIMEOUT &&
         app_.getTxPool().isEmpty())
     {
         app_.getStateManager().clear();
-    }
-}
-
-void
-PopAdaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
-{
-    auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
-    if (inboundLedger)
-    {
-        inboundLedger->touch();
     }
 }
 

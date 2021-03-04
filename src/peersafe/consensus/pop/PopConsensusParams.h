@@ -59,6 +59,8 @@ struct PopConsensusParms
 
     const unsigned timeoutCOUNT_ROLLBACK = 5;
 
+    const std::chrono::seconds initANNOUNCE_INTERVAL = std::chrono::seconds{1};
+
     inline Json::Value
     getJson() const
     {

@@ -22,7 +22,7 @@ struct HotstuffConsensusParms
 {
     explicit HotstuffConsensusParms() = default;
 
-    unsigned minBLOCK_TIME = 500;
+    unsigned minBLOCK_TIME = 1000;
     unsigned maxBLOCK_TIME = 1000;
 
     unsigned maxTXS_IN_LEDGER = 10000;
@@ -34,11 +34,16 @@ struct HotstuffConsensusParms
 
     std::chrono::seconds initTIME = std::chrono::seconds{90};
 
-        // The minimum tx limit for leader to propose a tx-set after
+    std::chrono::milliseconds extractINTERVAL =
+        std::chrono::milliseconds{200};
+
+    // The minimum tx limit for leader to propose a tx-set after
     // half-MinBlockTime
     const unsigned minTXS_IN_LEDGER_ADVANCE = 5000;
 
     const unsigned timeoutCOUNT_ROLLBACK = 5;
+
+    const std::chrono::seconds initANNOUNCE_INTERVAL = std::chrono::seconds{1};
 
     inline Json::Value
     getJson() const

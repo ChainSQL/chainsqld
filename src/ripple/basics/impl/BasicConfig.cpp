@@ -124,10 +124,10 @@ operator<<(std::ostream& os, Section const& section)
     for (auto const& [k, v] : section.cont())
         os << k << "=" << v << "\n";
 
-	for (auto const& item : section.values())
-		os << item << "\n";
+    for (auto const& item : section.values())
+        os << item << "\n";
 
-	os << "\n";
+    os << "\n";
 
     return os;
 }

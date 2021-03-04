@@ -93,6 +93,8 @@ HotstuffAdaptor::HotstuffAdaptor(
 
         parms_.omitEMPTY = app.config().loadConfig(
             SECTION_CONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+
+        parms_.extractINTERVAL = consensusParms.ledgerGRANULARITY;
     }
 }
 

@@ -99,6 +99,12 @@ public:
         return mutex_;
     }
 
+    inline void
+    setGenesisLedgerIndex(LedgerIndex seq)
+    {
+        consensus_->GENESIS_LEDGER_INDEX = seq;
+    }
+
     //! @see Consensus::startRound
     void
     startRound(

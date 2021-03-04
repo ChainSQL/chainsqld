@@ -408,6 +408,8 @@ private:
     checkLastClosedLedger(const Overlay::PeerSequence&, uint256& networkClosed);
 
 public:
+    void
+    setGenesisLedgerIndex(LedgerIndex seq) override;
     bool
     beginConsensus(uint256 const& networkClosed) override;
     void
@@ -2062,6 +2064,12 @@ NetworkOPsImp::switchLastClosedLedger(
 
     app_.peerManager().foreach(
         send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
+}
+
+void
+NetworkOPsImp::setGenesisLedgerIndex(LedgerIndex seq)
+{
+    mConsensus.setGenesisLedgerIndex(seq);
 }
 
 bool

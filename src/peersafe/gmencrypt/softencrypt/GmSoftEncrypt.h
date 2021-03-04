@@ -50,29 +50,29 @@ public:
 
     }
 public:
-    unsigned long  OpenDevice();
-    unsigned long  CloseDevice();
+    unsigned long  OpenDevice() override;
+    unsigned long  CloseDevice() override;
     
     EC_KEY* standPubToSM2Pub(unsigned char* standPub, int standPubLen);
     //Generate random
 	unsigned long GenerateRandom(
 		unsigned int uiLength,
-		unsigned char * pucRandomBuf);
+		unsigned char * pucRandomBuf) override;
 	unsigned long GenerateRandom2File(
 		unsigned int uiLength,
 		unsigned char * pucRandomBuf,
-		int times);
-    bool randomSingleCheck(unsigned long randomCheckLen);
+		int times) override;
+    bool randomSingleCheck(unsigned long randomCheckLen) override;
     //SM2 interface
     unsigned long getPrivateKeyRight(
 		unsigned int uiKeyIndex,
 		unsigned char *pucPassword = nullptr,
-		unsigned int uiPwdLength = 0);
+		unsigned int uiPwdLength = 0) override;
 	//Release Private key access right
 	unsigned long releasePrivateKeyRight(
-		unsigned int uiKeyIndex);
-	std::pair<unsigned char*, int> getECCSyncTablePubKey(unsigned char* publicKeyTemp);
-	std::pair<unsigned char*, int> getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex);
+		unsigned int uiKeyIndex) override;
+	std::pair<unsigned char*, int> getECCSyncTablePubKey(unsigned char* publicKeyTemp) override;
+	std::pair<unsigned char*, int> getECCNodeVerifyPubKey(unsigned char* publicKeyTemp, int keyIndex) override;
     //Generate Publick&Secret Key
     unsigned long SM2GenECCKeyPair(
         std::vector<unsigned char>& publicKey,
@@ -80,26 +80,26 @@ public:
         bool isRoot,
         unsigned long ulAlias,
         unsigned long ulKeyUse,
-        unsigned long ulModulusLen);
+        unsigned long ulModulusLen) override;
     //SM2 Sign&Verify
     unsigned long SM2ECCSign(
         std::pair<int, int> pri4SignInfo,
         std::pair<unsigned char*, int>& pri4Sign,
         unsigned char *pInData,
         unsigned long ulInDataLen,
-        std::vector<unsigned char>& signedDataV);
+        std::vector<unsigned char>& signedDataV) override;
     unsigned long SM2ECCVerify(
         std::pair<unsigned char*, int>& pub4Verify,
         unsigned char *pInData,
         unsigned long ulInDataLen,
         unsigned char *pSignValue,
-        unsigned long ulSignValueLen);
+        unsigned long ulSignValueLen) override;
     //SM2 Encrypt&Decrypt
     unsigned long SM2ECCEncrypt(
         std::pair<unsigned char*, int>& pub4Encrypt,
         unsigned char * pPlainData,
         unsigned long ulPlainDataLen,
-        std::vector<unsigned char>& cipherDataV);
+        std::vector<unsigned char>& cipherDataV) override;
     unsigned long SM2ECCDecrypt(
         std::pair<int, int> pri4DecryptInfo,
         std::pair<unsigned char*, int>& pri4Decrypt,
@@ -107,17 +107,17 @@ public:
         unsigned long ulCipherDataLen,
         std::vector<unsigned char>& plainDataV,
 		bool isSymmertryKey,
-        void* sm4Handle);
+        void* sm4Handle) override;
     //SM3 interface
     unsigned long SM3HashTotal(
         unsigned char *pInData,
         unsigned long ulInDataLen,
         unsigned char *pHashData,
-        unsigned long *pulHashDataLen);
+        unsigned long *pulHashDataLen) override;
     // unsigned long SM3HashInit(EVP_MD_CTX *phSM3Handle);
-    unsigned long SM3HashInit(HANDLE *phSM3Handle);
-    unsigned long SM3HashFinal(void* phSM3Handle, unsigned char *pHashData, unsigned long *pulHashDataLen);
-    void operator()(void* phSM3Handle, void const* data, std::size_t size) noexcept;
+    unsigned long SM3HashInit(HANDLE *phSM3Handle) override;
+    unsigned long SM3HashFinal(void* phSM3Handle, unsigned char *pHashData, unsigned long *pulHashDataLen) override;
+    void operator()(void* phSM3Handle, void const* data, std::size_t size) noexcept override;
     //SM4 Symetry Encrypt&Decrypt
     unsigned long SM4SymEncrypt(
 		unsigned int  uiAlgMode,
@@ -127,7 +127,7 @@ public:
 		unsigned long ulPlainDataLen,
 		unsigned char *pCipherData,
 		unsigned long *pulCipherDataLen,
-		int secKeyType);
+		int secKeyType) override;
 	unsigned long SM4SymDecrypt(
 		unsigned int  uiAlgMode,
 		unsigned char *pSessionKey,
@@ -136,10 +136,10 @@ public:
 		unsigned long ulCipherDataLen,
 		unsigned char *pPlainData,
 		unsigned long *pulPlainDataLen,
-		int secKeyType);
+		int secKeyType) override;
     unsigned long SM4GenerateSessionKey(
         unsigned char *pSessionKey,
-        unsigned long *pSessionKeyLen);
+        unsigned long *pSessionKeyLen) override;
     unsigned long SM4SymEncryptEx(
         unsigned char *pPlainData,
         unsigned long ulPlainDataLen,
@@ -147,7 +147,7 @@ public:
         unsigned long *pSessionKeyLen,
         unsigned char *pCipherData,
         unsigned long *pulCipherDataLen
-    );
+    ) override;
 private:
     ENGINE *sm_engine_;
     const EVP_MD *md_;

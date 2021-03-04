@@ -38,7 +38,8 @@ enum ConsensusMessageType {
     mtVOTE = 4,
     mtACQUIREBLOCK = 5,  // acquire hotstuff block
     mtBLOCKDATA = 6,     // provide hotstuff block
-    mtEPOCHCHANGE = 7
+    mtINITANNOUNCE = 7,
+    mtEPOCHCHANGE = 8
 };
 
 class PeerImp;
@@ -57,7 +58,7 @@ public:
     using clock_type = beast::abstract_clock<std::chrono::steady_clock>;
     using ScopedLockType = std::lock_guard<std::recursive_mutex>;
 
-    const unsigned GENESIS_LEDGER_INDEX = 1;
+    Ledger_t::Seq GENESIS_LEDGER_INDEX = 1;
 
 public:
     clock_type const& clock_;

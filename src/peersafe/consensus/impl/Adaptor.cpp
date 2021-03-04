@@ -32,6 +32,7 @@
 #include <ripple/overlay/predicates.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/consensus/Adaptor.h>
+#include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/util/Common.h>
 
@@ -161,6 +162,20 @@ Adaptor::notify(
 }
 
 void
+Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce)
+{
+    Blob v = initAnnounce.getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&v[0], v.size());
+    consensus.set_msgtype(ConsensusMessageType::mtINITANNOUNCE);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
+
+    signAndSendMessage(consensus);
+}
+
+void
 Adaptor::signMessage(protocol::TMConsensus& consensus)
 {
     consensus.set_signerpubkey(valPublic_.data(), valPublic_.size());
@@ -240,6 +255,17 @@ Adaptor::acquireLedger(LedgerHash const& hash)
     inboundTransactions_.newRound(built->info().seq);
 
     return RCLCxLedger(built);
+}
+
+void
+Adaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
+{
+    auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
+    if (inboundLedger)
+    {
+        JLOG(j_.warn()) << "touch inboundLedger for " << prevLedgerHash;
+        inboundLedger->touch();
+    }
 }
 
 RCLCxLedger

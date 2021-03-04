@@ -51,6 +51,7 @@ HotstuffConsensus::HotstuffConsensus(
     // HotstuffConsensusParms to hotstuff::Config
     config.timeout =
         std::ceil(adaptor_.parms().consensusTIMEOUT.count() / 1000.0);
+    config.interval_extract = adaptor_.parms().extractINTERVAL.count();
 
     hotstuff_ = hotstuff::Hotstuff::Builder(adaptor_.getIOService(), j)
                     .setConfig(config)
@@ -92,6 +93,9 @@ HotstuffConsensus::startRound(
 void
 HotstuffConsensus::timerEntry(NetClock::time_point const& now)
 {
+    if (!startup_)
+        return;
+
     now_ = now;
 
     if (mode_.get() == ConsensusMode::wrongLedger)
@@ -115,9 +119,20 @@ HotstuffConsensus::timerEntry(NetClock::time_point const& now)
         return;
     }
 
+    if (waitingForInit())
+    {
+        consensusTime_ = now_;
+
+        if (adaptor_.validating() && mode_.get() != ConsensusMode::wrongLedger)
+        {
+            initAnnounce();
+        }
+
+        return;
+    }
+
     if ((now_ - consensusTime_) > (adaptor_.parms().consensusTIMEOUT *
-                                       adaptor_.parms().timeoutCOUNT_ROLLBACK +
-                                   adaptor_.parms().initTIME))
+                                   adaptor_.parms().timeoutCOUNT_ROLLBACK))
     {
         JLOG(j_.error()) << "Consensus network partitioned, do recover";
         startRoundInternal(
@@ -156,6 +171,9 @@ HotstuffConsensus::peerConsensusMessage(
                 break;
             case ConsensusMessageType::mtEPOCHCHANGE:
                 peerEpochChange(peer, isTrusted, m);
+                break;
+            case ConsensusMessageType::mtINITANNOUNCE:
+                peerInitAnnounce(peer, isTrusted, m);
                 break;
             case ConsensusMessageType::mtVALIDATION:
                 peerValidation(peer, isTrusted, m);
@@ -246,7 +264,7 @@ HotstuffConsensus::waitingForInit() const
 }
 
 bool
-HotstuffConsensus::canExtract() const
+HotstuffConsensus::canExtract()
 {
     if (!adaptor_.validating())
     {
@@ -283,9 +301,12 @@ HotstuffConsensus::canExtract() const
         return true;
     }
 
-    if (adaptor_.getPoolQueuedTxCount() > 0 &&
+    if (lastTxSetSize_ > 0 &&
+        adaptor_.getPoolQueuedTxCount() == lastTxSetSize_ &&
         sinceClose >= adaptor_.parms().minBLOCK_TIME)
         return true;
+
+    lastTxSetSize_ = adaptor_.getPoolQueuedTxCount();
 
     return false;
 }
@@ -833,6 +854,26 @@ HotstuffConsensus::timeSinceLastClose() const
 }
 
 void
+HotstuffConsensus::initAnnounce()
+{
+    if (now_ - initAnnounceTime_ < adaptor_.parms().initANNOUNCE_INTERVAL)
+        return;
+
+    initAnnounceTime_ = now_;
+
+    JLOG(j_.info()) << "Init announce to other peers prevSeq="
+                    << previousLedger_.seq() << ", prevHash=" << prevLedgerID_;
+
+    auto initAnnounce = std::make_shared<STInitAnnounce>(
+        previousLedger_.seq(),
+        prevLedgerID_,
+        adaptor_.valPublic(),
+        adaptor_.closeTime());
+
+    adaptor_.InitAnnounce(*initAnnounce);
+}
+
+void
 HotstuffConsensus::peerProposal(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
@@ -869,6 +910,8 @@ HotstuffConsensus::peerProposal(
                                               .ledger_info;
             if (netLoaded.seq > previousLedger_.seq())
             {
+                JLOG(j_.warn()) << "Init time switch to netLedger "
+                                << netLoaded.seq << ":" << netLoaded.hash;
                 handleWrongLedger(netLoaded.hash);
             }
         }
@@ -994,6 +1037,8 @@ HotstuffConsensus::peerVote(
                 vote->vote().vote_data().parent().ledger_info;
             if (netLoaded.seq > previousLedger_.seq())
             {
+                JLOG(j_.warn()) << "Init time switch to netLedger "
+                                << netLoaded.seq << ":" << netLoaded.hash;
                 handleWrongLedger(netLoaded.hash);
             }
         }
@@ -1147,6 +1192,72 @@ HotstuffConsensus::peerEpochChange(
 }
 
 void
+HotstuffConsensus::peerInitAnnounce(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.info()) << "drop UNTRUSTED InitAnnounce";
+        return;
+    }
+
+    try
+    {
+        STInitAnnounce::pointer initAnnounce;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
+
+        initAnnounce = std::make_shared<STInitAnnounce>(sit, publicKey);
+
+        peerInitAnnounceInternal(initAnnounce);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "InitAnnounce: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return;
+}
+
+void
+HotstuffConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
+{
+    if (!waitingForInit())
+    {
+        JLOG(j_.info()) << "Ignored InitAnnounce, I'm initialized";
+        return;
+    }
+
+    JLOG(j_.info()) << "Processing peer InitAnnounce prevSeq="
+                    << initAnnounce->prevSeq()
+                    << ", prevHash=" << initAnnounce->prevHash();
+
+    if (initAnnounce->prevSeq() > previousLedger_.seq())
+    {
+        // if mode_.get() == ConsensusMode::wrongLedger
+        // acquiring a netLedger now, so don't checkLedger.
+        if (mode_.get() != ConsensusMode::wrongLedger)
+        {
+            JLOG(j_.warn())
+                << "Init time switch to netLedger " << initAnnounce->prevSeq()
+                << ":" << initAnnounce->prevHash();
+            handleWrongLedger(initAnnounce->prevHash());
+        }
+        else if (initAnnounce->prevHash() == prevLedgerID_)
+        {
+            // acquiring netLedger is prevLedgerID_, touch it.
+            adaptor_.touchAcquringLedger(prevLedgerID_);
+        }
+    }
+
+    return;
+}
+
+void
 HotstuffConsensus::peerValidation(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
@@ -1219,6 +1330,8 @@ HotstuffConsensus::startRoundInternal(
     acquired_.clear();
     curProposalCache_.clear();
 
+    lastTxSetSize_ = 0;
+
     if (recover)
     {
         if (startup_)
@@ -1242,6 +1355,8 @@ HotstuffConsensus::startRoundInternal(
         hotstuff_->start(hotstuff::RecoverData{previousLedger_.ledger_->info(),
                                                init_epoch_state,
                                                adaptor_.validating()});
+
+        nextProposalCache_.clear();
     }
 
     checkCache();

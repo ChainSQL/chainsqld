@@ -84,7 +84,7 @@ public:
     //SM3Hash &getSM3Obj(); 
     bool isHardEncryptExist();
 	std::string GetHomePath();
-	int FileWrite(const char *filename, char *mode, unsigned char *buffer, size_t size);
+	int FileWrite(const char *filename, const char *mode, const unsigned char *buffer, size_t size);
 
 	//Generate random
 	virtual unsigned long GenerateRandom(

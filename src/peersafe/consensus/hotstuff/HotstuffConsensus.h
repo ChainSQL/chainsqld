@@ -91,7 +91,7 @@ public:
 
     // Overwrite CommandManager extract interface.
     bool
-    canExtract() const override final;
+    canExtract() override final;
     boost::optional<hotstuff::Command>
     extract(hotstuff::BlockData& blockData) override final;
 
@@ -172,6 +172,9 @@ private:
     timeSinceLastClose() const;
 
     void
+    initAnnounce();
+
+    void
     peerProposal(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
@@ -205,6 +208,14 @@ private:
         std::shared_ptr<protocol::TMConsensus> const& m);
 
     void
+    peerInitAnnounce(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+    void
+    peerInitAnnounceInternal(STInitAnnounce::ref viewChange);
+
+    void
     peerValidation(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
@@ -232,9 +243,12 @@ private:
 
     bool startup_ = false;
     NetClock::time_point startTime_;
+    NetClock::time_point initAnnounceTime_;
     NetClock::time_point now_;
     NetClock::time_point openTime_;
     NetClock::time_point consensusTime_;
+
+    uint64_t lastTxSetSize_;
 
     hotstuff::Epoch epoch_ = 0;
     bool configChanged_ = false;
