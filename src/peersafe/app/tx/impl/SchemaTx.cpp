@@ -212,6 +212,9 @@ namespace ripple {
 			!ctx.tx.isFieldPresent(sfSchemaID))
 			return temMALFORMED;
 
+        if (ctx.app.schemaId() != beast::zero)
+            return tefSCHEMA_TX_FORBIDDEN;
+
 		return preflight2(ctx);
 	}
 
