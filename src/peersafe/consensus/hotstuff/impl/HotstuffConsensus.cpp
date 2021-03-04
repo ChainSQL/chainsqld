@@ -93,6 +93,9 @@ HotstuffConsensus::startRound(
 void
 HotstuffConsensus::timerEntry(NetClock::time_point const& now)
 {
+    if (!startup_)
+        return;
+
     now_ = now;
 
     if (mode_.get() == ConsensusMode::wrongLedger)
