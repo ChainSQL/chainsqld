@@ -86,7 +86,7 @@ public:
     void
     launchViewChange(STViewChange const& viewChange);
     void
-    onViewChanged(bool bWaitingInit, Ledger_t previousLedger);
+    onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView);
 
 private:
     void

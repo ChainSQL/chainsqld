@@ -179,10 +179,10 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 }
 
 void
-PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
+PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView)
 {
     onConsensusReached(bWaitingInit, previousLedger);
-
+	app_.getOPs().pubViewChange(previousLedger.seq(), newView);
     // Try to clear state cache.
     if (app_.getLedgerMaster().getPublishedLedgerAge() >
             3 * parms_.consensusTIMEOUT &&
