@@ -82,6 +82,7 @@ bool SoftEncrypt::getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& 
         DebugPrint("private key Len: %d", priLen);
         priKey.resize(priLen);
         int priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair), priKey.data());
+        (void)priLen;
         return true;
     }
     else return false;
@@ -523,7 +524,7 @@ unsigned long SoftEncrypt::SM3HashFinal(void* phSM3Handle, unsigned char *pHashD
             *pulHashDataLen = SM3_DIGEST_LENGTH;
             // memset(&sm3_ctx_, 0, sizeof(sm3_ctx_t));
             // memset(phSM3Handle, 0, sizeof(sm3_ctx_t));
-            delete phSM3Handle;
+            delete (sm3_ctx_t*)phSM3Handle;
             DebugPrint("sm3_final Hash success!");
             return 0;
         }

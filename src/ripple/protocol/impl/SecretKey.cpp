@@ -236,6 +236,7 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
             std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
         unsigned long rv = hEObj->SM2ECCDecrypt(
             pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), resPlainText);
+        (void)rv;   // ignore unused warning
 		
         return resPlainText;
     }

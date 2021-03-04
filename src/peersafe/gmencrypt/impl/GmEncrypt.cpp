@@ -118,7 +118,7 @@ void GmEncrypt::dePkcs5Padding(unsigned char* srcUC, unsigned long srcUCLen, uns
     memcpy(dstUC, srcUC, *dstUCLen);
 }
 
-int GmEncrypt::FileWrite(const char *filename, char *mode, unsigned char *buffer, size_t size)
+int GmEncrypt::FileWrite(const char *filename, const char *mode, const unsigned char *buffer, size_t size)
 {
 	FILE *fp;
 	int rw, rwed;

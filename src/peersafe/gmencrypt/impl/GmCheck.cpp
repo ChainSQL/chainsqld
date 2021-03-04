@@ -182,7 +182,7 @@ GMCheck::GMCheck(beast::Journal gmCheckJournal):gmCheckJournal_(gmCheckJournal)
 
 void GMCheck::gmStand2Cipher(ripple::Blob &cipher)
 {
-    if ( GmEncryptObj::hEType_ = GmEncryptObj::soft )
+    if ( GmEncryptObj::hEType_ == GmEncryptObj::soft )
     {
         ripple::Blob cParam(cipher.end() - 32, cipher.end());
         cipher.erase(cipher.end() - 32, cipher.end());
@@ -1047,7 +1047,8 @@ int GMCheck::getDataSM2EncDec_Enc(int dataSetCnt, unsigned int plainLen)
 	std::vector<unsigned char> cipherDataV;
     std::vector<unsigned char> outDataV;
 	//unsigned char pGMStdCipher[MAX_LEN_4_GMSTD];
-	unsigned int cipherLen = 236, nTmpDataLen;
+	unsigned int nTmpDataLen;
+    //unsigned int cipherLen = 236
 	//unsigned int nOutDataLen;
 	// unsigned int gmStdCipherLen = 96 + plainLen;
 	// unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];
@@ -1178,7 +1179,8 @@ int GMCheck::getDataSM2EncDec_Dec(int dataSetCnt, unsigned int plainLen)
     std::vector<unsigned char> cipherDataV;
     std::vector<unsigned char> outDataV;
 	//unsigned char pGMStdCipher[MAX_LEN_4_GMSTD];
-	unsigned int cipherLen = 236, nTmpDataLen;
+	unsigned int nTmpDataLen;
+    //unsigned int cipherLen = 236;
 	// unsigned int nOutDataLen;
 	// unsigned int gmStdCipherLen = 96 + plainLen;
 	// unsigned char* pGMStdCipher = new unsigned char[gmStdCipherLen];

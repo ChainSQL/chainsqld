@@ -321,8 +321,10 @@ Value::operator=(Value const& other)
 }
 
 Value::Value(Value&& other) noexcept
-    : value_(other.value_), type_(other.type_),
-    allocated_(other.allocated_), length_(other.length_)
+    : value_(other.value_)
+    , length_(other.length_)
+    , type_(other.type_)
+    , allocated_(other.allocated_)
 {
     other.type_ = nullValue;
     other.allocated_ = 0;
