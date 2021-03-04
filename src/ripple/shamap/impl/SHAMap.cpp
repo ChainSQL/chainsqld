@@ -103,19 +103,19 @@ SHAMap::genesisSnapShot(Family& f) const
             {
                 int branch = pos;
                 auto child = node->getChild(pos++);
-                if (child && child->isInner())
-                {
-                    // save our place and work on this node
-                    stack.emplace(std::move(node), branch);
-                    // The semantics of this changes when we move to c++-20
-                    // Right now no move will occur; With c++-20 child will
-                    // be moved from.
-                    node = std::static_pointer_cast<SHAMapInnerNode>(
-                        std::move(child));
-                    pos = 0;
-                }
-                else {
-                    child->setSeq(1);
+                if (child){
+                    if (child->isInner()) {
+                        // save our place and work on this node
+                        stack.emplace(std::move(node), branch);
+                        // The semantics of this changes when we move to c++-20
+                        // Right now no move will occur; With c++-20 child will
+                        // be moved from.
+                        node = std::static_pointer_cast<SHAMapInnerNode>(
+                            std::move(child));
+                        pos = 0;
+                    }else{
+                        child->setSeq(1);
+                    }
                 }
             }
         }
