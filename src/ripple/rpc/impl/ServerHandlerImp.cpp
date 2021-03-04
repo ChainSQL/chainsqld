@@ -402,7 +402,12 @@ ServerHandlerImp::processSession(
 
 	if ( !schema_id.isZero() && !app_.hasSchema(schema_id))
 	{
-		return rpcError(rpcNO_SCHEMA);
+        Json::Value jr(Json::objectValue);
+        jr               = rpcError(rpcNO_SCHEMA);
+        jr[jss::request] = jv;
+        jr[jss::type]    = jss::response;
+        jr[jss::status]  = jss::error;
+        return jr;
 	}
 
 	// move NetworkOps setting from onHandOff to here.
