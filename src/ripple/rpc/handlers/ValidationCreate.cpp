@@ -76,6 +76,8 @@ Json::Value doFillValidationJson(KeyType keyType, std::string const &str)
 
             obj[jss::validation_public_key] = toBase58(TokenType::NodePublic, publicPrivatePair.first);
             obj[jss::validation_private_key] = toBase58(TokenType::NodePrivate, publicPrivatePair.second);
+            obj[jss::validation_public_key_hex] = strHex(publicPrivatePair.first);
+            obj[jss::account_id] = toBase58(calcAccountID(publicPrivatePair.first));
             break;
         }
         case KeyType::secp256k1:
@@ -84,9 +86,8 @@ Json::Value doFillValidationJson(KeyType keyType, std::string const &str)
         {
             auto const private_key = generateSecretKey(keyType, *seed);
 
-            obj[jss::validation_public_key_hex] = strHex(derivePublicKey(keyType, private_key));
-
             auto publicKey = derivePublicKey(keyType, private_key);
+            obj[jss::validation_public_key_hex] = strHex(publicKey);
             obj[jss::validation_public_key] = toBase58(
                 TokenType::NodePublic, publicKey);
             obj[jss::account_id] = toBase58(calcAccountID(publicKey));
