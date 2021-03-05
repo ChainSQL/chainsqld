@@ -358,15 +358,6 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
         EC_KEY_free(pubkey);
 		return 0;
     }
-
-    // if (!SM2_encrypt_with_recommended(pCipherData, (size_t*)pulCipherDataLen,
-	// 	(const unsigned char *)pPlainData, ulPlainDataLen, pubkey))
-    // {
-
-	// 	DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
-    //     EC_KEY_free(pubkey);
-	// 	return 1;
-	// }
 }
 unsigned long SoftEncrypt::SM2ECCDecrypt(
     std::pair<int, int> pri4DecryptInfo,
@@ -400,7 +391,7 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 
 	unsigned char* pCipherDataTemp = new unsigned char[ulCipherDataLen + 1];
 	// cipherReDecode(pCipherData, ulCipherDataLen);
-	pCipherDataTemp[0] = 4;
+    pCipherDataTemp[0] = SM2_ENCRYPT_PRE;
 	memcpy(pCipherDataTemp + 1, pCipherData, ulCipherDataLen);
 
 	size_t msglen;
@@ -438,45 +429,6 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
         delete[] pPlainData;
 		return 0;
 	}
-
-
-	//if (!SM2_decrypt_with_recommended(NULL, &msglen, buf, buflen, ec_key)) {
-	//	fprintf(stderr, "error: %s %d\n", __FILE__, __LINE__);
-	//	goto end;
-	//}
-	//if (msglen > sizeof(msg)) {
-	//	fprintf(stderr, "error: %s %d\n", __FILE__, __LINE__);
-	//	goto end;
-	//}
-	//else if (!SM2_decrypt_with_recommended(msg, &msglen, buf, buflen, ec_key)) {
-	//	fprintf(stderr, "error: %s %d\n", __FILE__, __LINE__);
-	//	goto end;
-	//}
-	//if (msglen != strlen(M) || memcmp(msg, M, strlen(M))) {
-	//	fprintf(stderr, "error: %s %d\n", __FILE__, __LINE__);
-	//	goto end;
-	//}
-
-	//ret = 1;
-
- //   unsigned char* pCipherDataTemp = new unsigned char[ulCipherDataLen + 1];
- //   // cipherReDecode(pCipherData, ulCipherDataLen);
- //   pCipherDataTemp[0] = 4;
- //   memcpy(pCipherDataTemp + 1, pCipherData, ulCipherDataLen);
-	//if (!SM2_decrypt_with_recommended(pPlainData, (size_t*)pulPlainDataLen, pCipherDataTemp, ulCipherDataLen + 1, ec_key))
- //   {
-	//	DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended failed");
- //       delete [] pCipherDataTemp;
-	//	EC_KEY_free(ec_key);
-	//	return 1;
-	//}
- //   else
- //   {
- //       DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended successfully");
- //       delete [] pCipherDataTemp;
-	//	EC_KEY_free(ec_key);
-	//	return 0;
- //   }
 }
 //SM3 interface
 unsigned long SoftEncrypt::SM3HashTotal(

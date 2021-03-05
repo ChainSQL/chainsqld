@@ -44,6 +44,8 @@
 
 const char g_signId[] = "1234567812345678";
 const int SM2_VERIFY_SUCCESS=1;
+const int SM2_ENCRYPT_PRE = 0x30;
+
 class SoftEncrypt : public GmEncrypt
 {
 public:
