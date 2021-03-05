@@ -3247,7 +3247,7 @@ NetworkOPsImp::getServerStatus()
     if (consensusInfo.isMember("parms") &&
         consensusInfo["parms"].isMember("time_out"))
     {
-        timeout = std::chrono::milliseconds(
+        timeout = 2 * std::chrono::milliseconds(
             consensusInfo["parms"]["time_out"].asInt());
     }
 

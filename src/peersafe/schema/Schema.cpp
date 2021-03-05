@@ -1281,18 +1281,21 @@ SchemaImp::setup()
         }
     }
 
-    if (!validatorSites_->load(
-            config().section(SECTION_VALIDATOR_LIST_SITES).values()))
+    if (schemaId() == beast::zero)
     {
-        JLOG(m_journal.fatal())
-            << "Invalid entry in [" << SECTION_VALIDATOR_LIST_SITES << "]";
-        return false;
-    }
-    else
-    {
-        m_networkOPs->setGenesisLedgerIndex(
-            m_ledgerMaster->getClosedLedger()->info().seq);
-        validatorSites_->setWaitinBeginConsensus();
+        if (!validatorSites_->load(
+                config().section(SECTION_VALIDATOR_LIST_SITES).values()))
+        {
+            JLOG(m_journal.fatal())
+                << "Invalid entry in [" << SECTION_VALIDATOR_LIST_SITES << "]";
+            return false;
+        }
+        else
+        {
+            m_networkOPs->setGenesisLedgerIndex(
+                m_ledgerMaster->getClosedLedger()->info().seq);
+            validatorSites_->setWaitinBeginConsensus();
+        }
     }
 
      if (!caCertSites_->load(
@@ -1319,12 +1322,16 @@ SchemaImp::setup()
             return false;
     }
 
-    validatorSites_->start();
+    if (schemaId() == beast::zero)
+    {
+        validatorSites_->start();
+    }
 
     caCertSites_->start();
 
     // start first consensus round
-    if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
+    if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0 ||
+        schemaId() != beast::zero)
     {
         m_networkOPs->setGenesisLedgerIndex(
             m_ledgerMaster->getClosedLedger()->info().seq);
