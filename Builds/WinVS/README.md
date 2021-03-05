@@ -18,6 +18,10 @@
 ### install visual studio 2017
 > [Visual Studio 2017 Download](https://www.visualstudio.com/downloads/download-visual-studio-vs) 
 
+### install perl
+> 1. [perl download](https://strawberryperl.com/download/5.32.1.1/strawberry-perl-5.32.1.1-64bit.msi)
+> 2. 下载安装之后，默认会添加到环境变量，如果没有请手动添加
+
 ### install git for windows
 > [Git for windows](https://git-scm.com/downloads)
 
