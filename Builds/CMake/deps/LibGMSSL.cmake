@@ -53,6 +53,14 @@ set_property(TARGET OpenSSL::Crypto PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${lib
 add_dependencies(OpenSSL::SSL ${libcrypto})
 add_dependencies(OpenSSL::Crypto libgmssl)
 
+find_package (ZLIB)
+set (has_zlib FALSE)
+if (TARGET ZLIB::ZLIB)
+  set_target_properties(OpenSSL::Crypto PROPERTIES
+    INTERFACE_LINK_LIBRARIES ZLIB::ZLIB)
+  set (has_zlib TRUE)
+endif ()
+
 # target_link_libraries (ripple_libs INTERFACE
 #     OpenSSL::SSL
 #     OpenSSL::Crypto)
