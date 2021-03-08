@@ -1422,6 +1422,8 @@ SchemaImp::setup()
 
     m_schemaAvailable = true;
 
+    doStart();
+
     return true;
 }
 

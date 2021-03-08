@@ -860,7 +860,7 @@ public:
 		}
 
 		// fix an issue that we can't catch an exception on top-level,
-		// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
+		// because destructor of one-temp-type driver to execute actual SQL-engine API.
 		// however destructor can catch an exception but can't throw an exception that was catched by destructor.
 		if (db_conn_->getSession().last_error().first != 0) {
 			last_error(db_conn_->getSession().last_error());
