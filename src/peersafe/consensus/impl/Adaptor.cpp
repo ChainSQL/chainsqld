@@ -382,11 +382,8 @@ Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger)
             mode() != ConsensusMode::wrongLedger);
     }
 
-    if (app_.schemaId() == beast::zero)
-    {
-        app_.validators().updateTrusted(
-            app_.getValidations().getCurrentNodeIDs());
-    }
+    app_.validators().updateTrusted(
+        app_.getValidations().getCurrentNodeIDs());
 }
 
 }  // namespace ripple

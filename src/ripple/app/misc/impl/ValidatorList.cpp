@@ -953,6 +953,48 @@ ValidatorList::calculateQuorum(
     //return quorum;
 }
 
+void ValidatorList::applySchemaModify(std::vector<PublicKey>const& validators, bool bAdd)
+{
+	PublicKey local;
+	auto it = publisherLists_.emplace(std::piecewise_construct,
+            std::forward_as_tuple(local),
+            std::forward_as_tuple());
+	if (bAdd)
+	{
+		for (auto& val : validators) 
+		{
+			//update publisherLists_
+			if (std::find(
+				it.first->second.list.begin(), 
+				it.first->second.list.end(), 
+				val)== it.first->second.list.end())
+			{
+				it.first->second.list.push_back(val);
+			}
+			// update keyListings_
+			keyListings_.insert({val, 1});
+		}
+	}
+	else 
+	{
+        for (auto& val : validators)
+        {
+			//update publisherLists_
+            auto iter = std::find(
+                    it.first->second.list.begin(),
+                    it.first->second.list.end(),
+				    val);
+			if(iter != it.first->second.list.end())
+            {
+                it.first->second.list.erase(iter);
+            }
+			// update keyListings_
+			keyListings_.erase(val);
+        }
+	}
+	
+}
+
 TrustChanges
 ValidatorList::updateTrusted(hash_set<NodeID> const& seenValidators)
 {
