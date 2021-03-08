@@ -1486,8 +1486,8 @@ void VM::interpretCases()
         CASE(EXRENAMETABLE)
         {
             updateMem(memNeed(m_SP[1], m_SP[2]));
-            tableGasMem(m_SP[3], m_SP[4]);
-            updateIOGas();
+            //tableGasMem(m_SP[3], m_SP[4]);
+            //updateIOGas();
 
             auto const address = intx::be::trunc<evmc::address>(m_SP[0]);
             uint8_t const* nameIdx = m_mem.data() + size_t(m_SP[1]);
