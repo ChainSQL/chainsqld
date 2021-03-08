@@ -20,8 +20,8 @@ if(snappy)
 else()
   ExternalProject_Add (snappy
     PREFIX ${nih_cache_path}
-    #GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/snappy.git
-    #GIT_TAG 1.1.7
+    GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/snappy.git
+    GIT_TAG 1.1.7
     CMAKE_ARGS
       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}

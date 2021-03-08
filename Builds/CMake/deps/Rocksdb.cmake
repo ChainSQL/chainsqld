@@ -59,8 +59,8 @@ if (local_rocksdb)
   message (STATUS "Using local build of RocksDB.")
   ExternalProject_Add (rocksdb
     PREFIX ${nih_cache_path}
-    #GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/rocksdb.git
-    #GIT_TAG v6.7.3
+    GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/rocksdb.git
+    GIT_TAG v6.7.3
     PATCH_COMMAND
       # only used by windows build
       ${CMAKE_COMMAND} -E copy

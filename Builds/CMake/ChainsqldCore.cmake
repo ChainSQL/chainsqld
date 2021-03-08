@@ -787,15 +787,8 @@ target_sources (chainsqld PRIVATE
       test sources:
         subdir: unit_test
   #]===============================]
-  src/test/unit_test/multi_runner.cpp
-     #[===============================[
-#      test sources:
-#        subdir: shamap
-#   #]===============================]
-   src/test/shamap/FetchPack_test.cpp
-   src/test/shamap/SHAMapSync_test.cpp
-   src/test/shamap/SHAMap_test.cpp)
-   #[===============================[
+  src/test/unit_test/multi_runner.cpp)
+#   #[===============================[
 #      test sources:
 #        subdir: app
 #   #]===============================]
@@ -1093,6 +1086,13 @@ target_sources (chainsqld PRIVATE
 #   #]===============================]
 #   src/test/server/ServerStatus_test.cpp
 #   src/test/server/Server_test.cpp
+#   #[===============================[
+#      test sources:
+#        subdir: shamap
+#   #]===============================]
+#   src/test/shamap/FetchPack_test.cpp
+#   src/test/shamap/SHAMapSync_test.cpp
+#   src/test/shamap/SHAMap_test.cpp
 #   #[===============================[
 #      test sources:
 #        subdir: unit_test
