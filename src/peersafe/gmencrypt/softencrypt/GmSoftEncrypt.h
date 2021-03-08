@@ -26,18 +26,26 @@
 
 #define SOFTENCRYPT
 #ifdef SOFTENCRYPT
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/engine.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/evp.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/ec.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/rand.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/obj_mac.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/pem.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm2.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm3.h>
-#include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sms4.h>
-//#include <gmencrypt/softencrypt/usr/include/openssl/hmac.h>
+#include <openssl/ec.h>
+#include <openssl/pem.h>
+#include <openssl/sm2.h>
+#include <openssl/sm3.h>
+#include <openssl/sms4.h>
+
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/engine.h>
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/evp.h>
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/ec.h>
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/rand.h>
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/obj_mac.h>
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/pem.h>
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm2.h>
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sm3.h>
+// #include <peersafe/gmencrypt/softencrypt/GmSSL/include/openssl/sms4.h>
 
 const char g_signId[] = "1234567812345678";
+const int SM2_VERIFY_SUCCESS=1;
+const int SM2_ENCRYPT_PRE = 0x30;
+
 class SoftEncrypt : public GmEncrypt
 {
 public:

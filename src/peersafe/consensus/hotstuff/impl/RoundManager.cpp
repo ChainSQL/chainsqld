@@ -138,14 +138,12 @@ void RoundManager::GenerateThenBroadCastProposalInTimer(const NewRoundEvent& eve
 		}
 	}
 	else {
+        JLOG(journal_.debug()) << "delay to generate a proposal for round "
+                                << event.round;
 		boost::asio::steady_timer& timer = round_state_->GenerateProposalTimeoutTimer();
 		timer.expires_from_now(std::chrono::milliseconds(config_.interval_extract));
 		timer.async_wait(
 			std::bind(&RoundManager::GenerateThenBroadCastProposal, this, std::placeholders::_1, event));
-
-		JLOG(journal_.info())
-			<< "tx-pool may be empty. delay to generate a proposal for round "
-			<< event.round;
 	}
 }
 

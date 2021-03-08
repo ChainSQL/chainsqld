@@ -384,9 +384,8 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::pair<unsigned char*, int> pub4Encrypt = 
                         std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
-        unsigned long rv = hEObj->SM2ECCEncrypt(pub4Encrypt,
+        hEObj->SM2ECCEncrypt(pub4Encrypt,
                         (unsigned char*)&passBlob[0], passBlob.size(), vucCipherText);
-        (void)rv;   // ignore_unused warning
         return vucCipherText;
     }
     default:

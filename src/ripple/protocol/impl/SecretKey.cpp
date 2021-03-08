@@ -221,7 +221,6 @@ Blob
 decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
 {
     GmEncrypt* hEObj = GmEncryptObj::getInstance();
-    // if (nullptr != hEObj) //GM Algorithm
     if (hEObj->comKey == secret_key.keyTypeInt_)
     {
         // Blob secretBlob(secret_key.data(), secret_key.data() +secret_key.size());
@@ -234,9 +233,8 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
             std::make_pair(secret_key.keyTypeInt_, secret_key.encrytCardIndex_);
         std::pair<unsigned char*, int> pri4Decrypt = 
             std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
-        unsigned long rv = hEObj->SM2ECCDecrypt(
+        hEObj->SM2ECCDecrypt(
             pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), resPlainText);
-        (void)rv;   // ignore unused warning
 		
         return resPlainText;
     }

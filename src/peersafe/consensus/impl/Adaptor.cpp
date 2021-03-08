@@ -381,6 +381,12 @@ Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger)
             previousLedger,
             mode() != ConsensusMode::wrongLedger);
     }
+
+    if (app_.schemaId() == beast::zero)
+    {
+        app_.validators().updateTrusted(
+            app_.getValidations().getCurrentNodeIDs());
+    }
 }
 
 }  // namespace ripple

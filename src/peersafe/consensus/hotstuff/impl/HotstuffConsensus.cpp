@@ -1368,7 +1368,7 @@ HotstuffConsensus::checkCache()
     std::uint32_t curSeq = previousLedger_.seq() + 1;
     if (nextProposalCache_.find(curSeq) != nextProposalCache_.end())
     {
-        JLOG(j_.info()) << "Handle cached proposal";
+        JLOG(j_.info()) << "Handle cached proposal seq: " << curSeq;
         for (auto const& it : nextProposalCache_[curSeq])
         {
             if (!blockAcquiring_.fetch(it.second->syncInfo()
@@ -1383,7 +1383,7 @@ HotstuffConsensus::checkCache()
 
     for (auto it = nextProposalCache_.begin(); it != nextProposalCache_.end();)
     {
-        if (it->first < curSeq)
+        if (it->first < curSeq - 1)
         {
             it = nextProposalCache_.erase(it);
         }

@@ -199,7 +199,8 @@ PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
         return;
     }
 
-    if (!adaptor_.isLeader(previousLedger_.seq() + 1, view_))
+    if (!adaptor_.isLeader(previousLedger_.seq() + 1, view_) &&
+        !result_)
     {
         auto set = txSet.map_->snapShot(false);
         // this place has a txSet copy,what's the time it costs?
