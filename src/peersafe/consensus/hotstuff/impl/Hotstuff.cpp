@@ -134,7 +134,8 @@ int Hotstuff::start(const RecoverData& recover_data) {
 }
 
 void Hotstuff::stop() {
-    round_manager_->stop();
+    if (round_manager_)
+        round_manager_->stop();
 }
 
 bool Hotstuff::CheckProposal(
