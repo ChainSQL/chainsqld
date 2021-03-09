@@ -264,16 +264,21 @@ PopConsensus::getJson(bool full) const
     ret["proposing"] = (mode_.get() == ConsensusMode::proposing);
     ret["proposers"] = static_cast<Int>(txSetVoted_.size());
 
-    if (mode_.get() != ConsensusMode::wrongLedger)
+    // Maybe consensus isn't begin
+    if (previousLedger_.ledger_ != nullptr)
     {
-        ret["synched"] = true;
-        ret["ledger_seq"] = previousLedger_.seq() + 1;
-        ret["close_granularity"] = static_cast<Int>(closeResolution_.count());
-    }
-    else
-    {
-        ret["synched"] = false;
-        ret["ledger_seq"] = previousLedger_.seq() + 1;
+        if (mode_.get() != ConsensusMode::wrongLedger)
+        {
+            ret["synched"] = true;
+            ret["ledger_seq"] = previousLedger_.seq() + 1;
+            ret["close_granularity"] =
+                static_cast<Int>(closeResolution_.count());
+        }
+        else
+        {
+            ret["synched"] = false;
+            ret["ledger_seq"] = previousLedger_.seq() + 1;
+        }
     }
 
     ret["phase"] = to_string(phase_);

@@ -332,6 +332,16 @@ public:
     TrustChanges
     updateTrusted(hash_set<NodeID> const& seenValidators);
 
+	/** Apply SchemaModify transaction
+		
+		Reset the following structures:
+		1. publisherLists_
+		2. keyListings_
+
+		And call updateTrusted when onConsensusReached called
+	 */
+	void applySchemaModify(std::vector<PublicKey>const& validators,bool bAdd);
+
     /** Get quorum value for current trusted key set
 
         The quorum is the minimum number of validations needed for a ledger to

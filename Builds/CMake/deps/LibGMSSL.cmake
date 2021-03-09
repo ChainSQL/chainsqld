@@ -1,6 +1,6 @@
 set(libcrypto "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}crypto${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(libssl "${nih_cache_path}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}ssl${CMAKE_STATIC_LIBRARY_SUFFIX}")
-set(libgmssl_include_dir "${nih_cache_path}/include/openssl")
+set(libgmssl_include_dir "${nih_cache_path}/include")
 
 if(UNIX)
     set(GMSSL_CFG_CMD ./config -fPIC no-shared --prefix=${nih_cache_path} --openssldir=${nih_cache_path}/lib/ssl)
@@ -29,7 +29,7 @@ ExternalProject_Add(libgmssl
     # BUILD_BYPRODUCTS "${libcrypto}"
 )
 
-set(OPENSSL_INCLUDE_DIRECTORIES ${nih_cache_path}/include/openssl)
+set(OPENSSL_INCLUDE_DIRECTORIES ${libgmssl_include_dir})
 set(OPENSSL_LINK_DIRECTORIES ${nih_cache_path}/lib)
 if(openssl)
     message(STATUS "Unset gmssl path")
@@ -39,7 +39,7 @@ else()
     set(OPENSSL_ROOT_DIR ${nih_cache_path})
 endif()
 
-file(MAKE_DIRECTORY ${libgmssl_include_dir})
+file(MAKE_DIRECTORY ${libgmssl_include_dir}/openssl)
 # Create imported library
 add_library(OpenSSL::SSL STATIC IMPORTED)
 set_property(TARGET OpenSSL::SSL PROPERTY IMPORTED_CONFIGURATIONS Release)
@@ -52,6 +52,14 @@ set_property(TARGET OpenSSL::SSL PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${libgms
 set_property(TARGET OpenSSL::Crypto PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${libgmssl_include_dir})
 add_dependencies(OpenSSL::SSL ${libcrypto})
 add_dependencies(OpenSSL::Crypto libgmssl)
+
+find_package (ZLIB)
+set (has_zlib FALSE)
+if (TARGET ZLIB::ZLIB)
+  set_target_properties(OpenSSL::Crypto PROPERTIES
+    INTERFACE_LINK_LIBRARIES ZLIB::ZLIB)
+  set (has_zlib TRUE)
+endif ()
 
 # target_link_libraries (ripple_libs INTERFACE
 #     OpenSSL::SSL

@@ -226,6 +226,19 @@ void VM::tableGasMem(intx::uint256 memBegin, intx::uint256 byteLens)
     updateMem(memNeed(memBegin, byteLens));
 }
 
+void VM::int64ToIntxUint256(int64_t num)
+{
+    if (num & 0x8000000000000000)  // neg
+    {
+        m_SPP[0] = intx::uint256(
+            intx::uint128(UINT64_MAX, UINT64_MAX),
+            intx::uint128(UINT64_MAX, num));
+    }
+    else
+    {
+        m_SPP[0] = num;
+    }
+}
 void VM::fetchInstruction()
 {
     m_OP = Instruction(m_code[m_PC]);
@@ -1743,7 +1756,16 @@ void VM::interpretCases()
 
             auto r = m_host->trust_limit(m_context, &address, currencyIdx, currencyLen, power, &gateway);
 
-            m_SPP[0] = r;
+            int64ToIntxUint256(r);
+            //if ((r && 0x8000000000000000) == 0x8000000000000000)//neg
+            //{
+            //    m_SPP[0] = intx::uint256(intx::uint128(UINT64_MAX, UINT64_MAX),
+            //                                intx::uint128(UINT64_MAX, r));
+            //}
+            //else
+            //{
+            //    m_SPP[0] = r;
+            //}
         }
         NEXT
         CASE(EXGATEWAYBALANCE)
@@ -1758,7 +1780,8 @@ void VM::interpretCases()
 
             auto r = m_host->gateway_balance(m_context, &address, currencyIdx, currencyLen, power, &gateway);
 
-            m_SPP[0] = r;
+            int64ToIntxUint256(r);
+            //m_SPP[0] = r;
         }
         NEXT
         CASE(EXPAY)

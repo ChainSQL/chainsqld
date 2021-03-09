@@ -3685,6 +3685,13 @@ NetworkOPsImp::checkSchemaTx(
             }
         }
 
+		//update validators list
+		if (!bOperatingSelf)
+		{
+			app_.app().getSchema(schemaID).validators().applySchemaModify(vecValidators,
+				stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::add);
+		}		
+
         std::vector<std::string> vecPeers;
         auto& peers = stTxn->getFieldArray(sfPeerList);
         for (auto& peer : peers)
