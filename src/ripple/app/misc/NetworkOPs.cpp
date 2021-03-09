@@ -4356,7 +4356,7 @@ void NetworkOPsImp::subTable(InfoSub::ref isrListener, AccountID const& accountI
     if (simIterator == mSubTable.end())
     {
         hash_map<std::string, SubMapType> map;
-        // Not found, note that account has a new single listner.
+        // Not found, note that account has a new single listener.
         SubMapType usisElement;
         usisElement[isrListener->getSeq()] = isrListener;
         map[sTableName] = usisElement;
