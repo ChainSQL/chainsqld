@@ -770,10 +770,15 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 				auto ec{ rpcSUCCESS };
 				std::shared_ptr<STTx const> pTx = nullptr;
 				auto pTransaction = app_.getMasterTransaction().fetch(table.getFieldH256(sfCreatedTxnHash),ec);
-				if (pTransaction)
-				{
-					pTx = pTransaction->getSTransaction();
-				}
+
+                if (!pTransaction) {
+                    std::string errMsg = "fetch transaction " + to_string(table.getFieldH256(sfCreatedTxnHash)) + " failed";
+                    return std::make_pair(false, errMsg);
+                }
+                else {
+                    pTx = pTransaction->getSTransaction();
+                }
+					
 				if (!user_accountID_ || user_accountID_->isZero() )
 				{
 					app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
