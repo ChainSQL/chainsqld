@@ -1379,7 +1379,7 @@ LedgerMaster::checkSubChains()
             {
                 JLOG(m_journal.info())
                     << "Creating schema when checkSubChains:" << schemaId;
-                app_.getOPs().createSchema(sle, true);
+                app_.getOPs().createSchema(sle, false);
             }
         }
         else
