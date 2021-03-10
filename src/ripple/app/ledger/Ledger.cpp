@@ -362,7 +362,7 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
 	stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
 
-    stateMap_->dump(true);
+    //stateMap_->dump(true);
    // ledger.stateMap_->dump(true);
 
 
