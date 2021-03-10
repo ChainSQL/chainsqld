@@ -363,11 +363,25 @@ public:
             auto const iter(slots_.find(local_endpoint));
             if (iter != slots_.end())
             {
-                assert(
-                    iter->second->local_endpoint() == slot->remote_endpoint());
-                JLOG(m_journal.warn())
-                    << beast::leftw(18) << "Logic dropping "
-                    << slot->remote_endpoint() << " as self connect";
+                if (iter->second->local_endpoint() &&
+                    iter->second->local_endpoint()->port() ==
+                        config_.listeningPort &&
+                    slot->remote_endpoint().port() != config_.listeningPort)
+                {
+                    JLOG(m_journal.warn())
+                        << beast::leftw(18) << "Logic dropping "
+                        << slot->remote_endpoint() << " reused port "
+                        << local_endpoint.port() << " in local machine";
+                }
+                else
+                {
+                    assert(
+                        iter->second->local_endpoint() ==
+                        slot->remote_endpoint());
+                    JLOG(m_journal.warn())
+                        << beast::leftw(18) << "Logic dropping "
+                        << slot->remote_endpoint() << " as self connect";
+                }
                 return false;
             }
         }
@@ -482,7 +496,7 @@ public:
         for (auto const& s : slots_)
         {
             auto const result(
-                m_squelches.insert(s.second->remote_endpoint().address()));
+                m_squelches.insert(s.second->remote_endpoint()));
             if (!result.second)
                 m_squelches.touch(result.first);
         }
@@ -981,17 +995,17 @@ public:
         auto const now(m_clock.now());
         for (auto iter = fixed_.begin(); needed && iter != fixed_.end(); ++iter)
         {
-            auto const& address(iter->first.address());
+            auto const& endpoint(iter->first);
             if (iter->second.when() <= now &&
-                squelches.find(address) == squelches.end() &&
+                squelches.find(endpoint) == squelches.end() &&
                 std::none_of(
                     slots_.cbegin(),
                     slots_.cend(),
-                    [address](Slots::value_type const& v) {
-                        return address == v.first.address();
+                    [endpoint](Slots::value_type const& v) {
+                        return endpoint == v.first;
                     }))
             {
-                squelches.insert(iter->first.address());
+                squelches.insert(iter->first);
                 c.push_back(iter->first);
                 --needed;
             }

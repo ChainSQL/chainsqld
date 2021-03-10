@@ -3417,9 +3417,13 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             << "pub all Txs, time used: " << utcTime() - timeStart << "ms";
     }
 
-    for (auto const& vt : alpAccepted->getMap())
+    // Check schema txs in main schema
+    if (app_.schemaId() == beast::zero)
     {
-        checkSchemaTx(lpAccepted, *vt.second);
+        for (auto const& vt : alpAccepted->getMap())
+        {
+            checkSchemaTx(lpAccepted, *vt.second);
+        }
     }
     //// test createSchema code
     //{
