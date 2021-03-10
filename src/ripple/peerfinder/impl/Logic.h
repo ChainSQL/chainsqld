@@ -352,11 +352,25 @@ public:
             auto const iter (slots_.find (local_endpoint));
             if (iter != slots_.end ())
             {
-                assert (iter->second->local_endpoint ()
-                        == slot->remote_endpoint ());
-                JLOG(m_journal.warn()) << beast::leftw (18) <<
-                    "Logic dropping " << slot->remote_endpoint () <<
-                    " as self connect";
+                if (iter->second->local_endpoint() &&
+                    iter->second->local_endpoint()->port() ==
+                        config_.listeningPort &&
+                    slot->remote_endpoint().port() != config_.listeningPort)
+                {
+                    JLOG(m_journal.warn())
+                        << beast::leftw(18) << "Logic dropping "
+                        << slot->remote_endpoint() << " reused port "
+                        << local_endpoint.port() << " in local machine";
+                }
+                else
+                {
+                    assert(
+                        iter->second->local_endpoint() ==
+                        slot->remote_endpoint());
+                    JLOG(m_journal.warn())
+                        << beast::leftw(18) << "Logic dropping "
+                        << slot->remote_endpoint() << " as self connect";
+                }
                 return false;
             }
         }
