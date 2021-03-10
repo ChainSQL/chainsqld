@@ -188,6 +188,62 @@ public:
 		return ret;
 	}
 
+	int createIndex(const std::string& Raw) {
+		int ret = 0;
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		STTx tx(ttTABLELISTSET, [this, &Raw, &hex_table, &keypair](STObject &obj) {
+			set_AccountID(obj);
+			obj.setFieldVL(sfSigningPubKey, keypair.first.slice());
+			set_tables(obj);
+			obj.setFieldU16(sfOpType, 17); 
+			ripple::Blob blob;
+			blob.assign(Raw.begin(), Raw.end());
+			obj.setFieldVL(sfRaw, blob);
+			});
+
+		tx.sign(keypair.first, keypair.second);
+		std::string text = tx.getFullText();
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		auto result = txstore_->Dispose(tx, "");
+		if (result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+			ret = -1;
+		}
+		return ret;
+	}
+
+	int dropIndex(const std::string& Raw) {
+		int ret = 0;
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		STTx tx(ttTABLELISTSET, [this, &Raw, &hex_table, &keypair](STObject &obj) {
+			set_AccountID(obj);
+			obj.setFieldVL(sfSigningPubKey, keypair.first.slice());
+			set_tables(obj);
+			obj.setFieldU16(sfOpType, 18);
+			ripple::Blob blob;
+			blob.assign(Raw.begin(), Raw.end());
+			obj.setFieldVL(sfRaw, blob);
+			});
+
+		tx.sign(keypair.first, keypair.second);
+		std::string text = tx.getFullText();
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		auto result = txstore_->Dispose(tx, "");
+		if (result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+			ret = -1;
+		}
+		return ret;
+	}
+
 	int createTable(const std::string& Raw, const std::string& optionalRule) {
 		int ret = 0;
 		const auto keypair = randomKeyPair(KeyType::ed25519);
@@ -2530,6 +2586,26 @@ public:
 		test_DropTableTransaction();
 	}
 
+	void test_CreateOrDeleteIndex() {
+		enum {
+			CREATEINDEX = 17,
+			DELETEINDEX = 18,
+		};
+
+		std::string raw = "[{\"field\":\"id\",\"type\":\"int\"},{\"field\":\"cash\",\"type\":\"float\"}]";
+		int ret = createTable(raw, "");
+		BEAST_EXPECT(ret == 0);
+
+		std::string createindex = "[{\"index\":\"testindex\"},{\"field\":\"id\"}, {\"field\":\"cash\"}]";
+		ret = createIndex(createindex);
+		BEAST_EXPECT(ret == 0);
+		
+		std::string dropindex = "[{\"index\":\"testindex\"}]";
+		ret = dropIndex(dropindex);
+		BEAST_EXPECT(ret == 0);
+		test_DropTableTransaction();
+	}
+
 	void run() {
 		// init env
 		init_env();
@@ -2554,6 +2630,7 @@ public:
 		test_join_select();
 
 		test_AlterTable();
+		test_CreateOrDeleteIndex();
 
 		pass();
 	}

@@ -62,6 +62,7 @@ private:
 	int GenerateAddColumnsSql(const Json::Value& raw, BuildSQL *buildsql);
 	int GenerateDelColumnsSql(const Json::Value& raw, BuildSQL *buildsql);
 	int GenerateModifyColumnsSql(const Json::Value& raw, BuildSQL *buildsql);
+	int GenerateOperateIndex(const Json::Value& raw, BuildSQL *buildsql);
 	std::pair<int, std::string> GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql);
 
 	std::pair<bool, std::string> handle_assert_statement(const Json::Value& raw, BuildSQL *buildsql);
