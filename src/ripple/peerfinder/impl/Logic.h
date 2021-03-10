@@ -363,7 +363,9 @@ public:
             auto const iter(slots_.find(local_endpoint));
             if (iter != slots_.end())
             {
-                if (iter->second->local_endpoint() == config_.listeningPort &&
+                if (iter->second->local_endpoint() &&
+                    iter->second->local_endpoint()->port() ==
+                        config_.listeningPort &&
                     slot->remote_endpoint().port() != config_.listeningPort)
                 {
                     JLOG(m_journal.warn())
