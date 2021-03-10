@@ -481,6 +481,8 @@ public:
 		BUILD_ALTER_ADD_SQL = 14,
 		BUILD_ALTER_DEL_SQL = 15,
 		BUILD_ALTER_MOD_SQL = 16,
+		BUILD_CREATE_INDEX_SQL = 17,
+		BUILD_DROP_INDEX_SQL = 18,
 		BUILD_EXIST_TABLE = 1000,
 		BUILD_NOSQL
 	};
@@ -830,6 +832,12 @@ public:
 		case BuildSQL::BUILD_ALTER_MOD_SQL:
 			sql = build_modifycolumn_sql();
 			break;
+		case BuildSQL::BUILD_CREATE_INDEX_SQL:
+			sql = build_createindex_sql();
+			break;
+		case BuildSQL::BUILD_DROP_INDEX_SQL:
+			sql = build_dropindex_sql();
+			break;
 		default:
 			break;
 		}
@@ -875,6 +883,12 @@ public:
 			break;
 		case BuildSQL::BUILD_ALTER_MOD_SQL:
 			ret = execute_modifycolumn_sql();
+			break;
+		case BuildSQL::BUILD_CREATE_INDEX_SQL:
+			ret = execute_createindex_sql();
+			break;
+		case BuildSQL::BUILD_DROP_INDEX_SQL:
+			ret = execute_dropindex_sql();
 			break;
 		default:
 			break;
@@ -1647,6 +1661,41 @@ private:
 		return sql;
 	}
 
+	std::string build_createindex_sql() {
+		std::string index_name;
+		std::string columns;
+		for (size_t idx = 0; idx < fields_.size(); idx++) {
+			BuildField& field = fields_[idx];
+			if (field.isIndex()) {
+				index_name = field.Name();
+			}
+			else {
+				columns += field.Name();
+				if (idx != fields_.size() - 1) {
+					columns += ",";
+				}
+			}
+		}
+
+		std::string& tablename = tables_[0];
+		std::string sql = (boost::format("CREATE INDEX %s ON %s (%s)")
+			% index_name
+			% tablename
+			% columns).str();
+		return sql;
+	}
+
+	std::string build_dropindex_sql() {
+		assert(fields_[0].isIndex());
+		std::string index_name = fields_[0].Name();
+
+		std::string& tablename = tables_[0];
+		std::string sql = (boost::format("DROP INDEX %s ON %s")
+			% index_name
+			% tablename).str();
+		return sql;
+	}
+
 	int execute_addcolumn_sql() {
 		std::string sql_str = build_addcolumn_sql();
 		if (sql_str.empty()) {
@@ -1693,6 +1742,46 @@ private:
 		std::string sql_str = build_modifycolumn_sql();
 		if (sql_str.empty()) {
 			last_error(std::make_pair<int, std::string>(-1, "executing alter table modify columns unsuccessfully"));
+			return -1;
+		}
+
+		try {
+			LockedSociSession sql = db_conn_->checkoutDb();
+			soci::statement st =
+				(sql->prepare << sql_str);
+			st.execute();
+		}
+		catch (soci::soci_error& e) {
+			last_error(std::make_pair<int, std::string>(-1, e.what()));
+			return -1;
+		}
+		return 0;
+	}
+
+	int execute_createindex_sql() {
+		std::string sql_str = build_createindex_sql();
+		if (sql_str.empty()) {
+			last_error(std::make_pair<int, std::string>(-1, "executing create index unsuccessfully"));
+			return -1;
+		}
+
+		try {
+			LockedSociSession sql = db_conn_->checkoutDb();
+			soci::statement st =
+				(sql->prepare << sql_str);
+			st.execute();
+		}
+		catch (soci::soci_error& e) {
+			last_error(std::make_pair<int, std::string>(-1, e.what()));
+			return -1;
+		}
+		return 0;
+	}
+
+	int execute_dropindex_sql() {
+		std::string sql_str = build_dropindex_sql();
+		if (sql_str.empty()) {
+			last_error(std::make_pair<int, std::string>(-1, "executing drop index unsuccessfully"));
 			return -1;
 		}
 
@@ -3248,18 +3337,39 @@ int STTx2SQL::GenerateAddColumnsSql(const Json::Value& raw, BuildSQL *buildsql) 
 }
 
 int STTx2SQL::GenerateDelColumnsSql(const Json::Value& raw, BuildSQL *buildsql) {
-	if (raw.isArray()) {
-		for (Json::UInt index = 0; index < raw.size(); index++) {
-			Json::Value v = raw[index];
-			std::string fieldname = v["field"].asString();
-			buildsql->AddField(BuildField(fieldname));
-		}
+	if (raw.isArray() != false)
+		return -1;
+
+	for (Json::UInt index = 0; index < raw.size(); index++) {
+		Json::Value v = raw[index];
+		std::string fieldname = v["field"].asString();
+		buildsql->AddField(BuildField(fieldname));
 	}
 	return 0;
 }
 
 int STTx2SQL::GenerateModifyColumnsSql(const Json::Value& raw, BuildSQL *buildsql) {
 	return ParseFieldDefinitionAndAdd(raw, buildsql);
+}
+
+int STTx2SQL::GenerateOperateIndex(const Json::Value& raw, BuildSQL *buildsql) {
+	for (Json::UInt index = 0; index < raw.size(); index++) {
+		Json::Value v = raw[index];
+		std::string fieldname;
+		if (index == 0) {
+			fieldname = v["index"].asString();
+		}
+		else {
+			fieldname = v["field"].asString();
+		}
+		BuildField field(fieldname);
+		if (index == 0) {
+			field.SetIndex();
+		}
+
+		buildsql->AddField(field);
+	}
+	return 0;
 }
 
 std::pair<int, std::string> STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
@@ -3536,6 +3646,8 @@ bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	case BuildSQL::BUILD_ALTER_ADD_SQL:
 	case BuildSQL::BUILD_ALTER_DEL_SQL:
 	case BuildSQL::BUILD_ALTER_MOD_SQL:
+	case BuildSQL::BUILD_CREATE_INDEX_SQL:
+	case BuildSQL::BUILD_DROP_INDEX_SQL:
 		for (Json::UInt idx = 0; idx < size; idx++) {
 			const Json::Value& e = raw[idx];
 			if (e.isObject() == false) {
@@ -3673,6 +3785,12 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		break;
 	case 16:
 		build_type = BuildSQL::BUILD_ALTER_MOD_SQL;
+		break;
+	case 17:
+		build_type = BuildSQL::BUILD_CREATE_INDEX_SQL;
+		break;
+	case 18:
+		build_type = BuildSQL::BUILD_DROP_INDEX_SQL;
 		break;
 	default:
 		break;
@@ -3885,6 +4003,12 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		break;
 	case BuildSQL::BUILD_ALTER_MOD_SQL:
 		result = GenerateModifyColumnsSql(raw_json, buildsql.get());
+		break;
+	case BuildSQL::BUILD_CREATE_INDEX_SQL:
+		result = GenerateOperateIndex(raw_json, buildsql.get());
+		break;
+	case BuildSQL::BUILD_DROP_INDEX_SQL:
+		result = GenerateOperateIndex(raw_json, buildsql.get());
 		break;
 	default:
 		break;
