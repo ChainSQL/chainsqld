@@ -478,6 +478,11 @@ public:
 		BUILD_DELETE_SQL = 9,
 		BUILD_ASSERT_STATEMENT = 10,
         BUILD_RECREATE_SQL = 12,
+		BUILD_ALTER_ADD_SQL = 14,
+		BUILD_ALTER_DEL_SQL = 15,
+		BUILD_ALTER_MOD_SQL = 16,
+		BUILD_CREATE_INDEX_SQL = 17,
+		BUILD_DROP_INDEX_SQL = 18,
 		BUILD_EXIST_TABLE = 1000,
 		BUILD_NOSQL
 	};
@@ -819,6 +824,21 @@ public:
 		case BuildSQL::BUILD_EXIST_TABLE:
 			sql = build_exist_sql();
 			break;
+		case BuildSQL::BUILD_ALTER_ADD_SQL:
+			sql = build_addcolumn_sql();
+			break;
+		case BuildSQL::BUILD_ALTER_DEL_SQL:
+			break;
+			sql = build_delcolumn_sql();
+		case BuildSQL::BUILD_ALTER_MOD_SQL:
+			sql = build_modifycolumn_sql();
+			break;
+		case BuildSQL::BUILD_CREATE_INDEX_SQL:
+			sql = build_createindex_sql();
+			break;
+		case BuildSQL::BUILD_DROP_INDEX_SQL:
+			sql = build_dropindex_sql();
+			break;
 		default:
 			break;
 		}
@@ -856,6 +876,21 @@ public:
         case BuildSQL::BUILD_RECREATE_SQL:
             ret = execute_createtable_sql();
             break;
+		case BuildSQL::BUILD_ALTER_ADD_SQL:
+			ret = execute_addcolumn_sql();
+			break;
+		case BuildSQL::BUILD_ALTER_DEL_SQL:
+			ret = execute_delcolumn_sql();
+			break;
+		case BuildSQL::BUILD_ALTER_MOD_SQL:
+			ret = execute_modifycolumn_sql();
+			break;
+		case BuildSQL::BUILD_CREATE_INDEX_SQL:
+			ret = execute_createindex_sql();
+			break;
+		case BuildSQL::BUILD_DROP_INDEX_SQL:
+			ret = execute_dropindex_sql();
+			break;
 		default:
 			break;
 		}
@@ -887,7 +922,7 @@ public:
 
 protected:
 	DisposeSQL() {};
-
+	virtual std::size_t analyse_fields_and_build_colunms(std::vector<std::string>& columns) = 0;
 	virtual std::string build_createtable_sql() = 0;
 	virtual int execute_createtable_sql() = 0;
 	virtual std::string build_exist_sql() = 0;
@@ -1546,6 +1581,219 @@ private:
 		return sql;
 	}
 
+	std::string build_addcolumn_sql() {
+		std::string& tablename = tables_[0];
+		std::vector<std::string> columns;
+		analyse_fields_and_build_colunms(columns);
+
+		std::string columns_str;
+		for (size_t idx = 0; idx < columns.size(); idx++) {
+			if (idx == 0) {
+				columns_str += "ADD ";
+			}
+
+			std::string& element = columns[idx];
+			if (element.compare(",") == 0) {
+				columns_str += element;
+				columns_str += "ADD ";
+			}
+			else {
+				columns_str += element;
+				columns_str += " ";
+			}
+
+		}
+
+		std::string sql = (boost::format("ALTER TABLE %s %s")
+			% tablename
+			% columns_str).str();
+		return sql;
+	}
+
+	std::string build_delcolumn_sql() {
+		std::string columns;
+		for (size_t idx = 0; idx < fields_.size(); idx++) {
+			BuildField& field = fields_[idx];
+			columns += "DROP ";
+			columns += field.Name();
+			if (idx != fields_.size() - 1) {
+				columns += ",";
+			}
+		}
+
+		std::string& tablename = tables_[0];
+		std::string sql = (boost::format("ALTER TABLE %s %s")
+			% tablename
+			% columns).str();
+		return sql;
+	}
+
+	std::string build_modifycolumn_sql() {
+		std::string& tablename = tables_[0];
+		std::vector<std::string> columns;
+		analyse_fields_and_build_colunms(columns);
+
+		std::string columns_str;
+		for (size_t idx = 0; idx < columns.size(); idx++) {
+			if (idx == 0) {
+				columns_str += "MODIFY ";
+			}
+
+			std::string& element = columns[idx];
+			if (element.compare(",") == 0) {
+				columns_str += element;
+				columns_str += "MODIFY ";
+			}
+			else {
+				columns_str += element;
+				columns_str += " ";
+			}
+
+		}
+
+		std::string sql = (boost::format("ALTER TABLE %s %s")
+			% tablename
+			% columns_str).str();
+		return sql;
+	}
+
+	std::string build_createindex_sql() {
+		std::string index_name;
+		std::string columns;
+		for (size_t idx = 0; idx < fields_.size(); idx++) {
+			BuildField& field = fields_[idx];
+			if (field.isIndex()) {
+				index_name = field.Name();
+			}
+			else {
+				columns += field.Name();
+				if (idx != fields_.size() - 1) {
+					columns += ",";
+				}
+			}
+		}
+
+		std::string& tablename = tables_[0];
+		std::string sql = (boost::format("CREATE INDEX %s ON %s (%s)")
+			% index_name
+			% tablename
+			% columns).str();
+		return sql;
+	}
+
+	std::string build_dropindex_sql() {
+		assert(fields_[0].isIndex());
+		std::string index_name = fields_[0].Name();
+
+		std::string& tablename = tables_[0];
+		std::string sql = (boost::format("DROP INDEX %s ON %s")
+			% index_name
+			% tablename).str();
+		return sql;
+	}
+
+	int execute_addcolumn_sql() {
+		std::string sql_str = build_addcolumn_sql();
+		if (sql_str.empty()) {
+			last_error(std::make_pair<int, std::string>(-1, "executing alter table add columns unsuccessfully"));
+			return -1;
+		}
+
+		try {
+			LockedSociSession sql = db_conn_->checkoutDb();
+			soci::statement st =
+				(sql->prepare << sql_str);
+			st.execute();
+		}
+		catch (soci::soci_error& e) {
+			last_error(std::make_pair<int, std::string>(-1, e.what()));
+			return -1;
+		}
+
+		return 0;
+	}
+
+	int execute_delcolumn_sql() {
+		std::string sql_str = build_delcolumn_sql();
+		if (sql_str.empty()) {
+			last_error(std::make_pair<int, std::string>(-1, "executing alter table drop columns unsuccessfully"));
+			return -1;
+		}
+
+		try {
+			LockedSociSession sql = db_conn_->checkoutDb();
+			soci::statement st =
+				(sql->prepare << sql_str);
+			st.execute();
+		}
+		catch (soci::soci_error& e) {
+			last_error(std::make_pair<int, std::string>(-1, e.what()));
+			return -1;
+		}
+
+		return 0;
+	}
+
+	int execute_modifycolumn_sql() {
+		std::string sql_str = build_modifycolumn_sql();
+		if (sql_str.empty()) {
+			last_error(std::make_pair<int, std::string>(-1, "executing alter table modify columns unsuccessfully"));
+			return -1;
+		}
+
+		try {
+			LockedSociSession sql = db_conn_->checkoutDb();
+			soci::statement st =
+				(sql->prepare << sql_str);
+			st.execute();
+		}
+		catch (soci::soci_error& e) {
+			last_error(std::make_pair<int, std::string>(-1, e.what()));
+			return -1;
+		}
+		return 0;
+	}
+
+	int execute_createindex_sql() {
+		std::string sql_str = build_createindex_sql();
+		if (sql_str.empty()) {
+			last_error(std::make_pair<int, std::string>(-1, "executing create index unsuccessfully"));
+			return -1;
+		}
+
+		try {
+			LockedSociSession sql = db_conn_->checkoutDb();
+			soci::statement st =
+				(sql->prepare << sql_str);
+			st.execute();
+		}
+		catch (soci::soci_error& e) {
+			last_error(std::make_pair<int, std::string>(-1, e.what()));
+			return -1;
+		}
+		return 0;
+	}
+
+	int execute_dropindex_sql() {
+		std::string sql_str = build_dropindex_sql();
+		if (sql_str.empty()) {
+			last_error(std::make_pair<int, std::string>(-1, "executing drop index unsuccessfully"));
+			return -1;
+		}
+
+		try {
+			LockedSociSession sql = db_conn_->checkoutDb();
+			soci::statement st =
+				(sql->prepare << sql_str);
+			st.execute();
+		}
+		catch (soci::soci_error& e) {
+			last_error(std::make_pair<int, std::string>(-1, e.what()));
+			return -1;
+		}
+		return 0;
+	}
+
 	int execute_select_sql() {
 		std::string sql_str;
 		if (tables_.size() == 0) {
@@ -1718,19 +1966,18 @@ public:
 
 protected:
 
-	std::string build_createtable_sql() override {
-		std::string sql;
+	std::size_t analyse_fields_and_build_colunms(std::vector<std::string>& columns) override {
+		columns.clear();
 		if (tables_.size() == 0) {
 			last_error(std::make_pair<int, std::string>(-1, "Table miss when building create-sql"));
-			return sql;
+			return 0;
 		}
 
 		if (fields_.size() == 0) {
 			last_error(std::make_pair<int, std::string>(-1, "Fields are empty when building create-sql"));
-			return sql;
+			return 0;
 		}
 
-		std::string& tablename = tables_[0];
 		std::vector<std::string> fields;
 		std::vector<std::string> indexs;
 		std::vector<std::string> primary_keys;
@@ -1748,49 +1995,54 @@ protected:
 				else
 					str = "VARCHAR(64)";
 				fields.push_back(str);
-			} else if (field.isChar()) {
+			}
+			else if (field.isChar()) {
 				std::string str;
 				if (length > 0)
 					str = (boost::format("CHAR(%d)") % length).str();
 				else
 					str = "CHAR(128)";
 				fields.push_back(str);
-			} else if (field.isText()) {
+			}
+			else if (field.isText()) {
 				std::string str;
 				if (length > 0)
 					str = (boost::format("TEXT(%d)") % length).str();
 				else
 					str = "TEXT";
 				fields.push_back(str);
-			} else if (field.isBlob()) {
+			}
+			else if (field.isBlob()) {
 				std::string str = "BLOB";
 				fields.push_back(str);
-			} else if (field.isInt()) {
+			}
+			else if (field.isInt()) {
 				std::string str;
-				/*if (length > 0)
-					str = (boost::format("INT(%d)") % length).str();
-				else
-					str = "INT";
-                */
-                str = "INT";
-                fields.push_back(str);
-			} else if (field.isFloat()) {
+				str = "INT";
+				fields.push_back(str);
+			}
+			else if (field.isFloat()) {
 				std::string str = "FLOAT";
 				fields.push_back(str);
-			} else if (field.isDouble()) {
+			}
+			else if (field.isDouble()) {
 				std::string str = "DOUBLE";
 				fields.push_back(str);
-			} else if (field.isDecimal()) {
+			}
+			else if (field.isDecimal()) {
 				std::string str = "DECIMAL";
-				str = (boost::format("DECIMAL(%d,%d)") 
+				str = (boost::format("DECIMAL(%d,%d)")
 					% field.asDecimal().length()
 					% field.asDecimal().accuracy()).str();
 				fields.push_back(str);
-			} else if (field.isDateTime()) {
+			}
+			else if (field.isDateTime()) {
 				fields.push_back(std::string("datetime"));
-			} else if (field.isDate()) {
+			}
+			else if (field.isDate()) {
 				fields.push_back(std::string("date"));
-			} else if (field.isLongText()) {
+			}
+			else if (field.isLongText()) {
 				std::string str;
 				if (length > 0)
 					str = (boost::format("LONGTEXT(%d)") % length).str();
@@ -1800,10 +2052,9 @@ protected:
 			}
 
 			if (field.isPrimaryKey()) {
-				//fields.push_back(std::string("PRIMARY KEY"));
 				primary_keys.push_back(field.Name());
 			}
-              
+
 			if (field.isForeigKey()) {
 				foreign_keys.push_back(field.Name());
 				references.push_back(field.Foreigns());
@@ -1838,11 +2089,9 @@ protected:
 		}
 
 		if (fields.size()) {
-			std::string columns;
 			for (size_t idx = 0; idx < fields.size(); idx++) {
 				std::string& element = fields[idx];
-				columns += element;
-				columns += std::string(" ");
+				columns.push_back(element);
 			}
 
 			// primary keys
@@ -1856,7 +2105,8 @@ protected:
 			}
 
 			if (primarys.empty() == false) {
-				columns += (boost::format(",primary key(%s)") %primarys).str();
+				columns.push_back(",");
+				columns.push_back((boost::format("primary key(%s)") % primarys).str());
 			}
 
 			// indexs
@@ -1870,7 +2120,8 @@ protected:
 			}
 
 			if (idxs.empty() == false) {
-				columns += (boost::format(",index(%s)") %idxs).str();
+				columns.push_back(",");
+				columns.push_back((boost::format("index(%s)") % idxs).str());
 			}
 
 			// foreign keys
@@ -1879,18 +2130,36 @@ protected:
 			//assert(size > 0 && size == references.size());
 			for (size_t i = 0; i < size; i++) {
 				Json::Value& r = references[i];
-				refs += (boost::format(",foreign key(%s) references %s(%s)")
-					%foreign_keys[i]
-					%r["table"].asString()
-					%r["field"].asString()).str();
+				refs += (boost::format("foreign key(%s) references %s(%s)")
+					% foreign_keys[i]
+					% r["table"].asString()
+					% r["field"].asString()).str();
 			}
-			if (refs.empty() == false)
-				columns += refs;
-
-			sql = (boost::format("CREATE TABLE %s (%s)")//ENGINE=InnoDB DEFAULT CHARSET=utf8
-				% tablename
-				% columns).str();
+			if (refs.empty() == false) {
+				columns.push_back(",");
+				columns.push_back(refs);
+			}
 		}
+
+		return columns.size();
+	}
+
+	std::string build_createtable_sql() override {
+		std::string& tablename = tables_[0];
+		std::vector<std::string> columns;
+		analyse_fields_and_build_colunms(columns);
+
+		std::string columns_str;
+		for (size_t idx = 0; idx < columns.size(); idx++) {
+			std::string& element = columns[idx];
+			columns_str += element;
+			columns_str += " ";
+		}
+
+		std::string sql = (boost::format("CREATE TABLE %s (%s)")//ENGINE=InnoDB DEFAULT CHARSET=utf8
+			% tablename
+			% columns_str).str();
+
 		return sql;
 	}
 
@@ -1952,19 +2221,18 @@ public:
 
 protected:
 
-	std::string build_createtable_sql() override {
-		std::string sql;
+	std::size_t analyse_fields_and_build_colunms(std::vector<std::string>& columns) override {
+		columns.clear();
 		if (tables_.size() == 0) {
 			last_error(std::make_pair<int, std::string>(-1, "Table miss when building create-sql"));
-			return sql;
+			return 0;
 		}
 
 		if (fields_.size() == 0) {
 			last_error(std::make_pair<int, std::string>(-1, "Fields are empty when building create-sql"));
-			return sql;
+			return 0;
 		}
 
-		std::string& tablename = tables_[0];
 		std::vector<std::string> fields;
 		std::vector<std::string> primary_keys;
 		std::vector<std::string> foreign_keys;
@@ -1977,19 +2245,24 @@ protected:
 			if (field.isString() || field.isVarchar() || field.isText()) {
 				std::string str = "TEXT";
 				fields.push_back(str);
-			} else if (field.isBlob()) {
+			}
+			else if (field.isBlob()) {
 				std::string str = "BLOB";
 				fields.push_back(str);
-			} else if (field.isInt()) {
+			}
+			else if (field.isInt()) {
 				std::string str = "INTEGER";
 				fields.push_back(str);
-			} else if (field.isFloat() || field.isDouble() || field.isDecimal()) {
+			}
+			else if (field.isFloat() || field.isDouble() || field.isDecimal()) {
 				std::string str = "REAL";
 				fields.push_back(str);
-			} else if (field.isDateTime()) {
+			}
+			else if (field.isDateTime()) {
 				std::string str = "NUMERIC";
 				fields.push_back(str);
-			} else if (field.isLongText()) {
+			}
+			else if (field.isLongText()) {
 				std::string str = "LONGTEXT";
 				fields.push_back(str);
 			}
@@ -2003,7 +2276,7 @@ protected:
 				foreign_keys.push_back(field.Name());
 				references.push_back(field.Foreigns());
 			}
-			
+
 			// fix an bug on RR-525, disable auto increment
 			//if (field.isAutoIncrease())  
 			//	fields.push_back(std::string("AUTOINCREMENT"));
@@ -2036,30 +2309,37 @@ protected:
 		}
 
 		if (fields.size()) {
-			std::string columns;
 			for (size_t idx = 0; idx < fields.size(); idx++) {
 				std::string& element = fields[idx];
-				columns += element;
-				columns += std::string(" ");
+				columns.push_back(element);
 			}
 			// foreign keys
 			std::string refs;
-            size_t size = foreign_keys.size();
+			size_t size = foreign_keys.size();
 			//assert(size > 0 && size == references.size());
 			for (size_t i = 0; i < size; i++) {
 				Json::Value& r = references[i];
-				refs += (boost::format(",foreign key(%s) references %s(%s)")
+				refs += (boost::format("foreign key(%s) references %s(%s)")
 					% foreign_keys[i]
 					% r["table"].asString()
 					% r["field"].asString()).str();
 			}
-			if (refs.empty() == false)
-				columns += refs;
-
-			sql = (boost::format("CREATE TABLE if not exists %s (%s)")
-				% tablename
-				% columns).str();
+			if (refs.empty() == false) {
+				columns.push_back(",");
+				columns.push_back(refs);
+			}
 		}
+		return columns.size();
+	}
+
+	std::string build_createtable_sql() override {
+		std::string& tablename = tables_[0];
+		std::vector<std::string> columns;
+		analyse_fields_and_build_colunms(columns);
+		std::string columns_str;
+		std::string sql = (boost::format("CREATE TABLE if not exists %s (%s)")
+			% tablename
+			% columns_str).str();
 		return sql;
 	}
 
@@ -2864,120 +3144,120 @@ bool STTx2SQL::ConvertCondition2SQL(const Json::Value& condition, std::string& s
 	return true;
 }
 
-int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql) {
+
+int STTx2SQL::ParseFieldDefinitionAndAdd(const Json::Value& Raw, BuildSQL *buildsql) {
 	int ret = -1;
-    std::string sError = "";
+	std::string sError = "";
 	if (Raw.isArray()) {
 		for (Json::UInt index = 0; index < Raw.size(); index++) {
 			Json::Value v = Raw[index];
 
-
-            // both field and type are requirement 
-            if (v.isMember("field") == false && v.isMember("type") == false)
-                return ret;
-            //field and type
-            std::string fieldname = v["field"].asString();
-            std::string type = v["type"].asString();
-            BuildField buildfield(fieldname);
-            // set default value when create table
-            if (boost::iequals(type, "int") || boost::iequals(type, "integer"))
-                buildfield.SetFieldValue(0);
-            else if (boost::iequals(type, "float"))
-                buildfield.SetFieldValue(0.0f);
-            else if (boost::iequals(type, "double"))
-                buildfield.SetFieldValue((double)0.0f);
-            else if (boost::iequals(type, "text"))
-                buildfield.SetFieldValue("", FieldValue::fTEXT);
-            else if (boost::iequals(type, "varchar"))
-                buildfield.SetFieldValue("", FieldValue::fVARCHAR);
-            else if (boost::iequals(type, "char"))
-                buildfield.SetFieldValue("", FieldValue::fCHAR);
-            else if (boost::iequals(type, "blob"))
-                buildfield.SetFieldValue("", FieldValue::fBLOB);
-            else if (boost::iequals(type, "datetime"))
-                buildfield.SetFieldValue(InnerDateTime());
-            else if (boost::iequals(type, "date"))
-                buildfield.SetFieldValue(InnerDate());
-            else if (boost::iequals(type, "decimal"))
-                buildfield.SetFieldValue(InnerDecimal(32, 0));
+			// both field and type are requirement 
+			if (v.isMember("field") == false && v.isMember("type") == false)
+				return ret;
+			//field and type
+			std::string fieldname = v["field"].asString();
+			std::string type = v["type"].asString();
+			BuildField buildfield(fieldname);
+			// set default value when create table
+			if (boost::iequals(type, "int") || boost::iequals(type, "integer"))
+				buildfield.SetFieldValue(0);
+			else if (boost::iequals(type, "float"))
+				buildfield.SetFieldValue(0.0f);
+			else if (boost::iequals(type, "double"))
+				buildfield.SetFieldValue((double)0.0f);
+			else if (boost::iequals(type, "text"))
+				buildfield.SetFieldValue("", FieldValue::fTEXT);
+			else if (boost::iequals(type, "varchar"))
+				buildfield.SetFieldValue("", FieldValue::fVARCHAR);
+			else if (boost::iequals(type, "char"))
+				buildfield.SetFieldValue("", FieldValue::fCHAR);
+			else if (boost::iequals(type, "blob"))
+				buildfield.SetFieldValue("", FieldValue::fBLOB);
+			else if (boost::iequals(type, "datetime"))
+				buildfield.SetFieldValue(InnerDateTime());
+			else if (boost::iequals(type, "date"))
+				buildfield.SetFieldValue(InnerDate());
+			else if (boost::iequals(type, "decimal"))
+				buildfield.SetFieldValue(InnerDecimal(32, 0));
 			else if (boost::iequals(type, "longtext"))
 				buildfield.SetFieldValue("", FieldValue::fLONGTEXT);
-            else
-            {                
-                buildsql->set_last_error( std::make_pair<int, std::string>(-1, (boost::format("type : %s is not support") % type).str()));
-                return ret;
-            }
+			else
+			{
+				buildsql->set_last_error(std::make_pair<int, std::string>(-1, (boost::format("type : %s is not support") % type).str()));
+				return ret;
+			}
 
-            //about length
-            int length = 0;
-            if (v.isMember("length")) {
-                length = v["length"].asInt();
-            }
+			//about length
+			int length = 0;
+			if (v.isMember("length")) {
+				length = v["length"].asInt();
+			}
 
-            if (boost::iequals(type, "decimal")) {
-                if (length == 0)
-                    length = 32;
-                int accuracy = 2;
-                if (v.isMember("accuracy"))
-                    accuracy = v["accuracy"].asInt();
-                // update decimal
-                buildfield.asDecimal().update(InnerDecimal(length, accuracy));
-            }
-            else {
-                if (length)
-                    buildfield.SetLength(length);
-            }
+			if (boost::iequals(type, "decimal")) {
+				if (length == 0)
+					length = 32;
+				int accuracy = 2;
+				if (v.isMember("accuracy"))
+					accuracy = v["accuracy"].asInt();
+				// update decimal
+				buildfield.asDecimal().update(InnerDecimal(length, accuracy));
+			}
+			else {
+				if (length)
+					buildfield.SetLength(length);
+			}
 
 
-            //
-            if (v.isMember("FK") && v.isMember("REFERENCES")) {
-                buildfield.SetForeignKey();
-                if (v["REFERENCES"].isMember("table") == false || v["REFERENCES"].isMember("field") == false)
-                {
-                    buildsql->set_last_error(std::make_pair<int, std::string>(-1, "There is no table or field in REFERENCES object."));
-                    return ret;
-                }
-                    
-                buildfield.SetForeigns(v["REFERENCES"]);
-            }
+			//
+			if (v.isMember("FK") && v.isMember("REFERENCES")) {
+				buildfield.SetForeignKey();
+				if (v["REFERENCES"].isMember("table") == false || v["REFERENCES"].isMember("field") == false)
+				{
+					buildsql->set_last_error(std::make_pair<int, std::string>(-1, "There is no table or field in REFERENCES object."));
+					return ret;
+				}
 
-            //other fields
-            Json::Value::Members members = v.getMemberNames();
-            for (auto it = members.cbegin(); it != members.cend(); it++)
-            {
-                if ((*it).compare("field") == 0  || (*it).compare("type")       == 0 ||
-                    (*it).compare("length") == 0 || (*it).compare("accuracy")   == 0 ||
-                    (*it).compare("FK")    == 0  || (*it).compare("REFERENCES") == 0  )   continue;
-                else if ((*it).compare("PK") == 0)
-                {
-                    if (v["PK"].asInt() == 1) buildfield.SetPrimaryKey();
-                }
-                else if ((*it).compare("index") == 0)
-                {
-                    if (v["index"].asInt() == 1) buildfield.SetIndex();
-                }
-                else if ((*it).compare("NN") == 0)
-                {
-                    if (v["NN"].asInt() == 1) buildfield.SetNotNull();
-                }
-                else if ((*it).compare("UQ") == 0)
-                {
-                    if (v["UQ"].asInt() == 1) buildfield.SetUnique();
-                }
-                else if ((*it).compare("default") == 0)
-                {
-                    buildfield.SetDefault();
-                    if (v["default"].isString())
-                        buildfield.SetFieldValue(v["default"].asString());
-                    else if (v["default"].isNumeric())
-                        buildfield.SetFieldValue(v["default"].asInt());
-                }
-                else
-                {
-                    buildsql->set_last_error(std::make_pair<int, std::string>(-1, (boost::format("key word : %s is not support") % *it).str()));
-                    return ret;
-                }
-            }
+				buildfield.SetForeigns(v["REFERENCES"]);
+			}
+
+			//other fields
+			Json::Value::Members members = v.getMemberNames();
+			for (auto it = members.cbegin(); it != members.cend(); it++)
+			{
+				if ((*it).compare("field") == 0 || (*it).compare("type") == 0 ||
+					(*it).compare("length") == 0 || (*it).compare("accuracy") == 0 ||
+					(*it).compare("FK") == 0 || (*it).compare("REFERENCES") == 0)   continue;
+				else if ((*it).compare("PK") == 0)
+				{
+					if (v["PK"].asInt() == 1) buildfield.SetPrimaryKey();
+				}
+				else if ((*it).compare("index") == 0)
+				{
+					if (v["index"].asInt() == 1) buildfield.SetIndex();
+				}
+				else if ((*it).compare("NN") == 0)
+				{
+					if (v["NN"].asInt() == 1) buildfield.SetNotNull();
+				}
+				else if ((*it).compare("UQ") == 0)
+				{
+					if (v["UQ"].asInt() == 1) buildfield.SetUnique();
+				}
+				else if ((*it).compare("default") == 0)
+				{
+					buildfield.SetDefault();
+					if (v["default"].isString())
+						buildfield.SetFieldValue(v["default"].asString());
+					else if (v["default"].isNumeric())
+						buildfield.SetFieldValue(v["default"].asInt());
+				}
+				else
+				{
+					buildsql->set_last_error(std::make_pair<int, std::string>(-1, (boost::format("key word : %s is not support") % *it).str()));
+					return ret;
+				}
+			}
 
 			buildsql->AddField(buildfield);
 		}
@@ -2985,6 +3265,10 @@ int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql)
 	}
 
 	return ret;
+}
+
+int STTx2SQL::GenerateCreateTableSql(const Json::Value& Raw, BuildSQL *buildsql) {
+	return ParseFieldDefinitionAndAdd(Raw, buildsql);
 }
 
 std::pair<int, std::string> STTx2SQL::GenerateInsertSql(const Json::Value& raw, BuildSQL *buildsql) {
@@ -3041,6 +3325,46 @@ std::pair<int, std::string> STTx2SQL::GenerateInsertSql(const Json::Value& raw, 
 int STTx2SQL::GenerateDeleteSql(const Json::Value& raw, BuildSQL *buildsql) {
 
 	buildsql->AddCondition(raw);
+	return 0;
+}
+
+int STTx2SQL::GenerateAddColumnsSql(const Json::Value& raw, BuildSQL *buildsql) {
+	return ParseFieldDefinitionAndAdd(raw, buildsql);
+}
+
+int STTx2SQL::GenerateDelColumnsSql(const Json::Value& raw, BuildSQL *buildsql) {
+	if (raw.isArray() != false)
+		return -1;
+
+	for (Json::UInt index = 0; index < raw.size(); index++) {
+		Json::Value v = raw[index];
+		std::string fieldname = v["field"].asString();
+		buildsql->AddField(BuildField(fieldname));
+	}
+	return 0;
+}
+
+int STTx2SQL::GenerateModifyColumnsSql(const Json::Value& raw, BuildSQL *buildsql) {
+	return ParseFieldDefinitionAndAdd(raw, buildsql);
+}
+
+int STTx2SQL::GenerateOperateIndex(const Json::Value& raw, BuildSQL *buildsql) {
+	for (Json::UInt index = 0; index < raw.size(); index++) {
+		Json::Value v = raw[index];
+		std::string fieldname;
+		if (index == 0) {
+			fieldname = v["index"].asString();
+		}
+		else {
+			fieldname = v["field"].asString();
+		}
+		BuildField field(fieldname);
+		if (index == 0) {
+			field.SetIndex();
+		}
+
+		buildsql->AddField(field);
+	}
 	return 0;
 }
 
@@ -3315,6 +3639,11 @@ bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	case BuildSQL::BUILD_UPDATE_SQL:
 	case BuildSQL::BUILD_DELETE_SQL:
 	case BuildSQL::BUILD_ASSERT_STATEMENT:
+	case BuildSQL::BUILD_ALTER_ADD_SQL:
+	case BuildSQL::BUILD_ALTER_DEL_SQL:
+	case BuildSQL::BUILD_ALTER_MOD_SQL:
+	case BuildSQL::BUILD_CREATE_INDEX_SQL:
+	case BuildSQL::BUILD_DROP_INDEX_SQL:
 		for (Json::UInt idx = 0; idx < size; idx++) {
 			const Json::Value& e = raw[idx];
 			if (e.isObject() == false) {
@@ -3443,6 +3772,21 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		break;
 	case 12:
 		build_type = BuildSQL::BUILD_RECREATE_SQL;
+		break;
+	case 14:
+		build_type = BuildSQL::BUILD_ALTER_ADD_SQL;
+		break;
+	case 15:
+		build_type = BuildSQL::BUILD_ALTER_DEL_SQL;
+		break;
+	case 16:
+		build_type = BuildSQL::BUILD_ALTER_MOD_SQL;
+		break;
+	case 17:
+		build_type = BuildSQL::BUILD_CREATE_INDEX_SQL;
+		break;
+	case 18:
+		build_type = BuildSQL::BUILD_DROP_INDEX_SQL;
 		break;
 	default:
 		break;
@@ -3646,6 +3990,21 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		break;
 	case BuildSQL::BUILD_RECREATE_SQL:
 		result = GenerateCreateTableSql(raw_json, buildsql.get());
+		break;
+	case BuildSQL::BUILD_ALTER_ADD_SQL:
+		result = GenerateAddColumnsSql(raw_json, buildsql.get());
+		break;
+	case BuildSQL::BUILD_ALTER_DEL_SQL:
+		result = GenerateDelColumnsSql(raw_json, buildsql.get());
+		break;
+	case BuildSQL::BUILD_ALTER_MOD_SQL:
+		result = GenerateModifyColumnsSql(raw_json, buildsql.get());
+		break;
+	case BuildSQL::BUILD_CREATE_INDEX_SQL:
+		result = GenerateOperateIndex(raw_json, buildsql.get());
+		break;
+	case BuildSQL::BUILD_DROP_INDEX_SQL:
+		result = GenerateOperateIndex(raw_json, buildsql.get());
 		break;
 	default:
 		break;

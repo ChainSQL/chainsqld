@@ -53,11 +53,16 @@ public:
 
 private:
 	STTx2SQL() {};
+	int ParseFieldDefinitionAndAdd(const Json::Value& raw, BuildSQL *buildsql);
 	int GenerateCreateTableSql(const Json::Value& raw, BuildSQL *buildsql);
 	//int GenerateRenameTableSql(const Json::Value& tx_json, std::string& sql);
 	std::pair<int,std::string> GenerateInsertSql(const Json::Value& raw, BuildSQL *buildsql);
 	//int GenerateUpdateSql(const Json::Value& raw, BuildSQL *buildsql);
 	int GenerateDeleteSql(const Json::Value& raw, BuildSQL *buildsql);
+	int GenerateAddColumnsSql(const Json::Value& raw, BuildSQL *buildsql);
+	int GenerateDelColumnsSql(const Json::Value& raw, BuildSQL *buildsql);
+	int GenerateModifyColumnsSql(const Json::Value& raw, BuildSQL *buildsql);
+	int GenerateOperateIndex(const Json::Value& raw, BuildSQL *buildsql);
 	std::pair<int, std::string> GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql);
 
 	std::pair<bool, std::string> handle_assert_statement(const Json::Value& raw, BuildSQL *buildsql);
