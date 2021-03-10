@@ -160,6 +160,34 @@ public:
 		}
 	}
 
+	int alterTable(const std::string& Raw, uint16_t alterType) {
+		int ret = 0;
+		const auto keypair = randomKeyPair(KeyType::ed25519);
+		ripple::uint128 hex_table = ripple::from_hex_text<ripple::uint128>(table_name_);
+		STTx tx(ttTABLELISTSET, [this, &Raw, &hex_table, &keypair, alterType](STObject &obj) {
+			set_AccountID(obj);
+			obj.setFieldVL(sfSigningPubKey, keypair.first.slice());
+			set_tables(obj);
+			obj.setFieldU16(sfOpType, alterType); 
+			ripple::Blob blob;
+			blob.assign(Raw.begin(), Raw.end());
+			obj.setFieldVL(sfRaw, blob);
+			});
+
+		tx.sign(keypair.first, keypair.second);
+		std::string text = tx.getFullText();
+		TxStoreTransaction tr(txstore_dbconn_.get());
+		auto result = txstore_->Dispose(tx, "");
+		if (result.first == true) {
+			tr.commit();
+		}
+		else {
+			tr.rollback();
+			ret = -1;
+		}
+		return ret;
+	}
+
 	int createTable(const std::string& Raw, const std::string& optionalRule) {
 		int ret = 0;
 		const auto keypair = randomKeyPair(KeyType::ed25519);
@@ -2474,6 +2502,34 @@ public:
 		test_buildcondition();
 	}
 
+	void test_AlterTable() {
+		enum {
+			ALTERADD = 14,
+			ALTERDEL = 15,
+			ALTERMOD = 16,
+		};
+		std::string raw = "[{\"field\":\"id\",\"type\":\"int\",\"PK\":1},{\"field\":\"cash\",\"type\":\"float\"}]";
+		int ret = createTable(raw, "");
+		BEAST_EXPECT(ret == 0);
+
+		std::string addColumns = "[{\"field\":\"name\",\"type\":\"varchar\",\"length\":100,\"index\":1},{\"field\":\"comment\",\"type\":\"text\"},\
+{\"field\":\"deci\",\"type\":\"decimal\",\"length\":16,\"accuracy\":2},{\"field\":\"datetime\",\"type\":\"datetime\"},\
+{\"field\":\"ch\",\"type\":\"char\"},{\"field\":\"ch2\",\"type\":\"char\",\"length\":16, \"index\":1},\
+{\"field\":\"date_field\",\"type\":\"date\"}]";
+		ret = alterTable(addColumns, ALTERADD);
+		BEAST_EXPECT(ret == 0);
+
+		std::string delColumns = "[{\"field\":\"ch\"},{\"field\":\"ch2\"}]";
+		ret = alterTable(delColumns, ALTERDEL);
+		BEAST_EXPECT(ret == 0);
+
+		std::string modColums = "[{\"field\":\"comment\",\"type\":\"varchar\", \"length\":100, \"NN\":1}]";
+		ret = alterTable(modColums, ALTERMOD);
+		BEAST_EXPECT(ret == 0);
+
+		test_DropTableTransaction();
+	}
+
 	void run() {
 		// init env
 		init_env();
@@ -2488,6 +2544,7 @@ public:
 		test_UpdateRecordTransaction();
 		test_SelectRecord();
 
+
 		test_assert_transaction();
 
 		test_DeleteRecordTransaction();
@@ -2495,6 +2552,8 @@ public:
 		test_DropTableTransaction();
 		test_mongodb_json_style();
 		test_join_select();
+
+		test_AlterTable();
 
 		pass();
 	}
