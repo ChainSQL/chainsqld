@@ -219,7 +219,7 @@ HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     consensus.set_msgtype(ConsensusMessageType::mtVOTE);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    JLOG(j_.info()) << "send VOTE to leader, leader index: "
+    JLOG(j_.info()) << "send VOTE to leader (Publickey index)"
                     << getPubIndex(pubKey);
 
     signAndSendMessage(pubKey, consensus);
