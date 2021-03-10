@@ -308,14 +308,14 @@ namespace ripple {
 				TER ret2 = OperationRule::adjustInsertCount(ctx_, tx, txStore.getDatabaseCon());
 				if (!isTesSuccess(ret2))
 				{
-					JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << "Deal with count limit rule error";
+					JLOG(app.journal("SqlStatement").warn()) << "Dispose error" << "Deal with count limit rule error";
 					return ret2;
 				}
 				JLOG(app.journal("SqlStatement").trace()) << "Dispose success";
 			}
 			else
 			{
-				JLOG(app.journal("SqlStatement").trace()) << "Dispose error" << result.second;
+				JLOG(app.journal("SqlStatement").warn()) << "Dispose error" << result.second;
 				stTran.rollback();
 				setExtraMsg(result.second);
 				return result.first;
