@@ -104,8 +104,8 @@ public:
     bool
     loadOldLedger(std::string const& ledgerID, bool replay, bool isFilename, unsigned offset=0);
 
-    void
-    startGenesisLedger(std::shared_ptr<Ledger const> curLedger);
+    bool
+    startGenesisLedger(std::shared_ptr<Ledger const> loadLedger);
 
 private:
     Application& app_;
@@ -1825,11 +1825,26 @@ SchemaImp::loadOldLedger(
     return true;
 }
 
-void
-SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
+bool
+SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
 {
-    assert(curLedger);
-    auto genesis = std::make_shared<Ledger>(*curLedger, nodeFamily_);
+    assert(loadLedger);
+
+    loadLedger->stateMap().invariants();
+
+    if (!loadLedger->walkLedger(app_.journal("Ledger")))
+    {
+        JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
+        return false;
+    }
+
+    if (!loadLedger->assertSane(app_.journal("Ledger")))
+    {
+        JLOG(m_journal.fatal()) << "Ledger is not sane.";
+        return false;
+    }
+
+    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_);
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));
@@ -1837,6 +1852,8 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
 
     // set valid ledger
     m_ledgerMaster->initGenesisLedger(genesis);
+
+    return true;
 }
 
 //static std::vector<std::string>

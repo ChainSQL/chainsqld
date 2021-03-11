@@ -339,9 +339,7 @@ Ledger::Ledger(
 
 Ledger::Ledger(Ledger const& ledger, Family& f)
 	: mImmutable(false)
-	, txMap_(std::make_shared <SHAMap>(
-		SHAMapType::TRANSACTION,
-		ledger.stateMap_->family()))
+	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
 	, stateMap_(ledger.stateMap_->genesisSnapShot(f))
 	, fees_(ledger.fees_)
 	, rules_(ledger.rules_)
