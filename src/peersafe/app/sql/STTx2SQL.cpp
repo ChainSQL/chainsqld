@@ -3333,7 +3333,7 @@ int STTx2SQL::GenerateAddColumnsSql(const Json::Value& raw, BuildSQL *buildsql) 
 }
 
 int STTx2SQL::GenerateDelColumnsSql(const Json::Value& raw, BuildSQL *buildsql) {
-	if (raw.isArray() != false)
+	if (raw.isArray() == false)
 		return -1;
 
 	for (Json::UInt index = 0; index < raw.size(); index++) {
