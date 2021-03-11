@@ -36,12 +36,17 @@ enum TableOpType {
 	T_GRANT        = 11,
     T_RECREATE     = 12,
     T_REPORT       = 13,
+	T_ADD_FIELDS   = 14,
+	T_DELETE_FIELDS= 15,
+	T_MODIFY_FIELDS= 16,
+	T_CREATE_INDEX = 17,
+	T_DELETE_INDEX = 18
 };
 
 inline bool isTableListSetOpType(TableOpType eType)
 {
 	if (eType < R_INSERT && eType >= T_CREATE)                            return true;
-	if (eType == T_GRANT || eType == T_RECREATE || eType == T_REPORT)     return true;
+	if (eType >= T_GRANT && eType <= T_DELETE_INDEX)     return true;
     
 	return false;
 }
