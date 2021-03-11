@@ -82,8 +82,15 @@ PopAdaptor::PopAdaptor(
                 std::chrono::milliseconds{parms_.maxBLOCK_TIME * 2};
         }
 
-        parms_.initTIME = std::chrono::seconds{app.config().loadConfig(
-            SECTION_CONSENSUS, "init_time", parms_.initTIME.count())};
+        // default: 90s
+        // min : 2 * consensusTIMEOUT
+        parms_.initTIME = std::chrono::seconds{std::max(
+            std::chrono::duration_cast<std::chrono::seconds>(
+                parms_.consensusTIMEOUT)
+                    .count() *
+                2,
+            app.config().loadConfig(
+                SECTION_CONSENSUS, "init_time", parms_.initTIME.count()))};
 
         parms_.omitEMPTY = app.config().loadConfig(
             SECTION_CONSENSUS, "omit_empty_block", parms_.omitEMPTY);
