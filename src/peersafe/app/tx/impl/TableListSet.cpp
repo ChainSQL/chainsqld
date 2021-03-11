@@ -514,6 +514,11 @@ namespace ripple {
                     break;
                 }
                 case T_RECREATE:
+				case T_ADD_FIELDS:
+				case T_DELETE_FIELDS:
+				case T_MODIFY_FIELDS:
+				case T_CREATE_INDEX:
+				case T_DELETE_INDEX:
                 {
                     if (pEntry != NULL)                ret = tesSUCCESS;
                     else                               ret = tefTABLE_NOTEXIST;
