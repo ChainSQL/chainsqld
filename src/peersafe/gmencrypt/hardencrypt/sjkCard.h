@@ -87,6 +87,10 @@ public:
         unsigned long ulAlias,
         unsigned long ulKeyUse,
         unsigned long ulModulusLen);
+    bool generatePubFromPri(
+        const unsigned char* pPriUC,
+        int priLen,
+        std::vector<unsigned char>& publicKey);
     //SM2 Sign&Verify
 	unsigned long SM2ECCSign(
 		std::pair<int, int> pri4SignInfo,

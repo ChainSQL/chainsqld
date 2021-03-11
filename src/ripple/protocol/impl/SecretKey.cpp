@@ -361,6 +361,12 @@ derivePublicKey(KeyType type, SecretKey const& sk)
             ed25519_publickey(sk.data(), &buf[1]);
             return PublicKey(Slice{buf, sizeof(buf)});
         }
+        case KeyType::gmalg: {
+            GmEncrypt* hEObj = GmEncryptObj::getInstance();
+            std::vector<unsigned char> tempPublickey;
+            hEObj->generatePubFromPri(sk.data(), sk.size(), tempPublickey);
+            return PublicKey(Slice(tempPublickey.data(), tempPublickey.size()));
+        }
         default:
             LogicError("derivePublicKey: bad key type");
     };

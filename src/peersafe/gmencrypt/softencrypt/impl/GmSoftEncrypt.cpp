@@ -163,9 +163,29 @@ unsigned long SoftEncrypt::SM2GenECCKeyPair(
     return ret;
 }
 
-bool SoftEncrypt::setPubfromPri(EC_KEY* pEcKey)
+bool SoftEncrypt::generatePubFromPri(
+    const unsigned char* pPriUC,
+    int priLen,
+    std::vector<unsigned char>& publicKey)
 {
     EC_POINT *pub_key = NULL;
+    BIGNUM* bn = BN_bin2bn(pPriUC, priLen, nullptr);
+    if (bn == nullptr)
+    {
+        DebugPrint("generatePubFromPri: BN_bin2bn failed");
+        return false;
+    }
+
+    EC_KEY* pEcKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+    const bool ok = EC_KEY_set_private_key(pEcKey, bn);
+    BN_clear_free(bn);
+
+    if (!ok)
+    {
+        DebugPrint("generatePubFromPri: EC_KEY_set_private_key failed");
+        EC_KEY_free(pEcKey);
+        return false;
+    }
 
     const EC_GROUP* pEcGroup = EC_KEY_get0_group(pEcKey);
     const BIGNUM* priv_key = EC_KEY_get0_private_key(pEcKey);
@@ -179,6 +199,8 @@ bool SoftEncrypt::setPubfromPri(EC_KEY* pEcKey)
     
     if (!EC_KEY_set_public_key(pEcKey, pub_key))
         return false;
+
+    getPublicKey(pEcKey, publicKey);
     return true;
 }
 //SM2 Sign&Verify

@@ -89,6 +89,10 @@ public:
         unsigned long ulAlias,
         unsigned long ulKeyUse,
         unsigned long ulModulusLen) override;
+    bool generatePubFromPri(
+        const unsigned char* pPriUC,
+        int priLen,
+        std::vector<unsigned char>& publicKey);
     //SM2 Sign&Verify
     unsigned long SM2ECCSign(
         std::pair<int, int> pri4SignInfo,
@@ -164,7 +168,7 @@ private:
 private:
     bool getPublicKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& pubKey);
     bool getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& priKey);
-    bool setPubfromPri(EC_KEY* pEcKey);
+    //bool setPubfromPri(EC_KEY* pEcKey);
     size_t EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf);
     EC_KEY* CreateEC(unsigned char *key, int is_public);
     void cipherReEncode(unsigned char* pCipher, unsigned long cipherLen);

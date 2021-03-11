@@ -114,6 +114,10 @@ public:
         unsigned long ulAlias = SD_KEY_ALIAS,
         unsigned long ulKeyUse = SD_KEY_USE,
         unsigned long ulModulusLen = PRIVATE_KEY_BIT_LEN) = 0;
+    virtual bool generatePubFromPri(
+        const unsigned char* pPriUC,
+        int priLen,
+        std::vector<unsigned char>& publicKey) = 0;
     //SM2 Sign&Verify
 	virtual unsigned long SM2ECCSign(
 		std::pair<int, int> pri4SignInfo,
