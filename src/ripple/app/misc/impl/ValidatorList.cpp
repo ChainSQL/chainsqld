@@ -1,19 +1,19 @@
 ﻿//------------------------------------------------------------------------------
 /*
-	This file is part of rippled: https://github.com/ripple/rippled
-	Copyright (c) 2015 Ripple Labs Inc.
+        This file is part of rippled: https://github.com/ripple/rippled
+        Copyright (c) 2015 Ripple Labs Inc.
 
-	Permission to use, copy, modify, and/or distribute this software for any
-	purpose  with  or without fee is hereby granted, provided that the above
-	copyright notice and this permission notice appear in all copies.
+        Permission to use, copy, modify, and/or distribute this software for any
+        purpose  with  or without fee is hereby granted, provided that the above
+        copyright notice and this permission notice appear in all copies.
 
-	THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-	WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED  WARRANTIES  OF
-	MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-	ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-	WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER IN AN
-	ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-	OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+        THE  SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+   WARRANTIES WITH  REGARD  TO  THIS  SOFTWARE  INCLUDING  ALL  IMPLIED
+   WARRANTIES  OF MERCHANTABILITY  AND  FITNESS. IN NO EVENT SHALL THE AUTHOR BE
+   LIABLE FOR ANY  SPECIAL ,  DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY
+   DAMAGES WHATSOEVER  RESULTING  FROM  LOSS  OF USE, DATA OR PROFITS, WHETHER
+   IN AN ACTION  OF  CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+   OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 //==============================================================================
 
@@ -24,11 +24,11 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/base64.h>
 #include <ripple/json/json_reader.h>
-#include <peersafe/schema/PeerManager.h>
 #include <ripple/protocol/STValidation.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/protocol/messages.h>
 #include <boost/regex.hpp>
+#include <peersafe/schema/PeerManager.h>
 
 #include <date/date.h>
 
@@ -164,8 +164,8 @@ ValidatorList::load(
         std::string publicKeyStr = match[1];
         if ('n' == publicKeyStr[0])
         {
-            auto const oId = parseBase58<PublicKey>(
-                TokenType::NodePublic, publicKeyStr);
+            auto const oId =
+                parseBase58<PublicKey>(TokenType::NodePublic, publicKeyStr);
             if (!oId)
             {
                 JLOG(j_.error()) << "Invalid node identity: " << match[1];
@@ -173,10 +173,11 @@ ValidatorList::load(
             }
             id = *oId;
         }
-        else if('p' == publicKeyStr[0])
+        else if ('p' == publicKeyStr[0])
         {
             // std::string publicKeyStr = match[1];
-            std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::NodePublic);
+            std::string publicKeyDe58 =
+                decodeBase58Token(publicKeyStr, TokenType::NodePublic);
             if (publicKeyDe58.empty() || publicKeyDe58.size() != 65)
             {
                 JLOG(j_.error()) << "Invalid node identity: " << match[1];
@@ -210,7 +211,7 @@ ValidatorList::load(
 
     JLOG(j_.debug()) << "Loaded " << count << " entries";
 
-	resetValidators();
+    resetValidators();
 
     return true;
 }
@@ -282,7 +283,7 @@ ValidatorList::applyListAndBroadcast(
             msg.set_blob(blob);
             msg.set_signature(signature);
             msg.set_version(version);
-            msg.set_schemaid(schemaid.begin(),schemaid.size());
+            msg.set_schemaid(schemaid.begin(), schemaid.size());
 
             auto const& publisherKey = *result.publisherKey;
             auto const sequence = *result.sequence;
@@ -452,10 +453,9 @@ ValidatorList::applyList(
         }
     }
 
-
     // Cache the validator list in a file
     CacheValidatorFile(pubKey, publisher);
-	//resetValidators();
+    // resetValidators();
 
     return applyResult;
 }
@@ -586,7 +586,7 @@ ValidatorList::listed(PublicKey const& identity) const
 int
 ValidatorList::getPubIndex(PublicKey const& publicKey)
 {
-    std::shared_lock<std::shared_timed_mutex> read_lock{ mutex_ };
+    std::shared_lock<std::shared_timed_mutex> read_lock{mutex_};
     for (int i = 0; i < validators_.size(); i++)
     {
         if (validators_[i] == publicKey)
@@ -599,7 +599,7 @@ ValidatorList::getPubIndex(PublicKey const& publicKey)
 PublicKey
 ValidatorList::getLeaderPubKey(LedgerIndex seq)
 {
-    std::shared_lock<std::shared_timed_mutex> read_lock{ mutex_ };
+    std::shared_lock<std::shared_timed_mutex> read_lock{mutex_};
     if (validators_.size() > 0)
     {
         return validators_[seq % validators_.size()];
@@ -678,7 +678,7 @@ ValidatorList::removePublisherList(PublicKey const& publisherKey)
     iList->second.list.clear();
     iList->second.available = false;
 
-	resetValidators();
+    resetValidators();
 
     return true;
 }
@@ -895,14 +895,14 @@ ValidatorList::calculateQuorum(
             return std::numeric_limits<std::size_t>::max();
     }
 
-	// POP
+    // POP
     if (unlSize < 4)
         return unlSize;
 
     std::size_t faultsSize = (unlSize - 1) / 3;
     return (unlSize - faultsSize);
 
-    // RPCA 
+    // RPCA
     // Use an 80% quorum to balance fork safety, liveness, and required UNL
     // overlap.
     //
@@ -937,12 +937,13 @@ ValidatorList::calculateQuorum(
     // Note that the negative UNL protocol introduced the AbsoluteMinimumQuorum
     // which is 60% of the original UNL size. The effective quorum should
     // not be lower than it.
-    //auto quorum = static_cast<std::size_t>(std::max(
+    // auto quorum = static_cast<std::size_t>(std::max(
     //    std::ceil(effectiveUnlSize * 0.8f), std::ceil(unlSize * 0.6f)));
 
-    //// Use lower quorum specified via command line if the normal quorum appears
-    //// unreachable based on the number of recently received validations.
-    //if (minimumQuorum_ && *minimumQuorum_ < quorum && seenSize < quorum)
+    //// Use lower quorum specified via command line if the normal quorum
+    ///appears / unreachable based on the number of recently received
+    ///validations.
+    // if (minimumQuorum_ && *minimumQuorum_ < quorum && seenSize < quorum)
     //{
     //    quorum = *minimumQuorum_;
 
@@ -950,49 +951,52 @@ ValidatorList::calculateQuorum(
     //                    << " as specified in the command line";
     //}
 
-    //return quorum;
+    // return quorum;
 }
 
-void ValidatorList::applySchemaModify(std::vector<PublicKey>const& validators, bool bAdd)
+void
+ValidatorList::applySchemaModify(
+    std::vector<PublicKey> const& validators,
+    bool bAdd)
 {
-	PublicKey local;
-	auto it = publisherLists_.emplace(std::piecewise_construct,
-            std::forward_as_tuple(local),
-            std::forward_as_tuple());
-	if (bAdd)
-	{
-		for (auto& val : validators) 
-		{
-			//update publisherLists_
-			if (std::find(
-				it.first->second.list.begin(), 
-				it.first->second.list.end(), 
-				val)== it.first->second.list.end())
-			{
-				it.first->second.list.push_back(val);
-			}
-			// update keyListings_
-			keyListings_.insert({val, 1});
-		}
-	}
-	else 
-	{
+    PublicKey local;
+    auto it = publisherLists_.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(local),
+        std::forward_as_tuple());
+    if (bAdd)
+    {
         for (auto& val : validators)
         {
-			//update publisherLists_
-            auto iter = std::find(
+            // update publisherLists_
+            if (std::find(
                     it.first->second.list.begin(),
                     it.first->second.list.end(),
-				    val);
-			if(iter != it.first->second.list.end())
+                    val) == it.first->second.list.end())
+            {
+                it.first->second.list.push_back(val);
+            }
+            // update keyListings_
+            keyListings_.insert({val, 1});
+        }
+    }
+    else
+    {
+        for (auto& val : validators)
+        {
+            // update publisherLists_
+            auto iter = std::find(
+                it.first->second.list.begin(),
+                it.first->second.list.end(),
+                val);
+            if (iter != it.first->second.list.end())
             {
                 it.first->second.list.erase(iter);
             }
-			// update keyListings_
-			keyListings_.erase(val);
+            // update keyListings_
+            keyListings_.erase(val);
         }
-	}
-	
+    }
 }
 
 TrustChanges
@@ -1149,11 +1153,10 @@ ValidatorList::resetValidators()
     {
         validators_.push_back(iter->first);
     }
-	std::sort(validators_.begin(), validators_.end(),
-		[](PublicKey const& a, PublicKey const& b) {
-			return a < b;
-		}
-	);
+    std::sort(
+        validators_.begin(),
+        validators_.end(),
+        [](PublicKey const& a, PublicKey const& b) { return a < b; });
 
     JLOG(j_.info()) << "validators_: ";
     for (auto iter = validators_.begin(); iter != validators_.end(); ++iter)
