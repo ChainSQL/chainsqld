@@ -86,9 +86,7 @@ PopAdaptor::PopAdaptor(
         // min : 2 * consensusTIMEOUT
         parms_.initTIME = std::chrono::seconds{std::max(
             std::chrono::duration_cast<std::chrono::seconds>(
-                parms_.consensusTIMEOUT)
-                    .count() *
-                2,
+                parms_.consensusTIMEOUT).count() * 2,
             app.config().loadConfig(
                 SECTION_CONSENSUS, "init_time", parms_.initTIME.count()))};
 
