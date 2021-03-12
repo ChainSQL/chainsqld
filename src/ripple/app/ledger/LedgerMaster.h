@@ -475,7 +475,7 @@ private:
     // Time that the previous upgrade warning was issued.
     TimeKeeper::time_point upgradeWarningPrevTime_{};
 
-    bool subChainInited_{false};
+    std::atomic_bool subChainInited_{false};
 
 private:
     struct Stats

@@ -590,7 +590,7 @@ HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
     }
     else if (
         prevInfo.ledger_info.seq == previousLedger_.seq() &&
-        adaptor_.parms().omitEMPTY && mode_.get() < ConsensusMode::wrongLedger)
+        adaptor_.parms().omitEMPTY && prevInfo.round > 0)
     {
         adaptor_.onConsensusReached(bWaitingInit_, previousLedger_);
         if (bWaitingInit_)

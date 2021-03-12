@@ -1350,7 +1350,7 @@ LedgerMaster::isConfidentialUnit(const STTx& tx)
 void
 LedgerMaster::checkSubChains()
 {
-    if (subChainInited_)
+    if (subChainInited_.exchange(true))
         return;
 
     if (app_.schemaId() != beast::zero)
@@ -1393,8 +1393,6 @@ LedgerMaster::checkSubChains()
             }
         }
     }
-
-    subChainInited_ = true;
 }
 
 void

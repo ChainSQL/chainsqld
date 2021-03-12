@@ -1357,9 +1357,16 @@ ApplicationImp::loadSubChains()
 
         auto newSchema = getSchemaManager().createSchema(config, params);
         if (!newSchema->initBeforeSetup())
+        {
+            getSchemaManager().removeSchema(newSchema->schemaId());
             return false;
+        }
+
         if (!newSchema->setup())
+        {
+            getSchemaManager().removeSchema(newSchema->schemaId());
             return false;
+        }
 
         JLOG(m_journal.info())
             << "Schema:" << to_string(schemaId) << " created.";
