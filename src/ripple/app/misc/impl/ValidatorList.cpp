@@ -996,6 +996,8 @@ ValidatorList::applySchemaModify(
             // update keyListings_
             keyListings_.erase(val);
         }
+		hash_set<NodeID> tmp;
+		updateTrusted(tmp);
     }
 }
 
