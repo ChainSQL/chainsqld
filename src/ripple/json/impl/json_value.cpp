@@ -229,6 +229,7 @@ Value::Value(double value) : type_(realValue)
 Value::Value(const char* value) : type_(stringValue), allocated_(true)
 {
     value_.string_ = valueAllocator()->duplicateStringValue(value);
+	length_ = strlen(value);
 }
 
 Value::Value(std::string const& value) : type_(stringValue), allocated_(true)
