@@ -119,11 +119,16 @@ HotstuffConsensus::timerEntry(NetClock::time_point const& now)
         return;
     }
 
+    if (!adaptor_.validating())
+    {
+        return;
+    }
+
     if (waitingForInit())
     {
         consensusTime_ = now_;
 
-        if (adaptor_.validating() && mode_.get() != ConsensusMode::wrongLedger)
+        if (mode_.get() != ConsensusMode::wrongLedger)
         {
             initAnnounce();
         }
@@ -585,12 +590,12 @@ HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
     }
     else if (
         prevInfo.ledger_info.seq == previousLedger_.seq() &&
-        adaptor_.parms().omitEMPTY)
+        adaptor_.parms().omitEMPTY && mode_.get() < ConsensusMode::wrongLedger)
     {
-         adaptor_.onConsensusReached(bWaitingInit_, previousLedger_);
-         if (bWaitingInit_)
-         {
-             bWaitingInit_ = false;
+        adaptor_.onConsensusReached(bWaitingInit_, previousLedger_);
+        if (bWaitingInit_)
+        {
+            bWaitingInit_ = false;
         }
     }
 
