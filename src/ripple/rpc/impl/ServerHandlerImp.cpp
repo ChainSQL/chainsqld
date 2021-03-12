@@ -449,9 +449,9 @@ ServerHandlerImp::processSession(
         }
 
         auto required = RPC::roleRequired(
-            apiVersion,
-            jv.isMember(jss::command) ? jv[jss::command].asString()
-                                      : jv[jss::method].asString());
+            apiVersion,jv.isMember(jss::command) ? 
+			jv[jss::command].asString(): 
+			jv[jss::method].asString());
         auto role = requestRole(
             required,
             session->port(),
@@ -530,9 +530,10 @@ ServerHandlerImp::processSession(
         jr[jss::status] = jss::success;
     }
 	//if table operation,remove tx_blob & tx_json field
-	if (jr.isMember(jss::result) && jr[jss::result].isMember(jss::tx_json) 
-		&& jr[jss::result][jss::tx_json].isMember(jss::hash)
-		&& !jr[jss::result][jss::tx_json].isMember("Signers"))
+    auto strMethod = jv.isMember(jss::command) ? 
+					jv[jss::command].asString(): 
+					jv[jss::method].asString();
+	if (strMethod == "submit" && jr.isMember(jss::result) && jr[jss::result].isMember(jss::tx_json))
 	{
 		std::string txType = jr[jss::result][jss::tx_json][jss::TransactionType].asString();
 		if (isChainSqlTableType(txType))
@@ -977,8 +978,7 @@ ServerHandlerImp::processRequest(
 		{
 			Json::Value tx_id(Json::nullValue);
 			Json::Value& result = r[jss::result];
-			if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash)
-				&& !result[jss::tx_json].isMember("Signers"))
+			if (strMethod == "submit" && result.isMember(jss::tx_json))
 			{
 				std::string txType = result[jss::tx_json][jss::TransactionType].asString();
 				if (isChainSqlTableType(txType))
