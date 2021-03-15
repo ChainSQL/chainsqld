@@ -481,9 +481,8 @@ DirectStepI<TDerived>::maxPaymentFlow(ReadView const& sb) const
         return {srcOwed, DebtDirection::redeems};
 
     // srcOwed is negative or zero
-    return {
-        creditLimit2(sb, dst_, src_, currency_) + srcOwed,
-        DebtDirection::issues};
+    return {creditLimit2(sb, dst_, src_, currency_) + srcOwed,
+            DebtDirection::issues};
 }
 
 template <class TDerived>
@@ -543,23 +542,27 @@ DirectStepI<TDerived>::revImp(
     {
         IOUAmount const in =
             mulRatio(srcToDst, srcQOut, QUALITY_ONE, /*roundUp*/ true);
-		IOUAmount realIn = in;
-		
-		if (in >= srcToDst)
+        IOUAmount realIn = in;
+
+		//Add by ljl: only justify feeMin,feeMax when src is issuer for revImp
+		//The strand is usually like this:
+		// src -> issuer (0)
+		// issuer -> dst (1)
+        if (in >= srcToDst && issues(srcDebtDir))
         {
-			boost::optional<IOUAmount> feeMin, feeMax;
-			auto fee = in - srcToDst;
-			auto saFeeMin = transferFeeMin(sb, srcToDstIss.account);
-			auto saFeeMax = transferFeeMax(sb, srcToDstIss.account);
+            boost::optional<IOUAmount> feeMin, feeMax;
+            auto fee = in - srcToDst;
+            auto saFeeMin = transferFeeMin(sb, srcToDstIss.account);
+            auto saFeeMax = transferFeeMax(sb, srcToDstIss.account);
             STAmount minAmount = amountFromString(srcToDstIss, saFeeMin);
             STAmount maxAmount = amountFromString(srcToDstIss, saFeeMax);
             feeMin = toAmountSpec(minAmount).iou;
             feeMax = toAmountSpec(maxAmount).iou;
-			auto feeAct = std::min(*feeMax, std::max(fee, *feeMin));
-			if (fee != feeAct)
-				realIn = srcToDst + feeAct;
-		}
-        cache_.emplace(in, srcToDst, out, srcDebtDir);
+            auto feeAct = std::min(*feeMax, std::max(fee, *feeMin));
+            if (fee != feeAct)
+                realIn = srcToDst + feeAct;
+        }
+        cache_.emplace(realIn, srcToDst, out, srcDebtDir);
         rippleCredit(
             sb,
             src_,
@@ -572,7 +575,7 @@ DirectStepI<TDerived>::revImp(
                          << " in: " << to_string(realIn)
                          << " srcToDst: " << to_string(srcToDst)
                          << " out: " << to_string(out);
-        return { realIn, out};
+        return {realIn, out};
     }
 
     // limiting node
@@ -867,9 +870,8 @@ DirectStepI<TDerived>::qualityUpperBound(
         if (isLast_ && dstQIn > QUALITY_ONE)
             dstQIn = QUALITY_ONE;
         Issue const iss{currency_, src_};
-        return {
-            Quality(getRate(STAmount(iss, srcQOut), STAmount(iss, dstQIn))),
-            dir};
+        return {Quality(getRate(STAmount(iss, srcQOut), STAmount(iss, dstQIn))),
+                dir};
     }
 
     auto const [srcQOut, dstQIn] = redeems(dir)
@@ -883,8 +885,8 @@ DirectStepI<TDerived>::qualityUpperBound(
     // (Input*dstQIn/srcQOut = Output; So rate = srcQOut/dstQIn). Although the
     // first parameter is called `offerOut`, it should take the `dstQIn`
     // variable.
-    return {
-        Quality(getRate(STAmount(iss, dstQIn), STAmount(iss, srcQOut))), dir};
+    return {Quality(getRate(STAmount(iss, dstQIn), STAmount(iss, srcQOut))),
+            dir};
 }
 
 template <class TDerived>
