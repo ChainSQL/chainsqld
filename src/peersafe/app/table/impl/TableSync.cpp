@@ -1573,13 +1573,15 @@ std::pair<bool, std::string>
         //std::string PreviousCommit;
         pItem->Init(accountID, sTableName,true);
         ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
-		if(ret)
-		{
+		if(ret){
 			ret = true;
             std::lock_guard lock(mutexlistTable_);
             listTableInfo_.push_back(pItem);   
 			JLOG(journal_.info()) <<
 				"InsertListDynamically listTableInfo_ add item,tableName=" << sTableName <<",owner="<< to_string(accountID);
+        }
+        else {
+            err = "Insert to list dynamically failed,tableName=" + sTableName + ",owner=" + to_string(accountID);
         }
     }
     catch (std::exception const& e)

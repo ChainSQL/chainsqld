@@ -370,9 +370,7 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
 	}
     else
     {
-        // *pulCipherDataLen = cipherDataTempLen - 1;
-        // memcpy(pCipherData, pCipherDataTemp + 1, *pulCipherDataLen);
-        std::vector<unsigned char> cipherDataVTemp(pCipherDataTemp + 1, (pCipherDataTemp + 1 + cipherDataTempLen - 1));
+        std::vector<unsigned char> cipherDataVTemp(pCipherDataTemp, (pCipherDataTemp + cipherDataTempLen));
         cipherDataV.assign(cipherDataVTemp.begin(), cipherDataVTemp.end());
         // cipherReEncode(pCipherData, *pulCipherDataLen);
         delete [] pCipherDataTemp;
@@ -411,17 +409,13 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 		return 1;
 	}
 
-	unsigned char* pCipherDataTemp = new unsigned char[ulCipherDataLen + 1];
 	// cipherReDecode(pCipherData, ulCipherDataLen);
-    pCipherDataTemp[0] = SM2_ENCRYPT_PRE;
-	memcpy(pCipherDataTemp + 1, pCipherData, ulCipherDataLen);
 
 	size_t msglen;
-	if (!SM2_decrypt_with_recommended(pCipherDataTemp, ulCipherDataLen+1, NULL, &msglen, ec_key)) {
+    if (!SM2_decrypt_with_recommended(pCipherData, ulCipherDataLen, NULL, &msglen, ec_key)) {
 		
 		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended failed");
 		EC_KEY_free(ec_key);
-		delete[] pCipherDataTemp;
 		return 1;
 	}
 
@@ -433,11 +427,10 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 	// }
 
     unsigned char* pPlainData = new unsigned char[msglen];
-	if (!SM2_decrypt_with_recommended(pCipherDataTemp, ulCipherDataLen + 1, pPlainData, &msglen, ec_key))
+    if (!SM2_decrypt_with_recommended(pCipherData, ulCipherDataLen, pPlainData, &msglen, ec_key))
 	{
 		DebugPrint("SM2ECCDecrypt2: SM2_decrypt_with_recommended failed");
 		EC_KEY_free(ec_key);
-		delete[] pCipherDataTemp;
         delete[] pPlainData;
 		return 1;
 	}
@@ -447,7 +440,6 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
         plainDataV.assign(plainDataVTemp.begin(), plainDataVTemp.end());
 		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended successfully");
 		EC_KEY_free(ec_key);
-		delete[] pCipherDataTemp;
         delete[] pPlainData;
 		return 0;
 	}

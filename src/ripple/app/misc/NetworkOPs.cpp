@@ -3593,10 +3593,12 @@ NetworkOPsImp::createSchema(
             {
                 if (!newSchema->initBeforeSetup())
                 {
+                    app_.getSchemaManager().removeSchema(newSchema->schemaId());
                     return std::make_pair(false, "Error while initBeforeSetup");
                 }
                 if (!newSchema->setup())
                 {
+                    app_.getSchemaManager().removeSchema(newSchema->schemaId());
                     return std::make_pair(false, "Error while setup");
                 }
                 app_.app().overlay().onSchemaCreated(params.schema_id);

@@ -1202,7 +1202,11 @@ SchemaImp::setup()
         }
         JLOG(m_journal.info()) << "NEWCHAIN_WITHSTATE from ledger="
                                << to_string(schema_params_.anchor_ledger_hash);
-        startGenesisLedger(validLedger);
+
+        if (!startGenesisLedger(validLedger))
+        {
+            return false;
+        }
     }
     else
     {
