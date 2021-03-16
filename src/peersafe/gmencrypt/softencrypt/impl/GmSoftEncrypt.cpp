@@ -82,6 +82,7 @@ bool SoftEncrypt::getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& 
         DebugPrint("private key Len: %d", priLen);
         priKey.resize(priLen);
         int priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair), priKey.data());
+        (void)priLen;
         return true;
     }
     else return false;
@@ -162,9 +163,29 @@ unsigned long SoftEncrypt::SM2GenECCKeyPair(
     return ret;
 }
 
-bool SoftEncrypt::setPubfromPri(EC_KEY* pEcKey)
+bool SoftEncrypt::generatePubFromPri(
+    const unsigned char* pPriUC,
+    int priLen,
+    std::vector<unsigned char>& publicKey)
 {
     EC_POINT *pub_key = NULL;
+    BIGNUM* bn = BN_bin2bn(pPriUC, priLen, nullptr);
+    if (bn == nullptr)
+    {
+        DebugPrint("generatePubFromPri: BN_bin2bn failed");
+        return false;
+    }
+
+    EC_KEY* pEcKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+    const bool ok = EC_KEY_set_private_key(pEcKey, bn);
+    BN_clear_free(bn);
+
+    if (!ok)
+    {
+        DebugPrint("generatePubFromPri: EC_KEY_set_private_key failed");
+        EC_KEY_free(pEcKey);
+        return false;
+    }
 
     const EC_GROUP* pEcGroup = EC_KEY_get0_group(pEcKey);
     const BIGNUM* priv_key = EC_KEY_get0_private_key(pEcKey);
@@ -178,6 +199,8 @@ bool SoftEncrypt::setPubfromPri(EC_KEY* pEcKey)
     
     if (!EC_KEY_set_public_key(pEcKey, pub_key))
         return false;
+
+    getPublicKey(pEcKey, publicKey);
     return true;
 }
 //SM2 Sign&Verify
@@ -239,8 +262,10 @@ unsigned long SoftEncrypt::SM2ECCSign(
 		return ret;
 	}
 
-	unsigned int rSize = BN_num_bytes(sm2sig->r);
-	unsigned int sSize = BN_num_bytes(sm2sig->s);
+    const BIGNUM *sig_r, *sig_s;
+    ECDSA_SIG_get0(sm2sig, &sig_r, &sig_s);
+	unsigned int rSize = BN_num_bytes(sig_r);
+	unsigned int sSize = BN_num_bytes(sig_s);
 	if (rSize > 32 || sSize > 32) {	
 		ECDSA_SIG_free(sm2sig);
 		EC_KEY_free(ec_key);
@@ -252,8 +277,8 @@ unsigned long SoftEncrypt::SM2ECCSign(
 	unsigned char rTmp[32] = { 0 };
 	unsigned char sTmp[32] = { 0 };
 
-	rSize = BN_bn2bin(sm2sig->r, rTmp);
-	sSize = BN_bn2bin(sm2sig->s, sTmp);
+	rSize = BN_bn2bin(sig_r, rTmp);
+	sSize = BN_bn2bin(sig_s, sTmp);
 
 	memcpy(signedTmp + (32 - rSize), rTmp, rSize);
 	memcpy(signedTmp + (64 - sSize), sTmp, sSize);
@@ -284,8 +309,11 @@ unsigned long SoftEncrypt::SM2ECCVerify(
     if (ulSignValueLen == 64)
     {
         ECDSA_SIG *sm2sig = ECDSA_SIG_new();
-        BN_bin2bn(pSignValue, 32, sm2sig->r);
-        BN_bin2bn(pSignValue + 32, 32, sm2sig->s);
+        BIGNUM *sig_r = BN_new();
+        BIGNUM *sig_s = BN_new();
+        BN_bin2bn(pSignValue, 32, sig_r);
+        BN_bin2bn(pSignValue + 32, 32, sig_s);
+        ECDSA_SIG_set0(sm2sig, sig_r, sig_s);
 
         int derSigLen = i2d_ECDSA_SIG(sm2sig, NULL);
         unsigned char *derSigTemp = new unsigned char[derSigLen];
@@ -324,16 +352,16 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
 	}
 
     size_t cipherDataTempLen;
-    if (!SM2_encrypt_with_recommended(NULL, &cipherDataTempLen,
-		(const unsigned char *)pPlainData, ulPlainDataLen, pubkey)) 
+    if (!SM2_encrypt_with_recommended((const unsigned char *)pPlainData, ulPlainDataLen,
+                NULL, &cipherDataTempLen, pubkey)) 
     {
 		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
         EC_KEY_free(pubkey);
 		return 1;
 	}
     unsigned char* pCipherDataTemp = new unsigned char[cipherDataTempLen];
-	if (!SM2_encrypt_with_recommended(pCipherDataTemp, &cipherDataTempLen,
-		(const unsigned char *)pPlainData, ulPlainDataLen, pubkey))
+	if (!SM2_encrypt_with_recommended((const unsigned char *)pPlainData, ulPlainDataLen,
+        pCipherDataTemp, &cipherDataTempLen, pubkey))
     {
 		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
         delete [] pCipherDataTemp;
@@ -342,9 +370,7 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
 	}
     else
     {
-        // *pulCipherDataLen = cipherDataTempLen - 1;
-        // memcpy(pCipherData, pCipherDataTemp + 1, *pulCipherDataLen);
-        std::vector<unsigned char> cipherDataVTemp(pCipherDataTemp + 1, (pCipherDataTemp + 1 + cipherDataTempLen - 1));
+        std::vector<unsigned char> cipherDataVTemp(pCipherDataTemp, (pCipherDataTemp + cipherDataTempLen));
         cipherDataV.assign(cipherDataVTemp.begin(), cipherDataVTemp.end());
         // cipherReEncode(pCipherData, *pulCipherDataLen);
         delete [] pCipherDataTemp;
@@ -352,15 +378,6 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
         EC_KEY_free(pubkey);
 		return 0;
     }
-
-    // if (!SM2_encrypt_with_recommended(pCipherData, (size_t*)pulCipherDataLen,
-	// 	(const unsigned char *)pPlainData, ulPlainDataLen, pubkey))
-    // {
-
-	// 	DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
-    //     EC_KEY_free(pubkey);
-	// 	return 1;
-	// }
 }
 unsigned long SoftEncrypt::SM2ECCDecrypt(
     std::pair<int, int> pri4DecryptInfo,
@@ -392,18 +409,13 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 		return 1;
 	}
 
-	unsigned char* pCipherDataTemp = new unsigned char[ulCipherDataLen + 1];
 	// cipherReDecode(pCipherData, ulCipherDataLen);
-	pCipherDataTemp[0] = 4;
-	memcpy(pCipherDataTemp + 1, pCipherData, ulCipherDataLen);
-
 
 	size_t msglen;
-	if (!SM2_decrypt_with_recommended(NULL, &msglen, pCipherDataTemp, ulCipherDataLen+1, ec_key)) {
+    if (!SM2_decrypt_with_recommended(pCipherData, ulCipherDataLen, NULL, &msglen, ec_key)) {
 		
 		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended failed");
 		EC_KEY_free(ec_key);
-		delete[] pCipherDataTemp;
 		return 1;
 	}
 
@@ -415,11 +427,10 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 	// }
 
     unsigned char* pPlainData = new unsigned char[msglen];
-	if (!SM2_decrypt_with_recommended(pPlainData, &msglen, pCipherDataTemp, ulCipherDataLen + 1, ec_key))
+    if (!SM2_decrypt_with_recommended(pCipherData, ulCipherDataLen, pPlainData, &msglen, ec_key))
 	{
 		DebugPrint("SM2ECCDecrypt2: SM2_decrypt_with_recommended failed");
 		EC_KEY_free(ec_key);
-		delete[] pCipherDataTemp;
         delete[] pPlainData;
 		return 1;
 	}
@@ -429,49 +440,9 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
         plainDataV.assign(plainDataVTemp.begin(), plainDataVTemp.end());
 		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended successfully");
 		EC_KEY_free(ec_key);
-		delete[] pCipherDataTemp;
         delete[] pPlainData;
 		return 0;
 	}
-
-
-	//if (!SM2_decrypt_with_recommended(NULL, &msglen, buf, buflen, ec_key)) {
-	//	fprintf(stderr, "error: %s %d\n", __FILE__, __LINE__);
-	//	goto end;
-	//}
-	//if (msglen > sizeof(msg)) {
-	//	fprintf(stderr, "error: %s %d\n", __FILE__, __LINE__);
-	//	goto end;
-	//}
-	//else if (!SM2_decrypt_with_recommended(msg, &msglen, buf, buflen, ec_key)) {
-	//	fprintf(stderr, "error: %s %d\n", __FILE__, __LINE__);
-	//	goto end;
-	//}
-	//if (msglen != strlen(M) || memcmp(msg, M, strlen(M))) {
-	//	fprintf(stderr, "error: %s %d\n", __FILE__, __LINE__);
-	//	goto end;
-	//}
-
-	//ret = 1;
-
- //   unsigned char* pCipherDataTemp = new unsigned char[ulCipherDataLen + 1];
- //   // cipherReDecode(pCipherData, ulCipherDataLen);
- //   pCipherDataTemp[0] = 4;
- //   memcpy(pCipherDataTemp + 1, pCipherData, ulCipherDataLen);
-	//if (!SM2_decrypt_with_recommended(pPlainData, (size_t*)pulPlainDataLen, pCipherDataTemp, ulCipherDataLen + 1, ec_key))
- //   {
-	//	DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended failed");
- //       delete [] pCipherDataTemp;
-	//	EC_KEY_free(ec_key);
-	//	return 1;
-	//}
- //   else
- //   {
- //       DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended successfully");
- //       delete [] pCipherDataTemp;
-	//	EC_KEY_free(ec_key);
-	//	return 0;
- //   }
 }
 //SM3 interface
 unsigned long SoftEncrypt::SM3HashTotal(
@@ -523,7 +494,7 @@ unsigned long SoftEncrypt::SM3HashFinal(void* phSM3Handle, unsigned char *pHashD
             *pulHashDataLen = SM3_DIGEST_LENGTH;
             // memset(&sm3_ctx_, 0, sizeof(sm3_ctx_t));
             // memset(phSM3Handle, 0, sizeof(sm3_ctx_t));
-            delete phSM3Handle;
+            delete (sm3_ctx_t*)phSM3Handle;
             DebugPrint("sm3_final Hash success!");
             return 0;
         }
@@ -760,14 +731,14 @@ EC_KEY* SoftEncrypt::CreateEC(unsigned char *key, int is_public) {
 int SoftEncrypt::computeDigestWithSm2(EC_KEY* ec_key, unsigned char* pInData, unsigned long ulInDataLen,
                                         unsigned char* dgst, unsigned int*dgstLen)
 {
-    const EVP_MD *id_md = EVP_sm3();
-    const EVP_MD *msg_md = EVP_sm3();
-    if (!SM2_compute_id_digest(id_md, dgst, dgstLen, ec_key)) {
-		return 1;
-	}
-    if (!SM2_compute_message_digest(id_md, msg_md, pInData, ulInDataLen, dgst, dgstLen, ec_key)) {
-		return 1;
-	}
+    // const EVP_MD *id_md = EVP_sm3();
+    // const EVP_MD *msg_md = EVP_sm3();
+    // if (!SM2_compute_id_digest(id_md, dgst, dgstLen, ec_key)) {
+	// 	return 1;
+	// }
+    // if (!SM2_compute_message_digest(id_md, msg_md, pInData, ulInDataLen, dgst, dgstLen, ec_key)) {
+	// 	return 1;
+	// }
     return 0;
 }
 

@@ -288,6 +288,13 @@ unsigned long SJKCard::SM2GenECCKeyPair(
     }
     return ret;
 }
+bool SJKCard::generatePubFromPri(
+    const unsigned char* pPriUC,
+    int priLen,
+    std::vector<unsigned char>& publicKey)
+{
+    return false;
+}
 //SM2 Sign&Verify
 unsigned long SJKCard::SM2ECCSign(
 	std::pair<int, int> pri4SignInfo,

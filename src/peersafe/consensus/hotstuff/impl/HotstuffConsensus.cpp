@@ -17,19 +17,16 @@
 */
 //==============================================================================
 
-
+#include <chrono>
+#include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
 #include <peersafe/consensus/hotstuff/impl/Config.h>
 #include <peersafe/consensus/hotstuff/impl/RecoverData.h>
-#include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
 #include <peersafe/serialization/hotstuff/ExecutedBlock.h>
-#include <chrono>
-
 
 namespace ripple {
 
-
-extern uint256 calculateLedgerHash(LedgerInfo const& info);
-
+extern uint256
+calculateLedgerHash(LedgerInfo const& info);
 
 HotstuffConsensus::HotstuffConsensus(
     Adaptor& adaptor,
@@ -37,7 +34,12 @@ HotstuffConsensus::HotstuffConsensus(
     beast::Journal j)
     : ConsensusBase(clock, j)
     , adaptor_(*(HotstuffAdaptor*)(&adaptor))
-    , blockAcquiring_("blockAcquiring", 256, adaptor_.parms().consensusTIMEOUT, const_cast<clock_type &>(clock), j)
+    , blockAcquiring_(
+          "blockAcquiring",
+          256,
+          adaptor_.parms().consensusTIMEOUT,
+          const_cast<clock_type&>(clock),
+          j)
 {
     JLOG(j_.info()) << "Creating HOTSTUFF consensus object";
 
@@ -47,16 +49,19 @@ HotstuffConsensus::HotstuffConsensus(
 
     // TODO
     // HotstuffConsensusParms to hotstuff::Config
-    config.timeout = adaptor_.parms().consensusTIMEOUT.count();
+    config.timeout =
+        std::ceil(adaptor_.parms().consensusTIMEOUT.count() / 1000.0);
+    config.interval_extract = adaptor_.parms().extractINTERVAL.count();
 
     hotstuff_ = hotstuff::Hotstuff::Builder(adaptor_.getIOService(), j)
-        .setConfig(config)
-        .setCommandManager(this)
-        .setStateCompute(this)
-        .setNetWork(this)
-        .setProposerElection(&adaptor_)
-        .build();
+                    .setConfig(config)
+                    .setCommandManager(this)
+                    .setStateCompute(this)
+                    .setNetWork(this)
+                    .setProposerElection(&adaptor_)
+                    .build();
 
+    // Unused now
     using beast::hash_append;
     ripple::sha512_half_hasher h;
     hash_append(h, std::string("EPOCHCHANGE"));
@@ -71,82 +76,125 @@ HotstuffConsensus::~HotstuffConsensus()
     }
 }
 
-void HotstuffConsensus::startRound(
+void
+HotstuffConsensus::startRound(
     NetClock::time_point const& now,
     typename Ledger_t::ID const& prevLedgerID,
     Ledger_t prevLedger,
     hash_set<NodeID> const& nowUntrusted,
     bool proposing)
 {
-    ConsensusMode startMode = proposing ? ConsensusMode::proposing : ConsensusMode::observing;
+    ConsensusMode startMode =
+        proposing ? ConsensusMode::proposing : ConsensusMode::observing;
 
     startRoundInternal(now, prevLedgerID, prevLedger, startMode, !startup_);
 }
 
-void HotstuffConsensus::timerEntry(NetClock::time_point const& now)
+void
+HotstuffConsensus::timerEntry(NetClock::time_point const& now)
 {
+    if (!startup_)
+        return;
+
     now_ = now;
 
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
         if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
         {
-            JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
+            JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()
+                            << ":" << prevLedgerID_;
             adaptor_.removePoolTxs(
                 newLedger->ledger_->txMap(),
                 newLedger->ledger_->info().seq,
                 newLedger->ledger_->info().parentHash);
 
-            startRoundInternal(now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger, waitingForInit());
+            startRoundInternal(
+                now_,
+                prevLedgerID_,
+                *newLedger,
+                ConsensusMode::switchedLedger,
+                waitingForInit());
         }
         return;
     }
 
-    if ((now_ - consensusTime_) > (adaptor_.parms().consensusTIMEOUT * adaptor_.parms().timeoutCOUNT_ROLLBACK + adaptor_.parms().initTIME))
+    if (!adaptor_.validating())
+    {
+        return;
+    }
+
+    if (waitingForInit())
+    {
+        consensusTime_ = now_;
+
+        if (mode_.get() != ConsensusMode::wrongLedger)
+        {
+            initAnnounce();
+        }
+
+        return;
+    }
+
+    if ((now_ - consensusTime_) > (adaptor_.parms().consensusTIMEOUT *
+                                   adaptor_.parms().timeoutCOUNT_ROLLBACK))
     {
         JLOG(j_.error()) << "Consensus network partitioned, do recover";
-        startRoundInternal(now_, prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger, true);
+        startRoundInternal(
+            now_,
+            prevLedgerID_,
+            previousLedger_,
+            ConsensusMode::switchedLedger,
+            true);
     }
 }
 
-bool HotstuffConsensus::peerConsensusMessage(
+bool
+HotstuffConsensus::peerConsensusMessage(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
     if (startup_)
     {
-        JLOG(j_.info()) << "Processing peerConsensusMessage mt(" << m->msgtype() << ")" ;
+        JLOG(j_.info()) << "Processing peerConsensusMessage mt(" << m->msgtype()
+                        << ")";
 
         switch (m->msgtype())
         {
-        case ConsensusMessageType::mtPROPOSAL:
-            peerProposal(peer, isTrusted, m);
-            break;
-        case ConsensusMessageType::mtVOTE:
-            peerVote(peer, isTrusted, m);
-            break;
-        case ConsensusMessageType::mtACQUIREBLOCK:
-            peerAcquireBlock(peer, isTrusted, m);
-            break;
-        case ConsensusMessageType::mtBLOCKDATA:
-            peerBlockData(peer, isTrusted, m);
-            break;
-        case ConsensusMessageType::mtEPOCHCHANGE:
-            peerEpochChange(peer, isTrusted, m);
-            break;
-        case ConsensusMessageType::mtVALIDATION:
-            peerValidation(peer, isTrusted, m);
-            break;
-        default:
-            break;
+            case ConsensusMessageType::mtPROPOSAL:
+                peerProposal(peer, isTrusted, m);
+                break;
+            case ConsensusMessageType::mtVOTE:
+                peerVote(peer, isTrusted, m);
+                break;
+            case ConsensusMessageType::mtACQUIREBLOCK:
+                peerAcquireBlock(peer, isTrusted, m);
+                break;
+            case ConsensusMessageType::mtBLOCKDATA:
+                peerBlockData(peer, isTrusted, m);
+                break;
+            case ConsensusMessageType::mtEPOCHCHANGE:
+                peerEpochChange(peer, isTrusted, m);
+                break;
+            case ConsensusMessageType::mtINITANNOUNCE:
+                peerInitAnnounce(peer, isTrusted, m);
+                break;
+            case ConsensusMessageType::mtVALIDATION:
+                peerValidation(peer, isTrusted, m);
+                break;
+            default:
+                break;
         }
     }
 
     return false;
 }
 
-void HotstuffConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
+void
+HotstuffConsensus::gotTxSet(
+    NetClock::time_point const& now,
+    TxSet_t const& txSet)
 {
     (void)now;
 
@@ -165,30 +213,38 @@ void HotstuffConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const&
     }
 }
 
-Json::Value HotstuffConsensus::getJson(bool full) const
+Json::Value
+HotstuffConsensus::getJson(bool full) const
 {
     using std::to_string;
     using Int = Json::Value::Int;
 
     Json::Value ret(Json::objectValue);
 
+    ret["type"] = "hotstuff";
+
     ret["proposing"] = (mode_.get() == ConsensusMode::proposing);
 
-    if (mode_.get() != ConsensusMode::wrongLedger)
+    // Maybe consensus isn't begin
+    if (previousLedger_.ledger_ != nullptr)
     {
-        ret["synched"] = true;
-        ret["ledger_seq"] = previousLedger_.seq() + 1;
-    }
-    else
-    {
-        ret["synched"] = false;
-        ret["ledger_seq"] = previousLedger_.seq() + 1;
+        if (mode_.get() != ConsensusMode::wrongLedger)
+        {
+            ret["synched"] = true;
+            ret["ledger_seq"] = previousLedger_.seq() + 1;
+        }
+        else
+        {
+            ret["synched"] = false;
+            ret["ledger_seq"] = previousLedger_.seq() + 1;
+        }
     }
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
-    ret["time_out"] = static_cast<Int>(adaptor_.parms().consensusTIMEOUT.count() * 1000);
     ret["initialized"] = !waitingForInit();
+
+    ret["parms"] = adaptor_.parms().getJson();
 
     if (full)
     {
@@ -206,14 +262,32 @@ Json::Value HotstuffConsensus::getJson(bool full) const
     return ret;
 }
 
-const bool HotstuffConsensus::canExtract() const
+bool
+HotstuffConsensus::waitingForInit() const
 {
+    // This code is for initialization,wait 90 seconds for loading ledger before
+    // real start-mode.
+    return /*(previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&*/
+        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_)
+             .count() < adaptor_.parms().initTIME.count());
+}
+
+bool
+HotstuffConsensus::canExtract()
+{
+    if (!adaptor_.validating())
+    {
+        return false;
+    }
+
     long long sinceClose;
 
     if (openTime_ < consensusTime_)
     {
         // Case omit empty block, last close time maybe very big
-        sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(now_ - consensusTime_).count();
+        sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(
+                         now_ - consensusTime_)
+                         .count();
     }
     else
     {
@@ -228,20 +302,26 @@ const bool HotstuffConsensus::canExtract() const
     if (sinceClose >= adaptor_.parms().maxBLOCK_TIME)
         return true;
 
-    if (adaptor_.parms().maxTXS_IN_LEDGER >= adaptor_.parms().minTXS_IN_LEDGER_ADVANCE &&
+    if (adaptor_.parms().maxTXS_IN_LEDGER >=
+            adaptor_.parms().minTXS_IN_LEDGER_ADVANCE &&
         adaptor_.getPoolQueuedTxCount() >= adaptor_.parms().maxTXS_IN_LEDGER &&
         sinceClose >= adaptor_.parms().minBLOCK_TIME / 2)
     {
         return true;
     }
 
-    if (adaptor_.getPoolQueuedTxCount() > 0 && sinceClose >= adaptor_.parms().minBLOCK_TIME)
+    if (lastTxSetSize_ > 0 &&
+        adaptor_.getPoolQueuedTxCount() == lastTxSetSize_ &&
+        sinceClose >= adaptor_.parms().minBLOCK_TIME)
         return true;
+
+    lastTxSetSize_ = adaptor_.getPoolQueuedTxCount();
 
     return false;
 }
 
-boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockData &blockData)
+boost::optional<hotstuff::Command>
+HotstuffConsensus::extract(hotstuff::BlockData& blockData)
 {
     // Build new ledger
     if (!adaptor_.isPoolAvailable())
@@ -251,7 +331,8 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
 
     if (configChanged_)
     {
-        JLOG(j_.info()) << "Config changed, temporarily unable to proposal new ledger";
+        JLOG(j_.info())
+            << "Config changed, temporarily unable to proposal new ledger";
         blockData.getLedgerInfo() = previousLedger_.ledger_->info();
         return epochChangeHash_;
     }
@@ -276,18 +357,23 @@ boost::optional<hotstuff::Command> HotstuffConsensus::extract(hotstuff::BlockDat
     auto closeTime = adaptor_.closeTime();
     closeTime = std::max<NetClock::time_point>(
         closeTime,
-        previousLedger_.closeTime() + std::chrono::seconds{ adaptor_.parms().minBLOCK_TIME / 1000 });
+        previousLedger_.closeTime() +
+            std::chrono::seconds{adaptor_.parms().minBLOCK_TIME / 1000});
 
     auto built = std::make_shared<Ledger>(*previousLedger_.ledger_, closeTime);
 
-    built->setAccepted(closeTime, closeResolution_, true, adaptor_.getAppConfig());
+    built->setAccepted(
+        closeTime, closeResolution_, true, adaptor_.getAppConfig());
 
     blockData.getLedgerInfo() = built->info();
 
     return cmd;
 }
 
-bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateComputeResult& result)
+bool
+HotstuffConsensus::compute(
+    const hotstuff::Block& block,
+    hotstuff::StateComputeResult& result)
 {
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
@@ -313,7 +399,8 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     {
         JLOG(j_.info()) << "compute block: NilBlock Proposal";
         result.ledger_info = info;
-        result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
+        result.parent_ledger_info =
+            block.block_data().quorum_cert.certified_block().ledger_info;
         return true;
     }
 
@@ -343,7 +430,8 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         epoch_state.verifier = this;
 
         result.ledger_info = previousLedger_.ledger_->info();
-        result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
+        result.parent_ledger_info =
+            block.block_data().quorum_cert.certified_block().ledger_info;
         result.epoch_state = epoch_state;
         return true;
     }
@@ -351,7 +439,8 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     // omit empty
     if (adaptor_.parms().omitEMPTY && payload->cmd == beast::zero)
     {
-        JLOG(j_.info()) << "Empty transaction-set from leader and omit empty ledger";
+        JLOG(j_.info())
+            << "Empty transaction-set from leader and omit empty ledger";
 
         if (info.hash != previousLedger_.id())
         {
@@ -360,7 +449,8 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         }
 
         result.ledger_info = previousLedger_.ledger_->info();
-        result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
+        result.parent_ledger_info =
+            block.block_data().quorum_cert.certified_block().ledger_info;
         return true;
     }
 
@@ -375,14 +465,15 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
     std::set<TxID> failed;
 
     // Put transactions into a deterministic, but unpredictable, order
-    CanonicalTXSet retriableTxs{ payload->cmd };
+    CanonicalTXSet retriableTxs{payload->cmd};
     JLOG(j_.info()) << "Building canonical tx set: " << retriableTxs.key();
 
     for (auto const& item : *ait->second.map_)
     {
         try
         {
-            retriableTxs.insert(std::make_shared<STTx const>(SerialIter{ item.slice() }));
+            retriableTxs.insert(
+                std::make_shared<STTx const>(SerialIter{item.slice()}));
             JLOG(j_.debug()) << "    Tx: " << item.key();
         }
         catch (std::exception const&)
@@ -398,17 +489,21 @@ bool HotstuffConsensus::compute(const hotstuff::Block& block, hotstuff::StateCom
         info.closeTime,
         true,
         info.closeTimeResolution,
-        std::chrono::milliseconds{ 0 },
+        std::chrono::milliseconds{0},
         failed);
 
     JLOG(j_.info()) << "built ledger: " << built.id();
 
     result.ledger_info = built.ledger_->info();
-    result.parent_ledger_info = block.block_data().quorum_cert.certified_block().ledger_info;
+    result.parent_ledger_info =
+        block.block_data().quorum_cert.certified_block().ledger_info;
     return true;
 }
 
-bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::StateComputeResult& result)
+bool
+HotstuffConsensus::verify(
+    const hotstuff::Block& block,
+    const hotstuff::StateComputeResult& result)
 {
     if (block.id() == beast::zero)
     {
@@ -416,7 +511,8 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
         return false;
     }
 
-    if (result.parent_ledger_info.hash != block.block_data().quorum_cert.certified_block().ledger_info.hash)
+    if (result.parent_ledger_info.hash !=
+        block.block_data().quorum_cert.certified_block().ledger_info.hash)
     {
         JLOG(j_.warn()) << "verify block: block and result mismatch";
         return false;
@@ -434,19 +530,20 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
         if ((adaptor_.parms().omitEMPTY && payload->cmd == beast::zero) ||
             payload->cmd == epochChangeHash_)
         {
-            return result.ledger_info.seq == result.parent_ledger_info.seq
-                && result.ledger_info.hash == result.parent_ledger_info.hash;
+            return result.ledger_info.seq == result.parent_ledger_info.seq &&
+                result.ledger_info.hash == result.parent_ledger_info.hash;
         }
         else
         {
-            return result.ledger_info.seq == result.parent_ledger_info.seq + 1
-                && result.ledger_info.parentHash == result.parent_ledger_info.hash;
+            return result.ledger_info.seq ==
+                result.parent_ledger_info.seq + 1 &&
+                result.ledger_info.parentHash == result.parent_ledger_info.hash;
         }
     }
     else if (block.block_data().block_type == hotstuff::BlockData::NilBlock)
     {
-        return result.ledger_info.seq == result.parent_ledger_info.seq
-            && result.ledger_info.hash == result.parent_ledger_info.hash;
+        return result.ledger_info.seq == result.parent_ledger_info.seq &&
+            result.ledger_info.hash == result.parent_ledger_info.hash;
     }
     else
     {
@@ -455,7 +552,8 @@ bool HotstuffConsensus::verify(const hotstuff::Block& block, const hotstuff::Sta
     }
 }
 
-int HotstuffConsensus::commit(const hotstuff::ExecutedBlock& executedBlock)
+int
+HotstuffConsensus::commit(const hotstuff::ExecutedBlock& executedBlock)
 {
     LedgerInfo const& info = executedBlock.state_compute_result.ledger_info;
 
@@ -470,7 +568,8 @@ int HotstuffConsensus::commit(const hotstuff::ExecutedBlock& executedBlock)
     return 0;
 }
 
-bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
+bool
+HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
 {
     if (waitingForInit())
     {
@@ -489,22 +588,35 @@ bool HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
             return handleWrongLedger(prevInfo.ledger_info.hash);
         }
     }
-    else if (prevInfo.ledger_info.seq == previousLedger_.seq() &&
-        adaptor_.parms().omitEMPTY)
+    else if (
+        prevInfo.ledger_info.seq == previousLedger_.seq() &&
+        adaptor_.parms().omitEMPTY && prevInfo.round > 0)
     {
-        adaptor_.updateConsensusTime();
+        adaptor_.onConsensusReached(bWaitingInit_, previousLedger_);
+        if (bWaitingInit_)
+        {
+            bWaitingInit_ = false;
+        }
     }
 
     return true;
 }
 
 /* deprecated */
-bool HotstuffConsensus::syncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::ExecutedBlock& executedBlock)
+bool
+HotstuffConsensus::syncBlock(
+    const uint256& blockID,
+    const hotstuff::Author& author,
+    hotstuff::ExecutedBlock& executedBlock)
 {
     return false;
 }
 
-void HotstuffConsensus::asyncBlock(const uint256& blockID, const hotstuff::Author& author, hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler)
+void
+HotstuffConsensus::asyncBlock(
+    const uint256& blockID,
+    const hotstuff::Author& author,
+    hotstuff::StateCompute::AsyncCompletedHander asyncCompletedHandler)
 {
     // Send acquire block message
     adaptor_.acquireBlock(author, blockID);
@@ -515,40 +627,51 @@ void HotstuffConsensus::asyncBlock(const uint256& blockID, const hotstuff::Autho
     }
     else
     {
-        blockAcquiring_.insert(blockID, std::vector<hotstuff::StateCompute::AsyncCompletedHander>{asyncCompletedHandler});
+        blockAcquiring_.insert(
+            blockID,
+            std::vector<hotstuff::StateCompute::AsyncCompletedHander>{
+                asyncCompletedHandler});
     }
 }
 
-const hotstuff::Author& HotstuffConsensus::Self() const
+const hotstuff::Author&
+HotstuffConsensus::Self() const
 {
     return adaptor_.valPublic();
 }
 
-bool HotstuffConsensus::signature(const uint256& digest, hotstuff::Signature& signature)
+bool
+HotstuffConsensus::signature(
+    const uint256& digest,
+    hotstuff::Signature& signature)
 {
     signature = signDigest(adaptor_.valPublic(), adaptor_.valSecret(), digest);
     return true;
 }
 
-const bool HotstuffConsensus::verifySignature(
+bool
+HotstuffConsensus::verifySignature(
     const hotstuff::Author& author,
     const hotstuff::Signature& signature,
     const hotstuff::HashValue& digest) const
 {
     if (adaptor_.trusted(author))
     {
-        return verifyDigest(author, digest, Slice(signature.data(), signature.size()), false);
+        return verifyDigest(
+            author, digest, Slice(signature.data(), signature.size()), false);
     }
 
     return false;
 }
 
-const bool HotstuffConsensus::verifySignature(
+bool
+HotstuffConsensus::verifySignature(
     const hotstuff::Author& author,
     const hotstuff::Signature& signature,
     const hotstuff::Block& block) const
 {
-    if (calculateLedgerHash(block.block_data().getLedgerInfo()) != block.block_data().getLedgerInfo().hash)
+    if (calculateLedgerHash(block.block_data().getLedgerInfo()) !=
+        block.block_data().getLedgerInfo().hash)
     {
         JLOG(j_.warn()) << "verify block signature: LedgerInfo hash missmatch";
         return false;
@@ -560,10 +683,12 @@ const bool HotstuffConsensus::verifySignature(
         return false;
     }
 
-    return verifyDigest(author, block.id(), Slice(signature.data(), signature.size()), false);
+    return verifyDigest(
+        author, block.id(), Slice(signature.data(), signature.size()), false);
 }
 
-const bool HotstuffConsensus::verifySignature(
+bool
+HotstuffConsensus::verifySignature(
     const hotstuff::Author& author,
     const hotstuff::Signature& signature,
     const hotstuff::Vote& vote) const
@@ -574,10 +699,15 @@ const bool HotstuffConsensus::verifySignature(
         return false;
     }
 
-    return verifyDigest(author, vote.ledger_info().consensus_data_hash, Slice(signature.data(), signature.size()), false);
+    return verifyDigest(
+        author,
+        vote.ledger_info().consensus_data_hash,
+        Slice(signature.data(), signature.size()),
+        false);
 }
 
-const bool HotstuffConsensus::verifyLedgerInfo(
+bool
+HotstuffConsensus::verifyLedgerInfo(
     const hotstuff::BlockInfo& commit_info,
     const hotstuff::HashValue& consensus_data_hash,
     const std::map<hotstuff::Author, hotstuff::Signature>& signatures)
@@ -592,10 +722,10 @@ const bool HotstuffConsensus::verifyLedgerInfo(
         }
 
         if (!verifyDigest(
-            iter->first,
-            consensus_data_hash,
-            Slice(iter->second.data(), iter->second.size()),
-            false))
+                iter->first,
+                consensus_data_hash,
+                Slice(iter->second.data(), iter->second.size()),
+                false))
         {
             return false;
         }
@@ -611,63 +741,76 @@ const bool HotstuffConsensus::verifyLedgerInfo(
     return true;
 }
 
-const bool HotstuffConsensus::checkVotingPower(const std::map<hotstuff::Author, hotstuff::Signature>& signatures) const
+bool
+HotstuffConsensus::checkVotingPower(
+    const std::map<hotstuff::Author, hotstuff::Signature>& signatures) const
 {
     return signatures.size() >= adaptor_.getQuorum();
 }
 
-void HotstuffConsensus::broadcast(const hotstuff::Block& block, const hotstuff::SyncInfo& syncInfo)
+void
+HotstuffConsensus::broadcast(
+    const hotstuff::Block& block,
+    const hotstuff::SyncInfo& syncInfo)
 {
-    auto proposal = std::make_shared<STProposal>(block, syncInfo, adaptor_.valPublic());
-    
+    auto proposal =
+        std::make_shared<STProposal>(block, syncInfo, adaptor_.valPublic());
+
     adaptor_.broadcast(*proposal);
 
     adaptor_.getJobQueue().addJob(
-        jtCONSENSUS_t,
-        "broadcast_proposal",
-        [this, block](Job&) {
-        ScopedLockType _(this->adaptor_.peekConsensusMutex());
-        this->hotstuff_->handleProposal(block);
-    });
+        jtCONSENSUS_t, "broadcast_proposal", [this, block](Job&) {
+            ScopedLockType _(this->adaptor_.peekConsensusMutex());
+            this->hotstuff_->handleProposal(block);
+        });
 }
 
-void HotstuffConsensus::broadcast(const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo)
+void
+HotstuffConsensus::broadcast(
+    const hotstuff::Vote& vote,
+    const hotstuff::SyncInfo& syncInfo)
 {
-    auto stVote = std::make_shared<STVote>(vote, syncInfo, adaptor_.valPublic());
+    auto stVote =
+        std::make_shared<STVote>(vote, syncInfo, adaptor_.valPublic());
 
     adaptor_.broadcast(*stVote);
 
     adaptor_.getJobQueue().addJob(
-        jtCONSENSUS_t,
-        "broadcast_vote",
-        [this, vote, syncInfo](Job&) {
-        ScopedLockType _(this->adaptor_.peekConsensusMutex());
-        this->hotstuff_->handleVote(vote, syncInfo);
-    });
+        jtCONSENSUS_t, "broadcast_vote", [this, vote, syncInfo](Job&) {
+            ScopedLockType _(this->adaptor_.peekConsensusMutex());
+            this->hotstuff_->handleVote(vote, syncInfo);
+        });
 }
 
-void HotstuffConsensus::sendVote(const hotstuff::Author& author, const hotstuff::Vote& vote, const hotstuff::SyncInfo& syncInfo)
+void
+HotstuffConsensus::sendVote(
+    const hotstuff::Author& author,
+    const hotstuff::Vote& vote,
+    const hotstuff::SyncInfo& syncInfo)
 {
     if (author == adaptor_.valPublic())
     {
         adaptor_.getJobQueue().addJob(
-            jtCONSENSUS_t,
-            "send_vote",
-            [this, vote, syncInfo](Job&) {
-            ScopedLockType _(this->adaptor_.peekConsensusMutex());
-            this->hotstuff_->handleVote(vote, syncInfo);
-        });
+            jtCONSENSUS_t, "send_vote", [this, vote, syncInfo](Job&) {
+                ScopedLockType _(this->adaptor_.peekConsensusMutex());
+                this->hotstuff_->handleVote(vote, syncInfo);
+            });
     }
     else
     {
-        auto stVote = std::make_shared<STVote>(vote, syncInfo, adaptor_.valPublic());
+        auto stVote =
+            std::make_shared<STVote>(vote, syncInfo, adaptor_.valPublic());
         adaptor_.sendVote(author, *stVote);
     }
 }
 
-void HotstuffConsensus::broadcast(const hotstuff::EpochChange& epochChange, const hotstuff::SyncInfo& syncInfo)
+void
+HotstuffConsensus::broadcast(
+    const hotstuff::EpochChange& epochChange,
+    const hotstuff::SyncInfo& syncInfo)
 {
-    auto stEpochChange = std::make_shared<STEpochChange>(epochChange, syncInfo, adaptor_.valPublic());
+    auto stEpochChange = std::make_shared<STEpochChange>(
+        epochChange, syncInfo, adaptor_.valPublic());
 
     adaptor_.broadcast(*stEpochChange);
 
@@ -675,27 +818,26 @@ void HotstuffConsensus::broadcast(const hotstuff::EpochChange& epochChange, cons
         jtCONSENSUS_t,
         "broadcast_epochChange",
         [this, epochChange, syncInfo](Job&) {
-        ScopedLockType _(this->adaptor_.peekConsensusMutex());
-        if (hotstuff_->checkEpochChange(epochChange, syncInfo))
-        {
-            configChanged_ = false;
-            //epoch_++;
-            startRoundInternal(now_, prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger, true);
-        }
-    });
+            ScopedLockType _(this->adaptor_.peekConsensusMutex());
+            if (hotstuff_->checkEpochChange(epochChange, syncInfo))
+            {
+                configChanged_ = false;
+                // epoch_++;
+                startRoundInternal(
+                    now_,
+                    prevLedgerID_,
+                    previousLedger_,
+                    ConsensusMode::switchedLedger,
+                    true);
+            }
+        });
 }
 
 // -------------------------------------------------------------------
 // Private member functions
 
-bool HotstuffConsensus::waitingForInit() const
-{
-    // This code is for initialization,wait 90 seconds for loading ledger before real start-mode.
-    return (previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&
-        (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_).count() < adaptor_.parms().initTIME.count());
-}
-
-std::chrono::milliseconds HotstuffConsensus::timeSinceLastClose() const
+std::chrono::milliseconds
+HotstuffConsensus::timeSinceLastClose() const
 {
     using namespace std::chrono;
     // This computes how long since last ledger's close time
@@ -707,25 +849,48 @@ std::chrono::milliseconds HotstuffConsensus::timeSinceLastClose() const
             (previousLedger_.closeTime().time_since_epoch().count() != 0);
 
         auto lastCloseTime = previousCloseCorrect
-            ? previousLedger_.closeTime()   // use consensus timing
-            : consensusTime_;                    // use the time we saw internally
+            ? previousLedger_.closeTime()  // use consensus timing
+            : consensusTime_;              // use the time we saw internally
 
         if (now_ >= lastCloseTime)
-            sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(now_ - lastCloseTime);
+            sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now_ - lastCloseTime);
         else
-            sinceClose = -std::chrono::duration_cast<std::chrono::milliseconds>(lastCloseTime - now_);
+            sinceClose = -std::chrono::duration_cast<std::chrono::milliseconds>(
+                lastCloseTime - now_);
     }
     return sinceClose;
 }
 
-void HotstuffConsensus::peerProposal(
+void
+HotstuffConsensus::initAnnounce()
+{
+    if (now_ - initAnnounceTime_ < adaptor_.parms().initANNOUNCE_INTERVAL)
+        return;
+
+    initAnnounceTime_ = now_;
+
+    JLOG(j_.info()) << "Init announce to other peers prevSeq="
+                    << previousLedger_.seq() << ", prevHash=" << prevLedgerID_;
+
+    auto initAnnounce = std::make_shared<STInitAnnounce>(
+        previousLedger_.seq(),
+        prevLedgerID_,
+        adaptor_.valPublic(),
+        adaptor_.closeTime());
+
+    adaptor_.InitAnnounce(*initAnnounce);
+}
+
+void
+HotstuffConsensus::peerProposal(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED proposal";
+        JLOG(j_.info()) << "drop UNTRUSTED proposal";
         return;
     }
 
@@ -734,22 +899,28 @@ void HotstuffConsensus::peerProposal(
         STProposal::pointer proposal;
 
         SerialIter sit(makeSlice(m->msg()));
-        PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
 
         proposal = std::make_shared<STProposal>(sit, publicKey);
 
         // Check message public key same with proposal public key.
         if (proposal->nodePublic() != proposal->block().block_data().author())
         {
-            JLOG(j_.warn()) << "message public key different with proposal public key, drop proposal";
+            JLOG(j_.warn()) << "message public key different with proposal "
+                               "public key, drop proposal";
             return;
         }
 
         if (waitingForInit())
         {
-            LedgerInfo const& netLoaded = proposal->block().block_data().quorum_cert.certified_block().ledger_info;
+            LedgerInfo const& netLoaded = proposal->block()
+                                              .block_data()
+                                              .quorum_cert.certified_block()
+                                              .ledger_info;
             if (netLoaded.seq > previousLedger_.seq())
             {
+                JLOG(j_.warn()) << "Init time switch to netLedger "
+                                << netLoaded.seq << ":" << netLoaded.hash;
                 handleWrongLedger(netLoaded.hash);
             }
         }
@@ -758,16 +929,20 @@ void HotstuffConsensus::peerProposal(
         {
             peerProposalInternal(proposal);
         }
-        else // Maybe acquiring previous hotstuff block
+        else  // Maybe acquiring previous hotstuff block
         {
-            if (blockAcquiring_.fetch(proposal->syncInfo().HighestQuorumCert().certified_block().id))
+            if (blockAcquiring_.fetch(proposal->syncInfo()
+                                          .HighestQuorumCert()
+                                          .certified_block()
+                                          .id))
             {
                 auto payload = proposal->block().block_data().payload;
                 if (!payload)
                 {
                     Throw<std::runtime_error>("proposal missing payload");
                 }
-                nextProposalCache_[proposal->block().getLedgerInfo().seq][payload->author] = proposal;
+                nextProposalCache_[proposal->block().getLedgerInfo().seq]
+                                  [payload->author] = proposal;
             }
         }
     }
@@ -778,12 +953,13 @@ void HotstuffConsensus::peerProposal(
     }
 }
 
-void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
+void
+HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
 {
     LedgerInfo const& info = proposal->block().getLedgerInfo();
 
-    JLOG(j_.info()) << "peerProposalInternal proposal seq="
-        << info.seq << ", prev seq=" << previousLedger_.seq();
+    JLOG(j_.info()) << "peerProposalInternal proposal seq=" << info.seq
+                    << ", prev seq=" << previousLedger_.seq();
 
     if (info.seq < previousLedger_.seq())
     {
@@ -815,7 +991,6 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
         return;
     }
 
-
     auto const ait = acquired_.find(payload->cmd);
     if (ait == acquired_.end())
     {
@@ -836,14 +1011,15 @@ void HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
     hotstuff_->handleProposal(proposal->block());
 }
 
-void HotstuffConsensus::peerVote(
+void
+HotstuffConsensus::peerVote(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED vote";
+        JLOG(j_.info()) << "drop UNTRUSTED vote";
         return;
     }
 
@@ -852,22 +1028,26 @@ void HotstuffConsensus::peerVote(
         STVote::pointer vote;
 
         SerialIter sit(makeSlice(m->msg()));
-        PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
 
         vote = std::make_shared<STVote>(sit, publicKey);
 
         // Check message public key same with vote public key.
         if (vote->nodePublic() != vote->vote().author())
         {
-            JLOG(j_.warn()) << "message public key different with vote public key, drop vote";
+            JLOG(j_.warn()) << "message public key different with vote public "
+                               "key, drop vote";
             return;
         }
 
         if (waitingForInit())
         {
-            LedgerInfo const& netLoaded = vote->vote().vote_data().parent().ledger_info;
+            LedgerInfo const& netLoaded =
+                vote->vote().vote_data().parent().ledger_info;
             if (netLoaded.seq > previousLedger_.seq())
             {
+                JLOG(j_.warn()) << "Init time switch to netLedger "
+                                << netLoaded.seq << ":" << netLoaded.hash;
                 handleWrongLedger(netLoaded.hash);
             }
         }
@@ -881,7 +1061,8 @@ void HotstuffConsensus::peerVote(
     }
 }
 
-void HotstuffConsensus::peerAcquireBlock(
+void
+HotstuffConsensus::peerAcquireBlock(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
@@ -907,29 +1088,33 @@ void HotstuffConsensus::peerAcquireBlock(
     adaptor_.sendBLock(peer, block);
 }
 
-void HotstuffConsensus::peerBlockData(
+void
+HotstuffConsensus::peerBlockData(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED block data";
+        JLOG(j_.info()) << "drop UNTRUSTED block data";
         return;
     }
 
     try
     {
-        hotstuff::ExecutedBlock executedBlock = serialization::deserialize<hotstuff::ExecutedBlock>(
-            Buffer(m->msg().data(), m->msg().size()));
+        hotstuff::ExecutedBlock executedBlock =
+            serialization::deserialize<hotstuff::ExecutedBlock>(
+                Buffer(m->msg().data(), m->msg().size()));
 
         if (!verify(executedBlock.block, executedBlock.state_compute_result))
         {
-            JLOG(j_.warn()) << "acquired block " << executedBlock.block.id() << " , but verify failed";
+            JLOG(j_.warn()) << "acquired block " << executedBlock.block.id()
+                            << " , but verify failed";
             return;
         }
 
-        JLOG(j_.info()) << "acquired block " << executedBlock.block.id() << " success";
+        JLOG(j_.info()) << "acquired block " << executedBlock.block.id()
+                        << " success";
 
         auto hanlders = blockAcquiring_.fetch(executedBlock.block.id());
         if (hanlders)
@@ -937,12 +1122,18 @@ void HotstuffConsensus::peerBlockData(
             for (auto const& cb : *hanlders)
             {
                 boost::optional<hotstuff::Block> block = executedBlock.block;
-                if (hotstuff::StateCompute::AsyncBlockResult::PROPOSAL_SUCCESS ==
-                    cb(hotstuff::StateCompute::AsyncBlockErrorCode::ASYNC_SUCCESS, executedBlock, block))
+                if (hotstuff::StateCompute::AsyncBlockResult::
+                        PROPOSAL_SUCCESS ==
+                    cb(hotstuff::StateCompute::AsyncBlockErrorCode::
+                           ASYNC_SUCCESS,
+                       executedBlock,
+                       block))
                 {
                     assert(block && block->block_data().payload);
                     auto payload = block->block_data().payload;
-                    auto proposal = nextProposalCache_[block->getLedgerInfo().seq][payload->author];
+                    auto proposal =
+                        nextProposalCache_[block->getLedgerInfo().seq]
+                                          [payload->author];
                     if (proposal && proposal->block().id() == block->id())
                     {
                         peerProposalInternal(proposal);
@@ -960,14 +1151,15 @@ void HotstuffConsensus::peerBlockData(
     }
 }
 
-void HotstuffConsensus::peerEpochChange(
+void
+HotstuffConsensus::peerEpochChange(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED vote";
+        JLOG(j_.info()) << "drop UNTRUSTED vote";
         return;
     }
 
@@ -976,22 +1168,29 @@ void HotstuffConsensus::peerEpochChange(
         STEpochChange::pointer epochChange;
 
         SerialIter sit(makeSlice(m->msg()));
-        PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
 
         epochChange = std::make_shared<STEpochChange>(sit, publicKey);
 
         // Check message public key same with vote public key.
         if (epochChange->nodePublic() != epochChange->epochChange().author)
         {
-            JLOG(j_.warn()) << "message public key different with epochChange public key, drop epochChange";
+            JLOG(j_.warn()) << "message public key different with epochChange "
+                               "public key, drop epochChange";
             return;
         }
 
-        if (hotstuff_->checkEpochChange(epochChange->epochChange(), epochChange->syncInfo()))
+        if (hotstuff_->checkEpochChange(
+                epochChange->epochChange(), epochChange->syncInfo()))
         {
             configChanged_ = false;
-            //epoch_++;
-            startRoundInternal(now_, prevLedgerID_, previousLedger_, ConsensusMode::switchedLedger, true);
+            // epoch_++;
+            startRoundInternal(
+                now_,
+                prevLedgerID_,
+                previousLedger_,
+                ConsensusMode::switchedLedger,
+                true);
         }
     }
     catch (std::exception const& e)
@@ -1001,14 +1200,81 @@ void HotstuffConsensus::peerEpochChange(
     }
 }
 
-void HotstuffConsensus::peerValidation(
+void
+HotstuffConsensus::peerInitAnnounce(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
     if (!isTrusted)
     {
-        JLOG(j_.warn()) << "drop UNTRUSTED validattion";
+        JLOG(j_.info()) << "drop UNTRUSTED InitAnnounce";
+        return;
+    }
+
+    try
+    {
+        STInitAnnounce::pointer initAnnounce;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
+
+        initAnnounce = std::make_shared<STInitAnnounce>(sit, publicKey);
+
+        peerInitAnnounceInternal(initAnnounce);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "InitAnnounce: Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return;
+}
+
+void
+HotstuffConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
+{
+    if (!waitingForInit())
+    {
+        JLOG(j_.info()) << "Ignored InitAnnounce, I'm initialized";
+        return;
+    }
+
+    JLOG(j_.info()) << "Processing peer InitAnnounce prevSeq="
+                    << initAnnounce->prevSeq()
+                    << ", prevHash=" << initAnnounce->prevHash();
+
+    if (initAnnounce->prevSeq() > previousLedger_.seq())
+    {
+        // if mode_.get() == ConsensusMode::wrongLedger
+        // acquiring a netLedger now, so don't checkLedger.
+        if (mode_.get() != ConsensusMode::wrongLedger)
+        {
+            JLOG(j_.warn())
+                << "Init time switch to netLedger " << initAnnounce->prevSeq()
+                << ":" << initAnnounce->prevHash();
+            handleWrongLedger(initAnnounce->prevHash());
+        }
+        else if (initAnnounce->prevHash() == prevLedgerID_)
+        {
+            // acquiring netLedger is prevLedgerID_, touch it.
+            adaptor_.touchAcquringLedger(prevLedgerID_);
+        }
+    }
+
+    return;
+}
+
+void
+HotstuffConsensus::peerValidation(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.info()) << "drop UNTRUSTED validattion";
         return;
     }
 
@@ -1024,13 +1290,11 @@ void HotstuffConsensus::peerValidation(
         STValidation::pointer val;
         {
             SerialIter sit(makeSlice(m->msg()));
-            PublicKey const publicKey{ makeSlice(m->signerpubkey()) };
+            PublicKey const publicKey{makeSlice(m->signerpubkey())};
             val = std::make_shared<STValidation>(
-                std::ref(sit),
-                publicKey,
-                [&](PublicKey const& pk) {
-                return calcNodeID(adaptor_.getMasterKey(pk));
-            });
+                std::ref(sit), publicKey, [&](PublicKey const& pk) {
+                    return calcNodeID(adaptor_.getMasterKey(pk));
+                });
 
             if (((val->getFieldU32(sfLedgerSequence) + 1) % 256) != 0)
             {
@@ -1054,7 +1318,8 @@ void HotstuffConsensus::peerValidation(
     return;
 }
 
-void HotstuffConsensus::startRoundInternal(
+void
+HotstuffConsensus::startRoundInternal(
     NetClock::time_point const& now,
     RCLCxLedger::ID const& prevLgrId,
     RCLCxLedger const& prevLgr,
@@ -1074,11 +1339,14 @@ void HotstuffConsensus::startRoundInternal(
     acquired_.clear();
     curProposalCache_.clear();
 
+    lastTxSetSize_ = 0;
+
     if (recover)
     {
         if (startup_)
         {
-            JLOG(j_.info()) << "recover hotstuff, used ledger " << previousLedger_.seq();
+            JLOG(j_.info())
+                << "recover hotstuff, used ledger " << previousLedger_.seq();
             hotstuff_->stop();
         }
         else
@@ -1093,30 +1361,38 @@ void HotstuffConsensus::startRoundInternal(
         init_epoch_state.epoch = epoch_;
         init_epoch_state.verifier = this;
 
-        hotstuff_->start(hotstuff::RecoverData{ previousLedger_.ledger_->info(), init_epoch_state });
+        hotstuff_->start(hotstuff::RecoverData{previousLedger_.ledger_->info(),
+                                               init_epoch_state,
+                                               adaptor_.validating()});
+
+        nextProposalCache_.clear();
     }
 
     checkCache();
 }
 
-void HotstuffConsensus::checkCache()
+void
+HotstuffConsensus::checkCache()
 {
     std::uint32_t curSeq = previousLedger_.seq() + 1;
     if (nextProposalCache_.find(curSeq) != nextProposalCache_.end())
     {
-        JLOG(j_.info()) << "Handle cached proposal";
+        JLOG(j_.info()) << "Handle cached proposal seq: " << curSeq;
         for (auto const& it : nextProposalCache_[curSeq])
         {
-            if (!blockAcquiring_.fetch(it.second->syncInfo().HighestQuorumCert().certified_block().id))
+            if (!blockAcquiring_.fetch(it.second->syncInfo()
+                                           .HighestQuorumCert()
+                                           .certified_block()
+                                           .id))
             {
                 peerProposalInternal(it.second);
             }
         }
     }
 
-    for (auto it = nextProposalCache_.begin(); it != nextProposalCache_.end(); )
+    for (auto it = nextProposalCache_.begin(); it != nextProposalCache_.end();)
     {
-        if (it->first < curSeq)
+        if (it->first < curSeq - 1)
         {
             it = nextProposalCache_.erase(it);
         }
@@ -1127,7 +1403,8 @@ void HotstuffConsensus::checkCache()
     }
 }
 
-bool HotstuffConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
+bool
+HotstuffConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 {
     assert(lgrId != prevLedgerID_ || previousLedger_.id() != lgrId);
 
@@ -1150,13 +1427,19 @@ bool HotstuffConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     // we need to switch the ledger we're working from
     if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
     {
-        JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq() << ":" << prevLedgerID_;
+        JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()
+                        << ":" << prevLedgerID_;
         adaptor_.removePoolTxs(
             newLedger->ledger_->txMap(),
             newLedger->ledger_->info().seq,
             newLedger->ledger_->info().parentHash);
 
-        startRoundInternal(now_, lgrId, *newLedger, ConsensusMode::switchedLedger, waitingForInit());
+        startRoundInternal(
+            now_,
+            lgrId,
+            *newLedger,
+            ConsensusMode::switchedLedger,
+            waitingForInit());
 
         return true;
     }
@@ -1166,5 +1449,4 @@ bool HotstuffConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     return false;
 }
 
-
-} // namespace ripple
+}  // namespace ripple

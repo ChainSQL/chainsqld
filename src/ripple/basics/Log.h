@@ -209,6 +209,9 @@ public:
 	void
     setCallBack(std::function<void(std::string const& s)> f);
 
+    void
+    resetCallBack();
+
     /**
      * Set flag to write logs to stderr (false) or not (true).
      *

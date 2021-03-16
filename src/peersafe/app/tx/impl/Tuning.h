@@ -32,6 +32,8 @@ namespace ripple {
 	int const TX_TIMEOUT = 30;
 
 	int const RAW_SHOW_SIZE = 2048;
+
+	int const MAX_VALIDATOR_SCHEMA_COUNT = 5;
 } // ripple
 
 #endif

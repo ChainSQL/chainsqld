@@ -724,7 +724,7 @@ PeerImp::getSchemaInfo(std::string prefix, std::string const& schemaIdBuffer)
     std::lock_guard sl(schemaInfoMutex_);
     if (schemaInfo_.find(schemaId) == schemaInfo_.end())
     {
-        JLOG(p_journal_.warn()) << prefix << "Don't have schemaInfo for "
+        JLOG(p_journal_.info()) << prefix << "Don't have schemaInfo for "
                                 << to_string(schemaId) << " in schemaInfo_";
         return std::make_tuple(false, schemaId, nullptr);
     }
@@ -1008,60 +1008,54 @@ PeerImp::doProtocolStart()
     onReadMessage(error_code(), 0);
 
     std::lock_guard sl(schemaInfoMutex_);
-    for (auto it = schemaInfo_.begin(); it != schemaInfo_.end(); it++)
+
+    uint256 schemaid = beast::zero;
+    // Send all the validator lists that have been loaded
+    if (supportsFeature(ProtocolFeature::ValidatorListPropagation))
     {
-        auto schemaid = it->first;
-        auto& app = app_.getSchema(schemaid);
-        // Send all the validator lists that have been loaded
-        if (supportsFeature(ProtocolFeature::ValidatorListPropagation))
-        {
-            app_.validators().for_each_available(
-                [&](std::string const& manifest,
-                    std::string const& blob,
-                    std::string const& signature,
-                    std::uint32_t version,
-                    PublicKey const& pubKey,
-                    std::size_t sequence,
-                    uint256 const& hash) {
-                    protocol::TMValidatorList vl;
+        app_.validators().for_each_available([&](std::string const& manifest,
+                                                 std::string const& blob,
+                                                 std::string const& signature,
+                                                 std::uint32_t version,
+                                                 PublicKey const& pubKey,
+                                                 std::size_t sequence,
+                                                 uint256 const& hash) {
+            protocol::TMValidatorList vl;
 
-                    vl.set_manifest(manifest);
-                    vl.set_blob(blob);
-                    vl.set_signature(signature);
-                    vl.set_version(version);
-                    vl.set_schemaid(schemaid.begin(), schemaid.size());
+            vl.set_manifest(manifest);
+            vl.set_blob(blob);
+            vl.set_signature(signature);
+            vl.set_version(version);
+            vl.set_schemaid(schemaid.begin(), schemaid.size());
 
-                    JLOG(p_journal_.debug())
-                        << "Sending validator list for " << strHex(pubKey)
-                        << " with sequence " << sequence << " to "
-                        << remote_address_.to_string() << " (" << id_ << ")";
-                    auto m = std::make_shared<Message>(
-                        vl, protocol::mtVALIDATORLIST);
-                    send(m);
-                    // Don't send it next time.
-                    app_.getHashRouter().addSuppressionPeer(hash, id_);
-                    setPublisherListSequence(pubKey, sequence);
-                });
-        }
-
-        protocol::TMManifests tm;
-
-        app_.validatorManifests().for_each_manifest(
-            [&tm](std::size_t s) { tm.mutable_list()->Reserve(s); },
-            [&schemaid, &tm, &hr = app_.getHashRouter()](
-                Manifest const& manifest) {
-                auto const& s = manifest.serialized;
-                auto& tm_e = *tm.add_list();
-                tm_e.set_stobject(s.data(), s.size());
-                tm.set_schemaid(schemaid.begin(), schemaid.size());
-                hr.addSuppression(manifest.hash());
-            });
-
-        if (tm.list_size() > 0)
-        {
-            auto m = std::make_shared<Message>(tm, protocol::mtMANIFESTS);
+            JLOG(p_journal_.debug())
+                << "Sending validator list for " << strHex(pubKey)
+                << " with sequence " << sequence << " to "
+                << remote_address_.to_string() << " (" << id_ << ")";
+            auto m = std::make_shared<Message>(vl, protocol::mtVALIDATORLIST);
             send(m);
-        }
+            // Don't send it next time.
+            app_.getHashRouter().addSuppressionPeer(hash, id_);
+            setPublisherListSequence(pubKey, sequence);
+        });
+    }
+
+    protocol::TMManifests tm;
+
+    app_.validatorManifests().for_each_manifest(
+        [&tm](std::size_t s) { tm.mutable_list()->Reserve(s); },
+        [&schemaid, &tm, &hr = app_.getHashRouter()](Manifest const& manifest) {
+            auto const& s = manifest.serialized;
+            auto& tm_e = *tm.add_list();
+            tm_e.set_stobject(s.data(), s.size());
+            tm.set_schemaid(schemaid.begin(), schemaid.size());
+            hr.addSuppression(manifest.hash());
+        });
+
+    if (tm.list_size() > 0)
+    {
+        auto m = std::make_shared<Message>(tm, protocol::mtMANIFESTS);
+        send(m);
     }
 }
 
@@ -2208,7 +2202,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
             return;
         }
 
-        auto tup = getSchemaInfo("TMStatusChange:", m->schemaid());
+        auto tup = getSchemaInfo("TMValidatorList:", m->schemaid());
         if (!get<0>(tup))
             return;
         uint256 schemaId = get<1>(tup);
@@ -2471,7 +2465,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
     // Preliminary check for the validity of the signature: A DER encoded
     // signature can't be longer than 72 bytes.
     if ((boost::algorithm::clamp(sig.size(), 64, 72) != sig.size()) ||
-        (publicKeyType(publicKey) != KeyType::secp256k1))
+        (publicKeyType(publicKey) != CommonKey::algTypeGlobal))
     {
         JLOG(p_journal_.warn())
             << "Consensus message mt(" << m->msgtype() << ")"

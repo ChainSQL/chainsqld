@@ -52,6 +52,11 @@ private:
     uint64_t openTimeMilli_;
     uint64_t consensusTime_;
 
+    uint64_t lastTxSetSize_;
+
+    boost::optional<NetClock::time_point> startTime_;
+    NetClock::time_point initAnnounceTime_;
+
     NetClock::duration closeResolution_ = ledgerDefaultTimeResolution;
 
     // Transaction Sets, indexed by hash of transaction tree
@@ -149,6 +154,9 @@ public:
     Json::Value
     getJson(bool full) const override final;
 
+    bool
+    waitingForInit() const override final;
+
 private:
     inline uint64_t
     timeSinceOpen() const
@@ -164,8 +172,8 @@ private:
     std::chrono::milliseconds
     timeSinceLastClose();
 
-    bool
-    waitingForInit() const;
+    void
+    initAnnounce();
 
     void
     startRoundInternal(
@@ -274,6 +282,14 @@ private:
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
+
+    bool
+    peerInitAnnounce(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+    bool
+    peerInitAnnounceInternal(STInitAnnounce::ref viewChange);
 };
 
 

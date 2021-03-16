@@ -89,6 +89,10 @@ class ShardArchiveHandler;
 class Schema
 {
 public:
+    Schema() {}
+    virtual ~Schema() = default;
+
+public:
     virtual bool
     setup() = 0;
     virtual void

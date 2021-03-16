@@ -12,9 +12,14 @@ namespace ripple {
 
 AccountID const c_RipemdPrecompiledAddress(23);
 
-Executive::Executive(SleOps & _s, eth::EnvInfo const& _envInfo, unsigned int _level)
-	:m_s(_s),m_envInfo(_envInfo),m_depth(_level),
-    m_PreContractFace(m_envInfo.preContractFace())
+Executive::Executive(
+    SleOps& _s,
+    eth::EnvInfo const& _envInfo,
+    unsigned int _level)
+    : m_s(_s)
+    , m_envInfo(_envInfo)
+    , m_PreContractFace(m_envInfo.preContractFace())
+    , m_depth(_level)
 {
 }
 

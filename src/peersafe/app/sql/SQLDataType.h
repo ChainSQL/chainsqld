@@ -55,19 +55,19 @@ public:
 	}
 
 	~InnerDecimal() {}
-	const int length() {
+    int length() {
 		return length_;
 	}
 
-	const int length() const {
+	int length() const {
 		return length_;
 	}
 
-	const int accuracy() {
+	int accuracy() {
 		return accuracy_;
 	}
 
-	const int accuracy() const {
+	int accuracy() const {
 		return accuracy_;
 	}
 

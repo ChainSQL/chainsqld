@@ -641,7 +641,11 @@ Json::Value TxPrepareBase::prepareForCreate()
         hEObj->SM4SymEncrypt(hEObj->ECB, passBlob.data(), passBlob.size(), raw_blob.data(), raw_blob.size(), pCipherData, &cipherDataLen);
         rawCipher = Blob(pCipherData, pCipherData + cipherDataLen);
         delete [] pCipherData;
+        break;
     }
+    default:
+        return RPC::make_error(
+            rpcGENERAL, "encrypt raw failed, pubkey type error!");
     }
 
     //JLOG(m_journal.error()) << "on prepareForCreate, encrypted raw HEX: " << strHex(rawCipher);

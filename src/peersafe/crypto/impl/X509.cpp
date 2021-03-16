@@ -170,6 +170,7 @@ namespace ripple {
 		std::uint8_t* ptr = &result[0];
 
 		int const size = i2o_ECPublicKey((EC_KEY*)key.get(), &ptr);
+        (void)size;
 		assert(size <= 33);
 
 

@@ -182,7 +182,7 @@ transResults()
 		MAKE_ERROR(temBAD_RULEANDTOKEN,		   "Malformed: OperationRule and Confidential are not supported in the mean time."),
 		MAKE_ERROR(temBAD_TICK_SIZE,		   "Malformed: Tick size out of range."                                            ),
 		MAKE_ERROR(temBAD_NEEDVERIFY_OPERRULE, "Malformed: NeedVerify must be 1 if there is table has OperatinRule."           ),
-		MAKE_ERROR(temBAD_VALIDATOR ,          "Malformed: No publickey field or publickey is null."                           ),
+		MAKE_ERROR(temBAD_VALIDATOR ,          "Malformed: No publickey field or publickey is not valid."                           ),
 		MAKE_ERROR(temBAD_PEERLIST ,           "Malformed: No peer field or peer is null"                                      ),
 		MAKE_ERROR(temBAD_SIGNERFORVAL,        "Malformed: Singer is not in the validator list."                               ),
 		MAKE_ERROR(temBAD_ANCHORLEDGER,        "Malformed: Anchor ledger is null or ledger not found."                         ),
@@ -218,10 +218,12 @@ transResults()
 		MAKE_ERROR(tefSCHEMA_NOPEER,   	       "There is no corresponding peer" ),
 		MAKE_ERROR(tefBAD_SCHEMAID,            "Schema id may be error, there is no corresponding schema." ),
 		MAKE_ERROR(tefBAD_SCHEMAADMIN, 	       "Incorrect schema admin." ),
+		MAKE_ERROR(tefBAD_SCHEMAACCOUNT,	   "Incorrect schema creater."),
 		MAKE_ERROR(tefSCHEMA_TX_FORBIDDEN,	   "SchemaCreate tx cannot occur in sub-chain."),
 		MAKE_ERROR(tefSCEMA_NO_PATH,		   "No schema_path configured."),
 		MAKE_ERROR(tefBAD_DUPLACATE_ITEM,	   "Duplicate items in PeerList or Validators."),
 		MAKE_ERROR(tefSCHEMA_NODE_COUNT,	   "Insufficient node count for schema."),
+		MAKE_ERROR(tefSCHEMA_MAX_SCHEMAS,	   "A validator can only participate in 5 schemas."),
         MAKE_ERROR(tesSUCCESS,                 "The transaction was applied. Only final in a validated ledger."                )
     };
     // clang-format on

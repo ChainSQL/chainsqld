@@ -567,15 +567,14 @@ public:
 	, limit_()
 	, group_()
 	, having_()
+    , indi_null(soci::i_null)
 	, build_type_(type)
 	, index_(0)	
 	, conditions_()
 	, db_conn_(dbconn)
 	, condition_(Json::ValueType::nullValue)
 	, join_on_condition_(Json::ValueType::nullValue)
-	, last_error_()
-	, indi_null(soci::i_null){
-
+	, last_error_() {
 	}
 
 	virtual ~DisposeSQL() {
@@ -861,7 +860,7 @@ public:
 		}
 
 		// fix an issue that we can't catch an exception on top-level,
-		// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
+		// because destructor of one-temp-type driver to execute actual SQL-engine API.
 		// however destructor can catch an exception but can't throw an exception that was catched by destructor.
 		if (db_conn_->getSession().last_error().first != 0) {
 			last_error(db_conn_->getSession().last_error());
@@ -1158,7 +1157,7 @@ private:
 		if (std::get<0>(conditions) == 0) {
 			const std::string& c = std::get<1>(conditions);
 
-			// similar to this sql statement �� update table_01 set age=1,name=concat("a_",name);
+			// similar to this sql statement : update table_01 set age=1,name=concat("a_",name);
 			if (!update_command_fields.empty()) {
 				std::string extraComma = (update_fields.back() == ',' ? std::string("") : std::string(","));
 				update_fields += extraComma + update_command_fields;
@@ -1263,7 +1262,7 @@ private:
 					}
 			}
 			// fix an issue that we can't catch an exception on top-level,
-			// beacause desctructor of one-temp-type driver to execute actual SQL-engine API.
+			// because destructor of one-temp-type driver to execute actual SQL-engine API.
 			// however destructor can catch an exception but can't throw an exception that was catched by destructor.
 			//if (db_conn_->getSession().last_error().first != 0) {
 			//	last_error(db_conn_->getSession().last_error());
@@ -2601,7 +2600,7 @@ namespace helper {
 						e[key] = static_cast<int>(r->get<unsigned long long>(i));
 				}
 				else if (r->get_properties(i).get_data_type() == soci::dt_date) {
-					std::tm tm = { 0 };
+					std::tm tm = { };
 					std::string datetime = "NULL";
 					if (r->get_indicator(i) == soci::i_ok) {
 						tm = r->get<std::tm>(i);
@@ -2654,7 +2653,7 @@ namespace helper {
 							e[r->get_properties(i).get_name()] = static_cast<int>(r->get<unsigned long long>(i));
 					}
 					else if (r->get_properties(i).get_data_type() == soci::dt_date) {
-						std::tm tm = { 0 };
+						std::tm tm = { };
 						std::string datetime = "NULL";
 						if (r->get_indicator(i) == soci::i_ok) {
 							tm = r->get<std::tm>(i);
@@ -3384,7 +3383,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 	//ripple::uint160 hex_tablename = tx.getFieldH160(sfNameInDB);
 	std::string tn = ripple::to_string(hex_tablename);
 	if (tn.empty()) {
-		ret = { -1, "Tablename is empty." };
+		ret = { -1, "Table name is empty." };
 		return ret;
 	}
 

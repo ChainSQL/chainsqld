@@ -17,21 +17,18 @@
 */
 //==============================================================================
 
-
 #ifndef PEERSAFE_HOTSTUFF_CONSENSUS_H_INCLUDED
 #define PEERSAFE_HOTSTUFF_CONSENSUS_H_INCLUDED
 
-
+#include <peersafe/consensus/ConsensusBase.h>
+#include <peersafe/consensus/LedgerTiming.h>
+#include <peersafe/consensus/hotstuff/Hotstuff.h>
+#include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
+#include <peersafe/protocol/STEpochChange.h>
 #include <peersafe/protocol/STProposal.h>
 #include <peersafe/protocol/STVote.h>
-#include <peersafe/protocol/STEpochChange.h>
-#include <peersafe/consensus/LedgerTiming.h>
-#include <peersafe/consensus/ConsensusBase.h>
-#include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
-#include <peersafe/consensus/hotstuff/Hotstuff.h>
 
 #include <future>
-
 
 namespace ripple {
 
@@ -89,9 +86,12 @@ public:
     Json::Value
     getJson(bool full) const override final;
 
+    bool
+    waitingForInit() const override final;
+
     // Overwrite CommandManager extract interface.
-    const bool
-    canExtract() const override final;
+    bool
+    canExtract() override final;
     boost::optional<hotstuff::Command>
     extract(hotstuff::BlockData& blockData) override final;
 
@@ -125,28 +125,28 @@ public:
     bool
     signature(const uint256& digest, hotstuff::Signature& signature)
         override final;
-    const bool
+    bool
     verifySignature(
         const hotstuff::Author& author,
         const hotstuff::Signature& signature,
         const hotstuff::HashValue& digest) const override final;
-    const bool
+    bool
     verifySignature(
         const hotstuff::Author& author,
         const hotstuff::Signature& signature,
         const hotstuff::Block& block) const override final;
-    const bool
+    bool
     verifySignature(
         const hotstuff::Author& author,
         const hotstuff::Signature& signature,
         const hotstuff::Vote& vote) const override final;
-    const bool
+    bool
     verifyLedgerInfo(
         const hotstuff::BlockInfo& commit_info,
         const hotstuff::HashValue& consensus_data_hash,
         const std::map<hotstuff::Author, hotstuff::Signature>& signatures)
         override final;
-    const bool
+    bool
     checkVotingPower(const std::map<hotstuff::Author, hotstuff::Signature>&
                          signatures) const override final;
 
@@ -168,10 +168,11 @@ public:
         const hotstuff::SyncInfo& syncInfo) override final;
 
 private:
-    bool
-    waitingForInit() const;
     std::chrono::milliseconds
     timeSinceLastClose() const;
+
+    void
+    initAnnounce();
 
     void
     peerProposal(
@@ -207,6 +208,14 @@ private:
         std::shared_ptr<protocol::TMConsensus> const& m);
 
     void
+    peerInitAnnounce(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+    void
+    peerInitAnnounceInternal(STInitAnnounce::ref viewChange);
+
+    void
     peerValidation(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
@@ -234,13 +243,18 @@ private:
 
     bool startup_ = false;
     NetClock::time_point startTime_;
+    NetClock::time_point initAnnounceTime_;
     NetClock::time_point now_;
     NetClock::time_point openTime_;
     NetClock::time_point consensusTime_;
 
+    uint64_t lastTxSetSize_;
+
     hotstuff::Epoch epoch_ = 0;
     bool configChanged_ = false;
     TxSet_t::ID epochChangeHash_;
+
+    bool bWaitingInit_ = true;
 
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;
@@ -258,4 +272,4 @@ private:
 
 }  // namespace ripple
 
-#endif 
+#endif

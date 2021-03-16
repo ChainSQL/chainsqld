@@ -384,7 +384,7 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::pair<unsigned char*, int> pub4Encrypt = 
                         std::make_pair((unsigned char*)publicKey.data(), publicKey.size());
-        unsigned long rv = hEObj->SM2ECCEncrypt(pub4Encrypt,
+        hEObj->SM2ECCEncrypt(pub4Encrypt,
                         (unsigned char*)&passBlob[0], passBlob.size(), vucCipherText);
         return vucCipherText;
     }
@@ -397,8 +397,10 @@ encrypt(const Blob& passBlob,PublicKey const& publicKey)
 bool generateAddrAndPubFile(int pubType, int index, std::string filePath)
 {
     if(GmEncryptObj::hEType_ == GmEncryptObj::gmAlgType::soft)
+    {
         return true;
-        
+    }
+
 	GmEncrypt* hEObj = GmEncryptObj::getInstance();
 	std::string fileName = "";
 	unsigned char publicKeyTemp[PUBLIC_KEY_EXT_LEN] = { 0 };
@@ -429,7 +431,7 @@ bool generateAddrAndPubFile(int pubType, int index, std::string filePath)
 			filePath = hEObj->GetHomePath();
 			filePath += fileName;
 		}
-		hEObj->FileWrite(filePath.c_str(), "wb+", (unsigned char*)fileBuffer.c_str(), fileBuffer.size());
+		hEObj->FileWrite(filePath.c_str(), "wb+", (const unsigned char*)fileBuffer.c_str(), fileBuffer.size());
 		return true;
 	}
 	return false;

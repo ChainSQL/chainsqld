@@ -90,7 +90,8 @@ enum SerializedTypeID {
     STI_VIEWCHANGE  = 10006,
     STI_PROPOSAL    = 10007,
     STI_VOTE        = 10008,
-    STI_EPOCHCHANGE = 10009
+    STI_INITANNOUNCE= 10009,
+    STI_EPOCHCHANGE = 10010
 };
 
 // constexpr
@@ -354,6 +355,7 @@ extern SField const sfProposeSet;
 extern SField const sfViewChange;
 extern SField const sfProposal;
 extern SField const sfVote;
+extern SField const sfInitAnnounce;
 extern SField const sfEpochChange;
 
 // 8-bit integers

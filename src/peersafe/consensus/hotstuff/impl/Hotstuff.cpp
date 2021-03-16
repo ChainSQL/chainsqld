@@ -130,11 +130,12 @@ int Hotstuff::start(const RecoverData& recover_data) {
 			proposer_election_,
 			network_);
 	}
-	return round_manager_->start();
+    return round_manager_->start(recover_data.validating);
 }
 
 void Hotstuff::stop() {
-    round_manager_->stop();
+    if (round_manager_)
+        round_manager_->stop();
 }
 
 bool Hotstuff::CheckProposal(

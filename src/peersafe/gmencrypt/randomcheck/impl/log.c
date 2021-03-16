@@ -47,7 +47,7 @@ static char sLogStr[LOG_TRACE][20] = {
 /*Linux/Unix: 在TMP目录*/
 
 
-void APT_LogMessage(int nLogLevel, char *sModule, char *sFile, int nLine, unsigned int unErrCode, char *sMessage)
+void APT_LogMessage(int nLogLevel, const char *sModule, const char *sFile, int nLine, unsigned int unErrCode, const char *sMessage)
 {
 	FILE *fp;
 	struct tm *newtime;
@@ -119,7 +119,7 @@ void APT_LogMessage(int nLogLevel, char *sModule, char *sFile, int nLine, unsign
 	fclose(fp);
 }
 
-void APT_LogMessageEx(int nLogLevel, char *sModule, char *sFile, int nLine, unsigned int unErrCode, char *sMessage, ...)
+void APT_LogMessageEx(int nLogLevel, const char *sModule, const char *sFile, int nLine, unsigned int unErrCode, const char *sMessage, ...)
 {
 	FILE *fp;
 	struct tm *newtime;
@@ -209,7 +209,7 @@ void APT_LogMessageEx(int nLogLevel, char *sModule, char *sFile, int nLine, unsi
 	fclose(fp);
 }
 
-void logPrint(int nLogLevel, char * sModule, char * sFile, int nLine, unsigned int unErrCode, char * sMessage)
+void logPrint(int nLogLevel, const char * sModule, const char * sFile, int nLine, unsigned int unErrCode, const char * sMessage)
 {
 	struct tm *newtime;
 	time_t aclock;
@@ -247,7 +247,7 @@ void logPrint(int nLogLevel, char * sModule, char * sFile, int nLine, unsigned i
 	}
 }
 
-void logPrintEx(int nLogLevel, char * sModule, char * sFile, int nLine, unsigned int unErrCode, char * sMessage, ...)
+void logPrintEx(int nLogLevel, const char * sModule, const char * sFile, int nLine, unsigned int unErrCode, const char * sMessage, ...)
 {
 	struct tm *newtime;
 	time_t aclock;

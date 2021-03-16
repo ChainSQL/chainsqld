@@ -28,15 +28,15 @@ class TableAuditItem : public TableDumpItem
 {
 public:     
     TableAuditItem(Schema& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType);
-    virtual ~TableAuditItem();
+    ~TableAuditItem();
 
     std::pair<bool, std::string> SetAuditPara(std::string sPath, const std::list<int>& idArray, const std::list<std::string> & fieldArray);
     std::pair<bool, std::string> SetAuditPara(std::string sSql, std::string sPath);
 
 private:	
-    bool isTxNeededOutput(const STTx& tx, std::vector<STTx>& vecTxs);    
+    bool isTxNeededOutput(const STTx& tx, std::vector<STTx>& vecTxs) override;    
     void ConstructCheckJson();   
-    void issuesAfterStop();
+    void issuesAfterStop() override;
     bool checkSqlValid(std::string sSql);
 
 private:

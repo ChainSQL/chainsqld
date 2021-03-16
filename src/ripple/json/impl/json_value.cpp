@@ -229,6 +229,7 @@ Value::Value(double value) : type_(realValue)
 Value::Value(const char* value) : type_(stringValue), allocated_(true)
 {
     value_.string_ = valueAllocator()->duplicateStringValue(value);
+	length_ = strlen(value);
 }
 
 Value::Value(std::string const& value) : type_(stringValue), allocated_(true)
@@ -321,8 +322,10 @@ Value::operator=(Value const& other)
 }
 
 Value::Value(Value&& other) noexcept
-    : value_(other.value_), type_(other.type_),
-    allocated_(other.allocated_), length_(other.length_)
+    : value_(other.value_)
+    , length_(other.length_)
+    , type_(other.type_)
+    , allocated_(other.allocated_)
 {
     other.type_ = nullValue;
     other.allocated_ = 0;

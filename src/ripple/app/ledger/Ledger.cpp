@@ -339,9 +339,7 @@ Ledger::Ledger(
 
 Ledger::Ledger(Ledger const& ledger, Family& f)
 	: mImmutable(false)
-	, txMap_(std::make_shared <SHAMap>(
-		SHAMapType::TRANSACTION,
-		ledger.stateMap_->family()))
+	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
 	, stateMap_(ledger.stateMap_->genesisSnapShot(f))
 	, fees_(ledger.fees_)
 	, rules_(ledger.rules_)
@@ -361,6 +359,11 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
 	stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
+
+    //stateMap_->dump(true);
+   // ledger.stateMap_->dump(true);
+
+
 }
 
 void Ledger::setImmutable (Config const& config)
@@ -609,8 +612,10 @@ Ledger::setup(Config const& config)
             if (sle->getFieldIndex (sfReserveIncrement) != -1)
                 fees_.increment = sle->getFieldU32 (sfReserveIncrement);
 
-			if (sle->getFieldIndex(sfDropsPerByte) != -1)
-				fees_.drops_per_byte = sle->getFieldU64(sfDropsPerByte);
+            if (sle->isFieldPresent(sfDropsPerByte))
+            {
+                fees_.drops_per_byte = sle->getFieldU64(sfDropsPerByte);
+            }
         }
     }
     catch (SHAMapMissingNode const&)

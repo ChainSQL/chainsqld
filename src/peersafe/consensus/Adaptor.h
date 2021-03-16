@@ -38,6 +38,7 @@
 #include <peersafe/consensus/ConsensusTypes.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/protocol/STInitAnnounce.h>
 #include <boost/optional.hpp>
 #include <memory>
 
@@ -101,6 +102,8 @@ public:
         ValidatorKeys const& validatorKeys,
         beast::Journal journal,
         LocalTxs& localTxs);
+
+    virtual ~Adaptor() = default;
 
     inline NodeID_t const&
     nodeID() const
@@ -317,6 +320,9 @@ public:
         RCLCxLedger const& ledger,
         bool haveCorrectLCL);
 
+    virtual void
+    InitAnnounce(STInitAnnounce const& initAnnounce);
+
     void
     signMessage(protocol::TMConsensus& consensus);
 
@@ -347,6 +353,9 @@ public:
     */
     virtual boost::optional<RCLCxLedger>
     acquireLedger(LedgerHash const& hash);
+
+    virtual void
+    touchAcquringLedger(LedgerHash const& prevLedgerHash);
 
     /** Build the new last closed ledger.
 
@@ -395,6 +404,9 @@ public:
     */
     void
     onModeChange(ConsensusMode before, ConsensusMode after);
+
+    virtual void
+    onConsensusReached(bool bWaitingInit, Ledger_t previousLedger);
 
 private:
 };

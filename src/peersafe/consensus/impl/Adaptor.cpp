@@ -25,12 +25,14 @@
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/ledger/BuildLedger.h>
 #include <ripple/app/ledger/TransactionMaster.h>
+#include <ripple/app/ledger/LocalTxs.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/basics/random.h>
 #include <ripple/overlay/predicates.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/consensus/Adaptor.h>
+#include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/util/Common.h>
 
@@ -160,6 +162,20 @@ Adaptor::notify(
 }
 
 void
+Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce)
+{
+    Blob v = initAnnounce.getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&v[0], v.size());
+    consensus.set_msgtype(ConsensusMessageType::mtINITANNOUNCE);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
+
+    signAndSendMessage(consensus);
+}
+
+void
 Adaptor::signMessage(protocol::TMConsensus& consensus)
 {
     consensus.set_signerpubkey(valPublic_.data(), valPublic_.size());
@@ -241,6 +257,17 @@ Adaptor::acquireLedger(LedgerHash const& hash)
     return RCLCxLedger(built);
 }
 
+void
+Adaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
+{
+    auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
+    if (inboundLedger)
+    {
+        JLOG(j_.warn()) << "touch inboundLedger for " << prevLedgerHash;
+        inboundLedger->touch();
+    }
+}
+
 RCLCxLedger
 Adaptor::buildLCL(
     RCLCxLedger const& previousLedger,
@@ -310,6 +337,53 @@ Adaptor::onModeChange(ConsensusMode before, ConsensusMode after)
                         << ", after=" << to_string(after);
         mode_ = after;
     }
+}
+
+void
+Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger)
+{
+    app_.getLedgerMaster().onConsensusReached(
+        bWaitingInit, previousLedger.ledger_);
+
+    if (bWaitingInit)
+    {
+        notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
+    }
+    if (app_.openLedger().current()->info().seq != previousLedger.seq() + 1)
+    {
+        // Generate new openLedger
+        CanonicalTXSet retriableTxs{beast::zero};
+        auto const lastVal = ledgerMaster_.getValidatedLedger();
+        boost::optional<Rules> rules;
+        if (lastVal)
+            rules.emplace(*lastVal, app_.config().features);
+        else
+            rules.emplace(app_.config().features);
+        app_.openLedger().accept(
+            app_,
+            *rules,
+            previousLedger.ledger_,
+            localTxs_.getTxSet(),
+            false,
+            retriableTxs,
+            tapNONE,
+            "consensus",
+            [&](OpenView& view, beast::Journal j) {
+                // Stuff the ledger with transactions from the queue.
+                return app_.getTxQ().accept(app_, view);
+            });
+    }
+
+    if (!validating())
+    {
+        notify(
+            protocol::neCLOSING_LEDGER,
+            previousLedger,
+            mode() != ConsensusMode::wrongLedger);
+    }
+
+    app_.validators().updateTrusted(
+        app_.getValidations().getCurrentNodeIDs());
 }
 
 }  // namespace ripple

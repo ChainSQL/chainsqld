@@ -174,6 +174,8 @@ public:
     mapComplete(std::shared_ptr<SHAMap> const& map, bool fromAcquire) = 0;
 
     // network state machine
+    virtual void
+    setGenesisLedgerIndex(LedgerIndex seq) = 0;
     virtual bool
     beginConsensus(uint256 const& netLCL) = 0;
     virtual void

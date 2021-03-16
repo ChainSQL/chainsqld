@@ -218,10 +218,15 @@ Transactor::checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee)
         return terNO_ACCOUNT;
 
     auto const balance = (*sle)[sfBalance].zxc();
-    auto const reserve = ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
+	if (ctx.tx.getTxnType() == ttTABLELISTSET && ctx.tx.getFieldU16(sfOpType) == T_CREATE)
+	{
+		//If no judgement here ,tx will go into ledger and deduct expensive fee
+		auto const reserve =
+			ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
 
-    if (balance < reserve)
-        return tecINSUFFICIENT_RESERVE;
+        if (balance < reserve)
+			return tecINSUFFICIENT_RESERVE;
+	}
 
     if (balance < feePaid)
     {
@@ -841,8 +846,10 @@ Transactor::operator()()
         std::string strToken;
         std::string strHuman;
 
-    if (auto stream = j_.trace())
-        stream << "preclaim result: " << transToken(terResult.ter);
+        if (auto stream = j_.trace())
+        {
+            stream << "preclaim result: " << transToken(terResult.ter);
+        }
 
         stream <<
             "applyTransaction: terResult=" << strToken <<

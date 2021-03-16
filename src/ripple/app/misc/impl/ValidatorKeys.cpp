@@ -104,7 +104,7 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                     {
                         // CommonKey::setAlgType(*type);
                         secretKey = generateSecretKey(CommonKey::algTypeGlobal, *seed);
-                        publicKey = derivePublicKey(CommonKey::algTypeGlobal, secretKey);;
+                        publicKey = derivePublicKey(CommonKey::algTypeGlobal, secretKey);
                     }
                 }
             }

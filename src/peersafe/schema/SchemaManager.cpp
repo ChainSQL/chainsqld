@@ -40,7 +40,7 @@ SchemaManager::createSchema(
     SchemaParams const& param)
 {
     auto schema = make_Schema(param, config, app_, j_);
-    schema->doStart();
+   // schema->doStart();
     schemas_[param.schema_id] = schema;
 
     return schema;

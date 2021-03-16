@@ -33,10 +33,10 @@ extern char apt_log_file[512]; //全局变量
 extern unsigned int apt_log_level;//全局变量
 extern unsigned int apt_log_max_size; //全局变量
 
-void APT_LogMessage(int nLogLevel, char *sModule, char *sFile, int nLine, unsigned int unErrCode, char *sMessage);
-void APT_LogMessageEx(int nLogLevel, char *sModule, char *sFile, int nLine, unsigned int unErrCode, char *sMessage, ...);
-void logPrint(int nLogLevel, char *sModule, char *sFile, int nLine, unsigned int unErrCode, char *sMessage);
-void logPrintEx(int nLogLevel, char *sModule, char *sFile, int nLine, unsigned int unErrCode, char *sMessage, ...);
+void APT_LogMessage(int nLogLevel, const char *sModule, const char *sFile, int nLine, unsigned int unErrCode, const char *sMessage);
+void APT_LogMessageEx(int nLogLevel, const char *sModule, const char *sFile, int nLine, unsigned int unErrCode, const char *sMessage, ...);
+void logPrint(int nLogLevel, const char *sModule, const char *sFile, int nLine, unsigned int unErrCode, const char *sMessage);
+void logPrintEx(int nLogLevel, const char *sModule, const char *sFile, int nLine, unsigned int unErrCode, const char *sMessage, ...);
 
 #define LOGP(lvl, rv, msg) \
 	do { \

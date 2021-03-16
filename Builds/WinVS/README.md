@@ -18,6 +18,10 @@
 ### install visual studio 2017
 > [Visual Studio 2017 Download](https://www.visualstudio.com/downloads/download-visual-studio-vs) 
 
+### install perl
+> 1. [perl download](https://strawberryperl.com/download/5.32.1.1/strawberry-perl-5.32.1.1-64bit.msi)
+> 2. 下载安装之后，默认会添加到环境变量，如果没有请手动添加
+
 ### install git for windows
 > [Git for windows](https://git-scm.com/downloads)
 
@@ -44,8 +48,8 @@
 > 3. 将 BOOST_ROOT 环境变量设置为 C:\lib\boost_1_70_0
 
 ### install mysql
-> 1. 下载 5.6或5.7版本的 [libmysqlclient for windwos](https://dev.mysql.com/downloads/connector/c/)。建议优先选择 x86，64-bit 的压缩包。
-> 2. 将 MYSQL_ROOT_DIR 环境变量设置为 libmysqlclient 的安装目录
+> 1. 下载 [mysql8.0 for windows](https://dev.mysql.com/downloads/installer/)。建议优先选择 x86，64-bit 的压缩包并安装。
+> 2. 将 MYSQL_ROOT_DIR 环境变量设置为 mysql8.0 的安装目录
 
 ## 编译 chainsqld
 ### 下载源码

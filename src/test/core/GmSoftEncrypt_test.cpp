@@ -68,24 +68,24 @@ namespace ripple {
 			try
 			{
 
-				SoftEncrypt softGM;
+				//SoftEncrypt softGM;
 
-				//  sk 45F4FFFF06FF1095868565F7F2F688F8FFFFF7F581307011FF32F3F1FFFFF640
-				//	pub4Verify 4711C19CD97B3219CF7D0D256F78C05BAF04642316BAF6ACDC32FBC41A4F63EDE3BF74954A88FF4CD7D642D220A763F6FD5C81B5BEE437E2125D474C839D5195B8
-				//	digest FC41B0FC835338B989AD9CB951B805CA776006FD26D5A0B431360387D082DBC5
-				//	sig 9D672E83DB1AAC5BDDA4FF38A686BB2111EECBBFF51190A5E0F5EB8B3C8D935F05369984914C80B7963EFAC3206792E113FEC7452DDDB8DED4A78141A8A8F638
-				//	secretKey SM2ECCVerify ERR rv = 1
+				////  sk 45F4FFFF06FF1095868565F7F2F688F8FFFFF7F581307011FF32F3F1FFFFF640
+				////	pub4Verify 4711C19CD97B3219CF7D0D256F78C05BAF04642316BAF6ACDC32FBC41A4F63EDE3BF74954A88FF4CD7D642D220A763F6FD5C81B5BEE437E2125D474C839D5195B8
+				////	digest FC41B0FC835338B989AD9CB951B805CA776006FD26D5A0B431360387D082DBC5
+				////	sig 9D672E83DB1AAC5BDDA4FF38A686BB2111EECBBFF51190A5E0F5EB8B3C8D935F05369984914C80B7963EFAC3206792E113FEC7452DDDB8DED4A78141A8A8F638
+				////	secretKey SM2ECCVerify ERR rv = 1
 
-				auto const publicKeyDe58 = parseBase58<PublicKey>(TOKEN_NODE_PUBLIC, "pEnUJumfgaBTYkDySCdBJPT8NbEq44LVvqpDBG1zqmpZE2tm8fZWCPYW3Dnd1ioNW9hgFzbsn1ywp5yHy7cnqkG9zeFj88E6");
-				std::cout << strHex(publicKeyDe58->slice()) << std::endl;
+				//auto const publicKeyDe58 = parseBase58<PublicKey>(TOKEN_NODE_PUBLIC, "pEnUJumfgaBTYkDySCdBJPT8NbEq44LVvqpDBG1zqmpZE2tm8fZWCPYW3Dnd1ioNW9hgFzbsn1ywp5yHy7cnqkG9zeFj88E6");
+				//std::cout << strHex(publicKeyDe58->slice()) << std::endl;
 	
 
-				std::string privateKeyStrDe58 = decodeBase58Token("pc5uHtWptaUCf7KnupEbrDoM3EbM85xuj3wWf7c4Fsx9Jf5TiZU", TOKEN_NODE_PRIVATE);
-				//std::cout << strHex(privateKeyStrDe58) << std::endl;
+				//std::string privateKeyStrDe58 = decodeBase58Token("pc5uHtWptaUCf7KnupEbrDoM3EbM85xuj3wWf7c4Fsx9Jf5TiZU", TOKEN_NODE_PRIVATE);
+				////std::cout << strHex(privateKeyStrDe58) << std::endl;
 
-				auto tempPri = ripple::strUnHex(privateSV1).first;
-				auto tempPub = ripple::strUnHex(publicSV1).first;
-				tempPub.insert(tempPub.begin(), 0x47);
+				//auto tempPri = ripple::strUnHex(privateSV1).first;
+				//auto tempPub = ripple::strUnHex(publicSV1).first;
+				//tempPub.insert(tempPub.begin(), 0x47);
 
 				/*softGM.SM2GenECCKeyPair(0, 1, 256);
 				auto tempPublickey = softGM.getPublicKey();
@@ -132,7 +132,7 @@ namespace ripple {
 			try
 			{
 
-				SoftEncrypt softGM;
+			/*	SoftEncrypt softGM;
 
 				auto tempPri = ripple::strUnHex(privateED1).first;
 				auto tempPub = ripple::strUnHex(publicED1).first;
@@ -145,7 +145,7 @@ namespace ripple {
 				std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
 				auto tmpPlain = ripple::strUnHex(plainSV1).first;
 
-				std::pair<unsigned char*, int> pubVerify = std::make_pair((unsigned char*)pk.data(), pk.size());
+				std::pair<unsigned char*, int> pubVerify = std::make_pair((unsigned char*)pk.data(), pk.size());*/
 
 				/*for (int i = 0; i < 1000; i++) {
 
@@ -177,7 +177,7 @@ namespace ripple {
 			try
 			{
 
-				const std::string sm4ECBPWD1   = "195DFB107315BB593FFE57BAB9F295F2";
+			/*	const std::string sm4ECBPWD1   = "195DFB107315BB593FFE57BAB9F295F2";
 				const std::string sm4ECBPlain1 = "7AB7711EF976C0CE516F135E45EADE848171DA25223CA76D79EDB61E0C7E6628";
 				const std::string sm4ECBCipher1 = "A0C8EC1BA6A6F9E6E7134037170964927BB47695602C9C16126F980FFD6655FE6522B3CCE93DA7D8A4D5579C52298648";
 
@@ -198,7 +198,7 @@ namespace ripple {
 				unsigned long plainLen = 0;	
 				res = softGM.SM4SymDecrypt(GmEncrypt::ECB, passBlob.data(), passBlob.size(), testCipherBlob.data(), testCipherBlob.size(), raw_blob.data(), &plainLen, 1);
 				assert(res == 0);
-				std::cout << "sm4 plain data :" << ripple::strHex(Blob(raw_blob.data(), raw_blob.data() + plainLen)) << std::endl;
+				std::cout << "sm4 plain data :" << ripple::strHex(Blob(raw_blob.data(), raw_blob.data() + plainLen)) << std::endl;*/
 				pass();
 			}
 			catch (std::exception&)

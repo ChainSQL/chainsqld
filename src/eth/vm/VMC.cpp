@@ -26,7 +26,7 @@ owning_bytes_ref VMC::exec(int64_t& gas, ExtVMFace& ext) {
 	evmc_message msg = { kind, flags, ext.depth, gas,
 		ext.myAddress, ext.caller,
 		ext.data.data(), ext.data.size(), ext.value,
-		ext.envInfo().dropsPerByte() };
+		ext.envInfo().dropsPerByte(), {} };
 	EvmCHost host{ ext };
 
 	//return Result{

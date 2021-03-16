@@ -77,29 +77,59 @@ SHAMap::genesisSnapShot(Family& f) const
     auto ret = std::make_shared<SHAMap>(type_, f);
     SHAMap& newMap = *ret;
 
-    newMap.seq_ = 1;
+    newMap.seq_       = 1;
     newMap.ledgerSeq_ = 0;
-    newMap.root_ = root_;
-    newMap.backed_ = backed_;
+    newMap.root_      = root_->clone(1);
+    newMap.backed_    = backed_;
 
-    newMap.root_->setSeq(1);
+    // Stack of {parent,index,child} pointers representing
+    using StackEntry = std::pair<std::shared_ptr<SHAMapInnerNode>, int>;
+    std::stack<StackEntry, std::vector<StackEntry>> stack;
+
     auto node = std::static_pointer_cast<SHAMapInnerNode>(newMap.root_);
+    
+    // set seq of all nodes equal to 1
     int pos = 0;
-    while (pos < 16)
-    {
-        if (node->isEmptyBranch(pos))
+    while (1) {
+
+        while (pos < 16)
         {
-            ++pos;
-        }
-        else
-        {
-            int branch = pos;
-            auto child = node->getChild(pos++);
-            if (child)
+
+            if (node->isEmptyBranch(pos))
             {
-                child->setSeq(1);
-            }       
+                ++pos;
+            }
+            else
+            {
+                int branch = pos;
+                auto child = node->getChild(pos++);
+                if (child){
+                    if (child->isInner()) {
+                        // save our place and work on this node
+                        stack.emplace(std::move(node), branch);
+                        // The semantics of this changes when we move to c++-20
+                        // Right now no move will occur; With c++-20 child will
+                        // be moved from.
+                        node = std::static_pointer_cast<SHAMapInnerNode>(
+                            std::move(child));
+                        pos = 0;
+                    }else{
+                        child->setSeq(1);
+                    }
+                }
+            }
         }
+
+        node->setSeq(1);
+        if (stack.empty())
+            break;
+
+        auto parent = std::move(stack.top().first);
+        pos = stack.top().second;
+        stack.pop();
+
+        node = std::move(parent);
+        ++pos;
     }
 
     return ret;

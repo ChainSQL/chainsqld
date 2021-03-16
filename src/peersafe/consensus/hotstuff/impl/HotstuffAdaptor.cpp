@@ -17,16 +17,15 @@
 */
 //==============================================================================
 
-
-#include <ripple/core/ConfigSections.h>
-#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/LocalTxs.h>
-#include <ripple/app/misc/LoadFeeTrack.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/misc/AmendmentTable.h>
+#include <ripple/app/misc/LoadFeeTrack.h>
+#include <ripple/core/ConfigSections.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
 #include <peersafe/serialization/hotstuff/ExecutedBlock.h>
-
+#include <peersafe/app/misc/StateManager.h>
 
 namespace ripple {
 
@@ -48,37 +47,68 @@ HotstuffAdaptor::HotstuffAdaptor(
           journal,
           localTxs)
 {
-    if (app_.config().exists(SECTION_HCONSENSUS))
+    if (app_.config().exists(SECTION_CONSENSUS))
     {
-        parms_.minBLOCK_TIME = app.config().loadConfig(
-            SECTION_HCONSENSUS, "min_block_time", parms_.minBLOCK_TIME);
-        parms_.maxBLOCK_TIME = app.config().loadConfig(
-            SECTION_HCONSENSUS, "max_block_time", parms_.maxBLOCK_TIME);
+        parms_.minBLOCK_TIME = std::max(
+            parms_.minBLOCK_TIME,
+            app.config().loadConfig(
+                SECTION_CONSENSUS, "min_block_time", parms_.minBLOCK_TIME));
+        parms_.maxBLOCK_TIME = std::max(
+            parms_.maxBLOCK_TIME,
+            app.config().loadConfig(
+                SECTION_CONSENSUS, "max_block_time", parms_.maxBLOCK_TIME));
         parms_.maxBLOCK_TIME =
             std::max(parms_.minBLOCK_TIME, parms_.maxBLOCK_TIME);
 
         parms_.maxTXS_IN_LEDGER = std::min(
             app.config().loadConfig(
-                SECTION_HCONSENSUS,
+                SECTION_CONSENSUS,
                 "max_txs_per_ledger",
                 parms_.maxTXS_IN_LEDGER),
             consensusParms.txPOOL_CAPACITY);
 
-        parms_.omitEMPTY = app.config().loadConfig(
-            SECTION_HCONSENSUS, "omit_empty_block", parms_.omitEMPTY);
-
-        // default: 6s
-        // min: 6s
-        parms_.consensusTIMEOUT = std::chrono::seconds{std::max(
-            (int)parms_.consensusTIMEOUT.count(),
-            app.config().loadConfig(SECTION_HCONSENSUS, "time_out", 0))};
+        // default: 5000ms
+        // min: 2 * maxBLOCK_TIME + 3000
+        parms_.consensusTIMEOUT = std::chrono::milliseconds{std::max(
+            parms_.consensusTIMEOUT.count(),
+            app.config().loadConfig(
+                SECTION_CONSENSUS,
+                "time_out",
+                parms_.consensusTIMEOUT.count()))};
+        if (parms_.consensusTIMEOUT.count() < 2 * parms_.maxBLOCK_TIME + 3000)
+        {
+            parms_.consensusTIMEOUT =
+                std::chrono::milliseconds{2 * parms_.maxBLOCK_TIME + 3000};
+        }
 
         // default: 90s
         // min : 2 * consensusTIMEOUT
         parms_.initTIME = std::chrono::seconds{std::max(
-            parms_.consensusTIMEOUT.count() * 2,
+            std::chrono::duration_cast<std::chrono::seconds>(
+                parms_.consensusTIMEOUT)
+                    .count() *
+                2,
             app.config().loadConfig(
-                SECTION_HCONSENSUS, "init_time", parms_.initTIME.count()))};
+                SECTION_CONSENSUS, "init_time", parms_.initTIME.count()))};
+
+        parms_.omitEMPTY = app.config().loadConfig(
+            SECTION_CONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+
+        parms_.extractINTERVAL = consensusParms.ledgerGRANULARITY;
+    }
+}
+
+void
+HotstuffAdaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger)
+{
+    Adaptor::onConsensusReached(bWaitingInit, previousLedger);
+
+    // Try to clear state cache.
+    if (app_.getLedgerMaster().getPublishedLedgerAge() >
+            3 * parms_.consensusTIMEOUT &&
+        app_.getTxPool().isEmpty())
+    {
+        app_.getStateManager().clear();
     }
 }
 
@@ -96,7 +126,7 @@ HotstuffAdaptor::onExtractTransactions(
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    // notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
+    notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
 
     // Tell the ledger master not to acquire the ledger we're probably building
     ledgerMaster_.setBuildingLedger(prevLedger.seq() + 1);
@@ -104,8 +134,8 @@ HotstuffAdaptor::onExtractTransactions(
     H256Set txs;
     topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs);
 
-    auto initialSet = std::make_shared<SHAMap>(
-        SHAMapType::TRANSACTION, app_.getNodeFamily());
+    auto initialSet =
+        std::make_shared<SHAMap>(SHAMapType::TRANSACTION, app_.getNodeFamily());
     initialSet->setUnbacked();
 
     // Build SHAMap containing all transactions in our open ledger
@@ -189,7 +219,7 @@ HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     consensus.set_msgtype(ConsensusMessageType::mtVOTE);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    JLOG(j_.info()) << "send VOTE to leader, leader index: "
+    JLOG(j_.info()) << "send VOTE to leader (Publickey index)"
                     << getPubIndex(pubKey);
 
     signAndSendMessage(pubKey, consensus);
@@ -360,10 +390,7 @@ HotstuffAdaptor::validate(std::shared_ptr<Ledger const> ledger)
     lastValidationTime_ = validationTime;
 
     auto v = std::make_shared<STValidation>(
-        lastValidationTime_,
-        valPublic_,
-        nodeID_,
-        [&](STValidation& v) {
+        lastValidationTime_, valPublic_, nodeID_, [&](STValidation& v) {
             v.setFieldH256(sfLedgerHash, ledger->info().hash);
             v.setFieldH256(sfConsensusHash, ledger->info().txHash);
 

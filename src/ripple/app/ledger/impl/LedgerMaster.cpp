@@ -274,7 +274,7 @@ LedgerMaster::getPublishedLedgerAge()
 }
 
 void
-LedgerMaster::onViewChanged(
+LedgerMaster::onConsensusReached(
     bool bWaitingInit,
     std::shared_ptr<Ledger const> previousLedger)
 {
@@ -1281,6 +1281,12 @@ LedgerMaster::isConfidential(const STTx& tx)
     }
 }
 
+std::uint32_t
+LedgerMaster::getLastConsensusTime()
+{
+	return mLastConsensusTime.load();
+}
+
 void
 LedgerMaster::processFullLedgerTask(std::shared_ptr<Ledger const> const& ledger)
 {
@@ -1344,7 +1350,7 @@ LedgerMaster::isConfidentialUnit(const STTx& tx)
 void
 LedgerMaster::checkSubChains()
 {
-    if (subChainInited_)
+    if (subChainInited_.exchange(true))
         return;
 
     if (app_.schemaId() != beast::zero)
@@ -1373,7 +1379,7 @@ LedgerMaster::checkSubChains()
             {
                 JLOG(m_journal.info())
                     << "Creating schema when checkSubChains:" << schemaId;
-                app_.getOPs().createSchema(sle, true);
+                app_.getOPs().createSchema(sle, false);
             }
         }
         else
@@ -1387,8 +1393,6 @@ LedgerMaster::checkSubChains()
             }
         }
     }
-
-    subChainInited_ = true;
 }
 
 void

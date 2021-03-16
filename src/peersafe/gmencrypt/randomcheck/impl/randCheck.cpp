@@ -69,7 +69,7 @@ int RandCheck::RandTest(GmEncrypt * hEObj, int randomTestSetCnt, int randomLen, 
 {
 	int i = 0;
 	int rv = 0;
-	int iCount = 0; //ͨ通过检测的数量
+	//int iCount = 0; //ͨ通过检测的数量
 	int iLevel = 0; //ͨ通过检测的标准数量
 	bool checkResult = true;
 	int iSampleSize = randomTestSetCnt; //样本数量为1000

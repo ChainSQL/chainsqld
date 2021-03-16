@@ -200,6 +200,22 @@ public:
         unexpected(sMap.getHash() != mapHash, "bad snapshot");
         unexpected(map2->getHash() != mapHash, "bad snapshot");
 
+
+        //std::shared_ptr<SHAMap> map3 = sMap.genesisSnapShot(f);
+        //map3->invariants();
+        //unexpected(map3->getHash() != sMap.getHash(), "bad genesisSnapShot");
+
+        //i = map3->begin();
+        //e = map3->end();
+        //unexpected(i != e || (*i != i1), "bad traverse");
+        //++i;
+        //unexpected(i == e || (*i != i3), "bad traverse");
+        //++i;
+        //unexpected(i == e || (*i != i4), "bad traverse");
+        //++i;
+        //unexpected(i != e, "bad traverse");
+
+
         SHAMap::Delta delta;
         BEAST_EXPECT(sMap.compare(*map2, delta, 100));
         BEAST_EXPECT(delta.empty());

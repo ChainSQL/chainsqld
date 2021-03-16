@@ -205,7 +205,7 @@ public:
     void
     setLedgerRangePresent(std::uint32_t minV, std::uint32_t maxV);
     void
-    onViewChanged(
+    onConsensusReached(
         bool bWaitingInit,
         std::shared_ptr<Ledger const> previousLedger);
 
@@ -346,6 +346,8 @@ public:
     void
     processFullLedgerTask(std::shared_ptr<Ledger const> const& l);
 
+    std::uint32_t
+    getLastConsensusTime();
 private:
     void
     setValidLedger(std::shared_ptr<Ledger const> const& l);
@@ -473,7 +475,7 @@ private:
     // Time that the previous upgrade warning was issued.
     TimeKeeper::time_point upgradeWarningPrevTime_{};
 
-    bool subChainInited_{false};
+    std::atomic_bool subChainInited_{false};
 
 private:
     struct Stats

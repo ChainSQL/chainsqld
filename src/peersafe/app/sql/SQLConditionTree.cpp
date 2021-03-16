@@ -31,7 +31,8 @@ conditionTree::conditionTree(NodeType type)
 , bind_values_index_(-1)
 , expression_()
 , children_()
-, bind_values_() {
+, bind_values_()
+, indi_null_(soci::i_null){
 
 }
 
@@ -40,7 +41,8 @@ conditionTree::conditionTree(const conditionTree& t)
 , bind_values_index_(t.bind_values_index_)
 , expression_(t.expression_)
 , children_(t.children_)
-, bind_values_(t.bind_values_) {
+, bind_values_(t.bind_values_)
+, indi_null_(soci::i_null) {
 
 }
 
@@ -166,6 +168,9 @@ int conditionTree::bind_value(const BindValue& value, soci::details::once_temp_t
 	}
 	else if (value.isDouble() || value.isNumeric()) {
 		t = t, soci::use(value.asDouble());
+	}
+	else if (value.isNull()) {
+		t = t, soci::use(0, indi_null_);
 	}
 	else {
 		result = -1;
@@ -296,11 +301,12 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 
 		std::string sub;
 		if (style == 0) {
+            size_t size = value.size();
 			if(op == "in" || op == "not in") {
 				// op must be in or nin
 				//assert(op == "in" || op == "not in");
 				std::string element = "(";
-				size_t size = value.size();
+				
 				for (size_t index = 0; index < size; index++) {
 					const BindValue& v = value[index];
 					std::string real_v;
@@ -332,7 +338,12 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 				if (!value[0].isNull())
 					return false;
 				sub += (boost::format("%1% %2% %3%") % keyname %op %"null").str();
-            } else {
+            }
+            else if (op == "=" && size == 1 && value[0].isNull())
+            {
+                sub += (boost::format("%1% is null") % keyname ).str();
+            }      
+            else {
 				//assert(value.size() == 1);
 				assert(op != "in" && op != "not in");
 				const BindValue& v = value[0];
@@ -349,10 +360,11 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 			}
 		}
 		else {
+            const size_t& size = value.size();
 			std::string placeHoder;
 			if (boost::iequals(op, "in") || boost::iequals(op, "not in")) {
 				placeHoder += "(";
-				const size_t& size = value.size();
+				
 				for (size_t i = 0; i < size; i++) {
 					placeHoder += (boost::format(":%1%_%2%") %keyname %i).str();
 					if (i != size - 1) {
@@ -367,7 +379,13 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
                 std::string fv;
                 if (format_value(v, fv) != 0)
                     return false;
-                placeHoder += "NULL";
+                placeHoder = (boost::format(":%1%") % (++bind_values_index_)).str();
+            }
+            else if ( boost::iequals(op, "=") && size == 1 && value[0].isNull())
+            {          
+                // convert "name = NULL" to "name is null"
+                op = "is";
+                placeHoder = (boost::format(":%1%") % (++bind_values_index_)).str();
             }
 			else {
 				if (bind_values_index_ != -1) {
@@ -968,7 +986,7 @@ namespace conditionParse {
 		do {
 			const std::vector<std::string>& keys = condition.getMemberNames();
 			if (condition.isObject() && keys.size() > 1) {
-				result = { -1, (boost::format("condtion is malformed in parsing expression.[%s]")
+				result = { -1, (boost::format("condition is malformed in parsing expression.[%s]")
 					% Json::jsonAsString(condition)).str() };
 				break;
 			}
@@ -982,7 +1000,7 @@ namespace conditionParse {
 			Json::Value value = condition[key];
 			if (value.isObject()) {
 				if (value.getMemberNames().size() != 1) {
-					result = { -1, (boost::format("condtion is malformed in parsing expression.[%s]")
+					result = { -1, (boost::format("condition is malformed in parsing expression.[%s]")
 						% Json::jsonAsString(condition)).str() };
 					break;
 				}

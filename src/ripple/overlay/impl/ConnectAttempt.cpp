@@ -104,7 +104,7 @@ ConnectAttempt::close()
 void
 ConnectAttempt::fail(std::string const& reason)
 {
-    JLOG(journal_.debug()) << reason;
+    JLOG(journal_.info()) << reason;
     close();
 }
 

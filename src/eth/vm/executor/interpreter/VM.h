@@ -148,6 +148,7 @@ private:
     void updateMem(uint64_t _newMem);
     void logGasMem();
     void tableGasMem(intx::uint256 memBegin, intx::uint256 byteLens);
+    void int64ToIntxUint256(int64_t num);
     void fetchInstruction();
     
     uint64_t decodeJumpDest(const byte* const _code, uint64_t& _pc);

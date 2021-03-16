@@ -96,24 +96,26 @@ public:
     checkCertificate();
 
     std::shared_ptr<Ledger>
-    getLastFullLedger();
+    getLastFullLedger(unsigned offset);
 
     std::shared_ptr<Ledger>
     loadLedgerFromFile(std::string const& ledgerID);
 
     bool
-    loadOldLedger(std::string const& ledgerID, bool replay, bool isFilename);
+    loadOldLedger(std::string const& ledgerID, bool replay, bool isFilename, unsigned offset=0);
 
-    void
-    startGenesisLedger(std::shared_ptr<Ledger const> curLedger);
+    bool
+    startGenesisLedger(std::shared_ptr<Ledger const> loadLedger);
 
 private:
     Application& app_;
     beast::Journal m_journal;
     SchemaParams schema_params_;
+    std::shared_ptr<Config> config_;
+
+    bool m_schemaAvailable;
 
     Application::MutexType m_masterMutex;
-    std::shared_ptr<Config> config_;
     TransactionMaster m_txMaster;
 
     std::unique_ptr<SHAMapStore> m_shaMapStore;
@@ -124,8 +126,6 @@ private:
     // These are not Stoppable-derived
     NodeCache m_tempNodeCache;
     CachedSLEs cachedSLEs_;
-
-    bool m_schemaAvailable;
 
     // These are Stoppable-related
     std::unique_ptr<NodeStore::Database> m_nodeStore;
@@ -179,10 +179,12 @@ public:
         Application& app,
         beast::Journal j)
         : RootStoppable("Schema")
-        , schema_params_(params)
         , app_(app)
         , m_journal(j)
+        , schema_params_(params)
         , config_(config)
+        , m_schemaAvailable(
+              schema_params_.schemaId() == beast::zero ? true : false)
 
         , m_txMaster(*this)
 
@@ -258,8 +260,6 @@ public:
               stopwatch(),
               SchemaImp::journal("TaggedCache"))
 
-        , m_peerManager(make_PeerManager(*this))
-
         , m_networkOPs(make_NetworkOPs(
               *this,
               stopwatch(),
@@ -292,26 +292,12 @@ public:
               config_->legacy("database_path"),
               SchemaImp::journal("ValidatorList"),
               config_->VALIDATION_QUORUM))
-
-        , validatorSites_(std::make_unique<ValidatorSite>(
-              *this,
-              *validatorManifests_,
-              dynamic_cast<BasicApp&>(app_).get_io_service(),
-              *validators_,
-              SchemaImp::journal("ValidatorSite")))
-
-        , caCertSites_(std::make_unique<CACertSite>(
-              *this,
-              *validatorManifests_,
-              *publisherManifests_,
-              app_.timeKeeper(),
-              dynamic_cast<BasicApp&>(app_).get_io_service(),
-              config_->ROOT_CERTIFICATES,
-              SchemaImp::journal("CACertSite")))
+        , validatorSites_(std::make_unique<ValidatorSite>(*this))
 
         , certList_(std::make_unique<CertList>(
               config_->ROOT_CERTIFICATES,
               SchemaImp::journal("CertList")))
+        , caCertSites_(std::make_unique<CACertSite>(*this))
 
         , mFeeTrack(
               std::make_unique<LoadFeeTrack>(SchemaImp::journal("LoadManager")))
@@ -363,8 +349,9 @@ public:
         , m_pStateManager(std::make_unique<StateManager>(
               *this,
               SchemaImp::journal("StateManager")))
-        , m_schemaAvailable(
-              schema_params_.schemaId() == beast::zero ? true : false)
+
+        , m_peerManager(make_PeerManager(*this))
+
     {
     }
 
@@ -381,7 +368,7 @@ public:
     }
 
     beast::Journal
-    journal(std::string const& name)
+    journal(std::string const& name) override
     {
         std::string prefix = strHex(
             schema_params_.schema_id.begin(),
@@ -1026,13 +1013,13 @@ public:
     }
 
     bool
-    checkSigs() const
+    checkSigs() const override
     {
         return app_.checkSigs();
     }
 
     void
-    checkSigs(bool check)
+    checkSigs(bool check) override
     {
         app_.checkSigs(check);
     }
@@ -1215,23 +1202,46 @@ SchemaImp::setup()
         }
         JLOG(m_journal.info()) << "NEWCHAIN_WITHSTATE from ledger="
                                << to_string(schema_params_.anchor_ledger_hash);
-        startGenesisLedger(validLedger);
+
+        if (!startGenesisLedger(validLedger))
+        {
+            return false;
+        }
     }
     else
     {
-        if (getLastFullLedger() != nullptr)
+        static const unsigned TRY_ANCESTOR = 3;
+
+        unsigned offset = 0;
+        for (offset = 0; offset < TRY_ANCESTOR; ++offset)
         {
-            if (!loadOldLedger(
-                    config_->START_LEDGER,
-                    startUp == Config::REPLAY,
-                    startUp == Config::LOAD_FILE))
+            if (getLastFullLedger(offset) != nullptr)
             {
-                JLOG(m_journal.fatal()) << "Load old ledger failed for schema:"
+                if (loadOldLedger(
+                        config_->START_LEDGER,
+                        startUp == Config::REPLAY,
+                        startUp == Config::LOAD_FILE,
+                        offset))
+                {
+                    break;
+                }
+
+                JLOG(m_journal.error()) << "Load old ledger failed for schema: "
                                         << to_string(schemaId());
-                return false;
+
+                if (config_->START_LEDGER.empty() ||
+                    boost::iequals(config_->START_LEDGER, "latest"))
+                {
+                    JLOG(m_journal.warn()) << "Try ancestor " << offset + 1;
+                }
+                else
+                {
+                    return false;
+                }
             }
         }
-        else
+
+        if (offset >= TRY_ANCESTOR)
         {
             startGenesisLedger();
         }
@@ -1275,19 +1285,24 @@ SchemaImp::setup()
         }
     }
 
-    if (!validatorSites_->load(
-            config().section(SECTION_VALIDATOR_LIST_SITES).values()))
+    if (schemaId() == beast::zero)
     {
-        JLOG(m_journal.fatal())
-            << "Invalid entry in [" << SECTION_VALIDATOR_LIST_SITES << "]";
-        return false;
-    }
-    else
-    {
-        validatorSites_->setWaitinBeginConsensus();
+        if (!validatorSites_->load(
+                config().section(SECTION_VALIDATOR_LIST_SITES).values()))
+        {
+            JLOG(m_journal.fatal())
+                << "Invalid entry in [" << SECTION_VALIDATOR_LIST_SITES << "]";
+            return false;
+        }
+        else
+        {
+            m_networkOPs->setGenesisLedgerIndex(
+                m_ledgerMaster->getClosedLedger()->info().seq);
+            validatorSites_->setWaitinBeginConsensus();
+        }
     }
 
-    if (!caCertSites_->load(
+     if (!caCertSites_->load(
             config().section(SECTION_CACERTS_LIST_KEYS).values(),
             config().section(SECTION_CACERTS_LIST_SITES).values()))
     {
@@ -1311,13 +1326,19 @@ SchemaImp::setup()
             return false;
     }
 
-    validatorSites_->start();
+    if (schemaId() == beast::zero)
+    {
+        validatorSites_->start();
+    }
 
     caCertSites_->start();
 
     // start first consensus round
-    if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0)
+    if (config().section(SECTION_VALIDATOR_LIST_SITES).values().size() == 0 ||
+        schemaId() != beast::zero)
     {
+        m_networkOPs->setGenesisLedgerIndex(
+            m_ledgerMaster->getClosedLedger()->info().seq);
         if (!m_networkOPs->beginConsensus(
                 m_ledgerMaster->getClosedLedger()->info().hash))
         {
@@ -1412,6 +1433,8 @@ SchemaImp::setup()
 
     m_schemaAvailable = true;
 
+    doStart();
+
     return true;
 }
 
@@ -1448,17 +1471,16 @@ SchemaImp::startGenesisLedger()
 }
 
 std::shared_ptr<Ledger>
-SchemaImp::getLastFullLedger()
+SchemaImp::getLastFullLedger(unsigned offset)
 {
     auto j = app_.journal("Ledger");
 
-    // int count = 0;
-    // while (count < 3)
-    //{
     try
     {
-        auto const [ledger, seq, hash] =
-            loadLedgerHelper("order by LedgerSeq desc limit 1", *this);
+        auto const [ledger, seq, hash] = loadLedgerHelper(
+            (boost::format("order by LedgerSeq desc limit %1%,1") % offset)
+                .str(),
+            *this);
 
         if (!ledger)
             return {};
@@ -1486,9 +1508,7 @@ SchemaImp::getLastFullLedger()
     {
         JLOG(j.warn()) << "Ledger with missing nodes in database: "
                        << mn.what();
-        // continue;
     }
-    //}
     return {};
 }
 
@@ -1632,7 +1652,8 @@ bool
 SchemaImp::loadOldLedger(
     std::string const& ledgerID,
     bool replay,
-    bool isFileName)
+    bool isFileName,
+    unsigned offset)
 {
     try
     {
@@ -1667,7 +1688,7 @@ SchemaImp::loadOldLedger(
         }
         else if (ledgerID.empty() || boost::iequals(ledgerID, "latest"))
         {
-            loadLedger = getLastFullLedger();
+            loadLedger = getLastFullLedger(offset);
         }
         else
         {
@@ -1808,11 +1829,26 @@ SchemaImp::loadOldLedger(
     return true;
 }
 
-void
-SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
+bool
+SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
 {
-    assert(curLedger);
-    auto genesis = std::make_shared<Ledger>(*curLedger, nodeFamily_);
+    assert(loadLedger);
+
+    loadLedger->stateMap().invariants();
+
+    if (!loadLedger->walkLedger(app_.journal("Ledger")))
+    {
+        JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
+        return false;
+    }
+
+    if (!loadLedger->assertSane(app_.journal("Ledger")))
+    {
+        JLOG(m_journal.fatal()) << "Ledger is not sane.";
+        return false;
+    }
+
+    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_);
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));
@@ -1820,47 +1856,49 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> curLedger)
 
     // set valid ledger
     m_ledgerMaster->initGenesisLedger(genesis);
+
+    return true;
 }
 
-static std::vector<std::string>
-getSchema(DatabaseCon& dbc, std::string const& dbName)
-{
-    std::vector<std::string> schema;
-    schema.reserve(32);
+//static std::vector<std::string>
+//getSchema(DatabaseCon& dbc, std::string const& dbName)
+//{
+//    std::vector<std::string> schema;
+//    schema.reserve(32);
+//
+//    std::string sql = "SELECT sql FROM sqlite_master WHERE tbl_name='";
+//    sql += dbName;
+//    sql += "';";
+//
+//    std::string r;
+//    soci::statement st = (dbc.getSession().prepare << sql, soci::into(r));
+//    st.execute();
+//    while (st.fetch())
+//    {
+//        schema.emplace_back(r);
+//    }
+//
+//    return schema;
+//}
 
-    std::string sql = "SELECT sql FROM sqlite_master WHERE tbl_name='";
-    sql += dbName;
-    sql += "';";
-
-    std::string r;
-    soci::statement st = (dbc.getSession().prepare << sql, soci::into(r));
-    st.execute();
-    while (st.fetch())
-    {
-        schema.emplace_back(r);
-    }
-
-    return schema;
-}
-
-static bool
-schemaHas(
-    DatabaseCon& dbc,
-    std::string const& dbName,
-    int line,
-    std::string const& content,
-    beast::Journal j)
-{
-    std::vector<std::string> schema = getSchema(dbc, dbName);
-
-    if (static_cast<int>(schema.size()) <= line)
-    {
-        JLOG(j.fatal()) << "Schema for " << dbName << " has too few lines";
-        Throw<std::runtime_error>("bad schema");
-    }
-
-    return schema[line].find(content) != std::string::npos;
-}
+//static bool
+//schemaHas(
+//    DatabaseCon& dbc,
+//    std::string const& dbName,
+//    int line,
+//    std::string const& content,
+//    beast::Journal j)
+//{
+//    std::vector<std::string> schema = getSchema(dbc, dbName);
+//
+//    if (static_cast<int>(schema.size()) <= line)
+//    {
+//        JLOG(j.fatal()) << "Schema for " << dbName << " has too few lines";
+//        Throw<std::runtime_error>("bad schema");
+//    }
+//
+//    return schema[line].find(content) != std::string::npos;
+//}
 
 bool
 SchemaImp::nodeToShards()

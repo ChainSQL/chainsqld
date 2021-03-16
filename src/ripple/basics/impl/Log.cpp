@@ -217,6 +217,12 @@ Logs::setCallBack(std::function<void(std::string const& s)> f)
     f_ = f;
 }
 
+void
+Logs::resetCallBack()
+{
+    f_.reset();
+}
+
 std::unique_ptr<beast::Journal::Sink>
 Logs::makeSink(std::string const& name, beast::severities::Severity threshold)
 {

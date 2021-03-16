@@ -84,7 +84,7 @@ public:
     //SM3Hash &getSM3Obj(); 
     bool isHardEncryptExist();
 	std::string GetHomePath();
-	int FileWrite(const char *filename, char *mode, unsigned char *buffer, size_t size);
+	int FileWrite(const char *filename, const char *mode, const unsigned char *buffer, size_t size);
 
 	//Generate random
 	virtual unsigned long GenerateRandom(
@@ -114,6 +114,10 @@ public:
         unsigned long ulAlias = SD_KEY_ALIAS,
         unsigned long ulKeyUse = SD_KEY_USE,
         unsigned long ulModulusLen = PRIVATE_KEY_BIT_LEN) = 0;
+    virtual bool generatePubFromPri(
+        const unsigned char* pPriUC,
+        int priLen,
+        std::vector<unsigned char>& publicKey) = 0;
     //SM2 Sign&Verify
 	virtual unsigned long SM2ECCSign(
 		std::pair<int, int> pri4SignInfo,

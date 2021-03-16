@@ -86,7 +86,7 @@ namespace ripple {
 		}
 
         void
-        add(Serializer& s) const
+        add(Serializer& s) const override
         {
             assert(fName->isBinary());
             assert(fName->fieldType == STI_MAP256);
@@ -100,7 +100,7 @@ namespace ripple {
         }
 
         bool
-        isEquivalent(const STBase& t) const
+        isEquivalent(const STBase& t) const override
         {
             const STMap256* v = dynamic_cast<const STMap256*> (&t);
             return v && (mValue == v->mValue);

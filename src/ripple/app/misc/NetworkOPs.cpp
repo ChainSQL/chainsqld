@@ -269,7 +269,7 @@ public:
         , m_ledgerMaster(ledgerMaster)
         , m_job_queue(job_queue)
         , m_standalone(standalone)
-        , minPeerCount_(start_valid ? 0 : minPeerCount)
+        , minPeerCount_(0/*start_valid ? 0 : minPeerCount*/)
         , m_stats(std::bind(&NetworkOPsImp::collect_metrics, this), collector)
     {
         auto& cfg = app_.config();
@@ -408,6 +408,8 @@ private:
     checkLastClosedLedger(const Overlay::PeerSequence&, uint256& networkClosed);
 
 public:
+    void
+    setGenesisLedgerIndex(LedgerIndex seq) override;
     bool
     beginConsensus(uint256 const& networkClosed) override;
     void
@@ -617,11 +619,11 @@ public:
         const AccountID& contractID,
         uint256 const* aTopic,
         int iTopicNum,
-        const Blob& byValue);
+        const Blob& byValue) override;
 
-	void pubViewChange(uint32_t ledgerSeq, uint64_t view);
+	void pubViewChange(uint32_t ledgerSeq, uint64_t view) override;
 
-    bool waitingForInit();
+    bool waitingForInit() override;
 
     //--------------------------------------------------------------------------
     //
@@ -716,7 +718,7 @@ public:
     bool
     unsubLogs(std::uint64_t uListener) override;
     void
-    pubLogs(std::string const& log);
+    pubLogs(std::string const& log) override;
 
     bool
     subConsensus(InfoSub::ref ispListener) override;
@@ -731,13 +733,16 @@ public:
     tryRemoveRpcSub(std::string const& strUrl) override;
 
     bool
-    hasChainSQLTxListener()
+    hasChainSQLTxListener() override
     {
         return !mSubTable.empty() || !mSubTx.empty() ||
             !mValidatedSubTx.empty();
     }
+
     std::pair<bool, std::string>
-    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce);
+    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce)
+        override;
+
     //--------------------------------------------------------------------------
     //
     // Stoppable.
@@ -2061,6 +2066,12 @@ NetworkOPsImp::switchLastClosedLedger(
         send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
 }
 
+void
+NetworkOPsImp::setGenesisLedgerIndex(LedgerIndex seq)
+{
+    mConsensus.setGenesisLedgerIndex(seq);
+}
+
 bool
 NetworkOPsImp::beginConsensus(uint256 const& networkClosed)
 {
@@ -3081,9 +3092,6 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
 
     if (!human)
     {
-        constexpr std::uint64_t max32 =
-            std::numeric_limits<std::uint32_t>::max();
-
         info[jss::load_base] = loadBaseServer;
         info[jss::load_factor] = trunc32(loadFactor);
         info[jss::load_factor_server] = loadFactorServer;
@@ -3234,12 +3242,16 @@ NetworkOPsImp::getServerStatus()
     auto const& consensusInfo = getConsensusInfo(false);
 
     // Time out in milliseconds
-    auto const& timeOut = consensusInfo.get(
-        "time_out", std::numeric_limits<Json::Value::Int>::max());
+    auto timeout = std::chrono::milliseconds(std::numeric_limits<
+                  Json::Value::Int>::max());
+    if (consensusInfo.isMember("parms") &&
+        consensusInfo["parms"].isMember("time_out"))
+    {
+        timeout = 2 * std::chrono::milliseconds(
+            consensusInfo["parms"]["time_out"].asInt());
+    }
 
-    bool consensusValid =
-        m_ledgerMaster.getValidatedLedgerAge().count() * 1000 <
-        2 * timeOut.asInt();
+    bool consensusValid = m_ledgerMaster.getValidatedLedgerAge() < timeout;
     auto mode = mConsensus.mode();
 
     if (consensusValid &&
@@ -3397,6 +3409,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
         // Don't lock since pubAcceptedTransaction is locking.
         for (auto const& [_, accTx] : alpAccepted->getMap())
         {
+            boost::ignore_unused(_);
             JLOG(m_journal.trace()) << "pubAccepted: " << accTx->getJson();
             pubValidatedTransaction(lpAccepted, *accTx);
         }
@@ -3404,9 +3417,13 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             << "pub all Txs, time used: " << utcTime() - timeStart << "ms";
     }
 
-    for (auto const& vt : alpAccepted->getMap())
+    // Check schema txs in main schema
+    if (app_.schemaId() == beast::zero)
     {
-        checkSchemaTx(lpAccepted, *vt.second);
+        for (auto const& vt : alpAccepted->getMap())
+        {
+            checkSchemaTx(lpAccepted, *vt.second);
+        }
     }
     //// test createSchema code
     //{
@@ -3576,10 +3593,12 @@ NetworkOPsImp::createSchema(
             {
                 if (!newSchema->initBeforeSetup())
                 {
+                    app_.getSchemaManager().removeSchema(newSchema->schemaId());
                     return std::make_pair(false, "Error while initBeforeSetup");
                 }
                 if (!newSchema->setup())
                 {
+                    app_.getSchemaManager().removeSchema(newSchema->schemaId());
                     return std::make_pair(false, "Error while setup");
                 }
                 app_.app().overlay().onSchemaCreated(params.schema_id);
@@ -3642,7 +3661,9 @@ NetworkOPsImp::checkSchemaTx(
 
         auto ret = this->createSchema(sleSchema, false);
         if (!ret.first)
+        {
             JLOG(m_journal.fatal()) << ret.second;
+        }
     }
     else if (stTxn->getTxnType() == ttSCHEMA_MODIFY)
     {
@@ -3660,10 +3681,22 @@ NetworkOPsImp::checkSchemaTx(
                 bOperatingSelf = true;
         }
 
-        if (!bOperatingSelf && !app_.app().hasSchema(schemaID))
+        if (!app_.app().hasSchema(schemaID))
         {
-            return;
+            if (stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::del ||
+                (stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::add &&
+                 !bOperatingSelf))
+            {
+                return;
+            }
         }
+
+		//update validators list
+		if (!bOperatingSelf)
+		{
+			app_.app().getSchema(schemaID).validators().applySchemaModify(vecValidators,
+				stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::add);
+		}		
 
         std::vector<std::string> vecPeers;
         auto& peers = stTxn->getFieldArray(sfPeerList);
@@ -3679,7 +3712,9 @@ NetworkOPsImp::checkSchemaTx(
             {
                 auto ret = this->createSchema(sleSchema, false);
                 if (!ret.first)
+                {
                     JLOG(m_journal.fatal()) << ret.second;
+                }
             }
             else
             {
@@ -4334,7 +4369,7 @@ void NetworkOPsImp::subTable(InfoSub::ref isrListener, AccountID const& accountI
     if (simIterator == mSubTable.end())
     {
         hash_map<std::string, SubMapType> map;
-        // Not found, note that account has a new single listner.
+        // Not found, note that account has a new single listener.
         SubMapType usisElement;
         usisElement[isrListener->getSeq()] = isrListener;
         map[sTableName] = usisElement;

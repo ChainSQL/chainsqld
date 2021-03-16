@@ -221,7 +221,6 @@ Blob
 decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
 {
     GmEncrypt* hEObj = GmEncryptObj::getInstance();
-    // if (nullptr != hEObj) //GM Algorithm
     if (hEObj->comKey == secret_key.keyTypeInt_)
     {
         // Blob secretBlob(secret_key.data(), secret_key.data() +secret_key.size());
@@ -234,7 +233,7 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
             std::make_pair(secret_key.keyTypeInt_, secret_key.encrytCardIndex_);
         std::pair<unsigned char*, int> pri4Decrypt = 
             std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
-        unsigned long rv = hEObj->SM2ECCDecrypt(
+        hEObj->SM2ECCDecrypt(
             pri4DecryptInfo, pri4Decrypt, (unsigned char*)&cipherBlob[0], cipherBlob.size(), resPlainText);
 		
         return resPlainText;
@@ -361,6 +360,12 @@ derivePublicKey(KeyType type, SecretKey const& sk)
             buf[0] = 0xED;
             ed25519_publickey(sk.data(), &buf[1]);
             return PublicKey(Slice{buf, sizeof(buf)});
+        }
+        case KeyType::gmalg: {
+            GmEncrypt* hEObj = GmEncryptObj::getInstance();
+            std::vector<unsigned char> tempPublickey;
+            hEObj->generatePubFromPri(sk.data(), sk.size(), tempPublickey);
+            return PublicKey(Slice(tempPublickey.data(), tempPublickey.size()));
         }
         default:
             LogicError("derivePublicKey: bad key type");

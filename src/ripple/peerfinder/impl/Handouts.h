@@ -272,7 +272,7 @@ class ConnectHandouts
 public:
     // Keeps track of addresses we have made outgoing connections
     // to, for the purposes of not connecting to them too frequently.
-    using Squelches = beast::aged_set<beast::IP::Address>;
+    using Squelches = beast::aged_set<beast::IP::Endpoint>;
 
     using list_type = std::vector<beast::IP::Endpoint>;
 
@@ -341,9 +341,7 @@ ConnectHandouts::try_insert(beast::IP::Endpoint const& endpoint)
             [&endpoint](beast::IP::Endpoint const& other) {
                 // Ignore port for security reasons
                 // by peersafe
-                return other.address() ==
-                    endpoint.address() && other.port() ==
-                    endpoint.port();
+                return other == endpoint;
             }))
     {
         return false;
@@ -351,11 +349,9 @@ ConnectHandouts::try_insert(beast::IP::Endpoint const& endpoint)
 
     // Add to squelch list so we don't try it too often.
     // If its already there, then make try_insert fail.
-    m_squelches.insert (endpoint.address());
-    //auto const result (m_squelches.insert (
-       // endpoint.address()));
-    //if (! result.second)
-    //    return false;
+    auto const result (m_squelches.insert(endpoint));
+    if (! result.second)
+        return false;
 
     m_list.push_back(endpoint);
 

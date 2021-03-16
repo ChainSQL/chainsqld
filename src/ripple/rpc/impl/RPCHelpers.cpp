@@ -780,18 +780,20 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
     {
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::string privateKeyStr = params[jss::secret].asString();
-        std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, TokenType::AccountSecret);
-        std::string publicKeyStr = params[jss::public_key].asString();
-        std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::AccountPublic);
-        if (privateKeyStrDe58.empty() || publicKeyDe58.empty() || publicKeyDe58.size() != 65)
+        TokenType tokenType = TokenType::AccountSecret;
+        if (params.isMember(jss::for_node) && params[jss::for_node].asBool())
         {
-            error = RPC::missing_field_error(": 'public_key' field");
-            return{};
+            tokenType = TokenType::NodePrivate;
         }
+        
+        std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, tokenType);
+        
 		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
 		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
-        return std::make_pair(PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size())),
-			secretkeyTemp);
+        auto publicKey = derivePublicKey(KeyType::gmalg, secretkeyTemp);
+        //std::string pubHex = strHex(publicKey.begin(), publicKey.end());
+
+        return std::make_pair(publicKey, secretkeyTemp);
     }
     else
     {

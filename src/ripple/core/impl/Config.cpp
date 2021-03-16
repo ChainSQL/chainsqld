@@ -302,6 +302,8 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 removeSection("sync_db");
 	 removeSection("auto_sync");
 	 removeSection("sync_tables");
+    removeSection(SECTION_VALIDATOR_LIST_KEYS);
+    removeSection(SECTION_VALIDATOR_LIST_SITES);
 
 	 deprecatedClearSection("validators");
 	 std::vector<std::string>   validatorList;
@@ -557,15 +559,14 @@ Config::loadFromString(std::string const& fileContents)
             }
         }
 
-        if(cryptoAlgSection.exists("hash_type"))
-        {
-            auto hashType = cryptoAlgSection.get<std::string>("hash_type");
-            if (!CommonKey::setHashType(*hashType))
-            {
-                Throw<std::runtime_error> ("hash_type is invalid");
-            }
-            // GmEncryptObj::setGmAlgType(GmEncryptObj::fromString(*gmType));
-        }
+        // if(cryptoAlgSection.exists("hash_type"))
+        // {
+        //     auto hashType = cryptoAlgSection.get<std::string>("hash_type");
+        //     if (!CommonKey::setHashType(*hashType))
+        //     {
+        //         Throw<std::runtime_error> ("hash_type is invalid");
+        //     }
+        // }
 
         if(cryptoAlgSection.exists("gm_self_check"))
         {
@@ -751,8 +752,8 @@ Config::loadFromString(std::string const& fileContents)
 		catch (std::exception const&)
 		{
 			JLOG(j_.error()) <<
-				"Invalid value '" << result.first << "' for key " <<
-				"'schema_path' in [" << SECTION_PCONSENSUS << "]\n";
+				"Invalid value '" << result.second << "' for key " <<
+				"'schema_path' in [" << SECTION_SCHEMA << "]\n";
 			Rethrow();
 		}
 	}
@@ -767,7 +768,7 @@ Config::loadFromString(std::string const& fileContents)
 		catch (std::exception const&)
 		{
 			JLOG(j_.error()) <<
-				"Invalid value '" << resSchema.first << "' for key " <<
+				"Invalid value '" << resSchema.second << "' for key " <<
 				"'auto_accept_new_schema' in [" << SECTION_SCHEMA << "]\n";
 			Rethrow();
 		}
@@ -783,8 +784,8 @@ Config::loadFromString(std::string const& fileContents)
 		catch (std::exception const&)
 		{
 			JLOG(j_.error()) <<
-				"Invalid value '" << resSchemaValidate.first << "' for key " <<
-				"'auto_accept_new_schema' in [" << SECTION_SCHEMA << "]\n";
+				"Invalid value '" << resSchemaValidate.second << "' for key " <<
+				"'only_validate_for_schema' in [" << SECTION_SCHEMA << "]\n";
 			Rethrow();
 		}
 	}

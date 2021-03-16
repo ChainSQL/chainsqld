@@ -96,7 +96,7 @@ int RoundState::insertVote(
 	Round round = current_round();
 	if (vote.vote_data().proposed().round != round) {
 		JLOG(journal_.error())
-			<< "insert vote failed. reason: expecte round is "
+			<< "insert vote failed. reason: expect round is "
 			<< vote.vote_data().proposed().round
 			<< " but current round is " << round;
 		return 1;

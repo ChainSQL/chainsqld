@@ -60,7 +60,7 @@ public:
 	{
 	}
 protected:
-	virtual bool needContinue(clock_type::time_point const now, typename TaggedCache<Key, T>::Entry& entry)
+     bool needContinue(clock_type::time_point const now, typename TaggedCache<Key, T>::Entry& entry) override
 	{
 		clock_type::time_point when_expire_max;
 		if (this->m_target_size == 0 ||

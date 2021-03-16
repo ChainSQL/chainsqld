@@ -50,40 +50,48 @@ PopAdaptor::PopAdaptor(
           journal,
           localTxs)
 {
-    if (app_.config().exists(SECTION_PCONSENSUS))
+    if (app_.config().exists(SECTION_CONSENSUS))
     {
         parms_.minBLOCK_TIME = std::max(
             parms_.minBLOCK_TIME,
             app.config().loadConfig(
-                SECTION_PCONSENSUS, "min_block_time", (unsigned)0));
+                SECTION_CONSENSUS, "min_block_time", parms_.minBLOCK_TIME));
         parms_.maxBLOCK_TIME = std::max(
             parms_.maxBLOCK_TIME,
             app.config().loadConfig(
-                SECTION_PCONSENSUS, "max_block_time", (unsigned)0));
+                SECTION_CONSENSUS, "max_block_time", parms_.maxBLOCK_TIME));
         parms_.maxBLOCK_TIME =
             std::max(parms_.minBLOCK_TIME, parms_.maxBLOCK_TIME);
 
         parms_.maxTXS_IN_LEDGER = std::min(
             app.config().loadConfig(
-                SECTION_PCONSENSUS,
+                SECTION_CONSENSUS,
                 "max_txs_per_ledger",
                 parms_.maxTXS_IN_LEDGER),
             consensusParms.txPOOL_CAPACITY);
 
         parms_.consensusTIMEOUT = std::chrono::milliseconds{std::max(
-            (int)parms_.consensusTIMEOUT.count(),
-            app.config().loadConfig(SECTION_PCONSENSUS, "time_out", 0))};
+            parms_.consensusTIMEOUT.count(),
+            app.config().loadConfig(
+                SECTION_CONSENSUS,
+                "time_out",
+                parms_.consensusTIMEOUT.count()))};
         if (parms_.consensusTIMEOUT.count() <= parms_.maxBLOCK_TIME)
         {
             parms_.consensusTIMEOUT =
                 std::chrono::milliseconds{parms_.maxBLOCK_TIME * 2};
         }
 
-        parms_.initTIME = std::chrono::seconds{app.config().loadConfig(
-            SECTION_PCONSENSUS, "init_time", parms_.initTIME.count())};
+        // default: 90s
+        // min : 2 * consensusTIMEOUT
+        parms_.initTIME = std::chrono::seconds{std::max(
+            std::chrono::duration_cast<std::chrono::seconds>(
+                parms_.consensusTIMEOUT).count() * 2,
+            app.config().loadConfig(
+                SECTION_CONSENSUS, "init_time", parms_.initTIME.count()))};
 
         parms_.omitEMPTY = app.config().loadConfig(
-            SECTION_PCONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+            SECTION_CONSENSUS, "omit_empty_block", parms_.omitEMPTY);
     }
 }
 
@@ -176,62 +184,16 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 }
 
 void
-PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger)
+PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView)
 {
-    app_.getLedgerMaster().onViewChanged(bWaitingInit, previousLedger.ledger_);
+    onConsensusReached(bWaitingInit, previousLedger);
+	app_.getOPs().pubViewChange(previousLedger.seq(), newView);
     // Try to clear state cache.
     if (app_.getLedgerMaster().getPublishedLedgerAge() >
             3 * parms_.consensusTIMEOUT &&
         app_.getTxPool().isEmpty())
     {
         app_.getStateManager().clear();
-    }
-
-    if (bWaitingInit)
-    {
-        notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
-    }
-    if (app_.openLedger().current()->info().seq != previousLedger.seq() + 1)
-    {
-        // Generate new openLedger
-        CanonicalTXSet retriableTxs{beast::zero};
-        auto const lastVal = ledgerMaster_.getValidatedLedger();
-        boost::optional<Rules> rules;
-        if (lastVal)
-            rules.emplace(*lastVal, app_.config().features);
-        else
-            rules.emplace(app_.config().features);
-        app_.openLedger().accept(
-            app_,
-            *rules,
-            previousLedger.ledger_,
-            localTxs_.getTxSet(),
-            false,
-            retriableTxs,
-            tapNONE,
-            "consensus",
-            [&](OpenView& view, beast::Journal j) {
-                // Stuff the ledger with transactions from the queue.
-                return app_.getTxQ().accept(app_, view);
-            });
-    }
-
-    if (!validating())
-    {
-        notify(
-            protocol::neCLOSING_LEDGER,
-            previousLedger,
-            mode() != ConsensusMode::wrongLedger);
-    }
-}
-
-void
-PopAdaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
-{
-    auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
-    if (inboundLedger)
-    {
-        inboundLedger->touch();
     }
 }
 

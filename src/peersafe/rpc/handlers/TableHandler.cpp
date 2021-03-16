@@ -355,7 +355,7 @@ Json::Value checkSig(RPC::JsonContext&  context)
 		return RPC::missing_field_error("LedgerIndex");
 	}
 	auto seqInJson = tx_json["LedgerIndex"].asUInt();
-	if (valSeq - seqInJson < 0 || valSeq - seqInJson > 5)
+	if (valSeq < seqInJson || valSeq - seqInJson > 5)
 	{
 		return RPC::invalid_field_error("LedgerIndex");
 	}

@@ -217,10 +217,12 @@ enum TEFcodes : TERUnderlyingType
 	tefSCHEMA_NOPEER,
 	tefBAD_SCHEMAID,
 	tefBAD_SCHEMAADMIN,
+	tefBAD_SCHEMAACCOUNT,
 	tefSCHEMA_TX_FORBIDDEN,
 	tefSCEMA_NO_PATH,
 	tefBAD_DUPLACATE_ITEM,
 	tefSCHEMA_NODE_COUNT,
+	tefSCHEMA_MAX_SCHEMAS,
 };
 
 //------------------------------------------------------------------------------

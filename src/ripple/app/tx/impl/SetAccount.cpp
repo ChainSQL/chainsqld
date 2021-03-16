@@ -211,7 +211,9 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 	auto const sle = ctx.view.read(
 		keylet::account(id));
     if (!sle)
+    {
         return terNO_ACCOUNT;
+    }
         
 	std::uint32_t const uFlagsIn = sle->getFieldU32(sfFlags);
 
