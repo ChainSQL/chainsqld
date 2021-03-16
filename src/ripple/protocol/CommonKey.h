@@ -11,29 +11,29 @@ namespace ripple {
 	class CommonKey {
 	public:
         enum HashType { unknown = -1, sha, sm3};
-        static KeyType algTypeGlobal;
-        static HashType hashTypeGlobal;
-		int keyTypeInt_;
+        static KeyType chainAlgTypeG;
+        static HashType chainHashTypeG;
+        KeyType keyTypeInt_;
 		int encrytCardIndex_;
 
 	public:
-		CommonKey() { keyTypeInt_ = GmEncrypt::comKey; encrytCardIndex_ = 0; };
-		CommonKey(int keyType, int index):keyTypeInt_(keyType), encrytCardIndex_(index){ };
+		CommonKey() { keyTypeInt_ = KeyType::secp256k1; encrytCardIndex_ = 0; };
+		CommonKey(KeyType keyType, int index):keyTypeInt_(keyType), encrytCardIndex_(index){ };
 
-        // static void setAlgType(KeyType algTypeCnf) { algTypeGlobal = algTypeCnf; };
+        // static void setAlgType(KeyType algTypeCnf) { chainAlgTypeG = algTypeCnf; };
         static bool setAlgType(std::string& nodeAlgTypeStr)
         {
-            algTypeGlobal = *(keyTypeFromString(nodeAlgTypeStr));
+            chainAlgTypeG = *(keyTypeFromString(nodeAlgTypeStr));
             
-            if(algTypeGlobal == KeyType::invalid) return false;
+            if(chainAlgTypeG == KeyType::invalid) return false;
             else
             {
-                return setHashTypeByAlgType(algTypeGlobal);
+                return setHashTypeByAlgType(chainAlgTypeG);
             }
         }
         static std::string getAlgTypeStr()
         {
-            return to_string(algTypeGlobal);
+            return to_string(chainAlgTypeG);
         }
 
         static bool setHashTypeByAlgType(KeyType algType)
@@ -43,12 +43,12 @@ namespace ripple {
                 case KeyType::secp256k1:
                 case KeyType::ed25519:
                 {
-                    hashTypeGlobal = HashType::sha;
+                    chainHashTypeG = HashType::sha;
                     return true;
                 }
                 case KeyType::gmalg:
                 {
-                    hashTypeGlobal = HashType::sm3;
+                    chainHashTypeG = HashType::sm3;
                     return true;
                 }
                 default:
@@ -60,19 +60,19 @@ namespace ripple {
         {
             if (hashTypeStr == "sha")
             {
-                hashTypeGlobal = HashType::sha;
+                chainHashTypeG = HashType::sha;
                 return true;
             }
             else if (hashTypeStr == "sm3")
             {
-                hashTypeGlobal = HashType::sm3;
+                chainHashTypeG = HashType::sm3;
                 return true;
             }
             else return false;
         }
         static std::string getHashTypeStr()
         {
-            switch(hashTypeGlobal)
+            switch(chainHashTypeG)
             {
                 case HashType::sha:
                     return "sha";

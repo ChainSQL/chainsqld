@@ -197,8 +197,8 @@ printHelp(const po::options_description& desc)
 	             
 }
 
-KeyType CommonKey::algTypeGlobal = KeyType::secp256k1;
-CommonKey::HashType CommonKey::hashTypeGlobal = CommonKey::HashType::sha;
+KeyType CommonKey::chainAlgTypeG = KeyType::secp256k1;
+CommonKey::HashType CommonKey::chainHashTypeG = CommonKey::HashType::sha;
 //------------------------------------------------------------------------------
 
 /* simple unit test selector that allows a comma separated list

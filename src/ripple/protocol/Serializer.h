@@ -161,7 +161,7 @@ public:
     }
 
     // DEPRECATED
-    uint256 getSHA512Half(CommonKey::HashType hashType = CommonKey::hashTypeGlobal) const;
+    uint256 getSHA512Half(CommonKey::HashType hashType = CommonKey::chainHashTypeG) const;
 
     // totality functions
     Blob const&

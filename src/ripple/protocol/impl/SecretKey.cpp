@@ -128,10 +128,12 @@ signDigest(PublicKey const& pk, SecretKey const& sk, uint256 const& digest)
         break;
 	}
 	case KeyType::gmalg:
+    case KeyType::gmInCard:
 	{
         GmEncrypt* hEObj = GmEncryptObj::getInstance();
 		BOOST_ASSERT(sk.size() == 32);
-		std::pair<int, int> pri4SignInfo = std::make_pair(sk.keyTypeInt_, sk.encrytCardIndex_);
+        int secKeyType = sk.keyTypeInt_ == KeyType::gmalg ? hEObj->gmOutCard : hEObj->gmInCard;
+		std::pair<int, int> pri4SignInfo = std::make_pair(secKeyType, sk.encrytCardIndex_);
 		std::pair<unsigned char*, int> pri4Sign = std::make_pair((unsigned char*)sk.data(), sk.size());
         std::vector<unsigned char> signedDataV;
 		unsigned long rv = hEObj->SM2ECCSign(pri4SignInfo, pri4Sign, (unsigned char*)digest.data(), digest.bytes, signedDataV);
@@ -190,6 +192,7 @@ sign(PublicKey const& pk, SecretKey const& sk, Slice const& m)
             return Buffer{sig, len};
         }
         case KeyType::gmalg:
+        case KeyType::gmInCard:
         {
             Blob signedDataV;
             unsigned char hashData[32] = {0};
@@ -199,8 +202,9 @@ sign(PublicKey const& pk, SecretKey const& sk, Slice const& m)
             hEObj->SM3HashTotal(
                 (unsigned char*)m.data(), m.size(), hashData, &hashDataLen);
 
+            int secKeyType = sk.keyTypeInt_ == KeyType::gmalg ? hEObj->gmOutCard : hEObj->gmInCard;
             std::pair<int, int> pri4SignInfo =
-                std::make_pair(sk.keyTypeInt_, sk.encrytCardIndex_);
+                std::make_pair(secKeyType, sk.encrytCardIndex_);
             std::pair<unsigned char*, int> pri4Sign =
                 std::make_pair((unsigned char*)sk.data(), sk.size());
 
@@ -221,7 +225,7 @@ Blob
 decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
 {
     GmEncrypt* hEObj = GmEncryptObj::getInstance();
-    if (hEObj->comKey == secret_key.keyTypeInt_)
+    if (KeyType::secp256k1 == secret_key.keyTypeInt_ || KeyType::ed25519 == secret_key.keyTypeInt_)
     {
         // Blob secretBlob(secret_key.data(), secret_key.data() +secret_key.size());
         return ripple::asymDecrypt(cipherBlob, secret_key);
@@ -229,8 +233,9 @@ decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
     else
     {
         Blob resPlainText;
+        int secKeyType = secret_key.keyTypeInt_ == KeyType::gmalg ? hEObj->gmOutCard : hEObj->gmInCard;
 		std::pair<int, int> pri4DecryptInfo = 
-            std::make_pair(secret_key.keyTypeInt_, secret_key.encrytCardIndex_);
+            std::make_pair(secKeyType, secret_key.encrytCardIndex_);
         std::pair<unsigned char*, int> pri4Decrypt = 
             std::make_pair((unsigned char*)secret_key.data(), secret_key.size());
         hEObj->SM2ECCDecrypt(
@@ -404,7 +409,7 @@ generateKeyPair(KeyType type, Seed const& seed)
             hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey, isRoot);
 
             SecretKey secretkeyTemp(Slice(tempPrivatekey.data(), tempPrivatekey.size()));
-            secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
+            secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
             return std::make_pair(PublicKey(Slice(tempPublickey.data(), tempPublickey.size())),
                 secretkeyTemp);
         }
@@ -429,7 +434,7 @@ randomKeyPair(KeyType type)
         hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
 
 		SecretKey secretkeyTemp(Slice(tempPrivatekey.data(), tempPrivatekey.size()));
-		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
+		secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
         return std::make_pair(PublicKey(Slice(tempPublickey.data(), tempPublickey.size())),
 			secretkeyTemp);
     }

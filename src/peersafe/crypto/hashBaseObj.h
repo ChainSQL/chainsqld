@@ -10,7 +10,7 @@ namespace ripple {
     class hashBaseObj
     {
     public:
-        static std::unique_ptr<hashBase> getHasher(CommonKey::HashType hashType = CommonKey::hashTypeGlobal)
+        static std::unique_ptr<hashBase> getHasher(CommonKey::HashType hashType = CommonKey::chainHashTypeG)
         {
             switch (hashType)
             {

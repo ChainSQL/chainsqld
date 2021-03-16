@@ -789,7 +789,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
         std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, tokenType);
         
 		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-		secretkeyTemp.keyTypeInt_ = hEObj->gmOutCard;
+		secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
         auto publicKey = derivePublicKey(KeyType::gmalg, secretkeyTemp);
         //std::string pubHex = strHex(publicKey.begin(), publicKey.end());
 

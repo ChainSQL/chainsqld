@@ -204,7 +204,7 @@ Ledger::Ledger(
     // }
 
     static auto const id = calcAccountID(
-        generateKeyPair(CommonKey::algTypeGlobal, generateSeed("masterpassphrase"))
+        generateKeyPair(CommonKey::chainAlgTypeG, generateSeed("masterpassphrase"))
             .first);
     {
         auto const sle = std::make_shared<SLE>(keylet::account(id));

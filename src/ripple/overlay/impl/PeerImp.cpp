@@ -2465,7 +2465,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
     // Preliminary check for the validity of the signature: A DER encoded
     // signature can't be longer than 72 bytes.
     if ((boost::algorithm::clamp(sig.size(), 64, 72) != sig.size()) ||
-        (publicKeyType(publicKey) != CommonKey::algTypeGlobal))
+        (publicKeyType(publicKey) != CommonKey::chainAlgTypeG))
     {
         JLOG(p_journal_.warn())
             << "Consensus message mt(" << m->msgtype() << ")"

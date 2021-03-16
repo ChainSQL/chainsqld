@@ -87,7 +87,7 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
         {
             if ('x' == seedStr[0])
             {
-                if (CommonKey::algTypeGlobal == KeyType::gmalg)
+                if (CommonKey::chainAlgTypeG == KeyType::gmalg)
                 {
                     configInvalid_ = true;
                     JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
@@ -103,14 +103,14 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                     else
                     {
                         // CommonKey::setAlgType(*type);
-                        secretKey = generateSecretKey(CommonKey::algTypeGlobal, *seed);
-                        publicKey = derivePublicKey(CommonKey::algTypeGlobal, secretKey);
+                        secretKey = generateSecretKey(CommonKey::chainAlgTypeG, *seed);
+                        publicKey = derivePublicKey(CommonKey::chainAlgTypeG, secretKey);
                     }
                 }
             }
             else if ('p' == seedStr[0])
             {
-                if (CommonKey::algTypeGlobal != KeyType::gmalg)
+                if (CommonKey::chainAlgTypeG != KeyType::gmalg)
                 {
                     configInvalid_ = true;
                     JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
@@ -127,7 +127,7 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                         JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "] and [" SECTION_VALIDATION_PUBLIC_KEY "]";
                     }
                     secretKey = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-                    secretKey.keyTypeInt_ = hEObj->gmOutCard;
+                    secretKey.keyTypeInt_ = KeyType::gmalg;
                     publicKey = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
                     // auto const type = publicKeyType(publicKey.slice());
                     // if (!type)
@@ -140,7 +140,7 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
             }
             else if (seedStr.size() <= 2)
             {
-                if (CommonKey::algTypeGlobal != KeyType::gmalg)
+                if (CommonKey::chainAlgTypeG != KeyType::gmalg)
                 {
                     configInvalid_ = true;
                     JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
@@ -156,7 +156,7 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                         memset(temp4Secret, index, 32);
                         SecretKey tempSecKey(Slice(temp4Secret, 32));
                         tempSecKey.encrytCardIndex_ = index;
-                        tempSecKey.keyTypeInt_ = hEObj->gmInCard;
+                        tempSecKey.keyTypeInt_ = KeyType::gmInCard;
                         hEObj->getPrivateKeyRight(index);
                         secretKey = tempSecKey;
                         delete[] temp4Secret;

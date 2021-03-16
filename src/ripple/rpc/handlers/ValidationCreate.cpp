@@ -48,7 +48,7 @@ Json::Value
 doValidationCreate(RPC::JsonContext& context)
 {
     std::string seedStr;
-    KeyType keyType = CommonKey::algTypeGlobal;
+    KeyType keyType = CommonKey::chainAlgTypeG;
     if (context.params.isMember (jss::secret))
         seedStr = context.params[jss::secret].asString ();
     if (context.params.isMember (jss::key_type))
@@ -63,27 +63,39 @@ Json::Value doFillValidationJson(KeyType keyType, std::string const &str)
         return rpcError(rpcINVALID_PARAMS);
 
     Json::Value     obj(Json::objectValue);
-    
-    auto seed = validationSeed(str);
-    if (!seed)
-        return rpcError(rpcBAD_SEED);
 
     switch (keyType)
     {
         case KeyType::gmalg:
         {
-            auto publicPrivatePair = generateKeyPair(keyType, *seed);
+            PublicKey pubKey;
+            SecretKey secKey;
+            if (!str.empty())
+            {
+                secKey = *(parseBase58<SecretKey>(TokenType::NodePrivate, str));
+                pubKey = derivePublicKey(KeyType::gmalg, secKey);
+            }
+            else
+            {
+                auto publicPrivatePair = randomKeyPair(keyType);
+                secKey = publicPrivatePair.second;
+                pubKey = publicPrivatePair.first;
+            }
 
-            obj[jss::validation_public_key] = toBase58(TokenType::NodePublic, publicPrivatePair.first);
-            obj[jss::validation_private_key] = toBase58(TokenType::NodePrivate, publicPrivatePair.second);
-            obj[jss::validation_public_key_hex] = strHex(publicPrivatePair.first);
-            obj[jss::account_id] = toBase58(calcAccountID(publicPrivatePair.first));
+            obj[jss::validation_public_key] = toBase58(TokenType::NodePublic, pubKey);
+            obj[jss::validation_private_key] = toBase58(TokenType::NodePrivate, secKey);
+            obj[jss::validation_public_key_hex] = strHex(pubKey);
+            obj[jss::account_id] = toBase58(calcAccountID(pubKey));
             break;
         }
         case KeyType::secp256k1:
         case KeyType::ed25519:
         default:
         {
+            auto seed = validationSeed(str);
+            if (!seed)
+                return rpcError(rpcBAD_SEED);
+
             auto const private_key = generateSecretKey(keyType, *seed);
 
             auto publicKey = derivePublicKey(keyType, private_key);

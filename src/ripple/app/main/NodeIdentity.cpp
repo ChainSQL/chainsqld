@@ -96,7 +96,7 @@ loadNodeIdentity(Application& app)
     {
 
         // std::tie(publicKey, secretKey) = randomKeyPair(KeyType::secp256k1);
-        std::tie(publicKey, secretKey) = randomKeyPair(CommonKey::algTypeGlobal);
+        std::tie(publicKey, secretKey) = randomKeyPair(CommonKey::chainAlgTypeG);
         *db << str(boost::format(
                        "INSERT INTO NodeIdentity (PublicKey,PrivateKey) VALUES ('%s','%s');") %
                    toBase58(TokenType::NodePublic, *publicKey) % toBase58(TokenType::NodePrivate, *secretKey));

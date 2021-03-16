@@ -771,7 +771,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
     {
         try
         { 
-            if(!user.empty())
+            if(secret.size() <= 3)
             {
 				auto pUser = ripple::parseBase58<AccountID>(user);
 				if (boost::none == pUser)
@@ -779,28 +779,28 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
 				userAccountId = *pUser;
                 
                 GmEncrypt* hEObj = GmEncryptObj::getInstance();
-				if (secret.size() <= 3)
-				{
-					//add a try catch to judge whether the index is a number.
-					secret = secret.substr(1);
-					int index = atoi(secret.c_str());
-					//SecretKey tempSecKey(Slice(nullptr, 0));
-					char* temp4Secret = new char[32];
-					memset(temp4Secret, index, 32);
-					SecretKey tempSecKey(Slice(temp4Secret, 32));
-					tempSecKey.encrytCardIndex_ = index;
-					tempSecKey.keyTypeInt_ = hEObj->gmInCard;
-					hEObj->getPrivateKeyRight(index);
-					secret_key = tempSecKey;
-					delete[] temp4Secret;
-				}
-				else
-				{
-					std::string privateKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
-					SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-					tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
-					secret_key = tempSecKey;
-				}
+
+                //add a try catch to judge whether the index is a number.
+                secret = secret.substr(1);
+                int index = atoi(secret.c_str());
+                //SecretKey tempSecKey(Slice(nullptr, 0));
+                char* temp4Secret = new char[32];
+                memset(temp4Secret, index, 32);
+                SecretKey tempSecKey(Slice(temp4Secret, 32));
+                tempSecKey.encrytCardIndex_ = index;
+                tempSecKey.keyTypeInt_ = KeyType::gmInCard;
+                hEObj->getPrivateKeyRight(index);
+                secret_key = tempSecKey;
+                delete[] temp4Secret;
+            }
+            else
+            {
+                std::string privateKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
+                SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+                tempSecKey.keyTypeInt_ = KeyType::gmalg;
+                secret_key = tempSecKey;
+                public_key = derivePublicKey(KeyType::gmalg, tempSecKey);
+                userAccountId = calcAccountID(public_key);
             }
         }
         catch (std::exception const& e)

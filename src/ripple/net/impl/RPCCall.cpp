@@ -1936,7 +1936,7 @@ rpcClient(
             if (args[0] == "validation_create")
             {
                 std::string seedStr;
-                KeyType keyType = CommonKey::algTypeGlobal;
+                KeyType keyType = CommonKey::chainAlgTypeG;
                 if (args.size() >= 2)
                 {
                     keyType = *(keyTypeFromString(args[1]));

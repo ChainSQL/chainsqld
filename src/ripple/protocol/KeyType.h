@@ -32,6 +32,7 @@ enum class KeyType {
     secp256k1 = 0,
     ed25519   = 1,
     gmalg     = 2,
+    gmInCard  = 3
 };
 
 inline boost::optional<KeyType>
@@ -40,6 +41,7 @@ keyTypeFromString(std::string const& s)
 	if (s == "secp256k1")  return KeyType::secp256k1;
 	if (s == "ed25519")  return KeyType::ed25519;
 	if (s == "gmalg")      return KeyType::gmalg;
+    if (s == "gmInCard")   return KeyType::gmInCard;
 
 	return KeyType::invalid;
 }
@@ -55,6 +57,9 @@ to_string(KeyType type)
 
     if (type == KeyType::gmalg)
         return "gmalg";
+
+    if (type == KeyType::gmInCard)
+        return "gmInCard";
     
     return "INVALID";
 }

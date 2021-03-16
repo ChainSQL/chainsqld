@@ -723,7 +723,7 @@ Json::Value TxPrepareBase::prepareForAssign()
         }
         SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
         // GmEncrypt* hEObj = GmEncryptObj::getInstance();
-		tempSecKey.keyTypeInt_ = GmEncryptObj::getInstance()->gmOutCard;
+		tempSecKey.keyTypeInt_ = KeyType::gmalg;
         secret_key = tempSecKey;
     }
 	std::pair<Blob, Json::Value> result = getPassBlob(ownerID_, ownerID_, secret_key);
@@ -762,7 +762,7 @@ Json::Value TxPrepareBase::prepareForOperating()
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
         SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-		tempSecKey.keyTypeInt_ = hEObj->gmOutCard;
+		tempSecKey.keyTypeInt_ = KeyType::gmalg;
         secret_key = tempSecKey;
     }
 

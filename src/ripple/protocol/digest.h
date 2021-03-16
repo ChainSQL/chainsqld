@@ -233,7 +233,7 @@ sha512_half_hasher::result_type
 sha512Half(Args const&... args)
 {
     using beast::hash_append;
-    CommonKey::HashType hashTypeTemp = hashType == CommonKey::unknown? CommonKey::hashTypeGlobal : hashType;
+    CommonKey::HashType hashTypeTemp = hashType == CommonKey::unknown? CommonKey::chainHashTypeG : hashType;
 
     // std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher(hashTypeTemp);
     // hash_append(*hasher, args...);
