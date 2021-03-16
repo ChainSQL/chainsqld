@@ -138,9 +138,9 @@ pair<bool, eth::bytes> alt_bn128_pairing_product(eth::bytesConstRef _in)
 			eth::bytesConstRef const pair = _in.cropped(i * pairSize, pairSize);
 			libff::alt_bn128_G1 const g1 = decodePointG1(pair);
 			libff::alt_bn128_G2 const p = decodePointG2(pair.cropped(2 * 32));
-			if (-libff::alt_bn128_G2::scalar_field::one() * p + p != libff::alt_bn128_G2::zero())
-				// p is not an element of the group (has wrong order)
-				return { false, eth::bytes() };
+			//if (-libff::alt_bn128_G2::scalar_field::one() * p + p != libff::alt_bn128_G2::zero())
+			//	// p is not an element of the group (has wrong order)
+			//	return { false, eth::bytes() };
 			if (p.is_zero() || g1.is_zero())
 				continue; // the pairing is one
 			x = x * libff::alt_bn128_miller_loop(

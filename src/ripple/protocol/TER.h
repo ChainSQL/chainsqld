@@ -222,6 +222,7 @@ enum TEFcodes : TERUnderlyingType
 	tefSCEMA_NO_PATH,
 	tefBAD_DUPLACATE_ITEM,
 	tefSCHEMA_NODE_COUNT,
+	tefSCHEMA_MAX_SCHEMAS,
 };
 
 //------------------------------------------------------------------------------

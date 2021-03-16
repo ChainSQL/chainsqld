@@ -223,6 +223,7 @@ transResults()
 		MAKE_ERROR(tefSCEMA_NO_PATH,		   "No schema_path configured."),
 		MAKE_ERROR(tefBAD_DUPLACATE_ITEM,	   "Duplicate items in PeerList or Validators."),
 		MAKE_ERROR(tefSCHEMA_NODE_COUNT,	   "Insufficient node count for schema."),
+		MAKE_ERROR(tefSCHEMA_MAX_SCHEMAS,	   "A validator can only participate in 5 schemas."),
         MAKE_ERROR(tesSUCCESS,                 "The transaction was applied. Only final in a validated ledger."                )
     };
     // clang-format on
