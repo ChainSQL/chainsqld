@@ -44,10 +44,6 @@ TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
 	, checkSkipNode_("SkipNode", 65536, std::chrono::seconds{ 450 }, stopwatch(),
         app_.journal("TaggedCache"))
 {
-    bTableSyncThread_ = false;
-    bLocalSyncThread_ = false;
-    bInitTableItems_  = false;
-
     if (app.getTxStoreDBConn().GetDBConn() == nullptr || 
 		app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
         bIsHaveSync_ = false;
@@ -894,7 +890,9 @@ bool TableSync::CreateTableItems()
                 std::lock_guard lock(mutexlistTable_);
                 listTableInfo_.push_back(ret.first);
 				//this set can only be modified here
-				setTableInCfg.emplace(to_string(ret.first->GetAccount()) + ret.first->GetTableName());
+                std::string temKey = to_string(ret.first->GetAccount()) +
+                    ret.first->GetTableName();
+                setTableInCfg[temKey] = line;
             }
         }
 		
@@ -1198,24 +1196,24 @@ bool TableSync::IsNeedSyn()
 
 void TableSync::TryTableSync()
 {
-    if (!bInitTableItems_ && bIsHaveSync_)
+    if (!bInitTableItems_.load() && bIsHaveSync_ &&
+        app_.getLedgerMaster().getValidatedLedger() != nullptr &&
+        app_.getLedgerMaster().getValidLedgerIndex() > 1)
     {
-		if (app_.getLedgerMaster().getValidatedLedger() !=nullptr && app_.getLedgerMaster().getValidLedgerIndex() > 1)
-		{
-            CreateTableItems();
-            bInitTableItems_ = true;
-		}
+        CreateTableItems();
+        bInitTableItems_.store(true);
     }
 
     ClearNotSyncItem();
 
-    if (!IsNeedSyn())                 return;
+    if (!IsNeedSyn())
+        return;
 
-    if (!bTableSyncThread_)
-    {
-        bTableSyncThread_ = true;
-        app_.getJobQueue().addJob( jtTABLESYNC, "tableSync", [this](Job&) { TableSyncThread(); });
-    }
+    if (bTableSyncThread_.exchange(true))
+        return;
+
+    app_.getJobQueue().addJob(
+        jtTABLESYNC, "tableSync", [this](Job&) { TableSyncThread(); });
 }
 
 void TableSync::TableSyncThread()
@@ -1262,10 +1260,8 @@ void TableSync::TableSyncThread()
 				//pItem->DeleteTable(sNameInDB);
 				pItem->DoUpdateSyncDB(to_string(stItem.accountID), sNameInDB, true, PreviousCommit);
 			}
-			if (pItem->getAutoSync())
-				pItem->SetSyncState(TableSyncItem::SYNC_REMOVE);
-			else
-				pItem->SetSyncState(TableSyncItem::SYNC_INIT);
+
+            pItem->SetSyncState(TableSyncItem::SYNC_REMOVE);
 			break;
 		}
         case TableSyncItem::SYNC_INIT:
@@ -1319,7 +1315,7 @@ void TableSync::TableSyncThread()
                         TxnLedgerHash = uint256();
 						bool bAutoSync = true;
 						std::string temKey = to_string(stItem.accountID) + stItem.sTableName;
-						if(setTableInCfg.end() != std::find(setTableInCfg.begin(), setTableInCfg.end(), temKey))
+						if(setTableInCfg.count(temKey) > 0)
 						{
 							bAutoSync = false;
 						}
@@ -1485,7 +1481,7 @@ void TableSync::TableSyncThread()
         TryLocalSync();
     }
 
-    bTableSyncThread_ = false;
+    bTableSyncThread_.store(false);
 
 	if (bNeedReSync) {
 		TryTableSync();
@@ -1494,11 +1490,12 @@ void TableSync::TableSyncThread()
 
 void TableSync::TryLocalSync()
 {
-    if (!bLocalSyncThread_)
-    {
-        bLocalSyncThread_ = true;
-        app_.getJobQueue().addJob(jtTABLELOCALSYNC, "tableLocalSync", [this](Job&) { LocalSyncThread(); });
-    }
+    if (bLocalSyncThread_.exchange(true))
+        return;
+
+    app_.getJobQueue().addJob(jtTABLELOCALSYNC, "tableLocalSync", [this](Job&) {
+        LocalSyncThread();
+    });
 }
 void TableSync::LocalSyncThread()
 {
@@ -1520,8 +1517,9 @@ void TableSync::LocalSyncThread()
             pItem->SetSyncState(TableSyncItem::SYNC_LOCAL_ACQUIRING);
             SeekTableTxLedger(stItem,cache);
         }
-    }  
-	bLocalSyncThread_ = false;
+    }
+
+	bLocalSyncThread_.store(false);
 }
 
 bool TableSync::Is256thLedgerExist(LedgerIndex index)
@@ -1547,41 +1545,74 @@ std::pair<bool, std::string>
 	std::string err = "";
     try
     {
-        //check formal tables
-        if (isExist(listTableInfo_, accountID, sTableName, TableSyncItem::SyncTarget_db))
-        {
-          std::string temKey = to_string(accountID) + sTableName;
-          if (setTableInCfg.end() == std::find(setTableInCfg.begin(), setTableInCfg.end(), temKey))
-          {
-            return std::make_pair(false, "Table exist in listTableInfo");
-          }
-          else
-          {
-            return std::make_pair(true, err);
-          }
-        }
-	
-	//check temp tables
-        auto it = std::find_if(listTempTable_.begin(), listTempTable_.end(),
-            [sNameInDB](std::string sName) {
-            return sName == sNameInDB;
-        });
-        if (it != listTempTable_.end())
-            return std::make_pair(false,err);
+        std::string temKey = to_string(accountID) + sTableName;
 
-        std::shared_ptr<TableSyncItem> pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
-        //std::string PreviousCommit;
-        pItem->Init(accountID, sTableName,true);
-        ret = InsertSnycDB(sTableName, sNameInDB, to_string(accountID), seq, uHash, true, to_string(time), chainId);
-		if(ret){
-			ret = true;
-            std::lock_guard lock(mutexlistTable_);
-            listTableInfo_.push_back(pItem);   
-			JLOG(journal_.info()) <<
-				"InsertListDynamically listTableInfo_ add item,tableName=" << sTableName <<",owner="<< to_string(accountID);
+        // check formal tables
+        if (isExist(
+                listTableInfo_,
+                accountID,
+                sTableName,
+                TableSyncItem::SyncTarget_db))
+        {
+            if (setTableInCfg.count(temKey) > 0)
+            {
+                return std::make_pair(false, "Table exist in listTableInfo");
+            }
+            else
+            {
+                return std::make_pair(true, err);
+            }
         }
-        else {
-            err = "Insert to list dynamically failed,tableName=" + sTableName + ",owner=" + to_string(accountID);
+	    // check temp tables
+        if (std::find_if(
+                listTempTable_.begin(),
+                listTempTable_.end(),
+                [sNameInDB](std::string sName) {
+                    return sName == sNameInDB;
+                }) != listTempTable_.end())
+        {
+            return std::make_pair(false, err);
+        }
+
+        std::shared_ptr<TableSyncItem> pItem = nullptr;
+        if (setTableInCfg.count(temKey) > 0)
+        {
+            auto result = CreateOneItem(
+                TableSyncItem::SyncTarget_db, setTableInCfg[temKey]);
+            pItem = result.first;
+            err = result.second;
+        }
+        else
+        {
+            pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
+            pItem->Init(accountID, sTableName, true);
+        }
+
+        if (pItem)
+        {
+            if (ret = InsertSnycDB(
+                    sTableName,
+                    sNameInDB,
+                    to_string(accountID),
+                    seq,
+                    uHash,
+                    pItem->getAutoSync(),
+                    to_string(time),
+                    chainId);
+                ret)
+            {
+                std::lock_guard lock(mutexlistTable_);
+                listTableInfo_.push_back(pItem);
+                JLOG(journal_.info())
+                    << "InsertListDynamically listTableInfo_ add "
+                       "item,tableName="
+                    << sTableName << ",owner=" << to_string(accountID);
+            }
+            else
+            {
+                err = "Insert to list dynamically failed,tableName=" +
+                    sTableName + ",owner=" + to_string(accountID);
+            }
         }
     }
     catch (std::exception const& e)
@@ -1591,7 +1622,7 @@ std::pair<bool, std::string>
         ret = false;
 		err = e.what();
     }
-    return std::make_pair(ret,err);
+    return std::make_pair(ret, err);
 }
 
 uint256 TableSync::GetLocalHash(LedgerIndex ledgerSeq)
@@ -1713,7 +1744,11 @@ std::shared_ptr <TableSyncItem> TableSync::GetRightItem(AccountID accountID, std
 // check and sync table
 void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 {    
-	if (ledger == NULL)    return;
+	if (ledger == NULL)
+        return;
+
+    if (!bInitTableItems_.load())
+        return;
 
     std::shared_ptr<AcceptedLedger> alpAccepted =
         app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
@@ -1764,7 +1799,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 					{
 						std::string temKey = to_string(accountID) + tableName;
 						bool bInSyncTables = true;
-						if (setTableInCfg.end() == std::find(setTableInCfg.begin(), setTableInCfg.end(), temKey)) {
+						if (setTableInCfg.count(temKey) <= 0) {
 							bInSyncTables = false;
 						}
 

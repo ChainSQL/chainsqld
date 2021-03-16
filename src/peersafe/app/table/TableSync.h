@@ -127,22 +127,23 @@ private:
 
     std::mutex                                  mutexlistTable_;
     std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_;
-	std::set<std::string>						setTableInCfg;
+	std::map<std::string, std::string>			setTableInCfg;
 
     std::mutex                                  mutexTempTable_;
     std::list<std::string>                      listTempTable_;
-
-    //if the sync thread is running
-    bool                                        bTableSyncThread_;
-    bool                                        bLocalSyncThread_;
 
     std::mutex                                  mutexSkipNode_;
     TaggedCache <LedgerIndex, Blob>             checkSkipNode_;
 
     std::mutex                                  mutexCreateTable_;
     bool                                        bAutoLoadTable_;
-    bool                                        bInitTableItems_;
+
     bool                                        bIsHaveSync_;
+
+    std::atomic_bool bInitTableItems_{false};
+    // if the sync thread is running
+    std::atomic_bool bTableSyncThread_{false};
+    std::atomic_bool bLocalSyncThread_{false};
 
 	std::string                                 sLastErr_;
 

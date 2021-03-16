@@ -11,6 +11,36 @@
 
 namespace ripple {
 
+	// A validator node can only participate in MAX_VALIDATOR_SCHEMA_COUNT schemas
+	TER
+	checkCountsForValidator(
+		PreclaimContext const& ctx,
+		std::vector<Blob> const& validators)
+	{
+		// check for final node count
+		if (ctx.tx.getFieldU16(sfTransactionType) == ttSCHEMA_MODIFY &&
+			ctx.tx.getFieldU16(sfOpType) == (uint16_t)SchemaModifyOp::del)
+		{
+			return tesSUCCESS;
+		}
+		std::map<Blob, int> mapValidatorCount;
+		// This is a time-consuming process for a project that has many
+		// sles.
+		for (auto sle : ctx.view.sles)
+		{
+			if (sle->getType() != ltSCHEMA)
+				continue;
+			for (auto& validator : sle->getFieldArray(sfValidators))
+			{
+				Json::Value val(Json::objectValue);
+				auto publicKey = validator.getFieldVL(sfPublicKey);
+                if (++mapValidatorCount[publicKey] >= MAX_VALIDATOR_SCHEMA_COUNT)
+					return tefSCHEMA_MAX_SCHEMAS;
+			}
+		}
+		return tesSUCCESS;
+	}
+
 	TER preClaimCommon(PreclaimContext const& ctx)
 	{
 		std::vector<Blob> validators;
@@ -48,7 +78,7 @@ namespace ripple {
 		if (validators.size() != peerList.size())
 			return temMALFORMED;
 
-		return tesSUCCESS;
+		return checkCountsForValidator(ctx,validators);
 	}
 
 	TER checkMulsignValid(STArray const & vals, STArray const& txSigners)

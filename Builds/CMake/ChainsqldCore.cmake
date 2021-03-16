@@ -1119,7 +1119,7 @@ target_compile_options (chainsqld
   PUBLIC
     $<$<BOOL:${is_gcc}>:-Wno-maybe-uninitialized>)
 
-set_target_properties(chainsqld PROPERTIES LINK_FLAGS_RELEASE -s)
+# set_target_properties(chainsqld PROPERTIES LINK_FLAGS_RELEASE -s)
 
 add_definitions(-DOPENSSL_NO_SSL2)
 
