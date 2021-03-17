@@ -778,7 +778,7 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
     
     if ((isExitSecret && !privateKeyStr.empty() && ('p' == privateKeyStr[0])))
     {
-        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+        //GmEncrypt* hEObj = GmEncryptObj::getInstance();
         std::string privateKeyStr = params[jss::secret].asString();
         TokenType tokenType = TokenType::AccountSecret;
         if (params.isMember(jss::for_node) && params[jss::for_node].asBool())

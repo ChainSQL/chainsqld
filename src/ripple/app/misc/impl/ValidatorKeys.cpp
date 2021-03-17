@@ -117,7 +117,7 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                 }
                 else
                 {
-                    GmEncrypt *hEObj = GmEncryptObj::getInstance();
+                    //GmEncrypt *hEObj = GmEncryptObj::getInstance();
                     std::string privateKeyStrDe58 = decodeBase58Token(seedStr, TokenType::NodePrivate);
                     // std::string publicKeyStr = config.section(SECTION_VALIDATION_PUBLIC_KEY).lines().front();
                     std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::NodePublic);
