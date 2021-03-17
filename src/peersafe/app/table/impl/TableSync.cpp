@@ -1554,7 +1554,7 @@ std::pair<bool, std::string>
                 sTableName,
                 TableSyncItem::SyncTarget_db))
         {
-            if (setTableInCfg.count(temKey) > 0)
+            if (setTableInCfg.count(temKey) <= 0)
             {
                 return std::make_pair(false, "Table exist in listTableInfo");
             }
