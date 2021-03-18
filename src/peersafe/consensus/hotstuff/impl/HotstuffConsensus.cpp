@@ -119,12 +119,7 @@ HotstuffConsensus::timerEntry(NetClock::time_point const& now)
         return;
     }
 
-    if (!adaptor_.validating())
-    {
-        return;
-    }
-
-    if (waitingForInit())
+    if (waitingForInit() && adaptor_.validating())
     {
         consensusTime_ = now_;
 
