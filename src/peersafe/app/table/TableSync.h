@@ -88,7 +88,9 @@ public:
 	std::string GetPressTableName();
 	bool IsPressSwitchOn();
     void sweep();
-private:	
+private:
+    bool
+    initTableItems();
 	std::pair<std::shared_ptr<TableSyncItem>, std::string> CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line);
     bool CreateTableItems();
     //check ledger according to the skip node
@@ -125,7 +127,7 @@ private:
     beast::Journal                              journal_;
     Config&                                     cfg_;
 
-    std::mutex                                  mutexlistTable_;
+    std::recursive_mutex                        mutexlistTable_;
     std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_;
 	std::map<std::string, std::string>			setTableInCfg;
 
@@ -140,7 +142,7 @@ private:
 
     bool                                        bIsHaveSync_;
 
-    std::atomic_bool bInitTableItems_{false};
+    bool bInitTableItems_{false};
     // if the sync thread is running
     std::atomic_bool bTableSyncThread_{false};
     std::atomic_bool bLocalSyncThread_{false};

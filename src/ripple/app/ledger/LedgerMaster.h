@@ -434,7 +434,7 @@ private:
     std::unique_ptr<detail::LedgerCleaner> mLedgerCleaner;
 
     // Publish thread is running.
-    bool mAdvanceThread{false};
+    std::atomic_bool mAdvanceThread{false};
 
     // Publish thread has work to do.
     bool mAdvanceWork{false};

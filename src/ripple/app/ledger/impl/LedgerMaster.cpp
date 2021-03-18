@@ -1413,7 +1413,7 @@ void
 LedgerMaster::advanceThread()
 {
     std::unique_lock sl(m_mutex);
-    assert(!mValidLedger.empty() && mAdvanceThread);
+    assert(!mValidLedger.empty() && mAdvanceThread.load());
 
     JLOG(m_journal.trace()) << "advanceThread<";
 
@@ -1426,7 +1426,7 @@ LedgerMaster::advanceThread()
         JLOG(m_journal.fatal()) << "doAdvance throws an exception:" << e.what();
     }
 
-    mAdvanceThread = false;
+    mAdvanceThread.store(false);
     JLOG(m_journal.trace()) << "advanceThread>";
 }
 
@@ -1564,9 +1564,8 @@ LedgerMaster::tryAdvance()
 
     // Can't advance without at least one fully-valid ledger
     mAdvanceWork = true;
-    if (!mAdvanceThread && !mValidLedger.empty())
+    if (!mAdvanceThread.exchange(true) && !mValidLedger.empty())
     {
-        mAdvanceThread = true;
         app_.getJobQueue().addJob(
             jtADVANCE, "advanceLedger", [this](Job&) { advanceThread(); });
     }

@@ -681,7 +681,30 @@ bool TableSync::ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq, uint256 &t
     return app_.getTableStatusDB().ReadSyncDB(nameInDB, txnseq, txnhash, seq, hash, txnupdatehash);
 }
 
-//void TableSync::parseFormline
+
+bool
+TableSync::initTableItems()
+{
+    std::lock_guard lock(mutexlistTable_);
+    if (bInitTableItems_)
+        return true;
+
+    if (!bIsHaveSync_)
+    {
+        bInitTableItems_ = true;
+        return true;
+    }
+
+    if (app_.getLedgerMaster().getValidatedLedger() != nullptr &&
+        app_.getLedgerMaster().getValidLedgerIndex() > 1 /*RR-1835*/)
+    {
+        CreateTableItems();
+        bInitTableItems_ = true;
+        return true;
+    }
+
+    return false;
+}
 
 std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line)
 {	
@@ -1196,13 +1219,7 @@ bool TableSync::IsNeedSyn()
 
 void TableSync::TryTableSync()
 {
-    if (!bInitTableItems_.load() && bIsHaveSync_ &&
-        app_.getLedgerMaster().getValidatedLedger() != nullptr &&
-        app_.getLedgerMaster().getValidLedgerIndex() > 1)
-    {
-        CreateTableItems();
-        bInitTableItems_.store(true);
-    }
+    initTableItems();
 
     ClearNotSyncItem();
 
@@ -1747,7 +1764,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 	if (ledger == NULL)
         return;
 
-    if (!bInitTableItems_.load())
+    if (!initTableItems())
         return;
 
     std::shared_ptr<AcceptedLedger> alpAccepted =
