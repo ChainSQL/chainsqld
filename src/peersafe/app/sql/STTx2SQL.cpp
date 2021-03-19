@@ -56,6 +56,7 @@ class BuildField {
 #define ID	0x00000010		// index
 #define DF	0x00000020		// has default value
 #define FK	0x00000040		// foreign key
+#define NU  0x00000080      // default null
 
 public:
 	explicit BuildField(const std::string& name)
@@ -381,6 +382,11 @@ public:
 		flag_ |= FK;
 	}
 
+    void SetDefaultNull()
+    {
+        flag_ |= NU;
+    }
+
 	bool isPrimaryKey() {
 		return (flag_ & PK) == PK;
 	}
@@ -408,6 +414,11 @@ public:
 	bool isDefault() {
 		return (flag_ & DF) == DF;
 	}
+
+    bool isDefaultNull()
+    {
+        return (flag_ & NU) == NU;
+    }
 
 	int length() {
 		return length_;
@@ -2072,15 +2083,37 @@ protected:
 			}
 			if (field.isDefault()) {
 				std::string str;
-				if (field.isNumeric()) {
-					str = (boost::format("DEFAULT %d") % field.asInt()).str();
-				}
-				else if (field.isString()) {
-					str = (boost::format("DEFAULT '%1%'") % field.asString()).str();
-				}
-				else if (field.isNull()) {
-					str = "DEFAULT NULL";
-				}
+                if (field.isDefaultNull())
+                {
+                    str = "DEFAULT NULL";
+                }
+                // mysql engine: BLOB, TEXT, GEOMETRY or JSON column can't have a default value
+                else if (field.isChar() || field.isVarchar() ||
+                    /*field.isBlob() || field.isText() || field.isLongText() ||*/
+                    field.isDate() || field.isDateTime())
+                {
+                    str = (boost::format("DEFAULT '%1%'") % field.asString()).str();
+                }
+                else if (field.isInt())
+                {
+                    str = (boost::format("DEFAULT %1%") % field.asInt()).str();
+                }
+                else if (field.isFloat())
+                {
+                    str = (boost::format("DEFAULT %1%") % field.asFloat()).str();
+                }
+                else if (field.isDouble())
+                {
+                    str = (boost::format("DEFAULT %1%") % field.asDouble()).str();
+                }
+                else if (field.isDecimal())
+                {
+                    str = (boost::format("DEFAULT %1%") % field.asDecimal().value()).str();
+                }
+                else if (field.isNumeric())
+                {
+                    str = (boost::format("DEFAULT %1%") % field.asInt()).str();
+                }
 				fields.push_back(str);
 			}
 
@@ -3247,10 +3280,37 @@ int STTx2SQL::ParseFieldDefinitionAndAdd(const Json::Value& Raw, BuildSQL *build
 				else if ((*it).compare("default") == 0)
 				{
 					buildfield.SetDefault();
-					if (v["default"].isString())
-						buildfield.SetFieldValue(v["default"].asString());
-					else if (v["default"].isNumeric())
-						buildfield.SetFieldValue(v["default"].asInt());
+                    if (v["default"].isString())
+                    {
+                        if (buildfield.isChar())
+                            buildfield.SetFieldValue(v["default"].asString(), FieldValue::fCHAR);
+                        else if (buildfield.isVarchar())
+                            buildfield.SetFieldValue(v["default"].asString(), FieldValue::fVARCHAR);
+                        else if (buildfield.isLongText())
+                            buildfield.SetFieldValue(v["default"].asString(), FieldValue::fLONGTEXT);
+                        else if (buildfield.isDate())
+                            buildfield.SetFieldValue(v["default"].asString(), FieldValue::fDATE);
+                        else if (buildfield.isDateTime())
+                            buildfield.SetFieldValue(v["default"].asString(), FieldValue::fDATETIME);
+                    }
+                    else if (v["default"].isNumeric())
+                    {
+                        if (buildfield.isInt())
+                            buildfield.SetFieldValue(v["default"].asInt());
+                        else if (buildfield.isFloat())
+                            buildfield.SetFieldValue((float)v["default"].asDouble());
+                        else if (buildfield.isDouble())
+                            buildfield.SetFieldValue(v["default"].asDouble());
+                        else if (buildfield.isDecimal())
+                            buildfield.SetFieldValue(InnerDecimal(
+                                    buildfield.asDecimal().length(),
+                                    buildfield.asDecimal().accuracy(),
+                                    v["default"].asDouble()));
+                    }
+                    else if (v["default"].isNull())
+                    {
+                        buildfield.SetDefaultNull();
+                    }
 				}
 				else
 				{
