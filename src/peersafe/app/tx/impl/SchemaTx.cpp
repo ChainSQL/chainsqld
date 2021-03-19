@@ -23,7 +23,14 @@ namespace ripple {
 		{
 			return tesSUCCESS;
 		}
+
 		std::map<Blob, int> mapValidatorCount;
+
+        for (auto const& v : validators)
+        {
+            ++mapValidatorCount[v];
+        }
+
 		// This is a time-consuming process for a project that has many
 		// sles.
 		for (auto sle : ctx.view.sles)
@@ -34,7 +41,7 @@ namespace ripple {
 			{
 				Json::Value val(Json::objectValue);
 				auto publicKey = validator.getFieldVL(sfPublicKey);
-                if (++mapValidatorCount[publicKey] >= MAX_VALIDATOR_SCHEMA_COUNT)
+                if (++mapValidatorCount[publicKey] > MAX_VALIDATOR_SCHEMA_COUNT)
 					return tefSCHEMA_MAX_SCHEMAS;
 			}
 		}
