@@ -132,9 +132,6 @@ PeerImp::run()
     if (!strand_.running_in_this_thread())
         return post(strand_, std::bind(&PeerImp::run, shared_from_this()));
 
-    // Dispatch to schema
-    dispatch();
-
     // We need to decipher
     auto parseLedgerHash =
         [](std::string const& value) -> boost::optional<uint256> {
@@ -192,6 +189,9 @@ PeerImp::run()
         // type.)
         doProtocolStart();
     }
+
+    // Dispatch to schema
+    dispatch();
 
     // Comment by ljl:this msg may interrupt the async_write_some  call in
     // onWriteResponse.
