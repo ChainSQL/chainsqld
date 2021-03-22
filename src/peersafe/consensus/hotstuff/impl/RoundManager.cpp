@@ -761,7 +761,7 @@ bool RoundManager::ReceivedProposedBlock(const HashValue& proposed_id) {
 }
 
 void RoundManager::AddVoteToCache(const Vote& vote) {
-	JLOG(journal_.warn())
+	JLOG(journal_.info())
 		<< "Received a vote but it's proposal hasn't been received now, cache it."
 		<< "Vote round is " << vote.vote_data().proposed().round
 		<< " and author is " << toBase58(TokenType::NodePublic, vote.author());
