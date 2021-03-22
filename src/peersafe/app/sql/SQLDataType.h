@@ -51,8 +51,15 @@ class InnerDecimal
 public:
 	InnerDecimal(int length, int accuracy)
 		: length_(length)
-		, accuracy_(accuracy) {
+		, accuracy_(accuracy)
+        , value_(0.0){
 	}
+
+    InnerDecimal(int length, int accuracy, double value)
+        : length_(length)
+        , accuracy_(accuracy)
+        , value_(value) {
+    }
 
 	~InnerDecimal() {}
     int length() {
@@ -71,56 +78,78 @@ public:
 		return accuracy_;
 	}
 
+    double value() {
+        return value_;
+    }
+
+    double value() const {
+        return value_;
+    }
+
 	void update(const InnerDecimal& v) {
 		length_ = v.length_;
 		accuracy_ = v.accuracy_;
+        value_ = v.value_;
 	}
 
 	InnerDecimal& operator =(const InnerDecimal& value) {
 		length_ = value.length_;
 		accuracy_ = value.accuracy_;
+        value_ = value.value_;
 		return *this;
 	}
 
 	bool operator ==(const InnerDecimal& value) {
-		return length_ == value.length_ && accuracy_ == value.accuracy_;
+		return length_ == value.length_ && accuracy_ == value.accuracy_ && value_ == value.value_;
 	}
 
 private:
 	InnerDecimal() {}
 	int length_;	// length of decimal
 	int accuracy_;	// accuracy of decimal
+    double value_;  // default value
 };
 
 class FieldValue {
 public:
 	explicit FieldValue()
-		: value_type_(INNER_UNKOWN) {};
+		: value_type_(INNER_UNKOWN)
+        , value_()
+    {};
 
 	explicit FieldValue(const std::string& value)
-		: value_type_(STRING) {
+		: value_type_(STRING)
+        , value_() {
 		value_.str = new std::string;
 		if (value_.str) {
 			value_.str->assign(value);
 		}
 	}
 
-	enum { fVARCHAR, fCHAR, fTEXT, fBLOB, fCOMMAND, fLONGTEXT };
-	explicit FieldValue(const std::string& value, int flag)
-		: value_type_(STRING) {
+	enum {
+        fVARCHAR, fCHAR, fTEXT, fBLOB, fCOMMAND, fLONGTEXT,
+        fDATE, fDATETIME };
 
-		if (flag == fVARCHAR)
-			value_type_ = VARCHAR;
-		else if (flag == fCHAR)
-			value_type_ = CHAR;
-		else if (flag == fTEXT)
-			value_type_ = TEXT;
-		else if (flag == fBLOB)
-			value_type_ = BLOB;
-		else if (flag == fCOMMAND)
-			value_type_ = COMMAND;
-		else if (flag == fLONGTEXT)
-			value_type_ = LONGTEXT;
+	explicit FieldValue(const std::string& value, int flag)
+		: value_type_(STRING)
+        , value_() {
+
+        if (flag == fVARCHAR)
+            value_type_ = VARCHAR;
+        else if (flag == fCHAR)
+            value_type_ = CHAR;
+        else if (flag == fTEXT)
+            value_type_ = TEXT;
+        else if (flag == fBLOB)
+            value_type_ = BLOB;
+        else if (flag == fCOMMAND)
+            value_type_ = COMMAND;
+        else if (flag == fLONGTEXT)
+            value_type_ = LONGTEXT;
+        else if (flag == fDATE)
+            value_type_ = DATE;
+        else if (flag == fDATETIME)
+            value_type_ = DATETIME;
 
 		value_.str = new std::string;
 		if (value_.str) {
@@ -129,52 +158,62 @@ public:
 	}
 
 	explicit FieldValue(const int value)
-		: value_type_(INT) {
+		: value_type_(INT)
+        , value_() {
 		value_.i = value;
 	}
 
 	explicit FieldValue(const unsigned int value)
-		: value_type_(UINT) {
+		: value_type_(UINT)
+        , value_() {
 		value_.ui = value;
 	}
 
 	explicit FieldValue(const float f)
-		: value_type_(FLOAT) {
+		: value_type_(FLOAT)
+        , value_() {
 		value_.f = f;
 	}
 
 	explicit FieldValue(const double d)
-		: value_type_(DOUBLE) {
+		: value_type_(DOUBLE)
+        , value_() {
 		value_.d = d;
 	}
 
 	explicit FieldValue(const int64_t value)
-		: value_type_(LONG64) {
+		: value_type_(LONG64)
+        , value_() {
 		value_.i64 = value;
 	}
 
 	explicit FieldValue(const InnerDateTime& datetime)
-		: value_type_(DATETIME) {
+		: value_type_(DATETIME)
+        , value_() {
 		value_.datetime = nullptr;
 	}
 
 	explicit FieldValue(const InnerDate& date)
-		: value_type_(DATE) {
+		: value_type_(DATE)
+        , value_() {
 		value_.date = nullptr;
 	}
 
 	explicit FieldValue(const InnerDecimal& d)
-		: value_type_(DECIMAL) {
-		value_.decimal = new InnerDecimal(d.length(), d.accuracy());
+		: value_type_(DECIMAL)
+        , value_() {
+		value_.decimal = new InnerDecimal(d.length(), d.accuracy(), d.value());
 	}
 
 	explicit FieldValue(const FieldValue& value)
-		: value_type_(value.value_type_) {
+		: value_type_(value.value_type_)
+        , value_() {
 		assign(value);
 	}
 
 	explicit FieldValue(const InnerNull& value)
-		:value_type_(NULLTYPE)
+		: value_type_(NULLTYPE)
+        , value_()
 	{
 	}
 
@@ -194,19 +233,21 @@ public:
 		else if (value_type_ == STRING || value_type_ == VARCHAR
 			|| value_type_ == TEXT || value_type_ == BLOB
 			|| value_type_ == CHAR || value_type_ == COMMAND
-			|| value_type_ == LONGTEXT) {
-
+			|| value_type_ == LONGTEXT || value_type_ == DATE
+            || value_type_ == DATETIME) {
+            if (value_.str) delete value_.str;
 			value_.str = new std::string;
-			if (value_.str) {
+			if (value_.str && value.value_.str) {
 				value_.str->assign(value.value_.str->c_str());
 			}
 		}
-		else if (value_type_ == DATETIME) {
-			value_.datetime = value.value_.datetime;
-		}
-		else if (value_type_ == DATE) {
-			value_.date = value.value_.date;
-		} else if (value_type_ == LONG64) {
+		//else if (value_type_ == DATETIME) {
+		//	value_.datetime = value.value_.datetime;
+		//}
+		//else if (value_type_ == DATE) {
+		//	value_.date = value.value_.date;
+		//}
+        else if (value_type_ == LONG64) {
 			value_.i64 = value.value_.i64;
 		}
 		else if (value_type_ == FLOAT) {
@@ -216,13 +257,16 @@ public:
 			value_.d = value.value_.d;
 		}
 		else if (value_type_ == DECIMAL) {
+            if (value_.decimal) delete value_.decimal;
 			value_.decimal = new InnerDecimal(value.value_.decimal->length(),
-				value.value_.decimal->accuracy());
+				value.value_.decimal->accuracy(), value.value_.decimal->value());
 		}
 	}
 
 	FieldValue& operator =(const std::string& value) {
 		value_type_ = STRING;
+        if (value_.str)
+            delete value_.str;
 		value_.str = new std::string;
 		if (value_.str) {
 			value_.str->assign(value);
@@ -268,7 +312,9 @@ public:
 
 	FieldValue& operator =(const InnerDecimal& value) {
 		value_type_ = DECIMAL;
-		value_.decimal = new InnerDecimal(value.length(), value.accuracy());
+        if (value_.decimal)
+            delete value_.decimal;
+		value_.decimal = new InnerDecimal(value.length(), value.accuracy(), value.value());
 		return *this;
 	}
 
@@ -440,7 +486,7 @@ public:
 	~FieldValue() {
 		if ((value_type_ == STRING || value_type_ == VARCHAR
 			|| value_type_ == TEXT || value_type_ == BLOB
-			|| value_type_ == CHAR)
+			|| value_type_ == CHAR || value_type_ == DATE || value_type_ == DATETIME)
 			&& value_.str) {
 			delete value_.str;
 			value_.str = nullptr;
