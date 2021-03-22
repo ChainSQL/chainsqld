@@ -211,15 +211,26 @@ PeerImp::dispatch()
         for (auto item : app_.getSchemaManager())
         {
             auto vecKeys = item.second->validators().validators();
-            if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_) !=
-                    vecKeys.end() ||
-                item.first ==
-                    beast::zero)  // add to main chain with no validators check.
+			auto vecPendingKeys = item.second->validators().pendingValidators();
+			bool bShoundAdd = false;
+			if (item.first == beast::zero)// add to main chain with no validators check.
+			{
+				bShoundAdd = true;
+			}
+			if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_)
+				!= vecKeys.end())
+			{
+				bShoundAdd = true;
+			}
+			if (std::find(vecPendingKeys.begin(), vecPendingKeys.end(), *publicValidate_)
+				!= vecPendingKeys.end())
+			{
+				bShoundAdd = true;
+			}
+			if(bShoundAdd)
             {
-                {
-                    std::lock_guard sl(schemaInfoMutex_);
-                    schemaInfo_.emplace(item.first, SchemaInfo());
-                }
+                std::lock_guard sl(schemaInfoMutex_);
+                schemaInfo_.emplace(item.first, SchemaInfo());
                 item.second->peerManager().add(shared_from_this());
             }
         }

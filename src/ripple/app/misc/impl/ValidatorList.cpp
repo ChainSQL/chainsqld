@@ -978,6 +978,7 @@ ValidatorList::applySchemaModify(
             }
             // update keyListings_
             keyListings_.insert({val, 1});
+			pendingValidators_.push_back(val);
         }
     }
     else
@@ -1089,6 +1090,8 @@ ValidatorList::updateTrusted(hash_set<NodeID> const& seenValidators)
     {
         resetValidators();
     }
+
+	pendingValidators_.clear();
 
     return trustChanges;
 }

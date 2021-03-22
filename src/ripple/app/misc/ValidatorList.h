@@ -164,6 +164,7 @@ class ValidatorList
     hash_set<PublicKey> trustedSigningKeys_;
 
 	std::vector<PublicKey> validators_;
+	std::vector<PublicKey> pendingValidators_;
 
     PublicKey localPubKey_;
 
@@ -368,6 +369,11 @@ public:
 	inline std::vector<PublicKey> validators()
 	{
 		return validators_;
+	}
+
+	inline std::vector<PublicKey> pendingValidators()
+	{
+		return pendingValidators_;
 	}
 
     int getPubIndex(PublicKey const& publicKey);
