@@ -89,6 +89,15 @@ Json::Value doSubmit (RPC::Context& context)
 
 
     {
+		//check publicKey type
+		auto keyType = publicKeyType(makeSlice(stpTrans->getFieldVL(sfSigningPubKey)));
+		if (*keyType != CommonKey::algTypeGlobal)
+		{
+			jvResult[jss::error] = "invalidTransaction";
+			jvResult[jss::error_message] = "fails local checks: signingPublicKey type is " \
+				"not consistent with the node.";
+		}
+
         if (!context.app.checkSigs())
             forceValidity(context.app.getHashRouter(),
                 stpTrans->getTransactionID(), Validity::SigGoodOnly);
