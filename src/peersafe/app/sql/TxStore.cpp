@@ -38,37 +38,44 @@ namespace ripple {
 TxStoreDBConn::TxStoreDBConn(const Config& cfg)
     : databasecon_(nullptr)
 {
-    std::string database_name = "chainsql";
     std::string dbType;
+    std::string dbName = "chainsql";
 
-	DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg);
+    DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg);
 
-    std::pair<std::string, bool> database = setup.sync_db.find("db");
-    if (database.second)
-        database_name = database.first;
+    std::pair<std::string, bool> dbNameCfg = setup.sync_db.find("db");
+    if (dbNameCfg.second && !dbNameCfg.first.empty())
+        dbName = dbNameCfg.first;
 
-    std::pair<std::string, bool> db_type = setup.sync_db.find("type");
-    if (db_type.second == false || db_type.first.empty())
-        ;
-	else if (db_type.first.compare("sqlite")==0){
-		database_name += ".db";
-		dbType = "sqlite";
-	}
-    else
-        dbType = "mycat";
+    std::pair<std::string, bool> dbTypeCfg = setup.sync_db.find("type");
+    if (dbTypeCfg.second)
+    {
+        if (boost::iequals(dbTypeCfg.first, "sqlite"))
+        {
+            dbType = "sqlite";
+            dbName += ".db";
+        }
+        else if (
+            boost::iequals(dbTypeCfg.first, "mysql") ||
+            boost::iequals(dbTypeCfg.first, "mycat"))
+        {
+            dbType = "mycat";
+        }
+    }
 
     for (int count = 0; count < 3; ++count)
     {
         try
         {
-            databasecon_ = std::make_shared<DatabaseCon>(setup, database_name, nullptr, 0, dbType);
-		}
-		catch (soci::soci_error error)
-		{
-			if (count == 1)
-				std::cerr << error.get_error_message() << std::endl;
-			databasecon_ = NULL;
-		}
+            databasecon_ = std::make_shared<DatabaseCon>(
+                setup, dbName, nullptr, 0, dbType);
+        }
+        catch (soci::soci_error error)
+        {
+            if (count == 1)
+                std::cerr << error.get_error_message() << std::endl;
+            databasecon_ = NULL;
+        }
         catch (...)
         {
             databasecon_ = NULL;
