@@ -38,22 +38,29 @@ namespace ripple {
 TxStoreDBConn::TxStoreDBConn(const Config& cfg)
     : databasecon_(nullptr)
 {
-    std::string database_name = "chainsql";
     std::string dbType;
+    std::string database_name = "chainsql";
 
 	DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg);
 
     std::pair<std::string, bool> database = setup.sync_db.find("db");
-    if (database.second)
+    if (database.second && !database.first.empty())
         database_name = database.first;
 
     std::pair<std::string, bool> db_type = setup.sync_db.find("type");
-    if (db_type.second == false || db_type.first.empty())
-        ;
-	else if (db_type.first.compare("sqlite")==0)
-        database_name += ".db";
-    else
-        dbType = "mycat";
+    if (db_type.second)
+    {
+        if (boost::iequals(db_type.first, "sqlite"))
+        {
+            dbType = "sqlite";
+            database_name += ".db";
+        }
+        else if (boost::iequals(db_type.first, "mysql")
+            || boost::iequals(db_type.first, "mycat"))
+        {
+            dbType = "mycat";
+        }
+    }
 
     for (int count = 0; count < 3; ++count)
     {
