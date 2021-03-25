@@ -1217,11 +1217,11 @@ bool ApplicationImp::setup()
         setMaxDisallowedLedger();
 
     getLedgerDB ().getSession ()
-        << boost::str (boost::format ("PRAGMA cache_size=-%d;") %
+        << boost::str (boost::format ("PRAGMA cache_size=%d;") %
                         (config_->getSize (siLgrDBCache) * 1024));
 
     getTxnDB ().getSession ()
-            << boost::str (boost::format ("PRAGMA cache_size=-%d;") %
+            << boost::str (boost::format ("PRAGMA cache_size=%d;") %
                             (config_->getSize (siTxnDBCache) * 1024));
 
     mTxnDB->setupCheckpointing (m_jobQueue.get(), logs());
