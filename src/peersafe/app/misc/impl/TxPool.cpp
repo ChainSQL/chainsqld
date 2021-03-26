@@ -100,9 +100,9 @@ TxPool::removeTxs(
 {
     int count = 0;
     TransactionSet::iterator iterSet;
-    for (auto const& item : cSet)
+    try
     {
-        try
+        for (auto const& item : cSet)
         {
             if (!txExists(item.key()))
                 continue;
@@ -116,29 +116,15 @@ TxPool::removeTxs(
                 mTxsSet.erase(iterSet);
             }
 
-            // remove from avoid set.
-            std::unique_lock<std::shared_mutex> lock(mutexAvoid_);
-            if (mAvoidByHash.find(item.key()) != mAvoidByHash.end())
-            {
-                LedgerIndex seq = mAvoidByHash[item.key()];
-                mAvoidBySeq[seq].erase(item.key());
-                if (!mAvoidBySeq[seq].size())
-                {
-                    mAvoidBySeq.erase(seq);
-                }
-                mAvoidByHash.erase(item.key());
-            }
-            else
-            {
-                // JLOG(j_.warn()) << "TxPool::TX:" << item.key() << " not in
-                // mAvoid set";
-            }
             count++;
         }
-        catch (std::exception const& e)
-        {
-            JLOG(j_.warn()) << "TxPool::removeTxs exception:" << e.what();
-        }
+
+        // remove avoid set.
+        clearAvoid(ledgerSeq);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "TxPool::removeTxs exception:" << e.what();
     }
 
     JLOG(j_.info()) << "Remove " << count << " txs for ledger " << ledgerSeq;
@@ -202,16 +188,10 @@ TxPool::checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash)
 void
 TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
 {
-    // If the Tx set had be added into avoid set recently, don't add it again.
-    // TODO
-    if (0)
-    {
-        return;
-    }
     if (mAvoidBySeq.find(seq) != mAvoidBySeq.end() &&
         mAvoidBySeq[seq].size() > 0)
     {
-        JLOG(j_.info()) << "TxPool updateAvoid already "
+        JLOG(j_.warn()) << "TxPool updateAvoid already "
                         << mAvoidBySeq[seq].size() << " txs for Seq:" << seq;
     }
 
