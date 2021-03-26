@@ -40,6 +40,9 @@ namespace ripple {
         ret[jss::value] = malloc_trim(0);
         #endif
 
+        auto j = context.app.journal("RPCHandler");
+        JLOG(j.info()) << "malloc_trim(0) executed.";
+
         return ret;
     }
 
